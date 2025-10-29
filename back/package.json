@@ -1,4 +1,20 @@
 {
+  "name": "oi-backend",
+  "version": "1.0.0",
+  "description": "Oi Backend Server",
+  "main": "app.js",
+  "scripts": {
+    "start": "node app.js",
+    "dev": "nodemon app.js",
+    "test": "jest"
+  },
+  "keywords": [
+    "social",
+    "community",
+    "student"
+  ],
+  "author": "Oi Development Team",
+  "license": "ISC",
   "dependencies": {
     "bcrypt": "^6.0.0",
     "cors": "^2.8.5",
