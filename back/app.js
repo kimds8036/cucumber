@@ -7,6 +7,57 @@ const User = require('./models/User');
 const app = express();
 app.use(express.json());
 
+/*
+// 예시
+app.get('/', (req, res) => {
+  res.json({
+    message: '🎉 오이 API 서버',
+    endpoints: {
+      users: '/api/users',
+      schools: '/api/schools',
+      stats: '/api/stats'
+    }
+  });
+});
+
+// 모든 사용자 보기
+app.get('/api/users', async (req, res) => {
+  try {
+    const users = await User.findAll({
+      attributes: { exclude: ['password_hash'] }
+    });
+    res.json({ count: users.length, users });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// 모든 학교 보기
+app.get('/api/schools', async (req, res) => {
+  try {
+    const [schools] = await sequelize.query('SELECT * FROM schools');
+    res.json({ count: schools.length, schools });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// 통계 보기
+app.get('/api/stats', async (req, res) => {
+  try {
+    const [userCount] = await sequelize.query('SELECT COUNT(*) as count FROM users');
+    const [schoolCount] = await sequelize.query('SELECT COUNT(*) as count FROM schools');
+    
+    res.json({
+      total_users: userCount[0].count,
+      total_schools: schoolCount[0].count
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+*/
+
 // ========================================
 // 데이터베이스 동기화 및 서버 시작
 // ========================================
@@ -37,15 +88,6 @@ const startServer = async () => {
 // ========================================
 // API 라우트 예시
 // ========================================
-
-// 예시
-app.get('/', (req, res) => {
-  res.json({ 
-    message: '🎉 오이(오늘의 이야기) API 서버가 실행 중입니다!',
-    status: 'OK',
-    database: 'Connected'
-  });
-});
 
 // 1. 일반 회원가입
 app.post('/api/auth/register', async (req, res) => {
