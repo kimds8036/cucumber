@@ -17,7 +17,7 @@ export default function App() {
   return (
     <SafeAreaProvider>
       <NavigationContainer>
-        <Stack.Navigator initialRouteName="Login">
+        <Stack.Navigator initialRouteName="General">
           <Stack.Screen name="Home" component={HomeScreen} options={{ title: '홈' }} />
           <Stack.Screen name="Login" component={LoginScreen} options={{ title: '로그인' }} />
           <Stack.Screen name="Signup" component={SignupScreen} options={{ title: '회원가입' }} />
