@@ -7,7 +7,7 @@ import { TagButton } from '../components/common/TagButton';
 import { BoardCard } from '../components/BoardCard';
 import { BottomTabBar } from '../components/BottomTabBar';
 
-export const GeneralScreen: React.FC = () => {
+const GeneralScreen: React.FC = () => {
   const [activeTab, setActiveTab] = useState('home');
 
   // 아이콘을 실제 아이콘 컴포넌트로 교체하세요
@@ -79,3 +79,4 @@ const styles = StyleSheet.create({
     borderRadius: 12,
   },
 });
+export default GeneralScreen;

@@ -7,7 +7,7 @@ import { PostCard } from '../components/PostCard';
 import { FloatingButton } from '../components/FloatingButton';
 import { BottomTabBar } from '../components/BottomTabBar';
 
-export const BoardDetailScreen: React.FC = () => {
+const BoardDetailScreen: React.FC = () => {
   const [activeTab, setActiveTab] = useState('home');
 
   const headerLeftIcon = <View style={styles.iconPlaceholder} />;
@@ -92,3 +92,5 @@ const styles = StyleSheet.create({
     borderRadius: 12,
   },
 });
+
+export default BoardDetailScreen;

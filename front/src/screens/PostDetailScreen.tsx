@@ -10,7 +10,7 @@ import { CommentCard } from '../components/CommentCard';
 import { CommentInput } from '../components/CommentInput';
 import { BottomTabBar } from '../components/BottomTabBar';
 
-export const PostDetailScreen: React.FC = () => {
+const PostDetailScreen: React.FC = () => {
   const [post, setPost] = useState<PostDetail | null>(null);
   const [activeTab, setActiveTab] = useState('home');
 
@@ -130,3 +130,4 @@ const styles = StyleSheet.create({
     marginTop: 20,
   },
 });
+export default PostDetailScreen;
