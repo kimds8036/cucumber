@@ -4,10 +4,10 @@
     "slug": "cucumber-front",
     "version": "1.0.0",
     "orientation": "portrait",
-  
+    "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
     "splash": {
-      
+      "image": "./assets/splash.png",
       "resizeMode": "contain",
       "backgroundColor": "#ffffff"
     },
@@ -16,7 +16,10 @@
       "bundleIdentifier": "com.cucumber.app"
     },
     "android": {
-      "backgroundColor": "#ffffff",
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#ffffff"
+      },
       "package": "com.cucumber.app"
     },
     "plugins": [
