@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
-import { COLORS } from '../constants/colors';
+import colors from '../constants/colors';
 
 interface CheckboxProps {
   label: string;
@@ -23,13 +23,13 @@ const styles = StyleSheet.create({
     width: 18,
     height: 18,
     borderWidth: 2,
-    borderColor: COLORS.brand,
+    borderColor: colors.brand,
     backgroundColor: 'transparent',
     marginRight: 10,
     justifyContent: 'center',
     alignItems: 'center',
   },
-  boxChecked: { backgroundColor: COLORS.input },
-  inner: { width: 10, height: 10, backgroundColor: COLORS.brand },
-  label: { color: COLORS.brand, fontSize: 12, letterSpacing: 1 },
+  boxChecked: { backgroundColor: colors.cardBackground },
+  inner: { width: 10, height: 10, backgroundColor: colors.brand },
+  label: { color: colors.brand, fontSize: 12, letterSpacing: 1 },
 });

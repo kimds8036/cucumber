@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
-import { COLORS } from '../constants/colors';
+import colors from '../constants/colors';
 
 const links = ['아이디 찾기', '비밀번호 찾기', '회원가입'];
 
@@ -24,6 +24,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginTop: 40,
   },
-  link: { color: COLORS.placeholder, fontSize: 12 },
-  divider: { color: COLORS.placeholder, fontSize: 12, marginHorizontal: 8 },
+  link: { color: colors.textSecondary, fontSize: 12 },
+  divider: { color: colors.textSecondary, fontSize: 12, marginHorizontal: 8 },
 });

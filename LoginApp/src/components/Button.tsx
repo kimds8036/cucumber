@@ -1,6 +1,6 @@
 import React from 'react';
 import { TouchableOpacity, Text, StyleSheet } from 'react-native';
-import { COLORS } from '../constants/colors';
+import colors from '../constants/colors';
 
 interface ButtonProps {
   title: string;
@@ -15,11 +15,11 @@ export const Button: React.FC<ButtonProps> = ({ title, onPress }) => (
 
 const styles = StyleSheet.create({
   button: {
-    backgroundColor: COLORS.brand,
+    backgroundColor: colors.brand,
     borderRadius: 25,
     paddingVertical: 15,
     alignItems: 'center',
     marginTop: 10,
   },
-  text: { color: COLORS.background, fontSize: 16, fontWeight: '600' },
+  text: { color: colors.background, fontSize: 16, fontWeight: '600' },
 });

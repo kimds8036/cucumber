@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, StyleSheet } from 'react-native';
-import { COLORS } from '../constants/colors';
+import colors from '../constants/colors';
 
 export const Logo = () => (
   <View style={styles.container}>
@@ -22,7 +22,7 @@ const styles = StyleSheet.create({
   circle: {
     width: 100,
     height: 100,
-    backgroundColor: COLORS.brand,
+    backgroundColor: colors.brand,
     borderRadius: 50,
     justifyContent: 'center',
     alignItems: 'center',
@@ -32,7 +32,7 @@ const styles = StyleSheet.create({
     position: 'absolute',
     width: 6,
     height: 14,
-    backgroundColor: COLORS.background,
+    backgroundColor: colors.background,
     borderRadius: 3,
     left: 17,
     top: 0,

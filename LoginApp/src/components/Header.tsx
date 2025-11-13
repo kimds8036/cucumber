@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
-import { COLORS } from '../constants/colors';
+import colors from '../constants/colors';
 
 interface HeaderProps {
   title: string;
@@ -25,18 +25,18 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     paddingVertical: 20,
     borderBottomWidth: 1,
-    borderBottomColor: COLORS.border,
+    borderBottomColor: colors.border,
   },
   backButton: {
     marginRight: 15,
   },
   backIcon: {
     fontSize: 24,
-    color: COLORS.text,
+    color: colors.text,
   },
   title: {
     fontSize: 18,
-    color: COLORS.text,
+    color: colors.text,
     fontWeight: '500',
   },
 });

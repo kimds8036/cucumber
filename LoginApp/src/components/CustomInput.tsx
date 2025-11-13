@@ -1,6 +1,6 @@
 import React from 'react';
 import { TextInput, StyleSheet, TextInputProps } from 'react-native';
-import { COLORS } from '../constants/colors';
+import colors from '../constants/colors';
 
 interface CustomInputProps extends TextInputProps {
   placeholder: string;
@@ -10,7 +10,7 @@ export const CustomInput: React.FC<CustomInputProps> = ({ placeholder, ...props 
   <TextInput
     style={styles.input}
     placeholder={placeholder}
-    placeholderTextColor={COLORS.placeholder}
+    placeholderTextColor={colors.textSecondary}
     autoCapitalize="none"
     {...props}
   />
@@ -18,15 +18,15 @@ export const CustomInput: React.FC<CustomInputProps> = ({ placeholder, ...props 
 
 const styles = StyleSheet.create({
   input: {
-    backgroundColor: COLORS.input,
+    backgroundColor: colors.cardBackground,
     borderWidth: 1,
-    borderColor: COLORS.border,
+    borderColor: colors.border,
     borderRadius: 25,
     paddingHorizontal: 20,
     paddingVertical: 15,
     marginBottom: 15,
     fontSize: 14,
-    color: COLORS.text,
+    color: colors.text,
     letterSpacing: 1,
   },
 });

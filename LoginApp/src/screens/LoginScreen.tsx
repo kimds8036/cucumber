@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { View, StyleSheet, StatusBar, KeyboardAvoidingView, Platform } from 'react-native';
-import { COLORS } from '../constants/colors';
+import colors from '../constants/colors';
 import { Logo } from '../components/Logo';
 import { CustomInput } from '../components/CustomInput';
 import { Checkbox } from '../components/Checkbox';
@@ -21,7 +21,7 @@ const LoginScreen = () => {
       style={styles.container}
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
     >
-      <StatusBar barStyle="light-content" backgroundColor={COLORS.background} />
+      <StatusBar barStyle="light-content" backgroundColor={colors.background} />
       
       <Logo />
 
@@ -40,7 +40,7 @@ const LoginScreen = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: COLORS.background,
+    backgroundColor: colors.background,
     paddingHorizontal: 30,
     justifyContent: 'center',
   },

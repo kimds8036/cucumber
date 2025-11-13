@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, TextInput, StyleSheet } from 'react-native';
-import { COLORS } from '../constants/colors';
+import colors from '../constants/colors';
 import { Button } from './Button';
 
 interface PhoneInputProps {
@@ -22,7 +22,7 @@ export const PhoneInput: React.FC<PhoneInputProps> = ({
     <TextInput
       style={styles.input}
       placeholder={placeholder}
-      placeholderTextColor={COLORS.placeholder}
+      placeholderTextColor={colors.textSecondary}
       value={value}
       onChangeText={onChangeText}
       keyboardType="phone-pad"
@@ -42,14 +42,14 @@ const styles = StyleSheet.create({
   },
   input: {
     flex: 1,
-    backgroundColor: COLORS.input,
+    backgroundColor: colors.cardBackground,
     borderWidth: 1,
-    borderColor: COLORS.border,
+    borderColor: colors.border,
     borderRadius: 25,
     paddingHorizontal: 20,
     paddingVertical: 15,
     fontSize: 14,
-    color: COLORS.text,
+    color: colors.text,
   },
   buttonWrapper: {
     width: 80,

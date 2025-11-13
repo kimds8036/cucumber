@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, StatusBar, ScrollView } from 'react-native';
-import { COLORS } from '../constants/colors';
+import colors from '../constants/colors';
 import { Header } from '../components/Header';
 import { CustomInput } from '../components/CustomInput';
 import { PhoneInput } from '../components/PhoneInput';
@@ -28,7 +28,7 @@ const SignupScreen = () => {
 
   return (
     <View style={styles.container}>
-      <StatusBar barStyle="light-content" backgroundColor={COLORS.background} />
+      <StatusBar barStyle="light-content" backgroundColor={colors.background} />
       
       <Header title="회원가입" onBack={handleBack} />
 
@@ -65,14 +65,14 @@ const SignupScreen = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: COLORS.background,
+    backgroundColor: colors.background,
     paddingHorizontal: 20,
   },
   scrollView: {
     flex: 1,
   },
   description: {
-    color: COLORS.placeholder,
+    color: colors.textSecondary,
     fontSize: 12,
     marginTop: 15,
     marginBottom: 30,

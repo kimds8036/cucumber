@@ -1,8 +1,11 @@
-export const COLORS = {
+const colors = {
   brand: '#A6DA95',
   background: '#1A1E1C',
-  input: '#2F3833',
+  cardBackground: '#2F3833',
   border: '#A6DA95',
   text: '#FFFFFF',
-  placeholder: '#7A8C7E',
-};
+  textSecondary: '#A6DA95',
+  black: '#000000',
+} as const;
+
+export default colors;
