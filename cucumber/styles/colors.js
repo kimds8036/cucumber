@@ -17,21 +17,24 @@ export const colors = {
   textWhite: '#fff',         // 흰색 텍스트
 
   // 오이 컬러
-  green: '#F7FFF3',          // 에러/알림 빨강
-  yellow: '#FFFCD7',        // 경고 노랑
-  red: '#FFF3F3',        // 성공 초록
-  blue: '#E5F0FF',           // 정보 파랑
+  green: '#F7FFF3',          // 빨강
+  yellow: '#FFFCD7',        // 노랑
+  red: '#FFF3F3',        // 초록
+  blue: '#E5F0FF',           // 파랑
+
+  // 알림
+  alert: '#FF9F9F',
 
   // 추가 컬러
   shadow: '#000',            // 그림자
   transparent: 'transparent', // 투명
 
   // 투명도 버전 (Opacity)
-  primaryLight5: 'rgba(39, 42, 38, 0.05)',   // 5%
-  primaryLight10: 'rgba(39, 42, 38, 0.1)',   // 10%
-  primaryLight20: 'rgba(39, 42, 38, 0.2)',   // 20%
-  primaryLight50: 'rgba(39, 42, 38, 0.5)',   // 50%
-  primaryLight70: 'rgba(39, 42, 38, 0.7)',   // 70%
+  textLight5: 'rgba(39, 42, 38, 0.05)',   // 5%
+  textLight10: 'rgba(39, 42, 38, 0.1)',   // 10%
+  textLight20: 'rgba(39, 42, 38, 0.2)',   // 20%
+  textLight70: 'rgba(39, 42, 38, 0.7)',   // 70%
+  primaryLight50: 'rgba(166,218,149, 0.5)', // 50%
 
   shadowLight: 'rgba(0, 0, 0, 0.1)',          // 밝은 그림자
   shadowMedium: 'rgba(0, 0, 0, 0.2)',         // 중간 그림자

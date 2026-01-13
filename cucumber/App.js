@@ -1,5 +1,5 @@
 import { StatusBar } from 'expo-status-bar';
-import { StyleSheet, View, ScrollView, Text, Dimensions } from 'react-native';
+import { StyleSheet, View, ScrollView, Text, useWindowDimensions } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import MainHeader from './view/frame/mainHeader';
 import MainFooter from './view/frame/mainFooter';
@@ -7,13 +7,13 @@ import { useFonts } from 'expo-font';
 import * as SplashScreen from 'expo-splash-screen';
 import { useEffect } from 'react';
 
-const { width } = Dimensions.get('window');
-const scale = width / 375;
-const normalize = (size) => Math.round(scale * size);
-
 SplashScreen.preventAutoHideAsync();
 
 export default function App() {
+  const { width } = useWindowDimensions();
+  const scale = width / 375;
+  const normalize = (size) => Math.round(scale * size);
+
   const [fontsLoaded] = useFonts({
     'Baloo2-Regular': require('./assets/fonts/Baloo2-Regular.ttf'),
     'Baloo2-Bold': require('./assets/fonts/Baloo2-Bold.ttf'),
@@ -27,9 +27,31 @@ export default function App() {
 
   if (!fontsLoaded) return null;
 
+  const styles = StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: '#fff',
+    },
+    content: {
+      flex: 1,
+      backgroundColor: '#f5f5f5',
+    },
+    scrollContent: {
+      flexGrow: 1,
+    },
+    contentInner: {
+      padding: width * 0.04,
+    },
+    sampleText: {
+      fontSize: normalize(16),
+      color: '#333',
+      marginBottom: normalize(12),
+    },
+  });
+
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
-      <StatusBar style="auto" />
+    <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
+      <StatusBar style="dark" />
 
       {/* 헤더 */}
       <MainHeader title="전체" />
@@ -47,25 +69,3 @@ export default function App() {
     </SafeAreaView>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#fff',
-  },
-  content: {
-    flex: 1,
-    backgroundColor: '#f5f5f5',
-  },
-  scrollContent: {
-    flexGrow: 1,
-  },
-  contentInner: {
-    padding: width * 0.04,
-  },
-  sampleText: {
-    fontSize: normalize(16),
-    color: '#333',
-    marginBottom: normalize(12),
-  },
-});

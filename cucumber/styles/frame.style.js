@@ -1,124 +1,129 @@
-import { StyleSheet, Dimensions } from 'react-native';
+import { StyleSheet, Platform, StatusBar } from 'react-native';
 import { colors } from './colors';
 
-const { width, height } = Dimensions.get('window');
+// normalize 함수를 export하여 컴포넌트에서 사용
+export const getNormalize = (width) => {
+  const scale = width / 375;
+  return (size) => Math.round(scale * size);
+};
 
-// 화면 크기 기준 계산
-const scale = width / 375; // 기준: iPhone SE/8 크기 (375px)
-const normalize = (size) => Math.round(scale * size);
+// 동적 스타일 생성 함수
+export const createHeaderStyles = (width, height) => {
+  const scale = width / 375;
+  const normalize = (size) => Math.round(scale * size);
+  const SPACING_H = width * 0.04;
 
-// 반응형 크기
-const HEADER_HEIGHT = height * 0.07; // 화면 높이의 7%
-const FOOTER_HEIGHT = height * 0.09; // 화면 높이의 9%
-const SPACING_H = width * 0.04; // 가로 여백 4%
-const ICON_SIZE = normalize(24);
-const FOOTER_ICON_SIZE = normalize(26);
+  return StyleSheet.create({
+    container: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      paddingHorizontal: SPACING_H,
+      paddingVertical: normalize(12),
+      backgroundColor: colors.background,
+      height: normalize(56),
+    },
+    tabContainer: {
+      flex: 1,
+      flexDirection: 'row',
+      alignItems: 'center',
+    },
+    tabButton: {
+      paddingHorizontal: normalize(16),
+      paddingVertical: normalize(8),
+      borderRadius: normalize(20),
+    },
+    activeTab: {
+      backgroundColor: colors.primary,
+    },
+    tabText: {
+      fontSize: normalize(25),
+      fontFamily: 'Baloo2-Bold',
+      color: colors.textPrimary,
+      fontWeight: '500',
+    },
+    activeTabText: {
+      fontFamily: 'Baloo2-Bold',
+      color: colors.textWhite,
+      fontWeight: '600',
+    },
+    buttonContainer: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: width * 0.03,
+    },
+    iconButton: {
+      position: 'relative',
+      padding: normalize(8),
+      minWidth: normalize(40),
+      minHeight: normalize(40),
+      alignItems: 'center',
+      justifyContent: 'center',
+      borderRadius: normalize(20),
+      backgroundColor: colors.green,
+      borderWidth: 1,
+      borderColor: colors.primaryLight50,
+    },
+    badge: {
+      position: 'absolute',
+      top: normalize(-1),
+      right: normalize(4),
+      width: normalize(10),
+      height: normalize(10),
+      borderRadius: normalize(5),
+      backgroundColor: colors.alert,
+    },
+  });
+};
 
-// 헤더 스타일
-export const headerStyles = StyleSheet.create({
-  container: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: SPACING_H,
-    paddingVertical: height * 0.015,
-    backgroundColor: colors.background,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
-    minHeight: 56,
-    maxHeight: 70,
-  },
-  tabContainer: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  tabButton: {
-    paddingHorizontal: normalize(16),
-    paddingVertical: normalize(8),
-    borderRadius: normalize(20),
-  },
-  activeTab: {
-    backgroundColor: colors.primary,
-  },
-  tabText: {
-    fontSize: normalize(25),
-    fontFamily: 'Baloo2-Bold',
-    color: colors.textSecondary,
-    fontWeight: '500',
-  },
-  activeTabText: {
-    fontFamily: 'Baloo2-Bold',
-    color: colors.textWhite,
-    fontWeight: '600',
-  },
-  buttonContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: width * 0.03,
-  },
-  iconButton: {
-    position: 'relative',
-    padding: normalize(4),
-    minWidth: normalize(40),
-    minHeight: normalize(40),
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  badge: {
-    position: 'absolute',
-    top: normalize(4),
-    right: normalize(4),
-    width: normalize(8),
-    height: normalize(8),
-    borderRadius: normalize(4),
-    backgroundColor: colors.error,
-  },
-});
+export const createFooterStyles = (width, height) => {
+  const scale = width / 375;
+  const normalize = (size) => Math.round(scale * size);
 
-// 푸터 스타일
-export const footerStyles = StyleSheet.create({
-  container: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    alignItems: 'center',
-    backgroundColor: colors.background,
-    borderTopWidth: 1,
-    borderTopColor: colors.border,
-    paddingVertical: height * 0.01,
-    paddingBottom: height * 0.015,
-    minHeight: 60,
-    maxHeight: 80,
-  },
-  tabButton: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: normalize(4),
-    minHeight: normalize(50),
-  },
-  tabText: {
-    fontSize: normalize(11),
-    color: colors.textTertiary,
-    marginTop: normalize(4),
-    fontWeight: '500',
-  },
-  activeTabText: {
-    color: colors.primary,
-    fontWeight: '600',
-  },
-});
-
-// 반응형 유틸리티 export (다른 파일에서도 사용 가능)
-export const responsive = {
-  width,
-  height,
-  normalize,
-  spacing: {
-    xs: width * 0.02,
-    sm: width * 0.03,
-    md: width * 0.04,
-    lg: width * 0.05,
-    xl: width * 0.06,
-  },
+  return StyleSheet.create({
+    container: {
+      flexDirection: 'row',
+      justifyContent: 'space-around',
+      alignItems: 'center',
+      backgroundColor: colors.background,
+      paddingVertical: normalize(8),
+      paddingBottom: normalize(-8),
+      height: normalize(65),
+      borderTopWidth: 1,
+      borderColor: colors.textLight20,
+    },
+    tabButton: {
+      flex: 1,
+      alignItems: 'center',
+      justifyContent: 'center',
+      paddingVertical: normalize(4),
+      minHeight: normalize(50),
+      position: 'relative',
+    },
+    activeTabIndicator: {
+      position: 'absolute',
+      top: normalize(-10),
+      width: 0,
+      height: 0,
+      backgroundColor: 'transparent',
+      borderStyle: 'solid',
+      borderLeftWidth: normalize(10),
+      borderRightWidth: normalize(10),
+      borderTopWidth: normalize(8),
+      borderLeftColor: 'transparent',
+      borderRightColor: 'transparent',
+      borderTopColor: colors.primary,
+    },
+    tabText: {
+      fontSize: normalize(10),
+      fontFamily: 'Baloo2-Bold',
+      color: colors.textSecondary,
+      marginTop: normalize(4),
+      fontWeight: '500',
+    },
+    activeTabText: {
+      color: colors.textSecondary,
+      fontWeight: '500',
+    },
+  });
 };
