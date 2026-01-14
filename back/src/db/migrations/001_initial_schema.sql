@@ -41,6 +41,8 @@ CREATE TABLE IF NOT EXISTS users (
   is_graduated BOOLEAN DEFAULT FALSE COMMENT '졸업 여부',
   is_deleted BOOLEAN DEFAULT FALSE COMMENT '탈퇴 여부',
   color_id INT NOT NULL COMMENT '프로필 컬러 ID',
+  phone_verified BOOLEAN DEFAULT FALSE COMMENT '전화번호 인증 여부',
+  student_verified BOOLEAN DEFAULT FALSE COMMENT '학생 인증 여부',
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP COMMENT '가입 일시',
   FOREIGN KEY (school_id) REFERENCES schools(school_id) ON DELETE RESTRICT,
   FOREIGN KEY (color_id) REFERENCES colors(id) ON DELETE RESTRICT,
@@ -199,3 +201,30 @@ CREATE TABLE IF NOT EXISTS timetables (
   FOREIGN KEY (school_id) REFERENCES schools(school_id) ON DELETE RESTRICT,
   INDEX idx_school_grade_class (school_id, grade, class_number)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='시간표 테이블';
+
+-- 전화번호 인증 테이블
+CREATE TABLE IF NOT EXISTS phone_verifications (
+  id INT AUTO_INCREMENT PRIMARY KEY COMMENT '인증 ID',
+  phone VARCHAR(20) NOT NULL COMMENT '전화번호',
+  verification_code VARCHAR(6) NOT NULL COMMENT '인증 코드',
+  is_verified BOOLEAN DEFAULT FALSE COMMENT '인증 완료 여부',
+  expires_at TIMESTAMP NOT NULL COMMENT '만료 일시',
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP COMMENT '생성 일시',
+  INDEX idx_phone (phone),
+  INDEX idx_expires_at (expires_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='전화번호 인증 테이블';
+
+-- 사용자 디바이스 테이블
+CREATE TABLE IF NOT EXISTS user_devices (
+  id INT AUTO_INCREMENT PRIMARY KEY COMMENT '디바이스 ID',
+  user_id INT NOT NULL COMMENT '사용자 ID',
+  device_id VARCHAR(255) COMMENT '디바이스 고유 ID',
+  device_info TEXT COMMENT '디바이스 정보 (User-Agent 등)',
+  ip_address VARCHAR(45) COMMENT 'IP 주소',
+  last_login_at TIMESTAMP COMMENT '마지막 로그인 일시',
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP COMMENT '등록 일시',
+  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+  INDEX idx_user_id (user_id),
+  INDEX idx_device_id (device_id),
+  INDEX idx_user_device (user_id, device_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='사용자 디바이스 정보 테이블';

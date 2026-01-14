@@ -2,6 +2,7 @@ import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import pool from './config/database.js';
+import authRoutes from './routes/auth.js';
 
 dotenv.config();
 
@@ -27,6 +28,9 @@ app.get('/api/test-db', async (req, res) => {
     res.status(500).json({ status: 'error', message: error.message });
   }
 });
+
+// Routes
+app.use('/api/auth', authRoutes);
 
 // 서버 시작
 app.listen(PORT, () => {

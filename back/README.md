@@ -21,7 +21,12 @@ DB_NAME=cucumber_db
 
 PORT=3000
 NODE_ENV=development
+
+JWT_SECRET=your-super-secret-jwt-key-change-in-production
+JWT_EXPIRES_IN=7d
 ```
+
+자세한 내용은 `ENV_EXAMPLE.md`를 참고하세요.
 
 ## 데이터베이스 스키마 작성
 
@@ -41,5 +46,20 @@ npm start
 
 ## API 엔드포인트
 
+### 공통
 - `GET /health` - 서버 상태 확인
 - `GET /api/test-db` - 데이터베이스 연결 테스트
+
+### 인증 API
+- `POST /api/auth/send-verification` - 전화번호 인증 코드 발송
+- `POST /api/auth/verify-phone` - 전화번호 인증 코드 확인
+- `POST /api/auth/signup` - 회원가입
+- `POST /api/auth/verify-student` - 학생 인증 (인증 필요)
+- `POST /api/auth/login` - 로그인
+- `POST /api/auth/logout` - 로그아웃 (인증 필요)
+
+### 인증 헤더
+인증이 필요한 API는 요청 헤더에 다음을 포함해야 합니다:
+```
+Authorization: Bearer {JWT_TOKEN}
+```
