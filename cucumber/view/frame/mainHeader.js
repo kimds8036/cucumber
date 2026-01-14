@@ -1,12 +1,15 @@
 import React, { useMemo } from 'react';
 import { View, Text, TouchableOpacity, useWindowDimensions } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { createHeaderStyles } from '../../styles/frame.style';
-import Fontisto from '@expo/vector-icons/Fontisto';
+import { createHeaderStyles, getNormalize } from '../../styles/frame.style';
+import FontAwesome5 from '@expo/vector-icons/FontAwesome5';
+import { colors } from '../../styles/colors';
+import Octicons from '@expo/vector-icons/Octicons';
 
 const MainHeader = ({ title = '전체' }) => {
   const { width, height } = useWindowDimensions();
   const headerStyles = useMemo(() => createHeaderStyles(width, height), [width, height]);
+  const normalize = useMemo(() => getNormalize(width), [width]);
 
   return (
     <View style={headerStyles.container}>
@@ -18,10 +21,10 @@ const MainHeader = ({ title = '전체' }) => {
       {/* 우측 버튼 영역 */}
       <View style={headerStyles.buttonContainer}>
         <TouchableOpacity style={headerStyles.iconButton}>
-          <Ionicons name="search" size={24} color="#A6DA95" />
+          <Ionicons name="search" size={normalize(24)} color={colors.primary} />
         </TouchableOpacity>
         <TouchableOpacity style={headerStyles.iconButton}>
-          <Fontisto name="bell" size={24} color="#A6DA95" />
+          <FontAwesome5 name="bell" size={normalize(24)} color={colors.primary} />
           <View style={headerStyles.badge} />
         </TouchableOpacity>
       </View>

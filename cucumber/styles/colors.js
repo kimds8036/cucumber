@@ -44,3 +44,21 @@ export const colors = {
   overlayLight: 'rgba(0, 0, 0, 0.3)',         // 밝은 오버레이
   overlayDark: 'rgba(0, 0, 0, 0.7)',          // 진한 오버레이
 };
+
+// 폰트 테마 관리
+export const fonts = {
+  regular: 'Baloo2-Regular',
+  bold: 'Baloo2-Bold',
+};
+
+// 폰트 사이즈 (normalize 함수와 함께 사용)
+export const fontSizes = {
+  xs: 10,
+  sm: 12,
+  md: 14,
+  lg: 16,
+  xl: 18,
+  xxl: 20,
+  title: 24,
+  heading: 28,
+};

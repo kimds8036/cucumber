@@ -19,9 +19,10 @@ export const createHeaderStyles = (width, height) => {
       justifyContent: 'space-between',
       alignItems: 'center',
       paddingHorizontal: SPACING_H,
-      paddingVertical: normalize(12),
+      paddingTop: normalize(8),
+      paddingBottom: normalize(8),
       backgroundColor: colors.background,
-      height: normalize(56),
+      minHeight: normalize(56),
     },
     tabContainer: {
       flex: 1,
