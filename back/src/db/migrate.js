@@ -1,0 +1,63 @@
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
+import { getConnection } from '../config/database.js';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+// 마이그레이션 파일들을 순서대로 실행
+async function runMigrations() {
+  const connection = await getConnection();
+  
+  try {
+    const migrationsDir = path.join(__dirname, 'migrations');
+    
+    // migrations 디렉토리가 없으면 생성
+    if (!fs.existsSync(migrationsDir)) {
+      fs.mkdirSync(migrationsDir, { recursive: true });
+      console.log('✅ migrations 디렉토리를 생성했습니다.');
+      console.log('📝 schema.sql 파일을 migrations 폴더에 만들어주세요.');
+      return;
+    }
+
+    const files = fs.readdirSync(migrationsDir)
+      .filter(file => file.endsWith('.sql'))
+      .sort(); // 파일명 순서대로 실행
+
+    if (files.length === 0) {
+      console.log('⚠️  실행할 마이그레이션 파일이 없습니다.');
+      return;
+    }
+
+    console.log(`📦 ${files.length}개의 마이그레이션 파일을 실행합니다...\n`);
+
+    for (const file of files) {
+      const filePath = path.join(migrationsDir, file);
+      const sql = fs.readFileSync(filePath, 'utf8');
+      
+      console.log(`⏳ 실행 중: ${file}`);
+      
+      // SQL을 세미콜론으로 분리하여 각각 실행
+      const statements = sql
+        .split(';')
+        .map(s => s.trim())
+        .filter(s => s.length > 0);
+
+      for (const statement of statements) {
+        await connection.execute(statement);
+      }
+      
+      console.log(`✅ 완료: ${file}\n`);
+    }
+
+    console.log('🎉 모든 마이그레이션이 성공적으로 완료되었습니다!');
+  } catch (error) {
+    console.error('❌ 마이그레이션 오류:', error.message);
+    throw error;
+  } finally {
+    await connection.end();
+  }
+}
+
+runMigrations().catch(console.error);
