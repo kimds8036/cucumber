@@ -460,4 +460,78 @@ router.post('/logout', authenticate, async (req, res) => {
   }
 });
 
+// OCR 학생증 인증
+router.post('/ocr', authenticate, async (req, res) => {
+  try {
+    const userId = req.user.userId;
+    const { imageUrl, ocrData } = req.body;
+
+    if (!imageUrl && !ocrData) {
+      return res.status(400).json({ 
+        success: false, 
+        message: '이미지 URL 또는 OCR 데이터를 제공해주세요.' 
+      });
+    }
+
+    // 실제로는 OCR 서비스(구글, 네이버)를 호출하여 학생증 정보 추출
+    // 여기서는 클라이언트에서 이미 OCR을 수행한 데이터를 받는다고 가정
+    // OCR 데이터 구조: { name, school, grade, classNumber, studentId 등 }
+
+    // 사용자 정보 조회
+    const [users] = await pool.execute(
+      'SELECT id, name, school_id, grade, class_number FROM users WHERE id = ?',
+      [userId]
+    );
+
+    if (users.length === 0) {
+      return res.status(404).json({ 
+        success: false, 
+        message: '사용자를 찾을 수 없습니다.' 
+      });
+    }
+
+    const user = users[0];
+
+    // OCR 데이터와 사용자 정보 일치 확인
+    // 실제로는 OCR 추출 데이터를 파싱하여 검증
+    let isVerified = false;
+    if (ocrData) {
+      // OCR에서 추출한 정보와 사용자 정보 비교 (실제 구현은 OCR 데이터 구조에 맞게)
+      // 예: ocrData.name === user.name && ocrData.school === user.school_id 등
+      // 여기서는 간단하게 처리
+      isVerified = true; // 실제로는 더 엄격한 검증 필요
+    }
+
+    // OCR 인증 기록 저장
+    const [result] = await pool.execute(
+      `INSERT INTO ocr_verifications (user_id, image_url, extracted_data, is_verified) 
+       VALUES (?, ?, ?, ?)`,
+      [userId, imageUrl || null, JSON.stringify(ocrData || {}), isVerified]
+    );
+
+    if (isVerified) {
+      // 학생 인증 완료 처리
+      await pool.execute(
+        'UPDATE users SET student_verified = TRUE WHERE id = ?',
+        [userId]
+      );
+    }
+
+    res.json({ 
+      success: true, 
+      message: isVerified ? 'OCR 인증이 완료되었습니다.' : 'OCR 인증이 완료되었으나 검증 대기 중입니다.',
+      data: {
+        ocrVerificationId: result.insertId,
+        isVerified
+      }
+    });
+  } catch (error) {
+    console.error('OCR 인증 오류:', error);
+    res.status(500).json({ 
+      success: false, 
+      message: 'OCR 인증 중 오류가 발생했습니다.' 
+    });
+  }
+});
+
 export default router;

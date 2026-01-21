@@ -3,6 +3,8 @@ import cors from 'cors';
 import dotenv from 'dotenv';
 import pool from './config/database.js';
 import authRoutes from './routes/auth.js';
+import postRoutes from './routes/posts.js';
+import commentRoutes from './routes/comments.js';
 
 dotenv.config();
 
@@ -31,6 +33,8 @@ app.get('/api/test-db', async (req, res) => {
 
 // Routes
 app.use('/api/auth', authRoutes);
+app.use('/api/posts', postRoutes);
+app.use('/api', commentRoutes);
 
 // 서버 시작
 app.listen(PORT, () => {

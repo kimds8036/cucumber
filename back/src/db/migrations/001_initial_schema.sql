@@ -78,6 +78,7 @@ CREATE TABLE IF NOT EXISTS comments (
   parent_comment_id INT COMMENT '부모 댓글 ID (대댓글)',
   content TEXT NOT NULL COMMENT '댓글 내용',
   anonymous_index TINYINT NOT NULL COMMENT '익명 번호 (익명1, 익명2 등)',
+  like_count INT DEFAULT 0 COMMENT '좋아요 수',
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP COMMENT '작성 일시',
   FOREIGN KEY (post_id) REFERENCES posts(id) ON DELETE CASCADE,
   FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
@@ -228,3 +229,59 @@ CREATE TABLE IF NOT EXISTS user_devices (
   INDEX idx_device_id (device_id),
   INDEX idx_user_device (user_id, device_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='사용자 디바이스 정보 테이블';
+
+-- 게시글 좋아요 테이블
+CREATE TABLE IF NOT EXISTS post_likes (
+  id INT AUTO_INCREMENT PRIMARY KEY COMMENT '좋아요 ID',
+  user_id INT NOT NULL COMMENT '사용자 ID',
+  post_id INT NOT NULL COMMENT '게시글 ID',
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP COMMENT '좋아요 일시',
+  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+  FOREIGN KEY (post_id) REFERENCES posts(id) ON DELETE CASCADE,
+  UNIQUE KEY unique_user_post (user_id, post_id),
+  INDEX idx_post_id (post_id),
+  INDEX idx_user_id (user_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='게시글 좋아요 테이블';
+
+-- 댓글 좋아요 테이블
+CREATE TABLE IF NOT EXISTS comment_likes (
+  id INT AUTO_INCREMENT PRIMARY KEY COMMENT '좋아요 ID',
+  user_id INT NOT NULL COMMENT '사용자 ID',
+  comment_id INT NOT NULL COMMENT '댓글 ID',
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP COMMENT '좋아요 일시',
+  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+  FOREIGN KEY (comment_id) REFERENCES comments(id) ON DELETE CASCADE,
+  UNIQUE KEY unique_user_comment (user_id, comment_id),
+  INDEX idx_comment_id (comment_id),
+  INDEX idx_user_id (user_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='댓글 좋아요 테이블';
+
+-- 신고 테이블
+CREATE TABLE IF NOT EXISTS reports (
+  id INT AUTO_INCREMENT PRIMARY KEY COMMENT '신고 ID',
+  reporter_id INT NOT NULL COMMENT '신고자 ID',
+  target_type VARCHAR(20) NOT NULL COMMENT '신고 대상 타입 (post/comment)',
+  target_id INT NOT NULL COMMENT '신고 대상 ID',
+  reason VARCHAR(255) COMMENT '신고 사유',
+  description TEXT COMMENT '신고 상세 내용',
+  status VARCHAR(20) DEFAULT 'pending' COMMENT '신고 상태 (pending/processing/resolved/rejected)',
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP COMMENT '신고 일시',
+  FOREIGN KEY (reporter_id) REFERENCES users(id) ON DELETE CASCADE,
+  INDEX idx_reporter_id (reporter_id),
+  INDEX idx_target (target_type, target_id),
+  INDEX idx_status (status)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='신고 테이블';
+
+-- OCR 인증 테이블
+CREATE TABLE IF NOT EXISTS ocr_verifications (
+  id INT AUTO_INCREMENT PRIMARY KEY COMMENT 'OCR 인증 ID',
+  user_id INT NOT NULL COMMENT '사용자 ID',
+  image_url TEXT COMMENT '학생증 이미지 URL',
+  extracted_data JSON COMMENT 'OCR 추출 데이터',
+  is_verified BOOLEAN DEFAULT FALSE COMMENT '인증 완료 여부',
+  verified_by INT COMMENT '인증 처리자 ID',
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP COMMENT '생성 일시',
+  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+  INDEX idx_user_id (user_id),
+  INDEX idx_is_verified (is_verified)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='OCR 학생증 인증 테이블';

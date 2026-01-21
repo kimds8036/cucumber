@@ -2,6 +2,9 @@
 
 Node.js + Express + MySQL 백엔드 서버
 
+> 💡 **핸드폰(공기계)에서 서버 실행하려면?**  
+> `SETUP_PHONE.md` 파일을 참고하세요. Termux에서 처음부터 설정하는 방법이 상세히 나와있습니다.
+
 ## 설치
 
 ```bash
