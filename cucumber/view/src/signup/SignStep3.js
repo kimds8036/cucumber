@@ -1,17 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, TouchableOpacity } from 'react-native';
-import { Camera } from 'expo-camera';
+import { CameraView, useCameraPermissions } from 'expo-camera';
 
 const SignStep3 = ({ styles, normalize, onNext, onManualInput }) => {
-  const [hasPermission, setHasPermission] = useState(null);
+  const [permission, requestPermission] = useCameraPermissions();
   const [cameraRef, setCameraRef] = useState(null);
   const [isRecognizing, setIsRecognizing] = useState(false);
 
   useEffect(() => {
-    (async () => {
-      const { status } = await Camera.requestCameraPermissionsAsync();
-      setHasPermission(status === 'granted');
-    })();
+    // 페이지 진입 시 바로 권한 요청
+    requestPermission();
   }, []);
 
   // 학생증 자동 인식 시뮬레이션 (추후 OCR API 연동)
@@ -32,36 +30,20 @@ const SignStep3 = ({ styles, normalize, onNext, onManualInput }) => {
     }, 3000);
   };
 
-  if (hasPermission === null) {
+  if (!permission || !permission.granted) {
     return (
       <View style={styles.content}>
-        <Text style={styles.description}>카메라 권한을 요청 중입니다...</Text>
-      </View>
-    );
-  }
-
-  if (hasPermission === false) {
-    return (
-      <View style={styles.content}>
-        <Text style={styles.description}>카메라 접근 권한이 필요합니다.</Text>
-        <TouchableOpacity style={styles.manualButton} onPress={onManualInput}>
-          <Text style={styles.manualButtonText}>직접 입력하기</Text>
-        </TouchableOpacity>
       </View>
     );
   }
 
   return (
     <View style={styles.content}>
-      <Text style={styles.description}>
-        학교 개인정보를 이용한 안전을 담보합니다.
-      </Text>
-
       {/* 카메라 영역 */}
       <View style={styles.cameraContainer}>
-        <Camera
+        <CameraView
           style={styles.camera}
-          type={Camera.Constants.Type.back}
+          facing="back"
           ref={(ref) => setCameraRef(ref)}
           onCameraReady={simulateRecognition}
         >
@@ -78,7 +60,7 @@ const SignStep3 = ({ styles, normalize, onNext, onManualInput }) => {
               </Text>
             </View>
           </View>
-        </Camera>
+        </CameraView>
       </View>
 
       {/* 직접 입력하기 버튼 */}

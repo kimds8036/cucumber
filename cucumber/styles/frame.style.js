@@ -41,7 +41,6 @@ export const createHeaderStyles = (width, height) => {
       fontSize: normalize(25),
       fontFamily: 'Baloo2-Bold',
       color: colors.textPrimary,
-      fontWeight: '500',
     },
     activeTabText: {
       fontFamily: 'Baloo2-Bold',

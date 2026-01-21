@@ -35,7 +35,7 @@ export const createLoginStyles = (width, normalize) => {
     },
     inputContainer: {
       width: '100%',
-      marginBottom: normalize(20),
+      marginBottom: normalize(10),
       alignItems: 'center',
     },
     input: {
@@ -111,11 +111,14 @@ export const createSignupStyles = (width, normalize) => {
     // 헤더 영역
     header: {
       paddingTop: normalize(10),
+      backgroundColor: colors.background,
+      zIndex: 10,
     },
     headerTop: {
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'center',
+      height: normalize(30),
       marginBottom: normalize(16),
       position: 'relative',
     },
@@ -133,7 +136,7 @@ export const createSignupStyles = (width, normalize) => {
     progressBarContainer: {
       width: '100%',
       height: normalize(6),
-      backgroundColor: colors.background2,
+      backgroundColor: colors.textLight20,
       borderRadius: normalize(3),
       overflow: 'hidden',
     },
@@ -146,13 +149,13 @@ export const createSignupStyles = (width, normalize) => {
     // 컨텐츠 영역
     content: {
       flex: 1,
-      paddingTop: normalize(10),
     },
     description: {
       fontSize: normalize(14),
       fontFamily: fonts.regular,
       color: colors.textSecondary,
-      marginBottom: normalize(30),
+      paddingTop: normalize(10),
+      marginBottom: normalize(20),
       textAlign: 'center',
     },
 
@@ -235,6 +238,7 @@ export const createSignupStyles = (width, normalize) => {
       flex: 1,
       marginBottom: 0,
       marginRight: normalize(8),
+      marginLeft: normalize(2),
     },
     verifyButton: {
       paddingHorizontal: normalize(20),
@@ -245,8 +249,8 @@ export const createSignupStyles = (width, normalize) => {
       alignItems: 'center',
     },
     verifyButtonText: {
-      fontSize: normalize(20),
-      fontFamily: fonts.regular,
+      fontSize: normalize(15),
+      fontFamily: fonts.bold,
       color: colors.background,
     },
 
@@ -283,7 +287,7 @@ export const createSignupStyles = (width, normalize) => {
       height: width * 0.45,
       borderWidth: 3,
       borderColor: colors.primary,
-      borderRadius: normalize(12),
+      borderRadius: normalize(20),
     },
     overlayBottom: {
       flex: 1,
@@ -294,7 +298,7 @@ export const createSignupStyles = (width, normalize) => {
     },
     cameraGuideText: {
       fontSize: normalize(14),
-      fontFamily: fonts.bold,
+      fontFamily: fonts.regular,
       color: colors.background,
       marginTop: normalize(20),
     },
@@ -302,26 +306,32 @@ export const createSignupStyles = (width, normalize) => {
     // 직접 입력하기 버튼
     manualButton: {
       width: '100%',
-      height: normalize(50),
+      height: normalize(30),
       backgroundColor: colors.background,
-      borderWidth: 2,
-      borderColor: colors.primary,
-      borderRadius: normalize(25),
       justifyContent: 'center',
       alignItems: 'center',
-      marginBottom: normalize(20),
+      marginBottom: normalize(10),
     },
     manualButtonText: {
-      fontSize: normalize(15),
-      fontFamily: fonts.bold,
-      color: colors.primary,
+      fontSize: normalize(14),
+      fontFamily: fonts.regular,
+      color: colors.textSecondary,
+      textDecorationLine: 'underline',
+    },
+
+    // 하단 고정 버튼 컨테이너
+    bottomButtonContainer: {
+      paddingBottom: normalize(20),
+      backgroundColor: colors.background,
+      zIndex: 10,
     },
 
     // 다음 버튼
     nextButtonWrapper: {
       width: '100%',
       alignItems: 'center',
-      marginBottom: normalize(20),
+      paddingTop: normalize(10),
+      paddingBottom: normalize(20),
     },
     nextButton: {
       width: '98%',

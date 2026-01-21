@@ -6,16 +6,32 @@ import FontAwesome5 from '@expo/vector-icons/FontAwesome5';
 import { colors } from '../../styles/colors';
 import Octicons from '@expo/vector-icons/Octicons';
 
-const MainHeader = ({ title = '전체' }) => {
+const MainHeader = ({ activeTab = 'board' }) => {
   const { width, height } = useWindowDimensions();
   const headerStyles = useMemo(() => createHeaderStyles(width, height), [width, height]);
   const normalize = useMemo(() => getNormalize(width), [width]);
+
+  // activeTab에 따른 헤더 텍스트
+  const getTabTitle = () => {
+    switch (activeTab) {
+      case 'board':
+        return '전체 게시판';
+      case 'message':
+        return '메시지';
+      case 'school':
+        return '우리 학교';
+      case 'mypage':
+        return '마이페이지';
+      default:
+        return '전체 게시판';
+    }
+  };
 
   return (
     <View style={headerStyles.container}>
       {/* 탭 제목 영역 */}
       <View style={headerStyles.tabContainer}>
-        <Text style={headerStyles.tabText}>전체 게시판</Text>
+        <Text style={headerStyles.tabText}>{getTabTitle()}</Text>
       </View>
 
       {/* 우측 버튼 영역 */}

@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { View, Text, TextInput, TouchableOpacity, Image, useWindowDimensions } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, Image, useWindowDimensions, ScrollView, KeyboardAvoidingView, Platform, Keyboard, TouchableWithoutFeedback } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { createLoginStyles } from '../../styles/login.style';
 import { colors } from '../../styles/colors';
@@ -17,7 +17,17 @@ const Login = ({ navigation }) => {
   const styles = useMemo(() => createLoginStyles(width, normalize), [width]);
 
   return (
-    <SafeAreaView style={styles.container}>
+    <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+      <SafeAreaView style={styles.container}>
+        <KeyboardAvoidingView
+          style={{ flex: 1, width: '100%' }}
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        >
+          <ScrollView
+            contentContainerStyle={{ flexGrow: 1, justifyContent: 'center', alignItems: 'center', width: '100%' }}
+            showsVerticalScrollIndicator={false}
+            keyboardShouldPersistTaps="handled"
+          >
       {/* 로고 */}
       <View style={styles.logoContainer}>
         <Image
@@ -70,6 +80,35 @@ const Login = ({ navigation }) => {
         <Text style={styles.checkboxText}>아이디 저장</Text>
       </TouchableOpacity>
 
+      {/* 로그인 버튼 */}
+      <TouchableOpacity
+        style={{
+          width: '95%',
+          height: normalize(50),
+          backgroundColor: colors.primary,
+          borderRadius: normalize(20),
+          justifyContent: 'center',
+          alignItems: 'center',
+        }}
+        onPress={() => {
+          // 추후 로그인 API 연동 및 유효성 검사
+          // if (!id || !password) {
+          //   alert('아이디와 비밀번호를 입력해주세요.');
+          //   return;
+          // }
+          console.log('로그인:', { id, password });
+          navigation.navigate('MainBoard');
+        }}
+      >
+        <Text style={{
+          fontSize: normalize(17),
+          fontFamily: 'Baloo2-Bold',
+          color: colors.background,
+        }}>
+          로그인
+        </Text>
+      </TouchableOpacity>
+
       {/* 링크들 */}
       <View style={styles.linkContainer}>
         <TouchableOpacity onPress={() => {}}>
@@ -84,7 +123,10 @@ const Login = ({ navigation }) => {
           <Text style={styles.linkText}>회원가입</Text>
         </TouchableOpacity>
       </View>
-    </SafeAreaView>
+          </ScrollView>
+        </KeyboardAvoidingView>
+      </SafeAreaView>
+    </TouchableWithoutFeedback>
   );
 };
 

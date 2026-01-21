@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, ScrollView, Modal, FlatList } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, Modal, FlatList, ScrollView, KeyboardAvoidingView, Platform } from 'react-native';
 import { colors } from '../../../styles/colors';
 
-const SignStep1 = ({ styles, normalize, onNext }) => {
+const SignStep1 = ({ styles, normalize }) => {
   const [name, setName] = useState('');
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
@@ -22,22 +22,16 @@ const SignStep1 = ({ styles, normalize, onNext }) => {
   const months = Array.from({ length: 12 }, (_, i) => (i + 1).toString().padStart(2, '0'));
   const days = Array.from({ length: 31 }, (_, i) => (i + 1).toString().padStart(2, '0'));
 
-  const handleNext = () => {
-    // 추후 유효성 검사 추가
-    if (name && username && password && passwordConfirm && birthYear && birthMonth && birthDay) {
-      onNext({
-        name,
-        username,
-        password,
-        birthday: `${birthYear}-${birthMonth}-${birthDay}`,
-      });
-    }
-  };
-
   return (
-    <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
-      <Text style={styles.description}>회원 및 학생 인증에 필요한 중요 정보입니다.</Text>
-
+    <KeyboardAvoidingView
+      style={styles.content}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
+    >
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
+      >
       {/* 이름 */}
       <Text style={styles.inputLabel}>이름</Text>
       <View style={styles.inputWrapper}>
@@ -112,13 +106,6 @@ const SignStep1 = ({ styles, normalize, onNext }) => {
             </Text>
           </TouchableOpacity>
         </View>
-      </View>
-
-      {/* 다음 단계 버튼 */}
-      <View style={styles.nextButtonWrapper}>
-        <TouchableOpacity style={styles.nextButton} onPress={handleNext}>
-          <Text style={styles.nextButtonText}>다음 단계</Text>
-        </TouchableOpacity>
       </View>
 
       {/* 년도 선택 모달 */}
@@ -249,7 +236,8 @@ const SignStep1 = ({ styles, normalize, onNext }) => {
           </View>
         </TouchableOpacity>
       </Modal>
-    </ScrollView>
+      </ScrollView>
+    </KeyboardAvoidingView>
   );
 };
 
