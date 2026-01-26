@@ -23,6 +23,7 @@ export const createHeaderStyles = (width, height) => {
       paddingBottom: normalize(8),
       backgroundColor: colors.background,
       minHeight: normalize(56),
+      paddingHorizontal: normalize(20),
     },
     tabContainer: {
       flex: 1,
@@ -30,7 +31,6 @@ export const createHeaderStyles = (width, height) => {
       alignItems: 'center',
     },
     tabButton: {
-      paddingHorizontal: normalize(16),
       paddingVertical: normalize(8),
       borderRadius: normalize(20),
     },
@@ -90,7 +90,7 @@ export const createFooterStyles = (width, height) => {
       paddingBottom: normalize(-8),
       height: normalize(65),
       borderTopWidth: 1,
-      borderColor: colors.textLight20,
+      borderColor: colors.textLight10,
     },
     tabButton: {
       flex: 1,
@@ -124,6 +124,89 @@ export const createFooterStyles = (width, height) => {
     activeTabText: {
       color: colors.textSecondary,
       fontWeight: '500',
+    },
+  });
+};
+
+// 서브 헤더 스타일 (뒤로가기 + 제목 + 경계선)
+export const createSubHeaderStyles = (width, height) => {
+  const scale = width / 375;
+  const normalize = (size) => Math.round(scale * size);
+
+  return StyleSheet.create({
+    header: {
+      paddingTop: normalize(10),
+      backgroundColor: colors.background,
+      paddingHorizontal: width * 0.08,
+    },
+    headerTop: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      height: normalize(30),
+      marginBottom: normalize(16),
+      position: 'relative',
+    },
+    backButton: {
+      position: 'absolute',
+      left: -5,
+    },
+    headerTitle: {
+      fontSize: normalize(20),
+      fontFamily: 'Baloo2-Bold',
+      color: colors.textPrimary,
+    },
+    rightButton: {
+      position: 'absolute',
+      right: -5,
+    },
+    rightButtonText: {
+      fontSize: normalize(16),
+      fontFamily: 'Baloo2-Bold',
+      color: colors.primaryDark,
+    },
+    divider: {
+      height: 1,
+      backgroundColor: colors.background2,
+    },
+  });
+};
+
+// 서브 푸터 스타일 (완료 버튼)
+export const createSubFooterStyles = (width, height) => {
+  const scale = width / 375;
+  const normalize = (size) => Math.round(scale * size);
+
+  return StyleSheet.create({
+    container: {
+      backgroundColor: colors.background,
+      paddingHorizontal: normalize(16),
+      paddingVertical: normalize(12),
+    },
+    button: {
+      backgroundColor: colors.primary,
+      borderRadius: normalize(12),
+      paddingVertical: normalize(16),
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    buttonDisabled: {
+      backgroundColor: colors.primaryLight50,
+    },
+    buttonText: {
+      fontSize: normalize(16),
+      fontFamily: 'Baloo2-Bold',
+      color: colors.background,
+    },
+    guideText: {
+      fontSize: normalize(12),
+      fontFamily: 'Baloo2-Regular',
+      color: colors.textSecondary,
+      textAlign: 'center',
+      marginBottom: normalize(8),
+    },
+    linkText: {
+      color: colors.primary,
     },
   });
 };

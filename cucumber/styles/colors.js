@@ -4,7 +4,7 @@
 export const colors = {
   // 메인 컬러
   primary: '#A6DA95',        // 메인 초록색
-  primaryDark: '#629052',    // 진한 초록색
+  primaryDark: '#6f9163',    // 진한 초록색
 
   // 배경 컬러
   background: '#fff',        // 기본 배경 (흰색)
@@ -17,9 +17,9 @@ export const colors = {
   textWhite: '#fff',         // 흰색 텍스트
 
   // 오이 컬러
-  green: '#F7FFF3',          // 빨강
+  green: '#F7FFF3',          // 초록
   yellow: '#FFFCD7',        // 노랑
-  red: '#FFF3F3',        // 초록
+  red: '#FFF3F3',        // 빨강
   blue: '#E5F0FF',           // 파랑
 
   // 알림
@@ -35,6 +35,7 @@ export const colors = {
   textLight20: 'rgba(39, 42, 38, 0.2)',   // 20%
   textLight70: 'rgba(39, 42, 38, 0.7)',   // 70%
   primaryLight50: 'rgba(166,218,149, 0.5)', // 50%
+  primaryLight30: 'rgba(166,218,149, 0.3)', // 30%
 
   shadowLight: 'rgba(0, 0, 0, 0.1)',          // 밝은 그림자
   shadowMedium: 'rgba(0, 0, 0, 0.2)',         // 중간 그림자
