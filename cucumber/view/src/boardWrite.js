@@ -17,7 +17,7 @@ const BoardWrite = ({ navigation }) => {
 
   const handleComplete = () => {
     // TODO: 게시글 저장 로직
-    navigation.navigate('MainBoard');
+    navigation.navigate('Main');
   };
 
   return (

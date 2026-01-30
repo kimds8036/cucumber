@@ -84,9 +84,9 @@ export const createFooterStyles = (width, height) => {
     container: {
       flexDirection: 'row',
       justifyContent: 'space-around',
-      alignItems: 'center',
+      alignItems: 'stretch',
       backgroundColor: colors.background,
-      paddingVertical: normalize(8),
+      paddingVertical: normalize(10),
       paddingBottom: normalize(-8),
       height: normalize(65),
       borderTopWidth: 1,

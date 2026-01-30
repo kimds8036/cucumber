@@ -97,7 +97,7 @@ const Login = ({ navigation }) => {
           //   return;
           // }
           console.log('로그인:', { id, password });
-          navigation.navigate('MainBoard');
+          navigation.navigate('Main');
         }}
       >
         <Text style={{

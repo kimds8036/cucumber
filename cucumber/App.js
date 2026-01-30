@@ -7,7 +7,7 @@ import MainHeader from './view/frame/mainHeader';
 import MainFooter from './view/frame/mainFooter';
 import Login from './view/src/Login';
 import Sign from './view/src/Sign';
-import BoardAll from './view/src/boardAll';
+import MainScreen from './view/src/MainScreen';
 import BoardWrite from './view/src/boardWrite';
 import BoardDetail from './view/src/boardDetail';
 import { useFonts } from 'expo-font';
@@ -41,7 +41,7 @@ export default function App() {
         >
           <Stack.Screen name="Login" component={Login} />
           <Stack.Screen name="Sign" component={Sign} />
-          <Stack.Screen name="MainBoard" component={BoardAll} />
+          <Stack.Screen name="Main" component={MainScreen} />
           <Stack.Screen name="BoardWrite" component={BoardWrite} />
           <Stack.Screen name="BoardDetail" component={BoardDetail} />
         </Stack.Navigator>

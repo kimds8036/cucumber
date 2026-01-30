@@ -7,14 +7,14 @@ import { FontAwesomeIcon } from '@fortawesome/react-native-fontawesome';
 import { faSchool, faHome, faCommentDots, faUser } from '@fortawesome/free-solid-svg-icons';
 import { colors } from '../../styles/colors';
 
-const MainFooter = ({ activeTab = 'board' }) => {
+const MainFooter = ({ activeTab = 'board', onTabPress }) => {
   const { width, height } = useWindowDimensions();
   const footerStyles = useMemo(() => createFooterStyles(width, height), [width, height]);
   const normalize = useMemo(() => getNormalize(width), [width]);
 
   return (
     <View style={footerStyles.container}>
-      <TouchableOpacity style={footerStyles.tabButton} activeOpacity={0.7}>
+      <TouchableOpacity style={footerStyles.tabButton} activeOpacity={0.7} onPress={() => onTabPress?.('board')}>
         {activeTab === 'board' && <View style={footerStyles.activeTabIndicator} />}
         <Octicons
           name="home-fill"
@@ -26,7 +26,7 @@ const MainFooter = ({ activeTab = 'board' }) => {
         </Text>
       </TouchableOpacity>
 
-      <TouchableOpacity style={footerStyles.tabButton} activeOpacity={0.7}>
+      <TouchableOpacity style={footerStyles.tabButton} activeOpacity={0.7} onPress={() => onTabPress?.('message')}>
         {activeTab === 'message' && <View style={footerStyles.activeTabIndicator} />}
         <Ionicons
           name="chatbubble-ellipses"
@@ -38,7 +38,7 @@ const MainFooter = ({ activeTab = 'board' }) => {
         </Text>
       </TouchableOpacity>
 
-      <TouchableOpacity style={footerStyles.tabButton} activeOpacity={0.7}>
+      <TouchableOpacity style={footerStyles.tabButton} activeOpacity={0.7} onPress={() => onTabPress?.('school')}>
         {activeTab === 'school' && <View style={footerStyles.activeTabIndicator} />}
         <FontAwesomeIcon
           icon={faSchool}
@@ -50,7 +50,7 @@ const MainFooter = ({ activeTab = 'board' }) => {
         </Text>
       </TouchableOpacity>
 
-      <TouchableOpacity style={footerStyles.tabButton} activeOpacity={0.7}>
+      <TouchableOpacity style={footerStyles.tabButton} activeOpacity={0.7} onPress={() => onTabPress?.('mypage')}>
         {activeTab === 'mypage' && <View style={footerStyles.activeTabIndicator} />}
         <Ionicons
           name="person"

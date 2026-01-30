@@ -147,7 +147,7 @@ export const createBoardStyles = (width, normalize) => {
     floatingButton: {
       position: 'absolute',
       right: normalize(20),
-      bottom: normalize(115),
+      bottom: normalize(20),
       width: normalize(50),
       height: normalize(50),
       borderRadius: normalize(28),

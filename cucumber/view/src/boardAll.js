@@ -18,7 +18,8 @@ import { createBoardStyles, getNormalize } from '../../styles/board.style';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import FontAwesome5 from '@expo/vector-icons/FontAwesome5';
 
-const BoardAll = ({ navigation }) => {
+// 메인 화면(MainScreen)에서 헤더/푸터 없이 메인 영역만 렌더할 때 사용
+export function BoardAllContent({ navigation }) {
   const { width } = useWindowDimensions();
   const normalize = useMemo(() => getNormalize(width), [width]);
   const styles = useMemo(() => createBoardStyles(width, normalize), [width]);
@@ -107,10 +108,7 @@ const BoardAll = ({ navigation }) => {
   ];
 
   return (
-    <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
-      {/* 헤더 */}
-      <MainHeader activeTab="board" />
-
+    <>
       {/* 정렬 버튼 영역 */}
       <View style={styles.sortContainer}>
         <TouchableOpacity
@@ -305,9 +303,25 @@ const BoardAll = ({ navigation }) => {
           </View>
         </TouchableWithoutFeedback>
       </Modal>
+    </>
+  );
+}
 
-      {/* 푸터 */}
-      <MainFooter activeTab="board" />
+// 단독 게시판 화면 (헤더+푸터 포함, 필요 시 사용)
+const BoardAll = ({ navigation }) => {
+  const { width } = useWindowDimensions();
+  const normalize = useMemo(() => getNormalize(width), [width]);
+  const styles = useMemo(() => createBoardStyles(width, normalize), [width]);
+  return (
+    <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
+      <MainHeader activeTab="board" />
+      <BoardAllContent navigation={navigation} />
+      <MainFooter
+        activeTab="board"
+        onTabPress={(tab) => {
+          if (tab === 'message') navigation.navigate('Message');
+        }}
+      />
     </SafeAreaView>
   );
 };
