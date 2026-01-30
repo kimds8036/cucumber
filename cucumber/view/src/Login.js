@@ -37,7 +37,7 @@ const Login = ({ navigation }) => {
         />
         <View style={styles.titleContainer}>
           <Text style={styles.titleLarge}>오</Text>
-          <Text style={styles.titleSmall}>늘의 </Text>
+          <Text style={styles.titleSmall}>늘의  </Text>
           <Text style={styles.titleLarge}>이</Text>
           <Text style={styles.titleSmall}>야기</Text>
         </View>

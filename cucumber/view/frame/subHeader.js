@@ -4,10 +4,11 @@ import { Ionicons } from '@expo/vector-icons';
 import { createSubHeaderStyles, getNormalize } from '../../styles/frame.style';
 import { colors } from '../../styles/colors';
 
-const SubHeader = ({ title, onBack, rightButtonText, onRightPress }) => {
+const SubHeader = ({ title, onBack, rightButtonText, rightIcon, rightElement, onRightPress }) => {
   const { width, height } = useWindowDimensions();
   const styles = useMemo(() => createSubHeaderStyles(width, height), [width, height]);
   const normalize = useMemo(() => getNormalize(width), [width]);
+  const hasRight = rightButtonText || rightIcon || rightElement;
 
   const getTitle = () => {
     return title;
@@ -21,9 +22,15 @@ const SubHeader = ({ title, onBack, rightButtonText, onRightPress }) => {
             <Ionicons name="chevron-back" size={normalize(24)} color={colors.textPrimary} />
           </TouchableOpacity>
           <Text style={styles.headerTitle}>{getTitle()}</Text>
-          {rightButtonText && (
+          {hasRight && (
             <TouchableOpacity style={styles.rightButton} onPress={onRightPress}>
-              <Text style={styles.rightButtonText}>{rightButtonText}</Text>
+              {rightElement != null
+                ? rightElement
+                : rightIcon ? (
+                    <Ionicons name={rightIcon} size={normalize(22)} color={colors.textPrimary} />
+                  ) : (
+                    <Text style={styles.rightButtonText}>{rightButtonText}</Text>
+                  )}
             </TouchableOpacity>
           )}
         </View>

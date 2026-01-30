@@ -138,6 +138,10 @@ export const createBoardStyles = (width, normalize) => {
       fontFamily: fonts.regular,
       color: colors.textSecondary,
     },
+    menuButton: {
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
 
     // 플로팅 버튼
     floatingButton: {
@@ -211,6 +215,271 @@ export const createWriteStyles = (width, normalize) => {
       fontSize: normalize(16),
       fontFamily: fonts.regular,
       color: colors.textSecondary,
+    },
+  });
+};
+
+// 게시글 상세 페이지 스타일
+export const createDetailStyles = (width, normalize) => {
+  return StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: colors.background,
+    },
+    scrollContent: {
+      paddingBottom: normalize(100),
+    },
+    // 게시글 내용 영역
+    contentSection: {
+      paddingHorizontal: width * 0.05,
+      paddingTop: normalize(13),
+      paddingBottom: normalize(13),
+    },
+    detailHeader: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      marginBottom: normalize(12),
+    },
+    detailAuthorRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+    },
+    detailAuthor: {
+      fontSize: normalize(12),
+      fontFamily: fonts.bold,
+      color: colors.alert,
+    },
+    detailAuthorAnonymous: {
+      fontSize: normalize(12),
+      fontFamily: fonts.regular,
+      color: colors.textSecondary,
+    },
+    detailDot: {
+      fontSize: normalize(13),
+      color: colors.textSecondary,
+      marginHorizontal: normalize(6),
+    },
+    detailTime: {
+      fontSize: normalize(12),
+      fontFamily: fonts.regular,
+      color: colors.textSecondary,
+    },
+    detailLocation: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      backgroundColor: colors.primaryLight30,
+      paddingHorizontal: normalize(10),
+      borderRadius: normalize(13),
+      gap: normalize(4),
+    },
+    detailLocationText: {
+      fontSize: normalize(13),
+      fontFamily: fonts.regular,
+      color: colors.textSecondary,
+    },
+    detailBody: {
+      fontSize: normalize(14),
+      fontFamily: fonts.regular,
+      color: colors.textPrimary,
+      lineHeight: normalize(20),
+      marginBottom: normalize(10),
+    },
+    detailDivider: {
+      height: 1,
+      backgroundColor: colors.textLight10,
+      marginBottom: normalize(10),
+    },
+    detailFooter: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+    },
+    detailStats: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: normalize(15),
+      paddingLeft: normalize(2),
+    },
+    detailStatItem: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: normalize(4),
+    },
+    detailStatText: {
+      fontSize: normalize(13),
+      fontFamily: fonts.regular,
+      color: colors.textSecondary,
+    },
+    detailMenuBtn: {
+      padding: normalize(4),
+    },
+    // 광고 영역 (비움)
+    adSection: {
+      minHeight: normalize(40),
+      marginHorizontal: width * 0,
+      marginVertical: normalize(3),
+      backgroundColor: 'grey',
+    },
+    // 댓글 섹션
+    commentSection: {
+      paddingHorizontal: width * 0.06,
+      paddingTop: normalize(10),
+      paddingBottom: normalize(10),
+    },
+    commentSectionTitle: {
+      fontSize: normalize(14),
+      fontFamily: fonts.bold,
+      color: colors.textPrimary,
+      marginBottom: normalize(12),
+    },
+    commentItem: {
+      marginBottom: normalize(16),
+    },
+    commentItemReply: {
+      marginBottom: normalize(16),
+      marginLeft: normalize(15),
+      flexDirection: 'row',
+      alignItems: 'flex-start',
+    },
+    commentReplyArrow: {
+      marginRight: normalize(8),
+    },
+    commentReplyBody: {
+      flex: 1,
+    },
+    commentRow: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'flex-start',
+      marginBottom: normalize(6),
+    },
+    commentAuthorRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+    },
+    commentAuthor: {
+      fontSize: normalize(12),
+      fontFamily: fonts.regular,
+      color: colors.textSecondary,
+    },
+    commentAuthorWriter: {
+      fontSize: normalize(12),
+      fontFamily: fonts.bold,
+      color: colors.alert,
+    },
+    commentDot: {
+      fontSize: normalize(13),
+      color: colors.textSecondary,
+      marginHorizontal: normalize(4),
+    },
+    commentTime: {
+      fontSize: normalize(12),
+      fontFamily: fonts.regular,
+      color: colors.textSecondary,
+    },
+    commentBody: {
+      fontSize: normalize(14),
+      fontFamily: fonts.regular,
+      color: colors.textPrimary,
+      lineHeight: normalize(20),
+      marginBottom: normalize(8),
+    },
+    commentBodyWithTag: {
+      fontSize: normalize(14),
+      fontFamily: fonts.regular,
+      color: colors.textPrimary,
+      lineHeight: normalize(20),
+      marginBottom: normalize(8),
+    },
+    commentTag: {
+      color: colors.primary,
+      fontFamily: fonts.bold,
+    },
+    commentFooter: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+    },
+    commentFooterLeft: {
+      flexDirection: 'row',
+      alignItems: 'baseline',
+      gap: normalize(12),
+      flex: 1,
+    },
+    commentLikeRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: normalize(4),
+    },
+    commentReplyButton: {
+      paddingVertical: normalize(4),
+      paddingHorizontal: normalize(6),
+    },
+    commentReplyButtonText: {
+      fontSize: normalize(13),
+      fontFamily: fonts.regular,
+      color: colors.textSecondary,
+      marginTop: -normalize(2),
+    },
+    loadMoreRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      alignSelf: 'flex-start',
+      paddingVertical: normalize(8),
+      paddingRight: normalize(4),
+      gap: normalize(4),
+    },
+    loadMoreRowReply: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      alignSelf: 'flex-start',
+      paddingTop: normalize(2),
+      paddingBottom: normalize(12),
+      paddingRight: normalize(4),
+      gap: normalize(4),
+      marginLeft: normalize(18),
+      marginTop: -normalize(8),
+    },
+    loadMoreText: {
+      fontSize: normalize(13),
+      fontFamily: fonts.regular,
+      color: colors.textSecondary,
+    },
+    // 하단 댓글 입력
+    bottomInputRow: {
+      position: 'absolute',
+      bottom: 0,
+      left: 0,
+      right: 0,
+      flexDirection: 'row',
+      alignItems: 'center',
+      paddingHorizontal: width * 0.03,
+      paddingVertical: normalize(12),
+      paddingBottom: normalize(40),
+      backgroundColor: colors.background,
+      borderTopWidth: 1,
+      borderTopColor: colors.textLight10,
+      gap: normalize(10),
+    },
+    bottomInput: {
+      flex: 1,
+      paddingVertical: normalize(12),
+      paddingHorizontal: normalize(16),
+      borderRadius: normalize(24),
+      backgroundColor: colors.textLight5,
+      fontSize: normalize(14),
+      fontFamily: fonts.regular,
+      color: colors.textPrimary,
+      maxHeight: normalize(80),
+    },
+    sendButton: {
+      width: normalize(44),
+      height: normalize(44),
+      borderRadius: normalize(22),
+      backgroundColor: colors.primary,
+      justifyContent: 'center',
+      alignItems: 'center',
     },
   });
 };

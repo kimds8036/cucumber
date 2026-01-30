@@ -1,12 +1,14 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useRef } from 'react';
 import { View, Text, TouchableOpacity, ScrollView, useWindowDimensions } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { Entypo } from '@expo/vector-icons';
 import MainHeader from '../frame/mainHeader';
 import MainFooter from '../frame/mainFooter';
+import FloatingMenu from '../frame/FloatingMenu';
 import { colors, fonts } from '../../styles/colors';
 import { createBoardStyles, getNormalize } from '../../styles/board.style';
+import FontAwesome from '@expo/vector-icons/FontAwesome';
 import FontAwesome5 from '@expo/vector-icons/FontAwesome5';
 
 const BoardAll = ({ navigation }) => {
@@ -15,8 +17,35 @@ const BoardAll = ({ navigation }) => {
   const styles = useMemo(() => createBoardStyles(width, normalize), [width]);
 
   const [sortType, setSortType] = useState('latest'); // latest, popular, nearby
+  const [floatingMenuVisible, setFloatingMenuVisible] = useState(false);
+  const [floatingMenuAnchor, setFloatingMenuAnchor] = useState(null);
+  const [floatingMenuPost, setFloatingMenuPost] = useState(null);
+  const menuButtonRefs = useRef({});
 
-  // 임시 게시글 데이터
+  const defaultMenuItems = useMemo(
+    () => [
+      { label: '쪽지 보내기', iconName: 'chatbubble-outline', onPress: () => {} },
+      { label: '신고', iconName: 'flag-outline', onPress: () => {} },
+      { label: '차단', iconName: 'remove-circle-outline', onPress: () => {} },
+      { label: 'URL 공유', iconName: 'share-outline', onPress: () => {} },
+    ],
+    []
+  );
+
+  const openFloatingMenu = (post, ref) => {
+    ref?.measureInWindow((x, y) => {
+      setFloatingMenuAnchor({ x, y });
+      setFloatingMenuPost(post);
+      setFloatingMenuVisible(true);
+    });
+  };
+  const closeFloatingMenu = () => {
+    setFloatingMenuVisible(false);
+    setFloatingMenuAnchor(null);
+    setFloatingMenuPost(null);
+  };
+
+  // 임시 게시글 데이터 (TODO: DB 연동 시 목록 API에서 post.liked 포함하여 사용)
   const posts = [
     {
       id: 1,
@@ -26,6 +55,7 @@ const BoardAll = ({ navigation }) => {
       content: '중간고사 D-7 같이 공부하실 분>시험기간인데 혼자 공부하니까 집중이 안 되서요. 온라인으로라도 같이 공부하실 분 있나요? 디스코드 공부방 만들까 생각 중임',
       likes: 213,
       comments: 89,
+      liked: false,
     },
     {
       id: 2,
@@ -35,6 +65,7 @@ const BoardAll = ({ navigation }) => {
       content: '중간고사 D-7 같이 공부하실 분>시험기간인데 혼자 공부하니까 집중이 안 되서요. 온라인으로라도 같이 공부하실 분 있나요? 디스코드 공부방 만들까 생각 중임',
       likes: 10,
       comments: 0,
+      liked: false,
     },
     {
       id: 3,
@@ -44,6 +75,7 @@ const BoardAll = ({ navigation }) => {
       content: '중간고사 D-7 같이 공부하실 분>시험기간인데 혼자 공부하니까 집중이 안 되서요. 온라인으로라도 같이 공부하실 분 있나요? 디스코드 공부방 만들까 생각 중임',
       likes: 0,
       comments: 0,
+      liked: false,
     },
     {
       id: 4,
@@ -53,6 +85,7 @@ const BoardAll = ({ navigation }) => {
       content: '중간고사 D-7 같이 공부하실 분>시험기간인데 혼자 공부하니까 집중이 안 되서요. 온라인으로라도 같이 공부하실 분 있나요? 디스코드 공부방 만들까 생각 중임',
       likes: 0,
       comments: 0,
+      liked: false,
     },
     {
       id: 5,
@@ -62,6 +95,7 @@ const BoardAll = ({ navigation }) => {
       content: '중간고사 D-7 같이 공부하실 분>시험기간인데 혼자 공부하니까 집중이 안 되서요. 온라인으로라도 같이 공부하실 분 있나요? 디스코드 공부방 만들까 생각 중임',
       likes: 213,
       comments: 89,
+      liked: false,
     },
   ];
 
@@ -101,7 +135,17 @@ const BoardAll = ({ navigation }) => {
       {/* 게시글 목록 */}
       <ScrollView style={styles.postList} showsVerticalScrollIndicator={false}>
         {posts.map((post) => (
-          <TouchableOpacity key={post.id} style={styles.postItem} activeOpacity={0.7}>
+          <TouchableOpacity
+            key={post.id}
+            style={styles.postItem}
+            activeOpacity={0.7}
+            onPress={() =>
+              navigation.navigate('BoardDetail', {
+                post: { ...post, author: post.id === 1 ? '작성자' : post.author },
+                isMyPost: post.id === 1, // 본인 글 여부 (추후 로그인 사용자와 비교)
+              })
+            }
+          >
             {/* 게시글 헤더: 좌측 익명•시간, 우측 위치 */}
             <View style={styles.postHeader}>
               <View style={styles.postAuthorInfo}>
@@ -129,7 +173,11 @@ const BoardAll = ({ navigation }) => {
             <View style={styles.postFooter}>
               <View style={styles.postStats}>
                 <View style={styles.postStatItem}>
-                  <FontAwesome5 name="heart" size={normalize(14)} color={colors.alert} />
+                  <FontAwesome
+                    name={post.liked ? 'heart' : 'heart-o'}
+                    size={normalize(14)}
+                    color={colors.alert}
+                  />
                   <Text style={styles.postStatText}>{post.likes}</Text>
                 </View>
                 <View style={styles.postStatItem}>
@@ -137,9 +185,21 @@ const BoardAll = ({ navigation }) => {
                   <Text style={styles.postStatText}>{post.comments}</Text>
                 </View>
               </View>
-              <TouchableOpacity style={styles.menuButton}>
-                <Entypo name="dots-three-vertical" size={normalize(14)} color={colors.textSecondary} />
-              </TouchableOpacity>
+              <View
+                ref={(r) => {
+                  if (r) menuButtonRefs.current[post.id] = r;
+                }}
+                collapsable={false}
+              >
+                <TouchableOpacity
+                  style={styles.menuButton}
+                  activeOpacity={0.7}
+                  onPress={() => openFloatingMenu(post, menuButtonRefs.current[post.id])}
+                  hitSlop={{ top: normalize(12), bottom: normalize(12), left: normalize(12), right: normalize(12) }}
+                >
+                  <Entypo name="dots-three-vertical" size={normalize(14)} color={colors.textSecondary} />
+                </TouchableOpacity>
+              </View>
             </View>
           </TouchableOpacity>
         ))}
@@ -153,6 +213,13 @@ const BoardAll = ({ navigation }) => {
       >
         <FontAwesome5 name="plus" size={normalize(24)} color={colors.background} />
       </TouchableOpacity>
+
+      <FloatingMenu
+        visible={floatingMenuVisible}
+        onClose={closeFloatingMenu}
+        items={defaultMenuItems}
+        anchor={floatingMenuAnchor}
+      />
 
       {/* 푸터 */}
       <MainFooter activeTab="board" />

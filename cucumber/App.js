@@ -9,6 +9,7 @@ import Login from './view/src/Login';
 import Sign from './view/src/Sign';
 import BoardAll from './view/src/boardAll';
 import BoardWrite from './view/src/boardWrite';
+import BoardDetail from './view/src/boardDetail';
 import { useFonts } from 'expo-font';
 import * as SplashScreen from 'expo-splash-screen';
 import { useEffect } from 'react';
@@ -42,6 +43,7 @@ export default function App() {
           <Stack.Screen name="Sign" component={Sign} />
           <Stack.Screen name="MainBoard" component={BoardAll} />
           <Stack.Screen name="BoardWrite" component={BoardWrite} />
+          <Stack.Screen name="BoardDetail" component={BoardDetail} />
         </Stack.Navigator>
       </NavigationContainer>
     </SafeAreaProvider>
