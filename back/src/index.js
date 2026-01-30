@@ -5,6 +5,8 @@ import pool from './config/database.js';
 import authRoutes from './routes/auth.js';
 import postRoutes from './routes/posts.js';
 import commentRoutes from './routes/comments.js';
+import messageRoutes from './routes/messages.js';
+import mailRoutes from './routes/mails.js';
 
 dotenv.config();
 
@@ -35,6 +37,8 @@ app.get('/api/test-db', async (req, res) => {
 app.use('/api/auth', authRoutes);
 app.use('/api/posts', postRoutes);
 app.use('/api', commentRoutes);
+app.use('/api/messages', messageRoutes);
+app.use('/api/mails', mailRoutes);
 
 // 서버 시작
 app.listen(PORT, () => {
