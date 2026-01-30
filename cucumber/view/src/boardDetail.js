@@ -8,6 +8,8 @@ import {
   TextInput,
   Keyboard,
   Platform,
+  Modal,
+  TouchableWithoutFeedback,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -16,7 +18,6 @@ import Feather from '@expo/vector-icons/Feather';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import FontAwesome5 from '@expo/vector-icons/FontAwesome5';
 import SubHeader from '../frame/subHeader';
-import FloatingMenu from '../frame/FloatingMenu';
 import { colors, fonts } from '../../styles/colors';
 import { createDetailStyles, getNormalize } from '../../styles/board.style';
 
@@ -530,12 +531,90 @@ export default function BoardDetail({ navigation, route }) {
             </TouchableOpacity>
           </View>
 
-          <FloatingMenu
+          {/* 플로팅 메뉴 (boardDetail 인라인) */}
+          <Modal
             visible={floatingMenuVisible}
-            onClose={closeFloatingMenu}
-            items={defaultMenuItems}
-            anchor={floatingMenuAnchor}
-          />
+            transparent
+            animationType="fade"
+            onRequestClose={closeFloatingMenu}
+          >
+            <TouchableWithoutFeedback onPress={closeFloatingMenu}>
+              <View
+                style={{
+                  flex: 1,
+                  backgroundColor: 'rgba(0,0,0,0.3)',
+                  ...(floatingMenuAnchor ? {} : { justifyContent: 'center', alignItems: 'center' }),
+                }}
+              >
+                <TouchableWithoutFeedback>
+                  <View
+                    style={{
+                      backgroundColor: colors.background,
+                      borderRadius: normalize(12),
+                      minWidth: width * 0.45,
+                      maxWidth: width * 0.7,
+                      paddingVertical: normalize(4),
+                      shadowColor: colors.shadow,
+                      shadowOffset: { width: 0, height: 2 },
+                      shadowOpacity: 0.15,
+                      shadowRadius: 5,
+                      elevation: 5,
+                      ...(floatingMenuAnchor
+                        ? {
+                            position: 'absolute',
+                            right: width - floatingMenuAnchor.x,
+                            top: floatingMenuAnchor.y,
+                          }
+                        : {}),
+                    }}
+                  >
+                    {defaultMenuItems.map((item, index) => (
+                      <React.Fragment key={index}>
+                        <TouchableOpacity
+                          style={{
+                            flexDirection: 'row',
+                            alignItems: 'center',
+                            justifyContent: 'space-between',
+                            paddingVertical: normalize(10),
+                            paddingHorizontal: normalize(14),
+                          }}
+                          activeOpacity={0.7}
+                          onPress={() => {
+                            if (item.onPress) item.onPress();
+                            closeFloatingMenu();
+                          }}
+                        >
+                          <Text
+                            style={{
+                              fontSize: normalize(13),
+                              fontFamily: fonts.regular,
+                              color: colors.textPrimary,
+                            }}
+                          >
+                            {item.label}
+                          </Text>
+                          <Ionicons
+                            name={item.iconName}
+                            size={normalize(17)}
+                            color={colors.textSecondary}
+                          />
+                        </TouchableOpacity>
+                        {index < defaultMenuItems.length - 1 && (
+                          <View
+                            style={{
+                              height: 1,
+                              backgroundColor: colors.textLight10,
+                              marginHorizontal: normalize(8),
+                            }}
+                          />
+                        )}
+                      </React.Fragment>
+                    ))}
+                  </View>
+                </TouchableWithoutFeedback>
+              </View>
+            </TouchableWithoutFeedback>
+          </Modal>
         </SafeAreaView>
     </View>
   );
