@@ -15,7 +15,7 @@ const MainScreen = ({ navigation }) => {
       case 'board':
         return <BoardAllContent navigation={navigation} />;
       case 'message':
-        return <MessageContent />;
+        return <MessageContent navigation={navigation} />;
       case 'school':
       case 'mypage':
       default:

@@ -10,6 +10,7 @@ import Sign from './view/src/Sign';
 import MainScreen from './view/src/MainScreen';
 import BoardWrite from './view/src/boardWrite';
 import BoardDetail from './view/src/boardDetail';
+import Chat from './view/src/Chat';
 import { useFonts } from 'expo-font';
 import * as SplashScreen from 'expo-splash-screen';
 import { useEffect } from 'react';
@@ -44,6 +45,7 @@ export default function App() {
           <Stack.Screen name="Main" component={MainScreen} />
           <Stack.Screen name="BoardWrite" component={BoardWrite} />
           <Stack.Screen name="BoardDetail" component={BoardDetail} />
+          <Stack.Screen name="Chat" component={Chat} />
         </Stack.Navigator>
       </NavigationContainer>
     </SafeAreaProvider>

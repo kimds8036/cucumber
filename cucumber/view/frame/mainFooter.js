@@ -4,8 +4,9 @@ import { Ionicons } from '@expo/vector-icons';
 import { createFooterStyles, getNormalize } from '../../styles/frame.style';
 import Octicons from '@expo/vector-icons/Octicons';
 import { FontAwesomeIcon } from '@fortawesome/react-native-fontawesome';
-import { faSchool, faHome, faCommentDots, faUser } from '@fortawesome/free-solid-svg-icons';
+import { faSchool } from '@fortawesome/free-solid-svg-icons';
 import { colors } from '../../styles/colors';
+import MessageTabIcon from '../../assets/Group 166.svg';
 
 const MainFooter = ({ activeTab = 'board', onTabPress }) => {
   const { width, height } = useWindowDimensions();
@@ -28,9 +29,9 @@ const MainFooter = ({ activeTab = 'board', onTabPress }) => {
 
       <TouchableOpacity style={footerStyles.tabButton} activeOpacity={0.7} onPress={() => onTabPress?.('message')}>
         {activeTab === 'message' && <View style={footerStyles.activeTabIndicator} />}
-        <Ionicons
-          name="chatbubble-ellipses"
-          size={normalize(33)}
+        <MessageTabIcon
+          width={normalize(30)}
+          height={normalize(30)}
           color={activeTab === 'message' ? colors.primary : colors.textSecondary}
         />
         <Text style={[footerStyles.tabText, activeTab === 'message' && footerStyles.activeTabText]}>

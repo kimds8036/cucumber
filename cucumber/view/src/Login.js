@@ -1,9 +1,10 @@
 import React, { useState, useMemo } from 'react';
-import { View, Text, TextInput, TouchableOpacity, Image, useWindowDimensions, ScrollView, KeyboardAvoidingView, Platform, Keyboard, TouchableWithoutFeedback } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, useWindowDimensions, ScrollView, KeyboardAvoidingView, Platform, Keyboard, TouchableWithoutFeedback } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { createLoginStyles } from '../../styles/login.style';
 import { colors } from '../../styles/colors';
 import { Ionicons } from '@expo/vector-icons';
+import LogoIcon from '../../assets/Group 166.svg';
 
 const Login = ({ navigation }) => {
   const { width } = useWindowDimensions();
@@ -30,11 +31,13 @@ const Login = ({ navigation }) => {
           >
       {/* 로고 */}
       <View style={styles.logoContainer}>
-        <Image
-          source={require('../../assets/Group 166.png')}
-          style={styles.logo}
-          resizeMode="contain"
-        />
+        <View style={styles.logo}>
+          <LogoIcon
+            width={normalize(140)}
+            height={normalize(140)}
+            color={colors.primary}
+          />
+        </View>
         <View style={styles.titleContainer}>
           <Text style={styles.titleLarge}>오</Text>
           <Text style={styles.titleSmall}>늘의  </Text>
