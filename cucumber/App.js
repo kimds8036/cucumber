@@ -8,6 +8,12 @@ import MainFooter from './view/frame/mainFooter';
 import Login from './view/src/Login';
 import Sign from './view/src/Sign';
 import MainScreen from './view/src/MainScreen';
+import AddTimetable from './view/src/addtimetable';
+import MyPosts from './view/src/myposts';
+import LikedPosts from './view/src/likedposts';
+import NotificationSettings from './view/src/notificationsettings';
+import ChangePassword from './view/src/changepassword';
+import ChangeSchool from './view/src/changeschool';
 import BoardWrite from './view/src/boardWrite';
 import BoardDetail from './view/src/boardDetail';
 import Chat from './view/src/Chat';
@@ -46,6 +52,12 @@ export default function App() {
           <Stack.Screen name="BoardWrite" component={BoardWrite} />
           <Stack.Screen name="BoardDetail" component={BoardDetail} />
           <Stack.Screen name="Chat" component={Chat} />
+          <Stack.Screen name="AddTimetable" component={AddTimetable} />
+          <Stack.Screen name="MyPosts" component={MyPosts} />
+          <Stack.Screen name="LikedPosts" component={LikedPosts} />
+          <Stack.Screen name="NotificationSettings" component={NotificationSettings} />
+          <Stack.Screen name="ChangePassword" component={ChangePassword} />
+          <Stack.Screen name="ChangeSchool" component={ChangeSchool} />
         </Stack.Navigator>
       </NavigationContainer>
     </SafeAreaProvider>

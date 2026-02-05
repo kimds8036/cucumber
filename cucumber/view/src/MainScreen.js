@@ -6,6 +6,8 @@ import MainFooter from '../frame/mainFooter';
 import { BoardAllContent } from './boardAll';
 import { MessageContent } from './Message';
 import { colors } from '../../styles/colors';
+import MyPage from './mypage';
+
 
 const MainScreen = ({ navigation }) => {
   const [activeTab, setActiveTab] = useState('board'); // 'board' | 'message' | 'school' | 'mypage'
@@ -17,7 +19,10 @@ const MainScreen = ({ navigation }) => {
       case 'message':
         return <MessageContent navigation={navigation} />;
       case 'school':
+        // TODO: 우리 학교 탭 화면 연결 예정
+        return <View style={{ flex: 1 }} />;
       case 'mypage':
+        return <MyPage navigation={navigation} />;
       default:
         return <View style={{ flex: 1 }} />;
     }
