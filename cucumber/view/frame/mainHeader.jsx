@@ -6,7 +6,7 @@ import FontAwesome5 from '@expo/vector-icons/FontAwesome5';
 import { colors } from '../../styles/colors';
 import Octicons from '@expo/vector-icons/Octicons';
 
-const MainHeader = ({ activeTab = 'board' }) => {
+const MainHeader = ({ activeTab = 'board', navigation }) => {
   const { width, height } = useWindowDimensions();
   const headerStyles = useMemo(() => createHeaderStyles(width, height), [width, height]);
   const normalize = useMemo(() => getNormalize(width), [width]);
@@ -36,10 +36,16 @@ const MainHeader = ({ activeTab = 'board' }) => {
 
       {/* 우측 버튼 영역 */}
       <View style={headerStyles.buttonContainer}>
-        <TouchableOpacity style={headerStyles.iconButton}>
+        <TouchableOpacity
+          style={headerStyles.iconButton}
+          onPress={() => navigation?.navigate('Search')}
+        >
           <Ionicons name="search" size={normalize(24)} color={colors.primary} />
         </TouchableOpacity>
-        <TouchableOpacity style={headerStyles.iconButton}>
+        <TouchableOpacity
+          style={headerStyles.iconButton}
+          onPress={() => navigation?.navigate('Notification')}
+        >
           <FontAwesome5 name="bell" size={normalize(24)} color={colors.primary} />
           <View style={headerStyles.badge} />
         </TouchableOpacity>

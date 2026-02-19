@@ -138,7 +138,11 @@ export function BoardAllContent({ navigation }) {
       </View>
 
       {/* 게시글 목록 */}
-      <ScrollView style={styles.postList} showsVerticalScrollIndicator={false}>
+      <ScrollView
+        style={styles.postList}
+        contentContainerStyle={{ paddingBottom: 48 }}
+        showsVerticalScrollIndicator={false}
+      >
         {posts.map((post) => (
           <TouchableOpacity
             key={post.id}

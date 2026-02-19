@@ -7,6 +7,7 @@ import { BoardAllContent } from './boardAll';
 import { MessageContent } from './Message';
 import { colors } from '../../styles/colors';
 import MyPage from './mypage';
+import OurSchoolScreen from './ourschoolscreen';
 
 
 const MainScreen = ({ navigation }) => {
@@ -19,8 +20,7 @@ const MainScreen = ({ navigation }) => {
       case 'message':
         return <MessageContent navigation={navigation} />;
       case 'school':
-        // TODO: 우리 학교 탭 화면 연결 예정
-        return <View style={{ flex: 1 }} />;
+        return <OurSchoolScreen navigation={navigation} />;
       case 'mypage':
         return <MyPage navigation={navigation} />;
       default:
@@ -30,7 +30,7 @@ const MainScreen = ({ navigation }) => {
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }} edges={['top', 'bottom']}>
-      <MainHeader activeTab={activeTab} />
+      <MainHeader activeTab={activeTab} navigation={navigation} />
       <View style={{ flex: 1, backgroundColor: colors.background }}>{renderContent()}</View>
       <MainFooter activeTab={activeTab} onTabPress={(tab) => setActiveTab(tab)} />
     </SafeAreaView>

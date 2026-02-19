@@ -1,4 +1,4 @@
-import { StyleSheet } from 'react-native';
+import { StyleSheet, Platform } from 'react-native';
 import { colors, fonts } from './colors';
 
 export const getNormalize = (width) => {
@@ -336,11 +336,29 @@ export const createDetailStyles = (width, normalize) => {
     commentItem: {
       marginBottom: normalize(16),
     },
+    commentItemReplying: {
+      backgroundColor: colors.primaryLight30,
+      borderRadius: normalize(10),
+      marginHorizontal: -normalize(6),
+      paddingHorizontal: normalize(6),
+      paddingVertical: normalize(8),
+      borderLeftWidth: 3,
+      borderLeftColor: colors.primary,
+    },
     commentItemReply: {
       marginBottom: normalize(16),
       marginLeft: normalize(15),
       flexDirection: 'row',
       alignItems: 'flex-start',
+    },
+    commentItemReplyReplying: {
+      backgroundColor: colors.primaryLight30,
+      borderRadius: normalize(10),
+      marginRight: normalize(6),
+      paddingVertical: normalize(8),
+      paddingLeft: normalize(4),
+      borderLeftWidth: 3,
+      borderLeftColor: colors.primary,
     },
     commentReplyArrow: {
       marginRight: normalize(8),
@@ -448,18 +466,33 @@ export const createDetailStyles = (width, normalize) => {
     },
     // 하단 댓글 입력
     bottomInputRow: {
-      position: 'absolute',
-      bottom: 0,
-      left: 0,
-      right: 0,
-      flexDirection: 'row',
-      alignItems: 'center',
-      paddingHorizontal: width * 0.03,
-      paddingVertical: normalize(12),
-      paddingBottom: normalize(40),
+      flexDirection: 'column',
       backgroundColor: colors.background,
       borderTopWidth: 1,
       borderTopColor: colors.textLight10,
+      paddingHorizontal: width * 0.03,
+      paddingVertical: normalize(12),
+      paddingBottom: Platform.OS === 'ios' ? normalize(34) : normalize(12),
+    },
+    replyTargetRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      marginBottom: normalize(6),
+      paddingHorizontal: normalize(4),
+    },
+    replyTargetText: {
+      fontSize: normalize(12),
+      fontFamily: fonts.regular,
+      color: colors.primary,
+      flex: 1,
+    },
+    replyTargetCancel: {
+      padding: normalize(4),
+    },
+    bottomInputInner: {
+      flexDirection: 'row',
+      alignItems: 'center',
       gap: normalize(10),
     },
     bottomInput: {

@@ -14,9 +14,12 @@ import LikedPosts from './view/src/likedposts';
 import NotificationSettings from './view/src/notificationsettings';
 import ChangePassword from './view/src/changepassword';
 import ChangeSchool from './view/src/changeschool';
+import SearchScreen from './view/src/searchscreen';
+import NotificationScreen from './view/src/notificationscreen';
 import BoardWrite from './view/src/boardWrite';
 import BoardDetail from './view/src/boardDetail';
 import Chat from './view/src/Chat';
+import SendMailScreen from './view/src/sendmailscreen';
 import { useFonts } from 'expo-font';
 import * as SplashScreen from 'expo-splash-screen';
 import { useEffect } from 'react';
@@ -58,6 +61,9 @@ export default function App() {
           <Stack.Screen name="NotificationSettings" component={NotificationSettings} />
           <Stack.Screen name="ChangePassword" component={ChangePassword} />
           <Stack.Screen name="ChangeSchool" component={ChangeSchool} />
+          <Stack.Screen name="Search" component={SearchScreen} />
+          <Stack.Screen name="Notification" component={NotificationScreen} />
+          <Stack.Screen name="SendMail" component={SendMailScreen} />
         </Stack.Navigator>
       </NavigationContainer>
     </SafeAreaProvider>

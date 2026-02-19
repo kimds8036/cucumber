@@ -28,7 +28,8 @@
       "permissions": [
         "CAMERA"
       ],
-      "package": "com.eunchae0215.cucumber"
+      "package": "com.eunchae0215.cucumber",
+      "softwareKeyboardLayoutMode": "resize"
     },
     "web": {
       "favicon": "./assets/favicon.png"

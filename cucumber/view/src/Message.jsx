@@ -227,7 +227,7 @@ export function MessageContent({ navigation }) {
             <TouchableOpacity
               style={styles.floatingButton}
               activeOpacity={0.8}
-              onPress={() => {}}
+              onPress={() => navigation?.navigate('SendMail')}
             >
               <Feather name="send" size={normalize(30)} top={normalize(2)} right={normalize(1)} color={colors.background} />
             </TouchableOpacity>
