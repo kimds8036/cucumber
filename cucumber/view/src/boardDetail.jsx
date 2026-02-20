@@ -5,13 +5,13 @@ import {
   TouchableOpacity,
   ScrollView,
   useWindowDimensions,
-  Keyboard,
   Platform,
   Modal,
   TouchableWithoutFeedback,
   Alert,
+  Keyboard,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { Entypo } from '@expo/vector-icons';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
@@ -82,7 +82,7 @@ export default function BoardDetail({ navigation, route }) {
   const scrollViewRef = useRef(null);
   const INITIAL_REPLIES = 3;
   const [expandedReplies, setExpandedReplies] = useState({});
-  const [keyboardHeight, setKeyboardHeight] = useState(0);
+  const insets = useSafeAreaInsets();
   const [floatingMenuVisible, setFloatingMenuVisible] = useState(false);
   const [floatingMenuContext, setFloatingMenuContext] = useState(null);
   const [floatingMenuAnchor, setFloatingMenuAnchor] = useState(null);
@@ -291,32 +291,26 @@ export default function BoardDetail({ navigation, route }) {
     }
   };
 
+  // 키보드 올라온 뒤 지연 스크롤만 수행 (state 없이 → 리렌더 없음, 포커스 유지. 입력창 올림은 전역 Animated)
   useEffect(() => {
-    const showSub = Keyboard.addListener(
-      Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow',
-      (e) => {
-        setKeyboardHeight(e.endCoordinates.height);
-        const delay = Platform.OS === 'ios' ? 280 : 150;
-        setTimeout(() => {
-          const commentId = scrollToCommentIdRef.current;
-          if (commentId) {
-            scrollToComment(commentId);
-            scrollToCommentIdRef.current = null;
-          } else {
-            scrollViewRef.current?.scrollToEnd({ animated: true });
-          }
-        }, delay);
-      }
-    );
-    const hideSub = Keyboard.addListener(
-      Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide',
-      () => {
-        setKeyboardHeight(0);
-      }
-    );
+    let scrollTimeoutId;
+    const showEvent = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
+    const onShow = () => {
+      const delay = Platform.OS === 'ios' ? 380 : 250;
+      scrollTimeoutId = setTimeout(() => {
+        const commentId = scrollToCommentIdRef.current;
+        if (commentId) {
+          scrollToComment(commentId);
+          scrollToCommentIdRef.current = null;
+        } else {
+          scrollViewRef.current?.scrollToEnd({ animated: true });
+        }
+      }, delay);
+    };
+    const subShow = Keyboard.addListener(showEvent, onShow);
     return () => {
-      showSub.remove();
-      hideSub.remove();
+      if (scrollTimeoutId) clearTimeout(scrollTimeoutId);
+      subShow.remove();
     };
   }, []);
 
@@ -326,21 +320,32 @@ export default function BoardDetail({ navigation, route }) {
       setReplyToCommentId(commentId);
       setReplyToAuthorLabel(target?.authorLabel ?? '');
       scrollToCommentIdRef.current = commentId;
-      scrollToComment(commentId);
+      // 스크롤은 키보드가 뜬 뒤 리스너에서 수행 (즉시 스크롤 시 키보드가 안 뜨는 현상 방지)
     } else {
       setReplyToCommentId(null);
       setReplyToAuthorLabel('');
+      scrollToCommentIdRef.current = null;
       scrollViewRef.current?.scrollToEnd({ animated: true });
     }
+    // 포커스 지연: 상태 반영 후 입력창에 포커스 (간헐적 미동작 방지)
     setTimeout(() => {
       bottomInputRef.current?.focus();
-    }, 100);
+    }, 260);
   };
 
   const clearReplyTarget = () => {
     setReplyToCommentId(null);
     setReplyToAuthorLabel('');
   };
+
+  // 댓글/대댓글 달기 누른 뒤 키보드가 간헐적으로 안 뜨는 경우 백업 포커스
+  useEffect(() => {
+    if (!replyToCommentId) return;
+    const backup = setTimeout(() => {
+      bottomInputRef.current?.focus();
+    }, 520);
+    return () => clearTimeout(backup);
+  }, [replyToCommentId]);
 
   const toggleRepliesExpand = (commentId) => {
     setExpandedReplies((prev) => ({ ...prev, [commentId]: !prev[commentId] }));
@@ -552,19 +557,20 @@ export default function BoardDetail({ navigation, route }) {
   return (
     <View style={{ flex: 1, backgroundColor: styles.container.backgroundColor }}>
       <SafeAreaView style={styles.container} edges={['top']}>
-        <SubHeader title="게시판" onBack={handleBack} />
-
-        <ScrollView
-          ref={scrollViewRef}
-          style={{ flex: 1 }}
-          contentContainerStyle={[
-            styles.scrollContent,
-            keyboardHeight > 0 && { paddingBottom: keyboardHeight + normalize(20) }
-          ]}
-          showsVerticalScrollIndicator={false}
-          keyboardShouldPersistTaps="handled"
-          keyboardDismissMode="on-drag"
-        >
+        {/* Chat과 동일: 헤더 → 컨텐츠 영역(스크롤 + 입력창) */}
+        <View style={{ zIndex: 1, elevation: 1, backgroundColor: colors.background }}>
+          <SubHeader title="게시판" onBack={handleBack} />
+        </View>
+        <View style={{ flex: 1, backgroundColor: colors.background, overflow: 'hidden', zIndex: 0 }} pointerEvents="box-none">
+          <View style={{ flex: 1, flexDirection: 'column' }}>
+            <ScrollView
+              ref={scrollViewRef}
+              style={{ flex: 1 }}
+              contentContainerStyle={styles.scrollContent}
+              showsVerticalScrollIndicator={false}
+              keyboardShouldPersistTaps="handled"
+              keyboardDismissMode="on-drag"
+            >
           {/* 게시글 내용 */}
           <View style={styles.contentSection}>
             <View style={styles.detailHeader}>
@@ -628,20 +634,29 @@ export default function BoardDetail({ navigation, route }) {
           <View style={styles.commentSection}>
             {visibleComments.map((c) => renderCommentTree(c))}
           </View>
-        </ScrollView>
+            </ScrollView>
 
-        {/* 하단 댓글 입력 컴포넌트 */}
-        <CommentInput
-          bottomInputRef={bottomInputRef}
-          bottomComment={bottomComment}
-          setBottomComment={setBottomComment}
-          replyToCommentId={replyToCommentId}
-          replyToAuthorLabel={replyToAuthorLabel}
-          clearReplyTarget={clearReplyTarget}
-          handleSendComment={handleSendComment}
-          styles={styles}
-          normalize={normalize}
-        />
+            {/* 하단 댓글 입력: Chat과 동일한 래퍼(키보드 높이는 전역 Animated로 올라감) */}
+            <View
+              style={{
+                backgroundColor: colors.background,
+                paddingBottom: Math.max(insets.bottom, normalize(12)),
+              }}
+            >
+              <CommentInput
+                bottomInputRef={bottomInputRef}
+                bottomComment={bottomComment}
+                setBottomComment={setBottomComment}
+                replyToCommentId={replyToCommentId}
+                replyToAuthorLabel={replyToAuthorLabel}
+                clearReplyTarget={clearReplyTarget}
+                handleSendComment={handleSendComment}
+                styles={styles}
+                normalize={normalize}
+              />
+            </View>
+          </View>
+        </View>
 
         {/* 플로팅 메뉴 (boardDetail 인라인) */}
         <Modal

@@ -23,6 +23,7 @@ import SendMailScreen from './view/src/sendmailscreen';
 import { useFonts } from 'expo-font';
 import * as SplashScreen from 'expo-splash-screen';
 import { useEffect } from 'react';
+import { KeyboardProvider } from './context/KeyboardContext';
 
 const Stack = createNativeStackNavigator();
 
@@ -44,6 +45,7 @@ export default function App() {
 
   return (
     <SafeAreaProvider>
+      <KeyboardProvider>
       <NavigationContainer>
         <Stack.Navigator
           initialRouteName="Login"
@@ -66,6 +68,7 @@ export default function App() {
           <Stack.Screen name="SendMail" component={SendMailScreen} />
         </Stack.Navigator>
       </NavigationContainer>
+      </KeyboardProvider>
     </SafeAreaProvider>
   );
 }

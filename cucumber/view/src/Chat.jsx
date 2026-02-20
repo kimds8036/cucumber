@@ -5,16 +5,15 @@ import {
   TouchableOpacity,
   ScrollView,
   useWindowDimensions,
-  TextInput,
   Keyboard,
   Platform,
-  Animated,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { Entypo } from '@expo/vector-icons';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import SubHeader from '../frame/subHeader';
+import CommentInput from '../../components/CommentInput.jsx';
 import { colors } from '../../styles/colors';
 import { createDetailStyles, getNormalize as getBoardNormalize } from '../../styles/board.style';
 import { createChatStyles } from '../../styles/message.style';
@@ -31,8 +30,6 @@ const DEFAULT_POST = {
   comments: 89,
   liked: false,
 };
-
-const KEYBOARD_INPUT_OVERLAP = 30;
 
 const MOCK_CHAT_MESSAGES = [
   { id: '1', isMe: false, content: '오늘 밤 뭐 나옴?', time: '23:01' },
@@ -54,9 +51,9 @@ export default function Chat({ navigation, route }) {
   const insets = useSafeAreaInsets();
 
   const scrollViewRef = useRef(null);
+  const bottomInputRef = useRef(null);
   const contentHeightRef = useRef(0);
   const scrollViewHeightRef = useRef(0);
-  const keyboardHeight = useRef(new Animated.Value(0)).current;
 
   const scrollToBottom = (animated = true) => {
     const ref = scrollViewRef.current;
@@ -70,41 +67,21 @@ export default function Chat({ navigation, route }) {
     }
   };
 
+  // 키보드 올라온 뒤 지연 스크롤 (즉시 스크롤 시 포커스 손실로 키보드가 내려가는 현상 방지)
+  const scrollTimeoutRef = useRef(null);
   useEffect(() => {
     const showEvent = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
-    const hideEvent = Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide';
-
-    const onShow = (e) => {
-      const h = Math.max(0, (e.endCoordinates?.height ?? 0) - KEYBOARD_INPUT_OVERLAP);
-      if (Platform.OS === 'ios' && e.duration != null) {
-        Animated.timing(keyboardHeight, {
-          toValue: h,
-          duration: e.duration,
-          useNativeDriver: true,
-        }).start(() => requestAnimationFrame(() => scrollToBottom(true)));
-      } else {
-        keyboardHeight.setValue(h);
-        requestAnimationFrame(() => scrollToBottom(true));
-      }
-    };
-
-    const onHide = (e) => {
-      if (Platform.OS === 'ios' && e.duration != null) {
-        Animated.timing(keyboardHeight, {
-          toValue: 0,
-          duration: e.duration,
-          useNativeDriver: true,
-        }).start();
-      } else {
-        keyboardHeight.setValue(0);
-      }
-    };
-
-    const subShow = Keyboard.addListener(showEvent, onShow);
-    const subHide = Keyboard.addListener(hideEvent, onHide);
+    const delay = Platform.OS === 'ios' ? 400 : 300;
+    const sub = Keyboard.addListener(showEvent, () => {
+      if (scrollTimeoutRef.current) clearTimeout(scrollTimeoutRef.current);
+      scrollTimeoutRef.current = setTimeout(() => {
+        scrollToBottom(true);
+        scrollTimeoutRef.current = null;
+      }, delay);
+    });
     return () => {
-      subShow.remove();
-      subHide.remove();
+      if (scrollTimeoutRef.current) clearTimeout(scrollTimeoutRef.current);
+      sub.remove();
     };
   }, []);
 
@@ -137,15 +114,8 @@ export default function Chat({ navigation, route }) {
       <View style={{ zIndex: 1, elevation: 1, backgroundColor: colors.background }}>
         <SubHeader title="쪽지" onBack={handleBack} />
       </View>
-      {/* 1. 뒷배경 → 2. (박스+입력창) 키보드와 같이 위로 밀림. 박스는 항상 상단에서 시작 */}
       <View style={{ flex: 1, backgroundColor: colors.background, overflow: 'hidden', zIndex: 0 }} pointerEvents="box-none">
-        {/* 키보드 없을 때: [게시글] [채팅 ScrollView] [입력창 맨 아래]. 키보드 올라오면 전체가 위로 밀림 */}
-        <Animated.View
-          style={[
-            { flex: 1, flexDirection: 'column' },
-            { transform: [{ translateY: Animated.multiply(keyboardHeight, -1) }] },
-          ]}
-        >
+        <View style={{ flex: 1, flexDirection: 'column' }}>
           {/* 1) 게시글 카드: 상단 고정 */}
           <View style={chatStyles.chatSectionbox}>
             <View style={detailStyles.contentSection}>
@@ -249,37 +219,24 @@ export default function Chat({ navigation, route }) {
 
           {/* 3) 입력창: ScrollView 밖, 맨 아래 고정. 키보드 시 transform으로 키보드 위로 이동 */}
           <View
-            style={[
-              detailStyles.bottomInputRow,
-              {
-                position: 'relative',
-                left: undefined,
-                right: undefined,
-                bottom: undefined,
-                backgroundColor: colors.background,
-                paddingBottom: Math.max(insets.bottom, normalize(12)),
-              },
-            ]}
+            style={{
+              backgroundColor: colors.background,
+              paddingBottom: Math.max(insets.bottom, normalize(12)),
+            }}
           >
-          <TextInput
-            style={detailStyles.bottomInput}
-            placeholder="메시지를 입력하세요"
-            placeholderTextColor={colors.textSecondary}
-            value={inputText}
-            onChangeText={setInputText}
-            multiline
-            maxLength={1000}
-            onSubmitEditing={handleSendMessage}
-          />
-          <TouchableOpacity
-            style={detailStyles.sendButton}
-            onPress={handleSendMessage}
-            activeOpacity={0.8}
-          >
-            <Ionicons name="arrow-up" size={normalize(22)} color={colors.background} />
-          </TouchableOpacity>
+            <CommentInput
+              bottomInputRef={bottomInputRef}
+              bottomComment={inputText}
+              setBottomComment={setInputText}
+              replyToCommentId={null}
+              replyToAuthorLabel=""
+              clearReplyTarget={() => {}}
+              handleSendComment={handleSendMessage}
+              styles={detailStyles}
+              normalize={normalize}
+            />
+          </View>
         </View>
-        </Animated.View>
       </View>
     </SafeAreaView>
   );
