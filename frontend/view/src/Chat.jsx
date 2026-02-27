@@ -1,12 +1,13 @@
-import React, { useState, useMemo, useRef, useEffect } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import {
   View,
   Text,
   TouchableOpacity,
-  ScrollView,
   useWindowDimensions,
-  Keyboard,
   Platform,
+  KeyboardAvoidingView,
+  FlatList,
+  Keyboard,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -49,53 +50,19 @@ export default function Chat({ navigation, route }) {
   const [messages, setMessages] = useState(MOCK_CHAT_MESSAGES);
   const [inputText, setInputText] = useState('');
   const insets = useSafeAreaInsets();
+  const [isKeyboardVisible, setIsKeyboardVisible] = useState(false);
 
-  const scrollViewRef = useRef(null);
-  const bottomInputRef = useRef(null);
-  const contentHeightRef = useRef(0);
-  const scrollViewHeightRef = useRef(0);
-
-  const scrollToBottom = (animated = true) => {
-    const ref = scrollViewRef.current;
-    if (!ref) return;
-    const ch = contentHeightRef.current;
-    const sh = scrollViewHeightRef.current;
-    if (ch > sh) {
-      ref.scrollTo({ y: Math.max(0, ch - sh), animated });
-    } else {
-      ref.scrollToEnd({ animated });
-    }
-  };
-
-  // 키보드 올라온 뒤 지연 스크롤 (즉시 스크롤 시 포커스 손실로 키보드가 내려가는 현상 방지)
-  const scrollTimeoutRef = useRef(null);
   useEffect(() => {
-    const showEvent = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
-    const delay = Platform.OS === 'ios' ? 400 : 300;
-    const sub = Keyboard.addListener(showEvent, () => {
-      if (scrollTimeoutRef.current) clearTimeout(scrollTimeoutRef.current);
-      scrollTimeoutRef.current = setTimeout(() => {
-        scrollToBottom(true);
-        scrollTimeoutRef.current = null;
-      }, delay);
-    });
+    const showSub = Keyboard.addListener('keyboardDidShow', () => setIsKeyboardVisible(true));
+    const hideSub = Keyboard.addListener('keyboardDidHide', () => setIsKeyboardVisible(false));
+
     return () => {
-      if (scrollTimeoutRef.current) clearTimeout(scrollTimeoutRef.current);
-      sub.remove();
+      showSub.remove();
+      hideSub.remove();
     };
   }, []);
 
-  useEffect(() => {
-    requestAnimationFrame(() => scrollToBottom(false));
-  }, []);
-
-  const handleScrollContentSizeChange = (_w, contentHeight) => {
-    contentHeightRef.current = contentHeight;
-    const sh = scrollViewHeightRef.current;
-    if (contentHeight > sh) {
-      requestAnimationFrame(() => scrollToBottom(false));
-    }
-  };
+  const keyboardVerticalOffset = insets.top + normalize(48);
 
   const handleBack = () => navigation.goBack();
   const handlePostLike = () => setPostLiked((prev) => !prev);
@@ -108,6 +75,38 @@ export default function Chat({ navigation, route }) {
     setInputText('');
   };
 
+  const renderMessageItem = ({ item: msg }) =>
+    msg.isMe ? (
+      <View key={msg.id} style={chatStyles.chatRowUser}>
+        <View style={chatStyles.userBubbleAndTime}>
+          <View style={chatStyles.userTimeColumn}>
+            {!msg.isRead && <Text style={chatStyles.chatUnreadCount}>1</Text>}
+            <Text style={chatStyles.chatTimeUser}>{msg.time}</Text>
+          </View>
+          <View style={chatStyles.userBubble}>
+            <Text style={chatStyles.userBubbleText}>{msg.content}</Text>
+          </View>
+        </View>
+      </View>
+    ) : (
+      <View key={msg.id} style={chatStyles.chatRowOpponent}>
+        <View style={chatStyles.chatProfileCircle}>
+          <MessageTabIcon width={normalize(28)} height={normalize(28)} color={colors.green} />
+        </View>
+        <View style={chatStyles.opponentBody}>
+          <View style={chatStyles.opponentNameAndBubble}>
+            <Text style={chatStyles.opponentName}>익명</Text>
+            <View style={chatStyles.opponentBubble}>
+              <Text style={chatStyles.opponentBubbleText}>{msg.content}</Text>
+            </View>
+          </View>
+          <Text style={chatStyles.chatTimeOpponent}>{msg.time}</Text>
+        </View>
+      </View>
+    );
+
+  const reversedMessages = useMemo(() => [...messages].reverse(), [messages]);
+
   return (
     <SafeAreaView style={[detailStyles.container, { backgroundColor: colors.background }]} edges={['top']}>
       {/* 헤더 */}
@@ -115,150 +114,118 @@ export default function Chat({ navigation, route }) {
         <SubHeader title="쪽지" onBack={handleBack} />
       </View>
 
-      <View style={{ flex: 1, backgroundColor: '#F8F9FA' }}>
-        {/* 1) 게시글 카드: 깔끔한 디자인 */}
-        <View
-          style={{
-            backgroundColor: colors.background,
-            marginHorizontal: normalize(12),
-            marginTop: normalize(12),
-            marginBottom: normalize(8),
-            borderRadius: normalize(12),
-            padding: normalize(16),
-            shadowColor: '#000',
-            shadowOffset: { width: 0, height: 2 },
-            shadowOpacity: 0.05,
-            shadowRadius: 8,
-            elevation: 2,
-          }}
-        >
-          {/* 게시글 헤더 */}
-          <View style={detailStyles.detailHeader}>
-            <View style={detailStyles.detailAuthorRow}>
-              <Text style={detailStyles.detailAuthorAnonymous}>{post.author}</Text>
-              <Text style={detailStyles.detailDot}>•</Text>
-              <Text style={detailStyles.detailTime}>{post.time}</Text>
-            </View>
-            {post.location ? (
-              <View style={detailStyles.detailLocation}>
-                <Ionicons name="location-sharp" size={normalize(12)} color={colors.textSecondary} />
-                <Text style={detailStyles.detailLocationText}>{post.location}</Text>
+      <KeyboardAvoidingView
+        style={{ flex: 1, backgroundColor: '#F8F9FA' }}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        keyboardVerticalOffset={keyboardVerticalOffset}
+      >
+        <View style={{ flex: 1, backgroundColor: '#F8F9FA' }}>
+          {/* 1) 게시글 카드: 깔끔한 디자인 */}
+          <View
+            style={{
+              backgroundColor: colors.background,
+              marginHorizontal: normalize(12),
+              marginTop: normalize(12),
+              marginBottom: normalize(8),
+              borderRadius: normalize(12),
+              padding: normalize(16),
+              shadowColor: '#000',
+              shadowOffset: { width: 0, height: 2 },
+              shadowOpacity: 0.05,
+              shadowRadius: 8,
+              elevation: 2,
+            }}
+          >
+            {/* 게시글 헤더 */}
+            <View style={detailStyles.detailHeader}>
+              <View style={detailStyles.detailAuthorRow}>
+                <Text style={detailStyles.detailAuthorAnonymous}>{post.author}</Text>
+                <Text style={detailStyles.detailDot}>•</Text>
+                <Text style={detailStyles.detailTime}>{post.time}</Text>
               </View>
-            ) : null}
-          </View>
-
-          {/* 게시글 내용 */}
-          <Text style={[detailStyles.detailBody, { marginVertical: normalize(12) }]}>
-            {post.content}
-          </Text>
-
-          {/* 구분선 */}
-          <View style={{ height: 1, backgroundColor: '#F0F0F0', marginVertical: normalize(8) }} />
-
-          {/* 게시글 푸터 */}
-          <View style={detailStyles.detailFooter}>
-            <View style={detailStyles.detailStats}>
-              <TouchableOpacity
-                style={detailStyles.detailStatItem}
-                onPress={handlePostLike}
-                activeOpacity={0.7}
-                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-              >
-                <FontAwesome
-                  name={postLiked ? 'heart' : 'heart-o'}
-                  size={normalize(14)}
-                  color={colors.alert}
-                />
-                <Text style={detailStyles.detailStatText}>{post.likes}</Text>
-              </TouchableOpacity>
-              <View style={detailStyles.detailStatItem}>
-                <Ionicons name="chatbubble-outline" size={normalize(15)} color={colors.primary} />
-                <Text style={detailStyles.detailStatText}>{post.comments}</Text>
-              </View>
-            </View>
-            <TouchableOpacity style={detailStyles.detailMenuBtn} activeOpacity={0.7}>
-              <Entypo name="dots-three-vertical" size={normalize(14)} color={colors.textSecondary} />
-            </TouchableOpacity>
-          </View>
-        </View>
-
-        {/* 2) 채팅 영역 */}
-        <ScrollView
-          ref={scrollViewRef}
-          style={{ flex: 1 }}
-          contentContainerStyle={{
-            paddingHorizontal: normalize(12),
-            paddingBottom: normalize(10),
-            paddingTop: normalize(8),
-          }}
-          onContentSizeChange={handleScrollContentSizeChange}
-          onLayout={(e) => {
-            scrollViewHeightRef.current = e.nativeEvent.layout.height;
-          }}
-          showsVerticalScrollIndicator={false}
-          keyboardShouldPersistTaps="handled"
-          keyboardDismissMode="on-drag"
-        >
-          {messages.map((msg) =>
-            msg.isMe ? (
-              <View key={msg.id} style={chatStyles.chatRowUser}>
-                <View style={chatStyles.userBubbleAndTime}>
-                  <View style={chatStyles.userTimeColumn}>
-                    {!msg.isRead && (
-                      <Text style={chatStyles.chatUnreadCount}>1</Text>
-                    )}
-                    <Text style={chatStyles.chatTimeUser}>{msg.time}</Text>
-                  </View>
-                  <View style={chatStyles.userBubble}>
-                    <Text style={chatStyles.userBubbleText}>{msg.content}</Text>
-                  </View>
+              {post.location ? (
+                <View style={detailStyles.detailLocation}>
+                  <Ionicons name="location-sharp" size={normalize(12)} color={colors.textSecondary} />
+                  <Text style={detailStyles.detailLocationText}>{post.location}</Text>
                 </View>
-              </View>
-            ) : (
-              <View key={msg.id} style={chatStyles.chatRowOpponent}>
-                <View style={chatStyles.chatProfileCircle}>
-                  <MessageTabIcon
-                    width={normalize(28)}
-                    height={normalize(28)}
-                    color={colors.green}
+              ) : null}
+            </View>
+
+            {/* 게시글 내용 */}
+            <Text style={[detailStyles.detailBody, { marginVertical: normalize(12) }]}>
+              {post.content}
+            </Text>
+
+            {/* 구분선 */}
+            <View style={{ height: 1, backgroundColor: '#F0F0F0', marginVertical: normalize(8) }} />
+
+            {/* 게시글 푸터 */}
+            <View style={detailStyles.detailFooter}>
+              <View style={detailStyles.detailStats}>
+                <TouchableOpacity
+                  style={detailStyles.detailStatItem}
+                  onPress={handlePostLike}
+                  activeOpacity={0.7}
+                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                >
+                  <FontAwesome
+                    name={postLiked ? 'heart' : 'heart-o'}
+                    size={normalize(14)}
+                    color={colors.alert}
                   />
-                </View>
-                <View style={chatStyles.opponentBody}>
-                  <View style={chatStyles.opponentNameAndBubble}>
-                    <Text style={chatStyles.opponentName}>익명</Text>
-                    <View style={chatStyles.opponentBubble}>
-                      <Text style={chatStyles.opponentBubbleText}>{msg.content}</Text>
-                    </View>
-                  </View>
-                  <Text style={chatStyles.chatTimeOpponent}>{msg.time}</Text>
+                  <Text style={detailStyles.detailStatText}>{post.likes}</Text>
+                </TouchableOpacity>
+                <View style={detailStyles.detailStatItem}>
+                  <Ionicons name="chatbubble-outline" size={normalize(15)} color={colors.primary} />
+                  <Text style={detailStyles.detailStatText}>{post.comments}</Text>
                 </View>
               </View>
-            )
-          )}
-        </ScrollView>
+              <TouchableOpacity style={detailStyles.detailMenuBtn} activeOpacity={0.7}>
+                <Entypo name="dots-three-vertical" size={normalize(14)} color={colors.textSecondary} />
+              </TouchableOpacity>
+            </View>
+          </View>
 
-        {/* 3) 입력창 */}
-        <View
-          style={{
-            backgroundColor: colors.background,
-            paddingBottom: Math.max(insets.bottom, normalize(12)),
-            borderTopWidth: 1,
-            borderTopColor: '#E8E8E8',
-          }}
-        >
-          <CommentInput
-            bottomInputRef={bottomInputRef}
-            bottomComment={inputText}
-            setBottomComment={setInputText}
-            replyToCommentId={null}
-            replyToAuthorLabel=""
-            clearReplyTarget={() => {}}
-            handleSendComment={handleSendMessage}
-            styles={detailStyles}
-            normalize={normalize}
+          {/* 2) 채팅 영역 - FlatList + inverted */}
+          <FlatList
+            style={{ flex: 1 }}
+            contentContainerStyle={{
+              paddingHorizontal: normalize(12),
+              paddingBottom: normalize(10),
+              paddingTop: normalize(8),
+            }}
+            data={reversedMessages}
+            keyExtractor={(item) => item.id}
+            renderItem={renderMessageItem}
+            inverted
+            showsVerticalScrollIndicator={false}
+            keyboardShouldPersistTaps="handled"
+            keyboardDismissMode="on-drag"
           />
+
+          {/* 3) 입력창 */}
+          <View
+            style={{
+              backgroundColor: colors.background,
+              paddingBottom: isKeyboardVisible ? 0 : Math.max(insets.bottom, normalize(12)),
+              borderTopWidth: 1,
+              borderTopColor: '#E8E8E8',
+            }}
+          >
+            <CommentInput
+              bottomInputRef={null}
+              bottomComment={inputText}
+              setBottomComment={setInputText}
+              replyToCommentId={null}
+              replyToAuthorLabel=""
+              clearReplyTarget={() => {}}
+              handleSendComment={handleSendMessage}
+              styles={detailStyles}
+              normalize={normalize}
+            />
+          </View>
         </View>
-      </View>
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }

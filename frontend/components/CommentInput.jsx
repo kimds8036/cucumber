@@ -1,8 +1,7 @@
 import React from 'react';
-import { View, Text, TextInput, TouchableOpacity, Animated } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { colors } from '../styles/colors';
-import { useKeyboard } from '../context/KeyboardContext';
 
 export default function CommentInput({
   bottomInputRef,
@@ -15,15 +14,8 @@ export default function CommentInput({
   styles,
   normalize,
 }) {
-  const { keyboardHeightAnimated } = useKeyboard();
-
   return (
-    <Animated.View
-      style={{
-        transform: [{ translateY: Animated.multiply(keyboardHeightAnimated, -1) }],
-      }}
-    >
-      <View style={styles.bottomInputRow}>
+    <View style={styles.bottomInputRow}>
       {replyToCommentId ? (
         <View style={styles.replyTargetRow}>
           <Text style={styles.replyTargetText} numberOfLines={1}>
@@ -59,6 +51,5 @@ export default function CommentInput({
         </TouchableOpacity>
       </View>
     </View>
-    </Animated.View>
   );
 }
