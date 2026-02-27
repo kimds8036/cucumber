@@ -1,5 +1,5 @@
 import React, { useMemo } from 'react';
-import { View, Text, StyleSheet } from 'react-native';
+import { View, Text, StyleSheet, Dimensions } from 'react-native';
 
 // ── 색상 ──────────────────────────────────────────────
 const GRASS_COLORS = [
@@ -27,16 +27,19 @@ const densityToLevel = (d) => {
 const densityToColor = (d) => GRASS_COLORS[densityToLevel(d)];
 
 // ── 레이아웃 상수 ─────────────────────────────────────
-// 한 화면에 27주가 모두 들어오도록 셀 크기를 살짝 작게 조정
-const CELL          = 8;    // 셀 크기 (px)
-const GAP           = 1.5;  // 셀 간격
-const STEP          = CELL + GAP;
-const DAY_COL_W     = 16;   // 요일 레이블 고정 너비
-const MONTH_H       = 14;   // 월 레이블 행 높이
+// 화면 너비 기반 가변 셀 크기
+const { width: SCREEN_WIDTH } = Dimensions.get('window');
+const CONTAINER_PADDING = 40;
+const DAY_COL_W = 16;   // 요일 레이블 고정 너비 (AVAILABLE_WIDTH 계산 전에 정의)
+const WEEKS = 27;       // 3월~8월 ≈ 27주 (계산에 사용)
+const AVAILABLE_WIDTH = SCREEN_WIDTH - (CONTAINER_PADDING * 2) - DAY_COL_W;
+const GAP = 1.5;        // 셀 간격
+const CELL = (AVAILABLE_WIDTH - (WEEKS * GAP)) / WEEKS;
+const STEP = CELL + GAP;
+const MONTH_H = 14;     // 월 레이블 행 높이
 
 // ── 데이터 상수 ───────────────────────────────────────
-const WEEKS = 27;  // 3월~8월 ≈ 27주
-const DAYS  = WEEKS * 7;
+const DAYS = WEEKS * 7;
 
 // 월별 시작 주(0-based) — 3월 1주=0, 4월≈4.4주, …
 // 3월:0, 4월:4.4, 5월:8.9, 6월:13.1, 7월:17.6, 8월:22.0 (평균값으로 고정)
