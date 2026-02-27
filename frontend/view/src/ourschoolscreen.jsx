@@ -1,14 +1,13 @@
 import React from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-
+import StudyGrassMap from '../../components/studygrassmap';
 
 const OurSchoolScreen = ({ navigation }) => {
   // 샘플 데이터
   const schoolInfo = {
     name: '진관고등학교',
     location: '서울 은평구 진관동',
-    studentCount: 525,
     postCount: 525,
     mailCount: 525,
   };
@@ -22,14 +21,11 @@ const OurSchoolScreen = ({ navigation }) => {
 
   return (
     <View style={styles.container}>
-      {/* 상단 헤더 */}
- 
-
       <ScrollView
         style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}
       >
-        {/* 학교 정보 카드 */}
+        {/* 학교 정보 카드 — 잔디밭 포함 */}
         <View style={styles.schoolCard}>
           <Text style={styles.schoolName}>{schoolInfo.name}</Text>
           <View style={styles.locationContainer}>
@@ -39,7 +35,6 @@ const OurSchoolScreen = ({ navigation }) => {
 
           <View style={styles.divider} />
 
-          {/* 통계 정보 */}
           <View style={styles.statsContainer}>
             <View style={styles.statItem}>
               <Text style={styles.statLabel}>학생</Text>
@@ -65,6 +60,9 @@ const OurSchoolScreen = ({ navigation }) => {
               </View>
             </View>
           </View>
+
+          {/* ✅ 잔디밭 — 카드 내부 */}
+          <StudyGrassMap />
         </View>
 
         {/* 바로가기 버튼 */}
