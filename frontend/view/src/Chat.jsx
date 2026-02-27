@@ -110,7 +110,7 @@ export default function Chat({ navigation, route }) {
   return (
     <SafeAreaView style={[detailStyles.container, { backgroundColor: colors.background }]} edges={['top']}>
       {/* 헤더 */}
-      <View style={{ zIndex: 1, elevation: 1, backgroundColor: colors.background }}>
+      <View style={{ zIndex: 1, elevation: 0, backgroundColor: colors.background }}>
         <SubHeader title="쪽지" onBack={handleBack} />
       </View>
 

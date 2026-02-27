@@ -558,7 +558,7 @@ export default function BoardDetail({ navigation, route }) {
     <View style={{ flex: 1, backgroundColor: styles.container.backgroundColor }}>
       <SafeAreaView style={styles.container} edges={['top']}>
         {/* Chat과 동일: 헤더 → 컨텐츠 영역(스크롤 + 입력창) */}
-        <View style={{ zIndex: 1, elevation: 1, backgroundColor: colors.background }}>
+        <View style={{ zIndex: 1, elevation: 0, backgroundColor: colors.background }}>
           <SubHeader title="게시판" onBack={handleBack} />
         </View>
         <View style={{ flex: 1, backgroundColor: colors.background, overflow: 'hidden', zIndex: 0 }} pointerEvents="box-none">
