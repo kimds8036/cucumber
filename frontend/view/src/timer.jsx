@@ -243,7 +243,7 @@ export const TimerContent = () => {
               />
               <TextInput
                 style={styles.friendSearchInput}
-                placeholder="친구 이름으로 검색"
+                placeholder="친구 아이디로로 검색"
                 placeholderTextColor={colors.textSecondary}
                 value={friendQuery}
                 onChangeText={setFriendQuery}
@@ -262,7 +262,7 @@ export const TimerContent = () => {
 
       {/* 공부 기록 타임테이블 */}
       <View style={styles.timetableSection}>
-        <Text style={styles.timetableTitle}>오늘 공부 기록</Text>
+        <Text style={styles.timetableTitle}>공부 기록</Text>
 
         {/* 본문: 시간별 10분 단위 블럭 */}
         <View style={styles.timetableBody}>
