@@ -1,15 +1,9 @@
 import React from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  ScrollView,
-  TouchableOpacity,
-} from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 
 
-const OurSchoolScreen = () => {
+const OurSchoolScreen = ({ navigation }) => {
   // 샘플 데이터
   const schoolInfo = {
     name: '진관고등학교',
@@ -75,7 +69,11 @@ const OurSchoolScreen = () => {
 
         {/* 바로가기 버튼 */}
         <View style={styles.shortcutContainer}>
-          <TouchableOpacity style={styles.shortcutButton}>
+          <TouchableOpacity
+            style={styles.shortcutButton}
+            activeOpacity={0.7}
+            onPress={() => navigation?.navigate('SchoolBoardAll')}
+          >
             <View style={[styles.iconCircle, { backgroundColor: '#E8F5E9' }]}>
               <Ionicons name="chatbubbles" size={28} color="#4CAF50" />
             </View>
