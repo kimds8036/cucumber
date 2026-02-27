@@ -7,6 +7,7 @@ import { FontAwesomeIcon } from '@fortawesome/react-native-fontawesome';
 import { faSchool } from '@fortawesome/free-solid-svg-icons';
 import { colors } from '../../styles/colors';
 import MessageTabIcon from '../../assets/Group 166.svg';
+import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 
 const MainFooter = ({ activeTab = 'board', onTabPress }) => {
   const { width, height } = useWindowDimensions();
@@ -48,6 +49,18 @@ const MainFooter = ({ activeTab = 'board', onTabPress }) => {
         />
         <Text style={[footerStyles.tabText, activeTab === 'school' && footerStyles.activeTabText]}>
           우리 학교
+        </Text>
+      </TouchableOpacity>
+
+      <TouchableOpacity style={footerStyles.tabButton} activeOpacity={0.7} onPress={() => onTabPress?.('timer')}>
+        {activeTab === 'timer' && <View style={footerStyles.activeTabIndicator} />}
+        <MaterialIcons
+          name="timer"
+          size={normalize(35)}
+          color={activeTab === 'timer' ? colors.primary : colors.textSecondary}
+        />
+        <Text style={[footerStyles.tabText, activeTab === 'timer' && footerStyles.activeTabText]}>
+          타이머
         </Text>
       </TouchableOpacity>
 

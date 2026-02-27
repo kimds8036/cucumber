@@ -18,8 +18,68 @@ import { createBoardStyles, getNormalize } from '../../styles/board.style';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import FontAwesome5 from '@expo/vector-icons/FontAwesome5';
 
+// 기본 게시글 더미 데이터 (전체 게시판용)
+const defaultPosts = [
+  {
+    id: 1,
+    author: '익명',
+    time: '2시간 전',
+    location: '24m',
+    content:
+      '중간고사 D-7 같이 공부하실 분>시험기간인데 혼자 공부하니까 집중이 안 되서요. 온라인으로라도 같이 공부하실 분 있나요? 디스코드 공부방 만들까 생각 중임',
+    likes: 213,
+    comments: 89,
+    liked: false,
+  },
+  {
+    id: 2,
+    author: '익명',
+    time: '2시간 전',
+    location: '',
+    content:
+      '중간고사 D-7 같이 공부하실 분>시험기간인데 혼자 공부하니까 집중이 안 되서요. 온라인으로라도 같이 공부하실 분 있나요? 디스코드 공부방 만들까 생각 중임',
+    likes: 10,
+    comments: 0,
+    liked: false,
+  },
+  {
+    id: 3,
+    author: '익명',
+    time: '2시간 전',
+    location: '24m',
+    content:
+      '중간고사 D-7 같이 공부하실 분>시험기간인데 혼자 공부하니까 집중이 안 되서요. 온라인으로라도 같이 공부하실 분 있나요? 디스코드 공부방 만들까 생각 중임',
+    likes: 0,
+    comments: 0,
+    liked: false,
+  },
+  {
+    id: 4,
+    author: '익명',
+    time: '2시간 전',
+    location: '',
+    content:
+      '중간고사 D-7 같이 공부하실 분>시험기간인데 혼자 공부하니까 집중이 안 되서요. 온라인으로라도 같이 공부하실 분 있나요? 디스코드 공부방 만들까 생각 중임',
+    likes: 0,
+    comments: 0,
+    liked: false,
+  },
+  {
+    id: 5,
+    author: '익명',
+    time: '2시간 전',
+    location: '',
+    content:
+      '중간고사 D-7 같이 공부하실 분>시험기간인데 혼자 공부하니까 집중이 안 되서요. 온라인으로라도 같이 공부하실 분 있나요? 디스코드 공부방 만들까 생각 중임',
+    likes: 213,
+    comments: 89,
+    liked: false,
+  },
+];
+
 // 메인 화면(MainScreen)에서 헤더/푸터 없이 메인 영역만 렌더할 때 사용
-export function BoardAllContent({ navigation }) {
+// posts: 외부에서 주입하는 게시글 배열 (없으면 defaultPosts 사용)
+export function BoardAllContent({ navigation, posts }) {
   const { width } = useWindowDimensions();
   const normalize = useMemo(() => getNormalize(width), [width]);
   const styles = useMemo(() => createBoardStyles(width, normalize), [width]);
@@ -52,60 +112,7 @@ export function BoardAllContent({ navigation }) {
     setFloatingMenuAnchor(null);
     setFloatingMenuPost(null);
   };
-
-  // 임시 게시글 데이터 (TODO: DB 연동 시 목록 API에서 post.liked 포함하여 사용)
-  const posts = [
-    {
-      id: 1,
-      author: '익명',
-      time: '2시간 전',
-      location: '24m',
-      content: '중간고사 D-7 같이 공부하실 분>시험기간인데 혼자 공부하니까 집중이 안 되서요. 온라인으로라도 같이 공부하실 분 있나요? 디스코드 공부방 만들까 생각 중임',
-      likes: 213,
-      comments: 89,
-      liked: false,
-    },
-    {
-      id: 2,
-      author: '익명',
-      time: '2시간 전',
-      location: '',
-      content: '중간고사 D-7 같이 공부하실 분>시험기간인데 혼자 공부하니까 집중이 안 되서요. 온라인으로라도 같이 공부하실 분 있나요? 디스코드 공부방 만들까 생각 중임',
-      likes: 10,
-      comments: 0,
-      liked: false,
-    },
-    {
-      id: 3,
-      author: '익명',
-      time: '2시간 전',
-      location: '24m',
-      content: '중간고사 D-7 같이 공부하실 분>시험기간인데 혼자 공부하니까 집중이 안 되서요. 온라인으로라도 같이 공부하실 분 있나요? 디스코드 공부방 만들까 생각 중임',
-      likes: 0,
-      comments: 0,
-      liked: false,
-    },
-    {
-      id: 4,
-      author: '익명',
-      time: '2시간 전',
-      location: '',
-      content: '중간고사 D-7 같이 공부하실 분>시험기간인데 혼자 공부하니까 집중이 안 되서요. 온라인으로라도 같이 공부하실 분 있나요? 디스코드 공부방 만들까 생각 중임',
-      likes: 0,
-      comments: 0,
-      liked: false,
-    },
-    {
-      id: 5,
-      author: '익명',
-      time: '2시간 전',
-      location: '',
-      content: '중간고사 D-7 같이 공부하실 분>시험기간인데 혼자 공부하니까 집중이 안 되서요. 온라인으로라도 같이 공부하실 분 있나요? 디스코드 공부방 만들까 생각 중임',
-      likes: 213,
-      comments: 89,
-      liked: false,
-    },
-  ];
+  const data = posts && posts.length > 0 ? posts : defaultPosts;
 
   return (
     <>
@@ -140,10 +147,10 @@ export function BoardAllContent({ navigation }) {
       {/* 게시글 목록 */}
       <ScrollView
         style={styles.postList}
-        contentContainerStyle={{ paddingBottom: 48 }}
+        contentContainerStyle={{ paddingBottom: 0 }}
         showsVerticalScrollIndicator={false}
       >
-        {posts.map((post) => (
+        {data.map((post) => (
           <TouchableOpacity
             key={post.id}
             style={styles.postItem}
@@ -319,7 +326,7 @@ const BoardAll = ({ navigation }) => {
   return (
     <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
       <MainHeader activeTab="board" />
-      <BoardAllContent navigation={navigation} />
+      <BoardAllContent navigation={navigation} posts={defaultPosts} />
       <MainFooter
         activeTab="board"
         onTabPress={(tab) => {

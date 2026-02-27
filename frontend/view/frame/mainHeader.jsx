@@ -22,6 +22,8 @@ const MainHeader = ({ activeTab = 'board', navigation }) => {
         return '우리 학교';
       case 'mypage':
         return '마이페이지';
+      case 'timer':
+        return '타이머';
       default:
         return '전체 게시판';
     }
