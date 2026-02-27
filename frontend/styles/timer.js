@@ -153,17 +153,17 @@ export const createTimerStyles = (width, normalize) => {
     },
     friendStatusDot: {
       position: 'absolute',
-      right: -normalize(1),
-      bottom: -normalize(1),
-      width: normalize(12),
-      height: normalize(12),
+      right: normalize(1),
+      bottom: normalize(1),
+      width: normalize(10),
+      height: normalize(10),
       borderRadius: normalize(6),
     },
     friendStatusDotActive: {
-      backgroundColor: colors.primaryLight50,
+      backgroundColor: "#FF9F9F",
     },
     friendStatusDotInactive: {
-      backgroundColor: colors.textLight10,
+      backgroundColor: "#E9E9E9",
     },
     friendName: {
       marginTop: normalize(4),
