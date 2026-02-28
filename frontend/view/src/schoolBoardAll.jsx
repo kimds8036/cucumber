@@ -1,88 +1,90 @@
-import React, { useState, useMemo, useRef } from 'react';
+import React, { useMemo, useState, useRef } from 'react';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import {
+  useWindowDimensions,
   View,
   Text,
   TouchableOpacity,
   ScrollView,
-  useWindowDimensions,
   Modal,
   TouchableWithoutFeedback,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { Entypo } from '@expo/vector-icons';
-import MainHeader from '../frame/mainHeader';
-import MainFooter from '../frame/mainFooter';
-import { colors, fonts } from '../../styles/colors';
-import { createBoardStyles, getNormalize } from '../../styles/board.style';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import FontAwesome5 from '@expo/vector-icons/FontAwesome5';
+import SubHeader from '../frame/subHeader';
+import { createSchoolBoardStyles, getNormalize } from '../../styles/schoolBoard.style';
+import { colors, fonts } from '../../styles/colors';
 
-// 기본 게시글 더미 데이터 (전체 게시판용)
-const defaultPosts = [
+// 학교 게시판 전용 더미 데이터
+const schoolPosts = [
   {
-    id: 1,
+    id: 101,
     author: '익명',
-    time: '2시간 전',
+    time: '1시간 전',
     location: '24m',
-    content:
-      '중간고사 D-7 같이 공부하실 분>시험기간인데 혼자 공부하니까 집중이 안 되서요. 온라인으로라도 같이 공부하실 분 있나요? 디스코드 공부방 만들까 생각 중임',
-    likes: 213,
-    comments: 89,
+    content: '우리 학교 축제 준비할 사람들 모여요! 아이디어 있으면 댓글로 남겨주세요.',
+    likes: 32,
+    comments: 12,
     liked: false,
   },
   {
-    id: 2,
+    id: 102,
     author: '익명',
-    time: '2시간 전',
+    time: '3시간 전',
     location: '',
-    content:
-      '중간고사 D-7 같이 공부하실 분>시험기간인데 혼자 공부하니까 집중이 안 되서요. 온라인으로라도 같이 공부하실 분 있나요? 디스코드 공부방 만들까 생각 중임',
-    likes: 10,
-    comments: 0,
+    content: '내일 체육대회 우천시 진행 여부 아는 사람 있나요?',
+    likes: 5,
+    comments: 3,
     liked: false,
   },
   {
-    id: 3,
+    id: 103,
     author: '익명',
-    time: '2시간 전',
-    location: '24m',
-    content:
-      '중간고사 D-7 같이 공부하실 분>시험기간인데 혼자 공부하니까 집중이 안 되서요. 온라인으로라도 같이 공부하실 분 있나요? 디스코드 공부방 만들까 생각 중임',
+    time: '어제',
+    location: '',
+    content: '1학년 자율학습실 자리 널널한가요?',
     likes: 0,
-    comments: 0,
+    comments: 1,
     liked: false,
   },
   {
-    id: 4,
+    id: 104,
     author: '익명',
-    time: '2시간 전',
+    time: '어제',
     location: '',
-    content:
-      '중간고사 D-7 같이 공부하실 분>시험기간인데 혼자 공부하니까 집중이 안 되서요. 온라인으로라도 같이 공부하실 분 있나요? 디스코드 공부방 만들까 생각 중임',
+    content: '1학년 자율학습실 자리 널널한가요?',
     likes: 0,
-    comments: 0,
+    comments: 1,
     liked: false,
   },
   {
-    id: 5,
+    id: 105,
     author: '익명',
-    time: '2시간 전',
+    time: '어제',
     location: '',
-    content:
-      '중간고사 D-7 같이 공부하실 분>시험기간인데 혼자 공부하니까 집중이 안 되서요. 온라인으로라도 같이 공부하실 분 있나요? 디스코드 공부방 만들까 생각 중임',
-    likes: 213,
-    comments: 89,
+    content: '1학년 자율학습실 자리 널널한가요?',
+    likes: 0,
+    comments: 1,
+    liked: false,
+  },
+  {
+    id: 106,
+    author: '익명',
+    time: '어제',
+    location: '',
+    content: '1학년 자율학습실 자리 널널한가요?',
+    likes: 0,
+    comments: 1,
     liked: false,
   },
 ];
 
-// 메인 화면(MainScreen)에서 헤더/푸터 없이 메인 영역만 렌더할 때 사용
-// posts: 외부에서 주입하는 게시글 배열 (없으면 defaultPosts 사용)
-export function BoardAllContent({ navigation, posts }) {
+const SchoolBoardAll = ({ navigation }) => {
   const { width } = useWindowDimensions();
   const normalize = useMemo(() => getNormalize(width), [width]);
-  const styles = useMemo(() => createBoardStyles(width, normalize), [width]);
+  const styles = useMemo(() => createSchoolBoardStyles(width, normalize), [width]);
 
   const [sortType, setSortType] = useState('latest'); // latest, popular, nearby
   const [floatingMenuVisible, setFloatingMenuVisible] = useState(false);
@@ -107,15 +109,25 @@ export function BoardAllContent({ navigation, posts }) {
       setFloatingMenuVisible(true);
     });
   };
+
   const closeFloatingMenu = () => {
     setFloatingMenuVisible(false);
     setFloatingMenuAnchor(null);
     setFloatingMenuPost(null);
   };
-  const data = posts && posts.length > 0 ? posts : defaultPosts;
 
   return (
-    <>
+    <SafeAreaView style={styles.container} edges={['top']}>
+      <SubHeader
+        title="학교 게시판"
+        onBack={() => navigation?.goBack()}
+        rightIcon="search"
+        onRightPress={() => navigation?.navigate('SearchScreen')}
+        rightElement={
+          <Ionicons name="search" size={normalize(22)} color={colors.textPrimary} />
+        }
+      />
+
       {/* 정렬 버튼 영역 */}
       <View style={styles.sortContainer}>
         <TouchableOpacity
@@ -134,14 +146,6 @@ export function BoardAllContent({ navigation, posts }) {
             인기
           </Text>
         </TouchableOpacity>
-        <TouchableOpacity
-          style={[styles.sortButton, sortType === 'nearby' && styles.sortButtonActive]}
-          onPress={() => setSortType('nearby')}
-        >
-          <Text style={[styles.sortButtonText, sortType === 'nearby' && styles.sortButtonTextActive]}>
-            근처
-          </Text>
-        </TouchableOpacity>
       </View>
 
       {/* 게시글 목록 */}
@@ -150,15 +154,15 @@ export function BoardAllContent({ navigation, posts }) {
         contentContainerStyle={{ paddingBottom: 0 }}
         showsVerticalScrollIndicator={false}
       >
-        {data.map((post) => (
+        {schoolPosts.map((post) => (
           <TouchableOpacity
             key={post.id}
             style={styles.postItem}
             activeOpacity={0.7}
             onPress={() =>
               navigation.navigate('BoardDetail', {
-                post: { ...post, author: post.id === 1 ? '작성자' : post.author },
-                isMyPost: post.id === 1, // 본인 글 여부 (추후 로그인 사용자와 비교)
+                post: { ...post, author: post.id === 101 ? '작성자' : post.author },
+                isMyPost: post.id === 101,
               })
             }
           >
@@ -230,7 +234,7 @@ export function BoardAllContent({ navigation, posts }) {
         <FontAwesome5 name="plus" size={normalize(24)} color={colors.background} />
       </TouchableOpacity>
 
-      {/* 플로팅 메뉴 (boardAll 인라인 - boardDetail과 동일한 UI) */}
+      {/* 플로팅 메뉴 */}
       <Modal
         visible={floatingMenuVisible}
         transparent
@@ -314,27 +318,9 @@ export function BoardAllContent({ navigation, posts }) {
           </View>
         </TouchableWithoutFeedback>
       </Modal>
-    </>
-  );
-}
-
-// 단독 게시판 화면 (헤더+푸터 포함, 필요 시 사용)
-const BoardAll = ({ navigation }) => {
-  const { width } = useWindowDimensions();
-  const normalize = useMemo(() => getNormalize(width), [width]);
-  const styles = useMemo(() => createBoardStyles(width, normalize), [width]);
-  return (
-    <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
-      <MainHeader activeTab="board" />
-      <BoardAllContent navigation={navigation} posts={defaultPosts} />
-      <MainFooter
-        activeTab="board"
-        onTabPress={(tab) => {
-          if (tab === 'message') navigation.navigate('Message');
-        }}
-      />
     </SafeAreaView>
   );
 };
 
-export default BoardAll;
+export default SchoolBoardAll;
+

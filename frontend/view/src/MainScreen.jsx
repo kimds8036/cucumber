@@ -5,13 +5,14 @@ import MainHeader from '../frame/mainHeader';
 import MainFooter from '../frame/mainFooter';
 import { BoardAllContent } from './boardAll';
 import { MessageContent } from './Message';
+import { TimerContent } from './timer';
 import { colors } from '../../styles/colors';
 import MyPage from './mypage';
 import OurSchoolScreen from './ourschoolscreen';
 
 
 const MainScreen = ({ navigation }) => {
-  const [activeTab, setActiveTab] = useState('board'); // 'board' | 'message' | 'school' | 'mypage'
+  const [activeTab, setActiveTab] = useState('board'); // 'board' | 'message' | 'school' | 'timer' | 'mypage'
 
   const renderContent = () => {
     switch (activeTab) {
@@ -21,6 +22,8 @@ const MainScreen = ({ navigation }) => {
         return <MessageContent navigation={navigation} />;
       case 'school':
         return <OurSchoolScreen navigation={navigation} />;
+      case 'timer':
+        return <TimerContent />;
       case 'mypage':
         return <MyPage navigation={navigation} />;
       default:

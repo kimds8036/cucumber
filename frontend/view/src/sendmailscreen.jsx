@@ -34,9 +34,9 @@ const SendMailScreen = ({ navigation }) => {
   ];
 
   const studentResults = [
-    { id: 1, name: '김민준', grade: 2, class: 3 },
-    { id: 2, name: '김서연', grade: 1, class: 5 },
-    { id: 3, name: '김지우', grade: 3, class: 2 },
+    { id: 1, name: '김민준', userId: 'kimminjun', grade: 2, class: 3, isDormant: false },
+    { id: 2, name: '김서연', userId: 'kimseoyeon', grade: 1, class: 5, isDormant: false },
+    { id: 3, name: '김지우', userId: 'kimjiwoo', grade: 3, class: 2, isDormant: true },
   ];
 
   const handleSchoolSelect = (school) => {
@@ -259,11 +259,21 @@ const SendMailScreen = ({ navigation }) => {
                               style={styles.resultItem}
                               onPress={() => handleStudentSelect(student)}>
                               <View style={styles.studentInfo}>
-                                <Text style={styles.resultName}>{student.name}</Text>
+                                <Text style={styles.resultName}>
+                                  {student.name}
+                                  {student.userId && (
+                                    <Text style={styles.resultId}> @{student.userId}</Text>
+                                  )}
+                                </Text>
                                 <Text style={styles.resultAddress}>
                                   {student.grade}학년 {student.class}반
                                 </Text>
                               </View>
+                              {student.isDormant && (
+                                <View style={styles.dormantBadge}>
+                                  <Text style={styles.dormantBadgeText}>휴면계정</Text>
+                                </View>
+                              )}
                               <Ionicons name="chevron-forward" size={20} color="#999" />
                             </TouchableOpacity>
                           ))
@@ -398,6 +408,11 @@ const styles = StyleSheet.create({
     color: '#333',
     marginBottom: 4,
   },
+  resultId: {
+    fontSize: 13,
+    fontWeight: '500',
+    color: '#999',
+  },
   resultAddress: {
     fontSize: 13,
     color: '#666',
@@ -412,6 +427,18 @@ const styles = StyleSheet.create({
   noResultText: {
     fontSize: 14,
     color: '#999',
+  },
+  dormantBadge: {
+    backgroundColor: '#FFEAEA',
+    borderRadius: 12,
+    paddingVertical: 4,
+    paddingHorizontal: 8,
+    marginRight: 8,
+  },
+  dormantBadgeText: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#FF6B6B',
   },
   recipientTypeContainer: {
     flexDirection: 'row',

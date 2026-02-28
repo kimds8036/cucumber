@@ -20,6 +20,8 @@ import BoardWrite from './view/src/boardWrite';
 import BoardDetail from './view/src/boardDetail';
 import Chat from './view/src/Chat';
 import SendMailScreen from './view/src/sendmailscreen';
+import SchoolBoardAll from './view/src/schoolBoardAll';
+import Timer from './view/src/timer';
 import { useFonts } from 'expo-font';
 import * as SplashScreen from 'expo-splash-screen';
 import { useEffect } from 'react';
@@ -66,6 +68,9 @@ export default function App() {
           <Stack.Screen name="Search" component={SearchScreen} />
           <Stack.Screen name="Notification" component={NotificationScreen} />
           <Stack.Screen name="SendMail" component={SendMailScreen} />
+          <Stack.Screen name="SchoolBoardAll" component={SchoolBoardAll} />
+          <Stack.Screen name="Timer" component={Timer} />
+          <Stack.Screen name="SearchScreen" component={SearchScreen} />
         </Stack.Navigator>
       </NavigationContainer>
       </KeyboardProvider>
