@@ -14,26 +14,12 @@ const MyPage = ({ navigation }) => {
   const userInfo = {
     name: '김은채',
     username: '@euncha015',
-    joinDate: '가입 3년 9개월 4일',
-    period: '2023/03 - 2027/02',
+    school: '전공 고등학교',
+    gradeClass: '3학년 4반',
+    friendCount: 12,
   };
 
-  // 시간표 데이터 상태 (null이면 시간표 없음, 객체면 시간표 있음)
   const [timetable, setTimetable] = useState(null);
-  
-  // 시간표가 있을 때 샘플 데이터 (실제로는 서버나 AsyncStorage에서 가져옴)
-  // const [timetable, setTimetable] = useState({
-  //   '월-1': '국어',
-  //   '월-2': '수학',
-  //   '월-3': '영어',
-  //   '화-1': '과학',
-  //   '화-2': '사회',
-  //   '수-1': '음악',
-  //   '수-3': '체육',
-  //   '목-2': '미술',
-  //   '금-1': '국어',
-  //   '금-4': '수학',
-  // });
 
   const days = ['월', '화', '수', '목', '금'];
   const periods = [1, 2, 3, 4, 5, 6, 7, 8, 9];
@@ -45,21 +31,14 @@ const MyPage = ({ navigation }) => {
   };
 
   const handleLogout = () => {
-    Alert.alert(
-      '로그아웃',
-      '정말 로그아웃 하시겠습니까?',
-      [
-        { text: '취소', style: 'cancel' },
-        {
-          text: '로그아웃',
-          style: 'destructive',
-          onPress: () => {
-            // TODO: 실제 로그아웃 처리 (토큰 삭제 등)
-            console.log('로그아웃됨');
-          },
-        },
-      ],
-    );
+    Alert.alert('로그아웃', '정말 로그아웃 하시겠습니까?', [
+      { text: '취소', style: 'cancel' },
+      {
+        text: '로그아웃',
+        style: 'destructive',
+        onPress: () => console.log('로그아웃됨'),
+      },
+    ]);
   };
 
   const handleDeleteAccount = () => {
@@ -71,18 +50,14 @@ const MyPage = ({ navigation }) => {
         {
           text: '탈퇴',
           style: 'destructive',
-          onPress: () => {
-            // TODO: 실제 계정 삭제 API 연동
-            Alert.alert('계정 탈퇴', '계정이 삭제되었습니다.');
-          },
+          onPress: () => Alert.alert('계정 탈퇴', '계정이 삭제되었습니다.'),
         },
-      ],
+      ]
     );
   };
 
   const MenuItem = ({ icon, title, subtitle, onPress, iconType = 'ionicons' }) => {
     const IconComponent = iconType === 'material' ? MaterialCommunityIcons : Ionicons;
-    
     return (
       <TouchableOpacity style={styles.menuItem} onPress={onPress}>
         <View style={styles.menuLeft}>
@@ -102,43 +77,51 @@ const MyPage = ({ navigation }) => {
   );
 
   const handleAddOrEditTimetable = () => {
-    // AddTimetable 화면으로 이동
     navigation.navigate('AddTimetable', {
       existingTimetable: timetable,
-      onSave: (newTimetable) => {
-        setTimetable(newTimetable);
-      },
+      onSave: (newTimetable) => setTimetable(newTimetable),
     });
   };
 
   return (
     <View style={styles.container}>
-      <ScrollView
-        style={styles.scrollView}
-        showsVerticalScrollIndicator={false}
-      >
-        {/* User Profile Card */}
+      <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
+
+        {/* ── 프로필 카드 ── */}
         <View style={styles.profileCard}>
           <View style={styles.profileHeader}>
+            {/* 아바타 */}
             <View style={styles.avatar}>
               <Ionicons name="person" size={32} color="#fff" />
             </View>
+
+            {/* 이름 / 아이디 / 학교 */}
             <View style={styles.profileInfo}>
               <Text style={styles.profileName}>{userInfo.name}</Text>
               <Text style={styles.profileUsername}>{userInfo.username}</Text>
-              <Text style={styles.profileDate}>{userInfo.joinDate}</Text>
-              <Text style={styles.profilePeriod}>{userInfo.period}</Text>
+              <Text style={styles.profileSchool}>{userInfo.school}</Text>
+              <Text style={styles.profileGradeClass}>{userInfo.gradeClass}</Text>
             </View>
+
+            {/* 친구 수 — 작은 뱃지 형태 */}
+            <TouchableOpacity
+              style={styles.friendBadge}
+              onPress={() => navigation.navigate('Friends')}
+              activeOpacity={0.7}
+            >
+              <Ionicons name="people" size={13} color="#fff" />
+              <Text style={styles.friendBadgeText}>{userInfo.friendCount}</Text>
+            </TouchableOpacity>
           </View>
 
-          {/* 조건부 렌더링: 시간표가 있으면 보여주고, 없으면 버튼만 */}
+          {/* 시간표 */}
           {timetable ? (
-            // 시간표가 있을 때
             <View style={styles.timetableSection}>
-              <Text style={styles.timetableTitle}>[전공 고등학교 3학년 4반 시간표]</Text>
-              
+              <Text style={styles.timetableTitle}>
+                [{userInfo.school} {userInfo.gradeClass} 시간표]
+              </Text>
+
               <View style={styles.timetableContainer}>
-                {/* Days Header */}
                 <View style={styles.daysRow}>
                   <View style={styles.periodHeaderCell} />
                   {days.map((day) => (
@@ -148,7 +131,6 @@ const MyPage = ({ navigation }) => {
                   ))}
                 </View>
 
-                {/* Timetable Grid */}
                 {periods.map((period) => (
                   <View key={period} style={styles.row}>
                     <View style={styles.periodCell}>
@@ -159,16 +141,10 @@ const MyPage = ({ navigation }) => {
                       return (
                         <View
                           key={`${day}-${period}`}
-                          style={[
-                            styles.classCell,
-                            content ? styles.classCellFilled : null,
-                          ]}
+                          style={[styles.classCell, content ? styles.classCellFilled : null]}
                         >
                           <Text
-                            style={[
-                              styles.classCellText,
-                              content ? styles.classCellTextFilled : null,
-                            ]}
+                            style={[styles.classCellText, content ? styles.classCellTextFilled : null]}
                             numberOfLines={1}
                           >
                             {content}
@@ -180,28 +156,20 @@ const MyPage = ({ navigation }) => {
                 ))}
               </View>
 
-              {/* 시간표 수정 버튼 */}
-              <TouchableOpacity 
-                style={styles.editButton}
-                onPress={handleAddOrEditTimetable}
-              >
+              <TouchableOpacity style={styles.editButton} onPress={handleAddOrEditTimetable}>
                 <Text style={styles.editButtonText}>시간표 수정하기</Text>
                 <Ionicons name="pencil" size={16} color="#fff" style={styles.editIcon} />
               </TouchableOpacity>
             </View>
           ) : (
-            // 시간표가 없을 때
-            <TouchableOpacity 
-              style={styles.editButton}
-              onPress={handleAddOrEditTimetable}
-            >
+            <TouchableOpacity style={styles.editButton} onPress={handleAddOrEditTimetable}>
               <Text style={styles.editButtonText}>시간표를 추가하기</Text>
               <Ionicons name="pencil" size={16} color="#fff" style={styles.editIcon} />
             </TouchableOpacity>
           )}
         </View>
 
-        {/* 활동 Section */}
+        {/* ── 활동 ── */}
         <SectionHeader title="활동" />
         <View style={styles.menuSection}>
           <MenuItem
@@ -230,7 +198,7 @@ const MyPage = ({ navigation }) => {
           />
         </View>
 
-        {/* 설정 Section */}
+        {/* ── 설정 ── */}
         <SectionHeader title="설정" />
         <View style={styles.menuSection}>
           <MenuItem
@@ -250,7 +218,7 @@ const MyPage = ({ navigation }) => {
           />
         </View>
 
-        {/* 계정 Section */}
+        {/* ── 계정 ── */}
         <SectionHeader title="계정" />
         <View style={styles.menuSection}>
           <MenuItem
@@ -265,7 +233,6 @@ const MyPage = ({ navigation }) => {
           />
         </View>
 
-        {/* Bottom padding */}
         <View style={styles.bottomPadding} />
       </ScrollView>
     </View>
@@ -281,6 +248,8 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingTop: 8,
   },
+
+  // ── 프로필 카드 ──
   profileCard: {
     backgroundColor: '#fff',
     margin: 16,
@@ -294,13 +263,13 @@ const styles = StyleSheet.create({
   },
   profileHeader: {
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'flex-start',
     marginBottom: 16,
   },
   avatar: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
+    width: 56,
+    height: 56,
+    borderRadius: 28,
     backgroundColor: '#8FD397',
     justifyContent: 'center',
     alignItems: 'center',
@@ -316,18 +285,39 @@ const styles = StyleSheet.create({
     marginBottom: 2,
   },
   profileUsername: {
-    fontSize: 13,
-    color: '#666',
+    fontSize: 12,
+    color: '#888',
     marginBottom: 4,
   },
-  profileDate: {
+  profileSchool: {
     fontSize: 12,
     color: '#999',
+    lineHeight: 17,
   },
-  profilePeriod: {
+  profileGradeClass: {
     fontSize: 12,
     color: '#999',
+    lineHeight: 17,
   },
+
+  // 친구 뱃지 — 작고 심플하게
+  friendBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#8FD397',
+    borderRadius: 20,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    gap: 3,
+    alignSelf: 'flex-start',
+  },
+  friendBadgeText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#fff',
+  },
+
+  // ── 시간표 ──
   timetableSection: {
     marginTop: 8,
   },
@@ -359,7 +349,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     borderLeftWidth: 1,
-    borderLeftColor: 'rgba(255, 255, 255, 0.3)',
+    borderLeftColor: 'rgba(255,255,255,0.3)',
   },
   dayText: {
     fontSize: 12,
@@ -424,6 +414,8 @@ const styles = StyleSheet.create({
   editIcon: {
     marginLeft: 4,
   },
+
+  // ── 메뉴 ──
   sectionHeader: {
     fontSize: 14,
     fontWeight: '600',

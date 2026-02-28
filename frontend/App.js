@@ -22,6 +22,7 @@ import Chat from './view/src/Chat';
 import SendMailScreen from './view/src/sendmailscreen';
 import SchoolBoardAll from './view/src/schoolBoardAll';
 import Timer from './view/src/timer';
+import FriendsScreen from './view/src/friendsscreen';
 import { useFonts } from 'expo-font';
 import * as SplashScreen from 'expo-splash-screen';
 import { useEffect } from 'react';
@@ -70,6 +71,7 @@ export default function App() {
           <Stack.Screen name="SendMail" component={SendMailScreen} />
           <Stack.Screen name="SchoolBoardAll" component={SchoolBoardAll} />
           <Stack.Screen name="Timer" component={Timer} />
+          <Stack.Screen name="Friends" component={FriendsScreen} />
           <Stack.Screen name="SearchScreen" component={SearchScreen} />
         </Stack.Navigator>
       </NavigationContainer>
