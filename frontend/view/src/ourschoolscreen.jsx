@@ -13,6 +13,7 @@ const OurSchoolScreen = () => {
   const schoolInfo = {
     name: '진관고등학교',
     location: '서울 은평구 진관동',
+    studentCount: 532,
     postCount: 525,
     mailCount: 525,
   };
