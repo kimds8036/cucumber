@@ -23,7 +23,293 @@ export const createTimerStyles = (width, normalize) => {
       gap: normalize(16),
     },
 
-    // 스탑워치 카드
+    // 친구 스토리 스타일 (상단, 일렬 배치, 상태점 원에 걸침)
+    friendStoryRow: {
+      marginBottom: normalize(8),
+    },
+    friendStoryScroll: {
+      flexDirection: 'row',
+      alignItems: 'flex-start',
+      paddingVertical: normalize(8),
+      paddingRight: normalize(16),
+    },
+    friendStoryAddCircleWrap: {
+      alignItems: 'center',
+      marginRight: normalize(14),
+      width: normalize(56),
+    },
+    friendStoryAddCircle: {
+      width: normalize(56),
+      height: normalize(56),
+      borderRadius: normalize(28),
+      backgroundColor: colors.textLight5,
+      borderWidth: 2,
+      borderColor: colors.primaryLight30,
+      borderStyle: 'dashed',
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    friendStoryAddLabel: {
+      marginTop: normalize(4),
+      fontSize: normalize(11),
+      fontFamily: fonts.regular,
+      color: colors.textSecondary,
+      textAlign: 'center',
+    },
+    friendStoryCircleWrap: {
+      alignItems: 'center',
+      marginRight: normalize(14),
+      width: normalize(56),
+      position: 'relative',
+    },
+    friendStoryCircle: {
+      width: normalize(56),
+      height: normalize(56),
+      borderRadius: normalize(28),
+      borderWidth: 2,
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    friendStatusDotOnCircle: {
+      position: 'absolute',
+      right: normalize(-3),
+      bottom: normalize(-3),
+      width: normalize(12),
+      height: normalize(12),
+      borderRadius: normalize(6),
+      borderWidth: 2,
+      borderColor: colors.background,
+    },
+    friendStoryName: {
+      marginTop: normalize(4),
+      fontSize: normalize(11),
+      fontFamily: fonts.regular,
+      color: colors.textSecondary,
+      textAlign: 'center',
+      maxWidth: normalize(56),
+    },
+
+    // 타이머 블록 (시·분·초)
+    timerBlock: {
+      alignItems: 'center',
+      paddingVertical: normalize(20),
+      paddingHorizontal: normalize(16),
+    },
+    timerTime: {
+      fontSize: normalize(42),
+      fontFamily: fonts.bold,
+      color: colors.primary,
+      letterSpacing: 2,
+      marginBottom: normalize(8),
+    },
+    timerHint: {
+      fontSize: normalize(13),
+      fontFamily: fonts.regular,
+      color: colors.textSecondary,
+      marginBottom: normalize(16),
+    },
+    timerBtn: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: normalize(8),
+      paddingVertical: normalize(12),
+      paddingHorizontal: normalize(28),
+      borderRadius: normalize(24),
+      backgroundColor: colors.primary,
+    },
+    timerBtnPause: {
+      backgroundColor: colors.textLight5,
+    },
+    timerBtnText: {
+      fontSize: normalize(15),
+      fontFamily: fonts.bold,
+      color: colors.textWhite,
+    },
+    timerBtnTextPause: {
+      color: colors.textPrimary,
+    },
+
+    // 구분선
+    divider: {
+      height: 1,
+      backgroundColor: colors.textLight10,
+    },
+
+    // 투두 + 타임테이블 수평 배치
+    todoTimetableRow: {
+      flexDirection: 'row',
+      flex: 1,
+      minHeight: normalize(320),
+      gap: normalize(12),
+    },
+    todoColumn: {
+      flex: 1,
+      minWidth: width * 0.5,
+      maxWidth: width * 0.6,
+    },
+    todoHeader: {
+      marginBottom: normalize(10),
+    },
+    todoTitle: {
+      fontSize: normalize(15),
+      fontFamily: fonts.bold,
+      color: colors.textPrimary,
+      marginBottom: normalize(8),
+    },
+    todoHeaderButtons: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      gap: normalize(8),
+    },
+    todoAddBtn: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: normalize(4),
+      paddingVertical: normalize(6),
+      paddingHorizontal: normalize(10),
+      borderRadius: normalize(10),
+      backgroundColor: colors.primaryLight30,
+    },
+    todoAddBtnText: {
+      fontSize: normalize(12),
+      fontFamily: fonts.regular,
+      color: colors.primary,
+    },
+    todoList: {
+      maxHeight: normalize(400),
+    },
+    subjectBlock: {
+      marginBottom: normalize(14),
+    },
+    subjectRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      marginBottom: normalize(6),
+    },
+    subjectColorBar: {
+      width: normalize(4),
+      height: normalize(36),
+      borderRadius: 2,
+      marginRight: normalize(8),
+    },
+    subjectBody: {
+      flex: 1,
+    },
+    subjectName: {
+      fontSize: normalize(14),
+      fontFamily: fonts.bold,
+      color: colors.textPrimary,
+    },
+    subjectTime: {
+      fontSize: normalize(12),
+      fontFamily: fonts.regular,
+      color: colors.textSecondary,
+      marginTop: 2,
+    },
+    subjectStartBtn: {
+      paddingVertical: normalize(6),
+      paddingHorizontal: normalize(12),
+      borderRadius: normalize(12),
+      backgroundColor: colors.primary,
+    },
+    subjectPlayBtn: {
+      width: normalize(36),
+      height: normalize(36),
+      borderRadius: normalize(18),
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    subjectPlayBtnActive: {
+      opacity: 0.9,
+    },
+    subjectCollapseBtn: {
+      padding: normalize(4),
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    subjectStartBtnActive: {
+      backgroundColor: colors.primaryDark,
+    },
+    subjectStartBtnText: {
+      fontSize: normalize(12),
+      fontFamily: fonts.bold,
+      color: colors.textWhite,
+    },
+    taskRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      paddingLeft: normalize(12),
+      paddingVertical: normalize(6),
+      marginBottom: normalize(4),
+      gap: normalize(8),
+    },
+    taskCheckbox: {
+      width: normalize(22),
+      height: normalize(22),
+      borderRadius: normalize(4),
+      borderWidth: 2,
+      borderColor: colors.textLight20,
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    taskCheckboxChecked: {
+      backgroundColor: colors.primary,
+      borderColor: colors.primary,
+    },
+    taskContent: {
+      flex: 1,
+      fontSize: normalize(13),
+      fontFamily: fonts.regular,
+      color: colors.textPrimary,
+    },
+    taskContentDone: {
+      color: colors.textSecondary,
+      textDecorationLine: 'line-through',
+    },
+    todoAddUnderSubject: {
+      paddingVertical: normalize(6),
+      paddingLeft: normalize(12),
+      marginBottom: normalize(8),
+    },
+    todoAddUnderSubjectText: {
+      fontSize: normalize(13),
+      fontFamily: fonts.regular,
+      color: colors.textSecondary,
+    },
+    taskStatusRow: {
+      flexDirection: 'row',
+      gap: normalize(4),
+    },
+    taskStatusBtn: {
+      width: normalize(26),
+      height: normalize(26),
+      borderRadius: normalize(13),
+      backgroundColor: colors.textLight10,
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    taskStatusDone: {
+      backgroundColor: colors.primary,
+    },
+    taskStatusFail: {
+      backgroundColor: colors.alert,
+    },
+    taskStatusPending: {
+      backgroundColor: colors.textSecondary,
+    },
+    taskStatusText: {
+      fontSize: normalize(12),
+      fontFamily: fonts.bold,
+      color: colors.textWhite,
+    },
+    timetableColumn: {
+      flex: 1,
+      minWidth: width * 0.4,
+    },
+    timetableScroll: {
+      maxHeight: normalize(600),
+    },
     stopwatchCard: {
       backgroundColor: colors.background,
       borderRadius: normalize(20),

@@ -1,4 +1,4 @@
-import React, { useMemo, useState, useEffect } from 'react';
+import React, { useMemo, useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -7,21 +7,26 @@ import {
   TextInput,
   useWindowDimensions,
   Modal,
-  Animated,
-  Easing,
   Alert,
+  AppState,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import MainHeader from '../frame/mainHeader';
 import MainFooter from '../frame/mainFooter';
 import { createTimerStyles, getNormalize } from '../../styles/timer';
-import { colors } from '../../styles/colors';
+import { colors, fonts } from '../../styles/colors';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import MessageTabIcon from '../../assets/Group 166.svg';
+import {
+  getTimerDayKey,
+  loadDayFromStorage,
+  saveDayToStorage,
+  flushPreviousDayAndLoadCurrent,
+  saveDayToDb,
+} from '../../utils/timerStorage';
 
 const FRIEND_ICON_COLORS = [colors.green, colors.yellow, colors.red, colors.blue];
-const getFriendIconColorByIndex = (index) =>
-  FRIEND_ICON_COLORS[index % FRIEND_ICON_COLORS.length];
+const getFriendIconColorByIndex = (i) => FRIEND_ICON_COLORS[i % FRIEND_ICON_COLORS.length];
 
 const INITIAL_FRIENDS = [
   { id: 1, name: '친구1', colorIndex: 0, isActive: true },
@@ -29,342 +34,445 @@ const INITIAL_FRIENDS = [
   { id: 3, name: '친구3', colorIndex: 2, isActive: false },
 ];
 
-const getMinutesFromMidnight = (date) =>
-  date.getHours() * 60 + date.getMinutes();
+// 과목용 색상 팔레트 (스터디 플래너 스타일)
+const SUBJECT_COLORS = [
+  '#FFB5C2', '#C4A77D', '#7FCDCD', '#87CEEB', '#98D8A6', '#B19CD9', '#FFB366', '#9FB5C7',
+];
+
+const getMinutesFromMidnight = (d) => d.getHours() * 60 + d.getMinutes();
 
 const HOURS = Array.from({ length: 24 }, (_, i) => i);
 
-// ── 쿡찌르기 팝업 컴포넌트 ───────────────────────────
-const PokeModal = ({ visible, friend, onClose, onPoke, onNotifyLater }) => {
-  const shakeAnim = useMemo(() => new Animated.Value(0), []);
+function formatHMS(ms) {
+  const total = Math.floor(ms / 1000);
+  const h = Math.floor(total / 3600);
+  const m = Math.floor((total % 3600) / 60);
+  const s = total % 60;
+  const pad = (n) => String(n).padStart(2, '0');
+  return `${pad(h)}:${pad(m)}:${pad(s)}`;
+}
 
-  useEffect(() => {
-    if (visible) {
-      // 팝업 열릴 때 살짝 흔들기 애니메이션
-      Animated.sequence([
-        Animated.timing(shakeAnim, { toValue: 8,  duration: 60,  useNativeDriver: true, easing: Easing.linear }),
-        Animated.timing(shakeAnim, { toValue: -8, duration: 60,  useNativeDriver: true, easing: Easing.linear }),
-        Animated.timing(shakeAnim, { toValue: 6,  duration: 60,  useNativeDriver: true, easing: Easing.linear }),
-        Animated.timing(shakeAnim, { toValue: -6, duration: 60,  useNativeDriver: true, easing: Easing.linear }),
-        Animated.timing(shakeAnim, { toValue: 0,  duration: 60,  useNativeDriver: true, easing: Easing.linear }),
-      ]).start();
-    }
-  }, [visible]);
+// ── 과목 추가 모달 ─────────────────────────────────────
+const AddSubjectModal = ({ visible, onClose, onAdd }) => {
+  const [name, setName] = useState('');
+  const [color, setColor] = useState(SUBJECT_COLORS[0]);
 
-  if (!friend) return null;
-
-  const isStudying = friend.isActive;
-
-  return (
-    <Modal
-      visible={visible}
-      transparent
-      animationType="fade"
-      onRequestClose={onClose}
-    >
-      {/* 딤 배경 */}
-      <TouchableOpacity style={pokeStyles.overlay} onPress={onClose} activeOpacity={1} />
-
-      <View style={pokeStyles.popupWrapper}>
-        <Animated.View
-          style={[pokeStyles.popup, { transform: [{ translateX: shakeAnim }] }]}
-        >
-          {/* 핸들 */}
-          <View style={pokeStyles.handle} />
-
-          {/* 아바타 + 이름 */}
-          <View style={pokeStyles.friendRow}>
-            <View
-              style={[
-                pokeStyles.avatar,
-                { backgroundColor: getFriendIconColorByIndex(friend.colorIndex) + '33' },
-              ]}
-            >
-              <MessageTabIcon
-                width={28}
-                height={28}
-                color={getFriendIconColorByIndex(friend.colorIndex)}
-              />
-              {/* 공부 중 표시 */}
-              {isStudying && (
-                <View style={pokeStyles.studyingBadge}>
-                  <Ionicons name="book" size={9} color="#fff" />
-                </View>
-              )}
-            </View>
-            <View>
-              <Text style={pokeStyles.friendName}>{friend.name}</Text>
-              <View style={pokeStyles.statusRow}>
-                <View
-                  style={[
-                    pokeStyles.statusDot,
-                    { backgroundColor: isStudying ? '#52B788' : '#bbb' },
-                  ]}
-                />
-                <Text style={pokeStyles.statusText}>
-                  {isStudying ? '공부 중' : '공부 안 하는 중'}
-                </Text>
-              </View>
-            </View>
-          </View>
-
-          <View style={pokeStyles.divider} />
-
-          {/* 상태별 메시지 */}
-          {isStudying ? (
-            // 공부 중인 친구
-            <>
-              <View style={pokeStyles.infoBox}>
-                <Text style={pokeStyles.infoEmoji}>🤫</Text>
-                <View style={{ flex: 1 }}>
-                  <Text style={pokeStyles.infoTitle}>쉿, 공부 중이에요</Text>
-                  <Text style={pokeStyles.infoDesc}>
-                    {friend.name}님이 지금 집중하고 있어요.{'\n'}
-                    공부가 끝나면 알림을 보내드릴게요!
-                  </Text>
-                </View>
-              </View>
-
-              <TouchableOpacity
-                style={pokeStyles.primaryBtn}
-                onPress={onNotifyLater}
-                activeOpacity={0.8}
-              >
-                <Ionicons name="notifications-outline" size={16} color="#fff" style={{ marginRight: 6 }} />
-                <Text style={pokeStyles.primaryBtnText}>공부 끝나면 알려줘!</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity style={pokeStyles.cancelBtn} onPress={onClose}>
-                <Text style={pokeStyles.cancelBtnText}>취소</Text>
-              </TouchableOpacity>
-            </>
-          ) : (
-            // 공부 안 하는 친구
-            <>
-              <View style={pokeStyles.infoBox}>
-                <Text style={pokeStyles.infoEmoji}>👉</Text>
-                <View style={{ flex: 1 }}>
-                  <Text style={pokeStyles.infoTitle}>쿡 찌르기</Text>
-                  <Text style={pokeStyles.infoDesc}>
-                    {friend.name}님에게 공부하자는{'\n'}
-                    알림을 보낼게요!
-                  </Text>
-                </View>
-              </View>
-
-              <TouchableOpacity
-                style={pokeStyles.primaryBtn}
-                onPress={onPoke}
-                activeOpacity={0.8}
-              >
-                <Text style={pokeStyles.primaryBtnText}>👉 공부하자!</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity style={pokeStyles.cancelBtn} onPress={onClose}>
-                <Text style={pokeStyles.cancelBtnText}>취소</Text>
-              </TouchableOpacity>
-            </>
-          )}
-        </Animated.View>
-      </View>
-    </Modal>
-  );
-};
-
-// ── 친구 추가 팝업 ─────────────────────────────────────
-const AddFriendModal = ({ visible, onClose, onAdd }) => {
-  const [query, setQuery] = useState('');
+  const pickRandom = () => setColor(SUBJECT_COLORS[Math.floor(Math.random() * SUBJECT_COLORS.length)]);
 
   const handleAdd = () => {
-    if (!query.trim()) return;
-    onAdd(query.trim());
-    setQuery('');
+    if (!name.trim()) return;
+    onAdd({ name: name.trim(), color });
+    setName('');
+    setColor(SUBJECT_COLORS[0]);
+    onClose();
   };
 
+  if (!visible) return null;
   return (
-    <Modal
-      visible={visible}
-      transparent
-      animationType="slide"
-      onRequestClose={onClose}
-    >
-      <TouchableOpacity
-        style={[pokeStyles.overlay, addFriendStyles.overlayTransparent]}
-        onPress={onClose}
-        activeOpacity={1}
-      />
-
-      <View style={pokeStyles.popupWrapper}>
-        <View style={pokeStyles.popup}>
-          <View style={pokeStyles.handle} />
-
-          <Text style={addFriendStyles.title}>친구 추가</Text>
-          <Text style={addFriendStyles.subtitle}>아이디로 친구를 검색하세요</Text>
-
-          <View style={addFriendStyles.inputRow}>
-            <Ionicons name="search-outline" size={18} color="#aaa" />
-            <TextInput
-              style={addFriendStyles.input}
-              placeholder="@아이디 입력"
-              placeholderTextColor="#ccc"
-              value={query}
-              onChangeText={setQuery}
-              autoFocus
-            />
-            {query.length > 0 && (
-              <TouchableOpacity onPress={() => setQuery('')}>
-                <Ionicons name="close-circle" size={16} color="#ccc" />
-              </TouchableOpacity>
-            )}
+    <Modal transparent animationType="fade" onRequestClose={onClose}>
+      <TouchableOpacity style={modalStyles.overlay} onPress={onClose} activeOpacity={1} />
+      <View style={modalStyles.centered}>
+        <View style={modalStyles.card}>
+          <Text style={modalStyles.title}>과목 추가</Text>
+          <TextInput
+            style={modalStyles.input}
+            placeholder="과목명"
+            placeholderTextColor={colors.textSecondary}
+            value={name}
+            onChangeText={setName}
+          />
+          <View style={modalStyles.colorRow}>
+            <Text style={modalStyles.label}>색상</Text>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ flexGrow: 0 }}>
+              <View style={modalStyles.colorWrap}>
+                {SUBJECT_COLORS.map((c) => (
+                  <TouchableOpacity
+                    key={c}
+                    onPress={() => setColor(c)}
+                    style={[
+                      modalStyles.colorDot,
+                      { backgroundColor: c },
+                      color === c && modalStyles.colorDotSelected,
+                    ]}
+                  />
+                ))}
+              </View>
+            </ScrollView>
+            <TouchableOpacity onPress={pickRandom} style={modalStyles.randomBtn}>
+              <Text style={modalStyles.randomText}>랜덤</Text>
+            </TouchableOpacity>
           </View>
-
-          <TouchableOpacity
-            style={[pokeStyles.primaryBtn, !query.trim() && addFriendStyles.btnDisabled]}
-            onPress={handleAdd}
-            activeOpacity={0.8}
-            disabled={!query.trim()}
-          >
-            <Ionicons name="person-add-outline" size={16} color="#fff" style={{ marginRight: 6 }} />
-            <Text style={pokeStyles.primaryBtnText}>추가하기</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity style={pokeStyles.cancelBtn} onPress={onClose}>
-            <Text style={pokeStyles.cancelBtnText}>취소</Text>
-          </TouchableOpacity>
+          <View style={modalStyles.row}>
+            <TouchableOpacity style={modalStyles.cancelBtn} onPress={onClose}>
+              <Text style={modalStyles.cancelText}>취소</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[modalStyles.primaryBtn, !name.trim() && modalStyles.btnDisabled]}
+              onPress={handleAdd}
+              disabled={!name.trim()}
+            >
+              <Text style={modalStyles.primaryText}>추가</Text>
+            </TouchableOpacity>
+          </View>
         </View>
       </View>
     </Modal>
   );
 };
 
-// ── 토스트 컴포넌트 ───────────────────────────────────
-const Toast = ({ message, visible }) => {
-  const opacity = useMemo(() => new Animated.Value(0), []);
+// ── 할일 추가 모달 ─────────────────────────────────────
+const AddTaskModal = ({ visible, onClose, onAdd, subjects, initialSubjectId }) => {
+  const [subjectId, setSubjectId] = useState(subjects[0]?.id ?? null);
+  const [content, setContent] = useState('');
 
   useEffect(() => {
-    if (visible) {
-      Animated.sequence([
-        Animated.timing(opacity, { toValue: 1, duration: 200, useNativeDriver: true }),
-        Animated.delay(1800),
-        Animated.timing(opacity, { toValue: 0, duration: 300, useNativeDriver: true }),
-      ]).start();
+    if (visible && subjects.length > 0) {
+      setSubjectId(initialSubjectId ?? subjects[0].id);
     }
-  }, [visible, message]);
+  }, [visible, subjects, initialSubjectId]);
 
+  const handleClose = () => {
+    setContent('');
+    onClose();
+  };
+
+  const handleAdd = () => {
+    if (!content.trim() || !subjectId) return;
+    onAdd({ subjectId, content: content.trim() });
+    setContent('');
+    onClose();
+  };
+
+  if (!visible) return null;
+  if (subjects.length === 0) {
+    return (
+      <Modal transparent animationType="fade" onRequestClose={handleClose}>
+        <TouchableOpacity style={modalStyles.overlay} onPress={handleClose} activeOpacity={1} />
+        <View style={modalStyles.centered}>
+          <View style={modalStyles.card}>
+            <Text style={modalStyles.title}>할일 추가</Text>
+            <Text style={{ fontSize: 14, color: colors.textSecondary, marginBottom: 16 }}>과목을 먼저 추가해주세요.</Text>
+            <TouchableOpacity style={modalStyles.primaryBtn} onPress={handleClose}>
+              <Text style={modalStyles.primaryText}>확인</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+    );
+  }
   return (
-    <Animated.View style={[pokeStyles.toast, { opacity }]}>
-      <Text style={pokeStyles.toastText}>{message}</Text>
-    </Animated.View>
+    <Modal transparent animationType="fade" onRequestClose={handleClose}>
+      <TouchableOpacity style={modalStyles.overlay} onPress={handleClose} activeOpacity={1} />
+      <View style={modalStyles.centered}>
+        <View style={modalStyles.card}>
+          <Text style={modalStyles.title}>할일 추가</Text>
+          <Text style={modalStyles.label}>과목</Text>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 12 }}>
+            <View style={{ flexDirection: 'row', gap: 8 }}>
+              {subjects.map((s) => (
+                <TouchableOpacity
+                  key={s.id}
+                  onPress={() => setSubjectId(s.id)}
+                  style={[
+                    modalStyles.subjectChip,
+                    { borderColor: s.color },
+                    subjectId === s.id && { backgroundColor: s.color + '30' },
+                  ]}
+                >
+                  <View style={[modalStyles.chipDot, { backgroundColor: s.color }]} />
+                  <Text style={modalStyles.chipText}>{s.name}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </ScrollView>
+          <Text style={modalStyles.label}>내용</Text>
+          <TextInput
+            style={[modalStyles.input, { minHeight: 60, textAlignVertical: 'top' }]}
+            placeholder="할 일 내용"
+            placeholderTextColor={colors.textSecondary}
+            value={content}
+            onChangeText={setContent}
+            multiline
+          />
+          <View style={modalStyles.row}>
+            <TouchableOpacity style={modalStyles.cancelBtn} onPress={handleClose}>
+              <Text style={modalStyles.cancelText}>취소</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[modalStyles.primaryBtn, (!content.trim() || !subjectId) && modalStyles.btnDisabled]}
+              onPress={handleAdd}
+              disabled={!content.trim() || !subjectId}
+            >
+              <Text style={modalStyles.primaryText}>추가</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </View>
+    </Modal>
   );
 };
 
-// ── 메인 컴포넌트 ────────────────────────────────────
+const modalStyles = {
+  overlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)' },
+  centered: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 24 },
+  card: { backgroundColor: colors.background, borderRadius: 16, padding: 20, width: '100%', maxWidth: 340 },
+  title: { fontSize: 17, fontFamily: fonts.bold, color: colors.textPrimary, marginBottom: 16 },
+  label: { fontSize: 12, fontFamily: fonts.regular, color: colors.textSecondary, marginBottom: 6 },
+  input: { borderWidth: 1, borderColor: colors.textLight10, borderRadius: 12, padding: 12, fontSize: 14, color: colors.textPrimary, marginBottom: 12 },
+  colorRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 16, gap: 8 },
+  colorWrap: { flexDirection: 'row', gap: 8, paddingVertical: 4 },
+  colorDot: { width: 28, height: 28, borderRadius: 14 },
+  colorDotSelected: { borderWidth: 3, borderColor: colors.primary },
+  randomBtn: { paddingHorizontal: 12, paddingVertical: 6, backgroundColor: colors.textLight5, borderRadius: 8 },
+  randomText: { fontSize: 12, fontFamily: fonts.bold, color: colors.textPrimary },
+  row: { flexDirection: 'row', justifyContent: 'flex-end', gap: 10, marginTop: 8 },
+  cancelBtn: { paddingVertical: 10, paddingHorizontal: 16 },
+  cancelText: { fontSize: 14, color: colors.textSecondary },
+  primaryBtn: { backgroundColor: colors.primary, paddingVertical: 10, paddingHorizontal: 20, borderRadius: 12 },
+  primaryText: { fontSize: 14, fontFamily: fonts.bold, color: colors.textWhite },
+  btnDisabled: { opacity: 0.5 },
+  subjectChip: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 12, paddingVertical: 8, borderRadius: 20, borderWidth: 2, gap: 6 },
+  chipDot: { width: 10, height: 10, borderRadius: 5 },
+  chipText: { fontSize: 13, fontFamily: fonts.regular, color: colors.textPrimary },
+};
+
+// ── 메인 콘텐츠 ────────────────────────────────────────
 export const TimerContent = () => {
   const { width } = useWindowDimensions();
   const normalize = useMemo(() => getNormalize(width), [width]);
   const styles = useMemo(() => createTimerStyles(width, normalize), [width, normalize]);
 
-  const [isRunning, setIsRunning]       = useState(false);
-  const [elapsedMs, setElapsedMs]       = useState(0);
-  const [startTimestamp, setStartTimestamp] = useState(null);
-  const [sessions, setSessions]         = useState([]);
-
-  const [friends, setFriends]           = useState(INITIAL_FRIENDS);
+  const [friends, setFriends] = useState(INITIAL_FRIENDS);
   const [showAddFriend, setShowAddFriend] = useState(false);
 
-  // 쿡찌르기 팝업 상태
-  const [pokeTarget, setPokeTarget]     = useState(null);
-  const [pokeVisible, setPokeVisible]   = useState(false);
+  const [subjects, setSubjects] = useState([
+    { id: 1, name: '영어', color: '#FFB5C2' },
+    { id: 2, name: '수학', color: '#87CEEB' },
+  ]);
+  const [tasks, setTasks] = useState([
+    { id: 1, subjectId: 1, content: '모의고사 1', status: 'pending' },
+    { id: 2, subjectId: 1, content: '듣기 30문제', status: 'pending' },
+    { id: 3, subjectId: 2, content: '수1 문제집 30문제', status: 'pending' },
+  ]);
+  const [sessions, setSessions] = useState([]);
+  const [activeSubjectId, setActiveSubjectId] = useState(null);
+  const [isRunning, setIsRunning] = useState(false);
+  const [elapsedMs, setElapsedMs] = useState(0);
+  const [startTimestamp, setStartTimestamp] = useState(null);
+  const [totalElapsedMs, setTotalElapsedMs] = useState(0);
 
-  // 토스트 상태
-  const [toastMsg, setToastMsg]         = useState('');
-  const [toastKey, setToastKey]         = useState(0);
-  const [toastVisible, setToastVisible] = useState(false);
+  const [showAddSubject, setShowAddSubject] = useState(false);
+  const [showAddTask, setShowAddTask] = useState(false);
+  const [addTaskSubjectId, setAddTaskSubjectId] = useState(null);
+  const [collapsedSubjects, setCollapsedSubjects] = useState({});
+  const [timerDayKey, setTimerDayKey] = useState(null);
+  const saveTimeoutRef = useRef(null);
 
-  const showToast = (msg) => {
-    setToastMsg(msg);
-    setToastKey((k) => k + 1);
-    setToastVisible(true);
-    setTimeout(() => setToastVisible(false), 2500);
-  };
-
-  // 스탑워치
+  // 마운트 시: 전날 미동기화면 DB 저장 후, 당일 로컬 데이터 로드
   useEffect(() => {
-    let intervalId;
+    let mounted = true;
+    const dayKey = getTimerDayKey(new Date());
+    flushPreviousDayAndLoadCurrent(dayKey).then((data) => {
+      if (!mounted) return;
+      setTimerDayKey(dayKey);
+      if (data?.sessions?.length) setSessions(data.sessions);
+      if (typeof data?.totalElapsedMs === 'number') setTotalElapsedMs(data.totalElapsedMs);
+      if (data?.subjects?.length) setSubjects(data.subjects);
+      if (data?.tasks?.length) setTasks(data.tasks);
+    });
+    return () => { mounted = false; };
+  }, []);
+
+  // 세션/누적/과목/할일 변경 시 로컬에 디바운스 저장 (재생 중이어도 저장)
+  useEffect(() => {
+    if (timerDayKey == null) return;
+    const payload = {
+      sessions,
+      totalElapsedMs,
+      subjects,
+      tasks,
+    };
+    if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
+    saveTimeoutRef.current = setTimeout(() => {
+      saveDayToStorage(timerDayKey, payload);
+      saveTimeoutRef.current = null;
+    }, 500);
+    return () => {
+      if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
+    };
+  }, [timerDayKey, sessions, totalElapsedMs, subjects, tasks]);
+
+  // 날짜가 바뀌었는지 주기적 확인 (6시~익일 5시59분 기준). 바뀌면 전날 로컬→DB 저장 후 당일 로드
+  useEffect(() => {
+    const checkDayChange = () => {
+      const nowKey = getTimerDayKey(new Date());
+      if (timerDayKey != null && nowKey !== timerDayKey) {
+        const payload = { sessions, totalElapsedMs, subjects, tasks };
+        saveDayToStorage(timerDayKey, payload);
+        saveDayToDb(timerDayKey, payload).then(() => {
+          setTimerDayKey(nowKey);
+          loadDayFromStorage(nowKey).then((data) => {
+            if (data?.sessions?.length) setSessions(data.sessions);
+            else setSessions([]);
+            if (typeof data?.totalElapsedMs === 'number') setTotalElapsedMs(data.totalElapsedMs);
+            else setTotalElapsedMs(0);
+            if (data?.subjects?.length) setSubjects(data.subjects);
+            if (data?.tasks?.length) setTasks(data.tasks);
+            setActiveSubjectId(null);
+            setIsRunning(false);
+            setElapsedMs(0);
+            setStartTimestamp(null);
+          });
+        });
+      }
+    };
+    const interval = setInterval(checkDayChange, 60 * 1000);
+    const sub = AppState.addEventListener('change', (state) => {
+      if (state === 'active') checkDayChange();
+    });
+    return () => {
+      clearInterval(interval);
+      sub?.remove();
+    };
+  }, [timerDayKey, sessions, totalElapsedMs, subjects, tasks]);
+
+  useEffect(() => {
+    let t;
     if (isRunning && startTimestamp != null) {
-      intervalId = setInterval(() => setElapsedMs(Date.now() - startTimestamp), 1000);
+      t = setInterval(() => setElapsedMs(Date.now() - startTimestamp), 1000);
     }
-    return () => { if (intervalId) clearInterval(intervalId); };
+    return () => { if (t) clearInterval(t); };
   }, [isRunning, startTimestamp]);
 
-  const formatTime = (ms) => {
-    const totalSeconds = Math.floor(ms / 1000);
-    const hours   = Math.floor(totalSeconds / 3600);
-    const minutes = Math.floor((totalSeconds % 3600) / 60);
-    const seconds = totalSeconds % 60;
-    const pad = (n) => String(n).padStart(2, '0');
-    return hours > 0
-      ? `${pad(hours)}:${pad(minutes)}:${pad(seconds)}`
-      : `${pad(minutes)}:${pad(seconds)}`;
+  const addSubject = (payload) => {
+    const id = Math.max(0, ...subjects.map((s) => s.id)) + 1;
+    setSubjects((prev) => [...prev, { id, name: payload.name, color: payload.color }]);
   };
 
-  const handleStart = () => {
-    if (isRunning) return;
-    const now = new Date();
+  const addTask = (payload) => {
+    const id = Math.max(0, ...tasks.map((t) => t.id)) + 1;
+    setTasks((prev) => [...prev, { id, subjectId: payload.subjectId, content: payload.content, status: 'pending' }]);
+  };
+
+  const setTaskStatus = (taskId, status) => {
+    setTasks((prev) => prev.map((t) => (t.id === taskId ? { ...t, status } : t)));
+  };
+
+  const endCurrentSession = () => {
+    if (startTimestamp == null) return 0;
+    const duration = Date.now() - startTimestamp;
+    setTotalElapsedMs((prev) => prev + duration);
+    return duration;
+  };
+
+  const startForSubject = (subjectId) => {
+    if (isRunning && activeSubjectId === subjectId) return;
+    if (isRunning) {
+      const now = new Date();
+      const endMinutes = getMinutesFromMidnight(now);
+      endCurrentSession();
+      setSessions((prev) => {
+        const next = [...prev];
+        for (let i = next.length - 1; i >= 0; i--) {
+          if (next[i].subjectId === activeSubjectId && next[i].endMinutes == null) {
+            next[i] = { ...next[i], endMinutes };
+            break;
+          }
+        }
+        return next;
+      });
+    }
+    setActiveSubjectId(subjectId);
     setIsRunning(true);
-    setStartTimestamp(Date.now() - elapsedMs);
+    setElapsedMs(0);
+    setStartTimestamp(Date.now());
+    const now = new Date();
     const startMinutes = getMinutesFromMidnight(now);
-    setSessions((prev) => [...prev, { startMinutes, endMinutes: null }]);
+    setSessions((prev) => [...prev, { subjectId, startMinutes, endMinutes: null }]);
   };
 
-  const handlePause = () => {
+  const startTimerTop = () => {
+    if (isRunning && activeSubjectId === null) return;
+    if (isRunning) {
+      const now = new Date();
+      const endMinutes = getMinutesFromMidnight(now);
+      endCurrentSession();
+      setSessions((prev) => {
+        const next = [...prev];
+        for (let i = next.length - 1; i >= 0; i--) {
+          if (next[i].subjectId === activeSubjectId && next[i].endMinutes == null) {
+            next[i] = { ...next[i], endMinutes };
+            break;
+          }
+        }
+        return next;
+      });
+    }
+    setActiveSubjectId(null);
+    setIsRunning(true);
+    setElapsedMs(0);
+    setStartTimestamp(Date.now());
+    const now = new Date();
+    const startMinutes = getMinutesFromMidnight(now);
+    setSessions((prev) => [...prev, { subjectId: null, startMinutes, endMinutes: null }]);
+  };
+
+  const pauseTimer = () => {
     if (!isRunning) return;
     const now = new Date();
     const endMinutes = getMinutesFromMidnight(now);
-    setIsRunning(false);
-    if (startTimestamp != null) setElapsedMs(Date.now() - startTimestamp);
-    setStartTimestamp(null);
+    endCurrentSession();
     setSessions((prev) => {
-      const updated = [...prev];
-      for (let i = updated.length - 1; i >= 0; i--) {
-        if (updated[i].endMinutes == null) {
-          updated[i] = { ...updated[i], endMinutes };
+      const next = [...prev];
+      for (let i = next.length - 1; i >= 0; i--) {
+        if (next[i].subjectId === activeSubjectId && next[i].endMinutes == null) {
+          next[i] = { ...next[i], endMinutes };
           break;
         }
       }
-      return updated;
+      return next;
     });
+    setIsRunning(false);
+    setElapsedMs(0);
+    setStartTimestamp(null);
   };
 
-  const toggleTimer = () => { isRunning ? handlePause() : handleStart(); };
-
-  const isSlotActive = (slotStartMinutes) => {
-    const slotEndMinutes = slotStartMinutes + 10;
-    return sessions.some(({ startMinutes, endMinutes }) => {
-      if (endMinutes == null) return false;
-      return endMinutes > slotStartMinutes && startMinutes < slotEndMinutes;
-    });
+  const toggleTimer = () => {
+    if (isRunning) pauseTimer();
+    else if (activeSubjectId != null) startForSubject(activeSubjectId);
+    else startTimerTop();
   };
 
-  // 친구 아바타 탭 → 팝업 열기
-  const handleFriendPress = (friend) => {
-    setPokeTarget(friend);
-    setPokeVisible(true);
+  const getSubjectTotalMs = (subjectId) => {
+    if (subjectId == null) return 0;
+    return sessions
+      .filter((s) => s.subjectId === subjectId && s.endMinutes != null)
+      .reduce((sum, s) => sum + (s.endMinutes - s.startMinutes) * 60 * 1000, 0);
   };
 
-  // 쿡 찌르기 (공부 안 하는 친구)
-  const handlePoke = () => {
-    setPokeVisible(false);
-    showToast(`👉 ${pokeTarget?.name}님에게 "공부하자!" 알림을 보냈어요`);
-    setPokeTarget(null);
+  const getTotalDisplayMs = () => totalElapsedMs + (isRunning ? elapsedMs : 0);
+
+  const toggleSubjectCollapsed = (subjectId) => {
+    setCollapsedSubjects((prev) => ({ ...prev, [subjectId]: !prev[subjectId] }));
   };
 
-  // 나중에 알려줘 (공부 중인 친구)
-  const handleNotifyLater = () => {
-    setPokeVisible(false);
-    showToast(`🔔 ${pokeTarget?.name}님 공부 완료 시 알림을 예약했어요`);
-    setPokeTarget(null);
+  const openAddTaskForSubject = (subjectId) => {
+    setAddTaskSubjectId(subjectId);
+    setShowAddTask(true);
   };
+
+  const isSlotForSubject = (subjectId, slotStartMinutes) => {
+    const end = slotStartMinutes + 10;
+    return sessions.some(
+      (s) =>
+        s.subjectId === subjectId &&
+        s.endMinutes != null &&
+        s.endMinutes > slotStartMinutes &&
+        s.startMinutes < end
+    );
+  };
+
+  const TIMETABLE_GRAY = '#D3D3D3';
 
   return (
     <>
@@ -373,161 +481,206 @@ export const TimerContent = () => {
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
-        {/* 스탑워치 */}
-        <View style={styles.stopwatchCard}>
-          <View style={styles.stopwatchLabelRow}>
-            <Text style={styles.stopwatchLabel}>공부 타이머</Text>
-            <Text style={styles.stopwatchSubLabel}>오늘의 공부 시간을 기록하세요</Text>
-          </View>
-          <Text style={styles.stopwatchTime}>{formatTime(elapsedMs)}</Text>
-          <View style={styles.stopwatchControls}>
+        {/* 1. 친구 목록 (일렬 배치, 추가 버튼에 "친구 추가" 라벨, 상태점 원에 걸침) */}
+        <View style={styles.friendStoryRow}>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.friendStoryScroll}
+          >
             <TouchableOpacity
-              style={[styles.controlButton, isRunning && styles.controlButtonSecondary]}
+              style={styles.friendStoryAddCircleWrap}
+              onPress={() => setShowAddFriend(true)}
               activeOpacity={0.8}
-              onPress={toggleTimer}
             >
-              <Ionicons
-                name={isRunning ? 'pause' : 'play'}
-                size={normalize(18)}
-                color={isRunning ? colors.textPrimary : colors.background}
-              />
-              <Text style={[styles.controlButtonText, isRunning && styles.controlButtonTextSecondary]}>
-                {isRunning ? '일시정지' : '시작'}
-              </Text>
+              <View style={styles.friendStoryAddCircle}>
+                <Ionicons name="add" size={normalize(28)} color={colors.primary} />
+              </View>
+              <Text style={styles.friendStoryAddLabel}>친구 추가</Text>
             </TouchableOpacity>
-          </View>
+            {friends.map((friend) => {
+              const iconColor = getFriendIconColorByIndex(friend.colorIndex);
+              return (
+                <TouchableOpacity
+                  key={friend.id}
+                  style={styles.friendStoryCircleWrap}
+                  onPress={() => Alert.alert(friend.name, '친구 프로필')}
+                  activeOpacity={0.8}
+                >
+                  <View style={[styles.friendStoryCircle, { backgroundColor: colors.primaryLight30, borderColor: colors.primary }]}>
+                    <MessageTabIcon width={normalize(22)} height={normalize(22)} color={iconColor} />
+                    <View style={[styles.friendStatusDotOnCircle, friend.isActive ? styles.friendStatusDotActive : styles.friendStatusDotInactive]} />
+                  </View>
+                  <Text style={styles.friendStoryName} numberOfLines={1}>{friend.name}</Text>
+                </TouchableOpacity>
+              );
+            })}
+          </ScrollView>
         </View>
 
-        {/* 친구 목록 */}
-        <View style={styles.friendSection}>
-          <View style={styles.friendHeaderRow}>
-            <Text style={styles.friendTitle}>친구</Text>
-            <TouchableOpacity
-              style={styles.friendAddButton}
-              activeOpacity={0.8}
-              onPress={() => setShowAddFriend(true)}
-            >
-              <Ionicons name="person-add" size={normalize(16)} color={colors.primary} />
-            </TouchableOpacity>
-          </View>
+        {/* 2. 타이머 (누적 시·분·초, 과목 없이도 시작 가능) */}
+        <View style={styles.timerBlock}>
+          <Text style={styles.timerTime}>{formatHMS(getTotalDisplayMs())}</Text>
+          <TouchableOpacity
+            style={[styles.timerBtn, isRunning && styles.timerBtnPause]}
+            onPress={toggleTimer}
+            activeOpacity={0.8}
+          >
+            <Ionicons
+              name={isRunning ? 'pause' : 'play'}
+              size={normalize(20)}
+              color={isRunning ? colors.textPrimary : colors.textWhite}
+            />
+            <Text style={[styles.timerBtnText, isRunning && styles.timerBtnTextPause]}>
+              {isRunning ? '일시정지' : '시작'}
+            </Text>
+          </TouchableOpacity>
+        </View>
 
-          <View style={styles.friendListRow}>
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              contentContainerStyle={styles.friendAvatarRow}
-              style={styles.friendAvatarScroll}
-            >
-              {friends.map((friend) => {
-                const iconColor = getFriendIconColorByIndex(friend.colorIndex);
+        {/* 구분선 */}
+        <View style={styles.divider} />
+
+        {/* 3. 투두리스트 | 타임테이블 수평 배치 */}
+        <View style={styles.todoTimetableRow}>
+          {/* 왼쪽: 투두리스트 */}
+          <View style={styles.todoColumn}>
+            <View style={styles.todoHeader}>
+              <Text style={styles.todoTitle}>투두리스트</Text>
+              <TouchableOpacity style={styles.todoAddBtn} onPress={() => setShowAddSubject(true)}>
+                <Ionicons name="add-circle-outline" size={18} color={colors.primary} />
+                <Text style={styles.todoAddBtnText}>과목 추가</Text>
+              </TouchableOpacity>
+            </View>
+            <ScrollView style={styles.todoList} showsVerticalScrollIndicator={false}>
+              {subjects.map((sub) => {
+                const subTasks = tasks.filter((t) => t.subjectId === sub.id);
+                const totalMs = getSubjectTotalMs(sub.id);
+                const isThisSubjectRunning = isRunning && activeSubjectId === sub.id;
+                const totalStr = isThisSubjectRunning ? formatHMS(elapsedMs) : formatHMS(totalMs);
+                const isCollapsed = collapsedSubjects[sub.id] === true;
                 return (
-                  // ✅ 아바타 탭하면 팝업 열기
-                  <TouchableOpacity
-                    key={friend.id}
-                    style={{ alignItems: 'center' }}
-                    onPress={() => handleFriendPress(friend)}
-                    activeOpacity={0.7}
-                  >
-                    <View style={styles.friendAvatarWrapper}>
-                      <View style={styles.friendAvatar}>
-                        <MessageTabIcon
-                          width={normalize(24)}
-                          height={normalize(24)}
-                          color={iconColor}
-                        />
+                  <View key={sub.id} style={styles.subjectBlock}>
+                    <View style={styles.subjectRow}>
+                      <View style={[styles.subjectColorBar, { backgroundColor: sub.color }]} />
+                      <View style={styles.subjectBody}>
+                        <Text style={styles.subjectName}>{sub.name}</Text>
+                        <Text style={styles.subjectTime}>{totalStr}</Text>
                       </View>
-                      <View
-                        style={[
-                          styles.friendStatusDot,
-                          friend.isActive
-                            ? styles.friendStatusDotActive
-                            : styles.friendStatusDotInactive,
-                        ]}
-                      />
+                      <TouchableOpacity
+                        style={[styles.subjectPlayBtn, { backgroundColor: sub.color }, activeSubjectId === sub.id && isRunning && styles.subjectPlayBtnActive]}
+                        onPress={() => (isRunning && activeSubjectId === sub.id ? pauseTimer() : startForSubject(sub.id))}
+                      >
+                        <Ionicons
+                          name={isRunning && activeSubjectId === sub.id ? 'pause' : 'play'}
+                          size={normalize(18)}
+                          color={colors.textWhite}
+                        />
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        style={styles.subjectCollapseBtn}
+                        onPress={() => toggleSubjectCollapsed(sub.id)}
+                      >
+                        <Ionicons
+                          name={isCollapsed ? 'chevron-down' : 'chevron-up'}
+                          size={normalize(20)}
+                          color={colors.textSecondary}
+                        />
+                      </TouchableOpacity>
                     </View>
-                    <Text style={styles.friendName} numberOfLines={1}>
-                      {friend.name}
-                    </Text>
-                  </TouchableOpacity>
+                    {!isCollapsed && (
+                      <>
+                        {subTasks.map((task) => (
+                          <View key={task.id} style={styles.taskRow}>
+                            <TouchableOpacity
+                              style={[styles.taskCheckbox, task.status === 'done' && styles.taskCheckboxChecked]}
+                              onPress={() => setTaskStatus(task.id, task.status === 'done' ? 'pending' : 'done')}
+                            >
+                              {task.status === 'done' && <Ionicons name="checkmark" size={normalize(14)} color={colors.textWhite} />}
+                            </TouchableOpacity>
+                            <Text style={[styles.taskContent, task.status === 'done' && styles.taskContentDone]} numberOfLines={1}>{task.content}</Text>
+                          </View>
+                        ))}
+                        <TouchableOpacity style={styles.todoAddUnderSubject} onPress={() => openAddTaskForSubject(sub.id)}>
+                          <Text style={styles.todoAddUnderSubjectText}>+ 추가</Text>
+                        </TouchableOpacity>
+                      </>
+                    )}
+                  </View>
                 );
               })}
             </ScrollView>
           </View>
-        </View>
 
-        {/* 공부 기록 타임테이블 */}
-        <View style={styles.timetableSection}>
-          <Text style={styles.timetableTitle}>공부 기록</Text>
-          <View style={styles.timetableBody}>
-            {HOURS.map((rowIndex) => {
-              const hour = (6 + rowIndex) % 24;
-              const rawLabel = 6 + rowIndex;
-              const displayHour = rawLabel > 24 ? rawLabel - 24 : rawLabel;
-              return (
-                <View key={rowIndex} style={styles.timetableRow}>
-                  <View style={styles.timetableHourCell}>
-                    <Text style={styles.timetableHourText}>
-                      {displayHour.toString().padStart(2, '0')}
-                    </Text>
+          {/* 오른쪽: 타임테이블 (과목별 색상 블록) */}
+          <View style={styles.timetableColumn}>
+            <Text style={styles.timetableTitle}>공부 기록</Text>
+            <View style={styles.timetableScroll} showsVerticalScrollIndicator={false}>
+              {HOURS.map((rowIndex) => {
+                const hour = (6 + rowIndex) % 24;
+                const slotStartBase = hour * 60;
+                return (
+                  <View key={rowIndex} style={styles.timetableRow}>
+                    <View style={styles.timetableHourCell}>
+                      <Text style={styles.timetableHourText}>
+                        {hour.toString().padStart(2, '0')}
+                      </Text>
+                    </View>
+                    <View style={styles.timetableSlotsRow}>
+                      {[0, 10, 20, 30, 40, 50].map((m) => {
+                        const slotStart = slotStartBase + m;
+                        const isGray = isSlotForSubject(null, slotStart);
+                        const subjectId = !isGray ? subjects.find((s) => isSlotForSubject(s.id, slotStart))?.id : null;
+                        const color = isGray ? TIMETABLE_GRAY : (subjectId ? subjects.find((s) => s.id === subjectId)?.color : null);
+                        return (
+                          <View
+                            key={m}
+                            style={[
+                              styles.timetableSlotCell,
+                              color ? { backgroundColor: color } : null,
+                            ]}
+                          />
+                        );
+                      })}
+                    </View>
                   </View>
-                  <View style={styles.timetableSlotsRow}>
-                    {[0, 10, 20, 30, 40, 50].map((m) => {
-                      const slotStartMinutes = hour * 60 + m;
-                      const active = isSlotActive(slotStartMinutes);
-                      return (
-                        <View
-                          key={m}
-                          style={[
-                            styles.timetableSlotCell,
-                            active && styles.timetableSlotActive,
-                          ]}
-                        />
-                      );
-                    })}
-                  </View>
-                </View>
-              );
-            })}
+                );
+              })}
+            </View>
           </View>
         </View>
       </ScrollView>
 
-      {/* ── 쿡찌르기 팝업 ── */}
-      <PokeModal
-        visible={pokeVisible}
-        friend={pokeTarget}
-        onClose={() => { setPokeVisible(false); setPokeTarget(null); }}
-        onPoke={handlePoke}
-        onNotifyLater={handleNotifyLater}
+      <AddSubjectModal visible={showAddSubject} onClose={() => setShowAddSubject(false)} onAdd={addSubject} />
+      <AddTaskModal
+        visible={showAddTask}
+        onClose={() => { setShowAddTask(false); setAddTaskSubjectId(null); }}
+        onAdd={addTask}
+        subjects={subjects}
+        initialSubjectId={addTaskSubjectId}
       />
 
-      <AddFriendModal
-        visible={showAddFriend}
-        onClose={() => setShowAddFriend(false)}
-        onAdd={(name) => {
-          Alert.alert(
-            '친구 요청',
-            '친구요청을 보내시겠습니까?',
-            [
-              { text: '취소', style: 'cancel' },
-              {
-                text: '보내기',
-                onPress: () => {
-                  setFriends((prev) => [
-                    ...prev,
-                    { id: prev.length + 1, name, colorIndex: prev.length, isActive: false },
-                  ]);
-                  setShowAddFriend(false);
-                  showToast(`✅ ${name}님에게 친구 요청을 보냈어요`);
-                },
-              },
-            ]
-          );
-        }}
-      />
-
-      {/* ── 토스트 ── */}
-      <Toast key={toastKey} message={toastMsg} visible={toastVisible} />
+      {showAddFriend && (
+        <Modal transparent animationType="fade" onRequestClose={() => setShowAddFriend(false)}>
+          <TouchableOpacity style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.4)' }} onPress={() => setShowAddFriend(false)} />
+          <View style={{ position: 'absolute', bottom: 0, left: 0, right: 0, backgroundColor: colors.background, borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 24 }}>
+            <Text style={{ fontSize: 17, fontFamily: fonts.bold, marginBottom: 12 }}>친구 추가</Text>
+            <TextInput
+              style={{ borderWidth: 1, borderColor: colors.textLight10, borderRadius: 12, padding: 12, marginBottom: 12 }}
+              placeholder="아이디 검색"
+              placeholderTextColor={colors.textSecondary}
+            />
+            <TouchableOpacity
+              style={{ backgroundColor: colors.primary, paddingVertical: 12, borderRadius: 12, alignItems: 'center' }}
+              onPress={() => {
+                setFriends((prev) => [...prev, { id: prev.length + 1, name: '새친구', colorIndex: prev.length, isActive: false }]);
+                setShowAddFriend(false);
+              }}
+            >
+              <Text style={{ color: colors.textWhite, fontFamily: fonts.bold }}>추가</Text>
+            </TouchableOpacity>
+          </View>
+        </Modal>
+      )}
     </>
   );
 };
@@ -540,10 +693,10 @@ const Timer = ({ navigation }) => {
       <MainFooter
         activeTab="timer"
         onTabPress={(tab) => {
-          if (tab === 'board')   navigation.navigate('Main');
+          if (tab === 'board') navigation.navigate('Main');
           if (tab === 'message') navigation.navigate('Message');
-          if (tab === 'school')  navigation.navigate('SchoolBoardAll');
-          if (tab === 'mypage')  navigation.navigate('MyPage');
+          if (tab === 'school') navigation.navigate('SchoolBoardAll');
+          if (tab === 'mypage') navigation.navigate('MyPage');
         }}
       />
     </SafeAreaView>
@@ -551,181 +704,3 @@ const Timer = ({ navigation }) => {
 };
 
 export default Timer;
-
-// ── 팝업 + 토스트 전용 스타일 ─────────────────────────
-const pokeStyles = {
-  overlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.4)',
-  },
-  popupWrapper: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-  },
-  popup: {
-    backgroundColor: '#fff',
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
-    paddingHorizontal: 24,
-    paddingBottom: 40,
-    paddingTop: 12,
-  },
-  handle: {
-    width: 40,
-    height: 4,
-    backgroundColor: '#E0E0E0',
-    borderRadius: 2,
-    alignSelf: 'center',
-    marginBottom: 20,
-  },
-  friendRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 14,
-    marginBottom: 16,
-  },
-  avatar: {
-    width: 52,
-    height: 52,
-    borderRadius: 26,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  studyingBadge: {
-    position: 'absolute',
-    bottom: 0,
-    right: 0,
-    backgroundColor: '#52B788',
-    borderRadius: 8,
-    width: 16,
-    height: 16,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  statusRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 5,
-    marginTop: 4,
-  },
-  statusDot: {
-    width: 7,
-    height: 7,
-    borderRadius: 4,
-  },
-  friendName: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#222',
-  },
-  statusText: {
-    fontSize: 12,
-    color: '#888',
-  },
-  divider: {
-    height: 1,
-    backgroundColor: '#F0F0F0',
-    marginBottom: 16,
-  },
-  infoBox: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    backgroundColor: '#F8FBF9',
-    borderRadius: 14,
-    padding: 14,
-    gap: 12,
-    marginBottom: 16,
-  },
-  infoEmoji: {
-    fontSize: 28,
-  },
-  infoTitle: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: '#333',
-    marginBottom: 4,
-  },
-  infoDesc: {
-    fontSize: 13,
-    color: '#888',
-    lineHeight: 19,
-  },
-  primaryBtn: {
-    flexDirection: 'row',
-    backgroundColor: '#8FD397',
-    borderRadius: 14,
-    paddingVertical: 14,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 10,
-  },
-  primaryBtnText: {
-    fontSize: 15,
-    fontWeight: '700',
-    color: '#fff',
-  },
-  cancelBtn: {
-    borderRadius: 14,
-    paddingVertical: 12,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#F5F5F5',
-  },
-  cancelBtnText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#888',
-  },
-  toast: {
-    position: 'absolute',
-    bottom: 100,
-    alignSelf: 'center',
-    backgroundColor: 'rgba(40,40,40,0.88)',
-    borderRadius: 20,
-    paddingHorizontal: 18,
-    paddingVertical: 10,
-  },
-  toastText: {
-    fontSize: 13,
-    color: '#fff',
-    fontWeight: '500',
-  },
-};
-
-const addFriendStyles = {
-  overlayTransparent: {
-    backgroundColor: 'transparent',
-  },
-  title: {
-    fontSize: 17,
-    fontWeight: '700',
-    color: '#222',
-    marginBottom: 4,
-  },
-  subtitle: {
-    fontSize: 13,
-    color: '#aaa',
-    marginBottom: 20,
-  },
-  inputRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#F7F7F7',
-    borderRadius: 12,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    gap: 8,
-    marginBottom: 16,
-  },
-  input: {
-    flex: 1,
-    fontSize: 14,
-    color: '#333',
-    padding: 0,
-  },
-  btnDisabled: {
-    opacity: 0.4,
-  },
-};
