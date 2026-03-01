@@ -8,7 +8,6 @@ import {
   TouchableOpacity,
   TextInput,
   Alert,
-  Modal,
   PanResponder,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -31,41 +30,39 @@ const Settings = ({ navigation }) => {
 
   // ── 게시판 거리 설정 (1~100km) ──
   const [distanceKm, setDistanceKm] = useState(10);
-  const distanceTrackRef = useRef(null);
   const trackWidthRef = useRef(0);
+  const trackXRef = useRef(0);
 
-  const distancePercent = ((distanceKm - 1) / 99) * 100; // 1 -> 0%, 100 -> 100%
+  const distancePercent = ((distanceKm - 1) / 99) * 100; // 1→0%, 100→100%
 
-  const updateDistanceFromPosition = (pageX) => {
+  const updateDistanceFromPageX = (pageX) => {
     if (trackWidthRef.current <= 0) return;
-    distanceTrackRef.current?.measureInWindow((x) => {
-      const relativeX = pageX - x;
-      const percent = Math.max(0, Math.min(1, relativeX / trackWidthRef.current));
-      const km = Math.round(1 + percent * 99);
-      setDistanceKm(Math.max(1, Math.min(100, km)));
-    });
+    const relativeX = pageX - trackXRef.current;
+    const percent = Math.max(0, Math.min(1, relativeX / trackWidthRef.current));
+    const km = Math.round(1 + percent * 99);
+    setDistanceKm(km);
   };
 
   const distancePanResponder = useRef(
     PanResponder.create({
       onStartShouldSetPanResponder: () => true,
       onMoveShouldSetPanResponder: () => true,
-      onPanResponderGrant: (evt) => updateDistanceFromPosition(evt.nativeEvent.pageX),
-      onPanResponderMove: (evt) => updateDistanceFromPosition(evt.nativeEvent.pageX),
+      onPanResponderGrant: (evt) => updateDistanceFromPageX(evt.nativeEvent.pageX),
+      onPanResponderMove: (evt) => updateDistanceFromPageX(evt.nativeEvent.pageX),
     })
   ).current;
 
   const handleDistanceTrackLayout = (e) => {
-    const { width } = e.nativeEvent.layout;
+    const { width, x } = e.nativeEvent.layout;
     trackWidthRef.current = width;
+    // layout의 x는 부모 기준이므로 measureInWindow로 절대 좌표를 구함
+    e.target.measureInWindow((absX) => {
+      trackXRef.current = absX;
+    });
   };
 
   // ── 비밀번호 변경 ──
-  const [pwForm, setPwForm] = useState({
-    current: '',
-    next: '',
-    confirm: '',
-  });
+  const [pwForm, setPwForm] = useState({ current: '', next: '', confirm: '' });
   const [showPw, setShowPw] = useState({ current: false, next: false, confirm: false });
 
   const handlePasswordChange = () => {
@@ -81,7 +78,6 @@ const Settings = ({ navigation }) => {
       Alert.alert('입력 오류', '비밀번호는 8자 이상이어야 합니다.');
       return;
     }
-    // TODO: API 연동
     Alert.alert('완료', '비밀번호가 변경되었습니다.', [
       { text: '확인', onPress: () => setPwForm({ current: '', next: '', confirm: '' }) },
     ]);
@@ -90,7 +86,7 @@ const Settings = ({ navigation }) => {
   // ── 아이디 변경 (6개월에 1번) ──
   const [currentUsername, setCurrentUsername] = useState('@euncha015');
   const [newUsername, setNewUsername] = useState('');
-  const [lastIdChangeAt, setLastIdChangeAt] = useState(null); // null = 변경 이력 없음, ISO 문자열 = 마지막 변경일
+  const [lastIdChangeAt, setLastIdChangeAt] = useState(null);
 
   const getNextChangeDate = () => {
     if (!lastIdChangeAt) return null;
@@ -103,27 +99,14 @@ const Settings = ({ navigation }) => {
 
   const handleIdChange = () => {
     const trimmed = newUsername.trim();
-    if (!trimmed) {
-      Alert.alert('입력 오류', '새 아이디를 입력해주세요.');
-      return;
-    }
-    if (!trimmed.startsWith('@')) {
-      Alert.alert('입력 오류', '아이디는 @로 시작해야 합니다.');
-      return;
-    }
-    if (trimmed.length < 4) {
-      Alert.alert('입력 오류', '아이디는 4자 이상이어야 합니다.');
-      return;
-    }
-    if (trimmed === currentUsername) {
-      Alert.alert('입력 오류', '현재와 동일한 아이디입니다.');
-      return;
-    }
+    if (!trimmed) { Alert.alert('입력 오류', '새 아이디를 입력해주세요.'); return; }
+    if (!trimmed.startsWith('@')) { Alert.alert('입력 오류', '아이디는 @로 시작해야 합니다.'); return; }
+    if (trimmed.length < 4) { Alert.alert('입력 오류', '아이디는 4자 이상이어야 합니다.'); return; }
+    if (trimmed === currentUsername) { Alert.alert('입력 오류', '현재와 동일한 아이디입니다.'); return; }
     if (!canChangeId) {
       Alert.alert('변경 제한', `아이디는 6개월에 1번만 변경할 수 있습니다.\n다음 변경 가능일: ${nextChangeDate.toLocaleDateString('ko-KR')}`);
       return;
     }
-    // TODO: API 연동
     setCurrentUsername(trimmed);
     setNewUsername('');
     setLastIdChangeAt(new Date().toISOString());
@@ -132,11 +115,7 @@ const Settings = ({ navigation }) => {
 
   // ── 학교 변경 ──
   const handleSchoolChange = () => {
-    Alert.alert(
-      '학교 변경 문의',
-      '학교 변경을 원하시면 아래 메일로 문의해주세요.\n\nkimds8036@naver.com',
-      [{ text: '확인' }]
-    );
+    Alert.alert('학교 변경 문의', '학교 변경을 원하시면 아래 메일로 문의해주세요.\n\nkimds8036@naver.com', [{ text: '확인' }]);
   };
 
   // ── 공통 컴포넌트 ──
@@ -183,27 +162,25 @@ const Settings = ({ navigation }) => {
     </View>
   );
 
+  // thumb 위치: 퍼센트를 픽셀로 환산 (트랙 너비를 알아야 정확하지만, translateX로 대응)
+  const thumbLeftPercent = distancePercent;
+
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
       <SubHeader title="설정" onBack={() => navigation.goBack()} />
 
       <ScrollView style={styles.scroll} showsVerticalScrollIndicator={false}>
 
-        {/* ────────────────── 알림 설정 ────────────────── */}
+        {/* ────────────── 알림 설정 ────────────── */}
         <SectionHeader icon="notifications-outline" title="알림 설정" />
-
         <View style={styles.card}>
-          {/* 푸시 알림 마스터 토글 */}
           <NotificationRow
             title="푸시 알림"
             subtitle="모든 알림의 수신 여부를 결정합니다"
             value={notifications.pushEnabled}
             onToggle={() => toggleNotification('pushEnabled')}
           />
-
           <View style={styles.divider} />
-
-          {/* 세부 항목 — 푸시 꺼지면 흐리게 */}
           {[
             { key: 'newPost',      label: '새 게시글 알림' },
             { key: 'newComment',   label: '댓글 알림' },
@@ -222,34 +199,38 @@ const Settings = ({ navigation }) => {
           ))}
         </View>
 
-        {/* ────────────────── 게시판 거리 설정 ────────────────── */}
+        {/* ────────────── 게시판 거리 설정 ────────────── */}
         <SectionHeader icon="location-outline" title="게시판 거리 설정" />
-
         <View style={styles.card}>
           <Text style={styles.distanceLabel}>
             게시글을 볼 수 있는 반경을 설정해요 (1km ~ 100km)
           </Text>
+
+          {/* 슬라이더 트랙 */}
           <View
-            ref={distanceTrackRef}
-            style={styles.distanceTrack}
+            style={styles.sliderWrapper}
             onLayout={handleDistanceTrackLayout}
             {...distancePanResponder.panHandlers}
           >
-            <View style={[styles.distanceFill, { width: `${distancePercent}%` }]} />
-            <View style={[styles.distanceThumb, { left: `${distancePercent}%` }]} />
+            {/* 배경 트랙 */}
+            <View style={styles.sliderTrack}>
+              {/* 채워진 부분 */}
+              <View style={[styles.sliderFill, { width: `${thumbLeftPercent}%` }]} />
+            </View>
+            {/* thumb — 퍼센트 위치에 absolute 배치 */}
+            <View style={[styles.sliderThumb, { left: `${thumbLeftPercent}%` }]} />
           </View>
+
           <View style={styles.distanceValueRow}>
             <Text style={styles.distanceValueText}>{distanceKm} km</Text>
             <View style={styles.distanceHintRow}>
-              <Text style={styles.distanceHint}>1km</Text>
               <Text style={styles.distanceHint}>100km</Text>
             </View>
           </View>
         </View>
 
-        {/* ────────────────── 아이디 변경 ────────────────── */}
+        {/* ────────────── 아이디 변경 ────────────── */}
         <SectionHeader icon="at-outline" title="아이디 변경" />
-
         <View style={styles.card}>
           <View style={styles.idField}>
             <Text style={styles.pwLabel}>현재 아이디</Text>
@@ -285,24 +266,21 @@ const Settings = ({ navigation }) => {
           </TouchableOpacity>
         </View>
 
-        {/* ────────────────── 비밀번호 변경 ────────────────── */}
+        {/* ────────────── 비밀번호 변경 ────────────── */}
         <SectionHeader icon="lock-closed-outline" title="비밀번호 변경" />
-
         <View style={styles.card}>
           <PwInput label="현재 비밀번호" fieldKey="current" />
           <View style={styles.innerDivider} />
           <PwInput label="새 비밀번호" fieldKey="next" />
           <View style={styles.innerDivider} />
           <PwInput label="새 비밀번호 확인" fieldKey="confirm" />
-
           <TouchableOpacity style={styles.actionButton} onPress={handlePasswordChange}>
             <Text style={styles.actionButtonText}>변경하기</Text>
           </TouchableOpacity>
         </View>
 
-        {/* ────────────────── 학교 변경 ────────────────── */}
+        {/* ────────────── 학교 변경 ────────────── */}
         <SectionHeader icon="school-outline" title="학교 변경" />
-
         <View style={styles.card}>
           <View style={styles.schoolRow}>
             <View style={styles.schoolInfo}>
@@ -325,13 +303,8 @@ const Settings = ({ navigation }) => {
 };
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#fff',
-  },
-  scroll: {
-    flex: 1,
-  },
+  container: { flex: 1, backgroundColor: '#fff' },
+  scroll: { flex: 1 },
 
   // ── 섹션 헤더 ──
   sectionHeader: {
@@ -369,48 +342,68 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: 14,
   },
-  notifRowDisabled: {
-    opacity: 0.4,
-  },
-  notifLeft: {
-    flex: 1,
-    marginRight: 12,
-  },
-  notifTitle: {
-    fontSize: 15,
-    color: '#333',
-    fontWeight: '500',
-  },
-  notifSubtitle: {
-    fontSize: 12,
-    color: '#999',
-    marginTop: 2,
-  },
-  textDisabled: {
-    color: '#aaa',
-  },
+  notifRowDisabled: { opacity: 0.4 },
+  notifLeft: { flex: 1, marginRight: 12 },
+  notifTitle: { fontSize: 15, color: '#333', fontWeight: '500' },
+  notifSubtitle: { fontSize: 12, color: '#999', marginTop: 2 },
+  textDisabled: { color: '#aaa' },
 
   // ── 구분선 ──
-  divider: {
-    height: 1,
-    backgroundColor: '#eee',
-    marginBottom: 4,
+  divider: { height: 1, backgroundColor: '#eee', marginBottom: 4 },
+  innerDivider: { height: 1, backgroundColor: '#f4f4f4' },
+
+  // ── 슬라이더 (얇게 수정) ──
+  distanceLabel: {
+    fontSize: 13,
+    color: '#666',
+    marginTop: 16,
+    marginBottom: 16,
   },
-  innerDivider: {
-    height: 1,
-    backgroundColor: '#f4f4f4',
+  sliderWrapper: {
+    height: 20,               // 터치 영역 확보
+    justifyContent: 'center',
+    marginBottom: 8,
   },
+  sliderTrack: {
+    height: 4,                // ← 얇은 트랙
+    borderRadius: 2,
+    backgroundColor: '#e0e0e0',
+    overflow: 'hidden',
+  },
+  sliderFill: {
+    height: '100%',
+    backgroundColor: '#8FD397',
+    borderRadius: 2,
+  },
+  sliderThumb: {
+    position: 'absolute',
+    width: 18,                // ← 작은 thumb
+    height: 18,
+    borderRadius: 9,
+    backgroundColor: '#fff',
+    marginLeft: -9,           // thumb 중앙 정렬
+    top: 1,                   // (20 - 18) / 2
+    borderWidth: 2,
+    borderColor: '#8FD397',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.18,
+    shadowRadius: 2,
+    elevation: 3,
+  },
+  distanceValueRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 16,
+  },
+  distanceValueText: { fontSize: 15, fontWeight: '700', color: '#8FD397' },
+  distanceHintRow: { flexDirection: 'row', gap: 24 },
+  distanceHint: { fontSize: 11, color: '#aaa' },
 
   // ── 비밀번호 ──
-  pwField: {
-    paddingVertical: 14,
-  },
-  pwLabel: {
-    fontSize: 12,
-    color: '#999',
-    marginBottom: 6,
-    fontWeight: '500',
-  },
+  pwField: { paddingVertical: 14 },
+  pwLabel: { fontSize: 12, color: '#999', marginBottom: 6, fontWeight: '500' },
   pwInputWrap: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -419,41 +412,17 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 10,
   },
-  pwInput: {
-    flex: 1,
-    fontSize: 14,
-    color: '#333',
-  },
+  pwInput: { flex: 1, fontSize: 14, color: '#333' },
 
   // ── 아이디 변경 ──
-  idField: {
-    paddingVertical: 14,
-  },
-  idCurrent: {
-    fontSize: 14,
-    color: '#333',
-    fontWeight: '500',
-  },
-  idHint: {
-    fontSize: 12,
-    color: '#999',
-    marginTop: 4,
-    marginBottom: 4,
-  },
-  idNextDate: {
-    fontSize: 12,
-    color: '#8FD397',
-    fontWeight: '600',
-    marginBottom: 8,
-  },
-  actionButtonDisabled: {
-    opacity: 0.5,
-  },
+  idField: { paddingVertical: 14 },
+  idCurrent: { fontSize: 14, color: '#333', fontWeight: '500' },
+  idHint: { fontSize: 12, color: '#999', marginTop: 4, marginBottom: 4 },
+  idNextDate: { fontSize: 12, color: '#8FD397', fontWeight: '600', marginBottom: 8 },
+  actionButtonDisabled: { opacity: 0.5 },
 
   // ── 학교 ──
-  schoolRow: {
-    paddingVertical: 14,
-  },
+  schoolRow: { paddingVertical: 14 },
   schoolInfo: {
     flexDirection: 'row',
     alignItems: 'flex-start',
@@ -462,15 +431,8 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     padding: 12,
   },
-  schoolDesc: {
-    flex: 1,
-    fontSize: 13,
-    color: '#555',
-    lineHeight: 19,
-  },
-  schoolButton: {
-    flexDirection: 'row',
-  },
+  schoolDesc: { flex: 1, fontSize: 13, color: '#555', lineHeight: 19 },
+  schoolButton: { flexDirection: 'row' },
 
   // ── 공통 버튼 ──
   actionButton: {
@@ -483,66 +445,7 @@ const styles = StyleSheet.create({
     marginTop: 4,
     marginBottom: 16,
   },
-  actionButtonText: {
-    color: '#fff',
-    fontSize: 14,
-    fontWeight: '700',
-  },
-
-  // ── 게시판 거리 설정 ──
-  distanceLabel: {
-    fontSize: 13,
-    color: '#666',
-    marginBottom: 12,
-  },
-  distanceTrack: {
-    height: 28,
-    borderRadius: 14,
-    backgroundColor: '#eee',
-    justifyContent: 'center',
-    position: 'relative',
-  },
-  distanceFill: {
-    position: 'absolute',
-    left: 0,
-    top: 0,
-    bottom: 0,
-    backgroundColor: '#8FD397',
-    borderRadius: 14,
-  },
-  distanceThumb: {
-    position: 'absolute',
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    backgroundColor: '#fff',
-    marginLeft: -12,
-    top: 2,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.2,
-    shadowRadius: 2,
-    elevation: 3,
-  },
-  distanceValueRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginTop: 8,
-  },
-  distanceValueText: {
-    fontSize: 15,
-    fontWeight: '700',
-    color: '#8FD397',
-  },
-  distanceHintRow: {
-    flexDirection: 'row',
-    gap: 24,
-  },
-  distanceHint: {
-    fontSize: 11,
-    color: '#aaa',
-  },
+  actionButtonText: { color: '#fff', fontSize: 14, fontWeight: '700' },
 });
 
 export default Settings;
