@@ -28,6 +28,13 @@ export function getPreviousDayKey(date = new Date()) {
   return getTimerDayKey(d);
 }
 
+/** 다음날 날짜 키 (6~6 기준 하루 후) */
+export function getNextDayKey(date = new Date()) {
+  const d = new Date(date);
+  d.setHours(d.getHours() + 24);
+  return getTimerDayKey(d);
+}
+
 export async function loadDayFromStorage(dayKey) {
   try {
     const raw = await AsyncStorage.getItem(TIMER_DAY_PREFIX + dayKey);
@@ -39,17 +46,24 @@ export async function loadDayFromStorage(dayKey) {
   }
 }
 
-/** 로컬에서 읽은 payload 정규화 (subjectId 등 숫자 보장, 미종료 세션은 로드 시 0분으로 종료) */
+/** 로컬에서 읽은 payload 정규화. startSeconds/endSeconds 사용, 없으면 startMinutes/endMinutes에서 변환 */
 function normalizeLoadedPayload(data) {
   if (!data || typeof data !== 'object') return null;
   const sessions = Array.isArray(data.sessions)
     ? data.sessions.map((s) => {
-        const start = Number(s.startMinutes) || 0;
-        const end = s.endMinutes != null ? Number(s.endMinutes) : start;
+        let startSec = s.startSeconds != null ? Number(s.startSeconds) : null;
+        let endSec = s.endSeconds != null ? Number(s.endSeconds) : (s.endMinutes != null ? null : null);
+        if (startSec == null && s.startMinutes != null) {
+          startSec = Math.floor(Number(s.startMinutes) * 60);
+          if (s.endMinutes != null) endSec = Math.floor(Number(s.endMinutes) * 60);
+          else endSec = startSec;
+        }
+        if (startSec == null) startSec = 0;
+        if (endSec == null) endSec = startSec;
         return {
           subjectId: s.subjectId != null ? Number(s.subjectId) : null,
-          startMinutes: start,
-          endMinutes: end,
+          startSeconds: startSec,
+          endSeconds: endSec,
         };
       })
     : [];
@@ -92,15 +106,25 @@ export async function setLastSyncedDayKey(dayKey) {
  */
 export async function saveDayToDb(dayKey, payload) {
   // TODO: 실제 백엔드 연동 시 예: POST /api/timer/day { dayKey, ...payload }
-  // const response = await fetch(API_BASE + '/api/timer/day', {
-  //   method: 'POST',
-  //   headers: { 'Content-Type': 'application/json' },
-  //   body: JSON.stringify({ dayKey, ...payload }),
-  // });
   if (__DEV__) {
     console.log('[Timer] saveDayToDb', dayKey, payload);
   }
   await setLastSyncedDayKey(dayKey);
+}
+
+/**
+ * 전날 및 그 이전 날짜 데이터는 DB에서 조회. 오늘은 로컬만 사용.
+ * dayKey가 오늘보다 이전이면 DB, 오늘이면 null(로컬에서 로드), 미래면 로컬 시도.
+ */
+export async function loadDayFromDb(dayKey) {
+  // TODO: 실제 백엔드 연동 시 예: GET /api/timer/day?dayKey=YYYY-MM-DD
+  // const res = await fetch(`${API_BASE}/api/timer/day?dayKey=${dayKey}`);
+  // const data = await res.json();
+  // return normalizeLoadedPayload(data);
+  if (__DEV__) {
+    console.log('[Timer] loadDayFromDb (placeholder)', dayKey);
+  }
+  return null;
 }
 
 /**

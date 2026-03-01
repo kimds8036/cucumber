@@ -23,7 +23,40 @@ export const createTimerStyles = (width, normalize) => {
       gap: normalize(16),
     },
 
-    // 친구 스토리 스타일 (상단, 일렬 배치, 상태점 원에 걸침)
+    dateBar: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      marginBottom: normalize(12),
+    },
+    dateBarLeft: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: normalize(8),
+    },
+    dateBarText: {
+      fontSize: normalize(16),
+      fontFamily: fonts.bold,
+      color: colors.textPrimary,
+      minWidth: normalize(100),
+      textAlign: 'center',
+    },
+    saveBtn: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: normalize(4),
+      paddingVertical: normalize(8),
+      paddingHorizontal: normalize(12),
+      borderRadius: normalize(10),
+      backgroundColor: colors.primaryLight30,
+    },
+    saveBtnText: {
+      fontSize: normalize(13),
+      fontFamily: fonts.regular,
+      color: colors.primary,
+    },
+
+    // 친구 스토리 스타일
     friendStoryRow: {
       marginBottom: normalize(8),
     },
@@ -565,6 +598,15 @@ export const createTimerStyles = (width, normalize) => {
       borderLeftWidth: 0.5,
       borderColor: colors.textLight10,
       backgroundColor: colors.background,
+      overflow: 'hidden',
+      flexDirection: 'row',
+    },
+    timetableSlotProgress: {
+      flex: 0,
+      minWidth: 0,
+    },
+    timetableSlotSegment: {
+      minWidth: 0,
     },
     timetableSlotActive: {
       backgroundColor: colors.primaryLight30,
@@ -574,6 +616,108 @@ export const createTimerStyles = (width, normalize) => {
       fontSize: normalize(11),
       fontFamily: fonts.regular,
       color: colors.textSecondary,
+    },
+
+    // 저장용 플래너 캡처 (좌: 날짜/시간/투두, 우: 타임테이블, 버튼 없음)
+    plannerCaptureWrap: {
+      width: width,
+      backgroundColor: '#fff',
+      paddingVertical: normalize(16),
+    },
+    plannerCaptureRow: {
+      flexDirection: 'row',
+      flex: 1,
+    },
+    plannerLeftColumn: {
+      width: width * 0.6,
+      paddingHorizontal: normalize(14),
+      paddingVertical: normalize(8),
+      borderRightWidth: 1,
+      borderColor: colors.textLight10,
+    },
+    plannerRightColumn: {
+      flex: 1,
+      paddingHorizontal: normalize(10),
+      paddingVertical: normalize(8),
+    },
+    plannerLabel: {
+      fontSize: normalize(11),
+      fontFamily: fonts.regular,
+      color: colors.textSecondary,
+      marginBottom: normalize(4),
+    },
+    plannerValue: {
+      fontSize: normalize(14),
+      fontFamily: fonts.bold,
+      color: colors.textPrimary,
+      marginBottom: normalize(12),
+    },
+    plannerMemoLine: {
+      height: 1,
+      backgroundColor: colors.textLight10,
+      marginBottom: normalize(16),
+    },
+    plannerTodoTitle: {
+      fontSize: normalize(13),
+      fontFamily: fonts.bold,
+      color: colors.textPrimary,
+      marginBottom: normalize(10),
+    },
+    plannerSubjectRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      marginBottom: normalize(6),
+    },
+    plannerSubjectColorBar: {
+      width: normalize(4),
+      height: normalize(28),
+      borderRadius: 2,
+      marginRight: normalize(6),
+    },
+    plannerSubjectBody: {
+      flex: 1,
+    },
+    plannerSubjectName: {
+      fontSize: normalize(13),
+      fontFamily: fonts.bold,
+      color: colors.textPrimary,
+    },
+    plannerSubjectTime: {
+      fontSize: normalize(11),
+      fontFamily: fonts.regular,
+      color: colors.textSecondary,
+      marginTop: 2,
+    },
+    plannerTaskRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      paddingLeft: normalize(14),
+      paddingVertical: normalize(4),
+      marginBottom: normalize(2),
+      gap: normalize(8),
+    },
+    plannerTaskCheckbox: {
+      width: normalize(18),
+      height: normalize(18),
+      borderRadius: normalize(4),
+      borderWidth: 2,
+      borderColor: colors.textLight20,
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    plannerTaskCheckboxChecked: {
+      backgroundColor: colors.primary,
+      borderColor: colors.primary,
+    },
+    plannerTaskContent: {
+      flex: 1,
+      fontSize: normalize(12),
+      fontFamily: fonts.regular,
+      color: colors.textPrimary,
+    },
+    plannerTaskContentDone: {
+      color: colors.textSecondary,
+      textDecorationLine: 'line-through',
     },
   });
 };

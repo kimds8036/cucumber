@@ -23,7 +23,12 @@ import {
   saveDayToStorage,
   flushPreviousDayAndLoadCurrent,
   saveDayToDb,
+  getPreviousDayKey,
+  getNextDayKey,
+  loadDayFromDb,
 } from '../../utils/timerStorage';
+import ViewShot from 'react-native-view-shot';
+import * as MediaLibrary from 'expo-media-library';
 
 const FRIEND_ICON_COLORS = [colors.green, colors.yellow, colors.red, colors.blue];
 const getFriendIconColorByIndex = (i) => FRIEND_ICON_COLORS[i % FRIEND_ICON_COLORS.length];
@@ -50,6 +55,12 @@ const DEFAULT_TASKS = [
 ];
 
 const getMinutesFromMidnight = (d) => d.getHours() * 60 + d.getMinutes();
+const getSecondsFromMidnight = (d) => d.getHours() * 3600 + d.getMinutes() * 60 + d.getSeconds();
+
+/** dayKey "YYYY-MM-DD" → Date 6시 기준 */
+function dateFromDayKey(dayKey) {
+  return new Date(dayKey + 'T06:00:00');
+}
 
 const HOURS = Array.from({ length: 24 }, (_, i) => i);
 
@@ -222,6 +233,97 @@ const AddTaskModal = ({ visible, onClose, onAdd, subjects, initialSubjectId }) =
   );
 };
 
+// ── 달력 모달 (날짜 선택) ─────────────────────────────────
+const CalendarModal = ({ visible, onClose, currentDayKey, onSelectDay }) => {
+  const [yearMonth, setYearMonth] = useState(() => {
+    const d = dateFromDayKey(currentDayKey || getTimerDayKey(new Date()));
+    return { year: d.getFullYear(), month: d.getMonth() };
+  });
+
+  useEffect(() => {
+    if (visible && currentDayKey) {
+      const d = dateFromDayKey(currentDayKey);
+      setYearMonth({ year: d.getFullYear(), month: d.getMonth() });
+    }
+  }, [visible, currentDayKey]);
+
+  const firstDay = new Date(yearMonth.year, yearMonth.month, 1);
+  const lastDay = new Date(yearMonth.year, yearMonth.month + 1, 0);
+  const startPad = firstDay.getDay();
+  const daysInMonth = lastDay.getDate();
+  const days = [...Array(startPad).fill(null), ...Array.from({ length: daysInMonth }, (_, i) => i + 1)];
+
+  const goPrevMonth = () => {
+    if (yearMonth.month === 0) setYearMonth({ year: yearMonth.year - 1, month: 11 });
+    else setYearMonth({ year: yearMonth.year, month: yearMonth.month - 1 });
+  };
+  const goNextMonth = () => {
+    if (yearMonth.month === 11) setYearMonth({ year: yearMonth.year + 1, month: 0 });
+    else setYearMonth({ year: yearMonth.year, month: yearMonth.month + 1 });
+  };
+
+  const getDayKey = (day) => {
+    if (!day) return null;
+    const d = new Date(yearMonth.year, yearMonth.month, day, 6, 0, 0);
+    return getTimerDayKey(d);
+  };
+
+  if (!visible) return null;
+  return (
+    <Modal transparent animationType="fade" onRequestClose={onClose}>
+      <TouchableOpacity style={modalStyles.overlay} onPress={onClose} activeOpacity={1} />
+      <View style={[modalStyles.centered, { justifyContent: 'center' }]}>
+        <View style={[modalStyles.card, { maxWidth: 360 }]}>
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+            <TouchableOpacity onPress={goPrevMonth} style={{ padding: 8 }}>
+              <Ionicons name="chevron-back" size={24} color={colors.textPrimary} />
+            </TouchableOpacity>
+            <Text style={{ fontSize: 16, fontFamily: fonts.bold, color: colors.textPrimary }}>
+              {yearMonth.year}년 {yearMonth.month + 1}월
+            </Text>
+            <TouchableOpacity onPress={goNextMonth} style={{ padding: 8 }}>
+              <Ionicons name="chevron-forward" size={24} color={colors.textPrimary} />
+            </TouchableOpacity>
+          </View>
+          <View style={{ flexDirection: 'row', flexWrap: 'wrap' }}>
+            {['일','월','화','수','목','금','토'].map((w, i) => (
+              <View key={w} style={{ width: '14.28%', alignItems: 'center', paddingVertical: 6 }}>
+                <Text style={{ fontSize: 12, fontFamily: fonts.regular, color: colors.textSecondary }}>{w}</Text>
+              </View>
+            ))}
+            {days.map((day, idx) => {
+              const key = getDayKey(day);
+              const isCurrent = key === currentDayKey;
+              return (
+                <TouchableOpacity
+                  key={idx}
+                  style={{
+                    width: '14.28%',
+                    alignItems: 'center',
+                    paddingVertical: 8,
+                    backgroundColor: isCurrent ? colors.primary : 'transparent',
+                    borderRadius: 20,
+                  }}
+                  onPress={() => { if (key) { onSelectDay(key); onClose(); } }}
+                  disabled={!day}
+                >
+                  <Text style={{
+                    fontSize: 14,
+                    fontFamily: fonts.regular,
+                    color: !day ? 'transparent' : isCurrent ? colors.textWhite : colors.textPrimary,
+                  }}>
+                    {day || ''}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+        </View>
+      </View>
+    </Modal>
+  );
+};
+
 const modalStyles = {
   overlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)' },
   centered: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 24 },
@@ -271,6 +373,36 @@ export const TimerContent = () => {
   const [timerDayKey, setTimerDayKey] = useState(null);
   const [initialLoadDone, setInitialLoadDone] = useState(false);
   const saveTimeoutRef = useRef(null);
+  const [selectedDayKey, setSelectedDayKey] = useState(null);
+  const [viewState, setViewState] = useState(null);
+  const capturePlannerRef = useRef(null);
+  const [showCalendar, setShowCalendar] = useState(false);
+
+  const todayKey = getTimerDayKey(new Date());
+
+  const loadDayData = async (dayKey) => {
+    if (dayKey === todayKey) {
+      const data = await loadDayFromStorage(dayKey);
+      return data;
+    }
+    const isPast = dayKey < todayKey;
+    if (isPast) return loadDayFromDb(dayKey);
+    return loadDayFromStorage(dayKey);
+  };
+
+  const applyDayData = (data) => {
+    if (!data) {
+      setSessions([]);
+      setTotalElapsedMs(0);
+      setSubjects(DEFAULT_SUBJECTS);
+      setTasks(DEFAULT_TASKS);
+      return;
+    }
+    setSessions(data.sessions ?? []);
+    setTotalElapsedMs(data.totalElapsedMs ?? 0);
+    setSubjects(data.subjects?.length ? data.subjects : DEFAULT_SUBJECTS);
+    setTasks(data.tasks?.length ? data.tasks : DEFAULT_TASKS);
+  };
 
   // 마운트 시: 전날 미동기화면 DB 저장 후, 당일 로컬 데이터 로드 → 과목별 시간(sessions) 포함 항상 복원
   useEffect(() => {
@@ -279,6 +411,7 @@ export const TimerContent = () => {
     flushPreviousDayAndLoadCurrent(dayKey).then((data) => {
       if (!mounted) return;
       setTimerDayKey(dayKey);
+      setSelectedDayKey(dayKey);
       if (data != null) {
         setSessions(data.sessions ?? []);
         setTotalElapsedMs(data.totalElapsedMs ?? 0);
@@ -290,9 +423,26 @@ export const TimerContent = () => {
     return () => { mounted = false; };
   }, []);
 
-  // 초기 로드 완료 후에만 로컬 저장 (과목별 재생 시간이 덮어쓰이지 않도록)
+  // 선택한 날짜 변경 시: 오늘은 로컬, 전날 이전은 DB에서 로드
   useEffect(() => {
-    if (!initialLoadDone || timerDayKey == null) return;
+    if (!initialLoadDone || selectedDayKey == null) return;
+    if (selectedDayKey === todayKey) {
+      setViewState(null);
+      return;
+    }
+    loadDayData(selectedDayKey).then((data) => {
+      setViewState(data ? {
+        sessions: data.sessions ?? [],
+        totalElapsedMs: data.totalElapsedMs ?? 0,
+        subjects: data.subjects?.length ? data.subjects : DEFAULT_SUBJECTS,
+        tasks: data.tasks?.length ? data.tasks : DEFAULT_TASKS,
+      } : { sessions: [], totalElapsedMs: 0, subjects: DEFAULT_SUBJECTS, tasks: DEFAULT_TASKS });
+    });
+  }, [selectedDayKey, todayKey, initialLoadDone]);
+
+  // 오늘만 로컬 캐시에 저장 (전날 이전은 DB에서 불러오므로 저장 불필요)
+  useEffect(() => {
+    if (!initialLoadDone || timerDayKey == null || selectedDayKey !== todayKey) return;
     const payload = {
       sessions,
       totalElapsedMs,
@@ -307,7 +457,7 @@ export const TimerContent = () => {
     return () => {
       if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
     };
-  }, [initialLoadDone, timerDayKey, sessions, totalElapsedMs, subjects, tasks]);
+  }, [initialLoadDone, timerDayKey, selectedDayKey, todayKey, sessions, totalElapsedMs, subjects, tasks]);
 
   // 날짜가 바뀌었는지 주기적 확인 (6시~익일 5시59분 기준). 바뀌면 전날 로컬→DB 저장 후 당일 로드
   useEffect(() => {
@@ -381,13 +531,13 @@ export const TimerContent = () => {
     if (isRunning && activeSubjectId === subjectId) return;
     if (isRunning) {
       const now = new Date();
-      const endMinutes = getMinutesFromMidnight(now);
+      const endSeconds = getSecondsFromMidnight(now);
       endCurrentSession();
       setSessions((prev) => {
         const next = [...prev];
         for (let i = next.length - 1; i >= 0; i--) {
-          if (next[i].subjectId === activeSubjectId && next[i].endMinutes == null) {
-            next[i] = { ...next[i], endMinutes };
+          if (next[i].subjectId === activeSubjectId && next[i].endSeconds == null) {
+            next[i] = { ...next[i], endSeconds };
             break;
           }
         }
@@ -399,21 +549,21 @@ export const TimerContent = () => {
     setElapsedMs(0);
     setStartTimestamp(Date.now());
     const now = new Date();
-    const startMinutes = getMinutesFromMidnight(now);
-    setSessions((prev) => [...prev, { subjectId, startMinutes, endMinutes: null }]);
+    const startSeconds = getSecondsFromMidnight(now);
+    setSessions((prev) => [...prev, { subjectId, startSeconds, endSeconds: null }]);
   };
 
   const startTimerTop = () => {
     if (isRunning && activeSubjectId === null) return;
     if (isRunning) {
       const now = new Date();
-      const endMinutes = getMinutesFromMidnight(now);
+      const endSeconds = getSecondsFromMidnight(now);
       endCurrentSession();
       setSessions((prev) => {
         const next = [...prev];
         for (let i = next.length - 1; i >= 0; i--) {
-          if (next[i].subjectId === activeSubjectId && next[i].endMinutes == null) {
-            next[i] = { ...next[i], endMinutes };
+          if (next[i].subjectId === activeSubjectId && next[i].endSeconds == null) {
+            next[i] = { ...next[i], endSeconds };
             break;
           }
         }
@@ -425,20 +575,20 @@ export const TimerContent = () => {
     setElapsedMs(0);
     setStartTimestamp(Date.now());
     const now = new Date();
-    const startMinutes = getMinutesFromMidnight(now);
-    setSessions((prev) => [...prev, { subjectId: null, startMinutes, endMinutes: null }]);
+    const startSeconds = getSecondsFromMidnight(now);
+    setSessions((prev) => [...prev, { subjectId: null, startSeconds, endSeconds: null }]);
   };
 
   const pauseTimer = () => {
     if (!isRunning) return;
     const now = new Date();
-    const endMinutes = getMinutesFromMidnight(now);
+    const endSeconds = getSecondsFromMidnight(now);
     endCurrentSession();
     setSessions((prev) => {
       const next = [...prev];
       for (let i = next.length - 1; i >= 0; i--) {
-        if (next[i].subjectId === activeSubjectId && next[i].endMinutes == null) {
-          next[i] = { ...next[i], endMinutes };
+        if (next[i].subjectId === activeSubjectId && next[i].endSeconds == null) {
+          next[i] = { ...next[i], endSeconds };
           break;
         }
       }
@@ -451,18 +601,74 @@ export const TimerContent = () => {
 
   const toggleTimer = () => {
     if (isRunning) pauseTimer();
-    else if (activeSubjectId != null) startForSubject(activeSubjectId);
     else startTimerTop();
   };
 
+  const getTotalDisplayMs = () => totalElapsedMs + (isRunning ? elapsedMs : 0);
+
+  const isViewingToday = selectedDayKey === todayKey;
+  const displaySessions = isViewingToday ? sessions : (viewState?.sessions ?? []);
+  const displayTotalElapsedMs = isViewingToday ? totalElapsedMs : (viewState?.totalElapsedMs ?? 0);
+  const displaySubjects = isViewingToday ? subjects : (viewState?.subjects ?? DEFAULT_SUBJECTS);
+  const displayTasks = isViewingToday ? tasks : (viewState?.tasks ?? DEFAULT_TASKS);
+  const displayTotalMs = isViewingToday ? getTotalDisplayMs() : displayTotalElapsedMs;
+
   const getSubjectTotalMs = (subjectId) => {
     if (subjectId == null) return 0;
-    return sessions
-      .filter((s) => s.subjectId === subjectId && s.endMinutes != null)
-      .reduce((sum, s) => sum + (s.endMinutes - s.startMinutes) * 60 * 1000, 0);
+    return displaySessions
+      .filter((s) => s.subjectId === subjectId && s.endSeconds != null)
+      .reduce((sum, s) => sum + (s.endSeconds - s.startSeconds) * 1000, 0);
   };
 
-  const getTotalDisplayMs = () => totalElapsedMs + (isRunning ? elapsedMs : 0);
+  const currentSecondsFromMidnight = () => getSecondsFromMidnight(new Date());
+
+  /** 한 슬롯(600초) 안에서 초 단위 세그먼트. startFraction = 슬롯 내 시작 위치(0~1), widthFraction = 길이 (예: 3시 35분 30초 시작이면 한 칸에서 중간부터) */
+  const getSlotSegments = (slotStartSeconds) => {
+    const slotEnd = slotStartSeconds + 600;
+    const nowSec = currentSecondsFromMidnight();
+    const segments = [];
+    displaySessions.forEach((s) => {
+      const endSec = s.endSeconds != null ? s.endSeconds : nowSec;
+      if (endSec <= slotStartSeconds || s.startSeconds >= slotEnd) return;
+      const overlapStart = Math.max(s.startSeconds, slotStartSeconds);
+      const overlapEnd = Math.min(endSec, slotEnd);
+      const startFraction = (overlapStart - slotStartSeconds) / 600;
+      const widthFraction = (overlapEnd - overlapStart) / 600;
+      if (widthFraction <= 0) return;
+      const color = s.subjectId == null ? TIMETABLE_GRAY : (displaySubjects.find((x) => x.id === s.subjectId)?.color);
+      if (!color) return;
+      segments.push({ color, widthFraction, startFraction });
+    });
+    segments.sort((a, b) => a.startFraction - b.startFraction);
+    return segments;
+  };
+
+  const goPrevDay = () => {
+    if (!selectedDayKey) return;
+    const d = dateFromDayKey(selectedDayKey);
+    setSelectedDayKey(getPreviousDayKey(d));
+  };
+  const goNextDay = () => {
+    if (!selectedDayKey) return;
+    const d = dateFromDayKey(selectedDayKey);
+    setSelectedDayKey(getNextDayKey(d));
+  };
+
+  const handleSaveAsImage = async () => {
+    if (!capturePlannerRef.current) return;
+    try {
+      const { status } = await MediaLibrary.requestPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert('권한 필요', '갤러리에 저장하려면 사진 저장 권한이 필요합니다.');
+        return;
+      }
+      const uri = await capturePlannerRef.current.capture();
+      await MediaLibrary.saveToLibraryAsync(uri);
+      Alert.alert('저장 완료', '갤러리에 저장되었습니다.');
+    } catch (e) {
+      Alert.alert('저장 실패', e?.message || '이미지 저장에 실패했습니다.');
+    }
+  };
 
   const toggleSubjectCollapsed = (subjectId) => {
     setCollapsedSubjects((prev) => ({ ...prev, [subjectId]: !prev[subjectId] }));
@@ -473,18 +679,7 @@ export const TimerContent = () => {
     setShowAddTask(true);
   };
 
-  const isSlotForSubject = (subjectId, slotStartMinutes) => {
-    const end = slotStartMinutes + 10;
-    return sessions.some(
-      (s) =>
-        s.subjectId === subjectId &&
-        s.endMinutes != null &&
-        s.endMinutes > slotStartMinutes &&
-        s.startMinutes < end
-    );
-  };
-
-  const TIMETABLE_GRAY = '#D3D3D3';
+  const TIMETABLE_GRAY = '#A6DA95';
 
   return (
     <>
@@ -530,9 +725,30 @@ export const TimerContent = () => {
           </ScrollView>
         </View>
 
-        {/* 2. 타이머 (누적 시·분·초, 과목 없이도 시작 가능) */}
+        <View style={styles.dateBar}>
+          <View style={styles.dateBarLeft}>
+            <TouchableOpacity onPress={goPrevDay} hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }} style={{ padding: 4 }}>
+              <Ionicons name="chevron-back" size={22} color={colors.textPrimary} />
+            </TouchableOpacity>
+            <TouchableOpacity onPress={() => setShowCalendar(true)} style={{ minWidth: normalize(100) }}>
+              <Text style={styles.dateBarText}>
+                {selectedDayKey ? selectedDayKey.replace(/-/g, '.') : '--.--.--'}
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity onPress={goNextDay} hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }} style={{ padding: 4 }}>
+              <Ionicons name="chevron-forward" size={22} color={colors.textPrimary} />
+            </TouchableOpacity>
+          </View>
+          <TouchableOpacity style={styles.saveBtn} onPress={handleSaveAsImage}>
+            <Ionicons name="image-outline" size={20} color={colors.primary} />
+            <Text style={styles.saveBtnText}>저장하기</Text>
+          </TouchableOpacity>
+        </View>
+
+        {/* 2. 타이머 (누적 시·분·초) */}
         <View style={styles.timerBlock}>
-          <Text style={styles.timerTime}>{formatHMS(getTotalDisplayMs())}</Text>
+          <Text style={styles.timerTime}>{formatHMS(displayTotalMs)}</Text>
+          {isViewingToday && (
           <TouchableOpacity
             style={[styles.timerBtn, isRunning && styles.timerBtnPause]}
             onPress={toggleTimer}
@@ -547,6 +763,7 @@ export const TimerContent = () => {
               {isRunning ? '일시정지' : '시작'}
             </Text>
           </TouchableOpacity>
+          )}
         </View>
 
         {/* 구분선 */}
@@ -558,17 +775,19 @@ export const TimerContent = () => {
           <View style={styles.todoColumn}>
             <View style={styles.todoHeader}>
               <Text style={styles.todoTitle}>투두리스트</Text>
+              {isViewingToday && (
               <TouchableOpacity style={styles.todoAddBtn} onPress={() => setShowAddSubject(true)}>
                 <Ionicons name="add-circle-outline" size={18} color={colors.primary} />
                 <Text style={styles.todoAddBtnText}>과목 추가</Text>
               </TouchableOpacity>
+              )}
             </View>
             <ScrollView style={styles.todoList} showsVerticalScrollIndicator={false}>
-              {subjects.map((sub) => {
-                const subTasks = tasks.filter((t) => t.subjectId === sub.id);
+              {displaySubjects.map((sub) => {
+                const subTasks = displayTasks.filter((t) => t.subjectId === sub.id);
                 const totalMs = getSubjectTotalMs(sub.id);
                 const isThisSubjectRunning = isRunning && activeSubjectId === sub.id;
-                const totalStr = isThisSubjectRunning ? formatHMS(elapsedMs) : formatHMS(totalMs);
+                const totalStr = isThisSubjectRunning ? formatHMS(totalMs + elapsedMs) : formatHMS(totalMs);
                 const isCollapsed = collapsedSubjects[sub.id] === true;
                 return (
                   <View key={sub.id} style={styles.subjectBlock}>
@@ -581,6 +800,7 @@ export const TimerContent = () => {
                       <TouchableOpacity
                         style={[styles.subjectPlayBtn, { backgroundColor: sub.color }, activeSubjectId === sub.id && isRunning && styles.subjectPlayBtnActive]}
                         onPress={() => (isRunning && activeSubjectId === sub.id ? pauseTimer() : startForSubject(sub.id))}
+                        disabled={!isViewingToday}
                       >
                         <Ionicons
                           name={isRunning && activeSubjectId === sub.id ? 'pause' : 'play'}
@@ -605,14 +825,15 @@ export const TimerContent = () => {
                           <View key={task.id} style={styles.taskRow}>
                             <TouchableOpacity
                               style={[styles.taskCheckbox, task.status === 'done' && styles.taskCheckboxChecked]}
-                              onPress={() => setTaskStatus(task.id, task.status === 'done' ? 'pending' : 'done')}
+                              onPress={() => isViewingToday && setTaskStatus(task.id, task.status === 'done' ? 'pending' : 'done')}
+                              disabled={!isViewingToday}
                             >
                               {task.status === 'done' && <Ionicons name="checkmark" size={normalize(14)} color={colors.textWhite} />}
                             </TouchableOpacity>
                             <Text style={[styles.taskContent, task.status === 'done' && styles.taskContentDone]} numberOfLines={1}>{task.content}</Text>
                           </View>
                         ))}
-                        <TouchableOpacity style={styles.todoAddUnderSubject} onPress={() => openAddTaskForSubject(sub.id)}>
+                        <TouchableOpacity style={styles.todoAddUnderSubject} onPress={() => openAddTaskForSubject(sub.id)} disabled={!isViewingToday}>
                           <Text style={styles.todoAddUnderSubjectText}>+ 추가</Text>
                         </TouchableOpacity>
                       </>
@@ -623,13 +844,13 @@ export const TimerContent = () => {
             </ScrollView>
           </View>
 
-          {/* 오른쪽: 타임테이블 (과목별 색상 블록) */}
+          {/* 오른쪽: 타임테이블 (초 단위 세그먼트) */}
           <View style={styles.timetableColumn}>
             <Text style={styles.timetableTitle}>공부 기록</Text>
-            <View style={styles.timetableScroll} showsVerticalScrollIndicator={false}>
+            <View style={styles.timetableScroll}>
               {HOURS.map((rowIndex) => {
                 const hour = (6 + rowIndex) % 24;
-                const slotStartBase = hour * 60;
+                const slotStartBaseSeconds = hour * 3600;
                 return (
                   <View key={rowIndex} style={styles.timetableRow}>
                     <View style={styles.timetableHourCell}>
@@ -639,18 +860,29 @@ export const TimerContent = () => {
                     </View>
                     <View style={styles.timetableSlotsRow}>
                       {[0, 10, 20, 30, 40, 50].map((m) => {
-                        const slotStart = slotStartBase + m;
-                        const isGray = isSlotForSubject(null, slotStart);
-                        const subjectId = !isGray ? subjects.find((s) => isSlotForSubject(s.id, slotStart))?.id : null;
-                        const color = isGray ? TIMETABLE_GRAY : (subjectId ? subjects.find((s) => s.id === subjectId)?.color : null);
+                        const slotStartSeconds = slotStartBaseSeconds + m * 60;
+                        const segments = getSlotSegments(slotStartSeconds);
+                        let pos = 0;
                         return (
-                          <View
-                            key={m}
-                            style={[
-                              styles.timetableSlotCell,
-                              color ? { backgroundColor: color } : null,
-                            ]}
-                          />
+                          <View key={m} style={styles.timetableSlotCell}>
+                            {segments.map((seg, idx) => {
+                              const spacerFlex = Math.max(0, seg.startFraction - pos);
+                              pos = seg.startFraction + seg.widthFraction;
+                              return (
+                                <React.Fragment key={idx}>
+                                  {spacerFlex > 0 && (
+                                    <View style={[styles.timetableSlotSegment, { flex: spacerFlex, backgroundColor: colors.background }]} />
+                                  )}
+                                  <View
+                                    style={[
+                                      styles.timetableSlotSegment,
+                                      { backgroundColor: seg.color, flex: seg.widthFraction },
+                                    ]}
+                                  />
+                                </React.Fragment>
+                              );
+                            })}
+                          </View>
                         );
                       })}
                     </View>
@@ -662,6 +894,92 @@ export const TimerContent = () => {
         </View>
       </ScrollView>
 
+      {/* 저장 시 캡처용 플래너 (오프스크린): 좌 날짜/시간/투두, 우 타임테이블, 버튼 없음 */}
+      <View style={{ position: 'absolute', left: -width * 2, top: 0, width: width }} pointerEvents="none">
+        <ViewShot ref={capturePlannerRef} options={{ format: 'png', quality: 1 }} style={{ backgroundColor: '#fff' }}>
+          <View style={styles.plannerCaptureWrap}>
+            <View style={styles.plannerCaptureRow}>
+              <View style={styles.plannerLeftColumn}>
+                <Text style={styles.plannerLabel}>Date</Text>
+                <Text style={styles.plannerValue}>{selectedDayKey ? selectedDayKey.replace(/-/g, '.') : '--.--.--'}</Text>
+                <Text style={styles.plannerLabel}>Time</Text>
+                <Text style={styles.plannerValue}>{formatHMS(displayTotalMs)}</Text>
+                <Text style={styles.plannerLabel}>To-do List</Text>
+                <View style={styles.plannerMemoLine} />
+                {displaySubjects.map((sub) => {
+                  const subTasks = displayTasks.filter((t) => t.subjectId === sub.id);
+                  const totalMs = getSubjectTotalMs(sub.id);
+                  const totalStr = formatHMS(totalMs);
+                  return (
+                    <View key={sub.id} style={{ marginBottom: normalize(10) }}>
+                      <View style={styles.plannerSubjectRow}>
+                        <View style={[styles.plannerSubjectColorBar, { backgroundColor: sub.color }]} />
+                        <View style={styles.plannerSubjectBody}>
+                          <Text style={styles.plannerSubjectName}>{sub.name}</Text>
+                          <Text style={styles.plannerSubjectTime}>{totalStr}</Text>
+                        </View>
+                      </View>
+                      {subTasks.map((task) => (
+                        <View key={task.id} style={styles.plannerTaskRow}>
+                          <View style={[styles.plannerTaskCheckbox, task.status === 'done' && styles.plannerTaskCheckboxChecked]}>
+                            {task.status === 'done' && <Ionicons name="checkmark" size={normalize(12)} color={colors.textWhite} />}
+                          </View>
+                          <Text style={[styles.plannerTaskContent, task.status === 'done' && styles.plannerTaskContentDone]} numberOfLines={1}>{task.content}</Text>
+                        </View>
+                      ))}
+                    </View>
+                  );
+                })}
+              </View>
+              <View style={styles.plannerRightColumn}>
+                <Text style={styles.timetableTitle}>공부 기록</Text>
+                <View style={styles.timetableScroll}>
+                  {HOURS.map((rowIndex) => {
+                    const hour = (6 + rowIndex) % 24;
+                    const slotStartBaseSeconds = hour * 3600;
+                    return (
+                      <View key={rowIndex} style={styles.timetableRow}>
+                        <View style={styles.timetableHourCell}>
+                          <Text style={styles.timetableHourText}>{hour.toString().padStart(2, '0')}</Text>
+                        </View>
+                        <View style={styles.timetableSlotsRow}>
+                          {[0, 10, 20, 30, 40, 50].map((m) => {
+                            const slotStartSeconds = slotStartBaseSeconds + m * 60;
+                            const segments = getSlotSegments(slotStartSeconds);
+                            let pos = 0;
+                            return (
+                              <View key={m} style={styles.timetableSlotCell}>
+                                {segments.map((seg, idx) => {
+                                  const spacerFlex = Math.max(0, seg.startFraction - pos);
+                                  pos = seg.startFraction + seg.widthFraction;
+                                  return (
+                                    <React.Fragment key={idx}>
+                                      {spacerFlex > 0 && (
+                                        <View style={[styles.timetableSlotSegment, { flex: spacerFlex, backgroundColor: colors.background }]} />
+                                      )}
+                                      <View
+                                        style={[
+                                          styles.timetableSlotSegment,
+                                          { backgroundColor: seg.color, flex: seg.widthFraction },
+                                        ]}
+                                      />
+                                    </React.Fragment>
+                                  );
+                                })}
+                              </View>
+                            );
+                          })}
+                        </View>
+                      </View>
+                    );
+                  })}
+                </View>
+              </View>
+            </View>
+          </View>
+        </ViewShot>
+      </View>
+
       <AddSubjectModal visible={showAddSubject} onClose={() => setShowAddSubject(false)} onAdd={addSubject} />
       <AddTaskModal
         visible={showAddTask}
@@ -669,6 +987,13 @@ export const TimerContent = () => {
         onAdd={addTask}
         subjects={subjects}
         initialSubjectId={addTaskSubjectId}
+      />
+
+      <CalendarModal
+        visible={showCalendar}
+        onClose={() => setShowCalendar(false)}
+        currentDayKey={selectedDayKey}
+        onSelectDay={setSelectedDayKey}
       />
 
       {showAddFriend && (
