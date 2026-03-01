@@ -39,6 +39,16 @@ const SUBJECT_COLORS = [
   '#FFB5C2', '#C4A77D', '#7FCDCD', '#87CEEB', '#98D8A6', '#B19CD9', '#FFB366', '#9FB5C7',
 ];
 
+const DEFAULT_SUBJECTS = [
+  { id: 1, name: '영어', color: '#FFB5C2' },
+  { id: 2, name: '수학', color: '#87CEEB' },
+];
+const DEFAULT_TASKS = [
+  { id: 1, subjectId: 1, content: '모의고사 1', status: 'pending' },
+  { id: 2, subjectId: 1, content: '듣기 30문제', status: 'pending' },
+  { id: 3, subjectId: 2, content: '수1 문제집 30문제', status: 'pending' },
+];
+
 const getMinutesFromMidnight = (d) => d.getHours() * 60 + d.getMinutes();
 
 const HOURS = Array.from({ length: 24 }, (_, i) => i);
@@ -245,15 +255,8 @@ export const TimerContent = () => {
   const [friends, setFriends] = useState(INITIAL_FRIENDS);
   const [showAddFriend, setShowAddFriend] = useState(false);
 
-  const [subjects, setSubjects] = useState([
-    { id: 1, name: '영어', color: '#FFB5C2' },
-    { id: 2, name: '수학', color: '#87CEEB' },
-  ]);
-  const [tasks, setTasks] = useState([
-    { id: 1, subjectId: 1, content: '모의고사 1', status: 'pending' },
-    { id: 2, subjectId: 1, content: '듣기 30문제', status: 'pending' },
-    { id: 3, subjectId: 2, content: '수1 문제집 30문제', status: 'pending' },
-  ]);
+  const [subjects, setSubjects] = useState(DEFAULT_SUBJECTS);
+  const [tasks, setTasks] = useState(DEFAULT_TASKS);
   const [sessions, setSessions] = useState([]);
   const [activeSubjectId, setActiveSubjectId] = useState(null);
   const [isRunning, setIsRunning] = useState(false);
@@ -266,26 +269,30 @@ export const TimerContent = () => {
   const [addTaskSubjectId, setAddTaskSubjectId] = useState(null);
   const [collapsedSubjects, setCollapsedSubjects] = useState({});
   const [timerDayKey, setTimerDayKey] = useState(null);
+  const [initialLoadDone, setInitialLoadDone] = useState(false);
   const saveTimeoutRef = useRef(null);
 
-  // 마운트 시: 전날 미동기화면 DB 저장 후, 당일 로컬 데이터 로드
+  // 마운트 시: 전날 미동기화면 DB 저장 후, 당일 로컬 데이터 로드 → 과목별 시간(sessions) 포함 항상 복원
   useEffect(() => {
     let mounted = true;
     const dayKey = getTimerDayKey(new Date());
     flushPreviousDayAndLoadCurrent(dayKey).then((data) => {
       if (!mounted) return;
       setTimerDayKey(dayKey);
-      if (data?.sessions?.length) setSessions(data.sessions);
-      if (typeof data?.totalElapsedMs === 'number') setTotalElapsedMs(data.totalElapsedMs);
-      if (data?.subjects?.length) setSubjects(data.subjects);
-      if (data?.tasks?.length) setTasks(data.tasks);
+      if (data != null) {
+        setSessions(data.sessions ?? []);
+        setTotalElapsedMs(data.totalElapsedMs ?? 0);
+        setSubjects(data.subjects?.length ? data.subjects : DEFAULT_SUBJECTS);
+        setTasks(data.tasks?.length ? data.tasks : DEFAULT_TASKS);
+      }
+      setInitialLoadDone(true);
     });
     return () => { mounted = false; };
   }, []);
 
-  // 세션/누적/과목/할일 변경 시 로컬에 디바운스 저장 (재생 중이어도 저장)
+  // 초기 로드 완료 후에만 로컬 저장 (과목별 재생 시간이 덮어쓰이지 않도록)
   useEffect(() => {
-    if (timerDayKey == null) return;
+    if (!initialLoadDone || timerDayKey == null) return;
     const payload = {
       sessions,
       totalElapsedMs,
@@ -296,11 +303,11 @@ export const TimerContent = () => {
     saveTimeoutRef.current = setTimeout(() => {
       saveDayToStorage(timerDayKey, payload);
       saveTimeoutRef.current = null;
-    }, 500);
+    }, 400);
     return () => {
       if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
     };
-  }, [timerDayKey, sessions, totalElapsedMs, subjects, tasks]);
+  }, [initialLoadDone, timerDayKey, sessions, totalElapsedMs, subjects, tasks]);
 
   // 날짜가 바뀌었는지 주기적 확인 (6시~익일 5시59분 기준). 바뀌면 전날 로컬→DB 저장 후 당일 로드
   useEffect(() => {
@@ -312,12 +319,17 @@ export const TimerContent = () => {
         saveDayToDb(timerDayKey, payload).then(() => {
           setTimerDayKey(nowKey);
           loadDayFromStorage(nowKey).then((data) => {
-            if (data?.sessions?.length) setSessions(data.sessions);
-            else setSessions([]);
-            if (typeof data?.totalElapsedMs === 'number') setTotalElapsedMs(data.totalElapsedMs);
-            else setTotalElapsedMs(0);
-            if (data?.subjects?.length) setSubjects(data.subjects);
-            if (data?.tasks?.length) setTasks(data.tasks);
+            if (data != null) {
+              setSessions(data.sessions ?? []);
+              setTotalElapsedMs(data.totalElapsedMs ?? 0);
+              setSubjects(data.subjects?.length ? data.subjects : DEFAULT_SUBJECTS);
+              setTasks(data.tasks?.length ? data.tasks : DEFAULT_TASKS);
+            } else {
+              setSessions([]);
+              setTotalElapsedMs(0);
+              setSubjects(DEFAULT_SUBJECTS);
+              setTasks(DEFAULT_TASKS);
+            }
             setActiveSubjectId(null);
             setIsRunning(false);
             setElapsedMs(0);

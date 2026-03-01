@@ -31,10 +31,34 @@ export function getPreviousDayKey(date = new Date()) {
 export async function loadDayFromStorage(dayKey) {
   try {
     const raw = await AsyncStorage.getItem(TIMER_DAY_PREFIX + dayKey);
-    return raw ? JSON.parse(raw) : null;
+    if (!raw) return null;
+    const data = JSON.parse(raw);
+    return normalizeLoadedPayload(data);
   } catch (e) {
     return null;
   }
+}
+
+/** 로컬에서 읽은 payload 정규화 (subjectId 등 숫자 보장, 미종료 세션은 로드 시 0분으로 종료) */
+function normalizeLoadedPayload(data) {
+  if (!data || typeof data !== 'object') return null;
+  const sessions = Array.isArray(data.sessions)
+    ? data.sessions.map((s) => {
+        const start = Number(s.startMinutes) || 0;
+        const end = s.endMinutes != null ? Number(s.endMinutes) : start;
+        return {
+          subjectId: s.subjectId != null ? Number(s.subjectId) : null,
+          startMinutes: start,
+          endMinutes: end,
+        };
+      })
+    : [];
+  return {
+    sessions,
+    totalElapsedMs: typeof data.totalElapsedMs === 'number' ? data.totalElapsedMs : 0,
+    subjects: Array.isArray(data.subjects) ? data.subjects : [],
+    tasks: Array.isArray(data.tasks) ? data.tasks : [],
+  };
 }
 
 /** 당일 데이터를 로컬에 저장 (세션/누적시간/과목/할일) */
