@@ -1,10 +1,11 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useRef } from 'react';
 import {
   View,
   Text,
   TouchableOpacity,
   ScrollView,
   useWindowDimensions,
+  Animated,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import MainHeader from '../frame/mainHeader';
@@ -99,25 +100,47 @@ export function MessageContent({ navigation }) {
   const styles = useMemo(() => createMessageStyles(width, normalize), [width, normalize]);
 
   const [messageType, setMessageType] = useState('note'); // 'note' | 'mail'
+  const slideAnim = useRef(new Animated.Value(0)).current; // 0 = 쪽지, 1 = 개인우편
+
+  const handleMessageTypeChange = (type) => {
+    setMessageType(type);
+    Animated.spring(slideAnim, {
+      toValue: type === 'note' ? 0 : 1,
+      useNativeDriver: false,
+      tension: 60,
+      friction: 10,
+    }).start();
+  };
 
   return (
     <>
-      {/* 쪽지/개인우편 토글 */}
+      {/* 쪽지/개인우편 토글 — 슬라이딩 pill */}
       <View style={styles.toggleContainer}>
         <View style={styles.toggleTrack}>
+          <Animated.View
+            style={[
+              styles.togglePill,
+              {
+                left: slideAnim.interpolate({
+                  inputRange: [0, 1],
+                  outputRange: ['0%', '50%'],
+                }),
+              },
+            ]}
+          />
           <TouchableOpacity
-            style={[styles.toggleOption, messageType === 'note' ? styles.toggleOptionActive : styles.toggleOptionInactive]}
-            onPress={() => setMessageType('note')}
-            activeOpacity={0.8}
+            style={styles.toggleOption}
+            onPress={() => handleMessageTypeChange('note')}
+            activeOpacity={1}
           >
             <Text style={[styles.toggleOptionText, messageType === 'note' && styles.toggleOptionTextActive]}>
               쪽지
             </Text>
           </TouchableOpacity>
           <TouchableOpacity
-            style={[styles.toggleOption, messageType === 'mail' ? styles.toggleOptionActive : styles.toggleOptionInactive]}
-            onPress={() => setMessageType('mail')}
-            activeOpacity={0.8}
+            style={styles.toggleOption}
+            onPress={() => handleMessageTypeChange('mail')}
+            activeOpacity={1}
           >
             <Text style={[styles.toggleOptionText, messageType === 'mail' && styles.toggleOptionTextActive]}>
               개인 우편

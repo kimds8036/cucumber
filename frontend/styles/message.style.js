@@ -13,7 +13,7 @@ export const createMessageStyles = (width, normalize) => {
       backgroundColor: colors.background,
     },
 
-    // 쪽지/개인우편 토글 영역 (게시판 정렬 버튼과 동일 위치)
+    // 쪽지/개인우편 토글 영역 (슬라이딩 pill)
     toggleContainer: {
       flexDirection: 'row',
       paddingHorizontal: width * 0.1,
@@ -27,6 +27,21 @@ export const createMessageStyles = (width, normalize) => {
       borderRadius: normalize(20),
       borderWidth: 1,
       borderColor: colors.primaryLight50,
+      position: 'relative',
+      height: normalize(40),
+    },
+    togglePill: {
+      position: 'absolute',
+      width: '50%',
+      top: 0,
+      bottom: 0,
+      backgroundColor: colors.primary,
+      borderRadius: normalize(18),
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 1 },
+      shadowOpacity: 0.08,
+      shadowRadius: 3,
+      elevation: 2,
     },
     toggleOption: {
       flex: 1,
@@ -34,6 +49,7 @@ export const createMessageStyles = (width, normalize) => {
       borderRadius: normalize(16),
       alignItems: 'center',
       justifyContent: 'center',
+      zIndex: 1,
     },
     toggleOptionActive: {
       backgroundColor: colors.primary,
