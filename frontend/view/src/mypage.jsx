@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   View,
   Text,
@@ -6,15 +6,22 @@ import {
   ScrollView,
   TouchableOpacity,
   Alert,
+  useWindowDimensions,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
+import { colors } from '../../styles/colors';
+import MessageTabIcon from '../../assets/Group 166.svg';
+import { getNormalize } from '../../styles/message.style';
 
 const MyPage = ({ navigation }) => {
+  const { width } = useWindowDimensions();
+  const normalize = useMemo(() => getNormalize(width), [width]);
+
   const userInfo = {
     name: '김은채',
     username: '@euncha015',
-    school: '전공 고등학교',
+    school: '전공고등학교',
     gradeClass: '3학년 4반',
     friendCount: 12,
   };
@@ -61,13 +68,13 @@ const MyPage = ({ navigation }) => {
     return (
       <TouchableOpacity style={styles.menuItem} onPress={onPress}>
         <View style={styles.menuLeft}>
-          <IconComponent name={icon} size={24} color="#333" style={styles.menuIcon} />
+          <IconComponent name={icon} size={24} color={colors.textPrimary} style={styles.menuIcon} />
           <View>
             <Text style={styles.menuTitle}>{title}</Text>
             {subtitle && <Text style={styles.menuSubtitle}>{subtitle}</Text>}
           </View>
         </View>
-        <Ionicons name="chevron-forward" size={20} color="#999" />
+        <Ionicons name="chevron-forward" size={20} color={colors.textSecondary} />
       </TouchableOpacity>
     );
   };
@@ -91,16 +98,19 @@ const MyPage = ({ navigation }) => {
         <View style={styles.profileCard}>
           <View style={styles.profileHeader}>
             {/* 아바타 */}
-            <View style={styles.avatar}>
-              <Ionicons name="person" size={32} color="#fff" />
+            <View style={[styles.profileCircle, { backgroundColor: colors.primary }]}>
+              <MessageTabIcon
+                width={normalize(30)}
+                height={normalize(30)}
+                color={colors.green}
+              />
             </View>
 
             {/* 이름 / 아이디 / 학교 */}
             <View style={styles.profileInfo}>
               <Text style={styles.profileName}>{userInfo.name}</Text>
               <Text style={styles.profileUsername}>{userInfo.username}</Text>
-              <Text style={styles.profileSchool}>{userInfo.school}</Text>
-              <Text style={styles.profileGradeClass}>{userInfo.gradeClass}</Text>
+              <Text style={styles.profileSchool}>{userInfo.school} {userInfo.gradeClass}</Text>
             </View>
 
             {/* 친구 수 — 작은 뱃지 형태 */}
@@ -109,7 +119,7 @@ const MyPage = ({ navigation }) => {
               onPress={() => navigation.navigate('Friends')}
               activeOpacity={0.7}
             >
-              <Ionicons name="people" size={13} color="#fff" />
+              <Ionicons name="people" size={13} color={colors.textWhite} />
               <Text style={styles.friendBadgeText}>{userInfo.friendCount}</Text>
             </TouchableOpacity>
           </View>
@@ -158,13 +168,13 @@ const MyPage = ({ navigation }) => {
 
               <TouchableOpacity style={styles.editButton} onPress={handleAddOrEditTimetable}>
                 <Text style={styles.editButtonText}>시간표 수정하기</Text>
-                <Ionicons name="pencil" size={16} color="#fff" style={styles.editIcon} />
+                <Ionicons name="pencil" size={16} color={colors.textWhite} style={styles.editIcon} />
               </TouchableOpacity>
             </View>
           ) : (
             <TouchableOpacity style={styles.editButton} onPress={handleAddOrEditTimetable}>
               <Text style={styles.editButtonText}>시간표를 추가하기</Text>
-              <Ionicons name="pencil" size={16} color="#fff" style={styles.editIcon} />
+              <Ionicons name="pencil" size={16} color={colors.textWhite} style={styles.editIcon} />
             </TouchableOpacity>
           )}
         </View>
@@ -242,7 +252,7 @@ const MyPage = ({ navigation }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#fff',
+    backgroundColor: colors.background,
   },
   scrollView: {
     flex: 1,
@@ -251,11 +261,11 @@ const styles = StyleSheet.create({
 
   // ── 프로필 카드 ──
   profileCard: {
-    backgroundColor: '#fff',
+    backgroundColor: colors.background,
     margin: 16,
     padding: 16,
     borderRadius: 12,
-    shadowColor: '#000',
+    shadowColor: colors.shadow,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
@@ -266,11 +276,10 @@ const styles = StyleSheet.create({
     alignItems: 'flex-start',
     marginBottom: 16,
   },
-  avatar: {
+  profileCircle: {
     width: 56,
     height: 56,
     borderRadius: 28,
-    backgroundColor: '#8FD397',
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 12,
@@ -281,22 +290,22 @@ const styles = StyleSheet.create({
   profileName: {
     fontSize: 16,
     fontWeight: 'bold',
-    color: '#333',
+    color: colors.textPrimary,
     marginBottom: 2,
   },
   profileUsername: {
     fontSize: 12,
-    color: '#888',
+    color: colors.textSecondary,
     marginBottom: 4,
   },
   profileSchool: {
     fontSize: 12,
-    color: '#999',
+    color: colors.textSecondary,
     lineHeight: 17,
   },
   profileGradeClass: {
     fontSize: 12,
-    color: '#999',
+    color: colors.textSecondary,
     lineHeight: 17,
   },
 
@@ -304,7 +313,7 @@ const styles = StyleSheet.create({
   friendBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#8FD397',
+    backgroundColor: colors.primary,
     borderRadius: 20,
     paddingHorizontal: 8,
     paddingVertical: 4,
@@ -314,7 +323,7 @@ const styles = StyleSheet.create({
   friendBadgeText: {
     fontSize: 12,
     fontWeight: '600',
-    color: '#fff',
+    color: colors.textWhite,
   },
 
   // ── 시간표 ──
@@ -323,7 +332,7 @@ const styles = StyleSheet.create({
   },
   timetableTitle: {
     fontSize: 12,
-    color: '#666',
+    color: colors.textSecondary,
     marginBottom: 12,
     textAlign: 'center',
   },
@@ -331,17 +340,17 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     overflow: 'hidden',
     borderWidth: 1,
-    borderColor: '#e0e0e0',
+    borderColor: colors.textLight10,
     marginBottom: 12,
   },
   daysRow: {
     flexDirection: 'row',
-    backgroundColor: '#8FD397',
+    backgroundColor: colors.primary,
   },
   periodHeaderCell: {
     width: 30,
     height: 30,
-    backgroundColor: '#8FD397',
+    backgroundColor: colors.primary,
   },
   dayCell: {
     flex: 1,
@@ -354,24 +363,24 @@ const styles = StyleSheet.create({
   dayText: {
     fontSize: 12,
     fontWeight: '600',
-    color: '#fff',
+    color: colors.textWhite,
   },
   row: {
     flexDirection: 'row',
     borderTopWidth: 1,
-    borderTopColor: '#e0e0e0',
+    borderTopColor: colors.textLight10,
   },
   periodCell: {
     width: 30,
     height: 45,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#f9f9f9',
+    backgroundColor: colors.textLight5,
   },
   periodText: {
     fontSize: 11,
     fontWeight: '500',
-    color: '#666',
+    color: colors.textSecondary,
   },
   classCell: {
     flex: 1,
@@ -379,26 +388,26 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     borderLeftWidth: 1,
-    borderLeftColor: '#e0e0e0',
-    backgroundColor: '#fff',
+    borderLeftColor: colors.textLight10,
+    backgroundColor: colors.background,
     padding: 2,
   },
   classCellFilled: {
-    backgroundColor: '#f0f9f1',
+    backgroundColor: colors.primaryLight30,
   },
   classCellText: {
     fontSize: 10,
-    color: '#ddd',
+    color: colors.textLight20,
     textAlign: 'center',
   },
   classCellTextFilled: {
     fontSize: 10,
-    color: '#333',
+    color: colors.textPrimary,
     fontWeight: '500',
   },
   editButton: {
     flexDirection: 'row',
-    backgroundColor: '#8FD397',
+    backgroundColor: colors.primary,
     paddingVertical: 10,
     paddingHorizontal: 16,
     borderRadius: 20,
@@ -406,7 +415,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   editButtonText: {
-    color: '#fff',
+    color: colors.textWhite,
     fontSize: 14,
     fontWeight: '600',
     marginRight: 4,
@@ -419,10 +428,10 @@ const styles = StyleSheet.create({
   sectionHeader: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#999',
+    color: colors.textSecondary,
     paddingHorizontal: 20,
     paddingVertical: 10,
-    backgroundColor: '#fff',
+    backgroundColor: colors.background,
   },
   menuSection: {
     marginHorizontal: 16,
@@ -434,10 +443,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: 14,
     paddingHorizontal: 18,
-    backgroundColor: '#fff',
+    backgroundColor: colors.background,
     borderRadius: 999,
     marginBottom: 10,
-    shadowColor: '#000',
+    shadowColor: colors.shadow,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.06,
     shadowRadius: 3,
@@ -453,12 +462,12 @@ const styles = StyleSheet.create({
   },
   menuTitle: {
     fontSize: 15,
-    color: '#333',
+    color: colors.textPrimary,
     fontWeight: '500',
   },
   menuSubtitle: {
     fontSize: 12,
-    color: '#999',
+    color: colors.textSecondary,
     marginTop: 2,
   },
   bottomPadding: {
