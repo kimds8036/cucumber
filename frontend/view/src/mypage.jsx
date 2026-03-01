@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Text,
@@ -6,18 +6,14 @@ import {
   ScrollView,
   TouchableOpacity,
   Alert,
-  useWindowDimensions,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
 import { colors } from '../../styles/colors';
-import MessageTabIcon from '../../assets/Group 166.svg';
-import { getNormalize } from '../../styles/message.style';
+import ProfileCard from '../../components/Profilecard';
+import TimetableView from '../../components/Timetableview';
 
 const MyPage = ({ navigation }) => {
-  const { width } = useWindowDimensions();
-  const normalize = useMemo(() => getNormalize(width), [width]);
-
   const userInfo = {
     name: '김은채',
     username: '@euncha015',
@@ -27,15 +23,6 @@ const MyPage = ({ navigation }) => {
   };
 
   const [timetable, setTimetable] = useState(null);
-
-  const days = ['월', '화', '수', '목', '금'];
-  const periods = [1, 2, 3, 4, 5, 6, 7, 8, 9];
-
-  const getCellContent = (day, period) => {
-    if (!timetable) return '';
-    const key = `${day}-${period}`;
-    return timetable[key] || '';
-  };
 
   const handleLogout = () => {
     Alert.alert('로그아웃', '정말 로그아웃 하시겠습니까?', [
@@ -63,6 +50,13 @@ const MyPage = ({ navigation }) => {
     );
   };
 
+  const handleAddOrEditTimetable = () => {
+    navigation.navigate('AddTimetable', {
+      existingTimetable: timetable,
+      onSave: (newTimetable) => setTimetable(newTimetable),
+    });
+  };
+
   const MenuItem = ({ icon, title, subtitle, onPress, iconType = 'ionicons' }) => {
     const IconComponent = iconType === 'material' ? MaterialCommunityIcons : Ionicons;
     return (
@@ -79,167 +73,41 @@ const MyPage = ({ navigation }) => {
     );
   };
 
-  const SectionHeader = ({ title }) => (
-    <Text style={styles.sectionHeader}>{title}</Text>
-  );
-
-  const handleAddOrEditTimetable = () => {
-    navigation.navigate('AddTimetable', {
-      existingTimetable: timetable,
-      onSave: (newTimetable) => setTimetable(newTimetable),
-    });
-  };
-
   return (
     <View style={styles.container}>
       <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
 
-        {/* ── 프로필 카드 ── */}
-        <View style={styles.profileCard}>
-          <View style={styles.profileHeader}>
-            {/* 아바타 */}
-            <View style={[styles.profileCircle, { backgroundColor: colors.primary }]}>
-              <MessageTabIcon
-                width={normalize(30)}
-                height={normalize(30)}
-                color={colors.green}
-              />
-            </View>
+        {/* ── 학생 정보 카드 ── */}
+        <ProfileCard userInfo={userInfo} navigation={navigation} />
 
-            {/* 이름 / 아이디 / 학교 */}
-            <View style={styles.profileInfo}>
-              <Text style={styles.profileName}>{userInfo.name}</Text>
-              <Text style={styles.profileUsername}>{userInfo.username}</Text>
-              <Text style={styles.profileSchool}>{userInfo.school} {userInfo.gradeClass}</Text>
-            </View>
+        {/* ── 시간표 ── */}
+        <TimetableView
+          timetable={timetable}
+          onAddOrEdit={handleAddOrEditTimetable}
+        />
 
-            {/* 친구 수 — 작은 뱃지 형태 */}
-            <TouchableOpacity
-              style={styles.friendBadge}
-              onPress={() => navigation.navigate('Friends')}
-              activeOpacity={0.7}
-            >
-              <Ionicons name="people" size={13} color={colors.textWhite} />
-              <Text style={styles.friendBadgeText}>{userInfo.friendCount}</Text>
-            </TouchableOpacity>
-          </View>
-
-          {/* 시간표 */}
-          {timetable ? (
-            <View style={styles.timetableSection}>
-              <Text style={styles.timetableTitle}>
-                [{userInfo.school} {userInfo.gradeClass} 시간표]
-              </Text>
-
-              <View style={styles.timetableContainer}>
-                <View style={styles.daysRow}>
-                  <View style={styles.periodHeaderCell} />
-                  {days.map((day) => (
-                    <View key={day} style={styles.dayCell}>
-                      <Text style={styles.dayText}>{day}</Text>
-                    </View>
-                  ))}
-                </View>
-
-                {periods.map((period) => (
-                  <View key={period} style={styles.row}>
-                    <View style={styles.periodCell}>
-                      <Text style={styles.periodText}>{period}</Text>
-                    </View>
-                    {days.map((day) => {
-                      const content = getCellContent(day, period);
-                      return (
-                        <View
-                          key={`${day}-${period}`}
-                          style={[styles.classCell, content ? styles.classCellFilled : null]}
-                        >
-                          <Text
-                            style={[styles.classCellText, content ? styles.classCellTextFilled : null]}
-                            numberOfLines={1}
-                          >
-                            {content}
-                          </Text>
-                        </View>
-                      );
-                    })}
-                  </View>
-                ))}
-              </View>
-
-              <TouchableOpacity style={styles.editButton} onPress={handleAddOrEditTimetable}>
-                <Text style={styles.editButtonText}>시간표 수정하기</Text>
-                <Ionicons name="pencil" size={16} color={colors.textWhite} style={styles.editIcon} />
-              </TouchableOpacity>
-            </View>
-          ) : (
-            <TouchableOpacity style={styles.editButton} onPress={handleAddOrEditTimetable}>
-              <Text style={styles.editButtonText}>시간표를 추가하기</Text>
-              <Ionicons name="pencil" size={16} color={colors.textWhite} style={styles.editIcon} />
-            </TouchableOpacity>
-          )}
-        </View>
-
-        {/* ── 활동 ── */}
-        <SectionHeader title="활동" />
+        {/* ── 메뉴 ── */}
         <View style={styles.menuSection}>
           <MenuItem
-            icon="document-text-outline"
-            title="내가 쓴 글"
-            subtitle="전체 게시글"
-            onPress={() => navigation.navigate('MyPosts', { type: '전체' })}
-          />
-          <MenuItem
-            icon="document-text-outline"
-            title="내가 쓴 글"
-            subtitle="익명 게시판"
-            onPress={() => navigation.navigate('MyPosts', { type: '익명' })}
-          />
-          <MenuItem
-            icon="heart-outline"
-            title="좋아요 누른글"
-            subtitle="전체 게시판"
-            onPress={() => navigation.navigate('LikedPosts')}
-          />
-          <MenuItem
-            icon="heart-outline"
-            title="좋아요 누른글"
-            subtitle="익명 게시판"
-            onPress={() => navigation.navigate('LikedPosts')}
-          />
-        </View>
-
-        {/* ── 설정 ── */}
-        <SectionHeader title="설정" />
-        <View style={styles.menuSection}>
-          <MenuItem
-            icon="notifications-outline"
-            title="알림 설정"
+            icon="settings-outline"
+            title="설정 및 변경"
             onPress={() => navigation.navigate('NotificationSettings')}
           />
           <MenuItem
-            icon="lock-closed-outline"
-            title="비밀번호 변경"
-            onPress={() => navigation.navigate('ChangePassword')}
+            icon="document-text-outline"
+            title="활동"
+            onPress={() => navigation.navigate('MyPosts', { type: '전체' })}
           />
           <MenuItem
-            icon="shield-checkmark-outline"
-            title="학교 변경"
-            onPress={() => navigation.navigate('ChangeSchool')}
-          />
-        </View>
-
-        {/* ── 계정 ── */}
-        <SectionHeader title="계정" />
-        <View style={styles.menuSection}>
-          <MenuItem
-            icon="log-out-outline"
-            title="로그아웃"
-            onPress={handleLogout}
-          />
-          <MenuItem
-            icon="help-circle-outline"
-            title="계정 탈퇴"
-            onPress={handleDeleteAccount}
+            icon="person-outline"
+            title="계정"
+            onPress={() => {
+              Alert.alert('계정', '선택하세요', [
+                { text: '취소', style: 'cancel' },
+                { text: '로그아웃', onPress: handleLogout },
+                { text: '계정 탈퇴', onPress: handleDeleteAccount, style: 'destructive' },
+              ]);
+            }}
           />
         </View>
 
@@ -258,183 +126,9 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingTop: 8,
   },
-
-  // ── 프로필 카드 ──
-  profileCard: {
-    backgroundColor: colors.background,
-    margin: 16,
-    padding: 16,
-    borderRadius: 12,
-    shadowColor: colors.shadow,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  profileHeader: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    marginBottom: 16,
-  },
-  profileCircle: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 12,
-  },
-  profileInfo: {
-    flex: 1,
-  },
-  profileName: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: colors.textPrimary,
-    marginBottom: 2,
-  },
-  profileUsername: {
-    fontSize: 12,
-    color: colors.textSecondary,
-    marginBottom: 4,
-  },
-  profileSchool: {
-    fontSize: 12,
-    color: colors.textSecondary,
-    lineHeight: 17,
-  },
-  profileGradeClass: {
-    fontSize: 12,
-    color: colors.textSecondary,
-    lineHeight: 17,
-  },
-
-  // 친구 뱃지 — 작고 심플하게
-  friendBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: colors.primary,
-    borderRadius: 20,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    gap: 3,
-    alignSelf: 'flex-start',
-  },
-  friendBadgeText: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: colors.textWhite,
-  },
-
-  // ── 시간표 ──
-  timetableSection: {
-    marginTop: 8,
-  },
-  timetableTitle: {
-    fontSize: 12,
-    color: colors.textSecondary,
-    marginBottom: 12,
-    textAlign: 'center',
-  },
-  timetableContainer: {
-    borderRadius: 8,
-    overflow: 'hidden',
-    borderWidth: 1,
-    borderColor: colors.textLight10,
-    marginBottom: 12,
-  },
-  daysRow: {
-    flexDirection: 'row',
-    backgroundColor: colors.primary,
-  },
-  periodHeaderCell: {
-    width: 30,
-    height: 30,
-    backgroundColor: colors.primary,
-  },
-  dayCell: {
-    flex: 1,
-    height: 30,
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderLeftWidth: 1,
-    borderLeftColor: 'rgba(255,255,255,0.3)',
-  },
-  dayText: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: colors.textWhite,
-  },
-  row: {
-    flexDirection: 'row',
-    borderTopWidth: 1,
-    borderTopColor: colors.textLight10,
-  },
-  periodCell: {
-    width: 30,
-    height: 45,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: colors.textLight5,
-  },
-  periodText: {
-    fontSize: 11,
-    fontWeight: '500',
-    color: colors.textSecondary,
-  },
-  classCell: {
-    flex: 1,
-    height: 45,
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderLeftWidth: 1,
-    borderLeftColor: colors.textLight10,
-    backgroundColor: colors.background,
-    padding: 2,
-  },
-  classCellFilled: {
-    backgroundColor: colors.primaryLight30,
-  },
-  classCellText: {
-    fontSize: 10,
-    color: colors.textLight20,
-    textAlign: 'center',
-  },
-  classCellTextFilled: {
-    fontSize: 10,
-    color: colors.textPrimary,
-    fontWeight: '500',
-  },
-  editButton: {
-    flexDirection: 'row',
-    backgroundColor: colors.primary,
-    paddingVertical: 10,
-    paddingHorizontal: 16,
-    borderRadius: 20,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  editButtonText: {
-    color: colors.textWhite,
-    fontSize: 14,
-    fontWeight: '600',
-    marginRight: 4,
-  },
-  editIcon: {
-    marginLeft: 4,
-  },
-
-  // ── 메뉴 ──
-  sectionHeader: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: colors.textSecondary,
-    paddingHorizontal: 20,
-    paddingVertical: 10,
-    backgroundColor: colors.background,
-  },
   menuSection: {
     marginHorizontal: 16,
+    marginTop: 8,
     marginBottom: 16,
   },
   menuItem: {
