@@ -70,7 +70,6 @@ export const createTimerStyles = (width, normalize) => {
       backgroundColor: colors.textLight5,
       borderWidth: 2,
       borderColor: colors.primaryLight30,
-      borderStyle: 'dashed',
       justifyContent: 'center',
       alignItems: 'center',
     },
@@ -174,13 +173,16 @@ export const createTimerStyles = (width, normalize) => {
       maxWidth: width * 0.6,
     },
     todoHeader: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
       marginBottom: normalize(10),
     },
     todoTitle: {
       fontSize: normalize(15),
       fontFamily: fonts.bold,
       color: colors.textPrimary,
-      marginBottom: normalize(8),
+      marginBottom: 0,
     },
     todoHeaderButtons: {
       flexDirection: 'row',
@@ -190,11 +192,12 @@ export const createTimerStyles = (width, normalize) => {
     todoAddBtn: {
       flexDirection: 'row',
       alignItems: 'center',
-      gap: normalize(4),
+      alignSelf: 'flex-start',
       paddingVertical: normalize(6),
-      paddingHorizontal: normalize(10),
+      paddingHorizontal: normalize(6),
       borderRadius: normalize(10),
-      backgroundColor: colors.primaryLight30,
+      backgroundColor: colors.green,
+      gap: normalize(4),
     },
     todoAddBtnText: {
       fontSize: normalize(12),
@@ -471,10 +474,10 @@ export const createTimerStyles = (width, normalize) => {
       borderRadius: normalize(6),
     },
     friendStatusDotActive: {
-      backgroundColor: "#FF9F9F",
+      backgroundColor: '#FF9F9F',
     },
     friendStatusDotInactive: {
-      backgroundColor: "#E9E9E9",
+      backgroundColor: '#E9E9E9',
     },
     friendName: {
       marginTop: normalize(4),
@@ -713,4 +716,3 @@ export const createTimerStyles = (width, normalize) => {
     },
   });
 };
-
