@@ -161,7 +161,6 @@ const SendMailScreen = ({ navigation }) => {
                           <Text style={styles.resultName}>{school.name}</Text>
                           <Text style={styles.resultAddress}>{school.address}</Text>
                         </View>
-                        <Ionicons name="chevron-forward" size={20} color="#999" />
                       </TouchableOpacity>
                     ))
                   ) : (
@@ -274,7 +273,6 @@ const SendMailScreen = ({ navigation }) => {
                                   <Text style={styles.dormantBadgeText}>휴면계정</Text>
                                 </View>
                               )}
-                              <Ionicons name="chevron-forward" size={20} color="#999" />
                             </TouchableOpacity>
                           ))
                         ) : (

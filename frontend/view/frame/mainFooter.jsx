@@ -44,7 +44,7 @@ const MainFooter = ({ activeTab = 'board', onTabPress }) => {
         {activeTab === 'school' && <View style={footerStyles.activeTabIndicator} />}
         <FontAwesomeIcon
           icon={faSchool}
-          size={normalize(30)}
+          size={normalize(33)}
           color={activeTab === 'school' ? colors.primary : colors.textSecondary}
         />
         <Text style={[footerStyles.tabText, activeTab === 'school' && footerStyles.activeTabText]}>

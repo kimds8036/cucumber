@@ -216,7 +216,9 @@ export function MessageContent({ navigation }) {
                     key={item.id}
                     style={styles.listItem}
                     activeOpacity={0.7}
-                    onPress={() => {}}
+                    onPress={() =>
+                      navigation?.navigate('MailDetail', { mail: item })
+                    }
                   >
                     <View style={styles.listItemLeft}>
                       <View style={[styles.profileCircle, { backgroundColor: colors.primary }]}>
