@@ -16,6 +16,7 @@ import MainFooter from '../frame/mainFooter';
 import { createTimerStyles, getNormalize } from '../../styles/timer';
 import { colors, fonts } from '../../styles/colors';
 import Ionicons from '@expo/vector-icons/Ionicons';
+import Feather from '@expo/vector-icons/Feather';
 import MessageTabIcon from '../../assets/Group 166.svg';
 import {
   getTimerDayKey,
@@ -740,12 +741,11 @@ export const TimerContent = () => {
             </TouchableOpacity>
           </View>
           <TouchableOpacity style={styles.saveBtn} onPress={handleSaveAsImage}>
-            <Ionicons name="image-outline" size={20} color={colors.primary} />
-            <Text style={styles.saveBtnText}>저장하기</Text>
+            <Feather name="download" size={20} color={colors.textPrimary} />
           </TouchableOpacity>
         </View>
 
-        {/* 2. 타이머 (누적 시·분·초) */}
+        {/* 2. 타이머 (누적 시·분·초) */}   
         <View style={styles.timerBlock}>
           <Text style={styles.timerTime}>{formatHMS(displayTotalMs)}</Text>
           {isViewingToday && (

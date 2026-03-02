@@ -22,12 +22,10 @@ export const createTimerStyles = (width, normalize) => {
       paddingBottom: normalize(24),
       gap: normalize(16),
     },
-
     dateBar: {
       flexDirection: 'row',
       justifyContent: 'space-between',
       alignItems: 'center',
-      marginBottom: normalize(12),
     },
     dateBarLeft: {
       flexDirection: 'row',
@@ -45,10 +43,7 @@ export const createTimerStyles = (width, normalize) => {
       flexDirection: 'row',
       alignItems: 'center',
       gap: normalize(4),
-      paddingVertical: normalize(8),
       paddingHorizontal: normalize(12),
-      borderRadius: normalize(10),
-      backgroundColor: colors.primaryLight30,
     },
     saveBtnText: {
       fontSize: normalize(13),
@@ -57,13 +52,10 @@ export const createTimerStyles = (width, normalize) => {
     },
 
     // 친구 스토리 스타일
-    friendStoryRow: {
-      marginBottom: normalize(8),
-    },
     friendStoryScroll: {
       flexDirection: 'row',
       alignItems: 'flex-start',
-      paddingVertical: normalize(8),
+      paddingBottom: normalize(8),
       paddingRight: normalize(16),
     },
     friendStoryAddCircleWrap: {
@@ -105,13 +97,12 @@ export const createTimerStyles = (width, normalize) => {
     },
     friendStatusDotOnCircle: {
       position: 'absolute',
-      right: normalize(-3),
+      top: normalize(40),
+      right: normalize(1),
       bottom: normalize(-3),
       width: normalize(12),
       height: normalize(12),
       borderRadius: normalize(6),
-      borderWidth: 2,
-      borderColor: colors.background,
     },
     friendStoryName: {
       marginTop: normalize(4),
@@ -167,6 +158,7 @@ export const createTimerStyles = (width, normalize) => {
     divider: {
       height: 1,
       backgroundColor: colors.textLight10,
+      marginBottom: normalize(10),
     },
 
     // 투두 + 타임테이블 수평 배치

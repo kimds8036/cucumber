@@ -62,7 +62,7 @@ export const createHeaderStyles = (width, height) => {
       borderRadius: normalize(20),
       backgroundColor: colors.green,
       borderWidth: 1,
-      borderColor: colors.primaryLight50,
+      borderColor: colors.primary,
     },
     badge: {
       position: 'absolute',
