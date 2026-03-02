@@ -16,6 +16,7 @@ import {
   Alert,
   AppState,
 } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import MainHeader from '../frame/mainHeader';
 import MainFooter from '../frame/mainFooter';
@@ -761,6 +762,29 @@ export const TimerContent = () => {
       [subjectId]: !prev[subjectId],
     }));
 
+  // ── [개발용] 전체 초기화 ──────────────────────────────
+  const handleDevReset = () => {
+    Alert.alert('개발용 초기화', '모든 타이머 데이터를 초기화할까요?', [
+      { text: '취소', style: 'cancel' },
+      {
+        text: '초기화',
+        style: 'destructive',
+        onPress: async () => {
+          await AsyncStorage.clear();
+          setSessions([]);
+          setTotalElapsedMs(0);
+          setSubjects(DEFAULT_SUBJECTS);
+          setTasks(DEFAULT_TASKS);
+          setIsRunning(false);
+          setElapsedMs(0);
+          setStartTimestamp(null);
+          setActiveSubjectId(null);
+          showToast('🗑️ 데이터가 초기화되었습니다');
+        },
+      },
+    ]);
+  };
+
   const openAddTaskForSubject = (subjectId) => {
     setAddTaskSubjectId(subjectId);
     setShowAddTask(true);
@@ -924,6 +948,23 @@ export const TimerContent = () => {
           </View>
           <TouchableOpacity style={styles.saveBtn} onPress={handleSaveAsImage}>
             <Feather name="download" size={20} color={colors.textPrimary} />
+          </TouchableOpacity>
+
+          {/* 개발용 초기화 버튼 - 배포 전 삭제 */}
+          <TouchableOpacity
+            onPress={handleDevReset}
+            style={{
+              marginLeft: 8,
+              padding: 6,
+              backgroundColor: '#FFE0E0',
+              borderRadius: 8,
+            }}
+          >
+            <Text
+              style={{ fontSize: 11, color: '#CC3333', fontWeight: '700' }}
+            >
+              DEV초기화
+            </Text>
           </TouchableOpacity>
         </View>
 
