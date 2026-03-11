@@ -247,7 +247,6 @@ const SendMailScreen = ({ navigation }) => {
                         </TouchableOpacity>
                       )}
                     </View>
-
                     {/* 학생 검색 결과 */}
                     {showStudentResults && searchStudentText && (
                       <View style={styles.resultsContainer}>

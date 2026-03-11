@@ -80,7 +80,11 @@ const OurSchoolScreen = ({ navigation }) => {
             <Text style={styles.shortcutSubtitle}>→ 보러 가기</Text>
           </TouchableOpacity>
 
-          <TouchableOpacity style={styles.shortcutButton}>
+          <TouchableOpacity
+            style={styles.shortcutButton}
+            activeOpacity={0.7}
+            onPress={() => navigation?.navigate('SchoolMailbox')}
+          >
             <View style={[styles.iconCircle, { backgroundColor: '#E8F5E9' }]}>
               <Ionicons name="mail" size={28} color="#4CAF50" />
             </View>

@@ -20,7 +20,9 @@ import BoardWrite from './view/src/boardWrite';
 import BoardDetail from './view/src/boardDetail';
 import Chat from './view/src/Chat';
 import SendMailScreen from './view/src/sendmailscreen';
-import AnonymousMailScreen from './view/src/mailscrenn';
+import AnonymousMailScreen from './view/src/mailscreen';
+import MailReplyScreen from './view/src/mailreply';
+import SchoolMailboxScreen from './view/src/schoolMailbox';
 import SchoolBoardAll from './view/src/schoolBoardAll';
 import Timer from './view/src/timer';
 import FriendsScreen from './view/src/friendsscreen';
@@ -71,6 +73,8 @@ export default function App() {
           <Stack.Screen name="Notification" component={NotificationScreen} />
           <Stack.Screen name="SendMail" component={SendMailScreen} />
           <Stack.Screen name="MailDetail" component={AnonymousMailScreen} />
+          <Stack.Screen name="MailReply" component={MailReplyScreen} />
+          <Stack.Screen name="SchoolMailbox" component={SchoolMailboxScreen} />
           <Stack.Screen name="SchoolBoardAll" component={SchoolBoardAll} />
           <Stack.Screen name="Timer" component={Timer} />
           <Stack.Screen name="Friends" component={FriendsScreen} />
