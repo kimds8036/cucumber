@@ -1,0 +1,54 @@
+{
+  "expo": {
+    "name": "cucumber",
+    "slug": "cucumber",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "light",
+    "newArchEnabled": true,
+    "splash": {
+      "image": "./assets/splash-icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#ffffff"
+    },
+    "ios": {
+      "supportsTablet": true,
+      "infoPlist": {
+        "UIViewControllerBasedStatusBarAppearance": false,
+        "NSCameraUsageDescription": "학생증 인증을 위해 카메라 접근 권한이 필요합니다."
+      }
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#ffffff"
+      },
+      "edgeToEdgeEnabled": true,
+      "permissions": [
+        "CAMERA"
+      ],
+      "package": "com.eunchae0215.cucumber",
+      "softwareKeyboardLayoutMode": "adjustResize"
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    },
+    "plugins": [
+      "expo-font",
+      [
+        "expo-media-library",
+        {
+          "photosPermission": "갤러리에서 사진을 불러오기 위해 접근 권한이 필요합니다.",
+          "savePhotosPermission": "캡처한 이미지를 갤러리에 저장하기 위해 권한이 필요합니다.",
+          "granularPermissions": ["photo", "audio"]
+        }
+      ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "0659e4b4-b396-4c6d-a4b3-3e3e345c5132"
+      }
+    }
+  }
+}
