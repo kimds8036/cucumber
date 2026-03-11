@@ -5,6 +5,7 @@
  */
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { api } from './api';
 
 const TIMER_DAY_PREFIX = '@timer_day_';
 const LAST_SYNCED_DAY_KEY = '@timer_last_synced_day';
@@ -105,11 +106,21 @@ export async function setLastSyncedDayKey(dayKey) {
  * 실제 API 연동 시 이 함수 내부만 수정하면 됨.
  */
 export async function saveDayToDb(dayKey, payload) {
-  // TODO: 실제 백엔드 연동 시 예: POST /api/timer/day { dayKey, ...payload }
-  if (__DEV__) {
-    console.log('[Timer] saveDayToDb', dayKey, payload);
+  try {
+    await api.post('/api/timer/day', {
+      dayKey,
+      sessions: payload.sessions ?? [],
+      totalElapsedMs: payload.totalElapsedMs ?? 0,
+      subjects: payload.subjects ?? [],
+      tasks: payload.tasks ?? [],
+    });
+    if (__DEV__) {
+      console.log('[Timer] saveDayToDb 성공', dayKey);
+    }
+    await setLastSyncedDayKey(dayKey);
+  } catch (e) {
+    console.error('[Timer] saveDayToDb 실패', e?.response?.data || e.message);
   }
-  await setLastSyncedDayKey(dayKey);
 }
 
 /**
@@ -117,14 +128,37 @@ export async function saveDayToDb(dayKey, payload) {
  * dayKey가 오늘보다 이전이면 DB, 오늘이면 null(로컬에서 로드), 미래면 로컬 시도.
  */
 export async function loadDayFromDb(dayKey) {
-  // TODO: 실제 백엔드 연동 시 예: GET /api/timer/day?dayKey=YYYY-MM-DD
-  // const res = await fetch(`${API_BASE}/api/timer/day?dayKey=${dayKey}`);
-  // const data = await res.json();
-  // return normalizeLoadedPayload(data);
-  if (__DEV__) {
-    console.log('[Timer] loadDayFromDb (placeholder)', dayKey);
+  try {
+    // 토큰이 아예 없는 경우에는 서버 호출 자체를 하지 않는다.
+    const token = await AsyncStorage.getItem('@auth_token');
+    if (!token) {
+      if (__DEV__) {
+        console.log(
+          '[Timer] loadDayFromDb: 토큰이 없어 서버 조회를 건너뜁니다.',
+        );
+      }
+      return null;
+    }
+
+    const res = await api.get('/api/timer/day', { params: { dayKey } });
+    const data = res.data?.data;
+    if (!data) return null;
+    return normalizeLoadedPayload(data);
+  } catch (e) {
+    // 로그인되지 않은 상태(토큰 없음)에서 타이머 화면을 볼 때는
+    // 인증 오류(401)는 자연스러운 상황이므로 조용히 무시한다.
+    const status = e?.response?.status;
+    if (status === 401) {
+      if (__DEV__) {
+        console.log(
+          '[Timer] loadDayFromDb: 인증 토큰 없음으로 인해 서버 기록을 불러오지 않습니다.',
+        );
+      }
+      return null;
+    }
+    console.error('[Timer] loadDayFromDb 실패', e?.response?.data || e.message);
+    return null;
   }
-  return null;
 }
 
 /**

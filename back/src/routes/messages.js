@@ -1,6 +1,8 @@
 import express from 'express';
 import pool from '../config/database.js';
 import { authenticate } from '../middleware/auth.js';
+import { createNotification } from '../utils/notifications.js';
+import { getNowForDB } from '../utils/dateUtils.js';
 
 const router = express.Router();
 
@@ -9,9 +11,10 @@ router.get('/rooms', authenticate, async (req, res) => {
   try {
     const userId = req.user.userId;
     const { page = 1, limit = 20 } = req.query;
-    const offset = (parseInt(page) - 1) * parseInt(limit);
+    const limitNum = Math.max(1, Math.min(100, parseInt(limit, 10) || 20));
+    const offsetNum = Math.max(0, (parseInt(page, 10) - 1) * limitNum);
 
-    // 사용자가 참여한 채팅방 조회
+    // 사용자가 참여한 채팅방 조회 (LIMIT/OFFSET은 숫자로 삽입)
     const [rooms] = await pool.execute(
       `SELECT 
         mr.id,
@@ -44,8 +47,8 @@ router.get('/rooms', authenticate, async (req, res) => {
       LEFT JOIN users u2 ON mr.user2_id = u2.id
       WHERE (mr.user1_id = ? OR mr.user2_id = ?)
       ORDER BY mr.last_message_at DESC, mr.created_at DESC
-      LIMIT ? OFFSET ?`,
-      [userId, userId, userId, userId, userId, userId, parseInt(limit), offset]
+      LIMIT ${limitNum} OFFSET ${offsetNum}`,
+      [userId, userId, userId, userId, userId, userId]
     );
 
     // 전체 개수 조회
@@ -55,17 +58,17 @@ router.get('/rooms', authenticate, async (req, res) => {
        WHERE user1_id = ? OR user2_id = ?`,
       [userId, userId]
     );
-    const total = countResult[0].total;
+    const total = Number(countResult[0]?.total ?? 0);
 
     res.json({
       success: true,
       data: {
         rooms,
         pagination: {
-          page: parseInt(page),
-          limit: parseInt(limit),
+          page: parseInt(page, 10),
+          limit: limitNum,
           total,
-          totalPages: Math.ceil(total / parseInt(limit))
+          totalPages: Math.ceil(total / limitNum) || 1
         }
       }
     });
@@ -202,7 +205,8 @@ router.get('/rooms/:roomId', authenticate, async (req, res) => {
     const userId = req.user.userId;
     const { roomId } = req.params;
     const { page = 1, limit = 50 } = req.query;
-    const offset = (parseInt(page) - 1) * parseInt(limit);
+    const limitNum = Math.max(1, Math.min(100, parseInt(limit, 10) || 50));
+    const offsetNum = Math.max(0, (parseInt(page, 10) - 1) * limitNum);
 
     // 채팅방 존재 및 접근 권한 확인
     const [rooms] = await pool.execute(
@@ -267,8 +271,8 @@ router.get('/rooms/:roomId', authenticate, async (req, res) => {
       LEFT JOIN users u ON m.sender_id = u.id
       WHERE m.room_id = ?
       ORDER BY m.created_at DESC
-      LIMIT ? OFFSET ?`,
-      [roomId, parseInt(limit), offset]
+      LIMIT ${limitNum} OFFSET ${offsetNum}`,
+      [roomId]
     );
 
     // 전체 메시지 개수 조회
@@ -276,7 +280,7 @@ router.get('/rooms/:roomId', authenticate, async (req, res) => {
       'SELECT COUNT(*) as total FROM messages WHERE room_id = ?',
       [roomId]
     );
-    const total = countResult[0].total;
+    const total = Number(countResult[0]?.total ?? 0);
 
     // 메시지를 시간순으로 정렬 (오래된 것부터)
     messages.reverse();
@@ -287,10 +291,10 @@ router.get('/rooms/:roomId', authenticate, async (req, res) => {
         room: roomInfo[0],
         messages,
         pagination: {
-          page: parseInt(page),
-          limit: parseInt(limit),
+          page: parseInt(page, 10),
+          limit: limitNum,
           total,
-          totalPages: Math.ceil(total / parseInt(limit))
+          totalPages: Math.ceil(total / limitNum) || 1
         }
       }
     });
@@ -332,19 +336,24 @@ router.post('/rooms/:roomId/messages', authenticate, async (req, res) => {
       });
     }
 
+    const room = rooms[0];
+    const otherUserId =
+      room.user1_id === userId ? room.user2_id : room.user1_id;
+
     // 메시지 생성
+    const now = getNowForDB();
     const [result] = await pool.execute(
-      `INSERT INTO messages (room_id, sender_id, content) 
-       VALUES (?, ?, ?)`,
-      [roomId, userId, content.trim()]
+      `INSERT INTO messages (room_id, sender_id, content, created_at)
+       VALUES (?, ?, ?, ?)`,
+      [roomId, userId, content.trim(), now]
     );
 
     // 채팅방의 마지막 메시지 정보 업데이트
     await pool.execute(
-      `UPDATE message_rooms 
-       SET last_message = ?, last_message_at = NOW() 
+      `UPDATE message_rooms
+       SET last_message = ?, last_message_at = ?
        WHERE id = ?`,
-      [content.trim().substring(0, 100), roomId] // 마지막 메시지는 최대 100자
+      [content.trim().substring(0, 100), now, roomId] // 마지막 메시지는 최대 100자
     );
 
     // 생성된 메시지 정보 조회
@@ -363,6 +372,19 @@ router.post('/rooms/:roomId/messages', authenticate, async (req, res) => {
       WHERE m.id = ?`,
       [result.insertId]
     );
+
+    // 상대방에게 쪽지 알림 생성
+    if (otherUserId && otherUserId !== userId) {
+      await createNotification({
+        userId: otherUserId,
+        type: 'mail',
+        category: 'mail',
+        title: '새로운 쪽지가 도착했습니다',
+        body: content.trim().slice(0, 80),
+        relatedType: 'message_room',
+        relatedId: roomId,
+      });
+    }
 
     res.status(201).json({
       success: true,

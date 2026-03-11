@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   View,
   Text,
@@ -12,17 +12,12 @@ import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
 import { colors } from '../../styles/colors';
 import ProfileCard from '../../components/Profilecard';
 import TimetableView from '../../components/Timetableview';
+import { api } from '../../utils/api';
 
 const MyPage = ({ navigation }) => {
-  const userInfo = {
-    name: '김은채',
-    username: '@euncha015',
-    school: '전공고등학교',
-    gradeClass: '3학년 4반',
-    friendCount: 12,
-  };
-
+  const [userInfo, setUserInfo] = useState(null);
   const [timetable, setTimetable] = useState(null);
+  const [loading, setLoading] = useState(false);
 
   const handleLogout = () => {
     Alert.alert('로그아웃', '정말 로그아웃 하시겠습니까?', [
@@ -50,10 +45,60 @@ const MyPage = ({ navigation }) => {
     );
   };
 
+  useEffect(() => {
+    let mounted = true;
+    const fetchMeAndTimetable = async () => {
+      try {
+        setLoading(true);
+        const [meRes, timetableRes] = await Promise.all([
+          api.get('/api/auth/me'),
+          api.get('/api/timetable'),
+        ]);
+
+        if (!mounted) return;
+
+        const me = meRes.data?.data;
+        if (me) {
+          setUserInfo({
+            name: me.name,
+            username: me.username ? `@${me.username}` : '',
+            school: me.school?.name || '',
+            gradeClass:
+              me.grade && me.classNumber
+                ? `${me.grade}학년 ${me.classNumber}반`
+                : '',
+            friendCount: me.friendCount ?? 0,
+          });
+        }
+
+        const tt = timetableRes.data?.data?.timetable;
+        // 시간표가 비어있으면 null로 두어 "시간표 추가하기" 버튼이 보이도록 처리
+        const hasEntries = tt && Object.keys(tt).length > 0;
+        setTimetable(hasEntries ? tt : null);
+      } catch (error) {
+        console.error('마이페이지 데이터 로드 실패:', error);
+      } finally {
+        if (mounted) setLoading(false);
+      }
+    };
+
+    fetchMeAndTimetable();
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
   const handleAddOrEditTimetable = () => {
     navigation.navigate('AddTimetable', {
       existingTimetable: timetable,
-      onSave: (newTimetable) => setTimetable(newTimetable),
+      onSave: async (newTimetable) => {
+        setTimetable(newTimetable);
+        try {
+          await api.put('/api/timetable', { timetable: newTimetable });
+        } catch (error) {
+          console.error('시간표 저장 실패:', error);
+        }
+      },
     });
   };
 
@@ -78,7 +123,13 @@ const MyPage = ({ navigation }) => {
       <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
 
         {/* ── 학생 정보 카드 ── */}
-        <ProfileCard userInfo={userInfo} navigation={navigation} />
+        {userInfo ? (
+          <ProfileCard userInfo={userInfo} navigation={navigation} />
+        ) : (
+          <View style={{ paddingHorizontal: 16, paddingVertical: 24 }}>
+            <Text style={{ color: colors.textSecondary }}>프로필 정보를 불러오는 중입니다...</Text>
+          </View>
+        )}
 
         {/* ── 시간표 ── */}
         <TimetableView

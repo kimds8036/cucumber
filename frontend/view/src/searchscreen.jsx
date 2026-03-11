@@ -10,6 +10,32 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import SubHeader from '../frame/subHeader';
+import { api } from '../../utils/api';
+
+/** 서버 created_at(UTC)을 "n분 전" 형식으로 변환. 화면에서는 기기 로컬 시간 기준으로 계산 */
+function formatTimeAgo(createdAt) {
+  if (!createdAt) return '';
+  let dateStr = typeof createdAt === 'string' ? createdAt.trim() : String(createdAt);
+  if (!dateStr) return '';
+  // MySQL "YYYY-MM-DD HH:mm:ss" 또는 "YYYY-MM-DDTHH:mm:ss" 형태이고
+  // 타임존 문자가 없으면 UTC로 간주해 Z(=+00:00) 를 붙인다.
+  if (/^\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}:\d{2}(\.\d+)?$/.test(dateStr) && !/[Z+-]/.test(dateStr)) {
+    dateStr = dateStr.replace(' ', 'T') + 'Z';
+  }
+  const date = new Date(dateStr);
+  if (Number.isNaN(date.getTime())) return '';
+  const now = new Date();
+  const diffMs = now - date;
+  const diffSec = Math.floor(diffMs / 1000);
+  const diffMin = Math.floor(diffSec / 60);
+  const diffHour = Math.floor(diffMin / 60);
+  const diffDay = Math.floor(diffHour / 24);
+  if (diffSec < 60) return '방금 전';
+  if (diffMin < 60) return `${diffMin}분 전`;
+  if (diffHour < 24) return `${diffHour}시간 전`;
+  if (diffDay < 7) return `${diffDay}일 전`;
+  return date.toLocaleDateString('ko-KR', { month: 'long', day: 'numeric' });
+}
 
 const SearchScreen = ({ navigation }) => {
   const [searchText, setSearchText] = useState('');
@@ -19,6 +45,8 @@ const SearchScreen = ({ navigation }) => {
     '시험 일정',
     '동아리 모집',
   ]);
+  const [results, setResults] = useState([]);
+  const [loading, setLoading] = useState(false);
 
   const popularSearches = [
     { rank: 1, keyword: '수학 시험', trend: 'up' },
@@ -53,6 +81,42 @@ const SearchScreen = ({ navigation }) => {
     }
   };
 
+  const runSearch = async (keyword) => {
+    const q = (keyword || searchText).trim();
+    if (!q) return;
+    try {
+      setLoading(true);
+      const res = await api.get('/api/posts', {
+        params: {
+          search: q,
+          page: 1,
+          limit: 50,
+          sort: 'latest',
+        },
+      });
+      const posts = res.data?.data?.posts || [];
+      const mapped = posts.map((p) => ({
+        id: p.id,
+        title: (p.content || '').split('\n')[0].slice(0, 40) || '제목 없음',
+        snippet: (p.content || '').slice(0, 80),
+        time: formatTimeAgo(p.created_at),
+        likeCount: p.like_count,
+        commentCount: p.comment_count,
+      }));
+      setResults(mapped);
+
+      // 최근 검색어 업데이트 (중복 제거, 앞에 추가)
+      setRecentSearches((prev) => {
+        const filtered = prev.filter((item) => item !== q);
+        return [q, ...filtered].slice(0, 10);
+      });
+    } catch (error) {
+      console.error('게시글 검색 실패:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <View style={{ flex: 1, backgroundColor: '#FFFFFF' }}>
       <SafeAreaView style={styles.container} edges={['top']}>
@@ -68,6 +132,7 @@ const SearchScreen = ({ navigation }) => {
                 placeholder="게시글, 우편함 검색"
                 value={searchText}
                 onChangeText={setSearchText}
+                onSubmitEditing={() => runSearch()}
                 placeholderTextColor="#999"
               />
               {searchText.length > 0 && (
@@ -91,7 +156,13 @@ const SearchScreen = ({ navigation }) => {
               <View style={styles.recentSearchContainer}>
                 {recentSearches.map((search, index) => (
                   <View key={index} style={styles.recentSearchItem}>
-                    <TouchableOpacity style={styles.recentSearchButton}>
+                    <TouchableOpacity
+                      style={styles.recentSearchButton}
+                      onPress={() => {
+                        setSearchText(search);
+                        runSearch(search);
+                      }}
+                    >
                       <Ionicons name="time-outline" size={16} color="#666" />
                       <Text style={styles.recentSearchText}>{search}</Text>
                     </TouchableOpacity>
@@ -117,7 +188,14 @@ const SearchScreen = ({ navigation }) => {
               {popularSearches.map((item) => {
                 const trendIcon = getTrendIcon(item.trend);
                 return (
-                  <TouchableOpacity key={item.rank} style={styles.popularSearchItem}>
+                  <TouchableOpacity
+                    key={item.rank}
+                    style={styles.popularSearchItem}
+                    onPress={() => {
+                      setSearchText(item.keyword);
+                      runSearch(item.keyword);
+                    }}
+                  >
                     <View style={styles.popularSearchLeft}>
                       <Text
                         style={[
@@ -144,13 +222,74 @@ const SearchScreen = ({ navigation }) => {
             <View style={styles.recommendContainer}>
               {['#급식메뉴', '#시험일정', '#동아리', '#축제', '#학생회'].map(
                 (tag, index) => (
-                  <TouchableOpacity key={index} style={styles.tagButton}>
+                  <TouchableOpacity
+                    key={index}
+                    style={styles.tagButton}
+                    onPress={() => {
+                      const pure = tag.replace(/^#/, '');
+                      setSearchText(pure);
+                      runSearch(pure);
+                    }}
+                  >
                     <Text style={styles.tagText}>{tag}</Text>
                   </TouchableOpacity>
                 )
               )}
             </View>
           </View>
+
+          {/* 검색 결과 */}
+          {results.length > 0 && (
+            <View style={[styles.section, styles.lastSection]}>
+              <View style={styles.sectionHeader}>
+                <Text style={styles.sectionTitle}>게시글 결과</Text>
+              </View>
+              {loading && (
+                <View style={styles.resultLoading}>
+                  <Ionicons name="time-outline" size={18} color="#999" />
+                  <Text style={styles.resultLoadingText}>검색 중...</Text>
+                </View>
+              )}
+              {results.map((item) => (
+                <TouchableOpacity
+                  key={item.id}
+                  style={styles.resultItem}
+                  activeOpacity={0.7}
+                  onPress={() =>
+                    navigation.navigate('BoardDetail', {
+                      post: {
+                        id: item.id,
+                        author: '익명',
+                        content: item.snippet,
+                      },
+                      isMyPost: false,
+                    })
+                  }
+                >
+                  <Text style={styles.resultTitle} numberOfLines={1}>
+                    {item.title}
+                  </Text>
+                  <Text style={styles.resultSnippet} numberOfLines={2}>
+                    {item.snippet}
+                  </Text>
+                  <View style={styles.resultMeta}>
+                    <Text style={styles.resultTime}>{item.time}</Text>
+                    <View style={styles.resultStats}>
+                      <Ionicons name="heart-outline" size={14} color="#FF6B6B" />
+                      <Text style={styles.resultStatText}>{item.likeCount}</Text>
+                      <Ionicons
+                        name="chatbubble-outline"
+                        size={14}
+                        color="#8FD397"
+                        style={{ marginLeft: 8 }}
+                      />
+                      <Text style={styles.resultStatText}>{item.commentCount}</Text>
+                    </View>
+                  </View>
+                </TouchableOpacity>
+              ))}
+            </View>
+          )}
         </ScrollView>
       </SafeAreaView>
     </View>
@@ -290,6 +429,52 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#4CAF50',
     fontWeight: '500',
+  },
+  resultLoading: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingBottom: 8,
+    gap: 6,
+  },
+  resultLoadingText: {
+    fontSize: 13,
+    color: '#999',
+  },
+  resultItem: {
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderTopWidth: 1,
+    borderTopColor: '#F5F5F5',
+  },
+  resultTitle: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#333',
+    marginBottom: 4,
+  },
+  resultSnippet: {
+    fontSize: 13,
+    color: '#666',
+    marginBottom: 6,
+  },
+  resultMeta: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  resultTime: {
+    fontSize: 12,
+    color: '#999',
+  },
+  resultStats: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  resultStatText: {
+    fontSize: 12,
+    color: '#666',
+    marginLeft: 2,
   },
 });
 

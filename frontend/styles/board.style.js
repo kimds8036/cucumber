@@ -71,6 +71,11 @@ export const createBoardStyles = (width, normalize) => {
       flexDirection: 'row',
       alignItems: 'center',
     },
+    postTimeRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: normalize(4),
+    },
     postAuthor: {
       fontSize: normalize(12),
       fontFamily: fonts.regular,

@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { View, Text, TouchableOpacity, useWindowDimensions, Keyboard, TouchableWithoutFeedback, Modal } from 'react-native';
+import { View, Text, TouchableOpacity, useWindowDimensions, Keyboard, TouchableWithoutFeedback, Modal, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { createSignupStyles } from '../../styles/login.style';
@@ -8,6 +8,7 @@ import SignStep1 from './signup/SignStep1';
 import SignStep2 from './signup/SignStep2';
 import SignStep3 from './signup/SignStep3';
 import SignStep4 from './signup/SignStep4';
+import { api } from '../../utils/api';
 
 const Sign = ({ navigation }) => {
   const { width } = useWindowDimensions();
@@ -18,6 +19,9 @@ const Sign = ({ navigation }) => {
   const [formData, setFormData] = useState({});
   const [recognizedData, setRecognizedData] = useState(null);
   const [showCompleteModal, setShowCompleteModal] = useState(false);
+  const [step1Data, setStep1Data] = useState({});
+  const [step2Data, setStep2Data] = useState({});
+  const [step4Data, setStep4Data] = useState({});
 
   const styles = useMemo(() => createSignupStyles(width, normalize), [width]);
 
@@ -34,14 +38,18 @@ const Sign = ({ navigation }) => {
   };
 
   // 1단계 완료
-  const handleStep1Next = (data) => {
-    setFormData({ ...formData, ...data });
+  const handleStep1Next = () => {
+    setFormData({ ...formData, ...step1Data });
     setCurrentStep(2);
   };
 
   // 2단계 완료
-  const handleStep2Next = (data) => {
-    setFormData({ ...formData, ...data });
+  const handleStep2Next = () => {
+    if (!step2Data.isVerified) {
+      Alert.alert('알림', '전화번호 인증을 먼저 완료해주세요.');
+      return;
+    }
+    setFormData({ ...formData, ...step2Data });
     setCurrentStep(3);
   };
 
@@ -58,11 +66,53 @@ const Sign = ({ navigation }) => {
   };
 
   // 4단계 완료 (회원가입 완료)
-  const handleComplete = (data) => {
-    const finalData = { ...formData, ...data };
-    console.log('회원가입 완료:', finalData);
-    // 추후 회원가입 API 호출
-    setShowCompleteModal(true);
+  const handleComplete = async () => {
+    const finalData = { ...formData, ...step4Data };
+
+    if (!finalData.username || !finalData.password || !finalData.name) {
+      Alert.alert('알림', '1단계 정보를 모두 입력해주세요.');
+      return;
+    }
+
+    if (!finalData.phoneNumber || !step2Data.isVerified) {
+      Alert.alert('알림', '전화번호 인증을 완료해주세요.');
+      return;
+    }
+
+    if (!finalData.birthDate) {
+      Alert.alert('알림', '생년월일을 선택해주세요.');
+      return;
+    }
+
+    try {
+      const payload = {
+        username: finalData.username,
+        password: finalData.password,
+        name: finalData.name,
+        phone: finalData.phoneNumber,
+        birthDate: finalData.birthDate,
+        // TODO: 실제 학교/컬러 선택 화면과 연동 필요
+        schoolId: 1,
+        grade: Number(finalData.grade) || 1,
+        classNumber: Number(finalData.classNum) || 1,
+        graduationYear:
+          finalData.graduationYear ||
+          (recognizedData?.graduationYear
+            ? String(recognizedData.graduationYear)
+            : String(new Date().getFullYear() + 1)),
+        colorId: 1,
+      };
+
+      const response = await api.post('/api/auth/signup', payload);
+      console.log('회원가입 완료:', response.data);
+      setShowCompleteModal(true);
+    } catch (error) {
+      console.error(error);
+      Alert.alert(
+        '회원가입 실패',
+        error.response?.data?.message || '회원가입 중 오류가 발생했습니다.',
+      );
+    }
   };
 
   // 로그인 페이지로 이동
@@ -126,10 +176,18 @@ const Sign = ({ navigation }) => {
 
         {/* 단계별 컨텐츠 */}
         {currentStep === 1 && (
-          <SignStep1 styles={styles} normalize={normalize} />
+          <SignStep1
+            styles={styles}
+            normalize={normalize}
+            onChange={setStep1Data}
+          />
         )}
         {currentStep === 2 && (
-          <SignStep2 styles={styles} normalize={normalize} />
+          <SignStep2
+            styles={styles}
+            normalize={normalize}
+            onChange={setStep2Data}
+          />
         )}
         {currentStep === 3 && (
           <SignStep3
@@ -144,6 +202,7 @@ const Sign = ({ navigation }) => {
             styles={styles}
             normalize={normalize}
             recognizedData={recognizedData}
+            onChange={setStep4Data}
           />
         )}
 
@@ -154,9 +213,9 @@ const Sign = ({ navigation }) => {
               <TouchableOpacity
                 style={styles.nextButton}
                 onPress={() => {
-                  if (currentStep === 1) handleStep1Next({});
-                  else if (currentStep === 2) handleStep2Next({});
-                  else if (currentStep === 4) handleComplete({});
+                  if (currentStep === 1) handleStep1Next();
+                  else if (currentStep === 2) handleStep2Next();
+                  else if (currentStep === 4) handleComplete();
                 }}
               >
                 <Text style={styles.nextButtonText}>

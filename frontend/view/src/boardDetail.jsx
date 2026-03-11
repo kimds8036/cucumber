@@ -10,6 +10,7 @@ import {
   TouchableWithoutFeedback,
   Alert,
   Keyboard,
+  Share,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -20,6 +21,31 @@ import SubHeader from '../frame/subHeader';
 import CommentInput from '../../components/CommentInput.jsx';
 import { colors, fonts } from '../../styles/colors';
 import { createDetailStyles, getNormalize } from '../../styles/board.style';
+import { api } from '../../utils/api';
+
+/** 서버 created_at(UTC)을 "n분 전" 형식으로 변환. 화면에서는 기기 로컬 시간 기준으로 계산 */
+function formatTimeAgo(createdAt) {
+  if (!createdAt) return '';
+  let dateStr = typeof createdAt === 'string' ? createdAt.trim() : String(createdAt);
+  if (!dateStr) return '';
+  // MySQL "YYYY-MM-DD HH:mm:ss" 형태이고 타임존 문자가 없으면 UTC로 간주해 Z(=+00:00) 를 붙인다.
+  if (/^\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}:\d{2}(\.\d+)?$/.test(dateStr) && !/[Z+-]/.test(dateStr)) {
+    dateStr = dateStr.replace(' ', 'T') + 'Z';
+  }
+  const date = new Date(dateStr);
+  if (Number.isNaN(date.getTime())) return '';
+  const now = new Date();
+  const diffMs = now - date;
+  const diffSec = Math.floor(diffMs / 1000);
+  const diffMin = Math.floor(diffSec / 60);
+  const diffHour = Math.floor(diffMin / 60);
+  const diffDay = Math.floor(diffHour / 24);
+  if (diffSec < 60) return '방금 전';
+  if (diffMin < 60) return `${diffMin}분 전`;
+  if (diffHour < 24) return `${diffHour}시간 전`;
+  if (diffDay < 7) return `${diffDay}일 전`;
+  return date.toLocaleDateString('ko-KR', { month: 'long', day: 'numeric' });
+}
 
 // 댓글 본문에서 @태그 파싱하여 렌더 (일반 텍스트 + @익명N 초록 강조)
 function CommentBody({ content, styles }) {
@@ -60,7 +86,7 @@ export default function BoardDetail({ navigation, route }) {
   const normalize = useMemo(() => getNormalize(width), [width]);
   const styles = useMemo(() => createDetailStyles(width, normalize), [width, normalize]);
 
-  const post = route?.params?.post ?? {
+  const initialPost = route?.params?.post ?? {
     id: 1,
     author: '작성자',
     time: '2시간 전',
@@ -71,9 +97,18 @@ export default function BoardDetail({ navigation, route }) {
     comments: 89,
     liked: false,
   };
+  const [post, setPost] = useState(() => {
+    const fromParams = route?.params?.post != null;
+    const isMy = route?.params?.isMyPost === true;
+    return {
+      ...initialPost,
+      author: fromParams ? (isMy ? '작성자' : '익명') : initialPost.author,
+    };
+  });
 
   const isMyPost = route?.params?.isMyPost ?? false;
-  const [postLiked, setPostLiked] = useState(post.liked ?? false);
+  const [isMyPostFromApi, setIsMyPostFromApi] = useState(isMyPost);
+  const [postLiked, setPostLiked] = useState(initialPost.liked ?? false);
   const [commentLikedState, setCommentLikedState] = useState({});
   const [bottomComment, setBottomComment] = useState('');
   const [replyToCommentId, setReplyToCommentId] = useState(null);
@@ -92,145 +127,162 @@ export default function BoardDetail({ navigation, route }) {
   const commentWrapperRefs = useRef({});
   const scrollToCommentIdRef = useRef(null);
 
+  const [allComments, setAllComments] = useState([]);
+  const [postAuthorId, setPostAuthorId] = useState(null);
+  const [currentUserId, setCurrentUserId] = useState(null);
+
+  // 게시글/댓글 로드
+  useEffect(() => {
+    const postId = initialPost?.id;
+    if (!postId) return;
+
+    const fetchPostAndComments = async () => {
+      try {
+        // 게시글 상세
+        const postRes = await api.get(`/api/posts/${postId}`);
+        const data = postRes.data?.data;
+        if (data) {
+          setPost({
+            id: data.id,
+            author: data.isMine ? '작성자' : '익명',
+            time: formatTimeAgo(data.created_at),
+            location: data.location ?? '',
+            content: data.content,
+            likes: data.like_count,
+            comments: data.comment_count,
+          });
+          setPostLiked(Boolean(data.isLiked));
+          if (data.isMine !== undefined) setIsMyPostFromApi(data.isMine);
+          if (data.post_author_id != null) setPostAuthorId(data.post_author_id);
+          if (data.current_user_id != null) setCurrentUserId(data.current_user_id);
+        }
+
+        // 댓글 목록
+        const commentRes = await api.get(`/api/${postId}/comments`);
+        const comments = commentRes.data?.data?.comments || [];
+        const postAuthorIdForTree = postRes.data?.data?.post_author_id ?? null;
+        const currentUserIdForTree = postRes.data?.data?.current_user_id ?? null;
+
+        const buildTree = () => {
+          const nodes = new Map();
+          comments.forEach((c) => {
+            const isPostAuthor = postAuthorIdForTree != null && c.user_id === postAuthorIdForTree;
+            nodes.set(c.id, {
+              id: c.id,
+              userId: c.user_id,
+              authorLabel: isPostAuthor ? '작성자' : `익명 ${c.anonymous_index}`,
+              isWriter: isPostAuthor,
+              isMyComment: currentUserIdForTree != null && c.user_id === currentUserIdForTree,
+              time: formatTimeAgo(c.created_at),
+              content: c.content,
+              likes: c.like_count,
+              replies: [],
+            });
+          });
+
+          const roots = [];
+          comments.forEach((c) => {
+            const node = nodes.get(c.id);
+            if (c.parent_comment_id) {
+              const parent = nodes.get(c.parent_comment_id);
+              if (parent) {
+                parent.replies.push(node);
+              } else {
+                roots.push(node);
+              }
+            } else {
+              roots.push(node);
+            }
+          });
+          return roots;
+        };
+
+        setAllComments(buildTree());
+      } catch (error) {
+        console.error('게시글/댓글 로드 실패:', error);
+        Alert.alert(
+          '오류',
+          error.response?.data?.message || '게시글을 불러오는 중 오류가 발생했습니다.'
+        );
+      }
+    };
+
+    fetchPostAndComments();
+  }, [initialPost?.id]);
+
+  const startNoteToUser = async (targetUserId, source) => {
+    if (!targetUserId || !post?.id) {
+      Alert.alert('오류', '쪽지를 보낼 수 없습니다.');
+      return;
+    }
+    try {
+      const res = await api.post('/api/messages/rooms', {
+        postId: post.id,
+        otherUserId: targetUserId,
+      });
+      const room = res.data?.data;
+      if (!room?.id) {
+        Alert.alert('오류', '쪽지 방 정보를 불러올 수 없습니다.');
+        return;
+      }
+      navigation.navigate('Chat', { roomId: room.id });
+    } catch (error) {
+      console.error('쪽지방 생성/조회 실패:', error);
+      Alert.alert(
+        '오류',
+        error.response?.data?.message || '쪽지방을 여는 중 오류가 발생했습니다.'
+      );
+    }
+  };
+
+  const handleSharePost = async () => {
+    if (!post?.id) return;
+    const url = `${api.defaults.baseURL}/posts/${post.id}`;
+    try {
+      await Share.share({
+        message: `오늘의 이야기 게시글을 공유합니다.\n\n${url}`,
+        url,
+        title: '오늘의 이야기 게시글',
+      });
+    } catch (error) {
+      console.error('게시글 공유 실패:', error);
+    }
+  };
+
   // 게시글용 메뉴 (다른 사람 글)
-  const postMenuItems = useMemo(
+  const postMenuItemsOthers = useMemo(
     () => [
-      { label: '쪽지 보내기', iconName: 'chatbubble-outline', onPress: () => {} },
+      {
+        label: '쪽지 보내기',
+        iconName: 'chatbubble-outline',
+        onPress: () => {
+          if (postAuthorId && currentUserId && postAuthorId === currentUserId) {
+            Alert.alert('안내', '자기 자신에게는 쪽지를 보낼 수 없습니다.');
+            return;
+          }
+          startNoteToUser(postAuthorId, 'post');
+        },
+      },
+      {
+        label: '공유하기',
+        iconName: 'share-outline',
+        onPress: handleSharePost,
+      },
       { label: '신고하기', iconName: 'flag-outline', onPress: () => {} },
-      { label: '차단하기', iconName: 'remove-circle-outline', onPress: () => {} },
-      { label: '공유하기', iconName: 'share-outline', onPress: () => {} },
     ],
     []
   );
 
-  // 댓글용 메뉴 (다른 사람 댓글 - 공유 제외)
-  const commentMenuItems = useMemo(
+  // 댓글용 메뉴 (다른 사람 댓글) - 차단하기 제외
+  const commentMenuItemsOthers = useMemo(
     () => [
-      { label: '쪽지 보내기', iconName: 'chatbubble-outline', onPress: () => {} },
-      { label: '신고하기', iconName: 'flag-outline', onPress: () => {} },
-      { label: '차단하기', iconName: 'remove-circle-outline', onPress: () => {} },
+      { label: '쪽지 보내기', iconName: 'chatbubble-outline' },
+      { label: '신고하기', iconName: 'flag-outline' },
     ],
     []
   );
 
-  const allComments = [
-    {
-      id: 'c1',
-      authorLabel: '익명 1',
-      isWriter: false,
-      time: '15분 전',
-      content: '오늘 밥 뭐 나옴?',
-      likes: 1,
-      replies: [
-        {
-          id: 'c1-1',
-          authorLabel: '익명 2',
-          isWriter: false,
-          time: '15분 전',
-          content: '오늘 밥 뭐 나옴?',
-          likes: 1,
-          replies: [
-            {
-              id: 'c1-1-1',
-              authorLabel: '작성자',
-              isWriter: true,
-              isMyComment: true,
-              time: '15분 전',
-              content: '@익명2 맛있었어??',
-              likes: 1,
-              replies: [],
-            },
-          ],
-        },
-        {
-          id: 'c2-1',
-          authorLabel: '익명 2',
-          isWriter: false,
-          time: '15분 전',
-          content: '오늘 밥 뭐 나옴?',
-          likes: 1,
-          replies: [
-            {
-              id: 'c2-1-1',
-              authorLabel: '작성자',
-              isWriter: true,
-              isMyComment: true,
-              time: '15분 전',
-              content: '@익명2 맛있었어??',
-              likes: 1,
-              replies: [],
-            },
-          ],
-        },
-        {
-          id: 'c3-1',
-          authorLabel: '익명 2',
-          isWriter: false,
-          time: '15분 전',
-          content: '오늘 밥 뭐 나옴?',
-          likes: 1,
-          replies: [
-            {
-              id: 'c3-1-1',
-              authorLabel: '작성자',
-              isWriter: true,
-              isMyComment: true,
-              time: '15분 전',
-              content: '@익명2 맛있었어??',
-              likes: 1,
-              replies: [],
-            },
-          ],
-        },
-        {
-          id: 'c4-1',
-          authorLabel: '익명 3',
-          isWriter: false,
-          time: '14분 전',
-          content: '저도 궁금해요',
-          likes: 0,
-          replies: [],
-        },
-        {
-          id: 'c5-1',
-          authorLabel: '익명 1',
-          isWriter: false,
-          time: '13분 전',
-          content: '급식표 확인해봐요',
-          likes: 2,
-          replies: [],
-        },
-      ],
-    },
-    {
-      id: 'c2',
-      authorLabel: '익명 1',
-      isWriter: false,
-      time: '15분 전',
-      content: '오늘 밥 뭐 나옴?',
-      likes: 1,
-      replies: [],
-    },
-    {
-      id: 'c3',
-      authorLabel: '익명 2',
-      isWriter: false,
-      isMyComment: true,
-      time: '14분 전',
-      content: '나도 궁금해요',
-      likes: 0,
-      replies: [],
-    },
-    {
-      id: 'c4',
-      authorLabel: '익명 1',
-      isWriter: false,
-      time: '10분 전',
-      content: '오늘 밥 뭐 나옴?',
-      likes: 1,
-      replies: [],
-    },
-  ];
+  // allComments는 서버에서 로드한 트리 구조를 사용
 
   const findCommentById = (comments, id) => {
     for (const c of comments) {
@@ -255,7 +307,7 @@ export default function BoardDetail({ navigation, route }) {
 
   const visibleComments = useMemo(
     () => filterCommentsTree(allComments ?? [], new Set(deletedCommentIds)),
-    [deletedCommentIds]
+    [allComments, deletedCommentIds]
   );
 
   const openFloatingMenu = (context, ref) => {
@@ -354,6 +406,35 @@ export default function BoardDetail({ navigation, route }) {
   const handleBack = () => navigation.goBack();
   const handleEdit = () => {}; // TODO
 
+  const handleDeletePost = () => {
+    closeFloatingMenu();
+    Alert.alert(
+      '게시글 삭제',
+      '이 게시글을 삭제할까요?',
+      [
+        { text: '취소', style: 'cancel' },
+        {
+          text: '삭제',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await api.delete(`/api/posts/${post.id}`);
+              Alert.alert('삭제됨', '게시글이 삭제되었습니다.', [
+                { text: '확인', onPress: () => navigation.goBack() },
+              ]);
+            } catch (error) {
+              console.error('게시글 삭제 오류:', error);
+              Alert.alert(
+                '오류',
+                error.response?.data?.message || '게시글 삭제 중 오류가 발생했습니다.'
+              );
+            }
+          },
+        },
+      ]
+    );
+  };
+
   const handleDeleteComment = (commentId) => {
     closeFloatingMenu();
     Alert.alert(
@@ -364,34 +445,144 @@ export default function BoardDetail({ navigation, route }) {
         {
           text: '삭제',
           style: 'destructive',
-          onPress: () => {
-            setDeletedCommentIds((prev) => [...prev, commentId]);
-            // TODO: DB 연동 시 삭제 API 호출 (예: DELETE /api/comments/:id)
+          onPress: async () => {
+            try {
+              await api.delete(`/api/comments/${commentId}`);
+              setDeletedCommentIds((prev) => [...prev, commentId]);
+              setPost((prev) =>
+                prev ? { ...prev, comments: Math.max(0, (prev.comments || 0) - 1) } : prev
+              );
+              Alert.alert('삭제됨', '댓글이 삭제되었습니다.');
+            } catch (error) {
+              console.error('댓글 삭제 오류:', error);
+              Alert.alert(
+                '오류',
+                error.response?.data?.message || '댓글 삭제 중 오류가 발생했습니다.'
+              );
+            }
           },
         },
       ]
     );
   };
 
-  const handlePostLike = () => {
-    setPostLiked((prev) => !prev);
-    // TODO: DB 연동 시 좋아요 저장/해제 API 호출 (예: POST /api/posts/:id/like)
-    // await api.post(`/posts/${post.id}/like`);
+  const handlePostLike = async () => {
+    try {
+      const res = await api.post(`/api/posts/${post.id}/like`);
+      const isLiked = res.data?.data?.isLiked;
+      setPostLiked(Boolean(isLiked));
+      setPost((prev) =>
+        prev
+          ? {
+              ...prev,
+              likes: prev.likes + (isLiked ? 1 : -1),
+            }
+          : prev
+      );
+    } catch (error) {
+      console.error('게시글 좋아요 오류:', error);
+      Alert.alert(
+        '오류',
+        error.response?.data?.message || '좋아요 처리 중 오류가 발생했습니다.'
+      );
+    }
   };
 
-  const handleCommentLike = (commentId) => {
-    setCommentLikedState((prev) => ({ ...prev, [commentId]: !prev[commentId] }));
-    // TODO: DB 연동 시 댓글 좋아요 저장/해제 API 호출 (예: POST /api/comments/:id/like)
-    // await api.post(`/comments/${commentId}/like`);
+  const handleCommentLike = async (commentId) => {
+    try {
+      const res = await api.post(`/api/${commentId}/like`);
+      const isLiked = res.data?.data?.isLiked;
+      setCommentLikedState((prev) => ({ ...prev, [commentId]: Boolean(isLiked) }));
+      setAllComments((prev) =>
+        prev.map((c) => {
+          const updateNode = (node) => {
+            if (node.id === commentId) {
+              return {
+                ...node,
+                likes: node.likes + (isLiked ? 1 : -1),
+              };
+            }
+            if (node.replies?.length) {
+              return { ...node, replies: node.replies.map(updateNode) };
+            }
+            return node;
+          };
+          return updateNode(c);
+        })
+      );
+    } catch (error) {
+      console.error('댓글 좋아요 오류:', error);
+      Alert.alert(
+        '오류',
+        error.response?.data?.message || '댓글 좋아요 처리 중 오류가 발생했습니다.'
+      );
+    }
   };
 
-  const handleSendComment = () => {
+  const handleSendComment = async () => {
     if (!bottomComment.trim()) return;
-    // 대댓글: replyToCommentId 있으면 해당 댓글의 자식으로 전송
-    // TODO: API - 예: POST /posts/:id/comments { content, parentCommentId: replyToCommentId ?? undefined }
-    setBottomComment('');
-    setReplyToCommentId(null);
-    setReplyToAuthorLabel('');
+    try {
+      const payload = {
+        content: bottomComment.trim(),
+      };
+      if (replyToCommentId) {
+        payload.parentCommentId = replyToCommentId;
+      }
+      const res = await api.post(`/api/${post.id}/comments`, payload);
+      const c = res.data?.data;
+      if (c) {
+        // 간단히 전체 댓글을 다시 로드
+        const commentRes = await api.get(`/api/${post.id}/comments`);
+        const comments = commentRes.data?.data?.comments || [];
+
+        const buildTree = () => {
+          const nodes = new Map();
+          comments.forEach((cm) => {
+            const isPostAuthor = postAuthorId != null && cm.user_id === postAuthorId;
+            nodes.set(cm.id, {
+              id: cm.id,
+              authorLabel: isPostAuthor ? '작성자' : `익명 ${cm.anonymous_index}`,
+              isWriter: isPostAuthor,
+              isMyComment: currentUserId != null && cm.user_id === currentUserId,
+              time: formatTimeAgo(cm.created_at),
+              content: cm.content,
+              likes: cm.like_count,
+              replies: [],
+            });
+          });
+          const roots = [];
+          comments.forEach((cm) => {
+            const node = nodes.get(cm.id);
+            if (cm.parent_comment_id) {
+              const parent = nodes.get(cm.parent_comment_id);
+              if (parent) parent.replies.push(node);
+              else roots.push(node);
+            } else {
+              roots.push(node);
+            }
+          });
+          return roots;
+        };
+        setAllComments(buildTree());
+        setPost((prev) =>
+          prev
+            ? {
+                ...prev,
+                comments: prev.comments + 1,
+              }
+            : prev
+        );
+      }
+      setBottomComment('');
+      setReplyToCommentId(null);
+      setReplyToAuthorLabel('');
+    } catch (error) {
+      console.error('댓글 작성 오류:', error);
+      Alert.alert(
+        '오류',
+        error.response?.data?.message || '댓글 작성 중 오류가 발생했습니다.'
+      );
+    }
   };
 
   const flattenReplies = (replies, depth = 0, parentAuthorLabel = null) => {
@@ -408,10 +599,11 @@ export default function BoardDetail({ navigation, route }) {
   const renderComment = (item, isReply = false, parentAuthorLabel = null, onFocusReply, likeState = {}) => {
     const isCommentLiked = likeState.liked ?? false;
     const onCommentLike = likeState.onLike;
-    const AuthorLabel = item.isWriter ? (
-      <Text style={styles.commentAuthorWriter}>{item.authorLabel}</Text>
-    ) : (
-      <Text style={styles.commentAuthor}>{item.authorLabel}</Text>
+    const isAuthorLabel = item.authorLabel === '작성자';
+    const AuthorLabel = (
+      <Text style={isAuthorLabel ? styles.commentAuthorWriter : styles.commentAuthor}>
+        {item.authorLabel}
+      </Text>
     );
 
     const bodyHasTag = /@익명\d+/.test(item.content);
@@ -426,9 +618,8 @@ export default function BoardDetail({ navigation, route }) {
         <View style={styles.commentRow}>
           <View style={styles.commentAuthorRow}>
             {AuthorLabel}
-            <Text style={styles.commentDot}>•</Text>
-            <Text style={styles.commentTime}>{item.time}</Text>
           </View>
+          <Text style={styles.commentTime}>{item.time}</Text>
         </View>
         {contentEl}
         <View style={styles.commentFooter}>
@@ -571,61 +762,60 @@ export default function BoardDetail({ navigation, route }) {
               keyboardShouldPersistTaps="handled"
               keyboardDismissMode="on-drag"
             >
-          {/* 게시글 내용 */}
-          <View style={styles.contentSection}>
-            <View style={styles.detailHeader}>
-              <View style={styles.detailAuthorRow}>
-                <Text
-                  style={
-                    post.author === '작성자' ? styles.detailAuthor : styles.detailAuthorAnonymous
-                  }
-                >
-                  {post.author}
-                </Text>
-                <Text style={styles.detailDot}>•</Text>
-                <Text style={styles.detailTime}>{post.time}</Text>
-              </View>
-              {post.location ? (
-                <View style={styles.detailLocation}>
-                  <Ionicons name="location-sharp" size={normalize(12)} color={colors.textSecondary} />
-                  <Text style={styles.detailLocationText}>{post.location}</Text>
+              {/* 게시글 내용 */}
+              <View style={styles.contentSection}>
+                <View style={styles.detailHeader}>
+                  <View style={styles.detailAuthorRow}>
+                    <Text
+                      style={
+                        post.author === '작성자' ? styles.detailAuthor : styles.detailAuthorAnonymous
+                      }
+                    >
+                      {post.author}
+                    </Text>
+                  </View>
+                  <Text style={styles.detailTime}>{post.time}</Text>
                 </View>
-              ) : null}
-            </View>
+                {post.location ? (
+                  <View style={styles.detailLocation}>
+                    <Ionicons name="location-sharp" size={normalize(12)} color={colors.textSecondary} />
+                    <Text style={styles.detailLocationText}>{post.location}</Text>
+                  </View>
+                ) : null}
 
-            <Text style={styles.detailBody}>{post.content}</Text>
-            <View style={styles.detailDivider} />
-            <View style={styles.detailFooter}>
-              <View style={styles.detailStats}>
-                <TouchableOpacity
-                  style={styles.detailStatItem}
-                  onPress={handlePostLike}
-                  activeOpacity={0.7}
-                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                >
-                  <FontAwesome
-                    name={postLiked ? 'heart' : 'heart-o'}
-                    size={normalize(14)}
-                    color={colors.alert}
-                  />
-                  <Text style={styles.detailStatText}>{post.likes}</Text>
-                </TouchableOpacity>
-                <View style={styles.detailStatItem}>
-                  <Ionicons name="chatbubble-outline" size={normalize(15)} color={colors.primary} />
-                  <Text style={styles.detailStatText}>{post.comments}</Text>
+                <Text style={styles.detailBody}>{post.content}</Text>
+                <View style={styles.detailDivider} />
+                <View style={styles.detailFooter}>
+                  <View style={styles.detailStats}>
+                    <TouchableOpacity
+                      style={styles.detailStatItem}
+                      onPress={handlePostLike}
+                      activeOpacity={0.7}
+                      hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                    >
+                      <FontAwesome
+                        name={postLiked ? 'heart' : 'heart-o'}
+                        size={normalize(14)}
+                        color={colors.alert}
+                      />
+                      <Text style={styles.detailStatText}>{post.likes}</Text>
+                    </TouchableOpacity>
+                    <View style={styles.detailStatItem}>
+                      <Ionicons name="chatbubble-outline" size={normalize(15)} color={colors.primary} />
+                      <Text style={styles.detailStatText}>{post.comments}</Text>
+                    </View>
+                  </View>
+                  <View ref={postMenuButtonRef} collapsable={false}>
+                    <TouchableOpacity
+                      style={styles.detailMenuBtn}
+                      hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                      onPress={() => openFloatingMenu('post', postMenuButtonRef.current)}
+                    >
+                      <Entypo name="dots-three-vertical" size={normalize(14)} color={colors.textSecondary} />
+                    </TouchableOpacity>
+                  </View>
                 </View>
               </View>
-              <View ref={postMenuButtonRef} collapsable={false}>
-                <TouchableOpacity
-                  style={styles.detailMenuBtn}
-                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                  onPress={() => openFloatingMenu('post', postMenuButtonRef.current)}
-                >
-                  <Entypo name="dots-three-vertical" size={normalize(14)} color={colors.textSecondary} />
-                </TouchableOpacity>
-              </View>
-            </View>
-          </View>
 
           {/* 광고 영역 비움 */}
           <View style={styles.adSection} />
@@ -701,18 +891,19 @@ export default function BoardDetail({ navigation, route }) {
                     const commentForMenu =
                       isCommentMenu != null ? findCommentById(allComments, isCommentMenu) : null;
                     const isMyComment = commentForMenu?.isMyComment === true;
-                    
+                    const isMyPostMenu = isMyPostFromApi;
+
                     // 메뉴 항목 결정
                     let menuItems;
-                    if (isPostMenu && isMyPost) {
-                      // 내가 쓴 게시글 - 수정하기, 공유하기만
+                    if (isPostMenu && isMyPostMenu) {
+                      // 내가 쓴 게시글 - 공유하기, 삭제하기
                       menuItems = [
-                        { label: '수정하기', iconName: 'create-outline', onPress: handleEdit },
                         { label: '공유하기', iconName: 'share-outline', onPress: () => {} },
+                        { label: '삭제하기', iconName: 'trash-outline', onPress: handleDeletePost },
                       ];
                     } else if (isPostMenu) {
-                      // 다른 사람 게시글 - 쪽지/신고/차단/공유
-                      menuItems = postMenuItems;
+                      // 다른 사람 게시글 - 쪽지/공유/신고
+                      menuItems = postMenuItemsOthers;
                     } else if (isMyComment) {
                       // 내가 쓴 댓글 - 삭제하기만
                       menuItems = [
@@ -722,11 +913,32 @@ export default function BoardDetail({ navigation, route }) {
                           onPress: () => handleDeleteComment(isCommentMenu),
                         },
                       ];
+                    } else if (commentForMenu) {
+                      // 다른 사람 댓글 - 쪽지/신고
+                      menuItems = [
+                        {
+                          label: '쪽지 보내기',
+                          iconName: 'chatbubble-outline',
+                          onPress: () => {
+                            if (commentForMenu.userId && currentUserId && commentForMenu.userId === currentUserId) {
+                              Alert.alert('안내', '자기 자신에게는 쪽지를 보낼 수 없습니다.');
+                              return;
+                            }
+                            startNoteToUser(commentForMenu.userId, 'comment');
+                          },
+                        },
+                        {
+                          label: '신고하기',
+                          iconName: 'flag-outline',
+                          onPress: () => {
+                            // TODO: 댓글 신고 기능 연결
+                          },
+                        },
+                      ];
                     } else {
-                      // 다른 사람 댓글 - 쪽지/신고/차단만 (공유 제외)
-                      menuItems = commentMenuItems;
+                      menuItems = commentMenuItemsOthers;
                     }
-                    
+
                     return menuItems.map((item, index) => (
                     <React.Fragment key={index}>
                       <TouchableOpacity

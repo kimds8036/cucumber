@@ -1,6 +1,8 @@
 import express from 'express';
 import pool from '../config/database.js';
 import { authenticate } from '../middleware/auth.js';
+import { createNotification } from '../utils/notifications.js';
+import { getNowForDB } from '../utils/dateUtils.js';
 
 const router = express.Router();
 
@@ -11,19 +13,20 @@ router.get('/personal/received', authenticate, async (req, res) => {
   try {
     const userId = req.user.userId;
     const { page = 1, limit = 20, isRead } = req.query;
-    const offset = (parseInt(page) - 1) * parseInt(limit);
-    const conditions = ['recipient_id = ?', 'is_deleted = FALSE'];
     const params = [userId];
+    const conditions = ['pm.recipient_id = ?', 'pm.is_deleted = FALSE'];
 
     // 읽음 여부 필터
     if (isRead !== undefined) {
-      conditions.push('is_read = ?');
+      conditions.push('pm.is_read = ?');
       params.push(isRead === 'true' ? 1 : 0);
     }
 
     const whereClause = `WHERE ${conditions.join(' AND ')}`;
+    const limitNum = Math.max(1, Math.min(100, parseInt(limit, 10) || 20));
+    const offsetNum = Math.max(0, (parseInt(page, 10) - 1) * limitNum);
 
-    // 받은 우편 조회
+    // 받은 우편 조회 (pm. 한정으로 is_deleted 모호함 제거)
     const [mails] = await pool.execute(
       `SELECT 
         pm.id,
@@ -37,28 +40,29 @@ router.get('/personal/received', authenticate, async (req, res) => {
         u.color_id as sender_color_id
       FROM personal_mails pm
       LEFT JOIN users u ON pm.sender_id = u.id
-      ${whereClause}
+      WHERE pm.recipient_id = ? AND pm.is_deleted = FALSE${isRead !== undefined ? ' AND pm.is_read = ?' : ''}
       ORDER BY pm.created_at DESC
-      LIMIT ? OFFSET ?`,
-      [...params, parseInt(limit), offset]
+      LIMIT ${limitNum} OFFSET ${offsetNum}`,
+      params
     );
 
     // 전체 개수 조회
     const [countResult] = await pool.execute(
-      `SELECT COUNT(*) as total FROM personal_mails ${whereClause}`,
+      `SELECT COUNT(*) as total FROM personal_mails pm
+       WHERE pm.recipient_id = ? AND pm.is_deleted = FALSE${isRead !== undefined ? ' AND pm.is_read = ?' : ''}`,
       params
     );
-    const total = countResult[0].total;
+    const total = Number(countResult[0]?.total ?? 0);
 
     res.json({
       success: true,
       data: {
         mails,
         pagination: {
-          page: parseInt(page),
-          limit: parseInt(limit),
+          page: parseInt(page, 10),
+          limit: limitNum,
           total,
-          totalPages: Math.ceil(total / parseInt(limit))
+          totalPages: Math.ceil(total / limitNum) || 1
         }
       }
     });
@@ -76,7 +80,8 @@ router.get('/personal/sent', authenticate, async (req, res) => {
   try {
     const userId = req.user.userId;
     const { page = 1, limit = 20 } = req.query;
-    const offset = (parseInt(page) - 1) * parseInt(limit);
+    const limitNum = Math.max(1, Math.min(100, parseInt(limit, 10) || 20));
+    const offsetNum = Math.max(0, (parseInt(page, 10) - 1) * limitNum);
 
     // 보낸 우편 조회
     const [mails] = await pool.execute(
@@ -94,8 +99,8 @@ router.get('/personal/sent', authenticate, async (req, res) => {
       LEFT JOIN users u ON pm.recipient_id = u.id
       WHERE pm.sender_id = ? AND pm.is_deleted = FALSE
       ORDER BY pm.created_at DESC
-      LIMIT ? OFFSET ?`,
-      [userId, parseInt(limit), offset]
+      LIMIT ${limitNum} OFFSET ${offsetNum}`,
+      [userId]
     );
 
     // 전체 개수 조회
@@ -105,17 +110,17 @@ router.get('/personal/sent', authenticate, async (req, res) => {
        WHERE sender_id = ? AND is_deleted = FALSE`,
       [userId]
     );
-    const total = countResult[0].total;
+    const total = Number(countResult[0]?.total ?? 0);
 
     res.json({
       success: true,
       data: {
         mails,
         pagination: {
-          page: parseInt(page),
-          limit: parseInt(limit),
+          page: parseInt(page, 10),
+          limit: limitNum,
           total,
-          totalPages: Math.ceil(total / parseInt(limit))
+          totalPages: Math.ceil(total / limitNum) || 1
         }
       }
     });
@@ -222,9 +227,9 @@ router.post('/personal', authenticate, async (req, res) => {
 
     // 우편 생성
     const [result] = await pool.execute(
-      `INSERT INTO personal_mails (sender_id, recipient_id, content) 
-       VALUES (?, ?, ?)`,
-      [userId, recipientId, content.trim()]
+      `INSERT INTO personal_mails (sender_id, recipient_id, content, created_at)
+       VALUES (?, ?, ?, ?)`,
+      [userId, recipientId, content.trim(), getNowForDB()]
     );
 
     // 생성된 우편 정보 조회
@@ -244,6 +249,17 @@ router.post('/personal', authenticate, async (req, res) => {
       WHERE pm.id = ?`,
       [result.insertId]
     );
+
+    // 수신자에게 알림 생성
+    await createNotification({
+      userId: Number(recipientId),
+      type: 'mail',
+      category: 'mail',
+      title: '새로운 익명 우편이 도착했습니다',
+      body: content.trim().slice(0, 80),
+      relatedType: 'personal_mail',
+      relatedId: result.insertId,
+    });
 
     res.status(201).json({
       success: true,
@@ -293,9 +309,9 @@ router.post('/personal/:mailId/reply', authenticate, async (req, res) => {
 
     // 답장 우편 생성
     const [result] = await pool.execute(
-      `INSERT INTO personal_mails (sender_id, recipient_id, content) 
-       VALUES (?, ?, ?)`,
-      [userId, recipientId, content.trim()]
+      `INSERT INTO personal_mails (sender_id, recipient_id, content, created_at)
+       VALUES (?, ?, ?, ?)`,
+      [userId, recipientId, content.trim(), getNowForDB()]
     );
 
     // 생성된 답장 정보 조회
@@ -315,6 +331,17 @@ router.post('/personal/:mailId/reply', authenticate, async (req, res) => {
       WHERE pm.id = ?`,
       [result.insertId]
     );
+
+    // 원본 발신자(=이번 답장 수신자)에게 알림 생성
+    await createNotification({
+      userId: Number(recipientId),
+      type: 'mail',
+      category: 'mail',
+      title: '새로운 익명 우편 답장이 도착했습니다',
+      body: content.trim().slice(0, 80),
+      relatedType: 'personal_mail',
+      relatedId: result.insertId,
+    });
 
     res.status(201).json({
       success: true,
@@ -441,7 +468,8 @@ router.get('/personal/unread-count', authenticate, async (req, res) => {
 router.get('/school', async (req, res) => {
   try {
     const { schoolId, page = 1, limit = 20 } = req.query;
-    const offset = (parseInt(page) - 1) * parseInt(limit);
+    const limitNum = Math.max(1, Math.min(100, parseInt(limit, 10) || 20));
+    const offsetNum = Math.max(0, (parseInt(page, 10) - 1) * limitNum);
 
     if (!schoolId) {
       return res.status(400).json({ 
@@ -468,8 +496,8 @@ router.get('/school', async (req, res) => {
       LEFT JOIN schools s ON sm.school_id = s.school_id
       WHERE sm.school_id = ? AND sm.is_deleted = FALSE
       ORDER BY sm.created_at DESC
-      LIMIT ? OFFSET ?`,
-      [schoolId, parseInt(limit), offset]
+      LIMIT ${limitNum} OFFSET ${offsetNum}`,
+      [schoolId]
     );
 
     // 전체 개수 조회
@@ -479,17 +507,17 @@ router.get('/school', async (req, res) => {
        WHERE school_id = ? AND is_deleted = FALSE`,
       [schoolId]
     );
-    const total = countResult[0].total;
+    const total = Number(countResult[0]?.total ?? 0);
 
     res.json({
       success: true,
       data: {
         mails,
         pagination: {
-          page: parseInt(page),
-          limit: parseInt(limit),
+          page: parseInt(page, 10),
+          limit: limitNum,
           total,
-          totalPages: Math.ceil(total / parseInt(limit))
+          totalPages: Math.ceil(total / limitNum) || 1
         }
       }
     });
@@ -598,9 +626,9 @@ router.post('/school', authenticate, async (req, res) => {
 
     // 학교 우편 생성
     const [result] = await pool.execute(
-      `INSERT INTO school_mails (school_id, user_id, content) 
-       VALUES (?, ?, ?)`,
-      [schoolId, userId, content.trim()]
+      `INSERT INTO school_mails (school_id, user_id, content, created_at) 
+       VALUES (?, ?, ?, ?)`,
+      [schoolId, userId, content.trim(), getNowForDB()]
     );
 
     // 생성된 우편 정보 조회
@@ -759,9 +787,9 @@ router.post('/school/:mailId/comments', authenticate, async (req, res) => {
 
     // 댓글 생성
     const [result] = await pool.execute(
-      `INSERT INTO school_mail_comments (mail_id, user_id, parent_comment_id, content, anonymous_index) 
-       VALUES (?, ?, ?, ?, ?)`,
-      [mailId, userId, parentCommentId || null, content, anonymousIndex]
+      `INSERT INTO school_mail_comments (mail_id, user_id, parent_comment_id, content, anonymous_index, created_at)
+       VALUES (?, ?, ?, ?, ?, ?)`,
+      [mailId, userId, parentCommentId || null, content, anonymousIndex, getNowForDB()]
     );
 
     // 학교 우편의 댓글 수 증가

@@ -224,6 +224,12 @@ export const createChatStyles = (width, normalize) => {
       fontFamily: fonts.regular,
       color: colors.textPrimary,
     },
+    opponentTimeRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: normalize(4),
+      marginTop: normalize(2),
+    },
     chatTimeOpponent: {
       fontSize: normalize(11),
       fontFamily: fonts.regular,
@@ -272,7 +278,8 @@ export const createChatStyles = (width, normalize) => {
     chatTimeUser: {
       fontSize: normalize(11),
       fontFamily: fonts.regular,
-      color: colors.textSecondary,
+      color: colors.textSecondary, // 시간 색상은 원래대로
+      marginBottom: normalize(2),
     },
   });
 };

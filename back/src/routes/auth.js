@@ -13,6 +13,69 @@ import { authenticate } from '../middleware/auth.js';
 
 const router = express.Router();
 
+// 내 프로필 조회
+router.get('/me', authenticate, async (req, res) => {
+  try {
+    const userId = req.user.userId;
+
+    const [rows] = await pool.execute(
+      `SELECT 
+         u.id,
+         u.username,
+         u.name,
+         u.school_id,
+         u.grade,
+         u.class_number,
+         s.name AS school_name
+       FROM users u
+       LEFT JOIN schools s ON u.school_id = s.school_id
+       WHERE u.id = ?`,
+      [userId],
+    );
+
+    if (rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: '사용자를 찾을 수 없습니다.',
+      });
+    }
+
+    const user = rows[0];
+
+    const [friendRows] = await pool.execute(
+      `SELECT COUNT(*) as cnt
+       FROM user_friendships
+       WHERE status = 'accepted'
+         AND (requester_id = ? OR addressee_id = ?)`,
+      [userId, userId],
+    );
+
+    const friendCount = Number(friendRows[0]?.cnt ?? 0);
+
+    res.json({
+      success: true,
+      data: {
+        id: user.id,
+        username: user.username,
+        name: user.name,
+        school: {
+          id: user.school_id,
+          name: user.school_name,
+        },
+        grade: user.grade,
+        classNumber: user.class_number,
+        friendCount,
+      },
+    });
+  } catch (error) {
+    console.error('내 프로필 조회 오류:', error);
+    res.status(500).json({
+      success: false,
+      message: '내 프로필 조회 중 오류가 발생했습니다.',
+    });
+  }
+});
+
 // 전화번호 인증 코드 발송
 router.post('/send-verification', async (req, res) => {
   try {

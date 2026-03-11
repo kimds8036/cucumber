@@ -1,10 +1,11 @@
 import React, { useState, useMemo } from 'react';
-import { View, Text, TextInput, TouchableOpacity, useWindowDimensions, ScrollView, KeyboardAvoidingView, Platform, Keyboard, TouchableWithoutFeedback } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, useWindowDimensions, ScrollView, KeyboardAvoidingView, Platform, Keyboard, TouchableWithoutFeedback, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { createLoginStyles } from '../../styles/login.style';
 import { colors } from '../../styles/colors';
 import { Ionicons } from '@expo/vector-icons';
 import LogoIcon from '../../assets/Group 166.svg';
+import { api, setAuthToken } from '../../utils/api';
 
 const Login = ({ navigation }) => {
   const { width } = useWindowDimensions();
@@ -93,14 +94,32 @@ const Login = ({ navigation }) => {
           justifyContent: 'center',
           alignItems: 'center',
         }}
-        onPress={() => {
-          // 추후 로그인 API 연동 및 유효성 검사
-          // if (!id || !password) {
-          //   alert('아이디와 비밀번호를 입력해주세요.');
-          //   return;
-          // }
-          console.log('로그인:', { id, password });
-          navigation.navigate('Main');
+        onPress={async () => {
+          if (!id || !password) {
+            Alert.alert('알림', '아이디와 비밀번호를 입력해주세요.');
+            return;
+          }
+
+          try {
+            const response = await api.post('/api/auth/login', {
+              username: id,
+              password,
+            });
+
+            const { token, user, needsVerification } = response.data.data;
+            console.log('로그인 성공', { token, user, needsVerification });
+
+            if (token) {
+              await setAuthToken(token);
+            }
+            navigation.navigate('Main');
+          } catch (error) {
+            console.error(error);
+            Alert.alert(
+              '로그인 실패',
+              error.response?.data?.message || '로그인 중 오류가 발생했습니다.',
+            );
+          }
         }}
       >
         <Text style={{

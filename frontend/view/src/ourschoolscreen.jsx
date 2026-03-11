@@ -1,24 +1,67 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import StudyGrassMap from '../../components/studygrassmap';
+import { api } from '../../utils/api';
 
 const OurSchoolScreen = ({ navigation }) => {
-  // 샘플 데이터
-  const schoolInfo = {
-    name: '진관고등학교',
-    location: '서울 은평구 진관동',
-    studentCount: 532,
-    postCount: 525,
-    mailCount: 525,
-  };
+  const [schoolInfo, setSchoolInfo] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [popularPosts, setPopularPosts] = useState([]);
 
-  const popularPosts = [
-    { id: 1, title: '지금 안 자는 사람', type: 'post', likes: 1, comments: 1 },
-    { id: 2, title: '지금 안 자는 사람', type: 'post', likes: 1, comments: 1 },
-    { id: 3, title: '지금 안 자는 사람', type: 'mail', likes: 0, comments: 1 },
-    { id: 4, title: '지금 안 자는 사람', type: 'mail', likes: 0, comments: 1 },
-  ];
+  useEffect(() => {
+    let mounted = true;
+    const fetchSchool = async () => {
+      try {
+        setLoading(true);
+        const res = await api.get('/api/schools/me');
+        if (!mounted) return;
+        const data = res.data?.data;
+        if (data) {
+          setSchoolInfo({
+            name: data.name,
+            location: data.address || data.region || '',
+            studentCount: data.studentCount ?? 0,
+            postCount: data.postCount ?? 0,
+            mailCount: data.mailCount ?? 0,
+          });
+
+          // 학교 게시판 인기 글 가져오기
+          try {
+            const postsRes = await api.get('/api/posts', {
+              params: {
+                boardType: 'school',
+                schoolId: data.id,
+                sort: 'popular',
+                page: 1,
+                limit: 5,
+              },
+            });
+            if (!mounted) return;
+            const apiPosts = postsRes.data?.data?.posts || [];
+            const mapped = apiPosts.map((p) => ({
+              id: p.id,
+              title: (p.content || '').split('\n')[0].slice(0, 40) || '제목 없음',
+              type: 'post',
+              likes: p.like_count,
+              comments: p.comment_count,
+            }));
+            setPopularPosts(mapped);
+          } catch (err) {
+            console.error('학교 인기 게시글 로드 실패:', err);
+          }
+        }
+      } catch (error) {
+        console.error('학교 정보 로드 실패:', error);
+      } finally {
+        if (mounted) setLoading(false);
+      }
+    };
+    fetchSchool();
+    return () => {
+      mounted = false;
+    };
+  }, []);
 
   return (
     <View style={styles.container}>
@@ -28,11 +71,15 @@ const OurSchoolScreen = ({ navigation }) => {
       >
         {/* 학교 정보 카드 — 잔디밭 포함 */}
         <View style={styles.schoolCard}>
-          <Text style={styles.schoolName}>{schoolInfo.name}</Text>
-          <View style={styles.locationContainer}>
-            <Ionicons name="location-outline" size={14} color="#666" />
-            <Text style={styles.locationText}>{schoolInfo.location}</Text>
-          </View>
+          <Text style={styles.schoolName}>
+            {schoolInfo?.name || (loading ? '학교 정보를 불러오는 중...' : '학교 정보 없음')}
+          </Text>
+          {schoolInfo?.location ? (
+            <View style={styles.locationContainer}>
+              <Ionicons name="location-outline" size={14} color="#666" />
+              <Text style={styles.locationText}>{schoolInfo.location}</Text>
+            </View>
+          ) : null}
 
           <View style={styles.divider} />
 
@@ -41,7 +88,9 @@ const OurSchoolScreen = ({ navigation }) => {
               <Text style={styles.statLabel}>학생</Text>
               <View style={styles.statValueContainer}>
                 <Ionicons name="person" size={16} color="#4A90E2" />
-                <Text style={styles.statValue}>{schoolInfo.studentCount}명</Text>
+                <Text style={styles.statValue}>
+                  {schoolInfo ? `${schoolInfo.studentCount}명` : '-'}
+                </Text>
               </View>
             </View>
 
@@ -49,7 +98,9 @@ const OurSchoolScreen = ({ navigation }) => {
               <Text style={styles.statLabel}>게시글</Text>
               <View style={styles.statValueContainer}>
                 <Ionicons name="document-text-outline" size={16} color="#4A90E2" />
-                <Text style={styles.statValue}>{schoolInfo.postCount}개</Text>
+                <Text style={styles.statValue}>
+                  {schoolInfo ? `${schoolInfo.postCount}개` : '-'}
+                </Text>
               </View>
             </View>
 
@@ -57,7 +108,9 @@ const OurSchoolScreen = ({ navigation }) => {
               <Text style={styles.statLabel}>우편</Text>
               <View style={styles.statValueContainer}>
                 <Ionicons name="mail-outline" size={16} color="#4A90E2" />
-                <Text style={styles.statValue}>{schoolInfo.mailCount}개</Text>
+                <Text style={styles.statValue}>
+                  {schoolInfo ? `${schoolInfo.mailCount}개` : '-'}
+                </Text>
               </View>
             </View>
           </View>
@@ -96,31 +149,57 @@ const OurSchoolScreen = ({ navigation }) => {
             <Text style={styles.popularTitle}>실시간 인기</Text>
           </View>
 
-          {popularPosts.map((post) => (
-            <TouchableOpacity key={post.id} style={styles.popularItem}>
-              <View style={styles.popularItemLeft}>
-                <Ionicons
-                  name={post.type === 'post' ? 'chatbubble-ellipses' : 'mail'}
-                  size={18}
-                  color={post.type === 'post' ? '#4CAF50' : '#FFA726'}
-                />
-                <Text style={styles.popularItemTitle}>{post.title}</Text>
-              </View>
-
-              <View style={styles.popularItemRight}>
-                {post.likes > 0 && (
-                  <View style={styles.countBadge}>
-                    <Ionicons name="heart-outline" size={14} color="#FF6B6B" />
-                    <Text style={styles.countText}>{post.likes}</Text>
-                  </View>
-                )}
-                <View style={styles.countBadge}>
-                  <Ionicons name="chatbubble-outline" size={14} color="#FFA726" />
-                  <Text style={styles.countText}>{post.comments}</Text>
+          {popularPosts.length > 0 ? (
+            popularPosts.map((post) => (
+              <TouchableOpacity
+                key={post.id}
+                style={styles.popularItem}
+                activeOpacity={0.7}
+                onPress={() =>
+                  navigation?.navigate('BoardDetail', {
+                    post: {
+                      id: post.id,
+                      author: '익명',
+                      time: '',
+                      location: '',
+                      content: '',
+                      likes: post.likes,
+                      comments: post.comments,
+                    },
+                    isMyPost: false,
+                  })
+                }
+              >
+                <View style={styles.popularItemLeft}>
+                  <Ionicons
+                    name="chatbubble-ellipses"
+                    size={18}
+                    color="#4CAF50"
+                  />
+                  <Text style={styles.popularItemTitle}>{post.title}</Text>
                 </View>
-              </View>
-            </TouchableOpacity>
-          ))}
+
+                <View style={styles.popularItemRight}>
+                  {post.likes > 0 && (
+                    <View style={styles.countBadge}>
+                      <Ionicons name="heart-outline" size={14} color="#FF6B6B" />
+                      <Text style={styles.countText}>{post.likes}</Text>
+                    </View>
+                  )}
+                  <View style={styles.countBadge}>
+                    <Ionicons name="chatbubble-outline" size={14} color="#FFA726" />
+                    <Text style={styles.countText}>{post.comments}</Text>
+                  </View>
+                </View>
+              </TouchableOpacity>
+            ))
+          ) : (
+            <View style={{ paddingVertical: 12, alignItems: 'center' }}>
+              <Text style={{ fontSize: 13, color: '#999' }}>
+                아직 인기 게시글이 없습니다.
+              </Text>
+            </View>
+          )}
         </View>
       </ScrollView>
     </View>

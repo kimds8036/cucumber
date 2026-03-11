@@ -30,7 +30,7 @@ INSERT IGNORE INTO colors (id, hex_code, color_number) VALUES
 CREATE TABLE IF NOT EXISTS users (
   id INT AUTO_INCREMENT PRIMARY KEY COMMENT '사용자 ID',
   username VARCHAR(50) NOT NULL UNIQUE COMMENT '사용자명 (로그인 ID)',
-  name VARCHAR(50) NOT NULL COMMENT '실명',
+  name VARCHAR(50) NOT NULL COMMENT '실명명',
   password VARCHAR(255) NOT NULL COMMENT '암호화된 비밀번호',
   phone VARCHAR(20) NOT NULL UNIQUE COMMENT '전화번호',
   birth_date DATE NOT NULL COMMENT '생년월일',
@@ -256,6 +256,27 @@ CREATE TABLE IF NOT EXISTS comment_likes (
   INDEX idx_user_id (user_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='댓글 좋아요 테이블';
 
+-- 해시태그 테이블
+CREATE TABLE IF NOT EXISTS tags (
+  id INT AUTO_INCREMENT PRIMARY KEY COMMENT '태그 ID',
+  name VARCHAR(50) NOT NULL UNIQUE COMMENT '해시태그 이름 (예: #중간고사)',
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP COMMENT '태그 생성 일시',
+  INDEX idx_tag_name (name)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='게시글 해시태그 테이블';
+
+-- 게시글-태그 매핑 테이블 (N:M)
+CREATE TABLE IF NOT EXISTS post_tags (
+  id INT AUTO_INCREMENT PRIMARY KEY COMMENT '게시글-태그 매핑 ID',
+  post_id INT NOT NULL COMMENT '게시글 ID',
+  tag_id INT NOT NULL COMMENT '태그 ID',
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP COMMENT '매핑 생성 일시',
+  FOREIGN KEY (post_id) REFERENCES posts(id) ON DELETE CASCADE,
+  FOREIGN KEY (tag_id) REFERENCES tags(id) ON DELETE CASCADE,
+  UNIQUE KEY unique_post_tag (post_id, tag_id),
+  INDEX idx_post_id (post_id),
+  INDEX idx_tag_id (tag_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='게시글-태그 매핑 테이블';
+
 -- 신고 테이블
 CREATE TABLE IF NOT EXISTS reports (
   id INT AUTO_INCREMENT PRIMARY KEY COMMENT '신고 ID',
@@ -285,3 +306,101 @@ CREATE TABLE IF NOT EXISTS ocr_verifications (
   INDEX idx_user_id (user_id),
   INDEX idx_is_verified (is_verified)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='OCR 학생증 인증 테이블';
+
+-- 친구 관계 테이블
+CREATE TABLE IF NOT EXISTS user_friendships (
+  id INT AUTO_INCREMENT PRIMARY KEY COMMENT '친구 관계 ID',
+  requester_id INT NOT NULL COMMENT '친구 요청자 ID',
+  addressee_id INT NOT NULL COMMENT '친구 요청 대상자 ID',
+  status VARCHAR(20) NOT NULL DEFAULT 'pending' COMMENT '상태 (pending/accepted/rejected)',
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP COMMENT '요청 일시',
+  responded_at TIMESTAMP NULL COMMENT '응답 일시',
+  FOREIGN KEY (requester_id) REFERENCES users(id) ON DELETE CASCADE,
+  FOREIGN KEY (addressee_id) REFERENCES users(id) ON DELETE CASCADE,
+  UNIQUE KEY unique_friend_pair (requester_id, addressee_id),
+  INDEX idx_requester_id (requester_id),
+  INDEX idx_addressee_id (addressee_id),
+  INDEX idx_status (status)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='사용자 친구 관계 테이블';
+
+-- 사용자 차단 테이블
+CREATE TABLE IF NOT EXISTS user_blocks (
+  id INT AUTO_INCREMENT PRIMARY KEY COMMENT '차단 ID',
+  user_id INT NOT NULL COMMENT '차단한 사용자 ID',
+  blocked_user_id INT NOT NULL COMMENT '차단된 사용자 ID',
+  reason VARCHAR(255) NULL COMMENT '차단 사유',
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP COMMENT '차단 일시',
+  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+  FOREIGN KEY (blocked_user_id) REFERENCES users(id) ON DELETE CASCADE,
+  UNIQUE KEY unique_block_pair (user_id, blocked_user_id),
+  INDEX idx_user_id (user_id),
+  INDEX idx_blocked_user_id (blocked_user_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='사용자 차단 테이블';
+
+-- 알림 테이블
+CREATE TABLE IF NOT EXISTS notifications (
+  id INT AUTO_INCREMENT PRIMARY KEY COMMENT '알림 ID',
+  user_id INT NOT NULL COMMENT '알림을 받는 사용자 ID',
+  type VARCHAR(30) NOT NULL COMMENT '알림 타입 (like/comment/mail/system 등)',
+  category VARCHAR(30) NOT NULL COMMENT '알림 카테고리 (post/mail/system 등)',
+  title VARCHAR(255) NOT NULL COMMENT '알림 제목',
+  body TEXT COMMENT '알림 내용',
+  related_type VARCHAR(30) NULL COMMENT '연관 리소스 타입 (post/comment/mail 등)',
+  related_id INT NULL COMMENT '연관 리소스 ID',
+  is_read BOOLEAN DEFAULT FALSE COMMENT '읽음 여부',
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP COMMENT '알림 생성 일시',
+  read_at TIMESTAMP NULL COMMENT '읽은 시각',
+  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+  INDEX idx_user_id (user_id),
+  INDEX idx_created_at (created_at),
+  INDEX idx_is_read (is_read),
+  INDEX idx_related (related_type, related_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='알림 테이블';
+
+-- 사용자 설정 테이블 (알림/게시판 거리/아이디 변경 등)
+CREATE TABLE IF NOT EXISTS user_settings (
+  id INT AUTO_INCREMENT PRIMARY KEY COMMENT '설정 ID',
+  user_id INT NOT NULL UNIQUE COMMENT '사용자 ID',
+  push_enabled BOOLEAN DEFAULT TRUE COMMENT '푸시 알림 전체 사용 여부',
+  new_post BOOLEAN DEFAULT TRUE COMMENT '새 게시글 알림',
+  new_comment BOOLEAN DEFAULT TRUE COMMENT '댓글 알림',
+  new_like BOOLEAN DEFAULT FALSE COMMENT '좋아요 알림',
+  announcement BOOLEAN DEFAULT TRUE COMMENT '공지사항 알림',
+  board_distance_km TINYINT UNSIGNED DEFAULT 10 COMMENT '게시판 거리 설정 (km, 1~100)',
+  last_username_change_at TIMESTAMP NULL COMMENT '마지막 아이디 변경 일시',
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP COMMENT '설정 생성 일시',
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '설정 수정 일시',
+  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+  INDEX idx_board_distance (board_distance_km)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='사용자 환경 설정 테이블';
+
+-- 공부/타이머 일별 요약 테이블
+CREATE TABLE IF NOT EXISTS study_days (
+  id INT AUTO_INCREMENT PRIMARY KEY COMMENT '공부 일별 집계 ID',
+  user_id INT NOT NULL COMMENT '사용자 ID',
+  day_key DATE NOT NULL COMMENT '날짜 (YYYY-MM-DD)',
+  total_elapsed_ms BIGINT NOT NULL DEFAULT 0 COMMENT '해당 날짜 총 공부 시간(ms)',
+  subjects JSON NULL COMMENT '과목 리스트 및 색상/메모 등(JSON)',
+  tasks JSON NULL COMMENT '투두리스트/과제 정보(JSON)',
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP COMMENT '생성 일시',
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '수정 일시',
+  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+  UNIQUE KEY unique_user_day (user_id, day_key),
+  INDEX idx_user_id (user_id),
+  INDEX idx_day_key (day_key)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='공부 타이머 일별 집계 테이블';
+
+-- 공부/타이머 세션 테이블
+CREATE TABLE IF NOT EXISTS study_sessions (
+  id INT AUTO_INCREMENT PRIMARY KEY COMMENT '공부 세션 ID',
+  user_id INT NOT NULL COMMENT '사용자 ID',
+  day_key DATE NOT NULL COMMENT '날짜 (YYYY-MM-DD)',
+  subject_name VARCHAR(100) NULL COMMENT '과목명 (NULL이면 전체 공부)',
+  start_seconds INT NOT NULL COMMENT '해당 날짜 기준 시작 시각(초)',
+  end_seconds INT NULL COMMENT '해당 날짜 기준 종료 시각(초, NULL이면 진행 중)',
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP COMMENT '생성 일시',
+  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+  INDEX idx_user_day (user_id, day_key),
+  INDEX idx_subject_name (subject_name),
+  INDEX idx_start_seconds (start_seconds)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='공부 타이머 세션 테이블';

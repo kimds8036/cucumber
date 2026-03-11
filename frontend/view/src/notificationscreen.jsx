@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -7,123 +7,277 @@ import {
   TouchableOpacity,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { AppState } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import SubHeader from '../frame/subHeader';
+import { api } from '../../utils/api';
 
 const NotificationScreen = ({ navigation }) => {
   const [selectedTab, setSelectedTab] = useState('all'); // all, post, mail, system
+  const [notifications, setNotifications] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const pendingReadIdsRef = useRef(new Set());
+  const flushTimerRef = useRef(null);
+  const isFlushingRef = useRef(false);
+  const appStateRef = useRef(AppState.currentState);
 
-  const notifications = [
-    {
-      id: 1,
-      type: 'like',
-      category: 'post',
-      title: '김철수님이 회원님의 게시글을 좋아합니다',
-      content: '오늘 급식 메뉴 어땠어요?',
-      time: '5분 전',
-      isRead: false,
-      icon: 'heart',
-      iconColor: '#FF6B6B',
-      iconBg: '#FFE5E5',
-    },
-    {
-      id: 2,
-      type: 'comment',
-      category: 'post',
-      title: '이영희님이 댓글을 남겼습니다',
-      content: '진짜 맛있었어요! 특히 김치찌개가...',
-      time: '15분 전',
-      isRead: false,
-      icon: 'chatbubble',
-      iconColor: '#4CAF50',
-      iconBg: '#E8F5E9',
-    },
-    {
-      id: 3,
-      type: 'mail',
-      category: 'mail',
-      title: '새로운 익명 우편이 도착했습니다',
-      content: '누군가 당신에게 편지를 보냈어요',
-      time: '1시간 전',
-      isRead: false,
-      icon: 'mail',
-      iconColor: '#FFA726',
-      iconBg: '#FFF3E0',
-    },
-    {
-      id: 4,
-      type: 'mention',
-      category: 'post',
-      title: '박민수님이 회원님을 언급했습니다',
-      content: '@홍길동 너도 이거 봤어?',
-      time: '2시간 전',
-      isRead: true,
-      icon: 'at',
-      iconColor: '#2196F3',
-      iconBg: '#E3F2FD',
-    },
-    {
-      id: 5,
-      type: 'system',
-      category: 'system',
-      title: '학교 공지사항',
-      content: '내일 체육대회가 예정되어 있습니다. 체육복을 준비해주세요.',
-      time: '3시간 전',
-      isRead: true,
-      icon: 'megaphone',
-      iconColor: '#9C27B0',
-      iconBg: '#F3E5F5',
-    },
-    {
-      id: 6,
-      type: 'reply',
-      category: 'post',
-      title: '최지훈님이 회원님의 댓글에 답글을 달았습니다',
-      content: '맞아요 저도 그렇게 생각해요!',
-      time: '5시간 전',
-      isRead: true,
-      icon: 'git-branch',
-      iconColor: '#00BCD4',
-      iconBg: '#E0F7FA',
-    },
-    {
-      id: 7,
-      type: 'mail',
-      category: 'mail',
-      title: '우편함에 새로운 메시지가 있습니다',
-      content: '안녕! 오랜만이야',
-      time: '1일 전',
-      isRead: true,
-      icon: 'mail-open',
-      iconColor: '#FFA726',
-      iconBg: '#FFF3E0',
-    },
-    {
-      id: 8,
-      type: 'system',
-      category: 'system',
-      title: '새로운 이벤트',
-      content: '동아리 모집이 시작되었습니다!',
-      time: '2일 전',
-      isRead: true,
-      icon: 'gift',
-      iconColor: '#E91E63',
-      iconBg: '#FCE4EC',
-    },
-  ];
+  const flushPendingReads = async () => {
+    const ids = Array.from(pendingReadIdsRef.current);
+    if (!ids.length || isFlushingRef.current) return;
+    isFlushingRef.current = true;
+    pendingReadIdsRef.current = new Set();
+    if (flushTimerRef.current) {
+      clearTimeout(flushTimerRef.current);
+      flushTimerRef.current = null;
+    }
+    try {
+      await api.post('/api/notifications/read-batch', { ids });
+    } catch (error) {
+      console.error('알림 배치 읽음 처리 실패:', error);
+      // Optimistic UI는 유지. 필요 시 전체 새로고침으로 복구 가능.
+    } finally {
+      isFlushingRef.current = false;
+    }
+  };
 
-  const tabs = [
-    { key: 'all', label: '전체', count: notifications.length },
-    { key: 'post', label: '게시글', count: notifications.filter(n => n.category === 'post').length },
-    { key: 'mail', label: '우편함', count: notifications.filter(n => n.category === 'mail').length },
-    { key: 'system', label: '시스템', count: notifications.filter(n => n.category === 'system').length },
-  ];
+  const scheduleFlush = () => {
+    const count = pendingReadIdsRef.current.size;
+    // 2️⃣ 개수 기준: 10개 이상이면 즉시 전송
+    if (count >= 10) {
+      flushPendingReads();
+      return;
+    }
 
-  const filteredNotifications = selectedTab === 'all'
-    ? notifications
-    : notifications.filter(n => n.category === selectedTab);
+    // 그 외에는 300ms 기다렸다가 전송 (여러 개를 한 번에 모으기 위함)
+    if (flushTimerRef.current) return;
+    flushTimerRef.current = setTimeout(async () => {
+      flushTimerRef.current = null;
+      await flushPendingReads();
+    }, 300);
+  };
 
-  const unreadCount = notifications.filter(n => !n.isRead).length;
+  const mapTypeToIcon = (type, category) => {
+    if (category === 'mail') return { name: 'mail', color: '#FFA726', bg: '#FFF3E0' };
+    if (category === 'system') return { name: 'megaphone', color: '#9C27B0', bg: '#F3E5F5' };
+    switch (type) {
+      case 'like':
+        return { name: 'heart', color: '#FF6B6B', bg: '#FFE5E5' };
+      case 'comment':
+      case 'reply':
+        return { name: 'chatbubble', color: '#4CAF50', bg: '#E8F5E9' };
+      case 'mention':
+        return { name: 'at', color: '#2196F3', bg: '#E3F2FD' };
+      default:
+        return { name: 'notifications-outline', color: '#4CAF50', bg: '#E8F5E9' };
+    }
+  };
+
+  const formatTime = (createdAt) => {
+    if (!createdAt) return '';
+    const d = new Date(createdAt);
+    if (Number.isNaN(d.getTime())) return '';
+    const now = new Date();
+    const diffMs = now - d;
+    const diffMin = Math.floor(diffMs / 60000);
+    if (diffMin < 1) return '방금 전';
+    if (diffMin < 60) return `${diffMin}분 전`;
+    const diffHour = Math.floor(diffMin / 60);
+    if (diffHour < 24) return `${diffHour}시간 전`;
+    const diffDay = Math.floor(diffHour / 24);
+    if (diffDay < 7) return `${diffDay}일 전`;
+    return d.toLocaleDateString('ko-KR');
+  };
+
+  const fetchNotifications = async () => {
+    try {
+      setLoading(true);
+      const res = await api.get('/api/notifications');
+      const list = res.data?.data || [];
+
+      // 좋아요(type === 'like') 알림은 너무 사소하므로 제외
+      const filtered = list.filter((n) => n.type !== 'like');
+
+      const mapped = filtered.map((n) => {
+        const icon = mapTypeToIcon(n.type, n.category);
+        return {
+          id: n.id,
+          type: n.type,
+          category: n.category,
+          title: n.title,
+          content: n.content,
+          time: formatTime(n.createdAt),
+           // 원본 시각/타입 정보도 보존 (필요 시 상세 화면에서 사용)
+          createdAt: n.createdAt,
+          isRead: !!n.isRead,
+          icon: icon.name,
+          iconColor: icon.color,
+          iconBg: icon.bg,
+          relatedType: n.relatedType,
+          relatedId: n.relatedId,
+        };
+      });
+      setNotifications(mapped);
+    } catch (error) {
+      console.error('알림 목록 불러오기 실패:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchNotifications();
+  }, []);
+
+  // 5️⃣ 앱 종료/백그라운드 대비: 상태 전환 시, 그리고 언마운트 시 pending 읽음 요청 강제 전송
+  useEffect(() => {
+    const handleAppStateChange = (nextState) => {
+      const prev = appStateRef.current;
+      appStateRef.current = nextState;
+      if (prev.match(/active/) && nextState.match(/inactive|background/)) {
+        // 앱이 background/inactive 로 갈 때 남은 읽음 요청을 강제로 flush
+        flushPendingReads();
+      }
+    };
+
+    const sub = AppState.addEventListener('change', handleAppStateChange);
+
+    return () => {
+      sub.remove();
+      // 화면 떠날 때도 남은 읽음 요청 전송
+      flushPendingReads();
+    };
+  }, []);
+
+  const tabs = useMemo(
+    () => [
+      { key: 'all', label: '전체', count: notifications.length },
+      {
+        key: 'post',
+        label: '게시글',
+        count: notifications.filter((n) => n.category === 'post').length,
+      },
+      {
+        key: 'mail',
+        label: '우편함',
+        count: notifications.filter((n) => n.category === 'mail').length,
+      },
+      {
+        key: 'system',
+        label: '시스템',
+        count: notifications.filter((n) => n.category === 'system').length,
+      },
+    ],
+    [notifications],
+  );
+
+  const filteredNotifications =
+    selectedTab === 'all'
+      ? notifications
+      : notifications.filter((n) => n.category === selectedTab);
+
+  const unreadCount = notifications.filter((n) => !n.isRead).length;
+
+  const handleMarkAllRead = async () => {
+    try {
+      await api.post('/api/notifications/mark-all-read');
+      setNotifications((prev) => prev.map((n) => ({ ...n, isRead: true })));
+    } catch (error) {
+      console.error('알림 모두 읽음 처리 실패:', error);
+    }
+  };
+
+  const handlePressNotification = (n) => {
+    // 1️⃣ Optimistic UI: 즉시 빨간 점 제거
+    setNotifications((prev) =>
+      prev.map((item) =>
+        item.id === n.id ? { ...item, isRead: true } : item
+      )
+    );
+
+    // 2️⃣ Batch API 요청을 위해 ID만 큐에 쌓고, 주기적으로 한번에 전송
+    pendingReadIdsRef.current.add(n.id);
+    scheduleFlush();
+
+    // 3️⃣ 알림 키에 따라 목적지 분기
+
+    // 1) 친구 요청 계열
+    if (n.type === 'friend_request') {
+      navigation?.navigate('Friends');
+      return;
+    }
+
+    // 2) 게시글/댓글/대댓글 관련 (댓글 달림, 대댓글 달림, 인기글 등록 등)
+    if (n.category === 'post' || n.relatedType === 'post') {
+      if (n.relatedId) {
+        navigation?.navigate('BoardDetail', {
+          post: {
+            id: n.relatedId,
+            author: '익명',
+            time: '',
+            location: '',
+            content: '',
+            likes: 0,
+            comments: 0,
+          },
+          isMyPost: false,
+        });
+      }
+      return;
+    }
+
+    // 3) 우편/쪽지 관련
+    if (n.category === 'mail' || n.type === 'mail') {
+      // (1) 개인 익명 우편 (personal_mail)
+      if (n.relatedType === 'personal_mail' && n.relatedId) {
+        navigation?.navigate('MailDetail', {
+          mail: {
+            id: n.relatedId,
+            receivedAt: n.time,
+            content: n.content,
+            is_read: false,
+          },
+        });
+        return;
+      }
+
+      // (2) 쪽지 채팅방 (message_room)
+      if (n.relatedType === 'message_room' && n.relatedId) {
+        navigation?.navigate('Chat', {
+          roomId: n.relatedId,
+        });
+        return;
+      }
+
+      // (3) 기본: 메시지/우편 화면 루트로 이동
+      navigation?.navigate('Message');
+      return;
+    }
+
+    // 4) 시스템 알림 (예: 인기 게시글 등록 등)
+    if (n.category === 'system') {
+      if (n.relatedType === 'post' && n.relatedId) {
+        navigation?.navigate('BoardDetail', {
+          post: {
+            id: n.relatedId,
+            author: '익명',
+            time: '',
+            location: '',
+            content: '',
+            likes: 0,
+            comments: 0,
+          },
+          isMyPost: false,
+        });
+        return;
+      }
+
+      // 그 외 시스템 알림은 일단 메인으로 이동 (원하면 마이페이지 등으로 변경 가능)
+      navigation?.navigate('Main');
+      return;
+    }
+
+    // 기본: 특별한 분기 없으면 아무 동작 안 함
+  };
 
   return (
     <View style={{ flex: 1, backgroundColor: styles.container.backgroundColor }}>
@@ -170,7 +324,7 @@ const NotificationScreen = ({ navigation }) => {
       {unreadCount > 0 && (
         <View style={styles.unreadHeader}>
           <Text style={styles.unreadText}>읽지 않은 알림 {unreadCount}개</Text>
-          <TouchableOpacity>
+          <TouchableOpacity onPress={handleMarkAllRead}>
             <Text style={styles.markAllReadButton}>모두 읽음으로 표시</Text>
           </TouchableOpacity>
         </View>
@@ -178,15 +332,27 @@ const NotificationScreen = ({ navigation }) => {
 
       {/* 알림 목록 */}
       <ScrollView style={styles.scrollView}>
-        {filteredNotifications.length > 0 ? (
+        {loading ? (
+          <View style={styles.emptyContainer}>
+            <Ionicons name="time-outline" size={32} color="#CCC" />
+            <Text style={styles.emptyText}>알림을 불러오는 중입니다...</Text>
+          </View>
+        ) : filteredNotifications.length > 0 ? (
           filteredNotifications.map((notification) => (
             <TouchableOpacity
               key={notification.id}
               style={[
                 styles.notificationItem,
                 !notification.isRead && styles.notificationItemUnread,
-              ]}>
-              <View style={[styles.iconContainer, { backgroundColor: notification.iconBg }]}>
+              ]}
+              onPress={() => handlePressNotification(notification)}
+            >
+              <View
+                style={[
+                  styles.iconContainer,
+                  { backgroundColor: notification.iconBg },
+                ]}
+              >
                 <Ionicons
                   name={notification.icon}
                   size={24}

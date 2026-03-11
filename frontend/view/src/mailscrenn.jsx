@@ -3,7 +3,7 @@
  * - Message.jsx 개인 우편함에서 우편 탭 시 route.params.mail 로 이 화면 진입 → 상세 표시
  * - mail 없이 진입 시 우편함 목록(MAILS) 표시, 항목 탭 시 상세로 이동
  */
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import {
   View,
   Text,
@@ -13,64 +13,70 @@ import {
   TextInput,
   StyleSheet,
   useWindowDimensions,
+  Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import SubHeader from '../frame/subHeader';
 import { colors, fonts } from '../../styles/colors';
 import { getNormalize } from '../../styles/frame.style';
+import { api } from '../../utils/api';
 
-// Message.jsx에서 넘어온 우편 형태 → 상세 화면용 형태로 통일
-// content가 없으면 MAILS 더미데이터에서 id로 찾아서 채움
+// Message.jsx 또는 API에서 넘어온 우편 형태 → 상세 화면용 형태로 통일
 function toDetailMail(m) {
   if (!m) return null;
-  const fromList = MAILS.find((mail) => mail.id === m.id);
   return {
     id: m.id,
-    receivedAt: m.receivedAt ?? m.time,
-    preview: m.preview ?? fromList?.preview ?? (m.content ? `${String(m.content).slice(0, 30)}...` : ''),
-    content: m.content || fromList?.content || '(편지 내용이 없습니다.)',
-    replied: m.replied ?? fromList?.replied ?? false,
-    replyContent: m.replyContent ?? fromList?.replyContent,
-    replyAt: m.replyAt ?? fromList?.replyAt,
-    isUnread: m.isUnread ?? (m.unreadCount > 0),
+    receivedAt: m.receivedAt || m.created_at || m.time || '',
+    preview:
+      m.preview ||
+      (m.content ? `${String(m.content).slice(0, 30)}...` : '(편지 내용이 없습니다.)'),
+    content: m.content || '(편지 내용이 없습니다.)',
+    replied: m.replied ?? false,
+    replyContent: m.replyContent,
+    replyAt: m.replyAt,
+    isUnread: m.isUnread ?? (m.unreadCount != null ? m.unreadCount > 0 : !m.is_read),
   };
 }
-
-// ─── 목록용 더미 데이터 (상세 진입 시에는 route.params.mail 사용) ───
-const MAILS = [
-  {
-    id: 1,
-    receivedAt: '2시간 전',
-    preview: '오늘도 수고했어. 요즘 많이 힘들어 보이던데...',
-    content: `오늘도 수고했어.\n\n요즘 많이 힘들어 보이던데 괜찮아?\n가끔 네 모습 보면 대단하다 싶어.\n\n그냥 한번쯤 전하고 싶었어.`,
-    replied: false,
-    isUnread: true,
-  },
-  {
-    id: 2,
-    receivedAt: '어제',
-    preview: '항상 밝게 웃는 모습이 주변을 환하게 만들어.',
-    content: `항상 밝게 웃는 모습이 주변을 환하게 만들어.\n그 에너지가 부러워서 편지 써봤어.\n\n그냥, 고마워.`,
-    replied: true,
-    replyContent: '누군지 모르지만 이런 편지 받으니까 정말 기뻤어. 고마워 :)',
-    replyAt: '어제',
-    isUnread: false,
-  },
-  {
-    id: 3,
-    receivedAt: '3일 전',
-    preview: '네 글씨체가 진짜 예뻐. 수업 시간에 훔쳐본 거 들키지 않길.',
-    content: `오랫동안 하고 싶었던 말인데\n네 글씨체가 진짜 예뻐.\n수업 시간에 필기 훔쳐본 거 들키지 않았길 바라며.`,
-    replied: false,
-    isUnread: false,
-  },
-];
 
 // ─── 우편함 목록 ─────────────────────────────────────────────────────
 function MailInbox({ onOpen, onBack }) {
   const { width } = useWindowDimensions();
   const normalize = useMemo(() => getNormalize(width), [width]);
   const styles = useMemo(() => createStyles(normalize), [normalize]);
+
+  const [mails, setMails] = useState([]);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    const fetchMails = async () => {
+      try {
+        setLoading(true);
+        const res = await api.get('/api/mails/personal/received', {
+          params: { page: 1, limit: 50 },
+        });
+        const apiMails = res.data?.data?.mails || [];
+        const mapped = apiMails.map((m) =>
+          toDetailMail({
+            id: m.id,
+            receivedAt: m.created_at,
+            content: m.content,
+            is_read: m.is_read,
+          })
+        );
+        setMails(mapped);
+      } catch (error) {
+        console.error('우편 목록 조회 실패:', error);
+        Alert.alert(
+          '오류',
+          error.response?.data?.message || '우편함을 불러오는 중 오류가 발생했습니다.'
+        );
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchMails();
+  }, []);
 
   return (
     <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
@@ -80,35 +86,63 @@ function MailInbox({ onOpen, onBack }) {
         contentContainerStyle={styles.inboxContainer}
         showsVerticalScrollIndicator={false}
       >
-        {MAILS.map((mail) => (
-          <TouchableOpacity
-            key={mail.id}
-            style={[styles.mailCard, mail.isUnread && styles.mailCardUnread]}
-            onPress={() => onOpen(mail)}
-            activeOpacity={0.8}
-          >
-            <View style={styles.mailCardHeader}>
-              <Text style={styles.anonLabel}>익명의 누군가</Text>
-              <Text style={styles.dotSep}>•</Text>
-              <Text style={styles.mailTime}>{mail.receivedAt}</Text>
-            </View>
-            <Text style={styles.mailPreview} numberOfLines={1}>{mail.preview}</Text>
-            <View style={styles.cardDivider} />
-            <View style={styles.mailCardFooter}>
-              {mail.replied ? (
-                <View style={styles.replyStatus}>
-                  <Text style={styles.replyStatusDoneText}>✓</Text>
-                  <Text style={styles.replyStatusDoneText}>답장 완료</Text>
-                </View>
-              ) : (
-                <View style={styles.replyStatus}>
-                  <Text style={styles.replyStatusPendingText}>💬</Text>
-                  <Text style={styles.replyStatusPendingText}>답장 가능</Text>
-                </View>
-              )}
-            </View>
-          </TouchableOpacity>
-        ))}
+        {loading && mails.length === 0 ? (
+          <View style={{ paddingVertical: normalize(40), alignItems: 'center' }}>
+            <Text
+              style={{
+                fontSize: normalize(14),
+                fontFamily: fonts.regular,
+                color: colors.textSecondary,
+              }}
+            >
+              우편함을 불러오는 중입니다...
+            </Text>
+          </View>
+        ) : mails.length === 0 ? (
+          <View style={{ paddingVertical: normalize(40), alignItems: 'center' }}>
+            <Text
+              style={{
+                fontSize: normalize(14),
+                fontFamily: fonts.regular,
+                color: colors.textSecondary,
+              }}
+            >
+              아직 도착한 우편이 없습니다.
+            </Text>
+          </View>
+        ) : (
+          mails.map((mail) => (
+            <TouchableOpacity
+              key={mail.id}
+              style={[styles.mailCard, mail.isUnread && styles.mailCardUnread]}
+              onPress={() => onOpen(mail)}
+              activeOpacity={0.8}
+            >
+              <View style={styles.mailCardHeader}>
+                <Text style={styles.anonLabel}>익명의 누군가</Text>
+                <Text style={styles.dotSep}>•</Text>
+                <Text style={styles.mailTime}>{mail.receivedAt}</Text>
+              </View>
+              <Text style={styles.mailPreview} numberOfLines={1}>
+                {mail.preview}
+              </Text>
+              <View style={styles.cardDivider} />
+              <View style={styles.mailCardFooter}>
+                {mail.replied ? (
+                  <View style={styles.replyStatus}>
+                    <Text style={styles.replyStatusDoneText}>✓</Text>
+                    <Text style={styles.replyStatusDoneText}>답장 완료</Text>
+                  </View>
+                ) : (
+                  <View style={styles.replyStatus}>
+                    <Text style={styles.replyStatusPendingText}>💬</Text>
+                    <Text style={styles.replyStatusPendingText}>답장 가능</Text>
+                  </View>
+                )}
+              </View>
+            </TouchableOpacity>
+          ))
+        )}
       </ScrollView>
     </SafeAreaView>
   );
@@ -125,12 +159,28 @@ function MailDetail({ mail: initialMail, onBack }) {
   const [showToast, setShowToast] = useState(false);
   const [replyText, setReplyText] = useState('');
 
-  const handleSend = () => {
+  const handleSend = async () => {
     if (!replyText.trim()) return;
-    setShowModal(false);
-    setShowToast(true);
-    setMail({ ...mail, replied: true, replyContent: replyText.trim(), replyAt: '방금 전' });
-    setReplyText('');
+    try {
+      await api.post(`/api/mails/personal/${mail.id}/reply`, {
+        content: replyText.trim(),
+      });
+      setShowModal(false);
+      setShowToast(true);
+      setMail({
+        ...mail,
+        replied: true,
+        replyContent: replyText.trim(),
+        replyAt: '방금 전',
+      });
+      setReplyText('');
+    } catch (error) {
+      console.error('우편 답장 오류:', error);
+      Alert.alert(
+        '오류',
+        error.response?.data?.message || '답장 전송 중 오류가 발생했습니다.'
+      );
+    }
   };
 
   return (

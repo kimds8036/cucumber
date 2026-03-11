@@ -1,17 +1,59 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, ScrollView, KeyboardAvoidingView, Platform } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, ScrollView, KeyboardAvoidingView, Platform, Alert } from 'react-native';
 import { colors } from '../../../styles/colors';
+import { api } from '../../../utils/api';
 
-const SignStep2 = ({ styles, normalize }) => {
+const SignStep2 = ({ styles, normalize, onChange }) => {
   const [phoneNumber, setPhoneNumber] = useState('');
   const [verificationCode, setVerificationCode] = useState('');
   const [isCodeSent, setIsCodeSent] = useState(false);
+  const [isVerified, setIsVerified] = useState(false);
 
-  const handleSendCode = () => {
-    // 추후 인증번호 발송 API 연동
-    if (phoneNumber) {
+  const notifyChange = (override = {}) => {
+    onChange &&
+      onChange({
+        phoneNumber,
+        verificationCode,
+        isCodeSent,
+        isVerified,
+        ...override,
+      });
+  };
+
+  const handleSendCode = async () => {
+    if (!phoneNumber) {
+      Alert.alert('알림', '전화번호를 입력해주세요.');
+      return;
+    }
+
+    try {
+      await api.post('/api/auth/send-verification', { phone: phoneNumber });
       setIsCodeSent(true);
-      // 인증번호 발송 로직
+      notifyChange({ isCodeSent: true });
+      Alert.alert('알림', '인증 코드가 발송되었습니다.');
+    } catch (error) {
+      console.error(error);
+      Alert.alert('오류', error.response?.data?.message || '인증 코드 발송 중 오류가 발생했습니다.');
+    }
+  };
+
+  const handleVerifyCode = async () => {
+    if (!phoneNumber || !verificationCode) {
+      Alert.alert('알림', '전화번호와 인증번호를 모두 입력해주세요.');
+      return;
+    }
+
+    try {
+      await api.post('/api/auth/verify-phone', {
+        phone: phoneNumber,
+        verificationCode,
+      });
+      setIsVerified(true);
+      notifyChange({ isVerified: true });
+      Alert.alert('알림', '전화번호 인증이 완료되었습니다.');
+    } catch (error) {
+      console.error(error);
+      Alert.alert('오류', error.response?.data?.message || '인증번호 확인 중 오류가 발생했습니다.');
     }
   };
 
@@ -32,7 +74,10 @@ const SignStep2 = ({ styles, normalize }) => {
           <TextInput
             style={[styles.input, styles.inputFlex]}
             value={phoneNumber}
-            onChangeText={setPhoneNumber}
+            onChangeText={(text) => {
+              setPhoneNumber(text);
+              notifyChange({ phoneNumber: text });
+            }}
             keyboardType="number-pad"
           />
           <TouchableOpacity style={styles.verifyButton} onPress={handleSendCode}>
@@ -47,11 +92,21 @@ const SignStep2 = ({ styles, normalize }) => {
         <TextInput
           style={styles.input}
           value={verificationCode}
-          onChangeText={setVerificationCode}
+          onChangeText={(text) => {
+            setVerificationCode(text);
+            notifyChange({ verificationCode: text });
+          }}
           keyboardType="number-pad"
           editable={isCodeSent}
         />
       </View>
+      {isCodeSent && (
+        <View style={styles.inputWrapper}>
+          <TouchableOpacity style={styles.verifyButton} onPress={handleVerifyCode}>
+            <Text style={styles.verifyButtonText}>인증 확인</Text>
+          </TouchableOpacity>
+        </View>
+      )}
       </ScrollView>
     </KeyboardAvoidingView>
   );

@@ -26,6 +26,7 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import Feather from '@expo/vector-icons/Feather';
 import MessageTabIcon from '../../assets/Group 166.svg';
 import ViewShot from 'react-native-view-shot';
+import { api } from '../../utils/api';
 import {
   getTimerDayKey,
   loadDayFromStorage,
@@ -58,15 +59,9 @@ const SUBJECT_COLORS = [
   '#FFB366',
   '#9FB5C7',
 ];
-const DEFAULT_SUBJECTS = [
-  { id: 1, name: '영어', color: '#FFB5C2' },
-  { id: 2, name: '수학', color: '#87CEEB' },
-];
-const DEFAULT_TASKS = [
-  { id: 1, subjectId: 1, content: '모의고사 1', status: 'pending' },
-  { id: 2, subjectId: 1, content: '듣기 30문제', status: 'pending' },
-  { id: 3, subjectId: 2, content: '수1 문제집 30문제', status: 'pending' },
-];
+// 더미 과목/할일 대신, 처음에는 비어 있고 사용자가 추가하면 저장된다.
+const DEFAULT_SUBJECTS = [];
+const DEFAULT_TASKS = [];
 const HOURS = Array.from({ length: 24 }, (_, i) => i);
 const TIMETABLE_GRAY = '#A6DA95';
 
@@ -456,6 +451,33 @@ export const TimerContent = () => {
     setToastKey((k) => k + 1);
     setToastVisible(true);
   };
+
+  // ── 친구 목록 로드 (백엔드 연동) ─────────────────────────
+  useEffect(() => {
+    let mounted = true;
+    const loadFriends = async () => {
+      try {
+        const res = await api.get('/api/friends/list');
+        const list = res.data?.data ?? [];
+        if (!mounted) return;
+        setFriends(
+          list.map((f, index) => ({
+            id: f.userId,
+            name: f.name || f.username || '친구',
+            colorIndex: index % FRIEND_ICON_COLORS.length,
+            // 현재는 공부 상태를 서버에서 받지 않으므로 기본값은 false
+            isActive: false,
+          })),
+        );
+      } catch (error) {
+        console.error('타이머 친구 목록 조회 실패:', error);
+      }
+    };
+    loadFriends();
+    return () => {
+      mounted = false;
+    };
+  }, []);
 
   // 친구 관련 핸들러
   const handleFriendPress = (friend) => {
@@ -1264,23 +1286,34 @@ export const TimerContent = () => {
       <AddFriendModal
         visible={showAddFriend}
         onClose={() => setShowAddFriend(false)}
-        onAdd={(name) => {
-          Alert.alert('친구 요청', '친구요청을 보내시겠습니까?', [
+        onAdd={async (raw) => {
+          const trimmed = raw.trim();
+          const username = trimmed.startsWith('@') ? trimmed.slice(1) : trimmed;
+          if (!username) return;
+
+          Alert.alert('친구 요청', `@${username} 님에게 친구 요청을 보내시겠어요?`, [
             { text: '취소', style: 'cancel' },
             {
               text: '보내기',
-              onPress: () => {
-                setFriends((prev) => [
-                  ...prev,
-                  {
-                    id: prev.length + 1,
-                    name,
-                    colorIndex: prev.length % FRIEND_ICON_COLORS.length,
-                    isActive: false,
-                  },
-                ]);
-                setShowAddFriend(false);
-                showToast(`✅ ${name}님에게 친구 요청을 보냈어요`);
+              onPress: async () => {
+                try {
+                  const res = await api.post('/api/friends/requests', {
+                    username,
+                  });
+                  const targetName =
+                    res.data?.data?.targetName ||
+                    res.data?.data?.targetUsername ||
+                    `@${username}`;
+                  setShowAddFriend(false);
+                  showToast(`✅ ${targetName}님에게 친구 요청을 보냈어요`);
+                } catch (error) {
+                  console.error('친구 요청 실패:', error);
+                  Alert.alert(
+                    '친구 요청 실패',
+                    error.response?.data?.message ||
+                      '친구 요청 중 오류가 발생했습니다.',
+                  );
+                }
               },
             },
           ]);

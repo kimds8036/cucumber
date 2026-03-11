@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import {
   View,
   Text,
@@ -13,6 +13,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import SubHeader from '../frame/subHeader';
+import { api } from '../../utils/api';
 
 const Settings = ({ navigation }) => {
   // ── 알림 설정 ──
@@ -24,8 +25,61 @@ const Settings = ({ navigation }) => {
     announcement: true,
   });
 
+  const [loadingSettings, setLoadingSettings] = useState(false);
+
+  const syncSettingsToServer = async (next) => {
+    try {
+      await api.put('/api/settings', {
+        pushEnabled: next.pushEnabled,
+        newPost: next.newPost,
+        newComment: next.newComment,
+        newLike: next.newLike,
+        announcement: next.announcement,
+        boardDistanceKm: next.distanceKm,
+        lastUsernameChangeAt: next.lastIdChangeAt,
+      });
+    } catch (error) {
+      console.error('설정 동기화 실패:', error);
+    }
+  };
+
+  useEffect(() => {
+    const fetchSettings = async () => {
+      try {
+        setLoadingSettings(true);
+        const res = await api.get('/api/settings');
+        const data = res.data?.data;
+        if (!data) return;
+        setNotifications({
+          pushEnabled: !!data.pushEnabled,
+          newPost: !!data.newPost,
+          newComment: !!data.newComment,
+          newLike: !!data.newLike,
+          announcement: !!data.announcement,
+        });
+        setDistanceKm(data.boardDistanceKm ?? 10);
+        if (data.lastUsernameChangeAt) {
+          setLastIdChangeAt(data.lastUsernameChangeAt);
+        }
+      } catch (error) {
+        console.error('설정 불러오기 실패:', error);
+      } finally {
+        setLoadingSettings(false);
+      }
+    };
+    fetchSettings();
+  }, []);
+
   const toggleNotification = (key) => {
-    setNotifications((prev) => ({ ...prev, [key]: !prev[key] }));
+    setNotifications((prev) => {
+      const next = { ...prev, [key]: !prev[key] };
+      syncSettingsToServer({
+        ...next,
+        distanceKm,
+        lastIdChangeAt,
+      });
+      return next;
+    });
   };
 
   // ── 게시판 거리 설정 (1~100km) ──
@@ -41,15 +95,22 @@ const Settings = ({ navigation }) => {
     const percent = Math.max(0, Math.min(1, relativeX / trackWidthRef.current));
     const km = Math.round(1 + percent * 99);
     setDistanceKm(km);
+    syncSettingsToServer({
+      ...notifications,
+      distanceKm: km,
+      lastIdChangeAt,
+    });
   };
 
   const distancePanResponder = useRef(
     PanResponder.create({
       onStartShouldSetPanResponder: () => true,
       onMoveShouldSetPanResponder: () => true,
-      onPanResponderGrant: (evt) => updateDistanceFromPageX(evt.nativeEvent.pageX),
-      onPanResponderMove: (evt) => updateDistanceFromPageX(evt.nativeEvent.pageX),
-    })
+      onPanResponderGrant: (evt) =>
+        updateDistanceFromPageX(evt.nativeEvent.pageX),
+      onPanResponderMove: (evt) =>
+        updateDistanceFromPageX(evt.nativeEvent.pageX),
+    }),
   ).current;
 
   const handleDistanceTrackLayout = (e) => {
@@ -63,7 +124,11 @@ const Settings = ({ navigation }) => {
 
   // ── 비밀번호 변경 ──
   const [pwForm, setPwForm] = useState({ current: '', next: '', confirm: '' });
-  const [showPw, setShowPw] = useState({ current: false, next: false, confirm: false });
+  const [showPw, setShowPw] = useState({
+    current: false,
+    next: false,
+    confirm: false,
+  });
 
   const handlePasswordChange = () => {
     if (!pwForm.current || !pwForm.next || !pwForm.confirm) {
@@ -79,7 +144,10 @@ const Settings = ({ navigation }) => {
       return;
     }
     Alert.alert('완료', '비밀번호가 변경되었습니다.', [
-      { text: '확인', onPress: () => setPwForm({ current: '', next: '', confirm: '' }) },
+      {
+        text: '확인',
+        onPress: () => setPwForm({ current: '', next: '', confirm: '' }),
+      },
     ]);
   };
 
@@ -99,23 +167,48 @@ const Settings = ({ navigation }) => {
 
   const handleIdChange = () => {
     const trimmed = newUsername.trim();
-    if (!trimmed) { Alert.alert('입력 오류', '새 아이디를 입력해주세요.'); return; }
-    if (!trimmed.startsWith('@')) { Alert.alert('입력 오류', '아이디는 @로 시작해야 합니다.'); return; }
-    if (trimmed.length < 4) { Alert.alert('입력 오류', '아이디는 4자 이상이어야 합니다.'); return; }
-    if (trimmed === currentUsername) { Alert.alert('입력 오류', '현재와 동일한 아이디입니다.'); return; }
-    if (!canChangeId) {
-      Alert.alert('변경 제한', `아이디는 6개월에 1번만 변경할 수 있습니다.\n다음 변경 가능일: ${nextChangeDate.toLocaleDateString('ko-KR')}`);
+    if (!trimmed) {
+      Alert.alert('입력 오류', '새 아이디를 입력해주세요.');
       return;
     }
+    if (!trimmed.startsWith('@')) {
+      Alert.alert('입력 오류', '아이디는 @로 시작해야 합니다.');
+      return;
+    }
+    if (trimmed.length < 4) {
+      Alert.alert('입력 오류', '아이디는 4자 이상이어야 합니다.');
+      return;
+    }
+    if (trimmed === currentUsername) {
+      Alert.alert('입력 오류', '현재와 동일한 아이디입니다.');
+      return;
+    }
+    if (!canChangeId) {
+      Alert.alert(
+        '변경 제한',
+        `아이디는 6개월에 1번만 변경할 수 있습니다.\n다음 변경 가능일: ${nextChangeDate.toLocaleDateString('ko-KR')}`,
+      );
+      return;
+    }
+    const nowIso = new Date().toISOString();
     setCurrentUsername(trimmed);
     setNewUsername('');
-    setLastIdChangeAt(new Date().toISOString());
+    setLastIdChangeAt(nowIso);
+    syncSettingsToServer({
+      ...notifications,
+      distanceKm,
+      lastIdChangeAt: nowIso,
+    });
     Alert.alert('완료', '아이디가 변경되었습니다.');
   };
 
   // ── 학교 변경 ──
   const handleSchoolChange = () => {
-    Alert.alert('학교 변경 문의', '학교 변경을 원하시면 아래 메일로 문의해주세요.\n\nkimds8036@naver.com', [{ text: '확인' }]);
+    Alert.alert(
+      '학교 변경 문의',
+      '학교 변경을 원하시면 아래 메일로 문의해주세요.\n\nkimds8036@naver.com',
+      [{ text: '확인' }],
+    );
   };
 
   // ── 공통 컴포넌트 ──
@@ -129,7 +222,9 @@ const Settings = ({ navigation }) => {
   const NotificationRow = ({ title, subtitle, value, onToggle, disabled }) => (
     <View style={[styles.notifRow, disabled && styles.notifRowDisabled]}>
       <View style={styles.notifLeft}>
-        <Text style={[styles.notifTitle, disabled && styles.textDisabled]}>{title}</Text>
+        <Text style={[styles.notifTitle, disabled && styles.textDisabled]}>
+          {title}
+        </Text>
         {subtitle && <Text style={styles.notifSubtitle}>{subtitle}</Text>}
       </View>
       <Switch
@@ -149,14 +244,24 @@ const Settings = ({ navigation }) => {
         <TextInput
           style={styles.pwInput}
           value={pwForm[fieldKey]}
-          onChangeText={(v) => setPwForm((prev) => ({ ...prev, [fieldKey]: v }))}
+          onChangeText={(v) =>
+            setPwForm((prev) => ({ ...prev, [fieldKey]: v }))
+          }
           secureTextEntry={!showPw[fieldKey]}
           placeholder="입력하세요"
           placeholderTextColor="#ccc"
           autoCapitalize="none"
         />
-        <TouchableOpacity onPress={() => setShowPw((prev) => ({ ...prev, [fieldKey]: !prev[fieldKey] }))}>
-          <Ionicons name={showPw[fieldKey] ? 'eye-off-outline' : 'eye-outline'} size={20} color="#aaa" />
+        <TouchableOpacity
+          onPress={() =>
+            setShowPw((prev) => ({ ...prev, [fieldKey]: !prev[fieldKey] }))
+          }
+        >
+          <Ionicons
+            name={showPw[fieldKey] ? 'eye-off-outline' : 'eye-outline'}
+            size={20}
+            color="#aaa"
+          />
         </TouchableOpacity>
       </View>
     </View>
@@ -170,7 +275,6 @@ const Settings = ({ navigation }) => {
       <SubHeader title="설정" onBack={() => navigation.goBack()} />
 
       <ScrollView style={styles.scroll} showsVerticalScrollIndicator={false}>
-
         {/* ────────────── 알림 설정 ────────────── */}
         <SectionHeader icon="notifications-outline" title="알림 설정" />
         <View style={styles.card}>
@@ -182,9 +286,9 @@ const Settings = ({ navigation }) => {
           />
           <View style={styles.divider} />
           {[
-            { key: 'newPost',      label: '새 게시글 알림' },
-            { key: 'newComment',   label: '댓글 알림' },
-            { key: 'newLike',      label: '좋아요 알림' },
+            { key: 'newPost', label: '새 게시글 알림' },
+            { key: 'newComment', label: '댓글 알림' },
+            { key: 'newLike', label: '좋아요 알림' },
             { key: 'announcement', label: '공지사항 알림' },
           ].map(({ key, label }, idx, arr) => (
             <React.Fragment key={key}>
@@ -215,10 +319,14 @@ const Settings = ({ navigation }) => {
             {/* 배경 트랙 */}
             <View style={styles.sliderTrack}>
               {/* 채워진 부분 */}
-              <View style={[styles.sliderFill, { width: `${thumbLeftPercent}%` }]} />
+              <View
+                style={[styles.sliderFill, { width: `${thumbLeftPercent}%` }]}
+              />
             </View>
             {/* thumb — 퍼센트 위치에 absolute 배치 */}
-            <View style={[styles.sliderThumb, { left: `${thumbLeftPercent}%` }]} />
+            <View
+              style={[styles.sliderThumb, { left: `${thumbLeftPercent}%` }]}
+            />
           </View>
 
           <View style={styles.distanceValueRow}>
@@ -251,14 +359,20 @@ const Settings = ({ navigation }) => {
               />
             </View>
           </View>
-          <Text style={styles.idHint}>아이디는 6개월에 1번만 변경할 수 있습니다.</Text>
+          <Text style={styles.idHint}>
+            아이디는 6개월에 1번만 변경할 수 있습니다.
+          </Text>
           {nextChangeDate && !canChangeId && (
             <Text style={styles.idNextDate}>
               다음 변경 가능일: {nextChangeDate.toLocaleDateString('ko-KR')}
             </Text>
           )}
           <TouchableOpacity
-            style={[styles.actionButton, (!canChangeId || !newUsername.trim()) && styles.actionButtonDisabled]}
+            style={[
+              styles.actionButton,
+              (!canChangeId || !newUsername.trim()) &&
+                styles.actionButtonDisabled,
+            ]}
             onPress={handleIdChange}
             disabled={!canChangeId || !newUsername.trim()}
           >
@@ -274,7 +388,10 @@ const Settings = ({ navigation }) => {
           <PwInput label="새 비밀번호" fieldKey="next" />
           <View style={styles.innerDivider} />
           <PwInput label="새 비밀번호 확인" fieldKey="confirm" />
-          <TouchableOpacity style={styles.actionButton} onPress={handlePasswordChange}>
+          <TouchableOpacity
+            style={styles.actionButton}
+            onPress={handlePasswordChange}
+          >
             <Text style={styles.actionButtonText}>변경하기</Text>
           </TouchableOpacity>
         </View>
@@ -284,14 +401,27 @@ const Settings = ({ navigation }) => {
         <View style={styles.card}>
           <View style={styles.schoolRow}>
             <View style={styles.schoolInfo}>
-              <Ionicons name="information-circle-outline" size={16} color="#8FD397" />
+              <Ionicons
+                name="information-circle-outline"
+                size={16}
+                color="#8FD397"
+              />
               <Text style={styles.schoolDesc}>
-                학교 변경은 관리자 검토 후 처리됩니다.{'\n'}메일로 학교명과 학년/반을 함께 보내주세요.
+                학교 변경은 관리자 검토 후 처리됩니다.{'\n'}메일로 학교명과
+                학년/반을 함께 보내주세요.
               </Text>
             </View>
           </View>
-          <TouchableOpacity style={[styles.actionButton, styles.schoolButton]} onPress={handleSchoolChange}>
-            <Ionicons name="mail-outline" size={16} color="#fff" style={{ marginRight: 6 }} />
+          <TouchableOpacity
+            style={[styles.actionButton, styles.schoolButton]}
+            onPress={handleSchoolChange}
+          >
+            <Ionicons
+              name="mail-outline"
+              size={16}
+              color="#fff"
+              style={{ marginRight: 6 }}
+            />
             <Text style={styles.actionButtonText}>메일로 문의하기</Text>
           </TouchableOpacity>
         </View>
@@ -360,12 +490,12 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   sliderWrapper: {
-    height: 20,               // 터치 영역 확보
+    height: 20, // 터치 영역 확보
     justifyContent: 'center',
     marginBottom: 8,
   },
   sliderTrack: {
-    height: 4,                // ← 얇은 트랙
+    height: 4, // ← 얇은 트랙
     borderRadius: 2,
     backgroundColor: '#e0e0e0',
     overflow: 'hidden',
@@ -377,12 +507,12 @@ const styles = StyleSheet.create({
   },
   sliderThumb: {
     position: 'absolute',
-    width: 18,                // ← 작은 thumb
+    width: 18, // ← 작은 thumb
     height: 18,
     borderRadius: 9,
     backgroundColor: '#fff',
-    marginLeft: -9,           // thumb 중앙 정렬
-    top: 1,                   // (20 - 18) / 2
+    marginLeft: -9, // thumb 중앙 정렬
+    top: 1, // (20 - 18) / 2
     borderWidth: 2,
     borderColor: '#8FD397',
     shadowColor: '#000',
@@ -418,7 +548,12 @@ const styles = StyleSheet.create({
   idField: { paddingVertical: 14 },
   idCurrent: { fontSize: 14, color: '#333', fontWeight: '500' },
   idHint: { fontSize: 12, color: '#999', marginTop: 4, marginBottom: 4 },
-  idNextDate: { fontSize: 12, color: '#8FD397', fontWeight: '600', marginBottom: 8 },
+  idNextDate: {
+    fontSize: 12,
+    color: '#8FD397',
+    fontWeight: '600',
+    marginBottom: 8,
+  },
   actionButtonDisabled: { opacity: 0.5 },
 
   // ── 학교 ──

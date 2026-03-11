@@ -31,3 +31,21 @@ export const authenticate = (req, res, next) => {
     });
   }
 };
+
+// 선택적 인증: 토큰이 있으면 req.user 설정, 없으면 req.user = null
+export const optionalAuthenticate = (req, res, next) => {
+  try {
+    const authHeader = req.headers.authorization;
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      req.user = null;
+      return next();
+    }
+    const token = authHeader.substring(7);
+    const decoded = verifyToken(token);
+    req.user = decoded || null;
+    next();
+  } catch (error) {
+    req.user = null;
+    next();
+  }
+};

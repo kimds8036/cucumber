@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity, Modal, FlatList, ScrollView, KeyboardAvoidingView, Platform } from 'react-native';
 import { colors } from '../../../styles/colors';
 
-const SignStep1 = ({ styles, normalize }) => {
+const SignStep1 = ({ styles, normalize, onChange }) => {
   const [name, setName] = useState('');
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
@@ -10,6 +10,28 @@ const SignStep1 = ({ styles, normalize }) => {
   const [birthYear, setBirthYear] = useState('');
   const [birthMonth, setBirthMonth] = useState('');
   const [birthDay, setBirthDay] = useState('');
+
+  const notifyChange = (override = {}) => {
+    const birthDate =
+      (override.birthYear ?? birthYear) &&
+      (override.birthMonth ?? birthMonth) &&
+      (override.birthDay ?? birthDay)
+        ? `${override.birthYear ?? birthYear}-${override.birthMonth ?? birthMonth}-${override.birthDay ?? birthDay}`
+        : '';
+
+    onChange &&
+      onChange({
+        name,
+        username,
+        password,
+        passwordConfirm,
+        birthYear,
+        birthMonth,
+        birthDay,
+        birthDate,
+        ...override,
+      });
+  };
 
   // 모달 상태
   const [showYearModal, setShowYearModal] = useState(false);
@@ -38,7 +60,10 @@ const SignStep1 = ({ styles, normalize }) => {
         <TextInput
           style={styles.input}
           value={name}
-          onChangeText={setName}
+          onChangeText={(text) => {
+            setName(text);
+            notifyChange({ name: text });
+          }}
         />
       </View>
 
@@ -48,7 +73,10 @@ const SignStep1 = ({ styles, normalize }) => {
         <TextInput
           style={styles.input}
           value={username}
-          onChangeText={setUsername}
+          onChangeText={(text) => {
+            setUsername(text);
+            notifyChange({ username: text });
+          }}
           autoCapitalize="none"
         />
       </View>
@@ -59,7 +87,10 @@ const SignStep1 = ({ styles, normalize }) => {
         <TextInput
           style={styles.input}
           value={password}
-          onChangeText={setPassword}
+          onChangeText={(text) => {
+            setPassword(text);
+            notifyChange({ password: text });
+          }}
           secureTextEntry
           autoCapitalize="none"
         />
@@ -71,7 +102,10 @@ const SignStep1 = ({ styles, normalize }) => {
         <TextInput
           style={styles.input}
           value={passwordConfirm}
-          onChangeText={setPasswordConfirm}
+          onChangeText={(text) => {
+            setPasswordConfirm(text);
+            notifyChange({ passwordConfirm: text });
+          }}
           secureTextEntry
           autoCapitalize="none"
         />
@@ -135,6 +169,7 @@ const SignStep1 = ({ styles, normalize }) => {
                   style={styles.modalItem}
                   onPress={() => {
                     setBirthYear(item);
+                    notifyChange({ birthYear: item });
                     setShowYearModal(false);
                   }}
                 >
@@ -178,6 +213,7 @@ const SignStep1 = ({ styles, normalize }) => {
                   style={styles.modalItem}
                   onPress={() => {
                     setBirthMonth(item);
+                    notifyChange({ birthMonth: item });
                     setShowMonthModal(false);
                   }}
                 >
@@ -221,6 +257,7 @@ const SignStep1 = ({ styles, normalize }) => {
                   style={styles.modalItem}
                   onPress={() => {
                     setBirthDay(item);
+                    notifyChange({ birthDay: item });
                     setShowDayModal(false);
                   }}
                 >

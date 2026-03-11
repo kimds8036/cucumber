@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { View, Text, TextInput, ScrollView, KeyboardAvoidingView, Platform } from 'react-native';
 import { colors } from '../../../styles/colors';
 
-const SignStep4 = ({ styles, normalize, recognizedData }) => {
+const SignStep4 = ({ styles, normalize, recognizedData, onChange }) => {
   const [name, setName] = useState('');
   const [school, setSchool] = useState('');
   const [grade, setGrade] = useState('');
@@ -15,8 +15,27 @@ const SignStep4 = ({ styles, normalize, recognizedData }) => {
       setSchool(recognizedData.school || '');
       setGrade(recognizedData.grade || '');
       setClassNum(recognizedData.class || '');
+      onChange &&
+        onChange({
+          name: recognizedData.name || '',
+          school: recognizedData.school || '',
+          grade: recognizedData.grade || '',
+          classNum: recognizedData.class || '',
+          graduationYear: recognizedData.graduationYear,
+        });
     }
   }, [recognizedData]);
+
+  const notifyChange = (override = {}) => {
+    onChange &&
+      onChange({
+        name,
+        school,
+        grade,
+        classNum,
+        ...override,
+      });
+  };
 
   return (
     <KeyboardAvoidingView
@@ -36,7 +55,10 @@ const SignStep4 = ({ styles, normalize, recognizedData }) => {
           placeholder="이름"
           placeholderTextColor={colors.textSecondary}
           value={name}
-          onChangeText={setName}
+          onChangeText={(text) => {
+            setName(text);
+            notifyChange({ name: text });
+          }}
         />
       </View>
 
@@ -48,7 +70,10 @@ const SignStep4 = ({ styles, normalize, recognizedData }) => {
           placeholder="학교"
           placeholderTextColor={colors.textSecondary}
           value={school}
-          onChangeText={setSchool}
+          onChangeText={(text) => {
+            setSchool(text);
+            notifyChange({ school: text });
+          }}
         />
       </View>
 
@@ -60,7 +85,10 @@ const SignStep4 = ({ styles, normalize, recognizedData }) => {
           placeholder="학년"
           placeholderTextColor={colors.textSecondary}
           value={grade}
-          onChangeText={setGrade}
+          onChangeText={(text) => {
+            setGrade(text);
+            notifyChange({ grade: text });
+          }}
           keyboardType="number-pad"
         />
       </View>
@@ -73,7 +101,10 @@ const SignStep4 = ({ styles, normalize, recognizedData }) => {
           placeholder="반"
           placeholderTextColor={colors.textSecondary}
           value={classNum}
-          onChangeText={setClassNum}
+          onChangeText={(text) => {
+            setClassNum(text);
+            notifyChange({ classNum: text });
+          }}
           keyboardType="number-pad"
         />
       </View>

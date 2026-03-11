@@ -6,13 +6,15 @@
   "type": "module",
   "scripts": {
     "start": "node src/index.js",
-    "dev": "node --watch src/index.js",
-    "migrate": "node src/db/migrate.js"
+    "dev": "nodemon --watch src src/index.js",
+    "migrate": "node src/db/migrate.js",
+    "db:reset": "node src/db/reset-db.js"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "bcrypt": "^6.0.0",
     "bcryptjs": "^2.4.3",
     "cors": "^2.8.5",
     "dotenv": "^16.3.1",
@@ -20,7 +22,10 @@
     "jsonwebtoken": "^9.0.2",
     "multer": "^1.4.5-lts.1",
     "mysql2": "^3.6.5",
-    "nodemon": "^3.1.14",
     "swagger-ui-express": "^5.0.0"
+  },
+  "devDependencies": {
+    "@faker-js/faker": "^10.3.0",
+    "nodemon": "^3.1.14"
   }
 }

@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useRef } from 'react';
+import React, { useState, useMemo, useRef, useEffect } from 'react';
 import {
   View,
   Text,
@@ -7,75 +7,43 @@ import {
   useWindowDimensions,
   Modal,
   TouchableWithoutFeedback,
+  Alert,
+  Share,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { Entypo } from '@expo/vector-icons';
 import MainHeader from '../frame/mainHeader';
 import MainFooter from '../frame/mainFooter';
 import { colors, fonts } from '../../styles/colors';
 import { createBoardStyles, getNormalize } from '../../styles/board.style';
-import FontAwesome from '@expo/vector-icons/FontAwesome';
 import FontAwesome5 from '@expo/vector-icons/FontAwesome5';
+import { api } from '../../utils/api';
+import BoardPostCard from '../../components/Boardpostcard';
 
-// 기본 게시글 더미 데이터 (전체 게시판용)
-const defaultPosts = [
-  {
-    id: 1,
-    author: '익명',
-    time: '2시간 전',
-    location: '24m',
-    content:
-      '중간고사 D-7 같이 공부하실 분>시험기간인데 혼자 공부하니까 집중이 안 되서요. 온라인으로라도 같이 공부하실 분 있나요? 디스코드 공부방 만들까 생각 중임',
-    likes: 213,
-    comments: 89,
-    liked: false,
-  },
-  {
-    id: 2,
-    author: '익명',
-    time: '2시간 전',
-    location: '',
-    content:
-      '중간고사 D-7 같이 공부하실 분>시험기간인데 혼자 공부하니까 집중이 안 되서요. 온라인으로라도 같이 공부하실 분 있나요? 디스코드 공부방 만들까 생각 중임',
-    likes: 10,
-    comments: 0,
-    liked: false,
-  },
-  {
-    id: 3,
-    author: '익명',
-    time: '2시간 전',
-    location: '24m',
-    content:
-      '중간고사 D-7 같이 공부하실 분>시험기간인데 혼자 공부하니까 집중이 안 되서요. 온라인으로라도 같이 공부하실 분 있나요? 디스코드 공부방 만들까 생각 중임',
-    likes: 0,
-    comments: 0,
-    liked: false,
-  },
-  {
-    id: 4,
-    author: '익명',
-    time: '2시간 전',
-    location: '',
-    content:
-      '중간고사 D-7 같이 공부하실 분>시험기간인데 혼자 공부하니까 집중이 안 되서요. 온라인으로라도 같이 공부하실 분 있나요? 디스코드 공부방 만들까 생각 중임',
-    likes: 0,
-    comments: 0,
-    liked: false,
-  },
-  {
-    id: 5,
-    author: '익명',
-    time: '2시간 전',
-    location: '',
-    content:
-      '중간고사 D-7 같이 공부하실 분>시험기간인데 혼자 공부하니까 집중이 안 되서요. 온라인으로라도 같이 공부하실 분 있나요? 디스코드 공부방 만들까 생각 중임',
-    likes: 213,
-    comments: 89,
-    liked: false,
-  },
-];
+/** 서버 created_at(UTC)을 "n분 전" 형식으로 변환. 화면에서는 기기 로컬 시간 기준으로 계산 */
+function formatTimeAgo(createdAt) {
+  if (!createdAt) return '';
+  let dateStr = typeof createdAt === 'string' ? createdAt.trim() : String(createdAt);
+  if (!dateStr) return '';
+  // MySQL "YYYY-MM-DD HH:mm:ss" 또는 "YYYY-MM-DDTHH:mm:ss" 형태이고
+  // 타임존 문자가 없으면 UTC로 간주해 Z(=+00:00) 를 붙인다.
+  if (/^\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}:\d{2}(\.\d+)?$/.test(dateStr) && !/[Z+-]/.test(dateStr)) {
+    dateStr = dateStr.replace(' ', 'T') + 'Z';
+  }
+  const date = new Date(dateStr);
+  if (Number.isNaN(date.getTime())) return '';
+  const now = new Date();
+  const diffMs = now - date;
+  const diffSec = Math.floor(diffMs / 1000);
+  const diffMin = Math.floor(diffSec / 60);
+  const diffHour = Math.floor(diffMin / 60);
+  const diffDay = Math.floor(diffHour / 24);
+  if (diffSec < 60) return '방금 전';
+  if (diffMin < 60) return `${diffMin}분 전`;
+  if (diffHour < 24) return `${diffHour}시간 전`;
+  if (diffDay < 7) return `${diffDay}일 전`;
+  return date.toLocaleDateString('ko-KR', { month: 'long', day: 'numeric' });
+}
 
 // 메인 화면(MainScreen)에서 헤더/푸터 없이 메인 영역만 렌더할 때 사용
 // posts: 외부에서 주입하는 게시글 배열 (없으면 defaultPosts 사용)
@@ -85,19 +53,59 @@ export function BoardAllContent({ navigation, posts }) {
   const styles = useMemo(() => createBoardStyles(width, normalize), [width]);
 
   const [sortType, setSortType] = useState('latest'); // latest, popular, nearby
+  const [serverPosts, setServerPosts] = useState([]);
+  const [loading, setLoading] = useState(false);
   const [floatingMenuVisible, setFloatingMenuVisible] = useState(false);
   const [floatingMenuAnchor, setFloatingMenuAnchor] = useState(null);
   const [floatingMenuPost, setFloatingMenuPost] = useState(null);
-  const menuButtonRefs = useRef({});
 
-  const defaultMenuItems = useMemo(
+  const defaultMenuItemsOthers = useMemo(
     () => [
-      { label: '쪽지 보내기', iconName: 'chatbubble-outline', onPress: () => {} },
-      { label: '신고하기', iconName: 'flag-outline', onPress: () => {} },
-      { label: '차단하기', iconName: 'remove-circle-outline', onPress: () => {} },
-      { label: '공유하기', iconName: 'share-outline', onPress: () => {} },
+      { label: '쪽지 보내기', iconName: 'chatbubble-outline' },
+      { label: '공유하기', iconName: 'share-outline' },
+      { label: '신고하기', iconName: 'flag-outline' },
     ],
     []
+  );
+
+  const defaultMenuItemsMine = useMemo(
+    () => [
+      { label: '공유하기', iconName: 'share-outline', onPress: () => {} },
+      {
+        label: '삭제하기',
+        iconName: 'trash-outline',
+        onPress: () => {
+          const postToDelete = floatingMenuPost;
+          closeFloatingMenu();
+          if (!postToDelete) return;
+          Alert.alert(
+            '게시글 삭제',
+            '이 게시글을 삭제할까요?',
+            [
+              { text: '취소', style: 'cancel' },
+              {
+                text: '삭제',
+                style: 'destructive',
+                onPress: async () => {
+                  try {
+                    await api.delete(`/api/posts/${postToDelete.id}`);
+                    setServerPosts((prev) => prev.filter((p) => p.id !== postToDelete.id));
+                    Alert.alert('삭제됨', '게시글이 삭제되었습니다.');
+                  } catch (error) {
+                    console.error('게시글 삭제 오류:', error);
+                    Alert.alert(
+                      '오류',
+                      error.response?.data?.message || '게시글 삭제 중 오류가 발생했습니다.'
+                    );
+                  }
+                },
+              },
+            ]
+          );
+        },
+      },
+    ],
+    [floatingMenuPost]
   );
 
   const openFloatingMenu = (post, ref) => {
@@ -112,7 +120,91 @@ export function BoardAllContent({ navigation, posts }) {
     setFloatingMenuAnchor(null);
     setFloatingMenuPost(null);
   };
-  const data = posts && posts.length > 0 ? posts : defaultPosts;
+  const startNoteToPostAuthorFromList = async (post) => {
+    if (!post?.authorUserId || !post?.id) {
+      Alert.alert('오류', '쪽지를 보낼 수 없습니다.');
+      return;
+    }
+    try {
+      const res = await api.post('/api/messages/rooms', {
+        postId: post.id,
+        otherUserId: post.authorUserId,
+      });
+      const room = res.data?.data;
+      if (!room?.id) {
+        Alert.alert('오류', '쪽지 방 정보를 불러올 수 없습니다.');
+        return;
+      }
+      closeFloatingMenu();
+      navigation.navigate('Chat', { roomId: room.id });
+    } catch (error) {
+      console.error('쪽지방 생성/조회 실패:', error);
+      Alert.alert(
+        '오류',
+        error.response?.data?.message || '쪽지방을 여는 중 오류가 발생했습니다.'
+      );
+    }
+  };
+
+  const handleShareFromList = async (post) => {
+    if (!post?.id) return;
+    const url = `${api.defaults.baseURL}/posts/${post.id}`;
+    try {
+      await Share.share({
+        message: `오늘의 이야기 게시글을 공유합니다.\n\n${url}`,
+        url,
+        title: '오늘의 이야기 게시글',
+      });
+    } catch (error) {
+      console.error('게시글 공유 실패:', error);
+    }
+  };
+
+  // 게시글 목록 로드
+  useEffect(() => {
+    const fetchPosts = async () => {
+      try {
+        setLoading(true);
+        const sortParam = sortType === 'popular' ? 'popular' : 'latest';
+        const response = await api.get('/api/posts', {
+          params: {
+            boardType: 'national',
+            sort: sortParam,
+            page: 1,
+            limit: 50,
+          },
+        });
+        const apiPosts = response.data?.data?.posts || [];
+        const mapped = apiPosts.map((p) => ({
+          id: p.id,
+          author: '익명',
+          time: formatTimeAgo(p.created_at),
+          location: '',
+          content: p.content,
+          likes: p.like_count,
+          comments: p.comment_count,
+          liked: false,
+          isMyPost: !!p.is_author,
+          authorUserId: p.author_user_id, // 쪽지 발신 대상 ID
+        }));
+        setServerPosts(mapped);
+      } catch (error) {
+        console.error('게시글 목록 로드 실패:', error);
+        if (error.response?.data?.message) {
+          console.error('서버 메시지:', error.response.data.message);
+        }
+        if (error.response?.data?.errorDetail) {
+          console.error('서버 오류 상세:', error.response.data.errorDetail);
+        }
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchPosts();
+  }, [sortType]);
+
+  const data = posts && posts.length > 0 ? posts : serverPosts;
 
   return (
     <>
@@ -150,75 +242,29 @@ export function BoardAllContent({ navigation, posts }) {
         contentContainerStyle={{ paddingBottom: 0 }}
         showsVerticalScrollIndicator={false}
       >
-        {data.map((post) => (
-          <TouchableOpacity
-            key={post.id}
-            style={styles.postItem}
-            activeOpacity={0.7}
-            onPress={() =>
-              navigation.navigate('BoardDetail', {
-                post: { ...post, author: post.id === 1 ? '작성자' : post.author },
-                isMyPost: post.id === 1, // 본인 글 여부 (추후 로그인 사용자와 비교)
-              })
-            }
-          >
-            {/* 게시글 헤더: 좌측 익명•시간, 우측 위치 */}
-            <View style={styles.postHeader}>
-              <View style={styles.postAuthorInfo}>
-                <Text style={styles.postAuthor}>{post.author}</Text>
-                <Text style={styles.postDot}>•</Text>
-                <Text style={styles.postTime}>{post.time}</Text>
-              </View>
-              {post.location ? (
-                <View style={styles.postLocation}>
-                  <Ionicons name="location-sharp" size={normalize(12)} color={colors.textSecondary} />
-                  <Text style={styles.postLocationText}>{post.location}</Text>
-                </View>
-              ) : null}
-            </View>
-
-            {/* 게시글 내용 */}
-            <Text style={styles.postContent} numberOfLines={3}>
-              {post.content}
+        {loading && data.length === 0 ? (
+          <View style={{ paddingVertical: normalize(40), alignItems: 'center' }}>
+            <Text style={{ fontFamily: fonts.regular, color: colors.textSecondary }}>
+              게시글을 불러오는 중입니다...
             </Text>
-
-            {/* 경계선 */}
-            <View style={styles.postDivider} />
-
-            {/* 푸터: 좌측 좋아요&댓글, 우측 햄버거 */}
-            <View style={styles.postFooter}>
-              <View style={styles.postStats}>
-                <View style={styles.postStatItem}>
-                  <FontAwesome
-                    name={post.liked ? 'heart' : 'heart-o'}
-                    size={normalize(14)}
-                    color={colors.alert}
-                  />
-                  <Text style={styles.postStatText}>{post.likes}</Text>
-                </View>
-                <View style={styles.postStatItem}>
-                  <Ionicons name="chatbubble-outline" size={normalize(15)} color={colors.primary} />
-                  <Text style={styles.postStatText}>{post.comments}</Text>
-                </View>
-              </View>
-              <View
-                ref={(r) => {
-                  if (r) menuButtonRefs.current[post.id] = r;
-                }}
-                collapsable={false}
-              >
-                <TouchableOpacity
-                  style={styles.menuButton}
-                  activeOpacity={0.7}
-                  onPress={() => openFloatingMenu(post, menuButtonRefs.current[post.id])}
-                  hitSlop={{ top: normalize(12), bottom: normalize(12), left: normalize(12), right: normalize(12) }}
-                >
-                  <Entypo name="dots-three-vertical" size={normalize(14)} color={colors.textSecondary} />
-                </TouchableOpacity>
-              </View>
-            </View>
-          </TouchableOpacity>
-        ))}
+          </View>
+        ) : (
+          data.map((post) => (
+            <BoardPostCard
+              key={post.id}
+              post={post}
+              normalize={normalize}
+              styles={styles}
+              onPress={() =>
+                navigation.navigate('BoardDetail', {
+                  post: { ...post, author: post.author },
+                  isMyPost: post.isMyPost ?? false,
+                })
+              }
+              onMenuPress={(p, ref) => openFloatingMenu(p, ref)}
+            />
+          ))
+        )}
       </ScrollView>
 
       {/* 글쓰기 플로팅 버튼 */}
@@ -267,7 +313,7 @@ export function BoardAllContent({ navigation, posts }) {
                     : {}),
                 }}
               >
-                {defaultMenuItems.map((item, index) => (
+                {((floatingMenuPost?.isMyPost) ? defaultMenuItemsMine : defaultMenuItemsOthers).map((item, index) => (
                   <React.Fragment key={index}>
                     <TouchableOpacity
                       style={{
@@ -279,7 +325,13 @@ export function BoardAllContent({ navigation, posts }) {
                       }}
                       activeOpacity={0.7}
                       onPress={() => {
-                        if (item.onPress) item.onPress();
+                        if (item.label === '쪽지 보내기') {
+                          startNoteToPostAuthorFromList(floatingMenuPost);
+                        } else if (item.label === '공유하기') {
+                          handleShareFromList(floatingMenuPost);
+                        } else if (item.onPress) {
+                          item.onPress();
+                        }
                         closeFloatingMenu();
                       }}
                     >
@@ -298,7 +350,7 @@ export function BoardAllContent({ navigation, posts }) {
                         color={colors.textSecondary}
                       />
                     </TouchableOpacity>
-                    {index < defaultMenuItems.length - 1 && (
+                    {index < ((floatingMenuPost?.isMyPost) ? defaultMenuItemsMine : defaultMenuItemsOthers).length - 1 && (
                       <View
                         style={{
                           height: 1,

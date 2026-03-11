@@ -23,11 +23,8 @@ import { colors } from '../styles/colors';
 export const FRIEND_ICON_COLORS = [colors.green, colors.yellow, colors.red, colors.blue];
 export const getFriendIconColorByIndex = (i) => FRIEND_ICON_COLORS[i % FRIEND_ICON_COLORS.length];
 
-export const INITIAL_FRIENDS = [
-  { id: 1, name: '친구20260302', colorIndex: 0, isActive: true },
-  { id: 2, name: '친구2',         colorIndex: 1, isActive: false },
-  { id: 3, name: '친구3',         colorIndex: 2, isActive: false },
-];
+// 백엔드 친구 목록과 연동하므로 더미 데이터는 사용하지 않는다.
+export const INITIAL_FRIENDS = [];
 
 // ── 쿡 찌르기 팝업 ──────────────────────────────────────
 export const PokeModal = ({ visible, friend, onClose, onPoke, onNotifyLater }) => {

@@ -1,8 +1,50 @@
 import express from 'express';
 import pool from '../config/database.js';
 import { authenticate } from '../middleware/auth.js';
+import { createNotification } from '../utils/notifications.js';
+import { getNowForDB } from '../utils/dateUtils.js';
 
 const router = express.Router();
+
+// 댓글 삭제 (본인 댓글만, 소프트 삭제)
+router.delete('/comments/:commentId', authenticate, async (req, res) => {
+  try {
+    const userId = req.user.userId;
+    const { commentId } = req.params;
+
+    const [comments] = await pool.execute(
+      'SELECT id, user_id, post_id FROM comments WHERE id = ? AND is_deleted = FALSE',
+      [commentId]
+    );
+    if (comments.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: '댓글을 찾을 수 없습니다.',
+      });
+    }
+    if (comments[0].user_id !== userId) {
+      return res.status(403).json({
+        success: false,
+        message: '본인이 작성한 댓글만 삭제할 수 있습니다.',
+      });
+    }
+
+    await pool.execute('UPDATE comments SET is_deleted = TRUE WHERE id = ?', [commentId]);
+    const postId = comments[0].post_id;
+    await pool.execute('UPDATE posts SET comment_count = comment_count - 1 WHERE id = ?', [postId]);
+
+    res.json({
+      success: true,
+      message: '댓글이 삭제되었습니다.',
+    });
+  } catch (error) {
+    console.error('댓글 삭제 오류:', error);
+    res.status(500).json({
+      success: false,
+      message: '댓글 삭제 중 오류가 발생했습니다.',
+    });
+  }
+});
 
 // 댓글 작성 (대댓글 포함)
 router.post('/:postId/comments', authenticate, async (req, res) => {
@@ -19,7 +61,10 @@ router.post('/:postId/comments', authenticate, async (req, res) => {
     }
 
     // 게시글 존재 확인
-    const [posts] = await pool.execute('SELECT id FROM posts WHERE id = ?', [postId]);
+    const [posts] = await pool.execute(
+      'SELECT id, user_id, content FROM posts WHERE id = ?',
+      [postId],
+    );
     if (posts.length === 0) {
       return res.status(404).json({ 
         success: false, 
@@ -28,9 +73,10 @@ router.post('/:postId/comments', authenticate, async (req, res) => {
     }
 
     // 대댓글인 경우 부모 댓글 확인
+    let parentComment = null;
     if (parentCommentId) {
       const [parentComments] = await pool.execute(
-        'SELECT id FROM comments WHERE id = ? AND post_id = ?',
+        'SELECT id, user_id, content FROM comments WHERE id = ? AND post_id = ?',
         [parentCommentId, postId]
       );
       if (parentComments.length === 0) {
@@ -39,20 +85,21 @@ router.post('/:postId/comments', authenticate, async (req, res) => {
           message: '부모 댓글을 찾을 수 없습니다.' 
         });
       }
+      parentComment = parentComments[0];
     }
 
-    // 해당 게시글의 댓글 수 계산하여 익명 번호 부여
+    // 해당 게시글의 댓글 수 계산하여 익명 번호 부여 (삭제되지 않은 댓글만)
     const [commentCountResult] = await pool.execute(
-      'SELECT COUNT(*) as count FROM comments WHERE post_id = ?',
+      'SELECT COUNT(*) as count FROM comments WHERE post_id = ? AND is_deleted = FALSE',
       [postId]
     );
     const anonymousIndex = (commentCountResult[0].count % 100) + 1;
 
     // 댓글 생성
     const [result] = await pool.execute(
-      `INSERT INTO comments (post_id, user_id, parent_comment_id, content, anonymous_index) 
-       VALUES (?, ?, ?, ?, ?)`,
-      [postId, userId, parentCommentId || null, content, anonymousIndex]
+      `INSERT INTO comments (post_id, user_id, parent_comment_id, content, anonymous_index, created_at)
+       VALUES (?, ?, ?, ?, ?, ?)`,
+      [postId, userId, parentCommentId || null, content, anonymousIndex, getNowForDB()]
     );
 
     // 게시글의 댓글 수 증가
@@ -79,6 +126,37 @@ router.post('/:postId/comments', authenticate, async (req, res) => {
       WHERE c.id = ?`,
       [result.insertId]
     );
+
+    const post = posts[0];
+
+    // 게시글 작성자에게 댓글/대댓글 알림
+    if (post.user_id && post.user_id !== userId) {
+      const isReplyToPost = !parentCommentId;
+      await createNotification({
+        userId: post.user_id,
+        type: isReplyToPost ? 'comment' : 'reply',
+        category: 'post',
+        title: isReplyToPost
+          ? '회원님의 게시글에 새로운 댓글이 달렸어요'
+          : '회원님의 게시글에 대댓글이 달렸어요',
+        body: content.slice(0, 80),
+        relatedType: 'post',
+        relatedId: post.id,
+      });
+    }
+
+    // 부모 댓글 작성자에게 대댓글 알림 (게시글 작성자와 다를 때)
+    if (parentComment && parentComment.user_id && parentComment.user_id !== userId && parentComment.user_id !== post.user_id) {
+      await createNotification({
+        userId: parentComment.user_id,
+        type: 'reply',
+        category: 'post',
+        title: '회원님의 댓글에 새로운 답글이 달렸어요',
+        body: content.slice(0, 80),
+        relatedType: 'post',
+        relatedId: post.id,
+      });
+    }
 
     res.status(201).json({
       success: true,
@@ -109,7 +187,7 @@ router.get('/:postId/comments', async (req, res) => {
       });
     }
 
-    // 댓글 조회 (대댓글 포함)
+    // 댓글 조회 (대댓글 포함, 삭제된 댓글 제외)
     const [comments] = await pool.execute(
       `SELECT 
         c.id,
@@ -124,7 +202,7 @@ router.get('/:postId/comments', async (req, res) => {
         u.color_id
       FROM comments c
       LEFT JOIN users u ON c.user_id = u.id
-      WHERE c.post_id = ?
+      WHERE c.post_id = ? AND c.is_deleted = FALSE
       ORDER BY c.parent_comment_id IS NULL DESC, c.created_at ASC`,
       [postId]
     );
@@ -168,8 +246,11 @@ router.post('/:commentId/like', authenticate, async (req, res) => {
     const userId = req.user.userId;
     const { commentId } = req.params;
 
-    // 댓글 존재 확인
-    const [comments] = await pool.execute('SELECT id FROM comments WHERE id = ?', [commentId]);
+    // 댓글 존재 확인 (삭제되지 않은 댓글만)
+    const [comments] = await pool.execute(
+      'SELECT id, user_id, content FROM comments WHERE id = ? AND is_deleted = FALSE',
+      [commentId],
+    );
     if (comments.length === 0) {
       return res.status(404).json({ 
         success: false, 
@@ -210,6 +291,19 @@ router.post('/:commentId/like', authenticate, async (req, res) => {
         [commentId]
       );
 
+      const comment = comments[0];
+      if (comment.user_id && comment.user_id !== userId) {
+        await createNotification({
+          userId: comment.user_id,
+          type: 'like',
+          category: 'post',
+          title: '누군가 회원님의 댓글을 좋아합니다',
+          body: (comment.content || '').slice(0, 80),
+          relatedType: 'comment',
+          relatedId: comment.id,
+        });
+      }
+
       res.json({
         success: true,
         message: '좋아요가 추가되었습니다.',
@@ -248,7 +342,7 @@ router.post('/:commentId/report', authenticate, async (req, res) => {
     }
 
     // 댓글 존재 확인
-    const [comments] = await pool.execute('SELECT id FROM comments WHERE id = ?', [commentId]);
+    const [comments] = await pool.execute('SELECT id FROM comments WHERE id = ? AND is_deleted = FALSE', [commentId]);
     if (comments.length === 0) {
       return res.status(404).json({ 
         success: false, 

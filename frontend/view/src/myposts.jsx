@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   View, Text, StyleSheet, ScrollView,
   TouchableOpacity, Animated,
@@ -6,10 +6,24 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import SubHeader from '../frame/subHeader';
+import { api } from '../../utils/api';
+
+function formatDate(dateString) {
+  if (!dateString) return '';
+  const d = new Date(dateString);
+  if (Number.isNaN(d.getTime())) return '';
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}.${m}.${day}`;
+}
 
 const ActivityPage = ({ navigation }) => {
   const [activeTab, setActiveTab] = useState('written');
   const slideAnim = useRef(new Animated.Value(0)).current;
+  const [writtenPosts, setWrittenPosts] = useState([]);
+  const [likedPosts, setLikedPosts] = useState([]);
+  const [loading, setLoading] = useState(false);
 
   const handleTabChange = (tab) => {
     setActiveTab(tab);
@@ -21,26 +35,69 @@ const ActivityPage = ({ navigation }) => {
     }).start();
   };
 
-  const writtenPosts = [
-    { id: 1, title: '오늘 점심 뭐 먹을까요?', date: '2024.02.05', likes: 12, comments: 5 },
-    { id: 2, title: '시험 범위 정리', date: '2024.02.04', likes: 8, comments: 3 },
-    { id: 3, title: '동아리 모집합니다', date: '2024.02.03', likes: 15, comments: 7 },
-    { id: 4, title: '오늘 급식 레전드임', date: '2024.02.02', likes: 22, comments: 11 },
-  ];
+  useEffect(() => {
+    let mounted = true;
+    const fetchData = async () => {
+      try {
+        setLoading(true);
+        const [writtenRes, likedRes] = await Promise.all([
+          api.get('/api/posts/my', { params: { page: 1, limit: 50 } }),
+          api.get('/api/posts/liked', { params: { page: 1, limit: 50 } }),
+        ]);
 
-  const likedPosts = [
-    { id: 5, title: '내신 공부법 공유해요', date: '2024.02.05', likes: 34, comments: 9 },
-    { id: 6, title: '이번 주 날씨 진짜 춥다', date: '2024.02.04', likes: 18, comments: 2 },
-    { id: 7, title: '방과후 추천 부탁드려요', date: '2024.02.01', likes: 10, comments: 4 },
-  ];
+        if (!mounted) return;
+
+        const wp = (writtenRes.data?.data?.posts || []).map((p) => ({
+          id: p.id,
+          title: (p.content || '').split('\n')[0].slice(0, 40) || '제목 없음',
+          date: formatDate(p.created_at),
+          likes: p.like_count,
+          comments: p.comment_count,
+        }));
+
+        const lp = (likedRes.data?.data?.posts || []).map((p) => ({
+          id: p.id,
+          title: (p.content || '').split('\n')[0].slice(0, 40) || '제목 없음',
+          date: formatDate(p.created_at),
+          likes: p.like_count,
+          comments: p.comment_count,
+        }));
+
+        setWrittenPosts(wp);
+        setLikedPosts(lp);
+      } catch (error) {
+        console.error('내 활동 게시글 로드 실패:', error);
+      } finally {
+        if (mounted) setLoading(false);
+      }
+    };
+
+    fetchData();
+    return () => {
+      mounted = false;
+    };
+  }, []);
 
   const currentPosts = activeTab === 'written' ? writtenPosts : likedPosts;
 
   const PostItem = ({ post }) => (
     <TouchableOpacity
       style={styles.postItem}
-      onPress={() => navigation.navigate('PostDetail', { postId: post.id })}
       activeOpacity={0.7}
+      onPress={() =>
+        navigation.navigate('BoardDetail', {
+          post: {
+            id: post.id,
+            author: '익명',
+            time: '',
+            location: '',
+            content: '',
+            likes: post.likes,
+            comments: post.comments,
+          },
+          isMyPost: activeTab === 'written',
+        })
+      }
     >
       <Text style={styles.postTitle} numberOfLines={2}>{post.title}</Text>
       <View style={styles.postBottom}>
@@ -125,7 +182,12 @@ const ActivityPage = ({ navigation }) => {
 
       {/* ── 게시글 목록 ── */}
       <ScrollView style={styles.scroll} showsVerticalScrollIndicator={false}>
-        {currentPosts.length > 0 ? (
+        {loading && currentPosts.length === 0 ? (
+          <View style={styles.empty}>
+            <Ionicons name="time-outline" size={40} color="#ddd" />
+            <Text style={styles.emptyText}>게시글을 불러오는 중입니다...</Text>
+          </View>
+        ) : currentPosts.length > 0 ? (
           <View style={styles.list}>
             {currentPosts.map((post) => (
               <PostItem key={post.id} post={post} />

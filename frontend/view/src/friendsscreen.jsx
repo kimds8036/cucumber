@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -10,28 +10,7 @@ import {
   TextInput,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-
-// ── 더미 데이터 ───────────────────────────────────────
-const DUMMY_FRIEND_REQUESTS = [
-  { id: 101, name: '김민지', username: '@minji_k', school: '진관고등학교', grade: '2학년 3반' },
-  { id: 102, name: '이준호', username: '@junho_lee', school: '은평고등학교', grade: '3학년 1반' },
-  { id: 103, name: '박서윤', username: '@seoyoon_p', school: '한울고등학교', grade: '1학년 4반' },
-];
-
-const DUMMY_FRIENDS = [
-  { id: 1,  name: '이서연', username: '@seoyeon02',  school: '진관고등학교',   grade: '2학년 1반' },
-  { id: 2,  name: '박지호', username: '@jiho_park',  school: '진관고등학교',   grade: '3학년 2반' },
-  { id: 3,  name: '최수아', username: '@sua_choi',   school: '은평고등학교',   grade: '1학년 3반' },
-  { id: 4,  name: '정태양', username: '@taeyang_j',  school: '한울고등학교',   grade: '3학년 4반' },
-  { id: 5,  name: '김도윤', username: '@doyun_k',    school: '진관고등학교',   grade: '2학년 5반' },
-  { id: 6,  name: '오하은', username: '@haeun_oh',   school: '대성고등학교',   grade: '1학년 2반' },
-  { id: 7,  name: '윤민서', username: '@minseo_y',   school: '진관고등학교',   grade: '3학년 1반' },
-  { id: 8,  name: '장준혁', username: '@junhyuk99',  school: '은평고등학교',   grade: '2학년 3반' },
-  { id: 9,  name: '임채원', username: '@chaewon_l',  school: '한울고등학교',   grade: '1학년 1반' },
-  { id: 10, name: '한소희', username: '@sohee_h',    school: '진관고등학교',   grade: '3학년 3반' },
-  { id: 11, name: '권지우', username: '@jiwoo_k',    school: '대성고등학교',   grade: '2학년 4반' },
-  { id: 12, name: '신예은', username: '@yeeun_s',    school: '진관고등학교',   grade: '1학년 5반' },
-];
+import { api } from '../../utils/api';
 
 // 이니셜 아바타 색상
 const AVATAR_COLORS = [
@@ -42,19 +21,77 @@ const getAvatarColor = (id) => AVATAR_COLORS[id % AVATAR_COLORS.length];
 
 // ── 컴포넌트 ─────────────────────────────────────────
 const FriendsScreen = ({ navigation }) => {
-  const [friends, setFriends]         = useState(DUMMY_FRIENDS);
-  const [friendRequests, setFriendRequests] = useState(DUMMY_FRIEND_REQUESTS);
+  const [friends, setFriends] = useState([]);
+  const [friendRequests, setFriendRequests] = useState([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedFriend, setSelectedFriend] = useState(null); // 바텀시트 대상
   const [modalVisible, setModalVisible]     = useState(false);
 
-  const handleAcceptRequest = (req) => {
-    setFriendRequests((prev) => prev.filter((r) => r.id !== req.id));
-    setFriends((prev) => [...prev, { ...req }]);
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const [friendsRes, reqRes] = await Promise.all([
+          api.get('/api/friends/list'),
+          api.get('/api/friends/requests/received'),
+        ]);
+
+        const friendsData = friendsRes.data?.data || [];
+        const requestsData = reqRes.data?.data || [];
+
+        setFriends(
+          friendsData.map((f) => ({
+            id: f.userId,
+            friendshipId: f.friendshipId,
+            name: f.name,
+            username: f.username,
+            school: f.school,
+            grade: f.grade,
+          }))
+        );
+
+        setFriendRequests(
+          requestsData.map((r) => ({
+            id: r.userId,
+            requestId: r.requestId,
+            name: r.name,
+            username: r.username,
+            school: r.school,
+            grade: r.grade,
+          }))
+        );
+      } catch (error) {
+        console.error('친구/요청 목록 조회 실패:', error);
+      }
+    };
+
+    fetchData();
+  }, []);
+
+  const handleAcceptRequest = async (req) => {
+    try {
+      await api.post(`/api/friends/requests/${req.requestId}/accept`);
+      setFriendRequests((prev) => prev.filter((r) => r.id !== req.id));
+      setFriends((prev) => [...prev, { ...req }]);
+    } catch (error) {
+      console.error('친구 요청 수락 실패:', error);
+      Alert.alert(
+        '오류',
+        error.response?.data?.message || '친구 요청 수락 중 오류가 발생했습니다.'
+      );
+    }
   };
 
-  const handleRejectRequest = (req) => {
-    setFriendRequests((prev) => prev.filter((r) => r.id !== req.id));
+  const handleRejectRequest = async (req) => {
+    try {
+      await api.post(`/api/friends/requests/${req.requestId}/reject`);
+      setFriendRequests((prev) => prev.filter((r) => r.id !== req.id));
+    } catch (error) {
+      console.error('친구 요청 거절 실패:', error);
+      Alert.alert(
+        '오류',
+        error.response?.data?.message || '친구 요청 거절 중 오류가 발생했습니다.'
+      );
+    }
   };
 
   // 검색 필터
@@ -84,8 +121,18 @@ const FriendsScreen = ({ navigation }) => {
         {
           text: '삭제',
           style: 'destructive',
-          onPress: () =>
-            setFriends((prev) => prev.filter((f) => f.id !== selectedFriend.id)),
+          onPress: async () => {
+            try {
+              await api.delete(`/api/friends/${selectedFriend.id}`);
+              setFriends((prev) => prev.filter((f) => f.id !== selectedFriend.id));
+            } catch (error) {
+              console.error('친구 삭제 실패:', error);
+              Alert.alert(
+                '오류',
+                error.response?.data?.message || '친구 삭제 중 오류가 발생했습니다.'
+              );
+            }
+          },
         },
       ]
     );
@@ -101,8 +148,18 @@ const FriendsScreen = ({ navigation }) => {
         {
           text: '차단',
           style: 'destructive',
-          onPress: () =>
-            setFriends((prev) => prev.filter((f) => f.id !== selectedFriend.id)),
+          onPress: async () => {
+            try {
+              await api.post(`/api/friends/${selectedFriend.id}/block`, {});
+              setFriends((prev) => prev.filter((f) => f.id !== selectedFriend.id));
+            } catch (error) {
+              console.error('사용자 차단 실패:', error);
+              Alert.alert(
+                '오류',
+                error.response?.data?.message || '사용자 차단 중 오류가 발생했습니다.'
+              );
+            }
+          },
         },
       ]
     );

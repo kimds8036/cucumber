@@ -12,6 +12,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import SubHeader from '../frame/subHeader';
+import { api } from '../../utils/api';
 
 const AddTimetable = ({ navigation, route }) => {
   // MyPage에서 전달받은 기존 시간표와 저장 함수
@@ -24,7 +25,28 @@ const AddTimetable = ({ navigation, route }) => {
   const [timetable, setTimetable] = useState(existingTimetable || {});
 
   const days = ['월', '화', '수', '목', '금'];
-  const periods = [1, 2, 3, 4, 5, 6, 7, 8, 9];
+  const periods = [1, 2, 3, 4, 5, 6, 7];
+
+  useEffect(() => {
+    let mounted = true;
+    // MyPage에서 시간표를 같이 넘겨주지 않은 경우, 서버에서 직접 조회
+    if (!existingTimetable) {
+      const fetchTimetable = async () => {
+        try {
+          const res = await api.get('/api/timetable');
+          if (!mounted) return;
+          const tt = res.data?.data?.timetable || {};
+          setTimetable(tt);
+        } catch (error) {
+          console.error('시간표 불러오기 실패:', error);
+        }
+      };
+      fetchTimetable();
+    }
+    return () => {
+      mounted = false;
+    };
+  }, [existingTimetable]);
 
   const handleCellPress = (day, period) => {
     setSelectedDay(day);
@@ -69,7 +91,7 @@ const AddTimetable = ({ navigation, route }) => {
     setSelectedPeriod(null);
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     // 시간표가 비어있는지 확인
     if (Object.keys(timetable).length === 0) {
       Alert.alert(
@@ -80,9 +102,15 @@ const AddTimetable = ({ navigation, route }) => {
       return;
     }
 
-    // MyPage로 시간표 데이터 전달
-    if (onSave) {
-      onSave(timetable);
+    // MyPage로 시간표 데이터 전달 및/또는 서버 저장
+    try {
+      if (onSave) {
+        onSave(timetable);
+      } else {
+        await api.put('/api/timetable', { timetable });
+      }
+    } catch (error) {
+      console.error('시간표 저장 실패:', error);
     }
 
     Alert.alert('저장 완료', '시간표가 저장되었습니다.', [
