@@ -8,8 +8,10 @@ import SignStep1 from './signup/SignStep1';
 import SignStep2 from './signup/SignStep2';
 import SignStep3 from './signup/SignStep3';
 import SignStep4 from './signup/SignStep4';
+import { useAppNavigation } from '../../navigation/useAppNavigation';
 
 const Sign = ({ navigation }) => {
+  const { resetTo } = useAppNavigation();
   const { width } = useWindowDimensions();
   const scale = width / 375;
   const normalize = (size) => Math.round(scale * size);
@@ -68,7 +70,8 @@ const Sign = ({ navigation }) => {
   // 로그인 페이지로 이동
   const handleGoToLogin = () => {
     setShowCompleteModal(false);
-    navigation.navigate('Login');
+    // 회원가입 완료 후에는 로그인 화면만 남도록 스택을 초기화
+    resetTo('Login');
   };
 
   // 단계별 제목

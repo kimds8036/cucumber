@@ -5,8 +5,12 @@ import { createLoginStyles } from '../../styles/login.style';
 import { colors } from '../../styles/colors';
 import { Ionicons } from '@expo/vector-icons';
 import LogoIcon from '../../assets/Group 166.svg';
+import { useAuth } from '../../context/AuthContext';
+import { useAppNavigation } from '../../navigation/useAppNavigation';
 
-const Login = ({ navigation }) => {
+const Login = () => {
+  const { login } = useAuth();
+  const { goTo } = useAppNavigation();
   const { width } = useWindowDimensions();
   const scale = width / 375;
   const normalize = (size) => Math.round(scale * size);
@@ -100,7 +104,8 @@ const Login = ({ navigation }) => {
           //   return;
           // }
           console.log('로그인:', { id, password });
-          navigation.navigate('Main');
+          // Auth Flow(선언적): 로그인 성공 시 상태만 바꾸면 App이 Main 스택으로 전환
+          login();
         }}
       >
         <Text style={{
@@ -122,7 +127,7 @@ const Login = ({ navigation }) => {
           <Text style={styles.linkText}>비밀번호 찾기</Text>
         </TouchableOpacity>
         <Text style={styles.linkDivider}>|</Text>
-        <TouchableOpacity onPress={() => navigation.navigate('Sign')}>
+        <TouchableOpacity onPress={() => goTo('Sign')}>
           <Text style={styles.linkText}>회원가입</Text>
         </TouchableOpacity>
       </View>

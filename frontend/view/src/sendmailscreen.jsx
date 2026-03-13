@@ -13,8 +13,10 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import SubHeader from '../frame/subHeader';
+import { useAppNavigation } from '../../navigation/useAppNavigation';
 
 const SendMailScreen = ({ navigation }) => {
+  const { goBack } = useAppNavigation();
   const [selectedSchool, setSelectedSchool] = useState('');
   const [searchSchoolText, setSearchSchoolText] = useState('');
   const [showSchoolResults, setShowSchoolResults] = useState(false);
@@ -83,9 +85,16 @@ const SendMailScreen = ({ navigation }) => {
           text: '전송',
           onPress: () => {
             // 여기에 실제 전송 로직
-            Alert.alert('완료', '우편이 전송되었습니다.');
-            // 초기화
-            setMailContent('');
+            Alert.alert('완료', '우편이 전송되었습니다.', [
+              {
+                text: '확인',
+                onPress: () => {
+                  // 초기화 후 이전 화면(개인 우편함 리스트)으로 복귀
+                  setMailContent('');
+                  goBack();
+                },
+              },
+            ]);
           },
         },
       ]
@@ -107,7 +116,7 @@ const SendMailScreen = ({ navigation }) => {
   return (
     <View style={{ flex: 1, backgroundColor: styles.container.backgroundColor }}>
       <SafeAreaView style={styles.container} edges={['top']}>
-        <SubHeader title="우편 보내기" onBack={() => navigation?.goBack()} />
+        <SubHeader title="우편 보내기" onBack={() => goBack()} />
 
         <KeyboardAvoidingView
           behavior={Platform.OS === 'ios' ? 'padding' : 'height'}

@@ -1,10 +1,6 @@
 import { StatusBar } from 'expo-status-bar';
-import { StyleSheet, View, ScrollView, Text, useWindowDimensions } from 'react-native';
-import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
-import MainHeader from './view/frame/mainHeader';
-import MainFooter from './view/frame/mainFooter';
 import Login from './view/src/Login';
 import Sign from './view/src/Sign';
 import MainScreen from './view/src/MainScreen';
@@ -17,6 +13,7 @@ import ChangeSchool from './view/src/changeschool';
 import SearchScreen from './view/src/searchscreen';
 import NotificationScreen from './view/src/notificationscreen';
 import BoardWrite from './view/src/boardWrite';
+import SearchResult from './view/src/SearchResult';
 import BoardDetail from './view/src/boardDetail';
 import Chat from './view/src/Chat';
 import SendMailScreen from './view/src/sendmailscreen';
@@ -29,11 +26,64 @@ import FriendsScreen from './view/src/friendsscreen';
 import { useFonts } from 'expo-font';
 import * as SplashScreen from 'expo-splash-screen';
 import { useEffect } from 'react';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { KeyboardProvider } from './context/KeyboardContext';
+import { AuthProvider, useAuth } from './context/AuthContext';
 
 const Stack = createNativeStackNavigator();
 
 SplashScreen.preventAutoHideAsync();
+
+// ---------- Auth Flow: 로그인 상태에 따른 스택 분리 (선언적 내비게이션) ----------
+// 비로그인 시 Auth 스택만, 로그인 시 Main 스택만 렌더링하여
+// "로그인 후 뒤로가기 시 다시 로그인 창" 문제를 근본적으로 방지합니다.
+// 로그아웃 시: 화면 어디서든 useAuth().logout() 호출하면 로그인 스택으로 전환됩니다.
+
+function AuthStack() {
+  return (
+    <Stack.Navigator
+      initialRouteName="Login"
+      screenOptions={{ headerShown: false }}
+    >
+      <Stack.Screen name="Login" component={Login} />
+      <Stack.Screen name="Sign" component={Sign} />
+    </Stack.Navigator>
+  );
+}
+
+function MainStack() {
+  return (
+    <Stack.Navigator
+      initialRouteName="Main"
+      screenOptions={{ headerShown: false }}
+    >
+      <Stack.Screen name="Main" component={MainScreen} />
+      <Stack.Screen name="BoardWrite" component={BoardWrite} />
+      <Stack.Screen name="BoardDetail" component={BoardDetail} />
+      <Stack.Screen name="Chat" component={Chat} />
+      <Stack.Screen name="AddTimetable" component={AddTimetable} />
+      <Stack.Screen name="MyPosts" component={MyPosts} />
+      <Stack.Screen name="LikedPosts" component={LikedPosts} />
+      <Stack.Screen name="NotificationSettings" component={NotificationSettings} />
+      <Stack.Screen name="ChangePassword" component={ChangePassword} />
+      <Stack.Screen name="ChangeSchool" component={ChangeSchool} />
+      <Stack.Screen name="Search" component={SearchScreen} />
+      <Stack.Screen name="Notification" component={NotificationScreen} />
+      <Stack.Screen name="SendMail" component={SendMailScreen} />
+      <Stack.Screen name="MailDetail" component={AnonymousMailScreen} />
+      <Stack.Screen name="SchoolBoardAll" component={SchoolBoardAll} />
+      <Stack.Screen name="Timer" component={Timer} />
+      <Stack.Screen name="Friends" component={FriendsScreen} />
+      <Stack.Screen name="SearchScreen" component={SearchScreen} />
+      <Stack.Screen name="SearchResult" component={SearchResult} />
+    </Stack.Navigator>
+  );
+}
+
+function RootNavigator() {
+  const { isLoggedIn } = useAuth();
+  return isLoggedIn ? <MainStack /> : <AuthStack />;
+}
 
 export default function App() {
   const [fontsLoaded] = useFonts({
@@ -52,35 +102,11 @@ export default function App() {
   return (
     <SafeAreaProvider>
       <KeyboardProvider>
-      <NavigationContainer>
-        <Stack.Navigator
-          initialRouteName="Login"
-          screenOptions={{ headerShown: false }}
-        >
-          <Stack.Screen name="Login" component={Login} />
-          <Stack.Screen name="Sign" component={Sign} />
-          <Stack.Screen name="Main" component={MainScreen} />
-          <Stack.Screen name="BoardWrite" component={BoardWrite} />
-          <Stack.Screen name="BoardDetail" component={BoardDetail} />
-          <Stack.Screen name="Chat" component={Chat} />
-          <Stack.Screen name="AddTimetable" component={AddTimetable} />
-          <Stack.Screen name="MyPosts" component={MyPosts} />
-          <Stack.Screen name="LikedPosts" component={LikedPosts} />
-          <Stack.Screen name="NotificationSettings" component={NotificationSettings} />
-          <Stack.Screen name="ChangePassword" component={ChangePassword} />
-          <Stack.Screen name="ChangeSchool" component={ChangeSchool} />
-          <Stack.Screen name="Search" component={SearchScreen} />
-          <Stack.Screen name="Notification" component={NotificationScreen} />
-          <Stack.Screen name="SendMail" component={SendMailScreen} />
-          <Stack.Screen name="MailDetail" component={AnonymousMailScreen} />
-          <Stack.Screen name="MailReply" component={MailReplyScreen} />
-          <Stack.Screen name="SchoolMailbox" component={SchoolMailboxScreen} />
-          <Stack.Screen name="SchoolBoardAll" component={SchoolBoardAll} />
-          <Stack.Screen name="Timer" component={Timer} />
-          <Stack.Screen name="Friends" component={FriendsScreen} />
-          <Stack.Screen name="SearchScreen" component={SearchScreen} />
-        </Stack.Navigator>
-      </NavigationContainer>
+        <AuthProvider>
+          <NavigationContainer>
+            <RootNavigator />
+          </NavigationContainer>
+        </AuthProvider>
       </KeyboardProvider>
     </SafeAreaProvider>
   );

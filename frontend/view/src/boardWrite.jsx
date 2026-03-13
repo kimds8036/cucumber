@@ -3,21 +3,37 @@ import { View, Text, TextInput, TouchableOpacity, TouchableWithoutFeedback, Keyb
 import { SafeAreaView } from 'react-native-safe-area-context';
 import SubHeader from '../frame/subHeader';
 import { createWriteStyles, getNormalize } from '../../styles/board.style';
+import { useAppNavigation } from '../../navigation/useAppNavigation';
 
-const BoardWrite = ({ navigation }) => {
+const BoardWrite = ({ route }) => {
+  const { resetTo, goBack } = useAppNavigation();
   const { width } = useWindowDimensions();
   const normalize = useMemo(() => getNormalize(width), [width]);
   const styles = useMemo(() => createWriteStyles(width, normalize), [width, normalize]);
 
   const [content, setContent] = useState('');
+  // 이 화면이 어디에서 열렸는지 (기본값: Main 게시판)
+  const fromScreen = route?.params?.from ?? 'Main';
 
   const handleBack = () => {
-    navigation.goBack();
+    goBack();
   };
 
   const handleComplete = () => {
-    // TODO: 게시글 저장 로직
-    navigation.navigate('Main');
+    // TODO: 게시글 저장 로직 (API 호출 등)
+    // 진입 위치에 따라 뒤로가기 동작을 다르게 처리
+    if (fromScreen === 'Main') {
+      // 메인 게시판에서 온 경우: 전체 스택을 Main 하나로 초기화
+      resetTo('Main');
+    } else if (fromScreen === 'SchoolBoardAll') {
+      // 학교 게시판에서 온 경우:
+      //   Main(학교 탭) → SchoolBoardAll → BoardWrite 스택 구조라고 가정
+      //   글쓰기 완료 후엔 단순히 한 단계만 돌아가서 SchoolBoardAll로 복귀
+      goBack();
+    } else {
+      // 기타 진입 경로는 보수적으로 한 단계만 뒤로가기
+      goBack();
+    }
   };
 
   return (
