@@ -40,6 +40,13 @@ const SearchScreen = ({ navigation }) => {
     setRecentSearches([]);
   };
 
+  // 공통 검색 실행 함수: 검색어를 SearchResult 화면으로 넘긴다.
+  const handleSearch = (keyword) => {
+    const q = (keyword ?? '').trim();
+    if (!q) return;
+    navigation.navigate('SearchResult', { query: q });
+  };
+
   const getTrendIcon = (trend) => {
     switch (trend) {
       case 'up':
@@ -69,6 +76,8 @@ const SearchScreen = ({ navigation }) => {
                 value={searchText}
                 onChangeText={setSearchText}
                 placeholderTextColor="#999"
+                returnKeyType="search"
+                onSubmitEditing={() => handleSearch(searchText)}
               />
               {searchText.length > 0 && (
                 <TouchableOpacity onPress={() => setSearchText('')}>
@@ -91,7 +100,10 @@ const SearchScreen = ({ navigation }) => {
               <View style={styles.recentSearchContainer}>
                 {recentSearches.map((search, index) => (
                   <View key={index} style={styles.recentSearchItem}>
-                    <TouchableOpacity style={styles.recentSearchButton}>
+                    <TouchableOpacity
+                      style={styles.recentSearchButton}
+                      onPress={() => handleSearch(search)}
+                    >
                       <Ionicons name="time-outline" size={16} color="#666" />
                       <Text style={styles.recentSearchText}>{search}</Text>
                     </TouchableOpacity>
@@ -117,7 +129,11 @@ const SearchScreen = ({ navigation }) => {
               {popularSearches.map((item) => {
                 const trendIcon = getTrendIcon(item.trend);
                 return (
-                  <TouchableOpacity key={item.rank} style={styles.popularSearchItem}>
+                  <TouchableOpacity
+                    key={item.rank}
+                    style={styles.popularSearchItem}
+                    onPress={() => handleSearch(item.keyword)}
+                  >
                     <View style={styles.popularSearchLeft}>
                       <Text
                         style={[
@@ -144,7 +160,11 @@ const SearchScreen = ({ navigation }) => {
             <View style={styles.recommendContainer}>
               {['#급식메뉴', '#시험일정', '#동아리', '#축제', '#학생회'].map(
                 (tag, index) => (
-                  <TouchableOpacity key={index} style={styles.tagButton}>
+                  <TouchableOpacity
+                    key={index}
+                    style={styles.tagButton}
+                    onPress={() => handleSearch(tag)}
+                  >
                     <Text style={styles.tagText}>{tag}</Text>
                   </TouchableOpacity>
                 )

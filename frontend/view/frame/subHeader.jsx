@@ -4,7 +4,15 @@ import { Ionicons } from '@expo/vector-icons';
 import { createSubHeaderStyles, getNormalize } from '../../styles/frame.style';
 import { colors } from '../../styles/colors';
 
-const SubHeader = ({ title, onBack, rightButtonText, rightIcon, rightElement, onRightPress }) => {
+const SubHeader = ({
+  title,
+  onBack,
+  rightButtonText,
+  rightIcon,
+  rightElement,
+  onRightPress,
+  titleElement, // 제목 자리에 커스텀 요소(검색창 등)를 넣고 싶을 때 사용
+}) => {
   const { width, height } = useWindowDimensions();
   const styles = useMemo(() => createSubHeaderStyles(width, height), [width, height]);
   const normalize = useMemo(() => getNormalize(width), [width]);
@@ -21,7 +29,11 @@ const SubHeader = ({ title, onBack, rightButtonText, rightIcon, rightElement, on
           <TouchableOpacity style={styles.backButton} onPress={onBack}>
             <Ionicons name="chevron-back" size={normalize(24)} color={colors.textPrimary} />
           </TouchableOpacity>
-          <Text style={styles.headerTitle}>{getTitle()}</Text>
+          {titleElement ? (
+            titleElement
+          ) : (
+            <Text style={styles.headerTitle}>{getTitle()}</Text>
+          )}
           {hasRight && (
             <TouchableOpacity style={styles.rightButton} onPress={onRightPress}>
               {rightElement != null

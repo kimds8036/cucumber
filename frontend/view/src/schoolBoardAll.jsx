@@ -229,7 +229,7 @@ const SchoolBoardAll = ({ navigation }) => {
       <TouchableOpacity
         style={styles.floatingButton}
         activeOpacity={0.8}
-        onPress={() => navigation.navigate('BoardWrite')}
+        onPress={() => navigation.navigate('BoardWrite', { from: 'SchoolBoardAll' })}
       >
         <FontAwesome5 name="plus" size={normalize(24)} color={colors.background} />
       </TouchableOpacity>
