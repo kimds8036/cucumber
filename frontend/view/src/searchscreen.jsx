@@ -1,17 +1,22 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   View,
   Text,
-  StyleSheet,
   ScrollView,
   TouchableOpacity,
   TextInput,
+  useWindowDimensions,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import SubHeader from '../frame/subHeader';
+import { getNormalize, createSearchScreenStyles } from '../../styles/search.style';
 
 const SearchScreen = ({ navigation }) => {
+  const { width } = useWindowDimensions();
+  const normalize = useMemo(() => getNormalize(width), [width]);
+  const styles = useMemo(() => createSearchScreenStyles(width, normalize), [width, normalize]);
+
   const [searchText, setSearchText] = useState('');
   const [recentSearches, setRecentSearches] = useState([
     '체육대회',
@@ -99,7 +104,13 @@ const SearchScreen = ({ navigation }) => {
 
               <View style={styles.recentSearchContainer}>
                 {recentSearches.map((search, index) => (
-                  <View key={index} style={styles.recentSearchItem}>
+                  <View
+                    key={index}
+                    style={[
+                      styles.recentSearchItem,
+                      index === recentSearches.length - 1 && styles.recentSearchItemLast,
+                    ]}
+                  >
                     <TouchableOpacity
                       style={styles.recentSearchButton}
                       onPress={() => handleSearch(search)}
@@ -118,7 +129,8 @@ const SearchScreen = ({ navigation }) => {
             </View>
           )}
 
-          {/* 인기 검색어 */}
+          {/*
+          // 실시간 인기 검색어 (추후 사용할 수 있어 주석만 유지)
           <View style={styles.section}>
             <View style={styles.sectionHeader}>
               <Text style={styles.sectionTitle}>실시간 인기 검색어</Text>
@@ -150,167 +162,11 @@ const SearchScreen = ({ navigation }) => {
               })}
             </View>
           </View>
-
-          {/* 추천 검색어 */}
-          <View style={[styles.section, styles.lastSection]}>
-            <View style={styles.sectionHeader}>
-              <Text style={styles.sectionTitle}>추천 검색어</Text>
-            </View>
-
-            <View style={styles.recommendContainer}>
-              {['#급식메뉴', '#시험일정', '#동아리', '#축제', '#학생회'].map(
-                (tag, index) => (
-                  <TouchableOpacity
-                    key={index}
-                    style={styles.tagButton}
-                    onPress={() => handleSearch(tag)}
-                  >
-                    <Text style={styles.tagText}>{tag}</Text>
-                  </TouchableOpacity>
-                )
-              )}
-            </View>
-          </View>
+          */}
         </ScrollView>
       </SafeAreaView>
     </View>
   );
 };
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#FFFFFF',
-  },
-  scrollView: {
-    flex: 1,
-    backgroundColor: '#F8F9FA',
-  },
-  searchContainer: {
-    backgroundColor: '#FFFFFF',
-    padding: 16,
-    paddingBottom: 20,
-  },
-  searchInputWrapper: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#F5F5F5',
-    borderRadius: 12,
-    paddingHorizontal: 12,
-    height: 48,
-    gap: 8,
-  },
-  searchInput: {
-    flex: 1,
-    fontSize: 16,
-    color: '#333',
-  },
-  section: {
-    backgroundColor: '#FFFFFF',
-    marginTop: 8,
-    paddingVertical: 20,
-    borderTopWidth: 1,
-    borderTopColor: '#E8E8E8',
-    borderBottomWidth: 1,
-    borderBottomColor: '#E8E8E8',
-  },
-  lastSection: {
-    marginBottom: 20,
-  },
-  sectionHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 16,
-    marginBottom: 16,
-  },
-  sectionTitle: {
-    fontSize: 17,
-    fontWeight: '700',
-    color: '#333',
-  },
-  clearButton: {
-    fontSize: 14,
-    color: '#999',
-  },
-  updateTime: {
-    fontSize: 12,
-    color: '#999',
-  },
-  recentSearchContainer: {
-    paddingHorizontal: 16,
-  },
-  recentSearchItem: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: '#F5F5F5',
-  },
-  recentSearchButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    flex: 1,
-  },
-  recentSearchText: {
-    fontSize: 15,
-    color: '#333',
-  },
-  deleteButton: {
-    padding: 4,
-  },
-  popularSearchContainer: {
-    paddingHorizontal: 16,
-  },
-  popularSearchItem: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: '#F5F5F5',
-  },
-  popularSearchLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    flex: 1,
-  },
-  rank: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: '#999',
-    width: 24,
-    textAlign: 'center',
-  },
-  topRank: {
-    color: '#4CAF50',
-    fontSize: 18,
-  },
-  popularKeyword: {
-    fontSize: 15,
-    color: '#333',
-    flex: 1,
-  },
-  recommendContainer: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    paddingHorizontal: 16,
-    gap: 8,
-  },
-  tagButton: {
-    backgroundColor: '#E8F5E9',
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 20,
-  },
-  tagText: {
-    fontSize: 14,
-    color: '#4CAF50',
-    fontWeight: '500',
-  },
-});
 
 export default SearchScreen;

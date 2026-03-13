@@ -105,9 +105,6 @@ const SearchSubHeader = ({
           <View style={styles.rightSlot}>{rightElement}</View>
         )}
       </View>
-
-      {/* 경계선 */}
-      <View style={styles.divider} />
     </>
   );
 };
@@ -118,8 +115,8 @@ const createStyles = (normalize) =>
       flexDirection: 'row',
       alignItems: 'center',
       paddingHorizontal: normalize(8),
-      paddingVertical: normalize(8),
-      backgroundColor: '#FFFFFF',
+      paddingVertical: normalize(9),
+      backgroundColor: colors.background,
       minHeight: normalize(52),
     },
     backButton: {
@@ -133,7 +130,7 @@ const createStyles = (normalize) =>
       flex: 1,
       flexDirection: 'row',
       alignItems: 'center',
-      backgroundColor: '#F5F5F5',
+      backgroundColor: colors.textLight5,
       borderRadius: normalize(10),
       paddingHorizontal: normalize(10),
       paddingVertical: Platform.OS === 'ios' ? normalize(8) : normalize(4),
@@ -144,7 +141,7 @@ const createStyles = (normalize) =>
     searchInput: {
       flex: 1,
       fontSize: normalize(14),
-      color: '#222',
+      color: colors.textPrimary,
       padding: 0, // Android 기본 패딩 제거
       includeFontPadding: false,
     },
@@ -153,7 +150,7 @@ const createStyles = (normalize) =>
     },
     divider: {
       height: 1,
-      backgroundColor: '#F0F0F0',
+      backgroundColor: colors.textLight10,
     },
   });
 

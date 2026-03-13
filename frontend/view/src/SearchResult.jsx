@@ -16,7 +16,7 @@ const mockData = {
     { id: 2, title: '아이폰17 케이스 분실물 발견', content: '검정 아이폰17 케이스 학생회관 앞에서 주웠습니다. 연락주세요.', time: '1일 전', likes: 12 },
   ],
   개인우편: [
-    { id: 1, title: 'Re: 아이폰17 케이스 공구 관련', content: '안녕하세요! 공구 참여하고 싶은데 입금 계좌 알려주실 수 있나요?', time: '30분 전', from: '익명' },
+    { id: 1, title: '아이폰17 케이스 공구 관련', content: '안녕하세요! 공구 참여하고 싶은데 입금 계좌 알려주실 수 있나요?', time: '30분 전', from: '익명' },
     { id: 2, title: '케이스 수령 확인해주세요', content: '어제 말씀드린 케이스 받으셨나요? 확인 부탁드려요~', time: '4시간 전', from: '익명2' },
     { id: 3, title: '같이 공부할 사람 구해요', content: '도서관에서 같이 공부할 스터디원 모집합니다!', time: '1일 전', from: '익명3' },
   ],
@@ -48,12 +48,13 @@ export default function SearchResult({ route, navigation }) {
   const normalize = useMemo(() => getNormalize(width), [width]);
   const styles = useMemo(() => createSearchStyles(width, normalize), [width, normalize]);
 
-  const query = route?.params?.query ?? '';
+  const routeQuery = route?.params?.query ?? '';
+  const [searchText, setSearchText] = useState(routeQuery);
   const [activeTab, setActiveTab] = useState('전체');
   const [expandedSection, setExpandedSection] = useState(null);
 
-  // 2. 검색어를 포함하는 데이터만 필터링 (제목 또는 내용 또는 from 에 query 포함)
-  const normalizedQuery = query.trim().toLowerCase();
+  // 2. 검색어를 포함하는 데이터만 필터링 (제목 또는 내용 또는 from 에 searchText 포함)
+  const normalizedQuery = searchText.trim().toLowerCase();
   const filteredMockData = useMemo(() => {
     if (!normalizedQuery) return {};
     const result = {};
@@ -97,7 +98,6 @@ export default function SearchResult({ route, navigation }) {
           onBack={() => setExpandedSection(null)}
         />
 
-        {/* 결과 목록 */}
         <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
           {items.map((item) => (
             <View key={item.id} style={styles.fullCard}>
@@ -107,7 +107,7 @@ export default function SearchResult({ route, navigation }) {
                 </View>
               ) : null}
               <Text style={styles.fullTitle}>
-                {highlight(item.title, query, styles)}
+                {highlight(item.title, searchText, styles)}
               </Text>
               <Text style={styles.fullContent}>{item.content}</Text>
               <Text style={styles.meta}>
@@ -116,6 +116,40 @@ export default function SearchResult({ route, navigation }) {
               </Text>
             </View>
           ))}
+
+          {/* 연관 검색어 해시태그 */}
+          <View style={styles.searchFooter}>
+            <Text style={styles.searchFooterLabel}>연관 검색어</Text>
+            <View style={styles.searchFooterTagRow}>
+              {/* TODO: 실제 연관 검색어 데이터로 대체 */}
+              <TouchableOpacity
+                style={styles.searchFooterTagChip}
+                activeOpacity={0.8}
+                onPress={() => setSearchText('케이스')}
+              >
+                <Text style={styles.searchFooterTagText}>#케이스</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.searchFooterTagChip}
+                activeOpacity={0.8}
+                onPress={() => setSearchText('휴대폰악세사리')}
+              >
+                <Text style={styles.searchFooterTagText}>#휴대폰악세사리</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.searchFooterTagChip}
+                activeOpacity={0.8}
+                onPress={() => setSearchText('공동구매')}
+              >
+                <Text style={styles.searchFooterTagText}>#공동구매</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+
+          {/* 검색 결과 요약 문구 (별도 박스) */}
+          <View style={styles.searchFooterSummaryBox}>
+            <Text style={styles.searchFooterSummary}>검색 결과를 모두 확인했습니다</Text>
+          </View>
         </ScrollView>
       </SafeAreaView>
     );
@@ -127,46 +161,42 @@ export default function SearchResult({ route, navigation }) {
       {/* 상단: 검색 전용 서브헤더 */}
       <SearchSubHeader
         onBack={() => navigation.goBack()}
-        value={query}
-        onChangeText={() => {}}
+        value={searchText}
+        onChangeText={setSearchText}
         onSubmit={() => {}}
         autoFocus={false}
       />
 
-      {/* 탭 */}
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        style={styles.tabBar}
-      >
-        {TABS.map((tab) => (
-          <TouchableOpacity
-            key={tab}
-            onPress={() => setActiveTab(tab)}
-            style={[
-              styles.tab,
-              activeTab === tab && styles.tabActive,
-            ]}
-            activeOpacity={0.8}
-          >
-            <Text
+      {/* 탭: boardAll 정렬 버튼처럼 컴팩트 + 가로 스크롤 */}
+      <View style={{  justifyContent: 'flex-start' }}>
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.searchTabsContainer}
+        >
+          {TABS.map((tab) => (
+            <TouchableOpacity
+              key={tab}
+              onPress={() => setActiveTab(tab)}
               style={[
-                styles.tabText,
-                activeTab === tab && styles.tabTextActive,
+                styles.searchTabButton,
+                activeTab === tab && styles.searchTabButtonActive,  
               ]}
+              activeOpacity={0.8}
             >
-              {tab}
-            </Text>
-            {tab !== '전체' && counts[tab] > 0 && (
-              <View style={styles.tabBadge}>
-                <Text style={styles.tabBadgeText}>{counts[tab]}</Text>
-              </View>
-            )}
-          </TouchableOpacity>
-        ))}
-      </ScrollView>
+              <Text
+                style={[
+                  styles.searchTabButtonText,
+                  activeTab === tab && styles.searchTabButtonTextActive,
+                ]}
+              >
+                {tab}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </ScrollView>
+      </View>
 
-      {/* 콘텐츠 */}
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
         {activeTab === '전체' ? (
           sortedSections.map(([section, items]) => (
@@ -177,15 +207,10 @@ export default function SearchResult({ route, navigation }) {
                   <Text style={styles.sectionBadgeText}>{items.length}건</Text>
                 </View>
               </View>
-              {items.slice(0, 2).map((item) => (
+              {items.slice(0, 3).map((item) => (
                 <View key={item.id} style={styles.card}>
-                  {item.from ? (
-                    <View style={styles.fromBadge}>
-                      <Text style={styles.fromBadgeText}>{item.from}</Text>
-                    </View>
-                  ) : null}
                   <Text style={styles.cardTitle}>
-                    {highlight(item.title, query, styles)}
+                    {highlight(item.title, searchText, styles)}
                   </Text>
                   <Text style={styles.cardContent}>
                     {item.content.slice(0, 48)}...
@@ -193,7 +218,7 @@ export default function SearchResult({ route, navigation }) {
                   <Text style={styles.meta}>{item.time}</Text>
                 </View>
               ))}
-              {items.length > 2 && (
+              {items.length > 3 && (
                 <TouchableOpacity
                   onPress={() => setExpandedSection(section)}
                   style={styles.moreButton}
@@ -210,13 +235,8 @@ export default function SearchResult({ route, navigation }) {
           <View style={styles.section}>
             {(mockData[activeTab] || []).map((item) => (
               <View key={item.id} style={styles.fullCard}>
-                {item.from ? (
-                  <View style={styles.fromBadge}>
-                    <Text style={styles.fromBadgeText}>{item.from}</Text>
-                  </View>
-                ) : null}
                 <Text style={styles.fullTitle}>
-                  {highlight(item.title, query, styles)}
+                  {highlight(item.title, searchText, styles)}
                 </Text>
                 <Text style={styles.fullContent}>{item.content}</Text>
                 <Text style={styles.meta}>
@@ -227,6 +247,40 @@ export default function SearchResult({ route, navigation }) {
             ))}
           </View>
         )}
+
+        {/* 연관 검색어 해시태그 */}
+        <View style={styles.searchFooter}>
+          <Text style={styles.searchFooterLabel}>연관 검색어</Text>
+          <View style={styles.searchFooterTagRow}>
+            {/* TODO: 실제 연관 검색어 데이터로 대체 */}
+            <TouchableOpacity
+              style={styles.searchFooterTagChip}
+              activeOpacity={0.8}
+              onPress={() => setSearchText('케이스')}
+            >
+              <Text style={styles.searchFooterTagText}>#케이스</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.searchFooterTagChip}
+              activeOpacity={0.8}
+              onPress={() => setSearchText('휴대폰악세사리')}
+            >
+              <Text style={styles.searchFooterTagText}>#휴대폰악세사리</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.searchFooterTagChip}
+              activeOpacity={0.8}
+              onPress={() => setSearchText('공동구매')}
+            >
+              <Text style={styles.searchFooterTagText}>#공동구매</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+
+        {/* 검색 결과 요약 문구 (별도 박스) */}
+        <View style={styles.searchFooterSummaryBox}>
+          <Text style={styles.searchFooterSummary}>검색 결과를 모두 확인했습니다</Text>
+        </View>
       </ScrollView>
     </SafeAreaView>
   );

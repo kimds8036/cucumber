@@ -10,7 +10,7 @@ export const createSearchStyles = (width, normalize) => {
   return StyleSheet.create({
     container: {
       flex: 1,
-      backgroundColor: '#f4f5f7',
+      backgroundColor: colors.background,
     },
     header: {
       flexDirection: 'row',
@@ -20,7 +20,6 @@ export const createSearchStyles = (width, normalize) => {
       paddingBottom: normalize(12),
       backgroundColor: colors.background,
       borderBottomWidth: 1,
-      borderBottomColor: '#ebebeb',
     },
     backButton: {
       paddingHorizontal: normalize(4),
@@ -35,7 +34,7 @@ export const createSearchStyles = (width, normalize) => {
       flex: 1,
       flexDirection: 'row',
       alignItems: 'center',
-      backgroundColor: '#f2f3f5',
+      backgroundColor: colors.backgroundGray,
       borderRadius: normalize(10),
       paddingHorizontal: normalize(10),
       paddingVertical: normalize(6),
@@ -111,16 +110,50 @@ export const createSearchStyles = (width, normalize) => {
       fontFamily: fonts.bold,
     },
 
+    // SearchResult 상단 탭 (정렬 버튼 스타일 유사)
+    searchTabsContainer: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      paddingHorizontal: width * 0.05,
+      paddingVertical: normalize(8),
+      gap: normalize(8),
+      backgroundColor: colors.background,
+      borderBottomWidth: 1,
+      borderColor: colors.textLight10,
+    },
+    searchTabButton: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      paddingHorizontal: normalize(16),
+      paddingVertical: normalize(8),
+      borderRadius: normalize(18),
+      backgroundColor: colors.background,
+      borderWidth: 1,
+      borderColor: colors.textLight10,
+      gap: normalize(4),
+    },
+    searchTabButtonActive: {
+      backgroundColor: colors.primary,
+      borderColor: colors.primary,
+    },
+    searchTabButtonText: {
+      fontSize: normalize(13),
+      fontFamily: fonts.bold,
+      color: colors.textSecondary,
+    },
+    searchTabButtonTextActive: {
+      color: colors.background,
+    },
+
     content: {
       flex: 1,
-      backgroundColor: '#f4f5f7',
+      backgroundColor: colors.textLight5,
     },
     section: {
       backgroundColor: colors.background,
-      marginBottom: normalize(8),
-      borderTopWidth: 1,
-      borderBottomWidth: 1,
-      borderColor: '#ebebeb',
+      marginTop: normalize(7),
+      borderWidth: 1,
+      borderColor: colors.textLight10,
     },
     sectionHeader: {
       flexDirection: 'row',
@@ -149,7 +182,7 @@ export const createSearchStyles = (width, normalize) => {
 
     card: {
       paddingHorizontal: normalize(16),
-      paddingVertical: normalize(10),
+      paddingVertical: normalize(13),
       borderTopWidth: 1,
       borderTopColor: '#f0f0f0',
     },
@@ -222,6 +255,187 @@ export const createSearchStyles = (width, normalize) => {
       borderRadius: 3,
       paddingHorizontal: 2,
       fontFamily: fonts.bold,
+    },
+
+    // 검색 결과 하단 푸터
+    searchFooter: {
+      paddingHorizontal: normalize(16),
+      paddingVertical: normalize(16),
+      marginTop: normalize(8),
+      borderWidth: 1,
+      borderColor: colors.textLight10,
+      backgroundColor: colors.background,
+    },
+    searchFooterLabel: {
+      fontSize: normalize(11),
+      fontFamily: fonts.bold,
+      color: colors.textSecondary,
+      marginBottom: normalize(8),
+    },
+    searchFooterTagRow: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      gap: normalize(6),
+    },
+    searchFooterTagChip: {
+      paddingHorizontal: normalize(10),
+      paddingVertical: normalize(5),
+      borderRadius: normalize(14),
+      backgroundColor: colors.primaryLight30,
+    },
+    searchFooterTagText: {
+      fontSize: normalize(11),
+      fontFamily: fonts.regular,
+      color: colors.primaryDark,
+    },
+    searchFooterSummaryBox: {
+      paddingHorizontal: normalize(20),
+      paddingTop: normalize(10),
+      paddingBottom: normalize(50),
+      backgroundColor: 'transparent',
+    },
+    searchFooterSummary: {
+      fontSize: normalize(12),
+      fontFamily: fonts.regular,
+      color: colors.textSecondary,
+      textAlign: 'center',
+    },
+  });
+};
+
+// 검색 화면(SearchScreen) 전용 스타일
+export const createSearchScreenStyles = (width, normalize) => {
+  return StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: colors.background,
+    },
+    scrollView: {
+      flex: 1,
+      backgroundColor: colors.textLight5,
+    },
+    searchContainer: {
+      backgroundColor: colors.background,
+      padding: normalize(16),
+      paddingBottom: normalize(20),
+    },
+    searchInputWrapper: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      backgroundColor: colors.textLight5,
+      borderRadius: normalize(12),
+      paddingHorizontal: normalize(12),
+      height: normalize(48),
+      gap: normalize(8),
+    },
+    searchInput: {
+      flex: 1,
+      fontSize: normalize(16),
+      color: colors.textPrimary,
+    },
+    section: {
+      backgroundColor: colors.background,
+      paddingBottom: normalize(16),
+    },
+    lastSection: {
+      marginBottom: normalize(20),
+    },
+    sectionHeader: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      paddingHorizontal: normalize(16),
+      marginBottom: normalize(16),
+    },
+    sectionTitle: {
+      fontSize: normalize(15),
+      fontFamily: fonts.bold,
+      color: colors.textPrimary,
+    },
+    clearButton: {
+      fontSize: normalize(13),
+      color: colors.textSecondary,
+    },
+    updateTime: {
+      fontSize: normalize(10),
+      color: colors.textSecondary,
+    },
+    recentSearchContainer: {
+      paddingHorizontal: normalize(16),
+    },
+    recentSearchItem: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      paddingVertical: normalize(12),
+      borderBottomWidth: 1,
+      borderBottomColor: '#F5F5F5',
+    },
+    recentSearchItemLast: {
+      borderBottomWidth: 0,
+    },
+    recentSearchButton: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: normalize(8),
+      flex: 1,
+    },
+    recentSearchText: {
+      fontSize: normalize(15),
+      color: colors.textPrimary,
+    },
+    deleteButton: {
+      padding: normalize(4),
+    },
+    popularSearchContainer: {
+      paddingHorizontal: normalize(16),
+    },
+    popularSearchItem: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      paddingVertical: normalize(12),
+      borderBottomWidth: 1,
+      borderBottomColor: '#F5F5F5',
+    },
+    popularSearchLeft: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: normalize(12),
+      flex: 1,
+    },
+    rank: {
+      fontSize: normalize(16),
+      fontFamily: fonts.bold,
+      color: '#999',
+      width: normalize(24),
+      textAlign: 'center',
+    },
+    topRank: {
+      color: colors.primary,
+      fontSize: normalize(18),
+    },
+    popularKeyword: {
+      fontSize: normalize(15),
+      color: colors.textPrimary,
+      flex: 1,
+    },
+    recommendContainer: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      paddingHorizontal: normalize(16),
+      gap: normalize(8),
+    },
+    tagButton: {
+      backgroundColor: colors.primaryLight30,
+      paddingHorizontal: normalize(16),
+      paddingVertical: normalize(8),
+      borderRadius: normalize(20),
+    },
+    tagText: {
+      fontSize: normalize(14),
+      color: colors.primaryDark,
+      fontFamily: fonts.medium,
     },
   });
 };
