@@ -1,7 +1,7 @@
 import express from 'express';
 import pool from '../config/database.js';
 import { authenticate } from '../middleware/auth.js';
-import { createNotification } from '../utils/notifications.js';
+import { enqueueNotification } from '../utils/notificationWorker.js';
 import { getNowForDB } from '../utils/dateUtils.js';
 
 const router = express.Router();
@@ -129,10 +129,10 @@ router.post('/:postId/comments', authenticate, async (req, res) => {
 
     const post = posts[0];
 
-    // 게시글 작성자에게 댓글/대댓글 알림
+    // 게시글 작성자에게 댓글/대댓글 알림 (비동기 큐로 위임)
     if (post.user_id && post.user_id !== userId) {
       const isReplyToPost = !parentCommentId;
-      await createNotification({
+      await enqueueNotification({
         userId: post.user_id,
         type: isReplyToPost ? 'comment' : 'reply',
         category: 'post',
@@ -145,9 +145,9 @@ router.post('/:postId/comments', authenticate, async (req, res) => {
       });
     }
 
-    // 부모 댓글 작성자에게 대댓글 알림 (게시글 작성자와 다를 때)
+    // 부모 댓글 작성자에게 대댓글 알림 (게시글 작성자와 다를 때, 비동기 큐)
     if (parentComment && parentComment.user_id && parentComment.user_id !== userId && parentComment.user_id !== post.user_id) {
-      await createNotification({
+      await enqueueNotification({
         userId: parentComment.user_id,
         type: 'reply',
         category: 'post',
@@ -293,7 +293,7 @@ router.post('/:commentId/like', authenticate, async (req, res) => {
 
       const comment = comments[0];
       if (comment.user_id && comment.user_id !== userId) {
-        await createNotification({
+        await enqueueNotification({
           userId: comment.user_id,
           type: 'like',
           category: 'post',

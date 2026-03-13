@@ -3,12 +3,12 @@ import {
   View,
   Text,
   TouchableOpacity,
-  ScrollView,
   useWindowDimensions,
   Modal,
   TouchableWithoutFeedback,
   Alert,
   Share,
+  FlatList,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -55,6 +55,9 @@ export function BoardAllContent({ navigation, posts }) {
   const [sortType, setSortType] = useState('latest'); // latest, popular, nearby
   const [serverPosts, setServerPosts] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [page, setPage] = useState(1);
+  const [hasMore, setHasMore] = useState(true);
   const [floatingMenuVisible, setFloatingMenuVisible] = useState(false);
   const [floatingMenuAnchor, setFloatingMenuAnchor] = useState(null);
   const [floatingMenuPost, setFloatingMenuPost] = useState(null);
@@ -160,51 +163,88 @@ export function BoardAllContent({ navigation, posts }) {
     }
   };
 
-  // 게시글 목록 로드
-  useEffect(() => {
-    const fetchPosts = async () => {
-      try {
+  const fetchPosts = async (nextPage = 1, append = false) => {
+    try {
+      if (nextPage === 1) {
         setLoading(true);
-        const sortParam = sortType === 'popular' ? 'popular' : 'latest';
-        const response = await api.get('/api/posts', {
-          params: {
-            boardType: 'national',
-            sort: sortParam,
-            page: 1,
-            limit: 50,
-          },
-        });
-        const apiPosts = response.data?.data?.posts || [];
-        const mapped = apiPosts.map((p) => ({
-          id: p.id,
-          author: '익명',
-          time: formatTimeAgo(p.created_at),
-          location: '',
-          content: p.content,
-          likes: p.like_count,
-          comments: p.comment_count,
-          liked: false,
-          isMyPost: !!p.is_author,
-          authorUserId: p.author_user_id, // 쪽지 발신 대상 ID
-        }));
-        setServerPosts(mapped);
-      } catch (error) {
-        console.error('게시글 목록 로드 실패:', error);
-        if (error.response?.data?.message) {
-          console.error('서버 메시지:', error.response.data.message);
-        }
-        if (error.response?.data?.errorDetail) {
-          console.error('서버 오류 상세:', error.response.data.errorDetail);
-        }
-      } finally {
-        setLoading(false);
+        setHasMore(true);
+      } else {
+        setLoadingMore(true);
       }
-    };
+      const sortParam = sortType === 'popular' ? 'popular' : 'latest';
+      const response = await api.get('/api/posts', {
+        params: {
+          boardType: 'national',
+          sort: sortParam,
+          page: nextPage,
+          limit: 20,
+        },
+      });
+      const apiPosts = response.data?.data?.posts || [];
+      const mapped = apiPosts.map((p) => ({
+        id: p.id,
+        author: '익명',
+        time: formatTimeAgo(p.created_at),
+        location: '',
+        content: p.content,
+        likes: p.like_count,
+        comments: p.comment_count,
+        liked: false,
+        isMyPost: !!p.is_author,
+        authorUserId: p.author_user_id,
+      }));
+      if (append) {
+        setServerPosts((prev) => [...prev, ...mapped]);
+      } else {
+        setServerPosts(mapped);
+      }
+      setHasMore(apiPosts.length > 0);
+      setPage(nextPage);
+    } catch (error) {
+      console.error('게시글 목록 로드 실패:', error);
+      if (error.response?.data?.message) {
+        console.error('서버 메시지:', error.response.data.message);
+      }
+      if (error.response?.data?.errorDetail) {
+        console.error('서버 오류 상세:', error.response.data.errorDetail);
+      }
+    } finally {
+      setLoading(false);
+      setLoadingMore(false);
+    }
+  };
 
-    fetchPosts();
+  // 게시글 목록 로드 (초기 + 정렬 변경 시)
+  useEffect(() => {
+    fetchPosts(1, false);
   }, [sortType]);
 
   const data = posts && posts.length > 0 ? posts : serverPosts;
+
+  const handleRefresh = () => {
+    fetchPosts(1, false);
+  };
+
+  const handleLoadMore = () => {
+    if (loadingMore || !hasMore || data.length === 0) return;
+    fetchPosts(page + 1, true);
+  };
+
+  const renderPostItem = ({ item: post }) => (
+    <BoardPostCard
+      key={post.id}
+      post={post}
+      normalize={normalize}
+      styles={styles}
+      onPress={() =>
+        navigation.navigate('BoardDetail', {
+          post: { ...post, author: post.author },
+          isMyPost: post.isMyPost ?? false,
+        })
+      }
+      onMenuPress={(p, ref) => openFloatingMenu(p, ref)}
+    />
+  );
 
   return (
     <>
@@ -236,36 +276,37 @@ export function BoardAllContent({ navigation, posts }) {
         </TouchableOpacity>
       </View>
 
-      {/* 게시글 목록 */}
-      <ScrollView
+      {/* 게시글 목록 - FlatList + 무한 스크롤 */}
+      <FlatList
         style={styles.postList}
-        contentContainerStyle={{ paddingBottom: 0 }}
+        data={data}
+        keyExtractor={(item) => String(item.id)}
+        renderItem={renderPostItem}
         showsVerticalScrollIndicator={false}
-      >
-        {loading && data.length === 0 ? (
-          <View style={{ paddingVertical: normalize(40), alignItems: 'center' }}>
-            <Text style={{ fontFamily: fonts.regular, color: colors.textSecondary }}>
-              게시글을 불러오는 중입니다...
-            </Text>
-          </View>
-        ) : (
-          data.map((post) => (
-            <BoardPostCard
-              key={post.id}
-              post={post}
-              normalize={normalize}
-              styles={styles}
-              onPress={() =>
-                navigation.navigate('BoardDetail', {
-                  post: { ...post, author: post.author },
-                  isMyPost: post.isMyPost ?? false,
-                })
-              }
-              onMenuPress={(p, ref) => openFloatingMenu(p, ref)}
-            />
-          ))
-        )}
-      </ScrollView>
+        refreshing={loading}
+        onRefresh={handleRefresh}
+        onEndReached={handleLoadMore}
+        onEndReachedThreshold={0.5}
+        ListEmptyComponent={
+          !loading ? (
+            <View style={{ paddingVertical: normalize(40), alignItems: 'center' }}>
+              <Text style={{ fontFamily: fonts.regular, color: colors.textSecondary }}>
+                아직 게시글이 없습니다.
+              </Text>
+            </View>
+          ) : null
+        }
+        ListFooterComponent={
+          loadingMore ? (
+            <View style={{ paddingVertical: normalize(16), alignItems: 'center' }}>
+              <Text style={{ fontFamily: fonts.regular, color: colors.textSecondary }}>
+                더 불러오는 중...
+              </Text>
+            </View>
+          ) : null
+        }
+        contentContainerStyle={{ paddingBottom: normalize(80) }}
+      />
 
       {/* 글쓰기 플로팅 버튼 */}
       <TouchableOpacity

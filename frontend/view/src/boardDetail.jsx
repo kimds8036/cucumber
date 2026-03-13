@@ -198,6 +198,16 @@ export default function BoardDetail({ navigation, route }) {
         };
 
         setAllComments(buildTree());
+
+        // 이 게시글과 연결된 알림을 모두 읽음 처리 (게시글 상세를 본 것으로 간주)
+        try {
+          await api.post('/api/notifications/read-by-related', {
+            relatedType: 'post',
+            relatedId: postId,
+          });
+        } catch (e) {
+          console.error('게시글 관련 알림 읽음 처리 실패:', e);
+        }
       } catch (error) {
         console.error('게시글/댓글 로드 실패:', error);
         Alert.alert(
@@ -212,22 +222,33 @@ export default function BoardDetail({ navigation, route }) {
 
   const startNoteToUser = async (targetUserId, source) => {
     if (!targetUserId || !post?.id) {
+      console.error(
+        '[BoardDetail] 쪽지 전송 불가 - 잘못된 파라미터',
+        { targetUserId, postId: post?.id, source }
+      );
       Alert.alert('오류', '쪽지를 보낼 수 없습니다.');
       return;
     }
     try {
+      console.log('[BoardDetail] 쪽지방 생성 요청', {
+        postId: post.id,
+        otherUserId: targetUserId,
+        source,
+      });
       const res = await api.post('/api/messages/rooms', {
         postId: post.id,
         otherUserId: targetUserId,
       });
+      console.log('[BoardDetail] 쪽지방 생성 응답', res.data);
       const room = res.data?.data;
       if (!room?.id) {
+        console.error('[BoardDetail] 쪽지방 데이터 이상', res.data);
         Alert.alert('오류', '쪽지 방 정보를 불러올 수 없습니다.');
         return;
       }
       navigation.navigate('Chat', { roomId: room.id });
     } catch (error) {
-      console.error('쪽지방 생성/조회 실패:', error);
+      console.error('[BoardDetail] 쪽지방 생성/조회 실패:', error?.response?.data || error);
       Alert.alert(
         '오류',
         error.response?.data?.message || '쪽지방을 여는 중 오류가 발생했습니다.'
@@ -256,6 +277,10 @@ export default function BoardDetail({ navigation, route }) {
         label: '쪽지 보내기',
         iconName: 'chatbubble-outline',
         onPress: () => {
+          console.log('[BoardDetail] 쪽지 메뉴 클릭', {
+            postAuthorId,
+            currentUserId,
+          });
           if (postAuthorId && currentUserId && postAuthorId === currentUserId) {
             Alert.alert('안내', '자기 자신에게는 쪽지를 보낼 수 없습니다.');
             return;
@@ -270,7 +295,7 @@ export default function BoardDetail({ navigation, route }) {
       },
       { label: '신고하기', iconName: 'flag-outline', onPress: () => {} },
     ],
-    []
+    [postAuthorId, currentUserId, handleSharePost]
   );
 
   // 댓글용 메뉴 (다른 사람 댓글) - 차단하기 제외
@@ -898,7 +923,7 @@ export default function BoardDetail({ navigation, route }) {
                     if (isPostMenu && isMyPostMenu) {
                       // 내가 쓴 게시글 - 공유하기, 삭제하기
                       menuItems = [
-                        { label: '공유하기', iconName: 'share-outline', onPress: () => {} },
+                        { label: '공유하기', iconName: 'share-outline', onPress: handleSharePost },
                         { label: '삭제하기', iconName: 'trash-outline', onPress: handleDeletePost },
                       ];
                     } else if (isPostMenu) {

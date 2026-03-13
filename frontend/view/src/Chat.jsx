@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useRef, useCallback, memo } from 'react';
 import {
   View,
   Text,
@@ -22,16 +22,18 @@ import { createChatStyles } from '../../styles/message.style';
 import MessageTabIcon from '../../assets/Group 166.svg';
 import { api } from '../../utils/api';
 
-// 게시글 정보 간단 캐시 (채팅방을 다시 열었을 때 재사용)
+// ─────────────────────────────────────────────
+// 1. 게시글 캐시
+// ─────────────────────────────────────────────
 const postCache = {};
 
-// DB에 UTC로 저장된 날짜 문자열을 기기 로컬 시간대로 변환해서 파싱
+// ─────────────────────────────────────────────
+// 2. 날짜 유틸
+// ─────────────────────────────────────────────
 function parseUtcToLocal(createdAt) {
   if (!createdAt) return null;
   let s = String(createdAt).trim();
   if (!s) return null;
-  // MySQL "YYYY-MM-DD HH:mm:ss" 또는 "YYYY-MM-DDTHH:mm:ss" 형태이고
-  // Z나 +09:00 같은 타임존 정보가 전혀 없으면 UTC로 간주해서 Z(=+00:00) 부여
   if (
     /^\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}:\d{2}(\.\d+)?$/.test(s) &&
     !/[Z+-]\d{2}:?\d{2}$/.test(s) &&
@@ -40,33 +42,147 @@ function parseUtcToLocal(createdAt) {
     s = s.replace(' ', 'T') + 'Z';
   }
   const d = new Date(s);
-  if (Number.isNaN(d.getTime())) return null;
-  return d;
+  return Number.isNaN(d.getTime()) ? null : d;
 }
 
-// 채팅방 내부: 항상 시간(HH:MM)만 표기 (UTC → 로컬 기준)
 function formatChatTime(createdAt) {
   const d = parseUtcToLocal(createdAt);
   if (!d) return '';
-  const h = String(d.getHours()).padStart(2, '0');
-  const m = String(d.getMinutes()).padStart(2, '0');
-  return `${h}:${m}`;
+  return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
 }
 
-// 날짜 배너용 포맷터 (YYYY-M-D 형태의 dateKey → 'YYYY.MM.DD')
 function formatChatDateBanner(dateKey) {
   if (!dateKey) return '';
   const [y, m, d] = dateKey.split('-').map(Number);
   if (!y || !m || !d) return '';
   const dt = new Date(y, m - 1, d);
-  if (Number.isNaN(dt.getTime())) return '';
-  return dt.toLocaleDateString('ko-KR', {
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-  });
+  return Number.isNaN(dt.getTime())
+    ? ''
+    : dt.toLocaleDateString('ko-KR', { year: 'numeric', month: '2-digit', day: '2-digit' });
 }
 
+function getDateKey(d) {
+  if (!d) return '';
+  return `${d.getFullYear()}-${d.getMonth() + 1}-${d.getDate()}`;
+}
+
+// ─────────────────────────────────────────────
+// 3. 메시지 정규화 (raw API 응답 → UI 모델)
+// ─────────────────────────────────────────────
+function normalizeMessage(m, meId) {
+  const createdAt = m.created_at || '';
+  const d = parseUtcToLocal(createdAt);
+  const isMe = meId != null && m.sender_id === meId;
+  return {
+    id: String(m.id),
+    isMe,
+    content: m.content,
+    createdAt,
+    dateKey: getDateKey(d),
+    time: formatChatTime(createdAt),
+    isReadByOther: isMe ? Boolean(m.is_read) : undefined,
+    isReadByMe: !isMe ? Boolean(m.is_read) : undefined,
+    isSending: false,
+    isFailed: false,
+  };
+}
+
+// ─────────────────────────────────────────────
+// 4. 날짜 배너를 배열 중간에 미리 삽입
+//    → 렌더 시점에 prev 비교 없이 타입으로 분기
+// ─────────────────────────────────────────────
+function injectDateBanners(msgs) {
+  // msgs: 시간순(오름차순) 정렬된 배열 가정
+  const result = [];
+  let lastDateKey = null;
+  for (const msg of msgs) {
+    if (msg.dateKey && msg.dateKey !== lastDateKey) {
+      result.push({ id: `banner-${msg.dateKey}`, type: 'dateBanner', dateKey: msg.dateKey });
+      lastDateKey = msg.dateKey;
+    }
+    result.push({ ...msg, type: 'message' });
+  }
+  return result;
+}
+
+// ─────────────────────────────────────────────
+// 5. 개별 메시지 컴포넌트 (React.memo로 리렌더 방지)
+// ─────────────────────────────────────────────
+const MessageItem = memo(({ msg, chatStyles, normalize, onRetry }) => {
+  if (msg.type === 'dateBanner') {
+    return (
+      <View style={{ alignItems: 'center', marginVertical: normalize(8) }}>
+        <View
+          style={{
+            paddingHorizontal: normalize(10),
+            paddingVertical: normalize(4),
+            borderRadius: normalize(10),
+            backgroundColor: '#EEE',
+          }}
+        >
+          <Text style={{ fontSize: normalize(11), color: colors.textSecondary }}>
+            {formatChatDateBanner(msg.dateKey)}
+          </Text>
+        </View>
+      </View>
+    );
+  }
+
+  if (msg.isMe) {
+    return (
+      <View style={chatStyles.chatRowUser}>
+        <View style={chatStyles.userBubbleAndTime}>
+          <View style={chatStyles.userTimeColumn}>
+            {/* 전송 실패 시 재전송 버튼 */}
+            {msg.isFailed ? (
+              <TouchableOpacity onPress={() => onRetry(msg)} style={{ alignItems: 'flex-end' }}>
+                <Ionicons name="refresh-circle" size={normalize(20)} color={colors.alert} />
+                <Text style={{ fontSize: normalize(10), color: colors.alert }}>재전송</Text>
+              </TouchableOpacity>
+            ) : (
+              <Text style={chatStyles.chatTimeUser}>
+                {msg.isReadByOther === false && !msg.isSending ? '1 ' : ''}
+                {msg.isSending ? '...' : msg.time}
+              </Text>
+            )}
+          </View>
+          <View
+            style={[
+              chatStyles.userBubble,
+              msg.isFailed && { borderWidth: 1, borderColor: colors.alert },
+            ]}
+          >
+            <Text style={chatStyles.userBubbleText}>{msg.content}</Text>
+          </View>
+        </View>
+      </View>
+    );
+  }
+
+  return (
+    <View style={chatStyles.chatRowOpponent}>
+      <View style={chatStyles.chatProfileCircle}>
+        <MessageTabIcon width={normalize(28)} height={normalize(28)} color={colors.green} />
+      </View>
+      <View style={chatStyles.opponentBody}>
+        <View style={chatStyles.opponentNameAndBubble}>
+          <Text style={chatStyles.opponentName}>익명</Text>
+          <View style={chatStyles.opponentBubble}>
+            <Text style={chatStyles.opponentBubbleText}>{msg.content}</Text>
+          </View>
+        </View>
+        <View style={chatStyles.opponentTimeRow}>
+          {!msg.isReadByMe && <Text style={chatStyles.chatUnreadCount}>●</Text>}
+          <Text style={chatStyles.chatTimeOpponent}>{msg.time}</Text>
+        </View>
+      </View>
+    </View>
+  );
+});
+
+// ─────────────────────────────────────────────
+// 6. 메인 Chat 컴포넌트
+// ─────────────────────────────────────────────
 export default function Chat({ navigation, route }) {
   const { width } = useWindowDimensions();
   const normalize = useMemo(() => getBoardNormalize(width), [width]);
@@ -76,25 +192,32 @@ export default function Chat({ navigation, route }) {
   const roomId = route?.params?.roomId;
 
   const [post, setPost] = useState(null);
-  const [messages, setMessages] = useState([]);
+  const [messages, setMessages] = useState([]);    // 시간순(오름차순) 정렬된 UI 모델 배열
   const [currentUserId, setCurrentUserId] = useState(null);
   const [inputText, setInputText] = useState('');
-  const insets = useSafeAreaInsets();
   const [isKeyboardVisible, setIsKeyboardVisible] = useState(false);
 
-  useEffect(() => {
-    const showSub = Keyboard.addListener('keyboardDidShow', () => setIsKeyboardVisible(true));
-    const hideSub = Keyboard.addListener('keyboardDidHide', () => setIsKeyboardVisible(false));
+  const insets = useSafeAreaInsets();
+  const pollRef = useRef(null);
+  const socketRef = useRef(null);                  // WebSocket 인스턴스
+  const currentUserIdRef = useRef(null);           // 클로저 문제 방지용 ref
 
-    return () => {
-      showSub.remove();
-      hideSub.remove();
-    };
+  // currentUserId 변경 시 ref도 동기화
+  useEffect(() => {
+    currentUserIdRef.current = currentUserId;
+  }, [currentUserId]);
+
+  // ── 키보드 리스너 ──
+  useEffect(() => {
+    const show = Keyboard.addListener('keyboardDidShow', () => setIsKeyboardVisible(true));
+    const hide = Keyboard.addListener('keyboardDidHide', () => setIsKeyboardVisible(false));
+    return () => { show.remove(); hide.remove(); };
   }, []);
 
-  // 채팅방 정보 + 메시지 로드
+  // ── 메시지 목록 로드 (최초 1회) ──
   useEffect(() => {
     if (!roomId) return;
+
     const fetchRoom = async () => {
       try {
         const res = await api.get(`/api/messages/rooms/${roomId}`, {
@@ -106,18 +229,13 @@ export default function Chat({ navigation, route }) {
         const room = data.room;
         const msgs = data.messages || [];
 
-        // 현재 사용자 ID 추론: other_user_id 외의 쪽
         const otherId = room.other_user_id;
         const meId =
-          room.user1_id === otherId
-            ? room.user2_id
-            : room.user2_id === otherId
-            ? room.user1_id
-            : null;
-
+          room.user1_id === otherId ? room.user2_id :
+          room.user2_id === otherId ? room.user1_id : null;
         setCurrentUserId(meId);
 
-        // 1) 게시글 정보: 캐시가 있으면 재사용, 없으면 한번만 상세 조회
+        // 게시글 정보
         const postId = room.post_id;
         let initialPost = {
           id: postId,
@@ -129,7 +247,6 @@ export default function Chat({ navigation, route }) {
           comments: 0,
           isLiked: false,
         };
-
         if (postId && postCache[postId]) {
           initialPost = { ...initialPost, ...postCache[postId] };
         } else if (postId) {
@@ -137,11 +254,7 @@ export default function Chat({ navigation, route }) {
             const postRes = await api.get(`/api/posts/${postId}`);
             const pd = postRes.data?.data;
             if (pd) {
-              const cached = {
-                likes: pd.like_count,
-                comments: pd.comment_count,
-                isLiked: Boolean(pd.isLiked),
-              };
+              const cached = { likes: pd.like_count, comments: pd.comment_count, isLiked: Boolean(pd.isLiked) };
               postCache[postId] = cached;
               initialPost = { ...initialPost, ...cached };
             }
@@ -151,198 +264,271 @@ export default function Chat({ navigation, route }) {
         }
         setPost(initialPost);
 
-        // 2) 메시지: created_at 기준으로 정렬해서 날짜 배너가 날짜별 최상단에만 나오도록
+        // 메시지 정렬 & 정규화
         msgs.sort((a, b) => {
           const ad = parseUtcToLocal(a.created_at || '');
           const bd = parseUtcToLocal(b.created_at || '');
-          if (!ad || !bd) return 0;
-          return ad - bd;
+          return (!ad || !bd) ? 0 : ad - bd;
         });
+        setMessages(msgs.map((m) => normalizeMessage(m, meId)));
 
-        const mapped = msgs.map((m) => {
-          const createdAt = m.created_at || '';
-          const d = parseUtcToLocal(createdAt);
-          const isMe = meId != null && m.sender_id === meId;
-          const dateKey = !d ? '' : `${d.getFullYear()}-${d.getMonth() + 1}-${d.getDate()}`;
-          return {
-            id: String(m.id),
-            isMe,
-            content: m.content,
-            createdAt,
-            dateKey,
-            time: formatChatTime(createdAt),
-            // 내가 보낸 메시지를 상대가 읽었는지
-            isReadByOther: isMe ? m.is_read : undefined,
-            // 상대 메시지를 내가 읽었는지
-            isReadByMe: !isMe ? m.is_read : undefined,
-          };
-        });
-        setMessages(mapped);
-
-        // 읽음 처리: 내가 읽은 것으로 표시 (상대가 보낸 메시지들)
+        // 읽음 처리
         try {
           await api.put(`/api/messages/rooms/${roomId}/read`);
-          // UI에서도 상대방 메시지는 모두 읽음으로 표시
           setMessages((prev) =>
-            prev.map((msg) =>
-              msg.isMe ? msg : { ...msg, isReadByMe: true }
-            )
+            prev.map((msg) => (msg.isMe ? msg : { ...msg, isReadByMe: true }))
           );
-        } catch {
-          // ignore
-        }
+          await api.post('/api/notifications/read-by-related', {
+            relatedType: 'message_room',
+            relatedId: roomId,
+          }).catch(() => {});
+        } catch { /* ignore */ }
+
       } catch (error) {
         console.error('채팅 내역 로드 실패:', error);
-        Alert.alert(
-          '오류',
-          error.response?.data?.message || '채팅 내역을 불러오는 중 오류가 발생했습니다.'
-        );
+        Alert.alert('오류', error.response?.data?.message || '채팅 내역을 불러오는 중 오류가 발생했습니다.');
       }
     };
 
     fetchRoom();
   }, [roomId]);
 
-  const keyboardVerticalOffset = insets.top + normalize(48);
+  // ─────────────────────────────────────────────
+  // 7. WebSocket 연결 (소켓이 있으면 폴링 대신 사용)
+  //    ※ 백엔드 소켓 서버 URL을 실제 환경에 맞게 교체하세요.
+  //      예) process.env.EXPO_PUBLIC_WS_URL || 'ws://localhost:3000'
+  // ─────────────────────────────────────────────
+  useEffect(() => {
+    if (!roomId) return;
 
-  const handleBack = () => navigation.goBack();
+    const WS_URL = process.env.EXPO_PUBLIC_WS_URL;   // 환경변수로 관리 권장
+    if (!WS_URL) {
+      // 소켓 URL이 없으면 폴링으로 fallback
+      startPolling();
+      return;
+    }
 
-  const handleOpenPost = () => {
-    if (!post?.id) return;
-    navigation.navigate('BoardDetail', {
-      post: { id: post.id },
-      isMyPost: false,
-    });
-  };
+    let ws;
+    let reconnectTimer;
+    let isMounted = true;
 
-  const handleSendMessage = async () => {
-    if (!inputText.trim() || !roomId) return;
-    const content = inputText.trim();
+    const connect = () => {
+      ws = new WebSocket(`${WS_URL}?roomId=${roomId}`);
+      socketRef.current = ws;
 
-    // 1) Optimistic UI: 서버 응답 기다리지 않고 먼저 화면에 추가
+      ws.onopen = () => {
+        console.log('[WS] 연결 성공');
+        // 소켓이 연결됐으면 폴링 중단
+        stopPolling();
+      };
+
+      ws.onmessage = (e) => {
+        try {
+          const payload = JSON.parse(e.data);
+
+          // 새 메시지 수신
+          if (payload.type === 'new_message') {
+            const meId = currentUserIdRef.current;
+            const newMsg = normalizeMessage(payload.message, meId);
+            setMessages((prev) => {
+              // 중복 방지: 이미 같은 id가 있으면 무시
+              if (prev.some((m) => m.id === newMsg.id)) return prev;
+              return [...prev, newMsg];
+            });
+            // 상대방 메시지면 즉시 읽음 처리
+            if (!newMsg.isMe) {
+              api.put(`/api/messages/rooms/${roomId}/read`).catch(() => {});
+            }
+          }
+
+          // 읽음 상태 갱신 (상대가 내 메시지를 읽었을 때)
+          if (payload.type === 'read_receipt') {
+            setMessages((prev) =>
+              prev.map((msg) =>
+                msg.isMe ? { ...msg, isReadByOther: true } : msg
+              )
+            );
+          }
+        } catch (err) {
+          console.error('[WS] 메시지 파싱 오류:', err);
+        }
+      };
+
+      ws.onerror = (err) => {
+        console.error('[WS] 오류:', err);
+      };
+
+      ws.onclose = () => {
+        console.warn('[WS] 연결 종료 → 3초 후 재연결');
+        if (isMounted) {
+          // 소켓이 끊기면 폴링으로 임시 fallback
+          startPolling();
+          reconnectTimer = setTimeout(() => {
+            if (isMounted) connect();
+          }, 3000);
+        }
+      };
+    };
+
+    connect();
+
+    return () => {
+      isMounted = false;
+      clearTimeout(reconnectTimer);
+      ws?.close();
+      socketRef.current = null;
+      stopPolling();
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [roomId]);
+
+  // ─────────────────────────────────────────────
+  // 8. 폴링 (소켓 연결 전/실패 시 fallback)
+  // ─────────────────────────────────────────────
+  const startPolling = useCallback(() => {
+    if (pollRef.current || !roomId) return;
+    pollRef.current = setInterval(async () => {
+      try {
+        const res = await api.get(`/api/messages/rooms/${roomId}`, {
+          params: { page: 1, limit: 50 },
+        });
+        const data = res.data?.data;
+        if (!data) return;
+        const room = data.room;
+        const msgs = data.messages || [];
+        const otherId = room.other_user_id;
+        const meId =
+          room.user1_id === otherId ? room.user2_id :
+          room.user2_id === otherId ? room.user1_id : null;
+
+        msgs.sort((a, b) => {
+          const ad = parseUtcToLocal(a.created_at || '');
+          const bd = parseUtcToLocal(b.created_at || '');
+          return (!ad || !bd) ? 0 : ad - bd;
+        });
+
+        setMessages((prev) => {
+          const mapped = msgs.map((m) => normalizeMessage(m, meId));
+          // Optimistic UI로 추가된 isSending/isFailed 메시지는 보존
+          const pendingMap = Object.fromEntries(
+            prev.filter((m) => m.isSending || m.isFailed).map((m) => [m.id, m])
+          );
+          const merged = mapped.map((m) => pendingMap[m.id] ?? m);
+          return merged;
+        });
+      } catch (e) {
+        console.error('[Poll] 폴링 오류:', e);
+      }
+    }, 8000);
+  }, [roomId]);
+
+  const stopPolling = useCallback(() => {
+    if (pollRef.current) {
+      clearInterval(pollRef.current);
+      pollRef.current = null;
+    }
+  }, []);
+
+  // ── 언마운트 시 폴링 정리 ──
+  useEffect(() => () => stopPolling(), [stopPolling]);
+
+  // ─────────────────────────────────────────────
+  // 9. 메시지 전송
+  // ─────────────────────────────────────────────
+  const handleSendMessage = useCallback(async (content) => {
+    const text = (content || inputText).trim();
+    if (!text || !roomId) return;
+
     const tempId = `temp-${Date.now()}`;
-    const nowIso = new Date().toISOString(); // UTC ISO 문자열
+    const nowIso = new Date().toISOString();
     const d = parseUtcToLocal(nowIso);
-    const dateKey = d ? `${d.getFullYear()}-${d.getMonth() + 1}-${d.getDate()}` : '';
 
     const optimisticMsg = {
       id: tempId,
+      type: 'message',
       isMe: true,
-      content,
+      content: text,
       createdAt: nowIso,
-      dateKey,
+      dateKey: getDateKey(d),
       time: formatChatTime(nowIso),
       isReadByOther: false,
       isReadByMe: undefined,
       isSending: true,
+      isFailed: false,
     };
 
     setMessages((prev) => [...prev, optimisticMsg]);
     setInputText('');
 
     try {
-      const res = await api.post(`/api/messages/rooms/${roomId}/messages`, {
-        content,
-      });
+      const res = await api.post(`/api/messages/rooms/${roomId}/messages`, { content: text });
       const m = res.data?.data;
       if (m) {
-        const createdAt = m.created_at || '';
-        const dReal = parseUtcToLocal(createdAt);
-        const isMe = currentUserId != null && m.sender_id === currentUserId;
-        const realDateKey = !dReal ? '' : `${dReal.getFullYear()}-${dReal.getMonth() + 1}-${dReal.getDate()}`;
-
-        setMessages((prev) =>
-          prev.map((msg) =>
-            msg.id === tempId
-              ? {
-                  id: String(m.id),
-                  isMe,
-                  content: m.content,
-                  createdAt,
-                  dateKey: realDateKey,
-                  time: formatChatTime(createdAt),
-                  isReadByOther: isMe ? m.is_read : undefined,
-                  isReadByMe: !isMe ? m.is_read : undefined,
-                }
-              : msg
-          )
-        );
+        const confirmed = {
+          ...normalizeMessage(m, currentUserIdRef.current),
+          // 방금 보낸 메시지는 상대가 아직 못 읽음
+          isReadByOther: false,
+          isSending: false,
+          isFailed: false,
+        };
+        setMessages((prev) => prev.map((msg) => (msg.id === tempId ? confirmed : msg)));
       }
     } catch (error) {
       console.error('쪽지 전송 실패:', error);
-      // 실패 시, 낙관적으로 추가한 임시 메시지를 제거
-      setMessages((prev) => prev.filter((msg) => msg.id !== tempId));
-      Alert.alert(
-        '오류',
-        error.response?.data?.message || '쪽지 전송 중 오류가 발생했습니다.'
+      // 전송 실패 → isFailed 플래그 설정 (재전송 버튼 노출)
+      setMessages((prev) =>
+        prev.map((msg) =>
+          msg.id === tempId ? { ...msg, isSending: false, isFailed: true } : msg
+        )
       );
     }
-  };
+  }, [inputText, roomId]);
 
-  const reversedMessages = useMemo(() => [...messages].reverse(), [messages]);
+  // ─────────────────────────────────────────────
+  // 10. 재전송 핸들러
+  // ─────────────────────────────────────────────
+  const handleRetry = useCallback((failedMsg) => {
+    // 실패한 메시지 제거 후 재전송
+    setMessages((prev) => prev.filter((m) => m.id !== failedMsg.id));
+    handleSendMessage(failedMsg.content);
+  }, [handleSendMessage]);
 
-  const renderMessageItem = ({ item: msg, index }) => {
-    // inverted + reversedMessages 환경에서는 index+1 이 시간상 "이전(과거)" 메시지
-    const prevOlderMsg = index < reversedMessages.length - 1 ? reversedMessages[index + 1] : null;
-    const showDateBanner = msg.dateKey && msg.dateKey !== prevOlderMsg?.dateKey;
+  // ─────────────────────────────────────────────
+  // 11. 날짜 배너가 삽입된 역순 배열 (FlatList inverted용)
+  //     - injectDateBanners는 순방향에서 수행 후 reverse
+  //     - 메모이제이션으로 messages 변경 시에만 재계산
+  // ─────────────────────────────────────────────
+  const flatData = useMemo(() => {
+    const withBanners = injectDateBanners(messages); // 시간순
+    return withBanners.reverse();                    // inverted FlatList용 역순
+  }, [messages]);
 
-    return (
-      <View key={msg.id}>
-        {showDateBanner && (
-          <View style={{ alignItems: 'center', marginVertical: normalize(8) }}>
-            <View
-              style={{
-                paddingHorizontal: normalize(10),
-                paddingVertical: normalize(4),
-                borderRadius: normalize(10),
-                backgroundColor: '#EEE',
-              }}
-            >
-              <Text style={{ fontSize: normalize(11), color: colors.textSecondary }}>
-                {formatChatDateBanner(msg.dateKey)}
-              </Text>
-            </View>
-          </View>
-        )}
+  // ─────────────────────────────────────────────
+  // 12. renderItem (useCallback으로 참조 안정화)
+  // ─────────────────────────────────────────────
+  const renderItem = useCallback(({ item }) => (
+    <MessageItem
+      msg={item}
+      chatStyles={chatStyles}
+      normalize={normalize}
+      onRetry={handleRetry}
+    />
+  ), [chatStyles, normalize, handleRetry]);
 
-        {msg.isMe ? (
-          <View style={chatStyles.chatRowUser}>
-            <View style={chatStyles.userBubbleAndTime}>
-              <View style={chatStyles.userTimeColumn}>
-                {/* 내가 보낸 메시지: 시간만 표시 */}
-                <Text style={chatStyles.chatTimeUser}>{msg.time}</Text>
-              </View>
-              <View style={chatStyles.userBubble}>
-                <Text style={chatStyles.userBubbleText}>{msg.content}</Text>
-              </View>
-            </View>
-          </View>
-        ) : (
-          <View style={chatStyles.chatRowOpponent}>
-            <View style={chatStyles.chatProfileCircle}>
-              <MessageTabIcon width={normalize(28)} height={normalize(28)} color={colors.green} />
-            </View>
-            <View style={chatStyles.opponentBody}>
-              <View style={chatStyles.opponentNameAndBubble}>
-                <Text style={chatStyles.opponentName}>익명</Text>
-                <View style={chatStyles.opponentBubble}>
-                  <Text style={chatStyles.opponentBubbleText}>{msg.content}</Text>
-                </View>
-              </View>
-              <View style={chatStyles.opponentTimeRow}>
-                {/* 상대방이 보낸 메시지 중 내가 아직 안 읽은 것에만 빨간 점 표시 */}
-                {!msg.isReadByMe && <Text style={chatStyles.chatUnreadCount}>●</Text>}
-                <Text style={chatStyles.chatTimeOpponent}>{msg.time}</Text>
-              </View>
-            </View>
-          </View>
-        )}
-      </View>
-    );
+  const keyExtractor = useCallback((item) => item.id, []);
+  const keyboardVerticalOffset = insets.top + normalize(48);
+
+  const handleBack = () => navigation.goBack();
+  const handleOpenPost = () => {
+    if (!post?.id) return;
+    navigation.navigate('BoardDetail', { post: { id: post.id }, isMyPost: false });
   };
 
   return (
-    <SafeAreaView style={[detailStyles.container, { backgroundColor: colors.background }]} edges={['top']}>
+    <SafeAreaView
+      style={[detailStyles.container, { backgroundColor: colors.background }]}
+      edges={['top']}
+    >
       {/* 헤더 */}
       <View style={{ zIndex: 1, elevation: 0, backgroundColor: colors.background }}>
         <SubHeader title="쪽지" onBack={handleBack} />
@@ -354,7 +540,7 @@ export default function Chat({ navigation, route }) {
         keyboardVerticalOffset={keyboardVerticalOffset}
       >
         <View style={{ flex: 1, backgroundColor: '#F8F9FA' }}>
-          {/* 1) 게시글 카드: 깔끔한 디자인 (관련 게시글이 있을 때만 표시) */}
+          {/* 게시글 카드 */}
           {post && (
             <TouchableOpacity
               activeOpacity={0.8}
@@ -373,38 +559,21 @@ export default function Chat({ navigation, route }) {
                 elevation: 2,
               }}
             >
-              {/* 게시글 헤더 */}
               <View style={detailStyles.detailHeader}>
                 <View style={detailStyles.detailAuthorRow}>
                   <Text style={detailStyles.detailAuthorAnonymous}>{post.author}</Text>
                 </View>
                 {post.location ? (
                   <View style={detailStyles.detailLocation}>
-                    <Ionicons
-                      name="location-sharp"
-                      size={normalize(12)}
-                      color={colors.textSecondary}
-                    />
+                    <Ionicons name="location-sharp" size={normalize(12)} color={colors.textSecondary} />
                     <Text style={detailStyles.detailLocationText}>{post.location}</Text>
                   </View>
                 ) : null}
               </View>
-
-              {/* 게시글 내용 */}
               <Text style={[detailStyles.detailBody, { marginVertical: normalize(12) }]}>
                 {post.content}
               </Text>
-
-              {/* 구분선 */}
-              <View
-                style={{
-                  height: 1,
-                  backgroundColor: '#F0F0F0',
-                  marginVertical: normalize(8),
-                }}
-              />
-
-              {/* 게시글 푸터 (좋아요/댓글 수만 단순 표시, 메뉴는 제거) */}
+              <View style={{ height: 1, backgroundColor: '#F0F0F0', marginVertical: normalize(8) }} />
               <View style={detailStyles.detailFooter}>
                 <View style={detailStyles.detailStats}>
                   <View style={detailStyles.detailStatItem}>
@@ -416,11 +585,7 @@ export default function Chat({ navigation, route }) {
                     <Text style={detailStyles.detailStatText}>{post.likes}</Text>
                   </View>
                   <View style={detailStyles.detailStatItem}>
-                    <Ionicons
-                      name="chatbubble-outline"
-                      size={normalize(15)}
-                      color={colors.primary}
-                    />
+                    <Ionicons name="chatbubble-outline" size={normalize(15)} color={colors.primary} />
                     <Text style={detailStyles.detailStatText}>{post.comments}</Text>
                   </View>
                 </View>
@@ -428,7 +593,7 @@ export default function Chat({ navigation, route }) {
             </TouchableOpacity>
           )}
 
-          {/* 2) 채팅 영역 - FlatList + inverted */}
+          {/* 채팅 FlatList */}
           <FlatList
             style={{ flex: 1 }}
             contentContainerStyle={{
@@ -436,16 +601,21 @@ export default function Chat({ navigation, route }) {
               paddingBottom: normalize(10),
               paddingTop: normalize(8),
             }}
-            data={reversedMessages}
-            keyExtractor={(item) => item.id}
-            renderItem={renderMessageItem}
+            data={flatData}
+            keyExtractor={keyExtractor}
+            renderItem={renderItem}
             inverted
             showsVerticalScrollIndicator={false}
             keyboardShouldPersistTaps="handled"
             keyboardDismissMode="on-drag"
+            // 메시지 높이가 가변이므로 getItemLayout은 생략 (고정 높이일 때만 적용)
+            removeClippedSubviews={Platform.OS === 'android'} // Android 스크롤 최적화
+            maxToRenderPerBatch={20}
+            windowSize={10}
+            initialNumToRender={20}
           />
 
-          {/* 3) 입력창 */}
+          {/* 입력창 */}
           <View
             style={{
               backgroundColor: colors.background,
@@ -461,7 +631,7 @@ export default function Chat({ navigation, route }) {
               replyToCommentId={null}
               replyToAuthorLabel=""
               clearReplyTarget={() => {}}
-              handleSendComment={handleSendMessage}
+              handleSendComment={() => handleSendMessage()}
               styles={detailStyles}
               normalize={normalize}
             />

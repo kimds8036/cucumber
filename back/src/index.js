@@ -2,6 +2,7 @@ import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import swaggerUi from 'swagger-ui-express';
+import { createServer } from 'http';
 import pool from './config/database.js';
 import authRoutes from './routes/auth.js';
 import postRoutes from './routes/posts.js';
@@ -15,6 +16,9 @@ import timerRoutes from './routes/timer.js';
 import timetableRoutes from './routes/timetable.js';
 import schoolsRoutes from './routes/schools.js';
 import swaggerSpec from './swagger.js';
+import { initSocketServer } from './socketServer.js';
+import './utils/notificationWorker.js';
+
 
 dotenv.config();
 
@@ -59,8 +63,12 @@ app.use('/api/timer', timerRoutes);
 app.use('/api/timetable', timetableRoutes);
 app.use('/api/schools', schoolsRoutes);
 
+// HTTP 서버 + Socket.io 초기화
+const httpServer = createServer(app);
+initSocketServer(httpServer);
+
 // 서버 시작 + DB 연결 상태 로그
-app.listen(PORT, async () => {
+httpServer.listen(PORT, async () => {
   console.log('==============================');
   console.log('🚀 서버가 시작되었습니다.');
   console.log(`🌐 HOST: ${HOST}`);

@@ -1,27 +1,82 @@
-import React, { useMemo, useState, useEffect, useRef } from 'react';
+import React, { useMemo, useState, useEffect, useRef, useCallback } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   ScrollView,
   TouchableOpacity,
+  FlatList,
+  Animated,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { AppState } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import SubHeader from '../frame/subHeader';
 import { api } from '../../utils/api';
+import { useNotification } from '../../context/NotificationContext';
+
+const PAGE_SIZE = 20;
+
+// 스켈레톤 행 (로딩 중 리스트 모양)
+const SkeletonRow = () => {
+  const opacity = useRef(new Animated.Value(0.3)).current;
+  useEffect(() => {
+    const loop = Animated.loop(
+      Animated.sequence([
+        Animated.timing(opacity, { toValue: 0.7, useNativeDriver: true, duration: 600 }),
+        Animated.timing(opacity, { toValue: 0.3, useNativeDriver: true, duration: 600 }),
+      ])
+    );
+    loop.start();
+    return () => loop.stop();
+  }, [opacity]);
+  return (
+    <View style={skeletonStyles.row}>
+      <Animated.View style={[skeletonStyles.icon, { opacity }]} />
+      <View style={skeletonStyles.content}>
+        <Animated.View style={[skeletonStyles.line, skeletonStyles.titleLine, { opacity }]} />
+        <Animated.View style={[skeletonStyles.line, skeletonStyles.textLine, { opacity }]} />
+        <Animated.View style={[skeletonStyles.line, skeletonStyles.timeLine, { opacity }]} />
+      </View>
+    </View>
+  );
+};
+
+const skeletonStyles = StyleSheet.create({
+  row: {
+    flexDirection: 'row',
+    padding: 16,
+    alignItems: 'flex-start',
+  },
+  icon: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: '#E0E0E0',
+    marginRight: 12,
+  },
+  content: { flex: 1 },
+  line: { backgroundColor: '#E0E0E0', borderRadius: 4 },
+  titleLine: { height: 16, width: '60%', marginBottom: 8 },
+  textLine: { height: 14, width: '90%', marginBottom: 6 },
+  timeLine: { height: 12, width: '30%' },
+});
 
 const NotificationScreen = ({ navigation }) => {
-  const [selectedTab, setSelectedTab] = useState('all'); // all, post, mail, system
+  const [selectedTab, setSelectedTab] = useState('all');
   const [notifications, setNotifications] = useState([]);
+  const [tappedIds, setTappedIds] = useState({}); // 실제로 눌러서 확인한 알림 ID (여기만 배경색 제거)
   const [loading, setLoading] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [page, setPage] = useState(1);
+  const [hasMore, setHasMore] = useState(true);
   const pendingReadIdsRef = useRef(new Set());
   const flushTimerRef = useRef(null);
   const isFlushingRef = useRef(false);
   const appStateRef = useRef(AppState.currentState);
+  const { setHasUnread } = useNotification();
 
-  const flushPendingReads = async () => {
+  const flushPendingReads = useCallback(async () => {
     const ids = Array.from(pendingReadIdsRef.current);
     if (!ids.length || isFlushingRef.current) return;
     isFlushingRef.current = true;
@@ -38,7 +93,7 @@ const NotificationScreen = ({ navigation }) => {
     } finally {
       isFlushingRef.current = false;
     }
-  };
+  }, []);
 
   const scheduleFlush = () => {
     const count = pendingReadIdsRef.current.size;
@@ -88,13 +143,23 @@ const NotificationScreen = ({ navigation }) => {
     return d.toLocaleDateString('ko-KR');
   };
 
-  const fetchNotifications = async () => {
+  const fetchNotifications = async (nextPage = 1, append = false) => {
     try {
-      setLoading(true);
-      const res = await api.get('/api/notifications');
-      const list = res.data?.data || [];
+      if (nextPage === 1) {
+        setLoading(true);
+        setHasMore(true);
+      } else {
+        setLoadingMore(true);
+      }
+      console.log('[NotificationScreen] fetchNotifications 호출', {
+        page: nextPage,
+        append,
+      });
 
-      // 좋아요(type === 'like') 알림은 너무 사소하므로 제외
+      const res = await api.get('/api/notifications', {
+        params: { page: nextPage, limit: PAGE_SIZE },
+      });
+      const list = res.data?.data || [];
       const filtered = list.filter((n) => n.type !== 'like');
 
       const mapped = filtered.map((n) => {
@@ -106,9 +171,8 @@ const NotificationScreen = ({ navigation }) => {
           title: n.title,
           content: n.content,
           time: formatTime(n.createdAt),
-           // 원본 시각/타입 정보도 보존 (필요 시 상세 화면에서 사용)
           createdAt: n.createdAt,
-          isRead: !!n.isRead,
+          isRead: !!n.isRead, // 서버 isRead 값을 그대로 신뢰
           icon: icon.name,
           iconColor: icon.color,
           iconBg: icon.bg,
@@ -116,17 +180,57 @@ const NotificationScreen = ({ navigation }) => {
           relatedId: n.relatedId,
         };
       });
-      setNotifications(mapped);
+
+      console.log('[NotificationScreen] 알림 로드 결과', {
+        page: nextPage,
+        append,
+        rawCount: list.length,
+        filteredCount: mapped.length,
+        hasUnread: mapped.some((n) => !n.isRead),
+      });
+
+      if (append) {
+        setNotifications((prev) => [...prev, ...mapped]);
+      } else {
+        setNotifications(mapped);
+        // 첫 페이지를 새로 불러온 직후에는 "알림 목록은 한 번 확인했다"고 보고 빨간 점을 끈다.
+        setHasUnread(false);
+      }
+      setHasMore(list.length >= PAGE_SIZE);
+      setPage(nextPage);
     } catch (error) {
-      console.error('알림 목록 불러오기 실패:', error);
+      console.error('[NotificationScreen] 알림 목록 불러오기 실패:', error?.response?.data || error);
     } finally {
       setLoading(false);
+      setLoadingMore(false);
     }
   };
 
   useEffect(() => {
-    fetchNotifications();
+    fetchNotifications(1, false);
   }, []);
+
+  // 화면이 최초로 열릴 때 한 번, 소켓 경로 디버그용 ping을 날려본다.
+  // - 이 호출 시 서버 로그에 [POST /api/notifications/debug/socket-ping] 이 찍히고
+  // - 클라이언트 콘솔에는 [NotificationContext] notification event: debug ... 가 찍혀야 소켓 경로 정상
+  // 개발용 소켓 경로 테스트 API는 제거 (불필요한 빨간 점 깜빡임 방지)
+
+  useEffect(() => {
+    const unsubscribe = navigation?.addListener?.('focus', () => {
+      // 화면에 진입한 순간 "알림 목록은 한 번 확인했다"고 간주하고
+      // 헤더의 빨간 점은 즉시 제거 (Optimistic)
+      setHasUnread(false);
+      fetchNotifications(1, false);
+    });
+    const blurUnsubscribe = navigation?.addListener?.('blur', () => {
+      // 화면에서 나갈 때, 현재까지 눌러서 확인한 알림들만 서버에 반영
+      flushPendingReads();
+    });
+    return () => {
+      unsubscribe?.();
+      blurUnsubscribe?.();
+    };
+  }, [navigation, flushPendingReads, setHasUnread]);
 
   // 5️⃣ 앱 종료/백그라운드 대비: 상태 전환 시, 그리고 언마운트 시 pending 읽음 요청 강제 전송
   useEffect(() => {
@@ -170,32 +274,96 @@ const NotificationScreen = ({ navigation }) => {
     [notifications],
   );
 
-  const filteredNotifications =
+  // 채팅(쪽지) 알림은 채널(relatedId) 단위로 묶어서 한 줄만 보여주기
+  const groupMailNotifications = (items) => {
+    const result = [];
+    const chatGroups = new Map(); // key: relatedId, value: { latest, count, ids }
+
+    for (const n of items) {
+      const isMailChat =
+        n.category === 'mail' &&
+        n.relatedType === 'message_room' &&
+        n.relatedId;
+
+      if (!isMailChat) {
+        result.push(n);
+        continue;
+      }
+
+      const key = n.relatedId;
+      const existing = chatGroups.get(key);
+      if (!existing) {
+        chatGroups.set(key, {
+          latest: n,
+          count: 1,
+          ids: [n.id],
+        });
+      } else {
+        existing.count += 1;
+        existing.ids.push(n.id);
+        // 최신 createdAt 기준으로 교체
+        const prevDate = new Date(existing.latest.createdAt);
+        const curDate = new Date(n.createdAt);
+        if (curDate > prevDate) {
+          existing.latest = n;
+        }
+      }
+    }
+
+    // 그룹된 mail 알림들을 result 뒤에 추가
+    for (const [relatedId, group] of chatGroups.entries()) {
+      const { latest, count, ids } = group;
+      if (count <= 1) {
+        result.push(latest);
+        continue;
+      }
+      const icon = mapTypeToIcon(latest.type, latest.category);
+      result.push({
+        ...latest,
+        id: `mail-group-${relatedId}`,
+        title: `${latest.title} 외 ${count - 1}건`,
+        icon: icon.name,
+        iconColor: icon.color,
+        iconBg: icon.bg,
+        groupedIds: ids,
+        groupCount: count,
+      });
+    }
+
+    // 최신순 유지 위해 createdAt 기준 다시 정렬
+    return result.sort(
+      (a, b) => new Date(b.createdAt) - new Date(a.createdAt),
+    );
+  };
+
+  const baseFiltered =
     selectedTab === 'all'
       ? notifications
       : notifications.filter((n) => n.category === selectedTab);
 
-  const unreadCount = notifications.filter((n) => !n.isRead).length;
-
-  const handleMarkAllRead = async () => {
-    try {
-      await api.post('/api/notifications/mark-all-read');
-      setNotifications((prev) => prev.map((n) => ({ ...n, isRead: true })));
-    } catch (error) {
-      console.error('알림 모두 읽음 처리 실패:', error);
-    }
-  };
+  const filteredNotifications = useMemo(
+    () => groupMailNotifications(baseFiltered),
+    [baseFiltered],
+  );
 
   const handlePressNotification = (n) => {
-    // 1️⃣ Optimistic UI: 즉시 빨간 점 제거
-    setNotifications((prev) =>
-      prev.map((item) =>
-        item.id === n.id ? { ...item, isRead: true } : item
-      )
-    );
+    // 실제로 눌렀을 때만 배경색 제거 (확인한 알림으로 표시)
+    console.log('[NotificationScreen] 알림 탭', {
+      id: n.id,
+      type: n.type,
+      category: n.category,
+      relatedType: n.relatedType,
+      relatedId: n.relatedId,
+      groupedIds: n.groupedIds,
+    });
+    setTappedIds((prev) => ({ ...prev, [n.id]: true }));
 
-    // 2️⃣ Batch API 요청을 위해 ID만 큐에 쌓고, 주기적으로 한번에 전송
-    pendingReadIdsRef.current.add(n.id);
+    // 그룹 알림이면 groupedIds 전체를 읽음 처리 대상으로 추가
+    if (Array.isArray(n.groupedIds) && n.groupedIds.length > 0) {
+      n.groupedIds.forEach((id) => pendingReadIdsRef.current.add(id));
+    } else {
+      pendingReadIdsRef.current.add(n.id);
+    }
     scheduleFlush();
 
     // 3️⃣ 알림 키에 따라 목적지 분기
@@ -320,32 +488,24 @@ const NotificationScreen = ({ navigation }) => {
         </ScrollView>
       </View>
 
-      {/* 읽지 않은 알림 헤더 */}
-      {unreadCount > 0 && (
-        <View style={styles.unreadHeader}>
-          <Text style={styles.unreadText}>읽지 않은 알림 {unreadCount}개</Text>
-          <TouchableOpacity onPress={handleMarkAllRead}>
-            <Text style={styles.markAllReadButton}>모두 읽음으로 표시</Text>
-          </TouchableOpacity>
-        </View>
-      )}
-
-      {/* 알림 목록 */}
-      <ScrollView style={styles.scrollView}>
-        {loading ? (
-          <View style={styles.emptyContainer}>
-            <Ionicons name="time-outline" size={32} color="#CCC" />
-            <Text style={styles.emptyText}>알림을 불러오는 중입니다...</Text>
-          </View>
-        ) : filteredNotifications.length > 0 ? (
-          filteredNotifications.map((notification) => (
+      {/* 알림 목록 - FlatList + 무한 스크롤 */}
+      <FlatList
+        style={styles.scrollView}
+        data={filteredNotifications}
+        keyExtractor={(item) => String(item.id)}
+        renderItem={({ item: notification }) => {
+          const isTapped = tappedIds[notification.id];
+          const isUnreadFromServer = !notification.isRead;
+          // 서버 기준으로 아직 안 읽은 알림 + 실제로 눌러서 확인하지 않은 것만 연한 초록 배경 + 점 표시
+          const showUnreadStyle = isUnreadFromServer && !isTapped;
+          return (
             <TouchableOpacity
-              key={notification.id}
               style={[
                 styles.notificationItem,
-                !notification.isRead && styles.notificationItemUnread,
+                showUnreadStyle && styles.notificationItemUnread,
               ]}
               onPress={() => handlePressNotification(notification)}
+              activeOpacity={0.7}
             >
               <View
                 style={[
@@ -368,16 +528,52 @@ const NotificationScreen = ({ navigation }) => {
                 <Text style={styles.notificationTime}>{notification.time}</Text>
               </View>
 
-              {!notification.isRead && <View style={styles.unreadDot} />}
+              {showUnreadStyle && <View style={styles.unreadDot} />}
             </TouchableOpacity>
-          ))
-        ) : (
-          <View style={styles.emptyContainer}>
-            <Ionicons name="notifications-off-outline" size={64} color="#CCC" />
-            <Text style={styles.emptyText}>알림이 없습니다</Text>
-          </View>
-        )}
-      </ScrollView>
+          );
+        }}
+        ListEmptyComponent={
+          loading ? (
+            <View style={styles.skeletonContainer}>
+              {[1, 2, 3, 4, 5, 6].map((key) => (
+                <SkeletonRow key={key} />
+              ))}
+            </View>
+          ) : (
+            <View style={styles.emptyContainer}>
+              <Ionicons name="notifications-off-outline" size={64} color="#CCC" />
+              <Text style={styles.emptyTitle}>아직 소식이 없네요</Text>
+              <Text style={styles.emptyText}>
+                인기 게시글을 확인해보러 갈까요?
+              </Text>
+              <TouchableOpacity
+                style={styles.emptyButton}
+                onPress={() => navigation?.navigate('Main')}
+                activeOpacity={0.8}
+              >
+                <Text style={styles.emptyButtonText}>인기글 보러가기</Text>
+              </TouchableOpacity>
+            </View>
+          )
+        }
+        ListFooterComponent={
+          loadingMore ? (
+            <View style={styles.footerLoader}>
+              <Text style={styles.footerLoaderText}>더 불러오는 중...</Text>
+            </View>
+          ) : null
+        }
+        onEndReached={() => {
+          if (!loadingMore && hasMore && filteredNotifications.length > 0) {
+            fetchNotifications(page + 1, true);
+          }
+        }}
+        onEndReachedThreshold={0.4}
+        contentContainerStyle={[
+          styles.contentContainer,
+          filteredNotifications.length === 0 && { flex: 1 },
+        ]}
+      />
       </SafeAreaView>
     </View>
   );
@@ -435,26 +631,12 @@ const styles = StyleSheet.create({
   countTextActive: {
     color: '#FFFFFF',
   },
-  unreadHeader: {
-    backgroundColor: '#FFF9E6',
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-  },
-  unreadText: {
-    fontSize: 14,
-    color: '#F57C00',
-    fontWeight: '500',
-  },
-  markAllReadButton: {
-    fontSize: 13,
-    color: '#4CAF50',
-    fontWeight: '500',
-  },
   scrollView: {
     flex: 1,
+  },
+  contentContainer: {
+    paddingBottom: 24,
+    flexGrow: 1,
   },
   notificationItem: {
     backgroundColor: '#FFFFFF',
@@ -505,12 +687,39 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 80,
+    paddingHorizontal: 24,
+  },
+  emptyTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#333',
+    marginTop: 16,
   },
   emptyText: {
     fontSize: 16,
     color: '#999',
-    marginTop: 16,
+    marginTop: 8,
+    textAlign: 'center',
+  },
+  emptyButton: {
+    marginTop: 24,
+    backgroundColor: '#4CAF50',
+    paddingVertical: 14,
+    paddingHorizontal: 28,
+    borderRadius: 999,
+  },
+  emptyButtonText: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#FFFFFF',
+  },
+  footerLoader: {
+    paddingVertical: 16,
+    alignItems: 'center',
+  },
+  footerLoaderText: {
+    fontSize: 13,
+    color: '#999',
   },
 });
 

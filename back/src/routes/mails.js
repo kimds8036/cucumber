@@ -1,7 +1,7 @@
 import express from 'express';
 import pool from '../config/database.js';
 import { authenticate } from '../middleware/auth.js';
-import { createNotification } from '../utils/notifications.js';
+import { enqueueNotification } from '../utils/notificationWorker.js';
 import { getNowForDB } from '../utils/dateUtils.js';
 
 const router = express.Router();
@@ -250,8 +250,8 @@ router.post('/personal', authenticate, async (req, res) => {
       [result.insertId]
     );
 
-    // 수신자에게 알림 생성
-    await createNotification({
+    // 수신자에게 알림 생성 (비동기 큐 + 소켓 emit)
+    await enqueueNotification({
       userId: Number(recipientId),
       type: 'mail',
       category: 'mail',
@@ -332,8 +332,8 @@ router.post('/personal/:mailId/reply', authenticate, async (req, res) => {
       [result.insertId]
     );
 
-    // 원본 발신자(=이번 답장 수신자)에게 알림 생성
-    await createNotification({
+    // 원본 발신자(=이번 답장 수신자)에게 알림 생성 (비동기 큐 + 소켓 emit)
+    await enqueueNotification({
       userId: Number(recipientId),
       type: 'mail',
       category: 'mail',

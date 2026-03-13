@@ -383,6 +383,7 @@ router.get('/:id', optionalAuthenticate, async (req, res) => {
     );
 
     if (posts.length === 0) {
+      console.warn('[GET /api/posts/:id] 게시글 없음', { id, userId });
       return res.status(404).json({ 
         success: false, 
         message: '게시글을 찾을 수 없습니다.' 
@@ -390,6 +391,14 @@ router.get('/:id', optionalAuthenticate, async (req, res) => {
     }
 
     const post = posts[0];
+
+    console.log('[GET /api/posts/:id] 게시글 조회 성공', {
+      id,
+      userId,
+      postUserId: post.user_id,
+      boardType: post.board_type,
+      schoolId: post.school_id,
+    });
 
     // 해시태그 목록 조회
     const [postTags] = await pool.execute(
@@ -416,6 +425,13 @@ router.get('/:id', optionalAuthenticate, async (req, res) => {
     const isMine = !!userId && post.user_id === userId;
     const postAuthorId = post.user_id;
     const { user_id, ...postSafe } = post;
+
+    console.log('[GET /api/posts/:id] 응답 데이터', {
+      id: postSafe.id,
+      isMine,
+      post_author_id: postAuthorId,
+      current_user_id: userId ?? null,
+    });
 
     res.json({
       success: true,

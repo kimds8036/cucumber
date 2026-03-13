@@ -5,10 +5,10 @@ import {
   View,
   Text,
   TouchableOpacity,
-  ScrollView,
   Modal,
   TouchableWithoutFeedback,
   Alert,
+  FlatList,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Entypo } from '@expo/vector-icons';
@@ -52,6 +52,9 @@ const SchoolBoardAll = ({ navigation }) => {
   const [sortType, setSortType] = useState('latest'); // latest, popular
   const [schoolPosts, setSchoolPosts] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [page, setPage] = useState(1);
+  const [hasMore, setHasMore] = useState(true);
   const [floatingMenuVisible, setFloatingMenuVisible] = useState(false);
   const [floatingMenuAnchor, setFloatingMenuAnchor] = useState(null);
   const [floatingMenuPost, setFloatingMenuPost] = useState(null);
@@ -160,53 +163,148 @@ const SchoolBoardAll = ({ navigation }) => {
     }
   };
 
-  useEffect(() => {
+  const fetchSchoolPosts = async (nextPage = 1, append = false) => {
     let mounted = true;
-    const fetchSchoolPosts = async () => {
-      try {
+    try {
+      if (nextPage === 1) {
         setLoading(true);
-        const schoolRes = await api.get('/api/schools/me');
-        const schoolId = schoolRes.data?.data?.id;
-        if (!schoolId) {
-          if (mounted) setSchoolPosts([]);
-          return;
-        }
-        const sortParam = sortType === 'popular' ? 'popular' : 'latest';
-        const postsRes = await api.get('/api/posts', {
-          params: {
-            boardType: 'school',
-            schoolId,
-            sort: sortParam,
-            page: 1,
-            limit: 50,
-          },
-        });
-        if (!mounted) return;
-        const apiPosts = postsRes.data?.data?.posts || [];
-        const mapped = apiPosts.map((p) => ({
-          id: p.id,
-          author: '익명',
-          time: formatTimeAgo(p.created_at),
-          location: '',
-          content: p.content,
-          likes: p.like_count,
-          comments: p.comment_count,
-          liked: false,
-          isMyPost: !!p.is_author,
-          authorUserId: p.author_user_id,
-        }));
-        setSchoolPosts(mapped);
-      } catch (error) {
-        console.error('학교 게시판 목록 로드 실패:', error);
-      } finally {
-        if (mounted) setLoading(false);
+        setHasMore(true);
+      } else {
+        setLoadingMore(true);
       }
-    };
-    fetchSchoolPosts();
-    return () => {
-      mounted = false;
-    };
+      const schoolRes = await api.get('/api/schools/me');
+      const schoolId = schoolRes.data?.data?.id;
+      if (!schoolId) {
+        if (mounted) setSchoolPosts([]);
+        return;
+      }
+      const sortParam = sortType === 'popular' ? 'popular' : 'latest';
+      const postsRes = await api.get('/api/posts', {
+        params: {
+          boardType: 'school',
+          schoolId,
+          sort: sortParam,
+          page: nextPage,
+          limit: 20,
+        },
+      });
+      if (!mounted) return;
+      const apiPosts = postsRes.data?.data?.posts || [];
+      const mapped = apiPosts.map((p) => ({
+        id: p.id,
+        author: '익명',
+        time: formatTimeAgo(p.created_at),
+        location: '',
+        content: p.content,
+        likes: p.like_count,
+        comments: p.comment_count,
+        liked: false,
+        isMyPost: !!p.is_author,
+        authorUserId: p.author_user_id,
+      }));
+      if (append) {
+        setSchoolPosts((prev) => [...prev, ...mapped]);
+      } else {
+        setSchoolPosts(mapped);
+      }
+      setHasMore(apiPosts.length > 0);
+      setPage(nextPage);
+    } catch (error) {
+      console.error('학교 게시판 목록 로드 실패:', error);
+    } finally {
+      if (mounted) {
+        setLoading(false);
+        setLoadingMore(false);
+      }
+    }
+  };
+
+  useEffect(() => {
+    fetchSchoolPosts(1, false);
   }, [sortType]);
+
+  const handleRefresh = () => {
+    fetchSchoolPosts(1, false);
+  };
+
+  const handleLoadMore = () => {
+    if (loadingMore || !hasMore || schoolPosts.length === 0) return;
+    fetchSchoolPosts(page + 1, true);
+  };
+
+  const renderPostItem = ({ item: post }) => (
+    <TouchableOpacity
+      key={post.id}
+      style={styles.postItem}
+      activeOpacity={0.7}
+      onPress={() =>
+        navigation.navigate('BoardDetail', {
+          post: { ...post, author: post.author },
+          isMyPost: post.isMyPost ?? false,
+        })
+      }
+    >
+      {/* 게시글 헤더: 좌측 익명 시간, 우측 위치 */}
+      <View style={styles.postHeader}>
+        <View style={styles.postAuthorInfo}>
+          <Text style={styles.postAuthor}>{post.author}</Text>
+          <Text style={styles.postTime}> {post.time}</Text>
+        </View>
+        {post.location ? (
+          <View style={styles.postLocation}>
+            <Ionicons name="location-sharp" size={normalize(12)} color={colors.textSecondary} />
+            <Text style={styles.postLocationText}>{post.location}</Text>
+          </View>
+        ) : null}
+      </View>
+
+      {/* 게시글 내용 */}
+      <Text style={styles.postContent} numberOfLines={3}>
+        {post.content}
+      </Text>
+
+      {/* 경계선 */}
+      <View style={styles.postDivider} />
+
+      {/* 푸터: 좌측 좋아요&댓글, 우측 햄버거 */}
+      <View style={styles.postFooter}>
+        <View style={styles.postStats}>
+          <View style={styles.postStatItem}>
+            <FontAwesome
+              name={post.liked ? 'heart' : 'heart-o'}
+              size={normalize(14)}
+              color={colors.alert}
+            />
+            <Text style={styles.postStatText}>{post.likes}</Text>
+          </View>
+          <View style={styles.postStatItem}>
+            <Ionicons name="chatbubble-outline" size={normalize(15)} color={colors.primary} />
+            <Text style={styles.postStatText}>{post.comments}</Text>
+          </View>
+        </View>
+        <View
+          ref={(r) => {
+            if (r) menuButtonRefs.current[post.id] = r;
+          }}
+          collapsable={false}
+        >
+          <TouchableOpacity
+            style={styles.menuButton}
+            activeOpacity={0.7}
+            onPress={() => openFloatingMenu(post, menuButtonRefs.current[post.id])}
+            hitSlop={{
+              top: normalize(12),
+              bottom: normalize(12),
+              left: normalize(12),
+              right: normalize(12),
+            }}
+          >
+            <Entypo name="dots-three-vertical" size={normalize(14)} color={colors.textSecondary} />
+          </TouchableOpacity>
+        </View>
+      </View>
+    </TouchableOpacity>
+  );
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
@@ -240,95 +338,37 @@ const SchoolBoardAll = ({ navigation }) => {
         </TouchableOpacity>
       </View>
 
-      {/* 게시글 목록 */}
-      <ScrollView
+      {/* 게시글 목록 - FlatList + 무한 스크롤 */}
+      <FlatList
         style={styles.postList}
-        contentContainerStyle={{ paddingBottom: 0 }}
+        data={schoolPosts}
+        keyExtractor={(item) => String(item.id)}
+        renderItem={renderPostItem}
         showsVerticalScrollIndicator={false}
-      >
-        {loading && schoolPosts.length === 0 ? (
-          <View style={{ paddingVertical: normalize(40), alignItems: 'center' }}>
-            <Text style={{ fontFamily: fonts.regular, color: colors.textSecondary }}>
-              게시글을 불러오는 중입니다...
-            </Text>
-          </View>
-        ) : schoolPosts.length > 0 ? (
-          schoolPosts.map((post) => (
-            <TouchableOpacity
-              key={post.id}
-              style={styles.postItem}
-              activeOpacity={0.7}
-              onPress={() =>
-                navigation.navigate('BoardDetail', {
-                  post: { ...post, author: post.author },
-                  isMyPost: post.isMyPost ?? false,
-                })
-              }
-            >
-            {/* 게시글 헤더: 좌측 익명 시간, 우측 위치 */}
-            <View style={styles.postHeader}>
-              <View style={styles.postAuthorInfo}>
-                <Text style={styles.postAuthor}>{post.author}</Text>
-                <Text style={styles.postTime}> {post.time}</Text>
-              </View>
-              {post.location ? (
-                <View style={styles.postLocation}>
-                  <Ionicons name="location-sharp" size={normalize(12)} color={colors.textSecondary} />
-                  <Text style={styles.postLocationText}>{post.location}</Text>
-                </View>
-              ) : null}
+        refreshing={loading}
+        onRefresh={handleRefresh}
+        onEndReached={handleLoadMore}
+        onEndReachedThreshold={0.5}
+        ListEmptyComponent={
+          !loading ? (
+            <View style={{ paddingVertical: normalize(40), alignItems: 'center' }}>
+              <Text style={{ fontFamily: fonts.regular, color: colors.textSecondary }}>
+                아직 학교 게시판에 글이 없습니다.
+              </Text>
             </View>
-
-            {/* 게시글 내용 */}
-            <Text style={styles.postContent} numberOfLines={3}>
-              {post.content}
-            </Text>
-
-            {/* 경계선 */}
-            <View style={styles.postDivider} />
-
-            {/* 푸터: 좌측 좋아요&댓글, 우측 햄버거 */}
-            <View style={styles.postFooter}>
-              <View style={styles.postStats}>
-                <View style={styles.postStatItem}>
-                  <FontAwesome
-                    name={post.liked ? 'heart' : 'heart-o'}
-                    size={normalize(14)}
-                    color={colors.alert}
-                  />
-                  <Text style={styles.postStatText}>{post.likes}</Text>
-                </View>
-                <View style={styles.postStatItem}>
-                  <Ionicons name="chatbubble-outline" size={normalize(15)} color={colors.primary} />
-                  <Text style={styles.postStatText}>{post.comments}</Text>
-                </View>
-              </View>
-              <View
-                ref={(r) => {
-                  if (r) menuButtonRefs.current[post.id] = r;
-                }}
-                collapsable={false}
-              >
-                <TouchableOpacity
-                  style={styles.menuButton}
-                  activeOpacity={0.7}
-                  onPress={() => openFloatingMenu(post, menuButtonRefs.current[post.id])}
-                  hitSlop={{ top: normalize(12), bottom: normalize(12), left: normalize(12), right: normalize(12) }}
-                >
-                  <Entypo name="dots-three-vertical" size={normalize(14)} color={colors.textSecondary} />
-                </TouchableOpacity>
-              </View>
+          ) : null
+        }
+        ListFooterComponent={
+          loadingMore ? (
+            <View style={{ paddingVertical: normalize(16), alignItems: 'center' }}>
+              <Text style={{ fontFamily: fonts.regular, color: colors.textSecondary }}>
+                더 불러오는 중...
+              </Text>
             </View>
-            </TouchableOpacity>
-          ))
-        ) : (
-          <View style={{ paddingVertical: normalize(40), alignItems: 'center' }}>
-            <Text style={{ fontFamily: fonts.regular, color: colors.textSecondary }}>
-              아직 학교 게시판에 글이 없습니다.
-            </Text>
-          </View>
-        )}
-      </ScrollView>
+          ) : null
+        }
+        contentContainerStyle={{ paddingBottom: normalize(80) }}
+      />
 
       {/* 글쓰기 플로팅 버튼 */}
       <TouchableOpacity
