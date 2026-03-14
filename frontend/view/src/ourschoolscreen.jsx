@@ -1,9 +1,17 @@
-import React from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
+import React, { useMemo } from 'react';
+import { View, Text, ScrollView, TouchableOpacity, useWindowDimensions } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import FontAwesome6 from '@expo/vector-icons/FontAwesome6';
+import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
 import StudyGrassMap from '../../components/studygrassmap';
+import { colors } from '../../styles/colors';
+import { getNormalize } from '../../styles/frame.style';
+import { createOurSchoolStyles } from '../../styles/school.style';
 
 const OurSchoolScreen = ({ navigation }) => {
+  const { width } = useWindowDimensions();
+  const normalize = useMemo(() => getNormalize(width), [width]);
+  const styles = useMemo(() => createOurSchoolStyles(normalize), [normalize]);
   // 샘플 데이터
   const schoolInfo = {
     name: '진관고등학교',
@@ -11,6 +19,11 @@ const OurSchoolScreen = ({ navigation }) => {
     studentCount: 532,
     postCount: 525,
     mailCount: 525,
+  };
+
+  const mealInfo = {
+    items: ['김치찌개', '잡채', '계란말이', '흰쌀밥'],
+    type: '중식',
   };
 
   const popularPosts = [
@@ -26,57 +39,70 @@ const OurSchoolScreen = ({ navigation }) => {
         style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}
       >
-        {/* 학교 정보 카드 — 잔디밭 포함 */}
-        <View style={styles.schoolCard}>
-          <Text style={styles.schoolName}>{schoolInfo.name}</Text>
-          <View style={styles.locationContainer}>
-            <Ionicons name="location-outline" size={14} color="#666" />
-            <Text style={styles.locationText}>{schoolInfo.location}</Text>
-          </View>
-
-          <View style={styles.divider} />
-
-          <View style={styles.statsContainer}>
-            <View style={styles.statItem}>
-              <Text style={styles.statLabel}>학생</Text>
-              <View style={styles.statValueContainer}>
-                <Ionicons name="person" size={16} color="#4A90E2" />
-                <Text style={styles.statValue}>{schoolInfo.studentCount}명</Text>
-              </View>
+        {/* 상단: 학교 정보 카드(좌 1.1) + 급식 카드(우 1) 분리, gap으로 간격 */}
+        <View style={styles.topRow}>
+          <View style={styles.schoolCard}>
+            <View style={styles.schoolNameRow}>
+              <Text style={styles.schoolName}>{schoolInfo.name}</Text>
             </View>
-
-            <View style={styles.statItem}>
-              <Text style={styles.statLabel}>게시글</Text>
-              <View style={styles.statValueContainer}>
-                <Ionicons name="document-text-outline" size={16} color="#4A90E2" />
-                <Text style={styles.statValue}>{schoolInfo.postCount}개</Text>
-              </View>
+            <View style={styles.locationContainer}>
+              <Ionicons name="location-outline" size={normalize(14)} color={colors.textSecondary} />
+              <Text style={styles.locationText}>{schoolInfo.location}</Text>
             </View>
-
-            <View style={styles.statItem}>
-              <Text style={styles.statLabel}>우편</Text>
-              <View style={styles.statValueContainer}>
-                <Ionicons name="mail-outline" size={16} color="#4A90E2" />
-                <Text style={styles.statValue}>{schoolInfo.mailCount}개</Text>
+            <View style={styles.statsContainer}>
+              <View style={styles.statItem}>
+                <View style={styles.statValueContainer}>
+                  <Ionicons name="person" size={normalize(16)} color={colors.primary} />
+                  <Text style={styles.statValue}>{schoolInfo.studentCount}명</Text>
+                </View>
+              </View>
+              <View style={styles.statItem}>
+                <View style={styles.statValueContainer}>
+                  <Ionicons name="chatbubbles" size={normalize(16)} color={colors.primary} />
+                  <Text style={styles.statValue}>{schoolInfo.postCount}개</Text>
+                </View>
+              </View>
+              <View style={styles.statItem}>
+                <View style={styles.statValueContainer}>
+                  <Ionicons name="mail" size={normalize(16)} color={colors.primary} />
+                  <Text style={styles.statValue}>{schoolInfo.mailCount}개</Text>
+                </View>
               </View>
             </View>
           </View>
+          <View style={styles.mealCard}>
+            <View style={styles.mealCardTop}>
+              <View style={styles.mealTypeRow}>
+                <MaterialCommunityIcons name="rice" size={normalize(16)} color={colors.primary} />
+                <Text style={styles.mealType}>{mealInfo.type}</Text>
+              </View>
+            </View>
+            <View style={styles.mealItemsWrap}>
+              {mealInfo.items.map((item, index) => (
+                <Text key={index} style={styles.mealItem}>{item}</Text>
+              ))}
+            </View>
+            <Text style={styles.mealMore}>자세히 →</Text>
+          </View>
+        </View>
 
-          {/* ✅ 잔디밭 — 카드 내부 */}
+        {/* 공부 잔디 카드 — 풀 너비 */}
+        <View style={styles.grassCard}>
+          <Text style={styles.grassCardTitle}>우리 학교 공부 잔디밭</Text>
           <StudyGrassMap />
         </View>
 
-        {/* 바로가기 버튼 */}
+        {/* 게시판 / 우편함 바로가기 */}
         <View style={styles.shortcutContainer}>
           <TouchableOpacity
             style={styles.shortcutButton}
             activeOpacity={0.7}
             onPress={() => navigation?.navigate('SchoolBoardAll')}
           >
-            <View style={[styles.iconCircle, { backgroundColor: '#E8F5E9' }]}>
-              <Ionicons name="chatbubbles" size={28} color="#4CAF50" />
+            <View style={styles.shortcutTopRow}>
+              <Ionicons name="chatbubbles" size={normalize(22)} color={colors.primary} />
+              <Text style={styles.shortcutTitle}>학교 게시판</Text>
             </View>
-            <Text style={styles.shortcutTitle}>학교 게시판</Text>
             <Text style={styles.shortcutSubtitle}>→ 보러 가기</Text>
           </TouchableOpacity>
 
@@ -85,10 +111,10 @@ const OurSchoolScreen = ({ navigation }) => {
             activeOpacity={0.7}
             onPress={() => navigation?.navigate('SchoolMailbox')}
           >
-            <View style={[styles.iconCircle, { backgroundColor: '#E8F5E9' }]}>
-              <Ionicons name="mail" size={28} color="#4CAF50" />
+            <View style={styles.shortcutTopRow}>
+              <Ionicons name="mail" size={normalize(22)} color={colors.primary} />
+              <Text style={styles.shortcutTitle}>학교 우편함</Text>
             </View>
-            <Text style={styles.shortcutTitle}>학교 우편함</Text>
             <Text style={styles.shortcutSubtitle}>→ 보러 가기</Text>
           </TouchableOpacity>
         </View>
@@ -96,7 +122,7 @@ const OurSchoolScreen = ({ navigation }) => {
         {/* 실시간 인기 */}
         <View style={styles.popularSection}>
           <View style={styles.popularHeader}>
-            <Ionicons name="flame" size={20} color="#FF6B6B" />
+            <Ionicons name="flame" size={normalize(20)} color={colors.alert} />
             <Text style={styles.popularTitle}>실시간 인기</Text>
           </View>
 
@@ -105,8 +131,8 @@ const OurSchoolScreen = ({ navigation }) => {
               <View style={styles.popularItemLeft}>
                 <Ionicons
                   name={post.type === 'post' ? 'chatbubble-ellipses' : 'mail'}
-                  size={18}
-                  color={post.type === 'post' ? '#4CAF50' : '#FFA726'}
+                  size={normalize(18)}
+                  color={post.type === 'post' ? colors.primary : colors.primaryDark}
                 />
                 <Text style={styles.popularItemTitle}>{post.title}</Text>
               </View>
@@ -114,12 +140,12 @@ const OurSchoolScreen = ({ navigation }) => {
               <View style={styles.popularItemRight}>
                 {post.likes > 0 && (
                   <View style={styles.countBadge}>
-                    <Ionicons name="heart-outline" size={14} color="#FF6B6B" />
+                    <Ionicons name="heart-outline" size={normalize(14)} color={colors.alert} />
                     <Text style={styles.countText}>{post.likes}</Text>
                   </View>
                 )}
                 <View style={styles.countBadge}>
-                  <Ionicons name="chatbubble-outline" size={14} color="#FFA726" />
+                  <Ionicons name="chatbubble-outline" size={normalize(14)} color={colors.primaryDark} />
                   <Text style={styles.countText}>{post.comments}</Text>
                 </View>
               </View>
@@ -130,166 +156,5 @@ const OurSchoolScreen = ({ navigation }) => {
     </View>
   );
 };
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#FFFFFF',
-  },
-  scrollView: {
-    flex: 1,
-  },
-  scrollContent: {
-    padding: 16,
-    paddingBottom: 48,
-  },
-  schoolCard: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 16,
-    padding: 20,
-    marginBottom: 16,
-    borderWidth: 2,
-    borderColor: '#A5D6A7',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  schoolName: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#333',
-    textAlign: 'center',
-    marginBottom: 8,
-  },
-  locationContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 16,
-  },
-  locationText: {
-    fontSize: 14,
-    color: '#666',
-    marginLeft: 4,
-  },
-  divider: {
-    height: 1,
-    backgroundColor: '#E0E0E0',
-    marginVertical: 16,
-  },
-  statsContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-  },
-  statItem: {
-    alignItems: 'center',
-  },
-  statLabel: {
-    fontSize: 14,
-    color: '#666',
-    marginBottom: 8,
-  },
-  statValueContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-  },
-  statValue: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: '#333',
-  },
-  shortcutContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: 16,
-    gap: 12,
-  },
-  shortcutButton: {
-    flex: 1,
-    backgroundColor: '#FFFFFF',
-    borderRadius: 16,
-    padding: 20,
-    alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  iconCircle: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 12,
-  },
-  shortcutTitle: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: '#333',
-    marginBottom: 4,
-  },
-  shortcutSubtitle: {
-    fontSize: 12,
-    color: '#999',
-  },
-  popularSection: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 16,
-    padding: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  popularHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 16,
-    gap: 6,
-  },
-  popularTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#333',
-  },
-  popularItem: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: '#F0F0F0',
-  },
-  popularItemLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    flex: 1,
-    gap: 8,
-  },
-  popularItemTitle: {
-    fontSize: 14,
-    color: '#333',
-    flex: 1,
-  },
-  popularItemRight: {
-    flexDirection: 'row',
-    gap: 8,
-  },
-  countBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 2,
-  },
-  countText: {
-    fontSize: 12,
-    color: '#666',
-  },
-});
 
 export default OurSchoolScreen;

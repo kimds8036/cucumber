@@ -7,7 +7,7 @@ food.py, timetable.py에서 import하여 사용
 import requests
 
 # 인증키: https://open.neis.go.kr/ 에서 발급 후 아래에 입력하세요.
-API_KEY = ""
+API_KEY = "010de2d810c04ad194eb1adaff8819b2"
 
 ERROR_CODES = {
     "INFO-000": "정상 처리",
@@ -83,3 +83,44 @@ def extract_row_list(data, key):
         if isinstance(item, dict) and "row" in item:
             return item["row"] if item["row"] else []
     return []
+
+
+def search_school(school_name, page=1, page_size=100):
+    """
+    학교명으로 학교기본정보 API 조회. 시도교육청코드·행정표준코드 조회용.
+    - school_name: 검색할 학교명 (일부만 입력해도 됨)
+    - 반환: [{ ATPT_OFCDC_SC_CODE, SD_SCHUL_CODE, SCHUL_NM, ... }, ...]
+    """
+    url = "https://open.neis.go.kr/hub/schoolInfo"
+    params = {
+        **get_base_params(),
+        "pIndex": page,
+        "pSize": page_size,
+        "SCHUL_NM": school_name.strip(),
+    }
+    r = requests.get(url, params=params)
+    data = handle_response(r, ["schoolInfo"])
+    return extract_row_list(data, "schoolInfo")
+
+
+def resolve_school(atpt_code=None, schul_code=None, school_name=None):
+    """
+    시도교육청코드+행정표준코드 또는 학교명으로 (atpt_code, schul_code) 반환.
+    - atpt_code, schul_code가 둘 다 있으면 그대로 반환.
+    - school_name만 있으면 학교명 검색 후 첫 번째 결과의 코드를 반환 (결과 없으면 SystemExit).
+    """
+    if atpt_code and schul_code:
+        return str(atpt_code).strip(), str(schul_code).strip()
+    if school_name and school_name.strip():
+        schools = search_school(school_name.strip())
+        if not schools:
+            print(f"[오류] 학교명 '{school_name}'에 해당하는 학교를 찾을 수 없습니다.")
+            raise SystemExit(1)
+        first = schools[0]
+        atpt = first.get("ATPT_OFCDC_SC_CODE", "").strip()
+        schul = first.get("SD_SCHUL_CODE", "").strip()
+        name = first.get("SCHUL_NM", "")
+        print(f"학교 검색 결과: {name} (시도교육청코드: {atpt}, 행정표준코드: {schul})")
+        return atpt, schul
+    print("[오류] ATPT_CODE·SCHUL_CODE 또는 SCHOOL_NAME 중 하나를 입력하세요.")
+    raise SystemExit(1)

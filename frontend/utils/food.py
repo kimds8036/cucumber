@@ -17,6 +17,7 @@ try:
         get_base_params,
         handle_response,
         extract_row_list,
+        resolve_school,
     )
 except ImportError:
     from neis_common import (
@@ -24,6 +25,7 @@ except ImportError:
         get_base_params,
         handle_response,
         extract_row_list,
+        resolve_school,
     )
 
 
@@ -81,32 +83,55 @@ def get_meal_info(
     return rows
 
 
+def get_meals_by_date(
+    atpt_code,
+    schul_code,
+    date,
+    page=1,
+    page_size=100,
+):
+    """
+    지정한 날짜의 조식·중식·석식을 모두 조회하여 출력.
+    - date: 급식일자 (YYYYMMDD)
+    - 반환: 세 식사 결과를 합친 row 리스트
+    """
+    meal_codes = [(1, "조식"), (2, "중식"), (3, "석식")]
+    all_rows = []
+    for code, name in meal_codes:
+        print(f"=== {name} ===")
+        rows = get_meal_info(
+            atpt_code,
+            schul_code,
+            meal_code=code,
+            date=date,
+            page=page,
+            page_size=page_size,
+        )
+        all_rows.extend(rows)
+    return all_rows
+
+
 if __name__ == "__main__":
-    # 여기에 학교 코드를 입력하세요 (시도교육청코드, 행정표준코드)
+    # 조회 방식 1: 시도교육청코드 + 행정표준코드 직접 입력
     ATPT_CODE = ""  # 예: B10 (서울)
-    SCHUL_CODE = ""  # 예: 7010123
+    SCHUL_CODE = ""  # 예: 7031199
+    # 조회 방식 2: 학교명만 입력 (위 두 코드를 비워두고 아래만 입력)
+    SCHOOL_NAME = "신도중학교"  # 예: 진관고등학교, 광남고
 
     if not API_KEY:
-        print("API_KEY를 neis_common.py 또는 이 파일 상단에서 설정한 뒤 실행하세요.")
-        raise SystemExit(1)
-    if not ATPT_CODE or not SCHUL_CODE:
-        print("ATPT_CODE, SCHUL_CODE를 입력한 뒤 실행하세요.")
+        print("API_KEY를 neis_common.py에서 설정한 뒤 실행하세요.")
         raise SystemExit(1)
 
-    now = datetime.now()
-    this_month_start = now.replace(day=1).strftime("%Y%m%d")
-    if now.month == 12:
-        next_month = now.replace(year=now.year + 1, month=1, day=1)
-    else:
-        next_month = now.replace(month=now.month + 1, day=1)
-    this_month_end = (next_month - timedelta(days=1)).strftime("%Y%m%d")
-
-    print("=== 급식 조회 (이번 달 중식) ===")
-    print(f"조회 기간: {this_month_start} ~ {this_month_end} (중식)")
-    get_meal_info(
-        ATPT_CODE,
-        SCHUL_CODE,
-        meal_code=2,
-        from_date=this_month_start,
-        to_date=this_month_end,
+    ATPT_CODE, SCHUL_CODE = resolve_school(
+        atpt_code=ATPT_CODE or None,
+        schul_code=SCHUL_CODE or None,
+        school_name=SCHOOL_NAME or None,
     )
+
+    # 조회할 날짜 (YYYYMMDD). 비우면 오늘 날짜 사용
+    MEAL_DATE = "20260310"  # 예: "20250315"
+    meal_date = MEAL_DATE if MEAL_DATE else datetime.now().strftime("%Y%m%d")
+
+    print("=== 급식 조회 (조식·중식·석식) ===")
+    print(f"조회 날짜: {meal_date}")
+    get_meals_by_date(ATPT_CODE, SCHUL_CODE, meal_date)
