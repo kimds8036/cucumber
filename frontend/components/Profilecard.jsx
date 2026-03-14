@@ -10,10 +10,12 @@ import { Ionicons } from '@expo/vector-icons';
 import { colors } from '../styles/colors';
 import MessageTabIcon from '../assets/Group 166.svg';
 import { getNormalize } from '../styles/message.style';
+import { useFriend } from '../context/FriendContext';
 
 const ProfileCard = ({ userInfo, navigation }) => {
   const { width } = useWindowDimensions();
   const normalize = useMemo(() => getNormalize(width), [width]);
+  const { hasUnreadFriendRequests } = useFriend();
 
   return (
     <View style={styles.profileCard}>
@@ -36,7 +38,7 @@ const ProfileCard = ({ userInfo, navigation }) => {
           </Text>
         </View>
 
-        {/* 우측: 친구 뱃지 */}
+        {/* 우측: 친구 뱃지 (미확인 친구 요청 있으면 빨간점) */}
         <TouchableOpacity
           style={styles.friendBadge}
           onPress={() => navigation.navigate('Friends')}
@@ -44,6 +46,7 @@ const ProfileCard = ({ userInfo, navigation }) => {
         >
           <Ionicons name="people" size={13} color={colors.textWhite} />
           <Text style={styles.friendBadgeText}>{userInfo.friendCount}</Text>
+          {hasUnreadFriendRequests && <View style={styles.friendBadgeDot} />}
         </TouchableOpacity>
       </View>
     </View>
@@ -96,6 +99,7 @@ const styles = StyleSheet.create({
     lineHeight: 17,
   },
   friendBadge: {
+    position: 'relative',
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: colors.primary,
@@ -108,6 +112,15 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '600',
     color: colors.textWhite,
+  },
+  friendBadgeDot: {
+    position: 'absolute',
+    top: -2,
+    right: -2,
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: colors.alert,
   },
 });
 

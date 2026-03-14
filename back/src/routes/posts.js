@@ -489,7 +489,7 @@ router.post('/', authenticate, async (req, res) => {
     const user = users[0];
 
     // 학교 게시판인 경우 사용자의 학교와 일치하는지 확인
-    if (boardType === 'school' && user.school_id !== parseInt(schoolId)) {
+    if (boardType === 'school' && user.school_id !== String(schoolId)) {
       return res.status(403).json({ 
         success: false, 
         message: '본인 학교 게시판에만 글을 작성할 수 있습니다.' 

@@ -14,6 +14,7 @@ import { Ionicons } from '@expo/vector-icons';
 import SubHeader from '../frame/subHeader';
 import { api } from '../../utils/api';
 import { useNotification } from '../../context/NotificationContext';
+import { useFriend } from '../../context/FriendContext';
 
 const PAGE_SIZE = 20;
 
@@ -74,7 +75,8 @@ const NotificationScreen = ({ navigation }) => {
   const flushTimerRef = useRef(null);
   const isFlushingRef = useRef(false);
   const appStateRef = useRef(AppState.currentState);
-  const { setHasUnread } = useNotification();
+  const { hasUnread, setHasUnread } = useNotification();
+  const { markFriendRequestsSeenForBell } = useFriend();
 
   const flushPendingReads = useCallback(async () => {
     const ids = Array.from(pendingReadIdsRef.current);
@@ -218,8 +220,9 @@ const NotificationScreen = ({ navigation }) => {
   useEffect(() => {
     const unsubscribe = navigation?.addListener?.('focus', () => {
       // 화면에 진입한 순간 "알림 목록은 한 번 확인했다"고 간주하고
-      // 헤더의 빨간 점은 즉시 제거 (Optimistic)
+      // 헤더 벨 빨간 점은 즉시 제거 (일반 알림 + 친구 요청 알림 모두)
       setHasUnread(false);
+      markFriendRequestsSeenForBell?.();
       fetchNotifications(1, false);
     });
     const blurUnsubscribe = navigation?.addListener?.('blur', () => {
@@ -230,7 +233,18 @@ const NotificationScreen = ({ navigation }) => {
       unsubscribe?.();
       blurUnsubscribe?.();
     };
-  }, [navigation, flushPendingReads, setHasUnread]);
+  }, [navigation, flushPendingReads, setHasUnread, markFriendRequestsSeenForBell]);
+
+  // 알림 화면이 열려 있는 동안 소켓으로 새 알림(hasUnread=true)이 들어오면
+  // 목록을 즉시 새로고침해서 방금 도착한 알림도 리스트에 바로 보이도록 한다.
+  useEffect(() => {
+    if (!hasUnread) return;
+    if (!navigation?.isFocused || !navigation.isFocused()) return;
+
+    // 서버 기준 최신 알림 목록을 불러오고, 화면에서는 이미 본 것으로 간주하므로 빨간 점은 다시 끈다.
+    fetchNotifications(1, false);
+    setHasUnread(false);
+  }, [hasUnread, navigation, fetchNotifications, setHasUnread]);
 
   // 5️⃣ 앱 종료/백그라운드 대비: 상태 전환 시, 그리고 언마운트 시 pending 읽음 요청 강제 전송
   useEffect(() => {

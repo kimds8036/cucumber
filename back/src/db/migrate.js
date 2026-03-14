@@ -9,10 +9,10 @@ const __dirname = path.dirname(__filename);
 // 마이그레이션 파일들을 순서대로 실행
 async function runMigrations() {
   const connection = await getConnection();
-  
+
   try {
     const migrationsDir = path.join(__dirname, 'migrations');
-    
+
     // migrations 디렉토리가 없으면 생성
     if (!fs.existsSync(migrationsDir)) {
       fs.mkdirSync(migrationsDir, { recursive: true });
@@ -21,8 +21,9 @@ async function runMigrations() {
       return;
     }
 
-    const files = fs.readdirSync(migrationsDir)
-      .filter(file => file.endsWith('.sql'))
+    const files = fs
+      .readdirSync(migrationsDir)
+      .filter((file) => file.endsWith('.sql'))
       .sort(); // 파일명 순서대로 실행
 
     if (files.length === 0) {
@@ -35,19 +36,25 @@ async function runMigrations() {
     for (const file of files) {
       const filePath = path.join(migrationsDir, file);
       const sql = fs.readFileSync(filePath, 'utf8');
-      
+
       console.log(`⏳ 실행 중: ${file}`);
-      
+
       // SQL을 세미콜론으로 분리하여 각각 실행
       const statements = sql
         .split(';')
-        .map(s => s.trim())
-        .filter(s => s.length > 0);
+        .map((s) => s.trim())
+        .filter((s) => s.length > 0);
 
       for (const statement of statements) {
-        await connection.execute(statement);
+        try {
+          await connection.execute(statement);
+        } catch (err) {
+          if (err.errno === 1060) console.warn('  ⏭️  컬럼 이미 존재, 스킵');
+          else if (err.errno === 1061) console.warn('  ⏭️  인덱스 이미 존재, 스킵');
+          else throw err;
+        }
       }
-      
+
       console.log(`✅ 완료: ${file}\n`);
     }
 

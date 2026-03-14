@@ -47,6 +47,8 @@ import {
   AddFriendModal,
   Toast,
 } from '../../components/timerFriendModals';
+import { useFriendSocketEvents } from '../../hooks/useFriendSocketEvents';
+import { useFriendStudyEvents } from '../../hooks/useFriendStudyEvents';
 
 // ── 상수 ────────────────────────────────────────────────
 const SUBJECT_COLORS = [
@@ -452,6 +454,59 @@ export const TimerContent = () => {
     setToastVisible(true);
   };
 
+  // ── 실시간 소켓 이벤트 연동 ─────────────────────────────
+  const { emitFriendPoke, emitTimerStatus, emitFriendNotifyOnStop } = useFriendSocketEvents({
+    onFriendTimerStatus: ({ userId, status }) => {
+      setFriends((prev) =>
+        prev.map((f) =>
+          f.id === userId ? { ...f, isActive: status === 'studying' } : f,
+        ),
+      );
+    },
+    onFriendPoke: ({ fromUserId }) => {
+      setFriends((prev) => {
+        const friend = prev.find((f) => f.id === fromUserId);
+        if (friend) {
+          showToast(`👉 ${friend.name}님이 "공부하자!" 하고 찔렀어요`);
+        } else {
+          showToast('👉 친구가 공부하자고 찔렀어요');
+        }
+        return prev;
+      });
+    },
+  });
+
+  // 공부 끝 알림 도착 시 토스트
+  useFriendStudyEvents({
+    onFriendStudyFinished: ({ userId, finishedAt, type }) => {
+      console.log('[Timer] onFriendStudyFinished 콜백 실행', {
+        userId,
+        finishedAt,
+        type,
+      });
+      setFriends((prev) => {
+        const friend = prev.find((f) => f.id === userId);
+        if (friend) {
+          showToast(`🔔 ${friend.name}님 공부가 끝났어요`);
+        } else {
+          showToast('🔔 친구의 공부가 끝났어요');
+        }
+        return prev;
+      });
+    },
+    onMyStudyFinishedSummary: ({ watchers }) => {
+      if (!watchers || watchers.length === 0) return;
+      const names = watchers.map((w) => w.name || `@${w.userId}`).filter(Boolean);
+      if (names.length === 1) {
+        showToast(`🔔 ${names[0]}님이 "공부 끝나면 알려줘"를 눌렀었어요`);
+      } else {
+        const first = names[0];
+        const others = names.length - 1;
+        showToast(`🔔 ${first}님 외 ${others}명이 "공부 끝나면 알려줘"를 눌렀었어요`);
+      }
+    },
+  });
+
   // ── 친구 목록 로드 (백엔드 연동) ─────────────────────────
   useEffect(() => {
     let mounted = true;
@@ -485,14 +540,18 @@ export const TimerContent = () => {
     setPokeVisible(true);
   };
   const handlePoke = () => {
-    if (pokeTarget)
+    if (pokeTarget) {
+      emitFriendPoke(pokeTarget.id);
       showToast(`👉 ${pokeTarget.name}님에게 공부하자! 알림을 보냈어요`);
+    }
     setPokeVisible(false);
     setPokeTarget(null);
   };
   const handleNotifyLater = () => {
-    if (pokeTarget)
+    if (pokeTarget) {
+      emitFriendNotifyOnStop(pokeTarget.id);
       showToast(`🔔 ${pokeTarget.name}님 공부 완료 시 알림을 예약했어요`);
+    }
     setPokeVisible(false);
     setPokeTarget(null);
   };
@@ -716,6 +775,7 @@ export const TimerContent = () => {
         endSeconds: null,
       },
     ]);
+    emitTimerStatus('studying');
   };
 
   const startTimerTop = () => {
@@ -736,6 +796,7 @@ export const TimerContent = () => {
         endSeconds: null,
       },
     ]);
+    emitTimerStatus('studying');
   };
 
   const pauseTimer = () => {
@@ -745,6 +806,7 @@ export const TimerContent = () => {
     setIsRunning(false);
     setElapsedMs(0);
     setStartTimestamp(null);
+    emitTimerStatus('idle');
   };
 
   const toggleTimer = () => (isRunning ? pauseTimer() : startTimerTop());
@@ -1296,18 +1358,31 @@ export const TimerContent = () => {
             {
               text: '보내기',
               onPress: async () => {
+                console.log('[Timer][FriendRequest] 보내기 버튼 눌림 → API 요청 시작', {
+                  username,
+                  target: `@${username}`,
+                });
                 try {
                   const res = await api.post('/api/friends/requests', {
                     username,
                   });
+                  const data = res.data?.data || {};
                   const targetName =
-                    res.data?.data?.targetName ||
-                    res.data?.data?.targetUsername ||
-                    `@${username}`;
+                    data.targetName || data.targetUsername || `@${username}`;
+                  console.log('[Timer][FriendRequest] API 성공 → 백엔드에서 수신자에게 소켓 알림 전송됨', {
+                    requestId: data.requestId,
+                    targetUserId: data.targetUserId,
+                    targetUsername: data.targetUsername,
+                    targetName,
+                  });
                   setShowAddFriend(false);
                   showToast(`✅ ${targetName}님에게 친구 요청을 보냈어요`);
                 } catch (error) {
-                  console.error('친구 요청 실패:', error);
+                  console.error('[Timer][FriendRequest] API 실패', {
+                    username,
+                    status: error.response?.status,
+                    message: error.response?.data?.message,
+                  });
                   Alert.alert(
                     '친구 요청 실패',
                     error.response?.data?.message ||

@@ -6,6 +6,7 @@ import FontAwesome5 from '@expo/vector-icons/FontAwesome5';
 import { colors } from '../../styles/colors';
 import Octicons from '@expo/vector-icons/Octicons';
 import { useNotification } from '../../context/NotificationContext';
+import { useFriend } from '../../context/FriendContext';
 
 const MainHeader = ({ activeTab = 'board', navigation }) => {
   const { width, height } = useWindowDimensions();
@@ -13,6 +14,7 @@ const MainHeader = ({ activeTab = 'board', navigation }) => {
   const normalize = useMemo(() => getNormalize(width), [width]);
 
   const { hasUnread } = useNotification();
+  const { hasUnreadFriendRequestsForBell } = useFriend();
 
   // activeTab에 따른 헤더 텍스트
   const getTabTitle = () => {
@@ -52,7 +54,7 @@ const MainHeader = ({ activeTab = 'board', navigation }) => {
           onPress={() => navigation?.navigate('Notification')}
         >
           <FontAwesome5 name="bell" size={normalize(24)} color={colors.primary} />
-          {hasUnread && <View style={headerStyles.badge} />}
+          {(hasUnread || hasUnreadFriendRequestsForBell) && <View style={headerStyles.badge} />}
         </TouchableOpacity>
       </View>
     </View>

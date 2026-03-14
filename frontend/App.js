@@ -29,6 +29,8 @@ import * as SplashScreen from 'expo-splash-screen';
 import { useEffect } from 'react';
 import { KeyboardProvider } from './context/KeyboardContext';
 import { NotificationProvider } from './context/NotificationContext';
+import { FriendProvider } from './context/FriendContext';
+import { SocketProvider } from './context/SocketContext';
 
 const Stack = createNativeStackNavigator();
 
@@ -51,35 +53,39 @@ export default function App() {
   return (
     <SafeAreaProvider>
       <KeyboardProvider>
-        <NotificationProvider>
-          <NavigationContainer>
-            <Stack.Navigator
-              initialRouteName="Login"
-              screenOptions={{ headerShown: false }}
-            >
-              <Stack.Screen name="Login" component={Login} />
-              <Stack.Screen name="Sign" component={Sign} />
-              <Stack.Screen name="Main" component={MainScreen} />
-              <Stack.Screen name="BoardWrite" component={BoardWrite} />
-              <Stack.Screen name="BoardDetail" component={BoardDetail} />
-              <Stack.Screen name="Chat" component={Chat} />
-              <Stack.Screen name="AddTimetable" component={AddTimetable} />
-              <Stack.Screen name="MyPosts" component={MyPosts} />
-              <Stack.Screen name="LikedPosts" component={LikedPosts} />
-              <Stack.Screen name="NotificationSettings" component={NotificationSettings} />
-              <Stack.Screen name="ChangePassword" component={ChangePassword} />
-              <Stack.Screen name="ChangeSchool" component={ChangeSchool} />
-              <Stack.Screen name="Search" component={SearchScreen} />
-              <Stack.Screen name="Notification" component={NotificationScreen} />
-              <Stack.Screen name="SendMail" component={SendMailScreen} />
-              <Stack.Screen name="MailDetail" component={AnonymousMailScreen} />
-              <Stack.Screen name="SchoolBoardAll" component={SchoolBoardAll} />
-              <Stack.Screen name="Timer" component={Timer} />
-              <Stack.Screen name="Friends" component={FriendsScreen} />
-              <Stack.Screen name="SearchScreen" component={SearchScreen} />
-            </Stack.Navigator>
-          </NavigationContainer>
-        </NotificationProvider>
+        <SocketProvider>
+          <NotificationProvider>
+            <FriendProvider>
+            <NavigationContainer>
+              <Stack.Navigator
+                initialRouteName="Login"
+                screenOptions={{ headerShown: false }}
+              >
+                <Stack.Screen name="Login" component={Login} />
+                <Stack.Screen name="Sign" component={Sign} />
+                <Stack.Screen name="Main" component={MainScreen} />
+                <Stack.Screen name="BoardWrite" component={BoardWrite} />
+                <Stack.Screen name="BoardDetail" component={BoardDetail} />
+                <Stack.Screen name="Chat" component={Chat} />
+                <Stack.Screen name="AddTimetable" component={AddTimetable} />
+                <Stack.Screen name="MyPosts" component={MyPosts} />
+                <Stack.Screen name="LikedPosts" component={LikedPosts} />
+                <Stack.Screen name="NotificationSettings" component={NotificationSettings} />
+                <Stack.Screen name="ChangePassword" component={ChangePassword} />
+                <Stack.Screen name="ChangeSchool" component={ChangeSchool} />
+                <Stack.Screen name="Search" component={SearchScreen} />
+                <Stack.Screen name="Notification" component={NotificationScreen} />
+                <Stack.Screen name="SendMail" component={SendMailScreen} />
+                <Stack.Screen name="MailDetail" component={AnonymousMailScreen} />
+                <Stack.Screen name="SchoolBoardAll" component={SchoolBoardAll} />
+                <Stack.Screen name="Timer" component={Timer} />
+                <Stack.Screen name="Friends" component={FriendsScreen} />
+                <Stack.Screen name="SearchScreen" component={SearchScreen} />
+              </Stack.Navigator>
+            </NavigationContainer>
+            </FriendProvider>
+          </NotificationProvider>
+        </SocketProvider>
       </KeyboardProvider>
     </SafeAreaProvider>
   );

@@ -341,7 +341,7 @@ router.post('/verify-student', authenticate, async (req, res) => {
 
     // 학생 정보 일치 확인 (실제로는 더 엄격한 검증 필요)
     if (user.name === name && 
-        user.school_id === schoolId && 
+        user.school_id === String(schoolId) && 
         user.grade === grade && 
         user.class_number === classNumber) {
       

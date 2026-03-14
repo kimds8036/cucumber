@@ -9,8 +9,10 @@ import {
   Alert,
   TextInput,
 } from 'react-native';
+import { useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { api } from '../../utils/api';
+import { useFriend } from '../../context/FriendContext';
 
 // 이니셜 아바타 색상
 const AVATAR_COLORS = [
@@ -26,6 +28,14 @@ const FriendsScreen = ({ navigation }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedFriend, setSelectedFriend] = useState(null); // 바텀시트 대상
   const [modalVisible, setModalVisible]     = useState(false);
+  const { refreshFriendRequestBadge } = useFriend();
+
+  // 화면 포커스 시 친구 요청 뱃지 갱신 (빨간점 해제 반영)
+  useFocusEffect(
+    React.useCallback(() => {
+      refreshFriendRequestBadge?.();
+    }, [refreshFriendRequestBadge])
+  );
 
   useEffect(() => {
     const fetchData = async () => {
@@ -72,6 +82,7 @@ const FriendsScreen = ({ navigation }) => {
       await api.post(`/api/friends/requests/${req.requestId}/accept`);
       setFriendRequests((prev) => prev.filter((r) => r.id !== req.id));
       setFriends((prev) => [...prev, { ...req }]);
+      refreshFriendRequestBadge?.();
     } catch (error) {
       console.error('친구 요청 수락 실패:', error);
       Alert.alert(
@@ -85,6 +96,7 @@ const FriendsScreen = ({ navigation }) => {
     try {
       await api.post(`/api/friends/requests/${req.requestId}/reject`);
       setFriendRequests((prev) => prev.filter((r) => r.id !== req.id));
+      refreshFriendRequestBadge?.();
     } catch (error) {
       console.error('친구 요청 거절 실패:', error);
       Alert.alert(

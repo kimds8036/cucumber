@@ -205,28 +205,69 @@ const addFriendStyles = {
 
 // ── 토스트 ──────────────────────────────────────────────
 export const Toast = ({ message, visible, onHide }) => {
+  const translateY = useRef(new Animated.Value(-40)).current;
   const opacity = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
     if (visible && message) {
       Animated.sequence([
-        Animated.timing(opacity, { toValue: 1, duration: 200, useNativeDriver: true }),
+        Animated.parallel([
+          Animated.timing(translateY, {
+            toValue: 0,
+            duration: 220,
+            easing: Easing.out(Easing.cubic),
+            useNativeDriver: true,
+          }),
+          Animated.timing(opacity, {
+            toValue: 1,
+            duration: 220,
+            useNativeDriver: true,
+          }),
+        ]),
         Animated.delay(2500),
-        Animated.timing(opacity, { toValue: 0, duration: 300, useNativeDriver: true }),
+        Animated.parallel([
+          Animated.timing(translateY, {
+            toValue: -40,
+            duration: 260,
+            easing: Easing.in(Easing.cubic),
+            useNativeDriver: true,
+          }),
+          Animated.timing(opacity, {
+            toValue: 0,
+            duration: 260,
+            useNativeDriver: true,
+          }),
+        ]),
       ]).start(() => onHide?.());
     }
-  }, [visible, message]);
+  }, [visible, message, translateY, opacity, onHide]);
 
   if (!visible || !message) return null;
   return (
-    <Animated.View style={[toastStyles.toast, { opacity }]} pointerEvents="none">
+    <Animated.View
+      style={[toastStyles.toast, { opacity, transform: [{ translateY }] }]}
+      pointerEvents="none"
+    >
       <Text style={toastStyles.toastText}>{message}</Text>
     </Animated.View>
   );
 };
 
 const toastStyles = {
-  toast:     { position: 'absolute', bottom: 100, alignSelf: 'center', backgroundColor: 'rgba(40,40,40,0.88)', borderRadius: 20, paddingHorizontal: 18, paddingVertical: 10 },
+  toast: {
+    position: 'absolute',
+    top: 40,
+    alignSelf: 'center',
+    backgroundColor: 'rgba(40,40,40,0.92)',
+    borderRadius: 20,
+    paddingHorizontal: 18,
+    paddingVertical: 10,
+    shadowColor: '#000',
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 4,
+  },
   toastText: { fontSize: 13, color: colors.textWhite, fontWeight: '500' },
 };
 
@@ -239,46 +280,67 @@ const toastStyles = {
  *   onFriendPress    - (friend) => void
  *   onAddFriendPress - () => void
  */
-export const FriendStoryBar = ({ friends, normalize, styles, onFriendPress, onAddFriendPress }) => (
-  <View style={styles.friendStoryRow}>
-    <ScrollView
-      horizontal
-      showsHorizontalScrollIndicator={false}
-      contentContainerStyle={styles.friendStoryScroll}
-    >
-      {/* 친구 추가 버튼 */}
-      <TouchableOpacity
-        style={styles.friendStoryAddCircleWrap}
-        onPress={onAddFriendPress}
-        activeOpacity={0.8}
-      >
-        <View style={styles.friendStoryAddCircle}>
-          <Ionicons name="add" size={normalize(28)} color={colors.primary} />
-        </View>
-        <Text style={styles.friendStoryAddLabel}>친구 추가</Text>
-      </TouchableOpacity>
+export const FriendStoryBar = ({ friends, normalize, styles, onFriendPress, onAddFriendPress }) => {
+  // 활동 중인 친구는 항상 앞에, 나머지는 랜덤 섞기
+  const activeFriends = friends.filter((f) => f.isActive);
+  const inactiveFriends = friends.filter((f) => !f.isActive);
+  const shuffledInactive = [...inactiveFriends];
+  for (let i = shuffledInactive.length - 1; i > 0; i -= 1) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [shuffledInactive[i], shuffledInactive[j]] = [shuffledInactive[j], shuffledInactive[i]];
+  }
+  const orderedFriends = [...activeFriends, ...shuffledInactive];
 
-      {/* 친구 목록 */}
-      {friends.map((friend) => {
-        const iconColor = getFriendIconColorByIndex(friend.colorIndex);
-        return (
-          <TouchableOpacity
-            key={friend.id}
-            style={styles.friendStoryCircleWrap}
-            onPress={() => onFriendPress(friend)}
-            activeOpacity={0.8}
-          >
-            <View style={[styles.friendStoryCircle, { backgroundColor: colors.primaryLight30, borderColor: colors.primary }]}>
-              <MessageTabIcon width={normalize(22)} height={normalize(22)} color={iconColor} />
-              <View style={[
-                styles.friendStatusDotOnCircle,
-                friend.isActive ? styles.friendStatusDotActive : styles.friendStatusDotInactive,
-              ]} />
-            </View>
-            <Text style={styles.friendStoryName} numberOfLines={1}>{friend.name}</Text>
-          </TouchableOpacity>
-        );
-      })}
-    </ScrollView>
-  </View>
-);
+  return (
+    <View style={styles.friendStoryRow}>
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={styles.friendStoryScroll}
+      >
+        {/* 친구 추가 버튼 */}
+        <TouchableOpacity
+          style={styles.friendStoryAddCircleWrap}
+          onPress={onAddFriendPress}
+          activeOpacity={0.8}
+        >
+          <View style={styles.friendStoryAddCircle}>
+            <Ionicons name="add" size={normalize(28)} color={colors.primary} />
+          </View>
+          <Text style={styles.friendStoryAddLabel}>친구 추가</Text>
+        </TouchableOpacity>
+
+        {/* 친구 목록 */}
+        {orderedFriends.map((friend) => {
+          const iconColor = getFriendIconColorByIndex(friend.colorIndex);
+          return (
+            <TouchableOpacity
+              key={friend.id}
+              style={styles.friendStoryCircleWrap}
+              onPress={() => onFriendPress(friend)}
+              activeOpacity={0.8}
+            >
+              <View
+                style={[
+                  styles.friendStoryCircle,
+                  { backgroundColor: colors.primaryLight30, borderColor: colors.primary },
+                ]}
+              >
+                <MessageTabIcon width={normalize(22)} height={normalize(22)} color={iconColor} />
+                <View
+                  style={[
+                    styles.friendStatusDotOnCircle,
+                    friend.isActive ? styles.friendStatusDotActive : styles.friendStatusDotInactive,
+                  ]}
+                />
+              </View>
+              <Text style={styles.friendStoryName} numberOfLines={1}>
+                {friend.name}
+              </Text>
+            </TouchableOpacity>
+          );
+        })}
+      </ScrollView>
+    </View>
+  );
+};

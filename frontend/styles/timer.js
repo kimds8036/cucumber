@@ -474,7 +474,7 @@ export const createTimerStyles = (width, normalize) => {
       borderRadius: normalize(6),
     },
     friendStatusDotActive: {
-      backgroundColor: '#FF9F9F',
+      backgroundColor: '#4CAF50',
     },
     friendStatusDotInactive: {
       backgroundColor: '#E9E9E9',

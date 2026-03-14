@@ -1,12 +1,20 @@
--- 학교 정보 테이블
+-- 학교 정보 테이블 (PK = JSON 학교ID, 매년 시드 시 전체 교체)
 CREATE TABLE IF NOT EXISTS schools (
-  school_id INT AUTO_INCREMENT PRIMARY KEY COMMENT '학교 ID',
+  school_id VARCHAR(50) NOT NULL PRIMARY KEY COMMENT '학교ID (JSON 제공값)',
   name VARCHAR(255) NOT NULL COMMENT '학교명',
   address TEXT COMMENT '학교 주소',
   school_type VARCHAR(20) COMMENT '학교 유형 (일반고/특목고 등)',
   region VARCHAR(100) COMMENT '지역 (시/도)',
   total_students INT DEFAULT 0 COMMENT '총 학생 수',
   total_posts INT DEFAULT 0 COMMENT '총 게시글 수',
+  school_level VARCHAR(50) NULL COMMENT '학교급구분',
+  founded_date DATE NULL COMMENT '설립일자',
+  foundation_type VARCHAR(50) NULL COMMENT '설립형태',
+  main_branch VARCHAR(20) NULL COMMENT '본교분교구분',
+  operation_status VARCHAR(20) NULL COMMENT '운영상태',
+  address_lot TEXT NULL COMMENT '소재지지번주소',
+  latitude DECIMAL(10,7) NULL COMMENT '위도',
+  longitude DECIMAL(10,7) NULL COMMENT '경도',
   INDEX idx_name (name),
   INDEX idx_region (region)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='학교 정보 테이블';
@@ -34,7 +42,7 @@ CREATE TABLE IF NOT EXISTS users (
   password VARCHAR(255) NOT NULL COMMENT '암호화된 비밀번호',
   phone VARCHAR(20) NOT NULL UNIQUE COMMENT '전화번호',
   birth_date DATE NOT NULL COMMENT '생년월일',
-  school_id INT NOT NULL COMMENT '학교 ID',
+  school_id VARCHAR(50) NOT NULL COMMENT '학교 ID',
   grade TINYINT NOT NULL COMMENT '학년 (1-3)',
   class_number TINYINT NOT NULL COMMENT '반 번호',
   graduation_year INT NOT NULL COMMENT '졸업년도',
@@ -57,7 +65,7 @@ CREATE TABLE IF NOT EXISTS posts (
   id INT AUTO_INCREMENT PRIMARY KEY COMMENT '게시글 ID',
   user_id INT NOT NULL COMMENT '작성자 ID',
   board_type VARCHAR(20) NOT NULL COMMENT '게시판 유형 (national/school)',
-  school_id INT COMMENT '학교 ID (학교 게시판인 경우)',
+  school_id VARCHAR(50) COMMENT '학교 ID (학교 게시판인 경우)',
   content TEXT NOT NULL COMMENT '게시글 내용',
   like_count INT DEFAULT 0 COMMENT '좋아요 수',
   comment_count INT DEFAULT 0 COMMENT '댓글 수',
@@ -142,7 +150,7 @@ CREATE TABLE IF NOT EXISTS personal_mails (
 -- 학교 우편 테이블
 CREATE TABLE IF NOT EXISTS school_mails (
   id INT AUTO_INCREMENT PRIMARY KEY COMMENT '학교 우편 ID',
-  school_id INT NOT NULL COMMENT '학교 ID',
+  school_id VARCHAR(50) NOT NULL COMMENT '학교 ID',
   user_id INT NOT NULL COMMENT '작성자 ID',
   content TEXT NOT NULL COMMENT '우편 내용',
   comment_count INT DEFAULT 0 COMMENT '댓글 수',
@@ -159,7 +167,7 @@ CREATE TABLE IF NOT EXISTS school_mails (
 CREATE TABLE IF NOT EXISTS timetables (
   id INT AUTO_INCREMENT PRIMARY KEY COMMENT '시간표 ID',
   user_id INT NOT NULL UNIQUE COMMENT '사용자 ID',
-  school_id INT NOT NULL COMMENT '학교 ID',
+  school_id VARCHAR(50) NOT NULL COMMENT '학교 ID',
   grade TINYINT NOT NULL COMMENT '학년',
   class_number TINYINT NOT NULL COMMENT '반',
   mon_1 VARCHAR(50) COMMENT '월요일 1교시',
