@@ -106,7 +106,7 @@ const OurSchoolScreen = ({ navigation }) => {
   };
 
   const mealSlots = getCurrentSlots();
-  const weekdayLabels = ['일', '월', '화', '수', '목', '금', '토'];
+  const weekdayLabels = ['월', '화', '수', '목', '금'];
   const getDayBadge = (dayIndex) => {
     const date = new Date();
     date.setDate(date.getDate() + dayIndex);

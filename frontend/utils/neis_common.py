@@ -105,12 +105,38 @@ def search_school(school_name, page=1, page_size=100):
 
 def resolve_school(atpt_code=None, schul_code=None, school_name=None):
     """
-    시도교육청코드+행정표준코드 또는 학교명으로 (atpt_code, schul_code) 반환.
+    시도교육청코드+행정표준코드, 행정표준코드+학교명, 또는 학교명만으로 (atpt_code, schul_code) 반환.
     - atpt_code, schul_code가 둘 다 있으면 그대로 반환.
+    - schul_code와 school_name이 있고 atpt_code가 없으면,
+      학교명으로 검색한 결과 중 행정표준코드가 일치하는 학교를 찾아 시도교육청코드(atpt_code)를 보완.
     - school_name만 있으면 학교명 검색 후 첫 번째 결과의 코드를 반환 (결과 없으면 SystemExit).
     """
+    # 1) 시도교육청코드 + 행정표준코드가 모두 있는 경우 그대로 사용
     if atpt_code and schul_code:
         return str(atpt_code).strip(), str(schul_code).strip()
+
+    # 2) 행정표준코드 + 학교명으로 조회 (atpt_code는 자동 보완)
+    if schul_code and school_name and school_name.strip():
+        schools = search_school(school_name.strip())
+        if not schools:
+            print(f"[오류] 학교명 '{school_name}'에 해당하는 학교를 찾을 수 없습니다.")
+            raise SystemExit(1)
+        target_schul = str(schul_code).strip()
+        for item in schools:
+            code = str(item.get("SD_SCHUL_CODE", "")).strip()
+            if code == target_schul:
+                atpt = str(item.get("ATPT_OFCDC_SC_CODE", "")).strip()
+                name = item.get("SCHUL_NM", "")
+                print(
+                    f"학교 검색 결과: {name} (시도교육청코드: {atpt}, 행정표준코드: {code})"
+                )
+                return atpt, target_schul
+        print(
+            f"[오류] 학교명 '{school_name}' 검색 결과 중 행정표준코드 '{schul_code}'에 해당하는 학교를 찾을 수 없습니다."
+        )
+        raise SystemExit(1)
+
+    # 3) 학교명만으로 조회
     if school_name and school_name.strip():
         schools = search_school(school_name.strip())
         if not schools:
@@ -122,5 +148,6 @@ def resolve_school(atpt_code=None, schul_code=None, school_name=None):
         name = first.get("SCHUL_NM", "")
         print(f"학교 검색 결과: {name} (시도교육청코드: {atpt}, 행정표준코드: {schul})")
         return atpt, schul
+
     print("[오류] ATPT_CODE·SCHUL_CODE 또는 SCHOOL_NAME 중 하나를 입력하세요.")
     raise SystemExit(1)
