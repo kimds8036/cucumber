@@ -15,14 +15,11 @@ export const createOurSchoolStyles = (normalize) => {
       padding: normalize(16),
       paddingBottom: normalize(16),
     },
-    topRow: {
-      flexDirection: 'row',
-      alignItems: 'stretch',
-      gap: normalize(12),
+    schoolCardBlock: {
       marginBottom: normalize(12),
     },
     schoolCard: {
-      flex: 7,
+      alignSelf: 'stretch',
       flexDirection: 'column',
       justifyContent: 'center',
       backgroundColor: colors.background,
@@ -34,6 +31,7 @@ export const createOurSchoolStyles = (normalize) => {
     schoolNameRow: {
       flexDirection: 'row',
       alignItems: 'center',
+      justifyContent: 'center',
       gap: normalize(8),
       marginBottom: normalize(6),
     },
@@ -45,6 +43,7 @@ export const createOurSchoolStyles = (normalize) => {
     locationContainer: {
       flexDirection: 'row',
       alignItems: 'center',
+      justifyContent: 'center',
       marginBottom: normalize(12),
     },
     locationText: {
@@ -73,13 +72,100 @@ export const createOurSchoolStyles = (normalize) => {
       fontFamily: fonts.bold,
       color: colors.textPrimary,
     },
+    mealCardBlock: {
+      marginBottom: normalize(12),
+    },
+    mealSectionCard: {
+      backgroundColor: colors.background,
+      borderRadius: normalize(16),
+      paddingHorizontal: normalize(10),
+      paddingVertical: normalize(10),
+      shadowColor: colors.shadow,
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.12,
+      shadowRadius: 4,
+      elevation: 3,
+    },
+    mealSectionHeader: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      marginBottom: normalize(8),
+      paddingHorizontal: normalize(4),
+    },
+    mealSectionTitle: {
+      fontSize: normalize(16),
+      fontFamily: fonts.bold,
+      color: colors.textPrimary,
+      paddingLeft: normalize(4),
+    },
+    mealSectionMore: {
+      fontSize: normalize(12),
+      fontFamily: fonts.regular,
+      color: colors.textPrimary,
+      paddingRight: normalize(4),
+    },
     mealCard: {
-      flex: 3,
+      alignSelf: 'stretch',
       flexDirection: 'column',
       justifyContent: 'space-between',
       backgroundColor: colors.primaryLight20,
       borderRadius: normalize(16),
-      padding: normalize(16),
+      padding: normalize(12),
+    },
+    mealSlotsRow: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      marginBottom: normalize(8),
+    },
+    mealSlot: {
+      flex: 1,
+      paddingHorizontal: normalize(6),
+    },
+    mealSlotLast: {
+      // 구분선 제거 후에도 혹시 모를 오버라이드를 위해 남겨둔 스타일
+    },
+    mealSlotHeader: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      marginBottom: normalize(4),
+    },
+    mealSlotTitleRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: normalize(4),
+    },
+    mealSlotTitle: {
+      fontSize: normalize(14),
+      fontFamily: fonts.bold,
+      color: colors.textPrimary,
+    },
+    mealSlotBadge: {
+      paddingHorizontal: normalize(5),
+      paddingVertical: normalize(2),
+      borderRadius: normalize(10),
+      backgroundColor: colors.primaryLight30,
+    },
+    mealSlotBadgeText: {
+      fontSize: normalize(11),
+      fontFamily: fonts.regular,
+      color: colors.primaryDark,
+    },
+    mealSlotMenus: {
+      minHeight: normalize(80),
+      justifyContent: 'flex-start',
+    },
+    mealSlotMenuText: {
+      fontSize: normalize(12),
+      fontFamily: fonts.regular,
+      color: colors.textPrimary,
+      marginBottom: normalize(2),
+    },
+    mealSlotEmptyText: {
+      fontSize: normalize(12),
+      fontFamily: fonts.regular,
+      color: colors.textSecondary,
     },
     mealCardTop: {
       flexDirection: 'column',
@@ -108,20 +194,24 @@ export const createOurSchoolStyles = (normalize) => {
       fontSize: normalize(13),
       fontFamily: fonts.regular,
       color: colors.textPrimary,
-      marginBottom: normalize(4),
     },
     mealMore: {
       fontSize: normalize(12),
       fontFamily: fonts.regular,
       color: colors.primaryDark,
+      textAlign: 'right',
     },
     grassCard: {
       borderRadius: normalize(16),
       paddingHorizontal: normalize(10),
-      paddingVertical: normalize(8),
+      paddingVertical: normalize(10),
       marginBottom: normalize(12),
-      borderWidth: 1,
-      borderColor: colors.textLight10,
+      backgroundColor: colors.background,
+      shadowColor: colors.shadow,
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.12,
+      shadowRadius: 4,
+      elevation: 3,
     },
     grassCardTitle: {
       fontSize: normalize(16),
@@ -141,8 +231,11 @@ export const createOurSchoolStyles = (normalize) => {
       backgroundColor: colors.background,
       borderRadius: normalize(16),
       padding: normalize(16),
-      borderWidth: 1,
-      borderColor: colors.textLight10,
+      shadowColor: colors.shadow,
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.12,
+      shadowRadius: 4,
+      elevation: 3,
     },
     shortcutTopRow: {
       flexDirection: 'row',
@@ -165,8 +258,11 @@ export const createOurSchoolStyles = (normalize) => {
       borderRadius: normalize(16),
       padding: normalize(16),
       marginBottom: normalize(12),
-      borderWidth: 1,
-      borderColor: colors.textLight10,
+      shadowColor: colors.shadow,
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.12,
+      shadowRadius: 4,
+      elevation: 3,
     },
     popularHeader: {
       flexDirection: 'row',
@@ -186,6 +282,9 @@ export const createOurSchoolStyles = (normalize) => {
       paddingVertical: normalize(12),
       borderBottomWidth: 1,
       borderBottomColor: colors.textLight10,
+    },
+    popularItemLast: {
+      borderBottomWidth: 0,
     },
     popularItemLeft: {
       flexDirection: 'row',
