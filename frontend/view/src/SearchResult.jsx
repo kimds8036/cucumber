@@ -1,9 +1,11 @@
 import React, { useMemo, useState } from 'react';
 import { View, Text, TouchableOpacity, ScrollView, useWindowDimensions } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { Ionicons } from '@expo/vector-icons';
 import SubHeader from '../frame/subHeader';
 import SearchSubHeader from '../frame/SearchSubHeader';
-import { createSearchStyles, getNormalize } from '../../styles/search.style';
+import { createSearchStyles, getNormalize, createSchoolSearchStyles } from '../../styles/search.style';
+import { colors } from '../../styles/colors';
 
 const mockData = {
   전체게시판: [
@@ -24,6 +26,14 @@ const mockData = {
     { id: 1, title: '[장학팀] 장학금 신청 안내', content: '이번 학기 성적 장학금 신청 기간입니다. 포털에서 신청해주세요.', time: '2일 전', from: '장학팀' },
   ],
 };
+
+// 학교 더미 데이터 (학교 버튼 UI 확인용)
+const mockSchools = [
+  { id: 1, name: '진관고등학교' },
+  { id: 2, name: '덕양고등학교' },
+  { id: 3, name: '고양고등학교' },
+  { id: 4, name: '진관중학교' },
+];
 
 const TABS = ['전체', '전체게시판', '학교게시판', '개인우편', '학교우편'];
 
@@ -47,11 +57,19 @@ export default function SearchResult({ route, navigation }) {
   const { width } = useWindowDimensions();
   const normalize = useMemo(() => getNormalize(width), [width]);
   const styles = useMemo(() => createSearchStyles(width, normalize), [width, normalize]);
+  const schoolStyles = useMemo(() => createSchoolSearchStyles(normalize), [normalize]);
 
   const routeQuery = route?.params?.query ?? '';
   const [searchText, setSearchText] = useState(routeQuery);
   const [activeTab, setActiveTab] = useState('전체');
   const [expandedSection, setExpandedSection] = useState(null);
+
+  // 검색어로 앞부분 일치하는 학교 더미 데이터 찾기 (2글자 이상일 때만)
+  const matchedSchool = useMemo(() => {
+    const q = searchText.trim();
+    if (q.length < 2) return null;
+    return mockSchools.find((school) => school.name.startsWith(q)) || null;
+  }, [searchText]);
 
   // 2. 검색어를 포함하는 데이터만 필터링 (제목 또는 내용 또는 from 에 searchText 포함)
   const normalizedQuery = searchText.trim().toLowerCase();
@@ -73,6 +91,12 @@ export default function SearchResult({ route, navigation }) {
     });
     return result;
   }, [normalizedQuery]);
+
+  // 검색 결과 유무 (DB/목데이터에서 조회된 항목이 있는지)
+  const hasResults = useMemo(
+    () => Object.keys(filteredMockData).length > 0,
+    [filteredMockData],
+  );
 
   const counts = useMemo(
     () =>
@@ -116,40 +140,6 @@ export default function SearchResult({ route, navigation }) {
               </Text>
             </View>
           ))}
-
-          {/* 연관 검색어 해시태그 */}
-          <View style={styles.searchFooter}>
-            <Text style={styles.searchFooterLabel}>연관 검색어</Text>
-            <View style={styles.searchFooterTagRow}>
-              {/* TODO: 실제 연관 검색어 데이터로 대체 */}
-              <TouchableOpacity
-                style={styles.searchFooterTagChip}
-                activeOpacity={0.8}
-                onPress={() => setSearchText('케이스')}
-              >
-                <Text style={styles.searchFooterTagText}>#케이스</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={styles.searchFooterTagChip}
-                activeOpacity={0.8}
-                onPress={() => setSearchText('휴대폰악세사리')}
-              >
-                <Text style={styles.searchFooterTagText}>#휴대폰악세사리</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={styles.searchFooterTagChip}
-                activeOpacity={0.8}
-                onPress={() => setSearchText('공동구매')}
-              >
-                <Text style={styles.searchFooterTagText}>#공동구매</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-
-          {/* 검색 결과 요약 문구 (별도 박스) */}
-          <View style={styles.searchFooterSummaryBox}>
-            <Text style={styles.searchFooterSummary}>검색 결과를 모두 확인했습니다</Text>
-          </View>
         </ScrollView>
       </SafeAreaView>
     );
@@ -198,6 +188,36 @@ export default function SearchResult({ route, navigation }) {
       </View>
 
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+        {/* 전체 섹션에서만 학교 검색 결과 노출 */}
+        {activeTab === '전체' && matchedSchool && (
+          <View style={styles.section}>
+            <View style={styles.sectionHeader}>
+              <Text style={styles.sectionTitle}>학교</Text>
+              <View style={styles.sectionBadge}>
+                <Text style={styles.sectionBadgeText}>1건</Text>
+              </View>
+            </View>
+            <View style={schoolStyles.schoolSearchCard}>
+              <View style={schoolStyles.schoolSearchInfo}>
+                <Text style={schoolStyles.schoolSearchName}>{matchedSchool.name}</Text>
+              </View>
+              <TouchableOpacity
+                activeOpacity={0.8}
+                onPress={() => {
+                  if (!matchedSchool) return;
+                  navigation.navigate('OtherSchool', {
+                    schoolId: matchedSchool.id,
+                    schoolName: matchedSchool.name,
+                  });
+                }}
+                style={schoolStyles.schoolSearchButton}
+              >
+                <Ionicons name="chevron-forward" size={16} color={colors.textPrimary} />
+              </TouchableOpacity>
+            </View>
+          </View>
+        )}
+
         {activeTab === '전체' ? (
           sortedSections.map(([section, items]) => (
             <View key={section} style={styles.section}>
@@ -232,54 +252,29 @@ export default function SearchResult({ route, navigation }) {
             </View>
           ))
         ) : (
-          <View style={styles.section}>
-            {(mockData[activeTab] || []).map((item) => (
-              <View key={item.id} style={styles.fullCard}>
-                <Text style={styles.fullTitle}>
-                  {highlight(item.title, searchText, styles)}
-                </Text>
-                <Text style={styles.fullContent}>{item.content}</Text>
-                <Text style={styles.meta}>
-                  {item.time}
-                  {item.likes !== undefined && ` · 좋아요 ${item.likes}`}
-                </Text>
-              </View>
-            ))}
-          </View>
+          (filteredMockData[activeTab] && filteredMockData[activeTab].length > 0) && (
+            <View style={styles.section}>
+              {filteredMockData[activeTab].map((item) => (
+                <View key={item.id} style={styles.fullCard}>
+                  <Text style={styles.fullTitle}>
+                    {highlight(item.title, searchText, styles)}
+                  </Text>
+                  <Text style={styles.fullContent}>{item.content}</Text>
+                  <Text style={styles.meta}>
+                    {item.time}
+                    {item.likes !== undefined && ` · 좋아요 ${item.likes}`}
+                  </Text>
+                </View>
+              ))}
+            </View>
+          )
         )}
-
-        {/* 연관 검색어 해시태그 */}
-        <View style={styles.searchFooter}>
-          <Text style={styles.searchFooterLabel}>연관 검색어</Text>
-          <View style={styles.searchFooterTagRow}>
-            {/* TODO: 실제 연관 검색어 데이터로 대체 */}
-            <TouchableOpacity
-              style={styles.searchFooterTagChip}
-              activeOpacity={0.8}
-              onPress={() => setSearchText('케이스')}
-            >
-              <Text style={styles.searchFooterTagText}>#케이스</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={styles.searchFooterTagChip}
-              activeOpacity={0.8}
-              onPress={() => setSearchText('휴대폰악세사리')}
-            >
-              <Text style={styles.searchFooterTagText}>#휴대폰악세사리</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={styles.searchFooterTagChip}
-              activeOpacity={0.8}
-              onPress={() => setSearchText('공동구매')}
-            >
-              <Text style={styles.searchFooterTagText}>#공동구매</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-
+        
         {/* 검색 결과 요약 문구 (별도 박스) */}
         <View style={styles.searchFooterSummaryBox}>
-          <Text style={styles.searchFooterSummary}>검색 결과를 모두 확인했습니다</Text>
+          <Text style={styles.searchFooterSummary}>
+            {hasResults ? '검색 결과를 모두 확인했습니다' : '검색 결과가 없습니다'}
+          </Text>
         </View>
       </ScrollView>
     </SafeAreaView>

@@ -171,8 +171,8 @@ export const createSearchStyles = (width, normalize) => {
     sectionBadge: {
       paddingHorizontal: normalize(8),
       paddingVertical: normalize(2),
-      borderRadius: normalize(6),
-      backgroundColor: '#a6da9520',
+      borderRadius: normalize(10),
+      backgroundColor: colors.primaryLight20,
     },
     sectionBadgeText: {
       fontSize: normalize(11),
@@ -184,7 +184,7 @@ export const createSearchStyles = (width, normalize) => {
       paddingHorizontal: normalize(16),
       paddingVertical: normalize(13),
       borderTopWidth: 1,
-      borderTopColor: '#f0f0f0',
+      borderTopColor: colors.textLight10,
     },
     fullCard: {
       paddingHorizontal: normalize(16),
@@ -436,6 +436,46 @@ export const createSearchScreenStyles = (width, normalize) => {
       fontSize: normalize(14),
       color: colors.primaryDark,
       fontFamily: fonts.medium,
+    },
+  });
+};
+
+// 검색 결과 화면 상단 학교 버튼 전용 스타일
+export const createSchoolSearchStyles = (normalize) => {
+  return StyleSheet.create({
+    schoolSearchCard: {
+      paddingHorizontal: normalize(16),
+      paddingVertical: normalize(12),
+      backgroundColor: colors.background,
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      borderTopWidth: 1,
+      borderTopColor: colors.textLight10,
+    },
+    schoolSearchInfo: {
+      flexShrink: 1,
+      paddingRight: normalize(8),
+    },
+    schoolSearchLabel: {
+      fontSize: normalize(11),
+      fontFamily: fonts.regular,
+      color: colors.textSecondary,
+      marginBottom: normalize(4),
+    },
+    schoolSearchName: {
+      fontSize: normalize(15),
+      fontFamily: fonts.bold,
+      color: colors.textPrimary,
+    },
+    schoolSearchButton: {
+      paddingHorizontal: normalize(12),
+      paddingVertical: normalize(8),
+    },
+    schoolSearchButtonText: {
+      fontSize: normalize(13),
+      fontFamily: fonts.bold,
+      color: colors.background,
     },
   });
 };

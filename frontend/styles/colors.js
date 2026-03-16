@@ -34,6 +34,7 @@ export const colors = {
   textLight10: 'rgba(39, 42, 38, 0.1)',   // 10%
   textLight20: 'rgba(39, 42, 38, 0.2)',   // 20%
   textLight70: 'rgba(39, 42, 38, 0.7)',   // 70%
+  primaryLight70: 'rgba(166,218,149, 0.7)', // 70%
   primaryLight50: 'rgba(166,218,149, 0.5)', // 50%
   primaryLight30: 'rgba(166,218,149, 0.3)', // 30%
   primaryLight20: 'rgba(166,218,149, 0.2)', // 20%
