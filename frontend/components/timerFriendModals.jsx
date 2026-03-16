@@ -18,6 +18,7 @@ import {
 import Ionicons from '@expo/vector-icons/Ionicons';
 import MessageTabIcon from '../assets/Group 166.svg';
 import { colors } from '../styles/colors';
+import { useFriendSocketEvents } from '../hooks/useFriendSocketEvents';
 
 // ── 상수 ────────────────────────────────────────────────
 export const FRIEND_ICON_COLORS = [colors.green, colors.yellow, colors.red, colors.blue];
@@ -103,6 +104,45 @@ export const PokeModal = ({ visible, friend, onClose, onPoke, onNotifyLater }) =
         </Animated.View>
       </View>
     </Modal>
+  );
+};
+
+/**
+ * FriendPokeController
+ * - 쿡 찌르기 관련 비즈니스 로직(소켓 emit + 토스트)을 여기서만 관리
+ * - Timer 화면은 pokeTarget/pokeVisible/state만 관리하고, 이 컴포넌트만 렌더링
+ */
+export const FriendPokeController = ({ visible, friend, onClose, showToast }) => {
+  const { emitFriendPoke, emitFriendNotifyOnStop } = useFriendSocketEvents();
+
+  const handleClose = () => {
+    onClose?.();
+  };
+
+  const handlePoke = () => {
+    if (friend) {
+      emitFriendPoke(friend.id);
+      showToast?.(`👉 ${friend.name}님에게 공부하자! 알림을 보냈어요`);
+    }
+    handleClose();
+  };
+
+  const handleNotifyLater = () => {
+    if (friend) {
+      emitFriendNotifyOnStop(friend.id);
+      showToast?.(`🔔 ${friend.name}님 공부 완료 시 알림을 예약했어요`);
+    }
+    handleClose();
+  };
+
+  return (
+    <PokeModal
+      visible={visible}
+      friend={friend}
+      onClose={handleClose}
+      onPoke={handlePoke}
+      onNotifyLater={handleNotifyLater}
+    />
   );
 };
 
@@ -280,7 +320,7 @@ const toastStyles = {
  *   onFriendPress    - (friend) => void
  *   onAddFriendPress - () => void
  */
-export const FriendStoryBar = ({ friends, normalize, styles, onFriendPress, onAddFriendPress }) => {
+export const FriendStoryBar = ({ friends, studyingFriends = {}, normalize, styles, onFriendPress, onAddFriendPress }) => {
   // 활동 중인 친구는 항상 앞에, 나머지는 랜덤 섞기
   const activeFriends = friends.filter((f) => f.isActive);
   const inactiveFriends = friends.filter((f) => !f.isActive);
@@ -312,6 +352,7 @@ export const FriendStoryBar = ({ friends, normalize, styles, onFriendPress, onAd
 
         {/* 친구 목록 */}
         {orderedFriends.map((friend) => {
+          const isActive = studyingFriends[friend.id] === true;
           const iconColor = getFriendIconColorByIndex(friend.colorIndex);
           return (
             <TouchableOpacity
@@ -330,7 +371,7 @@ export const FriendStoryBar = ({ friends, normalize, styles, onFriendPress, onAd
                 <View
                   style={[
                     styles.friendStatusDotOnCircle,
-                    friend.isActive ? styles.friendStatusDotActive : styles.friendStatusDotInactive,
+                    isActive ? styles.friendStatusDotActive : styles.friendStatusDotInactive,
                   ]}
                 />
               </View>

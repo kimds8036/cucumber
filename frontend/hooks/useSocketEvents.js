@@ -39,9 +39,19 @@ export function useSocketEvents({ onFriendTimerStatus, onFriendPoke } = {}) {
   );
 
   const emitTimerStatus = useCallback(
-    (status) => {
+    (status, payload = {}) => {
       if (!socket) return;
-      socket.emit('friend_timer_status', { status });
+      if (status === 'studying') {
+        socket.emit('friend_timer_status', {
+          status,
+          dayKey: payload.dayKey,
+          subjectId: payload.subjectId,
+          subjectName: payload.subjectName,
+          startSeconds: payload.startSeconds,
+        });
+      } else {
+        socket.emit('friend_timer_status', { status });
+      }
     },
     [socket],
   );

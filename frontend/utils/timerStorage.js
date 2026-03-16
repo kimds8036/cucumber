@@ -53,14 +53,22 @@ function normalizeLoadedPayload(data) {
   const sessions = Array.isArray(data.sessions)
     ? data.sessions.map((s) => {
         let startSec = s.startSeconds != null ? Number(s.startSeconds) : null;
-        let endSec = s.endSeconds != null ? Number(s.endSeconds) : (s.endMinutes != null ? null : null);
+        // endSeconds 가 없으면 "진행 중" 세션으로 간주해 null 유지
+        let endSec = s.endSeconds != null ? Number(s.endSeconds) : null;
+
+        // 옛날 포맷(startMinutes/endMinutes) 지원
         if (startSec == null && s.startMinutes != null) {
           startSec = Math.floor(Number(s.startMinutes) * 60);
-          if (s.endMinutes != null) endSec = Math.floor(Number(s.endMinutes) * 60);
-          else endSec = startSec;
+          if (s.endMinutes != null) {
+            endSec = Math.floor(Number(s.endMinutes) * 60);
+          } else {
+            // endMinutes 도 없으면 진행 중 세션이므로 endSec 은 그대로 null
+            endSec = null;
+          }
         }
+
         if (startSec == null) startSec = 0;
-        if (endSec == null) endSec = startSec;
+
         return {
           subjectId: s.subjectId != null ? Number(s.subjectId) : null,
           startSeconds: startSec,

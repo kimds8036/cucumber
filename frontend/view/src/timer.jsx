@@ -1,7 +1,8 @@
 /**
  * timer.jsx
- * 타이머 + 투두리스트 + 타임테이블 메인 화면
- * 친구 관련 UI/모달은 timerFriendModals.jsx 에서 import
+ * - 타이머 + 투두리스트 + 타임테이블 메인 화면 컨테이너
+ * - 친구 관련 UI/모달은 timerFriendModals.jsx 에서 import
+ * - 모달(UI) 코드는 timerModals.jsx 로, 친구 공부/요청 상태는 FriendContext 로 분리
  */
 
 import React, { useMemo, useState, useEffect, useRef } from 'react';
@@ -12,7 +13,6 @@ import {
   ScrollView,
   TextInput,
   useWindowDimensions,
-  Modal,
   Alert,
   AppState,
 } from 'react-native';
@@ -37,31 +37,27 @@ import {
   getNextDayKey,
   loadDayFromDb,
 } from '../../utils/timerStorage';
+import { AddSubjectModal, AddTaskModal, CalendarModal } from './timerModals';
 
 // ── 친구 관련 (분리된 파일) ─────────────────────────────
+// - FriendStoryBar: 상단 친구 스토리/상태 바
+// - FriendPokeController / AddFriendModal / Toast: 친구 쿡 찌르기 + 친구추가 + 토스트 UI
 import {
   INITIAL_FRIENDS,
   FRIEND_ICON_COLORS,
   FriendStoryBar,
-  PokeModal,
+  FriendPokeController,
   AddFriendModal,
   Toast,
 } from '../../components/timerFriendModals';
 import { useFriendSocketEvents } from '../../hooks/useFriendSocketEvents';
+import { useFriend } from '../../context/FriendContext';
+import { useFocusEffect } from '@react-navigation/native';
 import { useFriendStudyEvents } from '../../hooks/useFriendStudyEvents';
 
 // ── 상수 ────────────────────────────────────────────────
-const SUBJECT_COLORS = [
-  '#FFB5C2',
-  '#C4A77D',
-  '#7FCDCD',
-  '#87CEEB',
-  '#98D8A6',
-  '#B19CD9',
-  '#FFB366',
-  '#9FB5C7',
-];
-// 더미 과목/할일 대신, 처음에는 비어 있고 사용자가 추가하면 저장된다.
+// - SUBJECT/TASK/HOURS 등 화면 전체에서 공유하는 기본 값
+// - 더미 과목/할일 대신, 처음에는 비어 있고 사용자가 추가하면 저장된다.
 const DEFAULT_SUBJECTS = [];
 const DEFAULT_TASKS = [];
 const HOURS = Array.from({ length: 24 }, (_, i) => i);
@@ -85,350 +81,11 @@ function formatHMS(ms) {
   return `${pad(h)}:${pad(m)}:${pad(s)}`;
 }
 
-// ── 과목 추가 모달 ────────────────────────────────────────
-const AddSubjectModal = ({ visible, onClose, onAdd }) => {
-  const [name, setName] = useState('');
-  const [color, setColor] = useState(SUBJECT_COLORS[0]);
-
-  const pickRandom = () =>
-    setColor(SUBJECT_COLORS[Math.floor(Math.random() * SUBJECT_COLORS.length)]);
-
-  const handleAdd = () => {
-    if (!name.trim()) return;
-    onAdd({ name: name.trim(), color });
-    setName('');
-    setColor(SUBJECT_COLORS[0]);
-    onClose();
-  };
-
-  if (!visible) return null;
-  return (
-    <Modal transparent animationType="fade" onRequestClose={onClose}>
-      <View style={modalStyles.wrapper}>
-        <TouchableOpacity
-          style={modalStyles.overlay}
-          onPress={onClose}
-          activeOpacity={1}
-        />
-        <View style={modalStyles.centered}>
-          <View style={modalStyles.card}>
-            <Text style={modalStyles.title}>과목 추가</Text>
-            <TextInput
-              style={modalStyles.input}
-              placeholder="과목명"
-              placeholderTextColor={colors.textSecondary}
-              value={name}
-              onChangeText={setName}
-            />
-            <View style={modalStyles.colorRow}>
-              <Text style={modalStyles.label}>색상</Text>
-              <ScrollView
-                horizontal
-                showsHorizontalScrollIndicator={false}
-                style={{ flexGrow: 0 }}
-              >
-                <View style={modalStyles.colorWrap}>
-                  {SUBJECT_COLORS.map((c) => (
-                    <TouchableOpacity
-                      key={c}
-                      onPress={() => setColor(c)}
-                      style={[
-                        modalStyles.colorDot,
-                        { backgroundColor: c },
-                        color === c && modalStyles.colorDotSelected,
-                      ]}
-                    />
-                  ))}
-                </View>
-              </ScrollView>
-              <TouchableOpacity
-                onPress={pickRandom}
-                style={modalStyles.randomBtn}
-              >
-                <Text style={modalStyles.randomText}>랜덤</Text>
-              </TouchableOpacity>
-            </View>
-            <View style={modalStyles.row}>
-              <TouchableOpacity style={modalStyles.cancelBtn} onPress={onClose}>
-                <Text style={modalStyles.cancelText}>취소</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[
-                  modalStyles.primaryBtn,
-                  !name.trim() && modalStyles.btnDisabled,
-                ]}
-                onPress={handleAdd}
-                disabled={!name.trim()}
-              >
-                <Text style={modalStyles.primaryText}>추가</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </View>
-      </View>
-    </Modal>
-  );
-};
-
-// ── 할일 추가 모달 ────────────────────────────────────────
-const AddTaskModal = ({
-  visible,
-  onClose,
-  onAdd,
-  subjects,
-  initialSubjectId,
-}) => {
-  const [content, setContent] = useState('');
-  const effectiveSubjectId = initialSubjectId ?? subjects[0]?.id ?? null;
-
-  useEffect(() => {
-    if (!visible) setContent('');
-  }, [visible]);
-
-  const handleClose = () => {
-    setContent('');
-    onClose();
-  };
-  const handleAdd = () => {
-    if (!content.trim() || !effectiveSubjectId) return;
-    onAdd({ subjectId: effectiveSubjectId, content: content.trim() });
-    setContent('');
-    onClose();
-  };
-
-  if (!visible) return null;
-  if (subjects.length === 0) {
-    return (
-      <Modal transparent animationType="fade" onRequestClose={handleClose}>
-        <View style={modalStyles.wrapper}>
-          <TouchableOpacity
-            style={modalStyles.overlay}
-            onPress={handleClose}
-            activeOpacity={1}
-          />
-          <View style={modalStyles.centered}>
-            <View style={modalStyles.card}>
-              <Text style={modalStyles.title}>할일 추가</Text>
-              <Text
-                style={{
-                  fontSize: 14,
-                  color: colors.textSecondary,
-                  marginBottom: 16,
-                }}
-              >
-                과목을 먼저 추가해주세요.
-              </Text>
-              <TouchableOpacity
-                style={modalStyles.primaryBtn}
-                onPress={handleClose}
-              >
-                <Text style={modalStyles.primaryText}>확인</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </View>
-      </Modal>
-    );
-  }
-  return (
-    <Modal transparent animationType="fade" onRequestClose={handleClose}>
-      <View style={modalStyles.wrapper}>
-        <TouchableOpacity
-          style={modalStyles.overlay}
-          onPress={handleClose}
-          activeOpacity={1}
-        />
-        <View style={modalStyles.centered}>
-          <View style={modalStyles.card}>
-            <Text style={modalStyles.title}>할일 추가</Text>
-            <Text style={modalStyles.label}>내용</Text>
-            <TextInput
-              style={[
-                modalStyles.input,
-                { minHeight: 60, textAlignVertical: 'top' },
-              ]}
-              placeholder="할 일 내용"
-              placeholderTextColor={colors.textSecondary}
-              value={content}
-              onChangeText={setContent}
-              multiline
-            />
-            <View style={modalStyles.row}>
-              <TouchableOpacity
-                style={modalStyles.cancelBtn}
-                onPress={handleClose}
-              >
-                <Text style={modalStyles.cancelText}>취소</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[
-                  modalStyles.primaryBtn,
-                  !content.trim() && modalStyles.btnDisabled,
-                ]}
-                onPress={handleAdd}
-                disabled={!content.trim()}
-              >
-                <Text style={modalStyles.primaryText}>추가</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </View>
-      </View>
-    </Modal>
-  );
-};
-
-// ── 달력 모달 ─────────────────────────────────────────────
-const CalendarModal = ({ visible, onClose, currentDayKey, onSelectDay }) => {
-  const [yearMonth, setYearMonth] = useState(() => {
-    const d = dateFromDayKey(currentDayKey || getTimerDayKey(new Date()));
-    return { year: d.getFullYear(), month: d.getMonth() };
-  });
-
-  useEffect(() => {
-    if (visible && currentDayKey) {
-      const d = dateFromDayKey(currentDayKey);
-      setYearMonth({ year: d.getFullYear(), month: d.getMonth() });
-    }
-  }, [visible, currentDayKey]);
-
-  const firstDay = new Date(yearMonth.year, yearMonth.month, 1);
-  const lastDay = new Date(yearMonth.year, yearMonth.month + 1, 0);
-  const startPad = firstDay.getDay();
-  const daysInMonth = lastDay.getDate();
-  const days = [
-    ...Array(startPad).fill(null),
-    ...Array.from({ length: daysInMonth }, (_, i) => i + 1),
-  ];
-
-  const goPrevMonth = () =>
-    yearMonth.month === 0
-      ? setYearMonth({ year: yearMonth.year - 1, month: 11 })
-      : setYearMonth({ year: yearMonth.year, month: yearMonth.month - 1 });
-
-  const goNextMonth = () =>
-    yearMonth.month === 11
-      ? setYearMonth({ year: yearMonth.year + 1, month: 0 })
-      : setYearMonth({ year: yearMonth.year, month: yearMonth.month + 1 });
-
-  const getDayKey = (day) => {
-    if (!day) return null;
-    const d = new Date(yearMonth.year, yearMonth.month, day, 6, 0, 0);
-    return getTimerDayKey(d);
-  };
-
-  if (!visible) return null;
-  return (
-    <Modal transparent animationType="fade" onRequestClose={onClose}>
-      <View style={modalStyles.wrapper}>
-        <TouchableOpacity
-          style={modalStyles.overlay}
-          onPress={onClose}
-          activeOpacity={1}
-        />
-        <View style={[modalStyles.centered, { justifyContent: 'center' }]}>
-          <View style={[modalStyles.card, { maxWidth: 360 }]}>
-            <View
-              style={{
-                flexDirection: 'row',
-                justifyContent: 'space-between',
-                alignItems: 'center',
-                marginBottom: 16,
-              }}
-            >
-              <TouchableOpacity onPress={goPrevMonth} style={{ padding: 8 }}>
-                <Ionicons
-                  name="chevron-back"
-                  size={24}
-                  color={colors.textPrimary}
-                />
-              </TouchableOpacity>
-              <Text
-                style={{
-                  fontSize: 16,
-                  fontFamily: fonts.bold,
-                  color: colors.textPrimary,
-                }}
-              >
-                {yearMonth.year}년 {yearMonth.month + 1}월
-              </Text>
-              <TouchableOpacity onPress={goNextMonth} style={{ padding: 8 }}>
-                <Ionicons
-                  name="chevron-forward"
-                  size={24}
-                  color={colors.textPrimary}
-                />
-              </TouchableOpacity>
-            </View>
-            <View style={{ flexDirection: 'row', flexWrap: 'wrap' }}>
-              {['일', '월', '화', '수', '목', '금', '토'].map((w) => (
-                <View
-                  key={w}
-                  style={{
-                    width: '14.28%',
-                    alignItems: 'center',
-                    paddingVertical: 6,
-                  }}
-                >
-                  <Text
-                    style={{
-                      fontSize: 12,
-                      fontFamily: fonts.regular,
-                      color: colors.textSecondary,
-                    }}
-                  >
-                    {w}
-                  </Text>
-                </View>
-              ))}
-              {days.map((day, idx) => {
-                const key = getDayKey(day);
-                const isCurrent = key === currentDayKey;
-                return (
-                  <TouchableOpacity
-                    key={idx}
-                    style={{
-                      width: '14.28%',
-                      alignItems: 'center',
-                      paddingVertical: 8,
-                      backgroundColor: isCurrent
-                        ? colors.primary
-                        : 'transparent',
-                      borderRadius: 20,
-                    }}
-                    onPress={() => {
-                      if (key) {
-                        onSelectDay(key);
-                        onClose();
-                      }
-                    }}
-                    disabled={!day}
-                  >
-                    <Text
-                      style={{
-                        fontSize: 14,
-                        fontFamily: fonts.regular,
-                        color: !day
-                          ? 'transparent'
-                          : isCurrent
-                            ? colors.textWhite
-                            : colors.textPrimary,
-                      }}
-                    >
-                      {day || ''}
-                    </Text>
-                  </TouchableOpacity>
-                );
-              })}
-            </View>
-          </View>
-        </View>
-      </View>
-    </Modal>
-  );
-};
-
 // ── 메인 콘텐츠 ──────────────────────────────────────────
+// 화면 로직의 대부분이 모여 있는 컴포넌트
+// - 상단: 친구 스토리 바 + 오늘 타이머 요약
+// - 중간: 과목/할일 리스트 + 공부 기록 타임테이블
+// - 하단: 각종 모달들(AddSubject/AddTask/Calendar/친구 관련)
 export const TimerContent = () => {
   const { width } = useWindowDimensions();
   const normalize = useMemo(() => getNormalize(width), [width]);
@@ -438,6 +95,7 @@ export const TimerContent = () => {
   );
 
   // ── 친구 상태 ─────────────────────────────────────────
+  // - 상단 FriendStoryBar + 친구 모달에서 사용하는 친구 목록/쿡 찌르기 대상
   const [friends, setFriends] = useState(INITIAL_FRIENDS);
   const [showAddFriend, setShowAddFriend] = useState(false);
   const [pokeTarget, setPokeTarget] = useState(null);
@@ -454,15 +112,10 @@ export const TimerContent = () => {
     setToastVisible(true);
   };
 
+  const { studyingFriends, refreshStudyingFriends } = useFriend();
+
   // ── 실시간 소켓 이벤트 연동 ─────────────────────────────
-  const { emitFriendPoke, emitTimerStatus, emitFriendNotifyOnStop } = useFriendSocketEvents({
-    onFriendTimerStatus: ({ userId, status }) => {
-      setFriends((prev) =>
-        prev.map((f) =>
-          f.id === userId ? { ...f, isActive: status === 'studying' } : f,
-        ),
-      );
-    },
+  const { emitTimerStatus } = useFriendSocketEvents({
     onFriendPoke: ({ fromUserId }) => {
       setFriends((prev) => {
         const friend = prev.find((f) => f.id === fromUserId);
@@ -520,8 +173,6 @@ export const TimerContent = () => {
             id: f.userId,
             name: f.name || f.username || '친구',
             colorIndex: index % FRIEND_ICON_COLORS.length,
-            // 현재는 공부 상태를 서버에서 받지 않으므로 기본값은 false
-            isActive: false,
           })),
         );
       } catch (error) {
@@ -534,29 +185,22 @@ export const TimerContent = () => {
     };
   }, []);
 
-  // 친구 관련 핸들러
+  // 타이머 화면 진입 시: 놓친 친구 공부 상태 REST로만 보완
+  useFocusEffect(
+    React.useCallback(() => {
+      refreshStudyingFriends?.();
+    }, [refreshStudyingFriends]),
+  );
+
+  // 친구 관련 핸들러 (모달 열기까지만 담당, 쿡 찌르기 로직은 FriendPokeController 에서 처리)
   const handleFriendPress = (friend) => {
-    setPokeTarget(friend);
+    const isActive = studyingFriends?.[friend.id] === true;
+    setPokeTarget({ ...friend, isActive });
     setPokeVisible(true);
-  };
-  const handlePoke = () => {
-    if (pokeTarget) {
-      emitFriendPoke(pokeTarget.id);
-      showToast(`👉 ${pokeTarget.name}님에게 공부하자! 알림을 보냈어요`);
-    }
-    setPokeVisible(false);
-    setPokeTarget(null);
-  };
-  const handleNotifyLater = () => {
-    if (pokeTarget) {
-      emitFriendNotifyOnStop(pokeTarget.id);
-      showToast(`🔔 ${pokeTarget.name}님 공부 완료 시 알림을 예약했어요`);
-    }
-    setPokeVisible(false);
-    setPokeTarget(null);
   };
 
   // ── 타이머/투두 상태 ──────────────────────────────────
+  // - 과목/할일/세션/날짜/타이머 실행 여부 등 메인 비즈니스 상태
   const [subjects, setSubjects] = useState(DEFAULT_SUBJECTS);
   const [tasks, setTasks] = useState(DEFAULT_TASKS);
   const [sessions, setSessions] = useState([]);
@@ -596,10 +240,37 @@ export const TimerContent = () => {
       setTimerDayKey(dayKey);
       setSelectedDayKey(dayKey);
       if (data != null) {
-        setSessions(data.sessions ?? []);
+        const loadedSessions = data.sessions ?? [];
+        setSessions(loadedSessions);
         setTotalElapsedMs(data.totalElapsedMs ?? 0);
         setSubjects(data.subjects?.length ? data.subjects : DEFAULT_SUBJECTS);
         setTasks(data.tasks?.length ? data.tasks : DEFAULT_TASKS);
+
+        // 진행 중 세션이 있으면 타이머 상태 복구
+        const now = new Date();
+        const nowSec = getSecondsFromMidnight(now);
+        let openSession = null;
+        for (let i = loadedSessions.length - 1; i >= 0; i -= 1) {
+          if (loadedSessions[i].endSeconds == null) {
+            openSession = loadedSessions[i];
+            break;
+          }
+        }
+        if (openSession) {
+          const startSec = Number(openSession.startSeconds) || 0;
+          const diffMs = Math.max(0, (nowSec - startSec) * 1000);
+          setIsRunning(true);
+          setActiveSubjectId(
+            openSession.subjectId != null ? openSession.subjectId : null,
+          );
+          const ts = Date.now() - diffMs;
+          setStartTimestamp(ts);
+          setElapsedMs(diffMs);
+        } else {
+          setIsRunning(false);
+          setStartTimestamp(null);
+          setElapsedMs(0);
+        }
       }
       setInitialLoadDone(true);
     });
@@ -775,7 +446,13 @@ export const TimerContent = () => {
         endSeconds: null,
       },
     ]);
-    emitTimerStatus('studying');
+    const subjectName = subjects.find((s) => s.id === subjectId)?.name ?? null;
+    emitTimerStatus('studying', {
+      dayKey: timerDayKey ?? getTimerDayKey(new Date()),
+      subjectId,
+      subjectName,
+      startSeconds: getSecondsFromMidnight(new Date()),
+    });
   };
 
   const startTimerTop = () => {
@@ -796,7 +473,12 @@ export const TimerContent = () => {
         endSeconds: null,
       },
     ]);
-    emitTimerStatus('studying');
+    emitTimerStatus('studying', {
+      dayKey: timerDayKey ?? getTimerDayKey(new Date()),
+      subjectId: null,
+      subjectName: null,
+      startSeconds: getSecondsFromMidnight(new Date()),
+    });
   };
 
   const pauseTimer = () => {
@@ -978,6 +660,9 @@ export const TimerContent = () => {
     });
 
   // ─────────────────────────────────────────────────────
+  // 실제 화면 레이아웃:
+  // - 헤더/푸터는 Timer 래퍼에서 담당
+  // - 여기서는 타이머 본문(친구 바 + 타이머 + 투두 + 타임테이블 + 모달)만 렌더링
   return (
     <>
       <ScrollView
@@ -988,6 +673,7 @@ export const TimerContent = () => {
         {/* ① 친구 목록 (분리된 컴포넌트) */}
         <FriendStoryBar
           friends={friends}
+          studyingFriends={studyingFriends}
           normalize={normalize}
           styles={styles}
           onFriendPress={handleFriendPress}
@@ -1334,16 +1020,15 @@ export const TimerContent = () => {
         onSelectDay={setSelectedDayKey}
       />
 
-      {/* 친구 모달 (분리된 컴포넌트) */}
-      <PokeModal
+      {/* 친구 모달 (비즈니스 로직 포함 컴포넌트) */}
+      <FriendPokeController
         visible={pokeVisible}
         friend={pokeTarget}
         onClose={() => {
           setPokeVisible(false);
           setPokeTarget(null);
         }}
-        onPoke={handlePoke}
-        onNotifyLater={handleNotifyLater}
+        showToast={showToast}
       />
       <AddFriendModal
         visible={showAddFriend}
@@ -1406,6 +1091,7 @@ export const TimerContent = () => {
 };
 
 // ── 화면 래퍼 ────────────────────────────────────────────
+// 네비게이션/헤더/푸터를 감싸고 TimerContent 를 끼워 넣는 얇은 컴포넌트
 const Timer = ({ navigation }) => (
   <SafeAreaView style={{ flex: 1 }} edges={['top', 'bottom']}>
     <MainHeader activeTab="timer" navigation={navigation} />

@@ -18,6 +18,7 @@ export function FriendProvider({ children }) {
   const { socket } = useSocket();
   const [hasUnreadFriendRequests, setHasUnreadFriendRequests] = useState(false);
   const [hasUnreadFriendRequestsForBell, setHasUnreadFriendRequestsForBell] = useState(false);
+  const [studyingFriends, setStudyingFriends] = useState({}); // { [userId]: boolean }
 
   const refreshFriendRequestBadge = useCallback(async (opts = {}) => {
     const { updateBell = false } = opts;
@@ -48,21 +49,32 @@ export function FriendProvider({ children }) {
   useEffect(() => {
     if (!socket) return;
 
-    const handler = (payload) => {
+    const notificationHandler = (payload) => {
       if (payload?.type !== 'friend_request') return;
       setHasUnreadFriendRequests(true);
       setHasUnreadFriendRequestsForBell(true);
     };
 
-    socket.on('notification', handler);
+    const timerStatusHandler = ({ userId, status }) => {
+      if (!userId) return;
+      setStudyingFriends((prev) => ({
+        ...prev,
+        [userId]: status === 'studying',
+      }));
+    };
+
+    socket.on('notification', notificationHandler);
+    socket.on('friend_timer_status', timerStatusHandler);
 
     const onConnect = () => {
       refreshFriendRequestBadge({ updateBell: true });
+      // 친구 공부 상태는 화면 진입 시 REST로도 보완하므로 여기서는 생략
     };
     socket.on('connect', onConnect);
 
     return () => {
-      socket.off('notification', handler);
+      socket.off('notification', notificationHandler);
+      socket.off('friend_timer_status', timerStatusHandler);
       socket.off('connect', onConnect);
     };
   }, [socket, refreshFriendRequestBadge]);
@@ -72,10 +84,29 @@ export function FriendProvider({ children }) {
     setHasUnreadFriendRequestsForBell(false);
   }, []);
 
+  /** 타이머 화면 진입 시, 놓친 이벤트 보완용: 현재 공부 중인 친구 목록을 REST로 조회 */
+  const refreshStudyingFriends = useCallback(async () => {
+    try {
+      const res = await api.get('/api/friends/studying-status');
+      const list = res.data?.data || [];
+      const next = {};
+      list.forEach((item) => {
+        if (item.userId != null) {
+          next[item.userId] = item.isStudying === true;
+        }
+      });
+      setStudyingFriends(next);
+    } catch (error) {
+      console.error('[FriendContext] 공부 중 친구 상태 조회 실패:', error);
+    }
+  }, []);
+
   const value = {
     hasUnreadFriendRequests,
     hasUnreadFriendRequestsForBell,
+    studyingFriends,
     refreshFriendRequestBadge,
+    refreshStudyingFriends,
     markFriendRequestsSeenForBell,
   };
 
