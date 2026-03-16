@@ -22,6 +22,7 @@ import MailReplyScreen from './view/src/mailreply';
 import SchoolMailboxScreen from './view/src/schoolMailbox';
 import SchoolBoardAll from './view/src/schoolBoardAll';
 import OtherSchoolScreen from './view/src/otherschool';
+import MealCalender from './view/src/mealcalender';
 import Timer from './view/src/timer';
 import FriendsScreen from './view/src/friendsscreen';
 import { useFonts } from 'expo-font';
@@ -78,6 +79,7 @@ function MainStack() {
       <Stack.Screen name="SearchScreen" component={SearchScreen} />
       <Stack.Screen name="SearchResult" component={SearchResult} />
       <Stack.Screen name="OtherSchool" component={OtherSchoolScreen} />
+      <Stack.Screen name="MealCalendar" component={MealCalender} />
     </Stack.Navigator>
   );
 }

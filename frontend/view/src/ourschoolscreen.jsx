@@ -165,7 +165,12 @@ const OurSchoolScreen = ({ navigation }) => {
           <View style={styles.mealSectionCard}>
             <View style={styles.mealSectionHeader}>
               <Text style={styles.mealSectionTitle}>급식</Text>
-              <Text style={styles.mealSectionMore}>자세히 →</Text>
+              <TouchableOpacity
+                activeOpacity={0.7}
+                onPress={() => navigation?.navigate('MealCalendar')}
+              >
+                <Text style={styles.mealSectionMore}>자세히 →</Text>
+              </TouchableOpacity>
             </View>
 
             <View style={styles.mealSlotsRow}>
@@ -180,11 +185,6 @@ const OurSchoolScreen = ({ navigation }) => {
                   <View style={styles.mealCard}>
                     <View style={styles.mealSlotHeader}>
                       <View style={styles.mealSlotTitleRow}>
-                        <MaterialCommunityIcons
-                          name="rice"
-                          size={normalize(14)}
-                          color={colors.primary}
-                        />
                         <Text style={styles.mealSlotTitle}>{slot.mealType}</Text>
                       </View>
                       <View style={styles.mealSlotBadge}>

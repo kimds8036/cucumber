@@ -104,7 +104,3 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
 });
-</think>
-MealCard에서 훅을 중복 호출하고 require를 잘못 사용했습니다. 수정 중입니다.
-<｜tool▁calls▁begin｜><｜tool▁call▁begin｜>
-StrReplace
