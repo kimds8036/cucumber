@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useEffect, useRef, useState } from 'react';
+import { Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import io from 'socket.io-client';
 import { api } from '../utils/api';
@@ -20,9 +21,18 @@ export function SocketProvider({ children }) {
         const token = await AsyncStorage.getItem(AUTH_TOKEN_KEY);
         if (!token || cancelled) return;
 
-        const s = io(api.defaults.baseURL, {
-          transports: ['websocket'],
+        const baseURL = api.defaults.baseURL;
+        // iOS: WebSocket 단독 시 실패하는 경우가 있어 폴링 폴백 허용. Android/웹은 websocket 우선.
+        const transports = Platform.OS === 'ios' ? ['websocket', 'polling'] : ['websocket', 'polling'];
+
+        const s = io(baseURL, {
+          transports,
           auth: { token },
+          reconnection: true,
+          reconnectionAttempts: 10,
+          reconnectionDelay: 1000,
+          reconnectionDelayMax: 5000,
+          timeout: 20000,
         });
 
         s.on('connect', () => {
@@ -30,10 +40,14 @@ export function SocketProvider({ children }) {
             setConnected(true);
             setSocket(s);
           }
+          if (__DEV__) {
+            console.log('[SocketContext] 연결됨', { transport: s.io?.engine?.transport?.name, os: Platform.OS });
+          }
         });
 
-        s.on('disconnect', () => {
+        s.on('disconnect', (reason) => {
           setConnected(false);
+          if (__DEV__) console.log('[SocketContext] 연결 끊김', reason);
         });
 
         s.on('connect_error', (err) => {
