@@ -171,7 +171,12 @@ const OtherSchoolScreen = ({ route, navigation }) => {
           <View style={styles.mealSectionCard}>
             <View style={styles.mealSectionHeader}>
               <Text style={styles.mealSectionTitle}>급식</Text>
-              <Text style={styles.mealSectionMore}>자세히 →</Text>
+              <TouchableOpacity
+                activeOpacity={0.7}
+                onPress={() => navigation?.navigate('MealCalendar')}
+              >
+                <Text style={styles.mealSectionMore}>자세히 →</Text>
+              </TouchableOpacity>
             </View>
 
             <View style={styles.mealSlotsRow}>

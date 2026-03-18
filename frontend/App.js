@@ -19,6 +19,7 @@ import Chat from './view/src/Chat';
 import SendMailScreen from './view/src/sendmailscreen';
 import AnonymousMailScreen from './view/src/mailscreen';
 import MailReplyScreen from './view/src/mailreply';
+import MailHistoryScreen from './view/src/history';
 import SchoolMailboxScreen from './view/src/schoolMailbox';
 import SchoolBoardAll from './view/src/schoolBoardAll';
 import OtherSchoolScreen from './view/src/otherschool';
@@ -66,14 +67,20 @@ function MainStack() {
       <Stack.Screen name="AddTimetable" component={AddTimetable} />
       <Stack.Screen name="MyPosts" component={MyPosts} />
       <Stack.Screen name="LikedPosts" component={LikedPosts} />
-      <Stack.Screen name="NotificationSettings" component={NotificationSettings} />
+      <Stack.Screen
+        name="NotificationSettings"
+        component={NotificationSettings}
+      />
       <Stack.Screen name="ChangePassword" component={ChangePassword} />
       <Stack.Screen name="ChangeSchool" component={ChangeSchool} />
       <Stack.Screen name="Search" component={SearchScreen} />
       <Stack.Screen name="Notification" component={NotificationScreen} />
       <Stack.Screen name="SendMail" component={SendMailScreen} />
       <Stack.Screen name="MailDetail" component={AnonymousMailScreen} />
+      <Stack.Screen name="MailReply" component={MailReplyScreen} />
+      <Stack.Screen name="MailHistory" component={MailHistoryScreen} />
       <Stack.Screen name="SchoolBoardAll" component={SchoolBoardAll} />
+      <Stack.Screen name="SchoolMailbox" component={SchoolMailboxScreen} />
       <Stack.Screen name="Timer" component={Timer} />
       <Stack.Screen name="Friends" component={FriendsScreen} />
       <Stack.Screen name="SearchScreen" component={SearchScreen} />

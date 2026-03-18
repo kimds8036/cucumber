@@ -39,7 +39,16 @@ const ActivityPage = ({ navigation }) => {
   const PostItem = ({ post }) => (
     <TouchableOpacity
       style={styles.postItem}
-      onPress={() => navigation.navigate('PostDetail', { postId: post.id })}
+      onPress={() =>
+        navigation.navigate('BoardDetail', {
+          post: {
+            ...post,
+            author: '나',
+            time: post.date,
+          },
+          isMyPost: true,
+        })
+      }
       activeOpacity={0.7}
     >
       <Text style={styles.postTitle} numberOfLines={2}>{post.title}</Text>

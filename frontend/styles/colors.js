@@ -24,6 +24,7 @@ export const colors = {
 
   // 알림
   alert: '#FF9F9F',
+  subcolor: '#AAD7FF',
 
   // 추가 컬러
   shadow: '#000',            // 그림자
