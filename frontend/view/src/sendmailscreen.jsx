@@ -12,6 +12,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
 import SubHeader from '../frame/subHeader';
 import { useAppNavigation } from '../../navigation/useAppNavigation';
 import { getNormalize } from '../../styles/frame.style';
@@ -20,7 +21,7 @@ import { colors } from '../../styles/colors';
 
 const SendMailScreen = ({ navigation }) => {
   const { goBack } = useAppNavigation();
-  const { width, height } = useWindowDimensions();
+  const { width } = useWindowDimensions();
   const normalize = useMemo(() => getNormalize(width), [width]);
   const styles = useMemo(() => createMailStyles(normalize), [normalize]);
   const [selectedSchool, setSelectedSchool] = useState('');
@@ -32,17 +33,13 @@ const SendMailScreen = ({ navigation }) => {
 
   const [mailContent, setMailContent] = useState('');
 
-  const [headerHeight, setHeaderHeight] = useState(0);
-  const [schoolSectionHeight, setSchoolSectionHeight] = useState(0);
-  const [recipientSectionHeight, setRecipientSectionHeight] = useState(0);
-  const [buttonHeight, setButtonHeight] = useState(0);
-
-  const availableSectionHeight = Math.max(
-    0,
-    height - headerHeight - schoolSectionHeight - recipientSectionHeight - buttonHeight,
-  );
-  // "서브헤더/학교/받는사람/전송버튼 제외한" 나머지 높이를 그대로 최소 높이로 사용
-  const sectionMinHeight = Math.floor(availableSectionHeight);
+  const handleMailContentChange = (text) => {
+    if (text.length > 100) {
+      Alert.alert('알림', '광고를 보면 더 길게 작성할 수 있어요.');
+      return;
+    }
+    setMailContent(text);
+  };
 
   // 더미 데이터
   const schoolResults = [
@@ -124,25 +121,19 @@ const SendMailScreen = ({ navigation }) => {
 
   return (
     <View style={{ flex: 1, backgroundColor: styles.container.backgroundColor }}>
-      <SafeAreaView style={styles.container} edges={['top']}>
-        <View onLayout={(e) => setHeaderHeight(e.nativeEvent.layout.height)}>
-          <SubHeader title="우편 보내기" onBack={() => goBack()} />
-        </View>
+      <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
+        <SubHeader title="우편 보내기" onBack={() => goBack()} />
 
         <KeyboardAvoidingView
-          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-          style={styles.keyboardView}
-          keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}>
+          behavior={undefined}
+          style={styles.keyboardView}>
           <ScrollView
             style={styles.scrollView}
+            contentContainerStyle={{ flexGrow: 1, padding: normalize(16) }}
             showsVerticalScrollIndicator={false}
             keyboardShouldPersistTaps="handled">
-            
             {/* 학교 검색 */}
-            <View
-              style={styles.section}
-              onLayout={(e) => setSchoolSectionHeight(e.nativeEvent.layout.height)}
-            >
+            <View style={[styles.section, { marginTop: 0 }]}>
               <Text style={styles.label}>
                 보낼 학교
               </Text>
@@ -197,10 +188,7 @@ const SendMailScreen = ({ navigation }) => {
 
             {/* 받는 사람 선택 */}
             {selectedSchool && (
-              <View
-                style={styles.section}
-                onLayout={(e) => setRecipientSectionHeight(e.nativeEvent.layout.height)}
-              >
+              <View style={styles.section}>
                 <Text style={styles.label}>
                 받는 사람
                 </Text>
@@ -270,8 +258,8 @@ const SendMailScreen = ({ navigation }) => {
             )}
 
             {/* 내용 작성 */}
-            {selectedSchool && (
-              <View style={[styles.section, { minHeight: sectionMinHeight }]}>
+            {selectedStudent && (
+              <View style={[styles.section, { flex: 1, marginBottom: normalize(8) }]}>
                 <Text style={styles.label}>
                   내용
                 </Text>
@@ -280,32 +268,38 @@ const SendMailScreen = ({ navigation }) => {
                     style={styles.textArea}
                     placeholder="보낼 내용을 입력하세요"
                     value={mailContent}
-                    onChangeText={setMailContent}
+                    onChangeText={handleMailContentChange}
                     multiline
                     textAlignVertical="top"
                     placeholderTextColor={colors.textSecondary}
                   />
-                  <Text style={styles.charCount}>{mailContent.length}/500</Text>
+                  <View style={styles.replyFormMetaRow}>
+                    <View style={{ marginLeft: 'auto', alignItems: 'flex-end', justifyContent: 'flex-end' }}>
+                      <Text style={styles.replyFormCount}>{mailContent.length}/100자</Text>
+                      <View style={styles.replyFormChip}>
+                        <MaterialCommunityIcons name="television-classic" size={15} color={colors.textPrimary} />
+                        <Text style={styles.replyFormChipText}>x 2</Text>
+                      </View>
+                    </View>
+                  </View>
                 </View>
               </View>
             )}
           </ScrollView>
 
           {/* 전송 버튼 */}
-          {selectedSchool && (
-            <View
-              style={styles.buttonContainer}
-              onLayout={(e) => setButtonHeight(e.nativeEvent.layout.height)}
-            >
+          {selectedStudent && (
+            <View style={styles.bottomCtaWrapper}>
               <TouchableOpacity
                 style={[
-                  styles.sendButton,
-                  !mailContent.trim() && styles.sendButtonDisabled,
+                  styles.bottomCtaButton,
+                  !mailContent.trim() && styles.bottomCtaDisabled,
                 ]}
                 onPress={handleSend}
                 disabled={!mailContent.trim()}
+                activeOpacity={0.9}
               >
-                <Text style={styles.sendButtonText}>전송하기</Text>
+                <Text style={styles.bottomCtaText}>전송하기</Text>
               </TouchableOpacity>
             </View>
           )}

@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { View, Text, ScrollView, TextInput, Modal, TouchableOpacity, useWindowDimensions } from 'react-native';
+import { View, Text, ScrollView, TextInput, Modal, TouchableOpacity, useWindowDimensions, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
 import SubHeader from '../frame/subHeader';
@@ -18,6 +18,14 @@ export default function MailReplyScreen({ navigation, route }) {
   const [showToast, setShowToast] = useState(false);
   const [subHeaderHeight, setSubHeaderHeight] = useState(0);
   const [bottomHeight, setBottomHeight] = useState(0);
+
+  const handleReplyTextChange = (text) => {
+    if (text.length > 100) {
+      Alert.alert('알림', '광고를 보면 더 길게 작성할 수 있어요.');
+      return;
+    }
+    setReplyText(text);
+  };
 
   const availableHeight = Math.max(0, height - subHeaderHeight - bottomHeight);
   const halfCardHeight = Math.max(240, Math.floor(availableHeight * 0.4));
@@ -67,15 +75,14 @@ export default function MailReplyScreen({ navigation, route }) {
                 placeholder="내용을 입력하세요"
                 placeholderTextColor={colors.textSecondary}
                 value={replyText}
-                onChangeText={setReplyText}
-                maxLength={50}
+                onChangeText={handleReplyTextChange}
                 multiline
                 textAlignVertical="top"
               />
 
               <View style={styles.replyFormMetaRow}>
                 <View style={{ marginLeft: 'auto', alignItems: 'flex-end', justifyContent: 'flex-end' }}>
-                  <Text style={styles.replyFormCount}>{replyText.length}/50자</Text>
+                  <Text style={styles.replyFormCount}>{replyText.length}/100자</Text>
                   <View style={styles.replyFormChip}>
                     <MaterialCommunityIcons name="television-classic" size={15} color={colors.textPrimary} />
                     <Text style={styles.replyFormChipText}>x 2</Text>

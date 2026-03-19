@@ -175,7 +175,7 @@ function MailDetail({ mail: initialMail, onBack, navigation }) {
           onBack={onBack}
           rightElement={(
             <View style={styles.historyIconWrapper}>
-              <Octicons name="history" size={normalize(18)} color="black" />
+              <Octicons name="history" size={normalize(19)} color="black" />
             </View>
           )}
           onRightPress={() => navigation.navigate('MailHistory', { threadId: mail?.id })}
