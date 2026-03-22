@@ -11,6 +11,7 @@ const SubHeader = ({
   rightIcon,
   rightElement,
   onRightPress,
+  rightDisabled,
   titleElement, // 제목 자리에 커스텀 요소(검색창 등)를 넣고 싶을 때 사용
 }) => {
   const { width, height } = useWindowDimensions();
@@ -35,7 +36,12 @@ const SubHeader = ({
             <Text style={styles.headerTitle}>{getTitle()}</Text>
           )}
           {hasRight && (
-            <TouchableOpacity style={styles.rightButton} onPress={onRightPress}>
+            <TouchableOpacity
+              style={styles.rightButton}
+              onPress={onRightPress}
+              disabled={!!rightDisabled}
+              activeOpacity={rightDisabled ? 1 : 0.2}
+            >
               {rightElement != null
                 ? rightElement
                 : rightIcon ? (

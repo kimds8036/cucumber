@@ -261,6 +261,8 @@ const BoardWrite = ({ navigation, route }) => {
     }
   };
 
+  const canSubmit = content.trim().length > 0;
+
   return (
     <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
       <View style={{ flex: 1 }}>
@@ -269,9 +271,12 @@ const BoardWrite = ({ navigation, route }) => {
             title="글쓰기"
             onBack={handleBack}
             onRightPress={handleComplete}
+            rightDisabled={!canSubmit}
             rightElement={(
-              <View style={styles.completePill}>
-                <Text style={styles.completePillText}>완료</Text>
+              <View style={[styles.completePill, !canSubmit && styles.completePillDisabled]}>
+                <Text style={[styles.completePillText, !canSubmit && styles.completePillTextDisabled]}>
+                  등록
+                </Text>
               </View>
             )}
           />

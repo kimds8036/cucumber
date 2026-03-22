@@ -216,7 +216,7 @@ export const createWriteStyles = (width, normalize) => {
     },
     /** SubHeader 오른쪽 완료 pill (TouchableOpacity는 SubHeader가 감쌈) */
     completePill: {
-      backgroundColor: colors.primary,
+      backgroundColor: colors.primaryLight70,
       borderRadius: normalize(20),
       paddingHorizontal: normalize(14),
       paddingVertical: normalize(8),
@@ -225,6 +225,13 @@ export const createWriteStyles = (width, normalize) => {
       fontSize: normalize(13),
       fontWeight: '500',
       color: colors.writePillLabel,
+    },
+    /** 본문 비어 있을 때 등록 pill */
+    completePillDisabled: {
+      backgroundColor: colors.textLight10,
+    },
+    completePillTextDisabled: {
+      color: colors.textSecondary,
     },
     /** 해시태그 섹션 상·하단 구분선 */
     writeHashtagTopDivider: {
