@@ -34,7 +34,7 @@ const SendMailScreen = ({ navigation }) => {
   const [mailContent, setMailContent] = useState('');
 
   const handleMailContentChange = (text) => {
-    if (text.length > 100) {
+    if (text.length > 50) {
       Alert.alert('알림', '광고를 보면 더 길게 작성할 수 있어요.');
       return;
     }
@@ -275,7 +275,7 @@ const SendMailScreen = ({ navigation }) => {
                   />
                   <View style={styles.replyFormMetaRow}>
                     <View style={{ marginLeft: 'auto', alignItems: 'flex-end', justifyContent: 'flex-end' }}>
-                      <Text style={styles.replyFormCount}>{mailContent.length}/100자</Text>
+                      <Text style={styles.replyFormCount}>{mailContent.length}/50자</Text>
                       <View style={styles.replyFormChip}>
                         <MaterialCommunityIcons name="television-classic" size={15} color={colors.textPrimary} />
                         <Text style={styles.replyFormChipText}>x 2</Text>

@@ -20,7 +20,7 @@ export default function MailReplyScreen({ navigation, route }) {
   const [bottomHeight, setBottomHeight] = useState(0);
 
   const handleReplyTextChange = (text) => {
-    if (text.length > 100) {
+    if (text.length > 50) {
       Alert.alert('알림', '광고를 보면 더 길게 작성할 수 있어요.');
       return;
     }
@@ -82,7 +82,7 @@ export default function MailReplyScreen({ navigation, route }) {
 
               <View style={styles.replyFormMetaRow}>
                 <View style={{ marginLeft: 'auto', alignItems: 'flex-end', justifyContent: 'flex-end' }}>
-                  <Text style={styles.replyFormCount}>{replyText.length}/100자</Text>
+                  <Text style={styles.replyFormCount}>{replyText.length}/50자</Text>
                   <View style={styles.replyFormChip}>
                     <MaterialCommunityIcons name="television-classic" size={15} color={colors.textPrimary} />
                     <Text style={styles.replyFormChipText}>x 2</Text>

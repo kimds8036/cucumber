@@ -16,36 +16,62 @@ import { Entypo } from '@expo/vector-icons';
 import SubHeader from '../frame/subHeader';
 import { colors, fonts } from '../../styles/colors';
 import { getNormalize } from '../../styles/frame.style';
-import { createSchoolMailStyles } from '../../styles/school.style';
+import { createSchoolMailStyles } from '../../styles/SchoolMail.style';
+
+/** NEW 뱃지: 수신 시각 기준 24시간 이내만 (API 연동 시 서버 createdAt 사용) */
+const NEW_BADGE_MS = 24 * 60 * 60 * 1000;
+
+function isSchoolMailNew(mail) {
+  let ms = mail.createdAtMs;
+  if (ms == null && mail.createdAt) {
+    const parsed = new Date(mail.createdAt).getTime();
+    if (!Number.isNaN(parsed)) ms = parsed;
+  }
+  if (ms == null || Number.isNaN(ms)) return false;
+  return Date.now() - ms < NEW_BADGE_MS;
+}
 
 const MOCK_SCHOOL_MAILS = [
   {
     id: 1,
     preview: '2학기 중간고사가 다음 주부터 시작됩니다. 시험 범위와 일정을 확인해주세요.',
+    content:
+      '2학기 중간고사가 다음 주부터 시작됩니다.\n\n시험 범위와 일정은 학교 홈페이지 공지를 확인해 주세요. 모두 좋은 결과 있기를 바랍니다.',
+    fromLabel: '익명',
     time: '3시간 전',
     likes: 12,
     comments: 3,
+    createdAtMs: Date.now() - 3 * 60 * 60 * 1000,
   },
   {
     id: 2,
     preview: '다음 달 체육대회 참가 신청을 받습니다. 참여를 원하시는 분들은...',
+    content: '다음 달 체육대회 참가 신청을 받습니다. 참여를 원하시는 분들은 담임선생님께 말씀해 주세요.',
+    fromLabel: '익명',
     time: '1일 전',
     likes: 5,
     comments: 1,
+    createdAtMs: Date.now() - 25 * 60 * 60 * 1000,
   },
   {
     id: 3,
     preview: '이번 주 금요일 급식 메뉴가 변경되었습니다.',
+    content: '이번 주 금요일 급식 메뉴가 변경되었습니다. 자세한 사항은 급식실 공지를 참고해 주세요.',
+    fromLabel: '익명',
     time: '2일 전',
     likes: 0,
     comments: 0,
+    createdAtMs: Date.now() - 2 * 24 * 60 * 60 * 1000,
   },
   {
     id: 4,
     preview: '2학기 중간고사가 다음 주부터 시작됩니다. 시험 범위와 일정을 확인해주세요.',
+    content: '중간고사 일정 안내드립니다. 각 과목 범위는 담당 교과에서 안내 예정입니다.',
+    fromLabel: '익명',
     time: '3일 전',
     likes: 3,
     comments: 2,
+    createdAtMs: Date.now() - 3 * 24 * 60 * 60 * 1000,
   },
 ];
 
@@ -91,25 +117,22 @@ const SchoolMailboxScreen = ({ navigation, route }) => {
       <SubHeader title="학교 우편함" onBack={() => navigation?.goBack()} />
 
       <View style={styles.container}>
-        {/* 학교 정보 바: 왼쪽 학교 이름, 오른쪽 총 N통 */}
-        <View style={styles.schoolInfoBar}>
-          <Text style={styles.schoolInfoText}>{schoolName}</Text>
-          <Text style={styles.schoolInfoText}>총 {MOCK_SCHOOL_MAILS.length}통</Text>
-        </View>
-
         <ScrollView
           style={styles.list}
           contentContainerStyle={styles.gridContainer}
           showsVerticalScrollIndicator={false}
         >
-          {MOCK_SCHOOL_MAILS.map((mail, index) => (
+          {MOCK_SCHOOL_MAILS.map((mail) => (
             <TouchableOpacity
               key={mail.id}
               style={styles.card}
               activeOpacity={0.8}
-              onPress={() => {
-                // 추후 상세 화면 연동
-              }}
+              onPress={() =>
+                navigation?.navigate('SchoolMailDetail', {
+                  mail,
+                  schoolName,
+                })
+              }
             >
               <View style={styles.cardTopRow}>
                 <View style={styles.cardIconWrap}>
@@ -119,13 +142,8 @@ const SchoolMailboxScreen = ({ navigation, route }) => {
                     color={colors.primary}
                     style={styles.cardEnvelope}
                   />
-                  {index < 2 && (
-                    <View style={styles.cardNewArrow}>
-                      <Ionicons name="chevron-down" size={normalize(12)} color={colors.alert} />
-                    </View>
-                  )}
                 </View>
-                {index < 2 && (
+                {isSchoolMailNew(mail) && (
                   <View style={styles.newBadge}>
                     <Text style={styles.newBadgeText}>NEW</Text>
                   </View>
@@ -179,7 +197,13 @@ const SchoolMailboxScreen = ({ navigation, route }) => {
         <TouchableOpacity
           style={styles.floatingButton}
           activeOpacity={0.8}
-          onPress={() => navigation?.navigate('SendMail')}
+          onPress={() =>
+            navigation?.navigate('SendSchoolMail', {
+              schoolName,
+              // TODO: API 연동 시 schoolId, schoolAddress 등으로 교체
+              schoolAddress: '서울특별시 OO구 OO로 00 (임시)',
+            })
+          }
         >
           <Feather
             name="send"

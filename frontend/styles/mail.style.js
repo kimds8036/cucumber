@@ -132,6 +132,14 @@ export function createMailStyles(normalize) {
     bottomCtaDisabled: {
       backgroundColor: colors.primaryLight30,
     },
+    bottomWaitingText: {
+      fontSize: normalize(13),
+      color: colors.textSecondary,
+      textAlign: 'center',
+      paddingVertical: normalize(14),
+      paddingHorizontal: normalize(8),
+      lineHeight: normalize(20),
+    },
 
     // 답장 화면 (두 번째 디자인 재활용)
     modalFullSafe: { flex: 1, backgroundColor: colors.background },

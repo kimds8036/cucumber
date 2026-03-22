@@ -21,6 +21,8 @@ import AnonymousMailScreen from './view/src/mailscreen';
 import MailReplyScreen from './view/src/mailreply';
 import MailHistoryScreen from './view/src/history';
 import SchoolMailboxScreen from './view/src/schoolMailbox';
+import SchoolMailDetail from './view/src/schoolMailDetail';
+import SendSchoolMailScreen from './view/src/sendSchoolMailScreen';
 import SchoolBoardAll from './view/src/schoolBoardAll';
 import OtherSchoolScreen from './view/src/otherschool';
 import MealCalender from './view/src/mealcalender';
@@ -81,6 +83,8 @@ function MainStack() {
       <Stack.Screen name="MailHistory" component={MailHistoryScreen} />
       <Stack.Screen name="SchoolBoardAll" component={SchoolBoardAll} />
       <Stack.Screen name="SchoolMailbox" component={SchoolMailboxScreen} />
+      <Stack.Screen name="SchoolMailDetail" component={SchoolMailDetail} />
+      <Stack.Screen name="SendSchoolMail" component={SendSchoolMailScreen} />
       <Stack.Screen name="Timer" component={Timer} />
       <Stack.Screen name="Friends" component={FriendsScreen} />
       <Stack.Screen name="SearchScreen" component={SearchScreen} />

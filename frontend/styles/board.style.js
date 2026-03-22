@@ -314,17 +314,24 @@ export const createDetailStyles = (width, normalize) => {
     detailMenuBtn: {
       padding: normalize(4),
     },
-    // 광고 영역 (비움)
+    // 광고 영역
     adSection: {
       minHeight: normalize(40),
       marginHorizontal: width * 0,
       marginVertical: normalize(3),
       backgroundColor: 'grey',
+      justifyContent: 'center',
+      alignItems: 'center',
     },
-    // 댓글 섹션
+    adSectionText: {
+      fontSize: normalize(13),
+      fontFamily: fonts.regular,
+      color: colors.textWhite,
+    },
+    // 댓글 섹션 (SchoolMail.style.js smDetailComment* 와 동일 톤·간격)
     commentSection: {
-      paddingHorizontal: width * 0.06,
-      paddingTop: normalize(10),
+      paddingHorizontal: width * 0.03,
+      paddingTop: normalize(8),
       paddingBottom: normalize(10),
     },
     commentSectionTitle: {
@@ -334,34 +341,35 @@ export const createDetailStyles = (width, normalize) => {
       marginBottom: normalize(12),
     },
     commentItem: {
-      marginBottom: normalize(16),
-    },
-    commentItemReplying: {
-      backgroundColor: colors.primaryLight30,
-      borderRadius: normalize(10),
-      marginHorizontal: -normalize(6),
-      paddingHorizontal: normalize(6),
-      paddingVertical: normalize(8),
-      borderLeftWidth: 3,
-      borderLeftColor: colors.primary,
+      marginBottom: normalize(6),
     },
     commentItemReply: {
-      marginBottom: normalize(16),
-      marginLeft: normalize(15),
+      marginBottom: normalize(12),
+      marginLeft: normalize(12),
+      marginRight: 0,
       flexDirection: 'row',
       alignItems: 'flex-start',
     },
-    commentItemReplyReplying: {
-      backgroundColor: colors.primaryLight30,
-      borderRadius: normalize(10),
-      marginRight: normalize(6),
+    /** 댓글·대댓글 공통 말풍선 (= smDetailCommentBubble) */
+    commentBubble: {
+      backgroundColor: colors.background,
+      borderRadius: normalize(12),
       paddingVertical: normalize(8),
-      paddingLeft: normalize(4),
-      borderLeftWidth: 3,
-      borderLeftColor: colors.primary,
+      paddingLeft: normalize(10),
+    },
+    /** 대댓글 말풍선 가로 확장 (= smDetailCommentBubbleReply) */
+    commentBubbleReply: {
+      flex: 1,
+      minWidth: 0,
+      marginRight: 0,
+    },
+    /** 댓글 달기 포커스 (= smDetailCommentBubbleReplying, 그림자 없음) */
+    commentBubbleReplying: {
+      backgroundColor: colors.primaryLight20,
     },
     commentReplyArrow: {
-      marginRight: normalize(8),
+      marginRight: normalize(6),
+      marginTop: normalize(7),
     },
     commentReplyBody: {
       flex: 1,
@@ -375,6 +383,7 @@ export const createDetailStyles = (width, normalize) => {
     commentAuthorRow: {
       flexDirection: 'row',
       alignItems: 'center',
+      flexWrap: 'wrap',
     },
     commentAuthor: {
       fontSize: normalize(12),
@@ -401,14 +410,14 @@ export const createDetailStyles = (width, normalize) => {
       fontFamily: fonts.regular,
       color: colors.textPrimary,
       lineHeight: normalize(20),
-      marginBottom: normalize(8),
+      marginBottom: normalize(6),
     },
     commentBodyWithTag: {
       fontSize: normalize(14),
       fontFamily: fonts.regular,
       color: colors.textPrimary,
       lineHeight: normalize(20),
-      marginBottom: normalize(8),
+      marginBottom: normalize(6),
     },
     commentTag: {
       color: colors.primary,
@@ -453,11 +462,11 @@ export const createDetailStyles = (width, normalize) => {
       alignItems: 'center',
       alignSelf: 'flex-start',
       paddingTop: normalize(2),
-      paddingBottom: normalize(12),
+      paddingBottom: normalize(10),
       paddingRight: normalize(4),
       gap: normalize(4),
       marginLeft: normalize(18),
-      marginTop: -normalize(8),
+      marginTop: -normalize(4),
     },
     loadMoreText: {
       fontSize: normalize(13),

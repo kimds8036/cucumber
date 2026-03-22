@@ -13,6 +13,8 @@ export default function CommentInput({
   handleSendComment,
   styles,
   normalize,
+  /** 최상위 댓글 입력 placeholder (기본: 댓글을 입력하세요) */
+  mainPlaceholder,
 }) {
   return (
     <View style={styles.bottomInputRow}>
@@ -34,7 +36,9 @@ export default function CommentInput({
         <TextInput
           ref={bottomInputRef}
           style={styles.bottomInput}
-          placeholder={replyToCommentId ? `${replyToAuthorLabel}에게 답글 입력...` : '댓글을 입력하세요'}
+          placeholder={
+            replyToCommentId ? `${replyToAuthorLabel}에게 답글 입력...` : mainPlaceholder ?? '댓글을 입력하세요'
+          }
           placeholderTextColor={colors.textSecondary}
           value={bottomComment}
           onChangeText={setBottomComment}

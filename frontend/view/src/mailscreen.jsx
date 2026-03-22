@@ -252,26 +252,34 @@ function MailDetail({ mail: initialMail, onBack, navigation }) {
           style={styles.bottomCtaWrapper}
           onLayout={(e) => setBottomCtaHeight(e.nativeEvent.layout.height)}
         >
-          <TouchableOpacity
-            style={styles.bottomCtaButton}
-            onPress={() =>
-              navigation.navigate('MailReply', {
-                mail,
-                onSent: (replyText) => {
-                  setMail((prev) => ({
-                    ...prev,
-                    replied: true,
-                    replyContent: replyText,
-                    replyAt: '방금',
-                    viewMode: 'pair',
-                  }));
-                },
-              })
-            }
-            activeOpacity={0.9}
-          >
-            <Text style={styles.bottomCtaText}>답장하기</Text>
-          </TouchableOpacity>
+          {mail.isReceived !== false &&
+          mail.viewMode === 'pair' &&
+          mail.replyContent ? (
+            <Text style={styles.bottomWaitingText}>
+              상대방에게 답장이 오면 알려드릴게요
+            </Text>
+          ) : (
+            <TouchableOpacity
+              style={styles.bottomCtaButton}
+              onPress={() =>
+                navigation.navigate('MailReply', {
+                  mail,
+                  onSent: (replyText) => {
+                    setMail((prev) => ({
+                      ...prev,
+                      replied: true,
+                      replyContent: replyText,
+                      replyAt: '방금',
+                      viewMode: 'pair',
+                    }));
+                  },
+                })
+              }
+              activeOpacity={0.9}
+            >
+              <Text style={styles.bottomCtaText}>답장하기</Text>
+            </TouchableOpacity>
+          )}
         </View>
       </View>
     </SafeAreaView>
