@@ -167,7 +167,7 @@ export const createSubHeaderStyles = (width, height) => {
     },
     divider: {
       height: 1,
-      backgroundColor: colors.background2,
+      backgroundColor: colors.textLight20,
     },
   });
 };

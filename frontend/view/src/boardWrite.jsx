@@ -13,7 +13,9 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import SubHeader from '../frame/subHeader';
 import { createWriteStyles, getNormalize } from '../../styles/board.style';
-//import { api } from '../../utils/api';
+import { colors } from '../../styles/colors';
+import { filterDummyHashtagSuggestions } from '../../utils/dummyHashtagSuggestions';
+// import { api } from '../../utils/api';
 
 const BoardWrite = ({ navigation, route }) => {
   const { width } = useWindowDimensions();
@@ -31,9 +33,10 @@ const BoardWrite = ({ navigation, route }) => {
     navigation.goBack();
   };
 
-  // 해시태그 추가
-  const handleAddHashtag = () => {
-    const tag = hashtagInput.replace(/^#/, '').trim();
+  // 해시태그 추가 (override: 스페이스/엔터 직전 문자열)
+  const handleAddHashtag = (override) => {
+    const src = typeof override === 'string' ? override : hashtagInput;
+    const tag = src.replace(/^#/, '').trim();
     if (!tag) return;
     if (hashtags.includes(tag)) {
       setHashtagInput('');
@@ -52,31 +55,35 @@ const BoardWrite = ({ navigation, route }) => {
     setHashtags(prev => prev.filter(t => t !== tag));
   };
 
-  // 태그 추천 조회
+  // 태그 추천: API 없을 때는 로컬 더미 필터. 연동 시 아래 주석 블록으로 교체
   const fetchHashtagSuggestions = async (text) => {
     const q = text.replace(/^#/, '').trim();
     if (!q) {
       setHashtagSuggestions([]);
       return;
     }
-    try {
-      setLoadingSuggestions(true);
-      const res = await api.get('/api/posts/tags/search', {
-        params: { query: q },
-      });
-      const tags = res.data?.data?.tags || [];
-      setHashtagSuggestions(tags);
-    } catch (error) {
-      console.error('해시태그 추천 조회 오류:', error);
-    } finally {
-      setLoadingSuggestions(false);
-    }
+    setLoadingSuggestions(true);
+    await new Promise((r) => setTimeout(r, 120));
+    setHashtagSuggestions(filterDummyHashtagSuggestions(text));
+    setLoadingSuggestions(false);
+
+    // API 연동 예시 (위 4줄 대신 사용)
+    // try {
+    //   setLoadingSuggestions(true);
+    //   const res = await api.get('/api/posts/tags/search', { params: { query: q } });
+    //   setHashtagSuggestions(res.data?.data?.tags || []);
+    // } catch (e) {
+    //   console.error('해시태그 추천 조회 오류:', e);
+    //   setHashtagSuggestions([]);
+    // } finally {
+    //   setLoadingSuggestions(false);
+    // }
   };
 
   // 입력창에서 스페이스/엔터 입력 시 자동 추가 + 추천 조회
   const handleHashtagInputChange = (text) => {
     if (text.endsWith(' ') || text.endsWith('\n')) {
-      handleAddHashtag();
+      handleAddHashtag(text.slice(0, -1));
     } else {
       setHashtagInput(text);
       fetchHashtagSuggestions(text);
@@ -99,6 +106,110 @@ const BoardWrite = ({ navigation, route }) => {
     setHashtagInput('');
     setHashtagSuggestions([]);
   };
+
+  const guideBlock = (
+    <View style={styles.box2}>
+      <View style={styles.guideContainer}>
+        <Text style={styles.guideText}>비방/욕설 게시글은 </Text>
+        <TouchableOpacity onPress={() => {/* TODO: 가이드 페이지로 이동 */}}>
+          <Text style={styles.guideLink}>커뮤니티 가이드</Text>
+        </TouchableOpacity>
+        <Text style={styles.guideText}>에 따라 삭제될 수 있어요</Text>
+      </View>
+    </View>
+  );
+
+  const writeMainColumn = (
+    <>
+      <View style={styles.box} />
+
+      {/* 제목 필드가 있을 때를 가정한 본문 상단 구분선 */}
+      <View style={styles.writeBodyTopDivider} />
+
+      {/* 본문 입력 */}
+      <View style={styles.content}>
+        <TextInput
+          style={styles.textInput}
+          placeholder="오늘의 이야기를 들려주세요"
+          placeholderTextColor={colors.textSecondary}
+          multiline
+          value={content}
+          onChangeText={setContent}
+        />
+      </View>
+
+      {/* 해시태그 섹션 (본문 아래 · 가이드 위) */}
+      <View style={styles.writeHashtagTopDivider} />
+      <View style={styles.writeHashtagWrapper}>
+        <View style={styles.writeHashtagInputRow}>
+          <Text style={styles.writeHashtagPrefix}>#</Text>
+          <View style={styles.writeHashtagDashedWrap}>
+            <TextInput
+              style={styles.writeHashtagInput}
+              placeholder="태그 추가"
+              placeholderTextColor={colors.textSecondary}
+              value={hashtagInput}
+              onChangeText={handleHashtagInputChange}
+              onSubmitEditing={handleAddHashtag}
+              returnKeyType="done"
+              maxLength={30}
+            />
+          </View>
+          <Text style={styles.writeHashtagCounter}>
+            {hashtags.length}/5
+          </Text>
+        </View>
+
+        {hashtags.length > 0 && (
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            style={styles.writeHashtagTagScroll}
+            contentContainerStyle={styles.writeHashtagTagList}
+            keyboardShouldPersistTaps="handled"
+          >
+            {hashtags.map((tag) => (
+              <View key={tag} style={styles.writeHashtagTagChip}>
+                <Text style={styles.writeHashtagTagText}>#{tag}</Text>
+                <TouchableOpacity
+                  hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+                  onPress={() => handleRemoveHashtag(tag)}
+                >
+                  <Text style={styles.writeHashtagTagRemove}>✕</Text>
+                </TouchableOpacity>
+              </View>
+            ))}
+          </ScrollView>
+        )}
+
+        {hashtagSuggestions.length > 0 && (
+          <View style={styles.writeHashtagSuggestionWrapper}>
+            <Text style={styles.writeHashtagSuggestionTitle}>
+              {loadingSuggestions ? '태그 불러오는 중...' : '추천 태그'}
+            </Text>
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              style={styles.writeHashtagTagScroll}
+              contentContainerStyle={styles.writeHashtagTagList}
+              keyboardShouldPersistTaps="handled"
+            >
+              {hashtagSuggestions.map((t) => (
+                <TouchableOpacity
+                  key={t.id ?? t.name}
+                  style={styles.writeHashtagSuggestionChip}
+                  onPress={() => handleSelectSuggestion(t.name)}
+                >
+                  <Text style={styles.writeHashtagSuggestionText}>{t.name}</Text>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          </View>
+        )}
+      </View>
+      <View style={styles.writeHashtagBottomDivider} />
+    </>
+  );
 
   const handleComplete = async () => {
     if (!content.trim()) {
@@ -157,205 +268,21 @@ const BoardWrite = ({ navigation, route }) => {
           <SubHeader
             title="글쓰기"
             onBack={handleBack}
-            rightButtonText="완료"
             onRightPress={handleComplete}
-          />
-
-          <View style={styles.box} />
-
-          {/* 본문 입력 */}
-          <View style={styles.content}>
-            <TextInput
-              style={styles.textInput}
-              placeholder="오늘의 이야기를 들려주세요"
-              placeholderTextColor={styles.placeholder.color}
-              multiline
-              value={content}
-              onChangeText={setContent}
-            />
-          </View>
-
-          {/* 구분선 */}
-          <View style={hashtagSectionStyles.divider} />
-
-          {/* 해시태그 섹션 */}
-          <View style={hashtagSectionStyles.wrapper}>
-            {/* 입력 행 */}
-            <View style={hashtagSectionStyles.inputRow}>
-              <Text style={hashtagSectionStyles.prefix}>#</Text>
-              <TextInput
-                style={hashtagSectionStyles.input}
-                placeholder="해시태그 추가 (최대 5개)"
-                placeholderTextColor="#BDBDBD"
-                value={hashtagInput}
-                onChangeText={handleHashtagInputChange}
-                onSubmitEditing={handleAddHashtag}
-                returnKeyType="done"
-                maxLength={30}
-              />
-              {hashtagInput.length > 0 && (
-                <TouchableOpacity
-                  style={hashtagSectionStyles.addButton}
-                  onPress={handleAddHashtag}
-                >
-                  <Text style={hashtagSectionStyles.addButtonText}>추가</Text>
-                </TouchableOpacity>
-              )}
-            </View>
-
-            {/* 추가된 태그 목록 */}
-            {hashtags.length > 0 && (
-              <ScrollView
-                horizontal
-                showsHorizontalScrollIndicator={false}
-                style={hashtagSectionStyles.tagScroll}
-                contentContainerStyle={hashtagSectionStyles.tagList}
-                keyboardShouldPersistTaps="handled"
-              >
-                {hashtags.map((tag) => (
-                  <View key={tag} style={hashtagSectionStyles.tagChip}>
-                    <Text style={hashtagSectionStyles.tagText}>#{tag}</Text>
-                    <TouchableOpacity
-                      hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
-                      onPress={() => handleRemoveHashtag(tag)}
-                    >
-                      <Text style={hashtagSectionStyles.tagRemove}>✕</Text>
-                    </TouchableOpacity>
-                  </View>
-                ))}
-              </ScrollView>
-            )}
-
-            {/* 추천 태그 목록 */}
-            {hashtagSuggestions.length > 0 && (
-              <View style={hashtagSectionStyles.suggestionWrapper}>
-                <Text style={hashtagSectionStyles.suggestionTitle}>
-                  {loadingSuggestions ? '태그 불러오는 중...' : '추천 태그'}
-                </Text>
-                <ScrollView
-                  horizontal
-                  showsHorizontalScrollIndicator={false}
-                  style={hashtagSectionStyles.tagScroll}
-                  contentContainerStyle={hashtagSectionStyles.tagList}
-                  keyboardShouldPersistTaps="handled"
-                >
-                  {hashtagSuggestions.map((t) => (
-                    <TouchableOpacity
-                      key={t.id ?? t.name}
-                      style={hashtagSectionStyles.suggestionChip}
-                      onPress={() => handleSelectSuggestion(t.name)}
-                    >
-                      <Text style={hashtagSectionStyles.suggestionText}>{t.name}</Text>
-                    </TouchableOpacity>
-                  ))}
-                </ScrollView>
+            rightElement={(
+              <View style={styles.completePill}>
+                <Text style={styles.completePillText}>완료</Text>
               </View>
             )}
-          </View>
+          />
+
+          {writeMainColumn}
         </SafeAreaView>
 
-        {/* 하단 가이드 */}
-        <View style={styles.box2}>
-          <View style={styles.guideContainer}>
-            <Text style={styles.guideText}>비방/욕설 게시글은 </Text>
-            <TouchableOpacity onPress={() => {/* TODO: 가이드 페이지로 이동 */}}>
-              <Text style={styles.guideLink}>커뮤니티 가이드</Text>
-            </TouchableOpacity>
-            <Text style={styles.guideText}>에 따라 삭제될 수 있어요</Text>
-          </View>
-        </View>
+        {guideBlock}
       </View>
     </TouchableWithoutFeedback>
   );
-};
-
-// 해시태그 섹션 전용 인라인 스타일//
-// → board.style.js 에 옮겨서 normalize 적용하고 싶으면 그쪽으로 이전하세요
-const hashtagSectionStyles = {
-  divider: {
-    height: 1,
-    backgroundColor: '#F0F0F0',
-    marginHorizontal: 16,
-  },
-  wrapper: {
-    paddingHorizontal: 16,
-    paddingTop: 12,
-    paddingBottom: 8,
-  },
-  inputRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-  },
-  prefix: {
-    fontSize: 16,
-    color: '#555',
-    fontWeight: '600',
-  },
-  input: {
-    flex: 1,
-    fontSize: 15,
-    color: '#222',
-    paddingVertical: 4,
-  },
-  addButton: {
-    paddingHorizontal: 12,
-    paddingVertical: 4,
-    backgroundColor: '#F0F0F0',
-    borderRadius: 12,
-  },
-  addButtonText: {
-    fontSize: 13,
-    color: '#555',
-    fontWeight: '600',
-  },
-  tagScroll: {
-    marginTop: 10,
-  },
-  tagList: {
-    flexDirection: 'row',
-    gap: 8,
-    paddingBottom: 2,
-  },
-  tagChip: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#EEF3FF',
-    borderRadius: 16,
-    paddingHorizontal: 12,
-    paddingVertical: 5,
-    gap: 6,
-  },
-  tagText: {
-    fontSize: 13,
-    color: '#4A6FFF',
-    fontWeight: '500',
-  },
-  tagRemove: {
-    fontSize: 11,
-    color: '#8FA8FF',
-    fontWeight: '700',
-  },
-  suggestionWrapper: {
-    marginTop: 10,
-  },
-  suggestionTitle: {
-    fontSize: 12,
-    color: '#777',
-    marginBottom: 6,
-  },
-  suggestionChip: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#F5F5F5',
-    borderRadius: 16,
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-  },
-  suggestionText: {
-    fontSize: 13,
-    color: '#555',
-  },
 };
 
 export default BoardWrite;

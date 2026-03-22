@@ -171,13 +171,12 @@ export const createWriteStyles = (width, normalize) => {
       backgroundColor: colors.background,
     },
     box: {
-      padding: normalize(5),
-      backgroundColor: colors.textLight5,
+      backgroundColor: colors.background,
     },
     box2: {
       padding: normalize(10),
       paddingBottom: normalize(35),
-      backgroundColor: colors.textLight5,
+      backgroundColor: colors.background,
       alignItems: 'center',
     },
     guideContainer: {
@@ -196,12 +195,11 @@ export const createWriteStyles = (width, normalize) => {
       color: colors.textSecondary,
       textDecorationLine: 'underline',
     },
+    /** 본문 위 구분선 (제목/헤더 영역 아래) */
     content: {
       flex: 1,
-      paddingHorizontal: normalize(20),
-      paddingTop: normalize(16),
-      borderWidth: 1,
-      borderColor: colors.background2,
+      paddingHorizontal: normalize(16),
+      paddingVertical: normalize(14),
     },
     textInput: {
       flex: 1,
@@ -209,10 +207,118 @@ export const createWriteStyles = (width, normalize) => {
       fontFamily: fonts.regular,
       color: colors.textPrimary,
       textAlignVertical: 'top',
-      lineHeight: normalize(24),
+      lineHeight: normalize(22),
     },
     placeholder: {
-      fontSize: normalize(16),
+      fontSize: normalize(14),
+      fontFamily: fonts.regular,
+      color: colors.textSecondary,
+    },
+    /** SubHeader 오른쪽 완료 pill (TouchableOpacity는 SubHeader가 감쌈) */
+    completePill: {
+      backgroundColor: colors.primary,
+      borderRadius: normalize(20),
+      paddingHorizontal: normalize(14),
+      paddingVertical: normalize(8),
+    },
+    completePillText: {
+      fontSize: normalize(13),
+      fontWeight: '500',
+      color: colors.writePillLabel,
+    },
+    /** 해시태그 섹션 상·하단 구분선 */
+    writeHashtagTopDivider: {
+      height: 1,
+      backgroundColor: colors.textLight20,
+    },
+    writeHashtagBottomDivider: {
+      height: 1,
+      backgroundColor: colors.textLight20,
+    },
+    writeHashtagWrapper: {
+      paddingHorizontal: normalize(16),
+      paddingVertical: normalize(20),
+    },
+    writeHashtagInputRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: normalize(8),
+    },
+    writeHashtagPrefix: {
+      fontSize: normalize(20),
+      fontFamily: fonts.regular,
+      color: colors.textSecondary,
+    },
+    writeHashtagDashedWrap: {
+      flex: 1,
+      borderWidth: 0.5,
+      borderColor: colors.textSecondary,
+      borderRadius: normalize(20),
+      paddingHorizontal: normalize(12),
+      paddingVertical: normalize(10),
+    },
+    writeHashtagInput: {
+      flex: 1,
+      fontSize: normalize(12),
+      fontFamily: fonts.regular,
+      color: colors.textPrimary,
+      paddingVertical: normalize(7),
+    },
+    writeHashtagCounter: {
+      fontSize: normalize(14),
+      fontFamily: fonts.regular,
+      color: colors.textSecondary,
+    },
+    writeHashtagTagScroll: {
+      marginTop: normalize(10),
+    },
+    writeHashtagTagList: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      gap: normalize(8),
+      paddingBottom: normalize(2),
+    },
+    writeHashtagTagChip: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      backgroundColor: colors.hashtagChipBg,
+      borderWidth: 0.5,
+      borderColor: colors.hashtagChipBorder,
+      borderRadius: normalize(20),
+      paddingHorizontal: normalize(12),
+      paddingVertical: normalize(5),
+      gap: normalize(6),
+    },
+    writeHashtagTagText: {
+      fontSize: normalize(12),
+      fontFamily: fonts.regular,
+      color: colors.hashtagChipText,
+    },
+    writeHashtagTagRemove: {
+      fontSize: normalize(11),
+      fontFamily: fonts.regular,
+      color: colors.hashtagChipRemove,
+      fontWeight: '600',
+    },
+    writeHashtagSuggestionWrapper: {
+      marginTop: normalize(10),
+    },
+    writeHashtagSuggestionTitle: {
+      fontSize: normalize(12),
+      fontFamily: fonts.regular,
+      color: colors.textSecondary,
+      marginBottom: normalize(6),
+    },
+    writeHashtagSuggestionChip: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      backgroundColor: colors.textLight5,
+      borderRadius: normalize(16),
+      paddingHorizontal: normalize(10),
+      paddingVertical: normalize(4),
+    },
+    writeHashtagSuggestionText: {
+      fontSize: normalize(13),
       fontFamily: fonts.regular,
       color: colors.textSecondary,
     },
