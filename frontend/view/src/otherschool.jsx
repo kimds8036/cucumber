@@ -1,5 +1,5 @@
-import React, { useMemo, useState } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, useWindowDimensions } from 'react-native';
+import React, { useEffect, useMemo, useState } from 'react';
+import { View, Text, ScrollView, TouchableOpacity, useWindowDimensions, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
@@ -8,6 +8,7 @@ import SubHeader from '../frame/subHeader';
 import { colors } from '../../styles/colors';
 import { getNormalize } from '../../styles/frame.style';
 import { createOtherSchoolStyles } from '../../styles/otherschool.style';
+import { api } from '../../utils/api';
 
 const OtherSchoolScreen = ({ route, navigation }) => {
   const { width } = useWindowDimensions();
@@ -15,14 +16,49 @@ const OtherSchoolScreen = ({ route, navigation }) => {
   const styles = useMemo(() => createOtherSchoolStyles(normalize), [normalize]);
 
   const routeName = route?.params?.schoolName ?? '진관고등학교';
+  const routeSchoolId = route?.params?.schoolId ?? null;
 
-  const [schoolInfo] = useState({
+  const [schoolInfo, setSchoolInfo] = useState({
     name: routeName,
-    location: '서울 은평구 진관동',
-    studentCount: 532,
-    postCount: 525,
-    mailCount: 525,
+    location: '',
+    studentCount: 0,
+    postCount: 0,
+    mailCount: 0,
   });
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+
+  useEffect(() => {
+    const fetchSchool = async () => {
+      if (!routeSchoolId) {
+        console.log('[OtherSchool] no schoolId in route params, skip API call');
+        return;
+      }
+      console.log('[OtherSchool] routeSchoolId raw:', routeSchoolId);
+      try {
+        setLoading(true);
+        setError(null);
+        const res = await api.get(`/api/schools/${routeSchoolId}`);
+        const data = res.data?.data || {};
+        console.log('[OtherSchool] /api/schools response data:', data);
+        setSchoolInfo({
+          name: data.name || routeName,
+          // 백엔드에서 내려주는 address 필드를 우선 사용
+          location: data.address || data.location || '',
+          studentCount: data.studentCount || 0,
+          postCount: data.postCount || 0,
+          mailCount: data.mailCount || 0,
+        });
+      } catch (e) {
+        console.error('학교 정보 조회 실패:', e?.response?.data || e.message);
+        setError('학교 정보를 불러오지 못했습니다.');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchSchool();
+  }, [routeSchoolId, routeName]);
 
   const schoolMealTypes = ['중식', '석식'];
 
@@ -133,6 +169,16 @@ const OtherSchoolScreen = ({ route, navigation }) => {
         style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}
       >
+        {loading && (
+          <View style={{ paddingVertical: normalize(20), alignItems: 'center' }}>
+            <ActivityIndicator size="small" color={colors.primary} />
+          </View>
+        )}
+        {error && (
+          <View style={{ paddingHorizontal: normalize(16), paddingBottom: normalize(8) }}>
+            <Text style={{ fontSize: normalize(12), color: colors.alert }}>{error}</Text>
+          </View>
+        )}
         {/* 학교 정보 카드 */}
         <View style={styles.schoolCardBlock}>
           <View style={styles.schoolCard}>

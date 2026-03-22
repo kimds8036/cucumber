@@ -97,11 +97,16 @@ export default function BoardDetail({ navigation, route }) {
     comments: 89,
     liked: false,
   };
+  const routePost = route?.params?.post;
+  const routePostId = route?.params?.postId;
+
   const [post, setPost] = useState(() => {
-    const fromParams = route?.params?.post != null;
+    const fromParams = routePost != null;
     const isMy = route?.params?.isMyPost === true;
+    const base = fromParams ? { ...initialPost, ...routePost } : initialPost;
     return {
-      ...initialPost,
+      ...base,
+      id: routePostId ?? base.id,
       author: fromParams ? (isMy ? '작성자' : '익명') : initialPost.author,
     };
   });
@@ -133,7 +138,7 @@ export default function BoardDetail({ navigation, route }) {
 
   // 게시글/댓글 로드
   useEffect(() => {
-    const postId = initialPost?.id;
+    const postId = routePostId ?? post?.id ?? initialPost?.id;
     if (!postId) return;
 
     const fetchPostAndComments = async () => {

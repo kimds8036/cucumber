@@ -145,6 +145,38 @@ export const createSearchStyles = (width, normalize) => {
       color: colors.background,
     },
 
+    // SearchScreen 미리보기 드롭다운
+    previewDropdown: {
+      marginTop: normalize(6),
+      marginHorizontal: normalize(16),
+      paddingVertical: normalize(8),
+      paddingHorizontal: normalize(10),
+      borderRadius: normalize(10),
+      backgroundColor: colors.background,
+      shadowColor: colors.shadow,
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.15,
+      shadowRadius: 4,
+      elevation: 3,
+    },
+    previewSection: {
+      marginBottom: normalize(6),
+    },
+    previewSectionTitle: {
+      fontSize: normalize(11),
+      fontFamily: fonts.bold,
+      color: colors.textSecondary,
+      marginBottom: normalize(4),
+    },
+    previewItem: {
+      paddingVertical: normalize(6),
+    },
+    previewItemText: {
+      fontSize: normalize(13),
+      fontFamily: fonts.regular,
+      color: colors.textPrimary,
+    },
+
     content: {
       flex: 1,
       backgroundColor: colors.textLight5,

@@ -244,18 +244,21 @@ const SchoolBoardAll = ({ navigation }) => {
         })
       }
     >
-      {/* 게시글 헤더: 좌측 익명 시간, 우측 위치 */}
+      {/* 게시글 헤더: 좌측 작성자, 우측 시간(·위치) */}
       <View style={styles.postHeader}>
         <View style={styles.postAuthorInfo}>
           <Text style={styles.postAuthor}>{post.author}</Text>
-          <Text style={styles.postTime}> {post.time}</Text>
         </View>
-        {post.location ? (
-          <View style={styles.postLocation}>
-            <Ionicons name="location-sharp" size={normalize(12)} color={colors.textSecondary} />
-            <Text style={styles.postLocationText}>{post.location}</Text>
-          </View>
-        ) : null}
+        <View style={styles.postTimeRow}>
+          <Text style={styles.postTime}>{post.time}</Text>
+          {post.location ? (
+            <>
+              <Text style={styles.postTime}>{' · '}</Text>
+              <Ionicons name="location-sharp" size={normalize(12)} color={colors.textSecondary} />
+              <Text style={styles.postLocationText}>{post.location}</Text>
+            </>
+          ) : null}
+        </View>
       </View>
 
       {/* 게시글 내용 */}

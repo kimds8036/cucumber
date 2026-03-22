@@ -70,7 +70,7 @@ const SearchSubHeader = ({
         onPress={onBack}
         activeOpacity={0.7}
       >
-        <Text style={styles.cancelText}>취소</Text>
+        <Text style={styles.cancelText}>닫기</Text>
       </TouchableOpacity>
     </View>
   );

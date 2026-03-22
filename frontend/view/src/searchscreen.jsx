@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useRef, useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -6,19 +6,17 @@ import {
   ScrollView,
   TouchableOpacity,
   TextInput,
+  Animated,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import SubHeader from '../frame/subHeader';
 import { api } from '../../utils/api';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
-/** 서버 created_at(UTC)을 "n분 전" 형식으로 변환. 화면에서는 기기 로컬 시간 기준으로 계산 */
 function formatTimeAgo(createdAt) {
   if (!createdAt) return '';
   let dateStr = typeof createdAt === 'string' ? createdAt.trim() : String(createdAt);
   if (!dateStr) return '';
-  // MySQL "YYYY-MM-DD HH:mm:ss" 또는 "YYYY-MM-DDTHH:mm:ss" 형태이고
-  // 타임존 문자가 없으면 UTC로 간주해 Z(=+00:00) 를 붙인다.
   if (/^\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}:\d{2}(\.\d+)?$/.test(dateStr) && !/[Z+-]/.test(dateStr)) {
     dateStr = dateStr.replace(' ', 'T') + 'Z';
   }
@@ -37,259 +35,162 @@ function formatTimeAgo(createdAt) {
   return date.toLocaleDateString('ko-KR', { month: 'long', day: 'numeric' });
 }
 
+const RECENT_KEY = '@search_recent_keywords';
+
 const SearchScreen = ({ navigation }) => {
   const [searchText, setSearchText] = useState('');
-  const [recentSearches, setRecentSearches] = useState([
-    '체육대회',
-    '급식',
-    '시험 일정',
-    '동아리 모집',
-  ]);
-  const [results, setResults] = useState([]);
-  const [loading, setLoading] = useState(false);
+  const [recentSearches, setRecentSearches] = useState([]);
 
-  const popularSearches = [
-    { rank: 1, keyword: '수학 시험', trend: 'up' },
-    { rank: 2, keyword: '급식 메뉴', trend: 'up' },
-    { rank: 3, keyword: '체육대회', trend: 'down' },
-    { rank: 4, keyword: '방과후 신청', trend: 'new' },
-    { rank: 5, keyword: '자습실 예약', trend: 'up' },
-    { rank: 6, keyword: '축제', trend: 'same' },
-    { rank: 7, keyword: '동아리 활동', trend: 'up' },
-    { rank: 8, keyword: '학생회', trend: 'down' },
-  ];
+  useEffect(() => {
+    (async () => {
+      try {
+        const raw = await AsyncStorage.getItem(RECENT_KEY);
+        if (!raw) return;
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed)) setRecentSearches(parsed);
+      } catch {}
+    })();
+  }, []);
 
-  const handleDeleteRecent = (index) => {
-    const newSearches = recentSearches.filter((_, i) => i !== index);
-    setRecentSearches(newSearches);
+  // 학교 미리보기(드롭다운)는 SearchResult에서 처리하므로 SearchScreen에서는 사용하지 않음
+
+  const saveRecent = async (list) => {
+    try {
+      await AsyncStorage.setItem(RECENT_KEY, JSON.stringify(list));
+    } catch {}
+  };
+
+  const runSearch = (keyword) => {
+    const q = (keyword || searchText).trim();
+    if (!q) return;
+    setRecentSearches((prev) => {
+      const filtered = prev.filter((item) => item !== q);
+      const next = [q, ...filtered].slice(0, 10);
+      saveRecent(next);
+      return next;
+    });
+    navigation.navigate('SearchResult', { query: q });
+  };
+
+  const handleChangeText = (text) => {
+    // SearchScreen에서는 단순히 텍스트 상태만 업데이트 (미리보기 API 호출 없음)
+    setSearchText(text);
   };
 
   const handleClearAll = () => {
     setRecentSearches([]);
+    saveRecent([]);
   };
 
-  const getTrendIcon = (trend) => {
+  const handleDeleteRecent = (index) => {
+    const next = recentSearches.filter((_, i) => i !== index);
+    setRecentSearches(next);
+    saveRecent(next);
+  };
+
+  const getTrendMeta = (trend) => {
     switch (trend) {
-      case 'up':
-        return { name: 'trending-up', color: '#FF6B6B' };
-      case 'down':
-        return { name: 'trending-down', color: '#4A90E2' };
-      case 'new':
-        return { name: 'sparkles', color: '#FFA726' };
-      default:
-        return { name: 'remove', color: '#999' };
-    }
-  };
-
-  const runSearch = async (keyword) => {
-    const q = (keyword || searchText).trim();
-    if (!q) return;
-    try {
-      setLoading(true);
-      const res = await api.get('/api/posts', {
-        params: {
-          search: q,
-          page: 1,
-          limit: 50,
-          sort: 'latest',
-        },
-      });
-      const posts = res.data?.data?.posts || [];
-      const mapped = posts.map((p) => ({
-        id: p.id,
-        title: (p.content || '').split('\n')[0].slice(0, 40) || '제목 없음',
-        snippet: (p.content || '').slice(0, 80),
-        time: formatTimeAgo(p.created_at),
-        likeCount: p.like_count,
-        commentCount: p.comment_count,
-      }));
-      setResults(mapped);
-
-      // 최근 검색어 업데이트 (중복 제거, 앞에 추가)
-      setRecentSearches((prev) => {
-        const filtered = prev.filter((item) => item !== q);
-        return [q, ...filtered].slice(0, 10);
-      });
-    } catch (error) {
-      console.error('게시글 검색 실패:', error);
-    } finally {
-      setLoading(false);
+      case 'up':   return { icon: 'caret-up',   color: '#E85C4A' };
+      case 'down': return { icon: 'caret-down',  color: '#4A90E2' };
+      case 'new':  return { icon: null,           color: '#E8A020', label: 'NEW' };
+      default:     return { icon: null,           color: '#BBBBBB', label: '—' };
     }
   };
 
   return (
-    <View style={{ flex: 1, backgroundColor: '#FFFFFF' }}>
+    <View style={{ flex: 1, backgroundColor: '#FAFAFA' }}>
       <SafeAreaView style={styles.container} edges={['top']}>
-        <SubHeader title="검색" onBack={() => navigation?.goBack()} />
-
-        <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
-          {/* 검색창 */}
-          <View style={styles.searchContainer}>
-            <View style={styles.searchInputWrapper}>
-              <Ionicons name="search" size={20} color="#999" />
-              <TextInput
-                style={styles.searchInput}
-                placeholder="게시글, 우편함 검색"
-                value={searchText}
-                onChangeText={setSearchText}
-                onSubmitEditing={() => runSearch()}
-                placeholderTextColor="#999"
-              />
-              {searchText.length > 0 && (
-                <TouchableOpacity onPress={() => setSearchText('')}>
-                  <Ionicons name="close-circle" size={20} color="#999" />
-                </TouchableOpacity>
-              )}
-            </View>
+        <View style={styles.searchBarWrapper}>
+          <View style={styles.searchInputRow}>
+            <Ionicons name="search-outline" size={18} color="#AAAAAA" />
+            <TextInput
+              style={styles.searchInput}
+              placeholder="게시글, 우편함 검색"
+              value={searchText}
+              onChangeText={handleChangeText}
+              onSubmitEditing={() => runSearch()}
+              placeholderTextColor="#BBBBBB"
+              returnKeyType="search"
+            />
+            {searchText.length > 0 && (
+              <TouchableOpacity
+                onPress={() => {
+                  setSearchText('');
+                  setShowPreview(false);
+                }}
+                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              >
+                <Ionicons name="close-circle" size={17} color="#CCCCCC" />
+              </TouchableOpacity>
+            )}
           </View>
+          <TouchableOpacity
+            onPress={() =>
+              navigation.reset({
+                index: 0,
+                routes: [{ name: 'Main' }],
+              })
+            }
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            style={{ marginLeft: 10 }}
+          >
+            <Text style={styles.dimAction}>닫기</Text>
+          </TouchableOpacity>
+        </View>
 
+        <ScrollView
+          style={styles.scrollView}
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+        >
           {/* 최근 검색어 */}
           {recentSearches.length > 0 && (
             <View style={styles.section}>
               <View style={styles.sectionHeader}>
                 <Text style={styles.sectionTitle}>최근 검색어</Text>
-                <TouchableOpacity onPress={handleClearAll}>
-                  <Text style={styles.clearButton}>전체 삭제</Text>
+                <TouchableOpacity onPress={handleClearAll} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+                  <Text style={styles.dimAction}>전체 삭제</Text>
                 </TouchableOpacity>
               </View>
-
-              <View style={styles.recentSearchContainer}>
-                {recentSearches.map((search, index) => (
-                  <View key={index} style={styles.recentSearchItem}>
-                    <TouchableOpacity
-                      style={styles.recentSearchButton}
-                      onPress={() => {
-                        setSearchText(search);
-                        runSearch(search);
-                      }}
-                    >
-                      <Ionicons name="time-outline" size={16} color="#666" />
-                      <Text style={styles.recentSearchText}>{search}</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                      onPress={() => handleDeleteRecent(index)}
-                      style={styles.deleteButton}>
-                      <Ionicons name="close" size={16} color="#999" />
-                    </TouchableOpacity>
-                  </View>
-                ))}
-              </View>
-            </View>
-          )}
-
-          {/* 인기 검색어 */}
-          <View style={styles.section}>
-            <View style={styles.sectionHeader}>
-              <Text style={styles.sectionTitle}>실시간 인기 검색어</Text>
-              <Text style={styles.updateTime}>1분 전 업데이트</Text>
-            </View>
-
-            <View style={styles.popularSearchContainer}>
-              {popularSearches.map((item) => {
-                const trendIcon = getTrendIcon(item.trend);
-                return (
-                  <TouchableOpacity
-                    key={item.rank}
-                    style={styles.popularSearchItem}
-                    onPress={() => {
-                      setSearchText(item.keyword);
-                      runSearch(item.keyword);
-                    }}
-                  >
-                    <View style={styles.popularSearchLeft}>
-                      <Text
-                        style={[
-                          styles.rank,
-                          item.rank <= 3 && styles.topRank,
-                        ]}>
-                        {item.rank}
-                      </Text>
-                      <Text style={styles.popularKeyword}>{item.keyword}</Text>
-                    </View>
-                    <Ionicons name={trendIcon.name} size={18} color={trendIcon.color} />
-                  </TouchableOpacity>
-                );
-              })}
-            </View>
-          </View>
-
-          {/* 추천 검색어 */}
-          <View style={[styles.section, styles.lastSection]}>
-            <View style={styles.sectionHeader}>
-              <Text style={styles.sectionTitle}>추천 검색어</Text>
-            </View>
-
-            <View style={styles.recommendContainer}>
-              {['#급식메뉴', '#시험일정', '#동아리', '#축제', '#학생회'].map(
-                (tag, index) => (
-                  <TouchableOpacity
-                    key={index}
-                    style={styles.tagButton}
-                    onPress={() => {
-                      const pure = tag.replace(/^#/, '');
-                      setSearchText(pure);
-                      runSearch(pure);
-                    }}
-                  >
-                    <Text style={styles.tagText}>{tag}</Text>
-                  </TouchableOpacity>
-                )
-              )}
-            </View>
-          </View>
-
-          {/* 검색 결과 */}
-          {results.length > 0 && (
-            <View style={[styles.section, styles.lastSection]}>
-              <View style={styles.sectionHeader}>
-                <Text style={styles.sectionTitle}>게시글 결과</Text>
-              </View>
-              {loading && (
-                <View style={styles.resultLoading}>
-                  <Ionicons name="time-outline" size={18} color="#999" />
-                  <Text style={styles.resultLoadingText}>검색 중...</Text>
-                </View>
-              )}
-              {results.map((item) => (
+              {recentSearches.map((search, index) => (
                 <TouchableOpacity
-                  key={item.id}
-                  style={styles.resultItem}
-                  activeOpacity={0.7}
-                  onPress={() =>
-                    navigation.navigate('BoardDetail', {
-                      post: {
-                        id: item.id,
-                        author: '익명',
-                        content: item.snippet,
-                      },
-                      isMyPost: false,
-                    })
-                  }
+                  key={index}
+                  style={styles.recentRow}
+                  onPress={() => { setSearchText(search); runSearch(search); }}
+                  activeOpacity={0.6}
                 >
-                  <Text style={styles.resultTitle} numberOfLines={1}>
-                    {item.title}
-                  </Text>
-                  <Text style={styles.resultSnippet} numberOfLines={2}>
-                    {item.snippet}
-                  </Text>
-                  <View style={styles.resultMeta}>
-                    <Text style={styles.resultTime}>{item.time}</Text>
-                    <View style={styles.resultStats}>
-                      <Ionicons name="heart-outline" size={14} color="#FF6B6B" />
-                      <Text style={styles.resultStatText}>{item.likeCount}</Text>
-                      <Ionicons
-                        name="chatbubble-outline"
-                        size={14}
-                        color="#8FD397"
-                        style={{ marginLeft: 8 }}
-                      />
-                      <Text style={styles.resultStatText}>{item.commentCount}</Text>
-                    </View>
-                  </View>
+                  <Ionicons name="time-outline" size={15} color="#CCCCCC" />
+                  <Text style={styles.recentText}>{search}</Text>
+                  <TouchableOpacity
+                    onPress={() => handleDeleteRecent(index)}
+                    hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                    style={{ marginLeft: 'auto' }}
+                  >
+                    <Ionicons name="close" size={15} color="#DDDDDD" />
+                  </TouchableOpacity>
                 </TouchableOpacity>
               ))}
             </View>
           )}
+
+          {/* 추천 검색어 태그 */}
+          <View style={[styles.section, { paddingBottom: 28 }]}>
+            <View style={styles.sectionHeader}>
+              <Text style={styles.sectionTitle}>추천 검색어</Text>
+            </View>
+            <View style={styles.tagRow}>
+              {['급식메뉴', '시험일정', '동아리', '축제', '학생회'].map((tag) => (
+                <TouchableOpacity
+                  key={tag}
+                  style={styles.tag}
+                  onPress={() => { setSearchText(tag); runSearch(tag); }}
+                  activeOpacity={0.7}
+                >
+                  <Text style={styles.tagText}># {tag}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </View>
         </ScrollView>
       </SafeAreaView>
     </View>
@@ -299,182 +200,214 @@ const SearchScreen = ({ navigation }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#FAFAFA',
   },
   scrollView: {
     flex: 1,
-    backgroundColor: '#F8F9FA',
   },
-  searchContainer: {
-    backgroundColor: '#FFFFFF',
-    padding: 16,
-    paddingBottom: 20,
-  },
-  searchInputWrapper: {
+
+  /* ── 검색창 영역 ── */
+  searchBarWrapper: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#F5F5F5',
+    justifyContent: 'space-between',
+    backgroundColor: '#FFFFFF',
+    paddingHorizontal: 16,
+    paddingTop: 12,
+    paddingBottom: 12,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: '#EBEBEB',
+    zIndex: 10,
+  },
+  searchInputRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F3F3F3',
     borderRadius: 12,
     paddingHorizontal: 12,
-    height: 48,
+    height: 44,
     gap: 8,
+    flex: 1,
   },
   searchInput: {
     flex: 1,
-    fontSize: 16,
-    color: '#333',
+    fontSize: 15,
+    color: '#222222',
+    paddingVertical: 0,
   },
+
+  /* ── 미리보기 드롭다운 ── */
+  previewDropdown: {
+    marginTop: 6,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 14,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: '#E8E8E8',
+    overflow: 'hidden',
+    // 그림자 (iOS)
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.07,
+    shadowRadius: 12,
+    // 그림자 (Android)
+    elevation: 4,
+  },
+  previewGroupLabel: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#AAAAAA',
+    letterSpacing: 0.6,
+    textTransform: 'uppercase',
+    paddingHorizontal: 14,
+    paddingTop: 12,
+    paddingBottom: 4,
+  },
+  previewRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 14,
+    paddingVertical: 11,
+    gap: 10,
+  },
+  previewRowBorder: {
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: '#F2F2F2',
+  },
+  previewSchoolIcon: {
+    width: 28,
+    height: 28,
+    borderRadius: 8,
+    backgroundColor: '#F5F5F5',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  previewPostIcon: {
+    width: 28,
+    height: 28,
+    borderRadius: 8,
+    backgroundColor: '#F5F5F5',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  previewRowText: {
+    flex: 1,
+    fontSize: 14,
+    color: '#222222',
+    lineHeight: 20,
+  },
+  previewDivider: {
+    height: StyleSheet.hairlineWidth,
+    backgroundColor: '#EDEDED',
+    marginHorizontal: 14,
+    marginVertical: 4,
+  },
+
+  /* ── 공통 섹션 ── */
   section: {
     backgroundColor: '#FFFFFF',
     marginTop: 8,
-    paddingVertical: 20,
-    borderTopWidth: 1,
-    borderTopColor: '#E8E8E8',
-    borderBottomWidth: 1,
-    borderBottomColor: '#E8E8E8',
-  },
-  lastSection: {
-    marginBottom: 20,
+    paddingTop: 20,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: '#EBEBEB',
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: '#EBEBEB',
   },
   sectionHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 16,
-    marginBottom: 16,
+    paddingHorizontal: 18,
+    marginBottom: 14,
   },
   sectionTitle: {
-    fontSize: 17,
-    fontWeight: '700',
-    color: '#333',
-  },
-  clearButton: {
-    fontSize: 14,
-    color: '#999',
-  },
-  updateTime: {
-    fontSize: 12,
-    color: '#999',
-  },
-  recentSearchContainer: {
-    paddingHorizontal: 16,
-  },
-  recentSearchItem: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: '#F5F5F5',
-  },
-  recentSearchButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    flex: 1,
-  },
-  recentSearchText: {
     fontSize: 15,
-    color: '#333',
+    fontWeight: '700',
+    color: '#1A1A1A',
+    letterSpacing: -0.2,
   },
-  deleteButton: {
-    padding: 4,
+  dimAction: {
+    fontSize: 13,
+    color: '#BBBBBB',
   },
-  popularSearchContainer: {
-    paddingHorizontal: 16,
+  dimMeta: {
+    fontSize: 12,
+    color: '#CCCCCC',
   },
-  popularSearchItem: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: '#F5F5F5',
-  },
-  popularSearchLeft: {
+
+  /* ── 최근 검색어 ── */
+  recentRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
-    flex: 1,
+    paddingHorizontal: 18,
+    paddingVertical: 13,
+    gap: 10,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: '#F5F5F5',
   },
-  rank: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: '#999',
-    width: 24,
+  recentText: {
+    fontSize: 14,
+    color: '#333333',
+  },
+
+  /* ── 인기 검색어 ── */
+  popularGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+  },
+  popularRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    width: '50%',
+    paddingHorizontal: 18,
+    paddingVertical: 11,
+    gap: 10,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: '#F5F5F5',
+  },
+  popularRank: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#CCCCCC',
+    width: 20,
     textAlign: 'center',
   },
-  topRank: {
+  popularRankTop: {
     color: '#4CAF50',
-    fontSize: 18,
   },
   popularKeyword: {
-    fontSize: 15,
-    color: '#333',
     flex: 1,
+    fontSize: 14,
+    color: '#222222',
   },
-  recommendContainer: {
+  popularTrend: {
+    width: 20,
+    alignItems: 'center',
+  },
+  trendLabel: {
+    fontSize: 10,
+    fontWeight: '700',
+    letterSpacing: 0.3,
+  },
+
+  /* ── 추천 태그 ── */
+  tagRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     paddingHorizontal: 16,
     gap: 8,
   },
-  tagButton: {
-    backgroundColor: '#E8F5E9',
-    paddingHorizontal: 16,
+  tag: {
+    backgroundColor: '#F3F3F3',
+    paddingHorizontal: 14,
     paddingVertical: 8,
     borderRadius: 20,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: '#E8E8E8',
   },
   tagText: {
-    fontSize: 14,
-    color: '#4CAF50',
+    fontSize: 13,
+    color: '#555555',
     fontWeight: '500',
-  },
-  resultLoading: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingBottom: 8,
-    gap: 6,
-  },
-  resultLoadingText: {
-    fontSize: 13,
-    color: '#999',
-  },
-  resultItem: {
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderTopWidth: 1,
-    borderTopColor: '#F5F5F5',
-  },
-  resultTitle: {
-    fontSize: 15,
-    fontWeight: '600',
-    color: '#333',
-    marginBottom: 4,
-  },
-  resultSnippet: {
-    fontSize: 13,
-    color: '#666',
-    marginBottom: 6,
-  },
-  resultMeta: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  resultTime: {
-    fontSize: 12,
-    color: '#999',
-  },
-  resultStats: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  resultStatText: {
-    fontSize: 12,
-    color: '#666',
-    marginLeft: 2,
   },
 });
 

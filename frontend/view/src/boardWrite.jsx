@@ -269,7 +269,7 @@ const BoardWrite = ({ navigation, route }) => {
   );
 };
 
-// 해시태그 섹션 전용 인라인 스타일
+// 해시태그 섹션 전용 인라인 스타일//
 // → board.style.js 에 옮겨서 normalize 적용하고 싶으면 그쪽으로 이전하세요
 const hashtagSectionStyles = {
   divider: {
