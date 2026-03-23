@@ -10,6 +10,11 @@ DB_USER=root
 DB_PASSWORD=your_password
 DB_NAME=cucumber_db
 
+# Redis Configuration
+REDIS_HOST=127.0.0.1
+REDIS_PORT=6379
+REDIS_PASSWORD=
+
 # Server Configuration
 PORT=3000
 NODE_ENV=development
