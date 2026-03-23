@@ -176,13 +176,12 @@ export const createWriteStyles = (width, normalize) => {
       backgroundColor: colors.background,
     },
     box: {
-      padding: normalize(5),
-      backgroundColor: colors.textLight5,
+      backgroundColor: colors.background,
     },
     box2: {
       padding: normalize(10),
       paddingBottom: normalize(35),
-      backgroundColor: colors.textLight5,
+      backgroundColor: colors.background,
       alignItems: 'center',
     },
     guideContainer: {
@@ -201,12 +200,11 @@ export const createWriteStyles = (width, normalize) => {
       color: colors.textSecondary,
       textDecorationLine: 'underline',
     },
+    /** 본문 위 구분선 (제목/헤더 영역 아래) */
     content: {
       flex: 1,
-      paddingHorizontal: normalize(20),
-      paddingTop: normalize(16),
-      borderWidth: 1,
-      borderColor: colors.background2,
+      paddingHorizontal: normalize(16),
+      paddingVertical: normalize(14),
     },
     textInput: {
       flex: 1,
@@ -214,10 +212,125 @@ export const createWriteStyles = (width, normalize) => {
       fontFamily: fonts.regular,
       color: colors.textPrimary,
       textAlignVertical: 'top',
-      lineHeight: normalize(24),
+      lineHeight: normalize(22),
     },
     placeholder: {
-      fontSize: normalize(16),
+      fontSize: normalize(14),
+      fontFamily: fonts.regular,
+      color: colors.textSecondary,
+    },
+    /** SubHeader 오른쪽 완료 pill (TouchableOpacity는 SubHeader가 감쌈) */
+    completePill: {
+      backgroundColor: colors.primaryLight70,
+      borderRadius: normalize(20),
+      paddingHorizontal: normalize(14),
+      paddingVertical: normalize(8),
+    },
+    completePillText: {
+      fontSize: normalize(13),
+      fontWeight: '500',
+      color: colors.writePillLabel,
+    },
+    /** 본문 비어 있을 때 등록 pill */
+    completePillDisabled: {
+      backgroundColor: colors.textLight10,
+    },
+    completePillTextDisabled: {
+      color: colors.textSecondary,
+    },
+    /** 해시태그 섹션 상·하단 구분선 */
+    writeHashtagTopDivider: {
+      height: 1,
+      backgroundColor: colors.textLight20,
+    },
+    writeHashtagBottomDivider: {
+      height: 1,
+      backgroundColor: colors.textLight20,
+    },
+    writeHashtagWrapper: {
+      paddingHorizontal: normalize(16),
+      paddingVertical: normalize(20),
+    },
+    writeHashtagInputRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: normalize(8),
+    },
+    writeHashtagPrefix: {
+      fontSize: normalize(20),
+      fontFamily: fonts.regular,
+      color: colors.textSecondary,
+    },
+    writeHashtagDashedWrap: {
+      flex: 1,
+      borderWidth: 0.5,
+      borderColor: colors.textSecondary,
+      borderRadius: normalize(20),
+      paddingHorizontal: normalize(12),
+      paddingVertical: normalize(10),
+    },
+    writeHashtagInput: {
+      flex: 1,
+      fontSize: normalize(12),
+      fontFamily: fonts.regular,
+      color: colors.textPrimary,
+      paddingVertical: normalize(7),
+    },
+    writeHashtagCounter: {
+      fontSize: normalize(14),
+      fontFamily: fonts.regular,
+      color: colors.textSecondary,
+    },
+    writeHashtagTagScroll: {
+      marginTop: normalize(10),
+    },
+    writeHashtagTagList: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      gap: normalize(8),
+      paddingBottom: normalize(2),
+    },
+    writeHashtagTagChip: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      backgroundColor: colors.hashtagChipBg,
+      borderWidth: 0.5,
+      borderColor: colors.hashtagChipBorder,
+      borderRadius: normalize(20),
+      paddingHorizontal: normalize(12),
+      paddingVertical: normalize(5),
+      gap: normalize(6),
+    },
+    writeHashtagTagText: {
+      fontSize: normalize(12),
+      fontFamily: fonts.regular,
+      color: colors.hashtagChipText,
+    },
+    writeHashtagTagRemove: {
+      fontSize: normalize(11),
+      fontFamily: fonts.regular,
+      color: colors.hashtagChipRemove,
+      fontWeight: '600',
+    },
+    writeHashtagSuggestionWrapper: {
+      marginTop: normalize(10),
+    },
+    writeHashtagSuggestionTitle: {
+      fontSize: normalize(12),
+      fontFamily: fonts.regular,
+      color: colors.textSecondary,
+      marginBottom: normalize(6),
+    },
+    writeHashtagSuggestionChip: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      backgroundColor: colors.textLight5,
+      borderRadius: normalize(16),
+      paddingHorizontal: normalize(10),
+      paddingVertical: normalize(4),
+    },
+    writeHashtagSuggestionText: {
+      fontSize: normalize(13),
       fontFamily: fonts.regular,
       color: colors.textSecondary,
     },
@@ -319,17 +432,24 @@ export const createDetailStyles = (width, normalize) => {
     detailMenuBtn: {
       padding: normalize(4),
     },
-    // 광고 영역 (비움)
+    // 광고 영역
     adSection: {
       minHeight: normalize(40),
       marginHorizontal: width * 0,
       marginVertical: normalize(3),
       backgroundColor: 'grey',
+      justifyContent: 'center',
+      alignItems: 'center',
     },
-    // 댓글 섹션
+    adSectionText: {
+      fontSize: normalize(13),
+      fontFamily: fonts.regular,
+      color: colors.textWhite,
+    },
+    // 댓글 섹션 (SchoolMail.style.js smDetailComment* 와 동일 톤·간격)
     commentSection: {
-      paddingHorizontal: width * 0.06,
-      paddingTop: normalize(10),
+      paddingHorizontal: width * 0.03,
+      paddingTop: normalize(8),
       paddingBottom: normalize(10),
     },
     commentSectionTitle: {
@@ -339,34 +459,35 @@ export const createDetailStyles = (width, normalize) => {
       marginBottom: normalize(12),
     },
     commentItem: {
-      marginBottom: normalize(16),
-    },
-    commentItemReplying: {
-      backgroundColor: colors.primaryLight30,
-      borderRadius: normalize(10),
-      marginHorizontal: -normalize(6),
-      paddingHorizontal: normalize(6),
-      paddingVertical: normalize(8),
-      borderLeftWidth: 3,
-      borderLeftColor: colors.primary,
+      marginBottom: normalize(6),
     },
     commentItemReply: {
-      marginBottom: normalize(16),
-      marginLeft: normalize(15),
+      marginBottom: normalize(12),
+      marginLeft: normalize(12),
+      marginRight: 0,
       flexDirection: 'row',
       alignItems: 'flex-start',
     },
-    commentItemReplyReplying: {
-      backgroundColor: colors.primaryLight30,
-      borderRadius: normalize(10),
-      marginRight: normalize(6),
+    /** 댓글·대댓글 공통 말풍선 (= smDetailCommentBubble) */
+    commentBubble: {
+      backgroundColor: colors.background,
+      borderRadius: normalize(12),
       paddingVertical: normalize(8),
-      paddingLeft: normalize(4),
-      borderLeftWidth: 3,
-      borderLeftColor: colors.primary,
+      paddingLeft: normalize(10),
+    },
+    /** 대댓글 말풍선 가로 확장 (= smDetailCommentBubbleReply) */
+    commentBubbleReply: {
+      flex: 1,
+      minWidth: 0,
+      marginRight: 0,
+    },
+    /** 댓글 달기 포커스 (= smDetailCommentBubbleReplying, 그림자 없음) */
+    commentBubbleReplying: {
+      backgroundColor: colors.primaryLight20,
     },
     commentReplyArrow: {
-      marginRight: normalize(8),
+      marginRight: normalize(6),
+      marginTop: normalize(7),
     },
     commentReplyBody: {
       flex: 1,
@@ -380,6 +501,7 @@ export const createDetailStyles = (width, normalize) => {
     commentAuthorRow: {
       flexDirection: 'row',
       alignItems: 'center',
+      flexWrap: 'wrap',
     },
     commentAuthor: {
       fontSize: normalize(12),
@@ -406,14 +528,14 @@ export const createDetailStyles = (width, normalize) => {
       fontFamily: fonts.regular,
       color: colors.textPrimary,
       lineHeight: normalize(20),
-      marginBottom: normalize(8),
+      marginBottom: normalize(6),
     },
     commentBodyWithTag: {
       fontSize: normalize(14),
       fontFamily: fonts.regular,
       color: colors.textPrimary,
       lineHeight: normalize(20),
-      marginBottom: normalize(8),
+      marginBottom: normalize(6),
     },
     commentTag: {
       color: colors.primary,
@@ -458,11 +580,11 @@ export const createDetailStyles = (width, normalize) => {
       alignItems: 'center',
       alignSelf: 'flex-start',
       paddingTop: normalize(2),
-      paddingBottom: normalize(12),
+      paddingBottom: normalize(10),
       paddingRight: normalize(4),
       gap: normalize(4),
       marginLeft: normalize(18),
-      marginTop: -normalize(8),
+      marginTop: -normalize(4),
     },
     loadMoreText: {
       fontSize: normalize(13),

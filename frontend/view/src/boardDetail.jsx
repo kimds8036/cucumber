@@ -666,8 +666,10 @@ export default function BoardDetail({ navigation, route }) {
       <Text style={styles.commentBody}>{item.content}</Text>
     );
 
-    const block = (
-      <View key={item.id} style={isReply ? styles.commentReplyBody : undefined}>
+    const isReplyingToThis = replyToCommentId === item.id;
+
+    const commentBlockInner = (
+      <>
         <View style={styles.commentRow}>
           <View style={styles.commentAuthorRow}>
             {AuthorLabel}
@@ -713,15 +715,26 @@ export default function BoardDetail({ navigation, route }) {
             </TouchableOpacity>
           </View>
         </View>
+      </>
+    );
+
+    const bubble = (
+      <View
+        style={[
+          styles.commentBubble,
+          isReply && styles.commentBubbleReply,
+          isReplyingToThis && styles.commentBubbleReplying,
+        ]}
+      >
+        <View style={styles.commentReplyBody}>{commentBlockInner}</View>
       </View>
     );
 
-    const isReplyingToThis = replyToCommentId === item.id;
     if (isReply) {
       return (
         <View
           key={item.id}
-          style={[styles.commentItemReply, isReplyingToThis && styles.commentItemReplyReplying]}
+          style={styles.commentItemReply}
           ref={(r) => {
             if (r) commentWrapperRefs.current[item.id] = r;
           }}
@@ -730,20 +743,20 @@ export default function BoardDetail({ navigation, route }) {
           <View style={styles.commentReplyArrow}>
             <Ionicons name="return-down-forward" size={normalize(16)} color={colors.textSecondary} />
           </View>
-          {block}
+          {bubble}
         </View>
       );
     }
     return (
       <View
         key={item.id}
-        style={[styles.commentItem, isReplyingToThis && styles.commentItemReplying]}
+        style={styles.commentItem}
         ref={(r) => {
           if (r) commentWrapperRefs.current[item.id] = r;
         }}
         collapsable={false}
       >
-        {block}
+        {bubble}
       </View>
     );
   };
@@ -826,15 +839,16 @@ export default function BoardDetail({ navigation, route }) {
                     >
                       {post.author}
                     </Text>
+                    <Text style={styles.detailDot}>•</Text>
+                    <Text style={styles.detailTime}>{post.time}</Text>
                   </View>
-                  <Text style={styles.detailTime}>{post.time}</Text>
+                  {post.location ? (
+                    <View style={styles.detailLocation}>
+                      <Ionicons name="location-sharp" size={normalize(12)} color={colors.textSecondary} />
+                      <Text style={styles.detailLocationText}>{post.location}</Text>
+                    </View>
+                  ) : null}
                 </View>
-                {post.location ? (
-                  <View style={styles.detailLocation}>
-                    <Ionicons name="location-sharp" size={normalize(12)} color={colors.textSecondary} />
-                    <Text style={styles.detailLocationText}>{post.location}</Text>
-                  </View>
-                ) : null}
 
                 <Text style={styles.detailBody}>{post.content}</Text>
                 <View style={styles.detailDivider} />
@@ -857,19 +871,6 @@ export default function BoardDetail({ navigation, route }) {
                       <Ionicons name="chatbubble-outline" size={normalize(15)} color={colors.primary} />
                       <Text style={styles.detailStatText}>{post.comments}</Text>
                     </View>
-                    <TouchableOpacity
-                      style={styles.detailStatItem}
-                      onPress={handlePostScrap}
-                      activeOpacity={0.7}
-                      hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                    >
-                      <Ionicons
-                        name={postScrapped ? 'bookmark' : 'bookmark-outline'}
-                        size={normalize(14)}
-                        color={colors.scrap}
-                      />
-                      <Text style={styles.detailStatText}>{post.scraps ?? 0}</Text>
-                    </TouchableOpacity>
                   </View>
                   <View ref={postMenuButtonRef} collapsable={false}>
                     <TouchableOpacity
@@ -882,14 +883,15 @@ export default function BoardDetail({ navigation, route }) {
                   </View>
                 </View>
               </View>
+              {/* 광고 영역 */}
+              <View style={styles.adSection}>
+                <Text style={styles.adSectionText}>광고</Text>
+              </View>
 
-          {/* 광고 영역 비움 */}
-          <View style={styles.adSection} />
-
-          {/* 댓글: 최상위는 전부 노출, 각 댓글의 대댓글만 3개 제한 후 더보기 */}
-          <View style={styles.commentSection}>
-            {visibleComments.map((c) => renderCommentTree(c))}
-          </View>
+              {/* 댓글: 최상위는 전부 노출, 각 댓글의 대댓글만 3개 제한 후 더보기 */}
+              <View style={styles.commentSection}>
+                {visibleComments.map((c) => renderCommentTree(c))}
+              </View>
             </ScrollView>
 
             {/* 하단 댓글 입력: Chat과 동일한 래퍼(키보드 높이는 전역 Animated로 올라감) */}

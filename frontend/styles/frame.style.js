@@ -62,7 +62,7 @@ export const createHeaderStyles = (width, height) => {
       borderRadius: normalize(20),
       backgroundColor: colors.green,
       borderWidth: 1,
-      borderColor: colors.primary,
+      borderColor: colors.primaryLight50,
     },
     badge: {
       position: 'absolute',
@@ -167,7 +167,7 @@ export const createSubHeaderStyles = (width, height) => {
     },
     divider: {
       height: 1,
-      backgroundColor: colors.background2,
+      backgroundColor: colors.textLight20,
     },
   });
 };

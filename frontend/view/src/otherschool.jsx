@@ -169,16 +169,6 @@ const OtherSchoolScreen = ({ route, navigation }) => {
         style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}
       >
-        {loading && (
-          <View style={{ paddingVertical: normalize(20), alignItems: 'center' }}>
-            <ActivityIndicator size="small" color={colors.primary} />
-          </View>
-        )}
-        {error && (
-          <View style={{ paddingHorizontal: normalize(16), paddingBottom: normalize(8) }}>
-            <Text style={{ fontSize: normalize(12), color: colors.alert }}>{error}</Text>
-          </View>
-        )}
         {/* 학교 정보 카드 */}
         <View style={styles.schoolCardBlock}>
           <View style={styles.schoolCard}>
@@ -217,7 +207,12 @@ const OtherSchoolScreen = ({ route, navigation }) => {
           <View style={styles.mealSectionCard}>
             <View style={styles.mealSectionHeader}>
               <Text style={styles.mealSectionTitle}>급식</Text>
-              <Text style={styles.mealSectionMore}>자세히 →</Text>
+              <TouchableOpacity
+                activeOpacity={0.7}
+                onPress={() => navigation?.navigate('MealCalendar')}
+              >
+                <Text style={styles.mealSectionMore}>자세히 →</Text>
+              </TouchableOpacity>
             </View>
 
             <View style={styles.mealSlotsRow}>

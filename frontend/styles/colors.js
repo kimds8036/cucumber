@@ -1,4 +1,4 @@
-// 색상 테마 관리 파일
+﻿// 색상 테마 관리 파일
 // 여기서 색상을 변경하면 전체 앱에 적용됩니다
 
 export const colors = {
@@ -25,6 +25,7 @@ export const colors = {
 
   // 알림
   alert: '#FF9F9F',
+  subcolor: '#AAD7FF',
 
   // 추가 컬러
   shadow: '#000',            // 그림자
@@ -39,6 +40,8 @@ export const colors = {
   primaryLight70: 'rgba(166,218,149, 0.7)', // 70%
   primaryLight50: 'rgba(166,218,149, 0.5)', // 50%
   primaryLight30: 'rgba(166,218,149, 0.3)', // 30%
+  primaryLight20: 'rgba(166,218,149, 0.2)', // 20%
+  primaryLight10: 'rgba(166,218,149, 0.1)', // 10%
 
   shadowLight: 'rgba(0, 0, 0, 0.1)',          // 밝은 그림자
   shadowMedium: 'rgba(0, 0, 0, 0.2)',         // 중간 그림자
@@ -47,6 +50,13 @@ export const colors = {
   overlay: 'rgba(0, 0, 0, 0.5)',              // 오버레이 (50%)
   overlayLight: 'rgba(0, 0, 0, 0.3)',         // 밝은 오버레이
   overlayDark: 'rgba(0, 0, 0, 0.7)',          // 진한 오버레이
+
+  // 글쓰기: 완료 pill 라벨 / 해시태그 칩 (연한 그린 톤)
+  writePillLabel: '#1A4A26',
+  hashtagChipBg: '#EDF7F0',
+  hashtagChipBorder: '#B8DFC8',
+  hashtagChipText: '#3A7A52',
+  hashtagChipRemove: '#7AB08A',
 };
 
 // 폰트 테마 관리
@@ -66,3 +76,4 @@ export const fontSizes = {
   title: 24,
   heading: 28,
 };
+

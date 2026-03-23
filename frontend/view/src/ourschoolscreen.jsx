@@ -1,20 +1,31 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, useWindowDimensions } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import FontAwesome6 from '@expo/vector-icons/FontAwesome6';
+import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
 import StudyGrassMap from '../../components/studygrassmap';
 import { api } from '../../utils/api';
 import { colors } from '../../styles/colors';
-import { getNormalize } from '../../styles/board.style';
+import { getNormalize } from '../../styles/frame.style';
+import { createOurSchoolStyles } from '../../styles/school.style';
 
 const OurSchoolScreen = ({ navigation }) => {
   const { width } = useWindowDimensions();
   const normalize = useMemo(() => getNormalize(width), [width]);
-  const [schoolInfo, setSchoolInfo] = useState(null);
-  const [loading, setLoading] = useState(false);
+  const styles = useMemo(() => createOurSchoolStyles(normalize), [normalize]);
+  const [schoolInfo, setSchoolInfo] = useState({
+    name: '진관고등학교',
+    location: '서울 은평구 진관동',
+    studentCount: 532,
+    postCount: 525,
+    mailCount: 525,
+  });
   const [popularPosts, setPopularPosts] = useState([]);
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     let mounted = true;
+
     const fetchSchool = async () => {
       try {
         setLoading(true);
@@ -23,14 +34,13 @@ const OurSchoolScreen = ({ navigation }) => {
         const data = res.data?.data;
         if (data) {
           setSchoolInfo({
-            name: data.name,
+            name: data.name ?? '',
             location: data.address || data.region || '',
             studentCount: data.studentCount ?? 0,
             postCount: data.postCount ?? 0,
             mailCount: data.mailCount ?? 0,
           });
 
-          // 학교 게시판 인기 글 가져오기
           try {
             const postsRes = await api.get('/api/posts', {
               params: {
@@ -61,11 +71,105 @@ const OurSchoolScreen = ({ navigation }) => {
         if (mounted) setLoading(false);
       }
     };
+
     fetchSchool();
     return () => {
       mounted = false;
     };
   }, []);
+
+  // 학교가 제공하는 끼니 종류 (학교마다 다름)
+  const schoolMealTypes = ['중식', '석식']; // 예시
+
+  // 날짜별 끼니 메뉴 (0 = 오늘, 1 = 내일, 2 = 모레)
+  const mealData = [
+    {
+      조식: ['토스트', '우유', '샐러드'],
+      중식: ['김치찌개', '잡채', '계란말이', '흰쌀밥'],
+      석식: ['부대찌개', '깍두기', '어묵볶음', '흰쌀밥'],
+    },
+    {
+      조식: ['식빵', '우유', '요거트'],
+      중식: ['된장찌개', '멸치볶음', '시금치나물', '흰쌀밥'],
+      석식: ['순두부찌개', '김치', '제육볶음', '흰쌀밥'],
+    },
+    {
+      조식: ['크로와상', '오렌지주스', '과일'],
+      중식: ['비빔밥', '미역국', '깍두기', '흰쌀밥'],
+      석식: ['감자탕', '콩나물무침', '김치', '흰쌀밥'],
+    },
+  ];
+
+  const getCurrentSlots = () => {
+    const now = new Date();
+    const hour = now.getHours();
+    const allTypes = ['조식', '중식', '석식'];
+
+    let baseDayIndex = 0;
+    let baseMealType = '조식';
+
+    if (hour < 10) {
+      baseMealType = '조식';
+    } else if (hour < 14) {
+      baseMealType = '중식';
+    } else if (hour < 20) {
+      baseMealType = '석식';
+    } else {
+      baseDayIndex = 1;
+      baseMealType = schoolMealTypes[0];
+    }
+
+    const ensureSupported = (dayIndex, mealType) => {
+      if (schoolMealTypes.includes(mealType)) {
+        return { dayIndex, mealType };
+      }
+      for (let i = 0; i < allTypes.length; i++) {
+        const t = allTypes[i];
+        if (schoolMealTypes.includes(t)) {
+          return { dayIndex, mealType: t };
+        }
+      }
+      return { dayIndex, mealType: schoolMealTypes[0] };
+    };
+
+    const start = ensureSupported(baseDayIndex, baseMealType);
+
+    const slots = [];
+    let dayIndex = start.dayIndex;
+    let typeIndex = schoolMealTypes.indexOf(start.mealType);
+    if (typeIndex < 0) typeIndex = 0;
+
+    while (slots.length < 3) {
+      if (dayIndex > 2) break;
+
+      const mealType = schoolMealTypes[typeIndex];
+      const dayData = mealData[dayIndex];
+      const menus = dayData && dayData[mealType] ? dayData[mealType] : [];
+
+      slots.push({ dayIndex, mealType, menus });
+
+      typeIndex += 1;
+      if (typeIndex >= schoolMealTypes.length) {
+        typeIndex = 0;
+        dayIndex += 1;
+      }
+    }
+
+    while (slots.length < 3) {
+      slots.push({ dayIndex: 2, mealType: schoolMealTypes[0], menus: [] });
+    }
+
+    return slots;
+  };
+
+  const mealSlots = getCurrentSlots();
+  const weekdayLabels = ['월', '화', '수', '목', '금', '토', '일'];
+  const getDayBadge = (dayIndex) => {
+    const date = new Date();
+    date.setDate(date.getDate() + dayIndex);
+    const day = date.getDay();
+    return `${weekdayLabels[day]}`;
+  };
 
   return (
     <View style={styles.container}>
@@ -73,75 +177,122 @@ const OurSchoolScreen = ({ navigation }) => {
         style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}
       >
-        {/* 학교 정보 카드 — 잔디밭 포함 */}
-        <View style={styles.schoolCard}>
-          <Text style={styles.schoolName}>
-            {schoolInfo?.name || (loading ? '학교 정보를 불러오는 중...' : '학교 정보 없음')}
-          </Text>
-          {schoolInfo?.location ? (
+        {/* 학교 정보 카드 — 풀 너비 단독 */}
+        <View style={styles.schoolCardBlock}>
+          <View style={styles.schoolCard}>
+            <View style={styles.schoolNameRow}>
+              <Text style={styles.schoolName}>{schoolInfo.name}</Text>
+            </View>
             <View style={styles.locationContainer}>
-              <Ionicons name="location-outline" size={14} color="#666" />
+              <Ionicons name="location-outline" size={normalize(14)} color={colors.textSecondary} />
               <Text style={styles.locationText}>{schoolInfo.location}</Text>
             </View>
-          ) : null}
-
-          <View style={styles.divider} />
-
-          <View style={styles.statsContainer}>
-            <View style={styles.statItem}>
-              <Text style={styles.statLabel}>학생</Text>
-              <View style={styles.statValueContainer}>
-                <Ionicons name="person" size={16} color="#4A90E2" />
-                <Text style={styles.statValue}>
-                  {schoolInfo ? `${schoolInfo.studentCount}명` : '-'}
-                </Text>
+            <View style={styles.statsContainer}>
+              <View style={styles.statItem}>
+                <View style={styles.statValueContainer}>
+                  <Ionicons name="person" size={normalize(16)} color={colors.primary} />
+                  <Text style={styles.statValue}>{schoolInfo.studentCount}명</Text>
+                </View>
               </View>
-            </View>
-
-            <View style={styles.statItem}>
-              <Text style={styles.statLabel}>게시글</Text>
-              <View style={styles.statValueContainer}>
-                <Ionicons name="document-text-outline" size={16} color="#4A90E2" />
-                <Text style={styles.statValue}>
-                  {schoolInfo ? `${schoolInfo.postCount}개` : '-'}
-                </Text>
+              <View style={styles.statItem}>
+                <View style={styles.statValueContainer}>
+                  <Ionicons name="chatbubbles" size={normalize(16)} color={colors.primary} />
+                  <Text style={styles.statValue}>{schoolInfo.postCount}개</Text>
+                </View>
               </View>
-            </View>
-
-            <View style={styles.statItem}>
-              <Text style={styles.statLabel}>우편</Text>
-              <View style={styles.statValueContainer}>
-                <Ionicons name="mail-outline" size={16} color="#4A90E2" />
-                <Text style={styles.statValue}>
-                  {schoolInfo ? `${schoolInfo.mailCount}개` : '-'}
-                </Text>
+              <View style={styles.statItem}>
+                <View style={styles.statValueContainer}>
+                  <Ionicons name="mail" size={normalize(16)} color={colors.primary} />
+                  <Text style={styles.statValue}>{schoolInfo.mailCount}개</Text>
+                </View>
               </View>
             </View>
           </View>
+        </View>
 
-          {/* ✅ 잔디밭 — 카드 내부 */}
+        {/* 급식 카드 (상단 타이틀 박스 안에 3개 슬롯 수평 배치) */}
+        <View style={styles.mealCardBlock}>
+          <View style={styles.mealSectionCard}>
+            <View style={styles.mealSectionHeader}>
+              <Text style={styles.mealSectionTitle}>급식</Text>
+              <TouchableOpacity
+                activeOpacity={0.7}
+                onPress={() => navigation?.navigate('MealCalendar')}
+              >
+                <Text style={styles.mealSectionMore}>자세히 →</Text>
+              </TouchableOpacity>
+            </View>
+
+            <View style={styles.mealSlotsRow}>
+              {mealSlots.map((slot, index) => (
+                <View
+                  key={`${slot.dayIndex}-${slot.mealType}-${index}`}
+                  style={[
+                    styles.mealSlot,
+                    index === mealSlots.length - 1 && styles.mealSlotLast,
+                  ]}
+                >
+                  <View style={styles.mealCard}>
+                    <View style={styles.mealSlotHeader}>
+                      <View style={styles.mealSlotTitleRow}>
+                        <Text style={styles.mealSlotTitle}>{slot.mealType}</Text>
+                      </View>
+                      <View style={styles.mealSlotBadge}>
+                        <Text style={styles.mealSlotBadgeText}>{getDayBadge(slot.dayIndex)}</Text>
+                      </View>
+                    </View>
+
+                    <View style={styles.mealSlotMenus}>
+                      {slot.menus && slot.menus.length > 0 ? (
+                        slot.menus.map((menu, idx) => (
+                          <Text
+                            key={`${idx}-${menu}`}
+                            style={styles.mealSlotMenuText}
+                            numberOfLines={1}
+                          >
+                            {menu}
+                          </Text>
+                        ))
+                      ) : (
+                        <Text style={styles.mealSlotEmptyText}>정보 없음</Text>
+                      )}
+                    </View>
+                  </View>
+                </View>
+              ))}
+            </View>
+          </View>
+        </View>
+
+        {/* 공부 잔디 카드 */}
+        <View style={styles.grassCard}>
+          <Text style={styles.grassCardTitle}>우리 학교 공부 잔디밭</Text>
           <StudyGrassMap />
         </View>
 
-        {/* 바로가기 버튼 */}
+        {/* 게시판 / 우편함 바로가기 */}
         <View style={styles.shortcutContainer}>
           <TouchableOpacity
             style={styles.shortcutButton}
             activeOpacity={0.7}
             onPress={() => navigation?.navigate('SchoolBoardAll')}
           >
-            <View style={[styles.iconCircle, { backgroundColor: '#E8F5E9' }]}>
-              <Ionicons name="chatbubbles" size={28} color="#4CAF50" />
+            <View style={styles.shortcutTopRow}>
+              <Ionicons name="chatbubbles" size={normalize(22)} color={colors.primary} />
+              <Text style={styles.shortcutTitle}>학교 게시판</Text>
             </View>
-            <Text style={styles.shortcutTitle}>학교 게시판</Text>
             <Text style={styles.shortcutSubtitle}>→ 보러 가기</Text>
           </TouchableOpacity>
 
-          <TouchableOpacity style={styles.shortcutButton}>
-            <View style={[styles.iconCircle, { backgroundColor: '#E8F5E9' }]}>
-              <Ionicons name="mail" size={28} color="#4CAF50" />
+          <TouchableOpacity
+            style={styles.shortcutButton}
+            activeOpacity={0.7}
+            onPress={() => navigation?.navigate('SchoolMailbox')}
+          >
+            <View style={styles.shortcutTopRow}>
+              <Ionicons name="mail" size={normalize(22)} color={colors.primary} />
+              <Text style={styles.shortcutTitle}>학교 우편함</Text>
             </View>
-            <Text style={styles.shortcutTitle}>학교 우편함</Text>
             <Text style={styles.shortcutSubtitle}>→ 보러 가기</Text>
           </TouchableOpacity>
         </View>
@@ -149,7 +300,7 @@ const OurSchoolScreen = ({ navigation }) => {
         {/* 실시간 인기 */}
         <View style={styles.popularSection}>
           <View style={styles.popularHeader}>
-            <Ionicons name="flame" size={20} color="#FF6B6B" />
+            <Ionicons name="flame" size={normalize(20)} color={colors.alert} />
             <Text style={styles.popularTitle}>실시간 인기</Text>
           </View>
 
@@ -214,166 +365,5 @@ const OurSchoolScreen = ({ navigation }) => {
     </View>
   );
 };
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#FFFFFF',
-  },
-  scrollView: {
-    flex: 1,
-  },
-  scrollContent: {
-    padding: 16,
-    paddingBottom: 48,
-  },
-  schoolCard: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 16,
-    padding: 20,
-    marginBottom: 16,
-    borderWidth: 2,
-    borderColor: '#A5D6A7',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  schoolName: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#333',
-    textAlign: 'center',
-    marginBottom: 8,
-  },
-  locationContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 16,
-  },
-  locationText: {
-    fontSize: 14,
-    color: '#666',
-    marginLeft: 4,
-  },
-  divider: {
-    height: 1,
-    backgroundColor: '#E0E0E0',
-    marginVertical: 16,
-  },
-  statsContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-  },
-  statItem: {
-    alignItems: 'center',
-  },
-  statLabel: {
-    fontSize: 14,
-    color: '#666',
-    marginBottom: 8,
-  },
-  statValueContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-  },
-  statValue: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: '#333',
-  },
-  shortcutContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: 16,
-    gap: 12,
-  },
-  shortcutButton: {
-    flex: 1,
-    backgroundColor: '#FFFFFF',
-    borderRadius: 16,
-    padding: 20,
-    alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  iconCircle: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 12,
-  },
-  shortcutTitle: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: '#333',
-    marginBottom: 4,
-  },
-  shortcutSubtitle: {
-    fontSize: 12,
-    color: '#999',
-  },
-  popularSection: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 16,
-    padding: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  popularHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 16,
-    gap: 6,
-  },
-  popularTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#333',
-  },
-  popularItem: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: '#F0F0F0',
-  },
-  popularItemLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    flex: 1,
-    gap: 8,
-  },
-  popularItemTitle: {
-    fontSize: 14,
-    color: '#333',
-    flex: 1,
-  },
-  popularItemRight: {
-    flexDirection: 'row',
-    gap: 8,
-  },
-  countBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 2,
-  },
-  countText: {
-    fontSize: 12,
-    color: '#666',
-  },
-});
 
 export default OurSchoolScreen;

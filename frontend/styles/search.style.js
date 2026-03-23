@@ -1,4 +1,4 @@
-import { StyleSheet } from 'react-native';
+﻿import { StyleSheet } from 'react-native';
 import { colors, fonts } from './colors';
 
 export const getNormalize = (width) => {
@@ -511,4 +511,5 @@ export const createSchoolSearchStyles = (normalize) => {
     },
   });
 };
+
 

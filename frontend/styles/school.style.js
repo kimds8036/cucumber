@@ -1,4 +1,4 @@
-import { StyleSheet } from 'react-native';
+﻿import { StyleSheet } from 'react-native';
 import { colors, fonts } from './colors';
 
 // 우리 학교 화면 전용 스타일 (학교 정보 + 급식 + 잔디 + 바로가기 + 인기)
@@ -458,3 +458,4 @@ export const createSchoolMailStyles = (width, normalize) => {
       },
     });
 };
+

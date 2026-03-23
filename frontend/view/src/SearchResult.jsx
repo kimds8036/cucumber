@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+﻿import React, { useEffect, useMemo, useState } from 'react';
 import {
   View,
   Text,
@@ -833,3 +833,4 @@ const s = StyleSheet.create({
     color: '#AAAAAA',
   },
 });
+

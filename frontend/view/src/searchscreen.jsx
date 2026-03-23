@@ -1,8 +1,7 @@
-import React, { useRef, useState, useEffect } from 'react';
+﻿import React, { useRef, useState, useEffect } from 'react';
 import {
   View,
   Text,
-  StyleSheet,
   ScrollView,
   TouchableOpacity,
   TextInput,
@@ -40,6 +39,10 @@ function formatTimeAgo(createdAt) {
 const RECENT_KEY = '@search_recent_keywords';
 
 const SearchScreen = ({ navigation }) => {
+  const { width } = useWindowDimensions();
+  const normalize = useMemo(() => getNormalize(width), [width]);
+  const styles = useMemo(() => createSearchScreenStyles(width, normalize), [width, normalize]);
+
   const [searchText, setSearchText] = useState('');
   const [recentSearches, setRecentSearches] = useState([]);
 

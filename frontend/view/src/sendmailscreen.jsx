@@ -1,30 +1,45 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   View,
   Text,
-  StyleSheet,
   ScrollView,
   TouchableOpacity,
   TextInput,
   KeyboardAvoidingView,
   Platform,
   Alert,
+  useWindowDimensions,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
 import SubHeader from '../frame/subHeader';
+import { useAppNavigation } from '../../navigation/useAppNavigation';
+import { getNormalize } from '../../styles/frame.style';
+import { createMailStyles } from '../../styles/mail.style';
+import { colors } from '../../styles/colors';
 
 const SendMailScreen = ({ navigation }) => {
+  const { goBack } = useAppNavigation();
+  const { width } = useWindowDimensions();
+  const normalize = useMemo(() => getNormalize(width), [width]);
+  const styles = useMemo(() => createMailStyles(normalize), [normalize]);
   const [selectedSchool, setSelectedSchool] = useState('');
   const [searchSchoolText, setSearchSchoolText] = useState('');
   const [showSchoolResults, setShowSchoolResults] = useState(false);
-  
-  const [recipientType, setRecipientType] = useState('school'); // 'school' or 'student'
   const [selectedStudent, setSelectedStudent] = useState(null);
   const [searchStudentText, setSearchStudentText] = useState('');
   const [showStudentResults, setShowStudentResults] = useState(false);
-  
+
   const [mailContent, setMailContent] = useState('');
+
+  const handleMailContentChange = (text) => {
+    if (text.length > 50) {
+      Alert.alert('알림', '광고를 보면 더 길게 작성할 수 있어요.');
+      return;
+    }
+    setMailContent(text);
+  };
 
   // 더미 데이터
   const schoolResults = [
@@ -49,15 +64,6 @@ const SendMailScreen = ({ navigation }) => {
     setSelectedStudent(student);
     setSearchStudentText(`${student.name} (${student.grade}학년 ${student.class}반)`);
     setShowStudentResults(false);
-    setRecipientType('student');
-  };
-
-  const handleRecipientTypeChange = (type) => {
-    setRecipientType(type);
-    if (type === 'school') {
-      setSelectedStudent(null);
-      setSearchStudentText('');
-    }
   };
 
   const handleSend = () => {
@@ -69,10 +75,12 @@ const SendMailScreen = ({ navigation }) => {
       Alert.alert('알림', '내용을 입력해주세요.');
       return;
     }
+    if (!selectedStudent) {
+      Alert.alert('알림', '받는 학생을 선택해주세요.');
+      return;
+    }
 
-    const recipient = recipientType === 'student' && selectedStudent
-      ? `${selectedStudent.name} 학생`
-      : `${selectedSchool} 전체`;
+    const recipient = `${selectedStudent.name} 학생`;
 
     Alert.alert(
       '우편 전송',
@@ -83,9 +91,16 @@ const SendMailScreen = ({ navigation }) => {
           text: '전송',
           onPress: () => {
             // 여기에 실제 전송 로직
-            Alert.alert('완료', '우편이 전송되었습니다.');
-            // 초기화
-            setMailContent('');
+            Alert.alert('완료', '우편이 전송되었습니다.', [
+              {
+                text: '확인',
+                onPress: () => {
+                  // 초기화 후 이전 화면(개인 우편함 리스트)으로 복귀
+                  setMailContent('');
+                  goBack();
+                },
+              },
+            ]);
           },
         },
       ]
@@ -105,28 +120,24 @@ const SendMailScreen = ({ navigation }) => {
     : studentResults;
 
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
-      <SubHeader title="우편 보내기" onBack={() => navigation?.goBack()} />
+    <View style={{ flex: 1, backgroundColor: styles.container.backgroundColor }}>
+      <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
+        <SubHeader title="우편 보내기" onBack={() => goBack()} />
 
-      <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        style={styles.keyboardView}
-        keyboardVerticalOffset={0}
-      >
-        <ScrollView
-          style={styles.scrollView}
-          contentContainerStyle={{ flexGrow: 1, paddingBottom: 40 }}
-          showsVerticalScrollIndicator={false}
-          keyboardShouldPersistTaps="handled"
-        >
-            
+        <KeyboardAvoidingView behavior={undefined} style={styles.keyboardView}>
+          <ScrollView
+            style={styles.scrollView}
+            contentContainerStyle={{ flexGrow: 1, padding: normalize(16) }}
+            showsVerticalScrollIndicator={false}
+            keyboardShouldPersistTaps="handled"
+          >
             {/* 학교 검색 */}
-            <View style={styles.section}>
+            <View style={[styles.section, { marginTop: 0 }]}>
               <Text style={styles.label}>
-                보낼 학교 <Text style={styles.required}>*</Text>
+                보낼 학교
               </Text>
               <View style={styles.inputWrapper}>
-                <Ionicons name="school-outline" size={20} color="#999" />
+                <Ionicons name="school-outline" size={normalize(20)} color={colors.textSecondary} />
                 <TextInput
                   style={styles.input}
                   placeholder="학교를 검색하세요"
@@ -136,7 +147,7 @@ const SendMailScreen = ({ navigation }) => {
                     setShowSchoolResults(true);
                   }}
                   onFocus={() => setShowSchoolResults(true)}
-                  placeholderTextColor="#999"
+                  placeholderTextColor={colors.textSecondary}
                 />
                 {searchSchoolText.length > 0 && (
                   <TouchableOpacity
@@ -145,7 +156,7 @@ const SendMailScreen = ({ navigation }) => {
                       setSelectedSchool('');
                       setShowSchoolResults(false);
                     }}>
-                    <Ionicons name="close-circle" size={20} color="#999" />
+                    <Ionicons name="close-circle" size={normalize(20)} color={colors.textSecondary} />
                   </TouchableOpacity>
                 )}
               </View>
@@ -177,348 +188,124 @@ const SendMailScreen = ({ navigation }) => {
             {/* 받는 사람 선택 */}
             {selectedSchool && (
               <View style={styles.section}>
-                <Text style={styles.label}>받는 사람</Text>
-                
-                {/* 받는 사람 타입 선택 */}
-                <View style={styles.recipientTypeContainer}>
-                  <TouchableOpacity
-                    style={[
-                      styles.typeButton,
-                      recipientType === 'school' && styles.typeButtonActive,
-                    ]}
-                    onPress={() => handleRecipientTypeChange('school')}>
-                    <Ionicons
-                      name="business-outline"
-                      size={18}
-                      color={recipientType === 'school' ? '#4CAF50' : '#999'}
-                    />
-                    <Text
-                      style={[
-                        styles.typeButtonText,
-                        recipientType === 'school' && styles.typeButtonTextActive,
-                      ]}>
-                      학교 전체
-                    </Text>
-                  </TouchableOpacity>
-
-                  <TouchableOpacity
-                    style={[
-                      styles.typeButton,
-                      recipientType === 'student' && styles.typeButtonActive,
-                    ]}
-                    onPress={() => handleRecipientTypeChange('student')}>
-                    <Ionicons
-                      name="person-outline"
-                      size={18}
-                      color={recipientType === 'student' ? '#4CAF50' : '#999'}
-                    />
-                    <Text
-                      style={[
-                        styles.typeButtonText,
-                        recipientType === 'student' && styles.typeButtonTextActive,
-                      ]}>
-                      특정 학생
-                    </Text>
-                  </TouchableOpacity>
+                <Text style={styles.label}>
+                받는 사람
+                </Text>
+                {/* 학생 이름 검색 */}
+                <View style={[styles.inputWrapper]}>
+                  <Ionicons name="person-outline" size={normalize(20)} color={colors.textSecondary} />
+                  <TextInput
+                    style={styles.input}
+                    placeholder="학생 이름을 검색하세요"
+                    value={searchStudentText}
+                    onChangeText={(text) => {
+                      setSearchStudentText(text);
+                      setShowStudentResults(true);
+                    }}
+                    onFocus={() => setShowStudentResults(true)}
+                      placeholderTextColor={colors.textSecondary}
+                  />
+                  {searchStudentText.length > 0 && (
+                    <TouchableOpacity
+                      onPress={() => {
+                        setSearchStudentText('');
+                        setSelectedStudent(null);
+                        setShowStudentResults(false);
+                      }}>
+                        <Ionicons name="close-circle" size={normalize(20)} color={colors.textSecondary} />
+                    </TouchableOpacity>
+                  )}
                 </View>
 
-                {/* 특정 학생 검색 */}
-                {recipientType === 'student' && (
-                  <>
-                    <View style={[styles.inputWrapper, { marginTop: 12 }]}>
-                      <Ionicons name="person-outline" size={20} color="#999" />
-                      <TextInput
-                        style={styles.input}
-                        placeholder="학생 이름을 검색하세요"
-                        value={searchStudentText}
-                        onChangeText={(text) => {
-                          setSearchStudentText(text);
-                          setShowStudentResults(true);
-                        }}
-                        onFocus={() => setShowStudentResults(true)}
-                        placeholderTextColor="#999"
-                      />
-                      {searchStudentText.length > 0 && (
+                {/* 학생 검색 결과 */}
+                {showStudentResults && searchStudentText && (
+                  <View style={styles.resultsContainer}>
+                    {filteredStudents.length > 0 ? (
+                      filteredStudents.map((student) => (
                         <TouchableOpacity
-                          onPress={() => {
-                            setSearchStudentText('');
-                            setSelectedStudent(null);
-                            setShowStudentResults(false);
-                          }}>
-                          <Ionicons name="close-circle" size={20} color="#999" />
-                        </TouchableOpacity>
-                      )}
-                    </View>
-
-                    {/* 학생 검색 결과 */}
-                    {showStudentResults && searchStudentText && (
-                      <View style={styles.resultsContainer}>
-                        {filteredStudents.length > 0 ? (
-                          filteredStudents.map((student) => (
-                            <TouchableOpacity
-                              key={student.id}
-                              style={styles.resultItem}
-                              onPress={() => handleStudentSelect(student)}>
-                              <View style={styles.studentInfo}>
-                                <Text style={styles.resultName}>
-                                  {student.name}
-                                  {student.userId && (
-                                    <Text style={styles.resultId}> @{student.userId}</Text>
-                                  )}
-                                </Text>
-                                <Text style={styles.resultAddress}>
-                                  {student.grade}학년 {student.class}반
-                                </Text>
-                              </View>
-                              {student.isDormant && (
-                                <View style={styles.dormantBadge}>
-                                  <Text style={styles.dormantBadgeText}>휴면계정</Text>
-                                </View>
+                          key={student.id}
+                          style={styles.resultItem}
+                          onPress={() => handleStudentSelect(student)}>
+                          <View style={styles.studentInfo}>
+                            <Text style={styles.resultName}>
+                              {student.name}
+                              {student.userId && (
+                                <Text style={styles.resultId}> @{student.userId}</Text>
                               )}
-                            </TouchableOpacity>
-                          ))
-                        ) : (
-                          <View style={styles.noResultContainer}>
-                            <Text style={styles.noResultText}>검색 결과가 없습니다</Text>
+                            </Text>
+                            <Text style={styles.resultAddress}>
+                              {student.grade}학년 {student.class}반
+                            </Text>
                           </View>
-                        )}
+                          {student.isDormant && (
+                            <View style={styles.dormantBadge}>
+                              <Text style={styles.dormantBadgeText}>휴면계정</Text>
+                            </View>
+                          )}
+                        </TouchableOpacity>
+                      ))
+                    ) : (
+                      <View style={styles.noResultContainer}>
+                        <Text style={styles.noResultText}>검색 결과가 없습니다</Text>
                       </View>
                     )}
-                  </>
+                  </View>
                 )}
 
-                {/* 선택된 받는 사람 표시 */}
-                <View style={styles.recipientInfoBox}>
-                  <Ionicons name="mail-outline" size={16} color="#666" />
-                  <Text style={styles.recipientInfoText}>
-                    {recipientType === 'student' && selectedStudent
-                      ? `${selectedStudent.name} (${selectedStudent.grade}학년 ${selectedStudent.class}반)`
-                      : `${selectedSchool} 우편함`}
-                  </Text>
-                </View>
+    
               </View>
             )}
 
             {/* 내용 작성 */}
-            {selectedSchool && (
-              <View style={styles.section}>
+            {selectedStudent && (
+              <View style={[styles.section, { flex: 1, marginBottom: normalize(8) }]}>
                 <Text style={styles.label}>
-                  내용 <Text style={styles.required}>*</Text>
+                  내용
                 </Text>
                 <View style={styles.textAreaWrapper}>
                   <TextInput
                     style={styles.textArea}
                     placeholder="보낼 내용을 입력하세요"
                     value={mailContent}
-                    onChangeText={setMailContent}
+                    onChangeText={handleMailContentChange}
                     multiline
                     textAlignVertical="top"
-                    placeholderTextColor="#999"
+                    placeholderTextColor={colors.textSecondary}
                   />
-                  <Text style={styles.charCount}>{mailContent.length}/500</Text>
+                  <View style={styles.replyFormMetaRow}>
+                    <View style={{ marginLeft: 'auto', alignItems: 'flex-end', justifyContent: 'flex-end' }}>
+                      <Text style={styles.replyFormCount}>{mailContent.length}/50자</Text>
+                      <View style={styles.replyFormChip}>
+                        <MaterialCommunityIcons name="television-classic" size={15} color={colors.textPrimary} />
+                        <Text style={styles.replyFormChipText}>x 2</Text>
+                      </View>
+                    </View>
+                  </View>
                 </View>
               </View>
             )}
           </ScrollView>
 
           {/* 전송 버튼 */}
-          {selectedSchool && (
-            <View style={styles.buttonContainer}>
+          {selectedStudent && (
+            <View style={styles.bottomCtaWrapper}>
               <TouchableOpacity
                 style={[
-                  styles.sendButton,
-                  !mailContent.trim() && styles.sendButtonDisabled,
+                  styles.bottomCtaButton,
+                  !mailContent.trim() && styles.bottomCtaDisabled,
                 ]}
                 onPress={handleSend}
-                disabled={!mailContent.trim()}>
-                <Ionicons name="send" size={20} color="#FFFFFF" />
-                <Text style={styles.sendButtonText}>전송하기</Text>
+                disabled={!mailContent.trim()}
+                activeOpacity={0.9}
+              >
+                <Text style={styles.bottomCtaText}>전송하기</Text>
               </TouchableOpacity>
             </View>
           )}
       </KeyboardAvoidingView>
     </SafeAreaView>
+  </View>
   );
 };
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#FFFFFF',
-  },
-  keyboardView: {
-    flex: 1,
-  },
-  scrollView: {
-    flex: 1,
-    backgroundColor: '#F8F9FA',
-  },
-  section: {
-    backgroundColor: '#FFFFFF',
-    padding: 16,
-    marginTop: 8,
-    borderTopWidth: 1,
-    borderTopColor: '#E8E8E8',
-    borderBottomWidth: 1,
-    borderBottomColor: '#E8E8E8',
-  },
-  label: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#333',
-    marginBottom: 12,
-  },
-  required: {
-    color: '#FF6B6B',
-  },
-  inputWrapper: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#F5F5F5',
-    borderRadius: 12,
-    paddingHorizontal: 12,
-    height: 48,
-    gap: 8,
-  },
-  input: {
-    flex: 1,
-    fontSize: 15,
-    color: '#333',
-  },
-  resultsContainer: {
-    marginTop: 8,
-    backgroundColor: '#FFFFFF',
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: '#E8E8E8',
-    overflow: 'hidden',
-  },
-  resultItem: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    padding: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: '#F5F5F5',
-  },
-  resultName: {
-    fontSize: 15,
-    fontWeight: '600',
-    color: '#333',
-    marginBottom: 4,
-  },
-  resultId: {
-    fontSize: 13,
-    fontWeight: '500',
-    color: '#999',
-  },
-  resultAddress: {
-    fontSize: 13,
-    color: '#666',
-  },
-  studentInfo: {
-    flex: 1,
-  },
-  noResultContainer: {
-    padding: 24,
-    alignItems: 'center',
-  },
-  noResultText: {
-    fontSize: 14,
-    color: '#999',
-  },
-  dormantBadge: {
-    backgroundColor: '#FFEAEA',
-    borderRadius: 12,
-    paddingVertical: 4,
-    paddingHorizontal: 8,
-    marginRight: 8,
-  },
-  dormantBadgeText: {
-    fontSize: 11,
-    fontWeight: '600',
-    color: '#FF6B6B',
-  },
-  recipientTypeContainer: {
-    flexDirection: 'row',
-    gap: 8,
-  },
-  typeButton: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 12,
-    borderRadius: 12,
-    backgroundColor: '#F5F5F5',
-    gap: 6,
-  },
-  typeButtonActive: {
-    backgroundColor: '#E8F5E9',
-    borderWidth: 1,
-    borderColor: '#4CAF50',
-  },
-  typeButtonText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#999',
-  },
-  typeButtonTextActive: {
-    color: '#4CAF50',
-  },
-  recipientInfoBox: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#F8F9FA',
-    padding: 12,
-    borderRadius: 8,
-    marginTop: 12,
-    gap: 8,
-  },
-  recipientInfoText: {
-    fontSize: 14,
-    color: '#666',
-  },
-  textAreaWrapper: {
-    backgroundColor: '#F5F5F5',
-    borderRadius: 12,
-    padding: 12,
-  },
-  textArea: {
-    fontSize: 15,
-    color: '#333',
-    minHeight: 200,
-    maxHeight: 300,
-  },
-  charCount: {
-    fontSize: 12,
-    color: '#999',
-    textAlign: 'right',
-    marginTop: 8,
-  },
-  buttonContainer: {
-    padding: 16,
-    backgroundColor: '#FFFFFF',
-    borderTopWidth: 1,
-    borderTopColor: '#E8E8E8',
-  },
-  sendButton: {
-    flexDirection: 'row',
-    backgroundColor: '#4CAF50',
-    paddingVertical: 16,
-    borderRadius: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-  },
-  sendButtonDisabled: {
-    backgroundColor: '#E0E0E0',
-  },
-  sendButtonText: {
-    color: '#FFFFFF',
-    fontSize: 16,
-    fontWeight: '700',
-  },
-});
 
 export default SendMailScreen;

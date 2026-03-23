@@ -1,10 +1,6 @@
-import { StatusBar } from 'expo-status-bar';
-import { StyleSheet, View, ScrollView, Text, useWindowDimensions } from 'react-native';
-import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
+﻿import { StatusBar } from 'expo-status-bar';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
-import MainHeader from './view/frame/mainHeader';
-import MainFooter from './view/frame/mainFooter';
 import Login from './view/src/Login';
 import Sign from './view/src/Sign';
 import MainScreen from './view/src/MainScreen';
@@ -17,10 +13,16 @@ import ChangeSchool from './view/src/changeschool';
 import SearchScreen from './view/src/searchscreen';
 import NotificationScreen from './view/src/notificationscreen';
 import BoardWrite from './view/src/boardWrite';
+import SearchResult from './view/src/SearchResult';
 import BoardDetail from './view/src/boardDetail';
 import Chat from './view/src/Chat';
 import SendMailScreen from './view/src/sendmailscreen';
-import AnonymousMailScreen from './view/src/mailscrenn';
+import AnonymousMailScreen from './view/src/mailscreen';
+import MailReplyScreen from './view/src/mailreply';
+import MailHistoryScreen from './view/src/history';
+import SchoolMailboxScreen from './view/src/schoolMailbox';
+import SchoolMailDetail from './view/src/schoolMailDetail';
+import SendSchoolMailScreen from './view/src/sendSchoolMailScreen';
 import SchoolBoardAll from './view/src/schoolBoardAll';
 import OtherSchoolScreen from './view/src/otherschool';
 import Timer from './view/src/timer';
@@ -29,6 +31,7 @@ import SearchResult from './view/src/SearchResult';
 import { useFonts } from 'expo-font';
 import * as SplashScreen from 'expo-splash-screen';
 import { useEffect } from 'react';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { KeyboardProvider } from './context/KeyboardContext';
 import { NotificationProvider } from './context/NotificationContext';
 import { FriendProvider } from './context/FriendContext';
@@ -93,3 +96,4 @@ export default function App() {
     </SafeAreaProvider>
   );
 }
+
