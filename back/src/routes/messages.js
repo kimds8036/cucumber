@@ -9,6 +9,7 @@
  *    enqueueNotification() 큐 위임으로 교체
  *    → 알림 서버 장애가 메시지 전송 실패로 전파되지 않음
  * 3. 읽음 처리 시 메시지를 보낸 사람에게 read_receipt emit
+ * 4. 채팅방 나가기 / 내 메시지 삭제는 DB 소프트 삭제 (상대방 목록은 유지)
  * ─────────────────────────────────────────────────────
  */
 
@@ -50,19 +51,29 @@ router.get('/rooms', authenticate, async (req, res) => {
           WHERE m.room_id = mr.id
             AND m.sender_id != ?
             AND m.is_read = FALSE
+            AND (m.is_deleted IS NULL OR m.is_deleted = FALSE)
         ) AS unread_count
       FROM message_rooms mr
       LEFT JOIN posts  p  ON mr.post_id  = p.id
       LEFT JOIN users u1  ON mr.user1_id = u1.id
       LEFT JOIN users u2  ON mr.user2_id = u2.id
-      WHERE (mr.user1_id = ? OR mr.user2_id = ?)
+      WHERE (
+        (mr.user1_id = ? AND (mr.is_deleted_by_user1 IS NULL OR mr.is_deleted_by_user1 = FALSE))
+        OR
+        (mr.user2_id = ? AND (mr.is_deleted_by_user2 IS NULL OR mr.is_deleted_by_user2 = FALSE))
+      )
       ORDER BY mr.last_message_at DESC, mr.created_at DESC
       LIMIT ${limitNum} OFFSET ${offsetNum}`,
       [userId, userId, userId, userId, userId, userId]
     );
 
     const [countResult] = await pool.execute(
-      `SELECT COUNT(*) AS total FROM message_rooms WHERE user1_id = ? OR user2_id = ?`,
+      `SELECT COUNT(*) AS total FROM message_rooms mr
+       WHERE (
+         (mr.user1_id = ? AND (mr.is_deleted_by_user1 IS NULL OR mr.is_deleted_by_user1 = FALSE))
+         OR
+         (mr.user2_id = ? AND (mr.is_deleted_by_user2 IS NULL OR mr.is_deleted_by_user2 = FALSE))
+       )`,
       [userId, userId]
     );
     const total = Number(countResult[0]?.total ?? 0);
@@ -220,7 +231,7 @@ router.get('/rooms/:roomId', authenticate, async (req, res) => {
 
     const [messages] = await pool.execute(
       `SELECT
-        m.id, m.room_id, m.sender_id, m.content, m.is_read, m.created_at,
+        m.id, m.room_id, m.sender_id, m.content, m.is_read, m.is_deleted, m.created_at,
         u.name AS sender_name, u.color_id AS sender_color_id
        FROM messages m
        LEFT JOIN users u ON m.sender_id = u.id
@@ -301,7 +312,7 @@ router.post('/rooms/:roomId/messages', authenticate, async (req, res) => {
     // ── 저장된 메시지 조회 ──────────────────────
     const [messages] = await pool.execute(
       `SELECT
-        m.id, m.room_id, m.sender_id, m.content, m.is_read, m.created_at,
+        m.id, m.room_id, m.sender_id, m.content, m.is_read, m.is_deleted, m.created_at,
         u.name AS sender_name, u.color_id AS sender_color_id
        FROM messages m
        LEFT JOIN users u ON m.sender_id = u.id
@@ -398,9 +409,14 @@ router.get('/unread-count', authenticate, async (req, res) => {
       `SELECT COUNT(*) AS total_unread
        FROM messages m
        INNER JOIN message_rooms mr ON m.room_id = mr.id
-       WHERE (mr.user1_id = ? OR mr.user2_id = ?)
+       WHERE (
+         (mr.user1_id = ? AND (mr.is_deleted_by_user1 IS NULL OR mr.is_deleted_by_user1 = FALSE))
+         OR
+         (mr.user2_id = ? AND (mr.is_deleted_by_user2 IS NULL OR mr.is_deleted_by_user2 = FALSE))
+       )
          AND m.sender_id != ?
-         AND m.is_read = FALSE`,
+         AND m.is_read = FALSE
+         AND (m.is_deleted IS NULL OR m.is_deleted = FALSE)`,
       [userId, userId, userId]
     );
 
@@ -410,7 +426,12 @@ router.get('/unread-count', authenticate, async (req, res) => {
        LEFT JOIN messages m ON m.room_id = mr.id
          AND m.sender_id != ?
          AND m.is_read = FALSE
-       WHERE (mr.user1_id = ? OR mr.user2_id = ?)
+         AND (m.is_deleted IS NULL OR m.is_deleted = FALSE)
+       WHERE (
+         (mr.user1_id = ? AND (mr.is_deleted_by_user1 IS NULL OR mr.is_deleted_by_user1 = FALSE))
+         OR
+         (mr.user2_id = ? AND (mr.is_deleted_by_user2 IS NULL OR mr.is_deleted_by_user2 = FALSE))
+       )
        GROUP BY mr.id
        HAVING unread_count > 0`,
       [userId, userId, userId]
@@ -430,7 +451,7 @@ router.get('/unread-count', authenticate, async (req, res) => {
 });
 
 // ─────────────────────────────────────────────────────
-// 채팅방 삭제 (변경 없음)
+// 채팅방 나가기 (소프트 삭제: 내 쪽에서만 목록에서 숨김)
 // ─────────────────────────────────────────────────────
 router.delete('/rooms/:roomId', authenticate, async (req, res) => {
   try {
@@ -445,12 +466,46 @@ router.delete('/rooms/:roomId', authenticate, async (req, res) => {
       return res.status(404).json({ success: false, message: '채팅방을 찾을 수 없거나 접근 권한이 없습니다.' });
     }
 
-    await pool.execute('DELETE FROM message_rooms WHERE id = ?', [roomId]);
+    await pool.execute(
+      `UPDATE message_rooms SET
+        is_deleted_by_user1 = IF(user1_id = ?, TRUE, is_deleted_by_user1),
+        is_deleted_by_user2 = IF(user2_id = ?, TRUE, is_deleted_by_user2)
+       WHERE id = ? AND (user1_id = ? OR user2_id = ?)`,
+      [userId, userId, roomId, userId, userId]
+    );
 
     res.json({ success: true, message: '채팅방이 삭제되었습니다.' });
   } catch (error) {
     console.error('채팅방 삭제 오류:', error);
     res.status(500).json({ success: false, message: '채팅방 삭제 중 오류가 발생했습니다.' });
+  }
+});
+
+// ─────────────────────────────────────────────────────
+// 내 메시지 삭제 (소프트 삭제)
+// ─────────────────────────────────────────────────────
+router.delete('/:messageId', authenticate, async (req, res) => {
+  try {
+    const userId = req.user.userId;
+    const { messageId } = req.params;
+
+    const [updateResult] = await pool.execute(
+      `UPDATE messages SET is_deleted = TRUE
+       WHERE id = ? AND sender_id = ? AND (is_deleted IS NULL OR is_deleted = FALSE)`,
+      [messageId, userId]
+    );
+
+    if (!updateResult.affectedRows) {
+      return res.status(404).json({
+        success: false,
+        message: '메시지를 찾을 수 없거나 삭제 권한이 없습니다.',
+      });
+    }
+
+    res.json({ success: true });
+  } catch (error) {
+    console.error('메시지 삭제 오류:', error);
+    res.status(500).json({ success: false, message: '메시지 삭제 중 오류가 발생했습니다.' });
   }
 });
 

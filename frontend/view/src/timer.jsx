@@ -52,6 +52,7 @@ import {
 } from '../../components/timerFriendModals';
 import { useFriendSocketEvents } from '../../hooks/useFriendSocketEvents';
 import { useFriend } from '../../context/FriendContext';
+import { useSocket } from '../../context/SocketContext';
 import { useFocusEffect } from '@react-navigation/native';
 import { useFriendStudyEvents } from '../../hooks/useFriendStudyEvents';
 
@@ -113,23 +114,11 @@ export const TimerContent = () => {
   };
 
   const { studyingFriends, refreshStudyingFriends } = useFriend();
+  const { connected, reconnect } = useSocket();
 
   // ── 실시간 소켓 이벤트 연동 ─────────────────────────────
-  const { emitTimerStatus } = useFriendSocketEvents({
-    onFriendPoke: ({ fromUserId }) => {
-      setFriends((prev) => {
-        const friend = prev.find((f) => f.id === fromUserId);
-        if (friend) {
-          showToast(`👉 ${friend.name}님이 "공부하자!" 하고 찔렀어요`);
-        } else {
-          showToast('👉 친구가 공부하자고 찔렀어요');
-        }
-        return prev;
-      });
-    },
-  });
+  const { emitTimerStatus } = useFriendSocketEvents({});
 
-  // 공부 끝 알림 도착 시 토스트
   useFriendStudyEvents({
     onFriendStudyFinished: ({ userId, finishedAt, type }) => {
       console.log('[Timer] onFriendStudyFinished 콜백 실행', {
@@ -147,16 +136,11 @@ export const TimerContent = () => {
         return prev;
       });
     },
-    onMyStudyFinishedSummary: ({ watchers }) => {
-      if (!watchers || watchers.length === 0) return;
-      const names = watchers.map((w) => w.name || `@${w.userId}`).filter(Boolean);
-      if (names.length === 1) {
-        showToast(`🔔 ${names[0]}님이 "공부 끝나면 알려줘"를 눌렀었어요`);
-      } else {
-        const first = names[0];
-        const others = names.length - 1;
-        showToast(`🔔 ${first}님 외 ${others}명이 "공부 끝나면 알려줘"를 눌렀었어요`);
-      }
+    onPoke: (payload) => {
+      showToast(`👉 ${payload?.fromNickname ?? '친구'}님이 찔렀어요!`);
+    },
+    onMyStudyFinishedSummary: ({ toastText }) => {
+      showToast(toastText ?? '공부 완료 🎉');
     },
   });
 
@@ -185,11 +169,14 @@ export const TimerContent = () => {
     };
   }, []);
 
-  // 타이머 화면 진입 시: 놓친 친구 공부 상태 REST로만 보완
+  // 타이머 화면 진입 시: 놓친 친구 공부 상태 REST로만 보완 + 소켓 미연결 시 재연결
   useFocusEffect(
     React.useCallback(() => {
       refreshStudyingFriends?.();
-    }, [refreshStudyingFriends]),
+      if (!connected) {
+        reconnect?.();
+      }
+    }, [refreshStudyingFriends, connected, reconnect]),
   );
 
   // 친구 관련 핸들러 (모달 열기까지만 담당, 쿡 찌르기 로직은 FriendPokeController 에서 처리)

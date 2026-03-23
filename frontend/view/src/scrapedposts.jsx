@@ -1,9 +1,18 @@
-import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
+import React, { useEffect, useState, useMemo } from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  ScrollView,
+  TouchableOpacity,
+  useWindowDimensions,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import SubHeader from '../frame/subHeader';
 import { api } from '../../utils/api';
+import { colors } from '../../styles/colors';
+import { getNormalize } from '../../styles/board.style';
 
 function formatDate(dateString) {
   if (!dateString) return '';
@@ -15,16 +24,18 @@ function formatDate(dateString) {
   return `${y}.${m}.${day}`;
 }
 
-const LikedPosts = ({ navigation }) => {
-  const [likedPosts, setLikedPosts] = useState([]);
+const ScrapedPosts = ({ navigation }) => {
+  const { width } = useWindowDimensions();
+  const normalize = useMemo(() => getNormalize(width), [width]);
+  const [scrappedPosts, setScrappedPosts] = useState([]);
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     let mounted = true;
-    const fetchLiked = async () => {
+    const fetchScrapped = async () => {
       try {
         setLoading(true);
-        const res = await api.get('/api/posts/liked', {
+        const res = await api.get('/api/posts/scrapped', {
           params: { page: 1, limit: 50 },
         });
         if (!mounted) return;
@@ -33,17 +44,16 @@ const LikedPosts = ({ navigation }) => {
           title: (p.content || '').split('\n')[0].slice(0, 40) || '제목 없음',
           author: '익명',
           date: formatDate(p.created_at),
-          likes: p.like_count,
         }));
-        setLikedPosts(posts);
+        setScrappedPosts(posts);
       } catch (error) {
-        console.error('좋아요 누른 글 목록 로드 실패:', error);
+        console.error('스크랩한 글 목록 로드 실패:', error);
       } finally {
         if (mounted) setLoading(false);
       }
     };
 
-    fetchLiked();
+    fetchScrapped();
     return () => {
       mounted = false;
     };
@@ -52,34 +62,46 @@ const LikedPosts = ({ navigation }) => {
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
       <SubHeader
-        title="좋아요 누른 글"
+        title="스크랩한 글"
         onBack={() => navigation.goBack()}
       />
 
       <ScrollView style={styles.scrollView}>
-        {loading && likedPosts.length === 0 ? (
+        {loading && scrappedPosts.length === 0 ? (
           <View style={styles.empty}>
             <Ionicons name="time-outline" size={40} color="#ddd" />
             <Text style={styles.emptyText}>게시글을 불러오는 중입니다...</Text>
           </View>
-        ) : likedPosts.length > 0 ? (
-          likedPosts.map((post) => (
-            <TouchableOpacity key={post.id} style={styles.postItem}>
+        ) : scrappedPosts.length > 0 ? (
+          scrappedPosts.map((post) => (
+            <TouchableOpacity
+              key={post.id}
+              style={styles.postItem}
+              onPress={() =>
+                navigation.navigate('BoardDetail', {
+                  post: { id: post.id },
+                  isMyPost: false,
+                })
+              }
+            >
               <Text style={styles.postTitle}>{post.title}</Text>
               <View style={styles.postInfo}>
                 <Text style={styles.postAuthor}>{post.author}</Text>
                 <Text style={styles.postDate}>{post.date}</Text>
-                <View style={styles.likeInfo}>
-                  <Ionicons name="heart" size={16} color="#ff6b6b" />
-                  <Text style={styles.likeText}>{post.likes}</Text>
+                <View style={styles.scrapInfo}>
+                  <Ionicons
+                    name="bookmark"
+                    size={normalize(14)}
+                    color={colors.scrap}
+                  />
                 </View>
               </View>
             </TouchableOpacity>
           ))
         ) : (
           <View style={styles.empty}>
-            <Ionicons name="heart-outline" size={48} color="#ddd" />
-            <Text style={styles.emptyText}>아직 좋아요 누른 글이 없어요</Text>
+            <Ionicons name="bookmark-outline" size={48} color="#ddd" />
+            <Text style={styles.emptyText}>스크랩한 글이 없습니다</Text>
           </View>
         )}
       </ScrollView>
@@ -120,14 +142,9 @@ const styles = StyleSheet.create({
     color: '#999',
     flex: 1,
   },
-  likeInfo: {
+  scrapInfo: {
     flexDirection: 'row',
     alignItems: 'center',
-  },
-  likeText: {
-    fontSize: 13,
-    color: '#ff6b6b',
-    marginLeft: 4,
   },
   empty: {
     flex: 1,
@@ -143,4 +160,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default LikedPosts;
+export default ScrapedPosts;

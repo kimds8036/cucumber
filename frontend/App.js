@@ -10,7 +10,7 @@ import Sign from './view/src/Sign';
 import MainScreen from './view/src/MainScreen';
 import AddTimetable from './view/src/addtimetable';
 import MyPosts from './view/src/myposts';
-import LikedPosts from './view/src/likedposts';
+import ScrapedPosts from './view/src/scrapedposts';
 import NotificationSettings from './view/src/notificationsettings';
 import ChangePassword from './view/src/changepassword';
 import ChangeSchool from './view/src/changeschool';
@@ -70,7 +70,7 @@ export default function App() {
                   <Stack.Screen name="Chat" component={Chat} />
                   <Stack.Screen name="AddTimetable" component={AddTimetable} />
                   <Stack.Screen name="MyPosts" component={MyPosts} />
-                  <Stack.Screen name="LikedPosts" component={LikedPosts} />
+                  <Stack.Screen name="ScrapedPosts" component={ScrapedPosts} />
                   <Stack.Screen name="NotificationSettings" component={NotificationSettings} />
                   <Stack.Screen name="ChangePassword" component={ChangePassword} />
                   <Stack.Screen name="ChangeSchool" component={ChangeSchool} />

@@ -81,6 +81,8 @@ router.get('/', optionalAuthenticate, async (req, res) => {
 
     const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')} AND p.is_deleted = FALSE` : 'WHERE p.is_deleted = FALSE';
 
+    const likeScrapUserId = userId ?? 0;
+
     // 정렬
     let orderBy = 'p.created_at DESC';
     if (sort === 'popular') {
@@ -89,7 +91,8 @@ router.get('/', optionalAuthenticate, async (req, res) => {
       orderBy = 'p.comment_count DESC, p.created_at DESC';
     }
 
-    // 게시글 조회 (삭제되지 않은 것만)
+    // 게시글 조회 (삭제되지 않은 것만) — 로그인 시 내 좋아요/스크랩 여부
+    const listParams = [likeScrapUserId, likeScrapUserId, ...params];
     const [posts] = await pool.execute(
       `SELECT 
         p.id, 
@@ -102,14 +105,20 @@ router.get('/', optionalAuthenticate, async (req, res) => {
         p.created_at,
         u.name as author_name,
         u.color_id,
-        s.name as school_name
+        s.name as school_name,
+        (SELECT COUNT(*) FROM post_likes pl
+          WHERE pl.post_id = p.id AND pl.user_id = ?) AS is_liked,
+        (SELECT COUNT(*) FROM post_scraps ps
+          WHERE ps.post_id = p.id AND ps.user_id = ?) AS is_scrapped,
+        (SELECT COUNT(*) FROM post_scraps ps_cnt
+          WHERE ps_cnt.post_id = p.id) AS scrap_count
       FROM posts p
       LEFT JOIN users u ON p.user_id = u.id
       LEFT JOIN schools s ON p.school_id = s.school_id
       ${whereClause}
       ORDER BY ${orderBy}
       LIMIT ${limitNum} OFFSET ${offsetNum}`,
-      params
+      listParams
     );
 
     // 전체 개수 조회 (삭제 제외)
@@ -120,11 +129,14 @@ router.get('/', optionalAuthenticate, async (req, res) => {
     const total = Number(countResult[0]?.total ?? 0);
 
     const postsForClient = posts.map((p) => {
-      const { user_id, ...rest } = p;
+      const { user_id, is_liked, is_scrapped, scrap_count, ...rest } = p;
       return {
         ...rest,
         is_author: !!userId && user_id === userId,
         author_user_id: user_id,
+        isLiked: Boolean(Number(is_liked) > 0),
+        isScrapped: Boolean(Number(is_scrapped) > 0),
+        scrapCount: Number(scrap_count) || 0,
       };
     });
 
@@ -201,6 +213,8 @@ router.get('/my', authenticate, async (req, res) => {
       orderBy = 'p.comment_count DESC, p.created_at DESC';
     }
 
+    const likeScrapUserId = userId;
+    const listParams = [likeScrapUserId, likeScrapUserId, ...params];
     const [posts] = await pool.execute(
       `SELECT
          p.id,
@@ -213,14 +227,20 @@ router.get('/my', authenticate, async (req, res) => {
          p.created_at,
          u.name as author_name,
          u.color_id,
-         s.name as school_name
+         s.name as school_name,
+         (SELECT COUNT(*) FROM post_likes pl
+           WHERE pl.post_id = p.id AND pl.user_id = ?) AS is_liked,
+         (SELECT COUNT(*) FROM post_scraps ps
+           WHERE ps.post_id = p.id AND ps.user_id = ?) AS is_scrapped,
+         (SELECT COUNT(*) FROM post_scraps ps_cnt
+           WHERE ps_cnt.post_id = p.id) AS scrap_count
        FROM posts p
        LEFT JOIN users u ON p.user_id = u.id
        LEFT JOIN schools s ON p.school_id = s.school_id
        ${whereClause}
        ORDER BY ${orderBy}
        LIMIT ${limitNum} OFFSET ${offsetNum}`,
-      params,
+      listParams,
     );
 
     const [countResult] = await pool.execute(
@@ -231,10 +251,21 @@ router.get('/my', authenticate, async (req, res) => {
     );
     const total = Number(countResult[0]?.total ?? 0);
 
+    const postsForClient = posts.map((p) => {
+      const { user_id, is_liked, is_scrapped, scrap_count, ...rest } = p;
+      return {
+        ...rest,
+        author_user_id: user_id,
+        isLiked: Boolean(Number(is_liked) > 0),
+        isScrapped: Boolean(Number(is_scrapped) > 0),
+        scrapCount: Number(scrap_count) || 0,
+      };
+    });
+
     res.json({
       success: true,
       data: {
-        posts,
+        posts: postsForClient,
         pagination: {
           page: parseInt(page, 10),
           limit: limitNum,
@@ -355,6 +386,128 @@ router.get('/liked', authenticate, async (req, res) => {
   }
 });
 
+// 스크랩한 글 목록 (응답 형태는 GET /liked 와 동일)
+router.get('/scrapped', authenticate, async (req, res) => {
+  try {
+    const userId = req.user.userId;
+    const {
+      boardType,
+      schoolId,
+      page = 1,
+      limit = 20,
+      search,
+      sort = 'latest',
+    } = req.query;
+
+    const limitNum = Math.max(1, Math.min(100, parseInt(limit, 10) || 20));
+    const offsetNum = Math.max(
+      0,
+      (parseInt(page, 10) - 1) * limitNum,
+    );
+
+    const conditions = ['ps.user_id = ?'];
+    const params = [userId];
+
+    if (boardType) {
+      conditions.push('p.board_type = ?');
+      params.push(boardType);
+    }
+
+    if (schoolId) {
+      conditions.push('p.school_id = ?');
+      params.push(schoolId);
+    }
+
+    if (search) {
+      conditions.push('p.content LIKE ?');
+      params.push(`%${search}%`);
+    }
+
+    const whereClause =
+      conditions.length > 0
+        ? `WHERE ${conditions.join(' AND ')} AND p.is_deleted = FALSE`
+        : 'WHERE p.is_deleted = FALSE';
+
+    let orderBy = 'p.created_at DESC';
+    if (sort === 'popular') {
+      orderBy =
+        'p.like_count DESC, p.comment_count DESC, p.created_at DESC';
+    } else if (sort === 'comments') {
+      orderBy = 'p.comment_count DESC, p.created_at DESC';
+    }
+
+    const likeScrapUserId = userId;
+    const listParams = [likeScrapUserId, likeScrapUserId, ...params];
+    const [posts] = await pool.execute(
+      `SELECT
+         p.id,
+         p.user_id,
+         p.board_type,
+         p.school_id,
+         p.content,
+         p.like_count,
+         p.comment_count,
+         p.created_at,
+         u.name as author_name,
+         u.color_id,
+         s.name as school_name,
+         (SELECT COUNT(*) FROM post_likes pl
+           WHERE pl.post_id = p.id AND pl.user_id = ?) AS is_liked,
+         (SELECT COUNT(*) FROM post_scraps ps2
+           WHERE ps2.post_id = p.id AND ps2.user_id = ?) AS is_scrapped,
+         (SELECT COUNT(*) FROM post_scraps ps_cnt
+           WHERE ps_cnt.post_id = p.id) AS scrap_count
+       FROM post_scraps ps
+       INNER JOIN posts p ON ps.post_id = p.id
+       LEFT JOIN users u ON p.user_id = u.id
+       LEFT JOIN schools s ON p.school_id = s.school_id
+       ${whereClause}
+       ORDER BY ${orderBy}
+       LIMIT ${limitNum} OFFSET ${offsetNum}`,
+      listParams,
+    );
+
+    const [countResult] = await pool.execute(
+      `SELECT COUNT(*) as total
+       FROM post_scraps ps
+       INNER JOIN posts p ON ps.post_id = p.id
+       ${whereClause}`,
+      params,
+    );
+    const total = Number(countResult[0]?.total ?? 0);
+
+    const postsForClient = posts.map((p) => {
+      const { user_id, is_liked, is_scrapped, scrap_count, ...rest } = p;
+      return {
+        ...rest,
+        author_user_id: user_id,
+        isLiked: Boolean(Number(is_liked) > 0),
+        isScrapped: Boolean(Number(is_scrapped) > 0),
+        scrapCount: Number(scrap_count) || 0,
+      };
+    });
+
+    res.json({
+      success: true,
+      data: {
+        posts: postsForClient,
+        pagination: {
+          page: parseInt(page, 10),
+          limit: limitNum,
+          total,
+          totalPages: Math.ceil(total / limitNum) || 1,
+        },
+      },
+    });
+  } catch (error) {
+    console.error('스크랩한 글 목록 조회 오류:', error);
+    res.status(500).json({
+      success: false,
+      message: '스크랩한 글 목록 조회 중 오류가 발생했습니다.',
+    });
+  }
+});
+
 // 게시글 상세 조회 - 선택적 인증으로 본인 글 여부 반환
 router.get('/:id', optionalAuthenticate, async (req, res) => {
   try {
@@ -414,13 +567,26 @@ router.get('/:id', optionalAuthenticate, async (req, res) => {
 
     // 사용자가 좋아요를 눌렀는지 확인
     let isLiked = false;
+    let isScrapped = false;
     if (userId) {
       const [likes] = await pool.execute(
         'SELECT id FROM post_likes WHERE user_id = ? AND post_id = ?',
         [userId, id]
       );
       isLiked = likes.length > 0;
+
+      const [userScrapRows] = await pool.execute(
+        'SELECT COUNT(*) AS c FROM post_scraps WHERE user_id = ? AND post_id = ?',
+        [userId, id]
+      );
+      isScrapped = Number(userScrapRows[0]?.c ?? 0) > 0;
     }
+
+    const [scrapTotalRows] = await pool.execute(
+      'SELECT COUNT(*) AS c FROM post_scraps WHERE post_id = ?',
+      [id]
+    );
+    const scrapCount = Number(scrapTotalRows[0]?.c ?? 0);
 
     const isMine = !!userId && post.user_id === userId;
     const postAuthorId = post.user_id;
@@ -438,6 +604,8 @@ router.get('/:id', optionalAuthenticate, async (req, res) => {
       data: {
         ...postSafe,
         isLiked,
+        isScrapped,
+        scrapCount,
         isMine,
         post_author_id: postAuthorId,
         current_user_id: userId ?? null,
@@ -675,6 +843,56 @@ router.post('/:id/like', authenticate, async (req, res) => {
     res.status(500).json({ 
       success: false, 
       message: '좋아요 처리 중 오류가 발생했습니다.' 
+    });
+  }
+});
+
+// 게시글 스크랩 토글
+router.post('/:id/scrap', authenticate, async (req, res) => {
+  try {
+    const userId = req.user.userId;
+    const { id } = req.params;
+
+    const [posts] = await pool.execute(
+      'SELECT id FROM posts WHERE id = ? AND is_deleted = FALSE',
+      [id],
+    );
+    if (posts.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: '게시글을 찾을 수 없습니다.',
+      });
+    }
+
+    const [existing] = await pool.execute(
+      'SELECT id FROM post_scraps WHERE user_id = ? AND post_id = ?',
+      [userId, id],
+    );
+
+    if (existing.length > 0) {
+      await pool.execute(
+        'DELETE FROM post_scraps WHERE user_id = ? AND post_id = ?',
+        [userId, id],
+      );
+      return res.json({ success: true, scrapped: false });
+    }
+
+    await pool.execute(
+      'INSERT INTO post_scraps (user_id, post_id) VALUES (?, ?)',
+      [userId, id],
+    );
+    res.json({ success: true, scrapped: true });
+  } catch (error) {
+    console.error('게시글 스크랩 오류:', error);
+    if (error.code === 'ER_DUP_ENTRY') {
+      return res.status(400).json({
+        success: false,
+        message: '이미 스크랩한 게시글입니다.',
+      });
+    }
+    res.status(500).json({
+      success: false,
+      message: '스크랩 처리 중 오류가 발생했습니다.',
     });
   }
 });

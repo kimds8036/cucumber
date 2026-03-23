@@ -3,19 +3,20 @@ import { View, Text, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Entypo } from '@expo/vector-icons';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
-import { colors, fonts } from '../styles/colors';
+import { colors } from '../styles/colors';
 
 /**
  * BoardPostCard
  *
  * Props:
- *  - post         : 게시글 객체 { id, author, time, location, content, likes, comments, liked }
+ *  - post         : 게시글 객체 { id, author, time, location, content, likes, comments, liked, scrapped, scrapCount }
  *  - normalize    : 반응형 크기 함수
  *  - styles       : createBoardStyles 로 생성된 스타일 객체
  *  - onPress      : 카드 클릭 핸들러 (post) => void
  *  - onMenuPress  : 햄버거 메뉴 클릭 핸들러 (post, ref) => void
+ *  - onScrapPress : 스크랩 토글 (post) => void
  */
-const BoardPostCard = ({ post, normalize, styles, onPress, onMenuPress }) => {
+const BoardPostCard = ({ post, normalize, styles, onPress, onMenuPress, onScrapPress }) => {
   const menuButtonRef = useRef(null);
 
   return (
@@ -64,6 +65,17 @@ const BoardPostCard = ({ post, normalize, styles, onPress, onMenuPress }) => {
             <Ionicons name="chatbubble-outline" size={normalize(15)} color={colors.primary} />
             <Text style={styles.postStatText}>{post.comments}</Text>
           </View>
+          <TouchableOpacity
+            style={styles.postStatItem}
+            onPress={() => onScrapPress && onScrapPress(post)}
+          >
+            <Ionicons
+              name={post.scrapped ? 'bookmark' : 'bookmark-outline'}
+              size={normalize(14)}
+              color={colors.scrap}
+            />
+            <Text style={styles.postStatText}>{post.scrapCount ?? 0}</Text>
+          </TouchableOpacity>
         </View>
 
         <View ref={menuButtonRef} collapsable={false}>

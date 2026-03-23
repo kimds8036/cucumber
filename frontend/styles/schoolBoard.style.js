@@ -13,35 +13,6 @@ export const createSchoolBoardStyles = (width, normalize) => {
       backgroundColor: colors.background,
     },
 
-    // 정렬 버튼 영역
-    sortContainer: {
-      flexDirection: 'row',
-      paddingHorizontal: width * 0.05,
-      paddingVertical: normalize(10),
-      gap: normalize(8),
-    },
-    sortButton: {
-      paddingHorizontal: normalize(16),
-      paddingVertical: normalize(8),
-      borderRadius: normalize(20),
-      backgroundColor: colors.background,
-      borderWidth: 1,
-      borderColor: colors.textLight10,
-    },
-    sortButtonActive: {
-      backgroundColor: colors.primary,
-      borderColor: colors.primary,
-    },
-    sortButtonText: {
-      fontSize: normalize(13),
-      fontFamily: fonts.bold,
-      color: colors.textSecondary,
-    },
-    sortButtonTextActive: {
-      color: colors.background,
-      fontFamily: fonts.bold,
-    },
-
     // 게시글 목록
     postList: {
       flex: 1,

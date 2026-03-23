@@ -1,10 +1,14 @@
-import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
+import React, { useEffect, useState, useMemo } from 'react';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, useWindowDimensions } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import StudyGrassMap from '../../components/studygrassmap';
 import { api } from '../../utils/api';
+import { colors } from '../../styles/colors';
+import { getNormalize } from '../../styles/board.style';
 
 const OurSchoolScreen = ({ navigation }) => {
+  const { width } = useWindowDimensions();
+  const normalize = useMemo(() => getNormalize(width), [width]);
   const [schoolInfo, setSchoolInfo] = useState(null);
   const [loading, setLoading] = useState(false);
   const [popularPosts, setPopularPosts] = useState([]);
@@ -190,6 +194,11 @@ const OurSchoolScreen = ({ navigation }) => {
                     <Ionicons name="chatbubble-outline" size={14} color="#FFA726" />
                     <Text style={styles.countText}>{post.comments}</Text>
                   </View>
+                  <Ionicons
+                    name="bookmark-outline"
+                    size={normalize(14)}
+                    color={colors.scrap}
+                  />
                 </View>
               </TouchableOpacity>
             ))

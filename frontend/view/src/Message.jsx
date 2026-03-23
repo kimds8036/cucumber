@@ -6,6 +6,8 @@ import {
   ScrollView,
   useWindowDimensions,
   Animated,
+  Alert,
+  PanResponder,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import MainHeader from '../frame/mainHeader';
@@ -60,6 +62,66 @@ function formatListTime(createdAt) {
 // const getIconColor = (item) => item.profileColor;
 const ICON_COLORS = [colors.green, colors.yellow, colors.red, colors.blue]; // F7FFF3, FFFCD7, FFF3F3, E5F0FF
 const getIconColorByIndex = (index) => ICON_COLORS[index % ICON_COLORS.length];
+
+const SwipeableRow = ({ children, onDelete }) => {
+  const { width: windowWidth } = useWindowDimensions();
+  const [measuredWidth, setMeasuredWidth] = useState(null);
+  const containerWidth = measuredWidth ?? windowWidth;
+  const translateX = useRef(new Animated.Value(0)).current;
+
+  const panResponder = useRef(
+    PanResponder.create({
+      onMoveShouldSetPanResponder: (_, g) => Math.abs(g.dx) > 10 && Math.abs(g.dy) < 20,
+      onPanResponderMove: (_, g) => {
+        if (g.dx < 0) translateX.setValue(Math.max(g.dx, -80));
+      },
+      onPanResponderRelease: (_, g) => {
+        if (g.dx < -50) {
+          Animated.spring(translateX, { toValue: -80, useNativeDriver: true }).start();
+        } else {
+          Animated.spring(translateX, { toValue: 0, useNativeDriver: true }).start();
+        }
+      },
+    })
+  ).current;
+
+  const closeSwipe = () => {
+    Animated.spring(translateX, { toValue: 0, useNativeDriver: true }).start();
+  };
+
+  return (
+    <View
+      style={{ overflow: 'hidden' }}
+      onLayout={(e) => setMeasuredWidth(e.nativeEvent.layout.width)}
+    >
+      <Animated.View
+        style={{
+          flexDirection: 'row',
+          width: containerWidth + 80,
+          transform: [{ translateX }],
+        }}
+        {...panResponder.panHandlers}
+      >
+        <View style={{ flex: 1 }}>{children}</View>
+        <TouchableOpacity
+          onPress={() => {
+            closeSwipe();
+            onDelete?.();
+          }}
+          style={{
+            width: 80,
+            backgroundColor: colors.alert,
+            justifyContent: 'center',
+            alignItems: 'center',
+          }}
+        >
+          <Ionicons name="trash-outline" size={22} color="#fff" />
+          <Text style={{ color: '#fff', fontSize: 11, marginTop: 2 }}>삭제</Text>
+        </TouchableOpacity>
+      </Animated.View>
+    </View>
+  );
+};
 
 // 메인 화면(MainScreen)에서 헤더/푸터 없이 메인 영역만 렌더할 때 사용
 export function MessageContent({ navigation }) {
@@ -208,47 +270,58 @@ export function MessageContent({ navigation }) {
                 // const iconColor = getIconColor(item); // DB 연동 시
                 const iconColor = getIconColorByIndex(item.profileColorIndex);
                 return (
-                  <TouchableOpacity
+                  <SwipeableRow
                     key={item.id}
-                    style={styles.listItem}
-                    activeOpacity={0.7}
-                    onPress={() => {
-                      // 1️⃣ Optimistic UI: 목록에서 즉시 빨간 숫자 제거
-                      setNoteRooms((prev) =>
-                        prev.map((room) =>
-                          room.id === item.id ? { ...room, unreadCount: 0 } : room
-                        )
-                      );
-                      // 2️⃣ 채팅방으로 이동 → Chat 화면에서 바로 read API 호출 및 DB is_read 업데이트
-                      navigation?.navigate('Chat', {
-                        roomId: item.id,
-                      });
+                    onDelete={async () => {
+                      try {
+                        await api.delete(`/api/messages/rooms/${item.id}`);
+                        setNoteRooms((prev) => prev.filter((r) => r.id !== item.id));
+                      } catch (e) {
+                        Alert.alert('오류', '삭제에 실패했습니다.');
+                      }
                     }}
                   >
-                    <View style={styles.listItemLeft}>
-                      <View style={[styles.profileCircle, { backgroundColor: colors.primary }]}>
-                        <MessageTabIcon
-                          width={normalize(25)}
-                          height={normalize(25)}
-                          color={iconColor}
-                        />
-                      </View>
-                      <View style={styles.listItemBody}>
-                        <Text style={styles.listItemName}>{item.name}</Text>
-                        <Text style={styles.listItemContent} numberOfLines={1}>
-                          {item.content}
-                        </Text>
-                      </View>
-                    </View>
-                    <View style={styles.listItemRight}>
-                      <Text style={styles.listItemTime}>{item.time}</Text>
-                      {item.unreadCount > 0 ? (
-                        <View style={styles.unreadBadge}>
-                          <Text style={styles.unreadBadgeText}>{item.unreadCount}</Text>
+                    <TouchableOpacity
+                      style={styles.listItem}
+                      activeOpacity={0.7}
+                      onPress={() => {
+                        // 1️⃣ Optimistic UI: 목록에서 즉시 빨간 숫자 제거
+                        setNoteRooms((prev) =>
+                          prev.map((room) =>
+                            room.id === item.id ? { ...room, unreadCount: 0 } : room
+                          )
+                        );
+                        // 2️⃣ 채팅방으로 이동 → Chat 화면에서 바로 read API 호출 및 DB is_read 업데이트
+                        navigation?.navigate('Chat', {
+                          roomId: item.id,
+                        });
+                      }}
+                    >
+                      <View style={styles.listItemLeft}>
+                        <View style={[styles.profileCircle, { backgroundColor: colors.primary }]}>
+                          <MessageTabIcon
+                            width={normalize(25)}
+                            height={normalize(25)}
+                            color={iconColor}
+                          />
                         </View>
-                      ) : null}
-                    </View>
-                  </TouchableOpacity>
+                        <View style={styles.listItemBody}>
+                          <Text style={styles.listItemName}>{item.name}</Text>
+                          <Text style={styles.listItemContent} numberOfLines={1}>
+                            {item.content}
+                          </Text>
+                        </View>
+                      </View>
+                      <View style={styles.listItemRight}>
+                        <Text style={styles.listItemTime}>{item.time}</Text>
+                        {item.unreadCount > 0 ? (
+                          <View style={styles.unreadBadge}>
+                            <Text style={styles.unreadBadgeText}>{item.unreadCount}</Text>
+                          </View>
+                        ) : null}
+                      </View>
+                    </TouchableOpacity>
+                  </SwipeableRow>
                 );
               }))}
             </ScrollView>

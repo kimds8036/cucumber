@@ -53,7 +53,14 @@ export function NotificationProvider({ children }) {
       setHasUnread(true);
     };
 
+    const pokeHandler = () => setHasUnread(true);
+    const studyFinishedSummaryHandler = () => {
+      refreshHasUnread();
+    };
+
     socket.on('notification', handler);
+    socket.on('friend_poke', pokeHandler);
+    socket.on('friend_study_finished_summary', studyFinishedSummaryHandler);
 
     const onConnect = () => {
       refreshHasUnread();
@@ -62,6 +69,8 @@ export function NotificationProvider({ children }) {
 
     return () => {
       socket.off('notification', handler);
+      socket.off('friend_poke', pokeHandler);
+      socket.off('friend_study_finished_summary', studyFinishedSummaryHandler);
       socket.off('connect', onConnect);
     };
   }, [socket, refreshHasUnread]);

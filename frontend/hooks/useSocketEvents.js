@@ -38,23 +38,28 @@ export function useSocketEvents({ onFriendTimerStatus, onFriendPoke } = {}) {
     [socket],
   );
 
-  const emitTimerStatus = useCallback(
-    (status, payload = {}) => {
-      if (!socket) return;
-      if (status === 'studying') {
-        socket.emit('friend_timer_status', {
-          status,
-          dayKey: payload.dayKey,
-          subjectId: payload.subjectId,
-          subjectName: payload.subjectName,
-          startSeconds: payload.startSeconds,
-        });
-      } else {
-        socket.emit('friend_timer_status', { status });
-      }
-    },
-    [socket],
-  );
+  const emitTimerStatus = useCallback((status, payload = {}) => {
+    if (!socket || !socket.connected) {
+      console.warn('[useSocketEvents] 소켓 미연결 상태에서 emitTimerStatus 시도');
+      setTimeout(() => {
+        if (socket?.connected) {
+          emitTimerStatus(status, payload);
+        }
+      }, 2000);
+      return;
+    }
+    if (status === 'studying') {
+      socket.emit('friend_timer_status', {
+        status,
+        dayKey: payload.dayKey,
+        subjectId: payload.subjectId,
+        subjectName: payload.subjectName,
+        startSeconds: payload.startSeconds,
+      });
+    } else {
+      socket.emit('friend_timer_status', { status });
+    }
+  }, [socket]);
 
   const emitFriendNotifyOnStop = useCallback(
     (targetUserId) => {

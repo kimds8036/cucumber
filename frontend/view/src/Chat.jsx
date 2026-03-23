@@ -21,6 +21,11 @@ import { createDetailStyles, getNormalize as getBoardNormalize } from '../../sty
 import { createChatStyles } from '../../styles/message.style';
 import MessageTabIcon from '../../assets/Group 166.svg';
 import { api } from '../../utils/api';
+import { useNotification } from '../../context/NotificationContext';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { io } from 'socket.io-client';
+
+const AUTH_TOKEN_KEY = '@auth_token';
 
 // ─────────────────────────────────────────────
 // 1. 게시글 캐시
@@ -77,6 +82,7 @@ function normalizeMessage(m, meId) {
     id: String(m.id),
     isMe,
     content: m.content,
+    is_deleted: Boolean(m.is_deleted),
     createdAt,
     dateKey: getDateKey(d),
     time: formatChatTime(createdAt),
@@ -108,7 +114,7 @@ function injectDateBanners(msgs) {
 // ─────────────────────────────────────────────
 // 5. 개별 메시지 컴포넌트 (React.memo로 리렌더 방지)
 // ─────────────────────────────────────────────
-const MessageItem = memo(({ msg, chatStyles, normalize, onRetry }) => {
+const MessageItem = memo(({ msg, chatStyles, normalize, onRetry, onDeleteMessage }) => {
   if (msg.type === 'dateBanner') {
     return (
       <View style={{ alignItems: 'center', marginVertical: normalize(8) }}>
@@ -133,27 +139,49 @@ const MessageItem = memo(({ msg, chatStyles, normalize, onRetry }) => {
       <View style={chatStyles.chatRowUser}>
         <View style={chatStyles.userBubbleAndTime}>
           <View style={chatStyles.userTimeColumn}>
-            {/* 전송 실패 시 재전송 버튼 */}
             {msg.isFailed ? (
               <TouchableOpacity onPress={() => onRetry(msg)} style={{ alignItems: 'flex-end' }}>
                 <Ionicons name="refresh-circle" size={normalize(20)} color={colors.alert} />
                 <Text style={{ fontSize: normalize(10), color: colors.alert }}>재전송</Text>
               </TouchableOpacity>
             ) : (
-              <Text style={chatStyles.chatTimeUser}>
-                {msg.isReadByOther === false && !msg.isSending ? '1 ' : ''}
-                {msg.isSending ? '...' : msg.time}
-              </Text>
+              <>
+                {msg.isReadByOther === false && !msg.isSending && (
+                  <Text style={chatStyles.chatUnreadCount}>1</Text>
+                )}
+                <Text style={chatStyles.chatTimeUser}>
+                  {msg.isSending ? '...' : msg.time}
+                </Text>
+              </>
             )}
           </View>
-          <View
+          <TouchableOpacity
             style={[
               chatStyles.userBubble,
               msg.isFailed && { borderWidth: 1, borderColor: colors.alert },
+              msg.is_deleted && { backgroundColor: colors.disabled },
             ]}
+            onLongPress={() => {
+              if (msg.is_deleted || msg.isSending) return;
+              Alert.alert(
+                '메시지 삭제',
+                '이 메시지를 삭제하시겠어요?\n상대방 화면에서도 삭제됩니다.',
+                [
+                  { text: '취소', style: 'cancel' },
+                  {
+                    text: '삭제',
+                    style: 'destructive',
+                    onPress: () => onDeleteMessage?.(msg.id),
+                  },
+                ]
+              );
+            }}
+            activeOpacity={0.8}
           >
-            <Text style={chatStyles.userBubbleText}>{msg.content}</Text>
-          </View>
+            <Text style={chatStyles.userBubbleText}>
+              {msg.is_deleted ? '삭제된 메시지입니다.' : msg.content}
+            </Text>
+          </TouchableOpacity>
         </View>
       </View>
     );
@@ -168,11 +196,17 @@ const MessageItem = memo(({ msg, chatStyles, normalize, onRetry }) => {
         <View style={chatStyles.opponentNameAndBubble}>
           <Text style={chatStyles.opponentName}>익명</Text>
           <View style={chatStyles.opponentBubble}>
-            <Text style={chatStyles.opponentBubbleText}>{msg.content}</Text>
+            <Text
+              style={[
+                chatStyles.opponentBubbleText,
+                msg.is_deleted && { color: colors.textSecondary, fontStyle: 'italic' },
+              ]}
+            >
+              {msg.is_deleted ? '삭제된 메시지입니다.' : msg.content}
+            </Text>
           </View>
         </View>
         <View style={chatStyles.opponentTimeRow}>
-          {!msg.isReadByMe && <Text style={chatStyles.chatUnreadCount}>●</Text>}
           <Text style={chatStyles.chatTimeOpponent}>{msg.time}</Text>
         </View>
       </View>
@@ -190,6 +224,7 @@ export default function Chat({ navigation, route }) {
   const chatStyles = useMemo(() => createChatStyles(width, normalize), [width, normalize]);
 
   const roomId = route?.params?.roomId;
+  const { refreshHasUnread } = useNotification();
 
   const [post, setPost] = useState(null);
   const [messages, setMessages] = useState([]);    // 시간순(오름차순) 정렬된 UI 모델 배열
@@ -199,7 +234,7 @@ export default function Chat({ navigation, route }) {
 
   const insets = useSafeAreaInsets();
   const pollRef = useRef(null);
-  const socketRef = useRef(null);                  // WebSocket 인스턴스
+  const socketRef = useRef(null);                  // Socket.io 인스턴스
   const currentUserIdRef = useRef(null);           // 클로저 문제 방지용 ref
 
   // currentUserId 변경 시 ref도 동기화
@@ -282,6 +317,7 @@ export default function Chat({ navigation, route }) {
             relatedType: 'message_room',
             relatedId: roomId,
           }).catch(() => {});
+          refreshHasUnread();
         } catch { /* ignore */ }
 
       } catch (error) {
@@ -294,89 +330,87 @@ export default function Chat({ navigation, route }) {
   }, [roomId]);
 
   // ─────────────────────────────────────────────
-  // 7. WebSocket 연결 (소켓이 있으면 폴링 대신 사용)
-  //    ※ 백엔드 소켓 서버 URL을 실제 환경에 맞게 교체하세요.
-  //      예) process.env.EXPO_PUBLIC_WS_URL || 'ws://localhost:3000'
+  // 7. Socket.io 연결 (백엔드 socketServer.js 와 동일 프로토콜)
+  //    토큰 없거나 연결 실패 시 폴링 fallback · 재연결은 socket.io 기본 동작
   // ─────────────────────────────────────────────
   useEffect(() => {
     if (!roomId) return;
 
-    const WS_URL = process.env.EXPO_PUBLIC_WS_URL;   // 환경변수로 관리 권장
-    if (!WS_URL) {
-      // 소켓 URL이 없으면 폴링으로 fallback
-      startPolling();
-      return;
-    }
-
-    let ws;
-    let reconnectTimer;
     let isMounted = true;
 
-    const connect = () => {
-      ws = new WebSocket(`${WS_URL}?roomId=${roomId}`);
-      socketRef.current = ws;
+    const connect = async () => {
+      const token = await AsyncStorage.getItem(AUTH_TOKEN_KEY);
+      if (!token || !isMounted) {
+        startPolling();
+        return;
+      }
 
-      ws.onopen = () => {
-        console.log('[WS] 연결 성공');
-        // 소켓이 연결됐으면 폴링 중단
+      const BASE_URL = api.defaults.baseURL;
+
+      const socket = io(BASE_URL, {
+        auth: { token },
+        transports: ['websocket'],
+      });
+
+      if (!isMounted) {
+        socket.disconnect();
+        return;
+      }
+
+      socketRef.current = socket;
+
+      socket.on('connect', () => {
+        console.log('[Socket.io] 연결 성공');
         stopPolling();
-      };
+        socket.emit('join_room', { roomId });
+      });
 
-      ws.onmessage = (e) => {
-        try {
-          const payload = JSON.parse(e.data);
-
-          // 새 메시지 수신
-          if (payload.type === 'new_message') {
-            const meId = currentUserIdRef.current;
-            const newMsg = normalizeMessage(payload.message, meId);
-            setMessages((prev) => {
-              // 중복 방지: 이미 같은 id가 있으면 무시
-              if (prev.some((m) => m.id === newMsg.id)) return prev;
-              return [...prev, newMsg];
-            });
-            // 상대방 메시지면 즉시 읽음 처리
-            if (!newMsg.isMe) {
-              api.put(`/api/messages/rooms/${roomId}/read`).catch(() => {});
-            }
-          }
-
-          // 읽음 상태 갱신 (상대가 내 메시지를 읽었을 때)
-          if (payload.type === 'read_receipt') {
-            setMessages((prev) =>
-              prev.map((msg) =>
-                msg.isMe ? { ...msg, isReadByOther: true } : msg
-              )
-            );
-          }
-        } catch (err) {
-          console.error('[WS] 메시지 파싱 오류:', err);
+      socket.on('new_message', (payload) => {
+        if (!payload?.message) return;
+        const meId = currentUserIdRef.current;
+        const newMsg = normalizeMessage(payload.message, meId);
+        setMessages((prev) => {
+          if (prev.some((m) => String(m.id) === String(newMsg.id))) return prev;
+          // 내가 보낸 메시지가 소켓으로 돌아온 경우 (tempId → 실제id 교체)
+          const hasTempVersion = prev.some(
+            (m) => m.isSending && m.isMe && m.content === newMsg.content
+          );
+          if (hasTempVersion) return prev;
+          return [...prev, newMsg];
+        });
+        if (!newMsg.isMe) {
+          api.put(`/api/messages/rooms/${roomId}/read`).catch(() => {});
         }
-      };
+      });
 
-      ws.onerror = (err) => {
-        console.error('[WS] 오류:', err);
-      };
+      socket.on('read_receipt', (payload) => {
+        if (String(payload.roomId) !== String(roomId)) return;
+        setMessages((prev) =>
+          prev.map((msg) =>
+            msg.isMe ? { ...msg, isReadByOther: true } : msg
+          )
+        );
+      });
 
-      ws.onclose = () => {
-        console.warn('[WS] 연결 종료 → 3초 후 재연결');
-        if (isMounted) {
-          // 소켓이 끊기면 폴링으로 임시 fallback
-          startPolling();
-          reconnectTimer = setTimeout(() => {
-            if (isMounted) connect();
-          }, 3000);
-        }
-      };
+      socket.on('disconnect', () => {
+        console.warn('[Socket.io] 연결 종료');
+        if (isMounted) startPolling();
+      });
+
+      socket.on('connect_error', (err) => {
+        console.error('[Socket.io] 연결 오류:', err.message);
+        if (isMounted) startPolling();
+      });
     };
 
     connect();
 
     return () => {
       isMounted = false;
-      clearTimeout(reconnectTimer);
-      ws?.close();
-      socketRef.current = null;
+      if (socketRef.current) {
+        socketRef.current.disconnect();
+        socketRef.current = null;
+      }
       stopPolling();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -448,6 +482,7 @@ export default function Chat({ navigation, route }) {
       type: 'message',
       isMe: true,
       content: text,
+      is_deleted: false,
       createdAt: nowIso,
       dateKey: getDateKey(d),
       time: formatChatTime(nowIso),
@@ -493,6 +528,20 @@ export default function Chat({ navigation, route }) {
     handleSendMessage(failedMsg.content);
   }, [handleSendMessage]);
 
+  const handleDeleteMessage = useCallback(async (messageId) => {
+    if (String(messageId).startsWith('temp-')) return;
+    try {
+      await api.delete(`/api/messages/${messageId}`);
+      setMessages((prev) =>
+        prev.map((m) =>
+          m.id === String(messageId) ? { ...m, is_deleted: true } : m
+        )
+      );
+    } catch (e) {
+      Alert.alert('오류', '메시지 삭제에 실패했습니다.');
+    }
+  }, []);
+
   // ─────────────────────────────────────────────
   // 11. 날짜 배너가 삽입된 역순 배열 (FlatList inverted용)
   //     - injectDateBanners는 순방향에서 수행 후 reverse
@@ -512,8 +561,9 @@ export default function Chat({ navigation, route }) {
       chatStyles={chatStyles}
       normalize={normalize}
       onRetry={handleRetry}
+      onDeleteMessage={handleDeleteMessage}
     />
-  ), [chatStyles, normalize, handleRetry]);
+  ), [chatStyles, normalize, handleRetry, handleDeleteMessage]);
 
   const keyExtractor = useCallback((item) => item.id, []);
   const keyboardVerticalOffset = insets.top + normalize(48);

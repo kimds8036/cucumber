@@ -33,7 +33,7 @@ const FriendsScreen = ({ navigation }) => {
   // 화면 포커스 시 친구 요청 뱃지 갱신 (빨간점 해제 반영)
   useFocusEffect(
     React.useCallback(() => {
-      refreshFriendRequestBadge?.();
+      refreshFriendRequestBadge?.({ reason: 'friends_screen_focus' });
     }, [refreshFriendRequestBadge])
   );
 
@@ -82,7 +82,7 @@ const FriendsScreen = ({ navigation }) => {
       await api.post(`/api/friends/requests/${req.requestId}/accept`);
       setFriendRequests((prev) => prev.filter((r) => r.id !== req.id));
       setFriends((prev) => [...prev, { ...req }]);
-      refreshFriendRequestBadge?.();
+      refreshFriendRequestBadge?.({ reason: 'after_accept' });
     } catch (error) {
       console.error('친구 요청 수락 실패:', error);
       Alert.alert(
@@ -96,7 +96,7 @@ const FriendsScreen = ({ navigation }) => {
     try {
       await api.post(`/api/friends/requests/${req.requestId}/reject`);
       setFriendRequests((prev) => prev.filter((r) => r.id !== req.id));
-      refreshFriendRequestBadge?.();
+      refreshFriendRequestBadge?.({ reason: 'after_reject' });
     } catch (error) {
       console.error('친구 요청 거절 실패:', error);
       Alert.alert(

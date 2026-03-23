@@ -93,12 +93,25 @@ router.post('/:postId/comments', authenticate, async (req, res) => {
       parentComment = parentComments[0];
     }
 
-    // 해당 게시글의 댓글 수 계산하여 익명 번호 부여 (삭제되지 않은 댓글만)
-    const [commentCountResult] = await pool.execute(
-      'SELECT COUNT(*) as count FROM comments WHERE post_id = ? AND is_deleted = FALSE',
-      [postId],
+    // 익명 번호: 게시글 내 동일 유저는 같은 번호 유지, 신규 유저는 고유 작성자 수 기준 순번
+    const [existingIndex] = await pool.execute(
+      `SELECT anonymous_index FROM comments
+       WHERE post_id = ? AND user_id = ? AND is_deleted = FALSE
+       LIMIT 1`,
+      [postId, userId],
     );
-    const anonymousIndex = (commentCountResult[0].count % 100) + 1;
+
+    let anonymousIndex;
+    if (existingIndex.length > 0) {
+      anonymousIndex = existingIndex[0].anonymous_index;
+    } else {
+      const [uniqueAuthors] = await pool.execute(
+        `SELECT COUNT(DISTINCT user_id) as count FROM comments
+         WHERE post_id = ? AND is_deleted = FALSE`,
+        [postId],
+      );
+      anonymousIndex = uniqueAuthors[0].count + 1;
+    }
 
     // 댓글 생성
     const [result] = await pool.execute(

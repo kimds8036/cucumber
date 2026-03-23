@@ -22,6 +22,7 @@ import CommentInput from '../../components/CommentInput.jsx';
 import { colors, fonts } from '../../styles/colors';
 import { createDetailStyles, getNormalize } from '../../styles/board.style';
 import { api } from '../../utils/api';
+import { useNotification } from '../../context/NotificationContext';
 
 /** 서버 created_at(UTC)을 "n분 전" 형식으로 변환. 화면에서는 기기 로컬 시간 기준으로 계산 */
 function formatTimeAgo(createdAt) {
@@ -96,6 +97,7 @@ export default function BoardDetail({ navigation, route }) {
     likes: 213,
     comments: 89,
     liked: false,
+    scraps: 0,
   };
   const routePost = route?.params?.post;
   const routePostId = route?.params?.postId;
@@ -114,6 +116,7 @@ export default function BoardDetail({ navigation, route }) {
   const isMyPost = route?.params?.isMyPost ?? false;
   const [isMyPostFromApi, setIsMyPostFromApi] = useState(isMyPost);
   const [postLiked, setPostLiked] = useState(initialPost.liked ?? false);
+  const [postScrapped, setPostScrapped] = useState(Boolean(post?.isScrapped));
   const [commentLikedState, setCommentLikedState] = useState({});
   const [bottomComment, setBottomComment] = useState('');
   const [replyToCommentId, setReplyToCommentId] = useState(null);
@@ -135,6 +138,7 @@ export default function BoardDetail({ navigation, route }) {
   const [allComments, setAllComments] = useState([]);
   const [postAuthorId, setPostAuthorId] = useState(null);
   const [currentUserId, setCurrentUserId] = useState(null);
+  const { refreshHasUnread } = useNotification();
 
   // 게시글/댓글 로드
   useEffect(() => {
@@ -155,8 +159,10 @@ export default function BoardDetail({ navigation, route }) {
             content: data.content,
             likes: data.like_count,
             comments: data.comment_count,
+            scraps: data.scrapCount ?? 0,
           });
           setPostLiked(Boolean(data.isLiked));
+          setPostScrapped(Boolean(data.isScrapped));
           if (data.isMine !== undefined) setIsMyPostFromApi(data.isMine);
           if (data.post_author_id != null) setPostAuthorId(data.post_author_id);
           if (data.current_user_id != null) setCurrentUserId(data.current_user_id);
@@ -210,6 +216,7 @@ export default function BoardDetail({ navigation, route }) {
             relatedType: 'post',
             relatedId: postId,
           });
+          refreshHasUnread();
         } catch (e) {
           console.error('게시글 관련 알림 읽음 처리 실패:', e);
         }
@@ -515,6 +522,22 @@ export default function BoardDetail({ navigation, route }) {
         '오류',
         error.response?.data?.message || '좋아요 처리 중 오류가 발생했습니다.'
       );
+    }
+  };
+
+  const handlePostScrap = async () => {
+    try {
+      const res = await api.post(`/api/posts/${post.id}/scrap`);
+      const scrapped = res.data?.scrapped;
+      setPostScrapped(Boolean(scrapped));
+      setPost((prev) => {
+        const cur = prev?.scraps ?? 0;
+        const next = scrapped ? cur + 1 : Math.max(0, cur - 1);
+        return prev ? { ...prev, scraps: next } : prev;
+      });
+    } catch (error) {
+      console.error('게시글 스크랩 오류:', error);
+      Alert.alert('오류', '스크랩 처리 중 오류가 발생했습니다.');
     }
   };
 
@@ -834,6 +857,19 @@ export default function BoardDetail({ navigation, route }) {
                       <Ionicons name="chatbubble-outline" size={normalize(15)} color={colors.primary} />
                       <Text style={styles.detailStatText}>{post.comments}</Text>
                     </View>
+                    <TouchableOpacity
+                      style={styles.detailStatItem}
+                      onPress={handlePostScrap}
+                      activeOpacity={0.7}
+                      hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                    >
+                      <Ionicons
+                        name={postScrapped ? 'bookmark' : 'bookmark-outline'}
+                        size={normalize(14)}
+                        color={colors.scrap}
+                      />
+                      <Text style={styles.detailStatText}>{post.scraps ?? 0}</Text>
+                    </TouchableOpacity>
                   </View>
                   <View ref={postMenuButtonRef} collapsable={false}>
                     <TouchableOpacity
@@ -1020,4 +1056,4 @@ export default function BoardDetail({ navigation, route }) {
       </SafeAreaView>
     </View>
   );
-}
+} 

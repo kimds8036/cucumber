@@ -49,7 +49,6 @@ const SchoolBoardAll = ({ navigation }) => {
   const normalize = useMemo(() => getNormalize(width), [width]);
   const styles = useMemo(() => createSchoolBoardStyles(width, normalize), [width]);
 
-  const [sortType, setSortType] = useState('latest'); // latest, popular
   const [schoolPosts, setSchoolPosts] = useState([]);
   const [loading, setLoading] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
@@ -178,12 +177,11 @@ const SchoolBoardAll = ({ navigation }) => {
         if (mounted) setSchoolPosts([]);
         return;
       }
-      const sortParam = sortType === 'popular' ? 'popular' : 'latest';
       const postsRes = await api.get('/api/posts', {
         params: {
           boardType: 'school',
           schoolId,
-          sort: sortParam,
+          sort: 'latest',
           page: nextPage,
           limit: 20,
         },
@@ -198,7 +196,9 @@ const SchoolBoardAll = ({ navigation }) => {
         content: p.content,
         likes: p.like_count,
         comments: p.comment_count,
-        liked: false,
+        liked: Boolean(p.isLiked ?? false),
+        scrapped: Boolean(p.isScrapped ?? false),
+        scrapCount: p.scrapCount ?? 0,
         isMyPost: !!p.is_author,
         authorUserId: p.author_user_id,
       }));
@@ -221,7 +221,7 @@ const SchoolBoardAll = ({ navigation }) => {
 
   useEffect(() => {
     fetchSchoolPosts(1, false);
-  }, [sortType]);
+  }, []);
 
   const handleRefresh = () => {
     fetchSchoolPosts(1, false);
@@ -284,6 +284,13 @@ const SchoolBoardAll = ({ navigation }) => {
             <Ionicons name="chatbubble-outline" size={normalize(15)} color={colors.primary} />
             <Text style={styles.postStatText}>{post.comments}</Text>
           </View>
+          <View style={styles.postStatItem}>
+            <Ionicons
+              name="bookmark-outline"
+              size={normalize(14)}
+              color={colors.scrap}
+            />
+          </View>
         </View>
         <View
           ref={(r) => {
@@ -320,26 +327,6 @@ const SchoolBoardAll = ({ navigation }) => {
           <Ionicons name="search" size={normalize(22)} color={colors.textPrimary} />
         }
       />
-
-      {/* 정렬 버튼 영역 */}
-      <View style={styles.sortContainer}>
-        <TouchableOpacity
-          style={[styles.sortButton, sortType === 'latest' && styles.sortButtonActive]}
-          onPress={() => setSortType('latest')}
-        >
-          <Text style={[styles.sortButtonText, sortType === 'latest' && styles.sortButtonTextActive]}>
-            최신
-          </Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={[styles.sortButton, sortType === 'popular' && styles.sortButtonActive]}
-          onPress={() => setSortType('popular')}
-        >
-          <Text style={[styles.sortButtonText, sortType === 'popular' && styles.sortButtonTextActive]}>
-            인기
-          </Text>
-        </TouchableOpacity>
-      </View>
 
       {/* 게시글 목록 - FlatList + 무한 스크롤 */}
       <FlatList

@@ -1,12 +1,15 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useMemo } from 'react';
 import {
   View, Text, StyleSheet, ScrollView,
-  TouchableOpacity, Animated,
+  TouchableOpacity, Animated, useWindowDimensions,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import FontAwesome from '@expo/vector-icons/FontAwesome';
 import SubHeader from '../frame/subHeader';
 import { api } from '../../utils/api';
+import { colors } from '../../styles/colors';
+import { getNormalize } from '../../styles/board.style';
 
 function formatDate(dateString) {
   if (!dateString) return '';
@@ -19,10 +22,12 @@ function formatDate(dateString) {
 }
 
 const ActivityPage = ({ navigation }) => {
+  const { width } = useWindowDimensions();
+  const normalize = useMemo(() => getNormalize(width), [width]);
   const [activeTab, setActiveTab] = useState('written');
   const slideAnim = useRef(new Animated.Value(0)).current;
   const [writtenPosts, setWrittenPosts] = useState([]);
-  const [likedPosts, setLikedPosts] = useState([]);
+  const [scrappedPosts, setScrappedPosts] = useState([]);
   const [loading, setLoading] = useState(false);
 
   const handleTabChange = (tab) => {
@@ -40,9 +45,9 @@ const ActivityPage = ({ navigation }) => {
     const fetchData = async () => {
       try {
         setLoading(true);
-        const [writtenRes, likedRes] = await Promise.all([
+        const [writtenRes, scrappedRes] = await Promise.all([
           api.get('/api/posts/my', { params: { page: 1, limit: 50 } }),
-          api.get('/api/posts/liked', { params: { page: 1, limit: 50 } }),
+          api.get('/api/posts/scrapped', { params: { page: 1, limit: 50 } }),
         ]);
 
         if (!mounted) return;
@@ -53,18 +58,22 @@ const ActivityPage = ({ navigation }) => {
           date: formatDate(p.created_at),
           likes: p.like_count,
           comments: p.comment_count,
+          liked: Boolean(p.isLiked ?? false),
+          scrapCount: Number(p.scrapCount) || 0,
         }));
 
-        const lp = (likedRes.data?.data?.posts || []).map((p) => ({
+        const sp = (scrappedRes.data?.data?.posts || []).map((p) => ({
           id: p.id,
           title: (p.content || '').split('\n')[0].slice(0, 40) || '제목 없음',
           date: formatDate(p.created_at),
           likes: p.like_count,
           comments: p.comment_count,
+          liked: Boolean(p.isLiked ?? false),
+          scrapCount: Number(p.scrapCount) || 0,
         }));
 
         setWrittenPosts(wp);
-        setLikedPosts(lp);
+        setScrappedPosts(sp);
       } catch (error) {
         console.error('내 활동 게시글 로드 실패:', error);
       } finally {
@@ -78,7 +87,7 @@ const ActivityPage = ({ navigation }) => {
     };
   }, []);
 
-  const currentPosts = activeTab === 'written' ? writtenPosts : likedPosts;
+  const currentPosts = activeTab === 'written' ? writtenPosts : scrappedPosts;
 
   const PostItem = ({ post }) => (
     <TouchableOpacity
@@ -104,7 +113,15 @@ const ActivityPage = ({ navigation }) => {
         <Text style={styles.postDate}>{post.date}</Text>
         <View style={styles.stats}>
           <View style={styles.statItem}>
-            <Ionicons name="heart-outline" size={14} color="#FF8FA3" />
+            {activeTab === 'scrapped' ? (
+              <Ionicons name="bookmark" size={normalize(14)} color={colors.scrap} />
+            ) : (
+              <FontAwesome
+                name={post.liked ? 'heart' : 'heart-o'}
+                size={normalize(14)}
+                color={colors.alert}
+              />
+            )}
             <Text style={styles.statText}>{post.likes}</Text>
           </View>
           <View style={styles.statItem}>
@@ -127,7 +144,7 @@ const ActivityPage = ({ navigation }) => {
             style={[
               styles.pill,
               {
-                backgroundColor: activeTab === 'liked' ? '#FF6B6B' : '#8FD397',
+                backgroundColor: activeTab === 'scrapped' ? colors.scrap : '#8FD397',
                 left: slideAnim.interpolate({
                   inputRange: [0, 1],
                   outputRange: ['0%', '50%'],
@@ -157,23 +174,23 @@ const ActivityPage = ({ navigation }) => {
             </View>
           </TouchableOpacity>
 
-          {/* 좋아요 누른 글 */}
+          {/* 스크랩한 글 */}
           <TouchableOpacity
             style={styles.toggleBtn}
-            onPress={() => handleTabChange('liked')}
+            onPress={() => handleTabChange('scrapped')}
             activeOpacity={1}
           >
             <Ionicons
-              name="heart-outline"
+              name="bookmark-outline"
               size={13}
-              color={activeTab === 'liked' ? '#fff' : '#aaa'}
+              color={activeTab === 'scrapped' ? '#fff' : '#aaa'}
             />
-            <Text style={[styles.toggleText, activeTab === 'liked' && styles.toggleTextActive]}>
-              좋아요 누른 글
+            <Text style={[styles.toggleText, activeTab === 'scrapped' && styles.toggleTextActive]}>
+              스크랩한 글
             </Text>
-            <View style={[styles.cnt, activeTab === 'liked' && styles.cntActive]}>
-              <Text style={[styles.cntText, activeTab === 'liked' && styles.cntTextActive]}>
-                {likedPosts.length}
+            <View style={[styles.cnt, activeTab === 'scrapped' && styles.cntActive]}>
+              <Text style={[styles.cntText, activeTab === 'scrapped' && styles.cntTextActive]}>
+                {scrappedPosts.length}
               </Text>
             </View>
           </TouchableOpacity>
@@ -196,12 +213,12 @@ const ActivityPage = ({ navigation }) => {
         ) : (
           <View style={styles.empty}>
             <Ionicons
-              name={activeTab === 'written' ? 'document-text-outline' : 'heart-outline'}
+              name={activeTab === 'written' ? 'document-text-outline' : 'bookmark-outline'}
               size={48}
               color="#ddd"
             />
             <Text style={styles.emptyText}>
-              {activeTab === 'written' ? '아직 작성한 글이 없어요' : '아직 좋아요 누른 글이 없어요'}
+              {activeTab === 'written' ? '아직 작성한 글이 없어요' : '스크랩한 글이 없습니다'}
             </Text>
           </View>
         )}

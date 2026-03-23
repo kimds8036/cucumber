@@ -252,7 +252,9 @@ export const createChatStyles = (width, normalize) => {
     chatUnreadCount: {
       fontSize: normalize(11),
       fontFamily: fonts.bold,
-      color: colors.alert,
+      color: colors.primary,
+      marginBottom: normalize(2),
+      marginRight: normalize(4),
     },
     userBubbleAndTime: {
       flexDirection: 'row',
@@ -278,8 +280,9 @@ export const createChatStyles = (width, normalize) => {
     chatTimeUser: {
       fontSize: normalize(11),
       fontFamily: fonts.regular,
-      color: colors.textSecondary, // 시간 색상은 원래대로
+      color: colors.textSecondary,
       marginBottom: normalize(2),
+      marginRight: normalize(6),
     },
   });
 };

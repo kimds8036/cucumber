@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useRef, useEffect } from 'react';
+import React, { useState, useMemo, useRef, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -189,7 +189,9 @@ export function BoardAllContent({ navigation, posts }) {
         content: p.content,
         likes: p.like_count,
         comments: p.comment_count,
-        liked: false,
+        liked: Boolean(p.isLiked ?? false),
+        scrapped: Boolean(p.isScrapped ?? p.is_scrapped ?? false),
+        scrapCount: p.scrapCount ?? 0,
         isMyPost: !!p.is_author,
         authorUserId: p.author_user_id,
       }));
@@ -208,6 +210,7 @@ export function BoardAllContent({ navigation, posts }) {
       if (error.response?.data?.errorDetail) {
         console.error('서버 오류 상세:', error.response.data.errorDetail);
       }
+      Alert.alert('오류', '게시글을 불러오는 중 오류가 발생했습니다.');
     } finally {
       setLoading(false);
       setLoadingMore(false);
@@ -230,6 +233,27 @@ export function BoardAllContent({ navigation, posts }) {
     fetchPosts(page + 1, true);
   };
 
+  const handleScrapPress = useCallback(async (post) => {
+    try {
+      const res = await api.post(`/api/posts/${post.id}/scrap`);
+      const scrapped = Boolean(res.data?.scrapped);
+      setServerPosts((prev) =>
+        prev.map((p) => {
+          if (p.id !== post.id) return p;
+          const cur = p.scrapCount ?? 0;
+          const next = scrapped ? cur + 1 : Math.max(0, cur - 1);
+          return { ...p, scrapped, scrapCount: next };
+        })
+      );
+    } catch (error) {
+      console.error('스크랩 토글 오류:', error);
+      Alert.alert(
+        '오류',
+        error.response?.data?.message || '스크랩 처리에 실패했습니다.'
+      );
+    }
+  }, []);
+
   const renderPostItem = ({ item: post }) => (
     <BoardPostCard
       key={post.id}
@@ -243,6 +267,7 @@ export function BoardAllContent({ navigation, posts }) {
         })
       }
       onMenuPress={(p, ref) => openFloatingMenu(p, ref)}
+      onScrapPress={handleScrapPress}
     />
   );
 

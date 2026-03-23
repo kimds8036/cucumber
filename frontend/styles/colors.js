@@ -5,6 +5,7 @@ export const colors = {
   // 메인 컬러
   primary: '#A6DA95',        // 메인 초록색
   primaryDark: '#6f9163',    // 진한 초록색
+  scrap: '#F5A623',          // 스크랩 황금색
 
   // 배경 컬러
   background: '#fff',        // 기본 배경 (흰색)
@@ -28,6 +29,7 @@ export const colors = {
   // 추가 컬러
   shadow: '#000',            // 그림자
   transparent: 'transparent', // 투명
+  disabled: '#ECECEC',       // 비활성/삭제된 말풍선 배경 등
 
   // 투명도 버전 (Opacity)
   textLight5: 'rgba(39, 42, 38, 0.05)',   // 5%
