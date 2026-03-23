@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, TextInput, Alert } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, TextInput, Alert, ScrollView, KeyboardAvoidingView, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 
@@ -33,53 +33,65 @@ const ChangePassword = ({ navigation }) => {
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
-      {/* Header */}
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()}>
-          <Ionicons name="arrow-back" size={24} color="#333" />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>비밀번호 변경</Text>
-        <View style={{ width: 24 }} />
-      </View>
+      <KeyboardAvoidingView
+        style={{ flex: 1 }}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        keyboardVerticalOffset={0}
+      >
+        <ScrollView
+          contentContainerStyle={{ flexGrow: 1 }}
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
+        >
+          {/* Header */}
+          <View style={styles.header}>
+            <TouchableOpacity onPress={() => navigation.goBack()}>
+              <Ionicons name="arrow-back" size={24} color="#333" />
+            </TouchableOpacity>
+            <Text style={styles.headerTitle}>비밀번호 변경</Text>
+            <View style={{ width: 24 }} />
+          </View>
 
-      <View style={styles.content}>
-        <View style={styles.inputGroup}>
-          <Text style={styles.label}>현재 비밀번호</Text>
-          <TextInput
-            style={styles.input}
-            placeholder="현재 비밀번호를 입력하세요"
-            secureTextEntry
-            value={currentPassword}
-            onChangeText={setCurrentPassword}
-          />
-        </View>
+          <View style={styles.content}>
+            <View style={styles.inputGroup}>
+              <Text style={styles.label}>현재 비밀번호</Text>
+              <TextInput
+                style={styles.input}
+                placeholder="현재 비밀번호를 입력하세요"
+                secureTextEntry
+                value={currentPassword}
+                onChangeText={setCurrentPassword}
+              />
+            </View>
 
-        <View style={styles.inputGroup}>
-          <Text style={styles.label}>새 비밀번호</Text>
-          <TextInput
-            style={styles.input}
-            placeholder="새 비밀번호를 입력하세요"
-            secureTextEntry
-            value={newPassword}
-            onChangeText={setNewPassword}
-          />
-        </View>
+            <View style={styles.inputGroup}>
+              <Text style={styles.label}>새 비밀번호</Text>
+              <TextInput
+                style={styles.input}
+                placeholder="새 비밀번호를 입력하세요"
+                secureTextEntry
+                value={newPassword}
+                onChangeText={setNewPassword}
+              />
+            </View>
 
-        <View style={styles.inputGroup}>
-          <Text style={styles.label}>새 비밀번호 확인</Text>
-          <TextInput
-            style={styles.input}
-            placeholder="새 비밀번호를 다시 입력하세요"
-            secureTextEntry
-            value={confirmPassword}
-            onChangeText={setConfirmPassword}
-          />
-        </View>
+            <View style={styles.inputGroup}>
+              <Text style={styles.label}>새 비밀번호 확인</Text>
+              <TextInput
+                style={styles.input}
+                placeholder="새 비밀번호를 다시 입력하세요"
+                secureTextEntry
+                value={confirmPassword}
+                onChangeText={setConfirmPassword}
+              />
+            </View>
 
-        <TouchableOpacity style={styles.button} onPress={handleChangePassword}>
-          <Text style={styles.buttonText}>비밀번호 변경</Text>
-        </TouchableOpacity>
-      </View>
+            <TouchableOpacity style={styles.button} onPress={handleChangePassword}>
+              <Text style={styles.buttonText}>비밀번호 변경</Text>
+            </TouchableOpacity>
+          </View>
+        </ScrollView>
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 };

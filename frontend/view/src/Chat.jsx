@@ -230,7 +230,7 @@ export default function Chat({ navigation, route }) {
   const [messages, setMessages] = useState([]);    // 시간순(오름차순) 정렬된 UI 모델 배열
   const [currentUserId, setCurrentUserId] = useState(null);
   const [inputText, setInputText] = useState('');
-  const [isKeyboardVisible, setIsKeyboardVisible] = useState(false);
+  const [keyboardHeight, setKeyboardHeight] = useState(0);
 
   const insets = useSafeAreaInsets();
   const pollRef = useRef(null);
@@ -242,11 +242,21 @@ export default function Chat({ navigation, route }) {
     currentUserIdRef.current = currentUserId;
   }, [currentUserId]);
 
-  // ── 키보드 리스너 ──
+  // 키보드 높이 추적 (Android/iOS 공통)
   useEffect(() => {
-    const show = Keyboard.addListener('keyboardDidShow', () => setIsKeyboardVisible(true));
-    const hide = Keyboard.addListener('keyboardDidHide', () => setIsKeyboardVisible(false));
-    return () => { show.remove(); hide.remove(); };
+    const show = Keyboard.addListener(
+      Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow',
+      (e) => setKeyboardHeight(e?.endCoordinates?.height ?? 0),
+    );
+    const hide = Keyboard.addListener(
+      Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide',
+      () => setKeyboardHeight(0),
+    );
+
+    return () => {
+      show.remove();
+      hide.remove();
+    };
   }, []);
 
   // ── 메시지 목록 로드 (최초 1회) ──
@@ -587,7 +597,7 @@ export default function Chat({ navigation, route }) {
       <KeyboardAvoidingView
         style={{ flex: 1, backgroundColor: '#F8F9FA' }}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        keyboardVerticalOffset={keyboardVerticalOffset}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? keyboardVerticalOffset : 0}
       >
         <View style={{ flex: 1, backgroundColor: '#F8F9FA' }}>
           {/* 게시글 카드 */}
@@ -669,7 +679,12 @@ export default function Chat({ navigation, route }) {
           <View
             style={{
               backgroundColor: colors.background,
-              paddingBottom: isKeyboardVisible ? 0 : Math.max(insets.bottom, normalize(12)),
+              paddingBottom:
+                keyboardHeight > 0
+                  ? 0
+                  : insets.bottom > 0
+                    ? insets.bottom
+                    : normalize(12),
               borderTopWidth: 1,
               borderTopColor: '#E8E8E8',
             }}

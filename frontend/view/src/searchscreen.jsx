@@ -7,6 +7,8 @@ import {
   TouchableOpacity,
   TextInput,
   Animated,
+  KeyboardAvoidingView,
+  Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -100,6 +102,11 @@ const SearchScreen = ({ navigation }) => {
   return (
     <View style={{ flex: 1, backgroundColor: '#FAFAFA' }}>
       <SafeAreaView style={styles.container} edges={['top']}>
+        <KeyboardAvoidingView
+          style={{ flex: 1 }}
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          keyboardVerticalOffset={0}
+        >
         <View style={styles.searchBarWrapper}>
           <View style={styles.searchInputRow}>
             <Ionicons name="search-outline" size={18} color="#AAAAAA" />
@@ -192,6 +199,7 @@ const SearchScreen = ({ navigation }) => {
             </View>
           </View>
         </ScrollView>
+        </KeyboardAvoidingView>
       </SafeAreaView>
     </View>
   );

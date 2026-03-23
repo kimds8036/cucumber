@@ -6,9 +6,11 @@ import {
   TouchableOpacity,
   TouchableWithoutFeedback,
   Keyboard,
+  KeyboardAvoidingView,
   useWindowDimensions,
   Alert,
   ScrollView,
+  Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import SubHeader from '../frame/subHeader';
@@ -154,26 +156,31 @@ const BoardWrite = ({ navigation, route }) => {
     <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
       <View style={{ flex: 1 }}>
         <SafeAreaView style={styles.container} edges={['top']}>
-          <SubHeader
-            title="글쓰기"
-            onBack={handleBack}
-            rightButtonText="완료"
-            onRightPress={handleComplete}
-          />
-
-          <View style={styles.box} />
-
-          {/* 본문 입력 */}
-          <View style={styles.content}>
-            <TextInput
-              style={styles.textInput}
-              placeholder="오늘의 이야기를 들려주세요"
-              placeholderTextColor={styles.placeholder.color}
-              multiline
-              value={content}
-              onChangeText={setContent}
+          <KeyboardAvoidingView
+            style={{ flex: 1 }}
+            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+            keyboardVerticalOffset={0}
+          >
+            <SubHeader
+              title="글쓰기"
+              onBack={handleBack}
+              rightButtonText="완료"
+              onRightPress={handleComplete}
             />
-          </View>
+
+            <View style={styles.box} />
+
+            {/* 본문 입력 */}
+            <View style={styles.content}>
+              <TextInput
+                style={styles.textInput}
+                placeholder="오늘의 이야기를 들려주세요"
+                placeholderTextColor={styles.placeholder.color}
+                multiline
+                value={content}
+                onChangeText={setContent}
+              />
+            </View>
 
           {/* 구분선 */}
           <View style={hashtagSectionStyles.divider} />
@@ -252,6 +259,7 @@ const BoardWrite = ({ navigation, route }) => {
               </View>
             )}
           </View>
+          </KeyboardAvoidingView>
         </SafeAreaView>
 
         {/* 하단 가이드 */}

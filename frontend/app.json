@@ -29,7 +29,7 @@
         "CAMERA"
       ],
       "package": "com.eunchae0215.cucumber",
-      "softwareKeyboardLayoutMode": "adjustResize"
+      "softwareKeyboardLayoutMode": "pan"
     },
     "web": {
       "favicon": "./assets/favicon.png"

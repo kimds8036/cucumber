@@ -105,18 +105,20 @@ const SendMailScreen = ({ navigation }) => {
     : studentResults;
 
   return (
-    <View style={{ flex: 1, backgroundColor: styles.container.backgroundColor }}>
-      <SafeAreaView style={styles.container} edges={['top']}>
-        <SubHeader title="우편 보내기" onBack={() => navigation?.goBack()} />
+    <SafeAreaView style={styles.container} edges={['top']}>
+      <SubHeader title="우편 보내기" onBack={() => navigation?.goBack()} />
 
-        <KeyboardAvoidingView
-          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-          style={styles.keyboardView}
-          keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}>
-          <ScrollView
-            style={styles.scrollView}
-            showsVerticalScrollIndicator={false}
-            keyboardShouldPersistTaps="handled">
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        style={styles.keyboardView}
+        keyboardVerticalOffset={0}
+      >
+        <ScrollView
+          style={styles.scrollView}
+          contentContainerStyle={{ flexGrow: 1, paddingBottom: 40 }}
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+        >
             
             {/* 학교 검색 */}
             <View style={styles.section}>
@@ -334,9 +336,8 @@ const SendMailScreen = ({ navigation }) => {
               </TouchableOpacity>
             </View>
           )}
-        </KeyboardAvoidingView>
-      </SafeAreaView>
-    </View>
+      </KeyboardAvoidingView>
+    </SafeAreaView>
   );
 };
 

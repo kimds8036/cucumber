@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity, Modal, FlatList, ScrollView, KeyboardAvoidingView, Platform } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { colors } from '../../../styles/colors';
 
 const SignStep1 = ({ styles, normalize, onChange }) => {
@@ -45,15 +46,20 @@ const SignStep1 = ({ styles, normalize, onChange }) => {
   const days = Array.from({ length: 31 }, (_, i) => (i + 1).toString().padStart(2, '0'));
 
   return (
-    <KeyboardAvoidingView
-      style={styles.content}
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
-    >
-      <ScrollView
-        showsVerticalScrollIndicator={false}
-        keyboardShouldPersistTaps="handled"
+    <SafeAreaView style={{ flex: 1 }}>
+      <KeyboardAvoidingView
+        style={[styles.content, { flex: 1 }]}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        keyboardVerticalOffset={0}
       >
+        <ScrollView
+          contentContainerStyle={{
+            flexGrow: 1,
+            paddingBottom: normalize(40),
+          }}
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+        >
       {/* 이름 */}
       <Text style={styles.inputLabel}>이름</Text>
       <View style={styles.inputWrapper}>
@@ -273,8 +279,9 @@ const SignStep1 = ({ styles, normalize, onChange }) => {
           </View>
         </TouchableOpacity>
       </Modal>
-      </ScrollView>
-    </KeyboardAvoidingView>
+        </ScrollView>
+      </KeyboardAvoidingView>
+    </SafeAreaView>
   );
 };
 
