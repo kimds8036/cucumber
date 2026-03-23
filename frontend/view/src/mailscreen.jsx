@@ -1,124 +1,142 @@
-/**
- * 익명 우편함 화면 (React Native)
- * - Message.jsx 개인 우편함에서 우편 탭 시 route.params.mail 로 이 화면 진입 → 상세 표시
- * - mail 없이 진입 시 우편함 목록(MAILS) 표시, 항목 탭 시 상세로 이동
- */
-import React, { useState, useMemo } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   View,
   Text,
   TouchableOpacity,
   ScrollView,
+  ActivityIndicator,
+  Alert,
+  RefreshControl,
   useWindowDimensions,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Octicons from '@expo/vector-icons/Octicons';
 import SubHeader from '../frame/subHeader';
-import { colors, fonts } from '../../styles/colors';
+import { colors } from '../../styles/colors';
 import { getNormalize } from '../../styles/frame.style';
 import { createMailStyles } from '../../styles/mail.style';
+import { api } from '../../utils/api';
 
-// Message.jsx에서 넘어온 우편 형태 → 상세 화면용 형태로 통일
-// content가 없으면 MAILS 더미데이터에서 id로 찾아서 채움
-function toDetailMail(m) {
-  if (!m) return null;
-  const fromList = MAILS.find((mail) => mail.id === m.id);
-  const isSentItem = m.isReceived === false;
+function parseUtcToLocal(createdAt) {
+  if (!createdAt) return null;
+  let s = String(createdAt).trim();
+  if (!s) return null;
+  if (
+    /^\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}:\d{2}(\.\d+)?$/.test(s) &&
+    !/[Z+-]\d{2}:?\d{2}$/.test(s) &&
+    !/Z$/.test(s)
+  ) {
+    s = s.replace(' ', 'T') + 'Z';
+  }
+  const d = new Date(s);
+  return Number.isNaN(d.getTime()) ? null : d;
+}
 
-  // 받은 우편(ㄴ): content = 상대가 보낸 우편
-  // 보낸 우편(ㄱ): sentContent = 내가 보낸 우편, incomingReplyContent = 상대가 보낸 답장
-  const sentContent = m.sentContent ?? fromList?.sentContent;
-  const incomingReplyContent = m.incomingReplyContent ?? fromList?.incomingReplyContent;
+function formatListTime(createdAt) {
+  const d = parseUtcToLocal(createdAt);
+  if (!d) return '';
+  const yy = String(d.getFullYear()).slice(2);
+  const mm = String(d.getMonth() + 1).padStart(2, '0');
+  const dd = String(d.getDate()).padStart(2, '0');
+  const hh = String(d.getHours()).padStart(2, '0');
+  const mi = String(d.getMinutes()).padStart(2, '0');
+  return `${yy}/${mm}/${dd} ${hh}:${mi}`;
+}
 
-  const content = isSentItem
-    ? (sentContent || '(보낸 우편 내용이 없습니다.)')
-    : (m.content || fromList?.content || '(편지 내용이 없습니다.)');
-
-  // 받은 우편 화면에서의 "내가 보낸 답장"
-  const replyContent = m.replyContent ?? fromList?.replyContent;
-  const replyAt = m.replyAt ?? fromList?.replyAt;
-
-  const viewMode =
-    m.viewMode ??
-    fromList?.viewMode ??
-    (isSentItem ? (incomingReplyContent ? 'pair' : 'single') : (replyContent ? 'pair' : 'single'));
-
+function mapMailToListItem(mail, isReceived) {
   return {
-    id: m.id,
-    receivedAt: m.receivedAt ?? m.time,
-    preview: m.preview ?? fromList?.preview ?? (m.content ? `${String(m.content).slice(0, 30)}...` : ''),
-    content,
-    replied: m.replied ?? fromList?.replied ?? Boolean(replyContent),
-    replyContent,
-    replyAt,
-    isUnread: m.isUnread ?? (m.unreadCount > 0),
-    isReceived: m.isReceived ?? true,
-    senderName: m.senderName ?? '익명',
-    viewMode,
-    sentContent: sentContent ?? null,
-    incomingReplyContent: incomingReplyContent ?? null,
-    incomingReplyAt: m.incomingReplyAt ?? fromList?.incomingReplyAt ?? null,
+    id: mail.id,
+    raw: mail,
+    isReceived,
+    counterpartyUserId: isReceived ? mail.sender_id : mail.recipient_id,
+    preview: String(mail.content || '').slice(0, 40),
+    receivedAt: formatListTime(mail.created_at),
+    isUnread: isReceived ? !mail.is_read : false,
   };
 }
 
-// ─── 목록용 더미 데이터 (상세 진입 시에는 route.params.mail 사용) ───
-const MAILS = [
-  {
-    id: 1,
-    receivedAt: '2시간 전',
-    preview: '오늘도 수고했어. 요즘 많이 힘들어 보이던데...',
-    content: `오늘도 수고했어.\n\n요즘 많이 힘들어 보이던데 괜찮아?\n가끔 네 모습 보면 대단하다 싶어.\n\n그냥 한번쯤 전하고 싶었어.`,
-    replied: false,
-    isUnread: true,
-  },
-  {
-    id: 2,
-    receivedAt: '어제',
-    preview: '항상 밝게 웃는 모습이 주변을 환하게 만들어.',
-    content: `항상 밝게 웃는 모습이 주변을 환하게 만들어.\n그 에너지가 부러워서 편지 써봤어.\n\n그냥, 고마워.`,
-    replied: true,
-    replyContent: '누군지 모르지만 이런 편지 받으니까 정말 기뻤어. 고마워 :)',
-    replyAt: '어제',
-    isUnread: false,
-    viewMode: 'pair',
-  },
-  {
-    id: 3,
-    receivedAt: '3일 전',
-    preview: '네 글씨체가 진짜 예뻐. 수업 시간에 훔쳐본 거 들키지 않길.',
-    content: `오랫동안 하고 싶었던 말인데\n네 글씨체가 진짜 예뻐.\n수업 시간에 필기 훔쳐본 거 들키지 않았길 바라며.`,
-    replied: false,
-    isUnread: false,
-  },
-  {
-    id: 4,
-    receivedAt: '방금',
-    preview: '내가 보낸 우편 + 받은 답장 예시',
-    // ㄱ(보낸 사람) 화면에서: 위(보낸 우편) + 아래(받은 답장)
-    sentContent: '어제 편지 고마워! 나도 너한테 꼭 말해주고 싶었어 :)',
-    incomingReplyContent: '나도 고마워. 다음에 같이 점심 먹자!',
-    incomingReplyAt: '방금',
-    replied: false,
-    isUnread: true,
-    viewMode: 'pair',
-  },
-];
-
-// ─── 우편함 목록 ─────────────────────────────────────────────────────
-function MailInbox({ onOpen, onBack }) {
+function MailInbox({ onOpen, onBack, navigation }) {
   const { width } = useWindowDimensions();
   const normalize = useMemo(() => getNormalize(width), [width]);
-  const styles = useMemo(() => createStyles(normalize), [normalize]);
+  const styles = useMemo(() => createMailStyles(normalize), [normalize]);
+  const [tab, setTab] = useState('received');
+  const [items, setItems] = useState([]);
+  const [page, setPage] = useState(1);
+  const [hasMore, setHasMore] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [error, setError] = useState('');
+
+  const fetchList = useCallback(async (nextPage = 1, append = false) => {
+    try {
+      if (nextPage === 1 && !append) setLoading(true);
+      setError('');
+      const isReceived = tab === 'received';
+      const endpoint = isReceived ? '/api/mails/personal/received' : '/api/mails/personal/sent';
+      const res = await api.get(endpoint, { params: { page: nextPage, limit: 20 } });
+      const mails = res.data?.data?.mails || [];
+      const mapped = mails.map((mail) => mapMailToListItem(mail, isReceived));
+      const totalPages = Number(res.data?.data?.pagination?.totalPages || 1);
+
+      setItems((prev) => (append ? [...prev, ...mapped] : mapped));
+      setPage(nextPage);
+      setHasMore(nextPage < totalPages);
+    } catch (e) {
+      setError(e.response?.data?.message || '우편함을 불러오지 못했습니다.');
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  }, [tab]);
+
+  useEffect(() => {
+    fetchList(1, false);
+  }, [fetchList]);
+
+  const handleRefresh = () => {
+    setRefreshing(true);
+    fetchList(1, false);
+  };
 
   return (
     <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
       <SubHeader title="익명 우편함" onBack={onBack} />
+      <View style={{ flexDirection: 'row', paddingHorizontal: normalize(16), gap: normalize(8), marginBottom: normalize(8) }}>
+        <TouchableOpacity
+          style={{ flex: 1, paddingVertical: normalize(10), borderRadius: normalize(12), backgroundColor: tab === 'received' ? colors.primary : '#EEE', alignItems: 'center' }}
+          onPress={() => setTab('received')}
+        >
+          <Text style={{ color: tab === 'received' ? '#fff' : '#444' }}>받은 우편</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={{ flex: 1, paddingVertical: normalize(10), borderRadius: normalize(12), backgroundColor: tab === 'sent' ? colors.primary : '#EEE', alignItems: 'center' }}
+          onPress={() => setTab('sent')}
+        >
+          <Text style={{ color: tab === 'sent' ? '#fff' : '#444' }}>보낸 우편</Text>
+        </TouchableOpacity>
+      </View>
       <ScrollView
         style={styles.scroll}
-        contentContainerStyle={styles.inboxContainer}
+        contentContainerStyle={[styles.inboxContainer, { paddingBottom: normalize(20) }]}
         showsVerticalScrollIndicator={false}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />}
       >
-        {MAILS.map((mail) => (
+        {loading && (
+          <View style={{ paddingVertical: normalize(20), alignItems: 'center' }}>
+            <ActivityIndicator />
+          </View>
+        )}
+        {!loading && !!error && (
+          <View style={{ paddingVertical: normalize(20), alignItems: 'center' }}>
+            <Text style={{ color: '#E74C3C' }}>{error}</Text>
+          </View>
+        )}
+        {!loading && !error && items.length === 0 && (
+          <View style={{ paddingVertical: normalize(20), alignItems: 'center' }}>
+            <Text>우편이 없습니다.</Text>
+          </View>
+        )}
+        {items.map((mail) => (
           <TouchableOpacity
             key={mail.id}
             style={[styles.mailCard, mail.isUnread && styles.mailCardUnread]}
@@ -133,37 +151,83 @@ function MailInbox({ onOpen, onBack }) {
             <Text style={styles.mailPreview} numberOfLines={1}>{mail.preview}</Text>
             <View style={styles.cardDivider} />
             <View style={styles.mailCardFooter}>
-              {mail.replied ? (
-                <View style={styles.replyStatus}>
-                  <Text style={styles.replyStatusDoneText}>✓</Text>
-                  <Text style={styles.replyStatusDoneText}>답장 완료</Text>
-                </View>
-              ) : (
-                <View style={styles.replyStatus}>
-                  <Text style={styles.replyStatusPendingText}>💬</Text>
-                  <Text style={styles.replyStatusPendingText}>답장 가능</Text>
-                </View>
-              )}
+              <View style={styles.replyStatus}>
+                <Text style={styles.replyStatusPendingText}>{mail.isReceived ? '받은 우편' : '보낸 우편'}</Text>
+              </View>
             </View>
           </TouchableOpacity>
         ))}
+        {!loading && hasMore && (
+          <TouchableOpacity
+            style={{ marginTop: normalize(8), alignSelf: 'center' }}
+            onPress={() => fetchList(page + 1, true)}
+          >
+            <Text style={{ color: colors.textSecondary }}>더 불러오기</Text>
+          </TouchableOpacity>
+        )}
       </ScrollView>
+      <TouchableOpacity
+        style={styles.floatingButton}
+        activeOpacity={0.8}
+        onPress={() => navigation?.navigate('SendMail')}
+      >
+        <Text style={{ color: '#fff', fontSize: normalize(18) }}>+</Text>
+      </TouchableOpacity>
     </SafeAreaView>
   );
 }
 
-// ─── 우편 상세 + 답장 모달/토스트 ─────────────────────────────────────
 function MailDetail({ mail: initialMail, onBack, navigation }) {
   const { width, height } = useWindowDimensions();
   const normalize = useMemo(() => getNormalize(width), [width]);
   const styles = useMemo(() => createMailStyles(normalize), [normalize]);
 
-  const [mail, setMail] = useState(initialMail);
+  const [mail, setMail] = useState(null);
   const [subHeaderHeight, setSubHeaderHeight] = useState(0);
   const [bottomCtaHeight, setBottomCtaHeight] = useState(0);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
 
   const availableHeight = Math.max(0, height - subHeaderHeight - bottomCtaHeight);
   const halfCardHeight = Math.max(240, Math.floor(availableHeight * 0.4));
+
+  const fetchDetail = useCallback(async () => {
+    if (!initialMail?.id) return;
+    try {
+      setLoading(true);
+      setError('');
+      const res = await api.get(`/api/mails/personal/${initialMail.id}`);
+      const m = res.data?.data;
+      setMail({
+        id: m.id,
+        receivedAt: formatListTime(m.created_at),
+        content: m.content || '',
+        isReceived: initialMail?.isReceived ?? true,
+        senderName: m.sender_name || '익명',
+        counterpartyUserId:
+          (initialMail?.isReceived ?? true) ? m.sender_id : m.recipient_id,
+      });
+    } catch (e) {
+      setError(e.response?.data?.message || '우편 상세를 불러오지 못했습니다.');
+    } finally {
+      setLoading(false);
+    }
+  }, [initialMail?.id]);
+
+  useEffect(() => {
+    fetchDetail();
+  }, [fetchDetail]);
+
+  const handleDelete = async () => {
+    try {
+      await api.delete(`/api/mails/personal/${initialMail.id}`);
+      Alert.alert('완료', '우편이 삭제되었습니다.', [
+        { text: '확인', onPress: () => navigation.goBack() },
+      ]);
+    } catch (e) {
+      Alert.alert('오류', e.response?.data?.message || '우편 삭제에 실패했습니다.');
+    }
+  };
 
   return (
     <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
@@ -171,18 +235,20 @@ function MailDetail({ mail: initialMail, onBack, navigation }) {
         onLayout={(e) => setSubHeaderHeight(e.nativeEvent.layout.height)}
       >
         <SubHeader
-          title={mail.isReceived === false ? '보낸 우편' : '받은 우편'}
+          title={mail?.isReceived === false ? '보낸 우편' : '받은 우편'}
           onBack={onBack}
           rightElement={(
             <View style={styles.historyIconWrapper}>
               <Octicons name="history" size={normalize(19)} color="black" />
             </View>
           )}
-          onRightPress={() => navigation.navigate('AnonymousMailHistory', { threadId: mail?.id })}
+          onRightPress={() => navigation.navigate('AnonymousMailHistory', { threadId: mail?.counterpartyUserId })}
         />
       </View>
 
       <View style={styles.detailRoot}>
+        {loading && <ActivityIndicator style={{ marginTop: normalize(20) }} />}
+        {!loading && !!error && <Text style={{ color: '#E74C3C', textAlign: 'center', marginTop: normalize(12) }}>{error}</Text>}
         <ScrollView
           style={styles.scroll}
           contentContainerStyle={styles.detailScroll}
@@ -193,108 +259,65 @@ function MailDetail({ mail: initialMail, onBack, navigation }) {
               <View
                 style={[
                   styles.detailAvatar,
-                  mail.isReceived === false ? styles.detailAvatarMe : styles.detailAvatarOther,
+                  mail?.isReceived === false ? styles.detailAvatarMe : styles.detailAvatarOther,
                 ]}
               />
               <View style={styles.detailSenderTexts}>
                 <Text style={styles.detailSenderName}>
-                  {mail.isReceived === false ? (mail.senderName || '상대') : '익명'}
+                  {mail?.isReceived === false ? (mail?.senderName || '상대') : '익명'}
                 </Text>
-                <Text style={styles.detailTime}>{mail.receivedAt}</Text>
+                <Text style={styles.detailTime}>{mail?.receivedAt}</Text>
               </View>
               <View style={styles.typeChip}>
                 <Text style={styles.typeChipText}>
-                  {mail.isReceived === false ? '보낸 우편' : '받은 우편'}
+                  {mail?.isReceived === false ? '보낸 우편' : '받은 우편'}
                 </Text>
               </View>
             </View>
             <ScrollView showsVerticalScrollIndicator={false}>
-              <Text style={styles.detailBody}>{mail.content}</Text>
+              <Text style={styles.detailBody}>{mail?.content}</Text>
             </ScrollView>
           </View>
-
-          {/* 2번째 카드: 받은 우편이면 "내가 보낸 답장", 보낸 우편이면 "상대가 보낸 답장" */}
-          {mail.viewMode === 'pair' && (
-            <View style={[styles.detailLetterCard, { marginTop: 12, minHeight: halfCardHeight }]}>
-              <View style={styles.detailSenderRow}>
-                <View
-                  style={[
-                    styles.detailAvatar,
-                    mail.isReceived === false ? styles.detailAvatarOther : styles.detailAvatarMe,
-                  ]}
-                />
-                <View style={styles.detailSenderTexts}>
-                  <Text style={styles.detailSenderName}>
-                    {mail.isReceived === false ? (mail.senderName || '상대') : '나'}
-                  </Text>
-                  <Text style={styles.detailTime}>
-                    {mail.isReceived === false ? (mail.incomingReplyAt || '방금') : (mail.replyAt || '방금')}
-                  </Text>
-                </View>
-                <View style={styles.typeChip}>
-                  <Text style={styles.typeChipText}>
-                    {mail.isReceived === false ? '받은 답장' : '보낸 답장'}
-                  </Text>
-                </View>
-              </View>
-              <ScrollView showsVerticalScrollIndicator={false}>
-                <Text style={styles.detailBody}>
-                  {mail.isReceived === false ? (mail.incomingReplyContent || '(아직 답장이 도착하지 않았어요.)') : (mail.replyContent || '')}
-                </Text>
-              </ScrollView>
-            </View>
-          )}
-
-          
         </ScrollView>
 
         <View
           style={styles.bottomCtaWrapper}
           onLayout={(e) => setBottomCtaHeight(e.nativeEvent.layout.height)}
         >
-          {mail.isReceived !== false &&
-          mail.viewMode === 'pair' &&
-          mail.replyContent ? (
-            <Text style={styles.bottomWaitingText}>
-              상대방에게 답장이 오면 알려드릴게요
-            </Text>
-          ) : (
+          <View style={{ flexDirection: 'row', gap: normalize(8) }}>
             <TouchableOpacity
-              style={styles.bottomCtaButton}
+              style={[styles.bottomCtaButton, { flex: 1, backgroundColor: '#666' }]}
+              onPress={handleDelete}
+              activeOpacity={0.9}
+            >
+              <Text style={styles.bottomCtaText}>삭제</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.bottomCtaButton, { flex: 1 }]}
               onPress={() =>
                 navigation.navigate('AnonymousMailReply', {
-                  mail,
-                  onSent: (replyText) => {
-                    setMail((prev) => ({
-                      ...prev,
-                      replied: true,
-                      replyContent: replyText,
-                      replyAt: '방금',
-                      viewMode: 'pair',
-                    }));
-                  },
+                  mail: { id: initialMail?.id, content: mail?.content, receivedAt: mail?.receivedAt },
+                  onSent: () => fetchDetail(),
                 })
               }
               activeOpacity={0.9}
             >
               <Text style={styles.bottomCtaText}>답장하기</Text>
             </TouchableOpacity>
-          )}
+          </View>
         </View>
       </View>
     </SafeAreaView>
   );
 }
 
-// ─── 루트: 네비게이션 연동 ─────────────────────────────────────────────
 export default function AnonymousMailScreen({ navigation, route }) {
-  const mailParam = route.params?.mail;
-  const detailMail = useMemo(() => toDetailMail(mailParam), [mailParam]);
+  const detailMail = route.params?.mail;
 
   if (detailMail) {
     return (
       <MailDetail
-        mail={detailMail}
+        mail={detailMail?.raw || detailMail}
         onBack={() => navigation.goBack()}
         navigation={navigation}
       />
@@ -303,8 +326,9 @@ export default function AnonymousMailScreen({ navigation, route }) {
 
   return (
     <MailInbox
+      navigation={navigation}
       onBack={() => navigation.goBack()}
-      onOpen={(mail) => navigation.navigate('MailDetail', { mail: toDetailMail(mail) || mail })}
+      onOpen={(mail) => navigation.navigate('MailDetail', { mail })}
     />
   );
 }

@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import { View, Text, ScrollView, TextInput, Modal, TouchableOpacity, useWindowDimensions, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
@@ -6,6 +6,7 @@ import SubHeader from '../frame/subHeader';
 import { colors } from '../../styles/colors';
 import { getNormalize } from '../../styles/frame.style';
 import { createMailStyles } from '../../styles/mail.style';
+import { api } from '../../utils/api';
 
 export default function MailReplyScreen({ navigation, route }) {
   const { width, height } = useWindowDimensions();
@@ -13,9 +14,11 @@ export default function MailReplyScreen({ navigation, route }) {
   const styles = useMemo(() => createMailStyles(normalize), [normalize]);
 
   const mail = route?.params?.mail;
+  const mailId = route?.params?.mailId ?? route?.params?.mail?.id;
   const onSent = route?.params?.onSent;
   const [replyText, setReplyText] = useState('');
   const [showToast, setShowToast] = useState(false);
+  const [sending, setSending] = useState(false);
   const [subHeaderHeight, setSubHeaderHeight] = useState(0);
   const [bottomHeight, setBottomHeight] = useState(0);
 
@@ -30,11 +33,23 @@ export default function MailReplyScreen({ navigation, route }) {
   const availableHeight = Math.max(0, height - subHeaderHeight - bottomHeight);
   const halfCardHeight = Math.max(240, Math.floor(availableHeight * 0.4));
 
-  const handleSend = () => {
+  const handleSend = async () => {
     if (!replyText.trim()) return;
-
-    // 실제 전송 로직은 이후 연동
-    setShowToast(true);
+    if (!mailId) {
+      Alert.alert('오류', '원본 우편 정보가 없습니다.');
+      return;
+    }
+    try {
+      setSending(true);
+      await api.post(`/api/mails/personal/${mailId}/reply`, {
+        content: replyText.trim(),
+      });
+      setShowToast(true);
+    } catch (error) {
+      Alert.alert('오류', error.response?.data?.message || '답장 전송에 실패했습니다.');
+    } finally {
+      setSending(false);
+    }
   };
 
   const handleToastClose = () => {
@@ -45,7 +60,7 @@ export default function MailReplyScreen({ navigation, route }) {
     navigation.goBack();
   };
 
-  if (!mail) {
+  if (!mailId) {
     return null;
   }
 
@@ -96,11 +111,11 @@ export default function MailReplyScreen({ navigation, route }) {
                 <View style={styles.detailAvatar} />
                 <View style={styles.detailSenderTexts}>
                   <Text style={styles.detailSenderName}>익명</Text>
-                  <Text style={styles.detailTime}>{mail.receivedAt}</Text>
+                  <Text style={styles.detailTime}>{mail?.receivedAt ?? ''}</Text>
                 </View>
               </View>
               <View style={styles.detailDivider} />
-              <Text style={styles.detailBody}>{mail.content}</Text>
+              <Text style={styles.detailBody}>{mail?.content ?? ''}</Text>
             </View>
           </ScrollView>
 
@@ -111,10 +126,10 @@ export default function MailReplyScreen({ navigation, route }) {
             <TouchableOpacity
               style={[styles.bottomCtaButton, !replyText.trim() && styles.bottomCtaDisabled]}
               onPress={handleSend}
-              disabled={!replyText.trim()}
+              disabled={!replyText.trim() || sending}
               activeOpacity={0.9}
             >
-              <Text style={styles.bottomCtaText}>보내기</Text>
+              <Text style={styles.bottomCtaText}>{sending ? '전송 중...' : '보내기'}</Text>
             </TouchableOpacity>
           </View>
         </View>

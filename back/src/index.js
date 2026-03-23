@@ -15,6 +15,7 @@ import settingsRoutes from './routes/settings.js';
 import timerRoutes from './routes/timer.js';
 import timetableRoutes from './routes/timetable.js';
 import schoolsRoutes from './routes/schools.js';
+import usersRoutes from './routes/users.js';
 import searchRoutes from './routes/search.js';
 import swaggerSpec from './swagger.js';
 import { initSocketServer } from './socketServer.js';
@@ -63,6 +64,7 @@ app.use('/api/settings', settingsRoutes);
 app.use('/api/timer', timerRoutes);
 app.use('/api/timetable', timetableRoutes);
 app.use('/api/schools', schoolsRoutes);
+app.use('/api/users', usersRoutes);
 app.use('/api/search', searchRoutes);
 
 // HTTP 서버 + Socket.io 초기화

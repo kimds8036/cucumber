@@ -361,7 +361,13 @@ export function MessageContent({ navigation }) {
                       );
 
                       // 2️⃣ 개인 우편 상세로 이동
-                      navigation?.navigate('MailDetail', { mail: item.raw || item });
+                      navigation?.navigate('MailDetail', {
+                        mail: {
+                          ...(item.raw || item),
+                          isReceived: item.isReceived,
+                          counterpartyUserId: item.raw?.sender_id ?? item.raw?.recipient_id ?? null,
+                        },
+                      });
 
                       // 3️⃣ DB is_read 업데이트 (딜레이 없이, 실패해도 UI는 유지)
                       try {
