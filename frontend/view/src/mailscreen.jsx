@@ -178,7 +178,7 @@ function MailDetail({ mail: initialMail, onBack, navigation }) {
               <Octicons name="history" size={normalize(19)} color="black" />
             </View>
           )}
-          onRightPress={() => navigation.navigate('MailHistory', { threadId: mail?.id })}
+          onRightPress={() => navigation.navigate('AnonymousMailHistory', { threadId: mail?.id })}
         />
       </View>
 
@@ -262,7 +262,7 @@ function MailDetail({ mail: initialMail, onBack, navigation }) {
             <TouchableOpacity
               style={styles.bottomCtaButton}
               onPress={() =>
-                navigation.navigate('MailReply', {
+                navigation.navigate('AnonymousMailReply', {
                   mail,
                   onSent: (replyText) => {
                     setMail((prev) => ({

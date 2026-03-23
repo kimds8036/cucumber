@@ -8,6 +8,7 @@ import {
   KeyboardAvoidingView,
   FlatList,
   Keyboard,
+  TouchableWithoutFeedback,
   Alert,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -585,21 +586,22 @@ export default function Chat({ navigation, route }) {
   };
 
   return (
-    <SafeAreaView
-      style={[detailStyles.container, { backgroundColor: colors.background }]}
-      edges={['top']}
-    >
-      {/* 헤더 */}
-      <View style={{ zIndex: 1, elevation: 0, backgroundColor: colors.background }}>
-        <SubHeader title="쪽지" onBack={handleBack} />
-      </View>
-
-      <KeyboardAvoidingView
-        style={{ flex: 1, backgroundColor: '#F8F9FA' }}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        keyboardVerticalOffset={Platform.OS === 'ios' ? keyboardVerticalOffset : 0}
+    <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+      <SafeAreaView
+        style={[detailStyles.container, { backgroundColor: colors.background }]}
+        edges={['top']}
       >
-        <View style={{ flex: 1, backgroundColor: '#F8F9FA' }}>
+        {/* 헤더 */}
+        <View style={{ zIndex: 1, elevation: 0, backgroundColor: colors.background }}>
+          <SubHeader title="쪽지" onBack={handleBack} />
+        </View>
+
+        <KeyboardAvoidingView
+          style={{ flex: 1, backgroundColor: '#F8F9FA' }}
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          keyboardVerticalOffset={Platform.OS === 'ios' ? keyboardVerticalOffset : 0}
+        >
+          <View style={{ flex: 1, backgroundColor: '#F8F9FA' }}>
           {/* 게시글 카드 */}
           {post && (
             <TouchableOpacity
@@ -668,11 +670,11 @@ export default function Chat({ navigation, route }) {
             showsVerticalScrollIndicator={false}
             keyboardShouldPersistTaps="handled"
             keyboardDismissMode="on-drag"
-            // 메시지 높이가 가변이므로 getItemLayout은 생략 (고정 높이일 때만 적용)
-            removeClippedSubviews={Platform.OS === 'android'} // Android 스크롤 최적화
-            maxToRenderPerBatch={20}
-            windowSize={10}
-            initialNumToRender={20}
+            removeClippedSubviews={false}
+            maxToRenderPerBatch={10}
+            windowSize={5}
+            initialNumToRender={15}
+            maintainVisibleContentPosition={{ minIndexForVisible: 0 }}
           />
 
           {/* 입력창 */}
@@ -701,8 +703,9 @@ export default function Chat({ navigation, route }) {
               normalize={normalize}
             />
           </View>
-        </View>
-      </KeyboardAvoidingView>
-    </SafeAreaView>
+          </View>
+        </KeyboardAvoidingView>
+      </SafeAreaView>
+    </TouchableWithoutFeedback>
   );
 }

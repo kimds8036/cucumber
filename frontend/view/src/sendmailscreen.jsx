@@ -7,6 +7,8 @@ import {
   TextInput,
   KeyboardAvoidingView,
   Platform,
+  Keyboard,
+  TouchableWithoutFeedback,
   Alert,
   useWindowDimensions,
 } from 'react-native';
@@ -14,13 +16,11 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
 import SubHeader from '../frame/subHeader';
-import { useAppNavigation } from '../../navigation/useAppNavigation';
 import { getNormalize } from '../../styles/frame.style';
 import { createMailStyles } from '../../styles/mail.style';
 import { colors } from '../../styles/colors';
 
 const SendMailScreen = ({ navigation }) => {
-  const { goBack } = useAppNavigation();
   const { width } = useWindowDimensions();
   const normalize = useMemo(() => getNormalize(width), [width]);
   const styles = useMemo(() => createMailStyles(normalize), [normalize]);
@@ -120,16 +120,19 @@ const SendMailScreen = ({ navigation }) => {
     : studentResults;
 
   return (
-    <View style={{ flex: 1, backgroundColor: styles.container.backgroundColor }}>
-      <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
-        <SubHeader title="우편 보내기" onBack={() => goBack()} />
-
-        <KeyboardAvoidingView behavior={undefined} style={styles.keyboardView}>
+    <SafeAreaView style={{ flex: 1 }} edges={['top']}>
+      <SubHeader title="우편 보내기" onBack={() => navigation?.goBack()} />
+      <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+        <KeyboardAvoidingView
+          style={{ flex: 1 }}
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          keyboardVerticalOffset={0}
+        >
           <ScrollView
             style={styles.scrollView}
-            contentContainerStyle={{ flexGrow: 1, padding: normalize(16) }}
-            showsVerticalScrollIndicator={false}
+            contentContainerStyle={{ flexGrow: 1, paddingBottom: normalize(40), paddingHorizontal: normalize(16), paddingTop: normalize(16) }}
             keyboardShouldPersistTaps="handled"
+            showsVerticalScrollIndicator={false}
           >
             {/* 학교 검색 */}
             <View style={[styles.section, { marginTop: 0 }]}>
@@ -302,9 +305,9 @@ const SendMailScreen = ({ navigation }) => {
               </TouchableOpacity>
             </View>
           )}
-      </KeyboardAvoidingView>
+        </KeyboardAvoidingView>
+      </TouchableWithoutFeedback>
     </SafeAreaView>
-  </View>
   );
 };
 

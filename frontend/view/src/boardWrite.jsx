@@ -6,6 +6,8 @@ import {
   TouchableOpacity,
   TouchableWithoutFeedback,
   Keyboard,
+  KeyboardAvoidingView,
+  Platform,
   useWindowDimensions,
   Alert,
   ScrollView,
@@ -255,82 +257,45 @@ const BoardWrite = ({ navigation, route }) => {
     </>
   );
 
-  const handleComplete = async () => {
-    if (!content.trim()) {
-      Alert.alert('알림', '내용을 입력해주세요.');
-      return;
-    }
-
-    try {
-      let boardType = 'national';
-      let schoolId = null;
-
-      if (boardContext === 'school') {
-        const schoolRes = await api.get('/api/schools/me');
-        const id = schoolRes.data?.data?.id;
-        if (!id) {
-          Alert.alert('오류', '학교 정보를 불러올 수 없습니다.');
-          return;
-        }
-        boardType = 'school';
-        schoolId = id;
-      }
-
-      await api.post('/api/posts', {
-        boardType,
-        schoolId: schoolId ?? undefined,
-        content: content.trim(),
-        // 백엔드는 body.tags 배열을 사용하므로 이름을 맞춰 전달
-        tags: hashtags,
-      });
-
-      Alert.alert('완료', '게시글이 작성되었습니다.', [
-        {
-          text: '확인',
-          onPress: () => {
-            if (boardContext === 'school') {
-              navigation.navigate('SchoolBoardAll');
-            } else {
-              navigation.navigate('Main');
-            }
-          },
-        },
-      ]);
-    } catch (error) {
-      console.error('게시글 작성 오류:', error);
-      Alert.alert(
-        '오류',
-        error.response?.data?.message || '게시글 작성 중 오류가 발생했습니다.'
-      );
-    }
-  };
-
   const canSubmit = content.trim().length > 0;
 
   return (
-    <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
-      <View style={{ flex: 1 }}>
-        <SafeAreaView style={styles.container} edges={['top']}>
-          <SubHeader
-            title="글쓰기"
-            onBack={handleBack}
-            onRightPress={handleComplete}
-            rightDisabled={!canSubmit}
-            rightElement={(
-              <View style={[styles.completePill, !canSubmit && styles.completePillDisabled]}>
-                <Text style={[styles.completePillText, !canSubmit && styles.completePillTextDisabled]}>
-                  등록
-                </Text>
-              </View>
-            )}
-          />
+    <SafeAreaView style={{ flex: 1 }}>
+      <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+        <KeyboardAvoidingView
+          style={{ flex: 1 }}
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        >
+          <ScrollView
+            contentContainerStyle={{ flexGrow: 1 }}
+            keyboardShouldPersistTaps="handled"
+            showsVerticalScrollIndicator={false}
+          >
+            <View style={{ flex: 1 }}>
+              <SafeAreaView style={styles.container} edges={['top']}>
+                <SubHeader
+                  title="글쓰기"
+                  onBack={handleBack}
+                  onRightPress={handleComplete}
+                  rightDisabled={!canSubmit}
+                  rightElement={(
+                    <View style={[styles.completePill, !canSubmit && styles.completePillDisabled]}>
+                      <Text style={[styles.completePillText, !canSubmit && styles.completePillTextDisabled]}>
+                        등록
+                      </Text>
+                    </View>
+                  )}
+                />
 
-          {writeMainColumn}
-        </SafeAreaView>
+                {writeMainColumn}
+              </SafeAreaView>
 
-        {guideBlock}
-      </View>
-    </TouchableWithoutFeedback>
+              {guideBlock}
+            </View>
+          </ScrollView>
+        </KeyboardAvoidingView>
+      </TouchableWithoutFeedback>
+    </SafeAreaView>
   );
 };
 

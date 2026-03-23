@@ -10,8 +10,7 @@ import {
   Alert,
   FlatList,
 } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
-import { Entypo } from '@expo/vector-icons';
+import { Ionicons, Entypo } from '@expo/vector-icons';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import FontAwesome5 from '@expo/vector-icons/FontAwesome5';
 import SubHeader from '../frame/subHeader';

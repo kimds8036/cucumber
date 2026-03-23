@@ -6,6 +6,9 @@ import {
   TouchableOpacity,
   TextInput,
   KeyboardAvoidingView,
+  Platform,
+  Keyboard,
+  TouchableWithoutFeedback,
   Alert,
   useWindowDimensions,
 } from 'react-native';
@@ -16,7 +19,7 @@ import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
 import SubHeader from '../frame/subHeader';
 import { useAppNavigation } from '../../navigation/useAppNavigation';
 import { getNormalize } from '../../styles/frame.style';
-import { createSendSchoolMailStyles } from '../../styles/school.style';
+import { createSendSchoolMailStyles } from '../../styles/SchoolMail.style';
 import { colors } from '../../styles/colors';
 
 /** 라우트에 없을 때(직접 진입 등) 쓰는 임시 학교 — 이후 API로 대체 */
@@ -78,14 +81,18 @@ const SendSchoolMailScreen = () => {
     <View style={styles.schoolSendOuter}>
       <SafeAreaView style={styles.schoolSendSafe} edges={['top', 'bottom']}>
         <SubHeader title="우편 보내기" onBack={() => goBack()} />
-
-        <KeyboardAvoidingView behavior={undefined} style={styles.schoolSendKeyboard}>
-          <ScrollView
-            style={styles.schoolSendScroll}
-            contentContainerStyle={styles.schoolSendScrollContent}
-            showsVerticalScrollIndicator={false}
-            keyboardShouldPersistTaps="handled"
+        <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+          <KeyboardAvoidingView
+            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+            style={styles.schoolSendKeyboard}
+            keyboardVerticalOffset={0}
           >
+            <ScrollView
+              style={styles.schoolSendScroll}
+              contentContainerStyle={styles.schoolSendScrollContent}
+              showsVerticalScrollIndicator={false}
+              keyboardShouldPersistTaps="handled"
+            >
             <View style={[styles.schoolSendSection, { marginTop: 0 }]}>
               <Text style={styles.schoolSendFieldLabel}>보낼 학교</Text>
               <View style={styles.schoolSendFixedSchoolBox}>
@@ -119,22 +126,23 @@ const SendSchoolMailScreen = () => {
                 </View>
               </View>
             </View>
-          </ScrollView>
+            </ScrollView>
 
-          <View style={styles.schoolSendCtaBar}>
-            <TouchableOpacity
-              style={[
-                styles.schoolSendCtaBtn,
-                !mailContent.trim() && styles.schoolSendCtaBtnDisabled,
-              ]}
-              onPress={handleSend}
-              disabled={!mailContent.trim()}
-              activeOpacity={0.9}
-            >
-              <Text style={styles.schoolSendCtaLabel}>전송하기</Text>
-            </TouchableOpacity>
-          </View>
-        </KeyboardAvoidingView>
+            <View style={styles.schoolSendCtaBar}>
+              <TouchableOpacity
+                style={[
+                  styles.schoolSendCtaBtn,
+                  !mailContent.trim() && styles.schoolSendCtaBtnDisabled,
+                ]}
+                onPress={handleSend}
+                disabled={!mailContent.trim()}
+                activeOpacity={0.9}
+              >
+                <Text style={styles.schoolSendCtaLabel}>전송하기</Text>
+              </TouchableOpacity>
+            </View>
+          </KeyboardAvoidingView>
+        </TouchableWithoutFeedback>
       </SafeAreaView>
     </View>
   );

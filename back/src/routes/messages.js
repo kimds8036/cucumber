@@ -32,6 +32,21 @@ router.get('/rooms', authenticate, async (req, res) => {
     const limitNum = Math.max(1, Math.min(100, parseInt(limit, 10) || 20));
     const offsetNum = Math.max(0, (parseInt(page, 10) - 1) * limitNum);
 
+    // 진단용 - 나중에 삭제
+    const [debugRooms] = await pool.execute(
+      `SELECT mr.id, mr.user1_id, mr.user2_id,
+        mr.is_deleted_by_user1, mr.is_deleted_by_user2
+       FROM message_rooms mr
+       WHERE mr.user1_id = ? OR mr.user2_id = ?`,
+      [userId, userId]
+    );
+    console.log('[Debug] 전체 rooms (삭제조건 없이):', JSON.stringify(debugRooms));
+
+    const [cols] = await pool.execute(
+      `SHOW COLUMNS FROM message_rooms`
+    );
+    console.log('[Debug] message_rooms 컬럼:', JSON.stringify(cols.map(c => c.Field)));
+
     const [rooms] = await pool.execute(
       `SELECT 
         mr.id,
@@ -66,6 +81,8 @@ router.get('/rooms', authenticate, async (req, res) => {
       LIMIT ${limitNum} OFFSET ${offsetNum}`,
       [userId, userId, userId, userId, userId, userId]
     );
+    console.log('[Messages] userId:', userId, '조회된 rooms 수:', rooms.length);
+    console.log('[Messages] rooms 데이터:', JSON.stringify(rooms));
 
     const [countResult] = await pool.execute(
       `SELECT COUNT(*) AS total FROM message_rooms mr
@@ -216,6 +233,7 @@ router.get('/rooms/:roomId', authenticate, async (req, res) => {
     const [roomInfo] = await pool.execute(
       `SELECT
         mr.id, mr.post_id, mr.user1_id, mr.user2_id,
+        mr.deleted_at_msg_id_user1, mr.deleted_at_msg_id_user2,
         mr.last_message, mr.last_message_at, mr.created_at,
         p.content AS post_content,
         CASE WHEN mr.user1_id = ? THEN u2.id       ELSE u1.id       END AS other_user_id,
@@ -229,6 +247,36 @@ router.get('/rooms/:roomId', authenticate, async (req, res) => {
       [userId, userId, userId, roomId]
     );
 
+    const [roomMeta] = await pool.execute(
+      `SELECT user1_id, user2_id,
+        deleted_at_msg_id_user1,
+        deleted_at_msg_id_user2
+       FROM message_rooms WHERE id = ?`,
+      [roomId]
+    );
+    const roomData = roomMeta[0];
+    const isUser1 = roomData?.user1_id === userId;
+    const deletedAtMsgId = isUser1
+      ? (roomData?.deleted_at_msg_id_user1 ?? 0)
+      : (roomData?.deleted_at_msg_id_user2 ?? 0);
+
+    // 입장 시점에 deleted_at_msg_id 리셋
+    if (isUser1 && roomData?.deleted_at_msg_id_user1 !== null) {
+      await pool.execute(
+        'UPDATE message_rooms SET deleted_at_msg_id_user1 = NULL WHERE id = ?',
+        [roomId]
+      );
+    } else if (!isUser1 && roomData?.deleted_at_msg_id_user2 !== null) {
+      await pool.execute(
+        'UPDATE message_rooms SET deleted_at_msg_id_user2 = NULL WHERE id = ?',
+        [roomId]
+      );
+    }
+    console.log('[GetRoom] userId:', userId, 'isUser1:', isUser1);
+    console.log('[GetRoom] roomData:', JSON.stringify(roomData));
+    console.log('[GetRoom] deletedAtMsgId:', deletedAtMsgId);
+    console.log('[GetRoom] 조회 쿼리 조건: m.id >', deletedAtMsgId);
+
     const [messages] = await pool.execute(
       `SELECT
         m.id, m.room_id, m.sender_id, m.content, m.is_read, m.is_deleted, m.created_at,
@@ -236,14 +284,15 @@ router.get('/rooms/:roomId', authenticate, async (req, res) => {
        FROM messages m
        LEFT JOIN users u ON m.sender_id = u.id
        WHERE m.room_id = ?
+         AND m.id > ${deletedAtMsgId}
        ORDER BY m.created_at DESC
        LIMIT ${limitNum} OFFSET ${offsetNum}`,
       [roomId]
     );
 
     const [countResult] = await pool.execute(
-      'SELECT COUNT(*) AS total FROM messages WHERE room_id = ?',
-      [roomId]
+      'SELECT COUNT(*) AS total FROM messages WHERE room_id = ? AND id > ?',
+      [roomId, deletedAtMsgId]
     );
     const total = Number(countResult[0]?.total ?? 0);
 
@@ -301,6 +350,16 @@ router.post('/rooms/:roomId/messages', authenticate, async (req, res) => {
     const [result] = await pool.execute(
       `INSERT INTO messages (room_id, sender_id, content, created_at) VALUES (?, ?, ?, ?)`,
       [roomId, userId, trimmedContent, now]
+    );
+
+    // 메시지 전송 시 상대방의 "채팅방 삭제 상태"를 복구
+    await pool.execute(
+      `UPDATE message_rooms
+       SET
+         is_deleted_by_user1 = IF(user2_id = ?, FALSE, is_deleted_by_user1),
+         is_deleted_by_user2 = IF(user1_id = ?, FALSE, is_deleted_by_user2)
+       WHERE id = ?`,
+      [userId, userId, roomId]
     );
 
     // ── 채팅방 last_message 갱신 ────────────────
@@ -466,13 +525,27 @@ router.delete('/rooms/:roomId', authenticate, async (req, res) => {
       return res.status(404).json({ success: false, message: '채팅방을 찾을 수 없거나 접근 권한이 없습니다.' });
     }
 
+    const [lastMsg] = await pool.execute(
+      'SELECT MAX(id) as last_id FROM messages WHERE room_id = ?',
+      [roomId]
+    );
+    const lastMsgId = lastMsg[0]?.last_id ?? 0;
+    console.log('[Delete Room] userId:', userId, 'roomId:', roomId, 'lastMsgId:', lastMsgId);
+
     await pool.execute(
       `UPDATE message_rooms SET
         is_deleted_by_user1 = IF(user1_id = ?, TRUE, is_deleted_by_user1),
-        is_deleted_by_user2 = IF(user2_id = ?, TRUE, is_deleted_by_user2)
+        is_deleted_by_user2 = IF(user2_id = ?, TRUE, is_deleted_by_user2),
+        deleted_at_msg_id_user1 = IF(user1_id = ?, ?, deleted_at_msg_id_user1),
+        deleted_at_msg_id_user2 = IF(user2_id = ?, ?, deleted_at_msg_id_user2)
        WHERE id = ? AND (user1_id = ? OR user2_id = ?)`,
-      [userId, userId, roomId, userId, userId]
+      [userId, userId, userId, lastMsgId, userId, lastMsgId, roomId, userId, userId]
     );
+    const [check] = await pool.execute(
+      'SELECT is_deleted_by_user1, is_deleted_by_user2, deleted_at_msg_id_user1, deleted_at_msg_id_user2 FROM message_rooms WHERE id = ?',
+      [roomId]
+    );
+    console.log('[Delete Room] 저장 결과:', JSON.stringify(check[0]));
 
     res.json({ success: true, message: '채팅방이 삭제되었습니다.' });
   } catch (error) {

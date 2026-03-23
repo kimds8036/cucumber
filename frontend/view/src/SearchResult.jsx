@@ -1,4 +1,4 @@
-﻿import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   View,
   Text,
@@ -8,6 +8,10 @@ import {
   ActivityIndicator,
   StyleSheet,
   TextInput,
+  KeyboardAvoidingView,
+  Platform,
+  Keyboard,
+  TouchableWithoutFeedback,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -212,28 +216,44 @@ export default function SearchResult({ route, navigation }) {
   if (expandedSection) {
     const items = sections[expandedSection] || [];
     return (
-      <SafeAreaView style={s.container} edges={['top']}>
-        <SubHeader title={expandedSection} onBack={() => setExpandedSection(null)} />
-        <ScrollView style={s.scrollView} showsVerticalScrollIndicator={false}>
-          {items.map((item, idx) => (
-            <View
-              key={item.id}
-              style={[s.fullCard, idx < items.length - 1 && s.fullCardBorder]}
+      <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+        <SafeAreaView style={s.container} edges={['top']}>
+          <KeyboardAvoidingView
+            style={{ flex: 1 }}
+            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          >
+            <SubHeader title={expandedSection} onBack={() => setExpandedSection(null)} />
+            <ScrollView
+              style={s.scrollView}
+              showsVerticalScrollIndicator={false}
+              keyboardShouldPersistTaps="handled"
             >
-              {highlightFull(getTitle(item), searchText)}
-              <Text style={s.fullSnippet}>{makeSnippet(item.content, searchText)}</Text>
-              <Text style={s.metaText}>{formatMeta(item)}</Text>
-            </View>
-          ))}
-          <View style={{ height: 32 }} />
-        </ScrollView>
-      </SafeAreaView>
+              {items.map((item, idx) => (
+                <View
+                  key={item.id}
+                  style={[s.fullCard, idx < items.length - 1 && s.fullCardBorder]}
+                >
+                  {highlightFull(getTitle(item), searchText)}
+                  <Text style={s.fullSnippet}>{makeSnippet(item.content, searchText)}</Text>
+                  <Text style={s.metaText}>{formatMeta(item)}</Text>
+                </View>
+              ))}
+              <View style={{ height: 32 }} />
+            </ScrollView>
+          </KeyboardAvoidingView>
+        </SafeAreaView>
+      </TouchableWithoutFeedback>
     );
   }
 
   /* ── 기본 검색 결과 + 입력 모드 ── */
   return (
-    <SafeAreaView style={s.container} edges={['top']}>
+    <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+      <SafeAreaView style={s.container} edges={['top']}>
+      <KeyboardAvoidingView
+        style={{ flex: 1 }}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      >
       <View style={s.searchBarWrapper}>
         <View style={s.searchInputRow}>
           <Ionicons name="search-outline" size={18} color="#AAAAAA" />
@@ -312,7 +332,11 @@ export default function SearchResult({ route, navigation }) {
             </ScrollView>
           </View>
 
-          <ScrollView style={s.scrollView} showsVerticalScrollIndicator={false}>
+          <ScrollView
+            style={s.scrollView}
+            showsVerticalScrollIndicator={false}
+            keyboardShouldPersistTaps="handled"
+          >
 
         {/* 학교 매칭 카드들 (최대 5개) */}
         {activeTab === '전체' && matchedSchools.length > 0 && (
@@ -467,7 +491,11 @@ export default function SearchResult({ route, navigation }) {
       )}
 
       {mode === 'input' && (
-        <ScrollView style={s.scrollView} showsVerticalScrollIndicator={false}>
+        <ScrollView
+          style={s.scrollView}
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+        >
           {/* 최근 검색어 */}
           {recentSearches.length > 0 && (
             <View style={s.section}>
@@ -544,7 +572,9 @@ export default function SearchResult({ route, navigation }) {
           </View>
         </ScrollView>
       )}
+      </KeyboardAvoidingView>
     </SafeAreaView>
+    </TouchableWithoutFeedback>
   );
 }
 

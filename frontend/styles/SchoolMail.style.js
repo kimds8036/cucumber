@@ -407,3 +407,120 @@ export const createSchoolMailDetailStyles = (width, normalize) => {
     },
   });
 };
+
+/** 학교 우편 보내기 화면 — sendSchoolMailScreen.jsx */
+export const createSendSchoolMailStyles = (normalize) =>
+  StyleSheet.create({
+    schoolSendOuter: {
+      flex: 1,
+      backgroundColor: colors.background,
+    },
+    schoolSendSafe: {
+      flex: 1,
+      backgroundColor: colors.background,
+    },
+    schoolSendKeyboard: {
+      flex: 1,
+      backgroundColor: colors.background,
+    },
+    schoolSendScroll: {
+      flex: 1,
+    },
+    schoolSendScrollContent: {
+      flexGrow: 1,
+      paddingHorizontal: normalize(16),
+      paddingBottom: normalize(24),
+    },
+    schoolSendSection: {
+      marginTop: normalize(12),
+    },
+    schoolSendFieldLabel: {
+      fontSize: normalize(14),
+      fontFamily: fonts.bold,
+      color: colors.textPrimary,
+      marginBottom: normalize(8),
+    },
+    schoolSendFixedSchoolBox: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      backgroundColor: colors.textLight5,
+      borderRadius: normalize(12),
+      paddingHorizontal: normalize(12),
+      paddingVertical: normalize(12),
+      gap: normalize(8),
+    },
+    schoolSendFixedSchoolTexts: {
+      flex: 1,
+    },
+    schoolSendFixedSchoolName: {
+      fontSize: normalize(14),
+      fontFamily: fonts.regular,
+      color: colors.textPrimary,
+    },
+    schoolSendBodyWrap: {
+      flex: 1,
+      minHeight: normalize(220),
+      backgroundColor: colors.background,
+      borderRadius: normalize(12),
+      borderWidth: StyleSheet.hairlineWidth,
+      borderColor: colors.textLight10,
+      paddingHorizontal: normalize(12),
+      paddingVertical: normalize(12),
+    },
+    schoolSendBodyInput: {
+      flex: 1,
+      minHeight: normalize(150),
+      fontSize: normalize(14),
+      fontFamily: fonts.regular,
+      color: colors.textPrimary,
+      textAlignVertical: 'top',
+    },
+    schoolSendMetaRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      marginTop: normalize(10),
+    },
+    schoolSendCharCount: {
+      fontSize: normalize(12),
+      fontFamily: fonts.regular,
+      color: colors.textSecondary,
+      marginBottom: normalize(6),
+    },
+    schoolSendAdChip: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: normalize(4),
+      backgroundColor: colors.textLight5,
+      borderRadius: normalize(10),
+      paddingHorizontal: normalize(8),
+      paddingVertical: normalize(4),
+    },
+    schoolSendAdChipText: {
+      fontSize: normalize(12),
+      fontFamily: fonts.regular,
+      color: colors.textPrimary,
+    },
+    schoolSendCtaBar: {
+      paddingHorizontal: normalize(16),
+      paddingTop: normalize(8),
+      paddingBottom: Platform.OS === 'ios' ? normalize(22) : normalize(12),
+      backgroundColor: colors.background,
+      borderTopWidth: StyleSheet.hairlineWidth,
+      borderTopColor: colors.textLight10,
+    },
+    schoolSendCtaBtn: {
+      height: normalize(48),
+      borderRadius: normalize(14),
+      backgroundColor: colors.primary,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    schoolSendCtaBtnDisabled: {
+      backgroundColor: colors.disabled,
+    },
+    schoolSendCtaLabel: {
+      fontSize: normalize(15),
+      fontFamily: fonts.bold,
+      color: colors.textPrimary,
+    },
+  });

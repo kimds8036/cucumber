@@ -1,4 +1,4 @@
-﻿// 색상 테마 관리 파일
+// 색상 테마 관리 파일
 // 여기서 색상을 변경하면 전체 앱에 적용됩니다
 
 export const colors = {
@@ -28,13 +28,13 @@ export const colors = {
   subcolor: '#AAD7FF',
 
   // 추가 컬러
-  shadow: '#000',            // 그림자
+  shadow: '#000000',            // 그림자
   transparent: 'transparent', // 투명
   disabled: '#ECECEC',       // 비활성/삭제된 말풍선 배경 등
 
   // 투명도 버전 (Opacity)
   textLight5: 'rgba(39, 42, 38, 0.05)',   // 5%
-  textLight10: 'rgba(39, 42, 38, 0.1)',   // 10%
+  textLight10: 'rgba(0,0,0,0.1)',   // 10%
   textLight20: 'rgba(39, 42, 38, 0.2)',   // 20%
   textLight70: 'rgba(39, 42, 38, 0.7)',   // 70%
   primaryLight70: 'rgba(166,218,149, 0.7)', // 70%

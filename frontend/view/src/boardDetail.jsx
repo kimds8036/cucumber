@@ -13,10 +13,8 @@ import {
   Share,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Ionicons } from '@expo/vector-icons';
-import { Entypo } from '@expo/vector-icons';
+import { Ionicons, Entypo } from '@expo/vector-icons';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
-import FontAwesome5 from '@expo/vector-icons/FontAwesome5';
 import SubHeader from '../frame/subHeader';
 import CommentInput from '../../components/CommentInput.jsx';
 import { colors, fonts } from '../../styles/colors';
@@ -313,8 +311,14 @@ export default function BoardDetail({ navigation, route }) {
   // 댓글용 메뉴 (다른 사람 댓글) - 차단하기 제외
   const commentMenuItemsOthers = useMemo(
     () => [
-      { label: '쪽지 보내기', iconName: 'chatbubble-outline' },
-      { label: '신고하기', iconName: 'flag-outline' },
+      {
+        label: '쪽지 보내기',
+        iconName: 'chatbubble-outline',
+        onPress: () => {
+          // 쪽지 보내기는 commentForMenu 컨텍스트에서 처리하므로 여기선 빈 함수
+        },
+      },
+      { label: '신고하기', iconName: 'flag-outline', onPress: () => {} },
     ],
     []
   );
@@ -871,6 +875,19 @@ export default function BoardDetail({ navigation, route }) {
                       <Ionicons name="chatbubble-outline" size={normalize(15)} color={colors.primary} />
                       <Text style={styles.detailStatText}>{post.comments}</Text>
                     </View>
+                    <TouchableOpacity
+                      style={styles.detailStatItem}
+                      onPress={handlePostScrap}
+                      activeOpacity={0.7}
+                      hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                    >
+                      <Ionicons
+                        name={postScrapped ? 'bookmark' : 'bookmark-outline'}
+                        size={normalize(14)}
+                        color={colors.scrap}
+                      />
+                      <Text style={styles.detailStatText}>{post.scraps ?? 0}</Text>
+                    </TouchableOpacity>
                   </View>
                   <View ref={postMenuButtonRef} collapsable={false}>
                     <TouchableOpacity

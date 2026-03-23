@@ -1,4 +1,4 @@
-﻿import { StatusBar } from 'expo-status-bar';
+import { StatusBar } from 'expo-status-bar';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import Login from './view/src/Login';
@@ -27,7 +27,7 @@ import SchoolBoardAll from './view/src/schoolBoardAll';
 import OtherSchoolScreen from './view/src/otherschool';
 import Timer from './view/src/timer';
 import FriendsScreen from './view/src/friendsscreen';
-import SearchResult from './view/src/SearchResult';
+import MealCalender from './view/src/mealcalender';
 import { useFonts } from 'expo-font';
 import * as SplashScreen from 'expo-splash-screen';
 import { useEffect } from 'react';
@@ -81,7 +81,16 @@ export default function App() {
                   <Stack.Screen name="Notification" component={NotificationScreen} />
                   <Stack.Screen name="SendMail" component={SendMailScreen} />
                   <Stack.Screen name="MailDetail" component={AnonymousMailScreen} />
+                  <Stack.Screen name="AnonymousMailbox" component={AnonymousMailScreen} />
                   <Stack.Screen name="SchoolBoardAll" component={SchoolBoardAll} />
+                  <Stack.Screen name="SchoolMailbox" component={SchoolMailboxScreen} />
+                  <Stack.Screen name="SchoolMailDetail" component={SchoolMailDetail} />
+                  <Stack.Screen name="SendSchoolMail" component={SendSchoolMailScreen} />
+                  <Stack.Screen name="MealCalendar" component={MealCalender} />
+                  <Stack.Screen name="MailReply" component={MailReplyScreen} />
+                  <Stack.Screen name="MailHistory" component={MailHistoryScreen} />
+                  <Stack.Screen name="AnonymousMailReply" component={MailReplyScreen} />
+                  <Stack.Screen name="AnonymousMailHistory" component={MailHistoryScreen} />
                   <Stack.Screen name="Timer" component={Timer} />
                   <Stack.Screen name="Friends" component={FriendsScreen} />
                   <Stack.Screen name="SearchScreen" component={SearchScreen} />

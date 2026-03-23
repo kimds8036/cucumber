@@ -59,6 +59,7 @@ const OurSchoolScreen = ({ navigation }) => {
               type: 'post',
               likes: p.like_count,
               comments: p.comment_count,
+              scrapCount: p.scrapCount ?? 0,
             }));
             setPopularPosts(mapped);
           } catch (err) {
@@ -335,21 +336,18 @@ const OurSchoolScreen = ({ navigation }) => {
                 </View>
 
                 <View style={styles.popularItemRight}>
-                  {post.likes > 0 && (
-                    <View style={styles.countBadge}>
-                      <Ionicons name="heart-outline" size={14} color="#FF6B6B" />
-                      <Text style={styles.countText}>{post.likes}</Text>
-                    </View>
-                  )}
+                  <View style={styles.countBadge}>
+                    <Ionicons name="heart-outline" size={14} color="#FF6B6B" />
+                    <Text style={styles.countText}>{post.likes ?? 0}</Text>
+                  </View>
                   <View style={styles.countBadge}>
                     <Ionicons name="chatbubble-outline" size={14} color="#FFA726" />
-                    <Text style={styles.countText}>{post.comments}</Text>
+                    <Text style={styles.countText}>{post.comments ?? 0}</Text>
                   </View>
-                  <Ionicons
-                    name="bookmark-outline"
-                    size={normalize(14)}
-                    color={colors.scrap}
-                  />
+                  <View style={styles.countBadge}>
+                    <Ionicons name="bookmark-outline" size={normalize(14)} color={colors.scrap} />
+                    <Text style={styles.countText}>{post.scrapCount ?? 0}</Text>
+                  </View>
                 </View>
               </TouchableOpacity>
             ))

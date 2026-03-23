@@ -1,4 +1,4 @@
-﻿import React, { useRef, useState, useEffect } from 'react';
+import React, { useRef, useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -8,6 +8,9 @@ import {
   Animated,
   KeyboardAvoidingView,
   Platform,
+  Keyboard,
+  TouchableWithoutFeedback,
+  StyleSheet,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -39,10 +42,6 @@ function formatTimeAgo(createdAt) {
 const RECENT_KEY = '@search_recent_keywords';
 
 const SearchScreen = ({ navigation }) => {
-  const { width } = useWindowDimensions();
-  const normalize = useMemo(() => getNormalize(width), [width]);
-  const styles = useMemo(() => createSearchScreenStyles(width, normalize), [width, normalize]);
-
   const [searchText, setSearchText] = useState('');
   const [recentSearches, setRecentSearches] = useState([]);
 
@@ -104,12 +103,13 @@ const SearchScreen = ({ navigation }) => {
 
   return (
     <View style={{ flex: 1, backgroundColor: '#FAFAFA' }}>
-      <SafeAreaView style={styles.container} edges={['top']}>
-        <KeyboardAvoidingView
-          style={{ flex: 1 }}
-          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-          keyboardVerticalOffset={0}
-        >
+      <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+        <SafeAreaView style={styles.container} edges={['top']}>
+          <KeyboardAvoidingView
+            style={{ flex: 1 }}
+            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+            keyboardVerticalOffset={0}
+          >
         <View style={styles.searchBarWrapper}>
           <View style={styles.searchInputRow}>
             <Ionicons name="search-outline" size={18} color="#AAAAAA" />
@@ -126,7 +126,6 @@ const SearchScreen = ({ navigation }) => {
               <TouchableOpacity
                 onPress={() => {
                   setSearchText('');
-                  setShowPreview(false);
                 }}
                 hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
               >
@@ -202,8 +201,9 @@ const SearchScreen = ({ navigation }) => {
             </View>
           </View>
         </ScrollView>
-        </KeyboardAvoidingView>
-      </SafeAreaView>
+          </KeyboardAvoidingView>
+        </SafeAreaView>
+      </TouchableWithoutFeedback>
     </View>
   );
 };
