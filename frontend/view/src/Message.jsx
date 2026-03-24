@@ -58,6 +58,15 @@ function formatListTime(createdAt) {
   return `${y}.${mm}.${dd}`;
 }
 
+function extractMailListFromResponse(res) {
+  const payload = res?.data;
+  const data = payload?.data;
+  if (Array.isArray(data?.mails)) return data.mails;
+  if (Array.isArray(data)) return data;
+  if (Array.isArray(payload?.mails)) return payload.mails;
+  return [];
+}
+
 // 프로필: 배경 primary, 아이콘 색상은 DB 연동 시 item.profileColor 등으로 교체
 // const getIconColor = (item) => item.profileColor;
 const ICON_COLORS = [colors.green, colors.yellow, colors.red, colors.blue]; // F7FFF3, FFFCD7, FFF3F3, E5F0FF
@@ -65,19 +74,18 @@ const getIconColorByIndex = (index) => ICON_COLORS[index % ICON_COLORS.length];
 
 const SwipeableRow = ({ children, onDelete }) => {
   const { width: windowWidth } = useWindowDimensions();
-  const [measuredWidth, setMeasuredWidth] = useState(null);
-  const containerWidth = measuredWidth ?? windowWidth;
+  const [containerWidth, setContainerWidth] = useState(windowWidth);
   const translateX = useRef(new Animated.Value(0)).current;
 
   const panResponder = useRef(
     PanResponder.create({
-      onMoveShouldSetPanResponder: (_, g) => Math.abs(g.dx) > 10 && Math.abs(g.dy) < 20,
+      onMoveShouldSetPanResponder: (_, g) => Math.abs(g.dx) > 5 && Math.abs(g.dy) < 20,
       onPanResponderMove: (_, g) => {
-        if (g.dx < 0) translateX.setValue(Math.max(g.dx, -80));
+        if (g.dx < 0) translateX.setValue(Math.max(g.dx, -60));
       },
       onPanResponderRelease: (_, g) => {
-        if (g.dx < -50) {
-          Animated.spring(translateX, { toValue: -80, useNativeDriver: true }).start();
+        if (g.dx < -30) {
+          Animated.spring(translateX, { toValue: -60, useNativeDriver: true, bounciness: 0 }).start();
         } else {
           Animated.spring(translateX, { toValue: 0, useNativeDriver: true }).start();
         }
@@ -91,33 +99,42 @@ const SwipeableRow = ({ children, onDelete }) => {
 
   return (
     <View
-      style={{ overflow: 'hidden' }}
-      onLayout={(e) => setMeasuredWidth(e.nativeEvent.layout.width)}
+      style={{ backgroundColor: colors.alert, position: 'relative', overflow: 'hidden' }}
+      onLayout={(e) => {
+        const { width } = e.nativeEvent.layout;
+        if (width > 0) setContainerWidth(width);
+      }}
     >
+      <TouchableOpacity
+        onPress={() => {
+          closeSwipe();
+          onDelete?.();
+        }}
+        activeOpacity={0.8}
+        style={{
+          position: 'absolute',
+          right: 0,
+          top: 0,
+          bottom: 0,
+          width: 60,
+          justifyContent: 'center',
+          alignItems: 'center',
+          backgroundColor: colors.alert,
+          zIndex: 1,
+        }}
+      >
+        <Ionicons name="trash-outline" size={24} color="#fff" />
+      </TouchableOpacity>
       <Animated.View
         style={{
-          flexDirection: 'row',
-          width: containerWidth + 80,
+          width: containerWidth,
+          backgroundColor: colors.background,
           transform: [{ translateX }],
+          zIndex: 2,
         }}
         {...panResponder.panHandlers}
       >
-        <View style={{ flex: 1 }}>{children}</View>
-        <TouchableOpacity
-          onPress={() => {
-            closeSwipe();
-            onDelete?.();
-          }}
-          style={{
-            width: 80,
-            backgroundColor: colors.alert,
-            justifyContent: 'center',
-            alignItems: 'center',
-          }}
-        >
-          <Ionicons name="trash-outline" size={22} color="#fff" />
-          <Text style={{ color: '#fff', fontSize: 11, marginTop: 2 }}>삭제</Text>
-        </TouchableOpacity>
+        {children}
       </Animated.View>
     </View>
   );
@@ -183,19 +200,52 @@ export function MessageContent({ navigation }) {
     const fetchMails = async () => {
       try {
         setLoadingMail(true);
-        const res = await api.get('/api/mails/personal/received', {
-          params: { page: 1, limit: 50 },
-        });
-        const apiMails = res.data?.data?.mails || [];
-        const mapped = apiMails.map((m, idx) => ({
-          id: m.id,
-          profileColorIndex: idx,
-          isReceived: true,
-          senderName: '익명',
-          time: formatListTime(m.created_at || ''),
-          unreadCount: m.is_read ? 0 : 1,
-          raw: m,
-        }));
+        const [receivedRes, sentRes] = await Promise.all([
+          api.get('/api/mails/personal/received', { params: { page: 1, limit: 50 } }),
+          api.get('/api/mails/personal/sent', { params: { page: 1, limit: 50 } }),
+        ]);
+        const received = extractMailListFromResponse(receivedRes);
+        const sent = extractMailListFromResponse(sentRes);
+        const latestReceived = received
+          .slice()
+          .sort((a, b) => {
+            const ad = parseUtcToLocal(a.created_at);
+            const bd = parseUtcToLocal(b.created_at);
+            if (!ad || !bd) return 0;
+            return bd - ad;
+          })[0];
+        const latestSent = sent
+          .slice()
+          .sort((a, b) => {
+            const ad = parseUtcToLocal(a.created_at);
+            const bd = parseUtcToLocal(b.created_at);
+            if (!ad || !bd) return 0;
+            return bd - ad;
+          })[0];
+
+        const candidates = [
+          latestReceived ? { ...latestReceived, _isReceived: true } : null,
+          latestSent ? { ...latestSent, _isReceived: false } : null,
+        ].filter(Boolean);
+
+        const latestOne = candidates.sort((a, b) => {
+          const ad = parseUtcToLocal(a.created_at);
+          const bd = parseUtcToLocal(b.created_at);
+          if (!ad || !bd) return 0;
+          return bd - ad;
+        })[0];
+
+        const mapped = latestOne ? [{
+          id: latestOne.id,
+          profileColorIndex: 0,
+          isReceived: latestOne._isReceived,
+          senderName: latestOne._isReceived ? '익명' : (latestOne.recipient_name || '익명'),
+          directionText: latestOne._isReceived ? '익명' : (latestOne.recipient_name || '익명'),
+          previewText: String(latestOne.content || '').slice(0, 40),
+          time: formatListTime(latestOne.created_at || ''),
+          unreadCount: latestOne._isReceived ? (latestOne.is_read ? 0 : 1) : 0,
+          raw: latestOne,
+        }] : [];
         setMails(mapped);
       } catch (error) {
         console.error('개인 우편 목록 조회 실패:', error);
@@ -271,7 +321,7 @@ export function MessageContent({ navigation }) {
                 const iconColor = getIconColorByIndex(item.profileColorIndex);
                 return (
                   <SwipeableRow
-                    key={item.id}
+                    key={`mail-${item.id}-${item.isReceived ? 'r' : 's'}`}
                     onDelete={async () => {
                       try {
                         await api.delete(`/api/messages/rooms/${item.id}`);
@@ -300,8 +350,8 @@ export function MessageContent({ navigation }) {
                       <View style={styles.listItemLeft}>
                         <View style={[styles.profileCircle, { backgroundColor: colors.primary }]}>
                           <MessageTabIcon
-                            width={normalize(25)}
-                            height={normalize(25)}
+                            width={normalize(22)}
+                            height={normalize(22)}
                             color={iconColor}
                           />
                         </View>
@@ -345,62 +395,75 @@ export function MessageContent({ navigation }) {
               mails.map((item) => {
                 // const iconColor = getIconColor(item); // DB 연동 시
                 const iconColor = getIconColorByIndex(item.profileColorIndex);
-                const displayName = item.isReceived ? '익명' : item.senderName;
+                const displayName = item.directionText || (item.isReceived ? '익명' : item.raw?.recipient_name || '익명');
                 return (
-                  <TouchableOpacity
-                    key={item.id}
-                    style={styles.listItem}
-                    activeOpacity={0.7}
-                    onPress={async () => {
-                      const mailId = item.id;
-                      // 1️⃣ Optimistic UI: 목록에서 즉시 빨간 숫자 제거 + 아이콘 open 상태로
-                      setMails((prev) =>
-                        prev.map((m) =>
-                          m.id === mailId ? { ...m, unreadCount: 0, is_read: true } : m
-                        )
-                      );
-
-                      // 2️⃣ 개인 우편 상세로 이동
-                      navigation?.navigate('MailDetail', {
-                        mail: {
-                          ...(item.raw || item),
-                          isReceived: item.isReceived,
-                          counterpartyUserId: item.raw?.sender_id ?? item.raw?.recipient_id ?? null,
-                        },
-                      });
-
-                      // 3️⃣ DB is_read 업데이트 (딜레이 없이, 실패해도 UI는 유지)
+                  <SwipeableRow
+                    key={`mail-${item.id}-${item.isReceived ? 'r' : 's'}`}
+                    onDelete={async () => {
                       try {
-                        await api.put(`/api/mails/personal/${mailId}/read`);
-                      } catch (error) {
-                        console.error('개인 우편 읽음 처리 실패:', error);
+                        await api.delete(`/api/mails/personal/${item.id}`);
+                        setMails((prev) => prev.filter((m) => m.id !== item.id));
+                      } catch (e) {
+                        Alert.alert('오류', '우편 삭제에 실패했습니다.');
                       }
                     }}
                   >
-                    <View style={styles.listItemLeft}>
-                      <View style={[styles.profileCircle, { backgroundColor: colors.primary }]}>
-                        <Ionicons
-                          name={item.unreadCount > 0 ? 'mail' : 'mail-open'}
-                          size={normalize(27)}
-                          color={iconColor}
-                        />
-                      </View>
-                      <View style={styles.listItemBody}>
-                        <Text style={styles.listItemName}>{displayName}</Text>
-                        <Text style={styles.listItemContent} numberOfLines={1}>
-                          {item.isReceived ? '받은 우편' : '보낸 우편'}
-                        </Text>
-                      </View>
-                    </View>
-                    <View style={styles.listItemRight}>
-                      <Text style={styles.listItemTime}>{item.time}</Text>
-                      {item.unreadCount > 0 ? (
-                        <View style={styles.unreadBadge}>
-                          <Text style={styles.unreadBadgeText}>{item.unreadCount}</Text>
+                    <TouchableOpacity
+                      style={styles.listItem}
+                      activeOpacity={0.7}
+                      onPress={async () => {
+                        const mailId = item.id;
+                        // 1️⃣ Optimistic UI: 목록에서 즉시 빨간 숫자 제거 + 아이콘 open 상태로
+                        setMails((prev) =>
+                          prev.map((m) =>
+                            m.id === mailId ? { ...m, unreadCount: 0, is_read: true } : m
+                          )
+                        );
+
+                        // 2️⃣ 개인 우편 상세로 이동
+                        navigation?.navigate('MailDetail', {
+                          mail: {
+                            ...(item.raw || item),
+                            isReceived: item.isReceived,
+                            counterpartyUserId: item.raw?.sender_id ?? item.raw?.recipient_id ?? null,
+                          },
+                        });
+
+                        // 3️⃣ DB is_read 업데이트 (딜레이 없이, 실패해도 UI는 유지)
+                        if (item.isReceived) {
+                          try {
+                            await api.put(`/api/mails/personal/${mailId}/read`);
+                          } catch (error) {
+                            console.error('개인 우편 읽음 처리 실패:', error);
+                          }
+                        }
+                      }}
+                    >
+                      <View style={styles.listItemLeft}>
+                        <View style={[styles.profileCircle, { backgroundColor: colors.primary }]}>
+                          <Ionicons
+                            name={item.unreadCount > 0 ? 'mail' : 'mail-open'}
+                            size={normalize(23)}
+                            color={iconColor}
+                          />
                         </View>
-                      ) : null}
-                    </View>
-                  </TouchableOpacity>
+                        <View style={styles.listItemBody}>
+                          <Text style={styles.listItemName}>{displayName}</Text>
+                          <Text style={styles.listItemContent} numberOfLines={1}>
+                            {item.previewText || (item.isReceived ? '받은 우편' : '보낸 우편')}
+                          </Text>
+                        </View>
+                      </View>
+                      <View style={styles.listItemRight}>
+                        <Text style={styles.listItemTime}>{item.time}</Text>
+                        {item.unreadCount > 0 ? (
+                          <View style={styles.unreadBadge}>
+                            <Text style={styles.unreadBadgeText}>{item.unreadCount}</Text>
+                          </View>
+                        ) : null}
+                      </View>
+                    </TouchableOpacity>
+                  </SwipeableRow>
                 );
               }))}
             </ScrollView>

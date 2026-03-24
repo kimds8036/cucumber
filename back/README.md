@@ -66,3 +66,11 @@ npm start
 ```
 Authorization: Bearer {JWT_TOKEN}
 ```
+
+## 팀원 공유 테스트 방법
+1. Docker 켜기: `docker start redis-bull cucumber-mysql`
+2. 백엔드 실행: `cd back && npm run dev`
+3. ngrok 실행: `ngrok http 3000`
+4. 팀원한테 ngrok 주소 전달
+5. 팀원 front `api.js`에서 `baseURL`을 ngrok 주소로 변경
+6. 작업 끝나면 ngrok 종료, `api.js` `baseURL` 원래대로 복구

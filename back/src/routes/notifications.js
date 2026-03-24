@@ -1,0 +1,342 @@
+import express from 'express';
+import pool from '../config/database.js';
+import { authenticate } from '../middleware/auth.js';
+import { emitNotification } from '../socketServer.js';
+
+const router = express.Router();
+
+// 클라이언트에서 직접 알림 한 건 기록 (타이머 요약 등)
+router.post('/', authenticate, async (req, res) => {
+  try {
+    const userId = req.user.userId;
+    const { type, category, title, body } = req.body || {};
+    const tit = title != null && String(title).trim() !== '' ? String(title).slice(0, 255) : '알림';
+    const bod = body != null ? String(body) : '';
+    await pool.execute(
+      `INSERT INTO notifications (user_id, type, category, title, body, is_read, created_at)
+       VALUES (?, ?, ?, ?, ?, FALSE, NOW())`,
+      [userId, type || 'system', category || 'general', tit, bod],
+    );
+    res.json({ success: true });
+  } catch (e) {
+    console.error('알림 저장 오류:', e);
+    res.status(500).json({ success: false });
+  }
+});
+
+// 알림 목록 조회 (페이지네이션: page, limit)
+router.get('/', authenticate, async (req, res) => {
+  try {
+    const userId = req.user.userId;
+    const page = Math.max(1, parseInt(req.query.page, 10) || 1);
+    const limit = Math.min(50, Math.max(1, parseInt(req.query.limit, 10) || 20));
+    const offset = (page - 1) * limit;
+
+    // 일부 MySQL 버전에서 LIMIT/OFFSET 에 placeholer(?)를 쓰면
+    // ER_WRONG_ARGUMENTS 가 나는 경우가 있어, 검증된 정수만 직접 문자열에 삽입한다.
+    const limitSql = Number.isFinite(limit) ? limit : 20;
+    const offsetSql = Number.isFinite(offset) ? offset : 0;
+
+    console.log('[GET /api/notifications] 요청', {
+      userId,
+      page,
+      limit,
+      offset,
+    });
+
+    const [rows] = await pool.execute(
+      `SELECT 
+         id,
+         type,
+         category,
+         title,
+         body,
+         related_type,
+         related_id,
+         is_read,
+         created_at,
+         read_at
+       FROM notifications
+       WHERE user_id = ?
+       ORDER BY created_at DESC
+       LIMIT ${limitSql} OFFSET ${offsetSql}`,
+      [userId]
+    );
+
+    console.log('[GET /api/notifications] 결과', {
+      userId,
+      count: rows.length,
+      hasUnread: rows.some((n) => !n.is_read),
+    });
+
+    res.json({
+      success: true,
+      data: rows.map((n) => ({
+        id: n.id,
+        type: n.type,
+        category: n.category,
+        title: n.title,
+        content: n.body,
+        isRead: !!n.is_read,
+        createdAt: n.created_at,
+        relatedType: n.related_type,
+        relatedId: n.related_id,
+      })),
+    });
+  } catch (error) {
+    console.error('알림 목록 조회 오류:', error);
+    res.status(500).json({
+      success: false,
+      message: '알림 목록 조회 중 오류가 발생했습니다.',
+    });
+  }
+});
+
+// 개별 알림 읽음 처리 (Optimistic UI + Batch를 위해 개별도 유지)
+router.post('/:id/read', authenticate, async (req, res) => {
+  try {
+    const userId = req.user.userId;
+    const { id } = req.params;
+
+    console.log('[POST /api/notifications/:id/read] 요청', {
+      userId,
+      id,
+    });
+
+    const [result] = await pool.execute(
+      `UPDATE notifications 
+       SET is_read = TRUE, read_at = NOW()
+       WHERE id = ? AND user_id = ?`,
+      [id, userId],
+    );
+
+    if (result.affectedRows === 0) {
+      console.warn('[POST /api/notifications/:id/read] 대상 없음', {
+        userId,
+        id,
+      });
+      return res.status(404).json({
+        success: false,
+        message: '알림을 찾을 수 없거나 권한이 없습니다.',
+      });
+    }
+
+    console.log('[POST /api/notifications/:id/read] 업데이트 완료', {
+      userId,
+      id,
+      updatedCount: result.affectedRows,
+    });
+
+    res.json({
+      success: true,
+      message: '알림을 읽음으로 표시했습니다.',
+      data: { updatedCount: result.affectedRows },
+    });
+  } catch (error) {
+    console.error('알림 개별 읽음 처리 오류:', error);
+    res.status(500).json({
+      success: false,
+      message: '알림 읽음 처리 중 오류가 발생했습니다.',
+    });
+  }
+});
+
+// 여러 알림 읽음 처리 (Batch API)
+router.post('/read-batch', authenticate, async (req, res) => {
+  try {
+    const userId = req.user.userId;
+    const { ids } = req.body || {};
+
+    if (!Array.isArray(ids) || ids.length === 0) {
+      console.warn('[POST /api/notifications/read-batch] 잘못된 ids', {
+        userId,
+        ids,
+      });
+      return res.status(400).json({
+        success: false,
+        message: 'ids 배열을 전달해주세요.',
+      });
+    }
+
+    // 숫자로 정제
+    const cleanIds = Array.from(
+      new Set(
+        ids
+          .map((v) => Number(v))
+          .filter((v) => Number.isInteger(v) && v > 0),
+      ),
+    );
+
+    if (cleanIds.length === 0) {
+      console.warn('[POST /api/notifications/read-batch] 유효한 ID 없음', {
+        userId,
+        ids,
+      });
+      return res.status(400).json({
+        success: false,
+        message: '유효한 알림 ID가 없습니다.',
+      });
+    }
+
+    const placeholders = cleanIds.map(() => '?').join(',');
+    const params = [userId, ...cleanIds];
+
+    console.log('[POST /api/notifications/read-batch] 요청', {
+      userId,
+      ids: cleanIds,
+    });
+
+    const [result] = await pool.execute(
+      `UPDATE notifications 
+       SET is_read = TRUE, read_at = NOW()
+       WHERE user_id = ? 
+         AND is_read = FALSE 
+         AND id IN (${placeholders})`,
+      params,
+    );
+
+    console.log('[POST /api/notifications/read-batch] 업데이트 완료', {
+      userId,
+      updatedCount: result.affectedRows,
+    });
+
+    res.json({
+      success: true,
+      message: '여러 알림을 읽음으로 표시했습니다.',
+      data: { updatedCount: result.affectedRows },
+    });
+  } catch (error) {
+    console.error('알림 배치 읽음 처리 오류:', error);
+    res.status(500).json({
+      success: false,
+      message: '알림 읽음 처리 중 오류가 발생했습니다.',
+    });
+  }
+});
+
+// 디버그용: 소켓 경로가 살아있는지 즉시 테스트하는 API
+// - 클라이언트에서 이 엔드포인트를 치면, 현재 로그인한 유저에게 바로 notification 이벤트를 emit
+// - 나중에 필요 없으면 삭제해도 됨
+router.post('/debug/socket-ping', authenticate, async (req, res) => {
+  try {
+    const userId = req.user.userId;
+
+    console.log('[POST /api/notifications/debug/socket-ping] 호출', {
+      userId,
+    });
+
+    // 단순한 테스트용 페이로드
+    emitNotification(userId, {
+      type: 'debug',
+      category: 'system',
+      title: '소켓 테스트 알림',
+      body: '이 알림이 헤더 빨간 점을 바로 켜는지 확인용입니다.',
+      relatedType: null,
+      relatedId: null,
+    });
+
+    res.json({
+      success: true,
+      message: 'socket-ping emit 호출 완료',
+    });
+  } catch (error) {
+    console.error('[POST /api/notifications/debug/socket-ping] 오류:', error);
+    res.status(500).json({
+      success: false,
+      message: 'socket-ping 처리 중 오류가 발생했습니다.',
+    });
+  }
+});
+
+// relatedType + relatedId 기준으로 알림 읽음 처리
+router.post('/read-by-related', authenticate, async (req, res) => {
+  try {
+    const userId = req.user.userId;
+    const { relatedType, relatedId } = req.body || {};
+
+    if (!relatedType || !relatedId) {
+      console.warn('[POST /api/notifications/read-by-related] 잘못된 파라미터', {
+        userId,
+        relatedType,
+        relatedId,
+      });
+      return res.status(400).json({
+        success: false,
+        message: 'relatedType과 relatedId를 모두 전달해주세요.',
+      });
+    }
+
+    console.log('[POST /api/notifications/read-by-related] 요청', {
+      userId,
+      relatedType,
+      relatedId,
+    });
+
+    const [result] = await pool.execute(
+      `UPDATE notifications
+       SET is_read = TRUE, read_at = NOW()
+       WHERE user_id = ?
+         AND related_type = ?
+         AND related_id = ?
+         AND is_read = FALSE`,
+      [userId, relatedType, relatedId],
+    );
+
+    console.log('[POST /api/notifications/read-by-related] 업데이트 완료', {
+      userId,
+      relatedType,
+      relatedId,
+      updatedCount: result.affectedRows,
+    });
+
+    res.json({
+      success: true,
+      message: '관련 리소스의 알림을 모두 읽음으로 표시했습니다.',
+      data: { updatedCount: result.affectedRows },
+    });
+  } catch (error) {
+    console.error('알림 read-by-related 처리 오류:', error);
+    res.status(500).json({
+      success: false,
+      message: '알림 읽음 처리 중 오류가 발생했습니다.',
+    });
+  }
+});
+
+// 모든 알림 읽음 처리
+router.post('/mark-all-read', authenticate, async (req, res) => {
+  try {
+    const userId = req.user.userId;
+
+    console.log('[POST /api/notifications/mark-all-read] 요청', {
+      userId,
+    });
+
+    const [result] = await pool.execute(
+      `UPDATE notifications 
+       SET is_read = TRUE, read_at = NOW()
+       WHERE user_id = ? AND is_read = FALSE`,
+      [userId]
+    );
+
+    console.log('[POST /api/notifications/mark-all-read] 업데이트 완료', {
+      userId,
+      updatedCount: result.affectedRows,
+    });
+
+    res.json({
+      success: true,
+      message: '모든 알림을 읽음으로 표시했습니다.',
+      data: { updatedCount: result.affectedRows },
+    });
+  } catch (error) {
+    console.error('알림 모두 읽음 처리 오류:', error);
+    res.status(500).json({
+      success: false,
+      message: '알림 읽음 처리 중 오류가 발생했습니다.',
+    });
+  }
+});
+
+export default router;
+

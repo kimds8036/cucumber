@@ -5,6 +5,7 @@ import SubHeader from '../frame/subHeader';
 import { getNormalize } from '../../styles/frame.style';
 import { createMailStyles } from '../../styles/mail.style';
 import { api } from '../../utils/api';
+import { colors, PROFILE_COLORS } from '../../styles/colors';
 
 function parseUtcToLocal(createdAt) {
   if (!createdAt) return null;
@@ -32,6 +33,28 @@ function formatHistoryTime(createdAt) {
   return `${yy}/${mm}/${dd} ${hh}:${mi}`;
 }
 
+function formatRelativeTime(createdAt) {
+  const d = parseUtcToLocal(createdAt);
+  if (!d) return '';
+  const diffMs = Date.now() - d.getTime();
+  const diffMin = Math.floor(diffMs / (1000 * 60));
+  if (diffMin < 1) return '방금';
+  if (diffMin < 60) return `${diffMin}분 전`;
+  const diffHour = Math.floor(diffMin / 60);
+  if (diffHour < 24) return `${diffHour}시간 전`;
+  const diffDay = Math.floor(diffHour / 24);
+  return `${diffDay}일 전`;
+}
+
+function extractMailListFromResponse(res) {
+  const payload = res?.data;
+  const data = payload?.data;
+  if (Array.isArray(data?.mails)) return data.mails;
+  if (Array.isArray(data)) return data;
+  if (Array.isArray(payload?.mails)) return payload.mails;
+  return [];
+}
+
 export default function MailHistoryScreen({ navigation, route }) {
   const { width } = useWindowDimensions();
   const normalize = useMemo(() => getNormalize(width), [width]);
@@ -54,30 +77,48 @@ export default function MailHistoryScreen({ navigation, route }) {
         api.get('/api/mails/personal/sent', { params: { page: 1, limit: 100 } }),
       ]);
 
-      const received = receivedRes.data?.data?.mails || [];
-      const sent = sentRes.data?.data?.mails || [];
+      console.log('[History] received 응답 원본:', JSON.stringify(receivedRes.data));
+      console.log('[History] sent 응답 원본:', JSON.stringify(sentRes.data));
+      const received = extractMailListFromResponse(receivedRes);
+      const sent = extractMailListFromResponse(sentRes);
+      console.log('[History] list 파싱 결과:', {
+        receivedCount: received.length,
+        sentCount: sent.length,
+        receivedHasDataMails: Array.isArray(receivedRes.data?.data?.mails),
+        sentHasDataMails: Array.isArray(sentRes.data?.data?.mails),
+      });
 
       const merged = [
         ...received.map((m) => ({
           id: `r-${m.id}`,
           rawId: m.id,
+          threadKey: Number(m.thread_key ?? m.root_mail_id ?? m.id),
           direction: 'other',
-          label: '받은 우편',
+          displayName: '익명',
+          badgeText: '',
+          colorId: Number(m.sender_color_id ?? 1),
           createdAt: m.created_at,
+          relativeTime: formatRelativeTime(m.created_at),
           time: formatHistoryTime(m.created_at),
           text: m.content || '',
+          raw: m,
         })),
         ...sent.map((m) => ({
           id: `s-${m.id}`,
           rawId: m.id,
+          threadKey: Number(m.thread_key ?? m.root_mail_id ?? m.id),
           direction: 'me',
-          label: '보낸 우편',
+          displayName: m.recipient_name || '익명',
+          badgeText: '보냄',
+          colorId: Number(m.recipient_color_id ?? 1),
           createdAt: m.created_at,
+          relativeTime: formatRelativeTime(m.created_at),
           time: formatHistoryTime(m.created_at),
           text: m.content || '',
+          raw: m,
         })),
       ]
-        .filter((item) => (!Number.isInteger(threadId) ? true : item.rawId === threadId))
+        .filter((item) => (!Number.isInteger(threadId) ? true : item.threadKey === threadId || item.rawId === threadId))
         .sort((a, b) => {
           const ad = parseUtcToLocal(a.createdAt);
           const bd = parseUtcToLocal(b.createdAt);
@@ -126,23 +167,51 @@ export default function MailHistoryScreen({ navigation, route }) {
           </View>
         )}
         {historyItems.map((item) => {
-          const isMe = item.direction === 'me';
+          const profileColor = PROFILE_COLORS[String(item.colorId)] || colors.primary;
+          const firstChar = String(item.displayName || '익').charAt(0);
           return (
-            <View key={item.id} style={styles.historyRow}>
+            <View
+              key={item.id}
+              style={styles.historyRow}
+            >
               <View style={styles.historyCard}>
-                <View style={styles.detailSenderRow}>
+                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
                   <View
-                    style={[
-                      styles.detailAvatar,
-                      isMe ? styles.detailAvatarMe : styles.detailAvatarOther,
-                    ]}
-                  />
-                  <View style={styles.detailSenderTexts}>
-                    <Text style={styles.detailSenderName}>익명</Text>
-                    <Text style={styles.detailTime}>{item.time}</Text>
+                    style={{
+                      width: normalize(42),
+                      height: normalize(42),
+                      borderRadius: normalize(21),
+                      backgroundColor: profileColor,
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      marginRight: normalize(10),
+                    }}
+                  >
+                    <Text style={{ fontSize: normalize(14), color: '#fff' }}>{firstChar}</Text>
                   </View>
+                  <View style={{ flex: 1 }}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                      <Text style={{ fontSize: normalize(14), fontWeight: '600', color: colors.textPrimary }}>
+                        {item.displayName}
+                      </Text>
+                      {!!item.badgeText && (
+                        <Text style={{ marginLeft: normalize(6), fontSize: normalize(10), color: colors.textSecondary }}>
+                          {item.badgeText}
+                        </Text>
+                      )}
+                    </View>
+                    <Text
+                      style={{ marginTop: normalize(3), fontSize: normalize(13), color: colors.textSecondary }}
+                      numberOfLines={1}
+                      ellipsizeMode="tail"
+                    >
+                      {item.text}
+                    </Text>
+                  </View>
+                  <Text style={{ marginLeft: normalize(8), alignSelf: 'flex-start', fontSize: normalize(11), color: colors.textSecondary }}>
+                    {item.relativeTime}
+                  </Text>
                 </View>
-                <Text style={styles.historyCardBody}>{item.text}</Text>
               </View>
             </View>
           );
