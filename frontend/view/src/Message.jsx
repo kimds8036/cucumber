@@ -99,7 +99,7 @@ const SwipeableRow = ({ children, onDelete }) => {
 
   return (
     <View
-      style={{ backgroundColor: colors.alert, position: 'relative', overflow: 'hidden' }}
+      style={{ position: 'relative', overflow: 'hidden' }}
       onLayout={(e) => {
         const { width } = e.nativeEvent.layout;
         if (width > 0) setContainerWidth(width);
@@ -127,7 +127,7 @@ const SwipeableRow = ({ children, onDelete }) => {
       </TouchableOpacity>
       <Animated.View
         style={{
-          width: containerWidth,
+          width: containerWidth + 2,
           backgroundColor: colors.background,
           transform: [{ translateX }],
           zIndex: 2,
