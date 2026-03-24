@@ -10,6 +10,8 @@ export const colors = {
   // 배경 컬러
   background: '#fff',        // 기본 배경 (흰색)
   backgroundGray: '#D3D3D3', // 회색 배경
+  surface: '#F7F7F7',        // 카드 배경 약간 다른 톤
+  border: '#E0E0E0',         // 구분선/dashed border용
 
   // 검정 컬러
   textPrimary: '#272A26',       // 기본 텍스트 (진한 회색)
@@ -57,6 +59,15 @@ export const colors = {
   hashtagChipBorder: '#B8DFC8',
   hashtagChipText: '#3A7A52',
   hashtagChipRemove: '#7AB08A',
+};
+
+export const PROFILE_COLORS = {
+  1: '#a6da95',
+  2: '#89b4fa',
+  3: '#f38ba8',
+  4: '#fab387',
+  5: '#a9e3cb',
+  6: '#cba6f7',
 };
 
 // 폰트 테마 관리

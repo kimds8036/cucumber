@@ -35,6 +35,15 @@ router.get('/personal/received', authenticate, async (req, res) => {
         pm.content,
         pm.is_read,
         pm.is_deleted,
+        pm.parent_mail_id,
+        pm.root_mail_id,
+        COALESCE(pm.root_mail_id, pm.id) AS thread_key,
+        (
+          SELECT COUNT(*)
+          FROM personal_mails r
+          WHERE r.parent_mail_id = pm.id
+            AND r.is_deleted = FALSE
+        ) > 0 AS has_reply,
         pm.created_at,
         u.name as sender_name,
         u.color_id as sender_color_id
@@ -92,6 +101,15 @@ router.get('/personal/sent', authenticate, async (req, res) => {
         pm.content,
         pm.is_read,
         pm.is_deleted,
+        pm.parent_mail_id,
+        pm.root_mail_id,
+        COALESCE(pm.root_mail_id, pm.id) AS thread_key,
+        (
+          SELECT COUNT(*)
+          FROM personal_mails r
+          WHERE r.parent_mail_id = pm.id
+            AND r.is_deleted = FALSE
+        ) > 0 AS has_reply,
         pm.created_at,
         u.name as recipient_name,
         u.color_id as recipient_color_id
@@ -133,6 +151,81 @@ router.get('/personal/sent', authenticate, async (req, res) => {
   }
 });
 
+// 개인 우편 스레드 전체 조회
+router.get('/personal/:mailId/thread', authenticate, async (req, res) => {
+  try {
+    const userId = req.user.userId;
+    const { mailId } = req.params;
+
+    const [baseRows] = await pool.execute(
+      `SELECT id, sender_id, recipient_id, root_mail_id
+       FROM personal_mails
+       WHERE id = ? AND is_deleted = FALSE`,
+      [mailId]
+    );
+
+    if (baseRows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: '우편을 찾을 수 없습니다.',
+      });
+    }
+
+    const base = baseRows[0];
+    const threadRootId = base.root_mail_id == null ? Number(mailId) : Number(base.root_mail_id);
+
+    const [participationRows] = await pool.execute(
+      `SELECT COUNT(*) AS cnt
+       FROM personal_mails pm
+       WHERE (pm.id = ? OR pm.root_mail_id = ?)
+         AND pm.is_deleted = FALSE
+         AND (pm.sender_id = ? OR pm.recipient_id = ?)`,
+      [threadRootId, threadRootId, userId, userId]
+    );
+
+    if (Number(participationRows[0]?.cnt ?? 0) === 0) {
+      return res.status(403).json({
+        success: false,
+        message: '해당 스레드에 접근할 권한이 없습니다.',
+      });
+    }
+
+    const [messages] = await pool.execute(
+      `SELECT
+        pm.id,
+        pm.sender_id,
+        s.name as sender_name,
+        pm.recipient_id,
+        r.name as recipient_name,
+        pm.content,
+        pm.created_at,
+        pm.parent_mail_id,
+        pm.root_mail_id
+       FROM personal_mails pm
+       JOIN users s ON pm.sender_id = s.id
+       JOIN users r ON pm.recipient_id = r.id
+       WHERE (pm.id = ? OR pm.root_mail_id = ?)
+         AND pm.is_deleted = FALSE
+       ORDER BY pm.created_at ASC`,
+      [threadRootId, threadRootId]
+    );
+
+    res.json({
+      success: true,
+      data: {
+        thread_root_id: threadRootId,
+        messages,
+      },
+    });
+  } catch (error) {
+    console.error('개인 우편 스레드 조회 오류:', error);
+    res.status(500).json({
+      success: false,
+      message: '개인 우편 스레드 조회 중 오류가 발생했습니다.',
+    });
+  }
+});
+
 // 개인 우편 상세 조회
 router.get('/personal/:mailId', authenticate, async (req, res) => {
   try {
@@ -148,6 +241,8 @@ router.get('/personal/:mailId', authenticate, async (req, res) => {
         pm.content,
         pm.is_read,
         pm.is_deleted,
+        pm.parent_mail_id,
+        pm.root_mail_id,
         pm.created_at,
         u1.name as sender_name,
         u1.color_id as sender_color_id,
@@ -180,9 +275,28 @@ router.get('/personal/:mailId', authenticate, async (req, res) => {
       mail.is_read = true;
     }
 
+    const [replies] = await pool.execute(
+      `SELECT
+         id,
+         sender_id,
+         recipient_id,
+         content,
+         created_at,
+         parent_mail_id,
+         root_mail_id
+       FROM personal_mails
+       WHERE parent_mail_id = ?
+         AND is_deleted = FALSE
+       ORDER BY created_at ASC`,
+      [mailId]
+    );
+
     res.json({
       success: true,
-      data: mail
+      data: {
+        ...mail,
+        replies,
+      }
     });
   } catch (error) {
     console.error('개인 우편 상세 조회 오류:', error);
@@ -291,7 +405,7 @@ router.post('/personal/:mailId/reply', authenticate, async (req, res) => {
 
     // 원본 우편 조회 (받은 우편인지 확인)
     const [mails] = await pool.execute(
-      `SELECT sender_id, recipient_id 
+      `SELECT sender_id, recipient_id, root_mail_id
        FROM personal_mails 
        WHERE id = ? AND recipient_id = ? AND is_deleted = FALSE`,
       [mailId, userId]
@@ -306,12 +420,13 @@ router.post('/personal/:mailId/reply', authenticate, async (req, res) => {
 
     const originalMail = mails[0];
     const recipientId = originalMail.sender_id; // 원본 발신자에게 답장
+    const rootMailId = originalMail.root_mail_id == null ? Number(mailId) : Number(originalMail.root_mail_id);
 
     // 답장 우편 생성
     const [result] = await pool.execute(
-      `INSERT INTO personal_mails (sender_id, recipient_id, content, created_at)
-       VALUES (?, ?, ?, ?)`,
-      [userId, recipientId, content.trim(), getNowForDB()]
+      `INSERT INTO personal_mails (sender_id, recipient_id, content, parent_mail_id, root_mail_id, created_at)
+       VALUES (?, ?, ?, ?, ?, ?)`,
+      [userId, recipientId, content.trim(), Number(mailId), rootMailId, getNowForDB()]
     );
 
     // 생성된 답장 정보 조회
@@ -323,6 +438,8 @@ router.post('/personal/:mailId/reply', authenticate, async (req, res) => {
         pm.content,
         pm.is_read,
         pm.is_deleted,
+        pm.parent_mail_id,
+        pm.root_mail_id,
         pm.created_at,
         u.name as recipient_name,
         u.color_id as recipient_color_id
@@ -358,7 +475,7 @@ router.post('/personal/:mailId/reply', authenticate, async (req, res) => {
 });
 
 // 개인 우편 읽음 처리
-router.put('/personal/:mailId/read', authenticate, async (req, res) => {
+const markPersonalMailAsRead = async (req, res) => {
   try {
     const userId = req.user.userId;
     const { mailId } = req.params;
@@ -394,7 +511,10 @@ router.put('/personal/:mailId/read', authenticate, async (req, res) => {
       message: '읽음 처리 중 오류가 발생했습니다.' 
     });
   }
-});
+};
+
+router.put('/personal/:mailId/read', authenticate, markPersonalMailAsRead);
+router.patch('/personal/:mailId/read', authenticate, markPersonalMailAsRead);
 
 // 개인 우편 삭제
 router.delete('/personal/:mailId', authenticate, async (req, res) => {

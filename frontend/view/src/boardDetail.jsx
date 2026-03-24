@@ -117,6 +117,7 @@ export default function BoardDetail({ navigation, route }) {
   const [postScrapped, setPostScrapped] = useState(Boolean(post?.isScrapped));
   const [commentLikedState, setCommentLikedState] = useState({});
   const [bottomComment, setBottomComment] = useState('');
+  const [commentImages, setCommentImages] = useState([]);
   const [replyToCommentId, setReplyToCommentId] = useState(null);
   const [replyToAuthorLabel, setReplyToAuthorLabel] = useState('');
   const bottomInputRef = useRef(null);
@@ -577,15 +578,24 @@ export default function BoardDetail({ navigation, route }) {
   };
 
   const handleSendComment = async () => {
-    if (!bottomComment.trim()) return;
+    if (!bottomComment.trim() && commentImages.length === 0) return;
     try {
-      const payload = {
-        content: bottomComment.trim(),
-      };
+      const postId = post?.id;
+      const formData = new FormData();
+      formData.append('content', bottomComment.trim());
       if (replyToCommentId) {
-        payload.parentCommentId = replyToCommentId;
+        formData.append('parentCommentId', String(replyToCommentId));
       }
-      const res = await api.post(`/api/${post.id}/comments`, payload);
+      commentImages.forEach((uri, index) => {
+        formData.append('images', {
+          uri,
+          type: 'image/jpeg',
+          name: `image_${index}.jpg`,
+        });
+      });
+      const res = await api.post(`/api/comments/${postId}`, formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
       const c = res.data?.data;
       if (c) {
         // 간단히 전체 댓글을 다시 로드
@@ -631,6 +641,7 @@ export default function BoardDetail({ navigation, route }) {
         );
       }
       setBottomComment('');
+      setCommentImages([]);
       setReplyToCommentId(null);
       setReplyToAuthorLabel('');
     } catch (error) {
@@ -922,6 +933,9 @@ export default function BoardDetail({ navigation, route }) {
                 bottomInputRef={bottomInputRef}
                 bottomComment={bottomComment}
                 setBottomComment={setBottomComment}
+                selectedImages={commentImages}
+                onImagesChange={setCommentImages}
+                showImageAttach={true}
                 replyToCommentId={replyToCommentId}
                 replyToAuthorLabel={replyToAuthorLabel}
                 clearReplyTarget={clearReplyTarget}

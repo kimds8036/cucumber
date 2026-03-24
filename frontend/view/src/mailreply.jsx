@@ -19,6 +19,7 @@ export default function MailReplyScreen({ navigation, route }) {
   const [replyText, setReplyText] = useState('');
   const [showToast, setShowToast] = useState(false);
   const [sending, setSending] = useState(false);
+  const [previewExpanded, setPreviewExpanded] = useState(false);
   const [subHeaderHeight, setSubHeaderHeight] = useState(0);
   const [bottomHeight, setBottomHeight] = useState(0);
 
@@ -80,11 +81,33 @@ export default function MailReplyScreen({ navigation, route }) {
             contentContainerStyle={styles.modalFullContent}
             showsVerticalScrollIndicator={false}
           >
-            <View style={[styles.replyFormCard, { minHeight: halfCardHeight }]}>
-              <Text style={styles.replyFormToLabel}>
-                To. <Text style={styles.replyFormToName}>익명</Text>
-              </Text>
+            <View style={[styles.modalLetterPreviewCard, { minHeight: halfCardHeight }]}>
+              <TouchableOpacity
+                activeOpacity={0.8}
+                onPress={() => setPreviewExpanded((prev) => !prev)}
+                style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: normalize(8) }}
+              >
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: normalize(6) }}>
+                  <Text style={styles.detailSenderName}>익명 · 받은 편지</Text>
+                  <Text style={styles.detailTime}>{mail?.receivedAt ?? ''}</Text>
+                </View>
+                <MaterialCommunityIcons
+                  name={previewExpanded ? 'chevron-up' : 'chevron-down'}
+                  size={18}
+                  color={colors.textSecondary}
+                />
+              </TouchableOpacity>
+              <View style={styles.detailDivider} />
+              {previewExpanded ? (
+                <Text style={styles.detailBody}>{mail?.content ?? ''}</Text>
+              ) : (
+                <Text style={styles.detailBody} numberOfLines={1} ellipsizeMode="tail">
+                  {mail?.content ?? ''}
+                </Text>
+              )}
+            </View>
 
+            <View style={[styles.replyFormCard, { minHeight: halfCardHeight }]}>
               <TextInput
                 style={styles.replyFormInput}
                 placeholder="내용을 입력하세요"
@@ -104,18 +127,6 @@ export default function MailReplyScreen({ navigation, route }) {
                   </View>
                 </View>
               </View>
-            </View>
-
-            <View style={[styles.modalLetterPreviewCard, { minHeight: halfCardHeight }]}>
-              <View style={styles.detailSenderRow}>
-                <View style={styles.detailAvatar} />
-                <View style={styles.detailSenderTexts}>
-                  <Text style={styles.detailSenderName}>익명</Text>
-                  <Text style={styles.detailTime}>{mail?.receivedAt ?? ''}</Text>
-                </View>
-              </View>
-              <View style={styles.detailDivider} />
-              <Text style={styles.detailBody}>{mail?.content ?? ''}</Text>
             </View>
           </ScrollView>
 

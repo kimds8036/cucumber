@@ -231,6 +231,7 @@ export default function Chat({ navigation, route }) {
   const [messages, setMessages] = useState([]);    // 시간순(오름차순) 정렬된 UI 모델 배열
   const [currentUserId, setCurrentUserId] = useState(null);
   const [inputText, setInputText] = useState('');
+  const [chatImages, setChatImages] = useState([]);
   const [keyboardHeight, setKeyboardHeight] = useState(0);
 
   const insets = useSafeAreaInsets();
@@ -482,7 +483,8 @@ export default function Chat({ navigation, route }) {
   // ─────────────────────────────────────────────
   const handleSendMessage = useCallback(async (content) => {
     const text = (content || inputText).trim();
-    if (!text || !roomId) return;
+    if (!text && chatImages.length === 0) return;
+    if (!roomId) return;
 
     const tempId = `temp-${Date.now()}`;
     const nowIso = new Date().toISOString();
@@ -507,7 +509,19 @@ export default function Chat({ navigation, route }) {
     setInputText('');
 
     try {
-      const res = await api.post(`/api/messages/rooms/${roomId}/messages`, { content: text });
+      const formData = new FormData();
+      if (text) formData.append('content', text);
+      chatImages.forEach((uri, index) => {
+        formData.append('images', {
+          uri,
+          type: 'image/jpeg',
+          name: `image_${index}.jpg`,
+        });
+      });
+      const res = await api.post(`/api/messages/rooms/${roomId}/messages`, formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+      setChatImages([]);
       const m = res.data?.data;
       if (m) {
         const confirmed = {
@@ -528,7 +542,7 @@ export default function Chat({ navigation, route }) {
         )
       );
     }
-  }, [inputText, roomId]);
+  }, [inputText, roomId, chatImages]);
 
   // ─────────────────────────────────────────────
   // 10. 재전송 핸들러
@@ -695,6 +709,9 @@ export default function Chat({ navigation, route }) {
               bottomInputRef={null}
               bottomComment={inputText}
               setBottomComment={setInputText}
+              selectedImages={chatImages}
+              onImagesChange={setChatImages}
+              showImageAttach={true}
               replyToCommentId={null}
               replyToAuthorLabel=""
               clearReplyTarget={() => {}}

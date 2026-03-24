@@ -19,6 +19,7 @@ import { authenticate } from '../middleware/auth.js';
 import { getNowForDB } from '../utils/dateUtils.js';
 import { emitNewMessage, emitReadReceipt } from '../socketServer.js';
 import { enqueueNotification } from '../utils/notificationWorker.js';
+import { cloudinary, upload } from '../config/cloudinary.js';
 
 const router = express.Router();
 
@@ -280,7 +281,11 @@ router.get('/rooms/:roomId', authenticate, async (req, res) => {
     const [messages] = await pool.execute(
       `SELECT
         m.id, m.room_id, m.sender_id, m.content, m.is_read, m.is_deleted, m.created_at,
-        u.name AS sender_name, u.color_id AS sender_color_id
+        u.name AS sender_name, u.color_id AS sender_color_id,
+        (SELECT JSON_ARRAYAGG(cloudinary_url)
+          FROM message_images
+          WHERE message_id = m.id AND deleted_at IS NULL
+          ORDER BY display_order ASC) AS images
        FROM messages m
        LEFT JOIN users u ON m.sender_id = u.id
        WHERE m.room_id = ?
@@ -297,12 +302,16 @@ router.get('/rooms/:roomId', authenticate, async (req, res) => {
     const total = Number(countResult[0]?.total ?? 0);
 
     messages.reverse(); // 오래된 순으로 정렬
+    const parsed = messages.map(msg => ({
+      ...msg,
+      images: msg.images ? JSON.parse(msg.images) : []
+    }));
 
     res.json({
       success: true,
       data: {
         room: roomInfo[0],
-        messages,
+        messages: parsed,
         pagination: {
           page: parseInt(page, 10),
           limit: limitNum,
@@ -322,14 +331,14 @@ router.get('/rooms/:roomId', authenticate, async (req, res) => {
 // [변경] 1) 상대방에게 Socket.io로 new_message emit
 //        2) createNotification → enqueueNotification (큐 위임)
 // ─────────────────────────────────────────────────────
-router.post('/rooms/:roomId/messages', authenticate, async (req, res) => {
+router.post('/rooms/:roomId/messages', authenticate, upload.array('images', 5), async (req, res) => {
   try {
     const userId = req.user.userId;
     const { roomId } = req.params;
     const { content } = req.body;
 
-    if (!content || content.trim() === '') {
-      return res.status(400).json({ success: false, message: '메시지 내용을 입력해주세요.' });
+    if (!content?.trim() && (!req.files || req.files.length === 0)) {
+      return res.status(400).json({ message: '내용 또는 이미지를 입력해주세요.' });
     }
 
     const [rooms] = await pool.execute(
@@ -343,7 +352,7 @@ router.post('/rooms/:roomId/messages', authenticate, async (req, res) => {
 
     const room = rooms[0];
     const otherUserId = room.user1_id === userId ? room.user2_id : room.user1_id;
-    const trimmedContent = content.trim();
+    const trimmedContent = content?.trim() || null;
 
     // ── 메시지 저장 ─────────────────────────────
     const now = getNowForDB();
@@ -351,6 +360,19 @@ router.post('/rooms/:roomId/messages', authenticate, async (req, res) => {
       `INSERT INTO messages (room_id, sender_id, content, created_at) VALUES (?, ?, ?, ?)`,
       [roomId, userId, trimmedContent, now]
     );
+    const messageId = result.insertId;
+    if (req.files && req.files.length > 0) {
+      const imageValues = req.files.map((file, index) => [
+        messageId,
+        file.path,
+        file.filename,
+        index
+      ]);
+      await pool.query(
+        'INSERT INTO message_images (message_id, cloudinary_url, cloudinary_public_id, display_order) VALUES ?',
+        [imageValues]
+      );
+    }
 
     // 메시지 전송 시 상대방의 "채팅방 삭제 상태"를 복구
     await pool.execute(
@@ -376,7 +398,7 @@ router.post('/rooms/:roomId/messages', authenticate, async (req, res) => {
        FROM messages m
        LEFT JOIN users u ON m.sender_id = u.id
        WHERE m.id = ?`,
-      [result.insertId]
+      [messageId]
     );
     const savedMessage = messages[0];
 
