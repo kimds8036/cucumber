@@ -3,6 +3,7 @@ import pool from '../config/database.js';
 import { authenticate, optionalAuthenticate } from '../middleware/auth.js';
 import { createNotification } from '../utils/notifications.js';
 import { getNowForDB } from '../utils/dateUtils.js';
+import { cloudinary, upload } from '../config/cloudinary.js';
 
 const router = express.Router();
 
@@ -106,6 +107,7 @@ router.get('/', optionalAuthenticate, async (req, res) => {
         u.name as author_name,
         u.color_id,
         s.name as school_name,
+        (SELECT cloudinary_url FROM post_images WHERE post_id = p.id AND deleted_at IS NULL ORDER BY display_order ASC LIMIT 1) AS thumbnail,
         (SELECT COUNT(*) FROM post_likes pl
           WHERE pl.post_id = p.id AND pl.user_id = ?) AS is_liked,
         (SELECT COUNT(*) FROM post_scraps ps
@@ -545,6 +547,12 @@ router.get('/:id', optionalAuthenticate, async (req, res) => {
 
     const post = posts[0];
 
+    // 이미지 조회
+    const [images] = await pool.query(
+      'SELECT cloudinary_url, display_order FROM post_images WHERE post_id = ? AND deleted_at IS NULL ORDER BY display_order ASC',
+      [id]
+    );
+
     console.log('[GET /api/posts/:id] 게시글 조회 성공', {
       id,
       userId,
@@ -609,6 +617,7 @@ router.get('/:id', optionalAuthenticate, async (req, res) => {
         isMine,
         post_author_id: postAuthorId,
         current_user_id: userId ?? null,
+        images: images.map(img => img.cloudinary_url),
         tags: postTags,
       },
     });
@@ -622,7 +631,7 @@ router.get('/:id', optionalAuthenticate, async (req, res) => {
 });
 
 // 게시글 작성
-router.post('/', authenticate, async (req, res) => {
+router.post('/', authenticate, upload.array('images', 5), async (req, res) => {
   try {
     const userId = req.user.userId;
     const { boardType, schoolId, content, tags } = req.body;
@@ -672,6 +681,20 @@ router.post('/', authenticate, async (req, res) => {
     );
 
     const postId = result.insertId;
+
+    // 이미지 업로드 처리
+    if (req.files && req.files.length > 0) {
+      const imageValues = req.files.map((file, index) => [
+        postId,
+        file.path, // cloudinary url
+        file.filename, // cloudinary public_id
+        index,
+      ]);
+      await pool.query(
+        'INSERT INTO post_images (post_id, cloudinary_url, cloudinary_public_id, display_order) VALUES ?',
+        [imageValues],
+      );
+    }
 
     // 전체 게시판(national)에서만 해시태그 허용
     if (boardType === 'national' && Array.isArray(tags) && tags.length > 0) {
@@ -759,6 +782,11 @@ router.delete('/:id', authenticate, async (req, res) => {
     }
 
     await pool.execute('UPDATE posts SET is_deleted = TRUE WHERE id = ?', [id]);
+    // 연결된 이미지도 소프트 딜리트
+    await pool.query(
+      'UPDATE post_images SET deleted_at = NOW() WHERE post_id = ? AND deleted_at IS NULL',
+      [id]
+    );
 
     res.json({
       success: true,

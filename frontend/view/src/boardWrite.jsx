@@ -3,6 +3,7 @@ import {
   View,
   Text,
   TextInput,
+  Image,
   TouchableOpacity,
   TouchableWithoutFeedback,
   Keyboard,
@@ -13,6 +14,8 @@ import {
   ScrollView,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { Ionicons } from '@expo/vector-icons';
+import * as ImagePicker from 'expo-image-picker';
 import SubHeader from '../frame/subHeader';
 import { createWriteStyles, getNormalize } from '../../styles/board.style';
 import { api } from '../../utils/api';
@@ -28,6 +31,7 @@ const BoardWrite = ({ navigation, route }) => {
   const [hashtagInput, setHashtagInput] = useState(''); // 입력 중인 해시태그
   const [hashtagSuggestions, setHashtagSuggestions] = useState([]); // 추천 태그 목록
   const [loadingSuggestions, setLoadingSuggestions] = useState(false);
+  const [postImages, setPostImages] = useState([]);
   const boardContext = route?.params?.boardContext || 'national';
 
   const handleBack = () => {
@@ -103,6 +107,19 @@ const BoardWrite = ({ navigation, route }) => {
     setHashtagSuggestions([]);
   };
 
+  const handlePickPostImages = async () => {
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsMultipleSelection: true,
+      quality: 0.8,
+      selectionLimit: 5,
+    });
+    if (!result.canceled) {
+      const uris = result.assets.map((a) => a.uri);
+      setPostImages((prev) => [...prev, ...uris].slice(0, 5));
+    }
+  };
+
   const handleComplete = async () => {
     if (!content.trim()) {
       Alert.alert('알림', '내용을 입력해주세요.');
@@ -124,12 +141,20 @@ const BoardWrite = ({ navigation, route }) => {
         schoolId = id;
       }
 
-      await api.post('/api/posts', {
-        boardType,
-        schoolId: schoolId ?? undefined,
-        content: content.trim(),
-        // 백엔드는 body.tags 배열을 사용하므로 이름을 맞춰 전달
-        tags: hashtags,
+      const formData = new FormData();
+      formData.append('boardType', boardType);
+      if (schoolId) formData.append('schoolId', String(schoolId));
+      formData.append('content', content.trim());
+      hashtags.forEach(tag => formData.append('tags[]', tag));
+      postImages.forEach((uri, index) => {
+        formData.append('images', {
+          uri,
+          type: 'image/jpeg',
+          name: `image_${index}.jpg`,
+        });
+      });
+      await api.post('/api/posts', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
       });
 
       Alert.alert('완료', '게시글이 작성되었습니다.', [
@@ -253,11 +278,59 @@ const BoardWrite = ({ navigation, route }) => {
           </View>
         )}
       </View>
+      {/* 이미지 첨부 UI */}
+      <View style={{ paddingHorizontal: 16, paddingBottom: 10 }}>
+        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+          <Text style={{ color: colors.textSecondary, fontSize: 14 }}>사진 첨부</Text>
+          <Text style={{ color: colors.textSecondary, fontSize: 12 }}>{postImages.length}/5</Text>
+        </View>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+          <TouchableOpacity
+            onPress={handlePickPostImages}
+            disabled={postImages.length >= 5}
+            style={{
+              width: 80,
+              height: 80,
+              borderRadius: 10,
+              borderWidth: 1.5,
+              borderStyle: 'dashed',
+              borderColor: postImages.length >= 5 ? '#CCC' : '#999',
+              alignItems: 'center',
+              justifyContent: 'center',
+              marginRight: 8,
+              backgroundColor: '#FAFAFA',
+            }}
+          >
+            <Ionicons
+              name="add"
+              size={24}
+              color={postImages.length >= 5 ? '#CCC' : '#888'}
+            />
+          </TouchableOpacity>
+          {postImages.map((uri, index) => (
+            <View key={index} style={{ marginRight: 8, position: 'relative' }}>
+              <Image source={{ uri }} style={{ width: 80, height: 80, borderRadius: 10 }} />
+              <TouchableOpacity
+                onPress={() => setPostImages((prev) => prev.filter((_, i) => i !== index))}
+                style={{
+                  position: 'absolute',
+                  top: -6,
+                  right: -6,
+                  backgroundColor: '#000',
+                  borderRadius: 10,
+                }}
+              >
+                <Ionicons name="close-circle" size={18} color="#fff" />
+              </TouchableOpacity>
+            </View>
+          ))}
+        </ScrollView>
+      </View>
       <View style={styles.writeHashtagBottomDivider} />
     </>
   );
 
-  const canSubmit = content.trim().length > 0;
+  const canSubmit = content.trim().length > 0 || postImages.length > 0;
 
   return (
     <SafeAreaView style={{ flex: 1 }}>

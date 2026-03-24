@@ -1,6 +1,7 @@
 import React from 'react';
-import { View, Text, TextInput, TouchableOpacity } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, Image, ScrollView } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import * as ImagePicker from 'expo-image-picker';
 import { colors } from '../styles/colors';
 
 export default function CommentInput({
@@ -15,6 +16,9 @@ export default function CommentInput({
   normalize,
   /** 최상위 댓글 입력 placeholder (기본: 댓글을 입력하세요) */
   mainPlaceholder,
+  selectedImages = [],
+  onImagesChange = () => {},
+  showImageAttach = false,
 }) {
   return (
     <View style={styles.bottomInputRow}>
@@ -32,7 +36,41 @@ export default function CommentInput({
           </TouchableOpacity>
         </View>
       ) : null}
+      {selectedImages.length > 0 && (
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ paddingHorizontal: 8, paddingVertical: 6 }}>
+          {selectedImages.map((uri, index) => (
+            <View key={index} style={{ marginRight: 8, position: 'relative' }}>
+              <Image source={{ uri }} style={{ width: normalize(72), height: normalize(72), borderRadius: 8 }} />
+              <TouchableOpacity
+                onPress={() => onImagesChange(selectedImages.filter((_, i) => i !== index))}
+                style={{ position: 'absolute', top: -6, right: -6, backgroundColor: '#000', borderRadius: 10 }}
+              >
+                <Ionicons name="close-circle" size={normalize(18)} color="#fff" />
+              </TouchableOpacity>
+            </View>
+          ))}
+        </ScrollView>
+      )}
       <View style={styles.bottomInputInner}>
+        {showImageAttach && (
+          <TouchableOpacity
+            onPress={async () => {
+              const result = await ImagePicker.launchImageLibraryAsync({
+                mediaTypes: ImagePicker.MediaTypeOptions.Images,
+                allowsMultipleSelection: true,
+                quality: 0.8,
+                selectionLimit: 5,
+              });
+              if (!result.canceled) {
+                const uris = result.assets.map(a => a.uri);
+                onImagesChange([...selectedImages, ...uris].slice(0, 5));
+              }
+            }}
+            style={{ paddingHorizontal: 8, justifyContent: 'center' }}
+          >
+            <Ionicons name="image-outline" size={normalize(24)} color="#888" />
+          </TouchableOpacity>
+        )}
         <TextInput
           ref={bottomInputRef}
           style={styles.bottomInput}
@@ -48,7 +86,11 @@ export default function CommentInput({
         />
         <TouchableOpacity
           style={styles.sendButton}
-          onPress={handleSendComment}
+          onPress={() => {
+            if (bottomComment.trim() || selectedImages.length > 0) {
+              handleSendComment();
+            }
+          }}
           activeOpacity={0.8}
         >
           <Ionicons name="arrow-up" size={normalize(22)} color={colors.background} />

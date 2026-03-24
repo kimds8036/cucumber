@@ -3,6 +3,7 @@ import pool from '../config/database.js';
 import { authenticate } from '../middleware/auth.js';
 import { enqueueNotification } from '../utils/notificationWorker.js';
 import { getNowForDB } from '../utils/dateUtils.js';
+import { cloudinary, upload } from '../config/cloudinary.js';
 
 const router = express.Router();
 
@@ -52,13 +53,13 @@ router.delete('/comments/:commentId', authenticate, async (req, res) => {
 });
 
 // 댓글 작성 (대댓글 포함)
-router.post('/:postId/comments', authenticate, async (req, res) => {
+router.post('/:postId/comments', authenticate, upload.array('images', 5), async (req, res) => {
   try {
     const userId = req.user.userId;
     const { postId } = req.params;
     const { content, parentCommentId } = req.body;
 
-    if (!content) {
+    if (!content?.trim() && (!req.files || req.files.length === 0)) {
       return res.status(400).json({
         success: false,
         message: '댓글 내용을 입력해주세요.',
@@ -121,11 +122,24 @@ router.post('/:postId/comments', authenticate, async (req, res) => {
         postId,
         userId,
         parentCommentId || null,
-        content,
+        content?.trim() || null,
         anonymousIndex,
         getNowForDB(),
       ],
     );
+    const commentId = result.insertId;
+    if (req.files && req.files.length > 0) {
+      const imageValues = req.files.map((file, index) => [
+        commentId,
+        file.path,
+        file.filename,
+        index,
+      ]);
+      await pool.query(
+        'INSERT INTO comment_images (comment_id, cloudinary_url, cloudinary_public_id, display_order) VALUES ?',
+        [imageValues]
+      );
+    }
 
     // 게시글의 댓글 수 증가
     await pool.execute(
@@ -149,7 +163,7 @@ router.post('/:postId/comments', authenticate, async (req, res) => {
       FROM comments c
       LEFT JOIN users u ON c.user_id = u.id
       WHERE c.id = ?`,
-      [result.insertId],
+      [commentId],
     );
 
     const post = posts[0];
@@ -231,7 +245,11 @@ router.get('/:postId/comments', async (req, res) => {
         c.like_count,
         c.created_at,
         u.name as author_name,
-        u.color_id
+        u.color_id,
+        (SELECT JSON_ARRAYAGG(cloudinary_url)
+          FROM comment_images
+          WHERE comment_id = c.id AND deleted_at IS NULL
+          ORDER BY display_order ASC) AS images
       FROM comments c
       LEFT JOIN users u ON c.user_id = u.id
       WHERE c.post_id = ? AND c.is_deleted = FALSE
@@ -252,15 +270,17 @@ router.get('/:postId/comments', async (req, res) => {
     }
 
     // 댓글에 isLiked 속성 추가
-    const commentsWithLikes = comments.map((comment) => ({
+    const likedSet = new Set(likedCommentIds);
+    const result = comments.map(comment => ({
       ...comment,
-      isLiked: likedCommentIds.includes(comment.id),
+      images: comment.images ? JSON.parse(comment.images) : [],
+      isLiked: likedSet.has(comment.id),
     }));
 
     res.json({
       success: true,
       data: {
-        comments: commentsWithLikes,
+        comments: result,
       },
     });
   } catch (error) {
