@@ -109,6 +109,22 @@ export function initSocketServer(httpServer) {
       console.log(`[Socket] userId=${userId} → room:${roomId} 퇴장`);
     });
 
+    // ── 타이핑 이벤트(상대방 표시) ────────────────
+    socket.on('typing_start', ({ roomId, userId: typingUserId, userName }) => {
+      if (!roomId) return;
+      socket.to(`room:${roomId}`).emit('user_typing', {
+        userId: typingUserId,
+        userName: userName ?? '익명',
+      });
+    });
+
+    socket.on('typing_stop', ({ roomId, userId: typingUserId }) => {
+      if (!roomId) return;
+      socket.to(`room:${roomId}`).emit('user_stop_typing', {
+        userId: typingUserId,
+      });
+    });
+
     // ── 연결 해제 ───────────────────────────────
     socket.on('disconnect', (reason) => {
       console.log(`[Socket] 연결 해제: userId=${userId}, reason=${reason}`);

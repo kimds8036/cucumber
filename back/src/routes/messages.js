@@ -218,9 +218,12 @@ router.get('/rooms/:roomId', authenticate, async (req, res) => {
   try {
     const userId = req.user.userId;
     const { roomId } = req.params;
-    const { page = 1, limit = 50 } = req.query;
-    const limitNum = Math.max(1, Math.min(100, parseInt(limit, 10) || 50));
-    const offsetNum = Math.max(0, (parseInt(page, 10) - 1) * limitNum);
+    const { before, limit = 30 } = req.query;
+    // fetchLimit을 포함한 모든 숫자 타입을 확실히 보장
+    const limitNum = parseInt(limit, 10) || 30;
+    // 더 있는지 여부를 정확히 하려면 limit+1을 먼저 가져온다
+    const fetchLimit = limitNum + 1;
+    const beforeNum = before != null && before !== '' ? parseInt(before, 10) : null;
 
     const [rooms] = await pool.execute(
       `SELECT id, user1_id, user2_id, post_id FROM message_rooms
@@ -278,31 +281,47 @@ router.get('/rooms/:roomId', authenticate, async (req, res) => {
     console.log('[GetRoom] deletedAtMsgId:', deletedAtMsgId);
     console.log('[GetRoom] 조회 쿼리 조건: m.id >', deletedAtMsgId);
 
+    // 값 정규화를 한 곳에서만 처리 (prepared statement 바인딩 타입/개수 오류 방지)
+    const roomIdNum = parseInt(roomId, 10);
+    const cursorId = parseInt(deletedAtMsgId, 10) || 0;
+    const limitFetchNum = parseInt(fetchLimit, 10) || limitNum + 1;
+    const safeBeforeNum = before != null && before !== '' ? parseInt(before, 10) : null;
+    const beforeParsed = safeBeforeNum != null && !Number.isNaN(safeBeforeNum) ? safeBeforeNum : null;
+
+    const whereClause =
+      beforeParsed != null
+        ? 'WHERE m.room_id = ? AND m.id > ? AND m.id < ?'
+        : 'WHERE m.room_id = ? AND m.id > ?';
+
+    const queryParams =
+      beforeParsed != null
+        ? [roomIdNum, cursorId, beforeParsed, limitFetchNum]
+        : [roomIdNum, cursorId, limitFetchNum];
+
     const [messages] = await pool.execute(
       `SELECT
         m.id, m.room_id, m.sender_id, m.content, m.is_read, m.is_deleted, m.created_at,
         u.name AS sender_name, u.color_id AS sender_color_id,
         (SELECT JSON_ARRAYAGG(cloudinary_url)
-          FROM message_images
-          WHERE message_id = m.id AND deleted_at IS NULL
-          ORDER BY display_order ASC) AS images
+         FROM (
+           SELECT cloudinary_url
+           FROM message_images
+           WHERE message_id = m.id AND deleted_at IS NULL
+           ORDER BY display_order ASC
+         ) mi) AS images
        FROM messages m
        LEFT JOIN users u ON m.sender_id = u.id
-       WHERE m.room_id = ?
-         AND m.id > ${deletedAtMsgId}
-       ORDER BY m.created_at DESC
-       LIMIT ${limitNum} OFFSET ${offsetNum}`,
-      [roomId]
+       ${whereClause}
+       ORDER BY m.id DESC
+      LIMIT ?`,
+      queryParams
     );
 
-    const [countResult] = await pool.execute(
-      'SELECT COUNT(*) AS total FROM messages WHERE room_id = ? AND id > ?',
-      [roomId, deletedAtMsgId]
-    );
-    const total = Number(countResult[0]?.total ?? 0);
+    const hasMore = messages.length > limitNum;
+    const messagesToReturn = hasMore ? messages.slice(0, limitNum) : messages;
 
-    messages.reverse(); // 오래된 순으로 정렬
-    const parsed = messages.map(msg => ({
+    messagesToReturn.reverse(); // 오래된 순으로 정렬(asc)
+    const parsed = messagesToReturn.map(msg => ({
       ...msg,
       images: Array.isArray(msg.images)
         ? msg.images.filter((u) => typeof u === 'string')
@@ -315,16 +334,9 @@ router.get('/rooms/:roomId', authenticate, async (req, res) => {
 
     res.json({
       success: true,
-      data: {
-        room: roomInfo[0],
-        messages: parsed,
-        pagination: {
-          page: parseInt(page, 10),
-          limit: limitNum,
-          total,
-          totalPages: Math.ceil(total / limitNum) || 1,
-        },
-      },
+      room: roomInfo[0],
+      data: parsed,
+      hasMore,
     });
   } catch (error) {
     console.error('채팅 내역 조회 오류:', error);
@@ -341,7 +353,7 @@ router.post('/rooms/:roomId/messages', authenticate, upload.array('images', 5), 
   try {
     const userId = req.user.userId;
     const { roomId } = req.params;
-    const { content } = req.body;
+    const { content, clientId } = req.body;
 
     if (!content?.trim() && (!req.files || req.files.length === 0)) {
       return res.status(400).json({ message: '내용 또는 이미지를 입력해주세요.' });
@@ -418,6 +430,11 @@ WHERE m.id = ?`,
         : JSON.parse(savedMessage.images);
     } else {
       savedMessage.images = [];
+    }
+
+    // 프론트에서 optimistic temp에 쓰는 clientId를 소켓/응답에 그대로 echo
+    if (clientId) {
+      savedMessage.client_id = String(clientId);
     }
     emitNewMessage(roomId, savedMessage);
 
