@@ -935,7 +935,7 @@ export default function BoardDetail({ navigation, route }) {
                 setBottomComment={setBottomComment}
                 selectedImages={commentImages}
                 onImagesChange={setCommentImages}
-                showImageAttach={true}
+                showImageAttach={false}
                 replyToCommentId={replyToCommentId}
                 replyToAuthorLabel={replyToAuthorLabel}
                 clearReplyTarget={clearReplyTarget}

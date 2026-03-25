@@ -304,7 +304,13 @@ router.get('/rooms/:roomId', authenticate, async (req, res) => {
     messages.reverse(); // 오래된 순으로 정렬
     const parsed = messages.map(msg => ({
       ...msg,
-      images: msg.images ? JSON.parse(msg.images) : []
+      images: Array.isArray(msg.images)
+        ? msg.images.filter((u) => typeof u === 'string')
+        : msg.images
+          ? (typeof msg.images === 'string' && msg.images.startsWith('[')
+              ? JSON.parse(msg.images).filter((u) => typeof u === 'string')
+              : [msg.images])
+          : []
     }));
 
     res.json({
@@ -387,24 +393,32 @@ router.post('/rooms/:roomId/messages', authenticate, upload.array('images', 5), 
     // ── 채팅방 last_message 갱신 ────────────────
     await pool.execute(
       `UPDATE message_rooms SET last_message = ?, last_message_at = ? WHERE id = ?`,
-      [trimmedContent.substring(0, 100), now, roomId]
+      [(trimmedContent ?? '사진').substring(0, 100), now, roomId]
     );
 
     // ── 저장된 메시지 조회 ──────────────────────
     const [messages] = await pool.execute(
       `SELECT
-        m.id, m.room_id, m.sender_id, m.content, m.is_read, m.is_deleted, m.created_at,
-        u.name AS sender_name, u.color_id AS sender_color_id
-       FROM messages m
-       LEFT JOIN users u ON m.sender_id = u.id
-       WHERE m.id = ?`,
+  m.id, m.room_id, m.sender_id, m.content, m.is_read, m.is_deleted, m.created_at,
+  u.name AS sender_name, u.color_id AS sender_color_id,
+  (SELECT JSON_ARRAYAGG(mi.cloudinary_url)
+   FROM (SELECT cloudinary_url FROM message_images
+         WHERE message_id = m.id AND deleted_at IS NULL
+         ORDER BY display_order ASC) mi) AS images
+FROM messages m
+LEFT JOIN users u ON m.sender_id = u.id
+WHERE m.id = ?`,
       [messageId]
     );
     const savedMessage = messages[0];
 
-    // ── [변경] 상대방에게 소켓으로 즉시 push ────
-    // room:${roomId} 룸에 속한 모든 소켓에 emit
-    // → 상대방이 채팅방을 열고 있으면 8초 폴링 없이 즉시 수신
+    if (savedMessage.images) {
+      savedMessage.images = Array.isArray(savedMessage.images)
+        ? savedMessage.images
+        : JSON.parse(savedMessage.images);
+    } else {
+      savedMessage.images = [];
+    }
     emitNewMessage(roomId, savedMessage);
 
     // ── [변경] 알림을 큐에 위임 (비동기, fire-and-forget) ──
@@ -416,7 +430,7 @@ router.post('/rooms/:roomId/messages', authenticate, upload.array('images', 5), 
         type: 'mail',
         category: 'mail',
         title: '새로운 쪽지가 도착했습니다',
-        body: trimmedContent.slice(0, 80),
+        body: (trimmedContent ?? '사진').slice(0, 80),
         relatedType: 'message_room',
         relatedId: roomId,
       });
@@ -429,7 +443,8 @@ router.post('/rooms/:roomId/messages', authenticate, upload.array('images', 5), 
       data: savedMessage,
     });
   } catch (error) {
-    console.error('쪽지 보내기 오류:', error);
+    console.error('에러:', error);
+    console.error('에러 상세:', error?.response?.data || error?.message || JSON.stringify(error, null, 2));
     res.status(500).json({ success: false, message: '메시지 전송 중 오류가 발생했습니다.' });
   }
 });

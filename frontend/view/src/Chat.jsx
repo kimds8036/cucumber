@@ -2,6 +2,8 @@ import React, { useState, useMemo, useEffect, useRef, useCallback, memo } from '
 import {
   View,
   Text,
+  Image,
+  ActivityIndicator,
   TouchableOpacity,
   useWindowDimensions,
   Platform,
@@ -83,6 +85,19 @@ function normalizeMessage(m, meId) {
     id: String(m.id),
     isMe,
     content: m.content,
+    images: (() => {
+      const raw = m.images;
+      if (Array.isArray(raw)) return raw.filter((u) => typeof u === 'string');
+      if (typeof raw === 'string') {
+        try {
+          const parsed = JSON.parse(raw);
+          return Array.isArray(parsed) ? parsed.filter((u) => typeof u === 'string') : [];
+        } catch {
+          return [];
+        }
+      }
+      return [];
+    })(),
     is_deleted: Boolean(m.is_deleted),
     createdAt,
     dateKey: getDateKey(d),
@@ -135,6 +150,58 @@ const MessageItem = memo(({ msg, chatStyles, normalize, onRetry, onDeleteMessage
     );
   }
 
+  // 이미지만 있는 메시지: 말풍선/텍스트 없이 이미지 그리드만 렌더
+  if (msg.images && msg.images.length > 0 && !msg.content && !msg.is_deleted) {
+    return (
+      <View
+        style={{
+          width: '100%',
+          alignItems: msg.isMe ? 'flex-end' : 'flex-start',
+        }}
+      >
+        {msg.images.map((uri, index) => (
+          <View
+            key={index}
+            style={{
+              width: 200,
+              height: 200,
+              borderRadius: 12,
+              marginBottom: 4,
+              position: 'relative',
+              overflow: 'hidden',
+            }}
+          >
+            <Image
+              source={{ uri }}
+              style={{
+                width: '100%',
+                height: '100%',
+                borderRadius: 12,
+              }}
+              resizeMode="cover"
+            />
+            {msg.isSending && (
+              <View
+                style={{
+                  position: 'absolute',
+                  top: 0,
+                  left: 0,
+                  right: 0,
+                  bottom: 0,
+                  justifyContent: 'center',
+                  alignItems: 'center',
+                  backgroundColor: 'rgba(0,0,0,0.3)',
+                }}
+              >
+                <ActivityIndicator color="#fff" />
+              </View>
+            )}
+          </View>
+        ))}
+      </View>
+    );
+  }
+
   if (msg.isMe) {
     return (
       <View style={chatStyles.chatRowUser}>
@@ -179,9 +246,48 @@ const MessageItem = memo(({ msg, chatStyles, normalize, onRetry, onDeleteMessage
             }}
             activeOpacity={0.8}
           >
-            <Text style={chatStyles.userBubbleText}>
-              {msg.is_deleted ? '삭제된 메시지입니다.' : msg.content}
-            </Text>
+            {msg.images && msg.images.length > 0 && !msg.is_deleted && (
+              msg.images.map((uri, index) => (
+                <View
+                  key={index}
+                  style={{
+                    width: 200,
+                    height: 200,
+                    borderRadius: 8,
+                    marginBottom: 4,
+                    position: 'relative',
+                    overflow: 'hidden',
+                  }}
+                >
+                  <Image
+                    source={{ uri: uri }}
+                    style={{ width: 200, height: 200, borderRadius: 8 }}
+                    resizeMode="cover"
+                  />
+                  {msg.isSending && (
+                    <View
+                      style={{
+                        position: 'absolute',
+                        top: 0,
+                        left: 0,
+                        right: 0,
+                        bottom: 0,
+                        justifyContent: 'center',
+                        alignItems: 'center',
+                        backgroundColor: 'rgba(0,0,0,0.3)',
+                      }}
+                    >
+                      <ActivityIndicator color="#fff" />
+                    </View>
+                  )}
+                </View>
+              ))
+            )}
+            {msg.is_deleted ? (
+              <Text style={chatStyles.userBubbleText}>삭제된 메시지입니다.</Text>
+            ) : msg.content ? (
+              <Text style={chatStyles.userBubbleText}>{msg.content}</Text>
+            ) : null}
           </TouchableOpacity>
         </View>
       </View>
@@ -197,14 +303,55 @@ const MessageItem = memo(({ msg, chatStyles, normalize, onRetry, onDeleteMessage
         <View style={chatStyles.opponentNameAndBubble}>
           <Text style={chatStyles.opponentName}>익명</Text>
           <View style={chatStyles.opponentBubble}>
-            <Text
-              style={[
-                chatStyles.opponentBubbleText,
-                msg.is_deleted && { color: colors.textSecondary, fontStyle: 'italic' },
-              ]}
-            >
-              {msg.is_deleted ? '삭제된 메시지입니다.' : msg.content}
-            </Text>
+            {msg.images && msg.images.length > 0 && !msg.is_deleted && (
+              msg.images.map((uri, index) => (
+                <View
+                  key={index}
+                  style={{
+                    width: 200,
+                    height: 200,
+                    borderRadius: 8,
+                    marginBottom: 4,
+                    position: 'relative',
+                    overflow: 'hidden',
+                  }}
+                >
+                  <Image
+                    source={{ uri: uri }}
+                    style={{ width: 200, height: 200, borderRadius: 8 }}
+                    resizeMode="cover"
+                  />
+                  {msg.isSending && (
+                    <View
+                      style={{
+                        position: 'absolute',
+                        top: 0,
+                        left: 0,
+                        right: 0,
+                        bottom: 0,
+                        justifyContent: 'center',
+                        alignItems: 'center',
+                        backgroundColor: 'rgba(0,0,0,0.3)',
+                      }}
+                    >
+                      <ActivityIndicator color="#fff" />
+                    </View>
+                  )}
+                </View>
+              ))
+            )}
+            {msg.is_deleted ? (
+              <Text
+                style={[
+                  chatStyles.opponentBubbleText,
+                  { color: colors.textSecondary, fontStyle: 'italic' },
+                ]}
+              >
+                삭제된 메시지입니다.
+              </Text>
+            ) : msg.content ? (
+              <Text style={chatStyles.opponentBubbleText}>{msg.content}</Text>
+            ) : null}
           </View>
         </View>
         <View style={chatStyles.opponentTimeRow}>
@@ -378,16 +525,15 @@ export default function Chat({ navigation, route }) {
       });
 
       socket.on('new_message', (payload) => {
+        console.log('소켓 payload images:', JSON.stringify(payload?.message?.images));
         if (!payload?.message) return;
         const meId = currentUserIdRef.current;
         const newMsg = normalizeMessage(payload.message, meId);
         setMessages((prev) => {
+          // 이미 같은 id 있으면 스킵
           if (prev.some((m) => String(m.id) === String(newMsg.id))) return prev;
-          // 내가 보낸 메시지가 소켓으로 돌아온 경우 (tempId → 실제id 교체)
-          const hasTempVersion = prev.some(
-            (m) => m.isSending && m.isMe && m.content === newMsg.content
-          );
-          if (hasTempVersion) return prev;
+          // isSending 중인 temp 메시지랑 중복이면 스킵
+          if (prev.some((m) => m.isSending && m.isMe)) return prev;
           return [...prev, newMsg];
         });
         if (!newMsg.isMe) {
@@ -494,7 +640,8 @@ export default function Chat({ navigation, route }) {
       id: tempId,
       type: 'message',
       isMe: true,
-      content: text,
+      content: text || null,
+      images: [...chatImages],
       is_deleted: false,
       createdAt: nowIso,
       dateKey: getDateKey(d),
@@ -531,7 +678,16 @@ export default function Chat({ navigation, route }) {
           isSending: false,
           isFailed: false,
         };
-        setMessages((prev) => prev.map((msg) => (msg.id === tempId ? confirmed : msg)));
+        setMessages((prev) => {
+          // 소켓이 이미 같은 id로 추가했으면 temp만 제거
+          const alreadyExists = prev.some(
+            (msg) => msg.id === confirmed.id && msg.id !== tempId
+          );
+          if (alreadyExists) {
+            return prev.filter((msg) => msg.id !== tempId);
+          }
+          return prev.map((msg) => (msg.id === tempId ? confirmed : msg));
+        });
       }
     } catch (error) {
       console.error('쪽지 전송 실패:', error);
@@ -590,7 +746,7 @@ export default function Chat({ navigation, route }) {
     />
   ), [chatStyles, normalize, handleRetry, handleDeleteMessage]);
 
-  const keyExtractor = useCallback((item) => item.id, []);
+  const keyExtractor = useCallback((item) => String(item.id), []);
   const keyboardVerticalOffset = insets.top + normalize(48);
 
   const handleBack = () => navigation.goBack();
