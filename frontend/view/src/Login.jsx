@@ -17,6 +17,7 @@ const Login = ({ navigation }) => {
   const [rememberMe, setRememberMe] = useState(false);
 
   const styles = useMemo(() => createLoginStyles(width, normalize), [width]);
+  const debugLogin = (...args) => console.log('[LoginDebug]', ...args);
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
@@ -107,20 +108,68 @@ const Login = ({ navigation }) => {
                 }
 
                 try {
-                  const response = await api.post('/api/auth/login', {
+                  const loginPayload = {
                     username: id,
                     password,
+                  };
+
+                  debugLogin('로그인 시도', {
+                    baseURL: api.defaults.baseURL,
+                    endpoint: '/api/auth/login',
+                    username: id,
+                    passwordLength: password.length,
+                    platform: Platform.OS,
+                  });
+
+                  const response = await api.post('/api/auth/login', {
+                    ...loginPayload,
                   });
 
                   const { token, user, needsVerification } = response.data.data;
-                  console.log('로그인 성공', { token, user, needsVerification });
+                  debugLogin('로그인 성공', {
+                    status: response.status,
+                    success: response.data?.success,
+                    message: response.data?.message,
+                    hasToken: Boolean(token),
+                    tokenPreview: token ? `${token.slice(0, 10)}...` : null,
+                    user,
+                    needsVerification,
+                  });
 
                   if (token) {
+                    debugLogin('토큰 저장 시작');
                     await setAuthToken(token);
+                    debugLogin('토큰 저장 완료');
                   }
+                  debugLogin('Main 화면 이동');
                   navigation.navigate('Main');
                 } catch (error) {
-                  console.error(error);
+                  const hasResponse = Boolean(error?.response);
+                  const hasRequest = Boolean(error?.request);
+
+                  console.error('[LoginDebug] 로그인 실패', {
+                    baseURL: api.defaults.baseURL,
+                    endpoint: '/api/auth/login',
+                    errorMessage: error?.message,
+                    errorCode: error?.code,
+                    isAxiosError: error?.isAxiosError,
+                    status: error?.response?.status,
+                    statusText: error?.response?.statusText,
+                    responseData: error?.response?.data,
+                    requestInfo: hasRequest
+                      ? {
+                          timeout: error?.config?.timeout,
+                          method: error?.config?.method,
+                          url: error?.config?.url,
+                        }
+                      : null,
+                    errorType: hasResponse
+                      ? 'SERVER_ERROR'
+                      : hasRequest
+                        ? 'NETWORK_OR_TIMEOUT'
+                        : 'CLIENT_SETUP_ERROR',
+                  });
+
                   Alert.alert(
                     '로그인 실패',
                     error.response?.data?.message || '로그인 중 오류가 발생했습니다.',
