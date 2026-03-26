@@ -285,5 +285,54 @@ export const createChatStyles = (width, normalize) => {
       marginBottom: normalize(2),
       marginRight: normalize(6),
     },
+
+    // ─────────────────────────────────────────────
+    // 답장 UI
+    // ─────────────────────────────────────────────
+    replyPreviewContainer: {
+      backgroundColor: colors.surface,
+      paddingHorizontal: normalize(12),
+      paddingVertical: normalize(8),
+      borderBottomWidth: 1,
+      borderBottomColor: colors.border,
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+    },
+    replyPreviewMeta: {
+      flex: 1,
+    },
+    replyPreviewTitle: {
+      fontSize: 12,
+      color: colors.textSecondary,
+    },
+    replyPreviewContent: {
+      fontSize: 13,
+      color: colors.textPrimary,
+      marginTop: 4,
+    },
+
+    replyQuoteBox: {
+      backgroundColor: colors.textLight10,
+      borderLeftWidth: normalize(3),
+      borderLeftColor: colors.primary,
+      borderRadius: normalize(12),
+      paddingVertical: normalize(6),
+      paddingHorizontal: normalize(10),
+      marginBottom: normalize(6),
+      alignSelf: 'flex-start',
+      flexShrink: 0,
+    },
+    replyQuoteSender: {
+      fontSize: normalize(12),
+      fontFamily: fonts.bold,
+      color: colors.textSecondary,
+      marginBottom: normalize(2),
+    },
+    replyQuoteText: {
+      fontSize: normalize(13),
+      fontFamily: fonts.regular,
+      color: colors.textPrimary,
+    },
   });
 };
