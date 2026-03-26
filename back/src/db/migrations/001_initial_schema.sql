@@ -131,13 +131,16 @@ CREATE TABLE IF NOT EXISTS messages (
   id INT AUTO_INCREMENT PRIMARY KEY COMMENT '메시지 ID',
   room_id INT NOT NULL COMMENT '채팅방 ID',
   sender_id INT NOT NULL COMMENT '발신자 ID',
+  parent_message_id INT NULL COMMENT '답장 대상 메시지 ID',
   content TEXT NULL COMMENT '메시지 내용',
   is_read BOOLEAN DEFAULT FALSE COMMENT '읽음 여부',
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP COMMENT '발송 일시',
   FOREIGN KEY (room_id) REFERENCES message_rooms(id) ON DELETE CASCADE,
   FOREIGN KEY (sender_id) REFERENCES users(id) ON DELETE CASCADE,
+  FOREIGN KEY (parent_message_id) REFERENCES messages(id) ON DELETE SET NULL,
   INDEX idx_room_id (room_id),
   INDEX idx_sender_id (sender_id),
+  INDEX idx_parent_message_id (parent_message_id),
   INDEX idx_created_at (created_at),
   INDEX idx_is_read (is_read)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='쪽지 메시지 테이블';

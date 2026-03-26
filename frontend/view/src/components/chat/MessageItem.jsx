@@ -86,6 +86,17 @@ const SenderProfile = ({ chatStyles, normalize }) => (
   </View>
 );
 
+const ReplyQuote = ({ chatStyles, senderName, content }) => (
+  <View style={chatStyles.replyQuoteBox}>
+    <Text style={chatStyles.replyQuoteSender}>
+      {senderName ? senderName : '답장'}
+    </Text>
+    <Text style={chatStyles.replyQuoteText} numberOfLines={2}>
+      {content}
+    </Text>
+  </View>
+);
+
 /**
  * 실제 메시지(내용/이미지) + 시간/읽음 상태 표시
  * @param {{
@@ -185,17 +196,11 @@ const MessageBubble = ({
           >
             {/* 답장 인용구 (카카오톡 스타일) */}
             {msg.parent_content ? (
-              <View style={chatStyles.replyQuoteBox}>
-                <Text style={chatStyles.replyQuoteSender}>
-                  답장
-                  {msg.parent_sender_name
-                    ? ` • ${msg.parent_sender_name}`
-                    : ''}
-                </Text>
-                <Text style={chatStyles.replyQuoteText} numberOfLines={2}>
-                  {msg.parent_content}
-                </Text>
-              </View>
+              <ReplyQuote
+                chatStyles={chatStyles}
+                senderName={msg.parent_sender_name}
+                content={msg.parent_content}
+              />
             ) : null}
 
             {msg.images &&
@@ -279,17 +284,11 @@ const MessageBubble = ({
         >
           <View style={{ alignItems: 'flex-start' }}>
             {msg.parent_content ? (
-              <View style={chatStyles.replyQuoteBox}>
-                <Text style={chatStyles.replyQuoteSender}>
-                  답장
-                  {msg.parent_sender_name
-                    ? ` • ${msg.parent_sender_name}`
-                    : ''}
-                </Text>
-                <Text style={chatStyles.replyQuoteText} numberOfLines={2}>
-                  {msg.parent_content}
-                </Text>
-              </View>
+              <ReplyQuote
+                chatStyles={chatStyles}
+                senderName={msg.parent_sender_name}
+                content={msg.parent_content}
+              />
             ) : null}
             {msg.images &&
               msg.images.length > 0 &&
@@ -358,20 +357,11 @@ const MessageBubble = ({
             >
               <View style={chatStyles.opponentBubble}>
                     {msg.parent_content ? (
-                      <View style={chatStyles.replyQuoteBox}>
-                        <Text style={chatStyles.replyQuoteSender}>
-                          답장
-                          {msg.parent_sender_name
-                            ? ` • ${msg.parent_sender_name}`
-                            : ''}
-                        </Text>
-                        <Text
-                          style={chatStyles.replyQuoteText}
-                          numberOfLines={2}
-                        >
-                          {msg.parent_content}
-                        </Text>
-                      </View>
+                      <ReplyQuote
+                        chatStyles={chatStyles}
+                        senderName={msg.parent_sender_name}
+                        content={msg.parent_content}
+                      />
                     ) : null}
                 {msg.images &&
                   msg.images.length > 0 &&

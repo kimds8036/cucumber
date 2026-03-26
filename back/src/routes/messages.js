@@ -408,7 +408,7 @@ router.post(
     try {
       const userId = req.user.userId;
       const { roomId } = req.params;
-      const { content, clientId } = req.body;
+      const { content, clientId, parent_message_id } = req.body;
 
       if (!content?.trim() && (!req.files || req.files.length === 0)) {
         return res
@@ -432,12 +432,29 @@ router.post(
       const otherUserId =
         room.user1_id === userId ? room.user2_id : room.user1_id;
       const trimmedContent = content?.trim() || null;
+      const parentMessageId = parent_message_id
+        ? parseInt(parent_message_id, 10)
+        : null;
+
+      // parent_message_id가 있으면 같은 방 메시지인지 확인
+      if (parentMessageId && !Number.isNaN(parentMessageId)) {
+        const [parentRows] = await pool.execute(
+          `SELECT id FROM messages WHERE id = ? AND room_id = ?`,
+          [parentMessageId, roomId],
+        );
+        if (parentRows.length === 0) {
+          return res.status(400).json({
+            success: false,
+            message: '유효하지 않은 답장 대상 메시지입니다.',
+          });
+        }
+      }
 
       // ── 메시지 저장 ─────────────────────────────
       const now = getNowForDB();
       const [result] = await pool.execute(
-        `INSERT INTO messages (room_id, sender_id, content, created_at) VALUES (?, ?, ?, ?)`,
-        [roomId, userId, trimmedContent, now],
+        `INSERT INTO messages (room_id, sender_id, parent_message_id, content, created_at) VALUES (?, ?, ?, ?, ?)`,
+        [roomId, userId, parentMessageId, trimmedContent, now],
       );
       const messageId = result.insertId;
       if (req.files && req.files.length > 0) {
@@ -472,7 +489,8 @@ router.post(
       // ── 저장된 메시지 조회 ──────────────────────
       const [messages] = await pool.execute(
         `SELECT
-  m.id, m.room_id, m.sender_id, m.content, m.is_read, m.is_deleted, m.created_at,
+  m.id, m.room_id, m.sender_id, m.parent_message_id, m.content, m.is_read, m.is_deleted, m.created_at,
+  pm.content AS parent_content, pu.name AS parent_sender_name,
   u.name AS sender_name, u.color_id AS sender_color_id,
   (SELECT JSON_ARRAYAGG(mi.cloudinary_url)
    FROM (SELECT cloudinary_url FROM message_images
@@ -480,6 +498,8 @@ router.post(
          ORDER BY display_order ASC) mi) AS images
 FROM messages m
 LEFT JOIN users u ON m.sender_id = u.id
+LEFT JOIN messages pm ON m.parent_message_id = pm.id
+LEFT JOIN users pu ON pm.sender_id = pu.id
 WHERE m.id = ?`,
         [messageId],
       );

@@ -408,6 +408,8 @@ export default function useChat(roomId, socket) {
 
       setMessagesById((prevById) => {
         const next = { ...prevById };
+        const tempKeyForFallback = newMsg.clientId ? String(newMsg.clientId) : null;
+        const tempMsg = tempKeyForFallback ? next[tempKeyForFallback] : null;
 
         // optimistic temp 메시지 매칭: clientId로 temp 제거
         if (newMsg.clientId) {
@@ -418,6 +420,12 @@ export default function useChat(roomId, socket) {
         const shouldUpsert = !next[newMsg.id];
         next[newMsg.id] = {
           ...newMsg,
+          parent_message_id:
+            newMsg.parent_message_id ?? tempMsg?.parent_message_id ?? null,
+          parent_content:
+            newMsg.parent_content ?? tempMsg?.parent_content ?? null,
+          parent_sender_name:
+            newMsg.parent_sender_name ?? tempMsg?.parent_sender_name ?? null,
           status: 'sent',
           isSending: false,
           isFailed: false,
@@ -667,11 +675,18 @@ export default function useChat(roomId, socket) {
           const timeoutId = setTimeout(() => {
             setMessagesById((prevById) => {
               if (!prevById[clientId]) return prevById;
+              const tempMsg = prevById[clientId];
               const { [clientId]: temp, ...rest } = prevById;
               return {
                 ...rest,
                 [serverId]: {
                   ...serverMsg,
+                  parent_message_id:
+                    serverMsg.parent_message_id ?? tempMsg?.parent_message_id ?? null,
+                  parent_content:
+                    serverMsg.parent_content ?? tempMsg?.parent_content ?? null,
+                  parent_sender_name:
+                    serverMsg.parent_sender_name ?? tempMsg?.parent_sender_name ?? null,
                   status: 'sent',
                   isSending: false,
                   isFailed: false,
@@ -774,11 +789,18 @@ export default function useChat(roomId, socket) {
           const timeoutId = setTimeout(() => {
             setMessagesById((prevById) => {
               if (!prevById[clientId]) return prevById;
+              const tempMsg = prevById[clientId];
               const { [clientId]: temp, ...rest } = prevById;
               return {
                 ...rest,
                 [serverId]: {
                   ...serverMsg,
+                  parent_message_id:
+                    serverMsg.parent_message_id ?? tempMsg?.parent_message_id ?? null,
+                  parent_content:
+                    serverMsg.parent_content ?? tempMsg?.parent_content ?? null,
+                  parent_sender_name:
+                    serverMsg.parent_sender_name ?? tempMsg?.parent_sender_name ?? null,
                   status: 'sent',
                   isSending: false,
                   isFailed: false,
