@@ -423,138 +423,153 @@ export default function Chat({ navigation, route }) {
   };
 
   return (
-    <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
-      <SafeAreaView
-        style={[detailStyles.container, { backgroundColor: colors.background }]}
-        edges={['top']}
+    <SafeAreaView
+      style={[detailStyles.container, { backgroundColor: '#FFFFFF' }]}
+      edges={['top']}
+    >
+      <View
+        style={{
+          zIndex: 1,
+          elevation: 0,
+          backgroundColor: '#FFFFFF',
+        }}
+      >
+        <SubHeader title="쪽지" onBack={handleBack} />
+      </View>
+
+      <KeyboardAvoidingView
+        style={{ flex: 1, backgroundColor: '#FFFFFF' }}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        keyboardVerticalOffset={
+          Platform.OS === 'ios' ? keyboardVerticalOffset : 0
+        }
       >
         <View
           style={{
-            zIndex: 1,
-            elevation: 0,
-            backgroundColor: colors.background,
+            flex: 1,
+            backgroundColor: '#FFFFFF',
+            flexDirection: 'column',
           }}
         >
-          <SubHeader title="쪽지" onBack={handleBack} />
-        </View>
-
-        <KeyboardAvoidingView
-          style={{ flex: 1, backgroundColor: '#F8F9FA' }}
-          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-          keyboardVerticalOffset={
-            Platform.OS === 'ios' ? keyboardVerticalOffset : 0
-          }
-        >
-          <View style={{ flex: 1, backgroundColor: '#F8F9FA' }}>
-            {post && (
-              <TouchableOpacity
-                activeOpacity={0.8}
-                onPress={handleOpenPost}
-                style={{
-                  backgroundColor: colors.background,
-                  marginHorizontal: normalize(12),
-                  marginTop: normalize(12),
-                  marginBottom: normalize(8),
-                  borderRadius: normalize(12),
-                  padding: normalize(16),
-                  shadowColor: '#000',
-                  shadowOffset: { width: 0, height: 2 },
-                  shadowOpacity: 0.05,
-                  shadowRadius: 8,
-                  elevation: 2,
-                }}
-              >
-                <View style={detailStyles.detailHeader}>
-                  <View style={detailStyles.detailAuthorRow}>
-                    <Text style={detailStyles.detailAuthorAnonymous}>
-                      {post.author}
+          {post && (
+            <TouchableOpacity
+              activeOpacity={0.8}
+              onPress={handleOpenPost}
+              style={{
+                backgroundColor: '#FFFFFF',
+                marginHorizontal: normalize(12),
+                marginTop: normalize(12),
+                marginBottom: normalize(8),
+                borderRadius: normalize(12),
+                padding: normalize(16),
+                shadowColor: '#000',
+                shadowOffset: { width: 0, height: 2 },
+                shadowOpacity: 0.05,
+                shadowRadius: 8,
+                elevation: 2,
+              }}
+            >
+              <View style={detailStyles.detailHeader}>
+                <View style={detailStyles.detailAuthorRow}>
+                  <Text style={detailStyles.detailAuthorAnonymous}>
+                    {post.author}
+                  </Text>
+                </View>
+                {post.location ? (
+                  <View style={detailStyles.detailLocation}>
+                    <Ionicons
+                      name="location-sharp"
+                      size={normalize(12)}
+                      color={colors.textSecondary}
+                    />
+                    <Text style={detailStyles.detailLocationText}>
+                      {post.location}
                     </Text>
                   </View>
-                  {post.location ? (
-                    <View style={detailStyles.detailLocation}>
-                      <Ionicons
-                        name="location-sharp"
-                        size={normalize(12)}
-                        color={colors.textSecondary}
-                      />
-                      <Text style={detailStyles.detailLocationText}>
-                        {post.location}
-                      </Text>
-                    </View>
-                  ) : null}
-                </View>
+                ) : null}
+              </View>
 
-                <Text
-                  style={[
-                    detailStyles.detailBody,
-                    { marginVertical: normalize(12) },
-                  ]}
-                >
-                  {post.content}
-                </Text>
+              <Text
+                style={[
+                  detailStyles.detailBody,
+                  { marginVertical: normalize(12) },
+                ]}
+              >
+                {post.content}
+              </Text>
 
-                <View
-                  style={{
-                    height: 1,
-                    backgroundColor: '#F0F0F0',
-                    marginVertical: normalize(8),
-                  }}
-                />
-
-                <View style={detailStyles.detailFooter}>
-                  <View style={detailStyles.detailStats}>
-                    <View style={detailStyles.detailStatItem}>
-                      <FontAwesome
-                        name={post?.isLiked ? 'heart' : 'heart-o'}
-                        size={normalize(14)}
-                        color={colors.alert}
-                      />
-                      <Text style={detailStyles.detailStatText}>
-                        {post.likes}
-                      </Text>
-                    </View>
-                    <View style={detailStyles.detailStatItem}>
-                      <Ionicons
-                        name="chatbubble-outline"
-                        size={normalize(15)}
-                        color={colors.primary}
-                      />
-                      <Text style={detailStyles.detailStatText}>
-                        {post.comments}
-                      </Text>
-                    </View>
-                  </View>
-                </View>
-              </TouchableOpacity>
-            )}
-
-            {Object.values(typingUsers).length > 0 && (
               <View
                 style={{
-                  paddingHorizontal: normalize(16),
-                  paddingVertical: normalize(6),
-                  flexDirection: 'row',
-                  alignItems: 'center',
+                  height: 1,
+                  backgroundColor: '#F0F0F0',
+                  marginVertical: normalize(8),
                 }}
-              >
-                <Text style={{ color: '#999', fontSize: 12 }}>
-                  {Object.values(typingUsers)[0]}이(가) 입력 중...
-                </Text>
-                <ActivityIndicator
-                  size="small"
-                  color="#999"
-                  style={{ marginLeft: 4 }}
-                />
-              </View>
-            )}
+              />
 
+              <View style={detailStyles.detailFooter}>
+                <View style={detailStyles.detailStats}>
+                  <View style={detailStyles.detailStatItem}>
+                    <FontAwesome
+                      name={post?.isLiked ? 'heart' : 'heart-o'}
+                      size={normalize(14)}
+                      color={colors.alert}
+                    />
+                    <Text style={detailStyles.detailStatText}>
+                      {post.likes}
+                    </Text>
+                  </View>
+                  <View style={detailStyles.detailStatItem}>
+                    <Ionicons
+                      name="chatbubble-outline"
+                      size={normalize(15)}
+                      color={colors.primary}
+                    />
+                    <Text style={detailStyles.detailStatText}>
+                      {post.comments}
+                    </Text>
+                  </View>
+                </View>
+              </View>
+            </TouchableOpacity>
+          )}
+
+          {Object.values(typingUsers).length > 0 && (
+            <View
+              style={{
+                paddingHorizontal: normalize(16),
+                paddingVertical: normalize(6),
+                flexDirection: 'row',
+                alignItems: 'center',
+              }}
+            >
+              <Text style={{ color: '#999', fontSize: 12 }}>
+                {Object.values(typingUsers)[0]}이(가) 입력 중...
+              </Text>
+              <ActivityIndicator
+                size="small"
+                color="#999"
+                style={{ marginLeft: 4 }}
+              />
+            </View>
+          )}
+
+          <View
+            style={{
+              flex: 1,
+              backgroundColor: '#FFFFFF',
+              paddingHorizontal: normalize(12),
+              paddingBottom: normalize(10),
+              paddingTop: normalize(8),
+            }}
+            pointerEvents="box-none"
+          >
             <FlashList
               ref={flashListRef}
               style={{ flex: 1 }}
               contentContainerStyle={{
-                paddingHorizontal: normalize(12),
-                paddingBottom: normalize(10),
-                paddingTop: normalize(8),
+                paddingHorizontal: 0,
+                paddingBottom: 0,
+                paddingTop: 0,
               }}
               data={flatData}
               keyExtractor={keyExtractor}
@@ -574,6 +589,8 @@ export default function Chat({ navigation, route }) {
               showsVerticalScrollIndicator={false}
               keyboardShouldPersistTaps="handled"
               keyboardDismissMode="on-drag"
+              scrollEnabled={true}
+              overScrollMode="always"
               // 최적화된 설정
               removeClippedSubviews={Platform.OS === 'android'}
               maxToRenderPerBatch={8}
@@ -591,74 +608,74 @@ export default function Chat({ navigation, route }) {
               decelerationRate="normal"
               disableVirtualization={false}
             />
+          </View>
 
-            <ImageViewer
-              visible={Boolean(viewerUri)}
-              uri={viewerUri}
-              onClose={() => setViewerUri(null)}
-            />
+          <ImageViewer
+            visible={Boolean(viewerUri)}
+            uri={viewerUri}
+            onClose={() => setViewerUri(null)}
+          />
+
+          <View
+            style={{
+              backgroundColor: '#FFFFFF',
+              borderTopWidth: 1,
+              borderTopColor: '#E8E8E8',
+            }}
+          >
+            {replyToMessage && (
+              <TouchableOpacity
+                onPress={() => setReplyToMessage(null)}
+                style={chatStyles.replyPreviewContainer}
+              >
+                <View style={chatStyles.replyPreviewMeta}>
+                  <Text style={chatStyles.replyPreviewTitle}>
+                    {replyToMessage.isMe ? '내' : '상대방에게'} 답장 중
+                  </Text>
+                  <Text
+                    style={chatStyles.replyPreviewContent}
+                    numberOfLines={1}
+                  >
+                    {replyToMessage.content || '(이미지 메시지)'}
+                  </Text>
+                </View>
+                <Ionicons
+                  name="close-circle"
+                  size={24}
+                  color={colors.textSecondary}
+                  style={{ marginLeft: normalize(8) }}
+                />
+              </TouchableOpacity>
+            )}
 
             <View
               style={{
-                backgroundColor: colors.background,
-                borderTopWidth: 1,
-                borderTopColor: '#E8E8E8',
+                paddingBottom:
+                  keyboardHeight > 0
+                    ? 0
+                    : insets.bottom > 0
+                      ? insets.bottom
+                      : normalize(12),
               }}
             >
-              {replyToMessage && (
-                <TouchableOpacity
-                  onPress={() => setReplyToMessage(null)}
-                  style={chatStyles.replyPreviewContainer}
-                >
-                  <View style={chatStyles.replyPreviewMeta}>
-                    <Text style={chatStyles.replyPreviewTitle}>
-                      {replyToMessage.isMe ? '내' : '상대방에게'} 답장 중
-                    </Text>
-                    <Text
-                      style={chatStyles.replyPreviewContent}
-                      numberOfLines={1}
-                    >
-                      {replyToMessage.content || '(이미지 메시지)'}
-                    </Text>
-                  </View>
-                  <Ionicons
-                    name="close-circle"
-                    size={24}
-                    color={colors.textSecondary}
-                    style={{ marginLeft: normalize(8) }}
-                  />
-                </TouchableOpacity>
-              )}
-
-              <View
-                style={{
-                  paddingBottom:
-                    keyboardHeight > 0
-                      ? 0
-                      : insets.bottom > 0
-                        ? insets.bottom
-                        : normalize(12),
-                }}
-              >
-                <CommentInput
-                  bottomInputRef={null}
-                  bottomComment={inputText}
-                  selectedImages={chatImages}
-                  onImagesChange={setChatImages}
-                  showImageAttach={true}
-                  replyToCommentId={null}
-                  replyToAuthorLabel=""
-                  clearReplyTarget={() => {}}
-                  handleSendComment={handleSendComment}
-                  styles={detailStyles}
-                  normalize={normalize}
-                  setBottomComment={handleInputChange}
-                />
-              </View>
+              <CommentInput
+                bottomInputRef={null}
+                bottomComment={inputText}
+                selectedImages={chatImages}
+                onImagesChange={setChatImages}
+                showImageAttach={true}
+                replyToCommentId={null}
+                replyToAuthorLabel=""
+                clearReplyTarget={() => {}}
+                handleSendComment={handleSendComment}
+                styles={detailStyles}
+                normalize={normalize}
+                setBottomComment={handleInputChange}
+              />
             </View>
           </View>
-        </KeyboardAvoidingView>
-      </SafeAreaView>
-    </TouchableWithoutFeedback>
+        </View>
+      </KeyboardAvoidingView>
+    </SafeAreaView>
   );
 }
