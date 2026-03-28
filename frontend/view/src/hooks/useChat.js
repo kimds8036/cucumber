@@ -65,6 +65,7 @@ function normalizeMessage(m, meId) {
   return {
     id: String(m.id),
     clientId: m.client_id ?? m.clientId ?? null,
+    senderId: m.sender_id != null ? Number(m.sender_id) : null,
     isMe,
     senderName,
     content: m.content,
@@ -822,6 +823,10 @@ export default function useChat(roomId, socket) {
         clientId,
         type: 'message',
         isMe: true,
+        senderId:
+          currentUserIdRef.current != null
+            ? Number(currentUserIdRef.current)
+            : null,
         content: trimmed || null,
         images: [...imgArr],
         is_deleted: false,

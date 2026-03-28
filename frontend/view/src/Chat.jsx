@@ -47,12 +47,46 @@ import useChat from './hooks/useChat';
 const postCache = {};
 /** MessageItem 이미지 박스 높이와 동일 — overrideItemLayout 추정에 사용 */
 const CHAT_IMAGE_SLOT = 200;
+/** DateBanner 실측보다 기존 52가 작게 잡히는 경우 보정(+26px) */
+const DATE_BANNER_ESTIMATE_HEIGHT = 78;
+/** 리스트 외곽 paddingBottom 등과 맞춰 마지막 행에 가산(스크롤 끝 정렬 보정) */
+const CHAT_LAST_ROW_EXTRA_PAD = 24;
+
+function sameMessageSender(a, b) {
+  if (!a || !b) return false;
+  if (a.senderId != null && b.senderId != null) {
+    return a.senderId === b.senderId;
+  }
+  return a.isMe === b.isMe;
+}
+
+/**
+ * showProfile: 이전과 발신·분이 다르면 그룹의 첫 줄
+ * showTimestamp: 다음과 발신·분이 다르면 그룹의 마지막 줄
+ */
+function withMessageGroupFlags(msgs) {
+  if (!Array.isArray(msgs) || msgs.length === 0) return msgs;
+  return msgs.map((msg, i) => {
+    const prev = msgs[i - 1];
+    const next = msgs[i + 1];
+
+    const showProfile =
+      !prev ||
+      !sameMessageSender(prev, msg) ||
+      prev.time !== msg.time;
+
+    const showTimestamp =
+      !next ||
+      !sameMessageSender(msg, next) ||
+      msg.time !== next.time;
+
+    return { ...msg, showProfile, showTimestamp };
+  });
+}
 
 function injectDateBanners(msgs) {
   // msgs: 과거 -> 최신 순서(오름차순)
   // 각 날짜 그룹의 시작 지점에 배너를 먼저 삽입한다.
-  // 메시지 행은 messages 배열과 동일 객체 참조를 유지해 불필요한 객체 할당을 줄인다.
-  // (읽음 등으로 messages가 갱신되면 해당 참조도 바뀌므로 행 데이터는 최신 상태)
   const result = [];
   let lastDateKey = null;
   for (const msg of msgs) {
@@ -331,12 +365,19 @@ export default function Chat({ navigation, route }) {
     setReplyToMessage(msg);
   }, []);
 
-  const flatData = useMemo(() => injectDateBanners(messages), [messages]);
+  const flatData = useMemo(
+    () => injectDateBanners(withMessageGroupFlags(messages)),
+    [messages],
+  );
 
   /** FlashList: 타입별 대략 높이(px) — overrideItemLayout·평균 estimatedItemSize에 공통 사용 */
-  const estimateRowHeight = useCallback((item) => {
-    if (!item || item.type === 'dateBanner') return 52;
+  const estimateRowHeight = useCallback((item, index, totalCount) => {
+    if (!item || item.type === 'dateBanner') return DATE_BANNER_ESTIMATE_HEIGHT;
+    // UI는 showTimestamp === true일 때만 표시; 추정은 명시 false일 때만 시간 칸 축소
+    const showTs = item.showTimestamp !== false;
     let h = item.isMe ? 76 : 102;
+    if (!item.isMe && item.showProfile === false) h -= 28;
+    if (!showTs) h -= item.isMe ? 18 : 20;
     if (item.parent_content) h += 58;
     const n = Array.isArray(item.images) ? item.images.length : 0;
     if (n > 0) h += n * (CHAT_IMAGE_SLOT + 4);
@@ -345,24 +386,33 @@ export default function Chat({ navigation, route }) {
     );
     if (hasText) h += 46;
     if (item.isFailed || item.status === 'failed') h += 6;
+    if (
+      typeof index === 'number' &&
+      typeof totalCount === 'number' &&
+      totalCount > 0 &&
+      index === totalCount - 1
+    ) {
+      h += CHAT_LAST_ROW_EXTRA_PAD;
+    }
     return Math.max(120, Math.min(h, 2400));
   }, []);
 
   const overrideItemLayout = useCallback(
-    (layout, item) => {
-      layout.size = estimateRowHeight(item);
+    (layout, item, index) => {
+      layout.size = estimateRowHeight(item, index, flatData.length);
     },
-    [estimateRowHeight],
+    [estimateRowHeight, flatData.length],
   );
 
   /** initialScrollIndex·estimatedItemSize가 같은 기대 높이를 쓰도록 평균 반영 */
   const averageEstimatedItemSize = useMemo(() => {
     if (!flatData?.length) return 150;
     let sum = 0;
-    for (let i = 0; i < flatData.length; i++) {
-      sum += estimateRowHeight(flatData[i]);
+    const n = flatData.length;
+    for (let i = 0; i < n; i++) {
+      sum += estimateRowHeight(flatData[i], i, n);
     }
-    return Math.max(80, Math.round(sum / flatData.length));
+    return Math.max(80, Math.round(sum / n));
   }, [flatData, estimateRowHeight]);
 
   const initialScrollIndex =
@@ -633,6 +683,7 @@ export default function Chat({ navigation, route }) {
                   paddingBottom: 0,
                   paddingTop: 0,
                 }}
+                initialScrollOffset={999999}
                 data={flatData}
                 extraData={messages.length}
                 keyExtractor={keyExtractor}
@@ -647,6 +698,8 @@ export default function Chat({ navigation, route }) {
                 maintainVisibleContentPosition={{
                   minIndexForVisible: 1,
                   autoscrollToTopThreshold: 10,
+                  autoscrollToBottomThreshold: 0.2,
+                  startRenderingFromBottom: true,
                 }}
                 ListHeaderComponent={
                   isLoadingMore ? (

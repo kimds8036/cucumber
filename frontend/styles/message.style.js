@@ -179,16 +179,21 @@ export const createChatStyles = (width, normalize) => {
     chatRowOpponent: {
       flexDirection: 'row',
       alignItems: 'flex-end',
-      marginBottom: normalize(14),
     },
     chatProfileCircle: {
-      width: normalize(45),
-      height: normalize(45),
-      borderRadius: normalize(24),
+      width: normalize(38),
+      height: normalize(38),
+      borderRadius: normalize(19),
       backgroundColor: colors.primary,
       justifyContent: 'center',
       alignItems: 'center',
       marginRight: normalize(10),
+    },
+    /** 프로필 숨긴 연속 메시지: 프로필+마진과 동일 폭으로 말풍선 정렬 */
+    chatProfileSpacer: {
+      width: normalize(38),
+      marginRight: normalize(10),
+      alignSelf: 'stretch',
     },
     opponentBody: {
       flex: 1,
@@ -208,8 +213,8 @@ export const createChatStyles = (width, normalize) => {
       fontSize: normalize(12),
       fontFamily: fonts.regular,
       color: colors.textPrimary,
-      marginBottom: normalize(4),
-      marginLeft: normalize(2),
+      marginBottom: normalize(3),
+      marginLeft: 0,
     },
     opponentBubble: {
       paddingVertical: normalize(5),
@@ -235,7 +240,7 @@ export const createChatStyles = (width, normalize) => {
       fontSize: normalize(11),
       fontFamily: fonts.regular,
       color: colors.textSecondary,
-      marginLeft: normalize(6),
+      marginLeft: 0,
     },
     // 사용자 메시지 행: 좌측 시간, 우측 대화 내용
     chatRowUser: {
@@ -247,7 +252,7 @@ export const createChatStyles = (width, normalize) => {
     userTimeColumn: {
       alignItems: 'flex-end',
       justifyContent: 'flex-end',
-      marginRight: normalize(6),
+      marginRight: normalize(7),
       flexShrink: 0,
     },
     chatUnreadCount: {
@@ -283,7 +288,6 @@ export const createChatStyles = (width, normalize) => {
       fontFamily: fonts.regular,
       color: colors.textSecondary,
       marginBottom: normalize(2),
-      marginRight: normalize(6),
     },
 
     // ─────────────────────────────────────────────

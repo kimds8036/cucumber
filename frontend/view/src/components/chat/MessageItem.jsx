@@ -99,7 +99,18 @@ const OptimizedImage = memo(({ uri, onPress, isSending }) => (
  * @property {boolean|undefined} [isReadByOther]
  * @property {boolean|undefined} [isReadByMe]
  * @property {string} [time]
+ * @property {number|null} [senderId]
+ * @property {boolean} [showProfile] — 그룹 첫 줄(이전과 발신·분 다름)일 때만 true
+ * @property {boolean} [showTimestamp] — 그룹 마지막 줄(다음과 발신·분 다름)일 때만 true
  */
+
+function chatGroupRowMargins(msg, normalize) {
+  return {
+    marginTop: msg.showProfile === false ? normalize(2) : 0,
+    marginBottom:
+      msg.showTimestamp === false ? normalize(2) : normalize(14),
+  };
+}
 
 /**
  * @param {{ msg: ChatMessage, normalize: Function }} props
@@ -128,8 +139,8 @@ const DateBanner = ({ msg, normalize }) => (
 const SenderProfile = ({ chatStyles, normalize }) => (
   <View style={chatStyles.chatProfileCircle}>
     <MessageTabIcon
-      width={normalize(28)}
-      height={normalize(28)}
+      width={normalize(24)}
+      height={normalize(24)}
       color={colors.green}
     />
   </View>
@@ -174,7 +185,9 @@ const MessageBubble = ({
   // 내 메시지
   if (msg.isMe) {
     return (
-      <View style={chatStyles.chatRowUser}>
+      <View
+        style={[chatStyles.chatRowUser, chatGroupRowMargins(msg, normalize)]}
+      >
         <View style={chatStyles.userBubbleAndTime}>
           <View style={chatStyles.userTimeColumn}>
             {msg.status === 'failed' || msg.isFailed ? (
@@ -211,11 +224,13 @@ const MessageBubble = ({
                   {(msg.status === 'sending' || msg.isSending) && (
                     <ActivityIndicator size="small" color="#999" />
                   )}
-                  <Text style={chatStyles.chatTimeUser}>
-                    {msg.status === 'sending' || msg.isSending
-                      ? '...'
-                      : msg.time}
-                  </Text>
+                  {msg.showTimestamp === true ? (
+                    <Text style={chatStyles.chatTimeUser}>
+                      {msg.status === 'sending' || msg.isSending
+                        ? '...'
+                        : msg.time}
+                    </Text>
+                  ) : null}
                 </View>
               </>
             )}
@@ -276,49 +291,16 @@ const MessageBubble = ({
     );
   }
 
-  // 상대방 메시지
+  // 상대방 메시지: [말풍선/이미지] [시간] — 내 메시지 [시간][말풍선]과 대칭, 바닥 정렬
   return (
     <View style={chatStyles.opponentNameAndBubble}>
-      <Text style={chatStyles.opponentName}>익명</Text>
+      {msg.showProfile ? (
+        <Text style={chatStyles.opponentName}>익명</Text>
+      ) : null}
 
-      {/* 이미지 전용(말풍선 없음) */}
-      {isImageOnly ? (
-        <Pressable
-          onLongPress={() => {
-            if (msg.is_deleted || msg.isSending) return;
-            showMessageLongPressMenu(
-              msg,
-              onCopyMessage,
-              onDeleteMessage,
-              onReplyMessage,
-            );
-          }}
-        >
-          <View style={{ alignItems: 'flex-start' }}>
-            {msg.parent_content ? (
-              <ReplyQuote
-                chatStyles={chatStyles}
-                senderName={msg.parent_sender_name}
-                content={msg.parent_content}
-              />
-            ) : null}
-            {msg.images &&
-              msg.images.length > 0 &&
-              !msg.is_deleted &&
-              msg.images.map((uri, index) => (
-                <OptimizedImage
-                  key={`${uri}-${index}`}
-                  uri={uri}
-                  onPress={() => onImagePress?.(uri)}
-                  isSending={msg.isSending}
-                />
-              ))}
-          </View>
-        </Pressable>
-      ) : (
-        // 텍스트(또는 삭제 메시지)인 경우: Pressable로 long-press 처리
-        <>
-          {msg.content || msg.is_deleted ? (
+      <View style={{ flexDirection: 'row', alignItems: 'flex-end' }}>
+        <View style={{ flexShrink: 1, minWidth: 0 }}>
+          {isImageOnly ? (
             <Pressable
               onLongPress={() => {
                 if (msg.is_deleted || msg.isSending) return;
@@ -330,7 +312,7 @@ const MessageBubble = ({
                 );
               }}
             >
-              <View style={chatStyles.opponentBubble}>
+              <View style={{ alignItems: 'flex-start' }}>
                 {msg.parent_content ? (
                   <ReplyQuote
                     chatStyles={chatStyles}
@@ -349,32 +331,71 @@ const MessageBubble = ({
                       isSending={msg.isSending}
                     />
                   ))}
-                {msg.is_deleted ? (
-                  <Text
-                    style={[
-                      chatStyles.opponentBubbleText,
-                      {
-                        color: colors.textSecondary,
-                        fontStyle: 'italic',
-                      },
-                    ]}
-                  >
-                    삭제된 메시지입니다.
-                  </Text>
-                ) : msg.content ? (
-                  <Text style={chatStyles.opponentBubbleText}>
-                    {msg.content}
-                  </Text>
-                ) : null}
               </View>
             </Pressable>
-          ) : null}
-        </>
-      )}
-
-      {/* 시간 표시는 이미지/말풍선 아래쪽 */}
-      <View style={chatStyles.opponentTimeRow}>
-        <Text style={chatStyles.chatTimeOpponent}>{msg.time}</Text>
+          ) : (
+            <>
+              {msg.content || msg.is_deleted ? (
+                <Pressable
+                  onLongPress={() => {
+                    if (msg.is_deleted || msg.isSending) return;
+                    showMessageLongPressMenu(
+                      msg,
+                      onCopyMessage,
+                      onDeleteMessage,
+                      onReplyMessage,
+                    );
+                  }}
+                >
+                  <View style={chatStyles.opponentBubble}>
+                    {msg.parent_content ? (
+                      <ReplyQuote
+                        chatStyles={chatStyles}
+                        senderName={msg.parent_sender_name}
+                        content={msg.parent_content}
+                      />
+                    ) : null}
+                    {msg.images &&
+                      msg.images.length > 0 &&
+                      !msg.is_deleted &&
+                      msg.images.map((uri, index) => (
+                        <OptimizedImage
+                          key={`${uri}-${index}`}
+                          uri={uri}
+                          onPress={() => onImagePress?.(uri)}
+                          isSending={msg.isSending}
+                        />
+                      ))}
+                    {msg.is_deleted ? (
+                      <Text
+                        style={[
+                          chatStyles.opponentBubbleText,
+                          {
+                            color: colors.textSecondary,
+                            fontStyle: 'italic',
+                          },
+                        ]}
+                      >
+                        삭제된 메시지입니다.
+                      </Text>
+                    ) : msg.content ? (
+                      <Text style={chatStyles.opponentBubbleText}>
+                        {msg.content}
+                      </Text>
+                    ) : null}
+                  </View>
+                </Pressable>
+              ) : null}
+            </>
+          )}
+        </View>
+        {msg.showTimestamp === true ? (
+          <Text
+            style={[chatStyles.chatTimeOpponent, { marginLeft: normalize(7) }]}
+          >
+            {msg.time}
+          </Text>
+        ) : null}
       </View>
     </View>
   );
@@ -431,10 +452,15 @@ const MessageItem = memo(
       <View
         style={[
           chatStyles.chatRowOpponent,
-          { flexDirection: 'row', alignItems: 'flex-start' },
+          { flexDirection: 'row', alignItems: 'flex-end' },
+          chatGroupRowMargins(msg, normalize),
         ]}
       >
-        <SenderProfile chatStyles={chatStyles} normalize={normalize} />
+        {msg.showProfile ? (
+          <SenderProfile chatStyles={chatStyles} normalize={normalize} />
+        ) : (
+          <View style={chatStyles.chatProfileSpacer} pointerEvents="none" />
+        )}
         <MessageBubble
           msg={msg}
           chatStyles={chatStyles}
@@ -466,6 +492,8 @@ const MessageItem = memo(
       pm.isSending === nm.isSending &&
       pm.isReadByOther === nm.isReadByOther &&
       pm.isReadByMe === nm.isReadByMe &&
+      pm.showProfile === nm.showProfile &&
+      pm.showTimestamp === nm.showTimestamp &&
       areImagesEqual(pm.images, nm.images)
     );
   },
