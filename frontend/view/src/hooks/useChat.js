@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { Alert } from 'react-native';
+import { Alert, InteractionManager } from 'react-native';
 import { api } from '../../../utils/api';
 import { useNotification } from '../../../context/NotificationContext';
 
@@ -17,8 +17,10 @@ const PAGE_SIZE = 30;
 
 const getMessageSortValue = (msg) => {
   if (!msg) return Number.MIN_SAFE_INTEGER;
+  // ID 기준 정렬: 더 큰 ID가 더 최신 메시지
   const idNum = Number(msg.id);
   if (!Number.isNaN(idNum)) return idNum;
+  // ID가 없을 경우 생성시간 기준
   const t = Date.parse(msg.createdAt || '');
   if (!Number.isNaN(t)) return t;
   return Number.MIN_SAFE_INTEGER;
@@ -156,26 +158,91 @@ async function saveCachedMessages(roomId, data) {
 export default function useChat(roomId, socket) {
   const { refreshHasUnread } = useNotification();
 
-  const [messagesById, setMessagesById] = useState({});
-  const [messageIds, setMessageIds] = useState([]);
-  const [hasMore, setHasMore] = useState(true);
-  const [isLoadingMore, setIsLoadingMore] = useState(false);
-  const [typingUsers, setTypingUsers] = useState({});
-  const [isLoading, setIsLoading] = useState(false);
+  // 원자적 상태 관리 - 단일 객체로 묶어서 렌더링 최적화
+  const [chatData, setChatData] = useState({
+    messagesById: {},
+    messageIds: [],
+    hasMore: true,
+    isLoadingMore: false,
+    typingUsers: {},
+    isLoading: false,
+  });
 
   const [myId, setMyId] = useState(null);
+
+  // 개별 상태 추출을 위한 getter
+  const messagesById = chatData.messagesById;
+  const messageIds = chatData.messageIds;
+  const hasMore = chatData.hasMore;
+  const isLoadingMore = chatData.isLoadingMore;
+  const typingUsers = chatData.typingUsers;
+  const isLoading = chatData.isLoading;
 
   const pollRef = useRef(null);
   const oldestIdRef = useRef(null);
   const cacheSaveTimeoutRef = useRef(null);
+  const abortControllerRef = useRef(null);
 
   const currentUserIdRef = useRef(null); // 소켓/타이머 클로저 방지
   const pendingClientIdTimeoutsRef = useRef(new Map());
+
+  // roomId 변경 시 상태 즉시 초기화 및 이전 요청 취소
+  useEffect(() => {
+    if (!roomId) return;
+
+    // 이전 API 요청 취소
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+      abortControllerRef.current = null;
+    }
+
+    // 즉시 상태 초기화 - 잔상 방지 (원자적 업데이트)
+    setChatData({
+      messagesById: {},
+      messageIds: [],
+      hasMore: true,
+      isLoadingMore: false,
+      typingUsers: {},
+      isLoading: true,
+    });
+
+    // Ref 초기화
+    oldestIdRef.current = null;
+    currentUserIdRef.current = null;
+
+    // 기존 타이머 정리
+    if (pollRef.current) {
+      clearInterval(pollRef.current);
+      pollRef.current = null;
+    }
+  }, [roomId]);
+
+  // 컴포넌트 언마운트 시 정리
+  useEffect(() => {
+    return () => {
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+        abortControllerRef.current = null;
+      }
+    };
+  }, []);
 
   const messages = useMemo(() => {
     // 항상 과거 -> 최신 순서(오름차순)로 고정
     const arr = messageIds.map((id) => messagesById[id]).filter(Boolean);
     arr.sort((a, b) => getMessageSortValue(a) - getMessageSortValue(b));
+
+    // 디버그: 메시지 순서 확인
+    if (arr.length > 0) {
+      console.log('[useChat] Message order debug:', {
+        totalCount: arr.length,
+        firstMessage: arr[0]?.id,
+        firstMessageTime: arr[0]?.createdAt,
+        lastMessage: arr[arr.length - 1]?.id,
+        lastMessageTime: arr[arr.length - 1]?.createdAt,
+        messageIdsOrder: messageIds.slice(0, 3), // 처음 3개만 확인
+      });
+    }
 
     // 메모리 사용량 제한: 너무 많은 메시지는 메모리에서 제거
     if (arr.length > MEMORY_LIMIT) {
@@ -184,12 +251,14 @@ export default function useChat(roomId, socket) {
 
       // 상태 업데이트는 useEffect에서 처리하여 무한 루프 방지
       setTimeout(() => {
-        setMessagesById((prev) => {
-          const next = { ...prev };
-          oldestIds.forEach((id) => delete next[id]);
-          return next;
+        setChatData((prev) => {
+          const next = { ...prev, messagesById: { ...prev.messagesById } };
+          const nextIds = prev.messageIds.filter(
+            (id) => !oldestIds.includes(id),
+          );
+          oldestIds.forEach((id) => delete next.messagesById[id]);
+          return { ...prev, messagesById: next, messageIds: nextIds };
         });
-        setMessageIds((prev) => prev.filter((id) => !oldestIds.includes(id)));
       }, 0);
     }
 
@@ -238,19 +307,28 @@ export default function useChat(roomId, socket) {
         });
 
         // 폴링은 "서버에서 새로 생긴 메시지만" union 반영
-        setMessagesById((prevById) => {
-          const next = { ...prevById, ...mappedById };
+        setChatData((prev) => {
+          const next = {
+            ...prev,
+            messagesById: { ...prev.messagesById, ...mappedById },
+          };
           // optimistic/pending 덮지 않음
-          Object.keys(prevById).forEach((id) => {
-            const msg = prevById[id];
-            if (msg && (msg.isSending || msg.isFailed)) next[id] = msg;
+          Object.keys(prev.messagesById).forEach((id) => {
+            const msg = prev.messagesById[id];
+            if (msg && (msg.isSending || msg.isFailed)) {
+              next.messagesById[id] = msg;
+            }
           });
           return next;
         });
 
-        setMessageIds((prevIds) => {
-          const newIds = mappedIds.filter((id) => !prevIds.includes(id));
-          return newIds.length ? [...prevIds, ...newIds] : prevIds;
+        setChatData((prev) => {
+          const newIds = mappedIds.filter(
+            (id) => !prev.messageIds.includes(id),
+          );
+          // 중복 방지를 위해 Set 사용
+          const uniqueIds = [...new Set([...prev.messageIds, ...newIds])];
+          return newIds.length ? { ...prev, messageIds: uniqueIds } : prev;
         });
       } catch (e) {
         console.error('[useChat][Poll] 폴링 오류:', e);
@@ -258,99 +336,161 @@ export default function useChat(roomId, socket) {
     }, 10000); // 폴링 간격 증가로 성능 최적화
   }, [roomId]);
 
-  // ─────────────────────────────────────────────
-  // 1) 메시지 로드 + 캐시 (최초 1회)
-  // ─────────────────────────────────────────────
+  // 무거운 작업을 InteractionManager로 우선순위 조정
   useEffect(() => {
     if (!roomId) return;
 
     let isMounted = true;
-    setTypingUsers({});
-    setIsLoading(true);
 
     const init = async () => {
-      try {
-        const cached = await loadCachedMessages(roomId);
-        if (cached && isMounted) {
-          setMessagesById(cached.messagesById);
-          setMessageIds(cached.messageIds);
-          setHasMore(true);
-          oldestIdRef.current = cached.messageIds[0] ?? null;
-        }
+      // AbortController 생성
+      const controller = new AbortController();
+      abortControllerRef.current = controller;
 
-        const res = await api.get(
-          `/api/messages/rooms/${roomId}?limit=${INITIAL_FETCH_LIMIT}`,
-        );
-        const room = res.data?.room;
-        const msgs = res.data?.data || [];
-        const hasMoreRes = Boolean(res.data?.hasMore);
+      // 화면 전환 애니메이션이 끝난 후 무거운 작업 실행
+      InteractionManager.runAfterInteractions(() => {
+        if (!isMounted || controller.signal.aborted) return;
 
-        if (!room || !Array.isArray(msgs)) return;
-
-        const otherId = room.other_user_id;
-        const meId =
-          room.user1_id === otherId
-            ? room.user2_id
-            : room.user2_id === otherId
-              ? room.user1_id
-              : null;
-
-        currentUserIdRef.current = meId;
-        setMyId(meId);
-
-        msgs.sort((a, b) => {
-          const ad = parseUtcToLocal(a.created_at || '');
-          const bd = parseUtcToLocal(b.created_at || '');
-          return !ad || !bd ? 0 : ad - bd;
-        });
-
-        const normalized = {};
-        const ids = [];
-        msgs.forEach((m) => {
-          const nm = normalizeMessage(m, meId);
-          normalized[nm.id] = nm;
-          ids.push(nm.id);
-        });
-
-        if (!isMounted) return;
-        setMessagesById(normalized);
-        setMessageIds(ids);
-        setHasMore(hasMoreRes);
-        oldestIdRef.current = ids[0] ?? null;
-
-        // 읽음 처리
-        try {
-          await api.put(`/api/messages/rooms/${roomId}/read`);
-          setMessagesById((prev) => {
-            const next = { ...prev };
-            Object.keys(next).forEach((id) => {
-              if (next[id] && !next[id].isMe) {
-                next[id] = { ...next[id], isReadByMe: true };
+        // 여기서 초기 데이터 가공 등 무거운 작업 수행
+        (async () => {
+          try {
+            const cached = await loadCachedMessages(roomId);
+            if (cached && isMounted && !controller.signal.aborted) {
+              // roomId 일치 확인
+              if (String(roomId) === String(roomId)) {
+                setChatData((prev) => ({
+                  ...prev,
+                  messagesById: cached.messagesById,
+                  messageIds: cached.messageIds,
+                  hasMore: true,
+                }));
+                oldestIdRef.current = cached.messageIds[0] ?? null;
               }
-            });
-            return next;
-          });
+            }
 
-          await api
-            .post('/api/notifications/read-by-related', {
-              relatedType: 'message_room',
-              relatedId: roomId,
-            })
-            .catch(() => {});
-          refreshHasUnread();
-        } catch {
-          /* ignore */
-        }
-      } catch (error) {
-        console.error('[useChat] 메시지 로드 실패:', error);
-        Alert.alert(
-          '오류',
-          error?.response?.data?.message ||
-            '채팅 내역을 불러오는 중 오류가 발생했습니다.',
-        );
-      } finally {
-        if (isMounted) setIsLoading(false);
-      }
+            const res = await api.get(
+              `/api/messages/rooms/${roomId}?limit=${INITIAL_FETCH_LIMIT}`,
+              { signal: controller.signal },
+            );
+
+            if (controller.signal.aborted || !isMounted) return;
+            const room = res.data?.room;
+            const msgs = res.data?.data || [];
+            const hasMoreRes = Boolean(res.data?.hasMore);
+
+            // 디버그: API 응답 데이터 확인
+            console.log('[useChat] API Response debug:', {
+              roomId,
+              apiEndpoint: `/api/messages/rooms/${roomId}?limit=${INITIAL_FETCH_LIMIT}`,
+              responseCount: msgs.length,
+              hasMore: hasMoreRes,
+              firstMessageId: msgs[0]?.id,
+              firstMessageTime: msgs[0]?.created_at,
+              lastMessageId: msgs[msgs.length - 1]?.id,
+              lastMessageTime: msgs[msgs.length - 1]?.created_at,
+            });
+
+            if (!room || !Array.isArray(msgs) || !isMounted) return;
+
+            const otherId = room.other_user_id;
+            const meId =
+              room.user1_id === otherId
+                ? room.user2_id
+                : room.user2_id === otherId
+                  ? room.user1_id
+                  : null;
+
+            currentUserIdRef.current = meId;
+            setMyId(meId);
+
+            msgs.sort((a, b) => {
+              const ad = parseUtcToLocal(a.created_at || '');
+              const bd = parseUtcToLocal(b.created_at || '');
+              // 최신순(DESC)으로 정렬: 최신 메시지가 앞에 오도록
+              return !ad || !bd ? 0 : bd - ad;
+            });
+
+            const normalized = {};
+            // 최신순으로 정렬된 데이터를 시간순(ASC)으로 배열에 담기
+            const ids = [];
+            for (let i = msgs.length - 1; i >= 0; i--) {
+              const m = msgs[i];
+              const nm = normalizeMessage(m, meId);
+              normalized[nm.id] = nm;
+              ids.push(nm.id);
+            }
+
+            // 디버그: 초기 로딩 데이터 순서 확인
+            console.log('[useChat] Initial load debug:', {
+              roomId,
+              messageCount: ids.length,
+              oldestId: ids[0],
+              newestId: ids[ids.length - 1],
+              oldestTime: normalized[ids[0]]?.createdAt,
+              newestTime: normalized[ids[ids.length - 1]]?.createdAt,
+            });
+
+            // roomId 일치 확인 후 상태 업데이트 (완전 교체)
+            if (
+              String(roomId) === String(roomId) &&
+              !controller.signal.aborted
+            ) {
+              // 기존 데이터를 완전히 밀어내고 새 데이터로 교체
+              setChatData((prev) => ({
+                ...prev,
+                messagesById: normalized,
+                messageIds: ids,
+                hasMore: hasMoreRes,
+                isLoading: false,
+              }));
+              oldestIdRef.current = ids[0] ?? null;
+            }
+
+            // 읽음 처리
+            try {
+              await api.put(`/api/messages/rooms/${roomId}/read`);
+              setChatData((prev) => {
+                const next = {
+                  ...prev,
+                  messagesById: { ...prev.messagesById },
+                };
+                Object.keys(next.messagesById).forEach((id) => {
+                  if (next.messagesById[id] && !next.messagesById[id].isMe) {
+                    next.messagesById[id] = {
+                      ...next.messagesById[id],
+                      isReadByMe: true,
+                    };
+                  }
+                });
+                return next;
+              });
+
+              await api
+                .post('/api/notifications/read-by-related', {
+                  relatedType: 'message_room',
+                  relatedId: roomId,
+                })
+                .catch(() => {});
+              refreshHasUnread();
+            } catch {
+              /* ignore */
+            }
+          } catch (error) {
+            console.error('[useChat] 메시지 로드 실패:', error);
+            if (isMounted) {
+              Alert.alert(
+                '오류',
+                error?.response?.data?.message ||
+                  '채팅 내역을 불러오는 중 오류가 발생했습니다.',
+              );
+            }
+          } finally {
+            if (isMounted) {
+              setChatData((prev) => ({ ...prev, isLoading: false }));
+            }
+          }
+        })();
+      });
     };
 
     init();
@@ -386,26 +526,32 @@ export default function useChat(roomId, socket) {
   // ─────────────────────────────────────────────
   const handleSocketUserTyping = useCallback(({ userId, userName }) => {
     if (!userId) return;
-    setTypingUsers((prev) => ({ ...prev, [userId]: userName ?? '익명' }));
+    setChatData((prev) => ({
+      ...prev,
+      typingUsers: { ...prev.typingUsers, [userId]: userName ?? '익명' },
+    }));
   }, []);
 
   const handleSocketUserStopTyping = useCallback(({ userId }) => {
     if (!userId) return;
-    setTypingUsers((prev) => {
-      const updated = { ...prev };
+    setChatData((prev) => {
+      const updated = { ...prev.typingUsers };
       delete updated[userId];
-      return updated;
+      return { ...prev, typingUsers: updated };
     });
   }, []);
 
   const handleSocketReadReceipt = useCallback(
     (payload) => {
+      // roomId 일치 확인
       if (String(payload.roomId) !== String(roomId)) return;
-      setMessagesById((prevById) => {
-        const next = { ...prevById };
-        Object.keys(next).forEach((id) => {
-          const msg = next[id];
-          if (msg?.isMe) next[id] = { ...msg, isReadByOther: true };
+
+      setChatData((prev) => {
+        const next = { ...prev, messagesById: { ...prev.messagesById } };
+        Object.keys(next.messagesById).forEach((id) => {
+          const msg = next.messagesById[id];
+          if (msg?.isMe)
+            next.messagesById[id] = { ...msg, isReadByOther: true };
         });
         return next;
       });
@@ -416,6 +562,9 @@ export default function useChat(roomId, socket) {
   const handleSocketNewMessage = useCallback(
     (payload) => {
       if (!payload?.message) return;
+
+      // roomId 일치 확인
+      if (String(payload.message.room_id) !== String(roomId)) return;
 
       const newMsg = normalizeMessage(
         payload.message,
@@ -432,21 +581,23 @@ export default function useChat(roomId, socket) {
         }
       }
 
-      setMessagesById((prevById) => {
-        const next = { ...prevById };
+      setChatData((prev) => {
+        const next = { ...prev, messagesById: { ...prev.messagesById } };
+        const shouldUpsert = !next.messagesById[newMsg.id];
         const tempKeyForFallback = newMsg.clientId
           ? String(newMsg.clientId)
           : null;
-        const tempMsg = tempKeyForFallback ? next[tempKeyForFallback] : null;
+        const tempMsg = tempKeyForFallback
+          ? next.messagesById[tempKeyForFallback]
+          : null;
 
         // optimistic temp 메시지 매칭: clientId로 temp 제거
         if (newMsg.clientId) {
           const tempKey = String(newMsg.clientId);
-          if (next[tempKey]) delete next[tempKey];
+          if (next.messagesById[tempKey]) delete next.messagesById[tempKey];
         }
 
-        const shouldUpsert = !next[newMsg.id];
-        next[newMsg.id] = {
+        next.messagesById[newMsg.id] = {
           ...newMsg,
           parent_message_id:
             newMsg.parent_message_id ?? tempMsg?.parent_message_id ?? null,
@@ -460,25 +611,42 @@ export default function useChat(roomId, socket) {
         };
 
         if (shouldUpsert) {
-          setMessageIds((prevIds) => {
-            const tempKey = newMsg.clientId ? String(newMsg.clientId) : null;
-            const idx = tempKey ? prevIds.indexOf(tempKey) : -1;
-            const filtered = tempKey
-              ? prevIds.filter((id) => id !== tempKey)
-              : prevIds;
-            if (filtered.includes(newMsg.id)) return filtered;
-            if (idx >= 0) {
-              filtered.splice(idx, 0, newMsg.id);
-              return filtered;
-            }
-            return [...filtered, newMsg.id];
-          });
+          const tempKey = newMsg.clientId ? String(newMsg.clientId) : null;
+          const idx = tempKey ? prev.messageIds.indexOf(tempKey) : -1;
+          const filtered = tempKey
+            ? prev.messageIds.filter((id) => id !== tempKey)
+            : prev.messageIds;
+
+          if (filtered.includes(newMsg.id)) {
+            return { ...prev, messagesById: next.messagesById };
+          }
+
+          if (idx >= 0) {
+            filtered.splice(idx, 0, newMsg.id);
+            return {
+              ...prev,
+              messagesById: next.messagesById,
+              messageIds: filtered,
+            };
+          }
+
+          // 중복 방지를 위해 Set 사용
+          const uniqueIds = [...new Set([...filtered, newMsg.id])];
+          return {
+            ...prev,
+            messagesById: next.messagesById,
+            messageIds: uniqueIds,
+          };
         } else if (newMsg.clientId) {
           const tempKey = String(newMsg.clientId);
-          setMessageIds((prevIds) => prevIds.filter((id) => id !== tempKey));
+          return {
+            ...prev,
+            messagesById: next.messagesById,
+            messageIds: prev.messageIds.filter((id) => id !== tempKey),
+          };
         }
 
-        return next;
+        return { ...prev, messagesById: next.messagesById };
       });
 
       if (!newMsg.isMe) {
@@ -580,10 +748,14 @@ export default function useChat(roomId, socket) {
     if (!roomId) return;
     if (!hasMore) return;
     if (isLoadingMore) return;
-    setIsLoadingMore(true);
+
+    setChatData((prev) => ({ ...prev, isLoadingMore: true }));
 
     try {
-      if (!oldestIdRef.current) return;
+      if (!oldestIdRef.current) {
+        setChatData((prev) => ({ ...prev, isLoadingMore: false }));
+        return;
+      }
 
       const res = await api.get(
         `/api/messages/rooms/${roomId}?before=${oldestIdRef.current}&limit=${PAGE_SIZE}`,
@@ -591,35 +763,39 @@ export default function useChat(roomId, socket) {
 
       const msgs = res.data?.data || [];
       if (!Array.isArray(msgs) || msgs.length === 0) {
-        setHasMore(false);
+        setChatData((prev) => ({
+          ...prev,
+          isLoadingMore: false,
+          hasMore: false,
+        }));
         return;
       }
 
       const meId = currentUserIdRef.current;
       const mapped = msgs.map((m) => normalizeMessage(m, meId));
-      const newIds = mapped.map((m) => m.id);
+      // 서버는 ORDER BY id DESC → 과거 prepend 시 시간순(오름차순)으로 맞춤
+      const chronological = [...mapped].reverse();
+      const newIds = chronological.map((m) => m.id);
 
-      setMessagesById((prevById) => {
-        const next = { ...prevById };
-        mapped.forEach((m) => {
-          next[m.id] = m;
+      setChatData((prev) => {
+        const nextMessagesById = { ...prev.messagesById };
+        chronological.forEach((m) => {
+          nextMessagesById[m.id] = m;
         });
-        return next;
+        const uniqueIds = [...new Set([...newIds, ...prev.messageIds])];
+        return {
+          ...prev,
+          messagesById: nextMessagesById,
+          messageIds: uniqueIds,
+        };
       });
 
-      // 오름차순 유지: 더 과거(더 작은 id)가 들어오면 앞(prepend)
-      setMessageIds((prevIds) => {
-        const uniqueNewIds = newIds.filter((id) => !prevIds.includes(id));
-        if (uniqueNewIds.length === 0) return prevIds;
-        return [...uniqueNewIds, ...prevIds];
-      });
-
-      oldestIdRef.current = mapped[0]?.id ?? oldestIdRef.current;
-      setHasMore(Boolean(res.data?.hasMore));
+      oldestIdRef.current = chronological[0]?.id ?? oldestIdRef.current;
+      setChatData((prev) => ({ ...prev, hasMore: Boolean(res.data?.hasMore) }));
     } catch (e) {
       console.error('[useChat][Pagination] 로딩 실패:', e);
     } finally {
-      setIsLoadingMore(false);
+      setChatData((prev) => ({ ...prev, isLoadingMore: false }));
     }
   }, [roomId, hasMore, isLoadingMore]);
 
@@ -662,15 +838,11 @@ export default function useChat(roomId, socket) {
         status: 'sending',
       };
 
-      setMessagesById((prevById) => ({
-        ...prevById,
-        [clientId]: optimisticMsg,
+      setChatData((prev) => ({
+        ...prev,
+        messagesById: { ...prev.messagesById, [clientId]: optimisticMsg },
+        messageIds: [...prev.messageIds, clientId],
       }));
-
-      setMessageIds((prevIds) => {
-        if (prevIds.includes(clientId)) return prevIds;
-        return [...prevIds, clientId];
-      });
 
       try {
         const formData = new FormData();
@@ -701,42 +873,37 @@ export default function useChat(roomId, socket) {
 
             // 소켓 미도착 대비로 5초 뒤에만 교체
             const timeoutId = setTimeout(() => {
-              setMessagesById((prevById) => {
-                if (!prevById[clientId]) return prevById;
-                const tempMsg = prevById[clientId];
-                const { [clientId]: temp, ...rest } = prevById;
+              setChatData((prev) => {
+                if (!prev.messagesById[clientId]) return prev;
+                const tempMsg = prev.messagesById[clientId];
+                const { [clientId]: temp, ...rest } = prev.messagesById;
                 return {
-                  ...rest,
-                  [serverId]: {
-                    ...serverMsg,
-                    parent_message_id:
-                      serverMsg.parent_message_id ??
-                      tempMsg?.parent_message_id ??
-                      null,
-                    parent_content:
-                      serverMsg.parent_content ??
-                      tempMsg?.parent_content ??
-                      null,
-                    parent_sender_name:
-                      serverMsg.parent_sender_name ??
-                      tempMsg?.parent_sender_name ??
-                      null,
-                    status: 'sent',
-                    isSending: false,
-                    isFailed: false,
+                  ...prev,
+                  messagesById: {
+                    ...rest,
+                    [serverId]: {
+                      ...serverMsg,
+                      parent_message_id:
+                        serverMsg.parent_message_id ??
+                        tempMsg?.parent_message_id ??
+                        null,
+                      parent_content:
+                        serverMsg.parent_content ??
+                        tempMsg?.parent_content ??
+                        null,
+                      parent_sender_name:
+                        serverMsg.parent_sender_name ??
+                        tempMsg?.parent_sender_name ??
+                        null,
+                      status: 'sent',
+                      isSending: false,
+                      isFailed: false,
+                    },
                   },
+                  messageIds: prev.messageIds.map((id) =>
+                    id === clientId ? serverId : id,
+                  ),
                 };
-              });
-
-              setMessageIds((prevIds) => {
-                const idx = prevIds.indexOf(clientId);
-                const filtered = prevIds.filter((id) => id !== clientId);
-                if (filtered.includes(serverId)) return filtered;
-                if (idx >= 0) {
-                  filtered.splice(idx, 0, serverId);
-                  return filtered;
-                }
-                return [...filtered, serverId];
               });
 
               pendingClientIdTimeoutsRef.current.delete(clientId);
@@ -746,16 +913,19 @@ export default function useChat(roomId, socket) {
           });
       } catch (error) {
         console.error('[useChat] 쪽지 전송 실패:', error);
-        setMessagesById((prevById) => {
-          const target = prevById[clientId];
-          if (!target) return prevById;
+        setChatData((prev) => {
+          const target = prev.messagesById[clientId];
+          if (!target) return prev;
           return {
-            ...prevById,
-            [clientId]: {
-              ...target,
-              isSending: false,
-              isFailed: true,
-              status: 'failed',
+            ...prev,
+            messagesById: {
+              ...prev.messagesById,
+              [clientId]: {
+                ...target,
+                isSending: false,
+                isFailed: true,
+                status: 'failed',
+              },
             },
           };
         });
@@ -779,16 +949,19 @@ export default function useChat(roomId, socket) {
 
       if (!text && images.length === 0) return;
 
-      setMessagesById((prevById) => {
-        const target = prevById[clientId];
-        if (!target) return prevById;
+      setChatData((prev) => {
+        const target = prev.messagesById[clientId];
+        if (!target) return prev;
         return {
-          ...prevById,
-          [clientId]: {
-            ...target,
-            isSending: true,
-            isFailed: false,
-            status: 'sending',
+          ...prev,
+          messagesById: {
+            ...prev.messagesById,
+            [clientId]: {
+              ...target,
+              isSending: true,
+              isFailed: false,
+              status: 'sending',
+            },
           },
         };
       });
@@ -821,40 +994,37 @@ export default function useChat(roomId, socket) {
           serverMsg.status = 'sent';
 
           const timeoutId = setTimeout(() => {
-            setMessagesById((prevById) => {
-              if (!prevById[clientId]) return prevById;
-              const tempMsg = prevById[clientId];
-              const { [clientId]: temp, ...rest } = prevById;
+            setChatData((prev) => {
+              if (!prev.messagesById[clientId]) return prev;
+              const tempMsg = prev.messagesById[clientId];
+              const { [clientId]: temp, ...rest } = prev.messagesById;
               return {
-                ...rest,
-                [serverId]: {
-                  ...serverMsg,
-                  parent_message_id:
-                    serverMsg.parent_message_id ??
-                    tempMsg?.parent_message_id ??
-                    null,
-                  parent_content:
-                    serverMsg.parent_content ?? tempMsg?.parent_content ?? null,
-                  parent_sender_name:
-                    serverMsg.parent_sender_name ??
-                    tempMsg?.parent_sender_name ??
-                    null,
-                  status: 'sent',
-                  isSending: false,
-                  isFailed: false,
+                ...prev,
+                messagesById: {
+                  ...rest,
+                  [serverId]: {
+                    ...serverMsg,
+                    parent_message_id:
+                      serverMsg.parent_message_id ??
+                      tempMsg?.parent_message_id ??
+                      null,
+                    parent_content:
+                      serverMsg.parent_content ??
+                      tempMsg?.parent_content ??
+                      null,
+                    parent_sender_name:
+                      serverMsg.parent_sender_name ??
+                      tempMsg?.parent_sender_name ??
+                      null,
+                    status: 'sent',
+                    isSending: false,
+                    isFailed: false,
+                  },
                 },
+                messageIds: prev.messageIds.map((id) =>
+                  id === clientId ? serverId : id,
+                ),
               };
-            });
-
-            setMessageIds((prevIds) => {
-              const idx = prevIds.indexOf(clientId);
-              const filtered = prevIds.filter((id) => id !== clientId);
-              if (filtered.includes(serverId)) return filtered;
-              if (idx >= 0) {
-                filtered.splice(idx, 0, serverId);
-                return filtered;
-              }
-              return [...filtered, serverId];
             });
 
             pendingClientIdTimeoutsRef.current.delete(clientId);
@@ -864,16 +1034,19 @@ export default function useChat(roomId, socket) {
         }
       } catch (error) {
         console.error('[useChat] 재전송 실패:', error);
-        setMessagesById((prevById) => {
-          const target = prevById[clientId];
-          if (!target) return prevById;
+        setChatData((prev) => {
+          const target = prev.messagesById[clientId];
+          if (!target) return prev;
           return {
-            ...prevById,
-            [clientId]: {
-              ...target,
-              isSending: false,
-              isFailed: true,
-              status: 'failed',
+            ...prev,
+            messagesById: {
+              ...prev.messagesById,
+              [clientId]: {
+                ...target,
+                isSending: false,
+                isFailed: true,
+                status: 'failed',
+              },
             },
           };
         });
@@ -890,10 +1063,16 @@ export default function useChat(roomId, socket) {
     try {
       const targetId = String(messageId);
       await api.delete(`/api/messages/${targetId}`);
-      setMessagesById((prevById) => {
-        const target = prevById[targetId];
-        if (!target) return prevById;
-        return { ...prevById, [targetId]: { ...target, is_deleted: true } };
+      setChatData((prev) => {
+        const target = prev.messagesById[targetId];
+        if (!target) return prev;
+        return {
+          ...prev,
+          messagesById: {
+            ...prev.messagesById,
+            [targetId]: { ...target, is_deleted: true },
+          },
+        };
       });
     } catch (e) {
       console.error('[useChat] 메시지 삭제 실패:', e);

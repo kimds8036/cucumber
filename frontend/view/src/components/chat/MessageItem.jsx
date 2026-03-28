@@ -1,4 +1,4 @@
-import React, { memo, useMemo } from 'react';
+import React, { memo } from 'react';
 import {
   View,
   Text,
@@ -35,67 +35,54 @@ const areImagesEqual = (a, b) => {
   return true;
 };
 
-// 이미지 컴포넌트 메모이제이션
-const OptimizedImage = memo(({ uri, onPress, isSending }) => {
-  const imageStyle = useMemo(
-    () => ({
-      width: 200,
-      height: 200,
-      minHeight: 200,
-      borderRadius: 12,
-      marginBottom: 4,
-    }),
-    [],
-  );
+/** 채팅 썸네일: 로딩 전·후 동일 영역(고정 1:1) → 리스트 높이 추정과 스크롤 안정화 */
+const CHAT_IMAGE_BOX = 200;
 
-  const containerStyle = useMemo(
-    () => ({
-      width: 200,
-      height: 200,
-      minHeight: 200,
+const OptimizedImage = memo(({ uri, onPress, isSending }) => (
+  <TouchableOpacity
+    activeOpacity={0.9}
+    onPress={onPress}
+    style={{
+      width: CHAT_IMAGE_BOX,
+      height: CHAT_IMAGE_BOX,
+      aspectRatio: 1,
       borderRadius: 12,
       marginBottom: 4,
       position: 'relative',
       overflow: 'hidden',
-    }),
-    [],
-  );
-
-  return (
-    <TouchableOpacity
-      activeOpacity={0.9}
-      onPress={onPress}
-      style={containerStyle}
-    >
-      <Image
-        source={{ uri }}
-        style={imageStyle}
-        contentFit="cover"
-        cachePolicy="memory-disk"
-        placeholder={{ blurhash: 'LGFFaXYk^6#M@-5c,1J5@[or[Q6.' }}
-        transition={200}
-        recyclingKey={uri}
-        priority="high"
-      />
-      {isSending && (
-        <View
-          style={{
-            position: 'absolute',
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            justifyContent: 'center',
-            alignItems: 'center',
-            backgroundColor: 'rgba(0,0,0,0.3)',
-          }}
-        >
-          <ActivityIndicator color="#fff" />
-        </View>
-      )}
-    </TouchableOpacity>
-  );
-});
+    }}
+  >
+    <Image
+      source={{ uri }}
+      style={{
+        width: CHAT_IMAGE_BOX,
+        height: CHAT_IMAGE_BOX,
+      }}
+      contentFit="cover"
+      cachePolicy="memory-disk"
+      placeholder={{ blurhash: 'LGFFaXYk^6#M@-5c,1J5@[or[Q6.' }}
+      transition={200}
+      recyclingKey={uri}
+      priority="high"
+    />
+    {isSending ? (
+      <View
+        style={{
+          position: 'absolute',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          justifyContent: 'center',
+          alignItems: 'center',
+          backgroundColor: 'rgba(0,0,0,0.3)',
+        }}
+      >
+        <ActivityIndicator color="#fff" />
+      </View>
+    ) : null}
+  </TouchableOpacity>
+));
 
 /**
  * @typedef {Object} ChatMessage

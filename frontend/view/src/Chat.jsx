@@ -45,6 +45,8 @@ import useChat from './hooks/useChat';
 // 게시글 캐시
 // ─────────────────────────────────────────────
 const postCache = {};
+/** MessageItem 이미지 박스 높이와 동일 — overrideItemLayout 추정에 사용 */
+const CHAT_IMAGE_SLOT = 200;
 
 function injectDateBanners(msgs) {
   // msgs: 과거 -> 최신 순서(오름차순)
@@ -83,6 +85,7 @@ export default function Chat({ navigation, route }) {
 
   const {
     messages,
+    isLoading,
     isLoadingMore,
     sendMessage,
     loadMore,
@@ -97,12 +100,15 @@ export default function Chat({ navigation, route }) {
   // 최적화된 스크롤 관리를 위한 refs
   const flashListRef = useRef(null);
   const prevMessageCountRef = useRef(0);
-  const didInitialBottomLockRef = useRef(false);
   const isNearBottomRef = useRef(true);
   const prevNewestIdRef = useRef(null);
   const scrollAnimationRef = useRef(null);
   const keyboardTimeoutRef = useRef(null);
   const isScrollingRef = useRef(false);
+  /** 정방향 리스트: 상단 도달(onStartReached)로 과거 로드 — 초기 마운트 오호출 방지 */
+  const loadOlderAllowedRef = useRef(false);
+  /** 첫 레이아웃 1회만 처리(onLayout opacity / loadOlder 허용) */
+  const didListShellLayoutRef = useRef(false);
 
   const [post, setPost] = useState(null);
   const [inputText, setInputText] = useState('');
@@ -110,6 +116,8 @@ export default function Chat({ navigation, route }) {
   const [keyboardHeight, setKeyboardHeight] = useState(0);
   const [viewerUri, setViewerUri] = useState(null);
   const [replyToMessage, setReplyToMessage] = useState(null);
+  /** 첫 onLayout 전까지 리스트 숨김 → 스크롤 튐 최소화 */
+  const [listShellVisible, setListShellVisible] = useState(false);
 
   const typingTimeoutRef = useRef(null);
   const isTypingRef = useRef(false);
@@ -164,9 +172,11 @@ export default function Chat({ navigation, route }) {
   // 룸이 바뀌면 초기 스크롤 판단 기준도 초기화
   useEffect(() => {
     prevMessageCountRef.current = 0;
-    didInitialBottomLockRef.current = false;
     isNearBottomRef.current = false;
     prevNewestIdRef.current = null;
+    loadOlderAllowedRef.current = false;
+    didListShellLayoutRef.current = false;
+    setListShellVisible(false);
   }, [roomId]);
 
   // 최적화된 새 메시지 자동 스크롤
@@ -323,23 +333,50 @@ export default function Chat({ navigation, route }) {
 
   const flatData = useMemo(() => injectDateBanners(messages), [messages]);
 
-  // 초기 데이터 로드시만 안전하게 맨 앞(index 0)으로 스크롤
-  useEffect(() => {
-    const nextCount = flatData?.length ?? 0;
-    const prevCount = prevMessageCountRef.current;
-    prevMessageCountRef.current = nextCount;
+  /** FlashList: 타입별 대략 높이(px) — overrideItemLayout·평균 estimatedItemSize에 공통 사용 */
+  const estimateRowHeight = useCallback((item) => {
+    if (!item || item.type === 'dateBanner') return 52;
+    let h = item.isMe ? 76 : 102;
+    if (item.parent_content) h += 58;
+    const n = Array.isArray(item.images) ? item.images.length : 0;
+    if (n > 0) h += n * (CHAT_IMAGE_SLOT + 4);
+    const hasText = Boolean(
+      (item.content && String(item.content).trim()) || item.is_deleted,
+    );
+    if (hasText) h += 46;
+    if (item.isFailed || item.status === 'failed') h += 6;
+    return Math.max(120, Math.min(h, 2400));
+  }, []);
 
-    if (prevCount === 0 && nextCount > 0) {
-      // 첫 렌더 후 최신(맨 아래) 위치로 이동
-      setTimeout(() => {
-        try {
-          flashListRef.current?.scrollToEnd?.({ animated: false });
-        } catch (e) {
-          console.warn('[Chat] scrollToEnd 실패:', e?.message || e);
-        }
-      }, 0);
+  const overrideItemLayout = useCallback(
+    (layout, item) => {
+      layout.size = estimateRowHeight(item);
+    },
+    [estimateRowHeight],
+  );
+
+  /** initialScrollIndex·estimatedItemSize가 같은 기대 높이를 쓰도록 평균 반영 */
+  const averageEstimatedItemSize = useMemo(() => {
+    if (!flatData?.length) return 150;
+    let sum = 0;
+    for (let i = 0; i < flatData.length; i++) {
+      sum += estimateRowHeight(flatData[i]);
     }
+    return Math.max(80, Math.round(sum / flatData.length));
+  }, [flatData, estimateRowHeight]);
+
+  const initialScrollIndex =
+    flatData.length > 0 ? flatData.length - 1 : undefined;
+
+  useEffect(() => {
+    prevMessageCountRef.current = flatData?.length ?? 0;
   }, [flatData]);
+
+  const handleStartReached = useCallback(() => {
+    if (!loadOlderAllowedRef.current) return;
+    if (isLoading || isLoadingMore) return;
+    loadMore();
+  }, [isLoading, isLoadingMore, loadMore]);
 
   // 최적화된 스크롤 이벤트 핸들러
   const handleScroll = useCallback((e) => {
@@ -364,21 +401,16 @@ export default function Chat({ navigation, route }) {
     isNearBottomRef.current = offsetY + viewportH >= contentH - threshold;
   }, []);
 
-  const handleContentSizeChange = useCallback(() => {
-    if (didInitialBottomLockRef.current) return;
-    const len = flatData?.length ?? 0;
-    if (len === 0) return;
-
-    didInitialBottomLockRef.current = true;
-    // 첫 content size 확정 시 최신(맨 아래) 고정
-    setTimeout(() => {
-      try {
-        flashListRef.current?.scrollToEnd?.({ animated: false });
-      } catch (e) {
-        console.warn('[Chat] scrollToEnd 실패:', e?.message || e);
+  const handleListShellLayout = useCallback(() => {
+    if (didListShellLayoutRef.current) return;
+    didListShellLayoutRef.current = true;
+    requestAnimationFrame(() => {
+      setListShellVisible(true);
+      if (flatData.length > 0) {
+        loadOlderAllowedRef.current = true;
       }
-    }, 0);
-  }, [flatData]);
+    });
+  }, [flatData.length]);
 
   const renderItem = useCallback(
     ({ item }) => (
@@ -421,6 +453,31 @@ export default function Chat({ navigation, route }) {
       isMyPost: false,
     });
   };
+
+  // 로딩 상태일 때 빈 화면 또는 로딩 스피너 표시
+  if (isLoading && messages.length === 0) {
+    return (
+      <SafeAreaView
+        style={[detailStyles.container, { backgroundColor: '#FFFFFF' }]}
+        edges={['top']}
+      >
+        <View
+          style={{
+            zIndex: 1,
+            elevation: 0,
+            backgroundColor: '#FFFFFF',
+          }}
+        >
+          <SubHeader title="쪽지" onBack={handleBack} />
+        </View>
+        <View
+          style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}
+        >
+          <ActivityIndicator size="large" color={colors.primary} />
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView
@@ -563,51 +620,56 @@ export default function Chat({ navigation, route }) {
             }}
             pointerEvents="box-none"
           >
-            <FlashList
-              ref={flashListRef}
-              style={{ flex: 1 }}
-              contentContainerStyle={{
-                paddingHorizontal: 0,
-                paddingBottom: 0,
-                paddingTop: 0,
-              }}
-              data={flatData}
-              keyExtractor={keyExtractor}
-              getItemType={getFlashListItemType}
-              renderItem={renderItem}
-              estimatedItemSize={120}
-              drawDistance={250}
-              onEndReached={loadMore}
-              onEndReachedThreshold={0.1}
-              ListFooterComponent={
-                isLoadingMore ? (
-                  <View style={{ paddingVertical: normalize(12) }}>
-                    <ActivityIndicator color={colors.textSecondary} />
-                  </View>
-                ) : null
-              }
-              showsVerticalScrollIndicator={false}
-              keyboardShouldPersistTaps="handled"
-              keyboardDismissMode="on-drag"
-              scrollEnabled={true}
-              overScrollMode="always"
-              // 최적화된 설정
-              removeClippedSubviews={Platform.OS === 'android'}
-              maxToRenderPerBatch={8}
-              windowSize={7}
-              initialNumToRender={20}
-              getItemLayout={(data, index) => ({
-                length: 120,
-                offset: 120 * index,
-                index,
-              })}
-              onContentSizeChange={handleContentSizeChange}
-              onScroll={handleScroll}
-              scrollEventThrottle={16}
-              // 성능 최적화
-              decelerationRate="normal"
-              disableVirtualization={false}
-            />
+            <View
+              style={{ flex: 1, opacity: listShellVisible ? 1 : 0 }}
+              onLayout={handleListShellLayout}
+            >
+              <FlashList
+                ref={flashListRef}
+                key={roomId}
+                style={{ flex: 1 }}
+                contentContainerStyle={{
+                  paddingHorizontal: 0,
+                  paddingBottom: 0,
+                  paddingTop: 0,
+                }}
+                data={flatData}
+                extraData={messages.length}
+                keyExtractor={keyExtractor}
+                getItemType={getFlashListItemType}
+                renderItem={renderItem}
+                estimatedItemSize={averageEstimatedItemSize}
+                drawDistance={1000}
+                overrideItemLayout={overrideItemLayout}
+                initialScrollIndex={initialScrollIndex}
+                onStartReached={handleStartReached}
+                onStartReachedThreshold={0.25}
+                maintainVisibleContentPosition={{
+                  minIndexForVisible: 1,
+                  autoscrollToTopThreshold: 10,
+                }}
+                ListHeaderComponent={
+                  isLoadingMore ? (
+                    <View style={{ paddingVertical: normalize(12) }}>
+                      <ActivityIndicator color={colors.textSecondary} />
+                    </View>
+                  ) : null
+                }
+                showsVerticalScrollIndicator={false}
+                keyboardShouldPersistTaps="handled"
+                keyboardDismissMode="on-drag"
+                scrollEnabled={true}
+                overScrollMode="always"
+                removeClippedSubviews={true}
+                maxToRenderPerBatch={8}
+                windowSize={7}
+                initialNumToRender={20}
+                onScroll={handleScroll}
+                scrollEventThrottle={16}
+                decelerationRate="normal"
+                disableVirtualization={false}
+              />
+            </View>
           </View>
 
           <ImageViewer
