@@ -4,6 +4,7 @@ import React, {
   useEffect,
   useRef,
   useCallback,
+  memo,
 } from 'react';
 import {
   View,
@@ -21,7 +22,10 @@ import { FlashList } from '@shopify/flash-list';
 import * as Clipboard from 'expo-clipboard';
 import { Ionicons } from '@expo/vector-icons';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
-import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import {
+  SafeAreaView,
+  useSafeAreaInsets,
+} from 'react-native-safe-area-context';
 
 import SubHeader from '../frame/subHeader';
 import CommentInput from '../../components/CommentInput.jsx';
@@ -45,6 +49,8 @@ const postCache = {};
 function injectDateBanners(msgs) {
   // msgs: 과거 -> 최신 순서(오름차순)
   // 각 날짜 그룹의 시작 지점에 배너를 먼저 삽입한다.
+  // 메시지 행은 messages 배열과 동일 객체 참조를 유지해 불필요한 객체 할당을 줄인다.
+  // (읽음 등으로 messages가 갱신되면 해당 참조도 바뀌므로 행 데이터는 최신 상태)
   const result = [];
   let lastDateKey = null;
   for (const msg of msgs) {
@@ -56,7 +62,7 @@ function injectDateBanners(msgs) {
       });
       lastDateKey = msg.dateKey;
     }
-    result.push({ ...msg, type: 'message' });
+    result.push(msg);
   }
   return result;
 }
@@ -88,11 +94,15 @@ export default function Chat({ navigation, route }) {
 
   const insets = useSafeAreaInsets();
 
+  // 최적화된 스크롤 관리를 위한 refs
   const flashListRef = useRef(null);
   const prevMessageCountRef = useRef(0);
   const didInitialBottomLockRef = useRef(false);
   const isNearBottomRef = useRef(true);
   const prevNewestIdRef = useRef(null);
+  const scrollAnimationRef = useRef(null);
+  const keyboardTimeoutRef = useRef(null);
+  const isScrollingRef = useRef(false);
 
   const [post, setPost] = useState(null);
   const [inputText, setInputText] = useState('');
@@ -159,7 +169,7 @@ export default function Chat({ navigation, route }) {
     prevNewestIdRef.current = null;
   }, [roomId]);
 
-  // 새 메시지(최신)가 들어올 때만 조건부로 하단 스크롤
+  // 최적화된 새 메시지 자동 스크롤
   useEffect(() => {
     if (!messages?.length) return;
     const newest = messages[messages.length - 1];
@@ -170,27 +180,57 @@ export default function Chat({ navigation, route }) {
     if (prevId === newestId) return;
 
     const shouldAutoscroll = newest?.isMe || isNearBottomRef.current;
-    if (shouldAutoscroll) {
-      flashListRef.current?.scrollToEnd?.({ animated: true });
+    if (shouldAutoscroll && !isScrollingRef.current) {
+      // 이전 애니메이션 취소
+      if (scrollAnimationRef.current) {
+        clearTimeout(scrollAnimationRef.current);
+      }
+
+      // 부드러운 스크롤을 위한 딜레이
+      scrollAnimationRef.current = setTimeout(() => {
+        flashListRef.current?.scrollToEnd?.({ animated: true });
+      }, 100);
     }
 
     prevNewestIdRef.current = newestId;
   }, [messages]);
 
+  // 최적화된 키보드 이벤트 핸들러
   useEffect(() => {
     const show = Keyboard.addListener(
       Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow',
-      (e) => setKeyboardHeight(e?.endCoordinates?.height ?? 0),
+      (e) => {
+        const height = e?.endCoordinates?.height ?? 0;
+        setKeyboardHeight(height);
+
+        // 키보드显示时自动滚动到底部
+        if (messages?.length > 0 && isNearBottomRef.current) {
+          keyboardTimeoutRef.current = setTimeout(
+            () => {
+              flashListRef.current?.scrollToEnd?.({ animated: true });
+            },
+            Platform.OS === 'ios' ? 100 : 200,
+          );
+        }
+      },
     );
     const hide = Keyboard.addListener(
       Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide',
-      () => setKeyboardHeight(0),
+      () => {
+        setKeyboardHeight(0);
+        if (keyboardTimeoutRef.current) {
+          clearTimeout(keyboardTimeoutRef.current);
+        }
+      },
     );
     return () => {
       show.remove();
       hide.remove();
+      if (keyboardTimeoutRef.current) {
+        clearTimeout(keyboardTimeoutRef.current);
+      }
     };
-  }, []);
+  }, [messages?.length]);
 
   // 게시글 카드 로드 (메시지/소켓은 useChat 훅이 담당)
   useEffect(() => {
@@ -301,12 +341,27 @@ export default function Chat({ navigation, route }) {
     }
   }, [flatData]);
 
+  // 최적화된 스크롤 이벤트 핸들러
   const handleScroll = useCallback((e) => {
     const offsetY = e?.nativeEvent?.contentOffset?.y ?? 0;
     const viewportH = e?.nativeEvent?.layoutMeasurement?.height ?? 0;
     const contentH = e?.nativeEvent?.contentSize?.height ?? 0;
-    // non-inverted에서 하단 근접 여부
-    isNearBottomRef.current = offsetY + viewportH >= contentH - 80;
+
+    // 스크롤 상태 추적
+    isScrollingRef.current = true;
+
+    // 디바운스된 스크롤 상태 업데이트
+    if (scrollAnimationRef.current) {
+      clearTimeout(scrollAnimationRef.current);
+    }
+
+    scrollAnimationRef.current = setTimeout(() => {
+      isScrollingRef.current = false;
+    }, 150);
+
+    // 하단 근접 여부 계산 (더 정확한 계산)
+    const threshold = Math.max(80, viewportH * 0.1);
+    isNearBottomRef.current = offsetY + viewportH >= contentH - threshold;
   }, []);
 
   const handleContentSizeChange = useCallback(() => {
@@ -350,6 +405,11 @@ export default function Chat({ navigation, route }) {
   );
 
   const keyExtractor = useCallback((item) => String(item.id), []);
+
+  const getFlashListItemType = useCallback(
+    (item) => (item.type === 'dateBanner' ? 'dateBanner' : 'message'),
+    [],
+  );
 
   const keyboardVerticalOffset = insets.top + normalize(48);
 
@@ -498,13 +558,12 @@ export default function Chat({ navigation, route }) {
               }}
               data={flatData}
               keyExtractor={keyExtractor}
-              getItemType={(item) =>
-                item.type === 'dateBanner' ? 'dateBanner' : 'message'
-              }
+              getItemType={getFlashListItemType}
               renderItem={renderItem}
-              estimatedItemSize={80}
+              estimatedItemSize={120}
+              drawDistance={250}
               onEndReached={loadMore}
-              onEndReachedThreshold={0.2}
+              onEndReachedThreshold={0.1}
               ListFooterComponent={
                 isLoadingMore ? (
                   <View style={{ paddingVertical: normalize(12) }}>
@@ -515,13 +574,22 @@ export default function Chat({ navigation, route }) {
               showsVerticalScrollIndicator={false}
               keyboardShouldPersistTaps="handled"
               keyboardDismissMode="on-drag"
-              removeClippedSubviews={true}
-              maxToRenderPerBatch={10}
-              windowSize={5}
-              initialNumToRender={15}
+              // 최적화된 설정
+              removeClippedSubviews={Platform.OS === 'android'}
+              maxToRenderPerBatch={8}
+              windowSize={7}
+              initialNumToRender={20}
+              getItemLayout={(data, index) => ({
+                length: 120,
+                offset: 120 * index,
+                index,
+              })}
               onContentSizeChange={handleContentSizeChange}
               onScroll={handleScroll}
               scrollEventThrottle={16}
+              // 성능 최적화
+              decelerationRate="normal"
+              disableVirtualization={false}
             />
 
             <ImageViewer
@@ -594,4 +662,3 @@ export default function Chat({ navigation, route }) {
     </TouchableWithoutFeedback>
   );
 }
-

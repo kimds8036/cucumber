@@ -1,4 +1,4 @@
-import React, { memo } from 'react';
+import React, { memo, useMemo } from 'react';
 import {
   View,
   Text,
@@ -34,6 +34,68 @@ const areImagesEqual = (a, b) => {
   }
   return true;
 };
+
+// 이미지 컴포넌트 메모이제이션
+const OptimizedImage = memo(({ uri, onPress, isSending }) => {
+  const imageStyle = useMemo(
+    () => ({
+      width: 200,
+      height: 200,
+      minHeight: 200,
+      borderRadius: 12,
+      marginBottom: 4,
+    }),
+    [],
+  );
+
+  const containerStyle = useMemo(
+    () => ({
+      width: 200,
+      height: 200,
+      minHeight: 200,
+      borderRadius: 12,
+      marginBottom: 4,
+      position: 'relative',
+      overflow: 'hidden',
+    }),
+    [],
+  );
+
+  return (
+    <TouchableOpacity
+      activeOpacity={0.9}
+      onPress={onPress}
+      style={containerStyle}
+    >
+      <Image
+        source={{ uri }}
+        style={imageStyle}
+        contentFit="cover"
+        cachePolicy="memory-disk"
+        placeholder={{ blurhash: 'LGFFaXYk^6#M@-5c,1J5@[or[Q6.' }}
+        transition={200}
+        recyclingKey={uri}
+        priority="high"
+      />
+      {isSending && (
+        <View
+          style={{
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            justifyContent: 'center',
+            alignItems: 'center',
+            backgroundColor: 'rgba(0,0,0,0.3)',
+          }}
+        >
+          <ActivityIndicator color="#fff" />
+        </View>
+      )}
+    </TouchableOpacity>
+  );
+});
 
 /**
  * @typedef {Object} ChatMessage
@@ -207,49 +269,12 @@ const MessageBubble = ({
               msg.images.length > 0 &&
               !msg.is_deleted &&
               msg.images.map((uri, index) => (
-                <TouchableOpacity
-                  key={index}
-                  activeOpacity={0.9}
+                <OptimizedImage
+                  key={`${uri}-${index}`}
+                  uri={uri}
                   onPress={() => onImagePress?.(uri)}
-                  style={{
-                    width: 200,
-                    height: 200,
-                    minHeight: 200,
-                    borderRadius: 12,
-                    marginBottom: 4,
-                    position: 'relative',
-                    overflow: 'hidden',
-                  }}
-                >
-                  <Image
-                    source={{ uri }}
-                    style={{
-                      width: 200,
-                      height: 200,
-                      minHeight: 200,
-                      borderRadius: 12,
-                    }}
-                    contentFit="cover"
-                    placeholder={{ blurhash: 'LGFFaXYk^6#M@-5c,1J5@[or[Q6.' }}
-                    transition={200}
-                  />
-                  {msg.isSending && (
-                    <View
-                      style={{
-                        position: 'absolute',
-                        top: 0,
-                        left: 0,
-                        right: 0,
-                        bottom: 0,
-                        justifyContent: 'center',
-                        alignItems: 'center',
-                        backgroundColor: 'rgba(0,0,0,0.3)',
-                      }}
-                    >
-                      <ActivityIndicator color="#fff" />
-                    </View>
-                  )}
-                </TouchableOpacity>
+                  isSending={msg.isSending}
+                />
               ))}
             {msg.is_deleted ? (
               <Text style={chatStyles.userBubbleText}>
@@ -294,49 +319,12 @@ const MessageBubble = ({
               msg.images.length > 0 &&
               !msg.is_deleted &&
               msg.images.map((uri, index) => (
-                <TouchableOpacity
-                  key={index}
-                  activeOpacity={0.9}
+                <OptimizedImage
+                  key={`${uri}-${index}`}
+                  uri={uri}
                   onPress={() => onImagePress?.(uri)}
-                  style={{
-                    width: 200,
-                    height: 200,
-                    minHeight: 200,
-                    borderRadius: 12,
-                    marginBottom: 4,
-                    position: 'relative',
-                    overflow: 'hidden',
-                  }}
-                >
-                  <Image
-                    source={{ uri }}
-                    style={{
-                      width: 200,
-                      height: 200,
-                      minHeight: 200,
-                      borderRadius: 12,
-                    }}
-                    contentFit="cover"
-                    placeholder={{ blurhash: 'LGFFaXYk^6#M@-5c,1J5@[or[Q6.' }}
-                    transition={200}
-                  />
-                  {msg.isSending && (
-                    <View
-                      style={{
-                        position: 'absolute',
-                        top: 0,
-                        left: 0,
-                        right: 0,
-                        bottom: 0,
-                        justifyContent: 'center',
-                        alignItems: 'center',
-                        backgroundColor: 'rgba(0,0,0,0.3)',
-                      }}
-                    >
-                      <ActivityIndicator color="#fff" />
-                    </View>
-                  )}
-                </TouchableOpacity>
+                  isSending={msg.isSending}
+                />
               ))}
           </View>
         </Pressable>
@@ -356,62 +344,23 @@ const MessageBubble = ({
               }}
             >
               <View style={chatStyles.opponentBubble}>
-                    {msg.parent_content ? (
-                      <ReplyQuote
-                        chatStyles={chatStyles}
-                        senderName={msg.parent_sender_name}
-                        content={msg.parent_content}
-                      />
-                    ) : null}
+                {msg.parent_content ? (
+                  <ReplyQuote
+                    chatStyles={chatStyles}
+                    senderName={msg.parent_sender_name}
+                    content={msg.parent_content}
+                  />
+                ) : null}
                 {msg.images &&
                   msg.images.length > 0 &&
                   !msg.is_deleted &&
                   msg.images.map((uri, index) => (
-                    <TouchableOpacity
-                      key={index}
-                      activeOpacity={0.9}
+                    <OptimizedImage
+                      key={`${uri}-${index}`}
+                      uri={uri}
                       onPress={() => onImagePress?.(uri)}
-                      style={{
-                        width: 200,
-                        height: 200,
-                        minHeight: 200,
-                        borderRadius: 12,
-                        marginBottom: 4,
-                        position: 'relative',
-                        overflow: 'hidden',
-                      }}
-                    >
-                      <Image
-                        source={{ uri }}
-                        style={{
-                          width: 200,
-                          height: 200,
-                          minHeight: 200,
-                          borderRadius: 12,
-                        }}
-                        contentFit="cover"
-                        placeholder={{
-                          blurhash: 'LGFFaXYk^6#M@-5c,1J5@[or[Q6.',
-                        }}
-                        transition={200}
-                      />
-                      {msg.isSending && (
-                        <View
-                          style={{
-                            position: 'absolute',
-                            top: 0,
-                            left: 0,
-                            right: 0,
-                            bottom: 0,
-                            justifyContent: 'center',
-                            alignItems: 'center',
-                            backgroundColor: 'rgba(0,0,0,0.3)',
-                          }}
-                        >
-                          <ActivityIndicator color="#fff" />
-                        </View>
-                      )}
-                    </TouchableOpacity>
+                      isSending={msg.isSending}
+                    />
                   ))}
                 {msg.is_deleted ? (
                   <Text
@@ -536,4 +485,3 @@ const MessageItem = memo(
 );
 
 export default MessageItem;
-

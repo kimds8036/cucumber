@@ -7,6 +7,37 @@ import { Ionicons } from '@expo/vector-icons';
 import LogoIcon from '../../assets/Group 166.svg';
 import { api, setAuthToken } from '../../utils/api';
 
+/** --no-dev 등에서도 원인 파악용(Alert 본문) */
+function buildLoginFailureMessage(error) {
+  const base = api.defaults.baseURL || '(baseURL 없음)';
+  const data = error?.response?.data;
+  const serverMsg =
+    (typeof data?.message === 'string' && data.message) ||
+    (typeof data === 'string' ? data : null);
+  const axiosMsg = typeof error?.message === 'string' ? error.message : '';
+  const code = error?.code;
+  const status = error?.response?.status;
+
+  const lines = [];
+  if (serverMsg) lines.push(serverMsg);
+  else if (axiosMsg) lines.push(axiosMsg);
+  else lines.push('로그인 요청에 실패했습니다.');
+
+  if (status != null) lines.push(`HTTP ${status}`);
+  if (code) lines.push(`에러 코드: ${code}`);
+  lines.push(`API 주소: ${base}`);
+
+  const noResponse = !error?.response && error?.request;
+  if (noResponse) {
+    lines.push(
+      '',
+      '서버 응답이 없습니다. Wi‑Fi/데이터, 방화벽, EXPO_PUBLIC_API_URL·apiBaseUrl 설정을 확인하세요.',
+    );
+  }
+
+  return lines.join('\n');
+}
+
 const Login = ({ navigation }) => {
   const { width } = useWindowDimensions();
   const scale = width / 375;
@@ -170,10 +201,7 @@ const Login = ({ navigation }) => {
                         : 'CLIENT_SETUP_ERROR',
                   });
 
-                  Alert.alert(
-                    '로그인 실패',
-                    error.response?.data?.message || '로그인 중 오류가 발생했습니다.',
-                  );
+                  Alert.alert('로그인 실패', buildLoginFailureMessage(error));
                 }
               }}
             >

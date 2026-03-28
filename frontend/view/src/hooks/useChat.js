@@ -7,9 +7,13 @@ import { useNotification } from '../../../context/NotificationContext';
 const getCacheKey = (roomId) => `chat_cache_${roomId}`;
 
 // 초기 진입 시 최신 몇 개만 우선 로드할지
-const INITIAL_FETCH_LIMIT = 25;
+const INITIAL_FETCH_LIMIT = 30;
 // 캐시에 저장할 최대 메시지 수 (과거까지 전부 저장하면 초기 진입이 무거워짐)
-const CACHE_SAVE_LIMIT = 60;
+const CACHE_SAVE_LIMIT = 100;
+// 메모리에 보관할 최대 메시지 수
+const MEMORY_LIMIT = 200;
+// 페이징 사이즈
+const PAGE_SIZE = 30;
 
 const getMessageSortValue = (msg) => {
   if (!msg) return Number.MIN_SAFE_INTEGER;
@@ -104,7 +108,9 @@ async function loadCachedMessages(roomId) {
 
     // 캐시가 과도하게 크면 초기 진입이 무거워지므로 최신 INITIAL_FETCH_LIMIT만 사용
     const slicedIds =
-      allIds.length > INITIAL_FETCH_LIMIT ? allIds.slice(-INITIAL_FETCH_LIMIT) : allIds;
+      allIds.length > INITIAL_FETCH_LIMIT
+        ? allIds.slice(-INITIAL_FETCH_LIMIT)
+        : allIds;
     const slicedById = {};
     slicedIds.forEach((id) => {
       if (allById[id]) slicedById[id] = allById[id];
@@ -127,7 +133,8 @@ async function saveCachedMessages(roomId, data) {
     const byId = data.messagesById || {};
 
     // 캐시에 저장할 때도 과도하게 쌓이는 것을 방지
-    const slicedIds = ids.length > CACHE_SAVE_LIMIT ? ids.slice(-CACHE_SAVE_LIMIT) : ids;
+    const slicedIds =
+      ids.length > CACHE_SAVE_LIMIT ? ids.slice(-CACHE_SAVE_LIMIT) : ids;
     const slicedById = {};
     slicedIds.forEach((id) => {
       if (byId[id]) slicedById[id] = byId[id];
@@ -169,6 +176,23 @@ export default function useChat(roomId, socket) {
     // 항상 과거 -> 최신 순서(오름차순)로 고정
     const arr = messageIds.map((id) => messagesById[id]).filter(Boolean);
     arr.sort((a, b) => getMessageSortValue(a) - getMessageSortValue(b));
+
+    // 메모리 사용량 제한: 너무 많은 메시지는 메모리에서 제거
+    if (arr.length > MEMORY_LIMIT) {
+      const excessCount = arr.length - MEMORY_LIMIT;
+      const oldestIds = arr.slice(0, excessCount).map((msg) => msg.id);
+
+      // 상태 업데이트는 useEffect에서 처리하여 무한 루프 방지
+      setTimeout(() => {
+        setMessagesById((prev) => {
+          const next = { ...prev };
+          oldestIds.forEach((id) => delete next[id]);
+          return next;
+        });
+        setMessageIds((prev) => prev.filter((id) => !oldestIds.includes(id)));
+      }, 0);
+    }
+
     return arr;
   }, [messageIds, messagesById]);
 
@@ -183,7 +207,9 @@ export default function useChat(roomId, socket) {
     if (pollRef.current || !roomId) return;
     pollRef.current = setInterval(async () => {
       try {
-        const res = await api.get(`/api/messages/rooms/${roomId}?limit=50`);
+        const res = await api.get(
+          `/api/messages/rooms/${roomId}?limit=${PAGE_SIZE * 2}`,
+        );
         const room = res.data?.room;
         const msgs = res.data?.data || [];
         if (!room || !Array.isArray(msgs)) return;
@@ -229,7 +255,7 @@ export default function useChat(roomId, socket) {
       } catch (e) {
         console.error('[useChat][Poll] 폴링 오류:', e);
       }
-    }, 8000);
+    }, 10000); // 폴링 간격 증가로 성능 최적화
   }, [roomId]);
 
   // ─────────────────────────────────────────────
@@ -346,7 +372,7 @@ export default function useChat(roomId, socket) {
 
     cacheSaveTimeoutRef.current = setTimeout(() => {
       saveCachedMessages(roomId, { messagesById, messageIds });
-    }, 300);
+    }, 500); // 디바운스 시간 증가
 
     return () => {
       if (cacheSaveTimeoutRef.current) {
@@ -408,7 +434,9 @@ export default function useChat(roomId, socket) {
 
       setMessagesById((prevById) => {
         const next = { ...prevById };
-        const tempKeyForFallback = newMsg.clientId ? String(newMsg.clientId) : null;
+        const tempKeyForFallback = newMsg.clientId
+          ? String(newMsg.clientId)
+          : null;
         const tempMsg = tempKeyForFallback ? next[tempKeyForFallback] : null;
 
         // optimistic temp 메시지 매칭: clientId로 temp 제거
@@ -433,9 +461,7 @@ export default function useChat(roomId, socket) {
 
         if (shouldUpsert) {
           setMessageIds((prevIds) => {
-            const tempKey = newMsg.clientId
-              ? String(newMsg.clientId)
-              : null;
+            const tempKey = newMsg.clientId ? String(newMsg.clientId) : null;
             const idx = tempKey ? prevIds.indexOf(tempKey) : -1;
             const filtered = tempKey
               ? prevIds.filter((id) => id !== tempKey)
@@ -519,9 +545,11 @@ export default function useChat(roomId, socket) {
 
       if (handleConnectRef) socket.off('connect', handleConnectRef);
       if (handleNewMessageRef) socket.off('new_message', handleNewMessageRef);
-      if (handleReadReceiptRef) socket.off('read_receipt', handleReadReceiptRef);
+      if (handleReadReceiptRef)
+        socket.off('read_receipt', handleReadReceiptRef);
       if (handleDisconnectRef) socket.off('disconnect', handleDisconnectRef);
-      if (handleConnectErrorRef) socket.off('connect_error', handleConnectErrorRef);
+      if (handleConnectErrorRef)
+        socket.off('connect_error', handleConnectErrorRef);
       if (handleUserTypingRef) socket.off('user_typing', handleUserTypingRef);
       if (handleUserStopTypingRef)
         socket.off('user_stop_typing', handleUserStopTypingRef);
@@ -558,7 +586,7 @@ export default function useChat(roomId, socket) {
       if (!oldestIdRef.current) return;
 
       const res = await api.get(
-        `/api/messages/rooms/${roomId}?before=${oldestIdRef.current}&limit=30`,
+        `/api/messages/rooms/${roomId}?before=${oldestIdRef.current}&limit=${PAGE_SIZE}`,
       );
 
       const msgs = res.data?.data || [];
@@ -657,59 +685,65 @@ export default function useChat(roomId, socket) {
         formData.append('clientId', clientId);
         if (parentId) formData.append('parent_message_id', parentId);
 
-        await api.post(
-          `/api/messages/rooms/${roomId}/messages`,
-          formData,
-          { headers: { 'Content-Type': 'multipart/form-data' } },
-        ).then((res) => {
-          const m = res.data?.data;
-          if (!m) return;
+        await api
+          .post(`/api/messages/rooms/${roomId}/messages`, formData, {
+            headers: { 'Content-Type': 'multipart/form-data' },
+          })
+          .then((res) => {
+            const m = res.data?.data;
+            if (!m) return;
 
-          const serverMsg = normalizeMessage(m, currentUserIdRef.current);
-          const serverId = String(serverMsg.id);
-          serverMsg.isSending = false;
-          serverMsg.isFailed = false;
-          serverMsg.status = 'sent';
+            const serverMsg = normalizeMessage(m, currentUserIdRef.current);
+            const serverId = String(serverMsg.id);
+            serverMsg.isSending = false;
+            serverMsg.isFailed = false;
+            serverMsg.status = 'sent';
 
-          // 소켓 미도착 대비로 5초 뒤에만 교체
-          const timeoutId = setTimeout(() => {
-            setMessagesById((prevById) => {
-              if (!prevById[clientId]) return prevById;
-              const tempMsg = prevById[clientId];
-              const { [clientId]: temp, ...rest } = prevById;
-              return {
-                ...rest,
-                [serverId]: {
-                  ...serverMsg,
-                  parent_message_id:
-                    serverMsg.parent_message_id ?? tempMsg?.parent_message_id ?? null,
-                  parent_content:
-                    serverMsg.parent_content ?? tempMsg?.parent_content ?? null,
-                  parent_sender_name:
-                    serverMsg.parent_sender_name ?? tempMsg?.parent_sender_name ?? null,
-                  status: 'sent',
-                  isSending: false,
-                  isFailed: false,
-                },
-              };
-            });
+            // 소켓 미도착 대비로 5초 뒤에만 교체
+            const timeoutId = setTimeout(() => {
+              setMessagesById((prevById) => {
+                if (!prevById[clientId]) return prevById;
+                const tempMsg = prevById[clientId];
+                const { [clientId]: temp, ...rest } = prevById;
+                return {
+                  ...rest,
+                  [serverId]: {
+                    ...serverMsg,
+                    parent_message_id:
+                      serverMsg.parent_message_id ??
+                      tempMsg?.parent_message_id ??
+                      null,
+                    parent_content:
+                      serverMsg.parent_content ??
+                      tempMsg?.parent_content ??
+                      null,
+                    parent_sender_name:
+                      serverMsg.parent_sender_name ??
+                      tempMsg?.parent_sender_name ??
+                      null,
+                    status: 'sent',
+                    isSending: false,
+                    isFailed: false,
+                  },
+                };
+              });
 
-            setMessageIds((prevIds) => {
-              const idx = prevIds.indexOf(clientId);
-              const filtered = prevIds.filter((id) => id !== clientId);
-              if (filtered.includes(serverId)) return filtered;
-              if (idx >= 0) {
-                filtered.splice(idx, 0, serverId);
-                return filtered;
-              }
-              return [...filtered, serverId];
-            });
+              setMessageIds((prevIds) => {
+                const idx = prevIds.indexOf(clientId);
+                const filtered = prevIds.filter((id) => id !== clientId);
+                if (filtered.includes(serverId)) return filtered;
+                if (idx >= 0) {
+                  filtered.splice(idx, 0, serverId);
+                  return filtered;
+                }
+                return [...filtered, serverId];
+              });
 
-            pendingClientIdTimeoutsRef.current.delete(clientId);
-          }, 5000);
+              pendingClientIdTimeoutsRef.current.delete(clientId);
+            }, 5000);
 
-          pendingClientIdTimeoutsRef.current.set(clientId, timeoutId);
-        });
+            pendingClientIdTimeoutsRef.current.set(clientId, timeoutId);
+          });
       } catch (error) {
         console.error('[useChat] 쪽지 전송 실패:', error);
         setMessagesById((prevById) => {
@@ -796,11 +830,15 @@ export default function useChat(roomId, socket) {
                 [serverId]: {
                   ...serverMsg,
                   parent_message_id:
-                    serverMsg.parent_message_id ?? tempMsg?.parent_message_id ?? null,
+                    serverMsg.parent_message_id ??
+                    tempMsg?.parent_message_id ??
+                    null,
                   parent_content:
                     serverMsg.parent_content ?? tempMsg?.parent_content ?? null,
                   parent_sender_name:
-                    serverMsg.parent_sender_name ?? tempMsg?.parent_sender_name ?? null,
+                    serverMsg.parent_sender_name ??
+                    tempMsg?.parent_sender_name ??
+                    null,
                   status: 'sent',
                   isSending: false,
                   isFailed: false,
@@ -847,24 +885,21 @@ export default function useChat(roomId, socket) {
   // ─────────────────────────────────────────────
   // 7) 메시지 삭제 (소프트) - 롱프레스 메뉴
   // ─────────────────────────────────────────────
-  const deleteMessage = useCallback(
-    async (messageId) => {
-      if (String(messageId).startsWith('temp_')) return;
-      try {
-        const targetId = String(messageId);
-        await api.delete(`/api/messages/${targetId}`);
-        setMessagesById((prevById) => {
-          const target = prevById[targetId];
-          if (!target) return prevById;
-          return { ...prevById, [targetId]: { ...target, is_deleted: true } };
-        });
-      } catch (e) {
-        console.error('[useChat] 메시지 삭제 실패:', e);
-        Alert.alert('오류', '메시지 삭제에 실패했습니다.');
-      }
-    },
-    [],
-  );
+  const deleteMessage = useCallback(async (messageId) => {
+    if (String(messageId).startsWith('temp_')) return;
+    try {
+      const targetId = String(messageId);
+      await api.delete(`/api/messages/${targetId}`);
+      setMessagesById((prevById) => {
+        const target = prevById[targetId];
+        if (!target) return prevById;
+        return { ...prevById, [targetId]: { ...target, is_deleted: true } };
+      });
+    } catch (e) {
+      console.error('[useChat] 메시지 삭제 실패:', e);
+      Alert.alert('오류', '메시지 삭제에 실패했습니다.');
+    }
+  }, []);
 
   // 단순 안전장치: unmount 시 폴링 중지
   useEffect(() => () => stopPolling(), [stopPolling]);
@@ -882,4 +917,3 @@ export default function useChat(roomId, socket) {
     deleteMessage,
   };
 }
-

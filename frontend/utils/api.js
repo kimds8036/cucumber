@@ -1,19 +1,35 @@
 import axios from 'axios';
 import { Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import Constants from 'expo-constants';
 
 const AUTH_TOKEN_KEY = '@auth_token';
 
+/** 터널/개발 기본값 — 릴리스에서도 env 미설정 시 폴백 (--no-dev 로컬 검증용) */
+const DEFAULT_API_BASE = 'https://nonvenous-patriotically-bud.ngrok-free.dev';
+
+/**
+ * baseURL은 항상 슬래시로 끝난다.
+ * 우선순위: EXPO_PUBLIC_API_URL → app.json extra.apiBaseUrl → DEFAULT_API_BASE
+ * (__DEV__ 전용 분기 없음 — 프로덕션/미니파이에서도 동일 규칙)
+ */
 const getBaseURL = () => {
-  if (Platform.OS === 'web') {
-    return 'https://nonvenous-patriotically-bud.ngrok-free.dev/';
+  const fromEnv =
+    typeof process.env.EXPO_PUBLIC_API_URL === 'string'
+      ? process.env.EXPO_PUBLIC_API_URL.trim()
+      : '';
+  const extra = Constants.expoConfig?.extra ?? {};
+  const fromExtra =
+    typeof extra.apiBaseUrl === 'string' ? extra.apiBaseUrl.trim() : '';
+
+  const raw = fromEnv || fromExtra;
+  if (raw) {
+    const trimmed = raw.replace(/\/+$/, '');
+    return `${trimmed}/`;
   }
 
-  if (__DEV__) {
-    return 'https://nonvenous-patriotically-bud.ngrok-free.dev/';
-  }
-
-  return 'http://your-production-server.com'; // 프로덕션
+  const fallback = DEFAULT_API_BASE.replace(/\/+$/, '');
+  return `${fallback}/`;
 };
 
 export const api = axios.create({
@@ -54,7 +70,12 @@ export async function clearAuthToken() {
   await AsyncStorage.removeItem(AUTH_TOKEN_KEY);
 }
 
-// 디버깅용 (개발 중 확인)
 if (__DEV__) {
-  console.log('[API] baseURL:', api.defaults.baseURL);
+  console.log('[API] baseURL:', api.defaults.baseURL, {
+    fromEnv: Boolean(
+      typeof process.env.EXPO_PUBLIC_API_URL === 'string' &&
+        process.env.EXPO_PUBLIC_API_URL.trim(),
+    ),
+    platform: Platform.OS,
+  });
 }
