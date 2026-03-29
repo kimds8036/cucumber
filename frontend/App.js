@@ -6,7 +6,6 @@ import Sign from './view/src/Sign';
 import MainScreen from './view/src/MainScreen';
 import AddTimetable from './view/src/addtimetable';
 import MyPosts from './view/src/myposts';
-import LikedPosts from './view/src/likedposts';
 import NotificationSettings from './view/src/notificationsettings';
 import ChangePassword from './view/src/changepassword';
 import ChangeSchool from './view/src/changeschool';
@@ -34,6 +33,9 @@ import { useEffect } from 'react';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { KeyboardProvider } from './context/KeyboardContext';
 import { AuthProvider, useAuth } from './context/AuthContext';
+import { SocketProvider } from './context/SocketContext';
+import { NotificationProvider } from './context/NotificationContext';
+import { FriendProvider } from './context/FriendContext';
 
 const Stack = createNativeStackNavigator();
 
@@ -68,7 +70,6 @@ function MainStack() {
       <Stack.Screen name="Chat" component={Chat} />
       <Stack.Screen name="AddTimetable" component={AddTimetable} />
       <Stack.Screen name="MyPosts" component={MyPosts} />
-      <Stack.Screen name="LikedPosts" component={LikedPosts} />
       <Stack.Screen
         name="NotificationSettings"
         component={NotificationSettings}
@@ -118,9 +119,15 @@ export default function App() {
     <SafeAreaProvider>
       <KeyboardProvider>
         <AuthProvider>
-          <NavigationContainer>
-            <RootNavigator />
-          </NavigationContainer>
+          <SocketProvider>
+            <NotificationProvider>
+              <FriendProvider>
+                <NavigationContainer>
+                  <RootNavigator />
+                </NavigationContainer>
+              </FriendProvider>
+            </NotificationProvider>
+          </SocketProvider>
         </AuthProvider>
       </KeyboardProvider>
     </SafeAreaProvider>

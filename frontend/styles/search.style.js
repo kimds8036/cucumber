@@ -27,7 +27,7 @@ export const createSearchStyles = (width, normalize) => {
       marginRight: normalize(4),
     },
     backButtonText: {
-      fontSize: normalize(fontSizes.xxl),
+      fontSize: normalize(fontSizes.title),
       color: colors.textPrimary,
     },
     searchBox: {
@@ -41,13 +41,13 @@ export const createSearchStyles = (width, normalize) => {
       gap: normalize(6),
     },
     searchIconText: {
-      fontSize: normalize(fontSizes.lg),
+      fontSize: normalize(fontSizes.xl),
       color: colors.textSecondary,
       opacity: 0.6,
     },
     searchQueryText: {
       flex: 1,
-      fontSize: normalize(fontSizes.lg),
+      fontSize: normalize(fontSizes.xl),
       fontFamily: fonts.medium,
       color: colors.textPrimary,
     },
@@ -60,13 +60,13 @@ export const createSearchStyles = (width, normalize) => {
       justifyContent: 'center',
     },
     clearButtonText: {
-      fontSize: normalize(fontSizes.sm),
+      fontSize: normalize(fontSizes.md),
       color: colors.background,
       fontFamily: fonts.bold,
     },
     cancelText: {
       marginLeft: normalize(8),
-      fontSize: normalize(fontSizes.lg),
+      fontSize: normalize(fontSizes.xl),
       color: '#555',
       fontFamily: fonts.regular,
     },
@@ -86,7 +86,7 @@ export const createSearchStyles = (width, normalize) => {
       borderBottomColor: 'transparent',
     },
     tabText: {
-      fontSize: normalize(fontSizes.md),
+      fontSize: normalize(fontSizes.lg),
       fontFamily: fonts.medium,
       color: '#999',
     },
@@ -105,7 +105,7 @@ export const createSearchStyles = (width, normalize) => {
       backgroundColor: colors.primary,
     },
     tabBadgeText: {
-      fontSize: normalize(fontSizes.sm),
+      fontSize: normalize(fontSizes.md),
       color: '#2d7a5f',
       fontFamily: fonts.bold,
     },
@@ -137,7 +137,7 @@ export const createSearchStyles = (width, normalize) => {
       borderColor: colors.primary,
     },
     searchTabButtonText: {
-      fontSize: normalize(fontSizes.lg),
+      fontSize: normalize(fontSizes.xl),
       fontFamily: fonts.bold,
       color: colors.textSecondary,
     },
@@ -163,7 +163,7 @@ export const createSearchStyles = (width, normalize) => {
       marginBottom: normalize(6),
     },
     previewSectionTitle: {
-      fontSize: normalize(fontSizes.md),
+      fontSize: normalize(fontSizes.lg),
       fontFamily: fonts.bold,
       color: colors.textSecondary,
       marginBottom: normalize(4),
@@ -172,7 +172,7 @@ export const createSearchStyles = (width, normalize) => {
       paddingVertical: normalize(6),
     },
     previewItemText: {
-      fontSize: normalize(fontSizes.lg),
+      fontSize: normalize(fontSizes.xl),
       fontFamily: fonts.regular,
       color: colors.textPrimary,
     },
@@ -196,7 +196,7 @@ export const createSearchStyles = (width, normalize) => {
       paddingBottom: normalize(8),
     },
     sectionTitle: {
-      fontSize: normalize(fontSizes.lg),
+      fontSize: normalize(fontSizes.xl),
       fontFamily: fonts.bold,
       color: colors.textPrimary,
     },
@@ -207,7 +207,7 @@ export const createSearchStyles = (width, normalize) => {
       backgroundColor: colors.primaryLight20,
     },
     sectionBadgeText: {
-      fontSize: normalize(fontSizes.md),
+      fontSize: normalize(fontSizes.lg),
       color: '#2d7a5f',
       fontFamily: fonts.bold,
     },
@@ -234,36 +234,36 @@ export const createSearchStyles = (width, normalize) => {
       marginBottom: normalize(4),
     },
     fromBadgeText: {
-      fontSize: normalize(fontSizes.md),
+      fontSize: normalize(fontSizes.lg),
       color: '#2d7a5f',
       fontFamily: fonts.bold,
     },
     cardTitle: {
-      fontSize: normalize(fontSizes.lg),
+      fontSize: normalize(fontSizes.xl),
       fontFamily: fonts.medium,
       color: colors.textPrimary,
       marginBottom: normalize(3),
     },
     fullTitle: {
-      fontSize: normalize(fontSizes.lg),
+      fontSize: normalize(fontSizes.xl),
       fontFamily: fonts.bold,
       color: colors.textPrimary,
       marginBottom: normalize(5),
     },
     cardContent: {
-      fontSize: normalize(fontSizes.md),
+      fontSize: normalize(fontSizes.lg),
       fontFamily: fonts.regular,
       color: '#888',
       marginBottom: normalize(4),
     },
     fullContent: {
-      fontSize: normalize(fontSizes.lg),
+      fontSize: normalize(fontSizes.xl),
       fontFamily: fonts.regular,
       color: '#555',
       marginBottom: normalize(6),
     },
     meta: {
-      fontSize: normalize(fontSizes.md),
+      fontSize: normalize(fontSizes.lg),
       fontFamily: fonts.regular,
       color: '#bbb',
     },
@@ -276,7 +276,7 @@ export const createSearchStyles = (width, normalize) => {
       justifyContent: 'center',
     },
     moreButtonText: {
-      fontSize: normalize(fontSizes.lg),
+      fontSize: normalize(fontSizes.xl),
       fontFamily: fonts.medium,
       color: '#2d7a5f',
     },
@@ -299,7 +299,7 @@ export const createSearchStyles = (width, normalize) => {
       backgroundColor: colors.background,
     },
     searchFooterLabel: {
-      fontSize: normalize(fontSizes.md),
+      fontSize: normalize(fontSizes.lg),
       fontFamily: fonts.bold,
       color: colors.textSecondary,
       marginBottom: normalize(8),
@@ -316,7 +316,7 @@ export const createSearchStyles = (width, normalize) => {
       backgroundColor: colors.primaryLight30,
     },
     searchFooterTagText: {
-      fontSize: normalize(fontSizes.md),
+      fontSize: normalize(fontSizes.lg),
       fontFamily: fonts.regular,
       color: colors.primaryDark,
     },
@@ -327,7 +327,7 @@ export const createSearchStyles = (width, normalize) => {
       backgroundColor: 'transparent',
     },
     searchFooterSummary: {
-      fontSize: normalize(fontSizes.md),
+      fontSize: normalize(fontSizes.lg),
       fontFamily: fonts.regular,
       color: colors.textSecondary,
       textAlign: 'center',
@@ -382,7 +382,7 @@ export const createSearchScreenStyles = (width, normalize) => {
     },
     searchInput: {
       flex: 1,
-      fontSize: normalize(fontSizes.xl),
+      fontSize: normalize(fontSizes.xxl),
       fontFamily: fonts.regular,
       color: colors.textPrimary,
       paddingVertical: 0,
@@ -402,7 +402,7 @@ export const createSearchScreenStyles = (width, normalize) => {
       elevation: 4,
     },
     previewGroupLabel: {
-      fontSize: normalize(fontSizes.md),
+      fontSize: normalize(fontSizes.lg),
       fontFamily: fonts.bold,
       color: colors.textSecondary,
       letterSpacing: 0.6,
@@ -440,7 +440,7 @@ export const createSearchScreenStyles = (width, normalize) => {
     },
     previewRowText: {
       flex: 1,
-      fontSize: normalize(fontSizes.lg),
+      fontSize: normalize(fontSizes.xl),
       fontFamily: fonts.regular,
       color: colors.textPrimary,
       lineHeight: normalize(20),
@@ -479,18 +479,18 @@ export const createSearchScreenStyles = (width, normalize) => {
       marginBottom: normalize(14),
     },
     sectionTitle: {
-      fontSize: normalize(fontSizes.xl),
+      fontSize: normalize(fontSizes.xxl),
       fontFamily: fonts.bold,
       color: colors.textPrimary,
       letterSpacing: -0.2,
     },
     dimAction: {
-      fontSize: normalize(fontSizes.lg),
+      fontSize: normalize(fontSizes.xl),
       fontFamily: fonts.regular,
       color: colors.background2,
     },
     dimMeta: {
-      fontSize: normalize(fontSizes.md),
+      fontSize: normalize(fontSizes.lg),
       fontFamily: fonts.regular,
       color: colors.textLight20,
     },
@@ -505,7 +505,7 @@ export const createSearchScreenStyles = (width, normalize) => {
       borderTopColor: colors.surface,
     },
     recentText: {
-      fontSize: normalize(fontSizes.lg),
+      fontSize: normalize(fontSizes.xl),
       fontFamily: fonts.regular,
       color: colors.textPrimary,
     },
@@ -528,7 +528,7 @@ export const createSearchScreenStyles = (width, normalize) => {
       borderTopColor: colors.surface,
     },
     popularRank: {
-      fontSize: normalize(fontSizes.xl),
+      fontSize: normalize(fontSizes.xxl),
       fontFamily: fonts.bold,
       color: colors.textLight20,
       width: normalize(20),
@@ -539,7 +539,7 @@ export const createSearchScreenStyles = (width, normalize) => {
     },
     popularKeyword: {
       flex: 1,
-      fontSize: normalize(fontSizes.lg),
+      fontSize: normalize(fontSizes.xl),
       fontFamily: fonts.regular,
       color: colors.textPrimary,
     },
@@ -548,7 +548,7 @@ export const createSearchScreenStyles = (width, normalize) => {
       alignItems: 'center',
     },
     trendLabel: {
-      fontSize: normalize(fontSizes.sm),
+      fontSize: normalize(fontSizes.md),
       fontFamily: fonts.bold,
       letterSpacing: 0.3,
     },
@@ -568,7 +568,7 @@ export const createSearchScreenStyles = (width, normalize) => {
       borderColor: colors.textLight10,
     },
     tagText: {
-      fontSize: normalize(fontSizes.lg),
+      fontSize: normalize(fontSizes.xl),
       fontFamily: fonts.regular,
       fontWeight: '500',
       color: colors.textSecondary,
@@ -594,13 +594,13 @@ export const createSchoolSearchStyles = (normalize) => {
       paddingRight: normalize(8),
     },
     schoolSearchLabel: {
-      fontSize: normalize(fontSizes.md),
+      fontSize: normalize(fontSizes.lg),
       fontFamily: fonts.regular,
       color: colors.textSecondary,
       marginBottom: normalize(4),
     },
     schoolSearchName: {
-      fontSize: normalize(fontSizes.xl),
+      fontSize: normalize(fontSizes.xxl),
       fontFamily: fonts.bold,
       color: colors.textPrimary,
     },
@@ -609,7 +609,7 @@ export const createSchoolSearchStyles = (normalize) => {
       paddingVertical: normalize(8),
     },
     schoolSearchButtonText: {
-      fontSize: normalize(fontSizes.lg),
+      fontSize: normalize(fontSizes.xl),
       fontFamily: fonts.bold,
       color: colors.background,
     },
@@ -655,7 +655,7 @@ export const createSearchResultStyles = (normalize) => {
     },
     searchInput: {
       flex: 1,
-      fontSize: normalize(fontSizes.xl),
+      fontSize: normalize(fontSizes.xxl),
       color: colors.textPrimary,
       paddingVertical: 0,
     },
@@ -684,7 +684,7 @@ export const createSearchResultStyles = (normalize) => {
       backgroundColor: colors.textLight5,
     },
     tagText: {
-      fontSize: normalize(fontSizes.lg),
+      fontSize: normalize(fontSizes.xl),
       fontFamily: fonts.regular,
       color: colors.textSecondary,
     },
@@ -698,7 +698,7 @@ export const createSearchResultStyles = (normalize) => {
       gap: normalize(8),
     },
     recentText: {
-      fontSize: normalize(fontSizes.lg),
+      fontSize: normalize(fontSizes.xl),
       fontFamily: fonts.regular,
       color: colors.textPrimary,
     },
@@ -723,7 +723,7 @@ export const createSearchResultStyles = (normalize) => {
       borderColor: colors.textPrimary,
     },
     tabText: {
-      fontSize: normalize(fontSizes.lg),
+      fontSize: normalize(fontSizes.xl),
       fontFamily: fonts.regular,
       fontWeight: '500',
       color: colors.textSecondary,
@@ -768,13 +768,13 @@ export const createSearchResultStyles = (normalize) => {
       marginRight: normalize(6),
     },
     sectionTitle: {
-      fontSize: normalize(fontSizes.lg),
+      fontSize: normalize(fontSizes.xl),
       fontFamily: fonts.bold,
       color: colors.textPrimary,
       letterSpacing: -0.2,
     },
     clearRecentText: {
-      fontSize: normalize(fontSizes.lg),
+      fontSize: normalize(fontSizes.xl),
       fontFamily: fonts.regular,
       color: colors.textSecondary,
     },
@@ -785,7 +785,7 @@ export const createSearchResultStyles = (normalize) => {
       borderRadius: normalize(10),
     },
     countBadgeText: {
-      fontSize: normalize(fontSizes.md),
+      fontSize: normalize(fontSizes.lg),
       fontFamily: fonts.regular,
       fontWeight: '500',
       color: colors.textSecondary,
@@ -808,7 +808,7 @@ export const createSearchResultStyles = (normalize) => {
     },
     schoolName: {
       flex: 1,
-      fontSize: normalize(fontSizes.xl),
+      fontSize: normalize(fontSizes.xxl),
       fontFamily: fonts.bold,
       color: colors.textPrimary,
     },
@@ -822,14 +822,14 @@ export const createSearchResultStyles = (normalize) => {
       borderBottomColor: colors.textLight10,
     },
     cardTitle: {
-      fontSize: normalize(fontSizes.lg),
+      fontSize: normalize(fontSizes.xl),
       fontFamily: fonts.bold,
       color: colors.textPrimary,
       marginBottom: normalize(4),
       lineHeight: normalize(20),
     },
     cardSnippet: {
-      fontSize: normalize(fontSizes.lg),
+      fontSize: normalize(fontSizes.xl),
       fontFamily: fonts.regular,
       color: colors.textSecondary,
       lineHeight: normalize(18),
@@ -850,14 +850,14 @@ export const createSearchResultStyles = (normalize) => {
       borderBottomColor: colors.textLight10,
     },
     fullTitle: {
-      fontSize: normalize(fontSizes.xl),
+      fontSize: normalize(fontSizes.xxl),
       fontFamily: fonts.bold,
       color: colors.textPrimary,
       marginBottom: normalize(6),
       lineHeight: normalize(22),
     },
     fullSnippet: {
-      fontSize: normalize(fontSizes.lg),
+      fontSize: normalize(fontSizes.xl),
       fontFamily: fonts.regular,
       color: colors.textSecondary,
       lineHeight: normalize(19),
@@ -865,7 +865,7 @@ export const createSearchResultStyles = (normalize) => {
     },
 
     metaText: {
-      fontSize: normalize(fontSizes.md),
+      fontSize: normalize(fontSizes.lg),
       fontFamily: fonts.regular,
       color: colors.background2,
     },
@@ -880,7 +880,7 @@ export const createSearchResultStyles = (normalize) => {
       gap: normalize(4),
     },
     moreBtnText: {
-      fontSize: normalize(fontSizes.lg),
+      fontSize: normalize(fontSizes.xl),
       fontFamily: fonts.regular,
       fontWeight: '500',
       color: colors.textSecondary,
@@ -901,7 +901,7 @@ export const createSearchResultStyles = (normalize) => {
       backgroundColor: colors.background,
     },
     loadMoreText: {
-      fontSize: normalize(fontSizes.lg),
+      fontSize: normalize(fontSizes.xl),
       fontFamily: fonts.regular,
       fontWeight: '500',
       color: colors.textSecondary,
@@ -925,13 +925,13 @@ export const createSearchResultStyles = (normalize) => {
       marginBottom: normalize(14),
     },
     emptyTitle: {
-      fontSize: normalize(fontSizes.xl),
+      fontSize: normalize(fontSizes.xxl),
       fontFamily: fonts.bold,
       color: colors.textPrimary,
       marginBottom: normalize(6),
     },
     emptyDesc: {
-      fontSize: normalize(fontSizes.lg),
+      fontSize: normalize(fontSizes.xl),
       fontFamily: fonts.regular,
       color: colors.textSecondary,
     },
@@ -941,7 +941,7 @@ export const createSearchResultStyles = (normalize) => {
       alignItems: 'center',
     },
     endOfResultsText: {
-      fontSize: normalize(fontSizes.lg),
+      fontSize: normalize(fontSizes.xl),
       fontFamily: fonts.regular,
       color: colors.textSecondary,
       textAlign: 'center',
