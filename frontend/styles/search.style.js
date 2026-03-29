@@ -335,139 +335,243 @@ export const createSearchStyles = (width, normalize) => {
   });
 };
 
-// 검색 화면(SearchScreen) 전용 스타일
+// 검색 화면(SearchScreen) 전용 — searchscreen.jsx
 export const createSearchScreenStyles = (width, normalize) => {
   return StyleSheet.create({
+    root: {
+      flex: 1,
+      backgroundColor: colors.background,
+    },
+    flexOne: {
+      flex: 1,
+    },
     container: {
       flex: 1,
       backgroundColor: colors.background,
     },
     scrollView: {
       flex: 1,
-      backgroundColor: colors.textLight5,
     },
-    searchContainer: {
+
+    searchBarWrapper: {
+      flexDirection: 'row',
+      alignItems: 'center',
       backgroundColor: colors.background,
-      padding: normalize(16),
-      paddingBottom: normalize(20),
+      paddingHorizontal: normalize(16),
+      paddingTop: normalize(12),
+      paddingBottom: normalize(12),
+      borderBottomWidth: StyleSheet.hairlineWidth,
+      borderBottomColor: colors.textLight10,
+      zIndex: 10,
     },
-    searchInputWrapper: {
+    searchInputRow: {
       flexDirection: 'row',
       alignItems: 'center',
       backgroundColor: colors.textLight5,
       borderRadius: normalize(12),
       paddingHorizontal: normalize(12),
-      height: normalize(48),
+      height: normalize(44),
       gap: normalize(8),
+      flex: 1,
+    },
+    searchBackButton: {
+      marginRight: normalize(6),
+      padding: normalize(4),
+      justifyContent: 'center',
+      alignItems: 'center',
     },
     searchInput: {
       flex: 1,
       fontSize: normalize(fontSizes.xl),
+      fontFamily: fonts.regular,
       color: colors.textPrimary,
+      paddingVertical: 0,
     },
+
+    previewDropdown: {
+      marginTop: normalize(6),
+      backgroundColor: colors.background,
+      borderRadius: normalize(14),
+      borderWidth: StyleSheet.hairlineWidth,
+      borderColor: colors.textLight10,
+      overflow: 'hidden',
+      shadowColor: colors.shadow,
+      shadowOffset: { width: 0, height: normalize(4) },
+      shadowOpacity: 0.07,
+      shadowRadius: normalize(12),
+      elevation: 4,
+    },
+    previewGroupLabel: {
+      fontSize: normalize(fontSizes.md),
+      fontFamily: fonts.bold,
+      color: colors.textSecondary,
+      letterSpacing: 0.6,
+      textTransform: 'uppercase',
+      paddingHorizontal: normalize(14),
+      paddingTop: normalize(12),
+      paddingBottom: normalize(4),
+    },
+    previewRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      paddingHorizontal: normalize(14),
+      paddingVertical: normalize(11),
+      gap: normalize(10),
+    },
+    previewRowBorder: {
+      borderBottomWidth: StyleSheet.hairlineWidth,
+      borderBottomColor: colors.surface,
+    },
+    previewSchoolIcon: {
+      width: normalize(28),
+      height: normalize(28),
+      borderRadius: normalize(8),
+      backgroundColor: colors.surface,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    previewPostIcon: {
+      width: normalize(28),
+      height: normalize(28),
+      borderRadius: normalize(8),
+      backgroundColor: colors.surface,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    previewRowText: {
+      flex: 1,
+      fontSize: normalize(fontSizes.lg),
+      fontFamily: fonts.regular,
+      color: colors.textPrimary,
+      lineHeight: normalize(20),
+    },
+    previewDivider: {
+      height: StyleSheet.hairlineWidth,
+      backgroundColor: colors.border,
+      marginHorizontal: normalize(14),
+      marginVertical: normalize(4),
+    },
+
     section: {
       backgroundColor: colors.background,
-      paddingBottom: normalize(16),
+      marginTop: normalize(8),
+      paddingTop: normalize(20),
+      borderTopWidth: StyleSheet.hairlineWidth,
+      borderTopColor: colors.textLight10,
+      borderBottomWidth: StyleSheet.hairlineWidth,
+      borderBottomColor: colors.textLight10,
     },
-    lastSection: {
-      marginBottom: normalize(20),
+    sectionRecommendTags: {
+      backgroundColor: colors.background,
+      marginTop: normalize(8),
+      paddingTop: normalize(20),
+      paddingBottom: normalize(28),
+      borderTopWidth: StyleSheet.hairlineWidth,
+      borderTopColor: colors.textLight10,
+      borderBottomWidth: StyleSheet.hairlineWidth,
+      borderBottomColor: colors.textLight10,
     },
     sectionHeader: {
       flexDirection: 'row',
       justifyContent: 'space-between',
       alignItems: 'center',
-      paddingHorizontal: normalize(16),
-      marginBottom: normalize(16),
+      paddingHorizontal: normalize(18),
+      marginBottom: normalize(14),
     },
     sectionTitle: {
       fontSize: normalize(fontSizes.xl),
       fontFamily: fonts.bold,
       color: colors.textPrimary,
+      letterSpacing: -0.2,
     },
-    clearButton: {
+    dimAction: {
       fontSize: normalize(fontSizes.lg),
-      color: colors.textSecondary,
+      fontFamily: fonts.regular,
+      color: colors.background2,
     },
-    updateTime: {
-      fontSize: normalize(fontSizes.sm),
-      color: colors.textSecondary,
+    dimMeta: {
+      fontSize: normalize(fontSizes.md),
+      fontFamily: fonts.regular,
+      color: colors.textLight20,
     },
-    recentSearchContainer: {
-      paddingHorizontal: normalize(16),
-    },
-    recentSearchItem: {
-      flexDirection: 'row',
-      justifyContent: 'space-between',
-      alignItems: 'center',
-      paddingVertical: normalize(12),
-      borderBottomWidth: 1,
-      borderBottomColor: '#F5F5F5',
-    },
-    recentSearchItemLast: {
-      borderBottomWidth: 0,
-    },
-    recentSearchButton: {
+
+    recentRow: {
       flexDirection: 'row',
       alignItems: 'center',
-      gap: normalize(8),
-      flex: 1,
+      paddingHorizontal: normalize(18),
+      paddingVertical: normalize(13),
+      gap: normalize(10),
+      borderTopWidth: StyleSheet.hairlineWidth,
+      borderTopColor: colors.surface,
     },
-    recentSearchText: {
-      fontSize: normalize(fontSizes.xl),
+    recentText: {
+      fontSize: normalize(fontSizes.lg),
+      fontFamily: fonts.regular,
       color: colors.textPrimary,
     },
-    deleteButton: {
-      padding: normalize(4),
+    recentDeleteBtn: {
+      marginLeft: 'auto',
     },
-    popularSearchContainer: {
-      paddingHorizontal: normalize(16),
-    },
-    popularSearchItem: {
+
+    popularGrid: {
       flexDirection: 'row',
-      justifyContent: 'space-between',
-      alignItems: 'center',
-      paddingVertical: normalize(12),
-      borderBottomWidth: 1,
-      borderBottomColor: '#F5F5F5',
+      flexWrap: 'wrap',
     },
-    popularSearchLeft: {
+    popularRow: {
       flexDirection: 'row',
       alignItems: 'center',
-      gap: normalize(12),
-      flex: 1,
+      width: '50%',
+      paddingHorizontal: normalize(18),
+      paddingVertical: normalize(11),
+      gap: normalize(10),
+      borderTopWidth: StyleSheet.hairlineWidth,
+      borderTopColor: colors.surface,
     },
-    rank: {
+    popularRank: {
       fontSize: normalize(fontSizes.xl),
       fontFamily: fonts.bold,
-      color: '#999',
-      width: normalize(24),
+      color: colors.textLight20,
+      width: normalize(20),
       textAlign: 'center',
     },
-    topRank: {
-      color: colors.primary,
-      fontSize: normalize(fontSizes.xxl),
+    popularRankTop: {
+      color: colors.primaryDark,
     },
     popularKeyword: {
-      fontSize: normalize(fontSizes.xl),
-      color: colors.textPrimary,
       flex: 1,
+      fontSize: normalize(fontSizes.lg),
+      fontFamily: fonts.regular,
+      color: colors.textPrimary,
     },
-    recommendContainer: {
+    popularTrend: {
+      width: normalize(20),
+      alignItems: 'center',
+    },
+    trendLabel: {
+      fontSize: normalize(fontSizes.sm),
+      fontFamily: fonts.bold,
+      letterSpacing: 0.3,
+    },
+
+    tagRow: {
       flexDirection: 'row',
       flexWrap: 'wrap',
       paddingHorizontal: normalize(16),
       gap: normalize(8),
     },
-    tagButton: {
-      backgroundColor: colors.primaryLight30,
-      paddingHorizontal: normalize(16),
+    tag: {
+      backgroundColor: colors.textLight5,
+      paddingHorizontal: normalize(14),
       paddingVertical: normalize(8),
       borderRadius: normalize(20),
+      borderWidth: StyleSheet.hairlineWidth,
+      borderColor: colors.textLight10,
     },
     tagText: {
       fontSize: normalize(fontSizes.lg),
-      color: colors.primaryDark,
-      fontFamily: fonts.medium,
+      fontFamily: fonts.regular,
+      fontWeight: '500',
+      color: colors.textSecondary,
     },
   });
 };
