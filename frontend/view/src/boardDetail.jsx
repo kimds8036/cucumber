@@ -14,7 +14,9 @@ import {
   Image,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Ionicons, Entypo } from '@expo/vector-icons';
+import Ionicons from '@expo/vector-icons/Ionicons';
+import Entypo from '@expo/vector-icons/Entypo';
+import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import SubHeader from '../frame/subHeader';
 import CommentInput from '../../components/CommentInput.jsx';
@@ -861,56 +863,71 @@ export default function BoardDetail({ navigation, route }) {
                       style={
                         post.author === '작성자' ? styles.detailAuthor : styles.detailAuthorAnonymous
                       }
+                      numberOfLines={1}
                     >
                       {post.author}
                     </Text>
                     <Text style={styles.detailDot}>•</Text>
-                    <Text style={styles.detailTime}>{post.time}</Text>
+                    <Text style={styles.detailTime} numberOfLines={1}>
+                      {post.time}
+                    </Text>
+                    {post.location ? (
+                      <View
+                        style={{
+                          flexDirection: 'row',
+                          alignItems: 'baseline',
+                          flexShrink: 1,
+                        }}
+                      >
+                        <Text style={styles.detailTime}>{' · '}</Text>
+                        <Text
+                          style={[styles.detailLocationText, { flexShrink: 1, minWidth: 0 }]}
+                          numberOfLines={1}
+                        >
+                          {post.location}
+                        </Text>
+                      </View>
+                    ) : null}
                   </View>
                   <View
                     style={{
                       flexDirection: 'row',
                       alignItems: 'center',
-                      gap: normalize(6),
+                      marginLeft: normalize(8),
+                      flexShrink: 0,
                     }}
                   >
                     <View
                       style={{
                         flexDirection: 'row',
                         alignItems: 'center',
-                        gap: normalize(4),
+                        gap: normalize(1),
                         backgroundColor: colors.primaryLight30,
                         borderRadius: normalize(10),
                         paddingHorizontal: normalize(7),
                         paddingVertical: normalize(2),
                       }}
                     >
-                      <Ionicons name="navigate-outline" size={normalize(11)} color={colors.primary} />
+                      <MaterialIcons name="location-on" size={normalize(12)} color={colors.primaryDark} />
                       <Text
                         style={{
                           fontSize: normalize(11),
                           fontFamily: fonts.regular,
-                          color: colors.primary,
+                          color: colors.primaryDark,
                         }}
                       >
                         10km
                       </Text>
                     </View>
-                    {post.location ? (
-                      <View style={styles.detailLocation}>
-                        <Ionicons name="location-sharp" size={normalize(12)} color={colors.textSecondary} />
-                        <Text style={styles.detailLocationText}>{post.location}</Text>
-                      </View>
-                    ) : null}
                   </View>
                 </View>
 
-                <Text style={styles.detailBody}>{post.content}</Text>
+                <Text style={[styles.detailBody, { marginBottom: normalize(7) }]}>{post.content}</Text>
                 {Array.isArray(post.images) && post.images.length > 0 ? (
                   <ScrollView
                     horizontal
                     showsHorizontalScrollIndicator={false}
-                    style={{ marginTop: normalize(12) }}
+                    style={{ marginTop: normalize(7) }}
                     contentContainerStyle={{ paddingRight: normalize(16) }}
                   >
                     {post.images.map((uri, idx) => (
@@ -940,7 +957,7 @@ export default function BoardDetail({ navigation, route }) {
                       flexDirection: 'row',
                       flexWrap: 'wrap',
                       gap: normalize(6),
-                      marginTop: normalize(10),
+                      marginTop: normalize(7),
                     }}
                   >
                     {post.tags.map((tag, idx) => {
@@ -956,14 +973,14 @@ export default function BoardDetail({ navigation, route }) {
                             backgroundColor: colors.primaryLight30,
                             borderRadius: normalize(12),
                             paddingHorizontal: normalize(8),
-                            paddingVertical: normalize(3),
+                            paddingVertical: normalize(2),
                           }}
                         >
                           <Text
                             style={{
                               fontSize: normalize(11),
                               fontFamily: fonts.regular,
-                              color: colors.primary,
+                              color: colors.primaryDark,
                             }}
                           >
                             {label}
@@ -973,7 +990,6 @@ export default function BoardDetail({ navigation, route }) {
                     })}
                   </View>
                 ) : null}
-                <View style={styles.detailDivider} />
                 <View style={styles.detailFooter}>
                   <View style={styles.detailStats}>
                     <TouchableOpacity

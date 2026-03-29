@@ -1,18 +1,16 @@
-import React, { useMemo, useState, useRef, useEffect } from 'react';
+import React, { useMemo, useState, useEffect, useCallback } from 'react';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {
   useWindowDimensions,
   View,
   Text,
   TouchableOpacity,
-  Modal,
-  TouchableWithoutFeedback,
   Alert,
   FlatList,
   Image,
-  Share,
 } from 'react-native';
-import { Ionicons, Entypo } from '@expo/vector-icons';
+import Ionicons from '@expo/vector-icons/Ionicons';
+import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import FontAwesome5 from '@expo/vector-icons/FontAwesome5';
 import SubHeader from '../frame/subHeader';
@@ -55,113 +53,26 @@ const SchoolBoardAll = ({ navigation }) => {
   const [loadingMore, setLoadingMore] = useState(false);
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
-  const [floatingMenuVisible, setFloatingMenuVisible] = useState(false);
-  const [floatingMenuAnchor, setFloatingMenuAnchor] = useState(null);
-  const [floatingMenuPost, setFloatingMenuPost] = useState(null);
-  const menuButtonRefs = useRef({});
-
-  const defaultMenuItemsOthers = useMemo(
-    () => [
-      { label: '쪽지 보내기', iconName: 'chatbubble-outline' },
-      { label: '공유하기', iconName: 'share-outline' },
-      { label: '신고하기', iconName: 'flag-outline' },
-    ],
-    []
-  );
-
-  const defaultMenuItemsMine = useMemo(
-    () => [
-      { label: '공유하기', iconName: 'share-outline', onPress: () => {} },
-      {
-        label: '삭제하기',
-        iconName: 'trash-outline',
-        onPress: () => {
-          const postToDelete = floatingMenuPost;
-          closeFloatingMenu();
-          if (!postToDelete) return;
-          Alert.alert(
-            '게시글 삭제',
-            '이 게시글을 삭제할까요?',
-            [
-              { text: '취소', style: 'cancel' },
-              {
-                text: '삭제',
-                style: 'destructive',
-                onPress: async () => {
-                  try {
-                    await api.delete(`/api/posts/${postToDelete.id}`);
-                    setSchoolPosts((prev) => prev.filter((p) => p.id !== postToDelete.id));
-                    Alert.alert('삭제됨', '게시글이 삭제되었습니다.');
-                  } catch (error) {
-                    console.error('게시글 삭제 오류:', error);
-                    Alert.alert(
-                      '오류',
-                      error.response?.data?.message || '게시글 삭제 중 오류가 발생했습니다.'
-                    );
-                  }
-                },
-              },
-            ]
-          );
-        },
-      },
-    ],
-    [floatingMenuPost]
-  );
-
-  const openFloatingMenu = (post, ref) => {
-    ref?.measureInWindow((x, y) => {
-      setFloatingMenuAnchor({ x, y });
-      setFloatingMenuPost(post);
-      setFloatingMenuVisible(true);
-    });
-  };
-
-  const closeFloatingMenu = () => {
-    setFloatingMenuVisible(false);
-    setFloatingMenuAnchor(null);
-    setFloatingMenuPost(null);
-  };
-
-  const startNoteToPostAuthorFromList = async (post) => {
-    if (!post?.authorUserId || !post?.id) {
-      Alert.alert('오류', '쪽지를 보낼 수 없습니다.');
-      return;
-    }
+  const handleScrapPress = useCallback(async (post) => {
     try {
-      const res = await api.post('/api/messages/rooms', {
-        postId: post.id,
-        otherUserId: post.authorUserId,
-      });
-      const room = res.data?.data;
-      if (!room?.id) {
-        Alert.alert('오류', '쪽지 방 정보를 불러올 수 없습니다.');
-        return;
-      }
-      closeFloatingMenu();
-      navigation?.navigate('Chat', { roomId: room.id });
+      const res = await api.post(`/api/posts/${post.id}/scrap`);
+      const scrapped = Boolean(res.data?.scrapped);
+      setSchoolPosts((prev) =>
+        prev.map((p) => {
+          if (p.id !== post.id) return p;
+          const cur = p.scrapCount ?? 0;
+          const next = scrapped ? cur + 1 : Math.max(0, cur - 1);
+          return { ...p, scrapped, scrapCount: next };
+        })
+      );
     } catch (error) {
-      console.error('쪽지방 생성/조회 실패:', error);
+      console.error('스크랩 토글 오류:', error);
       Alert.alert(
         '오류',
-        error.response?.data?.message || '쪽지방을 여는 중 오류가 발생했습니다.'
+        error.response?.data?.message || '스크랩 처리에 실패했습니다.'
       );
     }
-  };
-
-  const handleShareFromList = async (post) => {
-    if (!post?.id) return;
-    const url = `${api.defaults.baseURL}/posts/${post.id}`;
-    try {
-      await Share.share({
-        message: `오늘의 이야기 게시글을 공유합니다.\n\n${url}`,
-        url,
-        title: '오늘의 이야기 게시글',
-      });
-    } catch (error) {
-      console.error('게시글 공유 실패:', error);
-    }
-  };
+  }, []);
 
   const fetchSchoolPosts = async (nextPage = 1, append = false) => {
     let mounted = true;
@@ -250,183 +161,204 @@ const SchoolBoardAll = ({ navigation }) => {
     fetchSchoolPosts(page + 1, true);
   };
 
-  const renderPostItem = ({ item: post }) => (
-    <TouchableOpacity
-      key={post.id}
-      style={styles.postItem}
-      activeOpacity={0.7}
-      onPress={() =>
-        navigation.navigate('BoardDetail', {
-          post: { ...post, author: post.author },
-          isMyPost: post.isMyPost ?? false,
-        })
-      }
-    >
-      {/* 게시글 헤더: 좌측 작성자, 우측 시간(·위치) */}
-      <View style={styles.postHeader}>
-        <View style={styles.postAuthorInfo}>
-          <Text style={styles.postAuthor}>{post.author}</Text>
-        </View>
-        <View
-          style={{
-            flexDirection: 'row',
-            alignItems: 'center',
-            gap: normalize(6),
-          }}
-        >
+  const renderPostItem = ({ item: post }) => {
+    const hasThumb =
+      typeof post.thumbnail === 'string' && post.thumbnail.trim().length > 0;
+    return (
+      <TouchableOpacity
+        key={post.id}
+        style={styles.postItem}
+        activeOpacity={0.7}
+        onPress={() =>
+          navigation.navigate('BoardDetail', {
+            post: { ...post, author: post.author },
+            isMyPost: post.isMyPost ?? false,
+          })
+        }
+      >
+        <View style={styles.postHeader}>
+          <View
+            style={{
+              flexDirection: 'row',
+              alignItems: 'baseline',
+              flex: 1,
+              minWidth: 0,
+            }}
+          >
+            <Text
+              style={[
+                styles.postAuthor,
+                post.author === '작성자' && {
+                  fontFamily: fonts.bold,
+                  color: colors.alert,
+                },
+              ]}
+              numberOfLines={1}
+            >
+              {post.author}
+            </Text>
+            <Text style={styles.postDot}>•</Text>
+            <Text style={styles.postTime} numberOfLines={1}>
+              {post.time}
+            </Text>
+            {post.location ? (
+              <View style={[styles.postTimeRow, { flexShrink: 1 }]}>
+                <Text style={styles.postTime}>{' · '}</Text>
+                <Text
+                  style={[styles.postLocationText, { flexShrink: 1, minWidth: 0 }]}
+                  numberOfLines={1}
+                >
+                  {post.location}
+                </Text>
+              </View>
+            ) : null}
+          </View>
           <View
             style={{
               flexDirection: 'row',
               alignItems: 'center',
-              gap: normalize(4),
-              backgroundColor: colors.primaryLight30,
-              borderRadius: normalize(10),
-              paddingHorizontal: normalize(7),
-              paddingVertical: normalize(2),
+              marginLeft: normalize(8),
+              flexShrink: 0,
             }}
           >
-            <Ionicons name="navigate-outline" size={normalize(11)} color={colors.primary} />
-            <Text
+            <View
               style={{
-                fontSize: normalize(11),
-                fontFamily: fonts.regular,
-                color: colors.primary,
+                flexDirection: 'row',
+                alignItems: 'center',
+                gap: normalize(1),
+                backgroundColor: colors.primaryLight30,
+                borderRadius: normalize(10),
+                paddingHorizontal: normalize(7),
+                paddingVertical: normalize(2),
               }}
             >
-              10km
-            </Text>
-          </View>
-          <View style={styles.postTimeRow}>
-            <Text style={styles.postTime}>{post.time}</Text>
-            {post.location ? (
-              <>
-                <Text style={styles.postTime}>{' · '}</Text>
-                <Ionicons name="location-sharp" size={normalize(12)} color={colors.textSecondary} />
-                <Text style={styles.postLocationText}>{post.location}</Text>
-              </>
-            ) : null}
+              <MaterialIcons name="location-on" size={normalize(12)} color={colors.primaryDark} />
+              <Text
+                style={{
+                  fontSize: normalize(11),
+                  fontFamily: fonts.regular,
+                  color: colors.primaryDark,
+                }}
+              >
+                10km
+              </Text>
+            </View>
           </View>
         </View>
-      </View>
 
-      {/* 본문 + 목록용 썸네일(BoardPostCard와 동일) */}
-      <View
-        style={{
-          flexDirection: 'row',
-          alignItems: 'flex-start',
-          marginBottom: normalize(10),
-        }}
-      >
-        <Text
-          style={[styles.postContent, { flex: 1, marginRight: post.thumbnail ? normalize(10) : 0 }]}
-          numberOfLines={5}
-          ellipsizeMode="tail"
-        >
-          {post.content}
-        </Text>
-        {typeof post.thumbnail === 'string' && post.thumbnail.trim() ? (
-          <Image
-            source={{ uri: post.thumbnail.trim() }}
-            style={{
-              width: normalize(76),
-              height: normalize(76),
-              borderRadius: normalize(8),
-              backgroundColor: colors.textLight10 ?? '#EEE',
-            }}
-            resizeMode="cover"
-          />
-        ) : null}
-      </View>
-
-      {Array.isArray(post.tags) && post.tags.length > 0 ? (
         <View
           style={{
             flexDirection: 'row',
-            flexWrap: 'wrap',
-            gap: normalize(6),
-            marginBottom: normalize(10),
+            alignItems: 'flex-start',
+            backgroundColor: colors.surface,
+            borderWidth: 1,
+            borderColor: colors.border,
+            borderRadius: normalize(12),
+            padding: normalize(12),
           }}
         >
-          {post.tags.map((tag, idx) => {
-            const label =
-              tag != null && typeof tag === 'object'
-                ? String(tag.name ?? '')
-                : String(tag ?? '');
-            if (!label.trim()) return null;
-            return (
-              <View
-                key={tag?.id != null ? `tag-${tag.id}` : `tag-${idx}-${label}`}
-                style={{
-                  backgroundColor: colors.primaryLight30,
-                  borderRadius: normalize(12),
-                  paddingHorizontal: normalize(8),
-                  paddingVertical: normalize(3),
-                }}
-              >
-                <Text
-                  style={{
-                    fontSize: normalize(11),
-                    fontFamily: fonts.regular,
-                    color: colors.primary,
-                  }}
-                >
-                  {label}
-                </Text>
-              </View>
-            );
-          })}
-        </View>
-      ) : null}
-
-      {/* 경계선 */}
-      <View style={styles.postDivider} />
-
-      {/* 푸터: 좌측 좋아요&댓글, 우측 햄버거 */}
-      <View style={styles.postFooter}>
-        <View style={styles.postStats}>
-          <View style={styles.postStatItem}>
-            <FontAwesome
-              name={post.liked ? 'heart' : 'heart-o'}
-              size={normalize(14)}
-              color={colors.alert}
-            />
-            <Text style={styles.postStatText}>{post.likes}</Text>
-          </View>
-          <View style={styles.postStatItem}>
-            <Ionicons name="chatbubble-outline" size={normalize(15)} color={colors.primary} />
-            <Text style={styles.postStatText}>{post.comments}</Text>
-          </View>
-          <View style={styles.postStatItem}>
-            <Ionicons
-              name="bookmark-outline"
-              size={normalize(14)}
-              color={colors.scrap}
-            />
-          </View>
-        </View>
-        <View
-          ref={(r) => {
-            if (r) menuButtonRefs.current[post.id] = r;
-          }}
-          collapsable={false}
-        >
-          <TouchableOpacity
-            style={styles.menuButton}
-            activeOpacity={0.7}
-            onPress={() => openFloatingMenu(post, menuButtonRefs.current[post.id])}
-            hitSlop={{
-              top: normalize(12),
-              bottom: normalize(12),
-              left: normalize(12),
-              right: normalize(12),
+          <View
+            style={{
+              flex: 1,
+              minWidth: 0,
+              flexDirection: 'column',
+              marginRight: hasThumb ? normalize(10) : 0,
             }}
           >
-            <Entypo name="dots-three-vertical" size={normalize(14)} color={colors.textSecondary} />
-          </TouchableOpacity>
+            <Text
+              style={[styles.postContent, { marginBottom: normalize(7) }]}
+              numberOfLines={3}
+              ellipsizeMode="tail"
+            >
+              {post.content}
+            </Text>
+
+            {Array.isArray(post.tags) && post.tags.length > 0 ? (
+              <View
+                style={{
+                  flexDirection: 'row',
+                  flexWrap: 'wrap',
+                  gap: normalize(6),
+                  marginBottom: normalize(7),
+                }}
+              >
+                {post.tags.map((tag, idx) => {
+                  const label =
+                    tag != null && typeof tag === 'object'
+                      ? String(tag.name ?? '')
+                      : String(tag ?? '');
+                  if (!label.trim()) return null;
+                  return (
+                    <View
+                      key={tag?.id != null ? `tag-${tag.id}` : `tag-${idx}-${label}`}
+                      style={{
+                        backgroundColor: colors.primaryLight30,
+                        borderRadius: normalize(12),
+                        paddingHorizontal: normalize(8),
+                        paddingVertical: normalize(2),
+                      }}
+                    >
+                      <Text
+                        style={{
+                          fontSize: normalize(11),
+                          fontFamily: fonts.regular,
+                          color: colors.primaryDark,
+                        }}
+                      >
+                        {label}
+                      </Text>
+                    </View>
+                  );
+                })}
+              </View>
+            ) : null}
+
+            <View style={[styles.postFooter, { justifyContent: 'flex-start' }]}>
+              <View style={styles.postStats}>
+                <View style={styles.postStatItem}>
+                  <FontAwesome
+                    name={post.liked ? 'heart' : 'heart-o'}
+                    size={normalize(14)}
+                    color={colors.alert}
+                  />
+                  <Text style={styles.postStatText}>{post.likes}</Text>
+                </View>
+                <View style={styles.postStatItem}>
+                  <Ionicons name="chatbubble-outline" size={normalize(15)} color={colors.primary} />
+                  <Text style={styles.postStatText}>{post.comments}</Text>
+                </View>
+                <TouchableOpacity
+                  style={styles.postStatItem}
+                  onPress={() => handleScrapPress(post)}
+                  activeOpacity={0.7}
+                >
+                  <Ionicons
+                    name={post.scrapped ? 'bookmark' : 'bookmark-outline'}
+                    size={normalize(14)}
+                    color={colors.scrap}
+                  />
+                  <Text style={styles.postStatText}>{post.scrapCount ?? 0}</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+
+          {hasThumb ? (
+            <Image
+              source={{ uri: post.thumbnail.trim() }}
+              style={{
+                width: normalize(65),
+                height: normalize(65),
+                borderRadius: normalize(8),
+                backgroundColor: colors.textLight10 ?? '#EEE',
+              }}
+              resizeMode="cover"
+            />
+          ) : null}
         </View>
-      </View>
-    </TouchableOpacity>
-  );
+      </TouchableOpacity>
+    );
+  };
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
@@ -481,96 +413,6 @@ const SchoolBoardAll = ({ navigation }) => {
         <FontAwesome5 name="plus" size={normalize(24)} color={colors.background} />
       </TouchableOpacity>
 
-      {/* 플로팅 메뉴 */}
-      <Modal
-        visible={floatingMenuVisible}
-        transparent
-        animationType="fade"
-        onRequestClose={closeFloatingMenu}
-      >
-        <TouchableWithoutFeedback onPress={closeFloatingMenu}>
-          <View
-            style={{
-              flex: 1,
-              backgroundColor: 'rgba(0,0,0,0.3)',
-              ...(floatingMenuAnchor ? {} : { justifyContent: 'center', alignItems: 'center' }),
-            }}
-          >
-            <TouchableWithoutFeedback>
-              <View
-                style={{
-                  backgroundColor: colors.background,
-                  borderRadius: normalize(12),
-                  minWidth: width * 0.45,
-                  maxWidth: width * 0.7,
-                  paddingVertical: normalize(4),
-                  shadowColor: colors.shadow,
-                  shadowOffset: { width: 0, height: 2 },
-                  shadowOpacity: 0.15,
-                  shadowRadius: 5,
-                  elevation: 5,
-                  ...(floatingMenuAnchor
-                    ? {
-                        position: 'absolute',
-                        right: width - floatingMenuAnchor.x,
-                        top: floatingMenuAnchor.y,
-                      }
-                    : {}),
-                }}
-              >
-                {((floatingMenuPost?.isMyPost) ? defaultMenuItemsMine : defaultMenuItemsOthers).map((item, index) => (
-                  <React.Fragment key={index}>
-                    <TouchableOpacity
-                      style={{
-                        flexDirection: 'row',
-                        alignItems: 'center',
-                        justifyContent: 'space-between',
-                        paddingVertical: normalize(10),
-                        paddingHorizontal: normalize(14),
-                      }}
-                      activeOpacity={0.7}
-                      onPress={() => {
-                        if (item.label === '쪽지 보내기') {
-                          startNoteToPostAuthorFromList(floatingMenuPost);
-                        } else if (item.label === '공유하기') {
-                          handleShareFromList(floatingMenuPost);
-                        } else if (item.onPress) {
-                          item.onPress();
-                        }
-                        closeFloatingMenu();
-                      }}
-                    >
-                      <Text
-                        style={{
-                          fontSize: normalize(13),
-                          fontFamily: fonts.regular,
-                          color: colors.textPrimary,
-                        }}
-                      >
-                        {item.label}
-                      </Text>
-                      <Ionicons
-                        name={item.iconName}
-                        size={normalize(17)}
-                        color={colors.textSecondary}
-                      />
-                    </TouchableOpacity>
-                    {index < ((floatingMenuPost?.isMyPost) ? defaultMenuItemsMine : defaultMenuItemsOthers).length - 1 && (
-                      <View
-                        style={{
-                          height: 1,
-                          backgroundColor: colors.textLight10,
-                          marginHorizontal: normalize(8),
-                        }}
-                      />
-                    )}
-                  </React.Fragment>
-                ))}
-              </View>
-            </TouchableWithoutFeedback>
-          </View>
-        </TouchableWithoutFeedback>
-      </Modal>
     </SafeAreaView>
   );
 };

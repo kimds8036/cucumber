@@ -7,6 +7,10 @@ export const getNormalize = (width) => {
 };
 
 export const createBoardStyles = (width, normalize) => {
+  const metaLineHeight = normalize(18);
+  const metaTextAndroid =
+    Platform.OS === 'android' ? { includeFontPadding: false } : {};
+
   return StyleSheet.create({
     container: {
       flex: 1,
@@ -60,36 +64,60 @@ export const createBoardStyles = (width, normalize) => {
       elevation: 3,
     },
 
-    // 게시글 헤더 (좌: 익명•시간, 우: 위치)
+    // 게시글 헤더 (좌: 작성자•시간[·위치], 우: 거리 배지 등)
     postHeader: {
       flexDirection: 'row',
       justifyContent: 'space-between',
       alignItems: 'center',
       marginBottom: normalize(12),
     },
+    postAuthorRow: {
+      flexDirection: 'row',
+      alignItems: 'baseline',
+      flex: 1,
+      minWidth: 0,
+    },
     postAuthorInfo: {
       flexDirection: 'row',
       alignItems: 'center',
     },
+    postAuthorVerified: {
+      fontSize: normalize(fontSizes.lg),
+      fontFamily: fonts.bold,
+      color: colors.alert,
+      lineHeight: metaLineHeight,
+      textAlignVertical: 'center',
+      ...metaTextAndroid,
+    },
     postTimeRow: {
       flexDirection: 'row',
-      alignItems: 'center',
+      alignItems: 'baseline',
       gap: normalize(4),
     },
     postAuthor: {
       fontSize: normalize(fontSizes.lg),
       fontFamily: fonts.regular,
       color: colors.textSecondary,
+      lineHeight: metaLineHeight,
+      textAlignVertical: 'center',
+      ...metaTextAndroid,
     },
     postDot: {
-      fontSize: normalize(fontSizes.xl),
+      fontSize: normalize(fontSizes.lg),
+      fontFamily: fonts.regular,
       color: colors.textSecondary,
+      lineHeight: metaLineHeight,
+      textAlignVertical: 'center',
       marginHorizontal: normalize(6),
+      ...metaTextAndroid,
     },
     postTime: {
       fontSize: normalize(fontSizes.lg),
       fontFamily: fonts.regular,
       color: colors.textSecondary,
+      lineHeight: metaLineHeight,
+      textAlignVertical: 'center',
+      ...metaTextAndroid,
     },
     postLocation: {
       flexDirection: 'row',
@@ -111,7 +139,7 @@ export const createBoardStyles = (width, normalize) => {
       fontFamily: fonts.regular,
       color: colors.textPrimary,
       lineHeight: normalize(20),
-      marginBottom: normalize(10),
+      marginBottom: normalize(7),
     },
 
     // 내용과 푸터 사이 경계선
@@ -339,6 +367,10 @@ export const createWriteStyles = (width, normalize) => {
 
 // 게시글 상세 페이지 스타일
 export const createDetailStyles = (width, normalize) => {
+  const metaLineHeight = normalize(18);
+  const metaTextAndroid =
+    Platform.OS === 'android' ? { includeFontPadding: false } : {};
+
   return StyleSheet.create({
     container: {
       flex: 1,
@@ -361,27 +393,40 @@ export const createDetailStyles = (width, normalize) => {
     },
     detailAuthorRow: {
       flexDirection: 'row',
-      alignItems: 'center',
+      alignItems: 'baseline',
     },
     detailAuthor: {
       fontSize: normalize(fontSizes.lg),
       fontFamily: fonts.bold,
       color: colors.alert,
+      lineHeight: metaLineHeight,
+      textAlignVertical: 'center',
+      ...metaTextAndroid,
     },
     detailAuthorAnonymous: {
       fontSize: normalize(fontSizes.lg),
       fontFamily: fonts.regular,
       color: colors.textSecondary,
+      lineHeight: metaLineHeight,
+      textAlignVertical: 'center',
+      ...metaTextAndroid,
     },
     detailDot: {
-      fontSize: normalize(fontSizes.xl),
+      fontSize: normalize(fontSizes.lg),
+      fontFamily: fonts.regular,
       color: colors.textSecondary,
+      lineHeight: metaLineHeight,
+      textAlignVertical: 'center',
       marginHorizontal: normalize(6),
+      ...metaTextAndroid,
     },
     detailTime: {
       fontSize: normalize(fontSizes.lg),
       fontFamily: fonts.regular,
       color: colors.textSecondary,
+      lineHeight: metaLineHeight,
+      textAlignVertical: 'center',
+      ...metaTextAndroid,
     },
     detailLocation: {
       flexDirection: 'row',

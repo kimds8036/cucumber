@@ -70,7 +70,7 @@ export const createHeaderStyles = (width, height) => {
       right: normalize(4),
       width: normalize(10),
       height: normalize(10),
-      borderRadius: normalize(5),
+      borderRadius: normalize(10),
       backgroundColor: colors.alert,
     },
   });
