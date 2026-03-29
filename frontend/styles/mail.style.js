@@ -1,5 +1,5 @@
 import { StyleSheet } from 'react-native';
-import { colors, fonts } from './colors';
+import { colors, fonts, fontSizes } from './colors';
 
 export function createMailStyles(normalize) {
   return StyleSheet.create({
@@ -22,15 +22,15 @@ export function createMailStyles(normalize) {
       borderLeftColor: colors.primary,
     },
     mailCardHeader: { flexDirection: 'row', alignItems: 'center', gap: normalize(6), marginBottom: normalize(8) },
-    anonLabel: { fontSize: normalize(13), fontFamily: fonts.bold, color: colors.textPrimary },
-    dotSep: { fontSize: normalize(13), color: colors.textSecondary },
-    mailTime: { fontSize: normalize(12), color: colors.textSecondary },
-    mailPreview: { fontSize: normalize(14), color: colors.textSecondary, marginBottom: normalize(10) },
+    anonLabel: { fontSize: normalize(fontSizes.lg), fontFamily: fonts.bold, color: colors.textPrimary },
+    dotSep: { fontSize: normalize(fontSizes.lg), color: colors.textSecondary },
+    mailTime: { fontSize: normalize(fontSizes.md), color: colors.textSecondary },
+    mailPreview: { fontSize: normalize(fontSizes.lg), color: colors.textSecondary, marginBottom: normalize(10) },
     cardDivider: { height: 1, backgroundColor: colors.textLight10, marginBottom: normalize(10) },
     mailCardFooter: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
     replyStatus: { flexDirection: 'row', alignItems: 'center', gap: normalize(5) },
-    replyStatusDoneText: { fontSize: normalize(12), color: colors.primary },
-    replyStatusPendingText: { fontSize: normalize(12), color: colors.textSecondary },
+    replyStatusDoneText: { fontSize: normalize(fontSizes.md), color: colors.primary },
+    replyStatusPendingText: { fontSize: normalize(fontSizes.md), color: colors.textSecondary },
 
     // 상세 화면 (첫 번째 디자인)
     detailRoot: { flex: 1, backgroundColor: colors.background, },
@@ -68,13 +68,13 @@ export function createMailStyles(normalize) {
     },
     detailSenderTexts: { justifyContent: 'center' },
     detailSenderName: {
-      fontSize: normalize(14),
+      fontSize: normalize(fontSizes.lg),
       fontFamily: fonts.bold,
       color: colors.textPrimary,
       marginBottom: normalize(2),
     },
     detailTime: {
-      fontSize: normalize(11),
+      fontSize: normalize(fontSizes.md),
       color: colors.textSecondary,
     },
     typeChip: {
@@ -83,7 +83,7 @@ export function createMailStyles(normalize) {
       paddingVertical: normalize(5),
     },
     typeChipText: {
-      fontSize: normalize(11),
+      fontSize: normalize(fontSizes.md),
       color: colors.textSecondary,
       fontFamily: fonts.regular,
     },
@@ -93,13 +93,13 @@ export function createMailStyles(normalize) {
       marginBottom: 0,
     },
     detailBody: {
-      fontSize: normalize(15),
+      fontSize: normalize(fontSizes.xl),
       color: colors.textPrimary,
       lineHeight: normalize(22),
     },
     detailNotice: {
       marginBottom: normalize(12),
-      fontSize: normalize(11),
+      fontSize: normalize(fontSizes.md),
       color: colors.textSecondary,
       textAlign: 'center',
     },
@@ -108,7 +108,7 @@ export function createMailStyles(normalize) {
       alignItems: 'center',
     },
     repliedSummaryText: {
-      fontSize: normalize(12),
+      fontSize: normalize(fontSizes.md),
       color: colors.textSecondary,
     },
     bottomCtaWrapper: {
@@ -125,7 +125,7 @@ export function createMailStyles(normalize) {
       paddingVertical: normalize(14),
     },
     bottomCtaText: {
-      fontSize: normalize(15),
+      fontSize: normalize(fontSizes.xl),
       fontFamily: fonts.bold,
       color: colors.textWhite,
     },
@@ -133,7 +133,7 @@ export function createMailStyles(normalize) {
       backgroundColor: colors.primaryLight30,
     },
     bottomWaitingText: {
-      fontSize: normalize(13),
+      fontSize: normalize(fontSizes.lg),
       color: colors.textSecondary,
       textAlign: 'center',
       paddingVertical: normalize(14),
@@ -166,7 +166,7 @@ export function createMailStyles(normalize) {
       marginBottom: normalize(16),
     },
     replyFormToLabel: {
-      fontSize: normalize(13),
+      fontSize: normalize(fontSizes.lg),
       fontFamily: fonts.bold,
       color: colors.textPrimary,
       marginBottom: normalize(10),
@@ -178,7 +178,7 @@ export function createMailStyles(normalize) {
       minHeight: normalize(80),
       flexGrow: 1,
       flexShrink: 1,
-      fontSize: normalize(14),
+      fontSize: normalize(fontSizes.lg),
       color: colors.textPrimary,
       paddingVertical: 0,
       marginBottom: normalize(8),
@@ -190,7 +190,7 @@ export function createMailStyles(normalize) {
       marginTop: 'auto',
     },
     replyFormCount: {
-      fontSize: normalize(11),
+      fontSize: normalize(fontSizes.md),
       color: colors.textSecondary,
       fontFamily: fonts.regular,
     },
@@ -203,11 +203,11 @@ export function createMailStyles(normalize) {
       backgroundColor: colors.primaryLight30,
     },
     replyFormChipIcon: {
-      fontSize: normalize(11),
+      fontSize: normalize(fontSizes.md),
       marginRight: normalize(4),
     },
     replyFormChipText: {
-      fontSize: normalize(11),
+      fontSize: normalize(fontSizes.md),
       marginLeft: normalize(4),
       color: colors.textPrimary,
       fontFamily: fonts.regular,
@@ -228,7 +228,7 @@ export function createMailStyles(normalize) {
     },
     modalFullNotice: {
       marginTop: normalize(12),
-      fontSize: normalize(11),
+      fontSize: normalize(fontSizes.md),
       color: colors.textSecondary,
       textAlign: 'center',
     },
@@ -266,12 +266,12 @@ export function createMailStyles(normalize) {
       marginBottom: normalize(6),
     },
     historyTypeBadge: {
-      fontSize: normalize(11),
+      fontSize: normalize(fontSizes.md),
       fontFamily: fonts.bold,
       color: colors.textPrimary,
     },
     historyTimeText: {
-      fontSize: normalize(10),
+      fontSize: normalize(fontSizes.sm),
       color: colors.textSecondary,
     },
     historyChipRow: {
@@ -279,7 +279,7 @@ export function createMailStyles(normalize) {
       marginBottom: normalize(4),
     },
     historyRoleChip: {
-      fontSize: normalize(10),
+      fontSize: normalize(fontSizes.sm),
       paddingHorizontal: normalize(10),
       paddingVertical: normalize(3),
       borderRadius: 999,
@@ -294,7 +294,7 @@ export function createMailStyles(normalize) {
       color: colors.textPrimary,
     },
     historyCardBody: {
-      fontSize: normalize(13),
+      fontSize: normalize(fontSizes.lg),
       color: colors.textPrimary,
       lineHeight: normalize(18),
     },
@@ -326,7 +326,7 @@ export function createMailStyles(normalize) {
       elevation: 6,
     },
     label: {
-      fontSize: normalize(16),
+      fontSize: normalize(fontSizes.xl),
       fontFamily: fonts.bold,
       color: colors.textPrimary,
       marginBottom: normalize(12),
@@ -344,7 +344,7 @@ export function createMailStyles(normalize) {
     },
     input: {
       flex: 1,
-      fontSize: normalize(15),
+      fontSize: normalize(fontSizes.xl),
       color: colors.textPrimary,
       paddingHorizontal: normalize(8),
     },
@@ -365,18 +365,18 @@ export function createMailStyles(normalize) {
       borderBottomColor: colors.textLight5,
     },
     resultName: {
-      fontSize: normalize(15),
+      fontSize: normalize(fontSizes.xl),
       fontFamily: fonts.bold,
       color: colors.textPrimary,
       marginBottom: normalize(4),
     },
     resultId: {
-      fontSize: normalize(13),
+      fontSize: normalize(fontSizes.lg),
       fontFamily: fonts.regular,
       color: colors.textSecondary,
     },
     resultAddress: {
-      fontSize: normalize(13),
+      fontSize: normalize(fontSizes.lg),
       color: colors.textSecondary,
     },
     studentInfo: {
@@ -387,7 +387,7 @@ export function createMailStyles(normalize) {
       alignItems: 'center',
     },
     noResultText: {
-      fontSize: normalize(14),
+      fontSize: normalize(fontSizes.lg),
       color: colors.textSecondary,
     },
     dormantBadge: {
@@ -398,7 +398,7 @@ export function createMailStyles(normalize) {
       marginRight: normalize(8),
     },
     dormantBadgeText: {
-      fontSize: normalize(11),
+      fontSize: normalize(fontSizes.md),
       fontFamily: fonts.bold,
       color: colors.alert,
     },
@@ -412,7 +412,7 @@ export function createMailStyles(normalize) {
       gap: normalize(8),
     },
     recipientInfoText: {
-      fontSize: normalize(14),
+      fontSize: normalize(fontSizes.lg),
       color: colors.textSecondary,
     },
     textAreaWrapper: {
@@ -423,11 +423,11 @@ export function createMailStyles(normalize) {
     },
     textArea: {
       flex: 1,
-      fontSize: normalize(15),
+      fontSize: normalize(fontSizes.xl),
       color: colors.textPrimary,
     },
     charCount: {
-      fontSize: normalize(12),
+      fontSize: normalize(fontSizes.md),
       color: colors.textSecondary,
       textAlign: 'right',
       marginTop: normalize(8),
@@ -450,7 +450,7 @@ export function createMailStyles(normalize) {
     },
     sendButtonText: {
       color: colors.textWhite,
-      fontSize: normalize(15),
+      fontSize: normalize(fontSizes.xl),
       fontFamily: fonts.bold,
       // fontWeight 대체
     },
@@ -464,11 +464,11 @@ export function createMailStyles(normalize) {
 
     toastOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.45)', justifyContent: 'center', alignItems: 'center', padding: normalize(24) },
     toastCard: { backgroundColor: colors.background, borderRadius: normalize(16), padding: normalize(28), maxWidth: 300, width: '85%', alignItems: 'center' },
-    toastIcon: { fontSize: normalize(36), marginBottom: normalize(12) },
-    toastTitle: { fontSize: normalize(16), fontFamily: fonts.bold, color: colors.textPrimary, marginBottom: normalize(8) },
-    toastDesc: { fontSize: normalize(12), color: colors.textSecondary, lineHeight: normalize(20), marginBottom: normalize(18), textAlign: 'center' },
+    toastIcon: { fontSize: normalize(fontSizes.heading), marginBottom: normalize(12) },
+    toastTitle: { fontSize: normalize(fontSizes.xl), fontFamily: fonts.bold, color: colors.textPrimary, marginBottom: normalize(8) },
+    toastDesc: { fontSize: normalize(fontSizes.md), color: colors.textSecondary, lineHeight: normalize(20), marginBottom: normalize(18), textAlign: 'center' },
     toastOk: { backgroundColor: colors.primary, borderRadius: normalize(8), paddingVertical: normalize(12), width: '100%', alignItems: 'center' },
-    toastOkText: { fontSize: normalize(14), fontFamily: fonts.bold, color: colors.textWhite },
+    toastOkText: { fontSize: normalize(fontSizes.lg), fontFamily: fonts.bold, color: colors.textWhite },
   });
 }
 

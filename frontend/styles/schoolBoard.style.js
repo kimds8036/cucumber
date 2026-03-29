@@ -1,5 +1,5 @@
 import { StyleSheet } from 'react-native';
-import { colors, fonts } from './colors';
+import { colors, fonts, fontSizes } from './colors';
 
 export const getNormalize = (width) => {
   const scale = width / 375;
@@ -43,7 +43,7 @@ export const createSchoolBoardStyles = (width, normalize) => {
       alignItems: 'center',
     },
     postAuthor: {
-      fontSize: normalize(12),
+      fontSize: normalize(fontSizes.md),
       fontFamily: fonts.regular,
       color: colors.textSecondary,
     },
@@ -53,12 +53,12 @@ export const createSchoolBoardStyles = (width, normalize) => {
       gap: normalize(4),
     },
     postDot: {
-      fontSize: normalize(13),
+      fontSize: normalize(fontSizes.lg),
       color: colors.textSecondary,
       marginHorizontal: normalize(6),
     },
     postTime: {
-      fontSize: normalize(12),
+      fontSize: normalize(fontSizes.md),
       fontFamily: fonts.regular,
       color: colors.textSecondary,
     },
@@ -71,14 +71,14 @@ export const createSchoolBoardStyles = (width, normalize) => {
       gap: normalize(4),
     },
     postLocationText: {
-      fontSize: normalize(13),
+      fontSize: normalize(fontSizes.lg),
       fontFamily: fonts.regular,
       color: colors.textSecondary,
     },
 
     // 게시글 내용
     postContent: {
-      fontSize: normalize(14),
+      fontSize: normalize(fontSizes.lg),
       fontFamily: fonts.regular,
       color: colors.textPrimary,
       lineHeight: normalize(20),
@@ -110,7 +110,7 @@ export const createSchoolBoardStyles = (width, normalize) => {
       gap: normalize(4),
     },
     postStatText: {
-      fontSize: normalize(13),
+      fontSize: normalize(fontSizes.lg),
       fontFamily: fonts.regular,
       color: colors.textSecondary,
     },

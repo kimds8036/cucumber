@@ -1,5 +1,5 @@
 import { StyleSheet } from 'react-native';
-import { colors, fonts } from './colors';
+import { colors, fonts, fontSizes } from './colors';
 
 // 다른 학교 화면 전용 스타일 (우리 학교 화면과 동일한 레이아웃)
 export const createOtherSchoolStyles = (normalize) => {
@@ -37,7 +37,7 @@ export const createOtherSchoolStyles = (normalize) => {
       marginTop: normalize(6),
     },
     schoolName: {
-      fontSize: normalize(22),
+      fontSize: normalize(fontSizes.title),
       fontFamily: fonts.bold,
       color: colors.textPrimary,
     },
@@ -47,7 +47,7 @@ export const createOtherSchoolStyles = (normalize) => {
       justifyContent: 'center',
     },
     locationText: {
-      fontSize: normalize(12),
+      fontSize: normalize(fontSizes.md),
       fontFamily: fonts.regular,
       color: colors.textSecondary,
       marginLeft: normalize(4),
@@ -75,7 +75,7 @@ export const createOtherSchoolStyles = (normalize) => {
       gap: normalize(4),
     },
     statValue: {
-      fontSize: normalize(14),
+      fontSize: normalize(fontSizes.lg),
       fontFamily: fonts.bold,
       color: colors.textPrimary,
     },
@@ -101,13 +101,13 @@ export const createOtherSchoolStyles = (normalize) => {
       paddingHorizontal: normalize(4),
     },
     mealSectionTitle: {
-      fontSize: normalize(16),
+      fontSize: normalize(fontSizes.xl),
       fontFamily: fonts.bold,
       color: colors.textPrimary,
       paddingLeft: normalize(4),
     },
     mealSectionMore: {
-      fontSize: normalize(12),
+      fontSize: normalize(fontSizes.md),
       fontFamily: fonts.regular,
       color: colors.textPrimary,
       paddingRight: normalize(4),
@@ -142,7 +142,7 @@ export const createOtherSchoolStyles = (normalize) => {
       gap: normalize(4),
     },
     mealSlotTitle: {
-      fontSize: normalize(14),
+      fontSize: normalize(fontSizes.lg),
       fontFamily: fonts.bold,
       color: colors.textPrimary,
     },
@@ -153,7 +153,7 @@ export const createOtherSchoolStyles = (normalize) => {
       backgroundColor: colors.primaryLight30,
     },
     mealSlotBadgeText: {
-      fontSize: normalize(11),
+      fontSize: normalize(fontSizes.md),
       fontFamily: fonts.regular,
       color: colors.primaryDark,
     },
@@ -162,13 +162,13 @@ export const createOtherSchoolStyles = (normalize) => {
       justifyContent: 'flex-start',
     },
     mealSlotMenuText: {
-      fontSize: normalize(12),
+      fontSize: normalize(fontSizes.md),
       fontFamily: fonts.regular,
       color: colors.textPrimary,
       marginBottom: normalize(2),
     },
     mealSlotEmptyText: {
-      fontSize: normalize(12),
+      fontSize: normalize(fontSizes.md),
       fontFamily: fonts.regular,
       color: colors.textSecondary,
     },
@@ -182,13 +182,13 @@ export const createOtherSchoolStyles = (normalize) => {
       gap: normalize(6),
     },
     mealLabel: {
-      fontSize: normalize(12),
+      fontSize: normalize(fontSizes.md),
       fontFamily: fonts.regular,
       color: colors.textSecondary,
       marginBottom: normalize(2),
     },
     mealType: {
-      fontSize: normalize(14),
+      fontSize: normalize(fontSizes.lg),
       fontFamily: fonts.bold,
       color: colors.textPrimary,
     },
@@ -196,12 +196,12 @@ export const createOtherSchoolStyles = (normalize) => {
       flexDirection: 'column',
     },
     mealItem: {
-      fontSize: normalize(13),
+      fontSize: normalize(fontSizes.lg),
       fontFamily: fonts.regular,
       color: colors.textPrimary,
     },
     mealMore: {
-      fontSize: normalize(12),
+      fontSize: normalize(fontSizes.md),
       fontFamily: fonts.regular,
       color: colors.primaryDark,
       textAlign: 'right',
@@ -219,7 +219,7 @@ export const createOtherSchoolStyles = (normalize) => {
       elevation: 3,
     },
     grassCardTitle: {
-      fontSize: normalize(16),
+      fontSize: normalize(fontSizes.xl),
       fontFamily: fonts.bold,
       color: colors.textPrimary,
       marginBottom: normalize(4),
@@ -236,8 +236,8 @@ export const createOtherSchoolStyles = (normalize) => {
       alignSelf: 'stretch',
       backgroundColor: colors.background,
       borderRadius: normalize(16),
-      paddingVertical: normalize(18),
-      paddingHorizontal: normalize(18),
+      paddingVertical: normalize(8),
+      paddingHorizontal: normalize(15),
       shadowColor: colors.shadow,
       shadowOffset: { width: 0, height: 2 },
       shadowOpacity: 0.12,
@@ -261,7 +261,7 @@ export const createOtherSchoolStyles = (normalize) => {
       justifyContent: 'center',
     },
     mailboxWideTitle: {
-      fontSize: normalize(17),
+      fontSize: normalize(fontSizes.xxl),
       fontFamily: fonts.bold,
       color: colors.textPrimary,
       includeFontPadding: false,
@@ -274,7 +274,7 @@ export const createOtherSchoolStyles = (normalize) => {
       justifyContent: 'center',
     },
     mailboxWideSubtitle: {
-      fontSize: normalize(13),
+      fontSize: normalize(fontSizes.lg),
       fontFamily: fonts.regular,
       color: colors.textSecondary,
     },

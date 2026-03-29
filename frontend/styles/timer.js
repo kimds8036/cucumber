@@ -1,5 +1,5 @@
 import { StyleSheet } from 'react-native';
-import { colors, fonts } from './colors';
+import { colors, fonts, fontSizes } from './colors';
 
 export const getNormalize = (width) => {
   const scale = width / 375;
@@ -33,7 +33,7 @@ export const createTimerStyles = (width, normalize) => {
       gap: normalize(8),
     },
     dateBarText: {
-      fontSize: normalize(16),
+      fontSize: normalize(fontSizes.xl),
       fontFamily: fonts.bold,
       color: colors.textPrimary,
       minWidth: normalize(100),
@@ -46,7 +46,7 @@ export const createTimerStyles = (width, normalize) => {
       paddingHorizontal: normalize(12),
     },
     saveBtnText: {
-      fontSize: normalize(13),
+      fontSize: normalize(fontSizes.lg),
       fontFamily: fonts.regular,
       color: colors.primary,
     },
@@ -75,7 +75,7 @@ export const createTimerStyles = (width, normalize) => {
     },
     friendStoryAddLabel: {
       marginTop: normalize(4),
-      fontSize: normalize(11),
+      fontSize: normalize(fontSizes.md),
       fontFamily: fonts.regular,
       color: colors.textSecondary,
       textAlign: 'center',
@@ -105,7 +105,7 @@ export const createTimerStyles = (width, normalize) => {
     },
     friendStoryName: {
       marginTop: normalize(4),
-      fontSize: normalize(11),
+      fontSize: normalize(fontSizes.md),
       fontFamily: fonts.regular,
       color: colors.textSecondary,
       textAlign: 'center',
@@ -119,14 +119,14 @@ export const createTimerStyles = (width, normalize) => {
       paddingHorizontal: normalize(16),
     },
     timerTime: {
-      fontSize: normalize(42),
+      fontSize: normalize(fontSizes.heading),
       fontFamily: fonts.bold,
       color: colors.primary,
       letterSpacing: 2,
       marginBottom: normalize(8),
     },
     timerHint: {
-      fontSize: normalize(13),
+      fontSize: normalize(fontSizes.lg),
       fontFamily: fonts.regular,
       color: colors.textSecondary,
       marginBottom: normalize(16),
@@ -145,7 +145,7 @@ export const createTimerStyles = (width, normalize) => {
       backgroundColor: colors.textLight5,
     },
     timerBtnText: {
-      fontSize: normalize(15),
+      fontSize: normalize(fontSizes.xl),
       fontFamily: fonts.bold,
       color: colors.textWhite,
     },
@@ -179,7 +179,7 @@ export const createTimerStyles = (width, normalize) => {
       marginBottom: normalize(10),
     },
     todoTitle: {
-      fontSize: normalize(15),
+      fontSize: normalize(fontSizes.xl),
       fontFamily: fonts.bold,
       color: colors.textPrimary,
       marginBottom: 0,
@@ -200,7 +200,7 @@ export const createTimerStyles = (width, normalize) => {
       gap: normalize(4),
     },
     todoAddBtnText: {
-      fontSize: normalize(12),
+      fontSize: normalize(fontSizes.md),
       fontFamily: fonts.regular,
       color: colors.primary,
     },
@@ -225,12 +225,12 @@ export const createTimerStyles = (width, normalize) => {
       flex: 1,
     },
     subjectName: {
-      fontSize: normalize(14),
+      fontSize: normalize(fontSizes.lg),
       fontFamily: fonts.bold,
       color: colors.textPrimary,
     },
     subjectTime: {
-      fontSize: normalize(12),
+      fontSize: normalize(fontSizes.md),
       fontFamily: fonts.regular,
       color: colors.textSecondary,
       marginTop: 2,
@@ -260,7 +260,7 @@ export const createTimerStyles = (width, normalize) => {
       backgroundColor: colors.primaryDark,
     },
     subjectStartBtnText: {
-      fontSize: normalize(12),
+      fontSize: normalize(fontSizes.md),
       fontFamily: fonts.bold,
       color: colors.textWhite,
     },
@@ -287,7 +287,7 @@ export const createTimerStyles = (width, normalize) => {
     },
     taskContent: {
       flex: 1,
-      fontSize: normalize(13),
+      fontSize: normalize(fontSizes.lg),
       fontFamily: fonts.regular,
       color: colors.textPrimary,
     },
@@ -301,7 +301,7 @@ export const createTimerStyles = (width, normalize) => {
       marginBottom: normalize(8),
     },
     todoAddUnderSubjectText: {
-      fontSize: normalize(13),
+      fontSize: normalize(fontSizes.lg),
       fontFamily: fonts.regular,
       color: colors.textSecondary,
     },
@@ -327,7 +327,7 @@ export const createTimerStyles = (width, normalize) => {
       backgroundColor: colors.textSecondary,
     },
     taskStatusText: {
-      fontSize: normalize(12),
+      fontSize: normalize(fontSizes.md),
       fontFamily: fonts.bold,
       color: colors.textWhite,
     },
@@ -356,17 +356,17 @@ export const createTimerStyles = (width, normalize) => {
       marginBottom: normalize(12),
     },
     stopwatchLabel: {
-      fontSize: normalize(15),
+      fontSize: normalize(fontSizes.xl),
       fontFamily: fonts.bold,
       color: colors.textPrimary,
     },
     stopwatchSubLabel: {
-      fontSize: normalize(12),
+      fontSize: normalize(fontSizes.md),
       fontFamily: fonts.regular,
       color: colors.textSecondary,
     },
     stopwatchTime: {
-      fontSize: normalize(36),
+      fontSize: normalize(fontSizes.heading),
       fontFamily: fonts.bold,
       color: colors.primary,
       textAlign: 'center',
@@ -392,7 +392,7 @@ export const createTimerStyles = (width, normalize) => {
       backgroundColor: colors.textLight5,
     },
     controlButtonText: {
-      fontSize: normalize(14),
+      fontSize: normalize(fontSizes.lg),
       fontFamily: fonts.bold,
       color: colors.background,
     },
@@ -419,7 +419,7 @@ export const createTimerStyles = (width, normalize) => {
       marginBottom: normalize(10),
     },
     friendTitle: {
-      fontSize: normalize(15),
+      fontSize: normalize(fontSizes.xl),
       fontFamily: fonts.bold,
       color: colors.textPrimary,
     },
@@ -433,7 +433,7 @@ export const createTimerStyles = (width, normalize) => {
       backgroundColor: colors.primaryLight30,
     },
     friendAddText: {
-      fontSize: normalize(12),
+      fontSize: normalize(fontSizes.md),
       fontFamily: fonts.regular,
       color: colors.primary,
     },
@@ -481,7 +481,7 @@ export const createTimerStyles = (width, normalize) => {
     },
     friendName: {
       marginTop: normalize(4),
-      fontSize: normalize(11),
+      fontSize: normalize(fontSizes.md),
       fontFamily: fonts.regular,
       color: colors.textSecondary,
       textAlign: 'center',
@@ -506,7 +506,7 @@ export const createTimerStyles = (width, normalize) => {
     },
     friendSearchInput: {
       flex: 1,
-      fontSize: normalize(13),
+      fontSize: normalize(fontSizes.lg),
       fontFamily: fonts.regular,
       color: colors.textPrimary,
     },
@@ -517,7 +517,7 @@ export const createTimerStyles = (width, normalize) => {
       backgroundColor: colors.primary,
     },
     friendSearchButtonText: {
-      fontSize: normalize(12),
+      fontSize: normalize(fontSizes.md),
       fontFamily: fonts.bold,
       color: colors.background,
     },
@@ -535,7 +535,7 @@ export const createTimerStyles = (width, normalize) => {
       elevation: 2,
     },
     timetableTitle: {
-      fontSize: normalize(15),
+      fontSize: normalize(fontSizes.xl),
       fontFamily: fonts.bold,
       color: colors.textPrimary,
       marginBottom: normalize(10),
@@ -559,7 +559,7 @@ export const createTimerStyles = (width, normalize) => {
       paddingVertical: normalize(2),
     },
     timetableMinuteHeaderText: {
-      fontSize: normalize(11),
+      fontSize: normalize(fontSizes.md),
       fontFamily: fonts.regular,
       color: colors.textSecondary,
     },
@@ -579,7 +579,7 @@ export const createTimerStyles = (width, normalize) => {
       justifyContent: 'center',
     },
     timetableHourText: {
-      fontSize: normalize(11),
+      fontSize: normalize(fontSizes.md),
       fontFamily: fonts.regular,
       color: colors.textSecondary,
     },
@@ -608,7 +608,7 @@ export const createTimerStyles = (width, normalize) => {
     },
     timetableFooterText: {
       marginTop: normalize(8),
-      fontSize: normalize(11),
+      fontSize: normalize(fontSizes.md),
       fontFamily: fonts.regular,
       color: colors.textSecondary,
     },
@@ -636,13 +636,13 @@ export const createTimerStyles = (width, normalize) => {
       paddingVertical: normalize(8),
     },
     plannerLabel: {
-      fontSize: normalize(11),
+      fontSize: normalize(fontSizes.md),
       fontFamily: fonts.regular,
       color: colors.textSecondary,
       marginBottom: normalize(4),
     },
     plannerValue: {
-      fontSize: normalize(14),
+      fontSize: normalize(fontSizes.lg),
       fontFamily: fonts.bold,
       color: colors.textPrimary,
       marginBottom: normalize(12),
@@ -653,7 +653,7 @@ export const createTimerStyles = (width, normalize) => {
       marginBottom: normalize(16),
     },
     plannerTodoTitle: {
-      fontSize: normalize(13),
+      fontSize: normalize(fontSizes.lg),
       fontFamily: fonts.bold,
       color: colors.textPrimary,
       marginBottom: normalize(10),
@@ -673,12 +673,12 @@ export const createTimerStyles = (width, normalize) => {
       flex: 1,
     },
     plannerSubjectName: {
-      fontSize: normalize(13),
+      fontSize: normalize(fontSizes.lg),
       fontFamily: fonts.bold,
       color: colors.textPrimary,
     },
     plannerSubjectTime: {
-      fontSize: normalize(11),
+      fontSize: normalize(fontSizes.md),
       fontFamily: fonts.regular,
       color: colors.textSecondary,
       marginTop: 2,
@@ -706,7 +706,7 @@ export const createTimerStyles = (width, normalize) => {
     },
     plannerTaskContent: {
       flex: 1,
-      fontSize: normalize(12),
+      fontSize: normalize(fontSizes.md),
       fontFamily: fonts.regular,
       color: colors.textPrimary,
     },

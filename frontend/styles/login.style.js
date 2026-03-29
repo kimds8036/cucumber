@@ -1,5 +1,5 @@
 import { StyleSheet } from 'react-native';
-import { colors, fonts, fontSizes } from '../styles/colors';
+import { colors, fonts, fontSizes } from './colors';
 
 export const createLoginStyles = (width, normalize) => {
   return StyleSheet.create({
@@ -24,12 +24,12 @@ export const createLoginStyles = (width, normalize) => {
       alignItems: 'baseline',
     },
     titleLarge: {
-      fontSize: normalize(40),
+      fontSize: normalize(fontSizes.heading),
       fontFamily: fonts.bold,
       color: colors.primary,
     },
     titleSmall: {
-      fontSize: normalize(20),
+      fontSize: normalize(fontSizes.title),
       fontFamily: fonts.bold,
       color: colors.textSecondary,
     },
@@ -45,7 +45,7 @@ export const createLoginStyles = (width, normalize) => {
       borderColor: colors.primary,
       borderRadius: normalize(20),
       paddingHorizontal: normalize(20),
-      fontSize: normalize(15),
+      fontSize: normalize(fontSizes.xl),
       fontFamily: fonts.regular,
       color: colors.textSecondary,
       marginBottom: normalize(12),
@@ -76,7 +76,7 @@ export const createLoginStyles = (width, normalize) => {
       borderColor: colors.primary,
     },
     checkboxText: {
-      fontSize: normalize(12),
+      fontSize: normalize(fontSizes.md),
       fontFamily: 'Baloo2-Regular',
       color: colors.textSecondary,
     },
@@ -87,13 +87,13 @@ export const createLoginStyles = (width, normalize) => {
       marginTop: normalize(20),
     },
     linkText: {
-      fontSize: normalize(12),
+      fontSize: normalize(fontSizes.md),
       fontFamily: 'Baloo2-Regular',
       color: colors.textSecondary,
       marginHorizontal: normalize(8),
     },
     linkDivider: {
-      fontSize: normalize(12),
+      fontSize: normalize(fontSizes.md),
       color: colors.textSecondary,
     },
   });
@@ -127,7 +127,7 @@ export const createSignupStyles = (width, normalize) => {
       left: -5,
     },
     headerTitle: {
-      fontSize: normalize(20),
+      fontSize: normalize(fontSizes.title),
       fontFamily: fonts.bold,
       color: colors.textPrimary,
     },
@@ -151,7 +151,7 @@ export const createSignupStyles = (width, normalize) => {
       flex: 1,
     },
     description: {
-      fontSize: normalize(14),
+      fontSize: normalize(fontSizes.lg),
       fontFamily: fonts.regular,
       color: colors.textSecondary,
       paddingTop: normalize(10),
@@ -161,7 +161,7 @@ export const createSignupStyles = (width, normalize) => {
 
     // 입력 필드
     inputLabel: {
-      fontSize: normalize(15),
+      fontSize: normalize(fontSizes.xl),
       fontFamily: fonts.regular,
       color: colors.textPrimary,
       marginBottom: normalize(8),
@@ -179,7 +179,7 @@ export const createSignupStyles = (width, normalize) => {
       borderColor: colors.primary,
       borderRadius: normalize(20),
       paddingHorizontal: normalize(20),
-      fontSize: normalize(15),
+      fontSize: normalize(fontSizes.xl),
       fontFamily: fonts.regular,
       color: colors.textPrimary,
       marginBottom: normalize(12),
@@ -218,12 +218,12 @@ export const createSignupStyles = (width, normalize) => {
       elevation: 2,
     },
     dropdownText: {
-      fontSize: normalize(15),
+      fontSize: normalize(fontSizes.xl),
       fontFamily: fonts.regular,
       color: colors.textPrimary,
     },
     dropdownPlaceholder: {
-      fontSize: normalize(15),
+      fontSize: normalize(fontSizes.xl),
       fontFamily: fonts.regular,
       color: colors.textSecondary,
     },
@@ -249,7 +249,7 @@ export const createSignupStyles = (width, normalize) => {
       alignItems: 'center',
     },
     verifyButtonText: {
-      fontSize: normalize(15),
+      fontSize: normalize(fontSizes.xl),
       fontFamily: fonts.bold,
       color: colors.background,
     },
@@ -297,7 +297,7 @@ export const createSignupStyles = (width, normalize) => {
       alignItems: 'center',
     },
     cameraGuideText: {
-      fontSize: normalize(14),
+      fontSize: normalize(fontSizes.lg),
       fontFamily: fonts.regular,
       color: colors.background,
       marginTop: normalize(20),
@@ -313,7 +313,7 @@ export const createSignupStyles = (width, normalize) => {
       marginBottom: normalize(10),
     },
     manualButtonText: {
-      fontSize: normalize(14),
+      fontSize: normalize(fontSizes.lg),
       fontFamily: fonts.regular,
       color: colors.textSecondary,
       textDecorationLine: 'underline',
@@ -342,7 +342,7 @@ export const createSignupStyles = (width, normalize) => {
       alignItems: 'center',
     },
     nextButtonText: {
-      fontSize: normalize(17),
+      fontSize: normalize(fontSizes.xxl),
       fontFamily: fonts.bold,
       color: colors.background,
     },
@@ -371,12 +371,12 @@ export const createSignupStyles = (width, normalize) => {
       borderBottomColor: colors.textLight10,
     },
     modalTitle: {
-      fontSize: normalize(18),
+      fontSize: normalize(fontSizes.xxl),
       fontFamily: fonts.bold,
       color: colors.textPrimary,
     },
     modalClose: {
-      fontSize: normalize(24),
+      fontSize: normalize(fontSizes.heading),
       fontFamily: fonts.bold,
       color: colors.textSecondary,
     },
@@ -387,7 +387,7 @@ export const createSignupStyles = (width, normalize) => {
       borderBottomColor: colors.textLight5,
     },
     modalItemText: {
-      fontSize: normalize(16),
+      fontSize: normalize(fontSizes.xl),
       fontFamily: fonts.regular,
       color: colors.textPrimary,
       textAlign: 'center',

@@ -1,5 +1,5 @@
 import { StyleSheet, Platform } from 'react-native';
-import { colors, fonts } from './colors';
+import { colors, fonts, fontSizes } from './colors';
 
 /** 학교 우편함 리스트 (2열 그리드) — schoolMailbox.jsx */
 export const createSchoolMailStyles = (width, normalize) => {
@@ -60,12 +60,12 @@ export const createSchoolMailStyles = (width, normalize) => {
       backgroundColor: colors.primaryLight30,
     },
     newBadgeText: {
-      fontSize: normalize(10),
+      fontSize: normalize(fontSizes.sm),
       fontFamily: fonts.bold,
       color: colors.primaryDark,
     },
     cardPreview: {
-      fontSize: normalize(12),
+      fontSize: normalize(fontSizes.md),
       fontFamily: fonts.regular,
       color: colors.textPrimary,
       lineHeight: normalize(18),
@@ -79,7 +79,7 @@ export const createSchoolMailStyles = (width, normalize) => {
       marginTop: 'auto',
     },
     cardTime: {
-      fontSize: normalize(11),
+      fontSize: normalize(fontSizes.md),
       fontFamily: fonts.regular,
       color: colors.textSecondary,
     },
@@ -94,7 +94,7 @@ export const createSchoolMailStyles = (width, normalize) => {
       gap: normalize(2),
     },
     statText: {
-      fontSize: normalize(11),
+      fontSize: normalize(fontSizes.md),
       fontFamily: fonts.regular,
       color: colors.textSecondary,
     },
@@ -156,7 +156,7 @@ export const createSchoolMailDetailStyles = (width, normalize) => {
       paddingRight: normalize(8),
     },
     smDetailFromToText: {
-      fontSize: normalize(13),
+      fontSize: normalize(fontSizes.lg),
       fontFamily: fonts.regular,
       color: '#7A6B5C',
       lineHeight: normalize(20),
@@ -174,7 +174,7 @@ export const createSchoolMailDetailStyles = (width, normalize) => {
       borderColor: '#C5DDF0',
     },
     smDetailPostBadgeLabel: {
-      fontSize: normalize(10),
+      fontSize: normalize(fontSizes.sm),
       fontFamily: fonts.bold,
       color: colors.textSecondary,
       marginTop: normalize(2),
@@ -186,7 +186,7 @@ export const createSchoolMailDetailStyles = (width, normalize) => {
       width: '100%',
     },
     smDetailMailBody: {
-      fontSize: normalize(15),
+      fontSize: normalize(fontSizes.xl),
       fontFamily: fonts.regular,
       color: colors.textPrimary,
       lineHeight: normalize(22),
@@ -199,7 +199,7 @@ export const createSchoolMailDetailStyles = (width, normalize) => {
       justifyContent: 'space-between',
     },
     smDetailMailTime: {
-      fontSize: normalize(12),
+      fontSize: normalize(fontSizes.md),
       fontFamily: fonts.regular,
       color: colors.textSecondary,
     },
@@ -214,7 +214,7 @@ export const createSchoolMailDetailStyles = (width, normalize) => {
       gap: normalize(4),
     },
     smDetailStatText: {
-      fontSize: normalize(13),
+      fontSize: normalize(fontSizes.lg),
       fontFamily: fonts.regular,
       color: colors.textSecondary,
     },
@@ -226,7 +226,7 @@ export const createSchoolMailDetailStyles = (width, normalize) => {
       paddingBottom: normalize(10),
     },
     smDetailCommentCountTitle: {
-      fontSize: normalize(14),
+      fontSize: normalize(fontSizes.lg),
       fontFamily: fonts.bold,
       color: colors.textPrimary,
       marginBottom: normalize(12),
@@ -282,27 +282,27 @@ export const createSchoolMailDetailStyles = (width, normalize) => {
       flexWrap: 'wrap',
     },
     smDetailCommentAuthor: {
-      fontSize: normalize(12),
+      fontSize: normalize(fontSizes.md),
       fontFamily: fonts.regular,
       color: colors.textSecondary,
     },
     smDetailCommentAuthorWriter: {
-      fontSize: normalize(12),
+      fontSize: normalize(fontSizes.md),
       fontFamily: fonts.bold,
       color: colors.alert,
     },
     smDetailCommentDot: {
-      fontSize: normalize(13),
+      fontSize: normalize(fontSizes.lg),
       color: colors.textSecondary,
       marginHorizontal: normalize(4),
     },
     smDetailCommentTime: {
-      fontSize: normalize(12),
+      fontSize: normalize(fontSizes.md),
       fontFamily: fonts.regular,
       color: colors.textSecondary,
     },
     smDetailCommentBody: {
-      fontSize: normalize(14),
+      fontSize: normalize(fontSizes.lg),
       fontFamily: fonts.regular,
       color: colors.textPrimary,
       lineHeight: normalize(20),
@@ -333,7 +333,7 @@ export const createSchoolMailDetailStyles = (width, normalize) => {
       paddingHorizontal: normalize(6),
     },
     smDetailCommentReplyButtonText: {
-      fontSize: normalize(13),
+      fontSize: normalize(fontSizes.lg),
       fontFamily: fonts.regular,
       color: colors.textSecondary,
       marginTop: -normalize(2),
@@ -350,7 +350,7 @@ export const createSchoolMailDetailStyles = (width, normalize) => {
       marginTop: -normalize(4),
     },
     smDetailLoadMoreText: {
-      fontSize: normalize(13),
+      fontSize: normalize(fontSizes.lg),
       fontFamily: fonts.regular,
       color: colors.textSecondary,
     },
@@ -373,7 +373,7 @@ export const createSchoolMailDetailStyles = (width, normalize) => {
       paddingHorizontal: normalize(4),
     },
     replyTargetText: {
-      fontSize: normalize(12),
+      fontSize: normalize(fontSizes.md),
       fontFamily: fonts.regular,
       color: colors.primary,
       flex: 1,
@@ -392,7 +392,7 @@ export const createSchoolMailDetailStyles = (width, normalize) => {
       paddingHorizontal: normalize(16),
       borderRadius: normalize(24),
       backgroundColor: colors.textLight5,
-      fontSize: normalize(14),
+      fontSize: normalize(fontSizes.lg),
       fontFamily: fonts.regular,
       color: colors.textPrimary,
       maxHeight: normalize(80),
@@ -435,7 +435,7 @@ export const createSendSchoolMailStyles = (normalize) =>
       marginTop: normalize(12),
     },
     schoolSendFieldLabel: {
-      fontSize: normalize(14),
+      fontSize: normalize(fontSizes.lg),
       fontFamily: fonts.bold,
       color: colors.textPrimary,
       marginBottom: normalize(8),
@@ -453,7 +453,7 @@ export const createSendSchoolMailStyles = (normalize) =>
       flex: 1,
     },
     schoolSendFixedSchoolName: {
-      fontSize: normalize(14),
+      fontSize: normalize(fontSizes.lg),
       fontFamily: fonts.regular,
       color: colors.textPrimary,
     },
@@ -470,7 +470,7 @@ export const createSendSchoolMailStyles = (normalize) =>
     schoolSendBodyInput: {
       flex: 1,
       minHeight: normalize(150),
-      fontSize: normalize(14),
+      fontSize: normalize(fontSizes.lg),
       fontFamily: fonts.regular,
       color: colors.textPrimary,
       textAlignVertical: 'top',
@@ -481,7 +481,7 @@ export const createSendSchoolMailStyles = (normalize) =>
       marginTop: normalize(10),
     },
     schoolSendCharCount: {
-      fontSize: normalize(12),
+      fontSize: normalize(fontSizes.md),
       fontFamily: fonts.regular,
       color: colors.textSecondary,
       marginBottom: normalize(6),
@@ -496,7 +496,7 @@ export const createSendSchoolMailStyles = (normalize) =>
       paddingVertical: normalize(4),
     },
     schoolSendAdChipText: {
-      fontSize: normalize(12),
+      fontSize: normalize(fontSizes.md),
       fontFamily: fonts.regular,
       color: colors.textPrimary,
     },
@@ -519,7 +519,7 @@ export const createSendSchoolMailStyles = (normalize) =>
       backgroundColor: colors.disabled,
     },
     schoolSendCtaLabel: {
-      fontSize: normalize(15),
+      fontSize: normalize(fontSizes.xl),
       fontFamily: fonts.bold,
       color: colors.textPrimary,
     },

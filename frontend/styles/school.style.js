@@ -1,5 +1,5 @@
 import { StyleSheet } from 'react-native';
-import { colors, fonts } from './colors';
+import { colors, fonts, fontSizes } from './colors';
 
 // 우리 학교 화면 전용 스타일 (학교 정보 + 급식 + 잔디 + 바로가기 + 인기)
 export const createOurSchoolStyles = (normalize) => {
@@ -37,7 +37,7 @@ export const createOurSchoolStyles = (normalize) => {
       marginTop: normalize(6),
     },
     schoolName: {
-      fontSize: normalize(22),
+      fontSize: normalize(fontSizes.title),
       fontFamily: fonts.bold,
       color: colors.textPrimary,
     },
@@ -47,7 +47,7 @@ export const createOurSchoolStyles = (normalize) => {
       justifyContent: 'center',
     },
     locationText: {
-      fontSize: normalize(12),
+      fontSize: normalize(fontSizes.md),
       fontFamily: fonts.regular,
       color: colors.textSecondary,
       marginLeft: normalize(4),
@@ -75,7 +75,7 @@ export const createOurSchoolStyles = (normalize) => {
       gap: normalize(4),
     },
     statValue: {
-      fontSize: normalize(14),
+      fontSize: normalize(fontSizes.lg),
       fontFamily: fonts.bold,
       color: colors.textPrimary,
     },
@@ -101,13 +101,13 @@ export const createOurSchoolStyles = (normalize) => {
       paddingHorizontal: normalize(4),
     },
     mealSectionTitle: {
-      fontSize: normalize(16),
+      fontSize: normalize(fontSizes.xl),
       fontFamily: fonts.bold,
       color: colors.textPrimary,
       paddingLeft: normalize(4),
     },
     mealSectionMore: {
-      fontSize: normalize(12),
+      fontSize: normalize(fontSizes.md),
       fontFamily: fonts.regular,
       color: colors.textPrimary,
       paddingRight: normalize(4),
@@ -144,7 +144,7 @@ export const createOurSchoolStyles = (normalize) => {
       gap: normalize(4),
     },
     mealSlotTitle: {
-      fontSize: normalize(14),
+      fontSize: normalize(fontSizes.lg),
       fontFamily: fonts.bold,
       color: colors.textPrimary,
     },
@@ -155,7 +155,7 @@ export const createOurSchoolStyles = (normalize) => {
       backgroundColor: colors.primaryLight30,
     },
     mealSlotBadgeText: {
-      fontSize: normalize(11),
+      fontSize: normalize(fontSizes.md),
       fontFamily: fonts.regular,
       color: colors.primaryDark,
     },
@@ -164,13 +164,13 @@ export const createOurSchoolStyles = (normalize) => {
       justifyContent: 'flex-start',
     },
     mealSlotMenuText: {
-      fontSize: normalize(12),
+      fontSize: normalize(fontSizes.md),
       fontFamily: fonts.regular,
       color: colors.textPrimary,
       marginBottom: normalize(2),
     },
     mealSlotEmptyText: {
-      fontSize: normalize(12),
+      fontSize: normalize(fontSizes.md),
       fontFamily: fonts.regular,
       color: colors.textSecondary,
     },
@@ -184,13 +184,13 @@ export const createOurSchoolStyles = (normalize) => {
       gap: normalize(6),
     },
     mealLabel: {
-      fontSize: normalize(12),
+      fontSize: normalize(fontSizes.md),
       fontFamily: fonts.regular,
       color: colors.textSecondary,
       marginBottom: normalize(2),
     },
     mealType: {
-      fontSize: normalize(14),
+      fontSize: normalize(fontSizes.lg),
       fontFamily: fonts.bold,
       color: colors.textPrimary,
     },
@@ -198,12 +198,12 @@ export const createOurSchoolStyles = (normalize) => {
       flexDirection: 'column',
     },
     mealItem: {
-      fontSize: normalize(13),
+      fontSize: normalize(fontSizes.lg),
       fontFamily: fonts.regular,
       color: colors.textPrimary,
     },
     mealMore: {
-      fontSize: normalize(12),
+      fontSize: normalize(fontSizes.md),
       fontFamily: fonts.regular,
       color: colors.primaryDark,
       textAlign: 'right',
@@ -221,7 +221,7 @@ export const createOurSchoolStyles = (normalize) => {
       elevation: 3,
     },
     grassCardTitle: {
-      fontSize: normalize(16),
+      fontSize: normalize(fontSizes.xl),
       fontFamily: fonts.bold,
       color: colors.textPrimary,
       marginBottom: normalize(4),
@@ -251,12 +251,12 @@ export const createOurSchoolStyles = (normalize) => {
       marginBottom: normalize(8),
     },
     shortcutTitle: {
-      fontSize: normalize(15),
+      fontSize: normalize(fontSizes.xl),
       fontFamily: fonts.bold,
       color: colors.textPrimary,
     },
     shortcutSubtitle: {
-      fontSize: normalize(12),
+      fontSize: normalize(fontSizes.md),
       fontFamily: fonts.regular,
       color: colors.textSecondary,
     },
@@ -278,7 +278,7 @@ export const createOurSchoolStyles = (normalize) => {
       gap: normalize(6),
     },
     popularTitle: {
-      fontSize: normalize(18),
+      fontSize: normalize(fontSizes.xxl),
       fontFamily: fonts.bold,
       color: colors.textPrimary,
     },
@@ -300,7 +300,7 @@ export const createOurSchoolStyles = (normalize) => {
       gap: normalize(8),
     },
     popularItemTitle: {
-      fontSize: normalize(14),
+      fontSize: normalize(fontSizes.lg),
       fontFamily: fonts.regular,
       color: colors.textPrimary,
       flex: 1,
@@ -315,7 +315,7 @@ export const createOurSchoolStyles = (normalize) => {
       gap: normalize(2),
     },
     countText: {
-      fontSize: normalize(12),
+      fontSize: normalize(fontSizes.md),
       fontFamily: fonts.regular,
       color: colors.textSecondary,
     },
@@ -347,7 +347,7 @@ export const createSchoolMailStyles = (width, normalize) => {
       borderBottomColor: colors.textLight10,
     },
     schoolInfoText: {
-      fontSize: normalize(13),
+      fontSize: normalize(fontSizes.lg),
       fontFamily: fonts.regular,
       color: colors.textSecondary,
     },
@@ -358,7 +358,7 @@ export const createSchoolMailStyles = (width, normalize) => {
       backgroundColor: colors.primaryLight30,
     },
     schoolNewBadgeText: {
-      fontSize: normalize(12),
+      fontSize: normalize(fontSizes.md),
       fontFamily: fonts.bold,
       color: colors.primaryDark,
     },
@@ -408,12 +408,12 @@ export const createSchoolMailStyles = (width, normalize) => {
       backgroundColor: colors.primaryLight30,
     },
     newBadgeText: {
-      fontSize: normalize(10),
+      fontSize: normalize(fontSizes.sm),
       fontFamily: fonts.bold,
       color: colors.primaryDark,
     },
     cardPreview: {
-      fontSize: normalize(12),
+      fontSize: normalize(fontSizes.md),
       fontFamily: fonts.regular,
       color: colors.textPrimary,
       lineHeight: normalize(18),
@@ -427,7 +427,7 @@ export const createSchoolMailStyles = (width, normalize) => {
       marginTop: 'auto',
     },
     cardTime: {
-      fontSize: normalize(11),
+      fontSize: normalize(fontSizes.md),
       fontFamily: fonts.regular,
       color: colors.textSecondary,
     },
@@ -442,7 +442,7 @@ export const createSchoolMailStyles = (width, normalize) => {
         gap: normalize(2),
       },
       statText: {
-        fontSize: normalize(11),
+        fontSize: normalize(fontSizes.md),
         fontFamily: fonts.regular,
         color: colors.textSecondary,
       },

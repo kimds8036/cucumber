@@ -1,5 +1,5 @@
 import { StyleSheet } from 'react-native';
-import { colors, fonts } from './colors';
+import { colors, fonts, fontSizes } from './colors';
 
 export const createCalendarStyles = (width, normalize) => {
   const dayCellSize = (width - normalize(32)) / 7;
@@ -25,7 +25,7 @@ export const createCalendarStyles = (width, normalize) => {
       marginBottom: normalize(12),
     },
     monthTitle: {
-      fontSize: normalize(18),
+      fontSize: normalize(fontSizes.xxl),
       fontFamily: fonts.bold,
       color: colors.textPrimary,
     },
@@ -35,7 +35,7 @@ export const createCalendarStyles = (width, normalize) => {
       gap: normalize(8),
     },
     monthNavText: {
-      fontSize: normalize(14),
+      fontSize: normalize(fontSizes.lg),
       fontFamily: fonts.regular,
       color: colors.textSecondary,
     },
@@ -51,7 +51,7 @@ export const createCalendarStyles = (width, normalize) => {
       paddingVertical: normalize(4),
     },
     weekdayText: {
-      fontSize: normalize(11),
+      fontSize: normalize(fontSizes.md),
       fontFamily: fonts.bold,
       color: colors.textSecondary,
     },
@@ -81,7 +81,7 @@ export const createCalendarStyles = (width, normalize) => {
       borderRightWidth: 0,
     },
     dayNumber: {
-      fontSize: normalize(12),
+      fontSize: normalize(fontSizes.md),
       fontFamily: fonts.bold,
       color: colors.textPrimary,
     },
@@ -116,7 +116,7 @@ export const createCalendarStyles = (width, normalize) => {
     },
     // 급식 이모지
     mealIcon: {
-      fontSize: normalize(18),
+      fontSize: normalize(fontSizes.xxl),
       marginTop: normalize(3),
       marginBottom: normalize(0),
     },
@@ -128,7 +128,7 @@ export const createCalendarStyles = (width, normalize) => {
     // 급식 없음 텍스트
     noMealText: {
       textAlign: 'center',
-      fontSize: normalize(13),
+      fontSize: normalize(fontSizes.lg),
       color: '#999999',
       paddingVertical: normalize(20),
     },
@@ -159,18 +159,18 @@ export const createCalendarStyles = (width, normalize) => {
       gap: normalize(6),
     },
     mealDetailType: {
-      fontSize: normalize(14),
+      fontSize: normalize(fontSizes.lg),
       fontFamily: fonts.bold,
       color: colors.textPrimary,
     },
     mealDetailMenu: {
-      fontSize: normalize(13),
+      fontSize: normalize(fontSizes.lg),
       fontFamily: fonts.regular,
       color: colors.textPrimary,
       marginBottom: normalize(2),
     },
     mealDetailMenuEmpty: {
-      fontSize: normalize(13),
+      fontSize: normalize(fontSizes.lg),
       fontFamily: fonts.regular,
       color: colors.textSecondary,
     },
@@ -192,7 +192,7 @@ export const createCalendarStyles = (width, normalize) => {
       backgroundColor: colors.primary,
     },
     legendText: {
-      fontSize: normalize(11),
+      fontSize: normalize(fontSizes.md),
       fontFamily: fonts.regular,
       color: colors.textSecondary,
     },

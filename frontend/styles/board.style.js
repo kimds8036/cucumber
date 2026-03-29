@@ -1,5 +1,5 @@
 import { StyleSheet, Platform } from 'react-native';
-import { colors, fonts } from './colors';
+import { colors, fonts, fontSizes } from './colors';
 
 export const getNormalize = (width) => {
   const scale = width / 375;
@@ -33,7 +33,7 @@ export const createBoardStyles = (width, normalize) => {
       borderColor: colors.primary,
     },
     sortButtonText: {
-      fontSize: normalize(13),
+      fontSize: normalize(fontSizes.lg),
       fontFamily: fonts.bold,
       color: colors.textSecondary,
     },
@@ -77,17 +77,17 @@ export const createBoardStyles = (width, normalize) => {
       gap: normalize(4),
     },
     postAuthor: {
-      fontSize: normalize(12),
+      fontSize: normalize(fontSizes.md),
       fontFamily: fonts.regular,
       color: colors.textSecondary,
     },
     postDot: {
-      fontSize: normalize(13),
+      fontSize: normalize(fontSizes.lg),
       color: colors.textSecondary,
       marginHorizontal: normalize(6),
     },
     postTime: {
-      fontSize: normalize(12),
+      fontSize: normalize(fontSizes.md),
       fontFamily: fonts.regular,
       color: colors.textSecondary,
     },
@@ -100,14 +100,14 @@ export const createBoardStyles = (width, normalize) => {
       gap: normalize(4),
     },
     postLocationText: {
-      fontSize: normalize(13),
+      fontSize: normalize(fontSizes.lg),
       fontFamily: fonts.regular,
       color: colors.textSecondary,
     },
 
     // 게시글 내용
     postContent: {
-      fontSize: normalize(14),
+      fontSize: normalize(fontSizes.lg),
       fontFamily: fonts.regular,
       color: colors.textPrimary,
       lineHeight: normalize(20),
@@ -139,7 +139,7 @@ export const createBoardStyles = (width, normalize) => {
       gap: normalize(4),
     },
     postStatText: {
-      fontSize: normalize(13),
+      fontSize: normalize(fontSizes.lg),
       fontFamily: fonts.regular,
       color: colors.textSecondary,
     },
@@ -189,13 +189,13 @@ export const createWriteStyles = (width, normalize) => {
       alignItems: 'baseline',
     },
     guideText: {
-      fontSize: normalize(12),
+      fontSize: normalize(fontSizes.md),
       fontFamily: fonts.regular,
       color: colors.textSecondary,
       textAlign: 'center',
     },
     guideLink: {
-      fontSize: normalize(12),
+      fontSize: normalize(fontSizes.md),
       fontFamily: fonts.regular,
       color: colors.textSecondary,
       textDecorationLine: 'underline',
@@ -208,14 +208,14 @@ export const createWriteStyles = (width, normalize) => {
     },
     textInput: {
       flex: 1,
-      fontSize: normalize(16),
+      fontSize: normalize(fontSizes.xl),
       fontFamily: fonts.regular,
       color: colors.textPrimary,
       textAlignVertical: 'top',
       lineHeight: normalize(22),
     },
     placeholder: {
-      fontSize: normalize(14),
+      fontSize: normalize(fontSizes.lg),
       fontFamily: fonts.regular,
       color: colors.textSecondary,
     },
@@ -227,7 +227,7 @@ export const createWriteStyles = (width, normalize) => {
       paddingVertical: normalize(8),
     },
     completePillText: {
-      fontSize: normalize(13),
+      fontSize: normalize(fontSizes.lg),
       fontWeight: '500',
       color: colors.writePillLabel,
     },
@@ -257,7 +257,7 @@ export const createWriteStyles = (width, normalize) => {
       gap: normalize(8),
     },
     writeHashtagPrefix: {
-      fontSize: normalize(20),
+      fontSize: normalize(fontSizes.title),
       fontFamily: fonts.regular,
       color: colors.textSecondary,
     },
@@ -271,13 +271,13 @@ export const createWriteStyles = (width, normalize) => {
     },
     writeHashtagInput: {
       flex: 1,
-      fontSize: normalize(12),
+      fontSize: normalize(fontSizes.md),
       fontFamily: fonts.regular,
       color: colors.textPrimary,
       paddingVertical: normalize(7),
     },
     writeHashtagCounter: {
-      fontSize: normalize(14),
+      fontSize: normalize(fontSizes.lg),
       fontFamily: fonts.regular,
       color: colors.textSecondary,
     },
@@ -302,12 +302,12 @@ export const createWriteStyles = (width, normalize) => {
       gap: normalize(6),
     },
     writeHashtagTagText: {
-      fontSize: normalize(12),
+      fontSize: normalize(fontSizes.md),
       fontFamily: fonts.regular,
       color: colors.hashtagChipText,
     },
     writeHashtagTagRemove: {
-      fontSize: normalize(11),
+      fontSize: normalize(fontSizes.md),
       fontFamily: fonts.regular,
       color: colors.hashtagChipRemove,
       fontWeight: '600',
@@ -316,7 +316,7 @@ export const createWriteStyles = (width, normalize) => {
       marginTop: normalize(10),
     },
     writeHashtagSuggestionTitle: {
-      fontSize: normalize(12),
+      fontSize: normalize(fontSizes.md),
       fontFamily: fonts.regular,
       color: colors.textSecondary,
       marginBottom: normalize(6),
@@ -330,7 +330,7 @@ export const createWriteStyles = (width, normalize) => {
       paddingVertical: normalize(4),
     },
     writeHashtagSuggestionText: {
-      fontSize: normalize(13),
+      fontSize: normalize(fontSizes.lg),
       fontFamily: fonts.regular,
       color: colors.textSecondary,
     },
@@ -364,22 +364,22 @@ export const createDetailStyles = (width, normalize) => {
       alignItems: 'center',
     },
     detailAuthor: {
-      fontSize: normalize(12),
+      fontSize: normalize(fontSizes.md),
       fontFamily: fonts.bold,
       color: colors.alert,
     },
     detailAuthorAnonymous: {
-      fontSize: normalize(12),
+      fontSize: normalize(fontSizes.md),
       fontFamily: fonts.regular,
       color: colors.textSecondary,
     },
     detailDot: {
-      fontSize: normalize(13),
+      fontSize: normalize(fontSizes.lg),
       color: colors.textSecondary,
       marginHorizontal: normalize(6),
     },
     detailTime: {
-      fontSize: normalize(12),
+      fontSize: normalize(fontSizes.md),
       fontFamily: fonts.regular,
       color: colors.textSecondary,
     },
@@ -392,12 +392,12 @@ export const createDetailStyles = (width, normalize) => {
       gap: normalize(4),
     },
     detailLocationText: {
-      fontSize: normalize(13),
+      fontSize: normalize(fontSizes.lg),
       fontFamily: fonts.regular,
       color: colors.textSecondary,
     },
     detailBody: {
-      fontSize: normalize(14),
+      fontSize: normalize(fontSizes.lg),
       fontFamily: fonts.regular,
       color: colors.textPrimary,
       lineHeight: normalize(20),
@@ -425,7 +425,7 @@ export const createDetailStyles = (width, normalize) => {
       gap: normalize(4),
     },
     detailStatText: {
-      fontSize: normalize(13),
+      fontSize: normalize(fontSizes.lg),
       fontFamily: fonts.regular,
       color: colors.textSecondary,
     },
@@ -442,7 +442,7 @@ export const createDetailStyles = (width, normalize) => {
       alignItems: 'center',
     },
     adSectionText: {
-      fontSize: normalize(13),
+      fontSize: normalize(fontSizes.lg),
       fontFamily: fonts.regular,
       color: colors.textWhite,
     },
@@ -453,7 +453,7 @@ export const createDetailStyles = (width, normalize) => {
       paddingBottom: normalize(10),
     },
     commentSectionTitle: {
-      fontSize: normalize(14),
+      fontSize: normalize(fontSizes.lg),
       fontFamily: fonts.bold,
       color: colors.textPrimary,
       marginBottom: normalize(12),
@@ -504,34 +504,34 @@ export const createDetailStyles = (width, normalize) => {
       flexWrap: 'wrap',
     },
     commentAuthor: {
-      fontSize: normalize(12),
+      fontSize: normalize(fontSizes.md),
       fontFamily: fonts.regular,
       color: colors.textSecondary,
     },
     commentAuthorWriter: {
-      fontSize: normalize(12),
+      fontSize: normalize(fontSizes.md),
       fontFamily: fonts.bold,
       color: colors.alert,
     },
     commentDot: {
-      fontSize: normalize(13),
+      fontSize: normalize(fontSizes.lg),
       color: colors.textSecondary,
       marginHorizontal: normalize(4),
     },
     commentTime: {
-      fontSize: normalize(12),
+      fontSize: normalize(fontSizes.md),
       fontFamily: fonts.regular,
       color: colors.textSecondary,
     },
     commentBody: {
-      fontSize: normalize(14),
+      fontSize: normalize(fontSizes.lg),
       fontFamily: fonts.regular,
       color: colors.textPrimary,
       lineHeight: normalize(20),
       marginBottom: normalize(6),
     },
     commentBodyWithTag: {
-      fontSize: normalize(14),
+      fontSize: normalize(fontSizes.lg),
       fontFamily: fonts.regular,
       color: colors.textPrimary,
       lineHeight: normalize(20),
@@ -562,7 +562,7 @@ export const createDetailStyles = (width, normalize) => {
       paddingHorizontal: normalize(6),
     },
     commentReplyButtonText: {
-      fontSize: normalize(13),
+      fontSize: normalize(fontSizes.lg),
       fontFamily: fonts.regular,
       color: colors.textSecondary,
       marginTop: -normalize(2),
@@ -587,7 +587,7 @@ export const createDetailStyles = (width, normalize) => {
       marginTop: -normalize(4),
     },
     loadMoreText: {
-      fontSize: normalize(13),
+      fontSize: normalize(fontSizes.lg),
       fontFamily: fonts.regular,
       color: colors.textSecondary,
     },
@@ -609,7 +609,7 @@ export const createDetailStyles = (width, normalize) => {
       paddingHorizontal: normalize(4),
     },
     replyTargetText: {
-      fontSize: normalize(12),
+      fontSize: normalize(fontSizes.md),
       fontFamily: fonts.regular,
       color: colors.primary,
       flex: 1,
@@ -628,7 +628,7 @@ export const createDetailStyles = (width, normalize) => {
       paddingHorizontal: normalize(16),
       borderRadius: normalize(24),
       backgroundColor: colors.textLight5,
-      fontSize: normalize(14),
+      fontSize: normalize(fontSizes.lg),
       fontFamily: fonts.regular,
       color: colors.textPrimary,
       maxHeight: normalize(80),

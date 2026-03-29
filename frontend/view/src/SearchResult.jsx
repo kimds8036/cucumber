@@ -6,7 +6,6 @@ import {
   ScrollView,
   useWindowDimensions,
   ActivityIndicator,
-  StyleSheet,
   TextInput,
   KeyboardAvoidingView,
   Platform,
@@ -17,6 +16,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import SubHeader from '../frame/subHeader';
 import { colors } from '../../styles/colors';
+import { getNormalize, createSearchResultStyles } from '../../styles/search.style';
 import { api } from '../../utils/api';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
@@ -29,38 +29,6 @@ const SECTION_ICON = {
   '개인우편':   'mail-outline',
   '학교우편':   'mail-open-outline',
 };
-
-function highlight(text, query) {
-  if (!query) return <Text style={s.cardTitle}>{text}</Text>;
-  const parts = text.split(new RegExp(`(${query})`, 'gi'));
-  return (
-    <Text style={s.cardTitle}>
-      {parts.map((p, i) =>
-        p.toLowerCase() === query.toLowerCase() ? (
-          <Text key={i} style={s.highlightText}>{p}</Text>
-        ) : (
-          <Text key={i}>{p}</Text>
-        )
-      )}
-    </Text>
-  );
-}
-
-function highlightFull(text, query) {
-  if (!query) return <Text style={s.fullTitle}>{text}</Text>;
-  const parts = text.split(new RegExp(`(${query})`, 'gi'));
-  return (
-    <Text style={s.fullTitle}>
-      {parts.map((p, i) =>
-        p.toLowerCase() === query.toLowerCase() ? (
-          <Text key={i} style={s.highlightText}>{p}</Text>
-        ) : (
-          <Text key={i}>{p}</Text>
-        )
-      )}
-    </Text>
-  );
-}
 
 function makeSnippet(content, query) {
   const text = content || '';
@@ -122,6 +90,42 @@ export default function SearchResult({ route, navigation }) {
   const [hasMore, setHasMore] = useState(false);
   const [loading, setLoading] = useState(false);
   const [recentSearches, setRecentSearches] = useState([]);
+
+  const { width } = useWindowDimensions();
+  const normalize = useMemo(() => getNormalize(width), [width]);
+  const s = useMemo(() => createSearchResultStyles(normalize), [normalize]);
+
+  const highlight = (text, query) => {
+    if (!query) return <Text style={s.cardTitle}>{text}</Text>;
+    const parts = text.split(new RegExp(`(${query})`, 'gi'));
+    return (
+      <Text style={s.cardTitle}>
+        {parts.map((p, i) =>
+          p.toLowerCase() === query.toLowerCase() ? (
+            <Text key={i} style={s.highlightText}>{p}</Text>
+          ) : (
+            <Text key={i}>{p}</Text>
+          )
+        )}
+      </Text>
+    );
+  };
+
+  const highlightFull = (text, query) => {
+    if (!query) return <Text style={s.fullTitle}>{text}</Text>;
+    const parts = text.split(new RegExp(`(${query})`, 'gi'));
+    return (
+      <Text style={s.fullTitle}>
+        {parts.map((p, i) =>
+          p.toLowerCase() === query.toLowerCase() ? (
+            <Text key={i} style={s.highlightText}>{p}</Text>
+          ) : (
+            <Text key={i}>{p}</Text>
+          )
+        )}
+      </Text>
+    );
+  };
 
   const normalizedQuery = committedQuery.trim();
 
@@ -203,9 +207,17 @@ export default function SearchResult({ route, navigation }) {
   }, [normalizedQuery]);
 
   const hasResults = useMemo(
-    () => Object.values(sections).some((v) => v.length > 0),
-    [sections],
+    () =>
+      matchedSchools.length > 0 ||
+      Object.values(sections).some((v) => v.length > 0),
+    [sections, matchedSchools],
   );
+
+  /** 현재 탭 스크롤에 실제로 보이는 결과가 있을 때만 하단 안내 표시 */
+  const hasVisibleResultsInTab = useMemo(() => {
+    if (activeTab === '전체') return hasResults;
+    return (sections[activeTab] || []).length > 0;
+  }, [activeTab, hasResults, sections]);
 
   const sortedSections = useMemo(
     () => Object.entries(sections).sort(([, a], [, b]) => b.length - a.length),
@@ -219,7 +231,7 @@ export default function SearchResult({ route, navigation }) {
       <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
         <SafeAreaView style={s.container} edges={['top']}>
           <KeyboardAvoidingView
-            style={{ flex: 1 }}
+            style={s.flexOne}
             behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
           >
             <SubHeader title={expandedSection} onBack={() => setExpandedSection(null)} />
@@ -238,7 +250,7 @@ export default function SearchResult({ route, navigation }) {
                   <Text style={s.metaText}>{formatMeta(item)}</Text>
                 </View>
               ))}
-              <View style={{ height: 32 }} />
+              <View style={s.scrollBottomSpacer} />
             </ScrollView>
           </KeyboardAvoidingView>
         </SafeAreaView>
@@ -251,7 +263,7 @@ export default function SearchResult({ route, navigation }) {
     <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
       <SafeAreaView style={s.container} edges={['top']}>
       <KeyboardAvoidingView
-        style={{ flex: 1 }}
+        style={s.flexOne}
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       >
       <View style={s.searchBarWrapper}>
@@ -270,10 +282,10 @@ export default function SearchResult({ route, navigation }) {
           hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
           style={s.searchBackButton}
         >
-          <Ionicons name="chevron-back" size={24} color={colors.textPrimary} />
+          <Ionicons name="chevron-back" size={normalize(24)} color={colors.textPrimary} />
         </TouchableOpacity>
         <View style={s.searchInputRow}>
-          <Ionicons name="search-outline" size={18} color="#AAAAAA" />
+          <Ionicons name="search-outline" size={normalize(18)} color={colors.textSecondary} />
           <TextInput
             style={s.searchInput}
             placeholder="게시글, 우편함 검색"
@@ -292,7 +304,7 @@ export default function SearchResult({ route, navigation }) {
                 return next;
               });
             }}
-            placeholderTextColor="#BBBBBB"
+            placeholderTextColor={colors.textSecondary}
             returnKeyType="search"
           />
           {searchText.length > 0 && (
@@ -300,7 +312,7 @@ export default function SearchResult({ route, navigation }) {
               onPress={() => setSearchText('')}
               hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
             >
-              <Ionicons name="close-circle" size={17} color="#CCCCCC" />
+              <Ionicons name="close-circle" size={normalize(17)} color={colors.textLight20} />
             </TouchableOpacity>
           )}
         </View>
@@ -342,7 +354,7 @@ export default function SearchResult({ route, navigation }) {
           <View style={s.section}>
             <View style={s.sectionHeader}>
               <View style={s.sectionTitleRow}>
-                <Ionicons name="business-outline" size={14} color="#888888" style={{ marginRight: 6 }} />
+                <Ionicons name="business-outline" size={normalize(14)} color={colors.textSecondary} style={s.sectionIconSpacing} />
                 <Text style={s.sectionTitle}>학교</Text>
               </View>
               <View style={s.countBadge}>
@@ -362,10 +374,10 @@ export default function SearchResult({ route, navigation }) {
                 }
               >
                 <View style={s.schoolIconBox}>
-                  <Ionicons name="school-outline" size={18} color="#555555" />
+                  <Ionicons name="school-outline" size={normalize(18)} color={colors.textSecondary} />
                 </View>
                 <Text style={s.schoolName}>{school.name}</Text>
-                <Ionicons name="chevron-forward" size={16} color="#CCCCCC" />
+                <Ionicons name="chevron-forward" size={normalize(16)} color={colors.textLight20} />
               </TouchableOpacity>
             ))}
           </View>
@@ -379,9 +391,9 @@ export default function SearchResult({ route, navigation }) {
                 <View style={s.sectionTitleRow}>
                   <Ionicons
                     name={SECTION_ICON[section] || 'document-outline'}
-                    size={14}
-                    color="#888888"
-                    style={{ marginRight: 6 }}
+                    size={normalize(14)}
+                    color={colors.textSecondary}
+                    style={s.sectionIconSpacing}
                   />
                   <Text style={s.sectionTitle}>{section}</Text>
                 </View>
@@ -417,7 +429,7 @@ export default function SearchResult({ route, navigation }) {
                   activeOpacity={0.7}
                 >
                   <Text style={s.moreBtnText}>{section} 결과 더보기</Text>
-                  <Ionicons name="chevron-forward" size={13} color="#888888" />
+                  <Ionicons name="chevron-forward" size={normalize(13)} color={colors.textSecondary} />
                 </TouchableOpacity>
               )}
             </View>
@@ -464,10 +476,17 @@ export default function SearchResult({ route, navigation }) {
         {!loading && !hasResults && (
           <View style={s.emptyBox}>
             <View style={s.emptyIconBox}>
-              <Ionicons name="search-outline" size={26} color="#CCCCCC" />
+              <Ionicons name="search-outline" size={normalize(26)} color={colors.textLight20} />
             </View>
             <Text style={s.emptyTitle}>검색 결과가 없습니다</Text>
             <Text style={s.emptyDesc}>다른 검색어로 다시 시도해보세요</Text>
+          </View>
+        )}
+
+        {/* 결과 있음 + 마지막 페이지: 안내 */}
+        {!loading && hasVisibleResultsInTab && !hasMore && (
+          <View style={s.endOfResultsBox}>
+            <Text style={s.endOfResultsText}>검색 결과를 모두 확인했습니다</Text>
           </View>
         )}
 
@@ -480,11 +499,11 @@ export default function SearchResult({ route, navigation }) {
               activeOpacity={0.7}
             >
               <Text style={s.loadMoreText}>더 불러오기</Text>
-              <Ionicons name="chevron-down" size={14} color="#666666" style={{ marginLeft: 4 }} />
+              <Ionicons name="chevron-down" size={normalize(14)} color={colors.textSecondary} style={s.loadMoreChevron} />
             </TouchableOpacity>
           </View>
         )}
-        <View style={{ height: 32 }} />
+        <View style={s.scrollBottomSpacer} />
       </ScrollView>
       </>
       )}
@@ -522,7 +541,7 @@ export default function SearchResult({ route, navigation }) {
                   }}
                   activeOpacity={0.6}
                 >
-                  <Ionicons name="time-outline" size={15} color="#CCCCCC" />
+                  <Ionicons name="time-outline" size={normalize(15)} color={colors.textLight20} />
                   <Text style={s.recentText}>{item}</Text>
                   <TouchableOpacity
                     onPress={() => {
@@ -531,9 +550,9 @@ export default function SearchResult({ route, navigation }) {
                       saveRecent(next);
                     }}
                     hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                    style={{ marginLeft: 'auto' }}
+                    style={s.recentDeleteBtn}
                   >
-                    <Ionicons name="close" size={15} color="#DDDDDD" />
+                    <Ionicons name="close" size={normalize(15)} color={colors.textLight20} />
                   </TouchableOpacity>
                 </TouchableOpacity>
               ))}
@@ -541,7 +560,7 @@ export default function SearchResult({ route, navigation }) {
           )}
 
           {/* 추천 검색어 태그 */}
-          <View style={[s.section, { paddingBottom: 28 }]}>
+          <View style={s.sectionRecommendTags}>
             <View style={s.sectionHeader}>
               <Text style={s.sectionTitle}>추천 검색어</Text>
             </View>
@@ -576,291 +595,3 @@ export default function SearchResult({ route, navigation }) {
     </TouchableWithoutFeedback>
   );
 }
-
-const s = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.background,
-  },
-  scrollView: {
-    flex: 1,
-  },
-
-  /* ── 검색창 영역 (SearchScreen 과 유사) ── */
-  searchBarWrapper: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#FFFFFF',
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: '#EBEBEB',
-    paddingHorizontal: 16,
-    paddingTop: 10,
-    paddingBottom: 8,
-  },
-  searchInputRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#F5F5F5',
-    borderRadius: 12,
-    paddingHorizontal: 12,
-    height: 44,
-    gap: 8,
-    flex: 1,
-  },
-  searchInput: {
-    flex: 1,
-    fontSize: 15,
-    color: '#333333',
-  },
-  searchBackButton: {
-    marginRight: 6,
-    padding: 4,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-
-  /* ── 탭바 ── */
-  tabBar: {
-    backgroundColor: '#FFFFFF',
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: '#EBEBEB',
-  },
-  tagRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    paddingHorizontal: 16,
-    gap: 8,
-  },
-  tag: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 16,
-    backgroundColor: '#F3F3F3',
-  },
-  tagText: {
-    fontSize: 13,
-    color: '#555555',
-  },
-  recentRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: '#F5F5F5',
-    gap: 8,
-  },
-  recentText: {
-    fontSize: 14,
-    color: '#333333',
-  },
-  tabContent: {
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-    gap: 6,
-  },
-  tabBtn: {
-    paddingHorizontal: 14,
-    paddingVertical: 7,
-    borderRadius: 20,
-    backgroundColor: '#F3F3F3',
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: '#E8E8E8',
-  },
-  tabBtnActive: {
-    backgroundColor: '#1A1A1A',
-    borderColor: '#1A1A1A',
-  },
-  tabText: {
-    fontSize: 13,
-    fontWeight: '500',
-    color: '#777777',
-  },
-  tabTextActive: {
-    color: '#FFFFFF',
-    fontWeight: '600',
-  },
-
-  /* ── 섹션 공통 ── */
-  section: {
-    backgroundColor: '#FFFFFF',
-    marginTop: 8,
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: '#EBEBEB',
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: '#EBEBEB',
-  },
-  sectionHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 18,
-    paddingVertical: 14,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: '#F3F3F3',
-  },
-  sectionTitleRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  sectionTitle: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: '#1A1A1A',
-    letterSpacing: -0.2,
-  },
-  countBadge: {
-    backgroundColor: '#F3F3F3',
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 10,
-  },
-  countBadgeText: {
-    fontSize: 12,
-    color: '#888888',
-    fontWeight: '500',
-  },
-
-  /* ── 학교 카드 ── */
-  schoolCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 18,
-    paddingVertical: 14,
-    gap: 12,
-  },
-  schoolIconBox: {
-    width: 36,
-    height: 36,
-    borderRadius: 10,
-    backgroundColor: '#F3F3F3',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  schoolName: {
-    flex: 1,
-    fontSize: 15,
-    fontWeight: '600',
-    color: '#1A1A1A',
-  },
-
-  /* ── 검색 결과 카드 (전체탭 미리보기) ── */
-  card: {
-    paddingHorizontal: 18,
-    paddingVertical: 14,
-  },
-  cardBorder: {
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: '#F3F3F3',
-  },
-  cardTitle: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#1A1A1A',
-    marginBottom: 4,
-    lineHeight: 20,
-  },
-  cardSnippet: {
-    fontSize: 13,
-    color: '#888888',
-    lineHeight: 18,
-    marginBottom: 6,
-  },
-  highlightText: {
-    color: '#4CAF50',
-    fontWeight: '700',
-  },
-
-  /* ── 전체 보기 카드 ── */
-  fullCard: {
-    paddingHorizontal: 18,
-    paddingVertical: 16,
-  },
-  fullCardBorder: {
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: '#F3F3F3',
-  },
-  fullTitle: {
-    fontSize: 15,
-    fontWeight: '600',
-    color: '#1A1A1A',
-    marginBottom: 6,
-    lineHeight: 22,
-  },
-  fullSnippet: {
-    fontSize: 13,
-    color: '#888888',
-    lineHeight: 19,
-    marginBottom: 8,
-  },
-
-  /* ── 메타 ── */
-  metaText: {
-    fontSize: 12,
-    color: '#BBBBBB',
-  },
-
-  /* ── 더보기 버튼 ── */
-  moreBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 13,
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: '#F3F3F3',
-    gap: 4,
-  },
-  moreBtnText: {
-    fontSize: 13,
-    color: '#666666',
-    fontWeight: '500',
-  },
-
-  /* ── 더 불러오기 ── */
-  centerBox: {
-    paddingVertical: 20,
-    alignItems: 'center',
-  },
-  loadMoreBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingVertical: 10,
-    borderRadius: 20,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: '#E0E0E0',
-    backgroundColor: '#FFFFFF',
-  },
-  loadMoreText: {
-    fontSize: 13,
-    color: '#555555',
-    fontWeight: '500',
-  },
-
-  /* ── 결과 없음 ── */
-  emptyBox: {
-    alignItems: 'center',
-    paddingVertical: 56,
-    paddingHorizontal: 32,
-  },
-  emptyIconBox: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    backgroundColor: '#F3F3F3',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 14,
-  },
-  emptyTitle: {
-    fontSize: 15,
-    fontWeight: '600',
-    color: '#333333',
-    marginBottom: 6,
-  },
-  emptyDesc: {
-    fontSize: 13,
-    color: '#AAAAAA',
-  },
-});
-
