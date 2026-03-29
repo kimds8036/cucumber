@@ -16,7 +16,7 @@ import {
   KeyboardAvoidingView,
   Keyboard,
   TouchableWithoutFeedback,
-  Alert,
+  Image,
 } from 'react-native';
 import { FlashList } from '@shopify/flash-list';
 import * as Clipboard from 'expo-clipboard';
@@ -29,7 +29,7 @@ import {
 
 import SubHeader from '../frame/subHeader';
 import CommentInput from '../../components/CommentInput.jsx';
-import { colors } from '../../styles/colors';
+import { colors, fonts } from '../../styles/colors';
 import {
   createDetailStyles,
   getNormalize as getBoardNormalize,
@@ -37,6 +37,7 @@ import {
 import { createChatStyles } from '../../styles/message.style';
 import ImageViewer from './ImageViewer';
 import MessageItem from './components/chat/MessageItem';
+import MessageLongPressMenu from './components/chat/MessageLongPressMenu';
 import { api } from '../../utils/api';
 import * as socketManager from './socketManager';
 import useChat from './hooks/useChat';
@@ -152,9 +153,13 @@ export default function Chat({ navigation, route }) {
   const [replyToMessage, setReplyToMessage] = useState(null);
   /** 첫 onLayout 전까지 리스트 숨김 → 스크롤 튐 최소화 */
   const [listShellVisible, setListShellVisible] = useState(false);
+  /** 메시지 롱프레스 플로팅 메뉴 */
+  const [longPressMenu, setLongPressMenu] = useState(null);
 
   const typingTimeoutRef = useRef(null);
   const isTypingRef = useRef(false);
+  const toastTimerRef = useRef(null);
+  const [toastText, setToastText] = useState(null);
 
   const handleImagePress = useCallback((uri) => {
     setViewerUri(uri);
@@ -297,6 +302,10 @@ export default function Chat({ navigation, route }) {
           likes: 0,
           comments: 0,
           isLiked: false,
+          thumbnail:
+            typeof room.post_thumbnail === 'string' && room.post_thumbnail.trim()
+              ? room.post_thumbnail.trim()
+              : '',
         };
 
         if (postId && postCache[postId]) {
@@ -310,6 +319,7 @@ export default function Chat({ navigation, route }) {
                 likes: pd.like_count,
                 comments: pd.comment_count,
                 isLiked: Boolean(pd.isLiked),
+                thumbnail: pd.thumbnail ?? '',
               };
               postCache[postId] = cached;
               initialPost = { ...initialPost, ...cached };
@@ -350,19 +360,44 @@ export default function Chat({ navigation, route }) {
     setReplyToMessage(null);
   }, [sendMessage, inputText, chatImages, replyToMessage]);
 
+  const showChatToast = useCallback((text) => {
+    if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
+    setToastText(text);
+    toastTimerRef.current = setTimeout(() => {
+      setToastText(null);
+      toastTimerRef.current = null;
+    }, 2000);
+  }, []);
+
+  useEffect(
+    () => () => {
+      if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
+    },
+    [],
+  );
+
+  /** @returns {Promise<boolean>} 롱프레스 메뉴에서 토스트만 사용 */
   const handleCopyMessage = useCallback(async (msg) => {
-    if (!msg.content) return;
+    if (!msg?.content) return false;
     try {
       await Clipboard.setStringAsync(msg.content);
-      Alert.alert('복사됨', '메시지가 클립보드에 복사되었습니다.');
+      return true;
     } catch (e) {
       console.error('[Copy] 복사 실패:', e);
-      Alert.alert('오류', '메시지 복사에 실패했습니다.');
+      return false;
     }
   }, []);
 
   const handleReplyMessage = useCallback((msg) => {
     setReplyToMessage(msg);
+  }, []);
+
+  const openLongPressMenu = useCallback((msg, anchor) => {
+    setLongPressMenu({ msg, anchor });
+  }, []);
+
+  const closeLongPressMenu = useCallback(() => {
+    setLongPressMenu(null);
   }, []);
 
   const flatData = useMemo(
@@ -473,6 +508,7 @@ export default function Chat({ navigation, route }) {
         onImagePress={handleImagePress}
         onCopyMessage={handleCopyMessage}
         onReplyMessage={handleReplyMessage}
+        onOpenLongPressMenu={openLongPressMenu}
       />
     ),
     [
@@ -483,6 +519,7 @@ export default function Chat({ navigation, route }) {
       handleImagePress,
       handleCopyMessage,
       handleReplyMessage,
+      openLongPressMenu,
     ],
   );
 
@@ -565,78 +602,108 @@ export default function Chat({ navigation, route }) {
               style={{
                 backgroundColor: '#FFFFFF',
                 marginHorizontal: normalize(12),
-                marginTop: normalize(12),
-                marginBottom: normalize(8),
-                borderRadius: normalize(12),
-                padding: normalize(16),
+                marginTop: normalize(6),
+                marginBottom: normalize(4),
+                borderRadius: normalize(10),
+                paddingHorizontal: normalize(12),
+                paddingVertical: normalize(8),
                 shadowColor: '#000',
-                shadowOffset: { width: 0, height: 2 },
-                shadowOpacity: 0.05,
-                shadowRadius: 8,
+                shadowOffset: { width: 0, height: 1 },
+                shadowOpacity: 0.06,
+                shadowRadius: 6,
                 elevation: 2,
               }}
             >
-              <View style={detailStyles.detailHeader}>
-                <View style={detailStyles.detailAuthorRow}>
-                  <Text style={detailStyles.detailAuthorAnonymous}>
-                    {post.author}
-                  </Text>
-                </View>
-                {post.location ? (
-                  <View style={detailStyles.detailLocation}>
-                    <Ionicons
-                      name="location-sharp"
-                      size={normalize(12)}
-                      color={colors.textSecondary}
-                    />
-                    <Text style={detailStyles.detailLocationText}>
-                      {post.location}
+              <View
+                style={{
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  gap: normalize(8),
+                }}
+              >
+                <View style={{ flex: 1, minWidth: 0 }}>
+                  <View
+                    style={{
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      gap: normalize(8),
+                    }}
+                  >
+                    <Text
+                      numberOfLines={1}
+                      style={{
+                        flex: 1,
+                        fontSize: normalize(11),
+                        fontFamily: fonts.regular,
+                        color: colors.textSecondary,
+                      }}
+                    >
+                      {post.author}
+                      {post.location ? ` · ${post.location}` : ''}
                     </Text>
+                    <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                      <FontAwesome
+                        name={post?.isLiked ? 'heart' : 'heart-o'}
+                        size={normalize(12)}
+                        color={colors.alert}
+                        style={{ marginRight: normalize(3) }}
+                      />
+                      <Text
+                        style={{
+                          fontSize: normalize(11),
+                          fontFamily: fonts.regular,
+                          color: colors.textSecondary,
+                          marginRight: normalize(10),
+                        }}
+                      >
+                        {post.likes}
+                      </Text>
+                      <Ionicons
+                        name="chatbubble-outline"
+                        size={normalize(13)}
+                        color={colors.primary}
+                        style={{ marginRight: normalize(3) }}
+                      />
+                      <Text
+                        style={{
+                          fontSize: normalize(11),
+                          fontFamily: fonts.regular,
+                          color: colors.textSecondary,
+                        }}
+                      >
+                        {post.comments}
+                      </Text>
+                    </View>
                   </View>
+                </View>
+                {typeof post.thumbnail === 'string' && post.thumbnail.trim() ? (
+                  <Image
+                    source={{ uri: post.thumbnail.trim() }}
+                    style={{
+                      width: 56,
+                      height: 56,
+                      borderRadius: 8,
+                      backgroundColor: colors.textLight10,
+                    }}
+                    resizeMode="cover"
+                  />
                 ) : null}
               </View>
-
               <Text
-                style={[
-                  detailStyles.detailBody,
-                  { marginVertical: normalize(12) },
-                ]}
+                numberOfLines={1}
+                ellipsizeMode="tail"
+                style={{
+                  marginTop: normalize(5),
+                  fontSize: normalize(13),
+                  fontFamily: fonts.regular,
+                  color: colors.textPrimary,
+                  lineHeight: normalize(18),
+                }}
               >
                 {post.content}
               </Text>
-
-              <View
-                style={{
-                  height: 1,
-                  backgroundColor: '#F0F0F0',
-                  marginVertical: normalize(8),
-                }}
-              />
-
-              <View style={detailStyles.detailFooter}>
-                <View style={detailStyles.detailStats}>
-                  <View style={detailStyles.detailStatItem}>
-                    <FontAwesome
-                      name={post?.isLiked ? 'heart' : 'heart-o'}
-                      size={normalize(14)}
-                      color={colors.alert}
-                    />
-                    <Text style={detailStyles.detailStatText}>
-                      {post.likes}
-                    </Text>
-                  </View>
-                  <View style={detailStyles.detailStatItem}>
-                    <Ionicons
-                      name="chatbubble-outline"
-                      size={normalize(15)}
-                      color={colors.primary}
-                    />
-                    <Text style={detailStyles.detailStatText}>
-                      {post.comments}
-                    </Text>
-                  </View>
-                </View>
-              </View>
             </TouchableOpacity>
           )}
 
@@ -666,7 +733,7 @@ export default function Chat({ navigation, route }) {
               backgroundColor: '#FFFFFF',
               paddingHorizontal: normalize(12),
               paddingBottom: normalize(10),
-              paddingTop: normalize(8),
+              paddingTop: normalize(4),
             }}
             pointerEvents="box-none"
           >
@@ -730,6 +797,60 @@ export default function Chat({ navigation, route }) {
             uri={viewerUri}
             onClose={() => setViewerUri(null)}
           />
+
+          <MessageLongPressMenu
+            visible={Boolean(longPressMenu)}
+            msg={longPressMenu?.msg ?? null}
+            anchor={longPressMenu?.anchor ?? null}
+            onClose={closeLongPressMenu}
+            onCopy={handleCopyMessage}
+            onReply={handleReplyMessage}
+            onDeleteMessage={deleteMessage}
+            onToast={showChatToast}
+            normalize={normalize}
+          />
+
+          {toastText ? (
+            <View
+              pointerEvents="none"
+              style={{
+                position: 'absolute',
+                left: normalize(20),
+                right: normalize(20),
+                bottom: insets.bottom + normalize(72),
+                alignItems: 'center',
+                zIndex: 2000,
+              }}
+            >
+              <View
+                style={{
+                  backgroundColor: 'rgba(255,255,255,0.97)',
+                  borderWidth: 1,
+                  borderColor: '#E0E0E0',
+                  paddingVertical: normalize(12),
+                  paddingHorizontal: normalize(22),
+                  borderRadius: normalize(12),
+                  maxWidth: '100%',
+                  shadowColor: '#000',
+                  shadowOffset: { width: 0, height: 2 },
+                  shadowOpacity: 0.08,
+                  shadowRadius: 8,
+                  elevation: 3,
+                }}
+              >
+                <Text
+                  style={{
+                    fontSize: normalize(14),
+                    fontFamily: fonts.regular,
+                    color: colors.textPrimary,
+                    textAlign: 'center',
+                  }}
+                >
+                  {toastText}
+                </Text>
+              </View>
+            </View>
+          ) : null}
 
           <View
             style={{

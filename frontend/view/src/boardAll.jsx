@@ -181,20 +181,37 @@ export function BoardAllContent({ navigation, posts }) {
         },
       });
       const apiPosts = response.data?.data?.posts || [];
-      const mapped = apiPosts.map((p) => ({
-        id: p.id,
-        author: '익명',
-        time: formatTimeAgo(p.created_at),
-        location: '',
-        content: p.content,
-        likes: p.like_count,
-        comments: p.comment_count,
-        liked: Boolean(p.isLiked ?? false),
-        scrapped: Boolean(p.isScrapped ?? p.is_scrapped ?? false),
-        scrapCount: p.scrapCount ?? 0,
-        isMyPost: !!p.is_author,
-        authorUserId: p.author_user_id,
-      }));
+      const mapped = apiPosts.map((p) => {
+        const thumb =
+          typeof p.thumbnail === 'string' && p.thumbnail.trim() ? p.thumbnail.trim() : null;
+        let tags = [];
+        if (Array.isArray(p.tags)) {
+          tags = p.tags;
+        } else if (p.tags != null && typeof p.tags === 'string' && p.tags.startsWith('[')) {
+          try {
+            const parsed = JSON.parse(p.tags);
+            tags = Array.isArray(parsed) ? parsed : [];
+          } catch {
+            tags = [];
+          }
+        }
+        return {
+          id: p.id,
+          author: '익명',
+          time: formatTimeAgo(p.created_at),
+          location: '',
+          content: p.content,
+          likes: p.like_count,
+          comments: p.comment_count,
+          liked: Boolean(p.isLiked ?? false),
+          scrapped: Boolean(p.isScrapped ?? p.is_scrapped ?? false),
+          scrapCount: p.scrapCount ?? 0,
+          isMyPost: !!p.is_author,
+          authorUserId: p.author_user_id,
+          thumbnail: thumb,
+          tags,
+        };
+      });
       if (append) {
         setServerPosts((prev) => [...prev, ...mapped]);
       } else {

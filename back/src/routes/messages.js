@@ -62,6 +62,11 @@ router.get('/rooms', authenticate, async (req, res) => {
         mr.last_message_at,
         mr.created_at,
         p.content AS post_content,
+        (SELECT pi.cloudinary_url
+           FROM post_images pi
+          WHERE pi.post_id = p.id AND pi.deleted_at IS NULL
+          ORDER BY pi.display_order ASC, pi.id ASC
+          LIMIT 1) AS post_thumbnail,
         CASE WHEN mr.user1_id = ? THEN u2.id   ELSE u1.id         END AS other_user_id,
         CASE WHEN mr.user1_id = ? THEN u2.name ELSE u1.name       END AS other_user_name,
         CASE WHEN mr.user1_id = ? THEN u2.color_id ELSE u1.color_id END AS other_user_color_id,
@@ -275,6 +280,11 @@ router.get('/rooms/:roomId', authenticate, async (req, res) => {
         mr.deleted_at_msg_id_user1, mr.deleted_at_msg_id_user2,
         mr.last_message, mr.last_message_at, mr.created_at,
         p.content AS post_content,
+        (SELECT pi.cloudinary_url
+           FROM post_images pi
+          WHERE pi.post_id = p.id AND pi.deleted_at IS NULL
+          ORDER BY pi.display_order ASC, pi.id ASC
+          LIMIT 1) AS post_thumbnail,
         CASE WHEN mr.user1_id = ? THEN u2.id       ELSE u1.id       END AS other_user_id,
         CASE WHEN mr.user1_id = ? THEN u2.name     ELSE u1.name     END AS other_user_name,
         CASE WHEN mr.user1_id = ? THEN u2.color_id ELSE u1.color_id END AS other_user_color_id

@@ -9,6 +9,8 @@ import {
   TouchableWithoutFeedback,
   Alert,
   FlatList,
+  Image,
+  Share,
 } from 'react-native';
 import { Ionicons, Entypo } from '@expo/vector-icons';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
@@ -187,20 +189,37 @@ const SchoolBoardAll = ({ navigation }) => {
       });
       if (!mounted) return;
       const apiPosts = postsRes.data?.data?.posts || [];
-      const mapped = apiPosts.map((p) => ({
-        id: p.id,
-        author: '익명',
-        time: formatTimeAgo(p.created_at),
-        location: '',
-        content: p.content,
-        likes: p.like_count,
-        comments: p.comment_count,
-        liked: Boolean(p.isLiked ?? false),
-        scrapped: Boolean(p.isScrapped ?? false),
-        scrapCount: p.scrapCount ?? 0,
-        isMyPost: !!p.is_author,
-        authorUserId: p.author_user_id,
-      }));
+      const mapped = apiPosts.map((p) => {
+        const thumb =
+          typeof p.thumbnail === 'string' && p.thumbnail.trim() ? p.thumbnail.trim() : null;
+        let tags = [];
+        if (Array.isArray(p.tags)) {
+          tags = p.tags;
+        } else if (p.tags != null && typeof p.tags === 'string' && p.tags.startsWith('[')) {
+          try {
+            const parsed = JSON.parse(p.tags);
+            tags = Array.isArray(parsed) ? parsed : [];
+          } catch {
+            tags = [];
+          }
+        }
+        return {
+          id: p.id,
+          author: '익명',
+          time: formatTimeAgo(p.created_at),
+          location: '',
+          content: p.content,
+          likes: p.like_count,
+          comments: p.comment_count,
+          liked: Boolean(p.isLiked ?? false),
+          scrapped: Boolean(p.isScrapped ?? false),
+          scrapCount: p.scrapCount ?? 0,
+          isMyPost: !!p.is_author,
+          authorUserId: p.author_user_id,
+          thumbnail: thumb,
+          tags,
+        };
+      });
       if (append) {
         setSchoolPosts((prev) => [...prev, ...mapped]);
       } else {
@@ -248,22 +267,116 @@ const SchoolBoardAll = ({ navigation }) => {
         <View style={styles.postAuthorInfo}>
           <Text style={styles.postAuthor}>{post.author}</Text>
         </View>
-        <View style={styles.postTimeRow}>
-          <Text style={styles.postTime}>{post.time}</Text>
-          {post.location ? (
-            <>
-              <Text style={styles.postTime}>{' · '}</Text>
-              <Ionicons name="location-sharp" size={normalize(12)} color={colors.textSecondary} />
-              <Text style={styles.postLocationText}>{post.location}</Text>
-            </>
-          ) : null}
+        <View
+          style={{
+            flexDirection: 'row',
+            alignItems: 'center',
+            gap: normalize(6),
+          }}
+        >
+          <View
+            style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              gap: normalize(4),
+              backgroundColor: colors.primaryLight30,
+              borderRadius: normalize(10),
+              paddingHorizontal: normalize(7),
+              paddingVertical: normalize(2),
+            }}
+          >
+            <Ionicons name="navigate-outline" size={normalize(11)} color={colors.primary} />
+            <Text
+              style={{
+                fontSize: normalize(11),
+                fontFamily: fonts.regular,
+                color: colors.primary,
+              }}
+            >
+              10km
+            </Text>
+          </View>
+          <View style={styles.postTimeRow}>
+            <Text style={styles.postTime}>{post.time}</Text>
+            {post.location ? (
+              <>
+                <Text style={styles.postTime}>{' · '}</Text>
+                <Ionicons name="location-sharp" size={normalize(12)} color={colors.textSecondary} />
+                <Text style={styles.postLocationText}>{post.location}</Text>
+              </>
+            ) : null}
+          </View>
         </View>
       </View>
 
-      {/* 게시글 내용 */}
-      <Text style={styles.postContent} numberOfLines={3}>
-        {post.content}
-      </Text>
+      {/* 본문 + 목록용 썸네일(BoardPostCard와 동일) */}
+      <View
+        style={{
+          flexDirection: 'row',
+          alignItems: 'flex-start',
+          marginBottom: normalize(10),
+        }}
+      >
+        <Text
+          style={[styles.postContent, { flex: 1, marginRight: post.thumbnail ? normalize(10) : 0 }]}
+          numberOfLines={5}
+          ellipsizeMode="tail"
+        >
+          {post.content}
+        </Text>
+        {typeof post.thumbnail === 'string' && post.thumbnail.trim() ? (
+          <Image
+            source={{ uri: post.thumbnail.trim() }}
+            style={{
+              width: normalize(76),
+              height: normalize(76),
+              borderRadius: normalize(8),
+              backgroundColor: colors.textLight10 ?? '#EEE',
+            }}
+            resizeMode="cover"
+          />
+        ) : null}
+      </View>
+
+      {Array.isArray(post.tags) && post.tags.length > 0 ? (
+        <View
+          style={{
+            flexDirection: 'row',
+            flexWrap: 'wrap',
+            gap: normalize(6),
+            marginBottom: normalize(10),
+          }}
+        >
+          {post.tags.map((tag, idx) => {
+            const label =
+              tag != null && typeof tag === 'object'
+                ? String(tag.name ?? '')
+                : String(tag ?? '');
+            if (!label.trim()) return null;
+            return (
+              <View
+                key={tag?.id != null ? `tag-${tag.id}` : `tag-${idx}-${label}`}
+                style={{
+                  backgroundColor: colors.primaryLight30,
+                  borderRadius: normalize(12),
+                  paddingHorizontal: normalize(8),
+                  paddingVertical: normalize(3),
+                }}
+              >
+                <Text
+                  style={{
+                    fontSize: normalize(11),
+                    fontFamily: fonts.regular,
+                    color: colors.primary,
+                  }}
+                >
+                  {label}
+                </Text>
+              </View>
+            );
+          })}
+        </View>
+      ) : null}
 
       {/* 경계선 */}
       <View style={styles.postDivider} />

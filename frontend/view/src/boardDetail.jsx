@@ -11,6 +11,7 @@ import {
   Alert,
   Keyboard,
   Share,
+  Image,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons, Entypo } from '@expo/vector-icons';
@@ -21,6 +22,7 @@ import { colors, fonts } from '../../styles/colors';
 import { createDetailStyles, getNormalize } from '../../styles/board.style';
 import { api } from '../../utils/api';
 import { useNotification } from '../../context/NotificationContext';
+import ImageViewer from './ImageViewer';
 
 /** 서버 created_at(UTC)을 "n분 전" 형식으로 변환. 화면에서는 기기 로컬 시간 기준으로 계산 */
 function formatTimeAgo(createdAt) {
@@ -108,6 +110,8 @@ export default function BoardDetail({ navigation, route }) {
       ...base,
       id: routePostId ?? base.id,
       author: fromParams ? (isMy ? '작성자' : '익명') : initialPost.author,
+      images: Array.isArray(base.images) ? base.images : [],
+      tags: Array.isArray(base.tags) ? base.tags : [],
     };
   });
 
@@ -138,6 +142,7 @@ export default function BoardDetail({ navigation, route }) {
   const [postAuthorId, setPostAuthorId] = useState(null);
   const [currentUserId, setCurrentUserId] = useState(null);
   const { refreshHasUnread } = useNotification();
+  const [viewerUri, setViewerUri] = useState(null);
 
   // 게시글/댓글 로드
   useEffect(() => {
@@ -150,6 +155,9 @@ export default function BoardDetail({ navigation, route }) {
         const postRes = await api.get(`/api/posts/${postId}`);
         const data = postRes.data?.data;
         if (data) {
+          const imageUrls = Array.isArray(data.images)
+            ? data.images.filter((u) => typeof u === 'string')
+            : [];
           setPost({
             id: data.id,
             author: data.isMine ? '작성자' : '익명',
@@ -159,6 +167,8 @@ export default function BoardDetail({ navigation, route }) {
             likes: data.like_count,
             comments: data.comment_count,
             scraps: data.scrapCount ?? 0,
+            images: imageUrls,
+            tags: Array.isArray(data.tags) ? data.tags : [],
           });
           setPostLiked(Boolean(data.isLiked));
           setPostScrapped(Boolean(data.isScrapped));
@@ -846,7 +856,7 @@ export default function BoardDetail({ navigation, route }) {
               {/* 게시글 내용 */}
               <View style={styles.contentSection}>
                 <View style={styles.detailHeader}>
-                  <View style={styles.detailAuthorRow}>
+                  <View style={[styles.detailAuthorRow, { flex: 1, minWidth: 0 }]}>
                     <Text
                       style={
                         post.author === '작성자' ? styles.detailAuthor : styles.detailAuthorAnonymous
@@ -857,15 +867,112 @@ export default function BoardDetail({ navigation, route }) {
                     <Text style={styles.detailDot}>•</Text>
                     <Text style={styles.detailTime}>{post.time}</Text>
                   </View>
-                  {post.location ? (
-                    <View style={styles.detailLocation}>
-                      <Ionicons name="location-sharp" size={normalize(12)} color={colors.textSecondary} />
-                      <Text style={styles.detailLocationText}>{post.location}</Text>
+                  <View
+                    style={{
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                      gap: normalize(6),
+                    }}
+                  >
+                    <View
+                      style={{
+                        flexDirection: 'row',
+                        alignItems: 'center',
+                        gap: normalize(4),
+                        backgroundColor: colors.primaryLight30,
+                        borderRadius: normalize(10),
+                        paddingHorizontal: normalize(7),
+                        paddingVertical: normalize(2),
+                      }}
+                    >
+                      <Ionicons name="navigate-outline" size={normalize(11)} color={colors.primary} />
+                      <Text
+                        style={{
+                          fontSize: normalize(11),
+                          fontFamily: fonts.regular,
+                          color: colors.primary,
+                        }}
+                      >
+                        10km
+                      </Text>
                     </View>
-                  ) : null}
+                    {post.location ? (
+                      <View style={styles.detailLocation}>
+                        <Ionicons name="location-sharp" size={normalize(12)} color={colors.textSecondary} />
+                        <Text style={styles.detailLocationText}>{post.location}</Text>
+                      </View>
+                    ) : null}
+                  </View>
                 </View>
 
                 <Text style={styles.detailBody}>{post.content}</Text>
+                {Array.isArray(post.images) && post.images.length > 0 ? (
+                  <ScrollView
+                    horizontal
+                    showsHorizontalScrollIndicator={false}
+                    style={{ marginTop: normalize(12) }}
+                    contentContainerStyle={{ paddingRight: normalize(16) }}
+                  >
+                    {post.images.map((uri, idx) => (
+                      <TouchableOpacity
+                        key={`${uri}-${idx}`}
+                        activeOpacity={0.85}
+                        onPress={() => setViewerUri(uri)}
+                      >
+                        <Image
+                          source={{ uri }}
+                          style={{
+                            width: Math.min(width * 0.72, 320),
+                            height: normalize(200),
+                            marginRight: normalize(8),
+                            borderRadius: normalize(8),
+                            backgroundColor: colors.textLight10,
+                          }}
+                          resizeMode="cover"
+                        />
+                      </TouchableOpacity>
+                    ))}
+                  </ScrollView>
+                ) : null}
+                {Array.isArray(post.tags) && post.tags.length > 0 ? (
+                  <View
+                    style={{
+                      flexDirection: 'row',
+                      flexWrap: 'wrap',
+                      gap: normalize(6),
+                      marginTop: normalize(10),
+                    }}
+                  >
+                    {post.tags.map((tag, idx) => {
+                      const label =
+                        tag != null && typeof tag === 'object'
+                          ? String(tag.name ?? '')
+                          : String(tag ?? '');
+                      if (!label.trim()) return null;
+                      return (
+                        <View
+                          key={tag?.id != null ? `tag-${tag.id}` : `tag-${idx}-${label}`}
+                          style={{
+                            backgroundColor: colors.primaryLight30,
+                            borderRadius: normalize(12),
+                            paddingHorizontal: normalize(8),
+                            paddingVertical: normalize(3),
+                          }}
+                        >
+                          <Text
+                            style={{
+                              fontSize: normalize(11),
+                              fontFamily: fonts.regular,
+                              color: colors.primary,
+                            }}
+                          >
+                            {label}
+                          </Text>
+                        </View>
+                      );
+                    })}
+                  </View>
+                ) : null}
                 <View style={styles.detailDivider} />
                 <View style={styles.detailFooter}>
                   <View style={styles.detailStats}>
@@ -1086,6 +1193,12 @@ export default function BoardDetail({ navigation, route }) {
             </View>
           </TouchableWithoutFeedback>
         </Modal>
+
+        <ImageViewer
+          visible={Boolean(viewerUri)}
+          uri={viewerUri}
+          onClose={() => setViewerUri(null)}
+        />
       </SafeAreaView>
     </View>
   );
