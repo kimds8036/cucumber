@@ -14,6 +14,7 @@ const OurSchoolScreen = ({ navigation }) => {
   const normalize = useMemo(() => getNormalize(width), [width]);
   const styles = useMemo(() => createOurSchoolStyles(normalize), [normalize]);
   const [schoolInfo, setSchoolInfo] = useState({
+    id: null,
     name: '진관고등학교',
     location: '서울 은평구 진관동',
     studentCount: 532,
@@ -34,6 +35,7 @@ const OurSchoolScreen = ({ navigation }) => {
         const data = res.data?.data;
         if (data) {
           setSchoolInfo({
+            id: data.id ?? null,
             name: data.name ?? '',
             location: data.address || data.region || '',
             studentCount: data.studentCount ?? 0,
@@ -289,7 +291,12 @@ const OurSchoolScreen = ({ navigation }) => {
           <TouchableOpacity
             style={styles.shortcutButton}
             activeOpacity={0.7}
-            onPress={() => navigation?.navigate('SchoolMailbox')}
+            onPress={() =>
+              navigation?.navigate('SchoolMailbox', {
+                schoolId: schoolInfo.id,
+                schoolName: schoolInfo.name,
+              })
+            }
           >
             <View style={styles.shortcutTopRow}>
               <Ionicons name="mail" size={normalize(22)} color={colors.primary} />

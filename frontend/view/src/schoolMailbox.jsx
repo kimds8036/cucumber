@@ -1,12 +1,13 @@
-import React, { useMemo, useState, useRef } from 'react';
+import React, { useMemo, useState, useRef, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
-  ScrollView,
+  FlatList,
   TouchableOpacity,
   useWindowDimensions,
   Modal,
   TouchableWithoutFeedback,
+  ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Feather from '@expo/vector-icons/Feather';
@@ -17,77 +18,130 @@ import SubHeader from '../frame/subHeader';
 import { colors, fonts } from '../../styles/colors';
 import { getNormalize } from '../../styles/frame.style';
 import { createSchoolMailStyles } from '../../styles/SchoolMail.style';
+import { api } from '../../utils/api';
+import { getSchoolMailFromLabel } from './utils/schoolMailFromLabel';
 
-/** NEW 뱃지: 수신 시각 기준 24시간 이내만 (API 연동 시 서버 createdAt 사용) */
-const NEW_BADGE_MS = 24 * 60 * 60 * 1000;
-
-function isSchoolMailNew(mail) {
-  let ms = mail.createdAtMs;
-  if (ms == null && mail.createdAt) {
-    const parsed = new Date(mail.createdAt).getTime();
-    if (!Number.isNaN(parsed)) ms = parsed;
+function formatTimeAgo(createdAt) {
+  if (!createdAt) return '';
+  let dateStr = typeof createdAt === 'string' ? createdAt.trim() : String(createdAt);
+  if (!dateStr) return '';
+  if (/^\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}:\d{2}(\.\d+)?$/.test(dateStr) && !/[Z+-]/.test(dateStr)) {
+    dateStr = dateStr.replace(' ', 'T') + 'Z';
   }
-  if (ms == null || Number.isNaN(ms)) return false;
-  return Date.now() - ms < NEW_BADGE_MS;
+  const date = new Date(dateStr);
+  if (Number.isNaN(date.getTime())) return String(createdAt);
+  const now = new Date();
+  const diffMs = now - date;
+  const diffSec = Math.floor(diffMs / 1000);
+  const diffMin = Math.floor(diffSec / 60);
+  const diffHour = Math.floor(diffMin / 60);
+  const diffDay = Math.floor(diffHour / 24);
+  if (diffSec < 60) return '방금 전';
+  if (diffMin < 60) return `${diffMin}분 전`;
+  if (diffHour < 24) return `${diffHour}시간 전`;
+  if (diffDay < 7) return `${diffDay}일 전`;
+  return date.toLocaleDateString('ko-KR', { month: 'long', day: 'numeric' });
 }
 
-const MOCK_SCHOOL_MAILS = [
-  {
-    id: 1,
-    preview: '2학기 중간고사가 다음 주부터 시작됩니다. 시험 범위와 일정을 확인해주세요.',
-    content:
-      '2학기 중간고사가 다음 주부터 시작됩니다.\n\n시험 범위와 일정은 학교 홈페이지 공지를 확인해 주세요. 모두 좋은 결과 있기를 바랍니다.',
-    fromLabel: '익명',
-    time: '3시간 전',
-    likes: 12,
-    comments: 3,
-    createdAtMs: Date.now() - 3 * 60 * 60 * 1000,
-  },
-  {
-    id: 2,
-    preview: '다음 달 체육대회 참가 신청을 받습니다. 참여를 원하시는 분들은...',
-    content: '다음 달 체육대회 참가 신청을 받습니다. 참여를 원하시는 분들은 담임선생님께 말씀해 주세요.',
-    fromLabel: '익명',
-    time: '1일 전',
-    likes: 5,
-    comments: 1,
-    createdAtMs: Date.now() - 25 * 60 * 60 * 1000,
-  },
-  {
-    id: 3,
-    preview: '이번 주 금요일 급식 메뉴가 변경되었습니다.',
-    content: '이번 주 금요일 급식 메뉴가 변경되었습니다. 자세한 사항은 급식실 공지를 참고해 주세요.',
-    fromLabel: '익명',
-    time: '2일 전',
+function isMailNew(createdAt) {
+  if (!createdAt) return false;
+  let dateStr = typeof createdAt === 'string' ? createdAt.trim() : String(createdAt);
+  if (/^\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}:\d{2}(\.\d+)?$/.test(dateStr) && !/[Z+-]/.test(dateStr)) {
+    dateStr = dateStr.replace(' ', 'T') + 'Z';
+  }
+  const t = new Date(dateStr).getTime();
+  if (Number.isNaN(t)) return false;
+  return Date.now() - t < 24 * 60 * 60 * 1000;
+}
+
+function mapMailForCard(raw, mailboxSchoolId) {
+  const content = raw.content ?? '';
+  return {
+    ...raw,
+    preview: content.slice(0, 50),
+    fromLabel: getSchoolMailFromLabel(raw, mailboxSchoolId),
+    time: formatTimeAgo(raw.created_at) || String(raw.created_at ?? ''),
     likes: 0,
-    comments: 0,
-    createdAtMs: Date.now() - 2 * 24 * 60 * 60 * 1000,
-  },
-  {
-    id: 4,
-    preview: '2학기 중간고사가 다음 주부터 시작됩니다. 시험 범위와 일정을 확인해주세요.',
-    content: '중간고사 일정 안내드립니다. 각 과목 범위는 담당 교과에서 안내 예정입니다.',
-    fromLabel: '익명',
-    time: '3일 전',
-    likes: 3,
-    comments: 2,
-    createdAtMs: Date.now() - 3 * 24 * 60 * 60 * 1000,
-  },
-];
+    comments: raw.comment_count ?? 0,
+  };
+}
 
 const SchoolMailboxScreen = ({ navigation, route }) => {
   const { width } = useWindowDimensions();
   const normalize = useMemo(() => getNormalize(width), [width]);
   const styles = useMemo(() => createSchoolMailStyles(width, normalize), [width, normalize]);
 
-  // 학교 이름: route.params.schoolName 으로 넘기면 표시 (예: navigate('SchoolMailbox', { schoolName: '진관고등학교' }))
-  // 추후 전역 상태(로그인 사용자 소속 학교) 또는 API로 교체 가능
   const schoolName = route?.params?.schoolName ?? 'OO고등학교';
+  const schoolId = route?.params?.schoolId ?? null;
+
+  const [mails, setMails] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [page, setPage] = useState(1);
+  const [hasMore, setHasMore] = useState(true);
 
   const [floatingMenuVisible, setFloatingMenuVisible] = useState(false);
   const [floatingMenuAnchor, setFloatingMenuAnchor] = useState(null);
   const [floatingMenuMail, setFloatingMenuMail] = useState(null);
   const menuButtonRefs = useRef({});
+
+  const fetchMails = useCallback(
+    async (nextPage = 1, append = false) => {
+      if (!schoolId) {
+        setMails([]);
+        setLoading(false);
+        setHasMore(false);
+        return;
+      }
+      try {
+        if (nextPage === 1) {
+          setLoading(true);
+        } else {
+          setLoadingMore(true);
+        }
+        const res = await api.get('/api/mails/school', {
+          params: { schoolId, page: nextPage, limit: 20 },
+        });
+        const data = res.data?.data;
+        const list = Array.isArray(data?.mails) ? data.mails : [];
+        const pag = data?.pagination;
+        const totalPages = pag?.totalPages ?? 1;
+        if (append && list.length === 0) {
+          setHasMore(false);
+          return;
+        }
+        if (append) {
+          setMails((prev) => [...prev, ...list]);
+        } else {
+          setMails(list);
+        }
+        setPage(nextPage);
+        setHasMore(nextPage < totalPages && list.length > 0);
+      } catch (e) {
+        console.error('학교 우편 목록 로드 실패:', e?.response?.data || e.message);
+        if (!append) setMails([]);
+      } finally {
+        setLoading(false);
+        setLoadingMore(false);
+      }
+    },
+    [schoolId],
+  );
+
+  useEffect(() => {
+    if (!schoolId) {
+      setLoading(false);
+      setMails([]);
+      setHasMore(false);
+      return;
+    }
+    fetchMails(1, false);
+  }, [schoolId, fetchMails]);
+
+  const handleLoadMore = useCallback(() => {
+    if (loading || loadingMore || !hasMore || !schoolId) return;
+    fetchMails(page + 1, true);
+  }, [loading, loadingMore, hasMore, schoolId, page, fetchMails]);
 
   const defaultMenuItems = useMemo(
     () => [
@@ -95,7 +149,7 @@ const SchoolMailboxScreen = ({ navigation, route }) => {
       { label: '차단하기', iconName: 'remove-circle-outline', onPress: () => {} },
       { label: '공유하기', iconName: 'share-outline', onPress: () => {} },
     ],
-    []
+    [],
   );
 
   const openFloatingMenu = (mail, ref) => {
@@ -112,110 +166,145 @@ const SchoolMailboxScreen = ({ navigation, route }) => {
     setFloatingMenuMail(null);
   };
 
+  const renderItem = ({ item: raw }) => {
+    const mail = mapMailForCard(raw, schoolId);
+    return (
+      <TouchableOpacity
+        style={styles.card}
+        activeOpacity={0.8}
+        onPress={() =>
+          navigation?.navigate('SchoolMailDetail', {
+            mailId: raw.id,
+            schoolName,
+            schoolId,
+          })
+        }
+      >
+        <View style={styles.cardTopRow}>
+          <View style={styles.cardIconWrap}>
+            <Ionicons
+              name="mail-outline"
+              size={normalize(22)}
+              color={colors.primary}
+              style={styles.cardEnvelope}
+            />
+          </View>
+          {isMailNew(raw.created_at) && (
+            <View style={styles.newBadge}>
+              <Text style={styles.newBadgeText}>NEW</Text>
+            </View>
+          )}
+        </View>
+
+        <Text style={styles.cardPreview} numberOfLines={2}>
+          {mail.preview}
+        </Text>
+        <Text
+          style={{
+            fontSize: normalize(12),
+            fontFamily: fonts.regular,
+            color: colors.textSecondary,
+            marginBottom: normalize(6),
+          }}
+          numberOfLines={1}
+        >
+          {mail.fromLabel}
+        </Text>
+
+        <View style={styles.cardFooterRow}>
+          <Text style={styles.cardTime}>{mail.time}</Text>
+          <View style={styles.statRow}>
+            <View style={styles.statItem}>
+              <FontAwesome name="heart-o" size={normalize(14)} color={colors.alert} />
+              <Text style={styles.statText}>{mail.likes}</Text>
+            </View>
+            <View style={styles.statItem}>
+              <Ionicons name="chatbubble-outline" size={normalize(15)} color={colors.primary} />
+              <Text style={styles.statText}>{mail.comments}</Text>
+            </View>
+            <View
+              ref={(r) => {
+                if (r) menuButtonRefs.current[raw.id] = r;
+              }}
+              collapsable={false}
+            >
+              <TouchableOpacity
+                activeOpacity={0.7}
+                onPress={(e) => {
+                  e.stopPropagation();
+                  openFloatingMenu(mail, menuButtonRefs.current[raw.id]);
+                }}
+                hitSlop={{
+                  top: normalize(8),
+                  bottom: normalize(8),
+                  left: normalize(8),
+                  right: normalize(8),
+                }}
+              >
+                <Entypo name="dots-three-vertical" size={normalize(14)} color={colors.textSecondary} />
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </TouchableOpacity>
+    );
+  };
+
+  const listEmpty =
+    !loading && (!schoolId || mails.length === 0) ? (
+      <View style={{ paddingVertical: normalize(40), alignItems: 'center', width: '100%' }}>
+        <Text style={{ fontFamily: fonts.regular, color: colors.textSecondary }}>
+          {!schoolId ? '학교 정보가 없습니다.' : '아직 우편이 없습니다'}
+        </Text>
+      </View>
+    ) : null;
+
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
       <SubHeader title="학교 우편함" onBack={() => navigation?.goBack()} />
 
       <View style={styles.container}>
-        <ScrollView
-          style={styles.list}
-          contentContainerStyle={styles.gridContainer}
-          showsVerticalScrollIndicator={false}
-        >
-          {MOCK_SCHOOL_MAILS.map((mail) => (
-            <TouchableOpacity
-              key={mail.id}
-              style={styles.card}
-              activeOpacity={0.8}
-              onPress={() =>
-                navigation?.navigate('SchoolMailDetail', {
-                  mail,
-                  schoolName,
-                })
-              }
-            >
-              <View style={styles.cardTopRow}>
-                <View style={styles.cardIconWrap}>
-                  <Ionicons
-                    name="mail-outline"
-                    size={normalize(22)}
-                    color={colors.primary}
-                    style={styles.cardEnvelope}
-                  />
+        {loading && mails.length === 0 ? (
+          <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+            <ActivityIndicator size="large" color={colors.primary} />
+          </View>
+        ) : (
+          <FlatList
+            style={styles.list}
+            contentContainerStyle={[styles.gridContainer, mails.length === 0 && { flexGrow: 1 }]}
+            data={mails}
+            keyExtractor={(item) => String(item.id)}
+            numColumns={2}
+            columnWrapperStyle={{ justifyContent: 'space-between' }}
+            renderItem={renderItem}
+            ListEmptyComponent={listEmpty}
+            onEndReached={handleLoadMore}
+            onEndReachedThreshold={0.4}
+            ListFooterComponent={
+              loadingMore ? (
+                <View style={{ paddingVertical: normalize(16), width: '100%', alignItems: 'center' }}>
+                  <ActivityIndicator color={colors.textSecondary} />
                 </View>
-                {isSchoolMailNew(mail) && (
-                  <View style={styles.newBadge}>
-                    <Text style={styles.newBadgeText}>NEW</Text>
-                  </View>
-                )}
-              </View>
+              ) : null
+            }
+            showsVerticalScrollIndicator={false}
+          />
+        )}
 
-              <Text style={styles.cardPreview} numberOfLines={2}>
-                {mail.preview}
-              </Text>
-
-              <View style={styles.cardFooterRow}>
-                <Text style={styles.cardTime}>{mail.time}</Text>
-                <View style={styles.statRow}>
-                  <View style={styles.statItem}>
-                    <FontAwesome name="heart-o" size={normalize(14)} color={colors.alert} />
-                    <Text style={styles.statText}>{mail.likes}</Text>
-                  </View>
-                  <View style={styles.statItem}>
-                    <Ionicons name="chatbubble-outline" size={normalize(15)} color={colors.primary} />
-                    <Text style={styles.statText}>{mail.comments}</Text>
-                  </View>
-                  <View
-                    ref={(r) => {
-                      if (r) menuButtonRefs.current[mail.id] = r;
-                    }}
-                    collapsable={false}
-                  >
-                    <TouchableOpacity
-                      activeOpacity={0.7}
-                      onPress={(e) => {
-                        e.stopPropagation();
-                        openFloatingMenu(mail, menuButtonRefs.current[mail.id]);
-                      }}
-                      hitSlop={{
-                        top: normalize(8),
-                        bottom: normalize(8),
-                        left: normalize(8),
-                        right: normalize(8),
-                      }}
-                    >
-                      <Entypo name="dots-three-vertical" size={normalize(14)} color={colors.textSecondary} />
-                    </TouchableOpacity>
-                  </View>
-                </View>
-              </View>
-            </TouchableOpacity>
-          ))}
-        </ScrollView>
-
-        {/* 학교 우편 보내기 플로팅 버튼 (Message.jsx와 동일 스타일) */}
         <TouchableOpacity
           style={styles.floatingButton}
           activeOpacity={0.8}
           onPress={() =>
             navigation?.navigate('SendSchoolMail', {
               schoolName,
-              // TODO: API 연동 시 schoolId, schoolAddress 등으로 교체
-              schoolAddress: '서울특별시 OO구 OO로 00 (임시)',
+              schoolId,
             })
           }
         >
-          <Feather
-            name="send"
-            size={normalize(30)}
-            top={normalize(2)}
-            right={normalize(1)}
-            color={colors.background}
-          />
+          <Feather name="send" size={normalize(30)} color={colors.background} />
         </TouchableOpacity>
       </View>
 
-      {/* 플로팅 메뉴 (boardAll과 유사) */}
       <Modal
         visible={floatingMenuVisible}
         transparent
@@ -277,11 +366,7 @@ const SchoolMailboxScreen = ({ navigation, route }) => {
                       >
                         {item.label}
                       </Text>
-                      <Ionicons
-                        name={item.iconName}
-                        size={normalize(17)}
-                        color={colors.textSecondary}
-                      />
+                      <Ionicons name={item.iconName} size={normalize(17)} color={colors.textSecondary} />
                     </TouchableOpacity>
                     {index < defaultMenuItems.length - 1 && (
                       <View
@@ -304,4 +389,3 @@ const SchoolMailboxScreen = ({ navigation, route }) => {
 };
 
 export default SchoolMailboxScreen;
-
