@@ -6,7 +6,6 @@ import Sign from './view/src/Sign';
 import MainScreen from './view/src/MainScreen';
 import AddTimetable from './view/src/addtimetable';
 import MyPosts from './view/src/myposts';
-import LikedPosts from './view/src/likedposts';
 import NotificationSettings from './view/src/notificationsettings';
 import ChangePassword from './view/src/changepassword';
 import ChangeSchool from './view/src/changeschool';
@@ -73,7 +72,6 @@ function MainStack() {
       <Stack.Screen name="DMChat" component={DMChat} />
       <Stack.Screen name="AddTimetable" component={AddTimetable} />
       <Stack.Screen name="MyPosts" component={MyPosts} />
-      <Stack.Screen name="LikedPosts" component={LikedPosts} />
       <Stack.Screen
         name="NotificationSettings"
         component={NotificationSettings}
@@ -124,13 +122,13 @@ export default function App() {
       <KeyboardProvider>
         <AuthProvider>
           <SocketProvider>
-            <FriendProvider>
-              <NotificationProvider>
+            <NotificationProvider>
+              <FriendProvider>
                 <NavigationContainer>
                   <RootNavigator />
                 </NavigationContainer>
-              </NotificationProvider>
-            </FriendProvider>
+              </FriendProvider>
+            </NotificationProvider>
           </SocketProvider>
         </AuthProvider>
       </KeyboardProvider>

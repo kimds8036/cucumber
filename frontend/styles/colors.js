@@ -78,13 +78,13 @@ export const fonts = {
 
 // 폰트 사이즈 (normalize 함수와 함께 사용)
 export const fontSizes = {
-  xs: 8,
-  sm: 10,
-  md: 12,
-  lg: 14,
-  xl: 16,
-  xxl: 18,
-  title: 20,
-  heading: 24,
+  xs: 6,
+  sm: 8,
+  md: 10,
+  lg: 12,
+  xl: 14,
+  xxl: 16,
+  title: 18,
+  heading: 20,
 };
 

@@ -38,7 +38,7 @@ export const createHeaderStyles = (width, height) => {
       backgroundColor: colors.primary,
     },
     tabText: {
-      fontSize: normalize(fontSizes.heading),
+      fontSize: normalize(fontSizes.heading + 6),
       fontFamily: 'Baloo2-Bold',
       color: colors.textPrimary,
     },
@@ -70,7 +70,7 @@ export const createHeaderStyles = (width, height) => {
       right: normalize(4),
       width: normalize(10),
       height: normalize(10),
-      borderRadius: normalize(5),
+      borderRadius: normalize(10),
       backgroundColor: colors.alert,
     },
   });
@@ -115,7 +115,7 @@ export const createFooterStyles = (width, height) => {
       borderTopColor: colors.primary,
     },
     tabText: {
-      fontSize: normalize(fontSizes.sm),
+      fontSize: normalize(fontSizes.md),
       fontFamily: 'Baloo2-Bold',
       color: colors.textSecondary,
       marginTop: normalize(4),
@@ -152,7 +152,7 @@ export const createSubHeaderStyles = (width, height) => {
       left: -5,
     },
     headerTitle: {
-      fontSize: normalize(fontSizes.title),
+      fontSize: normalize(fontSizes.heading),
       fontFamily: 'Baloo2-Bold',
       color: colors.textPrimary,
     },
@@ -161,7 +161,7 @@ export const createSubHeaderStyles = (width, height) => {
       right: -5,
     },
     rightButtonText: {
-      fontSize: normalize(fontSizes.xl),
+      fontSize: normalize(fontSizes.xxl),
       fontFamily: 'Baloo2-Bold',
       color: colors.primaryDark,
     },
@@ -194,12 +194,12 @@ export const createSubFooterStyles = (width, height) => {
       backgroundColor: colors.primaryLight50,
     },
     buttonText: {
-      fontSize: normalize(fontSizes.xl),
+      fontSize: normalize(fontSizes.xxl),
       fontFamily: 'Baloo2-Bold',
       color: colors.background,
     },
     guideText: {
-      fontSize: normalize(fontSizes.md),
+      fontSize: normalize(fontSizes.lg),
       fontFamily: 'Baloo2-Regular',
       color: colors.textSecondary,
       textAlign: 'center',

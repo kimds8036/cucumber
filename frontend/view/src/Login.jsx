@@ -174,7 +174,7 @@ const Login = ({ navigation }) => {
                     await setAuthToken(token);
                     debugLogin('토큰 저장 완료');
                   }
-                  debugLogin('AuthContext login() — Main 스택으로 전환');
+                  debugLogin('로그인 상태 반영 → Main 스택으로 전환');
                   login();
                 } catch (error) {
                   const hasResponse = Boolean(error?.response);

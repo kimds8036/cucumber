@@ -58,7 +58,7 @@ export const createMessageStyles = (width, normalize) => {
       backgroundColor: colors.transparent,
     },
     toggleOptionText: {
-      fontSize: normalize(fontSizes.lg),
+      fontSize: normalize(fontSizes.xl),
       fontFamily: fonts.bold,
       color: colors.textSecondary,
     },
@@ -103,13 +103,13 @@ export const createMessageStyles = (width, normalize) => {
       justifyContent: 'center',
     },
     listItemName: {
-      fontSize: normalize(fontSizes.lg),
+      fontSize: normalize(fontSizes.xl),
       fontFamily: fonts.bold,
       color: colors.textPrimary,
       marginBottom: normalize(2),
     },
     listItemContent: {
-      fontSize: normalize(fontSizes.md),
+      fontSize: normalize(fontSizes.lg),
       fontFamily: fonts.regular,
       color: colors.textSecondary,
     },
@@ -121,7 +121,7 @@ export const createMessageStyles = (width, normalize) => {
       flexShrink: 0,
     },
     listItemTime: {
-      fontSize: normalize(fontSizes.md),
+      fontSize: normalize(fontSizes.lg),
       fontFamily: fonts.regular,
       color: colors.textSecondary,
       marginBottom: normalize(4),
@@ -136,7 +136,7 @@ export const createMessageStyles = (width, normalize) => {
       paddingHorizontal: normalize(4),
     },
     unreadBadgeText: {
-      fontSize: normalize(fontSizes.sm),
+      fontSize: normalize(fontSizes.md),
       fontFamily: fonts.bold,
       color: colors.background,
     },
@@ -210,7 +210,7 @@ export const createChatStyles = (width, normalize) => {
       minWidth: 0,
     },
     opponentName: {
-      fontSize: normalize(fontSizes.md),
+      fontSize: normalize(fontSizes.lg),
       fontFamily: fonts.regular,
       color: colors.textPrimary,
       marginBottom: normalize(3),
@@ -226,7 +226,7 @@ export const createChatStyles = (width, normalize) => {
       alignSelf: 'flex-start',
     },
     opponentBubbleText: {
-      fontSize: normalize(fontSizes.lg),
+      fontSize: normalize(fontSizes.xl),
       fontFamily: fonts.regular,
       color: colors.textPrimary,
     },
@@ -237,7 +237,7 @@ export const createChatStyles = (width, normalize) => {
       marginTop: normalize(2),
     },
     chatTimeOpponent: {
-      fontSize: normalize(fontSizes.md),
+      fontSize: normalize(fontSizes.lg),
       fontFamily: fonts.regular,
       color: colors.textSecondary,
       marginLeft: 0,
@@ -256,7 +256,7 @@ export const createChatStyles = (width, normalize) => {
       flexShrink: 0,
     },
     chatUnreadCount: {
-      fontSize: normalize(fontSizes.md),
+      fontSize: normalize(fontSizes.lg),
       fontFamily: fonts.bold,
       color: colors.primary,
       marginBottom: normalize(2),
@@ -279,12 +279,12 @@ export const createChatStyles = (width, normalize) => {
       minWidth: 0,
     },
     userBubbleText: {
-      fontSize: normalize(fontSizes.lg),
+      fontSize: normalize(fontSizes.xl),
       fontFamily: fonts.regular,
       color: colors.textPrimary,
     },
     chatTimeUser: {
-      fontSize: normalize(fontSizes.md),
+      fontSize: normalize(fontSizes.lg),
       fontFamily: fonts.regular,
       color: colors.textSecondary,
       marginBottom: normalize(2),
@@ -307,11 +307,11 @@ export const createChatStyles = (width, normalize) => {
       flex: 1,
     },
     replyPreviewTitle: {
-      fontSize: normalize(fontSizes.md),
+      fontSize: normalize(fontSizes.lg),
       color: colors.textSecondary,
     },
     replyPreviewContent: {
-      fontSize: normalize(fontSizes.lg),
+      fontSize: normalize(fontSizes.xl),
       color: colors.textPrimary,
       marginTop: 4,
     },
@@ -327,13 +327,13 @@ export const createChatStyles = (width, normalize) => {
       backgroundColor: 'transparent',
     },
     replyQuoteSender: {
-      fontSize: normalize(fontSizes.md),
+      fontSize: normalize(fontSizes.lg),
       fontFamily: fonts.bold,
       color: colors.primary,
       marginBottom: normalize(2),
     },
     replyQuoteText: {
-      fontSize: normalize(fontSizes.md),
+      fontSize: normalize(fontSizes.lg),
       fontFamily: fonts.regular,
       color: colors.textPrimary,
     },

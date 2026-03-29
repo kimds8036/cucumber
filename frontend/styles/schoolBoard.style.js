@@ -43,7 +43,7 @@ export const createSchoolBoardStyles = (width, normalize) => {
       alignItems: 'center',
     },
     postAuthor: {
-      fontSize: normalize(fontSizes.md),
+      fontSize: normalize(fontSizes.lg),
       fontFamily: fonts.regular,
       color: colors.textSecondary,
     },
@@ -53,12 +53,12 @@ export const createSchoolBoardStyles = (width, normalize) => {
       gap: normalize(4),
     },
     postDot: {
-      fontSize: normalize(fontSizes.lg),
+      fontSize: normalize(fontSizes.xl),
       color: colors.textSecondary,
       marginHorizontal: normalize(6),
     },
     postTime: {
-      fontSize: normalize(fontSizes.md),
+      fontSize: normalize(fontSizes.lg),
       fontFamily: fonts.regular,
       color: colors.textSecondary,
     },
@@ -71,14 +71,14 @@ export const createSchoolBoardStyles = (width, normalize) => {
       gap: normalize(4),
     },
     postLocationText: {
-      fontSize: normalize(fontSizes.lg),
+      fontSize: normalize(fontSizes.xl),
       fontFamily: fonts.regular,
       color: colors.textSecondary,
     },
 
     // 게시글 내용
     postContent: {
-      fontSize: normalize(fontSizes.lg),
+      fontSize: normalize(fontSizes.xl),
       fontFamily: fonts.regular,
       color: colors.textPrimary,
       lineHeight: normalize(20),
@@ -110,7 +110,7 @@ export const createSchoolBoardStyles = (width, normalize) => {
       gap: normalize(4),
     },
     postStatText: {
-      fontSize: normalize(fontSizes.lg),
+      fontSize: normalize(fontSizes.xl),
       fontFamily: fonts.regular,
       color: colors.textSecondary,
     },
