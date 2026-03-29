@@ -1,13 +1,12 @@
 import { StatusBar } from 'expo-status-bar';
-import { DefaultTheme, NavigationContainer } from '@react-navigation/native';
+import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
-import { colors } from './styles/colors';
 import Login from './view/src/Login';
 import Sign from './view/src/Sign';
 import MainScreen from './view/src/MainScreen';
 import AddTimetable from './view/src/addtimetable';
 import MyPosts from './view/src/myposts';
-import ScrapedPosts from './view/src/scrapedposts';
+import LikedPosts from './view/src/likedposts';
 import NotificationSettings from './view/src/notificationsettings';
 import ChangePassword from './view/src/changepassword';
 import ChangeSchool from './view/src/changeschool';
@@ -26,30 +25,81 @@ import SchoolMailDetail from './view/src/schoolMailDetail';
 import SendSchoolMailScreen from './view/src/sendSchoolMailScreen';
 import SchoolBoardAll from './view/src/schoolBoardAll';
 import OtherSchoolScreen from './view/src/otherschool';
+import MealCalender from './view/src/mealcalender';
 import Timer from './view/src/timer';
 import FriendsScreen from './view/src/friendsscreen';
-import MealCalender from './view/src/mealcalender';
 import { useFonts } from 'expo-font';
 import * as SplashScreen from 'expo-splash-screen';
 import { useEffect } from 'react';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { KeyboardProvider } from './context/KeyboardContext';
-import { NotificationProvider } from './context/NotificationContext';
-import { FriendProvider } from './context/FriendContext';
-import { SocketProvider } from './context/SocketContext';
+import { AuthProvider, useAuth } from './context/AuthContext';
 
 const Stack = createNativeStackNavigator();
 
-const navigationTheme = {
-  ...DefaultTheme,
-  colors: {
-    ...DefaultTheme.colors,
-    background: colors.background,
-    card: colors.background,
-  },
-};
-
 SplashScreen.preventAutoHideAsync();
+
+// ---------- Auth Flow: 로그인 상태에 따른 스택 분리 (선언적 내비게이션) ----------
+// 비로그인 시 Auth 스택만, 로그인 시 Main 스택만 렌더링하여
+// "로그인 후 뒤로가기 시 다시 로그인 창" 문제를 근본적으로 방지합니다.
+// 로그아웃 시: 화면 어디서든 useAuth().logout() 호출하면 로그인 스택으로 전환됩니다.
+
+function AuthStack() {
+  return (
+    <Stack.Navigator
+      initialRouteName="Login"
+      screenOptions={{ headerShown: false }}
+    >
+      <Stack.Screen name="Login" component={Login} />
+      <Stack.Screen name="Sign" component={Sign} />
+    </Stack.Navigator>
+  );
+}
+
+function MainStack() {
+  return (
+    <Stack.Navigator
+      initialRouteName="Main"
+      screenOptions={{ headerShown: false }}
+    >
+      <Stack.Screen name="Main" component={MainScreen} />
+      <Stack.Screen name="BoardWrite" component={BoardWrite} />
+      <Stack.Screen name="BoardDetail" component={BoardDetail} />
+      <Stack.Screen name="Chat" component={Chat} />
+      <Stack.Screen name="AddTimetable" component={AddTimetable} />
+      <Stack.Screen name="MyPosts" component={MyPosts} />
+      <Stack.Screen name="LikedPosts" component={LikedPosts} />
+      <Stack.Screen
+        name="NotificationSettings"
+        component={NotificationSettings}
+      />
+      <Stack.Screen name="ChangePassword" component={ChangePassword} />
+      <Stack.Screen name="ChangeSchool" component={ChangeSchool} />
+      <Stack.Screen name="Search" component={SearchScreen} />
+      <Stack.Screen name="Notification" component={NotificationScreen} />
+      <Stack.Screen name="SendMail" component={SendMailScreen} />
+      <Stack.Screen name="MailDetail" component={AnonymousMailScreen} />
+      <Stack.Screen name="MailReply" component={MailReplyScreen} />
+      <Stack.Screen name="MailHistory" component={MailHistoryScreen} />
+      <Stack.Screen name="SchoolBoardAll" component={SchoolBoardAll} />
+      <Stack.Screen name="SchoolMailbox" component={SchoolMailboxScreen} />
+      <Stack.Screen name="SchoolMailDetail" component={SchoolMailDetail} />
+      <Stack.Screen name="SendSchoolMail" component={SendSchoolMailScreen} />
+      <Stack.Screen name="Timer" component={Timer} />
+      <Stack.Screen name="Friends" component={FriendsScreen} />
+      <Stack.Screen name="SearchScreen" component={SearchScreen} />
+      <Stack.Screen name="SearchResult" component={SearchResult} />
+      <Stack.Screen name="OtherSchool" component={OtherSchoolScreen} />
+      <Stack.Screen name="MealCalendar" component={MealCalender} />
+    </Stack.Navigator>
+  );
+}
+
+function RootNavigator() {
+  const { isLoggedIn } = useAuth();
+  return isLoggedIn ? <MainStack /> : <AuthStack />;
+}
+
 export default function App() {
   const [fontsLoaded] = useFonts({
     'Baloo2-Regular': require('./assets/fonts/Baloo2-Regular.ttf'),
@@ -67,55 +117,12 @@ export default function App() {
   return (
     <SafeAreaProvider>
       <KeyboardProvider>
-        <SocketProvider>
-          <NotificationProvider>
-            <FriendProvider>
-              <NavigationContainer theme={navigationTheme}>
-                <Stack.Navigator
-                  initialRouteName="Login"
-                  screenOptions={{
-                    headerShown: false,
-                    contentStyle: { backgroundColor: colors.background },
-                  }}
-                >
-                  <Stack.Screen name="Login" component={Login} />
-                  <Stack.Screen name="Sign" component={Sign} />
-                  <Stack.Screen name="Main" component={MainScreen} />
-                  <Stack.Screen name="BoardWrite" component={BoardWrite} />
-                  <Stack.Screen name="BoardDetail" component={BoardDetail} />
-                  <Stack.Screen name="Chat" component={Chat} />
-                  <Stack.Screen name="AddTimetable" component={AddTimetable} />
-                  <Stack.Screen name="MyPosts" component={MyPosts} />
-                  <Stack.Screen name="ScrapedPosts" component={ScrapedPosts} />
-                  <Stack.Screen name="NotificationSettings" component={NotificationSettings} />
-                  <Stack.Screen name="ChangePassword" component={ChangePassword} />
-                  <Stack.Screen name="ChangeSchool" component={ChangeSchool} />
-                  <Stack.Screen name="Search" component={SearchScreen} />
-                  <Stack.Screen name="Notification" component={NotificationScreen} />
-                  <Stack.Screen name="SendMail" component={SendMailScreen} />
-                  <Stack.Screen name="MailDetail" component={AnonymousMailScreen} />
-                  <Stack.Screen name="AnonymousMailbox" component={AnonymousMailScreen} />
-                  <Stack.Screen name="SchoolBoardAll" component={SchoolBoardAll} />
-                  <Stack.Screen name="SchoolMailbox" component={SchoolMailboxScreen} />
-                  <Stack.Screen name="SchoolMailDetail" component={SchoolMailDetail} />
-                  <Stack.Screen name="SendSchoolMail" component={SendSchoolMailScreen} />
-                  <Stack.Screen name="MealCalendar" component={MealCalender} />
-                  <Stack.Screen name="MailReply" component={MailReplyScreen} />
-                  <Stack.Screen name="MailHistory" component={MailHistoryScreen} />
-                  <Stack.Screen name="AnonymousMailReply" component={MailReplyScreen} />
-                  <Stack.Screen name="AnonymousMailHistory" component={MailHistoryScreen} />
-                  <Stack.Screen name="Timer" component={Timer} />
-                  <Stack.Screen name="Friends" component={FriendsScreen} />
-                  <Stack.Screen name="SearchScreen" component={SearchScreen} />
-                  <Stack.Screen name="SearchResult" component={SearchResult} />
-                  <Stack.Screen name="OtherSchool" component={OtherSchoolScreen} />
-                </Stack.Navigator>
-              </NavigationContainer>
-            </FriendProvider>
-          </NotificationProvider>
-        </SocketProvider>
+        <AuthProvider>
+          <NavigationContainer>
+            <RootNavigator />
+          </NavigationContainer>
+        </AuthProvider>
       </KeyboardProvider>
     </SafeAreaProvider>
   );
 }
-

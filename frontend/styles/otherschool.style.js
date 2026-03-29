@@ -261,7 +261,7 @@ export const createOtherSchoolStyles = (normalize) => {
       justifyContent: 'center',
     },
     mailboxWideTitle: {
-      fontSize: normalize(fontSizes.xxl),
+      fontSize: normalize(fontSizes.xl),
       fontFamily: fonts.bold,
       color: colors.textPrimary,
       includeFontPadding: false,
