@@ -609,7 +609,9 @@ router.get('/school', async (req, res) => {
         sm.is_deleted,
         sm.created_at,
         u.name as author_name,
+        u.school_id as author_school_id,
         u.color_id as author_color_id,
+        (SELECT s2.name FROM schools s2 WHERE s2.school_id = u.school_id) AS author_school_name,
         s.name as school_name
       FROM school_mails sm
       LEFT JOIN users u ON sm.user_id = u.id
@@ -666,7 +668,9 @@ router.get('/school/:mailId', async (req, res) => {
         sm.is_deleted,
         sm.created_at,
         u.name as author_name,
+        u.school_id as author_school_id,
         u.color_id as author_color_id,
+        (SELECT s2.name FROM schools s2 WHERE s2.school_id = u.school_id) AS author_school_name,
         s.name as school_name
       FROM school_mails sm
       LEFT JOIN users u ON sm.user_id = u.id
@@ -721,16 +725,6 @@ router.post('/school', authenticate, async (req, res) => {
       });
     }
 
-    const user = users[0];
-
-    // 학교 게시판인 경우 사용자의 학교와 일치하는지 확인
-    if (user.school_id !== String(schoolId)) {
-      return res.status(403).json({ 
-        success: false, 
-        message: '본인 학교에만 우편을 작성할 수 있습니다.' 
-      });
-    }
-
     // 학교 존재 확인
     const [schools] = await pool.execute(
       'SELECT school_id FROM schools WHERE school_id = ?',
@@ -762,7 +756,9 @@ router.post('/school', authenticate, async (req, res) => {
         sm.is_deleted,
         sm.created_at,
         u.name as author_name,
+        u.school_id as author_school_id,
         u.color_id as author_color_id,
+        (SELECT s2.name FROM schools s2 WHERE s2.school_id = u.school_id) AS author_school_name,
         s.name as school_name
       FROM school_mails sm
       LEFT JOIN users u ON sm.user_id = u.id

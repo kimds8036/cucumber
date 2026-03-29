@@ -11,6 +11,7 @@ import {
   TouchableWithoutFeedback,
   Alert,
   useWindowDimensions,
+  ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRoute } from '@react-navigation/native';
@@ -21,12 +22,7 @@ import { useAppNavigation } from '../../navigation/useAppNavigation';
 import { getNormalize } from '../../styles/frame.style';
 import { createSendSchoolMailStyles } from '../../styles/SchoolMail.style';
 import { colors } from '../../styles/colors';
-
-/** 라우트에 없을 때(직접 진입 등) 쓰는 임시 학교 — 이후 API로 대체 */
-const FALLBACK_SCHOOL = {
-  schoolName: 'OO고등학교',
-  schoolAddress: '서울특별시 OO구 OO로 00 (임시)',
-};
+import { api } from '../../utils/api';
 
 const SendSchoolMailScreen = () => {
   const route = useRoute();
@@ -35,10 +31,11 @@ const SendSchoolMailScreen = () => {
   const normalize = useMemo(() => getNormalize(width), [width]);
   const styles = useMemo(() => createSendSchoolMailStyles(normalize), [normalize]);
 
-  const schoolName = route.params?.schoolName ?? FALLBACK_SCHOOL.schoolName;
-  const schoolAddress = route.params?.schoolAddress ?? FALLBACK_SCHOOL.schoolAddress;
+  const schoolName = route.params?.schoolName ?? 'OO고등학교';
+  const schoolId = route.params?.schoolId ?? null;
 
   const [mailContent, setMailContent] = useState('');
+  const [sending, setSending] = useState(false);
 
   const handleMailContentChange = (text) => {
     if (text.length > 50) {
@@ -48,34 +45,53 @@ const SendSchoolMailScreen = () => {
     setMailContent(text);
   };
 
+  const doSend = async () => {
+    if (!schoolId) {
+      Alert.alert('오류', '학교 정보가 없습니다.');
+      return;
+    }
+    const content = mailContent.trim();
+    if (!content) {
+      Alert.alert('알림', '내용을 입력해주세요.');
+      return;
+    }
+    setSending(true);
+    try {
+      await api.post('/api/mails/school', { schoolId, content });
+      Alert.alert('완료', '우편이 전송되었습니다.', [
+        {
+          text: '확인',
+          onPress: () => {
+            setMailContent('');
+            goBack();
+          },
+        },
+      ]);
+    } catch (e) {
+      const msg = e?.response?.data?.message ?? '전송 실패';
+      Alert.alert('오류', msg);
+    } finally {
+      setSending(false);
+    }
+  };
+
   const handleSend = () => {
     if (!mailContent.trim()) {
       Alert.alert('알림', '내용을 입력해주세요.');
       return;
     }
+    if (!schoolId) {
+      Alert.alert('오류', '학교 정보가 없습니다.');
+      return;
+    }
 
-    Alert.alert(
-      '우편 전송',
-      `「${schoolName}」학교 우편함으로 전송하시겠습니까?`,
-      [
-        { text: '취소', style: 'cancel' },
-        {
-          text: '전송',
-          onPress: () => {
-            Alert.alert('완료', '우편이 전송되었습니다.', [
-              {
-                text: '확인',
-                onPress: () => {
-                  setMailContent('');
-                  goBack();
-                },
-              },
-            ]);
-          },
-        },
-      ]
-    );
+    Alert.alert('우편 전송', `「${schoolName}」학교 우편함으로 전송하시겠습니까?`, [
+      { text: '취소', style: 'cancel' },
+      { text: '전송', onPress: () => doSend() },
+    ]);
   };
+
+  const canSend = !!mailContent.trim() && !!schoolId && !sending;
 
   return (
     <View style={styles.schoolSendOuter}>
@@ -93,52 +109,54 @@ const SendSchoolMailScreen = () => {
               showsVerticalScrollIndicator={false}
               keyboardShouldPersistTaps="handled"
             >
-            <View style={[styles.schoolSendSection, { marginTop: 0 }]}>
-              <Text style={styles.schoolSendFieldLabel}>보낼 학교</Text>
-              <View style={styles.schoolSendFixedSchoolBox}>
-                <Ionicons name="school-outline" size={normalize(20)} color={colors.textSecondary} />
-                <View style={styles.schoolSendFixedSchoolTexts}>
-                  <Text style={styles.schoolSendFixedSchoolName}>{schoolName}</Text>
+              <View style={[styles.schoolSendSection, { marginTop: 0 }]}>
+                <Text style={styles.schoolSendFieldLabel}>보낼 학교</Text>
+                <View style={styles.schoolSendFixedSchoolBox}>
+                  <Ionicons name="school-outline" size={normalize(20)} color={colors.textSecondary} />
+                  <View style={styles.schoolSendFixedSchoolTexts}>
+                    <Text style={styles.schoolSendFixedSchoolName}>{schoolName}</Text>
+                  </View>
                 </View>
               </View>
-            </View>
 
-            <View style={[styles.schoolSendSection, { flex: 1, marginBottom: normalize(8) }]}>
-              <Text style={styles.schoolSendFieldLabel}>내용</Text>
-              <View style={styles.schoolSendBodyWrap}>
-                <TextInput
-                  style={styles.schoolSendBodyInput}
-                  placeholder="학교 우편함에 보낼 내용을 입력하세요"
-                  value={mailContent}
-                  onChangeText={handleMailContentChange}
-                  multiline
-                  textAlignVertical="top"
-                  placeholderTextColor={colors.textSecondary}
-                />
-                <View style={styles.schoolSendMetaRow}>
-                  <View style={{ marginLeft: 'auto', alignItems: 'flex-end', justifyContent: 'flex-end' }}>
-                    <Text style={styles.schoolSendCharCount}>{mailContent.length}/50자</Text>
-                    <View style={styles.schoolSendAdChip}>
-                      <MaterialCommunityIcons name="television-classic" size={15} color={colors.textPrimary} />
-                      <Text style={styles.schoolSendAdChipText}>x 2</Text>
+              <View style={[styles.schoolSendSection, { flex: 1, marginBottom: normalize(8) }]}>
+                <Text style={styles.schoolSendFieldLabel}>내용</Text>
+                <View style={styles.schoolSendBodyWrap}>
+                  <TextInput
+                    style={styles.schoolSendBodyInput}
+                    placeholder="학교 우편함에 보낼 내용을 입력하세요"
+                    value={mailContent}
+                    onChangeText={handleMailContentChange}
+                    multiline
+                    textAlignVertical="top"
+                    placeholderTextColor={colors.textSecondary}
+                    editable={!sending}
+                  />
+                  <View style={styles.schoolSendMetaRow}>
+                    <View style={{ marginLeft: 'auto', alignItems: 'flex-end', justifyContent: 'flex-end' }}>
+                      <Text style={styles.schoolSendCharCount}>{mailContent.length}/50자</Text>
+                      <View style={styles.schoolSendAdChip}>
+                        <MaterialCommunityIcons name="television-classic" size={15} color={colors.textPrimary} />
+                        <Text style={styles.schoolSendAdChipText}>x 2</Text>
+                      </View>
                     </View>
                   </View>
                 </View>
               </View>
-            </View>
             </ScrollView>
 
             <View style={styles.schoolSendCtaBar}>
               <TouchableOpacity
-                style={[
-                  styles.schoolSendCtaBtn,
-                  !mailContent.trim() && styles.schoolSendCtaBtnDisabled,
-                ]}
+                style={[styles.schoolSendCtaBtn, !canSend && styles.schoolSendCtaBtnDisabled]}
                 onPress={handleSend}
-                disabled={!mailContent.trim()}
+                disabled={!canSend}
                 activeOpacity={0.9}
               >
-                <Text style={styles.schoolSendCtaLabel}>전송하기</Text>
+                {sending ? (
+                  <ActivityIndicator color={colors.background} />
+                ) : (
+                  <Text style={styles.schoolSendCtaLabel}>전송하기</Text>
+                )}
               </TouchableOpacity>
             </View>
           </KeyboardAvoidingView>
