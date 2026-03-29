@@ -14,6 +14,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import SubHeader from '../frame/subHeader';
 import { api } from '../../utils/api';
+import { colors } from '../../styles/colors';
 
 const Settings = ({ navigation }) => {
   // ── 알림 설정 ──
@@ -433,7 +434,7 @@ const Settings = ({ navigation }) => {
 };
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#fff' },
+  container: { flex: 1, backgroundColor: colors.background },
   scroll: { flex: 1 },
 
   // ── 섹션 헤더 ──

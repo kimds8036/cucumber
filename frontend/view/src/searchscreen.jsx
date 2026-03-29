@@ -14,6 +14,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import { colors } from '../../styles/colors';
 import { api } from '../../utils/api';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
@@ -102,7 +103,7 @@ const SearchScreen = ({ navigation }) => {
   };
 
   return (
-    <View style={{ flex: 1, backgroundColor: '#FAFAFA' }}>
+    <View style={{ flex: 1, backgroundColor: colors.background }}>
       <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
         <SafeAreaView style={styles.container} edges={['top']}>
           <KeyboardAvoidingView
@@ -111,6 +112,18 @@ const SearchScreen = ({ navigation }) => {
             keyboardVerticalOffset={0}
           >
         <View style={styles.searchBarWrapper}>
+          <TouchableOpacity
+            onPress={() =>
+              navigation.reset({
+                index: 0,
+                routes: [{ name: 'Main' }],
+              })
+            }
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            style={styles.searchBackButton}
+          >
+            <Ionicons name="chevron-back" size={24} color={colors.textPrimary} />
+          </TouchableOpacity>
           <View style={styles.searchInputRow}>
             <Ionicons name="search-outline" size={18} color="#AAAAAA" />
             <TextInput
@@ -133,18 +146,6 @@ const SearchScreen = ({ navigation }) => {
               </TouchableOpacity>
             )}
           </View>
-          <TouchableOpacity
-            onPress={() =>
-              navigation.reset({
-                index: 0,
-                routes: [{ name: 'Main' }],
-              })
-            }
-            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-            style={{ marginLeft: 10 }}
-          >
-            <Text style={styles.dimAction}>닫기</Text>
-          </TouchableOpacity>
         </View>
 
         <ScrollView
@@ -211,7 +212,7 @@ const SearchScreen = ({ navigation }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FAFAFA',
+    backgroundColor: colors.background,
   },
   scrollView: {
     flex: 1,
@@ -221,7 +222,6 @@ const styles = StyleSheet.create({
   searchBarWrapper: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
     backgroundColor: '#FFFFFF',
     paddingHorizontal: 16,
     paddingTop: 12,
@@ -239,6 +239,12 @@ const styles = StyleSheet.create({
     height: 44,
     gap: 8,
     flex: 1,
+  },
+  searchBackButton: {
+    marginRight: 6,
+    padding: 4,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   searchInput: {
     flex: 1,

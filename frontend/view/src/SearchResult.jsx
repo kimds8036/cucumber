@@ -255,6 +255,23 @@ export default function SearchResult({ route, navigation }) {
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       >
       <View style={s.searchBarWrapper}>
+        <TouchableOpacity
+          onPress={() => {
+            if (mode === 'input') {
+              setSearchText(committedQuery);
+              setMode('result');
+            } else {
+              navigation.reset({
+                index: 0,
+                routes: [{ name: 'Main' }],
+              });
+            }
+          }}
+          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          style={s.searchBackButton}
+        >
+          <Ionicons name="chevron-back" size={24} color={colors.textPrimary} />
+        </TouchableOpacity>
         <View style={s.searchInputRow}>
           <Ionicons name="search-outline" size={18} color="#AAAAAA" />
           <TextInput
@@ -287,24 +304,6 @@ export default function SearchResult({ route, navigation }) {
             </TouchableOpacity>
           )}
         </View>
-        <TouchableOpacity
-          onPress={() => {
-            if (mode === 'input') {
-              // 편집 취소: 이전 검색어로 복원
-              setSearchText(committedQuery);
-              setMode('result');
-            } else {
-              navigation.reset({
-                index: 0,
-                routes: [{ name: 'Main' }],
-              });
-            }
-          }}
-          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-          style={{ marginLeft: 10 }}
-        >
-          <Text style={s.searchCloseText}>닫기</Text>
-        </TouchableOpacity>
       </View>
 
       {mode === 'result' && (
@@ -581,7 +580,7 @@ export default function SearchResult({ route, navigation }) {
 const s = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FAFAFA',
+    backgroundColor: colors.background,
   },
   scrollView: {
     flex: 1,
@@ -591,7 +590,6 @@ const s = StyleSheet.create({
   searchBarWrapper: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
     backgroundColor: '#FFFFFF',
     borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: '#EBEBEB',
@@ -614,9 +612,11 @@ const s = StyleSheet.create({
     fontSize: 15,
     color: '#333333',
   },
-  searchCloseText: {
-    fontSize: 13,
-    color: '#666666',
+  searchBackButton: {
+    marginRight: 6,
+    padding: 4,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
 
   /* ── 탭바 ── */

@@ -342,7 +342,7 @@ export const createDetailStyles = (width, normalize) => {
   return StyleSheet.create({
     container: {
       flex: 1,
-      backgroundColor: '#FFFFFF', // 명확한 흰색 배경
+      backgroundColor: colors.background,
     },
     scrollContent: {
       paddingBottom: normalize(100),

@@ -1,4 +1,4 @@
-﻿import { StyleSheet } from 'react-native';
+import { StyleSheet } from 'react-native';
 import { colors, fonts } from './colors';
 
 // 우리 학교 화면 전용 스타일 (학교 정보 + 급식 + 잔디 + 바로가기 + 인기)
@@ -34,6 +34,7 @@ export const createOurSchoolStyles = (normalize) => {
       justifyContent: 'center',
       gap: normalize(8),
       marginBottom: normalize(6),
+      marginTop: normalize(6),
     },
     schoolName: {
       fontSize: normalize(22),
@@ -44,13 +45,19 @@ export const createOurSchoolStyles = (normalize) => {
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'center',
-      marginBottom: normalize(12),
     },
     locationText: {
       fontSize: normalize(12),
       fontFamily: fonts.regular,
       color: colors.textSecondary,
       marginLeft: normalize(4),
+    },
+    schoolInfoDivider: {
+      alignSelf: 'stretch',
+      backgroundColor: colors.textLight10,
+      marginTop: normalize(15),
+      marginBottom: normalize(15),
+      height: 1,
     },
     statsContainer: {
       flexDirection: 'row',

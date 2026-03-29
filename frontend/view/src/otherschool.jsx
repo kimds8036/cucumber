@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, useWindowDimensions, ActivityIndicator } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, useWindowDimensions } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
@@ -151,13 +151,6 @@ const OtherSchoolScreen = ({ route, navigation }) => {
     return `${weekdayLabels[day]}`;
   };
 
-  const popularPosts = [
-    { id: 1, title: '지금 안 자는 사람', type: 'post', likes: 1, comments: 1 },
-    { id: 2, title: '지금 안 자는 사람', type: 'post', likes: 1, comments: 1 },
-    { id: 3, title: '지금 안 자는 사람', type: 'mail', likes: 0, comments: 1 },
-    { id: 4, title: '지금 안 자는 사람', type: 'mail', likes: 0, comments: 1 },
-  ];
-
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
       <SubHeader
@@ -179,6 +172,7 @@ const OtherSchoolScreen = ({ route, navigation }) => {
               <Ionicons name="location-outline" size={normalize(14)} color={colors.textSecondary} />
               <Text style={styles.locationText}>{schoolInfo.location}</Text>
             </View>
+            <View style={styles.schoolInfoDivider} />
             <View style={styles.statsContainer}>
               <View style={styles.statItem}>
                 <View style={styles.statValueContainer}>
@@ -267,68 +261,28 @@ const OtherSchoolScreen = ({ route, navigation }) => {
           <StudyGrassMap />
         </View>
 
-        {/* 게시판 / 우편함 바로가기 */}
-        <View style={styles.shortcutContainer}>
+        {/* 학교 우편함 (전체 너비 가로) */}
+        <View style={styles.mailboxWideBlock}>
           <TouchableOpacity
-            style={styles.shortcutButton}
+            style={styles.mailboxWideButton}
             activeOpacity={0.7}
-            onPress={() => {/* 다른 학교용 게시판 라우팅 연결 예정 */}}
+            onPress={() =>
+              navigation?.navigate('SchoolMailbox', {
+                schoolName: schoolInfo.name || routeName,
+                schoolId: routeSchoolId,
+              })
+            }
           >
-            <View style={styles.shortcutTopRow}>
-              <Ionicons name="chatbubbles" size={normalize(22)} color={colors.primary} />
-              <Text style={styles.shortcutTitle}>학교 게시판</Text>
+            <View style={styles.mailboxWideIconWrap}>
+              <Ionicons name="mail" size={normalize(26)} color={colors.primary} />
             </View>
-            <Text style={styles.shortcutSubtitle}>→ 보러 가기</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={styles.shortcutButton}
-            activeOpacity={0.7}
-            onPress={() => {/* 다른 학교용 우편함 라우팅 연결 예정 */}}
-          >
-            <View style={styles.shortcutTopRow}>
-              <Ionicons name="mail" size={normalize(22)} color={colors.primary} />
-              <Text style={styles.shortcutTitle}>학교 우편함</Text>
+            <View style={styles.mailboxWideTextCol}>
+              <Text style={styles.mailboxWideTitle}>학교 우편함</Text>
             </View>
-            <Text style={styles.shortcutSubtitle}>→ 보러 가기</Text>
+            <View style={styles.mailboxWideChevronWrap}>
+              <Ionicons name="chevron-forward" size={normalize(22)} color={colors.textSecondary} />
+            </View>
           </TouchableOpacity>
-        </View>
-
-        {/* 실시간 인기 */}
-        <View style={styles.popularSection}>
-          <View style={styles.popularHeader}>
-            <Ionicons name="flame" size={normalize(20)} color={colors.alert} />
-            <Text style={styles.popularTitle}>실시간 인기</Text>
-          </View>
-
-          {popularPosts.map((post, index) => (
-            <TouchableOpacity
-              key={post.id}
-              style={[styles.popularItem, index === popularPosts.length - 1 && styles.popularItemLast]}
-            >
-              <View style={styles.popularItemLeft}>
-                <Ionicons
-                  name={post.type === 'post' ? 'chatbubble-ellipses' : 'mail'}
-                  size={normalize(18)}
-                  color={post.type === 'post' ? colors.primary : colors.primaryDark}
-                />
-                <Text style={styles.popularItemTitle}>{post.title}</Text>
-              </View>
-
-              <View style={styles.popularItemRight}>
-                {post.likes > 0 && (
-                  <View style={styles.countBadge}>
-                    <Ionicons name="heart-outline" size={normalize(14)} color={colors.alert} />
-                    <Text style={styles.countText}>{post.likes}</Text>
-                  </View>
-                )}
-                <View style={styles.countBadge}>
-                  <Ionicons name="chatbubble-outline" size={normalize(14)} color={colors.primaryDark} />
-                  <Text style={styles.countText}>{post.comments}</Text>
-                </View>
-              </View>
-            </TouchableOpacity>
-          ))}
         </View>
       </ScrollView>
     </SafeAreaView>

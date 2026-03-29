@@ -902,7 +902,7 @@ export const TimerContent = () => {
         <ViewShot
           ref={capturePlannerRef}
           options={{ format: 'png', quality: 1 }}
-          style={{ backgroundColor: '#fff' }}
+          style={{ backgroundColor: colors.background }}
         >
           <View style={styles.plannerCaptureWrap}>
             <View style={styles.plannerCaptureRow}>

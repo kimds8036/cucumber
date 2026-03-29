@@ -1,6 +1,7 @@
 import { StatusBar } from 'expo-status-bar';
-import { NavigationContainer } from '@react-navigation/native';
+import { DefaultTheme, NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
+import { colors } from './styles/colors';
 import Login from './view/src/Login';
 import Sign from './view/src/Sign';
 import MainScreen from './view/src/MainScreen';
@@ -39,6 +40,15 @@ import { SocketProvider } from './context/SocketContext';
 
 const Stack = createNativeStackNavigator();
 
+const navigationTheme = {
+  ...DefaultTheme,
+  colors: {
+    ...DefaultTheme.colors,
+    background: colors.background,
+    card: colors.background,
+  },
+};
+
 SplashScreen.preventAutoHideAsync();
 export default function App() {
   const [fontsLoaded] = useFonts({
@@ -60,10 +70,13 @@ export default function App() {
         <SocketProvider>
           <NotificationProvider>
             <FriendProvider>
-              <NavigationContainer>
+              <NavigationContainer theme={navigationTheme}>
                 <Stack.Navigator
                   initialRouteName="Login"
-                  screenOptions={{ headerShown: false }}
+                  screenOptions={{
+                    headerShown: false,
+                    contentStyle: { backgroundColor: colors.background },
+                  }}
                 >
                   <Stack.Screen name="Login" component={Login} />
                   <Stack.Screen name="Sign" component={Sign} />

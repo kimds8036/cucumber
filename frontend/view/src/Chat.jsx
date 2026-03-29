@@ -508,14 +508,14 @@ export default function Chat({ navigation, route }) {
   if (isLoading && messages.length === 0) {
     return (
       <SafeAreaView
-        style={[detailStyles.container, { backgroundColor: '#FFFFFF' }]}
+        style={detailStyles.container}
         edges={['top']}
       >
         <View
           style={{
             zIndex: 1,
             elevation: 0,
-            backgroundColor: '#FFFFFF',
+            backgroundColor: colors.background,
           }}
         >
           <SubHeader title="쪽지" onBack={handleBack} />
@@ -531,21 +531,21 @@ export default function Chat({ navigation, route }) {
 
   return (
     <SafeAreaView
-      style={[detailStyles.container, { backgroundColor: '#FFFFFF' }]}
+      style={detailStyles.container}
       edges={['top']}
     >
       <View
         style={{
           zIndex: 1,
           elevation: 0,
-          backgroundColor: '#FFFFFF',
+          backgroundColor: colors.background,
         }}
       >
         <SubHeader title="쪽지" onBack={handleBack} />
       </View>
 
       <KeyboardAvoidingView
-        style={{ flex: 1, backgroundColor: '#FFFFFF' }}
+        style={{ flex: 1, backgroundColor: colors.background }}
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         keyboardVerticalOffset={
           Platform.OS === 'ios' ? keyboardVerticalOffset : 0
@@ -554,7 +554,7 @@ export default function Chat({ navigation, route }) {
         <View
           style={{
             flex: 1,
-            backgroundColor: '#FFFFFF',
+            backgroundColor: colors.background,
             flexDirection: 'column',
           }}
         >
@@ -563,7 +563,7 @@ export default function Chat({ navigation, route }) {
               activeOpacity={0.8}
               onPress={handleOpenPost}
               style={{
-                backgroundColor: '#FFFFFF',
+                backgroundColor: colors.background,
                 marginHorizontal: normalize(12),
                 marginTop: normalize(12),
                 marginBottom: normalize(8),
@@ -663,7 +663,7 @@ export default function Chat({ navigation, route }) {
           <View
             style={{
               flex: 1,
-              backgroundColor: '#FFFFFF',
+              backgroundColor: colors.background,
               paddingHorizontal: normalize(12),
               paddingBottom: normalize(10),
               paddingTop: normalize(8),
@@ -733,7 +733,7 @@ export default function Chat({ navigation, route }) {
 
           <View
             style={{
-              backgroundColor: '#FFFFFF',
+              backgroundColor: colors.background,
               borderTopWidth: 1,
               borderTopColor: '#E8E8E8',
             }}

@@ -13,6 +13,7 @@ import { useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { api } from '../../utils/api';
 import { useFriend } from '../../context/FriendContext';
+import { colors } from '../../styles/colors';
 
 // 이니셜 아바타 색상
 const AVATAR_COLORS = [
@@ -357,7 +358,7 @@ const FriendsScreen = ({ navigation }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#fff',
+    backgroundColor: colors.background,
   },
 
   // 헤더
@@ -367,7 +368,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingTop: 56,
     paddingBottom: 12,
-    backgroundColor: '#fff',
+    backgroundColor: colors.background,
     borderBottomWidth: 1,
     borderBottomColor: '#f0f0f0',
   },
@@ -598,7 +599,7 @@ const styles = StyleSheet.create({
 
   // 바텀시트
   bottomSheet: {
-    backgroundColor: '#fff',
+    backgroundColor: colors.background,
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
     paddingHorizontal: 20,

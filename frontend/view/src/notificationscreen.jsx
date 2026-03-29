@@ -13,6 +13,7 @@ import { AppState } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import SubHeader from '../frame/subHeader';
 import { api } from '../../utils/api';
+import { colors } from '../../styles/colors';
 import { useNotification } from '../../context/NotificationContext';
 import { useFriend } from '../../context/FriendContext';
 
@@ -596,10 +597,10 @@ const NotificationScreen = ({ navigation }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: colors.background,
   },
   tabContainer: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: colors.background,
     paddingVertical: 12,
     paddingHorizontal: 16,
     borderBottomWidth: 1,

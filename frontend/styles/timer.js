@@ -616,7 +616,7 @@ export const createTimerStyles = (width, normalize) => {
     // 저장용 플래너 캡처 (좌: 날짜/시간/투두, 우: 타임테이블, 버튼 없음)
     plannerCaptureWrap: {
       width: width,
-      backgroundColor: '#fff',
+      backgroundColor: colors.background,
       paddingVertical: normalize(16),
     },
     plannerCaptureRow: {

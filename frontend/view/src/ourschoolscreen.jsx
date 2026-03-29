@@ -188,6 +188,7 @@ const OurSchoolScreen = ({ navigation }) => {
               <Ionicons name="location-outline" size={normalize(14)} color={colors.textSecondary} />
               <Text style={styles.locationText}>{schoolInfo.location}</Text>
             </View>
+            <View style={styles.schoolInfoDivider} />
             <View style={styles.statsContainer}>
               <View style={styles.statItem}>
                 <View style={styles.statValueContainer}>
