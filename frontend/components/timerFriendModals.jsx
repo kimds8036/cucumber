@@ -19,6 +19,8 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import MessageTabIcon from '../assets/Group 166.svg';
 import { colors } from '../styles/colors';
 import { useFriendSocketEvents } from '../hooks/useFriendSocketEvents';
+import { useNavigation } from '@react-navigation/native';
+import { api } from '../utils/api';
 
 // ── 상수 ────────────────────────────────────────────────
 export const FRIEND_ICON_COLORS = [colors.green, colors.yellow, colors.red, colors.blue];
@@ -28,7 +30,7 @@ export const getFriendIconColorByIndex = (i) => FRIEND_ICON_COLORS[i % FRIEND_IC
 export const INITIAL_FRIENDS = [];
 
 // ── 쿡 찌르기 팝업 ──────────────────────────────────────
-export const PokeModal = ({ visible, friend, onClose, onPoke, onNotifyLater }) => {
+export const PokeModal = ({ visible, friend, onClose, onPoke, onNotifyLater, onMessage }) => {
   const shakeAnim = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
@@ -80,7 +82,7 @@ export const PokeModal = ({ visible, friend, onClose, onPoke, onNotifyLater }) =
                 </View>
               </View>
               <TouchableOpacity style={pokeModalStyles.primaryBtn} onPress={onNotifyLater} activeOpacity={0.8}>
-                <Text style={pokeModalStyles.primaryBtnText}>공부 끝나면 알려줘!</Text>
+                <Text style={pokeModalStyles.primaryBtnText}>🔔 공부 끝나면 알려줘!</Text>
               </TouchableOpacity>
             </>
           ) : (
@@ -98,6 +100,14 @@ export const PokeModal = ({ visible, friend, onClose, onPoke, onNotifyLater }) =
             </>
           )}
 
+          <TouchableOpacity
+            style={pokeModalStyles.messageBtn}
+            onPress={() => onMessage?.()}
+            activeOpacity={0.8}
+          >
+            <Text style={pokeModalStyles.messageBtnText}>💬 메시지 보내기</Text>
+          </TouchableOpacity>
+
           <TouchableOpacity style={pokeModalStyles.cancelBtn} onPress={onClose}>
             <Text style={pokeModalStyles.cancelBtnText}>취소</Text>
           </TouchableOpacity>
@@ -114,9 +124,26 @@ export const PokeModal = ({ visible, friend, onClose, onPoke, onNotifyLater }) =
  */
 export const FriendPokeController = ({ visible, friend, onClose, showToast }) => {
   const { emitFriendPoke, emitFriendNotifyOnStop } = useFriendSocketEvents();
+  const navigation = useNavigation();
 
   const handleClose = () => {
     onClose?.();
+  };
+
+  const handleMessage = async () => {
+    if (!friend) return;
+    try {
+      const res = await api.post('/api/dm/rooms', { otherUserId: friend.id });
+      const roomId = res.data?.data?.id;
+      if (roomId == null) {
+        showToast?.('메시지 전송 준비 중 오류가 발생했어요');
+        return;
+      }
+      handleClose();
+      navigation.navigate('DMChat', { roomId, friend });
+    } catch (e) {
+      showToast?.('메시지 전송 준비 중 오류가 발생했어요');
+    }
   };
 
   const handlePoke = () => {
@@ -142,6 +169,7 @@ export const FriendPokeController = ({ visible, friend, onClose, showToast }) =>
       onClose={handleClose}
       onPoke={handlePoke}
       onNotifyLater={handleNotifyLater}
+      onMessage={handleMessage}
     />
   );
 };
@@ -163,6 +191,8 @@ const pokeModalStyles = {
   infoDesc:      { fontSize: 13, color: colors.textSecondary, lineHeight: 19 },
   primaryBtn:    { backgroundColor: colors.primary, borderRadius: 14, paddingVertical: 14, alignItems: 'center', marginBottom: 10 },
   primaryBtnText:{ fontSize: 15, fontWeight: '700', color: colors.textWhite },
+  messageBtn:    { backgroundColor: colors.primary, opacity: 0.85, borderRadius: 14, paddingVertical: 14, alignItems: 'center', marginBottom: 10 },
+  messageBtnText:{ color: colors.textWhite, fontSize: 15, fontWeight: '600' },
   cancelBtn:     { paddingVertical: 12, alignItems: 'center', backgroundColor: '#F5F5F5', borderRadius: 14 },
   cancelBtnText: { fontSize: 14, fontWeight: '600', color: colors.textSecondary },
 };
@@ -245,36 +275,40 @@ const addFriendStyles = {
 
 // ── 토스트 ──────────────────────────────────────────────
 export const Toast = ({ message, visible, onHide }) => {
-  const translateY = useRef(new Animated.Value(-40)).current;
+  const translateY = useRef(new Animated.Value(-80)).current;
   const opacity = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
     if (visible && message) {
+      translateY.setValue(-80);
+      opacity.setValue(0);
       Animated.sequence([
         Animated.parallel([
           Animated.timing(translateY, {
             toValue: 0,
-            duration: 220,
-            easing: Easing.out(Easing.cubic),
+            duration: 320,
+            easing: Easing.out(Easing.back(1.2)),
             useNativeDriver: true,
           }),
           Animated.timing(opacity, {
             toValue: 1,
-            duration: 220,
+            duration: 320,
+            easing: Easing.out(Easing.cubic),
             useNativeDriver: true,
           }),
         ]),
-        Animated.delay(2500),
+        Animated.delay(2800),
         Animated.parallel([
           Animated.timing(translateY, {
-            toValue: -40,
-            duration: 260,
+            toValue: -80,
+            duration: 280,
             easing: Easing.in(Easing.cubic),
             useNativeDriver: true,
           }),
           Animated.timing(opacity, {
             toValue: 0,
-            duration: 260,
+            duration: 280,
+            easing: Easing.in(Easing.cubic),
             useNativeDriver: true,
           }),
         ]),
@@ -296,19 +330,27 @@ export const Toast = ({ message, visible, onHide }) => {
 const toastStyles = {
   toast: {
     position: 'absolute',
-    top: 40,
-    alignSelf: 'center',
-    backgroundColor: 'rgba(40,40,40,0.92)',
-    borderRadius: 20,
-    paddingHorizontal: 18,
-    paddingVertical: 10,
+    top: 55,
+    left: 16,
+    right: 16,
+    backgroundColor: 'rgba(255,255,255,0.97)',
+    borderRadius: 16,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    flexDirection: 'row',
+    alignItems: 'center',
     shadowColor: '#000',
-    shadowOpacity: 0.2,
-    shadowRadius: 8,
+    shadowOpacity: 0.12,
+    shadowRadius: 16,
     shadowOffset: { width: 0, height: 4 },
-    elevation: 4,
+    elevation: 8,
   },
-  toastText: { fontSize: 13, color: colors.textWhite, fontWeight: '500' },
+  toastText: {
+    fontSize: 14,
+    color: '#1a1a1a',
+    fontWeight: '600',
+    flex: 1,
+  },
 };
 
 // ── 친구 목록 UI (FriendStoryBar) ──────────────────────

@@ -1,6 +1,6 @@
 import express from 'express';
 import pool from '../config/database.js';
-import { authenticate } from '../middleware/auth.js';
+import { authenticate, optionalAuthenticate } from '../middleware/auth.js';
 import { enqueueNotification } from '../utils/notificationWorker.js';
 import { getNowForDB } from '../utils/dateUtils.js';
 
@@ -606,6 +606,7 @@ router.get('/school', async (req, res) => {
         sm.user_id,
         sm.content,
         sm.comment_count,
+        sm.like_count,
         sm.is_deleted,
         sm.created_at,
         u.name as author_name,
@@ -652,12 +653,12 @@ router.get('/school', async (req, res) => {
   }
 });
 
-// 학교 우편 상세 조회
-router.get('/school/:mailId', async (req, res) => {
+// 학교 우편 상세 조회 (비로그인 가능 — is_liked 는 로그인 시만)
+router.get('/school/:mailId', optionalAuthenticate, async (req, res) => {
   try {
     const { mailId } = req.params;
+    const uid = req.user?.userId ?? 0;
 
-    // 학교 우편 조회
     const [mails] = await pool.execute(
       `SELECT 
         sm.id,
@@ -665,18 +666,20 @@ router.get('/school/:mailId', async (req, res) => {
         sm.user_id,
         sm.content,
         sm.comment_count,
+        sm.like_count,
         sm.is_deleted,
         sm.created_at,
         u.name as author_name,
         u.school_id as author_school_id,
         u.color_id as author_color_id,
         (SELECT s2.name FROM schools s2 WHERE s2.school_id = u.school_id) AS author_school_name,
-        s.name as school_name
+        s.name as school_name,
+        (SELECT COUNT(*) FROM school_mail_likes sml WHERE sml.mail_id = sm.id AND sml.user_id = ?) AS is_liked
       FROM school_mails sm
       LEFT JOIN users u ON sm.user_id = u.id
       LEFT JOIN schools s ON sm.school_id = s.school_id
       WHERE sm.id = ? AND sm.is_deleted = FALSE`,
-      [mailId]
+      [uid, mailId]
     );
 
     if (mails.length === 0) {
@@ -686,9 +689,12 @@ router.get('/school/:mailId', async (req, res) => {
       });
     }
 
+    const row = mails[0];
+    row.is_liked = Number(row.is_liked) > 0;
+
     res.json({
       success: true,
-      data: mails[0]
+      data: row
     });
   } catch (error) {
     console.error('학교 우편 상세 조회 오류:', error);
@@ -696,6 +702,118 @@ router.get('/school/:mailId', async (req, res) => {
       success: false, 
       message: '학교 우편 상세 조회 중 오류가 발생했습니다.' 
     });
+  }
+});
+
+// 학교 우편 좋아요 토글
+router.post('/school/:mailId/like', authenticate, async (req, res) => {
+  const userId = req.user.userId;
+  const { mailId } = req.params;
+  const connection = await pool.getConnection();
+  try {
+    const [mrows] = await connection.execute(
+      'SELECT id, like_count FROM school_mails WHERE id = ? AND is_deleted = FALSE',
+      [mailId]
+    );
+    if (mrows.length === 0) {
+      return res.status(404).json({ success: false, message: '학교 우편을 찾을 수 없습니다.' });
+    }
+
+    await connection.beginTransaction();
+    const [likes] = await connection.execute(
+      'SELECT 1 FROM school_mail_likes WHERE mail_id = ? AND user_id = ?',
+      [mailId, userId]
+    );
+    let liked;
+    if (likes.length > 0) {
+      await connection.execute(
+        'DELETE FROM school_mail_likes WHERE mail_id = ? AND user_id = ?',
+        [mailId, userId]
+      );
+      await connection.execute(
+        'UPDATE school_mails SET like_count = GREATEST(0, like_count - 1) WHERE id = ?',
+        [mailId]
+      );
+      liked = false;
+    } else {
+      await connection.execute(
+        'INSERT INTO school_mail_likes (mail_id, user_id) VALUES (?, ?)',
+        [mailId, userId]
+      );
+      await connection.execute(
+        'UPDATE school_mails SET like_count = like_count + 1 WHERE id = ?',
+        [mailId]
+      );
+      liked = true;
+    }
+    await connection.commit();
+
+    const [lcRows] = await pool.execute('SELECT like_count FROM school_mails WHERE id = ?', [mailId]);
+    const likeCount = Number(lcRows[0]?.like_count ?? 0);
+    res.json({ success: true, liked, likeCount });
+  } catch (error) {
+    await connection.rollback();
+    console.error('학교 우편 좋아요 오류:', error);
+    res.status(500).json({ success: false, message: '좋아요 처리 중 오류가 발생했습니다.' });
+  } finally {
+    connection.release();
+  }
+});
+
+// 학교 우편 댓글 좋아요 토글
+router.post('/school/comments/:commentId/like', authenticate, async (req, res) => {
+  const userId = req.user.userId;
+  const { commentId } = req.params;
+  const connection = await pool.getConnection();
+  try {
+    const [crows] = await connection.execute(
+      'SELECT id, like_count FROM school_mail_comments WHERE id = ? AND is_deleted = FALSE',
+      [commentId]
+    );
+    if (crows.length === 0) {
+      return res.status(404).json({ success: false, message: '댓글을 찾을 수 없습니다.' });
+    }
+
+    await connection.beginTransaction();
+    const [likes] = await connection.execute(
+      'SELECT 1 FROM school_mail_comment_likes WHERE comment_id = ? AND user_id = ?',
+      [commentId, userId]
+    );
+    let liked;
+    if (likes.length > 0) {
+      await connection.execute(
+        'DELETE FROM school_mail_comment_likes WHERE comment_id = ? AND user_id = ?',
+        [commentId, userId]
+      );
+      await connection.execute(
+        'UPDATE school_mail_comments SET like_count = GREATEST(0, like_count - 1) WHERE id = ?',
+        [commentId]
+      );
+      liked = false;
+    } else {
+      await connection.execute(
+        'INSERT INTO school_mail_comment_likes (comment_id, user_id) VALUES (?, ?)',
+        [commentId, userId]
+      );
+      await connection.execute(
+        'UPDATE school_mail_comments SET like_count = like_count + 1 WHERE id = ?',
+        [commentId]
+      );
+      liked = true;
+    }
+    await connection.commit();
+
+    const [ccRows] = await pool.execute('SELECT like_count FROM school_mail_comments WHERE id = ?', [
+      commentId,
+    ]);
+    const likeCount = Number(ccRows[0]?.like_count ?? 0);
+    res.json({ success: true, liked, likeCount });
+  } catch (error) {
+    await connection.rollback();
+    console.error('학교 우편 댓글 좋아요 오류:', error);
+    res.status(500).json({ success: false, message: '댓글 좋아요 처리 중 오류가 발생했습니다.' });
+  } finally {
+    connection.release();
   }
 });
 
@@ -753,6 +871,7 @@ router.post('/school', authenticate, async (req, res) => {
         sm.user_id,
         sm.content,
         sm.comment_count,
+        sm.like_count,
         sm.is_deleted,
         sm.created_at,
         u.name as author_name,
@@ -820,112 +939,120 @@ router.delete('/school/:mailId', authenticate, async (req, res) => {
   }
 });
 
+// 학교 우편 댓글 목록 조회 (게시글보다 먼저 등록: /comments 가 :mailId에 안 먹히도록)
+router.get('/school/:mailId/comments', optionalAuthenticate, async (req, res) => {
+  try {
+    const { mailId } = req.params;
+    const uid = req.user?.userId ?? 0;
+
+    const [mails] = await pool.execute(
+      'SELECT id FROM school_mails WHERE id = ? AND is_deleted = FALSE',
+      [mailId]
+    );
+    if (mails.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: '학교 우편을 찾을 수 없습니다.',
+      });
+    }
+
+    const [rows] = await pool.execute(
+      `SELECT 
+        smc.id,
+        smc.mail_id,
+        smc.user_id,
+        smc.parent_id,
+        smc.content,
+        smc.like_count,
+        smc.is_deleted,
+        smc.created_at,
+        u.school_id AS author_school_id,
+        (SELECT s.name FROM schools s WHERE s.school_id = u.school_id) AS author_school_name,
+        (SELECT COUNT(*) FROM school_mail_comment_likes smcl WHERE smcl.comment_id = smc.id AND smcl.user_id = ?) AS is_liked
+      FROM school_mail_comments smc
+      LEFT JOIN users u ON smc.user_id = u.id
+      WHERE smc.mail_id = ? AND smc.is_deleted = FALSE
+      ORDER BY smc.created_at ASC`,
+      [uid, mailId]
+    );
+
+    const comments = rows.map((r) => ({
+      ...r,
+      is_liked: Number(r.is_liked) > 0,
+    }));
+
+    res.json({
+      success: true,
+      data: { comments },
+    });
+  } catch (error) {
+    console.error('학교 우편 댓글 목록 조회 오류:', error);
+    res.status(500).json({
+      success: false,
+      message: '댓글 목록 조회 중 오류가 발생했습니다.',
+    });
+  }
+});
+
 // 학교 우편 댓글 작성
-// 주의: 현재 DB 구조에는 school_mail_comments 테이블이 없습니다.
-// 댓글 기능을 사용하려면 별도의 school_mail_comments 테이블이 필요합니다.
-// 이 API는 테이블이 생성된 후 사용할 수 있습니다.
 router.post('/school/:mailId/comments', authenticate, async (req, res) => {
   try {
     const userId = req.user.userId;
     const { mailId } = req.params;
-    const { content, parentCommentId } = req.body;
+    const { content, parentId } = req.body;
 
-    if (!content) {
-      return res.status(400).json({ 
-        success: false, 
-        message: '댓글 내용을 입력해주세요.' 
+    if (!content || !String(content).trim()) {
+      return res.status(400).json({
+        success: false,
+        message: '댓글 내용을 입력해주세요.',
       });
     }
 
-    // 학교 우편 존재 확인
     const [mails] = await pool.execute(
       'SELECT id, school_id FROM school_mails WHERE id = ? AND is_deleted = FALSE',
       [mailId]
     );
     if (mails.length === 0) {
-      return res.status(404).json({ 
-        success: false, 
-        message: '학교 우편을 찾을 수 없습니다.' 
+      return res.status(404).json({
+        success: false,
+        message: '학교 우편을 찾을 수 없습니다.',
       });
     }
 
-    // 사용자 학교 확인
-    const [users] = await pool.execute(
-      'SELECT school_id FROM users WHERE id = ?',
-      [userId]
-    );
-    if (users.length === 0) {
-      return res.status(404).json({ 
-        success: false, 
-        message: '사용자를 찾을 수 없습니다.' 
-      });
-    }
-
-    const mail = mails[0];
-    const user = users[0];
-
-    // 같은 학교 사용자만 댓글 작성 가능
-    if (mail.school_id !== user.school_id) {
-      return res.status(403).json({ 
-        success: false, 
-        message: '같은 학교 사용자만 댓글을 작성할 수 있습니다.' 
-      });
-    }
-
-    // TODO: school_mail_comments 테이블이 생성되면 아래 코드를 활성화하세요
-    // 현재는 DB 구조에 school_mail_comments 테이블이 없으므로 에러를 반환합니다.
-    return res.status(501).json({ 
-      success: false, 
-      message: '학교 우편 댓글 기능은 아직 구현되지 않았습니다. school_mail_comments 테이블이 필요합니다.' 
-    });
-
-    /* 
-    // 대댓글인 경우 부모 댓글 확인
-    if (parentCommentId) {
-      const [parentComments] = await pool.execute(
-        'SELECT id FROM school_mail_comments WHERE id = ? AND mail_id = ?',
-        [parentCommentId, mailId]
+    let parentIdVal = parentId != null ? Number(parentId) : null;
+    if (parentIdVal) {
+      const [parents] = await pool.execute(
+        'SELECT id FROM school_mail_comments WHERE id = ? AND mail_id = ? AND is_deleted = FALSE',
+        [parentIdVal, mailId]
       );
-      if (parentComments.length === 0) {
-        return res.status(404).json({ 
-          success: false, 
-          message: '부모 댓글을 찾을 수 없습니다.' 
+      if (parents.length === 0) {
+        return res.status(404).json({
+          success: false,
+          message: '부모 댓글을 찾을 수 없습니다.',
         });
       }
     }
 
-    // 해당 우편의 댓글 수 계산하여 익명 번호 부여
-    const [commentCountResult] = await pool.execute(
-      'SELECT COUNT(*) as count FROM school_mail_comments WHERE mail_id = ?',
-      [mailId]
-    );
-    const anonymousIndex = (commentCountResult[0].count % 100) + 1;
-
-    // 댓글 생성
     const [result] = await pool.execute(
-      `INSERT INTO school_mail_comments (mail_id, user_id, parent_comment_id, content, anonymous_index, created_at)
-       VALUES (?, ?, ?, ?, ?, ?)`,
-      [mailId, userId, parentCommentId || null, content, anonymousIndex, getNowForDB()]
+      `INSERT INTO school_mail_comments (mail_id, user_id, parent_id, content, created_at)
+       VALUES (?, ?, ?, ?, ?)`,
+      [mailId, userId, parentIdVal, String(content).trim(), getNowForDB()]
     );
 
-    // 학교 우편의 댓글 수 증가
-    await pool.execute(
-      'UPDATE school_mails SET comment_count = comment_count + 1 WHERE id = ?',
-      [mailId]
-    );
+    await pool.execute('UPDATE school_mails SET comment_count = comment_count + 1 WHERE id = ?', [mailId]);
 
-    // 생성된 댓글 정보 조회
-    const [comments] = await pool.execute(
+    const [created] = await pool.execute(
       `SELECT 
         smc.id,
         smc.mail_id,
         smc.user_id,
-        smc.parent_comment_id,
+        smc.parent_id,
         smc.content,
-        smc.anonymous_index,
+        smc.like_count,
+        smc.is_deleted,
         smc.created_at,
-        u.name as author_name,
-        u.color_id
+        u.school_id AS author_school_id,
+        (SELECT s.name FROM schools s WHERE s.school_id = u.school_id) AS author_school_name
       FROM school_mail_comments smc
       LEFT JOIN users u ON smc.user_id = u.id
       WHERE smc.id = ?`,
@@ -935,75 +1062,13 @@ router.post('/school/:mailId/comments', authenticate, async (req, res) => {
     res.status(201).json({
       success: true,
       message: '댓글이 작성되었습니다.',
-      data: comments[0]
+      data: created[0],
     });
-    */
   } catch (error) {
     console.error('학교 우편 댓글 작성 오류:', error);
-    res.status(500).json({ 
-      success: false, 
-      message: '댓글 작성 중 오류가 발생했습니다.' 
-    });
-  }
-});
-
-// 학교 우편 댓글 목록 조회
-// 주의: 현재 DB 구조에는 school_mail_comments 테이블이 없습니다.
-router.get('/school/:mailId/comments', async (req, res) => {
-  try {
-    const { mailId } = req.params;
-    const userId = req.headers.authorization ? req.user?.userId : null;
-
-    // 학교 우편 존재 확인
-    const [mails] = await pool.execute(
-      'SELECT id FROM school_mails WHERE id = ? AND is_deleted = FALSE',
-      [mailId]
-    );
-    if (mails.length === 0) {
-      return res.status(404).json({ 
-        success: false, 
-        message: '학교 우편을 찾을 수 없습니다.' 
-      });
-    }
-
-    // TODO: school_mail_comments 테이블이 생성되면 아래 코드를 활성화하세요
-    return res.status(501).json({ 
-      success: false, 
-      message: '학교 우편 댓글 기능은 아직 구현되지 않았습니다. school_mail_comments 테이블이 필요합니다.' 
-    });
-
-    /*
-    // 댓글 조회 (대댓글 포함)
-    const [comments] = await pool.execute(
-      `SELECT 
-        smc.id,
-        smc.mail_id,
-        smc.user_id,
-        smc.parent_comment_id,
-        smc.content,
-        smc.anonymous_index,
-        smc.created_at,
-        u.name as author_name,
-        u.color_id
-      FROM school_mail_comments smc
-      LEFT JOIN users u ON smc.user_id = u.id
-      WHERE smc.mail_id = ?
-      ORDER BY smc.parent_comment_id IS NULL DESC, smc.created_at ASC`,
-      [mailId]
-    );
-
-    res.json({
-      success: true,
-      data: {
-        comments
-      }
-    });
-    */
-  } catch (error) {
-    console.error('학교 우편 댓글 목록 조회 오류:', error);
-    res.status(500).json({ 
-      success: false, 
-      message: '댓글 목록 조회 중 오류가 발생했습니다.' 
+    res.status(500).json({
+      success: false,
+      message: '댓글 작성 중 오류가 발생했습니다.',
     });
   }
 });

@@ -16,6 +16,7 @@ import BoardWrite from './view/src/boardWrite';
 import SearchResult from './view/src/SearchResult';
 import BoardDetail from './view/src/boardDetail';
 import Chat from './view/src/Chat';
+import DMChat from './view/src/DMChat';
 import SendMailScreen from './view/src/sendmailscreen';
 import AnonymousMailScreen from './view/src/mailscreen';
 import MailReplyScreen from './view/src/mailreply';
@@ -34,6 +35,9 @@ import { useEffect } from 'react';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { KeyboardProvider } from './context/KeyboardContext';
 import { AuthProvider, useAuth } from './context/AuthContext';
+import { SocketProvider } from './context/SocketContext';
+import { NotificationProvider } from './context/NotificationContext';
+import { FriendProvider } from './context/FriendContext';
 
 const Stack = createNativeStackNavigator();
 
@@ -66,6 +70,7 @@ function MainStack() {
       <Stack.Screen name="BoardWrite" component={BoardWrite} />
       <Stack.Screen name="BoardDetail" component={BoardDetail} />
       <Stack.Screen name="Chat" component={Chat} />
+      <Stack.Screen name="DMChat" component={DMChat} />
       <Stack.Screen name="AddTimetable" component={AddTimetable} />
       <Stack.Screen name="MyPosts" component={MyPosts} />
       <Stack.Screen name="LikedPosts" component={LikedPosts} />
@@ -118,9 +123,15 @@ export default function App() {
     <SafeAreaProvider>
       <KeyboardProvider>
         <AuthProvider>
-          <NavigationContainer>
-            <RootNavigator />
-          </NavigationContainer>
+          <SocketProvider>
+            <FriendProvider>
+              <NotificationProvider>
+                <NavigationContainer>
+                  <RootNavigator />
+                </NavigationContainer>
+              </NotificationProvider>
+            </FriendProvider>
+          </SocketProvider>
         </AuthProvider>
       </KeyboardProvider>
     </SafeAreaProvider>

@@ -61,7 +61,7 @@ function mapMailForCard(raw, mailboxSchoolId) {
     preview: content.slice(0, 50),
     fromLabel: getSchoolMailFromLabel(raw, mailboxSchoolId),
     time: formatTimeAgo(raw.created_at) || String(raw.created_at ?? ''),
-    likes: 0,
+    likes: raw.like_count ?? 0,
     comments: raw.comment_count ?? 0,
   };
 }

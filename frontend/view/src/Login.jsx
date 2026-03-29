@@ -6,6 +6,7 @@ import { colors } from '../../styles/colors';
 import { Ionicons } from '@expo/vector-icons';
 import LogoIcon from '../../assets/Group 166.svg';
 import { api, setAuthToken } from '../../utils/api';
+import { useAuth } from '../../context/AuthContext';
 
 /** --no-dev 등에서도 원인 파악용(Alert 본문) */
 function buildLoginFailureMessage(error) {
@@ -39,6 +40,7 @@ function buildLoginFailureMessage(error) {
 }
 
 const Login = ({ navigation }) => {
+  const { login } = useAuth();
   const { width } = useWindowDimensions();
   const scale = width / 375;
   const normalize = (size) => Math.round(scale * size);
@@ -172,8 +174,8 @@ const Login = ({ navigation }) => {
                     await setAuthToken(token);
                     debugLogin('토큰 저장 완료');
                   }
-                  debugLogin('Main 화면 이동');
-                  navigation.navigate('Main');
+                  debugLogin('AuthContext login() — Main 스택으로 전환');
+                  login();
                 } catch (error) {
                   const hasResponse = Boolean(error?.response);
                   const hasRequest = Boolean(error?.request);

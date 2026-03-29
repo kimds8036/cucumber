@@ -1,4 +1,7 @@
-import React, { createContext, useContext, useState, useCallback } from 'react';
+import React, { createContext, useContext, useState, useCallback, useEffect } from 'react';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+
+const AUTH_TOKEN_KEY = '@auth_token';
 
 const AuthContext = createContext(null);
 
@@ -8,6 +11,21 @@ const AuthContext = createContext(null);
  */
 export function AuthProvider({ children }) {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
+
+  useEffect(() => {
+    let mounted = true;
+    (async () => {
+      try {
+        const token = await AsyncStorage.getItem(AUTH_TOKEN_KEY);
+        if (mounted && token) setIsLoggedIn(true);
+      } catch {
+        // ignore
+      }
+    })();
+    return () => {
+      mounted = false;
+    };
+  }, []);
 
   const login = useCallback(() => {
     setIsLoggedIn(true);

@@ -13,5 +13,5 @@ export function getSchoolMailFromLabel(mail, mailboxSchoolId) {
     : '';
   if (box && author && author === box) return '재학생';
   const name = (mail.author_school_name || '').trim();
-  return name ? `${name} 학생` : '학생';
+  return name ? name : '학생';
 }
