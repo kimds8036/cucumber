@@ -593,7 +593,7 @@ export default function BoardDetail({ navigation, route }) {
           name: `image_${index}.jpg`,
         });
       });
-      const res = await api.post(`/api/comments/${postId}`, formData, {
+      const res = await api.post(`/api/${postId}/comments`, formData, {
         headers: { 'Content-Type': 'multipart/form-data' },
       });
       const c = res.data?.data;

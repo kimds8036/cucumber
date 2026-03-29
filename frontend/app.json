@@ -23,6 +23,7 @@
       }
     },
     "android": {
+      "usesCleartextTraffic": true,
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#ffffff"
@@ -49,6 +50,7 @@
       ]
     ],
     "extra": {
+      "apiBaseUrl": "https://nonvenous-patriotically-bud.ngrok-free.dev",
       "eas": {
         "projectId": "0659e4b4-b396-4c6d-a4b3-3e3e345c5132"
       }

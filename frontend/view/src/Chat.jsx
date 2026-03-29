@@ -1,435 +1,292 @@
-import React, { useState, useMemo, useEffect, useRef, useCallback, memo } from 'react';
+import React, {
+  useState,
+  useMemo,
+  useEffect,
+  useRef,
+  useCallback,
+  memo,
+} from 'react';
 import {
   View,
   Text,
-  Image,
   ActivityIndicator,
   TouchableOpacity,
   useWindowDimensions,
   Platform,
   KeyboardAvoidingView,
-  FlatList,
   Keyboard,
   TouchableWithoutFeedback,
   Alert,
 } from 'react-native';
-import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { FlashList } from '@shopify/flash-list';
+import * as Clipboard from 'expo-clipboard';
 import { Ionicons } from '@expo/vector-icons';
-import { Entypo } from '@expo/vector-icons';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
+import {
+  SafeAreaView,
+  useSafeAreaInsets,
+} from 'react-native-safe-area-context';
+
 import SubHeader from '../frame/subHeader';
 import CommentInput from '../../components/CommentInput.jsx';
 import { colors } from '../../styles/colors';
-import { createDetailStyles, getNormalize as getBoardNormalize } from '../../styles/board.style';
+import {
+  createDetailStyles,
+  getNormalize as getBoardNormalize,
+} from '../../styles/board.style';
 import { createChatStyles } from '../../styles/message.style';
-import MessageTabIcon from '../../assets/Group 166.svg';
+import ImageViewer from './ImageViewer';
+import MessageItem from './components/chat/MessageItem';
 import { api } from '../../utils/api';
-import { useNotification } from '../../context/NotificationContext';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import { io } from 'socket.io-client';
-
-const AUTH_TOKEN_KEY = '@auth_token';
+import * as socketManager from './socketManager';
+import useChat from './hooks/useChat';
 
 // ─────────────────────────────────────────────
-// 1. 게시글 캐시
+// 게시글 캐시
 // ─────────────────────────────────────────────
 const postCache = {};
+/** MessageItem 이미지 박스 높이와 동일 — overrideItemLayout 추정에 사용 */
+const CHAT_IMAGE_SLOT = 200;
+/** DateBanner 실측보다 기존 52가 작게 잡히는 경우 보정(+26px) */
+const DATE_BANNER_ESTIMATE_HEIGHT = 78;
+/** 리스트 외곽 paddingBottom 등과 맞춰 마지막 행에 가산(스크롤 끝 정렬 보정) */
+const CHAT_LAST_ROW_EXTRA_PAD = 24;
 
-// ─────────────────────────────────────────────
-// 2. 날짜 유틸
-// ─────────────────────────────────────────────
-function parseUtcToLocal(createdAt) {
-  if (!createdAt) return null;
-  let s = String(createdAt).trim();
-  if (!s) return null;
-  if (
-    /^\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}:\d{2}(\.\d+)?$/.test(s) &&
-    !/[Z+-]\d{2}:?\d{2}$/.test(s) &&
-    !/Z$/.test(s)
-  ) {
-    s = s.replace(' ', 'T') + 'Z';
+function sameMessageSender(a, b) {
+  if (!a || !b) return false;
+  if (a.senderId != null && b.senderId != null) {
+    return a.senderId === b.senderId;
   }
-  const d = new Date(s);
-  return Number.isNaN(d.getTime()) ? null : d;
+  return a.isMe === b.isMe;
 }
 
-function formatChatTime(createdAt) {
-  const d = parseUtcToLocal(createdAt);
-  if (!d) return '';
-  return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+/**
+ * showProfile: 이전과 발신·분이 다르면 그룹의 첫 줄
+ * showTimestamp: 다음과 발신·분이 다르면 그룹의 마지막 줄
+ */
+function withMessageGroupFlags(msgs) {
+  if (!Array.isArray(msgs) || msgs.length === 0) return msgs;
+  return msgs.map((msg, i) => {
+    const prev = msgs[i - 1];
+    const next = msgs[i + 1];
+
+    const showProfile =
+      !prev ||
+      !sameMessageSender(prev, msg) ||
+      prev.time !== msg.time;
+
+    const showTimestamp =
+      !next ||
+      !sameMessageSender(msg, next) ||
+      msg.time !== next.time;
+
+    return { ...msg, showProfile, showTimestamp };
+  });
 }
 
-function formatChatDateBanner(dateKey) {
-  if (!dateKey) return '';
-  const [y, m, d] = dateKey.split('-').map(Number);
-  if (!y || !m || !d) return '';
-  const dt = new Date(y, m - 1, d);
-  return Number.isNaN(dt.getTime())
-    ? ''
-    : dt.toLocaleDateString('ko-KR', { year: 'numeric', month: '2-digit', day: '2-digit' });
-}
-
-function getDateKey(d) {
-  if (!d) return '';
-  return `${d.getFullYear()}-${d.getMonth() + 1}-${d.getDate()}`;
-}
-
-// ─────────────────────────────────────────────
-// 3. 메시지 정규화 (raw API 응답 → UI 모델)
-// ─────────────────────────────────────────────
-function normalizeMessage(m, meId) {
-  const createdAt = m.created_at || '';
-  const d = parseUtcToLocal(createdAt);
-  const isMe = meId != null && m.sender_id === meId;
-  return {
-    id: String(m.id),
-    isMe,
-    content: m.content,
-    images: (() => {
-      const raw = m.images;
-      if (Array.isArray(raw)) return raw.filter((u) => typeof u === 'string');
-      if (typeof raw === 'string') {
-        try {
-          const parsed = JSON.parse(raw);
-          return Array.isArray(parsed) ? parsed.filter((u) => typeof u === 'string') : [];
-        } catch {
-          return [];
-        }
-      }
-      return [];
-    })(),
-    is_deleted: Boolean(m.is_deleted),
-    createdAt,
-    dateKey: getDateKey(d),
-    time: formatChatTime(createdAt),
-    isReadByOther: isMe ? Boolean(m.is_read) : undefined,
-    isReadByMe: !isMe ? Boolean(m.is_read) : undefined,
-    isSending: false,
-    isFailed: false,
-  };
-}
-
-// ─────────────────────────────────────────────
-// 4. 날짜 배너를 배열 중간에 미리 삽입
-//    → 렌더 시점에 prev 비교 없이 타입으로 분기
-// ─────────────────────────────────────────────
 function injectDateBanners(msgs) {
-  // msgs: 시간순(오름차순) 정렬된 배열 가정
+  // msgs: 과거 -> 최신 순서(오름차순)
+  // 각 날짜 그룹의 시작 지점에 배너를 먼저 삽입한다.
   const result = [];
   let lastDateKey = null;
   for (const msg of msgs) {
-    if (msg.dateKey && msg.dateKey !== lastDateKey) {
-      result.push({ id: `banner-${msg.dateKey}`, type: 'dateBanner', dateKey: msg.dateKey });
+    if (msg?.dateKey && msg.dateKey !== lastDateKey) {
+      result.push({
+        id: `banner-${msg.dateKey}-${msg.id}`,
+        type: 'dateBanner',
+        dateKey: msg.dateKey,
+      });
       lastDateKey = msg.dateKey;
     }
-    result.push({ ...msg, type: 'message' });
+    result.push(msg);
   }
   return result;
 }
 
-// ─────────────────────────────────────────────
-// 5. 개별 메시지 컴포넌트 (React.memo로 리렌더 방지)
-// ─────────────────────────────────────────────
-const MessageItem = memo(({ msg, chatStyles, normalize, onRetry, onDeleteMessage }) => {
-  if (msg.type === 'dateBanner') {
-    return (
-      <View style={{ alignItems: 'center', marginVertical: normalize(8) }}>
-        <View
-          style={{
-            paddingHorizontal: normalize(10),
-            paddingVertical: normalize(4),
-            borderRadius: normalize(10),
-            backgroundColor: '#EEE',
-          }}
-        >
-          <Text style={{ fontSize: normalize(11), color: colors.textSecondary }}>
-            {formatChatDateBanner(msg.dateKey)}
-          </Text>
-        </View>
-      </View>
-    );
-  }
-
-  // 이미지만 있는 메시지: 말풍선/텍스트 없이 이미지 그리드만 렌더
-  if (msg.images && msg.images.length > 0 && !msg.content && !msg.is_deleted) {
-    return (
-      <View
-        style={{
-          width: '100%',
-          alignItems: msg.isMe ? 'flex-end' : 'flex-start',
-        }}
-      >
-        {msg.images.map((uri, index) => (
-          <View
-            key={index}
-            style={{
-              width: 200,
-              height: 200,
-              borderRadius: 12,
-              marginBottom: 4,
-              position: 'relative',
-              overflow: 'hidden',
-            }}
-          >
-            <Image
-              source={{ uri }}
-              style={{
-                width: '100%',
-                height: '100%',
-                borderRadius: 12,
-              }}
-              resizeMode="cover"
-            />
-            {msg.isSending && (
-              <View
-                style={{
-                  position: 'absolute',
-                  top: 0,
-                  left: 0,
-                  right: 0,
-                  bottom: 0,
-                  justifyContent: 'center',
-                  alignItems: 'center',
-                  backgroundColor: 'rgba(0,0,0,0.3)',
-                }}
-              >
-                <ActivityIndicator color="#fff" />
-              </View>
-            )}
-          </View>
-        ))}
-      </View>
-    );
-  }
-
-  if (msg.isMe) {
-    return (
-      <View style={chatStyles.chatRowUser}>
-        <View style={chatStyles.userBubbleAndTime}>
-          <View style={chatStyles.userTimeColumn}>
-            {msg.isFailed ? (
-              <TouchableOpacity onPress={() => onRetry(msg)} style={{ alignItems: 'flex-end' }}>
-                <Ionicons name="refresh-circle" size={normalize(20)} color={colors.alert} />
-                <Text style={{ fontSize: normalize(10), color: colors.alert }}>재전송</Text>
-              </TouchableOpacity>
-            ) : (
-              <>
-                {msg.isReadByOther === false && !msg.isSending && (
-                  <Text style={chatStyles.chatUnreadCount}>1</Text>
-                )}
-                <Text style={chatStyles.chatTimeUser}>
-                  {msg.isSending ? '...' : msg.time}
-                </Text>
-              </>
-            )}
-          </View>
-          <TouchableOpacity
-            style={[
-              chatStyles.userBubble,
-              msg.isFailed && { borderWidth: 1, borderColor: colors.alert },
-              msg.is_deleted && { backgroundColor: colors.disabled },
-            ]}
-            onLongPress={() => {
-              if (msg.is_deleted || msg.isSending) return;
-              Alert.alert(
-                '메시지 삭제',
-                '이 메시지를 삭제하시겠어요?\n상대방 화면에서도 삭제됩니다.',
-                [
-                  { text: '취소', style: 'cancel' },
-                  {
-                    text: '삭제',
-                    style: 'destructive',
-                    onPress: () => onDeleteMessage?.(msg.id),
-                  },
-                ]
-              );
-            }}
-            activeOpacity={0.8}
-          >
-            {msg.images && msg.images.length > 0 && !msg.is_deleted && (
-              msg.images.map((uri, index) => (
-                <View
-                  key={index}
-                  style={{
-                    width: 200,
-                    height: 200,
-                    borderRadius: 8,
-                    marginBottom: 4,
-                    position: 'relative',
-                    overflow: 'hidden',
-                  }}
-                >
-                  <Image
-                    source={{ uri: uri }}
-                    style={{ width: 200, height: 200, borderRadius: 8 }}
-                    resizeMode="cover"
-                  />
-                  {msg.isSending && (
-                    <View
-                      style={{
-                        position: 'absolute',
-                        top: 0,
-                        left: 0,
-                        right: 0,
-                        bottom: 0,
-                        justifyContent: 'center',
-                        alignItems: 'center',
-                        backgroundColor: 'rgba(0,0,0,0.3)',
-                      }}
-                    >
-                      <ActivityIndicator color="#fff" />
-                    </View>
-                  )}
-                </View>
-              ))
-            )}
-            {msg.is_deleted ? (
-              <Text style={chatStyles.userBubbleText}>삭제된 메시지입니다.</Text>
-            ) : msg.content ? (
-              <Text style={chatStyles.userBubbleText}>{msg.content}</Text>
-            ) : null}
-          </TouchableOpacity>
-        </View>
-      </View>
-    );
-  }
-
-  return (
-    <View style={chatStyles.chatRowOpponent}>
-      <View style={chatStyles.chatProfileCircle}>
-        <MessageTabIcon width={normalize(28)} height={normalize(28)} color={colors.green} />
-      </View>
-      <View style={chatStyles.opponentBody}>
-        <View style={chatStyles.opponentNameAndBubble}>
-          <Text style={chatStyles.opponentName}>익명</Text>
-          <View style={chatStyles.opponentBubble}>
-            {msg.images && msg.images.length > 0 && !msg.is_deleted && (
-              msg.images.map((uri, index) => (
-                <View
-                  key={index}
-                  style={{
-                    width: 200,
-                    height: 200,
-                    borderRadius: 8,
-                    marginBottom: 4,
-                    position: 'relative',
-                    overflow: 'hidden',
-                  }}
-                >
-                  <Image
-                    source={{ uri: uri }}
-                    style={{ width: 200, height: 200, borderRadius: 8 }}
-                    resizeMode="cover"
-                  />
-                  {msg.isSending && (
-                    <View
-                      style={{
-                        position: 'absolute',
-                        top: 0,
-                        left: 0,
-                        right: 0,
-                        bottom: 0,
-                        justifyContent: 'center',
-                        alignItems: 'center',
-                        backgroundColor: 'rgba(0,0,0,0.3)',
-                      }}
-                    >
-                      <ActivityIndicator color="#fff" />
-                    </View>
-                  )}
-                </View>
-              ))
-            )}
-            {msg.is_deleted ? (
-              <Text
-                style={[
-                  chatStyles.opponentBubbleText,
-                  { color: colors.textSecondary, fontStyle: 'italic' },
-                ]}
-              >
-                삭제된 메시지입니다.
-              </Text>
-            ) : msg.content ? (
-              <Text style={chatStyles.opponentBubbleText}>{msg.content}</Text>
-            ) : null}
-          </View>
-        </View>
-        <View style={chatStyles.opponentTimeRow}>
-          <Text style={chatStyles.chatTimeOpponent}>{msg.time}</Text>
-        </View>
-      </View>
-    </View>
-  );
-});
-
-// ─────────────────────────────────────────────
-// 6. 메인 Chat 컴포넌트
-// ─────────────────────────────────────────────
 export default function Chat({ navigation, route }) {
   const { width } = useWindowDimensions();
   const normalize = useMemo(() => getBoardNormalize(width), [width]);
-  const detailStyles = useMemo(() => createDetailStyles(width, normalize), [width, normalize]);
-  const chatStyles = useMemo(() => createChatStyles(width, normalize), [width, normalize]);
+  const detailStyles = useMemo(
+    () => createDetailStyles(width, normalize),
+    [width, normalize],
+  );
+  const chatStyles = useMemo(
+    () => createChatStyles(width, normalize),
+    [width, normalize],
+  );
 
   const roomId = route?.params?.roomId;
-  const { refreshHasUnread } = useNotification();
+
+  const {
+    messages,
+    isLoading,
+    isLoadingMore,
+    sendMessage,
+    loadMore,
+    retryMessage,
+    typingUsers,
+    myId,
+    deleteMessage,
+  } = useChat(roomId, socketManager);
+
+  const insets = useSafeAreaInsets();
+
+  // 최적화된 스크롤 관리를 위한 refs
+  const flashListRef = useRef(null);
+  const prevMessageCountRef = useRef(0);
+  const isNearBottomRef = useRef(true);
+  const prevNewestIdRef = useRef(null);
+  const scrollAnimationRef = useRef(null);
+  const keyboardTimeoutRef = useRef(null);
+  const isScrollingRef = useRef(false);
+  /** 정방향 리스트: 상단 도달(onStartReached)로 과거 로드 — 초기 마운트 오호출 방지 */
+  const loadOlderAllowedRef = useRef(false);
+  /** 첫 레이아웃 1회만 처리(onLayout opacity / loadOlder 허용) */
+  const didListShellLayoutRef = useRef(false);
 
   const [post, setPost] = useState(null);
-  const [messages, setMessages] = useState([]);    // 시간순(오름차순) 정렬된 UI 모델 배열
-  const [currentUserId, setCurrentUserId] = useState(null);
   const [inputText, setInputText] = useState('');
   const [chatImages, setChatImages] = useState([]);
   const [keyboardHeight, setKeyboardHeight] = useState(0);
+  const [viewerUri, setViewerUri] = useState(null);
+  const [replyToMessage, setReplyToMessage] = useState(null);
+  /** 첫 onLayout 전까지 리스트 숨김 → 스크롤 튐 최소화 */
+  const [listShellVisible, setListShellVisible] = useState(false);
 
-  const insets = useSafeAreaInsets();
-  const pollRef = useRef(null);
-  const socketRef = useRef(null);                  // Socket.io 인스턴스
-  const currentUserIdRef = useRef(null);           // 클로저 문제 방지용 ref
+  const typingTimeoutRef = useRef(null);
+  const isTypingRef = useRef(false);
 
-  // currentUserId 변경 시 ref도 동기화
+  const handleImagePress = useCallback((uri) => {
+    setViewerUri(uri);
+  }, []);
+
+  const handleInputChange = useCallback(
+    (text) => {
+      setInputText(text);
+      if (!roomId) return;
+      if (myId == null) return;
+
+      const userName = '익명';
+
+      if (!text?.trim()) {
+        if (isTypingRef.current) {
+          socketManager.emit('typing_stop', { roomId, userId: myId });
+          isTypingRef.current = false;
+        }
+        if (typingTimeoutRef.current) {
+          clearTimeout(typingTimeoutRef.current);
+          typingTimeoutRef.current = null;
+        }
+        return;
+      }
+
+      if (!isTypingRef.current) {
+        socketManager.emit('typing_start', { roomId, userId: myId, userName });
+        isTypingRef.current = true;
+      }
+
+      if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
+      typingTimeoutRef.current = setTimeout(() => {
+        socketManager.emit('typing_stop', { roomId, userId: myId });
+        isTypingRef.current = false;
+        typingTimeoutRef.current = null;
+      }, 1500);
+    },
+    [roomId, myId],
+  );
+
   useEffect(() => {
-    currentUserIdRef.current = currentUserId;
-  }, [currentUserId]);
+    isTypingRef.current = false;
+    if (typingTimeoutRef.current) {
+      clearTimeout(typingTimeoutRef.current);
+      typingTimeoutRef.current = null;
+    }
+  }, [roomId]);
 
-  // 키보드 높이 추적 (Android/iOS 공통)
+  // 룸이 바뀌면 초기 스크롤 판단 기준도 초기화
+  useEffect(() => {
+    prevMessageCountRef.current = 0;
+    isNearBottomRef.current = false;
+    prevNewestIdRef.current = null;
+    loadOlderAllowedRef.current = false;
+    didListShellLayoutRef.current = false;
+    setListShellVisible(false);
+  }, [roomId]);
+
+  // 최적화된 새 메시지 자동 스크롤
+  useEffect(() => {
+    if (!messages?.length) return;
+    const newest = messages[messages.length - 1];
+    const newestId = newest?.id;
+    if (!newestId) return;
+
+    const prevId = prevNewestIdRef.current;
+    if (prevId === newestId) return;
+
+    const shouldAutoscroll = newest?.isMe || isNearBottomRef.current;
+    if (shouldAutoscroll && !isScrollingRef.current) {
+      // 이전 애니메이션 취소
+      if (scrollAnimationRef.current) {
+        clearTimeout(scrollAnimationRef.current);
+      }
+
+      // 부드러운 스크롤을 위한 딜레이
+      scrollAnimationRef.current = setTimeout(() => {
+        flashListRef.current?.scrollToEnd?.({ animated: true });
+      }, 100);
+    }
+
+    prevNewestIdRef.current = newestId;
+  }, [messages]);
+
+  // 최적화된 키보드 이벤트 핸들러
   useEffect(() => {
     const show = Keyboard.addListener(
       Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow',
-      (e) => setKeyboardHeight(e?.endCoordinates?.height ?? 0),
+      (e) => {
+        const height = e?.endCoordinates?.height ?? 0;
+        setKeyboardHeight(height);
+
+        // 키보드显示时自动滚动到底部
+        if (messages?.length > 0 && isNearBottomRef.current) {
+          keyboardTimeoutRef.current = setTimeout(
+            () => {
+              flashListRef.current?.scrollToEnd?.({ animated: true });
+            },
+            Platform.OS === 'ios' ? 100 : 200,
+          );
+        }
+      },
     );
     const hide = Keyboard.addListener(
       Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide',
-      () => setKeyboardHeight(0),
+      () => {
+        setKeyboardHeight(0);
+        if (keyboardTimeoutRef.current) {
+          clearTimeout(keyboardTimeoutRef.current);
+        }
+      },
     );
-
     return () => {
       show.remove();
       hide.remove();
+      if (keyboardTimeoutRef.current) {
+        clearTimeout(keyboardTimeoutRef.current);
+      }
     };
-  }, []);
+  }, [messages?.length]);
 
-  // ── 메시지 목록 로드 (최초 1회) ──
+  // 게시글 카드 로드 (메시지/소켓은 useChat 훅이 담당)
   useEffect(() => {
     if (!roomId) return;
+    let isMounted = true;
 
-    const fetchRoom = async () => {
+    const loadPost = async () => {
       try {
-        const res = await api.get(`/api/messages/rooms/${roomId}`, {
-          params: { page: 1, limit: 50 },
-        });
-        const data = res.data?.data;
-        if (!data) return;
+        const res = await api.get(`/api/messages/rooms/${roomId}?limit=1`);
+        const room = res.data?.room;
+        if (!room || !isMounted) return;
 
-        const room = data.room;
-        const msgs = data.messages || [];
-
-        const otherId = room.other_user_id;
-        const meId =
-          room.user1_id === otherId ? room.user2_id :
-          room.user2_id === otherId ? room.user1_id : null;
-        setCurrentUserId(meId);
-
-        // 게시글 정보
         const postId = room.post_id;
         let initialPost = {
           id: postId,
@@ -441,6 +298,7 @@ export default function Chat({ navigation, route }) {
           comments: 0,
           isLiked: false,
         };
+
         if (postId && postCache[postId]) {
           initialPost = { ...initialPost, ...postCache[postId] };
         } else if (postId) {
@@ -448,7 +306,11 @@ export default function Chat({ navigation, route }) {
             const postRes = await api.get(`/api/posts/${postId}`);
             const pd = postRes.data?.data;
             if (pd) {
-              const cached = { likes: pd.like_count, comments: pd.comment_count, isLiked: Boolean(pd.isLiked) };
+              const cached = {
+                likes: pd.like_count,
+                comments: pd.comment_count,
+                isLiked: Boolean(pd.isLiked),
+              };
               postCache[postId] = cached;
               initialPost = { ...initialPost, ...cached };
             }
@@ -456,329 +318,252 @@ export default function Chat({ navigation, route }) {
             console.error('채팅 내 게시글 정보 로드 실패:', e);
           }
         }
+
         setPost(initialPost);
-
-        // 메시지 정렬 & 정규화
-        msgs.sort((a, b) => {
-          const ad = parseUtcToLocal(a.created_at || '');
-          const bd = parseUtcToLocal(b.created_at || '');
-          return (!ad || !bd) ? 0 : ad - bd;
-        });
-        setMessages(msgs.map((m) => normalizeMessage(m, meId)));
-
-        // 읽음 처리
-        try {
-          await api.put(`/api/messages/rooms/${roomId}/read`);
-          setMessages((prev) =>
-            prev.map((msg) => (msg.isMe ? msg : { ...msg, isReadByMe: true }))
-          );
-          await api.post('/api/notifications/read-by-related', {
-            relatedType: 'message_room',
-            relatedId: roomId,
-          }).catch(() => {});
-          refreshHasUnread();
-        } catch { /* ignore */ }
-
-      } catch (error) {
-        console.error('채팅 내역 로드 실패:', error);
-        Alert.alert('오류', error.response?.data?.message || '채팅 내역을 불러오는 중 오류가 발생했습니다.');
+      } catch (e) {
+        console.error('채팅 게시글 로드 실패:', e);
       }
     };
 
-    fetchRoom();
-  }, [roomId]);
-
-  // ─────────────────────────────────────────────
-  // 7. Socket.io 연결 (백엔드 socketServer.js 와 동일 프로토콜)
-  //    토큰 없거나 연결 실패 시 폴링 fallback · 재연결은 socket.io 기본 동작
-  // ─────────────────────────────────────────────
-  useEffect(() => {
-    if (!roomId) return;
-
-    let isMounted = true;
-
-    const connect = async () => {
-      const token = await AsyncStorage.getItem(AUTH_TOKEN_KEY);
-      if (!token || !isMounted) {
-        startPolling();
-        return;
-      }
-
-      const BASE_URL = api.defaults.baseURL;
-
-      const socket = io(BASE_URL, {
-        auth: { token },
-        transports: ['websocket'],
-      });
-
-      if (!isMounted) {
-        socket.disconnect();
-        return;
-      }
-
-      socketRef.current = socket;
-
-      socket.on('connect', () => {
-        console.log('[Socket.io] 연결 성공');
-        stopPolling();
-        socket.emit('join_room', { roomId });
-      });
-
-      socket.on('new_message', (payload) => {
-        console.log('소켓 payload images:', JSON.stringify(payload?.message?.images));
-        if (!payload?.message) return;
-        const meId = currentUserIdRef.current;
-        const newMsg = normalizeMessage(payload.message, meId);
-        setMessages((prev) => {
-          // 이미 같은 id 있으면 스킵
-          if (prev.some((m) => String(m.id) === String(newMsg.id))) return prev;
-          // isSending 중인 temp 메시지랑 중복이면 스킵
-          if (prev.some((m) => m.isSending && m.isMe)) return prev;
-          return [...prev, newMsg];
-        });
-        if (!newMsg.isMe) {
-          api.put(`/api/messages/rooms/${roomId}/read`).catch(() => {});
-        }
-      });
-
-      socket.on('read_receipt', (payload) => {
-        if (String(payload.roomId) !== String(roomId)) return;
-        setMessages((prev) =>
-          prev.map((msg) =>
-            msg.isMe ? { ...msg, isReadByOther: true } : msg
-          )
-        );
-      });
-
-      socket.on('disconnect', () => {
-        console.warn('[Socket.io] 연결 종료');
-        if (isMounted) startPolling();
-      });
-
-      socket.on('connect_error', (err) => {
-        console.error('[Socket.io] 연결 오류:', err.message);
-        if (isMounted) startPolling();
-      });
-    };
-
-    connect();
-
+    loadPost();
     return () => {
       isMounted = false;
-      if (socketRef.current) {
-        socketRef.current.disconnect();
-        socketRef.current = null;
-      }
-      stopPolling();
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [roomId]);
 
-  // ─────────────────────────────────────────────
-  // 8. 폴링 (소켓 연결 전/실패 시 fallback)
-  // ─────────────────────────────────────────────
-  const startPolling = useCallback(() => {
-    if (pollRef.current || !roomId) return;
-    pollRef.current = setInterval(async () => {
-      try {
-        const res = await api.get(`/api/messages/rooms/${roomId}`, {
-          params: { page: 1, limit: 50 },
-        });
-        const data = res.data?.data;
-        if (!data) return;
-        const room = data.room;
-        const msgs = data.messages || [];
-        const otherId = room.other_user_id;
-        const meId =
-          room.user1_id === otherId ? room.user2_id :
-          room.user2_id === otherId ? room.user1_id : null;
-
-        msgs.sort((a, b) => {
-          const ad = parseUtcToLocal(a.created_at || '');
-          const bd = parseUtcToLocal(b.created_at || '');
-          return (!ad || !bd) ? 0 : ad - bd;
-        });
-
-        setMessages((prev) => {
-          const mapped = msgs.map((m) => normalizeMessage(m, meId));
-          // Optimistic UI로 추가된 isSending/isFailed 메시지는 보존
-          const pendingMap = Object.fromEntries(
-            prev.filter((m) => m.isSending || m.isFailed).map((m) => [m.id, m])
-          );
-          const merged = mapped.map((m) => pendingMap[m.id] ?? m);
-          return merged;
-        });
-      } catch (e) {
-        console.error('[Poll] 폴링 오류:', e);
-      }
-    }, 8000);
-  }, [roomId]);
-
-  const stopPolling = useCallback(() => {
-    if (pollRef.current) {
-      clearInterval(pollRef.current);
-      pollRef.current = null;
-    }
-  }, []);
-
-  // ── 언마운트 시 폴링 정리 ──
-  useEffect(() => () => stopPolling(), [stopPolling]);
-
-  // ─────────────────────────────────────────────
-  // 9. 메시지 전송
-  // ─────────────────────────────────────────────
-  const handleSendMessage = useCallback(async (content) => {
-    const text = (content || inputText).trim();
-    if (!text && chatImages.length === 0) return;
-    if (!roomId) return;
-
-    const tempId = `temp-${Date.now()}`;
-    const nowIso = new Date().toISOString();
-    const d = parseUtcToLocal(nowIso);
-
-    const optimisticMsg = {
-      id: tempId,
-      type: 'message',
-      isMe: true,
-      content: text || null,
-      images: [...chatImages],
-      is_deleted: false,
-      createdAt: nowIso,
-      dateKey: getDateKey(d),
-      time: formatChatTime(nowIso),
-      isReadByOther: false,
-      isReadByMe: undefined,
-      isSending: true,
-      isFailed: false,
-    };
-
-    setMessages((prev) => [...prev, optimisticMsg]);
-    setInputText('');
-
-    try {
-      const formData = new FormData();
-      if (text) formData.append('content', text);
-      chatImages.forEach((uri, index) => {
-        formData.append('images', {
-          uri,
-          type: 'image/jpeg',
-          name: `image_${index}.jpg`,
-        });
-      });
-      const res = await api.post(`/api/messages/rooms/${roomId}/messages`, formData, {
-        headers: { 'Content-Type': 'multipart/form-data' },
-      });
-      setChatImages([]);
-      const m = res.data?.data;
-      if (m) {
-        const confirmed = {
-          ...normalizeMessage(m, currentUserIdRef.current),
-          // 방금 보낸 메시지는 상대가 아직 못 읽음
-          isReadByOther: false,
-          isSending: false,
-          isFailed: false,
-        };
-        setMessages((prev) => {
-          // 소켓이 이미 같은 id로 추가했으면 temp만 제거
-          const alreadyExists = prev.some(
-            (msg) => msg.id === confirmed.id && msg.id !== tempId
-          );
-          if (alreadyExists) {
-            return prev.filter((msg) => msg.id !== tempId);
+  const handleSendComment = useCallback(() => {
+    sendMessage({
+      text: inputText,
+      images: chatImages,
+      replyTo: replyToMessage
+        ? {
+            id: replyToMessage.id,
+            content: replyToMessage.content || '(이미지 메시지)',
+            senderName:
+              replyToMessage.senderName ??
+              (replyToMessage.isMe ? '나' : '익명'),
           }
-          return prev.map((msg) => (msg.id === tempId ? confirmed : msg));
-        });
-      }
-    } catch (error) {
-      console.error('쪽지 전송 실패:', error);
-      // 전송 실패 → isFailed 플래그 설정 (재전송 버튼 노출)
-      setMessages((prev) =>
-        prev.map((msg) =>
-          msg.id === tempId ? { ...msg, isSending: false, isFailed: true } : msg
-        )
-      );
-    }
-  }, [inputText, roomId, chatImages]);
+        : null,
+    });
+    setInputText('');
+    setChatImages([]);
+    setReplyToMessage(null);
+  }, [sendMessage, inputText, chatImages, replyToMessage]);
 
-  // ─────────────────────────────────────────────
-  // 10. 재전송 핸들러
-  // ─────────────────────────────────────────────
-  const handleRetry = useCallback((failedMsg) => {
-    // 실패한 메시지 제거 후 재전송
-    setMessages((prev) => prev.filter((m) => m.id !== failedMsg.id));
-    handleSendMessage(failedMsg.content);
-  }, [handleSendMessage]);
-
-  const handleDeleteMessage = useCallback(async (messageId) => {
-    if (String(messageId).startsWith('temp-')) return;
+  const handleCopyMessage = useCallback(async (msg) => {
+    if (!msg.content) return;
     try {
-      await api.delete(`/api/messages/${messageId}`);
-      setMessages((prev) =>
-        prev.map((m) =>
-          m.id === String(messageId) ? { ...m, is_deleted: true } : m
-        )
-      );
+      await Clipboard.setStringAsync(msg.content);
+      Alert.alert('복사됨', '메시지가 클립보드에 복사되었습니다.');
     } catch (e) {
-      Alert.alert('오류', '메시지 삭제에 실패했습니다.');
+      console.error('[Copy] 복사 실패:', e);
+      Alert.alert('오류', '메시지 복사에 실패했습니다.');
     }
   }, []);
 
-  // ─────────────────────────────────────────────
-  // 11. 날짜 배너가 삽입된 역순 배열 (FlatList inverted용)
-  //     - injectDateBanners는 순방향에서 수행 후 reverse
-  //     - 메모이제이션으로 messages 변경 시에만 재계산
-  // ─────────────────────────────────────────────
-  const flatData = useMemo(() => {
-    const withBanners = injectDateBanners(messages); // 시간순
-    return withBanners.reverse();                    // inverted FlatList용 역순
-  }, [messages]);
+  const handleReplyMessage = useCallback((msg) => {
+    setReplyToMessage(msg);
+  }, []);
 
-  // ─────────────────────────────────────────────
-  // 12. renderItem (useCallback으로 참조 안정화)
-  // ─────────────────────────────────────────────
-  const renderItem = useCallback(({ item }) => (
-    <MessageItem
-      msg={item}
-      chatStyles={chatStyles}
-      normalize={normalize}
-      onRetry={handleRetry}
-      onDeleteMessage={handleDeleteMessage}
-    />
-  ), [chatStyles, normalize, handleRetry, handleDeleteMessage]);
+  const flatData = useMemo(
+    () => injectDateBanners(withMessageGroupFlags(messages)),
+    [messages],
+  );
+
+  /** FlashList: 타입별 대략 높이(px) — overrideItemLayout·평균 estimatedItemSize에 공통 사용 */
+  const estimateRowHeight = useCallback((item, index, totalCount) => {
+    if (!item || item.type === 'dateBanner') return DATE_BANNER_ESTIMATE_HEIGHT;
+    // UI는 showTimestamp === true일 때만 표시; 추정은 명시 false일 때만 시간 칸 축소
+    const showTs = item.showTimestamp !== false;
+    let h = item.isMe ? 76 : 102;
+    if (!item.isMe && item.showProfile === false) h -= 28;
+    if (!showTs) h -= item.isMe ? 18 : 20;
+    if (item.parent_content) h += 58;
+    const n = Array.isArray(item.images) ? item.images.length : 0;
+    if (n > 0) h += n * (CHAT_IMAGE_SLOT + 4);
+    const hasText = Boolean(
+      (item.content && String(item.content).trim()) || item.is_deleted,
+    );
+    if (hasText) h += 46;
+    if (item.isFailed || item.status === 'failed') h += 6;
+    if (
+      typeof index === 'number' &&
+      typeof totalCount === 'number' &&
+      totalCount > 0 &&
+      index === totalCount - 1
+    ) {
+      h += CHAT_LAST_ROW_EXTRA_PAD;
+    }
+    return Math.max(120, Math.min(h, 2400));
+  }, []);
+
+  const overrideItemLayout = useCallback(
+    (layout, item, index) => {
+      layout.size = estimateRowHeight(item, index, flatData.length);
+    },
+    [estimateRowHeight, flatData.length],
+  );
+
+  /** initialScrollIndex·estimatedItemSize가 같은 기대 높이를 쓰도록 평균 반영 */
+  const averageEstimatedItemSize = useMemo(() => {
+    if (!flatData?.length) return 150;
+    let sum = 0;
+    const n = flatData.length;
+    for (let i = 0; i < n; i++) {
+      sum += estimateRowHeight(flatData[i], i, n);
+    }
+    return Math.max(80, Math.round(sum / n));
+  }, [flatData, estimateRowHeight]);
+
+  const initialScrollIndex =
+    flatData.length > 0 ? flatData.length - 1 : undefined;
+
+  useEffect(() => {
+    prevMessageCountRef.current = flatData?.length ?? 0;
+  }, [flatData]);
+
+  const handleStartReached = useCallback(() => {
+    if (!loadOlderAllowedRef.current) return;
+    if (isLoading || isLoadingMore) return;
+    loadMore();
+  }, [isLoading, isLoadingMore, loadMore]);
+
+  // 최적화된 스크롤 이벤트 핸들러
+  const handleScroll = useCallback((e) => {
+    const offsetY = e?.nativeEvent?.contentOffset?.y ?? 0;
+    const viewportH = e?.nativeEvent?.layoutMeasurement?.height ?? 0;
+    const contentH = e?.nativeEvent?.contentSize?.height ?? 0;
+
+    // 스크롤 상태 추적
+    isScrollingRef.current = true;
+
+    // 디바운스된 스크롤 상태 업데이트
+    if (scrollAnimationRef.current) {
+      clearTimeout(scrollAnimationRef.current);
+    }
+
+    scrollAnimationRef.current = setTimeout(() => {
+      isScrollingRef.current = false;
+    }, 150);
+
+    // 하단 근접 여부 계산 (더 정확한 계산)
+    const threshold = Math.max(80, viewportH * 0.1);
+    isNearBottomRef.current = offsetY + viewportH >= contentH - threshold;
+  }, []);
+
+  const handleListShellLayout = useCallback(() => {
+    if (didListShellLayoutRef.current) return;
+    didListShellLayoutRef.current = true;
+    requestAnimationFrame(() => {
+      setListShellVisible(true);
+      if (flatData.length > 0) {
+        loadOlderAllowedRef.current = true;
+      }
+    });
+  }, [flatData.length]);
+
+  const renderItem = useCallback(
+    ({ item }) => (
+      <MessageItem
+        msg={item}
+        chatStyles={chatStyles}
+        normalize={normalize}
+        onRetry={retryMessage}
+        onDeleteMessage={deleteMessage}
+        onImagePress={handleImagePress}
+        onCopyMessage={handleCopyMessage}
+        onReplyMessage={handleReplyMessage}
+      />
+    ),
+    [
+      chatStyles,
+      normalize,
+      retryMessage,
+      deleteMessage,
+      handleImagePress,
+      handleCopyMessage,
+      handleReplyMessage,
+    ],
+  );
 
   const keyExtractor = useCallback((item) => String(item.id), []);
+
+  const getFlashListItemType = useCallback(
+    (item) => (item.type === 'dateBanner' ? 'dateBanner' : 'message'),
+    [],
+  );
+
   const keyboardVerticalOffset = insets.top + normalize(48);
 
   const handleBack = () => navigation.goBack();
   const handleOpenPost = () => {
     if (!post?.id) return;
-    navigation.navigate('BoardDetail', { post: { id: post.id }, isMyPost: false });
+    navigation.navigate('BoardDetail', {
+      post: { id: post.id },
+      isMyPost: false,
+    });
   };
 
-  return (
-    <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+  // 로딩 상태일 때 빈 화면 또는 로딩 스피너 표시
+  if (isLoading && messages.length === 0) {
+    return (
       <SafeAreaView
-        style={[detailStyles.container, { backgroundColor: colors.background }]}
+        style={[detailStyles.container, { backgroundColor: '#FFFFFF' }]}
         edges={['top']}
       >
-        {/* 헤더 */}
-        <View style={{ zIndex: 1, elevation: 0, backgroundColor: colors.background }}>
+        <View
+          style={{
+            zIndex: 1,
+            elevation: 0,
+            backgroundColor: '#FFFFFF',
+          }}
+        >
           <SubHeader title="쪽지" onBack={handleBack} />
         </View>
-
-        <KeyboardAvoidingView
-          style={{ flex: 1, backgroundColor: '#F8F9FA' }}
-          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-          keyboardVerticalOffset={Platform.OS === 'ios' ? keyboardVerticalOffset : 0}
+        <View
+          style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}
         >
-          <View style={{ flex: 1, backgroundColor: '#F8F9FA' }}>
-          {/* 게시글 카드 */}
+          <ActivityIndicator size="large" color={colors.primary} />
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  return (
+    <SafeAreaView
+      style={[detailStyles.container, { backgroundColor: '#FFFFFF' }]}
+      edges={['top']}
+    >
+      <View
+        style={{
+          zIndex: 1,
+          elevation: 0,
+          backgroundColor: '#FFFFFF',
+        }}
+      >
+        <SubHeader title="쪽지" onBack={handleBack} />
+      </View>
+
+      <KeyboardAvoidingView
+        style={{ flex: 1, backgroundColor: '#FFFFFF' }}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        keyboardVerticalOffset={
+          Platform.OS === 'ios' ? keyboardVerticalOffset : 0
+        }
+      >
+        <View
+          style={{
+            flex: 1,
+            backgroundColor: '#FFFFFF',
+            flexDirection: 'column',
+          }}
+        >
           {post && (
             <TouchableOpacity
               activeOpacity={0.8}
               onPress={handleOpenPost}
               style={{
-                backgroundColor: colors.background,
+                backgroundColor: '#FFFFFF',
                 marginHorizontal: normalize(12),
                 marginTop: normalize(12),
                 marginBottom: normalize(8),
@@ -793,19 +578,41 @@ export default function Chat({ navigation, route }) {
             >
               <View style={detailStyles.detailHeader}>
                 <View style={detailStyles.detailAuthorRow}>
-                  <Text style={detailStyles.detailAuthorAnonymous}>{post.author}</Text>
+                  <Text style={detailStyles.detailAuthorAnonymous}>
+                    {post.author}
+                  </Text>
                 </View>
                 {post.location ? (
                   <View style={detailStyles.detailLocation}>
-                    <Ionicons name="location-sharp" size={normalize(12)} color={colors.textSecondary} />
-                    <Text style={detailStyles.detailLocationText}>{post.location}</Text>
+                    <Ionicons
+                      name="location-sharp"
+                      size={normalize(12)}
+                      color={colors.textSecondary}
+                    />
+                    <Text style={detailStyles.detailLocationText}>
+                      {post.location}
+                    </Text>
                   </View>
                 ) : null}
               </View>
-              <Text style={[detailStyles.detailBody, { marginVertical: normalize(12) }]}>
+
+              <Text
+                style={[
+                  detailStyles.detailBody,
+                  { marginVertical: normalize(12) },
+                ]}
+              >
                 {post.content}
               </Text>
-              <View style={{ height: 1, backgroundColor: '#F0F0F0', marginVertical: normalize(8) }} />
+
+              <View
+                style={{
+                  height: 1,
+                  backgroundColor: '#F0F0F0',
+                  marginVertical: normalize(8),
+                }}
+              />
+
               <View style={detailStyles.detailFooter}>
                 <View style={detailStyles.detailStats}>
                   <View style={detailStyles.detailStatItem}>
@@ -814,71 +621,176 @@ export default function Chat({ navigation, route }) {
                       size={normalize(14)}
                       color={colors.alert}
                     />
-                    <Text style={detailStyles.detailStatText}>{post.likes}</Text>
+                    <Text style={detailStyles.detailStatText}>
+                      {post.likes}
+                    </Text>
                   </View>
                   <View style={detailStyles.detailStatItem}>
-                    <Ionicons name="chatbubble-outline" size={normalize(15)} color={colors.primary} />
-                    <Text style={detailStyles.detailStatText}>{post.comments}</Text>
+                    <Ionicons
+                      name="chatbubble-outline"
+                      size={normalize(15)}
+                      color={colors.primary}
+                    />
+                    <Text style={detailStyles.detailStatText}>
+                      {post.comments}
+                    </Text>
                   </View>
                 </View>
               </View>
             </TouchableOpacity>
           )}
 
-          {/* 채팅 FlatList */}
-          <FlatList
-            style={{ flex: 1 }}
-            contentContainerStyle={{
+          {Object.values(typingUsers).length > 0 && (
+            <View
+              style={{
+                paddingHorizontal: normalize(16),
+                paddingVertical: normalize(6),
+                flexDirection: 'row',
+                alignItems: 'center',
+              }}
+            >
+              <Text style={{ color: '#999', fontSize: 12 }}>
+                {Object.values(typingUsers)[0]}이(가) 입력 중...
+              </Text>
+              <ActivityIndicator
+                size="small"
+                color="#999"
+                style={{ marginLeft: 4 }}
+              />
+            </View>
+          )}
+
+          <View
+            style={{
+              flex: 1,
+              backgroundColor: '#FFFFFF',
               paddingHorizontal: normalize(12),
               paddingBottom: normalize(10),
               paddingTop: normalize(8),
             }}
-            data={flatData}
-            keyExtractor={keyExtractor}
-            renderItem={renderItem}
-            inverted
-            showsVerticalScrollIndicator={false}
-            keyboardShouldPersistTaps="handled"
-            keyboardDismissMode="on-drag"
-            removeClippedSubviews={false}
-            maxToRenderPerBatch={10}
-            windowSize={5}
-            initialNumToRender={15}
-            maintainVisibleContentPosition={{ minIndexForVisible: 0 }}
+            pointerEvents="box-none"
+          >
+            <View
+              style={{ flex: 1, opacity: listShellVisible ? 1 : 0 }}
+              onLayout={handleListShellLayout}
+            >
+              <FlashList
+                ref={flashListRef}
+                key={roomId}
+                style={{ flex: 1 }}
+                contentContainerStyle={{
+                  paddingHorizontal: 0,
+                  paddingBottom: 0,
+                  paddingTop: 0,
+                }}
+                initialScrollOffset={999999}
+                data={flatData}
+                extraData={messages.length}
+                keyExtractor={keyExtractor}
+                getItemType={getFlashListItemType}
+                renderItem={renderItem}
+                estimatedItemSize={averageEstimatedItemSize}
+                drawDistance={1000}
+                overrideItemLayout={overrideItemLayout}
+                initialScrollIndex={initialScrollIndex}
+                onStartReached={handleStartReached}
+                onStartReachedThreshold={0.25}
+                maintainVisibleContentPosition={{
+                  minIndexForVisible: 1,
+                  autoscrollToTopThreshold: 10,
+                  autoscrollToBottomThreshold: 0.2,
+                  startRenderingFromBottom: true,
+                }}
+                ListHeaderComponent={
+                  isLoadingMore ? (
+                    <View style={{ paddingVertical: normalize(12) }}>
+                      <ActivityIndicator color={colors.textSecondary} />
+                    </View>
+                  ) : null
+                }
+                showsVerticalScrollIndicator={false}
+                keyboardShouldPersistTaps="handled"
+                keyboardDismissMode="on-drag"
+                scrollEnabled={true}
+                overScrollMode="always"
+                removeClippedSubviews={true}
+                maxToRenderPerBatch={8}
+                windowSize={7}
+                initialNumToRender={20}
+                onScroll={handleScroll}
+                scrollEventThrottle={16}
+                decelerationRate="normal"
+                disableVirtualization={false}
+              />
+            </View>
+          </View>
+
+          <ImageViewer
+            visible={Boolean(viewerUri)}
+            uri={viewerUri}
+            onClose={() => setViewerUri(null)}
           />
 
-          {/* 입력창 */}
           <View
             style={{
-              backgroundColor: colors.background,
-              paddingBottom:
-                keyboardHeight > 0
-                  ? 0
-                  : insets.bottom > 0
-                    ? insets.bottom
-                    : normalize(12),
+              backgroundColor: '#FFFFFF',
               borderTopWidth: 1,
               borderTopColor: '#E8E8E8',
             }}
           >
-            <CommentInput
-              bottomInputRef={null}
-              bottomComment={inputText}
-              setBottomComment={setInputText}
-              selectedImages={chatImages}
-              onImagesChange={setChatImages}
-              showImageAttach={true}
-              replyToCommentId={null}
-              replyToAuthorLabel=""
-              clearReplyTarget={() => {}}
-              handleSendComment={() => handleSendMessage()}
-              styles={detailStyles}
-              normalize={normalize}
-            />
+            {replyToMessage && (
+              <TouchableOpacity
+                onPress={() => setReplyToMessage(null)}
+                style={chatStyles.replyPreviewContainer}
+              >
+                <View style={chatStyles.replyPreviewMeta}>
+                  <Text style={chatStyles.replyPreviewTitle}>
+                    {replyToMessage.isMe ? '내' : '상대방에게'} 답장 중
+                  </Text>
+                  <Text
+                    style={chatStyles.replyPreviewContent}
+                    numberOfLines={1}
+                  >
+                    {replyToMessage.content || '(이미지 메시지)'}
+                  </Text>
+                </View>
+                <Ionicons
+                  name="close-circle"
+                  size={24}
+                  color={colors.textSecondary}
+                  style={{ marginLeft: normalize(8) }}
+                />
+              </TouchableOpacity>
+            )}
+
+            <View
+              style={{
+                paddingBottom:
+                  keyboardHeight > 0
+                    ? 0
+                    : insets.bottom > 0
+                      ? insets.bottom
+                      : normalize(12),
+              }}
+            >
+              <CommentInput
+                bottomInputRef={null}
+                bottomComment={inputText}
+                selectedImages={chatImages}
+                onImagesChange={setChatImages}
+                showImageAttach={true}
+                replyToCommentId={null}
+                replyToAuthorLabel=""
+                clearReplyTarget={() => {}}
+                handleSendComment={handleSendComment}
+                styles={detailStyles}
+                normalize={normalize}
+                setBottomComment={handleInputChange}
+              />
+            </View>
           </View>
-          </View>
-        </KeyboardAvoidingView>
-      </SafeAreaView>
-    </TouchableWithoutFeedback>
+        </View>
+      </KeyboardAvoidingView>
+    </SafeAreaView>
   );
 }

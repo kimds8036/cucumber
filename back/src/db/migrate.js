@@ -49,8 +49,18 @@ async function runMigrations() {
         try {
           await connection.execute(statement);
         } catch (err) {
-          if (err.errno === 1060) console.warn('  ⏭️  컬럼 이미 존재, 스킵');
-          else if (err.errno === 1061) console.warn('  ⏭️  인덱스 이미 존재, 스킵');
+          // 반복 실행 시 자주 발생하는 "이미 존재/없음" 계열은 스킵
+          if (err.errno === 1050) console.warn('  ⏭️  테이블 이미 존재, 스킵');
+          else if (err.errno === 1060)
+            console.warn('  ⏭️  컬럼 이미 존재, 스킵');
+          else if (err.errno === 1061)
+            console.warn('  ⏭️  인덱스 이미 존재, 스킵');
+          else if (err.errno === 1062)
+            console.warn('  ⏭️  중복 데이터/키, 스킵');
+          else if (err.errno === 1091)
+            console.warn('  ⏭️  대상(인덱스/컬럼) 없음, 스킵');
+          else if (err.errno === 1826)
+            console.warn('  ⏭️  Foreign Key 이름 이미 존재, 스킵');
           else throw err;
         }
       }
