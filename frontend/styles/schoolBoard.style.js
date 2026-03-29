@@ -47,6 +47,11 @@ export const createSchoolBoardStyles = (width, normalize) => {
       fontFamily: fonts.regular,
       color: colors.textSecondary,
     },
+    postTimeRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: normalize(4),
+    },
     postDot: {
       fontSize: normalize(13),
       color: colors.textSecondary,

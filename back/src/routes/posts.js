@@ -7,6 +7,28 @@ import { cloudinary, upload } from '../config/cloudinary.js';
 
 const router = express.Router();
 
+/** message_images 조회(messages.js)와 동일 패턴 — JSON_ARRAYAGG / mysql2 반환 타입을 string[] 로 통일 */
+function normalizePostImagesFromRow(raw) {
+  if (raw == null) return [];
+  if (Array.isArray(raw)) {
+    return raw.filter((u) => typeof u === 'string');
+  }
+  if (typeof raw === 'string') {
+    if (raw.startsWith('[')) {
+      try {
+        const parsed = JSON.parse(raw);
+        return Array.isArray(parsed)
+          ? parsed.filter((u) => typeof u === 'string')
+          : [];
+      } catch {
+        return [];
+      }
+    }
+    return [raw];
+  }
+  return [];
+}
+
 // 해시태그 자동완성용 검색 API
 // GET /api/posts/tags/search?query=중간
 router.get('/tags/search', async (req, res) => {
@@ -107,13 +129,21 @@ router.get('/', optionalAuthenticate, async (req, res) => {
         u.name as author_name,
         u.color_id,
         s.name as school_name,
-        (SELECT cloudinary_url FROM post_images WHERE post_id = p.id AND deleted_at IS NULL ORDER BY display_order ASC LIMIT 1) AS thumbnail,
+        (SELECT pi1.cloudinary_url
+           FROM post_images pi1
+          WHERE pi1.post_id = p.id AND pi1.deleted_at IS NULL
+          ORDER BY pi1.display_order ASC
+          LIMIT 1) AS thumbnail,
         (SELECT COUNT(*) FROM post_likes pl
           WHERE pl.post_id = p.id AND pl.user_id = ?) AS is_liked,
         (SELECT COUNT(*) FROM post_scraps ps
           WHERE ps.post_id = p.id AND ps.user_id = ?) AS is_scrapped,
         (SELECT COUNT(*) FROM post_scraps ps_cnt
-          WHERE ps_cnt.post_id = p.id) AS scrap_count
+          WHERE ps_cnt.post_id = p.id) AS scrap_count,
+        (SELECT JSON_ARRAYAGG(JSON_OBJECT('id', t.id, 'name', t.name))
+           FROM post_tags pt
+           INNER JOIN tags t ON pt.tag_id = t.id
+          WHERE pt.post_id = p.id) AS tags
       FROM posts p
       LEFT JOIN users u ON p.user_id = u.id
       LEFT JOIN schools s ON p.school_id = s.school_id
@@ -131,9 +161,21 @@ router.get('/', optionalAuthenticate, async (req, res) => {
     const total = Number(countResult[0]?.total ?? 0);
 
     const postsForClient = posts.map((p) => {
-      const { user_id, is_liked, is_scrapped, scrap_count, ...rest } = p;
+      const { user_id, is_liked, is_scrapped, scrap_count, tags: rawTags, ...rest } = p;
+      let tags = [];
+      if (Array.isArray(rawTags)) {
+        tags = rawTags;
+      } else if (rawTags != null && typeof rawTags === 'string' && rawTags.startsWith('[')) {
+        try {
+          const parsed = JSON.parse(rawTags);
+          tags = Array.isArray(parsed) ? parsed : [];
+        } catch {
+          tags = [];
+        }
+      }
       return {
         ...rest,
+        tags,
         is_author: !!userId && user_id === userId,
         author_user_id: user_id,
         isLiked: Boolean(Number(is_liked) > 0),
@@ -235,7 +277,12 @@ router.get('/my', authenticate, async (req, res) => {
          (SELECT COUNT(*) FROM post_scraps ps
            WHERE ps.post_id = p.id AND ps.user_id = ?) AS is_scrapped,
          (SELECT COUNT(*) FROM post_scraps ps_cnt
-           WHERE ps_cnt.post_id = p.id) AS scrap_count
+           WHERE ps_cnt.post_id = p.id) AS scrap_count,
+         (SELECT pi1.cloudinary_url
+            FROM post_images pi1
+           WHERE pi1.post_id = p.id AND pi1.deleted_at IS NULL
+           ORDER BY pi1.display_order ASC
+           LIMIT 1) AS thumbnail
        FROM posts p
        LEFT JOIN users u ON p.user_id = u.id
        LEFT JOIN schools s ON p.school_id = s.school_id
@@ -347,7 +394,12 @@ router.get('/liked', authenticate, async (req, res) => {
          p.created_at,
          u.name as author_name,
          u.color_id,
-         s.name as school_name
+         s.name as school_name,
+         (SELECT pi1.cloudinary_url
+            FROM post_images pi1
+           WHERE pi1.post_id = p.id AND pi1.deleted_at IS NULL
+           ORDER BY pi1.display_order ASC
+           LIMIT 1) AS thumbnail
        FROM post_likes pl
        INNER JOIN posts p ON pl.post_id = p.id
        LEFT JOIN users u ON p.user_id = u.id
@@ -458,7 +510,12 @@ router.get('/scrapped', authenticate, async (req, res) => {
          (SELECT COUNT(*) FROM post_scraps ps2
            WHERE ps2.post_id = p.id AND ps2.user_id = ?) AS is_scrapped,
          (SELECT COUNT(*) FROM post_scraps ps_cnt
-           WHERE ps_cnt.post_id = p.id) AS scrap_count
+           WHERE ps_cnt.post_id = p.id) AS scrap_count,
+         (SELECT pi1.cloudinary_url
+            FROM post_images pi1
+           WHERE pi1.post_id = p.id AND pi1.deleted_at IS NULL
+           ORDER BY pi1.display_order ASC
+           LIMIT 1) AS thumbnail
        FROM post_scraps ps
        INNER JOIN posts p ON ps.post_id = p.id
        LEFT JOIN users u ON p.user_id = u.id
@@ -516,7 +573,6 @@ router.get('/:id', optionalAuthenticate, async (req, res) => {
     const { id } = req.params;
     const userId = req.user?.userId ?? null;
 
-    // 게시글 조회
     const [posts] = await pool.execute(
       `SELECT 
         p.id, 
@@ -529,7 +585,19 @@ router.get('/:id', optionalAuthenticate, async (req, res) => {
         p.created_at,
         u.name as author_name,
         u.color_id,
-        s.name as school_name
+        s.name as school_name,
+        (SELECT pi1.cloudinary_url
+           FROM post_images pi1
+          WHERE pi1.post_id = p.id AND pi1.deleted_at IS NULL
+          ORDER BY pi1.display_order ASC, pi1.id ASC
+          LIMIT 1) AS thumbnail,
+        (SELECT JSON_ARRAYAGG(cloudinary_url)
+         FROM (
+           SELECT cloudinary_url
+           FROM post_images
+           WHERE post_id = p.id AND deleted_at IS NULL
+           ORDER BY display_order ASC
+         ) pi) AS images
       FROM posts p
       LEFT JOIN users u ON p.user_id = u.id
       LEFT JOIN schools s ON p.school_id = s.school_id
@@ -546,12 +614,7 @@ router.get('/:id', optionalAuthenticate, async (req, res) => {
     }
 
     const post = posts[0];
-
-    // 이미지 조회
-    const [images] = await pool.query(
-      'SELECT cloudinary_url, display_order FROM post_images WHERE post_id = ? AND deleted_at IS NULL ORDER BY display_order ASC',
-      [id]
-    );
+    const images = normalizePostImagesFromRow(post.images);
 
     console.log('[GET /api/posts/:id] 게시글 조회 성공', {
       id,
@@ -598,7 +661,7 @@ router.get('/:id', optionalAuthenticate, async (req, res) => {
 
     const isMine = !!userId && post.user_id === userId;
     const postAuthorId = post.user_id;
-    const { user_id, ...postSafe } = post;
+    const { user_id, images: _rawImages, ...postSafe } = post;
 
     console.log('[GET /api/posts/:id] 응답 데이터', {
       id: postSafe.id,
@@ -617,7 +680,7 @@ router.get('/:id', optionalAuthenticate, async (req, res) => {
         isMine,
         post_author_id: postAuthorId,
         current_user_id: userId ?? null,
-        images: images.map(img => img.cloudinary_url),
+        images,
         tags: postTags,
       },
     });
@@ -673,82 +736,105 @@ router.post('/', authenticate, upload.array('images', 5), async (req, res) => {
       });
     }
 
-    // 게시글 생성
-    const [result] = await pool.execute(
-      `INSERT INTO posts (user_id, board_type, school_id, content, created_at)
-       VALUES (?, ?, ?, ?, ?)`,
-      [userId, boardType, boardType === 'school' ? schoolId : null, content, getNowForDB()]
-    );
+    const connection = await pool.getConnection();
+    let postId;
+    try {
+      await connection.beginTransaction();
+      const now = getNowForDB();
 
-    const postId = result.insertId;
-
-    // 이미지 업로드 처리
-    if (req.files && req.files.length > 0) {
-      const imageValues = req.files.map((file, index) => [
-        postId,
-        file.path, // cloudinary url
-        file.filename, // cloudinary public_id
-        index,
-      ]);
-      await pool.query(
-        'INSERT INTO post_images (post_id, cloudinary_url, cloudinary_public_id, display_order) VALUES ?',
-        [imageValues],
+      const [result] = await connection.execute(
+        `INSERT INTO posts (user_id, board_type, school_id, content, created_at)
+         VALUES (?, ?, ?, ?, ?)`,
+        [
+          userId,
+          boardType,
+          boardType === 'school' ? schoolId : null,
+          content,
+          now,
+        ],
       );
-    }
 
-    // 전체 게시판(national)에서만 해시태그 허용
-    if (boardType === 'national' && Array.isArray(tags) && tags.length > 0) {
-      for (let rawTag of tags) {
-        if (rawTag == null) continue;
-        let name = String(rawTag).trim();
-        if (!name) continue;
-        if (!name.startsWith('#')) {
-          name = `#${name}`;
-        }
-        // 최대 길이 제한 (DB는 VARCHAR(50))
-        if (name.length > 50) {
-          name = name.slice(0, 50);
-        }
+      postId = result.insertId;
 
-        // 태그 존재 여부 확인
-        let tagId;
-        const [existingTags] = await pool.execute(
-          'SELECT id FROM tags WHERE name = ?',
-          [name]
+      if (req.files && req.files.length > 0) {
+        const imageValues = req.files.map((file, index) => [
+          postId,
+          file.path,
+          file.filename,
+          index,
+        ]);
+        await connection.query(
+          'INSERT INTO post_images (post_id, cloudinary_url, cloudinary_public_id, display_order) VALUES ?',
+          [imageValues],
         );
-        if (existingTags.length > 0) {
-          tagId = existingTags[0].id;
-        } else {
-          const [tagResult] = await pool.execute(
-            'INSERT INTO tags (name, created_at) VALUES (?, ?)',
-            [name, getNowForDB()]
+      }
+
+      if (boardType === 'national' && Array.isArray(tags) && tags.length > 0) {
+        for (let rawTag of tags) {
+          if (rawTag == null) continue;
+          let name = String(rawTag).trim();
+          if (!name) continue;
+          if (!name.startsWith('#')) {
+            name = `#${name}`;
+          }
+          if (name.length > 50) {
+            name = name.slice(0, 50);
+          }
+
+          let tagId;
+          const [existingTags] = await connection.execute(
+            'SELECT id FROM tags WHERE name = ?',
+            [name],
           );
-          tagId = tagResult.insertId;
-        }
+          if (existingTags.length > 0) {
+            tagId = existingTags[0].id;
+          } else {
+            const [tagResult] = await connection.execute(
+              'INSERT INTO tags (name, created_at) VALUES (?, ?)',
+              [name, now],
+            );
+            tagId = tagResult.insertId;
+          }
 
-        // 게시글-태그 매핑 (중복은 무시)
-        await pool.execute(
-          'INSERT IGNORE INTO post_tags (post_id, tag_id, created_at) VALUES (?, ?, ?)',
-          [postId, tagId, getNowForDB()]
+          await connection.execute(
+            'INSERT IGNORE INTO post_tags (post_id, tag_id, created_at) VALUES (?, ?, ?)',
+            [postId, tagId, now],
+          );
+        }
+      }
+
+      if (boardType === 'school' && schoolId) {
+        await connection.execute(
+          'UPDATE schools SET total_posts = total_posts + 1 WHERE school_id = ?',
+          [schoolId],
         );
       }
-    }
 
-    // 학교 게시판인 경우 학교의 총 게시글 수 증가
-    if (boardType === 'school' && schoolId) {
-      await pool.execute(
-        'UPDATE schools SET total_posts = total_posts + 1 WHERE school_id = ?',
-        [schoolId]
-      );
-    }
+      await connection.commit();
 
-    res.status(201).json({
-      success: true,
-      message: '게시글이 작성되었습니다.',
-      data: {
-        postId,
+      res.status(201).json({
+        success: true,
+        message: '게시글이 작성되었습니다.',
+        data: {
+          postId,
+        },
+      });
+    } catch (txError) {
+      await connection.rollback();
+      if (req.files?.length) {
+        try {
+          const publicIds = req.files.map((f) => f.filename).filter(Boolean);
+          if (publicIds.length) {
+            await cloudinary.api.delete_resources(publicIds);
+          }
+        } catch (cleanupErr) {
+          console.error('게시글 작성 롤백 후 Cloudinary 정리 실패:', cleanupErr);
+        }
       }
-    });
+      throw txError;
+    } finally {
+      connection.release();
+    }
   } catch (error) {
     console.error('게시글 작성 오류:', error);
     res.status(500).json({ 

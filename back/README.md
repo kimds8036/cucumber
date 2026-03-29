@@ -74,3 +74,10 @@ Authorization: Bearer {JWT_TOKEN}
 4. 팀원한테 ngrok 주소 전달
 5. 팀원 front `api.js`에서 `baseURL`을 ngrok 주소로 변경
 6. 작업 끝나면 ngrok 종료, `api.js` `baseURL` 원래대로 복구
+
+### ngrok 없이 같은 Wi‑Fi에서만 테스트 (업로드 실패 시)
+- PC에서 `ipconfig`(Windows) 등으로 **IPv4 주소** 확인 (예: `192.168.45.12`).
+- 프론트 `app.json` → `expo.extra.apiBaseUrl`을 `http://(위 IP):3000`으로 바꾼 뒤 **Expo 재시작** (`npx expo start --clear` 권장).
+- 백엔드는 기본으로 **`0.0.0.0:PORT`** 에 바인딩한다. `LISTEN_HOST=127.0.0.1` 로 바꾸면 폰에서 접속 불가.
+- **게시글 등록 버튼**을 눌렀을 때 백엔드 터미널에 `[HTTP] POST /api/posts` 가 보이면 요청이 서버까지 도달한 것이다. 아무 줄도 없으면 URL·방화벽·Wi‑Fi·cleartext 문제를 의심한다.
+- **로컬 IP에서만 성공하고 ngrok에서만 Network Error**면 터널/프록시 제한 가능성이 크다.
