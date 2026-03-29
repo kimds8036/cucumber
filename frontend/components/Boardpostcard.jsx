@@ -19,6 +19,23 @@ const BoardPostCard = ({ post, normalize, styles, onPress, onScrapPress }) => {
   const hasThumb =
     typeof post.thumbnail === 'string' && post.thumbnail.trim().length > 0;
 
+  // 거리 배지: 사용자 위치와 post의 위도·경도(post.latitude, post.longitude 등)로 Haversine 등으로 거리(m) 계산
+  // const distanceMeters = computeHaversineMeters(userLat, userLng, postLat, postLng);
+  // if (distanceMeters < 1000) → 숫자(11pt) + 'km 미만'(10pt)  /  else → km 정수(11pt) + 'km'(10pt)
+  const distanceMeters = null;
+
+  let distanceNumberText = '10';
+  let distanceUnitText = 'km';
+  if (typeof distanceMeters === 'number' && !Number.isNaN(distanceMeters)) {
+    if (distanceMeters < 1000) {
+      distanceNumberText = '1';
+      distanceUnitText = 'km 미만';
+    } else {
+      distanceNumberText = String(Math.max(1, Math.round(distanceMeters / 1000)));
+      distanceUnitText = 'km';
+    }
+  }
+
   return (
     <TouchableOpacity
       style={styles.postItem}
@@ -65,22 +82,33 @@ const BoardPostCard = ({ post, normalize, styles, onPress, onScrapPress }) => {
               flexDirection: 'row',
               alignItems: 'center',
               gap: normalize(1),
-              backgroundColor: colors.primaryLight30,
+              backgroundColor: colors.primaryLight20,
               borderRadius: normalize(10),
               paddingHorizontal: normalize(7),
               paddingVertical: normalize(2),
             }}
           >
-            <MaterialIcons name="location-on" size={normalize(12)} color={colors.primaryDark} />
-            <Text
-              style={{
-                fontSize: normalize(11),
-                fontFamily: fonts.regular,
-                color: colors.primaryDark,
-              }}
-            >
-              10km
-            </Text>
+            <MaterialIcons name="location-on" size={normalize(10)} color={colors.primaryDark} />
+            <View style={{ flexDirection: 'row', alignItems: 'baseline' }}>
+              <Text
+                style={{
+                  fontSize: normalize(11),
+                  fontFamily: fonts.regular,
+                  color: colors.primaryDark,
+                }}
+              >
+                {distanceNumberText}
+              </Text>
+              <Text
+                style={{
+                  fontSize: normalize(10),
+                  fontFamily: fonts.regular,
+                  color: colors.primaryDark,
+                }}
+              >
+                {distanceUnitText}
+              </Text>
+            </View>
           </View>
         </View>
       </View>
@@ -129,7 +157,7 @@ const BoardPostCard = ({ post, normalize, styles, onPress, onScrapPress }) => {
                   <View
                     key={tag?.id != null ? `tag-${tag.id}` : `tag-${idx}-${label}`}
                     style={{
-                      backgroundColor: colors.primaryLight30,
+                      backgroundColor: colors.primaryLight20,
                       borderRadius: normalize(12),
                       paddingHorizontal: normalize(8),
                       paddingVertical: normalize(1),
