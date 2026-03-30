@@ -166,7 +166,6 @@ export default function useDMChat(roomId, socket) {
     messageIds: [],
     hasMore: true,
     isLoadingMore: false,
-    typingUsers: {},
     isLoading: false,
   });
 
@@ -177,7 +176,6 @@ export default function useDMChat(roomId, socket) {
   const messageIds = chatData.messageIds;
   const hasMore = chatData.hasMore;
   const isLoadingMore = chatData.isLoadingMore;
-  const typingUsers = chatData.typingUsers;
   const isLoading = chatData.isLoading;
 
   const pollRef = useRef(null);
@@ -204,7 +202,6 @@ export default function useDMChat(roomId, socket) {
       messageIds: [],
       hasMore: true,
       isLoadingMore: false,
-      typingUsers: {},
       isLoading: true,
     });
 
@@ -532,23 +529,6 @@ export default function useDMChat(roomId, socket) {
   // ─────────────────────────────────────────────
   // 3) Socket.io 연결
   // ─────────────────────────────────────────────
-  const handleSocketUserTyping = useCallback(({ userId, userName }) => {
-    if (!userId) return;
-    setChatData((prev) => ({
-      ...prev,
-      typingUsers: { ...prev.typingUsers, [userId]: userName ?? '익명' },
-    }));
-  }, []);
-
-  const handleSocketUserStopTyping = useCallback(({ userId }) => {
-    if (!userId) return;
-    setChatData((prev) => {
-      const updated = { ...prev.typingUsers };
-      delete updated[userId];
-      return { ...prev, typingUsers: updated };
-    });
-  }, []);
-
   const handleSocketReadReceipt = useCallback(
     (payload) => {
       // roomId 일치 확인
@@ -675,8 +655,6 @@ export default function useDMChat(roomId, socket) {
     let handleReadReceiptRef = null;
     let handleDisconnectRef = null;
     let handleConnectErrorRef = null;
-    let handleUserTypingRef = null;
-    let handleUserStopTypingRef = null;
 
     const connect = async () => {
       await socket.connectSocket(roomId);
@@ -684,8 +662,6 @@ export default function useDMChat(roomId, socket) {
 
       const handleNewMessage = handleSocketNewMessage;
       const handleReadReceipt = handleSocketReadReceipt;
-      const handleUserTyping = handleSocketUserTyping;
-      const handleUserStopTyping = handleSocketUserStopTyping;
 
       const handleConnect = () => {
         stopPolling();
@@ -700,8 +676,6 @@ export default function useDMChat(roomId, socket) {
       handleConnectRef = handleConnect;
       handleNewMessageRef = handleNewMessage;
       handleReadReceiptRef = handleReadReceipt;
-      handleUserTypingRef = handleUserTyping;
-      handleUserStopTypingRef = handleUserStopTyping;
       handleDisconnectRef = handleDisconnect;
       handleConnectErrorRef = handleConnectError;
 
@@ -710,8 +684,6 @@ export default function useDMChat(roomId, socket) {
       socket.on('read_receipt', handleReadReceipt);
       socket.on('disconnect', handleDisconnect);
       socket.on('connect_error', handleConnectError);
-      socket.on('user_typing', handleUserTyping);
-      socket.on('user_stop_typing', handleUserStopTyping);
     };
 
     connect();
@@ -726,9 +698,6 @@ export default function useDMChat(roomId, socket) {
       if (handleDisconnectRef) socket.off('disconnect', handleDisconnectRef);
       if (handleConnectErrorRef)
         socket.off('connect_error', handleConnectErrorRef);
-      if (handleUserTypingRef) socket.off('user_typing', handleUserTypingRef);
-      if (handleUserStopTypingRef)
-        socket.off('user_stop_typing', handleUserStopTypingRef);
 
       Array.from(pendingClientIdTimeoutsRef.current.values()).forEach((t) =>
         clearTimeout(t),
@@ -743,8 +712,6 @@ export default function useDMChat(roomId, socket) {
     socket,
     handleSocketNewMessage,
     handleSocketReadReceipt,
-    handleSocketUserTyping,
-    handleSocketUserStopTyping,
     startPolling,
     stopPolling,
   ]);
@@ -1103,7 +1070,6 @@ export default function useDMChat(roomId, socket) {
     sendMessage,
     loadMore,
     retryMessage,
-    typingUsers,
     myId,
     deleteMessage,
   };

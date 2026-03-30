@@ -206,6 +206,7 @@ export function MessageContent({ navigation }) {
             unreadCount: Number(r.unread_count) || 0,
             other_user_id: r.other_user_id,
             other_user_name: r.other_user_name,
+            other_user_school_name: r.other_user_school_name,
             other_user_color_id: r.other_user_color_id,
             sortTime: parseUtcToLocal(at)?.getTime() ?? 0,
           };
@@ -373,6 +374,7 @@ export function MessageContent({ navigation }) {
                           friend: {
                             id: item.other_user_id,
                             name: item.other_user_name || item.name,
+                            schoolName: item.other_user_school_name || '',
                             colorIndex: colorIdx,
                           },
                         });

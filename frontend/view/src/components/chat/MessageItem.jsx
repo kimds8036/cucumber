@@ -1,4 +1,4 @@
-import React, { memo, useRef } from 'react';
+import React, { memo, useRef, useState } from 'react';
 import {
   View,
   Text,
@@ -145,15 +145,25 @@ const SenderProfile = ({ chatStyles, normalize }) => (
   </View>
 );
 
-const ReplyQuote = ({ chatStyles, senderName, content }) => (
-  <View style={chatStyles.replyQuoteBox}>
+const ReplyQuote = ({
+  chatStyles,
+  senderName,
+  content,
+  onPress,
+}) => (
+  <TouchableOpacity
+    activeOpacity={onPress ? 0.75 : 1}
+    disabled={!onPress}
+    onPress={onPress}
+    style={chatStyles.replyQuoteBox}
+  >
     <Text style={chatStyles.replyQuoteSender}>
       {senderName ? senderName : '답장'}
     </Text>
     <Text style={chatStyles.replyQuoteText} numberOfLines={1}>
       {content}
     </Text>
-  </View>
+  </TouchableOpacity>
 );
 
 /**
@@ -167,6 +177,8 @@ const ReplyQuote = ({ chatStyles, senderName, content }) => (
  *  onImagePress: Function,
  *  onCopyMessage: Function,
  *  onReplyMessage: Function,
+ *  onPressReplyTarget: Function,
+ *  opponentName: string,
  *  onOpenLongPressMenu: (msg: any, anchor: { x: number, y: number, width: number, height: number }) => void,
  *  isImageOnly: boolean
  * }} props
@@ -180,10 +192,13 @@ const MessageBubble = ({
   onImagePress,
   onCopyMessage,
   onReplyMessage,
+  onPressReplyTarget,
+  opponentName,
   onOpenLongPressMenu,
   isImageOnly,
 }) => {
   const bubbleRef = useRef(null);
+  const [isExpanded, setIsExpanded] = useState(false);
 
   const openMenuFromBubble = () => {
     if (!onOpenLongPressMenu) return;
@@ -191,6 +206,8 @@ const MessageBubble = ({
       onOpenLongPressMenu(msg, { x, y, width: w, height: h });
     });
   };
+  const messageText = String(msg.content ?? '');
+  const isLongMessage = messageText.length > 180;
 
   // 내 메시지
   if (msg.isMe) {
@@ -247,7 +264,7 @@ const MessageBubble = ({
         </View>
 
         {/* 말풍선 (우측) */}
-        <View ref={bubbleRef} collapsable={false}>
+        <View ref={bubbleRef} collapsable={false} style={{ maxWidth: '78%' }}>
           <TouchableOpacity
             style={[
               !isImageOnly
@@ -272,6 +289,7 @@ const MessageBubble = ({
                 chatStyles={chatStyles}
                 senderName={msg.parent_sender_name}
                 content={msg.parent_content}
+                onPress={() => onPressReplyTarget?.(msg.parent_message_id)}
               />
             ) : null}
 
@@ -291,7 +309,24 @@ const MessageBubble = ({
                 삭제된 메시지입니다.
               </Text>
             ) : msg.content ? (
-              <Text style={chatStyles.userBubbleText}>{msg.content}</Text>
+              <>
+                <Text
+                  style={chatStyles.userBubbleText}
+                  numberOfLines={isExpanded ? undefined : (isLongMessage ? 4 : undefined)}
+                >
+                  {msg.content}
+                </Text>
+                {isLongMessage ? (
+                  <TouchableOpacity
+                    onPress={() => setIsExpanded((prev) => !prev)}
+                    activeOpacity={0.8}
+                  >
+                    <Text style={chatStyles.chatTimeUser}>
+                      {isExpanded ? '접기' : '전체보기'}
+                    </Text>
+                  </TouchableOpacity>
+                ) : null}
+              </>
             ) : null}
           </TouchableOpacity>
         </View>
@@ -303,7 +338,7 @@ const MessageBubble = ({
   return (
     <View style={chatStyles.opponentNameAndBubble}>
       {msg.showProfile ? (
-        <Text style={chatStyles.opponentName}>익명</Text>
+        <Text style={chatStyles.opponentName}>{opponentName || '익명'}</Text>
       ) : null}
 
       <View style={{ flexDirection: 'row', alignItems: 'flex-end' }}>
@@ -322,6 +357,7 @@ const MessageBubble = ({
                     chatStyles={chatStyles}
                     senderName={msg.parent_sender_name}
                     content={msg.parent_content}
+                    onPress={() => onPressReplyTarget?.(msg.parent_message_id)}
                   />
                 ) : null}
                 {msg.images &&
@@ -354,6 +390,7 @@ const MessageBubble = ({
                         chatStyles={chatStyles}
                         senderName={msg.parent_sender_name}
                         content={msg.parent_content}
+                        onPress={() => onPressReplyTarget?.(msg.parent_message_id)}
                       />
                     ) : null}
                     {msg.images &&
@@ -380,9 +417,26 @@ const MessageBubble = ({
                         삭제된 메시지입니다.
                       </Text>
                     ) : msg.content ? (
-                      <Text style={chatStyles.opponentBubbleText}>
-                        {msg.content}
-                      </Text>
+                      <>
+                        <Text
+                          style={chatStyles.opponentBubbleText}
+                          numberOfLines={
+                            isExpanded ? undefined : (isLongMessage ? 4 : undefined)
+                          }
+                        >
+                          {msg.content}
+                        </Text>
+                        {isLongMessage ? (
+                          <TouchableOpacity
+                            onPress={() => setIsExpanded((prev) => !prev)}
+                            activeOpacity={0.8}
+                          >
+                            <Text style={chatStyles.chatTimeOpponent}>
+                              {isExpanded ? '접기' : '전체보기'}
+                            </Text>
+                          </TouchableOpacity>
+                        ) : null}
+                      </>
                     ) : null}
                     </View>
                   </Pressable>
@@ -413,6 +467,8 @@ const MessageBubble = ({
  *  onImagePress: Function,
  *  onCopyMessage: Function,
  *  onReplyMessage: Function,
+ *  onPressReplyTarget: Function,
+ *  opponentName: string,
  *  onOpenLongPressMenu: Function
  * }} props
  */
@@ -426,6 +482,8 @@ const MessageItem = memo(
     onImagePress,
     onCopyMessage,
     onReplyMessage,
+    onPressReplyTarget,
+    opponentName,
     onOpenLongPressMenu,
   }) => {
     if (msg.type === 'dateBanner') {
@@ -447,6 +505,8 @@ const MessageItem = memo(
           onImagePress={onImagePress}
           onCopyMessage={onCopyMessage}
           onReplyMessage={onReplyMessage}
+          onPressReplyTarget={onPressReplyTarget}
+          opponentName={opponentName}
           onOpenLongPressMenu={onOpenLongPressMenu}
           isImageOnly={isImageOnly}
         />
@@ -474,6 +534,8 @@ const MessageItem = memo(
           onImagePress={onImagePress}
           onCopyMessage={onCopyMessage}
           onReplyMessage={onReplyMessage}
+          onPressReplyTarget={onPressReplyTarget}
+          opponentName={opponentName}
           onOpenLongPressMenu={onOpenLongPressMenu}
           isImageOnly={isImageOnly}
         />
@@ -485,6 +547,8 @@ const MessageItem = memo(
     if (prevProps.chatStyles !== nextProps.chatStyles) return false;
     if (prevProps.normalize !== nextProps.normalize) return false;
     if (prevProps.onOpenLongPressMenu !== nextProps.onOpenLongPressMenu)
+      return false;
+    if (prevProps.onPressReplyTarget !== nextProps.onPressReplyTarget)
       return false;
 
     const pm = prevProps.msg;
