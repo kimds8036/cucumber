@@ -687,22 +687,6 @@ export default function Chat({ navigation, route }) {
             </TouchableOpacity>
           )}
 
-          {Object.values(typingUsers).length > 0 && (
-            <View
-              style={{
-                paddingHorizontal: normalize(16),
-                paddingVertical: normalize(6),
-                flexDirection: 'row',
-                alignItems: 'center',
-              }}
-            >
-              <Text style={{ color: '#999', fontSize: 12 }}>
-                {Object.values(typingUsers)[0]}이(가) 입력 중...
-              </Text>
-              <Loading size="small" color="#999" style={{ marginLeft: 4 }} />
-            </View>
-          )}
-
           <View
             style={{
               flex: 1,

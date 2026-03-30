@@ -63,6 +63,25 @@ function withMessageGroupFlags(msgs) {
   });
 }
 
+function injectDateBanners(msgs) {
+  // msgs: 과거 -> 최신 순서(오름차순)
+  // 각 날짜 그룹의 시작 지점에 배너를 먼저 삽입한다.
+  const result = [];
+  let lastDateKey = null;
+  for (const msg of msgs) {
+    if (msg?.dateKey && msg.dateKey !== lastDateKey) {
+      result.push({
+        id: `banner-${msg.dateKey}-${msg.id}`,
+        type: 'dateBanner',
+        dateKey: msg.dateKey,
+      });
+      lastDateKey = msg.dateKey;
+    }
+    result.push(msg);
+  }
+  return result;
+}
+
 export default function DMChat({ navigation, route }) {
   const { width } = useWindowDimensions();
   const insets = useSafeAreaInsets();
@@ -149,6 +168,10 @@ export default function DMChat({ navigation, route }) {
     () => withMessageGroupFlags(messages),
     [messages],
   );
+  const flatData = useMemo(
+    () => injectDateBanners(displayMessages),
+    [displayMessages],
+  );
 
   /** FlashList: 타입별 대략 높이(px) 추정에 사용하는 상수 */
   const CHAT_IMAGE_SLOT = 200;
@@ -178,20 +201,20 @@ export default function DMChat({ navigation, route }) {
 
   /** initialScrollIndex·estimatedItemSize가 같은 기대 높이를 쓰도록 평균 반영 */
   const averageEstimatedItemSize = useMemo(() => {
-    if (!displayMessages?.length) return 150;
+    if (!flatData?.length) return 150;
     let sum = 0;
-    const n = displayMessages.length;
+    const n = flatData.length;
     for (let i = 0; i < n; i++) {
-      sum += estimateRowHeight(displayMessages[i], i, n);
+      sum += estimateRowHeight(flatData[i], i, n);
     }
     return Math.max(80, Math.round(sum / n));
-  }, [displayMessages, estimateRowHeight]);
+  }, [flatData, estimateRowHeight]);
 
   const overrideItemLayout = useCallback(
     (layout, item, index) => {
-      layout.size = estimateRowHeight(item, index, displayMessages.length);
+      layout.size = estimateRowHeight(item, index, flatData.length);
     },
-    [estimateRowHeight, displayMessages.length],
+    [estimateRowHeight, flatData.length],
   );
 
   const getFlashListItemType = useCallback(
@@ -201,10 +224,10 @@ export default function DMChat({ navigation, route }) {
 
   const allImageUris = useMemo(
     () =>
-      (Array.isArray(displayMessages) ? displayMessages : []).flatMap((msg) =>
+      (Array.isArray(flatData) ? flatData : []).flatMap((msg) =>
         Array.isArray(msg?.images) ? msg.images : [],
       ),
-    [displayMessages],
+    [flatData],
   );
 
   const selectedImageUri =
@@ -249,8 +272,8 @@ export default function DMChat({ navigation, route }) {
   const handlePressReplyTarget = useCallback((parentId) => {
     const targetId = parentId != null ? String(parentId) : null;
     if (!targetId) return;
-    const targetIndex = displayMessages.findIndex(
-      (m) => String(m?.id) === targetId,
+    const targetIndex = flatData.findIndex(
+      (m) => m?.type !== 'dateBanner' && String(m?.id) === targetId,
     );
     if (targetIndex < 0) {
       showToast('상단으로 더 올려서 과거 메시지를 확인해 주세요');
@@ -265,7 +288,7 @@ export default function DMChat({ navigation, route }) {
     } catch {
       showToast('상단으로 더 올려서 과거 메시지를 확인해 주세요');
     }
-  }, [displayMessages, showToast]);
+  }, [flatData, showToast]);
 
   const handleInputChange = useCallback((text) => {
     setInputText(text);
@@ -417,12 +440,12 @@ export default function DMChat({ navigation, route }) {
     requestAnimationFrame(() => {
       setListShellVisible(true);
       setTimeout(() => {
-        if (displayMessages.length > 0) {
+        if (flatData.length > 0) {
           loadOlderAllowedRef.current = true;
         }
       }, 500);
     });
-  }, [displayMessages.length]);
+  }, [flatData.length]);
 
   const handleScroll = useCallback((e) => {
     const offsetY = e?.nativeEvent?.contentOffset?.y ?? 0;
@@ -485,7 +508,7 @@ export default function DMChat({ navigation, route }) {
           <FlashList
             ref={listRef}
             key={roomId}
-            data={displayMessages}
+            data={flatData}
             extraData={messages.length}
             keyExtractor={(item) => String(item.id)}
             renderItem={renderItem}

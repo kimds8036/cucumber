@@ -1,5 +1,11 @@
 import React, { memo, useRef, useState } from 'react';
-import { View, Text, TouchableOpacity, Pressable } from 'react-native';
+import {
+  View,
+  Text,
+  TouchableOpacity,
+  Pressable,
+  ActivityIndicator,
+} from 'react-native';
 import { Image } from 'expo-image';
 import Loading from '../../../../components/Loading';
 import { colors } from '../../../../styles/colors';
