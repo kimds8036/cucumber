@@ -125,8 +125,6 @@ export default function Chat({ navigation, route }) {
     sendMessage,
     loadMore,
     retryMessage,
-    typingUsers,
-    myId,
     deleteMessage,
   } = useChat(roomId, socketManager);
 
@@ -156,8 +154,6 @@ export default function Chat({ navigation, route }) {
   /** 메시지 롱프레스 플로팅 메뉴 */
   const [longPressMenu, setLongPressMenu] = useState(null);
 
-  const typingTimeoutRef = useRef(null);
-  const isTypingRef = useRef(false);
   const toastTimerRef = useRef(null);
   const [toastText, setToastText] = useState(null);
 
@@ -165,48 +161,9 @@ export default function Chat({ navigation, route }) {
     setViewerUri(uri);
   }, []);
 
-  const handleInputChange = useCallback(
-    (text) => {
-      setInputText(text);
-      if (!roomId) return;
-      if (myId == null) return;
-
-      const userName = '익명';
-
-      if (!text?.trim()) {
-        if (isTypingRef.current) {
-          socketManager.emit('typing_stop', { roomId, userId: myId });
-          isTypingRef.current = false;
-        }
-        if (typingTimeoutRef.current) {
-          clearTimeout(typingTimeoutRef.current);
-          typingTimeoutRef.current = null;
-        }
-        return;
-      }
-
-      if (!isTypingRef.current) {
-        socketManager.emit('typing_start', { roomId, userId: myId, userName });
-        isTypingRef.current = true;
-      }
-
-      if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
-      typingTimeoutRef.current = setTimeout(() => {
-        socketManager.emit('typing_stop', { roomId, userId: myId });
-        isTypingRef.current = false;
-        typingTimeoutRef.current = null;
-      }, 1500);
-    },
-    [roomId, myId],
-  );
-
-  useEffect(() => {
-    isTypingRef.current = false;
-    if (typingTimeoutRef.current) {
-      clearTimeout(typingTimeoutRef.current);
-      typingTimeoutRef.current = null;
-    }
-  }, [roomId]);
+  const handleInputChange = useCallback((text) => {
+    setInputText(text);
+  }, []);
 
   // 룸이 바뀌면 초기 스크롤 판단 기준도 초기화
   useEffect(() => {
@@ -392,6 +349,27 @@ export default function Chat({ navigation, route }) {
     setReplyToMessage(msg);
   }, []);
 
+  const handlePressReplyTarget = useCallback((parentMessageId) => {
+    const targetId = parentMessageId != null ? String(parentMessageId) : null;
+    if (!targetId) return;
+    const targetIndex = flatData.findIndex(
+      (item) => item?.type !== 'dateBanner' && String(item?.id) === targetId,
+    );
+    if (targetIndex < 0) {
+      showChatToast('상단으로 더 올려서 과거 메시지를 확인해 주세요');
+      return;
+    }
+    try {
+      flashListRef.current?.scrollToIndex?.({
+        index: targetIndex,
+        animated: true,
+        viewPosition: 0.5,
+      });
+    } catch {
+      showChatToast('상단으로 더 올려서 과거 메시지를 확인해 주세요');
+    }
+  }, [flatData, showChatToast]);
+
   const openLongPressMenu = useCallback((msg, anchor) => {
     setLongPressMenu({ msg, anchor });
   }, []);
@@ -508,6 +486,7 @@ export default function Chat({ navigation, route }) {
         onImagePress={handleImagePress}
         onCopyMessage={handleCopyMessage}
         onReplyMessage={handleReplyMessage}
+        onPressReplyTarget={handlePressReplyTarget}
         onOpenLongPressMenu={openLongPressMenu}
       />
     ),
@@ -519,6 +498,7 @@ export default function Chat({ navigation, route }) {
       handleImagePress,
       handleCopyMessage,
       handleReplyMessage,
+      handlePressReplyTarget,
       openLongPressMenu,
     ],
   );
@@ -705,22 +685,6 @@ export default function Chat({ navigation, route }) {
                 {post.content}
               </Text>
             </TouchableOpacity>
-          )}
-
-          {Object.values(typingUsers).length > 0 && (
-            <View
-              style={{
-                paddingHorizontal: normalize(16),
-                paddingVertical: normalize(6),
-                flexDirection: 'row',
-                alignItems: 'center',
-              }}
-            >
-              <Text style={{ color: '#999', fontSize: 12 }}>
-                {Object.values(typingUsers)[0]}이(가) 입력 중...
-              </Text>
-              <Loading size="small" color="#999" style={{ marginLeft: 4 }} />
-            </View>
           )}
 
           <View

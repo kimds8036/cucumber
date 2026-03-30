@@ -12,12 +12,14 @@ import {
   View,
   Text,
   TouchableOpacity,
+  ActivityIndicator,
+  Alert,
   KeyboardAvoidingView,
   Platform,
-  FlatList,
   useWindowDimensions,
   ActivityIndicator,
 } from 'react-native';
+import { FlashList } from '@shopify/flash-list';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import Loading from '../../components/Loading';
 import SubHeader from '../frame/subHeader';
@@ -30,6 +32,7 @@ import {
 import { createChatStyles } from '../../styles/message.style';
 import MessageItem from './components/chat/MessageItem';
 import MessageLongPressMenu from './components/chat/MessageLongPressMenu';
+import ImageViewer from './ImageViewer';
 import CommentInput from '../../components/CommentInput.jsx';
 import { getFriendIconColorByIndex } from '../../components/timerFriendModals';
 import * as socketManager from './socketManager';
@@ -61,6 +64,25 @@ function withMessageGroupFlags(msgs) {
   });
 }
 
+function injectDateBanners(msgs) {
+  // msgs: 과거 -> 최신 순서(오름차순)
+  // 각 날짜 그룹의 시작 지점에 배너를 먼저 삽입한다.
+  const result = [];
+  let lastDateKey = null;
+  for (const msg of msgs) {
+    if (msg?.dateKey && msg.dateKey !== lastDateKey) {
+      result.push({
+        id: `banner-${msg.dateKey}-${msg.id}`,
+        type: 'dateBanner',
+        dateKey: msg.dateKey,
+      });
+      lastDateKey = msg.dateKey;
+    }
+    result.push(msg);
+  }
+  return result;
+}
+
 export default function DMChat({ navigation, route }) {
   const { width } = useWindowDimensions();
   const insets = useSafeAreaInsets();
@@ -86,35 +108,38 @@ export default function DMChat({ navigation, route }) {
 
   const roomId = route?.params?.roomId;
   const friend = route?.params?.friend ?? {};
+  const friendName = friend.name || route?.params?.friend?.name || '친구';
+  const friendSchool = friend.schoolName || friend.school || '';
 
   const {
     messages,
     isLoading,
     isLoadingMore,
-    hasMore,
     sendMessage,
     loadMore,
-    typingUsers,
-    myId,
+    retryMessage,
     deleteMessage,
   } = useDMChat(roomId, socketManager);
 
   const [inputText, setInputText] = useState('');
   const [chatImages, setChatImages] = useState([]);
+  const [isImageViewerVisible, setIsImageViewerVisible] = useState(false);
+  const [selectedImageIndex, setSelectedImageIndex] = useState(-1);
   const listRef = useRef(null);
+  const loadOlderAllowedRef = useRef(false);
+  const didListShellLayoutRef = useRef(false);
+  const isNearBottomRef = useRef(false);
+  const isScrollingRef = useRef(false);
+  const scrollAnimationRef = useRef(null);
+  const prevNewestIdRef = useRef(null);
   const isLoadingMoreRef = useRef(false);
   const [listShellVisible, setListShellVisible] = useState(false);
-  const initialScrollDoneRef = useRef(false);
-
-  const typingTimeoutRef = useRef(null);
-  const isTypingRef = useRef(false);
 
   const [longPressMenu, setLongPressMenu] = useState(null);
   const [replyToMessage, setReplyToMessage] = useState(null);
 
   const showToast = useCallback((text) => {
-    // DMChat은 아직 별도 토스트 UI가 없으므로 콘솔로만 처리
-    console.log('[DMChat][Toast]', text);
+    Alert.alert('', text);
   }, []);
 
   const handleCopyMessage = useCallback(async (msg) => {
@@ -144,6 +169,70 @@ export default function DMChat({ navigation, route }) {
     () => withMessageGroupFlags(messages),
     [messages],
   );
+  const flatData = useMemo(
+    () => injectDateBanners(displayMessages),
+    [displayMessages],
+  );
+
+  /** FlashList: 타입별 대략 높이(px) 추정에 사용하는 상수 */
+  const CHAT_IMAGE_SLOT = 200;
+  const DATE_BANNER_ESTIMATE_HEIGHT = 78;
+  const CHAT_LAST_ROW_EXTRA_PAD = 24;
+
+  /** 메시지 높이 추정: 성능을 위해 평균 estimatedItemSize 계산에 사용 */
+  const estimateRowHeight = useCallback((item, index, totalCount) => {
+    if (!item || item.type === 'dateBanner') return DATE_BANNER_ESTIMATE_HEIGHT;
+    const showTs = item.showTimestamp !== false;
+    let h = item.isMe ? 76 : 102;
+    if (!item.isMe && item.showProfile === false) h -= 28;
+    if (!showTs) h -= item.isMe ? 18 : 20;
+    if (item.parent_content) h += 58;
+    const n = Array.isArray(item.images) ? item.images.length : 0;
+    if (n > 0) h += n * (CHAT_IMAGE_SLOT + 4);
+    const hasText = Boolean(
+      (item.content && String(item.content).trim()) || item.is_deleted,
+    );
+    if (hasText) h += 46;
+    if (item.isFailed || item.status === 'failed') h += 6;
+    if (typeof index === 'number' && typeof totalCount === 'number' && totalCount > 0 && index === totalCount - 1) {
+      h += CHAT_LAST_ROW_EXTRA_PAD;
+    }
+    return Math.max(120, Math.min(h, 2400));
+  }, []);
+
+  /** initialScrollIndex·estimatedItemSize가 같은 기대 높이를 쓰도록 평균 반영 */
+  const averageEstimatedItemSize = useMemo(() => {
+    if (!flatData?.length) return 150;
+    let sum = 0;
+    const n = flatData.length;
+    for (let i = 0; i < n; i++) {
+      sum += estimateRowHeight(flatData[i], i, n);
+    }
+    return Math.max(80, Math.round(sum / n));
+  }, [flatData, estimateRowHeight]);
+
+  const overrideItemLayout = useCallback(
+    (layout, item, index) => {
+      layout.size = estimateRowHeight(item, index, flatData.length);
+    },
+    [estimateRowHeight, flatData.length],
+  );
+
+  const getFlashListItemType = useCallback(
+    (item) => (item.type === 'dateBanner' ? 'dateBanner' : 'message'),
+    [],
+  );
+
+  const allImageUris = useMemo(
+    () =>
+      (Array.isArray(flatData) ? flatData : []).flatMap((msg) =>
+        Array.isArray(msg?.images) ? msg.images : [],
+      ),
+    [flatData],
+  );
+
+  const selectedImageUri =
+    selectedImageIndex >= 0 ? allImageUris[selectedImageIndex] : null;
 
   const handleSend = useCallback(() => {
     sendMessage({
@@ -170,68 +259,71 @@ export default function DMChat({ navigation, route }) {
     friend.name,
   ]);
 
-  const handleInputChange = useCallback(
-    (text) => {
-      setInputText(text);
-      if (!roomId) return;
-      if (myId == null) return;
-
-      const userName = friend.name || '친구';
-
-      if (!text?.trim()) {
-        if (isTypingRef.current) {
-          socketManager.emit('typing_stop', { roomId, userId: myId });
-          isTypingRef.current = false;
-        }
-        if (typingTimeoutRef.current) {
-          clearTimeout(typingTimeoutRef.current);
-          typingTimeoutRef.current = null;
-        }
-        return;
-      }
-
-      if (!isTypingRef.current) {
-        socketManager.emit('typing_start', {
-          roomId,
-          userId: myId,
-          userName,
-        });
-        isTypingRef.current = true;
-      }
-
-      if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
-      typingTimeoutRef.current = setTimeout(() => {
-        socketManager.emit('typing_stop', { roomId, userId: myId });
-        isTypingRef.current = false;
-        typingTimeoutRef.current = null;
-      }, 1500);
+  const handleImagePress = useCallback(
+    (uri) => {
+      if (!uri) return;
+      const idx = allImageUris.indexOf(uri);
+      if (idx < 0) return;
+      setSelectedImageIndex(idx);
+      setIsImageViewerVisible(true);
     },
-    [roomId, myId, friend.name],
+    [allImageUris],
   );
 
-  useEffect(() => {
-    isTypingRef.current = false;
-    isLoadingMoreRef.current = false;
-    setListShellVisible(false);
-    initialScrollDoneRef.current = false;
-    if (typingTimeoutRef.current) {
-      clearTimeout(typingTimeoutRef.current);
-      typingTimeoutRef.current = null;
+  const handlePressReplyTarget = useCallback((parentId) => {
+    const targetId = parentId != null ? String(parentId) : null;
+    if (!targetId) return;
+    const targetIndex = flatData.findIndex(
+      (m) => m?.type !== 'dateBanner' && String(m?.id) === targetId,
+    );
+    if (targetIndex < 0) {
+      showToast('상단으로 더 올려서 과거 메시지를 확인해 주세요');
+      return;
     }
+    try {
+      listRef.current?.scrollToIndex?.({
+        index: targetIndex,
+        animated: true,
+        viewPosition: 0.5,
+      });
+    } catch {
+      showToast('상단으로 더 올려서 과거 메시지를 확인해 주세요');
+    }
+  }, [flatData, showToast]);
+
+  const handleInputChange = useCallback((text) => {
+    setInputText(text);
+  }, []);
+
+  useEffect(() => {
+    isLoadingMoreRef.current = false;
+    loadOlderAllowedRef.current = false;
+    didListShellLayoutRef.current = false;
+    isNearBottomRef.current = false;
+    prevNewestIdRef.current = null;
+    isScrollingRef.current = false;
+    setListShellVisible(false);
   }, [roomId]);
 
   useEffect(() => {
-    if (messages.length > 0 && !initialScrollDoneRef.current) {
-      // 즉시 end로 맞춘 다음, 레이아웃이 안정화될 시간을 준 뒤 표시
-      listRef.current?.scrollToEnd?.({ animated: false });
-      const t = setTimeout(() => {
-        listRef.current?.scrollToEnd?.({ animated: false });
-        initialScrollDoneRef.current = true;
-        setListShellVisible(true);
-      }, 150);
-      return () => clearTimeout(t);
+    if (!messages?.length) return;
+    const newest = messages[messages.length - 1];
+    const newestId = newest?.id;
+    if (!newestId) return;
+    if (prevNewestIdRef.current === newestId) return;
+
+    const shouldAutoscroll = newest?.isMe || isNearBottomRef.current;
+    if (shouldAutoscroll && !isScrollingRef.current) {
+      if (scrollAnimationRef.current) {
+        clearTimeout(scrollAnimationRef.current);
+      }
+      scrollAnimationRef.current = setTimeout(() => {
+        listRef.current?.scrollToEnd?.({ animated: true });
+      }, 100);
     }
-  }, [messages.length > 0]);
+
+    prevNewestIdRef.current = newestId;
+  }, [messages]);
 
   const titleElement = useMemo(
     () => (
@@ -263,21 +355,46 @@ export default function DMChat({ navigation, route }) {
             )}
           />
         </View>
-        <Text
-          numberOfLines={1}
+        <View
           style={{
-            fontSize: normalize(17),
-            fontWeight: '700',
-            fontFamily: fonts.bold,
-            color: colors.textPrimary,
             flex: 1,
+            minWidth: 0,
+            flexDirection: 'column',
+            justifyContent: 'center',
           }}
         >
-          {friend.name || '친구'}
-        </Text>
+          <Text
+            numberOfLines={1}
+            style={{
+              fontSize: normalize(16),
+              lineHeight: normalize(20),
+              fontWeight: '700',
+              fontFamily: fonts.bold,
+              color: colors.textPrimary,
+              includeFontPadding: false,
+              marginBottom: normalize(1),
+            }}
+          >
+            {friendName}
+          </Text>
+          {friendSchool ? (
+            <Text
+              numberOfLines={1}
+              style={{
+                fontSize: normalize(11),
+                lineHeight: normalize(13),
+                fontFamily: fonts.regular,
+                color: colors.textSecondary,
+                marginTop: normalize(0),
+              }}
+            >
+              {friendSchool}
+            </Text>
+          ) : null}
+        </View>
       </View>
     ),
-    [normalize, friend.name, friend.colorIndex],
+    [normalize, friendName, friendSchool, friend.colorIndex],
   );
 
   const handleBack = () => navigation.goBack();
@@ -288,11 +405,61 @@ export default function DMChat({ navigation, route }) {
         msg={item}
         chatStyles={chatStyles}
         normalize={normalize}
+        onImagePress={handleImagePress}
+        onRetry={retryMessage}
+        onPressReplyTarget={handlePressReplyTarget}
+        opponentName={friendName}
         onOpenLongPressMenu={openLongPressMenu}
       />
     ),
-    [chatStyles, normalize, openLongPressMenu],
+    [
+      chatStyles,
+      normalize,
+      handleImagePress,
+      retryMessage,
+      handlePressReplyTarget,
+      friendName,
+      openLongPressMenu,
+    ],
   );
+
+  const handleStartReached = useCallback(() => {
+    if (!loadOlderAllowedRef.current) return;
+    if (isLoading || isLoadingMore) return;
+    if (isLoadingMoreRef.current) return;
+    isLoadingMoreRef.current = true;
+    loadMore().finally(() => {
+      setTimeout(() => {
+        isLoadingMoreRef.current = false;
+      }, 500);
+    });
+  }, [isLoading, isLoadingMore, loadMore]);
+
+  const handleListShellLayout = useCallback(() => {
+    if (didListShellLayoutRef.current) return;
+    didListShellLayoutRef.current = true;
+    requestAnimationFrame(() => {
+      setListShellVisible(true);
+      setTimeout(() => {
+        if (flatData.length > 0) {
+          loadOlderAllowedRef.current = true;
+        }
+      }, 500);
+    });
+  }, [flatData.length]);
+
+  const handleScroll = useCallback((e) => {
+    const offsetY = e?.nativeEvent?.contentOffset?.y ?? 0;
+    const viewportH = e?.nativeEvent?.layoutMeasurement?.height ?? 0;
+    const contentH = e?.nativeEvent?.contentSize?.height ?? 0;
+    isScrollingRef.current = true;
+    if (scrollAnimationRef.current) clearTimeout(scrollAnimationRef.current);
+    scrollAnimationRef.current = setTimeout(() => {
+      isScrollingRef.current = false;
+    }, 150);
+    const threshold = Math.max(80, viewportH * 0.1);
+    isNearBottomRef.current = offsetY + viewportH >= contentH - threshold;
+  }, []);
 
   if (!roomId) {
     return (
@@ -335,37 +502,16 @@ export default function DMChat({ navigation, route }) {
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         keyboardVerticalOffset={insets.top + normalize(48)}
       >
-        {Object.values(typingUsers).length > 0 && (
-          <View
-            style={{
-              paddingHorizontal: normalize(16),
-              paddingVertical: normalize(6),
-              flexDirection: 'row',
-              alignItems: 'center',
-            }}
-          >
-            <Text style={{ color: '#999', fontSize: 12 }}>
-              {friend.name || '친구'}이(가) 입력 중...
-            </Text>
-            <ActivityIndicator
-              size="small"
-              color="#999"
-              style={{ marginLeft: 4 }}
-            />
-          </View>
-        )}
-
         <View
           style={{ flex: 1, opacity: listShellVisible ? 1 : 0 }}
-          onLayout={() => {
-            // 초기 end로 맞춘 뒤에만 표시
-            if (initialScrollDoneRef.current) setListShellVisible(true);
-          }}
+          onLayout={handleListShellLayout}
         >
-          <FlatList
+          <FlashList
             ref={listRef}
-            data={displayMessages}
-            keyExtractor={(item) => item.id}
+            key={roomId}
+            data={flatData}
+            extraData={messages.length}
+            keyExtractor={(item) => String(item.id)}
             renderItem={renderItem}
             contentContainerStyle={{
               paddingHorizontal: normalize(14),
@@ -382,26 +528,23 @@ export default function DMChat({ navigation, route }) {
                 />
               ) : null
             }
-            onScroll={({ nativeEvent }) => {
-              if (
-                nativeEvent.contentOffset.y < 50 &&
-                hasMore &&
-                !isLoadingMoreRef.current &&
-                initialScrollDoneRef.current
-              ) {
-                isLoadingMoreRef.current = true;
-                loadMore().finally(() => {
-                  setTimeout(() => {
-                    isLoadingMoreRef.current = false;
-                  }, 800);
-                });
-              }
-            }}
-            scrollEventThrottle={200}
+            initialScrollOffset={999999}
+            onStartReached={handleStartReached}
+            onStartReachedThreshold={0.25}
+            estimatedItemSize={averageEstimatedItemSize}
+            drawDistance={1000}
+            getItemType={getFlashListItemType}
+            overrideItemLayout={overrideItemLayout}
             maintainVisibleContentPosition={{
-              minIndexForVisible: 0,
+              minIndexForVisible: 1,
               autoscrollToTopThreshold: 10,
+              autoscrollToBottomThreshold: 0.2,
+              startRenderingFromBottom: true,
             }}
+            keyboardShouldPersistTaps="handled"
+            keyboardDismissMode="on-drag"
+            onScroll={handleScroll}
+            scrollEventThrottle={16}
             showsVerticalScrollIndicator={false}
           />
         </View>
@@ -441,6 +584,14 @@ export default function DMChat({ navigation, route }) {
           onDeleteMessage={deleteMessage}
           onToast={(msg) => showToast?.(msg)}
           normalize={normalize}
+        />
+        <ImageViewer
+          visible={isImageViewerVisible}
+          uri={selectedImageUri}
+          onClose={() => {
+            setIsImageViewerVisible(false);
+            setSelectedImageIndex(-1);
+          }}
         />
       </KeyboardAvoidingView>
     </SafeAreaView>

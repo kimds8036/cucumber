@@ -39,6 +39,7 @@ router.get('/rooms', authenticate, async (req, res) => {
         dr.created_at,
         (CASE WHEN dr.user1_id = ? THEN dr.user2_id ELSE dr.user1_id END) AS other_user_id,
         u.name AS other_user_name,
+        s.name AS other_user_school_name,
         u.color_id AS other_user_color_id,
         (
           SELECT COUNT(*)
@@ -49,6 +50,7 @@ router.get('/rooms', authenticate, async (req, res) => {
         ) AS unread_count
       FROM dm_rooms dr
       INNER JOIN users u ON u.id = (CASE WHEN dr.user1_id = ? THEN dr.user2_id ELSE dr.user1_id END)
+      LEFT JOIN schools s ON s.school_id = u.school_id
       WHERE (dr.user1_id = ? OR dr.user2_id = ?)
         AND u.is_deleted = FALSE
       ORDER BY COALESCE(dr.last_message_at, dr.created_at) DESC
