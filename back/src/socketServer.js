@@ -84,12 +84,17 @@ export function initSocketServer(httpServer) {
 
       // 권한 확인: 실제로 이 룸의 참여자인지 DB 검증
       try {
-        const [rows] = await pool.execute(
+        const [msgRows] = await pool.execute(
           `SELECT id FROM message_rooms
            WHERE id = ? AND (user1_id = ? OR user2_id = ?)`,
-          [roomId, userId, userId]
+          [roomId, userId, userId],
         );
-        if (rows.length === 0) {
+        const [dmRows] = await pool.execute(
+          `SELECT id FROM dm_rooms
+           WHERE id = ? AND (user1_id = ? OR user2_id = ?)`,
+          [roomId, userId, userId],
+        );
+        if (msgRows.length === 0 && dmRows.length === 0) {
           socket.emit('error', { message: '채팅방 접근 권한이 없습니다.' });
           return;
         }

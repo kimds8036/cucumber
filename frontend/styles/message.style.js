@@ -87,6 +87,7 @@ export const createMessageStyles = (width, normalize) => {
     },
     listItemLeft: {
       flexDirection: 'row',
+      alignItems: 'center',
       flex: 1,
     },
     profileCircle: {
@@ -114,6 +115,7 @@ export const createMessageStyles = (width, normalize) => {
       color: colors.textSecondary,
     },
     listItemRight: {
+      alignSelf: 'center',
       alignItems: 'flex-end',
       justifyContent: 'center',
       marginLeft: normalize(8),
@@ -178,7 +180,7 @@ export const createChatStyles = (width, normalize) => {
     },
     chatRowOpponent: {
       flexDirection: 'row',
-      alignItems: 'flex-end',
+      alignItems: 'flex-start',
     },
     chatProfileCircle: {
       width: normalize(38),
@@ -220,7 +222,10 @@ export const createChatStyles = (width, normalize) => {
       paddingVertical: normalize(5),
       paddingHorizontal: normalize(14),
       borderRadius: normalize(16),
-      borderBottomLeftRadius: normalize(4),
+      borderTopLeftRadius: normalize(4),
+      borderBottomLeftRadius: normalize(16),
+      borderTopRightRadius: normalize(16),
+      borderBottomRightRadius: normalize(16),
       backgroundColor: colors.textLight10,
       flexShrink: 1,
       alignSelf: 'flex-start',
@@ -232,7 +237,7 @@ export const createChatStyles = (width, normalize) => {
     },
     opponentTimeRow: {
       flexDirection: 'row',
-      alignItems: 'center',
+      alignItems: 'flex-end',
       gap: normalize(4),
       marginTop: normalize(2),
     },
@@ -240,7 +245,8 @@ export const createChatStyles = (width, normalize) => {
       fontSize: normalize(fontSizes.lg),
       fontFamily: fonts.regular,
       color: colors.textSecondary,
-      marginLeft: 0,
+      marginLeft: normalize(7),
+      alignSelf: 'flex-end',
     },
     // 사용자 메시지 행: 좌측 시간, 우측 대화 내용
     chatRowUser: {
@@ -254,20 +260,14 @@ export const createChatStyles = (width, normalize) => {
       justifyContent: 'flex-end',
       marginRight: normalize(7),
       flexShrink: 0,
+      alignSelf: 'flex-end',
     },
     chatUnreadCount: {
       fontSize: normalize(fontSizes.lg),
       fontFamily: fonts.bold,
       color: colors.primary,
-      marginBottom: normalize(2),
+      marginBottom: normalize(-2),
       marginRight: normalize(4),
-    },
-    userBubbleAndTime: {
-      flexDirection: 'row',
-      alignItems: 'flex-end',
-      maxWidth: '75%',
-      flexShrink: 1,
-      minWidth: 0,
     },
     userBubble: {
       paddingVertical: normalize(5),
@@ -287,7 +287,7 @@ export const createChatStyles = (width, normalize) => {
       fontSize: normalize(fontSizes.lg),
       fontFamily: fonts.regular,
       color: colors.textSecondary,
-      marginBottom: normalize(2),
+      marginBottom: -5,
     },
 
     // ─────────────────────────────────────────────
@@ -319,12 +319,12 @@ export const createChatStyles = (width, normalize) => {
     replyQuoteBox: {
       borderLeftWidth: normalize(3),
       borderLeftColor: colors.primary,
-      paddingVertical: normalize(5),
-      paddingHorizontal: normalize(8),
-      marginBottom: normalize(8),
-      opacity: 0.75,
-      borderRadius: normalize(4),
-      backgroundColor: 'transparent',
+      paddingVertical: normalize(6),
+      paddingHorizontal: normalize(10),
+      marginBottom: normalize(6),
+      borderRadius: normalize(6),
+      backgroundColor: colors.textLight10, // 투명 → 연한 배경으로
+      opacity: 1,
     },
     replyQuoteSender: {
       fontSize: normalize(fontSizes.lg),
@@ -335,7 +335,7 @@ export const createChatStyles = (width, normalize) => {
     replyQuoteText: {
       fontSize: normalize(fontSizes.lg),
       fontFamily: fonts.regular,
-      color: colors.textPrimary,
+      color: colors.textSecondary, // textPrimary → textSecondary로 구분감
     },
   });
 };

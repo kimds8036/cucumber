@@ -146,8 +146,8 @@ export function MessageContent({ navigation }) {
   const normalize = useMemo(() => getNormalize(width), [width]);
   const styles = useMemo(() => createMessageStyles(width, normalize), [width, normalize]);
 
-  const [messageType, setMessageType] = useState('note'); // 'note' | 'mail'
-  const slideAnim = useRef(new Animated.Value(0)).current; // 0 = 쪽지, 1 = 개인우편
+  const [messageType, setMessageType] = useState('note'); // 'note' | 'mail' (쪽지 탭에 익명+DM 혼합)
+  const slideAnim = useRef(new Animated.Value(0)).current; // 0=쪽지, 1=개인우편
   const [noteRooms, setNoteRooms] = useState([]);
   const [mails, setMails] = useState([]);
   const [loadingNote, setLoadingNote] = useState(false);
@@ -155,34 +155,66 @@ export function MessageContent({ navigation }) {
 
   const handleMessageTypeChange = (type) => {
     setMessageType(type);
+    const toValue = type === 'note' ? 0 : 1;
     Animated.spring(slideAnim, {
-      toValue: type === 'note' ? 0 : 1,
+      toValue,
       useNativeDriver: false,
       tension: 60,
       friction: 10,
     }).start();
   };
 
-  // 쪽지 채팅방 목록 불러오기 (처음 + 화면 복귀 시마다 새로고침)
+  // 쪽지 탭: 익명 채팅방 + DM 방 동시 조회 후 최신순 병합
   useEffect(() => {
     const fetchRooms = async () => {
       try {
         setLoadingNote(true);
-        const res = await api.get('/api/messages/rooms', {
-          params: { page: 1, limit: 50 },
+        const [noteRes, dmRes] = await Promise.all([
+          api.get('/api/messages/rooms', { params: { page: 1, limit: 50 } }).catch((e) => {
+            console.error('채팅방 목록 조회 실패:', e);
+            return { data: {} };
+          }),
+          api.get('/api/dm/rooms', { params: { page: 1, limit: 50 } }).catch((e) => {
+            console.error('DM 목록 조회 실패:', e);
+            return { data: {} };
+          }),
+        ]);
+
+        const noteList = (noteRes.data?.data?.rooms ?? []).map((r, idx) => {
+          const at = r.last_message_at || r.created_at;
+          return {
+            type: 'note',
+            id: r.id,
+            profileColorIndex: idx,
+            name: '익명',
+            content: r.last_message || r.post_content || '',
+            time: formatListTime(at),
+            unreadCount: r.unread_count || 0,
+            sortTime: parseUtcToLocal(at)?.getTime() ?? 0,
+          };
         });
-        const rooms = res.data?.data?.rooms || [];
-        const mapped = rooms.map((r, idx) => ({
-          id: r.id,
-          profileColorIndex: idx,
-          name: '익명',
-          content: r.last_message || r.post_content || '',
-          time: formatListTime(r.last_message_at || r.created_at),
-          unreadCount: r.unread_count || 0,
-        }));
-        setNoteRooms(mapped);
+
+        const dmList = (dmRes.data?.data?.rooms ?? []).map((r, idx) => {
+          const at = r.last_message_at || r.created_at;
+          return {
+            type: 'dm',
+            id: r.id,
+            profileColorIndex: idx,
+            name: r.other_user_name || '친구',
+            content: r.last_message || '',
+            time: formatListTime(at),
+            unreadCount: Number(r.unread_count) || 0,
+            other_user_id: r.other_user_id,
+            other_user_name: r.other_user_name,
+            other_user_color_id: r.other_user_color_id,
+            sortTime: parseUtcToLocal(at)?.getTime() ?? 0,
+          };
+        });
+
+        const merged = [...noteList, ...dmList].sort((a, b) => b.sortTime - a.sortTime);
+        setNoteRooms(merged);
       } catch (error) {
-        console.error('채팅방 목록 조회 실패:', error);
+        console.error('쪽지 목록 조회 실패:', error);
       } finally {
         setLoadingNote(false);
       }
@@ -317,11 +349,66 @@ export function MessageContent({ navigation }) {
                 </View>
               ) : (
               noteRooms.map((item) => {
-                // const iconColor = getIconColor(item); // DB 연동 시
+                if (item.type === 'dm') {
+                  const colorIdx =
+                    item.other_user_color_id != null
+                      ? Number(item.other_user_color_id) % ICON_COLORS.length
+                      : item.profileColorIndex % ICON_COLORS.length;
+                  const iconColor = getIconColorByIndex(colorIdx);
+                  return (
+                    <TouchableOpacity
+                      key={`dm-${item.id}`}
+                      style={styles.listItem}
+                      activeOpacity={0.7}
+                      onPress={() => {
+                        setNoteRooms((prev) =>
+                          prev.map((r) =>
+                            r.id === item.id && r.type === 'dm'
+                              ? { ...r, unreadCount: 0 }
+                              : r
+                          )
+                        );
+                        navigation?.navigate('DMChat', {
+                          roomId: item.id,
+                          friend: {
+                            id: item.other_user_id,
+                            name: item.other_user_name || item.name,
+                            colorIndex: colorIdx,
+                          },
+                        });
+                      }}
+                    >
+                      <View style={styles.listItemLeft}>
+                        <View style={[styles.profileCircle, { backgroundColor: colors.primary }]}>
+                          <MessageTabIcon
+                            width={normalize(22)}
+                            height={normalize(22)}
+                            color={iconColor}
+                          />
+                        </View>
+                        <View style={styles.listItemBody}>
+                          <Text style={styles.listItemName}>{item.name}</Text>
+                          <Text style={styles.listItemContent} numberOfLines={1}>
+                            {item.content}
+                          </Text>
+                        </View>
+                      </View>
+                      <View style={styles.listItemRight}>
+                        <Text style={styles.listItemTime}>{item.time}</Text>
+                        {item.unreadCount > 0 ? (
+                          <View style={styles.unreadBadge}>
+                            <Text style={styles.unreadBadgeText}>{item.unreadCount}</Text>
+                          </View>
+                        ) : null}
+                      </View>
+                    </TouchableOpacity>
+                  );
+                }
+
                 const iconColor = getIconColorByIndex(item.profileColorIndex);
                 return (
                   <SwipeableRow
-                    key={`mail-${item.id}-${item.isReceived ? 'r' : 's'}`}
+                    key={`note-${item.id}`}
                     onDelete={async () => {
                       try {
                         await api.delete(`/api/messages/rooms/${item.id}`);
@@ -335,13 +422,11 @@ export function MessageContent({ navigation }) {
                       style={styles.listItem}
                       activeOpacity={0.7}
                       onPress={() => {
-                        // 1️⃣ Optimistic UI: 목록에서 즉시 빨간 숫자 제거
                         setNoteRooms((prev) =>
                           prev.map((room) =>
                             room.id === item.id ? { ...room, unreadCount: 0 } : room
                           )
                         );
-                        // 2️⃣ 채팅방으로 이동 → Chat 화면에서 바로 read API 호출 및 DB is_read 업데이트
                         navigation?.navigate('Chat', {
                           roomId: item.id,
                         });
