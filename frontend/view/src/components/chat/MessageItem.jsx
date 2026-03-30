@@ -150,7 +150,7 @@ const ReplyQuote = ({ chatStyles, senderName, content }) => (
     <Text style={chatStyles.replyQuoteSender}>
       {senderName ? senderName : '답장'}
     </Text>
-    <Text style={chatStyles.replyQuoteText} numberOfLines={2}>
+    <Text style={chatStyles.replyQuoteText} numberOfLines={1}>
       {content}
     </Text>
   </View>
@@ -198,72 +198,74 @@ const MessageBubble = ({
       <View
         style={[chatStyles.chatRowUser, chatGroupRowMargins(msg, normalize)]}
       >
-        <View style={chatStyles.userBubbleAndTime}>
-          <View style={chatStyles.userTimeColumn}>
-            {msg.status === 'failed' || msg.isFailed ? (
-              <TouchableOpacity
-                onPress={() => onRetry?.(msg)}
+        {/* 시간+1 (좌측) */}
+        <View style={chatStyles.userTimeColumn}>
+          {msg.status === 'failed' || msg.isFailed ? (
+            <TouchableOpacity
+              onPress={() => onRetry?.(msg)}
+              style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                justifyContent: 'flex-end',
+              }}
+            >
+              <Text
+                style={{
+                  color: colors.alert,
+                  fontSize: normalize(14),
+                  fontWeight: '700',
+                }}
+              >
+                !
+              </Text>
+            </TouchableOpacity>
+          ) : (
+            <>
+              {msg.isReadByOther === false && !msg.isSending && (
+                <Text style={chatStyles.chatUnreadCount}>1</Text>
+              )}
+              <View
                 style={{
                   flexDirection: 'row',
                   alignItems: 'center',
                   justifyContent: 'flex-end',
                 }}
               >
-                <Text
-                  style={{
-                    color: colors.alert,
-                    fontSize: normalize(14),
-                    fontWeight: '700',
-                  }}
-                >
-                  !
-                </Text>
-              </TouchableOpacity>
-            ) : (
-              <>
-                {msg.isReadByOther === false && !msg.isSending && (
-                  <Text style={chatStyles.chatUnreadCount}>1</Text>
+                {(msg.status === 'sending' || msg.isSending) && (
+                  <ActivityIndicator size="small" color="#999" />
                 )}
-                <View
-                  style={{
-                    flexDirection: 'row',
-                    alignItems: 'center',
-                    justifyContent: 'flex-end',
-                  }}
-                >
-                  {(msg.status === 'sending' || msg.isSending) && (
-                    <ActivityIndicator size="small" color="#999" />
-                  )}
-                  {msg.showTimestamp === true ? (
-                    <Text style={chatStyles.chatTimeUser}>
-                      {msg.status === 'sending' || msg.isSending
-                        ? '...'
-                        : msg.time}
-                    </Text>
-                  ) : null}
-                </View>
-              </>
-            )}
-          </View>
-          <View ref={bubbleRef} collapsable={false}>
-            <TouchableOpacity
-              style={[
-                !isImageOnly
-                  ? chatStyles.userBubble
-                  : {
-                      backgroundColor: 'transparent',
-                      paddingHorizontal: 0,
-                      paddingVertical: 0,
-                    },
-                msg.isFailed && { borderWidth: 1, borderColor: colors.alert },
-                msg.is_deleted && { backgroundColor: colors.disabled },
-              ]}
-              onLongPress={() => {
-                if (msg.is_deleted || msg.isSending) return;
-                openMenuFromBubble();
-              }}
-              activeOpacity={0.8}
-            >
+                {msg.showTimestamp === true ? (
+                  <Text style={chatStyles.chatTimeUser}>
+                    {msg.status === 'sending' || msg.isSending
+                      ? '...'
+                      : msg.time}
+                  </Text>
+                ) : null}
+              </View>
+            </>
+          )}
+        </View>
+
+        {/* 말풍선 (우측) */}
+        <View ref={bubbleRef} collapsable={false}>
+          <TouchableOpacity
+            style={[
+              !isImageOnly
+                ? chatStyles.userBubble
+                : {
+                    backgroundColor: 'transparent',
+                    paddingHorizontal: 0,
+                    paddingVertical: 0,
+                  },
+              msg.isFailed && { borderWidth: 1, borderColor: colors.alert },
+              msg.is_deleted && { backgroundColor: colors.disabled },
+            ]}
+            onLongPress={() => {
+              if (msg.is_deleted || msg.isSending) return;
+              openMenuFromBubble();
+            }}
+            activeOpacity={0.8}
+          >
             {/* 답장 인용구 (카카오톡 스타일) */}
             {msg.parent_content ? (
               <ReplyQuote
@@ -291,8 +293,7 @@ const MessageBubble = ({
             ) : msg.content ? (
               <Text style={chatStyles.userBubbleText}>{msg.content}</Text>
             ) : null}
-            </TouchableOpacity>
-          </View>
+          </TouchableOpacity>
         </View>
       </View>
     );
@@ -456,7 +457,6 @@ const MessageItem = memo(
       <View
         style={[
           chatStyles.chatRowOpponent,
-          { flexDirection: 'row', alignItems: 'flex-end' },
           chatGroupRowMargins(msg, normalize),
         ]}
       >

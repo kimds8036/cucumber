@@ -1,11 +1,16 @@
 /**
- * 친구 DM — 게시글 쪽지(Chat)와 분리, /api/dm/* 만 사용
+ * 친구 DM — /api/dm/* + useDMChat (소켓·폴링·캐시)
  */
-import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import React, {
+  useState,
+  useEffect,
+  useCallback,
+  useMemo,
+  useRef,
+} from 'react';
 import {
   View,
   Text,
-  TextInput,
   TouchableOpacity,
   ActivityIndicator,
   KeyboardAvoidingView,
@@ -21,27 +26,38 @@ import {
   createDetailStyles,
   getNormalize as getBoardNormalize,
 } from '../../styles/board.style';
-import { api } from '../../utils/api';
+import { createChatStyles } from '../../styles/message.style';
+import MessageItem from './components/chat/MessageItem';
+import MessageLongPressMenu from './components/chat/MessageLongPressMenu';
+import CommentInput from '../../components/CommentInput.jsx';
 import { getFriendIconColorByIndex } from '../../components/timerFriendModals';
+import * as socketManager from './socketManager';
+import useDMChat from './hooks/useDMChat';
+import * as Clipboard from 'expo-clipboard';
 
-function parseUtcToLocal(createdAt) {
-  if (!createdAt) return null;
-  let s = String(createdAt).trim();
-  if (
-    /^\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}:\d{2}(\.\d+)?$/.test(s) &&
-    !/[Z+-]\d{2}:?\d{2}$/.test(s) &&
-    !/Z$/.test(s)
-  ) {
-    s = s.replace(' ', 'T') + 'Z';
+function sameMessageSender(a, b) {
+  if (!a || !b) return false;
+  if (a.senderId != null && b.senderId != null) {
+    return a.senderId === b.senderId;
   }
-  const d = new Date(s);
-  return Number.isNaN(d.getTime()) ? null : d;
+  return a.isMe === b.isMe;
 }
 
-function formatChatTime(createdAt) {
-  const d = parseUtcToLocal(createdAt);
-  if (!d) return '';
-  return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+function withMessageGroupFlags(msgs) {
+  if (!Array.isArray(msgs) || msgs.length === 0) return msgs;
+  return msgs.map((msg, i) => {
+    const prev = msgs[i - 1];
+    const next = msgs[i + 1];
+    const showProfile =
+      !prev ||
+      !sameMessageSender(prev, msg) ||
+      prev.time !== msg.time;
+    const showTimestamp =
+      !next ||
+      !sameMessageSender(msg, next) ||
+      msg.time !== next.time;
+    return { ...msg, showProfile, showTimestamp };
+  });
 }
 
 export default function DMChat({ navigation, route }) {
@@ -52,71 +68,169 @@ export default function DMChat({ navigation, route }) {
     () => createDetailStyles(width, normalize),
     [width, normalize],
   );
+  const chatStyles = useMemo(
+    () => createChatStyles(width, normalize),
+    [width, normalize],
+  );
+
+  const chatInputStyles = useMemo(
+    () => ({
+      bottomInputRow: detailStyles.bottomInputRow,
+      bottomInputInner: detailStyles.bottomInputInner,
+      bottomInput: detailStyles.bottomInput,
+      sendButton: detailStyles.sendButton,
+    }),
+    [detailStyles],
+  );
 
   const roomId = route?.params?.roomId;
   const friend = route?.params?.friend ?? {};
 
-  const [loading, setLoading] = useState(true);
-  const [messages, setMessages] = useState([]);
-  const [inputText, setInputText] = useState('');
-  const [sending, setSending] = useState(false);
-  const listRef = useRef(null);
+  const {
+    messages,
+    isLoading,
+    isLoadingMore,
+    hasMore,
+    sendMessage,
+    loadMore,
+    typingUsers,
+    myId,
+    deleteMessage,
+  } = useDMChat(roomId, socketManager);
 
-  const loadMessages = useCallback(async () => {
-    if (!roomId) return;
-    setLoading(true);
+  const [inputText, setInputText] = useState('');
+  const [chatImages, setChatImages] = useState([]);
+  const listRef = useRef(null);
+  const isLoadingMoreRef = useRef(false);
+  const [listShellVisible, setListShellVisible] = useState(false);
+  const initialScrollDoneRef = useRef(false);
+
+  const typingTimeoutRef = useRef(null);
+  const isTypingRef = useRef(false);
+
+  const [longPressMenu, setLongPressMenu] = useState(null);
+  const [replyToMessage, setReplyToMessage] = useState(null);
+
+  const showToast = useCallback((text) => {
+    // DMChat은 아직 별도 토스트 UI가 없으므로 콘솔로만 처리
+    console.log('[DMChat][Toast]', text);
+  }, []);
+
+  const handleCopyMessage = useCallback(async (msg) => {
+    if (!msg?.content) return false;
     try {
-      const res = await api.get(`/api/dm/rooms/${roomId}?limit=50`);
-      const room = res.data?.room;
-      const list = res.data?.data ?? [];
-      if (!room) {
-        setMessages([]);
+      await Clipboard.setStringAsync(msg.content);
+      return true;
+    } catch (e) {
+      console.error('[DMChat][Copy] 복사 실패:', e);
+      return false;
+    }
+  }, []);
+
+  const handleReplyMessage = useCallback((msg) => {
+    setReplyToMessage(msg);
+  }, []);
+
+  const openLongPressMenu = useCallback((msg, anchor) => {
+    setLongPressMenu({ msg, anchor });
+  }, []);
+
+  const closeLongPressMenu = useCallback(() => {
+    setLongPressMenu(null);
+  }, []);
+
+  const displayMessages = useMemo(
+    () => withMessageGroupFlags(messages),
+    [messages],
+  );
+
+  const handleSend = useCallback(() => {
+    sendMessage({
+      text: inputText,
+      images: chatImages,
+      replyTo: replyToMessage
+        ? {
+            id: replyToMessage.id,
+            content: replyToMessage.content || '(이미지 메시지)',
+            senderName: replyToMessage.isMe
+              ? '나'
+              : (friend.name || '상대방'),
+          }
+        : null,
+    });
+    setInputText('');
+    setChatImages([]);
+    setReplyToMessage(null);
+  }, [
+    sendMessage,
+    inputText,
+    chatImages,
+    replyToMessage,
+    friend.name,
+  ]);
+
+  const handleInputChange = useCallback(
+    (text) => {
+      setInputText(text);
+      if (!roomId) return;
+      if (myId == null) return;
+
+      const userName = friend.name || '친구';
+
+      if (!text?.trim()) {
+        if (isTypingRef.current) {
+          socketManager.emit('typing_stop', { roomId, userId: myId });
+          isTypingRef.current = false;
+        }
+        if (typingTimeoutRef.current) {
+          clearTimeout(typingTimeoutRef.current);
+          typingTimeoutRef.current = null;
+        }
         return;
       }
-      const fid = Number(friend.id);
-      const u1 = Number(room.user1_id);
-      const u2 = Number(room.user2_id);
-      const me = fid === u1 ? u2 : fid === u2 ? u1 : null;
 
-      const mapped = list.map((m) => {
-        const sid = Number(m.sender_id);
-        return {
-          id: String(m.id),
-          content: m.content,
-          isMe: me != null && sid === me,
-          createdAt: m.created_at,
-          time: formatChatTime(m.created_at),
-        };
-      });
-      setMessages(mapped);
-    } catch (e) {
-      console.error('[DMChat] load', e);
-    } finally {
-      setLoading(false);
-    }
-  }, [roomId, friend.id]);
+      if (!isTypingRef.current) {
+        socketManager.emit('typing_start', {
+          roomId,
+          userId: myId,
+          userName,
+        });
+        isTypingRef.current = true;
+      }
+
+      if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
+      typingTimeoutRef.current = setTimeout(() => {
+        socketManager.emit('typing_stop', { roomId, userId: myId });
+        isTypingRef.current = false;
+        typingTimeoutRef.current = null;
+      }, 1500);
+    },
+    [roomId, myId, friend.name],
+  );
 
   useEffect(() => {
-    loadMessages();
-  }, [loadMessages]);
-
-  const send = async () => {
-    const t = inputText.trim();
-    if (!t || !roomId || sending) return;
-    setSending(true);
-    try {
-      await api.post(`/api/dm/rooms/${roomId}/messages`, { content: t });
-      setInputText('');
-      await loadMessages();
-      requestAnimationFrame(() => {
-        listRef.current?.scrollToEnd?.({ animated: true });
-      });
-    } catch (e) {
-      console.error('[DMChat] send', e);
-    } finally {
-      setSending(false);
+    isTypingRef.current = false;
+    isLoadingMoreRef.current = false;
+    setListShellVisible(false);
+    initialScrollDoneRef.current = false;
+    if (typingTimeoutRef.current) {
+      clearTimeout(typingTimeoutRef.current);
+      typingTimeoutRef.current = null;
     }
-  };
+  }, [roomId]);
+
+  useEffect(() => {
+    if (messages.length > 0 && !initialScrollDoneRef.current) {
+      // 즉시 end로 맞춘 다음, 레이아웃이 안정화될 시간을 준 뒤 표시
+      listRef.current?.scrollToEnd?.({ animated: false });
+      const t = setTimeout(() => {
+        listRef.current?.scrollToEnd?.({ animated: false });
+        initialScrollDoneRef.current = true;
+        setListShellVisible(true);
+      }, 150);
+      return () => clearTimeout(t);
+    }
+  }, [messages.length > 0]);
 
   const titleElement = useMemo(
     () => (
@@ -125,7 +239,7 @@ export default function DMChat({ navigation, route }) {
           flexDirection: 'row',
           alignItems: 'center',
           flex: 1,
-          marginLeft: 4,
+          marginLeft: 20,
           minWidth: 0,
         }}
       >
@@ -167,46 +281,16 @@ export default function DMChat({ navigation, route }) {
 
   const handleBack = () => navigation.goBack();
 
-  const renderItem = ({ item }) => (
-    <View
-      style={{
-        alignSelf: item.isMe ? 'flex-end' : 'flex-start',
-        maxWidth: '82%',
-        marginBottom: normalize(8),
-      }}
-    >
-      <View
-        style={{
-          backgroundColor: item.isMe ? colors.primary : colors.surface,
-          borderRadius: normalize(14),
-          paddingHorizontal: normalize(14),
-          paddingVertical: normalize(10),
-        }}
-      >
-        <Text
-          style={{
-            fontSize: normalize(17),
-            fontFamily: fonts.regular,
-            color: item.isMe ? colors.textPrimary : colors.textPrimary,
-            lineHeight: normalize(22),
-          }}
-        >
-          {item.content}
-        </Text>
-      </View>
-      {item.time ? (
-        <Text
-          style={{
-            fontSize: normalize(11),
-            color: colors.textSecondary,
-            marginTop: 4,
-            alignSelf: item.isMe ? 'flex-end' : 'flex-start',
-          }}
-        >
-          {item.time}
-        </Text>
-      ) : null}
-    </View>
+  const renderItem = useCallback(
+    ({ item }) => (
+      <MessageItem
+        msg={item}
+        chatStyles={chatStyles}
+        normalize={normalize}
+        onOpenLongPressMenu={openLongPressMenu}
+      />
+    ),
+    [chatStyles, normalize, openLongPressMenu],
   );
 
   if (!roomId) {
@@ -222,7 +306,7 @@ export default function DMChat({ navigation, route }) {
     );
   }
 
-  if (loading && messages.length === 0) {
+  if (isLoading && messages.length === 0) {
     return (
       <SafeAreaView style={detailStyles.container} edges={['top']}>
         <SubHeader
@@ -250,73 +334,113 @@ export default function DMChat({ navigation, route }) {
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         keyboardVerticalOffset={insets.top + normalize(48)}
       >
-        <FlatList
-          ref={listRef}
-          data={messages}
-          keyExtractor={(item) => item.id}
-          renderItem={renderItem}
-          contentContainerStyle={{
-            paddingHorizontal: normalize(14),
-            paddingTop: normalize(8),
-            paddingBottom: normalize(10),
-            flexGrow: 1,
+        {Object.values(typingUsers).length > 0 && (
+          <View
+            style={{
+              paddingHorizontal: normalize(16),
+              paddingVertical: normalize(6),
+              flexDirection: 'row',
+              alignItems: 'center',
+            }}
+          >
+            <Text style={{ color: '#999', fontSize: 12 }}>
+              {friend.name || '친구'}이(가) 입력 중...
+            </Text>
+            <ActivityIndicator
+              size="small"
+              color="#999"
+              style={{ marginLeft: 4 }}
+            />
+          </View>
+        )}
+
+        <View
+          style={{ flex: 1, opacity: listShellVisible ? 1 : 0 }}
+          onLayout={() => {
+            // 초기 end로 맞춘 뒤에만 표시
+            if (initialScrollDoneRef.current) setListShellVisible(true);
           }}
-          onContentSizeChange={() => {
-            listRef.current?.scrollToEnd?.({ animated: false });
-          }}
-          showsVerticalScrollIndicator={false}
-        />
+        >
+          <FlatList
+            ref={listRef}
+            data={displayMessages}
+            keyExtractor={(item) => item.id}
+            renderItem={renderItem}
+            contentContainerStyle={{
+              paddingHorizontal: normalize(14),
+              paddingTop: normalize(8),
+              paddingBottom: normalize(0),
+              flexGrow: 1,
+            }}
+            ListHeaderComponent={
+              isLoadingMore ? (
+                <ActivityIndicator
+                  size="small"
+                  color={colors.primary}
+                  style={{ paddingVertical: 12 }}
+                />
+              ) : null
+            }
+            onScroll={({ nativeEvent }) => {
+              if (
+                nativeEvent.contentOffset.y < 50 &&
+                hasMore &&
+                !isLoadingMoreRef.current &&
+                initialScrollDoneRef.current
+              ) {
+                isLoadingMoreRef.current = true;
+                loadMore().finally(() => {
+                  setTimeout(() => {
+                    isLoadingMoreRef.current = false;
+                  }, 800);
+                });
+              }
+            }}
+            scrollEventThrottle={200}
+            maintainVisibleContentPosition={{
+              minIndexForVisible: 0,
+              autoscrollToTopThreshold: 10,
+            }}
+            showsVerticalScrollIndicator={false}
+          />
+        </View>
 
         <View
           style={{
-            flexDirection: 'row',
-            alignItems: 'flex-end',
-            paddingHorizontal: normalize(12),
             paddingBottom:
               insets.bottom > 0 ? insets.bottom : normalize(12),
-            paddingTop: normalize(8),
-            borderTopWidth: 1,
-            borderTopColor: '#E8E8E8',
-            backgroundColor: colors.background,
           }}
         >
-          <TextInput
-            style={{
-              flex: 1,
-              minHeight: normalize(40),
-              maxHeight: normalize(120),
-              borderRadius: normalize(12),
-              backgroundColor: colors.surface,
-              paddingHorizontal: normalize(14),
-              paddingVertical: normalize(10),
-              fontSize: normalize(17),
-              fontFamily: fonts.regular,
-              color: colors.textPrimary,
-              marginRight: normalize(8),
-            }}
-            value={inputText}
-            onChangeText={setInputText}
-            placeholder="메시지 입력"
-            placeholderTextColor={colors.textSecondary}
-            multiline
-            editable={!sending}
+          <CommentInput
+            bottomInputRef={null}
+            bottomComment={inputText}
+            setBottomComment={handleInputChange}
+            selectedImages={chatImages}
+            onImagesChange={setChatImages}
+            showImageAttach
+            replyToCommentId={replyToMessage?.id ?? null}
+            replyToAuthorLabel={
+              replyToMessage?.isMe ? '나' : (friend.name || '상대방')
+            }
+            clearReplyTarget={() => setReplyToMessage(null)}
+            handleSendComment={handleSend}
+            styles={chatInputStyles}
+            normalize={normalize}
+            mainPlaceholder="메시지를 입력하세요"
           />
-          <TouchableOpacity
-            onPress={send}
-            disabled={sending || !inputText.trim()}
-            style={{
-              backgroundColor:
-                sending || !inputText.trim() ? colors.disabled : colors.primary,
-              paddingHorizontal: normalize(16),
-              paddingVertical: normalize(12),
-              borderRadius: normalize(12),
-            }}
-          >
-            <Text style={{ color: colors.textWhite, fontWeight: '700' }}>
-              전송
-            </Text>
-          </TouchableOpacity>
         </View>
+
+        <MessageLongPressMenu
+          visible={Boolean(longPressMenu)}
+          msg={longPressMenu?.msg ?? null}
+          anchor={longPressMenu?.anchor ?? null}
+          onClose={closeLongPressMenu}
+          onCopy={handleCopyMessage}
+          onReply={handleReplyMessage}
+          onDeleteMessage={deleteMessage}
+          onToast={(msg) => showToast?.(msg)}
+          normalize={normalize}
+        />
       </KeyboardAvoidingView>
     </SafeAreaView>
   );

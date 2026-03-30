@@ -4,7 +4,7 @@ import { Alert, InteractionManager } from 'react-native';
 import { api } from '../../../utils/api';
 import { useNotification } from '../../../context/NotificationContext';
 
-const getCacheKey = (roomId) => `chat_cache_${roomId}`;
+const getCacheKey = (roomId) => `dm_chat_cache_${roomId}`;
 
 // 초기 진입 시 최신 몇 개만 우선 로드할지
 const INITIAL_FETCH_LIMIT = 30;
@@ -57,7 +57,8 @@ function getDateKey(d) {
 function normalizeMessage(m, meId) {
   const createdAt = m.created_at || '';
   const d = parseUtcToLocal(createdAt);
-  const isMe = meId != null && m.sender_id === meId;
+  const isMe =
+    meId != null && Number(m.sender_id) === Number(meId);
   const isSending = Boolean(m.isSending);
   const isFailed = Boolean(m.isFailed);
   const senderName = m.sender_name ?? m.senderName ?? (isMe ? '나' : '익명');
@@ -124,7 +125,7 @@ async function loadCachedMessages(roomId) {
       messageIds: slicedIds,
     };
   } catch (error) {
-    console.error('[useChat] 캐시 로드 오류', error);
+    console.error('[useDMChat] 캐시 로드 오류', error);
     return null;
   }
 }
@@ -148,15 +149,15 @@ async function saveCachedMessages(roomId, data) {
       JSON.stringify({ messagesById: slicedById, messageIds: slicedIds }),
     );
   } catch (error) {
-    console.error('[useChat] 캐시 저장 오류', error);
+    console.error('[useDMChat] 캐시 저장 오류', error);
   }
 }
 
 /**
  * @param {string|number|null|undefined} roomId
- * @param {Object} socket - socketManager 모듈 전체 또는 { connectSocket, disconnectSocket, emit, on, off } 형태
+ * @param {Object} socket - socketManager (`connectSocket`, `disconnectSocket`, `emit`, `on`, `off`)
  */
-export default function useChat(roomId, socket) {
+export default function useDMChat(roomId, socket) {
   const { refreshHasUnread } = useNotification();
 
   // 원자적 상태 관리 - 단일 객체로 묶어서 렌더링 최적화
@@ -235,7 +236,7 @@ export default function useChat(roomId, socket) {
 
     // 디버그: 메시지 순서 확인
     if (arr.length > 0) {
-      console.log('[useChat] Message order debug:', {
+      console.log('[useDMChat] Message order debug:', {
         totalCount: arr.length,
         firstMessage: arr[0]?.id,
         firstMessageTime: arr[0]?.createdAt,
@@ -278,19 +279,13 @@ export default function useChat(roomId, socket) {
     pollRef.current = setInterval(async () => {
       try {
         const res = await api.get(
-          `/api/messages/rooms/${roomId}?limit=${PAGE_SIZE * 2}`,
+          `/api/dm/rooms/${roomId}?limit=${PAGE_SIZE * 2}`,
         );
         const room = res.data?.room;
         const msgs = res.data?.data || [];
         if (!room || !Array.isArray(msgs)) return;
 
-        const otherId = room.other_user_id;
-        const meId =
-          room.user1_id === otherId
-            ? room.user2_id
-            : room.user2_id === otherId
-              ? room.user1_id
-              : null;
+        const meId = currentUserIdRef.current;
 
         msgs.sort((a, b) => {
           const ad = parseUtcToLocal(a.created_at || '');
@@ -332,7 +327,7 @@ export default function useChat(roomId, socket) {
           return newIds.length ? { ...prev, messageIds: uniqueIds } : prev;
         });
       } catch (e) {
-        console.error('[useChat][Poll] 폴링 오류:', e);
+        console.error('[useDMChat][Poll] 폴링 오류:', e);
       }
     }, 10000); // 폴링 간격 증가로 성능 최적화
   }, [roomId]);
@@ -357,25 +352,42 @@ export default function useChat(roomId, socket) {
           try {
             const cached = await loadCachedMessages(roomId);
             if (cached && isMounted && !controller.signal.aborted) {
-              oldestIdRef.current = cached.messageIds[0] ?? null;
+              // roomId 일치 확인
+              if (String(roomId) === String(roomId)) {
+                setChatData((prev) => ({
+                  ...prev,
+                  messagesById: cached.messagesById,
+                  messageIds: cached.messageIds,
+                  hasMore: true,
+                }));
+                oldestIdRef.current = cached.messageIds[0] ?? null;
+              }
             }
 
-            const res = await api.get(
-              `/api/messages/rooms/${roomId}?limit=${INITIAL_FETCH_LIMIT}`,
-              { signal: controller.signal },
-            );
+            const [res, meRes] = await Promise.all([
+              api.get(`/api/dm/rooms/${roomId}?limit=${INITIAL_FETCH_LIMIT}`, {
+                signal: controller.signal,
+              }),
+              api.get('/api/auth/me', { signal: controller.signal }),
+            ]);
 
             if (controller.signal.aborted || !isMounted) return;
             const room = res.data?.room;
             const msgs = res.data?.data || [];
             const hasMoreRes = Boolean(res.data?.hasMore);
 
+            const mePayload = meRes.data?.data;
+            const meId = Number(
+              mePayload?.id != null ? mePayload.id : mePayload?.userId,
+            );
+
             // 디버그: API 응답 데이터 확인
-            console.log('[useChat] API Response debug:', {
+            console.log('[useDMChat] API Response debug:', {
               roomId,
-              apiEndpoint: `/api/messages/rooms/${roomId}?limit=${INITIAL_FETCH_LIMIT}`,
+              apiEndpoint: `/api/dm/rooms/${roomId}?limit=${INITIAL_FETCH_LIMIT}`,
               responseCount: msgs.length,
               hasMore: hasMoreRes,
+              meId,
               firstMessageId: msgs[0]?.id,
               firstMessageTime: msgs[0]?.created_at,
               lastMessageId: msgs[msgs.length - 1]?.id,
@@ -384,13 +396,15 @@ export default function useChat(roomId, socket) {
 
             if (!room || !Array.isArray(msgs) || !isMounted) return;
 
-            const otherId = room.other_user_id;
-            const meId =
-              room.user1_id === otherId
-                ? room.user2_id
-                : room.user2_id === otherId
-                  ? room.user1_id
-                  : null;
+            if (Number.isNaN(meId)) {
+              if (isMounted) {
+                Alert.alert(
+                  '오류',
+                  '로그인 정보를 확인할 수 없습니다.',
+                );
+              }
+              return;
+            }
 
             currentUserIdRef.current = meId;
             setMyId(meId);
@@ -413,7 +427,7 @@ export default function useChat(roomId, socket) {
             }
 
             // 디버그: 초기 로딩 데이터 순서 확인
-            console.log('[useChat] Initial load debug:', {
+            console.log('[useDMChat] Initial load debug:', {
               roomId,
               messageCount: ids.length,
               oldestId: ids[0],
@@ -422,8 +436,12 @@ export default function useChat(roomId, socket) {
               newestTime: normalized[ids[ids.length - 1]]?.createdAt,
             });
 
-            // API 응답으로 상태 완전 교체
-            if (!controller.signal.aborted && isMounted) {
+            // roomId 일치 확인 후 상태 업데이트 (완전 교체)
+            if (
+              String(roomId) === String(roomId) &&
+              !controller.signal.aborted
+            ) {
+              // 기존 데이터를 완전히 밀어내고 새 데이터로 교체
               setChatData((prev) => ({
                 ...prev,
                 messagesById: normalized,
@@ -434,37 +452,39 @@ export default function useChat(roomId, socket) {
               oldestIdRef.current = ids[0] ?? null;
             }
 
-            // 읽음 처리
             try {
-              await api.put(`/api/messages/rooms/${roomId}/read`);
-              setChatData((prev) => {
-                const next = {
-                  ...prev,
-                  messagesById: { ...prev.messagesById },
-                };
-                Object.keys(next.messagesById).forEach((id) => {
-                  if (next.messagesById[id] && !next.messagesById[id].isMe) {
-                    next.messagesById[id] = {
-                      ...next.messagesById[id],
-                      isReadByMe: true,
-                    };
-                  }
-                });
-                return next;
-              });
-
-              await api
-                .post('/api/notifications/read-by-related', {
-                  relatedType: 'message_room',
-                  relatedId: roomId,
-                })
-                .catch(() => {});
-              refreshHasUnread();
+              await api.put(`/api/dm/rooms/${roomId}/read`);
             } catch {
-              /* ignore */
+              /* DM 읽음 API 미구현·오류 시 무시 */
             }
+
+            setChatData((prev) => {
+              const next = {
+                ...prev,
+                messagesById: { ...prev.messagesById },
+              };
+              Object.keys(next.messagesById).forEach((id) => {
+                if (next.messagesById[id] && !next.messagesById[id].isMe) {
+                  next.messagesById[id] = {
+                    ...next.messagesById[id],
+                    isReadByMe: true,
+                  };
+                }
+              });
+              return next;
+            });
+
+            try {
+              await api.post('/api/notifications/read-by-related', {
+                relatedType: 'dm_room',
+                relatedId: roomId,
+              });
+            } catch {
+              /* 알림 연동 없으면 무시 */
+            }
+            refreshHasUnread();
           } catch (error) {
-            console.error('[useChat] 메시지 로드 실패:', error);
+            console.error('[useDMChat] 메시지 로드 실패:', error);
             if (isMounted) {
               Alert.alert(
                 '오류',
@@ -638,7 +658,7 @@ export default function useChat(roomId, socket) {
       });
 
       if (!newMsg.isMe) {
-        api.put(`/api/messages/rooms/${roomId}/read`).catch(() => {});
+        api.put(`/api/dm/rooms/${roomId}/read`).catch(() => {});
       }
     },
     [roomId],
@@ -746,7 +766,7 @@ export default function useChat(roomId, socket) {
       }
 
       const res = await api.get(
-        `/api/messages/rooms/${roomId}?before=${oldestIdRef.current}&limit=${PAGE_SIZE}`,
+        `/api/dm/rooms/${roomId}?before=${oldestIdRef.current}&limit=${PAGE_SIZE}`,
       );
 
       const msgs = res.data?.data || [];
@@ -781,7 +801,7 @@ export default function useChat(roomId, socket) {
       oldestIdRef.current = chronological[0]?.id ?? oldestIdRef.current;
       setChatData((prev) => ({ ...prev, hasMore: Boolean(res.data?.hasMore) }));
     } catch (e) {
-      console.error('[useChat][Pagination] 로딩 실패:', e);
+      console.error('[useDMChat][Pagination] 로딩 실패:', e);
     } finally {
       setChatData((prev) => ({ ...prev, isLoadingMore: false }));
     }
@@ -850,7 +870,7 @@ export default function useChat(roomId, socket) {
         if (parentId) formData.append('parent_message_id', parentId);
 
         await api
-          .post(`/api/messages/rooms/${roomId}/messages`, formData, {
+          .post(`/api/dm/rooms/${roomId}/messages`, formData, {
             headers: { 'Content-Type': 'multipart/form-data' },
           })
           .then((res) => {
@@ -904,7 +924,7 @@ export default function useChat(roomId, socket) {
             pendingClientIdTimeoutsRef.current.set(clientId, timeoutId);
           });
       } catch (error) {
-        console.error('[useChat] 쪽지 전송 실패:', error);
+        console.error('[useDMChat] 쪽지 전송 실패:', error);
         setChatData((prev) => {
           const target = prev.messagesById[clientId];
           if (!target) return prev;
@@ -972,7 +992,7 @@ export default function useChat(roomId, socket) {
         if (parentId) formData.append('parent_message_id', parentId);
 
         const res = await api.post(
-          `/api/messages/rooms/${roomId}/messages`,
+          `/api/dm/rooms/${roomId}/messages`,
           formData,
           { headers: { 'Content-Type': 'multipart/form-data' } },
         );
@@ -1025,7 +1045,7 @@ export default function useChat(roomId, socket) {
           pendingClientIdTimeoutsRef.current.set(clientId, timeoutId);
         }
       } catch (error) {
-        console.error('[useChat] 재전송 실패:', error);
+        console.error('[useDMChat] 재전송 실패:', error);
         setChatData((prev) => {
           const target = prev.messagesById[clientId];
           if (!target) return prev;
@@ -1054,7 +1074,7 @@ export default function useChat(roomId, socket) {
     if (String(messageId).startsWith('temp_')) return;
     try {
       const targetId = String(messageId);
-      await api.delete(`/api/messages/${targetId}`);
+      await api.delete(`/api/dm/messages/${targetId}`);
       setChatData((prev) => {
         const target = prev.messagesById[targetId];
         if (!target) return prev;
@@ -1067,7 +1087,7 @@ export default function useChat(roomId, socket) {
         };
       });
     } catch (e) {
-      console.error('[useChat] 메시지 삭제 실패:', e);
+      console.error('[useDMChat] 메시지 삭제 실패:', e);
       Alert.alert('오류', '메시지 삭제에 실패했습니다.');
     }
   }, []);
