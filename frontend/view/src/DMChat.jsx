@@ -16,6 +16,7 @@ import {
   Platform,
   FlatList,
   useWindowDimensions,
+  ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import Loading from '../../components/Loading';

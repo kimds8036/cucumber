@@ -69,7 +69,7 @@ export const createBoardStyles = (width, normalize) => {
       flexDirection: 'row',
       justifyContent: 'space-between',
       alignItems: 'center',
-      marginBottom: normalize(10),
+      marginBottom: normalize(5),
     },
     postAuthorRow: {
       flexDirection: 'row',
@@ -132,6 +132,42 @@ export const createBoardStyles = (width, normalize) => {
       fontFamily: fonts.regular,
       color: colors.textSecondary,
     },
+    postLocationWrap: {
+      flexShrink: 1,
+    },
+    postLocationInlineText: {
+      flexShrink: 1,
+      minWidth: 0,
+    },
+    distanceBadgeWrap: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      marginLeft: normalize(8),
+      flexShrink: 0,
+    },
+    distanceBadgeChip: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: normalize(1),
+      backgroundColor: colors.primaryLight20,
+      borderRadius: normalize(10),
+      paddingHorizontal: normalize(7),
+      paddingVertical: normalize(2),
+    },
+    distanceBadgeTextRow: {
+      flexDirection: 'row',
+      alignItems: 'baseline',
+    },
+    distanceBadgeNumber: {
+      fontSize: normalize(11),
+      fontFamily: fonts.regular,
+      color: colors.primaryDark,
+    },
+    distanceBadgeUnit: {
+      fontSize: normalize(10),
+      fontFamily: fonts.regular,
+      color: colors.primaryDark,
+    },
 
     // 게시글 내용
     postContent: {
@@ -140,6 +176,58 @@ export const createBoardStyles = (width, normalize) => {
       color: colors.textPrimary,
       lineHeight: normalize(20),
       marginBottom: normalize(7),
+    },
+    postContentCompact: {
+      marginBottom: normalize(5),
+    },
+    postTagsWrap: {
+      flexDirection: 'row',
+      flexWrap: 'nowrap',
+      gap: normalize(6),
+      marginBottom: normalize(5),
+      alignItems: 'center',
+      overflow: 'hidden',
+    },
+    postTagChip: {
+      flexShrink: 0,
+    },
+    postTagText: {
+      fontSize: normalize(11),
+      fontFamily: fonts.bold,
+      color: colors.textSecondary,
+    },
+    postTagMeasureHidden: {
+      opacity: 0,
+    },
+    postTagMoreChip: {
+      backgroundColor: colors.textLight10,
+      paddingHorizontal: normalize(5),
+      paddingVertical: normalize(1),
+      borderRadius: normalize(10),
+    },
+    postBodyRow: {
+      flexDirection: 'row',
+      alignItems: 'flex-start',
+    },
+    postBodyColumn: {
+      flex: 1,
+      minWidth: 0,
+      flexDirection: 'column',
+    },
+    postBodyColumnWithThumb: {
+      minHeight: normalize(70),
+      justifyContent: 'space-between',
+      marginRight: normalize(10),
+    },
+    postFooterStart: {
+      justifyContent: 'flex-start',
+    },
+    postThumb: {
+      width: normalize(70),
+      height: normalize(70),
+      borderRadius: normalize(8),
+      backgroundColor: colors.textLight10,
+      alignSelf: 'flex-start',
     },
 
     // 내용과 푸터 사이 경계선
@@ -199,6 +287,18 @@ export const createBoardStyles = (width, normalize) => {
 // 글쓰기 페이지 스타일
 export const createWriteStyles = (width, normalize) => {
   return StyleSheet.create({
+    screen: {
+      flex: 1,
+    },
+    keyboardAvoiding: {
+      flex: 1,
+    },
+    scrollContentGrow: {
+      flexGrow: 1,
+    },
+    fullFlex: {
+      flex: 1,
+    },
     container: {
       flex: 1,
       backgroundColor: colors.background,
@@ -211,6 +311,8 @@ export const createWriteStyles = (width, normalize) => {
       paddingBottom: normalize(35),
       backgroundColor: colors.background,
       alignItems: 'center',
+      borderColor: colors.textLight20,
+      borderTopWidth: 1,
     },
     guideContainer: {
       flexDirection: 'row',
@@ -362,6 +464,94 @@ export const createWriteStyles = (width, normalize) => {
       fontFamily: fonts.regular,
       color: colors.textSecondary,
     },
+    topToolbarSection: {
+      backgroundColor: colors.background,
+    },
+    topToolbar: {
+      height: normalize(48),
+      backgroundColor: colors.background,
+      flexDirection: 'row',
+      alignItems: 'center',
+      paddingHorizontal: normalize(16),
+      gap: normalize(20),
+      borderColor: colors.textLight20,
+      borderTopWidth: 1,
+    },
+    toolbarIconButton: {
+      position: 'relative',
+      padding: normalize(2),
+    },
+    toolbarLocationButton: {
+      padding: normalize(2),
+    },
+    toolbarBadge: {
+      position: 'absolute',
+      top: normalize(-6),
+      right: normalize(-10),
+      width: normalize(16),
+      height: normalize(16),
+      borderRadius: normalize(8),
+      backgroundColor: colors.primary,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    toolbarBadgeText: {
+      color: colors.background,
+      fontSize: normalize(10),
+      fontWeight: '700',
+    },
+    locationChipWrap: {
+      paddingHorizontal: normalize(16),
+      paddingTop: normalize(8),
+    },
+    photoStripContent: {
+      paddingHorizontal: normalize(16),
+      paddingTop: normalize(8),
+      paddingBottom: normalize(2),
+    },
+    photoAddButton: {
+      width: normalize(60),
+      height: normalize(60),
+      borderRadius: normalize(10),
+      borderWidth: 1.5,
+      borderStyle: 'dashed',
+      borderColor: '#999',
+      alignItems: 'center',
+      justifyContent: 'center',
+      marginRight: normalize(8),
+      backgroundColor: '#FAFAFA',
+    },
+    photoItemWrap: {
+      marginRight: normalize(8),
+      position: 'relative',
+    },
+    photoThumb: {
+      width: normalize(60),
+      height: normalize(60),
+      borderRadius: normalize(10),
+    },
+    photoDeleteButton: {
+      position: 'absolute',
+      top: normalize(-6),
+      right: normalize(-6),
+      backgroundColor: '#000',
+      borderRadius: normalize(10),
+    },
+    hashtagTagListWithPadding: {
+      paddingHorizontal: normalize(16),
+    },
+    hashtagSuggestionSectionTop: {
+      paddingHorizontal: normalize(16),
+      marginTop: normalize(8),
+    },
+    tagPanelContainer: {
+      borderTopWidth: 0.5,
+      borderTopColor: colors.textLight20,
+      backgroundColor: colors.background,
+    },
+    tagPanelWrapperCompact: {
+      paddingVertical: normalize(12),
+    },
   });
 };
 
@@ -389,7 +579,7 @@ export const createDetailStyles = (width, normalize) => {
       flexDirection: 'row',
       justifyContent: 'space-between',
       alignItems: 'center',
-      marginBottom: normalize(12),
+      marginBottom: normalize(7),
     },
     detailAuthorRow: {
       flexDirection: 'row',
@@ -447,6 +637,35 @@ export const createDetailStyles = (width, normalize) => {
       color: colors.textPrimary,
       lineHeight: normalize(20),
       marginBottom: normalize(10),
+    },
+    detailImagesWrap: {
+      marginBottom: normalize(7),
+      alignItems: 'flex-start',
+    },
+    detailImage: {
+      height: normalize(260),
+      marginBottom: normalize(8),
+      alignSelf: 'flex-start',
+    },
+    detailImageFallback: {
+      width: '100%',
+    },
+    detailImageLast: {
+      marginBottom: 0,
+    },
+    detailTagsWrap: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      gap: normalize(6),
+      marginBottom: normalize(7),
+    },
+    detailTagChip: {
+      flexShrink: 0,
+    },
+    detailTagText: {
+      fontSize: normalize(11),
+      fontFamily: fonts.bold,
+      color: colors.textSecondary,
     },
     detailDivider: {
       height: 1,

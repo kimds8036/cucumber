@@ -1,9 +1,9 @@
-import React from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { View, Text, TouchableOpacity, Image } from 'react-native';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
-import { colors, fonts } from '../styles/colors';
+import { colors } from '../styles/colors';
 
 /**
  * BoardPostCard
@@ -18,6 +18,63 @@ import { colors, fonts } from '../styles/colors';
 const BoardPostCard = ({ post, normalize, styles, onPress, onScrapPress }) => {
   const hasThumb =
     typeof post.thumbnail === 'string' && post.thumbnail.trim().length > 0;
+  const [containerWidth, setContainerWidth] = useState(0);
+  const [tagWidths, setTagWidths] = useState([]);
+  const tags = Array.isArray(post.tags)
+    ? post.tags
+        .map((tag) =>
+          tag != null && typeof tag === 'object' ? String(tag.name ?? '').trim() : String(tag ?? '').trim(),
+        )
+        .filter(Boolean)
+    : [];
+  const TAG_GAP = normalize(6);
+  const MORE_BADGE_WIDTH = normalize(36);
+
+  useEffect(() => {
+    setTagWidths(new Array(tags.length).fill(0));
+  }, [tags.length]);
+
+  const allMeasured =
+    tags.length > 0 &&
+    tagWidths.length === tags.length &&
+    tagWidths.every((w) => typeof w === 'number' && w > 0);
+
+  const { visibleCount, hiddenTagCount } = useMemo(() => {
+    if (!allMeasured || containerWidth <= 0) {
+      return { visibleCount: tags.length, hiddenTagCount: 0 };
+    }
+
+    const totalWidth =
+      tagWidths.reduce((sum, width) => sum + width, 0) + TAG_GAP * Math.max(0, tags.length - 1);
+
+    if (totalWidth <= containerWidth) {
+      return { visibleCount: tags.length, hiddenTagCount: 0 };
+    }
+
+    let used = 0;
+    let count = 0;
+
+    for (let i = 0; i < tags.length; i += 1) {
+      const gapBefore = count > 0 ? TAG_GAP : 0;
+      const remainingAfterCurrent = tags.length - (i + 1);
+      const reserveForMore = remainingAfterCurrent > 0 ? TAG_GAP + MORE_BADGE_WIDTH : 0;
+      const nextUsed = used + gapBefore + tagWidths[i];
+
+      if (nextUsed + reserveForMore <= containerWidth) {
+        used = nextUsed;
+        count += 1;
+      } else {
+        break;
+      }
+    }
+
+    return {
+      visibleCount: count,
+      hiddenTagCount: Math.max(0, tags.length - count),
+    };
+  }, [allMeasured, containerWidth, tagWidths, tags.length, TAG_GAP, MORE_BADGE_WIDTH]);
+
+  const isMeasuring = tags.length > 0 && (!allMeasured || containerWidth <= 0);
 
   // 거리 배지: 사용자 위치와 post의 위도·경도(post.latitude, post.longitude 등)로 Haversine 등으로 거리(m) 계산
   // const distanceMeters = computeHaversineMeters(userLat, userLng, postLat, postLng);
@@ -58,10 +115,10 @@ const BoardPostCard = ({ post, normalize, styles, onPress, onScrapPress }) => {
             {post.time}
           </Text>
           {post.location ? (
-            <View style={[styles.postTimeRow, { flexShrink: 1 }]}>
+            <View style={[styles.postTimeRow, styles.postLocationWrap]}>
               <Text style={styles.postTime}>{' · '}</Text>
               <Text
-                style={[styles.postLocationText, { flexShrink: 1, minWidth: 0 }]}
+                style={[styles.postLocationText, styles.postLocationInlineText]}
                 numberOfLines={1}
               >
                 {post.location}
@@ -69,116 +126,69 @@ const BoardPostCard = ({ post, normalize, styles, onPress, onScrapPress }) => {
             </View>
           ) : null}
         </View>
-        <View
-          style={{
-            flexDirection: 'row',
-            alignItems: 'center',
-            marginLeft: normalize(8),
-            flexShrink: 0,
-          }}
-        >
-          <View
-            style={{
-              flexDirection: 'row',
-              alignItems: 'center',
-              gap: normalize(1),
-              backgroundColor: colors.primaryLight20,
-              borderRadius: normalize(10),
-              paddingHorizontal: normalize(7),
-              paddingVertical: normalize(2),
-            }}
-          >
+        <View style={styles.distanceBadgeWrap}>
+          <View style={styles.distanceBadgeChip}>
             <MaterialIcons name="location-on" size={normalize(10)} color={colors.primaryDark} />
-            <View style={{ flexDirection: 'row', alignItems: 'baseline' }}>
-              <Text
-                style={{
-                  fontSize: normalize(11),
-                  fontFamily: fonts.regular,
-                  color: colors.primaryDark,
-                }}
-              >
-                {distanceNumberText}
-              </Text>
-              <Text
-                style={{
-                  fontSize: normalize(10),
-                  fontFamily: fonts.regular,
-                  color: colors.primaryDark,
-                }}
-              >
-                {distanceUnitText}
-              </Text>
+            <View style={styles.distanceBadgeTextRow}>
+              <Text style={styles.distanceBadgeNumber}>{distanceNumberText}</Text>
+              <Text style={styles.distanceBadgeUnit}>{distanceUnitText}</Text>
             </View>
           </View>
         </View>
       </View>
 
-      {/* 본문·해시태그·푸터(세로) + 썸네일(가로) 한 상자 */}
-      <View
-        style={{
-          flexDirection: 'row',
-          alignItems: 'flex-start',
-        }}
-      >
-        <View
-          style={{
-            flex: 1,
-            minWidth: 0,
-            flexDirection: 'column',
-            minHeight: hasThumb ? normalize(70) : undefined,
-            justifyContent: hasThumb ? 'space-between' : 'flex-start',
-            marginRight: hasThumb ? normalize(10) : 0,
-          }}
-        >
+      {/* 본문/푸터(세로) + 썸네일(가로) */}
+      <View style={styles.postBodyRow}>
+        <View style={[styles.postBodyColumn, hasThumb && styles.postBodyColumnWithThumb]}>
           <Text
-            style={[styles.postContent, { marginBottom: normalize(6) }]}
+            style={[styles.postContent, styles.postContentCompact]}
             numberOfLines={3}
             ellipsizeMode="tail"
           >
             {post.content}
           </Text>
 
-          {Array.isArray(post.tags) && post.tags.length > 0 ? (
+          {tags.length > 0 ? (
             <View
-              style={{
-                flexDirection: 'row',
-                flexWrap: 'wrap',
-                gap: normalize(6),
-                marginBottom: normalize(7),
+              style={styles.postTagsWrap}
+              onLayout={({ nativeEvent: { layout } }) => {
+                if (layout.width !== containerWidth) setContainerWidth(layout.width);
               }}
             >
-              {post.tags.map((tag, idx) => {
-                const label =
-                  tag != null && typeof tag === 'object'
-                    ? String(tag.name ?? '')
-                    : String(tag ?? '');
-                if (!label.trim()) return null;
+              {tags.map((label, idx) => {
+                if (!isMeasuring && idx >= visibleCount) return null;
                 return (
                   <View
-                    key={tag?.id != null ? `tag-${tag.id}` : `tag-${idx}-${label}`}
-                    style={{
-                      backgroundColor: colors.primaryLight20,
-                      borderRadius: normalize(12),
-                      paddingHorizontal: normalize(8),
-                      paddingVertical: normalize(1),
+                    key={`tag-${idx}-${label}`}
+                    style={[styles.postTagChip, isMeasuring && styles.postTagMeasureHidden]}
+                    onLayout={({ nativeEvent: { layout } }) => {
+                      const measuredWidth = layout.width;
+                      setTagWidths((prev) => {
+                        if (!Array.isArray(prev) || prev.length !== tags.length) {
+                          const next = new Array(tags.length).fill(0);
+                          next[idx] = measuredWidth;
+                          return next;
+                        }
+                        if (prev[idx] === measuredWidth) return prev;
+                        const next = [...prev];
+                        next[idx] = measuredWidth;
+                        return next;
+                      });
                     }}
                   >
-                    <Text
-                      style={{
-                        fontSize: normalize(10),
-                        fontFamily: fonts.regular,
-                        color: colors.primaryDark,
-                      }}
-                    >
-                      {label}
-                    </Text>
+                    <Text style={styles.postTagText}>{label}</Text>
                   </View>
                 );
               })}
+              {!isMeasuring && hiddenTagCount > 0 ? (
+                <View style={[styles.postTagChip, styles.postTagMoreChip]}>
+                  <Text style={styles.postTagText}>+{hiddenTagCount}</Text>
+                </View>
+              ) : null}
             </View>
           ) : null}
 
-          <View style={[styles.postFooter, { justifyContent: 'flex-start' }]}>
+          <View style={[styles.postFooter, styles.postFooterStart]}>
             <View style={styles.postStats}>
               <View style={styles.postStatItem}>
                 <FontAwesome
@@ -210,14 +220,7 @@ const BoardPostCard = ({ post, normalize, styles, onPress, onScrapPress }) => {
         {hasThumb ? (
           <Image
             source={{ uri: post.thumbnail.trim() }}
-            style={{
-              width: normalize(70),
-              height: normalize(70),
-              borderRadius: normalize(8),
-              backgroundColor: colors.textLight10 ?? '#EEE',
-              alignSelf: 'flex-start',
-              marginTop: normalize(2),
-            }}
+            style={styles.postThumb}
             resizeMode="cover"
           />
         ) : null}

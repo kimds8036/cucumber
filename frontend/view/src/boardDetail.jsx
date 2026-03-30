@@ -145,6 +145,7 @@ export default function BoardDetail({ navigation, route }) {
   const [currentUserId, setCurrentUserId] = useState(null);
   const { refreshHasUnread } = useNotification();
   const [viewerUri, setViewerUri] = useState(null);
+  const [imageRatios, setImageRatios] = useState({});
 
   // 게시글/댓글 로드
   useEffect(() => {
@@ -902,64 +903,74 @@ export default function BoardDetail({ navigation, route }) {
                         flexDirection: 'row',
                         alignItems: 'center',
                         gap: normalize(1),
-                        backgroundColor: colors.primaryLight30,
+                        backgroundColor: colors.primaryLight20,
                         borderRadius: normalize(10),
                         paddingHorizontal: normalize(7),
                         paddingVertical: normalize(2),
                       }}
                     >
-                      <MaterialIcons name="location-on" size={normalize(12)} color={colors.primaryDark} />
-                      <Text
-                        style={{
-                          fontSize: normalize(11),
-                          fontFamily: fonts.regular,
-                          color: colors.primaryDark,
-                        }}
-                      >
-                        10km
-                      </Text>
+                      <MaterialIcons name="location-on" size={normalize(10)} color={colors.primaryDark} />
+                      <View style={{ flexDirection: 'row', alignItems: 'baseline' }}>
+                        <Text
+                          style={{
+                            fontSize: normalize(11),
+                            fontFamily: fonts.regular,
+                            color: colors.primaryDark,
+                          }}
+                        >
+                          10
+                        </Text>
+                        <Text
+                          style={{
+                            fontSize: normalize(10),
+                            fontFamily: fonts.regular,
+                            color: colors.primaryDark,
+                          }}
+                        >
+                          km
+                        </Text>
+                      </View>
                     </View>
                   </View>
                 </View>
 
                 <Text style={[styles.detailBody, { marginBottom: normalize(7) }]}>{post.content}</Text>
                 {Array.isArray(post.images) && post.images.length > 0 ? (
-                  <ScrollView
-                    horizontal
-                    showsHorizontalScrollIndicator={false}
-                    style={{ marginTop: normalize(7) }}
-                    contentContainerStyle={{ paddingRight: normalize(16) }}
-                  >
+                  <View style={styles.detailImagesWrap}>
                     {post.images.map((uri, idx) => (
                       <TouchableOpacity
                         key={`${uri}-${idx}`}
                         activeOpacity={0.85}
                         onPress={() => setViewerUri(uri)}
+                        style={{ width: '100%' }}
                       >
                         <Image
                           source={{ uri }}
-                          style={{
-                            width: Math.min(width * 0.72, 320),
-                            height: normalize(200),
-                            marginRight: normalize(8),
-                            borderRadius: normalize(8),
-                            backgroundColor: colors.textLight10,
+                          style={[
+                            styles.detailImage,
+                            imageRatios[uri]
+                              ? { width: undefined, maxWidth: '100%', aspectRatio: imageRatios[uri] }
+                              : styles.detailImageFallback,
+                            idx === post.images.length - 1 && styles.detailImageLast,
+                          ]}
+                          onLoad={(e) => {
+                            const w = e?.nativeEvent?.source?.width;
+                            const h = e?.nativeEvent?.source?.height;
+                            if (!w || !h) return;
+                            const ratio = w / h;
+                            setImageRatios((prev) => {
+                              if (prev[uri] === ratio) return prev;
+                              return { ...prev, [uri]: ratio };
+                            });
                           }}
-                          resizeMode="cover"
+                          resizeMode="contain"
                         />
                       </TouchableOpacity>
                     ))}
-                  </ScrollView>
+                  </View>
                 ) : null}
                 {Array.isArray(post.tags) && post.tags.length > 0 ? (
-                  <View
-                    style={{
-                      flexDirection: 'row',
-                      flexWrap: 'wrap',
-                      gap: normalize(6),
-                      marginTop: normalize(7),
-                    }}
-                  >
+                  <View style={styles.detailTagsWrap}>
                     {post.tags.map((tag, idx) => {
                       const label =
                         tag != null && typeof tag === 'object'
@@ -969,22 +980,9 @@ export default function BoardDetail({ navigation, route }) {
                       return (
                         <View
                           key={tag?.id != null ? `tag-${tag.id}` : `tag-${idx}-${label}`}
-                          style={{
-                            backgroundColor: colors.primaryLight30,
-                            borderRadius: normalize(12),
-                            paddingHorizontal: normalize(8),
-                            paddingVertical: normalize(2),
-                          }}
+                          style={styles.detailTagChip}
                         >
-                          <Text
-                            style={{
-                              fontSize: normalize(11),
-                              fontFamily: fonts.regular,
-                              color: colors.primaryDark,
-                            }}
-                          >
-                            {label}
-                          </Text>
+                          <Text style={styles.detailTagText}>{label}</Text>
                         </View>
                       );
                     })}

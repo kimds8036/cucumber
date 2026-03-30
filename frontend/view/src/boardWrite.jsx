@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useRef, useEffect } from 'react';
 import {
   View,
   Text,
@@ -12,6 +12,7 @@ import {
   useWindowDimensions,
   Alert,
   ScrollView,
+  Animated,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -32,7 +33,13 @@ const BoardWrite = ({ navigation, route }) => {
   const [hashtagSuggestions, setHashtagSuggestions] = useState([]); // 추천 태그 목록
   const [loadingSuggestions, setLoadingSuggestions] = useState(false);
   const [postImages, setPostImages] = useState([]);
+  const [locationEnabled, setLocationEnabled] = useState(false);
+  const [locationText, setLocationText] = useState('');
+  const [activePanel, setActivePanel] = useState(null); // 'tag' | null
+  const [tagPanelVisible, setTagPanelVisible] = useState(false);
   const boardContext = route?.params?.boardContext || 'national';
+  const tagInputRef = useRef(null);
+  const tagPanelAnim = useRef(new Animated.Value(0)).current;
 
   const handleBack = () => {
     navigation.goBack();
@@ -119,6 +126,50 @@ const BoardWrite = ({ navigation, route }) => {
       setPostImages((prev) => [...prev, ...uris].slice(0, 5));
     }
   };
+
+  const handleToggleTagPanel = () => {
+    setActivePanel((prev) => (prev === 'tag' ? null : 'tag'));
+  };
+
+  const handlePressPhoto = async () => {
+    setActivePanel(null);
+    await handlePickPostImages();
+  };
+
+  const handleToggleLocation = async () => {
+    setActivePanel(null);
+    const next = !locationEnabled;
+    setLocationEnabled(next);
+    setLocationText(next ? '위치 사용중' : '');
+  };
+
+  useEffect(() => {
+    if (activePanel === 'tag') {
+      setTagPanelVisible(true);
+      Animated.timing(tagPanelAnim, {
+        toValue: 1,
+        duration: 180,
+        useNativeDriver: true,
+      }).start();
+    } else {
+      Animated.timing(tagPanelAnim, {
+        toValue: 0,
+        duration: 180,
+        useNativeDriver: true,
+      }).start(({ finished }) => {
+        if (finished) setTagPanelVisible(false);
+      });
+    }
+  }, [activePanel, tagPanelAnim]);
+
+  useEffect(() => {
+    if (activePanel === 'tag') {
+      const t = setTimeout(() => {
+        tagInputRef.current?.focus();
+      }, 220);
+      return () => clearTimeout(t);
+    }
+  }, [activePanel]);
 
   const handleComplete = async () => {
     if (!content.trim()) {
@@ -208,30 +259,112 @@ const BoardWrite = ({ navigation, route }) => {
           onChangeText={setContent}
         />
       </View>
+    </>
+  );
 
-      {/* 해시태그 섹션 (본문 아래 · 가이드 위) */}
-      <View style={styles.writeHashtagTopDivider} />
-      <View style={styles.writeHashtagWrapper}>
-        <View style={styles.writeHashtagInputRow}>
-          <Text style={styles.writeHashtagPrefix}>#</Text>
-          <View style={styles.writeHashtagDashedWrap}>
-            <TextInput
-              style={styles.writeHashtagInput}
-              placeholder="태그 추가"
-              placeholderTextColor={colors.textSecondary}
-              value={hashtagInput}
-              onChangeText={handleHashtagInputChange}
-              onSubmitEditing={handleAddHashtag}
-              returnKeyType="done"
-              maxLength={30}
-            />
+  const topToolbarSection = (
+    <View style={styles.topToolbarSection}>
+      {/* 상단 툴바 */}
+      <View style={styles.topToolbar}>
+        <TouchableOpacity onPress={handleToggleTagPanel} style={styles.toolbarIconButton}>
+          <Ionicons
+            name="pricetag-outline"
+            size={22}
+            color={activePanel === 'tag' ? colors.primary : colors.textSecondary}
+          />
+          {hashtags.length > 0 && (
+            <View style={styles.toolbarBadge}>
+              <Text style={styles.toolbarBadgeText}>
+                {hashtags.length}
+              </Text>
+            </View>
+          )}
+        </TouchableOpacity>
+
+        <TouchableOpacity onPress={handlePressPhoto} style={styles.toolbarIconButton}>
+          <Ionicons name="image-outline" size={22} color={colors.textSecondary} />
+          {postImages.length > 0 && (
+            <View style={styles.toolbarBadge}>
+              <Text style={styles.toolbarBadgeText}>
+                {postImages.length}
+              </Text>
+            </View>
+          )}
+        </TouchableOpacity>
+
+        <TouchableOpacity onPress={handleToggleLocation} style={styles.toolbarLocationButton}>
+          <Ionicons
+            name="location-outline"
+            size={22}
+            color={locationEnabled ? colors.primary : colors.textSecondary}
+          />
+        </TouchableOpacity>
+      </View>
+
+      {/* 칩 영역: 위치 -> 사진 -> 태그 */}
+      {locationEnabled && !!locationText && (
+        <View style={styles.locationChipWrap}>
+          <View style={styles.writeHashtagTagChip}>
+            <Text style={styles.writeHashtagTagText}>{locationText}</Text>
           </View>
-          <Text style={styles.writeHashtagCounter}>
-            {hashtags.length}/5
-          </Text>
         </View>
+      )}
 
-        {hashtags.length > 0 && (
+      {postImages.length > 0 && (
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.photoStripContent}
+        >
+          {postImages.length < 5 && (
+            <TouchableOpacity
+              onPress={handlePressPhoto}
+              style={styles.photoAddButton}
+            >
+              <Ionicons name="add" size={20} color="#888" />
+            </TouchableOpacity>
+          )}
+          {postImages.map((uri, index) => (
+            <View key={index} style={styles.photoItemWrap}>
+              <Image source={{ uri }} style={styles.photoThumb} />
+              <TouchableOpacity
+                onPress={() => setPostImages((prev) => prev.filter((_, i) => i !== index))}
+                style={styles.photoDeleteButton}
+              >
+                <Ionicons name="close-circle" size={18} color="#fff" />
+              </TouchableOpacity>
+            </View>
+          ))}
+        </ScrollView>
+      )}
+
+      {hashtags.length > 0 && (
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          style={styles.writeHashtagTagScroll}
+          contentContainerStyle={[styles.writeHashtagTagList, styles.hashtagTagListWithPadding]}
+          keyboardShouldPersistTaps="handled"
+        >
+          {hashtags.map((tag) => (
+            <View key={tag} style={styles.writeHashtagTagChip}>
+              <Text style={styles.writeHashtagTagText}>#{tag}</Text>
+              <TouchableOpacity
+                hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+                onPress={() => handleRemoveHashtag(tag)}
+              >
+                <Text style={styles.writeHashtagTagRemove}>✕</Text>
+              </TouchableOpacity>
+            </View>
+          ))}
+        </ScrollView>
+      )}
+
+      {activePanel === 'tag' && hashtagSuggestions.length > 0 && (
+        <View style={[styles.writeHashtagSuggestionWrapper, styles.hashtagSuggestionSectionTop]}>
+          <Text style={styles.writeHashtagSuggestionTitle}>
+            {loadingSuggestions ? '태그 불러오는 중...' : '추천 태그'}
+          </Text>
           <ScrollView
             horizontal
             showsHorizontalScrollIndicator={false}
@@ -239,136 +372,103 @@ const BoardWrite = ({ navigation, route }) => {
             contentContainerStyle={styles.writeHashtagTagList}
             keyboardShouldPersistTaps="handled"
           >
-            {hashtags.map((tag) => (
-              <View key={tag} style={styles.writeHashtagTagChip}>
-                <Text style={styles.writeHashtagTagText}>#{tag}</Text>
-                <TouchableOpacity
-                  hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
-                  onPress={() => handleRemoveHashtag(tag)}
-                >
-                  <Text style={styles.writeHashtagTagRemove}>✕</Text>
-                </TouchableOpacity>
-              </View>
+            {hashtagSuggestions.map((t) => (
+              <TouchableOpacity
+                key={t.id ?? t.name}
+                style={styles.writeHashtagSuggestionChip}
+                onPress={() => handleSelectSuggestion(t.name)}
+              >
+                <Text style={styles.writeHashtagSuggestionText}>{t.name}</Text>
+              </TouchableOpacity>
             ))}
           </ScrollView>
-        )}
-
-        {hashtagSuggestions.length > 0 && (
-          <View style={styles.writeHashtagSuggestionWrapper}>
-            <Text style={styles.writeHashtagSuggestionTitle}>
-              {loadingSuggestions ? '태그 불러오는 중...' : '추천 태그'}
-            </Text>
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              style={styles.writeHashtagTagScroll}
-              contentContainerStyle={styles.writeHashtagTagList}
-              keyboardShouldPersistTaps="handled"
-            >
-              {hashtagSuggestions.map((t) => (
-                <TouchableOpacity
-                  key={t.id ?? t.name}
-                  style={styles.writeHashtagSuggestionChip}
-                  onPress={() => handleSelectSuggestion(t.name)}
-                >
-                  <Text style={styles.writeHashtagSuggestionText}>{t.name}</Text>
-                </TouchableOpacity>
-              ))}
-            </ScrollView>
-          </View>
-        )}
-      </View>
-      {/* 이미지 첨부 UI */}
-      <View style={{ paddingHorizontal: 16, paddingBottom: 10 }}>
-        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-          <Text style={{ color: colors.textSecondary, fontSize: 14 }}>사진 첨부</Text>
-          <Text style={{ color: colors.textSecondary, fontSize: 12 }}>{postImages.length}/5</Text>
         </View>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-          <TouchableOpacity
-            onPress={handlePickPostImages}
-            disabled={postImages.length >= 5}
-            style={{
-              width: 80,
-              height: 80,
-              borderRadius: 10,
-              borderWidth: 1.5,
-              borderStyle: 'dashed',
-              borderColor: postImages.length >= 5 ? '#CCC' : '#999',
-              alignItems: 'center',
-              justifyContent: 'center',
-              marginRight: 8,
-              backgroundColor: '#FAFAFA',
-            }}
-          >
-            <Ionicons
-              name="add"
-              size={24}
-              color={postImages.length >= 5 ? '#CCC' : '#888'}
-            />
-          </TouchableOpacity>
-          {postImages.map((uri, index) => (
-            <View key={index} style={{ marginRight: 8, position: 'relative' }}>
-              <Image source={{ uri }} style={{ width: 80, height: 80, borderRadius: 10 }} />
-              <TouchableOpacity
-                onPress={() => setPostImages((prev) => prev.filter((_, i) => i !== index))}
-                style={{
-                  position: 'absolute',
-                  top: -6,
-                  right: -6,
-                  backgroundColor: '#000',
-                  borderRadius: 10,
-                }}
-              >
-                <Ionicons name="close-circle" size={18} color="#fff" />
-              </TouchableOpacity>
+      )}
+
+      {tagPanelVisible && (
+        <Animated.View
+          style={{
+            transform: [
+              {
+                translateY: tagPanelAnim.interpolate({
+                  inputRange: [0, 1],
+                  outputRange: [16, 0],
+                }),
+              },
+            ],
+            opacity: tagPanelAnim,
+          }}
+        >
+          <View style={styles.tagPanelContainer}>
+            <View style={[styles.writeHashtagWrapper, styles.tagPanelWrapperCompact]}>
+              <View style={styles.writeHashtagInputRow}>
+                <Text style={styles.writeHashtagPrefix}>#</Text>
+                <View style={styles.writeHashtagDashedWrap}>
+                  <TextInput
+                    ref={tagInputRef}
+                    style={styles.writeHashtagInput}
+                    placeholder="태그 추가"
+                    placeholderTextColor={colors.textSecondary}
+                    value={hashtagInput}
+                    onChangeText={handleHashtagInputChange}
+                    onSubmitEditing={handleAddHashtag}
+                    returnKeyType="done"
+                    maxLength={30}
+                  />
+                </View>
+                <Text style={styles.writeHashtagCounter}>
+                  {hashtags.length}/5
+                </Text>
+              </View>
             </View>
-          ))}
-        </ScrollView>
-      </View>
-      <View style={styles.writeHashtagBottomDivider} />
-    </>
+          </View>
+        </Animated.View>
+      )}
+    </View>
   );
 
   const canSubmit = content.trim().length > 0 || postImages.length > 0;
 
   return (
-    <SafeAreaView style={{ flex: 1 }}>
+    <View style={styles.screen}>
       <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
         <KeyboardAvoidingView
-          style={{ flex: 1 }}
+          style={styles.keyboardAvoiding}
           behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         >
-          <ScrollView
-            contentContainerStyle={{ flexGrow: 1 }}
-            keyboardShouldPersistTaps="handled"
-            showsVerticalScrollIndicator={false}
-          >
-            <View style={{ flex: 1 }}>
-              <SafeAreaView style={styles.container} edges={['top']}>
-                <SubHeader
-                  title="글쓰기"
-                  onBack={handleBack}
-                  onRightPress={handleComplete}
-                  rightDisabled={!canSubmit}
-                  rightElement={(
-                    <View style={[styles.completePill, !canSubmit && styles.completePillDisabled]}>
-                      <Text style={[styles.completePillText, !canSubmit && styles.completePillTextDisabled]}>
-                        등록
-                      </Text>
-                    </View>
-                  )}
-                />
+          <View style={styles.fullFlex}>
+            <SafeAreaView style={styles.container} edges={['top']}>
+              <SubHeader
+                title="글쓰기"
+                onBack={handleBack}
+                onRightPress={handleComplete}
+                rightDisabled={!canSubmit}
+                rightElement={(
+                  <View style={[styles.completePill, !canSubmit && styles.completePillDisabled]}>
+                    <Text style={[styles.completePillText, !canSubmit && styles.completePillTextDisabled]}>
+                      등록
+                    </Text>
+                  </View>
+                )}
+              />
 
+              <ScrollView
+                style={styles.fullFlex}
+                contentContainerStyle={styles.scrollContentGrow}
+                keyboardShouldPersistTaps="handled"
+                showsVerticalScrollIndicator={false}
+              >
                 {writeMainColumn}
-              </SafeAreaView>
+              </ScrollView>
 
+              {topToolbarSection}
               {guideBlock}
-            </View>
-          </ScrollView>
+            </SafeAreaView>
+
+          </View>
         </KeyboardAvoidingView>
       </TouchableWithoutFeedback>
-    </SafeAreaView>
+    </View>
   );
 };
 
