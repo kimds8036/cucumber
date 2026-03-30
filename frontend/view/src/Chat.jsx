@@ -51,7 +51,7 @@ const CHAT_IMAGE_SLOT = 200;
 /** DateBanner 실측보다 기존 52가 작게 잡히는 경우 보정(+26px) */
 const DATE_BANNER_ESTIMATE_HEIGHT = 78;
 /** 리스트 외곽 paddingBottom 등과 맞춰 마지막 행에 가산(스크롤 끝 정렬 보정) */
-const CHAT_LAST_ROW_EXTRA_PAD = 24;
+const CHAT_LAST_ROW_EXTRA_PAD = 0;
 
 function sameMessageSender(a, b) {
   if (!a || !b) return false;
@@ -72,14 +72,10 @@ function withMessageGroupFlags(msgs) {
     const next = msgs[i + 1];
 
     const showProfile =
-      !prev ||
-      !sameMessageSender(prev, msg) ||
-      prev.time !== msg.time;
+      !prev || !sameMessageSender(prev, msg) || prev.time !== msg.time;
 
     const showTimestamp =
-      !next ||
-      !sameMessageSender(msg, next) ||
-      msg.time !== next.time;
+      !next || !sameMessageSender(msg, next) || msg.time !== next.time;
 
     return { ...msg, showProfile, showTimestamp };
   });
@@ -132,12 +128,18 @@ export default function Chat({ navigation, route }) {
 
   // 최적화된 스크롤 관리를 위한 refs
   const flashListRef = useRef(null);
-  const prevMessageCountRef = useRef(0);
+  const currentOffsetRef = useRef(0); // 실시간 스크롤 위치 추적
+  const contentHeightRef = useRef(0);
+  const offsetBeforePrependRef = useRef(0);
+  const beforeContentHeightRef = useRef(0);
+  const pendingPrependCompensationRef = useRef(false);
   const isNearBottomRef = useRef(true);
   const prevNewestIdRef = useRef(null);
   const scrollAnimationRef = useRef(null);
   const keyboardTimeoutRef = useRef(null);
   const isScrollingRef = useRef(false);
+  const isInitialLoad = useRef(true); // ✅ 초기 로드 제어
+  const didInitialAnchorRef = useRef(false);
   /** 정방향 리스트: 상단 도달(onStartReached)로 과거 로드 — 초기 마운트 오호출 방지 */
   const loadOlderAllowedRef = useRef(false);
   /** 첫 레이아웃 1회만 처리(onLayout opacity / loadOlder 허용) */
@@ -167,11 +169,15 @@ export default function Chat({ navigation, route }) {
 
   // 룸이 바뀌면 초기 스크롤 판단 기준도 초기화
   useEffect(() => {
-    prevMessageCountRef.current = 0;
     isNearBottomRef.current = false;
     prevNewestIdRef.current = null;
     loadOlderAllowedRef.current = false;
     didListShellLayoutRef.current = false;
+    didInitialAnchorRef.current = false;
+    isInitialLoad.current = true;
+    pendingPrependCompensationRef.current = false;
+    beforeContentHeightRef.current = 0;
+    contentHeightRef.current = 0;
     setListShellVisible(false);
   }, [roomId]);
 
@@ -260,7 +266,8 @@ export default function Chat({ navigation, route }) {
           comments: 0,
           isLiked: false,
           thumbnail:
-            typeof room.post_thumbnail === 'string' && room.post_thumbnail.trim()
+            typeof room.post_thumbnail === 'string' &&
+            room.post_thumbnail.trim()
               ? room.post_thumbnail.trim()
               : '',
         };
@@ -349,26 +356,29 @@ export default function Chat({ navigation, route }) {
     setReplyToMessage(msg);
   }, []);
 
-  const handlePressReplyTarget = useCallback((parentMessageId) => {
-    const targetId = parentMessageId != null ? String(parentMessageId) : null;
-    if (!targetId) return;
-    const targetIndex = flatData.findIndex(
-      (item) => item?.type !== 'dateBanner' && String(item?.id) === targetId,
-    );
-    if (targetIndex < 0) {
-      showChatToast('상단으로 더 올려서 과거 메시지를 확인해 주세요');
-      return;
-    }
-    try {
-      flashListRef.current?.scrollToIndex?.({
-        index: targetIndex,
-        animated: true,
-        viewPosition: 0.5,
-      });
-    } catch {
-      showChatToast('상단으로 더 올려서 과거 메시지를 확인해 주세요');
-    }
-  }, [flatData, showChatToast]);
+  const handlePressReplyTarget = useCallback(
+    (parentMessageId) => {
+      const targetId = parentMessageId != null ? String(parentMessageId) : null;
+      if (!targetId) return;
+      const targetIndex = flatData.findIndex(
+        (item) => item?.type !== 'dateBanner' && String(item?.id) === targetId,
+      );
+      if (targetIndex < 0) {
+        showChatToast('상단으로 더 올려서 과거 메시지를 확인해 주세요');
+        return;
+      }
+      try {
+        flashListRef.current?.scrollToIndex?.({
+          index: targetIndex,
+          animated: true,
+          viewPosition: 0.5,
+        });
+      } catch {
+        showChatToast('상단으로 더 올려서 과거 메시지를 확인해 주세요');
+      }
+    },
+    [flatData, showChatToast],
+  );
 
   const openLongPressMenu = useCallback((msg, anchor) => {
     setLongPressMenu({ msg, anchor });
@@ -417,27 +427,16 @@ export default function Chat({ navigation, route }) {
     [estimateRowHeight, flatData.length],
   );
 
-  /** initialScrollIndex·estimatedItemSize가 같은 기대 높이를 쓰도록 평균 반영 */
-  const averageEstimatedItemSize = useMemo(() => {
-    if (!flatData?.length) return 150;
-    let sum = 0;
-    const n = flatData.length;
-    for (let i = 0; i < n; i++) {
-      sum += estimateRowHeight(flatData[i], i, n);
-    }
-    return Math.max(80, Math.round(sum / n));
-  }, [flatData, estimateRowHeight]);
-
   const initialScrollIndex =
     flatData.length > 0 ? flatData.length - 1 : undefined;
-
-  useEffect(() => {
-    prevMessageCountRef.current = flatData?.length ?? 0;
-  }, [flatData]);
 
   const handleStartReached = useCallback(() => {
     if (!loadOlderAllowedRef.current) return;
     if (isLoading || isLoadingMore) return;
+    offsetBeforePrependRef.current = Math.max(0, currentOffsetRef.current);
+    beforeContentHeightRef.current = Math.max(0, contentHeightRef.current);
+    pendingPrependCompensationRef.current = true;
+
     loadMore();
   }, [isLoading, isLoadingMore, loadMore]);
 
@@ -446,6 +445,7 @@ export default function Chat({ navigation, route }) {
     const offsetY = e?.nativeEvent?.contentOffset?.y ?? 0;
     const viewportH = e?.nativeEvent?.layoutMeasurement?.height ?? 0;
     const contentH = e?.nativeEvent?.contentSize?.height ?? 0;
+    contentHeightRef.current = contentH;
 
     // 스크롤 상태 추적
     isScrollingRef.current = true;
@@ -474,6 +474,27 @@ export default function Chat({ navigation, route }) {
       }
     });
   }, [flatData.length]);
+
+  useEffect(() => {
+    if (didInitialAnchorRef.current) return;
+    if (isLoading) return;
+    if (flatData.length === 0) {
+      didInitialAnchorRef.current = true;
+      setListShellVisible(true);
+      loadOlderAllowedRef.current = true;
+      isInitialLoad.current = false;
+      return;
+    }
+    if (!didListShellLayoutRef.current) return;
+
+    requestAnimationFrame(() => {
+      flashListRef.current?.scrollToEnd?.({ animated: false });
+      didInitialAnchorRef.current = true;
+      setListShellVisible(true);
+      loadOlderAllowedRef.current = true;
+      isInitialLoad.current = false;
+    });
+  }, [flatData.length, isLoading]);
 
   const renderItem = useCallback(
     ({ item }) => (
@@ -524,10 +545,7 @@ export default function Chat({ navigation, route }) {
   // 로딩 상태일 때 빈 화면 또는 로딩 스피너 표시
   if (isLoading && messages.length === 0) {
     return (
-      <SafeAreaView
-        style={detailStyles.container}
-        edges={['top']}
-      >
+      <SafeAreaView style={detailStyles.container} edges={['top']}>
         <View
           style={{
             zIndex: 1,
@@ -547,10 +565,7 @@ export default function Chat({ navigation, route }) {
   }
 
   return (
-    <SafeAreaView
-      style={detailStyles.container}
-      edges={['top']}
-    >
+    <SafeAreaView style={detailStyles.container} edges={['top']}>
       <View
         style={{
           zIndex: 1,
@@ -623,7 +638,9 @@ export default function Chat({ navigation, route }) {
                       {post.author}
                       {post.location ? ` · ${post.location}` : ''}
                     </Text>
-                    <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                    <View
+                      style={{ flexDirection: 'row', alignItems: 'center' }}
+                    >
                       <FontAwesome
                         name={post?.isLiked ? 'heart' : 'heart-o'}
                         size={normalize(12)}
@@ -692,7 +709,7 @@ export default function Chat({ navigation, route }) {
               flex: 1,
               backgroundColor: colors.background,
               paddingHorizontal: normalize(12),
-              paddingBottom: normalize(10),
+              paddingBottom: normalize(0),
               paddingTop: normalize(4),
             }}
             pointerEvents="box-none"
@@ -710,24 +727,56 @@ export default function Chat({ navigation, route }) {
                   paddingBottom: 0,
                   paddingTop: 0,
                 }}
-                initialScrollOffset={999999}
                 data={flatData}
                 extraData={messages.length}
                 keyExtractor={keyExtractor}
                 getItemType={getFlashListItemType}
                 renderItem={renderItem}
-                estimatedItemSize={averageEstimatedItemSize}
+                estimatedItemSize={90}
                 drawDistance={1000}
                 overrideItemLayout={overrideItemLayout}
                 initialScrollIndex={initialScrollIndex}
                 onStartReached={handleStartReached}
                 onStartReachedThreshold={0.25}
-                maintainVisibleContentPosition={{
-                  minIndexForVisible: 1,
-                  autoscrollToTopThreshold: 10,
-                  autoscrollToBottomThreshold: 0.2,
-                  startRenderingFromBottom: true,
+                onContentSizeChange={(_, nextHeight) => {
+                  if (typeof nextHeight === 'number') {
+                    contentHeightRef.current = nextHeight;
+                  }
+                  if (!pendingPrependCompensationRef.current) return;
+                  if (isLoadingMore) return;
+                  const afterHeight = Math.max(0, contentHeightRef.current);
+                  const beforeHeight = Math.max(0, beforeContentHeightRef.current);
+                  const delta = Math.max(0, afterHeight - beforeHeight);
+                  const targetOffset = Math.max(
+                    0,
+                    offsetBeforePrependRef.current + delta,
+                  );
+                  console.log('SCROLL TO', targetOffset, 'pass', 1, 'delta', delta);
+                  requestAnimationFrame(() => {
+                    flashListRef.current?.scrollToOffset?.({
+                      offset: targetOffset,
+                      animated: false,
+                    });
+                    requestAnimationFrame(() => {
+                      console.log(
+                        'SCROLL TO',
+                        targetOffset,
+                        'pass',
+                        2,
+                        'delta',
+                        delta,
+                      );
+                      flashListRef.current?.scrollToOffset?.({
+                        offset: targetOffset,
+                        animated: false,
+                      });
+                      pendingPrependCompensationRef.current = false;
+                      beforeContentHeightRef.current = 0;
+                    });
+                  });
                 }}
+                // 중요: 안드로이드에서 위치 계산을 돕기 위해 아래 속성 추가
+                disableAutoLayout={true}
                 ListHeaderComponent={
                   isLoadingMore ? (
                     <View style={{ paddingVertical: normalize(12) }}>
@@ -744,7 +793,26 @@ export default function Chat({ navigation, route }) {
                 maxToRenderPerBatch={8}
                 windowSize={7}
                 initialNumToRender={20}
-                onScroll={handleScroll}
+                onScroll={(event) => {
+                  // 실시간 스크롤 위치 추적
+                  const offsetY = event.nativeEvent?.contentOffset?.y;
+                  if (offsetY !== undefined && offsetY !== null) {
+                    currentOffsetRef.current = offsetY;
+                  }
+
+                  // 디버깅: 페이징 시 contentOffset.y 변화 추적
+                  if (isLoadingMore) {
+                    if (offsetY !== undefined && offsetY !== null) {
+                      console.log('[Chat] Scroll during pagination:', {
+                        contentOffsetY: offsetY,
+                        isLoadingMore,
+                        messageCount: messages.length,
+                        timestamp: Date.now(),
+                      });
+                    }
+                  }
+                  handleScroll(event);
+                }}
                 scrollEventThrottle={16}
                 decelerationRate="normal"
                 disableVirtualization={false}

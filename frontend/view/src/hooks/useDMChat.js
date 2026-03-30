@@ -9,9 +9,9 @@ const getCacheKey = (roomId) => `dm_chat_cache_${roomId}`;
 // 초기 진입 시 최신 몇 개만 우선 로드할지
 const INITIAL_FETCH_LIMIT = 30;
 // 캐시에 저장할 최대 메시지 수 (과거까지 전부 저장하면 초기 진입이 무거워짐)
-const CACHE_SAVE_LIMIT = 100;
+const CACHE_SAVE_LIMIT = 200;
 // 메모리에 보관할 최대 메시지 수
-const MEMORY_LIMIT = 200;
+const MEMORY_LIMIT = 500;
 // 페이징 사이즈
 const PAGE_SIZE = 30;
 
@@ -57,8 +57,7 @@ function getDateKey(d) {
 function normalizeMessage(m, meId) {
   const createdAt = m.created_at || '';
   const d = parseUtcToLocal(createdAt);
-  const isMe =
-    meId != null && Number(m.sender_id) === Number(meId);
+  const isMe = meId != null && Number(m.sender_id) === Number(meId);
   const isSending = Boolean(m.isSending);
   const isFailed = Boolean(m.isFailed);
   const senderName = m.sender_name ?? m.senderName ?? (isMe ? '나' : '익명');
@@ -113,7 +112,7 @@ async function loadCachedMessages(roomId) {
     // 캐시가 과도하게 크면 초기 진입이 무거워지므로 최신 INITIAL_FETCH_LIMIT만 사용
     const slicedIds =
       allIds.length > INITIAL_FETCH_LIMIT
-        ? allIds.slice(-INITIAL_FETCH_LIMIT)
+        ? allIds.slice(-INITIAL_FETCH_LIMIT) // 최신 메시지만 유지
         : allIds;
     const slicedById = {};
     slicedIds.forEach((id) => {
@@ -136,9 +135,9 @@ async function saveCachedMessages(roomId, data) {
     const ids = Array.isArray(data.messageIds) ? data.messageIds : [];
     const byId = data.messagesById || {};
 
-    // 캐시에 저장할 때도 과도하게 쌓이는 것을 방지
+    // 캐시에 저장할 때도 과도하게 쌓이는 것을 방지 - 최신 메시지 위주로 캐시
     const slicedIds =
-      ids.length > CACHE_SAVE_LIMIT ? ids.slice(-CACHE_SAVE_LIMIT) : ids;
+      ids.length > CACHE_SAVE_LIMIT ? ids.slice(-CACHE_SAVE_LIMIT) : ids; // 최신 메시지만 유지
     const slicedById = {};
     slicedIds.forEach((id) => {
       if (byId[id]) slicedById[id] = byId[id];
@@ -395,10 +394,7 @@ export default function useDMChat(roomId, socket) {
 
             if (Number.isNaN(meId)) {
               if (isMounted) {
-                Alert.alert(
-                  '오류',
-                  '로그인 정보를 확인할 수 없습니다.',
-                );
+                Alert.alert('오류', '로그인 정보를 확인할 수 없습니다.');
               }
               return;
             }
@@ -748,24 +744,44 @@ export default function useDMChat(roomId, socket) {
 
       const meId = currentUserIdRef.current;
       const mapped = msgs.map((m) => normalizeMessage(m, meId));
-      // 서버는 ORDER BY id DESC → 과거 prepend 시 시간순(오름차순)으로 맞춤
-      const chronological = [...mapped].reverse();
+      const chronological = [...mapped].reverse(); // 서버 DESC → 클라이언트 ASC
       const newIds = chronological.map((m) => m.id);
 
       setChatData((prev) => {
+        // 1. messagesById 객체를 먼저 복사
         const nextMessagesById = { ...prev.messagesById };
+
+        // 2. 새로운 메시지들을 복사된 객체에 하나씩 추가
         chronological.forEach((m) => {
           nextMessagesById[m.id] = m;
         });
-        const uniqueIds = [...new Set([...newIds, ...prev.messageIds])];
+
+        // 페이징은 "과거 데이터 prepend" 형태로 병합해야
+        // 유지 중인 가시 영역 인덱스가 흔들리지 않는다.
+        const newIdSet = new Set(newIds);
+        const mergedIds = [
+          ...newIds,
+          ...prev.messageIds.filter((id) => !newIdSet.has(id)),
+        ];
+        // 데이터 제한: 페이징 중에는 제한을 풀고, 앱 새로고침/방 이동 시에만 적용
+        const finalIds =
+          !isLoadingMore && mergedIds.length > MEMORY_LIMIT
+            ? mergedIds.slice(-MEMORY_LIMIT)
+            : mergedIds;
+
+        // 3. 상태 리턴 시 구조가 중첩되지 않도록 주의
         return {
           ...prev,
-          messagesById: nextMessagesById,
-          messageIds: uniqueIds,
+          messagesById: nextMessagesById, // ✅ 정확히 객체만 교체
+          messageIds: finalIds,
         };
       });
 
-      oldestIdRef.current = chronological[0]?.id ?? oldestIdRef.current;
+      // 인덱스 0이 항상 과거라는 보장이 없으므로, ID 숫자 중 가장 작은 값을 찾음
+      const minId = Math.min(...mapped.map((m) => Number(m.id)));
+      if (minId && minId !== Infinity) {
+        oldestIdRef.current = minId.toString();
+      }
       setChatData((prev) => ({ ...prev, hasMore: Boolean(res.data?.hasMore) }));
     } catch (e) {
       console.error('[useDMChat][Pagination] 로딩 실패:', e);

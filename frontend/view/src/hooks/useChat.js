@@ -9,9 +9,9 @@ const getCacheKey = (roomId) => `chat_cache_${roomId}`;
 // 초기 진입 시 최신 몇 개만 우선 로드할지
 const INITIAL_FETCH_LIMIT = 30;
 // 캐시에 저장할 최대 메시지 수 (과거까지 전부 저장하면 초기 진입이 무거워짐)
-const CACHE_SAVE_LIMIT = 100;
+const CACHE_SAVE_LIMIT = 200;
 // 메모리에 보관할 최대 메시지 수
-const MEMORY_LIMIT = 200;
+const MEMORY_LIMIT = 500;
 // 페이징 사이즈
 const PAGE_SIZE = 30;
 
@@ -737,15 +737,30 @@ export default function useChat(roomId, socket) {
         chronological.forEach((m) => {
           nextMessagesById[m.id] = m;
         });
-        const uniqueIds = [...new Set([...newIds, ...prev.messageIds])];
+        // 페이징은 "과거 데이터 prepend" 형태로 병합해야
+        // 유지 중인 가시 영역 인덱스가 흔들리지 않는다.
+        const newIdSet = new Set(newIds);
+        const mergedIds = [
+          ...newIds,
+          ...prev.messageIds.filter((id) => !newIdSet.has(id)),
+        ];
+        // 데이터 제한: 페이징 중에는 제한을 풀고, 앱 새로고침/방 이동 시에만 적용
+        const finalIds =
+          !isLoadingMore && mergedIds.length > MEMORY_LIMIT
+            ? mergedIds.slice(-MEMORY_LIMIT)
+            : mergedIds;
         return {
           ...prev,
           messagesById: nextMessagesById,
-          messageIds: uniqueIds,
+          messageIds: finalIds,
         };
       });
 
-      oldestIdRef.current = chronological[0]?.id ?? oldestIdRef.current;
+      // 인덱스 0이 항상 과거라는 보장이 없으므로, ID 숫자 중 가장 작은 값을 찾음
+      const minId = Math.min(...mapped.map((m) => Number(m.id)));
+      if (minId && minId !== Infinity) {
+        oldestIdRef.current = minId.toString();
+      }
       setChatData((prev) => ({ ...prev, hasMore: Boolean(res.data?.hasMore) }));
     } catch (e) {
       console.error('[useChat][Pagination] 로딩 실패:', e);
