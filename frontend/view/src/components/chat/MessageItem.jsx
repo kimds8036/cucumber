@@ -1,12 +1,7 @@
 import React, { memo, useRef, useState } from 'react';
-import {
-  View,
-  Text,
-  ActivityIndicator,
-  TouchableOpacity,
-  Pressable,
-} from 'react-native';
+import { View, Text, TouchableOpacity, Pressable } from 'react-native';
 import { Image } from 'expo-image';
+import Loading from '../../../../components/Loading';
 import { colors } from '../../../../styles/colors';
 import MessageTabIcon from '../../../../assets/Group 166.svg';
 
@@ -77,7 +72,7 @@ const OptimizedImage = memo(({ uri, onPress, isSending }) => (
           backgroundColor: 'rgba(0,0,0,0.3)',
         }}
       >
-        <ActivityIndicator color="#fff" />
+        <Loading color="#fff" />
       </View>
     ) : null}
   </TouchableOpacity>

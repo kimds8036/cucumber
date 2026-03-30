@@ -5,7 +5,6 @@ import {
   TouchableOpacity,
   ScrollView,
   useWindowDimensions,
-  ActivityIndicator,
   TextInput,
   KeyboardAvoidingView,
   Platform,
@@ -468,7 +467,7 @@ export default function SearchResult({ route, navigation }) {
         {/* 로딩 */}
         {loading && (
           <View style={s.centerBox}>
-            <ActivityIndicator size="small" color={colors.primary} />
+            <Loading size="small" />
           </View>
         )}
 

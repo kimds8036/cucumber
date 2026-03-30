@@ -7,7 +7,6 @@ import {
   useWindowDimensions,
   Modal,
   TouchableWithoutFeedback,
-  ActivityIndicator,
   Platform,
   Keyboard,
   Alert,
@@ -17,6 +16,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { Entypo } from '@expo/vector-icons';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import SubHeader from '../frame/subHeader';
+import Loading from '../../components/Loading';
 import CommentInput from '../../components/CommentInput.jsx';
 import { colors, fonts } from '../../styles/colors';
 import { getNormalize } from '../../styles/frame.style';
@@ -599,7 +599,7 @@ export default function SchoolMailDetail({ navigation, route }) {
         <View style={{ flex: 1, backgroundColor: colors.background, overflow: 'hidden' }} pointerEvents="box-none">
           {loading ? (
             <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-              <ActivityIndicator size="large" color={colors.primary} />
+              <Loading size="large" />
             </View>
           ) : error ? (
             <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', paddingHorizontal: normalize(24) }}>

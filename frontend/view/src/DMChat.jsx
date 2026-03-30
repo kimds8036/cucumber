@@ -20,6 +20,7 @@ import {
 } from 'react-native';
 import { FlashList } from '@shopify/flash-list';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import Loading from '../../components/Loading';
 import SubHeader from '../frame/subHeader';
 import MessageTabIcon from '../../assets/Group 166.svg';
 import { colors, fonts } from '../../styles/colors';
@@ -460,7 +461,7 @@ export default function DMChat({ navigation, route }) {
         <View
           style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}
         >
-          <ActivityIndicator size="large" color={colors.primary} />
+          <Loading size="large" />
         </View>
       </SafeAreaView>
     );
