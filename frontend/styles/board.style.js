@@ -69,7 +69,7 @@ export const createBoardStyles = (width, normalize) => {
       flexDirection: 'row',
       justifyContent: 'space-between',
       alignItems: 'center',
-      marginBottom: normalize(12),
+      marginBottom: normalize(10),
     },
     postAuthorRow: {
       flexDirection: 'row',
