@@ -9,7 +9,6 @@ import {
   Platform,
   Keyboard,
   TouchableWithoutFeedback,
-  ActivityIndicator,
   Alert,
   useWindowDimensions,
 } from 'react-native';
@@ -156,7 +155,7 @@ const SendMailScreen = ({ navigation }) => {
                       placeholderTextColor={colors.textSecondary}
                     />
                   </View>
-                  {schoolLoading && <ActivityIndicator style={{ marginTop: normalize(8) }} />}
+                  {schoolLoading && <Loading style={{ marginTop: normalize(8) }} />}
                   {!!schoolError && (
                     <Text style={{ marginTop: normalize(8), color: '#E74C3C', fontSize: normalize(12) }}>
                       {schoolError}
@@ -214,7 +213,7 @@ const SendMailScreen = ({ navigation }) => {
                       placeholderTextColor={colors.textSecondary}
                     />
                   </View>
-                  {userLoading && <ActivityIndicator style={{ marginTop: normalize(8) }} />}
+                  {userLoading && <Loading style={{ marginTop: normalize(8) }} />}
                   {!!userError && (
                     <Text style={{ marginTop: normalize(8), color: '#E74C3C', fontSize: normalize(12) }}>
                       {userError}
@@ -312,7 +311,7 @@ const SendMailScreen = ({ navigation }) => {
               activeOpacity={0.9}
             >
               {sending ? (
-                <ActivityIndicator color={colors.background} />
+                <Loading color={colors.background} />
               ) : (
                 <Text style={styles.bottomCtaText}>전송하기</Text>
               )}

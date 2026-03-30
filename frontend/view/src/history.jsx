@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { View, Text, ScrollView, useWindowDimensions, ActivityIndicator, RefreshControl } from 'react-native';
+import { View, Text, ScrollView, useWindowDimensions, RefreshControl } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import SubHeader from '../frame/subHeader';
 import { getNormalize } from '../../styles/frame.style';
@@ -153,7 +153,7 @@ export default function MailHistoryScreen({ navigation, route }) {
       >
         {loading && (
           <View style={{ paddingVertical: normalize(24), alignItems: 'center' }}>
-            <ActivityIndicator />
+            <Loading />
           </View>
         )}
         {!loading && !!error && (

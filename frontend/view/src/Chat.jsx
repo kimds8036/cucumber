@@ -9,7 +9,6 @@ import React, {
 import {
   View,
   Text,
-  ActivityIndicator,
   TouchableOpacity,
   useWindowDimensions,
   Platform,
@@ -27,6 +26,7 @@ import {
   useSafeAreaInsets,
 } from 'react-native-safe-area-context';
 
+import Loading from '../../components/Loading';
 import SubHeader from '../frame/subHeader';
 import CommentInput from '../../components/CommentInput.jsx';
 import { colors, fonts } from '../../styles/colors';
@@ -560,7 +560,7 @@ export default function Chat({ navigation, route }) {
         <View
           style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}
         >
-          <ActivityIndicator size="large" color={colors.primary} />
+          <Loading size="large" />
         </View>
       </SafeAreaView>
     );
@@ -719,11 +719,7 @@ export default function Chat({ navigation, route }) {
               <Text style={{ color: '#999', fontSize: 12 }}>
                 {Object.values(typingUsers)[0]}이(가) 입력 중...
               </Text>
-              <ActivityIndicator
-                size="small"
-                color="#999"
-                style={{ marginLeft: 4 }}
-              />
+              <Loading size="small" color="#999" style={{ marginLeft: 4 }} />
             </View>
           )}
 
@@ -771,7 +767,7 @@ export default function Chat({ navigation, route }) {
                 ListHeaderComponent={
                   isLoadingMore ? (
                     <View style={{ paddingVertical: normalize(12) }}>
-                      <ActivityIndicator color={colors.textSecondary} />
+                      <Loading color={colors.textSecondary} />
                     </View>
                   ) : null
                 }

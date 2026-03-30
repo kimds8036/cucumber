@@ -4,7 +4,6 @@ import {
   Text,
   TouchableOpacity,
   ScrollView,
-  ActivityIndicator,
   RefreshControl,
   useWindowDimensions,
 } from 'react-native';
@@ -252,7 +251,7 @@ function MailInbox({ onOpen, onBack, navigation }) {
       >
         {loading && (
           <View style={{ paddingVertical: normalize(20), alignItems: 'center' }}>
-            <ActivityIndicator />
+            <Loading />
           </View>
         )}
         {!loading && !!error && (
@@ -404,7 +403,7 @@ function MailDetail({ mail: initialMail, onBack, navigation }) {
       </View>
 
       <View style={styles.detailRoot}>
-        {loading && <ActivityIndicator style={{ marginTop: normalize(20) }} />}
+        {loading && <Loading style={{ marginTop: normalize(20) }} />}
         {!loading && !!error && <Text style={{ color: '#E74C3C', textAlign: 'center', marginTop: normalize(12) }}>{error}</Text>}
         <ScrollView
           style={styles.scroll}

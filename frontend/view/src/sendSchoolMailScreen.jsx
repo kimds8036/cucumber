@@ -11,7 +11,6 @@ import {
   TouchableWithoutFeedback,
   Alert,
   useWindowDimensions,
-  ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRoute } from '@react-navigation/native';
@@ -153,7 +152,7 @@ const SendSchoolMailScreen = () => {
                 activeOpacity={0.9}
               >
                 {sending ? (
-                  <ActivityIndicator color={colors.background} />
+                  <Loading color={colors.background} />
                 ) : (
                   <Text style={styles.schoolSendCtaLabel}>전송하기</Text>
                 )}

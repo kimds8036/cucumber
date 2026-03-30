@@ -7,7 +7,6 @@ import {
   useWindowDimensions,
   Modal,
   TouchableWithoutFeedback,
-  ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Feather from '@expo/vector-icons/Feather';
@@ -266,7 +265,7 @@ const SchoolMailboxScreen = ({ navigation, route }) => {
       <View style={styles.container}>
         {loading && mails.length === 0 ? (
           <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-            <ActivityIndicator size="large" color={colors.primary} />
+            <Loading size="large" />
           </View>
         ) : (
           <FlatList
@@ -283,7 +282,7 @@ const SchoolMailboxScreen = ({ navigation, route }) => {
             ListFooterComponent={
               loadingMore ? (
                 <View style={{ paddingVertical: normalize(16), width: '100%', alignItems: 'center' }}>
-                  <ActivityIndicator color={colors.textSecondary} />
+                  <Loading color={colors.textSecondary} />
                 </View>
               ) : null
             }
