@@ -736,6 +736,9 @@ export default function Chat({ navigation, route }) {
                 drawDistance={1000}
                 overrideItemLayout={overrideItemLayout}
                 initialScrollIndex={initialScrollIndex}
+                maintainVisibleContentPosition={{
+                  minIndexForVisible: 0,
+                }}
                 onStartReached={handleStartReached}
                 onStartReachedThreshold={0.25}
                 onContentSizeChange={(_, nextHeight) => {
@@ -745,13 +748,23 @@ export default function Chat({ navigation, route }) {
                   if (!pendingPrependCompensationRef.current) return;
                   if (isLoadingMore) return;
                   const afterHeight = Math.max(0, contentHeightRef.current);
-                  const beforeHeight = Math.max(0, beforeContentHeightRef.current);
+                  const beforeHeight = Math.max(
+                    0,
+                    beforeContentHeightRef.current,
+                  );
                   const delta = Math.max(0, afterHeight - beforeHeight);
                   const targetOffset = Math.max(
                     0,
                     offsetBeforePrependRef.current + delta,
                   );
-                  console.log('SCROLL TO', targetOffset, 'pass', 1, 'delta', delta);
+                  console.log(
+                    'SCROLL TO',
+                    targetOffset,
+                    'pass',
+                    1,
+                    'delta',
+                    delta,
+                  );
                   requestAnimationFrame(() => {
                     flashListRef.current?.scrollToOffset?.({
                       offset: targetOffset,
