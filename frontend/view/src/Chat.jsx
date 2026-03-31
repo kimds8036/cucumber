@@ -133,6 +133,8 @@ export default function Chat({ navigation, route }) {
   const offsetBeforePrependRef = useRef(0);
   const beforeContentHeightRef = useRef(0);
   const pendingPrependCompensationRef = useRef(false);
+  const compensationTimerRef = useRef(null);
+  const isLoadingMoreRef = useRef(false);
   const isNearBottomRef = useRef(true);
   const prevNewestIdRef = useRef(null);
   const scrollAnimationRef = useRef(null);
@@ -427,17 +429,33 @@ export default function Chat({ navigation, route }) {
     [estimateRowHeight, flatData.length],
   );
 
-  const initialScrollIndex =
-    flatData.length > 0 ? flatData.length - 1 : undefined;
+  const initialScrollIndexRef = useRef(undefined);
+  if (initialScrollIndexRef.current === undefined && flatData.length > 0) {
+    initialScrollIndexRef.current = flatData.length - 1;
+  }
+  const initialScrollIndex = initialScrollIndexRef.current;
 
   const handleStartReached = useCallback(() => {
     if (!loadOlderAllowedRef.current) return;
     if (isLoading || isLoadingMore) return;
+    if (isLoadingMoreRef.current) return;
+    if (pendingPrependCompensationRef.current) return;
+
+    console.log('[Chat] handleStartReached FIRED', {
+      offset: currentOffsetRef.current,
+      contentHeight: contentHeightRef.current,
+    });
+
     offsetBeforePrependRef.current = Math.max(0, currentOffsetRef.current);
     beforeContentHeightRef.current = Math.max(0, contentHeightRef.current);
     pendingPrependCompensationRef.current = true;
 
-    loadMore();
+    isLoadingMoreRef.current = true;
+    loadMore().finally(() => {
+      setTimeout(() => {
+        isLoadingMoreRef.current = false;
+      }, 500);
+    });
   }, [isLoading, isLoadingMore, loadMore]);
 
   // 최적화된 스크롤 이벤트 핸들러
@@ -746,47 +764,30 @@ export default function Chat({ navigation, route }) {
                     contentHeightRef.current = nextHeight;
                   }
                   if (!pendingPrependCompensationRef.current) return;
-                  if (isLoadingMore) return;
-                  const afterHeight = Math.max(0, contentHeightRef.current);
-                  const beforeHeight = Math.max(
-                    0,
-                    beforeContentHeightRef.current,
-                  );
-                  const delta = Math.max(0, afterHeight - beforeHeight);
-                  const targetOffset = Math.max(
-                    0,
-                    offsetBeforePrependRef.current + delta,
-                  );
-                  console.log(
-                    'SCROLL TO',
-                    targetOffset,
-                    'pass',
-                    1,
-                    'delta',
-                    delta,
-                  );
-                  requestAnimationFrame(() => {
+                  if (compensationTimerRef.current) {
+                    clearTimeout(compensationTimerRef.current);
+                  }
+                  compensationTimerRef.current = setTimeout(() => {
+                    compensationTimerRef.current = null;
+                    if (!pendingPrependCompensationRef.current) return;
+                    const afterHeight = Math.max(0, contentHeightRef.current);
+                    const beforeHeight = Math.max(
+                      0,
+                      beforeContentHeightRef.current,
+                    );
+                    const delta = Math.max(0, afterHeight - beforeHeight);
+                    const targetOffset = Math.max(
+                      0,
+                      offsetBeforePrependRef.current + delta,
+                    );
+                    pendingPrependCompensationRef.current = false;
+                    beforeContentHeightRef.current = 0;
+                    console.log('SCROLL TO', targetOffset, 'delta', delta);
                     flashListRef.current?.scrollToOffset?.({
                       offset: targetOffset,
                       animated: false,
                     });
-                    requestAnimationFrame(() => {
-                      console.log(
-                        'SCROLL TO',
-                        targetOffset,
-                        'pass',
-                        2,
-                        'delta',
-                        delta,
-                      );
-                      flashListRef.current?.scrollToOffset?.({
-                        offset: targetOffset,
-                        animated: false,
-                      });
-                      pendingPrependCompensationRef.current = false;
-                      beforeContentHeightRef.current = 0;
-                    });
-                  });
+                  }, 600);
                 }}
                 // 중요: 안드로이드에서 위치 계산을 돕기 위해 아래 속성 추가
                 disableAutoLayout={true}

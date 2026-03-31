@@ -129,6 +129,7 @@ export default function DMChat({ navigation, route }) {
   const offsetBeforePrependRef = useRef(0);
   const beforeContentHeightRef = useRef(0);
   const pendingPrependCompensationRef = useRef(false);
+  const compensationTimerRef = useRef(null);
   const loadOlderAllowedRef = useRef(false);
   const didListShellLayoutRef = useRef(false);
   const isNearBottomRef = useRef(true);
@@ -546,6 +547,9 @@ export default function DMChat({ navigation, route }) {
               ) : null
             }
             initialScrollIndex={initialScrollIndex}
+            maintainVisibleContentPosition={{
+              minIndexForVisible: 0,
+            }}
             onStartReached={handleStartReached}
             onStartReachedThreshold={0.25}
             onContentSizeChange={(_, nextHeight) => {
@@ -553,37 +557,30 @@ export default function DMChat({ navigation, route }) {
                 contentHeightRef.current = nextHeight;
               }
               if (!pendingPrependCompensationRef.current) return;
-              if (isLoadingMore) return;
-              const afterHeight = Math.max(0, contentHeightRef.current);
-              const beforeHeight = Math.max(0, beforeContentHeightRef.current);
-              const delta = Math.max(0, afterHeight - beforeHeight);
-              const targetOffset = Math.max(
-                0,
-                offsetBeforePrependRef.current + delta,
-              );
-              console.log('SCROLL TO', targetOffset, 'pass', 1, 'delta', delta);
-              requestAnimationFrame(() => {
+              if (compensationTimerRef.current) {
+                clearTimeout(compensationTimerRef.current);
+              }
+              compensationTimerRef.current = setTimeout(() => {
+                compensationTimerRef.current = null;
+                if (!pendingPrependCompensationRef.current) return;
+                const afterHeight = Math.max(0, contentHeightRef.current);
+                const beforeHeight = Math.max(
+                  0,
+                  beforeContentHeightRef.current,
+                );
+                const delta = Math.max(0, afterHeight - beforeHeight);
+                const targetOffset = Math.max(
+                  0,
+                  offsetBeforePrependRef.current + delta,
+                );
+                pendingPrependCompensationRef.current = false;
+                beforeContentHeightRef.current = 0;
+                console.log('SCROLL TO', targetOffset, 'delta', delta);
                 listRef.current?.scrollToOffset?.({
                   offset: targetOffset,
                   animated: false,
                 });
-                requestAnimationFrame(() => {
-                  console.log(
-                    'SCROLL TO',
-                    targetOffset,
-                    'pass',
-                    2,
-                    'delta',
-                    delta,
-                  );
-                  listRef.current?.scrollToOffset?.({
-                    offset: targetOffset,
-                    animated: false,
-                  });
-                  pendingPrependCompensationRef.current = false;
-                  beforeContentHeightRef.current = 0;
-                });
-              });
+              }, 100);
             }}
             estimatedItemSize={90}
             drawDistance={1000}
