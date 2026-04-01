@@ -47,13 +47,13 @@ const MainHeader = ({ activeTab = 'board', navigation }) => {
           style={headerStyles.iconButton}
           onPress={() => navigation?.navigate('Search')}
         >
-          <Ionicons name="search" size={normalize(24)} color={colors.primary} />
+          <Ionicons name="search" size={normalize(22)} color={colors.primary} />
         </TouchableOpacity>
         <TouchableOpacity
           style={headerStyles.iconButton}
           onPress={() => navigation?.navigate('Notification')}
         >
-          <FontAwesome5 name="bell" size={normalize(24)} color={colors.primary} />
+          <FontAwesome5 name="bell" size={normalize(22)} color={colors.primary} />
           {(hasUnread || hasUnreadFriendRequestsForBell) && <View style={headerStyles.badge} />}
         </TouchableOpacity>
       </View>
