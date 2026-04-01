@@ -6,6 +6,7 @@ import { getNormalize } from '../../styles/frame.style';
 import { createMailStyles } from '../../styles/mail.style';
 import { api } from '../../utils/api';
 import { colors, PROFILE_COLORS } from '../../styles/colors';
+import Loading from '../../components/Loading';
 
 function parseUtcToLocal(createdAt) {
   if (!createdAt) return null;

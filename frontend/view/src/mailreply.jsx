@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { View, Text, ScrollView, TextInput, Modal, TouchableOpacity, useWindowDimensions, Alert } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
 import SubHeader from '../frame/subHeader';
 import { colors } from '../../styles/colors';
@@ -10,6 +10,7 @@ import { api } from '../../utils/api';
 
 export default function MailReplyScreen({ navigation, route }) {
   const { width, height } = useWindowDimensions();
+  const insets = useSafeAreaInsets();
   const normalize = useMemo(() => getNormalize(width), [width]);
   const styles = useMemo(() => createMailStyles(normalize), [normalize]);
 
@@ -31,8 +32,22 @@ export default function MailReplyScreen({ navigation, route }) {
     setReplyText(text);
   };
 
-  const availableHeight = Math.max(0, height - subHeaderHeight - bottomHeight);
-  const halfCardHeight = Math.max(240, Math.floor(availableHeight * 0.4));
+  const availableHeight = Math.max(
+    0,
+    height - insets.top - insets.bottom - subHeaderHeight - bottomHeight,
+  );
+  const scrollPadding = 16 + 32; // paddingTop + paddingBottom (normalize 적용 전 raw값 기준)
+  const cardGap = 12;
+  const halfCardHeight = Math.max(
+    240,
+    Math.floor((availableHeight - scrollPadding - cardGap) / 2),
+  );
+  console.log('height', height);
+  console.log('insets', insets.top, insets.bottom);
+  console.log('subHeaderHeight', subHeaderHeight);
+  console.log('bottomHeight', bottomHeight);
+  console.log('availableHeight', availableHeight);
+  console.log('halfCardHeight', halfCardHeight);
 
   const handleSend = async () => {
     if (!replyText.trim()) return;
@@ -81,22 +96,31 @@ export default function MailReplyScreen({ navigation, route }) {
             contentContainerStyle={styles.modalFullContent}
             showsVerticalScrollIndicator={false}
           >
-            <View style={[styles.modalLetterPreviewCard, { minHeight: halfCardHeight }]}>
-              <TouchableOpacity
-                activeOpacity={0.8}
-                onPress={() => setPreviewExpanded((prev) => !prev)}
-                style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: normalize(8) }}
-              >
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: normalize(6) }}>
-                  <Text style={styles.detailSenderName}>익명 · 받은 편지</Text>
-                  <Text style={styles.detailTime}>{mail?.receivedAt ?? ''}</Text>
-                </View>
-                <MaterialCommunityIcons
-                  name={previewExpanded ? 'chevron-up' : 'chevron-down'}
-                  size={18}
-                  color={colors.textSecondary}
+            <View
+              style={[
+                styles.modalLetterPreviewCard,
+                { minHeight: halfCardHeight, marginBottom: 12 },
+              ]}
+            >
+              {/* 상세 화면과 동일한 헤더 디자인 */}
+              <View style={styles.detailSenderRow}>
+                <View
+                  style={[
+                    styles.detailAvatar,
+                    { backgroundColor: colors.primary },
+                  ]}
                 />
-              </TouchableOpacity>
+                <View style={styles.detailSenderTexts}>
+                  <Text style={styles.detailSenderName}>익명</Text>
+                  <Text style={styles.detailTime}>
+                    {mail?.receivedAt ?? ''}
+                  </Text>
+                </View>
+                <View style={styles.detailReplyBadge}>
+                  <Text style={styles.detailReplyBadgeText}>받은 우편</Text>
+                </View>
+              </View>
+
               <View style={styles.detailDivider} />
               {previewExpanded ? (
                 <Text style={styles.detailBody}>{mail?.content ?? ''}</Text>
