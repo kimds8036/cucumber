@@ -12,6 +12,7 @@ export default function useChatScroll({
   const listRef = useRef(null);
   const currentOffsetRef = useRef(0);
   const contentHeightRef = useRef(0);
+  const prevContentHeightRef = useRef(0);
   const isNearBottomRef = useRef(true);
   const isScrollingRef = useRef(false);
   const scrollAnimationRef = useRef(null);
@@ -22,8 +23,6 @@ export default function useChatScroll({
   const didInitialAnchorRef = useRef(false);
   const isInitialLoadRef = useRef(true);
   const keyboardTimeoutRef = useRef(null);
-  const firstVisibleIdRef = useRef(null);
-  const pendingAnchorIdRef = useRef(null);
 
   const [listShellVisible, setListShellVisible] = useState(false);
   const [keyboardHeight, setKeyboardHeight] = useState(0);
@@ -40,8 +39,6 @@ export default function useChatScroll({
     currentOffsetRef.current = 0;
     didInitialAnchorRef.current = false;
     isInitialLoadRef.current = true;
-    firstVisibleIdRef.current = null;
-    pendingAnchorIdRef.current = null;
     setListShellVisible(false);
   }, [roomId]);
 
@@ -52,12 +49,8 @@ export default function useChatScroll({
     if (!loadOlderAllowedRef.current) return;
     if (isLoading || isLoadingMore) return;
     if (isLoadingMoreRef.current) return;
-
-    // 현재 화면 맨 위에 보이는 메시지를 anchor로 기억 (아이템 기반)
-    if (firstVisibleIdRef.current) {
-      pendingAnchorIdRef.current = firstVisibleIdRef.current;
-    }
-
+    // loadMore 직전 contentHeight 스냅샷
+    prevContentHeightRef.current = contentHeightRef.current || 0;
     isLoadingMoreRef.current = true;
     loadMore().finally(() => {
       setTimeout(() => {
@@ -175,50 +168,34 @@ export default function useChatScroll({
     triggerLoadMore();
   }, [triggerLoadMore]);
 
-  // FlashList viewability 콜백: 현재 화면 맨 위 메시지의 id를 기억
-  const handleViewableItemsChanged = useCallback(({ viewableItems }) => {
-    if (!Array.isArray(viewableItems) || viewableItems.length === 0) return;
-    // 가장 위에 있는(가장 작은 index) 메시지 중 dateBanner가 아닌 것을 anchor로 사용
-    let candidate = null;
-    for (let i = 0; i < viewableItems.length; i += 1) {
-      const v = viewableItems[i];
-      const item = v?.item;
-      if (!item) continue;
-      if (item.type === 'dateBanner') continue;
-      if (!candidate || v.index < candidate.index) {
-        candidate = v;
-      }
-    }
-    if (candidate?.item?.id != null) {
-      firstVisibleIdRef.current = String(candidate.item.id);
-    }
-  }, []);
+  // FlashList onContentSizeChange 기반 스크롤 위치 보정
+  const handleContentSizeChange = useCallback(
+    (width, height) => {
+      const prevH = prevContentHeightRef.current || 0;
+      contentHeightRef.current = height;
+      // loadMore 이후, 실제로 contentHeight 가 늘어난 경우에만 보정
+      if (!isLoadingMoreRef.current) return;
+      const diff = height - prevH;
+      if (diff <= 0) return;
 
-  // loadMore 이후 anchor 복원: prepend가 끝난 뒤에도 사용자가 보던 메시지가 그대로 보이도록
-  useEffect(() => {
-    const anchorId = pendingAnchorIdRef.current;
-    if (!anchorId) return;
-    if (!flatData || flatData.length === 0) return;
+      const currentOffset = currentOffsetRef.current || 0;
+      const newOffset = currentOffset + diff;
 
-    const targetIndex = flatData.findIndex(
-      (item) =>
-        item?.type !== 'dateBanner' && String(item?.id) === String(anchorId),
-    );
-    if (targetIndex < 0) {
-      pendingAnchorIdRef.current = null;
-      return;
-    }
-
-    // FlashList가 layout을 갱신한 뒤에 anchor로 스크롤
-    requestAnimationFrame(() => {
-      listRef.current?.scrollToIndex?.({
-        index: targetIndex,
+      // 사용자가 보던 상대적 위치를 유지하도록, 늘어난 높이만큼 offset을 밀어준다.
+      listRef.current?.scrollToOffset?.({
+        offset: newOffset,
         animated: false,
-        viewPosition: 0, // 화면 상단에 anchor 고정
       });
-      pendingAnchorIdRef.current = null;
-    });
-  }, [flatData]);
+      currentOffsetRef.current = newOffset;
+
+      // 잠시 동안 추가 페이징을 막아 무한 페이징 방지 (쿨타임)
+      loadOlderAllowedRef.current = false;
+      setTimeout(() => {
+        loadOlderAllowedRef.current = true;
+      }, 250);
+    },
+    [],
+  );
 
   return {
     listRef,
@@ -227,7 +204,7 @@ export default function useChatScroll({
     handleScroll,
     handleListShellLayout,
     handleStartReached,
-    handleViewableItemsChanged,
+    handleContentSizeChange,
     isNearBottomRef,
     currentOffsetRef,
     contentHeightRef,

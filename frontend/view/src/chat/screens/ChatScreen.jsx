@@ -203,7 +203,7 @@ export default function ChatScreen({
           contentHeightRef={scroll.contentHeightRef}
           renderMessageProps={renderMessageProps}
           normalize={normalize}
-          handleViewableItemsChanged={scroll.handleViewableItemsChanged}
+          handleContentSizeChange={scroll.handleContentSizeChange}
         />
 
         {/* 토스트 */}
