@@ -59,7 +59,7 @@ export const createHeaderStyles = (width, height) => {
       minHeight: normalize(40),
       alignItems: 'center',
       justifyContent: 'center',
-      borderRadius: normalize(20),
+      borderRadius: normalize(25),
       backgroundColor: colors.green,
       borderWidth: 1,
       borderColor: colors.primaryLight50,

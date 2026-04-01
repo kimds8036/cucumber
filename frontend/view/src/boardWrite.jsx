@@ -37,9 +37,9 @@ const BoardWrite = ({ navigation, route }) => {
   const [loadingSuggestions, setLoadingSuggestions] = useState(false);
   const [postImages, setPostImages] = useState([]);
   const [locationEnabled, setLocationEnabled] = useState(false);
-  const [locationText, setLocationText] = useState('');
   const [activePanel, setActivePanel] = useState(null); // 'tag' | null
   const [tagPanelVisible, setTagPanelVisible] = useState(false);
+  const [tagPanelHeight, setTagPanelHeight] = useState(0);
   const boardContext = route?.params?.boardContext || 'national';
   const tagInputRef = useRef(null);
   const tagPanelAnim = useRef(new Animated.Value(0)).current;
@@ -122,7 +122,7 @@ const BoardWrite = ({ navigation, route }) => {
 
   const handlePickPostImages = async () => {
     const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      mediaTypes: 'images',
       allowsMultipleSelection: true,
       quality: 0.8,
       selectionLimit: 5,
@@ -146,7 +146,6 @@ const BoardWrite = ({ navigation, route }) => {
     setActivePanel(null);
     const next = !locationEnabled;
     setLocationEnabled(next);
-    setLocationText(next ? '위치 사용중' : '');
   };
 
   useEffect(() => {
@@ -174,12 +173,8 @@ const BoardWrite = ({ navigation, route }) => {
   }, [activePanel, tagPanelAnim, driverMode]);
 
   useEffect(() => {
-    if (activePanel === 'tag') {
-      const t = setTimeout(() => {
-        tagInputRef.current?.focus();
-      }, 300);
-      return () => clearTimeout(t);
-    }
+    // 태그 패널이 열릴 때 자동으로 키보드를 올리지 않도록
+    // 기존의 tagInput 자동 focus 로직을 제거했습니다.
   }, [activePanel]);
 
   const handleComplete = async () => {
@@ -282,7 +277,7 @@ const BoardWrite = ({ navigation, route }) => {
       <View
         style={[styles.topToolbarSection, styles.topToolbarSectionWithZIndex]}
       >
-        {/* 상단 툴바 */}
+        {/* 하단 툴바 */}
         <View style={styles.topToolbar}>
           <TouchableOpacity
             onPress={handleToggleTagPanel}
@@ -295,11 +290,6 @@ const BoardWrite = ({ navigation, route }) => {
                 activePanel === 'tag' ? colors.primary : colors.textSecondary
               }
             />
-            {hashtags.length > 0 && (
-              <View style={styles.toolbarBadge}>
-                <Text style={styles.toolbarBadgeText}>{hashtags.length}</Text>
-              </View>
-            )}
           </TouchableOpacity>
 
           <TouchableOpacity
@@ -311,11 +301,6 @@ const BoardWrite = ({ navigation, route }) => {
               size={22}
               color={colors.textSecondary}
             />
-            {postImages.length > 0 && (
-              <View style={styles.toolbarBadge}>
-                <Text style={styles.toolbarBadgeText}>{postImages.length}</Text>
-              </View>
-            )}
           </TouchableOpacity>
 
           <TouchableOpacity
@@ -323,21 +308,14 @@ const BoardWrite = ({ navigation, route }) => {
             style={styles.toolbarLocationButton}
           >
             <Ionicons
-              name="location-outline"
+              name={locationEnabled ? 'location-sharp' : 'location-outline'}
               size={22}
               color={locationEnabled ? colors.primary : colors.textSecondary}
             />
           </TouchableOpacity>
         </View>
 
-        {/* 칩 영역: 위치 -> 사진 -> 태그 */}
-        {locationEnabled && !!locationText && (
-          <View style={styles.locationChipWrap}>
-            <View style={styles.writeHashtagTagChip}>
-              <Text style={styles.writeHashtagTagText}>{locationText}</Text>
-            </View>
-          </View>
-        )}
+        {/* 칩 영역: 사진 -> 태그 */}
 
         {postImages.length > 0 && (
           <ScrollView
@@ -427,63 +405,90 @@ const BoardWrite = ({ navigation, route }) => {
           </View>
         )}
 
-        <Animated.View
-          pointerEvents={tagPanelVisible ? 'box-none' : 'none'}
-          style={{
-            transform: [
-              {
-                translateY: tagPanelAnim.interpolate({
-                  inputRange: [0, 1],
-                  outputRange: [16, 0],
-                }),
-              },
-            ],
-            opacity: tagPanelVisible ? 1 : 0,
-            ...styles.tagPanelAnimated,
-          }}
-        >
-          <View
-            style={[
-              styles.tagPanelContainer,
-              styles.tagPanelContainerWithZIndex,
-            ]}
-            collapsable={false}
+        {(tagPanelVisible || tagPanelHeight === 0) && (
+          <Animated.View
+            pointerEvents={tagPanelVisible ? 'box-none' : 'none'}
+            style={{
+              height: tagPanelAnim.interpolate({
+                inputRange: [0, 1],
+                outputRange: [0, tagPanelHeight],
+              }),
+              overflow: 'hidden',
+              zIndex: 20,
+              elevation: 20,
+            }}
           >
+            {/* 높이 측정용 - 한 번만 측정 */}
+            {tagPanelHeight === 0 && (
+              <View
+                style={{ position: 'absolute', opacity: 0, width: '100%' }}
+                onLayout={(e) => {
+                  const h = e.nativeEvent.layout.height;
+                  console.log('measured:', h);
+                  if (h > 0) setTagPanelHeight(h);
+                }}
+              >
+                <View style={[styles.tagPanelContainer]}>
+                  <View
+                    style={[
+                      styles.writeHashtagWrapper,
+                      styles.tagPanelWrapperCompact,
+                    ]}
+                  >
+                    <View style={styles.writeHashtagInputRow}>
+                      <Text style={styles.writeHashtagPrefix}>#</Text>
+                      <View style={styles.writeHashtagDashedWrap} />
+                      <Text style={styles.writeHashtagCounter}>0/5</Text>
+                    </View>
+                  </View>
+                </View>
+              </View>
+            )}
+
+            {/* 실제 패널 */}
             <View
               style={[
-                styles.writeHashtagWrapper,
-                styles.tagPanelWrapperCompact,
+                styles.tagPanelContainer,
+                styles.tagPanelContainerWithZIndex,
               ]}
+              collapsable={false}
             >
-              <View style={styles.writeHashtagInputRow}>
-                <Text style={styles.writeHashtagPrefix}>#</Text>
-                <View
-                  style={[
-                    styles.writeHashtagDashedWrap,
-                    styles.writeHashtagDashedWrapWithZIndex,
-                  ]}
-                >
-                  <TextInput
-                    ref={tagInputRef}
-                    style={styles.writeHashtagInputInline}
-                    placeholder="태그 추가"
-                    placeholderTextColor={colors.textSecondary}
-                    value={hashtagInput}
-                    onChangeText={handleHashtagInputChange}
-                    onSubmitEditing={handleAddHashtag}
-                    returnKeyType="done"
-                    maxLength={30}
-                    textAlignVertical="center"
-                    underlineColorAndroid="transparent"
-                  />
+              <View
+                style={[
+                  styles.writeHashtagWrapper,
+                  styles.tagPanelWrapperCompact,
+                ]}
+              >
+                <View style={styles.writeHashtagInputRow}>
+                  <Text style={styles.writeHashtagPrefix}>#</Text>
+                  <View
+                    style={[
+                      styles.writeHashtagDashedWrap,
+                      styles.writeHashtagDashedWrapWithZIndex,
+                    ]}
+                  >
+                    <TextInput
+                      ref={tagInputRef}
+                      style={styles.writeHashtagInputInline}
+                      placeholder="태그 추가"
+                      placeholderTextColor={colors.textSecondary}
+                      value={hashtagInput}
+                      onChangeText={handleHashtagInputChange}
+                      onSubmitEditing={handleAddHashtag}
+                      returnKeyType="done"
+                      maxLength={30}
+                      textAlignVertical="center"
+                      underlineColorAndroid="transparent"
+                    />
+                  </View>
+                  <Text style={styles.writeHashtagCounter}>
+                    {hashtags.length}/5
+                  </Text>
                 </View>
-                <Text style={styles.writeHashtagCounter}>
-                  {hashtags.length}/5
-                </Text>
               </View>
             </View>
-          </View>
-        </Animated.View>
+          </Animated.View>
+        )}
       </View>
     ),
     [
@@ -493,7 +498,6 @@ const BoardWrite = ({ navigation, route }) => {
       hashtagInput,
       postImages,
       locationEnabled,
-      locationText,
       hashtagSuggestions,
       loadingSuggestions,
     ],
@@ -502,53 +506,55 @@ const BoardWrite = ({ navigation, route }) => {
   const canSubmit = content.trim().length > 0 || postImages.length > 0;
 
   return (
-    <View style={styles.screen}>
-      <KeyboardAvoidingView
-        style={styles.keyboardAvoiding}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-      >
-        <View style={styles.fullFlex}>
-          <SafeAreaView style={styles.container} edges={['top']}>
-            <SubHeader
-              title="글쓰기"
-              onBack={handleBack}
-              onRightPress={handleComplete}
-              rightDisabled={!canSubmit}
-              rightElement={
-                <View
-                  style={[
-                    styles.completePill,
-                    !canSubmit && styles.completePillDisabled,
-                  ]}
-                >
-                  <Text
+    <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
+      <View style={styles.screen}>
+        <KeyboardAvoidingView
+          style={styles.keyboardAvoiding}
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        >
+          <View style={styles.fullFlex}>
+            <SafeAreaView style={styles.container} edges={['top']}>
+              <SubHeader
+                title="글쓰기"
+                onBack={handleBack}
+                onRightPress={handleComplete}
+                rightDisabled={!canSubmit}
+                rightElement={
+                  <View
                     style={[
-                      styles.completePillText,
-                      !canSubmit && styles.completePillTextDisabled,
+                      styles.completePill,
+                      !canSubmit && styles.completePillDisabled,
                     ]}
                   >
-                    등록
-                  </Text>
-                </View>
-              }
-            />
+                    <Text
+                      style={[
+                        styles.completePillText,
+                        !canSubmit && styles.completePillTextDisabled,
+                      ]}
+                    >
+                      등록
+                    </Text>
+                  </View>
+                }
+              />
 
-            <ScrollView
-              style={styles.fullFlex}
-              contentContainerStyle={styles.scrollContentGrow}
-              keyboardShouldPersistTaps="handled"
-              showsVerticalScrollIndicator={false}
-              onScrollBeginDrag={Keyboard.dismiss}
-            >
-              {writeMainColumn}
-            </ScrollView>
+              <ScrollView
+                style={styles.fullFlex}
+                contentContainerStyle={styles.scrollContentGrow}
+                keyboardShouldPersistTaps="handled"
+                showsVerticalScrollIndicator={false}
+                onScrollBeginDrag={Keyboard.dismiss}
+              >
+                {writeMainColumn}
+              </ScrollView>
 
-            {topToolbarSection}
-            {guideBlock}
-          </SafeAreaView>
-        </View>
-      </KeyboardAvoidingView>
-    </View>
+              {topToolbarSection}
+              {guideBlock}
+            </SafeAreaView>
+          </View>
+        </KeyboardAvoidingView>
+      </View>
+    </TouchableWithoutFeedback>
   );
 };
 

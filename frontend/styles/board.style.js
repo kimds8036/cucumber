@@ -411,7 +411,7 @@ export const createWriteStyles = (width, normalize) => {
       color: colors.textSecondary,
     },
     writeHashtagTagScroll: {
-      marginTop: normalize(10),
+      marginVertical: normalize(7),
     },
     writeHashtagTagList: {
       flexDirection: 'row',
@@ -505,8 +505,7 @@ export const createWriteStyles = (width, normalize) => {
     },
     photoStripContent: {
       paddingHorizontal: normalize(16),
-      paddingTop: normalize(8),
-      paddingBottom: normalize(2),
+      paddingVertical: normalize(10),
     },
     photoAddButton: {
       width: normalize(60),
@@ -514,11 +513,11 @@ export const createWriteStyles = (width, normalize) => {
       borderRadius: normalize(10),
       borderWidth: 1.5,
       borderStyle: 'dashed',
-      borderColor: '#999',
+      borderColor: colors.border,
       alignItems: 'center',
       justifyContent: 'center',
       marginRight: normalize(8),
-      backgroundColor: '#FAFAFA',
+      backgroundColor: colors.surface,
     },
     photoItemWrap: {
       marginRight: normalize(8),
@@ -544,12 +543,10 @@ export const createWriteStyles = (width, normalize) => {
       marginTop: normalize(8),
     },
     tagPanelContainer: {
-      borderTopWidth: 0.5,
-      borderTopColor: colors.textLight20,
       backgroundColor: colors.background,
     },
     tagPanelWrapperCompact: {
-      paddingVertical: normalize(12),
+      paddingVertical: normalize(10),
     },
     // 인라인 스타일 추가
     topToolbarSectionWithZIndex: {
