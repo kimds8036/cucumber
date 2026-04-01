@@ -13,6 +13,8 @@ export default function useChatScroll({
   const currentOffsetRef = useRef(0);
   const contentHeightRef = useRef(0);
   const prevContentHeightRef = useRef(0);
+  const didCorrectionForCurrentLoadRef = useRef(false);
+  const firstCorrectionDoneRef = useRef(false);
   const isNearBottomRef = useRef(true);
   const isScrollingRef = useRef(false);
   const scrollAnimationRef = useRef(null);
@@ -51,6 +53,17 @@ export default function useChatScroll({
     if (isLoadingMoreRef.current) return;
     // loadMore 직전 contentHeight 스냅샷
     prevContentHeightRef.current = contentHeightRef.current || 0;
+    // 이번 페이징 세션에서는 아직 보정이 수행되지 않았다고 표시
+    didCorrectionForCurrentLoadRef.current = false;
+    // 디버깅: 페이징 시작 시점의 높이 정보
+    // eslint-disable-next-line no-console
+    console.log(
+      '[ChatScroll] triggerLoadMore',
+      'contentHeight:',
+      contentHeightRef.current,
+      'prevContentHeight:',
+      prevContentHeightRef.current,
+    );
     isLoadingMoreRef.current = true;
     loadMore().finally(() => {
       setTimeout(() => {
@@ -67,6 +80,12 @@ export default function useChatScroll({
       const contentH = e?.nativeEvent?.contentSize?.height ?? 0;
       contentHeightRef.current = contentH;
       currentOffsetRef.current = offsetY;
+
+      // 디버깅: 페이징 중일 때만 현재 offset 로그
+      if (isLoadingMoreRef.current) {
+        // eslint-disable-next-line no-console
+        console.log('[ChatScroll] handleScroll while loadingMore, offsetY:', offsetY);
+      }
 
       isScrollingRef.current = true;
       if (scrollAnimationRef.current) clearTimeout(scrollAnimationRef.current);
@@ -91,6 +110,8 @@ export default function useChatScroll({
   // 새 메시지 자동 스크롤
   useEffect(() => {
     if (!messages?.length) return;
+    // 과거 페이징(loadMore) 중이거나 보정 쿨타임 동안에는 자동 스크롤 금지
+    if (isLoadingMoreRef.current || loadOlderAllowedRef.current === false) return;
     // messages 마지막 요소가 가장 최신이라고 가정 ([과거 → 최신])
     const newest = messages[messages.length - 1];
     const newestId = newest?.id;
@@ -173,26 +194,140 @@ export default function useChatScroll({
     (width, height) => {
       const prevH = prevContentHeightRef.current || 0;
       contentHeightRef.current = height;
-      // loadMore 이후, 실제로 contentHeight 가 늘어난 경우에만 보정
-      if (!isLoadingMoreRef.current) return;
-      const diff = height - prevH;
-      if (diff <= 0) return;
+      // 초기/일반 렌더링 시점에서는 contentHeight 스냅샷만 갱신하고 보정은 하지 않는다.
+      if (!isLoadingMoreRef.current) {
+        prevContentHeightRef.current = height;
+        return;
+      }
+
+      let diff = height - prevH;
+      if (diff <= 0) {
+        // eslint-disable-next-line no-console
+        console.log(
+          '[ChatScroll] handleContentSizeChange diff<=0, height:',
+          height,
+          'prevH:',
+          prevH,
+          'diff:',
+          diff,
+        );
+        return;
+      }
+
+      const MIN_DIFF_THRESHOLD = 100;
+      // 스피너 등장 등 미세한 레이아웃 변화(소량 높이 변화)는 보정 대상에서 제외
+      if (diff < MIN_DIFF_THRESHOLD) {
+        // eslint-disable-next-line no-console
+        console.log(
+          '[ChatScroll] handleContentSizeChange small diff, skip correction',
+          'height:',
+          height,
+          'prevH:',
+          prevH,
+          'diff:',
+          diff,
+        );
+        prevContentHeightRef.current = height;
+        return;
+      }
+
+      // 한 번이라도 보정을 수행했다면, 동일 페이징 세션 내에서는 추가 보정 금지
+      if (didCorrectionForCurrentLoadRef.current) {
+        // eslint-disable-next-line no-console
+        console.log(
+          '[ChatScroll] handleContentSizeChange [Correction Blocked - Already Done]',
+          'height:',
+          height,
+          'prevH:',
+          prevH,
+          'diff:',
+          diff,
+        );
+        return;
+      }
+
+      const originalDiff = diff;
+      // 비정상적으로 큰 점프를 방지하기 위해 상한선을 둔다.
+      diff = Math.min(diff, 2000);
+      if (originalDiff !== diff) {
+        // eslint-disable-next-line no-console
+        console.log(
+          '[ChatScroll] handleContentSizeChange diff clamped',
+          'originalDiff:',
+          originalDiff,
+          'clampedDiff:',
+          diff,
+        );
+      }
 
       const currentOffset = currentOffsetRef.current || 0;
+      // 이미 천장(상단 근처)에 붙어 다음 페이징을 시도 중이라면,
+      // 이전 페이징에 대한 보정은 뒷북이 되므로 과감히 스킵한다.
+      const topThreshold = 40;
+      if (currentOffset <= topThreshold) {
+        // 디버깅: 상단에서 보정 스킵
+        // eslint-disable-next-line no-console
+        console.log(
+          '[ChatScroll] handleContentSizeChange [Skip] User is at top, avoiding jump',
+          'height:',
+          height,
+          'prevH:',
+          prevH,
+          'diff:',
+          diff,
+          'currentOffset:',
+          currentOffset,
+        );
+        // 그래도 contentHeight 스냅샷은 최신으로 유지
+        prevContentHeightRef.current = height;
+        // 잠시 동안 추가 페이징과 자동 스크롤을 막는 쿨타임만 유지
+        loadOlderAllowedRef.current = false;
+        setTimeout(() => {
+          loadOlderAllowedRef.current = true;
+        }, 300);
+        return;
+      }
+
       const newOffset = currentOffset + diff;
 
-      // 사용자가 보던 상대적 위치를 유지하도록, 늘어난 높이만큼 offset을 밀어준다.
-      listRef.current?.scrollToOffset?.({
-        offset: newOffset,
-        animated: false,
-      });
-      currentOffsetRef.current = newOffset;
+      // 디버깅: 실제 보정이 어떻게 적용되는지 로그
+      // eslint-disable-next-line no-console
+      console.log(
+        '[ChatScroll] handleContentSizeChange [Correction Applied]',
+        'height:',
+        height,
+        'prevH:',
+        prevH,
+        'diff:',
+        diff,
+        'currentOffset:',
+        currentOffset,
+        'newOffset:',
+        newOffset,
+      );
 
-      // 잠시 동안 추가 페이징을 막아 무한 페이징 방지 (쿨타임)
+      // 첫 번째 보정은 레이아웃 안착 후 부드럽게 넘기기 위해 한 번만 animated: true 사용
+      const applyScroll = () => {
+        listRef.current?.scrollToOffset?.({
+          offset: newOffset,
+          animated: !firstCorrectionDoneRef.current, // 첫 보정만 true
+        });
+        currentOffsetRef.current = newOffset;
+        firstCorrectionDoneRef.current = true;
+        didCorrectionForCurrentLoadRef.current = true;
+      };
+
+      if (!firstCorrectionDoneRef.current) {
+        requestAnimationFrame(applyScroll);
+      } else {
+        applyScroll();
+      }
+
+      // 잠시 동안 추가 페이징과 자동 스크롤을 막아 무한 페이징/하단 튐 방지 (쿨타임)
       loadOlderAllowedRef.current = false;
       setTimeout(() => {
         loadOlderAllowedRef.current = true;
-      }, 250);
+      }, 300);
     },
     [],
   );

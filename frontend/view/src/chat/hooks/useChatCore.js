@@ -498,6 +498,10 @@ export default function useChatCore(config) {
     if (!oldestIdRef.current) return;
 
     dispatch({ type: 'SET_LOADING_MORE', payload: true });
+    // 안전장치: 5초 후에는 isLoadingMore를 강제로 해제하여 페이징이 영구 잠기지 않도록 함
+    const safetyTimer = setTimeout(() => {
+      dispatch({ type: 'SET_LOADING_MORE', payload: false });
+    }, 5000);
 
     try {
       const res = await api.fetchMore(
@@ -533,6 +537,7 @@ export default function useChatCore(config) {
     } catch (e) {
       console.error('[useChatCore][Pagination] 실패:', e);
     } finally {
+      clearTimeout(safetyTimer);
       dispatch({ type: 'SET_LOADING_MORE', payload: false });
     }
   }, [roomId, hasMore, isLoadingMore, api]);
