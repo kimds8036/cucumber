@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { View, Text, ScrollView, TextInput, Modal, TouchableOpacity, useWindowDimensions, Alert } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
 import SubHeader from '../frame/subHeader';
 import { colors } from '../../styles/colors';
@@ -10,6 +10,7 @@ import { api } from '../../utils/api';
 
 export default function MailReplyScreen({ navigation, route }) {
   const { width, height } = useWindowDimensions();
+  const insets = useSafeAreaInsets();
   const normalize = useMemo(() => getNormalize(width), [width]);
   const styles = useMemo(() => createMailStyles(normalize), [normalize]);
 
@@ -31,8 +32,22 @@ export default function MailReplyScreen({ navigation, route }) {
     setReplyText(text);
   };
 
-  const availableHeight = Math.max(0, height - subHeaderHeight - bottomHeight);
-  const halfCardHeight = Math.max(240, Math.floor(availableHeight * 0.4));
+  const availableHeight = Math.max(
+    0,
+    height - insets.top - insets.bottom - subHeaderHeight - bottomHeight,
+  );
+  const scrollPadding = 12 + 24 + 4 + 16; // paddingTop + paddingBottom + previewCard marginTop + replyCard marginBottom
+  const cardGap = 12;
+  const halfCardHeight = Math.max(
+    240,
+    Math.floor((availableHeight - scrollPadding - cardGap) / 2),
+  );
+  console.log('height', height);
+  console.log('insets', insets.top, insets.bottom);
+  console.log('subHeaderHeight', subHeaderHeight);
+  console.log('bottomHeight', bottomHeight);
+  console.log('availableHeight', availableHeight);
+  console.log('halfCardHeight', halfCardHeight);
 
   const handleSend = async () => {
     if (!replyText.trim()) return;
