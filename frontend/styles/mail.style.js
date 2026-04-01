@@ -82,7 +82,7 @@ export function createMailStyles(normalize) {
     },
 
     // 상세 화면 (첫 번째 디자인)
-    detailRoot: { flex: 1, backgroundColor: colors.background, },
+    detailRoot: { flex: 1, backgroundColor: colors.background },
     detailScroll: { padding: normalize(16), paddingBottom: normalize(32) },
     detailLetterCard: {
       backgroundColor: colors.background,
@@ -156,12 +156,8 @@ export function createMailStyles(normalize) {
       color: colors.textPrimary,
       lineHeight: normalize(22),
     },
-    detailBodyContainer: {
-      flex: 1,
-    },
-    detailReplyBodyContainer: {
-      flex: 1,
-    },
+    detailBodyContainer: { flex: 1 },
+    detailReplyBodyContainer: { flex: 1 },
     detailEmptyWrapper: {
       flex: 1,
       justifyContent: 'center',
@@ -235,15 +231,15 @@ export function createMailStyles(normalize) {
     modalFullContent: {
       flexGrow: 1,
       paddingHorizontal: normalize(16),
-      paddingBottom: normalize(24),
-      paddingTop: normalize(12),
+      paddingBottom: normalize(32),
+      paddingTop: normalize(16),
     },
     replyFormCard: {
       backgroundColor: colors.background,
       borderRadius: normalize(12),
       paddingHorizontal: normalize(16),
       paddingTop: normalize(18),
-      paddingBottom: normalize(14),
+      paddingBottom: normalize(24),
       flexDirection: 'column',
       // 경계선 대신 카드 그림자 처리 (detailLetterCard와 톤 맞춤)
       shadowColor: '#000',
@@ -311,7 +307,6 @@ export function createMailStyles(normalize) {
       shadowOpacity: 0.1,
       shadowRadius: 10,
       elevation: 6,
-      marginTop: normalize(4),
     },
     modalFullNotice: {
       marginTop: normalize(12),

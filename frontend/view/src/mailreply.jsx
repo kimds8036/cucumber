@@ -36,7 +36,7 @@ export default function MailReplyScreen({ navigation, route }) {
     0,
     height - insets.top - insets.bottom - subHeaderHeight - bottomHeight,
   );
-  const scrollPadding = 12 + 24 + 4 + 16; // paddingTop + paddingBottom + previewCard marginTop + replyCard marginBottom
+  const scrollPadding = 16 + 32; // paddingTop + paddingBottom (normalize 적용 전 raw값 기준)
   const cardGap = 12;
   const halfCardHeight = Math.max(
     240,
@@ -96,22 +96,31 @@ export default function MailReplyScreen({ navigation, route }) {
             contentContainerStyle={styles.modalFullContent}
             showsVerticalScrollIndicator={false}
           >
-            <View style={[styles.modalLetterPreviewCard, { minHeight: halfCardHeight }]}>
-              <TouchableOpacity
-                activeOpacity={0.8}
-                onPress={() => setPreviewExpanded((prev) => !prev)}
-                style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: normalize(8) }}
-              >
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: normalize(6) }}>
-                  <Text style={styles.detailSenderName}>익명 · 받은 편지</Text>
-                  <Text style={styles.detailTime}>{mail?.receivedAt ?? ''}</Text>
-                </View>
-                <MaterialCommunityIcons
-                  name={previewExpanded ? 'chevron-up' : 'chevron-down'}
-                  size={18}
-                  color={colors.textSecondary}
+            <View
+              style={[
+                styles.modalLetterPreviewCard,
+                { minHeight: halfCardHeight, marginBottom: 12 },
+              ]}
+            >
+              {/* 상세 화면과 동일한 헤더 디자인 */}
+              <View style={styles.detailSenderRow}>
+                <View
+                  style={[
+                    styles.detailAvatar,
+                    { backgroundColor: colors.primary },
+                  ]}
                 />
-              </TouchableOpacity>
+                <View style={styles.detailSenderTexts}>
+                  <Text style={styles.detailSenderName}>익명</Text>
+                  <Text style={styles.detailTime}>
+                    {mail?.receivedAt ?? ''}
+                  </Text>
+                </View>
+                <View style={styles.detailReplyBadge}>
+                  <Text style={styles.detailReplyBadgeText}>받은 우편</Text>
+                </View>
+              </View>
+
               <View style={styles.detailDivider} />
               {previewExpanded ? (
                 <Text style={styles.detailBody}>{mail?.content ?? ''}</Text>
