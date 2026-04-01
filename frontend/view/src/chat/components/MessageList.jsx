@@ -40,7 +40,7 @@ export default function MessageList({
   contentHeightRef,
   renderMessageProps,
   normalize,
-  handleViewableItemsChanged,
+  handleContentSizeChange,
 }) {
   const n =
     typeof normalize === 'function'
@@ -71,8 +71,10 @@ export default function MessageList({
         keyExtractor={extractKey}
         getItemType={getFlashListItemType}
         renderItem={renderItem}
-        estimatedItemSize={90}
-        drawDistance={1000}
+        // 평균 메시지 높이에 맞는 추정값으로 레이아웃 안정화
+        estimatedItemSize={100}
+        // 화면 밖 영역을 넉넉히 미리 렌더링해서 빠른 스크롤 대응
+        drawDistance={1500}
         overrideItemLayout={overrideItemLayout}
         maxToRenderPerBatch={8}
         windowSize={7}
@@ -80,7 +82,8 @@ export default function MessageList({
         removeClippedSubviews={true}
         disableAutoLayout={true}
         onStartReached={handleStartReached}
-        onStartReachedThreshold={0.1}
+        // 위로 스크롤하는 도중(상단 근처)에 미리 페이징을 트리거
+        onStartReachedThreshold={0.7}
         ListHeaderComponent={
           isLoadingMore && (data?.length || 0) > 0 ? (
             <View style={{ paddingVertical: 12, alignItems: 'center' }}>
@@ -94,11 +97,8 @@ export default function MessageList({
         scrollEventThrottle={16}
         decelerationRate="normal"
         contentContainerStyle={{ paddingHorizontal: n(6) }}
-        onContentSizeChange={(_, h) => {
-          if (contentHeightRef) contentHeightRef.current = h;
-        }}
+        onContentSizeChange={handleContentSizeChange}
         onScroll={handleScroll}
-        onViewableItemsChanged={handleViewableItemsChanged}
       />
     </View>
   );
