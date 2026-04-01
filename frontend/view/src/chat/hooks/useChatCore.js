@@ -364,22 +364,14 @@ export default function useChatCore(config) {
         parent_sender_name: parentSenderName,
         isReadByOther: false,
         isReadByMe: undefined,
-        isSending: true,
+        // 프론트에서는 즉시 전송 완료처럼 보이게 처리
+        isSending: false,
         isFailed: false,
-        status: 'sending',
+        status: 'sent',
       };
 
       dispatch({ type: 'ADD_MESSAGE', payload: optimisticMsg });
 
-      if (__DEV__) {
-        console.log('[ChatDebug] SendOptimistic', {
-          roomId,
-          clientId,
-          meId: meIdRef.current,
-          hasText: !!trimmed,
-          imageCount: imgArr.length,
-        });
-      }
 
       try {
         const formData = new FormData();
@@ -403,14 +395,6 @@ export default function useChatCore(config) {
             payload: { tempId: clientId, serverMessage: serverMsg },
           });
           pendingClientIdTimeoutsRef.current.delete(clientId);
-
-          if (__DEV__) {
-            console.log('[ChatDebug] SendReplace', {
-              roomId,
-              clientId,
-              serverId: serverMsg.id,
-            });
-          }
         }, CHAT_TEMP_REPLACE_DELAY);
 
         pendingClientIdTimeoutsRef.current.set(clientId, timeoutId);

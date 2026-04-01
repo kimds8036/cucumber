@@ -81,7 +81,8 @@ export default function DMChatScreen({ navigation, route }) {
               fontFamily: fonts.bold,
               color: colors.textPrimary,
               includeFontPadding: false,
-              marginBottom: normalize(1),
+              marginTop: normalize(9),
+              marginBottom: normalize(2),
             }}
           >
             {friendName}
@@ -93,6 +94,7 @@ export default function DMChatScreen({ navigation, route }) {
                 fontSize: normalize(11),
                 fontFamily: fonts.regular,
                 color: colors.textSecondary,
+                marginTop: normalize(0),
               }}
             >
               {friendSchool}

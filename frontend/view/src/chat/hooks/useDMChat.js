@@ -18,14 +18,6 @@ export default function useDMChat(roomId, socket) {
         const calculatedMeId = Number(mePayload?.id ?? mePayload?.userId);
         if (!Number.isNaN(calculatedMeId)) setMeId(calculatedMeId);
         const rawMessages = res.data?.data || [];
-        if (__DEV__) {
-          console.log('[ChatDebug] FetchMessages', {
-            scope: 'dm',
-            roomId: targetRoomId,
-            meId: calculatedMeId,
-            count: rawMessages.length,
-          });
-        }
         return {
           messages: rawMessages.map((m) => ({
             ...m,

@@ -83,14 +83,8 @@ export default function useChatScroll({
 
       const threshold = Math.max(80, viewportH * 0.1);
       isNearBottomRef.current = offsetY + viewportH >= contentH - threshold;
-
-      // 위쪽으로 충분히 올라왔을 때 선제적으로 loadMore 호출 (프리페치)
-      const nearTopThreshold = viewportH * 1.0;
-      if (offsetY <= nearTopThreshold) {
-        triggerLoadMore();
-      }
     },
-    [triggerLoadMore],
+    [],
   );
 
   // 새 메시지 자동 스크롤
@@ -161,14 +155,6 @@ export default function useChatScroll({
       setListShellVisible(true);
       loadOlderAllowedRef.current = true;
       isInitialLoadRef.current = false;
-      if (__DEV__) {
-        const newest = messages[messages.length - 1];
-        console.log('[ChatDebug] AnchorResolvedBottom', {
-          roomId,
-          messagesCount: messages.length,
-          newestId: newest?.id,
-        });
-      }
     });
   }, [isLoading, messages, roomId]);
 

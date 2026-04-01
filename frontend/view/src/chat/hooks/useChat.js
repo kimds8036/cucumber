@@ -24,14 +24,6 @@ export default function useChat(roomId, socket) {
               : null;
         setMeId(calculatedMeId);
         const rawMessages = res.data?.data || [];
-        if (__DEV__) {
-          console.log('[ChatDebug] FetchMessages', {
-            scope: 'chat',
-            roomId: targetRoomId,
-            meId: calculatedMeId,
-            count: rawMessages.length,
-          });
-        }
         return {
           messages: rawMessages.map((m) => ({
             ...m,
