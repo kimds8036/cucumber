@@ -71,22 +71,28 @@ export default function MessageList({
         keyExtractor={extractKey}
         getItemType={getFlashListItemType}
         renderItem={renderItem}
-        // 평균 메시지 높이에 맞는 추정값으로 레이아웃 안정화
-        estimatedItemSize={100}
+        // 평균 메시지 높이에 맞는 추정값으로 레이아웃 안정화 (텍스트+이미지 포함 평균 높이 기준)
+        estimatedItemSize={130}
         // 화면 밖 영역을 넉넉히 미리 렌더링해서 빠른 스크롤 대응
-        drawDistance={1500}
+        drawDistance={3000}
         overrideItemLayout={overrideItemLayout}
         maxToRenderPerBatch={8}
         windowSize={7}
-        initialNumToRender={20}
+        initialNumToRender={40}
         removeClippedSubviews={true}
         disableAutoLayout={true}
         onStartReached={handleStartReached}
-        // 위로 스크롤하는 도중(상단 근처)에 미리 페이징을 트리거
-        onStartReachedThreshold={0.7}
+        // 화면 높이 1.5배 여유가 있을 때 미리 페이징을 트리거
+        onStartReachedThreshold={1.5}
         ListHeaderComponent={
           isLoadingMore && (data?.length || 0) > 0 ? (
-            <View style={{ paddingVertical: 12, alignItems: 'center' }}>
+            <View
+              style={{
+                height: 50,
+                justifyContent: 'center',
+                alignItems: 'center',
+              }}
+            >
               <ActivityIndicator size="small" />
             </View>
           ) : null
