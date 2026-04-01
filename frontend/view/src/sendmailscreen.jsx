@@ -12,19 +12,20 @@ import {
   Alert,
   useWindowDimensions,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import SubHeader from '../frame/subHeader';
 import { getNormalize } from '../../styles/frame.style';
 import { createMailStyles } from '../../styles/mail.style';
-import { colors } from '../../styles/colors';
+import { colors, fonts } from '../../styles/colors';
 import Loading from '../../components/Loading';
 import { api } from '../../utils/api';
 
 const SendMailScreen = ({ navigation }) => {
-  const { width } = useWindowDimensions();
+  const { width, height } = useWindowDimensions();
+  const insets = useSafeAreaInsets();
   const normalize = useMemo(() => getNormalize(width), [width]);
   const styles = useMemo(() => createMailStyles(normalize), [normalize]);
   const [recipientId, setRecipientId] = useState('');
@@ -40,6 +41,10 @@ const SendMailScreen = ({ navigation }) => {
   const [selectedUser, setSelectedUser] = useState(null);
   const [mailContent, setMailContent] = useState('');
   const [sending, setSending] = useState(false);
+  const [subHeaderHeight, setSubHeaderHeight] = useState(0);
+  const [schoolSectionHeight, setSchoolSectionHeight] = useState(0);
+  const [recipientSectionHeight, setRecipientSectionHeight] = useState(0);
+  const [bottomCtaHeight, setBottomCtaHeight] = useState(0);
 
   const handleMailContentChange = (text) => {
     if (text.length > 50) {
@@ -130,9 +135,27 @@ const SendMailScreen = ({ navigation }) => {
     return () => clearTimeout(t);
   }, [selectedSchool?.id, userQuery]);
 
+  // 전체 높이 기준으로 내용 섹션 최소 높이 계산
+  const scrollPadding = 16 * 2; // ScrollView contentContainerStyle 상하 padding (raw 값 기준)
+  const sectionGap = 12 * 3; // 섹션 간 marginBottom (raw 값 기준)
+  const contentSectionMinHeight = Math.max(
+    200,
+    height -
+      insets.top -
+      insets.bottom -
+      subHeaderHeight -
+      schoolSectionHeight -
+      recipientSectionHeight -
+      bottomCtaHeight -
+      scrollPadding -
+      sectionGap,
+  );
+
   return (
     <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
-      <SubHeader title="우편 보내기" onBack={() => navigation?.goBack()} />
+      <View onLayout={(e) => setSubHeaderHeight(e.nativeEvent.layout.height)}>
+        <SubHeader title="우편 보내기" onBack={() => navigation?.goBack()} />
+      </View>
       <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
         <KeyboardAvoidingView
           style={styles.keyboardView}
@@ -146,7 +169,12 @@ const SendMailScreen = ({ navigation }) => {
             showsVerticalScrollIndicator={false}
           >
             {/* 섹션 1: 보낼 학교 */}
-            <View style={styles.section}>
+            <View
+              style={styles.section}
+              onLayout={(e) =>
+                setSchoolSectionHeight(e.nativeEvent.layout.height)
+              }
+            >
               <Text style={styles.label}>보낼 학교</Text>
               {!selectedSchool ? (
                 <View>
@@ -200,13 +228,19 @@ const SendMailScreen = ({ navigation }) => {
                             setSchoolResults([]);
                           }}
                         >
-                          <Text style={{ color: colors.textPrimary }}>
+                          <Text
+                            style={{
+                              color: colors.textPrimary,
+                              fontFamily: fonts.bold,
+                            }}
+                          >
                             {school.name}
                           </Text>
                           <Text
                             style={{
                               color: colors.textSecondary,
                               fontSize: normalize(12),
+                              fontFamily: fonts.regular,
                             }}
                           >
                             {school.region || '-'}
@@ -260,7 +294,12 @@ const SendMailScreen = ({ navigation }) => {
             </View>
 
             {/* 섹션 2: 받는 사람 */}
-            <View style={styles.section}>
+            <View
+              style={styles.section}
+              onLayout={(e) =>
+                setRecipientSectionHeight(e.nativeEvent.layout.height)
+              }
+            >
               <Text style={styles.label}>받는 사람</Text>
               {!selectedSchool ? (
                 <View style={styles.inputWrapper}>
@@ -315,40 +354,64 @@ const SendMailScreen = ({ navigation }) => {
                         backgroundColor: '#FFF',
                       }}
                     >
-                      {userResults.map((user, index) => (
-                        <TouchableOpacity
-                          key={user.id}
-                          style={{
-                            paddingHorizontal: normalize(12),
-                            paddingVertical: normalize(10),
-                            borderBottomWidth:
-                              index === userResults.length - 1 ? 0 : 1,
-                            borderBottomColor: '#F2F2F2',
-                          }}
-                          onPress={() => {
-                            setSelectedUser(user);
-                            setRecipientId(String(user.id));
-                            setUserResults([]);
-                          }}
-                        >
-                          <Text style={{ color: colors.textPrimary }}>
-                            {user.displayName}
-                          </Text>
-                          <Text
+                      {userResults.map((user, index) => {
+                        const userIdLabel =
+                          user?.username ??
+                          user?.loginId ??
+                          String(user.id ?? '');
+                        return (
+                          <TouchableOpacity
+                            key={user.id}
                             style={{
-                              color: colors.textSecondary,
-                              fontSize: normalize(12),
+                              paddingHorizontal: normalize(12),
+                              paddingVertical: normalize(10),
+                              borderBottomWidth:
+                                index === userResults.length - 1 ? 0 : 1,
+                              borderBottomColor: '#F2F2F2',
+                            }}
+                            onPress={() => {
+                              setSelectedUser(user);
+                              setRecipientId(String(user.id));
+                              setUserResults([]);
                             }}
                           >
-                            {user.schoolName}
-                            {user.grade
-                              ? ` · ${user.grade}학년 ${
-                                  user.class ?? ''
-                                }반`
-                              : ''}
+                          {/* 첫 줄: 이름 + @아이디 (아이디는 textSecondary) */}
+                          <Text
+                            style={{
+                              color: colors.textPrimary,
+                              fontFamily: fonts.regular,
+                            }}
+                          >
+                            {user.displayName}
+                            {userIdLabel ? (
+                              <Text
+                                style={{
+                                  color: colors.textSecondary,
+                                  fontFamily: fonts.regular,
+                                }}
+                              >
+                                @{userIdLabel}
+                              </Text>
+                            ) : null}
                           </Text>
-                        </TouchableOpacity>
-                      ))}
+                            {/* 둘째 줄: 학교명 학년 반 */}
+                            <Text
+                              style={{
+                                color: colors.textSecondary,
+                                fontSize: normalize(12),
+                                fontFamily: fonts.regular,
+                                marginTop: normalize(2),
+                              }}
+                            >
+                              {user.grade
+                                ? ` ${user.grade}학년 ${
+                                    user.class ?? ''
+                                  }반`
+                                : ''}
+                            </Text>
+                          </TouchableOpacity>
+                        );
+                      })}
                     </View>
                   )}
                   {!userLoading &&
@@ -367,12 +430,27 @@ const SendMailScreen = ({ navigation }) => {
                     size={normalize(20)}
                     color={colors.textSecondary}
                   />
-                  <TextInput
-                    style={[styles.input, { marginLeft: normalize(6) }]}
-                    value={`${selectedUser.displayName} · ${selectedUser.schoolName}`}
-                    editable={false}
-                    pointerEvents="none"
-                  />
+                  <Text
+                    style={[
+                      styles.input,
+                      { marginLeft: normalize(6) },
+                    ]}
+                    numberOfLines={1}
+                  >
+                    {selectedUser.displayName}
+                    <Text
+                      style={{
+                        color: colors.textSecondary,
+                        fontFamily: fonts.regular,
+                      }}
+                    >
+                      {`@${
+                        selectedUser?.username ??
+                        selectedUser?.loginId ??
+                        String(selectedUser.id ?? '')
+                      }`}
+                    </Text>
+                  </Text>
                   <TouchableOpacity
                     hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                     onPress={() => {
@@ -394,7 +472,12 @@ const SendMailScreen = ({ navigation }) => {
             </View>
 
             {/* 섹션 3: 내용 */}
-            <View style={[styles.section, { flex: 1, marginBottom: normalize(8) }]}>
+            <View
+              style={[
+                styles.section,
+                { flex: 1, minHeight: contentSectionMinHeight },
+              ]}
+            >
               <Text style={styles.label}>내용</Text>
               <View style={styles.textAreaWrapper}>
                 <TextInput
@@ -419,7 +502,10 @@ const SendMailScreen = ({ navigation }) => {
             </View>
           </ScrollView>
 
-          <View style={styles.bottomCtaWrapper}>
+          <View
+            style={styles.bottomCtaWrapper}
+            onLayout={(e) => setBottomCtaHeight(e.nativeEvent.layout.height)}
+          >
             <TouchableOpacity
               style={[
                 styles.bottomCtaButton,
