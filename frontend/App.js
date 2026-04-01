@@ -14,8 +14,8 @@ import NotificationScreen from './view/src/notificationscreen';
 import BoardWrite from './view/src/boardWrite';
 import SearchResult from './view/src/SearchResult';
 import BoardDetail from './view/src/boardDetail';
-import Chat from './view/src/Chat';
-import DMChat from './view/src/DMChat';
+import ChatRoomScreen from './view/src/chat/screens/ChatRoomScreen';
+import DMChatScreen from './view/src/chat/screens/DMChatScreen';
 import SendMailScreen from './view/src/sendmailscreen';
 import AnonymousMailScreen from './view/src/mailscreen';
 import MailReplyScreen from './view/src/mailreply';
@@ -68,8 +68,8 @@ function MainStack() {
       <Stack.Screen name="Main" component={MainScreen} />
       <Stack.Screen name="BoardWrite" component={BoardWrite} />
       <Stack.Screen name="BoardDetail" component={BoardDetail} />
-      <Stack.Screen name="Chat" component={Chat} />
-      <Stack.Screen name="DMChat" component={DMChat} />
+      <Stack.Screen name="Chat" component={ChatRoomScreen} />
+      <Stack.Screen name="DMChat" component={DMChatScreen} />
       <Stack.Screen name="AddTimetable" component={AddTimetable} />
       <Stack.Screen name="MyPosts" component={MyPosts} />
       <Stack.Screen
