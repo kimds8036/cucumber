@@ -149,7 +149,7 @@ const SendMailScreen = ({ navigation }) => {
                   <View style={styles.inputWrapper}>
                     <TextInput
                       style={styles.input}
-                      placeholder="학교를 먼저 선택해주세요"
+                      placeholder="학교 검색하기"
                       value={schoolQuery}
                       onChangeText={setSchoolQuery}
                       placeholderTextColor={colors.textSecondary}
@@ -266,7 +266,7 @@ const SendMailScreen = ({ navigation }) => {
               <View style={styles.inputWrapper}>
                 <TextInput
                   style={styles.input}
-                  placeholder="(대체 입력) 받는 사람 ID 직접 입력"
+                  placeholder="받는 사람 검색하기"
                   value={recipientId}
                   onChangeText={setRecipientId}
                   keyboardType="number-pad"
