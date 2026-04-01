@@ -17,10 +17,12 @@ import {
   KeyboardAvoidingView,
   Platform,
   useWindowDimensions,
-  ActivityIndicator,
 } from 'react-native';
 import { FlashList } from '@shopify/flash-list';
-import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import {
+  SafeAreaView,
+  useSafeAreaInsets,
+} from 'react-native-safe-area-context';
 import Loading from '../../components/Loading';
 import SubHeader from '../frame/subHeader';
 import MessageTabIcon from '../../assets/Group 166.svg';
@@ -53,13 +55,9 @@ function withMessageGroupFlags(msgs) {
     const prev = msgs[i - 1];
     const next = msgs[i + 1];
     const showProfile =
-      !prev ||
-      !sameMessageSender(prev, msg) ||
-      prev.time !== msg.time;
+      !prev || !sameMessageSender(prev, msg) || prev.time !== msg.time;
     const showTimestamp =
-      !next ||
-      !sameMessageSender(msg, next) ||
-      msg.time !== next.time;
+      !next || !sameMessageSender(msg, next) || msg.time !== next.time;
     return { ...msg, showProfile, showTimestamp };
   });
 }
@@ -194,7 +192,12 @@ export default function DMChat({ navigation, route }) {
     );
     if (hasText) h += 46;
     if (item.isFailed || item.status === 'failed') h += 6;
-    if (typeof index === 'number' && typeof totalCount === 'number' && totalCount > 0 && index === totalCount - 1) {
+    if (
+      typeof index === 'number' &&
+      typeof totalCount === 'number' &&
+      totalCount > 0 &&
+      index === totalCount - 1
+    ) {
       h += CHAT_LAST_ROW_EXTRA_PAD;
     }
     return Math.max(120, Math.min(h, 2400));
@@ -242,22 +245,14 @@ export default function DMChat({ navigation, route }) {
         ? {
             id: replyToMessage.id,
             content: replyToMessage.content || '(이미지 메시지)',
-            senderName: replyToMessage.isMe
-              ? '나'
-              : (friend.name || '상대방'),
+            senderName: replyToMessage.isMe ? '나' : friend.name || '상대방',
           }
         : null,
     });
     setInputText('');
     setChatImages([]);
     setReplyToMessage(null);
-  }, [
-    sendMessage,
-    inputText,
-    chatImages,
-    replyToMessage,
-    friend.name,
-  ]);
+  }, [sendMessage, inputText, chatImages, replyToMessage, friend.name]);
 
   const handleImagePress = useCallback(
     (uri) => {
@@ -270,26 +265,29 @@ export default function DMChat({ navigation, route }) {
     [allImageUris],
   );
 
-  const handlePressReplyTarget = useCallback((parentId) => {
-    const targetId = parentId != null ? String(parentId) : null;
-    if (!targetId) return;
-    const targetIndex = flatData.findIndex(
-      (m) => m?.type !== 'dateBanner' && String(m?.id) === targetId,
-    );
-    if (targetIndex < 0) {
-      showToast('상단으로 더 올려서 과거 메시지를 확인해 주세요');
-      return;
-    }
-    try {
-      listRef.current?.scrollToIndex?.({
-        index: targetIndex,
-        animated: true,
-        viewPosition: 0.5,
-      });
-    } catch {
-      showToast('상단으로 더 올려서 과거 메시지를 확인해 주세요');
-    }
-  }, [flatData, showToast]);
+  const handlePressReplyTarget = useCallback(
+    (parentId) => {
+      const targetId = parentId != null ? String(parentId) : null;
+      if (!targetId) return;
+      const targetIndex = flatData.findIndex(
+        (m) => m?.type !== 'dateBanner' && String(m?.id) === targetId,
+      );
+      if (targetIndex < 0) {
+        showToast('상단으로 더 올려서 과거 메시지를 확인해 주세요');
+        return;
+      }
+      try {
+        listRef.current?.scrollToIndex?.({
+          index: targetIndex,
+          animated: true,
+          viewPosition: 0.5,
+        });
+      } catch {
+        showToast('상단으로 더 올려서 과거 메시지를 확인해 주세요');
+      }
+    },
+    [flatData, showToast],
+  );
 
   const handleInputChange = useCallback((text) => {
     setInputText(text);
@@ -468,7 +466,9 @@ export default function DMChat({ navigation, route }) {
         <View
           style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}
         >
-          <Text style={{ color: colors.textSecondary }}>방 정보가 없습니다.</Text>
+          <Text style={{ color: colors.textSecondary }}>
+            방 정보가 없습니다.
+          </Text>
         </View>
       </SafeAreaView>
     );
@@ -477,11 +477,7 @@ export default function DMChat({ navigation, route }) {
   if (isLoading && messages.length === 0) {
     return (
       <SafeAreaView style={detailStyles.container} edges={['top']}>
-        <SubHeader
-          title=" "
-          onBack={handleBack}
-          titleElement={titleElement}
-        />
+        <SubHeader title=" " onBack={handleBack} titleElement={titleElement} />
         <View
           style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}
         >
@@ -551,8 +547,7 @@ export default function DMChat({ navigation, route }) {
 
         <View
           style={{
-            paddingBottom:
-              insets.bottom > 0 ? insets.bottom : normalize(12),
+            paddingBottom: insets.bottom > 0 ? insets.bottom : normalize(12),
           }}
         >
           <CommentInput
@@ -564,7 +559,7 @@ export default function DMChat({ navigation, route }) {
             showImageAttach
             replyToCommentId={replyToMessage?.id ?? null}
             replyToAuthorLabel={
-              replyToMessage?.isMe ? '나' : (friend.name || '상대방')
+              replyToMessage?.isMe ? '나' : friend.name || '상대방'
             }
             clearReplyTarget={() => setReplyToMessage(null)}
             handleSendComment={handleSend}

@@ -397,14 +397,13 @@ export const createWriteStyles = (width, normalize) => {
       borderColor: colors.textSecondary,
       borderRadius: normalize(20),
       paddingHorizontal: normalize(12),
-      paddingVertical: normalize(10),
+      paddingVertical: normalize(7),
     },
     writeHashtagInput: {
       flex: 1,
       fontSize: normalize(fontSizes.lg),
       fontFamily: fonts.regular,
       color: colors.textPrimary,
-      paddingVertical: normalize(7),
     },
     writeHashtagCounter: {
       fontSize: normalize(fontSizes.xl),
@@ -551,6 +550,33 @@ export const createWriteStyles = (width, normalize) => {
     },
     tagPanelWrapperCompact: {
       paddingVertical: normalize(12),
+    },
+    // 인라인 스타일 추가
+    topToolbarSectionWithZIndex: {
+      zIndex: 10,
+      elevation: 10,
+    },
+    tagPanelContainerWithZIndex: {
+      zIndex: 20,
+      elevation: 20,
+    },
+    writeHashtagDashedWrapWithZIndex: {
+      zIndex: 30,
+      elevation: 30,
+    },
+    tagPanelAnimated: {
+      zIndex: 20,
+      elevation: 20,
+    },
+    writeHashtagInputInline: {
+      flex: 1,
+      fontSize: normalize(fontSizes.lg),
+      fontFamily: fonts.regular,
+      color: colors.textPrimary,
+    },
+    completePillWrapper: {
+      flexDirection: 'row',
+      alignItems: 'center',
     },
   });
 };
