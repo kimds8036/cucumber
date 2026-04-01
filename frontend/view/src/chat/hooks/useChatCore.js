@@ -57,13 +57,12 @@ export default function useChatCore(config) {
     meIdRef.current = meId;
   }, [meId]);
 
-  // ─── derived messages (ID 기반 정렬 — 원본 방식) ───
+  // ─── derived messages ([과거 → 최신] — 리듀서 정렬 기준 사용) ───
   const messages = useMemo(() => {
-    const arr = state.messageIds
+    // messageIds 는 getSortedUniqueIds 에 의해 "과거가 앞, 최신이 뒤" 순서로 관리된다.
+    return state.messageIds
       .map((id) => state.messagesById[id])
       .filter(Boolean);
-    arr.sort((a, b) => getMessageSortValue(a) - getMessageSortValue(b));
-    return arr;
   }, [state.messageIds, state.messagesById]);
 
   const hasMore = state.hasMore;
