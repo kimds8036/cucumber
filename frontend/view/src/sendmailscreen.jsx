@@ -14,10 +14,13 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
+import MaterialIcons from '@expo/vector-icons/MaterialIcons';
+import Ionicons from '@expo/vector-icons/Ionicons';
 import SubHeader from '../frame/subHeader';
 import { getNormalize } from '../../styles/frame.style';
 import { createMailStyles } from '../../styles/mail.style';
 import { colors } from '../../styles/colors';
+import Loading from '../../components/Loading';
 import { api } from '../../utils/api';
 
 const SendMailScreen = ({ navigation }) => {
@@ -128,153 +131,269 @@ const SendMailScreen = ({ navigation }) => {
   }, [selectedSchool?.id, userQuery]);
 
   return (
-    <SafeAreaView style={{ flex: 1 }} edges={['top']}>
+    <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
       <SubHeader title="우편 보내기" onBack={() => navigation?.goBack()} />
       <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
         <KeyboardAvoidingView
-          style={{ flex: 1 }}
+          style={styles.keyboardView}
           behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
           keyboardVerticalOffset={0}
         >
           <ScrollView
             style={styles.scrollView}
-            contentContainerStyle={{ flexGrow: 1, paddingBottom: normalize(40), paddingHorizontal: normalize(16), paddingTop: normalize(16) }}
+            contentContainerStyle={styles.sendScrollContent}
             keyboardShouldPersistTaps="handled"
             showsVerticalScrollIndicator={false}
           >
-            <View style={[styles.section, { marginTop: 0 }]}>
-              <Text style={styles.label}>받는 사람</Text>
+            {/* 섹션 1: 보낼 학교 */}
+            <View style={styles.section}>
+              <Text style={styles.label}>보낼 학교</Text>
               {!selectedSchool ? (
                 <View>
                   <View style={styles.inputWrapper}>
+                    <MaterialCommunityIcons
+                      name="school-outline"
+                      size={normalize(18)}
+                      color={colors.textSecondary}
+                    />
                     <TextInput
-                      style={styles.input}
+                      style={[styles.input, { marginLeft: normalize(6) }]}
                       placeholder="학교 검색하기"
                       value={schoolQuery}
                       onChangeText={setSchoolQuery}
                       placeholderTextColor={colors.textSecondary}
                     />
                   </View>
-                  {schoolLoading && <Loading style={{ marginTop: normalize(8) }} />}
+                  {schoolLoading && (
+                    <Loading style={styles.loadingBelowInput} />
+                  )}
                   {!!schoolError && (
-                    <Text style={{ marginTop: normalize(8), color: '#E74C3C', fontSize: normalize(12) }}>
+                    <Text
+                      style={styles.sendInlineErrorText}
+                    >
                       {schoolError}
                     </Text>
                   )}
                   {schoolResults.length > 0 && (
-                    <View style={{ marginTop: normalize(8), borderWidth: 1, borderColor: '#EEE', borderRadius: normalize(10), backgroundColor: '#FFF' }}>
-                      {schoolResults.map((school) => (
+                    <View
+                      style={{
+                        marginTop: normalize(8),
+                        borderWidth: 1,
+                        borderColor: '#EEE',
+                        borderRadius: normalize(10),
+                        backgroundColor: '#FFF',
+                      }}
+                    >
+                      {schoolResults.map((school, index) => (
                         <TouchableOpacity
                           key={school.id}
-                          style={{ paddingHorizontal: normalize(12), paddingVertical: normalize(10), borderBottomWidth: 1, borderBottomColor: '#F2F2F2' }}
+                          style={{
+                            paddingHorizontal: normalize(12),
+                            paddingVertical: normalize(10),
+                            borderBottomWidth:
+                              index === schoolResults.length - 1 ? 0 : 1,
+                            borderBottomColor: '#F2F2F2',
+                          }}
                           onPress={() => {
                             setSelectedSchool(school);
                             setSchoolQuery('');
                             setSchoolResults([]);
                           }}
                         >
-                          <Text style={{ color: colors.textPrimary }}>{school.name}</Text>
-                          <Text style={{ color: colors.textSecondary, fontSize: normalize(12) }}>{school.region || '-'}</Text>
+                          <Text style={{ color: colors.textPrimary }}>
+                            {school.name}
+                          </Text>
+                          <Text
+                            style={{
+                              color: colors.textSecondary,
+                              fontSize: normalize(12),
+                            }}
+                          >
+                            {school.region || '-'}
+                          </Text>
                         </TouchableOpacity>
                       ))}
                     </View>
                   )}
-                  {!schoolLoading && !schoolError && schoolQuery.trim().length > 0 && schoolResults.length === 0 && (
-                    <Text style={{ marginTop: normalize(8), color: colors.textSecondary, fontSize: normalize(12) }}>
-                      검색 결과 없음
-                    </Text>
-                  )}
+                  {!schoolLoading &&
+                    !schoolError &&
+                    schoolQuery.trim().length > 0 &&
+                    schoolResults.length === 0 && (
+                      <Text style={styles.sendInlineHelperText}>
+                        검색 결과 없음
+                      </Text>
+                    )}
+                </View>
+              ) : (
+                <View style={styles.inputWrapper}>
+                  <MaterialCommunityIcons
+                    name="school-outline"
+                    size={normalize(18)}
+                    color={colors.textSecondary}
+                  />
+                  <TextInput
+                    style={[styles.input, { marginLeft: normalize(6) }]}
+                    value={selectedSchool.name}
+                    editable={false}
+                    pointerEvents="none"
+                  />
+                  <TouchableOpacity
+                    hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                    onPress={() => {
+                      setSelectedSchool(null);
+                      setSchoolQuery('');
+                      setSchoolResults([]);
+                      setUserQuery('');
+                      setUserResults([]);
+                      setSelectedUser(null);
+                      setUserError('');
+                    }}
+                  >
+                    <Ionicons
+                      name="close-circle"
+                      size={normalize(18)}
+                      color={colors.textSecondary}
+                    />
+                  </TouchableOpacity>
+                </View>
+              )}
+            </View>
+
+            {/* 섹션 2: 받는 사람 */}
+            <View style={styles.section}>
+              <Text style={styles.label}>받는 사람</Text>
+              {!selectedSchool ? (
+                <View style={styles.inputWrapper}>
+                  <MaterialIcons
+                    name="person-outline"
+                    size={normalize(20)}
+                    color={colors.textSecondary}
+                  />
+                  <TextInput
+                    style={[
+                      styles.input,
+                      { opacity: 0.4, marginLeft: normalize(6) },
+                    ]}
+                    placeholder="학교를 먼저 선택하세요"
+                    editable={false}
+                    placeholderTextColor={colors.textSecondary}
+                  />
                 </View>
               ) : !selectedUser ? (
                 <View>
-                  <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: normalize(8), gap: normalize(8) }}>
-                    <View style={{ backgroundColor: '#EEF4FF', borderRadius: normalize(14), paddingHorizontal: normalize(10), paddingVertical: normalize(6), flexDirection: 'row', alignItems: 'center', gap: normalize(6) }}>
-                      <Text style={{ color: colors.textPrimary, fontSize: normalize(12) }}>{selectedSchool.name}</Text>
-                      <TouchableOpacity
-                        onPress={() => {
-                          setSelectedSchool(null);
-                          setSelectedUser(null);
-                          setRecipientId('');
-                          setUserQuery('');
-                          setUserResults([]);
-                          setUserError('');
-                        }}
-                      >
-                        <Text style={{ color: colors.textSecondary }}>x</Text>
-                      </TouchableOpacity>
-                    </View>
-                  </View>
                   <View style={styles.inputWrapper}>
+                    <MaterialIcons
+                      name="person-outline"
+                      size={normalize(20)}
+                      color={colors.textSecondary}
+                    />
                     <TextInput
-                      style={styles.input}
+                      style={[styles.input, { marginLeft: normalize(6) }]}
                       placeholder="아이디 또는 이름으로 검색"
                       value={userQuery}
                       onChangeText={setUserQuery}
                       placeholderTextColor={colors.textSecondary}
                     />
                   </View>
-                  {userLoading && <Loading style={{ marginTop: normalize(8) }} />}
+                  {userLoading && (
+                    <Loading style={styles.loadingBelowInput} />
+                  )}
                   {!!userError && (
-                    <Text style={{ marginTop: normalize(8), color: '#E74C3C', fontSize: normalize(12) }}>
+                    <Text
+                      style={styles.sendInlineErrorText}
+                    >
                       {userError}
                     </Text>
                   )}
                   {userResults.length > 0 && (
-                    <View style={{ marginTop: normalize(8), borderWidth: 1, borderColor: '#EEE', borderRadius: normalize(10), backgroundColor: '#FFF' }}>
-                      {userResults.map((user) => (
+                    <View
+                      style={{
+                        marginTop: normalize(8),
+                        borderWidth: 1,
+                        borderColor: '#EEE',
+                        borderRadius: normalize(10),
+                        backgroundColor: '#FFF',
+                      }}
+                    >
+                      {userResults.map((user, index) => (
                         <TouchableOpacity
                           key={user.id}
-                          style={{ paddingHorizontal: normalize(12), paddingVertical: normalize(10), borderBottomWidth: 1, borderBottomColor: '#F2F2F2' }}
+                          style={{
+                            paddingHorizontal: normalize(12),
+                            paddingVertical: normalize(10),
+                            borderBottomWidth:
+                              index === userResults.length - 1 ? 0 : 1,
+                            borderBottomColor: '#F2F2F2',
+                          }}
                           onPress={() => {
                             setSelectedUser(user);
                             setRecipientId(String(user.id));
                             setUserResults([]);
                           }}
                         >
-                          <Text style={{ color: colors.textPrimary }}>{user.displayName}</Text>
-                          <Text style={{ color: colors.textSecondary, fontSize: normalize(12) }}>
-                            {user.schoolName}{user.grade ? ` · ${user.grade}학년 ${user.class ?? ''}반` : ''}
+                          <Text style={{ color: colors.textPrimary }}>
+                            {user.displayName}
+                          </Text>
+                          <Text
+                            style={{
+                              color: colors.textSecondary,
+                              fontSize: normalize(12),
+                            }}
+                          >
+                            {user.schoolName}
+                            {user.grade
+                              ? ` · ${user.grade}학년 ${
+                                  user.class ?? ''
+                                }반`
+                              : ''}
                           </Text>
                         </TouchableOpacity>
                       ))}
                     </View>
                   )}
-                  {!userLoading && !userError && userQuery.trim().length > 0 && userResults.length === 0 && (
-                    <Text style={{ marginTop: normalize(8), color: colors.textSecondary, fontSize: normalize(12) }}>
-                      해당 학교에 가입된 유저가 없습니다
-                    </Text>
-                  )}
+                  {!userLoading &&
+                    !userError &&
+                    userQuery.trim().length > 0 &&
+                    userResults.length === 0 && (
+                      <Text style={styles.sendInlineHelperText}>
+                        해당 학교에 가입된 유저가 없습니다
+                      </Text>
+                    )}
                 </View>
               ) : (
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: normalize(8) }}>
-                  <View style={{ backgroundColor: '#EEF4FF', borderRadius: normalize(14), paddingHorizontal: normalize(10), paddingVertical: normalize(6), flexDirection: 'row', alignItems: 'center', gap: normalize(6), flex: 1 }}>
-                    <Text style={{ color: colors.textPrimary, fontSize: normalize(12), flex: 1 }} numberOfLines={1}>
-                      {selectedUser.displayName} · {selectedUser.schoolName}
-                    </Text>
-                    <TouchableOpacity
-                      onPress={() => {
-                        setSelectedUser(null);
-                        setRecipientId('');
-                        setUserQuery('');
-                      }}
-                    >
-                      <Text style={{ color: colors.textSecondary }}>x</Text>
-                    </TouchableOpacity>
-                  </View>
+                <View style={styles.inputWrapper}>
+                  <MaterialIcons
+                    name="person-outline"
+                    size={normalize(20)}
+                    color={colors.textSecondary}
+                  />
+                  <TextInput
+                    style={[styles.input, { marginLeft: normalize(6) }]}
+                    value={`${selectedUser.displayName} · ${selectedUser.schoolName}`}
+                    editable={false}
+                    pointerEvents="none"
+                  />
+                  <TouchableOpacity
+                    hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                    onPress={() => {
+                      setSelectedUser(null);
+                      setRecipientId('');
+                      setUserQuery('');
+                      setUserResults([]);
+                      setUserError('');
+                    }}
+                  >
+                    <Ionicons
+                      name="close-circle"
+                      size={normalize(18)}
+                      color={colors.textSecondary}
+                    />
+                  </TouchableOpacity>
                 </View>
               )}
-              <View style={styles.inputWrapper}>
-                <TextInput
-                  style={styles.input}
-                  placeholder="받는 사람 검색하기"
-                  value={recipientId}
-                  onChangeText={setRecipientId}
-                  keyboardType="number-pad"
-                  placeholderTextColor={colors.textSecondary}
-                />
-              </View>
             </View>
 
+            {/* 섹션 3: 내용 */}
             <View style={[styles.section, { flex: 1, marginBottom: normalize(8) }]}>
               <Text style={styles.label}>내용</Text>
               <View style={styles.textAreaWrapper}>
@@ -288,7 +407,7 @@ const SendMailScreen = ({ navigation }) => {
                   placeholderTextColor={colors.textSecondary}
                 />
                 <View style={styles.replyFormMetaRow}>
-                  <View style={{ marginLeft: 'auto', alignItems: 'flex-end', justifyContent: 'flex-end' }}>
+                  <View style={styles.sendMetaRight}>
                     <Text style={styles.replyFormCount}>{mailContent.length}/50자</Text>
                     <View style={styles.replyFormChip}>
                       <MaterialCommunityIcons name="television-classic" size={15} color={colors.textPrimary} />
@@ -304,7 +423,8 @@ const SendMailScreen = ({ navigation }) => {
             <TouchableOpacity
               style={[
                 styles.bottomCtaButton,
-                (!mailContent.trim() || !selectedUser || sending) && styles.bottomCtaDisabled,
+                (!mailContent.trim() || !selectedUser || sending) &&
+                  styles.bottomCtaDisabled,
               ]}
               onPress={handleSend}
               disabled={!mailContent.trim() || !selectedUser || sending}

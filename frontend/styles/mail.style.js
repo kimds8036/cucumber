@@ -392,7 +392,7 @@ export function createMailStyles(normalize) {
     scrollView: {
       flex: 1,
       backgroundColor: colors.background,
-      },
+    },
     section: {
       backgroundColor: colors.background,
       marginHorizontal: 0,
@@ -428,7 +428,7 @@ export function createMailStyles(normalize) {
       flex: 1,
       fontSize: normalize(fontSizes.xxl),
       color: colors.textPrimary,
-      paddingHorizontal: normalize(8),
+      paddingHorizontal: normalize(4),
     },
     resultsContainer: {
       marginTop: normalize(8),
@@ -471,6 +471,31 @@ export function createMailStyles(normalize) {
     noResultText: {
       fontSize: normalize(fontSizes.xl),
       color: colors.textSecondary,
+    },
+    // SendMail 전용 레이아웃
+    sendScrollContent: {
+      flexGrow: 1,
+      paddingBottom: normalize(40),
+      paddingHorizontal: normalize(16),
+      paddingTop: normalize(16),
+    },
+    loadingBelowInput: {
+      marginTop: normalize(8),
+    },
+    sendInlineErrorText: {
+      marginTop: normalize(8),
+      color: '#E74C3C',
+      fontSize: normalize(12),
+    },
+    sendInlineHelperText: {
+      marginTop: normalize(8),
+      color: colors.textSecondary,
+      fontSize: normalize(12),
+    },
+    sendMetaRight: {
+      marginLeft: 'auto',
+      alignItems: 'flex-end',
+      justifyContent: 'flex-end',
     },
     dormantBadge: {
       backgroundColor: colors.red,
