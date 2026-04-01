@@ -79,6 +79,7 @@ export default function ChatScreen({
   } = useChatUI();
 
   // flatData 생성: withMessageGroupFlags → injectDateBanners
+  // messages는 [과거 → 최신] 순서를 유지하고, flatData도 동일한 시간 흐름을 따른다.
   const flatData = useMemo(
     () => injectDateBanners(withMessageGroupFlags(chat.messages || [])),
     [chat.messages],

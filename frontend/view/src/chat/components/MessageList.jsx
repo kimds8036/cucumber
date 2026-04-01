@@ -64,7 +64,8 @@ export default function MessageList({
     >
       <FlashList
         ref={listRef}
-        key={roomId}
+        key={`${roomId}_inverted`}
+        inverted
         data={data}
         extraData={messages?.length}
         keyExtractor={extractKey}
@@ -78,11 +79,10 @@ export default function MessageList({
         initialNumToRender={20}
         removeClippedSubviews={true}
         disableAutoLayout={true}
-        maintainVisibleContentPosition={{ minIndexForVisible: 0 }}
         onStartReached={handleStartReached}
-        onStartReachedThreshold={0.01}
+        onStartReachedThreshold={0.1}
         ListHeaderComponent={
-          isLoadingMore ? (
+          isLoadingMore && (data?.length || 0) > 0 ? (
             <View style={{ paddingVertical: 12, alignItems: 'center' }}>
               <ActivityIndicator size="small" />
             </View>

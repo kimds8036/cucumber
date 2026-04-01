@@ -1,3 +1,22 @@
+const getMessageSortValue = (msg) => {
+  if (!msg) return Number.MIN_SAFE_INTEGER;
+  const idNum = Number(msg.id);
+  if (!Number.isNaN(idNum)) return idNum;
+  const t = Date.parse(msg.createdAt || '');
+  if (!Number.isNaN(t)) return t;
+  return Number.MIN_SAFE_INTEGER;
+};
+
+const getSortedUniqueIds = (ids, messagesById) => {
+  const unique = Array.from(new Set(ids));
+  // 정렬 결과: index 0 이 가장 "과거" (정렬값이 작은) 메시지
+  unique.sort(
+    (a, b) =>
+      getMessageSortValue(messagesById[a]) - getMessageSortValue(messagesById[b]),
+  );
+  return unique;
+};
+
 export const initialState = {
   messagesById: {},
   messageIds: [],
@@ -18,10 +37,12 @@ export function chatReducer(state, action) {
         messageIds.push(msg.id);
       });
 
+      const sortedIds = getSortedUniqueIds(messageIds, messagesById);
+
       return {
         ...state,
         messagesById,
-        messageIds,
+        messageIds: sortedIds,
         hasMore,
         isLoading: false,
       };
@@ -39,11 +60,10 @@ export function chatReducer(state, action) {
         }
       });
 
-      const newIdSet = new Set(newIds);
-      const mergedIds = [
-        ...newIds,
-        ...state.messageIds.filter((id) => !newIdSet.has(id)),
-      ];
+      const mergedIds = getSortedUniqueIds(
+        [...newIds, ...state.messageIds],
+        newById,
+      );
 
       return {
         ...state,
@@ -55,15 +75,18 @@ export function chatReducer(state, action) {
 
     case 'ADD_MESSAGE': {
       const msg = action.payload;
+      const messagesById = {
+        ...state.messagesById,
+        [msg.id]: msg,
+      };
+      const mergedIds = getSortedUniqueIds(
+        [...state.messageIds, msg.id],
+        messagesById,
+      );
       return {
         ...state,
-        messagesById: {
-          ...state.messagesById,
-          [msg.id]: msg,
-        },
-        messageIds: state.messageIds.includes(msg.id)
-          ? state.messageIds
-          : [...state.messageIds, msg.id],
+        messagesById,
+        messageIds: mergedIds,
       };
     }
 
@@ -87,31 +110,34 @@ export function chatReducer(state, action) {
 
       const tempMsg = state.messagesById[tempId];
       const { [tempId]: _removed, ...restById } = state.messagesById;
+      const messagesById = {
+        ...restById,
+        [serverMessage.id]: {
+          ...serverMessage,
+          parent_message_id:
+            serverMessage.parent_message_id ??
+            tempMsg.parent_message_id ??
+            null,
+          parent_content:
+            serverMessage.parent_content ?? tempMsg.parent_content ?? null,
+          parent_sender_name:
+            serverMessage.parent_sender_name ??
+            tempMsg.parent_sender_name ??
+            null,
+          status: 'sent',
+          isSending: false,
+          isFailed: false,
+        },
+      };
+      const replacedIds = state.messageIds.map((id) =>
+        id === tempId ? serverMessage.id : id,
+      );
+      const sortedIds = getSortedUniqueIds(replacedIds, messagesById);
 
       return {
         ...state,
-        messagesById: {
-          ...restById,
-          [serverMessage.id]: {
-            ...serverMessage,
-            parent_message_id:
-              serverMessage.parent_message_id ??
-              tempMsg.parent_message_id ??
-              null,
-            parent_content:
-              serverMessage.parent_content ?? tempMsg.parent_content ?? null,
-            parent_sender_name:
-              serverMessage.parent_sender_name ??
-              tempMsg.parent_sender_name ??
-              null,
-            status: 'sent',
-            isSending: false,
-            isFailed: false,
-          },
-        },
-        messageIds: state.messageIds.map((id) =>
-          id === tempId ? serverMessage.id : id,
-        ),
+        messagesById,
+        messageIds: sortedIds,
       };
     }
 
@@ -157,12 +183,12 @@ export function chatReducer(state, action) {
         const existing = newById[msg.id];
         if (existing && (existing.isSending || existing.isFailed)) return;
         newById[msg.id] = msg;
-        if (!state.messageIds.includes(msg.id)) {
-          newIds.push(msg.id);
-        }
+        newIds.push(msg.id);
       });
 
-      return { ...state, messagesById: newById, messageIds: newIds };
+      const sortedIds = getSortedUniqueIds(newIds, newById);
+
+      return { ...state, messagesById: newById, messageIds: sortedIds };
     }
 
     case 'TRIM_MESSAGES': {

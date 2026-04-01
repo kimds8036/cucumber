@@ -83,6 +83,14 @@ export default function useChatScroll({
 
       const threshold = Math.max(80, viewportH * 0.1);
       isNearBottomRef.current = offsetY + viewportH >= contentH - threshold;
+      // 초기 앵커링이 끝난 뒤, 사용자가 하단에서 벗어나 위로 스크롤한 이후에만 과거 로딩 허용
+      if (
+        didInitialAnchorRef.current &&
+        !isInitialLoadRef.current &&
+        !isNearBottomRef.current
+      ) {
+        loadOlderAllowedRef.current = true;
+      }
     },
     [],
   );
@@ -90,6 +98,7 @@ export default function useChatScroll({
   // 새 메시지 자동 스크롤
   useEffect(() => {
     if (!messages?.length) return;
+    // messages 마지막 요소가 가장 최신이라고 가정 ([과거 → 최신])
     const newest = messages[messages.length - 1];
     const newestId = newest?.id;
     if (!newestId || prevNewestIdRef.current === newestId) return;
@@ -98,6 +107,7 @@ export default function useChatScroll({
     if (shouldAutoscroll && !isScrollingRef.current) {
       if (scrollAnimationRef.current) clearTimeout(scrollAnimationRef.current);
       scrollAnimationRef.current = setTimeout(() => {
+        // inverted 리스트에서 "리스트 끝(최신)"으로 이동하려면 scrollToEnd 사용
         listRef.current?.scrollToEnd?.({ animated: true });
       }, 100);
     }
@@ -150,10 +160,12 @@ export default function useChatScroll({
     if (!messages || messages.length === 0) return;
 
     requestAnimationFrame(() => {
+      // inverted 환경에서 "리스트 끝(최신)"이 보이는 위치(바닥)에 맞추기 위해 scrollToEnd 사용
       listRef.current?.scrollToEnd?.({ animated: false });
       didInitialAnchorRef.current = true;
       setListShellVisible(true);
-      loadOlderAllowedRef.current = true;
+      // 사용자가 실제로 위로 스크롤하기 전까지는 과거 로딩을 막는다.
+      loadOlderAllowedRef.current = false;
       isInitialLoadRef.current = false;
     });
   }, [isLoading, messages, roomId]);
