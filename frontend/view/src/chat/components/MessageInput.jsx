@@ -1,0 +1,52 @@
+import React from 'react';
+import { View } from 'react-native';
+import CommentInput from '../../../../components/CommentInput.jsx';
+
+export default function MessageInput({
+  value,
+  onChange,
+  onSend,
+  images,
+  onImagesChange,
+  styles,
+  normalize,
+  replyToMessage,
+  clearReplyTarget,
+  keyboardHeight,
+  bottomInset,
+  mainPlaceholder,
+  chatInputStyles,
+}) {
+  const n = typeof normalize === 'function' ? normalize : (v) => v;
+  const paddingBottom =
+    keyboardHeight > 0 ? 0 : bottomInset > 0 ? bottomInset : n(12);
+
+  return (
+    <View
+      style={[
+        {
+          paddingBottom,
+          borderTopWidth: 1,
+          borderTopColor: '#E0E0E0',
+        },
+        chatInputStyles,
+      ]}
+    >
+      <CommentInput
+        bottomInputRef={null}
+        bottomComment={value}
+        setBottomComment={onChange}
+        selectedImages={images}
+        onImagesChange={onImagesChange}
+        showImageAttach
+        replyToCommentId={replyToMessage?.id ?? null}
+        replyToAuthorLabel={replyToMessage?.senderName || ''}
+        clearReplyTarget={clearReplyTarget}
+        handleSendComment={onSend}
+        styles={styles}
+        normalize={normalize}
+        mainPlaceholder={mainPlaceholder}
+      />
+    </View>
+  );
+}
