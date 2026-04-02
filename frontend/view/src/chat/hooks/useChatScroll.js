@@ -190,6 +190,14 @@ export default function useChatScroll({
   }, [triggerLoadMore]);
 
   // FlashList onContentSizeChange 기반 스크롤 위치 보정
+  /** 리스트 뷰포트 높이가 바뀐 뒤(예: 상단 PostCard 로드) 최신 메시지 쪽으로 다시 맞출 때 */
+  const scrollToLatest = useCallback((options = {}) => {
+    const animated = options.animated ?? false;
+    requestAnimationFrame(() => {
+      listRef.current?.scrollToEnd?.({ animated });
+    });
+  }, []);
+
   const handleContentSizeChange = useCallback(
     (width, height) => {
       const prevH = prevContentHeightRef.current || 0;
@@ -340,6 +348,7 @@ export default function useChatScroll({
     handleListShellLayout,
     handleStartReached,
     handleContentSizeChange,
+    scrollToLatest,
     isNearBottomRef,
     currentOffsetRef,
     contentHeightRef,

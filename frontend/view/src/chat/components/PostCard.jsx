@@ -1,5 +1,11 @@
-import React, { useEffect, useState } from 'react';
-import { Image, Text, TouchableOpacity, View } from 'react-native';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
+import {
+  ActivityIndicator,
+  Image,
+  Text,
+  TouchableOpacity,
+  View,
+} from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { api } from '../../../../utils/api';
@@ -7,13 +13,113 @@ import { colors, fonts } from '../../../../styles/colors';
 
 const postCache = {};
 
-export default function PostCard({ roomId, normalize, onPress }) {
+/** 실제 카드와 비슷한 바깥 여백 + 고정 높이(레이아웃 점프 완화) */
+function PostCardSkeleton({ n, onLayout }) {
+  const bar = (w, h, mt = 0) => (
+    <View
+      style={{
+        width: w,
+        height: h,
+        marginTop: mt,
+        borderRadius: n(4),
+        backgroundColor: colors.textLight10,
+      }}
+    />
+  );
+
+  return (
+    <View
+      pointerEvents="none"
+      onLayout={onLayout}
+      style={{
+        backgroundColor: colors.background,
+        marginHorizontal: n(12),
+        marginTop: n(6),
+        marginBottom: n(4),
+        borderRadius: n(10),
+        paddingHorizontal: n(12),
+        paddingVertical: n(8),
+        height: n(100),
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.06,
+        shadowRadius: 6,
+        elevation: 2,
+        justifyContent: 'space-between',
+      }}
+    >
+      <View
+        style={{
+          flexDirection: 'row',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          gap: n(8),
+        }}
+      >
+        <View style={{ flex: 1, minWidth: 0, justifyContent: 'center' }}>
+          {bar('72%', n(10))}
+          {bar('48%', n(8), n(8))}
+        </View>
+        <View
+          style={{
+            width: 56,
+            height: 56,
+            borderRadius: 8,
+            backgroundColor: colors.textLight10,
+            justifyContent: 'center',
+            alignItems: 'center',
+          }}
+        >
+          <ActivityIndicator size="small" color={colors.textSecondary} />
+        </View>
+      </View>
+      {bar('100%', n(12), n(6))}
+    </View>
+  );
+}
+
+export default function PostCard({ roomId, normalize, onPress, onReady, onThumbnailLoaded }) {
   const [post, setPost] = useState(null);
+  const [loading, setLoading] = useState(() => Boolean(roomId));
   const n = typeof normalize === 'function' ? normalize : (v) => v;
+  const readyFiredRef = useRef(false);
+  const thumbLoadFiredRef = useRef(false);
+  const loadingRef = useRef(loading);
 
   useEffect(() => {
-    if (!roomId) return;
+    readyFiredRef.current = false;
+    thumbLoadFiredRef.current = false;
+  }, [roomId]);
+
+  useEffect(() => {
+    if (loadingRef.current && !loading && post) {
+      readyFiredRef.current = false;
+      thumbLoadFiredRef.current = false;
+    }
+    loadingRef.current = loading;
+  }, [loading, post]);
+
+  const handleLayout = useCallback(() => {
+    if (readyFiredRef.current) return;
+    readyFiredRef.current = true;
+    onReady?.();
+  }, [onReady]);
+
+  const handleThumbnailLoad = useCallback(() => {
+    if (thumbLoadFiredRef.current) return;
+    thumbLoadFiredRef.current = true;
+    onThumbnailLoaded?.();
+  }, [onThumbnailLoaded]);
+
+  useEffect(() => {
+    if (!roomId) {
+      setLoading(false);
+      setPost(null);
+      return;
+    }
     let isMounted = true;
+    setLoading(true);
+    setPost(null);
 
     (async () => {
       try {
@@ -62,6 +168,8 @@ export default function PostCard({ roomId, normalize, onPress }) {
         if (isMounted) setPost(data);
       } catch {
         /* ignore */
+      } finally {
+        if (isMounted) setLoading(false);
       }
     })();
 
@@ -70,11 +178,16 @@ export default function PostCard({ roomId, normalize, onPress }) {
     };
   }, [roomId]);
 
+  if (loading) {
+    return <PostCardSkeleton n={n} onLayout={handleLayout} />;
+  }
+
   if (!post) return null;
 
   return (
     <TouchableOpacity
       activeOpacity={0.8}
+      onLayout={handleLayout}
       onPress={() => onPress?.(post)}
       style={{
         backgroundColor: colors.background,
@@ -165,6 +278,8 @@ export default function PostCard({ roomId, normalize, onPress }) {
               backgroundColor: colors.textLight10,
             }}
             resizeMode="cover"
+            onLoad={handleThumbnailLoad}
+            onError={handleThumbnailLoad}
           />
         ) : null}
       </View>

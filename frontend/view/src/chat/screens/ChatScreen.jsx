@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   KeyboardAvoidingView,
   Platform,
@@ -94,6 +94,27 @@ export default function ChatScreen({
     loadMore: chat.loadMore,
   });
 
+  const postCardLayoutAnchorDoneRef = useRef(false);
+  const postCardThumbAnchorDoneRef = useRef(false);
+  const scrollToLatestRef = useRef(scroll.scrollToLatest);
+  scrollToLatestRef.current = scroll.scrollToLatest;
+  useEffect(() => {
+    postCardLayoutAnchorDoneRef.current = false;
+    postCardThumbAnchorDoneRef.current = false;
+  }, [roomId]);
+
+  const handlePostCardReady = useCallback(() => {
+    if (postCardLayoutAnchorDoneRef.current) return;
+    postCardLayoutAnchorDoneRef.current = true;
+    scrollToLatestRef.current?.({ animated: false });
+  }, []);
+
+  const handlePostCardThumbnailLoaded = useCallback(() => {
+    if (postCardThumbAnchorDoneRef.current) return;
+    postCardThumbAnchorDoneRef.current = true;
+    scrollToLatestRef.current?.({ animated: false });
+  }, []);
+
   // 로딩 화면
   if (chat.isLoading && (!chat.messages || chat.messages.length === 0)) {
     return (
@@ -180,6 +201,8 @@ export default function ChatScreen({
           <PostCard
             roomId={roomId}
             normalize={normalize}
+            onReady={handlePostCardReady}
+            onThumbnailLoaded={handlePostCardThumbnailLoaded}
             onPress={(post) => {
               if (!post?.id || !navigation) return;
               navigation.navigate('BoardDetail', {
