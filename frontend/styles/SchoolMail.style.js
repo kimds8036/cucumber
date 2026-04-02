@@ -20,9 +20,7 @@ export const createSchoolMailStyles = (width, normalize) => {
       paddingVertical: normalize(8),
     },
     gridContainer: {
-      flexDirection: 'row',
-      flexWrap: 'wrap',
-      justifyContent: 'space-between',
+      paddingBottom: normalize(20),
     },
     card: {
       width: cardWidth,

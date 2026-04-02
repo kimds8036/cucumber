@@ -364,7 +364,7 @@ const BoardWrite = ({ navigation, route }) => {
                 onPress={handlePressPhoto}
                 style={styles.photoAddButton}
               >
-                <Ionicons name="add" size={20} color="#888" />
+                <Ionicons name="add" size={20} color={colors.textSecondary} />
               </TouchableOpacity>
             )}
             {postImages.map((uri, index) => (
@@ -376,7 +376,7 @@ const BoardWrite = ({ navigation, route }) => {
                   }
                   style={styles.photoDeleteButton}
                 >
-                  <Ionicons name="close-circle" size={18} color="#fff" />
+                  <Ionicons name="close-circle" size={18} color={colors.background} />
                 </TouchableOpacity>
               </View>
             ))}

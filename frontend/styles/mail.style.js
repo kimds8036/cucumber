@@ -177,8 +177,9 @@ export function createMailStyles(normalize) {
       marginBottom: normalize(6),
     },
     detailReplyBadgeText: {
-      color: colors.writePillLabel,
-      fontSize: normalize(10),
+      color: colors.textPrimary,
+      fontSize: normalize(fontSizes.md),
+      fontFamily: fonts.regular,
     },
     detailNotice: {
       marginBottom: normalize(12),

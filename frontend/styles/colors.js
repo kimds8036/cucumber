@@ -52,13 +52,6 @@ export const colors = {
   overlay: 'rgba(0, 0, 0, 0.5)',              // 오버레이 (50%)
   overlayLight: 'rgba(0, 0, 0, 0.3)',         // 밝은 오버레이
   overlayDark: 'rgba(0, 0, 0, 0.7)',          // 진한 오버레이
-
-  // 글쓰기: 완료 pill 라벨 / 해시태그 칩 (연한 그린 톤)
-  writePillLabel: '#1A4A26',
-  hashtagChipBg: '#EDF7F0',
-  hashtagChipBorder: '#B8DFC8',
-  hashtagChipText: '#3A7A52',
-  hashtagChipRemove: '#7AB08A',
 };
 
 export const PROFILE_COLORS = {

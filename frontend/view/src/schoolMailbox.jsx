@@ -17,6 +17,7 @@ import SubHeader from '../frame/subHeader';
 import { colors, fonts } from '../../styles/colors';
 import { getNormalize } from '../../styles/frame.style';
 import { createSchoolMailStyles } from '../../styles/SchoolMail.style';
+import Loading from '../../components/Loading';
 import { api } from '../../utils/api';
 import { getSchoolMailFromLabel } from './utils/schoolMailFromLabel';
 
