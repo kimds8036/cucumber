@@ -1,18 +1,15 @@
-import React, { useMemo, useState, useRef, useEffect, useCallback } from 'react';
+import React, { useMemo, useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
   FlatList,
   TouchableOpacity,
   useWindowDimensions,
-  Modal,
-  TouchableWithoutFeedback,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Feather from '@expo/vector-icons/Feather';
 import { Ionicons } from '@expo/vector-icons';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
-import { Entypo } from '@expo/vector-icons';
 import SubHeader from '../frame/subHeader';
 import { colors, fonts } from '../../styles/colors';
 import { getNormalize } from '../../styles/frame.style';
@@ -80,11 +77,6 @@ const SchoolMailboxScreen = ({ navigation, route }) => {
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
 
-  const [floatingMenuVisible, setFloatingMenuVisible] = useState(false);
-  const [floatingMenuAnchor, setFloatingMenuAnchor] = useState(null);
-  const [floatingMenuMail, setFloatingMenuMail] = useState(null);
-  const menuButtonRefs = useRef({});
-
   const fetchMails = useCallback(
     async (nextPage = 1, append = false) => {
       if (!schoolId) {
@@ -143,29 +135,6 @@ const SchoolMailboxScreen = ({ navigation, route }) => {
     fetchMails(page + 1, true);
   }, [loading, loadingMore, hasMore, schoolId, page, fetchMails]);
 
-  const defaultMenuItems = useMemo(
-    () => [
-      { label: '신고하기', iconName: 'flag-outline', onPress: () => {} },
-      { label: '차단하기', iconName: 'remove-circle-outline', onPress: () => {} },
-      { label: '공유하기', iconName: 'share-outline', onPress: () => {} },
-    ],
-    [],
-  );
-
-  const openFloatingMenu = (mail, ref) => {
-    ref?.measureInWindow((x, y) => {
-      setFloatingMenuAnchor({ x, y });
-      setFloatingMenuMail(mail);
-      setFloatingMenuVisible(true);
-    });
-  };
-
-  const closeFloatingMenu = () => {
-    setFloatingMenuVisible(false);
-    setFloatingMenuAnchor(null);
-    setFloatingMenuMail(null);
-  };
-
   const renderItem = ({ item: raw }) => {
     const mail = mapMailForCard(raw, schoolId);
     return (
@@ -181,13 +150,14 @@ const SchoolMailboxScreen = ({ navigation, route }) => {
         }
       >
         <View style={styles.cardTopRow}>
-          <View style={styles.cardIconWrap}>
-            <Ionicons
-              name="mail-outline"
-              size={normalize(22)}
-              color={colors.primary}
-              style={styles.cardEnvelope}
-            />
+          <View style={styles.cardMetaRow}>
+            <Text style={styles.cardFromLabel} numberOfLines={1}>
+              {mail.fromLabel}
+            </Text>
+            <Text style={styles.cardMetaDot}>•</Text>
+            <Text style={styles.cardTime} numberOfLines={1}>
+              {mail.time}
+            </Text>
           </View>
           {isMailNew(raw.created_at) && (
             <View style={styles.newBadge}>
@@ -199,20 +169,8 @@ const SchoolMailboxScreen = ({ navigation, route }) => {
         <Text style={styles.cardPreview} numberOfLines={2}>
           {mail.preview}
         </Text>
-        <Text
-          style={{
-            fontSize: normalize(12),
-            fontFamily: fonts.regular,
-            color: colors.textSecondary,
-            marginBottom: normalize(6),
-          }}
-          numberOfLines={1}
-        >
-          {mail.fromLabel}
-        </Text>
 
         <View style={styles.cardFooterRow}>
-          <Text style={styles.cardTime}>{mail.time}</Text>
           <View style={styles.statRow}>
             <View style={styles.statItem}>
               <FontAwesome name="heart-o" size={normalize(14)} color={colors.alert} />
@@ -221,28 +179,6 @@ const SchoolMailboxScreen = ({ navigation, route }) => {
             <View style={styles.statItem}>
               <Ionicons name="chatbubble-outline" size={normalize(15)} color={colors.primary} />
               <Text style={styles.statText}>{mail.comments}</Text>
-            </View>
-            <View
-              ref={(r) => {
-                if (r) menuButtonRefs.current[raw.id] = r;
-              }}
-              collapsable={false}
-            >
-              <TouchableOpacity
-                activeOpacity={0.7}
-                onPress={(e) => {
-                  e.stopPropagation();
-                  openFloatingMenu(mail, menuButtonRefs.current[raw.id]);
-                }}
-                hitSlop={{
-                  top: normalize(8),
-                  bottom: normalize(8),
-                  left: normalize(8),
-                  right: normalize(8),
-                }}
-              >
-                <Entypo name="dots-three-vertical" size={normalize(14)} color={colors.textSecondary} />
-              </TouchableOpacity>
             </View>
           </View>
         </View>
@@ -301,89 +237,15 @@ const SchoolMailboxScreen = ({ navigation, route }) => {
             })
           }
         >
-          <Feather name="send" size={normalize(30)} color={colors.background} />
+          <Feather
+            name="send"
+            size={normalize(30)}
+            top={normalize(2)}
+            right={normalize(1)}
+            color={colors.background}
+          />
         </TouchableOpacity>
       </View>
-
-      <Modal
-        visible={floatingMenuVisible}
-        transparent
-        animationType="fade"
-        onRequestClose={closeFloatingMenu}
-      >
-        <TouchableWithoutFeedback onPress={closeFloatingMenu}>
-          <View
-            style={{
-              flex: 1,
-              backgroundColor: 'rgba(0,0,0,0.3)',
-              ...(floatingMenuAnchor ? {} : { justifyContent: 'center', alignItems: 'center' }),
-            }}
-          >
-            <TouchableWithoutFeedback>
-              <View
-                style={{
-                  backgroundColor: colors.background,
-                  borderRadius: normalize(12),
-                  minWidth: width * 0.45,
-                  maxWidth: width * 0.7,
-                  paddingVertical: normalize(4),
-                  shadowColor: colors.shadow,
-                  shadowOffset: { width: 0, height: 2 },
-                  shadowOpacity: 0.15,
-                  shadowRadius: 5,
-                  elevation: 5,
-                  ...(floatingMenuAnchor
-                    ? {
-                        position: 'absolute',
-                        right: width - floatingMenuAnchor.x,
-                        top: floatingMenuAnchor.y,
-                      }
-                    : {}),
-                }}
-              >
-                {defaultMenuItems.map((item, index) => (
-                  <React.Fragment key={index}>
-                    <TouchableOpacity
-                      style={{
-                        flexDirection: 'row',
-                        alignItems: 'center',
-                        justifyContent: 'space-between',
-                        paddingVertical: normalize(10),
-                        paddingHorizontal: normalize(14),
-                      }}
-                      activeOpacity={0.7}
-                      onPress={() => {
-                        if (item.onPress) item.onPress(floatingMenuMail);
-                        closeFloatingMenu();
-                      }}
-                    >
-                      <Text
-                        style={{
-                          fontSize: normalize(13),
-                          fontFamily: fonts.regular,
-                          color: colors.textPrimary,
-                        }}
-                      >
-                        {item.label}
-                      </Text>
-                      <Ionicons name={item.iconName} size={normalize(17)} color={colors.textSecondary} />
-                    </TouchableOpacity>
-                    {index < defaultMenuItems.length - 1 && (
-                      <View
-                        style={{
-                          height: 1,
-                          backgroundColor: colors.textLight10,
-                          marginHorizontal: normalize(8),
-                        }}
-                      />
-                    )}
-                  </React.Fragment>
-                ))}
-              </View>
-            </TouchableWithoutFeedback>
-          </View>
-        </TouchableWithoutFeedback>
-      </Modal>
     </SafeAreaView>
   );
 };

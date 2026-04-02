@@ -144,7 +144,7 @@ export const createSubHeaderStyles = (width, height) => {
       alignItems: 'center',
       justifyContent: 'center',
       height: normalize(30),
-      marginBottom: normalize(16),
+      marginBottom: normalize(10),
       position: 'relative',
     },
     backButton: {

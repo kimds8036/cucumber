@@ -36,9 +36,27 @@ export const createSchoolMailStyles = (width, normalize) => {
     },
     cardTopRow: {
       flexDirection: 'row',
-      alignItems: 'flex-start',
+      alignItems: 'center',
       justifyContent: 'space-between',
       marginBottom: normalize(8),
+    },
+    cardMetaRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      flex: 1,
+      minWidth: 0,
+    },
+    cardFromLabel: {
+      fontSize: normalize(fontSizes.lg),
+      fontFamily: fonts.regular,
+      color: colors.textSecondary,
+      flexShrink: 1,
+    },
+    cardMetaDot: {
+      fontSize: normalize(fontSizes.lg),
+      fontFamily: fonts.regular,
+      color: colors.textSecondary,
+      marginHorizontal: normalize(4),
     },
     cardIconWrap: {
       position: 'relative',
@@ -67,12 +85,11 @@ export const createSchoolMailStyles = (width, normalize) => {
       fontFamily: fonts.regular,
       color: colors.textPrimary,
       lineHeight: normalize(18),
-      marginBottom: normalize(8),
-      minHeight: normalize(36),
+      marginBottom: normalize(10),
     },
     cardFooterRow: {
       flexDirection: 'row',
-      justifyContent: 'space-between',
+      justifyContent: 'flex-start',
       alignItems: 'center',
       marginTop: 'auto',
     },
