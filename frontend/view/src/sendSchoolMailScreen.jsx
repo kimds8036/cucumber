@@ -21,18 +21,15 @@ import { colors } from '../../styles/colors';
 import Loading from '../../components/Loading';
 import { api } from '../../utils/api';
 
-/** ourschoolscreen 연동 전 임시 값 (추후 route.params 또는 API로 대체) */
-const TEMP_SCHOOL_ID = 1;
-const TEMP_SCHOOL_NAME = '진관고등학교';
-
 const SendSchoolMailScreen = ({ navigation, route }) => {
   const { width, height } = useWindowDimensions();
   const insets = useSafeAreaInsets();
   const normalize = useMemo(() => getNormalize(width), [width]);
   const styles = useMemo(() => createMailStyles(normalize), [normalize]);
 
-  const schoolId = route?.params?.schoolId ?? TEMP_SCHOOL_ID;
-  const schoolName = route?.params?.schoolName ?? TEMP_SCHOOL_NAME;
+  /** 학교 우편함 등에서 navigate 시 전달 (별도 조회 API 없음) */
+  const schoolId = route?.params?.schoolId ?? null;
+  const schoolName = route?.params?.schoolName ?? '';
 
   const [mailContent, setMailContent] = useState('');
   const [sending, setSending] = useState(false);
@@ -49,6 +46,10 @@ const SendSchoolMailScreen = ({ navigation, route }) => {
   };
 
   const handleSend = async () => {
+    if (!schoolId) {
+      Alert.alert('오류', '학교 정보가 없습니다.');
+      return;
+    }
     if (!mailContent.trim()) {
       Alert.alert('알림', '내용을 입력해주세요.');
       return;
@@ -118,7 +119,7 @@ const SendSchoolMailScreen = ({ navigation, route }) => {
                 />
                 <TextInput
                   style={[styles.input, { marginLeft: normalize(6) }]}
-                  value={schoolName}
+                  value={schoolName || '(학교 정보 없음)'}
                   editable={false}
                   pointerEvents="none"
                 />
@@ -159,10 +160,10 @@ const SendSchoolMailScreen = ({ navigation, route }) => {
             <TouchableOpacity
               style={[
                 styles.bottomCtaButton,
-                (!mailContent.trim() || sending) && styles.bottomCtaDisabled,
+                (!mailContent.trim() || !schoolId || sending) && styles.bottomCtaDisabled,
               ]}
               onPress={handleSend}
-              disabled={!mailContent.trim() || sending}
+              disabled={!mailContent.trim() || !schoolId || sending}
               activeOpacity={0.9}
             >
               {sending ? (

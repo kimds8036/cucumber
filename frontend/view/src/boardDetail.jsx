@@ -691,11 +691,6 @@ export default function BoardDetail({ navigation, route }) {
     const isCommentLiked = likeState.liked ?? false;
     const onCommentLike = likeState.onLike;
     const isAuthorLabel = item.authorLabel === '작성자';
-    const AuthorLabel = (
-      <Text style={isAuthorLabel ? styles.commentAuthorWriter : styles.commentAuthor}>
-        {item.authorLabel}
-      </Text>
-    );
 
     const bodyHasTag = /@익명\d+/.test(item.content);
     const contentEl = bodyHasTag ? (
@@ -708,11 +703,17 @@ export default function BoardDetail({ navigation, route }) {
 
     const commentBlockInner = (
       <>
-        <View style={styles.commentRow}>
-          <View style={styles.commentAuthorRow}>
-            {AuthorLabel}
-          </View>
-          <Text style={styles.commentTime}>{item.time}</Text>
+        <View style={[styles.detailAuthorRow, { flex: 1, minWidth: 0, marginBottom: normalize(6) }]}>
+          <Text
+            style={isAuthorLabel ? styles.detailAuthor : styles.detailAuthorAnonymous}
+            numberOfLines={1}
+          >
+            {item.authorLabel}
+          </Text>
+          <Text style={styles.detailDot}>•</Text>
+          <Text style={styles.detailTime} numberOfLines={1}>
+            {item.time}
+          </Text>
         </View>
         {contentEl}
         <View style={styles.commentFooter}>
@@ -987,13 +988,20 @@ export default function BoardDetail({ navigation, route }) {
                           ? String(tag.name ?? '')
                           : String(tag ?? '');
                       if (!label.trim()) return null;
+                      const searchQuery = label.trim();
                       return (
-                        <View
+                        <TouchableOpacity
                           key={tag?.id != null ? `tag-${tag.id}` : `tag-${idx}-${label}`}
                           style={styles.detailTagChip}
+                          activeOpacity={0.7}
+                          onPress={() =>
+                            navigation.navigate('SearchResult', {
+                              query: searchQuery,
+                            })
+                          }
                         >
                           <Text style={styles.detailTagText}>{label}</Text>
-                        </View>
+                        </TouchableOpacity>
                       );
                     })}
                   </View>

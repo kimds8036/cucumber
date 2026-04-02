@@ -18,6 +18,7 @@ import { colors } from '../../styles/colors';
 import { getNormalize, createSearchResultStyles } from '../../styles/search.style';
 import { api } from '../../utils/api';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import Loading from '../../components/Loading';
 
 const TABS = ['전체', '전체게시판', '학교게시판', '학교우편'];
 const RECENT_KEY = '@search_recent_keywords';
@@ -43,6 +44,11 @@ function makeSnippet(content, query) {
 
 function getTitle(item) {
   return (item.content || '').split('\n')[0] || '제목 없음';
+}
+
+/** API/매칭용: 검색어에서 # 제거 */
+function stripHashForSearch(q) {
+  return String(q ?? '').replace(/#/g, '').trim();
 }
 
 // BoardAll / boardDetail 과 동일한 created_at → 한국 기준 상대 시간 포맷
@@ -76,9 +82,9 @@ function formatMeta(item) {
 }
 
 export default function SearchResult({ route, navigation }) {
-  const routeQuery = route?.params?.query ?? '';
-  const [searchText, setSearchText] = useState(routeQuery);
-  const [committedQuery, setCommittedQuery] = useState(routeQuery);
+  const initialFromRoute = stripHashForSearch(route?.params?.query ?? '');
+  const [searchText, setSearchText] = useState(initialFromRoute);
+  const [committedQuery, setCommittedQuery] = useState(initialFromRoute);
   const [mode, setMode] = useState('result'); // 'input' | 'result'
   const [activeTab, setActiveTab] = useState('전체');
   const [expandedSection, setExpandedSection] = useState(null);
@@ -126,7 +132,7 @@ export default function SearchResult({ route, navigation }) {
     );
   };
 
-  const normalizedQuery = committedQuery.trim();
+  const normalizedQuery = stripHashForSearch(committedQuery);
 
   const saveRecent = async (list) => {
     try {
@@ -193,6 +199,12 @@ export default function SearchResult({ route, navigation }) {
   }, []);
 
   useEffect(() => {
+    const q = stripHashForSearch(route?.params?.query ?? '');
+    setSearchText(q);
+    setCommittedQuery(q);
+  }, [route?.params?.query]);
+
+  useEffect(() => {
     if (!normalizedQuery) return;
     console.log('[SearchResult] normalizedQuery changed, trigger search', {
       query: normalizedQuery,
@@ -244,8 +256,8 @@ export default function SearchResult({ route, navigation }) {
                   key={item.id}
                   style={[s.fullCard, idx < items.length - 1 && s.fullCardBorder]}
                 >
-                  {highlightFull(getTitle(item), searchText)}
-                  <Text style={s.fullSnippet}>{makeSnippet(item.content, searchText)}</Text>
+                  {highlightFull(getTitle(item), normalizedQuery)}
+                  <Text style={s.fullSnippet}>{makeSnippet(item.content, normalizedQuery)}</Text>
                   <Text style={s.metaText}>{formatMeta(item)}</Text>
                 </View>
               ))}
@@ -269,7 +281,7 @@ export default function SearchResult({ route, navigation }) {
         <TouchableOpacity
           onPress={() => {
             if (mode === 'input') {
-              setSearchText(committedQuery);
+              setSearchText(stripHashForSearch(committedQuery));
               setMode('result');
             } else {
               navigation.reset({
@@ -289,12 +301,13 @@ export default function SearchResult({ route, navigation }) {
             style={s.searchInput}
             placeholder="게시글, 우편함 검색"
             value={searchText}
-            onChangeText={setSearchText}
+            onChangeText={(t) => setSearchText(stripHashForSearch(t))}
             onFocus={() => setMode('input')}
             onSubmitEditing={() => {
-              const q = searchText.trim();
+              const q = stripHashForSearch(searchText);
               if (!q) return;
               setCommittedQuery(q);
+              setSearchText(q);
               setMode('result');
               setRecentSearches((prev) => {
                 const filtered = prev.filter((item) => item !== q);
@@ -413,9 +426,9 @@ export default function SearchResult({ route, navigation }) {
                     });
                   }}
                 >
-                  {highlight(getTitle(item), searchText)}
+                  {highlight(getTitle(item), normalizedQuery)}
                   <Text style={s.cardSnippet} numberOfLines={2}>
-                    {makeSnippet(item.content, searchText)}
+                    {makeSnippet(item.content, normalizedQuery)}
                   </Text>
                   <Text style={s.metaText}>{formatMeta(item)}</Text>
                 </TouchableOpacity>
@@ -454,9 +467,9 @@ export default function SearchResult({ route, navigation }) {
                     });
                   }}
                 >
-                  {highlightFull(getTitle(item), searchText)}
+                  {highlightFull(getTitle(item), normalizedQuery)}
                   <Text style={s.fullSnippet}>
-                    {makeSnippet(item.content, searchText)}
+                    {makeSnippet(item.content, normalizedQuery)}
                   </Text>
                   <Text style={s.metaText}>{formatMeta(item)}</Text>
                 </TouchableOpacity>
@@ -533,7 +546,7 @@ export default function SearchResult({ route, navigation }) {
                   key={index}
                   style={s.recentRow}
                   onPress={() => {
-                    const q = item;
+                    const q = stripHashForSearch(item);
                     setSearchText(q);
                     setCommittedQuery(q);
                     setMode('result');
@@ -569,7 +582,7 @@ export default function SearchResult({ route, navigation }) {
                   key={tag}
                   style={s.tag}
                   onPress={() => {
-                    const q = tag;
+                    const q = stripHashForSearch(tag);
                     setSearchText(q);
                     setCommittedQuery(q);
                     setMode('result');

@@ -42,6 +42,10 @@ function formatTimeAgo(createdAt) {
 
 const RECENT_KEY = '@search_recent_keywords';
 
+function stripHashForSearch(q) {
+  return String(q ?? '').replace(/#/g, '').trim();
+}
+
 const SearchScreen = ({ navigation }) => {
   const { width } = useWindowDimensions();
   const normalize = useMemo(() => getNormalize(width), [width]);
@@ -68,7 +72,11 @@ const SearchScreen = ({ navigation }) => {
   };
 
   const runSearch = (keyword) => {
-    const q = (keyword || searchText).trim();
+    const raw =
+      keyword !== undefined && keyword !== null && String(keyword).length > 0
+        ? keyword
+        : searchText;
+    const q = stripHashForSearch(raw);
     if (!q) return;
     setRecentSearches((prev) => {
       const filtered = prev.filter((item) => item !== q);
@@ -80,7 +88,7 @@ const SearchScreen = ({ navigation }) => {
   };
 
   const handleChangeText = (text) => {
-    setSearchText(text);
+    setSearchText(stripHashForSearch(text));
   };
 
   const handleClearAll = () => {
@@ -166,7 +174,11 @@ const SearchScreen = ({ navigation }) => {
                 <TouchableOpacity
                   key={index}
                   style={styles.recentRow}
-                  onPress={() => { setSearchText(search); runSearch(search); }}
+                  onPress={() => {
+                    const q = stripHashForSearch(search);
+                    setSearchText(q);
+                    runSearch(q);
+                  }}
                   activeOpacity={0.6}
                 >
                   <Ionicons name="time-outline" size={normalize(15)} color={colors.textLight20} />
@@ -192,7 +204,11 @@ const SearchScreen = ({ navigation }) => {
                 <TouchableOpacity
                   key={tag}
                   style={styles.tag}
-                  onPress={() => { setSearchText(tag); runSearch(tag); }}
+                  onPress={() => {
+                    const q = stripHashForSearch(tag);
+                    setSearchText(q);
+                    runSearch(q);
+                  }}
                   activeOpacity={0.7}
                 >
                   <Text style={styles.tagText}># {tag}</Text>
