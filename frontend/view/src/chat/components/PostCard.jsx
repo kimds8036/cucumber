@@ -78,7 +78,14 @@ function PostCardSkeleton({ n, onLayout }) {
   );
 }
 
-export default function PostCard({ roomId, normalize, onPress, onReady, onThumbnailLoaded }) {
+export default function PostCard({
+  roomId,
+  normalize,
+  onPress,
+  onReady,
+  onThumbnailLoaded,
+  onLoadingChange,
+}) {
   const [post, setPost] = useState(null);
   const [loading, setLoading] = useState(() => Boolean(roomId));
   const n = typeof normalize === 'function' ? normalize : (v) => v;
@@ -98,6 +105,10 @@ export default function PostCard({ roomId, normalize, onPress, onReady, onThumbn
     }
     loadingRef.current = loading;
   }, [loading, post]);
+
+  useEffect(() => {
+    onLoadingChange?.(loading);
+  }, [loading, onLoadingChange]);
 
   const handleLayout = useCallback(() => {
     if (readyFiredRef.current) return;
