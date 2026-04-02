@@ -1,7 +1,8 @@
-import React, { useCallback, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   KeyboardAvoidingView,
   Platform,
+  StyleSheet,
   Text,
   TouchableOpacity,
   View,
@@ -65,6 +66,21 @@ export default function ChatScreen({
 
   const [inputText, setInputText] = useState('');
   const [chatImages, setChatImages] = useState([]);
+  const [postCardLoading, setPostCardLoading] = useState(
+    () => chatType === 'room' && Boolean(roomId),
+  );
+
+  useEffect(() => {
+    if (chatType === 'room' && roomId) setPostCardLoading(true);
+    else setPostCardLoading(false);
+  }, [roomId, chatType]);
+
+  const handlePostCardLoadingChange = useCallback((next) => {
+    setPostCardLoading(next);
+  }, []);
+
+  const combinedLoading =
+    chat.isLoading || (chatType === 'room' && Boolean(roomId) && postCardLoading);
 
   const {
     replyToMessage,
@@ -89,28 +105,31 @@ export default function ChatScreen({
     roomId,
     messages: chat.messages,
     flatData,
-    isLoading: chat.isLoading,
+    isLoading: combinedLoading,
     isLoadingMore: chat.isLoadingMore,
     loadMore: chat.loadMore,
   });
 
-  // 로딩 화면
-  if (chat.isLoading && (!chat.messages || chat.messages.length === 0)) {
-    return (
-      <SafeAreaView style={detailStyles.container} edges={['top']}>
-        <SubHeader
-          title={headerConfig?.title || '채팅'}
-          onBack={headerConfig?.onBack}
-          titleElement={headerConfig?.titleElement}
-        />
-        <View
-          style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}
-        >
-          <Loading size="large" />
-        </View>
-      </SafeAreaView>
-    );
-  }
+  const postCardLayoutAnchorDoneRef = useRef(false);
+  const postCardThumbAnchorDoneRef = useRef(false);
+  const scrollToLatestRef = useRef(scroll.scrollToLatest);
+  scrollToLatestRef.current = scroll.scrollToLatest;
+  useEffect(() => {
+    postCardLayoutAnchorDoneRef.current = false;
+    postCardThumbAnchorDoneRef.current = false;
+  }, [roomId]);
+
+  const handlePostCardReady = useCallback(() => {
+    if (postCardLayoutAnchorDoneRef.current) return;
+    postCardLayoutAnchorDoneRef.current = true;
+    scrollToLatestRef.current?.({ animated: false });
+  }, []);
+
+  const handlePostCardThumbnailLoaded = useCallback(() => {
+    if (postCardThumbAnchorDoneRef.current) return;
+    postCardThumbAnchorDoneRef.current = true;
+    scrollToLatestRef.current?.({ animated: false });
+  }, []);
 
   const handleSend = () => {
     chat.sendMessage({
@@ -169,26 +188,30 @@ export default function ChatScreen({
         titleElement={headerConfig?.titleElement}
       />
 
-      <KeyboardAvoidingView
-        style={{ flex: 1, backgroundColor: colors.background }}
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        keyboardVerticalOffset={
-          Platform.OS === 'ios' ? insets.top + normalize(48) : 0
-        }
-      >
-        {chatType === 'room' && (
-          <PostCard
-            roomId={roomId}
-            normalize={normalize}
-            onPress={(post) => {
-              if (!post?.id || !navigation) return;
-              navigation.navigate('BoardDetail', {
-                post: { id: post.id },
-                isMyPost: false,
-              });
-            }}
-          />
-        )}
+      <View style={{ flex: 1 }}>
+        <KeyboardAvoidingView
+          style={{ flex: 1, backgroundColor: colors.background }}
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          keyboardVerticalOffset={
+            Platform.OS === 'ios' ? insets.top + normalize(48) : 0
+          }
+        >
+          {chatType === 'room' && (
+            <PostCard
+              roomId={roomId}
+              normalize={normalize}
+              onLoadingChange={handlePostCardLoadingChange}
+              onReady={handlePostCardReady}
+              onThumbnailLoaded={handlePostCardThumbnailLoaded}
+              onPress={(post) => {
+                if (!post?.id || !navigation) return;
+                navigation.navigate('BoardDetail', {
+                  post: { id: post.id },
+                  isMyPost: false,
+                });
+              }}
+            />
+          )}
 
         <MessageList
           roomId={roomId}
@@ -288,22 +311,40 @@ export default function ChatScreen({
           </TouchableOpacity>
         ) : null}
 
-        <MessageInput
-          value={inputText}
-          onChange={setInputText}
-          onSend={handleSend}
-          images={chatImages}
-          onImagesChange={setChatImages}
-          styles={detailStyles}
-          normalize={normalize}
-          replyToMessage={replyToMessage}
-          clearReplyTarget={() => setReplyToMessage(null)}
-          keyboardHeight={scroll.keyboardHeight}
-          bottomInset={insets.bottom}
-          mainPlaceholder={mainPlaceholder}
-          chatInputStyles={chatInputStyles}
-        />
-      </KeyboardAvoidingView>
+          <MessageInput
+            value={inputText}
+            onChange={setInputText}
+            onSend={handleSend}
+            images={chatImages}
+            onImagesChange={setChatImages}
+            styles={detailStyles}
+            normalize={normalize}
+            replyToMessage={replyToMessage}
+            clearReplyTarget={() => setReplyToMessage(null)}
+            keyboardHeight={scroll.keyboardHeight}
+            bottomInset={insets.bottom}
+            mainPlaceholder={mainPlaceholder}
+            chatInputStyles={chatInputStyles}
+          />
+        </KeyboardAvoidingView>
+
+        {combinedLoading ? (
+          <View
+            pointerEvents="auto"
+            style={[
+              StyleSheet.absoluteFillObject,
+              {
+                backgroundColor: colors.background,
+                justifyContent: 'center',
+                alignItems: 'center',
+                zIndex: 50,
+              },
+            ]}
+          >
+            <Loading size="large" />
+          </View>
+        ) : null}
+      </View>
 
       <MessageActions
         visible={Boolean(longPressMenu)}
