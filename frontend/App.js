@@ -37,6 +37,9 @@ import { AuthProvider, useAuth } from './context/AuthContext';
 import { SocketProvider } from './context/SocketContext';
 import { NotificationProvider } from './context/NotificationContext';
 import { FriendProvider } from './context/FriendContext';
+import { ToastProvider } from './context/ToastContext';
+import ToastHost from './components/common/ToastHost';
+import { navigationRef } from './navigation/navigationRef';
 
 const Stack = createNativeStackNavigator();
 
@@ -122,13 +125,16 @@ export default function App() {
       <KeyboardProvider>
         <AuthProvider>
           <SocketProvider>
-            <NotificationProvider>
-              <FriendProvider>
-                <NavigationContainer>
-                  <RootNavigator />
-                </NavigationContainer>
-              </FriendProvider>
-            </NotificationProvider>
+            <ToastProvider>
+              <NotificationProvider>
+                <FriendProvider>
+                  <NavigationContainer ref={navigationRef}>
+                    <RootNavigator />
+                    <ToastHost />
+                  </NavigationContainer>
+                </FriendProvider>
+              </NotificationProvider>
+            </ToastProvider>
           </SocketProvider>
         </AuthProvider>
       </KeyboardProvider>

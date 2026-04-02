@@ -17,7 +17,7 @@ import express from 'express';
 import pool from '../config/database.js';
 import { authenticate } from '../middleware/auth.js';
 import { getNowForDB } from '../utils/dateUtils.js';
-import { emitNewMessage, emitReadReceipt } from '../socketServer.js';
+import { emitNewMessage, emitReadReceipt, isUserInRoom } from '../socketServer.js';
 import { enqueueNotification } from '../utils/notificationWorker.js';
 import { cloudinary, upload } from '../config/cloudinary.js';
 
@@ -32,25 +32,6 @@ router.get('/rooms', authenticate, async (req, res) => {
     const { page = 1, limit = 20 } = req.query;
     const limitNum = Math.max(1, Math.min(100, parseInt(limit, 10) || 20));
     const offsetNum = Math.max(0, (parseInt(page, 10) - 1) * limitNum);
-
-    // 진단용 - 나중에 삭제
-    const [debugRooms] = await pool.execute(
-      `SELECT mr.id, mr.user1_id, mr.user2_id,
-        mr.is_deleted_by_user1, mr.is_deleted_by_user2
-       FROM message_rooms mr
-       WHERE mr.user1_id = ? OR mr.user2_id = ?`,
-      [userId, userId],
-    );
-    console.log(
-      '[Debug] 전체 rooms (삭제조건 없이):',
-      JSON.stringify(debugRooms),
-    );
-
-    const [cols] = await pool.execute(`SHOW COLUMNS FROM message_rooms`);
-    console.log(
-      '[Debug] message_rooms 컬럼:',
-      JSON.stringify(cols.map((c) => c.Field)),
-    );
 
     const [rooms] = await pool.execute(
       `SELECT 
@@ -91,9 +72,6 @@ router.get('/rooms', authenticate, async (req, res) => {
       LIMIT ${limitNum} OFFSET ${offsetNum}`,
       [userId, userId, userId, userId, userId, userId],
     );
-    console.log('[Messages] userId:', userId, '조회된 rooms 수:', rooms.length);
-    console.log('[Messages] rooms 데이터:', JSON.stringify(rooms));
-
     const [countResult] = await pool.execute(
       `SELECT COUNT(*) AS total FROM message_rooms mr
        WHERE (
@@ -532,12 +510,17 @@ WHERE m.id = ?`,
       // ── [변경] 알림을 큐에 위임 (비동기, fire-and-forget) ──
       // createNotification을 직접 await 하지 않으므로
       // 알림 서버 장애 시에도 메시지 전송 자체는 성공으로 응답
-      if (otherUserId && otherUserId !== userId) {
+      if (
+        otherUserId &&
+        otherUserId !== userId &&
+        !isUserInRoom(roomId, otherUserId)
+      ) {
+        const senderName = savedMessage?.sender_name || '새 메시지';
         await enqueueNotification({
           userId: otherUserId,
           type: 'mail',
           category: 'mail',
-          title: '새로운 쪽지가 도착했습니다',
+          title: senderName,
           body: (trimmedContent ?? '사진').slice(0, 80),
           relatedType: 'message_room',
           relatedId: roomId,

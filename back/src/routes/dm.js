@@ -6,7 +6,8 @@ import pool from '../config/database.js';
 import { authenticate } from '../middleware/auth.js';
 import { getNowForDB } from '../utils/dateUtils.js';
 import { upload } from '../config/cloudinary.js';
-import { emitNewMessage, emitReadReceipt } from '../socketServer.js';
+import { emitNewMessage, emitReadReceipt, isUserInRoom } from '../socketServer.js';
+import { enqueueNotification } from '../utils/notificationWorker.js';
 
 const router = express.Router();
 
@@ -350,6 +351,9 @@ router.post(
           message: '대화방을 찾을 수 없거나 접근 권한이 없습니다.',
         });
       }
+      const room = rooms[0];
+      const otherUserId =
+        room.user1_id === userId ? room.user2_id : room.user1_id;
 
       // 답장 대상이 있다면, 같은 방에 속한 메시지인지 확인합니다.
       if (parentMessageId && !Number.isNaN(parentMessageId)) {
@@ -431,6 +435,23 @@ router.post(
       }
 
       emitNewMessage(roomId, savedMessage);
+
+      if (
+        otherUserId &&
+        otherUserId !== userId &&
+        !isUserInRoom(roomId, otherUserId)
+      ) {
+        const senderName = savedMessage?.sender_name || '새 메시지';
+        await enqueueNotification({
+          userId: otherUserId,
+          type: 'mail',
+          category: 'mail',
+          title: senderName,
+          body: (trimmed ?? '사진').slice(0, 80),
+          relatedType: 'dm_room',
+          relatedId: roomId,
+        });
+      }
 
       res.status(201).json({
         success: true,

@@ -12,6 +12,9 @@ export const connectSocket = async (roomId, token) => {
   if (socket && socket.connected) {
     // 이미 연결된 상태면 room만 갱신(필요 시)
     if (roomId && currentRoomId !== roomId) {
+      if (currentRoomId) {
+        socket.emit('leave_room', { roomId: currentRoomId });
+      }
       currentRoomId = roomId;
       socket.emit('join_room', { roomId });
     }
@@ -35,8 +38,9 @@ export const connectSocket = async (roomId, token) => {
 };
 
 export const disconnectSocket = () => {
-  socket?.disconnect();
-  socket = null;
+  if (socket?.connected && currentRoomId) {
+    socket.emit('leave_room', { roomId: currentRoomId });
+  }
   currentRoomId = null;
 };
 

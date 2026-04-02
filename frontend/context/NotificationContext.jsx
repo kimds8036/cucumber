@@ -9,11 +9,13 @@ import React, { createContext, useContext, useState, useEffect, useCallback } fr
 import { AppState } from 'react-native';
 import { api } from '../utils/api';
 import { useSocket } from './SocketContext';
+import { useToast } from './ToastContext';
 
 const NotificationContext = createContext(null);
 
 export function NotificationProvider({ children }) {
   const { socket } = useSocket();
+  const { showToast, activeChatRoomId, isMessageTab } = useToast();
   const [hasUnread, setHasUnread] = useState(false);
   const [initialized, setInitialized] = useState(false);
 
@@ -51,16 +53,82 @@ export function NotificationProvider({ children }) {
     const handler = (payload) => {
       if (payload?.type === 'friend_request') return;
       setHasUnread(true);
+      const isChatNotification =
+        payload?.relatedType === 'message_room' ||
+        payload?.relatedType === 'dm_room';
+      const titleText = String(payload?.title ?? '').trim();
+      const bodyText = String(payload?.body ?? '').trim();
+      const composedMessage = isChatNotification
+        ? `${titleText || '새 메시지'}: ${bodyText || '(이미지)'}`
+        : (titleText || bodyText);
+
+      if (!composedMessage) return;
+      showToast({
+        message: composedMessage,
+        roomId: payload?.relatedId,
+        relatedType: payload?.relatedType,
+        isChat: isChatNotification,
+      });
     };
 
     const pokeHandler = () => setHasUnread(true);
     const studyFinishedSummaryHandler = () => {
       refreshHasUnread();
     };
+    const newMessageHandler = (payload) => {
+      const roomId = payload?.message?.room_id;
+      const senderName = payload?.message?.sender_name || '새 메시지';
+      const content = payload?.message?.content || '(이미지)';
+      const isActiveRoom =
+        roomId != null &&
+        activeChatRoomId != null &&
+        String(roomId) === String(activeChatRoomId);
+
+      console.log('[NotificationSocket] new_message received', {
+        roomId,
+        activeChatRoomId,
+        isActiveRoom,
+        isMessageTab,
+        senderName,
+        hasContent: Boolean(payload?.message?.content),
+        receivedAt: new Date().toISOString(),
+      });
+
+      if (!isActiveRoom) {
+        setHasUnread(true);
+      }
+
+      if (isMessageTab) {
+        console.log('[NotificationSocket] toast skipped', {
+          reason: 'isMessageTab=true',
+          roomId,
+        });
+        return;
+      }
+      if (isActiveRoom) {
+        console.log('[NotificationSocket] toast skipped', {
+          reason: 'activeChatRoomId matched',
+          roomId,
+          activeChatRoomId,
+        });
+        return;
+      }
+      console.log('[NotificationSocket] toast shown', {
+        roomId,
+        senderName,
+      });
+      showToast({
+        message: `${senderName}: ${content}`,
+        roomId,
+        relatedType: 'message_room',
+        isChat: true,
+      });
+    };
 
     socket.on('notification', handler);
     socket.on('friend_poke', pokeHandler);
     socket.on('friend_study_finished_summary', studyFinishedSummaryHandler);
+    socket.on('new_message', newMessageHandler);
 
     const onConnect = () => {
       refreshHasUnread();
@@ -71,9 +139,10 @@ export function NotificationProvider({ children }) {
       socket.off('notification', handler);
       socket.off('friend_poke', pokeHandler);
       socket.off('friend_study_finished_summary', studyFinishedSummaryHandler);
+      socket.off('new_message', newMessageHandler);
       socket.off('connect', onConnect);
     };
-  }, [socket, refreshHasUnread]);
+  }, [socket, refreshHasUnread, showToast, activeChatRoomId, isMessageTab]);
 
   const value = {
     hasUnread,

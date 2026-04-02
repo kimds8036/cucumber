@@ -208,6 +208,25 @@ export function emitNotification(targetUserId, payload) {
   console.log('[Socket][emitNotification] emit 완료', { targetUserId, payloadType: payload?.type });
 }
 
+/**
+ * 특정 유저가 특정 room:{roomId}에 현재 접속 중인지 확인
+ * @param {number|string} roomId
+ * @param {number|string} userId
+ */
+export function isUserInRoom(roomId, userId) {
+  if (!io || roomId == null || userId == null) return false;
+  const roomName = `room:${roomId}`;
+  const room = io.sockets.adapter?.rooms?.get(roomName);
+  if (!room || room.size === 0) return false;
+
+  const targetId = String(userId);
+  for (const socketId of room) {
+    const s = io.sockets.sockets.get(socketId);
+    if (s && String(s.userId) === targetId) return true;
+  }
+  return false;
+}
+
 /** io 인스턴스 직접 접근이 필요한 경우 */
 export function getIO() {
   return io;
