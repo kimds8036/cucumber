@@ -395,7 +395,6 @@ export function createMailStyles(normalize) {
     },
     section: {
       backgroundColor: colors.background,
-      marginHorizontal: 0,
       paddingHorizontal: normalize(16),
       paddingTop: normalize(18),
       paddingBottom: normalize(16),

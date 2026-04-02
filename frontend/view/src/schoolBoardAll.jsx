@@ -7,16 +7,14 @@ import {
   TouchableOpacity,
   Alert,
   FlatList,
-  Image,
 } from 'react-native';
 import Ionicons from '@expo/vector-icons/Ionicons';
-import MaterialIcons from '@expo/vector-icons/MaterialIcons';
-import FontAwesome from '@expo/vector-icons/FontAwesome';
 import FontAwesome5 from '@expo/vector-icons/FontAwesome5';
 import SubHeader from '../frame/subHeader';
 import { createSchoolBoardStyles, getNormalize } from '../../styles/schoolBoard.style';
-import { colors, fonts } from '../../styles/colors';
+import { colors } from '../../styles/colors';
 import { api } from '../../utils/api';
+import BoardPostCard from '../../components/Boardpostcard';
 
 /** 서버 created_at(UTC)을 "n분 전" 형식으로 변환. 화면에서는 기기 로컬 시간 기준으로 계산 */
 function formatTimeAgo(createdAt) {
@@ -161,204 +159,21 @@ const SchoolBoardAll = ({ navigation }) => {
     fetchSchoolPosts(page + 1, true);
   };
 
-  const renderPostItem = ({ item: post }) => {
-    const hasThumb =
-      typeof post.thumbnail === 'string' && post.thumbnail.trim().length > 0;
-    return (
-      <TouchableOpacity
-        key={post.id}
-        style={styles.postItem}
-        activeOpacity={0.7}
-        onPress={() =>
-          navigation.navigate('BoardDetail', {
-            post: { ...post, author: post.author },
-            isMyPost: post.isMyPost ?? false,
-          })
-        }
-      >
-        <View style={styles.postHeader}>
-          <View
-            style={{
-              flexDirection: 'row',
-              alignItems: 'baseline',
-              flex: 1,
-              minWidth: 0,
-            }}
-          >
-            <Text
-              style={[
-                styles.postAuthor,
-                post.author === '작성자' && {
-                  fontFamily: fonts.bold,
-                  color: colors.alert,
-                },
-              ]}
-              numberOfLines={1}
-            >
-              {post.author}
-            </Text>
-            <Text style={styles.postDot}>•</Text>
-            <Text style={styles.postTime} numberOfLines={1}>
-              {post.time}
-            </Text>
-            {post.location ? (
-              <View style={[styles.postTimeRow, { flexShrink: 1 }]}>
-                <Text style={styles.postTime}>{' · '}</Text>
-                <Text
-                  style={[styles.postLocationText, { flexShrink: 1, minWidth: 0 }]}
-                  numberOfLines={1}
-                >
-                  {post.location}
-                </Text>
-              </View>
-            ) : null}
-          </View>
-          <View
-            style={{
-              flexDirection: 'row',
-              alignItems: 'center',
-              marginLeft: normalize(8),
-              flexShrink: 0,
-            }}
-          >
-            <View
-              style={{
-                flexDirection: 'row',
-                alignItems: 'center',
-                gap: normalize(1),
-                backgroundColor: colors.primaryLight30,
-                borderRadius: normalize(10),
-                paddingHorizontal: normalize(7),
-                paddingVertical: normalize(2),
-              }}
-            >
-              <MaterialIcons name="location-on" size={normalize(12)} color={colors.primaryDark} />
-              <Text
-                style={{
-                  fontSize: normalize(11),
-                  fontFamily: fonts.regular,
-                  color: colors.primaryDark,
-                }}
-              >
-                10km
-              </Text>
-            </View>
-          </View>
-        </View>
-
-        <View
-          style={{
-            flexDirection: 'row',
-            alignItems: 'flex-start',
-            backgroundColor: colors.surface,
-            borderWidth: 1,
-            borderColor: colors.border,
-            borderRadius: normalize(12),
-            padding: normalize(12),
-          }}
-        >
-          <View
-            style={{
-              flex: 1,
-              minWidth: 0,
-              flexDirection: 'column',
-              marginRight: hasThumb ? normalize(10) : 0,
-            }}
-          >
-            <Text
-              style={[styles.postContent, { marginBottom: normalize(7) }]}
-              numberOfLines={3}
-              ellipsizeMode="tail"
-            >
-              {post.content}
-            </Text>
-
-            {Array.isArray(post.tags) && post.tags.length > 0 ? (
-              <View
-                style={{
-                  flexDirection: 'row',
-                  flexWrap: 'wrap',
-                  gap: normalize(6),
-                  marginBottom: normalize(7),
-                }}
-              >
-                {post.tags.map((tag, idx) => {
-                  const label =
-                    tag != null && typeof tag === 'object'
-                      ? String(tag.name ?? '')
-                      : String(tag ?? '');
-                  if (!label.trim()) return null;
-                  return (
-                    <View
-                      key={tag?.id != null ? `tag-${tag.id}` : `tag-${idx}-${label}`}
-                      style={{
-                        backgroundColor: colors.primaryLight30,
-                        borderRadius: normalize(12),
-                        paddingHorizontal: normalize(8),
-                        paddingVertical: normalize(2),
-                      }}
-                    >
-                      <Text
-                        style={{
-                          fontSize: normalize(11),
-                          fontFamily: fonts.regular,
-                          color: colors.primaryDark,
-                        }}
-                      >
-                        {label}
-                      </Text>
-                    </View>
-                  );
-                })}
-              </View>
-            ) : null}
-
-            <View style={[styles.postFooter, { justifyContent: 'flex-start' }]}>
-              <View style={styles.postStats}>
-                <View style={styles.postStatItem}>
-                  <FontAwesome
-                    name={post.liked ? 'heart' : 'heart-o'}
-                    size={normalize(14)}
-                    color={colors.alert}
-                  />
-                  <Text style={styles.postStatText}>{post.likes}</Text>
-                </View>
-                <View style={styles.postStatItem}>
-                  <Ionicons name="chatbubble-outline" size={normalize(15)} color={colors.primary} />
-                  <Text style={styles.postStatText}>{post.comments}</Text>
-                </View>
-                <TouchableOpacity
-                  style={styles.postStatItem}
-                  onPress={() => handleScrapPress(post)}
-                  activeOpacity={0.7}
-                >
-                  <Ionicons
-                    name={post.scrapped ? 'bookmark' : 'bookmark-outline'}
-                    size={normalize(14)}
-                    color={colors.scrap}
-                  />
-                  <Text style={styles.postStatText}>{post.scrapCount ?? 0}</Text>
-                </TouchableOpacity>
-              </View>
-            </View>
-          </View>
-
-          {hasThumb ? (
-            <Image
-              source={{ uri: post.thumbnail.trim() }}
-              style={{
-                width: normalize(65),
-                height: normalize(65),
-                borderRadius: normalize(8),
-                backgroundColor: colors.textLight10 ?? '#EEE',
-              }}
-              resizeMode="cover"
-            />
-          ) : null}
-        </View>
-      </TouchableOpacity>
-    );
-  };
+  const renderPostItem = ({ item: post }) => (
+    <BoardPostCard
+      key={post.id}
+      post={post}
+      normalize={normalize}
+      styles={styles}
+      onPress={() =>
+        navigation.navigate('BoardDetail', {
+          post: { ...post, author: post.author },
+          isMyPost: post.isMyPost ?? false,
+        })
+      }
+      onScrapPress={handleScrapPress}
+    />
+  );
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
@@ -385,8 +200,8 @@ const SchoolBoardAll = ({ navigation }) => {
         onEndReachedThreshold={0.5}
         ListEmptyComponent={
           !loading ? (
-            <View style={{ paddingVertical: normalize(40), alignItems: 'center' }}>
-              <Text style={{ fontFamily: fonts.regular, color: colors.textSecondary }}>
+            <View style={styles.emptyContainer}>
+              <Text style={styles.emptyText}>
                 아직 학교 게시판에 글이 없습니다.
               </Text>
             </View>
@@ -394,14 +209,14 @@ const SchoolBoardAll = ({ navigation }) => {
         }
         ListFooterComponent={
           loadingMore ? (
-            <View style={{ paddingVertical: normalize(16), alignItems: 'center' }}>
-              <Text style={{ fontFamily: fonts.regular, color: colors.textSecondary }}>
+            <View style={styles.loadingMoreContainer}>
+              <Text style={styles.loadingMoreText}>
                 더 불러오는 중...
               </Text>
             </View>
           ) : null
         }
-        contentContainerStyle={{ paddingBottom: normalize(80) }}
+        contentContainerStyle={styles.listContentContainer}
       />
 
       {/* 글쓰기 플로팅 버튼 */}

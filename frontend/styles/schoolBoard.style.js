@@ -17,7 +17,7 @@ export const createSchoolBoardStyles = (width, normalize) => {
     postList: {
       flex: 1,
       paddingHorizontal: width * 0.04,
-      paddingVertical: normalize(5),
+      paddingVertical: normalize(16),
     },
     postItem: {
       backgroundColor: colors.background,
@@ -38,6 +38,18 @@ export const createSchoolBoardStyles = (width, normalize) => {
       alignItems: 'center',
       marginBottom: normalize(12),
     },
+    postHeaderLeft: {
+      flexDirection: 'row',
+      alignItems: 'baseline',
+      flex: 1,
+      minWidth: 0,
+    },
+    postAuthorRow: {
+      flexDirection: 'row',
+      alignItems: 'baseline',
+      flex: 1,
+      minWidth: 0,
+    },
     postAuthorInfo: {
       flexDirection: 'row',
       alignItems: 'center',
@@ -47,10 +59,21 @@ export const createSchoolBoardStyles = (width, normalize) => {
       fontFamily: fonts.regular,
       color: colors.textSecondary,
     },
+    postAuthorHighlighted: {
+      fontFamily: fonts.bold,
+      color: colors.alert,
+    },
+    postAuthorVerified: {
+      fontFamily: fonts.bold,
+      color: colors.alert,
+    },
     postTimeRow: {
       flexDirection: 'row',
       alignItems: 'center',
       gap: normalize(4),
+    },
+    postTimeRowShrink: {
+      flexShrink: 1,
     },
     postDot: {
       fontSize: normalize(fontSizes.xl),
@@ -75,14 +98,157 @@ export const createSchoolBoardStyles = (width, normalize) => {
       fontFamily: fonts.regular,
       color: colors.textSecondary,
     },
+    postLocationTextShrink: {
+      flexShrink: 1,
+      minWidth: 0,
+    },
+    postLocationWrap: {
+      flexShrink: 1,
+    },
+    postLocationInlineText: {
+      flexShrink: 1,
+      minWidth: 0,
+    },
+    postHeaderRight: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      marginLeft: normalize(8),
+      flexShrink: 0,
+    },
+    postDistanceBadge: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: normalize(1),
+      backgroundColor: colors.primaryLight30,
+      borderRadius: normalize(10),
+      paddingHorizontal: normalize(7),
+      paddingVertical: normalize(2),
+    },
+    postDistanceText: {
+      fontSize: normalize(11),
+      fontFamily: fonts.regular,
+      color: colors.primaryDark,
+    },
+    distanceBadgeWrap: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      marginLeft: normalize(8),
+      flexShrink: 0,
+    },
+    distanceBadgeChip: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: normalize(1),
+      backgroundColor: colors.primaryLight30,
+      borderRadius: normalize(10),
+      paddingHorizontal: normalize(7),
+      paddingVertical: normalize(2),
+    },
+    distanceBadgeTextRow: {
+      flexDirection: 'row',
+      alignItems: 'baseline',
+      gap: normalize(1),
+    },
+    distanceBadgeNumber: {
+      fontSize: normalize(11),
+      fontFamily: fonts.regular,
+      color: colors.primaryDark,
+    },
+    distanceBadgeUnit: {
+      fontSize: normalize(10),
+      fontFamily: fonts.regular,
+      color: colors.primaryDark,
+    },
 
     // 게시글 내용
+    postBody: {
+      flexDirection: 'row',
+      alignItems: 'flex-start',
+    },
+    postBodyRow: {
+      flexDirection: 'row',
+      alignItems: 'flex-start',
+    },
+    postContentArea: {
+      flex: 1,
+      minWidth: 0,
+      flexDirection: 'column',
+    },
+    postBodyColumn: {
+      flex: 1,
+      minWidth: 0,
+      flexDirection: 'column',
+    },
+    postContentAreaWithThumb: {
+      marginRight: normalize(10),
+    },
+    postBodyColumnWithThumb: {
+      marginRight: normalize(10),
+    },
     postContent: {
       fontSize: normalize(fontSizes.xl),
       fontFamily: fonts.regular,
       color: colors.textPrimary,
       lineHeight: normalize(20),
       marginBottom: normalize(10),
+    },
+    postContentCompact: {
+      marginBottom: normalize(7),
+    },
+    postTagsRow: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      gap: normalize(6),
+      marginBottom: normalize(7),
+    },
+    postTagsWrap: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      gap: normalize(6),
+      marginBottom: normalize(7),
+    },
+    postTagItem: {
+      backgroundColor: colors.primaryLight30,
+      borderRadius: normalize(12),
+      paddingHorizontal: normalize(8),
+      paddingVertical: normalize(2),
+    },
+    postTagChip: {
+      backgroundColor: colors.primaryLight30,
+      borderRadius: normalize(12),
+      paddingHorizontal: normalize(8),
+      paddingVertical: normalize(2),
+    },
+    postTagMeasureHidden: {
+      opacity: 0,
+      position: 'absolute',
+    },
+    postTagMoreChip: {
+      minWidth: normalize(36),
+      alignItems: 'center',
+    },
+    postTagText: {
+      fontSize: normalize(11),
+      fontFamily: fonts.regular,
+      color: colors.primaryDark,
+    },
+    postFooterLeft: {
+      justifyContent: 'flex-start',
+    },
+    postFooterStart: {
+      justifyContent: 'flex-start',
+    },
+    postThumbnail: {
+      width: normalize(65),
+      height: normalize(65),
+      borderRadius: normalize(8),
+      backgroundColor: colors.textLight10 ?? '#EEE',
+    },
+    postThumb: {
+      width: normalize(65),
+      height: normalize(65),
+      borderRadius: normalize(8),
+      backgroundColor: colors.textLight10 ?? '#EEE',
     },
 
     // 내용과 푸터 사이 경계선
@@ -135,6 +301,25 @@ export const createSchoolBoardStyles = (width, normalize) => {
       shadowOpacity: 0.3,
       shadowRadius: 4,
       elevation: 5,
+    },
+    emptyContainer: {
+      paddingVertical: normalize(40),
+      alignItems: 'center',
+    },
+    emptyText: {
+      fontFamily: fonts.regular,
+      color: colors.textSecondary,
+    },
+    loadingMoreContainer: {
+      paddingVertical: normalize(16),
+      alignItems: 'center',
+    },
+    loadingMoreText: {
+      fontFamily: fonts.regular,
+      color: colors.textSecondary,
+    },
+    listContentContainer: {
+      paddingBottom: normalize(80),
     },
   });
 };

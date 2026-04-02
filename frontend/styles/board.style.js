@@ -465,6 +465,8 @@ export const createWriteStyles = (width, normalize) => {
     },
     topToolbarSection: {
       backgroundColor: colors.background,
+      borderColor: colors.textLight20,
+      borderBottomWidth: 1,
     },
     topToolbar: {
       height: normalize(48),
@@ -473,8 +475,58 @@ export const createWriteStyles = (width, normalize) => {
       alignItems: 'center',
       paddingHorizontal: normalize(16),
       gap: normalize(20),
-      borderColor: colors.textLight20,
-      borderTopWidth: 1,
+    },
+    boardChip: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: normalize(4),
+      paddingHorizontal: normalize(10),
+      paddingVertical: normalize(5),
+      borderRadius: normalize(20),
+      backgroundColor: colors.primaryLight10,
+      borderColor: colors.primaryLight30,
+      borderWidth: 1,
+    },
+    boardChipText: {
+      fontSize: normalize(fontSizes.md),
+      color: colors.primaryDark,
+      fontFamily: fonts.medium ?? fonts.bold,
+    },
+    boardChipArrow: {
+      fontSize: normalize(8),
+      color: colors.primaryDark,
+    },
+    toolbarDivider: {
+      width: 0.5,
+      height: normalize(16),
+      backgroundColor: colors.textSecondary,
+    },
+    boardDropdown: {
+      position: 'absolute',
+      top: normalize(42),
+      left: normalize(16),
+      backgroundColor: colors.background,
+      borderRadius: normalize(8),
+      zIndex: 100,
+      elevation: 100,
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.1,
+      shadowRadius: 8,
+    },
+    boardDropdownItem: {
+      paddingHorizontal: normalize(16),
+      paddingVertical: normalize(10),
+    },
+    boardDropdownText: {
+      fontSize: normalize(fontSizes.md),
+      color: colors.textPrimary,
+      fontFamily: fonts.regular,
+    },
+    boardDropdownTextSelected: {
+      fontSize: normalize(fontSizes.md),
+      color: colors.primaryDark,
+      fontFamily: fonts.bold,
     },
     toolbarIconButton: {
       position: 'relative',
@@ -482,22 +534,6 @@ export const createWriteStyles = (width, normalize) => {
     },
     toolbarLocationButton: {
       padding: normalize(2),
-    },
-    toolbarBadge: {
-      position: 'absolute',
-      top: normalize(-6),
-      right: normalize(-10),
-      width: normalize(16),
-      height: normalize(16),
-      borderRadius: normalize(8),
-      backgroundColor: colors.primary,
-      alignItems: 'center',
-      justifyContent: 'center',
-    },
-    toolbarBadgeText: {
-      color: colors.background,
-      fontSize: normalize(10),
-      fontWeight: '700',
     },
     locationChipWrap: {
       paddingHorizontal: normalize(16),
@@ -546,7 +582,7 @@ export const createWriteStyles = (width, normalize) => {
       backgroundColor: colors.background,
     },
     tagPanelWrapperCompact: {
-      paddingVertical: normalize(10),
+      paddingVertical: normalize(7),
     },
     // 인라인 스타일 추가
     topToolbarSectionWithZIndex: {

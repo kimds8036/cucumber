@@ -41,6 +41,10 @@ const BoardWrite = ({ navigation, route }) => {
   const [tagPanelVisible, setTagPanelVisible] = useState(false);
   const [tagPanelHeight, setTagPanelHeight] = useState(0);
   const boardContext = route?.params?.boardContext || 'national';
+  const [selectedBoard, setSelectedBoard] = useState(
+    boardContext === 'school' ? '학교게시판' : '전체게시판',
+  );
+  const [boardDropdownVisible, setBoardDropdownVisible] = useState(false);
   const tagInputRef = useRef(null);
   const tagPanelAnim = useRef(new Animated.Value(0)).current;
   const [driverMode, setDriverMode] = useState(true);
@@ -280,6 +284,14 @@ const BoardWrite = ({ navigation, route }) => {
         {/* 하단 툴바 */}
         <View style={styles.topToolbar}>
           <TouchableOpacity
+            style={styles.boardChip}
+            onPress={() => setBoardDropdownVisible(v => !v)}
+          >
+            <Text style={styles.boardChipText}>{selectedBoard}</Text>
+            <Text style={styles.boardChipArrow}>▼</Text>
+          </TouchableOpacity>
+          <View style={styles.toolbarDivider} />
+          <TouchableOpacity
             onPress={handleToggleTagPanel}
             style={styles.toolbarIconButton}
           >
@@ -314,6 +326,29 @@ const BoardWrite = ({ navigation, route }) => {
             />
           </TouchableOpacity>
         </View>
+        {boardDropdownVisible && (
+          <View style={styles.boardDropdown}>
+            {['전체게시판', '학교게시판'].map((item) => (
+              <TouchableOpacity
+                key={item}
+                style={styles.boardDropdownItem}
+                onPress={() => {
+                  setSelectedBoard(item);
+                  setBoardDropdownVisible(false);
+                }}
+              >
+                <Text
+                  style={[
+                    styles.boardDropdownText,
+                    selectedBoard === item && styles.boardDropdownTextSelected,
+                  ]}
+                >
+                  {item}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        )}
 
         {/* 칩 영역: 사진 -> 태그 */}
 
@@ -342,31 +377,6 @@ const BoardWrite = ({ navigation, route }) => {
                   style={styles.photoDeleteButton}
                 >
                   <Ionicons name="close-circle" size={18} color="#fff" />
-                </TouchableOpacity>
-              </View>
-            ))}
-          </ScrollView>
-        )}
-
-        {hashtags.length > 0 && (
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            style={styles.writeHashtagTagScroll}
-            contentContainerStyle={[
-              styles.writeHashtagTagList,
-              styles.hashtagTagListWithPadding,
-            ]}
-            keyboardShouldPersistTaps="handled"
-          >
-            {hashtags.map((tag) => (
-              <View key={tag} style={styles.writeHashtagTagChip}>
-                <Text style={styles.writeHashtagTagText}>#{tag}</Text>
-                <TouchableOpacity
-                  hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
-                  onPress={() => handleRemoveHashtag(tag)}
-                >
-                  <Text style={styles.writeHashtagTagRemove}>✕</Text>
                 </TouchableOpacity>
               </View>
             ))}
@@ -489,6 +499,31 @@ const BoardWrite = ({ navigation, route }) => {
             </View>
           </Animated.View>
         )}
+
+        {hashtags.length > 0 && (
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            style={styles.writeHashtagTagScroll}
+            contentContainerStyle={[
+              styles.writeHashtagTagList,
+              styles.hashtagTagListWithPadding,
+            ]}
+            keyboardShouldPersistTaps="handled"
+          >
+            {hashtags.map((tag) => (
+              <View key={tag} style={styles.writeHashtagTagChip}>
+                <Text style={styles.writeHashtagTagText}>#{tag}</Text>
+                <TouchableOpacity
+                  hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+                  onPress={() => handleRemoveHashtag(tag)}
+                >
+                  <Text style={styles.writeHashtagTagRemove}>✕</Text>
+                </TouchableOpacity>
+              </View>
+            ))}
+          </ScrollView>
+        )}
       </View>
     ),
     [
@@ -498,6 +533,8 @@ const BoardWrite = ({ navigation, route }) => {
       hashtagInput,
       postImages,
       locationEnabled,
+      selectedBoard,
+      boardDropdownVisible,
       hashtagSuggestions,
       loadingSuggestions,
     ],
@@ -506,7 +543,13 @@ const BoardWrite = ({ navigation, route }) => {
   const canSubmit = content.trim().length > 0 || postImages.length > 0;
 
   return (
-    <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
+    <TouchableWithoutFeedback
+      onPress={() => {
+        setBoardDropdownVisible(false);
+        Keyboard.dismiss();
+      }}
+      accessible={false}
+    >
       <View style={styles.screen}>
         <KeyboardAvoidingView
           style={styles.keyboardAvoiding}
@@ -537,6 +580,7 @@ const BoardWrite = ({ navigation, route }) => {
                   </View>
                 }
               />
+              {topToolbarSection}
 
               <ScrollView
                 style={styles.fullFlex}
@@ -548,7 +592,6 @@ const BoardWrite = ({ navigation, route }) => {
                 {writeMainColumn}
               </ScrollView>
 
-              {topToolbarSection}
               {guideBlock}
             </SafeAreaView>
           </View>
