@@ -14,6 +14,8 @@ export function ToastProvider({ children }) {
   const [toast, setToast] = useState({
     id: 0,
     message: '',
+    senderName: null,
+    body: null,
     roomId: null,
     relatedType: null,
     isChat: false,
@@ -45,9 +47,19 @@ export function ToastProvider({ children }) {
 
       clearHideTimer();
       const nextId = Date.now();
+      const senderName =
+        next.senderName != null && String(next.senderName).trim() !== ''
+          ? String(next.senderName).trim()
+          : null;
+      const body =
+        next.body != null && String(next.body).trim() !== ''
+          ? String(next.body).trim()
+          : null;
       setToast({
         id: nextId,
         message: text,
+        senderName,
+        body,
         roomId:
           next.roomId != null && next.roomId !== ''
             ? String(next.roomId)

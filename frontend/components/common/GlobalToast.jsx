@@ -1,49 +1,80 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Animated, Easing, Text, TouchableOpacity, View } from 'react-native';
 
 export default function GlobalToast({
   toastId,
   message,
+  senderName,
+  body,
   visible,
-  isChat = false,
   onPress,
   onHide,
   topOffset = 55,
 }) {
   const translateY = useRef(new Animated.Value(-80)).current;
   const opacity = useRef(new Animated.Value(0)).current;
-  const progress = useRef(new Animated.Value(1)).current;
+  const contentOpacity = useRef(new Animated.Value(1)).current;
+  const contentTranslateY = useRef(new Animated.Value(0)).current;
+  const prevVisibleRef = useRef(false);
+  const prevToastIdRef = useRef(null);
+  const [exiting, setExiting] = useState(false);
+
+  const showStructured = Boolean(senderName || body);
+  const singleLineText = showStructured
+    ? `${senderName || '새 메시지'}: ${body || ''}`.trim()
+    : message;
 
   useEffect(() => {
-    if (!visible || !message) return;
+    if (!message) return;
 
-    translateY.setValue(-80);
-    opacity.setValue(0);
-    progress.setValue(1);
+    if (visible) {
+      if (!prevVisibleRef.current) {
+        translateY.setValue(-80);
+        opacity.setValue(0);
+        contentOpacity.setValue(1);
+        contentTranslateY.setValue(0);
+        Animated.parallel([
+          Animated.timing(translateY, {
+            toValue: 0,
+            duration: 320,
+            easing: Easing.out(Easing.back(1.2)),
+            useNativeDriver: true,
+          }),
+          Animated.timing(opacity, {
+            toValue: 1,
+            duration: 320,
+            easing: Easing.out(Easing.cubic),
+            useNativeDriver: true,
+          }),
+        ]).start();
+        prevToastIdRef.current = toastId;
+      } else if (prevToastIdRef.current !== toastId) {
+        contentOpacity.setValue(0.82);
+        contentTranslateY.setValue(5);
+        Animated.parallel([
+          Animated.spring(contentOpacity, {
+            toValue: 1,
+            friction: 7,
+            tension: 120,
+            useNativeDriver: true,
+          }),
+          Animated.timing(contentTranslateY, {
+            toValue: 0,
+            duration: 200,
+            easing: Easing.out(Easing.cubic),
+            useNativeDriver: true,
+          }),
+        ]).start();
+        prevToastIdRef.current = toastId;
+      }
+      prevVisibleRef.current = true;
+      setExiting(false);
+      return;
+    }
 
-    Animated.sequence([
-      Animated.parallel([
-        Animated.timing(translateY, {
-          toValue: 0,
-          duration: 320,
-          easing: Easing.out(Easing.back(1.2)),
-          useNativeDriver: true,
-        }),
-        Animated.timing(opacity, {
-          toValue: 1,
-          duration: 320,
-          easing: Easing.out(Easing.cubic),
-          useNativeDriver: true,
-        }),
-      ]),
-      Animated.parallel([
-        Animated.timing(progress, {
-          toValue: 0,
-          duration: 2400,
-          easing: Easing.linear,
-          useNativeDriver: false,
-        }),
-      ]),
+    if (prevVisibleRef.current) {
+      prevVisibleRef.current = false;
+      setExiting(true);
       Animated.parallel([
         Animated.timing(translateY, {
           toValue: -80,
@@ -57,11 +88,15 @@ export default function GlobalToast({
           easing: Easing.in(Easing.cubic),
           useNativeDriver: true,
         }),
-      ]),
-    ]).start(() => onHide?.());
-  }, [visible, message, toastId, translateY, opacity, progress, onHide]);
+      ]).start(() => {
+        setExiting(false);
+        onHide?.();
+      });
+    }
+  }, [visible, message, toastId, translateY, opacity, contentOpacity, contentTranslateY, onHide]);
 
-  if (!visible || !message) return null;
+  if (!message) return null;
+  if (!visible && !exiting) return null;
 
   return (
     <Animated.View
@@ -89,29 +124,39 @@ export default function GlobalToast({
           elevation: 8,
         }}
       >
-        <Text
+        <Animated.View
           style={{
-            fontSize: 14,
-            color: '#1a1a1a',
-            fontWeight: '600',
+            opacity: contentOpacity,
+            transform: [{ translateY: contentTranslateY }],
           }}
         >
-          {message}
-        </Text>
+          <Text
+            numberOfLines={1}
+            ellipsizeMode="tail"
+            style={{
+              fontSize: 14,
+              color: '#1a1a1a',
+              fontWeight: '600',
+            }}
+          >
+            {singleLineText}
+          </Text>
+        </Animated.View>
+        {/* 로딩바(채팅 진행 표시) — 사용 시 isChat과 progress 애니메이션을 함께 복구
         {isChat ? (
           <View
             style={{
               marginTop: 10,
-              height: 1,
-              borderRadius: 0.5,
+              height: 2,
+              borderRadius: 1,
               backgroundColor: 'rgba(0,0,0,0.08)',
               overflow: 'hidden',
             }}
           >
             <Animated.View
               style={{
-                height: 1,
-                borderRadius: 0.5,
+                height: 2,
+                borderRadius: 1,
                 backgroundColor: '#4CAF50',
                 width: progress.interpolate({
                   inputRange: [0, 1],
@@ -121,6 +166,7 @@ export default function GlobalToast({
             />
           </View>
         ) : null}
+        */}
       </TouchableOpacity>
     </Animated.View>
   );
