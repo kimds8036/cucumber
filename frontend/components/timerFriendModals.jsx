@@ -21,6 +21,7 @@ import { colors } from '../styles/colors';
 import { useFriendSocketEvents } from '../hooks/useFriendSocketEvents';
 import { useNavigation } from '@react-navigation/native';
 import { api } from '../utils/api';
+import GlobalToast from './common/GlobalToast';
 
 // ── 상수 ────────────────────────────────────────────────
 export const FRIEND_ICON_COLORS = [colors.green, colors.yellow, colors.red, colors.blue];
@@ -274,84 +275,7 @@ const addFriendStyles = {
 };
 
 // ── 토스트 ──────────────────────────────────────────────
-export const Toast = ({ message, visible, onHide }) => {
-  const translateY = useRef(new Animated.Value(-80)).current;
-  const opacity = useRef(new Animated.Value(0)).current;
-
-  useEffect(() => {
-    if (visible && message) {
-      translateY.setValue(-80);
-      opacity.setValue(0);
-      Animated.sequence([
-        Animated.parallel([
-          Animated.timing(translateY, {
-            toValue: 0,
-            duration: 320,
-            easing: Easing.out(Easing.back(1.2)),
-            useNativeDriver: true,
-          }),
-          Animated.timing(opacity, {
-            toValue: 1,
-            duration: 320,
-            easing: Easing.out(Easing.cubic),
-            useNativeDriver: true,
-          }),
-        ]),
-        Animated.delay(2800),
-        Animated.parallel([
-          Animated.timing(translateY, {
-            toValue: -80,
-            duration: 280,
-            easing: Easing.in(Easing.cubic),
-            useNativeDriver: true,
-          }),
-          Animated.timing(opacity, {
-            toValue: 0,
-            duration: 280,
-            easing: Easing.in(Easing.cubic),
-            useNativeDriver: true,
-          }),
-        ]),
-      ]).start(() => onHide?.());
-    }
-  }, [visible, message, translateY, opacity, onHide]);
-
-  if (!visible || !message) return null;
-  return (
-    <Animated.View
-      style={[toastStyles.toast, { opacity, transform: [{ translateY }] }]}
-      pointerEvents="none"
-    >
-      <Text style={toastStyles.toastText}>{message}</Text>
-    </Animated.View>
-  );
-};
-
-const toastStyles = {
-  toast: {
-    position: 'absolute',
-    top: 55,
-    left: 16,
-    right: 16,
-    backgroundColor: 'rgba(255,255,255,0.97)',
-    borderRadius: 16,
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-    flexDirection: 'row',
-    alignItems: 'center',
-    shadowColor: '#000',
-    shadowOpacity: 0.12,
-    shadowRadius: 16,
-    shadowOffset: { width: 0, height: 4 },
-    elevation: 8,
-  },
-  toastText: {
-    fontSize: 14,
-    color: '#1a1a1a',
-    fontWeight: '600',
-    flex: 1,
-  },
-};
+export const Toast = GlobalToast;
 
 // ── 친구 목록 UI (FriendStoryBar) ──────────────────────
 /**

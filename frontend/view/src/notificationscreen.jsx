@@ -297,7 +297,7 @@ const NotificationScreen = ({ navigation }) => {
     for (const n of items) {
       const isMailChat =
         n.category === 'mail' &&
-        n.relatedType === 'message_room' &&
+        (n.relatedType === 'message_room' || n.relatedType === 'dm_room') &&
         n.relatedId;
 
       if (!isMailChat) {
@@ -430,9 +430,15 @@ const NotificationScreen = ({ navigation }) => {
         });
         return;
       }
+      if (n.relatedType === 'dm_room' && n.relatedId) {
+        navigation?.navigate('DMChat', {
+          roomId: n.relatedId,
+        });
+        return;
+      }
 
       // (3) 기본: 메시지/우편 화면 루트로 이동
-      navigation?.navigate('Message');
+      navigation?.navigate('Main');
       return;
     }
 

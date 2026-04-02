@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useRef, useEffect } from 'react';
+import React, { useState, useMemo, useRef, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -18,6 +18,8 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import Feather from '@expo/vector-icons/Feather';
 import MessageTabIcon from '../../assets/Group 166.svg';
 import { api } from '../../utils/api';
+import * as socketManager from './socketManager';
+import { useToast } from '../../context/ToastContext';
 
 // DB에 UTC로 저장된 날짜 문자열을 기기 로컬 시간대로 변환해서 파싱
 function parseUtcToLocal(createdAt) {
@@ -152,6 +154,7 @@ export function MessageContent({ navigation }) {
   const [mails, setMails] = useState([]);
   const [loadingNote, setLoadingNote] = useState(false);
   const [loadingMail, setLoadingMail] = useState(false);
+  const { setIsMessageTab } = useToast();
 
   const handleMessageTypeChange = (type) => {
     setMessageType(type);
@@ -164,69 +167,151 @@ export function MessageContent({ navigation }) {
     }).start();
   };
 
+  const fetchRooms = useCallback(async () => {
+    try {
+      setLoadingNote(true);
+      const [noteRes, dmRes] = await Promise.all([
+        api.get('/api/messages/rooms', { params: { page: 1, limit: 50 } }).catch((e) => {
+          console.error('채팅방 목록 조회 실패:', e);
+          return { data: {} };
+        }),
+        api.get('/api/dm/rooms', { params: { page: 1, limit: 50 } }).catch((e) => {
+          console.error('DM 목록 조회 실패:', e);
+          return { data: {} };
+        }),
+      ]);
+
+      const noteList = (noteRes.data?.data?.rooms ?? []).map((r, idx) => {
+        const at = r.last_message_at || r.created_at;
+        return {
+          type: 'note',
+          id: r.id,
+          profileColorIndex: idx,
+          name: '익명',
+          content: r.last_message || r.post_content || '',
+          time: formatListTime(at),
+          unreadCount: r.unread_count || 0,
+          sortTime: parseUtcToLocal(at)?.getTime() ?? 0,
+        };
+      });
+
+      const dmList = (dmRes.data?.data?.rooms ?? []).map((r, idx) => {
+        const at = r.last_message_at || r.created_at;
+        return {
+          type: 'dm',
+          id: r.id,
+          profileColorIndex: idx,
+          name: r.other_user_name || '친구',
+          content: r.last_message || '',
+          time: formatListTime(at),
+          unreadCount: Number(r.unread_count) || 0,
+          other_user_id: r.other_user_id,
+          other_user_name: r.other_user_name,
+          other_user_school_name: r.other_user_school_name,
+          other_user_color_id: r.other_user_color_id,
+          sortTime: parseUtcToLocal(at)?.getTime() ?? 0,
+        };
+      });
+
+      const merged = [...noteList, ...dmList].sort((a, b) => b.sortTime - a.sortTime);
+      setNoteRooms(merged);
+    } catch (error) {
+      console.error('쪽지 목록 조회 실패:', error);
+    } finally {
+      setLoadingNote(false);
+    }
+  }, []);
+
   // 쪽지 탭: 익명 채팅방 + DM 방 동시 조회 후 최신순 병합
   useEffect(() => {
-    const fetchRooms = async () => {
-      try {
-        setLoadingNote(true);
-        const [noteRes, dmRes] = await Promise.all([
-          api.get('/api/messages/rooms', { params: { page: 1, limit: 50 } }).catch((e) => {
-            console.error('채팅방 목록 조회 실패:', e);
-            return { data: {} };
-          }),
-          api.get('/api/dm/rooms', { params: { page: 1, limit: 50 } }).catch((e) => {
-            console.error('DM 목록 조회 실패:', e);
-            return { data: {} };
-          }),
-        ]);
-
-        const noteList = (noteRes.data?.data?.rooms ?? []).map((r, idx) => {
-          const at = r.last_message_at || r.created_at;
-          return {
-            type: 'note',
-            id: r.id,
-            profileColorIndex: idx,
-            name: '익명',
-            content: r.last_message || r.post_content || '',
-            time: formatListTime(at),
-            unreadCount: r.unread_count || 0,
-            sortTime: parseUtcToLocal(at)?.getTime() ?? 0,
-          };
-        });
-
-        const dmList = (dmRes.data?.data?.rooms ?? []).map((r, idx) => {
-          const at = r.last_message_at || r.created_at;
-          return {
-            type: 'dm',
-            id: r.id,
-            profileColorIndex: idx,
-            name: r.other_user_name || '친구',
-            content: r.last_message || '',
-            time: formatListTime(at),
-            unreadCount: Number(r.unread_count) || 0,
-            other_user_id: r.other_user_id,
-            other_user_name: r.other_user_name,
-            other_user_school_name: r.other_user_school_name,
-            other_user_color_id: r.other_user_color_id,
-            sortTime: parseUtcToLocal(at)?.getTime() ?? 0,
-          };
-        });
-
-        const merged = [...noteList, ...dmList].sort((a, b) => b.sortTime - a.sortTime);
-        setNoteRooms(merged);
-      } catch (error) {
-        console.error('쪽지 목록 조회 실패:', error);
-      } finally {
-        setLoadingNote(false);
-      }
-    };
-
     fetchRooms();
     const unsubscribe = navigation?.addListener?.('focus', fetchRooms);
     return () => {
       if (unsubscribe) unsubscribe();
     };
-  }, [navigation]);
+  }, [navigation, fetchRooms]);
+
+  // 채팅 관련 소켓 이벤트 수신 시 목록 실시간 갱신
+  useEffect(() => {
+    let isMounted = true;
+
+    const handleNewMessage = (payload) => {
+      const roomId = payload?.message?.room_id;
+      const messageId = payload?.message?.id;
+      const senderId = payload?.message?.sender_id;
+      const senderName = payload?.message?.sender_name;
+      const hasContent = Boolean(payload?.message?.content);
+      const imageCount = Array.isArray(payload?.message?.images)
+        ? payload.message.images.length
+        : 0;
+
+      console.log('[MessageListSocket] new_message received', {
+        roomId: payload?.message?.room_id,
+        messageId: payload?.message?.id,
+        senderId,
+        senderName,
+        hasContent,
+        imageCount,
+        receivedAt: new Date().toISOString(),
+      });
+
+      console.log('[MessageListSocket] fetchRooms scheduled', {
+        reason: 'new_message',
+        roomId,
+        messageId,
+      });
+      fetchRooms();
+    };
+    const handleNotification = (payload) => {
+      // 목록 화면에서도 new_message 이벤트 누락 가능성이 있어 notification을 보조 트리거로 사용
+      if (payload?.type === 'friend_request') return;
+      if (
+        payload?.relatedType === 'message_room' ||
+        payload?.relatedType === 'dm_room' ||
+        payload?.category === 'mail' ||
+        payload?.type === 'mail'
+      ) {
+        console.log('[MessageListSocket] fetchRooms scheduled', {
+          reason: 'notification',
+          relatedType: payload?.relatedType,
+          relatedId: payload?.relatedId,
+        });
+        fetchRooms();
+      }
+    };
+
+    socketManager.connectSocket?.().then?.(() => {
+      if (!isMounted) return;
+      const currentSocket = socketManager.getSocket?.();
+      console.log('[MessageListSocket] listener attach', {
+        event: 'new_message',
+        socketId: currentSocket?.id,
+        connected: currentSocket?.connected,
+      });
+      socketManager.on('new_message', handleNewMessage);
+      socketManager.on('notification', handleNotification);
+    });
+
+    return () => {
+      isMounted = false;
+      const currentSocket = socketManager.getSocket?.();
+      console.log('[MessageListSocket] listener detach', {
+        event: 'new_message',
+        socketId: currentSocket?.id,
+        connected: currentSocket?.connected,
+      });
+      socketManager.off('new_message', handleNewMessage);
+      socketManager.off('notification', handleNotification);
+    };
+  }, [fetchRooms]);
+
+  // 메시지 목록 화면 진입/이탈 상태를 전역 알림 정책에 공유
+  useEffect(() => {
+    setIsMessageTab(true);
+    return () => {
+      setIsMessageTab(false);
+    };
+  }, [setIsMessageTab]);
 
   // 개인 우편 요약 목록 불러오기 (처음 + 화면 복귀 시마다 새로고침)
   useEffect(() => {

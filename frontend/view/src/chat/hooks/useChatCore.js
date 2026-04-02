@@ -15,6 +15,7 @@ import normalizeMessage, {
   getDateKey,
 } from '../utils/normalizeMessage';
 import { loadCache, saveCache } from '../utils/cacheManager';
+import { useToast } from '../../../../context/ToastContext';
 
 const getMessageSortValue = (msg) => {
   if (!msg) return Number.MIN_SAFE_INTEGER;
@@ -45,6 +46,7 @@ export default function useChatCore(config) {
   } = config;
 
   const [state, dispatch] = useReducer(chatReducer, initialState);
+  const { setActiveChatRoomId } = useToast();
 
   const meIdRef = useRef(meId);
   const oldestIdRef = useRef(null);
@@ -52,10 +54,15 @@ export default function useChatCore(config) {
   const abortControllerRef = useRef(null);
   const cacheSaveTimeoutRef = useRef(null);
   const pendingClientIdTimeoutsRef = useRef(new Map());
+  const messagesByIdRef = useRef(state.messagesById);
 
   useEffect(() => {
     meIdRef.current = meId;
   }, [meId]);
+
+  useEffect(() => {
+    messagesByIdRef.current = state.messagesById;
+  }, [state.messagesById]);
 
   // ─── derived messages ([과거 → 최신] — 리듀서 정렬 기준 사용) ───
   const messages = useMemo(() => {
@@ -93,6 +100,15 @@ export default function useChatCore(config) {
       pollRef.current = null;
     }
   }, [roomId]);
+
+  // 현재 열려 있는 채팅방 ID를 전역 토스트 시스템에 공유
+  useEffect(() => {
+    if (!roomId) return;
+    setActiveChatRoomId(roomId);
+    return () => {
+      setActiveChatRoomId(null);
+    };
+  }, [roomId, setActiveChatRoomId]);
 
   // unmount 시 AbortController 정리
   useEffect(() => {
@@ -145,7 +161,7 @@ export default function useChatCore(config) {
         }
       }
 
-      if (newMsg.clientId && state.messagesById[String(newMsg.clientId)]) {
+      if (newMsg.clientId && messagesByIdRef.current[String(newMsg.clientId)]) {
         dispatch({
           type: 'REPLACE_TEMP_MESSAGE',
           payload: { tempId: String(newMsg.clientId), serverMessage: newMsg },
@@ -158,7 +174,7 @@ export default function useChatCore(config) {
         api.markRead?.(roomId)?.catch?.(() => {});
       }
     },
-    [roomId, api, state.messagesById],
+    [roomId, api],
   );
 
   // ─── 소켓 read_receipt 핸들러 ───

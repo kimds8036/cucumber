@@ -6,10 +6,9 @@ import React, {
   useState,
   useCallback,
 } from 'react';
-import { Platform, AppState } from 'react-native';
+import { AppState } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import io from 'socket.io-client';
-import { api } from '../utils/api';
+import * as socketManager from '../view/src/socketManager';
 
 const AUTH_TOKEN_KEY = '@auth_token';
 
@@ -18,44 +17,26 @@ const SocketContext = createContext(null);
 export function SocketProvider({ children }) {
   const [connected, setConnected] = useState(false);
   const [socket, setSocket] = useState(null);
-  const socketRef = useRef(null);
+  const reconnectAuthTimerRef = useRef(null);
   const appStateRef = useRef(AppState.currentState);
   const cancelledRef = useRef(false);
 
+  const cleanupContextListeners = useCallback((targetSocket) => {
+    if (!targetSocket) return;
+    targetSocket.off('connect');
+    targetSocket.off('disconnect');
+    targetSocket.off('connect_error');
+  }, []);
+
   const connect = useCallback(async () => {
     try {
-      if (socketRef.current && socketRef.current.connected) {
-        return;
-      }
-
-      // 끊긴 인스턴스가 남아 있으면 정리 후 새로 연결
-      if (socketRef.current && !socketRef.current.connected) {
-        try {
-          socketRef.current.removeAllListeners();
-          socketRef.current.disconnect();
-        } catch (e) {
-          /* ignore */
-        }
-        socketRef.current = null;
-        setSocket(null);
-      }
-
       const token = await AsyncStorage.getItem(AUTH_TOKEN_KEY);
       if (!token || cancelledRef.current) return;
 
-      const baseURL = api.defaults.baseURL;
-      const transports =
-        Platform.OS === 'ios' ? ['websocket', 'polling'] : ['websocket', 'polling'];
+      const s = await socketManager.connectSocket?.(null, token);
+      if (!s || cancelledRef.current) return;
 
-      const s = io(baseURL, {
-        transports,
-        auth: { token },
-        reconnection: true,
-        reconnectionAttempts: Infinity,
-        reconnectionDelay: 1000,
-        reconnectionDelayMax: 5000,
-        timeout: 20000,
-      });
+      cleanupContextListeners(s);
 
       s.on('connect', () => {
         if (!cancelledRef.current) {
@@ -64,8 +45,8 @@ export function SocketProvider({ children }) {
         }
         if (__DEV__) {
           console.log('[SocketContext] 연결됨', {
+            socketId: s.id,
             transport: s.io?.engine?.transport?.name,
-            os: Platform.OS,
           });
         }
       });
@@ -91,27 +72,29 @@ export function SocketProvider({ children }) {
           msg.includes('invalid') ||
           msg.includes('Unauthorized')
         ) {
-          setTimeout(() => {
-            if (!cancelledRef.current && socketRef.current) {
-              try {
-                socketRef.current.removeAllListeners();
-                socketRef.current.disconnect();
-              } catch (e) {
-                /* ignore */
-              }
-              socketRef.current = null;
-              setSocket(null);
-              connect();
+          if (reconnectAuthTimerRef.current) {
+            clearTimeout(reconnectAuthTimerRef.current);
+            reconnectAuthTimerRef.current = null;
+          }
+          reconnectAuthTimerRef.current = setTimeout(async () => {
+            const latest = socketManager.getSocket?.();
+            if (!cancelledRef.current && latest) {
+              const latestToken = await AsyncStorage.getItem(AUTH_TOKEN_KEY);
+              if (!latestToken) return;
+              latest.auth = { token: latestToken };
+              latest.connect();
             }
-          }, 5000);
+            reconnectAuthTimerRef.current = null;
+          }, 2000);
         }
       });
 
-      socketRef.current = s;
+      setSocket(s);
+      if (!s.connected) s.connect();
     } catch (e) {
       console.error('[SocketContext] 연결 실패:', e);
     }
-  }, []);
+  }, [cleanupContextListeners]);
 
   useEffect(() => {
     cancelledRef.current = false;
@@ -121,7 +104,8 @@ export function SocketProvider({ children }) {
       const prev = appStateRef.current;
       appStateRef.current = nextState;
       if (prev.match(/inactive|background/) && nextState === 'active') {
-        if (!socketRef.current || !socketRef.current.connected) {
+        const activeSocket = socketManager.getSocket?.();
+        if (!activeSocket || !activeSocket.connected) {
           if (__DEV__) {
             console.log('[SocketContext] AppState active → 소켓 재연결 시도');
           }
@@ -135,15 +119,16 @@ export function SocketProvider({ children }) {
     return () => {
       cancelledRef.current = true;
       sub.remove();
-      if (socketRef.current) {
-        socketRef.current.removeAllListeners();
-        socketRef.current.disconnect();
-        socketRef.current = null;
+      if (reconnectAuthTimerRef.current) {
+        clearTimeout(reconnectAuthTimerRef.current);
+        reconnectAuthTimerRef.current = null;
       }
+      // 컨텍스트에서 등록한 리스너만 정리하고, 소켓 연결은 유지한다.
+      cleanupContextListeners(socketManager.getSocket?.());
       setSocket(null);
       setConnected(false);
     };
-  }, [connect]);
+  }, [connect, cleanupContextListeners]);
 
   const value = {
     socket,
