@@ -65,6 +65,10 @@ export function NotificationProvider({ children }) {
       if (!composedMessage) return;
       showToast({
         message: composedMessage,
+        senderName: isChatNotification
+          ? titleText || '새 메시지'
+          : null,
+        body: isChatNotification ? bodyText || '(이미지)' : null,
         roomId: payload?.relatedId,
         relatedType: payload?.relatedType,
         isChat: isChatNotification,
@@ -119,6 +123,8 @@ export function NotificationProvider({ children }) {
       });
       showToast({
         message: `${senderName}: ${content}`,
+        senderName,
+        body: content,
         roomId,
         relatedType: 'message_room',
         isChat: true,

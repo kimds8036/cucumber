@@ -35,7 +35,8 @@ export default function ToastHost() {
         visible={visible}
         toastId={toast?.id}
         message={toast?.message}
-        isChat={toast?.isChat}
+        senderName={toast?.senderName}
+        body={toast?.body}
         onPress={handleToastPress}
         onHide={hideToast}
       />
