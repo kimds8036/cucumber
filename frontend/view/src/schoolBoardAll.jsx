@@ -169,9 +169,18 @@ const SchoolBoardAll = ({ navigation }) => {
         navigation.navigate('BoardDetail', {
           post: { ...post, author: post.author },
           isMyPost: post.isMyPost ?? false,
+          onLikeChange: (id, liked, likes) => {
+            setSchoolPosts((prev) =>
+              prev.map((p) => (p.id === id ? { ...p, liked, likes } : p))
+            );
+          },
+          onScrapChange: (id, scrapped, scrapCount) => {
+            setSchoolPosts((prev) =>
+              prev.map((p) => (p.id === id ? { ...p, scrapped, scrapCount } : p))
+            );
+          },
         })
       }
-      onScrapPress={handleScrapPress}
     />
   );
 

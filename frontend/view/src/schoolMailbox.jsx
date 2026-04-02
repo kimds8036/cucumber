@@ -60,6 +60,7 @@ function mapMailForCard(raw, mailboxSchoolId) {
     time: formatTimeAgo(raw.created_at) || String(raw.created_at ?? ''),
     likes: raw.like_count ?? 0,
     comments: raw.comment_count ?? 0,
+    liked: raw.is_liked ?? false,
   };
 }
 
@@ -135,6 +136,11 @@ const SchoolMailboxScreen = ({ navigation, route }) => {
     fetchMails(page + 1, true);
   }, [loading, loadingMore, hasMore, schoolId, page, fetchMails]);
 
+  const handleRefresh = useCallback(() => {
+    if (!schoolId) return;
+    fetchMails(1, false);
+  }, [schoolId, fetchMails]);
+
   const renderItem = ({ item: raw }) => {
     const mail = mapMailForCard(raw, schoolId);
     return (
@@ -146,6 +152,13 @@ const SchoolMailboxScreen = ({ navigation, route }) => {
             mailId: raw.id,
             schoolName,
             schoolId,
+            onLikeChange: (id, liked, likeCount) => {
+              setMails((prev) =>
+                prev.map((m) =>
+                  m.id === id ? { ...m, is_liked: liked, like_count: likeCount } : m
+                )
+              );
+            },
           })
         }
       >
@@ -173,7 +186,11 @@ const SchoolMailboxScreen = ({ navigation, route }) => {
         <View style={styles.cardFooterRow}>
           <View style={styles.statRow}>
             <View style={styles.statItem}>
-              <FontAwesome name="heart-o" size={normalize(14)} color={colors.alert} />
+              <FontAwesome
+                name={mail.liked ? 'heart' : 'heart-o'}
+                size={normalize(14)}
+                color={colors.alert}
+              />
               <Text style={styles.statText}>{mail.likes}</Text>
             </View>
             <View style={styles.statItem}>
@@ -200,32 +217,28 @@ const SchoolMailboxScreen = ({ navigation, route }) => {
       <SubHeader title="학교 우편함" onBack={() => navigation?.goBack()} />
 
       <View style={styles.container}>
-        {loading && mails.length === 0 ? (
-          <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-            <Loading size="large" />
-          </View>
-        ) : (
-          <FlatList
-            style={styles.list}
-            contentContainerStyle={[styles.gridContainer, mails.length === 0 && { flexGrow: 1 }]}
-            data={mails}
-            keyExtractor={(item) => String(item.id)}
-            numColumns={2}
-            columnWrapperStyle={{ justifyContent: 'space-between' }}
-            renderItem={renderItem}
-            ListEmptyComponent={listEmpty}
-            onEndReached={handleLoadMore}
-            onEndReachedThreshold={0.4}
-            ListFooterComponent={
-              loadingMore ? (
-                <View style={{ paddingVertical: normalize(16), width: '100%', alignItems: 'center' }}>
-                  <Loading color={colors.textSecondary} />
-                </View>
-              ) : null
-            }
-            showsVerticalScrollIndicator={false}
-          />
-        )}
+        <FlatList
+          style={styles.list}
+          contentContainerStyle={[styles.gridContainer, mails.length === 0 && { flexGrow: 1 }]}
+          data={mails}
+          keyExtractor={(item) => String(item.id)}
+          numColumns={2}
+          columnWrapperStyle={{ justifyContent: 'space-between' }}
+          renderItem={renderItem}
+          ListEmptyComponent={listEmpty}
+          refreshing={loading}
+          onRefresh={handleRefresh}
+          onEndReached={handleLoadMore}
+          onEndReachedThreshold={0.4}
+          ListFooterComponent={
+            loadingMore ? (
+              <View style={{ paddingVertical: normalize(16), width: '100%', alignItems: 'center' }}>
+                <Loading color={colors.textSecondary} />
+              </View>
+            ) : null
+          }
+          showsVerticalScrollIndicator={false}
+        />
 
         <TouchableOpacity
           style={styles.floatingButton}

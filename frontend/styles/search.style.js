@@ -1,4 +1,4 @@
-import { StyleSheet } from 'react-native';
+﻿import { StyleSheet } from 'react-native';
 import { colors, fonts, fontSizes } from './colors';
 
 export const getNormalize = (width) => {
@@ -447,7 +447,7 @@ export const createSearchScreenStyles = (width, normalize) => {
     },
     previewDivider: {
       height: StyleSheet.hairlineWidth,
-      backgroundColor: colors.border,
+      backgroundColor: colors.textLight5,
       marginHorizontal: normalize(14),
       marginVertical: normalize(4),
     },
@@ -875,7 +875,7 @@ export const createSearchResultStyles = (normalize) => {
       alignItems: 'center',
       justifyContent: 'center',
       paddingVertical: normalize(13),
-      borderTopWidth: StyleSheet.hairlineWidth,
+      borderTopWidth: 1,
       borderTopColor: colors.textLight10,
       gap: normalize(4),
     },
@@ -896,8 +896,8 @@ export const createSearchResultStyles = (normalize) => {
       paddingHorizontal: normalize(20),
       paddingVertical: normalize(10),
       borderRadius: normalize(20),
-      borderWidth: StyleSheet.hairlineWidth,
-      borderColor: colors.border,
+      borderWidth: 1,
+      borderColor: colors.textLight5,
       backgroundColor: colors.background,
     },
     loadMoreText: {

@@ -317,6 +317,8 @@ export default function SchoolMailDetail({ navigation, route }) {
       const { liked, likeCount } = res.data;
       setPostLiked(Boolean(liked));
       setMail((m) => (m ? { ...m, like_count: likeCount, is_liked: liked } : m));
+      const onLikeChange = route?.params?.onLikeChange;
+      if (onLikeChange) onLikeChange(mailId, Boolean(liked), likeCount);
     } catch (e) {
       setPostLiked(prevLiked);
       setMail((m) => (m ? { ...m, like_count: prevCount, is_liked: prevLiked } : m));
@@ -620,20 +622,12 @@ export default function SchoolMailDetail({ navigation, route }) {
                     <View style={styles.smDetailLetterTopRow}>
                       <View style={styles.smDetailFromToCol}>
                         <Text style={styles.smDetailFromToText}>From. {fromLine}</Text>
-                        {!!schoolName && (
-                          <Text
-                            style={[styles.smDetailFromToText, { marginTop: normalize(4), opacity: 0.85 }]}
-                            numberOfLines={1}
-                          >
-                            {schoolName}
-                          </Text>
-                        )}
                       </View>
+                      <Text style={styles.smDetailMailTime}>{timeLabel}</Text>
                     </View>
                     <View style={styles.smDetailDashedRule} />
                     <Text style={styles.smDetailMailBody}>{mailBody}</Text>
                     <View style={styles.smDetailMailFooter}>
-                      <Text style={styles.smDetailMailTime}>{timeLabel}</Text>
                       <View style={styles.smDetailMailStats}>
                         <TouchableOpacity
                           style={styles.smDetailStatItem}
@@ -652,15 +646,15 @@ export default function SchoolMailDetail({ navigation, route }) {
                           <Ionicons name="chatbubble-outline" size={normalize(15)} color={colors.primary} />
                           <Text style={styles.smDetailStatText}>{displayCommentCount}</Text>
                         </View>
-                        <View ref={postMenuButtonRef} collapsable={false}>
-                          <TouchableOpacity
-                            style={{ padding: normalize(4) }}
-                            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                            onPress={() => openFloatingMenu('post', postMenuButtonRef.current)}
-                          >
-                            <Entypo name="dots-three-vertical" size={normalize(14)} color={colors.textSecondary} />
-                          </TouchableOpacity>
-                        </View>
+                      </View>
+                      <View ref={postMenuButtonRef} collapsable={false}>
+                        <TouchableOpacity
+                          style={{ padding: normalize(4) }}
+                          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                          onPress={() => openFloatingMenu('post', postMenuButtonRef.current)}
+                        >
+                          <Entypo name="dots-three-vertical" size={normalize(14)} color={colors.textSecondary} />
+                        </TouchableOpacity>
                       </View>
                     </View>
                   </View>

@@ -24,7 +24,9 @@ export const createSchoolMailStyles = (width, normalize) => {
     },
     card: {
       width: cardWidth,
-      backgroundColor: '#F8FFF8',
+      minHeight: normalize(150),
+      flexDirection: 'column',
+      backgroundColor: colors.background,
       borderRadius: normalize(14),
       padding: normalize(12),
       marginBottom: normalize(10),
@@ -81,10 +83,11 @@ export const createSchoolMailStyles = (width, normalize) => {
       color: colors.primaryDark,
     },
     cardPreview: {
-      fontSize: normalize(fontSizes.lg),
+      flexGrow: 1,
+      fontSize: normalize(fontSizes.xl),
       fontFamily: fonts.regular,
       color: colors.textPrimary,
-      lineHeight: normalize(18),
+      lineHeight: normalize(fontSizes.title),
       marginBottom: normalize(10),
     },
     cardFooterRow: {
@@ -154,7 +157,7 @@ export const createSchoolMailDetailStyles = (width, normalize) => {
       paddingHorizontal: normalize(16),
       paddingTop: normalize(16),
       paddingBottom: normalize(18),
-      shadowColor: '#000',
+      shadowColor: colors.shadow,
       shadowOffset: { width: 0, height: 1 },
       shadowOpacity: 0.1,
       shadowRadius: 10,
@@ -173,8 +176,8 @@ export const createSchoolMailDetailStyles = (width, normalize) => {
     smDetailFromToText: {
       fontSize: normalize(fontSizes.xl),
       fontFamily: fonts.regular,
-      color: '#7A6B5C',
-      lineHeight: normalize(20),
+      color: colors.textSecondary,
+      lineHeight: normalize(fontSizes.heading),
       marginBottom: normalize(2),
     },
     smDetailPostBadge: {
@@ -184,9 +187,8 @@ export const createSchoolMailDetailStyles = (width, normalize) => {
       paddingVertical: normalize(6),
       paddingHorizontal: normalize(4),
       borderRadius: normalize(8),
-      backgroundColor: '#E8F4FC',
-      borderWidth: StyleSheet.hairlineWidth,
-      borderColor: '#C5DDF0',
+      backgroundColor: colors.blue,
+      borderColor: colors.subcolor,
     },
     smDetailPostBadgeLabel: {
       fontSize: normalize(fontSizes.md),
@@ -197,16 +199,15 @@ export const createSchoolMailDetailStyles = (width, normalize) => {
     smDetailDashedRule: {
       borderBottomWidth: 1,
       borderStyle: 'dashed',
-      borderBottomColor: '#C9B8A8',
+      borderBottomColor: colors.textLight5,
       width: '100%',
     },
     smDetailMailBody: {
       fontSize: normalize(fontSizes.xxl),
       fontFamily: fonts.regular,
       color: colors.textPrimary,
-      lineHeight: normalize(22),
+      lineHeight: normalize(fontSizes.xxl + 6),
       marginBottom: normalize(16),
-      minHeight: normalize(60),
     },
     smDetailMailFooter: {
       flexDirection: 'row',
@@ -252,7 +253,7 @@ export const createSchoolMailDetailStyles = (width, normalize) => {
       paddingHorizontal: normalize(14),
       paddingVertical: normalize(12),
       marginBottom: normalize(10),
-      shadowColor: '#000',
+      shadowColor: colors.shadow,
       shadowOffset: { width: 0, height: 1 },
       shadowOpacity: 0.1,
       shadowRadius: 10,
@@ -308,6 +309,7 @@ export const createSchoolMailDetailStyles = (width, normalize) => {
     },
     smDetailCommentDot: {
       fontSize: normalize(fontSizes.xl),
+      fontFamily: fonts.regular,
       color: colors.textSecondary,
       marginHorizontal: normalize(4),
     },
@@ -320,7 +322,7 @@ export const createSchoolMailDetailStyles = (width, normalize) => {
       fontSize: normalize(fontSizes.xl),
       fontFamily: fonts.regular,
       color: colors.textPrimary,
-      lineHeight: normalize(20),
+      lineHeight: normalize(fontSizes.heading),
       marginBottom: normalize(6),
     },
     smDetailCommentTag: {
@@ -344,7 +346,6 @@ export const createSchoolMailDetailStyles = (width, normalize) => {
       gap: normalize(4),
     },
     smDetailCommentReplyButton: {
-      paddingVertical: normalize(4),
       paddingHorizontal: normalize(6),
     },
     smDetailCommentReplyButtonText: {

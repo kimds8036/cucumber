@@ -298,7 +298,7 @@ export const createChatStyles = (width, normalize) => {
       paddingHorizontal: normalize(12),
       paddingVertical: normalize(8),
       borderBottomWidth: 1,
-      borderBottomColor: colors.border,
+      borderBottomColor: colors.textLight5,
       flexDirection: 'row',
       justifyContent: 'space-between',
       alignItems: 'center',

@@ -202,17 +202,14 @@ const BoardPostCard = ({ post, normalize, styles, onPress, onScrapPress }) => {
                 <Ionicons name="chatbubble-outline" size={normalize(15)} color={colors.primary} />
                 <Text style={styles.postStatText}>{post.comments}</Text>
               </View>
-              <TouchableOpacity
-                style={styles.postStatItem}
-                onPress={() => onScrapPress && onScrapPress(post)}
-              >
+              <View style={styles.postStatItem}>
                 <Ionicons
                   name={post.scrapped ? 'bookmark' : 'bookmark-outline'}
                   size={normalize(14)}
                   color={colors.scrap}
                 />
                 <Text style={styles.postStatText}>{post.scrapCount ?? 0}</Text>
-              </TouchableOpacity>
+              </View>
             </View>
           </View>
         </View>

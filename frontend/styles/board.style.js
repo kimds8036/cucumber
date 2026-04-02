@@ -550,11 +550,11 @@ export const createWriteStyles = (width, normalize) => {
       borderRadius: normalize(10),
       borderWidth: 1.5,
       borderStyle: 'dashed',
-      borderColor: colors.border,
+      borderColor: colors.textLight10,
       alignItems: 'center',
       justifyContent: 'center',
       marginRight: normalize(8),
-      backgroundColor: colors.surface,
+      backgroundColor: colors.textLight5,
     },
     photoItemWrap: {
       marginRight: normalize(8),
