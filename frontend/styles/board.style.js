@@ -201,6 +201,9 @@ export const createBoardStyles = (width, normalize) => {
       paddingVertical: normalize(1),
     },
     postTagMeasureHidden: {
+      position: 'absolute',
+      top: -9999,
+      left: -9999,
       opacity: 0,
     },
     postTagMoreChip: {
