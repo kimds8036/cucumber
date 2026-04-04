@@ -97,8 +97,11 @@ export default function ChatScreen({
   // flatData 생성: withMessageGroupFlags → injectDateBanners
   // messages는 [과거 → 최신] 순서를 유지하고, flatData도 동일한 시간 흐름을 따른다.
   const flatData = useMemo(
-    () => injectDateBanners(withMessageGroupFlags(chat.messages || [])),
-    [chat.messages],
+    () =>
+      injectDateBanners(withMessageGroupFlags(chat.messages || []), {
+        prependCount: chat.lastPrependCount ?? 0,
+      }),
+    [chat.messages, chat.lastPrependCount],
   );
 
   const scroll = useChatScroll({
@@ -108,6 +111,8 @@ export default function ChatScreen({
     isLoading: combinedLoading,
     isLoadingMore: chat.isLoadingMore,
     loadMore: chat.loadMore,
+    loadMoreSilent: chat.loadMoreSilent,
+    hasMore: chat.hasMore,
   });
 
   const postCardLayoutAnchorDoneRef = useRef(false);
@@ -213,21 +218,46 @@ export default function ChatScreen({
             />
           )}
 
-        <MessageList
-          roomId={roomId}
-          data={flatData}
-          messages={chat.messages}
-          listRef={scroll.listRef}
-          isLoadingMore={chat.isLoadingMore}
-          handleScroll={scroll.handleScroll}
-          handleStartReached={scroll.handleStartReached}
-          handleListShellLayout={scroll.handleListShellLayout}
-          listShellVisible={scroll.listShellVisible}
-          contentHeightRef={scroll.contentHeightRef}
-          renderMessageProps={renderMessageProps}
-          normalize={normalize}
-          handleContentSizeChange={scroll.handleContentSizeChange}
-        />
+        <View style={{ flex: 1, position: 'relative' }}>
+          <MessageList
+            roomId={roomId}
+            data={flatData}
+            listRef={scroll.listRef}
+            isLoadingMore={chat.isLoadingMore}
+            handleScroll={scroll.handleScroll}
+            handleStartReached={scroll.handleStartReached}
+            handleListShellLayout={scroll.handleListShellLayout}
+            listShellVisible={scroll.listShellVisible}
+            contentHeightRef={scroll.contentHeightRef}
+            renderMessageProps={renderMessageProps}
+            normalize={normalize}
+            handleContentSizeChange={scroll.handleContentSizeChange}
+            onViewableItemsChanged={scroll.handleViewableItemsChanged}
+          />
+          {scroll.initialScrollSettling ? (
+            <View
+              pointerEvents="auto"
+              style={{
+                ...StyleSheet.absoluteFillObject,
+                justifyContent: 'center',
+                alignItems: 'center',
+                backgroundColor: 'rgba(255,255,255,0.72)',
+                zIndex: 20,
+              }}
+            >
+              <Loading size="large" />
+              <Text
+                style={{
+                  marginTop: normalize(10),
+                  fontSize: normalize(13),
+                  color: colors.textSecondary,
+                }}
+              >
+                불러오는 중…
+              </Text>
+            </View>
+          ) : null}
+        </View>
 
         {/* 토스트 */}
         {toastText ? (

@@ -199,6 +199,7 @@ export default function BoardDetail({ navigation, route }) {
               time: formatTimeAgo(c.created_at),
               content: c.content,
               likes: c.like_count,
+              liked: Boolean(c.isLiked),
               replies: [],
             });
           });
@@ -631,12 +632,14 @@ export default function BoardDetail({ navigation, route }) {
             const isPostAuthor = postAuthorId != null && cm.user_id === postAuthorId;
             nodes.set(cm.id, {
               id: cm.id,
+              userId: cm.user_id,
               authorLabel: isPostAuthor ? '작성자' : `익명 ${cm.anonymous_index}`,
               isWriter: isPostAuthor,
               isMyComment: currentUserId != null && cm.user_id === currentUserId,
               time: formatTimeAgo(cm.created_at),
               content: cm.content,
               likes: cm.like_count,
+              liked: Boolean(cm.isLiked),
               replies: [],
             });
           });
@@ -807,16 +810,18 @@ export default function BoardDetail({ navigation, route }) {
     const repliesToShow = showAllRepliesForThis ? flattened : flattened.slice(0, INITIAL_REPLIES);
     const hasMoreReplies = flattened.length > INITIAL_REPLIES && !showAllRepliesForThis;
 
+    const likedFromState = (id, serverLiked) =>
+      commentLikedState[id] !== undefined ? commentLikedState[id] : Boolean(serverLiked);
     const nodes = [
       renderComment(c, false, null, () => focusReplyInput(c.id), {
-        liked: commentLikedState[c.id],
+        liked: likedFromState(c.id, c.liked),
         onLike: () => handleCommentLike(c.id),
       }),
     ];
     repliesToShow.forEach(({ reply: r, parentAuthorLabel: parentLabel }) => {
       nodes.push(
         renderComment(r, true, parentLabel, () => focusReplyInput(r.id), {
-          liked: commentLikedState[r.id],
+          liked: likedFromState(r.id, r.liked),
           onLike: () => handleCommentLike(r.id),
         })
       );

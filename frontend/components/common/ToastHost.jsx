@@ -37,6 +37,8 @@ export default function ToastHost() {
         message={toast?.message}
         senderName={toast?.senderName}
         body={toast?.body}
+        isChat={toast?.isChat}
+        showProgress={toast?.showProgress}
         onPress={handleToastPress}
         onHide={hideToast}
       />

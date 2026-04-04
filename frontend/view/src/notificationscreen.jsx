@@ -18,6 +18,59 @@ import { useNotification } from '../../context/NotificationContext';
 import { useFriend } from '../../context/FriendContext';
 
 const PAGE_SIZE = 20;
+/** 초기 로드 시 '좋아요'만 있는 연속 페이지를 건너뛸 때 상한 */
+const MAX_INITIAL_PAGE_SWEEP = 30;
+
+const mapTypeToIcon = (type, category) => {
+  if (category === 'mail') return { name: 'mail', color: '#FFA726', bg: '#FFF3E0' };
+  if (category === 'system') return { name: 'megaphone', color: '#9C27B0', bg: '#F3E5F5' };
+  switch (type) {
+    case 'like':
+      return { name: 'heart', color: '#FF6B6B', bg: '#FFE5E5' };
+    case 'comment':
+    case 'reply':
+      return { name: 'chatbubble', color: '#4CAF50', bg: '#E8F5E9' };
+    case 'mention':
+      return { name: 'at', color: '#2196F3', bg: '#E3F2FD' };
+    default:
+      return { name: 'notifications-outline', color: '#4CAF50', bg: '#E8F5E9' };
+  }
+};
+
+const formatTime = (createdAt) => {
+  if (!createdAt) return '';
+  const d = new Date(createdAt);
+  if (Number.isNaN(d.getTime())) return '';
+  const now = new Date();
+  const diffMs = now - d;
+  const diffMin = Math.floor(diffMs / 60000);
+  if (diffMin < 1) return '방금 전';
+  if (diffMin < 60) return `${diffMin}분 전`;
+  const diffHour = Math.floor(diffMin / 60);
+  if (diffHour < 24) return `${diffHour}시간 전`;
+  const diffDay = Math.floor(diffHour / 24);
+  if (diffDay < 7) return `${diffDay}일 전`;
+  return d.toLocaleDateString('ko-KR');
+};
+
+const mapRowToNotificationItem = (n) => {
+  const icon = mapTypeToIcon(n.type, n.category);
+  return {
+    id: n.id,
+    type: n.type,
+    category: n.category,
+    title: n.title,
+    content: n.content,
+    time: formatTime(n.createdAt),
+    createdAt: n.createdAt,
+    isRead: !!n.isRead,
+    icon: icon.name,
+    iconColor: icon.color,
+    iconBg: icon.bg,
+    relatedType: n.relatedType,
+    relatedId: n.relatedId,
+  };
+};
 
 // 스켈레톤 행 (로딩 중 리스트 모양)
 const SkeletonRow = () => {
@@ -77,6 +130,8 @@ const NotificationScreen = ({ navigation }) => {
   const isFlushingRef = useRef(false);
   const appStateRef = useRef(AppState.currentState);
   const { hasUnread, setHasUnread } = useNotification();
+  const setHasUnreadRef = useRef(setHasUnread);
+  setHasUnreadRef.current = setHasUnread;
   const { markFriendRequestsSeenForBell } = useFriend();
 
   const flushPendingReads = useCallback(async () => {
@@ -114,104 +169,105 @@ const NotificationScreen = ({ navigation }) => {
     }, 300);
   };
 
-  const mapTypeToIcon = (type, category) => {
-    if (category === 'mail') return { name: 'mail', color: '#FFA726', bg: '#FFF3E0' };
-    if (category === 'system') return { name: 'megaphone', color: '#9C27B0', bg: '#F3E5F5' };
-    switch (type) {
-      case 'like':
-        return { name: 'heart', color: '#FF6B6B', bg: '#FFE5E5' };
-      case 'comment':
-      case 'reply':
-        return { name: 'chatbubble', color: '#4CAF50', bg: '#E8F5E9' };
-      case 'mention':
-        return { name: 'at', color: '#2196F3', bg: '#E3F2FD' };
-      default:
-        return { name: 'notifications-outline', color: '#4CAF50', bg: '#E8F5E9' };
-    }
-  };
-
-  const formatTime = (createdAt) => {
-    if (!createdAt) return '';
-    const d = new Date(createdAt);
-    if (Number.isNaN(d.getTime())) return '';
-    const now = new Date();
-    const diffMs = now - d;
-    const diffMin = Math.floor(diffMs / 60000);
-    if (diffMin < 1) return '방금 전';
-    if (diffMin < 60) return `${diffMin}분 전`;
-    const diffHour = Math.floor(diffMin / 60);
-    if (diffHour < 24) return `${diffHour}시간 전`;
-    const diffDay = Math.floor(diffHour / 24);
-    if (diffDay < 7) return `${diffDay}일 전`;
-    return d.toLocaleDateString('ko-KR');
-  };
-
-  const fetchNotifications = async (nextPage = 1, append = false) => {
+  const fetchNotifications = useCallback(async (nextPage = 1, append = false) => {
     try {
-      if (nextPage === 1) {
+      if (nextPage === 1 && !append) {
         setLoading(true);
         setHasMore(true);
-      } else {
+      } else if (append) {
         setLoadingMore(true);
       }
+
       console.log('[NotificationScreen] fetchNotifications 호출', {
         page: nextPage,
         append,
       });
 
-      const res = await api.get('/api/notifications', {
-        params: { page: nextPage, limit: PAGE_SIZE },
-      });
-      const list = res.data?.data || [];
-      const filtered = list.filter((n) => n.type !== 'like');
-
-      const mapped = filtered.map((n) => {
-        const icon = mapTypeToIcon(n.type, n.category);
-        return {
-          id: n.id,
-          type: n.type,
-          category: n.category,
-          title: n.title,
-          content: n.content,
-          time: formatTime(n.createdAt),
-          createdAt: n.createdAt,
-          isRead: !!n.isRead, // 서버 isRead 값을 그대로 신뢰
-          icon: icon.name,
-          iconColor: icon.color,
-          iconBg: icon.bg,
-          relatedType: n.relatedType,
-          relatedId: n.relatedId,
-        };
-      });
-
-      console.log('[NotificationScreen] 알림 로드 결과', {
-        page: nextPage,
-        append,
-        rawCount: list.length,
-        filteredCount: mapped.length,
-        hasUnread: mapped.some((n) => !n.isRead),
-      });
-
       if (append) {
-        setNotifications((prev) => [...prev, ...mapped]);
+        const res = await api.get('/api/notifications', {
+          params: { page: nextPage, limit: PAGE_SIZE },
+        });
+        const list = res.data?.data || [];
+        const meta = res.data?.meta;
+        const filtered = list.filter((n) => n.type !== 'like');
+        const mapped = filtered.map(mapRowToNotificationItem);
+
+        setNotifications((prev) => {
+          const ids = new Set(prev.map((x) => String(x.id)));
+          const addition = mapped.filter((m) => !ids.has(String(m.id)));
+          console.log('[NotificationScreen] 알림 추가 로드', {
+            page: nextPage,
+            serverReturned: list.length,
+            afterLikeFilter: filtered.length,
+            appendedUnique: addition.length,
+            meta,
+          });
+          return [...prev, ...addition];
+        });
+        setHasMore(list.length >= PAGE_SIZE);
+        setPage(nextPage);
       } else {
-        setNotifications(mapped);
-        // 첫 페이지를 새로 불러온 직후에는 "알림 목록은 한 번 확인했다"고 보고 빨간 점을 끈다.
-        setHasUnread(false);
+        let pageCursor = nextPage;
+        let accumulated = [];
+        let lastList = [];
+        let lastMeta = null;
+        let sweepIdx = 0;
+
+        for (; sweepIdx < MAX_INITIAL_PAGE_SWEEP; sweepIdx += 1) {
+          const res = await api.get('/api/notifications', {
+            params: { page: pageCursor, limit: PAGE_SIZE },
+          });
+          lastList = res.data?.data || [];
+          lastMeta = res.data?.meta ?? null;
+          const filtered = lastList.filter((n) => n.type !== 'like');
+          const mapped = filtered.map(mapRowToNotificationItem);
+          accumulated.push(...mapped);
+
+          console.log('[NotificationScreen] 알림 초기 스윕', {
+            page: pageCursor,
+            sweep: sweepIdx,
+            rawCount: lastList.length,
+            afterLikeFilter: filtered.length,
+            serverTotal: lastMeta?.total,
+            meta: lastMeta,
+          });
+
+          if (lastList.length < PAGE_SIZE) break;
+          if (mapped.length > 0) break;
+          pageCursor += 1;
+        }
+
+        const hitSweepCap =
+          sweepIdx >= MAX_INITIAL_PAGE_SWEEP &&
+          accumulated.length === 0 &&
+          lastList.length >= PAGE_SIZE;
+
+        setNotifications(accumulated);
+        setHasMore(lastList.length >= PAGE_SIZE && !hitSweepCap);
+        setPage(pageCursor);
+        setHasUnreadRef.current(false);
+
+        console.log('[NotificationScreen] 알림 초기 로드 완료', {
+          endPage: pageCursor,
+          listRowCount: accumulated.length,
+          groupedUiCountNote:
+            '탭/쪽지 묶음 후 실제 행 수는 groupMailNotifications 이후와 다를 수 있음',
+          serverTotal: lastMeta?.total,
+          likeRowsHidden: true,
+          hitSweepCap,
+        });
       }
-      setHasMore(list.length >= PAGE_SIZE);
-      setPage(nextPage);
     } catch (error) {
       console.error('[NotificationScreen] 알림 목록 불러오기 실패:', error?.response?.data || error);
     } finally {
       setLoading(false);
       setLoadingMore(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
     fetchNotifications(1, false);
-  }, []);
+  }, [fetchNotifications]);
 
   // 화면이 최초로 열릴 때 한 번, 소켓 경로 디버그용 ping을 날려본다.
   // - 이 호출 시 서버 로그에 [POST /api/notifications/debug/socket-ping] 이 찍히고
@@ -585,7 +641,7 @@ const NotificationScreen = ({ navigation }) => {
           ) : null
         }
         onEndReached={() => {
-          if (!loadingMore && hasMore && filteredNotifications.length > 0) {
+          if (!loadingMore && hasMore) {
             fetchNotifications(page + 1, true);
           }
         }}

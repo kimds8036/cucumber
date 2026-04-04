@@ -44,6 +44,12 @@ router.get('/', authenticate, async (req, res) => {
       offset,
     });
 
+    const [countRows] = await pool.execute(
+      `SELECT COUNT(*) AS total FROM notifications WHERE user_id = ?`,
+      [userId],
+    );
+    const total = Number(countRows?.[0]?.total) || 0;
+
     const [rows] = await pool.execute(
       `SELECT 
          id,
@@ -65,12 +71,21 @@ router.get('/', authenticate, async (req, res) => {
 
     console.log('[GET /api/notifications] 결과', {
       userId,
-      count: rows.length,
+      total,
+      page,
+      limit,
+      returned: rows.length,
       hasUnread: rows.some((n) => !n.is_read),
     });
 
     res.json({
       success: true,
+      meta: {
+        total,
+        page,
+        limit,
+        returned: rows.length,
+      },
       data: rows.map((n) => ({
         id: n.id,
         type: n.type,

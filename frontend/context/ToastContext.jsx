@@ -19,6 +19,7 @@ export function ToastProvider({ children }) {
     roomId: null,
     relatedType: null,
     isChat: false,
+    showProgress: false,
   });
   const [activeChatRoomId, setActiveChatRoomIdState] = useState(null);
   const [isMessageTab, setIsMessageTab] = useState(false);
@@ -66,6 +67,7 @@ export function ToastProvider({ children }) {
             : null,
         relatedType: next.relatedType ?? null,
         isChat: Boolean(next.isChat),
+        showProgress: Boolean(next.showProgress),
       });
       setVisible(true);
       console.log('[ToastSystem] Triggered:', {

@@ -23,6 +23,8 @@ export const initialState = {
   isLoading: false,
   isLoadingMore: false,
   hasMore: true,
+  /** 직전 prepend에서 앞에 붙인 메시지 개수 — flatData 날짜 배너 경계 전용 */
+  lastPrependCount: 0,
 };
 
 export function chatReducer(state, action) {
@@ -45,6 +47,7 @@ export function chatReducer(state, action) {
         messageIds: sortedIds,
         hasMore,
         isLoading: false,
+        lastPrependCount: 0,
       };
     }
 
@@ -70,6 +73,7 @@ export function chatReducer(state, action) {
         messagesById: newById,
         messageIds: mergedIds,
         isLoadingMore: false,
+        lastPrependCount: newIds.length,
       };
     }
 
@@ -87,6 +91,7 @@ export function chatReducer(state, action) {
         ...state,
         messagesById,
         messageIds: mergedIds,
+        lastPrependCount: 0,
       };
     }
 
@@ -138,6 +143,7 @@ export function chatReducer(state, action) {
         ...state,
         messagesById,
         messageIds: sortedIds,
+        lastPrependCount: 0,
       };
     }
 
@@ -149,6 +155,7 @@ export function chatReducer(state, action) {
         ...state,
         messagesById: newById,
         messageIds: state.messageIds.filter((mid) => mid !== id),
+        lastPrependCount: 0,
       };
     }
 
@@ -188,7 +195,12 @@ export function chatReducer(state, action) {
 
       const sortedIds = getSortedUniqueIds(newIds, newById);
 
-      return { ...state, messagesById: newById, messageIds: sortedIds };
+      return {
+        ...state,
+        messagesById: newById,
+        messageIds: sortedIds,
+        lastPrependCount: 0,
+      };
     }
 
     case 'TRIM_MESSAGES': {
@@ -198,7 +210,12 @@ export function chatReducer(state, action) {
       ids.forEach((id) => {
         if (state.messagesById[id]) newById[id] = state.messagesById[id];
       });
-      return { ...state, messageIds: ids, messagesById: newById };
+      return {
+        ...state,
+        messageIds: ids,
+        messagesById: newById,
+        lastPrependCount: 0,
+      };
     }
 
     case 'SET_LOADING':

@@ -1,6 +1,6 @@
 import express from 'express';
 import pool from '../config/database.js';
-import { authenticate } from '../middleware/auth.js';
+import { authenticate, optionalAuthenticate } from '../middleware/auth.js';
 import { enqueueNotification } from '../utils/notificationWorker.js';
 import { getNowForDB } from '../utils/dateUtils.js';
 import { cloudinary, upload } from '../config/cloudinary.js';
@@ -216,11 +216,11 @@ router.post('/:postId/comments', authenticate, upload.array('images', 5), async 
   }
 });
 
-// 댓글 목록 조회
-router.get('/:postId/comments', async (req, res) => {
+// 댓글 목록 조회 (로그인 시 각 댓글 isLiked 반영 — optionalAuthenticate로 req.user 설정)
+router.get('/:postId/comments', optionalAuthenticate, async (req, res) => {
   try {
     const { postId } = req.params;
-    const userId = req.headers.authorization ? req.user?.userId : null;
+    const userId = req.user?.userId ?? null;
 
     // 게시글 존재 확인
     const [posts] = await pool.execute('SELECT id FROM posts WHERE id = ?', [

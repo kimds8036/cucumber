@@ -75,10 +75,20 @@ const OptimizedImage = memo(({ uri, onPress, isSending }) => (
           bottom: 0,
           justifyContent: 'center',
           alignItems: 'center',
-          backgroundColor: 'rgba(0,0,0,0.3)',
+          backgroundColor: 'rgba(0,0,0,0.38)',
         }}
       >
-        <Loading color="#fff" />
+        <Loading color="#fff" size="small" />
+        <Text
+          style={{
+            marginTop: 8,
+            color: '#fff',
+            fontSize: 12,
+            fontWeight: '600',
+          }}
+        >
+          전송 중…
+        </Text>
       </View>
     ) : null}
   </TouchableOpacity>

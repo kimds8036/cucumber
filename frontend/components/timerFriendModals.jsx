@@ -21,7 +21,7 @@ import { colors } from '../styles/colors';
 import { useFriendSocketEvents } from '../hooks/useFriendSocketEvents';
 import { useNavigation } from '@react-navigation/native';
 import { api } from '../utils/api';
-import GlobalToast from './common/GlobalToast';
+import { useToast } from '../context/ToastContext';
 
 // ── 상수 ────────────────────────────────────────────────
 export const FRIEND_ICON_COLORS = [colors.green, colors.yellow, colors.red, colors.blue];
@@ -123,9 +123,22 @@ export const PokeModal = ({ visible, friend, onClose, onPoke, onNotifyLater, onM
  * - 쿡 찌르기 관련 비즈니스 로직(소켓 emit + 토스트)을 여기서만 관리
  * - Timer 화면은 pokeTarget/pokeVisible/state만 관리하고, 이 컴포넌트만 렌더링
  */
-export const FriendPokeController = ({ visible, friend, onClose, showToast }) => {
+export const FriendPokeController = ({ visible, friend, onClose }) => {
+  const { showToast } = useToast();
   const { emitFriendPoke, emitFriendNotifyOnStop } = useFriendSocketEvents();
   const navigation = useNavigation();
+
+  const pushToast = (senderName, body) => {
+    const s = String(senderName || '알림').trim();
+    const b = String(body || '').trim();
+    if (!b) return;
+    showToast({
+      message: `${s}: ${b}`,
+      senderName: s,
+      body: b,
+      showProgress: true,
+    });
+  };
 
   const handleClose = () => {
     onClose?.();
@@ -137,20 +150,20 @@ export const FriendPokeController = ({ visible, friend, onClose, showToast }) =>
       const res = await api.post('/api/dm/rooms', { otherUserId: friend.id });
       const roomId = res.data?.data?.id;
       if (roomId == null) {
-        showToast?.('메시지 전송 준비 중 오류가 발생했어요');
+        pushToast('메시지', '전송 준비 중 오류가 발생했어요');
         return;
       }
       handleClose();
       navigation.navigate('DMChat', { roomId, friend });
     } catch (e) {
-      showToast?.('메시지 전송 준비 중 오류가 발생했어요');
+      pushToast('메시지', '전송 준비 중 오류가 발생했어요');
     }
   };
 
   const handlePoke = () => {
     if (friend) {
       emitFriendPoke(friend.id);
-      showToast?.(`👉 ${friend.name}님에게 공부하자! 알림을 보냈어요`);
+      pushToast(friend.name, '공부하자! 알림을 보냈어요');
     }
     handleClose();
   };
@@ -158,7 +171,7 @@ export const FriendPokeController = ({ visible, friend, onClose, showToast }) =>
   const handleNotifyLater = () => {
     if (friend) {
       emitFriendNotifyOnStop(friend.id);
-      showToast?.(`🔔 ${friend.name}님 공부 완료 시 알림을 예약했어요`);
+      pushToast(friend.name, '공부 완료 시 알림을 예약했어요');
     }
     handleClose();
   };
@@ -273,9 +286,6 @@ const addFriendStyles = {
   cancelBtnText:  { fontSize: 14, fontWeight: '600', color: colors.textSecondary },
   btnDisabled:    { opacity: 0.4 },
 };
-
-// ── 토스트 ──────────────────────────────────────────────
-export const Toast = GlobalToast;
 
 // ── 친구 목록 UI (FriendStoryBar) ──────────────────────
 /**

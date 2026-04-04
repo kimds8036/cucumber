@@ -7,6 +7,8 @@ export default function GlobalToast({
   senderName,
   body,
   visible,
+  isChat = false,
+  showProgress = false,
   onPress,
   onHide,
   topOffset = 55,
@@ -15,10 +17,12 @@ export default function GlobalToast({
   const opacity = useRef(new Animated.Value(0)).current;
   const contentOpacity = useRef(new Animated.Value(1)).current;
   const contentTranslateY = useRef(new Animated.Value(0)).current;
+  const progress = useRef(new Animated.Value(1)).current;
   const prevVisibleRef = useRef(false);
   const prevToastIdRef = useRef(null);
   const [exiting, setExiting] = useState(false);
 
+  const showBar = Boolean(showProgress || isChat);
   const showStructured = Boolean(senderName || body);
   const singleLineText = showStructured
     ? `${senderName || '새 메시지'}: ${body || ''}`.trim()
@@ -95,6 +99,21 @@ export default function GlobalToast({
     }
   }, [visible, message, toastId, translateY, opacity, contentOpacity, contentTranslateY, onHide]);
 
+  /* 로딩바 애니메이션 — 사용 시 아래 progress 블록과 함께 복구
+  useEffect(() => {
+    if (!visible || !message || !showBar) return;
+    progress.setValue(1);
+    const anim = Animated.timing(progress, {
+      toValue: 0,
+      duration: 2800,
+      easing: Easing.linear,
+      useNativeDriver: false,
+    });
+    anim.start();
+    return () => anim.stop();
+  }, [visible, message, toastId, showBar, progress]);
+  */
+
   if (!message) return null;
   if (!visible && !exiting) return null;
 
@@ -142,8 +161,8 @@ export default function GlobalToast({
             {singleLineText}
           </Text>
         </Animated.View>
-        {/* 로딩바(채팅 진행 표시) — 사용 시 isChat과 progress 애니메이션을 함께 복구
-        {isChat ? (
+        {/* 로딩바 — 사용 시 위쪽 progress useEffect와 함께 복구
+        {showBar ? (
           <View
             style={{
               marginTop: 10,

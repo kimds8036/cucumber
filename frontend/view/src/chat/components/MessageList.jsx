@@ -1,10 +1,16 @@
-import React, { useCallback } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, View } from 'react-native';
 import { FlashList } from '@shopify/flash-list';
+import { CHAT_LIST_SPINNER_DELAY_MS } from '../constants/chatConfig';
 import MessageItem from './MessageItem';
 import DateBanner from './DateBanner';
 
 const getFlashListItemType = (item) => item.type;
+
+const CHAT_VIEWABILITY_CONFIG = {
+  itemVisiblePercentThreshold: 10,
+  minimumViewTime: 80,
+};
 
 const estimateRowHeight = (item, index, totalCount) => {
   if (!item || item.type === 'dateBanner') return 78;
@@ -23,14 +29,10 @@ const estimateRowHeight = (item, index, totalCount) => {
   return Math.max(120, Math.min(h, 2400));
 };
 
-const overrideItemLayout = (layout, item, index, maxColumns, extraData) => {
-  layout.size = estimateRowHeight(item, index, extraData ?? 0);
-};
 
 export default function MessageList({
   roomId,
   data,
-  messages,
   listRef,
   isLoadingMore,
   handleScroll,
@@ -41,7 +43,9 @@ export default function MessageList({
   renderMessageProps,
   normalize,
   handleContentSizeChange,
+  onViewableItemsChanged,
 }) {
+  const initialScrollIndex = Math.max(0, (data?.length ?? 1) - 1);
   const n =
     typeof normalize === 'function'
       ? normalize
@@ -57,6 +61,26 @@ export default function MessageList({
 
   const extractKey = useCallback((item) => String(item.id), []);
 
+  const totalCount = data?.length ?? 0;
+  const overrideItemLayout = useCallback(
+    (layout, item, index) => {
+      layout.size = estimateRowHeight(item, index, totalCount);
+    },
+    [totalCount],
+  );
+
+  const [showDelayedSpinner, setShowDelayedSpinner] = useState(false);
+  useEffect(() => {
+    if (!isLoadingMore) {
+      setShowDelayedSpinner(false);
+      return;
+    }
+    const t = setTimeout(() => {
+      setShowDelayedSpinner(true);
+    }, CHAT_LIST_SPINNER_DELAY_MS);
+    return () => clearTimeout(t);
+  }, [isLoadingMore]);
+
   return (
     <View
       style={{ flex: 1, opacity: listShellVisible ? 1 : 0 }}
@@ -67,7 +91,6 @@ export default function MessageList({
         key={`${roomId}_inverted`}
         inverted
         data={data}
-        extraData={messages?.length}
         keyExtractor={extractKey}
         getItemType={getFlashListItemType}
         renderItem={renderItem}
@@ -79,13 +102,15 @@ export default function MessageList({
         maxToRenderPerBatch={8}
         windowSize={7}
         initialNumToRender={40}
+        initialScrollIndex={initialScrollIndex}
+        maintainVisibleContentPosition={{ minIndexForVisible: 0 }}
         removeClippedSubviews={true}
         disableAutoLayout={true}
         onStartReached={handleStartReached}
         // 화면 높이 1.5배 여유가 있을 때 미리 페이징을 트리거
-        onStartReachedThreshold={1.5}
+        onStartReachedThreshold={1.0}
         ListHeaderComponent={
-          isLoadingMore && (data?.length || 0) > 0 ? (
+          showDelayedSpinner && isLoadingMore && (data?.length || 0) > 0 ? (
             <View
               style={{
                 height: 50,
@@ -105,6 +130,8 @@ export default function MessageList({
         contentContainerStyle={{ paddingHorizontal: n(6) }}
         onContentSizeChange={handleContentSizeChange}
         onScroll={handleScroll}
+        onViewableItemsChanged={onViewableItemsChanged}
+        viewabilityConfig={CHAT_VIEWABILITY_CONFIG}
       />
     </View>
   );

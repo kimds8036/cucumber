@@ -54,6 +54,7 @@ export default function useChatCore(config) {
   const abortControllerRef = useRef(null);
   const cacheSaveTimeoutRef = useRef(null);
   const pendingClientIdTimeoutsRef = useRef(new Map());
+  const silentFetchInFlightRef = useRef(false);
   const messagesByIdRef = useRef(state.messagesById);
 
   useEffect(() => {
@@ -75,6 +76,7 @@ export default function useChatCore(config) {
   const hasMore = state.hasMore;
   const isLoading = state.isLoading;
   const isLoadingMore = state.isLoadingMore;
+  const lastPrependCount = state.lastPrependCount;
 
   // ─── 메모리 trim (useEffect — useMemo 안 setState 금지) ───
   useEffect(() => {
@@ -354,75 +356,111 @@ export default function useChatCore(config) {
       const imgArr = Array.isArray(images) ? images : [];
       if (!trimmed && imgArr.length === 0) return;
 
-      const clientId = `temp_${Date.now()}`;
-      const nowIso = new Date().toISOString();
-      const d = parseUtcToLocal(nowIso);
       const parentId = replyTo?.id ? String(replyTo.id) : null;
       const parentContent = replyTo?.content ?? null;
       const parentSenderName = replyTo?.senderName ?? null;
 
-      const optimisticMsg = {
-        id: clientId,
+      const sendOnePart = async ({
         clientId,
-        type: 'message',
-        isMe: true,
-        senderId:
-          meIdRef.current != null ? Number(meIdRef.current) : null,
-        content: trimmed || null,
-        images: [...imgArr],
-        is_deleted: false,
-        createdAt: nowIso,
-        dateKey: getDateKey(d),
-        time: formatChatTime(nowIso),
-        parent_message_id: parentId,
-        parent_content: parentContent,
-        parent_sender_name: parentSenderName,
-        isReadByOther: false,
-        isReadByMe: undefined,
-        // 프론트에서는 즉시 전송 완료처럼 보이게 처리
-        isSending: false,
-        isFailed: false,
-        status: 'sent',
+        contentStr,
+        imageUris,
+        createdAtIso,
+      }) => {
+        const d = parseUtcToLocal(createdAtIso);
+        const hasImages = (imageUris || []).length > 0;
+        const optimisticMsg = {
+          id: clientId,
+          clientId,
+          type: 'message',
+          isMe: true,
+          senderId:
+            meIdRef.current != null ? Number(meIdRef.current) : null,
+          content: contentStr ? String(contentStr).trim() || null : null,
+          images: [...(imageUris || [])],
+          is_deleted: false,
+          createdAt: createdAtIso,
+          dateKey: getDateKey(d),
+          time: formatChatTime(createdAtIso),
+          parent_message_id: parentId,
+          parent_content: parentContent,
+          parent_sender_name: parentSenderName,
+          isReadByOther: false,
+          isReadByMe: undefined,
+          isSending: hasImages,
+          isFailed: false,
+          status: hasImages ? 'sending' : 'sent',
+        };
+
+        dispatch({ type: 'ADD_MESSAGE', payload: optimisticMsg });
+
+        try {
+          const formData = new FormData();
+          const t = (contentStr ?? '').trim();
+          if (t) formData.append('content', t);
+          (imageUris || []).forEach((uri, i) => {
+            formData.append('images', {
+              uri,
+              type: 'image/jpeg',
+              name: `image_${i}.jpg`,
+            });
+          });
+          formData.append('clientId', clientId);
+          if (parentId) formData.append('parent_message_id', parentId);
+
+          const serverRaw = await api.sendMessage(roomId, formData);
+          const serverMsg = normalizeMessage(serverRaw, meIdRef.current);
+
+          const timeoutId = setTimeout(() => {
+            dispatch({
+              type: 'REPLACE_TEMP_MESSAGE',
+              payload: { tempId: clientId, serverMessage: serverMsg },
+            });
+            pendingClientIdTimeoutsRef.current.delete(clientId);
+          }, CHAT_TEMP_REPLACE_DELAY);
+
+          pendingClientIdTimeoutsRef.current.set(clientId, timeoutId);
+        } catch (error) {
+          console.error('[useChatCore] 전송 실패:', error);
+          dispatch({
+            type: 'UPDATE_MESSAGE',
+            payload: {
+              id: clientId,
+              updates: { isSending: false, isFailed: true, status: 'failed' },
+            },
+          });
+        }
       };
 
-      dispatch({ type: 'ADD_MESSAGE', payload: optimisticMsg });
-
-
-      try {
-        const formData = new FormData();
-        if (trimmed) formData.append('content', trimmed);
-        imgArr.forEach((uri, i) => {
-          formData.append('images', {
-            uri,
-            type: 'image/jpeg',
-            name: `image_${i}.jpg`,
-          });
+      // 텍스트 + 사진: 업로드 대기 없이 텍스트·이미지 각각 병렬 전송 (서버 저장 순서대로 표시)
+      if (trimmed && imgArr.length > 0) {
+        const baseMs = Date.now();
+        const textIso = new Date(baseMs).toISOString();
+        const imgIso = new Date(baseMs + 1).toISOString();
+        const textId = `temp_${baseMs}_t`;
+        const imgId = `temp_${baseMs}_i`;
+        void sendOnePart({
+          clientId: textId,
+          contentStr: trimmed,
+          imageUris: [],
+          createdAtIso: textIso,
         });
-        formData.append('clientId', clientId);
-        if (parentId) formData.append('parent_message_id', parentId);
-
-        const serverRaw = await api.sendMessage(roomId, formData);
-        const serverMsg = normalizeMessage(serverRaw, meIdRef.current);
-
-        const timeoutId = setTimeout(() => {
-          dispatch({
-            type: 'REPLACE_TEMP_MESSAGE',
-            payload: { tempId: clientId, serverMessage: serverMsg },
-          });
-          pendingClientIdTimeoutsRef.current.delete(clientId);
-        }, CHAT_TEMP_REPLACE_DELAY);
-
-        pendingClientIdTimeoutsRef.current.set(clientId, timeoutId);
-      } catch (error) {
-        console.error('[useChatCore] 전송 실패:', error);
-        dispatch({
-          type: 'UPDATE_MESSAGE',
-          payload: {
-            id: clientId,
-            updates: { isSending: false, isFailed: true, status: 'failed' },
-          },
+        void sendOnePart({
+          clientId: imgId,
+          contentStr: '',
+          imageUris: imgArr,
+          createdAtIso: imgIso,
         });
+        return;
       }
+
+      const clientId = `temp_${Date.now()}`;
+      const nowIso = new Date().toISOString();
+      await sendOnePart({
+        clientId,
+        contentStr: trimmed,
+        imageUris: imgArr,
+        createdAtIso: nowIso,
+      });
     },
     [roomId, api],
   );
@@ -508,55 +546,74 @@ export default function useChatCore(config) {
     [api],
   );
 
-  // ─── loadMore (oldestIdRef + prepend) ───
+  // ─── loadMore / loadMoreSilent (oldestIdRef + prepend) ───
+  const fetchOlderPageAndPrepend = useCallback(async () => {
+    const res = await api.fetchMore(
+      roomId,
+      oldestIdRef.current,
+      CHAT_PAGE_SIZE,
+    );
+    const msgs = res.messages || [];
+
+    if (msgs.length === 0) {
+      dispatch({ type: 'SET_HAS_MORE', payload: false });
+      return;
+    }
+
+    const currentMeId = meIdRef.current;
+    const mapped = msgs.map((m) => normalizeMessage(m, currentMeId));
+    const chronological = [...mapped].reverse();
+
+    dispatch({
+      type: 'ADD_MESSAGES_PREPEND',
+      payload: { messages: chronological },
+    });
+
+    const minId = Math.min(
+      ...mapped.map((m) => Number(m.id)).filter((n) => !Number.isNaN(n)),
+    );
+    if (minId && minId !== Infinity) {
+      oldestIdRef.current = minId.toString();
+    }
+
+    dispatch({ type: 'SET_HAS_MORE', payload: Boolean(res.hasMore) });
+  }, [roomId, api]);
+
   const loadMore = useCallback(async () => {
     if (!roomId || !hasMore || isLoadingMore) return;
+    if (silentFetchInFlightRef.current) return;
     if (!oldestIdRef.current) return;
 
     dispatch({ type: 'SET_LOADING_MORE', payload: true });
-    // 안전장치: 5초 후에는 isLoadingMore를 강제로 해제하여 페이징이 영구 잠기지 않도록 함
     const safetyTimer = setTimeout(() => {
       dispatch({ type: 'SET_LOADING_MORE', payload: false });
     }, 5000);
 
     try {
-      const res = await api.fetchMore(
-        roomId,
-        oldestIdRef.current,
-        CHAT_PAGE_SIZE,
-      );
-      const msgs = res.messages || [];
-
-      if (msgs.length === 0) {
-        dispatch({ type: 'SET_HAS_MORE', payload: false });
-        dispatch({ type: 'SET_LOADING_MORE', payload: false });
-        return;
-      }
-
-      const currentMeId = meIdRef.current;
-      const mapped = msgs.map((m) => normalizeMessage(m, currentMeId));
-      const chronological = [...mapped].reverse();
-
-      dispatch({
-        type: 'ADD_MESSAGES_PREPEND',
-        payload: { messages: chronological },
-      });
-
-      const minId = Math.min(
-        ...mapped.map((m) => Number(m.id)).filter((n) => !Number.isNaN(n)),
-      );
-      if (minId && minId !== Infinity) {
-        oldestIdRef.current = minId.toString();
-      }
-
-      dispatch({ type: 'SET_HAS_MORE', payload: Boolean(res.hasMore) });
+      await fetchOlderPageAndPrepend();
     } catch (e) {
       console.error('[useChatCore][Pagination] 실패:', e);
     } finally {
       clearTimeout(safetyTimer);
       dispatch({ type: 'SET_LOADING_MORE', payload: false });
     }
-  }, [roomId, hasMore, isLoadingMore, api]);
+  }, [roomId, hasMore, isLoadingMore, api, fetchOlderPageAndPrepend]);
+
+  /** 스피너 없이 상단 prepend — 초기 백그라운드 프리페치용. 바닥 앵커 보정은 useChatScroll 세션과 함께 쓸 것. */
+  const loadMoreSilent = useCallback(async () => {
+    if (!roomId || !hasMore || isLoadingMore) return;
+    if (silentFetchInFlightRef.current) return;
+    if (!oldestIdRef.current) return;
+
+    silentFetchInFlightRef.current = true;
+    try {
+      await fetchOlderPageAndPrepend();
+    } catch (e) {
+      console.error('[useChatCore][Pagination][silent] 실패:', e);
+    } finally {
+      silentFetchInFlightRef.current = false;
+    }
+  }, [roomId, hasMore, isLoadingMore, fetchOlderPageAndPrepend]);
 
   // unmount 시 폴링 정리
   useEffect(() => () => stopPolling(), [stopPolling]);
@@ -566,10 +623,12 @@ export default function useChatCore(config) {
     isLoading,
     isLoadingMore,
     hasMore,
+    lastPrependCount,
     meId,
     sendMessage,
     retryMessage,
     deleteMessage,
     loadMore,
+    loadMoreSilent,
   };
 }

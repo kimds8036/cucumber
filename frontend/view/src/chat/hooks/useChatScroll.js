@@ -1,5 +1,16 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Keyboard, Platform } from 'react-native';
+import { InteractionManager, Keyboard, Platform } from 'react-native';
+import {
+  CHAT_INITIAL_SCROLL_SETTLE_MAX_MS,
+  CHAT_SILENT_PREFETCH_DELAY_MS,
+} from '../constants/chatConfig';
+
+/** inverted FlashList: 최신이 스크롤 '끝'(큰 offset)에 있을 때, 뷰포트 하단~콘텐츠 하단 거리 */
+function computeDistanceFromBottom(contentH, offsetY, viewportH) {
+  if (!contentH || viewportH <= 0) return 0;
+  const oy = Math.max(0, offsetY);
+  return Math.max(0, contentH - oy - viewportH);
+}
 
 export default function useChatScroll({
   roomId,
@@ -8,11 +19,23 @@ export default function useChatScroll({
   isLoading,
   isLoadingMore,
   loadMore,
+  loadMoreSilent,
+  hasMore,
 }) {
   const listRef = useRef(null);
   const currentOffsetRef = useRef(0);
   const contentHeightRef = useRef(0);
+  const viewportHeightRef = useRef(0);
+  /** 바닥(최신) 기준 논리 거리 — 스크롤 시 실시간 갱신 */
+  const distanceFromBottomRef = useRef(0);
+  /** API 종료 후에도 큰 prepend 레이아웃이 늦게 올 수 있어 isLoadingMoreRef 대신 보정 허용 */
+  const pagingAnchorPendingRef = useRef(false);
+  /** prepend 보정 완료 전 — 자동 scrollToEnd·키보드 스크롤 등 경쟁 호출 차단 */
+  const prependScrollLockRef = useRef(false);
+  const pagingSessionClearTimeoutRef = useRef(null);
   const prevContentHeightRef = useRef(0);
+  /** handleScroll에서 본 contentSize.max — FlashList 일시적 축소(prevH 난조) 보정용 */
+  const maxContentHeightSeenRef = useRef(0);
   const didCorrectionForCurrentLoadRef = useRef(false);
   const firstCorrectionDoneRef = useRef(false);
   const isNearBottomRef = useRef(true);
@@ -25,9 +48,31 @@ export default function useChatScroll({
   const didInitialAnchorRef = useRef(false);
   const isInitialLoadRef = useRef(true);
   const keyboardTimeoutRef = useRef(null);
+  /** 바닥 거리 디버그 로그 스로틀 (ms) */
+  const bottomDistLogLastMsRef = useRef(0);
+  const didSilentPrefetchRef = useRef(false);
+  /** scrollToEnd 직후 한 프레임 더 지난 뒤 true — silent prefetch와 경쟁 방지 */
+  const silentPrefetchReadyRef = useRef(false);
+  /** 백그라운드 프리페치 1회 완료(성공·스킵·실패) — 초기 스크롤 오버레이 해제용 */
+  const silentPrefetchCompletedRef = useRef(false);
+  const initialAnchorLoggedRef = useRef(false);
+  /** onViewableItemsChanged — 과거 쪽(작은 index)에 가까운 가시 메시지 id */
+  const topVisibleMessageIdRef = useRef(null);
+  /** 페이징 직전 스냅샷: 로그·타임아웃용 (보정은 offset 스냅샷 사용) */
+  const pagingAnchorMessageIdRef = useRef(null);
+  /** prepend 직전 scroll offset Y (FlashList inverted — scrollToItem 대신 offset 보정) */
+  const pagingScrollOffsetRef = useRef(0);
+  /** prepend 직전 바닥까지 거리 — near-bottom이면 scrollToEnd */
+  const pagingDistanceFromBottomRef = useRef(0);
+  const flatDataRef = useRef(flatData);
+  /** id -> (index, item) 캐시 */
+  const idToFlatIndexRef = useRef(new Map());
+  const idToItemRef = useRef(new Map());
 
   const [listShellVisible, setListShellVisible] = useState(false);
   const [keyboardHeight, setKeyboardHeight] = useState(0);
+  /** 방 진입 직후: 백그라운드 프리페치·prepend 앵커가 끝날 때까지 터치 차단(스크롤 튐 방지) */
+  const [initialScrollSettling, setInitialScrollSettling] = useState(false);
 
   // roomId 변경 시 ref 초기화
   useEffect(() => {
@@ -38,39 +83,226 @@ export default function useChatScroll({
     prevNewestIdRef.current = null;
     isScrollingRef.current = false;
     contentHeightRef.current = 0;
+    maxContentHeightSeenRef.current = 0;
+    viewportHeightRef.current = 0;
+    distanceFromBottomRef.current = 0;
+    pagingAnchorPendingRef.current = false;
+    prependScrollLockRef.current = false;
+    if (pagingSessionClearTimeoutRef.current) {
+      clearTimeout(pagingSessionClearTimeoutRef.current);
+      pagingSessionClearTimeoutRef.current = null;
+    }
     currentOffsetRef.current = 0;
+    bottomDistLogLastMsRef.current = 0;
     didInitialAnchorRef.current = false;
     isInitialLoadRef.current = true;
+    didSilentPrefetchRef.current = false;
+    silentPrefetchReadyRef.current = false;
+    silentPrefetchCompletedRef.current = false;
+    initialAnchorLoggedRef.current = false;
+    topVisibleMessageIdRef.current = null;
+    pagingAnchorMessageIdRef.current = null;
+    pagingScrollOffsetRef.current = 0;
+    pagingDistanceFromBottomRef.current = 0;
     setListShellVisible(false);
+    setInitialScrollSettling(false);
   }, [roomId]);
 
-  // 공통 loadMore 트리거 (onStartReached + 프리페치 둘 다 여기 사용)
+  flatDataRef.current = flatData;
+
+  // flatData 변경 시 id -> (index, item) 캐시를 갱신
+  useEffect(() => {
+    const idxMap = new Map();
+    const itemMap = new Map();
+    const arr = flatData || [];
+    arr.forEach((it, idx) => {
+      if (!it || it.type === 'dateBanner' || it.id == null) return;
+      const key = String(it.id);
+      idxMap.set(key, idx);
+      itemMap.set(key, it);
+    });
+    idToFlatIndexRef.current = idxMap;
+    idToItemRef.current = itemMap;
+  }, [flatData]);
+
+  /** prepend 전 ID 앵커 스냅샷 — 사용자 페이징·백그라운드 프리페치 공통 */
+  const beginPagingSessionSnapshot = useCallback((options = {}) => {
+    const { forceNewest = false } = options;
+    const ch = Math.max(
+      contentHeightRef.current || 0,
+      prevContentHeightRef.current || 0,
+      maxContentHeightSeenRef.current || 0,
+    );
+    prevContentHeightRef.current = ch;
+
+    pagingAnchorPendingRef.current = true;
+    prependScrollLockRef.current = true;
+    if (pagingSessionClearTimeoutRef.current) {
+      clearTimeout(pagingSessionClearTimeoutRef.current);
+    }
+    pagingSessionClearTimeoutRef.current = setTimeout(() => {
+      pagingAnchorPendingRef.current = false;
+      prependScrollLockRef.current = false;
+      pagingAnchorMessageIdRef.current = null;
+      pagingScrollOffsetRef.current = 0;
+      pagingDistanceFromBottomRef.current = 0;
+      pagingSessionClearTimeoutRef.current = null;
+    }, 2800);
+    didCorrectionForCurrentLoadRef.current = false;
+    // 첫 백그라운드 프리페치: scrollToEnd 직후 viewability가 과거 id를 잡는 경우가 있어 최신 id만 사용
+    let anchor = forceNewest ? null : topVisibleMessageIdRef.current;
+    if (!anchor) {
+      const arr = flatDataRef.current || [];
+      for (let i = arr.length - 1; i >= 0; i -= 1) {
+        const it = arr[i];
+        if (it && it.type !== 'dateBanner' && it.id != null) {
+          anchor = String(it.id);
+          break;
+        }
+      }
+    }
+    pagingAnchorMessageIdRef.current = anchor;
+    pagingScrollOffsetRef.current = Math.max(0, currentOffsetRef.current ?? 0);
+    pagingDistanceFromBottomRef.current = Math.max(
+      0,
+      distanceFromBottomRef.current ?? 0,
+    );
+    return { anchorId: pagingAnchorMessageIdRef.current };
+  }, []);
+
+  const finishInitialScrollSettling = useCallback((reason) => {
+    if (silentPrefetchCompletedRef.current) return;
+    silentPrefetchCompletedRef.current = true;
+    setInitialScrollSettling(false);
+    // eslint-disable-next-line no-console
+    console.log('[ChatScroll] initial scroll settle done', { roomId, reason });
+  }, [roomId]);
+
+  /** 첫 로드 후 hasMore면 프리페치 전까지 리스트 위에 오버레이(스크롤·튐 방지) */
+  useEffect(() => {
+    if (!roomId || isLoading || !messages?.length) return;
+    if (!hasMore) {
+      finishInitialScrollSettling('no_more_pages');
+      return;
+    }
+    if (silentPrefetchCompletedRef.current) return;
+    setInitialScrollSettling(true);
+  }, [roomId, isLoading, messages?.length, hasMore]);
+
+  /** 안전망: 레이아웃/네트워크 지연 시에도 오버레이가 무한히 남지 않게 */
+  useEffect(() => {
+    if (!initialScrollSettling) return;
+    const t = setTimeout(() => {
+      // eslint-disable-next-line no-console
+      console.log('[ChatScroll] initial scroll settle timeout', {
+        roomId,
+        maxMs: CHAT_INITIAL_SCROLL_SETTLE_MAX_MS,
+      });
+      finishInitialScrollSettling('timeout');
+    }, CHAT_INITIAL_SCROLL_SETTLE_MAX_MS);
+    return () => clearTimeout(t);
+  }, [initialScrollSettling, roomId, finishInitialScrollSettling]);
+
+  // 공통 loadMore 트리거 (onStartReached)
   const triggerLoadMore = useCallback(() => {
-    // 초기 앵커링(맨 아래로 스크롤)이 끝나기 전에는 절대 페이징하지 않는다.
     if (isInitialLoadRef.current || !didInitialAnchorRef.current) return;
     if (!loadOlderAllowedRef.current) return;
     if (isLoading || isLoadingMore) return;
     if (isLoadingMoreRef.current) return;
-    // loadMore 직전 contentHeight 스냅샷
-    prevContentHeightRef.current = contentHeightRef.current || 0;
-    // 이번 페이징 세션에서는 아직 보정이 수행되지 않았다고 표시
-    didCorrectionForCurrentLoadRef.current = false;
-    // 디버깅: 페이징 시작 시점의 높이 정보
+    const { anchorId } = beginPagingSessionSnapshot();
     // eslint-disable-next-line no-console
-    console.log(
-      '[ChatScroll] triggerLoadMore',
-      'contentHeight:',
-      contentHeightRef.current,
-      'prevContentHeight:',
-      prevContentHeightRef.current,
-    );
+    console.log('[ChatScroll] 페이징 직전 앵커', {
+      roomId,
+      anchorId,
+    });
     isLoadingMoreRef.current = true;
     loadMore().finally(() => {
       setTimeout(() => {
         isLoadingMoreRef.current = false;
       }, 500);
     });
-  }, [isLoading, isLoadingMore, loadMore]);
+  }, [isLoading, isLoadingMore, loadMore, roomId, beginPagingSessionSnapshot]);
+
+  // 첫 로드 후 바닥에 있을 때만 한 번 — 다음 페이지를 스피너 없이 미리 붙임 (바닥 앵커 보정과 동일 세션)
+  useEffect(() => {
+    if (!roomId || isLoading || !hasMore || typeof loadMoreSilent !== 'function') {
+      return;
+    }
+    if (!messages?.length || didSilentPrefetchRef.current) return;
+
+    const timer = setTimeout(async () => {
+      if (didSilentPrefetchRef.current) return;
+      if (!(flatDataRef.current?.length > 0)) {
+        didSilentPrefetchRef.current = true;
+        finishInitialScrollSettling('skip_no_flat_data');
+        return;
+      }
+      if (!didInitialAnchorRef.current || isInitialLoadRef.current) {
+        didSilentPrefetchRef.current = true;
+        finishInitialScrollSettling('skip_no_initial_anchor');
+        return;
+      }
+      if (!isNearBottomRef.current) {
+        didSilentPrefetchRef.current = true;
+        finishInitialScrollSettling('skip_not_near_bottom');
+        return;
+      }
+      if (!silentPrefetchReadyRef.current) {
+        didSilentPrefetchRef.current = true;
+        finishInitialScrollSettling('skip_not_ready');
+        return;
+      }
+      const { anchorId } = beginPagingSessionSnapshot({ forceNewest: true });
+      // eslint-disable-next-line no-console
+      console.log('[ChatScroll] 백그라운드 프리페치 직전 앵커', {
+        roomId,
+        anchorId,
+        forceNewest: true,
+        delayMs: CHAT_SILENT_PREFETCH_DELAY_MS,
+      });
+      try {
+        await loadMoreSilent();
+      } catch {
+        /* noop */
+      } finally {
+        didSilentPrefetchRef.current = true;
+        // messages.length 변경 등으로 이펙트가 재실행돼도 await 중 cleanup이 나면
+        // cancelled로 settle을 막으면 안 됨(타임아웃만 남음). 완료 시 항상 settle.
+        InteractionManager.runAfterInteractions(() => {
+          requestAnimationFrame(() => {
+            setTimeout(() => {
+              finishInitialScrollSettling('silent_prefetch_done');
+            }, 80);
+          });
+        });
+      }
+    }, CHAT_SILENT_PREFETCH_DELAY_MS);
+
+    return () => {
+      clearTimeout(timer);
+    };
+  }, [
+    roomId,
+    isLoading,
+    hasMore,
+    loadMoreSilent,
+    beginPagingSessionSnapshot,
+    finishInitialScrollSettling,
+  ]);
+
+  const handleViewableItemsChanged = useCallback(({ viewableItems }) => {
+    if (!viewableItems?.length) return;
+    const rows = viewableItems.filter(
+      (vi) =>
+        vi?.item &&
+        vi.item.type !== 'dateBanner' &&
+        vi.item.id != null &&
+        vi.index != null,
+    );
+    if (!rows.length) return;
+    const top = rows.reduce((a, b) => (a.index <= b.index ? a : b));
+    topVisibleMessageIdRef.current = String(top.item.id);
+  }, []);
 
   // 스크롤 이벤트 핸들러 + 프리페치 기반 페이징
   const handleScroll = useCallback(
@@ -78,13 +310,37 @@ export default function useChatScroll({
       const offsetY = e?.nativeEvent?.contentOffset?.y ?? 0;
       const viewportH = e?.nativeEvent?.layoutMeasurement?.height ?? 0;
       const contentH = e?.nativeEvent?.contentSize?.height ?? 0;
+      maxContentHeightSeenRef.current = Math.max(
+        maxContentHeightSeenRef.current || 0,
+        contentH,
+      );
       contentHeightRef.current = contentH;
-      currentOffsetRef.current = offsetY;
+      if (viewportH > 0) viewportHeightRef.current = viewportH;
+      currentOffsetRef.current = Math.max(0, offsetY);
+      let bottomDist = distanceFromBottomRef.current;
+      if (viewportH > 0) {
+        bottomDist = computeDistanceFromBottom(
+          contentH,
+          offsetY,
+          viewportH,
+        );
+        distanceFromBottomRef.current = bottomDist;
+      }
 
-      // 디버깅: 페이징 중일 때만 현재 offset 로그
-      if (isLoadingMoreRef.current) {
+      const now = Date.now();
+      if (now - bottomDistLogLastMsRef.current >= 400) {
+        bottomDistLogLastMsRef.current = now;
         // eslint-disable-next-line no-console
-        console.log('[ChatScroll] handleScroll while loadingMore, offsetY:', offsetY);
+        const nearBottomNow =
+          offsetY + viewportH >= contentH - Math.max(80, viewportH * 0.1);
+        console.log('[ChatScroll] scrollState', {
+          roomId,
+          bottomDist,
+          offsetY,
+          nearBottom: nearBottomNow,
+          prependPending: pagingAnchorPendingRef.current,
+          anchorId: pagingAnchorMessageIdRef.current,
+        });
       }
 
       isScrollingRef.current = true;
@@ -94,7 +350,8 @@ export default function useChatScroll({
       }, 150);
 
       const threshold = Math.max(80, viewportH * 0.1);
-      isNearBottomRef.current = offsetY + viewportH >= contentH - threshold;
+      const oyClamped = Math.max(0, offsetY);
+      isNearBottomRef.current = oyClamped + viewportH >= contentH - threshold;
       // 초기 앵커링이 끝난 뒤, 사용자가 하단에서 벗어나 위로 스크롤한 이후에만 과거 로딩 허용
       if (
         didInitialAnchorRef.current &&
@@ -103,26 +360,52 @@ export default function useChatScroll({
       ) {
         loadOlderAllowedRef.current = true;
       }
+
+      // inverted: offsetY ≈ 상단(과거)까지 거리 — viewportH * 2 남았을 때 미리 페이징
+      if (
+        viewportH > 0 &&
+        didInitialAnchorRef.current &&
+        !isInitialLoadRef.current &&
+        loadOlderAllowedRef.current &&
+        !isLoadingMoreRef.current &&
+        !pagingAnchorPendingRef.current &&
+        hasMore
+      ) {
+        const distanceFromTop = Math.max(0, offsetY);
+        const PREFETCH_THRESHOLD = viewportH * 2;
+        if (distanceFromTop < PREFETCH_THRESHOLD) {
+          triggerLoadMore();
+        }
+      }
     },
-    [],
+    [roomId, hasMore, triggerLoadMore],
   );
 
   // 새 메시지 자동 스크롤
   useEffect(() => {
     if (!messages?.length) return;
-    // 과거 페이징(loadMore) 중이거나 보정 쿨타임 동안에는 자동 스크롤 금지
-    if (isLoadingMoreRef.current || loadOlderAllowedRef.current === false) return;
     // messages 마지막 요소가 가장 최신이라고 가정 ([과거 → 최신])
     const newest = messages[messages.length - 1];
     const newestId = newest?.id;
     if (!newestId || prevNewestIdRef.current === newestId) return;
 
+    const blockAutoscroll =
+      isLoadingMoreRef.current ||
+      prependScrollLockRef.current ||
+      loadOlderAllowedRef.current === false;
+
     const shouldAutoscroll = newest?.isMe || isNearBottomRef.current;
-    if (shouldAutoscroll && !isScrollingRef.current) {
+    if (
+      !blockAutoscroll &&
+      shouldAutoscroll &&
+      !isScrollingRef.current
+    ) {
       if (scrollAnimationRef.current) clearTimeout(scrollAnimationRef.current);
       scrollAnimationRef.current = setTimeout(() => {
         // inverted 리스트에서 "리스트 끝(최신)"으로 이동하려면 scrollToEnd 사용
         listRef.current?.scrollToEnd?.({ animated: true });
+        isNearBottomRef.current = true;
+        distanceFromBottomRef.current = 0;
       }, 100);
     }
 
@@ -135,9 +418,15 @@ export default function useChatScroll({
       Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow',
       (e) => {
         setKeyboardHeight(e?.endCoordinates?.height ?? 0);
-        if (messages?.length > 0 && isNearBottomRef.current) {
+        if (
+          messages?.length > 0 &&
+          isNearBottomRef.current &&
+          !prependScrollLockRef.current
+        ) {
           keyboardTimeoutRef.current = setTimeout(() => {
             listRef.current?.scrollToEnd?.({ animated: true });
+            isNearBottomRef.current = true;
+            distanceFromBottomRef.current = 0;
           }, Platform.OS === 'ios' ? 100 : 200);
         }
       },
@@ -174,13 +463,31 @@ export default function useChatScroll({
     if (!messages || messages.length === 0) return;
 
     requestAnimationFrame(() => {
-      // inverted 환경에서 "리스트 끝(최신)"이 보이는 위치(바닥)에 맞추기 위해 scrollToEnd 사용
-      listRef.current?.scrollToEnd?.({ animated: false });
+      if (didInitialAnchorRef.current) return;
+      // initialScrollIndex가 이미 맨 아래(최신)로 초기 위치를 잡음
+      isNearBottomRef.current = true;
+      distanceFromBottomRef.current = 0;
       didInitialAnchorRef.current = true;
       setListShellVisible(true);
+      // initialScrollIndex만으로는 inverted/가변 높이에서 바닥이 어긋날 수 있어 한 번 맞춤
+      listRef.current?.scrollToEnd?.({ animated: false });
       // 사용자가 실제로 위로 스크롤하기 전까지는 과거 로딩을 막는다.
       loadOlderAllowedRef.current = false;
       isInitialLoadRef.current = false;
+      if (!initialAnchorLoggedRef.current) {
+        initialAnchorLoggedRef.current = true;
+        // eslint-disable-next-line no-console
+        const latestId = messages?.[messages.length - 1]?.id;
+        console.log('[ChatScroll] initial anchor ready', {
+          roomId,
+          latestId,
+          listLen: messages?.length ?? 0,
+        });
+      }
+      // scrollToEnd 적용 후 한 프레임 더 지나 silent prefetch 허용
+      requestAnimationFrame(() => {
+        silentPrefetchReadyRef.current = true;
+      });
     });
   }, [isLoading, messages, roomId]);
 
@@ -193,161 +500,149 @@ export default function useChatScroll({
   /** 리스트 뷰포트 높이가 바뀐 뒤(예: 상단 PostCard 로드) 최신 메시지 쪽으로 다시 맞출 때 */
   const scrollToLatest = useCallback((options = {}) => {
     const animated = options.animated ?? false;
+    prependScrollLockRef.current = false;
+    pagingAnchorPendingRef.current = false;
+    pagingScrollOffsetRef.current = 0;
+    pagingDistanceFromBottomRef.current = 0;
+    if (pagingSessionClearTimeoutRef.current) {
+      clearTimeout(pagingSessionClearTimeoutRef.current);
+      pagingSessionClearTimeoutRef.current = null;
+    }
     requestAnimationFrame(() => {
       listRef.current?.scrollToEnd?.({ animated });
+      isNearBottomRef.current = true;
+      distanceFromBottomRef.current = 0;
+      // eslint-disable-next-line no-console
+      console.log('[ChatScroll] 리앵커(scrollToLatest)', { roomId });
     });
-  }, []);
+  }, [roomId]);
 
   const handleContentSizeChange = useCallback(
     (width, height) => {
       const prevH = prevContentHeightRef.current || 0;
-      contentHeightRef.current = height;
-      // 초기/일반 렌더링 시점에서는 contentHeight 스냅샷만 갱신하고 보정은 하지 않는다.
-      if (!isLoadingMoreRef.current) {
+      const inPagingSession =
+        isLoadingMoreRef.current || pagingAnchorPendingRef.current;
+
+      if (!inPagingSession) {
+        // prepend 없이 높이만 크게 줄어드는 값은 종종 FlashList 재측정 노이즈 → ref 오염 방지
+        if (prevH > 0 && height + 150 < prevH) {
+          return;
+        }
         prevContentHeightRef.current = height;
+        contentHeightRef.current = height;
         return;
       }
 
+      contentHeightRef.current = height;
+
       let diff = height - prevH;
       if (diff <= 0) {
-        // eslint-disable-next-line no-console
-        console.log(
-          '[ChatScroll] handleContentSizeChange diff<=0, height:',
-          height,
-          'prevH:',
-          prevH,
-          'diff:',
-          diff,
-        );
+        if (prevH > 0 && height + 150 < prevH) {
+          return;
+        }
+        prevContentHeightRef.current = height;
         return;
       }
 
       const MIN_DIFF_THRESHOLD = 100;
       // 스피너 등장 등 미세한 레이아웃 변화(소량 높이 변화)는 보정 대상에서 제외
       if (diff < MIN_DIFF_THRESHOLD) {
-        // eslint-disable-next-line no-console
-        console.log(
-          '[ChatScroll] handleContentSizeChange small diff, skip correction',
-          'height:',
-          height,
-          'prevH:',
-          prevH,
-          'diff:',
-          diff,
-        );
         prevContentHeightRef.current = height;
         return;
       }
 
       // 한 번이라도 보정을 수행했다면, 동일 페이징 세션 내에서는 추가 보정 금지
       if (didCorrectionForCurrentLoadRef.current) {
-        // eslint-disable-next-line no-console
-        console.log(
-          '[ChatScroll] handleContentSizeChange [Correction Blocked - Already Done]',
-          'height:',
-          height,
-          'prevH:',
-          prevH,
-          'diff:',
-          diff,
-        );
-        return;
-      }
-
-      const originalDiff = diff;
-      // 비정상적으로 큰 점프를 방지하기 위해 상한선을 둔다.
-      diff = Math.min(diff, 2000);
-      if (originalDiff !== diff) {
-        // eslint-disable-next-line no-console
-        console.log(
-          '[ChatScroll] handleContentSizeChange diff clamped',
-          'originalDiff:',
-          originalDiff,
-          'clampedDiff:',
-          diff,
-        );
-      }
-
-      const currentOffset = currentOffsetRef.current || 0;
-      // 이미 천장(상단 근처)에 붙어 다음 페이징을 시도 중이라면,
-      // 이전 페이징에 대한 보정은 뒷북이 되므로 과감히 스킵한다.
-      const topThreshold = 40;
-      if (currentOffset <= topThreshold) {
-        // 디버깅: 상단에서 보정 스킵
-        // eslint-disable-next-line no-console
-        console.log(
-          '[ChatScroll] handleContentSizeChange [Skip] User is at top, avoiding jump',
-          'height:',
-          height,
-          'prevH:',
-          prevH,
-          'diff:',
-          diff,
-          'currentOffset:',
-          currentOffset,
-        );
-        // 그래도 contentHeight 스냅샷은 최신으로 유지
         prevContentHeightRef.current = height;
-        // 잠시 동안 추가 페이징과 자동 스크롤을 막는 쿨타임만 유지
-        loadOlderAllowedRef.current = false;
-        setTimeout(() => {
-          loadOlderAllowedRef.current = true;
-        }, 300);
         return;
       }
 
-      const newOffset = currentOffset + diff;
+      // 비정상적으로 큰 점프 방지
+      diff = Math.min(diff, 2000);
 
-      // 디버깅: 실제 보정이 어떻게 적용되는지 로그
-      // eslint-disable-next-line no-console
-      console.log(
-        '[ChatScroll] handleContentSizeChange [Correction Applied]',
-        'height:',
-        height,
-        'prevH:',
-        prevH,
-        'diff:',
-        diff,
-        'currentOffset:',
-        currentOffset,
-        'newOffset:',
-        newOffset,
-      );
+      // prepend 전후 content 높이 차이(diff)만큼 스크롤 offset을 보정 — FlashList 가변 높이에서
+      // scrollToIndex/scrollToItem/viewPosition 추정 오차를 피함
+      const applyPrependOffsetCorrection = () => {
+        const distSnapshot = pagingDistanceFromBottomRef.current ?? 9999;
+        const vp = viewportHeightRef.current || 0;
+        const nearBottomThreshold = Math.max(80, vp * 0.08);
+        const wasNearBottom = distSnapshot < nearBottomThreshold;
 
-      // 첫 번째 보정은 레이아웃 안착 후 부드럽게 넘기기 위해 한 번만 animated: true 사용
-      const applyScroll = () => {
-        listRef.current?.scrollToOffset?.({
-          offset: newOffset,
-          animated: !firstCorrectionDoneRef.current, // 첫 보정만 true
+        const runScroll = () => {
+          try {
+            if (wasNearBottom) {
+              listRef.current?.scrollToEnd?.({ animated: false });
+              return;
+            }
+            const baseY = Math.max(
+              0,
+              pagingScrollOffsetRef.current ?? currentOffsetRef.current ?? 0,
+            );
+            const nextY = Math.max(0, baseY + diff);
+            const list = listRef.current;
+            if (typeof list?.scrollTo === 'function') {
+              list.scrollTo({ y: nextY, animated: false });
+            } else if (typeof list?.scrollToOffset === 'function') {
+              list.scrollToOffset({ offset: nextY, animated: false });
+            }
+          } catch {
+            /* noop */
+          }
+        };
+
+        if (pagingSessionClearTimeoutRef.current) {
+          clearTimeout(pagingSessionClearTimeoutRef.current);
+          pagingSessionClearTimeoutRef.current = null;
+        }
+
+        InteractionManager.runAfterInteractions(() => {
+          requestAnimationFrame(() => {
+            runScroll();
+          });
         });
-        currentOffsetRef.current = newOffset;
+
+        const anchorIdForLog = pagingAnchorMessageIdRef.current;
+
         firstCorrectionDoneRef.current = true;
         didCorrectionForCurrentLoadRef.current = true;
+        pagingAnchorPendingRef.current = false;
+        prependScrollLockRef.current = false;
+        pagingAnchorMessageIdRef.current = null;
+
+        // eslint-disable-next-line no-console
+        console.log('[ChatScroll] prepend 보정(offset)', {
+          roomId,
+          anchorId: anchorIdForLog,
+          diff,
+          wasNearBottom,
+          distSnapshot,
+          baseY: pagingScrollOffsetRef.current,
+          method: wasNearBottom ? 'scrollToEnd' : 'scrollTo:y+diff',
+        });
       };
 
-      if (!firstCorrectionDoneRef.current) {
-        requestAnimationFrame(applyScroll);
-      } else {
-        applyScroll();
-      }
+      applyPrependOffsetCorrection();
 
-      // 잠시 동안 추가 페이징과 자동 스크롤을 막아 무한 페이징/하단 튐 방지 (쿨타임)
+      prevContentHeightRef.current = height;
+
       loadOlderAllowedRef.current = false;
       setTimeout(() => {
         loadOlderAllowedRef.current = true;
       }, 300);
     },
-    [],
+    [roomId],
   );
 
   return {
     listRef,
     listShellVisible,
     keyboardHeight,
+    initialScrollSettling,
     handleScroll,
     handleListShellLayout,
     handleStartReached,
     handleContentSizeChange,
+    handleViewableItemsChanged,
     scrollToLatest,
     isNearBottomRef,
     currentOffsetRef,

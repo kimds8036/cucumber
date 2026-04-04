@@ -41,15 +41,15 @@ import { AddSubjectModal, AddTaskModal, CalendarModal } from './timerModals';
 
 // ── 친구 관련 (분리된 파일) ─────────────────────────────
 // - FriendStoryBar: 상단 친구 스토리/상태 바
-// - FriendPokeController / AddFriendModal / Toast: 친구 쿡 찌르기 + 친구추가 + 토스트 UI
+// - FriendPokeController / AddFriendModal: 친구 쿡 찌르기 + 친구추가 (토스트는 전역 ToastContext)
 import {
   INITIAL_FRIENDS,
   FRIEND_ICON_COLORS,
   FriendStoryBar,
   FriendPokeController,
   AddFriendModal,
-  Toast,
 } from '../../components/timerFriendModals';
+import { useToast } from '../../context/ToastContext';
 import { useFriendSocketEvents } from '../../hooks/useFriendSocketEvents';
 import { useFriend } from '../../context/FriendContext';
 import { useSocket } from '../../context/SocketContext';
@@ -102,15 +102,17 @@ export const TimerContent = () => {
   const [pokeTarget, setPokeTarget] = useState(null);
   const [pokeVisible, setPokeVisible] = useState(false);
 
-  // ── 토스트 상태 ───────────────────────────────────────
-  const [toastMsg, setToastMsg] = useState('');
-  const [toastKey, setToastKey] = useState(0);
-  const [toastVisible, setToastVisible] = useState(false);
-
-  const showToast = (msg) => {
-    setToastMsg(msg);
-    setToastKey((k) => k + 1);
-    setToastVisible(true);
+  const { showToast } = useToast();
+  const pushTimerToast = (senderName, body) => {
+    const s = String(senderName || '알림').trim();
+    const b = String(body || '').trim();
+    if (!b) return;
+    showToast({
+      message: `${s}: ${b}`,
+      senderName: s,
+      body: b,
+      showProgress: true,
+    });
   };
 
   const { studyingFriends, refreshStudyingFriends } = useFriend();
@@ -129,18 +131,21 @@ export const TimerContent = () => {
       setFriends((prev) => {
         const friend = prev.find((f) => f.id === userId);
         if (friend) {
-          showToast(`🔔 ${friend.name}님 공부가 끝났어요`);
+          pushTimerToast(friend.name, '공부가 끝났어요');
         } else {
-          showToast('🔔 친구의 공부가 끝났어요');
+          pushTimerToast('친구', '공부가 끝났어요');
         }
         return prev;
       });
     },
     onPoke: (payload) => {
-      showToast(`👉 ${payload?.fromNickname ?? '친구'}님이 찔렀어요!`);
+      pushTimerToast(
+        payload?.fromNickname ?? '친구',
+        '쿡 찌르기 알림이 왔어요!',
+      );
     },
     onMyStudyFinishedSummary: ({ toastText }) => {
-      showToast(toastText ?? '공부 완료 🎉');
+      pushTimerToast('타이머', toastText ?? '공부 완료 🎉');
     },
   });
 
@@ -532,7 +537,7 @@ export const TimerContent = () => {
           setElapsedMs(0);
           setStartTimestamp(null);
           setActiveSubjectId(null);
-          showToast('🗑️ 데이터가 초기화되었습니다');
+          pushTimerToast('타이머', '데이터가 초기화되었습니다');
         },
       },
     ]);
@@ -1015,7 +1020,6 @@ export const TimerContent = () => {
           setPokeVisible(false);
           setPokeTarget(null);
         }}
-        showToast={showToast}
       />
       <AddFriendModal
         visible={showAddFriend}
@@ -1048,7 +1052,7 @@ export const TimerContent = () => {
                     targetName,
                   });
                   setShowAddFriend(false);
-                  showToast(`✅ ${targetName}님에게 친구 요청을 보냈어요`);
+                  pushTimerToast(targetName, '친구 요청을 보냈어요');
                 } catch (error) {
                   console.error('[Timer][FriendRequest] API 실패', {
                     username,
@@ -1067,12 +1071,6 @@ export const TimerContent = () => {
         }}
       />
 
-      <Toast
-        key={toastKey}
-        message={toastMsg}
-        visible={toastVisible}
-        onHide={() => setToastVisible(false)}
-      />
     </>
   );
 };
