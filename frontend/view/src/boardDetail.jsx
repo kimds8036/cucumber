@@ -13,13 +13,14 @@ import {
   Share,
   Image,
 } from 'react-native';
-import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import Entypo from '@expo/vector-icons/Entypo';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import SubHeader from '../frame/subHeader';
 import CommentInput from '../../components/CommentInput.jsx';
+import { usePlatformInsets } from '../../hooks/usePlatformInsets';
 import { colors, fonts } from '../../styles/colors';
 import { createDetailStyles, getNormalize } from '../../styles/board.style';
 import { api } from '../../utils/api';
@@ -130,7 +131,7 @@ export default function BoardDetail({ navigation, route }) {
   const scrollViewRef = useRef(null);
   const INITIAL_REPLIES = 3;
   const [expandedReplies, setExpandedReplies] = useState({});
-  const insets = useSafeAreaInsets();
+  const insets = usePlatformInsets();
   const [floatingMenuVisible, setFloatingMenuVisible] = useState(false);
   const [floatingMenuContext, setFloatingMenuContext] = useState(null);
   const [floatingMenuAnchor, setFloatingMenuAnchor] = useState(null);

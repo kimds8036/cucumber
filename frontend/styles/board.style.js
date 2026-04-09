@@ -1,5 +1,6 @@
 import { StyleSheet, Platform } from 'react-native';
 import { colors, fonts, fontSizes } from './colors';
+import { shadow } from './tokens';
 
 export const getNormalize = (width) => {
   const scale = width / 375;
@@ -57,11 +58,7 @@ export const createBoardStyles = (width, normalize) => {
       borderRadius: normalize(20),
       padding: normalize(16),
       marginBottom: normalize(12),
-      shadowColor: colors.shadow,
-      shadowOffset: { width: 1, height: 1 },
-      shadowOpacity: 0.2,
-      shadowRadius: 3,
-      elevation: 3,
+      ...shadow.md,
     },
 
     // 게시글 헤더 (좌: 작성자•시간[·위치], 우: 거리 배지 등)
@@ -282,11 +279,7 @@ export const createBoardStyles = (width, normalize) => {
       backgroundColor: colors.primary,
       justifyContent: 'center',
       alignItems: 'center',
-      shadowColor: colors.shadow,
-      shadowOffset: { width: 0, height: 4 },
-      shadowOpacity: 0.3,
-      shadowRadius: 4,
-      elevation: 5,
+      ...shadow.lg,
     },
   });
 };
@@ -591,19 +584,18 @@ export const createWriteStyles = (width, normalize) => {
     // 인라인 스타일 추가
     topToolbarSectionWithZIndex: {
       zIndex: 10,
-      elevation: 10,
     },
     tagPanelContainerWithZIndex: {
       zIndex: 20,
-      elevation: 20,
+      ...Platform.select({ android: { elevation: 20 }, ios: {} }),
     },
     writeHashtagDashedWrapWithZIndex: {
       zIndex: 30,
-      elevation: 30,
+      ...Platform.select({ android: { elevation: 30 }, ios: {} }),
     },
     tagPanelAnimated: {
       zIndex: 20,
-      elevation: 20,
+      ...Platform.select({ android: { elevation: 20 }, ios: {} }),
     },
     writeHashtagInputInline: {
       flex: 1,

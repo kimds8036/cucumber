@@ -425,7 +425,7 @@ const BoardWrite = ({ navigation, route }) => {
               }),
               overflow: 'hidden',
               zIndex: 20,
-              elevation: 20,
+              ...Platform.select({ android: { elevation: 20 }, ios: {} }),
             }}
           >
             {/* 높이 측정용 - 한 번만 측정 */}
