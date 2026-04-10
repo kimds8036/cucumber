@@ -30,10 +30,12 @@ const mealPriorityAfterNow = (now) => {
 
 const cleanMenuText = (raw) =>
   String(raw || '')
-    .replace(/\([^)]*\)/g, '')
-    .replace(/[＃#♯]/g, '')
-    .replace(/&/g, ' ')
-    .replace(/[·*]/g, ' ')
+    .replace(/\([^)]*\)/g, '')           // 괄호 제거
+    .replace(/[＃#♯]/g, '')              // 샵류 제거
+    .replace(/[·*＊✱✳✴]/g, ' ')         // 별표류 제거
+    .replace(/[\\／/]/g, ' ')            // 백슬래시/슬래시류 제거
+    .replace(/^[^\p{L}\p{N}가-힣]+/u, '') // 맨 앞 특수문자 제거
+    .replace(/[^\p{L}\p{N}가-힣]+$/u, '') // 맨 뒤 특수문자 제거
     .replace(/\s+/g, ' ')
     .trim();
 

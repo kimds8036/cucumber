@@ -54,6 +54,14 @@ export const colors = {
   overlayDark: 'rgba(0, 0, 0, 0.7)',          // 진한 오버레이
 };
 
+export const TIMETABLE_SUBJECT_COLORS = [
+  '#E6F4EA', '#E8F0FE', '#FDEFE3', '#F3E8FD', '#E7F7F6', '#FFF4CC', '#FCE8F3', '#EAF2FF',
+  '#E9F7EF', '#F0F4FF', '#FFF1E6', '#F6ECFF', '#EAFBF8', '#FFF8DB', '#FFEFF6', '#EEF5FF',
+  '#E4F5EA', '#EAF0FF', '#FDEADB', '#EFE6FF', '#E3F6F3', '#FFF2BF', '#FDE6F1', '#E3EDFF',
+  '#DFF2E8', '#E3EAFE', '#FCE4D5', '#E9DEFD', '#DDF3EF', '#FFECAF', '#FBDDEA', '#DDE8FF',
+  '#D8EEDF', '#DCE5FA', '#FBDCCB', '#E4D7FA', '#D6EEE8', '#FFE6A0', '#F9D6E6', '#D6E2FA',
+];
+
 export const PROFILE_COLORS = {
   1: '#a6da95',
   2: '#89b4fa',

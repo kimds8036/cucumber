@@ -12,7 +12,6 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import SubHeader from '../frame/subHeader';
-import { api } from '../../utils/api';
 import { colors } from '../../styles/colors';
 
 const AddTimetable = ({ navigation, route }) => {
@@ -29,24 +28,8 @@ const AddTimetable = ({ navigation, route }) => {
   const periods = [1, 2, 3, 4, 5, 6, 7];
 
   useEffect(() => {
-    let mounted = true;
-    // MyPage에서 시간표를 같이 넘겨주지 않은 경우, 서버에서 직접 조회
-    if (!existingTimetable) {
-      const fetchTimetable = async () => {
-        try {
-          const res = await api.get('/api/timetable');
-          if (!mounted) return;
-          const tt = res.data?.data?.timetable || {};
-          setTimetable(tt);
-        } catch (error) {
-          console.error('시간표 불러오기 실패:', error);
-        }
-      };
-      fetchTimetable();
-    }
-    return () => {
-      mounted = false;
-    };
+    // 캐시-only 모드: MyPage에서 전달된 시간표를 편집
+    setTimetable(existingTimetable || {});
   }, [existingTimetable]);
 
   const handleCellPress = (day, period) => {
@@ -103,12 +86,10 @@ const AddTimetable = ({ navigation, route }) => {
       return;
     }
 
-    // MyPage로 시간표 데이터 전달 및/또는 서버 저장
+    // MyPage로 시간표 데이터 전달 (캐시-only)
     try {
       if (onSave) {
         onSave(timetable);
-      } else {
-        await api.put('/api/timetable', { timetable });
       }
     } catch (error) {
       console.error('시간표 저장 실패:', error);
