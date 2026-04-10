@@ -33,13 +33,15 @@ const TimetableView = ({
   onResetPress,
   colorSeed = 0,
 }) => {
+  const safeTimetable = timetable || {};
+
   const subjectColorMap = useMemo(() => {
     const map = {};
-    if (!timetable) return map;
+    if (!safeTimetable) return map;
 
     const used = new Set();
     const subjects = [...new Set(
-      Object.values(timetable)
+      Object.values(safeTimetable)
         .map((v) => normalizeSubject(v))
         .filter(Boolean),
     )];
@@ -57,11 +59,10 @@ const TimetableView = ({
     });
 
     return map;
-  }, [timetable]);
+  }, [safeTimetable, colorSeed]);
 
   const getCellContent = (day, period) => {
-    if (!timetable) return '';
-    return timetable[`${day}-${period}`] || '';
+    return safeTimetable[`${day}-${period}`] || '';
   };
 
   const getCellColor = (content) => {
@@ -69,15 +70,6 @@ const TimetableView = ({
     if (!key) return null;
     return subjectColorMap[key] || TIMETABLE_SUBJECT_COLORS[getSubjectColorIndex(key)];
   };
-
-  if (!timetable) {
-    return (
-      <TouchableOpacity style={styles.addButton} onPress={onToggleEdit || onAddOrEdit}>
-        <Ionicons name="calendar-outline" size={16} color={colors.textWhite} />
-        <Text style={styles.addButtonText}>시간표를 추가하기</Text>
-      </TouchableOpacity>
-    );
-  }
 
   return (
     <View style={styles.wrapper}>

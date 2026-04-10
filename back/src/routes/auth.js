@@ -17,6 +17,7 @@ const router = express.Router();
 router.get('/me', authenticate, async (req, res) => {
   try {
     const userId = req.user.userId;
+    console.log('[API][GET /api/auth/me] 요청 수신:', { userId });
 
     const [rows] = await pool.execute(
       `SELECT 
@@ -41,6 +42,13 @@ router.get('/me', authenticate, async (req, res) => {
     }
 
     const user = rows[0];
+    console.log('[API][GET /api/auth/me] 사용자 기준 정보:', {
+      userId: user.id,
+      schoolId: user.school_id,
+      schoolName: user.school_name,
+      grade: user.grade,
+      classNumber: user.class_number,
+    });
 
     const [friendRows] = await pool.execute(
       `SELECT COUNT(*) as cnt
@@ -66,6 +74,10 @@ router.get('/me', authenticate, async (req, res) => {
         classNumber: user.class_number,
         friendCount,
       },
+    });
+    console.log('[API][GET /api/auth/me] 응답 완료:', {
+      userId: user.id,
+      friendCount,
     });
   } catch (error) {
     console.error('내 프로필 조회 오류:', error);

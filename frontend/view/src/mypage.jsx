@@ -31,6 +31,7 @@ const MyPage = ({ navigation }) => {
   const [selectedPeriod, setSelectedPeriod] = useState(null);
   const [className, setClassName] = useState('');
   const [loading, setLoading] = useState(false);
+  const [timetableLoading, setTimetableLoading] = useState(false);
 
   const handleLogout = () => {
     Alert.alert('로그아웃', '정말 로그아웃 하시겠습니까?', [
@@ -63,6 +64,7 @@ const MyPage = ({ navigation }) => {
     const fetchMeAndTimetable = async () => {
       try {
         setLoading(true);
+        console.log('[MyPage] 진입: 사용자/시간표 로드 시작');
         let cachedTimetable = null;
         try {
           const raw = await AsyncStorage.getItem(TIMETABLE_CACHE_KEY);
@@ -70,23 +72,43 @@ const MyPage = ({ navigation }) => {
             const parsed = JSON.parse(raw);
             if (Date.now() - Number(parsed?.ts || 0) < TIMETABLE_CACHE_TTL_MS) {
               cachedTimetable = parsed?.timetable || null;
+              console.log('[MyPage] 시간표 캐시 히트:', {
+                hasTimetable: !!cachedTimetable && Object.keys(cachedTimetable || {}).length > 0,
+                key: TIMETABLE_CACHE_KEY,
+              });
               if (mounted) {
                 const normalized = cachedTimetable && Object.keys(cachedTimetable).length > 0 ? cachedTimetable : null;
                 setTimetable(normalized);
                 setInitialTimetable(normalized);
               }
+            } else {
+              console.log('[MyPage] 시간표 캐시 만료');
+              setTimetableLoading(true);
             }
+          } else {
+            console.log('[MyPage] 시간표 캐시 없음');
+            setTimetableLoading(true);
           }
         } catch (cacheErr) {
           console.warn('시간표 캐시 읽기 실패:', cacheErr);
+          setTimetableLoading(true);
         }
 
+        console.log('[MyPage] /api/auth/me 요청 시작');
         const meRes = await api.get('/api/auth/me');
+        console.log('[MyPage] /api/auth/me 응답 수신');
 
         if (!mounted) return;
 
         const me = meRes.data?.data;
         if (me) {
+          console.log('[MyPage] 사용자 기준 정보:', {
+            userId: me.id,
+            schoolId: me.school?.id,
+            schoolName: me.school?.name,
+            grade: me.grade,
+            classNumber: me.classNumber,
+          });
           setUserInfo({
             name: me.name,
             username: me.username ? `@${me.username}` : '',
@@ -99,15 +121,39 @@ const MyPage = ({ navigation }) => {
           });
         }
 
-        // 캐시가 만료된 경우에는 빈 시간표(null)로 초기화
-        if (!cachedTimetable && mounted) {
-          setTimetable(null);
-          setInitialTimetable(null);
+        // 캐시가 없거나 비어 있으면 서버 시간표를 1회 조회하여 채운다.
+        if ((!cachedTimetable || Object.keys(cachedTimetable || {}).length === 0) && mounted) {
+          try {
+            console.log('[MyPage] /api/timetable 요청 시작');
+            const ttRes = await api.get('/api/timetable');
+            const tt = ttRes.data?.data?.timetable || {};
+            const hasEntries = Object.keys(tt).length > 0;
+            const normalized = hasEntries ? tt : null;
+            console.log('[MyPage] /api/timetable 응답 수신:', { hasEntries, count: Object.keys(tt).length });
+            setTimetable(normalized);
+            setInitialTimetable(normalized);
+            await AsyncStorage.setItem(
+              TIMETABLE_CACHE_KEY,
+              JSON.stringify({
+                ts: Date.now(),
+                timetable: normalized,
+              }),
+            );
+          } catch (ttError) {
+            console.error('[MyPage] /api/timetable 조회 실패:', ttError?.response?.data || ttError?.message || ttError);
+            setTimetable(null);
+            setInitialTimetable(null);
+          } finally {
+            setTimetableLoading(false);
+          }
+        } else {
+          setTimetableLoading(false);
         }
       } catch (error) {
-        console.error('마이페이지 데이터 로드 실패:', error);
+        console.error('[MyPage] 데이터 로드 실패:', error?.response?.data || error?.message || error);
       } finally {
         if (mounted) setLoading(false);
+        console.log('[MyPage] 로드 종료');
       }
     };
 
@@ -244,17 +290,40 @@ const MyPage = ({ navigation }) => {
         )}
 
         {/* ── 시간표 ── */}
-        <TimetableView
-          timetable={isEditMode ? editingTimetable : timetable}
-          onAddOrEdit={handleStartEdit}
-          editMode={isEditMode}
-          onToggleEdit={handleStartEdit}
-          onSaveEdit={handleSaveEdit}
-          onCancelEdit={handleCancelEdit}
-          onCellPress={handleCellPress}
-          onResetPress={handleResetTimetable}
-          colorSeed={colorSeed}
-        />
+        {timetableLoading && !isEditMode ? (
+          <View style={styles.ttSkeletonCard}>
+            <View style={styles.ttSkeletonHeader} />
+            <View style={styles.ttSkeletonRow}>
+              <View style={styles.ttSkeletonCellSmall} />
+              <View style={styles.ttSkeletonCell} />
+              <View style={styles.ttSkeletonCell} />
+              <View style={styles.ttSkeletonCell} />
+              <View style={styles.ttSkeletonCell} />
+              <View style={styles.ttSkeletonCell} />
+            </View>
+            <View style={styles.ttSkeletonRow}>
+              <View style={styles.ttSkeletonCellSmall} />
+              <View style={styles.ttSkeletonCell} />
+              <View style={styles.ttSkeletonCell} />
+              <View style={styles.ttSkeletonCell} />
+              <View style={styles.ttSkeletonCell} />
+              <View style={styles.ttSkeletonCell} />
+            </View>
+            <Text style={styles.ttSkeletonText}>시간표를 불러오는 중입니다...</Text>
+          </View>
+        ) : (
+          <TimetableView
+            timetable={isEditMode ? (editingTimetable || {}) : (timetable || {})}
+            onAddOrEdit={handleStartEdit}
+            editMode={isEditMode}
+            onToggleEdit={handleStartEdit}
+            onSaveEdit={handleSaveEdit}
+            onCancelEdit={handleCancelEdit}
+            onCellPress={handleCellPress}
+            onResetPress={handleResetTimetable}
+            colorSeed={colorSeed}
+          />
+        )}
 
         {/* ── 메뉴 ── */}
         <View style={styles.menuSection}>
@@ -442,6 +511,47 @@ const styles = StyleSheet.create({
     fontSize: 15,
     color: colors.textWhite,
     fontWeight: '600',
+  },
+  ttSkeletonCard: {
+    marginHorizontal: 16,
+    marginBottom: 8,
+    backgroundColor: colors.background,
+    borderRadius: 12,
+    padding: 16,
+    shadowColor: colors.shadow,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  ttSkeletonHeader: {
+    width: 100,
+    height: 14,
+    borderRadius: 8,
+    backgroundColor: colors.textLight10,
+    marginBottom: 12,
+  },
+  ttSkeletonRow: {
+    flexDirection: 'row',
+    marginBottom: 6,
+    gap: 6,
+  },
+  ttSkeletonCellSmall: {
+    width: 22,
+    height: 22,
+    borderRadius: 4,
+    backgroundColor: colors.textLight10,
+  },
+  ttSkeletonCell: {
+    flex: 1,
+    height: 22,
+    borderRadius: 4,
+    backgroundColor: colors.textLight10,
+  },
+  ttSkeletonText: {
+    marginTop: 8,
+    fontSize: 12,
+    color: colors.textSecondary,
   },
 });
 
