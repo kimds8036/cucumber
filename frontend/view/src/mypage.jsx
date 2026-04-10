@@ -23,6 +23,8 @@ const MyPage = ({ navigation }) => {
   const { logout } = useAuth();
   const TIMETABLE_CACHE_KEY = '@mypage_timetable_cache_v1';
   const TIMETABLE_CACHE_TTL_MS = 24 * 60 * 60 * 1000;
+  const PROFILE_CACHE_KEY = '@mypage_profile_cache_v1';
+  const PROFILE_CACHE_TTL_MS = 24 * 60 * 60 * 1000;
   const [userInfo, setUserInfo] = useState(null);
   const [timetable, setTimetable] = useState(null);
   const [initialTimetable, setInitialTimetable] = useState(null);
@@ -43,6 +45,7 @@ const MyPage = ({ navigation }) => {
       await api.post('/api/auth/logout').catch(() => null);
       await clearAuthToken();
       await AsyncStorage.removeItem(TIMETABLE_CACHE_KEY);
+      await AsyncStorage.removeItem(PROFILE_CACHE_KEY);
     } catch (error) {
       console.error('로그아웃 처리 실패:', error);
     } finally {
@@ -73,6 +76,22 @@ const MyPage = ({ navigation }) => {
         setLoading(true);
         console.log('[MyPage] 진입: 사용자/시간표 로드 시작');
         let cachedTimetable = null;
+        let cachedProfile = null;
+        try {
+          const rawProfile = await AsyncStorage.getItem(PROFILE_CACHE_KEY);
+          if (rawProfile) {
+            const parsed = JSON.parse(rawProfile);
+            if (Date.now() - Number(parsed?.ts || 0) < PROFILE_CACHE_TTL_MS) {
+              cachedProfile = parsed?.userInfo || null;
+              if (mounted && cachedProfile) {
+                setUserInfo(cachedProfile);
+              }
+            }
+          }
+        } catch (profileCacheErr) {
+          console.warn('프로필 캐시 읽기 실패:', profileCacheErr);
+        }
+
         try {
           const raw = await AsyncStorage.getItem(TIMETABLE_CACHE_KEY);
           if (raw) {
@@ -116,7 +135,7 @@ const MyPage = ({ navigation }) => {
             grade: me.grade,
             classNumber: me.classNumber,
           });
-          setUserInfo({
+          const nextUserInfo = {
             name: me.name,
             username: me.username ? `@${me.username}` : '',
             school: me.school?.name || '',
@@ -125,7 +144,21 @@ const MyPage = ({ navigation }) => {
                 ? `${me.grade}학년 ${me.classNumber}반`
                 : '',
             friendCount: me.friendCount ?? 0,
-          });
+          };
+          setUserInfo(nextUserInfo);
+          try {
+            await AsyncStorage.setItem(
+              PROFILE_CACHE_KEY,
+              JSON.stringify({
+                ts: Date.now(),
+                userInfo: nextUserInfo,
+              }),
+            );
+          } catch (profileSaveErr) {
+            console.warn('프로필 캐시 저장 실패:', profileSaveErr);
+          }
+        } else if (!cachedProfile && mounted) {
+          setUserInfo(null);
         }
 
         // 캐시가 없거나 비어 있으면 서버 시간표를 1회 조회하여 채운다.
@@ -291,8 +324,16 @@ const MyPage = ({ navigation }) => {
         {userInfo ? (
           <ProfileCard userInfo={userInfo} navigation={navigation} />
         ) : (
-          <View style={{ paddingHorizontal: 16, paddingVertical: 24 }}>
-            <Text style={{ color: colors.textSecondary }}>프로필 정보를 불러오는 중입니다...</Text>
+          <View style={styles.profileSkeletonCard}>
+            <View style={styles.profileSkeletonHeader}>
+              <View style={styles.profileSkeletonAvatar} />
+              <View style={styles.profileSkeletonInfo}>
+                <View style={styles.profileSkeletonName} />
+                <View style={styles.profileSkeletonUsername} />
+                <View style={styles.profileSkeletonSchool} />
+              </View>
+              <View style={styles.profileSkeletonBadge} />
+            </View>
           </View>
         )}
 
@@ -568,6 +609,60 @@ const styles = StyleSheet.create({
     marginTop: 8,
     fontSize: 12,
     color: colors.textSecondary,
+  },
+  profileSkeletonCard: {
+    backgroundColor: colors.background,
+    marginHorizontal: 16,
+    marginTop: 16,
+    marginBottom: 8,
+    padding: 16,
+    borderRadius: 12,
+    minHeight: 88,
+    shadowColor: colors.shadow,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  profileSkeletonHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  profileSkeletonAvatar: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    marginRight: 12,
+    backgroundColor: colors.textLight10,
+  },
+  profileSkeletonInfo: {
+    flex: 1,
+    gap: 6,
+  },
+  profileSkeletonName: {
+    width: 120,
+    height: 14,
+    borderRadius: 6,
+    backgroundColor: colors.textLight10,
+  },
+  profileSkeletonUsername: {
+    width: 90,
+    height: 10,
+    borderRadius: 6,
+    backgroundColor: colors.textLight10,
+  },
+  profileSkeletonSchool: {
+    width: 150,
+    height: 10,
+    borderRadius: 6,
+    backgroundColor: colors.textLight10,
+  },
+  profileSkeletonBadge: {
+    width: 38,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: colors.textLight10,
+    marginLeft: 8,
   },
 });
 
