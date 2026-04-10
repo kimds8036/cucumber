@@ -1239,4 +1239,4 @@ export default function BoardDetail({ navigation, route }) {
       </SafeAreaView>
     </View>
   );
-} 
+}

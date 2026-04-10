@@ -9,7 +9,7 @@
     "dev": "nodemon --watch src src/index.js",
     "migrate": "node src/db/migrate.js",
     "db:reset": "node src/db/reset-db.js",
-    "seed:schools": "node src/db/seed-schools-from-json.js",
+    "seed:schools": "node src/db/seed-schools-from-csv.js",
     "seed:admin-users": "node src/db/seed-admin-users.js"
   },
   "keywords": [],

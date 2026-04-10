@@ -32,6 +32,11 @@ const getBaseURL = () => {
   return `${fallback}/`;
 };
 
+/** 슬래시 없는 베이스 URL (네이티브 채팅 Intent 등) */
+export function getApiBaseUrlNoSlash() {
+  return getBaseURL().replace(/\/+$/, '');
+}
+
 export const api = axios.create({
   baseURL: getBaseURL(),
   timeout: 10000,

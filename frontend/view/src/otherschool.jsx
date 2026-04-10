@@ -15,7 +15,7 @@ const OtherSchoolScreen = ({ route, navigation }) => {
   const normalize = useMemo(() => getNormalize(width), [width]);
   const styles = useMemo(() => createOtherSchoolStyles(normalize), [normalize]);
 
-  const routeName = route?.params?.schoolName ?? '진관고등학교';
+  const routeName = route?.params?.schoolName ?? '';
   const routeSchoolId = route?.params?.schoolId ?? null;
 
   const [schoolInfo, setSchoolInfo] = useState({
@@ -24,8 +24,12 @@ const OtherSchoolScreen = ({ route, navigation }) => {
     studentCount: 0,
     postCount: 0,
     mailCount: 0,
+    eduOfficeCode: '',
+    adminStandardCode: '',
   });
   const [loading, setLoading] = useState(false);
+  const [mealLoading, setMealLoading] = useState(false);
+  const [nextMeals, setNextMeals] = useState([]);
   const [error, setError] = useState(null);
 
   useEffect(() => {
@@ -48,6 +52,8 @@ const OtherSchoolScreen = ({ route, navigation }) => {
           studentCount: data.studentCount || 0,
           postCount: data.postCount || 0,
           mailCount: data.mailCount || 0,
+          eduOfficeCode: data.eduOfficeCode || data.edu_office_code || '',
+          adminStandardCode: data.adminStandardCode || data.admin_standard_code || '',
         });
       } catch (e) {
         console.error('학교 정보 조회 실패:', e?.response?.data || e.message);
@@ -60,95 +66,60 @@ const OtherSchoolScreen = ({ route, navigation }) => {
     fetchSchool();
   }, [routeSchoolId, routeName]);
 
-  const schoolMealTypes = ['중식', '석식'];
-
-  const mealData = [
-    {
-      조식: ['토스트', '우유', '샐러드'],
-      중식: ['김치찌개', '잡채', '계란말이', '흰쌀밥'],
-      석식: ['부대찌개', '깍두기', '어묵볶음', '흰쌀밥'],
-    },
-    {
-      조식: ['식빵', '우유', '요거트'],
-      중식: ['된장찌개', '멸치볶음', '시금치나물', '흰쌀밥'],
-      석식: ['순두부찌개', '김치', '제육볶음', '흰쌀밥'],
-    },
-    {
-      조식: ['크로와상', '오렌지주스', '과일'],
-      중식: ['비빔밥', '미역국', '깍두기', '흰쌀밥'],
-      석식: ['감자탕', '콩나물무침', '김치', '흰쌀밥'],
-    },
-  ];
-
-  const getCurrentSlots = () => {
-    const now = new Date();
-    const hour = now.getHours();
-    const allTypes = ['조식', '중식', '석식'];
-
-    let baseDayIndex = 0;
-    let baseMealType = '조식';
-
-    if (hour < 10) {
-      baseMealType = '조식';
-    } else if (hour < 14) {
-      baseMealType = '중식';
-    } else if (hour < 20) {
-      baseMealType = '석식';
-    } else {
-      baseDayIndex = 1;
-      baseMealType = schoolMealTypes[0];
-    }
-
-    const ensureSupported = (dayIndex, mealType) => {
-      if (schoolMealTypes.includes(mealType)) {
-        return { dayIndex, mealType };
+  useEffect(() => {
+    let mounted = true;
+    const fetchMeals = async () => {
+      if (!routeSchoolId) {
+        setNextMeals([]);
+        return;
       }
-      for (let i = 0; i < allTypes.length; i++) {
-        const t = allTypes[i];
-        if (schoolMealTypes.includes(t)) {
-          return { dayIndex, mealType: t };
-        }
+      try {
+        setMealLoading(true);
+        const res = await api.get(`/api/schools/${routeSchoolId}/meals/next`, {
+          params: { count: 3 },
+        });
+        if (!mounted) return;
+        const rows = res.data?.data?.meals || [];
+        setNextMeals(Array.isArray(rows) ? rows : []);
+      } catch (e) {
+        if (mounted) setNextMeals([]);
+      } finally {
+        if (mounted) setMealLoading(false);
       }
-      return { dayIndex, mealType: schoolMealTypes[0] };
     };
+    fetchMeals();
+    return () => {
+      mounted = false;
+    };
+  }, [routeSchoolId]);
 
-    const start = ensureSupported(baseDayIndex, baseMealType);
-
-    const slots = [];
-    let dayIndex = start.dayIndex;
-    let typeIndex = schoolMealTypes.indexOf(start.mealType);
-    if (typeIndex < 0) typeIndex = 0;
-
-    while (slots.length < 3) {
-      if (dayIndex > 2) break;
-
-      const mealType = schoolMealTypes[typeIndex];
-      const dayData = mealData[dayIndex];
-      const menus = dayData && dayData[mealType] ? dayData[mealType] : [];
-
-      slots.push({ dayIndex, mealType, menus });
-
-      typeIndex += 1;
-      if (typeIndex >= schoolMealTypes.length) {
-        typeIndex = 0;
-        dayIndex += 1;
-      }
-    }
-
-    while (slots.length < 3) {
-      slots.push({ dayIndex: 2, mealType: schoolMealTypes[0], menus: [] });
-    }
-
-    return slots;
+  const mealTypeLabel = {
+    breakfast: '조식',
+    lunch: '중식',
+    dinner: '석식',
   };
 
-  const mealSlots = getCurrentSlots();
-  const weekdayLabels = ['월', '화', '수', '목', '금'];
-  const getDayBadge = (dayIndex) => {
-    const date = new Date();
-    date.setDate(date.getDate() + dayIndex);
-    const day = date.getDay();
-    return `${weekdayLabels[day]}`;
+  const mealSlotsRaw = nextMeals.map((m) => {
+    const ymd = String(m.ymd || '');
+    return {
+      ymd,
+      mealType: mealTypeLabel[m.mealType] || '급식',
+      menus: Array.isArray(m.menus) ? m.menus : [],
+    };
+  });
+  const mealSlots = [...mealSlotsRaw];
+  while (mealSlots.length < 3) {
+    mealSlots.push({ ymd: '', mealType: '급식', menus: [] });
+  }
+  const weekdayLabels = ['일', '월', '화', '수', '목', '금', '토'];
+  const getDayBadge = (ymd) => {
+    if (!/^\d{8}$/.test(String(ymd || ''))) return '-';
+    const date = new Date(
+      Number(ymd.slice(0, 4)),
+      Number(ymd.slice(4, 6)) - 1,
+      Number(ymd.slice(6, 8)),
+    );
+    return `${weekdayLabels[date.getDay()]}`;
   };
 
   return (
@@ -165,34 +136,51 @@ const OtherSchoolScreen = ({ route, navigation }) => {
         {/* 학교 정보 카드 */}
         <View style={styles.schoolCardBlock}>
           <View style={styles.schoolCard}>
-            <View style={styles.schoolNameRow}>
-              <Text style={styles.schoolName}>{schoolInfo.name}</Text>
-            </View>
-            <View style={styles.locationContainer}>
-              <Ionicons name="location-outline" size={normalize(14)} color={colors.textSecondary} />
-              <Text style={styles.locationText}>{schoolInfo.location}</Text>
-            </View>
-            <View style={styles.schoolInfoDivider} />
-            <View style={styles.statsContainer}>
-              <View style={styles.statItem}>
-                <View style={styles.statValueContainer}>
-                  <Ionicons name="person" size={normalize(16)} color={colors.primary} />
-                  <Text style={styles.statValue}>{schoolInfo.studentCount}명</Text>
+            {loading ? (
+              <View style={{ minHeight: normalize(110), justifyContent: 'center' }}>
+                <View style={{ height: normalize(18), width: '45%', backgroundColor: '#ECECEC', borderRadius: 6, marginBottom: 10 }} />
+                <View style={{ height: normalize(14), width: '65%', backgroundColor: '#F0F0F0', borderRadius: 6, marginBottom: 12 }} />
+                <View style={styles.schoolInfoDivider} />
+                <View style={styles.statsContainer}>
+                  {[0, 1, 2].map((idx) => (
+                    <View key={idx} style={styles.statItem}>
+                      <View style={{ height: normalize(16), width: normalize(58), backgroundColor: '#F0F0F0', borderRadius: 6 }} />
+                    </View>
+                  ))}
                 </View>
               </View>
-              <View style={styles.statItem}>
-                <View style={styles.statValueContainer}>
-                  <Ionicons name="chatbubbles" size={normalize(16)} color={colors.primary} />
-                  <Text style={styles.statValue}>{schoolInfo.postCount}개</Text>
+            ) : (
+              <>
+                <View style={styles.schoolNameRow}>
+                  <Text style={styles.schoolName}>{schoolInfo.name}</Text>
                 </View>
-              </View>
-              <View style={styles.statItem}>
-                <View style={styles.statValueContainer}>
-                  <Ionicons name="mail" size={normalize(16)} color={colors.primary} />
-                  <Text style={styles.statValue}>{schoolInfo.mailCount}개</Text>
+                <View style={styles.locationContainer}>
+                  <Ionicons name="location-outline" size={normalize(14)} color={colors.textSecondary} />
+                  <Text style={styles.locationText}>{schoolInfo.location}</Text>
                 </View>
-              </View>
-            </View>
+                <View style={styles.schoolInfoDivider} />
+                <View style={styles.statsContainer}>
+                  <View style={styles.statItem}>
+                    <View style={styles.statValueContainer}>
+                      <Ionicons name="person" size={normalize(16)} color={colors.primary} />
+                      <Text style={styles.statValue}>{schoolInfo.studentCount}명</Text>
+                    </View>
+                  </View>
+                  <View style={styles.statItem}>
+                    <View style={styles.statValueContainer}>
+                      <Ionicons name="chatbubbles" size={normalize(16)} color={colors.primary} />
+                      <Text style={styles.statValue}>{schoolInfo.postCount}개</Text>
+                    </View>
+                  </View>
+                  <View style={styles.statItem}>
+                    <View style={styles.statValueContainer}>
+                      <Ionicons name="mail" size={normalize(16)} color={colors.primary} />
+                      <Text style={styles.statValue}>{schoolInfo.mailCount}개</Text>
+                    </View>
+                  </View>
+                </View>
+              </>
+            )}
           </View>
         </View>
 
@@ -203,22 +191,38 @@ const OtherSchoolScreen = ({ route, navigation }) => {
               <Text style={styles.mealSectionTitle}>급식</Text>
               <TouchableOpacity
                 activeOpacity={0.7}
-                onPress={() => navigation?.navigate('MealCalendar')}
+                onPress={() =>
+                  navigation?.navigate('MealCalendar', {
+                    schoolId: routeSchoolId,
+                    schoolName: schoolInfo.name || routeName,
+                  })
+                }
               >
                 <Text style={styles.mealSectionMore}>자세히 →</Text>
               </TouchableOpacity>
             </View>
 
             <View style={styles.mealSlotsRow}>
-              {mealSlots.map((slot, index) => (
+              {mealLoading ? (
+                [0, 1, 2].map((idx) => (
+                  <View key={`meal-skeleton-${idx}`} style={[styles.mealSlot, idx === 2 && styles.mealSlotLast]}>
+                    <View style={styles.mealCard}>
+                      <View style={{ height: normalize(14), width: '45%', backgroundColor: '#ECECEC', borderRadius: 6, marginBottom: 8 }} />
+                      <View style={{ height: normalize(12), width: '90%', backgroundColor: '#F0F0F0', borderRadius: 6, marginBottom: 6 }} />
+                      <View style={{ height: normalize(12), width: '80%', backgroundColor: '#F0F0F0', borderRadius: 6 }} />
+                    </View>
+                  </View>
+                ))
+              ) : (
+                mealSlots.map((slot, index) => (
                 <View
-                  key={`${slot.dayIndex}-${slot.mealType}-${index}`}
+                  key={`${slot.ymd}-${slot.mealType}-${index}`}
                   style={[
                     styles.mealSlot,
                     index === mealSlots.length - 1 && styles.mealSlotLast,
                   ]}
                 >
-                  <View style={styles.mealCard}>
+                  <View style={[styles.mealCard, { minHeight: normalize(96) }]}>
                     <View style={styles.mealSlotHeader}>
                       <View style={styles.mealSlotTitleRow}>
                         <MaterialCommunityIcons
@@ -229,7 +233,7 @@ const OtherSchoolScreen = ({ route, navigation }) => {
                         <Text style={styles.mealSlotTitle}>{slot.mealType}</Text>
                       </View>
                       <View style={styles.mealSlotBadge}>
-                        <Text style={styles.mealSlotBadgeText}>{getDayBadge(slot.dayIndex)}</Text>
+                        <Text style={styles.mealSlotBadgeText}>{getDayBadge(slot.ymd)}</Text>
                       </View>
                     </View>
 
@@ -250,7 +254,8 @@ const OtherSchoolScreen = ({ route, navigation }) => {
                     </View>
                   </View>
                 </View>
-              ))}
+                ))
+              )}
             </View>
           </View>
         </View>
