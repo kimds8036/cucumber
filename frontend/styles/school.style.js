@@ -1,5 +1,6 @@
 import { StyleSheet } from 'react-native';
 import { colors, fonts, fontSizes } from './colors';
+import { shadow } from './tokens';
 
 // 우리 학교 화면 전용 스타일 (학교 정보 + 급식 + 잔디 + 바로가기 + 인기)
 export const createOurSchoolStyles = (normalize) => {
@@ -87,11 +88,7 @@ export const createOurSchoolStyles = (normalize) => {
       borderRadius: normalize(16),
       paddingHorizontal: normalize(10),
       paddingVertical: normalize(10),
-      shadowColor: colors.shadow,
-      shadowOffset: { width: 0, height: 2 },
-      shadowOpacity: 0.12,
-      shadowRadius: 4,
-      elevation: 3,
+      ...shadow.md,
     },
     mealSectionHeader: {
       flexDirection: 'row',
@@ -214,11 +211,7 @@ export const createOurSchoolStyles = (normalize) => {
       paddingVertical: normalize(10),
       marginBottom: normalize(12),
       backgroundColor: colors.background,
-      shadowColor: colors.shadow,
-      shadowOffset: { width: 0, height: 2 },
-      shadowOpacity: 0.12,
-      shadowRadius: 4,
-      elevation: 3,
+      ...shadow.md,
     },
     grassCardTitle: {
       fontSize: normalize(fontSizes.xxl),
@@ -238,11 +231,7 @@ export const createOurSchoolStyles = (normalize) => {
       backgroundColor: colors.background,
       borderRadius: normalize(16),
       padding: normalize(16),
-      shadowColor: colors.shadow,
-      shadowOffset: { width: 0, height: 2 },
-      shadowOpacity: 0.12,
-      shadowRadius: 4,
-      elevation: 3,
+      ...shadow.md,
     },
     shortcutTopRow: {
       flexDirection: 'row',
@@ -265,11 +254,7 @@ export const createOurSchoolStyles = (normalize) => {
       borderRadius: normalize(16),
       padding: normalize(16),
       marginBottom: normalize(12),
-      shadowColor: colors.shadow,
-      shadowOffset: { width: 0, height: 2 },
-      shadowOpacity: 0.12,
-      shadowRadius: 4,
-      elevation: 3,
+      ...shadow.md,
     },
     popularHeader: {
       flexDirection: 'row',
@@ -378,11 +363,7 @@ export const createSchoolMailStyles = (width, normalize) => {
       borderRadius: normalize(14),
       padding: normalize(12),
       marginBottom: normalize(10),
-      shadowColor: colors.shadow,
-      shadowOffset: { width: 1, height: 1 },
-      shadowOpacity: 0.2,
-      shadowRadius: 3,
-      elevation: 3,
+      ...shadow.md,
     },
     cardTopRow: {
       flexDirection: 'row',
@@ -457,11 +438,7 @@ export const createSchoolMailStyles = (width, normalize) => {
         backgroundColor: colors.primary,
         justifyContent: 'center',
         alignItems: 'center',
-        shadowColor: colors.shadow,
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.3,
-        shadowRadius: 4,
-        elevation: 5,
+        ...shadow.lg,
       },
     });
 };

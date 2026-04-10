@@ -165,11 +165,18 @@ export default function ChatScreen({
       showChatToast('상단으로 더 올려서 과거 메시지를 확인해 주세요');
       return;
     }
-    scroll.listRef.current?.scrollToIndex?.({
-      index: targetIndex,
-      animated: true,
-      viewPosition: 0.5,
-    });
+    if (targetIndex >= flatData.length) return;
+    const list = scroll.listRef.current;
+    if (!list?.scrollToIndex) return;
+    try {
+      list.scrollToIndex({
+        index: targetIndex,
+        animated: true,
+        viewPosition: 0.5,
+      });
+    } catch {
+      showChatToast('해당 메시지로 이동하지 못했습니다');
+    }
   };
 
   const renderMessageProps = {

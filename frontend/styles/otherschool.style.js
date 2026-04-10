@@ -1,5 +1,6 @@
 import { StyleSheet } from 'react-native';
 import { colors, fonts, fontSizes } from './colors';
+import { shadow } from './tokens';
 
 // 다른 학교 화면 전용 스타일 (우리 학교 화면과 동일한 레이아웃)
 export const createOtherSchoolStyles = (normalize) => {
@@ -87,11 +88,7 @@ export const createOtherSchoolStyles = (normalize) => {
       borderRadius: normalize(16),
       paddingHorizontal: normalize(10),
       paddingVertical: normalize(10),
-      shadowColor: colors.shadow,
-      shadowOffset: { width: 0, height: 2 },
-      shadowOpacity: 0.12,
-      shadowRadius: 4,
-      elevation: 3,
+      ...shadow.md,
     },
     mealSectionHeader: {
       flexDirection: 'row',
@@ -212,11 +209,7 @@ export const createOtherSchoolStyles = (normalize) => {
       paddingVertical: normalize(10),
       marginBottom: normalize(12),
       backgroundColor: colors.background,
-      shadowColor: colors.shadow,
-      shadowOffset: { width: 0, height: 2 },
-      shadowOpacity: 0.12,
-      shadowRadius: 4,
-      elevation: 3,
+      ...shadow.md,
     },
     grassCardTitle: {
       fontSize: normalize(fontSizes.xxl),
@@ -238,11 +231,7 @@ export const createOtherSchoolStyles = (normalize) => {
       borderRadius: normalize(16),
       paddingVertical: normalize(8),
       paddingHorizontal: normalize(15),
-      shadowColor: colors.shadow,
-      shadowOffset: { width: 0, height: 2 },
-      shadowOpacity: 0.12,
-      shadowRadius: 4,
-      elevation: 3,
+      ...shadow.md,
       borderWidth: StyleSheet.hairlineWidth,
       borderColor: colors.primaryLight30,
     },

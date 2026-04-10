@@ -1,5 +1,6 @@
 import { StyleSheet } from 'react-native';
 import { colors, fonts, fontSizes } from './colors';
+import { shadow } from './tokens';
 
 export const createLoginStyles = (width, normalize) => {
   return StyleSheet.create({
@@ -50,11 +51,7 @@ export const createLoginStyles = (width, normalize) => {
       color: colors.textSecondary,
       marginBottom: normalize(12),
       backgroundColor: colors.background,
-      shadowColor: colors.shadow,
-      shadowOffset: { width: 0, height: 2 },
-      shadowOpacity: 0.3,
-      shadowRadius: 2,
-      elevation: 2,
+      ...shadow.sm,
     },
     checkboxContainer: {
       flexDirection: 'row',
@@ -184,11 +181,7 @@ export const createSignupStyles = (width, normalize) => {
       color: colors.textPrimary,
       marginBottom: normalize(12),
       backgroundColor: colors.background,
-      shadowColor: colors.shadow,
-      shadowOffset: { width: 0, height: 2 },
-      shadowOpacity: 0.3,
-      shadowRadius: 2,
-      elevation: 2,
+      ...shadow.sm,
     },
 
     // 생년월일 드롭다운
@@ -211,11 +204,7 @@ export const createSignupStyles = (width, normalize) => {
       justifyContent: 'center',
       alignItems: 'center',
       backgroundColor: colors.background,
-      shadowColor: colors.shadow,
-      shadowOffset: { width: 0, height: 2 },
-      shadowOpacity: 0.3,
-      shadowRadius: 2,
-      elevation: 2,
+      ...shadow.sm,
     },
     dropdownText: {
       fontSize: normalize(fontSizes.xxl),

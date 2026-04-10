@@ -1,8 +1,16 @@
-import React, { useMemo } from 'react';
-import { Text, View, useWindowDimensions } from 'react-native';
+import React, { useEffect, useMemo, useState } from 'react';
+import {
+  ActivityIndicator,
+  Platform,
+  StyleSheet,
+  Text,
+  View,
+  useWindowDimensions,
+} from 'react-native';
 import ChatScreen from './ChatScreen';
 import useDMChat from '../hooks/useDMChat';
 import * as socketManager from '../../socketManager';
+import { openNativeChatAndroid } from '../../../../utils/openNativeChatAndroid';
 import {
   getNormalize as getBoardNormalize,
   createDetailStyles,
@@ -16,6 +24,33 @@ export default function DMChatScreen({ navigation, route }) {
   const friend = route?.params?.friend ?? {};
   const friendName = friend.name || '친구';
   const friendSchool = friend.schoolName || friend.school || '';
+  const [showJsxChat, setShowJsxChat] = useState(Platform.OS !== 'android');
+
+  useEffect(() => {
+    if (Platform.OS !== 'android') return;
+    if (!roomId) {
+      setShowJsxChat(true);
+      return;
+    }
+    let cancelled = false;
+    (async () => {
+      const ok = await openNativeChatAndroid({
+        roomId,
+        title: friendName,
+        subtitle: friendSchool,
+        chatChannel: 'dm',
+      });
+      if (cancelled) return;
+      if (ok) {
+        navigation.goBack();
+        return;
+      }
+      setShowJsxChat(true);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [roomId, navigation, friendName, friendSchool]);
 
   const { width } = useWindowDimensions();
   const normalize = useMemo(() => getBoardNormalize(width), [width]);
@@ -114,6 +149,14 @@ export default function DMChatScreen({ navigation, route }) {
     [roomId],
   );
 
+  if (!showJsxChat) {
+    return (
+      <View style={dmStyles.nativeLaunchPlaceholder}>
+        <ActivityIndicator size="large" color={colors.primary} />
+      </View>
+    );
+  }
+
   return (
     <ChatScreen
       roomId={roomId}
@@ -132,3 +175,12 @@ export default function DMChatScreen({ navigation, route }) {
     />
   );
 }
+
+const dmStyles = StyleSheet.create({
+  nativeLaunchPlaceholder: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: colors.background,
+  },
+});

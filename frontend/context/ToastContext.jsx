@@ -5,7 +5,10 @@ import React, {
   useRef,
   useState,
   useCallback,
+  useEffect,
 } from 'react';
+import { DeviceEventEmitter, Platform } from 'react-native';
+import { navigate } from '../navigation/navigationRef';
 
 const ToastContext = createContext(null);
 
@@ -89,6 +92,32 @@ export function ToastProvider({ children }) {
     setActiveChatRoomIdState(
       roomId != null && roomId !== '' ? String(roomId) : null,
     );
+  }, []);
+
+  /** Android 네이티브 채팅(ChatLauncherActivity) 포그라운드 시 RN 토스트/알림 억제와 동기화 */
+  useEffect(() => {
+    if (Platform.OS !== 'android') return undefined;
+    const sub = DeviceEventEmitter.addListener('nativeChatActiveRoom', (payload) => {
+      const rid = payload?.roomId;
+      setActiveChatRoomId(
+        rid != null && String(rid).trim() !== '' ? String(rid).trim() : null,
+      );
+    });
+    return () => sub.remove();
+  }, [setActiveChatRoomId]);
+
+  /** 네이티브 쪽지방 상단 게시글 카드 탭 → BoardDetail (ChatScreen과 동일 파라미터) */
+  useEffect(() => {
+    if (Platform.OS !== 'android') return undefined;
+    const sub = DeviceEventEmitter.addListener('nativeOpenBoardDetail', (payload) => {
+      const postId = payload?.postId;
+      if (postId == null || String(postId).trim() === '') return;
+      navigate('BoardDetail', {
+        post: { id: String(postId).trim() },
+        isMyPost: false,
+      });
+    });
+    return () => sub.remove();
   }, []);
 
   const value = useMemo(

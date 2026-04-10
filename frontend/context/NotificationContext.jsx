@@ -6,7 +6,7 @@
  */
 
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
-import { AppState } from 'react-native';
+import { AppState, DeviceEventEmitter, Platform } from 'react-native';
 import { api } from '../utils/api';
 import { useSocket } from './SocketContext';
 import { useToast } from './ToastContext';
@@ -44,6 +44,15 @@ export function NotificationProvider({ children }) {
     };
 
     const sub = AppState.addEventListener('change', handleAppStateChange);
+    return () => sub.remove();
+  }, [refreshHasUnread]);
+
+  /** 네이티브 채팅에서 read-by-related 후 벨 배지와 JSX 동기화 */
+  useEffect(() => {
+    if (Platform.OS !== 'android') return undefined;
+    const sub = DeviceEventEmitter.addListener('nativeRequestRefreshUnread', () => {
+      refreshHasUnread();
+    });
     return () => sub.remove();
   }, [refreshHasUnread]);
 
