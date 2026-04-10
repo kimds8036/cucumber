@@ -229,7 +229,14 @@ function MailInbox({ onOpen, onBack, navigation }) {
 
   return (
     <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
-      <SubHeader title="익명 우편함" onBack={onBack} />
+      <SubHeader
+        title="익명 우편함"
+        onBack={onBack}
+        rightElement={
+          <Octicons name="history" size={normalize(22)} color={colors.textPrimary} />
+        }
+        onRightPress={() => navigation?.navigate('MailHistory')}
+      />
       <View style={styles.inboxTabRow}>
         <TouchableOpacity
           style={[
@@ -347,6 +354,21 @@ function MailDetail({ mail: initialMail, onBack, navigation }) {
   const normalize = useMemo(() => getNormalize(width), [width]);
   const styles = useMemo(() => createMailStyles(normalize), [normalize]);
 
+  const historyThreadId = useMemo(() => {
+    const tk =
+      initialMail?.thread_key ??
+      initialMail?.threadKey ??
+      initialMail?.root_mail_id ??
+      initialMail?.id;
+    const n = Number(tk);
+    return Number.isFinite(n) ? n : undefined;
+  }, [
+    initialMail?.id,
+    initialMail?.thread_key,
+    initialMail?.threadKey,
+    initialMail?.root_mail_id,
+  ]);
+
   const [mail, setMail] = useState(null);
   const [myName, setMyName] = useState('');
   const [latestMyReply, setLatestMyReply] = useState(null);
@@ -439,6 +461,14 @@ function MailDetail({ mail: initialMail, onBack, navigation }) {
         <SubHeader
           title={mail?.isReceived === false ? '보낸 우편' : '받은 우편'}
           onBack={onBack}
+          rightElement={
+            <Octicons name="history" size={normalize(18)} color={colors.textPrimary} />
+          }
+          onRightPress={() =>
+            navigation.navigate('MailHistory', {
+              ...(historyThreadId != null ? { threadId: historyThreadId } : {}),
+            })
+          }
         />
       </View>
 
