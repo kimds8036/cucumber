@@ -15,9 +15,12 @@ import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
 import { colors } from '../../styles/colors';
 import ProfileCard from '../../components/Profilecard';
 import TimetableView from '../../components/Timetableview';
-import { api } from '../../utils/api';
+import { api, clearAuthToken } from '../../utils/api';
+import { useAuth } from '../../context/AuthContext';
+import IOSActionSheet from '../../components/common/IOSActionSheet';
 
 const MyPage = ({ navigation }) => {
+  const { logout } = useAuth();
   const TIMETABLE_CACHE_KEY = '@mypage_timetable_cache_v1';
   const TIMETABLE_CACHE_TTL_MS = 24 * 60 * 60 * 1000;
   const [userInfo, setUserInfo] = useState(null);
@@ -32,16 +35,20 @@ const MyPage = ({ navigation }) => {
   const [className, setClassName] = useState('');
   const [loading, setLoading] = useState(false);
   const [timetableLoading, setTimetableLoading] = useState(false);
+  const [accountSheetVisible, setAccountSheetVisible] = useState(false);
 
-  const handleLogout = () => {
-    Alert.alert('로그아웃', '정말 로그아웃 하시겠습니까?', [
-      { text: '취소', style: 'cancel' },
-      {
-        text: '로그아웃',
-        style: 'destructive',
-        onPress: () => console.log('로그아웃됨'),
-      },
-    ]);
+  const handleLogout = async () => {
+    try {
+      // 서버 로그아웃은 실패해도 로컬 세션 정리는 진행
+      await api.post('/api/auth/logout').catch(() => null);
+      await clearAuthToken();
+      await AsyncStorage.removeItem(TIMETABLE_CACHE_KEY);
+    } catch (error) {
+      console.error('로그아웃 처리 실패:', error);
+    } finally {
+      setAccountSheetVisible(false);
+      logout();
+    }
   };
 
   const handleDeleteAccount = () => {
@@ -293,22 +300,16 @@ const MyPage = ({ navigation }) => {
         {timetableLoading && !isEditMode ? (
           <View style={styles.ttSkeletonCard}>
             <View style={styles.ttSkeletonHeader} />
-            <View style={styles.ttSkeletonRow}>
-              <View style={styles.ttSkeletonCellSmall} />
-              <View style={styles.ttSkeletonCell} />
-              <View style={styles.ttSkeletonCell} />
-              <View style={styles.ttSkeletonCell} />
-              <View style={styles.ttSkeletonCell} />
-              <View style={styles.ttSkeletonCell} />
-            </View>
-            <View style={styles.ttSkeletonRow}>
-              <View style={styles.ttSkeletonCellSmall} />
-              <View style={styles.ttSkeletonCell} />
-              <View style={styles.ttSkeletonCell} />
-              <View style={styles.ttSkeletonCell} />
-              <View style={styles.ttSkeletonCell} />
-              <View style={styles.ttSkeletonCell} />
-            </View>
+            {[...Array(7)].map((_, idx) => (
+              <View style={styles.ttSkeletonRow} key={`tt-sk-${idx}`}>
+                <View style={styles.ttSkeletonCellSmall} />
+                <View style={styles.ttSkeletonCell} />
+                <View style={styles.ttSkeletonCell} />
+                <View style={styles.ttSkeletonCell} />
+                <View style={styles.ttSkeletonCell} />
+                <View style={styles.ttSkeletonCell} />
+              </View>
+            ))}
             <Text style={styles.ttSkeletonText}>시간표를 불러오는 중입니다...</Text>
           </View>
         ) : (
@@ -341,11 +342,7 @@ const MyPage = ({ navigation }) => {
             icon="person-outline"
             title="계정"
             onPress={() => {
-              Alert.alert('계정', '선택하세요', [
-                { text: '취소', style: 'cancel' },
-                { text: '로그아웃', onPress: handleLogout },
-                { text: '계정 탈퇴', onPress: handleDeleteAccount, style: 'destructive' },
-              ]);
+              setAccountSheetVisible(true);
             }}
           />
         </View>
@@ -396,6 +393,24 @@ const MyPage = ({ navigation }) => {
           </View>
         </View>
       </Modal>
+
+      <IOSActionSheet
+        visible={accountSheetVisible}
+        title="계정"
+        subtitle="원하는 작업을 선택하세요"
+        actions={[
+          { label: '로그아웃', destructive: true, onPress: handleLogout },
+          {
+            label: '계정 탈퇴',
+            destructive: true,
+            onPress: () => {
+              setAccountSheetVisible(false);
+              handleDeleteAccount();
+            },
+          },
+        ]}
+        onClose={() => setAccountSheetVisible(false)}
+      />
     </View>
   );
 };
@@ -518,6 +533,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.background,
     borderRadius: 12,
     padding: 16,
+    minHeight: 260,
     shadowColor: colors.shadow,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
@@ -533,18 +549,18 @@ const styles = StyleSheet.create({
   },
   ttSkeletonRow: {
     flexDirection: 'row',
-    marginBottom: 6,
+    marginBottom: 8,
     gap: 6,
   },
   ttSkeletonCellSmall: {
     width: 22,
-    height: 22,
+    height: 24,
     borderRadius: 4,
     backgroundColor: colors.textLight10,
   },
   ttSkeletonCell: {
     flex: 1,
-    height: 22,
+    height: 24,
     borderRadius: 4,
     backgroundColor: colors.textLight10,
   },
