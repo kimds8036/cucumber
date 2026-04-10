@@ -1,5 +1,6 @@
 import { StyleSheet } from 'react-native';
 import { colors, fonts, fontSizes } from './colors';
+import { shadow } from './tokens';
 
 export const getNormalize = (width) => {
   const scale = width / 375;
@@ -37,11 +38,7 @@ export const createMessageStyles = (width, normalize) => {
       bottom: 0,
       backgroundColor: colors.primary,
       borderRadius: normalize(18),
-      shadowColor: '#000',
-      shadowOffset: { width: 0, height: 1 },
-      shadowOpacity: 0.08,
-      shadowRadius: 3,
-      elevation: 2,
+      ...shadow.sm,
     },
     toggleOption: {
       flex: 1,
@@ -152,11 +149,7 @@ export const createMessageStyles = (width, normalize) => {
       backgroundColor: colors.primary,
       justifyContent: 'center',
       alignItems: 'center',
-      shadowColor: colors.shadow,
-      shadowOffset: { width: 0, height: 4 },
-      shadowOpacity: 0.3,
-      shadowRadius: 4,
-      elevation: 5,
+      ...shadow.lg,
     },
   });
 };

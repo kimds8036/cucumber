@@ -1,5 +1,6 @@
 import { StyleSheet } from 'react-native';
 import { colors, fonts, fontSizes } from './colors';
+import { shadow } from './tokens';
 
 export const getNormalize = (width) => {
   const scale = width / 375;
@@ -24,11 +25,7 @@ export const createSchoolBoardStyles = (width, normalize) => {
       borderRadius: normalize(20),
       padding: normalize(16),
       marginBottom: normalize(12),
-      shadowColor: colors.shadow,
-      shadowOffset: { width: 1, height: 1 },
-      shadowOpacity: 0.2,
-      shadowRadius: 3,
-      elevation: 3,
+      ...shadow.md,
     },
 
     // 게시글 헤더 (좌: 익명•시간, 우: 위치)
@@ -296,11 +293,7 @@ export const createSchoolBoardStyles = (width, normalize) => {
       backgroundColor: colors.primary,
       justifyContent: 'center',
       alignItems: 'center',
-      shadowColor: colors.shadow,
-      shadowOffset: { width: 0, height: 4 },
-      shadowOpacity: 0.3,
-      shadowRadius: 4,
-      elevation: 5,
+      ...shadow.lg,
     },
     emptyContainer: {
       paddingVertical: normalize(40),

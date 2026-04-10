@@ -1,5 +1,6 @@
 import { StyleSheet } from 'react-native';
 import { colors, fonts, fontSizes } from './colors';
+import { shadow } from './tokens';
 
 export const getNormalize = (width) => {
   const scale = width / 375;
@@ -343,11 +344,7 @@ export const createTimerStyles = (width, normalize) => {
       borderRadius: normalize(20),
       paddingVertical: normalize(18),
       paddingHorizontal: normalize(20),
-      shadowColor: colors.shadow,
-      shadowOffset: { width: 0, height: 2 },
-      shadowOpacity: 0.15,
-      shadowRadius: 4,
-      elevation: 3,
+      ...shadow.md,
     },
     stopwatchLabelRow: {
       flexDirection: 'row',
@@ -406,11 +403,7 @@ export const createTimerStyles = (width, normalize) => {
       borderRadius: normalize(20),
       paddingVertical: normalize(14),
       paddingHorizontal: normalize(20),
-      shadowColor: colors.shadow,
-      shadowOffset: { width: 0, height: 2 },
-      shadowOpacity: 0.12,
-      shadowRadius: 4,
-      elevation: 2,
+      ...shadow.sm,
     },
     friendHeaderRow: {
       flexDirection: 'row',
@@ -528,11 +521,7 @@ export const createTimerStyles = (width, normalize) => {
       borderRadius: normalize(20),
       paddingVertical: normalize(14),
       paddingHorizontal: normalize(20),
-      shadowColor: colors.shadow,
-      shadowOffset: { width: 0, height: 2 },
-      shadowOpacity: 0.1,
-      shadowRadius: 4,
-      elevation: 2,
+      ...shadow.sm,
     },
     timetableTitle: {
       fontSize: normalize(fontSizes.xxl),

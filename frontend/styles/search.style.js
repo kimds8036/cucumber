@@ -1,5 +1,6 @@
-﻿import { StyleSheet } from 'react-native';
+import { StyleSheet } from 'react-native';
 import { colors, fonts, fontSizes } from './colors';
+import { shadow } from './tokens';
 
 export const getNormalize = (width) => {
   const scale = width / 375;
@@ -153,11 +154,7 @@ export const createSearchStyles = (width, normalize) => {
       paddingHorizontal: normalize(10),
       borderRadius: normalize(10),
       backgroundColor: colors.background,
-      shadowColor: colors.shadow,
-      shadowOffset: { width: 0, height: 2 },
-      shadowOpacity: 0.15,
-      shadowRadius: 4,
-      elevation: 3,
+      ...shadow.md,
     },
     previewSection: {
       marginBottom: normalize(6),
@@ -395,11 +392,7 @@ export const createSearchScreenStyles = (width, normalize) => {
       borderWidth: StyleSheet.hairlineWidth,
       borderColor: colors.textLight10,
       overflow: 'hidden',
-      shadowColor: colors.shadow,
-      shadowOffset: { width: 0, height: normalize(4) },
-      shadowOpacity: 0.07,
-      shadowRadius: normalize(12),
-      elevation: 4,
+      ...shadow.md,
     },
     previewGroupLabel: {
       fontSize: normalize(fontSizes.lg),

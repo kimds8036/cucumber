@@ -1,5 +1,6 @@
 import { StyleSheet, Platform } from 'react-native';
 import { colors, fonts, fontSizes } from './colors';
+import { shadow } from './tokens';
 
 /** 학교 우편함 리스트 (2열 그리드) — schoolMailbox.jsx */
 export const createSchoolMailStyles = (width, normalize) => {
@@ -30,11 +31,7 @@ export const createSchoolMailStyles = (width, normalize) => {
       borderRadius: normalize(14),
       padding: normalize(12),
       marginBottom: normalize(10),
-      shadowColor: colors.shadow,
-      shadowOffset: { width: 1, height: 1 },
-      shadowOpacity: 0.2,
-      shadowRadius: 3,
-      elevation: 3,
+      ...shadow.md,
     },
     cardTopRow: {
       flexDirection: 'row',
@@ -126,11 +123,7 @@ export const createSchoolMailStyles = (width, normalize) => {
       backgroundColor: colors.primary,
       justifyContent: 'center',
       alignItems: 'center',
-      shadowColor: colors.shadow,
-      shadowOffset: { width: 0, height: 4 },
-      shadowOpacity: 0.3,
-      shadowRadius: 4,
-      elevation: 5,
+      ...shadow.lg,
     },
   });
 };
@@ -157,11 +150,7 @@ export const createSchoolMailDetailStyles = (width, normalize) => {
       paddingHorizontal: normalize(16),
       paddingTop: normalize(16),
       paddingBottom: normalize(18),
-      shadowColor: colors.shadow,
-      shadowOffset: { width: 0, height: 1 },
-      shadowOpacity: 0.1,
-      shadowRadius: 10,
-      elevation: 6,
+      ...shadow.md,
     },
     smDetailLetterTopRow: {
       flexDirection: 'row',
@@ -253,11 +242,7 @@ export const createSchoolMailDetailStyles = (width, normalize) => {
       paddingHorizontal: normalize(14),
       paddingVertical: normalize(12),
       marginBottom: normalize(10),
-      shadowColor: colors.shadow,
-      shadowOffset: { width: 0, height: 1 },
-      shadowOpacity: 0.1,
-      shadowRadius: 10,
-      elevation: 6,
+      ...shadow.md,
     },
     /** 대댓글: 왼쪽 들여쓰기(행의 marginLeft) 유지, 오른쪽은 부모 댓글과 동일 선상까지 채움 */
     smDetailCommentBubbleReply: {
@@ -268,6 +253,18 @@ export const createSchoolMailDetailStyles = (width, normalize) => {
     /** 댓글 달기 포커스 시 말풍선만 강조 */
     smDetailCommentBubbleReplying: {
       backgroundColor: colors.primaryLight20,
+      ...Platform.select({
+        ios: {
+          shadowColor: 'transparent',
+          shadowOffset: { width: 0, height: 0 },
+          shadowOpacity: 0,
+          shadowRadius: 0,
+        },
+        android: {
+          elevation: 0,
+          shadowColor: 'transparent',
+        },
+      }),
     },
     smDetailCommentItem: {
       marginBottom: normalize(6),

@@ -7,11 +7,12 @@ import {
   RefreshControl,
   useWindowDimensions,
 } from 'react-native';
-import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import Octicons from '@expo/vector-icons/Octicons';
 import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
 import SubHeader from '../frame/subHeader';
 import Loading from '../../components/Loading';
+import { usePlatformInsets } from '../../hooks/usePlatformInsets';
 import { colors, PROFILE_COLORS } from '../../styles/colors';
 import { getNormalize } from '../../styles/frame.style';
 import { createMailStyles } from '../../styles/mail.style';
@@ -343,7 +344,7 @@ function MailInbox({ onOpen, onBack, navigation }) {
 
 function MailDetail({ mail: initialMail, onBack, navigation }) {
   const { width, height } = useWindowDimensions();
-  const insets = useSafeAreaInsets();
+  const insets = usePlatformInsets();
   const normalize = useMemo(() => getNormalize(width), [width]);
   const styles = useMemo(() => createMailStyles(normalize), [normalize]);
 

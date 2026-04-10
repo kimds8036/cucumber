@@ -1,5 +1,6 @@
 import { StyleSheet } from 'react-native';
 import { colors, fonts, fontSizes } from './colors';
+import { shadow } from './tokens';
 
 export function createMailStyles(normalize) {
   return StyleSheet.create({
@@ -91,11 +92,7 @@ export function createMailStyles(normalize) {
       paddingTop: normalize(18),
       paddingBottom: normalize(24),
       // 경계선 대신 카드 그림자 처리
-      shadowColor: '#000',
-      shadowOffset: { width: 0, height: 1 },
-      shadowOpacity: 0.1,
-      shadowRadius: 10,
-      elevation: 6,
+      ...shadow.md,
     },
     detailLoading: {
       marginTop: normalize(20),
@@ -243,11 +240,7 @@ export function createMailStyles(normalize) {
       paddingBottom: normalize(24),
       flexDirection: 'column',
       // 경계선 대신 카드 그림자 처리 (detailLetterCard와 톤 맞춤)
-      shadowColor: '#000',
-      shadowOffset: { width: 0, height: 1 },
-      shadowOpacity: 0.1,
-      shadowRadius: 10,
-      elevation: 6,
+      ...shadow.md,
     },
     replyFormToLabel: {
       fontSize: normalize(fontSizes.xl),
@@ -303,11 +296,7 @@ export function createMailStyles(normalize) {
       paddingTop: normalize(18),
       paddingBottom: normalize(24),
       // 경계선 대신 카드 그림자 처리 (detailLetterCard와 톤 맞춤)
-      shadowColor: '#000',
-      shadowOffset: { width: 0, height: 1 },
-      shadowOpacity: 0.1,
-      shadowRadius: 10,
-      elevation: 6,
+      ...shadow.md,
     },
     modalFullNotice: {
       marginTop: normalize(12),
@@ -336,11 +325,7 @@ export function createMailStyles(normalize) {
       borderRadius: normalize(12),
       paddingHorizontal: normalize(14),
       paddingVertical: normalize(12),
-      shadowColor: colors.shadow,
-      shadowOffset: { width: 0, height: 1 },
-      shadowOpacity: 0.08,
-      shadowRadius: 8,
-      elevation: 3,
+      ...shadow.sm,
     },
     historyCardHeader: {
       flexDirection: 'row',
@@ -401,11 +386,7 @@ export function createMailStyles(normalize) {
       paddingBottom: normalize(16),
       marginBottom: normalize(12),
       borderRadius: normalize(12),
-      shadowColor: '#000',
-      shadowOffset: { width: 0, height: 1 },
-      shadowOpacity: 0.1,
-      shadowRadius: 10,
-      elevation: 6,
+      ...shadow.md,
     },
     label: {
       fontSize: normalize(fontSizes.xxl),
