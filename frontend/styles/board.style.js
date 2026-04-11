@@ -55,8 +55,8 @@ export const createBoardStyles = (width, normalize) => {
     },
     postItem: {
       backgroundColor: colors.background,
-      borderRadius: normalize(20),
-      padding: normalize(16),
+      borderRadius: normalize(18),
+      padding: normalize(14),
       marginBottom: normalize(12),
       ...shadow.md,
     },

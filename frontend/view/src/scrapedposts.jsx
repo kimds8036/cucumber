@@ -2,7 +2,6 @@ import React, { useEffect, useState, useMemo } from 'react';
 import {
   View,
   Text,
-  StyleSheet,
   ScrollView,
   TouchableOpacity,
   useWindowDimensions,
@@ -12,7 +11,10 @@ import { Ionicons } from '@expo/vector-icons';
 import SubHeader from '../frame/subHeader';
 import { api } from '../../utils/api';
 import { colors } from '../../styles/colors';
-import { getNormalize } from '../../styles/board.style';
+import {
+  getNormalize,
+  createScrapedPostsStyles,
+} from '../../styles/mypage.style';
 
 function formatDate(dateString) {
   if (!dateString) return '';
@@ -27,6 +29,10 @@ function formatDate(dateString) {
 const ScrapedPosts = ({ navigation }) => {
   const { width } = useWindowDimensions();
   const normalize = useMemo(() => getNormalize(width), [width]);
+  const styles = useMemo(
+    () => createScrapedPostsStyles(normalize),
+    [normalize],
+  );
   const [scrappedPosts, setScrappedPosts] = useState([]);
   const [loading, setLoading] = useState(false);
 
@@ -69,7 +75,11 @@ const ScrapedPosts = ({ navigation }) => {
       <ScrollView style={styles.scrollView}>
         {loading && scrappedPosts.length === 0 ? (
           <View style={styles.empty}>
-            <Ionicons name="time-outline" size={40} color="#ddd" />
+            <Ionicons
+              name="time-outline"
+              size={normalize(40)}
+              color={colors.textLight20}
+            />
             <Text style={styles.emptyText}>게시글을 불러오는 중입니다...</Text>
           </View>
         ) : scrappedPosts.length > 0 ? (
@@ -100,7 +110,11 @@ const ScrapedPosts = ({ navigation }) => {
           ))
         ) : (
           <View style={styles.empty}>
-            <Ionicons name="bookmark-outline" size={48} color="#ddd" />
+            <Ionicons
+              name="bookmark-outline"
+              size={normalize(48)}
+              color={colors.textLight20}
+            />
             <Text style={styles.emptyText}>스크랩한 글이 없습니다</Text>
           </View>
         )}
@@ -108,56 +122,5 @@ const ScrapedPosts = ({ navigation }) => {
     </SafeAreaView>
   );
 };
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.background,
-  },
-  scrollView: {
-    flex: 1,
-  },
-  postItem: {
-    padding: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: '#f0f0f0',
-  },
-  postTitle: {
-    fontSize: 15,
-    color: '#333',
-    fontWeight: '500',
-    marginBottom: 8,
-  },
-  postInfo: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  postAuthor: {
-    fontSize: 13,
-    color: '#666',
-    marginRight: 8,
-  },
-  postDate: {
-    fontSize: 13,
-    color: '#999',
-    flex: 1,
-  },
-  scrapInfo: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  empty: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingTop: 80,
-    gap: 12,
-  },
-  emptyText: {
-    fontSize: 15,
-    color: '#ccc',
-    fontWeight: '500',
-  },
-});
 
 export default ScrapedPosts;
