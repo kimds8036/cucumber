@@ -19,7 +19,7 @@ export const createTimerStyles = (width, normalize) => {
     },
     scrollContent: {
       paddingHorizontal: width * 0.05,
-      paddingTop: normalize(16),
+      paddingTop: normalize(8),
       paddingBottom: normalize(24),
       gap: normalize(16),
     },

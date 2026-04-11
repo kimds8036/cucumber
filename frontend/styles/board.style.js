@@ -23,6 +23,7 @@ export const createBoardStyles = (width, normalize) => {
       flexDirection: 'row',
       paddingHorizontal: width * 0.05,
       paddingVertical: normalize(10),
+      paddingTop: normalize(8),
       gap: normalize(8),
     },
     sortButton: {

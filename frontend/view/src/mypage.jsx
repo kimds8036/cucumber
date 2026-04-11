@@ -18,7 +18,7 @@ import {
   themedTextInputProps,
 } from '../../styles/mypage.style';
 import ProfileCard from '../../components/Profilecard';
-import TimetableView from '../../components/Timetableview';
+// import TimetableView from '../../components/Timetableview'; // 시간표 UI 복구 시 주석 해제
 import { api, clearAuthToken } from '../../utils/api';
 import { useAuth } from '../../context/AuthContext';
 
@@ -361,12 +361,16 @@ const MyPage = ({ navigation }) => {
                 <View style={styles.profileSkeletonUsername} />
                 <View style={styles.profileSkeletonSchool} />
               </View>
-              <View style={styles.profileSkeletonBadge} />
+            </View>
+            <View style={styles.profileSkeletonQuickRow}>
+              <View style={styles.profileSkeletonQuickCell} />
+              <View style={styles.profileSkeletonQuickCell} />
+              <View style={styles.profileSkeletonQuickCell} />
             </View>
           </View>
         )}
 
-        {/* ── 시간표 ── */}
+        {/* ── 시간표 (일시 비표시 — 복구 시 아래 블록 주석 해제 + TimetableView import 주석 해제) ──
         {timetableLoading && !isEditMode ? (
           <View style={styles.ttSkeletonCard}>
             <View style={styles.ttSkeletonHeader} />
@@ -395,6 +399,7 @@ const MyPage = ({ navigation }) => {
             colorSeed={colorSeed}
           />
         )}
+        */}
 
         {/* ── 메뉴 ── */}
         <View style={styles.menuSection}>
@@ -413,11 +418,6 @@ const MyPage = ({ navigation }) => {
             }
           />
           <MenuItem
-            icon="document-text-outline"
-            title="활동"
-            onPress={() => navigation.navigate('MyPosts', { type: '전체' })}
-          />
-          <MenuItem
             icon="log-out-outline"
             title="로그아웃"
             onPress={confirmLogout}
@@ -433,6 +433,7 @@ const MyPage = ({ navigation }) => {
 
         <View style={styles.bottomPadding} />
       </ScrollView>
+      {/* 시간표 셀 편집 모달 — 시간표 UI 복구 시 주석 해제
       <Modal
         animationType="slide"
         transparent
@@ -478,6 +479,7 @@ const MyPage = ({ navigation }) => {
           </View>
         </View>
       </Modal>
+      */}
 
     </View>
   );

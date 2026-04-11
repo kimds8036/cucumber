@@ -19,6 +19,7 @@ export const createMessageStyles = (width, normalize) => {
       flexDirection: 'row',
       paddingHorizontal: width * 0.1,
       paddingVertical: normalize(10),
+      paddingTop: normalize(8),
       gap: normalize(8),
     },
     toggleTrack: {

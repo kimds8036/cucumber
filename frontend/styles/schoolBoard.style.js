@@ -1,7 +1,6 @@
 import { StyleSheet } from 'react-native';
 import { colors, fonts, fontSizes } from './colors';
 import { shadow } from './tokens';
-
 export const getNormalize = (width) => {
   const scale = width / 375;
   return (size) => Math.round(scale * size);

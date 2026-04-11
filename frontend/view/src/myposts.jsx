@@ -1,10 +1,9 @@
-import React, { useState, useRef, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   View,
   Text,
   ScrollView,
   TouchableOpacity,
-  Animated,
   useWindowDimensions,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -28,42 +27,36 @@ function formatDate(dateString) {
   return `${y}.${m}.${day}`;
 }
 
-const ActivityPage = ({ navigation }) => {
+const tabFromRoute = (route) =>
+  route?.params?.tab === 'scrapped' ? 'scrapped' : 'written';
+
+const ActivityPage = ({ navigation, route }) => {
   const { width } = useWindowDimensions();
   const normalize = useMemo(() => getNormalize(width), [width]);
   const styles = useMemo(
     () => createMyPostsStyles(normalize),
     [normalize],
   );
-  const [activeTab, setActiveTab] = useState('written');
-  const slideAnim = useRef(new Animated.Value(0)).current;
-  const [writtenPosts, setWrittenPosts] = useState([]);
-  const [scrappedPosts, setScrappedPosts] = useState([]);
+  const listKind = tabFromRoute(route);
+  const [posts, setPosts] = useState([]);
   const [loading, setLoading] = useState(false);
-
-  const handleTabChange = (tab) => {
-    setActiveTab(tab);
-    Animated.spring(slideAnim, {
-      toValue: tab === 'written' ? 0 : 1,
-      useNativeDriver: false,
-      tension: 60,
-      friction: 10,
-    }).start();
-  };
 
   useEffect(() => {
     let mounted = true;
+    const kind = tabFromRoute(route);
+
     const fetchData = async () => {
       try {
         setLoading(true);
-        const [writtenRes, scrappedRes] = await Promise.all([
-          api.get('/api/posts/my', { params: { page: 1, limit: 50 } }),
-          api.get('/api/posts/scrapped', { params: { page: 1, limit: 50 } }),
-        ]);
+        const url =
+          kind === 'written'
+            ? '/api/posts/my'
+            : '/api/posts/scrapped';
+        const res = await api.get(url, { params: { page: 1, limit: 50 } });
 
         if (!mounted) return;
 
-        const wp = (writtenRes.data?.data?.posts || []).map((p) => ({
+        const mapped = (res.data?.data?.posts || []).map((p) => ({
           id: p.id,
           title: (p.content || '').split('\n')[0].slice(0, 40) || '제목 없음',
           date: formatDate(p.created_at),
@@ -73,20 +66,10 @@ const ActivityPage = ({ navigation }) => {
           scrapCount: Number(p.scrapCount) || 0,
         }));
 
-        const sp = (scrappedRes.data?.data?.posts || []).map((p) => ({
-          id: p.id,
-          title: (p.content || '').split('\n')[0].slice(0, 40) || '제목 없음',
-          date: formatDate(p.created_at),
-          likes: p.like_count,
-          comments: p.comment_count,
-          liked: Boolean(p.isLiked ?? false),
-          scrapCount: Number(p.scrapCount) || 0,
-        }));
-
-        setWrittenPosts(wp);
-        setScrappedPosts(sp);
+        setPosts(mapped);
       } catch (error) {
         console.error('내 활동 게시글 로드 실패:', error);
+        if (mounted) setPosts([]);
       } finally {
         if (mounted) setLoading(false);
       }
@@ -96,9 +79,10 @@ const ActivityPage = ({ navigation }) => {
     return () => {
       mounted = false;
     };
-  }, []);
+  }, [route?.params?.tab]);
 
-  const currentPosts = activeTab === 'written' ? writtenPosts : scrappedPosts;
+  const screenTitle =
+    listKind === 'written' ? '내가 쓴 글' : '스크랩한 글';
 
   const PostItem = ({ post }) => (
     <TouchableOpacity
@@ -115,7 +99,7 @@ const ActivityPage = ({ navigation }) => {
             likes: post.likes,
             comments: post.comments,
           },
-          isMyPost: activeTab === 'written',
+          isMyPost: listKind === 'written',
         })
       }
     >
@@ -126,7 +110,7 @@ const ActivityPage = ({ navigation }) => {
         <Text style={styles.postDate}>{post.date}</Text>
         <View style={styles.stats}>
           <View style={styles.statItem}>
-            {activeTab === 'scrapped' ? (
+            {listKind === 'scrapped' ? (
               <Ionicons
                 name="bookmark"
                 size={normalize(14)}
@@ -156,102 +140,14 @@ const ActivityPage = ({ navigation }) => {
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
-      <SubHeader title="내 활동" onBack={() => navigation.goBack()} />
+      <SubHeader title={screenTitle} onBack={() => navigation.goBack()} />
 
-      <View style={styles.toggleWrapper}>
-        <View style={styles.toggleTrack}>
-          <Animated.View
-            style={[
-              styles.pill,
-              {
-                backgroundColor:
-                  activeTab === 'scrapped' ? colors.scrap : colors.primary,
-                left: slideAnim.interpolate({
-                  inputRange: [0, 1],
-                  outputRange: ['0%', '50%'],
-                }),
-              },
-            ]}
-          />
-
-          <TouchableOpacity
-            style={styles.toggleBtn}
-            onPress={() => handleTabChange('written')}
-            activeOpacity={1}
-          >
-            <Ionicons
-              name="document-text-outline"
-              size={normalize(15)}
-              color={
-                activeTab === 'written' ? colors.textWhite : colors.textLight40
-              }
-            />
-            <Text
-              style={[
-                styles.toggleText,
-                activeTab === 'written' && styles.toggleTextActive,
-              ]}
-            >
-              내가 쓴 글
-            </Text>
-            <View
-              style={[
-                styles.cnt,
-                activeTab === 'written' && styles.cntActive,
-              ]}
-            >
-              <Text
-                style={[
-                  styles.cntText,
-                  activeTab === 'written' && styles.cntTextActive,
-                ]}
-              >
-                {writtenPosts.length}
-              </Text>
-            </View>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={styles.toggleBtn}
-            onPress={() => handleTabChange('scrapped')}
-            activeOpacity={1}
-          >
-            <Ionicons
-              name="bookmark-outline"
-              size={normalize(13)}
-              color={
-                activeTab === 'scrapped' ? colors.textWhite : colors.textLight40
-              }
-            />
-            <Text
-              style={[
-                styles.toggleText,
-                activeTab === 'scrapped' && styles.toggleTextActive,
-              ]}
-            >
-              스크랩한 글
-            </Text>
-            <View
-              style={[
-                styles.cnt,
-                activeTab === 'scrapped' && styles.cntActive,
-              ]}
-            >
-              <Text
-                style={[
-                  styles.cntText,
-                  activeTab === 'scrapped' && styles.cntTextActive,
-                ]}
-              >
-                {scrappedPosts.length}
-              </Text>
-            </View>
-          </TouchableOpacity>
-        </View>
-      </View>
-
-      <ScrollView style={styles.scroll} showsVerticalScrollIndicator={false}>
-        {loading && currentPosts.length === 0 ? (
+      <ScrollView
+        style={styles.scroll}
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+      >
+        {loading && posts.length === 0 ? (
           <View style={styles.empty}>
             <Ionicons
               name="time-outline"
@@ -260,9 +156,9 @@ const ActivityPage = ({ navigation }) => {
             />
             <Text style={styles.emptyText}>게시글을 불러오는 중입니다...</Text>
           </View>
-        ) : currentPosts.length > 0 ? (
+        ) : posts.length > 0 ? (
           <View style={styles.list}>
-            {currentPosts.map((post) => (
+            {posts.map((post) => (
               <PostItem key={post.id} post={post} />
             ))}
           </View>
@@ -270,7 +166,7 @@ const ActivityPage = ({ navigation }) => {
           <View style={styles.empty}>
             <Ionicons
               name={
-                activeTab === 'written'
+                listKind === 'written'
                   ? 'document-text-outline'
                   : 'bookmark-outline'
               }
@@ -278,7 +174,7 @@ const ActivityPage = ({ navigation }) => {
               color={colors.textLight20}
             />
             <Text style={styles.emptyText}>
-              {activeTab === 'written'
+              {listKind === 'written'
                 ? '아직 작성한 글이 없어요'
                 : '스크랩한 글이 없습니다'}
             </Text>
