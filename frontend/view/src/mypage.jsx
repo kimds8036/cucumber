@@ -1,25 +1,31 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   View,
   Text,
-  StyleSheet,
   ScrollView,
   TouchableOpacity,
   Alert,
   Modal,
   TextInput,
+  useWindowDimensions,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { Ionicons } from '@expo/vector-icons';
-import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
+import Ionicons from '@expo/vector-icons/Ionicons';
 import { colors } from '../../styles/colors';
+import {
+  createMyPageStyles,
+  getNormalize,
+  themedTextInputProps,
+} from '../../styles/mypage.style';
 import ProfileCard from '../../components/Profilecard';
 import TimetableView from '../../components/Timetableview';
 import { api, clearAuthToken } from '../../utils/api';
 import { useAuth } from '../../context/AuthContext';
-import IOSActionSheet from '../../components/common/IOSActionSheet';
 
 const MyPage = ({ navigation }) => {
+  const { width } = useWindowDimensions();
+  const normalize = useMemo(() => getNormalize(width), [width]);
+  const styles = useMemo(() => createMyPageStyles(normalize), [normalize]);
   const { logout } = useAuth();
   const TIMETABLE_CACHE_KEY = '@mypage_timetable_cache_v1';
   const TIMETABLE_CACHE_TTL_MS = 24 * 60 * 60 * 1000;
@@ -37,7 +43,6 @@ const MyPage = ({ navigation }) => {
   const [className, setClassName] = useState('');
   const [loading, setLoading] = useState(false);
   const [timetableLoading, setTimetableLoading] = useState(false);
-  const [accountSheetVisible, setAccountSheetVisible] = useState(false);
 
   const handleLogout = async () => {
     try {
@@ -49,9 +54,15 @@ const MyPage = ({ navigation }) => {
     } catch (error) {
       console.error('로그아웃 처리 실패:', error);
     } finally {
-      setAccountSheetVisible(false);
       logout();
     }
+  };
+
+  const confirmLogout = () => {
+    Alert.alert('로그아웃', '로그아웃 하시겠습니까?', [
+      { text: '취소', style: 'cancel' },
+      { text: '로그아웃', style: 'destructive', onPress: () => handleLogout() },
+    ]);
   };
 
   const handleDeleteAccount = () => {
@@ -300,18 +311,36 @@ const MyPage = ({ navigation }) => {
     setClassName('');
   };
 
-  const MenuItem = ({ icon, title, subtitle, onPress, iconType = 'ionicons' }) => {
-    const IconComponent = iconType === 'material' ? MaterialCommunityIcons : Ionicons;
+  const MenuItem = ({
+    icon,
+    title,
+    subtitle,
+    onPress,
+    hideChevron = false,
+  }) => {
     return (
-      <TouchableOpacity style={styles.menuItem} onPress={onPress}>
+      <TouchableOpacity style={styles.menuItem} onPress={onPress} activeOpacity={0.7}>
         <View style={styles.menuLeft}>
-          <IconComponent name={icon} size={24} color={colors.textPrimary} style={styles.menuIcon} />
+          <Ionicons
+            name={icon}
+            size={normalize(22)}
+            color={colors.textPrimary}
+            style={styles.menuIcon}
+          />
           <View>
             <Text style={styles.menuTitle}>{title}</Text>
-            {subtitle && <Text style={styles.menuSubtitle}>{subtitle}</Text>}
+            {subtitle ? (
+              <Text style={styles.menuSubtitle}>{subtitle}</Text>
+            ) : null}
           </View>
         </View>
-        <Ionicons name="chevron-forward" size={20} color={colors.textSecondary} />
+        {!hideChevron && (
+          <Ionicons
+            name="chevron-forward"
+            size={normalize(20)}
+            color={colors.textSecondary}
+          />
+        )}
       </TouchableOpacity>
     );
   };
@@ -370,9 +399,18 @@ const MyPage = ({ navigation }) => {
         {/* ── 메뉴 ── */}
         <View style={styles.menuSection}>
           <MenuItem
-            icon="settings-outline"
-            title="설정 및 변경"
-            onPress={() => navigation.navigate('NotificationSettings')}
+            icon="notifications-outline"
+            title="설정"
+            onPress={() =>
+              navigation.navigate('NotificationSettings', { variant: 'prefs' })
+            }
+          />
+          <MenuItem
+            icon="create-outline"
+            title="변경"
+            onPress={() =>
+              navigation.navigate('NotificationSettings', { variant: 'profile' })
+            }
           />
           <MenuItem
             icon="document-text-outline"
@@ -380,11 +418,16 @@ const MyPage = ({ navigation }) => {
             onPress={() => navigation.navigate('MyPosts', { type: '전체' })}
           />
           <MenuItem
-            icon="person-outline"
-            title="계정"
-            onPress={() => {
-              setAccountSheetVisible(true);
-            }}
+            icon="log-out-outline"
+            title="로그아웃"
+            onPress={confirmLogout}
+            hideChevron
+          />
+          <MenuItem
+            icon="close-circle-outline"
+            title="계정 탈퇴"
+            onPress={handleDeleteAccount}
+            hideChevron
           />
         </View>
 
@@ -404,6 +447,7 @@ const MyPage = ({ navigation }) => {
             <TextInput
               style={styles.input}
               placeholder="과목명을 입력하세요 (비우면 삭제)"
+              {...themedTextInputProps}
               value={className}
               onChangeText={setClassName}
               autoFocus
@@ -435,235 +479,8 @@ const MyPage = ({ navigation }) => {
         </View>
       </Modal>
 
-      <IOSActionSheet
-        visible={accountSheetVisible}
-        title="계정"
-        subtitle="원하는 작업을 선택하세요"
-        actions={[
-          { label: '로그아웃', destructive: true, onPress: handleLogout },
-          {
-            label: '계정 탈퇴',
-            destructive: true,
-            onPress: () => {
-              setAccountSheetVisible(false);
-              handleDeleteAccount();
-            },
-          },
-        ]}
-        onClose={() => setAccountSheetVisible(false)}
-      />
     </View>
   );
 };
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.background,
-  },
-  scrollView: {
-    flex: 1,
-    paddingTop: 8,
-  },
-  menuSection: {
-    marginHorizontal: 16,
-    marginTop: 8,
-    marginBottom: 16,
-  },
-  menuItem: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingVertical: 14,
-    paddingHorizontal: 18,
-    backgroundColor: colors.background,
-    borderRadius: 999,
-    marginBottom: 10,
-    shadowColor: colors.shadow,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.06,
-    shadowRadius: 3,
-    elevation: 2,
-  },
-  menuLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    flex: 1,
-  },
-  menuIcon: {
-    marginRight: 12,
-  },
-  menuTitle: {
-    fontSize: 15,
-    color: colors.textPrimary,
-    fontWeight: '500',
-  },
-  menuSubtitle: {
-    fontSize: 12,
-    color: colors.textSecondary,
-    marginTop: 2,
-  },
-  bottomPadding: {
-    height: 80,
-  },
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: colors.overlay,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  modalContent: {
-    width: '80%',
-    backgroundColor: colors.background,
-    borderRadius: 12,
-    padding: 20,
-  },
-  modalTitle: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: colors.textPrimary,
-    marginBottom: 16,
-    textAlign: 'center',
-  },
-  input: {
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: 8,
-    padding: 12,
-    fontSize: 15,
-    marginBottom: 16,
-  },
-  modalButtons: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-  },
-  modalButton: {
-    flex: 1,
-    paddingVertical: 12,
-    borderRadius: 8,
-    alignItems: 'center',
-    marginHorizontal: 4,
-  },
-  cancelButton: {
-    backgroundColor: colors.textLight5,
-  },
-  deleteButton: {
-    backgroundColor: colors.alert,
-  },
-  confirmButton: {
-    backgroundColor: colors.primary,
-  },
-  cancelButtonText: {
-    fontSize: 15,
-    color: colors.textSecondary,
-    fontWeight: '600',
-  },
-  deleteButtonText: {
-    fontSize: 15,
-    color: colors.textWhite,
-    fontWeight: '600',
-  },
-  confirmButtonText: {
-    fontSize: 15,
-    color: colors.textWhite,
-    fontWeight: '600',
-  },
-  ttSkeletonCard: {
-    marginHorizontal: 16,
-    marginBottom: 8,
-    backgroundColor: colors.background,
-    borderRadius: 12,
-    padding: 16,
-    minHeight: 260,
-    shadowColor: colors.shadow,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  ttSkeletonHeader: {
-    width: 100,
-    height: 14,
-    borderRadius: 8,
-    backgroundColor: colors.textLight10,
-    marginBottom: 12,
-  },
-  ttSkeletonRow: {
-    flexDirection: 'row',
-    marginBottom: 8,
-    gap: 6,
-  },
-  ttSkeletonCellSmall: {
-    width: 22,
-    height: 24,
-    borderRadius: 4,
-    backgroundColor: colors.textLight10,
-  },
-  ttSkeletonCell: {
-    flex: 1,
-    height: 24,
-    borderRadius: 4,
-    backgroundColor: colors.textLight10,
-  },
-  ttSkeletonText: {
-    marginTop: 8,
-    fontSize: 12,
-    color: colors.textSecondary,
-  },
-  profileSkeletonCard: {
-    backgroundColor: colors.background,
-    marginHorizontal: 16,
-    marginTop: 16,
-    marginBottom: 8,
-    padding: 16,
-    borderRadius: 12,
-    minHeight: 88,
-    shadowColor: colors.shadow,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  profileSkeletonHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  profileSkeletonAvatar: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    marginRight: 12,
-    backgroundColor: colors.textLight10,
-  },
-  profileSkeletonInfo: {
-    flex: 1,
-    gap: 6,
-  },
-  profileSkeletonName: {
-    width: 120,
-    height: 14,
-    borderRadius: 6,
-    backgroundColor: colors.textLight10,
-  },
-  profileSkeletonUsername: {
-    width: 90,
-    height: 10,
-    borderRadius: 6,
-    backgroundColor: colors.textLight10,
-  },
-  profileSkeletonSchool: {
-    width: 150,
-    height: 10,
-    borderRadius: 6,
-    backgroundColor: colors.textLight10,
-  },
-  profileSkeletonBadge: {
-    width: 38,
-    height: 24,
-    borderRadius: 12,
-    backgroundColor: colors.textLight10,
-    marginLeft: 8,
-  },
-});
 
 export default MyPage;

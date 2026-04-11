@@ -1,5 +1,5 @@
 import { StyleSheet, Platform, StatusBar } from 'react-native';
-import { colors, fontSizes } from './colors';
+import { colors, fontSizes, fonts } from './colors';
 
 // normalize 함수를 export하여 컴포넌트에서 사용
 export const getNormalize = (width) => {
@@ -39,11 +39,11 @@ export const createHeaderStyles = (width, height) => {
     },
     tabText: {
       fontSize: normalize(fontSizes.heading + 6),
-      fontFamily: 'Baloo2-Bold',
+      fontFamily: fonts.bold,
       color: colors.textPrimary,
     },
     activeTabText: {
-      fontFamily: 'Baloo2-Bold',
+      fontFamily: fonts.bold,
       color: colors.textWhite,
       fontWeight: '600',
     },
@@ -116,7 +116,7 @@ export const createFooterStyles = (width, height) => {
     },
     tabText: {
       fontSize: normalize(fontSizes.md),
-      fontFamily: 'Baloo2-Bold',
+      fontFamily: fonts.bold,
       color: colors.textSecondary,
       marginTop: normalize(4),
       fontWeight: '500',
@@ -153,7 +153,7 @@ export const createSubHeaderStyles = (width, height) => {
     },
     headerTitle: {
       fontSize: normalize(fontSizes.heading),
-      fontFamily: 'Baloo2-Bold',
+      fontFamily: fonts.bold,
       color: colors.textPrimary,
     },
     rightButton: {
@@ -162,7 +162,7 @@ export const createSubHeaderStyles = (width, height) => {
     },
     rightButtonText: {
       fontSize: normalize(fontSizes.xxl),
-      fontFamily: 'Baloo2-Bold',
+      fontFamily: fonts.bold,
       color: colors.primaryDark,
     },
     divider: {
@@ -195,12 +195,12 @@ export const createSubFooterStyles = (width, height) => {
     },
     buttonText: {
       fontSize: normalize(fontSizes.xxl),
-      fontFamily: 'Baloo2-Bold',
+      fontFamily: fonts.bold,
       color: colors.background,
     },
     guideText: {
       fontSize: normalize(fontSizes.lg),
-      fontFamily: 'Baloo2-Regular',
+      fontFamily: fonts.regular,
       color: colors.textSecondary,
       textAlign: 'center',
       marginBottom: normalize(8),

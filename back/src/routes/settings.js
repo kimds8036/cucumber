@@ -23,6 +23,8 @@ router.get('/', authenticate, async (req, res) => {
          new_comment,
          new_like,
          announcement,
+         friend_request,
+         mail_outgoing,
          board_distance_km,
          last_username_change_at,
          created_at,
@@ -48,6 +50,8 @@ router.get('/', authenticate, async (req, res) => {
         newComment: !!s.new_comment,
         newLike: !!s.new_like,
         announcement: !!s.announcement,
+        friendRequest: !!(s.friend_request ?? 1),
+        mailOutgoing: !!(s.mail_outgoing ?? 1),
         boardDistanceKm: s.board_distance_km,
         lastUsernameChangeAt: s.last_username_change_at,
       },
@@ -71,6 +75,8 @@ router.put('/', authenticate, async (req, res) => {
       newComment,
       newLike,
       announcement,
+      friendRequest,
+      mailOutgoing,
       boardDistanceKm,
       lastUsernameChangeAt,
     } = req.body;
@@ -103,6 +109,14 @@ router.put('/', authenticate, async (req, res) => {
     if (announcement !== undefined) {
       fields.push('announcement = ?');
       params.push(announcement ? 1 : 0);
+    }
+    if (friendRequest !== undefined) {
+      fields.push('friend_request = ?');
+      params.push(friendRequest ? 1 : 0);
+    }
+    if (mailOutgoing !== undefined) {
+      fields.push('mail_outgoing = ?');
+      params.push(mailOutgoing ? 1 : 0);
     }
     if (boardDistanceKm !== undefined) {
       const km = Math.min(100, Math.max(1, parseInt(boardDistanceKm, 10) || 10));

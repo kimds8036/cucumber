@@ -1,22 +1,55 @@
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useMemo, useState, useRef } from 'react';
 import {
   View,
   Text,
-  StyleSheet,
   ScrollView,
   Switch,
   TouchableOpacity,
   TextInput,
   Alert,
   PanResponder,
+  useWindowDimensions,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import SubHeader from '../frame/subHeader';
+import * as Clipboard from 'expo-clipboard';
 import { api } from '../../utils/api';
 import { colors } from '../../styles/colors';
+import {
+  getNormalize,
+  createNotificationSettingsStyles,
+  themedTextInputProps,
+} from '../../styles/mypage.style';
 
-const Settings = ({ navigation }) => {
+const SCHOOL_CHANGE_EMAIL = 'kimds8036@naver.com';
+
+const NOTIFICATION_ITEMS = [
+  { key: 'newComment', label: '게시글 댓글' },
+  { key: 'friendRequest', label: '친구 요청' },
+  { key: 'mailOutgoing', label: '우편 발신' },
+  {
+    key: 'promo',
+    label: '시스템 알림',
+    subtitle: '인기 게시글, 광고성 정보 등',
+    isPromo: true,
+  },
+];
+
+const Settings = ({ navigation, route }) => {
+  const { width } = useWindowDimensions();
+  const normalize = useMemo(() => getNormalize(width), [width]);
+  const styles = useMemo(
+    () => createNotificationSettingsStyles(normalize),
+    [normalize],
+  );
+
+  /** 마이페이지에서 분리 진입: 'prefs' 알림·거리만, 'profile' 아이디·비밀번호·학교만, 없으면 전체 */
+  const variant = route?.params?.variant;
+  const showPrefs = variant !== 'profile';
+  const showProfile = variant !== 'prefs';
+  const headerTitle = variant === 'profile' ? '변경' : '설정';
   // ── 알림 설정 ──
   const [notifications, setNotifications] = useState({
     pushEnabled: true,
@@ -24,6 +57,8 @@ const Settings = ({ navigation }) => {
     newComment: true,
     newLike: false,
     announcement: true,
+    friendRequest: true,
+    mailOutgoing: true,
   });
 
   const [loadingSettings, setLoadingSettings] = useState(false);
@@ -36,6 +71,8 @@ const Settings = ({ navigation }) => {
         newComment: next.newComment,
         newLike: next.newLike,
         announcement: next.announcement,
+        friendRequest: next.friendRequest,
+        mailOutgoing: next.mailOutgoing,
         boardDistanceKm: next.distanceKm,
         lastUsernameChangeAt: next.lastIdChangeAt,
       });
@@ -45,35 +82,81 @@ const Settings = ({ navigation }) => {
   };
 
   useEffect(() => {
+    let mounted = true;
     const fetchSettings = async () => {
       try {
         setLoadingSettings(true);
-        const res = await api.get('/api/settings');
-        const data = res.data?.data;
-        if (!data) return;
-        setNotifications({
-          pushEnabled: !!data.pushEnabled,
-          newPost: !!data.newPost,
-          newComment: !!data.newComment,
-          newLike: !!data.newLike,
-          announcement: !!data.announcement,
-        });
-        setDistanceKm(data.boardDistanceKm ?? 10);
-        if (data.lastUsernameChangeAt) {
-          setLastIdChangeAt(data.lastUsernameChangeAt);
+        const results = await Promise.allSettled([
+          api.get('/api/settings'),
+          api.get('/api/auth/me'),
+        ]);
+
+        if (!mounted) return;
+
+        if (results[1].status === 'fulfilled') {
+          const me = results[1].value.data?.data;
+          if (me) {
+            setCurrentUsername(me.username ? `@${me.username}` : '');
+          }
+        }
+
+        if (results[0].status === 'fulfilled') {
+          const data = results[0].value.data?.data;
+          if (data) {
+            setNotifications({
+              pushEnabled: !!data.pushEnabled,
+              newPost: !!data.newPost,
+              newComment: !!data.newComment,
+              newLike: !!data.newLike,
+              announcement: !!data.announcement,
+              friendRequest: data.friendRequest !== false,
+              mailOutgoing: data.mailOutgoing !== false,
+            });
+            setDistanceKm(data.boardDistanceKm ?? 10);
+            if (data.lastUsernameChangeAt) {
+              setLastIdChangeAt(data.lastUsernameChangeAt);
+            }
+          }
+        } else {
+          console.error('설정 불러오기 실패:', results[0].reason);
+        }
+        if (results[1].status === 'rejected') {
+          console.warn('프로필(아이디) 불러오기 실패:', results[1].reason);
         }
       } catch (error) {
-        console.error('설정 불러오기 실패:', error);
+        console.error('설정 화면 로드 실패:', error);
       } finally {
-        setLoadingSettings(false);
+        if (mounted) setLoadingSettings(false);
       }
     };
     fetchSettings();
+    return () => {
+      mounted = false;
+    };
   }, []);
 
   const toggleNotification = (key) => {
     setNotifications((prev) => {
       const next = { ...prev, [key]: !prev[key] };
+      syncSettingsToServer({
+        ...next,
+        distanceKm,
+        lastIdChangeAt,
+      });
+      return next;
+    });
+  };
+
+  const togglePromo = () => {
+    setNotifications((prev) => {
+      const on = prev.newPost && prev.newLike && prev.announcement;
+      const nextVal = !on;
+      const next = {
+        ...prev,
+        newPost: nextVal,
+        newLike: nextVal,
+        announcement: nextVal,
+      };
       syncSettingsToServer({
         ...next,
         distanceKm,
@@ -153,7 +236,7 @@ const Settings = ({ navigation }) => {
   };
 
   // ── 아이디 변경 (6개월에 1번) ──
-  const [currentUsername, setCurrentUsername] = useState('@euncha015');
+  const [currentUsername, setCurrentUsername] = useState('');
   const [newUsername, setNewUsername] = useState('');
   const [lastIdChangeAt, setLastIdChangeAt] = useState(null);
 
@@ -207,39 +290,88 @@ const Settings = ({ navigation }) => {
   const handleSchoolChange = () => {
     Alert.alert(
       '학교 변경 문의',
-      '학교 변경을 원하시면 아래 메일로 문의해주세요.\n\nkimds8036@naver.com',
-      [{ text: '확인' }],
+      `학교 변경을 원하시면 아래 메일로 증명서를 보내주세요.\n\n${SCHOOL_CHANGE_EMAIL}`,
+      [
+        {
+          text: '메일 주소 복사',
+          onPress: async () => {
+            try {
+              await Clipboard.setStringAsync(SCHOOL_CHANGE_EMAIL);
+              Alert.alert('알림', '메일 주소를 클립보드에 복사했습니다.');
+            } catch (e) {
+              console.warn('클립보드 복사 실패:', e);
+              Alert.alert('오류', '복사에 실패했습니다. 메일 주소를 직접 입력해 주세요.');
+            }
+          },
+        },
+        { text: '확인', style: 'cancel' },
+      ],
     );
   };
 
   // ── 공통 컴포넌트 ──
-  const SectionHeader = ({ icon, title }) => (
+  const SectionHeader = ({ icon, title, Icon = Ionicons, description }) => (
     <View style={styles.sectionHeader}>
-      <Ionicons name={icon} size={18} color="#8FD397" />
-      <Text style={styles.sectionHeaderText}>{title}</Text>
+      <View style={styles.sectionHeaderTopRow}>
+        <Icon name={icon} size={normalize(20)} color={colors.primary} />
+        <Text style={styles.sectionHeaderText}>{title}</Text>
+      </View>
+      {description ? (
+        <Text style={styles.sectionHeaderDescription}>{description}</Text>
+      ) : null}
     </View>
   );
 
-  const NotificationRow = ({ title, subtitle, value, onToggle, disabled }) => (
+  const NotificationRow = ({
+    title,
+    subtitle,
+    value,
+    onToggle,
+    disabled,
+    titleBold = false,
+  }) => (
     <View style={[styles.notifRow, disabled && styles.notifRowDisabled]}>
       <View style={styles.notifLeft}>
-        <Text style={[styles.notifTitle, disabled && styles.textDisabled]}>
+        <Text
+          style={[
+            titleBold ? styles.notifTitleBold : styles.notifTitle,
+            disabled && styles.textDisabled,
+          ]}
+        >
           {title}
         </Text>
-        {subtitle && <Text style={styles.notifSubtitle}>{subtitle}</Text>}
+        {subtitle ? (
+          <Text
+            style={[styles.notifSubtitle, disabled && styles.textDisabled]}
+          >
+            {subtitle}
+          </Text>
+        ) : null}
       </View>
-      <Switch
-        value={value}
-        onValueChange={onToggle}
-        disabled={disabled}
-        trackColor={{ false: '#ddd', true: '#8FD397' }}
-        thumbColor="#fff"
-      />
+      <View style={styles.notifSwitchWrap}>
+        <Switch
+          value={value}
+          onValueChange={onToggle}
+          disabled={disabled}
+          trackColor={{ false: colors.border, true: colors.primary }}
+          thumbColor={colors.textWhite}
+        />
+      </View>
     </View>
   );
 
-  const PwInput = ({ label, fieldKey }) => (
-    <View style={styles.pwField}>
+  const PwInput = ({ label, fieldKey, density }) => (
+    <View
+      style={
+        density === 'first'
+          ? styles.pwFieldFirst
+          : density === 'middle'
+            ? styles.pwFieldMiddle
+            : density === 'last'
+              ? styles.pwFieldLast
+              : styles.pwField
+      }
+    >
       <Text style={styles.pwLabel}>{label}</Text>
       <View style={styles.pwInputWrap}>
         <TextInput
@@ -250,7 +382,7 @@ const Settings = ({ navigation }) => {
           }
           secureTextEntry={!showPw[fieldKey]}
           placeholder="입력하세요"
-          placeholderTextColor="#ccc"
+          {...themedTextInputProps}
           autoCapitalize="none"
         />
         <TouchableOpacity
@@ -260,8 +392,8 @@ const Settings = ({ navigation }) => {
         >
           <Ionicons
             name={showPw[fieldKey] ? 'eye-off-outline' : 'eye-outline'}
-            size={20}
-            color="#aaa"
+            size={normalize(20)}
+            color={colors.textSecondary}
           />
         </TouchableOpacity>
       </View>
@@ -273,44 +405,59 @@ const Settings = ({ navigation }) => {
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
-      <SubHeader title="설정" onBack={() => navigation.goBack()} />
+      <SubHeader title={headerTitle} onBack={() => navigation.goBack()} />
 
       <ScrollView style={styles.scroll} showsVerticalScrollIndicator={false}>
+        {showPrefs && (
+          <>
         {/* ────────────── 알림 설정 ────────────── */}
-        <SectionHeader icon="notifications-outline" title="알림 설정" />
+        <SectionHeader
+          icon="notifications-outline"
+          title="알림 설정"
+          description="모든 알림의 수신 여부를 결정합니다"
+        />
         <View style={styles.card}>
           <NotificationRow
             title="푸시 알림"
-            subtitle="모든 알림의 수신 여부를 결정합니다"
+            titleBold
             value={notifications.pushEnabled}
             onToggle={() => toggleNotification('pushEnabled')}
           />
           <View style={styles.divider} />
-          {[
-            { key: 'newPost', label: '새 게시글 알림' },
-            { key: 'newComment', label: '댓글 알림' },
-            { key: 'newLike', label: '좋아요 알림' },
-            { key: 'announcement', label: '공지사항 알림' },
-          ].map(({ key, label }, idx, arr) => (
-            <React.Fragment key={key}>
-              <NotificationRow
-                title={label}
-                value={notifications[key]}
-                onToggle={() => toggleNotification(key)}
-                disabled={!notifications.pushEnabled}
-              />
-              {idx < arr.length - 1 && <View style={styles.innerDivider} />}
-            </React.Fragment>
-          ))}
+          {NOTIFICATION_ITEMS.map((item, idx, arr) => {
+            const value = item.isPromo
+              ? !!(
+                  notifications.newPost &&
+                  notifications.newLike &&
+                  notifications.announcement
+                )
+              : notifications[item.key];
+            const onToggle = item.isPromo
+              ? togglePromo
+              : () => toggleNotification(item.key);
+            return (
+              <React.Fragment key={item.key}>
+                <NotificationRow
+                  title={item.label}
+                  subtitle={item.subtitle}
+                  value={value}
+                  onToggle={onToggle}
+                  disabled={!notifications.pushEnabled}
+                />
+                {idx < arr.length - 1 && <View style={styles.innerDivider} />}
+              </React.Fragment>
+            );
+          })}
         </View>
 
         {/* ────────────── 게시판 거리 설정 ────────────── */}
-        <SectionHeader icon="location-outline" title="게시판 거리 설정" />
+        <SectionHeader
+          icon="social-distance"
+          title="게시판 거리 설정"
+          Icon={MaterialIcons}
+          description="게시글을 볼 수 있는 반경을 설정해요 (1 ~ 100km)"
+        />
         <View style={styles.card}>
-          <Text style={styles.distanceLabel}>
-            게시글을 볼 수 있는 반경을 설정해요 (1km ~ 100km)
-          </Text>
-
           {/* 슬라이더 트랙 */}
           <View
             style={styles.sliderWrapper}
@@ -337,16 +484,27 @@ const Settings = ({ navigation }) => {
             </View>
           </View>
         </View>
+          </>
+        )}
 
+        {showProfile && (
+          <>
         {/* ────────────── 아이디 변경 ────────────── */}
-        <SectionHeader icon="at-outline" title="아이디 변경" />
+        <SectionHeader
+          icon="at-outline"
+          title="아이디 변경"
+          description="아이디는 6개월에 1번만 변경할 수 있습니다."
+        />
         <View style={styles.card}>
-          <View style={styles.idField}>
+          <View style={styles.idFieldFirst}>
             <Text style={styles.pwLabel}>현재 아이디</Text>
-            <Text style={styles.idCurrent}>{currentUsername}</Text>
+            <View style={styles.pwInputWrap}>
+              <Text style={styles.pwInput} numberOfLines={1}>
+                {currentUsername}
+              </Text>
+            </View>
           </View>
-          <View style={styles.innerDivider} />
-          <View style={styles.idField}>
+          <View style={styles.idFieldSecond}>
             <Text style={styles.pwLabel}>새 아이디</Text>
             <View style={styles.pwInputWrap}>
               <TextInput
@@ -354,15 +512,12 @@ const Settings = ({ navigation }) => {
                 value={newUsername}
                 onChangeText={setNewUsername}
                 placeholder="@아이디 입력"
-                placeholderTextColor="#ccc"
+                {...themedTextInputProps}
                 autoCapitalize="none"
                 autoCorrect={false}
               />
             </View>
           </View>
-          <Text style={styles.idHint}>
-            아이디는 6개월에 1번만 변경할 수 있습니다.
-          </Text>
           {nextChangeDate && !canChangeId && (
             <Text style={styles.idNextDate}>
               다음 변경 가능일: {nextChangeDate.toLocaleDateString('ko-KR')}
@@ -384,11 +539,9 @@ const Settings = ({ navigation }) => {
         {/* ────────────── 비밀번호 변경 ────────────── */}
         <SectionHeader icon="lock-closed-outline" title="비밀번호 변경" />
         <View style={styles.card}>
-          <PwInput label="현재 비밀번호" fieldKey="current" />
-          <View style={styles.innerDivider} />
-          <PwInput label="새 비밀번호" fieldKey="next" />
-          <View style={styles.innerDivider} />
-          <PwInput label="새 비밀번호 확인" fieldKey="confirm" />
+          <PwInput label="현재 비밀번호" fieldKey="current" density="first" />
+          <PwInput label="새 비밀번호" fieldKey="next" density="middle" />
+          <PwInput label="새 비밀번호 확인" fieldKey="confirm" density="last" />
           <TouchableOpacity
             style={styles.actionButton}
             onPress={handlePasswordChange}
@@ -404,12 +557,11 @@ const Settings = ({ navigation }) => {
             <View style={styles.schoolInfo}>
               <Ionicons
                 name="information-circle-outline"
-                size={16}
-                color="#8FD397"
+                size={normalize(16)}
+                color={colors.primary}
               />
               <Text style={styles.schoolDesc}>
-                학교 변경은 관리자 검토 후 처리됩니다.{'\n'}메일로 학교명과
-                학년/반을 함께 보내주세요.
+                학교 변경은 관리자 검토 후 처리됩니다.{'\n'}초중고 졸업(예정) 증명서를 메일로 보내주세요.
               </Text>
             </View>
           </View>
@@ -419,169 +571,20 @@ const Settings = ({ navigation }) => {
           >
             <Ionicons
               name="mail-outline"
-              size={16}
-              color="#fff"
-              style={{ marginRight: 6 }}
+              size={normalize(16)}
+              color={colors.textWhite}
+              style={styles.schoolButtonIcon}
             />
             <Text style={styles.actionButtonText}>메일로 문의하기</Text>
           </TouchableOpacity>
         </View>
+          </>
+        )}
 
-        <View style={{ height: 80 }} />
+        <View style={styles.scrollBottomSpacer} />
       </ScrollView>
     </SafeAreaView>
   );
 };
-
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.background },
-  scroll: { flex: 1 },
-
-  // ── 섹션 헤더 ──
-  sectionHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    marginTop: 24,
-    marginBottom: 8,
-    marginHorizontal: 20,
-  },
-  sectionHeaderText: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: '#8FD397',
-    letterSpacing: 0.3,
-  },
-
-  // ── 카드 ──
-  card: {
-    marginHorizontal: 16,
-    backgroundColor: '#fff',
-    borderRadius: 16,
-    paddingHorizontal: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.06,
-    shadowRadius: 6,
-    elevation: 2,
-  },
-
-  // ── 알림 ──
-  notifRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingVertical: 14,
-  },
-  notifRowDisabled: { opacity: 0.4 },
-  notifLeft: { flex: 1, marginRight: 12 },
-  notifTitle: { fontSize: 15, color: '#333', fontWeight: '500' },
-  notifSubtitle: { fontSize: 12, color: '#999', marginTop: 2 },
-  textDisabled: { color: '#aaa' },
-
-  // ── 구분선 ──
-  divider: { height: 1, backgroundColor: '#eee', marginBottom: 4 },
-  innerDivider: { height: 1, backgroundColor: '#f4f4f4' },
-
-  // ── 슬라이더 (얇게 수정) ──
-  distanceLabel: {
-    fontSize: 13,
-    color: '#666',
-    marginTop: 16,
-    marginBottom: 16,
-  },
-  sliderWrapper: {
-    height: 20, // 터치 영역 확보
-    justifyContent: 'center',
-    marginBottom: 8,
-  },
-  sliderTrack: {
-    height: 4, // ← 얇은 트랙
-    borderRadius: 2,
-    backgroundColor: '#e0e0e0',
-    overflow: 'hidden',
-  },
-  sliderFill: {
-    height: '100%',
-    backgroundColor: '#8FD397',
-    borderRadius: 2,
-  },
-  sliderThumb: {
-    position: 'absolute',
-    width: 18, // ← 작은 thumb
-    height: 18,
-    borderRadius: 9,
-    backgroundColor: '#fff',
-    marginLeft: -9, // thumb 중앙 정렬
-    top: 1, // (20 - 18) / 2
-    borderWidth: 2,
-    borderColor: '#8FD397',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.18,
-    shadowRadius: 2,
-    elevation: 3,
-  },
-  distanceValueRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 16,
-  },
-  distanceValueText: { fontSize: 15, fontWeight: '700', color: '#8FD397' },
-  distanceHintRow: { flexDirection: 'row', gap: 24 },
-  distanceHint: { fontSize: 11, color: '#aaa' },
-
-  // ── 비밀번호 ──
-  pwField: { paddingVertical: 14 },
-  pwLabel: { fontSize: 12, color: '#999', marginBottom: 6, fontWeight: '500' },
-  pwInputWrap: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#f8f8f8',
-    borderRadius: 10,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-  },
-  pwInput: { flex: 1, fontSize: 14, color: '#333' },
-
-  // ── 아이디 변경 ──
-  idField: { paddingVertical: 14 },
-  idCurrent: { fontSize: 14, color: '#333', fontWeight: '500' },
-  idHint: { fontSize: 12, color: '#999', marginTop: 4, marginBottom: 4 },
-  idNextDate: {
-    fontSize: 12,
-    color: '#8FD397',
-    fontWeight: '600',
-    marginBottom: 8,
-  },
-  actionButtonDisabled: { opacity: 0.5 },
-
-  // ── 학교 ──
-  schoolRow: { paddingVertical: 14 },
-  schoolInfo: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: 8,
-    backgroundColor: '#f0f9f1',
-    borderRadius: 10,
-    padding: 12,
-  },
-  schoolDesc: { flex: 1, fontSize: 13, color: '#555', lineHeight: 19 },
-  schoolButton: { flexDirection: 'row' },
-
-  // ── 공통 버튼 ──
-  actionButton: {
-    backgroundColor: '#8FD397',
-    borderRadius: 999,
-    paddingVertical: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
-    flexDirection: 'row',
-    marginTop: 4,
-    marginBottom: 16,
-  },
-  actionButtonText: { color: '#fff', fontSize: 14, fontWeight: '700' },
-});
 
 export default Settings;
