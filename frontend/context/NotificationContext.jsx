@@ -25,7 +25,12 @@ export function NotificationProvider({ children }) {
         params: { page: 1, limit: 20 },
       });
       const list = res.data?.data || [];
-      const filtered = list.filter((n) => n.type !== 'like');
+      const filtered = list
+        .filter((n) => n.type !== 'like')
+        .filter(
+          (n) =>
+            n.relatedType !== 'message_room' && n.relatedType !== 'dm_room',
+        );
       const anyUnread = filtered.some((n) => !n.isRead);
       setHasUnread(anyUnread);
       setInitialized(true);
@@ -61,10 +66,12 @@ export function NotificationProvider({ children }) {
 
     const handler = (payload) => {
       if (payload?.type === 'friend_request') return;
-      setHasUnread(true);
       const isChatNotification =
         payload?.relatedType === 'message_room' ||
         payload?.relatedType === 'dm_room';
+      if (!isChatNotification) {
+        setHasUnread(true);
+      }
       const titleText = String(payload?.title ?? '').trim();
       const bodyText = String(payload?.body ?? '').trim();
       const composedMessage = isChatNotification
@@ -106,10 +113,6 @@ export function NotificationProvider({ children }) {
         hasContent: Boolean(payload?.message?.content),
         receivedAt: new Date().toISOString(),
       });
-
-      if (!isActiveRoom) {
-        setHasUnread(true);
-      }
 
       if (isMessageTab) {
         console.log('[NotificationSocket] toast skipped', {

@@ -54,6 +54,7 @@ const MainHeader = ({ activeTab = 'board', navigation }) => {
           onPress={() => navigation?.navigate('Notification')}
         >
           <FontAwesome5 name="bell" size={normalize(22)} color={colors.primary} />
+          {/* hasUnread: NotificationContext — 쪽지/DM 소켓·알림 행은 제외된 뒤의 미읽음만 반영 */}
           {(hasUnread || hasUnreadFriendRequestsForBell) && <View style={headerStyles.badge} />}
         </TouchableOpacity>
       </View>

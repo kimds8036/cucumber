@@ -53,6 +53,10 @@ const formatTime = (createdAt) => {
   return d.toLocaleDateString('ko-KR');
 };
 
+/** 알림 내역·탭·벨 집계에서 제외: 쪽지방·DM은 채팅 화면에서만 다룸 */
+const isChatNotificationRow = (n) =>
+  n?.relatedType === 'message_room' || n?.relatedType === 'dm_room';
+
 const mapRowToNotificationItem = (n) => {
   const icon = mapTypeToIcon(n.type, n.category);
   return {
@@ -71,6 +75,9 @@ const mapRowToNotificationItem = (n) => {
     relatedId: n.relatedId,
   };
 };
+
+const sortNotificationsByCreatedDesc = (items) =>
+  [...items].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
 
 // 스켈레톤 행 (로딩 중 리스트 모양)
 const SkeletonRow = () => {
@@ -125,6 +132,9 @@ const NotificationScreen = ({ navigation }) => {
   const [loadingMore, setLoadingMore] = useState(false);
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
+  const isRefreshingRef = useRef(false);
+  /** 알림에서 상세 등으로 push 후 복귀 시 목록·페이지 유지 (벨/뒤로가기로 빠졌다 다시 오면 false) */
+  const preserveListOnNextFocusRef = useRef(false);
   const pendingReadIdsRef = useRef(new Set());
   const flushTimerRef = useRef(null);
   const isFlushingRef = useRef(false);
@@ -170,7 +180,9 @@ const NotificationScreen = ({ navigation }) => {
   };
 
   const fetchNotifications = useCallback(async (nextPage = 1, append = false) => {
+    if (!append && isRefreshingRef.current) return;
     try {
+      if (!append) isRefreshingRef.current = true;
       if (nextPage === 1 && !append) {
         setLoading(true);
         setHasMore(true);
@@ -189,7 +201,9 @@ const NotificationScreen = ({ navigation }) => {
         });
         const list = res.data?.data || [];
         const meta = res.data?.meta;
-        const filtered = list.filter((n) => n.type !== 'like');
+        const filtered = list
+          .filter((n) => n.type !== 'like')
+          .filter((n) => !isChatNotificationRow(n));
         const mapped = filtered.map(mapRowToNotificationItem);
 
         setNotifications((prev) => {
@@ -219,7 +233,9 @@ const NotificationScreen = ({ navigation }) => {
           });
           lastList = res.data?.data || [];
           lastMeta = res.data?.meta ?? null;
-          const filtered = lastList.filter((n) => n.type !== 'like');
+          const filtered = lastList
+            .filter((n) => n.type !== 'like')
+            .filter((n) => !isChatNotificationRow(n));
           const mapped = filtered.map(mapRowToNotificationItem);
           accumulated.push(...mapped);
 
@@ -250,8 +266,7 @@ const NotificationScreen = ({ navigation }) => {
         console.log('[NotificationScreen] 알림 초기 로드 완료', {
           endPage: pageCursor,
           listRowCount: accumulated.length,
-          groupedUiCountNote:
-            '탭/쪽지 묶음 후 실제 행 수는 groupMailNotifications 이후와 다를 수 있음',
+          chatRowsHidden: true,
           serverTotal: lastMeta?.total,
           likeRowsHidden: true,
           hitSweepCap,
@@ -260,14 +275,11 @@ const NotificationScreen = ({ navigation }) => {
     } catch (error) {
       console.error('[NotificationScreen] 알림 목록 불러오기 실패:', error?.response?.data || error);
     } finally {
+      if (!append) isRefreshingRef.current = false;
       setLoading(false);
       setLoadingMore(false);
     }
   }, []);
-
-  useEffect(() => {
-    fetchNotifications(1, false);
-  }, [fetchNotifications]);
 
   // 화면이 최초로 열릴 때 한 번, 소켓 경로 디버그용 ping을 날려본다.
   // - 이 호출 시 서버 로그에 [POST /api/notifications/debug/socket-ping] 이 찍히고
@@ -275,22 +287,49 @@ const NotificationScreen = ({ navigation }) => {
   // 개발용 소켓 경로 테스트 API는 제거 (불필요한 빨간 점 깜빡임 방지)
 
   useEffect(() => {
-    const unsubscribe = navigation?.addListener?.('focus', () => {
+    const onFocus = () => {
       // 화면에 진입한 순간 "알림 목록은 한 번 확인했다"고 간주하고
       // 헤더 벨 빨간 점은 즉시 제거 (일반 알림 + 친구 요청 알림 모두)
       setHasUnread(false);
       markFriendRequestsSeenForBell?.();
+      if (preserveListOnNextFocusRef.current) {
+        preserveListOnNextFocusRef.current = false;
+        return;
+      }
       fetchNotifications(1, false);
-    });
-    const blurUnsubscribe = navigation?.addListener?.('blur', () => {
+    };
+
+    const onBlur = () => {
       // 화면에서 나갈 때, 현재까지 눌러서 확인한 알림들만 서버에 반영
       flushPendingReads();
-    });
+      try {
+        const state = navigation?.getState?.();
+        if (!state?.routes?.length) {
+          preserveListOnNextFocusRef.current = false;
+          return;
+        }
+        const topIdx = state.index;
+        const notifIdx = state.routes.findIndex((r) => r.name === 'Notification');
+        if (notifIdx === -1) {
+          preserveListOnNextFocusRef.current = false;
+          return;
+        }
+        const pushedChild = topIdx > notifIdx;
+        // 알림 항목 탭으로 이미 true인 경우, blur 시점 getState 레이스로 덮어쓰이지 않도록 OR
+        preserveListOnNextFocusRef.current =
+          preserveListOnNextFocusRef.current || pushedChild;
+      } catch {
+        preserveListOnNextFocusRef.current = false;
+      }
+    };
+
+    const unsubscribe = navigation?.addListener?.('focus', onFocus);
+    const blurUnsubscribe = navigation?.addListener?.('blur', onBlur);
     return () => {
       unsubscribe?.();
       blurUnsubscribe?.();
     };
-  }, [navigation, flushPendingReads, setHasUnread, markFriendRequestsSeenForBell]);
+  }, [navigation, flushPendingReads, fetchNotifications, setHasUnread, markFriendRequestsSeenForBell]);
 
   // 알림 화면이 열려 있는 동안 소켓으로 새 알림(hasUnread=true)이 들어오면
   // 목록을 즉시 새로고침해서 방금 도착한 알림도 리스트에 바로 보이도록 한다.
@@ -323,98 +362,34 @@ const NotificationScreen = ({ navigation }) => {
     };
   }, []);
 
-  const tabs = useMemo(
-    () => [
-      { key: 'all', label: '전체', count: notifications.length },
-      {
-        key: 'post',
-        label: '게시글',
-        count: notifications.filter((n) => n.category === 'post').length,
-      },
-      {
-        key: 'mail',
-        label: '우편함',
-        count: notifications.filter((n) => n.category === 'mail').length,
-      },
-      {
-        key: 'system',
-        label: '시스템',
-        count: notifications.filter((n) => n.category === 'system').length,
-      },
-    ],
-    [notifications],
-  );
-
-  // 채팅(쪽지) 알림은 채널(relatedId) 단위로 묶어서 한 줄만 보여주기
-  const groupMailNotifications = (items) => {
-    const result = [];
-    const chatGroups = new Map(); // key: relatedId, value: { latest, count, ids }
-
-    for (const n of items) {
-      const isMailChat =
-        n.category === 'mail' &&
-        (n.relatedType === 'message_room' || n.relatedType === 'dm_room') &&
-        n.relatedId;
-
-      if (!isMailChat) {
-        result.push(n);
-        continue;
-      }
-
-      const key = n.relatedId;
-      const existing = chatGroups.get(key);
-      if (!existing) {
-        chatGroups.set(key, {
-          latest: n,
-          count: 1,
-          ids: [n.id],
-        });
-      } else {
-        existing.count += 1;
-        existing.ids.push(n.id);
-        // 최신 createdAt 기준으로 교체
-        const prevDate = new Date(existing.latest.createdAt);
-        const curDate = new Date(n.createdAt);
-        if (curDate > prevDate) {
-          existing.latest = n;
-        }
-      }
-    }
-
-    // 그룹된 mail 알림들을 result 뒤에 추가
-    for (const [relatedId, group] of chatGroups.entries()) {
-      const { latest, count, ids } = group;
-      if (count <= 1) {
-        result.push(latest);
-        continue;
-      }
-      const icon = mapTypeToIcon(latest.type, latest.category);
-      result.push({
-        ...latest,
-        id: `mail-group-${relatedId}`,
-        title: `${latest.title} 외 ${count - 1}건`,
-        icon: icon.name,
-        iconColor: icon.color,
-        iconBg: icon.bg,
-        groupedIds: ids,
-        groupCount: count,
-      });
-    }
-
-    // 최신순 유지 위해 createdAt 기준 다시 정렬
-    return result.sort(
-      (a, b) => new Date(b.createdAt) - new Date(a.createdAt),
-    );
-  };
-
   const baseFiltered =
     selectedTab === 'all'
       ? notifications
       : notifications.filter((n) => n.category === selectedTab);
 
   const filteredNotifications = useMemo(
-    () => groupMailNotifications(baseFiltered),
+    () => sortNotificationsByCreatedDesc(baseFiltered),
     [baseFiltered],
+  );
+
+  const unreadCounts = useMemo(() => {
+    const list = notifications;
+    const getUnreadFlag = (n) => !n?.isRead;
+    const allUnread = list.filter((n) => getUnreadFlag(n) && !tappedIds[n.id]).length;
+    const postUnread = list.filter((n) => n.category === 'post' && getUnreadFlag(n) && !tappedIds[n.id]).length;
+    const mailUnread = list.filter((n) => n.category === 'mail' && getUnreadFlag(n) && !tappedIds[n.id]).length;
+    const systemUnread = list.filter((n) => n.category === 'system' && getUnreadFlag(n) && !tappedIds[n.id]).length;
+    return { allUnread, postUnread, mailUnread, systemUnread };
+  }, [notifications, tappedIds]);
+
+  const tabs = useMemo(
+    () => [
+      { key: 'all', label: '전체', count: unreadCounts.allUnread },
+      { key: 'post', label: '게시글', count: unreadCounts.postUnread },
+      { key: 'mail', label: '우편함', count: unreadCounts.mailUnread },
+      { key: 'system', label: '시스템', count: unreadCounts.systemUnread },
+    ],
+    [unreadCounts],
   );
 
   const handlePressNotification = (n) => {
@@ -425,22 +400,17 @@ const NotificationScreen = ({ navigation }) => {
       category: n.category,
       relatedType: n.relatedType,
       relatedId: n.relatedId,
-      groupedIds: n.groupedIds,
     });
     setTappedIds((prev) => ({ ...prev, [n.id]: true }));
 
-    // 그룹 알림이면 groupedIds 전체를 읽음 처리 대상으로 추가
-    if (Array.isArray(n.groupedIds) && n.groupedIds.length > 0) {
-      n.groupedIds.forEach((id) => pendingReadIdsRef.current.add(id));
-    } else {
-      pendingReadIdsRef.current.add(n.id);
-    }
+    pendingReadIdsRef.current.add(n.id);
     scheduleFlush();
 
     // 3️⃣ 알림 키에 따라 목적지 분기
 
     // 1) 친구 요청 계열
     if (n.type === 'friend_request') {
+      preserveListOnNextFocusRef.current = true;
       navigation?.navigate('Friends');
       return;
     }
@@ -448,6 +418,7 @@ const NotificationScreen = ({ navigation }) => {
     // 2) 게시글/댓글/대댓글 관련 (댓글 달림, 대댓글 달림, 인기글 등록 등)
     if (n.category === 'post' || n.relatedType === 'post') {
       if (n.relatedId) {
+        preserveListOnNextFocusRef.current = true;
         navigation?.navigate('BoardDetail', {
           post: {
             id: n.relatedId,
@@ -468,6 +439,7 @@ const NotificationScreen = ({ navigation }) => {
     if (n.category === 'mail' || n.type === 'mail') {
       // (1) 개인 익명 우편 (personal_mail)
       if (n.relatedType === 'personal_mail' && n.relatedId) {
+        preserveListOnNextFocusRef.current = true;
         navigation?.navigate('MailDetail', {
           mail: {
             id: n.relatedId,
@@ -479,21 +451,8 @@ const NotificationScreen = ({ navigation }) => {
         return;
       }
 
-      // (2) 쪽지 채팅방 (message_room)
-      if (n.relatedType === 'message_room' && n.relatedId) {
-        navigation?.navigate('Chat', {
-          roomId: n.relatedId,
-        });
-        return;
-      }
-      if (n.relatedType === 'dm_room' && n.relatedId) {
-        navigation?.navigate('DMChat', {
-          roomId: n.relatedId,
-        });
-        return;
-      }
-
-      // (3) 기본: 메시지/우편 화면 루트로 이동
+      // (2) 기본: 메시지/우편 화면 루트로 이동
+      preserveListOnNextFocusRef.current = false;
       navigation?.navigate('Main');
       return;
     }
@@ -501,6 +460,7 @@ const NotificationScreen = ({ navigation }) => {
     // 4) 시스템 알림 (예: 인기 게시글 등록 등)
     if (n.category === 'system') {
       if (n.relatedType === 'post' && n.relatedId) {
+        preserveListOnNextFocusRef.current = true;
         navigation?.navigate('BoardDetail', {
           post: {
             id: n.relatedId,
@@ -517,6 +477,7 @@ const NotificationScreen = ({ navigation }) => {
       }
 
       // 그 외 시스템 알림은 일단 메인으로 이동 (원하면 마이페이지 등으로 변경 가능)
+      preserveListOnNextFocusRef.current = false;
       navigation?.navigate('Main');
       return;
     }
@@ -719,7 +680,8 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
     flexDirection: 'row',
     padding: 16,
-    marginBottom: 1,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: '#ECECEC',
     alignItems: 'flex-start',
   },
   notificationItemUnread: {
