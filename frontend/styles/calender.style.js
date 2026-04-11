@@ -135,6 +135,7 @@ export const createCalendarStyles = (width, normalize) => {
     // 급식 상세 3개 카드 행
     mealDetailRow: {
       flexDirection: 'row',
+      alignItems: 'stretch',
       justifyContent: 'space-between',
       gap: normalize(8),
     },
@@ -146,6 +147,9 @@ export const createCalendarStyles = (width, normalize) => {
       backgroundColor: '#edf7ed',
       marginBottom: normalize(10),
       flex: 1,
+      alignSelf: 'stretch',
+      flexDirection: 'column',
+      justifyContent: 'flex-start',
     },
     mealDetailHeader: {
       flexDirection: 'row',

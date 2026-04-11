@@ -8,6 +8,7 @@ import {
   Animated,
   Alert,
   PanResponder,
+  Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import MainHeader from '../frame/mainHeader';
@@ -74,11 +75,18 @@ function extractMailListFromResponse(res) {
 const ICON_COLORS = [colors.green, colors.yellow, colors.red, colors.blue]; // F7FFF3, FFFCD7, FFF3F3, E5F0FF
 const getIconColorByIndex = (index) => ICON_COLORS[index % ICON_COLORS.length];
 
-/** 쪽지 / 개인 우편 목록 로딩용 — listItemName / listItemContent / listItemTime 규격에 맞춤 */
-function MessageListSkeleton({ styles, normalize, rowCount = 7 }) {
-  const nameH = normalize(fontSizes.xl);
-  const bodyH = normalize(fontSizes.lg);
-  const timeH = normalize(fontSizes.lg);
+/** Text 줄박스는 fontSize보다 크므로(특히 Android includeFontPadding) 실제 목록과 맞는 줄 높이로 맞춤 */
+function messageListSkeletonLineHeight(normalize, fontSizeToken) {
+  const base = normalize(Math.ceil(fontSizeToken * 1.42));
+  const androidExtra = Platform.OS === 'android' ? normalize(3) : 0;
+  return base + androidExtra;
+}
+
+/** 쪽지 / 개인 우편 목록 로딩용 — 실제 행: 배지 없음 기준, 줄 높이는 Text에 근접 */
+function MessageListSkeleton({ styles, normalize, rowCount = 9 }) {
+  const nameLineH = messageListSkeletonLineHeight(normalize, fontSizes.xl);
+  const bodyLineH = messageListSkeletonLineHeight(normalize, fontSizes.lg);
+  const timeLineH = bodyLineH;
   return (
     <>
       {Array.from({ length: rowCount }, (_, i) => (
@@ -93,7 +101,7 @@ function MessageListSkeleton({ styles, normalize, rowCount = 7 }) {
             <View style={[styles.listItemBody, { justifyContent: 'center' }]}>
               <View
                 style={{
-                  height: nameH,
+                  height: nameLineH,
                   width: i % 3 === 0 ? '42%' : '55%',
                   backgroundColor: '#ECECEC',
                   borderRadius: 6,
@@ -102,7 +110,7 @@ function MessageListSkeleton({ styles, normalize, rowCount = 7 }) {
               />
               <View
                 style={{
-                  height: bodyH,
+                  height: bodyLineH,
                   width: i % 2 === 0 ? '78%' : '65%',
                   backgroundColor: '#F0F0F0',
                   borderRadius: 6,
@@ -113,14 +121,14 @@ function MessageListSkeleton({ styles, normalize, rowCount = 7 }) {
           <View style={styles.listItemRight}>
             <View
               style={{
-                height: timeH,
-                width: normalize(56),
+                height: timeLineH,
+                alignSelf: 'flex-end',
+                width: normalize(68),
                 marginBottom: normalize(4),
                 backgroundColor: '#F0F0F0',
                 borderRadius: 6,
               }}
             />
-            <View style={[styles.unreadBadge, { backgroundColor: 'transparent' }]} />
           </View>
         </View>
       ))}
@@ -476,7 +484,7 @@ export function MessageContent({ navigation }) {
           <>
             <ScrollView style={styles.list} showsVerticalScrollIndicator={false}>
               {loadingNote && noteRooms.length === 0 ? (
-                <MessageListSkeleton styles={styles} normalize={normalize} rowCount={7} />
+                <MessageListSkeleton styles={styles} normalize={normalize} rowCount={9} />
               ) : noteRooms.length === 0 ? (
                 <View style={{ paddingVertical: normalize(40), alignItems: 'center' }}>
                   <Text style={{ fontFamily: fonts.regular, color: colors.textSecondary }}>
@@ -602,7 +610,7 @@ export function MessageContent({ navigation }) {
           <>
             <ScrollView style={styles.list} showsVerticalScrollIndicator={false}>
               {loadingMail && mails.length === 0 ? (
-                <MessageListSkeleton styles={styles} normalize={normalize} rowCount={7} />
+                <MessageListSkeleton styles={styles} normalize={normalize} rowCount={9} />
               ) : mails.length === 0 ? (
                 <View style={{ paddingVertical: normalize(40), alignItems: 'center' }}>
                   <Text style={{ fontFamily: fonts.regular, color: colors.textSecondary }}>
