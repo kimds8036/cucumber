@@ -7,6 +7,7 @@ import {
   TouchableOpacity,
   FlatList,
   Animated,
+  useWindowDimensions,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { AppState } from 'react-native';
@@ -14,6 +15,8 @@ import { Ionicons } from '@expo/vector-icons';
 import SubHeader from '../frame/subHeader';
 import { api } from '../../utils/api';
 import { colors } from '../../styles/colors';
+import { getNormalize } from '../../styles/frame.style';
+import { subheaderMailListBodyTopAfterTabRow } from '../../styles/subheaderContent';
 import { useNotification } from '../../context/NotificationContext';
 import { useFriend } from '../../context/FriendContext';
 
@@ -118,6 +121,12 @@ const skeletonStyles = StyleSheet.create({
 });
 
 const NotificationScreen = ({ navigation }) => {
+  const { width } = useWindowDimensions();
+  const normalize = useMemo(() => getNormalize(width), [width]);
+  const tabContainerStyle = useMemo(
+    () => [styles.tabContainer, { paddingTop: normalize(8) }],
+    [normalize],
+  );
   const [selectedTab, setSelectedTab] = useState('all');
   const [notifications, setNotifications] = useState([]);
   const [tappedIds, setTappedIds] = useState({}); // 실제로 눌러서 확인한 알림 ID (여기만 배경색 제거)
@@ -530,7 +539,7 @@ const NotificationScreen = ({ navigation }) => {
         <SubHeader title="알림" onBack={() => navigation?.goBack()} />
 
       {/* 탭 메뉴 */}
-      <View style={styles.tabContainer}>
+      <View style={tabContainerStyle}>
         <ScrollView horizontal showsHorizontalScrollIndicator={false}>
           {tabs.map((tab) => (
             <TouchableOpacity
@@ -648,6 +657,7 @@ const NotificationScreen = ({ navigation }) => {
         onEndReachedThreshold={0.4}
         contentContainerStyle={[
           styles.contentContainer,
+          { paddingTop: subheaderMailListBodyTopAfterTabRow(normalize) },
           filteredNotifications.length === 0 && { flex: 1 },
         ]}
       />

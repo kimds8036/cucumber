@@ -1,11 +1,24 @@
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, TextInput, TouchableOpacity, ScrollView, KeyboardAvoidingView, Platform } from 'react-native';
+import React, { useState, useMemo } from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  TextInput,
+  TouchableOpacity,
+  ScrollView,
+  KeyboardAvoidingView,
+  Platform,
+  useWindowDimensions,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import SubHeader from '../frame/subHeader';
 import { colors } from '../../styles/colors';
+import { getNormalize } from '../../styles/frame.style';
 
 const ChangeSchool = ({ navigation }) => {
+  const { width } = useWindowDimensions();
+  const normalize = useMemo(() => getNormalize(width), [width]);
   const [query, setQuery] = useState('');
 
   // TODO: 실제 학교 검색 API 연동
@@ -29,7 +42,7 @@ const ChangeSchool = ({ navigation }) => {
           title="학교 변경"
           onBack={() => navigation.goBack()}
         />
-        <View style={styles.container}>
+        <View style={[styles.container, { paddingTop: normalize(8) }]}>
           <View style={styles.searchBox}>
             <Ionicons name="search-outline" size={20} color="#999" style={{ marginRight: 8 }} />
             <TextInput

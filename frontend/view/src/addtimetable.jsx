@@ -13,7 +13,6 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import SubHeader from '../frame/subHeader';
 import { colors } from '../../styles/colors';
-
 const AddTimetable = ({ navigation, route }) => {
   // MyPage에서 전달받은 기존 시간표와 저장 함수
   const { existingTimetable, onSave } = route.params || {};

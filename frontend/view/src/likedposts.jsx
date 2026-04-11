@@ -14,7 +14,6 @@ import SubHeader from '../frame/subHeader';
 import { api } from '../../utils/api';
 import { colors } from '../../styles/colors';
 import { getNormalize } from '../../styles/board.style';
-
 function formatDate(dateString) {
   if (!dateString) return '';
   const d = new Date(dateString);
@@ -64,7 +63,9 @@ const LikedPosts = ({ navigation }) => {
     <SafeAreaView style={styles.container} edges={['top']}>
       <SubHeader title="좋아요한 글" onBack={() => navigation.goBack()} />
 
-      <ScrollView style={styles.scrollView}>
+      <ScrollView
+        style={[styles.scrollView, { paddingTop: normalize(8) }]}
+      >
         {loading && likedPosts.length === 0 ? (
           <View style={styles.empty}>
             <Ionicons name="time-outline" size={40} color="#ddd" />

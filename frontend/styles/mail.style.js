@@ -1,7 +1,6 @@
 import { StyleSheet } from 'react-native';
 import { colors, fonts, fontSizes } from './colors';
 import { shadow } from './tokens';
-
 export function createMailStyles(normalize) {
   return StyleSheet.create({
     safe: { flex: 1, backgroundColor: colors.background, },
@@ -14,6 +13,7 @@ export function createMailStyles(normalize) {
       paddingHorizontal: normalize(16),
       gap: normalize(8),
       marginBottom: normalize(8),
+      paddingTop: normalize(8),
     },
     inboxTabButton: {
       flex: 1,
@@ -315,7 +315,7 @@ export function createMailStyles(normalize) {
     historyScroll: { flex: 1, backgroundColor: colors.background },
     historyContainer: {
       paddingHorizontal: normalize(16),
-      paddingVertical: normalize(20),
+      paddingVertical: normalize(16),
     },
     historyRow: {
       marginBottom: normalize(12),

@@ -1,7 +1,6 @@
 import { StyleSheet } from 'react-native';
 import { colors, fonts, fontSizes } from './colors';
 import { shadow } from './tokens';
-
 export const getNormalize = (width) => {
   const scale = width / 375;
   return (size) => Math.round(scale * size);
@@ -13,6 +12,7 @@ export const createMyPageStyles = (normalize) => {
       flex: 1,
       backgroundColor: colors.background,
     },
+    // MainHeader 본문 상단: 게시판 탭 `BoardAllContent`의 `sortContainer` paddingTop 과 동일
     scrollView: {
       flex: 1,
       paddingTop: normalize(8),
@@ -165,11 +165,11 @@ export const createMyPageStyles = (normalize) => {
     profileSkeletonCard: {
       backgroundColor: colors.background,
       marginHorizontal: normalize(16),
-      marginTop: normalize(16),
+      marginTop: 0,
       marginBottom: normalize(8),
       padding: normalize(16),
-      borderRadius: normalize(12),
-      minHeight: normalize(88),
+      borderRadius: normalize(16),
+      minHeight: normalize(180),
       ...shadow.md,
     },
     profileSkeletonHeader: {
@@ -205,15 +205,105 @@ export const createMyPageStyles = (normalize) => {
       borderRadius: normalize(6),
       backgroundColor: colors.textLight10,
     },
-    profileSkeletonBadge: {
-      width: normalize(38),
-      height: normalize(24),
+    profileSkeletonQuickRow: {
+      flexDirection: 'row',
+      marginTop: normalize(14),
+      gap: normalize(8),
+    },
+    profileSkeletonQuickCell: {
+      flex: 1,
+      height: normalize(76),
       borderRadius: normalize(12),
       backgroundColor: colors.textLight10,
-      marginLeft: normalize(8),
     },
   });
 };
+
+/** 마이페이지 학생 정보 카드 + 하단 바로가기 (`Profilecard.jsx`) */
+export const createProfileCardStyles = (normalize) =>
+  StyleSheet.create({
+    profileCard: {
+      backgroundColor: colors.background,
+      marginHorizontal: normalize(16),
+      marginTop: 0,
+      marginBottom: normalize(8),
+      padding: normalize(16),
+      borderRadius: normalize(16),
+      ...shadow.md,
+    },
+    profileHeader: {
+      flexDirection: 'row',
+      alignItems: 'center',
+    },
+    profileCircle: {
+      width: normalize(56),
+      height: normalize(56),
+      borderRadius: normalize(28),
+      justifyContent: 'center',
+      alignItems: 'center',
+      marginRight: normalize(12),
+    },
+    profileInfo: {
+      flex: 1,
+    },
+    profileName: {
+      fontSize: normalize(fontSizes.xxl),
+      fontFamily: fonts.bold,
+      color: colors.textPrimary,
+    },
+    profileUsername: {
+      fontSize: normalize(fontSizes.lg),
+      fontFamily: fonts.regular,
+      color: colors.textSecondary,
+    },
+    profileSchool: {
+      fontSize: normalize(fontSizes.lg),
+      fontFamily: fonts.regular,
+      color: colors.textSecondary,
+      lineHeight: normalize(20),
+    },
+    quickLinksRow: {
+      flexDirection: 'row',
+      marginTop: normalize(14),
+      gap: normalize(8),
+    },
+    quickLinkCard: {
+      flex: 1,
+      backgroundColor: colors.textLight5,
+      borderRadius: normalize(12),
+      paddingVertical: normalize(8),
+      paddingHorizontal: normalize(4),
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: normalize(2),
+      position: 'relative',
+      borderWidth: StyleSheet.hairlineWidth,
+      borderColor: colors.textLight10,
+    },
+    quickLinkLabel: {
+      alignSelf: 'stretch',
+      fontSize: normalize(fontSizes.md),
+      fontFamily: fonts.regular,
+      color: colors.textSecondary,
+      textAlign: 'center',
+    },
+    quickLinkMeta: {
+      alignSelf: 'stretch',
+      fontSize: normalize(fontSizes.xxl),
+      fontFamily: fonts.bold,
+      color: colors.textPrimary,
+      textAlign: 'center',
+    },
+    quickLinkDot: {
+      position: 'absolute',
+      top: normalize(6),
+      right: normalize(6),
+      width: normalize(8),
+      height: normalize(8),
+      borderRadius: normalize(4),
+      backgroundColor: colors.alert,
+    },
+  });
 
 /** 알림/설정 화면 (`notificationsettings.jsx`) */
 export const createNotificationSettingsStyles = (normalize) => {
@@ -224,6 +314,7 @@ export const createNotificationSettingsStyles = (normalize) => {
     },
     scroll: {
       flex: 1,
+      paddingTop: normalize(8),
     },
     scrollBottomSpacer: {
       height: normalize(80),
@@ -468,6 +559,7 @@ export const createScrapedPostsStyles = (normalize) => {
     },
     scrollView: {
       flex: 1,
+      paddingTop: normalize(8),
     },
     postItem: {
       padding: normalize(16),
@@ -517,7 +609,7 @@ export const createScrapedPostsStyles = (normalize) => {
   });
 };
 
-/** 내 활동 — 작성글 / 스크랩 탭 (`myposts.jsx`) */
+/** 내 활동 — 작성글 또는 스크랩 목록 (`myposts.jsx`, `tab` 라우트 파라미터로 구분) */
 export const createMyPostsStyles = (normalize) => {
   return StyleSheet.create({
     container: {
@@ -525,65 +617,11 @@ export const createMyPostsStyles = (normalize) => {
       backgroundColor: colors.background,
     },
 
-    toggleWrapper: {
-      paddingHorizontal: normalize(16),
-      paddingVertical: normalize(10),
-      backgroundColor: colors.background,
-    },
-    toggleTrack: {
-      flexDirection: 'row',
-      backgroundColor: colors.background,
-      borderRadius: normalize(999),
-      padding: 0,
-      position: 'relative',
-      height: normalize(38),
-      borderWidth: 1,
-      borderColor: colors.primary,
-    },
-    pill: {
-      position: 'absolute',
-      width: '50%',
-      top: 0,
-      bottom: 0,
-      borderRadius: normalize(999),
-      ...shadow.sm,
-    },
-    toggleBtn: {
-      flex: 1,
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'center',
-      gap: normalize(4),
-      zIndex: 1,
-    },
-    toggleText: {
-      fontSize: normalize(fontSizes.lg),
-      fontFamily: fonts.bold,
-      color: colors.textLight40,
-    },
-    toggleTextActive: {
-      color: colors.textWhite,
-    },
-    cnt: {
-      backgroundColor: colors.textLight10,
-      borderRadius: normalize(999),
-      paddingHorizontal: normalize(5),
-      paddingVertical: 0,
-    },
-    cntActive: {
-      backgroundColor: 'rgba(255,255,255,0.3)',
-    },
-    cntText: {
-      fontSize: normalize(fontSizes.md),
-      fontFamily: fonts.bold,
-      color: colors.textLight40,
-    },
-    cntTextActive: {
-      color: colors.textWhite,
-    },
-
     scroll: {
       flex: 1,
+    },
+    scrollContent: {
+      paddingTop: normalize(16),
     },
     scrollBottomSpacer: {
       height: normalize(80),

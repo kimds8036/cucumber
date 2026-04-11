@@ -1,7 +1,6 @@
 import { StyleSheet, Platform } from 'react-native';
 import { colors, fonts, fontSizes } from './colors';
 import { shadow } from './tokens';
-
 /** 학교 우편함 리스트 (2열 그리드) — schoolMailbox.jsx */
 export const createSchoolMailStyles = (width, normalize) => {
   const cardWidth = (width * 0.92 - normalize(8)) / 2;
@@ -13,7 +12,7 @@ export const createSchoolMailStyles = (width, normalize) => {
     container: {
       flex: 1,
       backgroundColor: colors.background,
-      paddingTop: normalize(6),
+      paddingTop: normalize(8),
     },
     list: {
       flex: 1,
@@ -140,7 +139,6 @@ export const createSchoolMailDetailStyles = (width, normalize) => {
     },
     smDetailLetterWrap: {
       paddingHorizontal: width * 0.05,
-      paddingTop: normalize(14),
       paddingBottom: normalize(8),
     },
     /** mail.style detailLetterCard와 유사 + 크림 톤·테두리 */
@@ -148,7 +146,6 @@ export const createSchoolMailDetailStyles = (width, normalize) => {
       backgroundColor: colors.background,
       borderRadius: normalize(12),
       paddingHorizontal: normalize(16),
-      paddingTop: normalize(16),
       paddingBottom: normalize(18),
       ...shadow.md,
     },
@@ -515,7 +512,6 @@ export const createSendSchoolMailStyles = (normalize) =>
     },
     schoolSendCtaBar: {
       paddingHorizontal: normalize(16),
-      paddingTop: normalize(8),
       paddingBottom: Platform.OS === 'ios' ? normalize(22) : normalize(12),
       backgroundColor: colors.background,
       borderTopWidth: StyleSheet.hairlineWidth,
