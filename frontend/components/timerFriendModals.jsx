@@ -3,7 +3,7 @@
  * 친구 목록 UI + PokeModal + AddFriendModal + Toast
  */
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo, memo } from 'react';
 import {
   View,
   Text,
@@ -296,16 +296,24 @@ const addFriendStyles = {
  *   onFriendPress    - (friend) => void
  *   onAddFriendPress - () => void
  */
-export const FriendStoryBar = ({ friends, studyingFriends = {}, normalize, styles, onFriendPress, onAddFriendPress }) => {
-  // 활동 중인 친구는 항상 앞에, 나머지는 랜덤 섞기
-  const activeFriends = friends.filter((f) => f.isActive);
-  const inactiveFriends = friends.filter((f) => !f.isActive);
-  const shuffledInactive = [...inactiveFriends];
-  for (let i = shuffledInactive.length - 1; i > 0; i -= 1) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [shuffledInactive[i], shuffledInactive[j]] = [shuffledInactive[j], shuffledInactive[i]];
-  }
-  const orderedFriends = [...activeFriends, ...shuffledInactive];
+export const FriendStoryBar = memo(function FriendStoryBar({
+  friends,
+  studyingFriends = {},
+  normalize,
+  styles,
+  onFriendPress,
+  onAddFriendPress,
+}) {
+  const orderedFriends = useMemo(() => {
+    const activeFriends = friends.filter((f) => studyingFriends[f.id] === true);
+    const inactiveFriends = friends.filter((f) => studyingFriends[f.id] !== true);
+    const shuffledInactive = [...inactiveFriends];
+    for (let i = shuffledInactive.length - 1; i > 0; i -= 1) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [shuffledInactive[i], shuffledInactive[j]] = [shuffledInactive[j], shuffledInactive[i]];
+    }
+    return [...activeFriends, ...shuffledInactive];
+  }, [friends, studyingFriends]);
 
   return (
     <View style={styles.friendStoryRow}>
@@ -328,7 +336,7 @@ export const FriendStoryBar = ({ friends, studyingFriends = {}, normalize, style
 
         {/* 친구 목록 */}
         {orderedFriends.map((friend) => {
-          const isActive = studyingFriends[friend.id] === true;
+          const isActive = studyingFriends[friend.id] === true; // 정렬 기준과 동일
           const iconColor = getFriendIconColorByIndex(friend.colorIndex);
           return (
             <TouchableOpacity
@@ -360,4 +368,4 @@ export const FriendStoryBar = ({ friends, studyingFriends = {}, normalize, style
       </ScrollView>
     </View>
   );
-};
+});

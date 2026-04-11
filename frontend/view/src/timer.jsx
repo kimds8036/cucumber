@@ -5,7 +5,16 @@
  * - 모달(UI) 코드는 timerModals.jsx 로, 친구 공부/요청 상태는 FriendContext 로 분리
  */
 
-import React, { useMemo, useState, useEffect, useRef } from 'react';
+import React, {
+  useMemo,
+  useState,
+  useEffect,
+  useRef,
+  useLayoutEffect,
+  useContext,
+  createContext,
+  useCallback,
+} from 'react';
 import {
   View,
   Text,
@@ -26,6 +35,7 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import Feather from '@expo/vector-icons/Feather';
 import MessageTabIcon from '../../assets/Group 166.svg';
 import ViewShot from 'react-native-view-shot';
+import * as MediaLibrary from 'expo-media-library';
 import { api } from '../../utils/api';
 import {
   getTimerDayKey,
@@ -80,6 +90,573 @@ function formatHMS(ms) {
   const s = total % 60;
   const pad = (n) => String(n).padStart(2, '0');
   return `${pad(h)}:${pad(m)}:${pad(s)}`;
+}
+
+/** 1초마다 갱신되는 누적 시간(진행 중 세션) — Provider 하위만 리렌더 */
+const LiveElapsedMsContext = createContext(0);
+
+function LiveElapsedTicker({ isRunning, startTimestamp, children }) {
+  const [liveExtraMs, setLiveExtraMs] = useState(0);
+  useLayoutEffect(() => {
+    if (!isRunning || startTimestamp == null) {
+      setLiveExtraMs(0);
+      return;
+    }
+    setLiveExtraMs(Date.now() - startTimestamp);
+  }, [isRunning, startTimestamp]);
+  useEffect(() => {
+    if (!isRunning || startTimestamp == null) return undefined;
+    const t = setInterval(
+      () => setLiveExtraMs(Date.now() - startTimestamp),
+      1000,
+    );
+    return () => clearInterval(t);
+  }, [isRunning, startTimestamp]);
+  return (
+    <LiveElapsedMsContext.Provider value={liveExtraMs}>
+      {children}
+    </LiveElapsedMsContext.Provider>
+  );
+}
+
+/**
+ * 날짜 바 ~ 타임테이블 (스크롤 본문)
+ * - LiveElapsedTicker 하위 — 초 단위 tick이 친구 바(형제)까지 전파되지 않음
+ */
+function TimerLiveScrollInner({
+  styles,
+  normalize,
+  isViewingToday,
+  totalElapsedMs,
+  displayTotalElapsedMs,
+  displaySessions,
+  displaySubjects,
+  displayTasks,
+  isRunning,
+  activeSubjectId,
+  selectedDayKey,
+  goPrevDay,
+  goNextDay,
+  setShowCalendar,
+  handleSaveAsImage,
+  handleDevReset,
+  toggleTimer,
+  pauseTimer,
+  startForSubject,
+  collapsedSubjects,
+  toggleSubjectCollapsed,
+  openAddTaskForSubject,
+  setShowAddSubject,
+  setTaskStatus,
+}) {
+  const liveExtraMs = useContext(LiveElapsedMsContext);
+  const displayTotalMs = isViewingToday
+    ? totalElapsedMs + (isRunning ? liveExtraMs : 0)
+    : displayTotalElapsedMs;
+
+  const getSubjectTotalMs = (subjectId) => {
+    if (subjectId == null) return 0;
+    return displaySessions
+      .filter((s) => s.subjectId === subjectId && s.endSeconds != null)
+      .reduce((sum, s) => sum + (s.endSeconds - s.startSeconds) * 1000, 0);
+  };
+
+  const getSlotSegments = (slotStartSeconds) => {
+    const slotEnd = slotStartSeconds + 600;
+    const nowSec = getSecondsFromMidnight(new Date());
+    const segments = [];
+    displaySessions.forEach((s) => {
+      const endSec = s.endSeconds != null ? s.endSeconds : nowSec;
+      if (endSec <= slotStartSeconds || s.startSeconds >= slotEnd) return;
+      const overlapStart = Math.max(s.startSeconds, slotStartSeconds);
+      const overlapEnd = Math.min(endSec, slotEnd);
+      const startFraction = (overlapStart - slotStartSeconds) / 600;
+      const widthFraction = (overlapEnd - overlapStart) / 600;
+      if (widthFraction <= 0) return;
+      const color =
+        s.subjectId == null
+          ? TIMETABLE_GRAY
+          : displaySubjects.find((x) => x.id === s.subjectId)?.color;
+      if (!color) return;
+      segments.push({ color, widthFraction, startFraction });
+    });
+    segments.sort((a, b) => a.startFraction - b.startFraction);
+    return segments;
+  };
+
+  const renderTimetable = () =>
+    HOURS.map((rowIndex) => {
+      const hour = (6 + rowIndex) % 24;
+      const slotStartBaseSeconds = hour * 3600;
+      return (
+        <View key={rowIndex} style={styles.timetableRow}>
+          <View style={styles.timetableHourCell}>
+            <Text style={styles.timetableHourText}>
+              {hour.toString().padStart(2, '0')}
+            </Text>
+          </View>
+          <View style={styles.timetableSlotsRow}>
+            {[0, 10, 20, 30, 40, 50].map((m) => {
+              const slotStartSeconds = slotStartBaseSeconds + m * 60;
+              const segments = getSlotSegments(slotStartSeconds);
+              let pos = 0;
+              return (
+                <View key={m} style={styles.timetableSlotCell}>
+                  {segments.map((seg, idx) => {
+                    const spacerFlex = Math.max(0, seg.startFraction - pos);
+                    pos = seg.startFraction + seg.widthFraction;
+                    return (
+                      <React.Fragment key={idx}>
+                        {spacerFlex > 0 && (
+                          <View
+                            style={[
+                              styles.timetableSlotSegment,
+                              {
+                                flex: spacerFlex,
+                                backgroundColor: colors.background,
+                              },
+                            ]}
+                          />
+                        )}
+                        <View
+                          style={[
+                            styles.timetableSlotSegment,
+                            {
+                              backgroundColor: seg.color,
+                              flex: seg.widthFraction,
+                            },
+                          ]}
+                        />
+                      </React.Fragment>
+                    );
+                  })}
+                </View>
+              );
+            })}
+          </View>
+        </View>
+      );
+    });
+
+  return (
+    <>
+      <View style={styles.dateBar}>
+        <View style={styles.dateBarLeft}>
+          <TouchableOpacity
+            onPress={goPrevDay}
+            hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+            style={{ padding: 4 }}
+          >
+            <Ionicons
+              name="chevron-back"
+              size={22}
+              color={colors.textPrimary}
+            />
+          </TouchableOpacity>
+          <TouchableOpacity
+            onPress={() => setShowCalendar(true)}
+            style={{ minWidth: normalize(100) }}
+          >
+            <Text style={styles.dateBarText}>
+              {selectedDayKey
+                ? selectedDayKey.replace(/-/g, '.')
+                : '--.--.--'}
+            </Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            onPress={goNextDay}
+            hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+            style={{ padding: 4 }}
+          >
+            <Ionicons
+              name="chevron-forward"
+              size={22}
+              color={colors.textPrimary}
+            />
+          </TouchableOpacity>
+        </View>
+        <TouchableOpacity style={styles.saveBtn} onPress={handleSaveAsImage}>
+          <Feather name="download" size={20} color={colors.textPrimary} />
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          onPress={handleDevReset}
+          style={{
+            marginLeft: 8,
+            padding: 6,
+            backgroundColor: '#FFE0E0',
+            borderRadius: 8,
+          }}
+        >
+          <Text
+            style={{ fontSize: 11, color: '#CC3333', fontWeight: '700' }}
+          >
+            DEV초기화
+          </Text>
+        </TouchableOpacity>
+      </View>
+
+      <View style={styles.timerBlock}>
+        <Text style={styles.timerTime}>{formatHMS(displayTotalMs)}</Text>
+        {isViewingToday && (
+          <TouchableOpacity
+            style={[styles.timerBtn, isRunning && styles.timerBtnPause]}
+            onPress={toggleTimer}
+            activeOpacity={0.8}
+          >
+            <Ionicons
+              name={isRunning ? 'pause' : 'play'}
+              size={normalize(20)}
+              color={isRunning ? colors.textPrimary : colors.textWhite}
+            />
+            <Text
+              style={[
+                styles.timerBtnText,
+                isRunning && styles.timerBtnTextPause,
+              ]}
+            >
+              {isRunning ? '일시정지' : '시작'}
+            </Text>
+          </TouchableOpacity>
+        )}
+      </View>
+
+      <View style={styles.divider} />
+
+      <View style={styles.todoTimetableRow}>
+        <View style={styles.todoColumn}>
+          <View style={styles.todoHeader}>
+            <Text style={styles.todoTitle}>투두리스트</Text>
+            {isViewingToday && (
+              <TouchableOpacity
+                style={styles.todoAddBtn}
+                onPress={() => setShowAddSubject(true)}
+              >
+                <Ionicons
+                  name="add-circle-outline"
+                  size={18}
+                  color={colors.primary}
+                />
+                <Text style={styles.todoAddBtnText}>과목 추가</Text>
+              </TouchableOpacity>
+            )}
+          </View>
+          <ScrollView
+            style={styles.todoList}
+            showsVerticalScrollIndicator={false}
+          >
+            {displaySubjects.map((sub) => {
+              const subTasks = displayTasks.filter(
+                (t) => t.subjectId === sub.id,
+              );
+              const totalMs = getSubjectTotalMs(sub.id);
+              const isThisRunning = isRunning && activeSubjectId === sub.id;
+              const totalStr = isThisRunning
+                ? formatHMS(totalMs + liveExtraMs)
+                : formatHMS(totalMs);
+              const isCollapsed = collapsedSubjects[sub.id] === true;
+              return (
+                <View key={sub.id} style={styles.subjectBlock}>
+                  <View style={styles.subjectRow}>
+                    <View
+                      style={[
+                        styles.subjectColorBar,
+                        { backgroundColor: sub.color },
+                      ]}
+                    />
+                    <View style={styles.subjectBody}>
+                      <Text style={styles.subjectName}>{sub.name}</Text>
+                      <Text style={styles.subjectTime}>{totalStr}</Text>
+                    </View>
+                    <TouchableOpacity
+                      style={[
+                        styles.subjectPlayBtn,
+                        { backgroundColor: sub.color },
+                        isThisRunning && styles.subjectPlayBtnActive,
+                      ]}
+                      onPress={() =>
+                        isRunning && activeSubjectId === sub.id
+                          ? pauseTimer()
+                          : startForSubject(sub.id)
+                      }
+                      disabled={!isViewingToday}
+                    >
+                      <Ionicons
+                        name={isThisRunning ? 'pause' : 'play'}
+                        size={normalize(18)}
+                        color={colors.textWhite}
+                      />
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={styles.subjectCollapseBtn}
+                      onPress={() => toggleSubjectCollapsed(sub.id)}
+                    >
+                      <Ionicons
+                        name={isCollapsed ? 'chevron-down' : 'chevron-up'}
+                        size={normalize(20)}
+                        color={colors.textSecondary}
+                      />
+                    </TouchableOpacity>
+                  </View>
+                  {!isCollapsed && (
+                    <>
+                      {subTasks.map((task) => (
+                        <View key={task.id} style={styles.taskRow}>
+                          <TouchableOpacity
+                            style={[
+                              styles.taskCheckbox,
+                              task.status === 'done' &&
+                                styles.taskCheckboxChecked,
+                            ]}
+                            onPress={() =>
+                              isViewingToday &&
+                              setTaskStatus(
+                                task.id,
+                                task.status === 'done' ? 'pending' : 'done',
+                              )
+                            }
+                            disabled={!isViewingToday}
+                          >
+                            {task.status === 'done' && (
+                              <Ionicons
+                                name="checkmark"
+                                size={normalize(14)}
+                                color={colors.textWhite}
+                              />
+                            )}
+                          </TouchableOpacity>
+                          <Text
+                            style={[
+                              styles.taskContent,
+                              task.status === 'done' &&
+                                styles.taskContentDone,
+                            ]}
+                            numberOfLines={1}
+                          >
+                            {task.content}
+                          </Text>
+                        </View>
+                      ))}
+                      <TouchableOpacity
+                        style={styles.todoAddUnderSubject}
+                        onPress={() => openAddTaskForSubject(sub.id)}
+                        disabled={!isViewingToday}
+                      >
+                        <Text style={styles.todoAddUnderSubjectText}>
+                          + 추가
+                        </Text>
+                      </TouchableOpacity>
+                    </>
+                  )}
+                </View>
+              );
+            })}
+          </ScrollView>
+        </View>
+
+        <View style={styles.timetableColumn}>
+          <Text style={styles.timetableTitle}>공부 기록</Text>
+          <View style={styles.timetableScroll}>{renderTimetable()}</View>
+        </View>
+      </View>
+    </>
+  );
+}
+
+/** ViewShot 캡처 영역 — LiveElapsedTicker 하위에서만 동작 */
+function TimerLivePlannerCapture({
+  capturePlannerRef,
+  styles,
+  normalize,
+  isViewingToday,
+  isRunning,
+  totalElapsedMs,
+  displayTotalElapsedMs,
+  displaySessions,
+  displaySubjects,
+  displayTasks,
+  selectedDayKey,
+  width,
+}) {
+  const liveExtraMs = useContext(LiveElapsedMsContext);
+  const displayTotalMs = isViewingToday
+    ? totalElapsedMs + (isRunning ? liveExtraMs : 0)
+    : displayTotalElapsedMs;
+
+  const getSubjectTotalMs = (subjectId) => {
+    if (subjectId == null) return 0;
+    return displaySessions
+      .filter((s) => s.subjectId === subjectId && s.endSeconds != null)
+      .reduce((sum, s) => sum + (s.endSeconds - s.startSeconds) * 1000, 0);
+  };
+
+  const getSlotSegments = (slotStartSeconds) => {
+    const slotEnd = slotStartSeconds + 600;
+    const nowSec = getSecondsFromMidnight(new Date());
+    const segments = [];
+    displaySessions.forEach((s) => {
+      const endSec = s.endSeconds != null ? s.endSeconds : nowSec;
+      if (endSec <= slotStartSeconds || s.startSeconds >= slotEnd) return;
+      const overlapStart = Math.max(s.startSeconds, slotStartSeconds);
+      const overlapEnd = Math.min(endSec, slotEnd);
+      const startFraction = (overlapStart - slotStartSeconds) / 600;
+      const widthFraction = (overlapEnd - overlapStart) / 600;
+      if (widthFraction <= 0) return;
+      const color =
+        s.subjectId == null
+          ? TIMETABLE_GRAY
+          : displaySubjects.find((x) => x.id === s.subjectId)?.color;
+      if (!color) return;
+      segments.push({ color, widthFraction, startFraction });
+    });
+    segments.sort((a, b) => a.startFraction - b.startFraction);
+    return segments;
+  };
+
+  const renderTimetable = () =>
+    HOURS.map((rowIndex) => {
+      const hour = (6 + rowIndex) % 24;
+      const slotStartBaseSeconds = hour * 3600;
+      return (
+        <View key={rowIndex} style={styles.timetableRow}>
+          <View style={styles.timetableHourCell}>
+            <Text style={styles.timetableHourText}>
+              {hour.toString().padStart(2, '0')}
+            </Text>
+          </View>
+          <View style={styles.timetableSlotsRow}>
+            {[0, 10, 20, 30, 40, 50].map((m) => {
+              const slotStartSeconds = slotStartBaseSeconds + m * 60;
+              const segments = getSlotSegments(slotStartSeconds);
+              let pos = 0;
+              return (
+                <View key={m} style={styles.timetableSlotCell}>
+                  {segments.map((seg, idx) => {
+                    const spacerFlex = Math.max(0, seg.startFraction - pos);
+                    pos = seg.startFraction + seg.widthFraction;
+                    return (
+                      <React.Fragment key={idx}>
+                        {spacerFlex > 0 && (
+                          <View
+                            style={[
+                              styles.timetableSlotSegment,
+                              {
+                                flex: spacerFlex,
+                                backgroundColor: colors.background,
+                              },
+                            ]}
+                          />
+                        )}
+                        <View
+                          style={[
+                            styles.timetableSlotSegment,
+                            {
+                              backgroundColor: seg.color,
+                              flex: seg.widthFraction,
+                            },
+                          ]}
+                        />
+                      </React.Fragment>
+                    );
+                  })}
+                </View>
+              );
+            })}
+          </View>
+        </View>
+      );
+    });
+
+  return (
+    <View
+      style={{ position: 'absolute', left: -width * 2, top: 0, width: width }}
+      pointerEvents="none"
+    >
+      <ViewShot
+        ref={capturePlannerRef}
+        options={{ format: 'png', quality: 1 }}
+        style={{ backgroundColor: colors.background }}
+      >
+        <View style={styles.plannerCaptureWrap}>
+          <View style={styles.plannerCaptureRow}>
+            <View style={styles.plannerLeftColumn}>
+              <Text style={styles.plannerLabel}>Date</Text>
+              <Text style={styles.plannerValue}>
+                {selectedDayKey
+                  ? selectedDayKey.replace(/-/g, '.')
+                  : '--.--.--'}
+              </Text>
+              <Text style={styles.plannerLabel}>Time</Text>
+              <Text style={styles.plannerValue}>
+                {formatHMS(displayTotalMs)}
+              </Text>
+              <Text style={styles.plannerLabel}>To-do List</Text>
+              <View style={styles.plannerMemoLine} />
+              {displaySubjects.map((sub) => {
+                const subTasks = displayTasks.filter(
+                  (t) => t.subjectId === sub.id,
+                );
+                const totalStr = formatHMS(getSubjectTotalMs(sub.id));
+                return (
+                  <View key={sub.id} style={{ marginBottom: normalize(10) }}>
+                    <View style={styles.plannerSubjectRow}>
+                      <View
+                        style={[
+                          styles.plannerSubjectColorBar,
+                          { backgroundColor: sub.color },
+                        ]}
+                      />
+                      <View style={styles.plannerSubjectBody}>
+                        <Text style={styles.plannerSubjectName}>
+                          {sub.name}
+                        </Text>
+                        <Text style={styles.plannerSubjectTime}>
+                          {totalStr}
+                        </Text>
+                      </View>
+                    </View>
+                    {subTasks.map((task) => (
+                      <View key={task.id} style={styles.plannerTaskRow}>
+                        <View
+                          style={[
+                            styles.plannerTaskCheckbox,
+                            task.status === 'done' &&
+                              styles.plannerTaskCheckboxChecked,
+                          ]}
+                        >
+                          {task.status === 'done' && (
+                            <Ionicons
+                              name="checkmark"
+                              size={normalize(12)}
+                              color={colors.textWhite}
+                            />
+                          )}
+                        </View>
+                        <Text
+                          style={[
+                            styles.plannerTaskContent,
+                            task.status === 'done' &&
+                              styles.plannerTaskContentDone,
+                          ]}
+                          numberOfLines={1}
+                        >
+                          {task.content}
+                        </Text>
+                      </View>
+                    ))}
+                  </View>
+                );
+              })}
+            </View>
+            <View style={styles.plannerRightColumn}>
+              <Text style={styles.timetableTitle}>공부 기록</Text>
+              <View style={styles.timetableScroll}>{renderTimetable()}</View>
+            </View>
+          </View>
+        </View>
+      </ViewShot>
+    </View>
+  );
 }
 
 // ── 메인 콘텐츠 ──────────────────────────────────────────
@@ -185,11 +762,12 @@ export const TimerContent = () => {
   );
 
   // 친구 관련 핸들러 (모달 열기까지만 담당, 쿡 찌르기 로직은 FriendPokeController 에서 처리)
-  const handleFriendPress = (friend) => {
+  const handleOpenAddFriend = useCallback(() => setShowAddFriend(true), []);
+  const handleFriendPress = useCallback((friend) => {
     const isActive = studyingFriends?.[friend.id] === true;
     setPokeTarget({ ...friend, isActive });
     setPokeVisible(true);
-  };
+  }, [studyingFriends]);
 
   // ── 타이머/투두 상태 ──────────────────────────────────
   // - 과목/할일/세션/날짜/타이머 실행 여부 등 메인 비즈니스 상태
@@ -198,7 +776,6 @@ export const TimerContent = () => {
   const [sessions, setSessions] = useState([]);
   const [activeSubjectId, setActiveSubjectId] = useState(null);
   const [isRunning, setIsRunning] = useState(false);
-  const [elapsedMs, setElapsedMs] = useState(0);
   const [startTimestamp, setStartTimestamp] = useState(null);
   const [totalElapsedMs, setTotalElapsedMs] = useState(0);
 
@@ -257,11 +834,9 @@ export const TimerContent = () => {
           );
           const ts = Date.now() - diffMs;
           setStartTimestamp(ts);
-          setElapsedMs(diffMs);
         } else {
           setIsRunning(false);
           setStartTimestamp(null);
-          setElapsedMs(0);
         }
       }
       setInitialLoadDone(true);
@@ -345,7 +920,6 @@ export const TimerContent = () => {
             }
             setActiveSubjectId(null);
             setIsRunning(false);
-            setElapsedMs(0);
             setStartTimestamp(null);
           });
         });
@@ -360,15 +934,6 @@ export const TimerContent = () => {
       sub?.remove();
     };
   }, [timerDayKey, sessions, totalElapsedMs, subjects, tasks]);
-
-  useEffect(() => {
-    let t;
-    if (isRunning && startTimestamp != null)
-      t = setInterval(() => setElapsedMs(Date.now() - startTimestamp), 1000);
-    return () => {
-      if (t) clearInterval(t);
-    };
-  }, [isRunning, startTimestamp]);
 
   // ── 투두/과목 핸들러 ──────────────────────────────────
   const addSubject = (payload) => {
@@ -428,7 +993,6 @@ export const TimerContent = () => {
     }
     setActiveSubjectId(subjectId);
     setIsRunning(true);
-    setElapsedMs(0);
     setStartTimestamp(Date.now());
     setSessions((prev) => [
       ...prev,
@@ -455,7 +1019,6 @@ export const TimerContent = () => {
     }
     setActiveSubjectId(null);
     setIsRunning(true);
-    setElapsedMs(0);
     setStartTimestamp(Date.now());
     setSessions((prev) => [
       ...prev,
@@ -478,14 +1041,11 @@ export const TimerContent = () => {
     endCurrentSession();
     closeOpenSession(activeSubjectId);
     setIsRunning(false);
-    setElapsedMs(0);
     setStartTimestamp(null);
     emitTimerStatus('idle');
   };
 
   const toggleTimer = () => (isRunning ? pauseTimer() : startTimerTop());
-
-  const getTotalDisplayMs = () => totalElapsedMs + (isRunning ? elapsedMs : 0);
 
   // ── 날짜 이동 ─────────────────────────────────────────
   const goPrevDay = () => {
@@ -534,7 +1094,6 @@ export const TimerContent = () => {
           setSubjects(DEFAULT_SUBJECTS);
           setTasks(DEFAULT_TASKS);
           setIsRunning(false);
-          setElapsedMs(0);
           setStartTimestamp(null);
           setActiveSubjectId(null);
           pushTimerToast('타이머', '데이터가 초기화되었습니다');
@@ -562,432 +1121,72 @@ export const TimerContent = () => {
   const displayTasks = isViewingToday
     ? tasks
     : (viewState?.tasks ?? DEFAULT_TASKS);
-  const displayTotalMs = isViewingToday
-    ? getTotalDisplayMs()
-    : displayTotalElapsedMs;
-
-  const getSubjectTotalMs = (subjectId) => {
-    if (subjectId == null) return 0;
-    return displaySessions
-      .filter((s) => s.subjectId === subjectId && s.endSeconds != null)
-      .reduce((sum, s) => sum + (s.endSeconds - s.startSeconds) * 1000, 0);
-  };
-
-  const getSlotSegments = (slotStartSeconds) => {
-    const slotEnd = slotStartSeconds + 600;
-    const nowSec = getSecondsFromMidnight(new Date());
-    const segments = [];
-    displaySessions.forEach((s) => {
-      const endSec = s.endSeconds != null ? s.endSeconds : nowSec;
-      if (endSec <= slotStartSeconds || s.startSeconds >= slotEnd) return;
-      const overlapStart = Math.max(s.startSeconds, slotStartSeconds);
-      const overlapEnd = Math.min(endSec, slotEnd);
-      const startFraction = (overlapStart - slotStartSeconds) / 600;
-      const widthFraction = (overlapEnd - overlapStart) / 600;
-      if (widthFraction <= 0) return;
-      const color =
-        s.subjectId == null
-          ? TIMETABLE_GRAY
-          : displaySubjects.find((x) => x.id === s.subjectId)?.color;
-      if (!color) return;
-      segments.push({ color, widthFraction, startFraction });
-    });
-    segments.sort((a, b) => a.startFraction - b.startFraction);
-    return segments;
-  };
-
-  // ── 타임테이블 렌더 헬퍼 ──────────────────────────────
-  const renderTimetable = () =>
-    HOURS.map((rowIndex) => {
-      const hour = (6 + rowIndex) % 24;
-      const slotStartBaseSeconds = hour * 3600;
-      return (
-        <View key={rowIndex} style={styles.timetableRow}>
-          <View style={styles.timetableHourCell}>
-            <Text style={styles.timetableHourText}>
-              {hour.toString().padStart(2, '0')}
-            </Text>
-          </View>
-          <View style={styles.timetableSlotsRow}>
-            {[0, 10, 20, 30, 40, 50].map((m) => {
-              const slotStartSeconds = slotStartBaseSeconds + m * 60;
-              const segments = getSlotSegments(slotStartSeconds);
-              let pos = 0;
-              return (
-                <View key={m} style={styles.timetableSlotCell}>
-                  {segments.map((seg, idx) => {
-                    const spacerFlex = Math.max(0, seg.startFraction - pos);
-                    pos = seg.startFraction + seg.widthFraction;
-                    return (
-                      <React.Fragment key={idx}>
-                        {spacerFlex > 0 && (
-                          <View
-                            style={[
-                              styles.timetableSlotSegment,
-                              {
-                                flex: spacerFlex,
-                                backgroundColor: colors.background,
-                              },
-                            ]}
-                          />
-                        )}
-                        <View
-                          style={[
-                            styles.timetableSlotSegment,
-                            {
-                              backgroundColor: seg.color,
-                              flex: seg.widthFraction,
-                            },
-                          ]}
-                        />
-                      </React.Fragment>
-                    );
-                  })}
-                </View>
-              );
-            })}
-          </View>
-        </View>
-      );
-    });
 
   // ─────────────────────────────────────────────────────
   // 실제 화면 레이아웃:
   // - 헤더/푸터는 Timer 래퍼에서 담당
   // - 여기서는 타이머 본문(친구 바 + 타이머 + 투두 + 타임테이블 + 모달)만 렌더링
+  // - LiveElapsedTicker: 1초 tick이 FriendStoryBar(메모)까지 전파되지 않게 격리
   return (
     <>
-      <ScrollView
-        style={styles.scroll}
-        contentContainerStyle={styles.scrollContent}
-        showsVerticalScrollIndicator={false}
-      >
-        {/* ① 친구 목록 (분리된 컴포넌트) */}
-        <FriendStoryBar
-          friends={friends}
-          studyingFriends={studyingFriends}
-          normalize={normalize}
-          styles={styles}
-          onFriendPress={handleFriendPress}
-          onAddFriendPress={() => setShowAddFriend(true)}
-        />
-
-        {/* ② 날짜 바 */}
-        <View style={styles.dateBar}>
-          <View style={styles.dateBarLeft}>
-            <TouchableOpacity
-              onPress={goPrevDay}
-              hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
-              style={{ padding: 4 }}
-            >
-              <Ionicons
-                name="chevron-back"
-                size={22}
-                color={colors.textPrimary}
-              />
-            </TouchableOpacity>
-            <TouchableOpacity
-              onPress={() => setShowCalendar(true)}
-              style={{ minWidth: normalize(100) }}
-            >
-              <Text style={styles.dateBarText}>
-                {selectedDayKey
-                  ? selectedDayKey.replace(/-/g, '.')
-                  : '--.--.--'}
-              </Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              onPress={goNextDay}
-              hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
-              style={{ padding: 4 }}
-            >
-              <Ionicons
-                name="chevron-forward"
-                size={22}
-                color={colors.textPrimary}
-              />
-            </TouchableOpacity>
-          </View>
-          <TouchableOpacity style={styles.saveBtn} onPress={handleSaveAsImage}>
-            <Feather name="download" size={20} color={colors.textPrimary} />
-          </TouchableOpacity>
-
-          {/* 개발용 초기화 버튼 - 배포 전 삭제 */}
-          <TouchableOpacity
-            onPress={handleDevReset}
-            style={{
-              marginLeft: 8,
-              padding: 6,
-              backgroundColor: '#FFE0E0',
-              borderRadius: 8,
-            }}
+      <LiveElapsedTicker isRunning={isRunning} startTimestamp={startTimestamp}>
+        <>
+          <ScrollView
+            style={styles.scroll}
+            contentContainerStyle={styles.scrollContent}
+            showsVerticalScrollIndicator={false}
           >
-            <Text
-              style={{ fontSize: 11, color: '#CC3333', fontWeight: '700' }}
-            >
-              DEV초기화
-            </Text>
-          </TouchableOpacity>
-        </View>
-
-        {/* 2. 타이머 (누적 시·분·초) */}
-        <View style={styles.timerBlock}>
-          <Text style={styles.timerTime}>{formatHMS(displayTotalMs)}</Text>
-          {isViewingToday && (
-            <TouchableOpacity
-              style={[styles.timerBtn, isRunning && styles.timerBtnPause]}
-              onPress={toggleTimer}
-              activeOpacity={0.8}
-            >
-              <Ionicons
-                name={isRunning ? 'pause' : 'play'}
-                size={normalize(20)}
-                color={isRunning ? colors.textPrimary : colors.textWhite}
-              />
-              <Text
-                style={[
-                  styles.timerBtnText,
-                  isRunning && styles.timerBtnTextPause,
-                ]}
-              >
-                {isRunning ? '일시정지' : '시작'}
-              </Text>
-            </TouchableOpacity>
-          )}
-        </View>
-
-        <View style={styles.divider} />
-
-        {/* ④ 투두리스트 + 타임테이블 */}
-        <View style={styles.todoTimetableRow}>
-          {/* 왼쪽: 투두리스트 */}
-          <View style={styles.todoColumn}>
-            <View style={styles.todoHeader}>
-              <Text style={styles.todoTitle}>투두리스트</Text>
-              {isViewingToday && (
-                <TouchableOpacity
-                  style={styles.todoAddBtn}
-                  onPress={() => setShowAddSubject(true)}
-                >
-                  <Ionicons
-                    name="add-circle-outline"
-                    size={18}
-                    color={colors.primary}
-                  />
-                  <Text style={styles.todoAddBtnText}>과목 추가</Text>
-                </TouchableOpacity>
-              )}
-            </View>
-            <ScrollView
-              style={styles.todoList}
-              showsVerticalScrollIndicator={false}
-            >
-              {displaySubjects.map((sub) => {
-                const subTasks = displayTasks.filter(
-                  (t) => t.subjectId === sub.id,
-                );
-                const totalMs = getSubjectTotalMs(sub.id);
-                const isThisRunning = isRunning && activeSubjectId === sub.id;
-                const totalStr = isThisRunning
-                  ? formatHMS(totalMs + elapsedMs)
-                  : formatHMS(totalMs);
-                const isCollapsed = collapsedSubjects[sub.id] === true;
-                return (
-                  <View key={sub.id} style={styles.subjectBlock}>
-                    <View style={styles.subjectRow}>
-                      <View
-                        style={[
-                          styles.subjectColorBar,
-                          { backgroundColor: sub.color },
-                        ]}
-                      />
-                      <View style={styles.subjectBody}>
-                        <Text style={styles.subjectName}>{sub.name}</Text>
-                        <Text style={styles.subjectTime}>{totalStr}</Text>
-                      </View>
-                      <TouchableOpacity
-                        style={[
-                          styles.subjectPlayBtn,
-                          { backgroundColor: sub.color },
-                          isThisRunning && styles.subjectPlayBtnActive,
-                        ]}
-                        onPress={() =>
-                          isRunning && activeSubjectId === sub.id
-                            ? pauseTimer()
-                            : startForSubject(sub.id)
-                        }
-                        disabled={!isViewingToday}
-                      >
-                        <Ionicons
-                          name={isThisRunning ? 'pause' : 'play'}
-                          size={normalize(18)}
-                          color={colors.textWhite}
-                        />
-                      </TouchableOpacity>
-                      <TouchableOpacity
-                        style={styles.subjectCollapseBtn}
-                        onPress={() => toggleSubjectCollapsed(sub.id)}
-                      >
-                        <Ionicons
-                          name={isCollapsed ? 'chevron-down' : 'chevron-up'}
-                          size={normalize(20)}
-                          color={colors.textSecondary}
-                        />
-                      </TouchableOpacity>
-                    </View>
-                    {!isCollapsed && (
-                      <>
-                        {subTasks.map((task) => (
-                          <View key={task.id} style={styles.taskRow}>
-                            <TouchableOpacity
-                              style={[
-                                styles.taskCheckbox,
-                                task.status === 'done' &&
-                                  styles.taskCheckboxChecked,
-                              ]}
-                              onPress={() =>
-                                isViewingToday &&
-                                setTaskStatus(
-                                  task.id,
-                                  task.status === 'done' ? 'pending' : 'done',
-                                )
-                              }
-                              disabled={!isViewingToday}
-                            >
-                              {task.status === 'done' && (
-                                <Ionicons
-                                  name="checkmark"
-                                  size={normalize(14)}
-                                  color={colors.textWhite}
-                                />
-                              )}
-                            </TouchableOpacity>
-                            <Text
-                              style={[
-                                styles.taskContent,
-                                task.status === 'done' &&
-                                  styles.taskContentDone,
-                              ]}
-                              numberOfLines={1}
-                            >
-                              {task.content}
-                            </Text>
-                          </View>
-                        ))}
-                        <TouchableOpacity
-                          style={styles.todoAddUnderSubject}
-                          onPress={() => openAddTaskForSubject(sub.id)}
-                          disabled={!isViewingToday}
-                        >
-                          <Text style={styles.todoAddUnderSubjectText}>
-                            + 추가
-                          </Text>
-                        </TouchableOpacity>
-                      </>
-                    )}
-                  </View>
-                );
-              })}
-            </ScrollView>
-          </View>
-
-          {/* 오른쪽: 타임테이블 */}
-          <View style={styles.timetableColumn}>
-            <Text style={styles.timetableTitle}>공부 기록</Text>
-            <View style={styles.timetableScroll}>{renderTimetable()}</View>
-          </View>
-        </View>
-      </ScrollView>
-
-      {/* 캡처용 오프스크린 플래너 */}
-      <View
-        style={{ position: 'absolute', left: -width * 2, top: 0, width: width }}
-        pointerEvents="none"
-      >
-        <ViewShot
-          ref={capturePlannerRef}
-          options={{ format: 'png', quality: 1 }}
-          style={{ backgroundColor: colors.background }}
-        >
-          <View style={styles.plannerCaptureWrap}>
-            <View style={styles.plannerCaptureRow}>
-              <View style={styles.plannerLeftColumn}>
-                <Text style={styles.plannerLabel}>Date</Text>
-                <Text style={styles.plannerValue}>
-                  {selectedDayKey
-                    ? selectedDayKey.replace(/-/g, '.')
-                    : '--.--.--'}
-                </Text>
-                <Text style={styles.plannerLabel}>Time</Text>
-                <Text style={styles.plannerValue}>
-                  {formatHMS(displayTotalMs)}
-                </Text>
-                <Text style={styles.plannerLabel}>To-do List</Text>
-                <View style={styles.plannerMemoLine} />
-                {displaySubjects.map((sub) => {
-                  const subTasks = displayTasks.filter(
-                    (t) => t.subjectId === sub.id,
-                  );
-                  const totalStr = formatHMS(getSubjectTotalMs(sub.id));
-                  return (
-                    <View key={sub.id} style={{ marginBottom: normalize(10) }}>
-                      <View style={styles.plannerSubjectRow}>
-                        <View
-                          style={[
-                            styles.plannerSubjectColorBar,
-                            { backgroundColor: sub.color },
-                          ]}
-                        />
-                        <View style={styles.plannerSubjectBody}>
-                          <Text style={styles.plannerSubjectName}>
-                            {sub.name}
-                          </Text>
-                          <Text style={styles.plannerSubjectTime}>
-                            {totalStr}
-                          </Text>
-                        </View>
-                      </View>
-                      {subTasks.map((task) => (
-                        <View key={task.id} style={styles.plannerTaskRow}>
-                          <View
-                            style={[
-                              styles.plannerTaskCheckbox,
-                              task.status === 'done' &&
-                                styles.plannerTaskCheckboxChecked,
-                            ]}
-                          >
-                            {task.status === 'done' && (
-                              <Ionicons
-                                name="checkmark"
-                                size={normalize(12)}
-                                color={colors.textWhite}
-                              />
-                            )}
-                          </View>
-                          <Text
-                            style={[
-                              styles.plannerTaskContent,
-                              task.status === 'done' &&
-                                styles.plannerTaskContentDone,
-                            ]}
-                            numberOfLines={1}
-                          >
-                            {task.content}
-                          </Text>
-                        </View>
-                      ))}
-                    </View>
-                  );
-                })}
-              </View>
-              <View style={styles.plannerRightColumn}>
-                <Text style={styles.timetableTitle}>공부 기록</Text>
-                <View style={styles.timetableScroll}>{renderTimetable()}</View>
-              </View>
-            </View>
-          </View>
-        </ViewShot>
-      </View>
+            <FriendStoryBar
+              friends={friends}
+              studyingFriends={studyingFriends}
+              normalize={normalize}
+              styles={styles}
+              onFriendPress={handleFriendPress}
+              onAddFriendPress={handleOpenAddFriend}
+            />
+            <TimerLiveScrollInner
+              styles={styles}
+              normalize={normalize}
+              isViewingToday={isViewingToday}
+              totalElapsedMs={totalElapsedMs}
+              displayTotalElapsedMs={displayTotalElapsedMs}
+              displaySessions={displaySessions}
+              displaySubjects={displaySubjects}
+              displayTasks={displayTasks}
+              isRunning={isRunning}
+              activeSubjectId={activeSubjectId}
+              selectedDayKey={selectedDayKey}
+              goPrevDay={goPrevDay}
+              goNextDay={goNextDay}
+              setShowCalendar={setShowCalendar}
+              handleSaveAsImage={handleSaveAsImage}
+              handleDevReset={handleDevReset}
+              toggleTimer={toggleTimer}
+              pauseTimer={pauseTimer}
+              startForSubject={startForSubject}
+              collapsedSubjects={collapsedSubjects}
+              toggleSubjectCollapsed={toggleSubjectCollapsed}
+              openAddTaskForSubject={openAddTaskForSubject}
+              setShowAddSubject={setShowAddSubject}
+              setTaskStatus={setTaskStatus}
+            />
+          </ScrollView>
+          <TimerLivePlannerCapture
+            capturePlannerRef={capturePlannerRef}
+            styles={styles}
+            normalize={normalize}
+            isViewingToday={isViewingToday}
+            isRunning={isRunning}
+            totalElapsedMs={totalElapsedMs}
+            displayTotalElapsedMs={displayTotalElapsedMs}
+            displaySessions={displaySessions}
+            displaySubjects={displaySubjects}
+            displayTasks={displayTasks}
+            selectedDayKey={selectedDayKey}
+            width={width}
+          />
+        </>
+      </LiveElapsedTicker>
 
       {/* ── 모달들 ── */}
       <AddSubjectModal
