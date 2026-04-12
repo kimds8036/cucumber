@@ -11,7 +11,6 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import Octicons from '@expo/vector-icons/Octicons';
 import SubHeader from '../frame/subHeader';
 import Loading from '../../components/Loading';
-import { usePlatformInsets } from '../../hooks/usePlatformInsets';
 import { colors, PROFILE_COLORS } from '../../styles/colors';
 import { getNormalize } from '../../styles/frame.style';
 import { createMailStyles } from '../../styles/mail.style';
@@ -397,7 +396,6 @@ function MailInbox({ onOpen, onBack, navigation }) {
 
 function MailDetail({ mail: initialMail, onBack, navigation }) {
   const { width, height } = useWindowDimensions();
-  const insets = usePlatformInsets();
   const normalize = useMemo(() => getNormalize(width), [width]);
   const styles = useMemo(() => createMailStyles(normalize), [normalize]);
 
@@ -421,22 +419,10 @@ function MailDetail({ mail: initialMail, onBack, navigation }) {
   const [currentUserId, setCurrentUserId] = useState(null);
   const [latestMyReply, setLatestMyReply] = useState(null);
   const [latestOtherReply, setLatestOtherReply] = useState(null);
-  const [subHeaderHeight, setSubHeaderHeight] = useState(0);
-  const [bottomCtaHeight, setBottomCtaHeight] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
-  const availableHeight = Math.max(
-    0,
-    height - insets.top - insets.bottom - subHeaderHeight - bottomCtaHeight,
-  );
-  const scrollPadding = 16 + 32; // paddingTop + paddingBottom (normalize 적용 전 raw값 기준)
-  const cardGap = 12;
-  const halfCardHeight = Math.max(
-    240,
-    Math.floor((availableHeight - scrollPadding - cardGap) / 2),
-  );
-  const singleCardMinHeight = halfCardHeight * 2 + cardGap;
+  const singleCardMinHeight = Math.max(240, Math.round(height * 0.7));
 
   const fetchDetail = useCallback(async () => {
     if (!initialMail?.id) return;
@@ -528,22 +514,18 @@ function MailDetail({ mail: initialMail, onBack, navigation }) {
 
   return (
     <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
-      <View
-        onLayout={(e) => setSubHeaderHeight(e.nativeEvent.layout.height)}
-      >
-        <SubHeader
-          title={mail?.isReceived === false ? '보낸 우편' : '받은 우편'}
-          onBack={onBack}
-          rightElement={
-            <Octicons name="history" size={normalize(18)} color={colors.textPrimary} />
-          }
-          onRightPress={() =>
-            navigation.navigate('MailHistory', {
-              ...(historyThreadId != null ? { threadId: historyThreadId } : {}),
-            })
-          }
-        />
-      </View>
+      <SubHeader
+        title={mail?.isReceived === false ? '보낸 우편' : '받은 우편'}
+        onBack={onBack}
+        rightElement={
+          <Octicons name="history" size={normalize(18)} color={colors.textPrimary} />
+        }
+        onRightPress={() =>
+          navigation.navigate('MailHistory', {
+            ...(historyThreadId != null ? { threadId: historyThreadId } : {}),
+          })
+        }
+      />
 
       <View style={styles.detailRoot}>
         {loading && <Loading style={styles.detailLoading} />}
@@ -552,7 +534,10 @@ function MailDetail({ mail: initialMail, onBack, navigation }) {
         )}
         <ScrollView
           style={styles.scroll}
-          contentContainerStyle={styles.detailScroll}
+          contentContainerStyle={[
+            styles.detailScroll,
+            { flexGrow: 1, justifyContent: 'center' },
+          ]}
           showsVerticalScrollIndicator={false}
         >
           <View
@@ -560,7 +545,6 @@ function MailDetail({ mail: initialMail, onBack, navigation }) {
               styles.detailLetterCard,
               {
                 minHeight: singleCardMinHeight,
-                marginBottom: 12,
               },
             ]}
           >
@@ -616,10 +600,7 @@ function MailDetail({ mail: initialMail, onBack, navigation }) {
           </View>
         </ScrollView>
 
-        <View
-          style={styles.bottomCtaWrapper}
-          onLayout={(e) => setBottomCtaHeight(e.nativeEvent.layout.height)}
-        >
+        <View style={styles.bottomCtaWrapper}>
           {showWaitingForReply ? (
             <Text style={styles.bottomWaitingText}>
               상대방의 답장을 기다리고 있어요

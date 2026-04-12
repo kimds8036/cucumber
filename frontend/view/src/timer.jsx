@@ -240,88 +240,88 @@ function TimerLiveScrollInner({
 
   return (
     <>
-      <View style={styles.dateBar}>
-        <View style={styles.dateBarLeft}>
-          <TouchableOpacity
-            onPress={goPrevDay}
-            hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
-            style={{ padding: 4 }}
-          >
-            <Ionicons
-              name="chevron-back"
-              size={22}
-              color={colors.textPrimary}
-            />
+      <View style={styles.timerCard}>
+        <View style={styles.dateBar}>
+          <View style={styles.dateBarLeft}>
+            <TouchableOpacity
+              onPress={goPrevDay}
+              hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+              style={{ padding: 4 }}
+            >
+              <Ionicons
+                name="chevron-back"
+                size={22}
+                color={colors.textPrimary}
+              />
+            </TouchableOpacity>
+            <TouchableOpacity
+              onPress={() => setShowCalendar(true)}
+              style={{ minWidth: normalize(100) }}
+            >
+              <Text style={styles.dateBarText}>
+                {selectedDayKey
+                  ? selectedDayKey.replace(/-/g, '.')
+                  : '--.--.--'}
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              onPress={goNextDay}
+              hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+              style={{ padding: 4 }}
+            >
+              <Ionicons
+                name="chevron-forward"
+                size={22}
+                color={colors.textPrimary}
+              />
+            </TouchableOpacity>
+          </View>
+          <TouchableOpacity style={styles.saveBtn} onPress={handleSaveAsImage}>
+            <Feather name="download" size={20} color={colors.textPrimary} />
           </TouchableOpacity>
+
           <TouchableOpacity
-            onPress={() => setShowCalendar(true)}
-            style={{ minWidth: normalize(100) }}
+            onPress={handleDevReset}
+            style={{
+              marginLeft: 8,
+              padding: 6,
+              backgroundColor: '#FFE0E0',
+              borderRadius: 8,
+            }}
           >
-            <Text style={styles.dateBarText}>
-              {selectedDayKey
-                ? selectedDayKey.replace(/-/g, '.')
-                : '--.--.--'}
+            <Text
+              style={{ fontSize: 11, color: '#CC3333', fontWeight: '700' }}
+            >
+              DEV초기화
             </Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            onPress={goNextDay}
-            hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
-            style={{ padding: 4 }}
-          >
-            <Ionicons
-              name="chevron-forward"
-              size={22}
-              color={colors.textPrimary}
-            />
           </TouchableOpacity>
         </View>
-        <TouchableOpacity style={styles.saveBtn} onPress={handleSaveAsImage}>
-          <Feather name="download" size={20} color={colors.textPrimary} />
-        </TouchableOpacity>
 
-        <TouchableOpacity
-          onPress={handleDevReset}
-          style={{
-            marginLeft: 8,
-            padding: 6,
-            backgroundColor: '#FFE0E0',
-            borderRadius: 8,
-          }}
-        >
-          <Text
-            style={{ fontSize: 11, color: '#CC3333', fontWeight: '700' }}
-          >
-            DEV초기화
-          </Text>
-        </TouchableOpacity>
-      </View>
-
-      <View style={styles.timerBlock}>
-        <Text style={styles.timerTime}>{formatHMS(displayTotalMs)}</Text>
-        {isViewingToday && (
-          <TouchableOpacity
-            style={[styles.timerBtn, isRunning && styles.timerBtnPause]}
-            onPress={toggleTimer}
-            activeOpacity={0.8}
-          >
-            <Ionicons
-              name={isRunning ? 'pause' : 'play'}
-              size={normalize(20)}
-              color={isRunning ? colors.textPrimary : colors.textWhite}
-            />
-            <Text
-              style={[
-                styles.timerBtnText,
-                isRunning && styles.timerBtnTextPause,
-              ]}
+        <View style={styles.timerBlock}>
+          <Text style={styles.timerTime}>{formatHMS(displayTotalMs)}</Text>
+          {isViewingToday && (
+            <TouchableOpacity
+              style={[styles.timerBtn, isRunning && styles.timerBtnPause]}
+              onPress={toggleTimer}
+              activeOpacity={0.8}
             >
-              {isRunning ? '일시정지' : '시작'}
-            </Text>
-          </TouchableOpacity>
-        )}
+              <Ionicons
+                name={isRunning ? 'pause' : 'play'}
+                size={normalize(20)}
+                color={isRunning ? colors.textPrimary : colors.textWhite}
+              />
+              <Text
+                style={[
+                  styles.timerBtnText,
+                  isRunning && styles.timerBtnTextPause,
+                ]}
+              >
+                {isRunning ? '일시정지' : '시작'}
+              </Text>
+            </TouchableOpacity>
+          )}
+        </View>
       </View>
-
-      <View style={styles.divider} />
 
       <View style={styles.todoTimetableRow}>
         <View style={styles.todoColumn}>
@@ -335,7 +335,7 @@ function TimerLiveScrollInner({
                 <Ionicons
                   name="add-circle-outline"
                   size={18}
-                  color={colors.primary}
+                  color={colors.primaryDark}
                 />
                 <Text style={styles.todoAddBtnText}>과목 추가</Text>
               </TouchableOpacity>

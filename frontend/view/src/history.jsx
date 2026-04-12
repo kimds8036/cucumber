@@ -131,7 +131,7 @@ export default function MailHistoryScreen({ navigation, route }) {
   }, [fetchHistory]);
 
   return (
-    <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
+    <SafeAreaView style={styles.safe} edges={['top']}>
       <SubHeader title="우편 내역" onBack={() => navigation.goBack()} />
 
       <ScrollView
@@ -159,7 +159,8 @@ export default function MailHistoryScreen({ navigation, route }) {
         )}
         {historyItems.map((item) => {
           const r = normalize(12);
-          const accentW = normalize(6);
+          // 카드 모서리 반경과 동일하게 두어 막대 외곽 호가 상자와 맞음 (얇으면 RN에서 호가 잘림)
+          const accentW = r;
           const isOther = item.direction === 'other';
           return (
             <View key={item.id} style={styles.historyRow}>
@@ -170,8 +171,6 @@ export default function MailHistoryScreen({ navigation, route }) {
                     {
                       flexDirection: 'row',
                       alignItems: 'stretch',
-                      paddingHorizontal: 0,
-                      paddingVertical: normalize(12),
                     },
                   ]}
                 >
@@ -179,7 +178,8 @@ export default function MailHistoryScreen({ navigation, route }) {
                   <View
                     style={{
                       width: accentW,
-                      backgroundColor: colors.primary,
+                      alignSelf: 'stretch',
+                      backgroundColor: colors.textLight20,
                       borderTopLeftRadius: r,
                       borderBottomLeftRadius: r,
                     }}
@@ -191,8 +191,10 @@ export default function MailHistoryScreen({ navigation, route }) {
                     {
                       flex: 1,
                       minWidth: 0,
-                      paddingLeft: normalize(14),
-                      paddingRight: normalize(14),
+                      paddingTop: normalize(12),
+                      paddingBottom: normalize(12),
+                      paddingLeft: isOther ? normalize(10) : normalize(14),
+                      paddingRight: isOther ? normalize(14) : normalize(10),
                     },
                   ]}
                 >
@@ -207,7 +209,8 @@ export default function MailHistoryScreen({ navigation, route }) {
                   <View
                     style={{
                       width: accentW,
-                      backgroundColor: colors.textSecondary,
+                      alignSelf: 'stretch',
+                      backgroundColor: colors.primaryLight50,
                       borderTopRightRadius: r,
                       borderBottomRightRadius: r,
                     }}

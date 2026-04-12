@@ -56,7 +56,6 @@ export const createTimerStyles = (width, normalize) => {
     friendStoryScroll: {
       flexDirection: 'row',
       alignItems: 'flex-start',
-      paddingBottom: normalize(8),
       paddingRight: normalize(16),
     },
     friendStoryAddCircleWrap: {
@@ -113,11 +112,20 @@ export const createTimerStyles = (width, normalize) => {
       maxWidth: normalize(56),
     },
 
-    // 타이머 블록 (시·분·초)
+    // 타이머 상자 — 학교탭 급식 `mealSectionCard`와 동일 톤(배경·radius·shadow.md)
+    timerCard: {
+      backgroundColor: colors.background,
+      borderRadius: normalize(16),
+      paddingHorizontal: normalize(10),
+      paddingVertical: normalize(16),
+      marginBottom: normalize(10),
+      ...shadow.md,
+    },
+    // 타이머 블록 (시·분·초) — 카드 안 정렬
     timerBlock: {
       alignItems: 'center',
-      paddingVertical: normalize(20),
-      paddingHorizontal: normalize(16),
+      paddingVertical: normalize(10),
+      paddingHorizontal: normalize(6),
     },
     timerTime: {
       fontSize: normalize(fontSizes.heading + 15),
@@ -203,7 +211,7 @@ export const createTimerStyles = (width, normalize) => {
     todoAddBtnText: {
       fontSize: normalize(fontSizes.lg),
       fontFamily: fonts.regular,
-      color: colors.primary,
+      color: colors.primaryDark,
     },
     todoList: {
       maxHeight: normalize(400),

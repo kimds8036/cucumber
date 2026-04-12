@@ -1,4 +1,4 @@
-import { StyleSheet } from 'react-native';
+import { StyleSheet, Platform } from 'react-native';
 import { colors, fonts, fontSizes } from './colors';
 import { shadow } from './tokens';
 export const getNormalize = (width) => {
@@ -7,13 +7,17 @@ export const getNormalize = (width) => {
 };
 
 export const createSchoolBoardStyles = (width, normalize) => {
+  const metaLineHeight = normalize(18);
+  const metaTextAndroid =
+    Platform.OS === 'android' ? { includeFontPadding: false } : {};
+
   return StyleSheet.create({
     container: {
       flex: 1,
       backgroundColor: colors.background,
     },
 
-    // 게시글 목록
+    // 게시글 목록 — BoardPostCard + board.style.js 와 동일
     postList: {
       flex: 1,
       paddingHorizontal: width * 0.04,
@@ -21,24 +25,18 @@ export const createSchoolBoardStyles = (width, normalize) => {
     },
     postItem: {
       backgroundColor: colors.background,
-      borderRadius: normalize(20),
-      padding: normalize(16),
+      borderRadius: normalize(18),
+      padding: normalize(14),
       marginBottom: normalize(12),
       ...shadow.md,
     },
 
-    // 게시글 헤더 (좌: 익명•시간, 우: 위치)
+    // 게시글 헤더 (좌: 작성자•시간[·위치], 우: 거리 배지 등)
     postHeader: {
       flexDirection: 'row',
       justifyContent: 'space-between',
       alignItems: 'center',
-      marginBottom: normalize(12),
-    },
-    postHeaderLeft: {
-      flexDirection: 'row',
-      alignItems: 'baseline',
-      flex: 1,
-      minWidth: 0,
+      marginBottom: normalize(5),
     },
     postAuthorRow: {
       flexDirection: 'row',
@@ -50,36 +48,43 @@ export const createSchoolBoardStyles = (width, normalize) => {
       flexDirection: 'row',
       alignItems: 'center',
     },
+    postAuthorVerified: {
+      fontSize: normalize(fontSizes.lg),
+      fontFamily: fonts.bold,
+      color: colors.alert,
+      lineHeight: metaLineHeight,
+      textAlignVertical: 'center',
+      ...metaTextAndroid,
+    },
+    postTimeRow: {
+      flexDirection: 'row',
+      alignItems: 'baseline',
+      gap: normalize(4),
+    },
     postAuthor: {
       fontSize: normalize(fontSizes.lg),
       fontFamily: fonts.regular,
       color: colors.textSecondary,
-    },
-    postAuthorHighlighted: {
-      fontFamily: fonts.bold,
-      color: colors.alert,
-    },
-    postAuthorVerified: {
-      fontFamily: fonts.bold,
-      color: colors.alert,
-    },
-    postTimeRow: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: normalize(4),
-    },
-    postTimeRowShrink: {
-      flexShrink: 1,
+      lineHeight: metaLineHeight,
+      textAlignVertical: 'center',
+      ...metaTextAndroid,
     },
     postDot: {
-      fontSize: normalize(fontSizes.xl),
+      fontSize: normalize(fontSizes.lg),
+      fontFamily: fonts.regular,
       color: colors.textSecondary,
+      lineHeight: metaLineHeight,
+      textAlignVertical: 'center',
       marginHorizontal: normalize(6),
+      ...metaTextAndroid,
     },
     postTime: {
       fontSize: normalize(fontSizes.lg),
       fontFamily: fonts.regular,
       color: colors.textSecondary,
+      lineHeight: metaLineHeight,
+      textAlignVertical: 'center',
+      ...metaTextAndroid,
     },
     postLocation: {
       flexDirection: 'row',
@@ -94,36 +99,12 @@ export const createSchoolBoardStyles = (width, normalize) => {
       fontFamily: fonts.regular,
       color: colors.textSecondary,
     },
-    postLocationTextShrink: {
-      flexShrink: 1,
-      minWidth: 0,
-    },
     postLocationWrap: {
       flexShrink: 1,
     },
     postLocationInlineText: {
       flexShrink: 1,
       minWidth: 0,
-    },
-    postHeaderRight: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      marginLeft: normalize(8),
-      flexShrink: 0,
-    },
-    postDistanceBadge: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: normalize(1),
-      backgroundColor: colors.primaryLight30,
-      borderRadius: normalize(10),
-      paddingHorizontal: normalize(7),
-      paddingVertical: normalize(2),
-    },
-    postDistanceText: {
-      fontSize: normalize(11),
-      fontFamily: fonts.regular,
-      color: colors.primaryDark,
     },
     distanceBadgeWrap: {
       flexDirection: 'row',
@@ -135,7 +116,7 @@ export const createSchoolBoardStyles = (width, normalize) => {
       flexDirection: 'row',
       alignItems: 'center',
       gap: normalize(1),
-      backgroundColor: colors.primaryLight30,
+      backgroundColor: colors.primaryLight20,
       borderRadius: normalize(10),
       paddingHorizontal: normalize(7),
       paddingVertical: normalize(2),
@@ -143,7 +124,6 @@ export const createSchoolBoardStyles = (width, normalize) => {
     distanceBadgeTextRow: {
       flexDirection: 'row',
       alignItems: 'baseline',
-      gap: normalize(1),
     },
     distanceBadgeNumber: {
       fontSize: normalize(11),
@@ -157,94 +137,71 @@ export const createSchoolBoardStyles = (width, normalize) => {
     },
 
     // 게시글 내용
-    postBody: {
+    postContent: {
+      fontSize: normalize(fontSizes.xl),
+      fontFamily: fonts.regular,
+      color: colors.textPrimary,
+      lineHeight: normalize(20),
+      marginBottom: normalize(7),
+    },
+    postContentCompact: {
+      marginBottom: normalize(5),
+    },
+    postTagsWrap: {
       flexDirection: 'row',
-      alignItems: 'flex-start',
+      flexWrap: 'nowrap',
+      gap: normalize(6),
+      marginBottom: normalize(5),
+      alignItems: 'center',
+      overflow: 'hidden',
+    },
+    postTagChip: {
+      flexShrink: 0,
+    },
+    postTagText: {
+      fontSize: normalize(fontSizes.md),
+      fontFamily: fonts.regular,
+      color: colors.primaryDark,
+      backgroundColor: colors.primaryLight10,
+      borderRadius: normalize(10),
+      paddingHorizontal: normalize(5),
+      paddingVertical: normalize(1),
+    },
+    postTagMeasureHidden: {
+      position: 'absolute',
+      top: -9999,
+      left: -9999,
+      opacity: 0,
+    },
+    postTagMoreChip: {
+      backgroundColor: colors.primaryLight10,
+      paddingHorizontal: normalize(1),
+      paddingVertical: normalize(1),
+      borderRadius: normalize(10),
     },
     postBodyRow: {
       flexDirection: 'row',
       alignItems: 'flex-start',
-    },
-    postContentArea: {
-      flex: 1,
-      minWidth: 0,
-      flexDirection: 'column',
     },
     postBodyColumn: {
       flex: 1,
       minWidth: 0,
       flexDirection: 'column',
     },
-    postContentAreaWithThumb: {
-      marginRight: normalize(10),
-    },
     postBodyColumnWithThumb: {
+      minHeight: normalize(70),
+      justifyContent: 'space-between',
       marginRight: normalize(10),
-    },
-    postContent: {
-      fontSize: normalize(fontSizes.xl),
-      fontFamily: fonts.regular,
-      color: colors.textPrimary,
-      lineHeight: normalize(20),
-      marginBottom: normalize(10),
-    },
-    postContentCompact: {
-      marginBottom: normalize(7),
-    },
-    postTagsRow: {
-      flexDirection: 'row',
-      flexWrap: 'wrap',
-      gap: normalize(6),
-      marginBottom: normalize(7),
-    },
-    postTagsWrap: {
-      flexDirection: 'row',
-      flexWrap: 'wrap',
-      gap: normalize(6),
-      marginBottom: normalize(7),
-    },
-    postTagItem: {
-      backgroundColor: colors.primaryLight30,
-      borderRadius: normalize(12),
-      paddingHorizontal: normalize(8),
-      paddingVertical: normalize(2),
-    },
-    postTagChip: {
-      backgroundColor: colors.primaryLight30,
-      borderRadius: normalize(12),
-      paddingHorizontal: normalize(8),
-      paddingVertical: normalize(2),
-    },
-    postTagMeasureHidden: {
-      opacity: 0,
-      position: 'absolute',
-    },
-    postTagMoreChip: {
-      minWidth: normalize(36),
-      alignItems: 'center',
-    },
-    postTagText: {
-      fontSize: normalize(11),
-      fontFamily: fonts.regular,
-      color: colors.primaryDark,
-    },
-    postFooterLeft: {
-      justifyContent: 'flex-start',
     },
     postFooterStart: {
       justifyContent: 'flex-start',
     },
-    postThumbnail: {
-      width: normalize(65),
-      height: normalize(65),
-      borderRadius: normalize(8),
-      backgroundColor: colors.textLight10 ?? '#EEE',
-    },
     postThumb: {
-      width: normalize(65),
-      height: normalize(65),
+      width: normalize(70),
+      height: normalize(70),
       borderRadius: normalize(8),
-      backgroundColor: colors.textLight10 ?? '#EEE',
+      backgroundColor: colors.textLight10,
+      alignSelf: 'flex-start',
     },
 
     // 내용과 푸터 사이 경계선
