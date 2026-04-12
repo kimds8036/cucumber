@@ -111,19 +111,22 @@ export const createOtherSchoolStyles = (normalize) => {
     },
     mealCard: {
       alignSelf: 'stretch',
+      flex: 1,
       flexDirection: 'column',
-      justifyContent: 'space-between',
+      justifyContent: 'flex-start',
       backgroundColor: colors.primaryLight20,
       borderRadius: normalize(16),
       padding: normalize(12),
     },
     mealSlotsRow: {
       flexDirection: 'row',
+      alignItems: 'stretch',
       justifyContent: 'space-between',
       marginBottom: normalize(8),
     },
     mealSlot: {
       flex: 1,
+      flexDirection: 'column',
       paddingHorizontal: normalize(6),
     },
     mealSlotLast: {},

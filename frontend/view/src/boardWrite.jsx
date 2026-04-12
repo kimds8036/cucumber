@@ -21,8 +21,11 @@ import SubHeader from '../frame/subHeader';
 import { createWriteStyles, getNormalize } from '../../styles/board.style';
 import { api } from '../../utils/api';
 import { colors, fonts, fontSizes } from '../../styles/colors';
+import { useLocationContext } from '../../context/LocationContext';
+import * as Location from 'expo-location';
 
 const BoardWrite = ({ navigation, route }) => {
+  const { coords, refreshLocation } = useLocationContext();
   const { width } = useWindowDimensions();
   const normalize = useMemo(() => getNormalize(width), [width]);
   const styles = useMemo(
@@ -36,7 +39,7 @@ const BoardWrite = ({ navigation, route }) => {
   const [hashtagSuggestions, setHashtagSuggestions] = useState([]); // 추천 태그 목록
   const [loadingSuggestions, setLoadingSuggestions] = useState(false);
   const [postImages, setPostImages] = useState([]);
-  const [locationEnabled, setLocationEnabled] = useState(false);
+  const [locationEnabled, setLocationEnabled] = useState(true);
   const [activePanel, setActivePanel] = useState(null); // 'tag' | null
   const [tagPanelVisible, setTagPanelVisible] = useState(false);
   const [tagPanelHeight, setTagPanelHeight] = useState(0);
@@ -214,6 +217,28 @@ const BoardWrite = ({ navigation, route }) => {
           name: `image_${index}.jpg`,
         });
       });
+      if (locationEnabled) {
+        let lat = coords?.latitude;
+        let lng = coords?.longitude;
+        if (lat == null || lng == null) {
+          try {
+            const pos = await Location.getCurrentPositionAsync({
+              accuracy: Location.Accuracy.Balanced,
+            });
+            lat = pos.coords.latitude;
+            lng = pos.coords.longitude;
+            await refreshLocation();
+          } catch {
+            lat = null;
+            lng = null;
+          }
+        }
+        if (lat != null && lng != null) {
+          formData.append('includeLocation', 'true');
+          formData.append('latitude', String(lat));
+          formData.append('longitude', String(lng));
+        }
+      }
       await api.post('/api/posts', formData, {
         headers: { 'Content-Type': 'multipart/form-data' },
       });

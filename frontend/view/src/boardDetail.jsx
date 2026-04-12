@@ -24,8 +24,9 @@ import { usePlatformInsets } from '../../hooks/usePlatformInsets';
 import { colors, fonts } from '../../styles/colors';
 import { createDetailStyles, getNormalize } from '../../styles/board.style';
 import { api } from '../../utils/api';
-import { emitBoardPostLike, emitBoardPostScrap } from '../../utils/listSyncEvents';
+import { normalizeTagsFromApi } from '../../utils/normalizePostTags';
 import { useNotification } from '../../context/NotificationContext';
+import { useLocationContext } from '../../context/LocationContext';
 import ImageViewer from './ImageViewer';
 
 /** 서버 created_at(UTC)을 "n분 전" 형식으로 변환. 화면에서는 기기 로컬 시간 기준으로 계산 */
@@ -87,41 +88,49 @@ function CommentBody({ content, styles }) {
 }
 
 export default function BoardDetail({ navigation, route }) {
+  const { coords } = useLocationContext();
   const { width } = useWindowDimensions();
   const normalize = useMemo(() => getNormalize(width), [width]);
   const styles = useMemo(() => createDetailStyles(width, normalize), [width, normalize]);
 
-  const initialPost = route?.params?.post ?? {
-    id: 1,
-    author: '작성자',
-    time: '2시간 전',
-    location: '24m',
-    content:
-      '중간고사 D-72 같이 공부하실 분? 시험기간인데 혼자 공부하니까 집중이 안 돼서요. 온라인으로라도 같이 공부하실 분 있나요? 디스코드 공부방 만들까 생각 중임',
-    likes: 213,
-    comments: 89,
-    liked: false,
-    scraps: 0,
-  };
   const routePost = route?.params?.post;
   const routePostId = route?.params?.postId;
+
+  const emptyPostShell = {
+    id: null,
+    author: '익명',
+    time: '',
+    location: '',
+    content: '',
+    likes: 0,
+    comments: 0,
+    liked: false,
+    scraps: 0,
+    images: [],
+    tags: [],
+    distanceKm: null,
+  };
 
   const [post, setPost] = useState(() => {
     const fromParams = routePost != null;
     const isMy = route?.params?.isMyPost === true;
-    const base = fromParams ? { ...initialPost, ...routePost } : initialPost;
+    const base = fromParams ? { ...emptyPostShell, ...routePost } : emptyPostShell;
     return {
       ...base,
-      id: routePostId ?? base.id,
-      author: fromParams ? (isMy ? '작성자' : '익명') : initialPost.author,
+      id: routePostId ?? routePost?.id ?? base.id ?? null,
+      author: fromParams ? (isMy ? '작성자' : '익명') : '익명',
       images: Array.isArray(base.images) ? base.images : [],
-      tags: Array.isArray(base.tags) ? base.tags : [],
+      tags: normalizeTagsFromApi(base.tags),
+      distanceKm:
+        typeof base.distanceKm === 'number' && !Number.isNaN(base.distanceKm)
+          ? base.distanceKm
+          : null,
     };
   });
 
   const isMyPost = route?.params?.isMyPost ?? false;
   const [isMyPostFromApi, setIsMyPostFromApi] = useState(isMyPost);
-  const [postLiked, setPostLiked] = useState(initialPost.liked ?? false);
+  const [postLiked, setPostLiked] = useState(Boolean(routePost?.liked));
   const [postScrapped, setPostScrapped] = useState(Boolean(post?.isScrapped));
   const [commentLikedState, setCommentLikedState] = useState({});
   const [bottomComment, setBottomComment] = useState('');
@@ -151,13 +160,18 @@ export default function BoardDetail({ navigation, route }) {
 
   // 게시글/댓글 로드
   useEffect(() => {
-    const postId = routePostId ?? post?.id ?? initialPost?.id;
-    if (!postId) return;
+    const postId = routePostId ?? routePost?.id;
+    if (postId == null || postId === '') return;
 
     const fetchPostAndComments = async () => {
       try {
+        const detailParams = {};
+        if (coords) {
+          detailParams.viewerLat = coords.latitude;
+          detailParams.viewerLng = coords.longitude;
+        }
         // 게시글 상세
-        const postRes = await api.get(`/api/posts/${postId}`);
+        const postRes = await api.get(`/api/posts/${postId}`, { params: detailParams });
         const data = postRes.data?.data;
         if (data) {
           const imageUrls = Array.isArray(data.images)
@@ -173,7 +187,11 @@ export default function BoardDetail({ navigation, route }) {
             comments: data.comment_count,
             scraps: data.scrapCount ?? 0,
             images: imageUrls,
-            tags: Array.isArray(data.tags) ? data.tags : [],
+            tags: normalizeTagsFromApi(data.tags),
+            distanceKm:
+              typeof data.distanceKm === 'number' && !Number.isNaN(data.distanceKm)
+                ? data.distanceKm
+                : null,
           });
           setPostLiked(Boolean(data.isLiked));
           setPostScrapped(Boolean(data.isScrapped));
@@ -245,7 +263,13 @@ export default function BoardDetail({ navigation, route }) {
     };
 
     fetchPostAndComments();
-  }, [initialPost?.id]);
+  }, [
+    routePostId,
+    routePost?.id,
+    coords?.latitude,
+    coords?.longitude,
+    refreshHasUnread,
+  ]);
 
   const startNoteToUser = async (targetUserId, source) => {
     if (!targetUserId || !post?.id) {
@@ -922,26 +946,40 @@ export default function BoardDetail({ navigation, route }) {
                       }}
                     >
                       <MaterialIcons name="location-on" size={normalize(10)} color={colors.primaryDark} />
-                      <View style={{ flexDirection: 'row', alignItems: 'baseline' }}>
+                      {typeof post.distanceKm === 'number' && !Number.isNaN(post.distanceKm) ? (
+                        <View style={{ flexDirection: 'row', alignItems: 'baseline' }}>
+                          <Text
+                            style={{
+                              fontSize: normalize(11),
+                              fontFamily: fonts.regular,
+                              color: colors.primaryDark,
+                            }}
+                          >
+                            {post.distanceKm < 1 ? '1' : String(Math.round(post.distanceKm))}
+                          </Text>
+                          <Text
+                            style={{
+                              fontSize: normalize(10),
+                              fontFamily: fonts.regular,
+                              color: colors.primaryDark,
+                            }}
+                          >
+                            {post.distanceKm < 1 ? 'km 미만' : 'km'}
+                          </Text>
+                        </View>
+                      ) : (
                         <Text
                           style={{
-                            fontSize: normalize(11),
-                            fontFamily: fonts.regular,
-                            color: colors.primaryDark,
-                          }}
-                        >
-                          10
-                        </Text>
-                        <Text
-                          style={{
+                            marginLeft: normalize(2),
                             fontSize: normalize(10),
                             fontFamily: fonts.regular,
                             color: colors.primaryDark,
                           }}
+                          numberOfLines={1}
                         >
-                          km
+                          위치 없음
                         </Text>
-                      </View>
+                      )}
                     </View>
                   </View>
                 </View>

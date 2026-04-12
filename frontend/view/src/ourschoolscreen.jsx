@@ -6,7 +6,7 @@ import FontAwesome6 from '@expo/vector-icons/FontAwesome6';
 import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
 import StudyGrassMap from '../../components/studygrassmap';
 import { api } from '../../utils/api';
-import { colors } from '../../styles/colors';
+import { colors, fontSizes } from '../../styles/colors';
 import { getNormalize } from '../../styles/frame.style';
 import { createOurSchoolStyles } from '../../styles/school.style';
 
@@ -268,10 +268,43 @@ const OurSchoolScreen = ({ navigation }) => {
               {mealLoading ? (
                 [0, 1, 2].map((idx) => (
                   <View key={`meal-skeleton-${idx}`} style={[styles.mealSlot, idx === 2 && styles.mealSlotLast]}>
-                    <View style={styles.mealCard}>
-                      <View style={{ height: normalize(14), width: '45%', backgroundColor: '#ECECEC', borderRadius: 6, marginBottom: 8 }} />
-                      <View style={{ height: normalize(12), width: '90%', backgroundColor: '#F0F0F0', borderRadius: 6, marginBottom: 6 }} />
-                      <View style={{ height: normalize(12), width: '80%', backgroundColor: '#F0F0F0', borderRadius: 6 }} />
+                    <View style={[styles.mealCard, { minHeight: normalize(96) }]}>
+                      <View style={styles.mealSlotHeader}>
+                        <View style={styles.mealSlotTitleRow}>
+                          <View
+                            style={{
+                              height: normalize(fontSizes.xl),
+                              width: '58%',
+                              backgroundColor: '#ECECEC',
+                              borderRadius: 6,
+                            }}
+                          />
+                        </View>
+                        <View style={styles.mealSlotBadge}>
+                          <View
+                            style={{
+                              height: normalize(fontSizes.lg),
+                              width: normalize(32),
+                              backgroundColor: '#E8E8E8',
+                              borderRadius: 6,
+                            }}
+                          />
+                        </View>
+                      </View>
+                      <View style={styles.mealSlotMenus}>
+                        {[0, 1, 2, 3].map((line) => (
+                          <View
+                            key={`meal-skel-line-${idx}-${line}`}
+                            style={{
+                              height: normalize(fontSizes.lg),
+                              marginBottom: normalize(2),
+                              width: line === 3 ? '62%' : '100%',
+                              backgroundColor: '#F0F0F0',
+                              borderRadius: 4,
+                            }}
+                          />
+                        ))}
+                      </View>
                     </View>
                   </View>
                 ))

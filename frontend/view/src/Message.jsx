@@ -8,12 +8,13 @@ import {
   Animated,
   Alert,
   PanResponder,
+  Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import MainHeader from '../frame/mainHeader';
 import MainFooter from '../frame/mainFooter';
 import { createMessageStyles, getNormalize } from '../../styles/message.style';
-import { colors, fonts } from '../../styles/colors';
+import { colors, fonts, fontSizes } from '../../styles/colors';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import Feather from '@expo/vector-icons/Feather';
 import MessageTabIcon from '../../assets/Group 166.svg';
@@ -73,6 +74,67 @@ function extractMailListFromResponse(res) {
 // const getIconColor = (item) => item.profileColor;
 const ICON_COLORS = [colors.green, colors.yellow, colors.red, colors.blue]; // F7FFF3, FFFCD7, FFF3F3, E5F0FF
 const getIconColorByIndex = (index) => ICON_COLORS[index % ICON_COLORS.length];
+
+/** Text 줄박스는 fontSize보다 크므로(특히 Android includeFontPadding) 실제 목록과 맞는 줄 높이로 맞춤 */
+function messageListSkeletonLineHeight(normalize, fontSizeToken) {
+  const base = normalize(Math.ceil(fontSizeToken * 1.42));
+  const androidExtra = Platform.OS === 'android' ? normalize(3) : 0;
+  return base + androidExtra;
+}
+
+/** 쪽지 / 개인 우편 목록 로딩용 — 실제 행: 배지 없음 기준, 줄 높이는 Text에 근접 */
+function MessageListSkeleton({ styles, normalize, rowCount = 9 }) {
+  const nameLineH = messageListSkeletonLineHeight(normalize, fontSizes.xl);
+  const bodyLineH = messageListSkeletonLineHeight(normalize, fontSizes.lg);
+  const timeLineH = bodyLineH;
+  return (
+    <>
+      {Array.from({ length: rowCount }, (_, i) => (
+        <View key={`msg-skel-${i}`} style={styles.listItem}>
+          <View style={styles.listItemLeft}>
+            <View
+              style={[
+                styles.profileCircle,
+                { backgroundColor: '#E8E8E8' },
+              ]}
+            />
+            <View style={[styles.listItemBody, { justifyContent: 'center' }]}>
+              <View
+                style={{
+                  height: nameLineH,
+                  width: i % 3 === 0 ? '42%' : '55%',
+                  backgroundColor: '#ECECEC',
+                  borderRadius: 6,
+                  marginBottom: normalize(2),
+                }}
+              />
+              <View
+                style={{
+                  height: bodyLineH,
+                  width: i % 2 === 0 ? '78%' : '65%',
+                  backgroundColor: '#F0F0F0',
+                  borderRadius: 6,
+                }}
+              />
+            </View>
+          </View>
+          <View style={styles.listItemRight}>
+            <View
+              style={{
+                height: timeLineH,
+                alignSelf: 'flex-end',
+                width: normalize(68),
+                marginBottom: normalize(4),
+                backgroundColor: '#F0F0F0',
+                borderRadius: 6,
+              }}
+            />
+          </View>
+        </View>
+      ))}
+    </>
+  );
+}
 
 const SwipeableRow = ({ children, onDelete }) => {
   const { width: windowWidth } = useWindowDimensions();
@@ -422,11 +484,7 @@ export function MessageContent({ navigation }) {
           <>
             <ScrollView style={styles.list} showsVerticalScrollIndicator={false}>
               {loadingNote && noteRooms.length === 0 ? (
-                <View style={{ paddingVertical: normalize(40), alignItems: 'center' }}>
-                  <Text style={{ fontFamily: fonts.regular, color: colors.textSecondary }}>
-                    쪽지를 불러오는 중입니다...
-                  </Text>
-                </View>
+                <MessageListSkeleton styles={styles} normalize={normalize} rowCount={9} />
               ) : noteRooms.length === 0 ? (
                 <View style={{ paddingVertical: normalize(40), alignItems: 'center' }}>
                   <Text style={{ fontFamily: fonts.regular, color: colors.textSecondary }}>
@@ -552,11 +610,7 @@ export function MessageContent({ navigation }) {
           <>
             <ScrollView style={styles.list} showsVerticalScrollIndicator={false}>
               {loadingMail && mails.length === 0 ? (
-                <View style={{ paddingVertical: normalize(40), alignItems: 'center' }}>
-                  <Text style={{ fontFamily: fonts.regular, color: colors.textSecondary }}>
-                    우편함을 불러오는 중입니다...
-                  </Text>
-                </View>
+                <MessageListSkeleton styles={styles} normalize={normalize} rowCount={9} />
               ) : mails.length === 0 ? (
                 <View style={{ paddingVertical: normalize(40), alignItems: 'center' }}>
                   <Text style={{ fontFamily: fonts.regular, color: colors.textSecondary }}>
