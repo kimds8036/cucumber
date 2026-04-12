@@ -561,10 +561,7 @@ export default function BoardDetail({ navigation, route }) {
             }
           : prev
       );
-      const onLikeChange = route?.params?.onLikeChange;
-      if (onLikeChange) {
-        onLikeChange(post.id, Boolean(isLiked), post.likes + (isLiked ? 1 : -1));
-      }
+      emitBoardPostLike(post.id, Boolean(isLiked), post.likes + (isLiked ? 1 : -1));
     } catch (error) {
       console.error('게시글 좋아요 오류:', error);
       Alert.alert(
@@ -584,12 +581,9 @@ export default function BoardDetail({ navigation, route }) {
         const next = scrapped ? cur + 1 : Math.max(0, cur - 1);
         return prev ? { ...prev, scraps: next } : prev;
       });
-      const onScrapChange = route?.params?.onScrapChange;
-      if (onScrapChange) {
-        const cur = post?.scraps ?? 0;
-        const next = scrapped ? cur + 1 : Math.max(0, cur - 1);
-        onScrapChange(post.id, Boolean(scrapped), next);
-      }
+      const curScrap = post?.scraps ?? 0;
+      const nextScrap = scrapped ? curScrap + 1 : Math.max(0, curScrap - 1);
+      emitBoardPostScrap(post.id, Boolean(scrapped), nextScrap);
     } catch (error) {
       console.error('게시글 스크랩 오류:', error);
       Alert.alert('오류', '스크랩 처리 중 오류가 발생했습니다.');

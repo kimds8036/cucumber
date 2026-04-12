@@ -307,16 +307,6 @@ export function BoardAllContent({ navigation, posts }) {
         navigation.navigate('BoardDetail', {
           post: { ...post, author: post.author },
           isMyPost: post.isMyPost ?? false,
-          onLikeChange: (id, liked, likes) => {
-            setServerPosts((prev) =>
-              prev.map((p) => (p.id === id ? { ...p, liked, likes } : p))
-            );
-          },
-          onScrapChange: (id, scrapped, scrapCount) => {
-            setServerPosts((prev) =>
-              prev.map((p) => (p.id === id ? { ...p, scrapped, scrapCount } : p))
-            );
-          },
         })
       }
       onMenuPress={(p, ref) => openFloatingMenu(p, ref)}
