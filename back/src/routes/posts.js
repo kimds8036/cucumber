@@ -4,6 +4,7 @@ import { authenticate, optionalAuthenticate } from '../middleware/auth.js';
 import { createNotification } from '../utils/notifications.js';
 import { getNowForDB } from '../utils/dateUtils.js';
 import { cloudinary, upload } from '../config/cloudinary.js';
+import { haversineKm, sqlHaversineKmLessOrEqual } from '../utils/geo.js';
 
 const router = express.Router();
 
@@ -68,13 +69,15 @@ router.get('/tags/search', async (req, res) => {
 router.get('/', optionalAuthenticate, async (req, res) => {
   try {
     const userId = req.user?.userId ?? null;
-    const { 
-      boardType, 
-      schoolId, 
-      page = 1, 
-      limit = 20, 
-      search, 
-      sort = 'latest' 
+    const {
+      boardType,
+      schoolId,
+      page = 1,
+      limit = 20,
+      search,
+      sort = 'latest',
+      viewerLat,
+      viewerLng,
     } = req.query;
 
     const offset = (parseInt(page, 10) - 1) * parseInt(limit, 10);
@@ -82,6 +85,44 @@ router.get('/', optionalAuthenticate, async (req, res) => {
     const offsetNum = Math.max(0, offset);
     const conditions = [];
     const params = [];
+
+    const vLat = viewerLat != null && viewerLat !== '' ? parseFloat(viewerLat) : NaN;
+    const vLng = viewerLng != null && viewerLng !== '' ? parseFloat(viewerLng) : NaN;
+    const hasViewerCoords =
+      !Number.isNaN(vLat) &&
+      !Number.isNaN(vLng) &&
+      vLat >= -90 &&
+      vLat <= 90 &&
+      vLng >= -180 &&
+      vLng <= 180;
+
+    if (sort === 'nearby') {
+      if (!userId) {
+        return res.status(401).json({
+          success: false,
+          message: '근처 탭은 로그인 후 이용할 수 있습니다.',
+        });
+      }
+      if (!hasViewerCoords) {
+        return res.status(400).json({
+          success: false,
+          message: '근처 탭을 사용하려면 위치 좌표가 필요합니다.',
+        });
+      }
+      const [settingsRows] = await pool.execute(
+        'SELECT board_distance_km FROM user_settings WHERE user_id = ?',
+        [userId],
+      );
+      let maxKm = 10;
+      if (settingsRows.length > 0) {
+        const raw = settingsRows[0].board_distance_km;
+        const n = parseInt(raw, 10);
+        if (!Number.isNaN(n)) maxKm = Math.min(100, Math.max(1, n));
+      }
+      conditions.push('p.latitude IS NOT NULL', 'p.longitude IS NOT NULL');
+      conditions.push(sqlHaversineKmLessOrEqual('p'));
+      params.push(vLat, vLat, vLng, maxKm);
+    }
 
     // 게시판 타입 필터
     if (boardType) {
@@ -102,7 +143,10 @@ router.get('/', optionalAuthenticate, async (req, res) => {
       params.push(searchTerm);
     }
 
-    const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')} AND p.is_deleted = FALSE` : 'WHERE p.is_deleted = FALSE';
+    const whereClause =
+      conditions.length > 0
+        ? `WHERE ${conditions.join(' AND ')} AND p.is_deleted = FALSE`
+        : 'WHERE p.is_deleted = FALSE';
 
     const likeScrapUserId = userId ?? 0;
 
@@ -112,6 +156,8 @@ router.get('/', optionalAuthenticate, async (req, res) => {
       orderBy = 'p.like_count DESC, p.comment_count DESC, p.created_at DESC';
     } else if (sort === 'comments') {
       orderBy = 'p.comment_count DESC, p.created_at DESC';
+    } else if (sort === 'nearby') {
+      orderBy = 'p.created_at DESC';
     }
 
     // 게시글 조회 (삭제되지 않은 것만) — 로그인 시 내 좋아요/스크랩 여부
@@ -123,6 +169,8 @@ router.get('/', optionalAuthenticate, async (req, res) => {
         p.board_type, 
         p.school_id, 
         p.content, 
+        p.latitude,
+        p.longitude,
         p.like_count, 
         p.comment_count, 
         p.created_at,
@@ -161,21 +209,48 @@ router.get('/', optionalAuthenticate, async (req, res) => {
     const total = Number(countResult[0]?.total ?? 0);
 
     const postsForClient = posts.map((p) => {
-      const { user_id, is_liked, is_scrapped, scrap_count, tags: rawTags, ...rest } = p;
+      const {
+        user_id,
+        is_liked,
+        is_scrapped,
+        scrap_count,
+        tags: rawTags,
+        latitude: postLat,
+        longitude: postLng,
+        ...rest
+      } = p;
       let tags = [];
       if (Array.isArray(rawTags)) {
         tags = rawTags;
+      } else if (rawTags != null && typeof rawTags === 'object') {
+        tags = [rawTags];
       } else if (rawTags != null && typeof rawTags === 'string' && rawTags.startsWith('[')) {
         try {
           const parsed = JSON.parse(rawTags);
-          tags = Array.isArray(parsed) ? parsed : [];
+          if (Array.isArray(parsed)) {
+            tags = parsed;
+          } else if (parsed != null && typeof parsed === 'object') {
+            tags = [parsed];
+          }
         } catch {
           tags = [];
         }
       }
+      let distanceKm = null;
+      if (
+        hasViewerCoords &&
+        postLat != null &&
+        postLng != null &&
+        !Number.isNaN(Number(postLat)) &&
+        !Number.isNaN(Number(postLng))
+      ) {
+        distanceKm =
+          Math.round(haversineKm(vLat, vLng, Number(postLat), Number(postLng)) * 10) / 10;
+      }
       return {
         ...rest,
         tags,
+        distanceKm,
         is_author: !!userId && user_id === userId,
         author_user_id: user_id,
         isLiked: Boolean(Number(is_liked) > 0),
@@ -572,6 +647,18 @@ router.get('/:id', optionalAuthenticate, async (req, res) => {
   try {
     const { id } = req.params;
     const userId = req.user?.userId ?? null;
+    const { viewerLat, viewerLng } = req.query;
+    const vLat =
+      viewerLat != null && viewerLat !== '' ? parseFloat(viewerLat) : NaN;
+    const vLng =
+      viewerLng != null && viewerLng !== '' ? parseFloat(viewerLng) : NaN;
+    const hasViewerCoords =
+      !Number.isNaN(vLat) &&
+      !Number.isNaN(vLng) &&
+      vLat >= -90 &&
+      vLat <= 90 &&
+      vLng >= -180 &&
+      vLng <= 180;
 
     const [posts] = await pool.execute(
       `SELECT 
@@ -579,7 +666,9 @@ router.get('/:id', optionalAuthenticate, async (req, res) => {
         p.user_id, 
         p.board_type, 
         p.school_id, 
-        p.content, 
+        p.content,
+        p.latitude,
+        p.longitude,
         p.like_count, 
         p.comment_count, 
         p.created_at,
@@ -661,7 +750,22 @@ router.get('/:id', optionalAuthenticate, async (req, res) => {
 
     const isMine = !!userId && post.user_id === userId;
     const postAuthorId = post.user_id;
-    const { user_id, images: _rawImages, ...postSafe } = post;
+    const { user_id, images: _rawImages, latitude, longitude, ...postSafe } =
+      post;
+
+    let distanceKm = null;
+    if (
+      hasViewerCoords &&
+      latitude != null &&
+      longitude != null &&
+      !Number.isNaN(Number(latitude)) &&
+      !Number.isNaN(Number(longitude))
+    ) {
+      distanceKm =
+        Math.round(
+          haversineKm(vLat, vLng, Number(latitude), Number(longitude)) * 10,
+        ) / 10;
+    }
 
     console.log('[GET /api/posts/:id] 응답 데이터', {
       id: postSafe.id,
@@ -674,6 +778,7 @@ router.get('/:id', optionalAuthenticate, async (req, res) => {
       success: true,
       data: {
         ...postSafe,
+        distanceKm,
         isLiked,
         isScrapped,
         scrapCount,
@@ -742,14 +847,38 @@ router.post('/', authenticate, upload.array('images', 5), async (req, res) => {
       await connection.beginTransaction();
       const now = getNowForDB();
 
+      let postLat = null;
+      let postLng = null;
+      const includeLoc =
+        req.body.includeLocation === true ||
+        req.body.includeLocation === 'true' ||
+        req.body.includeLocation === '1';
+      if (includeLoc) {
+        const la = parseFloat(req.body.latitude);
+        const lo = parseFloat(req.body.longitude);
+        if (
+          !Number.isNaN(la) &&
+          !Number.isNaN(lo) &&
+          la >= -90 &&
+          la <= 90 &&
+          lo >= -180 &&
+          lo <= 180
+        ) {
+          postLat = la;
+          postLng = lo;
+        }
+      }
+
       const [result] = await connection.execute(
-        `INSERT INTO posts (user_id, board_type, school_id, content, created_at)
-         VALUES (?, ?, ?, ?, ?)`,
+        `INSERT INTO posts (user_id, board_type, school_id, content, latitude, longitude, created_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?)`,
         [
           userId,
           boardType,
           boardType === 'school' ? schoolId : null,
           content,
+          postLat,
+          postLng,
           now,
         ],
       );
@@ -769,7 +898,11 @@ router.post('/', authenticate, upload.array('images', 5), async (req, res) => {
         );
       }
 
-      if (boardType === 'national' && Array.isArray(tags) && tags.length > 0) {
+      if (
+        (boardType === 'national' || boardType === 'school') &&
+        Array.isArray(tags) &&
+        tags.length > 0
+      ) {
         for (let rawTag of tags) {
           if (rawTag == null) continue;
           let name = String(rawTag).trim();

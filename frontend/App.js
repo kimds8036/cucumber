@@ -34,6 +34,7 @@ import { useEffect } from 'react';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { KeyboardProvider } from './context/KeyboardContext';
 import { AuthProvider, useAuth } from './context/AuthContext';
+import { LocationProvider, LocationGate } from './context/LocationContext';
 import { SocketProvider } from './context/SocketContext';
 import { NotificationProvider } from './context/NotificationContext';
 import { FriendProvider } from './context/FriendContext';
@@ -103,7 +104,12 @@ function MainStack() {
 
 function RootNavigator() {
   const { isLoggedIn } = useAuth();
-  return isLoggedIn ? <MainStack /> : <AuthStack />;
+  if (!isLoggedIn) return <AuthStack />;
+  return (
+    <LocationGate>
+      <MainStack />
+    </LocationGate>
+  );
 }
 
 export default function App() {
@@ -124,6 +130,7 @@ export default function App() {
     <SafeAreaProvider>
       <KeyboardProvider>
         <AuthProvider>
+          <LocationProvider>
           <SocketProvider>
             <ToastProvider>
               <NotificationProvider>
@@ -136,6 +143,7 @@ export default function App() {
               </NotificationProvider>
             </ToastProvider>
           </SocketProvider>
+          </LocationProvider>
         </AuthProvider>
       </KeyboardProvider>
     </SafeAreaProvider>

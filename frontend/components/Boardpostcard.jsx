@@ -4,6 +4,7 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { colors } from '../styles/colors';
+import { normalizeTagsFromApi } from '../utils/normalizePostTags';
 
 /**
  * BoardPostCard
@@ -20,13 +21,25 @@ const BoardPostCard = ({ post, normalize, styles, onPress, onScrapPress }) => {
     typeof post.thumbnail === 'string' && post.thumbnail.trim().length > 0;
   const [containerWidth, setContainerWidth] = useState(0);
   const [tagWidths, setTagWidths] = useState([]);
-  const tags = Array.isArray(post.tags)
-    ? post.tags
-        .map((tag) =>
-          tag != null && typeof tag === 'object' ? String(tag.name ?? '').trim() : String(tag ?? '').trim(),
-        )
-        .filter(Boolean)
-    : [];
+  const [measureBypass, setMeasureBypass] = useState(false);
+
+  const tags = useMemo(() => {
+    const rawList = normalizeTagsFromApi(post.tags);
+    return rawList
+      .map((tag) =>
+        tag != null && typeof tag === 'object'
+          ? String(tag.name ?? '').trim()
+          : String(tag ?? '').trim(),
+      )
+      .filter(Boolean);
+  }, [post.tags]);
+
+  useEffect(() => {
+    setMeasureBypass(false);
+    if (tags.length === 0) return undefined;
+    const id = setTimeout(() => setMeasureBypass(true), 450);
+    return () => clearTimeout(id);
+  }, [post?.id, tags.length]);
   const TAG_GAP = normalize(6);
   const MORE_BADGE_WIDTH = normalize(36);
 
@@ -74,23 +87,52 @@ const BoardPostCard = ({ post, normalize, styles, onPress, onScrapPress }) => {
     };
   }, [allMeasured, containerWidth, tagWidths, tags.length, TAG_GAP, MORE_BADGE_WIDTH]);
 
-  const isMeasuring = tags.length > 0 && (!allMeasured || containerWidth <= 0);
+  const isMeasuring =
+    tags.length > 0 &&
+    !measureBypass &&
+    (!allMeasured || containerWidth <= 0);
 
-  // 거리 배지: 사용자 위치와 post의 위도·경도(post.latitude, post.longitude 등)로 Haversine 등으로 거리(m) 계산
-  // const distanceMeters = computeHaversineMeters(userLat, userLng, postLat, postLng);
-  // if (distanceMeters < 1000) → 숫자(11pt) + 'km 미만'(10pt)  /  else → km 정수(11pt) + 'km'(10pt)
-  const distanceMeters = null;
+  useEffect(() => {
+    if (!__DEV__) return;
+    const rawDesc = Array.isArray(post.tags)
+      ? `array(len=${post.tags.length})`
+      : post.tags == null
+        ? String(post.tags)
+        : typeof post.tags;
+    console.log('[BoardPostCard:tags]', {
+      postId: post?.id,
+      rawTags: rawDesc,
+      parsedChipCount: tags.length,
+      containerWidth,
+      allMeasured,
+      measureBypass,
+      visibleChips: visibleCount,
+      hiddenByOverflow: hiddenTagCount,
+    });
+  }, [
+    post?.id,
+    post.tags,
+    tags.length,
+    containerWidth,
+    allMeasured,
+    measureBypass,
+    visibleCount,
+    hiddenTagCount,
+  ]);
 
-  let distanceNumberText = '10';
-  let distanceUnitText = 'km';
-  if (typeof distanceMeters === 'number' && !Number.isNaN(distanceMeters)) {
-    if (distanceMeters < 1000) {
-      distanceNumberText = '1';
-      distanceUnitText = 'km 미만';
-    } else {
-      distanceNumberText = String(Math.max(1, Math.round(distanceMeters / 1000)));
-      distanceUnitText = 'km';
-    }
+  const km = post.distanceKm;
+  const hasKm = typeof km === 'number' && !Number.isNaN(km);
+  let distanceNumberText = '';
+  let distanceUnitText = '';
+  let distanceUnknown = false;
+  if (!hasKm) {
+    distanceUnknown = true;
+  } else if (km < 1) {
+    distanceNumberText = '1';
+    distanceUnitText = 'km 미만';
+  } else {
+    distanceNumberText = String(Math.round(km));
+    distanceUnitText = 'km';
   }
 
   return (
@@ -129,10 +171,19 @@ const BoardPostCard = ({ post, normalize, styles, onPress, onScrapPress }) => {
         <View style={styles.distanceBadgeWrap}>
           <View style={styles.distanceBadgeChip}>
             <MaterialIcons name="location-on" size={normalize(10)} color={colors.primaryDark} />
-            <View style={styles.distanceBadgeTextRow}>
-              <Text style={styles.distanceBadgeNumber}>{distanceNumberText}</Text>
-              <Text style={styles.distanceBadgeUnit}>{distanceUnitText}</Text>
-            </View>
+            {distanceUnknown ? (
+              <Text
+                style={[styles.distanceBadgeUnit, { marginLeft: normalize(2), fontSize: normalize(10) }]}
+                numberOfLines={1}
+              >
+                위치 없음
+              </Text>
+            ) : (
+              <View style={styles.distanceBadgeTextRow}>
+                <Text style={styles.distanceBadgeNumber}>{distanceNumberText}</Text>
+                <Text style={styles.distanceBadgeUnit}>{distanceUnitText}</Text>
+              </View>
+            )}
           </View>
         </View>
       </View>

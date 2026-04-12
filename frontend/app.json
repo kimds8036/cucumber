@@ -17,6 +17,7 @@
       "infoPlist": {
         "UIViewControllerBasedStatusBarAppearance": false,
         "NSCameraUsageDescription": "학생증 인증을 위해 카메라 접근 권한이 필요합니다.",
+        "NSLocationWhenInUseUsageDescription": "게시판 근처 글·거리 표시를 위해 사용 중에만 위치 정보를 사용합니다.",
         "NSAppTransportSecurity": {
           "NSAllowsArbitraryLoads": true
         }
@@ -30,7 +31,9 @@
       },
       "edgeToEdgeEnabled": true,
       "permissions": [
-        "CAMERA"
+        "CAMERA",
+        "ACCESS_FINE_LOCATION",
+        "ACCESS_COARSE_LOCATION"
       ],
       "package": "com.eunchae0215.cucumber",
       "softwareKeyboardLayoutMode": "pan"
@@ -40,6 +43,12 @@
     },
     "plugins": [
       "expo-font",
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "게시판 근처 글·거리 표시를 위해 사용 중에만 위치 정보를 사용합니다."
+        }
+      ],
       [
         "expo-media-library",
         {

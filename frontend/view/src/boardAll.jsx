@@ -18,7 +18,9 @@ import { colors, fonts } from '../../styles/colors';
 import { createBoardStyles, getNormalize } from '../../styles/board.style';
 import FontAwesome5 from '@expo/vector-icons/FontAwesome5';
 import { api } from '../../utils/api';
+import { normalizeTagsFromApi } from '../../utils/normalizePostTags';
 import BoardPostCard from '../../components/Boardpostcard';
+import { useLocationContext } from '../../context/LocationContext';
 
 /** 서버 created_at(UTC)을 "n분 전" 형식으로 변환. 화면에서는 기기 로컬 시간 기준으로 계산 */
 function formatTimeAgo(createdAt) {
@@ -51,6 +53,7 @@ export function BoardAllContent({ navigation, posts }) {
   const { width } = useWindowDimensions();
   const normalize = useMemo(() => getNormalize(width), [width]);
   const styles = useMemo(() => createBoardStyles(width, normalize), [width]);
+  const { coords, refreshLocation } = useLocationContext();
 
   const [sortType, setSortType] = useState('latest'); // latest, popular, nearby
   const [serverPosts, setServerPosts] = useState([]);
@@ -163,89 +166,112 @@ export function BoardAllContent({ navigation, posts }) {
     }
   };
 
-  const fetchPosts = async (nextPage = 1, append = false) => {
-    try {
-      if (nextPage === 1) {
-        setLoading(true);
-        setHasMore(true);
-      } else {
-        setLoadingMore(true);
-      }
-      const sortParam = sortType === 'popular' ? 'popular' : 'latest';
-      const response = await api.get('/api/posts', {
-        params: {
+  const fetchPosts = useCallback(
+    async (nextPage = 1, append = false) => {
+      try {
+        if (sortType === 'nearby' && !coords) {
+          if (nextPage === 1) {
+            setServerPosts([]);
+            setHasMore(false);
+            setPage(1);
+          }
+          setLoading(false);
+          setLoadingMore(false);
+          return;
+        }
+        if (nextPage === 1) {
+          setLoading(true);
+          setHasMore(true);
+        } else {
+          setLoadingMore(true);
+        }
+        const sortParam =
+          sortType === 'popular' ? 'popular' : sortType === 'nearby' ? 'nearby' : 'latest';
+        const params = {
           boardType: 'national',
           sort: sortParam,
           page: nextPage,
           limit: 20,
-        },
-      });
-      const apiPosts = response.data?.data?.posts || [];
-      const mapped = apiPosts.map((p) => {
-        const thumb =
-          typeof p.thumbnail === 'string' && p.thumbnail.trim() ? p.thumbnail.trim() : null;
-        let tags = [];
-        if (Array.isArray(p.tags)) {
-          tags = p.tags;
-        } else if (p.tags != null && typeof p.tags === 'string' && p.tags.startsWith('[')) {
-          try {
-            const parsed = JSON.parse(p.tags);
-            tags = Array.isArray(parsed) ? parsed : [];
-          } catch {
-            tags = [];
-          }
-        }
-        return {
-          id: p.id,
-          author: '익명',
-          time: formatTimeAgo(p.created_at),
-          location: '',
-          content: p.content,
-          likes: p.like_count,
-          comments: p.comment_count,
-          liked: Boolean(p.isLiked ?? false),
-          scrapped: Boolean(p.isScrapped ?? p.is_scrapped ?? false),
-          scrapCount: p.scrapCount ?? 0,
-          isMyPost: !!p.is_author,
-          authorUserId: p.author_user_id,
-          thumbnail: thumb,
-          tags,
         };
-      });
-      if (append) {
-        setServerPosts((prev) => [...prev, ...mapped]);
-      } else {
-        setServerPosts(mapped);
+        if (coords) {
+          params.viewerLat = coords.latitude;
+          params.viewerLng = coords.longitude;
+        }
+        const response = await api.get('/api/posts', { params });
+        const apiPosts = response.data?.data?.posts || [];
+        const mapped = apiPosts.map((p) => {
+          const thumb =
+            typeof p.thumbnail === 'string' && p.thumbnail.trim() ? p.thumbnail.trim() : null;
+          const tags = normalizeTagsFromApi(p.tags);
+          return {
+            id: p.id,
+            author: '익명',
+            time: formatTimeAgo(p.created_at),
+            location: '',
+            content: p.content,
+            likes: p.like_count,
+            comments: p.comment_count,
+            liked: Boolean(p.isLiked ?? false),
+            scrapped: Boolean(p.isScrapped ?? p.is_scrapped ?? false),
+            scrapCount: p.scrapCount ?? 0,
+            isMyPost: !!p.is_author,
+            authorUserId: p.author_user_id,
+            thumbnail: thumb,
+            tags,
+            distanceKm:
+              typeof p.distanceKm === 'number' && !Number.isNaN(p.distanceKm) ? p.distanceKm : null,
+          };
+        });
+        if (append) {
+          setServerPosts((prev) => [...prev, ...mapped]);
+        } else {
+          setServerPosts(mapped);
+        }
+        setHasMore(apiPosts.length > 0);
+        setPage(nextPage);
+      } catch (error) {
+        console.error('게시글 목록 로드 실패:', error);
+        if (error.response?.data?.message) {
+          console.error('서버 메시지:', error.response.data.message);
+        }
+        if (error.response?.data?.errorDetail) {
+          console.error('서버 오류 상세:', error.response.data.errorDetail);
+        }
+        Alert.alert('오류', '게시글을 불러오는 중 오류가 발생했습니다.');
+      } finally {
+        setLoading(false);
+        setLoadingMore(false);
       }
-      setHasMore(apiPosts.length > 0);
-      setPage(nextPage);
-    } catch (error) {
-      console.error('게시글 목록 로드 실패:', error);
-      if (error.response?.data?.message) {
-        console.error('서버 메시지:', error.response.data.message);
-      }
-      if (error.response?.data?.errorDetail) {
-        console.error('서버 오류 상세:', error.response.data.errorDetail);
-      }
-      Alert.alert('오류', '게시글을 불러오는 중 오류가 발생했습니다.');
-    } finally {
-      setLoading(false);
-      setLoadingMore(false);
-    }
-  };
+    },
+    [sortType, coords],
+  );
 
-  // 게시글 목록 로드 (초기 + 정렬 변경 시)
+  // 게시글 목록 로드 (초기 + 정렬 변경 시 + 위치 갱신 시)
   useEffect(() => {
     fetchPosts(1, false);
-  }, [sortType]);
+  }, [fetchPosts]);
 
   const data = posts && posts.length > 0 ? posts : serverPosts;
 
-  const handleRefresh = () => {
-    fetchPosts(1, false);
+  useEffect(() => {
+    if (!__DEV__) return;
+    const usingInjected = Boolean(posts && posts.length > 0);
+    const src = usingInjected ? 'injected_posts(prop)' : 'serverPosts(API)';
+    const arr = usingInjected ? posts : serverPosts;
+    const sample = arr.slice(0, 8).map((p) => ({
+      id: p.id,
+      tagsLen: Array.isArray(p.tags) ? p.tags.length : p.tags == null ? 'null' : typeof p.tags,
+    }));
+    console.log('[BoardAllContent:list]', { dataSource: src, total: arr.length, sample });
+  }, [posts, serverPosts]);
+
+  const handleRefresh = async () => {
+    await refreshLocation();
+    await fetchPosts(1, false);
   };
 
   const handleLoadMore = () => {
+    if (sortType === 'nearby' && !coords) return;
     if (loadingMore || !hasMore || data.length === 0) return;
     fetchPosts(page + 1, true);
   };
@@ -342,7 +368,9 @@ export function BoardAllContent({ navigation, posts }) {
           !loading ? (
             <View style={{ paddingVertical: normalize(40), alignItems: 'center' }}>
               <Text style={{ fontFamily: fonts.regular, color: colors.textSecondary }}>
-                아직 게시글이 없습니다.
+                {sortType === 'nearby' && !coords
+                  ? '현재 위치를 불러올 수 없어요. 아래로 당겨 다시 시도해 주세요.'
+                  : '아직 게시글이 없습니다.'}
               </Text>
             </View>
           ) : null

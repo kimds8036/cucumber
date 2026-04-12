@@ -14,7 +14,9 @@ import SubHeader from '../frame/subHeader';
 import { createSchoolBoardStyles, getNormalize } from '../../styles/schoolBoard.style';
 import { colors } from '../../styles/colors';
 import { api } from '../../utils/api';
+import { normalizeTagsFromApi } from '../../utils/normalizePostTags';
 import BoardPostCard from '../../components/Boardpostcard';
+import { useLocationContext } from '../../context/LocationContext';
 
 /** 서버 created_at(UTC)을 "n분 전" 형식으로 변환. 화면에서는 기기 로컬 시간 기준으로 계산 */
 function formatTimeAgo(createdAt) {
@@ -45,6 +47,7 @@ const SchoolBoardAll = ({ navigation }) => {
   const { width } = useWindowDimensions();
   const normalize = useMemo(() => getNormalize(width), [width]);
   const styles = useMemo(() => createSchoolBoardStyles(width, normalize), [width]);
+  const { coords, refreshLocation } = useLocationContext();
 
   const [schoolPosts, setSchoolPosts] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -72,86 +75,92 @@ const SchoolBoardAll = ({ navigation }) => {
     }
   }, []);
 
-  const fetchSchoolPosts = async (nextPage = 1, append = false) => {
-    let mounted = true;
-    try {
-      if (nextPage === 1) {
-        setLoading(true);
-        setHasMore(true);
-      } else {
-        setLoadingMore(true);
-      }
-      const schoolRes = await api.get('/api/schools/me');
-      const schoolId = schoolRes.data?.data?.id;
-      if (!schoolId) {
-        if (mounted) setSchoolPosts([]);
-        return;
-      }
-      const postsRes = await api.get('/api/posts', {
-        params: {
+  const fetchSchoolPosts = useCallback(
+    async (nextPage = 1, append = false) => {
+      try {
+        if (nextPage === 1) {
+          setLoading(true);
+          setHasMore(true);
+        } else {
+          setLoadingMore(true);
+        }
+        const schoolRes = await api.get('/api/schools/me');
+        const schoolId = schoolRes.data?.data?.id;
+        if (!schoolId) {
+          setSchoolPosts([]);
+          setLoading(false);
+          setLoadingMore(false);
+          return;
+        }
+        const params = {
           boardType: 'school',
           schoolId,
           sort: 'latest',
           page: nextPage,
           limit: 20,
-        },
-      });
-      if (!mounted) return;
-      const apiPosts = postsRes.data?.data?.posts || [];
-      const mapped = apiPosts.map((p) => {
-        const thumb =
-          typeof p.thumbnail === 'string' && p.thumbnail.trim() ? p.thumbnail.trim() : null;
-        let tags = [];
-        if (Array.isArray(p.tags)) {
-          tags = p.tags;
-        } else if (p.tags != null && typeof p.tags === 'string' && p.tags.startsWith('[')) {
-          try {
-            const parsed = JSON.parse(p.tags);
-            tags = Array.isArray(parsed) ? parsed : [];
-          } catch {
-            tags = [];
-          }
-        }
-        return {
-          id: p.id,
-          author: '익명',
-          time: formatTimeAgo(p.created_at),
-          location: '',
-          content: p.content,
-          likes: p.like_count,
-          comments: p.comment_count,
-          liked: Boolean(p.isLiked ?? false),
-          scrapped: Boolean(p.isScrapped ?? false),
-          scrapCount: p.scrapCount ?? 0,
-          isMyPost: !!p.is_author,
-          authorUserId: p.author_user_id,
-          thumbnail: thumb,
-          tags,
         };
-      });
-      if (append) {
-        setSchoolPosts((prev) => [...prev, ...mapped]);
-      } else {
-        setSchoolPosts(mapped);
-      }
-      setHasMore(apiPosts.length > 0);
-      setPage(nextPage);
-    } catch (error) {
-      console.error('학교 게시판 목록 로드 실패:', error);
-    } finally {
-      if (mounted) {
+        if (coords) {
+          params.viewerLat = coords.latitude;
+          params.viewerLng = coords.longitude;
+        }
+        const postsRes = await api.get('/api/posts', { params });
+        const apiPosts = postsRes.data?.data?.posts || [];
+        const mapped = apiPosts.map((p) => {
+          const thumb =
+            typeof p.thumbnail === 'string' && p.thumbnail.trim() ? p.thumbnail.trim() : null;
+          const tags = normalizeTagsFromApi(p.tags);
+          return {
+            id: p.id,
+            author: '익명',
+            time: formatTimeAgo(p.created_at),
+            location: '',
+            content: p.content,
+            likes: p.like_count,
+            comments: p.comment_count,
+            liked: Boolean(p.isLiked ?? false),
+            scrapped: Boolean(p.isScrapped ?? false),
+            scrapCount: p.scrapCount ?? 0,
+            isMyPost: !!p.is_author,
+            authorUserId: p.author_user_id,
+            thumbnail: thumb,
+            tags,
+            distanceKm:
+              typeof p.distanceKm === 'number' && !Number.isNaN(p.distanceKm) ? p.distanceKm : null,
+          };
+        });
+        if (append) {
+          setSchoolPosts((prev) => [...prev, ...mapped]);
+        } else {
+          setSchoolPosts(mapped);
+        }
+        setHasMore(apiPosts.length > 0);
+        setPage(nextPage);
+      } catch (error) {
+        console.error('학교 게시판 목록 로드 실패:', error);
+      } finally {
         setLoading(false);
         setLoadingMore(false);
       }
-    }
-  };
+    },
+    [coords],
+  );
 
   useEffect(() => {
     fetchSchoolPosts(1, false);
-  }, []);
+  }, [fetchSchoolPosts]);
 
-  const handleRefresh = () => {
-    fetchSchoolPosts(1, false);
+  useEffect(() => {
+    if (!__DEV__) return;
+    const sample = schoolPosts.slice(0, 8).map((p) => ({
+      id: p.id,
+      tagsLen: Array.isArray(p.tags) ? p.tags.length : p.tags == null ? 'null' : typeof p.tags,
+    }));
+    console.log('[SchoolBoardAll:list]', { dataSource: 'serverPosts(API)', total: schoolPosts.length, sample });
+  }, [schoolPosts]);
+
+  const handleRefresh = async () => {
+    await refreshLocation();
+    await fetchSchoolPosts(1, false);
   };
 
   const handleLoadMore = () => {
