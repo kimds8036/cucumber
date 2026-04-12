@@ -7,7 +7,10 @@ import { createMailStyles } from '../../styles/mail.style';
 import { api } from '../../utils/api';
 import { colors } from '../../styles/colors';
 import Loading from '../../components/Loading';
-import { senderDisplayNameForCurrentUser } from './mailscreen';
+import {
+  senderDisplayNameForCurrentUser,
+  replyToMySentFromThread,
+} from './mailscreen';
 
 function parseUtcToLocal(createdAt) {
   if (!createdAt) return null;
@@ -73,6 +76,21 @@ export default function MailHistoryScreen({ navigation, route }) {
       const meId = Number(me?.id != null ? me.id : me?.userId);
       const myDisplayName = me?.name || me?.username || '';
 
+      let threadMessages = [];
+      if (Number.isFinite(threadId) && threadId > 0) {
+        try {
+          const tr = await api.get(`/api/mails/personal/${threadId}/thread`);
+          threadMessages = tr?.data?.data?.messages || [];
+        } catch (_) {
+          threadMessages = [];
+        }
+      }
+
+      const replyToMySentForReceived = (m) =>
+        Boolean(m.reply_to_my_sent ?? m.replyToMySent) ||
+        (threadMessages.length > 0 &&
+          replyToMySentFromThread(m, threadMessages, meId));
+
       const merged = [
         ...received.map((m) => ({
           id: `r-${m.id}`,
@@ -85,6 +103,7 @@ export default function MailHistoryScreen({ navigation, route }) {
               senderNameFromApi: m.sender_name,
               currentUserId: meId,
               myDisplayName,
+              replyToMySent: replyToMySentForReceived(m),
             }) ?? '익명',
           createdAt: m.created_at,
           time: formatHistoryTime(m.created_at),
@@ -102,6 +121,7 @@ export default function MailHistoryScreen({ navigation, route }) {
               senderNameFromApi: m.sender_name,
               currentUserId: meId,
               myDisplayName,
+              replyToMySent: false,
             }) ?? (myDisplayName || '나'),
           createdAt: m.created_at,
           time: formatHistoryTime(m.created_at),

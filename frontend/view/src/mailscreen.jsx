@@ -55,6 +55,18 @@ function extractMailListFromResponse(res) {
   return [];
 }
 
+/** 스레드에서 해당 메시지가 '내가 보낸 우편'에 대한 답장인지 (부모 발신자가 나) */
+export function replyToMySentFromThread(message, threadMessages, currentUserId) {
+  if (!message || !Array.isArray(threadMessages)) return false;
+  const me = Number(currentUserId);
+  if (!Number.isFinite(me)) return false;
+  const pid = message.parent_mail_id;
+  if (pid == null) return false;
+  const parent = threadMessages.find((msg) => Number(msg.id) === Number(pid));
+  if (!parent) return false;
+  return Number(parent.sender_id) === me;
+}
+
 function pickLatestThreadMessage(myMsg, otherMsg) {
   if (myMsg && otherMsg) {
     const mt = parseUtcToLocal(myMsg.created_at);
@@ -67,12 +79,16 @@ function pickLatestThreadMessage(myMsg, otherMsg) {
   return myMsg || otherMsg || null;
 }
 
-/** 발신자 표기: senderId === 현재 유저면 실명, 아니면 익명 (렌더 전용, API 변경 없음). me/sender 미확정 시 null */
+/**
+ * 발신자 표기: 내가 보낸 경우 실명, 상대가 첫 우편이면 익명,
+ * 내가 보낸 우편에 대한 답장(replyToMySent)이면 상대 실명.
+ */
 export function senderDisplayNameForCurrentUser({
   senderId,
   senderNameFromApi,
   currentUserId,
   myDisplayName,
+  replyToMySent = false,
 }) {
   const sid = Number(senderId);
   const me = Number(currentUserId);
@@ -85,6 +101,13 @@ export function senderDisplayNameForCurrentUser({
         ? String(senderNameFromApi).trim()
         : '';
     return fromApi || (myDisplayName && String(myDisplayName).trim()) || '나';
+  }
+  if (replyToMySent) {
+    const fromApi =
+      senderNameFromApi != null && String(senderNameFromApi).trim()
+        ? String(senderNameFromApi).trim()
+        : '';
+    return fromApi || '익명';
   }
   return '익명';
 }
@@ -107,6 +130,7 @@ function mapMailToListItem(mail, isReceived) {
     preview: String(mail.content || '').slice(0, 40),
     receivedAt: formatListTime(mail.created_at),
     isUnread: isReceived ? !mail.is_read : false,
+    replyToMySent: Boolean(mail.reply_to_my_sent ?? mail.replyToMySent),
   };
 }
 
@@ -353,6 +377,9 @@ function MailInbox({ onOpen, onBack, navigation }) {
                       senderNameFromApi: mail.raw?.sender_name,
                       currentUserId: inboxCurrentUserId,
                       myDisplayName: inboxMyDisplayName,
+                      replyToMySent:
+                        mail.isReceived &&
+                        Boolean(mail.replyToMySent ?? mail.raw?.reply_to_my_sent),
                     }) ??
                     (mail.isReceived ? '익명' : inboxMyDisplayName || '나'))}
               </Text>
@@ -419,6 +446,7 @@ function MailDetail({ mail: initialMail, onBack, navigation }) {
   const [currentUserId, setCurrentUserId] = useState(null);
   const [latestMyReply, setLatestMyReply] = useState(null);
   const [latestOtherReply, setLatestOtherReply] = useState(null);
+  const [threadMessages, setThreadMessages] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
@@ -438,9 +466,9 @@ function MailDetail({ mail: initialMail, onBack, navigation }) {
       const me = meRes.data?.data;
       const meId = Number(me?.id != null ? me?.id : me?.userId);
       const meDisplayName = me?.name || me?.username || '나';
-      const threadMessages = threadRes?.data?.data?.messages || [];
+      const threadMsgs = threadRes?.data?.data?.messages || [];
       const myLatestSent =
-        threadMessages
+        threadMsgs
           .filter((msg) => Number(msg.sender_id) === meId)
           .sort((a, b) => {
             const ad = parseUtcToLocal(a.created_at);
@@ -449,7 +477,7 @@ function MailDetail({ mail: initialMail, onBack, navigation }) {
             return bd - ad;
           })[0] || null;
       const otherLatestSent =
-        threadMessages
+        threadMsgs
           .filter((msg) => Number(msg.sender_id) !== meId)
           .sort((a, b) => {
             const ad = parseUtcToLocal(a.created_at);
@@ -462,6 +490,7 @@ function MailDetail({ mail: initialMail, onBack, navigation }) {
       setCurrentUserId(Number.isFinite(meId) ? meId : null);
       setLatestMyReply(myLatestSent);
       setLatestOtherReply(otherLatestSent);
+      setThreadMessages(Array.isArray(threadMsgs) ? threadMsgs : []);
       setMail({
         id: m.id,
         receivedAt: formatListTime(m.created_at),
@@ -473,13 +502,16 @@ function MailDetail({ mail: initialMail, onBack, navigation }) {
         recipientColorId: m.recipient_color_id != null ? m.recipient_color_id : null,
         counterpartyUserId:
           (initialMail?.isReceived != null ? initialMail?.isReceived : true) ? m.sender_id : m.recipient_id,
+        replyToMySent: Boolean(
+          m.reply_to_my_sent ?? m.replyToMySent ?? initialMail?.replyToMySent
+        ),
       });
     } catch (e) {
       setError(e.response?.data?.message || '우편 상세를 불러오지 못했습니다.');
     } finally {
       setLoading(false);
     }
-  }, [initialMail?.id]);
+  }, [initialMail?.id, initialMail?.replyToMySent]);
 
   useEffect(() => {
     fetchDetail();
@@ -499,12 +531,22 @@ function MailDetail({ mail: initialMail, onBack, navigation }) {
     threadLatest != null ? threadLatest.sender_id : mail?.senderId;
   const displaySenderNameFromApi =
     threadLatest != null ? threadLatest.sender_name : mail?.senderName;
+  const replyToMySentFromApi = Boolean(mail?.replyToMySent);
+  const replyToMySentFromThreadMsg =
+    Boolean(threadLatest) &&
+    threadMessages.length > 0 &&
+    replyToMySentFromThread(threadLatest, threadMessages, currentUserId);
+  const replyToMySent =
+    mail?.isReceived === true &&
+    !isDisplayMine &&
+    (replyToMySentFromApi || replyToMySentFromThreadMsg);
   const cardSenderLabel =
     senderDisplayNameForCurrentUser({
       senderId: displaySenderId,
       senderNameFromApi: displaySenderNameFromApi,
       currentUserId: currentUserId,
       myDisplayName: myName,
+      replyToMySent,
     }) ?? (isDisplayMine ? myName || '나' : '익명');
 
   // 보낸 우편 흐름에서, 상자에 보이는 최신 글이 내 것일 때(상대가 아직 답하지 않음)
@@ -633,9 +675,17 @@ export default function AnonymousMailScreen({ navigation, route }) {
   const detailMail = route.params?.mail;
 
   if (detailMail) {
+    const mailForDetail =
+      detailMail?.raw != null
+        ? {
+            ...detailMail.raw,
+            isReceived: detailMail.isReceived,
+            replyToMySent: detailMail.replyToMySent,
+          }
+        : detailMail;
     return (
       <MailDetail
-        mail={detailMail?.raw || detailMail}
+        mail={mailForDetail}
         onBack={() => navigation.goBack()}
         navigation={navigation}
       />

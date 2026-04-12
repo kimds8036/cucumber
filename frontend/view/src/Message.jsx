@@ -20,7 +20,10 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import Feather from '@expo/vector-icons/Feather';
 import MessageTabIcon from '../../assets/Group 166.svg';
 import { api } from '../../utils/api';
-import { senderDisplayNameForCurrentUser } from './mailscreen';
+import {
+  senderDisplayNameForCurrentUser,
+  replyToMySentFromThread,
+} from './mailscreen';
 import * as socketManager from './socketManager';
 import { useToast } from '../../context/ToastContext';
 
@@ -456,31 +459,54 @@ export function MessageContent({ navigation }) {
         return bd - ad;
       })[0];
 
-      const rowLabel = latestOne
-        ? senderDisplayNameForCurrentUser({
-            senderId: latestOne.sender_id,
-            senderNameFromApi: latestOne.sender_name,
-            currentUserId: meId,
-            myDisplayName,
-          }) ?? (latestOne._isReceived ? '익명' : (myDisplayName || '나'))
-        : '';
+      if (!latestOne) {
+        setMails([]);
+        return;
+      }
 
-      const mapped = latestOne
-        ? [
-            {
-              id: latestOne.id,
-              profileColorIndex: 0,
-              isReceived: latestOne._isReceived,
-              senderName: rowLabel,
-              directionText: rowLabel,
-              previewText: String(latestOne.content || '').slice(0, 40),
-              time: formatTimeAgo(latestOne.created_at || ''),
-              unreadCount: latestOne._isReceived ? (latestOne.is_read ? 0 : 1) : 0,
-              raw: latestOne,
-            },
-          ]
-        : [];
-      setMails(mapped);
+      const isReceived = Boolean(latestOne._isReceived);
+      const rawMail = { ...latestOne };
+      delete rawMail._isReceived;
+
+      let threadMessages = [];
+      if (isReceived && rawMail.parent_mail_id != null) {
+        try {
+          const tr = await api.get(`/api/mails/personal/${rawMail.id}/thread`);
+          threadMessages = tr?.data?.data?.messages || [];
+        } catch (_) {
+          threadMessages = [];
+        }
+      }
+
+      const replyToMySent =
+        isReceived &&
+        (Boolean(rawMail.reply_to_my_sent ?? rawMail.replyToMySent) ||
+          (threadMessages.length > 0 &&
+            replyToMySentFromThread(rawMail, threadMessages, meId)));
+
+      const rowLabel =
+        senderDisplayNameForCurrentUser({
+          senderId: rawMail.sender_id,
+          senderNameFromApi: rawMail.sender_name,
+          currentUserId: meId,
+          myDisplayName,
+          replyToMySent,
+        }) ?? (isReceived ? '익명' : myDisplayName || '나');
+
+      setMails([
+        {
+          id: rawMail.id,
+          profileColorIndex: 0,
+          isReceived,
+          replyToMySent,
+          senderName: rowLabel,
+          directionText: rowLabel,
+          previewText: String(rawMail.content || '').slice(0, 40),
+          time: formatTimeAgo(rawMail.created_at || ''),
+          unreadCount: isReceived ? (rawMail.is_read ? 0 : 1) : 0,
+          raw: rawMail,
+        },
+      ]);
     } catch (error) {
       console.error('개인 우편 목록 조회 실패:', error);
     } finally {
@@ -734,9 +760,15 @@ export function MessageContent({ navigation }) {
                         // 2️⃣ 개인 우편 상세로 이동
                         navigation?.navigate('MailDetail', {
                           mail: {
-                            ...(item.raw || item),
+                            raw: item.raw || item,
                             isReceived: item.isReceived,
-                            counterpartyUserId: item.raw?.sender_id ?? item.raw?.recipient_id ?? null,
+                            replyToMySent: Boolean(
+                              item.replyToMySent ??
+                                item.raw?.reply_to_my_sent ??
+                                item.raw?.replyToMySent
+                            ),
+                            counterpartyUserId:
+                              item.raw?.sender_id ?? item.raw?.recipient_id ?? null,
                           },
                         });
 

@@ -13,7 +13,7 @@ router.get('/personal/received', authenticate, async (req, res) => {
   try {
     const userId = req.user.userId;
     const { page = 1, limit = 20, isRead } = req.query;
-    const params = [userId];
+    const params = [userId, userId];
     const conditions = ['pm.recipient_id = ?', 'pm.is_deleted = FALSE'];
 
     // 읽음 여부 필터
@@ -46,20 +46,24 @@ router.get('/personal/received', authenticate, async (req, res) => {
         ) > 0 AS has_reply,
         pm.created_at,
         u.name as sender_name,
-        u.color_id as sender_color_id
+        u.color_id as sender_color_id,
+        (pm.parent_mail_id IS NOT NULL AND par.sender_id = ?) AS reply_to_my_sent
       FROM personal_mails pm
       LEFT JOIN users u ON pm.sender_id = u.id
+      LEFT JOIN personal_mails par ON par.id = pm.parent_mail_id AND par.is_deleted = FALSE
       WHERE pm.recipient_id = ? AND pm.is_deleted = FALSE${isRead !== undefined ? ' AND pm.is_read = ?' : ''}
       ORDER BY pm.created_at DESC
       LIMIT ${limitNum} OFFSET ${offsetNum}`,
       params
     );
 
-    // 전체 개수 조회
+    // 전체 개수 조회 (목록 SELECT와 플레이스홀더 개수가 다름)
+    const countParams =
+      isRead !== undefined ? [userId, isRead === 'true' ? 1 : 0] : [userId];
     const [countResult] = await pool.execute(
       `SELECT COUNT(*) as total FROM personal_mails pm
        WHERE pm.recipient_id = ? AND pm.is_deleted = FALSE${isRead !== undefined ? ' AND pm.is_read = ?' : ''}`,
-      params
+      countParams
     );
     const total = Number(countResult[0]?.total ?? 0);
 
@@ -247,14 +251,16 @@ router.get('/personal/:mailId', authenticate, async (req, res) => {
         u1.name as sender_name,
         u1.color_id as sender_color_id,
         u2.name as recipient_name,
-        u2.color_id as recipient_color_id
+        u2.color_id as recipient_color_id,
+        (pm.parent_mail_id IS NOT NULL AND par.sender_id = ?) AS reply_to_my_sent
       FROM personal_mails pm
       LEFT JOIN users u1 ON pm.sender_id = u1.id
       LEFT JOIN users u2 ON pm.recipient_id = u2.id
+      LEFT JOIN personal_mails par ON par.id = pm.parent_mail_id AND par.is_deleted = FALSE
       WHERE pm.id = ? 
         AND (pm.sender_id = ? OR pm.recipient_id = ?)
         AND pm.is_deleted = FALSE`,
-      [mailId, userId, userId]
+      [userId, mailId, userId, userId]
     );
 
     if (mails.length === 0) {
