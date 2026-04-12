@@ -1,4 +1,4 @@
-import React, { useMemo, useState, useEffect, useCallback } from 'react';
+import React, { useMemo, useState, useEffect, useCallback, useRef } from 'react';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {
   useWindowDimensions,
@@ -7,12 +7,13 @@ import {
   TouchableOpacity,
   Alert,
   FlatList,
+  ActivityIndicator,
 } from 'react-native';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import FontAwesome5 from '@expo/vector-icons/FontAwesome5';
 import SubHeader from '../frame/subHeader';
 import { createSchoolBoardStyles, getNormalize } from '../../styles/schoolBoard.style';
-import { colors } from '../../styles/colors';
+import { colors, fonts } from '../../styles/colors';
 import { api } from '../../utils/api';
 import { normalizeTagsFromApi } from '../../utils/normalizePostTags';
 import BoardPostCard from '../../components/Boardpostcard';
@@ -54,6 +55,27 @@ const SchoolBoardAll = ({ navigation }) => {
   const [loadingMore, setLoadingMore] = useState(false);
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
+
+  const layoutPendingRef = useRef(null);
+  const layoutGateTimeoutRef = useRef(null);
+  const listLayoutEpochRef = useRef(0);
+
+  const handleCardLayoutStable = useCallback((id, epoch) => {
+    const p = layoutPendingRef.current;
+    if (!p || p.epoch !== epoch || !p.ids.has(String(id))) return;
+    p.ids.delete(String(id));
+    if (layoutPendingRef.current !== p) return;
+    if (p.ids.size === 0) {
+      if (layoutGateTimeoutRef.current != null) {
+        clearTimeout(layoutGateTimeoutRef.current);
+        layoutGateTimeoutRef.current = null;
+      }
+      layoutPendingRef.current = null;
+      if (p.isAppend) setLoadingMore(false);
+      else setLoading(false);
+    }
+  }, []);
+
   const handleScrapPress = useCallback(async (post) => {
     try {
       const res = await api.post(`/api/posts/${post.id}/scrap`);
@@ -88,6 +110,11 @@ const SchoolBoardAll = ({ navigation }) => {
         const schoolId = schoolRes.data?.data?.id;
         if (!schoolId) {
           setSchoolPosts([]);
+          if (layoutGateTimeoutRef.current != null) {
+            clearTimeout(layoutGateTimeoutRef.current);
+            layoutGateTimeoutRef.current = null;
+          }
+          layoutPendingRef.current = null;
           setLoading(false);
           setLoadingMore(false);
           return;
@@ -135,9 +162,44 @@ const SchoolBoardAll = ({ navigation }) => {
         }
         setHasMore(apiPosts.length > 0);
         setPage(nextPage);
+
+        const clearGateTimer = () => {
+          if (layoutGateTimeoutRef.current != null) {
+            clearTimeout(layoutGateTimeoutRef.current);
+            layoutGateTimeoutRef.current = null;
+          }
+        };
+
+        if (mapped.length === 0) {
+          clearGateTimer();
+          layoutPendingRef.current = null;
+          if (append) setLoadingMore(false);
+          else setLoading(false);
+        } else {
+          clearGateTimer();
+          listLayoutEpochRef.current += 1;
+          const epoch = listLayoutEpochRef.current;
+          layoutPendingRef.current = {
+            epoch,
+            ids: new Set(mapped.map((p) => String(p.id))),
+            isAppend: append,
+          };
+          layoutGateTimeoutRef.current = setTimeout(() => {
+            layoutGateTimeoutRef.current = null;
+            const pend = layoutPendingRef.current;
+            if (!pend) return;
+            layoutPendingRef.current = null;
+            if (pend.isAppend) setLoadingMore(false);
+            else setLoading(false);
+          }, 900);
+        }
       } catch (error) {
         console.error('학교 게시판 목록 로드 실패:', error);
-      } finally {
+        if (layoutGateTimeoutRef.current != null) {
+          clearTimeout(layoutGateTimeoutRef.current);
+          layoutGateTimeoutRef.current = null;
+        }
+        layoutPendingRef.current = null;
         setLoading(false);
         setLoadingMore(false);
       }
@@ -168,12 +230,16 @@ const SchoolBoardAll = ({ navigation }) => {
     fetchSchoolPosts(page + 1, true);
   };
 
+  const hideListBehindLoader = loading || loadingMore;
+
   const renderPostItem = ({ item: post }) => (
     <BoardPostCard
       key={post.id}
       post={post}
       normalize={normalize}
       styles={styles}
+      layoutStableEpoch={listLayoutEpochRef.current}
+      onLayoutStable={handleCardLayoutStable}
       onPress={() =>
         navigation.navigate('BoardDetail', {
           post: { ...post, author: post.author },
@@ -195,37 +261,68 @@ const SchoolBoardAll = ({ navigation }) => {
         }
       />
 
-      {/* 게시글 목록 - FlatList + 무한 스크롤 */}
-      <FlatList
-        style={styles.postList}
-        data={schoolPosts}
-        keyExtractor={(item) => String(item.id)}
-        renderItem={renderPostItem}
-        showsVerticalScrollIndicator={false}
-        refreshing={loading}
-        onRefresh={handleRefresh}
-        onEndReached={handleLoadMore}
-        onEndReachedThreshold={0.5}
-        ListEmptyComponent={
-          !loading ? (
-            <View style={styles.emptyContainer}>
-              <Text style={styles.emptyText}>
-                아직 학교 게시판에 글이 없습니다.
-              </Text>
-            </View>
-          ) : null
-        }
-        ListFooterComponent={
-          loadingMore ? (
-            <View style={styles.loadingMoreContainer}>
-              <Text style={styles.loadingMoreText}>
-                더 불러오는 중...
-              </Text>
-            </View>
-          ) : null
-        }
-        contentContainerStyle={styles.listContentContainer}
-      />
+      {/* 게시글 목록 — 로딩 중에는 목록을 그리되 가려 두고, 게이트 종료 후 한 번에 표시 */}
+      <View style={{ flex: 1 }}>
+        <FlatList
+          style={[styles.postList, hideListBehindLoader && { opacity: 0 }]}
+          pointerEvents={hideListBehindLoader ? 'none' : 'auto'}
+          data={schoolPosts}
+          keyExtractor={(item) => String(item.id)}
+          renderItem={renderPostItem}
+          showsVerticalScrollIndicator={false}
+          refreshing={loading && !hideListBehindLoader}
+          onRefresh={handleRefresh}
+          onEndReached={handleLoadMore}
+          onEndReachedThreshold={0.5}
+          ListEmptyComponent={
+            !loading ? (
+              <View style={styles.emptyContainer}>
+                <Text style={styles.emptyText}>
+                  아직 학교 게시판에 글이 없습니다.
+                </Text>
+              </View>
+            ) : null
+          }
+          ListFooterComponent={
+            loadingMore && !hideListBehindLoader ? (
+              <View style={styles.loadingMoreContainer}>
+                <Text style={styles.loadingMoreText}>
+                  더 불러오는 중...
+                </Text>
+              </View>
+            ) : null
+          }
+          contentContainerStyle={styles.listContentContainer}
+        />
+        {hideListBehindLoader ? (
+          <View
+            pointerEvents="box-none"
+            style={{
+              position: 'absolute',
+              left: 0,
+              right: 0,
+              top: 0,
+              bottom: 0,
+              backgroundColor: colors.background,
+              alignItems: 'center',
+              justifyContent: 'center',
+              zIndex: 2,
+            }}
+          >
+            <ActivityIndicator size="large" color={colors.primary} />
+            <Text
+              style={{
+                marginTop: normalize(12),
+                fontFamily: fonts.regular,
+                color: colors.textSecondary,
+                fontSize: normalize(14),
+              }}
+            >
+              {loadingMore ? '더 불러오는 중...' : '불러오는 중...'}
+            </Text>
+          </View>
+        ) : null}
+      </View>
 
       {/* 글쓰기 플로팅 버튼 */}
       <TouchableOpacity
