@@ -124,9 +124,9 @@ export function createMailStyles(normalize) {
       justifyContent: 'center',
     },
     detailSenderName: {
-      fontSize: normalize(fontSizes.xl),
+      fontSize: normalize(fontSizes.lg),
       fontFamily: fonts.bold,
-      color: colors.textPrimary,
+      color: colors.textSecondary,
       marginBottom: normalize(2),
     },
     detailTime: {
@@ -149,7 +149,7 @@ export function createMailStyles(normalize) {
       marginBottom: 0,
     },
     detailBody: {
-      fontSize: normalize(fontSizes.xxl),
+      fontSize: normalize(fontSizes.xl),
       color: colors.textPrimary,
       lineHeight: normalize(22),
     },
@@ -325,7 +325,22 @@ export function createMailStyles(normalize) {
       borderRadius: normalize(12),
       paddingHorizontal: normalize(14),
       paddingVertical: normalize(12),
-      ...shadow.sm,
+      ...shadow.md,
+    },
+    historyCardTopRow: {
+      flexDirection: 'row',
+      alignItems: 'flex-start',
+    },
+    historyCardMain: {
+      flex: 1,
+      minWidth: 0,
+      paddingRight: normalize(8),
+    },
+    historyNameDateRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      flexWrap: 'wrap',
+      marginBottom: normalize(8),
     },
     historyCardHeader: {
       flexDirection: 'row',

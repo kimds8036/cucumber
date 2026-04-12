@@ -18,6 +18,7 @@ import { colors, fonts } from '../../styles/colors';
 import { createBoardStyles, getNormalize } from '../../styles/board.style';
 import FontAwesome5 from '@expo/vector-icons/FontAwesome5';
 import { api } from '../../utils/api';
+import { subscribeBoardPostLike, subscribeBoardPostScrap } from '../../utils/listSyncEvents';
 import BoardPostCard from '../../components/Boardpostcard';
 
 /** 서버 created_at(UTC)을 "n분 전" 형식으로 변환. 화면에서는 기기 로컬 시간 기준으로 계산 */
@@ -239,6 +240,23 @@ export function BoardAllContent({ navigation, posts }) {
     fetchPosts(1, false);
   }, [sortType]);
 
+  useEffect(() => {
+    const unsubLike = subscribeBoardPostLike(({ postId, liked, likes }) => {
+      setServerPosts((prev) =>
+        prev.map((p) => (p.id === postId ? { ...p, liked, likes } : p))
+      );
+    });
+    const unsubScrap = subscribeBoardPostScrap(({ postId, scrapped, scrapCount }) => {
+      setServerPosts((prev) =>
+        prev.map((p) => (p.id === postId ? { ...p, scrapped, scrapCount } : p))
+      );
+    });
+    return () => {
+      unsubLike();
+      unsubScrap();
+    };
+  }, []);
+
   const data = posts && posts.length > 0 ? posts : serverPosts;
 
   const handleRefresh = () => {
@@ -281,16 +299,6 @@ export function BoardAllContent({ navigation, posts }) {
         navigation.navigate('BoardDetail', {
           post: { ...post, author: post.author },
           isMyPost: post.isMyPost ?? false,
-          onLikeChange: (id, liked, likes) => {
-            setServerPosts((prev) =>
-              prev.map((p) => (p.id === id ? { ...p, liked, likes } : p))
-            );
-          },
-          onScrapChange: (id, scrapped, scrapCount) => {
-            setServerPosts((prev) =>
-              prev.map((p) => (p.id === id ? { ...p, scrapped, scrapCount } : p))
-            );
-          },
         })
       }
       onMenuPress={(p, ref) => openFloatingMenu(p, ref)}

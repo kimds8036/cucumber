@@ -5,7 +5,7 @@ import SubHeader from '../frame/subHeader';
 import { getNormalize } from '../../styles/frame.style';
 import { createMailStyles } from '../../styles/mail.style';
 import { api } from '../../utils/api';
-import { colors, PROFILE_COLORS } from '../../styles/colors';
+import { colors } from '../../styles/colors';
 import Loading from '../../components/Loading';
 
 function parseUtcToLocal(createdAt) {
@@ -34,19 +34,6 @@ function formatHistoryTime(createdAt) {
   return `${yy}/${mm}/${dd} ${hh}:${mi}`;
 }
 
-function formatRelativeTime(createdAt) {
-  const d = parseUtcToLocal(createdAt);
-  if (!d) return '';
-  const diffMs = Date.now() - d.getTime();
-  const diffMin = Math.floor(diffMs / (1000 * 60));
-  if (diffMin < 1) return '방금';
-  if (diffMin < 60) return `${diffMin}분 전`;
-  const diffHour = Math.floor(diffMin / 60);
-  if (diffHour < 24) return `${diffHour}시간 전`;
-  const diffDay = Math.floor(diffHour / 24);
-  return `${diffDay}일 전`;
-}
-
 function extractMailListFromResponse(res) {
   const payload = res?.data;
   const data = payload?.data;
@@ -54,6 +41,16 @@ function extractMailListFromResponse(res) {
   if (Array.isArray(data)) return data;
   if (Array.isArray(payload?.mails)) return payload.mails;
   return [];
+}
+
+/** `mailscreen` 상세: 받은/보낸 우편·답장 뱃지와 동일한 기준 */
+function historyKindLabel(isReceived, rawMail) {
+  const pid = rawMail?.parent_mail_id;
+  const isReply = pid != null && Number(pid) > 0;
+  if (isReceived) {
+    return isReply ? '받은 답장' : '받은 우편';
+  }
+  return isReply ? '보낸 답장' : '보낸 우편';
 }
 
 export default function MailHistoryScreen({ navigation, route }) {
@@ -96,10 +93,8 @@ export default function MailHistoryScreen({ navigation, route }) {
           threadKey: Number(m.thread_key ?? m.root_mail_id ?? m.id),
           direction: 'other',
           displayName: '익명',
-          badgeText: '',
-          colorId: Number(m.sender_color_id ?? 1),
+          kindLabel: historyKindLabel(true, m),
           createdAt: m.created_at,
-          relativeTime: formatRelativeTime(m.created_at),
           time: formatHistoryTime(m.created_at),
           text: m.content || '',
           raw: m,
@@ -110,10 +105,8 @@ export default function MailHistoryScreen({ navigation, route }) {
           threadKey: Number(m.thread_key ?? m.root_mail_id ?? m.id),
           direction: 'me',
           displayName: m.recipient_name || '익명',
-          badgeText: '보냄',
-          colorId: Number(m.recipient_color_id ?? 1),
+          kindLabel: historyKindLabel(false, m),
           createdAt: m.created_at,
-          relativeTime: formatRelativeTime(m.created_at),
           time: formatHistoryTime(m.created_at),
           text: m.content || '',
           raw: m,
@@ -142,7 +135,7 @@ export default function MailHistoryScreen({ navigation, route }) {
 
   return (
     <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
-      <SubHeader title="히스토리" onBack={() => navigation.goBack()} />
+      <SubHeader title="우편 내역" onBack={() => navigation.goBack()} />
 
       <ScrollView
         style={styles.historyScroll}
@@ -159,7 +152,7 @@ export default function MailHistoryScreen({ navigation, route }) {
         )}
         {!loading && !!error && (
           <View style={{ paddingVertical: normalize(24), alignItems: 'center' }}>
-            <Text style={{ color: '#E74C3C' }}>{error}</Text>
+            <Text style={{ color: colors.textPrimary }}>{error}</Text>
           </View>
         )}
         {!loading && !error && historyItems.length === 0 && (
@@ -167,56 +160,25 @@ export default function MailHistoryScreen({ navigation, route }) {
             <Text>히스토리가 없습니다.</Text>
           </View>
         )}
-        {historyItems.map((item) => {
-          const profileColor = PROFILE_COLORS[String(item.colorId)] || colors.primary;
-          const firstChar = String(item.displayName || '익').charAt(0);
-          return (
-            <View
-              key={item.id}
-              style={styles.historyRow}
-            >
-              <View style={styles.historyCard}>
-                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                  <View
-                    style={{
-                      width: normalize(42),
-                      height: normalize(42),
-                      borderRadius: normalize(21),
-                      backgroundColor: profileColor,
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      marginRight: normalize(10),
-                    }}
-                  >
-                    <Text style={{ fontSize: normalize(14), color: '#fff' }}>{firstChar}</Text>
+        {historyItems.map((item) => (
+          <View key={item.id} style={styles.historyRow}>
+            <View style={styles.historyCard}>
+              <View style={styles.historyCardTopRow}>
+                <View style={styles.historyCardMain}>
+                  <View style={styles.historyNameDateRow}>
+                    <Text style={styles.detailSenderName}>{item.displayName}</Text>
+                    <Text style={styles.dotSep}> · </Text>
+                    <Text style={styles.detailTime}>{item.time}</Text>
                   </View>
-                  <View style={{ flex: 1 }}>
-                    <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                      <Text style={{ fontSize: normalize(14), fontWeight: '600', color: colors.textPrimary }}>
-                        {item.displayName}
-                      </Text>
-                      {!!item.badgeText && (
-                        <Text style={{ marginLeft: normalize(6), fontSize: normalize(10), color: colors.textSecondary }}>
-                          {item.badgeText}
-                        </Text>
-                      )}
-                    </View>
-                    <Text
-                      style={{ marginTop: normalize(3), fontSize: normalize(13), color: colors.textSecondary }}
-                      numberOfLines={1}
-                      ellipsizeMode="tail"
-                    >
-                      {item.text}
-                    </Text>
-                  </View>
-                  <Text style={{ marginLeft: normalize(8), alignSelf: 'flex-start', fontSize: normalize(11), color: colors.textSecondary }}>
-                    {item.relativeTime}
-                  </Text>
+                  <Text style={styles.detailBody}>{item.text}</Text>
+                </View>
+                <View style={styles.detailReplyBadge}>
+                  <Text style={styles.detailReplyBadgeText}>{item.kindLabel}</Text>
                 </View>
               </View>
             </View>
-          );
-        })}
+          </View>
+        ))}
 
       </ScrollView>
     </SafeAreaView>

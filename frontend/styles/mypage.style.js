@@ -269,7 +269,7 @@ export const createProfileCardStyles = (normalize) =>
     },
     quickLinkCard: {
       flex: 1,
-      backgroundColor: colors.textLight5,
+      backgroundColor: colors.primaryLight20,
       borderRadius: normalize(12),
       paddingVertical: normalize(8),
       paddingHorizontal: normalize(4),
@@ -277,8 +277,6 @@ export const createProfileCardStyles = (normalize) =>
       justifyContent: 'center',
       gap: normalize(2),
       position: 'relative',
-      borderWidth: StyleSheet.hairlineWidth,
-      borderColor: colors.textLight10,
     },
     quickLinkLabel: {
       alignSelf: 'stretch',

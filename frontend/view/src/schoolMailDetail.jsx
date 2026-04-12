@@ -22,6 +22,7 @@ import { colors, fonts } from '../../styles/colors';
 import { getNormalize } from '../../styles/frame.style';
 import { createSchoolMailDetailStyles } from '../../styles/SchoolMail.style';
 import { api } from '../../utils/api';
+import { emitSchoolMailLike } from '../../utils/listSyncEvents';
 import { getSchoolMailFromLabel } from './utils/schoolMailFromLabel';
 
 const INITIAL_REPLIES = 3;
@@ -317,8 +318,7 @@ export default function SchoolMailDetail({ navigation, route }) {
       const { liked, likeCount } = res.data;
       setPostLiked(Boolean(liked));
       setMail((m) => (m ? { ...m, like_count: likeCount, is_liked: liked } : m));
-      const onLikeChange = route?.params?.onLikeChange;
-      if (onLikeChange) onLikeChange(mailId, Boolean(liked), likeCount);
+      emitSchoolMailLike(mailId, Boolean(liked), likeCount);
     } catch (e) {
       setPostLiked(prevLiked);
       setMail((m) => (m ? { ...m, like_count: prevCount, is_liked: prevLiked } : m));

@@ -16,6 +16,7 @@ import { getNormalize } from '../../styles/frame.style';
 import { createSchoolMailStyles } from '../../styles/SchoolMail.style';
 import Loading from '../../components/Loading';
 import { api } from '../../utils/api';
+import { subscribeSchoolMailLike } from '../../utils/listSyncEvents';
 import { getSchoolMailFromLabel } from './utils/schoolMailFromLabel';
 
 function formatTimeAgo(createdAt) {
@@ -131,6 +132,17 @@ const SchoolMailboxScreen = ({ navigation, route }) => {
     fetchMails(1, false);
   }, [schoolId, fetchMails]);
 
+  useEffect(() => {
+    const unsub = subscribeSchoolMailLike(({ mailId, liked, likeCount }) => {
+      setMails((prev) =>
+        prev.map((m) =>
+          m.id === mailId ? { ...m, is_liked: liked, like_count: likeCount } : m
+        )
+      );
+    });
+    return () => unsub();
+  }, []);
+
   const handleLoadMore = useCallback(() => {
     if (loading || loadingMore || !hasMore || !schoolId) return;
     fetchMails(page + 1, true);
@@ -152,13 +164,6 @@ const SchoolMailboxScreen = ({ navigation, route }) => {
             mailId: raw.id,
             schoolName,
             schoolId,
-            onLikeChange: (id, liked, likeCount) => {
-              setMails((prev) =>
-                prev.map((m) =>
-                  m.id === id ? { ...m, is_liked: liked, like_count: likeCount } : m
-                )
-              );
-            },
           })
         }
       >
