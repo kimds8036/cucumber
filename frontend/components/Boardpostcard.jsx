@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { View, Text, TouchableOpacity, Image } from 'react-native';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
@@ -15,8 +15,18 @@ import { normalizeTagsFromApi } from '../utils/normalizePostTags';
  *  - styles       : createBoardStyles 로 생성된 스타일 객체
  *  - onPress      : 카드 클릭 핸들러 (post) => void
  *  - onScrapPress : 스크랩 토글 (post) => void
+ *  - onLayoutStable : (postId, layoutEpoch) => void — 태그 줄·칩 측정이 끝난 뒤(또는 태그 없음) 1회
+ *  - layoutStableEpoch : 목록이 배치한 로드 배치 번호(부모 ref). 콜백과 짝을 맞출 때 사용
  */
-const BoardPostCard = ({ post, normalize, styles, onPress, onScrapPress }) => {
+const BoardPostCard = ({
+  post,
+  normalize,
+  styles,
+  onPress,
+  onScrapPress,
+  onLayoutStable,
+  layoutStableEpoch = 0,
+}) => {
   const hasThumb =
     typeof post.thumbnail === 'string' && post.thumbnail.trim().length > 0;
   const [containerWidth, setContainerWidth] = useState(0);
@@ -91,6 +101,25 @@ const BoardPostCard = ({ post, normalize, styles, onPress, onScrapPress }) => {
     tags.length > 0 &&
     !measureBypass &&
     (!allMeasured || containerWidth <= 0);
+
+  const layoutStableKeyRef = useRef('');
+  const layoutStable = tags.length === 0 || !isMeasuring;
+  useEffect(() => {
+    if (!onLayoutStable) return undefined;
+    if (!layoutStable) return undefined;
+    const key = `${layoutStableEpoch}:${post?.id}`;
+    if (layoutStableKeyRef.current === key) return undefined;
+    layoutStableKeyRef.current = key;
+    const id = post?.id;
+    const epoch = layoutStableEpoch;
+    const raf = requestAnimationFrame(() => {
+      onLayoutStable(id, epoch);
+    });
+    return () => {
+      cancelAnimationFrame(raf);
+      layoutStableKeyRef.current = '';
+    };
+  }, [layoutStable, layoutStableEpoch, onLayoutStable, post?.id]);
 
   useEffect(() => {
     if (!__DEV__) return;
