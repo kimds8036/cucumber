@@ -126,7 +126,7 @@ export function createMailStyles(normalize) {
     detailSenderName: {
       fontSize: normalize(fontSizes.lg),
       fontFamily: fonts.bold,
-      color: colors.textSecondary,
+      color: colors.textPrimary,
       marginBottom: normalize(2),
     },
     detailTime: {
@@ -320,12 +320,16 @@ export function createMailStyles(normalize) {
     historyRow: {
       marginBottom: normalize(12),
     },
+    // 히스토리 카드: 바깥 = 그림자+테두리, 안쪽 = overflow(액센트 막대 라운드) — 그림자는 바깥에만
     historyCard: {
-      backgroundColor: colors.background,
       borderRadius: normalize(12),
-      paddingHorizontal: normalize(14),
-      paddingVertical: normalize(12),
+      backgroundColor: colors.background,
       ...shadow.md,
+    },
+    historyCardInner: {
+      borderRadius: normalize(12),
+      overflow: 'hidden',
+      backgroundColor: colors.background,
     },
     historyCardTopRow: {
       flexDirection: 'row',

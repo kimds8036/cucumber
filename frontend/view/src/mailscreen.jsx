@@ -9,7 +9,6 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Octicons from '@expo/vector-icons/Octicons';
-import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
 import SubHeader from '../frame/subHeader';
 import Loading from '../../components/Loading';
 import { usePlatformInsets } from '../../hooks/usePlatformInsets';
@@ -55,6 +54,40 @@ function extractMailListFromResponse(res) {
   if (Array.isArray(data)) return data;
   if (Array.isArray(payload?.mails)) return payload.mails;
   return [];
+}
+
+function pickLatestThreadMessage(myMsg, otherMsg) {
+  if (myMsg && otherMsg) {
+    const mt = parseUtcToLocal(myMsg.created_at);
+    const ot = parseUtcToLocal(otherMsg.created_at);
+    if (mt && ot) return mt >= ot ? myMsg : otherMsg;
+    if (mt) return myMsg;
+    if (ot) return otherMsg;
+    return myMsg || otherMsg;
+  }
+  return myMsg || otherMsg || null;
+}
+
+/** 발신자 표기: senderId === 현재 유저면 실명, 아니면 익명 (렌더 전용, API 변경 없음). me/sender 미확정 시 null */
+export function senderDisplayNameForCurrentUser({
+  senderId,
+  senderNameFromApi,
+  currentUserId,
+  myDisplayName,
+}) {
+  const sid = Number(senderId);
+  const me = Number(currentUserId);
+  if (!Number.isFinite(sid) || !Number.isFinite(me)) {
+    return null;
+  }
+  if (sid === me) {
+    const fromApi =
+      senderNameFromApi != null && String(senderNameFromApi).trim()
+        ? String(senderNameFromApi).trim()
+        : '';
+    return fromApi || (myDisplayName && String(myDisplayName).trim()) || '나';
+  }
+  return '익명';
 }
 
 function extractPaginationFromResponse(res) {
@@ -161,6 +194,8 @@ function MailInbox({ onOpen, onBack, navigation }) {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState('');
+  const [inboxCurrentUserId, setInboxCurrentUserId] = useState(null);
+  const [inboxMyDisplayName, setInboxMyDisplayName] = useState('');
 
   const fetchList = useCallback(async (nextPage = 1, append = false) => {
     try {
@@ -168,16 +203,21 @@ function MailInbox({ onOpen, onBack, navigation }) {
       setError('');
       const isReceived = tab === 'received';
       const endpoint = isReceived ? '/api/mails/personal/received' : '/api/mails/personal/sent';
-      const res = await api.get(endpoint, { params: { page: nextPage, limit: 20 } });
-      console.log('[MailScreen] list 응답 원본:', JSON.stringify(res.data));
+      const loadMe = nextPage === 1 && !append;
+      const results = await Promise.all([
+        api.get(endpoint, { params: { page: nextPage, limit: 20 } }),
+        loadMe ? api.get('/api/auth/me') : Promise.resolve(null),
+      ]);
+      const res = results[0];
+      const meRes = loadMe ? results[1] : null;
+      if (meRes?.data?.data) {
+        const me = meRes.data.data;
+        const meId = Number(me.id != null ? me.id : me.userId);
+        setInboxCurrentUserId(Number.isFinite(meId) ? meId : null);
+        setInboxMyDisplayName(me.name || me.username || '');
+      }
       const mails = extractMailListFromResponse(res);
       const pagination = extractPaginationFromResponse(res);
-      console.log('[MailScreen] list 파싱 결과:', {
-        endpoint,
-        count: mails.length,
-        hasDataMails: Array.isArray(res.data?.data?.mails),
-        hasDataArray: Array.isArray(res.data?.data),
-      });
       const mapped = mails.map((mail) => mapMailToListItem(mail, isReceived));
       let displayItems = mapped;
 
@@ -309,7 +349,13 @@ function MailInbox({ onOpen, onBack, navigation }) {
               <Text style={styles.anonLabel}>
                 {mail.rowKind === 'parent'
                   ? '원본 우편'
-                  : (mail.isReceived ? '익명' : (mail.raw?.recipient_name || '상대'))}
+                  : (senderDisplayNameForCurrentUser({
+                      senderId: mail.raw?.sender_id,
+                      senderNameFromApi: mail.raw?.sender_name,
+                      currentUserId: inboxCurrentUserId,
+                      myDisplayName: inboxMyDisplayName,
+                    }) ??
+                    (mail.isReceived ? '익명' : inboxMyDisplayName || '나'))}
               </Text>
               <Text style={styles.dotSep}>•</Text>
               <Text style={styles.mailTime}>{mail.receivedAt}</Text>
@@ -372,6 +418,7 @@ function MailDetail({ mail: initialMail, onBack, navigation }) {
 
   const [mail, setMail] = useState(null);
   const [myName, setMyName] = useState('');
+  const [currentUserId, setCurrentUserId] = useState(null);
   const [latestMyReply, setLatestMyReply] = useState(null);
   const [latestOtherReply, setLatestOtherReply] = useState(null);
   const [subHeaderHeight, setSubHeaderHeight] = useState(0);
@@ -389,6 +436,7 @@ function MailDetail({ mail: initialMail, onBack, navigation }) {
     240,
     Math.floor((availableHeight - scrollPadding - cardGap) / 2),
   );
+  const singleCardMinHeight = halfCardHeight * 2 + cardGap;
 
   const fetchDetail = useCallback(async () => {
     if (!initialMail?.id) return;
@@ -425,6 +473,7 @@ function MailDetail({ mail: initialMail, onBack, navigation }) {
           })[0] || null;
 
       setMyName(meDisplayName);
+      setCurrentUserId(Number.isFinite(meId) ? meId : null);
       setLatestMyReply(myLatestSent);
       setLatestOtherReply(otherLatestSent);
       setMail({
@@ -432,6 +481,7 @@ function MailDetail({ mail: initialMail, onBack, navigation }) {
         receivedAt: formatListTime(m.created_at),
         content: m.content || '',
         isReceived: initialMail?.isReceived != null ? initialMail?.isReceived : true,
+        senderId: m.sender_id,
         senderName: m.sender_name || '익명',
         senderColorId: m.sender_color_id != null ? m.sender_color_id : null,
         recipientColorId: m.recipient_color_id != null ? m.recipient_color_id : null,
@@ -448,11 +498,33 @@ function MailDetail({ mail: initialMail, onBack, navigation }) {
   useEffect(() => {
     fetchDetail();
   }, [fetchDetail]);
-  const initialIsReceived =
-    initialMail?.isReceived != null ? initialMail?.isReceived : true;
-  const hasReply = initialIsReceived
-    ? latestMyReply !== null
-    : latestOtherReply !== null;
+
+  const threadLatest = pickLatestThreadMessage(latestMyReply, latestOtherReply);
+  const singleBody =
+    threadLatest?.content ?? (mail?.content != null ? mail.content : '') ?? '';
+  const singleTimeLabel = threadLatest?.created_at
+    ? formatListTime(threadLatest.created_at)
+    : mail?.receivedAt ?? '';
+  const isDisplayMine = threadLatest
+    ? threadLatest === latestMyReply
+    : mail?.isReceived === false;
+
+  const displaySenderId =
+    threadLatest != null ? threadLatest.sender_id : mail?.senderId;
+  const displaySenderNameFromApi =
+    threadLatest != null ? threadLatest.sender_name : mail?.senderName;
+  const cardSenderLabel =
+    senderDisplayNameForCurrentUser({
+      senderId: displaySenderId,
+      senderNameFromApi: displaySenderNameFromApi,
+      currentUserId: currentUserId,
+      myDisplayName: myName,
+    }) ?? (isDisplayMine ? myName || '나' : '익명');
+
+  // 보낸 우편 흐름에서, 상자에 보이는 최신 글이 내 것일 때(상대가 아직 답하지 않음)
+  const showWaitingForReply =
+    mail?.isReceived === false && isDisplayMine;
+  const showReplyCta = mail?.isReceived === true && !isDisplayMine;
 
   return (
     <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
@@ -486,98 +558,60 @@ function MailDetail({ mail: initialMail, onBack, navigation }) {
           <View
             style={[
               styles.detailLetterCard,
-              { minHeight: halfCardHeight, marginBottom: 12 },
-            ]}
-          >
-            <View style={styles.detailSenderRow}>
-              <View
-                style={[
-                  styles.detailAvatar,
-                  {
-                    backgroundColor:
-                      mail?.isReceived === false
-                        ? colors.backgroundGray
-                        : colors.primary,
-                  },
-                ]}
-              />
-              <View style={styles.detailSenderTexts}>
-                <Text style={styles.detailSenderName}>
-                  {mail?.isReceived === false ? myName || '나' : '익명'}
-                </Text>
-                <Text style={styles.detailTime}>{mail?.receivedAt}</Text>
-              </View>
-              <View style={styles.detailReplyBadge}>
-                <Text style={styles.detailReplyBadgeText}>
-                  {mail?.isReceived === false ? '보낸 우편' : '받은 우편'}
-                </Text>
-              </View>
-            </View>
-            <View style={styles.detailBodyContainer}>
-              <Text style={styles.detailBody}>{mail?.content}</Text>
-            </View>
-          </View>
-
-          <View
-            style={[
-              styles.detailLetterCard,
               {
-                minHeight: halfCardHeight,
-                backgroundColor: colors.background,
+                minHeight: singleCardMinHeight,
+                marginBottom: 12,
               },
             ]}
           >
-            {hasReply ? (
+            {isDisplayMine ? (
               <>
                 <View style={styles.detailSenderRow}>
                   <View
                     style={[
                       styles.detailAvatar,
                       {
-                        backgroundColor:
-                          mail?.isReceived === false
-                            ? colors.primary
-                            : colors.backgroundGray,
+                        backgroundColor: colors.backgroundGray,
                       },
                     ]}
                   />
                   <View style={styles.detailSenderTexts}>
-                    <Text style={styles.detailSenderName}>
-                      {mail?.isReceived === false
-                        ? latestOtherReply?.sender_name || '익명'
-                        : myName || '나'}
-                    </Text>
-                    <Text style={styles.detailTime}>
-                      {formatListTime(
-                        (mail?.isReceived === false
-                          ? latestOtherReply
-                          : latestMyReply
-                        )?.created_at,
-                      )}
-                    </Text>
+                    <Text style={styles.detailSenderName}>{cardSenderLabel}</Text>
+                    <Text style={styles.detailTime}>{singleTimeLabel}</Text>
                   </View>
                   <View style={styles.detailReplyBadge}>
                     <Text style={styles.detailReplyBadgeText}>
-                      {mail?.isReceived === false ? '받은 답장' : '보낸 답장'}
+                      보낸 답장
                     </Text>
                   </View>
                 </View>
                 <View style={styles.detailReplyBodyContainer}>
-                  <Text style={styles.detailBody}>
-                    {(mail?.isReceived === false
-                      ? latestOtherReply
-                      : latestMyReply
-                    )?.content || ''}
-                  </Text>
+                  <Text style={styles.detailBody}>{singleBody}</Text>
                 </View>
               </>
             ) : (
-              <View style={styles.detailEmptyWrapper}>
-                <MaterialCommunityIcons name="email-outline" size={32} color={colors.textSecondary} />
-                <Text style={[styles.detailBody, styles.detailEmptyText]}>
-                  아직 답장하지 않았어요
-                </Text>
-              </View>
+              <>
+                <View style={styles.detailSenderRow}>
+                  <View
+                    style={[
+                      styles.detailAvatar,
+                      {
+                        backgroundColor: colors.primary,
+                      },
+                    ]}
+                  />
+                  <View style={styles.detailSenderTexts}>
+                    <Text style={styles.detailSenderName}>{cardSenderLabel}</Text>
+                    <Text style={styles.detailTime}>{singleTimeLabel}</Text>
+                  </View>
+                  <View style={styles.detailReplyBadge}>
+                    <Text style={styles.detailReplyBadgeText}>받은 우편</Text>
+                  </View>
+                </View>
+                <View style={styles.detailBodyContainer}>
+                  <Text style={styles.detailBody}>{singleBody}</Text>
+                </View>
+              </>
             )}
           </View>
         </ScrollView>
@@ -586,18 +620,28 @@ function MailDetail({ mail: initialMail, onBack, navigation }) {
           style={styles.bottomCtaWrapper}
           onLayout={(e) => setBottomCtaHeight(e.nativeEvent.layout.height)}
         >
-          <TouchableOpacity
+          {showWaitingForReply ? (
+            <Text style={styles.bottomWaitingText}>
+              상대방의 답장을 기다리고 있어요
+            </Text>
+          ) : showReplyCta ? (
+            <TouchableOpacity
               style={styles.bottomCtaButton}
               onPress={() =>
                 navigation.navigate('MailReply', {
-                  mail: { id: initialMail?.id, content: mail?.content, receivedAt: mail?.receivedAt },
+                  mail: {
+                    id: initialMail?.id,
+                    content: mail?.content,
+                    receivedAt: mail?.receivedAt,
+                  },
                   onSent: () => fetchDetail(),
                 })
               }
               activeOpacity={0.9}
-          >
+            >
               <Text style={styles.bottomCtaText}>답장하기</Text>
-          </TouchableOpacity>
+            </TouchableOpacity>
+          ) : null}
         </View>
       </View>
     </SafeAreaView>

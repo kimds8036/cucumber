@@ -455,7 +455,7 @@ const Settings = ({ navigation, route }) => {
           icon="social-distance"
           title="게시판 거리 설정"
           Icon={MaterialIcons}
-          description="게시글을 볼 수 있는 반경을 설정해요 (1 ~ 100km)"
+          description="근처 게시글의 반경을 설정해요 (1 ~ 100km)"
         />
         <View style={styles.card}>
           {/* 슬라이더 트랙 */}

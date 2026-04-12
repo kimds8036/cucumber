@@ -7,6 +7,7 @@ import { createMailStyles } from '../../styles/mail.style';
 import { api } from '../../utils/api';
 import { colors } from '../../styles/colors';
 import Loading from '../../components/Loading';
+import { senderDisplayNameForCurrentUser } from './mailscreen';
 
 function parseUtcToLocal(createdAt) {
   if (!createdAt) return null;
@@ -43,16 +44,6 @@ function extractMailListFromResponse(res) {
   return [];
 }
 
-/** `mailscreen` 상세: 받은/보낸 우편·답장 뱃지와 동일한 기준 */
-function historyKindLabel(isReceived, rawMail) {
-  const pid = rawMail?.parent_mail_id;
-  const isReply = pid != null && Number(pid) > 0;
-  if (isReceived) {
-    return isReply ? '받은 답장' : '받은 우편';
-  }
-  return isReply ? '보낸 답장' : '보낸 우편';
-}
-
 export default function MailHistoryScreen({ navigation, route }) {
   const { width } = useWindowDimensions();
   const normalize = useMemo(() => getNormalize(width), [width]);
@@ -70,21 +61,17 @@ export default function MailHistoryScreen({ navigation, route }) {
       else setLoading(true);
       setError('');
 
-      const [receivedRes, sentRes] = await Promise.all([
+      const [receivedRes, sentRes, meRes] = await Promise.all([
         api.get('/api/mails/personal/received', { params: { page: 1, limit: 100 } }),
         api.get('/api/mails/personal/sent', { params: { page: 1, limit: 100 } }),
+        api.get('/api/auth/me'),
       ]);
 
-      console.log('[History] received 응답 원본:', JSON.stringify(receivedRes.data));
-      console.log('[History] sent 응답 원본:', JSON.stringify(sentRes.data));
       const received = extractMailListFromResponse(receivedRes);
       const sent = extractMailListFromResponse(sentRes);
-      console.log('[History] list 파싱 결과:', {
-        receivedCount: received.length,
-        sentCount: sent.length,
-        receivedHasDataMails: Array.isArray(receivedRes.data?.data?.mails),
-        sentHasDataMails: Array.isArray(sentRes.data?.data?.mails),
-      });
+      const me = meRes?.data?.data;
+      const meId = Number(me?.id != null ? me.id : me?.userId);
+      const myDisplayName = me?.name || me?.username || '';
 
       const merged = [
         ...received.map((m) => ({
@@ -92,8 +79,13 @@ export default function MailHistoryScreen({ navigation, route }) {
           rawId: m.id,
           threadKey: Number(m.thread_key ?? m.root_mail_id ?? m.id),
           direction: 'other',
-          displayName: '익명',
-          kindLabel: historyKindLabel(true, m),
+          displayName:
+            senderDisplayNameForCurrentUser({
+              senderId: m.sender_id,
+              senderNameFromApi: m.sender_name,
+              currentUserId: meId,
+              myDisplayName,
+            }) ?? '익명',
           createdAt: m.created_at,
           time: formatHistoryTime(m.created_at),
           text: m.content || '',
@@ -104,8 +96,13 @@ export default function MailHistoryScreen({ navigation, route }) {
           rawId: m.id,
           threadKey: Number(m.thread_key ?? m.root_mail_id ?? m.id),
           direction: 'me',
-          displayName: m.recipient_name || '익명',
-          kindLabel: historyKindLabel(false, m),
+          displayName:
+            senderDisplayNameForCurrentUser({
+              senderId: m.sender_id,
+              senderNameFromApi: m.sender_name,
+              currentUserId: meId,
+              myDisplayName,
+            }) ?? (myDisplayName || '나'),
           createdAt: m.created_at,
           time: formatHistoryTime(m.created_at),
           text: m.content || '',
@@ -160,11 +157,45 @@ export default function MailHistoryScreen({ navigation, route }) {
             <Text>히스토리가 없습니다.</Text>
           </View>
         )}
-        {historyItems.map((item) => (
-          <View key={item.id} style={styles.historyRow}>
-            <View style={styles.historyCard}>
-              <View style={styles.historyCardTopRow}>
-                <View style={styles.historyCardMain}>
+        {historyItems.map((item) => {
+          const r = normalize(12);
+          const accentW = normalize(6);
+          const isOther = item.direction === 'other';
+          return (
+            <View key={item.id} style={styles.historyRow}>
+              <View style={styles.historyCard}>
+                <View
+                  style={[
+                    styles.historyCardInner,
+                    {
+                      flexDirection: 'row',
+                      alignItems: 'stretch',
+                      paddingHorizontal: 0,
+                      paddingVertical: normalize(12),
+                    },
+                  ]}
+                >
+                {isOther ? (
+                  <View
+                    style={{
+                      width: accentW,
+                      backgroundColor: colors.primary,
+                      borderTopLeftRadius: r,
+                      borderBottomLeftRadius: r,
+                    }}
+                  />
+                ) : null}
+                <View
+                  style={[
+                    styles.historyCardMain,
+                    {
+                      flex: 1,
+                      minWidth: 0,
+                      paddingLeft: normalize(14),
+                      paddingRight: normalize(14),
+                    },
+                  ]}
+                >
                   <View style={styles.historyNameDateRow}>
                     <Text style={styles.detailSenderName}>{item.displayName}</Text>
                     <Text style={styles.dotSep}> · </Text>
@@ -172,13 +203,21 @@ export default function MailHistoryScreen({ navigation, route }) {
                   </View>
                   <Text style={styles.detailBody}>{item.text}</Text>
                 </View>
-                <View style={styles.detailReplyBadge}>
-                  <Text style={styles.detailReplyBadgeText}>{item.kindLabel}</Text>
+                {isOther ? null : (
+                  <View
+                    style={{
+                      width: accentW,
+                      backgroundColor: colors.textSecondary,
+                      borderTopRightRadius: r,
+                      borderBottomRightRadius: r,
+                    }}
+                  />
+                )}
                 </View>
               </View>
             </View>
-          </View>
-        ))}
+          );
+        })}
 
       </ScrollView>
     </SafeAreaView>
