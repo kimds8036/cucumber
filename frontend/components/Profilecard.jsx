@@ -21,8 +21,10 @@ const ProfileCard = ({ userInfo, navigation }) => {
   const { hasUnreadFriendRequests } = useFriend();
   const [posts, setPosts] = useState([]);
   const [scrappedPosts, setScrappedPosts] = useState([]);
+  const [countsLoading, setCountsLoading] = useState(true);
 
   const loadPostCounts = useCallback(async () => {
+    setCountsLoading(true);
     try {
       const [writtenRes, scrappedRes] = await Promise.all([
         api.get('/api/posts/my', { params: { page: 1, limit: 50 } }),
@@ -34,6 +36,8 @@ const ProfileCard = ({ userInfo, navigation }) => {
       console.warn('[ProfileCard] 게시글 수 로드 실패:', e?.message || e);
       setPosts([]);
       setScrappedPosts([]);
+    } finally {
+      setCountsLoading(false);
     }
   }, []);
 
@@ -68,28 +72,60 @@ const ProfileCard = ({ userInfo, navigation }) => {
           style={styles.quickLinkCard}
           onPress={() => navigation.navigate('Friends')}
           activeOpacity={0.7}
+          disabled={countsLoading}
         >
-          <Text style={styles.quickLinkMeta}>{userInfo.friendCount ?? 0}</Text>
-          <Text style={styles.quickLinkLabel}>친구</Text>
-          {hasUnreadFriendRequests ? <View style={styles.quickLinkDot} /> : null}
+          {countsLoading ? (
+            <>
+              <View style={styles.quickLinkSkeletonMeta} />
+              <View style={styles.quickLinkSkeletonLabel} />
+            </>
+          ) : (
+            <>
+              <Text style={styles.quickLinkMeta}>{userInfo.friendCount ?? 0}</Text>
+              <Text style={styles.quickLinkLabel}>친구</Text>
+            </>
+          )}
+          {!countsLoading && hasUnreadFriendRequests ? (
+            <View style={styles.quickLinkDot} />
+          ) : null}
         </TouchableOpacity>
 
         <TouchableOpacity
           style={styles.quickLinkCard}
           onPress={() => navigation.navigate('MyPosts', { tab: 'written' })}
           activeOpacity={0.7}
+          disabled={countsLoading}
         >
-          <Text style={styles.quickLinkMeta}>{posts.length}</Text>
-          <Text style={styles.quickLinkLabel}>게시글</Text>
+          {countsLoading ? (
+            <>
+              <View style={styles.quickLinkSkeletonMeta} />
+              <View style={styles.quickLinkSkeletonLabel} />
+            </>
+          ) : (
+            <>
+              <Text style={styles.quickLinkMeta}>{posts.length}</Text>
+              <Text style={styles.quickLinkLabel}>게시글</Text>
+            </>
+          )}
         </TouchableOpacity>
 
         <TouchableOpacity
           style={styles.quickLinkCard}
           onPress={() => navigation.navigate('MyPosts', { tab: 'scrapped' })}
           activeOpacity={0.7}
+          disabled={countsLoading}
         >
-          <Text style={styles.quickLinkMeta}>{scrappedPosts.length}</Text>
-          <Text style={styles.quickLinkLabel}>스크랩</Text>
+          {countsLoading ? (
+            <>
+              <View style={styles.quickLinkSkeletonMeta} />
+              <View style={styles.quickLinkSkeletonLabel} />
+            </>
+          ) : (
+            <>
+              <Text style={styles.quickLinkMeta}>{scrappedPosts.length}</Text>
+              <Text style={styles.quickLinkLabel}>스크랩</Text>
+            </>
+          )}
         </TouchableOpacity>
       </View>
     </View>

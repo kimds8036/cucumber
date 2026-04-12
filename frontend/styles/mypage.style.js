@@ -301,6 +301,21 @@ export const createProfileCardStyles = (normalize) =>
       borderRadius: normalize(4),
       backgroundColor: colors.alert,
     },
+    /** 숫자·라벨 줄 높이를 실제 `quickLinkMeta` / `quickLinkLabel`에 맞춤 */
+    quickLinkSkeletonMeta: {
+      alignSelf: 'center',
+      width: '48%',
+      height: normalize(24),
+      borderRadius: normalize(6),
+      backgroundColor: colors.textLight10,
+    },
+    quickLinkSkeletonLabel: {
+      alignSelf: 'center',
+      width: '64%',
+      height: normalize(15),
+      borderRadius: normalize(4),
+      backgroundColor: colors.textLight10,
+    },
   });
 
 /** 알림/설정 화면 (`notificationsettings.jsx`) */
