@@ -112,6 +112,57 @@ export function senderDisplayNameForCurrentUser({
   return '익명';
 }
 
+export function counterpartyDisplayNameForCurrentUser({
+  isReceived,
+  senderNameFromApi,
+  recipientNameFromApi,
+  isRootAuthorForCurrentUser = false,
+}) {
+  if (!isReceived) {
+    const knownRecipient =
+      recipientNameFromApi != null && String(recipientNameFromApi).trim()
+        ? String(recipientNameFromApi).trim()
+        : '';
+    const decided = knownRecipient || '상대';
+    console.log('[MailLabelDecision][Helper]', {
+      isReceived,
+      isRootAuthorForCurrentUser,
+      senderNameFromApi: senderNameFromApi ?? null,
+      recipientNameFromApi: recipientNameFromApi ?? null,
+      decidedLabel: decided,
+    });
+    return decided;
+  }
+
+  if (!isRootAuthorForCurrentUser) {
+    console.log('[MailLabelDecision][Helper]', {
+      isReceived,
+      isRootAuthorForCurrentUser,
+      senderNameFromApi: senderNameFromApi ?? null,
+      recipientNameFromApi: recipientNameFromApi ?? null,
+      decidedLabel: '익명',
+    });
+    return '익명';
+  }
+
+  if (isReceived) {
+    const knownSender =
+      senderNameFromApi != null && String(senderNameFromApi).trim()
+        ? String(senderNameFromApi).trim()
+        : '';
+    const decided = knownSender || '익명';
+    console.log('[MailLabelDecision][Helper]', {
+      isReceived,
+      isRootAuthorForCurrentUser,
+      senderNameFromApi: senderNameFromApi ?? null,
+      recipientNameFromApi: recipientNameFromApi ?? null,
+      decidedLabel: decided,
+    });
+    return decided;
+  }
+  return '익명';
+}
+
 function extractPaginationFromResponse(res) {
   const payload = res?.data;
   const data = payload?.data;
@@ -134,78 +185,6 @@ function mapMailToListItem(mail, isReceived) {
   };
 }
 
-function buildSentDisplayItems(mappedSentMails, parentMailById) {
-  const grouped = new Map();
-  mappedSentMails.forEach((mail) => {
-    const key = mail.threadKey;
-    if (!grouped.has(key)) grouped.set(key, []);
-    grouped.get(key).push(mail);
-  });
-
-  const groupEntries = Array.from(grouped.entries()).sort((a, b) => {
-    const aLatest = a[1].slice().sort((x, y) => {
-      const xd = parseUtcToLocal(x.createdAt);
-      const yd = parseUtcToLocal(y.createdAt);
-      if (!xd || !yd) return 0;
-      return yd - xd;
-    })[0];
-    const bLatest = b[1].slice().sort((x, y) => {
-      const xd = parseUtcToLocal(x.createdAt);
-      const yd = parseUtcToLocal(y.createdAt);
-      if (!xd || !yd) return 0;
-      return yd - xd;
-    })[0];
-    const ad = parseUtcToLocal(aLatest?.createdAt);
-    const bd = parseUtcToLocal(bLatest?.createdAt);
-    if (!ad || !bd) return 0;
-    return bd - ad;
-  });
-
-  const displayItems = [];
-  groupEntries.forEach(([, groupMails]) => {
-    const replies = groupMails.filter((m) => Number(m.parentMailId) > 0);
-    const roots = groupMails.filter((m) => !m.parentMailId);
-
-    if (replies.length === 0) {
-      roots
-        .sort((a, b) => {
-          const ad = parseUtcToLocal(a.createdAt);
-          const bd = parseUtcToLocal(b.createdAt);
-          if (!ad || !bd) return 0;
-          return bd - ad;
-        })
-        .forEach((m) => displayItems.push({ ...m, rowKind: 'normal' }));
-      return;
-    }
-
-    const parentId = Number(replies[0].parentMailId);
-    const parentFromGroup = roots.find((r) => Number(r.id) === parentId);
-    const parentFromApi = parentMailById.get(parentId);
-    const parent = parentFromGroup || (parentFromApi ? mapMailToListItem(parentFromApi, true) : null);
-
-    if (parent) {
-      displayItems.push({
-        ...parent,
-        listKey: `parent-${parent.id}-${groupMails[0].threadKey}`,
-        rowKind: 'parent',
-        isReceived: true,
-        isUnread: false,
-      });
-    }
-
-    replies
-      .sort((a, b) => {
-        const ad = parseUtcToLocal(a.createdAt);
-        const bd = parseUtcToLocal(b.createdAt);
-        if (!ad || !bd) return 0;
-        return ad - bd;
-      })
-      .forEach((reply) => displayItems.push({ ...reply, rowKind: 'reply' }));
-  });
-
-  return displayItems;
-}
-
 function MailInbox({ onOpen, onBack, navigation }) {
   const { width } = useWindowDimensions();
   const normalize = useMemo(() => getNormalize(width), [width]);
@@ -217,8 +196,6 @@ function MailInbox({ onOpen, onBack, navigation }) {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState('');
-  const [inboxCurrentUserId, setInboxCurrentUserId] = useState(null);
-  const [inboxMyDisplayName, setInboxMyDisplayName] = useState('');
 
   const fetchList = useCallback(async (nextPage = 1, append = false) => {
     try {
@@ -226,48 +203,23 @@ function MailInbox({ onOpen, onBack, navigation }) {
       setError('');
       const isReceived = tab === 'received';
       const endpoint = isReceived ? '/api/mails/personal/received' : '/api/mails/personal/sent';
-      const loadMe = nextPage === 1 && !append;
-      const results = await Promise.all([
-        api.get(endpoint, { params: { page: nextPage, limit: 20 } }),
-        loadMe ? api.get('/api/auth/me') : Promise.resolve(null),
-      ]);
-      const res = results[0];
-      const meRes = loadMe ? results[1] : null;
-      if (meRes?.data?.data) {
-        const me = meRes.data.data;
-        const meId = Number(me.id != null ? me.id : me.userId);
-        setInboxCurrentUserId(Number.isFinite(meId) ? meId : null);
-        setInboxMyDisplayName(me.name || me.username || '');
-      }
+      const res = await api.get(endpoint, { params: { page: nextPage, limit: 20 } });
       const mails = extractMailListFromResponse(res);
       const pagination = extractPaginationFromResponse(res);
       const mapped = mails.map((mail) => mapMailToListItem(mail, isReceived));
       let displayItems = mapped;
 
       if (!isReceived) {
-        const parentIds = Array.from(
-          new Set(
-            mapped
-              .map((m) => m.parentMailId)
-              .filter((id) => Number.isInteger(Number(id)) && Number(id) > 0)
-              .map((id) => Number(id))
-          )
-        );
-
-        const parentMailById = new Map();
-        if (parentIds.length > 0) {
-          const parentResponses = await Promise.all(
-            parentIds.map((parentId) =>
-              api.get(`/api/mails/personal/${parentId}`).catch(() => null)
-            )
-          );
-          parentResponses.forEach((resp) => {
-            const parent = resp?.data?.data;
-            if (parent?.id) parentMailById.set(Number(parent.id), parent);
-          });
-        }
-
-        displayItems = buildSentDisplayItems(mapped, parentMailById);
+        // 보낸 우편은 thread_key 기준 병합을 하지 않고, 발송 단위(행)로만 노출한다.
+        displayItems = mapped
+          .slice()
+          .sort((a, b) => {
+            const ad = parseUtcToLocal(a.createdAt);
+            const bd = parseUtcToLocal(b.createdAt);
+            if (!ad || !bd) return 0;
+            return bd - ad;
+          })
+          .map((m) => ({ ...m, rowKind: 'normal' }));
       }
       const totalPages = Number(pagination?.totalPages || 1);
 
@@ -372,16 +324,25 @@ function MailInbox({ onOpen, onBack, navigation }) {
               <Text style={styles.anonLabel}>
                 {mail.rowKind === 'parent'
                   ? '원본 우편'
-                  : (senderDisplayNameForCurrentUser({
-                      senderId: mail.raw?.sender_id,
+                  : counterpartyDisplayNameForCurrentUser({
+                      isReceived: Boolean(mail.isReceived),
                       senderNameFromApi: mail.raw?.sender_name,
-                      currentUserId: inboxCurrentUserId,
-                      myDisplayName: inboxMyDisplayName,
-                      replyToMySent:
-                        mail.isReceived &&
-                        Boolean(mail.replyToMySent ?? mail.raw?.reply_to_my_sent),
-                    }) ??
-                    (mail.isReceived ? '익명' : inboxMyDisplayName || '나'))}
+                      recipientNameFromApi: mail.raw?.recipient_name,
+                      isRootAuthorForCurrentUser: Boolean(
+                        mail.raw?.is_root_author_for_current_user
+                      ),
+                    })}
+              {mail.rowKind !== 'parent' &&
+                console.log('[MailLabelDecision][MailInboxRow]', {
+                  mailId: mail.raw?.id ?? mail.id,
+                  rowKind: mail.rowKind ?? 'normal',
+                  isReceived: Boolean(mail.isReceived),
+                  isRootAuthorForCurrentUser: Boolean(
+                    mail.raw?.is_root_author_for_current_user
+                  ),
+                  senderNameFromApi: mail.raw?.sender_name ?? null,
+                  recipientNameFromApi: mail.raw?.recipient_name ?? null,
+                })}
               </Text>
               <Text style={styles.dotSep}>•</Text>
               <Text style={styles.mailTime}>{mail.receivedAt}</Text>
@@ -486,12 +447,18 @@ function MailDetail({ mail: initialMail, onBack, navigation }) {
         isReceived: initialMail?.isReceived != null ? initialMail?.isReceived : true,
         senderId: m.sender_id,
         senderName: m.sender_name || '익명',
+        recipientName: m.recipient_name || '',
         senderColorId: m.sender_color_id != null ? m.sender_color_id : null,
         recipientColorId: m.recipient_color_id != null ? m.recipient_color_id : null,
         counterpartyUserId:
           (initialMail?.isReceived != null ? initialMail?.isReceived : true) ? m.sender_id : m.recipient_id,
         replyToMySent: Boolean(
           m.reply_to_my_sent ?? m.replyToMySent ?? initialMail?.replyToMySent
+        ),
+        isRootAuthorForCurrentUser: Boolean(
+          m.is_root_author_for_current_user ??
+          initialMail?.is_root_author_for_current_user ??
+          initialMail?.isRootAuthorForCurrentUser
         ),
       });
     } catch (e) {
@@ -515,27 +482,27 @@ function MailDetail({ mail: initialMail, onBack, navigation }) {
     ? threadLatest === latestMyReply
     : mail?.isReceived === false;
 
-  const displaySenderId =
-    threadLatest != null ? threadLatest.sender_id : mail?.senderId;
-  const displaySenderNameFromApi =
-    threadLatest != null ? threadLatest.sender_name : mail?.senderName;
-  const replyToMySentFromApi = Boolean(mail?.replyToMySent);
-  const replyToMySentFromThreadMsg =
-    Boolean(threadLatest) &&
-    threadMessages.length > 0 &&
-    replyToMySentFromThread(threadLatest, threadMessages, currentUserId);
-  const replyToMySent =
-    mail?.isReceived === true &&
-    !isDisplayMine &&
-    (replyToMySentFromApi || replyToMySentFromThreadMsg);
-  const cardSenderLabel =
-    senderDisplayNameForCurrentUser({
-      senderId: displaySenderId,
-      senderNameFromApi: displaySenderNameFromApi,
-      currentUserId: currentUserId,
-      myDisplayName: myName,
-      replyToMySent,
-    }) ?? (isDisplayMine ? myName || '나' : '익명');
+  const counterpartyKnownName =
+    mail?.isReceived === true
+      ? (threadMessages.find((msg) => Number(msg.sender_id) !== Number(currentUserId))?.sender_name || mail?.senderName)
+      : (mail?.recipientName || '');
+  const cardSenderLabel = isDisplayMine
+    ? (myName || '나')
+    : counterpartyDisplayNameForCurrentUser({
+        isReceived: true,
+        senderNameFromApi: counterpartyKnownName,
+        recipientNameFromApi: mail?.recipientName,
+        isRootAuthorForCurrentUser: Boolean(mail?.isRootAuthorForCurrentUser),
+      });
+  console.log('[MailLabelDecision][MailDetail]', {
+    mailId: mail?.id ?? initialMail?.id ?? null,
+    isReceived: Boolean(mail?.isReceived),
+    isRootAuthorForCurrentUser: Boolean(mail?.isRootAuthorForCurrentUser),
+    isDisplayMine,
+    counterpartyKnownName: counterpartyKnownName || null,
+    recipientNameFromApi: mail?.recipientName ?? null,
+    decidedLabel: cardSenderLabel,
+  });
 
   // 보낸 우편 흐름에서, 상자에 보이는 최신 글이 내 것일 때(상대가 아직 답하지 않음)
   const showWaitingForReply =

@@ -37,7 +37,10 @@ router.get('/personal/received', authenticate, async (req, res) => {
         pm.is_deleted,
         pm.parent_mail_id,
         pm.root_mail_id,
+        pm.room_id,
         COALESCE(pm.root_mail_id, pm.id) AS thread_key,
+        root_pm.sender_id AS root_sender_id,
+        (root_pm.sender_id = ?) AS is_root_author_for_current_user,
         (
           SELECT COUNT(*)
           FROM personal_mails r
@@ -51,10 +54,11 @@ router.get('/personal/received', authenticate, async (req, res) => {
       FROM personal_mails pm
       LEFT JOIN users u ON pm.sender_id = u.id
       LEFT JOIN personal_mails par ON par.id = pm.parent_mail_id AND par.is_deleted = FALSE
+      LEFT JOIN personal_mails root_pm ON root_pm.id = COALESCE(pm.root_mail_id, pm.id) AND root_pm.is_deleted = FALSE
       WHERE pm.recipient_id = ? AND pm.is_deleted = FALSE${isRead !== undefined ? ' AND pm.is_read = ?' : ''}
       ORDER BY pm.created_at DESC
       LIMIT ${limitNum} OFFSET ${offsetNum}`,
-      params
+      [userId, ...params]
     );
 
     // 전체 개수 조회 (목록 SELECT와 플레이스홀더 개수가 다름)
@@ -107,7 +111,10 @@ router.get('/personal/sent', authenticate, async (req, res) => {
         pm.is_deleted,
         pm.parent_mail_id,
         pm.root_mail_id,
+        pm.room_id,
         COALESCE(pm.root_mail_id, pm.id) AS thread_key,
+        root_pm.sender_id AS root_sender_id,
+        (root_pm.sender_id = ?) AS is_root_author_for_current_user,
         (
           SELECT COUNT(*)
           FROM personal_mails r
@@ -119,10 +126,11 @@ router.get('/personal/sent', authenticate, async (req, res) => {
         u.color_id as recipient_color_id
       FROM personal_mails pm
       LEFT JOIN users u ON pm.recipient_id = u.id
+      LEFT JOIN personal_mails root_pm ON root_pm.id = COALESCE(pm.root_mail_id, pm.id) AND root_pm.is_deleted = FALSE
       WHERE pm.sender_id = ? AND pm.is_deleted = FALSE
       ORDER BY pm.created_at DESC
       LIMIT ${limitNum} OFFSET ${offsetNum}`,
-      [userId]
+      [userId, userId]
     );
 
     // 전체 개수 조회
@@ -204,14 +212,18 @@ router.get('/personal/:mailId/thread', authenticate, async (req, res) => {
         pm.content,
         pm.created_at,
         pm.parent_mail_id,
-        pm.root_mail_id
+        pm.root_mail_id,
+        pm.room_id,
+        root_pm.sender_id AS root_sender_id,
+        (root_pm.sender_id = ?) AS is_root_author_for_current_user
        FROM personal_mails pm
        JOIN users s ON pm.sender_id = s.id
        JOIN users r ON pm.recipient_id = r.id
+       LEFT JOIN personal_mails root_pm ON root_pm.id = COALESCE(pm.root_mail_id, pm.id) AND root_pm.is_deleted = FALSE
        WHERE (pm.id = ? OR pm.root_mail_id = ?)
          AND pm.is_deleted = FALSE
        ORDER BY pm.created_at ASC`,
-      [threadRootId, threadRootId]
+      [userId, threadRootId, threadRootId]
     );
 
     res.json({
@@ -247,6 +259,8 @@ router.get('/personal/:mailId', authenticate, async (req, res) => {
         pm.is_deleted,
         pm.parent_mail_id,
         pm.root_mail_id,
+        root_pm.sender_id AS root_sender_id,
+        (root_pm.sender_id = ?) AS is_root_author_for_current_user,
         pm.created_at,
         u1.name as sender_name,
         u1.color_id as sender_color_id,
@@ -257,10 +271,11 @@ router.get('/personal/:mailId', authenticate, async (req, res) => {
       LEFT JOIN users u1 ON pm.sender_id = u1.id
       LEFT JOIN users u2 ON pm.recipient_id = u2.id
       LEFT JOIN personal_mails par ON par.id = pm.parent_mail_id AND par.is_deleted = FALSE
+      LEFT JOIN personal_mails root_pm ON root_pm.id = COALESCE(pm.root_mail_id, pm.id) AND root_pm.is_deleted = FALSE
       WHERE pm.id = ? 
         AND (pm.sender_id = ? OR pm.recipient_id = ?)
         AND pm.is_deleted = FALSE`,
-      [userId, mailId, userId, userId]
+      [userId, userId, mailId, userId, userId]
     );
 
     if (mails.length === 0) {
@@ -345,12 +360,51 @@ router.post('/personal', authenticate, async (req, res) => {
       });
     }
 
-    // 우편 생성
-    const [result] = await pool.execute(
-      `INSERT INTO personal_mails (sender_id, recipient_id, content, created_at)
-       VALUES (?, ?, ?, ?)`,
-      [userId, recipientId, content.trim(), getNowForDB()]
-    );
+    const connection = await pool.getConnection();
+    let result;
+    try {
+      await connection.beginTransaction();
+      // 루트 우편 생성 (room_id는 생성 후 업데이트)
+      [result] = await connection.execute(
+        `INSERT INTO personal_mails (sender_id, recipient_id, content, root_mail_id, created_at)
+         VALUES (?, ?, ?, NULL, ?)`,
+        [userId, recipientId, content.trim(), getNowForDB()]
+      );
+      const rootMailId = Number(result.insertId);
+
+      const [roomResult] = await connection.execute(
+        `INSERT INTO personal_mail_rooms (
+          root_mail_id,
+          root_author_id,
+          user1_id,
+          user2_id,
+          last_mail_id,
+          last_mail_at
+        ) VALUES (?, ?, ?, ?, ?, ?)`,
+        [
+          rootMailId,
+          userId,
+          Math.min(Number(userId), Number(recipientId)),
+          Math.max(Number(userId), Number(recipientId)),
+          rootMailId,
+          getNowForDB(),
+        ]
+      );
+      const roomId = Number(roomResult.insertId);
+
+      await connection.execute(
+        `UPDATE personal_mails
+         SET root_mail_id = ?, room_id = ?
+         WHERE id = ?`,
+        [rootMailId, roomId, rootMailId]
+      );
+      await connection.commit();
+    } catch (txError) {
+      await connection.rollback();
+      throw txError;
+    } finally {
+      connection.release();
+    }
 
     // 생성된 우편 정보 조회
     const [newMails] = await pool.execute(
@@ -361,6 +415,7 @@ router.post('/personal', authenticate, async (req, res) => {
         pm.content,
         pm.is_read,
         pm.is_deleted,
+        pm.room_id,
         pm.created_at,
         u.name as recipient_name,
         u.color_id as recipient_color_id
@@ -397,6 +452,7 @@ router.post('/personal', authenticate, async (req, res) => {
 
 // 개인 우편 답장
 router.post('/personal/:mailId/reply', authenticate, async (req, res) => {
+  const connection = await pool.getConnection();
   try {
     const userId = req.user.userId;
     const { mailId } = req.params;
@@ -409,15 +465,19 @@ router.post('/personal/:mailId/reply', authenticate, async (req, res) => {
       });
     }
 
-    // 원본 우편 조회 (받은 우편인지 확인)
-    const [mails] = await pool.execute(
-      `SELECT sender_id, recipient_id, root_mail_id
+    await connection.beginTransaction();
+
+    // 원본 우편 조회 (받은 우편인지 확인) + 잠금
+    const [mails] = await connection.execute(
+      `SELECT id, sender_id, recipient_id, root_mail_id, parent_mail_id, room_id
        FROM personal_mails 
-       WHERE id = ? AND recipient_id = ? AND is_deleted = FALSE`,
+       WHERE id = ? AND recipient_id = ? AND is_deleted = FALSE
+       FOR UPDATE`,
       [mailId, userId]
     );
 
     if (mails.length === 0) {
+      await connection.rollback();
       return res.status(404).json({ 
         success: false, 
         message: '답장할 우편을 찾을 수 없거나 권한이 없습니다.' 
@@ -428,15 +488,91 @@ router.post('/personal/:mailId/reply', authenticate, async (req, res) => {
     const recipientId = originalMail.sender_id; // 원본 발신자에게 답장
     const rootMailId = originalMail.root_mail_id == null ? Number(mailId) : Number(originalMail.root_mail_id);
 
+    // 루트 우편 무결성 검증: 루트는 parent_mail_id 가 없어야 한다.
+    const [rootRows] = await connection.execute(
+      `SELECT id, sender_id, recipient_id, parent_mail_id
+       FROM personal_mails
+       WHERE id = ? AND is_deleted = FALSE
+       FOR UPDATE`,
+      [rootMailId]
+    );
+    if (rootRows.length === 0 || rootRows[0].parent_mail_id != null) {
+      await connection.rollback();
+      return res.status(409).json({
+        success: false,
+        message: '스레드 구조가 올바르지 않아 답장을 보낼 수 없습니다.',
+      });
+    }
+
+    // 스레드 사용자쌍 일관성 검증: 같은 root 아래 모든 메일은 동일 2인 쌍이어야 한다.
+    const [threadRows] = await connection.execute(
+      `SELECT sender_id, recipient_id
+       FROM personal_mails
+       WHERE (id = ? OR root_mail_id = ?)
+         AND is_deleted = FALSE`,
+      [rootMailId, rootMailId]
+    );
+    const normalizePair = (a, b) => {
+      const x = Number(a);
+      const y = Number(b);
+      return x < y ? `${x}:${y}` : `${y}:${x}`;
+    };
+    const expectedPair = normalizePair(userId, recipientId);
+    const hasMismatchedPair = threadRows.some(
+      (row) => normalizePair(row.sender_id, row.recipient_id) !== expectedPair
+    );
+    if (hasMismatchedPair) {
+      await connection.rollback();
+      return res.status(409).json({
+        success: false,
+        message: '스레드 참여자 정보가 일치하지 않아 답장을 보낼 수 없습니다.',
+      });
+    }
+
+    // 룸 조회/검증
+    const [roomRows] = await connection.execute(
+      `SELECT id, root_author_id, user1_id, user2_id
+       FROM personal_mail_rooms
+       WHERE root_mail_id = ?
+       FOR UPDATE`,
+      [rootMailId]
+    );
+    if (roomRows.length === 0) {
+      await connection.rollback();
+      return res.status(409).json({
+        success: false,
+        message: '메일 룸 정보가 없어 답장을 보낼 수 없습니다.',
+      });
+    }
+    const room = roomRows[0];
+    const expectedPairSorted = [Math.min(Number(userId), Number(recipientId)), Math.max(Number(userId), Number(recipientId))];
+    if (
+      Number(room.user1_id) !== expectedPairSorted[0] ||
+      Number(room.user2_id) !== expectedPairSorted[1]
+    ) {
+      await connection.rollback();
+      return res.status(409).json({
+        success: false,
+        message: '메일 룸 참여자 정보가 일치하지 않습니다.',
+      });
+    }
+
     // 답장 우편 생성
-    const [result] = await pool.execute(
-      `INSERT INTO personal_mails (sender_id, recipient_id, content, parent_mail_id, root_mail_id, created_at)
-       VALUES (?, ?, ?, ?, ?, ?)`,
-      [userId, recipientId, content.trim(), Number(mailId), rootMailId, getNowForDB()]
+    const [result] = await connection.execute(
+      `INSERT INTO personal_mails (sender_id, recipient_id, content, parent_mail_id, root_mail_id, room_id, created_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?)`,
+      [userId, recipientId, content.trim(), Number(mailId), rootMailId, Number(room.id), getNowForDB()]
+    );
+
+    await connection.execute(
+      `UPDATE personal_mail_rooms
+       SET last_mail_id = ?, last_mail_at = ?
+       WHERE id = ?`,
+      [Number(result.insertId), getNowForDB(), Number(room.id)]
     );
 
     // 생성된 답장 정보 조회
-    const [replyMails] = await pool.execute(
+    const [replyMails] = await connection.execute(
       `SELECT 
         pm.id,
         pm.sender_id,
@@ -446,6 +582,7 @@ router.post('/personal/:mailId/reply', authenticate, async (req, res) => {
         pm.is_deleted,
         pm.parent_mail_id,
         pm.root_mail_id,
+        pm.room_id,
         pm.created_at,
         u.name as recipient_name,
         u.color_id as recipient_color_id
@@ -454,6 +591,8 @@ router.post('/personal/:mailId/reply', authenticate, async (req, res) => {
       WHERE pm.id = ?`,
       [result.insertId]
     );
+
+    await connection.commit();
 
     // 원본 발신자(=이번 답장 수신자)에게 알림 생성 (비동기 큐 + 소켓 emit)
     await enqueueNotification({
@@ -472,11 +611,18 @@ router.post('/personal/:mailId/reply', authenticate, async (req, res) => {
       data: replyMails[0]
     });
   } catch (error) {
+    try {
+      await connection.rollback();
+    } catch (_) {
+      // no-op
+    }
     console.error('개인 우편 답장 오류:', error);
     res.status(500).json({ 
       success: false, 
       message: '답장 전송 중 오류가 발생했습니다.' 
     });
+  } finally {
+    connection.release();
   }
 });
 
