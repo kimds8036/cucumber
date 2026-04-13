@@ -153,13 +153,10 @@ const BoardPostCard = ({
   const hasKm = typeof km === 'number' && !Number.isNaN(km);
   let distanceNumberText = '';
   let distanceUnitText = '';
-  let distanceUnknown = false;
-  if (!hasKm) {
-    distanceUnknown = true;
-  } else if (km < 1) {
+  if (hasKm && km < 1) {
     distanceNumberText = '1';
     distanceUnitText = 'km 미만';
-  } else {
+  } else if (hasKm) {
     distanceNumberText = String(Math.round(km));
     distanceUnitText = 'km';
   }
@@ -197,24 +194,17 @@ const BoardPostCard = ({
             </View>
           ) : null}
         </View>
-        <View style={styles.distanceBadgeWrap}>
-          <View style={styles.distanceBadgeChip}>
-            <MaterialIcons name="location-on" size={normalize(10)} color={colors.primaryDark} />
-            {distanceUnknown ? (
-              <Text
-                style={[styles.distanceBadgeUnit, { marginLeft: normalize(2), fontSize: normalize(10) }]}
-                numberOfLines={1}
-              >
-                위치 없음
-              </Text>
-            ) : (
+        {hasKm ? (
+          <View style={styles.distanceBadgeWrap}>
+            <View style={styles.distanceBadgeChip}>
+              <MaterialIcons name="location-on" size={normalize(10)} color={colors.primaryDark} />
               <View style={styles.distanceBadgeTextRow}>
                 <Text style={styles.distanceBadgeNumber}>{distanceNumberText}</Text>
                 <Text style={styles.distanceBadgeUnit}>{distanceUnitText}</Text>
               </View>
-            )}
+            </View>
           </View>
-        </View>
+        ) : null}
       </View>
 
       {/* 본문/푸터(세로) + 썸네일(가로) */}

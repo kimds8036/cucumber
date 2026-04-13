@@ -926,27 +926,27 @@ export default function BoardDetail({ navigation, route }) {
                       </View>
                     ) : null}
                   </View>
-                  <View
-                    style={{
-                      flexDirection: 'row',
-                      alignItems: 'center',
-                      marginLeft: normalize(8),
-                      flexShrink: 0,
-                    }}
-                  >
+                  {typeof post.distanceKm === 'number' && !Number.isNaN(post.distanceKm) ? (
                     <View
                       style={{
                         flexDirection: 'row',
                         alignItems: 'center',
-                        gap: normalize(1),
-                        backgroundColor: colors.primaryLight20,
-                        borderRadius: normalize(10),
-                        paddingHorizontal: normalize(7),
-                        paddingVertical: normalize(2),
+                        marginLeft: normalize(8),
+                        flexShrink: 0,
                       }}
                     >
-                      <MaterialIcons name="location-on" size={normalize(10)} color={colors.primaryDark} />
-                      {typeof post.distanceKm === 'number' && !Number.isNaN(post.distanceKm) ? (
+                      <View
+                        style={{
+                          flexDirection: 'row',
+                          alignItems: 'center',
+                          gap: normalize(1),
+                          backgroundColor: colors.primaryLight20,
+                          borderRadius: normalize(10),
+                          paddingHorizontal: normalize(7),
+                          paddingVertical: normalize(2),
+                        }}
+                      >
+                        <MaterialIcons name="location-on" size={normalize(10)} color={colors.primaryDark} />
                         <View style={{ flexDirection: 'row', alignItems: 'baseline' }}>
                           <Text
                             style={{
@@ -967,21 +967,9 @@ export default function BoardDetail({ navigation, route }) {
                             {post.distanceKm < 1 ? 'km 미만' : 'km'}
                           </Text>
                         </View>
-                      ) : (
-                        <Text
-                          style={{
-                            marginLeft: normalize(2),
-                            fontSize: normalize(10),
-                            fontFamily: fonts.regular,
-                            color: colors.primaryDark,
-                          }}
-                          numberOfLines={1}
-                        >
-                          위치 없음
-                        </Text>
-                      )}
+                      </View>
                     </View>
-                  </View>
+                  ) : null}
                 </View>
 
                 <Text style={[styles.detailBody, { marginBottom: normalize(7) }]}>{post.content}</Text>
