@@ -8,7 +8,7 @@ import { api } from '../../utils/api';
 import { colors } from '../../styles/colors';
 import Loading from '../../components/Loading';
 import {
-  senderDisplayNameForCurrentUser,
+  counterpartyDisplayNameForCurrentUser,
   replyToMySentFromThread,
 } from './mailscreen';
 
@@ -74,22 +74,63 @@ export default function MailHistoryScreen({ navigation, route }) {
       const sent = extractMailListFromResponse(sentRes);
       const me = meRes?.data?.data;
       const meId = Number(me?.id != null ? me.id : me?.userId);
-      const myDisplayName = me?.name || me?.username || '';
 
-      let threadMessages = [];
       if (Number.isFinite(threadId) && threadId > 0) {
-        try {
-          const tr = await api.get(`/api/mails/personal/${threadId}/thread`);
-          threadMessages = tr?.data?.data?.messages || [];
-        } catch (_) {
-          threadMessages = [];
-        }
+        const tr = await api.get(`/api/mails/personal/${threadId}/thread`);
+        const threadMessages = tr?.data?.data?.messages || [];
+        const counterpartyKnownName =
+          threadMessages.find((m) => Number(m.sender_id) !== meId)?.sender_name || '';
+        const mappedThread = threadMessages
+          .map((m) => {
+            const isMine = Number(m.sender_id) === meId;
+            const replyToMySent =
+              !isMine && replyToMySentFromThread(m, threadMessages, meId);
+            const displayName = isMine
+              ? '나'
+              : counterpartyDisplayNameForCurrentUser({
+                  isReceived: true,
+                  senderNameFromApi: counterpartyKnownName || m.sender_name,
+                  recipientNameFromApi: '',
+                  isRootAuthorForCurrentUser: Boolean(
+                    m.is_root_author_for_current_user
+                  ),
+                });
+            console.log('[MailLabelDecision][HistoryThreadRow]', {
+              threadId,
+              mailId: m.id,
+              isMine,
+              replyToMySent,
+              isRootAuthorForCurrentUser: Boolean(
+                m.is_root_author_for_current_user
+              ),
+              senderNameFromApi: m.sender_name ?? null,
+              counterpartyKnownName: counterpartyKnownName || null,
+              decidedLabel: displayName,
+            });
+            return {
+              id: `t-${m.id}`,
+              rawId: m.id,
+              direction: isMine ? 'me' : 'other',
+              displayName,
+              createdAt: m.created_at,
+              time: formatHistoryTime(m.created_at),
+              text: m.content || '',
+              raw: m,
+            };
+          })
+          .sort((a, b) => {
+            const ad = parseUtcToLocal(a.createdAt);
+            const bd = parseUtcToLocal(b.createdAt);
+            if (!ad || !bd) return 0;
+            return bd - ad;
+          });
+
+        setHistoryItems(mappedThread);
+        return;
       }
 
       const replyToMySentForReceived = (m) =>
-        Boolean(m.reply_to_my_sent ?? m.replyToMySent) ||
-        (threadMessages.length > 0 &&
-          replyToMySentFromThread(m, threadMessages, meId));
+        Boolean(m.reply_to_my_sent ?? m.replyToMySent);
 
       const merged = [
         ...received.map((m) => ({
@@ -97,14 +138,27 @@ export default function MailHistoryScreen({ navigation, route }) {
           rawId: m.id,
           threadKey: Number(m.thread_key ?? m.root_mail_id ?? m.id),
           direction: 'other',
-          displayName:
-            senderDisplayNameForCurrentUser({
-              senderId: m.sender_id,
+          displayName: (() => {
+            const decided = counterpartyDisplayNameForCurrentUser({
+              isReceived: true,
               senderNameFromApi: m.sender_name,
-              currentUserId: meId,
-              myDisplayName,
-              replyToMySent: replyToMySentForReceived(m),
-            }) ?? '익명',
+              recipientNameFromApi: '',
+              isRootAuthorForCurrentUser: Boolean(
+                m.is_root_author_for_current_user
+              ),
+            });
+            console.log('[MailLabelDecision][HistoryMergedRow]', {
+              source: 'received',
+              mailId: m.id,
+              threadKey: Number(m.thread_key ?? m.root_mail_id ?? m.id),
+              isRootAuthorForCurrentUser: Boolean(
+                m.is_root_author_for_current_user
+              ),
+              senderNameFromApi: m.sender_name ?? null,
+              decidedLabel: decided,
+            });
+            return decided;
+          })(),
           createdAt: m.created_at,
           time: formatHistoryTime(m.created_at),
           text: m.content || '',
@@ -115,22 +169,26 @@ export default function MailHistoryScreen({ navigation, route }) {
           rawId: m.id,
           threadKey: Number(m.thread_key ?? m.root_mail_id ?? m.id),
           direction: 'me',
-          displayName:
-            senderDisplayNameForCurrentUser({
-              senderId: m.sender_id,
-              senderNameFromApi: m.sender_name,
-              currentUserId: meId,
-              myDisplayName,
-              replyToMySent: false,
-            }) ?? (myDisplayName || '나'),
+          displayName: (() => {
+            const decided = '나';
+            console.log('[MailLabelDecision][HistoryMergedRow]', {
+              source: 'sent',
+              mailId: m.id,
+              threadKey: Number(m.thread_key ?? m.root_mail_id ?? m.id),
+              isRootAuthorForCurrentUser: Boolean(
+                m.is_root_author_for_current_user
+              ),
+              recipientNameFromApi: m.recipient_name ?? null,
+              decidedLabel: decided,
+            });
+            return decided;
+          })(),
           createdAt: m.created_at,
           time: formatHistoryTime(m.created_at),
           text: m.content || '',
           raw: m,
         })),
-      ]
-        .filter((item) => (!Number.isInteger(threadId) ? true : item.threadKey === threadId || item.rawId === threadId))
-        .sort((a, b) => {
+      ].sort((a, b) => {
           const ad = parseUtcToLocal(a.createdAt);
           const bd = parseUtcToLocal(b.createdAt);
           if (!ad || !bd) return 0;

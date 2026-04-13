@@ -20,10 +20,7 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import Feather from '@expo/vector-icons/Feather';
 import MessageTabIcon from '../../assets/Group 166.svg';
 import { api } from '../../utils/api';
-import {
-  senderDisplayNameForCurrentUser,
-  replyToMySentFromThread,
-} from './mailscreen';
+import { counterpartyDisplayNameForCurrentUser } from './mailscreen';
 import * as socketManager from './socketManager';
 import { useToast } from '../../context/ToastContext';
 
@@ -429,84 +426,98 @@ export function MessageContent({ navigation }) {
       const sent = extractMailListFromResponse(sentRes);
       const me = meRes?.data?.data;
       const meId = Number(me?.id != null ? me.id : me?.userId);
-      const myDisplayName = me?.name || me?.username || '';
-      const latestReceived = received
-        .slice()
-        .sort((a, b) => {
-          const ad = parseUtcToLocal(a.created_at);
-          const bd = parseUtcToLocal(b.created_at);
-          if (!ad || !bd) return 0;
-          return bd - ad;
-        })[0];
-      const latestSent = sent
-        .slice()
-        .sort((a, b) => {
-          const ad = parseUtcToLocal(a.created_at);
-          const bd = parseUtcToLocal(b.created_at);
-          if (!ad || !bd) return 0;
-          return bd - ad;
-        })[0];
-
       const candidates = [
-        latestReceived ? { ...latestReceived, _isReceived: true } : null,
-        latestSent ? { ...latestSent, _isReceived: false } : null,
-      ].filter(Boolean);
+        ...received.map((m) => ({ ...m, _isReceived: true })),
+        ...sent.map((m) => ({ ...m, _isReceived: false })),
+      ];
 
-      const latestOne = candidates.sort((a, b) => {
-        const ad = parseUtcToLocal(a.created_at);
-        const bd = parseUtcToLocal(b.created_at);
-        if (!ad || !bd) return 0;
-        return bd - ad;
-      })[0];
-
-      if (!latestOne) {
+      if (candidates.length === 0) {
         setMails([]);
         return;
       }
 
-      const isReceived = Boolean(latestOne._isReceived);
-      const rawMail = { ...latestOne };
-      delete rawMail._isReceived;
-
-      let threadMessages = [];
-      if (isReceived && rawMail.parent_mail_id != null) {
-        try {
-          const tr = await api.get(`/api/mails/personal/${rawMail.id}/thread`);
-          threadMessages = tr?.data?.data?.messages || [];
-        } catch (_) {
-          threadMessages = [];
+      const latestByRoom = new Map();
+      candidates.forEach((candidate) => {
+        const roomKey = Number(
+          candidate.room_id != null
+            ? candidate.room_id
+            : (candidate.thread_key != null
+                ? candidate.thread_key
+                : (candidate.root_mail_id != null ? candidate.root_mail_id : candidate.id))
+        );
+        const key = Number.isFinite(roomKey) ? roomKey : Number(candidate.id);
+        const prev = latestByRoom.get(key);
+        if (!prev) {
+          latestByRoom.set(key, candidate);
+          return;
         }
-      }
+        const prevTime = parseUtcToLocal(prev.created_at)?.getTime() ?? 0;
+        const nextTime = parseUtcToLocal(candidate.created_at)?.getTime() ?? 0;
+        if (nextTime >= prevTime) latestByRoom.set(key, candidate);
+      });
 
-      const replyToMySent =
-        isReceived &&
-        (Boolean(rawMail.reply_to_my_sent ?? rawMail.replyToMySent) ||
-          (threadMessages.length > 0 &&
-            replyToMySentFromThread(rawMail, threadMessages, meId)));
+      const rows = Array.from(latestByRoom.values())
+        .sort((a, b) => {
+          const ad = parseUtcToLocal(a.created_at);
+          const bd = parseUtcToLocal(b.created_at);
+          if (!ad || !bd) return 0;
+          return bd - ad;
+        })
+        .map((mail, idx) => {
+          const isReceived = Boolean(mail._isReceived);
+          const rawMail = { ...mail };
+          delete rawMail._isReceived;
 
-      const rowLabel =
-        senderDisplayNameForCurrentUser({
-          senderId: rawMail.sender_id,
-          senderNameFromApi: rawMail.sender_name,
-          currentUserId: meId,
-          myDisplayName,
-          replyToMySent,
-        }) ?? (isReceived ? '익명' : myDisplayName || '나');
+          const replyToMySent =
+            isReceived &&
+            Boolean(rawMail.reply_to_my_sent ?? rawMail.replyToMySent);
 
-      setMails([
-        {
-          id: rawMail.id,
-          profileColorIndex: 0,
-          isReceived,
-          replyToMySent,
-          senderName: rowLabel,
-          directionText: rowLabel,
-          previewText: String(rawMail.content || '').slice(0, 40),
-          time: formatTimeAgo(rawMail.created_at || ''),
-          unreadCount: isReceived ? (rawMail.is_read ? 0 : 1) : 0,
-          raw: rawMail,
-        },
-      ]);
+          const recipientName =
+            rawMail.recipient_name != null && String(rawMail.recipient_name).trim()
+              ? String(rawMail.recipient_name).trim()
+              : '';
+          // 목록 라벨은 대화 상대 기준으로 고정:
+          // - 받은 우편: 기본 익명, 내가 먼저 보낸 대상의 답장인 경우 실명
+          // - 보낸 우편: 내가 선택한 상대 실명
+          const rowLabel = counterpartyDisplayNameForCurrentUser({
+            isReceived,
+            senderNameFromApi: rawMail.sender_name,
+            recipientNameFromApi: recipientName,
+            isRootAuthorForCurrentUser: Boolean(
+              rawMail.is_root_author_for_current_user
+            ),
+          });
+          console.log('[MailLabelDecision][MessageList]', {
+            mailId: rawMail.id,
+            roomId: rawMail.room_id ?? null,
+            threadKey:
+              rawMail.thread_key ?? rawMail.root_mail_id ?? rawMail.id,
+            isReceived,
+            replyToMySent,
+            isRootAuthorForCurrentUser: Boolean(
+              rawMail.is_root_author_for_current_user
+            ),
+            senderNameFromApi: rawMail.sender_name ?? null,
+            recipientNameFromApi: recipientName || null,
+            decidedLabel: rowLabel,
+          });
+
+          return {
+            id: rawMail.id,
+            roomId: rawMail.room_id ?? null,
+            profileColorIndex: idx,
+            isReceived,
+            replyToMySent,
+            senderName: rowLabel,
+            directionText: rowLabel,
+            previewText: String(rawMail.content || '').slice(0, 40),
+            time: formatTimeAgo(rawMail.created_at || ''),
+            unreadCount: isReceived ? (rawMail.is_read ? 0 : 1) : 0,
+            raw: rawMail,
+          };
+        });
+
+      setMails(rows);
     } catch (error) {
       console.error('개인 우편 목록 조회 실패:', error);
     } finally {

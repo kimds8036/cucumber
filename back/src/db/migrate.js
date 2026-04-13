@@ -61,6 +61,8 @@ async function runMigrations() {
             console.warn('  ⏭️  대상(인덱스/컬럼) 없음, 스킵');
           else if (err.errno === 1826)
             console.warn('  ⏭️  Foreign Key 이름 이미 존재, 스킵');
+          else if (err.errno === 1146)
+            console.warn('  ⏭️  테이블 없음, 스킵');
           else throw err;
         }
       }
