@@ -88,6 +88,147 @@ router.get('/me', authenticate, async (req, res) => {
   }
 });
 
+// 내 아이디(username) 변경
+router.patch('/me/username', authenticate, async (req, res) => {
+  try {
+    const userId = req.user.userId;
+    const input = String(req.body?.username ?? '').trim();
+    const normalized = input.startsWith('@') ? input.slice(1) : input;
+
+    if (!normalized) {
+      return res.status(400).json({
+        success: false,
+        message: '새 아이디를 입력해주세요.',
+      });
+    }
+    if (!validateUsername(normalized)) {
+      return res.status(400).json({
+        success: false,
+        message: '아이디는 영문, 숫자, 언더스코어만 사용 가능하며 3-20자여야 합니다.',
+      });
+    }
+
+    await pool.execute(
+      `INSERT IGNORE INTO user_settings (user_id) VALUES (?)`,
+      [userId]
+    );
+
+    const [settingsRows] = await pool.execute(
+      `SELECT last_username_change_at
+       FROM user_settings
+       WHERE user_id = ?`,
+      [userId]
+    );
+    const lastChangedAt = settingsRows[0]?.last_username_change_at
+      ? new Date(settingsRows[0].last_username_change_at)
+      : null;
+    if (lastChangedAt) {
+      const nextAllowedAt = new Date(lastChangedAt);
+      nextAllowedAt.setMonth(nextAllowedAt.getMonth() + 6);
+      if (new Date() < nextAllowedAt) {
+        return res.status(400).json({
+          success: false,
+          message: `아이디는 6개월에 1번만 변경할 수 있습니다. 다음 변경 가능일: ${nextAllowedAt.toISOString().slice(0, 10)}`,
+        });
+      }
+    }
+
+    const [dupRows] = await pool.execute(
+      `SELECT id FROM users WHERE username = ? AND id != ?`,
+      [normalized, userId]
+    );
+    if (dupRows.length > 0) {
+      return res.status(400).json({
+        success: false,
+        message: '이미 사용 중인 아이디입니다.',
+      });
+    }
+
+    await pool.execute(
+      `UPDATE users SET username = ? WHERE id = ? AND is_deleted = FALSE`,
+      [normalized, userId]
+    );
+    await pool.execute(
+      `UPDATE user_settings
+       SET last_username_change_at = NOW()
+       WHERE user_id = ?`,
+      [userId]
+    );
+
+    return res.json({
+      success: true,
+      message: '아이디가 변경되었습니다.',
+      data: { username: normalized, lastUsernameChangeAt: new Date().toISOString() },
+    });
+  } catch (error) {
+    console.error('아이디 변경 오류:', error);
+    return res.status(500).json({
+      success: false,
+      message: '아이디 변경 중 오류가 발생했습니다.',
+    });
+  }
+});
+
+// 내 비밀번호 변경
+router.patch('/me/password', authenticate, async (req, res) => {
+  try {
+    const userId = req.user.userId;
+    const currentPassword = String(req.body?.currentPassword ?? '');
+    const newPassword = String(req.body?.newPassword ?? '');
+
+    if (!currentPassword || !newPassword) {
+      return res.status(400).json({
+        success: false,
+        message: '현재 비밀번호와 새 비밀번호를 입력해주세요.',
+      });
+    }
+    if (!validatePassword(newPassword)) {
+      return res.status(400).json({
+        success: false,
+        message: '비밀번호는 영문과 숫자를 포함하여 최소 8자 이상이어야 합니다.',
+      });
+    }
+
+    const [rows] = await pool.execute(
+      `SELECT password
+       FROM users
+       WHERE id = ? AND is_deleted = FALSE`,
+      [userId]
+    );
+    if (rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: '사용자를 찾을 수 없습니다.',
+      });
+    }
+
+    const isValidCurrent = await comparePassword(currentPassword, rows[0].password);
+    if (!isValidCurrent) {
+      return res.status(400).json({
+        success: false,
+        message: '현재 비밀번호가 일치하지 않습니다.',
+      });
+    }
+
+    const hashed = await hashPassword(newPassword);
+    await pool.execute(
+      `UPDATE users SET password = ? WHERE id = ?`,
+      [hashed, userId]
+    );
+
+    return res.json({
+      success: true,
+      message: '비밀번호가 변경되었습니다.',
+    });
+  } catch (error) {
+    console.error('비밀번호 변경 오류:', error);
+    return res.status(500).json({
+      success: false,
+      message: '비밀번호 변경 중 오류가 발생했습니다.',
+    });
+  }
+});
+
 // 전화번호 인증 코드 발송
 router.post('/send-verification', async (req, res) => {
   try {

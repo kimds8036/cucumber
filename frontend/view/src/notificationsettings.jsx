@@ -214,7 +214,7 @@ const Settings = ({ navigation, route }) => {
     confirm: false,
   });
 
-  const handlePasswordChange = () => {
+  const handlePasswordChange = async () => {
     if (!pwForm.current || !pwForm.next || !pwForm.confirm) {
       Alert.alert('입력 오류', '모든 항목을 입력해주세요.');
       return;
@@ -227,13 +227,38 @@ const Settings = ({ navigation, route }) => {
       Alert.alert('입력 오류', '비밀번호는 8자 이상이어야 합니다.');
       return;
     }
-    Alert.alert('완료', '비밀번호가 변경되었습니다.', [
-      {
-        text: '확인',
-        onPress: () => setPwForm({ current: '', next: '', confirm: '' }),
-      },
-    ]);
+    try {
+      await api.patch('/api/auth/me/password', {
+        currentPassword: pwForm.current,
+        newPassword: pwForm.next,
+      });
+      Alert.alert('완료', '비밀번호가 변경되었습니다.', [
+        {
+          text: '확인',
+          onPress: () => setPwForm({ current: '', next: '', confirm: '' }),
+        },
+      ]);
+    } catch (error) {
+      Alert.alert('오류', error.response?.data?.message || '비밀번호 변경에 실패했습니다.');
+    }
   };
+  const canSubmitPasswordChange =
+    !!pwForm.current &&
+    !!pwForm.next &&
+    !!pwForm.confirm &&
+    pwForm.next === pwForm.confirm &&
+    pwForm.next.length >= 8;
+  const passwordGuideText = !pwForm.current
+    ? '현재 비밀번호를 입력해주세요.'
+    : !pwForm.next
+      ? '새 비밀번호를 입력해주세요.'
+      : pwForm.next.length < 8
+        ? '새 비밀번호는 8자 이상이어야 합니다.'
+        : !pwForm.confirm
+          ? '새 비밀번호 확인을 입력해주세요.'
+          : pwForm.next !== pwForm.confirm
+            ? '새 비밀번호 확인이 일치하지 않습니다.'
+            : '';
 
   // ── 아이디 변경 (6개월에 1번) ──
   const [currentUsername, setCurrentUsername] = useState('');
@@ -249,7 +274,7 @@ const Settings = ({ navigation, route }) => {
   const nextChangeDate = getNextChangeDate();
   const canChangeId = nextChangeDate === null || new Date() >= nextChangeDate;
 
-  const handleIdChange = () => {
+  const handleIdChange = async () => {
     const trimmed = newUsername.trim();
     if (!trimmed) {
       Alert.alert('입력 오류', '새 아이디를 입력해주세요.');
@@ -274,16 +299,23 @@ const Settings = ({ navigation, route }) => {
       );
       return;
     }
-    const nowIso = new Date().toISOString();
-    setCurrentUsername(trimmed);
-    setNewUsername('');
-    setLastIdChangeAt(nowIso);
-    syncSettingsToServer({
-      ...notifications,
-      distanceKm,
-      lastIdChangeAt: nowIso,
-    });
-    Alert.alert('완료', '아이디가 변경되었습니다.');
+    try {
+      const res = await api.patch('/api/auth/me/username', {
+        username: trimmed,
+      });
+      const changedUsername = res.data?.data?.username;
+      const changedAt = res.data?.data?.lastUsernameChangeAt || new Date().toISOString();
+      if (changedUsername) {
+        setCurrentUsername(`@${changedUsername}`);
+      } else {
+        setCurrentUsername(trimmed.startsWith('@') ? trimmed : `@${trimmed}`);
+      }
+      setNewUsername('');
+      setLastIdChangeAt(changedAt);
+      Alert.alert('완료', '아이디가 변경되었습니다.');
+    } catch (error) {
+      Alert.alert('오류', error.response?.data?.message || '아이디 변경에 실패했습니다.');
+    }
   };
 
   // ── 학교 변경 ──
@@ -360,7 +392,7 @@ const Settings = ({ navigation, route }) => {
     </View>
   );
 
-  const PwInput = ({ label, fieldKey, density }) => (
+  const renderPwInput = ({ label, fieldKey, density }) => (
     <View
       style={
         density === 'first'
@@ -499,7 +531,13 @@ const Settings = ({ navigation, route }) => {
           <View style={styles.idFieldFirst}>
             <Text style={styles.pwLabel}>현재 아이디</Text>
             <View style={styles.pwInputWrap}>
-              <Text style={styles.pwInput} numberOfLines={1}>
+              <Text
+                style={[
+                  styles.pwInput,
+                  { color: colors.textSecondary },
+                ]}
+                numberOfLines={1}
+              >
                 {currentUsername}
               </Text>
             </View>
@@ -539,15 +577,24 @@ const Settings = ({ navigation, route }) => {
         {/* ────────────── 비밀번호 변경 ────────────── */}
         <SectionHeader icon="lock-closed-outline" title="비밀번호 변경" />
         <View style={styles.card}>
-          <PwInput label="현재 비밀번호" fieldKey="current" density="first" />
-          <PwInput label="새 비밀번호" fieldKey="next" density="middle" />
-          <PwInput label="새 비밀번호 확인" fieldKey="confirm" density="last" />
+          {renderPwInput({ label: '현재 비밀번호', fieldKey: 'current', density: 'first' })}
+          {renderPwInput({ label: '새 비밀번호', fieldKey: 'next', density: 'middle' })}
+          {renderPwInput({ label: '새 비밀번호 확인', fieldKey: 'confirm', density: 'last' })}
           <TouchableOpacity
-            style={styles.actionButton}
+            style={[
+              styles.actionButton,
+              !canSubmitPasswordChange && styles.actionButtonDisabled,
+            ]}
             onPress={handlePasswordChange}
+            disabled={!canSubmitPasswordChange}
           >
             <Text style={styles.actionButtonText}>변경하기</Text>
           </TouchableOpacity>
+          {!canSubmitPasswordChange && !!passwordGuideText && (
+            <Text style={[styles.pwLabel, { marginTop: 0, marginBottom: normalize(14) }]}>
+              {passwordGuideText}
+            </Text>
+          )}
         </View>
 
         {/* ────────────── 학교 변경 ────────────── */}

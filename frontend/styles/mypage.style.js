@@ -490,13 +490,15 @@ export const createNotificationSettingsStyles = (normalize) => {
       backgroundColor: colors.surface,
       borderRadius: normalize(10),
       paddingHorizontal: normalize(12),
-      paddingVertical: normalize(10),
+      height: normalize(44),
     },
     pwInput: {
       flex: 1,
       fontSize: normalize(fontSizes.xl),
       fontFamily: fonts.regular,
       color: colors.textPrimary,
+      paddingVertical: normalize(2),
+      textAlignVertical: 'center',
     },
 
     /** 아이디 변경: 두 블록 사이만 촘촘히 (첫 블록 하단 / 둘째 블록 상단만 축소) */

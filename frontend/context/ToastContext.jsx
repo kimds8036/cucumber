@@ -21,6 +21,9 @@ export function ToastProvider({ children }) {
     body: null,
     roomId: null,
     relatedType: null,
+    relatedId: null,
+    type: null,
+    category: null,
     isChat: false,
     showProgress: false,
   });
@@ -69,6 +72,12 @@ export function ToastProvider({ children }) {
             ? String(next.roomId)
             : null,
         relatedType: next.relatedType ?? null,
+        relatedId:
+          next.relatedId != null && next.relatedId !== ''
+            ? String(next.relatedId)
+            : null,
+        type: next.type ?? null,
+        category: next.category ?? null,
         isChat: Boolean(next.isChat),
         showProgress: Boolean(next.showProgress),
       });
@@ -77,6 +86,9 @@ export function ToastProvider({ children }) {
         message: text,
         roomId: next.roomId ?? null,
         relatedType: next.relatedType ?? null,
+        relatedId: next.relatedId ?? null,
+        type: next.type ?? null,
+        category: next.category ?? null,
         isChat: Boolean(next.isChat),
       });
 

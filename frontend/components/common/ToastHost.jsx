@@ -8,14 +8,59 @@ export default function ToastHost() {
   const { visible, toast, hideToast } = useToast();
 
   const handleToastPress = () => {
-    const roomId = toast?.roomId;
-    if (!roomId) return;
+    const roomId = toast?.roomId != null ? String(toast.roomId) : null;
+    const relatedId = toast?.relatedId != null ? String(toast.relatedId) : null;
+    const relatedType = String(toast?.relatedType ?? '').trim();
+    const type = String(toast?.type ?? '').trim();
+    const category = String(toast?.category ?? '').trim();
+
     hideToast();
-    if (toast?.relatedType === 'dm_room') {
+
+    if (relatedType === 'dm_room' && roomId) {
       navigate('DMChat', { roomId });
       return;
     }
-    navigate('Chat', { roomId });
+    if (relatedType === 'message_room' && roomId) {
+      navigate('Chat', { roomId });
+      return;
+    }
+    if (relatedType === 'personal_mail' && relatedId) {
+      navigate('MailDetail', {
+        mail: {
+          id: relatedId,
+          receivedAt: '',
+          content: '',
+          is_read: false,
+        },
+      });
+      return;
+    }
+    if (relatedType === 'post' && relatedId) {
+      navigate('BoardDetail', {
+        post: {
+          id: relatedId,
+          author: '익명',
+          time: '',
+          location: '',
+          content: '',
+          likes: 0,
+          comments: 0,
+        },
+        isMyPost: false,
+      });
+      return;
+    }
+    if (relatedType === 'friendship' || type === 'friend_request') {
+      navigate('Friends');
+      return;
+    }
+    if (roomId) {
+      navigate('Chat', { roomId });
+      return;
+    }
+    if (category === 'system' || category === 'mail' || category === 'post') {
+      navigate('Notification');
+    }
   };
 
   return (

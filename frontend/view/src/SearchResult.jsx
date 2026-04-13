@@ -114,8 +114,11 @@ function formatMeta(item) {
 
 export default function SearchResult({ route, navigation }) {
   const initialFromRoute = normalizeSearchText(route?.params?.query ?? '');
+  const initialSearchType = normalizeSearchText(route?.params?.searchType ?? '').toLowerCase();
+  const initialForcedHashtag = initialSearchType === 'hashtag';
   const [searchText, setSearchText] = useState(initialFromRoute);
   const [committedQuery, setCommittedQuery] = useState(initialFromRoute);
+  const [forceHashtagMode, setForceHashtagMode] = useState(initialForcedHashtag);
   const [mode, setMode] = useState('result'); // 'input' | 'result'
   const [activeTab, setActiveTab] = useState('전체');
   const [expandedSection, setExpandedSection] = useState(null);
@@ -128,10 +131,16 @@ export default function SearchResult({ route, navigation }) {
   const [isInitialRenderReady, setIsInitialRenderReady] = useState(false);
   const [recentSearches, setRecentSearches] = useState([]);
 
-  const searchIntent = useMemo(
-    () => parseSearchIntent(committedQuery),
-    [committedQuery],
-  );
+  const searchIntent = useMemo(() => {
+    const parsed = parseSearchIntent(committedQuery);
+    if (!forceHashtagMode) {
+      return parsed;
+    }
+    return {
+      ...parsed,
+      isHashtag: true,
+    };
+  }, [committedQuery, forceHashtagMode]);
   const activeTabs = searchIntent.isHashtag ? TABS_FOR_HASHTAG : TABS_FOR_TEXT;
 
   const { width } = useWindowDimensions();
@@ -195,20 +204,19 @@ export default function SearchResult({ route, navigation }) {
       });
       setLoading(true);
       const res = await api.get('/api/search/posts', {
-        params: { query: normalizedQuery, page: nextPage, limit: 20 },
+        params: {
+          query: committedQuery,
+          page: nextPage,
+          limit: 20,
+          searchType: searchIntent.isHashtag ? 'hashtag' : 'text',
+        },
       });
       const data = res.data?.data || {};
       const posts = Array.isArray(data.posts) ? data.posts : [];
       const mails = Array.isArray(data.schoolMails) ? data.schoolMails : [];
       const filteredPosts = searchIntent.isHashtag
-        ? posts.filter((post) =>
-            getTagLabels(post).some((tag) =>
-              includesIgnoreCase(tag, normalizedQuery),
-            ),
-          )
-        : posts.filter((post) =>
-            includesIgnoreCase(post?.content, normalizedQuery),
-          );
+        ? posts
+        : posts.filter((post) => includesIgnoreCase(post?.content, normalizedQuery));
       const filteredMails = searchIntent.isHashtag
         ? []
         : mails.filter((mail) =>
@@ -266,9 +274,12 @@ export default function SearchResult({ route, navigation }) {
 
   useEffect(() => {
     const q = normalizeSearchText(route?.params?.query ?? '');
+    const routeSearchType = normalizeSearchText(route?.params?.searchType ?? '').toLowerCase();
+    const isForcedHashtag = routeSearchType === 'hashtag';
     setSearchText(q);
     setCommittedQuery(q);
-  }, [route?.params?.query]);
+    setForceHashtagMode(isForcedHashtag);
+  }, [route?.params?.query, route?.params?.searchType]);
 
   useEffect(() => {
     if (!activeTabs.includes(activeTab)) {
@@ -414,6 +425,7 @@ export default function SearchResult({ route, navigation }) {
                 onSubmitEditing={() => {
                   const q = normalizeSearchText(searchText);
                   if (!q) return;
+                  if (forceHashtagMode && !q.startsWith('#')) return;
                   setCommittedQuery(q);
                   setSearchText(q);
                   setMode('result');

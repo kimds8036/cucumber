@@ -65,7 +65,6 @@ export function NotificationProvider({ children }) {
     if (!socket) return;
 
     const handler = (payload) => {
-      if (payload?.type === 'friend_request') return;
       const isChatNotification =
         payload?.relatedType === 'message_room' ||
         payload?.relatedType === 'dm_room';
@@ -87,6 +86,9 @@ export function NotificationProvider({ children }) {
         body: isChatNotification ? bodyText || '(이미지)' : null,
         roomId: payload?.relatedId,
         relatedType: payload?.relatedType,
+        relatedId: payload?.relatedId,
+        type: payload?.type,
+        category: payload?.category,
         isChat: isChatNotification,
       });
     };
@@ -139,6 +141,9 @@ export function NotificationProvider({ children }) {
         body: content,
         roomId,
         relatedType: 'message_room',
+        relatedId: roomId,
+        type: 'mail',
+        category: 'mail',
         isChat: true,
       });
     };

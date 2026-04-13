@@ -52,9 +52,11 @@ router.get('/preview', async (req, res) => {
 // - matchedSchools: 검색어를 포함하는 학교 최대 5개 반환
 router.get('/posts', optionalAuthenticate, async (req, res) => {
   try {
-    const { query = '', page = 1, limit = 20 } = req.query;
+    const { query = '', page = 1, limit = 20, searchType = 'text' } = req.query;
 
     const q = String(query || '').trim();
+    const mode = String(searchType || 'text').trim().toLowerCase();
+    const isHashtagSearch = mode === 'hashtag';
     if (!q) {
       return res.json({
         success: true,
@@ -93,8 +95,59 @@ router.get('/posts', optionalAuthenticate, async (req, res) => {
     // 게시글 검색 (삭제되지 않은 것만)
     // - 전체게시판(national): 모든 학교
     // - 학교게시판(school): 로그인한 경우에만 본인 학교의 글
-    const postWhereParts = ['p.is_deleted = FALSE', 'p.content LIKE ?'];
-    const postParams = [like];
+    const postWhereParts = ['p.is_deleted = FALSE'];
+    const postParams = [];
+    let hashtagExact = '';
+    if (isHashtagSearch) {
+      if (!q.startsWith('#')) {
+        return res.json({
+          success: true,
+          data: {
+            posts: [],
+            schoolMails: [],
+            matchedSchools: [],
+            pagination: {
+              page: 1,
+              limit: limitNum,
+              total: 0,
+              totalPages: 1,
+              hasMore: false,
+            },
+          },
+        });
+      }
+      hashtagExact = `#${q.replace(/^#+/, '').trim()}`;
+      if (!hashtagExact || hashtagExact === '#') {
+        return res.json({
+          success: true,
+          data: {
+            posts: [],
+            schoolMails: [],
+            matchedSchools: [],
+            pagination: {
+              page: 1,
+              limit: limitNum,
+              total: 0,
+              totalPages: 1,
+              hasMore: false,
+            },
+          },
+        });
+      }
+      postWhereParts.push(
+        `EXISTS (
+          SELECT 1
+          FROM post_tags pt
+          INNER JOIN tags t ON t.id = pt.tag_id
+          WHERE pt.post_id = p.id
+            AND t.name = ?
+        )`,
+      );
+      postParams.push(hashtagExact);
+    } else {
+      postWhereParts.push('p.content LIKE ?');
+      postParams.push(like);
+    }
     if (userSchoolId) {
       postWhereParts.push(
         `(p.board_type = 'national' OR (p.board_type = 'school' AND p.school_id = ?))`,
@@ -144,22 +197,24 @@ router.get('/posts', optionalAuthenticate, async (req, res) => {
 
     // 학교 매칭: 이름에 query 를 포함하는 학교 최대 5개 (소속학교와 무관하게 전역 검색)
     let matchedSchools = [];
-    const [schoolRows] = await pool.execute(
-      `SELECT school_id, name
-       FROM schools
-       WHERE name LIKE ?
-       ORDER BY RAND()
-       LIMIT 5`,
-      [`%${q}%`],
-    );
-    matchedSchools = schoolRows.map((s) => ({
-      schoolId: s.school_id,
-      name: s.name,
-    }));
+    if (!isHashtagSearch) {
+      const [schoolRows] = await pool.execute(
+        `SELECT school_id, name
+         FROM schools
+         WHERE name LIKE ?
+         ORDER BY RAND()
+         LIMIT 5`,
+        [`%${q}%`],
+      );
+      matchedSchools = schoolRows.map((s) => ({
+        schoolId: s.school_id,
+        name: s.name,
+      }));
+    }
 
     // 학교 우편(학교우편) 검색: 로그인 + 사용자 학교가 있는 경우에만
     let schoolMails = [];
-    if (userSchoolId) {
+    if (userSchoolId && !isHashtagSearch) {
       const [mailRows] = await pool.execute(
         `SELECT id, content, created_at
          FROM school_mails

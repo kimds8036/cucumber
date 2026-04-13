@@ -345,7 +345,7 @@ export const createTimerStyles = (width, normalize) => {
       minWidth: width * 0.4,
     },
     timetableScroll: {
-      maxHeight: normalize(600),
+      // 높이 제한을 없애 전체 페이지 스크롤에서 00~05까지 노출
     },
     stopwatchCard: {
       backgroundColor: colors.background,
