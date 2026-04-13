@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useMemo } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, useWindowDimensions } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TouchableWithoutFeedback, useWindowDimensions, Modal } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Ionicons } from '@expo/vector-icons';
 import FontAwesome6 from '@expo/vector-icons/FontAwesome6';
@@ -31,6 +31,7 @@ const OurSchoolScreen = ({ navigation }) => {
   const [loading, setLoading] = useState(false);
   const [mealLoading, setMealLoading] = useState(false);
   const [nextMeals, setNextMeals] = useState([]);
+  const [selectedMealSlot, setSelectedMealSlot] = useState(null);
 
   const isFreshCache = (ts) => {
     if (!ts) return false;
@@ -317,6 +318,10 @@ const OurSchoolScreen = ({ navigation }) => {
                     index === mealSlots.length - 1 && styles.mealSlotLast,
                   ]}
                 >
+                  <TouchableOpacity
+                    activeOpacity={0.85}
+                    onPress={() => setSelectedMealSlot(slot)}
+                  >
                   <View style={[styles.mealCard, { minHeight: normalize(96) }]}>
                     <View style={styles.mealSlotHeader}>
                       <View style={styles.mealSlotTitleRow}>
@@ -343,6 +348,7 @@ const OurSchoolScreen = ({ navigation }) => {
                       )}
                     </View>
                   </View>
+                  </TouchableOpacity>
                 </View>
                 ))
               )}
@@ -450,6 +456,51 @@ const OurSchoolScreen = ({ navigation }) => {
           )}
         </View>
       </ScrollView>
+
+      <Modal
+        visible={Boolean(selectedMealSlot)}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setSelectedMealSlot(null)}
+      >
+        <TouchableWithoutFeedback onPress={() => setSelectedMealSlot(null)}>
+          <View style={styles.mealModalBackdrop}>
+            <TouchableWithoutFeedback>
+              <View style={styles.mealModalCard}>
+                <View style={styles.mealModalHeader}>
+                  <View style={styles.mealModalTitleRow}>
+                    <Text style={styles.mealModalTitle}>
+                      {selectedMealSlot?.mealType || '급식'}
+                    </Text>
+                  </View>
+                  <View style={styles.mealModalBadge}>
+                    <Text style={styles.mealModalBadgeText}>
+                      {getDayBadge(selectedMealSlot?.ymd)}
+                    </Text>
+                  </View>
+                </View>
+
+                <ScrollView showsVerticalScrollIndicator={false}>
+                  {selectedMealSlot?.menus?.length > 0 ? (
+                    selectedMealSlot.menus.map((menu, idx) => (
+                      <Text
+                        key={`${idx}-${menu}`}
+                        style={styles.mealModalMenuText}
+                      >
+                        {menu}
+                      </Text>
+                    ))
+                  ) : (
+                    <Text style={styles.mealModalEmptyText}>
+                      정보 없음
+                    </Text>
+                  )}
+                </ScrollView>
+              </View>
+            </TouchableWithoutFeedback>
+          </View>
+        </TouchableWithoutFeedback>
+      </Modal>
     </View>
   );
 };

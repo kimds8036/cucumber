@@ -1027,7 +1027,7 @@ export default function BoardDetail({ navigation, route }) {
                           ? String(tag.name ?? '')
                           : String(tag ?? '');
                       if (!label.trim()) return null;
-                      const searchQuery = label.trim();
+                      const searchQuery = `#${label.trim().replace(/^#+/, '')}`;
                       return (
                         <TouchableOpacity
                           key={tag?.id != null ? `tag-${tag.id}` : `tag-${idx}-${label}`}

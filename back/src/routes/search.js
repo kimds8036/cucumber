@@ -52,11 +52,7 @@ router.get('/preview', async (req, res) => {
 // - matchedSchools: 검색어를 포함하는 학교 최대 5개 반환
 router.get('/posts', optionalAuthenticate, async (req, res) => {
   try {
-    const {
-      query = '',
-      page = 1,
-      limit = 20,
-    } = req.query;
+    const { query = '', page = 1, limit = 20 } = req.query;
 
     const q = String(query || '').trim();
     if (!q) {
@@ -206,4 +202,3 @@ router.get('/posts', optionalAuthenticate, async (req, res) => {
 });
 
 export default router;
-

@@ -1,5 +1,6 @@
 import { StyleSheet } from 'react-native';
 import { colors, fonts, fontSizes } from './colors';
+import { shadow } from './tokens';
 
 export const createCalendarStyles = (width, normalize) => {
   const dayCellSize = (width - normalize(32)) / 7;
@@ -96,7 +97,7 @@ export const createCalendarStyles = (width, normalize) => {
     },
     // 오늘 날짜 원형 배경
     todayCircle: {
-      backgroundColor: '#a6da95',
+      backgroundColor: colors.primary,
     },
     // 선택된 날짜 원형 배경
     selectedCircle: {
@@ -104,11 +105,11 @@ export const createCalendarStyles = (width, normalize) => {
     },
     // 오늘/선택 원 안의 숫자 색상
     circleText: {
-      color: '#ffffff',
+      color: colors.textWhite,
     },
     // 일요일 날짜 텍스트
     sundayText: {
-      color: '#9EC0FF',
+      color: colors.subcolor,
     },
     // 토요일 날짜 텍스트
     saturdayText: {
@@ -129,27 +130,27 @@ export const createCalendarStyles = (width, normalize) => {
     noMealText: {
       textAlign: 'center',
       fontSize: normalize(fontSizes.xl),
-      color: '#999999',
+      color: colors.textLight40,
       paddingVertical: normalize(20),
     },
     // 급식 상세 3개 카드 행
     mealDetailRow: {
-      flexDirection: 'row',
+      flexDirection: 'column',
       alignItems: 'stretch',
-      justifyContent: 'space-between',
-      gap: normalize(8),
+      justifyContent: 'flex-start',
+      gap: normalize(2),
     },
     // 급식 상세 카드
     mealDetailCard: {
       borderRadius: normalize(16),
       paddingHorizontal: normalize(16),
       paddingVertical: normalize(14),
-      backgroundColor: '#edf7ed',
+      backgroundColor: colors.primaryLight20,
       marginBottom: normalize(10),
-      flex: 1,
-      alignSelf: 'stretch',
+      width: '100%',
       flexDirection: 'column',
       justifyContent: 'flex-start',
+      ...shadow.md,
     },
     mealDetailHeader: {
       flexDirection: 'row',

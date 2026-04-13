@@ -42,8 +42,8 @@ function formatTimeAgo(createdAt) {
 
 const RECENT_KEY = '@search_recent_keywords';
 
-function stripHashForSearch(q) {
-  return String(q ?? '').replace(/#/g, '').trim();
+function normalizeSearchText(q) {
+  return String(q ?? '').trim();
 }
 
 const SearchScreen = ({ navigation }) => {
@@ -76,7 +76,7 @@ const SearchScreen = ({ navigation }) => {
       keyword !== undefined && keyword !== null && String(keyword).length > 0
         ? keyword
         : searchText;
-    const q = stripHashForSearch(raw);
+    const q = normalizeSearchText(raw);
     if (!q) return;
     setRecentSearches((prev) => {
       const filtered = prev.filter((item) => item !== q);
@@ -88,7 +88,7 @@ const SearchScreen = ({ navigation }) => {
   };
 
   const handleChangeText = (text) => {
-    setSearchText(stripHashForSearch(text));
+    setSearchText(text);
   };
 
   const handleClearAll = () => {
@@ -175,7 +175,7 @@ const SearchScreen = ({ navigation }) => {
                   key={index}
                   style={styles.recentRow}
                   onPress={() => {
-                    const q = stripHashForSearch(search);
+                    const q = normalizeSearchText(search);
                     setSearchText(q);
                     runSearch(q);
                   }}
@@ -205,7 +205,7 @@ const SearchScreen = ({ navigation }) => {
                   key={tag}
                   style={styles.tag}
                   onPress={() => {
-                    const q = stripHashForSearch(tag);
+                    const q = normalizeSearchText(`#${tag}`);
                     setSearchText(q);
                     runSearch(q);
                   }}

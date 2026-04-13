@@ -15,19 +15,23 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import SubHeader from '../frame/subHeader';
 import { colors } from '../../styles/colors';
-import { getNormalize, createSearchResultStyles } from '../../styles/search.style';
+import {
+  getNormalize,
+  createSearchResultStyles,
+} from '../../styles/search.style';
 import { api } from '../../utils/api';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Loading from '../../components/Loading';
 
-const TABS = ['전체', '전체게시판', '학교게시판', '학교우편'];
+const TABS_FOR_TEXT = ['전체', '전체게시판', '학교게시판', '학교우편'];
+const TABS_FOR_HASHTAG = ['전체', '전체게시판', '학교게시판'];
 const RECENT_KEY = '@search_recent_keywords';
 
 const SECTION_ICON = {
-  '전체게시판': 'globe-outline',
-  '학교게시판': 'school-outline',
-  '개인우편':   'mail-outline',
-  '학교우편':   'mail-open-outline',
+  전체게시판: 'globe-outline',
+  학교게시판: 'school-outline',
+  개인우편: 'mail-outline',
+  학교우편: 'mail-open-outline',
 };
 
 function makeSnippet(content, query) {
@@ -46,17 +50,44 @@ function getTitle(item) {
   return (item.content || '').split('\n')[0] || '제목 없음';
 }
 
-/** API/매칭용: 검색어에서 # 제거 */
-function stripHashForSearch(q) {
-  return String(q ?? '').replace(/#/g, '').trim();
+function normalizeSearchText(q) {
+  return String(q ?? '').trim();
+}
+
+function parseSearchIntent(rawQuery) {
+  const raw = normalizeSearchText(rawQuery);
+  const isHashtag = raw.startsWith('#');
+  const keyword = isHashtag ? raw.replace(/^#+/, '').trim() : raw;
+  return { raw, isHashtag, keyword };
+}
+
+function getTagLabels(item) {
+  const tags = Array.isArray(item?.tags) ? item.tags : [];
+  return tags
+    .map((tag) =>
+      tag != null && typeof tag === 'object'
+        ? String(tag.name ?? '').trim()
+        : String(tag ?? '').trim(),
+    )
+    .filter(Boolean);
+}
+
+function includesIgnoreCase(text, query) {
+  return String(text ?? '')
+    .toLowerCase()
+    .includes(String(query ?? '').toLowerCase());
 }
 
 // BoardAll / boardDetail 과 동일한 created_at → 한국 기준 상대 시간 포맷
 function formatTimeAgo(createdAt) {
   if (!createdAt) return '';
-  let dateStr = typeof createdAt === 'string' ? createdAt.trim() : String(createdAt);
+  let dateStr =
+    typeof createdAt === 'string' ? createdAt.trim() : String(createdAt);
   if (!dateStr) return '';
-  if (/^\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}:\d{2}(\.\d+)?$/.test(dateStr) && !/[Z+-]/.test(dateStr)) {
+  if (
+    /^\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}:\d{2}(\.\d+)?$/.test(dateStr) &&
+    !/[Z+-]/.test(dateStr)
+  ) {
     dateStr = dateStr.replace(' ', 'T') + 'Z';
   }
   const date = new Date(dateStr);
@@ -82,7 +113,7 @@ function formatMeta(item) {
 }
 
 export default function SearchResult({ route, navigation }) {
-  const initialFromRoute = stripHashForSearch(route?.params?.query ?? '');
+  const initialFromRoute = normalizeSearchText(route?.params?.query ?? '');
   const [searchText, setSearchText] = useState(initialFromRoute);
   const [committedQuery, setCommittedQuery] = useState(initialFromRoute);
   const [mode, setMode] = useState('result'); // 'input' | 'result'
@@ -96,6 +127,12 @@ export default function SearchResult({ route, navigation }) {
   const [loading, setLoading] = useState(false);
   const [recentSearches, setRecentSearches] = useState([]);
 
+  const searchIntent = useMemo(
+    () => parseSearchIntent(committedQuery),
+    [committedQuery],
+  );
+  const activeTabs = searchIntent.isHashtag ? TABS_FOR_HASHTAG : TABS_FOR_TEXT;
+
   const { width } = useWindowDimensions();
   const normalize = useMemo(() => getNormalize(width), [width]);
   const s = useMemo(() => createSearchResultStyles(normalize), [normalize]);
@@ -107,10 +144,12 @@ export default function SearchResult({ route, navigation }) {
       <Text style={s.cardTitle}>
         {parts.map((p, i) =>
           p.toLowerCase() === query.toLowerCase() ? (
-            <Text key={i} style={s.highlightText}>{p}</Text>
+            <Text key={i} style={s.highlightText}>
+              {p}
+            </Text>
           ) : (
             <Text key={i}>{p}</Text>
-          )
+          ),
         )}
       </Text>
     );
@@ -123,16 +162,18 @@ export default function SearchResult({ route, navigation }) {
       <Text style={s.fullTitle}>
         {parts.map((p, i) =>
           p.toLowerCase() === query.toLowerCase() ? (
-            <Text key={i} style={s.highlightText}>{p}</Text>
+            <Text key={i} style={s.highlightText}>
+              {p}
+            </Text>
           ) : (
             <Text key={i}>{p}</Text>
-          )
+          ),
         )}
       </Text>
     );
   };
 
-  const normalizedQuery = stripHashForSearch(committedQuery);
+  const normalizedQuery = searchIntent.keyword;
 
   const saveRecent = async (list) => {
     try {
@@ -157,21 +198,41 @@ export default function SearchResult({ route, navigation }) {
       const data = res.data?.data || {};
       const posts = Array.isArray(data.posts) ? data.posts : [];
       const mails = Array.isArray(data.schoolMails) ? data.schoolMails : [];
-      setMatchedSchools(Array.isArray(data.matchedSchools) ? data.matchedSchools : []);
+      const filteredPosts = searchIntent.isHashtag
+        ? posts.filter((post) =>
+            getTagLabels(post).some((tag) =>
+              includesIgnoreCase(tag, normalizedQuery),
+            ),
+          )
+        : posts.filter((post) =>
+            includesIgnoreCase(post?.content, normalizedQuery),
+          );
+      const filteredMails = searchIntent.isHashtag
+        ? []
+        : mails.filter((mail) =>
+            includesIgnoreCase(mail?.content, normalizedQuery),
+          );
+      setMatchedSchools(
+        searchIntent.isHashtag
+          ? []
+          : Array.isArray(data.matchedSchools)
+            ? data.matchedSchools
+            : [],
+      );
 
       const nextSections = nextPage === 1 ? {} : { ...sections };
-      posts.forEach((p) => {
+      filteredPosts.forEach((p) => {
         const key = p.boardType === 'school' ? '학교게시판' : '전체게시판';
         if (!nextSections[key]) nextSections[key] = [];
         nextSections[key].push(p);
       });
-      if (nextPage === 1) {
-        if (mails.length > 0) {
-          nextSections['학교우편'] = mails;
+      if (nextPage === 1 && !searchIntent.isHashtag) {
+        if (filteredMails.length > 0) {
+          nextSections['학교우편'] = filteredMails;
         }
-      } else if (mails.length > 0) {
+      } else if (!searchIntent.isHashtag && filteredMails.length > 0) {
         const prevMails = nextSections['학교우편'] || [];
-        nextSections['학교우편'] = [...prevMails, ...mails];
+        nextSections['학교우편'] = [...prevMails, ...filteredMails];
       }
 
       setSections(nextSections);
@@ -199,10 +260,16 @@ export default function SearchResult({ route, navigation }) {
   }, []);
 
   useEffect(() => {
-    const q = stripHashForSearch(route?.params?.query ?? '');
+    const q = normalizeSearchText(route?.params?.query ?? '');
     setSearchText(q);
     setCommittedQuery(q);
   }, [route?.params?.query]);
+
+  useEffect(() => {
+    if (!activeTabs.includes(activeTab)) {
+      setActiveTab('전체');
+    }
+  }, [activeTab, activeTabs]);
 
   useEffect(() => {
     if (!normalizedQuery) return;
@@ -245,7 +312,10 @@ export default function SearchResult({ route, navigation }) {
             style={s.flexOne}
             behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
           >
-            <SubHeader title={expandedSection} onBack={() => setExpandedSection(null)} />
+            <SubHeader
+              title={expandedSection}
+              onBack={() => setExpandedSection(null)}
+            />
             <ScrollView
               style={s.scrollView}
               showsVerticalScrollIndicator={false}
@@ -254,10 +324,15 @@ export default function SearchResult({ route, navigation }) {
               {items.map((item, idx) => (
                 <View
                   key={item.id}
-                  style={[s.fullCard, idx < items.length - 1 && s.fullCardBorder]}
+                  style={[
+                    s.fullCard,
+                    idx < items.length - 1 && s.fullCardBorder,
+                  ]}
                 >
                   {highlightFull(getTitle(item), normalizedQuery)}
-                  <Text style={s.fullSnippet}>{makeSnippet(item.content, normalizedQuery)}</Text>
+                  <Text style={s.fullSnippet}>
+                    {makeSnippet(item.content, normalizedQuery)}
+                  </Text>
                   <Text style={s.metaText}>{formatMeta(item)}</Text>
                 </View>
               ))}
@@ -273,337 +348,400 @@ export default function SearchResult({ route, navigation }) {
   return (
     <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
       <SafeAreaView style={s.container} edges={['top']}>
-      <KeyboardAvoidingView
-        style={s.flexOne}
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      >
-      <View style={s.searchBarWrapper}>
-        <TouchableOpacity
-          onPress={() => {
-            if (mode === 'input') {
-              setSearchText(stripHashForSearch(committedQuery));
-              setMode('result');
-            } else {
-              navigation.reset({
-                index: 0,
-                routes: [{ name: 'Main' }],
-              });
-            }
-          }}
-          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-          style={s.searchBackButton}
+        <KeyboardAvoidingView
+          style={s.flexOne}
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         >
-          <Ionicons name="chevron-back" size={normalize(24)} color={colors.textPrimary} />
-        </TouchableOpacity>
-        <View style={s.searchInputRow}>
-          <Ionicons name="search-outline" size={normalize(18)} color={colors.textSecondary} />
-          <TextInput
-            style={s.searchInput}
-            placeholder="게시글, 우편함 검색"
-            value={searchText}
-            onChangeText={(t) => setSearchText(stripHashForSearch(t))}
-            onFocus={() => setMode('input')}
-            onSubmitEditing={() => {
-              const q = stripHashForSearch(searchText);
-              if (!q) return;
-              setCommittedQuery(q);
-              setSearchText(q);
-              setMode('result');
-              setRecentSearches((prev) => {
-                const filtered = prev.filter((item) => item !== q);
-                const next = [q, ...filtered].slice(0, 10);
-                saveRecent(next);
-                return next;
-              });
-            }}
-            placeholderTextColor={colors.textSecondary}
-            returnKeyType="search"
-          />
-          {searchText.length > 0 && (
+          <View style={s.searchBarWrapper}>
             <TouchableOpacity
-              onPress={() => setSearchText('')}
-              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-            >
-              <Ionicons name="close-circle" size={normalize(17)} color={colors.textLight20} />
-            </TouchableOpacity>
-          )}
-        </View>
-      </View>
-
-      {mode === 'result' && (
-        <>
-          {/* 탭 */}
-          <View style={s.tabBar}>
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              contentContainerStyle={s.tabContent}
-            >
-              {TABS.map((tab) => {
-                const isActive = activeTab === tab;
-                return (
-                  <TouchableOpacity
-                    key={tab}
-                    onPress={() => setActiveTab(tab)}
-                    style={[s.tabBtn, isActive && s.tabBtnActive]}
-                    activeOpacity={0.7}
-                  >
-                    <Text style={[s.tabText, isActive && s.tabTextActive]}>{tab}</Text>
-                  </TouchableOpacity>
-                );
-              })}
-            </ScrollView>
-          </View>
-
-          <ScrollView
-            style={s.scrollView}
-            showsVerticalScrollIndicator={false}
-            keyboardShouldPersistTaps="handled"
-          >
-
-        {/* 학교 매칭 카드들 (최대 5개) */}
-        {activeTab === '전체' && matchedSchools.length > 0 && (
-          <View style={s.section}>
-            <View style={s.sectionHeader}>
-              <View style={s.sectionTitleRow}>
-                <Ionicons name="business-outline" size={normalize(14)} color={colors.textSecondary} style={s.sectionIconSpacing} />
-                <Text style={s.sectionTitle}>학교</Text>
-              </View>
-              <View style={s.countBadge}>
-                <Text style={s.countBadgeText}>{matchedSchools.length}건</Text>
-              </View>
-            </View>
-            {matchedSchools.map((school) => (
-              <TouchableOpacity
-                key={school.schoolId}
-                style={s.schoolCard}
-                activeOpacity={0.7}
-                onPress={() =>
-                  navigation.navigate('OtherSchool', {
-                    schoolId: school.schoolId,
-                    schoolName: school.name,
-                  })
+              onPress={() => {
+                if (mode === 'input') {
+                  setSearchText(normalizeSearchText(committedQuery));
+                  setMode('result');
+                } else {
+                  navigation.reset({
+                    index: 0,
+                    routes: [{ name: 'Main' }],
+                  });
                 }
-              >
-                <View style={s.schoolIconBox}>
-                  <Ionicons name="school-outline" size={normalize(18)} color={colors.textSecondary} />
-                </View>
-                <Text style={s.schoolName}>{school.name}</Text>
-                <Ionicons name="chevron-forward" size={normalize(16)} color={colors.textLight20} />
-              </TouchableOpacity>
-            ))}
-          </View>
-        )}
-
-        {/* 전체 탭 */}
-        {activeTab === '전체' &&
-          sortedSections.map(([section, items]) => (
-            <View key={section} style={s.section}>
-              <View style={s.sectionHeader}>
-                <View style={s.sectionTitleRow}>
+              }}
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              style={s.searchBackButton}
+            >
+              <Ionicons
+                name="chevron-back"
+                size={normalize(24)}
+                color={colors.textPrimary}
+              />
+            </TouchableOpacity>
+            <View style={s.searchInputRow}>
+              <Ionicons
+                name="search-outline"
+                size={normalize(18)}
+                color={colors.textSecondary}
+              />
+              <TextInput
+                style={s.searchInput}
+                placeholder="게시글, 우편함 검색"
+                value={searchText}
+                onChangeText={(t) => setSearchText(t)}
+                onFocus={() => setMode('input')}
+                onSubmitEditing={() => {
+                  const q = normalizeSearchText(searchText);
+                  if (!q) return;
+                  setCommittedQuery(q);
+                  setSearchText(q);
+                  setMode('result');
+                  setRecentSearches((prev) => {
+                    const filtered = prev.filter((item) => item !== q);
+                    const next = [q, ...filtered].slice(0, 10);
+                    saveRecent(next);
+                    return next;
+                  });
+                }}
+                placeholderTextColor={colors.textSecondary}
+                returnKeyType="search"
+              />
+              {searchText.length > 0 && (
+                <TouchableOpacity
+                  onPress={() => setSearchText('')}
+                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                >
                   <Ionicons
-                    name={SECTION_ICON[section] || 'document-outline'}
-                    size={normalize(14)}
-                    color={colors.textSecondary}
-                    style={s.sectionIconSpacing}
+                    name="close-circle"
+                    size={normalize(17)}
+                    color={colors.textLight20}
                   />
-                  <Text style={s.sectionTitle}>{section}</Text>
-                </View>
-                <View style={s.countBadge}>
-                  <Text style={s.countBadgeText}>{items.length}건</Text>
-                </View>
-              </View>
-
-              {items.slice(0, 3).map((item, idx) => (
-                <TouchableOpacity
-                  key={item.id}
-                  style={[s.card, idx < Math.min(items.length, 3) - 1 && s.cardBorder]}
-                  activeOpacity={0.7}
-                  onPress={() => {
-                    navigation.navigate('BoardDetail', {
-                      postId: item.id,
-                      fromSearch: true,
-                    });
-                  }}
-                >
-                  {highlight(getTitle(item), normalizedQuery)}
-                  <Text style={s.cardSnippet} numberOfLines={2}>
-                    {makeSnippet(item.content, normalizedQuery)}
-                  </Text>
-                  <Text style={s.metaText}>{formatMeta(item)}</Text>
-                </TouchableOpacity>
-              ))}
-
-              {items.length > 3 && (
-                <TouchableOpacity
-                  style={s.moreBtn}
-                  onPress={() => setExpandedSection(section)}
-                  activeOpacity={0.7}
-                >
-                  <Text style={s.moreBtnText}>{section} 결과 더보기</Text>
-                  <Ionicons name="chevron-forward" size={normalize(13)} color={colors.textSecondary} />
                 </TouchableOpacity>
               )}
             </View>
-          ))}
+          </View>
 
-        {/* 개별 탭 */}
-        {activeTab !== '전체' &&
-          sections[activeTab] &&
-          sections[activeTab].length > 0 && (
-            <View style={s.section}>
-              {sections[activeTab].map((item, idx) => (
-                <TouchableOpacity
-                  key={item.id}
-                  style={[
-                    s.fullCard,
-                    idx < sections[activeTab].length - 1 && s.fullCardBorder,
-                  ]}
-                  activeOpacity={0.7}
-                  onPress={() => {
-                    navigation.navigate('BoardDetail', {
-                      postId: item.id,
-                      fromSearch: true,
-                    });
-                  }}
+          {mode === 'result' && (
+            <>
+              {/* 탭 */}
+              <View style={s.tabBar}>
+                <ScrollView
+                  horizontal
+                  showsHorizontalScrollIndicator={false}
+                  contentContainerStyle={s.tabContent}
                 >
-                  {highlightFull(getTitle(item), normalizedQuery)}
-                  <Text style={s.fullSnippet}>
-                    {makeSnippet(item.content, normalizedQuery)}
-                  </Text>
-                  <Text style={s.metaText}>{formatMeta(item)}</Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-          )}
-
-        {/* 로딩 */}
-        {loading && (
-          <View style={s.centerBox}>
-            <Loading size="small" />
-          </View>
-        )}
-
-        {/* 결과 없음 */}
-        {!loading && !hasResults && (
-          <View style={s.emptyBox}>
-            <View style={s.emptyIconBox}>
-              <Ionicons name="search-outline" size={normalize(26)} color={colors.textLight20} />
-            </View>
-            <Text style={s.emptyTitle}>검색 결과가 없습니다</Text>
-            <Text style={s.emptyDesc}>다른 검색어로 다시 시도해보세요</Text>
-          </View>
-        )}
-
-        {/* 결과 있음 + 마지막 페이지: 안내 */}
-        {!loading && hasVisibleResultsInTab && !hasMore && (
-          <View style={s.endOfResultsBox}>
-            <Text style={s.endOfResultsText}>검색 결과를 모두 확인했습니다</Text>
-          </View>
-        )}
-
-        {/* 더 불러오기 */}
-        {hasMore && !loading && (
-          <View style={s.centerBox}>
-            <TouchableOpacity
-              style={s.loadMoreBtn}
-              onPress={() => fetchSearch(page + 1)}
-              activeOpacity={0.7}
-            >
-              <Text style={s.loadMoreText}>더 불러오기</Text>
-              <Ionicons name="chevron-down" size={normalize(14)} color={colors.textSecondary} style={s.loadMoreChevron} />
-            </TouchableOpacity>
-          </View>
-        )}
-        <View style={s.scrollBottomSpacer} />
-      </ScrollView>
-      </>
-      )}
-
-      {mode === 'input' && (
-        <ScrollView
-          style={s.scrollView}
-          showsVerticalScrollIndicator={false}
-          keyboardShouldPersistTaps="handled"
-        >
-          {/* 최근 검색어 */}
-          {recentSearches.length > 0 && (
-            <View style={s.section}>
-              <View style={s.sectionHeader}>
-                <Text style={s.sectionTitle}>최근 검색어</Text>
-                <TouchableOpacity
-                  onPress={() => {
-                    setRecentSearches([]);
-                    saveRecent([]);
-                  }}
-                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                >
-                  <Text style={s.clearButton}>전체 삭제</Text>
-                </TouchableOpacity>
+                  {activeTabs.map((tab) => {
+                    const isActive = activeTab === tab;
+                    return (
+                      <TouchableOpacity
+                        key={tab}
+                        onPress={() => setActiveTab(tab)}
+                        style={[s.tabBtn, isActive && s.tabBtnActive]}
+                        activeOpacity={0.7}
+                      >
+                        <Text style={[s.tabText, isActive && s.tabTextActive]}>
+                          {tab}
+                        </Text>
+                      </TouchableOpacity>
+                    );
+                  })}
+                </ScrollView>
               </View>
-              {recentSearches.map((item, index) => (
-                <TouchableOpacity
-                  key={index}
-                  style={s.recentRow}
-                  onPress={() => {
-                    const q = stripHashForSearch(item);
-                    setSearchText(q);
-                    setCommittedQuery(q);
-                    setMode('result');
-                  }}
-                  activeOpacity={0.6}
-                >
-                  <Ionicons name="time-outline" size={normalize(15)} color={colors.textLight20} />
-                  <Text style={s.recentText}>{item}</Text>
-                  <TouchableOpacity
-                    onPress={() => {
-                      const next = recentSearches.filter((_, i) => i !== index);
-                      setRecentSearches(next);
-                      saveRecent(next);
-                    }}
-                    hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                    style={s.recentDeleteBtn}
-                  >
-                    <Ionicons name="close" size={normalize(15)} color={colors.textLight20} />
-                  </TouchableOpacity>
-                </TouchableOpacity>
-              ))}
-            </View>
+
+              <ScrollView
+                style={s.scrollView}
+                showsVerticalScrollIndicator={false}
+                keyboardShouldPersistTaps="handled"
+              >
+                {/* 학교 매칭 카드들 (최대 5개) */}
+                {activeTab === '전체' && matchedSchools.length > 0 && (
+                  <View style={s.section}>
+                    <View style={s.sectionHeader}>
+                      <View style={s.sectionTitleRow}>
+                        <Ionicons
+                          name="business-outline"
+                          size={normalize(14)}
+                          color={colors.textSecondary}
+                          style={s.sectionIconSpacing}
+                        />
+                        <Text style={s.sectionTitle}>학교</Text>
+                      </View>
+                      <View style={s.countBadge}>
+                        <Text style={s.countBadgeText}>
+                          {matchedSchools.length}건
+                        </Text>
+                      </View>
+                    </View>
+                    {matchedSchools.map((school) => (
+                      <TouchableOpacity
+                        key={school.schoolId}
+                        style={s.schoolCard}
+                        activeOpacity={0.7}
+                        onPress={() =>
+                          navigation.navigate('OtherSchool', {
+                            schoolId: school.schoolId,
+                            schoolName: school.name,
+                          })
+                        }
+                      >
+                        <View style={s.schoolIconBox}>
+                          <Ionicons
+                            name="school-outline"
+                            size={normalize(18)}
+                            color={colors.textSecondary}
+                          />
+                        </View>
+                        <Text style={s.schoolName}>{school.name}</Text>
+                        <Ionicons
+                          name="chevron-forward"
+                          size={normalize(16)}
+                          color={colors.textLight20}
+                        />
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                )}
+
+                {/* 전체 탭 */}
+                {activeTab === '전체' &&
+                  sortedSections.map(([section, items]) => (
+                    <View key={section} style={s.section}>
+                      <View style={s.sectionHeader}>
+                        <View style={s.sectionTitleRow}>
+                          <Ionicons
+                            name={SECTION_ICON[section] || 'document-outline'}
+                            size={normalize(14)}
+                            color={colors.textSecondary}
+                            style={s.sectionIconSpacing}
+                          />
+                          <Text style={s.sectionTitle}>{section}</Text>
+                        </View>
+                        <View style={s.countBadge}>
+                          <Text style={s.countBadgeText}>{items.length}건</Text>
+                        </View>
+                      </View>
+
+                      {items.slice(0, 3).map((item, idx) => (
+                        <TouchableOpacity
+                          key={item.id}
+                          style={[
+                            s.card,
+                            idx < Math.min(items.length, 3) - 1 && s.cardBorder,
+                          ]}
+                          activeOpacity={0.7}
+                          onPress={() => {
+                            navigation.navigate('BoardDetail', {
+                              postId: item.id,
+                              fromSearch: true,
+                            });
+                          }}
+                        >
+                          {highlight(getTitle(item), normalizedQuery)}
+                          <Text style={s.cardSnippet} numberOfLines={2}>
+                            {makeSnippet(item.content, normalizedQuery)}
+                          </Text>
+                          <Text style={s.metaText}>{formatMeta(item)}</Text>
+                        </TouchableOpacity>
+                      ))}
+
+                      {items.length > 3 && (
+                        <TouchableOpacity
+                          style={s.moreBtn}
+                          onPress={() => setExpandedSection(section)}
+                          activeOpacity={0.7}
+                        >
+                          <Text style={s.moreBtnText}>
+                            {section} 결과 더보기
+                          </Text>
+                          <Ionicons
+                            name="chevron-forward"
+                            size={normalize(13)}
+                            color={colors.textSecondary}
+                          />
+                        </TouchableOpacity>
+                      )}
+                    </View>
+                  ))}
+
+                {/* 개별 탭 */}
+                {activeTab !== '전체' &&
+                  sections[activeTab] &&
+                  sections[activeTab].length > 0 && (
+                    <View style={s.section}>
+                      {sections[activeTab].map((item, idx) => (
+                        <TouchableOpacity
+                          key={item.id}
+                          style={[
+                            s.fullCard,
+                            idx < sections[activeTab].length - 1 &&
+                              s.fullCardBorder,
+                          ]}
+                          activeOpacity={0.7}
+                          onPress={() => {
+                            navigation.navigate('BoardDetail', {
+                              postId: item.id,
+                              fromSearch: true,
+                            });
+                          }}
+                        >
+                          {highlightFull(getTitle(item), normalizedQuery)}
+                          <Text style={s.fullSnippet}>
+                            {makeSnippet(item.content, normalizedQuery)}
+                          </Text>
+                          <Text style={s.metaText}>{formatMeta(item)}</Text>
+                        </TouchableOpacity>
+                      ))}
+                    </View>
+                  )}
+
+                {/* 로딩 */}
+                {loading && (
+                  <View style={s.centerBox}>
+                    <Loading size="small" />
+                  </View>
+                )}
+
+                {/* 결과 없음 */}
+                {!loading && !hasResults && (
+                  <View style={s.emptyBox}>
+                    <View style={s.emptyIconBox}>
+                      <Ionicons
+                        name="search-outline"
+                        size={normalize(26)}
+                        color={colors.textLight20}
+                      />
+                    </View>
+                    <Text style={s.emptyTitle}>검색 결과가 없습니다</Text>
+                    <Text style={s.emptyDesc}>
+                      다른 검색어로 다시 시도해보세요
+                    </Text>
+                  </View>
+                )}
+
+                {/* 결과 있음 + 마지막 페이지: 안내 */}
+                {!loading && hasVisibleResultsInTab && !hasMore && (
+                  <View style={s.endOfResultsBox}>
+                    <Text style={s.endOfResultsText}>
+                      검색 결과를 모두 확인했습니다
+                    </Text>
+                  </View>
+                )}
+
+                {/* 더 불러오기 */}
+                {hasMore && !loading && (
+                  <View style={s.centerBox}>
+                    <TouchableOpacity
+                      style={s.loadMoreBtn}
+                      onPress={() => fetchSearch(page + 1)}
+                      activeOpacity={0.7}
+                    >
+                      <Text style={s.loadMoreText}>더 불러오기</Text>
+                      <Ionicons
+                        name="chevron-down"
+                        size={normalize(14)}
+                        color={colors.textSecondary}
+                        style={s.loadMoreChevron}
+                      />
+                    </TouchableOpacity>
+                  </View>
+                )}
+                <View style={s.scrollBottomSpacer} />
+              </ScrollView>
+            </>
           )}
 
-          {/* 추천 검색어 태그 */}
-          <View style={s.sectionRecommendTags}>
-            <View style={s.sectionHeader}>
-              <Text style={s.sectionTitle}>추천 검색어</Text>
-            </View>
-            <View style={s.tagRow}>
-              {['급식메뉴', '시험일정', '동아리', '축제', '학생회'].map((tag) => (
-                <TouchableOpacity
-                  key={tag}
-                  style={s.tag}
-                  onPress={() => {
-                    const q = stripHashForSearch(tag);
-                    setSearchText(q);
-                    setCommittedQuery(q);
-                    setMode('result');
-                    setRecentSearches((prev) => {
-                      const filtered = prev.filter((item) => item !== q);
-                      const next = [q, ...filtered].slice(0, 10);
-                      saveRecent(next);
-                      return next;
-                    });
-                  }}
-                  activeOpacity={0.7}
-                >
-                  <Text style={s.tagText}># {tag}</Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-          </View>
-        </ScrollView>
-      )}
-      </KeyboardAvoidingView>
-    </SafeAreaView>
+          {mode === 'input' && (
+            <ScrollView
+              style={s.scrollView}
+              showsVerticalScrollIndicator={false}
+              keyboardShouldPersistTaps="handled"
+            >
+              {/* 최근 검색어 */}
+              {recentSearches.length > 0 && (
+                <View style={s.section}>
+                  <View style={s.sectionHeader}>
+                    <Text style={s.sectionTitle}>최근 검색어</Text>
+                    <TouchableOpacity
+                      onPress={() => {
+                        setRecentSearches([]);
+                        saveRecent([]);
+                      }}
+                      hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                    >
+                      <Text style={s.clearButton}>전체 삭제</Text>
+                    </TouchableOpacity>
+                  </View>
+                  {recentSearches.map((item, index) => (
+                    <TouchableOpacity
+                      key={index}
+                      style={s.recentRow}
+                      onPress={() => {
+                        const q = normalizeSearchText(item);
+                        setSearchText(q);
+                        setCommittedQuery(q);
+                        setMode('result');
+                      }}
+                      activeOpacity={0.6}
+                    >
+                      <Ionicons
+                        name="time-outline"
+                        size={normalize(15)}
+                        color={colors.textLight20}
+                      />
+                      <Text style={s.recentText}>{item}</Text>
+                      <TouchableOpacity
+                        onPress={() => {
+                          const next = recentSearches.filter(
+                            (_, i) => i !== index,
+                          );
+                          setRecentSearches(next);
+                          saveRecent(next);
+                        }}
+                        hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                        style={s.recentDeleteBtn}
+                      >
+                        <Ionicons
+                          name="close"
+                          size={normalize(15)}
+                          color={colors.textLight20}
+                        />
+                      </TouchableOpacity>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              )}
+
+              {/* 추천 검색어 태그 */}
+              <View style={s.sectionRecommendTags}>
+                <View style={s.sectionHeader}>
+                  <Text style={s.sectionTitle}>추천 검색어</Text>
+                </View>
+                <View style={s.tagRow}>
+                  {['급식메뉴', '시험일정', '동아리', '축제', '학생회'].map(
+                    (tag) => (
+                      <TouchableOpacity
+                        key={tag}
+                        style={s.tag}
+                        onPress={() => {
+                          const q = normalizeSearchText(`#${tag}`);
+                          setSearchText(q);
+                          setCommittedQuery(q);
+                          setMode('result');
+                          setRecentSearches((prev) => {
+                            const filtered = prev.filter((item) => item !== q);
+                            const next = [q, ...filtered].slice(0, 10);
+                            saveRecent(next);
+                            return next;
+                          });
+                        }}
+                        activeOpacity={0.7}
+                      >
+                        <Text style={s.tagText}># {tag}</Text>
+                      </TouchableOpacity>
+                    ),
+                  )}
+                </View>
+              </View>
+            </ScrollView>
+          )}
+        </KeyboardAvoidingView>
+      </SafeAreaView>
     </TouchableWithoutFeedback>
   );
 }
