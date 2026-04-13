@@ -13,25 +13,24 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import FontAwesome from '@expo/vector-icons/FontAwesome';
 import SubHeader from '../frame/subHeader';
 import { colors } from '../../styles/colors';
-import {
-  getNormalize,
-  createSearchResultStyles,
-} from '../../styles/search.style';
+import { getNormalize } from '../../styles/search.style';
+import { createSearchResultStyles } from '../../styles/result.style';
 import { api } from '../../utils/api';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Loading from '../../components/Loading';
 
 const TABS_FOR_TEXT = ['전체', '전체게시판', '학교게시판', '학교우편'];
-const TABS_FOR_HASHTAG = ['전체', '전체게시판', '학교게시판'];
+const TABS_FOR_HASHTAG = ['전체', '전체게시판', '학교게시판', '학교우편'];
 const RECENT_KEY = '@search_recent_keywords';
+const SECTIONS_WITH_EXTRA_GAP = ['학교게시판', '전체게시판', '학교우편'];
 
 const SECTION_ICON = {
   전체게시판: 'globe-outline',
   학교게시판: 'school-outline',
-  개인우편: 'mail-outline',
-  학교우편: 'mail-open-outline',
+  학교우편: 'mail-outline',
 };
 
 function makeSnippet(content, query) {
@@ -46,12 +45,12 @@ function makeSnippet(content, query) {
   return `${start > 0 ? '…' : ''}${text.slice(start, end)}${end < text.length ? '…' : ''}`;
 }
 
-function getTitle(item) {
-  return (item.content || '').split('\n')[0] || '제목 없음';
-}
-
 function normalizeSearchText(q) {
   return String(q ?? '').trim();
+}
+
+function escapeRegExp(text) {
+  return String(text).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
 function parseSearchIntent(rawQuery) {
@@ -76,6 +75,20 @@ function includesIgnoreCase(text, query) {
   return String(text ?? '')
     .toLowerCase()
     .includes(String(query ?? '').toLowerCase());
+}
+
+function getLikeCount(item) {
+  const count = item?.likeCount ?? item?.like_count ?? 0;
+  return Number.isFinite(Number(count)) ? Number(count) : 0;
+}
+
+function getCommentCount(item) {
+  const count = item?.commentCount ?? item?.comment_count ?? 0;
+  return Number.isFinite(Number(count)) ? Number(count) : 0;
+}
+
+function getTimeText(item) {
+  return formatTimeAgo(item?.createdAt ?? item?.created_at);
 }
 
 // BoardAll / boardDetail 과 동일한 created_at → 한국 기준 상대 시간 포맷
@@ -103,13 +116,6 @@ function formatTimeAgo(createdAt) {
   if (diffHour < 24) return `${diffHour}시간 전`;
   if (diffDay < 7) return `${diffDay}일 전`;
   return date.toLocaleDateString('ko-KR', { month: 'long', day: 'numeric' });
-}
-
-function formatMeta(item) {
-  const parts = [formatTimeAgo(item.createdAt)];
-  if (item.likeCount != null) parts.push(`좋아요 ${item.likeCount}`);
-  if (item.commentCount != null) parts.push(`댓글 ${item.commentCount}`);
-  return parts.join(' · ');
 }
 
 export default function SearchResult({ route, navigation }) {
@@ -147,29 +153,12 @@ export default function SearchResult({ route, navigation }) {
   const normalize = useMemo(() => getNormalize(width), [width]);
   const s = useMemo(() => createSearchResultStyles(normalize), [normalize]);
 
-  const highlight = (text, query) => {
-    if (!query) return <Text style={s.cardTitle}>{text}</Text>;
-    const parts = text.split(new RegExp(`(${query})`, 'gi'));
+  const highlightSnippet = (text, query, baseStyle) => {
+    if (!query) return <Text style={baseStyle}>{text}</Text>;
+    const escapedQuery = escapeRegExp(query);
+    const parts = text.split(new RegExp(`(${escapedQuery})`, 'gi'));
     return (
-      <Text style={s.cardTitle}>
-        {parts.map((p, i) =>
-          p.toLowerCase() === query.toLowerCase() ? (
-            <Text key={i} style={s.highlightText}>
-              {p}
-            </Text>
-          ) : (
-            <Text key={i}>{p}</Text>
-          ),
-        )}
-      </Text>
-    );
-  };
-
-  const highlightFull = (text, query) => {
-    if (!query) return <Text style={s.fullTitle}>{text}</Text>;
-    const parts = text.split(new RegExp(`(${query})`, 'gi'));
-    return (
-      <Text style={s.fullTitle}>
+      <Text style={baseStyle}>
         {parts.map((p, i) =>
           p.toLowerCase() === query.toLowerCase() ? (
             <Text key={i} style={s.highlightText}>
@@ -349,11 +338,34 @@ export default function SearchResult({ route, navigation }) {
                     idx < items.length - 1 && s.fullCardBorder,
                   ]}
                 >
-                  {highlightFull(getTitle(item), normalizedQuery)}
-                  <Text style={s.fullSnippet}>
-                    {makeSnippet(item.content, normalizedQuery)}
-                  </Text>
-                  <Text style={s.metaText}>{formatMeta(item)}</Text>
+                  <View style={s.contentTimeRow}>
+                    <View style={s.snippetWrap}>
+                      {highlightSnippet(
+                        makeSnippet(item.content, normalizedQuery),
+                        normalizedQuery,
+                        s.fullSnippet,
+                      )}
+                    </View>
+                    <Text style={s.metaTimeInline}>{getTimeText(item)}</Text>
+                  </View>
+                  <View style={s.metaBottomRow}>
+                    <View style={s.metaStatItem}>
+                        <FontAwesome
+                          name="heart-o"
+                          size={normalize(14)}
+                          color={colors.alert}
+                        />
+                        <Text style={s.metaStatText}>{getLikeCount(item)}</Text>
+                      </View>
+                      <View style={s.metaStatItem}>
+                        <Ionicons
+                          name="chatbubble-outline"
+                          size={normalize(15)}
+                          color={colors.primary}
+                        />
+                        <Text style={s.metaStatText}>{getCommentCount(item)}</Text>
+                      </View>
+                    </View>
                 </View>
               ))}
               <View style={s.scrollBottomSpacer} />
@@ -488,11 +500,16 @@ export default function SearchResult({ route, navigation }) {
               >
                 {/* 학교 매칭 카드들 (최대 5개) */}
                 {activeTab === '전체' && matchedSchools.length > 0 && (
-                  <View style={s.section}>
+                  <View
+                    style={[
+                      s.section,
+                      s.sectionGapAfterSchool,
+                    ]}
+                  >
                     <View style={s.sectionHeader}>
                       <View style={s.sectionTitleRow}>
-                        <Ionicons
-                          name="business-outline"
+                        <FontAwesome
+                          name="building-o"
                           size={normalize(14)}
                           color={colors.textSecondary}
                           style={s.sectionIconSpacing}
@@ -520,7 +537,7 @@ export default function SearchResult({ route, navigation }) {
                         <View style={s.schoolIconBox}>
                           <Ionicons
                             name="school-outline"
-                            size={normalize(18)}
+                            size={normalize(16)}
                             color={colors.textSecondary}
                           />
                         </View>
@@ -538,7 +555,14 @@ export default function SearchResult({ route, navigation }) {
                 {/* 전체 탭 */}
                 {activeTab === '전체' &&
                   sortedSections.map(([section, items]) => (
-                    <View key={section} style={s.section}>
+                    <View
+                      key={section}
+                      style={[
+                        s.section,
+                        SECTIONS_WITH_EXTRA_GAP.includes(section) &&
+                          s.sectionGapBetweenTargetSections,
+                      ]}
+                    >
                       <View style={s.sectionHeader}>
                         <View style={s.sectionTitleRow}>
                           <Ionicons
@@ -569,11 +593,40 @@ export default function SearchResult({ route, navigation }) {
                             });
                           }}
                         >
-                          {highlight(getTitle(item), normalizedQuery)}
-                          <Text style={s.cardSnippet} numberOfLines={2}>
-                            {makeSnippet(item.content, normalizedQuery)}
-                          </Text>
-                          <Text style={s.metaText}>{formatMeta(item)}</Text>
+                          <View style={s.contentTimeRow}>
+                            <View style={s.snippetWrap}>
+                              {highlightSnippet(
+                                makeSnippet(item.content, normalizedQuery),
+                                normalizedQuery,
+                                s.cardSnippet,
+                              )}
+                            </View>
+                            <Text style={s.metaTimeInline}>
+                              {getTimeText(item)}
+                            </Text>
+                          </View>
+                          <View style={s.metaBottomRow}>
+                            <View style={s.metaStatItem}>
+                              <FontAwesome
+                                name="heart-o"
+                                size={normalize(14)}
+                                color={colors.alert}
+                              />
+                              <Text style={s.metaStatText}>
+                                {getLikeCount(item)}
+                              </Text>
+                            </View>
+                            <View style={s.metaStatItem}>
+                              <Ionicons
+                                name="chatbubble-outline"
+                                size={normalize(15)}
+                                color={colors.primary}
+                              />
+                              <Text style={s.metaStatText}>
+                                {getCommentCount(item)}
+                              </Text>
+                            </View>
+                          </View>
                         </TouchableOpacity>
                       ))}
 
@@ -617,11 +670,40 @@ export default function SearchResult({ route, navigation }) {
                             });
                           }}
                         >
-                          {highlightFull(getTitle(item), normalizedQuery)}
-                          <Text style={s.fullSnippet}>
-                            {makeSnippet(item.content, normalizedQuery)}
-                          </Text>
-                          <Text style={s.metaText}>{formatMeta(item)}</Text>
+                          <View style={s.contentTimeRow}>
+                            <View style={s.snippetWrap}>
+                              {highlightSnippet(
+                                makeSnippet(item.content, normalizedQuery),
+                                normalizedQuery,
+                                s.fullSnippet,
+                              )}
+                            </View>
+                            <Text style={s.metaTimeInline}>
+                              {getTimeText(item)}
+                            </Text>
+                          </View>
+                          <View style={s.metaBottomRow}>
+                            <View style={s.metaStatItem}>
+                              <FontAwesome
+                                name="heart-o"
+                                size={normalize(14)}
+                                color={colors.alert}
+                              />
+                              <Text style={s.metaStatText}>
+                                {getLikeCount(item)}
+                              </Text>
+                            </View>
+                            <View style={s.metaStatItem}>
+                              <Ionicons
+                                name="chatbubble-outline"
+                                size={normalize(15)}
+                                color={colors.primary}
+                              />
+                              <Text style={s.metaStatText}>
+                                {getCommentCount(item)}
+                              </Text>
+                            </View>
+                          </View>
                         </TouchableOpacity>
                       ))}
                     </View>

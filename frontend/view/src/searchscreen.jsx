@@ -153,7 +153,7 @@ const SearchScreen = ({ navigation, route }) => {
             <TextInput
               ref={searchInputRef}
               style={styles.searchInput}
-              placeholder="게시글, 우편함 검색"
+              placeholder="검색어를 입력하세요요"
               value={searchText}
               onChangeText={handleChangeText}
               onSubmitEditing={() => runSearch()}
