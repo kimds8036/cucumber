@@ -1036,6 +1036,7 @@ export default function BoardDetail({ navigation, route }) {
                           onPress={() =>
                             navigation.navigate('SearchResult', {
                               query: searchQuery,
+                              searchType: 'hashtag',
                             })
                           }
                         >
