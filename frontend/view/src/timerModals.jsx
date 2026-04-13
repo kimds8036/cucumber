@@ -84,6 +84,16 @@ const modalStyles = {
     marginTop: 8,
     marginBottom: 14,
   },
+  colorLabelRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 4,
+  },
+  colorScroll: {
+    flexGrow: 0,
+    marginLeft: 8,
+  },
   colorWrap: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -107,11 +117,19 @@ const modalStyles = {
     paddingVertical: 6,
     borderRadius: 12,
     backgroundColor: '#F2F2F2',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 4,
+  },
+  randomIcon: {
+    marginTop: 0,
   },
   randomText: {
     fontSize: 12,
     fontWeight: '600',
     color: colors.textSecondary,
+    lineHeight: 14,
   },
   row: {
     flexDirection: 'row',
@@ -185,11 +203,13 @@ export const AddSubjectModal = ({ visible, onClose, onAdd }) => {
               onChangeText={setName}
             />
             <View style={modalStyles.colorRow}>
-              <Text style={modalStyles.label}>색상</Text>
+              <View style={modalStyles.colorLabelRow}>
+                <Text style={[modalStyles.label, { marginBottom: 0 }]}>색상</Text>
+              </View>
               <ScrollView
                 horizontal
                 showsHorizontalScrollIndicator={false}
-                style={{ flexGrow: 0 }}
+                style={modalStyles.colorScroll}
               >
                 <View style={modalStyles.colorWrap}>
                   {SUBJECT_COLORS.map((c) => (
@@ -209,6 +229,12 @@ export const AddSubjectModal = ({ visible, onClose, onAdd }) => {
                 onPress={pickRandom}
                 style={modalStyles.randomBtn}
               >
+                <Ionicons
+                  name="shuffle"
+                  size={14}
+                  color={colors.textSecondary}
+                  style={modalStyles.randomIcon}
+                />
                 <Text style={modalStyles.randomText}>랜덤</Text>
               </TouchableOpacity>
             </View>

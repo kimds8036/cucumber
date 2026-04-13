@@ -19,6 +19,7 @@ export default function CommentInput({
   selectedImages = [],
   onImagesChange = () => {},
   showImageAttach = false,
+  isSendingComment = false,
 }) {
   return (
     <View style={styles.bottomInputRow}>
@@ -82,11 +83,17 @@ export default function CommentInput({
           onChangeText={setBottomComment}
           multiline
           maxLength={1000}
-          onSubmitEditing={handleSendComment}
+          editable={!isSendingComment}
+          onSubmitEditing={() => {
+            if (isSendingComment) return;
+            handleSendComment();
+          }}
         />
         <TouchableOpacity
           style={styles.sendButton}
+          disabled={isSendingComment}
           onPress={() => {
+            if (isSendingComment) return;
             if (bottomComment.trim() || selectedImages.length > 0) {
               handleSendComment();
             }
