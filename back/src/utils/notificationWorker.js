@@ -32,6 +32,7 @@
 import Bull from 'bull';
 import { createNotification } from './notifications.js';
 import { emitNotification } from '../socketServer.js';
+import { checkNotificationAllowed } from './notificationUtils.js';
 
 // ── Redis 연결 설정 ──────────────────────────────────
 const REDIS_CONFIG = {
@@ -107,6 +108,8 @@ notificationQueue.on('error', (err) => {
  */
 export async function enqueueNotification(params) {
   try {
+    const allowed = await checkNotificationAllowed(params.userId, params.type);
+    if (!allowed) return;
     await notificationQueue.add(params);
   } catch (err) {
     // 큐 추가 실패 시 에러 로그만 남기고 메인 로직은 계속 진행

@@ -3,6 +3,7 @@ import pool from '../config/database.js';
 import { authenticate } from '../middleware/auth.js';
 import { createNotification } from '../utils/notifications.js';
 import { emitNotification } from '../socketServer.js';
+import { checkNotificationAllowed } from '../utils/notificationUtils.js';
 import { getStudyingFriends } from '../socket/socketService.js';
 
 const router = express.Router();
@@ -433,29 +434,35 @@ router.post('/requests', authenticate, async (req, res) => {
 
     // 알림 생성 (선택적)
     try {
-      await createNotification({
-        userId: target.id,
-        type: 'friend_request',
-        category: 'system',
-        title: '새 친구 요청이 도착했어요',
-        body: '친구 요청함에서 확인해 보세요.',
-        relatedType: 'friendship',
-        relatedId: requestId,
-      });
-      console.log('[Friends][FriendRequest] DB 알림 생성 완료 → 소켓 emit 예정', {
-        targetUserId: target.id,
-        requestId,
-      });
-      // 수신자에게 소켓으로 즉시 push (빨간점/친구 뱃지 반영)
-      emitNotification(target.id, {
-        type: 'friend_request',
-        category: 'system',
-        title: '새 친구 요청이 도착했어요',
-        body: '친구 요청함에서 확인해 보세요.',
-        relatedType: 'friendship',
-        relatedId: requestId,
-      });
-      console.log('[Friends][FriendRequest] emitNotification 호출 완료 (수신자 userId=%s)', target.id);
+      const allowed = await checkNotificationAllowed(
+        target.id,
+        'friend_request'
+      );
+      if (allowed) {
+        await createNotification({
+          userId: target.id,
+          type: 'friend_request',
+          category: 'system',
+          title: '새 친구 요청이 도착했어요',
+          body: '친구 요청함에서 확인해 보세요.',
+          relatedType: 'friendship',
+          relatedId: requestId,
+        });
+        console.log('[Friends][FriendRequest] DB 알림 생성 완료 → 소켓 emit 예정', {
+          targetUserId: target.id,
+          requestId,
+        });
+        // 수신자에게 소켓으로 즉시 push (빨간점/친구 뱃지 반영)
+        emitNotification(target.id, {
+          type: 'friend_request',
+          category: 'system',
+          title: '새 친구 요청이 도착했어요',
+          body: '친구 요청함에서 확인해 보세요.',
+          relatedType: 'friendship',
+          relatedId: requestId,
+        });
+        console.log('[Friends][FriendRequest] emitNotification 호출 완료 (수신자 userId=%s)', target.id);
+      }
     } catch (notifyError) {
       // 알림 실패는 전체 요청을 막지 않음
       console.error('[Friends][FriendRequest] 알림 생성/소켓 오류:', notifyError);
