@@ -119,11 +119,7 @@ export function counterpartyDisplayNameForCurrentUser({
   isRootAuthorForCurrentUser = false,
 }) {
   if (!isReceived) {
-    const knownRecipient =
-      recipientNameFromApi != null && String(recipientNameFromApi).trim()
-        ? String(recipientNameFromApi).trim()
-        : '';
-    const decided = knownRecipient || '상대';
+    const decided = '나';
     console.log('[MailLabelDecision][Helper]', {
       isReceived,
       isRootAuthorForCurrentUser,
@@ -194,6 +190,7 @@ function MailInbox({ onOpen, onBack, navigation }) {
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [isInitialLoading, setIsInitialLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState('');
 
@@ -230,6 +227,7 @@ function MailInbox({ onOpen, onBack, navigation }) {
       setError(e.response?.data?.message || '우편함을 불러오지 못했습니다.');
     } finally {
       setLoading(false);
+      if (nextPage === 1 && !append) setIsInitialLoading(false);
       setRefreshing(false);
     }
   }, [tab]);
@@ -242,6 +240,16 @@ function MailInbox({ onOpen, onBack, navigation }) {
     setRefreshing(true);
     fetchList(1, false);
   };
+
+  if (isInitialLoading && loading) {
+    return (
+      <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
+        <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
+          <Loading />
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
@@ -487,7 +495,7 @@ function MailDetail({ mail: initialMail, onBack, navigation }) {
       ? (threadMessages.find((msg) => Number(msg.sender_id) !== Number(currentUserId))?.sender_name || mail?.senderName)
       : (mail?.recipientName || '');
   const cardSenderLabel = isDisplayMine
-    ? (myName || '나')
+    ? '나'
     : counterpartyDisplayNameForCurrentUser({
         isReceived: true,
         senderNameFromApi: counterpartyKnownName,
@@ -509,6 +517,30 @@ function MailDetail({ mail: initialMail, onBack, navigation }) {
     mail?.isReceived === false && isDisplayMine;
   const showReplyCta = mail?.isReceived === true && !isDisplayMine;
 
+  if (loading) {
+    return (
+      <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
+        <SubHeader
+          title={mail?.isReceived === false ? '보낸 우편' : '받은 우편'}
+          onBack={onBack}
+          rightElement={
+            <Octicons name="history" size={normalize(18)} color={colors.textPrimary} />
+          }
+          onRightPress={() =>
+            navigation.navigate('MailHistory', {
+              ...(historyThreadId != null ? { threadId: historyThreadId } : {}),
+            })
+          }
+        />
+        <View style={styles.detailRoot}>
+          <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
+            <Loading />
+          </View>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
   return (
     <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
       <SubHeader
@@ -525,8 +557,7 @@ function MailDetail({ mail: initialMail, onBack, navigation }) {
       />
 
       <View style={styles.detailRoot}>
-        {loading && <Loading style={styles.detailLoading} />}
-        {!loading && !!error && (
+        {!!error && (
           <Text style={styles.detailErrorText}>{error}</Text>
         )}
         <ScrollView

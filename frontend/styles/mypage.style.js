@@ -327,14 +327,13 @@ export const createNotificationSettingsStyles = (normalize) => {
     },
     scroll: {
       flex: 1,
-      paddingTop: normalize(8),
     },
     scrollBottomSpacer: {
       height: normalize(80),
     },
 
     sectionHeader: {
-      marginTop: normalize(24),
+      marginTop: normalize(16),
       marginBottom: normalize(8),
       marginHorizontal: normalize(20),
     },
