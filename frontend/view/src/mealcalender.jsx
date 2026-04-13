@@ -211,26 +211,25 @@ const MealCalender = ({ route }) => {
 
   return (
     <View style={styles.container}>
+      <View style={styles.monthHeader}>
+        <TouchableOpacity style={styles.monthNav} onPress={handlePrevMonth} activeOpacity={0.7}>
+          <Ionicons name="chevron-back" size={normalize(18)} color={colors.textSecondary} />
+        </TouchableOpacity>
+        <Text style={styles.monthTitle}>{monthLabel}</Text>
+        <TouchableOpacity
+          style={styles.monthNav}
+          onPress={handleNextMonth}
+          activeOpacity={0.7}
+          disabled={isViewingCurrentMonth}
+        >
+          <Ionicons
+            name="chevron-forward"
+            size={normalize(18)}
+            color={isViewingCurrentMonth ? colors.background : colors.textSecondary}
+          />
+        </TouchableOpacity>
+      </View>
       <ScrollView style={styles.scroll} contentContainerStyle={styles.content}>
-        <View style={styles.monthHeader}>
-          <TouchableOpacity style={styles.monthNav} onPress={handlePrevMonth} activeOpacity={0.7}>
-            <Ionicons name="chevron-back" size={normalize(18)} color={colors.textSecondary} />
-          </TouchableOpacity>
-          <Text style={styles.monthTitle}>{monthLabel}</Text>
-          <TouchableOpacity
-            style={styles.monthNav}
-            onPress={handleNextMonth}
-            activeOpacity={0.7}
-            disabled={isViewingCurrentMonth}
-          >
-            <Ionicons
-              name="chevron-forward"
-              size={normalize(18)}
-              color={isViewingCurrentMonth ? colors.background : colors.textSecondary}
-            />
-          </TouchableOpacity>
-        </View>
-
         <View style={styles.weekdayRow}>
           {WEEKDAYS.map((w, idx) => (
             <View key={w} style={styles.weekdayCell}>
@@ -282,14 +281,9 @@ const MealCalender = ({ route }) => {
                       </View>
                       <View>
                         {hasMenus ? (
-                          menus.map((menu, idx) => (
-                            <Text
-                              key={`${selectedDate}-${mealType}-${idx}`}
-                              style={styles.mealDetailMenu}
-                            >
-                              {menu}
-                            </Text>
-                          ))
+                          <Text style={styles.mealDetailMenu}>
+                            {menus.join(', ')}
+                          </Text>
                         ) : (
                           <Text style={styles.mealDetailMenuEmpty}>급식 정보가 없어요</Text>
                         )}

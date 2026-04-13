@@ -15,14 +15,15 @@ export const createCalendarStyles = (width, normalize) => {
     },
     content: {
       paddingHorizontal: normalize(16),
-      // 서브헤더가 차지하던 상단 여백만큼 보정
-      paddingTop: normalize(60),
+      paddingTop: normalize(8),
       paddingBottom: normalize(24),
     },
     monthHeader: {
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'space-between',
+      paddingTop: normalize(60),
+      paddingHorizontal: normalize(16),
       marginBottom: normalize(12),
     },
     monthTitle: {
