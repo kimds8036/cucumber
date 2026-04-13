@@ -69,7 +69,7 @@ export const createMessageStyles = (width, normalize) => {
     contentArea: {
       flex: 1,
       paddingHorizontal: width * 0.04,
-      paddingVertical: normalize(10),
+      paddingVertical: normalize(5),
     },
     list: {
       flex: 1,
@@ -78,9 +78,7 @@ export const createMessageStyles = (width, normalize) => {
       flexDirection: 'row',
       alignItems: 'center',
       paddingVertical: normalize(10),
-      paddingHorizontal: normalize(12),
-      borderBottomWidth: 1,
-      borderBottomColor: colors.textLight10,
+      paddingHorizontal: normalize(8),
       backgroundColor: colors.background,
     },
     listItemLeft: {

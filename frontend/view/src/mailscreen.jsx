@@ -387,18 +387,6 @@ function MailInbox({ onOpen, onBack, navigation }) {
               <Text style={styles.mailTime}>{mail.receivedAt}</Text>
             </View>
             <Text style={styles.mailPreview} numberOfLines={1}>{mail.preview}</Text>
-            <View style={styles.cardDivider} />
-            <View style={styles.mailCardFooter}>
-              <View style={styles.replyStatus}>
-                <Text style={styles.replyStatusPendingText}>
-                  {mail.rowKind === 'parent'
-                    ? '원본'
-                    : mail.rowKind === 'reply'
-                      ? '내 답장'
-                      : (mail.isReceived ? '받은 우편' : '보낸 우편')}
-                </Text>
-              </View>
-            </View>
           </TouchableOpacity>
         ))}
         {!loading && hasMore && (
@@ -605,11 +593,6 @@ function MailDetail({ mail: initialMail, onBack, navigation }) {
                     <Text style={styles.detailSenderName}>{cardSenderLabel}</Text>
                     <Text style={styles.detailTime}>{singleTimeLabel}</Text>
                   </View>
-                  <View style={styles.detailReplyBadge}>
-                    <Text style={styles.detailReplyBadgeText}>
-                      보낸 답장
-                    </Text>
-                  </View>
                 </View>
                 <View style={styles.detailReplyBodyContainer}>
                   <Text style={styles.detailBody}>{singleBody}</Text>
@@ -629,9 +612,6 @@ function MailDetail({ mail: initialMail, onBack, navigation }) {
                   <View style={styles.detailSenderTexts}>
                     <Text style={styles.detailSenderName}>{cardSenderLabel}</Text>
                     <Text style={styles.detailTime}>{singleTimeLabel}</Text>
-                  </View>
-                  <View style={styles.detailReplyBadge}>
-                    <Text style={styles.detailReplyBadgeText}>받은 우편</Text>
                   </View>
                 </View>
                 <View style={styles.detailBodyContainer}>
