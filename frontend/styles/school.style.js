@@ -129,6 +129,9 @@ export const createOurSchoolStyles = (normalize) => {
       flexDirection: 'column',
       paddingHorizontal: normalize(6),
     },
+    mealSlotTouch: {
+      flex: 1,
+    },
     mealSlotLast: {
       // 구분선 제거 후에도 혹시 모를 오버라이드를 위해 남겨둔 스타일
     },

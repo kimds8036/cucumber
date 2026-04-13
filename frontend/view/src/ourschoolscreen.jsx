@@ -319,6 +319,7 @@ const OurSchoolScreen = ({ navigation }) => {
                   ]}
                 >
                   <TouchableOpacity
+                    style={styles.mealSlotTouch}
                     activeOpacity={0.85}
                     onPress={() => setSelectedMealSlot(slot)}
                   >
