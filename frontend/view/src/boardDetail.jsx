@@ -135,8 +135,10 @@ export default function BoardDetail({ navigation, route }) {
   const [commentLikedState, setCommentLikedState] = useState({});
   const [bottomComment, setBottomComment] = useState('');
   const [commentImages, setCommentImages] = useState([]);
+  const [isSendingComment, setIsSendingComment] = useState(false);
   const [replyToCommentId, setReplyToCommentId] = useState(null);
   const [replyToAuthorLabel, setReplyToAuthorLabel] = useState('');
+  const isSendingCommentRef = useRef(false);
   const bottomInputRef = useRef(null);
   const scrollViewRef = useRef(null);
   const INITIAL_REPLIES = 3;
@@ -622,7 +624,10 @@ export default function BoardDetail({ navigation, route }) {
   };
 
   const handleSendComment = async () => {
+    if (isSendingCommentRef.current) return;
     if (!bottomComment.trim() && commentImages.length === 0) return;
+    isSendingCommentRef.current = true;
+    setIsSendingComment(true);
     try {
       const postId = post?.id;
       const formData = new FormData();
@@ -696,6 +701,9 @@ export default function BoardDetail({ navigation, route }) {
         '오류',
         error.response?.data?.message || '댓글 작성 중 오류가 발생했습니다.'
       );
+    } finally {
+      isSendingCommentRef.current = false;
+      setIsSendingComment(false);
     }
   };
 
@@ -1107,6 +1115,7 @@ export default function BoardDetail({ navigation, route }) {
                 replyToAuthorLabel={replyToAuthorLabel}
                 clearReplyTarget={clearReplyTarget}
                 handleSendComment={handleSendComment}
+                isSendingComment={isSendingComment}
                 styles={styles}
                 normalize={normalize}
               />

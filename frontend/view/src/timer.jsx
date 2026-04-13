@@ -73,11 +73,26 @@ const DEFAULT_SUBJECTS = [];
 const DEFAULT_TASKS = [];
 const HOURS = Array.from({ length: 24 }, (_, i) => i);
 const TIMETABLE_GRAY = '#A6DA95';
+const TIMER_DAY_START_HOUR = 6;
 
 // ── 유틸 ─────────────────────────────────────────────────
 const getMinutesFromMidnight = (d) => d.getHours() * 60 + d.getMinutes();
 const getSecondsFromMidnight = (d) =>
   d.getHours() * 3600 + d.getMinutes() * 60 + d.getSeconds();
+
+function toTimerDayTimelineSeconds(rawSeconds) {
+  const sec = Number(rawSeconds) || 0;
+  const dayStartSec = TIMER_DAY_START_HOUR * 3600;
+  return sec < dayStartSec ? sec + 86400 : sec;
+}
+
+function getSessionDurationMs(session, nowSecRaw = null) {
+  const start = toTimerDayTimelineSeconds(session?.startSeconds);
+  const endRaw = session?.endSeconds != null ? session.endSeconds : nowSecRaw;
+  const end = toTimerDayTimelineSeconds(endRaw);
+  const adjustedEnd = end < start ? end + 86400 : end;
+  return Math.max(0, adjustedEnd - start) * 1000;
+}
 
 function dateFromDayKey(dayKey) {
   return new Date(dayKey + 'T06:00:00');
@@ -156,21 +171,26 @@ function TimerLiveScrollInner({
 
   const getSubjectTotalMs = (subjectId) => {
     if (subjectId == null) return 0;
+    const nowSec = getSecondsFromMidnight(new Date());
     return displaySessions
       .filter((s) => s.subjectId === subjectId && s.endSeconds != null)
-      .reduce((sum, s) => sum + (s.endSeconds - s.startSeconds) * 1000, 0);
+      .reduce((sum, s) => sum + getSessionDurationMs(s, nowSec), 0);
   };
 
   const getSlotSegments = (slotStartSeconds) => {
-    const slotEnd = slotStartSeconds + 600;
+    const slotStart = toTimerDayTimelineSeconds(slotStartSeconds);
+    const slotEnd = slotStart + 600;
     const nowSec = getSecondsFromMidnight(new Date());
     const segments = [];
     displaySessions.forEach((s) => {
-      const endSec = s.endSeconds != null ? s.endSeconds : nowSec;
-      if (endSec <= slotStartSeconds || s.startSeconds >= slotEnd) return;
-      const overlapStart = Math.max(s.startSeconds, slotStartSeconds);
-      const overlapEnd = Math.min(endSec, slotEnd);
-      const startFraction = (overlapStart - slotStartSeconds) / 600;
+      const startSec = toTimerDayTimelineSeconds(s.startSeconds);
+      const endSecRaw = s.endSeconds != null ? s.endSeconds : nowSec;
+      const endSec = toTimerDayTimelineSeconds(endSecRaw);
+      const adjustedEndSec = endSec < startSec ? endSec + 86400 : endSec;
+      if (adjustedEndSec <= slotStart || startSec >= slotEnd) return;
+      const overlapStart = Math.max(startSec, slotStart);
+      const overlapEnd = Math.min(adjustedEndSec, slotEnd);
+      const startFraction = (overlapStart - slotStart) / 600;
       const widthFraction = (overlapEnd - overlapStart) / 600;
       if (widthFraction <= 0) return;
       const color =
@@ -485,21 +505,26 @@ function TimerLivePlannerCapture({
 
   const getSubjectTotalMs = (subjectId) => {
     if (subjectId == null) return 0;
+    const nowSec = getSecondsFromMidnight(new Date());
     return displaySessions
       .filter((s) => s.subjectId === subjectId && s.endSeconds != null)
-      .reduce((sum, s) => sum + (s.endSeconds - s.startSeconds) * 1000, 0);
+      .reduce((sum, s) => sum + getSessionDurationMs(s, nowSec), 0);
   };
 
   const getSlotSegments = (slotStartSeconds) => {
-    const slotEnd = slotStartSeconds + 600;
+    const slotStart = toTimerDayTimelineSeconds(slotStartSeconds);
+    const slotEnd = slotStart + 600;
     const nowSec = getSecondsFromMidnight(new Date());
     const segments = [];
     displaySessions.forEach((s) => {
-      const endSec = s.endSeconds != null ? s.endSeconds : nowSec;
-      if (endSec <= slotStartSeconds || s.startSeconds >= slotEnd) return;
-      const overlapStart = Math.max(s.startSeconds, slotStartSeconds);
-      const overlapEnd = Math.min(endSec, slotEnd);
-      const startFraction = (overlapStart - slotStartSeconds) / 600;
+      const startSec = toTimerDayTimelineSeconds(s.startSeconds);
+      const endSecRaw = s.endSeconds != null ? s.endSeconds : nowSec;
+      const endSec = toTimerDayTimelineSeconds(endSecRaw);
+      const adjustedEndSec = endSec < startSec ? endSec + 86400 : endSec;
+      if (adjustedEndSec <= slotStart || startSec >= slotEnd) return;
+      const overlapStart = Math.max(startSec, slotStart);
+      const overlapEnd = Math.min(adjustedEndSec, slotEnd);
+      const startFraction = (overlapStart - slotStart) / 600;
       const widthFraction = (overlapEnd - overlapStart) / 600;
       if (widthFraction <= 0) return;
       const color =
@@ -826,8 +851,11 @@ export const TimerContent = () => {
           }
         }
         if (openSession) {
-          const startSec = Number(openSession.startSeconds) || 0;
-          const diffMs = Math.max(0, (nowSec - startSec) * 1000);
+          const startSec = toTimerDayTimelineSeconds(openSession.startSeconds);
+          const nowTimelineSec = toTimerDayTimelineSeconds(nowSec);
+          const adjustedNowSec =
+            nowTimelineSec < startSec ? nowTimelineSec + 86400 : nowTimelineSec;
+          const diffMs = Math.max(0, (adjustedNowSec - startSec) * 1000);
           setIsRunning(true);
           setActiveSubjectId(
             openSession.subjectId != null ? openSession.subjectId : null,
