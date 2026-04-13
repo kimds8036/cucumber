@@ -125,6 +125,7 @@ export default function SearchResult({ route, navigation }) {
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [isInitialRenderReady, setIsInitialRenderReady] = useState(false);
   const [recentSearches, setRecentSearches] = useState([]);
 
   const searchIntent = useMemo(
@@ -183,7 +184,8 @@ export default function SearchResult({ route, navigation }) {
     }
   };
 
-  const fetchSearch = async (nextPage = 1) => {
+  const fetchSearch = async (nextPage = 1, options = {}) => {
+    const { markInitialReady = false } = options;
     if (!normalizedQuery) return;
     try {
       console.log('[SearchResult] fetchSearch called', {
@@ -242,6 +244,9 @@ export default function SearchResult({ route, navigation }) {
       console.error('검색 결과 조회 실패:', e?.response?.data || e.message);
     } finally {
       setLoading(false);
+      if (markInitialReady) {
+        setIsInitialRenderReady(true);
+      }
     }
   };
 
@@ -272,15 +277,19 @@ export default function SearchResult({ route, navigation }) {
   }, [activeTab, activeTabs]);
 
   useEffect(() => {
-    if (!normalizedQuery) return;
+    if (!normalizedQuery) {
+      setIsInitialRenderReady(true);
+      return;
+    }
     console.log('[SearchResult] normalizedQuery changed, trigger search', {
       query: normalizedQuery,
     });
+    setIsInitialRenderReady(false);
     setSections({});
     setMatchedSchools([]);
     setPage(1);
     setMode('result');
-    fetchSearch(1);
+    fetchSearch(1, { markInitialReady: true });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [normalizedQuery]);
 
@@ -345,6 +354,16 @@ export default function SearchResult({ route, navigation }) {
   }
 
   /* ── 기본 검색 결과 + 입력 모드 ── */
+  if (!isInitialRenderReady) {
+    return (
+      <SafeAreaView style={s.container} edges={['top']}>
+        <View style={s.centerBox}>
+          <Loading size="small" />
+        </View>
+      </SafeAreaView>
+    );
+  }
+
   return (
     <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
       <SafeAreaView style={s.container} edges={['top']}>
@@ -385,7 +404,13 @@ export default function SearchResult({ route, navigation }) {
                 placeholder="게시글, 우편함 검색"
                 value={searchText}
                 onChangeText={(t) => setSearchText(t)}
-                onFocus={() => setMode('input')}
+                onFocus={() => {
+                  const q = normalizeSearchText(searchText || committedQuery);
+                  navigation.navigate('SearchScreen', {
+                    query: q,
+                    focusInput: true,
+                  });
+                }}
                 onSubmitEditing={() => {
                   const q = normalizeSearchText(searchText);
                   if (!q) return;
@@ -664,7 +689,7 @@ export default function SearchResult({ route, navigation }) {
                       }}
                       hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                     >
-                      <Text style={s.clearButton}>전체 삭제</Text>
+                      <Text style={s.dimAction}>전체 삭제</Text>
                     </TouchableOpacity>
                   </View>
                   {recentSearches.map((item, index) => (

@@ -1,6 +1,5 @@
-import { StyleSheet } from 'react-native';
+﻿import { StyleSheet } from 'react-native';
 import { colors, fonts, fontSizes } from './colors';
-import { shadow } from './tokens';
 export const getNormalize = (width) => {
   const scale = width / 375;
   return (size) => Math.round(scale * size);
@@ -16,10 +15,11 @@ export const createSearchStyles = (width, normalize) => {
       flexDirection: 'row',
       alignItems: 'center',
       paddingHorizontal: normalize(16),
-      paddingTop: normalize(14),
-      paddingBottom: normalize(12),
+      paddingTop: normalize(6),
+      paddingBottom: normalize(7),
       backgroundColor: colors.background,
       borderBottomWidth: 1,
+      borderBottomColor: colors.textLight20,
     },
     backButton: {
       paddingHorizontal: normalize(4),
@@ -34,11 +34,11 @@ export const createSearchStyles = (width, normalize) => {
       flex: 1,
       flexDirection: 'row',
       alignItems: 'center',
-      backgroundColor: colors.backgroundGray,
-      borderRadius: normalize(10),
-      paddingHorizontal: normalize(10),
-      paddingVertical: normalize(6),
-      gap: normalize(6),
+      backgroundColor: colors.textLight5,
+      borderRadius: normalize(12),
+      paddingHorizontal: normalize(12),
+      paddingVertical: normalize(7),
+      gap: normalize(8),
     },
     searchIconText: {
       fontSize: normalize(fontSizes.xl),
@@ -48,14 +48,14 @@ export const createSearchStyles = (width, normalize) => {
     searchQueryText: {
       flex: 1,
       fontSize: normalize(fontSizes.xl),
-      fontFamily: fonts.medium,
+      fontFamily: fonts.regular,
       color: colors.textPrimary,
     },
     clearButton: {
       width: normalize(18),
       height: normalize(18),
       borderRadius: normalize(9),
-      backgroundColor: '#c0c0c0',
+      backgroundColor: colors.backgroundGray,
       alignItems: 'center',
       justifyContent: 'center',
     },
@@ -67,32 +67,26 @@ export const createSearchStyles = (width, normalize) => {
     cancelText: {
       marginLeft: normalize(8),
       fontSize: normalize(fontSizes.xl),
-      color: '#555',
+      color: colors.textLight70,
       fontFamily: fonts.regular,
     },
 
     tabBar: {
       flexDirection: 'row',
       backgroundColor: colors.background,
-      borderBottomWidth: 1,
-      borderBottomColor: '#ebebeb',
       paddingHorizontal: normalize(4),
     },
     tab: {
       flexDirection: 'row',
       alignItems: 'center',
       paddingHorizontal: normalize(10),
-      borderBottomWidth: 2,
-      borderBottomColor: 'transparent',
     },
     tabText: {
       fontSize: normalize(fontSizes.lg),
-      fontFamily: fonts.medium,
-      color: '#999',
+      fontFamily: fonts.regular,
+      color: colors.textSecondary,
     },
-    tabActive: {
-      borderBottomColor: colors.primary,
-    },
+    tabActive: {},
     tabTextActive: {
       color: colors.textPrimary,
       fontFamily: fonts.bold,
@@ -106,7 +100,7 @@ export const createSearchStyles = (width, normalize) => {
     },
     tabBadgeText: {
       fontSize: normalize(fontSizes.md),
-      color: '#2d7a5f',
+      color: colors.primaryDark,
       fontFamily: fonts.bold,
     },
 
@@ -118,8 +112,6 @@ export const createSearchStyles = (width, normalize) => {
       paddingVertical: normalize(8),
       gap: normalize(8),
       backgroundColor: colors.background,
-      borderBottomWidth: 1,
-      borderColor: colors.textLight10,
     },
     searchTabButton: {
       flexDirection: 'row',
@@ -128,13 +120,10 @@ export const createSearchStyles = (width, normalize) => {
       paddingVertical: normalize(8),
       borderRadius: normalize(18),
       backgroundColor: colors.background,
-      borderWidth: 1,
-      borderColor: colors.textLight10,
       gap: normalize(4),
     },
     searchTabButtonActive: {
       backgroundColor: colors.primary,
-      borderColor: colors.primary,
     },
     searchTabButtonText: {
       fontSize: normalize(fontSizes.xl),
@@ -153,7 +142,11 @@ export const createSearchStyles = (width, normalize) => {
       paddingHorizontal: normalize(10),
       borderRadius: normalize(10),
       backgroundColor: colors.background,
-      ...shadow.md,
+      shadowColor: colors.shadow,
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.12,
+      shadowRadius: 6,
+      elevation: 4,
     },
     previewSection: {
       marginBottom: normalize(6),
@@ -179,22 +172,20 @@ export const createSearchStyles = (width, normalize) => {
     },
     section: {
       backgroundColor: colors.background,
-      marginTop: normalize(7),
-      borderWidth: 1,
-      borderColor: colors.textLight10,
+      paddingTop: normalize(20),
     },
     sectionHeader: {
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'space-between',
-      paddingHorizontal: normalize(16),
-      paddingTop: normalize(13),
-      paddingBottom: normalize(8),
+      paddingHorizontal: normalize(18),
+      marginBottom: normalize(7),
     },
     sectionTitle: {
-      fontSize: normalize(fontSizes.xl),
+      fontSize: normalize(fontSizes.xxl),
       fontFamily: fonts.bold,
       color: colors.textPrimary,
+      letterSpacing: -0.2,
     },
     sectionBadge: {
       paddingHorizontal: normalize(8),
@@ -204,21 +195,17 @@ export const createSearchStyles = (width, normalize) => {
     },
     sectionBadgeText: {
       fontSize: normalize(fontSizes.lg),
-      color: '#2d7a5f',
+      color: colors.primaryDark,
       fontFamily: fonts.bold,
     },
 
     card: {
       paddingHorizontal: normalize(16),
       paddingVertical: normalize(13),
-      borderTopWidth: 1,
-      borderTopColor: colors.textLight10,
     },
     fullCard: {
       paddingHorizontal: normalize(16),
       paddingVertical: normalize(14),
-      borderBottomWidth: 1,
-      borderBottomColor: '#f2f2f2',
       backgroundColor: colors.background,
     },
     fromBadge: {
@@ -226,17 +213,17 @@ export const createSearchStyles = (width, normalize) => {
       paddingHorizontal: normalize(7),
       paddingVertical: normalize(2),
       borderRadius: normalize(4),
-      backgroundColor: '#a6da9520',
+      backgroundColor: colors.primaryLight20,
       marginBottom: normalize(4),
     },
     fromBadgeText: {
       fontSize: normalize(fontSizes.lg),
-      color: '#2d7a5f',
+      color: colors.primaryDark,
       fontFamily: fonts.bold,
     },
     cardTitle: {
       fontSize: normalize(fontSizes.xl),
-      fontFamily: fonts.medium,
+      fontFamily: fonts.bold,
       color: colors.textPrimary,
       marginBottom: normalize(3),
     },
@@ -249,37 +236,35 @@ export const createSearchStyles = (width, normalize) => {
     cardContent: {
       fontSize: normalize(fontSizes.lg),
       fontFamily: fonts.regular,
-      color: '#888',
+      color: colors.textLight70,
       marginBottom: normalize(4),
     },
     fullContent: {
       fontSize: normalize(fontSizes.xl),
       fontFamily: fonts.regular,
-      color: '#555',
+      color: colors.textLight70,
       marginBottom: normalize(6),
     },
     meta: {
       fontSize: normalize(fontSizes.lg),
       fontFamily: fonts.regular,
-      color: '#bbb',
+      color: colors.textLight40,
     },
     moreButton: {
       paddingHorizontal: normalize(16),
       paddingVertical: normalize(12),
-      borderTopWidth: 1,
-      borderTopColor: '#f0f0f0',
       alignItems: 'center',
       justifyContent: 'center',
     },
     moreButtonText: {
       fontSize: normalize(fontSizes.xl),
-      fontFamily: fonts.medium,
-      color: '#2d7a5f',
+      fontFamily: fonts.regular,
+      color: colors.primaryDark,
     },
 
     highlightText: {
-      backgroundColor: '#a6da9550',
-      color: '#2d7a5f',
+      backgroundColor: colors.primaryLight50,
+      color: colors.primaryDark,
       borderRadius: 3,
       paddingHorizontal: 2,
       fontFamily: fonts.bold,
@@ -290,8 +275,6 @@ export const createSearchStyles = (width, normalize) => {
       paddingHorizontal: normalize(16),
       paddingVertical: normalize(16),
       marginTop: normalize(8),
-      borderWidth: 1,
-      borderColor: colors.textLight10,
       backgroundColor: colors.background,
     },
     searchFooterLabel: {
@@ -354,11 +337,11 @@ export const createSearchScreenStyles = (width, normalize) => {
       alignItems: 'center',
       backgroundColor: colors.background,
       paddingHorizontal: normalize(16),
-      paddingTop: normalize(12),
-      paddingBottom: normalize(12),
-      borderBottomWidth: StyleSheet.hairlineWidth,
-      borderBottomColor: colors.textLight10,
+      paddingTop: normalize(6),
+      paddingBottom: normalize(7),
       zIndex: 10,
+      borderBottomWidth: 1,
+      borderBottomColor: colors.textLight20,
     },
     searchInputRow: {
       flexDirection: 'row',
@@ -366,7 +349,7 @@ export const createSearchScreenStyles = (width, normalize) => {
       backgroundColor: colors.textLight5,
       borderRadius: normalize(12),
       paddingHorizontal: normalize(12),
-      height: normalize(44),
+      paddingVertical: normalize(7),
       gap: normalize(8),
       flex: 1,
     },
@@ -378,20 +361,21 @@ export const createSearchScreenStyles = (width, normalize) => {
     },
     searchInput: {
       flex: 1,
-      fontSize: normalize(fontSizes.xxl),
+      fontSize: normalize(fontSizes.xl),
       fontFamily: fonts.regular,
       color: colors.textPrimary,
-      paddingVertical: 0,
     },
 
     previewDropdown: {
       marginTop: normalize(6),
       backgroundColor: colors.background,
       borderRadius: normalize(14),
-      borderWidth: StyleSheet.hairlineWidth,
-      borderColor: colors.textLight10,
       overflow: 'hidden',
-      ...shadow.md,
+      shadowColor: colors.shadow,
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.12,
+      shadowRadius: 6,
+      elevation: 4,
     },
     previewGroupLabel: {
       fontSize: normalize(fontSizes.lg),
@@ -410,10 +394,7 @@ export const createSearchScreenStyles = (width, normalize) => {
       paddingVertical: normalize(11),
       gap: normalize(10),
     },
-    previewRowBorder: {
-      borderBottomWidth: StyleSheet.hairlineWidth,
-      borderBottomColor: colors.surface,
-    },
+    previewRowBorder: {},
     previewSchoolIcon: {
       width: normalize(28),
       height: normalize(28),
@@ -446,29 +427,20 @@ export const createSearchScreenStyles = (width, normalize) => {
 
     section: {
       backgroundColor: colors.background,
-      marginTop: normalize(8),
       paddingTop: normalize(20),
-      borderTopWidth: StyleSheet.hairlineWidth,
-      borderTopColor: colors.textLight10,
-      borderBottomWidth: StyleSheet.hairlineWidth,
-      borderBottomColor: colors.textLight10,
     },
     sectionRecommendTags: {
       backgroundColor: colors.background,
       marginTop: normalize(8),
       paddingTop: normalize(20),
       paddingBottom: normalize(28),
-      borderTopWidth: StyleSheet.hairlineWidth,
-      borderTopColor: colors.textLight10,
-      borderBottomWidth: StyleSheet.hairlineWidth,
-      borderBottomColor: colors.textLight10,
     },
     sectionHeader: {
       flexDirection: 'row',
       justifyContent: 'space-between',
       alignItems: 'center',
       paddingHorizontal: normalize(18),
-      marginBottom: normalize(14),
+      marginBottom: normalize(7),
     },
     sectionTitle: {
       fontSize: normalize(fontSizes.xxl),
@@ -477,7 +449,7 @@ export const createSearchScreenStyles = (width, normalize) => {
       letterSpacing: -0.2,
     },
     dimAction: {
-      fontSize: normalize(fontSizes.xl),
+      fontSize: normalize(fontSizes.lg),
       fontFamily: fonts.regular,
       color: colors.background2,
     },
@@ -490,11 +462,11 @@ export const createSearchScreenStyles = (width, normalize) => {
     recentRow: {
       flexDirection: 'row',
       alignItems: 'center',
-      paddingHorizontal: normalize(18),
+      marginHorizontal: normalize(18),
       paddingVertical: normalize(13),
       gap: normalize(10),
-      borderTopWidth: StyleSheet.hairlineWidth,
-      borderTopColor: colors.surface,
+      borderBottomWidth: 1,
+      borderBottomColor: colors.textLight5,
     },
     recentText: {
       fontSize: normalize(fontSizes.xl),
@@ -516,8 +488,6 @@ export const createSearchScreenStyles = (width, normalize) => {
       paddingHorizontal: normalize(18),
       paddingVertical: normalize(11),
       gap: normalize(10),
-      borderTopWidth: StyleSheet.hairlineWidth,
-      borderTopColor: colors.surface,
     },
     popularRank: {
       fontSize: normalize(fontSizes.xxl),
@@ -553,16 +523,13 @@ export const createSearchScreenStyles = (width, normalize) => {
     },
     tag: {
       backgroundColor: colors.textLight5,
-      paddingHorizontal: normalize(14),
-      paddingVertical: normalize(8),
+      paddingHorizontal: normalize(12),
+      paddingVertical: normalize(5),
       borderRadius: normalize(20),
-      borderWidth: StyleSheet.hairlineWidth,
-      borderColor: colors.textLight10,
     },
     tagText: {
-      fontSize: normalize(fontSizes.xl),
+      fontSize: normalize(fontSizes.lg),
       fontFamily: fonts.regular,
-      fontWeight: '500',
       color: colors.textSecondary,
     },
   });
@@ -578,8 +545,6 @@ export const createSchoolSearchStyles = (normalize) => {
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'space-between',
-      borderTopWidth: 1,
-      borderTopColor: colors.textLight10,
     },
     schoolSearchInfo: {
       flexShrink: 1,
@@ -630,27 +595,27 @@ export const createSearchResultStyles = (normalize) => {
       flexDirection: 'row',
       alignItems: 'center',
       backgroundColor: colors.background,
-      borderBottomWidth: StyleSheet.hairlineWidth,
-      borderBottomColor: colors.textLight10,
       paddingHorizontal: normalize(16),
-      paddingTop: normalize(10),
-      paddingBottom: normalize(8),
+      paddingTop: normalize(6),
+      paddingBottom: normalize(7),
+      borderBottomWidth: 1,
+      borderBottomColor: colors.textLight20,
     },
     searchInputRow: {
       flexDirection: 'row',
       alignItems: 'center',
-      backgroundColor: colors.surface,
+      backgroundColor: colors.textLight5,
       borderRadius: normalize(12),
       paddingHorizontal: normalize(12),
-      height: normalize(44),
+      paddingVertical: normalize(7),
       gap: normalize(8),
       flex: 1,
     },
     searchInput: {
       flex: 1,
-      fontSize: normalize(fontSizes.xxl),
+      fontSize: normalize(fontSizes.xl),
+      fontFamily: fonts.regular,
       color: colors.textPrimary,
-      paddingVertical: 0,
     },
     searchBackButton: {
       marginRight: normalize(6),
@@ -661,8 +626,6 @@ export const createSearchResultStyles = (normalize) => {
 
     tabBar: {
       backgroundColor: colors.background,
-      borderBottomWidth: StyleSheet.hairlineWidth,
-      borderBottomColor: colors.textLight10,
     },
     tagRow: {
       flexDirection: 'row',
@@ -672,22 +635,22 @@ export const createSearchResultStyles = (normalize) => {
     },
     tag: {
       paddingHorizontal: normalize(12),
-      paddingVertical: normalize(6),
-      borderRadius: normalize(16),
+      paddingVertical: normalize(5),
+      borderRadius: normalize(20),
       backgroundColor: colors.textLight5,
     },
     tagText: {
-      fontSize: normalize(fontSizes.xl),
+      fontSize: normalize(fontSizes.lg),
       fontFamily: fonts.regular,
       color: colors.textSecondary,
     },
     recentRow: {
       flexDirection: 'row',
       alignItems: 'center',
-      paddingHorizontal: normalize(16),
-      paddingVertical: normalize(10),
-      borderBottomWidth: StyleSheet.hairlineWidth,
-      borderBottomColor: colors.textLight10,
+      marginHorizontal: normalize(18),
+      paddingVertical: normalize(13),
+      borderBottomWidth: 1,
+      borderBottomColor: colors.textLight5,
       gap: normalize(8),
     },
     recentText: {
@@ -699,59 +662,45 @@ export const createSearchResultStyles = (normalize) => {
       marginLeft: 'auto',
     },
     tabContent: {
-      paddingHorizontal: normalize(14),
-      paddingVertical: normalize(10),
-      gap: normalize(6),
+      paddingHorizontal: normalize(16),
+      paddingVertical: normalize(8),
+      gap: normalize(8),
     },
     tabBtn: {
       paddingHorizontal: normalize(14),
       paddingVertical: normalize(7),
       borderRadius: normalize(20),
       backgroundColor: colors.textLight5,
-      borderWidth: StyleSheet.hairlineWidth,
-      borderColor: colors.textLight10,
     },
     tabBtnActive: {
       backgroundColor: colors.textPrimary,
-      borderColor: colors.textPrimary,
     },
     tabText: {
       fontSize: normalize(fontSizes.xl),
       fontFamily: fonts.regular,
-      fontWeight: '500',
       color: colors.textSecondary,
     },
     tabTextActive: {
       color: colors.background,
       fontFamily: fonts.bold,
-      fontWeight: '600',
     },
 
     section: {
       backgroundColor: colors.background,
-      marginTop: normalize(8),
-      borderTopWidth: StyleSheet.hairlineWidth,
-      borderTopColor: colors.textLight10,
-      borderBottomWidth: StyleSheet.hairlineWidth,
-      borderBottomColor: colors.textLight10,
+      paddingTop: normalize(20),
     },
     sectionRecommendTags: {
       backgroundColor: colors.background,
       marginTop: normalize(8),
+      paddingTop: normalize(20),
       paddingBottom: normalize(28),
-      borderTopWidth: StyleSheet.hairlineWidth,
-      borderTopColor: colors.textLight10,
-      borderBottomWidth: StyleSheet.hairlineWidth,
-      borderBottomColor: colors.textLight10,
     },
     sectionHeader: {
       flexDirection: 'row',
       justifyContent: 'space-between',
       alignItems: 'center',
       paddingHorizontal: normalize(18),
-      paddingVertical: normalize(14),
-      borderBottomWidth: StyleSheet.hairlineWidth,
-      borderBottomColor: colors.textLight10,
+      marginBottom: normalize(7),
     },
     sectionTitleRow: {
       flexDirection: 'row',
@@ -761,15 +710,15 @@ export const createSearchResultStyles = (normalize) => {
       marginRight: normalize(6),
     },
     sectionTitle: {
-      fontSize: normalize(fontSizes.xl),
+      fontSize: normalize(fontSizes.xxl),
       fontFamily: fonts.bold,
       color: colors.textPrimary,
       letterSpacing: -0.2,
     },
-    clearRecentText: {
-      fontSize: normalize(fontSizes.xl),
+    dimAction: {
+      fontSize: normalize(fontSizes.lg),
       fontFamily: fonts.regular,
-      color: colors.textSecondary,
+      color: colors.background2,
     },
     countBadge: {
       backgroundColor: colors.textLight5,
@@ -780,7 +729,6 @@ export const createSearchResultStyles = (normalize) => {
     countBadgeText: {
       fontSize: normalize(fontSizes.lg),
       fontFamily: fonts.regular,
-      fontWeight: '500',
       color: colors.textSecondary,
     },
 
@@ -810,10 +758,7 @@ export const createSearchResultStyles = (normalize) => {
       paddingHorizontal: normalize(18),
       paddingVertical: normalize(14),
     },
-    cardBorder: {
-      borderBottomWidth: StyleSheet.hairlineWidth,
-      borderBottomColor: colors.textLight10,
-    },
+    cardBorder: {},
     cardTitle: {
       fontSize: normalize(fontSizes.xl),
       fontFamily: fonts.bold,
@@ -831,17 +776,13 @@ export const createSearchResultStyles = (normalize) => {
     highlightText: {
       color: colors.primaryDark,
       fontFamily: fonts.bold,
-      fontWeight: '700',
     },
 
     fullCard: {
       paddingHorizontal: normalize(18),
       paddingVertical: normalize(16),
     },
-    fullCardBorder: {
-      borderBottomWidth: StyleSheet.hairlineWidth,
-      borderBottomColor: colors.textLight10,
-    },
+    fullCardBorder: {},
     fullTitle: {
       fontSize: normalize(fontSizes.xxl),
       fontFamily: fonts.bold,
@@ -868,14 +809,11 @@ export const createSearchResultStyles = (normalize) => {
       alignItems: 'center',
       justifyContent: 'center',
       paddingVertical: normalize(13),
-      borderTopWidth: 1,
-      borderTopColor: colors.textLight10,
       gap: normalize(4),
     },
     moreBtnText: {
       fontSize: normalize(fontSizes.xl),
       fontFamily: fonts.regular,
-      fontWeight: '500',
       color: colors.textSecondary,
     },
 
@@ -889,14 +827,11 @@ export const createSearchResultStyles = (normalize) => {
       paddingHorizontal: normalize(20),
       paddingVertical: normalize(10),
       borderRadius: normalize(20),
-      borderWidth: 1,
-      borderColor: colors.textLight5,
       backgroundColor: colors.background,
     },
     loadMoreText: {
       fontSize: normalize(fontSizes.xl),
       fontFamily: fonts.regular,
-      fontWeight: '500',
       color: colors.textSecondary,
     },
     loadMoreChevron: {
@@ -941,5 +876,3 @@ export const createSearchResultStyles = (normalize) => {
     },
   });
 };
-
-

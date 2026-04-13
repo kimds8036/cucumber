@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import {
   View,
   Text,
@@ -46,13 +46,28 @@ function normalizeSearchText(q) {
   return String(q ?? '').trim();
 }
 
-const SearchScreen = ({ navigation }) => {
+const SearchScreen = ({ navigation, route }) => {
   const { width } = useWindowDimensions();
   const normalize = useMemo(() => getNormalize(width), [width]);
   const styles = useMemo(() => createSearchScreenStyles(width, normalize), [width, normalize]);
+  const searchInputRef = useRef(null);
 
   const [searchText, setSearchText] = useState('');
   const [recentSearches, setRecentSearches] = useState([]);
+
+  useEffect(() => {
+    const q = normalizeSearchText(route?.params?.query ?? '');
+    if (!q) return;
+    setSearchText(q);
+  }, [route?.params?.query]);
+
+  useEffect(() => {
+    if (!route?.params?.focusInput) return;
+    const timer = setTimeout(() => {
+      searchInputRef.current?.focus();
+    }, 80);
+    return () => clearTimeout(timer);
+  }, [route?.params?.focusInput]);
 
   useEffect(() => {
     (async () => {
@@ -136,6 +151,7 @@ const SearchScreen = ({ navigation }) => {
           <View style={styles.searchInputRow}>
             <Ionicons name="search-outline" size={normalize(18)} color={colors.textSecondary} />
             <TextInput
+              ref={searchInputRef}
               style={styles.searchInput}
               placeholder="게시글, 우편함 검색"
               value={searchText}
@@ -166,7 +182,10 @@ const SearchScreen = ({ navigation }) => {
             <View style={styles.section}>
               <View style={styles.sectionHeader}>
                 <Text style={styles.sectionTitle}>최근 검색어</Text>
-                <TouchableOpacity onPress={handleClearAll} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+                <TouchableOpacity
+                  onPress={handleClearAll}
+                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                >
                   <Text style={styles.dimAction}>전체 삭제</Text>
                 </TouchableOpacity>
               </View>
