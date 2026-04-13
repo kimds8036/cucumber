@@ -234,6 +234,12 @@ const Settings = ({ navigation, route }) => {
       },
     ]);
   };
+  const canSubmitPasswordChange =
+    !!pwForm.current &&
+    !!pwForm.next &&
+    !!pwForm.confirm &&
+    pwForm.next === pwForm.confirm &&
+    pwForm.next.length >= 8;
 
   // ── 아이디 변경 (6개월에 1번) ──
   const [currentUsername, setCurrentUsername] = useState('');
@@ -360,7 +366,7 @@ const Settings = ({ navigation, route }) => {
     </View>
   );
 
-  const PwInput = ({ label, fieldKey, density }) => (
+  const renderPwInput = ({ label, fieldKey, density }) => (
     <View
       style={
         density === 'first'
@@ -539,12 +545,16 @@ const Settings = ({ navigation, route }) => {
         {/* ────────────── 비밀번호 변경 ────────────── */}
         <SectionHeader icon="lock-closed-outline" title="비밀번호 변경" />
         <View style={styles.card}>
-          <PwInput label="현재 비밀번호" fieldKey="current" density="first" />
-          <PwInput label="새 비밀번호" fieldKey="next" density="middle" />
-          <PwInput label="새 비밀번호 확인" fieldKey="confirm" density="last" />
+          {renderPwInput({ label: '현재 비밀번호', fieldKey: 'current', density: 'first' })}
+          {renderPwInput({ label: '새 비밀번호', fieldKey: 'next', density: 'middle' })}
+          {renderPwInput({ label: '새 비밀번호 확인', fieldKey: 'confirm', density: 'last' })}
           <TouchableOpacity
-            style={styles.actionButton}
+            style={[
+              styles.actionButton,
+              !canSubmitPasswordChange && styles.actionButtonDisabled,
+            ]}
             onPress={handlePasswordChange}
+            disabled={!canSubmitPasswordChange}
           >
             <Text style={styles.actionButtonText}>변경하기</Text>
           </TouchableOpacity>

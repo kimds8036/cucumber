@@ -65,7 +65,6 @@ export function NotificationProvider({ children }) {
     if (!socket) return;
 
     const handler = (payload) => {
-      if (payload?.type === 'friend_request') return;
       const isChatNotification =
         payload?.relatedType === 'message_room' ||
         payload?.relatedType === 'dm_room';
