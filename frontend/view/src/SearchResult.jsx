@@ -424,7 +424,7 @@ export default function SearchResult({ route, navigation }) {
               />
               <TextInput
                 style={s.searchInput}
-                placeholder="게시글, 우편함 검색"
+                placeholder="검색어를 입력하세요"
                 value={searchText}
                 onChangeText={(t) => setSearchText(t)}
                 onFocus={() => {

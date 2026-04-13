@@ -32,7 +32,7 @@ export const createSearchResultStyles = (normalize) => {
       flexDirection: 'row',
       alignItems: 'center',
       backgroundColor: colors.textLight5,
-      borderRadius: normalize(12),
+      borderRadius: normalize(999),
       paddingHorizontal: normalize(12),
       paddingVertical: normalize(7),
       gap: normalize(8),
