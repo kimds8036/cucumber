@@ -86,6 +86,9 @@ export function NotificationProvider({ children }) {
         body: isChatNotification ? bodyText || '(이미지)' : null,
         roomId: payload?.relatedId,
         relatedType: payload?.relatedType,
+        relatedId: payload?.relatedId,
+        type: payload?.type,
+        category: payload?.category,
         isChat: isChatNotification,
       });
     };
@@ -138,6 +141,9 @@ export function NotificationProvider({ children }) {
         body: content,
         roomId,
         relatedType: 'message_room',
+        relatedId: roomId,
+        type: 'mail',
+        category: 'mail',
         isChat: true,
       });
     };
