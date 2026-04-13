@@ -77,7 +77,7 @@ export const createMessageStyles = (width, normalize) => {
     listItem: {
       flexDirection: 'row',
       alignItems: 'center',
-      paddingVertical: normalize(10),
+      paddingVertical: normalize(12),
       paddingHorizontal: normalize(8),
       backgroundColor: colors.background,
     },

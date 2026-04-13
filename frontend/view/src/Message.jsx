@@ -476,17 +476,19 @@ export function MessageContent({ navigation }) {
             rawMail.recipient_name != null && String(rawMail.recipient_name).trim()
               ? String(rawMail.recipient_name).trim()
               : '';
-          // 목록 라벨은 대화 상대 기준으로 고정:
-          // - 받은 우편: 기본 익명, 내가 먼저 보낸 대상의 답장인 경우 실명
-          // - 보낸 우편: 내가 선택한 상대 실명
-          const rowLabel = counterpartyDisplayNameForCurrentUser({
-            isReceived,
-            senderNameFromApi: rawMail.sender_name,
-            recipientNameFromApi: recipientName,
-            isRootAuthorForCurrentUser: Boolean(
-              rawMail.is_root_author_for_current_user
-            ),
-          });
+          // 개인 우편 탭 라벨은 항상 "상대방" 기준으로 표기한다.
+          // - 받은 우편: 기존 익명/실명 규칙 유지
+          // - 보낸 우편: 수신자 이름(없으면 익명)
+          const rowLabel = isReceived
+            ? counterpartyDisplayNameForCurrentUser({
+                isReceived: true,
+                senderNameFromApi: rawMail.sender_name,
+                recipientNameFromApi: recipientName,
+                isRootAuthorForCurrentUser: Boolean(
+                  rawMail.is_root_author_for_current_user
+                ),
+              })
+            : (recipientName || '익명');
           console.log('[MailLabelDecision][MessageList]', {
             mailId: rawMail.id,
             roomId: rawMail.room_id ?? null,
@@ -743,7 +745,7 @@ export function MessageContent({ navigation }) {
                 const displayName =
                   item.senderName ||
                   item.directionText ||
-                  (item.isReceived ? '익명' : '나');
+                  '익명';
                 return (
                   <SwipeableRow
                     key={`mail-${item.id}-${item.isReceived ? 'r' : 's'}`}
