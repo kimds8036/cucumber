@@ -185,7 +185,6 @@ export const createOurSchoolStyles = (normalize) => {
       paddingHorizontal: normalize(18),
     },
     mealModalCard: {
-      width: '60%',
       maxHeight: '80%',
       backgroundColor: colors.green,
       borderRadius: normalize(16),

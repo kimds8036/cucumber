@@ -31,6 +31,7 @@ import FriendsScreen from './view/src/friendsscreen';
 import { useFonts } from 'expo-font';
 import * as SplashScreen from 'expo-splash-screen';
 import { useEffect } from 'react';
+import { Alert } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { KeyboardProvider } from './context/KeyboardContext';
 import { AuthProvider, useAuth } from './context/AuthContext';
@@ -40,7 +41,9 @@ import { NotificationProvider } from './context/NotificationContext';
 import { FriendProvider } from './context/FriendContext';
 import { ToastProvider } from './context/ToastContext';
 import ToastHost from './components/common/ToastHost';
+import AlertHost from './components/common/AlertHost';
 import { navigationRef } from './navigation/navigationRef';
+import { appAlert } from './utils/appAlert';
 
 const Stack = createNativeStackNavigator();
 
@@ -124,6 +127,15 @@ export default function App() {
     }
   }, [fontsLoaded]);
 
+  useEffect(() => {
+    const originalAlert = Alert.alert;
+    appAlert.setNativeAlert(originalAlert);
+    Alert.alert = (...args) => appAlert.alert(...args);
+    return () => {
+      Alert.alert = originalAlert;
+    };
+  }, []);
+
   if (!fontsLoaded) return null;
 
   return (
@@ -138,6 +150,7 @@ export default function App() {
                   <NavigationContainer ref={navigationRef}>
                     <RootNavigator />
                     <ToastHost />
+                    <AlertHost />
                   </NavigationContainer>
                 </FriendProvider>
               </NotificationProvider>
