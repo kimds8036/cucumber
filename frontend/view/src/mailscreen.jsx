@@ -118,18 +118,6 @@ export function counterpartyDisplayNameForCurrentUser({
   recipientNameFromApi,
   isRootAuthorForCurrentUser = false,
 }) {
-  if (!isReceived) {
-    const decided = '나';
-    console.log('[MailLabelDecision][Helper]', {
-      isReceived,
-      isRootAuthorForCurrentUser,
-      senderNameFromApi: senderNameFromApi ?? null,
-      recipientNameFromApi: recipientNameFromApi ?? null,
-      decidedLabel: decided,
-    });
-    return decided;
-  }
-
   if (!isRootAuthorForCurrentUser) {
     console.log('[MailLabelDecision][Helper]', {
       isReceived,
@@ -141,22 +129,25 @@ export function counterpartyDisplayNameForCurrentUser({
     return '익명';
   }
 
-  if (isReceived) {
-    const knownSender =
-      senderNameFromApi != null && String(senderNameFromApi).trim()
-        ? String(senderNameFromApi).trim()
-        : '';
-    const decided = knownSender || '익명';
-    console.log('[MailLabelDecision][Helper]', {
-      isReceived,
-      isRootAuthorForCurrentUser,
-      senderNameFromApi: senderNameFromApi ?? null,
-      recipientNameFromApi: recipientNameFromApi ?? null,
-      decidedLabel: decided,
-    });
-    return decided;
-  }
-  return '익명';
+  const knownSender =
+    senderNameFromApi != null && String(senderNameFromApi).trim()
+      ? String(senderNameFromApi).trim()
+      : '';
+  const knownRecipient =
+    recipientNameFromApi != null && String(recipientNameFromApi).trim()
+      ? String(recipientNameFromApi).trim()
+      : '';
+  // 첫 메일을 내가 시작한 스레드는 항상 실명 고정.
+  const decided = knownSender || knownRecipient || '익명';
+  console.log('[MailLabelDecision][Helper]', {
+    isReceived,
+    isRootAuthorForCurrentUser,
+    senderNameFromApi: senderNameFromApi ?? null,
+    recipientNameFromApi: recipientNameFromApi ?? null,
+    labelSource: 'firstMail',
+    decidedLabel: decided,
+  });
+  return decided;
 }
 
 function extractPaginationFromResponse(res) {
@@ -634,6 +625,7 @@ function MailDetail({ mail: initialMail, onBack, navigation }) {
                     id: initialMail?.id,
                     content: mail?.content,
                     receivedAt: mail?.receivedAt,
+                    senderLabel: cardSenderLabel,
                   },
                   onSent: () => fetchDetail(),
                 })

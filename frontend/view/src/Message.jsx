@@ -20,7 +20,6 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import Feather from '@expo/vector-icons/Feather';
 import MessageTabIcon from '../../assets/Group 166.svg';
 import { api } from '../../utils/api';
-import { counterpartyDisplayNameForCurrentUser } from './mailscreen';
 import * as socketManager from './socketManager';
 import { useToast } from '../../context/ToastContext';
 
@@ -436,24 +435,39 @@ export function MessageContent({ navigation }) {
         return;
       }
 
-      const latestByRoom = new Map();
-      candidates.forEach((candidate) => {
+      const getThreadGroupKey = (mail) => {
         const roomKey = Number(
-          candidate.room_id != null
-            ? candidate.room_id
-            : (candidate.thread_key != null
-                ? candidate.thread_key
-                : (candidate.root_mail_id != null ? candidate.root_mail_id : candidate.id))
+          mail.room_id != null
+            ? mail.room_id
+            : (mail.thread_key != null
+                ? mail.thread_key
+                : (mail.root_mail_id != null ? mail.root_mail_id : mail.id))
         );
-        const key = Number.isFinite(roomKey) ? roomKey : Number(candidate.id);
-        const prev = latestByRoom.get(key);
-        if (!prev) {
+        return Number.isFinite(roomKey) ? roomKey : Number(mail.id);
+      };
+
+      const latestByRoom = new Map();
+      const firstByRoom = new Map();
+      candidates.forEach((candidate) => {
+        const key = getThreadGroupKey(candidate);
+
+        const prevLatest = latestByRoom.get(key);
+        if (!prevLatest) {
           latestByRoom.set(key, candidate);
-          return;
+        } else {
+          const prevTime = parseUtcToLocal(prevLatest.created_at)?.getTime() ?? 0;
+          const nextTime = parseUtcToLocal(candidate.created_at)?.getTime() ?? 0;
+          if (nextTime >= prevTime) latestByRoom.set(key, candidate);
         }
-        const prevTime = parseUtcToLocal(prev.created_at)?.getTime() ?? 0;
-        const nextTime = parseUtcToLocal(candidate.created_at)?.getTime() ?? 0;
-        if (nextTime >= prevTime) latestByRoom.set(key, candidate);
+
+        const prevFirst = firstByRoom.get(key);
+        if (!prevFirst) {
+          firstByRoom.set(key, candidate);
+        } else {
+          const prevTime = parseUtcToLocal(prevFirst.created_at)?.getTime() ?? 0;
+          const nextTime = parseUtcToLocal(candidate.created_at)?.getTime() ?? 0;
+          if (nextTime < prevTime) firstByRoom.set(key, candidate);
+        }
       });
 
       const rows = Array.from(latestByRoom.values())
@@ -464,43 +478,51 @@ export function MessageContent({ navigation }) {
           return bd - ad;
         })
         .map((mail, idx) => {
+          const roomKey = getThreadGroupKey(mail);
+          const firstMail = firstByRoom.get(roomKey) || mail;
           const isReceived = Boolean(mail._isReceived);
           const rawMail = { ...mail };
           delete rawMail._isReceived;
+          const rawFirstMail = { ...firstMail };
+          delete rawFirstMail._isReceived;
 
           const replyToMySent =
             isReceived &&
             Boolean(rawMail.reply_to_my_sent ?? rawMail.replyToMySent);
 
-          const recipientName =
+          const latestRecipientName =
             rawMail.recipient_name != null && String(rawMail.recipient_name).trim()
               ? String(rawMail.recipient_name).trim()
               : '';
-          // 개인 우편 탭 라벨은 항상 "상대방" 기준으로 표기한다.
-          // - 받은 우편: 기존 익명/실명 규칙 유지
-          // - 보낸 우편: 수신자 이름(없으면 익명)
-          const rowLabel = isReceived
-            ? counterpartyDisplayNameForCurrentUser({
-                isReceived: true,
-                senderNameFromApi: rawMail.sender_name,
-                recipientNameFromApi: recipientName,
-                isRootAuthorForCurrentUser: Boolean(
-                  rawMail.is_root_author_for_current_user
-                ),
-              })
-            : (recipientName || '익명');
+          const firstRecipientName =
+            rawFirstMail.recipient_name != null &&
+            String(rawFirstMail.recipient_name).trim()
+              ? String(rawFirstMail.recipient_name).trim()
+              : '';
+          const firstSenderId = Number(rawFirstMail.sender_id);
+          const firstMailSentByMe = Number.isFinite(meId)
+            ? Number.isFinite(firstSenderId) && firstSenderId === meId
+            : !Boolean(firstMail._isReceived);
+          // 방 라벨은 최신 메시지와 무관하게 "첫 메일" 기준으로 고정한다.
+          const rowLabel = firstMailSentByMe
+            ? (firstRecipientName || latestRecipientName || '익명')
+            : '익명';
           console.log('[MailLabelDecision][MessageList]', {
             mailId: rawMail.id,
+            firstMailId: rawFirstMail.id ?? null,
+            firstMailSenderId: rawFirstMail.sender_id ?? null,
+            labelSource: 'firstMail',
             roomId: rawMail.room_id ?? null,
             threadKey:
               rawMail.thread_key ?? rawMail.root_mail_id ?? rawMail.id,
             isReceived,
+            firstMailSentByMe,
             replyToMySent,
             isRootAuthorForCurrentUser: Boolean(
               rawMail.is_root_author_for_current_user
             ),
             senderNameFromApi: rawMail.sender_name ?? null,
-            recipientNameFromApi: recipientName || null,
+            recipientNameFromApi: latestRecipientName || null,
             decidedLabel: rowLabel,
           });
 

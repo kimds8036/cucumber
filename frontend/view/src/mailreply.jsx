@@ -16,6 +16,11 @@ export default function MailReplyScreen({ navigation, route }) {
 
   const mail = route?.params?.mail;
   const mailId = route?.params?.mailId ?? route?.params?.mail?.id;
+  const senderLabel =
+    route?.params?.mail?.senderLabel != null &&
+    String(route.params.mail.senderLabel).trim()
+      ? String(route.params.mail.senderLabel).trim()
+      : '익명';
   const onSent = route?.params?.onSent;
   const [replyText, setReplyText] = useState('');
   const [showToast, setShowToast] = useState(false);
@@ -111,7 +116,7 @@ export default function MailReplyScreen({ navigation, route }) {
                   ]}
                 />
                 <View style={styles.detailSenderTexts}>
-                  <Text style={styles.detailSenderName}>익명</Text>
+                  <Text style={styles.detailSenderName}>{senderLabel}</Text>
                   <Text style={styles.detailTime}>
                     {mail?.receivedAt ?? ''}
                   </Text>
