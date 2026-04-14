@@ -1,6 +1,18 @@
-import { StyleSheet } from 'react-native';
+import { StyleSheet, Platform } from 'react-native';
 import { colors, fonts, fontSizes } from './colors';
 import { shadow } from './tokens';
+
+/** 모달 시트 상단 — colors.shadow 기준 (tokens.shadow 와 동일 톤) */
+const friendModalSheetShadow = (normalize) =>
+  Platform.select({
+    ios: {
+      shadowColor: colors.shadow,
+      shadowOffset: { width: 0, height: normalize(2) },
+      shadowOpacity: 0.12,
+      shadowRadius: normalize(4),
+    },
+    android: { elevation: 4 },
+  });
 
 export const getNormalize = (width) => {
   const scale = width / 375;
@@ -67,9 +79,9 @@ export const createTimerStyles = (width, normalize) => {
       width: normalize(56),
       height: normalize(56),
       borderRadius: normalize(28),
-      backgroundColor: colors.textLight5,
+      backgroundColor: colors.background,
       borderWidth: 2,
-      borderColor: colors.primaryLight30,
+      borderColor: colors.primary,
       justifyContent: 'center',
       alignItems: 'center',
     },
@@ -713,3 +725,221 @@ export const createTimerStyles = (width, normalize) => {
     },
   });
 };
+
+/** timerFriendModals.jsx — PokeModal / AddFriendModal 전용 */
+export const createTimerFriendModalStyles = (normalize) =>
+  StyleSheet.create({
+    pokeOverlay: {
+      flex: 1,
+      backgroundColor: colors.overlayLight,
+    },
+    pokeWrapper: {
+      position: 'absolute',
+      bottom: 0,
+      left: 0,
+      right: 0,
+    },
+    pokePopup: {
+      backgroundColor: colors.background,
+      borderTopLeftRadius: normalize(24),
+      borderTopRightRadius: normalize(24),
+      paddingHorizontal: normalize(24),
+      paddingBottom: normalize(40),
+      paddingTop: normalize(12),
+      ...friendModalSheetShadow(normalize),
+    },
+    pokeHandle: {
+      width: normalize(40),
+      height: normalize(4),
+      backgroundColor: colors.border,
+      borderRadius: normalize(2),
+      alignSelf: 'center',
+      marginBottom: normalize(20),
+    },
+    pokeFriendRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: normalize(14),
+      marginBottom: normalize(16),
+    },
+    pokeAvatar: {
+      width: normalize(52),
+      height: normalize(52),
+      borderRadius: normalize(26),
+      justifyContent: 'center',
+      alignItems: 'center',
+      backgroundColor: colors.primaryLight30,
+    },
+    pokeStudyingBadge: {
+      position: 'absolute',
+      bottom: 0,
+      right: 0,
+      width: normalize(16),
+      height: normalize(16),
+      borderRadius: normalize(8),
+      backgroundColor: colors.primaryDark,
+    },
+    pokeFriendName: {
+      fontSize: normalize(fontSizes.xxl),
+      fontFamily: fonts.bold,
+      color: colors.textPrimary,
+    },
+    pokeStatusText: {
+      fontSize: normalize(fontSizes.lg),
+      fontFamily: fonts.regular,
+      color: colors.textSecondary,
+      marginTop: normalize(4),
+    },
+    pokeDivider: {
+      height: 1,
+      backgroundColor: colors.textLight10,
+      marginBottom: normalize(16),
+    },
+    pokeInfoBox: {
+      flexDirection: 'row',
+      alignItems: 'flex-start',
+      backgroundColor: colors.green,
+      borderRadius: normalize(14),
+      padding: normalize(14),
+      gap: normalize(12),
+      marginBottom: normalize(16),
+    },
+    pokeInfoEmoji: {
+      fontSize: normalize(28),
+    },
+    pokeInfoTitle: {
+      fontSize: normalize(fontSizes.xl),
+      fontFamily: fonts.bold,
+      color: colors.textPrimary,
+      marginBottom: normalize(4),
+    },
+    pokeInfoDesc: {
+      fontSize: normalize(13),
+      fontFamily: fonts.regular,
+      color: colors.textSecondary,
+      lineHeight: normalize(19),
+    },
+    pokePrimaryBtn: {
+      backgroundColor: colors.primary,
+      borderRadius: normalize(14),
+      paddingVertical: normalize(14),
+      alignItems: 'center',
+      marginBottom: normalize(10),
+    },
+    pokePrimaryBtnText: {
+      fontSize: normalize(15),
+      fontFamily: fonts.bold,
+      color: colors.textWhite,
+    },
+    pokeMessageBtn: {
+      backgroundColor: colors.primaryLight70,
+      borderRadius: normalize(14),
+      paddingVertical: normalize(14),
+      alignItems: 'center',
+      marginBottom: normalize(10),
+    },
+    pokeMessageBtnText: {
+      color: colors.textWhite,
+      fontSize: normalize(15),
+      fontFamily: fonts.bold,
+    },
+    pokeCancelBtn: {
+      paddingVertical: normalize(12),
+      alignItems: 'center',
+      backgroundColor: colors.surface,
+      borderRadius: normalize(14),
+    },
+    pokeCancelBtnText: {
+      fontSize: normalize(fontSizes.xl),
+      fontFamily: fonts.bold,
+      color: colors.textSecondary,
+    },
+
+    addFriendOverlay: {
+      flex: 1,
+      backgroundColor: colors.transparent,
+    },
+    addFriendWrapper: {
+      position: 'absolute',
+      bottom: 0,
+      left: 0,
+      right: 0,
+    },
+    addFriendPopup: {
+      backgroundColor: colors.background,
+      borderTopLeftRadius: normalize(24),
+      borderTopRightRadius: normalize(24),
+      paddingHorizontal: normalize(24),
+      paddingBottom: normalize(40),
+      paddingTop: normalize(12),
+      ...friendModalSheetShadow(normalize),
+    },
+    addFriendHandle: {
+      width: normalize(40),
+      height: normalize(4),
+      backgroundColor: colors.border,
+      borderRadius: normalize(2),
+      alignSelf: 'center',
+      marginBottom: normalize(20),
+    },
+    addFriendTitle: {
+      fontSize: normalize(17),
+      fontFamily: fonts.bold,
+      color: colors.textPrimary,
+      marginBottom: normalize(4),
+    },
+    addFriendSubtitle: {
+      fontSize: normalize(fontSizes.xl),
+      fontFamily: fonts.regular,
+      color: colors.textSecondary,
+      marginBottom: normalize(20),
+    },
+    addFriendInputRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      backgroundColor: colors.surface,
+      borderRadius: normalize(12),
+      paddingHorizontal: normalize(14),
+      paddingVertical: normalize(12),
+      gap: normalize(8),
+      marginBottom: normalize(16),
+    },
+    addFriendInput: {
+      flex: 1,
+      fontSize: normalize(fontSizes.xl),
+      fontFamily: fonts.regular,
+      color: colors.textPrimary,
+      padding: 0,
+    },
+    addFriendPrimaryBtn: {
+      flexDirection: 'row',
+      backgroundColor: colors.primary,
+      borderRadius: normalize(14),
+      paddingVertical: normalize(14),
+      alignItems: 'center',
+      justifyContent: 'center',
+      marginBottom: normalize(10),
+    },
+    addFriendPrimaryBtnDisabled: {
+      opacity: 0.4,
+    },
+    addFriendPrimaryBtnIcon: {
+      marginRight: normalize(6),
+    },
+    addFriendPrimaryBtnText: {
+      fontSize: normalize(15),
+      fontFamily: fonts.bold,
+      color: colors.textWhite,
+    },
+    addFriendCancelBtn: {
+      paddingVertical: normalize(12),
+      alignItems: 'center',
+      backgroundColor: colors.surface,
+      borderRadius: normalize(14),
+    },
+    addFriendCancelBtnText: {
+      fontSize: normalize(fontSizes.xl),
+      fontFamily: fonts.bold,
+      color: colors.textSecondary,
+    },
+  });
