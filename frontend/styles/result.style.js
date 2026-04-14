@@ -35,7 +35,7 @@ export const createSearchResultStyles = (normalize) => {
       borderRadius: normalize(999),
       paddingHorizontal: normalize(12),
       paddingVertical:
-        Platform.OS === 'android' ? normalize(5) : normalize(7),
+        Platform.OS === 'android' ? normalize(6) : normalize(7),
       gap: normalize(8),
       flex: 1,
     },
