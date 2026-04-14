@@ -96,6 +96,7 @@ export const createOurSchoolStyles = (normalize) => {
       justifyContent: 'space-between',
       marginBottom: normalize(8),
       paddingHorizontal: normalize(4),
+      paddingVertical: normalize(4),
     },
     mealSectionTitle: {
       fontSize: normalize(fontSizes.xxl),
@@ -185,6 +186,7 @@ export const createOurSchoolStyles = (normalize) => {
       paddingHorizontal: normalize(18),
     },
     mealModalCard: {
+      width: '60%',
       maxHeight: '80%',
       backgroundColor: colors.green,
       borderRadius: normalize(16),
@@ -267,7 +269,7 @@ export const createOurSchoolStyles = (normalize) => {
     grassCard: {
       borderRadius: normalize(16),
       paddingHorizontal: normalize(10),
-      paddingVertical: normalize(10),
+      paddingVertical: normalize(12),
       marginBottom: normalize(12),
       backgroundColor: colors.background,
       ...shadow.md,
@@ -276,7 +278,7 @@ export const createOurSchoolStyles = (normalize) => {
       fontSize: normalize(fontSizes.xxl),
       fontFamily: fonts.bold,
       color: colors.textPrimary,
-      marginBottom: normalize(4),
+      marginBottom: normalize(6),
       paddingLeft: normalize(4),
     },
     shortcutContainer: {

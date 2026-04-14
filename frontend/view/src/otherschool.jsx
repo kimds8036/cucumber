@@ -1,24 +1,37 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, useWindowDimensions } from 'react-native';
+import {
+  View,
+  Text,
+  ScrollView,
+  TouchableOpacity,
+  TouchableWithoutFeedback,
+  Modal,
+  useWindowDimensions,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
 import StudyGrassMap from '../../components/studygrassmap';
 import SubHeader from '../frame/subHeader';
-import { colors } from '../../styles/colors';
+import { colors, fontSizes, fonts } from '../../styles/colors';
 import { getNormalize } from '../../styles/frame.style';
+import { createOurSchoolStyles } from '../../styles/school.style';
 import { createOtherSchoolStyles } from '../../styles/otherschool.style';
 import { api } from '../../utils/api';
 
 const OtherSchoolScreen = ({ route, navigation }) => {
   const { width } = useWindowDimensions();
   const normalize = useMemo(() => getNormalize(width), [width]);
-  const styles = useMemo(() => createOtherSchoolStyles(normalize), [normalize]);
+  const styles = useMemo(() => createOurSchoolStyles(normalize), [normalize]);
+  const otherSchoolStyles = useMemo(
+    () => createOtherSchoolStyles(normalize),
+    [normalize],
+  );
 
   const routeName = route?.params?.schoolName ?? '';
   const routeSchoolId = route?.params?.schoolId ?? null;
 
   const [schoolInfo, setSchoolInfo] = useState({
+    id: routeSchoolId,
     name: routeName,
     location: '',
     studentCount: 0,
@@ -31,6 +44,7 @@ const OtherSchoolScreen = ({ route, navigation }) => {
   const [mealLoading, setMealLoading] = useState(false);
   const [nextMeals, setNextMeals] = useState([]);
   const [error, setError] = useState(null);
+  const [selectedMealSlot, setSelectedMealSlot] = useState(null);
 
   useEffect(() => {
     const fetchSchool = async () => {
@@ -46,8 +60,8 @@ const OtherSchoolScreen = ({ route, navigation }) => {
         const data = res.data?.data || {};
         console.log('[OtherSchool] /api/schools response data:', data);
         setSchoolInfo({
+          id: data.id ?? data.school_id ?? routeSchoolId,
           name: data.name || routeName,
-          // 백엔드에서 내려주는 address 필드를 우선 사용
           location: data.address || data.location || '',
           studentCount: data.studentCount || 0,
           postCount: data.postCount || 0,
@@ -122,6 +136,8 @@ const OtherSchoolScreen = ({ route, navigation }) => {
     return `${weekdayLabels[date.getDay()]}`;
   };
 
+  const grassTitle = `${schoolInfo.name || routeName || '학교'} 공부 잔디밭`;
+
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
       <SubHeader
@@ -133,7 +149,7 @@ const OtherSchoolScreen = ({ route, navigation }) => {
         style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}
       >
-        {/* 학교 정보 카드 */}
+        {/* 학교 정보 카드 — 우리 학교 화면과 동일 */}
         <View style={styles.schoolCardBlock}>
           <View style={styles.schoolCard}>
             {loading ? (
@@ -184,7 +200,15 @@ const OtherSchoolScreen = ({ route, navigation }) => {
           </View>
         </View>
 
-        {/* 급식 카드 */}
+        {error ? (
+          <View style={{ marginBottom: normalize(12), paddingHorizontal: normalize(4) }}>
+            <Text style={{ fontSize: normalize(fontSizes.lg), color: colors.alert, fontFamily: fonts.regular }}>
+              {error}
+            </Text>
+          </View>
+        ) : null}
+
+        {/* 급식 카드 — 우리 학교 화면과 동일(모달·스켈레톤·슬롯 터치) */}
         <View style={styles.mealCardBlock}>
           <View style={styles.mealSectionCard}>
             <View style={styles.mealSectionHeader}>
@@ -206,70 +230,104 @@ const OtherSchoolScreen = ({ route, navigation }) => {
               {mealLoading ? (
                 [0, 1, 2].map((idx) => (
                   <View key={`meal-skeleton-${idx}`} style={[styles.mealSlot, idx === 2 && styles.mealSlotLast]}>
-                    <View style={styles.mealCard}>
-                      <View style={{ height: normalize(14), width: '45%', backgroundColor: '#ECECEC', borderRadius: 6, marginBottom: 8 }} />
-                      <View style={{ height: normalize(12), width: '90%', backgroundColor: '#F0F0F0', borderRadius: 6, marginBottom: 6 }} />
-                      <View style={{ height: normalize(12), width: '80%', backgroundColor: '#F0F0F0', borderRadius: 6 }} />
+                    <View style={[styles.mealCard, { minHeight: normalize(96) }]}>
+                      <View style={styles.mealSlotHeader}>
+                        <View style={styles.mealSlotTitleRow}>
+                          <View
+                            style={{
+                              height: normalize(fontSizes.xl),
+                              width: '58%',
+                              backgroundColor: '#ECECEC',
+                              borderRadius: 6,
+                            }}
+                          />
+                        </View>
+                        <View style={styles.mealSlotBadge}>
+                          <View
+                            style={{
+                              height: normalize(fontSizes.lg),
+                              width: normalize(32),
+                              backgroundColor: '#E8E8E8',
+                              borderRadius: 6,
+                            }}
+                          />
+                        </View>
+                      </View>
+                      <View style={styles.mealSlotMenus}>
+                        {[0, 1, 2, 3].map((line) => (
+                          <View
+                            key={`meal-skel-line-${idx}-${line}`}
+                            style={{
+                              height: normalize(fontSizes.lg),
+                              marginBottom: normalize(2),
+                              width: line === 3 ? '62%' : '100%',
+                              backgroundColor: '#F0F0F0',
+                              borderRadius: 4,
+                            }}
+                          />
+                        ))}
+                      </View>
                     </View>
                   </View>
                 ))
               ) : (
                 mealSlots.map((slot, index) => (
-                <View
-                  key={`${slot.ymd}-${slot.mealType}-${index}`}
-                  style={[
-                    styles.mealSlot,
-                    index === mealSlots.length - 1 && styles.mealSlotLast,
-                  ]}
-                >
-                  <View style={[styles.mealCard, { minHeight: normalize(96) }]}>
-                    <View style={styles.mealSlotHeader}>
-                      <View style={styles.mealSlotTitleRow}>
-                        <MaterialCommunityIcons
-                          name="rice"
-                          size={normalize(14)}
-                          color={colors.primary}
-                        />
-                        <Text style={styles.mealSlotTitle}>{slot.mealType}</Text>
-                      </View>
-                      <View style={styles.mealSlotBadge}>
-                        <Text style={styles.mealSlotBadgeText}>{getDayBadge(slot.ymd)}</Text>
-                      </View>
-                    </View>
+                  <View
+                    key={`${slot.ymd}-${slot.mealType}-${index}`}
+                    style={[
+                      styles.mealSlot,
+                      index === mealSlots.length - 1 && styles.mealSlotLast,
+                    ]}
+                  >
+                    <TouchableOpacity
+                      style={styles.mealSlotTouch}
+                      activeOpacity={0.85}
+                      onPress={() => setSelectedMealSlot(slot)}
+                    >
+                      <View style={[styles.mealCard, { minHeight: normalize(96) }]}>
+                        <View style={styles.mealSlotHeader}>
+                          <View style={styles.mealSlotTitleRow}>
+                            <Text style={styles.mealSlotTitle}>{slot.mealType}</Text>
+                          </View>
+                          <View style={styles.mealSlotBadge}>
+                            <Text style={styles.mealSlotBadgeText}>{getDayBadge(slot.ymd)}</Text>
+                          </View>
+                        </View>
 
-                    <View style={styles.mealSlotMenus}>
-                      {slot.menus && slot.menus.length > 0 ? (
-                        slot.menus.map((menu, idx) => (
-                          <Text
-                            key={`${idx}-${menu}`}
-                            style={styles.mealSlotMenuText}
-                            numberOfLines={1}
-                          >
-                            {menu}
-                          </Text>
-                        ))
-                      ) : (
-                        <Text style={styles.mealSlotEmptyText}>정보 없음</Text>
-                      )}
-                    </View>
+                        <View style={styles.mealSlotMenus}>
+                          {slot.menus && slot.menus.length > 0 ? (
+                            slot.menus.map((menu, idx) => (
+                              <Text
+                                key={`${idx}-${menu}`}
+                                style={styles.mealSlotMenuText}
+                                numberOfLines={1}
+                              >
+                                {menu}
+                              </Text>
+                            ))
+                          ) : (
+                            <Text style={styles.mealSlotEmptyText}>정보 없음</Text>
+                          )}
+                        </View>
+                      </View>
+                    </TouchableOpacity>
                   </View>
-                </View>
                 ))
               )}
             </View>
           </View>
         </View>
 
-        {/* 공부 잔디 카드 */}
+        {/* 공부 잔디 카드 — 우리 학교 화면과 동일 */}
         <View style={styles.grassCard}>
-          <Text style={styles.grassCardTitle}>우리 학교 공부 잔디밭</Text>
+          <Text style={styles.grassCardTitle}>{grassTitle}</Text>
           <StudyGrassMap />
         </View>
 
-        {/* 학교 우편함 (전체 너비 가로) */}
-        <View style={styles.mailboxWideBlock}>
+        {/* 학교 우편함 — 이전 가로형 카드 디자인 */}
+        <View style={otherSchoolStyles.mailboxWideBlock}>
           <TouchableOpacity
-            style={styles.mailboxWideButton}
+            style={otherSchoolStyles.mailboxWideButton}
             activeOpacity={0.7}
             onPress={() =>
               navigation?.navigate('SchoolMailbox', {
@@ -278,21 +336,69 @@ const OtherSchoolScreen = ({ route, navigation }) => {
               })
             }
           >
-            <View style={styles.mailboxWideIconWrap}>
+            <View style={otherSchoolStyles.mailboxWideIconWrap}>
               <Ionicons name="mail" size={normalize(26)} color={colors.primary} />
             </View>
-            <View style={styles.mailboxWideTextCol}>
-              <Text style={styles.mailboxWideTitle}>학교 우편함</Text>
+            <View style={otherSchoolStyles.mailboxWideTextCol}>
+              <Text style={otherSchoolStyles.mailboxWideTitle}>학교 우편함</Text>
             </View>
-            <View style={styles.mailboxWideChevronWrap}>
-              <Ionicons name="chevron-forward" size={normalize(22)} color={colors.textSecondary} />
+            <View style={otherSchoolStyles.mailboxWideChevronWrap}>
+              <Ionicons
+                name="chevron-forward"
+                size={normalize(22)}
+                color={colors.textSecondary}
+              />
             </View>
           </TouchableOpacity>
         </View>
       </ScrollView>
+
+      <Modal
+        visible={Boolean(selectedMealSlot)}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setSelectedMealSlot(null)}
+      >
+        <TouchableWithoutFeedback onPress={() => setSelectedMealSlot(null)}>
+          <View style={styles.mealModalBackdrop}>
+            <TouchableWithoutFeedback>
+              <View style={styles.mealModalCard}>
+                <View style={styles.mealModalHeader}>
+                  <View style={styles.mealModalTitleRow}>
+                    <Text style={styles.mealModalTitle}>
+                      {selectedMealSlot?.mealType || '급식'}
+                    </Text>
+                  </View>
+                  <View style={styles.mealModalBadge}>
+                    <Text style={styles.mealModalBadgeText}>
+                      {getDayBadge(selectedMealSlot?.ymd)}
+                    </Text>
+                  </View>
+                </View>
+
+                <ScrollView showsVerticalScrollIndicator={false}>
+                  {selectedMealSlot?.menus?.length > 0 ? (
+                    selectedMealSlot.menus.map((menu, idx) => (
+                      <Text
+                        key={`${idx}-${menu}`}
+                        style={styles.mealModalMenuText}
+                      >
+                        {menu}
+                      </Text>
+                    ))
+                  ) : (
+                    <Text style={styles.mealModalEmptyText}>
+                      정보 없음
+                    </Text>
+                  )}
+                </ScrollView>
+              </View>
+            </TouchableWithoutFeedback>
+          </View>
+        </TouchableWithoutFeedback>
+      </Modal>
     </SafeAreaView>
   );
 };
 
 export default OtherSchoolScreen;
-
