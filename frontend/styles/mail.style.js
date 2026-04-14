@@ -84,13 +84,12 @@ export function createMailStyles(normalize) {
 
     // 상세 화면 (첫 번째 디자인)
     detailRoot: { flex: 1, backgroundColor: colors.background },
-    detailScroll: { padding: normalize(16), paddingBottom: normalize(32) },
+    detailScroll: { padding: normalize(16) },
     detailLetterCard: {
       backgroundColor: colors.background,
       borderRadius: normalize(12),
       paddingHorizontal: normalize(16),
       paddingTop: normalize(18),
-      paddingBottom: normalize(24),
       // 경계선 대신 카드 그림자 처리
       ...shadow.md,
     },
