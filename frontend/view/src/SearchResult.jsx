@@ -27,12 +27,6 @@ const TABS_FOR_HASHTAG = ['전체', '전체게시판', '학교게시판', '학�
 const RECENT_KEY = '@search_recent_keywords';
 const SECTIONS_WITH_EXTRA_GAP = ['학교게시판', '전체게시판', '학교우편'];
 
-const SECTION_ICON = {
-  전체게시판: 'globe-outline',
-  학교게시판: 'school-outline',
-  학교우편: 'mail-outline',
-};
-
 function makeSnippet(content, query) {
   const text = content || '';
   const q = (query || '').trim();
@@ -508,12 +502,6 @@ export default function SearchResult({ route, navigation }) {
                   >
                     <View style={s.sectionHeader}>
                       <View style={s.sectionTitleRow}>
-                        <FontAwesome
-                          name="building-o"
-                          size={normalize(14)}
-                          color={colors.textSecondary}
-                          style={s.sectionIconSpacing}
-                        />
                         <Text style={s.sectionTitle}>학교</Text>
                       </View>
                       <View style={s.countBadge}>
@@ -565,12 +553,6 @@ export default function SearchResult({ route, navigation }) {
                     >
                       <View style={s.sectionHeader}>
                         <View style={s.sectionTitleRow}>
-                          <Ionicons
-                            name={SECTION_ICON[section] || 'document-outline'}
-                            size={normalize(14)}
-                            color={colors.textSecondary}
-                            style={s.sectionIconSpacing}
-                          />
                           <Text style={s.sectionTitle}>{section}</Text>
                         </View>
                         <View style={s.countBadge}>
