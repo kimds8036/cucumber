@@ -1,4 +1,4 @@
-import { StyleSheet } from 'react-native';
+import { StyleSheet, Platform } from 'react-native';
 import { colors, fonts, fontSizes } from './colors';
 
 export const createSearchResultStyles = (normalize) => {
@@ -34,7 +34,8 @@ export const createSearchResultStyles = (normalize) => {
       backgroundColor: colors.textLight5,
       borderRadius: normalize(999),
       paddingHorizontal: normalize(12),
-      paddingVertical: normalize(7),
+      paddingVertical:
+        Platform.OS === 'android' ? normalize(6) : normalize(7),
       gap: normalize(8),
       flex: 1,
     },
@@ -43,6 +44,8 @@ export const createSearchResultStyles = (normalize) => {
       fontSize: normalize(fontSizes.xl),
       fontFamily: fonts.regular,
       color: colors.textPrimary,
+      padding: 0,
+      includeFontPadding: false,
     },
     searchBackButton: {
       marginRight: normalize(6),
