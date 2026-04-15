@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, TextInput, ScrollView, KeyboardAvoidingView, Platform, Keyboard, TouchableWithoutFeedback } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import { colors } from '../../../styles/colors';
 
 const SignStep4 = ({ styles, normalize, recognizedData, onChange }) => {
@@ -39,7 +38,7 @@ const SignStep4 = ({ styles, normalize, recognizedData, onChange }) => {
   };
 
   return (
-    <SafeAreaView style={{ flex: 1 }}>
+    <View style={{ flex: 1 }}>
       <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
         <KeyboardAvoidingView
           style={[styles.content, { flex: 1 }]}
@@ -118,7 +117,7 @@ const SignStep4 = ({ styles, normalize, recognizedData, onChange }) => {
           </ScrollView>
         </KeyboardAvoidingView>
       </TouchableWithoutFeedback>
-    </SafeAreaView>
+    </View>
   );
 };
 
