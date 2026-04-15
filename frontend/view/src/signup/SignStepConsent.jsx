@@ -1,5 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, TouchableOpacity, ScrollView, StyleSheet } from 'react-native';
+import {
+  View,
+  Text,
+  TouchableOpacity,
+  ScrollView,
+  StyleSheet,
+} from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { colors, fonts, fontSizes } from '../../../styles/colors';
 import SignStepPrivacyPolicy from './SignStepPrivacyPolicy';
@@ -20,8 +26,21 @@ const SignStepConsent = ({ normalize, selectedAgeGroup, onChange }) => {
   });
 
   const requiredKeys = isUnder14
-    ? ['privacyPolicy', 'termsOfService', 'dataCollection', 'guardian', 'studentOcr', 'location']
-    : ['privacyPolicy', 'termsOfService', 'dataCollection', 'studentOcr', 'location'];
+    ? [
+        'privacyPolicy',
+        'termsOfService',
+        'dataCollection',
+        'guardian',
+        'studentOcr',
+        'location',
+      ]
+    : [
+        'privacyPolicy',
+        'termsOfService',
+        'dataCollection',
+        'studentOcr',
+        'location',
+      ];
 
   const allConsented = requiredKeys.every((key) => consents[key]);
 
@@ -36,14 +55,22 @@ const SignStepConsent = ({ normalize, selectedAgeGroup, onChange }) => {
   const toggleAll = () => {
     const newVal = !allConsented;
     const updated = {};
-    requiredKeys.forEach((k) => { updated[k] = newVal; });
+    requiredKeys.forEach((k) => {
+      updated[k] = newVal;
+    });
     setConsents((prev) => ({ ...prev, ...updated }));
   };
 
   const s = makeStyles(normalize);
 
   const Checkbox = ({ checked, size = 'sm' }) => (
-    <View style={[s.checkbox, size === 'lg' && s.checkboxLg, checked && s.checkboxChecked]}>
+    <View
+      style={[
+        s.checkbox,
+        size === 'lg' && s.checkboxLg,
+        checked && s.checkboxChecked,
+      ]}
+    >
       {checked && (
         <Ionicons
           name="checkmark"
@@ -54,18 +81,27 @@ const SignStepConsent = ({ normalize, selectedAgeGroup, onChange }) => {
     </View>
   );
 
-  const ConsentCard = ({ id, title, tableRows, onViewFull }) => (
+  const ConsentCard = ({
+    id,
+    title,
+    tableRows,
+    onViewFull,
+    hideCheckbox = false,
+    hideBadge = false,
+  }) => (
     <View style={s.card} pointerEvents="box-none">
       <TouchableOpacity
         style={s.cardHeader}
         onPress={() => toggle(id)}
         activeOpacity={0.8}
       >
-        <Checkbox checked={consents[id]} />
+        {!hideCheckbox && <Checkbox checked={consents[id]} />}
         <View style={s.cardTitleArea}>
-          <View style={s.badge}>
-            <Text style={s.badgeText}>필수</Text>
-          </View>
+          {!hideBadge && (
+            <View style={s.badge}>
+              <Text style={s.badgeText}>필수</Text>
+            </View>
+          )}
           <Text style={s.cardTitle}>{title}</Text>
         </View>
         {onViewFull && (
@@ -75,7 +111,11 @@ const SignStepConsent = ({ normalize, selectedAgeGroup, onChange }) => {
             hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
           >
             <Text style={s.viewFullText}>전문 보기</Text>
-            <Ionicons name="chevron-forward" size={normalize(13)} color={colors.primaryDark} />
+            <Ionicons
+              name="chevron-forward"
+              size={normalize(13)}
+              color={colors.primaryDark}
+            />
           </TouchableOpacity>
         )}
       </TouchableOpacity>
@@ -101,26 +141,16 @@ const SignStepConsent = ({ normalize, selectedAgeGroup, onChange }) => {
         contentContainerStyle={s.scrollContent}
       >
         {/* 전체 동의 */}
-        <TouchableOpacity style={s.allAgreeCard} onPress={toggleAll} activeOpacity={0.85}>
+        <TouchableOpacity
+          style={s.allAgreeCard}
+          onPress={toggleAll}
+          activeOpacity={0.85}
+        >
           <Checkbox checked={allConsented} size="lg" />
           <Text style={s.allAgreeText}>필수 항목 전체 동의</Text>
         </TouchableOpacity>
 
-        {/* 1. 개인정보 처리방침 전문 동의 */}
-        <ConsentCard
-          id="privacyPolicy"
-          title="개인정보 처리방침 전문 동의"
-          onViewFull={() => setShowPrivacyPolicy(true)}
-        />
-
-        {/* 2. 서비스 이용약관 동의 */}
-        <ConsentCard
-          id="termsOfService"
-          title="서비스 이용약관 동의"
-          onViewFull={() => setShowTermsOfService(true)}
-        />
-
-        {/* 3. 회원가입 및 서비스 제공을 위한 개인정보 수집·이용 */}
+        {/* 1. 회원가입 및 서비스 제공을 위한 개인정보 수집·이용 */}
         <ConsentCard
           id="dataCollection"
           title="회원가입 및 서비스 제공을 위한 개인정보 수집·이용"
@@ -132,19 +162,23 @@ const SignStepConsent = ({ normalize, selectedAgeGroup, onChange }) => {
             },
             {
               key: '이용 목적',
-              value: '회원 가입 및 본인 확인, 서비스 제공, 부정 이용 방지, 민원 처리',
+              value:
+                '회원 가입 및 본인 확인, 서비스 제공, 부정 이용 방지, 민원 처리',
             },
             { key: '보유 기간', value: '회원 탈퇴 시까지' },
           ]}
         />
 
-        {/* 3. 법정대리인 동의 (만 14세 미만만 표시) */}
+        {/* 2. 법정대리인 동의 (만 14세 미만만 표시) */}
         {isUnder14 && (
           <ConsentCard
             id="guardian"
             title="만 14세 미만 회원의 법정대리인 동의"
             tableRows={[
-              { key: '수집 항목', value: '법정대리인의 이름, 연락처 (PASS 인증으로 확인)' },
+              {
+                key: '수집 항목',
+                value: '법정대리인의 이름, 연락처 (PASS 인증으로 확인)',
+              },
               {
                 key: '이용 목적',
                 value:
@@ -155,7 +189,7 @@ const SignStepConsent = ({ normalize, selectedAgeGroup, onChange }) => {
           />
         )}
 
-        {/* 4. 학생증(OCR) 기반 인증 */}
+        {/* 3. 학생증(OCR) 기반 인증 */}
         <ConsentCard
           id="studentOcr"
           title="학생증(OCR) 기반 인증"
@@ -169,7 +203,7 @@ const SignStepConsent = ({ normalize, selectedAgeGroup, onChange }) => {
           ]}
         />
 
-        {/* 5. 위치 정보 수집·이용 */}
+        {/* 4. 위치 정보 수집·이용 */}
         <ConsentCard
           id="location"
           title="위치 정보 수집·이용"
@@ -177,8 +211,7 @@ const SignStepConsent = ({ normalize, selectedAgeGroup, onChange }) => {
             { key: '수집 항목', value: '위도·경도 (정밀 GPS 좌표)' },
             {
               key: '이용 목적',
-              value:
-                '학교 재학 여부 검증(Geofencing), 위치 기반 게시판 서비스',
+              value: '학교 재학 여부 검증(Geofencing), 위치 기반 게시판 서비스',
             },
             {
               key: '보유 기간',
@@ -188,8 +221,27 @@ const SignStepConsent = ({ normalize, selectedAgeGroup, onChange }) => {
           ]}
         />
 
+        {/* 5. 개인정보 처리방침 전문 동의 */}
+        <ConsentCard
+          id="privacyPolicy"
+          title="개인정보 처리방침 전문 동의"
+          onViewFull={() => setShowPrivacyPolicy(true)}
+          hideCheckbox={true}
+          hideBadge={true}
+        />
+
+        {/* 6. 서비스 이용약관 동의 */}
+        <ConsentCard
+          id="termsOfService"
+          title="서비스 이용약관 동의"
+          onViewFull={() => setShowTermsOfService(true)}
+          hideCheckbox={true}
+          hideBadge={true}
+        />
+
         <Text style={s.refusalNotice}>
-          ※ 필수 항목 동의를 거부할 권리가 있으나, 거부 시 회원가입 및 서비스 이용이 제한됩니다.
+          ※ 필수 항목 동의를 거부할 권리가 있으나, 거부 시 회원가입 및 서비스
+          이용이 제한됩니다.
         </Text>
       </ScrollView>
 

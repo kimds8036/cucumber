@@ -1,8 +1,7 @@
 import React from 'react';
-import { View, Text, ScrollView, Modal, StyleSheet } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { View, Text, ScrollView, Modal, StyleSheet, Platform } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { colors, fonts, fontSizes } from '../../../styles/colors';
-import SubHeader from '../../frame/subHeader';
 
 const SignStepPrivacyPolicy = ({ normalize, onBack }) => {
   const s = makeStyles(normalize);
@@ -42,9 +41,23 @@ const SignStepPrivacyPolicy = ({ normalize, onBack }) => {
   );
 
   return (
-    <Modal visible animationType="slide" onRequestClose={onBack} statusBarTranslucent>
-      <SafeAreaView style={s.container} edges={['top']}>
-        <SubHeader title="개인정보 처리방침" onBack={onBack} />
+    <Modal
+      visible
+      animationType="slide"
+      presentationStyle={Platform.OS === 'ios' ? 'pageSheet' : 'fullScreen'}
+      statusBarTranslucent
+      onRequestClose={onBack}
+    >
+      <SafeAreaView style={s.container} edges={['top', 'bottom']}>
+        <View style={s.sheetHeader}>
+          {Platform.OS === 'ios' && <View style={s.grabber} />}
+          <View style={s.sheetHeaderRow}>
+            <View style={s.leftPlaceholder} />
+            <Text style={s.sheetTitle}>개인정보 처리방침</Text>
+            <View style={s.rightPlaceholder} />
+          </View>
+        </View>
+        <View style={s.headerDivider} />
         <ScrollView
           style={s.scroll}
           contentContainerStyle={s.scrollContent}
@@ -188,6 +201,41 @@ const makeStyles = (normalize) =>
     container: {
       flex: 1,
       backgroundColor: colors.background,
+    },
+    sheetHeader: {
+      backgroundColor: colors.background,
+      paddingVertical: normalize(10),
+      paddingHorizontal: normalize(12),
+    },
+    grabber: {
+      alignSelf: 'center',
+      width: normalize(36),
+      height: normalize(5),
+      borderRadius: normalize(999),
+      backgroundColor: colors.textLight20,
+      marginTop: normalize(2),
+      marginBottom: normalize(8),
+    },
+    sheetHeaderRow: {
+      height: normalize(34),
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+    },
+    leftPlaceholder: {
+      minWidth: normalize(44),
+    },
+    sheetTitle: {
+      fontSize: normalize(fontSizes.xxl),
+      fontFamily: fonts.bold,
+      color: colors.textPrimary,
+    },
+    rightPlaceholder: {
+      minWidth: normalize(44),
+    },
+    headerDivider: {
+      height: 1,
+      backgroundColor: colors.textLight20,
     },
     scroll: {
       flex: 1,

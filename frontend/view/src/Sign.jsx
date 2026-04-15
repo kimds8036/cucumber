@@ -5,6 +5,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { createSignupStyles } from '../../styles/login.style';
 import { colors } from '../../styles/colors';
 import SignStepAgeGate from './signup/SignStepAgeGate';
+import SignStepConsent from './signup/SignStepConsent';
 import SignStep1 from './signup/SignStep1';
 import SignStep2 from './signup/SignStep2';
 import SignStep1_2 from './signup/SignStep1-2';
@@ -31,13 +32,14 @@ const Sign = ({ navigation }) => {
   const [guardianStepData, setGuardianStepData] = useState({});
   const [step4Data, setStep4Data] = useState({});
   const [selectedAgeGroup, setSelectedAgeGroup] = useState('');
+  const [consentData, setConsentData] = useState({ allConsented: false });
 
   const styles = useMemo(() => createSignupStyles(width, normalize), [width]);
   const isOver14Flow = selectedAgeGroup === 'over14';
-  const maxFlowStep = isOver14Flow ? 4 : 5;
+  const maxFlowStep = isOver14Flow ? 5 : 6;
   const isCameraStep =
-    (isOver14Flow && currentStep === 3) ||
-    (!isOver14Flow && currentStep === 4);
+    (isOver14Flow && currentStep === 4) ||
+    (!isOver14Flow && currentStep === 5);
 
   // 진행바 애니메이션
   const progressWidth = (currentStep / maxFlowStep) * 100;
@@ -64,6 +66,10 @@ const Sign = ({ navigation }) => {
     setCurrentStep(1);
   };
 
+  const handleConsentNext = () => {
+    setCurrentStep(2);
+  };
+
   // 본인인증 단계 완료
   const handleStep1Next = () => {
     if (!DISABLE_SIGN_VALIDATION_FOR_REDESIGN && !step1Data.isVerified) {
@@ -79,13 +85,13 @@ const Sign = ({ navigation }) => {
       ...step1Data,
     };
     setFormData(merged);
-    setCurrentStep(2);
+    setCurrentStep(3);
   };
 
   // 보호자 본인인증 단계 완료(미만 플로우)
   const handleStep2Next = () => {
     if (isOver14Flow) {
-      setCurrentStep(3);
+      setCurrentStep(4);
       return;
     }
 
@@ -94,7 +100,7 @@ const Sign = ({ navigation }) => {
       return;
     }
     setFormData({ ...formData, ...guardianStepData });
-    setCurrentStep(3);
+    setCurrentStep(4);
   };
 
   // 정보 입력 단계 완료
@@ -110,19 +116,19 @@ const Sign = ({ navigation }) => {
       }
     }
     setFormData({ ...formData, ...stepInfoData });
-    setCurrentStep(4);
+    setCurrentStep(5);
   };
 
   // 3단계 완료 (자동 인식)
   const handleStudentVerificationNext = (data) => {
     setRecognizedData(data);
-    setCurrentStep(isOver14Flow ? 4 : 5);
+    setCurrentStep(isOver14Flow ? 5 : 6);
   };
 
   // 3단계 직접 입력하기
   const handleManualInput = () => {
     setRecognizedData(null);
-    setCurrentStep(isOver14Flow ? 4 : 5);
+    setCurrentStep(isOver14Flow ? 5 : 6);
   };
 
   // 4단계 완료 (회원가입 완료)
@@ -199,12 +205,13 @@ const Sign = ({ navigation }) => {
         case 0:
           return '회원가입';
         case 1:
-          return '본인 인증';
+          return '개인정보 및 약관 동의';
         case 2:
-          return '정보 입력';
+          return '본인 인증';
         case 3:
-          return '학생 인증';
+          return '정보 입력';
         case 4:
+          return '학생 인증';
         case 5:
           return '학생 인증';
         default:
@@ -216,13 +223,16 @@ const Sign = ({ navigation }) => {
       case 0:
         return '회원가입';
       case 1:
-        return '본인 인증';
+        return '개인정보 및 약관 동의';
       case 2:
-        return '보호자 본인 인증';
+        return '본인 인증';
       case 3:
-        return '정보 입력';
+        return '보호자 본인 인증';
       case 4:
+        return '정보 입력';
       case 5:
+        return '학생 인증';
+      case 6:
         return '학생 인증';
       default:
         return '회원가입';
@@ -236,12 +246,13 @@ const Sign = ({ navigation }) => {
         case 0:
           return '만 14세 이상 여부를 먼저 선택해주세요.';
         case 1:
-          return 'PASS 인증을 통해 본인확인을 진행합니다.';
+          return '서비스 이용을 위한 동의 항목을 확인해주세요.';
         case 2:
-          return '이름/생년월일은 자동 입력되며 수정할 수 없습니다.';
+          return 'PASS 인증을 통해 본인확인을 진행합니다.';
         case 3:
-          return '학교 게시판을 이용하기 위한 인증 단계입니다.';
+          return '이름/생년월일은 자동 입력되며 수정할 수 없습니다.';
         case 4:
+          return '학교 게시판을 이용하기 위한 인증 단계입니다.';
         case 5:
           return '학생증과 해당 정보가 일치하는지 확인해주세요';
         default:
@@ -253,14 +264,17 @@ const Sign = ({ navigation }) => {
       case 0:
         return '만 14세 이상 여부를 먼저 선택해주세요.';
       case 1:
-        return 'PASS 인증을 통해 본인확인을 진행합니다.';
+        return '서비스 이용을 위한 동의 항목을 확인해주세요.';
       case 2:
-        return '보호자 PASS 인증을 진행합니다.';
+        return 'PASS 인증을 통해 본인확인을 진행합니다.';
       case 3:
-        return '이름/생년월일은 자동 입력되며 수정할 수 없습니다.';
+        return '보호자 PASS 인증을 진행합니다.';
       case 4:
+        return '이름/생년월일은 자동 입력되며 수정할 수 없습니다.';
       case 5:
         return '학교 게시판을 이용하기 위한 인증 단계입니다.';
+      case 6:
+        return '학생증과 해당 정보가 일치하는지 확인해주세요';
       default:
         return '';
     }
@@ -299,6 +313,13 @@ const Sign = ({ navigation }) => {
             />
           )}
           {currentStep === 1 && (
+            <SignStepConsent
+              normalize={normalize}
+              selectedAgeGroup={selectedAgeGroup}
+              onChange={setConsentData}
+            />
+          )}
+          {currentStep === 2 && (
             <SignStep1
               styles={styles}
               normalize={normalize}
@@ -307,7 +328,7 @@ const Sign = ({ navigation }) => {
               passMode={true}
             />
           )}
-          {currentStep === 2 && (
+          {currentStep === 3 && (
             isOver14Flow ? (
               <SignStep2
                 styles={styles}
@@ -325,7 +346,7 @@ const Sign = ({ navigation }) => {
               />
             )
           )}
-          {currentStep === 3 && (
+          {currentStep === 4 && (
             isOver14Flow ? (
               <SignStep3
                 styles={styles}
@@ -343,7 +364,7 @@ const Sign = ({ navigation }) => {
               />
             )
           )}
-          {currentStep === 4 && (
+          {currentStep === 5 && (
             isOver14Flow ? (
               <SignStep4
                 styles={styles}
@@ -360,7 +381,7 @@ const Sign = ({ navigation }) => {
               />
             )
           )}
-          {!isOver14Flow && currentStep === 5 && (
+          {!isOver14Flow && currentStep === 6 && (
             <SignStep4
               styles={styles}
               normalize={normalize}
@@ -379,21 +400,26 @@ const Sign = ({ navigation }) => {
                   style={[
                     styles.nextButton,
                     currentStep === 0 && !selectedAgeGroup && { backgroundColor: colors.textLight20 },
+                    currentStep === 1 && !consentData.allConsented && { backgroundColor: colors.textLight20 },
                   ]}
                   activeOpacity={0.9}
-                  disabled={currentStep === 0 && !selectedAgeGroup}
+                  disabled={
+                    (currentStep === 0 && !selectedAgeGroup) ||
+                    (currentStep === 1 && !consentData.allConsented)
+                  }
                   onPress={() => {
                     if (currentStep === 0) handleStep0Next();
-                    else if (currentStep === 1) handleStep1Next();
-                    else if (currentStep === 2) handleStep2Next();
-                    else if (currentStep === 3) handleStep3Next();
-                    else if ((isOver14Flow && currentStep === 4) || (!isOver14Flow && currentStep === 5)) {
+                    else if (currentStep === 1) handleConsentNext();
+                    else if (currentStep === 2) handleStep1Next();
+                    else if (currentStep === 3) handleStep2Next();
+                    else if (currentStep === 4) handleStep3Next();
+                    else if ((isOver14Flow && currentStep === 5) || (!isOver14Flow && currentStep === 6)) {
                       handleComplete();
                     }
                   }}
                 >
                   <Text style={styles.nextButtonText}>
-                    {(isOver14Flow && currentStep === 4) || (!isOver14Flow && currentStep === 5)
+                    {(isOver14Flow && currentStep === 5) || (!isOver14Flow && currentStep === 6)
                       ? '회원가입'
                       : '다음 단계'}
                   </Text>
@@ -451,7 +477,7 @@ const Sign = ({ navigation }) => {
                   width: '100%',
                   height: normalize(45),
                   backgroundColor: colors.primary,
-                  borderRadius: normalize(13),
+                  borderRadius: normalize(24),
                   justifyContent: 'center',
                   alignItems: 'center',
                 }}

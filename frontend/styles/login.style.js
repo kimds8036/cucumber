@@ -108,7 +108,7 @@ export const createSignupStyles = (width, normalize) => {
     container: {
       flex: 1,
       backgroundColor: colors.background,
-      paddingHorizontal: width * 0.08,
+      paddingHorizontal: width * 0.04,
       ...debugBorder,
     },
     headerSection: {
