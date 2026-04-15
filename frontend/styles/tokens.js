@@ -24,15 +24,3 @@ export const radius = {
   xl: 24,
   full: 999,
 };
-
-// 공통 spacing 스케일 (4pt grid)
-export const spacing = {
-  xxs: 4,
-  xs: 8,
-  sm: 12,
-  md: 16,
-  lg: 20,
-  xl: 24,
-  xxl: 32,
-  xxxl: 40,
-};

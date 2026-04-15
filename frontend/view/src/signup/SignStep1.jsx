@@ -1,85 +1,52 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, ScrollView, KeyboardAvoidingView, Platform, Alert, Keyboard, TouchableWithoutFeedback } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, Modal, FlatList, ScrollView, KeyboardAvoidingView, Platform, Keyboard, TouchableWithoutFeedback } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { colors } from '../../../styles/colors';
-import { api } from '../../../utils/api';
 
-const SignStep1 = ({ styles, normalize, onChange, disableValidation = false, passMode = false }) => {
-  const [phoneNumber, setPhoneNumber] = useState('');
-  const [verificationCode, setVerificationCode] = useState('');
-  const [isCodeSent, setIsCodeSent] = useState(false);
-  const [isVerified, setIsVerified] = useState(false);
-  const isPhoneReadyForVerification = phoneNumber.replace(/\D/g, '').length === 11;
+const SignStep1 = ({ styles, normalize, onChange }) => {
+  const [name, setName] = useState('');
+  const [username, setUsername] = useState('');
+  const [password, setPassword] = useState('');
+  const [passwordConfirm, setPasswordConfirm] = useState('');
+  const [birthYear, setBirthYear] = useState('');
+  const [birthMonth, setBirthMonth] = useState('');
+  const [birthDay, setBirthDay] = useState('');
 
   const notifyChange = (override = {}) => {
+    const birthDate =
+      (override.birthYear ?? birthYear) &&
+      (override.birthMonth ?? birthMonth) &&
+      (override.birthDay ?? birthDay)
+        ? `${override.birthYear ?? birthYear}-${override.birthMonth ?? birthMonth}-${override.birthDay ?? birthDay}`
+        : '';
+
     onChange &&
       onChange({
-        phoneNumber,
-        verificationCode,
-        isCodeSent,
-        isVerified,
+        name,
+        username,
+        password,
+        passwordConfirm,
+        birthYear,
+        birthMonth,
+        birthDay,
+        birthDate,
         ...override,
       });
   };
 
-  const handleSendCode = async () => {
-    if (disableValidation) {
-      setIsCodeSent(true);
-      notifyChange({ isCodeSent: true });
-      return;
-    }
+  // 모달 상태
+  const [showYearModal, setShowYearModal] = useState(false);
+  const [showMonthModal, setShowMonthModal] = useState(false);
+  const [showDayModal, setShowDayModal] = useState(false);
 
-    if (!phoneNumber) {
-      Alert.alert('알림', '전화번호를 입력해주세요.');
-      return;
-    }
-
-    try {
-      await api.post('/api/auth/send-verification', { phone: phoneNumber });
-      setIsCodeSent(true);
-      notifyChange({ isCodeSent: true });
-      Alert.alert('알림', '인증 코드가 발송되었습니다.');
-    } catch (error) {
-      console.error(error);
-      Alert.alert('오류', error.response?.data?.message || '인증 코드 발송 중 오류가 발생했습니다.');
-    }
-  };
-
-  const handleVerifyCode = async () => {
-    if (disableValidation) {
-      const mockedIdentity = {
-        name: '홍길동',
-        birthDate: '2008-01-01',
-      };
-      setIsVerified(true);
-      notifyChange({ isVerified: true, ...mockedIdentity });
-      return;
-    }
-
-    if (!phoneNumber || !verificationCode) {
-      Alert.alert('알림', '전화번호와 인증번호를 모두 입력해주세요.');
-      return;
-    }
-
-    try {
-      const response = await api.post('/api/auth/verify-phone', {
-        phone: phoneNumber,
-        verificationCode,
-      });
-      const identity = {
-        name: response?.data?.data?.name || '',
-        birthDate: response?.data?.data?.birthDate || '',
-      };
-      setIsVerified(true);
-      notifyChange({ isVerified: true, ...identity });
-      Alert.alert('알림', '전화번호 인증이 완료되었습니다.');
-    } catch (error) {
-      console.error(error);
-      Alert.alert('오류', error.response?.data?.message || '인증번호 확인 중 오류가 발생했습니다.');
-    }
-  };
+  // 년도, 월, 일 데이터 생성
+  const currentYear = new Date().getFullYear();
+  const years = Array.from({ length: 100 }, (_, i) => (currentYear - i).toString());
+  const months = Array.from({ length: 12 }, (_, i) => (i + 1).toString().padStart(2, '0'));
+  const days = Array.from({ length: 31 }, (_, i) => (i + 1).toString().padStart(2, '0'));
 
   return (
-    <View style={{ flex: 1 }}>
+    <SafeAreaView style={{ flex: 1 }}>
       <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
         <KeyboardAvoidingView
           style={[styles.content, { flex: 1 }]}
@@ -89,62 +56,234 @@ const SignStep1 = ({ styles, normalize, onChange, disableValidation = false, pas
           <ScrollView
             contentContainerStyle={{
               flexGrow: 1,
-              paddingBottom: normalize(10),
+              paddingBottom: normalize(40),
             }}
             showsVerticalScrollIndicator={false}
             keyboardShouldPersistTaps="handled"
           >
-      {/* 전화번호 */}
-      <Text style={styles.inputLabel}>전화번호</Text>
+      {/* 이름 */}
+      <Text style={styles.inputLabel}>이름</Text>
       <View style={styles.inputWrapper}>
-        <View style={styles.inputWithButton}>
-          <TextInput
-            style={[styles.input, styles.inputFlex]}
-            value={phoneNumber}
-            onChangeText={(text) => {
-              setPhoneNumber(text);
-              notifyChange({ phoneNumber: text });
-            }}
-            keyboardType="number-pad"
-          />
+        <TextInput
+          style={styles.input}
+          value={name}
+          onChangeText={(text) => {
+            setName(text);
+            notifyChange({ name: text });
+          }}
+        />
+      </View>
+
+      {/* 아이디 */}
+      <Text style={styles.inputLabel}>아이디</Text>
+      <View style={styles.inputWrapper}>
+        <TextInput
+          style={styles.input}
+          value={username}
+          onChangeText={(text) => {
+            setUsername(text);
+            notifyChange({ username: text });
+          }}
+          autoCapitalize="none"
+        />
+      </View>
+
+      {/* 비밀번호 */}
+      <Text style={styles.inputLabel}>비밀번호</Text>
+      <View style={styles.inputWrapper}>
+        <TextInput
+          style={styles.input}
+          value={password}
+          onChangeText={(text) => {
+            setPassword(text);
+            notifyChange({ password: text });
+          }}
+          secureTextEntry
+          autoCapitalize="none"
+        />
+      </View>
+
+      {/* 비밀번호 확인 */}
+      <Text style={styles.inputLabel}>비밀번호 확인</Text>
+      <View style={styles.inputWrapper}>
+        <TextInput
+          style={styles.input}
+          value={passwordConfirm}
+          onChangeText={(text) => {
+            setPasswordConfirm(text);
+            notifyChange({ passwordConfirm: text });
+          }}
+          secureTextEntry
+          autoCapitalize="none"
+        />
+      </View>
+
+      {/* 생년월일 */}
+      <Text style={styles.inputLabel}>생년월일</Text>
+      <View style={styles.inputWrapper}>
+        <View style={styles.dropdownRow}>
           <TouchableOpacity
-            style={[
-              styles.verifyButton,
-              !isPhoneReadyForVerification && { backgroundColor: colors.textLight10 },
-            ]}
-            onPress={handleSendCode}
-            disabled={!isPhoneReadyForVerification}
+            style={styles.dropdownButton}
+            onPress={() => setShowYearModal(true)}
           >
-            <Text style={styles.verifyButtonText}>인증</Text>
+            <Text style={birthYear ? styles.dropdownText : styles.dropdownPlaceholder}>
+              {birthYear || '년'}
+            </Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.dropdownButton}
+            onPress={() => setShowMonthModal(true)}
+          >
+            <Text style={birthMonth ? styles.dropdownText : styles.dropdownPlaceholder}>
+              {birthMonth || '월'}
+            </Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.dropdownButton}
+            onPress={() => setShowDayModal(true)}
+          >
+            <Text style={birthDay ? styles.dropdownText : styles.dropdownPlaceholder}>
+              {birthDay || '일'}
+            </Text>
           </TouchableOpacity>
         </View>
       </View>
 
-      {/* 인증번호 */}
-      <Text style={styles.inputLabel}>인증번호</Text>
-      <View style={styles.inputWrapper}>
-        <TextInput
-          style={styles.input}
-          value={verificationCode}
-          onChangeText={(text) => {
-            setVerificationCode(text);
-            notifyChange({ verificationCode: text });
-          }}
-          keyboardType="number-pad"
-          editable={isCodeSent}
-        />
-      </View>
-      {isCodeSent && (
-        <View style={styles.inputWrapper}>
-          <TouchableOpacity style={styles.verifyButton} onPress={handleVerifyCode}>
-            <Text style={styles.verifyButtonText}>인증 확인</Text>
-          </TouchableOpacity>
-        </View>
-      )}
+      {/* 년도 선택 모달 */}
+      <Modal
+        visible={showYearModal}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => setShowYearModal(false)}
+      >
+        <TouchableOpacity
+          style={styles.modalOverlay}
+          activeOpacity={1}
+          onPress={() => setShowYearModal(false)}
+        >
+          <View style={styles.modalContainer}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>년도 선택</Text>
+              <TouchableOpacity onPress={() => setShowYearModal(false)}>
+                <Text style={styles.modalClose}>✕</Text>
+              </TouchableOpacity>
+            </View>
+            <FlatList
+              data={years}
+              keyExtractor={(item) => item}
+              renderItem={({ item }) => (
+                <TouchableOpacity
+                  style={styles.modalItem}
+                  onPress={() => {
+                    setBirthYear(item);
+                    notifyChange({ birthYear: item });
+                    setShowYearModal(false);
+                  }}
+                >
+                  <Text style={[
+                    styles.modalItemText,
+                    birthYear === item && styles.modalItemTextSelected
+                  ]}>
+                    {item}년
+                  </Text>
+                </TouchableOpacity>
+              )}
+            />
+          </View>
+        </TouchableOpacity>
+      </Modal>
+
+      {/* 월 선택 모달 */}
+      <Modal
+        visible={showMonthModal}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => setShowMonthModal(false)}
+      >
+        <TouchableOpacity
+          style={styles.modalOverlay}
+          activeOpacity={1}
+          onPress={() => setShowMonthModal(false)}
+        >
+          <View style={styles.modalContainer}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>월 선택</Text>
+              <TouchableOpacity onPress={() => setShowMonthModal(false)}>
+                <Text style={styles.modalClose}>✕</Text>
+              </TouchableOpacity>
+            </View>
+            <FlatList
+              data={months}
+              keyExtractor={(item) => item}
+              renderItem={({ item }) => (
+                <TouchableOpacity
+                  style={styles.modalItem}
+                  onPress={() => {
+                    setBirthMonth(item);
+                    notifyChange({ birthMonth: item });
+                    setShowMonthModal(false);
+                  }}
+                >
+                  <Text style={[
+                    styles.modalItemText,
+                    birthMonth === item && styles.modalItemTextSelected
+                  ]}>
+                    {item}월
+                  </Text>
+                </TouchableOpacity>
+              )}
+            />
+          </View>
+        </TouchableOpacity>
+      </Modal>
+
+      {/* 일 선택 모달 */}
+      <Modal
+        visible={showDayModal}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => setShowDayModal(false)}
+      >
+        <TouchableOpacity
+          style={styles.modalOverlay}
+          activeOpacity={1}
+          onPress={() => setShowDayModal(false)}
+        >
+          <View style={styles.modalContainer}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>일 선택</Text>
+              <TouchableOpacity onPress={() => setShowDayModal(false)}>
+                <Text style={styles.modalClose}>✕</Text>
+              </TouchableOpacity>
+            </View>
+            <FlatList
+              data={days}
+              keyExtractor={(item) => item}
+              renderItem={({ item }) => (
+                <TouchableOpacity
+                  style={styles.modalItem}
+                  onPress={() => {
+                    setBirthDay(item);
+                    notifyChange({ birthDay: item });
+                    setShowDayModal(false);
+                  }}
+                >
+                  <Text style={[
+                    styles.modalItemText,
+                    birthDay === item && styles.modalItemTextSelected
+                  ]}>
+                    {item}일
+                  </Text>
+                </TouchableOpacity>
+              )}
+            />
+          </View>
+        </TouchableOpacity>
+      </Modal>
           </ScrollView>
         </KeyboardAvoidingView>
       </TouchableWithoutFeedback>
-    </View>
+    </SafeAreaView>
   );
 };
 
