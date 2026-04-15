@@ -5,6 +5,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { createSignupStyles } from '../../styles/login.style';
 import { colors } from '../../styles/colors';
 import SignStepAgeGate from './signup/SignStepAgeGate';
+import SignStepConsent from './signup/SignStepConsent';
 import SignStep1 from './signup/SignStep1';
 import SignStep2 from './signup/SignStep2';
 import SignStep1_2 from './signup/SignStep1-2';
@@ -31,13 +32,14 @@ const Sign = ({ navigation }) => {
   const [guardianStepData, setGuardianStepData] = useState({});
   const [step4Data, setStep4Data] = useState({});
   const [selectedAgeGroup, setSelectedAgeGroup] = useState('');
+  const [consentData, setConsentData] = useState({ allConsented: false });
 
   const styles = useMemo(() => createSignupStyles(width, normalize), [width]);
   const isOver14Flow = selectedAgeGroup === 'over14';
-  const maxFlowStep = isOver14Flow ? 4 : 5;
+  const maxFlowStep = isOver14Flow ? 5 : 6;
   const isCameraStep =
-    (isOver14Flow && currentStep === 3) ||
-    (!isOver14Flow && currentStep === 4);
+    (isOver14Flow && currentStep === 4) ||
+    (!isOver14Flow && currentStep === 5);
 
   // 진행바 애니메이션
   const progressWidth = (currentStep / maxFlowStep) * 100;
@@ -64,7 +66,12 @@ const Sign = ({ navigation }) => {
     setCurrentStep(1);
   };
 
-  // 본인인증 단계 완료
+  // 동의서 단계 완료
+  const handleConsentNext = () => {
+    setCurrentStep(2);
+  };
+
+  // 본인인증 단계 완료 (step 2 → 3)
   const handleStep1Next = () => {
     if (!DISABLE_SIGN_VALIDATION_FOR_REDESIGN && !step1Data.isVerified) {
       Alert.alert('알림', 'PASS 본인인증을 완료해주세요.');
@@ -79,13 +86,13 @@ const Sign = ({ navigation }) => {
       ...step1Data,
     };
     setFormData(merged);
-    setCurrentStep(2);
+    setCurrentStep(3);
   };
 
-  // 보호자 본인인증 단계 완료(미만 플로우)
+  // 보호자 본인인증 단계 완료 (step 3 → 4)
   const handleStep2Next = () => {
     if (isOver14Flow) {
-      setCurrentStep(3);
+      setCurrentStep(4);
       return;
     }
 
@@ -94,10 +101,10 @@ const Sign = ({ navigation }) => {
       return;
     }
     setFormData({ ...formData, ...guardianStepData });
-    setCurrentStep(3);
+    setCurrentStep(4);
   };
 
-  // 정보 입력 단계 완료
+  // 정보 입력 단계 완료 (step 4 → 5)
   const handleStep3Next = () => {
     if (!DISABLE_SIGN_VALIDATION_FOR_REDESIGN) {
       if (!stepInfoData.username || !stepInfoData.password || !stepInfoData.passwordConfirm) {
@@ -110,19 +117,19 @@ const Sign = ({ navigation }) => {
       }
     }
     setFormData({ ...formData, ...stepInfoData });
-    setCurrentStep(4);
+    setCurrentStep(5);
   };
 
-  // 3단계 완료 (자동 인식)
+  // 학생증 인증 단계 완료 (자동 인식)
   const handleStudentVerificationNext = (data) => {
     setRecognizedData(data);
-    setCurrentStep(isOver14Flow ? 4 : 5);
+    setCurrentStep(isOver14Flow ? 5 : 6);
   };
 
-  // 3단계 직접 입력하기
+  // 학생증 인증 단계 직접 입력하기
   const handleManualInput = () => {
     setRecognizedData(null);
-    setCurrentStep(isOver14Flow ? 4 : 5);
+    setCurrentStep(isOver14Flow ? 5 : 6);
   };
 
   // 4단계 완료 (회원가입 완료)
@@ -194,75 +201,51 @@ const Sign = ({ navigation }) => {
 
   // 단계별 제목
   const getStepTitle = () => {
+    if (currentStep === 0) return '회원가입';
+    if (currentStep === 1) return '동의서 확인';
+
     if (isOver14Flow) {
       switch (currentStep) {
-        case 0:
-          return '회원가입';
-        case 1:
-          return '본인 인증';
-        case 2:
-          return '정보 입력';
-        case 3:
-          return '학생 인증';
+        case 2: return '본인 인증';
+        case 3: return '정보 입력';
         case 4:
-        case 5:
-          return '학생 인증';
-        default:
-          return '회원가입';
+        case 5: return '학생 인증';
+        default: return '회원가입';
       }
     }
 
     switch (currentStep) {
-      case 0:
-        return '회원가입';
-      case 1:
-        return '본인 인증';
-      case 2:
-        return '보호자 본인 인증';
-      case 3:
-        return '정보 입력';
-      case 4:
+      case 2: return '본인 인증';
+      case 3: return '보호자 본인 인증';
+      case 4: return '정보 입력';
       case 5:
-        return '학생 인증';
-      default:
-        return '회원가입';
+      case 6: return '학생 인증';
+      default: return '회원가입';
     }
   };
 
   // 단계별 설명
   const getStepDescription = () => {
+    if (currentStep === 0) return '만 14세 이상 여부를 먼저 선택해주세요.';
+    if (currentStep === 1) return '서비스 이용을 위한 동의 항목을 확인해주세요.';
+
     if (isOver14Flow) {
       switch (currentStep) {
-        case 0:
-          return '만 14세 이상 여부를 먼저 선택해주세요.';
-        case 1:
-          return 'PASS 인증을 통해 본인확인을 진행합니다.';
-        case 2:
-          return '이름/생년월일은 자동 입력되며 수정할 수 없습니다.';
-        case 3:
-          return '학교 게시판을 이용하기 위한 인증 단계입니다.';
-        case 4:
-        case 5:
-          return '학생증과 해당 정보가 일치하는지 확인해주세요';
-        default:
-          return '';
+        case 2: return 'PASS 인증을 통해 본인확인을 진행합니다.';
+        case 3: return '이름/생년월일은 자동 입력되며 수정할 수 없습니다.';
+        case 4: return '학교 게시판을 이용하기 위한 인증 단계입니다.';
+        case 5: return '학생증과 해당 정보가 일치하는지 확인해주세요';
+        default: return '';
       }
     }
 
     switch (currentStep) {
-      case 0:
-        return '만 14세 이상 여부를 먼저 선택해주세요.';
-      case 1:
-        return 'PASS 인증을 통해 본인확인을 진행합니다.';
-      case 2:
-        return '보호자 PASS 인증을 진행합니다.';
-      case 3:
-        return '이름/생년월일은 자동 입력되며 수정할 수 없습니다.';
-      case 4:
-      case 5:
-        return '학교 게시판을 이용하기 위한 인증 단계입니다.';
-      default:
-        return '';
+      case 2: return 'PASS 인증을 통해 본인확인을 진행합니다.';
+      case 3: return '보호자 PASS 인증을 진행합니다.';
+      case 4: return '이름/생년월일은 자동 입력되며 수정할 수 없습니다.';
+      case 5: return '학교 게시판을 이용하기 위한 인증 단계입니다.';
+      case 6: return '학생증과 해당 정보가 일치하는지 확인해주세요';
+      default: return '';
     }
   };
 
@@ -291,6 +274,7 @@ const Sign = ({ navigation }) => {
 
         {/* 단계별 컨텐츠 */}
         <View style={styles.contentSection}>
+          {/* step 0: 연령 선택 */}
           {currentStep === 0 && (
             <SignStepAgeGate
               styles={styles}
@@ -298,7 +282,16 @@ const Sign = ({ navigation }) => {
               onSelect={handleAgeGateSelect}
             />
           )}
+          {/* step 1: 동의서 확인 */}
           {currentStep === 1 && (
+            <SignStepConsent
+              normalize={normalize}
+              selectedAgeGroup={selectedAgeGroup}
+              onChange={setConsentData}
+            />
+          )}
+          {/* step 2: 본인 인증 (공통) */}
+          {currentStep === 2 && (
             <SignStep1
               styles={styles}
               normalize={normalize}
@@ -307,7 +300,8 @@ const Sign = ({ navigation }) => {
               passMode={true}
             />
           )}
-          {currentStep === 2 && (
+          {/* step 3: 정보 입력(over14) / 보호자 본인 인증(under14) */}
+          {currentStep === 3 && (
             isOver14Flow ? (
               <SignStep2
                 styles={styles}
@@ -325,7 +319,8 @@ const Sign = ({ navigation }) => {
               />
             )
           )}
-          {currentStep === 3 && (
+          {/* step 4: 학생 인증(over14) / 정보 입력(under14) */}
+          {currentStep === 4 && (
             isOver14Flow ? (
               <SignStep3
                 styles={styles}
@@ -343,7 +338,8 @@ const Sign = ({ navigation }) => {
               />
             )
           )}
-          {currentStep === 4 && (
+          {/* step 5: 확인(over14) / 학생 인증(under14) */}
+          {currentStep === 5 && (
             isOver14Flow ? (
               <SignStep4
                 styles={styles}
@@ -360,7 +356,8 @@ const Sign = ({ navigation }) => {
               />
             )
           )}
-          {!isOver14Flow && currentStep === 5 && (
+          {/* step 6: 확인(under14) */}
+          {!isOver14Flow && currentStep === 6 && (
             <SignStep4
               styles={styles}
               normalize={normalize}
@@ -378,22 +375,29 @@ const Sign = ({ navigation }) => {
                 <TouchableOpacity
                   style={[
                     styles.nextButton,
-                    currentStep === 0 && !selectedAgeGroup && { backgroundColor: colors.textLight20 },
+                    ((currentStep === 0 && !selectedAgeGroup) ||
+                      (currentStep === 1 && !consentData.allConsented)) && {
+                      backgroundColor: colors.textLight20,
+                    },
                   ]}
                   activeOpacity={0.9}
-                  disabled={currentStep === 0 && !selectedAgeGroup}
+                  disabled={
+                    (currentStep === 0 && !selectedAgeGroup) ||
+                    (currentStep === 1 && !consentData.allConsented)
+                  }
                   onPress={() => {
                     if (currentStep === 0) handleStep0Next();
-                    else if (currentStep === 1) handleStep1Next();
-                    else if (currentStep === 2) handleStep2Next();
-                    else if (currentStep === 3) handleStep3Next();
-                    else if ((isOver14Flow && currentStep === 4) || (!isOver14Flow && currentStep === 5)) {
+                    else if (currentStep === 1) handleConsentNext();
+                    else if (currentStep === 2) handleStep1Next();
+                    else if (currentStep === 3) handleStep2Next();
+                    else if (currentStep === 4) handleStep3Next();
+                    else if ((isOver14Flow && currentStep === 5) || (!isOver14Flow && currentStep === 6)) {
                       handleComplete();
                     }
                   }}
                 >
                   <Text style={styles.nextButtonText}>
-                    {(isOver14Flow && currentStep === 4) || (!isOver14Flow && currentStep === 5)
+                    {(isOver14Flow && currentStep === 5) || (!isOver14Flow && currentStep === 6)
                       ? '회원가입'
                       : '다음 단계'}
                   </Text>
