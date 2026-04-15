@@ -1,65 +1,26 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, ScrollView, KeyboardAvoidingView, Platform, Alert, Keyboard, TouchableWithoutFeedback } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { View, Text, TextInput, ScrollView, KeyboardAvoidingView, Platform, Keyboard, TouchableWithoutFeedback } from 'react-native';
 import { colors } from '../../../styles/colors';
-import { api } from '../../../utils/api';
 
-const SignStep2 = ({ styles, normalize, onChange }) => {
-  const [phoneNumber, setPhoneNumber] = useState('');
-  const [verificationCode, setVerificationCode] = useState('');
-  const [isCodeSent, setIsCodeSent] = useState(false);
-  const [isVerified, setIsVerified] = useState(false);
+const SignStep2 = ({ styles, normalize, verifiedName, verifiedBirthDate, onChange }) => {
+  const [username, setUsername] = useState('');
+  const [password, setPassword] = useState('');
+  const [passwordConfirm, setPasswordConfirm] = useState('');
 
   const notifyChange = (override = {}) => {
     onChange &&
       onChange({
-        phoneNumber,
-        verificationCode,
-        isCodeSent,
-        isVerified,
+        name: verifiedName || '',
+        birthDate: verifiedBirthDate || '',
+        username,
+        password,
+        passwordConfirm,
         ...override,
       });
   };
 
-  const handleSendCode = async () => {
-    if (!phoneNumber) {
-      Alert.alert('알림', '전화번호를 입력해주세요.');
-      return;
-    }
-
-    try {
-      await api.post('/api/auth/send-verification', { phone: phoneNumber });
-      setIsCodeSent(true);
-      notifyChange({ isCodeSent: true });
-      Alert.alert('알림', '인증 코드가 발송되었습니다.');
-    } catch (error) {
-      console.error(error);
-      Alert.alert('오류', error.response?.data?.message || '인증 코드 발송 중 오류가 발생했습니다.');
-    }
-  };
-
-  const handleVerifyCode = async () => {
-    if (!phoneNumber || !verificationCode) {
-      Alert.alert('알림', '전화번호와 인증번호를 모두 입력해주세요.');
-      return;
-    }
-
-    try {
-      await api.post('/api/auth/verify-phone', {
-        phone: phoneNumber,
-        verificationCode,
-      });
-      setIsVerified(true);
-      notifyChange({ isVerified: true });
-      Alert.alert('알림', '전화번호 인증이 완료되었습니다.');
-    } catch (error) {
-      console.error(error);
-      Alert.alert('오류', error.response?.data?.message || '인증번호 확인 중 오류가 발생했습니다.');
-    }
-  };
-
   return (
-    <SafeAreaView style={{ flex: 1 }}>
+    <View style={{ flex: 1 }}>
       <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
         <KeyboardAvoidingView
           style={[styles.content, { flex: 1 }]}
@@ -69,55 +30,82 @@ const SignStep2 = ({ styles, normalize, onChange }) => {
           <ScrollView
             contentContainerStyle={{
               flexGrow: 1,
-              paddingBottom: normalize(40),
+              paddingBottom: normalize(10),
             }}
             showsVerticalScrollIndicator={false}
             keyboardShouldPersistTaps="handled"
           >
-      {/* 전화번호 */}
-      <Text style={styles.inputLabel}>전화번호</Text>
+      {/* 이름 */}
+      <Text style={styles.inputLabel}>이름</Text>
       <View style={styles.inputWrapper}>
-        <View style={styles.inputWithButton}>
-          <TextInput
-            style={[styles.input, styles.inputFlex]}
-            value={phoneNumber}
-            onChangeText={(text) => {
-              setPhoneNumber(text);
-              notifyChange({ phoneNumber: text });
-            }}
-            keyboardType="number-pad"
-          />
-          <TouchableOpacity style={styles.verifyButton} onPress={handleSendCode}>
-            <Text style={styles.verifyButtonText}>인증</Text>
-          </TouchableOpacity>
-        </View>
+        <TextInput
+          style={[styles.input, styles.inputReadonly]}
+          value={verifiedName || ''}
+          editable={false}
+          placeholder="본인인증 후 자동 입력"
+          placeholderTextColor={colors.textSecondary}
+        />
       </View>
 
-      {/* 인증번호 */}
-      <Text style={styles.inputLabel}>인증번호</Text>
+      {/* 생년월일 */}
+      <Text style={styles.inputLabel}>생년월일</Text>
+      <View style={styles.inputWrapper}>
+        <TextInput
+          style={[styles.input, styles.inputReadonly]}
+          value={verifiedBirthDate || ''}
+          editable={false}
+          placeholder="본인인증 후 자동 입력"
+          placeholderTextColor={colors.textSecondary}
+        />
+      </View>
+
+      {/* 아이디 */}
+      <Text style={styles.inputLabel}>아이디</Text>
       <View style={styles.inputWrapper}>
         <TextInput
           style={styles.input}
-          value={verificationCode}
+          value={username}
           onChangeText={(text) => {
-            setVerificationCode(text);
-            notifyChange({ verificationCode: text });
+            setUsername(text);
+            notifyChange({ username: text });
           }}
-          keyboardType="number-pad"
-          editable={isCodeSent}
+          autoCapitalize="none"
         />
       </View>
-      {isCodeSent && (
-        <View style={styles.inputWrapper}>
-          <TouchableOpacity style={styles.verifyButton} onPress={handleVerifyCode}>
-            <Text style={styles.verifyButtonText}>인증 확인</Text>
-          </TouchableOpacity>
-        </View>
-      )}
+
+      {/* 비밀번호 */}
+      <Text style={styles.inputLabel}>비밀번호</Text>
+      <View style={styles.inputWrapper}>
+        <TextInput
+          style={styles.input}
+          value={password}
+          onChangeText={(text) => {
+            setPassword(text);
+            notifyChange({ password: text });
+          }}
+          secureTextEntry
+          autoCapitalize="none"
+        />
+      </View>
+
+      {/* 비밀번호 확인 */}
+      <Text style={styles.inputLabel}>비밀번호 확인</Text>
+      <View style={styles.inputWrapper}>
+        <TextInput
+          style={styles.input}
+          value={passwordConfirm}
+          onChangeText={(text) => {
+            setPasswordConfirm(text);
+            notifyChange({ passwordConfirm: text });
+          }}
+          secureTextEntry
+          autoCapitalize="none"
+        />
+      </View>
           </ScrollView>
         </KeyboardAvoidingView>
       </TouchableWithoutFeedback>
-    </SafeAreaView>
+    </View>
   );
 };
 
