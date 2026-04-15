@@ -18,6 +18,7 @@ import { createMessageStyles, getNormalize } from '../../styles/message.style';
 import { colors, fonts, fontSizes } from '../../styles/colors';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import Feather from '@expo/vector-icons/Feather';
+import { StackActions } from '@react-navigation/native';
 import MessageTabIcon from '../../assets/Group 166.svg';
 import { api } from '../../utils/api';
 import * as socketManager from './socketManager';
@@ -870,7 +871,9 @@ const Message = ({ navigation }) => {
       <MainFooter
         activeTab="message"
         onTabPress={(tab) => {
-          if (tab === 'board') navigation.navigate('Main');
+          if (tab === 'board') {
+            navigation.dispatch(StackActions.popToTop());
+          }
         }}
       />
     </SafeAreaView>

@@ -33,6 +33,7 @@ import { createTimerStyles, getNormalize } from '../../styles/timer';
 import { colors, fonts } from '../../styles/colors';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import Feather from '@expo/vector-icons/Feather';
+import { StackActions } from '@react-navigation/native';
 import MessageTabIcon from '../../assets/Group 166.svg';
 import ViewShot from 'react-native-view-shot';
 import * as MediaLibrary from 'expo-media-library';
@@ -1311,10 +1312,10 @@ const Timer = ({ navigation }) => (
     <MainFooter
       activeTab="timer"
       onTabPress={(tab) => {
-        if (tab === 'board') navigation.navigate('Main');
-        if (tab === 'message') navigation.navigate('Message');
-        if (tab === 'school') navigation.navigate('SchoolBoardAll');
-        if (tab === 'mypage') navigation.navigate('MyPage');
+        if (tab === 'board') navigation.dispatch(StackActions.popToTop());
+        if (tab === 'message') navigation.dispatch(StackActions.replace('Message'));
+        if (tab === 'school') navigation.dispatch(StackActions.replace('SchoolBoardAll'));
+        if (tab === 'mypage') navigation.dispatch(StackActions.replace('MyPage'));
       }}
     />
   </SafeAreaView>
