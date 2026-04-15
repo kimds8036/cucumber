@@ -18,6 +18,20 @@ export function NotificationProvider({ children }) {
   const { showToast, activeChatRoomId, isMessageTab } = useToast();
   const [hasUnread, setHasUnread] = useState(false);
   const [initialized, setInitialized] = useState(false);
+  const [bellSuppressed, setBellSuppressed] = useState(false);
+  const [lastBellSeenAt, setLastBellSeenAt] = useState(null);
+
+  const parseDateMs = (value) => {
+    if (!value) return 0;
+    const t = new Date(value).getTime();
+    return Number.isFinite(t) ? t : 0;
+  };
+
+  const markNotificationsSeenForBell = useCallback(() => {
+    setBellSuppressed(true);
+    setLastBellSeenAt(new Date().toISOString());
+    setHasUnread(false);
+  }, []);
 
   const refreshHasUnread = useCallback(async () => {
     try {
@@ -32,14 +46,27 @@ export function NotificationProvider({ children }) {
             n.relatedType !== 'message_room' && n.relatedType !== 'dm_room',
         );
       const anyUnread = filtered.some((n) => !n.isRead);
-      setHasUnread(anyUnread);
+      const latestCreatedAtMs = filtered.reduce((max, n) => {
+        const t = parseDateMs(n?.createdAt);
+        return t > max ? t : max;
+      }, 0);
+      const lastSeenMs = parseDateMs(lastBellSeenAt);
+      const hasNewSinceBellSeen =
+        bellSuppressed && latestCreatedAtMs > 0 && latestCreatedAtMs > lastSeenMs;
+
+      if (hasNewSinceBellSeen) {
+        setBellSuppressed(false);
+      }
+
+      const shouldShowBell = anyUnread && (!bellSuppressed || hasNewSinceBellSeen);
+      setHasUnread(shouldShowBell);
       setInitialized(true);
     } catch (error) {
       console.error('[NotificationContext] hasUnread 조회 실패:', error);
-      setHasUnread(false);
+      // 조회 실패 시 기존 표시 상태를 유지해서, 임시 네트워크 오류로 점이 갑자기 바뀌지 않게 한다.
       setInitialized(true);
     }
-  }, []);
+  }, [bellSuppressed, lastBellSeenAt]);
 
   useEffect(() => {
     refreshHasUnread();
@@ -69,6 +96,7 @@ export function NotificationProvider({ children }) {
         payload?.relatedType === 'message_room' ||
         payload?.relatedType === 'dm_room';
       if (!isChatNotification) {
+        setBellSuppressed(false);
         setHasUnread(true);
       }
       const titleText = String(payload?.title ?? '').trim();
@@ -172,6 +200,7 @@ export function NotificationProvider({ children }) {
     initialized,
     refreshHasUnread,
     setHasUnread,
+    markNotificationsSeenForBell,
   };
 
   return (

@@ -17,6 +17,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
+import { StackActions } from '@react-navigation/native';
 import SubHeader from '../frame/subHeader';
 import { createWriteStyles, getNormalize } from '../../styles/board.style';
 import { api } from '../../utils/api';
@@ -248,9 +249,9 @@ const BoardWrite = ({ navigation, route }) => {
           text: '확인',
           onPress: () => {
             if (boardContext === 'school') {
-              navigation.navigate('SchoolBoardAll');
+              navigation.dispatch(StackActions.replace('SchoolBoardAll'));
             } else {
-              navigation.navigate('Main');
+              navigation.dispatch(StackActions.popToTop());
             }
           },
         },
