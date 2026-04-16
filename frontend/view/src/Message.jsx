@@ -23,6 +23,7 @@ import MessageTabIcon from '../../assets/Group 166.svg';
 import { api } from '../../utils/api';
 import * as socketManager from './socketManager';
 import { useToast } from '../../context/ToastContext';
+import { useNotification } from '../../context/NotificationContext';
 
 // DB에 UTC로 저장된 날짜 문자열을 기기 로컬 시간대로 변환해서 파싱
 function parseUtcToLocal(createdAt) {
@@ -165,25 +166,45 @@ const SwipeableRow = ({ children, onDelete }) => {
   const { width: windowWidth } = useWindowDimensions();
   const [containerWidth, setContainerWidth] = useState(windowWidth);
   const translateX = useRef(new Animated.Value(0)).current;
+  const openedRef = useRef(false);
+  const animateTo = useCallback((toValue) => {
+    translateX.stopAnimation((current) => {
+      if (Math.abs(current - toValue) < 0.5) {
+        openedRef.current = toValue === -60;
+        return;
+      }
+      Animated.spring(translateX, {
+        toValue,
+        useNativeDriver: true,
+        bounciness: 0,
+      }).start(() => {
+        openedRef.current = toValue === -60;
+      });
+    });
+  }, [translateX]);
 
   const panResponder = useRef(
     PanResponder.create({
       onMoveShouldSetPanResponder: (_, g) => Math.abs(g.dx) > 5 && Math.abs(g.dy) < 20,
       onPanResponderMove: (_, g) => {
-        if (g.dx < 0) translateX.setValue(Math.max(g.dx, -60));
+        if (g.dx < 0) {
+          const base = openedRef.current ? -60 : 0;
+          translateX.setValue(Math.max(base + g.dx, -60));
+        }
       },
       onPanResponderRelease: (_, g) => {
-        if (g.dx < -30) {
-          Animated.spring(translateX, { toValue: -60, useNativeDriver: true, bounciness: 0 }).start();
+        const shouldOpen = g.dx < -30 || (openedRef.current && g.dx <= 0);
+        if (shouldOpen) {
+          animateTo(-60);
         } else {
-          Animated.spring(translateX, { toValue: 0, useNativeDriver: true }).start();
+          animateTo(0);
         }
       },
     })
   ).current;
 
   const closeSwipe = () => {
-    Animated.spring(translateX, { toValue: 0, useNativeDriver: true }).start();
+    animateTo(0);
   };
 
   return (
@@ -244,6 +265,27 @@ export function MessageContent({ navigation }) {
   const [refreshingNote, setRefreshingNote] = useState(false);
   const [refreshingMail, setRefreshingMail] = useState(false);
   const { setIsMessageTab } = useToast();
+  const { refreshHasUnread } = useNotification();
+  const confirmDelete = useCallback(
+    ({ title, message, onConfirm }) => {
+      Alert.alert(
+        title,
+        message,
+        [
+          { text: '취소', style: 'cancel' },
+          {
+            text: '삭제',
+            style: 'destructive',
+            onPress: () => {
+              onConfirm?.();
+            },
+          },
+        ],
+        { cancelable: true },
+      );
+    },
+    [],
+  );
 
   const handleMessageTypeChange = (type) => {
     setMessageType(type);
@@ -633,53 +675,71 @@ export function MessageContent({ navigation }) {
                       : item.profileColorIndex % ICON_COLORS.length;
                   const iconColor = getIconColorByIndex(colorIdx);
                   return (
-                    <TouchableOpacity
+                    <SwipeableRow
                       key={`dm-${item.id}`}
-                      style={styles.listItem}
-                      activeOpacity={0.7}
-                      onPress={() => {
-                        setNoteRooms((prev) =>
-                          prev.map((r) =>
-                            r.id === item.id && r.type === 'dm'
-                              ? { ...r, unreadCount: 0 }
-                              : r
-                          )
-                        );
-                        navigation?.navigate('DMChat', {
-                          roomId: item.id,
-                          friend: {
-                            id: item.other_user_id,
-                            name: item.other_user_name || item.name,
-                            schoolName: item.other_user_school_name || '',
-                            colorIndex: colorIdx,
+                      onDelete={async () => {
+                        confirmDelete({
+                          title: 'DM 대화 삭제',
+                          message:
+                            '대화 내용을 삭제하시겠습니까?\n삭제하면 내 목록에서만 사라지고, 이후 새 메시지는 새 대화처럼 표시됩니다.',
+                          onConfirm: async () => {
+                            try {
+                              await api.delete(`/api/dm/rooms/${item.id}`);
+                              setNoteRooms((prev) => prev.filter((r) => !(r.type === 'dm' && r.id === item.id)));
+                            } catch (e) {
+                              Alert.alert('오류', 'DM 삭제에 실패했습니다.');
+                            }
                           },
                         });
                       }}
                     >
-                      <View style={styles.listItemLeft}>
-                        <View style={[styles.profileCircle, { backgroundColor: colors.primary }]}>
-                          <MessageTabIcon
-                            width={normalize(22)}
-                            height={normalize(22)}
-                            color={iconColor}
-                          />
-                        </View>
-                        <View style={styles.listItemBody}>
-                          <Text style={styles.listItemName}>{item.name}</Text>
-                          <Text style={styles.listItemContent} numberOfLines={1}>
-                            {item.content}
-                          </Text>
-                        </View>
-                      </View>
-                      <View style={styles.listItemRight}>
-                        <Text style={styles.listItemTime}>{item.time}</Text>
-                        {item.unreadCount > 0 ? (
-                          <View style={styles.unreadBadge}>
-                            <Text style={styles.unreadBadgeText}>{item.unreadCount}</Text>
+                      <TouchableOpacity
+                        style={styles.listItem}
+                        activeOpacity={0.7}
+                        onPress={() => {
+                          setNoteRooms((prev) =>
+                            prev.map((r) =>
+                              r.id === item.id && r.type === 'dm'
+                                ? { ...r, unreadCount: 0 }
+                                : r
+                            )
+                          );
+                          navigation?.navigate('DMChat', {
+                            roomId: item.id,
+                            friend: {
+                              id: item.other_user_id,
+                              name: item.other_user_name || item.name,
+                              schoolName: item.other_user_school_name || '',
+                              colorIndex: colorIdx,
+                            },
+                          });
+                        }}
+                      >
+                        <View style={styles.listItemLeft}>
+                          <View style={[styles.profileCircle, { backgroundColor: colors.primary }]}>
+                            <MessageTabIcon
+                              width={normalize(22)}
+                              height={normalize(22)}
+                              color={iconColor}
+                            />
                           </View>
-                        ) : null}
-                      </View>
-                    </TouchableOpacity>
+                          <View style={styles.listItemBody}>
+                            <Text style={styles.listItemName}>{item.name}</Text>
+                            <Text style={styles.listItemContent} numberOfLines={1}>
+                              {item.content}
+                            </Text>
+                          </View>
+                        </View>
+                        <View style={styles.listItemRight}>
+                          <Text style={styles.listItemTime}>{item.time}</Text>
+                          {item.unreadCount > 0 ? (
+                            <View style={styles.unreadBadge}>
+                              <Text style={styles.unreadBadgeText}>{item.unreadCount}</Text>
+                            </View>
+                          ) : null}
+                        </View>
+                      </TouchableOpacity>
+                    </SwipeableRow>
                   );
                 }
 
@@ -688,12 +748,19 @@ export function MessageContent({ navigation }) {
                   <SwipeableRow
                     key={`note-${item.id}`}
                     onDelete={async () => {
-                      try {
-                        await api.delete(`/api/messages/rooms/${item.id}`);
-                        setNoteRooms((prev) => prev.filter((r) => r.id !== item.id));
-                      } catch (e) {
-                        Alert.alert('오류', '삭제에 실패했습니다.');
-                      }
+                      confirmDelete({
+                        title: '쪽지 삭제',
+                        message:
+                          '대화 내용을 삭제하시겠습니까?\n삭제하면 내 목록에서만 사라지고, 이후 새 메시지는 새 대화처럼 표시됩니다.',
+                        onConfirm: async () => {
+                          try {
+                            await api.delete(`/api/messages/rooms/${item.id}`);
+                            setNoteRooms((prev) => prev.filter((r) => r.id !== item.id));
+                          } catch (e) {
+                            Alert.alert('오류', '삭제에 실패했습니다.');
+                          }
+                        },
+                      });
                     }}
                   >
                     <TouchableOpacity
@@ -773,12 +840,23 @@ export function MessageContent({ navigation }) {
                   <SwipeableRow
                     key={`mail-${item.id}-${item.isReceived ? 'r' : 's'}`}
                     onDelete={async () => {
-                      try {
-                        await api.delete(`/api/mails/personal/${item.id}`);
-                        setMails((prev) => prev.filter((m) => m.id !== item.id));
-                      } catch (e) {
-                        Alert.alert('오류', '우편 삭제에 실패했습니다.');
-                      }
+                      confirmDelete({
+                        title: '개인 우편 삭제',
+                        message:
+                          '대화 내용을 삭제하시겠습니까?\n삭제하면 내 목록에서만 사라지고, 이후 새 우편은 새 대화처럼 표시됩니다.',
+                        onConfirm: async () => {
+                          if (!item.roomId) {
+                            Alert.alert('오류', '우편 룸 정보를 찾을 수 없습니다.');
+                            return;
+                          }
+                          try {
+                            await api.delete(`/api/mails/personal/rooms/${item.roomId}`);
+                            setMails((prev) => prev.filter((m) => m.roomId !== item.roomId));
+                          } catch (e) {
+                            Alert.alert('오류', '우편 삭제에 실패했습니다.');
+                          }
+                        },
+                      });
                     }}
                   >
                     <TouchableOpacity
@@ -786,6 +864,20 @@ export function MessageContent({ navigation }) {
                       activeOpacity={0.7}
                       onPress={async () => {
                         const mailId = item.id;
+                        const rawMail = item.raw || item;
+                        const threadRootId =
+                          rawMail.root_mail_id ?? rawMail.thread_key ?? rawMail.id ?? mailId;
+
+                        // 알림 센터를 거치지 않고도 personal_mail 스레드 관련 알림을 즉시 읽음 처리
+                        try {
+                          await api.post('/api/notifications/read-personal-mail-thread', {
+                            threadRootId,
+                          });
+                        } catch {
+                          // ignore
+                        } finally {
+                          refreshHasUnread?.();
+                        }
                         // 1️⃣ Optimistic UI: 목록에서 즉시 빨간 숫자 제거 + 아이콘 open 상태로
                         setMails((prev) =>
                           prev.map((m) =>

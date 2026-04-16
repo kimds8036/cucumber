@@ -10,6 +10,55 @@ import { emitNewMessage, emitReadReceipt, isUserInRoom } from '../socketServer.j
 import { enqueueNotification } from '../utils/notificationWorker.js';
 
 const router = express.Router();
+let ensureDmSoftDeleteColumnsPromise = null;
+
+async function addColumnIfMissing(tableName, columnName, definitionSql) {
+  const [rows] = await pool.execute(
+    `SELECT COUNT(*) AS cnt
+     FROM INFORMATION_SCHEMA.COLUMNS
+     WHERE TABLE_SCHEMA = DATABASE()
+       AND TABLE_NAME = ?
+       AND COLUMN_NAME = ?`,
+    [tableName, columnName],
+  );
+  const exists = Number(rows[0]?.cnt ?? 0) > 0;
+  if (!exists) {
+    await pool.execute(
+      `ALTER TABLE ${tableName} ADD COLUMN ${columnName} ${definitionSql}`,
+    );
+  }
+}
+
+async function ensureDmSoftDeleteColumns() {
+  if (!ensureDmSoftDeleteColumnsPromise) {
+    ensureDmSoftDeleteColumnsPromise = (async () => {
+      await addColumnIfMissing(
+        'dm_rooms',
+        'is_deleted_by_user1',
+        'BOOLEAN DEFAULT FALSE',
+      );
+      await addColumnIfMissing(
+        'dm_rooms',
+        'is_deleted_by_user2',
+        'BOOLEAN DEFAULT FALSE',
+      );
+      await addColumnIfMissing(
+        'dm_rooms',
+        'deleted_at_msg_id_user1',
+        'INT DEFAULT NULL',
+      );
+      await addColumnIfMissing(
+        'dm_rooms',
+        'deleted_at_msg_id_user2',
+        'INT DEFAULT NULL',
+      );
+    })().catch((error) => {
+      ensureDmSoftDeleteColumnsPromise = null;
+      throw error;
+    });
+  }
+  return ensureDmSoftDeleteColumnsPromise;
+}
 
 function orderedPair(a, b) {
   const x = Number(a);
@@ -22,6 +71,7 @@ function orderedPair(a, b) {
 // ─────────────────────────────────────────────────────
 router.get('/rooms', authenticate, async (req, res) => {
   try {
+    await ensureDmSoftDeleteColumns();
     const userId = req.user.userId;
     const safePage = Math.max(1, parseInt(req.query.page, 10) || 1);
     const safeLimit = Math.min(
@@ -52,7 +102,11 @@ router.get('/rooms', authenticate, async (req, res) => {
       FROM dm_rooms dr
       INNER JOIN users u ON u.id = (CASE WHEN dr.user1_id = ? THEN dr.user2_id ELSE dr.user1_id END)
       LEFT JOIN schools s ON s.school_id = u.school_id
-      WHERE (dr.user1_id = ? OR dr.user2_id = ?)
+      WHERE (
+          (dr.user1_id = ? AND (dr.is_deleted_by_user1 IS NULL OR dr.is_deleted_by_user1 = FALSE))
+          OR
+          (dr.user2_id = ? AND (dr.is_deleted_by_user2 IS NULL OR dr.is_deleted_by_user2 = FALSE))
+        )
         AND u.is_deleted = FALSE
       ORDER BY COALESCE(dr.last_message_at, dr.created_at) DESC
       LIMIT ${safeLimit} OFFSET ${safeOffset}`,
@@ -61,7 +115,11 @@ router.get('/rooms', authenticate, async (req, res) => {
 
     const [countRows] = await pool.execute(
       `SELECT COUNT(*) AS total FROM dm_rooms
-       WHERE user1_id = ? OR user2_id = ?`,
+       WHERE (
+         (user1_id = ? AND (is_deleted_by_user1 IS NULL OR is_deleted_by_user1 = FALSE))
+         OR
+         (user2_id = ? AND (is_deleted_by_user2 IS NULL OR is_deleted_by_user2 = FALSE))
+       )`,
       [userId, userId],
     );
     const total = Number(countRows[0]?.total ?? 0);
@@ -180,13 +238,18 @@ router.post('/rooms', authenticate, async (req, res) => {
 // ─────────────────────────────────────────────────────
 router.get('/unread-count', authenticate, async (req, res) => {
   try {
+    await ensureDmSoftDeleteColumns();
     const userId = req.user.userId;
 
     const [result] = await pool.execute(
       `SELECT COUNT(*) AS total_unread
        FROM dm_messages m
        INNER JOIN dm_rooms r ON m.room_id = r.id
-       WHERE (r.user1_id = ? OR r.user2_id = ?)
+       WHERE (
+         (r.user1_id = ? AND (r.is_deleted_by_user1 IS NULL OR r.is_deleted_by_user1 = FALSE))
+         OR
+         (r.user2_id = ? AND (r.is_deleted_by_user2 IS NULL OR r.is_deleted_by_user2 = FALSE))
+       )
          AND m.sender_id != ?
          AND m.is_read = FALSE`,
       [userId, userId, userId],
@@ -210,6 +273,7 @@ router.get('/unread-count', authenticate, async (req, res) => {
 // ─────────────────────────────────────────────────────
 router.get('/rooms/:roomId', authenticate, async (req, res) => {
   try {
+    await ensureDmSoftDeleteColumns();
     const userId = req.user.userId;
     const { roomId } = req.params;
     const { before, limit = 30 } = req.query;
@@ -217,7 +281,8 @@ router.get('/rooms/:roomId', authenticate, async (req, res) => {
     const fetchLimit = limitNum + 1;
 
     const [rooms] = await pool.execute(
-      `SELECT id, user1_id, user2_id, last_message, last_message_at, created_at
+      `SELECT id, user1_id, user2_id, last_message, last_message_at, created_at,
+              deleted_at_msg_id_user1, deleted_at_msg_id_user2
        FROM dm_rooms
        WHERE id = ? AND (user1_id = ? OR user2_id = ?)`,
       [roomId, userId, userId],
@@ -228,6 +293,24 @@ router.get('/rooms/:roomId', authenticate, async (req, res) => {
         success: false,
         message: '대화방을 찾을 수 없거나 접근 권한이 없습니다.',
       });
+    }
+
+    const room = rooms[0];
+    const isUser1 = room.user1_id === userId;
+    const deletedAtMsgId = isUser1
+      ? (room.deleted_at_msg_id_user1 ?? 0)
+      : (room.deleted_at_msg_id_user2 ?? 0);
+
+    if (isUser1 && room.deleted_at_msg_id_user1 !== null) {
+      await pool.execute(
+        'UPDATE dm_rooms SET deleted_at_msg_id_user1 = NULL WHERE id = ?',
+        [roomId],
+      );
+    } else if (!isUser1 && room.deleted_at_msg_id_user2 !== null) {
+      await pool.execute(
+        'UPDATE dm_rooms SET deleted_at_msg_id_user2 = NULL WHERE id = ?',
+        [roomId],
+      );
     }
 
     const beforeParsed =
@@ -259,10 +342,10 @@ router.get('/rooms/:roomId', authenticate, async (req, res) => {
              LEFT JOIN users u ON m.sender_id = u.id
              LEFT JOIN dm_messages pm ON m.parent_message_id = pm.id
              LEFT JOIN users pu ON pm.sender_id = pu.id
-             WHERE m.room_id = ? AND m.id < ?
+             WHERE m.room_id = ? AND m.id > ? AND m.id < ?
              ORDER BY m.id DESC
              LIMIT ${fetchLimit}`;
-      params = [roomIdNum, safeBefore];
+      params = [roomIdNum, Number(deletedAtMsgId) || 0, safeBefore];
     } else {
       sql = `SELECT m.id, m.room_id, m.sender_id, m.parent_message_id, m.content, m.is_read, m.created_at,
                     pm.content AS parent_content, pu.name AS parent_sender_name,
@@ -272,10 +355,10 @@ router.get('/rooms/:roomId', authenticate, async (req, res) => {
              LEFT JOIN users u ON m.sender_id = u.id
              LEFT JOIN dm_messages pm ON m.parent_message_id = pm.id
              LEFT JOIN users pu ON pm.sender_id = pu.id
-             WHERE m.room_id = ?
+             WHERE m.room_id = ? AND m.id > ?
              ORDER BY m.id DESC
              LIMIT ${fetchLimit}`;
-      params = [roomIdNum];
+      params = [roomIdNum, Number(deletedAtMsgId) || 0];
     }
 
     const [messages] = await pool.execute(sql, params);
@@ -322,6 +405,7 @@ router.post(
   upload.array('images', 5),
   async (req, res) => {
     try {
+      await ensureDmSoftDeleteColumns();
       const userId = req.user.userId;
       const { roomId } = req.params;
       const { content, clientId, parent_message_id } = req.body;
@@ -394,8 +478,13 @@ router.post(
 
       const preview = (trimmed ?? '사진').substring(0, 500);
       await pool.execute(
-        `UPDATE dm_rooms SET last_message = ?, last_message_at = ? WHERE id = ?`,
-        [preview, now, roomId],
+        `UPDATE dm_rooms
+         SET last_message = ?,
+             last_message_at = ?,
+             is_deleted_by_user1 = IF(user2_id = ?, FALSE, is_deleted_by_user1),
+             is_deleted_by_user2 = IF(user1_id = ?, FALSE, is_deleted_by_user2)
+         WHERE id = ?`,
+        [preview, now, userId, userId, roomId],
       );
 
       const [rows] = await pool.execute(
@@ -543,6 +632,62 @@ router.delete('/messages/:messageId', authenticate, async (req, res) => {
     res.status(500).json({
       success: false,
       message: '메시지 삭제 중 오류가 발생했습니다.',
+    });
+  }
+});
+
+// ─────────────────────────────────────────────────────
+// DELETE /api/dm/rooms/:roomId — 내 목록에서 DM 방 숨김(소프트 삭제)
+// ─────────────────────────────────────────────────────
+router.delete('/rooms/:roomId', authenticate, async (req, res) => {
+  try {
+    await ensureDmSoftDeleteColumns();
+    const userId = req.user.userId;
+    const { roomId } = req.params;
+
+    const [rooms] = await pool.execute(
+      `SELECT id FROM dm_rooms WHERE id = ? AND (user1_id = ? OR user2_id = ?)`,
+      [roomId, userId, userId],
+    );
+    if (rooms.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: '대화방을 찾을 수 없거나 접근 권한이 없습니다.',
+      });
+    }
+
+    const [lastMsg] = await pool.execute(
+      'SELECT MAX(id) AS last_id FROM dm_messages WHERE room_id = ?',
+      [roomId],
+    );
+    const lastMsgId = Number(lastMsg[0]?.last_id ?? 0);
+
+    await pool.execute(
+      `UPDATE dm_rooms
+       SET is_deleted_by_user1 = IF(user1_id = ?, TRUE, is_deleted_by_user1),
+           is_deleted_by_user2 = IF(user2_id = ?, TRUE, is_deleted_by_user2),
+           deleted_at_msg_id_user1 = IF(user1_id = ?, ?, deleted_at_msg_id_user1),
+           deleted_at_msg_id_user2 = IF(user2_id = ?, ?, deleted_at_msg_id_user2)
+       WHERE id = ? AND (user1_id = ? OR user2_id = ?)`,
+      [
+        userId,
+        userId,
+        userId,
+        lastMsgId,
+        userId,
+        lastMsgId,
+        roomId,
+        userId,
+        userId,
+      ],
+    );
+
+    res.json({ success: true, message: 'DM 대화방이 삭제되었습니다.' });
+  } catch (error) {
+    console.error('[DM] DELETE /rooms/:roomId 오류:', error);
+    res.status(500).json({
+      success: false,
+      message: '대화방 삭제 중 오류가 발생했습니다.',
     });
   }
 });

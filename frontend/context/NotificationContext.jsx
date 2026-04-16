@@ -181,6 +181,12 @@ export function NotificationProvider({ children }) {
     socket.on('friend_study_finished_summary', studyFinishedSummaryHandler);
     socket.on('new_message', newMessageHandler);
 
+    const notificationReadHandler = () => {
+      // 읽음 처리로 인해 헤더 빨간 점 상태가 바뀔 수 있으므로 즉시 재계산
+      refreshHasUnread();
+    };
+    socket.on('notification_read', notificationReadHandler);
+
     const onConnect = () => {
       refreshHasUnread();
     };
@@ -191,6 +197,7 @@ export function NotificationProvider({ children }) {
       socket.off('friend_poke', pokeHandler);
       socket.off('friend_study_finished_summary', studyFinishedSummaryHandler);
       socket.off('new_message', newMessageHandler);
+      socket.off('notification_read', notificationReadHandler);
       socket.off('connect', onConnect);
     };
   }, [socket, refreshHasUnread, showToast, activeChatRoomId, isMessageTab]);

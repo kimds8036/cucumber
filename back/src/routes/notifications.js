@@ -1,9 +1,22 @@
 import express from 'express';
 import pool from '../config/database.js';
 import { authenticate } from '../middleware/auth.js';
-import { emitNotification } from '../socketServer.js';
+import { emitNotification, getIO } from '../socketServer.js';
 
 const router = express.Router();
+
+function emitNotificationReadToUser(userId, payload = {}) {
+  try {
+    const io = getIO?.();
+    if (!io) return;
+    io.to(`user:${userId}`).emit('notification_read', {
+      type: 'notification_read',
+      ...payload,
+    });
+  } catch {
+    // no-op
+  }
+}
 
 // 클라이언트에서 직접 알림 한 건 기록 (타이머 요약 등)
 router.post('/', authenticate, async (req, res) => {
@@ -147,6 +160,8 @@ router.post('/:id/read', authenticate, async (req, res) => {
       message: '알림을 읽음으로 표시했습니다.',
       data: { updatedCount: result.affectedRows },
     });
+
+    emitNotificationReadToUser(userId, { relatedType: null, relatedId: Number(id) });
   } catch (error) {
     console.error('알림 개별 읽음 처리 오류:', error);
     res.status(500).json({
@@ -220,6 +235,8 @@ router.post('/read-batch', authenticate, async (req, res) => {
       message: '여러 알림을 읽음으로 표시했습니다.',
       data: { updatedCount: result.affectedRows },
     });
+
+    emitNotificationReadToUser(userId, { relatedType: null, relatedId: null });
   } catch (error) {
     console.error('알림 배치 읽음 처리 오류:', error);
     res.status(500).json({
@@ -309,6 +326,8 @@ router.post('/read-by-related', authenticate, async (req, res) => {
       message: '관련 리소스의 알림을 모두 읽음으로 표시했습니다.',
       data: { updatedCount: result.affectedRows },
     });
+
+    emitNotificationReadToUser(userId, { relatedType, relatedId });
   } catch (error) {
     console.error('알림 read-by-related 처리 오류:', error);
     res.status(500).json({
@@ -344,11 +363,59 @@ router.post('/mark-all-read', authenticate, async (req, res) => {
       message: '모든 알림을 읽음으로 표시했습니다.',
       data: { updatedCount: result.affectedRows },
     });
+
+    emitNotificationReadToUser(userId, { relatedType: null, relatedId: null });
   } catch (error) {
     console.error('알림 모두 읽음 처리 오류:', error);
     res.status(500).json({
       success: false,
       message: '알림 읽음 처리 중 오류가 발생했습니다.',
+    });
+  }
+});
+
+// 개인 우편 스레드(= root mail 기준) 관련 알림을 일괄 읽음 처리
+// - relatedType: personal_mail
+// - 관련 relatedId는 personal_mails에서 root_mail_id 또는 id로 매칭
+router.post('/read-personal-mail-thread', authenticate, async (req, res) => {
+  try {
+    const userId = req.user.userId;
+    const { threadRootId } = req.body || {};
+    const rootId = Number(threadRootId);
+
+    if (!Number.isFinite(rootId)) {
+      return res.status(400).json({
+        success: false,
+        message: 'threadRootId를 올바르게 전달해주세요.',
+      });
+    }
+
+    const [result] = await pool.execute(
+      `UPDATE notifications
+       SET is_read = TRUE, read_at = NOW()
+       WHERE user_id = ?
+         AND related_type = 'personal_mail'
+         AND is_read = FALSE
+         AND related_id IN (
+           SELECT pm2.id
+           FROM personal_mails pm2
+           WHERE COALESCE(pm2.root_mail_id, pm2.id) = ?
+         )`,
+      [userId, rootId],
+    );
+
+    res.json({
+      success: true,
+      message: '개인 우편 스레드 관련 알림을 읽음 처리했습니다.',
+      data: { updatedCount: result.affectedRows },
+    });
+
+    emitNotificationReadToUser(userId, { relatedType: 'personal_mail', relatedId: rootId });
+  } catch (error) {
+    console.error('알림 개인 우편 스레드 읽음 처리 오류:', error);
+    res.status(500).json({
+      success: false,
+      message: '개인 우편 스레드 알림 읽음 처리 중 오류가 발생했습니다.',
     });
   }
 });
