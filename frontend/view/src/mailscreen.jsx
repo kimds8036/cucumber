@@ -15,6 +15,7 @@ import { colors, PROFILE_COLORS } from '../../styles/colors';
 import { getNormalize } from '../../styles/frame.style';
 import { createMailStyles } from '../../styles/mail.style';
 import { api } from '../../utils/api';
+import { useNotification } from '../../context/NotificationContext';
 
 function parseUtcToLocal(createdAt) {
   if (!createdAt) return null;
@@ -374,6 +375,8 @@ function MailDetail({ mail: initialMail, onBack, navigation }) {
   const normalize = useMemo(() => getNormalize(width), [width]);
   const styles = useMemo(() => createMailStyles(normalize), [normalize]);
 
+  const { refreshHasUnread } = useNotification();
+
   const historyThreadId = useMemo(() => {
     const tk =
       initialMail?.thread_key ??
@@ -389,6 +392,7 @@ function MailDetail({ mail: initialMail, onBack, navigation }) {
     initialMail?.root_mail_id,
   ]);
 
+  const [threadRootId, setThreadRootId] = useState(historyThreadId ?? null);
   const [mail, setMail] = useState(null);
   const [myName, setMyName] = useState('');
   const [currentUserId, setCurrentUserId] = useState(null);
@@ -413,6 +417,7 @@ function MailDetail({ mail: initialMail, onBack, navigation }) {
       const m = detailRes.data?.data;
       const me = meRes.data?.data;
       const meId = Number(me?.id != null ? me?.id : me?.userId);
+      const computedThreadRootId = Number(m?.root_mail_id ?? m?.id);
       const meDisplayName = me?.name || me?.username || '나';
       const threadMsgs = threadRes?.data?.data?.messages || [];
       const myLatestSent =
@@ -460,6 +465,10 @@ function MailDetail({ mail: initialMail, onBack, navigation }) {
           initialMail?.isRootAuthorForCurrentUser
         ),
       });
+
+      if (Number.isFinite(computedThreadRootId)) {
+        setThreadRootId(computedThreadRootId);
+      }
     } catch (e) {
       setError(e.response?.data?.message || '우편 상세를 불러오지 못했습니다.');
     } finally {
@@ -470,6 +479,40 @@ function MailDetail({ mail: initialMail, onBack, navigation }) {
   useEffect(() => {
     fetchDetail();
   }, [fetchDetail]);
+
+  // 알림센터를 거치지 않고 우편 내용을 확인했을 때,
+  // personal_mail 스레드 관련 알림을 지속적으로 읽음 처리해서
+  // 헤더 빨간 점과 알림 내역이 즉시 동기화되도록 한다.
+  useEffect(() => {
+    if (!threadRootId) return;
+
+    let cancelled = false;
+
+    const markThreadRead = async () => {
+      try {
+        await api.post('/api/notifications/read-personal-mail-thread', {
+          threadRootId,
+        });
+      } catch (e) {
+        // 네트워크/서버 오류 시에도 화면 동작은 유지
+      } finally {
+        if (!cancelled) refreshHasUnread?.();
+      }
+    };
+
+    // 즉시 1회 처리
+    void markThreadRead();
+
+    // 체류 중 새 알림이 도착하면 interval 다음 루프에서 바로 반영
+    const t = setInterval(() => {
+      void markThreadRead();
+    }, 3000);
+
+    return () => {
+      cancelled = true;
+      clearInterval(t);
+    };
+  }, [threadRootId, refreshHasUnread]);
 
   const threadLatest = pickLatestThreadMessage(latestMyReply, latestOtherReply);
   const singleBody =

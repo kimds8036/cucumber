@@ -4,7 +4,6 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Ionicons } from '@expo/vector-icons';
 import FontAwesome6 from '@expo/vector-icons/FontAwesome6';
 import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
-import StudyGrassMap from '../../components/studygrassmap';
 import { api } from '../../utils/api';
 import { colors, fontSizes } from '../../styles/colors';
 import { getNormalize } from '../../styles/frame.style';
@@ -360,7 +359,10 @@ const OurSchoolScreen = ({ navigation }) => {
         {/* 공부 잔디 카드 */}
         <View style={styles.grassCard}>
           <Text style={styles.grassCardTitle}>우리 학교 공부 잔디밭</Text>
-          <StudyGrassMap />
+          {/* TODO: 잔디밭 API 연결 위치 (예: /api/schools/me/study-grass) */}
+          <View style={{ paddingVertical: normalize(18), alignItems: 'center' }}>
+            <Text style={{ color: colors.textSecondary }}>잔디밭 데이터 준비 중</Text>
+          </View>
         </View>
 
         {/* 게시판 / 우편함 바로가기 */}

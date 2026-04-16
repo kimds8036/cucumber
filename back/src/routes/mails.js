@@ -5,24 +5,54 @@ import { enqueueNotification } from '../utils/notificationWorker.js';
 import { getNowForDB } from '../utils/dateUtils.js';
 
 const router = express.Router();
+let ensurePersonalMailRoomSoftDeleteColumnsPromise = null;
+
+async function addColumnIfMissing(tableName, columnName, definitionSql) {
+  const [rows] = await pool.execute(
+    `SELECT COUNT(*) AS cnt
+     FROM INFORMATION_SCHEMA.COLUMNS
+     WHERE TABLE_SCHEMA = DATABASE()
+       AND TABLE_NAME = ?
+       AND COLUMN_NAME = ?`,
+    [tableName, columnName],
+  );
+  const exists = Number(rows[0]?.cnt ?? 0) > 0;
+  if (!exists) {
+    await pool.execute(
+      `ALTER TABLE ${tableName} ADD COLUMN ${columnName} ${definitionSql}`,
+    );
+  }
+}
+
+async function ensurePersonalMailRoomSoftDeleteColumns() {
+  if (!ensurePersonalMailRoomSoftDeleteColumnsPromise) {
+    ensurePersonalMailRoomSoftDeleteColumnsPromise = (async () => {
+      await addColumnIfMissing(
+        'personal_mail_rooms',
+        'is_deleted_by_user1',
+        'BOOLEAN DEFAULT FALSE',
+      );
+      await addColumnIfMissing(
+        'personal_mail_rooms',
+        'is_deleted_by_user2',
+        'BOOLEAN DEFAULT FALSE',
+      );
+    })().catch((error) => {
+      ensurePersonalMailRoomSoftDeleteColumnsPromise = null;
+      throw error;
+    });
+  }
+  return ensurePersonalMailRoomSoftDeleteColumnsPromise;
+}
 
 // ==================== 개인 우편 API ====================
 
 // 개인 우편 목록 조회 (받은 우편)
 router.get('/personal/received', authenticate, async (req, res) => {
   try {
+    await ensurePersonalMailRoomSoftDeleteColumns();
     const userId = req.user.userId;
     const { page = 1, limit = 20, isRead } = req.query;
-    const params = [userId, userId];
-    const conditions = ['pm.recipient_id = ?', 'pm.is_deleted = FALSE'];
-
-    // 읽음 여부 필터
-    if (isRead !== undefined) {
-      conditions.push('pm.is_read = ?');
-      params.push(isRead === 'true' ? 1 : 0);
-    }
-
-    const whereClause = `WHERE ${conditions.join(' AND ')}`;
     const limitNum = Math.max(1, Math.min(100, parseInt(limit, 10) || 20));
     const offsetNum = Math.max(0, (parseInt(page, 10) - 1) * limitNum);
 
@@ -52,22 +82,35 @@ router.get('/personal/received', authenticate, async (req, res) => {
         u.color_id as sender_color_id,
         (pm.parent_mail_id IS NOT NULL AND par.sender_id = ?) AS reply_to_my_sent
       FROM personal_mails pm
+      INNER JOIN personal_mail_rooms pmr ON pm.room_id = pmr.id
       LEFT JOIN users u ON pm.sender_id = u.id
       LEFT JOIN personal_mails par ON par.id = pm.parent_mail_id AND par.is_deleted = FALSE
       LEFT JOIN personal_mails root_pm ON root_pm.id = COALESCE(pm.root_mail_id, pm.id) AND root_pm.is_deleted = FALSE
-      WHERE pm.recipient_id = ? AND pm.is_deleted = FALSE${isRead !== undefined ? ' AND pm.is_read = ?' : ''}
+      WHERE pm.recipient_id = ? AND pm.is_deleted = FALSE
+        AND (
+          (pmr.user1_id = ? AND (pmr.is_deleted_by_user1 IS NULL OR pmr.is_deleted_by_user1 = FALSE))
+          OR
+          (pmr.user2_id = ? AND (pmr.is_deleted_by_user2 IS NULL OR pmr.is_deleted_by_user2 = FALSE))
+        )${isRead !== undefined ? ' AND pm.is_read = ?' : ''}
       ORDER BY pm.created_at DESC
       LIMIT ${limitNum} OFFSET ${offsetNum}`,
-      [userId, ...params]
+      isRead !== undefined
+        ? [userId, userId, userId, userId, userId, isRead === 'true' ? 1 : 0]
+        : [userId, userId, userId, userId, userId]
     );
 
-    // 전체 개수 조회 (목록 SELECT와 플레이스홀더 개수가 다름)
-    const countParams =
-      isRead !== undefined ? [userId, isRead === 'true' ? 1 : 0] : [userId];
     const [countResult] = await pool.execute(
       `SELECT COUNT(*) as total FROM personal_mails pm
-       WHERE pm.recipient_id = ? AND pm.is_deleted = FALSE${isRead !== undefined ? ' AND pm.is_read = ?' : ''}`,
-      countParams
+       INNER JOIN personal_mail_rooms pmr ON pm.room_id = pmr.id
+       WHERE pm.recipient_id = ? AND pm.is_deleted = FALSE
+         AND (
+           (pmr.user1_id = ? AND (pmr.is_deleted_by_user1 IS NULL OR pmr.is_deleted_by_user1 = FALSE))
+           OR
+           (pmr.user2_id = ? AND (pmr.is_deleted_by_user2 IS NULL OR pmr.is_deleted_by_user2 = FALSE))
+         )${isRead !== undefined ? ' AND pm.is_read = ?' : ''}`,
+      isRead !== undefined
+        ? [userId, userId, userId, isRead === 'true' ? 1 : 0]
+        : [userId, userId, userId]
     );
     const total = Number(countResult[0]?.total ?? 0);
 
@@ -95,6 +138,7 @@ router.get('/personal/received', authenticate, async (req, res) => {
 // 개인 우편 목록 조회 (보낸 우편)
 router.get('/personal/sent', authenticate, async (req, res) => {
   try {
+    await ensurePersonalMailRoomSoftDeleteColumns();
     const userId = req.user.userId;
     const { page = 1, limit = 20 } = req.query;
     const limitNum = Math.max(1, Math.min(100, parseInt(limit, 10) || 20));
@@ -125,20 +169,32 @@ router.get('/personal/sent', authenticate, async (req, res) => {
         u.name as recipient_name,
         u.color_id as recipient_color_id
       FROM personal_mails pm
+      INNER JOIN personal_mail_rooms pmr ON pm.room_id = pmr.id
       LEFT JOIN users u ON pm.recipient_id = u.id
       LEFT JOIN personal_mails root_pm ON root_pm.id = COALESCE(pm.root_mail_id, pm.id) AND root_pm.is_deleted = FALSE
       WHERE pm.sender_id = ? AND pm.is_deleted = FALSE
+        AND (
+          (pmr.user1_id = ? AND (pmr.is_deleted_by_user1 IS NULL OR pmr.is_deleted_by_user1 = FALSE))
+          OR
+          (pmr.user2_id = ? AND (pmr.is_deleted_by_user2 IS NULL OR pmr.is_deleted_by_user2 = FALSE))
+        )
       ORDER BY pm.created_at DESC
       LIMIT ${limitNum} OFFSET ${offsetNum}`,
-      [userId, userId]
+      [userId, userId, userId, userId]
     );
 
     // 전체 개수 조회
     const [countResult] = await pool.execute(
-      `SELECT COUNT(*) as total 
-       FROM personal_mails 
-       WHERE sender_id = ? AND is_deleted = FALSE`,
-      [userId]
+      `SELECT COUNT(*) as total
+       FROM personal_mails pm
+       INNER JOIN personal_mail_rooms pmr ON pm.room_id = pmr.id
+       WHERE pm.sender_id = ? AND pm.is_deleted = FALSE
+         AND (
+           (pmr.user1_id = ? AND (pmr.is_deleted_by_user1 IS NULL OR pmr.is_deleted_by_user1 = FALSE))
+           OR
+           (pmr.user2_id = ? AND (pmr.is_deleted_by_user2 IS NULL OR pmr.is_deleted_by_user2 = FALSE))
+         )`,
+      [userId, userId, userId]
     );
     const total = Number(countResult[0]?.total ?? 0);
 
@@ -159,6 +215,53 @@ router.get('/personal/sent', authenticate, async (req, res) => {
     res.status(500).json({ 
       success: false, 
       message: '보낸 우편 목록 조회 중 오류가 발생했습니다.' 
+    });
+  }
+});
+
+// 개인 우편 룸 삭제 (내 목록에서 숨김 처리)
+router.delete('/personal/rooms/:roomId', authenticate, async (req, res) => {
+  try {
+    await ensurePersonalMailRoomSoftDeleteColumns();
+    const userId = req.user.userId;
+    const roomId = Number(req.params.roomId);
+
+    if (!Number.isFinite(roomId)) {
+      return res.status(400).json({
+        success: false,
+        message: '유효하지 않은 룸 ID입니다.',
+      });
+    }
+
+    const [rooms] = await pool.execute(
+      `SELECT id FROM personal_mail_rooms
+       WHERE id = ? AND (user1_id = ? OR user2_id = ?)`,
+      [roomId, userId, userId]
+    );
+    if (rooms.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: '우편 룸을 찾을 수 없거나 삭제 권한이 없습니다.',
+      });
+    }
+
+    await pool.execute(
+      `UPDATE personal_mail_rooms
+       SET is_deleted_by_user1 = IF(user1_id = ?, TRUE, is_deleted_by_user1),
+           is_deleted_by_user2 = IF(user2_id = ?, TRUE, is_deleted_by_user2)
+       WHERE id = ?`,
+      [userId, userId, roomId]
+    );
+
+    res.json({
+      success: true,
+      message: '우편 대화가 삭제되었습니다.',
+    });
+  } catch (error) {
+    console.error('개인 우편 룸 삭제 오류:', error);
+    res.status(500).json({
+      success: false,
+      message: '우편 대화 삭제 중 오류가 발생했습니다.',
     });
   }
 });
@@ -331,6 +434,7 @@ router.get('/personal/:mailId', authenticate, async (req, res) => {
 // 개인 우편 작성
 router.post('/personal', authenticate, async (req, res) => {
   try {
+    await ensurePersonalMailRoomSoftDeleteColumns();
     const userId = req.user.userId;
     const { recipientId, content } = req.body;
 
@@ -398,6 +502,13 @@ router.post('/personal', authenticate, async (req, res) => {
          WHERE id = ?`,
         [rootMailId, roomId, rootMailId]
       );
+      await connection.execute(
+        `UPDATE personal_mail_rooms
+         SET is_deleted_by_user1 = IF(user2_id = ?, FALSE, is_deleted_by_user1),
+             is_deleted_by_user2 = IF(user1_id = ?, FALSE, is_deleted_by_user2)
+         WHERE id = ?`,
+        [userId, userId, roomId]
+      );
       await connection.commit();
     } catch (txError) {
       await connection.rollback();
@@ -454,6 +565,7 @@ router.post('/personal', authenticate, async (req, res) => {
 router.post('/personal/:mailId/reply', authenticate, async (req, res) => {
   const connection = await pool.getConnection();
   try {
+    await ensurePersonalMailRoomSoftDeleteColumns();
     const userId = req.user.userId;
     const { mailId } = req.params;
     const { content } = req.body;
@@ -566,9 +678,11 @@ router.post('/personal/:mailId/reply', authenticate, async (req, res) => {
 
     await connection.execute(
       `UPDATE personal_mail_rooms
-       SET last_mail_id = ?, last_mail_at = ?
+       SET last_mail_id = ?, last_mail_at = ?,
+           is_deleted_by_user1 = IF(user2_id = ?, FALSE, is_deleted_by_user1),
+           is_deleted_by_user2 = IF(user1_id = ?, FALSE, is_deleted_by_user2)
        WHERE id = ?`,
-      [Number(result.insertId), getNowForDB(), Number(room.id)]
+      [Number(result.insertId), getNowForDB(), userId, userId, Number(room.id)]
     );
 
     // 생성된 답장 정보 조회
