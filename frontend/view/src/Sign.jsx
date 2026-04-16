@@ -4,7 +4,6 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { createSignupStyles } from '../../styles/login.style';
 import { colors } from '../../styles/colors';
-import SignStepAgeGate from './signup/SignStepAgeGate';
 import SignStepConsent from './signup/SignStepConsent';
 import SignStep1 from './signup/SignStep1';
 import SignStep2 from './signup/SignStep2';
@@ -41,10 +40,11 @@ const Sign = ({ navigation }) => {
   const [completeModalType, setCompleteModalType] = useState('signup');
 
   const styles = useMemo(() => createSignupStyles(width, normalize), [width]);
-  const isOver14Flow = selectedAgeGroup === 'over14';
-  const maxFlowStep = isOver14Flow ? 6 : 7;
-  const verificationStep = isOver14Flow ? 5 : 6;
-  const finalStep = isOver14Flow ? 6 : 7;
+  const isUnder14Flow = selectedAgeGroup === 'under14';
+  const maxFlowStep = isUnder14Flow ? 6 : 5;
+  const verificationMethodStep = isUnder14Flow ? 4 : 3;
+  const verificationStep = isUnder14Flow ? 5 : 4;
+  const finalStep = isUnder14Flow ? 6 : 5;
   const isCameraStep =
     currentStep === verificationStep &&
     selectedVerificationMethod === 'studentId';
@@ -61,21 +61,23 @@ const Sign = ({ navigation }) => {
     }
   };
 
-  const handleAgeGateSelect = (ageGroup) => {
-    setSelectedAgeGroup(ageGroup);
-  };
+  const isUnder14ByBirthDate = (birthDate) => {
+    if (!birthDate) return false;
+    const birth = new Date(birthDate);
+    if (Number.isNaN(birth.getTime())) return false;
 
-  const handleStep0Next = () => {
-    if (!selectedAgeGroup) {
-      Alert.alert('알림', '연령대를 선택해주세요.');
-      return;
-    }
-    setFormData({ ...formData, ageGroup: selectedAgeGroup });
-    setCurrentStep(1);
+    const today = new Date();
+    let age = today.getFullYear() - birth.getFullYear();
+    const hasNotHadBirthdayYet =
+      today.getMonth() < birth.getMonth() ||
+      (today.getMonth() === birth.getMonth() && today.getDate() < birth.getDate());
+    if (hasNotHadBirthdayYet) age -= 1;
+
+    return age < 14;
   };
 
   const handleConsentNext = () => {
-    setCurrentStep(2);
+    setCurrentStep(1);
   };
 
   // 본인인증 단계 완료
@@ -92,14 +94,17 @@ const Sign = ({ navigation }) => {
       phoneNumber: step1Data.phoneNumber || '',
       ...step1Data,
     };
+    const isUnder14 = isUnder14ByBirthDate(merged.birthDate);
+
     setFormData(merged);
-    setCurrentStep(3);
+    setSelectedAgeGroup(isUnder14 ? 'under14' : 'over14');
+    setCurrentStep(2);
   };
 
   // 보호자 본인인증 단계 완료(미만 플로우)
   const handleStep2Next = () => {
-    if (isOver14Flow) {
-      setCurrentStep(4);
+    if (!isUnder14Flow) {
+      setCurrentStep(3);
       return;
     }
 
@@ -108,7 +113,7 @@ const Sign = ({ navigation }) => {
       return;
     }
     setFormData({ ...formData, ...guardianStepData });
-    setCurrentStep(4);
+    setCurrentStep(3);
   };
 
   // 정보 입력 단계 완료
@@ -124,7 +129,7 @@ const Sign = ({ navigation }) => {
       }
     }
     setFormData({ ...formData, ...stepInfoData });
-    setCurrentStep(5);
+    setCurrentStep(4);
   };
 
   const handleVerificationMethodSelect = (method) => {
@@ -177,7 +182,7 @@ const Sign = ({ navigation }) => {
         Alert.alert('알림', '본인인증을 완료해주세요.');
         return;
       }
-      if (!isOver14Flow && !guardianStepData.guardianIsVerified) {
+      if (isUnder14Flow && !guardianStepData.guardianIsVerified) {
         Alert.alert('알림', '보호자 본인인증을 완료해주세요.');
         return;
       }
@@ -234,14 +239,14 @@ const Sign = ({ navigation }) => {
 
   // 단계별 제목
   const getStepTitle = () => {
-    if (isOver14Flow) {
+    if (isUnder14Flow) {
       switch (currentStep) {
         case 0:
-          return '회원가입';
-        case 1:
           return '개인정보 및 약관 동의';
-        case 2:
+        case 1:
           return '본인 인증';
+        case 2:
+          return '보호자 본인 인증';
         case 3:
           return '정보 입력';
         case 4:
@@ -257,20 +262,16 @@ const Sign = ({ navigation }) => {
 
     switch (currentStep) {
       case 0:
-        return '회원가입';
-      case 1:
         return '개인정보 및 약관 동의';
-      case 2:
+      case 1:
         return '본인 인증';
-      case 3:
-        return '보호자 본인 인증';
-      case 4:
+      case 2:
         return '정보 입력';
-      case 5:
+      case 3:
         return '학생 인증 방식 선택';
-      case 6:
+      case 4:
         return '학생 인증';
-      case 7:
+      case 5:
         return selectedVerificationMethod === 'certificate' ? '증명서 제출 정보' : '학생 인증';
       default:
         return '회원가입';
@@ -279,14 +280,14 @@ const Sign = ({ navigation }) => {
 
   // 단계별 설명
   const getStepDescription = () => {
-    if (isOver14Flow) {
+    if (isUnder14Flow) {
       switch (currentStep) {
         case 0:
-          return '만 14세 이상 여부를 먼저 선택해주세요.';
-        case 1:
           return '서비스 이용을 위한 동의 항목을 확인해주세요.';
-        case 2:
+        case 1:
           return 'PASS 인증을 통해 본인확인을 진행합니다.';
+        case 2:
+          return '보호자 PASS 인증을 진행합니다.';
         case 3:
           return '이름/생년월일은 자동 입력되며 수정할 수 없습니다.';
         case 4:
@@ -306,22 +307,18 @@ const Sign = ({ navigation }) => {
 
     switch (currentStep) {
       case 0:
-        return '만 14세 이상 여부를 먼저 선택해주세요.';
-      case 1:
         return '서비스 이용을 위한 동의 항목을 확인해주세요.';
-      case 2:
+      case 1:
         return 'PASS 인증을 통해 본인확인을 진행합니다.';
-      case 3:
-        return '보호자 PASS 인증을 진행합니다.';
-      case 4:
+      case 2:
         return '이름/생년월일은 자동 입력되며 수정할 수 없습니다.';
-      case 5:
+      case 3:
         return '학생증 인증 또는 증명서 제출 중 하나를 선택해주세요.';
-      case 6:
+      case 4:
         return selectedVerificationMethod === 'certificate'
           ? '학생증이 없는 학교만 졸업(예정)증명서를 제출해주세요.'
           : '학생증과 해당 정보가 일치하는지 확인해주세요';
-      case 7:
+      case 5:
         return selectedVerificationMethod === 'certificate'
           ? '보관함 URL과 접수 번호를 입력한 뒤 제출해주세요.'
           : '학교 정보가 정확한지 확인해주세요.';
@@ -356,20 +353,13 @@ const Sign = ({ navigation }) => {
         {/* 단계별 컨텐츠 */}
         <View style={styles.contentSection}>
           {currentStep === 0 && (
-            <SignStepAgeGate
-              styles={styles}
-              selectedAgeGroup={selectedAgeGroup}
-              onSelect={handleAgeGateSelect}
-            />
-          )}
-          {currentStep === 1 && (
             <SignStepConsent
               normalize={normalize}
               selectedAgeGroup={selectedAgeGroup}
               onChange={setConsentData}
             />
           )}
-          {currentStep === 2 && (
+          {currentStep === 1 && (
             <SignStep1
               styles={styles}
               normalize={normalize}
@@ -378,31 +368,14 @@ const Sign = ({ navigation }) => {
               passMode={true}
             />
           )}
-          {currentStep === 3 && (
-            isOver14Flow ? (
-              <SignStep2
-                styles={styles}
-                normalize={normalize}
-                verifiedName={formData.name || step1Data.name || ''}
-                verifiedBirthDate={formData.birthDate || step1Data.birthDate || ''}
-                onChange={setStepInfoData}
-              />
-            ) : (
+          {currentStep === 2 && (
+            isUnder14Flow ? (
               <SignStep1_2
                 styles={styles}
                 normalize={normalize}
                 onChange={setGuardianStepData}
                 disableValidation={DISABLE_SIGN_VALIDATION_FOR_REDESIGN}
               />
-            )
-          )}
-          {currentStep === 4 && (
-            isOver14Flow ? (
-              <SignStepVerificationMethod
-                styles={styles}
-                selectedMethod={selectedVerificationMethod}
-                onSelect={handleVerificationMethodSelect}
-              />
             ) : (
               <SignStep2
                 styles={styles}
@@ -413,8 +386,31 @@ const Sign = ({ navigation }) => {
               />
             )
           )}
-          {currentStep === 5 && (
-            isOver14Flow ? (
+          {currentStep === 3 && (
+            isUnder14Flow ? (
+              <SignStep2
+                styles={styles}
+                normalize={normalize}
+                verifiedName={formData.name || step1Data.name || ''}
+                verifiedBirthDate={formData.birthDate || step1Data.birthDate || ''}
+                onChange={setStepInfoData}
+              />
+            ) : (
+              <SignStepVerificationMethod
+                styles={styles}
+                selectedMethod={selectedVerificationMethod}
+                onSelect={handleVerificationMethodSelect}
+              />
+            )
+          )}
+          {currentStep === 4 && (
+            isUnder14Flow ? (
+              <SignStepVerificationMethod
+                styles={styles}
+                selectedMethod={selectedVerificationMethod}
+                onSelect={handleVerificationMethodSelect}
+              />
+            ) : (
               selectedVerificationMethod === 'certificate' ? (
                 <SignStepCertificate styles={styles} />
               ) : (
@@ -425,15 +421,21 @@ const Sign = ({ navigation }) => {
                   onManualInput={handleManualInput}
                 />
               )
+            )
+          )}
+          {isUnder14Flow && currentStep === 5 && (
+            selectedVerificationMethod === 'certificate' ? (
+              <SignStepCertificate styles={styles} />
             ) : (
-              <SignStepVerificationMethod
+              <SignStep3
                 styles={styles}
-                selectedMethod={selectedVerificationMethod}
-                onSelect={handleVerificationMethodSelect}
+                normalize={normalize}
+                onNext={handleStudentVerificationNext}
+                onManualInput={handleManualInput}
               />
             )
           )}
-          {isOver14Flow && currentStep === 6 && (
+          {isUnder14Flow && currentStep === 6 && (
             selectedVerificationMethod === 'certificate' ? (
               <SignStepNumber
                 styles={styles}
@@ -449,19 +451,7 @@ const Sign = ({ navigation }) => {
               />
             )
           )}
-          {!isOver14Flow && currentStep === 6 && (
-            selectedVerificationMethod === 'certificate' ? (
-              <SignStepCertificate styles={styles} />
-            ) : (
-              <SignStep3
-                styles={styles}
-                normalize={normalize}
-                onNext={handleStudentVerificationNext}
-                onManualInput={handleManualInput}
-              />
-            )
-          )}
-          {!isOver14Flow && currentStep === 7 && (
+          {!isUnder14Flow && currentStep === 5 && (
             selectedVerificationMethod === 'certificate' ? (
               <SignStepNumber
                 styles={styles}
@@ -487,39 +477,34 @@ const Sign = ({ navigation }) => {
                 <TouchableOpacity
                   style={[
                     styles.nextButton,
-                    currentStep === 0 && !selectedAgeGroup && { backgroundColor: colors.textLight20 },
-                    currentStep === 1 && !consentData.allConsented && { backgroundColor: colors.textLight20 },
-                    currentStep === 4 && isOver14Flow && !selectedVerificationMethod && { backgroundColor: colors.textLight20 },
-                    currentStep === 5 && !isOver14Flow && !selectedVerificationMethod && { backgroundColor: colors.textLight20 },
-                    ((isOver14Flow && currentStep === 6) || (!isOver14Flow && currentStep === 7)) &&
+                    currentStep === 0 && !consentData.allConsented && { backgroundColor: colors.textLight20 },
+                    currentStep === verificationMethodStep && !selectedVerificationMethod && { backgroundColor: colors.textLight20 },
+                    ((isUnder14Flow && currentStep === 6) || (!isUnder14Flow && currentStep === 5)) &&
                     selectedVerificationMethod === 'certificate' &&
                     (!stepNumberData.certificateUrl || !stepNumberData.submissionNumber) && { backgroundColor: colors.textLight20 },
                   ]}
                   activeOpacity={0.9}
                   disabled={
-                    (currentStep === 0 && !selectedAgeGroup) ||
-                    (currentStep === 1 && !consentData.allConsented) ||
-                    (currentStep === 4 && isOver14Flow && !selectedVerificationMethod) ||
-                    (currentStep === 5 && !isOver14Flow && !selectedVerificationMethod) ||
-                    (((isOver14Flow && currentStep === 6) || (!isOver14Flow && currentStep === 7)) &&
+                    (currentStep === 0 && !consentData.allConsented) ||
+                    (currentStep === verificationMethodStep && !selectedVerificationMethod) ||
+                    (((isUnder14Flow && currentStep === 6) || (!isUnder14Flow && currentStep === 5)) &&
                       selectedVerificationMethod === 'certificate' &&
                       (!stepNumberData.certificateUrl || !stepNumberData.submissionNumber))
                   }
                   onPress={() => {
-                    if (currentStep === 0) handleStep0Next();
-                    else if (currentStep === 1) handleConsentNext();
-                    else if (currentStep === 2) handleStep1Next();
-                    else if (currentStep === 3) handleStep2Next();
-                    else if (currentStep === 4 && isOver14Flow) handleVerificationMethodNext();
-                    else if (currentStep === 4 && !isOver14Flow) handleStep3Next();
-                    else if (currentStep === 5 && isOver14Flow && selectedVerificationMethod === 'certificate') {
+                    if (currentStep === 0) handleConsentNext();
+                    else if (currentStep === 1) handleStep1Next();
+                    else if (currentStep === 2) handleStep2Next();
+                    else if (currentStep === 3 && isUnder14Flow) handleStep3Next();
+                    else if (currentStep === 3 && !isUnder14Flow) handleVerificationMethodNext();
+                    else if (currentStep === 4 && isUnder14Flow) handleVerificationMethodNext();
+                    else if (currentStep === 4 && !isUnder14Flow && selectedVerificationMethod === 'certificate') {
                       handleManualInput();
                     }
-                    else if (currentStep === 5 && !isOver14Flow) handleVerificationMethodNext();
-                    else if (currentStep === 6 && !isOver14Flow && selectedVerificationMethod === 'certificate') {
+                    else if (currentStep === 5 && isUnder14Flow && selectedVerificationMethod === 'certificate') {
                       handleManualInput();
                     }
-                    else if ((isOver14Flow && currentStep === 6) || (!isOver14Flow && currentStep === 7)) {
+                    else if ((isUnder14Flow && currentStep === 6) || (!isUnder14Flow && currentStep === 5)) {
                       if (selectedVerificationMethod === 'certificate') {
                         handleCertificateSubmit();
                       } else {
@@ -529,7 +514,7 @@ const Sign = ({ navigation }) => {
                   }}
                 >
                   <Text style={styles.nextButtonText}>
-                    {(isOver14Flow && currentStep === 6) || (!isOver14Flow && currentStep === 7)
+                    {(isUnder14Flow && currentStep === 6) || (!isUnder14Flow && currentStep === 5)
                       ? selectedVerificationMethod === 'certificate'
                         ? '제출하기'
                         : '회원가입'
@@ -574,7 +559,7 @@ const Sign = ({ navigation }) => {
                 textAlign: 'center',
               }}>
                 {completeModalType === 'certificate'
-                  ? '증명서 제출이 정상적으로 완료되었습니다.'
+                  ? '증명서 제출이 완료되었습니다!'
                   : '회원가입이 완료되었습니다!'}
               </Text>
               <Text style={{
@@ -585,7 +570,7 @@ const Sign = ({ navigation }) => {
                 marginBottom: normalize(10),
               }}>
                 {completeModalType === 'certificate'
-                  ? '증명서 확인 후 로그인할 수 있으며, 결과는 푸시 알림으로 안내드릴게요.'
+                  ? '관리자 검토 후 로그인이 가능하며, 결과는 푸시 알림으로 보내드릴게요.'
                   : '지금 바로 서비스를 이용해보세요.'}
               </Text>
               <TouchableOpacity
@@ -604,7 +589,7 @@ const Sign = ({ navigation }) => {
                   fontFamily: 'Baloo2-Bold',
                   color: colors.background,
                 }}>
-                  로그인
+                  확인
                 </Text>
               </TouchableOpacity>
             </View>

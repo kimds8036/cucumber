@@ -88,7 +88,7 @@ const SignStep4 = ({ styles, normalize, recognizedData, onChange }) => {
       <View style={styles.inputWrapper}>
         <TextInput
           style={styles.input}
-          placeholder="학년"
+          placeholder="학년을 입력해 주세요"
           placeholderTextColor={colors.textSecondary}
           value={grade}
           onChangeText={(text) => {
@@ -104,7 +104,7 @@ const SignStep4 = ({ styles, normalize, recognizedData, onChange }) => {
       <View style={styles.inputWrapper}>
         <TextInput
           style={styles.input}
-          placeholder="반"
+          placeholder="반을 입력해 주세요"
           placeholderTextColor={colors.textSecondary}
           value={classNum}
           onChangeText={(text) => {
