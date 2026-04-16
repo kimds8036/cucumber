@@ -11,6 +11,9 @@ import SignStep2 from './signup/SignStep2';
 import SignStep1_2 from './signup/SignStep1-2';
 import SignStep3 from './signup/SignStep3';
 import SignStep4 from './signup/SignStep4';
+import SignStepVerificationMethod from './signup/SignStepVerificationMethod';
+import SignStepCertificate from './signup/SignStepCertificate';
+import SignStepNumber from './signup/SignStepNumber';
 import { api } from '../../utils/api';
 import { useAppNavigation } from '../../navigation/useAppNavigation';
 
@@ -31,15 +34,20 @@ const Sign = ({ navigation }) => {
   const [stepInfoData, setStepInfoData] = useState({});
   const [guardianStepData, setGuardianStepData] = useState({});
   const [step4Data, setStep4Data] = useState({});
+  const [stepNumberData, setStepNumberData] = useState({});
   const [selectedAgeGroup, setSelectedAgeGroup] = useState('');
+  const [selectedVerificationMethod, setSelectedVerificationMethod] = useState('');
   const [consentData, setConsentData] = useState({ allConsented: false });
+  const [completeModalType, setCompleteModalType] = useState('signup');
 
   const styles = useMemo(() => createSignupStyles(width, normalize), [width]);
   const isOver14Flow = selectedAgeGroup === 'over14';
-  const maxFlowStep = isOver14Flow ? 5 : 6;
+  const maxFlowStep = isOver14Flow ? 6 : 7;
+  const verificationStep = isOver14Flow ? 5 : 6;
+  const finalStep = isOver14Flow ? 6 : 7;
   const isCameraStep =
-    (isOver14Flow && currentStep === 4) ||
-    (!isOver14Flow && currentStep === 5);
+    currentStep === verificationStep &&
+    selectedVerificationMethod === 'studentId';
 
   // 진행바 애니메이션
   const progressWidth = (currentStep / maxFlowStep) * 100;
@@ -119,16 +127,40 @@ const Sign = ({ navigation }) => {
     setCurrentStep(5);
   };
 
+  const handleVerificationMethodSelect = (method) => {
+    setSelectedVerificationMethod(method);
+  };
+
+  const handleVerificationMethodNext = () => {
+    if (!selectedVerificationMethod) {
+      Alert.alert('알림', '학생 인증 방식을 선택해주세요.');
+      return;
+    }
+
+    setRecognizedData(null);
+    setCurrentStep(verificationStep);
+  };
+
   // 3단계 완료 (자동 인식)
   const handleStudentVerificationNext = (data) => {
     setRecognizedData(data);
-    setCurrentStep(isOver14Flow ? 5 : 6);
+    setCurrentStep(finalStep);
   };
 
   // 3단계 직접 입력하기
   const handleManualInput = () => {
     setRecognizedData(null);
-    setCurrentStep(isOver14Flow ? 5 : 6);
+    setCurrentStep(finalStep);
+  };
+
+  const handleCertificateSubmit = () => {
+    if (!stepNumberData.certificateUrl || !stepNumberData.submissionNumber) {
+      Alert.alert('알림', '증명서 URL과 접수 번호를 모두 입력해주세요.');
+      return;
+    }
+
+    setCompleteModalType('certificate');
+    setShowCompleteModal(true);
   };
 
   // 4단계 완료 (회원가입 완료)
@@ -156,6 +188,7 @@ const Sign = ({ navigation }) => {
       }
     } else {
       // 재디자인 모드에서는 서버 요청 없이 흐름 확인만 가능하도록 처리
+      setCompleteModalType('signup');
       setShowCompleteModal(true);
       return;
     }
@@ -181,6 +214,7 @@ const Sign = ({ navigation }) => {
 
       const response = await api.post('/api/auth/signup', payload);
       console.log('회원가입 완료:', response.data);
+      setCompleteModalType('signup');
       setShowCompleteModal(true);
     } catch (error) {
       console.error(error);
@@ -211,9 +245,11 @@ const Sign = ({ navigation }) => {
         case 3:
           return '정보 입력';
         case 4:
-          return '학생 인증';
+          return '학생 인증 방식 선택';
         case 5:
           return '학생 인증';
+        case 6:
+          return selectedVerificationMethod === 'certificate' ? '증명서 제출 정보' : '학생 인증';
         default:
           return '회원가입';
       }
@@ -231,9 +267,11 @@ const Sign = ({ navigation }) => {
       case 4:
         return '정보 입력';
       case 5:
-        return '학생 인증';
+        return '학생 인증 방식 선택';
       case 6:
         return '학생 인증';
+      case 7:
+        return selectedVerificationMethod === 'certificate' ? '증명서 제출 정보' : '학생 인증';
       default:
         return '회원가입';
     }
@@ -252,9 +290,15 @@ const Sign = ({ navigation }) => {
         case 3:
           return '이름/생년월일은 자동 입력되며 수정할 수 없습니다.';
         case 4:
-          return '학교 게시판을 이용하기 위한 인증 단계입니다.';
+          return '학생증 인증 또는 증명서 제출 중 하나를 선택해주세요.';
         case 5:
-          return '학생증과 해당 정보가 일치하는지 확인해주세요';
+          return selectedVerificationMethod === 'certificate'
+            ? '학생증이 없는 학교만 졸업(예정)증명서를 제출해주세요.'
+            : '학생증과 해당 정보가 일치하는지 확인해주세요';
+        case 6:
+          return selectedVerificationMethod === 'certificate'
+            ? '보관함 URL과 접수 번호를 입력한 뒤 제출해주세요.'
+            : '학교 정보가 정확한지 확인해주세요.';
         default:
           return '';
       }
@@ -272,9 +316,15 @@ const Sign = ({ navigation }) => {
       case 4:
         return '이름/생년월일은 자동 입력되며 수정할 수 없습니다.';
       case 5:
-        return '학교 게시판을 이용하기 위한 인증 단계입니다.';
+        return '학생증 인증 또는 증명서 제출 중 하나를 선택해주세요.';
       case 6:
-        return '학생증과 해당 정보가 일치하는지 확인해주세요';
+        return selectedVerificationMethod === 'certificate'
+          ? '학생증이 없는 학교만 졸업(예정)증명서를 제출해주세요.'
+          : '학생증과 해당 정보가 일치하는지 확인해주세요';
+      case 7:
+        return selectedVerificationMethod === 'certificate'
+          ? '보관함 URL과 접수 번호를 입력한 뒤 제출해주세요.'
+          : '학교 정보가 정확한지 확인해주세요.';
       default:
         return '';
     }
@@ -348,11 +398,10 @@ const Sign = ({ navigation }) => {
           )}
           {currentStep === 4 && (
             isOver14Flow ? (
-              <SignStep3
+              <SignStepVerificationMethod
                 styles={styles}
-                normalize={normalize}
-                onNext={handleStudentVerificationNext}
-                onManualInput={handleManualInput}
+                selectedMethod={selectedVerificationMethod}
+                onSelect={handleVerificationMethodSelect}
               />
             ) : (
               <SignStep2
@@ -366,12 +415,43 @@ const Sign = ({ navigation }) => {
           )}
           {currentStep === 5 && (
             isOver14Flow ? (
+              selectedVerificationMethod === 'certificate' ? (
+                <SignStepCertificate styles={styles} />
+              ) : (
+                <SignStep3
+                  styles={styles}
+                  normalize={normalize}
+                  onNext={handleStudentVerificationNext}
+                  onManualInput={handleManualInput}
+                />
+              )
+            ) : (
+              <SignStepVerificationMethod
+                styles={styles}
+                selectedMethod={selectedVerificationMethod}
+                onSelect={handleVerificationMethodSelect}
+              />
+            )
+          )}
+          {isOver14Flow && currentStep === 6 && (
+            selectedVerificationMethod === 'certificate' ? (
+              <SignStepNumber
+                styles={styles}
+                normalize={normalize}
+                onChange={setStepNumberData}
+              />
+            ) : (
               <SignStep4
                 styles={styles}
                 normalize={normalize}
                 recognizedData={recognizedData}
                 onChange={setStep4Data}
               />
+            )
+          )}
+          {!isOver14Flow && currentStep === 6 && (
+            selectedVerificationMethod === 'certificate' ? (
+              <SignStepCertificate styles={styles} />
             ) : (
               <SignStep3
                 styles={styles}
@@ -381,13 +461,21 @@ const Sign = ({ navigation }) => {
               />
             )
           )}
-          {!isOver14Flow && currentStep === 6 && (
-            <SignStep4
-              styles={styles}
-              normalize={normalize}
-              recognizedData={recognizedData}
-              onChange={setStep4Data}
-            />
+          {!isOver14Flow && currentStep === 7 && (
+            selectedVerificationMethod === 'certificate' ? (
+              <SignStepNumber
+                styles={styles}
+                normalize={normalize}
+                onChange={setStepNumberData}
+              />
+            ) : (
+              <SignStep4
+                styles={styles}
+                normalize={normalize}
+                recognizedData={recognizedData}
+                onChange={setStep4Data}
+              />
+            )
           )}
         </View>
 
@@ -401,26 +489,50 @@ const Sign = ({ navigation }) => {
                     styles.nextButton,
                     currentStep === 0 && !selectedAgeGroup && { backgroundColor: colors.textLight20 },
                     currentStep === 1 && !consentData.allConsented && { backgroundColor: colors.textLight20 },
+                    currentStep === 4 && isOver14Flow && !selectedVerificationMethod && { backgroundColor: colors.textLight20 },
+                    currentStep === 5 && !isOver14Flow && !selectedVerificationMethod && { backgroundColor: colors.textLight20 },
+                    ((isOver14Flow && currentStep === 6) || (!isOver14Flow && currentStep === 7)) &&
+                    selectedVerificationMethod === 'certificate' &&
+                    (!stepNumberData.certificateUrl || !stepNumberData.submissionNumber) && { backgroundColor: colors.textLight20 },
                   ]}
                   activeOpacity={0.9}
                   disabled={
                     (currentStep === 0 && !selectedAgeGroup) ||
-                    (currentStep === 1 && !consentData.allConsented)
+                    (currentStep === 1 && !consentData.allConsented) ||
+                    (currentStep === 4 && isOver14Flow && !selectedVerificationMethod) ||
+                    (currentStep === 5 && !isOver14Flow && !selectedVerificationMethod) ||
+                    (((isOver14Flow && currentStep === 6) || (!isOver14Flow && currentStep === 7)) &&
+                      selectedVerificationMethod === 'certificate' &&
+                      (!stepNumberData.certificateUrl || !stepNumberData.submissionNumber))
                   }
                   onPress={() => {
                     if (currentStep === 0) handleStep0Next();
                     else if (currentStep === 1) handleConsentNext();
                     else if (currentStep === 2) handleStep1Next();
                     else if (currentStep === 3) handleStep2Next();
-                    else if (currentStep === 4) handleStep3Next();
-                    else if ((isOver14Flow && currentStep === 5) || (!isOver14Flow && currentStep === 6)) {
-                      handleComplete();
+                    else if (currentStep === 4 && isOver14Flow) handleVerificationMethodNext();
+                    else if (currentStep === 4 && !isOver14Flow) handleStep3Next();
+                    else if (currentStep === 5 && isOver14Flow && selectedVerificationMethod === 'certificate') {
+                      handleManualInput();
+                    }
+                    else if (currentStep === 5 && !isOver14Flow) handleVerificationMethodNext();
+                    else if (currentStep === 6 && !isOver14Flow && selectedVerificationMethod === 'certificate') {
+                      handleManualInput();
+                    }
+                    else if ((isOver14Flow && currentStep === 6) || (!isOver14Flow && currentStep === 7)) {
+                      if (selectedVerificationMethod === 'certificate') {
+                        handleCertificateSubmit();
+                      } else {
+                        handleComplete();
+                      }
                     }
                   }}
                 >
                   <Text style={styles.nextButtonText}>
-                    {(isOver14Flow && currentStep === 5) || (!isOver14Flow && currentStep === 6)
-                      ? '회원가입'
+                    {(isOver14Flow && currentStep === 6) || (!isOver14Flow && currentStep === 7)
+                      ? selectedVerificationMethod === 'certificate'
+                        ? '제출하기'
+                        : '회원가입'
                       : '다음 단계'}
                   </Text>
                 </TouchableOpacity>
@@ -453,7 +565,7 @@ const Sign = ({ navigation }) => {
                 color: colors.textPrimary,
                 marginBottom: normalize(10),
               }}>
-                회원가입 성공🎉
+                {completeModalType === 'certificate' ? '제출 성공🎉' : '회원가입 성공🎉'}
               </Text>
               <Text style={{
                 fontSize: normalize(14),
@@ -461,7 +573,9 @@ const Sign = ({ navigation }) => {
                 color: colors.textSecondary,
                 textAlign: 'center',
               }}>
-                회원가입이 완료되었습니다!
+                {completeModalType === 'certificate'
+                  ? '증명서 제출이 정상적으로 완료되었습니다.'
+                  : '회원가입이 완료되었습니다!'}
               </Text>
               <Text style={{
                 fontSize: normalize(14),
@@ -470,7 +584,9 @@ const Sign = ({ navigation }) => {
                 textAlign: 'center',
                 marginBottom: normalize(10),
               }}>
-                지금 바로 서비스를 이용해보세요.
+                {completeModalType === 'certificate'
+                  ? '증명서 확인 후 로그인할 수 있으며, 결과는 푸시 알림으로 안내드릴게요.'
+                  : '지금 바로 서비스를 이용해보세요.'}
               </Text>
               <TouchableOpacity
                 style={{
