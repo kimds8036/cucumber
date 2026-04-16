@@ -10,7 +10,6 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import StudyGrassMap from '../../components/studygrassmap';
 import SubHeader from '../frame/subHeader';
 import { colors, fontSizes, fonts } from '../../styles/colors';
 import { getNormalize } from '../../styles/frame.style';
@@ -321,7 +320,10 @@ const OtherSchoolScreen = ({ route, navigation }) => {
         {/* 공부 잔디 카드 — 우리 학교 화면과 동일 */}
         <View style={styles.grassCard}>
           <Text style={styles.grassCardTitle}>{grassTitle}</Text>
-          <StudyGrassMap />
+          {/* TODO: 잔디밭 API 연결 위치 (예: /api/schools/:id/study-grass) */}
+          <View style={{ paddingVertical: normalize(18), alignItems: 'center' }}>
+            <Text style={{ color: colors.textSecondary }}>잔디밭 데이터 준비 중</Text>
+          </View>
         </View>
 
         {/* 학교 우편함 — 이전 가로형 카드 디자인 */}
