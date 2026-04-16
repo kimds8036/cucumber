@@ -36,7 +36,6 @@ export const createLoginStyles = (width, normalize) => {
     },
     inputContainer: {
       width: '100%',
-      marginBottom: normalize(10),
       alignItems: 'center',
     },
     input: {
@@ -54,8 +53,10 @@ export const createLoginStyles = (width, normalize) => {
       ...shadow.sm,
     },
     checkboxContainer: {
+      width: '90%',
       flexDirection: 'row',
       alignItems: 'center',
+      justifyContent: 'flex-start',
       marginBottom: normalize(30),
     },
     checkbox: {

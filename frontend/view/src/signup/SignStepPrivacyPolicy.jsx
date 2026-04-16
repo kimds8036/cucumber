@@ -174,7 +174,6 @@ const SignStepPrivacyPolicy = ({ normalize, onBack }) => {
             <Text style={s.infoRow}><Text style={s.infoLabel}>성명</Text>  김은채</Text>
             <Text style={s.infoRow}><Text style={s.infoLabel}>직책</Text>  서비스 운영 담당</Text>
             <Text style={s.infoRow}><Text style={s.infoLabel}>이메일</Text>  eunchae6589@gmail.com</Text>
-            <Text style={s.infoRow}><Text style={s.infoLabel}>전화</Text>  010-9237-6589</Text>
           </View>
 
           <Divider />

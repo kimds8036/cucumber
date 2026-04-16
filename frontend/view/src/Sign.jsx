@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { View, Text, TouchableOpacity, useWindowDimensions, Keyboard, TouchableWithoutFeedback, Modal, Alert } from 'react-native';
+import { View, Text, TouchableOpacity, useWindowDimensions, Modal, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { createSignupStyles } from '../../styles/login.style';
@@ -328,8 +328,7 @@ const Sign = ({ navigation }) => {
   };
 
   return (
-    <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
-      <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
+    <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
         <View style={styles.headerSection}>
           {/* 헤더 */}
           <View style={styles.header}>
@@ -595,8 +594,7 @@ const Sign = ({ navigation }) => {
             </View>
           </View>
         </Modal>
-      </SafeAreaView>
-    </TouchableWithoutFeedback>
+    </SafeAreaView>
   );
 };
 
