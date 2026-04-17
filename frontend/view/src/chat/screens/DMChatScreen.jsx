@@ -11,6 +11,7 @@ import ChatScreen from './ChatScreen';
 import useDMChat from '../hooks/useDMChat';
 import * as socketManager from '../../socketManager';
 import { openNativeChatAndroid } from '../../../../utils/openNativeChatAndroid';
+import { openNativeChatIOS } from '../../../../utils/openNativeChatIOS';
 import {
   getNormalize as getBoardNormalize,
   createDetailStyles,
@@ -24,22 +25,31 @@ export default function DMChatScreen({ navigation, route }) {
   const friend = route?.params?.friend ?? {};
   const friendName = friend.name || '친구';
   const friendSchool = friend.schoolName || friend.school || '';
-  const [showJsxChat, setShowJsxChat] = useState(Platform.OS !== 'android');
+  const [showJsxChat, setShowJsxChat] = useState(false);
 
   useEffect(() => {
-    if (Platform.OS !== 'android') return;
     if (!roomId) {
       setShowJsxChat(true);
       return;
     }
     let cancelled = false;
     (async () => {
-      const ok = await openNativeChatAndroid({
-        roomId,
-        title: friendName,
-        subtitle: friendSchool,
-        chatChannel: 'dm',
-      });
+      let ok = false;
+      if (Platform.OS === 'android') {
+        ok = await openNativeChatAndroid({
+          roomId,
+          title: friendName,
+          subtitle: friendSchool,
+          chatChannel: 'dm',
+        });
+      } else if (Platform.OS === 'ios') {
+        ok = await openNativeChatIOS({
+          roomId,
+          title: friendName,
+          subtitle: friendSchool,
+          chatChannel: 'dm',
+        });
+      }
       if (cancelled) return;
       if (ok) {
         navigation.goBack();
@@ -47,9 +57,7 @@ export default function DMChatScreen({ navigation, route }) {
       }
       setShowJsxChat(true);
     })();
-    return () => {
-      cancelled = true;
-    };
+    return () => { cancelled = true; };
   }, [roomId, navigation, friendName, friendSchool]);
 
   const { width } = useWindowDimensions();

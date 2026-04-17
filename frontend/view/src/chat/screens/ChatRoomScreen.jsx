@@ -4,25 +4,34 @@ import ChatScreen from './ChatScreen';
 import useChat from '../hooks/useChat';
 import * as socketManager from '../../socketManager';
 import { openNativeChatAndroid } from '../../../../utils/openNativeChatAndroid';
+import { openNativeChatIOS } from '../../../../utils/openNativeChatIOS';
 import { colors } from '../../../../styles/colors';
 
 export default function ChatRoomScreen({ navigation, route }) {
   const roomId = route?.params?.roomId;
-  const [showJsxChat, setShowJsxChat] = useState(Platform.OS !== 'android');
+  const [showJsxChat, setShowJsxChat] = useState(false);
 
   useEffect(() => {
-    if (Platform.OS !== 'android') return;
     if (!roomId) {
       setShowJsxChat(true);
       return;
     }
     let cancelled = false;
     (async () => {
-      const ok = await openNativeChatAndroid({
-        roomId,
-        title: '쪽지',
-        chatChannel: 'messages',
-      });
+      let ok = false;
+      if (Platform.OS === 'android') {
+        ok = await openNativeChatAndroid({
+          roomId,
+          title: '쪽지',
+          chatChannel: 'messages',
+        });
+      } else if (Platform.OS === 'ios') {
+        ok = await openNativeChatIOS({
+          roomId,
+          title: '쪽지',
+          chatChannel: 'messages',
+        });
+      }
       if (cancelled) return;
       if (ok) {
         navigation.goBack();
@@ -30,9 +39,7 @@ export default function ChatRoomScreen({ navigation, route }) {
       }
       setShowJsxChat(true);
     })();
-    return () => {
-      cancelled = true;
-    };
+    return () => { cancelled = true; };
   }, [roomId, navigation]);
 
   const hookConfig = useMemo(
