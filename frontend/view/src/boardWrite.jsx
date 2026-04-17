@@ -21,6 +21,7 @@ import { StackActions } from '@react-navigation/native';
 import SubHeader from '../frame/subHeader';
 import { createWriteStyles, getNormalize } from '../../styles/board.style';
 import { api } from '../../utils/api';
+import { invalidateProfileCountsCache } from '../../utils/profileCountsCache';
 import { colors, fonts, fontSizes } from '../../styles/colors';
 import { useLocationContext } from '../../context/LocationContext';
 import * as Location from 'expo-location';
@@ -243,6 +244,7 @@ const BoardWrite = ({ navigation, route }) => {
       await api.post('/api/posts', formData, {
         headers: { 'Content-Type': 'multipart/form-data' },
       });
+      await invalidateProfileCountsCache();
 
       Alert.alert('완료', '게시글이 작성되었습니다.', [
         {

@@ -3,6 +3,7 @@ import { View, Text, TextInput, TouchableOpacity, ScrollView, KeyboardAvoidingVi
 import { colors } from '../../../styles/colors';
 import { api } from '../../../utils/api';
 
+// 회원가입 2단계(14세 미만): 보호자 PASS 인증 화면
 const SignStep1_2 = ({ styles, normalize, onChange, disableValidation = false }) => {
   const [phoneNumber, setPhoneNumber] = useState('');
   const [verificationCode, setVerificationCode] = useState('');

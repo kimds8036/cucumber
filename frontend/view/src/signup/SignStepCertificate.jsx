@@ -1,6 +1,7 @@
 import React from 'react';
 import { View, Text } from 'react-native';
 
+// 학생 인증 대체 단계: 증명서 제출 안내/입력 화면
 const SignStepCertificate = ({ styles }) => {
   return (
     <View style={styles.ageGateContainer}>

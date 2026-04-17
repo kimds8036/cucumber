@@ -3,6 +3,7 @@ import { View, Text, TextInput, TouchableOpacity, ScrollView, KeyboardAvoidingVi
 import { colors } from '../../../styles/colors';
 import { api } from '../../../utils/api';
 
+// 회원가입 1단계: 본인(PASS) 인증 정보 입력/검증 화면
 const SignStep1 = ({ styles, normalize, onChange, disableValidation = false, passMode = false }) => {
   const [phoneNumber, setPhoneNumber] = useState('');
   const [verificationCode, setVerificationCode] = useState('');

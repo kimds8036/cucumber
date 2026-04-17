@@ -2,6 +2,7 @@ import React from 'react';
 import { View, Text, TouchableOpacity } from 'react-native';
 import { colors } from '../../../styles/colors';
 
+// 학생 인증 방식 선택 단계: 학생증 촬영 vs 증명서 제출 선택 화면
 const SignStepVerificationMethod = ({ styles, onSelect, selectedMethod }) => {
   return (
     <View style={styles.ageGateContainer}>

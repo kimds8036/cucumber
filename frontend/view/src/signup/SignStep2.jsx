@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { View, Text, TextInput, ScrollView, KeyboardAvoidingView, Platform, Keyboard, TouchableWithoutFeedback } from 'react-native';
 import { colors } from '../../../styles/colors';
 
+// 회원가입 정보 입력 단계: 계정/비밀번호 등 기본 계정정보 입력 화면
 const SignStep2 = ({ styles, normalize, verifiedName, verifiedBirthDate, onChange }) => {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');

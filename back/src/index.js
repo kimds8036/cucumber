@@ -21,6 +21,7 @@ import dmRoutes from './routes/dm.js';
 import swaggerSpec from './swagger.js';
 import { initSocketServer } from './socketServer.js';
 import './utils/notificationWorker.js';
+import { initJobs } from './jobs/index.js';
 
 
 dotenv.config();
@@ -94,6 +95,8 @@ httpServer.listen(PORT, async () => {
     console.log('❌ DB 연결 상태: 오류 발생');
     console.log(`   ↳ ${error.message}`);
   }
+
+  initJobs();
 
   console.log('==============================');
 });

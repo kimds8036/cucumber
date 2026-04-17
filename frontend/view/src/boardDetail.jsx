@@ -25,6 +25,7 @@ import { colors, fonts } from '../../styles/colors';
 import { createDetailStyles, getNormalize } from '../../styles/board.style';
 import { api } from '../../utils/api';
 import { normalizeTagsFromApi } from '../../utils/normalizePostTags';
+import { invalidateProfileCountsCache } from '../../utils/profileCountsCache';
 import { useNotification } from '../../context/NotificationContext';
 import { useLocationContext } from '../../context/LocationContext';
 import ImageViewer from './ImageViewer';
@@ -536,6 +537,7 @@ export default function BoardDetail({ navigation, route }) {
           onPress: async () => {
             try {
               await api.delete(`/api/posts/${post.id}`);
+              await invalidateProfileCountsCache();
               Alert.alert('삭제됨', '게시글이 삭제되었습니다.', [
                 { text: '확인', onPress: () => navigation.goBack() },
               ]);
@@ -610,6 +612,7 @@ export default function BoardDetail({ navigation, route }) {
     try {
       const res = await api.post(`/api/posts/${post.id}/scrap`);
       const scrapped = res.data?.scrapped;
+      await invalidateProfileCountsCache();
       setPostScrapped(Boolean(scrapped));
       setPost((prev) => {
         const cur = prev?.scraps ?? 0;

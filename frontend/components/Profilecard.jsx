@@ -5,11 +5,15 @@ import {
   TouchableOpacity,
   useWindowDimensions,
 } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { colors } from '../styles/colors';
 import MessageTabIcon from '../assets/Group 166.svg';
 import { getNormalize, createProfileCardStyles } from '../styles/mypage.style';
 import { useFriend } from '../context/FriendContext';
 import { api } from '../utils/api';
+import { PROFILE_COUNTS_CACHE_KEY } from '../utils/profileCountsCache';
+
+const PROFILE_COUNTS_CACHE_TTL_MS = 10 * 60 * 1000;
 
 const ProfileCard = ({ userInfo, navigation }) => {
   const { width } = useWindowDimensions();
@@ -19,33 +23,74 @@ const ProfileCard = ({ userInfo, navigation }) => {
     [normalize],
   );
   const { hasUnreadFriendRequests } = useFriend();
-  const [posts, setPosts] = useState([]);
-  const [scrappedPosts, setScrappedPosts] = useState([]);
+  const [counts, setCounts] = useState({
+    friendCount: Number(userInfo?.friendCount ?? 0),
+    postCount: 0,
+    scrapCount: 0,
+  });
   const [countsLoading, setCountsLoading] = useState(true);
 
-  const loadPostCounts = useCallback(async () => {
-    setCountsLoading(true);
+  const loadCounts = useCallback(async ({ force = false } = {}) => {
     try {
-      const [writtenRes, scrappedRes] = await Promise.all([
-        api.get('/api/posts/my', { params: { page: 1, limit: 50 } }),
-        api.get('/api/posts/scrapped', { params: { page: 1, limit: 50 } }),
-      ]);
-      setPosts(writtenRes.data?.data?.posts || []);
-      setScrappedPosts(scrappedRes.data?.data?.posts || []);
+      const raw = await AsyncStorage.getItem(PROFILE_COUNTS_CACHE_KEY);
+      let shouldFetch = true;
+
+      if (raw) {
+        try {
+          const parsed = JSON.parse(raw);
+          const cachedCounts = parsed?.counts;
+          const ts = Number(parsed?.ts || 0);
+          const isFresh = Date.now() - ts < PROFILE_COUNTS_CACHE_TTL_MS;
+          if (cachedCounts) {
+            setCounts((prev) => ({
+              friendCount: Number(cachedCounts.friendCount ?? prev.friendCount ?? 0),
+              postCount: Number(cachedCounts.postCount ?? 0),
+              scrapCount: Number(cachedCounts.scrapCount ?? 0),
+            }));
+            setCountsLoading(false);
+          }
+          shouldFetch = force || !isFresh;
+        } catch {
+          shouldFetch = true;
+        }
+      }
+
+      if (!shouldFetch) return;
+
+      const res = await api.get('/api/users/me/stats');
+      const nextCounts = {
+        friendCount: Number(res.data?.data?.friendCount ?? 0),
+        postCount: Number(res.data?.data?.postCount ?? 0),
+        scrapCount: Number(res.data?.data?.scrapCount ?? 0),
+      };
+      setCounts(nextCounts);
+      setCountsLoading(false);
+      await AsyncStorage.setItem(
+        PROFILE_COUNTS_CACHE_KEY,
+        JSON.stringify({
+          ts: Date.now(),
+          counts: nextCounts,
+        })
+      );
     } catch (e) {
-      console.warn('[ProfileCard] 게시글 수 로드 실패:', e?.message || e);
-      setPosts([]);
-      setScrappedPosts([]);
-    } finally {
+      console.warn('[ProfileCard] 통계 로드 실패:', e?.message || e);
       setCountsLoading(false);
     }
   }, []);
 
   useEffect(() => {
-    loadPostCounts();
-    const unsub = navigation.addListener('focus', loadPostCounts);
+    loadCounts();
+    const unsub = navigation.addListener('focus', () => loadCounts());
     return unsub;
-  }, [navigation, loadPostCounts]);
+  }, [navigation, loadCounts]);
+
+  useEffect(() => {
+    const fallbackFriendCount = Number(userInfo?.friendCount ?? 0);
+    setCounts((prev) => ({
+      ...prev,
+      friendCount: prev.friendCount || fallbackFriendCount,
+    }));
+  }, [userInfo?.friendCount]);
 
   return (
     <View style={styles.profileCard}>
@@ -81,7 +126,7 @@ const ProfileCard = ({ userInfo, navigation }) => {
             </>
           ) : (
             <>
-              <Text style={styles.quickLinkMeta}>{userInfo.friendCount ?? 0}</Text>
+              <Text style={styles.quickLinkMeta}>{counts.friendCount}</Text>
               <Text style={styles.quickLinkLabel}>친구</Text>
             </>
           )}
@@ -103,7 +148,7 @@ const ProfileCard = ({ userInfo, navigation }) => {
             </>
           ) : (
             <>
-              <Text style={styles.quickLinkMeta}>{posts.length}</Text>
+              <Text style={styles.quickLinkMeta}>{counts.postCount}</Text>
               <Text style={styles.quickLinkLabel}>게시글</Text>
             </>
           )}
@@ -122,7 +167,7 @@ const ProfileCard = ({ userInfo, navigation }) => {
             </>
           ) : (
             <>
-              <Text style={styles.quickLinkMeta}>{scrappedPosts.length}</Text>
+              <Text style={styles.quickLinkMeta}>{counts.scrapCount}</Text>
               <Text style={styles.quickLinkLabel}>스크랩</Text>
             </>
           )}

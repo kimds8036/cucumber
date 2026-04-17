@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { View, Text, TextInput, ScrollView, KeyboardAvoidingView, Platform, Keyboard, TouchableWithoutFeedback } from 'react-native';
 import { colors } from '../../../styles/colors';
 
+// 회원가입 최종 단계: 학생 정보 확인/보정 후 제출 화면
 const SignStep4 = ({ styles, normalize, recognizedData, onChange }) => {
   const [name, setName] = useState('');
   const [school, setSchool] = useState('');

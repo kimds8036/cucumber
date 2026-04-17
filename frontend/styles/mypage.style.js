@@ -307,14 +307,14 @@ export const createProfileCardStyles = (normalize) =>
       width: '48%',
       height: normalize(24),
       borderRadius: normalize(6),
-      backgroundColor: colors.textLight10,
+      backgroundColor: colors.primaryLight30,
     },
     quickLinkSkeletonLabel: {
       alignSelf: 'center',
       width: '64%',
       height: normalize(15),
       borderRadius: normalize(4),
-      backgroundColor: colors.textLight10,
+      backgroundColor: colors.primaryLight30,
     },
   });
 

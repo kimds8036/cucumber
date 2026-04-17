@@ -11,6 +11,7 @@ import { colors, fonts, fontSizes } from '../../../styles/colors';
 import SignStepPrivacyPolicy from './SignStepPrivacyPolicy';
 import SignStepTermsOfService from './SignStepTermsOfService';
 
+// 회원가입 0단계: 필수 동의 항목(개인정보/인증/위치) 확인 화면
 const SignStepConsent = ({ normalize, selectedAgeGroup, onChange }) => {
   const isUnder14 = selectedAgeGroup === 'under14';
 
@@ -42,11 +43,16 @@ const SignStepConsent = ({ normalize, selectedAgeGroup, onChange }) => {
         'location',
       ];
 
-  const allConsented = requiredKeys.every((key) => consents[key]);
+  // "전체 동의" 체크박스는 화면에서 직접 체크 가능한 항목들만 기준으로 동작
+  const checkboxRequiredKeys = isUnder14
+    ? ['dataCollection', 'guardian', 'studentOcr', 'location']
+    : ['dataCollection', 'studentOcr', 'location'];
+
+  const allConsented = checkboxRequiredKeys.every((key) => consents[key]);
 
   useEffect(() => {
     onChange && onChange({ allConsented });
-  }, [consents]);
+  }, [allConsented, onChange]);
 
   const toggle = (key) => {
     setConsents((prev) => ({ ...prev, [key]: !prev[key] }));
@@ -55,7 +61,7 @@ const SignStepConsent = ({ normalize, selectedAgeGroup, onChange }) => {
   const toggleAll = () => {
     const newVal = !allConsented;
     const updated = {};
-    requiredKeys.forEach((k) => {
+    checkboxRequiredKeys.forEach((k) => {
       updated[k] = newVal;
     });
     setConsents((prev) => ({ ...prev, ...updated }));

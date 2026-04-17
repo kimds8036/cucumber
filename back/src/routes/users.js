@@ -4,6 +4,52 @@ import { authenticate } from '../middleware/auth.js';
 
 const router = express.Router();
 
+// GET /api/users/me/stats
+// - 마이페이지 카드용 집계(친구/게시글/스크랩 수)
+router.get('/me/stats', authenticate, async (req, res) => {
+  try {
+    const userId = req.user.userId;
+
+    const [[friendRows], [postRows], [scrapRows]] = await Promise.all([
+      pool.execute(
+        `SELECT COUNT(*) AS count
+         FROM user_friendships
+         WHERE status = 'accepted'
+           AND (requester_id = ? OR addressee_id = ?)`,
+        [userId, userId]
+      ),
+      pool.execute(
+        `SELECT COUNT(*) AS count
+         FROM posts
+         WHERE user_id = ?
+           AND is_deleted = FALSE`,
+        [userId]
+      ),
+      pool.execute(
+        `SELECT COUNT(*) AS count
+         FROM post_scraps
+         WHERE user_id = ?`,
+        [userId]
+      ),
+    ]);
+
+    res.json({
+      success: true,
+      data: {
+        friendCount: Number(friendRows[0]?.count ?? 0),
+        postCount: Number(postRows[0]?.count ?? 0),
+        scrapCount: Number(scrapRows[0]?.count ?? 0),
+      },
+    });
+  } catch (error) {
+    console.error('내 통계 조회 오류:', error);
+    res.status(500).json({
+      success: false,
+      message: '내 통계 조회 중 오류가 발생했습니다.',
+    });
+  }
+});
+
 // GET /api/users/search?schoolId=xxx&query=xxx
 router.get('/search', authenticate, async (req, res) => {
   try {

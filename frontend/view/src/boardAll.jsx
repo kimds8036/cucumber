@@ -22,6 +22,7 @@ import { api } from '../../utils/api';
 import { normalizeTagsFromApi } from '../../utils/normalizePostTags';
 import BoardPostCard from '../../components/Boardpostcard';
 import { useLocationContext } from '../../context/LocationContext';
+import { invalidateProfileCountsCache } from '../../utils/profileCountsCache';
 
 /** 서버 created_at(UTC)을 "n분 전" 형식으로 변환. 화면에서는 기기 로컬 시간 기준으로 계산 */
 function formatTimeAgo(createdAt) {
@@ -116,6 +117,7 @@ export function BoardAllContent({ navigation, posts }) {
                 onPress: async () => {
                   try {
                     await api.delete(`/api/posts/${postToDelete.id}`);
+                    await invalidateProfileCountsCache();
                     setServerPosts((prev) => prev.filter((p) => p.id !== postToDelete.id));
                     Alert.alert('삭제됨', '게시글이 삭제되었습니다.');
                   } catch (error) {
@@ -319,18 +321,6 @@ export function BoardAllContent({ navigation, posts }) {
   }, [fetchPosts]);
 
   const data = posts && posts.length > 0 ? posts : serverPosts;
-
-  useEffect(() => {
-    if (!__DEV__) return;
-    const usingInjected = Boolean(posts && posts.length > 0);
-    const src = usingInjected ? 'injected_posts(prop)' : 'serverPosts(API)';
-    const arr = usingInjected ? posts : serverPosts;
-    const sample = arr.slice(0, 8).map((p) => ({
-      id: p.id,
-      tagsLen: Array.isArray(p.tags) ? p.tags.length : p.tags == null ? 'null' : typeof p.tags,
-    }));
-    console.log('[BoardAllContent:list]', { dataSource: src, total: arr.length, sample });
-  }, [posts, serverPosts]);
 
   const handleRefresh = async () => {
     await refreshLocation();

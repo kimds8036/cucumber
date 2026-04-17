@@ -3,6 +3,7 @@ import { View, Text, ScrollView, Modal, StyleSheet, Platform } from 'react-nativ
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { colors, fonts, fontSizes } from '../../../styles/colors';
 
+// 약관 모달: 개인정보 처리방침 전문 보기 화면
 const SignStepPrivacyPolicy = ({ normalize, onBack }) => {
   const s = makeStyles(normalize);
 

@@ -1,8 +1,32 @@
 import express from 'express';
 import pool from '../config/database.js';
 import { optionalAuthenticate } from '../middleware/auth.js';
+import { getBatchRedis } from '../services/batchRedis.service.js';
 
 const router = express.Router();
+
+// GET /api/search/trending?limit=10
+// - Redis trending:hashtag ZSET 상위 해시태그 반환
+router.get('/trending', async (req, res) => {
+  try {
+    const limitNum = Math.max(1, Math.min(20, parseInt(req.query?.limit, 10) || 10));
+    const redis = await getBatchRedis();
+    const hashtags = await redis.zrevrange('trending:hashtag', 0, limitNum - 1);
+
+    res.json({
+      success: true,
+      data: {
+        hashtags,
+      },
+    });
+  } catch (error) {
+    console.error('트렌딩 해시태그 조회 오류:', error);
+    res.status(500).json({
+      success: false,
+      message: '트렌딩 해시태그 조회 중 오류가 발생했습니다.',
+    });
+  }
+});
 
 // GET /api/search/preview?query=...
 // - 학교 이름만 미리보기 (최대 2개)

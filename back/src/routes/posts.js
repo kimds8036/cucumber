@@ -5,6 +5,7 @@ import { createNotification } from '../utils/notifications.js';
 import { getNowForDB } from '../utils/dateUtils.js';
 import { cloudinary, upload } from '../config/cloudinary.js';
 import { haversineKm, sqlHaversineKmLessOrEqual } from '../utils/geo.js';
+import { getBatchRedis } from '../services/batchRedis.service.js';
 
 const router = express.Router();
 
@@ -28,6 +29,33 @@ function normalizePostImagesFromRow(raw) {
     return [raw];
   }
   return [];
+}
+
+function toPostIdFromMember(member) {
+  if (typeof member !== 'string') return null;
+  const value = member.startsWith('post:') ? member.slice(5) : member;
+  const n = Number(value);
+  return Number.isInteger(n) && n > 0 ? n : null;
+}
+
+async function getPopularPostIdsFromCache({ boardType, schoolId, offsetNum, limitNum }) {
+  if (boardType === 'national') return null;
+
+  let key = 'trending:posts:national';
+  if (schoolId) {
+    key = `trending:posts:school:${schoolId}`;
+  } else if (boardType === 'school') {
+    return null;
+  }
+
+  const redis = await getBatchRedis();
+  const [members, total] = await Promise.all([
+    redis.zrevrange(key, offsetNum, offsetNum + limitNum - 1),
+    redis.zcard(key),
+  ]);
+
+  const ids = members.map(toPostIdFromMember).filter((id) => id != null);
+  return { ids, total: Number(total || 0) };
 }
 
 // 해시태그 자동완성용 검색 API
@@ -162,8 +190,86 @@ router.get('/', optionalAuthenticate, async (req, res) => {
 
     // 게시글 조회 (삭제되지 않은 것만) — 로그인 시 내 좋아요/스크랩 여부
     const listParams = [likeScrapUserId, likeScrapUserId, ...params];
-    const [posts] = await pool.execute(
-      `SELECT 
+
+    const canUsePopularCache =
+      sort === 'popular' && !search && boardType !== 'national' && sort !== 'nearby';
+
+    let posts = [];
+    let total = 0;
+
+    if (canUsePopularCache) {
+      try {
+        const cached = await getPopularPostIdsFromCache({
+          boardType,
+          schoolId,
+          offsetNum,
+          limitNum,
+        });
+
+        if (cached && cached.ids.length > 0) {
+          const placeholders = cached.ids.map(() => '?').join(', ');
+          const orderByField = cached.ids.map(() => '?').join(', ');
+          const popularParams = [
+            likeScrapUserId,
+            likeScrapUserId,
+            ...cached.ids,
+            ...params,
+            ...cached.ids,
+          ];
+
+          const [popularRows] = await pool.execute(
+            `SELECT
+              p.id,
+              p.user_id,
+              p.board_type,
+              p.school_id,
+              p.content,
+              p.latitude,
+              p.longitude,
+              p.like_count,
+              p.comment_count,
+              p.created_at,
+              u.name as author_name,
+              u.color_id,
+              s.name as school_name,
+              (SELECT pi1.cloudinary_url
+                 FROM post_images pi1
+                WHERE pi1.post_id = p.id AND pi1.deleted_at IS NULL
+                ORDER BY pi1.display_order ASC
+                LIMIT 1) AS thumbnail,
+              (SELECT COUNT(*) FROM post_likes pl
+                WHERE pl.post_id = p.id AND pl.user_id = ?) AS is_liked,
+              (SELECT COUNT(*) FROM post_scraps ps
+                WHERE ps.post_id = p.id AND ps.user_id = ?) AS is_scrapped,
+              (SELECT COUNT(*) FROM post_scraps ps_cnt
+                WHERE ps_cnt.post_id = p.id) AS scrap_count,
+              (SELECT JSON_ARRAYAGG(JSON_OBJECT('id', t.id, 'name', t.name))
+                 FROM post_tags pt
+                 INNER JOIN tags t ON pt.tag_id = t.id
+                WHERE pt.post_id = p.id) AS tags
+            FROM posts p
+            LEFT JOIN users u ON p.user_id = u.id
+            LEFT JOIN schools s ON p.school_id = s.school_id
+            WHERE p.id IN (${placeholders}) AND p.is_deleted = FALSE
+              AND (${conditions.length > 0 ? conditions.join(' AND ') : '1=1'})
+            ORDER BY FIELD(p.id, ${orderByField})`,
+            popularParams
+          );
+
+          posts = popularRows;
+          total = cached.total;
+        } else if (cached) {
+          posts = [];
+          total = cached.total;
+        }
+      } catch (cacheError) {
+        console.error('[GET /api/posts] popular cache 조회 실패, DB 폴백:', cacheError.message);
+      }
+    }
+
+    if (posts.length === 0 && total === 0) {
+      const [dbRows] = await pool.execute(
+        `SELECT
         p.id, 
         p.user_id, 
         p.board_type, 
@@ -198,15 +304,17 @@ router.get('/', optionalAuthenticate, async (req, res) => {
       ${whereClause}
       ORDER BY ${orderBy}
       LIMIT ${limitNum} OFFSET ${offsetNum}`,
-      listParams
-    );
+        listParams
+      );
+      posts = dbRows;
 
-    // 전체 개수 조회 (삭제 제외)
-    const [countResult] = await pool.execute(
-      `SELECT COUNT(*) as total FROM posts p ${whereClause}`,
-      params
-    );
-    const total = Number(countResult[0]?.total ?? 0);
+      // 전체 개수 조회 (삭제 제외)
+      const [countResult] = await pool.execute(
+        `SELECT COUNT(*) as total FROM posts p ${whereClause}`,
+        params
+      );
+      total = Number(countResult[0]?.total ?? 0);
+    }
 
     const postsForClient = posts.map((p) => {
       const {

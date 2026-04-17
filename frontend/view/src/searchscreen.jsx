@@ -41,6 +41,7 @@ function formatTimeAgo(createdAt) {
 }
 
 const RECENT_KEY = '@search_recent_keywords';
+const DEFAULT_RECOMMEND_TAGS = ['급식메뉴', '시험일정', '동아리', '축제', '학생회'];
 
 function normalizeSearchText(q) {
   return String(q ?? '').trim();
@@ -54,6 +55,7 @@ const SearchScreen = ({ navigation, route }) => {
 
   const [searchText, setSearchText] = useState('');
   const [recentSearches, setRecentSearches] = useState([]);
+  const [recommendedTags, setRecommendedTags] = useState(DEFAULT_RECOMMEND_TAGS);
 
   useEffect(() => {
     const q = normalizeSearchText(route?.params?.query ?? '');
@@ -77,6 +79,23 @@ const SearchScreen = ({ navigation, route }) => {
         const parsed = JSON.parse(raw);
         if (Array.isArray(parsed)) setRecentSearches(parsed);
       } catch {}
+    })();
+  }, []);
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const res = await api.get('/api/search/trending', { params: { limit: 10 } });
+        const hashtags = Array.isArray(res?.data?.data?.hashtags) ? res.data.data.hashtags : [];
+        const tags = hashtags
+          .map((tag) => String(tag || '').trim().replace(/^#+/, ''))
+          .filter(Boolean);
+        if (tags.length > 0) {
+          setRecommendedTags(tags);
+        }
+      } catch {
+        // fallback: 기본 추천 태그 유지
+      }
     })();
   }, []);
 
@@ -115,15 +134,6 @@ const SearchScreen = ({ navigation, route }) => {
     const next = recentSearches.filter((_, i) => i !== index);
     setRecentSearches(next);
     saveRecent(next);
-  };
-
-  const getTrendMeta = (trend) => {
-    switch (trend) {
-      case 'up':   return { icon: 'caret-up',   color: colors.alert };
-      case 'down': return { icon: 'caret-down',  color: colors.subcolor };
-      case 'new':  return { icon: null,           color: colors.scrap, label: 'NEW' };
-      default:     return { icon: null,           color: colors.background2, label: '—' };
-    }
   };
 
   return (
@@ -219,7 +229,7 @@ const SearchScreen = ({ navigation, route }) => {
               <Text style={styles.sectionTitle}>추천 검색어</Text>
             </View>
             <View style={styles.tagRow}>
-              {['급식메뉴', '시험일정', '동아리', '축제', '학생회'].map((tag) => (
+              {recommendedTags.map((tag) => (
                 <TouchableOpacity
                   key={tag}
                   style={styles.tag}

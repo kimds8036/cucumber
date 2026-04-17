@@ -1,6 +1,7 @@
 import React from 'react';
 import { View, Text, TouchableOpacity } from 'react-native';
 
+// 연령 분기 단계: 만 14세 이상/미만 플로우 선택 화면
 const SignStepAgeGate = ({ styles, onSelect, selectedAgeGroup }) => {
   return (
     <View style={styles.ageGateContainer}>

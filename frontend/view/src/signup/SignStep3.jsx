@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { View, Text, TouchableOpacity } from 'react-native';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 
+// 학생 인증 단계: 학생증 촬영/인식 및 수동 입력 분기 화면
 const SignStep3 = ({ styles, normalize, onNext, onManualInput }) => {
   const [permission, requestPermission] = useCameraPermissions();
   const [cameraRef, setCameraRef] = useState(null);

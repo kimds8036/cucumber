@@ -85,7 +85,6 @@ const MyPage = ({ navigation }) => {
     const fetchMeAndTimetable = async () => {
       try {
         setLoading(true);
-        console.log('[MyPage] 진입: 사용자/시간표 로드 시작');
         let cachedTimetable = null;
         let cachedProfile = null;
         try {
@@ -109,21 +108,15 @@ const MyPage = ({ navigation }) => {
             const parsed = JSON.parse(raw);
             if (Date.now() - Number(parsed?.ts || 0) < TIMETABLE_CACHE_TTL_MS) {
               cachedTimetable = parsed?.timetable || null;
-              console.log('[MyPage] 시간표 캐시 히트:', {
-                hasTimetable: !!cachedTimetable && Object.keys(cachedTimetable || {}).length > 0,
-                key: TIMETABLE_CACHE_KEY,
-              });
               if (mounted) {
                 const normalized = cachedTimetable && Object.keys(cachedTimetable).length > 0 ? cachedTimetable : null;
                 setTimetable(normalized);
                 setInitialTimetable(normalized);
               }
             } else {
-              console.log('[MyPage] 시간표 캐시 만료');
               setTimetableLoading(true);
             }
           } else {
-            console.log('[MyPage] 시간표 캐시 없음');
             setTimetableLoading(true);
           }
         } catch (cacheErr) {
@@ -131,21 +124,12 @@ const MyPage = ({ navigation }) => {
           setTimetableLoading(true);
         }
 
-        console.log('[MyPage] /api/auth/me 요청 시작');
         const meRes = await api.get('/api/auth/me');
-        console.log('[MyPage] /api/auth/me 응답 수신');
 
         if (!mounted) return;
 
         const me = meRes.data?.data;
         if (me) {
-          console.log('[MyPage] 사용자 기준 정보:', {
-            userId: me.id,
-            schoolId: me.school?.id,
-            schoolName: me.school?.name,
-            grade: me.grade,
-            classNumber: me.classNumber,
-          });
           const nextUserInfo = {
             name: me.name,
             username: me.username ? `@${me.username}` : '',
@@ -175,12 +159,10 @@ const MyPage = ({ navigation }) => {
         // 캐시가 없거나 비어 있으면 서버 시간표를 1회 조회하여 채운다.
         if ((!cachedTimetable || Object.keys(cachedTimetable || {}).length === 0) && mounted) {
           try {
-            console.log('[MyPage] /api/timetable 요청 시작');
             const ttRes = await api.get('/api/timetable');
             const tt = ttRes.data?.data?.timetable || {};
             const hasEntries = Object.keys(tt).length > 0;
             const normalized = hasEntries ? tt : null;
-            console.log('[MyPage] /api/timetable 응답 수신:', { hasEntries, count: Object.keys(tt).length });
             setTimetable(normalized);
             setInitialTimetable(normalized);
             await AsyncStorage.setItem(
@@ -204,7 +186,6 @@ const MyPage = ({ navigation }) => {
         console.error('[MyPage] 데이터 로드 실패:', error?.response?.data || error?.message || error);
       } finally {
         if (mounted) setLoading(false);
-        console.log('[MyPage] 로드 종료');
       }
     };
 

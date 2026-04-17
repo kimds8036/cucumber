@@ -68,7 +68,8 @@ const BoardPostCard = ({
     }
 
     const totalWidth =
-      tagWidths.reduce((sum, width) => sum + width, 0) + TAG_GAP * Math.max(0, tags.length - 1);
+      tagWidths.reduce((sum, width) => sum + width, 0) +
+      TAG_GAP * Math.max(0, tags.length - 1);
 
     if (totalWidth <= containerWidth) {
       return { visibleCount: tags.length, hiddenTagCount: 0 };
@@ -80,7 +81,8 @@ const BoardPostCard = ({
     for (let i = 0; i < tags.length; i += 1) {
       const gapBefore = count > 0 ? TAG_GAP : 0;
       const remainingAfterCurrent = tags.length - (i + 1);
-      const reserveForMore = remainingAfterCurrent > 0 ? TAG_GAP + MORE_BADGE_WIDTH : 0;
+      const reserveForMore =
+        remainingAfterCurrent > 0 ? TAG_GAP + MORE_BADGE_WIDTH : 0;
       const nextUsed = used + gapBefore + tagWidths[i];
 
       if (nextUsed + reserveForMore <= containerWidth) {
@@ -95,12 +97,17 @@ const BoardPostCard = ({
       visibleCount: count,
       hiddenTagCount: Math.max(0, tags.length - count),
     };
-  }, [allMeasured, containerWidth, tagWidths, tags.length, TAG_GAP, MORE_BADGE_WIDTH]);
+  }, [
+    allMeasured,
+    containerWidth,
+    tagWidths,
+    tags.length,
+    TAG_GAP,
+    MORE_BADGE_WIDTH,
+  ]);
 
   const isMeasuring =
-    tags.length > 0 &&
-    !measureBypass &&
-    (!allMeasured || containerWidth <= 0);
+    tags.length > 0 && !measureBypass && (!allMeasured || containerWidth <= 0);
 
   const layoutStableKeyRef = useRef('');
   const layoutStable = tags.length === 0 || !isMeasuring;
@@ -120,34 +127,6 @@ const BoardPostCard = ({
       layoutStableKeyRef.current = '';
     };
   }, [layoutStable, layoutStableEpoch, onLayoutStable, post?.id]);
-
-  useEffect(() => {
-    if (!__DEV__) return;
-    const rawDesc = Array.isArray(post.tags)
-      ? `array(len=${post.tags.length})`
-      : post.tags == null
-        ? String(post.tags)
-        : typeof post.tags;
-    console.log('[BoardPostCard:tags]', {
-      postId: post?.id,
-      rawTags: rawDesc,
-      parsedChipCount: tags.length,
-      containerWidth,
-      allMeasured,
-      measureBypass,
-      visibleChips: visibleCount,
-      hiddenByOverflow: hiddenTagCount,
-    });
-  }, [
-    post?.id,
-    post.tags,
-    tags.length,
-    containerWidth,
-    allMeasured,
-    measureBypass,
-    visibleCount,
-    hiddenTagCount,
-  ]);
 
   const km = post.distanceKm;
   const hasKm = typeof km === 'number' && !Number.isNaN(km);
@@ -172,7 +151,9 @@ const BoardPostCard = ({
         <View style={styles.postAuthorRow}>
           <Text
             style={
-              post.author === '작성자' ? styles.postAuthorVerified : styles.postAuthor
+              post.author === '작성자'
+                ? styles.postAuthorVerified
+                : styles.postAuthor
             }
             numberOfLines={1}
           >
@@ -197,9 +178,15 @@ const BoardPostCard = ({
         {hasKm ? (
           <View style={styles.distanceBadgeWrap}>
             <View style={styles.distanceBadgeChip}>
-              <MaterialIcons name="location-on" size={normalize(10)} color={colors.primaryDark} />
+              <MaterialIcons
+                name="location-on"
+                size={normalize(10)}
+                color={colors.primaryDark}
+              />
               <View style={styles.distanceBadgeTextRow}>
-                <Text style={styles.distanceBadgeNumber}>{distanceNumberText}</Text>
+                <Text style={styles.distanceBadgeNumber}>
+                  {distanceNumberText}
+                </Text>
                 <Text style={styles.distanceBadgeUnit}>{distanceUnitText}</Text>
               </View>
             </View>
@@ -209,7 +196,12 @@ const BoardPostCard = ({
 
       {/* 본문/푸터(세로) + 썸네일(가로) */}
       <View style={styles.postBodyRow}>
-        <View style={[styles.postBodyColumn, hasThumb && styles.postBodyColumnWithThumb]}>
+        <View
+          style={[
+            styles.postBodyColumn,
+            hasThumb && styles.postBodyColumnWithThumb,
+          ]}
+        >
           <Text
             style={[styles.postContent, styles.postContentCompact]}
             numberOfLines={3}
@@ -222,7 +214,8 @@ const BoardPostCard = ({
             <View
               style={styles.postTagsWrap}
               onLayout={({ nativeEvent: { layout } }) => {
-                if (layout.width !== containerWidth) setContainerWidth(layout.width);
+                if (layout.width !== containerWidth)
+                  setContainerWidth(layout.width);
               }}
             >
               {tags.map((label, idx) => {
@@ -230,11 +223,17 @@ const BoardPostCard = ({
                 return (
                   <View
                     key={`tag-${idx}-${label}`}
-                    style={[styles.postTagChip, isMeasuring && styles.postTagMeasureHidden]}
+                    style={[
+                      styles.postTagChip,
+                      isMeasuring && styles.postTagMeasureHidden,
+                    ]}
                     onLayout={({ nativeEvent: { layout } }) => {
                       const measuredWidth = layout.width;
                       setTagWidths((prev) => {
-                        if (!Array.isArray(prev) || prev.length !== tags.length) {
+                        if (
+                          !Array.isArray(prev) ||
+                          prev.length !== tags.length
+                        ) {
                           const next = new Array(tags.length).fill(0);
                           next[idx] = measuredWidth;
                           return next;
@@ -269,7 +268,11 @@ const BoardPostCard = ({
                 <Text style={styles.postStatText}>{post.likes}</Text>
               </View>
               <View style={styles.postStatItem}>
-                <Ionicons name="chatbubble-outline" size={normalize(15)} color={colors.primary} />
+                <Ionicons
+                  name="chatbubble-outline"
+                  size={normalize(15)}
+                  color={colors.primary}
+                />
                 <Text style={styles.postStatText}>{post.comments}</Text>
               </View>
               <View style={styles.postStatItem}>
