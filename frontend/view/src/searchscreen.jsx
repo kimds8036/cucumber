@@ -41,7 +41,6 @@ function formatTimeAgo(createdAt) {
 }
 
 const RECENT_KEY = '@search_recent_keywords';
-const DEFAULT_RECOMMEND_TAGS = ['급식메뉴', '시험일정', '동아리', '축제', '학생회'];
 
 function normalizeSearchText(q) {
   return String(q ?? '').trim();
@@ -55,7 +54,8 @@ const SearchScreen = ({ navigation, route }) => {
 
   const [searchText, setSearchText] = useState('');
   const [recentSearches, setRecentSearches] = useState([]);
-  const [recommendedTags, setRecommendedTags] = useState(DEFAULT_RECOMMEND_TAGS);
+  const [recommendedTags, setRecommendedTags] = useState([]);
+  const [trendingLoading, setTrendingLoading] = useState(true);
 
   useEffect(() => {
     const q = normalizeSearchText(route?.params?.query ?? '');
@@ -85,16 +85,17 @@ const SearchScreen = ({ navigation, route }) => {
   useEffect(() => {
     (async () => {
       try {
+        setTrendingLoading(true);
         const res = await api.get('/api/search/trending', { params: { limit: 10 } });
         const hashtags = Array.isArray(res?.data?.data?.hashtags) ? res.data.data.hashtags : [];
         const tags = hashtags
           .map((tag) => String(tag || '').trim().replace(/^#+/, ''))
           .filter(Boolean);
-        if (tags.length > 0) {
-          setRecommendedTags(tags);
-        }
+        setRecommendedTags(tags);
       } catch {
-        // fallback: 기본 추천 태그 유지
+        setRecommendedTags([]);
+      } finally {
+        setTrendingLoading(false);
       }
     })();
   }, []);
@@ -226,23 +227,34 @@ const SearchScreen = ({ navigation, route }) => {
 
           <View style={styles.sectionRecommendTags}>
             <View style={styles.sectionHeader}>
-              <Text style={styles.sectionTitle}>추천 검색어</Text>
+              <Text style={styles.sectionTitle}>인기 해시태그</Text>
             </View>
             <View style={styles.tagRow}>
-              {recommendedTags.map((tag) => (
+              {trendingLoading ? (
+                <Text style={styles.dimAction}>불러오는 중...</Text>
+              ) : recommendedTags.length > 0 ? (
+                recommendedTags.map((tag) => (
+                  <TouchableOpacity
+                    key={tag}
+                    style={styles.tag}
+                    onPress={() => {
+                      const q = normalizeSearchText(`#${tag}`);
+                      setSearchText(q);
+                      runSearch(q);
+                    }}
+                    activeOpacity={0.7}
+                  >
+                    <Text style={styles.tagText}># {tag}</Text>
+                  </TouchableOpacity>
+                ))
+              ) : (
                 <TouchableOpacity
-                  key={tag}
-                  style={styles.tag}
-                  onPress={() => {
-                    const q = normalizeSearchText(`#${tag}`);
-                    setSearchText(q);
-                    runSearch(q);
-                  }}
+                  onPress={() => navigation.navigate('BoardWrite')}
                   activeOpacity={0.7}
                 >
-                  <Text style={styles.tagText}># {tag}</Text>
+                  <Text style={styles.dimAction}>해시태그를 첨부하여 글을 작성해보세요!</Text>
                 </TouchableOpacity>
-              ))}
+              )}
             </View>
           </View>
         </ScrollView>

@@ -26,7 +26,6 @@ const TABS_FOR_TEXT = ['전체', '전체게시판', '학교게시판', '학교�
 const TABS_FOR_HASHTAG = ['전체', '전체게시판', '학교게시판', '학교우편'];
 const RECENT_KEY = '@search_recent_keywords';
 const SECTIONS_WITH_EXTRA_GAP = ['학교게시판', '전체게시판', '학교우편'];
-const DEFAULT_RECOMMEND_TAGS = ['급식메뉴', '시험일정', '동아리', '축제', '학생회'];
 
 function makeSnippet(content, query) {
   const text = content || '';
@@ -131,7 +130,8 @@ export default function SearchResult({ route, navigation }) {
   const [loading, setLoading] = useState(false);
   const [isInitialRenderReady, setIsInitialRenderReady] = useState(false);
   const [recentSearches, setRecentSearches] = useState([]);
-  const [recommendedTags, setRecommendedTags] = useState(DEFAULT_RECOMMEND_TAGS);
+  const [recommendedTags, setRecommendedTags] = useState([]);
+  const [trendingLoading, setTrendingLoading] = useState(true);
 
   const searchIntent = useMemo(() => {
     const parsed = parseSearchIntent(committedQuery);
@@ -260,16 +260,17 @@ export default function SearchResult({ route, navigation }) {
   useEffect(() => {
     (async () => {
       try {
+        setTrendingLoading(true);
         const res = await api.get('/api/search/trending', { params: { limit: 10 } });
         const hashtags = Array.isArray(res?.data?.data?.hashtags) ? res.data.data.hashtags : [];
         const tags = hashtags
           .map((tag) => String(tag || '').trim().replace(/^#+/, ''))
           .filter(Boolean);
-        if (tags.length > 0) {
-          setRecommendedTags(tags);
-        }
+        setRecommendedTags(tags);
       } catch {
-        // fallback: 기본 추천 태그 유지
+        setRecommendedTags([]);
+      } finally {
+        setTrendingLoading(false);
       }
     })();
   }, []);
@@ -830,31 +831,42 @@ export default function SearchResult({ route, navigation }) {
               {/* 추천 검색어 태그 */}
               <View style={s.sectionRecommendTags}>
                 <View style={s.sectionHeader}>
-                  <Text style={s.sectionTitle}>추천 검색어</Text>
+                  <Text style={s.sectionTitle}>인기 해시태그</Text>
                 </View>
                 <View style={s.tagRow}>
-                  {recommendedTags.map(
-                    (tag) => (
-                      <TouchableOpacity
-                        key={tag}
-                        style={s.tag}
-                        onPress={() => {
-                          const q = normalizeSearchText(`#${tag}`);
-                          setSearchText(q);
-                          setCommittedQuery(q);
-                          setMode('result');
-                          setRecentSearches((prev) => {
-                            const filtered = prev.filter((item) => item !== q);
-                            const next = [q, ...filtered].slice(0, 10);
-                            saveRecent(next);
-                            return next;
-                          });
-                        }}
-                        activeOpacity={0.7}
-                      >
-                        <Text style={s.tagText}># {tag}</Text>
-                      </TouchableOpacity>
-                    ),
+                  {trendingLoading ? (
+                    <Text style={s.dimAction}>불러오는 중...</Text>
+                  ) : recommendedTags.length > 0 ? (
+                    recommendedTags.map(
+                      (tag) => (
+                        <TouchableOpacity
+                          key={tag}
+                          style={s.tag}
+                          onPress={() => {
+                            const q = normalizeSearchText(`#${tag}`);
+                            setSearchText(q);
+                            setCommittedQuery(q);
+                            setMode('result');
+                            setRecentSearches((prev) => {
+                              const filtered = prev.filter((item) => item !== q);
+                              const next = [q, ...filtered].slice(0, 10);
+                              saveRecent(next);
+                              return next;
+                            });
+                          }}
+                          activeOpacity={0.7}
+                        >
+                          <Text style={s.tagText}># {tag}</Text>
+                        </TouchableOpacity>
+                      ),
+                    )
+                  ) : (
+                    <TouchableOpacity
+                      onPress={() => navigation.navigate('BoardWrite')}
+                      activeOpacity={0.7}
+                    >
+                      <Text style={s.dimAction}>해시태그를 첨부하여 글을 작성해보세요!</Text>
+                    </TouchableOpacity>
                   )}
                 </View>
               </View>
