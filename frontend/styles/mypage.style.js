@@ -682,6 +682,41 @@ export const createMyPostsStyles = (normalize) => {
       fontFamily: fonts.regular,
       color: colors.textLight40,
     },
+    myPostSkeletonItemGap: {
+      marginBottom: normalize(10),
+    },
+    myPostSkeletonTitleLine1: {
+      width: '92%',
+      height: normalize(16),
+      borderRadius: normalize(6),
+      backgroundColor: colors.textLight10,
+      marginBottom: normalize(8),
+    },
+    myPostSkeletonTitleLine2: {
+      width: '66%',
+      height: normalize(16),
+      borderRadius: normalize(6),
+      backgroundColor: colors.textLight10,
+      marginBottom: normalize(12),
+    },
+    myPostSkeletonDate: {
+      width: normalize(86),
+      height: normalize(12),
+      borderRadius: normalize(4),
+      backgroundColor: colors.textLight10,
+    },
+    myPostSkeletonIcon: {
+      width: normalize(14),
+      height: normalize(14),
+      borderRadius: normalize(7),
+      backgroundColor: colors.textLight10,
+    },
+    myPostSkeletonCount: {
+      width: normalize(16),
+      height: normalize(12),
+      borderRadius: normalize(4),
+      backgroundColor: colors.textLight10,
+    },
 
     empty: {
       alignItems: 'center',

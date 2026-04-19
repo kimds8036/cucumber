@@ -550,25 +550,6 @@ export function MessageContent({ navigation }) {
           const rowLabel = firstMailSentByMe
             ? (firstRecipientName || latestRecipientName || '익명')
             : '익명';
-          console.log('[MailLabelDecision][MessageList]', {
-            mailId: rawMail.id,
-            firstMailId: rawFirstMail.id ?? null,
-            firstMailSenderId: rawFirstMail.sender_id ?? null,
-            labelSource: 'firstMail',
-            roomId: rawMail.room_id ?? null,
-            threadKey:
-              rawMail.thread_key ?? rawMail.root_mail_id ?? rawMail.id,
-            isReceived,
-            firstMailSentByMe,
-            replyToMySent,
-            isRootAuthorForCurrentUser: Boolean(
-              rawMail.is_root_author_for_current_user
-            ),
-            senderNameFromApi: rawMail.sender_name ?? null,
-            recipientNameFromApi: latestRecipientName || null,
-            decidedLabel: rowLabel,
-          });
-
           return {
             id: rawMail.id,
             roomId: rawMail.room_id ?? null,

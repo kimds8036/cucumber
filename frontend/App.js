@@ -46,6 +46,14 @@ import { navigationRef } from './navigation/navigationRef';
 import { appAlert } from './utils/appAlert';
 
 const Stack = createNativeStackNavigator();
+const linking = {
+  prefixes: ['cucumber://'],
+  config: {
+    screens: {
+      BoardDetail: 'board/:postId',
+    },
+  },
+};
 
 SplashScreen.preventAutoHideAsync();
 
@@ -147,7 +155,7 @@ export default function App() {
             <ToastProvider>
               <NotificationProvider>
                 <FriendProvider>
-                  <NavigationContainer ref={navigationRef}>
+                  <NavigationContainer ref={navigationRef} linking={linking}>
                     <RootNavigator />
                     <ToastHost />
                     <AlertHost />

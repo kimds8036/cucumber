@@ -57,7 +57,9 @@ export default function DMChatScreen({ navigation, route }) {
       }
       setShowJsxChat(true);
     })();
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, [roomId, navigation, friendName, friendSchool]);
 
   const { width } = useWindowDimensions();

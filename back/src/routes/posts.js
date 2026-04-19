@@ -1044,13 +1044,6 @@ router.post('/', authenticate, upload.array('images', 5), async (req, res) => {
         }
       }
 
-      if (boardType === 'school' && schoolId) {
-        await connection.execute(
-          'UPDATE schools SET total_posts = total_posts + 1 WHERE school_id = ?',
-          [schoolId],
-        );
-      }
-
       await connection.commit();
 
       res.status(201).json({

@@ -162,6 +162,14 @@ export default function BoardDetail({ navigation, route }) {
   const [viewerUri, setViewerUri] = useState(null);
   const [imageRatios, setImageRatios] = useState({});
 
+  useEffect(() => {
+    console.log('[NativeOpenBoardDetail] BoardDetail mounted', {
+      routePostId: route?.params?.postId ?? null,
+      routePostObjectId: route?.params?.post?.id ?? null,
+      isMyPostParam: route?.params?.isMyPost ?? null,
+    });
+  }, [route?.params?.isMyPost, route?.params?.post?.id, route?.params?.postId]);
+
   // 게시글/댓글 로드
   useEffect(() => {
     const postId = routePostId ?? routePost?.id;

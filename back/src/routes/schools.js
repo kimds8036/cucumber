@@ -133,6 +133,31 @@ const getMySchoolCodes = async (userId) => {
   return row || null;
 };
 
+/** schools.stats_updated_at 이 NULL일 때만 사용 (배치 미실행 등) */
+async function fetchSchoolCountsLive(schoolId) {
+  const [[userRow]] = await pool.execute(
+    `SELECT COUNT(*) AS c FROM users WHERE school_id = ? AND is_deleted = FALSE`,
+    [schoolId],
+  );
+  const [[postRow]] = await pool.execute(
+    `SELECT COUNT(*) AS c
+     FROM posts
+     WHERE board_type = 'school' AND school_id = ? AND is_deleted = FALSE`,
+    [schoolId],
+  );
+  const [[mailRow]] = await pool.execute(
+    `SELECT COUNT(*) AS c
+     FROM school_mails
+     WHERE school_id = ? AND is_deleted = FALSE`,
+    [schoolId],
+  );
+  return {
+    studentCount: Number(userRow?.c ?? 0),
+    postCount: Number(postRow?.c ?? 0),
+    mailCount: Number(mailRow?.c ?? 0),
+  };
+}
+
 // GET /api/schools/search?query=xxx
 router.get('/search', async (req, res) => {
   try {
@@ -178,6 +203,8 @@ router.get('/me', authenticate, async (req, res) => {
          s.region,
          s.total_students,
          s.total_posts,
+         s.total_school_mails,
+         s.stats_updated_at,
          s.edu_office_code,
          s.admin_standard_code
        FROM users u
@@ -195,34 +222,19 @@ router.get('/me', authenticate, async (req, res) => {
 
     const schoolId = rows[0].school_id;
 
-    // 우편 수 (학교 우편)
-    const [mailRows] = await pool.execute(
-      `SELECT COUNT(*) AS mailCount
-       FROM school_mails
-       WHERE school_id = ? AND is_deleted = FALSE`,
-      [schoolId],
-    );
-
-    const mailCount = Number(mailRows[0]?.mailCount ?? 0);
-
-    // 게시글 수는 schools.total_posts 사용 (없는 경우 posts에서 계산)
-    let postCount =
-      rows[0].total_posts != null ? Number(rows[0].total_posts) : 0;
-
-    if (!postCount) {
-      const [postRows] = await pool.execute(
-        `SELECT COUNT(*) AS postCount
-         FROM posts
-         WHERE board_type = 'school' AND school_id = ?`,
-        [schoolId],
-      );
-      postCount = Number(postRows[0]?.postCount ?? 0);
+    let studentCount;
+    let postCount;
+    let mailCount;
+    if (rows[0].stats_updated_at != null) {
+      studentCount = Number(rows[0].total_students ?? 0);
+      postCount = Number(rows[0].total_posts ?? 0);
+      mailCount = Number(rows[0].total_school_mails ?? 0);
+    } else {
+      const live = await fetchSchoolCountsLive(schoolId);
+      studentCount = live.studentCount;
+      postCount = live.postCount;
+      mailCount = live.mailCount;
     }
-
-    const studentCount =
-      rows[0].total_students != null
-        ? Number(rows[0].total_students)
-        : 0;
 
     res.json({
       success: true,
@@ -446,7 +458,9 @@ router.get('/:schoolId', async (req, res) => {
 
   try {
     const [[schoolRow]] = await pool.execute(
-      `SELECT school_id, name, address, total_students, edu_office_code, admin_standard_code
+      `SELECT school_id, name, address,
+              total_students, total_posts, total_school_mails, stats_updated_at,
+              edu_office_code, admin_standard_code
        FROM schools
        WHERE school_id = ?`,
       [schoolId],
@@ -459,24 +473,19 @@ router.get('/:schoolId', async (req, res) => {
       });
     }
 
-    const [[postCountRow]] = await pool.execute(
-      `SELECT COUNT(*) AS count
-       FROM posts
-       WHERE is_deleted = FALSE
-         AND school_id = ?`,
-      [schoolId],
-    );
-
-    const [[mailCountRow]] = await pool.execute(
-      `SELECT COUNT(*) AS count
-       FROM school_mails
-       WHERE is_deleted = FALSE
-         AND school_id = ?`,
-      [schoolId],
-    );
-
-    const studentCount =
-      schoolRow.total_students != null ? Number(schoolRow.total_students) : 0;
+    let studentCount;
+    let postCount;
+    let mailCount;
+    if (schoolRow.stats_updated_at != null) {
+      studentCount = Number(schoolRow.total_students ?? 0);
+      postCount = Number(schoolRow.total_posts ?? 0);
+      mailCount = Number(schoolRow.total_school_mails ?? 0);
+    } else {
+      const live = await fetchSchoolCountsLive(schoolId);
+      studentCount = live.studentCount;
+      postCount = live.postCount;
+      mailCount = live.mailCount;
+    }
 
     res.json({
       success: true,
@@ -485,8 +494,8 @@ router.get('/:schoolId', async (req, res) => {
         name: schoolRow.name,
         location: schoolRow.address || '',
         studentCount,
-        postCount: Number(postCountRow?.count ?? 0),
-        mailCount: Number(mailCountRow?.count ?? 0),
+        postCount,
+        mailCount,
         eduOfficeCode: schoolRow.edu_office_code || '',
         adminStandardCode: schoolRow.admin_standard_code || '',
       },

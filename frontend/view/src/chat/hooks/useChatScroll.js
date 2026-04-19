@@ -170,13 +170,19 @@ export default function useChatScroll({
     return { anchorId: pagingAnchorMessageIdRef.current };
   }, []);
 
-  const finishInitialScrollSettling = useCallback((reason) => {
-    if (silentPrefetchCompletedRef.current) return;
-    silentPrefetchCompletedRef.current = true;
-    setInitialScrollSettling(false);
-    // eslint-disable-next-line no-console
-    console.log('[ChatScroll] initial scroll settle done', { roomId, reason });
-  }, [roomId]);
+  const finishInitialScrollSettling = useCallback(
+    (reason) => {
+      if (silentPrefetchCompletedRef.current) return;
+      silentPrefetchCompletedRef.current = true;
+      setInitialScrollSettling(false);
+      // eslint-disable-next-line no-console
+      console.log('[ChatScroll] initial scroll settle done', {
+        roomId,
+        reason,
+      });
+    },
+    [roomId],
+  );
 
   /** 첫 로드 후 hasMore면 프리페치 전까지 리스트 위에 오버레이(스크롤·튐 방지) */
   useEffect(() => {
@@ -225,7 +231,12 @@ export default function useChatScroll({
 
   // 첫 로드 후 바닥에 있을 때만 한 번 — 다음 페이지를 스피너 없이 미리 붙임 (바닥 앵커 보정과 동일 세션)
   useEffect(() => {
-    if (!roomId || isLoading || !hasMore || typeof loadMoreSilent !== 'function') {
+    if (
+      !roomId ||
+      isLoading ||
+      !hasMore ||
+      typeof loadMoreSilent !== 'function'
+    ) {
       return;
     }
     if (!messages?.length || didSilentPrefetchRef.current) return;
@@ -319,11 +330,7 @@ export default function useChatScroll({
       currentOffsetRef.current = Math.max(0, offsetY);
       let bottomDist = distanceFromBottomRef.current;
       if (viewportH > 0) {
-        bottomDist = computeDistanceFromBottom(
-          contentH,
-          offsetY,
-          viewportH,
-        );
+        bottomDist = computeDistanceFromBottom(contentH, offsetY, viewportH);
         distanceFromBottomRef.current = bottomDist;
       }
 
@@ -395,11 +402,7 @@ export default function useChatScroll({
       loadOlderAllowedRef.current === false;
 
     const shouldAutoscroll = newest?.isMe || isNearBottomRef.current;
-    if (
-      !blockAutoscroll &&
-      shouldAutoscroll &&
-      !isScrollingRef.current
-    ) {
+    if (!blockAutoscroll && shouldAutoscroll && !isScrollingRef.current) {
       if (scrollAnimationRef.current) clearTimeout(scrollAnimationRef.current);
       scrollAnimationRef.current = setTimeout(() => {
         // inverted 리스트에서 "리스트 끝(최신)"으로 이동하려면 scrollToEnd 사용
@@ -423,11 +426,14 @@ export default function useChatScroll({
           isNearBottomRef.current &&
           !prependScrollLockRef.current
         ) {
-          keyboardTimeoutRef.current = setTimeout(() => {
-            listRef.current?.scrollToEnd?.({ animated: true });
-            isNearBottomRef.current = true;
-            distanceFromBottomRef.current = 0;
-          }, Platform.OS === 'ios' ? 100 : 200);
+          keyboardTimeoutRef.current = setTimeout(
+            () => {
+              listRef.current?.scrollToEnd?.({ animated: true });
+              isNearBottomRef.current = true;
+              distanceFromBottomRef.current = 0;
+            },
+            Platform.OS === 'ios' ? 100 : 200,
+          );
         }
       },
     );
@@ -442,8 +448,7 @@ export default function useChatScroll({
     return () => {
       show.remove();
       hide.remove();
-      if (keyboardTimeoutRef.current)
-        clearTimeout(keyboardTimeoutRef.current);
+      if (keyboardTimeoutRef.current) clearTimeout(keyboardTimeoutRef.current);
     };
   }, [messages?.length]);
 
@@ -498,24 +503,27 @@ export default function useChatScroll({
 
   // FlashList onContentSizeChange 기반 스크롤 위치 보정
   /** 리스트 뷰포트 높이가 바뀐 뒤(예: 상단 PostCard 로드) 최신 메시지 쪽으로 다시 맞출 때 */
-  const scrollToLatest = useCallback((options = {}) => {
-    const animated = options.animated ?? false;
-    prependScrollLockRef.current = false;
-    pagingAnchorPendingRef.current = false;
-    pagingScrollOffsetRef.current = 0;
-    pagingDistanceFromBottomRef.current = 0;
-    if (pagingSessionClearTimeoutRef.current) {
-      clearTimeout(pagingSessionClearTimeoutRef.current);
-      pagingSessionClearTimeoutRef.current = null;
-    }
-    requestAnimationFrame(() => {
-      listRef.current?.scrollToEnd?.({ animated });
-      isNearBottomRef.current = true;
-      distanceFromBottomRef.current = 0;
-      // eslint-disable-next-line no-console
-      console.log('[ChatScroll] 리앵커(scrollToLatest)', { roomId });
-    });
-  }, [roomId]);
+  const scrollToLatest = useCallback(
+    (options = {}) => {
+      const animated = options.animated ?? false;
+      prependScrollLockRef.current = false;
+      pagingAnchorPendingRef.current = false;
+      pagingScrollOffsetRef.current = 0;
+      pagingDistanceFromBottomRef.current = 0;
+      if (pagingSessionClearTimeoutRef.current) {
+        clearTimeout(pagingSessionClearTimeoutRef.current);
+        pagingSessionClearTimeoutRef.current = null;
+      }
+      requestAnimationFrame(() => {
+        listRef.current?.scrollToEnd?.({ animated });
+        isNearBottomRef.current = true;
+        distanceFromBottomRef.current = 0;
+        // eslint-disable-next-line no-console
+        console.log('[ChatScroll] 리앵커(scrollToLatest)', { roomId });
+      });
+    },
+    [roomId],
+  );
 
   const handleContentSizeChange = useCallback(
     (width, height) => {

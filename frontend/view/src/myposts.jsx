@@ -138,6 +138,31 @@ const ActivityPage = ({ navigation, route }) => {
     </TouchableOpacity>
   );
 
+  const SkeletonItem = ({ index }) => (
+    <View
+      style={[
+        styles.postItem,
+        index < 4 && styles.myPostSkeletonItemGap,
+      ]}
+    >
+      <View style={styles.myPostSkeletonTitleLine1} />
+      <View style={styles.myPostSkeletonTitleLine2} />
+      <View style={styles.postBottom}>
+        <View style={styles.myPostSkeletonDate} />
+        <View style={styles.stats}>
+          <View style={styles.statItem}>
+            <View style={styles.myPostSkeletonIcon} />
+            <View style={styles.myPostSkeletonCount} />
+          </View>
+          <View style={styles.statItem}>
+            <View style={styles.myPostSkeletonIcon} />
+            <View style={styles.myPostSkeletonCount} />
+          </View>
+        </View>
+      </View>
+    </View>
+  );
+
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
       <SubHeader title={screenTitle} onBack={() => navigation.goBack()} />
@@ -148,13 +173,10 @@ const ActivityPage = ({ navigation, route }) => {
         showsVerticalScrollIndicator={false}
       >
         {loading && posts.length === 0 ? (
-          <View style={styles.empty}>
-            <Ionicons
-              name="time-outline"
-              size={normalize(40)}
-              color={colors.textLight20}
-            />
-            <Text style={styles.emptyText}>게시글을 불러오는 중입니다...</Text>
+          <View style={styles.list}>
+            {[0, 1, 2, 3, 4].map((idx) => (
+              <SkeletonItem key={`skeleton-${idx}`} index={idx} />
+            ))}
           </View>
         ) : posts.length > 0 ? (
           <View style={styles.list}>

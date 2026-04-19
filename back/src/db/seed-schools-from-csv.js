@@ -25,12 +25,6 @@ function cleanString(v) {
   return s.length ? s : null;
 }
 
-function parseNumber(v, fallback = 0) {
-  if (v == null || String(v).trim() === "") return fallback;
-  const n = Number(String(v).replace(/,/g, "").trim());
-  return Number.isFinite(n) ? n : fallback;
-}
-
 function parseDecimal(v) {
   if (v == null || String(v).trim() === "") return null;
   const n = Number(String(v).trim());
@@ -104,8 +98,6 @@ function buildRow(rawRow) {
     address,
     school_type: cleanString(rawRow.school_type),
     region: cleanString(rawRow.region),
-    total_students: parseNumber(rawRow.total_students, 0),
-    total_posts: parseNumber(rawRow.total_posts, 0),
     edu_office_code: cleanString(rawRow.edu_office_code),
     edu_office_name: cleanString(rawRow.edu_office_name),
     admin_standard_code: cleanString(rawRow.admin_standard_code),
@@ -188,21 +180,18 @@ async function main() {
     const sql = `
       INSERT INTO schools (
         school_id, name, address, school_type, region,
-        total_students, total_posts,
         edu_office_code, edu_office_name, admin_standard_code, jurisdiction_org_name,
         road_address, road_address_detail, phone, homepage_url, coed_type, hs_general_type,
         anniversary_date, modified_date,
         school_level, founded_date, foundation_type, main_branch, operation_status,
         address_lot, latitude, longitude
       )
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       ON DUPLICATE KEY UPDATE
         name = VALUES(name),
         address = VALUES(address),
         school_type = VALUES(school_type),
         region = VALUES(region),
-        total_students = VALUES(total_students),
-        total_posts = VALUES(total_posts),
         edu_office_code = VALUES(edu_office_code),
         edu_office_name = VALUES(edu_office_name),
         admin_standard_code = VALUES(admin_standard_code),
@@ -234,8 +223,6 @@ async function main() {
         row.address,
         row.school_type,
         row.region,
-        row.total_students,
-        row.total_posts,
         row.edu_office_code,
         row.edu_office_name,
         row.admin_standard_code,
@@ -267,6 +254,7 @@ async function main() {
     console.log(
       [
         `✅ schools CSV 시드 완료 (소스: ${csvPath})`,
+        `- total_students / total_posts / total_school_mails 는 시드에서 변경하지 않음 (배치 집계 유지)`,
         `- CSV 총 행(헤더 제외): ${rows.length}`,
         `- school_id 없음 스킵: ${skippedNoSchoolId}`,
         `- school_id 중복 제거 건수: ${duplicateSchoolIdCount}`,

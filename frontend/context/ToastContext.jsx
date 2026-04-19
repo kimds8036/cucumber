@@ -121,9 +121,14 @@ export function ToastProvider({ children }) {
   /** 네이티브 쪽지방 상단 게시글 카드 탭 → BoardDetail (ChatScreen과 동일 파라미터) */
   useEffect(() => {
     if (Platform.OS !== 'android') return undefined;
+    console.log('[NativeOpenBoardDetail] listener registered');
     const sub = DeviceEventEmitter.addListener('nativeOpenBoardDetail', (payload) => {
       const postId = payload?.postId;
+      console.log('[NativeOpenBoardDetail] event received', { postId });
       if (postId == null || String(postId).trim() === '') return;
+      console.log('[NativeOpenBoardDetail] navigate BoardDetail', {
+        postId: String(postId).trim(),
+      });
       navigate('BoardDetail', {
         post: { id: String(postId).trim() },
         isMyPost: false,

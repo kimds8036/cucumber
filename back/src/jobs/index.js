@@ -1,6 +1,7 @@
 import cron from 'node-cron';
 import { runStudyGrassAggregateJob } from './studyGrass.aggregate.js';
 import { runTrendingSettleJob } from './trending.settle.js';
+import { runSchoolStatsJob } from './schoolStats.js';
 
 const TZ = process.env.CRON_TIMEZONE || 'Asia/Seoul';
 
@@ -17,6 +18,7 @@ export function initJobs() {
 
   const studyGrassSchedule = process.env.CRON_STUDY_GRASS || '5 * * * *';
   const trendingSchedule = process.env.CRON_TRENDING_SETTLE || '*/10 * * * *';
+  const schoolStatsSchedule = process.env.CRON_SCHOOL_STATS || '0 * * * *';
 
   cron.schedule(
     studyGrassSchedule,
@@ -34,7 +36,15 @@ export function initJobs() {
     { timezone: TZ }
   );
 
+  cron.schedule(
+    schoolStatsSchedule,
+    async () => {
+      await runSchoolStatsJob();
+    },
+    { timezone: TZ }
+  );
+
   console.log(
-    `[BatchJob] started timezone=${TZ} studyGrass="${studyGrassSchedule}" trending="${trendingSchedule}"`
+    `[BatchJob] started timezone=${TZ} studyGrass="${studyGrassSchedule}" trending="${trendingSchedule}" schoolStats="${schoolStatsSchedule}"`
   );
 }

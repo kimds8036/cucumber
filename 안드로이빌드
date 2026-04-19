@@ -1,0 +1,2 @@
+cd c:\cucumber\frontend
+npx expo run:android

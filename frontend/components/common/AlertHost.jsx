@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Text, TouchableOpacity, View } from 'react-native';
 import { colors } from '../../styles/colors';
 import AppPopupModal from './AppPopupModal';
@@ -6,10 +6,21 @@ import { appAlert } from '../../utils/appAlert';
 
 export default function AlertHost() {
   const [currentAlert, setCurrentAlert] = useState(null);
+  const queueRef = useRef([]);
+
+  const dequeueNext = () => {
+    if (queueRef.current.length === 0) {
+      setCurrentAlert(null);
+      return;
+    }
+    const next = queueRef.current.shift();
+    setCurrentAlert(next);
+  };
 
   useEffect(() => {
     return appAlert.subscribe((payload) => {
-      setCurrentAlert(payload);
+      queueRef.current.push(payload);
+      setCurrentAlert((prev) => prev ?? queueRef.current.shift() ?? null);
     });
   }, []);
 
@@ -20,7 +31,7 @@ export default function AlertHost() {
     [currentAlert],
   );
 
-  const close = () => setCurrentAlert(null);
+  const close = () => dequeueNext();
 
   const handlePress = (button) => {
     close();
