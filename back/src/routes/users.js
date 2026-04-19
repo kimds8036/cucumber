@@ -54,18 +54,20 @@ router.get('/me/stats', authenticate, async (req, res) => {
 router.get('/search', authenticate, async (req, res) => {
   try {
     const schoolId = String(req.query?.schoolId || '').trim();
-    const query = String(req.query?.query || '').trim();
+    let matchStr = String(req.query?.query || '').trim();
+    if (matchStr.startsWith('@')) {
+      matchStr = matchStr.slice(1).trim();
+    }
 
     if (!schoolId) {
       return res.status(400).json({ success: false, message: 'schoolId가 필요합니다.' });
     }
 
-    const params = [schoolId];
-    let whereQuery = '';
-    if (query) {
-      whereQuery = ' AND (u.username LIKE ? OR u.name LIKE ?)';
-      params.push(`%${query}%`, `%${query}%`);
+    if (!matchStr) {
+      return res.json({ success: true, data: { users: [] } });
     }
+
+    const params = [schoolId, matchStr, matchStr];
     const [rows] = await pool.execute(
       `SELECT
          u.id,
@@ -78,7 +80,7 @@ router.get('/search', authenticate, async (req, res) => {
        LEFT JOIN schools s ON u.school_id = s.school_id
        WHERE u.is_deleted = FALSE
          AND u.school_id = ?
-         ${whereQuery}
+         AND (u.username = ? OR u.name = ?)
        ORDER BY u.name ASC
        LIMIT 10`,
       params
@@ -86,7 +88,9 @@ router.get('/search', authenticate, async (req, res) => {
 
     const users = rows.map((u) => ({
       id: u.id,
-      displayName: `${u.name} (${u.username})`,
+      name: u.name,
+      username: u.username,
+      displayName: u.name,
       schoolName: u.school_name || '',
       grade: u.grade ?? null,
       class: u.class_number ?? null,

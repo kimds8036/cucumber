@@ -96,7 +96,7 @@ const SendMailScreen = ({ navigation }) => {
       try {
         setSchoolLoading(true);
         setSchoolError('');
-        const res = await api.get('/api/schools/search', { params: { query: q, limit: 10 } });
+        const res = await api.get('/api/schools/search', { params: { query: q, limit: 5 } });
         console.log('[SendMail] schools/search 응답:', res.data?.data);
         setSchoolResults(res.data?.data?.schools || []);
       } catch (error) {
@@ -328,7 +328,7 @@ const SendMailScreen = ({ navigation }) => {
                     />
                     <TextInput
                       style={[styles.input, { marginLeft: normalize(6) }]}
-                      placeholder="아이디 또는 이름으로 검색"
+                      placeholder="실명 또는 아이디 전체 입력 (일치 시에만 표시)"
                       value={userQuery}
                       onChangeText={setUserQuery}
                       placeholderTextColor={colors.textSecondary}
@@ -355,10 +355,8 @@ const SendMailScreen = ({ navigation }) => {
                       }}
                     >
                       {userResults.map((user, index) => {
-                        const userIdLabel =
-                          user?.username ??
-                          user?.loginId ??
-                          String(user.id ?? '');
+                        const rowName = user?.name ?? user?.displayName ?? '';
+                        const rowUsername = user?.username ?? user?.loginId ?? '';
                         return (
                           <TouchableOpacity
                             key={user.id}
@@ -375,22 +373,21 @@ const SendMailScreen = ({ navigation }) => {
                               setUserResults([]);
                             }}
                           >
-                          {/* 첫 줄: 이름 + @아이디 (아이디는 textSecondary) */}
                           <Text
                             style={{
                               color: colors.textPrimary,
                               fontFamily: fonts.regular,
                             }}
                           >
-                            {user.displayName}
-                            {userIdLabel ? (
+                            {rowName}
+                            {rowUsername ? (
                               <Text
                                 style={{
                                   color: colors.textSecondary,
                                   fontFamily: fonts.regular,
                                 }}
                               >
-                                @{userIdLabel}
+                                {` @${rowUsername}`}
                               </Text>
                             ) : null}
                           </Text>
@@ -419,7 +416,7 @@ const SendMailScreen = ({ navigation }) => {
                     userQuery.trim().length > 0 &&
                     userResults.length === 0 && (
                       <Text style={styles.sendInlineHelperText}>
-                        해당 학교에 가입된 유저가 없습니다
+                        일치하는 사용자가 없습니다. 실명 또는 아이디를 정확히 입력해 주세요.
                       </Text>
                     )}
                 </View>
@@ -437,19 +434,19 @@ const SendMailScreen = ({ navigation }) => {
                     ]}
                     numberOfLines={1}
                   >
-                    {selectedUser.displayName}
-                    <Text
-                      style={{
-                        color: colors.textSecondary,
-                        fontFamily: fonts.regular,
-                      }}
-                    >
-                      {`@${
-                        selectedUser?.username ??
-                        selectedUser?.loginId ??
-                        String(selectedUser.id ?? '')
-                      }`}
-                    </Text>
+                    {selectedUser?.name ?? selectedUser?.displayName ?? ''}
+                    {selectedUser?.username || selectedUser?.loginId ? (
+                      <Text
+                        style={{
+                          color: colors.textSecondary,
+                          fontFamily: fonts.regular,
+                        }}
+                      >
+                        {` @${
+                          selectedUser?.username ?? selectedUser?.loginId ?? ''
+                        }`}
+                      </Text>
+                    ) : null}
                   </Text>
                   <TouchableOpacity
                     hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}

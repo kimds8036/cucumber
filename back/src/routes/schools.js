@@ -1,6 +1,11 @@
 import express from 'express';
 import pool from '../config/database.js';
 import { authenticate } from '../middleware/auth.js';
+import {
+  buildSafeSchoolSearchTerm,
+  buildSchoolSearchSql,
+  schoolSearchParams,
+} from '../utils/schoolSearch.js';
 
 const router = express.Router();
 const NEIS_BASE_URL = 'https://open.neis.go.kr/hub/mealServiceDietInfo';
@@ -158,7 +163,7 @@ async function fetchSchoolCountsLive(schoolId) {
   };
 }
 
-// GET /api/schools/search?query=xxx
+// GET /api/schools/search?query=xxx&limit=5
 router.get('/search', async (req, res) => {
   try {
     const query = String(req.query?.query || '').trim();
@@ -167,13 +172,15 @@ router.get('/search', async (req, res) => {
       return res.json({ success: true, data: { schools: [] } });
     }
 
+    const safe = buildSafeSchoolSearchTerm(query);
+    if (!safe) {
+      return res.json({ success: true, data: { schools: [] } });
+    }
+
+    const limitRaw = Number(req.query?.limit ?? 5);
     const [rows] = await pool.execute(
-      `SELECT school_id, name, region
-       FROM schools
-       WHERE name LIKE ?
-       ORDER BY name ASC
-       LIMIT 10`,
-      [`%${query}%`]
+      buildSchoolSearchSql(limitRaw),
+      schoolSearchParams(safe),
     );
 
     const schools = rows.map((s) => ({
