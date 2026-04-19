@@ -19,13 +19,18 @@ import { useAppNavigation } from '../../navigation/useAppNavigation';
 // TODO: 재디자인 완료 후 false로 되돌려 유효성 검사를 다시 활성화하세요.
 const DISABLE_SIGN_VALIDATION_FOR_REDESIGN = true;
 
+/** true: 첫 화면이 보호자 인증(SignStep1-2). false: 약관 동의(SignStepConsent)부터 시작. */
+const SIGNUP_START_AT_GUARDIAN_STEP_FOR_PREVIEW = true;
+
 const Sign = ({ navigation }) => {
   const { resetTo } = useAppNavigation();
   const { width } = useWindowDimensions();
   const scale = width / 375;
   const normalize = (size) => Math.round(scale * size);
 
-  const [currentStep, setCurrentStep] = useState(0);
+  const [currentStep, setCurrentStep] = useState(() =>
+    SIGNUP_START_AT_GUARDIAN_STEP_FOR_PREVIEW ? 2 : 0,
+  );
   const [formData, setFormData] = useState({});
   const [recognizedData, setRecognizedData] = useState(null);
   const [showCompleteModal, setShowCompleteModal] = useState(false);
@@ -34,7 +39,9 @@ const Sign = ({ navigation }) => {
   const [guardianStepData, setGuardianStepData] = useState({});
   const [step4Data, setStep4Data] = useState({});
   const [stepNumberData, setStepNumberData] = useState({});
-  const [selectedAgeGroup, setSelectedAgeGroup] = useState('');
+  const [selectedAgeGroup, setSelectedAgeGroup] = useState(() =>
+    SIGNUP_START_AT_GUARDIAN_STEP_FOR_PREVIEW ? 'under14' : '',
+  );
   const [selectedVerificationMethod, setSelectedVerificationMethod] = useState('');
   const [consentData, setConsentData] = useState({ allConsented: false });
   const [completeModalType, setCompleteModalType] = useState('signup');

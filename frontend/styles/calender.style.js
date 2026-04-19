@@ -4,6 +4,9 @@ import { shadow } from './tokens';
 
 export const createCalendarStyles = (width, normalize) => {
   const dayCellSize = (width - normalize(32)) / 7;
+  // Android는 borderRadius를 과도하게 크게 주면 사각형에 가깝게 그려지는 경우가 있어,
+  // 크기의 절반으로 고정하고 overflow로 배경을 클립한다.
+  const dayNumberCircleSize = normalize(22);
 
   return StyleSheet.create({
     container: {
@@ -89,9 +92,10 @@ export const createCalendarStyles = (width, normalize) => {
     },
     // 날짜 숫자 원형 배경 공통
     dayNumberCircle: {
-      width: normalize(22),
-      height: normalize(22),
-      borderRadius: normalize(11),
+      width: dayNumberCircleSize,
+      height: dayNumberCircleSize,
+      borderRadius: dayNumberCircleSize / 2,
+      overflow: 'hidden',
       alignItems: 'center',
       justifyContent: 'center',
       marginBottom: normalize(2),
@@ -151,7 +155,6 @@ export const createCalendarStyles = (width, normalize) => {
       width: '100%',
       flexDirection: 'column',
       justifyContent: 'flex-start',
-      ...shadow.md,
     },
     mealDetailHeader: {
       flexDirection: 'row',

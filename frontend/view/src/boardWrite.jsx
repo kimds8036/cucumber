@@ -23,6 +23,7 @@ import { createWriteStyles, getNormalize } from '../../styles/board.style';
 import { api } from '../../utils/api';
 import { invalidateProfileCountsCache } from '../../utils/profileCountsCache';
 import { colors, fonts, fontSizes } from '../../styles/colors';
+import BoardCommunityGuideModal from './BoardCommunityGuideModal';
 import { useLocationContext } from '../../context/LocationContext';
 import * as Location from 'expo-location';
 
@@ -53,6 +54,7 @@ const BoardWrite = ({ navigation, route }) => {
   const tagInputRef = useRef(null);
   const tagPanelAnim = useRef(new Animated.Value(0)).current;
   const [driverMode, setDriverMode] = useState(true);
+  const [communityGuideVisible, setCommunityGuideVisible] = useState(false);
 
   const handleBack = () => {
     navigation.goBack();
@@ -271,11 +273,7 @@ const BoardWrite = ({ navigation, route }) => {
     <View style={styles.box2}>
       <View style={styles.guideContainer}>
         <Text style={styles.guideText}>비방/욕설 게시글은 </Text>
-        <TouchableOpacity
-          onPress={() => {
-            /* TODO: 가이드 페이지로 이동 */
-          }}
-        >
+        <TouchableOpacity onPress={() => setCommunityGuideVisible(true)}>
           <Text style={styles.guideLink}>커뮤니티 가이드</Text>
         </TouchableOpacity>
         <Text style={styles.guideText}>에 따라 삭제될 수 있어요</Text>
@@ -579,6 +577,11 @@ const BoardWrite = ({ navigation, route }) => {
       accessible={false}
     >
       <View style={styles.screen}>
+        <BoardCommunityGuideModal
+          visible={communityGuideVisible}
+          normalize={normalize}
+          onClose={() => setCommunityGuideVisible(false)}
+        />
         <KeyboardAvoidingView
           style={styles.keyboardAvoiding}
           behavior={Platform.OS === 'ios' ? 'padding' : undefined}

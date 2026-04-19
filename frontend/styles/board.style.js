@@ -588,15 +588,15 @@ export const createWriteStyles = (width, normalize) => {
     },
     tagPanelContainerWithZIndex: {
       zIndex: 20,
-      ...Platform.select({ android: { elevation: 20 }, ios: {} }),
+      ...Platform.select({ android: {}, ios: {} }),
     },
     writeHashtagDashedWrapWithZIndex: {
       zIndex: 30,
-      ...Platform.select({ android: { elevation: 30 }, ios: {} }),
+      ...Platform.select({ android: {}, ios: {} }),
     },
     tagPanelAnimated: {
       zIndex: 20,
-      ...Platform.select({ android: { elevation: 20 }, ios: {} }),
+      ...Platform.select({ android: {}, ios: {} }),
     },
     writeHashtagInputInline: {
       flex: 1,

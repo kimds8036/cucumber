@@ -200,13 +200,36 @@ const OurSchoolScreen = ({ navigation }) => {
           <View style={styles.schoolCard}>
             {loading ? (
               <View style={{ minHeight: normalize(110), justifyContent: 'center' }}>
-                <View style={{ height: normalize(18), width: '45%', backgroundColor: '#ECECEC', borderRadius: 6, marginBottom: 10 }} />
-                <View style={{ height: normalize(14), width: '65%', backgroundColor: '#F0F0F0', borderRadius: 6, marginBottom: 12 }} />
+                <View
+                  style={{
+                    height: normalize(18),
+                    width: '45%',
+                    backgroundColor: colors.disabled,
+                    borderRadius: 6,
+                    marginBottom: 10,
+                  }}
+                />
+                <View
+                  style={{
+                    height: normalize(14),
+                    width: '65%',
+                    backgroundColor: colors.surface,
+                    borderRadius: 6,
+                    marginBottom: 12,
+                  }}
+                />
                 <View style={styles.schoolInfoDivider} />
                 <View style={styles.statsContainer}>
                   {[0, 1, 2].map((idx) => (
-                    <View key={idx} style={styles.statItem}>
-                      <View style={{ height: normalize(16), width: normalize(58), backgroundColor: '#F0F0F0', borderRadius: 6 }} />
+                      <View key={idx} style={styles.statItem}>
+                      <View
+                        style={{
+                          height: normalize(16),
+                          width: normalize(58),
+                          backgroundColor: colors.surface,
+                          borderRadius: 6,
+                        }}
+                      />
                     </View>
                   ))}
                 </View>
@@ -275,7 +298,7 @@ const OurSchoolScreen = ({ navigation }) => {
                             style={{
                               height: normalize(fontSizes.xl),
                               width: '58%',
-                              backgroundColor: '#ECECEC',
+                              backgroundColor: colors.disabled,
                               borderRadius: 6,
                             }}
                           />
@@ -285,7 +308,7 @@ const OurSchoolScreen = ({ navigation }) => {
                             style={{
                               height: normalize(fontSizes.lg),
                               width: normalize(32),
-                              backgroundColor: '#E8E8E8',
+                              backgroundColor: colors.border,
                               borderRadius: 6,
                             }}
                           />
@@ -299,7 +322,7 @@ const OurSchoolScreen = ({ navigation }) => {
                               height: normalize(fontSizes.lg),
                               marginBottom: normalize(2),
                               width: line === 3 ? '62%' : '100%',
-                              backgroundColor: '#F0F0F0',
+                              backgroundColor: colors.surface,
                               borderRadius: 4,
                             }}
                           />
@@ -429,18 +452,22 @@ const OurSchoolScreen = ({ navigation }) => {
                   <Ionicons
                     name="chatbubble-ellipses"
                     size={18}
-                    color="#4CAF50"
+                    color={colors.primary}
                   />
                   <Text style={styles.popularItemTitle}>{post.title}</Text>
                 </View>
 
                 <View style={styles.popularItemRight}>
                   <View style={styles.countBadge}>
-                    <Ionicons name="heart-outline" size={14} color="#FF6B6B" />
+                    <Ionicons name="heart-outline" size={14} color={colors.alert} />
                     <Text style={styles.countText}>{post.likes ?? 0}</Text>
                   </View>
                   <View style={styles.countBadge}>
-                    <Ionicons name="chatbubble-outline" size={14} color="#FFA726" />
+                    <Ionicons
+                      name="chatbubble-outline"
+                      size={14}
+                      color={colors.primary}
+                    />
                     <Text style={styles.countText}>{post.comments ?? 0}</Text>
                   </View>
                   <View style={styles.countBadge}>
@@ -452,7 +479,12 @@ const OurSchoolScreen = ({ navigation }) => {
             ))
           ) : (
             <View style={{ paddingVertical: 12, alignItems: 'center' }}>
-              <Text style={{ fontSize: 13, color: '#999' }}>
+              <Text
+                style={{
+                  fontSize: normalize(fontSizes.md),
+                  color: colors.textSecondary,
+                }}
+              >
                 아직 인기 게시글이 없습니다.
               </Text>
             </View>

@@ -4,6 +4,7 @@ import {
   Text,
   TouchableOpacity,
   ScrollView,
+  RefreshControl,
   useWindowDimensions,
   Modal,
   TouchableWithoutFeedback,
@@ -186,6 +187,7 @@ export default function SchoolMailDetail({ navigation, route }) {
   const [mail, setMail] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [refreshing, setRefreshing] = useState(false);
 
   const [comments, setComments] = useState([]);
   const [replyToCommentId, setReplyToCommentId] = useState(null);
@@ -248,6 +250,35 @@ export default function SchoolMailDetail({ navigation, route }) {
     return () => {
       cancelled = true;
     };
+  }, [mailId]);
+
+  const onRefreshMail = useCallback(async () => {
+    if (mailId == null) return;
+    setRefreshing(true);
+    setError(null);
+    try {
+      const res = await api.get(`/api/mails/school/${mailId}`);
+      const data = res.data?.data;
+      setMail(data ?? null);
+      if (data) {
+        setPostLiked(Boolean(data.is_liked));
+        try {
+          const cr = await api.get(`/api/mails/school/${mailId}/comments`);
+          const flat = cr.data?.data?.comments ?? [];
+          setComments(buildCommentTree(flat, data.school_id));
+        } catch (ce) {
+          console.error('학교 우편 댓글 로드 실패:', ce?.response?.data || ce.message);
+          setComments([]);
+        }
+      }
+      if (!data) setError('우편을 찾을 수 없습니다.');
+    } catch (e) {
+      console.error('학교 우편 상세 새로고침 실패:', e?.response?.data || e.message);
+      setMail(null);
+      setError(e?.response?.data?.message ?? '우편을 불러오지 못했습니다.');
+    } finally {
+      setRefreshing(false);
+    }
   }, [mailId]);
 
   const mailBody = mail?.content ?? '';
@@ -461,7 +492,7 @@ export default function SchoolMailDetail({ navigation, route }) {
             >
               <FontAwesome
                 name={isCommentLiked ? 'heart' : 'heart-o'}
-                size={normalize(13)}
+                size={normalize(12)}
                 color={colors.alert}
               />
               <Text style={styles.smDetailStatText}>{item.likes}</Text>
@@ -598,7 +629,10 @@ export default function SchoolMailDetail({ navigation, route }) {
           <SubHeader title="받은 우편" onBack={() => navigation.goBack()} />
         </View>
 
-        <View style={{ flex: 1, backgroundColor: colors.background, overflow: 'hidden' }} pointerEvents="box-none">
+        <View
+          style={{ flex: 1, backgroundColor: colors.background }}
+          pointerEvents="box-none"
+        >
           {loading ? (
             <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
               <Loading size="large" />
@@ -616,6 +650,15 @@ export default function SchoolMailDetail({ navigation, route }) {
                 showsVerticalScrollIndicator={false}
                 keyboardShouldPersistTaps="handled"
                 keyboardDismissMode="on-drag"
+                refreshControl={
+                  <RefreshControl
+                    refreshing={refreshing}
+                    onRefresh={onRefreshMail}
+                    tintColor={colors.primary}
+                    colors={[colors.primary]}
+                    progressBackgroundColor={colors.background}
+                  />
+                }
               >
                 <View style={styles.smDetailLetterWrap}>
                   <View style={styles.smDetailLetterCard}>
