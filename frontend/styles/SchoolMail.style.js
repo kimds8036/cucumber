@@ -140,6 +140,7 @@ export const createSchoolMailDetailStyles = (width, normalize) => {
     smDetailLetterWrap: {
       paddingHorizontal: width * 0.05,
       paddingBottom: normalize(8),
+      paddingVertical: normalize(16),
     },
     /** mail.style detailLetterCard와 유사 + 크림 톤·테두리 */
     smDetailLetterCard: {
@@ -153,14 +154,14 @@ export const createSchoolMailDetailStyles = (width, normalize) => {
       flexDirection: 'row',
       alignItems: 'flex-start',
       justifyContent: 'space-between',
-      marginBottom: normalize(12),
+      marginVertical: normalize(14),
     },
     smDetailFromToCol: {
       flex: 1,
       paddingRight: normalize(8),
     },
     smDetailFromToText: {
-      fontSize: normalize(fontSizes.xl),
+      fontSize: normalize(fontSizes.lg),
       fontFamily: fonts.regular,
       color: colors.textSecondary,
       lineHeight: normalize(fontSizes.heading),
@@ -182,12 +183,24 @@ export const createSchoolMailDetailStyles = (width, normalize) => {
       color: colors.textSecondary,
       marginTop: normalize(2),
     },
-    smDetailDashedRule: {
-      borderBottomWidth: 1,
-      borderStyle: 'dashed',
-      borderBottomColor: colors.textLight5,
-      width: '100%',
-    },
+    /** iOS: 점선. Android는 dashed가 실선으로 굵게 렌더링되므로 높이 0으로 구분선 제거(iOS와 동일한 인상) */
+    smDetailDashedRule: Platform.select({
+      ios: {
+        borderBottomWidth: 1,
+        borderStyle: 'dashed',
+        borderBottomColor: colors.textLight5,
+        width: '100%',
+      },
+      android: {
+        height: 0,
+        width: '100%',
+      },
+      default: {
+        height: StyleSheet.hairlineWidth,
+        backgroundColor: colors.textLight5,
+        width: '100%',
+      },
+    }),
     smDetailMailBody: {
       fontSize: normalize(fontSizes.xxl),
       fontFamily: fonts.regular,
@@ -216,7 +229,7 @@ export const createSchoolMailDetailStyles = (width, normalize) => {
       gap: normalize(4),
     },
     smDetailStatText: {
-      fontSize: normalize(fontSizes.xl),
+      fontSize: normalize(fontSizes.lg),
       fontFamily: fonts.regular,
       color: colors.textSecondary,
     },
@@ -343,7 +356,7 @@ export const createSchoolMailDetailStyles = (width, normalize) => {
       paddingHorizontal: normalize(6),
     },
     smDetailCommentReplyButtonText: {
-      fontSize: normalize(fontSizes.xl),
+      fontSize: normalize(fontSizes.lg),
       fontFamily: fonts.regular,
       color: colors.textSecondary,
       marginTop: -normalize(2),
