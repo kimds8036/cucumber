@@ -767,11 +767,26 @@ export const TimerContent = () => {
       try {
         const res = await api.get('/api/friends/list');
         const list = res.data?.data ?? [];
+        if (__DEV__) {
+          console.log('[ColorIdDebug][Timer] /api/friends/list sample:', {
+            count: list.length,
+            first: list[0]
+              ? {
+                  userId: list[0].userId,
+                  colorId: list[0].colorId,
+                  profileColorId: list[0].profileColorId,
+                  profile_color_id: list[0].profile_color_id,
+                  profileColor: list[0].profileColor,
+                }
+              : null,
+          });
+        }
         if (!mounted) return;
         setFriends(
           list.map((f, index) => ({
             id: f.userId,
             name: f.name || f.username || '친구',
+            colorId: f.colorId ?? f.profileColorId ?? f.profile_color_id ?? f.profileColor?.id,
             colorIndex: index % FRIEND_ICON_COLORS.length,
           })),
         );

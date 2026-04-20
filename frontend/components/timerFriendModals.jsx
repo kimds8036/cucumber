@@ -16,17 +16,18 @@ import {
   useWindowDimensions,
 } from 'react-native';
 import Ionicons from '@expo/vector-icons/Ionicons';
-import MessageTabIcon from '../assets/Logo.svg';
+import ProfileIcon from '../assets/Profile.svg';
 import { colors } from '../styles/colors';
 import { createTimerFriendModalStyles, getNormalize } from '../styles/timer';
 import { useFriendSocketEvents } from '../hooks/useFriendSocketEvents';
 import { useNavigation } from '@react-navigation/native';
 import { api } from '../utils/api';
 import { useToast } from '../context/ToastContext';
+import { PROFILE_INNER_COLORS, getProfileInnerColor } from '../utils/profileIconColor';
 
 // ── 상수 ────────────────────────────────────────────────
-export const FRIEND_ICON_COLORS = [colors.green, colors.yellow, colors.red, colors.blue];
-export const getFriendIconColorByIndex = (i) => FRIEND_ICON_COLORS[i % FRIEND_ICON_COLORS.length];
+export const FRIEND_ICON_COLORS = PROFILE_INNER_COLORS;
+export const getFriendIconColorByIndex = (i) => getProfileInnerColor(i);
 
 // 백엔드 친구 목록과 연동하므로 더미 데이터는 사용하지 않는다.
 export const INITIAL_FRIENDS = [];
@@ -63,10 +64,10 @@ export const PokeModal = ({ visible, friend, onClose, onPoke, onNotifyLater, onM
           {/* 친구 정보 */}
           <View style={s.pokeFriendRow}>
             <View style={s.pokeAvatar}>
-              <MessageTabIcon
-                width={normalize(28)}
-                height={normalize(28)}
-                color={getFriendIconColorByIndex(friend.colorIndex)}
+              <ProfileIcon
+                width={normalize(24)}
+                height={normalize(24)}
+                color={getProfileInnerColor(friend.colorId ?? friend.colorIndex)}
               />
               {isStudying && <View style={s.pokeStudyingBadge} />}
             </View>
@@ -325,7 +326,7 @@ export const FriendStoryBar = memo(function FriendStoryBar({
         {/* 친구 목록 */}
         {orderedFriends.map((friend) => {
           const isActive = studyingFriends[friend.id] === true; // 정렬 기준과 동일
-          const iconColor = getFriendIconColorByIndex(friend.colorIndex);
+          const iconColor = getProfileInnerColor(friend.colorId ?? friend.colorIndex);
           return (
             <TouchableOpacity
               key={friend.id}
@@ -339,7 +340,7 @@ export const FriendStoryBar = memo(function FriendStoryBar({
                   { backgroundColor: colors.primaryLight30, borderColor: colors.primary },
                 ]}
               >
-                <MessageTabIcon width={normalize(22)} height={normalize(22)} color={iconColor} />
+                <ProfileIcon width={normalize(22)} height={normalize(22)} color={iconColor} />
                 <View
                   style={[
                     styles.friendStatusDotOnCircle,

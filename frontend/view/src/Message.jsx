@@ -19,11 +19,12 @@ import { colors, fonts, fontSizes } from '../../styles/colors';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import Feather from '@expo/vector-icons/Feather';
 import { StackActions } from '@react-navigation/native';
-import MessageTabIcon from '../../assets/Logo.svg';
+import ProfileIcon from '../../assets/Profile.svg';
 import { api } from '../../utils/api';
 import * as socketManager from './socketManager';
 import { useToast } from '../../context/ToastContext';
 import { useNotification } from '../../context/NotificationContext';
+import { getProfileInnerColor } from '../../utils/profileIconColor';
 
 // DB에 UTC로 저장된 날짜 문자열을 기기 로컬 시간대로 변환해서 파싱
 function parseUtcToLocal(createdAt) {
@@ -95,11 +96,6 @@ function extractMailListFromResponse(res) {
   if (Array.isArray(payload?.mails)) return payload.mails;
   return [];
 }
-
-// 프로필: 배경 primary, 아이콘 색상은 DB 연동 시 item.profileColor 등으로 교체
-// const getIconColor = (item) => item.profileColor;
-const ICON_COLORS = [colors.green, colors.yellow, colors.red, colors.blue]; // F7FFF3, FFFCD7, FFF3F3, E5F0FF
-const getIconColorByIndex = (index) => ICON_COLORS[index % ICON_COLORS.length];
 
 /** Text 줄박스는 fontSize보다 크므로(특히 Android includeFontPadding) 실제 목록과 맞는 줄 높이로 맞춤 */
 function messageListSkeletonLineHeight(normalize, fontSizeToken) {
@@ -322,6 +318,7 @@ export function MessageContent({ navigation }) {
           type: 'note',
           id: r.id,
           profileColorIndex: idx,
+          profileColorId: r.other_user_color_id ?? r.profile_color_id ?? r.profileColorId ?? idx,
           name: '익명',
           content: r.last_message || r.post_content || '',
           time: formatListTime(at),
@@ -336,6 +333,7 @@ export function MessageContent({ navigation }) {
           type: 'dm',
           id: r.id,
           profileColorIndex: idx,
+          profileColorId: r.other_user_color_id ?? r.profile_color_id ?? r.profileColorId ?? idx,
           name: r.other_user_name || '친구',
           content: r.last_message || '',
           time: formatListTime(at),
@@ -554,6 +552,12 @@ export function MessageContent({ navigation }) {
             id: rawMail.id,
             roomId: rawMail.room_id ?? null,
             profileColorIndex: idx,
+            profileColorId:
+              rawMail.sender_color_id ??
+              rawMail.recipient_color_id ??
+              rawMail.profile_color_id ??
+              rawMail.profileColorId ??
+              idx,
             isReceived,
             replyToMySent,
             senderName: rowLabel,
@@ -651,10 +655,8 @@ export function MessageContent({ navigation }) {
               noteRooms.map((item) => {
                 if (item.type === 'dm') {
                   const colorIdx =
-                    item.other_user_color_id != null
-                      ? Number(item.other_user_color_id) % ICON_COLORS.length
-                      : item.profileColorIndex % ICON_COLORS.length;
-                  const iconColor = getIconColorByIndex(colorIdx);
+                    item.other_user_color_id ?? item.profileColorId ?? item.profileColorIndex ?? 0;
+                  const iconColor = getProfileInnerColor(colorIdx);
                   return (
                     <SwipeableRow
                       key={`dm-${item.id}`}
@@ -697,8 +699,8 @@ export function MessageContent({ navigation }) {
                         }}
                       >
                         <View style={styles.listItemLeft}>
-                          <View style={[styles.profileCircle, { backgroundColor: colors.primary }]}>
-                            <MessageTabIcon
+                          <View style={[styles.profileCircle]}>
+                            <ProfileIcon
                               width={normalize(22)}
                               height={normalize(22)}
                               color={iconColor}
@@ -724,7 +726,7 @@ export function MessageContent({ navigation }) {
                   );
                 }
 
-                const iconColor = getIconColorByIndex(item.profileColorIndex);
+                const iconColor = getProfileInnerColor(item.profileColorId ?? item.profileColorIndex);
                 return (
                   <SwipeableRow
                     key={`note-${item.id}`}
@@ -759,8 +761,8 @@ export function MessageContent({ navigation }) {
                       }}
                     >
                       <View style={styles.listItemLeft}>
-                        <View style={[styles.profileCircle, { backgroundColor: colors.primary }]}>
-                          <MessageTabIcon
+                        <View style={[styles.profileCircle]}>
+                          <ProfileIcon
                             width={normalize(22)}
                             height={normalize(22)}
                             color={iconColor}
@@ -811,8 +813,7 @@ export function MessageContent({ navigation }) {
                 </View>
               ) : (
               mails.map((item) => {
-                // const iconColor = getIconColor(item); // DB 연동 시
-                const iconColor = getIconColorByIndex(item.profileColorIndex);
+                const iconColor = getProfileInnerColor(item.profileColorId ?? item.profileColorIndex);
                 const displayName =
                   item.senderName ||
                   item.directionText ||
@@ -893,9 +894,9 @@ export function MessageContent({ navigation }) {
                     >
                       <View style={styles.listItemLeft}>
                         <View style={[styles.profileCircle, { backgroundColor: colors.primary }]}>
-                          <Ionicons
-                            name={item.unreadCount > 0 ? 'mail' : 'mail-open'}
-                            size={normalize(23)}
+                          <ProfileIcon
+                            width={normalize(22)}
+                            height={normalize(22)}
                             color={iconColor}
                           />
                         </View>

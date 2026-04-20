@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   View,
   Text,
@@ -7,6 +7,7 @@ import {
   Modal,
   Alert,
   TextInput,
+  useWindowDimensions,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
@@ -16,22 +17,17 @@ import { useFriend } from '../../context/FriendContext';
 import { colors } from '../../styles/colors';
 import SubHeader from '../frame/subHeader';
 import styles from '../../styles/friend.style';
-
-// 이니셜 아바타 색상
-const AVATAR_COLORS = [
-  '#8FD397',
-  '#7EC8E3',
-  '#F4A261',
-  '#E76F51',
-  '#A8DADC',
-  '#B5838D',
-  '#6D6875',
-  '#52B788',
-];
-const getAvatarColor = (id) => AVATAR_COLORS[id % AVATAR_COLORS.length];
+import ProfileIcon from '../../assets/Profile.svg';
+import { getNormalize } from '../../styles/frame.style';
+import {
+  getProfileInnerColor,
+  getProfileInnerColorBySeed,
+} from '../../utils/profileIconColor';
 
 // ── 컴포넌트 ─────────────────────────────────────────
 const FriendsScreen = ({ navigation }) => {
+  const { width } = useWindowDimensions();
+  const normalize = useMemo(() => getNormalize(width), [width]);
   const [friends, setFriends] = useState([]);
   const [friendRequests, setFriendRequests] = useState([]);
   const [searchQuery, setSearchQuery] = useState('');
@@ -56,6 +52,32 @@ const FriendsScreen = ({ navigation }) => {
 
         const friendsData = friendsRes.data?.data || [];
         const requestsData = reqRes.data?.data || [];
+        if (__DEV__) {
+          console.log('[ColorIdDebug][FriendsScreen] /api/friends/list sample:', {
+            count: friendsData.length,
+            first: friendsData[0]
+              ? {
+                  userId: friendsData[0].userId,
+                  colorId: friendsData[0].colorId,
+                  profileColorId: friendsData[0].profileColorId,
+                  profile_color_id: friendsData[0].profile_color_id,
+                  profileColor: friendsData[0].profileColor,
+                }
+              : null,
+          });
+          console.log('[ColorIdDebug][FriendsScreen] /api/friends/requests/received sample:', {
+            count: requestsData.length,
+            first: requestsData[0]
+              ? {
+                  userId: requestsData[0].userId,
+                  colorId: requestsData[0].colorId,
+                  profileColorId: requestsData[0].profileColorId,
+                  profile_color_id: requestsData[0].profile_color_id,
+                  profileColor: requestsData[0].profileColor,
+                }
+              : null,
+          });
+        }
 
         setFriends(
           friendsData.map((f) => ({
@@ -65,6 +87,8 @@ const FriendsScreen = ({ navigation }) => {
             username: f.username,
             school: f.school,
             grade: f.grade,
+            profileColorId:
+              f.colorId ?? f.profileColorId ?? f.profile_color_id ?? f.profileColor?.id,
           })),
         );
 
@@ -76,6 +100,8 @@ const FriendsScreen = ({ navigation }) => {
             username: r.username,
             school: r.school,
             grade: r.grade,
+            profileColorId:
+              r.colorId ?? r.profileColorId ?? r.profile_color_id ?? r.profileColor?.id,
           })),
         );
       } catch (error) {
@@ -248,15 +274,12 @@ const FriendsScreen = ({ navigation }) => {
             >
               {friendRequests.map((req) => (
                 <View key={req.id} style={styles.requestCard}>
-                  <View
-                    style={[
-                      styles.reqAvatar,
-                      { backgroundColor: getAvatarColor(req.id) },
-                    ]}
-                  >
-                    <Text style={styles.reqAvatarText}>
-                      {req.name.charAt(0)}
-                    </Text>
+                  <View style={styles.reqAvatar}>
+                    <ProfileIcon
+                      width={normalize(22)}
+                      height={normalize(22)}
+                      color={getProfileInnerColor(req.profileColorId) || getProfileInnerColorBySeed(req.id)}
+                    />
                   </View>
                   <Text style={styles.reqName} numberOfLines={1}>
                     {req.name}
@@ -300,13 +323,12 @@ const FriendsScreen = ({ navigation }) => {
         ) : (
           filtered.map((friend) => (
             <View key={friend.id} style={styles.friendRow}>
-              <View
-                style={[
-                  styles.avatar,
-                  { backgroundColor: getAvatarColor(friend.id) },
-                ]}
-              >
-                <Text style={styles.avatarText}>{friend.name.charAt(0)}</Text>
+              <View style={styles.avatar}>
+                <ProfileIcon
+                  width={normalize(22)}
+                  height={normalize(22)}
+                  color={getProfileInnerColor(friend.profileColorId) || getProfileInnerColorBySeed(friend.id)}
+                />
               </View>
               <View style={styles.friendInfo}>
                 <View style={styles.nameRow}>
@@ -355,15 +377,15 @@ const FriendsScreen = ({ navigation }) => {
           {selectedFriend && (
             <>
               <View style={styles.sheetFriendInfo}>
-                <View
-                  style={[
-                    styles.sheetAvatar,
-                    { backgroundColor: getAvatarColor(selectedFriend.id) },
-                  ]}
-                >
-                  <Text style={styles.sheetAvatarText}>
-                    {selectedFriend.name.charAt(0)}
-                  </Text>
+                <View style={styles.sheetAvatar}>
+                  <ProfileIcon
+                    width={normalize(24)}
+                    height={normalize(24)}
+                    color={
+                      getProfileInnerColor(selectedFriend.profileColorId) ||
+                      getProfileInnerColorBySeed(selectedFriend.id)
+                    }
+                  />
                 </View>
                 <View>
                   <Text style={styles.sheetName}>{selectedFriend.name}</Text>
