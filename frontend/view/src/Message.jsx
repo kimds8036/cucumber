@@ -19,7 +19,7 @@ import { colors, fonts, fontSizes } from '../../styles/colors';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import Feather from '@expo/vector-icons/Feather';
 import { StackActions } from '@react-navigation/native';
-import MessageTabIcon from '../../assets/Group 166.svg';
+import MessageTabIcon from '../../assets/Logo.svg';
 import { api } from '../../utils/api';
 import * as socketManager from './socketManager';
 import { useToast } from '../../context/ToastContext';

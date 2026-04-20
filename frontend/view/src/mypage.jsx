@@ -125,7 +125,8 @@ const MyPage = ({ navigation }) => {
         }
 
         const meRes = await api.get('/api/auth/me');
-
+        // TEMP TEST: /api/auth/me 응답 raw 전체 확인 (확인 후 삭제)
+        console.log('[TEMP][MyPage] /api/auth/me raw response =', JSON.stringify(meRes?.data));
         if (!mounted) return;
 
         const me = meRes.data?.data;
@@ -133,6 +134,7 @@ const MyPage = ({ navigation }) => {
           const nextUserInfo = {
             name: me.name,
             username: me.username ? `@${me.username}` : '',
+            colorId: me.colorId ?? null,
             school: me.school?.name || '',
             gradeClass:
               me.grade && me.classNumber

@@ -7,11 +7,12 @@ import {
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { colors } from '../styles/colors';
-import MessageTabIcon from '../assets/Group 166.svg';
+import ProfileIcon from './icons/ProfileIcon';
 import { getNormalize, createProfileCardStyles } from '../styles/mypage.style';
 import { useFriend } from '../context/FriendContext';
 import { api } from '../utils/api';
 import { PROFILE_COUNTS_CACHE_KEY } from '../utils/profileCountsCache';
+import { getProfileHexByColorId } from '../utils/profileColor';
 
 const PROFILE_COUNTS_CACHE_TTL_MS = 10 * 60 * 1000;
 
@@ -29,6 +30,7 @@ const ProfileCard = ({ userInfo, navigation }) => {
     scrapCount: 0,
   });
   const [countsLoading, setCountsLoading] = useState(true);
+  const profileEyeColor = getProfileHexByColorId(userInfo?.colorId);
 
   const loadCounts = useCallback(async ({ force = false } = {}) => {
     try {
@@ -96,11 +98,7 @@ const ProfileCard = ({ userInfo, navigation }) => {
     <View style={styles.profileCard}>
       <View style={styles.profileHeader}>
         <View style={[styles.profileCircle, { backgroundColor: colors.primary }]}>
-          <MessageTabIcon
-            width={normalize(30)}
-            height={normalize(30)}
-            color={colors.green}
-          />
+          <ProfileIcon size={normalize(30)} color={profileEyeColor} />
         </View>
 
         <View style={styles.profileInfo}>
