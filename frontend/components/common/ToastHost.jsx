@@ -3,11 +3,82 @@ import { View } from 'react-native';
 import GlobalToast from './GlobalToast';
 import { useToast } from '../../context/ToastContext';
 import { navigate } from '../../navigation/navigationRef';
+import { api } from '../../utils/api';
+import {
+  isStudySummaryNotification,
+  normalizeStudySummaryWatchers,
+} from '../../utils/studySummaryNotification';
+
+const DM_ICON_COLOR_COUNT = 4;
 
 export default function ToastHost() {
   const { visible, toast, hideToast } = useToast();
 
-  const handleToastPress = () => {
+  const openDmRoom = async (watcher) => {
+    if (!watcher?.userId) {
+      console.log('[ToastHost] DM 이동 실패: watcher.userId 없음, Notification으로 이동', {
+        watcher,
+      });
+      navigate('Notification');
+      return;
+    }
+    try {
+      const res = await api.post('/api/dm/rooms', { otherUserId: watcher.userId });
+      const roomId = res?.data?.data?.id;
+      if (roomId == null) {
+        console.log('[ToastHost] DM roomId 없음, Notification으로 이동', {
+          watcherUserId: watcher.userId,
+        });
+        navigate('Notification');
+        return;
+      }
+      let friendPayload = { id: watcher.userId, name: watcher.name };
+      try {
+        const roomsRes = await api.get('/api/dm/rooms', { params: { page: 1, limit: 100 } });
+        const rooms = Array.isArray(roomsRes?.data?.data?.rooms) ? roomsRes.data.data.rooms : [];
+        const room = rooms.find((r) => String(r?.id) === String(roomId));
+        if (room) {
+          const colorIndexRaw =
+            room.other_user_color_id != null
+              ? Number(room.other_user_color_id)
+              : null;
+          const safeColorIndex =
+            Number.isFinite(colorIndexRaw) && colorIndexRaw >= 0
+              ? colorIndexRaw % DM_ICON_COLOR_COUNT
+              : 0;
+          friendPayload = {
+            id: room.other_user_id ?? watcher.userId,
+            name: room.other_user_name || watcher.name || '친구',
+            schoolName: room.other_user_school_name || '',
+            colorIndex: safeColorIndex,
+          };
+        }
+      } catch (friendError) {
+        console.log('[ToastHost] DM friend 정보 보강 실패, 기본 payload 사용', {
+          watcherUserId: watcher.userId,
+          message: friendError?.message,
+        });
+      }
+      console.log('[ToastHost] study summary -> DMChat 이동', {
+        watcherUserId: watcher.userId,
+        watcherName: watcher.name,
+        roomId,
+        friendPayload,
+      });
+      navigate('DMChat', {
+        roomId,
+        friend: friendPayload,
+      });
+    } catch (error) {
+      console.log('[ToastHost] DM 생성 실패, Notification으로 이동', {
+        watcherUserId: watcher.userId,
+        message: error?.message,
+      });
+      navigate('Notification');
+    }
+  };
+
+  const handleToastPress = async () => {
     const roomId = toast?.roomId != null ? String(toast.roomId) : null;
     const relatedId = toast?.relatedId != null ? String(toast.relatedId) : null;
     const relatedType = String(toast?.relatedType ?? '').trim();
@@ -33,6 +104,21 @@ export default function ToastHost() {
           is_read: false,
         },
       });
+      return;
+    }
+    if (isStudySummaryNotification({ relatedType, type })) {
+      const watchers = normalizeStudySummaryWatchers(toast?.watchers);
+      console.log('[ToastHost] study summary toast pressed', {
+        watchersCount: watchers.length,
+        relatedType,
+        type,
+      });
+      if (watchers.length === 1) {
+        await openDmRoom(watchers[0]);
+        return;
+      }
+      console.log('[ToastHost] study summary 다중 대기자 -> Notification 이동');
+      navigate('Notification');
       return;
     }
     if (relatedType === 'post' && relatedId) {

@@ -705,7 +705,7 @@ export const TimerContent = () => {
   const [pokeTarget, setPokeTarget] = useState(null);
   const [pokeVisible, setPokeVisible] = useState(false);
 
-  const { showToast } = useToast();
+  const { showToast, setIsTimerScreenActive } = useToast();
   const pushTimerToast = (senderName, body) => {
     const s = String(senderName || '알림').trim();
     const b = String(body || '').trim();
@@ -725,30 +725,29 @@ export const TimerContent = () => {
   const { emitTimerStatus } = useFriendSocketEvents({});
 
   useFriendStudyEvents({
-    onFriendStudyFinished: ({ userId, finishedAt, type }) => {
-      console.log('[Timer] onFriendStudyFinished 콜백 실행', {
-        userId,
-        finishedAt,
-        type,
-      });
-      setFriends((prev) => {
-        const friend = prev.find((f) => f.id === userId);
-        if (friend) {
-          pushTimerToast(friend.name, '공부가 끝났어요');
-        } else {
-          pushTimerToast('친구', '공부가 끝났어요');
-        }
-        return prev;
-      });
-    },
+    onFriendStudyFinished: () => {},
     onPoke: (payload) => {
       pushTimerToast(
         payload?.fromNickname ?? '친구',
         '쿡 찌르기 알림이 왔어요!',
       );
     },
-    onMyStudyFinishedSummary: ({ toastText }) => {
-      pushTimerToast('타이머', toastText ?? '공부 완료 🎉');
+    onMyStudyFinishedSummary: ({ toastText, watchers, createdAt, type }) => {
+      const watcherList = Array.isArray(watchers) ? watchers : [];
+      if (watcherList.length === 0) return;
+      const summaryBody = String(toastText || '').trim();
+      if (!summaryBody) return;
+      showToast({
+        message: `타이머: ${summaryBody}`,
+        senderName: '타이머',
+        body: summaryBody,
+        relatedType: 'friend_study_finished_summary',
+        relatedId: createdAt ? String(createdAt) : null,
+        type: type || 'study_finished_summary',
+        category: 'system',
+        watchers: watcherList,
+        showProgress: true,
+      });
     },
   });
 
@@ -780,11 +779,15 @@ export const TimerContent = () => {
   // 타이머 화면 진입 시: 놓친 친구 공부 상태 REST로만 보완 + 소켓 미연결 시 재연결
   useFocusEffect(
     React.useCallback(() => {
+      setIsTimerScreenActive?.(true);
       refreshStudyingFriends?.();
       if (!connected) {
         reconnect?.();
       }
-    }, [refreshStudyingFriends, connected, reconnect]),
+      return () => {
+        setIsTimerScreenActive?.(false);
+      };
+    }, [refreshStudyingFriends, connected, reconnect, setIsTimerScreenActive]),
   );
 
   // 친구 관련 핸들러 (모달 열기까지만 담당, 쿡 찌르기 로직은 FriendPokeController 에서 처리)

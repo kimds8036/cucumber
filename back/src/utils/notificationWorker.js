@@ -58,6 +58,13 @@ export const notificationQueue = new Bull('notifications', {
 // ── 잡 처리 핸들러 ───────────────────────────────────
 notificationQueue.process(async (job) => {
   const { userId, type, category, title, body, relatedType, relatedId } = job.data;
+  console.log('[NotifQueue] processing', {
+    jobId: job.id,
+    userId,
+    type,
+    relatedType,
+    relatedId,
+  });
 
   await createNotification({
     userId,

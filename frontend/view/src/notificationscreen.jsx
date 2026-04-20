@@ -20,6 +20,10 @@ import { getNormalize } from '../../styles/frame.style';
 import { subheaderMailListBodyTopAfterTabRow } from '../../styles/subheaderContent';
 import { useNotification } from '../../context/NotificationContext';
 import { useFriend } from '../../context/FriendContext';
+import {
+  isStudySummaryNotification,
+  normalizeStudySummaryWatchers,
+} from '../../utils/studySummaryNotification';
 
 const PAGE_SIZE = 20;
 /** 초기 로드 시 '좋아요'만 있는 연속 페이지를 건너뛸 때 상한 */
@@ -65,6 +69,17 @@ const formatTime = (createdAt) => {
 const isChatNotificationRow = (n) =>
   n?.relatedType === 'message_room' || n?.relatedType === 'dm_room';
 
+const STUDY_WATCHER_ICON_COLORS = ['#4CAF50', '#42A5F5', '#FF7043', '#AB47BC'];
+const DM_ICON_COLOR_COUNT = 4;
+
+const normalizeWatchers = (watchers) => normalizeStudySummaryWatchers(watchers);
+
+const getWatcherColor = (watcher, idx) => {
+  const key = String(watcher?.userId ?? watcher?.name ?? idx);
+  const sum = Array.from(key).reduce((acc, ch) => acc + ch.charCodeAt(0), 0);
+  return STUDY_WATCHER_ICON_COLORS[sum % STUDY_WATCHER_ICON_COLORS.length];
+};
+
 const mapRowToNotificationItem = (n) => {
   const icon = mapTypeToIcon(n.type, n.category);
   return {
@@ -81,6 +96,7 @@ const mapRowToNotificationItem = (n) => {
     iconBg: icon.bg,
     relatedType: n.relatedType,
     relatedId: n.relatedId,
+    watchers: normalizeWatchers(n.watchers),
   };
 };
 
@@ -142,6 +158,7 @@ const NotificationScreen = ({ navigation }) => {
   const [selectedTab, setSelectedTab] = useState('all');
   const [notifications, setNotifications] = useState([]);
   const [tappedIds, setTappedIds] = useState({}); // 실제로 눌러서 확인한 알림 ID (여기만 배경색 제거)
+  const [expandedSummaryById, setExpandedSummaryById] = useState({});
   const [loading, setLoading] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
   const [page, setPage] = useState(1);
@@ -153,7 +170,7 @@ const NotificationScreen = ({ navigation }) => {
   const flushTimerRef = useRef(null);
   const isFlushingRef = useRef(false);
   const appStateRef = useRef(AppState.currentState);
-  const { hasUnread, markNotificationsSeenForBell } = useNotification();
+  const { hasUnread, markNotificationsSeenForBell, getStudySummaryWatchers } = useNotification();
   const { markFriendRequestsSeenForBell } = useFriend();
 
   const flushPendingReads = useCallback(async () => {
@@ -379,10 +396,15 @@ const NotificationScreen = ({ navigation }) => {
       ? notifications
       : notifications.filter((n) => n.category === selectedTab);
 
-  const filteredNotifications = useMemo(
-    () => sortNotificationsByCreatedDesc(baseFiltered),
-    [baseFiltered],
-  );
+  const filteredNotifications = useMemo(() => {
+    const enriched = baseFiltered.map((item) => {
+      if (!isStudySummaryNotification(item)) return item;
+      const fallbackWatchers = normalizeWatchers(getStudySummaryWatchers?.(item));
+      const watchers = item.watchers?.length ? item.watchers : fallbackWatchers;
+      return { ...item, watchers };
+    });
+    return sortNotificationsByCreatedDesc(enriched);
+  }, [baseFiltered, getStudySummaryWatchers]);
 
   const unreadCounts = useMemo(() => {
     const list = notifications;
@@ -404,6 +426,63 @@ const NotificationScreen = ({ navigation }) => {
     [unreadCounts],
   );
 
+  const openDmRoom = useCallback(async (watcher) => {
+    if (!watcher?.userId) {
+      console.log('[NotificationScreen] DM 이동 스킵: watcher.userId 없음', { watcher });
+      return;
+    }
+    try {
+      const res = await api.post('/api/dm/rooms', { otherUserId: watcher.userId });
+      const roomId = res?.data?.data?.id;
+      if (roomId == null) {
+        console.log('[NotificationScreen] DM 이동 실패: roomId 없음', {
+          watcherUserId: watcher.userId,
+        });
+        return;
+      }
+      let friendPayload = { id: watcher.userId, name: watcher.name };
+      try {
+        const roomsRes = await api.get('/api/dm/rooms', { params: { page: 1, limit: 100 } });
+        const rooms = Array.isArray(roomsRes?.data?.data?.rooms) ? roomsRes.data.data.rooms : [];
+        const room = rooms.find((r) => String(r?.id) === String(roomId));
+        if (room) {
+          const colorIndexRaw =
+            room.other_user_color_id != null
+              ? Number(room.other_user_color_id)
+              : null;
+          const safeColorIndex =
+            Number.isFinite(colorIndexRaw) && colorIndexRaw >= 0
+              ? colorIndexRaw % DM_ICON_COLOR_COUNT
+              : 0;
+          friendPayload = {
+            id: room.other_user_id ?? watcher.userId,
+            name: room.other_user_name || watcher.name || '친구',
+            schoolName: room.other_user_school_name || '',
+            colorIndex: safeColorIndex,
+          };
+        }
+      } catch (friendError) {
+        console.log('[NotificationScreen] DM friend 정보 보강 실패, 기본 payload 사용', {
+          watcherUserId: watcher.userId,
+          message: friendError?.message,
+        });
+      }
+      preserveListOnNextFocusRef.current = true;
+      console.log('[NotificationScreen] study summary -> DMChat 이동', {
+        watcherUserId: watcher.userId,
+        watcherName: watcher.name,
+        roomId,
+        friendPayload,
+      });
+      navigation?.navigate('DMChat', {
+        roomId,
+        friend: friendPayload,
+      });
+    } catch (error) {
+      console.error('[NotificationScreen] DM 이동 실패:', error?.response?.data || error);
+    }
+  }, [navigation]);
+
   const handlePressNotification = (n) => {
     // 실제로 눌렀을 때만 배경색 제거 (확인한 알림으로 표시)
     console.log('[NotificationScreen] 알림 탭', {
@@ -419,6 +498,44 @@ const NotificationScreen = ({ navigation }) => {
     scheduleFlush();
 
     // 3️⃣ 알림 키에 따라 목적지 분기
+    if (isStudySummaryNotification(n)) {
+      const watchers = normalizeWatchers(
+        n.watchers?.length ? n.watchers : getStudySummaryWatchers?.(n),
+      );
+      console.log('[NotificationScreen] study summary notification pressed', {
+        notificationId: n.id,
+        watchersCount: watchers.length,
+        relatedType: n.relatedType,
+        relatedId: n.relatedId,
+      });
+      if (
+        watchers.length === 0 &&
+        (n.relatedType === 'friend_study_finished_summary_single' ||
+          n.relatedType === 'study_summary_single') &&
+        n.relatedId != null
+      ) {
+        console.log('[NotificationScreen] study summary single fallback -> relatedId로 DM 이동', {
+          notificationId: n.id,
+          relatedId: n.relatedId,
+        });
+        openDmRoom({ userId: String(n.relatedId), name: '친구' });
+        return;
+      }
+      if (watchers.length === 1) {
+        openDmRoom(watchers[0]);
+        return;
+      }
+      if (watchers.length > 1) {
+        console.log('[NotificationScreen] study summary 다중 대기자 드롭다운 토글', {
+          notificationId: n.id,
+        });
+        setExpandedSummaryById((prev) => ({
+          ...prev,
+          [n.id]: !prev[n.id],
+        }));
+      }
+      return;
+    }
 
     // 1) 친구 요청 계열
     if (n.type === 'friend_request') {
@@ -546,6 +663,10 @@ const NotificationScreen = ({ navigation }) => {
         renderItem={({ item: notification }) => {
           const isTapped = tappedIds[notification.id];
           const isUnreadFromServer = !notification.isRead;
+          const isStudySummary = isStudySummaryNotification(notification);
+          const watchers = normalizeWatchers(notification.watchers);
+          const canExpandWatchers = isStudySummary && watchers.length > 1;
+          const isExpanded = Boolean(expandedSummaryById[notification.id]);
           // 서버 기준으로 아직 안 읽은 알림 + 실제로 눌러서 확인하지 않은 것만 연한 초록 배경 + 점 표시
           const showUnreadStyle = isUnreadFromServer && !isTapped;
           return (
@@ -576,6 +697,34 @@ const NotificationScreen = ({ navigation }) => {
                   {notification.content}
                 </Text>
                 <Text style={styles.notificationTime}>{notification.time}</Text>
+                {canExpandWatchers && isExpanded ? (
+                  <ScrollView
+                    horizontal
+                    showsHorizontalScrollIndicator={false}
+                    contentContainerStyle={styles.summaryWatcherRow}
+                  >
+                    {watchers.map((watcher, idx) => (
+                      <TouchableOpacity
+                        key={`${notification.id}-${watcher.userId}-${idx}`}
+                        style={styles.summaryWatcherChip}
+                        activeOpacity={0.8}
+                        onPress={() => openDmRoom(watcher)}
+                      >
+                        <View
+                          style={[
+                            styles.summaryWatcherAvatar,
+                            { backgroundColor: getWatcherColor(watcher, idx) },
+                          ]}
+                        >
+                          <Ionicons name="person" size={12} color="#FFFFFF" />
+                        </View>
+                        <Text style={styles.summaryWatcherName} numberOfLines={1}>
+                          {watcher.name}
+                        </Text>
+                      </TouchableOpacity>
+                    ))}
+                  </ScrollView>
+                ) : null}
               </View>
 
               {showUnreadStyle && <View style={styles.unreadDot} />}
@@ -726,6 +875,34 @@ const styles = StyleSheet.create({
   notificationTime: {
     fontSize: 12,
     color: '#999',
+  },
+  summaryWatcherRow: {
+    marginTop: 8,
+    paddingRight: 8,
+    gap: 8,
+  },
+  summaryWatcherChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F4F7F4',
+    borderRadius: 999,
+    paddingVertical: 5,
+    paddingHorizontal: 8,
+    marginRight: 8,
+    maxWidth: 140,
+  },
+  summaryWatcherAvatar: {
+    width: 18,
+    height: 18,
+    borderRadius: 9,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 6,
+  },
+  summaryWatcherName: {
+    fontSize: 12,
+    color: '#335533',
+    fontWeight: '600',
   },
   unreadDot: {
     width: 8,

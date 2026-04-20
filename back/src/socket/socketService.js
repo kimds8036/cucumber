@@ -179,40 +179,9 @@ export async function broadcastTimerStatus({ userId, status }) {
       watcherCount: watchers ? watchers.size : 0,
     });
     if (watchers && watchers.size > 0) {
-      let studyUserName = '친구';
-      try {
-        const [userRows] = await pool.execute('SELECT name FROM users WHERE id = ?', [userId]);
-        if (userRows.length > 0) studyUserName = userRows[0].name;
-      } catch (e) {
-        /* ignore */
-      }
-
       const finishedAt = new Date().toISOString();
 
-      // 1) 공부를 기다리던 친구들에게 개별 "공부 끝" 이벤트
-      const finishPayload = {
-        type: 'friend_study_finished',
-        userId,
-        finishedAt,
-      };
-      for (const watcherId of watchers) {
-        console.log('[FriendSocket] friend_study_finished emit', {
-          to: watcherId,
-          from: userId,
-        });
-        io.to(`user:${watcherId}`).emit('friend_study_finished', finishPayload);
-        await enqueueNotification({
-          userId: watcherId,
-          type: 'system',
-          category: 'timer',
-          title: '공부 완료',
-          relatedType: 'timer_finish',
-          relatedId: userId,
-          body: `${studyUserName}님이 공부를 마쳤어요`,
-        });
-      }
-
-      // 2) 공부를 끝낸 본인에게 "누가 기다렸는지" 요약 이벤트
+      // 공부를 끝낸 본인에게만 "누가 기다렸는지" 요약 이벤트
       try {
         const watcherIds = Array.from(watchers);
         const placeholders = watcherIds.map(() => '?').join(',');
@@ -236,20 +205,33 @@ export async function broadcastTimerStatus({ userId, status }) {
         io.to(`user:${userId}`).emit('friend_study_finished_summary', summaryPayload);
 
         const watcherNames = rowsWatchers.map((u) => u.name);
+        const watcherUserIds = rowsWatchers.map((u) => u.id);
         let summaryBody = '공부를 마쳤어요';
         if (watcherNames.length === 1) {
           summaryBody = `${watcherNames[0]}님이 기다렸어요`;
         } else if (watcherNames.length > 1) {
           summaryBody = `${watcherNames[0]}님 외 ${watcherNames.length - 1}명이 기다렸어요`;
         }
+        const isSingleWatcher = watcherUserIds.length === 1;
+        const summaryRelatedType = isSingleWatcher
+          ? 'study_summary_single'
+          : 'study_summary_multi';
+        const summaryRelatedId = isSingleWatcher ? watcherUserIds[0] : userId;
+
+        console.log('[FriendSocket] summary notification enqueue', {
+          userId,
+          watcherCount: watcherUserIds.length,
+          relatedType: summaryRelatedType,
+          relatedId: summaryRelatedId,
+        });
 
         await enqueueNotification({
           userId,
-          type: 'system',
-          category: 'timer',
-          title: '공부 완료 🎉',
-          relatedType: 'timer_finish',
-          relatedId: userId,
+          type: 'study_finished_summary',
+          category: 'system',
+          title: '공부 완료',
+          relatedType: summaryRelatedType,
+          relatedId: summaryRelatedId,
           body: summaryBody,
         });
       } catch (err) {

@@ -2,6 +2,11 @@ import express from 'express';
 import pool from '../config/database.js';
 import { optionalAuthenticate } from '../middleware/auth.js';
 import { getBatchRedis } from '../services/batchRedis.service.js';
+import {
+  buildSafeSchoolSearchTerm,
+  buildSchoolSearchSql,
+  schoolSearchParams,
+} from '../utils/schoolSearch.js';
 
 const router = express.Router();
 
@@ -41,17 +46,15 @@ router.get('/preview', async (req, res) => {
       });
     }
 
-    const like = `%${q}%`;
-
-    // 학교 이름에 query 를 포함하는 학교 (최대 2개)
-    const [schoolRows] = await pool.execute(
-      `SELECT school_id, name
-       FROM schools
-       WHERE name LIKE ?
-       ORDER BY name
-       LIMIT 2`,
-      [like],
-    );
+    const safe = buildSafeSchoolSearchTerm(q);
+    let schoolRows = [];
+    if (safe) {
+      const [rows] = await pool.execute(
+        buildSchoolSearchSql(2),
+        schoolSearchParams(safe),
+      );
+      schoolRows = rows;
+    }
 
     res.json({
       success: true,
@@ -222,18 +225,17 @@ router.get('/posts', optionalAuthenticate, async (req, res) => {
     // 학교 매칭: 이름에 query 를 포함하는 학교 최대 5개 (소속학교와 무관하게 전역 검색)
     let matchedSchools = [];
     if (!isHashtagSearch) {
-      const [schoolRows] = await pool.execute(
-        `SELECT school_id, name
-         FROM schools
-         WHERE name LIKE ?
-         ORDER BY RAND()
-         LIMIT 5`,
-        [`%${q}%`],
-      );
-      matchedSchools = schoolRows.map((s) => ({
-        schoolId: s.school_id,
-        name: s.name,
-      }));
+      const safe = buildSafeSchoolSearchTerm(q);
+      if (safe) {
+        const [schoolRows] = await pool.execute(
+          buildSchoolSearchSql(5),
+          schoolSearchParams(safe),
+        );
+        matchedSchools = schoolRows.map((s) => ({
+          schoolId: s.school_id,
+          name: s.name,
+        }));
+      }
     }
 
     // 학교 우편(학교우편) 검색: 로그인 + 사용자 학교가 있는 경우에만
