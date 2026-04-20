@@ -21,7 +21,6 @@ import ProfileIcon from '../../assets/Profile.svg';
 import { getNormalize } from '../../styles/frame.style';
 import {
   getProfileInnerColor,
-  getProfileInnerColorBySeed,
 } from '../../utils/profileIconColor';
 
 // ── 컴포넌트 ─────────────────────────────────────────
@@ -90,6 +89,7 @@ const FriendsScreen = ({ navigation }) => {
             grade: f.grade,
             profileColorId:
               f.colorId ?? f.profileColorId ?? f.profile_color_id ?? f.profileColor?.id,
+            profileColorHex: f.profileColor?.hexCode ?? null,
           })),
         );
 
@@ -103,6 +103,7 @@ const FriendsScreen = ({ navigation }) => {
             grade: r.grade,
             profileColorId:
               r.colorId ?? r.profileColorId ?? r.profile_color_id ?? r.profileColor?.id,
+            profileColorHex: r.profileColor?.hexCode ?? null,
           })),
         );
       } catch (error) {

@@ -186,7 +186,7 @@ export async function broadcastTimerStatus({ userId, status }) {
         const watcherIds = Array.from(watchers);
         const placeholders = watcherIds.map(() => '?').join(',');
         const [rowsWatchers] = await pool.execute(
-          `SELECT id, name FROM users WHERE id IN (${placeholders})`,
+          `SELECT id, name, color_id FROM users WHERE id IN (${placeholders})`,
           watcherIds,
         );
         const summaryPayload = {
@@ -196,6 +196,7 @@ export async function broadcastTimerStatus({ userId, status }) {
           watchers: rowsWatchers.map((u) => ({
             userId: u.id,
             name: u.name,
+            colorId: u.color_id,
           })),
         };
         console.log('[FriendSocket] friend_study_finished_summary emit', {
@@ -236,6 +237,7 @@ export async function broadcastTimerStatus({ userId, status }) {
           watchers: rowsWatchers.map((u) => ({
             userId: u.id,
             name: u.name,
+            colorId: u.color_id,
           })),
         });
       } catch (err) {

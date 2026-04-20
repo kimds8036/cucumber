@@ -19,10 +19,14 @@ export function normalizeStudySummaryWatchers(watchers) {
       const name = String(w.name ?? w.username ?? '').trim();
       const idRaw = w.userId ?? w.id ?? null;
       const userId = idRaw == null ? null : String(idRaw).trim();
+      const colorIdRaw = w.colorId ?? w.profileColorId ?? w.profile_color_id ?? null;
+      const colorIdNum = Number(colorIdRaw);
+      const colorId = Number.isFinite(colorIdNum) ? colorIdNum : null;
       if (!name && !userId) return null;
       return {
         userId: userId || `watcher-${idx}`,
         name: name || '이름 없음',
+        colorId,
       };
     })
     .filter(Boolean);

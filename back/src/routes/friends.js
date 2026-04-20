@@ -23,6 +23,7 @@ router.get('/list', authenticate, async (req, res) => {
          u.name,
          u.username,
          u.color_id,
+         c.hex_code AS profile_color_hex,
          u.school_id,
          s.name AS school_name,
          u.grade,
@@ -36,6 +37,7 @@ router.get('/list', authenticate, async (req, res) => {
                     WHEN uf.requester_id = ? THEN uf.addressee_id
                     ELSE uf.requester_id
                   END
+      LEFT JOIN colors c ON c.id = u.color_id
        LEFT JOIN schools s ON u.school_id = s.school_id
        LEFT JOIN colors c ON u.color_id = c.id
        WHERE (uf.requester_id = ? OR uf.addressee_id = ?)
@@ -51,6 +53,10 @@ router.get('/list', authenticate, async (req, res) => {
         name: r.name,
         username: r.username ? `@${r.username}` : '',
         colorId: r.color_id,
+        profileColor: {
+          id: r.color_id,
+          hexCode: r.profile_color_hex,
+        },
         school: r.school_name || '',
         grade:
           r.grade != null && r.class_number != null
@@ -105,6 +111,7 @@ router.get('/requests/received', authenticate, async (req, res) => {
          u.name,
          u.username,
          u.color_id,
+         c.hex_code AS profile_color_hex,
          u.school_id,
          s.name AS school_name,
          u.grade,
@@ -114,6 +121,7 @@ router.get('/requests/received', authenticate, async (req, res) => {
          uf.created_at
        FROM user_friendships uf
        JOIN users u ON uf.requester_id = u.id
+      LEFT JOIN colors c ON c.id = u.color_id
        LEFT JOIN schools s ON u.school_id = s.school_id
        LEFT JOIN colors c ON u.color_id = c.id
        WHERE uf.addressee_id = ?
@@ -129,6 +137,10 @@ router.get('/requests/received', authenticate, async (req, res) => {
         name: r.name,
         username: r.username ? `@${r.username}` : '',
         colorId: r.color_id,
+        profileColor: {
+          id: r.color_id,
+          hexCode: r.profile_color_hex,
+        },
         school: r.school_name || '',
         grade:
           r.grade != null && r.class_number != null
