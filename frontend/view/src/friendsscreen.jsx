@@ -21,7 +21,6 @@ import ProfileIcon from '../../assets/Profile.svg';
 import { getNormalize } from '../../styles/frame.style';
 import {
   getProfileInnerColor,
-  getProfileInnerColorBySeed,
 } from '../../utils/profileIconColor';
 
 // ── 컴포넌트 ─────────────────────────────────────────
@@ -89,6 +88,7 @@ const FriendsScreen = ({ navigation }) => {
             grade: f.grade,
             profileColorId:
               f.colorId ?? f.profileColorId ?? f.profile_color_id ?? f.profileColor?.id,
+            profileColorHex: f.profileColor?.hexCode ?? null,
           })),
         );
 
@@ -102,6 +102,7 @@ const FriendsScreen = ({ navigation }) => {
             grade: r.grade,
             profileColorId:
               r.colorId ?? r.profileColorId ?? r.profile_color_id ?? r.profileColor?.id,
+            profileColorHex: r.profileColor?.hexCode ?? null,
           })),
         );
       } catch (error) {
@@ -278,7 +279,7 @@ const FriendsScreen = ({ navigation }) => {
                     <ProfileIcon
                       width={normalize(22)}
                       height={normalize(22)}
-                      color={getProfileInnerColor(req.profileColorId) || getProfileInnerColorBySeed(req.id)}
+                      color={getProfileInnerColor(req.profileColorId)}
                     />
                   </View>
                   <Text style={styles.reqName} numberOfLines={1}>
@@ -327,7 +328,7 @@ const FriendsScreen = ({ navigation }) => {
                 <ProfileIcon
                   width={normalize(22)}
                   height={normalize(22)}
-                  color={getProfileInnerColor(friend.profileColorId) || getProfileInnerColorBySeed(friend.id)}
+                  color={getProfileInnerColor(friend.profileColorId)}
                 />
               </View>
               <View style={styles.friendInfo}>
@@ -381,10 +382,7 @@ const FriendsScreen = ({ navigation }) => {
                   <ProfileIcon
                     width={normalize(24)}
                     height={normalize(24)}
-                    color={
-                      getProfileInnerColor(selectedFriend.profileColorId) ||
-                      getProfileInnerColorBySeed(selectedFriend.id)
-                    }
+                    color={getProfileInnerColor(selectedFriend.profileColorId)}
                   />
                 </View>
                 <View>

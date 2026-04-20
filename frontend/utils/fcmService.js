@@ -1,8 +1,10 @@
 import messaging from '@react-native-firebase/messaging';
 import { api } from './api';
+import { ensureFirebaseApp } from './firebaseApp';
 
 export const getFCMToken = async () => {
   try {
+    ensureFirebaseApp();
     return await messaging().getToken();
   } catch (e) {
     console.error('[FCM] getFCMToken 실패:', e);
@@ -12,6 +14,7 @@ export const getFCMToken = async () => {
 
 export const initFCM = async () => {
   try {
+    ensureFirebaseApp();
     const authStatus = await messaging().requestPermission();
     const enabled =
       authStatus === messaging.AuthorizationStatus.AUTHORIZED ||
@@ -29,6 +32,7 @@ export const initFCM = async () => {
 };
 
 export const setupFCMHandlers = () => {
+  ensureFirebaseApp();
   const unsubscribeForeground = messaging().onMessage(async (remoteMessage) => {
     console.log('[FCM] 포그라운드 알림:', remoteMessage);
   });

@@ -20,6 +20,8 @@ import { getNormalize } from '../../styles/frame.style';
 import { subheaderMailListBodyTopAfterTabRow } from '../../styles/subheaderContent';
 import { useNotification } from '../../context/NotificationContext';
 import { useFriend } from '../../context/FriendContext';
+import ProfileIcon from '../../assets/Profile.svg';
+import { getProfileInnerColor } from '../../utils/profileIconColor';
 import {
   isStudySummaryNotification,
   normalizeStudySummaryWatchers,
@@ -69,16 +71,9 @@ const formatTime = (createdAt) => {
 const isChatNotificationRow = (n) =>
   n?.relatedType === 'message_room' || n?.relatedType === 'dm_room';
 
-const STUDY_WATCHER_ICON_COLORS = ['#4CAF50', '#42A5F5', '#FF7043', '#AB47BC'];
 const DM_ICON_COLOR_COUNT = 4;
 
 const normalizeWatchers = (watchers) => normalizeStudySummaryWatchers(watchers);
-
-const getWatcherColor = (watcher, idx) => {
-  const key = String(watcher?.userId ?? watcher?.name ?? idx);
-  const sum = Array.from(key).reduce((acc, ch) => acc + ch.charCodeAt(0), 0);
-  return STUDY_WATCHER_ICON_COLORS[sum % STUDY_WATCHER_ICON_COLORS.length];
-};
 
 const mapRowToNotificationItem = (n) => {
   const icon = mapTypeToIcon(n.type, n.category);
@@ -711,12 +706,13 @@ const NotificationScreen = ({ navigation }) => {
                         onPress={() => openDmRoom(watcher)}
                       >
                         <View
-                          style={[
-                            styles.summaryWatcherAvatar,
-                            { backgroundColor: getWatcherColor(watcher, idx) },
-                          ]}
+                          style={styles.summaryWatcherAvatar}
                         >
-                          <Ionicons name="person" size={12} color="#FFFFFF" />
+                          <ProfileIcon
+                            width={12}
+                            height={12}
+                            color={getProfileInnerColor(watcher.colorId)}
+                          />
                         </View>
                         <Text style={styles.summaryWatcherName} numberOfLines={1}>
                           {watcher.name}

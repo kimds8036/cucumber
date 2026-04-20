@@ -67,7 +67,9 @@ export const PokeModal = ({ visible, friend, onClose, onPoke, onNotifyLater, onM
               <ProfileIcon
                 width={normalize(24)}
                 height={normalize(24)}
-                color={getProfileInnerColor(friend.colorId ?? friend.colorIndex)}
+                color={getProfileInnerColor(
+                  friend.colorId ?? friend.profileColorId ?? friend.profile_color_id ?? friend.colorIndex,
+                )}
               />
               {isStudying && <View style={s.pokeStudyingBadge} />}
             </View>
@@ -326,7 +328,9 @@ export const FriendStoryBar = memo(function FriendStoryBar({
         {/* 친구 목록 */}
         {orderedFriends.map((friend) => {
           const isActive = studyingFriends[friend.id] === true; // 정렬 기준과 동일
-          const iconColor = getProfileInnerColor(friend.colorId ?? friend.colorIndex);
+          const iconColor = getProfileInnerColor(
+            friend.colorId ?? friend.profileColorId ?? friend.profile_color_id ?? friend.colorIndex,
+          );
           return (
             <TouchableOpacity
               key={friend.id}

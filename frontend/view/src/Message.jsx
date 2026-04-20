@@ -318,7 +318,7 @@ export function MessageContent({ navigation }) {
           type: 'note',
           id: r.id,
           profileColorIndex: idx,
-          profileColorId: r.other_user_color_id ?? r.profile_color_id ?? r.profileColorId ?? idx,
+          profileColorId: r.other_user_color_id ?? r.profile_color_id ?? r.profileColorId ?? null,
           name: '익명',
           content: r.last_message || r.post_content || '',
           time: formatListTime(at),
@@ -333,7 +333,7 @@ export function MessageContent({ navigation }) {
           type: 'dm',
           id: r.id,
           profileColorIndex: idx,
-          profileColorId: r.other_user_color_id ?? r.profile_color_id ?? r.profileColorId ?? idx,
+          profileColorId: r.other_user_color_id ?? r.profile_color_id ?? r.profileColorId ?? null,
           name: r.other_user_name || '친구',
           content: r.last_message || '',
           time: formatListTime(at),
@@ -557,7 +557,7 @@ export function MessageContent({ navigation }) {
               rawMail.recipient_color_id ??
               rawMail.profile_color_id ??
               rawMail.profileColorId ??
-              idx,
+              null,
             isReceived,
             replyToMySent,
             senderName: rowLabel,
