@@ -9,7 +9,7 @@ import {
 import { Image } from 'expo-image';
 import Loading from '../../../../components/Loading';
 import { colors } from '../../../../styles/colors';
-import MessageTabIcon from '../../../../assets/Group 166.svg';
+import MessageTabIcon from '../../../../assets/Logo.svg';
 
 function formatChatDateBanner(dateKey) {
   if (!dateKey) return '';

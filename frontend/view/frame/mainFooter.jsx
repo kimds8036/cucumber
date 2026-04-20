@@ -6,7 +6,7 @@ import Octicons from '@expo/vector-icons/Octicons';
 import { FontAwesomeIcon } from '@fortawesome/react-native-fontawesome';
 import { faSchool } from '@fortawesome/free-solid-svg-icons';
 import { colors } from '../../styles/colors';
-import MessageTabIcon from '../../assets/Group 166.svg';
+import MessageTabIcon from '../../components/icons/MessageTabIcon';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 
 const MainFooter = ({ activeTab = 'board', onTabPress }) => {
@@ -30,11 +30,7 @@ const MainFooter = ({ activeTab = 'board', onTabPress }) => {
 
       <TouchableOpacity style={footerStyles.tabButton} activeOpacity={0.7} onPress={() => onTabPress?.('message')}>
         {activeTab === 'message' && <View style={footerStyles.activeTabIndicator} />}
-        <MessageTabIcon
-          width={normalize(30)}
-          height={normalize(30)}
-          color={activeTab === 'message' ? colors.primary : colors.textSecondary}
-        />
+        <MessageTabIcon active={activeTab === 'message'} size={normalize(30)} />
         <Text style={[footerStyles.tabText, activeTab === 'message' && footerStyles.activeTabText]}>
           메시지
         </Text>

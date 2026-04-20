@@ -33,7 +33,8 @@ import { createTimerStyles, getNormalize } from '../../styles/timer';
 import { colors, fonts } from '../../styles/colors';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import Feather from '@expo/vector-icons/Feather';
-import MessageTabIcon from '../../assets/Group 166.svg';
+import { StackActions } from '@react-navigation/native';
+import MessageTabIcon from '../../assets/Logo.svg';
 import ViewShot from 'react-native-view-shot';
 import * as MediaLibrary from 'expo-media-library';
 import { api } from '../../utils/api';
@@ -322,9 +323,7 @@ function TimerLiveScrollInner({
               borderRadius: 8,
             }}
           >
-            <Text
-              style={{ fontSize: 11, color: '#CC3333', fontWeight: '700' }}
-            >
+            <Text style={{ fontSize: 11, color: '#CC3333', fontWeight: '700' }}>
               DEV초기화
             </Text>
           </TouchableOpacity>
@@ -461,8 +460,7 @@ function TimerLiveScrollInner({
                           <Text
                             style={[
                               styles.taskContent,
-                              task.status === 'done' &&
-                                styles.taskContentDone,
+                              task.status === 'done' && styles.taskContentDone,
                             ]}
                             numberOfLines={1}
                           >
@@ -800,11 +798,14 @@ export const TimerContent = () => {
 
   // 친구 관련 핸들러 (모달 열기까지만 담당, 쿡 찌르기 로직은 FriendPokeController 에서 처리)
   const handleOpenAddFriend = useCallback(() => setShowAddFriend(true), []);
-  const handleFriendPress = useCallback((friend) => {
-    const isActive = studyingFriends?.[friend.id] === true;
-    setPokeTarget({ ...friend, isActive });
-    setPokeVisible(true);
-  }, [studyingFriends]);
+  const handleFriendPress = useCallback(
+    (friend) => {
+      const isActive = studyingFriends?.[friend.id] === true;
+      setPokeTarget({ ...friend, isActive });
+      setPokeVisible(true);
+    },
+    [studyingFriends],
+  );
 
   // ── 타이머/투두 상태 ──────────────────────────────────
   // - 과목/할일/세션/날짜/타이머 실행 여부 등 메인 비즈니스 상태
@@ -1154,8 +1155,13 @@ export const TimerContent = () => {
         Number.isFinite(runtimeBase) && runtimeBase > 0
           ? runtimeBase
           : startTimestamp;
-      const elapsedSec = Math.floor((Date.now() - countdownBaseTimestamp) / 1000);
-      const remainingSec = Math.max(0, TIMER_COUNTDOWN_TOTAL_SECONDS - elapsedSec);
+      const elapsedSec = Math.floor(
+        (Date.now() - countdownBaseTimestamp) / 1000,
+      );
+      const remainingSec = Math.max(
+        0,
+        TIMER_COUNTDOWN_TOTAL_SECONDS - elapsedSec,
+      );
       setTimerRuntimeState({
         isRunning: true,
         startTimestamp,
@@ -1419,48 +1425,57 @@ export const TimerContent = () => {
           const username = trimmed.startsWith('@') ? trimmed.slice(1) : trimmed;
           if (!username) return;
 
-          Alert.alert('친구 요청', `@${username} 님에게 친구 요청을 보내시겠어요?`, [
-            { text: '취소', style: 'cancel' },
-            {
-              text: '보내기',
-              onPress: async () => {
-                console.log('[Timer][FriendRequest] 보내기 버튼 눌림 → API 요청 시작', {
-                  username,
-                  target: `@${username}`,
-                });
-                try {
-                  const res = await api.post('/api/friends/requests', {
-                    username,
-                  });
-                  const data = res.data?.data || {};
-                  const targetName =
-                    data.targetName || data.targetUsername || `@${username}`;
-                  console.log('[Timer][FriendRequest] API 성공 → 백엔드에서 수신자에게 소켓 알림 전송됨', {
-                    requestId: data.requestId,
-                    targetUserId: data.targetUserId,
-                    targetUsername: data.targetUsername,
-                    targetName,
-                  });
-                  setShowAddFriend(false);
-                  pushTimerToast(targetName, '친구 요청을 보냈어요');
-                } catch (error) {
-                  console.error('[Timer][FriendRequest] API 실패', {
-                    username,
-                    status: error.response?.status,
-                    message: error.response?.data?.message,
-                  });
-                  Alert.alert(
-                    '친구 요청 실패',
-                    error.response?.data?.message ||
-                      '친구 요청 중 오류가 발생했습니다.',
+          Alert.alert(
+            '친구 요청',
+            `@${username} 님에게 친구 요청을 보내시겠어요?`,
+            [
+              { text: '취소', style: 'cancel' },
+              {
+                text: '보내기',
+                onPress: async () => {
+                  console.log(
+                    '[Timer][FriendRequest] 보내기 버튼 눌림 → API 요청 시작',
+                    {
+                      username,
+                      target: `@${username}`,
+                    },
                   );
-                }
+                  try {
+                    const res = await api.post('/api/friends/requests', {
+                      username,
+                    });
+                    const data = res.data?.data || {};
+                    const targetName =
+                      data.targetName || data.targetUsername || `@${username}`;
+                    console.log(
+                      '[Timer][FriendRequest] API 성공 → 백엔드에서 수신자에게 소켓 알림 전송됨',
+                      {
+                        requestId: data.requestId,
+                        targetUserId: data.targetUserId,
+                        targetUsername: data.targetUsername,
+                        targetName,
+                      },
+                    );
+                    setShowAddFriend(false);
+                    pushTimerToast(targetName, '친구 요청을 보냈어요');
+                  } catch (error) {
+                    console.error('[Timer][FriendRequest] API 실패', {
+                      username,
+                      status: error.response?.status,
+                      message: error.response?.data?.message,
+                    });
+                    Alert.alert(
+                      '친구 요청 실패',
+                      error.response?.data?.message ||
+                        '친구 요청 중 오류가 발생했습니다.',
+                    );
+                  }
+                },
               },
-            },
-          ]);
+            ],
+          );
         }}
       />
-
     </>
   );
 };
@@ -1474,10 +1489,14 @@ const Timer = ({ navigation }) => (
     <MainFooter
       activeTab="timer"
       onTabPress={(tab) => {
-        if (tab === 'board') navigation.navigate('Main', { initialTab: 'board' });
-        if (tab === 'message') navigation.navigate('Main', { initialTab: 'message' });
-        if (tab === 'school') navigation.navigate('Main', { initialTab: 'school' });
-        if (tab === 'mypage') navigation.navigate('Main', { initialTab: 'mypage' });
+        if (tab === 'board')
+          navigation.navigate('Main', { initialTab: 'board' });
+        if (tab === 'message')
+          navigation.navigate('Main', { initialTab: 'message' });
+        if (tab === 'school')
+          navigation.navigate('Main', { initialTab: 'school' });
+        if (tab === 'mypage')
+          navigation.navigate('Main', { initialTab: 'mypage' });
       }}
     />
   </SafeAreaView>

@@ -4,7 +4,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { createLoginStyles } from '../../styles/login.style';
 import { colors } from '../../styles/colors';
 import { Ionicons } from '@expo/vector-icons';
-import LogoIcon from '../../assets/Group 166.svg';
+import LogoIcon from '../../assets/Logo.svg';
 import { api, setAuthToken } from '../../utils/api';
 import { useAuth } from '../../context/AuthContext';
 

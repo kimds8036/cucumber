@@ -16,7 +16,7 @@ import {
   useWindowDimensions,
 } from 'react-native';
 import Ionicons from '@expo/vector-icons/Ionicons';
-import MessageTabIcon from '../assets/Group 166.svg';
+import MessageTabIcon from '../assets/Logo.svg';
 import { colors } from '../styles/colors';
 import { createTimerFriendModalStyles, getNormalize } from '../styles/timer';
 import { useFriendSocketEvents } from '../hooks/useFriendSocketEvents';

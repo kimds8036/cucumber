@@ -17,7 +17,7 @@ import {
   createDetailStyles,
 } from '../../../../styles/board.style';
 import { colors, fonts } from '../../../../styles/colors';
-import MessageTabIcon from '../../../../assets/Group 166.svg';
+import MessageTabIcon from '../../../../assets/Logo.svg';
 import { getFriendIconColorByIndex } from '../../../../components/timerFriendModals';
 
 export default function DMChatScreen({ navigation, route }) {

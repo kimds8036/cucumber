@@ -24,6 +24,7 @@ router.get('/me', authenticate, async (req, res) => {
          u.id,
          u.username,
          u.name,
+         u.color_id,
          u.school_id,
          u.grade,
          u.class_number,
@@ -48,6 +49,7 @@ router.get('/me', authenticate, async (req, res) => {
     const user = rows[0];
     console.log('[API][GET /api/auth/me] 사용자 기준 정보:', {
       userId: user.id,
+      colorId: user.color_id,
       schoolId: user.school_id,
       schoolName: user.school_name,
       grade: user.grade,
@@ -72,6 +74,7 @@ router.get('/me', authenticate, async (req, res) => {
         id: user.id,
         username: user.username,
         name: user.name,
+        colorId: user.color_id,
         school: {
           id: user.school_id,
           name: user.school_name,
