@@ -47,7 +47,8 @@ import AlertHost from './components/common/AlertHost';
 import { navigationRef } from './navigation/navigationRef';
 import { appAlert } from './utils/appAlert';
 import { configureTimerNotificationHandler } from './utils/timerRunNotification';
-import { initFCM, setupFCMHandlers } from './utils/fcmService';
+// TEMP(expo-go): Firebase Messaging은 네이티브 빌드에서만 사용
+// import { initFCM, setupFCMHandlers } from './utils/fcmService';
 
 const Stack = createNativeStackNavigator();
 const linking = {
@@ -122,11 +123,12 @@ function RootNavigator() {
 
   useEffect(() => {
     if (!isLoggedIn) return undefined;
+    // TEMP(expo-go): RNFirebase 의존 코드 임시 비활성화
     let cleanup;
-    (async () => {
-      await initFCM();
-      cleanup = setupFCMHandlers();
-    })();
+    // (async () => {
+    //   await initFCM();
+    //   cleanup = setupFCMHandlers();
+    // })();
     return () => {
       if (typeof cleanup === 'function') cleanup();
     };

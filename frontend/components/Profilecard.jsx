@@ -6,8 +6,7 @@ import {
   useWindowDimensions,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { colors } from '../styles/colors';
-import ProfileIcon from './icons/ProfileIcon';
+import ProfileIcon from '../assets/Profile.svg';
 import { getNormalize, createProfileCardStyles } from '../styles/mypage.style';
 import { useFriend } from '../context/FriendContext';
 import { api } from '../utils/api';
@@ -15,22 +14,6 @@ import { PROFILE_COUNTS_CACHE_KEY } from '../utils/profileCountsCache';
 import { getProfileHexByColorId } from '../utils/profileColor';
 
 const PROFILE_COUNTS_CACHE_TTL_MS = 10 * 60 * 1000;
-
-function normalizeHexColor(value) {
-  const raw = String(value || '').trim();
-  if (!/^#[0-9a-fA-F]{6}$/.test(raw)) return null;
-  return raw;
-}
-
-function getContrastIconColor(bgHex) {
-  const hex = normalizeHexColor(bgHex);
-  if (!hex) return colors.textWhite;
-  const r = parseInt(hex.slice(1, 3), 16);
-  const g = parseInt(hex.slice(3, 5), 16);
-  const b = parseInt(hex.slice(5, 7), 16);
-  const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
-  return luminance > 0.6 ? '#272A26' : '#FFFFFF';
-}
 
 const ProfileCard = ({ userInfo, navigation }) => {
   const { width } = useWindowDimensions();
@@ -110,14 +93,11 @@ const ProfileCard = ({ userInfo, navigation }) => {
     }));
   }, [userInfo?.friendCount]);
 
-  const profileBgColor = normalizeHexColor(userInfo?.profileColorHex) || colors.primary;
-  const profileIconColor = getContrastIconColor(profileBgColor);
-
   return (
     <View style={styles.profileCard}>
       <View style={styles.profileHeader}>
-        <View style={[styles.profileCircle, { backgroundColor: colors.primary }]}>
-          <ProfileIcon size={normalize(30)} color={profileEyeColor} />
+        <View style={[styles.profileCircle]}>
+          <ProfileIcon width={normalize(56)} height={normalize(56)} color={profileEyeColor} />
         </View>
 
         <View style={styles.profileInfo}>
