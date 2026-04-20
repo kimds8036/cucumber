@@ -57,7 +57,7 @@ export const notificationQueue = new Bull('notifications', {
 
 // ── 잡 처리 핸들러 ───────────────────────────────────
 notificationQueue.process(async (job) => {
-  const { userId, type, category, title, body, relatedType, relatedId } = job.data;
+  const { userId, type, category, title, body, relatedType, relatedId, watchers } = job.data;
   console.log('[NotifQueue] processing', {
     jobId: job.id,
     userId,
@@ -74,11 +74,20 @@ notificationQueue.process(async (job) => {
     body,
     relatedType,
     relatedId,
+    watchers,
   });
 
   // DB 알림 생성 후, 해당 유저에게 소켓 알림도 함께 push (실패해도 메인 로직에는 영향 없음)
   try {
-    emitNotification(userId, { type, category, title, body, relatedType, relatedId });
+    emitNotification(userId, {
+      type,
+      category,
+      title,
+      body,
+      relatedType,
+      relatedId,
+      watchers,
+    });
   } catch (err) {
     console.error('[NotifQueue] 소켓 알림 emit 실패(무시):', err.message);
   }
@@ -112,6 +121,7 @@ notificationQueue.on('error', (err) => {
  * @param {string}  params.body
  * @param {string}  [params.relatedType]
  * @param {number}  [params.relatedId]
+ * @param {Array<{userId:number,name:string}>} [params.watchers]
  */
 export async function enqueueNotification(params) {
   try {

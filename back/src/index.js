@@ -20,11 +20,13 @@ import searchRoutes from './routes/search.js';
 import dmRoutes from './routes/dm.js';
 import swaggerSpec from './swagger.js';
 import { initSocketServer } from './socketServer.js';
+import { initFirebase } from './config/firebase.js';
 import './utils/notificationWorker.js';
 import { initJobs } from './jobs/index.js';
 
 
 dotenv.config();
+initFirebase();
 
 const app = express();
 const PORT = process.env.PORT || 3000;

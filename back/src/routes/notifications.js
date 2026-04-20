@@ -5,6 +5,18 @@ import { emitNotification, getIO } from '../socketServer.js';
 
 const router = express.Router();
 
+function parseWatchersJson(raw) {
+  if (!raw) return [];
+  if (Array.isArray(raw)) return raw;
+  if (typeof raw === 'object') return [];
+  try {
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
+
 function emitNotificationReadToUser(userId, payload = {}) {
   try {
     const io = getIO?.();
@@ -72,6 +84,7 @@ router.get('/', authenticate, async (req, res) => {
          body,
          related_type,
          related_id,
+         watchers_json,
          is_read,
          created_at,
          read_at
@@ -109,6 +122,7 @@ router.get('/', authenticate, async (req, res) => {
         createdAt: n.created_at,
         relatedType: n.related_type,
         relatedId: n.related_id,
+        watchers: parseWatchersJson(n.watchers_json),
       })),
     });
   } catch (error) {

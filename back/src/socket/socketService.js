@@ -233,6 +233,10 @@ export async function broadcastTimerStatus({ userId, status }) {
           relatedType: summaryRelatedType,
           relatedId: summaryRelatedId,
           body: summaryBody,
+          watchers: rowsWatchers.map((u) => ({
+            userId: u.id,
+            name: u.name,
+          })),
         });
       } catch (err) {
         console.error('[FriendSocket] friend_study_finished_summary 생성/emit 오류:', err);

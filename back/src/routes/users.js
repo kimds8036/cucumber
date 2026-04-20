@@ -4,6 +4,30 @@ import { authenticate } from '../middleware/auth.js';
 
 const router = express.Router();
 
+// POST /api/users/fcm-token
+router.post('/fcm-token', authenticate, async (req, res) => {
+  try {
+    const token = String(req.body?.token || '').trim();
+    const userId = req.user.userId;
+
+    if (!token) {
+      return res.status(400).json({ success: false, message: 'token 필요' });
+    }
+
+    await pool.execute('UPDATE users SET fcm_token = ? WHERE id = ?', [
+      token,
+      userId,
+    ]);
+
+    return res.json({ success: true });
+  } catch (error) {
+    console.error('FCM 토큰 저장 오류:', error);
+    return res
+      .status(500)
+      .json({ success: false, message: 'FCM 토큰 저장 중 오류가 발생했습니다.' });
+  }
+});
+
 // GET /api/users/me/stats
 // - 마이페이지 카드용 집계(친구/게시글/스크랩 수)
 router.get('/me/stats', authenticate, async (req, res) => {
