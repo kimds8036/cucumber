@@ -26,6 +26,9 @@ export const connectSocket = async (roomId, token) => {
   socket = io(api.defaults.baseURL, {
     auth: { token: resolvedToken },
     transports: ['websocket'],
+    reconnection: true,
+    reconnectionDelay: 2000,
+    reconnectionAttempts: 5,
   });
 
   currentRoomId = roomId ?? null;
@@ -40,6 +43,9 @@ export const connectSocket = async (roomId, token) => {
 export const disconnectSocket = () => {
   if (socket?.connected && currentRoomId) {
     socket.emit('leave_room', { roomId: currentRoomId });
+  }
+  if (socket?.connected) {
+    socket.disconnect();
   }
   currentRoomId = null;
 };

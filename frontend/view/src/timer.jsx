@@ -33,7 +33,6 @@ import { createTimerStyles, getNormalize } from '../../styles/timer';
 import { colors, fonts } from '../../styles/colors';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import Feather from '@expo/vector-icons/Feather';
-import { StackActions } from '@react-navigation/native';
 import MessageTabIcon from '../../assets/Group 166.svg';
 import ViewShot from 'react-native-view-shot';
 import * as MediaLibrary from 'expo-media-library';
@@ -63,9 +62,18 @@ import {
 import { useToast } from '../../context/ToastContext';
 import { useFriendSocketEvents } from '../../hooks/useFriendSocketEvents';
 import { useFriend } from '../../context/FriendContext';
-import { useSocket } from '../../context/SocketContext';
 import { useFocusEffect } from '@react-navigation/native';
 import { useFriendStudyEvents } from '../../hooks/useFriendStudyEvents';
+import {
+  showTimerRunningNotification,
+  cancelTimerRunningNotification,
+} from '../../utils/timerRunNotification';
+import {
+  getTimerRuntimeState,
+  registerTimerStopHandler,
+  setTimerRuntimeState,
+  TIMER_COUNTDOWN_TOTAL_SECONDS,
+} from '../../utils/timerRuntimeStore';
 
 // ── 상수 ────────────────────────────────────────────────
 // - SUBJECT/TASK/HOURS 등 화면 전체에서 공유하는 기본 값
@@ -75,6 +83,10 @@ const DEFAULT_TASKS = [];
 const HOURS = Array.from({ length: 24 }, (_, i) => i);
 const TIMETABLE_GRAY = '#A6DA95';
 const TIMER_DAY_START_HOUR = 6;
+const TIMER_HEARTBEAT_MS = 60 * 1000;
+const TIMER_BACKGROUND_AUTO_CLOSE_MS = 15 * 60 * 1000;
+const TIMER_DB_BACKUP_MIN_INTERVAL_MS = 5 * 60 * 1000;
+const TIMER_DB_BACKUP_MIN_DELTA_MS = 60 * 1000;
 
 // ── 유틸 ─────────────────────────────────────────────────
 const getMinutesFromMidnight = (d) => d.getHours() * 60 + d.getMinutes();
@@ -719,7 +731,6 @@ export const TimerContent = () => {
   };
 
   const { studyingFriends, refreshStudyingFriends } = useFriend();
-  const { connected, reconnect } = useSocket();
 
   // ── 실시간 소켓 이벤트 연동 ─────────────────────────────
   const { emitTimerStatus } = useFriendSocketEvents({});
@@ -781,13 +792,10 @@ export const TimerContent = () => {
     React.useCallback(() => {
       setIsTimerScreenActive?.(true);
       refreshStudyingFriends?.();
-      if (!connected) {
-        reconnect?.();
-      }
       return () => {
         setIsTimerScreenActive?.(false);
       };
-    }, [refreshStudyingFriends, connected, reconnect, setIsTimerScreenActive]),
+    }, [refreshStudyingFriends, setIsTimerScreenActive]),
   );
 
   // 친구 관련 핸들러 (모달 열기까지만 담당, 쿡 찌르기 로직은 FriendPokeController 에서 처리)
@@ -815,6 +823,13 @@ export const TimerContent = () => {
   const [timerDayKey, setTimerDayKey] = useState(null);
   const [initialLoadDone, setInitialLoadDone] = useState(false);
   const saveTimeoutRef = useRef(null);
+  const prevIsRunningRef = useRef(false);
+  const lastDbBackupAtRef = useRef(0);
+  const lastDbBackupElapsedMsRef = useRef(0);
+  const appStateRef = useRef(AppState.currentState);
+  const backgroundEnteredAtRef = useRef(null);
+  const wasRunningOnBackgroundRef = useRef(false);
+  const closeIncompleteLockRef = useRef(false);
   const [selectedDayKey, setSelectedDayKey] = useState(null);
   const [viewState, setViewState] = useState(null);
   const capturePlannerRef = useRef(null);
@@ -1079,6 +1094,150 @@ export const TimerContent = () => {
 
   const toggleTimer = () => (isRunning ? pauseTimer() : startTimerTop());
 
+  useEffect(() => {
+    if (!isRunning) return undefined;
+    emitTimerStatus('heartbeat');
+    const heartbeatInterval = setInterval(() => {
+      emitTimerStatus('heartbeat');
+    }, TIMER_HEARTBEAT_MS);
+    return () => {
+      clearInterval(heartbeatInterval);
+    };
+  }, [isRunning, emitTimerStatus]);
+
+  useEffect(() => {
+    const wasRunning = prevIsRunningRef.current;
+    if (wasRunning && !isRunning && timerDayKey) {
+      const now = Date.now();
+      const elapsedSinceLastBackup = now - lastDbBackupAtRef.current;
+      const deltaElapsedMs = Math.max(
+        0,
+        totalElapsedMs - lastDbBackupElapsedMsRef.current,
+      );
+      const shouldBackup =
+        lastDbBackupAtRef.current === 0 ||
+        elapsedSinceLastBackup >= TIMER_DB_BACKUP_MIN_INTERVAL_MS ||
+        deltaElapsedMs >= TIMER_DB_BACKUP_MIN_DELTA_MS;
+
+      if (shouldBackup) {
+        const payload = { sessions, totalElapsedMs, subjects, tasks };
+        saveDayToDb(timerDayKey, payload, { markAsDaySynced: false }).then(
+          (ok) => {
+            if (ok) {
+              lastDbBackupAtRef.current = now;
+              lastDbBackupElapsedMsRef.current = totalElapsedMs;
+            }
+          },
+        );
+      }
+    }
+    prevIsRunningRef.current = isRunning;
+  }, [isRunning, timerDayKey, sessions, totalElapsedMs, subjects, tasks]);
+
+  useEffect(() => {
+    if (!isRunning || startTimestamp == null) {
+      setTimerRuntimeState({
+        isRunning: false,
+        startTimestamp: null,
+        countdownBaseTimestamp: null,
+        countdownRemainingSec: TIMER_COUNTDOWN_TOTAL_SECONDS,
+        countdownTotalSec: TIMER_COUNTDOWN_TOTAL_SECONDS,
+      });
+      cancelTimerRunningNotification();
+      return undefined;
+    }
+
+    const syncRuntimeCountdown = () => {
+      const runtimeState = getTimerRuntimeState();
+      const runtimeBase = Number(runtimeState?.countdownBaseTimestamp);
+      const countdownBaseTimestamp =
+        Number.isFinite(runtimeBase) && runtimeBase > 0
+          ? runtimeBase
+          : startTimestamp;
+      const elapsedSec = Math.floor((Date.now() - countdownBaseTimestamp) / 1000);
+      const remainingSec = Math.max(0, TIMER_COUNTDOWN_TOTAL_SECONDS - elapsedSec);
+      setTimerRuntimeState({
+        isRunning: true,
+        startTimestamp,
+        countdownBaseTimestamp,
+        countdownRemainingSec: remainingSec,
+        countdownTotalSec: TIMER_COUNTDOWN_TOTAL_SECONDS,
+      });
+      if (remainingSec === 0) {
+        pauseTimer();
+      }
+    };
+
+    syncRuntimeCountdown();
+    const countdownInterval = setInterval(syncRuntimeCountdown, 1000);
+    return () => {
+      clearInterval(countdownInterval);
+    };
+  }, [isRunning, startTimestamp, pauseTimer]);
+
+  useEffect(() => {
+    const unregister = registerTimerStopHandler(() => {
+      pauseTimer();
+    });
+    return unregister;
+  }, [pauseTimer]);
+
+  useEffect(() => {
+    const sub = AppState.addEventListener('change', (nextState) => {
+      const prevState = appStateRef.current;
+      appStateRef.current = nextState;
+
+      if (nextState === 'inactive' || nextState === 'background') {
+        backgroundEnteredAtRef.current = Date.now();
+        wasRunningOnBackgroundRef.current = isRunning;
+        if (isRunning) {
+          showTimerRunningNotification();
+        }
+        return;
+      }
+
+      if (prevState.match(/inactive|background/) && nextState === 'active') {
+        cancelTimerRunningNotification();
+      }
+
+      if (
+        prevState.match(/inactive|background/) &&
+        nextState === 'active' &&
+        wasRunningOnBackgroundRef.current
+      ) {
+        const enteredAt = backgroundEnteredAtRef.current ?? Date.now();
+        const backgroundMs = Math.max(0, Date.now() - enteredAt);
+        if (
+          backgroundMs >= TIMER_BACKGROUND_AUTO_CLOSE_MS &&
+          !closeIncompleteLockRef.current
+        ) {
+          closeIncompleteLockRef.current = true;
+          (async () => {
+            try {
+              await api.post('/api/timer/session/close-incomplete');
+              if (isRunning) {
+                endCurrentSession();
+                closeOpenSession(activeSubjectId);
+                setIsRunning(false);
+                setStartTimestamp(null);
+                emitTimerStatus('idle');
+              }
+              pushTimerToast(
+                '타이머',
+                '백그라운드 시간이 길어 세션을 자동 정리했어요.',
+              );
+            } catch (error) {
+              console.error('[Timer] close-incomplete 호출 실패:', error);
+            } finally {
+              closeIncompleteLockRef.current = false;
+            }
+          })();
+        }
+      }
+    });
+    return () => sub.remove();
+  }, [isRunning, activeSubjectId, emitTimerStatus]);
+
   // ── 날짜 이동 ─────────────────────────────────────────
   const goPrevDay = () => {
     if (!selectedDayKey) return;
@@ -1315,10 +1474,10 @@ const Timer = ({ navigation }) => (
     <MainFooter
       activeTab="timer"
       onTabPress={(tab) => {
-        if (tab === 'board') navigation.dispatch(StackActions.popToTop());
-        if (tab === 'message') navigation.dispatch(StackActions.replace('Message'));
-        if (tab === 'school') navigation.dispatch(StackActions.replace('SchoolBoardAll'));
-        if (tab === 'mypage') navigation.dispatch(StackActions.replace('MyPage'));
+        if (tab === 'board') navigation.navigate('Main', { initialTab: 'board' });
+        if (tab === 'message') navigation.navigate('Main', { initialTab: 'message' });
+        if (tab === 'school') navigation.navigate('Main', { initialTab: 'school' });
+        if (tab === 'mypage') navigation.navigate('Main', { initialTab: 'mypage' });
       }}
     />
   </SafeAreaView>

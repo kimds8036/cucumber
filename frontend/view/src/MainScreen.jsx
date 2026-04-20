@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import MainHeader from '../frame/mainHeader';
@@ -11,8 +11,17 @@ import MyPage from './mypage';
 import OurSchoolScreen from './ourschoolscreen';
 
 
-const MainScreen = ({ navigation }) => {
+const MAIN_TABS = new Set(['board', 'message', 'school', 'timer', 'mypage']);
+
+const MainScreen = ({ navigation, route }) => {
   const [activeTab, setActiveTab] = useState('board'); // 'board' | 'message' | 'school' | 'timer' | 'mypage'
+
+  useEffect(() => {
+    const requestedTab = route?.params?.initialTab;
+    if (!MAIN_TABS.has(requestedTab)) return;
+    setActiveTab(requestedTab);
+    navigation.setParams({ initialTab: undefined });
+  }, [route?.params?.initialTab, navigation]);
 
   const renderContent = () => {
     switch (activeTab) {

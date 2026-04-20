@@ -20,6 +20,7 @@ export function SocketProvider({ children }) {
   const reconnectAuthTimerRef = useRef(null);
   const appStateRef = useRef(AppState.currentState);
   const cancelledRef = useRef(false);
+  const isReconnectingRef = useRef(false);
 
   const cleanupContextListeners = useCallback((targetSocket) => {
     if (!targetSocket) return;
@@ -39,6 +40,7 @@ export function SocketProvider({ children }) {
       cleanupContextListeners(s);
 
       s.on('connect', () => {
+        isReconnectingRef.current = false;
         if (!cancelledRef.current) {
           setConnected(true);
           setSocket(s);
@@ -54,13 +56,6 @@ export function SocketProvider({ children }) {
       s.on('disconnect', (reason) => {
         setConnected(false);
         if (__DEV__) console.log('[SocketContext] 연결 끊김', reason);
-        if (reason === 'io server disconnect' && !cancelledRef.current) {
-          setTimeout(() => {
-            if (!cancelledRef.current) {
-              connect();
-            }
-          }, 1000);
-        }
       });
 
       s.on('connect_error', (err) => {
@@ -105,11 +100,13 @@ export function SocketProvider({ children }) {
       appStateRef.current = nextState;
       if (prev.match(/inactive|background/) && nextState === 'active') {
         const activeSocket = socketManager.getSocket?.();
-        if (!activeSocket || !activeSocket.connected) {
+        if (activeSocket && !activeSocket.connected) {
+          if (isReconnectingRef.current) return;
+          isReconnectingRef.current = true;
           if (__DEV__) {
             console.log('[SocketContext] AppState active → 소켓 재연결 시도');
           }
-          connect();
+          activeSocket.connect();
         }
       }
     };

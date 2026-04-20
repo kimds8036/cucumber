@@ -9,6 +9,7 @@ import { api } from './api';
 
 const TIMER_DAY_PREFIX = '@timer_day_';
 const LAST_SYNCED_DAY_KEY = '@timer_last_synced_day';
+const PENDING_FLUSH_META_KEY = '@timer_pending_flush_meta';
 
 /** 6시~익일 5시59분 기준 "오늘" 날짜 키 (YYYY-MM-DD) */
 export function getTimerDayKey(date = new Date()) {
@@ -109,11 +110,42 @@ export async function setLastSyncedDayKey(dayKey) {
   }
 }
 
+async function getPendingFlushMeta() {
+  try {
+    const raw = await AsyncStorage.getItem(PENDING_FLUSH_META_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    if (!parsed || typeof parsed !== 'object') return null;
+    const dayKey = typeof parsed.dayKey === 'string' ? parsed.dayKey : null;
+    if (!dayKey) return null;
+    return {
+      dayKey,
+      retryCount: Number(parsed.retryCount) || 0,
+      lastFailedAt: parsed.lastFailedAt || null,
+    };
+  } catch {
+    return null;
+  }
+}
+
+async function setPendingFlushMeta(meta) {
+  try {
+    if (!meta) {
+      await AsyncStorage.removeItem(PENDING_FLUSH_META_KEY);
+      return;
+    }
+    await AsyncStorage.setItem(PENDING_FLUSH_META_KEY, JSON.stringify(meta));
+  } catch {
+    // ignore
+  }
+}
+
 /**
  * 하루가 끝났을 때 DB에 저장 (6~6 기준 전날 데이터 전송)
  * 실제 API 연동 시 이 함수 내부만 수정하면 됨.
  */
-export async function saveDayToDb(dayKey, payload) {
+export async function saveDayToDb(dayKey, payload, options = {}) {
+  const { markAsDaySynced = true } = options;
   try {
     await api.post('/api/timer/day', {
       dayKey,
@@ -125,9 +157,25 @@ export async function saveDayToDb(dayKey, payload) {
     if (__DEV__) {
       console.log('[Timer] saveDayToDb 성공', dayKey);
     }
-    await setLastSyncedDayKey(dayKey);
+    if (markAsDaySynced) {
+      await setLastSyncedDayKey(dayKey);
+    }
+    const pending = await getPendingFlushMeta();
+    if (pending?.dayKey === dayKey) {
+      await setPendingFlushMeta(null);
+    }
+    return true;
   } catch (e) {
+    const pending = await getPendingFlushMeta();
+    const retryCount =
+      pending?.dayKey === dayKey ? (Number(pending.retryCount) || 0) + 1 : 1;
+    await setPendingFlushMeta({
+      dayKey,
+      retryCount,
+      lastFailedAt: new Date().toISOString(),
+    });
     console.error('[Timer] saveDayToDb 실패', e?.response?.data || e.message);
+    return false;
   }
 }
 
@@ -173,6 +221,19 @@ export async function loadDayFromDb(dayKey) {
  * 앱 진입/날짜 변경 시: 아직 동기화 안 한 전날이 있으면 로컬에서 읽어 DB 저장 후, 당일 데이터 로드
  */
 export async function flushPreviousDayAndLoadCurrent(currentDayKey) {
+  const pending = await getPendingFlushMeta();
+  if (pending?.dayKey) {
+    const pendingData = await loadDayFromStorage(pending.dayKey);
+    if (
+      pendingData &&
+      (pendingData.sessions?.length > 0 || pendingData.totalElapsedMs > 0)
+    ) {
+      await saveDayToDb(pending.dayKey, pendingData, { markAsDaySynced: true });
+    } else {
+      await setPendingFlushMeta(null);
+    }
+  }
+
   const lastSynced = await getLastSyncedDayKey();
   const prevDayKey = getPreviousDayKey(new Date());
 

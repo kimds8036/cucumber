@@ -15,6 +15,22 @@ import { PROFILE_COUNTS_CACHE_KEY } from '../utils/profileCountsCache';
 
 const PROFILE_COUNTS_CACHE_TTL_MS = 10 * 60 * 1000;
 
+function normalizeHexColor(value) {
+  const raw = String(value || '').trim();
+  if (!/^#[0-9a-fA-F]{6}$/.test(raw)) return null;
+  return raw;
+}
+
+function getContrastIconColor(bgHex) {
+  const hex = normalizeHexColor(bgHex);
+  if (!hex) return colors.textWhite;
+  const r = parseInt(hex.slice(1, 3), 16);
+  const g = parseInt(hex.slice(3, 5), 16);
+  const b = parseInt(hex.slice(5, 7), 16);
+  const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+  return luminance > 0.6 ? '#272A26' : '#FFFFFF';
+}
+
 const ProfileCard = ({ userInfo, navigation }) => {
   const { width } = useWindowDimensions();
   const normalize = useMemo(() => getNormalize(width), [width]);
@@ -92,14 +108,17 @@ const ProfileCard = ({ userInfo, navigation }) => {
     }));
   }, [userInfo?.friendCount]);
 
+  const profileBgColor = normalizeHexColor(userInfo?.profileColorHex) || colors.primary;
+  const profileIconColor = getContrastIconColor(profileBgColor);
+
   return (
     <View style={styles.profileCard}>
       <View style={styles.profileHeader}>
-        <View style={[styles.profileCircle, { backgroundColor: colors.primary }]}>
+        <View style={[styles.profileCircle, { backgroundColor: profileBgColor }]}>
           <MessageTabIcon
             width={normalize(30)}
             height={normalize(30)}
-            color={colors.green}
+            color={profileIconColor}
           />
         </View>
 

@@ -29,6 +29,7 @@
     "expo-image-picker": "~17.0.10",
     "expo-location": "^55.1.4",
     "expo-media-library": "~18.2.1",
+    "expo-notifications": "^55.0.19",
     "expo-splash-screen": "~31.0.13",
     "expo-status-bar": "~3.0.9",
     "neis": "^0.5.1",

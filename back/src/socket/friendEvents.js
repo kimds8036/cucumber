@@ -71,6 +71,8 @@ export function registerFriendEvents(socket) {
           subjectName: subjectName != null ? subjectName : null,
           startSeconds: secs,
         });
+      } else if (status === 'heartbeat') {
+        return;
       } else if (status === 'idle') {
         await closeStudySession({ userId });
       }

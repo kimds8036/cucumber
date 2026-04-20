@@ -32,6 +32,8 @@ import { useFonts } from 'expo-font';
 import * as SplashScreen from 'expo-splash-screen';
 import { useEffect } from 'react';
 import { Alert } from 'react-native';
+import * as Notifications from 'expo-notifications';
+import Constants from 'expo-constants';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { KeyboardProvider } from './context/KeyboardContext';
 import { AuthProvider, useAuth } from './context/AuthContext';
@@ -44,6 +46,7 @@ import ToastHost from './components/common/ToastHost';
 import AlertHost from './components/common/AlertHost';
 import { navigationRef } from './navigation/navigationRef';
 import { appAlert } from './utils/appAlert';
+import { configureTimerNotificationHandler } from './utils/timerRunNotification';
 
 const Stack = createNativeStackNavigator();
 const linking = {
@@ -144,6 +147,28 @@ export default function App() {
     };
   }, []);
 
+  useEffect(() => {
+    const isExpoGo = Constants.appOwnership === 'expo';
+    if (isExpoGo) {
+      console.log('[Notification] Expo Go 환경에서는 원격 푸시 기능을 초기화하지 않습니다.');
+      return undefined;
+    }
+
+    configureTimerNotificationHandler();
+    Notifications.requestPermissionsAsync().catch((error) => {
+      console.warn('[Notification] 권한 요청 실패:', error?.message ?? error);
+    });
+    const sub = Notifications.addNotificationResponseReceivedListener((response) => {
+      const targetScreen = response?.notification?.request?.content?.data?.targetScreen;
+      if (targetScreen === 'Timer' && navigationRef.isReady()) {
+        navigationRef.navigate('Timer');
+      }
+    });
+    return () => {
+      sub.remove();
+    };
+  }, []);
+
   if (!fontsLoaded) return null;
 
   return (
@@ -155,7 +180,10 @@ export default function App() {
             <ToastProvider>
               <NotificationProvider>
                 <FriendProvider>
-                  <NavigationContainer ref={navigationRef} linking={linking}>
+                  <NavigationContainer
+                    ref={navigationRef}
+                    linking={linking}
+                  >
                     <RootNavigator />
                     <ToastHost />
                     <AlertHost />

@@ -138,6 +138,9 @@ const MyPage = ({ navigation }) => {
               me.grade && me.classNumber
                 ? `${me.grade}학년 ${me.classNumber}반`
                 : '',
+            profileColorHex: me.profileColor?.hexCode || null,
+            profileColorId: me.profileColor?.id ?? me.colorId ?? null,
+            profileColorNumber: me.profileColor?.colorNumber ?? null,
             friendCount: me.friendCount ?? 0,
           };
           setUserInfo(nextUserInfo);

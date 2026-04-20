@@ -27,9 +27,13 @@ router.get('/me', authenticate, async (req, res) => {
          u.school_id,
          u.grade,
          u.class_number,
+         u.color_id,
+         c.hex_code AS profile_color_hex,
+         c.color_number AS profile_color_number,
          s.name AS school_name
        FROM users u
        LEFT JOIN schools s ON u.school_id = s.school_id
+       LEFT JOIN colors c ON u.color_id = c.id
        WHERE u.id = ?`,
       [userId],
     );
@@ -48,6 +52,8 @@ router.get('/me', authenticate, async (req, res) => {
       schoolName: user.school_name,
       grade: user.grade,
       classNumber: user.class_number,
+      colorId: user.color_id,
+      profileColorHex: user.profile_color_hex,
     });
 
     const [friendRows] = await pool.execute(
@@ -72,6 +78,12 @@ router.get('/me', authenticate, async (req, res) => {
         },
         grade: user.grade,
         classNumber: user.class_number,
+        colorId: user.color_id,
+        profileColor: {
+          id: user.color_id,
+          hexCode: user.profile_color_hex,
+          colorNumber: user.profile_color_number,
+        },
         friendCount,
       },
     });

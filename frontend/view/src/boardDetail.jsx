@@ -96,7 +96,6 @@ export default function BoardDetail({ navigation, route }) {
 
   const routePost = route?.params?.post;
   const routePostId = route?.params?.postId;
-  const postIdForNotificationSync = routePostId ?? routePost?.id ?? null;
 
   const emptyPostShell = {
     id: null,
@@ -159,8 +158,13 @@ export default function BoardDetail({ navigation, route }) {
   const [postAuthorId, setPostAuthorId] = useState(null);
   const [currentUserId, setCurrentUserId] = useState(null);
   const { refreshHasUnread } = useNotification();
+  const refreshHasUnreadRef = useRef(refreshHasUnread);
   const [viewerUri, setViewerUri] = useState(null);
   const [imageRatios, setImageRatios] = useState({});
+
+  useEffect(() => {
+    refreshHasUnreadRef.current = refreshHasUnread;
+  }, [refreshHasUnread]);
 
   useEffect(() => {
     console.log('[NativeOpenBoardDetail] BoardDetail mounted', {
@@ -261,7 +265,7 @@ export default function BoardDetail({ navigation, route }) {
             relatedType: 'post',
             relatedId: postId,
           });
-          refreshHasUnread();
+          refreshHasUnreadRef.current?.();
         } catch (e) {
           console.error('게시글 관련 알림 읽음 처리 실패:', e);
         }
@@ -280,40 +284,7 @@ export default function BoardDetail({ navigation, route }) {
     routePost?.id,
     coords?.latitude,
     coords?.longitude,
-    refreshHasUnread,
   ]);
-
-  // 체류 중 새 댓글/반응 알림이 도착해도 빨간 점과 알림 내역이 즉시 동기화되도록 주기적으로 동기화
-  useEffect(() => {
-    if (!postIdForNotificationSync) return;
-    let cancelled = false;
-
-    const sync = async () => {
-      try {
-        await api.post('/api/notifications/read-by-related', {
-          relatedType: 'post',
-          relatedId: postIdForNotificationSync,
-        });
-      } catch {
-        // ignore
-      } finally {
-        if (!cancelled) refreshHasUnread?.();
-      }
-    };
-
-    // 즉시 1회
-    void sync();
-
-    // 이후 주기 동기화
-    const t = setInterval(() => {
-      void sync();
-    }, 3000);
-
-    return () => {
-      cancelled = true;
-      clearInterval(t);
-    };
-  }, [postIdForNotificationSync, refreshHasUnread]);
 
   const startNoteToUser = async (targetUserId, source) => {
     if (!targetUserId || !post?.id) {

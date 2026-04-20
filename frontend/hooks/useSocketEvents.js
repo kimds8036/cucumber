@@ -56,6 +56,8 @@ export function useSocketEvents({ onFriendTimerStatus, onFriendPoke } = {}) {
         subjectName: payload.subjectName,
         startSeconds: payload.startSeconds,
       });
+    } else if (status === 'heartbeat') {
+      socket.emit('friend_timer_status', { status: 'heartbeat' });
     } else {
       socket.emit('friend_timer_status', { status });
     }
