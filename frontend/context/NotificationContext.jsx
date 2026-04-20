@@ -5,21 +5,79 @@
  * - 리스너 등록 후 반드시 socket.off 로 클린업
  */
 
-import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
 import { AppState, DeviceEventEmitter, Platform } from 'react-native';
 import { api } from '../utils/api';
 import { useSocket } from './SocketContext';
 import { useToast } from './ToastContext';
+import {
+  isStudySummaryNotification,
+  normalizeStudySummaryWatchers,
+} from '../utils/studySummaryNotification';
 
 const NotificationContext = createContext(null);
 
 export function NotificationProvider({ children }) {
   const { socket } = useSocket();
-  const { showToast, activeChatRoomId, isMessageTab } = useToast();
+  const { showToast, activeChatRoomId, isMessageTab, isTimerScreenActive } = useToast();
   const [hasUnread, setHasUnread] = useState(false);
   const [initialized, setInitialized] = useState(false);
   const [bellSuppressed, setBellSuppressed] = useState(false);
   const [lastBellSeenAt, setLastBellSeenAt] = useState(null);
+  const studySummaryWatchersRef = useRef(new Map());
+
+  const toSummaryKey = (value) => {
+    if (value == null) return null;
+    const normalized = String(value).trim();
+    return normalized ? normalized : null;
+  };
+
+  const toWatchersArray = (watchers) => normalizeStudySummaryWatchers(watchers);
+
+  const cacheStudySummaryWatchers = (payload) => {
+    const watchers = toWatchersArray(payload?.watchers);
+    if (!watchers.length) return;
+    const payloadRelatedType = String(payload?.relatedType ?? '').trim();
+    const payloadType = String(payload?.type ?? '').trim();
+    const isSocketStudySummary =
+      payloadType === 'friend_study_finished_summary' ||
+      payloadRelatedType === 'study_summary_single' ||
+      payloadRelatedType === 'study_summary_multi';
+    const keys = [
+      toSummaryKey(payload?.relatedId),
+      // friend_study_finished_summary 소켓 payload는 relatedId가 없고 userId만 오므로 key에 포함한다.
+      isSocketStudySummary ? toSummaryKey(payload?.userId) : null,
+      toSummaryKey(payload?.finishedAt),
+      toSummaryKey(payload?.createdAt),
+      toSummaryKey(payload?.id),
+      toSummaryKey(payload?.notificationId),
+      toSummaryKey(payload?.title && payload?.body ? `${payload.title}::${payload.body}` : null),
+    ].filter(Boolean);
+    if (!keys.length) return;
+    keys.forEach((key) => {
+      studySummaryWatchersRef.current.set(key, watchers);
+    });
+  };
+
+  const getStudySummaryWatchers = useCallback((notification) => {
+    const direct = toWatchersArray(notification?.watchers);
+    if (direct.length) return direct;
+    const keys = [
+      toSummaryKey(notification?.relatedId),
+      toSummaryKey(notification?.createdAt),
+      toSummaryKey(notification?.id),
+      toSummaryKey(
+        notification?.title && notification?.content
+          ? `${notification.title}::${notification.content}`
+          : null,
+      ),
+    ].filter(Boolean);
+    for (const key of keys) {
+      const cached = studySummaryWatchersRef.current.get(key);
+      if (cached?.length) return cached;
+    }
+    return [];
+  }, []);
 
   const parseDateMs = (value) => {
     if (!value) return 0;
@@ -95,9 +153,27 @@ export function NotificationProvider({ children }) {
       const isChatNotification =
         payload?.relatedType === 'message_room' ||
         payload?.relatedType === 'dm_room';
+      const isStudySummary = isStudySummaryNotification(payload);
       if (!isChatNotification) {
         setBellSuppressed(false);
         setHasUnread(true);
+      }
+      if (isStudySummary) {
+        // 타이머 화면이 활성화된 경우에는 타이머 전용 토스트를 우선 사용한다.
+        if (isTimerScreenActive) {
+          console.log('[NotificationContext] study summary toast skipped (timer screen active)', {
+            relatedType: payload?.relatedType,
+            type: payload?.type,
+            relatedId: payload?.relatedId,
+          });
+          return;
+        }
+        // 타이머 화면이 아닐 땐 일반 알림 토스트로 fallback 한다.
+        console.log('[NotificationContext] study summary toast fallback (timer screen inactive)', {
+          relatedType: payload?.relatedType,
+          type: payload?.type,
+          relatedId: payload?.relatedId,
+        });
       }
       const titleText = String(payload?.title ?? '').trim();
       const bodyText = String(payload?.body ?? '').trim();
@@ -112,17 +188,19 @@ export function NotificationProvider({ children }) {
           ? titleText || '새 메시지'
           : null,
         body: isChatNotification ? bodyText || '(이미지)' : null,
-        roomId: payload?.relatedId,
+        roomId: isChatNotification ? payload?.relatedId : null,
         relatedType: payload?.relatedType,
         relatedId: payload?.relatedId,
         type: payload?.type,
         category: payload?.category,
         isChat: isChatNotification,
+        watchers: payload?.watchers,
       });
     };
 
     const pokeHandler = () => setHasUnread(true);
-    const studyFinishedSummaryHandler = () => {
+    const studyFinishedSummaryHandler = (payload) => {
+      cacheStudySummaryWatchers(payload);
       refreshHasUnread();
     };
     const newMessageHandler = (payload) => {
@@ -200,7 +278,7 @@ export function NotificationProvider({ children }) {
       socket.off('notification_read', notificationReadHandler);
       socket.off('connect', onConnect);
     };
-  }, [socket, refreshHasUnread, showToast, activeChatRoomId, isMessageTab]);
+  }, [socket, refreshHasUnread, showToast, activeChatRoomId, isMessageTab, isTimerScreenActive]);
 
   const value = {
     hasUnread,
@@ -208,6 +286,7 @@ export function NotificationProvider({ children }) {
     refreshHasUnread,
     setHasUnread,
     markNotificationsSeenForBell,
+    getStudySummaryWatchers,
   };
 
   return (

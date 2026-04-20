@@ -26,9 +26,11 @@ export function ToastProvider({ children }) {
     category: null,
     isChat: false,
     showProgress: false,
+    watchers: [],
   });
   const [activeChatRoomId, setActiveChatRoomIdState] = useState(null);
   const [isMessageTab, setIsMessageTab] = useState(false);
+  const [isTimerScreenActive, setIsTimerScreenActive] = useState(false);
   const hideTimerRef = useRef(null);
 
   const clearHideTimer = useCallback(() => {
@@ -80,6 +82,7 @@ export function ToastProvider({ children }) {
         category: next.category ?? null,
         isChat: Boolean(next.isChat),
         showProgress: Boolean(next.showProgress),
+        watchers: Array.isArray(next.watchers) ? next.watchers : [],
       });
       setVisible(true);
       console.log('[ToastSystem] Triggered:', {
@@ -147,6 +150,8 @@ export function ToastProvider({ children }) {
       setActiveChatRoomId,
       isMessageTab,
       setIsMessageTab,
+      isTimerScreenActive,
+      setIsTimerScreenActive,
     }),
     [
       visible,
@@ -157,6 +162,8 @@ export function ToastProvider({ children }) {
       setActiveChatRoomId,
       isMessageTab,
       setIsMessageTab,
+      isTimerScreenActive,
+      setIsTimerScreenActive,
     ],
   );
 
