@@ -12,15 +12,29 @@ export async function createNotification({
   body,
   relatedType = null,
   relatedId = null,
+  watchers = null,
 }) {
   try {
     if (!userId) return;
+    const watchersPayload =
+      Array.isArray(watchers) && watchers.length > 0
+        ? JSON.stringify(watchers)
+        : null;
 
     await pool.execute(
       `INSERT INTO notifications
-         (user_id, type, category, title, body, related_type, related_id)
-       VALUES (?, ?, ?, ?, ?, ?, ?)`,
-      [userId, type, category, title, body || null, relatedType, relatedId],
+         (user_id, type, category, title, body, related_type, related_id, watchers_json)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+      [
+        userId,
+        type,
+        category,
+        title,
+        body || null,
+        relatedType,
+        relatedId,
+        watchersPayload,
+      ],
     );
   } catch (error) {
     console.error('알림 생성 오류:', error);

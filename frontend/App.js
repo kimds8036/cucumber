@@ -47,6 +47,7 @@ import AlertHost from './components/common/AlertHost';
 import { navigationRef } from './navigation/navigationRef';
 import { appAlert } from './utils/appAlert';
 import { configureTimerNotificationHandler } from './utils/timerRunNotification';
+import { initFCM, setupFCMHandlers } from './utils/fcmService';
 
 const Stack = createNativeStackNavigator();
 const linking = {
@@ -118,6 +119,19 @@ function MainStack() {
 
 function RootNavigator() {
   const { isLoggedIn } = useAuth();
+
+  useEffect(() => {
+    if (!isLoggedIn) return undefined;
+    let cleanup;
+    (async () => {
+      await initFCM();
+      cleanup = setupFCMHandlers();
+    })();
+    return () => {
+      if (typeof cleanup === 'function') cleanup();
+    };
+  }, [isLoggedIn]);
+
   if (!isLoggedIn) return <AuthStack />;
   return (
     <LocationGate>
