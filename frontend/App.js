@@ -3,6 +3,8 @@ import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import Login from './view/src/Login';
 import Sign from './view/src/Sign';
+import IDfind from './view/src/IDfind';
+import PWfind from './view/src/PWfind';
 import MainScreen from './view/src/MainScreen';
 import AddTimetable from './view/src/addtimetable';
 import MyPosts from './view/src/myposts';
@@ -75,6 +77,8 @@ function AuthStack() {
     >
       <Stack.Screen name="Login" component={Login} />
       <Stack.Screen name="Sign" component={Sign} />
+      <Stack.Screen name="IDfind" component={IDfind} />
+      <Stack.Screen name="PWfind" component={PWfind} />
     </Stack.Navigator>
   );
 }
