@@ -69,7 +69,6 @@ export const createMessageStyles = (width, normalize) => {
     contentArea: {
       flex: 1,
       paddingHorizontal: width * 0.04,
-      paddingVertical: normalize(5),
     },
     list: {
       flex: 1,

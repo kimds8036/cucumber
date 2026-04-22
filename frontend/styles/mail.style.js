@@ -490,6 +490,7 @@ export function createMailStyles(normalize) {
       marginTop: normalize(8),
       color: colors.textSecondary,
       fontSize: normalize(12),
+      textAlign: 'center',
     },
     sendMetaRight: {
       marginLeft: 'auto',

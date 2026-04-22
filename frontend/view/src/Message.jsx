@@ -893,10 +893,10 @@ export function MessageContent({ navigation }) {
                       }}
                     >
                       <View style={styles.listItemLeft}>
-                        <View style={[styles.profileCircle, { backgroundColor: colors.primary }]}>
+                        <View style={[styles.profileCircle]}>
                           <ProfileIcon
-                            width={normalize(22)}
-                            height={normalize(22)}
+                            width={normalize(35)}
+                            height={normalize(35)}
                             color={iconColor}
                           />
                         </View>
