@@ -27,7 +27,15 @@ export async function runTimerSessionGuardJob() {
 
     const [closeResult] = await pool.execute(
       `UPDATE study_sessions
-       SET end_seconds = LEAST(86399, UNIX_TIMESTAMP(NOW()) - UNIX_TIMESTAMP(CONCAT(day_key, ' 00:00:00')))
+       SET end_seconds = (
+         (
+           HOUR(CONVERT_TZ(UTC_TIMESTAMP(), '+00:00', '+09:00')) * 3600
+           + MINUTE(CONVERT_TZ(UTC_TIMESTAMP(), '+00:00', '+09:00')) * 60
+           + SECOND(CONVERT_TZ(UTC_TIMESTAMP(), '+00:00', '+09:00'))
+           - 21600
+           + 86400
+         ) % 86400
+       )
        WHERE end_seconds IS NULL
          AND created_at < DATE_SUB(NOW(), INTERVAL ? MINUTE)`,
       [staleMinutes],

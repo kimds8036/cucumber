@@ -16,6 +16,7 @@ import { getNormalize } from '../../styles/frame.style';
 import { createOurSchoolStyles } from '../../styles/school.style';
 import { createOtherSchoolStyles } from '../../styles/otherschool.style';
 import { api } from '../../utils/api';
+import StudyGrassMap from '../../components/studygrassmap';
 
 const OtherSchoolScreen = ({ route, navigation }) => {
   const { width } = useWindowDimensions();
@@ -44,6 +45,26 @@ const OtherSchoolScreen = ({ route, navigation }) => {
   const [nextMeals, setNextMeals] = useState([]);
   const [error, setError] = useState(null);
   const [selectedMealSlot, setSelectedMealSlot] = useState(null);
+  const [grassDays, setGrassDays] = useState([]);
+  const getCurrentSemesterDays = () => {
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = now.getMonth() + 1;
+    let start;
+    let end;
+    if (month >= 3 && month <= 8) {
+      start = new Date(year, 2, 1);
+      end = new Date(year, 7, 31);
+    } else if (month >= 9) {
+      start = new Date(year, 8, 1);
+      end = new Date(year + 1, 2, 0);
+    } else {
+      start = new Date(year - 1, 8, 1);
+      end = new Date(year, 2, 0);
+    }
+    const diffDays = Math.floor((end.getTime() - start.getTime()) / 86400000) + 1;
+    return diffDays;
+  };
 
   useEffect(() => {
     const fetchSchool = async () => {
@@ -101,6 +122,36 @@ const OtherSchoolScreen = ({ route, navigation }) => {
       }
     };
     fetchMeals();
+    return () => {
+      mounted = false;
+    };
+  }, [routeSchoolId]);
+
+  useEffect(() => {
+    let mounted = true;
+    const fetchStudyGrass = async () => {
+      if (!routeSchoolId) {
+        setGrassDays([]);
+        return;
+      }
+      try {
+        const res = await api.get(`/api/schools/${routeSchoolId}/study-grass`, {
+          params: { days: getCurrentSemesterDays() },
+        });
+        if (!mounted) return;
+        const series = res.data?.data?.series || [];
+        const mapped = Array.isArray(series)
+          ? series.map((row) => ({
+              dayKey: row?.dayKey,
+              totalElapsedMs: row?.totalElapsedMs,
+            }))
+          : [];
+        setGrassDays(mapped);
+      } catch (e) {
+        if (mounted) setGrassDays([]);
+      }
+    };
+    fetchStudyGrass();
     return () => {
       mounted = false;
     };
@@ -320,10 +371,7 @@ const OtherSchoolScreen = ({ route, navigation }) => {
         {/* 공부 잔디 카드 — 우리 학교 화면과 동일 */}
         <View style={styles.grassCard}>
           <Text style={styles.grassCardTitle}>{grassTitle}</Text>
-          {/* TODO: 잔디밭 API 연결 위치 (예: /api/schools/:id/study-grass) */}
-          <View style={{ paddingVertical: normalize(18), alignItems: 'center' }}>
-            <Text style={{ color: colors.textSecondary }}>잔디밭 데이터 준비 중</Text>
-          </View>
+          <StudyGrassMap days={grassDays} />
         </View>
 
         {/* 학교 우편함 — 이전 가로형 카드 디자인 */}

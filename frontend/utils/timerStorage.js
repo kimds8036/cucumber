@@ -1,26 +1,46 @@
 /**
- * 타이머 로컬 저장 + 하루(6시~익일 5시59분) 종료 시 DB 저장
- * - 로컬: AsyncStorage에 당일(6~6 기준) 데이터 저장
- * - DB: 하루가 끝나면(새로운 6시 도래 시) 전날 데이터를 API로 전송
+ * 타이머 서버 저장/조회 유틸
+ * - 하루 기준: 오전 6시 ~ 익일 05:59
+ * - 로컬 캐시를 사용하지 않고 서버 API만 사용
  */
-
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { api } from './api';
 
-const TIMER_DAY_PREFIX = '@timer_day_';
-const LAST_SYNCED_DAY_KEY = '@timer_last_synced_day';
-const PENDING_FLUSH_META_KEY = '@timer_pending_flush_meta';
+const TIMER_TIMEZONE = 'Asia/Seoul';
+
+function getKstDateParts(date = new Date()) {
+  const formatter = new Intl.DateTimeFormat('en-CA', {
+    timeZone: TIMER_TIMEZONE,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    hour12: false,
+  });
+  const parts = formatter.formatToParts(date);
+  const part = (type) => parts.find((p) => p.type === type)?.value || '00';
+  return {
+    year: Number(part('year')),
+    month: Number(part('month')),
+    day: Number(part('day')),
+    hour: Number(part('hour')),
+  };
+}
+
+function formatUtcDateAsYmd(date) {
+  const y = date.getUTCFullYear();
+  const m = String(date.getUTCMonth() + 1).padStart(2, '0');
+  const d = String(date.getUTCDate()).padStart(2, '0');
+  return `${y}-${m}-${d}`;
+}
 
 /** 6시~익일 5시59분 기준 "오늘" 날짜 키 (YYYY-MM-DD) */
 export function getTimerDayKey(date = new Date()) {
-  const d = new Date(date);
-  if (d.getHours() < 6) {
-    d.setDate(d.getDate() - 1);
+  const kst = getKstDateParts(date);
+  const baseUtc = new Date(Date.UTC(kst.year, kst.month - 1, kst.day));
+  if (kst.hour < 6) {
+    baseUtc.setUTCDate(baseUtc.getUTCDate() - 1);
   }
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, '0');
-  const day = String(d.getDate()).padStart(2, '0');
-  return `${y}-${m}-${day}`;
+  return formatUtcDateAsYmd(baseUtc);
 }
 
 /** 전날 날짜 키 (6~6 기준 하루 전) */
@@ -37,18 +57,6 @@ export function getNextDayKey(date = new Date()) {
   return getTimerDayKey(d);
 }
 
-export async function loadDayFromStorage(dayKey) {
-  try {
-    const raw = await AsyncStorage.getItem(TIMER_DAY_PREFIX + dayKey);
-    if (!raw) return null;
-    const data = JSON.parse(raw);
-    return normalizeLoadedPayload(data);
-  } catch (e) {
-    return null;
-  }
-}
-
-/** 로컬에서 읽은 payload 정규화. startSeconds/endSeconds 사용, 없으면 startMinutes/endMinutes에서 변환 */
 function normalizeLoadedPayload(data) {
   if (!data || typeof data !== 'object') return null;
   const sessions = Array.isArray(data.sessions)
@@ -72,6 +80,10 @@ function normalizeLoadedPayload(data) {
 
         return {
           subjectId: s.subjectId != null ? Number(s.subjectId) : null,
+          subjectName:
+            s.subjectName != null ? String(s.subjectName).trim() : null,
+          subjectColor:
+            s.subjectColor != null ? String(s.subjectColor).trim() : null,
           startSeconds: startSec,
           endSeconds: endSec,
         };
@@ -85,67 +97,7 @@ function normalizeLoadedPayload(data) {
   };
 }
 
-/** 당일 데이터를 로컬에 저장 (세션/누적시간/과목/할일) */
-export async function saveDayToStorage(dayKey, payload) {
-  try {
-    await AsyncStorage.setItem(TIMER_DAY_PREFIX + dayKey, JSON.stringify(payload));
-  } catch (e) {
-    // ignore
-  }
-}
-
-export async function getLastSyncedDayKey() {
-  try {
-    return await AsyncStorage.getItem(LAST_SYNCED_DAY_KEY);
-  } catch (e) {
-    return null;
-  }
-}
-
-export async function setLastSyncedDayKey(dayKey) {
-  try {
-    await AsyncStorage.setItem(LAST_SYNCED_DAY_KEY, dayKey);
-  } catch (e) {
-    // ignore
-  }
-}
-
-async function getPendingFlushMeta() {
-  try {
-    const raw = await AsyncStorage.getItem(PENDING_FLUSH_META_KEY);
-    if (!raw) return null;
-    const parsed = JSON.parse(raw);
-    if (!parsed || typeof parsed !== 'object') return null;
-    const dayKey = typeof parsed.dayKey === 'string' ? parsed.dayKey : null;
-    if (!dayKey) return null;
-    return {
-      dayKey,
-      retryCount: Number(parsed.retryCount) || 0,
-      lastFailedAt: parsed.lastFailedAt || null,
-    };
-  } catch {
-    return null;
-  }
-}
-
-async function setPendingFlushMeta(meta) {
-  try {
-    if (!meta) {
-      await AsyncStorage.removeItem(PENDING_FLUSH_META_KEY);
-      return;
-    }
-    await AsyncStorage.setItem(PENDING_FLUSH_META_KEY, JSON.stringify(meta));
-  } catch {
-    // ignore
-  }
-}
-
-/**
- * 하루가 끝났을 때 DB에 저장 (6~6 기준 전날 데이터 전송)
- * 실제 API 연동 시 이 함수 내부만 수정하면 됨.
- */
 export async function saveDayToDb(dayKey, payload, options = {}) {
-  const { markAsDaySynced = true } = options;
   try {
     await api.post('/api/timer/day', {
       dayKey,
@@ -157,23 +109,8 @@ export async function saveDayToDb(dayKey, payload, options = {}) {
     if (__DEV__) {
       console.log('[Timer] saveDayToDb 성공', dayKey);
     }
-    if (markAsDaySynced) {
-      await setLastSyncedDayKey(dayKey);
-    }
-    const pending = await getPendingFlushMeta();
-    if (pending?.dayKey === dayKey) {
-      await setPendingFlushMeta(null);
-    }
     return true;
   } catch (e) {
-    const pending = await getPendingFlushMeta();
-    const retryCount =
-      pending?.dayKey === dayKey ? (Number(pending.retryCount) || 0) + 1 : 1;
-    await setPendingFlushMeta({
-      dayKey,
-      retryCount,
-      lastFailedAt: new Date().toISOString(),
-    });
     console.error('[Timer] saveDayToDb 실패', e?.response?.data || e.message);
     return false;
   }
@@ -185,17 +122,6 @@ export async function saveDayToDb(dayKey, payload, options = {}) {
  */
 export async function loadDayFromDb(dayKey) {
   try {
-    // 토큰이 아예 없는 경우에는 서버 호출 자체를 하지 않는다.
-    const token = await AsyncStorage.getItem('@auth_token');
-    if (!token) {
-      if (__DEV__) {
-        console.log(
-          '[Timer] loadDayFromDb: 토큰이 없어 서버 조회를 건너뜁니다.',
-        );
-      }
-      return null;
-    }
-
     const res = await api.get('/api/timer/day', { params: { dayKey } });
     const data = res.data?.data;
     if (!data) return null;
@@ -215,36 +141,4 @@ export async function loadDayFromDb(dayKey) {
     console.error('[Timer] loadDayFromDb 실패', e?.response?.data || e.message);
     return null;
   }
-}
-
-/**
- * 앱 진입/날짜 변경 시: 아직 동기화 안 한 전날이 있으면 로컬에서 읽어 DB 저장 후, 당일 데이터 로드
- */
-export async function flushPreviousDayAndLoadCurrent(currentDayKey) {
-  const pending = await getPendingFlushMeta();
-  if (pending?.dayKey) {
-    const pendingData = await loadDayFromStorage(pending.dayKey);
-    if (
-      pendingData &&
-      (pendingData.sessions?.length > 0 || pendingData.totalElapsedMs > 0)
-    ) {
-      await saveDayToDb(pending.dayKey, pendingData, { markAsDaySynced: true });
-    } else {
-      await setPendingFlushMeta(null);
-    }
-  }
-
-  const lastSynced = await getLastSyncedDayKey();
-  const prevDayKey = getPreviousDayKey(new Date());
-
-  if (lastSynced !== prevDayKey) {
-    const prevData = await loadDayFromStorage(prevDayKey);
-    if (prevData && (prevData.sessions?.length > 0 || prevData.totalElapsedMs > 0)) {
-      await saveDayToDb(prevDayKey, prevData);
-    } else {
-      await setLastSyncedDayKey(prevDayKey);
-    }
-  }
-
-  return loadDayFromStorage(currentDayKey);
 }

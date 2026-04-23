@@ -2,8 +2,6 @@ import {
   sendFriendPoke,
   broadcastTimerStatus,
   addNotifyOnStop,
-  upsertStudySessionStart,
-  closeStudySession,
 } from './socketService.js';
 
 /**
@@ -44,7 +42,7 @@ export function registerFriendEvents(socket) {
     }
   });
 
-  // 공부 시작/종료 상태: DB 저장 + 친구들에게 소켓 브로드캐스트
+  // 공부 시작/종료 상태: 친구들에게 소켓 브로드캐스트
   socket.on('friend_timer_status', async ({ status, dayKey, subjectId, subjectName, startSeconds }) => {
     try {
       console.log('[FriendSocket] friend_timer_status 수신', {
@@ -56,25 +54,8 @@ export function registerFriendEvents(socket) {
       });
       if (!status) return;
 
-      if (status === 'studying') {
-        const today = new Date();
-        const y = today.getFullYear();
-        const m = String(today.getMonth() + 1).padStart(2, '0');
-        const d = String(today.getDate()).padStart(2, '0');
-        const serverDayKey = `${y}-${m}-${d}`;
-        const day = dayKey || serverDayKey;
-        const secs = startSeconds != null ? Number(startSeconds) : (today.getHours() * 3600 + today.getMinutes() * 60 + today.getSeconds());
-        await upsertStudySessionStart({
-          userId,
-          dayKey: day,
-          subjectId: subjectId != null ? subjectId : null,
-          subjectName: subjectName != null ? subjectName : null,
-          startSeconds: secs,
-        });
-      } else if (status === 'heartbeat') {
+      if (status === 'heartbeat') {
         return;
-      } else if (status === 'idle') {
-        await closeStudySession({ userId });
       }
 
       await broadcastTimerStatus({ userId, status });

@@ -1,5 +1,6 @@
 import { StatusBar } from 'expo-status-bar';
 import { NavigationContainer } from '@react-navigation/native';
+import { StackActions } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import Login from './view/src/Login';
 import Sign from './view/src/Sign';
@@ -175,7 +176,9 @@ export default function App() {
     const sub = Notifications.addNotificationResponseReceivedListener((response) => {
       const targetScreen = response?.notification?.request?.content?.data?.targetScreen;
       if (targetScreen === 'Timer' && navigationRef.isReady()) {
-        navigationRef.navigate('Timer');
+        navigationRef.dispatch(
+          StackActions.replace('Timer')
+        );
       }
     });
     return () => {
