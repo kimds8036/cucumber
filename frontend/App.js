@@ -4,6 +4,8 @@ import { StackActions } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import Login from './view/src/Login';
 import Sign from './view/src/Sign';
+import IDfind from './view/src/IDfind';
+import PWfind from './view/src/PWfind';
 import MainScreen from './view/src/MainScreen';
 import AddTimetable from './view/src/addtimetable';
 import MyPosts from './view/src/myposts';
@@ -48,7 +50,8 @@ import AlertHost from './components/common/AlertHost';
 import { navigationRef } from './navigation/navigationRef';
 import { appAlert } from './utils/appAlert';
 import { configureTimerNotificationHandler } from './utils/timerRunNotification';
-import { initFCM, setupFCMHandlers } from './utils/fcmService';
+// TEMP(expo-go): Firebase Messaging은 네이티브 빌드에서만 사용
+// import { initFCM, setupFCMHandlers } from './utils/fcmService';
 
 const Stack = createNativeStackNavigator();
 const linking = {
@@ -75,6 +78,8 @@ function AuthStack() {
     >
       <Stack.Screen name="Login" component={Login} />
       <Stack.Screen name="Sign" component={Sign} />
+      <Stack.Screen name="IDfind" component={IDfind} />
+      <Stack.Screen name="PWfind" component={PWfind} />
     </Stack.Navigator>
   );
 }
@@ -123,11 +128,12 @@ function RootNavigator() {
 
   useEffect(() => {
     if (!isLoggedIn) return undefined;
+    // TEMP(expo-go): RNFirebase 의존 코드 임시 비활성화
     let cleanup;
-    (async () => {
-      await initFCM();
-      cleanup = setupFCMHandlers();
-    })();
+    // (async () => {
+    //   await initFCM();
+    //   cleanup = setupFCMHandlers();
+    // })();
     return () => {
       if (typeof cleanup === 'function') cleanup();
     };

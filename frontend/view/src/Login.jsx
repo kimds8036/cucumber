@@ -220,11 +220,11 @@ const Login = ({ navigation }) => {
 
             {/* 링크들 */}
             <View style={styles.linkContainer}>
-              <TouchableOpacity onPress={() => {}}>
+              <TouchableOpacity onPress={() => navigation.navigate('IDfind')}>
                 <Text style={styles.linkText}>아이디 찾기</Text>
               </TouchableOpacity>
               <Text style={styles.linkDivider}>|</Text>
-              <TouchableOpacity onPress={() => {}}>
+              <TouchableOpacity onPress={() => navigation.navigate('PWfind')}>
                 <Text style={styles.linkText}>비밀번호 찾기</Text>
               </TouchableOpacity>
               <Text style={styles.linkDivider}>|</Text>

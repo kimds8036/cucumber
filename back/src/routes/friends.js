@@ -28,6 +28,8 @@ router.get('/list', authenticate, async (req, res) => {
          s.name AS school_name,
          u.grade,
          u.class_number,
+         c.hex_code AS profile_color_hex,
+         c.color_number AS profile_color_number,
          uf.created_at
        FROM user_friendships uf
        JOIN users u 
@@ -37,6 +39,7 @@ router.get('/list', authenticate, async (req, res) => {
                   END
       LEFT JOIN colors c ON c.id = u.color_id
        LEFT JOIN schools s ON u.school_id = s.school_id
+       LEFT JOIN colors c ON u.color_id = c.id
        WHERE (uf.requester_id = ? OR uf.addressee_id = ?)
          AND uf.status = 'accepted'`,
       [userId, userId, userId, userId]
@@ -59,6 +62,11 @@ router.get('/list', authenticate, async (req, res) => {
           r.grade != null && r.class_number != null
             ? `${r.grade}학년 ${r.class_number}반`
             : '',
+        profileColor: {
+          id: r.color_id,
+          hexCode: r.profile_color_hex,
+          colorNumber: r.profile_color_number,
+        },
         createdAt: r.created_at,
       })),
     });
@@ -108,11 +116,14 @@ router.get('/requests/received', authenticate, async (req, res) => {
          s.name AS school_name,
          u.grade,
          u.class_number,
+         c.hex_code AS profile_color_hex,
+         c.color_number AS profile_color_number,
          uf.created_at
        FROM user_friendships uf
        JOIN users u ON uf.requester_id = u.id
       LEFT JOIN colors c ON c.id = u.color_id
        LEFT JOIN schools s ON u.school_id = s.school_id
+       LEFT JOIN colors c ON u.color_id = c.id
        WHERE uf.addressee_id = ?
          AND uf.status = 'pending'`,
       [userId]
@@ -135,6 +146,11 @@ router.get('/requests/received', authenticate, async (req, res) => {
           r.grade != null && r.class_number != null
             ? `${r.grade}학년 ${r.class_number}반`
             : '',
+        profileColor: {
+          id: r.color_id,
+          hexCode: r.profile_color_hex,
+          colorNumber: r.profile_color_number,
+        },
         createdAt: r.created_at,
       })),
     });

@@ -341,10 +341,9 @@ export const FriendStoryBar = memo(function FriendStoryBar({
               <View
                 style={[
                   styles.friendStoryCircle,
-                  { backgroundColor: colors.primaryLight30, borderColor: colors.primary },
                 ]}
               >
-                <ProfileIcon width={normalize(22)} height={normalize(22)} color={iconColor} />
+                <ProfileIcon width={normalize(56)} height={normalize(56)} color={iconColor} />
                 <View
                   style={[
                     styles.friendStatusDotOnCircle,

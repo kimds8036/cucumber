@@ -294,19 +294,19 @@ const OurSchoolScreen = ({ navigation }) => {
                 <View style={styles.statsContainer}>
                   <View style={styles.statItem}>
                     <View style={styles.statValueContainer}>
-                      <Ionicons name="person" size={normalize(16)} color={colors.primary} />
+                      <Ionicons name="person" size={normalize(18)} color={colors.primary} />
                       <Text style={styles.statValue}>{schoolInfo.studentCount}명</Text>
                     </View>
                   </View>
                   <View style={styles.statItem}>
                     <View style={styles.statValueContainer}>
-                      <Ionicons name="chatbubbles" size={normalize(16)} color={colors.primary} />
+                      <Ionicons name="chatbubbles" size={normalize(18)} color={colors.primary} />
                       <Text style={styles.statValue}>{schoolInfo.postCount}개</Text>
                     </View>
                   </View>
                   <View style={styles.statItem}>
                     <View style={styles.statValueContainer}>
-                      <Ionicons name="mail" size={normalize(16)} color={colors.primary} />
+                      <Ionicons name="mail" size={normalize(18)} color={colors.primary} />
                       <Text style={styles.statValue}>{schoolInfo.mailCount}개</Text>
                     </View>
                   </View>

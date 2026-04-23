@@ -16,7 +16,7 @@ import { api } from '../../utils/api';
 import { useFriend } from '../../context/FriendContext';
 import { colors } from '../../styles/colors';
 import SubHeader from '../frame/subHeader';
-import styles from '../../styles/friend.style';
+import { createFriendStyles } from '../../styles/friend.style';
 import ProfileIcon from '../../assets/Profile.svg';
 import { getNormalize } from '../../styles/frame.style';
 import {
@@ -27,6 +27,7 @@ import {
 const FriendsScreen = ({ navigation }) => {
   const { width } = useWindowDimensions();
   const normalize = useMemo(() => getNormalize(width), [width]);
+  const styles = useMemo(() => createFriendStyles(normalize), [normalize]);
   const [friends, setFriends] = useState([]);
   const [friendRequests, setFriendRequests] = useState([]);
   const [searchQuery, setSearchQuery] = useState('');
@@ -277,9 +278,9 @@ const FriendsScreen = ({ navigation }) => {
                 <View key={req.id} style={styles.requestCard}>
                   <View style={styles.reqAvatar}>
                     <ProfileIcon
-                      width={normalize(22)}
-                      height={normalize(22)}
-                      color={getProfileInnerColor(req.profileColorId)}
+                      width={normalize(40)}
+                      height={normalize(40)}
+                      color={getProfileInnerColor(req.profileColorId) || getProfileInnerColorBySeed(req.id)}
                     />
                   </View>
                   <Text style={styles.reqName} numberOfLines={1}>
@@ -326,9 +327,9 @@ const FriendsScreen = ({ navigation }) => {
             <View key={friend.id} style={styles.friendRow}>
               <View style={styles.avatar}>
                 <ProfileIcon
-                  width={normalize(22)}
-                  height={normalize(22)}
-                  color={getProfileInnerColor(friend.profileColorId)}
+                  width={normalize(35)}
+                  height={normalize(35)}
+                  color={getProfileInnerColor(friend.profileColorId) || getProfileInnerColorBySeed(friend.id)}
                 />
               </View>
               <View style={styles.friendInfo}>
@@ -380,9 +381,12 @@ const FriendsScreen = ({ navigation }) => {
               <View style={styles.sheetFriendInfo}>
                 <View style={styles.sheetAvatar}>
                   <ProfileIcon
-                    width={normalize(24)}
-                    height={normalize(24)}
-                    color={getProfileInnerColor(selectedFriend.profileColorId)}
+                    width={normalize(35)}
+                    height={normalize(35)}
+                    color={
+                      getProfileInnerColor(selectedFriend.profileColorId) ||
+                      getProfileInnerColorBySeed(selectedFriend.id)
+                    }
                   />
                 </View>
                 <View>

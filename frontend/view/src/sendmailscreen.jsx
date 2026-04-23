@@ -328,7 +328,7 @@ const SendMailScreen = ({ navigation }) => {
                     />
                     <TextInput
                       style={[styles.input, { marginLeft: normalize(6) }]}
-                      placeholder="실명 또는 아이디 전체 입력 (일치 시에만 표시)"
+                      placeholder="실명 전체 입력"
                       value={userQuery}
                       onChangeText={setUserQuery}
                       placeholderTextColor={colors.textSecondary}
@@ -356,7 +356,6 @@ const SendMailScreen = ({ navigation }) => {
                     >
                       {userResults.map((user, index) => {
                         const rowName = user?.name ?? user?.displayName ?? '';
-                        const rowUsername = user?.username ?? user?.loginId ?? '';
                         return (
                           <TouchableOpacity
                             key={user.id}
@@ -380,16 +379,6 @@ const SendMailScreen = ({ navigation }) => {
                             }}
                           >
                             {rowName}
-                            {rowUsername ? (
-                              <Text
-                                style={{
-                                  color: colors.textSecondary,
-                                  fontFamily: fonts.regular,
-                                }}
-                              >
-                                {` @${rowUsername}`}
-                              </Text>
-                            ) : null}
                           </Text>
                             {/* 둘째 줄: 학교명 학년 반 */}
                             <Text
@@ -416,7 +405,7 @@ const SendMailScreen = ({ navigation }) => {
                     userQuery.trim().length > 0 &&
                     userResults.length === 0 && (
                       <Text style={styles.sendInlineHelperText}>
-                        일치하는 사용자가 없습니다. 실명 또는 아이디를 정확히 입력해 주세요.
+                        일치하는 사용자가 없습니다. 실명을 정확히 입력해 주세요.
                       </Text>
                     )}
                 </View>

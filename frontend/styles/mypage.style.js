@@ -181,7 +181,6 @@ export const createMyPageStyles = (normalize) => {
       height: normalize(56),
       borderRadius: normalize(28),
       marginRight: normalize(12),
-      backgroundColor: colors.textLight10,
     },
     profileSkeletonInfo: {
       flex: 1,

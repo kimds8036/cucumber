@@ -73,7 +73,7 @@ export const createOurSchoolStyles = (normalize) => {
     statValueContainer: {
       flexDirection: 'row',
       alignItems: 'center',
-      gap: normalize(4),
+      gap: normalize(6),
     },
     statValue: {
       fontSize: normalize(fontSizes.xl),
