@@ -5,15 +5,6 @@ import { closeIncompleteStudySessions } from '../socket/socketService.js';
 
 const router = express.Router();
 
-const parseJsonArray = (value) => {
-  try {
-    const parsed = JSON.parse(value || '[]');
-    return Array.isArray(parsed) ? parsed : [];
-  } catch {
-    return [];
-  }
-};
-
 const sanitizeDayKey = (dayKey) =>
   typeof dayKey === 'string' ? dayKey.slice(0, 10) : null;
 
@@ -56,25 +47,6 @@ const sanitizeSession = (session) => ({
       ? clampSecond(session.endSeconds, { allowDayEnd: true })
       : null,
 });
-
-const mergeLegacyJsonArrayById = (existing = [], incoming = []) => {
-  if (!Array.isArray(existing)) return incoming;
-  if (!Array.isArray(incoming) || incoming.length === 0) return existing;
-  const byId = new Map();
-  existing.forEach((item) => {
-    const id = item?.id != null ? Number(item.id) : null;
-    if (id != null) byId.set(id, item);
-  });
-  incoming.forEach((item) => {
-    const id = item?.id != null ? Number(item.id) : null;
-    if (id != null) {
-      byId.set(id, { ...(byId.get(id) || {}), ...item });
-    }
-  });
-  const mergedWithId = Array.from(byId.values());
-  const incomingNoId = incoming.filter((item) => item?.id == null);
-  return [...mergedWithId, ...incomingNoId];
-};
 
 const deriveSubjectsFromSessions = (sessions = []) => {
   const byId = new Map();
@@ -193,13 +165,6 @@ router.post('/day', authenticate, async (req, res) => {
     }
 
     await connection.beginTransaction();
-
-    const [[existingDay]] = await connection.execute(
-      `SELECT subjects, tasks
-       FROM study_days
-       WHERE user_id = ? AND day_key = ?`,
-      [userId, normalizedDayKey],
-    );
 
     const subjectIdMap = new Map();
     const normalizedSubjects = subjectsArr.length > 0
@@ -406,25 +371,16 @@ router.post('/day', authenticate, async (req, res) => {
     // 클라이언트 payload(totalElapsedMs)는 오염될 수 있으므로 세션 합계를 단일 진실원으로 사용
     const safeElapsedMs = computedElapsedMs;
 
-    const existingSubjectsJson = parseJsonArray(existingDay?.subjects);
-    const existingTasksJson = parseJsonArray(existingDay?.tasks);
-    const mergedLegacySubjects = mergeLegacyJsonArrayById(existingSubjectsJson, subjectsArr);
-    const mergedLegacyTasks = mergeLegacyJsonArrayById(existingTasksJson, tasksArr);
-
     await connection.execute(
-      `INSERT INTO study_days (user_id, day_key, total_elapsed_ms, subjects, tasks)
-       VALUES (?, ?, ?, ?, ?)
+      `INSERT INTO study_days (user_id, day_key, total_elapsed_ms)
+       VALUES (?, ?, ?)
        ON DUPLICATE KEY UPDATE
          total_elapsed_ms = VALUES(total_elapsed_ms),
-         subjects = VALUES(subjects),
-         tasks = VALUES(tasks),
          updated_at = CURRENT_TIMESTAMP`,
       [
         userId,
         normalizedDayKey,
         safeElapsedMs,
-        JSON.stringify(mergedLegacySubjects),
-        JSON.stringify(mergedLegacyTasks),
       ],
     );
 
@@ -580,7 +536,7 @@ router.get('/day', authenticate, async (req, res) => {
     }
 
     const [days] = await pool.execute(
-      `SELECT total_elapsed_ms, subjects, tasks 
+      `SELECT total_elapsed_ms
        FROM study_days 
        WHERE user_id = ? AND day_key = ?`,
       [userId, dayKey]
@@ -604,18 +560,12 @@ router.get('/day', authenticate, async (req, res) => {
     }));
     const sessionsData = dedupeSessionsPreferClosed(sessionsDataRaw);
     const normalized = await loadNormalizedDayData(pool, userId, dayKey);
-    const hasNormalizedData =
-      normalized.subjects.length > 0 || normalized.tasks.length > 0;
-    const subjectsData = hasNormalizedData
-      ? normalized.subjects
-      : parseJsonArray(day?.subjects);
+    const subjectsData = normalized.subjects;
     const fallbackSubjectsFromSessions = deriveSubjectsFromSessions(sessionsData);
     const effectiveSubjectsData =
       subjectsData.length > 0 ? subjectsData : fallbackSubjectsFromSessions;
 
-    const tasksData = hasNormalizedData
-      ? normalized.tasks
-      : parseJsonArray(day?.tasks);
+    const tasksData = normalized.tasks;
 
     if (process.env.NODE_ENV !== 'production') {
       const nullSubjectCount = sessionsData.filter(

@@ -23,6 +23,7 @@ import { normalizeTagsFromApi } from '../../utils/normalizePostTags';
 import BoardPostCard from '../../components/Boardpostcard';
 import { useLocationContext } from '../../context/LocationContext';
 import { invalidateProfileCountsCache } from '../../utils/profileCountsCache';
+import { useFocusEffect } from '@react-navigation/native';
 
 /** 서버 created_at(UTC)을 "n분 전" 형식으로 변환. 화면에서는 기기 로컬 시간 기준으로 계산 */
 function formatTimeAgo(createdAt) {
@@ -67,25 +68,8 @@ export function BoardAllContent({ navigation, posts }) {
   const [floatingMenuAnchor, setFloatingMenuAnchor] = useState(null);
   const [floatingMenuPost, setFloatingMenuPost] = useState(null);
 
-  const layoutPendingRef = useRef(null);
-  const layoutGateTimeoutRef = useRef(null);
-  const listLayoutEpochRef = useRef(0);
-
-  const handleCardLayoutStable = useCallback((id, epoch) => {
-    const p = layoutPendingRef.current;
-    if (!p || p.epoch !== epoch || !p.ids.has(String(id))) return;
-    p.ids.delete(String(id));
-    if (layoutPendingRef.current !== p) return;
-    if (p.ids.size === 0) {
-      if (layoutGateTimeoutRef.current != null) {
-        clearTimeout(layoutGateTimeoutRef.current);
-        layoutGateTimeoutRef.current = null;
-      }
-      layoutPendingRef.current = null;
-      if (p.isAppend) setLoadingMore(false);
-      else setLoading(false);
-    }
-  }, []);
+  const fetchPostsRef = useRef(null);
+  const didMountSortEffectRef = useRef(false);
 
   const defaultMenuItemsOthers = useMemo(
     () => [
@@ -198,11 +182,6 @@ export function BoardAllContent({ navigation, posts }) {
             setHasMore(false);
             setPage(1);
           }
-          if (layoutGateTimeoutRef.current != null) {
-            clearTimeout(layoutGateTimeoutRef.current);
-            layoutGateTimeoutRef.current = null;
-          }
-          layoutPendingRef.current = null;
           setLoading(false);
           setLoadingMore(false);
           return;
@@ -251,49 +230,18 @@ export function BoardAllContent({ navigation, posts }) {
           };
         });
         if (append) {
-          setServerPosts((prev) => [...prev, ...mapped]);
+          setServerPosts((prev) => {
+            const existingIds = new Set(prev.map((p) => p.id));
+            const filtered = mapped.filter((p) => !existingIds.has(p.id));
+            return [...prev, ...filtered];
+          });
         } else {
           setServerPosts(mapped);
         }
         setHasMore(apiPosts.length > 0);
         setPage(nextPage);
-
-        const clearGateTimer = () => {
-          if (layoutGateTimeoutRef.current != null) {
-            clearTimeout(layoutGateTimeoutRef.current);
-            layoutGateTimeoutRef.current = null;
-          }
-        };
-
-        const injected = Boolean(posts && posts.length > 0);
-        if (injected) {
-          clearGateTimer();
-          layoutPendingRef.current = null;
-          if (append) setLoadingMore(false);
-          else setLoading(false);
-        } else if (mapped.length === 0) {
-          clearGateTimer();
-          layoutPendingRef.current = null;
-          if (append) setLoadingMore(false);
-          else setLoading(false);
-        } else {
-          clearGateTimer();
-          listLayoutEpochRef.current += 1;
-          const epoch = listLayoutEpochRef.current;
-          layoutPendingRef.current = {
-            epoch,
-            ids: new Set(mapped.map((p) => String(p.id))),
-            isAppend: append,
-          };
-          layoutGateTimeoutRef.current = setTimeout(() => {
-            layoutGateTimeoutRef.current = null;
-            const pend = layoutPendingRef.current;
-            if (!pend) return;
-            layoutPendingRef.current = null;
-            if (pend.isAppend) setLoadingMore(false);
-            else setLoading(false);
-          }, 900);
-        }
+        if (append) setLoadingMore(false);
+        else setLoading(false);
       } catch (error) {
         console.error('게시글 목록 로드 실패:', error);
         if (error.response?.data?.message) {
@@ -303,11 +251,6 @@ export function BoardAllContent({ navigation, posts }) {
           console.error('서버 오류 상세:', error.response.data.errorDetail);
         }
         Alert.alert('오류', '게시글을 불러오는 중 오류가 발생했습니다.');
-        if (layoutGateTimeoutRef.current != null) {
-          clearTimeout(layoutGateTimeoutRef.current);
-          layoutGateTimeoutRef.current = null;
-        }
-        layoutPendingRef.current = null;
         setLoading(false);
         setLoadingMore(false);
       }
@@ -315,17 +258,32 @@ export function BoardAllContent({ navigation, posts }) {
     [sortType, coords, posts],
   );
 
-  // 게시글 목록 로드 (초기 + 정렬 변경 시 + 위치 갱신 시)
   useEffect(() => {
-    fetchPosts(1, false);
+    fetchPostsRef.current = fetchPosts;
   }, [fetchPosts]);
 
-  const data = posts && posts.length > 0 ? posts : serverPosts;
+  useEffect(() => {
+    const init = async () => {
+      await Promise.all([refreshLocation(), fetchPosts(1, false)]);
+    };
+    init();
+  }, []);
 
-  const handleRefresh = async () => {
-    await refreshLocation();
-    await fetchPosts(1, false);
-  };
+  useFocusEffect(
+    useCallback(() => {
+      fetchPostsRef.current?.(1, false);
+    }, [])
+  );
+
+  useEffect(() => {
+    if (!didMountSortEffectRef.current) {
+      didMountSortEffectRef.current = true;
+      return;
+    }
+    fetchPosts(1, false);
+  }, [sortType]);
+
+  const data = posts && posts.length > 0 ? posts : serverPosts;
 
   const handleLoadMore = () => {
     if (sortType === 'nearby' && !coords) return;
@@ -355,7 +313,7 @@ export function BoardAllContent({ navigation, posts }) {
   }, []);
 
   const postsInjected = Boolean(posts && posts.length > 0);
-  const hideListBehindLoader = (loading || loadingMore) && !postsInjected;
+  const hideListBehindLoader = loading && !postsInjected;
 
   const renderPostItem = ({ item: post }) => (
     <BoardPostCard
@@ -363,8 +321,6 @@ export function BoardAllContent({ navigation, posts }) {
       post={post}
       normalize={normalize}
       styles={styles}
-      layoutStableEpoch={listLayoutEpochRef.current}
-      onLayoutStable={postsInjected ? undefined : handleCardLayoutStable}
       onPress={() =>
         navigation.navigate('BoardDetail', {
           post: { ...post, author: post.author },
@@ -414,8 +370,6 @@ export function BoardAllContent({ navigation, posts }) {
           keyExtractor={(item) => String(item.id)}
           renderItem={renderPostItem}
           showsVerticalScrollIndicator={false}
-          refreshing={loading && !hideListBehindLoader}
-          onRefresh={handleRefresh}
           onEndReached={handleLoadMore}
           onEndReachedThreshold={0.5}
           ListEmptyComponent={
@@ -430,11 +384,9 @@ export function BoardAllContent({ navigation, posts }) {
             ) : null
           }
           ListFooterComponent={
-            loadingMore && !hideListBehindLoader ? (
+            loadingMore && hasMore ? (
               <View style={{ paddingVertical: normalize(16), alignItems: 'center' }}>
-                <Text style={{ fontFamily: fonts.regular, color: colors.textSecondary }}>
-                  더 불러오는 중...
-                </Text>
+                <ActivityIndicator size="small" color={colors.primary} />
               </View>
             ) : null
           }
@@ -464,7 +416,7 @@ export function BoardAllContent({ navigation, posts }) {
                 fontSize: normalize(14),
               }}
             >
-              {loadingMore ? '더 불러오는 중...' : '불러오는 중...'}
+              불러오는 중...
             </Text>
           </View>
         ) : null}

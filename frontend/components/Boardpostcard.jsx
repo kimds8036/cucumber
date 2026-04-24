@@ -31,7 +31,6 @@ const BoardPostCard = ({
     typeof post.thumbnail === 'string' && post.thumbnail.trim().length > 0;
   const [containerWidth, setContainerWidth] = useState(0);
   const [tagWidths, setTagWidths] = useState([]);
-  const [measureBypass, setMeasureBypass] = useState(false);
 
   const tags = useMemo(() => {
     const rawList = normalizeTagsFromApi(post.tags);
@@ -44,12 +43,6 @@ const BoardPostCard = ({
       .filter(Boolean);
   }, [post.tags]);
 
-  useEffect(() => {
-    setMeasureBypass(false);
-    if (tags.length === 0) return undefined;
-    const id = setTimeout(() => setMeasureBypass(true), 450);
-    return () => clearTimeout(id);
-  }, [post?.id, tags.length]);
   const TAG_GAP = normalize(6);
   const MORE_BADGE_WIDTH = normalize(36);
 
@@ -106,8 +99,7 @@ const BoardPostCard = ({
     MORE_BADGE_WIDTH,
   ]);
 
-  const isMeasuring =
-    tags.length > 0 && !measureBypass && (!allMeasured || containerWidth <= 0);
+  const isMeasuring = tags.length > 0 && (!allMeasured || containerWidth <= 0);
 
   const layoutStableKeyRef = useRef('');
   const layoutStable = tags.length === 0 || !isMeasuring;
@@ -223,10 +215,7 @@ const BoardPostCard = ({
                 return (
                   <View
                     key={`tag-${idx}-${label}`}
-                    style={[
-                      styles.postTagChip,
-                      isMeasuring && styles.postTagMeasureHidden,
-                    ]}
+                    style={styles.postTagChip}
                     onLayout={({ nativeEvent: { layout } }) => {
                       const measuredWidth = layout.width;
                       setTagWidths((prev) => {

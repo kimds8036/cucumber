@@ -51,30 +51,12 @@ const SchoolBoardAll = ({ navigation }) => {
   const { coords, refreshLocation } = useLocationContext();
 
   const [schoolPosts, setSchoolPosts] = useState([]);
+  const [sortType] = useState('latest');
   const [loading, setLoading] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
-
-  const layoutPendingRef = useRef(null);
-  const layoutGateTimeoutRef = useRef(null);
-  const listLayoutEpochRef = useRef(0);
-
-  const handleCardLayoutStable = useCallback((id, epoch) => {
-    const p = layoutPendingRef.current;
-    if (!p || p.epoch !== epoch || !p.ids.has(String(id))) return;
-    p.ids.delete(String(id));
-    if (layoutPendingRef.current !== p) return;
-    if (p.ids.size === 0) {
-      if (layoutGateTimeoutRef.current != null) {
-        clearTimeout(layoutGateTimeoutRef.current);
-        layoutGateTimeoutRef.current = null;
-      }
-      layoutPendingRef.current = null;
-      if (p.isAppend) setLoadingMore(false);
-      else setLoading(false);
-    }
-  }, []);
+  const didMountSortEffectRef = useRef(false);
 
   const handleScrapPress = useCallback(async (post) => {
     try {
@@ -110,11 +92,6 @@ const SchoolBoardAll = ({ navigation }) => {
         const schoolId = schoolRes.data?.data?.id;
         if (!schoolId) {
           setSchoolPosts([]);
-          if (layoutGateTimeoutRef.current != null) {
-            clearTimeout(layoutGateTimeoutRef.current);
-            layoutGateTimeoutRef.current = null;
-          }
-          layoutPendingRef.current = null;
           setLoading(false);
           setLoadingMore(false);
           return;
@@ -122,7 +99,7 @@ const SchoolBoardAll = ({ navigation }) => {
         const params = {
           boardType: 'school',
           schoolId,
-          sort: 'latest',
+          sort: sortType,
           page: nextPage,
           limit: 20,
         };
@@ -156,60 +133,38 @@ const SchoolBoardAll = ({ navigation }) => {
           };
         });
         if (append) {
-          setSchoolPosts((prev) => [...prev, ...mapped]);
+          setSchoolPosts((prev) => {
+            const existingIds = new Set(prev.map((p) => p.id));
+            const filtered = mapped.filter((p) => !existingIds.has(p.id));
+            return [...prev, ...filtered];
+          });
         } else {
           setSchoolPosts(mapped);
         }
         setHasMore(apiPosts.length > 0);
         setPage(nextPage);
-
-        const clearGateTimer = () => {
-          if (layoutGateTimeoutRef.current != null) {
-            clearTimeout(layoutGateTimeoutRef.current);
-            layoutGateTimeoutRef.current = null;
-          }
-        };
-
-        if (mapped.length === 0) {
-          clearGateTimer();
-          layoutPendingRef.current = null;
-          if (append) setLoadingMore(false);
-          else setLoading(false);
-        } else {
-          clearGateTimer();
-          listLayoutEpochRef.current += 1;
-          const epoch = listLayoutEpochRef.current;
-          layoutPendingRef.current = {
-            epoch,
-            ids: new Set(mapped.map((p) => String(p.id))),
-            isAppend: append,
-          };
-          layoutGateTimeoutRef.current = setTimeout(() => {
-            layoutGateTimeoutRef.current = null;
-            const pend = layoutPendingRef.current;
-            if (!pend) return;
-            layoutPendingRef.current = null;
-            if (pend.isAppend) setLoadingMore(false);
-            else setLoading(false);
-          }, 900);
-        }
+        if (append) setLoadingMore(false);
+        else setLoading(false);
       } catch (error) {
         console.error('학교 게시판 목록 로드 실패:', error);
-        if (layoutGateTimeoutRef.current != null) {
-          clearTimeout(layoutGateTimeoutRef.current);
-          layoutGateTimeoutRef.current = null;
-        }
-        layoutPendingRef.current = null;
         setLoading(false);
         setLoadingMore(false);
       }
     },
-    [coords],
+    [coords, sortType],
   );
 
   useEffect(() => {
     fetchSchoolPosts(1, false);
   }, [fetchSchoolPosts]);
+
+  useEffect(() => {
+    if (!didMountSortEffectRef.current) {
+      didMountSortEffectRef.current = true;
+      return;
+    }
+    fetchSchoolPosts(1, false);
+  }, [sortType]);
 
   useEffect(() => {
     if (!__DEV__) return;
@@ -230,7 +185,7 @@ const SchoolBoardAll = ({ navigation }) => {
     fetchSchoolPosts(page + 1, true);
   };
 
-  const hideListBehindLoader = loading || loadingMore;
+  const hideListBehindLoader = loading;
 
   const renderPostItem = ({ item: post }) => (
     <BoardPostCard
@@ -238,8 +193,6 @@ const SchoolBoardAll = ({ navigation }) => {
       post={post}
       normalize={normalize}
       styles={styles}
-      layoutStableEpoch={listLayoutEpochRef.current}
-      onLayoutStable={handleCardLayoutStable}
       onPress={() =>
         navigation.navigate('BoardDetail', {
           post: { ...post, author: post.author },
@@ -284,11 +237,9 @@ const SchoolBoardAll = ({ navigation }) => {
             ) : null
           }
           ListFooterComponent={
-            loadingMore && !hideListBehindLoader ? (
+            loadingMore && hasMore ? (
               <View style={styles.loadingMoreContainer}>
-                <Text style={styles.loadingMoreText}>
-                  더 불러오는 중...
-                </Text>
+                <ActivityIndicator size="small" color={colors.primary} />
               </View>
             ) : null
           }
@@ -318,7 +269,7 @@ const SchoolBoardAll = ({ navigation }) => {
                 fontSize: normalize(14),
               }}
             >
-              {loadingMore ? '더 불러오는 중...' : '불러오는 중...'}
+              불러오는 중...
             </Text>
           </View>
         ) : null}
