@@ -43,6 +43,11 @@ function walkFiles(dir) {
   return out;
 }
 
+function isExcludedCucumberChatFile(filePath) {
+  const normalized = filePath.split(path.sep).join("/");
+  return normalized.endsWith("/AppDelegate.swift");
+}
+
 function ensureXcodeSourceLinked(project, relToIos, targetUuid, groupKey) {
   // 1) Try the standard helper first.
   try {
@@ -77,8 +82,14 @@ function withCucumberChatCopy(config) {
       const appSourceRoot = path.join(platformProjectRoot, projectName);
       const destDir = path.join(appSourceRoot, "CucumberChat");
       const copiedCount = copyDirRecursiveSync(srcDir, destDir);
+      const appDelegatePath = path.join(destDir, "AppDelegate.swift");
+      let removedExcludedCount = 0;
+      if (fs.existsSync(appDelegatePath)) {
+        fs.unlinkSync(appDelegatePath);
+        removedExcludedCount += 1;
+      }
       console.log(
-        `[with-cucumber-chat] copied ${copiedCount} files from ${srcDir} to ${destDir}`
+        `[with-cucumber-chat] copied ${copiedCount} files from ${srcDir} to ${destDir} (excluded=${removedExcludedCount})`
       );
 
       return config;
@@ -102,7 +113,9 @@ function withCucumberChatXcode(config) {
       projectName,
     });
     const mainGroupKey = project.getFirstProject()?.firstProject?.mainGroup;
-    const files = walkFiles(chatRoot).filter((f) => /\.(swift|m|mm|h)$/i.test(f));
+    const files = walkFiles(chatRoot).filter(
+      (f) => /\.(swift|m|mm|h)$/i.test(f) && !isExcludedCucumberChatFile(f)
+    );
     console.log(
       `[with-cucumber-chat] xcode source candidates: ${files.length} files (target=${target?.uuid ?? "none"}, group=${mainGroupKey ?? "none"})`
     );
