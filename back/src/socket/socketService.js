@@ -1,6 +1,7 @@
 import pool from '../config/database.js';
 import { getIO } from '../socketServer.js';
 import { enqueueNotification } from '../utils/notificationWorker.js';
+import { getTimerDayKey } from '../utils/timerDayKey.js';
 
 // in-memory throttle map: key = `${fromUserId}:${targetUserId}`
 const lastPokeAtMap = new Map();
@@ -12,6 +13,18 @@ const notifyOnStopMap = new Map();
 // 현재 공부 상태 in-memory 캐시 (실시간 소켓 수신용 보조, REST 조회는 DB 사용)
 const currentTimerStatusMap = new Map();
 
+const KST_NOW_SECONDS_SQL = `
+  (
+    (
+      HOUR(CONVERT_TZ(UTC_TIMESTAMP(), '+00:00', '+09:00')) * 3600
+      + MINUTE(CONVERT_TZ(UTC_TIMESTAMP(), '+00:00', '+09:00')) * 60
+      + SECOND(CONVERT_TZ(UTC_TIMESTAMP(), '+00:00', '+09:00'))
+      - 21600
+      + 86400
+    ) % 86400
+  )
+`;
+
 // ── 세션 DB 저장 (소켓 수신 시 호출) ─────────────────────
 
 /**
@@ -22,11 +35,19 @@ export async function upsertStudySessionStart({ userId, dayKey, subjectId, subje
   const connection = await pool.getConnection();
   try {
     await connection.beginTransaction();
-    // 같은 유저의 미완료 세션을 해당 일자 자정 기준 종료 시각으로 마감
+    // 같은 유저의 최근 미완료 세션 1건만 현재 시각(초)으로 종료
     await connection.execute(
       `UPDATE study_sessions
-       SET end_seconds = LEAST(86399, UNIX_TIMESTAMP(NOW()) - UNIX_TIMESTAMP(CONCAT(day_key, ' 00:00:00')))
-       WHERE user_id = ? AND end_seconds IS NULL`,
+       SET end_seconds = ${KST_NOW_SECONDS_SQL}
+       WHERE id = (
+         SELECT id FROM (
+           SELECT id
+           FROM study_sessions
+           WHERE user_id = ? AND end_seconds IS NULL
+           ORDER BY id DESC
+           LIMIT 1
+         ) AS latest_open
+       )`,
       [userId],
     );
     await connection.execute(
@@ -55,8 +76,16 @@ export async function upsertStudySessionStart({ userId, dayKey, subjectId, subje
 export async function closeStudySession({ userId }) {
   await pool.execute(
     `UPDATE study_sessions
-     SET end_seconds = LEAST(86399, UNIX_TIMESTAMP(NOW()) - UNIX_TIMESTAMP(CONCAT(day_key, ' 00:00:00')))
-     WHERE user_id = ? AND end_seconds IS NULL`,
+     SET end_seconds = ${KST_NOW_SECONDS_SQL}
+     WHERE id = (
+       SELECT id FROM (
+         SELECT id
+         FROM study_sessions
+         WHERE user_id = ? AND end_seconds IS NULL
+         ORDER BY id DESC
+         LIMIT 1
+       ) AS latest_open
+     )`,
     [userId],
   );
 }
@@ -273,13 +302,14 @@ export async function getStudyingFriends({ userId }) {
 
   const friendIds = friendRows.map((r) => r.friend_id);
   const placeholders = friendIds.map(() => '?').join(',');
+  const todayTimerDayKey = getTimerDayKey();
   const [studyingRows] = await pool.execute(
     `SELECT DISTINCT user_id
      FROM study_sessions
      WHERE user_id IN (${placeholders})
        AND end_seconds IS NULL
-       AND day_key = CURDATE()`,
-    friendIds,
+       AND day_key = ?`,
+    [...friendIds, todayTimerDayKey],
   );
 
   return studyingRows.map((r) => ({

@@ -1,6 +1,7 @@
 import express from 'express';
 import pool from '../config/database.js';
 import { authenticate } from '../middleware/auth.js';
+import { getBatchRedis } from '../services/batchRedis.service.js';
 import {
   buildSafeSchoolSearchTerm,
   buildSchoolSearchSql,
@@ -10,6 +11,8 @@ import {
 const router = express.Router();
 const NEIS_BASE_URL = 'https://open.neis.go.kr/hub/mealServiceDietInfo';
 const NEIS_API_KEY = process.env.NEIS_API_KEY || process.env.NEIS_KEY || '';
+const DEFAULT_STUDY_GRASS_DAYS = 27 * 7;
+const MAX_STUDY_GRASS_DAYS = 365;
 
 const MEAL_CODES = ['1', '2', '3'];
 const MEAL_CODE_TO_TYPE = {
@@ -24,6 +27,52 @@ const toYmd = (date) => {
   const d = String(date.getDate()).padStart(2, '0');
   return `${y}${m}${d}`;
 };
+
+const toDateKey = (date) => {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, '0');
+  const d = String(date.getDate()).padStart(2, '0');
+  return `${y}-${m}-${d}`;
+};
+
+const parseStudyGrassDaysParam = (value) => {
+  const n = Number(value);
+  if (!Number.isFinite(n)) return DEFAULT_STUDY_GRASS_DAYS;
+  return Math.min(Math.max(Math.floor(n), 1), MAX_STUDY_GRASS_DAYS);
+};
+
+async function fetchStudyGrassSeries({ schoolId, days }) {
+  const redis = await getBatchRedis();
+  const dateKeys = [];
+  for (let offset = days - 1; offset >= 0; offset -= 1) {
+    const d = new Date();
+    d.setDate(d.getDate() - offset);
+    dateKeys.push(toDateKey(d));
+  }
+
+  const pipeline = redis.pipeline();
+  dateKeys.forEach((dayKey) => {
+    pipeline.hgetall(`study:grass:school:${schoolId}:${dayKey}`);
+  });
+  const rows = await pipeline.exec();
+
+  const series = dateKeys.map((dayKey, idx) => {
+    const row = rows?.[idx]?.[1];
+    const hasData = row && Object.keys(row).length > 0;
+    return {
+      dayKey,
+      totalElapsedMs: hasData ? Number(row.total_elapsed_ms || 0) : null,
+      activeUserCount: hasData ? Number(row.active_user_count || 0) : null,
+      hasData,
+    };
+  });
+
+  return {
+    schoolId,
+    days,
+    series,
+  };
+}
 
 const mealPriorityAfterNow = (now) => {
   const h = now.getHours();
@@ -266,6 +315,31 @@ router.get('/me', authenticate, async (req, res) => {
   }
 });
 
+router.get('/me/study-grass', authenticate, async (req, res) => {
+  try {
+    const userId = req.user.userId;
+    const school = await getMySchoolCodes(userId);
+    if (!school?.school_id) {
+      return res.status(404).json({
+        success: false,
+        message: '사용자의 학교 정보를 찾을 수 없습니다.',
+      });
+    }
+    const days = parseStudyGrassDaysParam(req.query?.days);
+    const data = await fetchStudyGrassSeries({
+      schoolId: school.school_id,
+      days,
+    });
+    return res.json({ success: true, data });
+  } catch (error) {
+    console.error('내 학교 공부 잔디밭 조회 오류:', error);
+    return res.status(500).json({
+      success: false,
+      message: '내 학교 공부 잔디밭 조회 중 오류가 발생했습니다.',
+    });
+  }
+});
+
 router.get('/me/meals/next', authenticate, async (req, res) => {
   try {
     const userId = req.user.userId;
@@ -455,6 +529,28 @@ router.get('/:schoolId/meals/calendar', async (req, res) => {
   } catch (error) {
     console.error('학교 급식 달력 조회 오류:', error);
     return res.status(500).json({ success: false, message: '급식 달력 조회 중 오류가 발생했습니다.' });
+  }
+});
+
+router.get('/:schoolId/study-grass', async (req, res) => {
+  try {
+    const { schoolId } = req.params;
+    const school = await getSchoolCodesById(schoolId);
+    if (!school) {
+      return res.status(404).json({
+        success: false,
+        message: '학교를 찾을 수 없습니다.',
+      });
+    }
+    const days = parseStudyGrassDaysParam(req.query?.days);
+    const data = await fetchStudyGrassSeries({ schoolId, days });
+    return res.json({ success: true, data });
+  } catch (error) {
+    console.error('학교 공부 잔디밭 조회 오류:', error);
+    return res.status(500).json({
+      success: false,
+      message: '학교 공부 잔디밭 조회 중 오류가 발생했습니다.',
+    });
   }
 });
 

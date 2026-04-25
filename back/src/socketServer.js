@@ -54,12 +54,18 @@ export function initSocketServer(httpServer) {
       hasToken: !!token,
     });
 
-    if (!token) return next(new Error('인증 토큰이 필요합니다.'));
+    if (!token) {
+      const err = new Error('인증 토큰이 필요합니다.');
+      err.data = { code: 'AUTH_FAILED' };
+      return next(err);
+    }
 
     const decoded = verifyToken(token);
     if (!decoded) {
       console.warn('[Socket] auth failed: verifyToken returned null');
-      return next(new Error('토큰이 만료되었거나 유효하지 않습니다.'));
+      const err = new Error('토큰이 만료되었거나 유효하지 않습니다.');
+      err.data = { code: 'AUTH_FAILED' };
+      return next(err);
     }
 
     socket.userId = decoded.userId;   // 이후 핸들러에서 socket.userId 로 접근

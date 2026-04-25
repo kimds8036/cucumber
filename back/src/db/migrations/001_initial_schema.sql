@@ -436,8 +436,6 @@ CREATE TABLE IF NOT EXISTS study_days (
   user_id INT NOT NULL COMMENT '사용자 ID',
   day_key DATE NOT NULL COMMENT '날짜 (YYYY-MM-DD)',
   total_elapsed_ms BIGINT NOT NULL DEFAULT 0 COMMENT '해당 날짜 총 공부 시간(ms)',
-  subjects JSON NULL COMMENT '과목 리스트 및 색상/메모 등(JSON)',
-  tasks JSON NULL COMMENT '투두리스트/과제 정보(JSON)',
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP COMMENT '생성 일시',
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '수정 일시',
   FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,

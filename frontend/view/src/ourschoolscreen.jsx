@@ -8,6 +8,7 @@ import { api } from '../../utils/api';
 import { colors, fontSizes } from '../../styles/colors';
 import { getNormalize } from '../../styles/frame.style';
 import { createOurSchoolStyles } from '../../styles/school.style';
+import StudyGrassMap from '../../components/studygrassmap';
 
 const OurSchoolScreen = ({ navigation }) => {
   const SCHOOL_CACHE_KEY = '@our_school_screen_cache_v1';
@@ -31,6 +32,26 @@ const OurSchoolScreen = ({ navigation }) => {
   const [mealLoading, setMealLoading] = useState(false);
   const [nextMeals, setNextMeals] = useState([]);
   const [selectedMealSlot, setSelectedMealSlot] = useState(null);
+  const [grassDays, setGrassDays] = useState([]);
+  const getCurrentSemesterDays = () => {
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = now.getMonth() + 1;
+    let start;
+    let end;
+    if (month >= 3 && month <= 8) {
+      start = new Date(year, 2, 1);
+      end = new Date(year, 7, 31);
+    } else if (month >= 9) {
+      start = new Date(year, 8, 1);
+      end = new Date(year + 1, 2, 0);
+    } else {
+      start = new Date(year - 1, 8, 1);
+      end = new Date(year, 2, 0);
+    }
+    const diffDays = Math.floor((end.getTime() - start.getTime()) / 86400000) + 1;
+    return diffDays;
+  };
 
   const isFreshCache = (ts) => {
     if (!ts) return false;
@@ -158,6 +179,32 @@ const OurSchoolScreen = ({ navigation }) => {
       mounted = false;
     };
   }, [schoolInfo.id]);
+
+  useEffect(() => {
+    let mounted = true;
+    const fetchStudyGrass = async () => {
+      try {
+        const res = await api.get('/api/schools/me/study-grass', {
+          params: { days: getCurrentSemesterDays() },
+        });
+        if (!mounted) return;
+        const series = res.data?.data?.series || [];
+        const mapped = Array.isArray(series)
+          ? series.map((row) => ({
+              dayKey: row?.dayKey,
+              totalElapsedMs: row?.totalElapsedMs,
+            }))
+          : [];
+        setGrassDays(mapped);
+      } catch (error) {
+        if (mounted) setGrassDays([]);
+      }
+    };
+    fetchStudyGrass();
+    return () => {
+      mounted = false;
+    };
+  }, []);
 
   const mealTypeLabel = {
     breakfast: '조식',
@@ -382,10 +429,7 @@ const OurSchoolScreen = ({ navigation }) => {
         {/* 공부 잔디 카드 */}
         <View style={styles.grassCard}>
           <Text style={styles.grassCardTitle}>우리 학교 공부 잔디밭</Text>
-          {/* TODO: 잔디밭 API 연결 위치 (예: /api/schools/me/study-grass) */}
-          <View style={{ paddingVertical: normalize(18), alignItems: 'center' }}>
-            <Text style={{ color: colors.textSecondary }}>잔디밭 데이터 준비 중</Text>
-          </View>
+          <StudyGrassMap days={grassDays} />
         </View>
 
         {/* 게시판 / 우편함 바로가기 */}
