@@ -16,7 +16,6 @@ import SubHeader from '../frame/subHeader';
 import { api } from '../../utils/api';
 import { colors } from '../../styles/colors';
 import { getNormalize } from '../../styles/frame.style';
-import { subheaderMailListBodyTopAfterTabRow } from '../../styles/subheaderContent';
 import {
   createNotificationSkeletonStyles,
   createNotificationStyles,
@@ -33,25 +32,25 @@ import {
 const PAGE_SIZE = 20;
 /** 초기 로드 시 '좋아요'만 있는 연속 페이지를 건너뛸 때 상한 */
 const MAX_INITIAL_PAGE_SWEEP = 30;
-const SHOW_LAYOUT_BORDERS = true;
+const SHOW_LAYOUT_BORDERS = false;
 
 const popToMainRoot = (navigation) => {
   navigation?.dispatch?.(StackActions.popToTop());
 };
 
 const mapTypeToIcon = (type, category) => {
-  if (category === 'mail') return { name: 'mail', color: '#FFA726', bg: '#FFF3E0' };
-  if (category === 'system') return { name: 'megaphone', color: '#9C27B0', bg: '#F3E5F5' };
+  if (category === 'mail') return { name: 'mail', color: colors.scrap, bg: colors.blue };
+  if (category === 'system') return { name: 'notifications', color: colors.alert, bg: colors.red };
   switch (type) {
     case 'like':
-      return { name: 'heart', color: '#FF6B6B', bg: '#FFE5E5' };
+      return { name: 'heart', color: colors.alert, bg: colors.red };
     case 'comment':
     case 'reply':
-      return { name: 'chatbubble', color: '#4CAF50', bg: '#E8F5E9' };
+      return { name: 'chatbubble', color: colors.primary, bg: colors.lightgreen };
     case 'mention':
-      return { name: 'at', color: '#2196F3', bg: '#E3F2FD' };
+      return { name: 'at', color: colors.subcolor, bg: colors.blue };
     default:
-      return { name: 'notifications-outline', color: '#4CAF50', bg: '#E8F5E9' };
+      return { name: 'notifications', color: colors.scrap, bg: colors.yellow };
   }
 };
 
@@ -640,6 +639,8 @@ const NotificationScreen = ({ navigation }) => {
         style={[styles.scrollView, getDebugBorderStyle('#5856D6')]}
         data={filteredNotifications}
         keyExtractor={(item) => String(item.id)}
+        refreshing={loading && !loadingMore}
+        onRefresh={() => fetchNotifications(1, false)}
         renderItem={({ item: notification }) => {
           const isTapped = tappedIds[notification.id];
           const isUnreadFromServer = !notification.isRead;
@@ -649,6 +650,10 @@ const NotificationScreen = ({ navigation }) => {
           const isExpanded = Boolean(expandedSummaryById[notification.id]);
           // 서버 기준으로 아직 안 읽은 알림 + 실제로 눌러서 확인하지 않은 것만 연한 초록 배경 + 점 표시
           const showUnreadStyle = isUnreadFromServer && !isTapped;
+          const hidePreviewText =
+            notification.category === 'mail' ||
+            notification.type === 'comment' ||
+            notification.type === 'reply';
           return (
             <TouchableOpacity
               style={[
@@ -662,7 +667,6 @@ const NotificationScreen = ({ navigation }) => {
               <View
                 style={[
                   styles.iconContainer,
-                  { backgroundColor: notification.iconBg },
                 ]}
               >
                 <Ionicons
@@ -674,9 +678,11 @@ const NotificationScreen = ({ navigation }) => {
 
               <View style={[styles.notificationContent, getDebugBorderStyle('#5AC8FA')]}>
                 <Text style={styles.notificationTitle}>{notification.title}</Text>
-                <Text style={styles.notificationText} numberOfLines={2}>
-                  {notification.content}
-                </Text>
+                {!hidePreviewText ? (
+                  <Text style={styles.notificationText} numberOfLines={2}>
+                    {notification.content}
+                  </Text>
+                ) : null}
                 <Text style={styles.notificationTime}>{notification.time}</Text>
                 {canExpandWatchers && isExpanded ? (
                   <ScrollView
@@ -759,7 +765,6 @@ const NotificationScreen = ({ navigation }) => {
         onEndReachedThreshold={0.4}
         contentContainerStyle={[
           styles.contentContainer,
-          { paddingTop: subheaderMailListBodyTopAfterTabRow(normalize) },
           filteredNotifications.length === 0 && { flex: 1 },
           getDebugBorderStyle('#FFD60A'),
         ]}

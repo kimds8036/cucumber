@@ -34,6 +34,7 @@ export const createNotificationStyles = (normalize) =>
     },
     tabContainer: {
       backgroundColor: colors.background,
+      paddingVertical: normalize(4),
     },
     tabContent: {
       paddingHorizontal: normalize(16),
@@ -100,17 +101,13 @@ export const createNotificationStyles = (normalize) =>
     notificationItem: {
       backgroundColor: colors.background,
       flexDirection: 'row',
-      padding: normalize(16),
-      borderBottomWidth: StyleSheet.hairlineWidth,
-      borderBottomColor: colors.textLight10,
+      padding: normalize(18),
       alignItems: 'flex-start',
     },
     notificationItemUnread: {
       backgroundColor: colors.primaryLight10,
     },
     iconContainer: {
-      width: normalize(48),
-      height: normalize(48),
       borderRadius: normalize(24),
       alignItems: 'center',
       justifyContent: 'center',
@@ -120,7 +117,7 @@ export const createNotificationStyles = (normalize) =>
       flex: 1,
     },
     notificationTitle: {
-      fontSize: normalize(fontSizes.xxl - 1),
+      fontSize: normalize(fontSizes.xl),
       fontFamily: fonts.bold,
       color: colors.textPrimary,
       marginBottom: normalize(4),
@@ -130,7 +127,6 @@ export const createNotificationStyles = (normalize) =>
       fontFamily: fonts.regular,
       color: colors.textSecondary,
       lineHeight: normalize(20),
-      marginBottom: normalize(4),
     },
     notificationTime: {
       fontSize: normalize(fontSizes.lg),
@@ -221,7 +217,7 @@ export const createNotificationStyles = (normalize) =>
       size: normalize(64),
     },
     notificationIcon: {
-      size: normalize(24),
+      size: normalize(22),
     },
     summaryWatcherProfileIcon: {
       width: normalize(12),
