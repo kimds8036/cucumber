@@ -1,6 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import {
-  ActivityIndicator,
   Platform,
   StyleSheet,
   Text,
@@ -19,6 +18,7 @@ import {
 import { colors, fonts } from '../../../../styles/colors';
 import MessageTabIcon from '../../../../assets/Logo.svg';
 import { getFriendIconColorByIndex } from '../../../../components/timerFriendModals';
+import Skeleton from '../../../../components/common/Skeleton';
 
 export default function DMChatScreen({ navigation, route }) {
   const roomId = route?.params?.roomId;
@@ -162,7 +162,31 @@ export default function DMChatScreen({ navigation, route }) {
   if (!showJsxChat) {
     return (
       <View style={dmStyles.nativeLaunchPlaceholder}>
-        <ActivityIndicator size="large" color={colors.primary} />
+        <View style={dmStyles.skelHeader}>
+          <View style={dmStyles.skelHeaderIdentity}>
+            <Skeleton width={34} height={34} borderRadius={17} />
+            <View style={{ gap: 6 }}>
+              <Skeleton width={92} height={12} borderRadius={6} />
+              <Skeleton width={66} height={10} borderRadius={5} />
+            </View>
+          </View>
+        </View>
+        <View style={dmStyles.skelBody}>
+          <View style={dmStyles.skelRowLeft}>
+            <Skeleton width={34} height={34} borderRadius={17} />
+            <Skeleton width="50%" height={14} borderRadius={7} />
+          </View>
+          <View style={dmStyles.skelRowRight}>
+            <Skeleton width="58%" height={14} borderRadius={7} />
+          </View>
+          <View style={dmStyles.skelRowLeft}>
+            <Skeleton width={34} height={34} borderRadius={17} />
+            <Skeleton width="44%" height={14} borderRadius={7} />
+          </View>
+        </View>
+        <View style={dmStyles.skelInputRow}>
+          <Skeleton width="100%" height={44} borderRadius={22} />
+        </View>
       </View>
     );
   }
@@ -189,8 +213,38 @@ export default function DMChatScreen({ navigation, route }) {
 const dmStyles = StyleSheet.create({
   nativeLaunchPlaceholder: {
     flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
     backgroundColor: colors.background,
+  },
+  skelHeader: {
+    paddingHorizontal: 16,
+    paddingTop: 12,
+    paddingBottom: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.textLight10,
+  },
+  skelHeaderIdentity: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  skelBody: {
+    flex: 1,
+    paddingHorizontal: 16,
+    paddingTop: 18,
+    gap: 14,
+  },
+  skelRowLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  skelRowRight: {
+    alignItems: 'flex-end',
+  },
+  skelInputRow: {
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    borderTopWidth: 1,
+    borderTopColor: colors.textLight10,
   },
 });

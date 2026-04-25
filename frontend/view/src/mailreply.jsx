@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { View, Text, ScrollView, TextInput, Modal, TouchableOpacity, useWindowDimensions, Alert } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
@@ -7,6 +7,7 @@ import { colors } from '../../styles/colors';
 import { getNormalize } from '../../styles/frame.style';
 import { createMailStyles } from '../../styles/mail.style';
 import { api } from '../../utils/api';
+import Skeleton from '../../components/common/Skeleton';
 
 export default function MailReplyScreen({ navigation, route }) {
   const { width, height } = useWindowDimensions();
@@ -28,6 +29,12 @@ export default function MailReplyScreen({ navigation, route }) {
   const [previewExpanded, setPreviewExpanded] = useState(false);
   const [subHeaderHeight, setSubHeaderHeight] = useState(0);
   const [bottomHeight, setBottomHeight] = useState(0);
+  const [screenReady, setScreenReady] = useState(false);
+
+  useEffect(() => {
+    const timer = setTimeout(() => setScreenReady(true), 220);
+    return () => clearTimeout(timer);
+  }, []);
 
   const handleReplyTextChange = (text) => {
     if (text.length > 50) {
@@ -83,6 +90,19 @@ export default function MailReplyScreen({ navigation, route }) {
 
   if (!mailId) {
     return null;
+  }
+
+  if (!screenReady) {
+    return (
+      <SafeAreaView style={styles.modalFullSafe} edges={['top', 'bottom']}>
+        <View style={{ paddingHorizontal: normalize(16), paddingTop: normalize(16) }}>
+          <Skeleton width={normalize(110)} height={normalize(20)} borderRadius={normalize(8)} style={{ marginBottom: normalize(12) }} />
+          <Skeleton width="100%" height={normalize(190)} borderRadius={normalize(14)} style={{ marginBottom: normalize(12) }} />
+          <Skeleton width="100%" height={normalize(220)} borderRadius={normalize(14)} style={{ marginBottom: normalize(14) }} />
+          <Skeleton width="100%" height={normalize(50)} borderRadius={normalize(14)} />
+        </View>
+      </SafeAreaView>
+    );
   }
 
   return (

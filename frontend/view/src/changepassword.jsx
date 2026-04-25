@@ -1,13 +1,20 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, TextInput, Alert, ScrollView, KeyboardAvoidingView, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { colors } from '../../styles/colors';
+import Skeleton from '../../components/common/Skeleton';
 
 const ChangePassword = ({ navigation }) => {
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [screenReady, setScreenReady] = useState(false);
+
+  useEffect(() => {
+    const timer = setTimeout(() => setScreenReady(true), 220);
+    return () => clearTimeout(timer);
+  }, []);
 
   const handleChangePassword = () => {
     if (!currentPassword || !newPassword || !confirmPassword) {
@@ -31,6 +38,27 @@ const ChangePassword = ({ navigation }) => {
       [{ text: '확인', onPress: () => navigation.goBack() }]
     );
   };
+
+  if (!screenReady) {
+    return (
+      <SafeAreaView style={styles.container} edges={['top']}>
+        <View style={styles.header}>
+          <Skeleton width={24} height={24} borderRadius={12} />
+          <Skeleton width={120} height={18} borderRadius={8} />
+          <View style={{ width: 24 }} />
+        </View>
+        <View style={styles.content}>
+          {[0, 1, 2].map((idx) => (
+            <View key={`change-pw-skel-${idx}`} style={styles.inputGroup}>
+              <Skeleton width={110} height={12} borderRadius={6} style={{ marginBottom: 8 }} />
+              <Skeleton width="100%" height={46} borderRadius={8} />
+            </View>
+          ))}
+          <Skeleton width="100%" height={48} borderRadius={8} style={{ marginTop: 8 }} />
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>

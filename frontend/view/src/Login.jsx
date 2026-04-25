@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import { View, Text, TextInput, TouchableOpacity, useWindowDimensions, ScrollView, KeyboardAvoidingView, Platform, Keyboard, TouchableWithoutFeedback, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { createLoginStyles } from '../../styles/login.style';
@@ -7,6 +7,7 @@ import { Ionicons } from '@expo/vector-icons';
 import LogoIcon from '../../assets/Logo.svg';
 import { api, setAuthToken } from '../../utils/api';
 import { useAuth } from '../../context/AuthContext';
+import Skeleton from '../../components/common/Skeleton';
 
 /** --no-dev 등에서도 원인 파악용(Alert 본문) */
 function buildLoginFailureMessage(error) {
@@ -48,9 +49,32 @@ const Login = ({ navigation }) => {
   const [id, setId] = useState('');
   const [password, setPassword] = useState('');
   const [rememberMe, setRememberMe] = useState(false);
+  const [screenReady, setScreenReady] = useState(false);
 
   const styles = useMemo(() => createLoginStyles(width, normalize), [width]);
   const debugLogin = (...args) => console.log('[LoginDebug]', ...args);
+
+  useEffect(() => {
+    const timer = setTimeout(() => setScreenReady(true), 250);
+    return () => clearTimeout(timer);
+  }, []);
+
+  if (!screenReady) {
+    return (
+      <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
+        <View style={{ flex: 1, justifyContent: 'center', paddingHorizontal: normalize(24) }}>
+          <View style={{ alignItems: 'center', marginBottom: normalize(28) }}>
+            <Skeleton width={normalize(120)} height={normalize(120)} borderRadius={normalize(60)} />
+            <Skeleton width={normalize(130)} height={normalize(22)} borderRadius={normalize(8)} style={{ marginTop: normalize(14) }} />
+          </View>
+          <Skeleton width="100%" height={normalize(50)} borderRadius={normalize(20)} style={{ marginBottom: normalize(12) }} />
+          <Skeleton width="100%" height={normalize(50)} borderRadius={normalize(20)} style={{ marginBottom: normalize(12) }} />
+          <Skeleton width={normalize(92)} height={normalize(16)} borderRadius={normalize(8)} style={{ marginBottom: normalize(24) }} />
+          <Skeleton width="95%" height={normalize(50)} borderRadius={normalize(20)} />
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>

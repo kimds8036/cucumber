@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   Alert,
   KeyboardAvoidingView,
@@ -15,6 +15,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { colors } from '../../styles/colors';
 import { createFindStyles } from '../../styles/find.style';
 import { api } from '../../utils/api';
+import Skeleton from '../../components/common/Skeleton';
 
 const PWfind = ({ navigation }) => {
   const { width } = useWindowDimensions();
@@ -29,6 +30,12 @@ const PWfind = ({ navigation }) => {
   const [step, setStep] = useState(1);
   const [verifiedUser, setVerifiedUser] = useState(null);
   const [checkingUser, setCheckingUser] = useState(false);
+  const [screenReady, setScreenReady] = useState(false);
+
+  useEffect(() => {
+    const timer = setTimeout(() => setScreenReady(true), 220);
+    return () => clearTimeout(timer);
+  }, []);
 
   const canCheckUser = name.trim().length > 0 && username.trim().length > 0;
   const canResetPassword = newPassword.length > 0 && newPasswordConfirm.length > 0;
@@ -73,6 +80,31 @@ const PWfind = ({ navigation }) => {
     Alert.alert('완료', '비밀번호가 변경되었습니다.');
     navigation.goBack();
   };
+
+  if (!screenReady) {
+    return (
+      <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
+        <View style={styles.headerSection}>
+          <View style={styles.headerTop}>
+            <Skeleton width={normalize(24)} height={normalize(24)} borderRadius={normalize(12)} />
+            <Skeleton width={normalize(96)} height={normalize(18)} borderRadius={normalize(8)} />
+          </View>
+          <Skeleton width="72%" height={normalize(14)} borderRadius={normalize(6)} style={{ marginTop: normalize(10) }} />
+        </View>
+        <View style={styles.contentSection}>
+          {[0, 1].map((idx) => (
+            <View key={`pwfind-skel-${idx}`} style={{ marginBottom: normalize(18) }}>
+              <Skeleton width={normalize(70)} height={normalize(12)} borderRadius={normalize(6)} style={{ marginBottom: normalize(8) }} />
+              <Skeleton width="100%" height={normalize(48)} borderRadius={normalize(12)} />
+            </View>
+          ))}
+        </View>
+        <View style={styles.footerSection}>
+          <Skeleton width="100%" height={normalize(50)} borderRadius={normalize(14)} />
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={styles.container} edges={['top', 'bottom']}>

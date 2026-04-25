@@ -13,6 +13,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import SubHeader from '../frame/subHeader';
 import { colors } from '../../styles/colors';
+import Skeleton from '../../components/common/Skeleton';
 const AddTimetable = ({ navigation, route }) => {
   // MyPage에서 전달받은 기존 시간표와 저장 함수
   const { existingTimetable, onSave } = route.params || {};
@@ -22,6 +23,7 @@ const AddTimetable = ({ navigation, route }) => {
   const [modalVisible, setModalVisible] = useState(false);
   const [className, setClassName] = useState('');
   const [timetable, setTimetable] = useState(existingTimetable || {});
+  const [screenReady, setScreenReady] = useState(false);
 
   const days = ['월', '화', '수', '목', '금'];
   const periods = [1, 2, 3, 4, 5, 6, 7];
@@ -30,6 +32,11 @@ const AddTimetable = ({ navigation, route }) => {
     // 캐시-only 모드: MyPage에서 전달된 시간표를 편집
     setTimetable(existingTimetable || {});
   }, [existingTimetable]);
+
+  useEffect(() => {
+    const timer = setTimeout(() => setScreenReady(true), 220);
+    return () => clearTimeout(timer);
+  }, []);
 
   const handleCellPress = (day, period) => {
     setSelectedDay(day);
@@ -106,6 +113,20 @@ const AddTimetable = ({ navigation, route }) => {
     const key = `${day}-${period}`;
     return timetable[key] || '';
   };
+
+  if (!screenReady) {
+    return (
+      <View style={{ flex: 1, backgroundColor: styles.container.backgroundColor }}>
+        <SafeAreaView style={styles.container} edges={['top']}>
+          <View style={{ padding: 16 }}>
+            <Skeleton width={120} height={18} borderRadius={8} style={{ marginBottom: 16 }} />
+            <Skeleton width="100%" height={320} borderRadius={12} style={{ marginBottom: 12 }} />
+            <Skeleton width="100%" height={52} borderRadius={8} />
+          </View>
+        </SafeAreaView>
+      </View>
+    );
+  }
 
   return (
     <View

@@ -32,7 +32,7 @@ class ChatRoomViewController: UIViewController {
     private let toastView = UIView()
     private let toastLabel = UILabel()
     private let loadingOverlay = UIView()
-    private let loadingIndicator = UIActivityIndicatorView(style: .large)
+    private let loadingSkeleton = UIView()
     private var pollingTimer: Timer?
     private var pollingInterval: TimeInterval = 5.0
 
@@ -121,8 +121,10 @@ class ChatRoomViewController: UIViewController {
         loadingOverlay.backgroundColor = ChatTheme.Color.background
         loadingOverlay.isHidden = true
         loadingOverlay.alpha = 0
-        loadingIndicator.translatesAutoresizingMaskIntoConstraints = false
-        loadingIndicator.color = ChatTheme.Color.primary
+        loadingSkeleton.translatesAutoresizingMaskIntoConstraints = false
+        loadingSkeleton.backgroundColor = ChatTheme.Color.textLight10
+        loadingSkeleton.layer.cornerRadius = ChatTheme.s(14)
+        loadingSkeleton.layer.masksToBounds = true
 
         view.addSubview(headerView)
         view.addSubview(postCardView)
@@ -136,7 +138,7 @@ class ChatRoomViewController: UIViewController {
         replyPreviewView.addSubview(replyPreviewContentLabel)
         replyPreviewView.addSubview(replyCloseButton)
         toastView.addSubview(toastLabel)
-        loadingOverlay.addSubview(loadingIndicator)
+        loadingOverlay.addSubview(loadingSkeleton)
 
         postCardHeightConstraint = postCardView.heightAnchor.constraint(equalToConstant: 0)
         inputBottomConstraint = inputContainerView.bottomAnchor.constraint(equalTo: view.safeAreaLayoutGuide.bottomAnchor)
@@ -190,8 +192,10 @@ class ChatRoomViewController: UIViewController {
             loadingOverlay.leadingAnchor.constraint(equalTo: view.leadingAnchor),
             loadingOverlay.trailingAnchor.constraint(equalTo: view.trailingAnchor),
             loadingOverlay.bottomAnchor.constraint(equalTo: view.bottomAnchor),
-            loadingIndicator.centerXAnchor.constraint(equalTo: loadingOverlay.centerXAnchor),
-            loadingIndicator.centerYAnchor.constraint(equalTo: loadingOverlay.centerYAnchor),
+            loadingSkeleton.centerXAnchor.constraint(equalTo: loadingOverlay.centerXAnchor),
+            loadingSkeleton.centerYAnchor.constraint(equalTo: loadingOverlay.centerYAnchor),
+            loadingSkeleton.widthAnchor.constraint(equalToConstant: ChatTheme.s(28)),
+            loadingSkeleton.heightAnchor.constraint(equalToConstant: ChatTheme.s(28)),
         ])
 
         tableView.delegate = self
@@ -406,14 +410,29 @@ class ChatRoomViewController: UIViewController {
     private func setLoadingOverlayVisible(_ visible: Bool) {
         if visible {
             loadingOverlay.isHidden = false
-            loadingIndicator.startAnimating()
+            startLoadingSkeletonAnimation()
             UIView.animate(withDuration: 0.15) { self.loadingOverlay.alpha = 1 }
         } else {
             UIView.animate(withDuration: 0.15, animations: { self.loadingOverlay.alpha = 0 }) { _ in
-                self.loadingIndicator.stopAnimating()
+                self.stopLoadingSkeletonAnimation()
                 self.loadingOverlay.isHidden = true
             }
         }
+    }
+
+    private func startLoadingSkeletonAnimation() {
+        if loadingSkeleton.layer.animation(forKey: "skeletonOpacity") != nil { return }
+        let anim = CABasicAnimation(keyPath: "opacity")
+        anim.fromValue = 0.5
+        anim.toValue = 0.9
+        anim.duration = 0.65
+        anim.autoreverses = true
+        anim.repeatCount = .infinity
+        loadingSkeleton.layer.add(anim, forKey: "skeletonOpacity")
+    }
+
+    private func stopLoadingSkeletonAnimation() {
+        loadingSkeleton.layer.removeAnimation(forKey: "skeletonOpacity")
     }
 
     private func startPolling(interval: TimeInterval) {

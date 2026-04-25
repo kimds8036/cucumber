@@ -9,6 +9,7 @@ import { colors, fontSizes } from '../../styles/colors';
 import { getNormalize } from '../../styles/frame.style';
 import { createOurSchoolStyles } from '../../styles/school.style';
 import StudyGrassMap from '../../components/studygrassmap';
+import Skeleton from '../../components/common/Skeleton';
 
 const OurSchoolScreen = ({ navigation }) => {
   const SCHOOL_CACHE_KEY = '@our_school_screen_cache_v1';
@@ -235,6 +236,25 @@ const OurSchoolScreen = ({ navigation }) => {
     );
     return `${weekdayLabels[date.getDay()]}`;
   };
+
+  const showInitialSkeleton =
+    loading &&
+    !schoolInfo.name &&
+    popularPosts.length === 0 &&
+    nextMeals.length === 0 &&
+    grassDays.length === 0;
+
+  if (showInitialSkeleton) {
+    return (
+      <View style={styles.container}>
+        <View style={{ paddingHorizontal: normalize(16), paddingTop: normalize(12) }}>
+          <Skeleton width="100%" height={normalize(130)} borderRadius={normalize(14)} style={{ marginBottom: normalize(12) }} />
+          <Skeleton width="100%" height={normalize(180)} borderRadius={normalize(14)} style={{ marginBottom: normalize(12) }} />
+          <Skeleton width="100%" height={normalize(140)} borderRadius={normalize(14)} />
+        </View>
+      </View>
+    );
+  }
 
   return (
     <View style={styles.container}>

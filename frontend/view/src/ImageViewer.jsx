@@ -1,6 +1,7 @@
-import React, { useEffect, useMemo, useRef } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Modal, View, TouchableOpacity, Text, Animated } from 'react-native';
 import { Image } from 'expo-image';
+import Skeleton from '../../components/common/Skeleton';
 
 const clamp = (v, min, max) => Math.min(max, Math.max(min, v));
 
@@ -9,6 +10,7 @@ export default function ImageViewer({ visible, uri, onClose }) {
   const scaleRef = useRef(1);
   const initialDistanceRef = useRef(null);
   const initialScaleRef = useRef(1);
+  const [imageReady, setImageReady] = useState(false);
 
   const reset = () => {
     initialDistanceRef.current = null;
@@ -18,7 +20,10 @@ export default function ImageViewer({ visible, uri, onClose }) {
   };
 
   useEffect(() => {
-    if (visible) reset();
+    if (visible) {
+      reset();
+      setImageReady(false);
+    }
   }, [visible]);
 
   const getDistance = (t1, t2) => {
@@ -82,10 +87,20 @@ export default function ImageViewer({ visible, uri, onClose }) {
           onTouchMove={handleTouchMove}
         >
           <Animated.View style={{ width: '100%', height: '100%', transform: [{ scale }] }}>
+            {!imageReady ? (
+              <View style={{ width: '100%', height: '100%', justifyContent: 'center', alignItems: 'center' }}>
+                <Skeleton width="86%" height="86%" borderRadius={16} />
+              </View>
+            ) : null}
             <Image
               source={{ uri: viewerUri }}
-              style={{ width: '100%', height: '100%' }}
+              style={{
+                width: '100%',
+                height: '100%',
+                opacity: imageReady ? 1 : 0,
+              }}
               contentFit="contain"
+              onLoadEnd={() => setImageReady(true)}
             />
           </Animated.View>
         </View>

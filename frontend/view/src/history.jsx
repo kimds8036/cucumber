@@ -6,7 +6,7 @@ import { getNormalize } from '../../styles/frame.style';
 import { createMailStyles } from '../../styles/mail.style';
 import { api } from '../../utils/api';
 import { colors } from '../../styles/colors';
-import Loading from '../../components/Loading';
+import Skeleton from '../../components/common/Skeleton';
 import {
   counterpartyDisplayNameForCurrentUser,
   replyToMySentFromThread,
@@ -221,8 +221,23 @@ export default function MailHistoryScreen({ navigation, route }) {
         }
       >
         {loading && (
-          <View style={{ paddingVertical: normalize(24), alignItems: 'center' }}>
-            <Loading />
+          <View style={{ paddingVertical: normalize(10), alignItems: 'stretch' }}>
+            {[0, 1, 2].map((idx) => (
+              <View key={`history-skel-${idx}`} style={styles.historyRow}>
+                <View style={styles.historyCard}>
+                  <View style={styles.historyCardInner}>
+                    <View style={styles.historyCardMain}>
+                      <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: normalize(8) }}>
+                        <Skeleton width={normalize(70)} height={normalize(12)} borderRadius={normalize(6)} />
+                        <Skeleton width={normalize(54)} height={normalize(11)} borderRadius={normalize(6)} />
+                      </View>
+                      <Skeleton width="100%" height={normalize(13)} borderRadius={normalize(6)} style={{ marginBottom: normalize(6) }} />
+                      <Skeleton width="82%" height={normalize(13)} borderRadius={normalize(6)} />
+                    </View>
+                  </View>
+                </View>
+              </View>
+            ))}
           </View>
         )}
         {!loading && !!error && (

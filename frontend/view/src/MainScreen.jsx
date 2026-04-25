@@ -9,12 +9,14 @@ import { TimerContent } from './timer';
 import { colors } from '../../styles/colors';
 import MyPage from './mypage';
 import OurSchoolScreen from './ourschoolscreen';
+import Skeleton from '../../components/common/Skeleton';
 
 
 const MAIN_TABS = new Set(['board', 'message', 'school', 'timer', 'mypage']);
 
 const MainScreen = ({ navigation, route }) => {
   const [activeTab, setActiveTab] = useState('board'); // 'board' | 'message' | 'school' | 'timer' | 'mypage'
+  const [screenReady, setScreenReady] = useState(false);
 
   useEffect(() => {
     const requestedTab = route?.params?.initialTab;
@@ -22,6 +24,11 @@ const MainScreen = ({ navigation, route }) => {
     setActiveTab(requestedTab);
     navigation.setParams({ initialTab: undefined });
   }, [route?.params?.initialTab, navigation]);
+
+  useEffect(() => {
+    const timer = setTimeout(() => setScreenReady(true), 180);
+    return () => clearTimeout(timer);
+  }, []);
 
   const renderContent = () => {
     switch (activeTab) {
@@ -43,7 +50,31 @@ const MainScreen = ({ navigation, route }) => {
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }} edges={['top', 'bottom']}>
       <MainHeader activeTab={activeTab} navigation={navigation} />
-      <View style={{ flex: 1, backgroundColor: colors.background }}>{renderContent()}</View>
+      <View style={{ flex: 1, backgroundColor: colors.background }}>
+        {screenReady ? (
+          renderContent()
+        ) : (
+          <View style={{ flex: 1, paddingHorizontal: 16, paddingTop: 16 }}>
+            {[0, 1, 2].map((idx) => (
+              <View
+                key={`main-skeleton-${idx}`}
+                style={{
+                  backgroundColor: colors.background,
+                  borderRadius: 12,
+                  padding: 14,
+                  borderWidth: 1,
+                  borderColor: colors.textLight10,
+                  marginBottom: 12,
+                }}
+              >
+                <Skeleton width="55%" height={14} borderRadius={7} style={{ marginBottom: 10 }} />
+                <Skeleton width="100%" height={12} borderRadius={6} style={{ marginBottom: 8 }} />
+                <Skeleton width="85%" height={12} borderRadius={6} />
+              </View>
+            ))}
+          </View>
+        )}
+      </View>
       <MainFooter activeTab={activeTab} onTabPress={(tab) => setActiveTab(tab)} />
     </SafeAreaView>
   );

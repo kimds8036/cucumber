@@ -1,6 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
-  ActivityIndicator,
   Image,
   Text,
   TouchableOpacity,
@@ -10,6 +9,7 @@ import { Ionicons } from '@expo/vector-icons';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { api } from '../../../../utils/api';
 import { colors, fonts } from '../../../../styles/colors';
+import Skeleton from '../../../../components/common/Skeleton';
 
 const postCache = {};
 
@@ -70,7 +70,7 @@ function PostCardSkeleton({ n, onLayout }) {
             alignItems: 'center',
           }}
         >
-          <ActivityIndicator size="small" color={colors.textSecondary} />
+          <Skeleton width={14} height={14} borderRadius={7} />
         </View>
       </View>
       {bar('100%', n(12), n(6))}

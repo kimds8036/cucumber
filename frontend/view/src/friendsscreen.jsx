@@ -22,6 +22,7 @@ import { getNormalize } from '../../styles/frame.style';
 import {
   getProfileInnerColor,
 } from '../../utils/profileIconColor';
+import Skeleton from '../../components/common/Skeleton';
 
 // ── 컴포넌트 ─────────────────────────────────────────
 const FriendsScreen = ({ navigation }) => {
@@ -33,6 +34,7 @@ const FriendsScreen = ({ navigation }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedFriend, setSelectedFriend] = useState(null); // 바텀시트 대상
   const [modalVisible, setModalVisible] = useState(false);
+  const [isInitialLoading, setIsInitialLoading] = useState(true);
   const { refreshFriendRequestBadge } = useFriend();
 
   // 화면 포커스 시 친구 요청 뱃지 갱신 (빨간점 해제 반영)
@@ -108,6 +110,8 @@ const FriendsScreen = ({ navigation }) => {
         );
       } catch (error) {
         console.error('친구/요청 목록 조회 실패:', error);
+      } finally {
+        setIsInitialLoading(false);
       }
     };
 
@@ -260,6 +264,42 @@ const FriendsScreen = ({ navigation }) => {
         contentContainerStyle={styles.mainScrollContent}
         showsVerticalScrollIndicator={false}
       >
+        {isInitialLoading ? (
+          <>
+            <View style={styles.requestsSection}>
+              <View style={styles.requestsHeader}>
+                <Skeleton width={normalize(64)} height={normalize(14)} borderRadius={normalize(6)} />
+                <Skeleton width={normalize(34)} height={normalize(12)} borderRadius={normalize(6)} />
+              </View>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.requestsScroll}>
+                {[0, 1, 2].map((idx) => (
+                  <View key={`friend-req-skel-${idx}`} style={styles.requestCard}>
+                    <Skeleton width={normalize(40)} height={normalize(40)} borderRadius={normalize(20)} style={{ marginBottom: normalize(8) }} />
+                    <Skeleton width={normalize(56)} height={normalize(12)} borderRadius={normalize(6)} style={{ marginBottom: normalize(6) }} />
+                    <Skeleton width={normalize(62)} height={normalize(11)} borderRadius={normalize(6)} style={{ marginBottom: normalize(10) }} />
+                    <View style={styles.reqButtons}>
+                      <Skeleton width={normalize(44)} height={normalize(24)} borderRadius={normalize(12)} />
+                      <Skeleton width={normalize(44)} height={normalize(24)} borderRadius={normalize(12)} />
+                    </View>
+                  </View>
+                ))}
+              </ScrollView>
+            </View>
+
+            <Text style={styles.listSectionTitle}>친구 목록</Text>
+            {[0, 1, 2, 3].map((idx) => (
+              <View key={`friend-row-skel-${idx}`} style={styles.friendRow}>
+                <Skeleton width={normalize(35)} height={normalize(35)} borderRadius={normalize(18)} />
+                <View style={[styles.friendInfo, { gap: normalize(6) }]}>
+                  <Skeleton width={normalize(90)} height={normalize(12)} borderRadius={normalize(6)} />
+                  <Skeleton width={normalize(120)} height={normalize(11)} borderRadius={normalize(6)} />
+                </View>
+                <Skeleton width={normalize(24)} height={normalize(24)} borderRadius={normalize(12)} />
+              </View>
+            ))}
+          </>
+        ) : (
+        <>
         {/* 친구 요청 (검색바 ↔ 친구목록 사이) */}
         {friendRequests.length > 0 && (
           <View style={styles.requestsSection}>
@@ -354,6 +394,8 @@ const FriendsScreen = ({ navigation }) => {
               </TouchableOpacity>
             </View>
           ))
+        )}
+        </>
         )}
       </ScrollView>
 

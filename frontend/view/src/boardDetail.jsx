@@ -26,9 +26,11 @@ import { createDetailStyles, getNormalize } from '../../styles/board.style';
 import { api } from '../../utils/api';
 import { normalizeTagsFromApi } from '../../utils/normalizePostTags';
 import { invalidateProfileCountsCache } from '../../utils/profileCountsCache';
+import { emitBoardPostLike, emitBoardPostScrap } from '../../utils/listSyncEvents';
 import { useNotification } from '../../context/NotificationContext';
 import { useLocationContext } from '../../context/LocationContext';
 import ImageViewer from './ImageViewer';
+import Skeleton from '../../components/common/Skeleton';
 
 /** 서버 created_at(UTC)을 "n분 전" 형식으로 변환. 화면에서는 기기 로컬 시간 기준으로 계산 */
 function formatTimeAgo(createdAt) {
@@ -90,7 +92,7 @@ function CommentBody({ content, styles }) {
 
 export default function BoardDetail({ navigation, route }) {
   const { coords } = useLocationContext();
-  const { width } = useWindowDimensions();
+  const { width, height } = useWindowDimensions();
   const normalize = useMemo(() => getNormalize(width), [width]);
   const styles = useMemo(() => createDetailStyles(width, normalize), [width, normalize]);
 
@@ -161,6 +163,7 @@ export default function BoardDetail({ navigation, route }) {
   const refreshHasUnreadRef = useRef(refreshHasUnread);
   const [viewerUri, setViewerUri] = useState(null);
   const [imageRatios, setImageRatios] = useState({});
+  const [loadingDetail, setLoadingDetail] = useState(true);
 
   useEffect(() => {
     refreshHasUnreadRef.current = refreshHasUnread;
@@ -180,6 +183,7 @@ export default function BoardDetail({ navigation, route }) {
     if (postId == null || postId === '') return;
 
     const fetchPostAndComments = async () => {
+      setLoadingDetail(true);
       try {
         const detailParams = {};
         if (coords) {
@@ -193,6 +197,32 @@ export default function BoardDetail({ navigation, route }) {
           const imageUrls = Array.isArray(data.images)
             ? data.images.filter((u) => typeof u === 'string')
             : [];
+          // 스켈레톤 해제 전에 이미지 비율까지 선계산해서 첫 렌더를 안정화
+          const ratioEntries = await Promise.all(
+            imageUrls.map(
+              (uri) =>
+                new Promise((resolve) => {
+                  Image.getSize(
+                    uri,
+                    (w, h) => {
+                      if (!w || !h) {
+                        resolve([uri, null]);
+                        return;
+                      }
+                      resolve([uri, w / h]);
+                    },
+                    () => resolve([uri, null]),
+                  );
+                }),
+            ),
+          );
+          const preloadedRatios = ratioEntries.reduce((acc, [uri, ratio]) => {
+            if (typeof ratio === 'number' && Number.isFinite(ratio) && ratio > 0) {
+              acc[uri] = ratio;
+            }
+            return acc;
+          }, {});
+          setImageRatios(preloadedRatios);
           setPost({
             id: data.id,
             author: data.isMine ? '작성자' : '익명',
@@ -275,6 +305,8 @@ export default function BoardDetail({ navigation, route }) {
           '오류',
           error.response?.data?.message || '게시글을 불러오는 중 오류가 발생했습니다.'
         );
+      } finally {
+        setLoadingDetail(false);
       }
     };
 
@@ -916,6 +948,43 @@ export default function BoardDetail({ navigation, route }) {
               keyboardDismissMode="on-drag"
             >
               {/* 게시글 내용 */}
+              {loadingDetail ? (
+                <View style={styles.contentSection}>
+                  <View style={styles.detailHeader}>
+                    <View style={{ flex: 1 }}>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: normalize(8) }}>
+                        <Skeleton width={normalize(56)} height={normalize(12)} borderRadius={normalize(6)} />
+                        <View style={{ width: normalize(8) }} />
+                        <Skeleton width={normalize(44)} height={normalize(12)} borderRadius={normalize(6)} />
+                      </View>
+                    </View>
+                  </View>
+                  <Skeleton width="100%" height={normalize(14)} borderRadius={normalize(6)} style={{ marginBottom: normalize(6) }} />
+                  <Skeleton width="92%" height={normalize(14)} borderRadius={normalize(6)} style={{ marginBottom: normalize(6) }} />
+                  <Skeleton width="78%" height={normalize(14)} borderRadius={normalize(6)} style={{ marginBottom: normalize(10) }} />
+                  <Skeleton
+                    width="100%"
+                    height={Math.round(height * 0.23)}
+                    borderRadius={normalize(10)}
+                    style={{ marginBottom: normalize(10) }}
+                  />
+                  <View style={{ flexDirection: 'row', gap: normalize(6), marginBottom: normalize(10) }}>
+                    <Skeleton width={normalize(44)} height={normalize(16)} borderRadius={normalize(8)} />
+                    <Skeleton width={normalize(40)} height={normalize(16)} borderRadius={normalize(8)} />
+                    <Skeleton width={normalize(48)} height={normalize(16)} borderRadius={normalize(8)} />
+                  </View>
+                  <View style={styles.detailFooter}>
+                    <View style={styles.detailStats}>
+                      {[0, 1, 2].map((idx) => (
+                        <View key={`detail-stat-skel-${idx}`} style={styles.detailStatItem}>
+                          <Skeleton width={normalize(14)} height={normalize(14)} borderRadius={normalize(7)} />
+                          <Skeleton width={normalize(20)} height={normalize(12)} borderRadius={normalize(6)} />
+                        </View>
+                      ))}
+                    </View>
+                  </View>
+                </View>
+              ) : (
               <View style={styles.contentSection}>
                 <View style={styles.detailHeader}>
                   <View style={[styles.detailAuthorRow, { flex: 1, minWidth: 0 }]}>
@@ -1073,7 +1142,11 @@ export default function BoardDetail({ navigation, route }) {
                       <Text style={styles.detailStatText}>{post.likes}</Text>
                     </TouchableOpacity>
                     <View style={styles.detailStatItem}>
-                      <Ionicons name="chatbubble-outline" size={normalize(15)} color={colors.primary} />
+                      <Ionicons
+                        name="chatbubble-outline"
+                        size={normalize(15)}
+                        color={colors.primary}
+                      />
                       <Text style={styles.detailStatText}>{post.comments}</Text>
                     </View>
                     <TouchableOpacity
@@ -1101,40 +1174,57 @@ export default function BoardDetail({ navigation, route }) {
                   </View>
                 </View>
               </View>
+              )}
               {/* 광고 영역 */}
-              <View style={styles.adSection}>
-                <Text style={styles.adSectionText}>광고</Text>
-              </View>
+              {loadingDetail ? null : (
+                <View style={styles.adSection}>
+                  <Text style={styles.adSectionText}>광고</Text>
+                </View>
+              )}
 
               {/* 댓글: 최상위는 전부 노출, 각 댓글의 대댓글만 3개 제한 후 더보기 */}
-              <View style={styles.commentSection}>
-                {visibleComments.map((c) => renderCommentTree(c))}
-              </View>
+              {loadingDetail ? (
+                <View style={styles.commentSection}>
+                  {[0, 1, 2].map((idx) => (
+                    <View key={`detail-comment-skel-${idx}`} style={{ marginBottom: normalize(14) }}>
+                      <Skeleton width={normalize(62)} height={normalize(12)} borderRadius={normalize(6)} style={{ marginBottom: normalize(6) }} />
+                      <Skeleton width="100%" height={normalize(13)} borderRadius={normalize(6)} style={{ marginBottom: normalize(5) }} />
+                      <Skeleton width="74%" height={normalize(13)} borderRadius={normalize(6)} />
+                    </View>
+                  ))}
+                </View>
+              ) : (
+                <View style={styles.commentSection}>
+                  {visibleComments.map((c) => renderCommentTree(c))}
+                </View>
+              )}
             </ScrollView>
 
             {/* 하단 댓글 입력: Chat과 동일한 래퍼(키보드 높이는 전역 Animated로 올라감) */}
-            <View
-              style={{
-                backgroundColor: colors.background,
-                paddingBottom: Math.max(insets.bottom, normalize(12)),
-              }}
-            >
-              <CommentInput
-                bottomInputRef={bottomInputRef}
-                bottomComment={bottomComment}
-                setBottomComment={setBottomComment}
-                selectedImages={commentImages}
-                onImagesChange={setCommentImages}
-                showImageAttach={false}
-                replyToCommentId={replyToCommentId}
-                replyToAuthorLabel={replyToAuthorLabel}
-                clearReplyTarget={clearReplyTarget}
-                handleSendComment={handleSendComment}
-                isSendingComment={isSendingComment}
-                styles={styles}
-                normalize={normalize}
-              />
-            </View>
+            {loadingDetail ? null : (
+              <View
+                style={{
+                  backgroundColor: colors.background,
+                  paddingBottom: Math.max(insets.bottom, normalize(12)),
+                }}
+              >
+                <CommentInput
+                  bottomInputRef={bottomInputRef}
+                  bottomComment={bottomComment}
+                  setBottomComment={setBottomComment}
+                  selectedImages={commentImages}
+                  onImagesChange={setCommentImages}
+                  showImageAttach={false}
+                  replyToCommentId={replyToCommentId}
+                  replyToAuthorLabel={replyToAuthorLabel}
+                  clearReplyTarget={clearReplyTarget}
+                  handleSendComment={handleSendComment}
+                  isSendingComment={isSendingComment}
+                  styles={styles}
+                  normalize={normalize}
+                />
+              </View>
+            )}
           </View>
         </View>
 

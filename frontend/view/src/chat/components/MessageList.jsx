@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, View } from 'react-native';
+import { View } from 'react-native';
 import { FlashList } from '@shopify/flash-list';
+import Skeleton from '../../../../components/common/Skeleton';
 import { CHAT_LIST_SPINNER_DELAY_MS } from '../constants/chatConfig';
 import MessageItem from './MessageItem';
 import DateBanner from './DateBanner';
@@ -118,7 +119,7 @@ export default function MessageList({
                 alignItems: 'center',
               }}
             >
-              <ActivityIndicator size="small" />
+              <Skeleton width={14} height={14} borderRadius={7} />
             </View>
           ) : null
         }

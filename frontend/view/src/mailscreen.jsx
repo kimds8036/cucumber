@@ -10,7 +10,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Octicons from '@expo/vector-icons/Octicons';
 import SubHeader from '../frame/subHeader';
-import Loading from '../../components/Loading';
+import Skeleton from '../../components/common/Skeleton';
 import { colors, PROFILE_COLORS } from '../../styles/colors';
 import { getNormalize } from '../../styles/frame.style';
 import { createMailStyles } from '../../styles/mail.style';
@@ -236,8 +236,16 @@ function MailInbox({ onOpen, onBack, navigation }) {
   if (isInitialLoading && loading) {
     return (
       <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
-        <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
-          <Loading />
+        <View style={{ flex: 1, paddingHorizontal: normalize(14), paddingTop: normalize(10) }}>
+          {[0, 1, 2].map((idx) => (
+            <View key={`mail-list-skel-${idx}`} style={styles.mailCard}>
+              <View style={styles.mailCardHeader}>
+                <Skeleton width={normalize(66)} height={normalize(12)} borderRadius={normalize(6)} />
+                <Skeleton width={normalize(48)} height={normalize(11)} borderRadius={normalize(6)} />
+              </View>
+              <Skeleton width="92%" height={normalize(14)} borderRadius={normalize(6)} />
+            </View>
+          ))}
         </View>
       </SafeAreaView>
     );
@@ -295,7 +303,7 @@ function MailInbox({ onOpen, onBack, navigation }) {
       >
         {loading && (
           <View style={styles.inboxStateWrapper}>
-            <Loading />
+            <Skeleton width={normalize(18)} height={normalize(18)} borderRadius={normalize(9)} />
           </View>
         )}
         {!loading && !!error && (
@@ -567,8 +575,17 @@ function MailDetail({ mail: initialMail, onBack, navigation }) {
           }
         />
         <View style={styles.detailRoot}>
-          <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
-            <Loading />
+          <View style={{ flex: 1, paddingHorizontal: normalize(16), paddingTop: normalize(16) }}>
+            <View style={[styles.detailLetterCard, { minHeight: singleCardMinHeight }]}>
+              <Skeleton width={normalize(84)} height={normalize(12)} borderRadius={normalize(6)} style={{ marginBottom: normalize(8) }} />
+              <Skeleton width="100%" height={normalize(14)} borderRadius={normalize(6)} style={{ marginBottom: normalize(6) }} />
+              <Skeleton width="92%" height={normalize(14)} borderRadius={normalize(6)} style={{ marginBottom: normalize(6) }} />
+              <Skeleton width="74%" height={normalize(14)} borderRadius={normalize(6)} style={{ marginBottom: normalize(12) }} />
+              <View style={{ flexDirection: 'row', gap: normalize(12) }}>
+                <Skeleton width={normalize(30)} height={normalize(12)} borderRadius={normalize(6)} />
+                <Skeleton width={normalize(30)} height={normalize(12)} borderRadius={normalize(6)} />
+              </View>
+            </View>
           </View>
         </View>
       </SafeAreaView>

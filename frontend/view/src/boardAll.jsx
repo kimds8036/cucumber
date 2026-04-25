@@ -9,7 +9,6 @@ import {
   Alert,
   Share,
   FlatList,
-  ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -21,6 +20,7 @@ import FontAwesome5 from '@expo/vector-icons/FontAwesome5';
 import { api } from '../../utils/api';
 import { normalizeTagsFromApi } from '../../utils/normalizePostTags';
 import BoardPostCard from '../../components/Boardpostcard';
+import Skeleton from '../../components/common/Skeleton';
 import { useLocationContext } from '../../context/LocationContext';
 import { invalidateProfileCountsCache } from '../../utils/profileCountsCache';
 import { useFocusEffect } from '@react-navigation/native';
@@ -386,7 +386,11 @@ export function BoardAllContent({ navigation, posts }) {
           ListFooterComponent={
             loadingMore && hasMore ? (
               <View style={{ paddingVertical: normalize(16), alignItems: 'center' }}>
-                <ActivityIndicator size="small" color={colors.primary} />
+                <Skeleton
+                  width={normalize(16)}
+                  height={normalize(16)}
+                  borderRadius={normalize(8)}
+                />
               </View>
             ) : null
           }
@@ -402,22 +406,27 @@ export function BoardAllContent({ navigation, posts }) {
               top: 0,
               bottom: 0,
               backgroundColor: colors.background,
-              alignItems: 'center',
-              justifyContent: 'center',
+              paddingHorizontal: width * 0.04,
+              paddingTop: normalize(8),
               zIndex: 2,
             }}
           >
-            <ActivityIndicator size="large" color={colors.primary} />
-            <Text
-              style={{
-                marginTop: normalize(12),
-                fontFamily: fonts.regular,
-                color: colors.textSecondary,
-                fontSize: normalize(14),
-              }}
-            >
-              불러오는 중...
-            </Text>
+            {[0, 1, 2, 3].map((idx) => (
+              <View key={`board-list-skel-${idx}`} style={styles.postItem}>
+                <View style={{ flexDirection: 'row', marginBottom: normalize(8) }}>
+                  <Skeleton width={normalize(52)} height={normalize(12)} borderRadius={normalize(6)} />
+                  <View style={{ width: normalize(8) }} />
+                  <Skeleton width={normalize(44)} height={normalize(12)} borderRadius={normalize(6)} />
+                </View>
+                <Skeleton width="100%" height={normalize(14)} borderRadius={normalize(6)} style={{ marginBottom: normalize(6) }} />
+                <Skeleton width="86%" height={normalize(14)} borderRadius={normalize(6)} style={{ marginBottom: normalize(10) }} />
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: normalize(12) }}>
+                  <Skeleton width={normalize(26)} height={normalize(12)} borderRadius={normalize(6)} />
+                  <Skeleton width={normalize(26)} height={normalize(12)} borderRadius={normalize(6)} />
+                  <Skeleton width={normalize(26)} height={normalize(12)} borderRadius={normalize(6)} />
+                </View>
+              </View>
+            ))}
           </View>
         ) : null}
       </View>
