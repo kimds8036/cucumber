@@ -2,11 +2,13 @@ import express from 'express';
 import pool from '../config/database.js';
 import { authenticate, optionalAuthenticate } from '../middleware/auth.js';
 import { createNotification } from '../utils/notifications.js';
-import { getNowForDB } from '../utils/dateUtils.js';
+import {
+  getKstThreeDaysThroughToday235959UtcForSql,
+  getKstYesterday0000ThroughToday235959UtcForSql,
+  getNowForDB,
+} from '../utils/dateUtils.js';
 import { cloudinary, upload } from '../config/cloudinary.js';
 import { haversineKm, sqlHaversineKmLessOrEqual } from '../utils/geo.js';
-import { getBatchRedis } from '../services/batchRedis.service.js';
-
 const router = express.Router();
 
 /** message_images 조회(messages.js)와 동일 패턴 — JSON_ARRAYAGG / mysql2 반환 타입을 string[] 로 통일 */
@@ -31,31 +33,119 @@ function normalizePostImagesFromRow(raw) {
   return [];
 }
 
-function toPostIdFromMember(member) {
-  if (typeof member !== 'string') return null;
-  const value = member.startsWith('post:') ? member.slice(5) : member;
-  const n = Number(value);
-  return Number.isInteger(n) && n > 0 ? n : null;
+/** 좋아요/댓글/스크랩 **발생 시각**이 [start, end] 안에 드는 행을 게시물별로 집계 (전국) */
+const SQL_ENGAGED_EVENTS_NATIONAL = `
+(SELECT pl.post_id AS post_id FROM post_likes pl
+  INNER JOIN posts p ON p.id = pl.post_id AND p.board_type = 'national' AND p.is_deleted = FALSE
+  WHERE pl.created_at >= ? AND pl.created_at <= ?)
+UNION ALL
+(SELECT c.post_id FROM comments c
+  INNER JOIN posts p ON p.id = c.post_id AND p.board_type = 'national' AND p.is_deleted = FALSE
+  WHERE (c.is_deleted = FALSE OR c.is_deleted IS NULL)
+    AND c.created_at >= ? AND c.created_at <= ?)
+UNION ALL
+(SELECT ps.post_id FROM post_scraps ps
+  INNER JOIN posts p ON p.id = ps.post_id AND p.board_type = 'national' AND p.is_deleted = FALSE
+  WHERE ps.created_at >= ? AND ps.created_at <= ?)`;
+
+/** 학교 게시물 한정, 동일 집계 */
+const SQL_ENGAGED_EVENTS_SCHOOL = `
+(SELECT pl.post_id AS post_id FROM post_likes pl
+  INNER JOIN posts p ON p.id = pl.post_id
+    AND p.board_type = 'school' AND p.school_id = ? AND p.is_deleted = FALSE
+  WHERE pl.created_at >= ? AND pl.created_at <= ?)
+UNION ALL
+(SELECT c.post_id FROM comments c
+  INNER JOIN posts p ON p.id = c.post_id
+    AND p.board_type = 'school' AND p.school_id = ? AND p.is_deleted = FALSE
+  WHERE (c.is_deleted = FALSE OR c.is_deleted IS NULL)
+    AND c.created_at >= ? AND c.created_at <= ?)
+UNION ALL
+(SELECT ps.post_id FROM post_scraps ps
+  INNER JOIN posts p ON p.id = ps.post_id
+    AND p.board_type = 'school' AND p.school_id = ? AND p.is_deleted = FALSE
+  WHERE ps.created_at >= ? AND ps.created_at <= ?)`;
+
+function engagementWindowParams6(start, end) {
+  return [start, end, start, end, start, end];
 }
 
-async function getPopularPostIdsFromCache({ boardType, schoolId, offsetNum, limitNum }) {
-  if (boardType === 'national') return null;
+function schoolEngagementParams(schoolId, start, end) {
+  return [
+    schoolId,
+    start,
+    end,
+    schoolId,
+    start,
+    end,
+    schoolId,
+    start,
+    end,
+  ];
+}
 
-  let key = 'trending:posts:national';
-  if (schoolId) {
-    key = `trending:posts:school:${schoolId}`;
-  } else if (boardType === 'school') {
-    return null;
-  }
-
-  const redis = await getBatchRedis();
-  const [members, total] = await Promise.all([
-    redis.zrevrange(key, offsetNum, offsetNum + limitNum - 1),
-    redis.zcard(key),
-  ]);
-
-  const ids = members.map(toPostIdFromMember).filter((id) => id != null);
-  return { ids, total: Number(total || 0) };
+/**
+ * @param {import('mysql2/promise').Pool} pool
+ * @param {number[]} postIds
+ * @param {string} whereAndSql conditions.join (without "WHERE")
+ * @param {unknown[]} whereParams params for whereAndSql
+ */
+async function loadPostsRowsByIdOrder(
+  pool,
+  postIds,
+  likeScrapUserId,
+  whereAndSql,
+  whereParams
+) {
+  if (postIds.length === 0) return [];
+  const placeholders = postIds.map(() => '?').join(', ');
+  const orderByField = postIds.map(() => '?').join(', ');
+  const popularParams = [
+    likeScrapUserId,
+    likeScrapUserId,
+    ...postIds,
+    ...whereParams,
+    ...postIds,
+  ];
+  const [rows] = await pool.execute(
+    `SELECT
+      p.id,
+      p.user_id,
+      p.board_type,
+      p.school_id,
+      p.content,
+      p.latitude,
+      p.longitude,
+      p.like_count,
+      p.comment_count,
+      p.created_at,
+      u.name as author_name,
+      u.color_id,
+      s.name as school_name,
+      (SELECT pi1.cloudinary_url
+         FROM post_images pi1
+        WHERE pi1.post_id = p.id AND pi1.deleted_at IS NULL
+        ORDER BY pi1.display_order ASC
+        LIMIT 1) AS thumbnail,
+      (SELECT COUNT(*) FROM post_likes pl
+        WHERE pl.post_id = p.id AND pl.user_id = ?) AS is_liked,
+      (SELECT COUNT(*) FROM post_scraps ps
+        WHERE ps.post_id = p.id AND ps.user_id = ?) AS is_scrapped,
+      (SELECT COUNT(*) FROM post_scraps ps_cnt
+        WHERE ps_cnt.post_id = p.id) AS scrap_count,
+      (SELECT JSON_ARRAYAGG(JSON_OBJECT('id', t.id, 'name', t.name))
+         FROM post_tags pt
+         INNER JOIN tags t ON pt.tag_id = t.id
+        WHERE pt.post_id = p.id) AS tags
+    FROM posts p
+    LEFT JOIN users u ON p.user_id = u.id
+    LEFT JOIN schools s ON p.school_id = s.school_id
+    WHERE p.id IN (${placeholders}) AND p.is_deleted = FALSE
+      AND (${whereAndSql})
+    ORDER BY FIELD(p.id, ${orderByField})`,
+    popularParams
+  );
+  return rows;
 }
 
 // 해시태그 자동완성용 검색 API
@@ -191,83 +281,108 @@ router.get('/', optionalAuthenticate, async (req, res) => {
     // 게시글 조회 (삭제되지 않은 것만) — 로그인 시 내 좋아요/스크랩 여부
     const listParams = [likeScrapUserId, likeScrapUserId, ...params];
 
-    const canUsePopularCache =
-      sort === 'popular' && !search && boardType !== 'national' && sort !== 'nearby';
-
     let posts = [];
     let total = 0;
+    let usedEngagementPopular = false;
 
-    if (canUsePopularCache) {
-      try {
-        const cached = await getPopularPostIdsFromCache({
-          boardType,
-          schoolId,
-          offsetNum,
-          limitNum,
-        });
-
-        if (cached && cached.ids.length > 0) {
-          const placeholders = cached.ids.map(() => '?').join(', ');
-          const orderByField = cached.ids.map(() => '?').join(', ');
-          const popularParams = [
-            likeScrapUserId,
-            likeScrapUserId,
-            ...cached.ids,
-            ...params,
-            ...cached.ids,
-          ];
-
-          const [popularRows] = await pool.execute(
-            `SELECT
-              p.id,
-              p.user_id,
-              p.board_type,
-              p.school_id,
-              p.content,
-              p.latitude,
-              p.longitude,
-              p.like_count,
-              p.comment_count,
-              p.created_at,
-              u.name as author_name,
-              u.color_id,
-              s.name as school_name,
-              (SELECT pi1.cloudinary_url
-                 FROM post_images pi1
-                WHERE pi1.post_id = p.id AND pi1.deleted_at IS NULL
-                ORDER BY pi1.display_order ASC
-                LIMIT 1) AS thumbnail,
-              (SELECT COUNT(*) FROM post_likes pl
-                WHERE pl.post_id = p.id AND pl.user_id = ?) AS is_liked,
-              (SELECT COUNT(*) FROM post_scraps ps
-                WHERE ps.post_id = p.id AND ps.user_id = ?) AS is_scrapped,
-              (SELECT COUNT(*) FROM post_scraps ps_cnt
-                WHERE ps_cnt.post_id = p.id) AS scrap_count,
-              (SELECT JSON_ARRAYAGG(JSON_OBJECT('id', t.id, 'name', t.name))
-                 FROM post_tags pt
-                 INNER JOIN tags t ON pt.tag_id = t.id
-                WHERE pt.post_id = p.id) AS tags
-            FROM posts p
-            LEFT JOIN users u ON p.user_id = u.id
-            LEFT JOIN schools s ON p.school_id = s.school_id
-            WHERE p.id IN (${placeholders}) AND p.is_deleted = FALSE
-              AND (${conditions.length > 0 ? conditions.join(' AND ') : '1=1'})
-            ORDER BY FIELD(p.id, ${orderByField})`,
-            popularParams
-          );
-
-          posts = popularRows;
-          total = cached.total;
-        } else if (cached) {
+    {
+      const whereAnd = conditions.length > 0 ? conditions.join(' AND ') : '1=1';
+      if (
+        sort === 'popular' &&
+        !search &&
+        boardType === 'school' &&
+        schoolId
+      ) {
+        usedEngagementPopular = true;
+        const { start, end } = getKstYesterday0000ThroughToday235959UtcForSql();
+        const sParams = schoolEngagementParams(schoolId, start, end);
+        const [countRow] = await pool.execute(
+          `SELECT COUNT(*) AS c FROM (
+            SELECT u.post_id FROM (${SQL_ENGAGED_EVENTS_SCHOOL}) u
+            GROUP BY u.post_id
+          ) t`,
+          sParams
+        );
+        const distinctWithActivity = Number(countRow[0]?.c ?? 0);
+        const listTotal = Math.min(5, distinctWithActivity);
+        if (listTotal === 0 || offsetNum >= listTotal) {
           posts = [];
-          total = cached.total;
+          total = listTotal;
+        } else {
+          const [ranked] = await pool.execute(
+            `SELECT p.id, p.created_at, g.eng
+             FROM (
+               SELECT u.post_id, COUNT(*) AS eng
+               FROM (${SQL_ENGAGED_EVENTS_SCHOOL}) u
+               GROUP BY u.post_id
+             ) g
+             INNER JOIN posts p ON p.id = g.post_id
+             ORDER BY g.eng DESC, p.created_at DESC
+             LIMIT 5`,
+            sParams
+          );
+          const sortedByDate = [...ranked].sort(
+            (a, b) => new Date(b.created_at) - new Date(a.created_at)
+          );
+          const paged = sortedByDate.slice(offsetNum, offsetNum + limitNum);
+          const postIds = paged.map((r) => r.id);
+          posts = await loadPostsRowsByIdOrder(
+            pool,
+            postIds,
+            likeScrapUserId,
+            whereAnd,
+            params
+          );
+          total = listTotal;
         }
-      } catch (cacheError) {
-        console.error('[GET /api/posts] popular cache 조회 실패, DB 폴백:', cacheError.message);
+      } else if (sort === 'popular' && !search && boardType === 'national') {
+        usedEngagementPopular = true;
+        const { start, end } = getKstThreeDaysThroughToday235959UtcForSql();
+        const w6 = engagementWindowParams6(start, end);
+        const [countRow] = await pool.execute(
+          `SELECT COUNT(*) AS c FROM (
+            SELECT u.post_id
+            FROM (${SQL_ENGAGED_EVENTS_NATIONAL}) u
+            GROUP BY u.post_id
+            HAVING COUNT(*) > 5
+          ) t`,
+          w6
+        );
+        const eligible = Number(countRow[0]?.c ?? 0);
+        if (eligible === 0) {
+          posts = [];
+          total = 0;
+        } else {
+          // prepared statement + LIMIT ? / OFFSET ? 는 MySQL 1210(ER_WRONG_ARGUMENTS)로 실패하는 경우가 있어 정수만 삽입
+          const safeLimit = Math.max(1, Math.min(100, Number(limitNum) || 20));
+          const safeOffset = Math.max(0, Number(offsetNum) || 0);
+          const [idRows] = await pool.execute(
+            `SELECT p.id
+             FROM (
+               SELECT u.post_id, COUNT(*) AS eng
+               FROM (${SQL_ENGAGED_EVENTS_NATIONAL}) u
+               GROUP BY u.post_id
+               HAVING COUNT(*) > 5
+             ) g
+             INNER JOIN posts p ON p.id = g.post_id
+             ORDER BY g.eng DESC, p.created_at DESC
+             LIMIT ${safeLimit} OFFSET ${safeOffset}`,
+            w6
+          );
+          const postIds = idRows.map((r) => r.id);
+          posts = await loadPostsRowsByIdOrder(
+            pool,
+            postIds,
+            likeScrapUserId,
+            whereAnd,
+            params
+          );
+          total = eligible;
+        }
       }
     }
 
-    if (posts.length === 0 && total === 0) {
+    if (posts.length === 0 && total === 0 && !usedEngagementPopular) {
       const [dbRows] = await pool.execute(
         `SELECT
         p.id, 
