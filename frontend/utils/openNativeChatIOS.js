@@ -12,6 +12,9 @@ export async function openNativeChatIOS({
   chatChannel = 'messages',
   myUserId = '',
 } = {}) {
+  console.log('[NativeChat][iOS] open called', { roomId, chatChannel });
+  console.log('[NativeChat][iOS] CucumberNativeChat exists?', !!NativeModules?.CucumberNativeChat);
+  console.log('[NativeChat][iOS] CucumberNativeChat has open?', !!CucumberNativeChat?.open);
   if (Platform.OS !== 'ios') return false;
   if (!roomId || !CucumberNativeChat?.open) return false;
 
@@ -35,8 +38,10 @@ export async function openNativeChatIOS({
       chatChannel: String(chatChannel ?? ''),
       myUserId: myUserId != null && myUserId !== '' ? String(myUserId) : '',
     });
+    console.log('[NativeChat][iOS] open success', { roomId, chatChannel });
     return true;
-  } catch {
+  } catch (error) {
+    console.log('[NativeChat][iOS] open failed', { roomId, chatChannel, error: String(error) });
     return false;
   }
 }

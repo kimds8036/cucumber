@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   View,
   Text,
@@ -10,10 +10,19 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { colors, fonts, fontSizes } from '../../styles/colors';
+import Skeleton from '../../components/common/Skeleton';
 
 /** 글쓰기 화면용 커뮤니티 가이드 (SignStepPrivacyPolicy 약관 모달과 동일 레이아웃·여백) */
 const BoardCommunityGuideModal = ({ visible, normalize, onClose }) => {
   const s = makeStyles(normalize);
+  const [ready, setReady] = useState(false);
+
+  useEffect(() => {
+    if (!visible) return undefined;
+    setReady(false);
+    const timer = setTimeout(() => setReady(true), 180);
+    return () => clearTimeout(timer);
+  }, [visible]);
 
   const Para = ({ children }) => (
     <Text style={s.para}>{children}</Text>
@@ -75,6 +84,20 @@ const BoardCommunityGuideModal = ({ visible, normalize, onClose }) => {
           </View>
         </View>
         <View style={s.headerDivider} />
+        {!ready ? (
+          <View style={[s.scrollContent, { flex: 1 }]}>
+            <Skeleton width="45%" height={normalize(20)} borderRadius={normalize(8)} style={{ marginBottom: normalize(10) }} />
+            {[0, 1, 2, 3, 4, 5].map((idx) => (
+              <Skeleton
+                key={`guide-skel-${idx}`}
+                width="100%"
+                height={normalize(idx % 2 === 0 ? 16 : 52)}
+                borderRadius={normalize(8)}
+                style={{ marginBottom: normalize(8) }}
+              />
+            ))}
+          </View>
+        ) : (
         <ScrollView
           style={s.scroll}
           contentContainerStyle={s.scrollContent}
@@ -281,6 +304,7 @@ const BoardCommunityGuideModal = ({ visible, normalize, onClose }) => {
             ※ 본 규정은 서비스 운영 방침에 따라 사전 예고 없이 변경될 수 있습니다.
           </Para>
         </ScrollView>
+        )}
       </SafeAreaView>
     </Modal>
   );

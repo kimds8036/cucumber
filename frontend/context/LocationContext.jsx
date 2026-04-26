@@ -7,7 +7,6 @@ import React, {
   useState,
 } from 'react';
 import {
-  ActivityIndicator,
   Linking,
   Platform,
   Text,
@@ -17,6 +16,7 @@ import {
 import * as Location from 'expo-location';
 import { useAuth } from './AuthContext';
 import { colors, fonts } from '../styles/colors';
+import Skeleton from '../components/common/Skeleton';
 
 const LocationContext = createContext(null);
 
@@ -120,7 +120,7 @@ export function LocationGate({ children }) {
           backgroundColor: colors.background,
         }}
       >
-        <ActivityIndicator size="large" color={colors.primary} />
+        <Skeleton width={28} height={28} borderRadius={14} />
         <Text
           style={{
             marginTop: 16,

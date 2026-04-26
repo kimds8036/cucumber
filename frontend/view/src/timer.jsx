@@ -36,6 +36,7 @@ import MessageTabIcon from '../../assets/Logo.svg';
 import ViewShot from 'react-native-view-shot';
 import * as MediaLibrary from 'expo-media-library';
 import { api } from '../../utils/api';
+import Skeleton from '../../components/common/Skeleton';
 import {
   getTimerDayKey,
   saveDayToDb,
@@ -1820,6 +1821,57 @@ export const TimerContent = () => {
   // - 헤더/푸터는 Timer 래퍼에서 담당
   // - 여기서는 타이머 본문(친구 바 + 타이머 + 투두 + 타임테이블 + 모달)만 렌더링
   // - LiveElapsedTicker: 1초 tick이 FriendStoryBar(메모)까지 전파되지 않게 격리
+  if (!initialLoadDone) {
+    return (
+      <ScrollView
+        style={styles.scroll}
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+      >
+        <View style={styles.friendStoryRow}>
+          <View style={styles.friendStoryScroll}>
+            {[0, 1, 2, 3].map((idx) => (
+              <View key={`timer-friend-skel-${idx}`} style={styles.friendStoryCircleWrap}>
+                <Skeleton width={normalize(56)} height={normalize(56)} borderRadius={normalize(28)} />
+                <Skeleton width={normalize(44)} height={normalize(11)} borderRadius={normalize(6)} style={{ marginTop: normalize(4) }} />
+              </View>
+            ))}
+          </View>
+        </View>
+
+        <View style={styles.timerCard}>
+          <Skeleton width={normalize(180)} height={normalize(30)} borderRadius={normalize(10)} style={{ alignSelf: 'center', marginBottom: normalize(10) }} />
+          <Skeleton width={normalize(92)} height={normalize(12)} borderRadius={normalize(6)} style={{ alignSelf: 'center', marginBottom: normalize(16) }} />
+          <Skeleton width={normalize(140)} height={normalize(40)} borderRadius={normalize(20)} style={{ alignSelf: 'center' }} />
+        </View>
+
+        <View style={styles.todoTimetableRow}>
+          <View style={styles.todoColumn}>
+            <Skeleton width={normalize(80)} height={normalize(13)} borderRadius={normalize(6)} style={{ marginBottom: normalize(10) }} />
+            {[0, 1, 2].map((idx) => (
+              <View key={`timer-task-skel-${idx}`} style={{ flexDirection: 'row', alignItems: 'center', marginBottom: normalize(10), gap: normalize(8) }}>
+                <Skeleton width={normalize(22)} height={normalize(22)} borderRadius={normalize(4)} />
+                <Skeleton width="70%" height={normalize(13)} borderRadius={normalize(6)} />
+              </View>
+            ))}
+          </View>
+          <View style={styles.timetableColumn}>
+            <Skeleton width={normalize(80)} height={normalize(13)} borderRadius={normalize(6)} style={{ marginBottom: normalize(10) }} />
+            {[0, 1, 2, 3].map((idx) => (
+              <Skeleton
+                key={`timer-table-skel-${idx}`}
+                width="100%"
+                height={normalize(42)}
+                borderRadius={normalize(10)}
+                style={{ marginBottom: normalize(8) }}
+              />
+            ))}
+          </View>
+        </View>
+      </ScrollView>
+    );
+  }
+
   return (
     <>
       <LiveElapsedTicker isRunning={isRunning} startTimestamp={startTimestamp}>

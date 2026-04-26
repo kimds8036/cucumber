@@ -30,17 +30,30 @@ import { useFriendSocketEvents } from '../hooks/useFriendSocketEvents';
 import { useNavigation } from '@react-navigation/native';
 import { api } from '../utils/api';
 import { useToast } from '../context/ToastContext';
-import { PROFILE_INNER_COLORS, getProfileInnerColor } from '../utils/profileIconColor';
+import {
+  PROFILE_INNER_COLORS,
+  getProfileInnerColor,
+} from '../utils/profileIconColor';
 
 // ── 상수 ────────────────────────────────────────────────
 export const FRIEND_ICON_COLORS = PROFILE_INNER_COLORS;
 export const getFriendIconColorByIndex = (i) => getProfileInnerColor(i);
+const DEBUG_FRIEND_STORY_BORDER = false;
+const debugFriendStoryBorder = (color) =>
+  DEBUG_FRIEND_STORY_BORDER ? { borderWidth: 1, borderColor: color } : null;
 
 // 백엔드 친구 목록과 연동하므로 더미 데이터는 사용하지 않는다.
 export const INITIAL_FRIENDS = [];
 
 // ── 쿡 찌르기 팝업 ──────────────────────────────────────
-export const PokeModal = ({ visible, friend, onClose, onPoke, onNotifyLater, onMessage }) => {
+export const PokeModal = ({
+  visible,
+  friend,
+  onClose,
+  onPoke,
+  onNotifyLater,
+  onMessage,
+}) => {
   const shakeAnim = useRef(new Animated.Value(0)).current;
   const { width } = useWindowDimensions();
   const normalize = useMemo(() => getNormalize(width), [width]);
@@ -49,11 +62,35 @@ export const PokeModal = ({ visible, friend, onClose, onPoke, onNotifyLater, onM
   useEffect(() => {
     if (visible && friend) {
       Animated.sequence([
-        Animated.timing(shakeAnim, { toValue:  8, duration: 60, useNativeDriver: true, easing: Easing.linear }),
-        Animated.timing(shakeAnim, { toValue: -8, duration: 60, useNativeDriver: true, easing: Easing.linear }),
-        Animated.timing(shakeAnim, { toValue:  6, duration: 60, useNativeDriver: true, easing: Easing.linear }),
-        Animated.timing(shakeAnim, { toValue: -6, duration: 60, useNativeDriver: true, easing: Easing.linear }),
-        Animated.timing(shakeAnim, { toValue:  0, duration: 60, useNativeDriver: true }),
+        Animated.timing(shakeAnim, {
+          toValue: 8,
+          duration: 60,
+          useNativeDriver: true,
+          easing: Easing.linear,
+        }),
+        Animated.timing(shakeAnim, {
+          toValue: -8,
+          duration: 60,
+          useNativeDriver: true,
+          easing: Easing.linear,
+        }),
+        Animated.timing(shakeAnim, {
+          toValue: 6,
+          duration: 60,
+          useNativeDriver: true,
+          easing: Easing.linear,
+        }),
+        Animated.timing(shakeAnim, {
+          toValue: -6,
+          duration: 60,
+          useNativeDriver: true,
+          easing: Easing.linear,
+        }),
+        Animated.timing(shakeAnim, {
+          toValue: 0,
+          duration: 60,
+          useNativeDriver: true,
+        }),
       ]).start();
     }
   }, [visible, friend]);
@@ -63,19 +100,28 @@ export const PokeModal = ({ visible, friend, onClose, onPoke, onNotifyLater, onM
 
   return (
     <Modal transparent animationType="fade" onRequestClose={onClose}>
-      <TouchableOpacity style={s.pokeOverlay} onPress={onClose} activeOpacity={1} />
+      <TouchableOpacity
+        style={s.pokeOverlay}
+        onPress={onClose}
+        activeOpacity={1}
+      />
       <View style={s.pokeWrapper}>
-        <Animated.View style={[s.pokePopup, { transform: [{ translateX: shakeAnim }] }]}>
+        <Animated.View
+          style={[s.pokePopup, { transform: [{ translateX: shakeAnim }] }]}
+        >
           <View style={s.pokeHandle} />
 
           {/* 친구 정보 */}
           <View style={s.pokeFriendRow}>
             <View style={s.pokeAvatar}>
               <ProfileIcon
-                width={normalize(24)}
-                height={normalize(24)}
+                width={normalize(45)}
+                height={normalize(45)}
                 color={getProfileInnerColor(
-                  friend.colorId ?? friend.profileColorId ?? friend.profile_color_id ?? friend.colorIndex,
+                  friend.colorId ??
+                    friend.profileColorId ??
+                    friend.profile_color_id ??
+                    friend.colorIndex,
                 )}
               />
               {isStudying && <View style={s.pokeStudyingBadge} />}
@@ -83,7 +129,7 @@ export const PokeModal = ({ visible, friend, onClose, onPoke, onNotifyLater, onM
             <View>
               <Text style={s.pokeFriendName}>{friend.name}</Text>
               <Text style={s.pokeStatusText}>
-                {isStudying ? '공부 중' : '공부 안 하는 중'}
+                {isStudying ? '공부 중' : '쉬는 중'}
               </Text>
             </View>
           </View>
@@ -97,23 +143,35 @@ export const PokeModal = ({ visible, friend, onClose, onPoke, onNotifyLater, onM
                 <Text style={s.pokeInfoEmoji}>🤫</Text>
                 <View>
                   <Text style={s.pokeInfoTitle}>쉿, 공부 중이에요</Text>
-                  <Text style={s.pokeInfoDesc}>공부가 끝나면 알려달라고 요청할 수 있어요.</Text>
+                  <Text style={s.pokeInfoDesc}>
+                    공부가 끝나면 알려달라고 요청할 수 있어요.
+                  </Text>
                 </View>
               </View>
-              <TouchableOpacity style={s.pokePrimaryBtn} onPress={onNotifyLater} activeOpacity={0.8}>
+              <TouchableOpacity
+                style={s.pokePrimaryBtn}
+                onPress={onNotifyLater}
+                activeOpacity={0.8}
+              >
                 <Text style={s.pokePrimaryBtnText}>🔔 공부 끝나면 알려줘!</Text>
               </TouchableOpacity>
             </>
           ) : (
             <>
               <View style={s.pokeInfoBox}>
-                <Text style={s.pokeInfoEmoji}>👉</Text>
+                <Text style={s.pokeInfoEmoji}>👉 </Text>
                 <View>
                   <Text style={s.pokeInfoTitle}>쿡 찌르기</Text>
-                  <Text style={s.pokeInfoDesc}>친구에게 공부하자고 알림을 보낼 수 있어요.</Text>
+                  <Text style={s.pokeInfoDesc}>
+                    친구에게 공부하자고 알림을 보낼 수 있어요.
+                  </Text>
                 </View>
               </View>
-              <TouchableOpacity style={s.pokePrimaryBtn} onPress={onPoke} activeOpacity={0.8}>
+              <TouchableOpacity
+                style={s.pokePrimaryBtn}
+                onPress={onPoke}
+                activeOpacity={0.8}
+              >
                 <Text style={s.pokePrimaryBtnText}>👉 공부하자!</Text>
               </TouchableOpacity>
             </>
@@ -331,61 +389,79 @@ export const FriendStoryBar = memo(function FriendStoryBar({
 }) {
   const orderedFriends = useMemo(() => {
     const activeFriends = friends.filter((f) => studyingFriends[f.id] === true);
-    const inactiveFriends = friends.filter((f) => studyingFriends[f.id] !== true);
-    const shuffledInactive = [...inactiveFriends];
-    for (let i = shuffledInactive.length - 1; i > 0; i -= 1) {
-      const j = Math.floor(Math.random() * (i + 1));
-      [shuffledInactive[i], shuffledInactive[j]] = [shuffledInactive[j], shuffledInactive[i]];
-    }
-    return [...activeFriends, ...shuffledInactive];
+    const inactiveFriends = friends.filter(
+      (f) => studyingFriends[f.id] !== true,
+    );
+    // 비활성 친구 순서는 고정(원본 배열 순서 유지), 공부 중 친구만 앞쪽 배치
+    return [...activeFriends, ...inactiveFriends];
   }, [friends, studyingFriends]);
 
   return (
-    <View style={styles.friendStoryRow}>
+    <View style={[styles.friendStoryRow, debugFriendStoryBorder('#FF3B30')]}>
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
-        contentContainerStyle={styles.friendStoryScroll}
+        contentContainerStyle={[
+          styles.friendStoryScroll,
+          debugFriendStoryBorder('#FF9500'),
+        ]}
       >
         {/* 친구 추가 버튼 */}
         <TouchableOpacity
-          style={styles.friendStoryAddCircleWrap}
+          style={[
+            styles.friendStoryAddCircleWrap,
+            debugFriendStoryBorder('#FFCC00'),
+          ]}
           onPress={onAddFriendPress}
           activeOpacity={0.8}
         >
-          <View style={styles.friendStoryAddCircle}>
+          <View style={[styles.friendStoryAddCircle, debugFriendStoryBorder('#34C759')]}>
             <Ionicons name="add" size={normalize(28)} color={colors.primary} />
           </View>
-          <Text style={styles.friendStoryAddLabel}>친구 추가</Text>
+          <Text style={[styles.friendStoryAddLabel, debugFriendStoryBorder('#30B0C7')]}>
+            친구 추가
+          </Text>
         </TouchableOpacity>
 
         {/* 친구 목록 */}
         {orderedFriends.map((friend) => {
           const isActive = studyingFriends[friend.id] === true; // 정렬 기준과 동일
           const iconColor = getProfileInnerColor(
-            friend.colorId ?? friend.profileColorId ?? friend.profile_color_id ?? friend.colorIndex,
+            friend.colorId ??
+              friend.profileColorId ??
+              friend.profile_color_id ??
+              friend.colorIndex,
           );
           return (
             <TouchableOpacity
               key={friend.id}
-              style={styles.friendStoryCircleWrap}
+              style={[
+                styles.friendStoryCircleWrap,
+                debugFriendStoryBorder('#0A84FF'),
+              ]}
               onPress={() => onFriendPress(friend)}
               activeOpacity={0.8}
             >
-              <View
-                style={[
-                  styles.friendStoryCircle,
-                ]}
-              >
-                <ProfileIcon width={normalize(56)} height={normalize(56)} color={iconColor} />
+              <View style={[styles.friendStoryCircle, debugFriendStoryBorder('#5E5CE6')]}>
+                <ProfileIcon
+                  width={normalize(56)}
+                  height={normalize(56)}
+                  color={iconColor}
+                />
                 <View
                   style={[
                     styles.friendStatusDotOnCircle,
-                    isActive ? styles.friendStatusDotActive : styles.friendStatusDotInactive,
+                    isActive
+                      ? styles.friendStatusDotActive
+                      : styles.friendStatusDotInactive,
+                    debugFriendStoryBorder('#BF5AF2'),
                   ]}
                 />
               </View>
-              <Text style={styles.friendStoryName} numberOfLines={1}>
+              <Text
+                style={[styles.friendStoryName, debugFriendStoryBorder('#FF2D55')]}
+                numberOfLines={1}
+              >
                 {friend.name}
               </Text>
             </TouchableOpacity>

@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   Alert,
   KeyboardAvoidingView,
@@ -15,6 +15,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { colors } from '../../styles/colors';
 import { createFindStyles } from '../../styles/find.style';
+import Skeleton from '../../components/common/Skeleton';
 
 const IDfind = ({ navigation }) => {
   const { width } = useWindowDimensions();
@@ -23,6 +24,12 @@ const IDfind = ({ navigation }) => {
   const styles = useMemo(() => createFindStyles(width, normalize), [width]);
 
   const [foundId, setFoundId] = useState('');
+  const [screenReady, setScreenReady] = useState(false);
+
+  useEffect(() => {
+    const timer = setTimeout(() => setScreenReady(true), 220);
+    return () => clearTimeout(timer);
+  }, []);
 
   const handlePassVerify = () => {
     // TODO: PASS 본인인증 연동 후 응답값으로 아이디를 설정
@@ -30,6 +37,26 @@ const IDfind = ({ navigation }) => {
     setFoundId(mockFoundId);
     Alert.alert('안내', 'PASS 본인인증(추후 도입) 완료 처리되었습니다.');
   };
+
+  if (!screenReady) {
+    return (
+      <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
+        <View style={styles.headerSection}>
+          <View style={styles.headerTop}>
+            <Skeleton width={normalize(24)} height={normalize(24)} borderRadius={normalize(12)} />
+            <Skeleton width={normalize(84)} height={normalize(18)} borderRadius={normalize(8)} />
+          </View>
+        </View>
+        <View style={styles.contentSection}>
+          <Skeleton width="70%" height={normalize(14)} borderRadius={normalize(6)} style={{ marginBottom: normalize(16) }} />
+          <Skeleton width="100%" height={normalize(92)} borderRadius={normalize(12)} />
+        </View>
+        <View style={styles.footerSection}>
+          <Skeleton width="100%" height={normalize(50)} borderRadius={normalize(14)} />
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={styles.container} edges={['top', 'bottom']}>

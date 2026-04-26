@@ -14,7 +14,7 @@ import SubHeader from '../frame/subHeader';
 import { colors, fonts } from '../../styles/colors';
 import { getNormalize } from '../../styles/frame.style';
 import { createSchoolMailStyles } from '../../styles/SchoolMail.style';
-import Loading from '../../components/Loading';
+import Skeleton from '../../components/common/Skeleton';
 import { api } from '../../utils/api';
 import { subscribeSchoolMailLike } from '../../utils/listSyncEvents';
 import { getSchoolMailFromLabel } from './utils/schoolMailFromLabel';
@@ -209,7 +209,26 @@ const SchoolMailboxScreen = ({ navigation, route }) => {
   };
 
   const listEmpty =
-    !loading && (!schoolId || mails.length === 0) ? (
+    loading && mails.length === 0 ? (
+      <View style={{ width: '100%' }}>
+        {[0, 1, 2, 3].map((idx) => (
+          <View key={`school-mailbox-skel-${idx}`} style={styles.card}>
+            <View style={styles.cardTopRow}>
+              <Skeleton width={normalize(62)} height={normalize(11)} borderRadius={normalize(6)} />
+              <Skeleton width={normalize(44)} height={normalize(10)} borderRadius={normalize(5)} />
+            </View>
+            <Skeleton width="100%" height={normalize(13)} borderRadius={normalize(6)} style={{ marginBottom: normalize(4) }} />
+            <Skeleton width="82%" height={normalize(13)} borderRadius={normalize(6)} style={{ marginBottom: normalize(8) }} />
+            <View style={styles.cardFooterRow}>
+              <View style={styles.statRow}>
+                <Skeleton width={normalize(24)} height={normalize(11)} borderRadius={normalize(5)} />
+                <Skeleton width={normalize(24)} height={normalize(11)} borderRadius={normalize(5)} />
+              </View>
+            </View>
+          </View>
+        ))}
+      </View>
+    ) : !loading && (!schoolId || mails.length === 0) ? (
       <View style={{ paddingVertical: normalize(40), alignItems: 'center', width: '100%' }}>
         <Text style={{ fontFamily: fonts.regular, color: colors.textSecondary }}>
           {!schoolId ? '학교 정보가 없습니다.' : '아직 우편이 없습니다'}
@@ -238,7 +257,7 @@ const SchoolMailboxScreen = ({ navigation, route }) => {
           ListFooterComponent={
             loadingMore ? (
               <View style={{ paddingVertical: normalize(16), width: '100%', alignItems: 'center' }}>
-                <Loading color={colors.textSecondary} />
+                <Skeleton width={normalize(16)} height={normalize(16)} borderRadius={normalize(8)} />
               </View>
             ) : null
           }

@@ -42,6 +42,7 @@ const BoardWrite = ({ navigation, route }) => {
   const [hashtagSuggestions, setHashtagSuggestions] = useState([]); // 추천 태그 목록
   const [loadingSuggestions, setLoadingSuggestions] = useState(false);
   const [postImages, setPostImages] = useState([]);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [locationEnabled, setLocationEnabled] = useState(true);
   const [activePanel, setActivePanel] = useState(null); // 'tag' | null
   const [tagPanelVisible, setTagPanelVisible] = useState(false);
@@ -189,11 +190,13 @@ const BoardWrite = ({ navigation, route }) => {
   }, [activePanel]);
 
   const handleComplete = async () => {
+    if (isSubmitting) return;
     if (!content.trim()) {
       Alert.alert('알림', '내용을 입력해주세요.');
       return;
     }
 
+    setIsSubmitting(true);
     try {
       let boardType = 'national';
       let schoolId = null;
@@ -266,6 +269,8 @@ const BoardWrite = ({ navigation, route }) => {
         '오류',
         error.response?.data?.message || '게시글 작성 중 오류가 발생했습니다.',
       );
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -563,10 +568,12 @@ const BoardWrite = ({ navigation, route }) => {
       boardDropdownVisible,
       hashtagSuggestions,
       loadingSuggestions,
+      isSubmitting,
     ],
   );
 
-  const canSubmit = content.trim().length > 0 || postImages.length > 0;
+  const canSubmit =
+    (content.trim().length > 0 || postImages.length > 0) && !isSubmitting;
 
   return (
     <TouchableWithoutFeedback
@@ -603,7 +610,7 @@ const BoardWrite = ({ navigation, route }) => {
                         !canSubmit && styles.completePillTextDisabled,
                       ]}
                     >
-                      등록
+                      {isSubmitting ? '등록 중...' : '등록'}
                     </Text>
                   </View>
                 }

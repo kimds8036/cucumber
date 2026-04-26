@@ -679,7 +679,7 @@ export function MessageContent({ navigation }) {
                       <TouchableOpacity
                         style={styles.listItem}
                         activeOpacity={0.7}
-                        onPress={() => {
+                      onPress={async () => {
                           setNoteRooms((prev) =>
                             prev.map((r) =>
                               r.id === item.id && r.type === 'dm'
@@ -749,7 +749,7 @@ export function MessageContent({ navigation }) {
                     <TouchableOpacity
                       style={styles.listItem}
                       activeOpacity={0.7}
-                      onPress={() => {
+                      onPress={async () => {
                         setNoteRooms((prev) =>
                           prev.map((room) =>
                             room.id === item.id ? { ...room, unreadCount: 0 } : room

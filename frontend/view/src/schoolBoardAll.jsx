@@ -7,7 +7,6 @@ import {
   TouchableOpacity,
   Alert,
   FlatList,
-  ActivityIndicator,
 } from 'react-native';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import FontAwesome5 from '@expo/vector-icons/FontAwesome5';
@@ -18,6 +17,7 @@ import { api } from '../../utils/api';
 import { normalizeTagsFromApi } from '../../utils/normalizePostTags';
 import BoardPostCard from '../../components/Boardpostcard';
 import { useLocationContext } from '../../context/LocationContext';
+import Skeleton from '../../components/common/Skeleton';
 
 /** 서버 created_at(UTC)을 "n분 전" 형식으로 변환. 화면에서는 기기 로컬 시간 기준으로 계산 */
 function formatTimeAgo(createdAt) {
@@ -239,7 +239,11 @@ const SchoolBoardAll = ({ navigation }) => {
           ListFooterComponent={
             loadingMore && hasMore ? (
               <View style={styles.loadingMoreContainer}>
-                <ActivityIndicator size="small" color={colors.primary} />
+                <Skeleton
+                  width={normalize(16)}
+                  height={normalize(16)}
+                  borderRadius={normalize(8)}
+                />
               </View>
             ) : null
           }
@@ -255,22 +259,27 @@ const SchoolBoardAll = ({ navigation }) => {
               top: 0,
               bottom: 0,
               backgroundColor: colors.background,
-              alignItems: 'center',
-              justifyContent: 'center',
+              paddingHorizontal: width * 0.04,
+              paddingTop: normalize(8),
               zIndex: 2,
             }}
           >
-            <ActivityIndicator size="large" color={colors.primary} />
-            <Text
-              style={{
-                marginTop: normalize(12),
-                fontFamily: fonts.regular,
-                color: colors.textSecondary,
-                fontSize: normalize(14),
-              }}
-            >
-              불러오는 중...
-            </Text>
+            {[0, 1, 2, 3].map((idx) => (
+              <View key={`school-list-skel-${idx}`} style={styles.postItem}>
+                <View style={{ flexDirection: 'row', marginBottom: normalize(8) }}>
+                  <Skeleton width={normalize(52)} height={normalize(12)} borderRadius={normalize(6)} />
+                  <View style={{ width: normalize(8) }} />
+                  <Skeleton width={normalize(44)} height={normalize(12)} borderRadius={normalize(6)} />
+                </View>
+                <Skeleton width="100%" height={normalize(14)} borderRadius={normalize(6)} style={{ marginBottom: normalize(6) }} />
+                <Skeleton width="86%" height={normalize(14)} borderRadius={normalize(6)} style={{ marginBottom: normalize(10) }} />
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: normalize(12) }}>
+                  <Skeleton width={normalize(26)} height={normalize(12)} borderRadius={normalize(6)} />
+                  <Skeleton width={normalize(26)} height={normalize(12)} borderRadius={normalize(6)} />
+                  <Skeleton width={normalize(26)} height={normalize(12)} borderRadius={normalize(6)} />
+                </View>
+              </View>
+            ))}
           </View>
         ) : null}
       </View>

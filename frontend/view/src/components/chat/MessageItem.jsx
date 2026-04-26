@@ -4,12 +4,12 @@ import {
   Text,
   TouchableOpacity,
   Pressable,
-  ActivityIndicator,
 } from 'react-native';
 import { Image } from 'expo-image';
 import Loading from '../../../../components/Loading';
 import { colors } from '../../../../styles/colors';
 import MessageTabIcon from '../../../../assets/Logo.svg';
+import Skeleton from '../../../../components/common/Skeleton';
 
 function formatChatDateBanner(dateKey) {
   if (!dateKey) return '';
@@ -260,7 +260,7 @@ const MessageBubble = ({
                 }}
               >
                 {(msg.status === 'sending' || msg.isSending) && (
-                  <ActivityIndicator size="small" color="#999" />
+                  <Skeleton width={14} height={14} borderRadius={7} />
                 )}
                 {msg.showTimestamp === true ? (
                   <Text style={chatStyles.chatTimeUser}>

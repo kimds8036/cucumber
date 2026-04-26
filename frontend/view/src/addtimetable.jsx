@@ -19,7 +19,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import SubHeader from '../frame/subHeader';
 import { colors } from '../../styles/colors';
-import { useKeyboardHandler } from 'react-native-keyboard-controller';
+import Skeleton from '../../components/common/Skeleton';
 const AddTimetable = ({ navigation, route }) => {
   // MyPage에서 전달받은 기존 시간표와 저장 함수
   const { existingTimetable, onSave } = route.params || {};
@@ -29,25 +29,7 @@ const AddTimetable = ({ navigation, route }) => {
   const [modalVisible, setModalVisible] = useState(false);
   const [className, setClassName] = useState('');
   const [timetable, setTimetable] = useState(existingTimetable || {});
-  const translateY = useSharedValue(0);
-
-  useKeyboardHandler(
-    {
-      onMove: (e) => {
-        'worklet';
-        translateY.value = -e.height;
-      },
-      onEnd: (e) => {
-        'worklet';
-        translateY.value = -e.height;
-      },
-    },
-    [],
-  );
-
-  const animStyle = useAnimatedStyle(() => ({
-    transform: [{ translateY: translateY.value }],
-  }));
+  const [screenReady, setScreenReady] = useState(false);
 
   const days = ['월', '화', '수', '목', '금'];
   const periods = [1, 2, 3, 4, 5, 6, 7];
@@ -58,8 +40,9 @@ const AddTimetable = ({ navigation, route }) => {
   }, [existingTimetable]);
 
   useEffect(() => {
-    if (!modalVisible) translateY.value = 0;
-  }, [modalVisible, translateY]);
+    const timer = setTimeout(() => setScreenReady(true), 220);
+    return () => clearTimeout(timer);
+  }, []);
 
   const handleCellPress = (day, period) => {
     setSelectedDay(day);
@@ -136,6 +119,20 @@ const AddTimetable = ({ navigation, route }) => {
     const key = `${day}-${period}`;
     return timetable[key] || '';
   };
+
+  if (!screenReady) {
+    return (
+      <View style={{ flex: 1, backgroundColor: styles.container.backgroundColor }}>
+        <SafeAreaView style={styles.container} edges={['top']}>
+          <View style={{ padding: 16 }}>
+            <Skeleton width={120} height={18} borderRadius={8} style={{ marginBottom: 16 }} />
+            <Skeleton width="100%" height={320} borderRadius={12} style={{ marginBottom: 12 }} />
+            <Skeleton width="100%" height={52} borderRadius={8} />
+          </View>
+        </SafeAreaView>
+      </View>
+    );
+  }
 
   return (
     <View

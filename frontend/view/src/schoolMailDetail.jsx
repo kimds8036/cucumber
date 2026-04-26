@@ -21,7 +21,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { Entypo } from '@expo/vector-icons';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import SubHeader from '../frame/subHeader';
-import Loading from '../../components/Loading';
+import Skeleton from '../../components/common/Skeleton';
 import CommentInput from '../../components/CommentInput.jsx';
 import { colors, fonts } from '../../styles/colors';
 import { getNormalize } from '../../styles/frame.style';
@@ -652,8 +652,16 @@ export default function SchoolMailDetail({ navigation, route }) {
           pointerEvents="box-none"
         >
           {loading ? (
-            <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-              <Loading size="large" />
+            <View style={{ flex: 1, paddingHorizontal: normalize(16), paddingTop: normalize(16) }}>
+              <View style={styles.smDetailLetterCard}>
+                <Skeleton width={normalize(90)} height={normalize(12)} borderRadius={normalize(6)} style={{ marginBottom: normalize(8) }} />
+                <Skeleton width="100%" height={normalize(14)} borderRadius={normalize(6)} style={{ marginBottom: normalize(6) }} />
+                <Skeleton width="86%" height={normalize(14)} borderRadius={normalize(6)} style={{ marginBottom: normalize(10) }} />
+                <View style={{ flexDirection: 'row', gap: normalize(12) }}>
+                  <Skeleton width={normalize(30)} height={normalize(12)} borderRadius={normalize(6)} />
+                  <Skeleton width={normalize(30)} height={normalize(12)} borderRadius={normalize(6)} />
+                </View>
+              </View>
             </View>
           ) : error ? (
             <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', paddingHorizontal: normalize(24) }}>

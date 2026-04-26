@@ -117,6 +117,10 @@ export const createTimerStyles = (width, normalize) => {
     friendStoryName: {
       marginTop: normalize(4),
       fontSize: normalize(fontSizes.lg),
+      lineHeight: normalize(20),
+      height: normalize(20),
+      includeFontPadding: false,
+      textAlignVertical: 'center',
       fontFamily: fonts.regular,
       color: colors.textSecondary,
       textAlign: 'center',
@@ -761,13 +765,15 @@ export const createTimerFriendModalStyles = (normalize) =>
       gap: normalize(14),
       marginBottom: normalize(16),
     },
+    pokeFriendTextBox: {
+      minHeight: normalize(52),
+      justifyContent: 'center',
+      flexShrink: 1,
+    },
     pokeAvatar: {
-      width: normalize(52),
-      height: normalize(52),
       borderRadius: normalize(26),
       justifyContent: 'center',
       alignItems: 'center',
-      backgroundColor: colors.primaryLight30,
     },
     pokeStudyingBadge: {
       position: 'absolute',
@@ -782,12 +788,17 @@ export const createTimerFriendModalStyles = (normalize) =>
       fontSize: normalize(fontSizes.xxl),
       fontFamily: fonts.bold,
       color: colors.textPrimary,
+      lineHeight: normalize(20),
+      includeFontPadding: false,
+      textAlignVertical: 'center',
     },
     pokeStatusText: {
-      fontSize: normalize(fontSizes.lg),
+      fontSize: normalize(fontSizes.xl),
       fontFamily: fonts.regular,
       color: colors.textSecondary,
       marginTop: normalize(4),
+      lineHeight: normalize(20),
+      includeFontPadding: false,
     },
     pokeDivider: {
       height: 1,

@@ -20,7 +20,7 @@ import { getNormalize } from '../../styles/search.style';
 import { createSearchResultStyles } from '../../styles/result.style';
 import { api } from '../../utils/api';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import Loading from '../../components/Loading';
+import Skeleton from '../../components/common/Skeleton';
 
 const TABS_FOR_TEXT = ['전체', '전체게시판', '학교게시판', '학교우편'];
 const TABS_FOR_HASHTAG = ['전체', '전체게시판', '학교게시판', '학교우편'];
@@ -395,8 +395,28 @@ export default function SearchResult({ route, navigation }) {
   if (!isInitialRenderReady) {
     return (
       <SafeAreaView style={s.container} edges={['top']}>
-        <View style={s.centerBox}>
-          <Loading size="small" />
+        <View style={{ paddingHorizontal: normalize(18), paddingTop: normalize(14) }}>
+          {[0, 1, 2, 3].map((idx) => (
+            <View key={`search-skel-${idx}`} style={{ marginBottom: normalize(14) }}>
+              <Skeleton
+                width={normalize(90)}
+                height={normalize(13)}
+                borderRadius={normalize(6)}
+                style={{ marginBottom: normalize(8) }}
+              />
+              <Skeleton
+                width="100%"
+                height={normalize(14)}
+                borderRadius={normalize(6)}
+                style={{ marginBottom: normalize(6) }}
+              />
+              <Skeleton
+                width="76%"
+                height={normalize(14)}
+                borderRadius={normalize(6)}
+              />
+            </View>
+          ))}
         </View>
       </SafeAreaView>
     );
@@ -716,7 +736,11 @@ export default function SearchResult({ route, navigation }) {
                 {/* 로딩 */}
                 {loading && (
                   <View style={s.centerBox}>
-                    <Loading size="small" />
+                    <Skeleton
+                      width={normalize(16)}
+                      height={normalize(16)}
+                      borderRadius={normalize(8)}
+                    />
                   </View>
                 )}
 

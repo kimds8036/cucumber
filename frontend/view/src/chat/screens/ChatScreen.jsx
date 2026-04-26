@@ -24,7 +24,7 @@ import {
 } from '../../../../styles/board.style';
 import { createChatStyles } from '../../../../styles/message.style';
 import { colors } from '../../../../styles/colors';
-import Loading from '../../../../components/Loading';
+import Skeleton from '../../../../components/common/Skeleton';
 import SubHeader from '../../../frame/subHeader';
 
 import useChatScroll from '../hooks/useChatScroll';
@@ -268,16 +268,17 @@ export default function ChatScreen({
                 zIndex: 20,
               }}
             >
-              <Loading size="large" />
-              <Text
-                style={{
-                  marginTop: normalize(10),
-                  fontSize: normalize(13),
-                  color: colors.textSecondary,
-                }}
-              >
-                불러오는 중…
-              </Text>
+              <View style={{ width: '92%', gap: normalize(12) }}>
+                <View style={{ alignItems: 'flex-start' }}>
+                  <Skeleton width="48%" height={normalize(14)} borderRadius={normalize(7)} />
+                </View>
+                <View style={{ alignItems: 'flex-end' }}>
+                  <Skeleton width="62%" height={normalize(14)} borderRadius={normalize(7)} />
+                </View>
+                <View style={{ alignItems: 'flex-start' }}>
+                  <Skeleton width="44%" height={normalize(14)} borderRadius={normalize(7)} />
+                </View>
+              </View>
             </View>
           ) : null}
         </View>
@@ -395,7 +396,18 @@ export default function ChatScreen({
               },
             ]}
           >
-            <Loading size="large" />
+            <View style={{ width: '92%', gap: normalize(12) }}>
+              <View style={{ alignItems: 'flex-start' }}>
+                <Skeleton width="52%" height={normalize(14)} borderRadius={normalize(7)} />
+              </View>
+              <View style={{ alignItems: 'flex-end' }}>
+                <Skeleton width="58%" height={normalize(14)} borderRadius={normalize(7)} />
+              </View>
+              <View style={{ alignItems: 'flex-start' }}>
+                <Skeleton width="40%" height={normalize(14)} borderRadius={normalize(7)} />
+              </View>
+              <Skeleton width="100%" height={normalize(44)} borderRadius={normalize(22)} style={{ marginTop: normalize(8) }} />
+            </View>
           </View>
         ) : null}
       </View>

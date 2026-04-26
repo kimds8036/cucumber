@@ -2,7 +2,6 @@ import React, { useMemo, useState, useEffect, useRef, useCallback } from 'react'
 import {
   View,
   Text,
-  StyleSheet,
   ScrollView,
   TouchableOpacity,
   FlatList,
@@ -17,7 +16,10 @@ import SubHeader from '../frame/subHeader';
 import { api } from '../../utils/api';
 import { colors } from '../../styles/colors';
 import { getNormalize } from '../../styles/frame.style';
-import { subheaderMailListBodyTopAfterTabRow } from '../../styles/subheaderContent';
+import {
+  createNotificationSkeletonStyles,
+  createNotificationStyles,
+} from '../../styles/notification.style';
 import { useNotification } from '../../context/NotificationContext';
 import { useFriend } from '../../context/FriendContext';
 import ProfileIcon from '../../assets/Profile.svg';
@@ -30,24 +32,25 @@ import {
 const PAGE_SIZE = 20;
 /** 초기 로드 시 '좋아요'만 있는 연속 페이지를 건너뛸 때 상한 */
 const MAX_INITIAL_PAGE_SWEEP = 30;
+const SHOW_LAYOUT_BORDERS = false;
 
 const popToMainRoot = (navigation) => {
   navigation?.dispatch?.(StackActions.popToTop());
 };
 
 const mapTypeToIcon = (type, category) => {
-  if (category === 'mail') return { name: 'mail', color: '#FFA726', bg: '#FFF3E0' };
-  if (category === 'system') return { name: 'megaphone', color: '#9C27B0', bg: '#F3E5F5' };
+  if (category === 'mail') return { name: 'mail', color: colors.scrap, bg: colors.blue };
+  if (category === 'system') return { name: 'notifications', color: colors.alert, bg: colors.red };
   switch (type) {
     case 'like':
-      return { name: 'heart', color: '#FF6B6B', bg: '#FFE5E5' };
+      return { name: 'heart', color: colors.alert, bg: colors.red };
     case 'comment':
     case 'reply':
-      return { name: 'chatbubble', color: '#4CAF50', bg: '#E8F5E9' };
+      return { name: 'chatbubble', color: colors.primary, bg: colors.lightgreen };
     case 'mention':
-      return { name: 'at', color: '#2196F3', bg: '#E3F2FD' };
+      return { name: 'at', color: colors.subcolor, bg: colors.blue };
     default:
-      return { name: 'notifications-outline', color: '#4CAF50', bg: '#E8F5E9' };
+      return { name: 'notifications', color: colors.scrap, bg: colors.yellow };
   }
 };
 
@@ -99,7 +102,7 @@ const sortNotificationsByCreatedDesc = (items) =>
   [...items].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
 
 // 스켈레톤 행 (로딩 중 리스트 모양)
-const SkeletonRow = () => {
+const SkeletonRow = ({ skeletonStyles }) => {
   const opacity = useRef(new Animated.Value(0.3)).current;
   useEffect(() => {
     const loop = Animated.loop(
@@ -123,31 +126,12 @@ const SkeletonRow = () => {
   );
 };
 
-const skeletonStyles = StyleSheet.create({
-  row: {
-    flexDirection: 'row',
-    padding: 16,
-    alignItems: 'flex-start',
-  },
-  icon: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: '#E0E0E0',
-    marginRight: 12,
-  },
-  content: { flex: 1 },
-  line: { backgroundColor: '#E0E0E0', borderRadius: 4 },
-  titleLine: { height: 16, width: '60%', marginBottom: 8 },
-  textLine: { height: 14, width: '90%', marginBottom: 6 },
-  timeLine: { height: 12, width: '30%' },
-});
-
 const NotificationScreen = ({ navigation }) => {
   const { width } = useWindowDimensions();
   const normalize = useMemo(() => getNormalize(width), [width]);
-  const tabContainerStyle = useMemo(
-    () => [styles.tabContainer, { paddingTop: normalize(8) }],
+  const styles = useMemo(() => createNotificationStyles(normalize), [normalize]);
+  const skeletonStyles = useMemo(
+    () => createNotificationSkeletonStyles(normalize),
     [normalize],
   );
   const [selectedTab, setSelectedTab] = useState('all');
@@ -167,6 +151,13 @@ const NotificationScreen = ({ navigation }) => {
   const appStateRef = useRef(AppState.currentState);
   const { hasUnread, markNotificationsSeenForBell, getStudySummaryWatchers } = useNotification();
   const { markFriendRequestsSeenForBell } = useFriend();
+  const getDebugBorderStyle = useCallback(
+    (color = '#FF3B30') =>
+      SHOW_LAYOUT_BORDERS
+        ? { borderWidth: 1, borderColor: color }
+        : null,
+    [],
+  );
 
   const flushPendingReads = useCallback(async () => {
     const ids = Array.from(pendingReadIdsRef.current);
@@ -610,19 +601,24 @@ const NotificationScreen = ({ navigation }) => {
   };
 
   return (
-    <View style={{ flex: 1, backgroundColor: styles.container.backgroundColor }}>
-      <SafeAreaView style={styles.container} edges={['top']}>
+    <View style={[styles.rootWrapper, getDebugBorderStyle('#FF3B30')]}>
+      <SafeAreaView style={[styles.container, getDebugBorderStyle('#FF9500')]} edges={['top']}>
         <SubHeader title="알림" onBack={() => navigation?.goBack()} />
 
       {/* 탭 메뉴 */}
-      <View style={tabContainerStyle}>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+      <View style={[styles.tabContainer, getDebugBorderStyle('#FFCC00')]}>
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={[styles.tabContent, getDebugBorderStyle('#34C759')]}
+        >
           {tabs.map((tab) => (
             <TouchableOpacity
               key={tab.key}
               style={[
                 styles.tabButton,
                 selectedTab === tab.key && styles.tabButtonActive,
+                getDebugBorderStyle('#007AFF'),
               ]}
               onPress={() => setSelectedTab(tab.key)}>
               <Text
@@ -632,19 +628,7 @@ const NotificationScreen = ({ navigation }) => {
                 ]}>
                 {tab.label}
               </Text>
-              {tab.count > 0 && (
-                <View style={[
-                  styles.countBadge,
-                  selectedTab === tab.key && styles.countBadgeActive,
-                ]}>
-                  <Text style={[
-                    styles.countText,
-                    selectedTab === tab.key && styles.countTextActive,
-                  ]}>
-                    {tab.count}
-                  </Text>
-                </View>
-              )}
+              {tab.count > 0 && <View style={styles.tabUnreadDot} />}
             </TouchableOpacity>
           ))}
         </ScrollView>
@@ -652,9 +636,11 @@ const NotificationScreen = ({ navigation }) => {
 
       {/* 알림 목록 - FlatList + 무한 스크롤 */}
       <FlatList
-        style={styles.scrollView}
+        style={[styles.scrollView, getDebugBorderStyle('#5856D6')]}
         data={filteredNotifications}
         keyExtractor={(item) => String(item.id)}
+        refreshing={loading && !loadingMore}
+        onRefresh={() => fetchNotifications(1, false)}
         renderItem={({ item: notification }) => {
           const isTapped = tappedIds[notification.id];
           const isUnreadFromServer = !notification.isRead;
@@ -664,11 +650,16 @@ const NotificationScreen = ({ navigation }) => {
           const isExpanded = Boolean(expandedSummaryById[notification.id]);
           // 서버 기준으로 아직 안 읽은 알림 + 실제로 눌러서 확인하지 않은 것만 연한 초록 배경 + 점 표시
           const showUnreadStyle = isUnreadFromServer && !isTapped;
+          const hidePreviewText =
+            notification.category === 'mail' ||
+            notification.type === 'comment' ||
+            notification.type === 'reply';
           return (
             <TouchableOpacity
               style={[
                 styles.notificationItem,
                 showUnreadStyle && styles.notificationItemUnread,
+                getDebugBorderStyle('#AF52DE'),
               ]}
               onPress={() => handlePressNotification(notification)}
               activeOpacity={0.7}
@@ -676,32 +667,36 @@ const NotificationScreen = ({ navigation }) => {
               <View
                 style={[
                   styles.iconContainer,
-                  { backgroundColor: notification.iconBg },
                 ]}
               >
                 <Ionicons
                   name={notification.icon}
-                  size={24}
+                  size={styles.notificationIcon.size}
                   color={notification.iconColor}
                 />
               </View>
 
-              <View style={styles.notificationContent}>
+              <View style={[styles.notificationContent, getDebugBorderStyle('#5AC8FA')]}>
                 <Text style={styles.notificationTitle}>{notification.title}</Text>
-                <Text style={styles.notificationText} numberOfLines={2}>
-                  {notification.content}
-                </Text>
+                {!hidePreviewText ? (
+                  <Text style={styles.notificationText} numberOfLines={2}>
+                    {notification.content}
+                  </Text>
+                ) : null}
                 <Text style={styles.notificationTime}>{notification.time}</Text>
                 {canExpandWatchers && isExpanded ? (
                   <ScrollView
                     horizontal
                     showsHorizontalScrollIndicator={false}
-                    contentContainerStyle={styles.summaryWatcherRow}
+                    contentContainerStyle={[
+                      styles.summaryWatcherRow,
+                      getDebugBorderStyle('#30B0C7'),
+                    ]}
                   >
                     {watchers.map((watcher, idx) => (
                       <TouchableOpacity
                         key={`${notification.id}-${watcher.userId}-${idx}`}
-                        style={styles.summaryWatcherChip}
+                        style={[styles.summaryWatcherChip, getDebugBorderStyle('#64D2FF')]}
                         activeOpacity={0.8}
                         onPress={() => openDmRoom(watcher)}
                       >
@@ -709,8 +704,8 @@ const NotificationScreen = ({ navigation }) => {
                           style={styles.summaryWatcherAvatar}
                         >
                           <ProfileIcon
-                            width={12}
-                            height={12}
+                            width={styles.summaryWatcherProfileIcon.width}
+                            height={styles.summaryWatcherProfileIcon.height}
                             color={getProfileInnerColor(watcher.colorId)}
                           />
                         </View>
@@ -729,14 +724,18 @@ const NotificationScreen = ({ navigation }) => {
         }}
         ListEmptyComponent={
           loading ? (
-            <View style={styles.skeletonContainer}>
+            <View style={[styles.skeletonContainer, getDebugBorderStyle('#32D74B')]}>
               {[1, 2, 3, 4, 5, 6].map((key) => (
-                <SkeletonRow key={key} />
+                <SkeletonRow key={key} skeletonStyles={skeletonStyles} />
               ))}
             </View>
           ) : (
-            <View style={styles.emptyContainer}>
-              <Ionicons name="notifications-off-outline" size={64} color="#CCC" />
+            <View style={[styles.emptyContainer, getDebugBorderStyle('#0A84FF')]}>
+              <Ionicons
+                name="notifications-off-outline"
+                size={styles.emptyIcon.size}
+                color={styles.emptyIcon.color}
+              />
               <Text style={styles.emptyTitle}>아직 소식이 없네요</Text>
               <Text style={styles.emptyText}>
                 인기 게시글을 확인해보러 갈까요?
@@ -753,7 +752,7 @@ const NotificationScreen = ({ navigation }) => {
         }
         ListFooterComponent={
           loadingMore ? (
-            <View style={styles.footerLoader}>
+            <View style={[styles.footerLoader, getDebugBorderStyle('#BF5AF2')]}>
               <Text style={styles.footerLoaderText}>더 불러오는 중...</Text>
             </View>
           ) : null
@@ -766,186 +765,13 @@ const NotificationScreen = ({ navigation }) => {
         onEndReachedThreshold={0.4}
         contentContainerStyle={[
           styles.contentContainer,
-          { paddingTop: subheaderMailListBodyTopAfterTabRow(normalize) },
           filteredNotifications.length === 0 && { flex: 1 },
+          getDebugBorderStyle('#FFD60A'),
         ]}
       />
       </SafeAreaView>
     </View>
   );
 };
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.background,
-  },
-  tabContainer: {
-    backgroundColor: colors.background,
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: '#E0E0E0',
-  },
-  tabButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    marginRight: 8,
-    borderRadius: 20,
-    backgroundColor: '#F5F5F5',
-    gap: 6,
-  },
-  tabButtonActive: {
-    backgroundColor: '#4CAF50',
-  },
-  tabText: {
-    fontSize: 14,
-    fontWeight: '500',
-    color: '#666',
-  },
-  tabTextActive: {
-    color: '#FFFFFF',
-  },
-  countBadge: {
-    backgroundColor: '#E0E0E0',
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 10,
-    minWidth: 20,
-    alignItems: 'center',
-  },
-  countBadgeActive: {
-    backgroundColor: 'rgba(255, 255, 255, 0.3)',
-  },
-  countText: {
-    fontSize: 11,
-    fontWeight: 'bold',
-    color: '#666',
-  },
-  countTextActive: {
-    color: '#FFFFFF',
-  },
-  scrollView: {
-    flex: 1,
-  },
-  contentContainer: {
-    paddingBottom: 24,
-    flexGrow: 1,
-  },
-  notificationItem: {
-    backgroundColor: '#FFFFFF',
-    flexDirection: 'row',
-    padding: 16,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: '#ECECEC',
-    alignItems: 'flex-start',
-  },
-  notificationItemUnread: {
-    backgroundColor: '#F9FFF9',
-  },
-  iconContainer: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: 12,
-  },
-  notificationContent: {
-    flex: 1,
-  },
-  notificationTitle: {
-    fontSize: 15,
-    fontWeight: '600',
-    color: '#333',
-    marginBottom: 4,
-  },
-  notificationText: {
-    fontSize: 14,
-    color: '#666',
-    lineHeight: 20,
-    marginBottom: 4,
-  },
-  notificationTime: {
-    fontSize: 12,
-    color: '#999',
-  },
-  summaryWatcherRow: {
-    marginTop: 8,
-    paddingRight: 8,
-    gap: 8,
-  },
-  summaryWatcherChip: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#F4F7F4',
-    borderRadius: 999,
-    paddingVertical: 5,
-    paddingHorizontal: 8,
-    marginRight: 8,
-    maxWidth: 140,
-  },
-  summaryWatcherAvatar: {
-    width: 18,
-    height: 18,
-    borderRadius: 9,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: 6,
-  },
-  summaryWatcherName: {
-    fontSize: 12,
-    color: '#335533',
-    fontWeight: '600',
-  },
-  unreadDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: '#4CAF50',
-    marginLeft: 8,
-    marginTop: 6,
-  },
-  emptyContainer: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: 24,
-  },
-  emptyTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#333',
-    marginTop: 16,
-  },
-  emptyText: {
-    fontSize: 16,
-    color: '#999',
-    marginTop: 8,
-    textAlign: 'center',
-  },
-  emptyButton: {
-    marginTop: 24,
-    backgroundColor: '#4CAF50',
-    paddingVertical: 14,
-    paddingHorizontal: 28,
-    borderRadius: 999,
-  },
-  emptyButtonText: {
-    fontSize: 15,
-    fontWeight: '600',
-    color: '#FFFFFF',
-  },
-  footerLoader: {
-    paddingVertical: 16,
-    alignItems: 'center',
-  },
-  footerLoaderText: {
-    fontSize: 13,
-    color: '#999',
-  },
-});
 
 export default NotificationScreen;

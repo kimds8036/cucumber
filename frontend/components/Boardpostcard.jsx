@@ -132,6 +132,12 @@ const BoardPostCard = ({
     distanceUnitText = 'km';
   }
 
+  const likesCount = Number(post.likes) || 0;
+  const commentsCount = Number(post.comments) || 0;
+  const scrapCount = Number(post.scrapCount) || 0;
+  const hasVisibleStats =
+    likesCount > 0 || commentsCount > 0 || scrapCount > 0;
+
   return (
     <TouchableOpacity
       style={styles.postItem}
@@ -246,34 +252,42 @@ const BoardPostCard = ({
             </View>
           ) : null}
 
-          <View style={[styles.postFooter, styles.postFooterStart]}>
-            <View style={styles.postStats}>
-              <View style={styles.postStatItem}>
-                <FontAwesome
-                  name={post.liked ? 'heart' : 'heart-o'}
-                  size={normalize(14)}
-                  color={colors.alert}
-                />
-                <Text style={styles.postStatText}>{post.likes}</Text>
-              </View>
-              <View style={styles.postStatItem}>
-                <Ionicons
-                  name="chatbubble-outline"
-                  size={normalize(15)}
-                  color={colors.primary}
-                />
-                <Text style={styles.postStatText}>{post.comments}</Text>
-              </View>
-              <View style={styles.postStatItem}>
-                <Ionicons
-                  name={post.scrapped ? 'bookmark' : 'bookmark-outline'}
-                  size={normalize(14)}
-                  color={colors.scrap}
-                />
-                <Text style={styles.postStatText}>{post.scrapCount ?? 0}</Text>
+          {hasVisibleStats ? (
+            <View style={[styles.postFooter, styles.postFooterStart]}>
+              <View style={styles.postStats}>
+                {likesCount > 0 ? (
+                  <View style={styles.postStatItem}>
+                    <FontAwesome
+                      name="heart-o"
+                      size={normalize(14)}
+                      color={colors.alert}
+                    />
+                    <Text style={styles.postStatText}>{likesCount}</Text>
+                  </View>
+                ) : null}
+                {commentsCount > 0 ? (
+                  <View style={styles.postStatItem}>
+                    <Ionicons
+                      name="chatbubble-outline"
+                      size={normalize(15)}
+                      color={colors.primary}
+                    />
+                    <Text style={styles.postStatText}>{commentsCount}</Text>
+                  </View>
+                ) : null}
+                {scrapCount > 0 ? (
+                  <View style={styles.postStatItem}>
+                    <Ionicons
+                      name="bookmark-outline"
+                      size={normalize(14)}
+                      color={colors.scrap}
+                    />
+                    <Text style={styles.postStatText}>{scrapCount}</Text>
+                  </View>
+                ) : null}
               </View>
             </View>
-          </View>
+          ) : null}
         </View>
 
         {hasThumb ? (

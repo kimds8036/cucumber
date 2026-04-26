@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import { View, Text, TouchableOpacity, useWindowDimensions, Modal, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -15,6 +15,7 @@ import SignStepCertificate from './signup/SignStepCertificate';
 import SignStepNumber from './signup/SignStepNumber';
 import { api } from '../../utils/api';
 import { useAppNavigation } from '../../navigation/useAppNavigation';
+import Skeleton from '../../components/common/Skeleton';
 
 // TODO: 재디자인 완료 후 false로 되돌려 유효성 검사를 다시 활성화하세요.
 const DISABLE_SIGN_VALIDATION_FOR_REDESIGN = true;
@@ -45,6 +46,7 @@ const Sign = ({ navigation }) => {
   const [selectedVerificationMethod, setSelectedVerificationMethod] = useState('');
   const [consentData, setConsentData] = useState({ allConsented: false });
   const [completeModalType, setCompleteModalType] = useState('signup');
+  const [screenReady, setScreenReady] = useState(false);
 
   const styles = useMemo(() => createSignupStyles(width, normalize), [width]);
   const isUnder14Flow = selectedAgeGroup === 'under14';
@@ -333,6 +335,36 @@ const Sign = ({ navigation }) => {
         return '';
     }
   };
+
+  useEffect(() => {
+    const timer = setTimeout(() => setScreenReady(true), 250);
+    return () => clearTimeout(timer);
+  }, []);
+
+  if (!screenReady) {
+    return (
+      <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
+        <View style={styles.headerSection}>
+          <View style={styles.header}>
+            <View style={styles.headerTop}>
+              <Skeleton width={normalize(24)} height={normalize(24)} borderRadius={normalize(12)} />
+              <Skeleton width={normalize(120)} height={normalize(18)} borderRadius={normalize(8)} />
+            </View>
+            <Skeleton width="100%" height={normalize(8)} borderRadius={normalize(999)} style={{ marginTop: normalize(10), marginBottom: normalize(10) }} />
+            <Skeleton width="80%" height={normalize(13)} borderRadius={normalize(6)} />
+          </View>
+        </View>
+        <View style={styles.contentSection}>
+          {[0, 1, 2].map((idx) => (
+            <View key={`sign-skeleton-${idx}`} style={{ marginBottom: normalize(16) }}>
+              <Skeleton width={normalize(90)} height={normalize(12)} borderRadius={normalize(6)} style={{ marginBottom: normalize(8) }} />
+              <Skeleton width="100%" height={normalize(46)} borderRadius={normalize(12)} />
+            </View>
+          ))}
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={styles.container} edges={['top', 'bottom']}>

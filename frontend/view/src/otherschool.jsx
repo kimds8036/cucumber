@@ -17,6 +17,7 @@ import { createOurSchoolStyles } from '../../styles/school.style';
 import { createOtherSchoolStyles } from '../../styles/otherschool.style';
 import { api } from '../../utils/api';
 import StudyGrassMap from '../../components/studygrassmap';
+import Skeleton from '../../components/common/Skeleton';
 
 const OtherSchoolScreen = ({ route, navigation }) => {
   const { width } = useWindowDimensions();
@@ -187,6 +188,24 @@ const OtherSchoolScreen = ({ route, navigation }) => {
   };
 
   const grassTitle = `${schoolInfo.name || routeName || '학교'} 공부 잔디밭`;
+  const showInitialSkeleton =
+    loading &&
+    !schoolInfo.location &&
+    nextMeals.length === 0 &&
+    grassDays.length === 0;
+
+  if (showInitialSkeleton) {
+    return (
+      <SafeAreaView style={styles.container} edges={['top']}>
+        <SubHeader title={routeName} onBack={() => navigation?.goBack()} />
+        <View style={{ paddingHorizontal: normalize(16), paddingTop: normalize(12) }}>
+          <Skeleton width="100%" height={normalize(130)} borderRadius={normalize(14)} style={{ marginBottom: normalize(12) }} />
+          <Skeleton width="100%" height={normalize(180)} borderRadius={normalize(14)} style={{ marginBottom: normalize(12) }} />
+          <Skeleton width="100%" height={normalize(140)} borderRadius={normalize(14)} />
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>

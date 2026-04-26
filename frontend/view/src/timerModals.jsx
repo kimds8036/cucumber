@@ -24,6 +24,7 @@ import Animated, {
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { colors } from '../../styles/colors';
 import { getTimerDayKey } from '../../utils/timerStorage';
+import Skeleton from '../../components/common/Skeleton';
 import { useKeyboardHandler } from 'react-native-keyboard-controller';
 
 // ── 공통 상수/유틸 ───────────────────────────────────────────
@@ -178,6 +179,14 @@ const modalStyles = {
 export const AddSubjectModal = ({ visible, onClose, onAdd }) => {
   const [name, setName] = useState('');
   const [color, setColor] = useState(SUBJECT_COLORS[0]);
+  const [ready, setReady] = useState(false);
+
+  useEffect(() => {
+    if (!visible) return undefined;
+    setReady(false);
+    const timer = setTimeout(() => setReady(true), 120);
+    return () => clearTimeout(timer);
+  }, [visible]);
   const translateY = useSharedValue(0);
 
   useKeyboardHandler(
@@ -214,6 +223,21 @@ export const AddSubjectModal = ({ visible, onClose, onAdd }) => {
   };
 
   if (!visible) return null;
+  if (!ready) {
+    return (
+      <Modal transparent animationType="fade" onRequestClose={onClose}>
+        <View style={modalStyles.wrapper}>
+          <View style={modalStyles.centered}>
+            <View style={modalStyles.card}>
+              <Skeleton width={110} height={18} borderRadius={8} style={{ marginBottom: 10 }} />
+              <Skeleton width="100%" height={42} borderRadius={10} style={{ marginBottom: 12 }} />
+              <Skeleton width="100%" height={36} borderRadius={10} />
+            </View>
+          </View>
+        </View>
+      </Modal>
+    );
+  }
   return (
     <Modal transparent animationType="fade" onRequestClose={onClose}>
       <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
@@ -301,6 +325,7 @@ export const AddTaskModal = ({
   initialSubjectId,
 }) => {
   const [content, setContent] = useState('');
+  const [ready, setReady] = useState(false);
   const effectiveSubjectId = initialSubjectId ?? subjects[0]?.id ?? null;
   const translateY = useSharedValue(0);
 
@@ -325,6 +350,12 @@ export const AddTaskModal = ({
   useEffect(() => {
     if (!visible) setContent('');
   }, [visible]);
+  useEffect(() => {
+    if (!visible) return undefined;
+    setReady(false);
+    const timer = setTimeout(() => setReady(true), 120);
+    return () => clearTimeout(timer);
+  }, [visible]);
 
   useEffect(() => {
     if (!visible) translateY.value = 0;
@@ -342,6 +373,21 @@ export const AddTaskModal = ({
   };
 
   if (!visible) return null;
+  if (!ready) {
+    return (
+      <Modal transparent animationType="fade" onRequestClose={handleClose}>
+        <View style={modalStyles.wrapper}>
+          <View style={modalStyles.centered}>
+            <View style={modalStyles.card}>
+              <Skeleton width={110} height={18} borderRadius={8} style={{ marginBottom: 10 }} />
+              <Skeleton width="100%" height={66} borderRadius={10} style={{ marginBottom: 12 }} />
+              <Skeleton width="100%" height={36} borderRadius={10} />
+            </View>
+          </View>
+        </View>
+      </Modal>
+    );
+  }
   if (subjects.length === 0) {
     return (
       <Modal transparent animationType="fade" onRequestClose={handleClose}>
@@ -431,6 +477,7 @@ export const CalendarModal = ({ visible, onClose, currentDayKey, onSelectDay }) 
     const d = dateFromDayKey(currentDayKey || getTimerDayKey(new Date()));
     return { year: d.getFullYear(), month: d.getMonth() };
   });
+  const [ready, setReady] = useState(false);
 
   useEffect(() => {
     if (visible && currentDayKey) {
@@ -438,6 +485,12 @@ export const CalendarModal = ({ visible, onClose, currentDayKey, onSelectDay }) 
       setYearMonth({ year: d.getFullYear(), month: d.getMonth() });
     }
   }, [visible, currentDayKey]);
+  useEffect(() => {
+    if (!visible) return undefined;
+    setReady(false);
+    const timer = setTimeout(() => setReady(true), 120);
+    return () => clearTimeout(timer);
+  }, [visible]);
 
   const firstDay = new Date(yearMonth.year, yearMonth.month, 1);
   const lastDay = new Date(yearMonth.year, yearMonth.month + 1, 0);
@@ -465,6 +518,22 @@ export const CalendarModal = ({ visible, onClose, currentDayKey, onSelectDay }) 
   };
 
   if (!visible) return null;
+  if (!ready) {
+    return (
+      <Modal transparent animationType="fade" onRequestClose={onClose}>
+        <View style={modalStyles.wrapper}>
+          <View style={[modalStyles.centered, { justifyContent: 'center' }]}>
+            <View style={[modalStyles.card, { maxWidth: 360 }]}>
+              <Skeleton width={140} height={18} borderRadius={8} style={{ alignSelf: 'center', marginBottom: 14 }} />
+              {[0, 1, 2, 3].map((idx) => (
+                <Skeleton key={`calendar-skel-${idx}`} width="100%" height={34} borderRadius={8} style={{ marginBottom: 8 }} />
+              ))}
+            </View>
+          </View>
+        </View>
+      </Modal>
+    );
+  }
   return (
     <Modal transparent animationType="fade" onRequestClose={onClose}>
       <View style={modalStyles.wrapper}>
