@@ -391,37 +391,6 @@ export default function SearchResult({ route, navigation }) {
     );
   }
 
-  /* ── 기본 검색 결과 + 입력 모드 ── */
-  if (!isInitialRenderReady) {
-    return (
-      <SafeAreaView style={s.container} edges={['top']}>
-        <View style={{ paddingHorizontal: normalize(18), paddingTop: normalize(14) }}>
-          {[0, 1, 2, 3].map((idx) => (
-            <View key={`search-skel-${idx}`} style={{ marginBottom: normalize(14) }}>
-              <Skeleton
-                width={normalize(90)}
-                height={normalize(13)}
-                borderRadius={normalize(6)}
-                style={{ marginBottom: normalize(8) }}
-              />
-              <Skeleton
-                width="100%"
-                height={normalize(14)}
-                borderRadius={normalize(6)}
-                style={{ marginBottom: normalize(6) }}
-              />
-              <Skeleton
-                width="76%"
-                height={normalize(14)}
-                borderRadius={normalize(6)}
-              />
-            </View>
-          ))}
-        </View>
-      </SafeAreaView>
-    );
-  }
-
   return (
     <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
       <SafeAreaView style={s.container} edges={['top']}>
@@ -534,261 +503,289 @@ export default function SearchResult({ route, navigation }) {
                 keyboardShouldPersistTaps="handled"
                 keyboardDismissMode="on-drag"
               >
-                {/* 학교 매칭 카드들 (최대 5개) */}
-                {activeTab === '전체' && matchedSchools.length > 0 && (
-                  <View
-                    style={[
-                      s.section,
-                      s.sectionGapAfterSchool,
-                    ]}
-                  >
-                    <View style={s.sectionHeader}>
-                      <View style={s.sectionTitleRow}>
-                        <Text style={s.sectionTitle}>학교</Text>
-                      </View>
-                      <View style={s.countBadge}>
-                        <Text style={s.countBadgeText}>
-                          {matchedSchools.length}건
-                        </Text>
-                      </View>
-                    </View>
-                    {matchedSchools.map((school) => (
-                      <TouchableOpacity
-                        key={school.schoolId}
-                        style={s.schoolCard}
-                        activeOpacity={0.7}
-                        onPress={() =>
-                          navigation.navigate('OtherSchool', {
-                            schoolId: school.schoolId,
-                            schoolName: school.name,
-                          })
-                        }
-                      >
-                        <View style={s.schoolIconBox}>
-                          <Ionicons
-                            name="school-outline"
-                            size={normalize(16)}
-                            color={colors.textSecondary}
-                          />
-                        </View>
-                        <Text style={s.schoolName}>{school.name}</Text>
-                        <Ionicons
-                          name="chevron-forward"
-                          size={normalize(16)}
-                          color={colors.textLight20}
+                {!isInitialRenderReady ? (
+                  <View style={{ paddingHorizontal: normalize(18), paddingTop: normalize(14) }}>
+                    {[0, 1, 2, 3].map((idx) => (
+                      <View key={`search-skel-${idx}`} style={{ marginBottom: normalize(14) }}>
+                        <Skeleton
+                          width={normalize(90)}
+                          height={normalize(13)}
+                          borderRadius={normalize(6)}
+                          style={{ marginBottom: normalize(8) }}
                         />
-                      </TouchableOpacity>
+                        <Skeleton
+                          width="100%"
+                          height={normalize(14)}
+                          borderRadius={normalize(6)}
+                          style={{ marginBottom: normalize(6) }}
+                        />
+                        <Skeleton
+                          width="76%"
+                          height={normalize(14)}
+                          borderRadius={normalize(6)}
+                        />
+                      </View>
                     ))}
                   </View>
-                )}
-
-                {/* 전체 탭 */}
-                {activeTab === '전체' &&
-                  sortedSections.map(([section, items]) => (
-                    <View
-                      key={section}
-                      style={[
-                        s.section,
-                        SECTIONS_WITH_EXTRA_GAP.includes(section) &&
-                          s.sectionGapBetweenTargetSections,
-                      ]}
-                    >
-                      <View style={s.sectionHeader}>
-                        <View style={s.sectionTitleRow}>
-                          <Text style={s.sectionTitle}>{section}</Text>
-                        </View>
-                        <View style={s.countBadge}>
-                          <Text style={s.countBadgeText}>{items.length}건</Text>
-                        </View>
-                      </View>
-
-                      {items.slice(0, 3).map((item, idx) => (
-                        <TouchableOpacity
-                          key={item.id}
-                          style={[
-                            s.card,
-                            idx < Math.min(items.length, 3) - 1 && s.cardBorder,
-                          ]}
-                          activeOpacity={0.7}
-                          onPress={() => {
-                            navigation.navigate('BoardDetail', {
-                              postId: item.id,
-                              fromSearch: true,
-                            });
-                          }}
-                        >
-                          <View style={s.contentTimeRow}>
-                            <View style={s.snippetWrap}>
-                              {highlightSnippet(
-                                makeSnippet(item.content, normalizedQuery),
-                                normalizedQuery,
-                                s.cardSnippet,
-                              )}
-                            </View>
-                            <Text style={s.metaTimeInline}>
-                              {getTimeText(item)}
+                ) : (
+                  <>
+                    {/* 학교 매칭 카드들 (최대 5개) */}
+                    {activeTab === '전체' && matchedSchools.length > 0 && (
+                      <View
+                        style={[
+                          s.section,
+                          s.sectionGapAfterSchool,
+                        ]}
+                      >
+                        <View style={s.sectionHeader}>
+                          <View style={s.sectionTitleRow}>
+                            <Text style={s.sectionTitle}>학교</Text>
+                          </View>
+                          <View style={s.countBadge}>
+                            <Text style={s.countBadgeText}>
+                              {matchedSchools.length}건
                             </Text>
                           </View>
-                          <View style={s.metaBottomRow}>
-                            <View style={s.metaStatItem}>
-                              <FontAwesome
-                                name="heart-o"
-                                size={normalize(14)}
-                                color={colors.alert}
-                              />
-                              <Text style={s.metaStatText}>
-                                {getLikeCount(item)}
-                              </Text>
-                            </View>
-                            <View style={s.metaStatItem}>
+                        </View>
+                        {matchedSchools.map((school) => (
+                          <TouchableOpacity
+                            key={school.schoolId}
+                            style={s.schoolCard}
+                            activeOpacity={0.7}
+                            onPress={() =>
+                              navigation.navigate('OtherSchool', {
+                                schoolId: school.schoolId,
+                                schoolName: school.name,
+                              })
+                            }
+                          >
+                            <View style={s.schoolIconBox}>
                               <Ionicons
-                                name="chatbubble-outline"
-                                size={normalize(15)}
-                                color={colors.primary}
+                                name="school-outline"
+                                size={normalize(16)}
+                                color={colors.textSecondary}
                               />
-                              <Text style={s.metaStatText}>
-                                {getCommentCount(item)}
-                              </Text>
+                            </View>
+                            <Text style={s.schoolName}>{school.name}</Text>
+                            <Ionicons
+                              name="chevron-forward"
+                              size={normalize(16)}
+                              color={colors.textLight20}
+                            />
+                          </TouchableOpacity>
+                        ))}
+                      </View>
+                    )}
+
+                    {/* 전체 탭 */}
+                    {activeTab === '전체' &&
+                      sortedSections.map(([section, items]) => (
+                        <View
+                          key={section}
+                          style={[
+                            s.section,
+                            SECTIONS_WITH_EXTRA_GAP.includes(section) &&
+                              s.sectionGapBetweenTargetSections,
+                          ]}
+                        >
+                          <View style={s.sectionHeader}>
+                            <View style={s.sectionTitleRow}>
+                              <Text style={s.sectionTitle}>{section}</Text>
+                            </View>
+                            <View style={s.countBadge}>
+                              <Text style={s.countBadgeText}>{items.length}건</Text>
                             </View>
                           </View>
-                        </TouchableOpacity>
+
+                          {items.slice(0, 3).map((item, idx) => (
+                            <TouchableOpacity
+                              key={item.id}
+                              style={[
+                                s.card,
+                                idx < Math.min(items.length, 3) - 1 && s.cardBorder,
+                              ]}
+                              activeOpacity={0.7}
+                              onPress={() => {
+                                navigation.navigate('BoardDetail', {
+                                  postId: item.id,
+                                  fromSearch: true,
+                                });
+                              }}
+                            >
+                              <View style={s.contentTimeRow}>
+                                <View style={s.snippetWrap}>
+                                  {highlightSnippet(
+                                    makeSnippet(item.content, normalizedQuery),
+                                    normalizedQuery,
+                                    s.cardSnippet,
+                                  )}
+                                </View>
+                                <Text style={s.metaTimeInline}>
+                                  {getTimeText(item)}
+                                </Text>
+                              </View>
+                              <View style={s.metaBottomRow}>
+                                <View style={s.metaStatItem}>
+                                  <FontAwesome
+                                    name="heart-o"
+                                    size={normalize(14)}
+                                    color={colors.alert}
+                                  />
+                                  <Text style={s.metaStatText}>
+                                    {getLikeCount(item)}
+                                  </Text>
+                                </View>
+                                <View style={s.metaStatItem}>
+                                  <Ionicons
+                                    name="chatbubble-outline"
+                                    size={normalize(15)}
+                                    color={colors.primary}
+                                  />
+                                  <Text style={s.metaStatText}>
+                                    {getCommentCount(item)}
+                                  </Text>
+                                </View>
+                              </View>
+                            </TouchableOpacity>
+                          ))}
+
+                          {items.length > 3 && (
+                            <TouchableOpacity
+                              style={s.moreBtn}
+                              onPress={() => setExpandedSection(section)}
+                              activeOpacity={0.7}
+                            >
+                              <Text style={s.moreBtnText}>
+                                {section} 결과 더보기
+                              </Text>
+                              <Ionicons
+                                name="chevron-forward"
+                                size={normalize(13)}
+                                color={colors.textSecondary}
+                              />
+                            </TouchableOpacity>
+                          )}
+                        </View>
                       ))}
 
-                      {items.length > 3 && (
+                    {/* 개별 탭 */}
+                    {activeTab !== '전체' &&
+                      sections[activeTab] &&
+                      sections[activeTab].length > 0 && (
+                        <View style={s.section}>
+                          {sections[activeTab].map((item, idx) => (
+                            <TouchableOpacity
+                              key={item.id}
+                              style={[
+                                s.fullCard,
+                                idx < sections[activeTab].length - 1 &&
+                                  s.fullCardBorder,
+                              ]}
+                              activeOpacity={0.7}
+                              onPress={() => {
+                                navigation.navigate('BoardDetail', {
+                                  postId: item.id,
+                                  fromSearch: true,
+                                });
+                              }}
+                            >
+                              <View style={s.contentTimeRow}>
+                                <View style={s.snippetWrap}>
+                                  {highlightSnippet(
+                                    makeSnippet(item.content, normalizedQuery),
+                                    normalizedQuery,
+                                    s.fullSnippet,
+                                  )}
+                                </View>
+                                <Text style={s.metaTimeInline}>
+                                  {getTimeText(item)}
+                                </Text>
+                              </View>
+                              <View style={s.metaBottomRow}>
+                                <View style={s.metaStatItem}>
+                                  <FontAwesome
+                                    name="heart-o"
+                                    size={normalize(14)}
+                                    color={colors.alert}
+                                  />
+                                  <Text style={s.metaStatText}>
+                                    {getLikeCount(item)}
+                                  </Text>
+                                </View>
+                                <View style={s.metaStatItem}>
+                                  <Ionicons
+                                    name="chatbubble-outline"
+                                    size={normalize(15)}
+                                    color={colors.primary}
+                                  />
+                                  <Text style={s.metaStatText}>
+                                    {getCommentCount(item)}
+                                  </Text>
+                                </View>
+                              </View>
+                            </TouchableOpacity>
+                          ))}
+                        </View>
+                      )}
+
+                    {/* 로딩 */}
+                    {loading && (
+                      <View style={s.centerBox}>
+                        <Skeleton
+                          width={normalize(16)}
+                          height={normalize(16)}
+                          borderRadius={normalize(8)}
+                        />
+                      </View>
+                    )}
+
+                    {/* 결과 없음 */}
+                    {!loading && !hasResults && (
+                      <View style={s.emptyBox}>
+                        <View style={s.emptyIconBox}>
+                          <Ionicons
+                            name="search-outline"
+                            size={normalize(26)}
+                            color={colors.textLight20}
+                          />
+                        </View>
+                        <Text style={s.emptyTitle}>검색 결과가 없습니다</Text>
+                        <Text style={s.emptyDesc}>
+                          다른 검색어로 다시 시도해보세요
+                        </Text>
+                      </View>
+                    )}
+
+                    {/* 결과 있음 + 마지막 페이지: 안내 */}
+                    {!loading && hasVisibleResultsInTab && !hasMore && (
+                      <View style={s.endOfResultsBox}>
+                        <Text style={s.endOfResultsText}>
+                          검색 결과를 모두 확인했습니다
+                        </Text>
+                      </View>
+                    )}
+
+                    {/* 더 불러오기 */}
+                    {hasMore && !loading && (
+                      <View style={s.centerBox}>
                         <TouchableOpacity
-                          style={s.moreBtn}
-                          onPress={() => setExpandedSection(section)}
+                          style={s.loadMoreBtn}
+                          onPress={() => fetchSearch(page + 1)}
                           activeOpacity={0.7}
                         >
-                          <Text style={s.moreBtnText}>
-                            {section} 결과 더보기
-                          </Text>
+                          <Text style={s.loadMoreText}>더 불러오기</Text>
                           <Ionicons
-                            name="chevron-forward"
-                            size={normalize(13)}
+                            name="chevron-down"
+                            size={normalize(14)}
                             color={colors.textSecondary}
+                            style={s.loadMoreChevron}
                           />
                         </TouchableOpacity>
-                      )}
-                    </View>
-                  ))}
-
-                {/* 개별 탭 */}
-                {activeTab !== '전체' &&
-                  sections[activeTab] &&
-                  sections[activeTab].length > 0 && (
-                    <View style={s.section}>
-                      {sections[activeTab].map((item, idx) => (
-                        <TouchableOpacity
-                          key={item.id}
-                          style={[
-                            s.fullCard,
-                            idx < sections[activeTab].length - 1 &&
-                              s.fullCardBorder,
-                          ]}
-                          activeOpacity={0.7}
-                          onPress={() => {
-                            navigation.navigate('BoardDetail', {
-                              postId: item.id,
-                              fromSearch: true,
-                            });
-                          }}
-                        >
-                          <View style={s.contentTimeRow}>
-                            <View style={s.snippetWrap}>
-                              {highlightSnippet(
-                                makeSnippet(item.content, normalizedQuery),
-                                normalizedQuery,
-                                s.fullSnippet,
-                              )}
-                            </View>
-                            <Text style={s.metaTimeInline}>
-                              {getTimeText(item)}
-                            </Text>
-                          </View>
-                          <View style={s.metaBottomRow}>
-                            <View style={s.metaStatItem}>
-                              <FontAwesome
-                                name="heart-o"
-                                size={normalize(14)}
-                                color={colors.alert}
-                              />
-                              <Text style={s.metaStatText}>
-                                {getLikeCount(item)}
-                              </Text>
-                            </View>
-                            <View style={s.metaStatItem}>
-                              <Ionicons
-                                name="chatbubble-outline"
-                                size={normalize(15)}
-                                color={colors.primary}
-                              />
-                              <Text style={s.metaStatText}>
-                                {getCommentCount(item)}
-                              </Text>
-                            </View>
-                          </View>
-                        </TouchableOpacity>
-                      ))}
-                    </View>
-                  )}
-
-                {/* 로딩 */}
-                {loading && (
-                  <View style={s.centerBox}>
-                    <Skeleton
-                      width={normalize(16)}
-                      height={normalize(16)}
-                      borderRadius={normalize(8)}
-                    />
-                  </View>
+                      </View>
+                    )}
+                    <View style={s.scrollBottomSpacer} />
+                  </>
                 )}
-
-                {/* 결과 없음 */}
-                {!loading && !hasResults && (
-                  <View style={s.emptyBox}>
-                    <View style={s.emptyIconBox}>
-                      <Ionicons
-                        name="search-outline"
-                        size={normalize(26)}
-                        color={colors.textLight20}
-                      />
-                    </View>
-                    <Text style={s.emptyTitle}>검색 결과가 없습니다</Text>
-                    <Text style={s.emptyDesc}>
-                      다른 검색어로 다시 시도해보세요
-                    </Text>
-                  </View>
-                )}
-
-                {/* 결과 있음 + 마지막 페이지: 안내 */}
-                {!loading && hasVisibleResultsInTab && !hasMore && (
-                  <View style={s.endOfResultsBox}>
-                    <Text style={s.endOfResultsText}>
-                      검색 결과를 모두 확인했습니다
-                    </Text>
-                  </View>
-                )}
-
-                {/* 더 불러오기 */}
-                {hasMore && !loading && (
-                  <View style={s.centerBox}>
-                    <TouchableOpacity
-                      style={s.loadMoreBtn}
-                      onPress={() => fetchSearch(page + 1)}
-                      activeOpacity={0.7}
-                    >
-                      <Text style={s.loadMoreText}>더 불러오기</Text>
-                      <Ionicons
-                        name="chevron-down"
-                        size={normalize(14)}
-                        color={colors.textSecondary}
-                        style={s.loadMoreChevron}
-                      />
-                    </TouchableOpacity>
-                  </View>
-                )}
-                <View style={s.scrollBottomSpacer} />
               </ScrollView>
             </>
           )}
