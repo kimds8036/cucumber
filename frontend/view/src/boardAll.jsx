@@ -60,7 +60,7 @@ export function BoardAllContent({ navigation, posts }) {
 
   const [sortType, setSortType] = useState('latest'); // latest, popular, nearby
   const [serverPosts, setServerPosts] = useState([]);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);

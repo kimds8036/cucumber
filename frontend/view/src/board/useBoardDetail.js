@@ -114,6 +114,7 @@ export function useBoardDetail({
   const [currentUserId, setCurrentUserId] = useState(null);
   const [deletedCommentIds, setDeletedCommentIds] = useState([]);
   const [isSendingComment, setIsSendingComment] = useState(false);
+  const [isInitialLoading, setIsInitialLoading] = useState(true);
   const isSendingCommentRef = useRef(false);
   const refreshHasUnreadRef = useRef(refreshHasUnread);
 
@@ -125,6 +126,7 @@ export function useBoardDetail({
     const postId = routePostId ?? routePost?.id;
     if (postId == null || postId === '') return;
     try {
+      setIsInitialLoading(true);
       const detailParams = {};
       if (coords) {
         detailParams.viewerLat = coords.latitude;
@@ -175,6 +177,8 @@ export function useBoardDetail({
     } catch (error) {
       console.error('게시글/댓글 로드 실패:', error);
       Alert.alert('오류', error.response?.data?.message || '게시글을 불러오는 중 오류가 발생했습니다.');
+    } finally {
+      setIsInitialLoading(false);
     }
   }, [coords, routePostId, routePost?.id]);
 
@@ -422,6 +426,7 @@ export function useBoardDetail({
     deletedCommentIds,
     setDeletedCommentIds,
     isSendingComment,
+    isInitialLoading,
     fetchPostAndComments,
     handleSendComment,
     handlePostLike,

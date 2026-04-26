@@ -398,7 +398,9 @@ export const createWriteStyles = (width, normalize) => {
       borderColor: colors.textSecondary,
       borderRadius: normalize(20),
       paddingHorizontal: normalize(12),
-      paddingVertical: normalize(7),
+      paddingVertical: normalize(5),
+      minHeight: normalize(34),
+      justifyContent: 'center',
     },
     writeHashtagInput: {
       flex: 1,
@@ -413,6 +415,11 @@ export const createWriteStyles = (width, normalize) => {
     },
     writeHashtagTagScroll: {
       marginVertical: normalize(7),
+    },
+    /** 첨부된 해시태그 칩 행(입력란 바로 아래) — 입력란과 간격만 좁힘 */
+    writeHashtagAttachedTagScroll: {
+      marginTop: normalize(2),
+      marginBottom: normalize(4),
     },
     writeHashtagTagList: {
       flexDirection: 'row',
@@ -464,7 +471,11 @@ export const createWriteStyles = (width, normalize) => {
     topToolbarSection: {
       backgroundColor: colors.background,
       borderColor: colors.textLight20,
-      borderBottomWidth: 1,
+      borderBottomWidth: 0.5,
+    },
+    topToolbarSectionTagOpen: {
+      borderBottomWidth: 0.5,
+      borderBottomColor: colors.textLight10,
     },
     topToolbar: {
       height: normalize(48),
@@ -580,7 +591,8 @@ export const createWriteStyles = (width, normalize) => {
       backgroundColor: colors.background,
     },
     tagPanelWrapperCompact: {
-      paddingVertical: normalize(7),
+      paddingTop: normalize(10),
+      paddingBottom: normalize(10),
     },
     // 인라인 스타일 추가
     topToolbarSectionWithZIndex: {
@@ -603,6 +615,15 @@ export const createWriteStyles = (width, normalize) => {
       fontSize: normalize(fontSizes.lg),
       fontFamily: fonts.regular,
       color: colors.textPrimary,
+      paddingVertical: 0,
+      margin: 0,
+      lineHeight: normalize(18),
+      ...Platform.select({
+        android: {
+          includeFontPadding: false,
+          textAlignVertical: 'center',
+        },
+      }),
     },
     completePillWrapper: {
       flexDirection: 'row',
@@ -864,6 +885,12 @@ export const createDetailStyles = (width, normalize) => {
     commentTag: {
       color: colors.primary,
       fontFamily: fonts.bold,
+    },
+    commentReplyLabel: {
+      fontSize: normalize(fontSizes.lg),
+      fontFamily: fonts.regular,
+      color: colors.primaryDark,
+      marginBottom: normalize(4),
     },
     commentFooter: {
       flexDirection: 'row',
