@@ -46,7 +46,6 @@ const BoardWrite = ({ navigation, route }) => {
   const [locationEnabled, setLocationEnabled] = useState(true);
   const [activePanel, setActivePanel] = useState(null); // 'tag' | null
   const [tagPanelVisible, setTagPanelVisible] = useState(false);
-  const [tagPanelHeight, setTagPanelHeight] = useState(0);
   const boardContext = route?.params?.boardContext || 'national';
   const [selectedBoard, setSelectedBoard] = useState(
     boardContext === 'school' ? '학교게시판' : '전체게시판',
@@ -54,8 +53,8 @@ const BoardWrite = ({ navigation, route }) => {
   const [boardDropdownVisible, setBoardDropdownVisible] = useState(false);
   const tagInputRef = useRef(null);
   const tagPanelAnim = useRef(new Animated.Value(0)).current;
-  const [driverMode, setDriverMode] = useState(true);
   const [communityGuideVisible, setCommunityGuideVisible] = useState(false);
+  const TAG_PANEL_HEIGHT = normalize(56);
 
   const handleBack = () => {
     navigation.goBack();
@@ -163,26 +162,21 @@ const BoardWrite = ({ navigation, route }) => {
   useEffect(() => {
     if (activePanel === 'tag') {
       setTagPanelVisible(true);
-      // Reset animation value when changing driver mode
-      if (driverMode) {
-        setDriverMode(false);
-        tagPanelAnim.setValue(0);
-      }
       Animated.timing(tagPanelAnim, {
         toValue: 1,
-        duration: 180,
+        duration: 160,
         useNativeDriver: false,
       }).start();
     } else {
       Animated.timing(tagPanelAnim, {
         toValue: 0,
-        duration: 180,
+        duration: 140,
         useNativeDriver: false,
       }).start(({ finished }) => {
         if (finished) setTagPanelVisible(false);
       });
     }
-  }, [activePanel, tagPanelAnim, driverMode]);
+  }, [activePanel, tagPanelAnim]);
 
   useEffect(() => {
     // 태그 패널이 열릴 때 자동으로 키보드를 올리지 않도록
@@ -310,7 +304,11 @@ const BoardWrite = ({ navigation, route }) => {
   const topToolbarSection = useMemo(
     () => (
       <View
-        style={[styles.topToolbarSection, styles.topToolbarSectionWithZIndex]}
+        style={[
+          styles.topToolbarSection,
+          styles.topToolbarSectionWithZIndex,
+          activePanel === 'tag' && styles.topToolbarSectionTagOpen,
+        ]}
       >
         {/* 하단 툴바 */}
         <View style={styles.topToolbar}>
@@ -446,46 +444,19 @@ const BoardWrite = ({ navigation, route }) => {
           </View>
         )}
 
-        {(tagPanelVisible || tagPanelHeight === 0) && (
+        {tagPanelVisible && (
           <Animated.View
             pointerEvents={tagPanelVisible ? 'box-none' : 'none'}
             style={{
               height: tagPanelAnim.interpolate({
                 inputRange: [0, 1],
-                outputRange: [0, tagPanelHeight],
+                outputRange: [0, TAG_PANEL_HEIGHT],
               }),
               overflow: 'hidden',
               zIndex: 20,
               ...Platform.select({ android: { elevation: 20 }, ios: {} }),
             }}
           >
-            {/* 높이 측정용 - 한 번만 측정 */}
-            {tagPanelHeight === 0 && (
-              <View
-                style={{ position: 'absolute', opacity: 0, width: '100%' }}
-                onLayout={(e) => {
-                  const h = e.nativeEvent.layout.height;
-                  console.log('measured:', h);
-                  if (h > 0) setTagPanelHeight(h);
-                }}
-              >
-                <View style={[styles.tagPanelContainer]}>
-                  <View
-                    style={[
-                      styles.writeHashtagWrapper,
-                      styles.tagPanelWrapperCompact,
-                    ]}
-                  >
-                    <View style={styles.writeHashtagInputRow}>
-                      <Text style={styles.writeHashtagPrefix}>#</Text>
-                      <View style={styles.writeHashtagDashedWrap} />
-                      <Text style={styles.writeHashtagCounter}>0/5</Text>
-                    </View>
-                  </View>
-                </View>
-              </View>
-            )}
-
             {/* 실제 패널 */}
             <View
               style={[
@@ -535,7 +506,7 @@ const BoardWrite = ({ navigation, route }) => {
           <ScrollView
             horizontal
             showsHorizontalScrollIndicator={false}
-            style={styles.writeHashtagTagScroll}
+            style={styles.writeHashtagAttachedTagScroll}
             contentContainerStyle={[
               styles.writeHashtagTagList,
               styles.hashtagTagListWithPadding,
