@@ -23,6 +23,7 @@ import Reanimated, {
 } from 'react-native-reanimated';
 import { useKeyboardHandler } from 'react-native-keyboard-controller';
 import Ionicons from '@expo/vector-icons/Ionicons';
+import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
 import ProfileIcon from '../assets/Profile.svg';
 import { colors } from '../styles/colors';
 import { createTimerFriendModalStyles, getNormalize } from '../styles/timer';
@@ -158,21 +159,23 @@ export const PokeModal = ({
             </>
           ) : (
             <>
-              <View style={s.pokeInfoBox}>
-                <Text style={s.pokeInfoEmoji}>👉 </Text>
-                <View>
-                  <Text style={s.pokeInfoTitle}>쿡 찌르기</Text>
-                  <Text style={s.pokeInfoDesc}>
-                    친구에게 공부하자고 알림을 보낼 수 있어요.
-                  </Text>
-                </View>
-              </View>
               <TouchableOpacity
                 style={s.pokePrimaryBtn}
                 onPress={onPoke}
                 activeOpacity={0.8}
               >
-                <Text style={s.pokePrimaryBtnText}>👉 공부하자!</Text>
+                <View style={s.pokePrimaryBtnContent}>
+                  <MaterialCommunityIcons
+                    name="hand-pointing-right"
+                    style={s.pokeInfoEmoji}
+                  />
+                  <View style={s.pokePrimaryBtnTextGroup}>
+                    <Text style={s.pokeInfoTitle}>쿡 찌르기</Text>
+                    <Text style={s.pokeInfoDesc}>
+                      친구에게 공부하자고 알림을 보낼 수 있어요.
+                    </Text>
+                  </View>
+                </View>
               </TouchableOpacity>
             </>
           )}
@@ -182,7 +185,12 @@ export const PokeModal = ({
             onPress={() => onMessage?.()}
             activeOpacity={0.8}
           >
-            <Text style={s.pokeMessageBtnText}>💬 메시지 보내기</Text>
+            <View style={s.pokePrimaryBtnContent}>
+              <Ionicons name="chatbubble" style={s.pokeMessageBtnIcon} />
+              <View style={s.pokePrimaryBtnTextGroup}>
+                <Text style={s.pokeInfoTitle}>메시지 보내기</Text>
+              </View>
+            </View>
           </TouchableOpacity>
 
           <TouchableOpacity style={s.pokeCancelBtn} onPress={onClose}>
