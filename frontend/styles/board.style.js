@@ -865,6 +865,12 @@ export const createDetailStyles = (width, normalize) => {
       color: colors.primary,
       fontFamily: fonts.bold,
     },
+    commentReplyLabel: {
+      fontSize: normalize(fontSizes.lg),
+      fontFamily: fonts.regular,
+      color: colors.primaryDark,
+      marginBottom: normalize(4),
+    },
     commentFooter: {
       flexDirection: 'row',
       alignItems: 'center',

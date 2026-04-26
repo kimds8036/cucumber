@@ -15,6 +15,7 @@ import { useBoardDetail } from './board/useBoardDetail';
 import BoardPostContent from './board/BoardPostContent';
 import BoardCommentTree from './board/BoardCommentTree';
 import BoardFloatingMenu from './board/BoardFloatingMenu';
+import Skeleton from '../../components/common/Skeleton';
 
 export default function BoardDetail({ navigation, route }) {
   const { coords } = useLocationContext();
@@ -37,6 +38,7 @@ export default function BoardDetail({ navigation, route }) {
   const [viewerUri, setViewerUri] = useState(null);
   const [imageRatios, setImageRatios] = useState({});
   const [keyboardHeight, setKeyboardHeight] = useState(0);
+  const [imageRevealBypass, setImageRevealBypass] = useState(false);
 
   const insets = usePlatformInsets();
   const inputTranslateY = useSharedValue(0);
@@ -66,6 +68,7 @@ export default function BoardDetail({ navigation, route }) {
     currentUserId,
     deletedCommentIds,
     isSendingComment,
+    isInitialLoading,
     handleSendComment,
     handlePostLike,
     handlePostScrap,
@@ -299,6 +302,31 @@ export default function BoardDetail({ navigation, route }) {
     width,
   });
 
+  const postImages = Array.isArray(post?.images) ? post.images : [];
+  const hasAllImageRatios =
+    postImages.length === 0 || postImages.every((uri) => Boolean(imageRatios[uri]));
+  const isWaitingImageLayout =
+    !isInitialLoading &&
+    postImages.length > 0 &&
+    !hasAllImageRatios &&
+    !imageRevealBypass;
+  const showInitialSkeleton = isInitialLoading || isWaitingImageLayout;
+
+  useEffect(() => {
+    if (isInitialLoading) {
+      setImageRevealBypass(false);
+      return;
+    }
+    if (postImages.length === 0 || hasAllImageRatios) {
+      setImageRevealBypass(false);
+      return;
+    }
+    const timer = setTimeout(() => {
+      setImageRevealBypass(true);
+    }, 1200);
+    return () => clearTimeout(timer);
+  }, [isInitialLoading, hasAllImageRatios, postImages.length, post?.id]);
+
   return (
     <View style={{ flex: 1, backgroundColor: styles.container.backgroundColor }}>
       <SafeAreaView style={styles.container} edges={['top']}>
@@ -312,7 +340,8 @@ export default function BoardDetail({ navigation, route }) {
           <View style={{ flex: 1, flexDirection: 'column' }}>
             <FlatList
               ref={scrollViewRef}
-              style={{ flex: 1 }}
+              style={[{ flex: 1 }, showInitialSkeleton && { opacity: 0 }]}
+              pointerEvents={showInitialSkeleton ? 'none' : 'auto'}
               data={flatComments}
               keyExtractor={commentTree.keyExtractor}
               renderItem={commentTree.renderItem}
@@ -357,6 +386,77 @@ export default function BoardDetail({ navigation, route }) {
               keyboardShouldPersistTaps="handled"
               keyboardDismissMode="on-drag"
             />
+            {showInitialSkeleton ? (
+              <View
+                pointerEvents="none"
+                style={{
+                  position: 'absolute',
+                  left: 0,
+                  right: 0,
+                  top: 0,
+                  bottom: 0,
+                  backgroundColor: colors.background,
+                }}
+              >
+                <View style={styles.contentSection}>
+                  <View style={{ flexDirection: 'row', marginBottom: normalize(8) }}>
+                    <Skeleton width={normalize(52)} height={normalize(12)} borderRadius={normalize(6)} />
+                    <View style={{ width: normalize(8) }} />
+                    <Skeleton width={normalize(68)} height={normalize(12)} borderRadius={normalize(6)} />
+                  </View>
+                  <Skeleton
+                    width="100%"
+                    height={normalize(14)}
+                    borderRadius={normalize(6)}
+                    style={{ marginBottom: normalize(6) }}
+                  />
+                  <Skeleton
+                    width="90%"
+                    height={normalize(14)}
+                    borderRadius={normalize(6)}
+                    style={{ marginBottom: normalize(10) }}
+                  />
+                  <Skeleton
+                    width="100%"
+                    height={normalize(260)}
+                    borderRadius={normalize(10)}
+                    style={{ marginBottom: normalize(10) }}
+                  />
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: normalize(14) }}>
+                    <Skeleton width={normalize(34)} height={normalize(14)} borderRadius={normalize(6)} />
+                    <Skeleton width={normalize(34)} height={normalize(14)} borderRadius={normalize(6)} />
+                    <Skeleton width={normalize(34)} height={normalize(14)} borderRadius={normalize(6)} />
+                  </View>
+                </View>
+                <View style={styles.adSection}>
+                  <Skeleton width={normalize(36)} height={normalize(12)} borderRadius={normalize(6)} />
+                </View>
+                <View style={[styles.commentSection, { paddingTop: normalize(10) }]}>
+                  {[0, 1, 2].map((idx) => (
+                    <View key={`board-detail-comment-skel-${idx}`} style={styles.commentItem}>
+                      <Skeleton
+                        width={normalize(120)}
+                        height={normalize(11)}
+                        borderRadius={normalize(6)}
+                        style={{ marginBottom: normalize(8) }}
+                      />
+                      <Skeleton
+                        width="100%"
+                        height={normalize(13)}
+                        borderRadius={normalize(6)}
+                        style={{ marginBottom: normalize(6) }}
+                      />
+                      <Skeleton
+                        width={normalize(140)}
+                        height={normalize(11)}
+                        borderRadius={normalize(6)}
+                        style={{ marginBottom: normalize(12) }}
+                      />
+                    </View>
+                  ))}
+                </View>
+              </View>
+            ) : null}
 
             <Animated.View
               style={[
