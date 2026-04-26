@@ -112,8 +112,9 @@ export const PokeModal = ({
                     style={[s.pokeNotificationBtnIcon, { color: colors.primary }]}
                   />
                   <View style={s.pokePrimaryBtnTextGroup}>
-                    <Text style={s.pokePrimaryBtnText}>
-                      공부 완료 알람 받기
+                    <Text style={s.pokeInfoTitle}>기다림 알림 보내기</Text>
+                    <Text style={s.pokeInfoDesc}>
+                      공부가 끝나면 기다렸다고 알림을 보낼게요
                     </Text>
                   </View>
                 </View>
