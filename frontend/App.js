@@ -1,6 +1,5 @@
 import { StatusBar } from 'expo-status-bar';
-import { NavigationContainer } from '@react-navigation/native';
-import { StackActions } from '@react-navigation/native';
+import { CommonActions, NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import Login from './view/src/Login';
 import Sign from './view/src/Sign';
@@ -33,8 +32,8 @@ import Timer from './view/src/timer';
 import FriendsScreen from './view/src/friendsscreen';
 import { useFonts } from 'expo-font';
 import * as SplashScreen from 'expo-splash-screen';
-import { useEffect } from 'react';
-import { Alert } from 'react-native';
+import { useEffect, useRef } from 'react';
+import { Alert, AppState } from 'react-native';
 import * as Notifications from 'expo-notifications';
 import Constants from 'expo-constants';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
@@ -49,7 +48,13 @@ import ToastHost from './components/common/ToastHost';
 import AlertHost from './components/common/AlertHost';
 import { navigationRef } from './navigation/navigationRef';
 import { appAlert } from './utils/appAlert';
-import { configureTimerNotificationHandler } from './utils/timerRunNotification';
+import {
+  cancelTimerRunningNotification,
+  configureTimerNotificationHandler,
+  hasTimerRunningNotification,
+  showTimerRunningNotification,
+} from './utils/timerRunNotification';
+import { getTimerRuntimeState } from './utils/timerRuntimeStore';
 // TEMP(expo-go): Firebase Messaging은 네이티브 빌드에서만 사용
 // import { initFCM, setupFCMHandlers } from './utils/fcmService';
 
@@ -168,6 +173,21 @@ export default function App() {
     };
   }, []);
 
+  const lastHandledTimerNotificationRef = useRef(null);
+  const lastHandledTimerNotificationAtRef = useRef(0);
+  const appStateRef = useRef(AppState.currentState);
+  const backgroundRetryTimerRef = useRef(null);
+  const lastBackgroundAtRef = useRef(0);
+  const TIMER_NOTIFICATION_HANDLE_WINDOW_MS = 4000;
+  const logTimerBg = (event, payload = {}) => {
+    if (!__DEV__) return;
+    console.log(`[TimerBG][${event}]`, {
+      at: new Date().toISOString(),
+      appState: appStateRef.current,
+      ...payload,
+    });
+  };
+
   useEffect(() => {
     const isExpoGo = Constants.appOwnership === 'expo';
     if (isExpoGo) {
@@ -181,13 +201,149 @@ export default function App() {
     });
     const sub = Notifications.addNotificationResponseReceivedListener((response) => {
       const targetScreen = response?.notification?.request?.content?.data?.targetScreen;
+      const responseId = response?.notification?.request?.identifier ?? null;
       if (targetScreen === 'Timer' && navigationRef.isReady()) {
+        const currentRouteBefore = navigationRef.getCurrentRoute?.();
+        if (__DEV__) {
+          console.log('[TimerNotifNav][response_received]', {
+            at: new Date().toISOString(),
+            appState: appStateRef.current,
+            targetScreen,
+            responseId,
+            currentRouteName: currentRouteBefore?.name ?? null,
+            currentRouteKey: currentRouteBefore?.key ?? null,
+            sinceBackgroundMs: Date.now() - lastBackgroundAtRef.current,
+          });
+        }
+        const sinceBgMs = Date.now() - lastBackgroundAtRef.current;
+        // stale 응답(이미 포그라운드에서 다른 화면 이동 중 뒤늦게 도착) 차단
+        if (
+          appStateRef.current === 'active' &&
+          sinceBgMs > TIMER_NOTIFICATION_HANDLE_WINDOW_MS
+        ) {
+          if (__DEV__) {
+            console.log('[TimerNotifNav][response_ignored_stale]', {
+              at: new Date().toISOString(),
+              appState: appStateRef.current,
+              responseId,
+              sinceBackgroundMs: sinceBgMs,
+              handleWindowMs: TIMER_NOTIFICATION_HANDLE_WINDOW_MS,
+            });
+          }
+          return;
+        }
+        const now = Date.now();
+        // 알림 탭 처리 직후 발생하는 중복/지연 응답으로 인한 재-reset 방지
+        if (now - lastHandledTimerNotificationAtRef.current < 1500) {
+          if (__DEV__) {
+            console.log('[TimerNotifNav][response_ignored_cooldown]', {
+              at: new Date().toISOString(),
+              appState: appStateRef.current,
+              responseId,
+              diffMs: now - lastHandledTimerNotificationAtRef.current,
+            });
+          }
+          return;
+        }
+        // 동일 알림 응답 중복 전달/중복 탭 방지
+        if (responseId && lastHandledTimerNotificationRef.current === responseId) {
+          if (__DEV__) {
+            console.log('[TimerNotifNav][response_ignored_duplicate_id]', {
+              at: new Date().toISOString(),
+              responseId,
+            });
+          }
+          return;
+        }
+        if (responseId) {
+          lastHandledTimerNotificationRef.current = responseId;
+        }
+        lastHandledTimerNotificationAtRef.current = now;
+        const currentRoute = navigationRef.getCurrentRoute?.();
+        if (currentRoute?.name === 'Timer') {
+          if (__DEV__) {
+            console.log('[TimerNotifNav][response_ignored_already_timer]', {
+              at: new Date().toISOString(),
+              responseId,
+              currentRouteName: currentRoute?.name ?? null,
+            });
+          }
+          return;
+        }
+        if (__DEV__) {
+          console.log('[TimerNotifNav][dispatch_reset_to_timer]', {
+            at: new Date().toISOString(),
+            responseId,
+            currentRouteName: currentRoute?.name ?? null,
+          });
+        }
         navigationRef.dispatch(
-          StackActions.replace('Timer')
+          CommonActions.reset({
+            index: 0,
+            routes: [{ name: 'Timer' }],
+          }),
         );
+        Notifications.clearLastNotificationResponseAsync?.().catch(() => {});
       }
     });
     return () => {
+      sub.remove();
+    };
+  }, []);
+
+  useEffect(() => {
+    const sub = AppState.addEventListener('change', (nextState) => {
+      const prevState = appStateRef.current;
+      appStateRef.current = nextState;
+      logTimerBg('appstate_change', { prevState, nextState });
+
+      if (backgroundRetryTimerRef.current) {
+        clearTimeout(backgroundRetryTimerRef.current);
+        backgroundRetryTimerRef.current = null;
+      }
+
+      if (nextState === 'inactive' || nextState === 'background') {
+        lastBackgroundAtRef.current = Date.now();
+        const runtime = getTimerRuntimeState();
+        logTimerBg('background_enter', {
+          runtimeRunning: Boolean(runtime?.isRunning),
+        });
+        if (runtime?.isRunning) {
+          logTimerBg('show_request_primary');
+          showTimerRunningNotification();
+          // 간헐적 AppState 경계 누락 보정: 짧은 지연 후 1회 재확인
+          backgroundRetryTimerRef.current = setTimeout(async () => {
+            backgroundRetryTimerRef.current = null;
+            if (appStateRef.current === 'active') return;
+            const latestRuntime = getTimerRuntimeState();
+            if (!latestRuntime?.isRunning) return;
+            const exists = await hasTimerRunningNotification();
+            logTimerBg('show_retry_check', {
+              runtimeRunning: Boolean(latestRuntime?.isRunning),
+              exists,
+            });
+            if (!exists) {
+              logTimerBg('show_request_retry');
+              showTimerRunningNotification();
+            }
+          }, 700);
+        } else {
+          logTimerBg('cancel_request_not_running');
+          cancelTimerRunningNotification();
+        }
+        return;
+      }
+
+      if (prevState.match(/inactive|background/) && nextState === 'active') {
+        logTimerBg('foreground_enter_cancel');
+        cancelTimerRunningNotification();
+      }
+    });
+    return () => {
+      if (backgroundRetryTimerRef.current) {
+        clearTimeout(backgroundRetryTimerRef.current);
+        backgroundRetryTimerRef.current = null;
+      }
       sub.remove();
     };
   }, []);

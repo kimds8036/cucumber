@@ -25,13 +25,13 @@ import {
   AppState,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { CommonActions } from '@react-navigation/native';
 import MainHeader from '../frame/mainHeader';
 import MainFooter from '../frame/mainFooter';
 import { createTimerStyles, getNormalize } from '../../styles/timer';
 import { colors } from '../../styles/colors';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import Feather from '@expo/vector-icons/Feather';
-import { StackActions } from '@react-navigation/native';
 import MessageTabIcon from '../../assets/Logo.svg';
 import ViewShot from 'react-native-view-shot';
 import * as MediaLibrary from 'expo-media-library';
@@ -62,7 +62,6 @@ import { useFriend } from '../../context/FriendContext';
 import { useFocusEffect, useIsFocused } from '@react-navigation/native';
 import { useFriendStudyEvents } from '../../hooks/useFriendStudyEvents';
 import {
-  showTimerRunningNotification,
   cancelTimerRunningNotification,
 } from '../../utils/timerRunNotification';
 import {
@@ -1021,6 +1020,19 @@ export const TimerContent = () => {
     };
   }, [timerDayKey, sessions, totalElapsedMs, subjects, tasks]);
 
+  useEffect(() => {
+    if (!__DEV__) return;
+    console.log('[TimerState][isRunning_change]', {
+      at: new Date().toISOString(),
+      isRunning,
+      startTimestamp,
+      activeSubjectId,
+      timerDayKey,
+      selectedDayKey,
+      appState: appStateRef.current,
+    });
+  }, [isRunning, startTimestamp, activeSubjectId, timerDayKey, selectedDayKey]);
+
   const persistTimerSnapshot = useCallback(
     (reason, override = null) => {
       const snapshot = override ?? latestSnapshotRef.current;
@@ -1413,6 +1425,14 @@ export const TimerContent = () => {
     });
 
   const startForSubject = (subjectId) => {
+    if (__DEV__) {
+      console.log('[TimerAction][startForSubject]', {
+        at: new Date().toISOString(),
+        subjectId,
+        wasRunning: isRunning,
+        activeSubjectId,
+      });
+    }
     if (isRunning && activeSubjectId === subjectId) return;
     if (isRunning) {
       endCurrentSession();
@@ -1446,6 +1466,13 @@ export const TimerContent = () => {
   };
 
   const startTimerTop = () => {
+    if (__DEV__) {
+      console.log('[TimerAction][startTimerTop]', {
+        at: new Date().toISOString(),
+        wasRunning: isRunning,
+        activeSubjectId,
+      });
+    }
     if (isRunning && activeSubjectId === null) return;
     if (isRunning) {
       endCurrentSession();
@@ -1476,6 +1503,13 @@ export const TimerContent = () => {
   };
 
   const pauseTimer = () => {
+    if (__DEV__) {
+      console.log('[TimerAction][pauseTimer]', {
+        at: new Date().toISOString(),
+        isRunning,
+        activeSubjectId,
+      });
+    }
     if (!isRunning) return;
     endCurrentSession();
     closeOpenSession(activeSubjectId);
@@ -1604,7 +1638,6 @@ export const TimerContent = () => {
     }
 
     const syncRuntimeCountdown = () => {
-      if (isFocused) return;
       const runtimeState = getTimerRuntimeState();
       const runtimeBase = Number(runtimeState?.countdownBaseTimestamp);
       const countdownBaseTimestamp =
@@ -1648,15 +1681,13 @@ export const TimerContent = () => {
     const sub = AppState.addEventListener('change', (nextState) => {
       const prevState = appStateRef.current;
       appStateRef.current = nextState;
+      const runningNow = prevIsRunningRef.current;
 
       if (nextState === 'inactive' || nextState === 'background') {
         backgroundEnteredAtRef.current = Date.now();
-        wasRunningOnBackgroundRef.current = isRunning;
+        wasRunningOnBackgroundRef.current = runningNow;
         backgroundDayKeyRef.current = timerDayKey ?? getTimerDayKey(new Date());
         persistTimerSnapshot('app-background');
-        if (isRunning) {
-          showTimerRunningNotification();
-        }
         return;
       }
 
@@ -1713,6 +1744,9 @@ export const TimerContent = () => {
             return prevTs + backgroundMs;
           });
         }
+      } else if (nextState === 'active') {
+        // 앱 복귀 시 잔여 타이머 알림을 항상 정리해서 0개 유지
+        cancelTimerRunningNotification();
       }
     });
     return () => sub.remove();
@@ -2023,6 +2057,17 @@ const Timer = ({ navigation }) => {
     () => createTimerStyles(width, normalize),
     [width, normalize],
   );
+  const goMainTab = useCallback(
+    (tab) => {
+      navigation.dispatch(
+        CommonActions.reset({
+          index: 0,
+          routes: [{ name: 'Main', params: { initialTab: tab } }],
+        }),
+      );
+    },
+    [navigation],
+  );
   return (
     <SafeAreaView style={styles.safeAreaFlex} edges={['top', 'bottom']}>
       <MainHeader activeTab="timer" navigation={navigation} />
@@ -2030,14 +2075,10 @@ const Timer = ({ navigation }) => {
       <MainFooter
         activeTab="timer"
         onTabPress={(tab) => {
-          if (tab === 'board')
-            navigation.navigate('Main', { initialTab: 'board' });
-          if (tab === 'message')
-            navigation.navigate('Main', { initialTab: 'message' });
-          if (tab === 'school')
-            navigation.navigate('Main', { initialTab: 'school' });
-          if (tab === 'mypage')
-            navigation.navigate('Main', { initialTab: 'mypage' });
+          if (tab === 'board') goMainTab('board');
+          if (tab === 'message') goMainTab('message');
+          if (tab === 'school') goMainTab('school');
+          if (tab === 'mypage') goMainTab('mypage');
         }}
       />
     </SafeAreaView>
