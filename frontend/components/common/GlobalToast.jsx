@@ -1,5 +1,7 @@
-import React, { useEffect, useRef, useState } from 'react';
-import { Animated, Easing, Text, TouchableOpacity, View } from 'react-native';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { Animated, Easing, Text, TouchableOpacity, View, useWindowDimensions } from 'react-native';
+import { colors, fonts, fontSizes } from '../../styles/colors';
+import { getNormalize } from '../../styles/timer';
 
 export default function GlobalToast({
   toastId,
@@ -11,8 +13,10 @@ export default function GlobalToast({
   showProgress = false,
   onPress,
   onHide,
-  topOffset = 55,
+  topOffset = 60,
 }) {
+  const { width } = useWindowDimensions();
+  const normalize = useMemo(() => getNormalize(width), [width]);
   const translateY = useRef(new Animated.Value(-80)).current;
   const opacity = useRef(new Animated.Value(0)).current;
   const contentOpacity = useRef(new Animated.Value(1)).current;
@@ -33,7 +37,7 @@ export default function GlobalToast({
 
     if (visible) {
       if (!prevVisibleRef.current) {
-        translateY.setValue(-80);
+        translateY.setValue(-normalize(80));
         opacity.setValue(0);
         contentOpacity.setValue(1);
         contentTranslateY.setValue(0);
@@ -54,7 +58,7 @@ export default function GlobalToast({
         prevToastIdRef.current = toastId;
       } else if (prevToastIdRef.current !== toastId) {
         contentOpacity.setValue(0.82);
-        contentTranslateY.setValue(5);
+        contentTranslateY.setValue(normalize(5));
         Animated.parallel([
           Animated.spring(contentOpacity, {
             toValue: 1,
@@ -81,7 +85,7 @@ export default function GlobalToast({
       setExiting(true);
       Animated.parallel([
         Animated.timing(translateY, {
-          toValue: -80,
+          toValue: -normalize(80),
           duration: 180,
           easing: Easing.in(Easing.cubic),
           useNativeDriver: true,
@@ -121,9 +125,9 @@ export default function GlobalToast({
     <Animated.View
       style={{
         position: 'absolute',
-        top: topOffset,
-        left: 16,
-        right: 16,
+        top: normalize(topOffset),
+        left: normalize(16),
+        right: normalize(16),
         opacity,
         transform: [{ translateY }],
       }}
@@ -132,14 +136,14 @@ export default function GlobalToast({
         activeOpacity={0.92}
         onPress={onPress}
         style={{
-          backgroundColor: 'rgba(255,255,255,0.97)',
-          borderRadius: 16,
-          paddingHorizontal: 16,
-          paddingVertical: 14,
-          shadowColor: '#000',
+          backgroundColor: colors.background,
+          borderRadius: normalize(16),
+          paddingHorizontal: normalize(16),
+          paddingVertical: normalize(14),
+          shadowColor: colors.shadow,
           shadowOpacity: 0.12,
-          shadowRadius: 16,
-          shadowOffset: { width: 0, height: 4 },
+          shadowRadius: normalize(16),
+          shadowOffset: { width: 0, height: normalize(4) },
           elevation: 8,
         }}
       >
@@ -153,9 +157,9 @@ export default function GlobalToast({
             numberOfLines={1}
             ellipsizeMode="tail"
             style={{
-              fontSize: 14,
-              color: '#1a1a1a',
-              fontWeight: '600',
+              fontSize: normalize(fontSizes.xl),
+              color: colors.textPrimary,
+              fontFamily: fonts.bold,
             }}
           >
             {singleLineText}

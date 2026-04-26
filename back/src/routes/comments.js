@@ -175,9 +175,7 @@ router.post('/:postId/comments', authenticate, upload.array('images', 5), async 
         userId: post.user_id,
         type: isReplyToPost ? 'comment' : 'reply',
         category: 'post',
-        title: isReplyToPost
-          ? '회원님의 게시글에 새로운 댓글이 달렸어요'
-          : '회원님의 게시글에 대댓글이 달렸어요',
+        title: '내 게시글에 새로운 댓글이 달렸어요',
         body: content.slice(0, 80),
         relatedType: 'post',
         relatedId: post.id,
@@ -195,7 +193,7 @@ router.post('/:postId/comments', authenticate, upload.array('images', 5), async 
         userId: parentComment.user_id,
         type: 'reply',
         category: 'post',
-        title: '회원님의 댓글에 새로운 답글이 달렸어요',
+        title: '내 댓글에 새 답글이 달렸어요',
         body: content.slice(0, 80),
         relatedType: 'post',
         relatedId: post.id,
@@ -344,17 +342,7 @@ router.post('/:commentId/like', authenticate, async (req, res) => {
       );
 
       const comment = comments[0];
-      if (comment.user_id && comment.user_id !== userId) {
-        await enqueueNotification({
-          userId: comment.user_id,
-          type: 'like',
-          category: 'post',
-          title: '누군가 회원님의 댓글을 좋아합니다',
-          body: (comment.content || '').slice(0, 80),
-          relatedType: 'comment',
-          relatedId: comment.id,
-        });
-      }
+      // 댓글 좋아요 알림은 정책 변경으로 더 이상 생성하지 않는다.
 
       res.json({
         success: true,

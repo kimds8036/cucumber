@@ -205,13 +205,14 @@ export const FriendPokeController = ({ visible, friend, onClose }) => {
   const navigation = useNavigation();
 
   const pushToast = (senderName, body) => {
-    const s = String(senderName || '알림').trim();
+    const s = String(senderName || '').trim();
     const b = String(body || '').trim();
     if (!b) return;
+    const hasSender = s.length > 0;
     showToast({
-      message: `${s}: ${b}`,
-      senderName: s,
-      body: b,
+      message: hasSender ? `${s}: ${b}` : b,
+      senderName: hasSender ? s : null,
+      body: hasSender ? b : null,
       showProgress: true,
     });
   };
@@ -226,20 +227,20 @@ export const FriendPokeController = ({ visible, friend, onClose }) => {
       const res = await api.post('/api/dm/rooms', { otherUserId: friend.id });
       const roomId = res.data?.data?.id;
       if (roomId == null) {
-        pushToast('메시지', '전송 준비 중 오류가 발생했어요');
+        pushToast('메시지', '전송 준비 중 문제가 발생했어요. 잠시 후 다시 시도해 주세요');
         return;
       }
       handleClose();
       navigation.navigate('DMChat', { roomId, friend });
     } catch (e) {
-      pushToast('메시지', '전송 준비 중 오류가 발생했어요');
+      pushToast('메시지', '전송 준비 중 문제가 발생했어요. 잠시 후 다시 시도해 주세요');
     }
   };
 
   const handlePoke = () => {
     if (friend) {
       emitFriendPoke(friend.id);
-      pushToast(friend.name, '공부하자! 알림을 보냈어요');
+      pushToast('', `${friend.name} 님에게 공부하자는 알림을 보냈어요`);
     }
     handleClose();
   };
@@ -247,7 +248,7 @@ export const FriendPokeController = ({ visible, friend, onClose }) => {
   const handleNotifyLater = () => {
     if (friend) {
       emitFriendNotifyOnStop(friend.id);
-      pushToast(friend.name, '공부 완료 시 알림을 예약했어요');
+      pushToast('', `${friend.name} 님의 공부가 끝나면 알려드릴게요`);
     }
     handleClose();
   };

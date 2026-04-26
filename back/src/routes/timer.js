@@ -461,7 +461,7 @@ router.delete('/subjects/:subjectId', authenticate, async (req, res) => {
     console.error('타이머 과목 삭제 오류:', error);
     return res.status(500).json({
       success: false,
-      message: '타이머 과목 삭제 중 오류가 발생했습니다.',
+      message: '타이머 과목 삭제 중 문제가 발생했어요',
     });
   } finally {
     connection.release();

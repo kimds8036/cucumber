@@ -38,8 +38,8 @@ export function useFriendStudyEvents({
       const firstName = watchers[0]?.name;
       const body = firstName
         ? watchers.length > 1
-          ? `${firstName}님 외 ${watchers.length - 1}명이 기다렸어요`
-          : `${firstName}님이 기다렸어요`
+          ? `${firstName} 님 외 ${watchers.length - 1}명이 기다렸어요`
+          : `${firstName} 님이 기다렸어요`
         : '누군가 기다렸어요';
 
       onMyStudyFinishedSummary?.({ ...payload, watchers, toastText: body });

@@ -137,8 +137,8 @@ export async function sendFriendPoke({ fromUserId, targetUserId }) {
       userId: targetUserId,
       type: 'poke',
       category: 'timer',
-      title: '친구가 공부하자고 찔렀어요',
-      body: '타이머에서 친구의 공부 현황을 확인해보세요.',
+      title: '친구가 쿡 찔렀어요',
+      body: '타이머를 실행해 함께 공부해요',
       relatedType: 'timer_poke',
       relatedId: fromUserId,
     });
@@ -238,9 +238,9 @@ export async function broadcastTimerStatus({ userId, status }) {
         const watcherUserIds = rowsWatchers.map((u) => u.id);
         let summaryBody = '공부를 마쳤어요';
         if (watcherNames.length === 1) {
-          summaryBody = `${watcherNames[0]}님이 기다렸어요`;
+          summaryBody = `${watcherNames[0]} 님이 기다렸어요`;
         } else if (watcherNames.length > 1) {
-          summaryBody = `${watcherNames[0]}님 외 ${watcherNames.length - 1}명이 기다렸어요`;
+          summaryBody = `${watcherNames[0]} 님 외 ${watcherNames.length - 1}명이 기다렸어요`;
         }
         const isSingleWatcher = watcherUserIds.length === 1;
         const summaryRelatedType = isSingleWatcher
