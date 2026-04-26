@@ -6,7 +6,7 @@
  * - CalendarModal
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   View,
   Text,
@@ -16,6 +16,7 @@ import {
   Modal,
   Keyboard,
   TouchableWithoutFeedback,
+  useWindowDimensions,
 } from 'react-native';
 import Animated, {
   useAnimatedStyle,
@@ -23,6 +24,7 @@ import Animated, {
 } from 'react-native-reanimated';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { colors } from '../../styles/colors';
+import { getNormalize, createTimerModalsStyles } from '../../styles/timer';
 import { getTimerDayKey } from '../../utils/timerStorage';
 import Skeleton from '../../components/common/Skeleton';
 import { useKeyboardHandler } from 'react-native-keyboard-controller';
@@ -41,142 +43,16 @@ const SUBJECT_COLORS = [
 
 const dateFromDayKey = (dayKey) => new Date(dayKey + 'T06:00:00');
 
-const modalStyles = {
-  wrapper: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: 'rgba(0,0,0,0.3)',
-  },
-  overlay: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-  },
-  centered: {
-    width: '86%',
-  },
-  card: {
-    backgroundColor: colors.background,
-    borderRadius: 18,
-    paddingHorizontal: 18,
-    paddingVertical: 18,
-  },
-  title: {
-    fontSize: 17,
-    fontWeight: '700',
-    color: colors.textPrimary,
-    marginBottom: 10,
-  },
-  label: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: colors.textSecondary,
-    marginBottom: 6,
-  },
-  input: {
-    borderWidth: 1,
-    borderColor: '#E0E0E0',
-    borderRadius: 10,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    fontSize: 14,
-    color: colors.textPrimary,
-    marginBottom: 12,
-  },
-  colorRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginTop: 8,
-    marginBottom: 14,
-  },
-  colorLabelRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 4,
-  },
-  colorScroll: {
-    flexGrow: 0,
-    marginLeft: 8,
-  },
-  colorWrap: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    paddingVertical: 4,
-  },
-  colorDot: {
-    width: 22,
-    height: 22,
-    borderRadius: 11,
-    borderWidth: 1,
-    borderColor: 'transparent',
-  },
-  colorDotSelected: {
-    borderColor: '#333',
-    borderWidth: 2,
-  },
-  randomBtn: {
-    marginLeft: 10,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 12,
-    backgroundColor: '#F2F2F2',
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 4,
-  },
-  randomIcon: {
-    marginTop: 0,
-  },
-  randomText: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: colors.textSecondary,
-    lineHeight: 14,
-  },
-  row: {
-    flexDirection: 'row',
-    justifyContent: 'flex-end',
-    marginTop: 10,
-    gap: 8,
-  },
-  cancelBtn: {
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-    borderRadius: 10,
-    backgroundColor: '#F2F2F2',
-  },
-  cancelText: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: colors.textSecondary,
-  },
-  primaryBtn: {
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderRadius: 10,
-    backgroundColor: colors.primary,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  primaryText: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: colors.textWhite,
-  },
-  btnDisabled: {
-    opacity: 0.4,
-  },
-};
+function useTimerModalStyles() {
+  const { width } = useWindowDimensions();
+  const normalize = useMemo(() => getNormalize(width), [width]);
+  const m = useMemo(() => createTimerModalsStyles(normalize), [normalize]);
+  return { m, normalize };
+}
 
 // ── 과목 추가 모달 ────────────────────────────────────────
 export const AddSubjectModal = ({ visible, onClose, onAdd }) => {
+  const { m, normalize } = useTimerModalStyles();
   const [name, setName] = useState('');
   const [color, setColor] = useState(SUBJECT_COLORS[0]);
   const [ready, setReady] = useState(false);
@@ -226,11 +102,11 @@ export const AddSubjectModal = ({ visible, onClose, onAdd }) => {
   if (!ready) {
     return (
       <Modal transparent animationType="fade" onRequestClose={onClose}>
-        <View style={modalStyles.wrapper}>
-          <View style={modalStyles.centered}>
-            <View style={modalStyles.card}>
-              <Skeleton width={110} height={18} borderRadius={8} style={{ marginBottom: 10 }} />
-              <Skeleton width="100%" height={42} borderRadius={10} style={{ marginBottom: 12 }} />
+        <View style={m.wrapper}>
+          <View style={m.centered}>
+            <View style={m.card}>
+              <Skeleton width={110} height={18} borderRadius={8} style={m.skelLineMb10} />
+              <Skeleton width="100%" height={42} borderRadius={10} style={m.skelLineMb12} />
               <Skeleton width="100%" height={36} borderRadius={10} />
             </View>
           </View>
@@ -241,40 +117,40 @@ export const AddSubjectModal = ({ visible, onClose, onAdd }) => {
   return (
     <Modal transparent animationType="fade" onRequestClose={onClose}>
       <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
-        <View style={modalStyles.wrapper}>
+        <View style={m.wrapper}>
           <TouchableOpacity
-            style={modalStyles.overlay}
+            style={m.overlay}
             onPress={onClose}
             activeOpacity={1}
           />
-          <Animated.View style={[modalStyles.centered, animStyle]}>
-            <View style={modalStyles.card}>
-            <Text style={modalStyles.title}>과목 추가</Text>
+          <Animated.View style={[m.centered, animStyle]}>
+            <View style={m.card}>
+            <Text style={m.title}>과목 추가</Text>
             <TextInput
-              style={modalStyles.input}
+              style={m.input}
               placeholder="과목명"
               placeholderTextColor={colors.textSecondary}
               value={name}
               onChangeText={setName}
             />
-            <View style={modalStyles.colorRow}>
-              <View style={modalStyles.colorLabelRow}>
-                <Text style={[modalStyles.label, { marginBottom: 0 }]}>색상</Text>
+            <View style={m.colorRow}>
+              <View style={m.colorLabelRow}>
+                <Text style={[m.label, m.labelNoMargin]}>색상</Text>
               </View>
               <ScrollView
                 horizontal
                 showsHorizontalScrollIndicator={false}
-                style={modalStyles.colorScroll}
+                style={m.colorScroll}
               >
-                <View style={modalStyles.colorWrap}>
+                <View style={m.colorWrap}>
                   {SUBJECT_COLORS.map((c) => (
                     <TouchableOpacity
                       key={c}
                       onPress={() => setColor(c)}
                       style={[
-                        modalStyles.colorDot,
+                        m.colorDot,
                         { backgroundColor: c },
-                        color === c && modalStyles.colorDotSelected,
+                        color === c && m.colorDotSelected,
                       ]}
                     />
                   ))}
@@ -282,30 +158,30 @@ export const AddSubjectModal = ({ visible, onClose, onAdd }) => {
               </ScrollView>
               <TouchableOpacity
                 onPress={pickRandom}
-                style={modalStyles.randomBtn}
+                style={m.randomBtn}
               >
                 <Ionicons
                   name="shuffle"
-                  size={14}
+                  size={normalize(14)}
                   color={colors.textSecondary}
-                  style={modalStyles.randomIcon}
+                  style={m.randomIcon}
                 />
-                <Text style={modalStyles.randomText}>랜덤</Text>
+                <Text style={m.randomText}>랜덤</Text>
               </TouchableOpacity>
             </View>
-              <View style={modalStyles.row}>
-              <TouchableOpacity style={modalStyles.cancelBtn} onPress={onClose}>
-                <Text style={modalStyles.cancelText}>취소</Text>
+              <View style={m.row}>
+              <TouchableOpacity style={m.cancelBtn} onPress={onClose}>
+                <Text style={m.cancelText}>취소</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 style={[
-                  modalStyles.primaryBtn,
-                  !name.trim() && modalStyles.btnDisabled,
+                  m.primaryBtn,
+                  !name.trim() && m.btnDisabled,
                 ]}
                 onPress={handleAdd}
                 disabled={!name.trim()}
               >
-                <Text style={modalStyles.primaryText}>추가</Text>
+                <Text style={m.primaryText}>추가</Text>
               </TouchableOpacity>
               </View>
             </View>
@@ -324,6 +200,7 @@ export const AddTaskModal = ({
   subjects,
   initialSubjectId,
 }) => {
+  const { m, normalize } = useTimerModalStyles();
   const [content, setContent] = useState('');
   const [ready, setReady] = useState(false);
   const effectiveSubjectId = initialSubjectId ?? subjects[0]?.id ?? null;
@@ -376,11 +253,11 @@ export const AddTaskModal = ({
   if (!ready) {
     return (
       <Modal transparent animationType="fade" onRequestClose={handleClose}>
-        <View style={modalStyles.wrapper}>
-          <View style={modalStyles.centered}>
-            <View style={modalStyles.card}>
-              <Skeleton width={110} height={18} borderRadius={8} style={{ marginBottom: 10 }} />
-              <Skeleton width="100%" height={66} borderRadius={10} style={{ marginBottom: 12 }} />
+        <View style={m.wrapper}>
+          <View style={m.centered}>
+            <View style={m.card}>
+              <Skeleton width={110} height={18} borderRadius={8} style={m.skelLineMb10} />
+              <Skeleton width="100%" height={66} borderRadius={10} style={m.skelLineMb12} />
               <Skeleton width="100%" height={36} borderRadius={10} />
             </View>
           </View>
@@ -391,29 +268,23 @@ export const AddTaskModal = ({
   if (subjects.length === 0) {
     return (
       <Modal transparent animationType="fade" onRequestClose={handleClose}>
-        <View style={modalStyles.wrapper}>
+        <View style={m.wrapper}>
           <TouchableOpacity
-            style={modalStyles.overlay}
+            style={m.overlay}
             onPress={handleClose}
             activeOpacity={1}
           />
-          <View style={modalStyles.centered}>
-            <View style={modalStyles.card}>
-              <Text style={modalStyles.title}>할일 추가</Text>
-              <Text
-                style={{
-                  fontSize: 14,
-                  color: colors.textSecondary,
-                  marginBottom: 16,
-                }}
-              >
+          <View style={m.centered}>
+            <View style={m.card}>
+              <Text style={m.title}>할일 추가</Text>
+              <Text style={m.emptySubjectHint}>
                 과목을 먼저 추가해주세요.
               </Text>
               <TouchableOpacity
-                style={modalStyles.primaryBtn}
+                style={m.primaryBtn}
                 onPress={handleClose}
               >
-                <Text style={modalStyles.primaryText}>확인</Text>
+                <Text style={m.primaryText}>확인</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -424,43 +295,40 @@ export const AddTaskModal = ({
   return (
     <Modal transparent animationType="fade" onRequestClose={handleClose}>
       <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
-        <View style={modalStyles.wrapper}>
+        <View style={m.wrapper}>
           <TouchableOpacity
-            style={modalStyles.overlay}
+            style={m.overlay}
             onPress={handleClose}
             activeOpacity={1}
           />
-          <Animated.View style={[modalStyles.centered, animStyle]}>
-            <View style={modalStyles.card}>
-            <Text style={modalStyles.title}>할일 추가</Text>
-            <Text style={modalStyles.label}>내용</Text>
+          <Animated.View style={[m.centered, animStyle]}>
+            <View style={m.card}>
+            <Text style={m.title}>할일 추가</Text>
+            <Text style={m.label}>내용</Text>
             <TextInput
-              style={[
-                modalStyles.input,
-                { minHeight: 60, textAlignVertical: 'top' },
-              ]}
+              style={[m.input, m.inputMultiline]}
               placeholder="할 일 내용"
               placeholderTextColor={colors.textSecondary}
               value={content}
               onChangeText={setContent}
               multiline
             />
-              <View style={modalStyles.row}>
+              <View style={m.row}>
               <TouchableOpacity
-                style={modalStyles.cancelBtn}
+                style={m.cancelBtn}
                 onPress={handleClose}
               >
-                <Text style={modalStyles.cancelText}>취소</Text>
+                <Text style={m.cancelText}>취소</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 style={[
-                  modalStyles.primaryBtn,
-                  !content.trim() && modalStyles.btnDisabled,
+                  m.primaryBtn,
+                  !content.trim() && m.btnDisabled,
                 ]}
                 onPress={handleAdd}
                 disabled={!content.trim()}
               >
-                <Text style={modalStyles.primaryText}>추가</Text>
+                <Text style={m.primaryText}>추가</Text>
               </TouchableOpacity>
               </View>
             </View>
@@ -473,6 +341,7 @@ export const AddTaskModal = ({
 
 // ── 달력 모달 ─────────────────────────────────────────────
 export const CalendarModal = ({ visible, onClose, currentDayKey, onSelectDay }) => {
+  const { m, normalize } = useTimerModalStyles();
   const [yearMonth, setYearMonth] = useState(() => {
     const d = dateFromDayKey(currentDayKey || getTimerDayKey(new Date()));
     return { year: d.getFullYear(), month: d.getMonth() };
@@ -521,12 +390,12 @@ export const CalendarModal = ({ visible, onClose, currentDayKey, onSelectDay }) 
   if (!ready) {
     return (
       <Modal transparent animationType="fade" onRequestClose={onClose}>
-        <View style={modalStyles.wrapper}>
-          <View style={[modalStyles.centered, { justifyContent: 'center' }]}>
-            <View style={[modalStyles.card, { maxWidth: 360 }]}>
-              <Skeleton width={140} height={18} borderRadius={8} style={{ alignSelf: 'center', marginBottom: 14 }} />
+        <View style={m.wrapper}>
+          <View style={[m.centered, m.centeredJustify]}>
+            <View style={[m.card, m.cardMaxWidth]}>
+              <Skeleton width={140} height={18} borderRadius={8} style={m.skelTitleMb14} />
               {[0, 1, 2, 3].map((idx) => (
-                <Skeleton key={`calendar-skel-${idx}`} width="100%" height={34} borderRadius={8} style={{ marginBottom: 8 }} />
+                <Skeleton key={`calendar-skel-${idx}`} width="100%" height={34} borderRadius={8} style={m.skelLineMb8} />
               ))}
             </View>
           </View>
@@ -536,76 +405,48 @@ export const CalendarModal = ({ visible, onClose, currentDayKey, onSelectDay }) 
   }
   return (
     <Modal transparent animationType="fade" onRequestClose={onClose}>
-      <View style={modalStyles.wrapper}>
+      <View style={m.wrapper}>
         <TouchableOpacity
-          style={modalStyles.overlay}
+          style={m.overlay}
           onPress={onClose}
           activeOpacity={1}
         />
-        <View style={[modalStyles.centered, { justifyContent: 'center' }]}>
-          <View style={[modalStyles.card, { maxWidth: 360 }]}>
-            <View
-              style={{
-                flexDirection: 'row',
-                justifyContent: 'space-between',
-                alignItems: 'center',
-                marginBottom: 16,
-              }}
-            >
+        <View style={[m.centered, m.centeredJustify]}>
+          <View style={[m.card, m.cardMaxWidth]}>
+            <View style={m.calendarHeader}>
               <TouchableOpacity onPress={goPrevMonth} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-                <Ionicons name="chevron-back" size={20} color={colors.textPrimary} />
+                <Ionicons name="chevron-back" size={normalize(20)} color={colors.textPrimary} />
               </TouchableOpacity>
-              <Text
-                style={{
-                  fontSize: 16,
-                  fontWeight: '700',
-                  color: colors.textPrimary,
-                }}
-              >
+              <Text style={m.calendarMonthTitle}>
                 {yearMonth.year}년 {yearMonth.month + 1}월
               </Text>
               <TouchableOpacity onPress={goNextMonth} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
                 <Ionicons
                   name="chevron-forward"
-                  size={20}
+                  size={normalize(20)}
                   color={colors.textPrimary}
                 />
               </TouchableOpacity>
             </View>
 
-            <View style={{ flexDirection: 'row', marginBottom: 6 }}>
+            <View style={m.weekRow}>
               {['일', '월', '화', '수', '목', '금', '토'].map((d) => (
-                <View
-                  key={d}
-                  style={{ flex: 1, alignItems: 'center', paddingVertical: 4 }}
-                >
-                  <Text
-                    style={{
-                      fontSize: 12,
-                      fontWeight: '600',
-                      color: colors.textSecondary,
-                    }}
-                  >
+                <View key={d} style={m.weekDayCell}>
+                  <Text style={m.weekDayText}>
                     {d}
                   </Text>
                 </View>
               ))}
             </View>
 
-            <View style={{ flexDirection: 'row', flexWrap: 'wrap' }}>
+            <View style={m.calendarGrid}>
               {days.map((day, idx) => {
                 const key = day ? getDayKey(day) : null;
                 const isSelected = key && key === currentDayKey;
                 return (
                   <TouchableOpacity
                     key={idx}
-                    style={{
-                      width: '14.285%',
-                      aspectRatio: 1,
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      paddingVertical: 4,
-                    }}
+                    style={m.dayCell}
                     disabled={!day}
                     onPress={() => {
                       const selected = getDayKey(day);
@@ -617,21 +458,16 @@ export const CalendarModal = ({ visible, onClose, currentDayKey, onSelectDay }) 
                   >
                     {day && (
                       <View
-                        style={{
-                          width: 28,
-                          height: 28,
-                          borderRadius: 14,
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          backgroundColor: isSelected ? colors.primary : 'transparent',
-                        }}
+                        style={[
+                          m.dayInner,
+                          isSelected && m.dayInnerSelected,
+                        ]}
                       >
                         <Text
-                          style={{
-                            fontSize: 13,
-                            fontWeight: isSelected ? '700' : '400',
-                            color: isSelected ? colors.textWhite : colors.textPrimary,
-                          }}
+                          style={[
+                            m.dayText,
+                            isSelected && m.dayTextSelected,
+                          ]}
                         >
                           {day}
                         </Text>
