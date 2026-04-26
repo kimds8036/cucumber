@@ -27,8 +27,11 @@ export const connectSocket = async (roomId, token) => {
     auth: { token: resolvedToken },
     transports: ['websocket'],
     reconnection: true,
-    reconnectionDelay: 2000,
-    reconnectionAttempts: 5,
+    reconnectionDelay: 1000,
+    reconnectionDelayMax: 15000,
+    randomizationFactor: 0.5,
+    reconnectionAttempts: Infinity,
+    timeout: 10000,
   });
 
   currentRoomId = roomId ?? null;
@@ -40,11 +43,26 @@ export const connectSocket = async (roomId, token) => {
   return socket;
 };
 
-export const disconnectSocket = () => {
+/**
+ * 전역 소켓 강제 종료.
+ * - 원칙적으로 SocketContext(로그아웃/세션만료/앱 종료 흐름)에서만 호출한다.
+ * - 화면/훅 cleanup에서는 절대 호출하지 말고 leave_room만 처리한다.
+ */
+export const disconnectSocket = (opts = {}) => {
+  const { force = false, reason = 'unspecified' } = opts;
+  if (!force) {
+    if (__DEV__) {
+      console.warn('[SocketManager] disconnectSocket 차단(force=false)', { reason });
+    }
+    return;
+  }
   if (socket?.connected && currentRoomId) {
     socket.emit('leave_room', { roomId: currentRoomId });
   }
-  if (socket?.connected) {
+  if (socket) {
+    if (__DEV__) {
+      console.log('[SocketManager] disconnectSocket 실행', { reason });
+    }
     socket.disconnect();
   }
   currentRoomId = null;

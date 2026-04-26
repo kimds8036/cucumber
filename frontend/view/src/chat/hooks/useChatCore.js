@@ -225,7 +225,11 @@ export default function useChatCore(config) {
       });
       pendingClientIdTimeoutsRef.current.forEach((t) => clearTimeout(t));
       pendingClientIdTimeoutsRef.current.clear();
-      socket.disconnectSocket?.();
+      // 전역 소켓은 SocketContext가 소유한다.
+      // 채팅 화면 cleanup에서는 room 구독만 해제하고 소켓 자체는 유지한다.
+      if (roomId) {
+        socket.emit?.('leave_room', { roomId });
+      }
       stopPolling();
     };
   }, [

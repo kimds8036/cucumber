@@ -15,6 +15,7 @@ import * as socketManager from '../view/src/socketManager';
 const AUTH_TOKEN_KEY = '@auth_token';
 const SOCKET_AUTH_ERROR_CODE = 'AUTH_FAILED';
 const AUTH_ERROR_KEYWORDS = ['토큰', '인증', 'invalid', 'Unauthorized', '만료'];
+const SOCKET_HEALTHCHECK_MS = 15000;
 
 const SocketContext = createContext(null);
 
@@ -30,6 +31,24 @@ export function SocketProvider({ children }) {
   const pendingAuthFailureRef = useRef(false);
   const isLoggingOutRef = useRef(false);
   const alertShownRef = useRef(false);
+  const reconnectBackoffMsRef = useRef(1000);
+  const reconnectTimerRef = useRef(null);
+
+  const logSocket = useCallback((event, payload = {}) => {
+    if (!__DEV__) return;
+    console.log(`[SocketContext][${event}]`, {
+      at: new Date().toISOString(),
+      appState: appStateRef.current,
+      ...payload,
+    });
+  }, []);
+
+  const clearReconnectTimer = useCallback(() => {
+    if (reconnectTimerRef.current) {
+      clearTimeout(reconnectTimerRef.current);
+      reconnectTimerRef.current = null;
+    }
+  }, []);
 
   const cleanupContextListeners = useCallback((targetSocket) => {
     if (!targetSocket) return;
@@ -56,7 +75,10 @@ export function SocketProvider({ children }) {
         // disconnect 이벤트/재시도 콜백 재진입을 막기 위해 리스너를 먼저 정리한다.
         cleanupContextListeners(latest);
         latest.removeAllListeners?.();
-        latest.disconnect();
+        socketManager.disconnectSocket?.({
+          force: true,
+          reason: 'session_expired_logout',
+        });
       }
 
       await clearAuthToken();
@@ -127,6 +149,24 @@ export function SocketProvider({ children }) {
     }
   }, [forceLogoutBySessionExpired, tryRefreshAccessToken]);
 
+  const scheduleReconnect = useCallback((reason = 'unspecified') => {
+    if (cancelledRef.current || isLoggingOutRef.current) return;
+    clearReconnectTimer();
+    const delay = reconnectBackoffMsRef.current;
+    reconnectBackoffMsRef.current = Math.min(
+      Math.floor(reconnectBackoffMsRef.current * 1.8),
+      15000,
+    );
+    logSocket('reconnect_scheduled', { reason, delayMs: delay });
+    reconnectTimerRef.current = setTimeout(() => {
+      const latest = socketManager.getSocket?.();
+      if (latest && !latest.connected) {
+        logSocket('reconnect_attempt', { reason });
+        latest.connect();
+      }
+    }, delay);
+  }, [clearReconnectTimer, logSocket]);
+
   const connect = useCallback(async () => {
     try {
       const token = await AsyncStorage.getItem(AUTH_TOKEN_KEY);
@@ -141,26 +181,32 @@ export function SocketProvider({ children }) {
         isReconnectingRef.current = false;
         pendingAuthFailureRef.current = false;
         hasRetriedAfterRefreshRef.current = false;
+        reconnectBackoffMsRef.current = 1000;
+        clearReconnectTimer();
         if (!cancelledRef.current) {
           setConnected(true);
           setSocket(s);
         }
-        if (__DEV__) {
-          console.log('[SocketContext] 연결됨', {
-            socketId: s.id,
-            transport: s.io?.engine?.transport?.name,
-          });
-        }
+        logSocket('connected', {
+          socketId: s.id,
+          transport: s.io?.engine?.transport?.name,
+        });
       });
 
       s.on('disconnect', (reason) => {
         setConnected(false);
-        if (__DEV__) console.log('[SocketContext] 연결 끊김', reason);
+        logSocket('disconnected', { reason });
+        scheduleReconnect(`disconnect:${reason}`);
       });
 
       s.on('connect_error', (err) => {
-        console.warn('[SocketContext] connect_error:', err?.message);
+        logSocket('connect_error', {
+          message: err?.message,
+          code: err?.data?.code,
+          description: err?.description,
+        });
         if (!isAuthConnectError(err)) {
+          scheduleReconnect('connect_error_non_auth');
           return;
         }
 
@@ -175,9 +221,12 @@ export function SocketProvider({ children }) {
       setSocket(s);
       if (!s.connected) s.connect();
     } catch (e) {
-      console.error('[SocketContext] 연결 실패:', e);
+      console.error('[SocketContext][connect_failed]', {
+        at: new Date().toISOString(),
+        message: e?.message,
+      });
     }
-  }, [cleanupContextListeners]);
+  }, [cleanupContextListeners, clearReconnectTimer, isAuthConnectError, logSocket, recoverSocketAuth, scheduleReconnect]);
 
   useEffect(() => {
     cancelledRef.current = false;
@@ -197,25 +246,31 @@ export function SocketProvider({ children }) {
         if (activeSocket && !activeSocket.connected) {
           if (isReconnectingRef.current) return;
           isReconnectingRef.current = true;
-          if (__DEV__) {
-            console.log('[SocketContext] AppState active → 소켓 재연결 시도');
-          }
+          logSocket('appstate_reconnect', { prev, nextState });
           activeSocket.connect();
         }
       }
     };
 
     const sub = AppState.addEventListener('change', handleAppStateChange);
+    const healthcheck = setInterval(() => {
+      if (appStateRef.current !== 'active') return;
+      const latest = socketManager.getSocket?.();
+      if (!latest || latest.connected) return;
+      scheduleReconnect('healthcheck');
+    }, SOCKET_HEALTHCHECK_MS);
 
     return () => {
       cancelledRef.current = true;
       sub.remove();
+      clearInterval(healthcheck);
+      clearReconnectTimer();
       // 컨텍스트에서 등록한 리스너만 정리하고, 소켓 연결은 유지한다.
       cleanupContextListeners(socketManager.getSocket?.());
       setSocket(null);
       setConnected(false);
     };
-  }, [connect, cleanupContextListeners, recoverSocketAuth]);
+  }, [clearReconnectTimer, connect, cleanupContextListeners, logSocket, recoverSocketAuth, scheduleReconnect]);
 
   const value = {
     socket,
