@@ -858,13 +858,14 @@ export const TimerContent = () => {
 
   const { showToast, setIsTimerScreenActive } = useToast();
   const pushTimerToast = (senderName, body) => {
-    const s = String(senderName || '알림').trim();
+    const s = String(senderName || '').trim();
     const b = String(body || '').trim();
     if (!b) return;
+    const hasSender = s.length > 0;
     showToast({
-      message: `${s}: ${b}`,
-      senderName: s,
-      body: b,
+      message: hasSender ? `${s}: ${b}` : b,
+      senderName: hasSender ? s : null,
+      body: hasSender ? b : null,
       showProgress: true,
     });
   };
@@ -1527,7 +1528,7 @@ export const TimerContent = () => {
                 await reloadTodayFromServer();
               } catch (error) {
                 console.error('[Timer] 과목 삭제 실패:', error);
-                Alert.alert('삭제 실패', '과목 삭제 중 오류가 발생했습니다.');
+                Alert.alert('삭제 실패', '과목 삭제 중 문제가 발생했어요');
               }
             },
           },
@@ -1559,7 +1560,7 @@ export const TimerContent = () => {
               await reloadTodayFromServer();
             } catch (error) {
               console.error('[Timer] 할 일 삭제 실패:', error);
-              Alert.alert('삭제 실패', '할 일 삭제 중 오류가 발생했습니다.');
+              Alert.alert('삭제 실패', '할 일 삭제 중 문제가 발생했어요');
             }
           },
         },
@@ -1690,7 +1691,7 @@ export const TimerContent = () => {
               }
               pushTimerToast(
                 '타이머',
-                '백그라운드 시간이 길어 세션을 자동 정리했어요.',
+                '백그라운드 유지 시간이 길어 세션이 자동으로 종료되었어요',
               );
             } catch (error) {
               console.error('[Timer] close-incomplete 호출 실패:', error);
@@ -1744,14 +1745,14 @@ export const TimerContent = () => {
     try {
       const { status } = await MediaLibrary.requestPermissionsAsync();
       if (status !== 'granted') {
-        Alert.alert('권한 필요', '사진 저장 권한이 필요합니다.');
+        Alert.alert('권한 필요', '사진 저장을 위해 갤러리 접근 권한이 필요해요');
         return;
       }
       const uri = await capturePlannerRef.current.capture();
       await MediaLibrary.saveToLibraryAsync(uri);
-      Alert.alert('저장 완료', '갤러리에 저장되었습니다.');
+      Alert.alert('저장 완료', '갤러리에 저장되었어요');
     } catch (e) {
-      Alert.alert('저장 실패', e?.message || '이미지 저장에 실패했습니다.');
+      Alert.alert('저장 실패', e?.message || '이미지 저장에 실패했어요. 다시 시도해 주세요');
     }
   };
 
@@ -2000,7 +2001,7 @@ export const TimerContent = () => {
                     Alert.alert(
                       '친구 요청 실패',
                       error.response?.data?.message ||
-                        '친구 요청 중 오류가 발생했습니다.',
+                        '친구 요청 중 문제가 발생했어요. 잠시 후 다시 시도해 주세요',
                     );
                   }
                 },

@@ -32,7 +32,7 @@ export async function showTimerRunningNotification() {
     await Notifications.scheduleNotificationAsync({
       content: {
         title: '타이머 실행 중',
-        body: '공부 시간을 기록하고 있어요. 탭해서 돌아오기',
+        body: '공부 시간을 기록 중이에요. 탭하여 돌아가기',
         data: {
           targetScreen: 'Timer',
           identifier: TIMER_RUNNING_NOTIFICATION_IDENTIFIER,

@@ -78,14 +78,22 @@ const DM_ICON_COLOR_COUNT = 4;
 
 const normalizeWatchers = (watchers) => normalizeStudySummaryWatchers(watchers);
 
+const normalizeKoreanHonorificSpacing = (text) => {
+  const raw = String(text ?? '');
+  if (!raw) return raw;
+  return raw
+    .replace(/([^\s])님이/g, '$1 님이')
+    .replace(/([^\s])님 외/g, '$1 님 외');
+};
+
 const mapRowToNotificationItem = (n) => {
   const icon = mapTypeToIcon(n.type, n.category);
   return {
     id: n.id,
     type: n.type,
     category: n.category,
-    title: n.title,
-    content: n.content,
+    title: normalizeKoreanHonorificSpacing(n.title),
+    content: normalizeKoreanHonorificSpacing(n.content),
     time: formatTime(n.createdAt),
     createdAt: n.createdAt,
     isRead: !!n.isRead,
@@ -736,10 +744,12 @@ const NotificationScreen = ({ navigation }) => {
                 size={styles.emptyIcon.size}
                 color={styles.emptyIcon.color}
               />
-              <Text style={styles.emptyTitle}>아직 소식이 없네요</Text>
-              <Text style={styles.emptyText}>
-                인기 게시글을 확인해보러 갈까요?
-              </Text>
+              <Text style={styles.emptyTitle}>아직 새로운 소식이 없어요</Text>
+              {/*
+                TODO(marketing-consent):
+                마케팅 동의 사용자 대상으로
+                "인기 게시글을 확인해 보세요" 알림 문구/플로우 적용 예정
+              */}
               <TouchableOpacity
                 style={styles.emptyButton}
                 onPress={() => popToMainRoot(navigation)}

@@ -472,7 +472,7 @@ router.post('/requests', authenticate, async (req, res) => {
           type: 'friend_request',
           category: 'system',
           title: '새 친구 요청이 도착했어요',
-          body: '친구 요청함에서 확인해 보세요.',
+          body: '친구 목록에서 확인해 보세요.',
           relatedType: 'friendship',
           relatedId: requestId,
         });
@@ -485,7 +485,7 @@ router.post('/requests', authenticate, async (req, res) => {
           type: 'friend_request',
           category: 'system',
           title: '새 친구 요청이 도착했어요',
-          body: '친구 요청함에서 확인해 보세요.',
+          body: '친구 목록에서 확인해 보세요.',
           relatedType: 'friendship',
           relatedId: requestId,
         });
