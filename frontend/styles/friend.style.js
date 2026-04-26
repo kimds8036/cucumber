@@ -153,8 +153,6 @@ export const createFriendStyles = (normalize) =>
       flexDirection: 'row',
       alignItems: 'center',
       paddingVertical: normalize(12),
-      borderBottomWidth: 1,
-      borderBottomColor: colors.textLight5,
     },
     avatar: {
       borderRadius: normalize(23),

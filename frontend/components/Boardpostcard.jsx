@@ -17,6 +17,7 @@ import { normalizeTagsFromApi } from '../utils/normalizePostTags';
  *  - onScrapPress : 스크랩 토글 (post) => void
  *  - onLayoutStable : (postId, layoutEpoch) => void — 태그 줄·칩 측정이 끝난 뒤(또는 태그 없음) 1회
  *  - layoutStableEpoch : 목록이 배치한 로드 배치 번호(부모 ref). 콜백과 짝을 맞출 때 사용
+ *  - hideDistanceBadge : true면 우측 거리(km) 뱃지만 숨김
  */
 const BoardPostCard = ({
   post,
@@ -26,6 +27,7 @@ const BoardPostCard = ({
   onScrapPress,
   onLayoutStable,
   layoutStableEpoch = 0,
+  hideDistanceBadge = false,
 }) => {
   const hasThumb =
     typeof post.thumbnail === 'string' && post.thumbnail.trim().length > 0;
@@ -173,7 +175,7 @@ const BoardPostCard = ({
             </View>
           ) : null}
         </View>
-        {hasKm ? (
+        {!hideDistanceBadge && hasKm ? (
           <View style={styles.distanceBadgeWrap}>
             <View style={styles.distanceBadgeChip}>
               <MaterialIcons
