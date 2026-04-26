@@ -491,6 +491,8 @@ const FriendsScreen = ({ navigation }) => {
           )}
         </View>
       </Modal>
+        </View>
+      </TouchableWithoutFeedback>
     </SafeAreaView>
   );
 };
