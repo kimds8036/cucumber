@@ -3,7 +3,7 @@
  * 친구 목록 UI + PokeModal + AddFriendModal + Toast
  */
 
-import React, { useState, useEffect, useRef, useMemo, memo } from 'react';
+import React, { useState, useEffect, useMemo, memo } from 'react';
 import {
   View,
   Text,
@@ -11,8 +11,6 @@ import {
   ScrollView,
   TextInput,
   Modal,
-  Animated,
-  Easing,
   useWindowDimensions,
   Keyboard,
   TouchableWithoutFeedback,
@@ -23,6 +21,7 @@ import Reanimated, {
 } from 'react-native-reanimated';
 import { useKeyboardHandler } from 'react-native-keyboard-controller';
 import Ionicons from '@expo/vector-icons/Ionicons';
+import FontAwesome5 from '@expo/vector-icons/FontAwesome5';
 import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
 import ProfileIcon from '../assets/Profile.svg';
 import { colors } from '../styles/colors';
@@ -55,46 +54,9 @@ export const PokeModal = ({
   onNotifyLater,
   onMessage,
 }) => {
-  const shakeAnim = useRef(new Animated.Value(0)).current;
   const { width } = useWindowDimensions();
   const normalize = useMemo(() => getNormalize(width), [width]);
   const s = useMemo(() => createTimerFriendModalStyles(normalize), [normalize]);
-
-  useEffect(() => {
-    if (visible && friend) {
-      Animated.sequence([
-        Animated.timing(shakeAnim, {
-          toValue: 8,
-          duration: 60,
-          useNativeDriver: true,
-          easing: Easing.linear,
-        }),
-        Animated.timing(shakeAnim, {
-          toValue: -8,
-          duration: 60,
-          useNativeDriver: true,
-          easing: Easing.linear,
-        }),
-        Animated.timing(shakeAnim, {
-          toValue: 6,
-          duration: 60,
-          useNativeDriver: true,
-          easing: Easing.linear,
-        }),
-        Animated.timing(shakeAnim, {
-          toValue: -6,
-          duration: 60,
-          useNativeDriver: true,
-          easing: Easing.linear,
-        }),
-        Animated.timing(shakeAnim, {
-          toValue: 0,
-          duration: 60,
-          useNativeDriver: true,
-        }),
-      ]).start();
-    }
-  }, [visible, friend]);
 
   if (!visible || !friend) return null;
   const isStudying = friend.isActive === true;
@@ -107,10 +69,7 @@ export const PokeModal = ({
         activeOpacity={1}
       />
       <View style={s.pokeWrapper}>
-        <Animated.View
-          style={[s.pokePopup, { transform: [{ translateX: shakeAnim }] }]}
-        >
-          <View style={s.pokeHandle} />
+        <View style={s.pokePopup}>
 
           {/* 친구 정보 */}
           <View style={s.pokeFriendRow}>
@@ -125,7 +84,11 @@ export const PokeModal = ({
                     friend.colorIndex,
                 )}
               />
-              {isStudying && <View style={s.pokeStudyingBadge} />}
+              {isStudying ? (
+                <View style={s.pokeStudyingBadge} />
+              ) : (
+                <View style={s.pokeIdleBadge} />
+              )}
             </View>
             <View>
               <Text style={s.pokeFriendName}>{friend.name}</Text>
@@ -135,26 +98,25 @@ export const PokeModal = ({
             </View>
           </View>
 
-          <View style={s.pokeDivider} />
-
           {/* 상태별 분기 */}
           {isStudying ? (
             <>
-              <View style={s.pokeInfoBox}>
-                <Text style={s.pokeInfoEmoji}>🤫</Text>
-                <View>
-                  <Text style={s.pokeInfoTitle}>쉿, 공부 중이에요</Text>
-                  <Text style={s.pokeInfoDesc}>
-                    공부가 끝나면 알려달라고 요청할 수 있어요.
-                  </Text>
-                </View>
-              </View>
               <TouchableOpacity
                 style={s.pokePrimaryBtn}
                 onPress={onNotifyLater}
                 activeOpacity={0.8}
               >
-                <Text style={s.pokePrimaryBtnText}>🔔 공부 끝나면 알려줘!</Text>
+                <View style={s.pokePrimaryBtnContent}>
+                  <Ionicons
+                    name="notifications"
+                    style={[s.pokeNotificationBtnIcon, { color: colors.primary }]}
+                  />
+                  <View style={s.pokePrimaryBtnTextGroup}>
+                    <Text style={s.pokePrimaryBtnText}>
+                      공부 완료 알람 받기
+                    </Text>
+                  </View>
+                </View>
               </TouchableOpacity>
             </>
           ) : (
@@ -192,11 +154,7 @@ export const PokeModal = ({
               </View>
             </View>
           </TouchableOpacity>
-
-          <TouchableOpacity style={s.pokeCancelBtn} onPress={onClose}>
-            <Text style={s.pokeCancelBtnText}>취소</Text>
-          </TouchableOpacity>
-        </Animated.View>
+        </View>
       </View>
     </Modal>
   );
@@ -321,9 +279,7 @@ export const AddFriendModal = ({ visible, onClose, onAdd }) => {
           <TouchableOpacity style={s.addFriendOverlay} onPress={onClose} activeOpacity={1} />
           <Reanimated.View style={[s.addFriendWrapper, animStyle]}>
             <View style={s.addFriendPopup}>
-              <View style={s.addFriendHandle} />
               <Text style={s.addFriendTitle}>친구 추가</Text>
-              <Text style={s.addFriendSubtitle}>아이디로 친구를 검색하세요</Text>
 
               <View style={s.addFriendInputRow}>
                 <Ionicons
@@ -343,7 +299,7 @@ export const AddFriendModal = ({ visible, onClose, onAdd }) => {
                   <TouchableOpacity onPress={() => setQuery('')}>
                     <Ionicons
                       name="close-circle"
-                      size={normalize(16)}
+                      size={normalize(18)}
                       color={colors.textLight20}
                     />
                   </TouchableOpacity>
@@ -359,17 +315,13 @@ export const AddFriendModal = ({ visible, onClose, onAdd }) => {
                 activeOpacity={0.8}
                 disabled={!query.trim()}
               >
-                <Ionicons
-                  name="person-add-outline"
+                <FontAwesome5
+                  name="user-plus"
                   size={normalize(16)}
                   color={colors.textWhite}
                   style={s.addFriendPrimaryBtnIcon}
                 />
                 <Text style={s.addFriendPrimaryBtnText}>추가하기</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity style={s.addFriendCancelBtn} onPress={onClose}>
-                <Text style={s.addFriendCancelBtnText}>취소</Text>
               </TouchableOpacity>
             </View>
           </Reanimated.View>

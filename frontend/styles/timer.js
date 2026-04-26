@@ -108,7 +108,7 @@ export const createTimerStyles = (width, normalize) => {
     friendStatusDotOnCircle: {
       position: 'absolute',
       top: normalize(43),
-      right: normalize(1),
+      right: normalize(3),
       bottom: normalize(-3),
       width: normalize(12),
       height: normalize(12),
@@ -483,14 +483,14 @@ export const createTimerStyles = (width, normalize) => {
     },
     friendStatusDot: {
       position: 'absolute',
-      right: normalize(1),
+      right: normalize(3),
       bottom: normalize(1),
       width: normalize(10),
       height: normalize(10),
       borderRadius: normalize(6),
     },
     friendStatusDotActive: {
-      backgroundColor: '#4CAF50',
+      backgroundColor: '#7ACC5E',
     },
     friendStatusDotInactive: {
       backgroundColor: '#E9E9E9',
@@ -726,6 +726,57 @@ export const createTimerStyles = (width, normalize) => {
       color: colors.textSecondary,
       textDecorationLine: 'line-through',
     },
+    /** @timer.jsx */
+    dateBarNavBtn: {
+      padding: normalize(4),
+    },
+    dateBarDateTouch: {
+      minWidth: normalize(100),
+    },
+    plannerCaptureOffscreen: {
+      position: 'absolute',
+      left: -width * 2,
+      top: 0,
+      width,
+    },
+    viewShotBg: {
+      backgroundColor: colors.background,
+    },
+    plannerSubjectListItem: {
+      marginBottom: normalize(10),
+    },
+    timerSkelFriendName: {
+      marginTop: normalize(4),
+    },
+    timerSkelDateLine1: {
+      alignSelf: 'center',
+      marginBottom: normalize(10),
+    },
+    timerSkelDateLine2: {
+      alignSelf: 'center',
+      marginBottom: normalize(16),
+    },
+    timerSkelTimerBtn: {
+      alignSelf: 'center',
+    },
+    timerSkelColTitle: {
+      marginBottom: normalize(10),
+    },
+    timerSkelTaskRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      marginBottom: normalize(10),
+      gap: normalize(8),
+    },
+    timerSkelTtTitle: {
+      marginBottom: normalize(10),
+    },
+    timerSkelTtRow: {
+      marginBottom: normalize(8),
+    },
+    safeAreaFlex: {
+      flex: 1,
+    },
   });
 };
 
@@ -764,6 +815,7 @@ export const createTimerFriendModalStyles = (normalize) =>
       alignItems: 'center',
       gap: normalize(14),
       marginBottom: normalize(16),
+      marginTop: normalize(10),
     },
     pokeFriendTextBox: {
       minHeight: normalize(52),
@@ -777,12 +829,21 @@ export const createTimerFriendModalStyles = (normalize) =>
     },
     pokeStudyingBadge: {
       position: 'absolute',
-      bottom: 0,
-      right: 0,
-      width: normalize(16),
-      height: normalize(16),
+      bottom: normalize(2),
+      right: normalize(0),
+      width: normalize(10),
+      height: normalize(10),
       borderRadius: normalize(8),
-      backgroundColor: colors.primaryDark,
+      backgroundColor: '#7ACC5E',
+    },
+    pokeIdleBadge: {
+      position: 'absolute',
+      bottom: normalize(2),
+      right: normalize(0),
+      width: normalize(10),
+      height: normalize(10),
+      borderRadius: normalize(8),
+      backgroundColor: '#E9E9E9',
     },
     pokeFriendName: {
       fontSize: normalize(fontSizes.xxl),
@@ -807,7 +868,7 @@ export const createTimerFriendModalStyles = (normalize) =>
     },
     pokeInfoBox: {
       flexDirection: 'row',
-      alignItems: 'flex-start',
+      alignItems: 'center',
       backgroundColor: colors.green,
       borderRadius: normalize(14),
       padding: normalize(14),
@@ -816,30 +877,32 @@ export const createTimerFriendModalStyles = (normalize) =>
     },
     pokeInfoEmoji: {
       fontSize: normalize(fontSizes.heading + 3),
-      color: colors.background,
+      color: colors.primary,
     },
     pokeInfoTitle: {
       fontSize: normalize(fontSizes.xxl),
       fontFamily: fonts.bold,
-      color: colors.background,
+      color: colors.primary,
+      textAlignVertical: 'center',
+      includeFontPadding: false,
     },
     pokeInfoDesc: {
       fontSize: normalize(fontSizes.lg),
       fontFamily: fonts.regular,
       color: colors.background2,
-      lineHeight: normalize(19),
+      lineHeight: normalize(16),
     },
     pokePrimaryBtn: {
-      backgroundColor: colors.primary,
-      borderRadius: normalize(14),
-      paddingVertical: normalize(14),
+      backgroundColor: colors.primaryLight20,
+      borderRadius: normalize(20),
+      paddingVertical: normalize(12),
       alignItems: 'center',
       marginBottom: normalize(10),
     },
     pokePrimaryBtnContent: {
       width: '100%',
       flexDirection: 'row',
-      alignItems: 'flex-start',
+      alignItems: 'center',
       justifyContent: 'flex-start',
       paddingHorizontal: normalize(16),
       gap: normalize(12),
@@ -851,35 +914,41 @@ export const createTimerFriendModalStyles = (normalize) =>
     pokePrimaryBtnText: {
       fontSize: normalize(15),
       fontFamily: fonts.bold,
-      color: colors.textWhite,
+      color: colors.primary,
     },
     pokeMessageBtn: {
-      backgroundColor: colors.primary,
-      borderRadius: normalize(14),
-      paddingVertical: normalize(14),
+      backgroundColor: colors.primaryLight20,
+      borderRadius: normalize(20),
+      paddingVertical: normalize(12),
       alignItems: 'center',
       marginBottom: normalize(10),
     },
     pokeMessageBtnContent: {
       width: '100%',
       flexDirection: 'row',
-      alignItems: 'flex-start',
+      alignItems: 'center',
       justifyContent: 'flex-start',
       paddingHorizontal: normalize(14),
       gap: normalize(12),
     },
     pokeMessageBtnIcon: {
-      color: colors.background,
+      color: colors.primary,
       fontSize: normalize(fontSizes.xxl),
       alignSelf: 'center',
       paddingHorizontal: normalize(4),
+    },
+    pokeNotificationBtnIcon: {
+      color: colors.primary,
+      fontSize: normalize(fontSizes.heading),
+      alignSelf: 'center',
+      paddingHorizontal: normalize(2),
     },
     pokeMessageBtnTextGroup: {
       flex: 1,
       alignItems: 'flex-start',
     },
     pokeMessageBtnText: {
-      color: colors.textWhite,
+      color: colors.background,
       fontSize: normalize(15),
       fontFamily: fonts.bold,
       alignSelf: 'flex-start',
@@ -889,8 +958,8 @@ export const createTimerFriendModalStyles = (normalize) =>
     pokeCancelBtn: {
       paddingVertical: normalize(12),
       alignItems: 'center',
-      backgroundColor: colors.surface,
-      borderRadius: normalize(14),
+      backgroundColor: colors.textLight5,
+      borderRadius: normalize(20),
     },
     pokeCancelBtnText: {
       fontSize: normalize(fontSizes.xl),
@@ -913,7 +982,7 @@ export const createTimerFriendModalStyles = (normalize) =>
       borderTopLeftRadius: normalize(24),
       borderTopRightRadius: normalize(24),
       paddingHorizontal: normalize(24),
-      paddingBottom: normalize(40),
+      paddingBottom: normalize(30),
       paddingTop: normalize(12),
       ...friendModalSheetShadow(normalize),
     },
@@ -926,16 +995,16 @@ export const createTimerFriendModalStyles = (normalize) =>
       marginBottom: normalize(20),
     },
     addFriendTitle: {
-      fontSize: normalize(17),
+      fontSize: normalize(fontSizes.title),
       fontFamily: fonts.bold,
       color: colors.textPrimary,
-      marginBottom: normalize(4),
+      marginBottom: normalize(10),
+      marginTop: normalize(10),
     },
     addFriendSubtitle: {
       fontSize: normalize(fontSizes.xl),
       fontFamily: fonts.regular,
       color: colors.textSecondary,
-      marginBottom: normalize(20),
     },
     addFriendInputRow: {
       flexDirection: 'row',
@@ -984,5 +1053,220 @@ export const createTimerFriendModalStyles = (normalize) =>
       fontSize: normalize(fontSizes.xl),
       fontFamily: fonts.bold,
       color: colors.textSecondary,
+    },
+  });
+
+/** timerModals.jsx — AddSubjectModal / AddTaskModal / CalendarModal */
+export const createTimerModalsStyles = (normalize) =>
+  StyleSheet.create({
+    wrapper: {
+      flex: 1,
+      justifyContent: 'center',
+      alignItems: 'center',
+      backgroundColor: colors.overlayLight,
+    },
+    overlay: {
+      position: 'absolute',
+      top: 0,
+      left: 0,
+      right: 0,
+      bottom: 0,
+    },
+    centered: {
+      width: '86%',
+    },
+    centeredJustify: {
+      justifyContent: 'center',
+    },
+    card: {
+      backgroundColor: colors.background,
+      borderRadius: normalize(18),
+      paddingHorizontal: normalize(18),
+      paddingVertical: normalize(18),
+    },
+    cardMaxWidth: {
+      maxWidth: normalize(360),
+    },
+    title: {
+      fontSize: normalize(fontSizes.title),
+      fontFamily: fonts.bold,
+      color: colors.textPrimary,
+      marginBottom: normalize(10),
+    },
+    label: {
+      fontSize: normalize(fontSizes.lg),
+      fontFamily: fonts.bold,
+      color: colors.textSecondary,
+      marginBottom: normalize(6),
+    },
+    labelNoMargin: {
+      marginBottom: 0,
+    },
+    input: {
+      borderWidth: 1,
+      borderColor: colors.border,
+      borderRadius: normalize(10),
+      paddingHorizontal: normalize(12),
+      paddingVertical: normalize(8),
+      fontSize: normalize(fontSizes.xl),
+      fontFamily: fonts.regular,
+      color: colors.textPrimary,
+      marginBottom: normalize(12),
+    },
+    inputMultiline: {
+      minHeight: normalize(60),
+      textAlignVertical: 'top',
+    },
+    emptySubjectHint: {
+      fontSize: normalize(fontSizes.xl),
+      fontFamily: fonts.regular,
+      color: colors.textSecondary,
+      marginBottom: normalize(16),
+    },
+    colorRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      marginTop: normalize(8),
+      marginBottom: normalize(14),
+    },
+    colorLabelRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: normalize(4),
+    },
+    colorScroll: {
+      flexGrow: 0,
+      marginLeft: normalize(8),
+    },
+    colorWrap: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: normalize(8),
+      paddingVertical: normalize(4),
+    },
+    colorDot: {
+      width: normalize(22),
+      height: normalize(22),
+      borderRadius: normalize(11),
+      borderWidth: 1,
+      borderColor: colors.transparent,
+    },
+    colorDotSelected: {
+      borderColor: colors.textPrimary,
+      borderWidth: 2,
+    },
+    randomBtn: {
+      marginLeft: normalize(10),
+      paddingHorizontal: normalize(10),
+      paddingVertical: normalize(6),
+      borderRadius: normalize(12),
+      backgroundColor: colors.surface,
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: normalize(4),
+    },
+    randomIcon: {
+      marginTop: 0,
+    },
+    randomText: {
+      fontSize: normalize(fontSizes.md),
+      fontFamily: fonts.bold,
+      color: colors.textSecondary,
+      lineHeight: normalize(14),
+    },
+    row: {
+      flexDirection: 'row',
+      justifyContent: 'flex-end',
+      marginTop: normalize(10),
+      gap: normalize(8),
+    },
+    cancelBtn: {
+      paddingHorizontal: normalize(14),
+      paddingVertical: normalize(10),
+      borderRadius: normalize(10),
+      backgroundColor: colors.surface,
+    },
+    cancelText: {
+      fontSize: normalize(fontSizes.lg),
+      fontFamily: fonts.bold,
+      color: colors.textSecondary,
+    },
+    primaryBtn: {
+      paddingHorizontal: normalize(16),
+      paddingVertical: normalize(10),
+      borderRadius: normalize(10),
+      backgroundColor: colors.primary,
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    primaryText: {
+      fontSize: normalize(fontSizes.xl),
+      fontFamily: fonts.bold,
+      color: colors.textWhite,
+    },
+    btnDisabled: {
+      opacity: 0.4,
+    },
+    skelLineMb10: { marginBottom: normalize(10) },
+    skelLineMb12: { marginBottom: normalize(12) },
+    skelLineMb8: { marginBottom: normalize(8) },
+    skelTitleMb14: { alignSelf: 'center', marginBottom: normalize(14) },
+    calendarHeader: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      marginBottom: normalize(16),
+    },
+    calendarMonthTitle: {
+      fontSize: normalize(fontSizes.xxl),
+      fontFamily: fonts.bold,
+      color: colors.textPrimary,
+    },
+    weekRow: {
+      flexDirection: 'row',
+      marginBottom: normalize(6),
+    },
+    weekDayCell: {
+      flex: 1,
+      alignItems: 'center',
+      paddingVertical: normalize(4),
+    },
+    weekDayText: {
+      fontSize: normalize(fontSizes.md),
+      fontFamily: fonts.bold,
+      color: colors.textSecondary,
+    },
+    calendarGrid: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+    },
+    dayCell: {
+      width: '14.285%',
+      aspectRatio: 1,
+      alignItems: 'center',
+      justifyContent: 'center',
+      paddingVertical: normalize(4),
+    },
+    dayInner: {
+      width: normalize(28),
+      height: normalize(28),
+      borderRadius: normalize(14),
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    dayInnerSelected: {
+      backgroundColor: colors.primary,
+    },
+    dayText: {
+      fontSize: normalize(fontSizes.lg),
+      fontFamily: fonts.regular,
+      color: colors.textPrimary,
+    },
+    dayTextSelected: {
+      fontFamily: fonts.bold,
+      color: colors.textWhite,
     },
   });

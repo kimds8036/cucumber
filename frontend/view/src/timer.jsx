@@ -28,7 +28,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import MainHeader from '../frame/mainHeader';
 import MainFooter from '../frame/mainFooter';
 import { createTimerStyles, getNormalize } from '../../styles/timer';
-import { colors, fonts } from '../../styles/colors';
+import { colors } from '../../styles/colors';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import Feather from '@expo/vector-icons/Feather';
 import { StackActions } from '@react-navigation/native';
@@ -421,7 +421,7 @@ function TimerLiveScrollInner({
             <TouchableOpacity
               onPress={goPrevDay}
               hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
-              style={{ padding: 4 }}
+              style={styles.dateBarNavBtn}
             >
               <Ionicons
                 name="chevron-back"
@@ -431,7 +431,7 @@ function TimerLiveScrollInner({
             </TouchableOpacity>
             <TouchableOpacity
               onPress={() => setShowCalendar(true)}
-              style={{ minWidth: normalize(100) }}
+              style={styles.dateBarDateTouch}
             >
               <Text style={styles.dateBarText}>
                 {selectedDayKey
@@ -442,7 +442,7 @@ function TimerLiveScrollInner({
             <TouchableOpacity
               onPress={goNextDay}
               hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
-              style={{ padding: 4 }}
+              style={styles.dateBarNavBtn}
             >
               <Ionicons
                 name="chevron-forward"
@@ -745,13 +745,13 @@ function TimerLivePlannerCapture({
 
   return (
     <View
-      style={{ position: 'absolute', left: -width * 2, top: 0, width: width }}
+      style={styles.plannerCaptureOffscreen}
       pointerEvents="none"
     >
       <ViewShot
         ref={capturePlannerRef}
         options={{ format: 'png', quality: 1 }}
-        style={{ backgroundColor: colors.background }}
+        style={styles.viewShotBg}
       >
         <View style={styles.plannerCaptureWrap}>
           <View style={styles.plannerCaptureRow}>
@@ -774,7 +774,7 @@ function TimerLivePlannerCapture({
                 );
                 const totalStr = formatHMS(getSubjectTotalMs(sub.id));
                 return (
-                  <View key={sub.id} style={{ marginBottom: normalize(10) }}>
+                  <View key={sub.id} style={styles.plannerSubjectListItem}>
                     <View style={styles.plannerSubjectRow}>
                       <View
                         style={[
@@ -1834,37 +1834,37 @@ export const TimerContent = () => {
             {[0, 1, 2, 3].map((idx) => (
               <View key={`timer-friend-skel-${idx}`} style={styles.friendStoryCircleWrap}>
                 <Skeleton width={normalize(56)} height={normalize(56)} borderRadius={normalize(28)} />
-                <Skeleton width={normalize(44)} height={normalize(11)} borderRadius={normalize(6)} style={{ marginTop: normalize(4) }} />
+                <Skeleton width={normalize(44)} height={normalize(11)} borderRadius={normalize(6)} style={styles.timerSkelFriendName} />
               </View>
             ))}
           </View>
         </View>
 
         <View style={styles.timerCard}>
-          <Skeleton width={normalize(180)} height={normalize(30)} borderRadius={normalize(10)} style={{ alignSelf: 'center', marginBottom: normalize(10) }} />
-          <Skeleton width={normalize(92)} height={normalize(12)} borderRadius={normalize(6)} style={{ alignSelf: 'center', marginBottom: normalize(16) }} />
-          <Skeleton width={normalize(140)} height={normalize(40)} borderRadius={normalize(20)} style={{ alignSelf: 'center' }} />
+          <Skeleton width={normalize(180)} height={normalize(30)} borderRadius={normalize(10)} style={styles.timerSkelDateLine1} />
+          <Skeleton width={normalize(92)} height={normalize(12)} borderRadius={normalize(6)} style={styles.timerSkelDateLine2} />
+          <Skeleton width={normalize(140)} height={normalize(40)} borderRadius={normalize(20)} style={styles.timerSkelTimerBtn} />
         </View>
 
         <View style={styles.todoTimetableRow}>
           <View style={styles.todoColumn}>
-            <Skeleton width={normalize(80)} height={normalize(13)} borderRadius={normalize(6)} style={{ marginBottom: normalize(10) }} />
+            <Skeleton width={normalize(80)} height={normalize(13)} borderRadius={normalize(6)} style={styles.timerSkelColTitle} />
             {[0, 1, 2].map((idx) => (
-              <View key={`timer-task-skel-${idx}`} style={{ flexDirection: 'row', alignItems: 'center', marginBottom: normalize(10), gap: normalize(8) }}>
+              <View key={`timer-task-skel-${idx}`} style={styles.timerSkelTaskRow}>
                 <Skeleton width={normalize(22)} height={normalize(22)} borderRadius={normalize(4)} />
                 <Skeleton width="70%" height={normalize(13)} borderRadius={normalize(6)} />
               </View>
             ))}
           </View>
           <View style={styles.timetableColumn}>
-            <Skeleton width={normalize(80)} height={normalize(13)} borderRadius={normalize(6)} style={{ marginBottom: normalize(10) }} />
+            <Skeleton width={normalize(80)} height={normalize(13)} borderRadius={normalize(6)} style={styles.timerSkelColTitle} />
             {[0, 1, 2, 3].map((idx) => (
               <Skeleton
                 key={`timer-table-skel-${idx}`}
                 width="100%"
                 height={normalize(42)}
                 borderRadius={normalize(10)}
-                style={{ marginBottom: normalize(8) }}
+                style={styles.timerSkelTtRow}
               />
             ))}
           </View>
@@ -2016,126 +2016,32 @@ export const TimerContent = () => {
 
 // ── 화면 래퍼 ────────────────────────────────────────────
 // 네비게이션/헤더/푸터를 감싸고 TimerContent 를 끼워 넣는 얇은 컴포넌트
-const Timer = ({ navigation }) => (
-  <SafeAreaView style={{ flex: 1 }} edges={['top', 'bottom']}>
-    <MainHeader activeTab="timer" navigation={navigation} />
-    <TimerContent />
-    <MainFooter
-      activeTab="timer"
-      onTabPress={(tab) => {
-        if (tab === 'board')
-          navigation.navigate('Main', { initialTab: 'board' });
-        if (tab === 'message')
-          navigation.navigate('Main', { initialTab: 'message' });
-        if (tab === 'school')
-          navigation.navigate('Main', { initialTab: 'school' });
-        if (tab === 'mypage')
-          navigation.navigate('Main', { initialTab: 'mypage' });
-      }}
-    />
-  </SafeAreaView>
-);
+const Timer = ({ navigation }) => {
+  const { width } = useWindowDimensions();
+  const normalize = useMemo(() => getNormalize(width), [width]);
+  const styles = useMemo(
+    () => createTimerStyles(width, normalize),
+    [width, normalize],
+  );
+  return (
+    <SafeAreaView style={styles.safeAreaFlex} edges={['top', 'bottom']}>
+      <MainHeader activeTab="timer" navigation={navigation} />
+      <TimerContent />
+      <MainFooter
+        activeTab="timer"
+        onTabPress={(tab) => {
+          if (tab === 'board')
+            navigation.navigate('Main', { initialTab: 'board' });
+          if (tab === 'message')
+            navigation.navigate('Main', { initialTab: 'message' });
+          if (tab === 'school')
+            navigation.navigate('Main', { initialTab: 'school' });
+          if (tab === 'mypage')
+            navigation.navigate('Main', { initialTab: 'mypage' });
+        }}
+      />
+    </SafeAreaView>
+  );
+};
 
 export default Timer;
-
-// ── 공유 모달 스타일 ─────────────────────────────────────
-const modalStyles = {
-  wrapper: { flex: 1 },
-  overlay: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    backgroundColor: 'rgba(0,0,0,0.4)',
-  },
-  centered: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 24,
-  },
-  card: {
-    backgroundColor: colors.background,
-    borderRadius: 16,
-    padding: 20,
-    width: '100%',
-    maxWidth: 340,
-  },
-  title: {
-    fontSize: 17,
-    fontFamily: fonts.bold,
-    color: colors.textPrimary,
-    marginBottom: 16,
-  },
-  label: {
-    fontSize: 12,
-    fontFamily: fonts.regular,
-    color: colors.textSecondary,
-    marginBottom: 6,
-  },
-  input: {
-    borderWidth: 1,
-    borderColor: colors.textLight10,
-    borderRadius: 12,
-    padding: 12,
-    fontSize: 14,
-    color: colors.textPrimary,
-    marginBottom: 12,
-  },
-  colorRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 16,
-    gap: 8,
-  },
-  colorWrap: { flexDirection: 'row', gap: 8, paddingVertical: 4 },
-  colorDot: { width: 28, height: 28, borderRadius: 14 },
-  colorDotSelected: { borderWidth: 3, borderColor: colors.primary },
-  randomBtn: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    backgroundColor: colors.textLight5,
-    borderRadius: 8,
-  },
-  randomText: {
-    fontSize: 12,
-    fontFamily: fonts.bold,
-    color: colors.textPrimary,
-  },
-  row: {
-    flexDirection: 'row',
-    justifyContent: 'flex-end',
-    gap: 10,
-    marginTop: 8,
-  },
-  cancelBtn: { paddingVertical: 10, paddingHorizontal: 16 },
-  cancelText: { fontSize: 14, color: colors.textSecondary },
-  primaryBtn: {
-    backgroundColor: colors.primary,
-    paddingVertical: 10,
-    paddingHorizontal: 20,
-    borderRadius: 12,
-  },
-  primaryText: {
-    fontSize: 14,
-    fontFamily: fonts.bold,
-    color: colors.textWhite,
-  },
-  btnDisabled: { opacity: 0.5 },
-  subjectChip: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 20,
-    borderWidth: 2,
-    gap: 6,
-  },
-  chipDot: { width: 10, height: 10, borderRadius: 5 },
-  chipText: {
-    fontSize: 13,
-    fontFamily: fonts.regular,
-    color: colors.textPrimary,
-  },
-};
