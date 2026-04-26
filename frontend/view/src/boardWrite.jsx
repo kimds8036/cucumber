@@ -7,7 +7,6 @@ import {
   TouchableOpacity,
   TouchableWithoutFeedback,
   Keyboard,
-  KeyboardAvoidingView,
   Platform,
   useWindowDimensions,
   Alert,
@@ -15,6 +14,7 @@ import {
   Animated,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import { StackActions } from '@react-navigation/native';
@@ -582,10 +582,7 @@ const BoardWrite = ({ navigation, route }) => {
           normalize={normalize}
           onClose={() => setCommunityGuideVisible(false)}
         />
-        <KeyboardAvoidingView
-          style={styles.keyboardAvoiding}
-          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        >
+        <View style={styles.keyboardAvoiding}>
           <View style={styles.fullFlex}>
             <SafeAreaView style={styles.container} edges={['top']}>
               <SubHeader
@@ -613,20 +610,22 @@ const BoardWrite = ({ navigation, route }) => {
               />
               {topToolbarSection}
 
-              <ScrollView
+              <KeyboardAwareScrollView
                 style={styles.fullFlex}
                 contentContainerStyle={styles.scrollContentGrow}
                 keyboardShouldPersistTaps="handled"
+                keyboardDismissMode="on-drag"
                 showsVerticalScrollIndicator={false}
                 onScrollBeginDrag={Keyboard.dismiss}
+                bottomOffset={16}
               >
                 {writeMainColumn}
-              </ScrollView>
+              </KeyboardAwareScrollView>
 
               {guideBlock}
             </SafeAreaView>
           </View>
-        </KeyboardAvoidingView>
+        </View>
       </View>
     </TouchableWithoutFeedback>
   );

@@ -8,6 +8,8 @@ import {
   ScrollView,
   KeyboardAvoidingView,
   Platform,
+  Keyboard,
+  TouchableWithoutFeedback,
   useWindowDimensions,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -33,44 +35,50 @@ const ChangeSchool = ({ navigation }) => {
 
   return (
     <SafeAreaView style={styles.root} edges={['top']}>
-      <KeyboardAvoidingView
-        style={{ flex: 1 }}
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        keyboardVerticalOffset={0}
-      >
-        <SubHeader
-          title="학교 변경"
-          onBack={() => navigation.goBack()}
-        />
-        <View style={[styles.container, { paddingTop: normalize(8) }]}>
-          <View style={styles.searchBox}>
-            <Ionicons name="search-outline" size={20} color="#999" style={{ marginRight: 8 }} />
-            <TextInput
-              style={styles.searchInput}
-              placeholder="학교 이름을 입력하세요"
-              value={query}
-              onChangeText={setQuery}
-            />
-          </View>
+      <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+        <KeyboardAvoidingView
+          style={{ flex: 1 }}
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          keyboardVerticalOffset={0}
+        >
+          <SubHeader
+            title="학교 변경"
+            onBack={() => navigation.goBack()}
+          />
+          <View style={[styles.container, { paddingTop: normalize(8) }]}>
+            <View style={styles.searchBox}>
+              <Ionicons name="search-outline" size={20} color="#999" style={{ marginRight: 8 }} />
+              <TextInput
+                style={styles.searchInput}
+                placeholder="학교 이름을 입력하세요"
+                value={query}
+                onChangeText={setQuery}
+              />
+            </View>
 
-          <ScrollView style={styles.list}>
-            {filtered.map((name) => (
-              <TouchableOpacity
-                key={name}
-                style={styles.item}
-                onPress={() => handleSelectSchool(name)}
-              >
-                <Text style={styles.itemText}>{name}</Text>
-              </TouchableOpacity>
-            ))}
-            {filtered.length === 0 && (
-              <View style={styles.emptyBox}>
-                <Text style={styles.emptyText}>검색 결과가 없습니다.</Text>
-              </View>
-            )}
-          </ScrollView>
-        </View>
-      </KeyboardAvoidingView>
+            <ScrollView
+              style={styles.list}
+              keyboardShouldPersistTaps="handled"
+              keyboardDismissMode="on-drag"
+            >
+              {filtered.map((name) => (
+                <TouchableOpacity
+                  key={name}
+                  style={styles.item}
+                  onPress={() => handleSelectSchool(name)}
+                >
+                  <Text style={styles.itemText}>{name}</Text>
+                </TouchableOpacity>
+              ))}
+              {filtered.length === 0 && (
+                <View style={styles.emptyBox}>
+                  <Text style={styles.emptyText}>검색 결과가 없습니다.</Text>
+                </View>
+              )}
+            </ScrollView>
+          </View>
+        </KeyboardAvoidingView>
+      </TouchableWithoutFeedback>
     </SafeAreaView>
   );
 };

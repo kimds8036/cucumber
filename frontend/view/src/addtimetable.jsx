@@ -8,11 +8,18 @@ import {
   TextInput,
   Modal,
   Alert,
+  Keyboard,
+  TouchableWithoutFeedback,
 } from 'react-native';
+import Animated, {
+  useAnimatedStyle,
+  useSharedValue,
+} from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import SubHeader from '../frame/subHeader';
 import { colors } from '../../styles/colors';
+import { useKeyboardHandler } from 'react-native-keyboard-controller';
 const AddTimetable = ({ navigation, route }) => {
   // MyPage에서 전달받은 기존 시간표와 저장 함수
   const { existingTimetable, onSave } = route.params || {};
@@ -22,6 +29,25 @@ const AddTimetable = ({ navigation, route }) => {
   const [modalVisible, setModalVisible] = useState(false);
   const [className, setClassName] = useState('');
   const [timetable, setTimetable] = useState(existingTimetable || {});
+  const translateY = useSharedValue(0);
+
+  useKeyboardHandler(
+    {
+      onMove: (e) => {
+        'worklet';
+        translateY.value = -e.height;
+      },
+      onEnd: (e) => {
+        'worklet';
+        translateY.value = -e.height;
+      },
+    },
+    [],
+  );
+
+  const animStyle = useAnimatedStyle(() => ({
+    transform: [{ translateY: translateY.value }],
+  }));
 
   const days = ['월', '화', '수', '목', '금'];
   const periods = [1, 2, 3, 4, 5, 6, 7];
@@ -30,6 +56,10 @@ const AddTimetable = ({ navigation, route }) => {
     // 캐시-only 모드: MyPage에서 전달된 시간표를 편집
     setTimetable(existingTimetable || {});
   }, [existingTimetable]);
+
+  useEffect(() => {
+    if (!modalVisible) translateY.value = 0;
+  }, [modalVisible, translateY]);
 
   const handleCellPress = (day, period) => {
     setSelectedDay(day);
@@ -187,52 +217,54 @@ const AddTimetable = ({ navigation, route }) => {
         visible={modalVisible}
         onRequestClose={() => setModalVisible(false)}
       >
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>
-              {selectedDay}요일 {selectedPeriod}교시
-            </Text>
-            <TextInput
-              style={styles.input}
-              placeholder="과목명을 입력하세요"
-              value={className}
-              onChangeText={setClassName}
-              autoFocus
-            />
-            <View style={styles.modalButtons}>
-              <TouchableOpacity
-                style={[styles.modalButton, styles.cancelButton]}
-                onPress={() => {
-                  setModalVisible(false);
-                  setClassName('');
-                }}
-              >
-                <Text style={styles.cancelButtonText}>취소</Text>
-              </TouchableOpacity>
-
-              {/* 이미 과목이 있으면 삭제 버튼 표시 */}
-              {timetable[`${selectedDay}-${selectedPeriod}`] && (
+        <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+          <View style={styles.modalOverlay}>
+            <Animated.View style={[styles.modalContent, animStyle]}>
+              <Text style={styles.modalTitle}>
+                {selectedDay}요일 {selectedPeriod}교시
+              </Text>
+              <TextInput
+                style={styles.input}
+                placeholder="과목명을 입력하세요"
+                value={className}
+                onChangeText={setClassName}
+                autoFocus
+              />
+              <View style={styles.modalButtons}>
                 <TouchableOpacity
-                  style={[styles.modalButton, styles.deleteButton]}
-                  onPress={handleDeleteClass}
+                  style={[styles.modalButton, styles.cancelButton]}
+                  onPress={() => {
+                    setModalVisible(false);
+                    setClassName('');
+                  }}
                 >
-                  <Text style={styles.deleteButtonText}>삭제</Text>
+                  <Text style={styles.cancelButtonText}>취소</Text>
                 </TouchableOpacity>
-              )}
 
-              <TouchableOpacity
-                style={[styles.modalButton, styles.confirmButton]}
-                onPress={handleAddClass}
-              >
-                <Text style={styles.confirmButtonText}>
-                  {timetable[`${selectedDay}-${selectedPeriod}`]
-                    ? '수정'
-                    : '추가'}
-                </Text>
-              </TouchableOpacity>
-            </View>
+                {/* 이미 과목이 있으면 삭제 버튼 표시 */}
+                {timetable[`${selectedDay}-${selectedPeriod}`] && (
+                  <TouchableOpacity
+                    style={[styles.modalButton, styles.deleteButton]}
+                    onPress={handleDeleteClass}
+                  >
+                    <Text style={styles.deleteButtonText}>삭제</Text>
+                  </TouchableOpacity>
+                )}
+
+                <TouchableOpacity
+                  style={[styles.modalButton, styles.confirmButton]}
+                  onPress={handleAddClass}
+                >
+                  <Text style={styles.confirmButtonText}>
+                    {timetable[`${selectedDay}-${selectedPeriod}`]
+                      ? '수정'
+                      : '추가'}
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            </Animated.View>
           </View>
-        </View>
+        </TouchableWithoutFeedback>
       </Modal>
     </View>
   );

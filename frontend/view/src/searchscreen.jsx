@@ -188,6 +188,7 @@ const SearchScreen = ({ navigation, route }) => {
           style={styles.scrollView}
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
+          keyboardDismissMode="on-drag"
         >
           {recentSearches.length > 0 && (
             <View style={styles.section}>

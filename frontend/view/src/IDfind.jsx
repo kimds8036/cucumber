@@ -7,6 +7,8 @@ import {
   Text,
   TouchableOpacity,
   View,
+  Keyboard,
+  TouchableWithoutFeedback,
   useWindowDimensions,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -40,15 +42,17 @@ const IDfind = ({ navigation }) => {
         </View>
       </View>
 
-      <KeyboardAvoidingView
-        style={styles.contentSection}
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      >
-        <ScrollView
-          showsVerticalScrollIndicator={false}
-          keyboardShouldPersistTaps="handled"
-          contentContainerStyle={{ paddingBottom: normalize(20) }}
+      <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+        <KeyboardAvoidingView
+          style={styles.contentSection}
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         >
+          <ScrollView
+            showsVerticalScrollIndicator={false}
+            keyboardShouldPersistTaps="handled"
+            keyboardDismissMode="on-drag"
+            contentContainerStyle={{ paddingBottom: normalize(20) }}
+          >
           <Text style={styles.helperText}>PASS 인증은 다음 배포에서 실제 연동됩니다.</Text>
 
           {foundId ? (
@@ -57,8 +61,9 @@ const IDfind = ({ navigation }) => {
               <Text style={styles.resultValue}>{foundId}</Text>
             </View>
           ) : null}
-        </ScrollView>
-      </KeyboardAvoidingView>
+          </ScrollView>
+        </KeyboardAvoidingView>
+      </TouchableWithoutFeedback>
 
       <View style={styles.footerSection}>
         <TouchableOpacity style={styles.primaryButton} activeOpacity={0.9} onPress={handlePassVerify}>

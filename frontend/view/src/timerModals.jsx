@@ -14,10 +14,17 @@ import {
   ScrollView,
   TextInput,
   Modal,
+  Keyboard,
+  TouchableWithoutFeedback,
 } from 'react-native';
+import Animated, {
+  useAnimatedStyle,
+  useSharedValue,
+} from 'react-native-reanimated';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { colors } from '../../styles/colors';
 import { getTimerDayKey } from '../../utils/timerStorage';
+import { useKeyboardHandler } from 'react-native-keyboard-controller';
 
 // ── 공통 상수/유틸 ───────────────────────────────────────────
 const SUBJECT_COLORS = [
@@ -171,6 +178,29 @@ const modalStyles = {
 export const AddSubjectModal = ({ visible, onClose, onAdd }) => {
   const [name, setName] = useState('');
   const [color, setColor] = useState(SUBJECT_COLORS[0]);
+  const translateY = useSharedValue(0);
+
+  useKeyboardHandler(
+    {
+      onMove: (e) => {
+        'worklet';
+        translateY.value = -e.height;
+      },
+      onEnd: (e) => {
+        'worklet';
+        translateY.value = -e.height;
+      },
+    },
+    [],
+  );
+
+  const animStyle = useAnimatedStyle(() => ({
+    transform: [{ translateY: translateY.value }],
+  }));
+
+  useEffect(() => {
+    if (!visible) translateY.value = 0;
+  }, [translateY, visible]);
 
   const pickRandom = () =>
     setColor(SUBJECT_COLORS[Math.floor(Math.random() * SUBJECT_COLORS.length)]);
@@ -186,14 +216,15 @@ export const AddSubjectModal = ({ visible, onClose, onAdd }) => {
   if (!visible) return null;
   return (
     <Modal transparent animationType="fade" onRequestClose={onClose}>
-      <View style={modalStyles.wrapper}>
-        <TouchableOpacity
-          style={modalStyles.overlay}
-          onPress={onClose}
-          activeOpacity={1}
-        />
-        <View style={modalStyles.centered}>
-          <View style={modalStyles.card}>
+      <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+        <View style={modalStyles.wrapper}>
+          <TouchableOpacity
+            style={modalStyles.overlay}
+            onPress={onClose}
+            activeOpacity={1}
+          />
+          <Animated.View style={[modalStyles.centered, animStyle]}>
+            <View style={modalStyles.card}>
             <Text style={modalStyles.title}>과목 추가</Text>
             <TextInput
               style={modalStyles.input}
@@ -238,7 +269,7 @@ export const AddSubjectModal = ({ visible, onClose, onAdd }) => {
                 <Text style={modalStyles.randomText}>랜덤</Text>
               </TouchableOpacity>
             </View>
-            <View style={modalStyles.row}>
+              <View style={modalStyles.row}>
               <TouchableOpacity style={modalStyles.cancelBtn} onPress={onClose}>
                 <Text style={modalStyles.cancelText}>취소</Text>
               </TouchableOpacity>
@@ -252,10 +283,11 @@ export const AddSubjectModal = ({ visible, onClose, onAdd }) => {
               >
                 <Text style={modalStyles.primaryText}>추가</Text>
               </TouchableOpacity>
+              </View>
             </View>
-          </View>
+          </Animated.View>
         </View>
-      </View>
+      </TouchableWithoutFeedback>
     </Modal>
   );
 };
@@ -270,10 +302,33 @@ export const AddTaskModal = ({
 }) => {
   const [content, setContent] = useState('');
   const effectiveSubjectId = initialSubjectId ?? subjects[0]?.id ?? null;
+  const translateY = useSharedValue(0);
+
+  useKeyboardHandler(
+    {
+      onMove: (e) => {
+        'worklet';
+        translateY.value = -e.height;
+      },
+      onEnd: (e) => {
+        'worklet';
+        translateY.value = -e.height;
+      },
+    },
+    [],
+  );
+
+  const animStyle = useAnimatedStyle(() => ({
+    transform: [{ translateY: translateY.value }],
+  }));
 
   useEffect(() => {
     if (!visible) setContent('');
   }, [visible]);
+
+  useEffect(() => {
+    if (!visible) translateY.value = 0;
+  }, [translateY, visible]);
 
   const handleClose = () => {
     setContent('');
@@ -322,14 +377,15 @@ export const AddTaskModal = ({
   }
   return (
     <Modal transparent animationType="fade" onRequestClose={handleClose}>
-      <View style={modalStyles.wrapper}>
-        <TouchableOpacity
-          style={modalStyles.overlay}
-          onPress={handleClose}
-          activeOpacity={1}
-        />
-        <View style={modalStyles.centered}>
-          <View style={modalStyles.card}>
+      <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+        <View style={modalStyles.wrapper}>
+          <TouchableOpacity
+            style={modalStyles.overlay}
+            onPress={handleClose}
+            activeOpacity={1}
+          />
+          <Animated.View style={[modalStyles.centered, animStyle]}>
+            <View style={modalStyles.card}>
             <Text style={modalStyles.title}>할일 추가</Text>
             <Text style={modalStyles.label}>내용</Text>
             <TextInput
@@ -343,7 +399,7 @@ export const AddTaskModal = ({
               onChangeText={setContent}
               multiline
             />
-            <View style={modalStyles.row}>
+              <View style={modalStyles.row}>
               <TouchableOpacity
                 style={modalStyles.cancelBtn}
                 onPress={handleClose}
@@ -360,10 +416,11 @@ export const AddTaskModal = ({
               >
                 <Text style={modalStyles.primaryText}>추가</Text>
               </TouchableOpacity>
+              </View>
             </View>
-          </View>
+          </Animated.View>
         </View>
-      </View>
+      </TouchableWithoutFeedback>
     </Modal>
   );
 };

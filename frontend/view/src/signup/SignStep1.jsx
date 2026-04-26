@@ -94,6 +94,7 @@ const SignStep1 = ({ styles, normalize, onChange, disableValidation = false, pas
             }}
             showsVerticalScrollIndicator={false}
             keyboardShouldPersistTaps="handled"
+            keyboardDismissMode="on-drag"
           >
       {/* 전화번호 */}
       <Text style={styles.inputLabel}>전화번호</Text>

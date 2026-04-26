@@ -343,6 +343,7 @@ export default function SearchResult({ route, navigation }) {
               style={s.scrollView}
               showsVerticalScrollIndicator={false}
               keyboardShouldPersistTaps="handled"
+              keyboardDismissMode="on-drag"
             >
               {items.map((item, idx) => (
                 <View
@@ -511,6 +512,7 @@ export default function SearchResult({ route, navigation }) {
                 style={s.scrollView}
                 showsVerticalScrollIndicator={false}
                 keyboardShouldPersistTaps="handled"
+                keyboardDismissMode="on-drag"
               >
                 {/* 학교 매칭 카드들 (최대 5개) */}
                 {activeTab === '전체' && matchedSchools.length > 0 && (
@@ -772,6 +774,7 @@ export default function SearchResult({ route, navigation }) {
               style={s.scrollView}
               showsVerticalScrollIndicator={false}
               keyboardShouldPersistTaps="handled"
+              keyboardDismissMode="on-drag"
             >
               {/* 최근 검색어 */}
               {recentSearches.length > 0 && (

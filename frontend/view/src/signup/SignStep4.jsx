@@ -53,6 +53,7 @@ const SignStep4 = ({ styles, normalize, recognizedData, onChange }) => {
             }}
             showsVerticalScrollIndicator={false}
             keyboardShouldPersistTaps="handled"
+            keyboardDismissMode="on-drag"
           >
       {/* 이름 */}
       <Text style={styles.inputLabel}>이름</Text>

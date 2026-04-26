@@ -623,7 +623,7 @@ export const createDetailStyles = (width, normalize) => {
       backgroundColor: colors.background,
     },
     scrollContent: {
-      paddingBottom: normalize(100),
+      paddingBottom: normalize(24),
     },
     // 게시글 내용 영역
     contentSection: {

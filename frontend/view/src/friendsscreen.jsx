@@ -7,6 +7,8 @@ import {
   Modal,
   Alert,
   TextInput,
+  Keyboard,
+  TouchableWithoutFeedback,
   useWindowDimensions,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -225,41 +227,45 @@ const FriendsScreen = ({ navigation }) => {
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
-      <SubHeader
-        title="친구"
-        onBack={() => navigation?.goBack()}
-        rightElement={<Text style={styles.friendCountChip}>{friends.length}명</Text>}
-        rightDisabled
-      />
+      <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+        <View style={{ flex: 1 }}>
+          <SubHeader
+            title="친구"
+            onBack={() => navigation?.goBack()}
+            rightElement={<Text style={styles.friendCountChip}>{friends.length}명</Text>}
+            rightDisabled
+          />
 
       {/* ── 검색창 ── */}
-      <View style={styles.searchWrapper}>
-        <Ionicons
-          name="search-outline"
-          size={16}
-          color={colors.textSecondary}
-          style={styles.searchIcon}
-        />
-        <TextInput
-          style={styles.searchInput}
-          placeholder="이름, 아이디, 학교 검색"
-          placeholderTextColor={colors.textLight40}
-          value={searchQuery}
-          onChangeText={setSearchQuery}
-        />
-        {searchQuery.length > 0 && (
-          <TouchableOpacity onPress={() => setSearchQuery('')}>
-            <Ionicons name="close-circle" size={16} color={colors.textLight40} />
-          </TouchableOpacity>
-        )}
-      </View>
+          <View style={styles.searchWrapper}>
+            <Ionicons
+              name="search-outline"
+              size={16}
+              color={colors.textSecondary}
+              style={styles.searchIcon}
+            />
+            <TextInput
+              style={styles.searchInput}
+              placeholder="이름, 아이디, 학교 검색"
+              placeholderTextColor={colors.textLight40}
+              value={searchQuery}
+              onChangeText={setSearchQuery}
+            />
+            {searchQuery.length > 0 && (
+              <TouchableOpacity onPress={() => setSearchQuery('')}>
+                <Ionicons name="close-circle" size={16} color={colors.textLight40} />
+              </TouchableOpacity>
+            )}
+          </View>
 
       {/* ── 스크롤: 친구 요청 + 친구 목록 (함께 스크롤) ── */}
-      <ScrollView
-        style={styles.mainScroll}
-        contentContainerStyle={styles.mainScrollContent}
-        showsVerticalScrollIndicator={false}
-      >
+          <ScrollView
+            style={styles.mainScroll}
+            contentContainerStyle={styles.mainScrollContent}
+            showsVerticalScrollIndicator={false}
+            keyboardShouldPersistTaps="handled"
+            keyboardDismissMode="on-drag"
+          >
         {/* 친구 요청 (검색바 ↔ 친구목록 사이) */}
         {friendRequests.length > 0 && (
           <View style={styles.requestsSection}>
@@ -355,7 +361,9 @@ const FriendsScreen = ({ navigation }) => {
             </View>
           ))
         )}
-      </ScrollView>
+          </ScrollView>
+        </View>
+      </TouchableWithoutFeedback>
 
       {/* ── 바텀시트 모달 ── */}
       <Modal

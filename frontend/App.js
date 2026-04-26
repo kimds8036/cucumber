@@ -38,7 +38,7 @@ import { Alert } from 'react-native';
 import * as Notifications from 'expo-notifications';
 import Constants from 'expo-constants';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
-import { KeyboardProvider } from './context/KeyboardContext';
+import { KeyboardProvider } from 'react-native-keyboard-controller';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { LocationProvider, LocationGate } from './context/LocationContext';
 import { SocketProvider } from './context/SocketContext';

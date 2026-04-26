@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { InteractionManager, Keyboard, Platform } from 'react-native';
+import { InteractionManager, Platform } from 'react-native';
+import { runOnJS } from 'react-native-reanimated';
+import { useKeyboardHandler } from 'react-native-keyboard-controller';
 import {
   CHAT_INITIAL_SCROLL_SETTLE_MAX_MS,
   CHAT_SILENT_PREFETCH_DELAY_MS,
@@ -70,7 +72,6 @@ export default function useChatScroll({
   const idToItemRef = useRef(new Map());
 
   const [listShellVisible, setListShellVisible] = useState(false);
-  const [keyboardHeight, setKeyboardHeight] = useState(0);
   /** 방 진입 직후: 백그라운드 프리페치·prepend 앵커가 끝날 때까지 터치 차단(스크롤 튐 방지) */
   const [initialScrollSettling, setInitialScrollSettling] = useState(false);
 
@@ -415,42 +416,51 @@ export default function useChatScroll({
     prevNewestIdRef.current = newestId;
   }, [messages]);
 
-  // 키보드 이벤트 → 자동 스크롤
-  useEffect(() => {
-    const show = Keyboard.addListener(
-      Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow',
-      (e) => {
-        setKeyboardHeight(e?.endCoordinates?.height ?? 0);
-        if (
-          messages?.length > 0 &&
-          isNearBottomRef.current &&
-          !prependScrollLockRef.current
-        ) {
-          keyboardTimeoutRef.current = setTimeout(
-            () => {
-              listRef.current?.scrollToEnd?.({ animated: true });
-              isNearBottomRef.current = true;
-              distanceFromBottomRef.current = 0;
-            },
-            Platform.OS === 'ios' ? 100 : 200,
-          );
+  const clearKeyboardScrollTimeout = useCallback(() => {
+    if (keyboardTimeoutRef.current) {
+      clearTimeout(keyboardTimeoutRef.current);
+      keyboardTimeoutRef.current = null;
+    }
+  }, []);
+
+  const scheduleKeyboardAutoScroll = useCallback(() => {
+    clearKeyboardScrollTimeout();
+    if (
+      messages?.length > 0 &&
+      isNearBottomRef.current &&
+      !prependScrollLockRef.current
+    ) {
+      keyboardTimeoutRef.current = setTimeout(
+        () => {
+          listRef.current?.scrollToEnd?.({ animated: true });
+          isNearBottomRef.current = true;
+          distanceFromBottomRef.current = 0;
+        },
+        Platform.OS === 'ios' ? 100 : 200,
+      );
+    }
+  }, [clearKeyboardScrollTimeout, messages?.length]);
+
+  useKeyboardHandler(
+    {
+      onEnd: (e) => {
+        'worklet';
+        if (e.height > 0) {
+          runOnJS(scheduleKeyboardAutoScroll)();
+        } else {
+          runOnJS(clearKeyboardScrollTimeout)();
         }
       },
-    );
-    const hide = Keyboard.addListener(
-      Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide',
-      () => {
-        setKeyboardHeight(0);
-        if (keyboardTimeoutRef.current)
-          clearTimeout(keyboardTimeoutRef.current);
-      },
-    );
-    return () => {
-      show.remove();
-      hide.remove();
-      if (keyboardTimeoutRef.current) clearTimeout(keyboardTimeoutRef.current);
-    };
-  }, [messages?.length]);
+    },
+    [clearKeyboardScrollTimeout, scheduleKeyboardAutoScroll],
+  );
+
+  useEffect(
+    () => () => {
+      clearKeyboardScrollTimeout();
+    },
+    [clearKeyboardScrollTimeout],
+  );
 
   // 초기 앵커링 + opacity 제어
   const handleListShellLayout = useCallback(() => {
@@ -644,7 +654,6 @@ export default function useChatScroll({
   return {
     listRef,
     listShellVisible,
-    keyboardHeight,
     initialScrollSettling,
     handleScroll,
     handleListShellLayout,

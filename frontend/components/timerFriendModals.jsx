@@ -14,7 +14,14 @@ import {
   Animated,
   Easing,
   useWindowDimensions,
+  Keyboard,
+  TouchableWithoutFeedback,
 } from 'react-native';
+import Reanimated, {
+  useAnimatedStyle,
+  useSharedValue,
+} from 'react-native-reanimated';
+import { useKeyboardHandler } from 'react-native-keyboard-controller';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import ProfileIcon from '../assets/Profile.svg';
 import { colors } from '../styles/colors';
@@ -205,10 +212,33 @@ export const AddFriendModal = ({ visible, onClose, onAdd }) => {
   const { width } = useWindowDimensions();
   const normalize = useMemo(() => getNormalize(width), [width]);
   const s = useMemo(() => createTimerFriendModalStyles(normalize), [normalize]);
+  const translateY = useSharedValue(0);
+
+  useKeyboardHandler(
+    {
+      onMove: (e) => {
+        'worklet';
+        translateY.value = -e.height;
+      },
+      onEnd: (e) => {
+        'worklet';
+        translateY.value = -e.height;
+      },
+    },
+    [],
+  );
+
+  const animStyle = useAnimatedStyle(() => ({
+    transform: [{ translateY: translateY.value }],
+  }));
 
   useEffect(() => {
     if (!visible) setQuery('');
   }, [visible]);
+
+  useEffect(() => {
+    if (!visible) translateY.value = 0;
+  }, [translateY, visible]);
 
   const handleAdd = () => {
     if (!query.trim()) return;
@@ -219,61 +249,65 @@ export const AddFriendModal = ({ visible, onClose, onAdd }) => {
   if (!visible) return null;
   return (
     <Modal transparent animationType="slide" onRequestClose={onClose}>
-      <TouchableOpacity style={s.addFriendOverlay} onPress={onClose} activeOpacity={1} />
-      <View style={s.addFriendWrapper}>
-        <View style={s.addFriendPopup}>
-          <View style={s.addFriendHandle} />
-          <Text style={s.addFriendTitle}>친구 추가</Text>
-          <Text style={s.addFriendSubtitle}>아이디로 친구를 검색하세요</Text>
+      <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+        <View style={{ flex: 1 }}>
+          <TouchableOpacity style={s.addFriendOverlay} onPress={onClose} activeOpacity={1} />
+          <Reanimated.View style={[s.addFriendWrapper, animStyle]}>
+            <View style={s.addFriendPopup}>
+              <View style={s.addFriendHandle} />
+              <Text style={s.addFriendTitle}>친구 추가</Text>
+              <Text style={s.addFriendSubtitle}>아이디로 친구를 검색하세요</Text>
 
-          <View style={s.addFriendInputRow}>
-            <Ionicons
-              name="search-outline"
-              size={normalize(18)}
-              color={colors.textSecondary}
-            />
-            <TextInput
-              style={s.addFriendInput}
-              placeholder="@아이디 입력"
-              placeholderTextColor={colors.textLight20}
-              value={query}
-              onChangeText={setQuery}
-              autoFocus
-            />
-            {query.length > 0 && (
-              <TouchableOpacity onPress={() => setQuery('')}>
+              <View style={s.addFriendInputRow}>
                 <Ionicons
-                  name="close-circle"
-                  size={normalize(16)}
-                  color={colors.textLight20}
+                  name="search-outline"
+                  size={normalize(18)}
+                  color={colors.textSecondary}
                 />
+                <TextInput
+                  style={s.addFriendInput}
+                  placeholder="@아이디 입력"
+                  placeholderTextColor={colors.textLight20}
+                  value={query}
+                  onChangeText={setQuery}
+                  autoFocus
+                />
+                {query.length > 0 && (
+                  <TouchableOpacity onPress={() => setQuery('')}>
+                    <Ionicons
+                      name="close-circle"
+                      size={normalize(16)}
+                      color={colors.textLight20}
+                    />
+                  </TouchableOpacity>
+                )}
+              </View>
+
+              <TouchableOpacity
+                style={[
+                  s.addFriendPrimaryBtn,
+                  !query.trim() && s.addFriendPrimaryBtnDisabled,
+                ]}
+                onPress={handleAdd}
+                activeOpacity={0.8}
+                disabled={!query.trim()}
+              >
+                <Ionicons
+                  name="person-add-outline"
+                  size={normalize(16)}
+                  color={colors.textWhite}
+                  style={s.addFriendPrimaryBtnIcon}
+                />
+                <Text style={s.addFriendPrimaryBtnText}>추가하기</Text>
               </TouchableOpacity>
-            )}
-          </View>
 
-          <TouchableOpacity
-            style={[
-              s.addFriendPrimaryBtn,
-              !query.trim() && s.addFriendPrimaryBtnDisabled,
-            ]}
-            onPress={handleAdd}
-            activeOpacity={0.8}
-            disabled={!query.trim()}
-          >
-            <Ionicons
-              name="person-add-outline"
-              size={normalize(16)}
-              color={colors.textWhite}
-              style={s.addFriendPrimaryBtnIcon}
-            />
-            <Text style={s.addFriendPrimaryBtnText}>추가하기</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity style={s.addFriendCancelBtn} onPress={onClose}>
-            <Text style={s.addFriendCancelBtnText}>취소</Text>
-          </TouchableOpacity>
+              <TouchableOpacity style={s.addFriendCancelBtn} onPress={onClose}>
+                <Text style={s.addFriendCancelBtnText}>취소</Text>
+              </TouchableOpacity>
+            </View>
+          </Reanimated.View>
         </View>
-      </View>
+      </TouchableWithoutFeedback>
     </Modal>
   );
 };

@@ -1,95 +1,24 @@
-import React, { useState, useMemo, useRef, useEffect } from 'react';
-import {
-  View,
-  Text,
-  TouchableOpacity,
-  ScrollView,
-  useWindowDimensions,
-  Platform,
-  Modal,
-  TouchableWithoutFeedback,
-  Alert,
-  Keyboard,
-  Share,
-  Image,
-} from 'react-native';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { FlatList, InteractionManager, Platform, Text, View, useWindowDimensions } from 'react-native';
+import Animated, { runOnJS, useAnimatedStyle, useSharedValue } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import Ionicons from '@expo/vector-icons/Ionicons';
-import Entypo from '@expo/vector-icons/Entypo';
-import MaterialIcons from '@expo/vector-icons/MaterialIcons';
-import FontAwesome from '@expo/vector-icons/FontAwesome';
 import SubHeader from '../frame/subHeader';
 import CommentInput from '../../components/CommentInput.jsx';
 import { usePlatformInsets } from '../../hooks/usePlatformInsets';
-import { colors, fonts } from '../../styles/colors';
+import { colors } from '../../styles/colors';
 import { createDetailStyles, getNormalize } from '../../styles/board.style';
-import { api } from '../../utils/api';
-import { normalizeTagsFromApi } from '../../utils/normalizePostTags';
-import { invalidateProfileCountsCache } from '../../utils/profileCountsCache';
 import { useNotification } from '../../context/NotificationContext';
 import { useLocationContext } from '../../context/LocationContext';
 import ImageViewer from './ImageViewer';
-
-/** 서버 created_at(UTC)을 "n분 전" 형식으로 변환. 화면에서는 기기 로컬 시간 기준으로 계산 */
-function formatTimeAgo(createdAt) {
-  if (!createdAt) return '';
-  let dateStr = typeof createdAt === 'string' ? createdAt.trim() : String(createdAt);
-  if (!dateStr) return '';
-  // MySQL "YYYY-MM-DD HH:mm:ss" 형태이고 타임존 문자가 없으면 UTC로 간주해 Z(=+00:00) 를 붙인다.
-  if (/^\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}:\d{2}(\.\d+)?$/.test(dateStr) && !/[Z+-]/.test(dateStr)) {
-    dateStr = dateStr.replace(' ', 'T') + 'Z';
-  }
-  const date = new Date(dateStr);
-  if (Number.isNaN(date.getTime())) return '';
-  const now = new Date();
-  const diffMs = now - date;
-  const diffSec = Math.floor(diffMs / 1000);
-  const diffMin = Math.floor(diffSec / 60);
-  const diffHour = Math.floor(diffMin / 60);
-  const diffDay = Math.floor(diffHour / 24);
-  if (diffSec < 60) return '방금 전';
-  if (diffMin < 60) return `${diffMin}분 전`;
-  if (diffHour < 24) return `${diffHour}시간 전`;
-  if (diffDay < 7) return `${diffDay}일 전`;
-  return date.toLocaleDateString('ko-KR', { month: 'long', day: 'numeric' });
-}
-
-// 댓글 본문에서 @태그 파싱하여 렌더 (일반 텍스트 + @익명N 초록 강조)
-function CommentBody({ content, styles }) {
-  const parts = [];
-  let last = 0;
-  const regex = /@(익명\d+)/g;
-  let m;
-  while ((m = regex.exec(content)) !== null) {
-    if (m.index > last) {
-      parts.push(
-        <Text key={`t-${last}`} style={styles.commentBody}>
-          {content.slice(last, m.index)}
-        </Text>
-      );
-    }
-    parts.push(
-      <Text key={`tag-${m.index}`} style={[styles.commentBody, styles.commentTag]}>
-        @{m[1]}
-      </Text>
-    );
-    last = regex.lastIndex;
-  }
-  if (last < content.length) {
-    parts.push(
-      <Text key={`t-${last}`} style={styles.commentBody}>
-        {content.slice(last)}
-      </Text>
-    );
-  }
-  if (parts.length === 0) {
-    return <Text style={styles.commentBody}>{content}</Text>;
-  }
-  return <Text style={styles.commentBody}>{parts}</Text>;
-}
+import { useKeyboardHandler } from 'react-native-keyboard-controller';
+import { useBoardDetail } from './board/useBoardDetail';
+import BoardPostContent from './board/BoardPostContent';
+import BoardCommentTree from './board/BoardCommentTree';
+import BoardFloatingMenu from './board/BoardFloatingMenu';
 
 export default function BoardDetail({ navigation, route }) {
   const { coords } = useLocationContext();
+  const { refreshHasUnread } = useNotification();
   const { width } = useWindowDimensions();
   const normalize = useMemo(() => getNormalize(width), [width]);
   const styles = useMemo(() => createDetailStyles(width, normalize), [width, normalize]);
@@ -97,289 +26,69 @@ export default function BoardDetail({ navigation, route }) {
   const routePost = route?.params?.post;
   const routePostId = route?.params?.postId;
 
-  const emptyPostShell = {
-    id: null,
-    author: '익명',
-    time: '',
-    location: '',
-    content: '',
-    likes: 0,
-    comments: 0,
-    liked: false,
-    scraps: 0,
-    images: [],
-    tags: [],
-    distanceKm: null,
-  };
-
-  const [post, setPost] = useState(() => {
-    const fromParams = routePost != null;
-    const isMy = route?.params?.isMyPost === true;
-    const base = fromParams ? { ...emptyPostShell, ...routePost } : emptyPostShell;
-    return {
-      ...base,
-      id: routePostId ?? routePost?.id ?? base.id ?? null,
-      author: fromParams ? (isMy ? '작성자' : '익명') : '익명',
-      images: Array.isArray(base.images) ? base.images : [],
-      tags: normalizeTagsFromApi(base.tags),
-      distanceKm:
-        typeof base.distanceKm === 'number' && !Number.isNaN(base.distanceKm)
-          ? base.distanceKm
-          : null,
-    };
-  });
-
-  const isMyPost = route?.params?.isMyPost ?? false;
-  const [isMyPostFromApi, setIsMyPostFromApi] = useState(isMyPost);
-  const [postLiked, setPostLiked] = useState(Boolean(routePost?.liked));
-  const [postScrapped, setPostScrapped] = useState(Boolean(post?.isScrapped));
-  const [commentLikedState, setCommentLikedState] = useState({});
   const [bottomComment, setBottomComment] = useState('');
   const [commentImages, setCommentImages] = useState([]);
-  const [isSendingComment, setIsSendingComment] = useState(false);
   const [replyToCommentId, setReplyToCommentId] = useState(null);
   const [replyToAuthorLabel, setReplyToAuthorLabel] = useState('');
-  const isSendingCommentRef = useRef(false);
-  const bottomInputRef = useRef(null);
-  const scrollViewRef = useRef(null);
-  const INITIAL_REPLIES = 3;
   const [expandedReplies, setExpandedReplies] = useState({});
-  const insets = usePlatformInsets();
   const [floatingMenuVisible, setFloatingMenuVisible] = useState(false);
   const [floatingMenuContext, setFloatingMenuContext] = useState(null);
   const [floatingMenuAnchor, setFloatingMenuAnchor] = useState(null);
-  const [deletedCommentIds, setDeletedCommentIds] = useState([]);
-  const postMenuButtonRef = useRef(null);
-  const commentMenuRefs = useRef({});
-  const commentWrapperRefs = useRef({});
-  const scrollToCommentIdRef = useRef(null);
-
-  const [allComments, setAllComments] = useState([]);
-  const [postAuthorId, setPostAuthorId] = useState(null);
-  const [currentUserId, setCurrentUserId] = useState(null);
-  const { refreshHasUnread } = useNotification();
-  const refreshHasUnreadRef = useRef(refreshHasUnread);
   const [viewerUri, setViewerUri] = useState(null);
   const [imageRatios, setImageRatios] = useState({});
+  const [keyboardHeight, setKeyboardHeight] = useState(0);
 
-  useEffect(() => {
-    refreshHasUnreadRef.current = refreshHasUnread;
-  }, [refreshHasUnread]);
+  const insets = usePlatformInsets();
+  const inputTranslateY = useSharedValue(0);
+  const bottomInputRef = useRef(null);
+  const scrollViewRef = useRef(null);
+  const postMenuButtonRef = useRef(null);
+  const commentMenuRefs = useRef({});
+  const scrollToCommentIdRef = useRef(null);
+  const INITIAL_REPLIES = 3;
 
-  useEffect(() => {
-    console.log('[NativeOpenBoardDetail] BoardDetail mounted', {
-      routePostId: route?.params?.postId ?? null,
-      routePostObjectId: route?.params?.post?.id ?? null,
-      isMyPostParam: route?.params?.isMyPost ?? null,
-    });
-  }, [route?.params?.isMyPost, route?.params?.post?.id, route?.params?.postId]);
+  const closeFloatingMenu = () => {
+    setFloatingMenuVisible(false);
+    setFloatingMenuContext(null);
+    setFloatingMenuAnchor(null);
+  };
 
-  // 게시글/댓글 로드
-  useEffect(() => {
-    const postId = routePostId ?? routePost?.id;
-    if (postId == null || postId === '') return;
-
-    const fetchPostAndComments = async () => {
-      try {
-        const detailParams = {};
-        if (coords) {
-          detailParams.viewerLat = coords.latitude;
-          detailParams.viewerLng = coords.longitude;
-        }
-        // 게시글 상세
-        const postRes = await api.get(`/api/posts/${postId}`, { params: detailParams });
-        const data = postRes.data?.data;
-        if (data) {
-          const imageUrls = Array.isArray(data.images)
-            ? data.images.filter((u) => typeof u === 'string')
-            : [];
-          setPost({
-            id: data.id,
-            author: data.isMine ? '작성자' : '익명',
-            time: formatTimeAgo(data.created_at),
-            location: data.location ?? '',
-            content: data.content,
-            likes: data.like_count,
-            comments: data.comment_count,
-            scraps: data.scrapCount ?? 0,
-            images: imageUrls,
-            tags: normalizeTagsFromApi(data.tags),
-            distanceKm:
-              typeof data.distanceKm === 'number' && !Number.isNaN(data.distanceKm)
-                ? data.distanceKm
-                : null,
-          });
-          setPostLiked(Boolean(data.isLiked));
-          setPostScrapped(Boolean(data.isScrapped));
-          if (data.isMine !== undefined) setIsMyPostFromApi(data.isMine);
-          if (data.post_author_id != null) setPostAuthorId(data.post_author_id);
-          if (data.current_user_id != null) setCurrentUserId(data.current_user_id);
-        }
-
-        // 댓글 목록
-        const commentRes = await api.get(`/api/${postId}/comments`);
-        const comments = commentRes.data?.data?.comments || [];
-        const postAuthorIdForTree = postRes.data?.data?.post_author_id ?? null;
-        const currentUserIdForTree = postRes.data?.data?.current_user_id ?? null;
-
-        const buildTree = () => {
-          const nodes = new Map();
-          comments.forEach((c) => {
-            const isPostAuthor = postAuthorIdForTree != null && c.user_id === postAuthorIdForTree;
-            nodes.set(c.id, {
-              id: c.id,
-              userId: c.user_id,
-              authorLabel: isPostAuthor ? '작성자' : `익명 ${c.anonymous_index}`,
-              isWriter: isPostAuthor,
-              isMyComment: currentUserIdForTree != null && c.user_id === currentUserIdForTree,
-              time: formatTimeAgo(c.created_at),
-              content: c.content,
-              likes: c.like_count,
-              liked: Boolean(c.isLiked),
-              replies: [],
-            });
-          });
-
-          const roots = [];
-          comments.forEach((c) => {
-            const node = nodes.get(c.id);
-            if (c.parent_comment_id) {
-              const parent = nodes.get(c.parent_comment_id);
-              if (parent) {
-                parent.replies.push(node);
-              } else {
-                roots.push(node);
-              }
-            } else {
-              roots.push(node);
-            }
-          });
-          return roots;
-        };
-
-        setAllComments(buildTree());
-
-        // 이 게시글과 연결된 알림을 모두 읽음 처리 (게시글 상세를 본 것으로 간주)
-        try {
-          await api.post('/api/notifications/read-by-related', {
-            relatedType: 'post',
-            relatedId: postId,
-          });
-          refreshHasUnreadRef.current?.();
-        } catch (e) {
-          console.error('게시글 관련 알림 읽음 처리 실패:', e);
-        }
-      } catch (error) {
-        console.error('게시글/댓글 로드 실패:', error);
-        Alert.alert(
-          '오류',
-          error.response?.data?.message || '게시글을 불러오는 중 오류가 발생했습니다.'
-        );
-      }
-    };
-
-    fetchPostAndComments();
-  }, [
+  const {
+    post,
+    setPost,
+    allComments,
+    setAllComments,
+    postLiked,
+    postScrapped,
+    commentLikedState,
+    isMyPostFromApi,
+    postAuthorId,
+    currentUserId,
+    deletedCommentIds,
+    isSendingComment,
+    handleSendComment,
+    handlePostLike,
+    handlePostScrap,
+    handleCommentLike,
+    handleDeletePost,
+    handleDeleteComment,
+    startNoteToUser,
+    handleSharePost,
+  } = useBoardDetail({
+    navigation,
+    routePost,
     routePostId,
-    routePost?.id,
-    coords?.latitude,
-    coords?.longitude,
-  ]);
-
-  const startNoteToUser = async (targetUserId, source) => {
-    if (!targetUserId || !post?.id) {
-      console.error(
-        '[BoardDetail] 쪽지 전송 불가 - 잘못된 파라미터',
-        { targetUserId, postId: post?.id, source }
-      );
-      Alert.alert('오류', '쪽지를 보낼 수 없습니다.');
-      return;
-    }
-    try {
-      console.log('[BoardDetail] 쪽지방 생성 요청', {
-        postId: post.id,
-        otherUserId: targetUserId,
-        source,
-      });
-      const res = await api.post('/api/messages/rooms', {
-        postId: post.id,
-        otherUserId: targetUserId,
-      });
-      console.log('[BoardDetail] 쪽지방 생성 응답', res.data);
-      const room = res.data?.data;
-      if (!room?.id) {
-        console.error('[BoardDetail] 쪽지방 데이터 이상', res.data);
-        Alert.alert('오류', '쪽지 방 정보를 불러올 수 없습니다.');
-        return;
-      }
-      navigation.navigate('Chat', { roomId: room.id });
-    } catch (error) {
-      console.error('[BoardDetail] 쪽지방 생성/조회 실패:', error?.response?.data || error);
-      Alert.alert(
-        '오류',
-        error.response?.data?.message || '쪽지방을 여는 중 오류가 발생했습니다.'
-      );
-    }
-  };
-
-  const handleSharePost = async () => {
-    if (!post?.id) return;
-    const url = `${api.defaults.baseURL}/posts/${post.id}`;
-    try {
-      await Share.share({
-        message: `오늘의 이야기 게시글을 공유합니다.\n\n${url}`,
-        url,
-        title: '오늘의 이야기 게시글',
-      });
-    } catch (error) {
-      console.error('게시글 공유 실패:', error);
-    }
-  };
-
-  // 게시글용 메뉴 (다른 사람 글)
-  const postMenuItemsOthers = useMemo(
-    () => [
-      {
-        label: '쪽지 보내기',
-        iconName: 'chatbubble-outline',
-        onPress: () => {
-          console.log('[BoardDetail] 쪽지 메뉴 클릭', {
-            postAuthorId,
-            currentUserId,
-          });
-          if (postAuthorId && currentUserId && postAuthorId === currentUserId) {
-            Alert.alert('안내', '자기 자신에게는 쪽지를 보낼 수 없습니다.');
-            return;
-          }
-          startNoteToUser(postAuthorId, 'post');
-        },
-      },
-      {
-        label: '공유하기',
-        iconName: 'share-outline',
-        onPress: handleSharePost,
-      },
-      { label: '신고하기', iconName: 'flag-outline', onPress: () => {} },
-    ],
-    [postAuthorId, currentUserId, handleSharePost]
-  );
-
-  // 댓글용 메뉴 (다른 사람 댓글) - 차단하기 제외
-  const commentMenuItemsOthers = useMemo(
-    () => [
-      {
-        label: '쪽지 보내기',
-        iconName: 'chatbubble-outline',
-        onPress: () => {
-          // 쪽지 보내기는 commentForMenu 컨텍스트에서 처리하므로 여기선 빈 함수
-        },
-      },
-      { label: '신고하기', iconName: 'flag-outline', onPress: () => {} },
-    ],
-    []
-  );
-
-  // allComments는 서버에서 로드한 트리 구조를 사용
+    coords,
+    refreshHasUnread,
+    bottomComment,
+    setBottomComment,
+    commentImages,
+    setCommentImages,
+    replyToCommentId,
+    setReplyToCommentId,
+    setReplyToAuthorLabel,
+    onCloseMenu: closeFloatingMenu,
+  });
 
   const findCommentById = (comments, id) => {
     for (const c of comments) {
@@ -402,9 +111,47 @@ export default function BoardDetail({ navigation, route }) {
       }));
   };
 
+  const flattenReplies = (replies, depth = 0, parentAuthorLabel = null) => {
+    const result = [];
+    for (const r of replies) {
+      result.push({ reply: r, depth, parentAuthorLabel });
+      if (r.replies && r.replies.length) {
+        result.push(...flattenReplies(r.replies, depth + 1, r.authorLabel));
+      }
+    }
+    return result;
+  };
+
+  const buildFlatComments = (comments, expandedRepliesMap) => {
+    const result = [];
+    for (const c of comments) {
+      result.push({ type: 'comment', data: c });
+      const replies = c.replies || [];
+      const flattened = flattenReplies(replies, 0, c.authorLabel);
+      const isExpanded = expandedRepliesMap[c.id];
+      const repliesToShow = isExpanded ? flattened : flattened.slice(0, INITIAL_REPLIES);
+
+      for (const { reply, parentAuthorLabel } of repliesToShow) {
+        result.push({ type: 'reply', data: reply, parentAuthorLabel });
+      }
+      if (flattened.length > INITIAL_REPLIES && !isExpanded) {
+        result.push({ type: 'more', commentId: c.id, count: flattened.length - INITIAL_REPLIES });
+      }
+      if (isExpanded && flattened.length > INITIAL_REPLIES) {
+        result.push({ type: 'collapse', commentId: c.id });
+      }
+    }
+    return result;
+  };
+
   const visibleComments = useMemo(
     () => filterCommentsTree(allComments ?? [], new Set(deletedCommentIds)),
     [allComments, deletedCommentIds]
+  );
+
+  const flatComments = useMemo(
+    () => buildFlatComments(visibleComments, expandedReplies),
+    [visibleComments, expandedReplies]
   );
 
   const openFloatingMenu = (context, ref) => {
@@ -420,66 +167,97 @@ export default function BoardDetail({ navigation, route }) {
       setFloatingMenuVisible(true);
     }
   };
-  const closeFloatingMenu = () => {
-    setFloatingMenuVisible(false);
-    setFloatingMenuContext(null);
-    setFloatingMenuAnchor(null);
-  };
 
   const scrollToComment = (commentId) => {
-    const ref = commentWrapperRefs.current[commentId];
-    if (ref && scrollViewRef.current) {
-      ref.measureLayout(
-        scrollViewRef.current,
-        (_x, y) => {
-          const offset = Math.max(0, y - normalize(80));
-          scrollViewRef.current?.scrollTo({ y: offset, animated: true });
-        },
-        () => {}
-      );
+    const index = flatComments.findIndex(
+      (item) => (item.type === 'comment' || item.type === 'reply') && item.data.id === commentId
+    );
+    if (index === -1 || !scrollViewRef.current) return;
+    try {
+      scrollViewRef.current.scrollToIndex({
+        index,
+        animated: true,
+        viewOffset: normalize(80),
+        viewPosition: 0,
+      });
+    } catch (e) {
+      scrollViewRef.current.scrollToEnd({ animated: true });
     }
   };
 
-  // 키보드 올라온 뒤 지연 스크롤만 수행 (state 없이 → 리렌더 없음, 포커스 유지. 입력창 올림은 전역 Animated)
-  useEffect(() => {
-    let scrollTimeoutId;
-    const showEvent = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
-    const onShow = () => {
-      const delay = Platform.OS === 'ios' ? 380 : 250;
-      scrollTimeoutId = setTimeout(() => {
-        const commentId = scrollToCommentIdRef.current;
-        if (commentId) {
-          scrollToComment(commentId);
-          scrollToCommentIdRef.current = null;
-        } else {
-          scrollViewRef.current?.scrollToEnd({ animated: true });
+  const handleKeyboardShowScroll = () => {
+    const delay = Platform.OS === 'ios' ? 200 : 100;
+    setTimeout(() => {
+      const commentId = scrollToCommentIdRef.current;
+      if (commentId) {
+        scrollToCommentIdRef.current = null;
+        scrollToComment(commentId);
+      } else {
+        scrollViewRef.current?.scrollToEnd({ animated: true });
+      }
+    }, delay);
+  };
+
+  useKeyboardHandler(
+    {
+      onMove: (e) => {
+        'worklet';
+        inputTranslateY.value = -Math.max(e.height - insets.bottom, 0);
+      },
+      onEnd: (e) => {
+        'worklet';
+        inputTranslateY.value = -Math.max(e.height - insets.bottom, 0);
+        runOnJS(setKeyboardHeight)(e.height);
+        if (e.height > 0) {
+          runOnJS(handleKeyboardShowScroll)();
         }
-      }, delay);
-    };
-    const subShow = Keyboard.addListener(showEvent, onShow);
-    return () => {
-      if (scrollTimeoutId) clearTimeout(scrollTimeoutId);
-      subShow.remove();
-    };
-  }, []);
+      },
+    },
+    [insets.bottom]
+  );
+
+  const inputAnimStyle = useAnimatedStyle(() => ({
+    transform: [{ translateY: inputTranslateY.value }],
+  }));
 
   const focusReplyInput = (commentId) => {
     if (commentId != null) {
-      const target = findCommentById(allComments, commentId);
-      setReplyToCommentId(commentId);
-      setReplyToAuthorLabel(target?.authorLabel ?? '');
-      scrollToCommentIdRef.current = commentId;
-      // 스크롤은 키보드가 뜬 뒤 리스너에서 수행 (즉시 스크롤 시 키보드가 안 뜨는 현상 방지)
+      setReplyToCommentId(null);
+      setReplyToAuthorLabel('');
+      setBottomComment('');
+      scrollToCommentIdRef.current = null;
+
+      setTimeout(() => {
+        const target = findCommentById(allComments, commentId);
+        setReplyToCommentId(commentId);
+        setReplyToAuthorLabel(target?.authorLabel ?? '');
+        scrollToCommentIdRef.current = commentId;
+      }, 50);
+
+      InteractionManager.runAfterInteractions(() => {
+        bottomInputRef.current?.focus();
+      });
     } else {
       setReplyToCommentId(null);
       setReplyToAuthorLabel('');
       scrollToCommentIdRef.current = null;
       scrollViewRef.current?.scrollToEnd({ animated: true });
+      InteractionManager.runAfterInteractions(() => {
+        bottomInputRef.current?.focus();
+      });
     }
-    // 포커스 지연: 상태 반영 후 입력창에 포커스 (간헐적 미동작 방지)
-    setTimeout(() => {
+  };
+
+  useEffect(() => {
+    if (!replyToCommentId) return;
+    const task = InteractionManager.runAfterInteractions(() => {
       bottomInputRef.current?.focus();
-    }, 260);
+    });
+    return () => task.cancel();
+  }, [replyToCommentId]);
+
+  const toggleRepliesExpand = (commentId) => {
+    setExpandedReplies((prev) => ({ ...prev, [commentId]: !prev[commentId] }));
   };
 
   const clearReplyTarget = () => {
@@ -487,637 +265,107 @@ export default function BoardDetail({ navigation, route }) {
     setReplyToAuthorLabel('');
   };
 
-  // 댓글/대댓글 달기 누른 뒤 키보드가 간헐적으로 안 뜨는 경우 백업 포커스
-  useEffect(() => {
-    if (!replyToCommentId) return;
-    const backup = setTimeout(() => {
-      bottomInputRef.current?.focus();
-    }, 520);
-    return () => clearTimeout(backup);
-  }, [replyToCommentId]);
-
-  const toggleRepliesExpand = (commentId) => {
-    setExpandedReplies((prev) => ({ ...prev, [commentId]: !prev[commentId] }));
-  };
-
-  const handleBack = () => navigation.goBack();
-  const handleEdit = () => {}; // TODO
-
-  const handleDeletePost = () => {
-    closeFloatingMenu();
-    Alert.alert(
-      '게시글 삭제',
-      '이 게시글을 삭제할까요?',
-      [
-        { text: '취소', style: 'cancel' },
-        {
-          text: '삭제',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              await api.delete(`/api/posts/${post.id}`);
-              await invalidateProfileCountsCache();
-              Alert.alert('삭제됨', '게시글이 삭제되었습니다.', [
-                { text: '확인', onPress: () => navigation.goBack() },
-              ]);
-            } catch (error) {
-              console.error('게시글 삭제 오류:', error);
-              Alert.alert(
-                '오류',
-                error.response?.data?.message || '게시글 삭제 중 오류가 발생했습니다.'
-              );
-            }
-          },
-        },
-      ]
-    );
-  };
-
-  const handleDeleteComment = (commentId) => {
-    closeFloatingMenu();
-    Alert.alert(
-      '댓글 삭제',
-      '이 댓글을 삭제할까요?',
-      [
-        { text: '취소', style: 'cancel' },
-        {
-          text: '삭제',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              await api.delete(`/api/comments/${commentId}`);
-              setDeletedCommentIds((prev) => [...prev, commentId]);
-              setPost((prev) =>
-                prev ? { ...prev, comments: Math.max(0, (prev.comments || 0) - 1) } : prev
-              );
-              Alert.alert('삭제됨', '댓글이 삭제되었습니다.');
-            } catch (error) {
-              console.error('댓글 삭제 오류:', error);
-              Alert.alert(
-                '오류',
-                error.response?.data?.message || '댓글 삭제 중 오류가 발생했습니다.'
-              );
-            }
-          },
-        },
-      ]
-    );
-  };
-
-  const handlePostLike = async () => {
-    try {
-      const res = await api.post(`/api/posts/${post.id}/like`);
-      const isLiked = res.data?.data?.isLiked;
-      setPostLiked(Boolean(isLiked));
-      setPost((prev) =>
-        prev
-          ? {
-              ...prev,
-              likes: prev.likes + (isLiked ? 1 : -1),
-            }
-          : prev
-      );
-      emitBoardPostLike(post.id, Boolean(isLiked), post.likes + (isLiked ? 1 : -1));
-    } catch (error) {
-      console.error('게시글 좋아요 오류:', error);
-      Alert.alert(
-        '오류',
-        error.response?.data?.message || '좋아요 처리 중 오류가 발생했습니다.'
-      );
-    }
-  };
-
-  const handlePostScrap = async () => {
-    try {
-      const res = await api.post(`/api/posts/${post.id}/scrap`);
-      const scrapped = res.data?.scrapped;
-      await invalidateProfileCountsCache();
-      setPostScrapped(Boolean(scrapped));
-      setPost((prev) => {
-        const cur = prev?.scraps ?? 0;
-        const next = scrapped ? cur + 1 : Math.max(0, cur - 1);
-        return prev ? { ...prev, scraps: next } : prev;
-      });
-      const curScrap = post?.scraps ?? 0;
-      const nextScrap = scrapped ? curScrap + 1 : Math.max(0, curScrap - 1);
-      emitBoardPostScrap(post.id, Boolean(scrapped), nextScrap);
-    } catch (error) {
-      console.error('게시글 스크랩 오류:', error);
-      Alert.alert('오류', '스크랩 처리 중 오류가 발생했습니다.');
-    }
-  };
-
-  const handleCommentLike = async (commentId) => {
-    try {
-      const res = await api.post(`/api/${commentId}/like`);
-      const isLiked = res.data?.data?.isLiked;
-      setCommentLikedState((prev) => ({ ...prev, [commentId]: Boolean(isLiked) }));
-      setAllComments((prev) =>
-        prev.map((c) => {
-          const updateNode = (node) => {
-            if (node.id === commentId) {
-              return {
-                ...node,
-                likes: node.likes + (isLiked ? 1 : -1),
-              };
-            }
-            if (node.replies?.length) {
-              return { ...node, replies: node.replies.map(updateNode) };
-            }
-            return node;
-          };
-          return updateNode(c);
-        })
-      );
-    } catch (error) {
-      console.error('댓글 좋아요 오류:', error);
-      Alert.alert(
-        '오류',
-        error.response?.data?.message || '댓글 좋아요 처리 중 오류가 발생했습니다.'
-      );
-    }
-  };
-
-  const handleSendComment = async () => {
-    if (isSendingCommentRef.current) return;
-    if (!bottomComment.trim() && commentImages.length === 0) return;
-    isSendingCommentRef.current = true;
-    setIsSendingComment(true);
-    try {
-      const postId = post?.id;
-      const formData = new FormData();
-      formData.append('content', bottomComment.trim());
-      if (replyToCommentId) {
-        formData.append('parentCommentId', String(replyToCommentId));
-      }
-      commentImages.forEach((uri, index) => {
-        formData.append('images', {
-          uri,
-          type: 'image/jpeg',
-          name: `image_${index}.jpg`,
-        });
-      });
-      const res = await api.post(`/api/${postId}/comments`, formData, {
-        headers: { 'Content-Type': 'multipart/form-data' },
-      });
-      const c = res.data?.data;
-      if (c) {
-        // 간단히 전체 댓글을 다시 로드
-        const commentRes = await api.get(`/api/${post.id}/comments`);
-        const comments = commentRes.data?.data?.comments || [];
-
-        const buildTree = () => {
-          const nodes = new Map();
-          comments.forEach((cm) => {
-            const isPostAuthor = postAuthorId != null && cm.user_id === postAuthorId;
-            nodes.set(cm.id, {
-              id: cm.id,
-              userId: cm.user_id,
-              authorLabel: isPostAuthor ? '작성자' : `익명 ${cm.anonymous_index}`,
-              isWriter: isPostAuthor,
-              isMyComment: currentUserId != null && cm.user_id === currentUserId,
-              time: formatTimeAgo(cm.created_at),
-              content: cm.content,
-              likes: cm.like_count,
-              liked: Boolean(cm.isLiked),
-              replies: [],
-            });
-          });
-          const roots = [];
-          comments.forEach((cm) => {
-            const node = nodes.get(cm.id);
-            if (cm.parent_comment_id) {
-              const parent = nodes.get(cm.parent_comment_id);
-              if (parent) parent.replies.push(node);
-              else roots.push(node);
-            } else {
-              roots.push(node);
-            }
-          });
-          return roots;
-        };
-        setAllComments(buildTree());
-        setPost((prev) =>
-          prev
-            ? {
-                ...prev,
-                comments: prev.comments + 1,
-              }
-            : prev
-        );
-      }
-      setBottomComment('');
-      setCommentImages([]);
-      setReplyToCommentId(null);
-      setReplyToAuthorLabel('');
-    } catch (error) {
-      console.error('댓글 작성 오류:', error);
-      Alert.alert(
-        '오류',
-        error.response?.data?.message || '댓글 작성 중 오류가 발생했습니다.'
-      );
-    } finally {
-      isSendingCommentRef.current = false;
-      setIsSendingComment(false);
-    }
-  };
-
-  const flattenReplies = (replies, depth = 0, parentAuthorLabel = null) => {
-    const result = [];
-    for (const r of replies) {
-      result.push({ reply: r, depth, parentAuthorLabel });
-      if (r.replies && r.replies.length) {
-        result.push(...flattenReplies(r.replies, depth + 1, r.authorLabel));
-      }
-    }
-    return result;
-  };
-
-  const renderComment = (item, isReply = false, parentAuthorLabel = null, onFocusReply, likeState = {}) => {
-    const isCommentLiked = likeState.liked ?? false;
-    const onCommentLike = likeState.onLike;
-    const isAuthorLabel = item.authorLabel === '작성자';
-
-    const bodyHasTag = /@익명\d+/.test(item.content);
-    const contentEl = bodyHasTag ? (
-      <CommentBody content={item.content} styles={styles} />
-    ) : (
-      <Text style={styles.commentBody}>{item.content}</Text>
-    );
-
-    const isReplyingToThis = replyToCommentId === item.id;
-
-    const commentBlockInner = (
-      <>
-        <View style={[styles.detailAuthorRow, { flex: 1, minWidth: 0, marginBottom: normalize(6) }]}>
-          <Text
-            style={isAuthorLabel ? styles.detailAuthor : styles.detailAuthorAnonymous}
-            numberOfLines={1}
-          >
-            {item.authorLabel}
-          </Text>
-          <Text style={styles.detailDot}>•</Text>
-          <Text style={styles.detailTime} numberOfLines={1}>
-            {item.time}
-          </Text>
-        </View>
-        {contentEl}
-        <View style={styles.commentFooter}>
-          <View style={styles.commentFooterLeft}>
-            <TouchableOpacity
-              style={styles.commentLikeRow}
-              onPress={onCommentLike}
-              activeOpacity={0.7}
-              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-            >
-              <FontAwesome
-                name={isCommentLiked ? 'heart' : 'heart-o'}
-                size={normalize(13)}
-                color={colors.alert}
-              />
-              <Text style={styles.detailStatText}>{item.likes}</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={styles.commentReplyButton}
-              activeOpacity={0.7}
-              onPress={() => onFocusReply?.()}
-            >
-              <Text style={styles.commentReplyButtonText}>댓글 달기</Text>
-            </TouchableOpacity>
-          </View>
-          <View
-            ref={(r) => {
-              if (r) commentMenuRefs.current[item.id] = r;
-            }}
-            collapsable={false}
-          >
-            <TouchableOpacity
-              style={styles.detailMenuBtn}
-              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-              onPress={() => openFloatingMenu(item.id, commentMenuRefs.current[item.id])}
-            >
-              <Entypo name="dots-three-vertical" size={normalize(14)} color={colors.textSecondary} />
-            </TouchableOpacity>
-          </View>
-        </View>
-      </>
-    );
-
-    const bubble = (
-      <View
-        style={[
-          styles.commentBubble,
-          isReply && styles.commentBubbleReply,
-          isReplyingToThis && styles.commentBubbleReplying,
-        ]}
-      >
-        <View style={styles.commentReplyBody}>{commentBlockInner}</View>
-      </View>
-    );
-
-    if (isReply) {
-      return (
-        <View
-          key={item.id}
-          style={styles.commentItemReply}
-          ref={(r) => {
-            if (r) commentWrapperRefs.current[item.id] = r;
-          }}
-          collapsable={false}
-        >
-          <View style={styles.commentReplyArrow}>
-            <Ionicons name="return-down-forward" size={normalize(16)} color={colors.textSecondary} />
-          </View>
-          {bubble}
-        </View>
-      );
-    }
-    return (
-      <View
-        key={item.id}
-        style={styles.commentItem}
-        ref={(r) => {
-          if (r) commentWrapperRefs.current[item.id] = r;
-        }}
-        collapsable={false}
-      >
-        {bubble}
-      </View>
-    );
-  };
-
-  const renderCommentTree = (c) => {
-    const replies = c.replies || [];
-    const flattened = flattenReplies(replies, 0, c.authorLabel);
-    const showAllRepliesForThis = expandedReplies[c.id];
-    const repliesToShow = showAllRepliesForThis ? flattened : flattened.slice(0, INITIAL_REPLIES);
-    const hasMoreReplies = flattened.length > INITIAL_REPLIES && !showAllRepliesForThis;
-
-    const likedFromState = (id, serverLiked) =>
-      commentLikedState[id] !== undefined ? commentLikedState[id] : Boolean(serverLiked);
-    const nodes = [
-      renderComment(c, false, null, () => focusReplyInput(c.id), {
-        liked: likedFromState(c.id, c.liked),
-        onLike: () => handleCommentLike(c.id),
-      }),
-    ];
-    repliesToShow.forEach(({ reply: r, parentAuthorLabel: parentLabel }) => {
-      nodes.push(
-        renderComment(r, true, parentLabel, () => focusReplyInput(r.id), {
-          liked: likedFromState(r.id, r.liked),
-          onLike: () => handleCommentLike(r.id),
-        })
-      );
+  const onTagPress = (label) => {
+    const searchQuery = `#${String(label).trim().replace(/^#+/, '')}`;
+    navigation.navigate('SearchResult', {
+      query: searchQuery,
+      searchType: 'hashtag',
     });
-    if (hasMoreReplies) {
-      nodes.push(
-        <TouchableOpacity
-          key={`more-${c.id}`}
-          style={styles.loadMoreRowReply}
-          onPress={() => toggleRepliesExpand(c.id)}
-          activeOpacity={0.7}
-        >
-          <Ionicons name="chevron-down" size={normalize(18)} color={colors.textSecondary} />
-          <Text style={styles.loadMoreText}>댓글 더보기</Text>
-        </TouchableOpacity>
-      );
-    }
-    if (showAllRepliesForThis && flattened.length > INITIAL_REPLIES) {
-      nodes.push(
-        <TouchableOpacity
-          key={`collapse-${c.id}`}
-          style={styles.loadMoreRowReply}
-          onPress={() => toggleRepliesExpand(c.id)}
-          activeOpacity={0.7}
-        >
-          <Ionicons name="chevron-up" size={normalize(18)} color={colors.textSecondary} />
-          <Text style={styles.loadMoreText}>댓글 접기</Text>
-        </TouchableOpacity>
-      );
-    }
-    return nodes;
   };
+
+  const onImageLoad = (uri, e) => {
+    const w = e?.nativeEvent?.source?.width;
+    const h = e?.nativeEvent?.source?.height;
+    if (!w || !h) return;
+    const ratio = w / h;
+    setImageRatios((prev) => {
+      if (prev[uri] === ratio) return prev;
+      return { ...prev, [uri]: ratio };
+    });
+  };
+
+  const commentTree = BoardCommentTree({
+    flatComments,
+    commentLikedState,
+    replyToCommentId,
+    expandedReplies,
+    onFocusReply: focusReplyInput,
+    onCommentLike: handleCommentLike,
+    onToggleReplies: toggleRepliesExpand,
+    onOpenMenu: openFloatingMenu,
+    commentMenuRefs,
+    styles,
+    normalize,
+    width,
+  });
 
   return (
     <View style={{ flex: 1, backgroundColor: styles.container.backgroundColor }}>
       <SafeAreaView style={styles.container} edges={['top']}>
-        {/* Chat과 동일: 헤더 → 컨텐츠 영역(스크롤 + 입력창) */}
         <View style={{ zIndex: 1, elevation: 0, backgroundColor: colors.background }}>
-          <SubHeader title="게시판" onBack={handleBack} />
+          <SubHeader title="게시판" onBack={() => navigation.goBack()} />
         </View>
-        <View style={{ flex: 1, backgroundColor: colors.background, overflow: 'hidden', zIndex: 0 }} pointerEvents="box-none">
+        <View
+          style={{ flex: 1, backgroundColor: colors.background, overflow: 'hidden', zIndex: 0 }}
+          pointerEvents="box-none"
+        >
           <View style={{ flex: 1, flexDirection: 'column' }}>
-            <ScrollView
+            <FlatList
               ref={scrollViewRef}
               style={{ flex: 1 }}
-              contentContainerStyle={styles.scrollContent}
+              data={flatComments}
+              keyExtractor={commentTree.keyExtractor}
+              renderItem={commentTree.renderItem}
+              ListHeaderComponent={
+                <View>
+                  <BoardPostContent
+                    post={post}
+                    postLiked={postLiked}
+                    postScrapped={postScrapped}
+                    isMyPostFromApi={isMyPostFromApi}
+                    onLike={handlePostLike}
+                    onScrap={handlePostScrap}
+                    onMenu={() => openFloatingMenu('post', postMenuButtonRef.current)}
+                    onTagPress={onTagPress}
+                    onImagePress={setViewerUri}
+                    onImageLoad={onImageLoad}
+                    imageRatios={imageRatios}
+                    styles={styles}
+                    normalize={normalize}
+                    width={width}
+                    postMenuButtonRef={postMenuButtonRef}
+                  />
+                  <View style={styles.adSection}>
+                    <Text style={styles.adSectionText}>광고</Text>
+                  </View>
+                </View>
+              }
+              contentContainerStyle={[
+                styles.scrollContent,
+                { paddingBottom: keyboardHeight },
+              ]}
+              onScrollToIndexFailed={(info) => {
+                setTimeout(() => {
+                  scrollViewRef.current?.scrollToIndex({
+                    index: info.index,
+                    animated: true,
+                    viewOffset: normalize(80),
+                  });
+                }, 100);
+              }}
               showsVerticalScrollIndicator={false}
               keyboardShouldPersistTaps="handled"
               keyboardDismissMode="on-drag"
-            >
-              {/* 게시글 내용 */}
-              <View style={styles.contentSection}>
-                <View style={styles.detailHeader}>
-                  <View style={[styles.detailAuthorRow, { flex: 1, minWidth: 0 }]}>
-                    <Text
-                      style={
-                        post.author === '작성자' ? styles.detailAuthor : styles.detailAuthorAnonymous
-                      }
-                      numberOfLines={1}
-                    >
-                      {post.author}
-                    </Text>
-                    <Text style={styles.detailDot}>•</Text>
-                    <Text style={styles.detailTime} numberOfLines={1}>
-                      {post.time}
-                    </Text>
-                    {post.location ? (
-                      <View
-                        style={{
-                          flexDirection: 'row',
-                          alignItems: 'baseline',
-                          flexShrink: 1,
-                        }}
-                      >
-                        <Text style={styles.detailTime}>{' · '}</Text>
-                        <Text
-                          style={[styles.detailLocationText, { flexShrink: 1, minWidth: 0 }]}
-                          numberOfLines={1}
-                        >
-                          {post.location}
-                        </Text>
-                      </View>
-                    ) : null}
-                  </View>
-                  {typeof post.distanceKm === 'number' && !Number.isNaN(post.distanceKm) ? (
-                    <View
-                      style={{
-                        flexDirection: 'row',
-                        alignItems: 'center',
-                        marginLeft: normalize(8),
-                        flexShrink: 0,
-                      }}
-                    >
-                      <View
-                        style={{
-                          flexDirection: 'row',
-                          alignItems: 'center',
-                          gap: normalize(1),
-                          backgroundColor: colors.primaryLight20,
-                          borderRadius: normalize(10),
-                          paddingHorizontal: normalize(7),
-                          paddingVertical: normalize(2),
-                        }}
-                      >
-                        <MaterialIcons name="location-on" size={normalize(10)} color={colors.primaryDark} />
-                        <View style={{ flexDirection: 'row', alignItems: 'baseline' }}>
-                          <Text
-                            style={{
-                              fontSize: normalize(11),
-                              fontFamily: fonts.regular,
-                              color: colors.primaryDark,
-                            }}
-                          >
-                            {post.distanceKm < 1 ? '1' : String(Math.round(post.distanceKm))}
-                          </Text>
-                          <Text
-                            style={{
-                              fontSize: normalize(10),
-                              fontFamily: fonts.regular,
-                              color: colors.primaryDark,
-                            }}
-                          >
-                            {post.distanceKm < 1 ? 'km 미만' : 'km'}
-                          </Text>
-                        </View>
-                      </View>
-                    </View>
-                  ) : null}
-                </View>
+            />
 
-                <Text style={[styles.detailBody, { marginBottom: normalize(7) }]}>{post.content}</Text>
-                {Array.isArray(post.images) && post.images.length > 0 ? (
-                  <View style={styles.detailImagesWrap}>
-                    {post.images.map((uri, idx) => (
-                      <TouchableOpacity
-                        key={`${uri}-${idx}`}
-                        activeOpacity={0.85}
-                        onPress={() => setViewerUri(uri)}
-                        style={{ width: '100%' }}
-                      >
-                        <Image
-                          source={{ uri }}
-                          style={[
-                            styles.detailImage,
-                            imageRatios[uri]
-                              ? { width: undefined, maxWidth: '100%', aspectRatio: imageRatios[uri] }
-                              : styles.detailImageFallback,
-                            idx === post.images.length - 1 && styles.detailImageLast,
-                          ]}
-                          onLoad={(e) => {
-                            const w = e?.nativeEvent?.source?.width;
-                            const h = e?.nativeEvent?.source?.height;
-                            if (!w || !h) return;
-                            const ratio = w / h;
-                            setImageRatios((prev) => {
-                              if (prev[uri] === ratio) return prev;
-                              return { ...prev, [uri]: ratio };
-                            });
-                          }}
-                          resizeMode="contain"
-                        />
-                      </TouchableOpacity>
-                    ))}
-                  </View>
-                ) : null}
-                {Array.isArray(post.tags) && post.tags.length > 0 ? (
-                  <View style={styles.detailTagsWrap}>
-                    {post.tags.map((tag, idx) => {
-                      const label =
-                        tag != null && typeof tag === 'object'
-                          ? String(tag.name ?? '')
-                          : String(tag ?? '');
-                      if (!label.trim()) return null;
-                      const searchQuery = `#${label.trim().replace(/^#+/, '')}`;
-                      return (
-                        <TouchableOpacity
-                          key={tag?.id != null ? `tag-${tag.id}` : `tag-${idx}-${label}`}
-                          style={styles.detailTagChip}
-                          activeOpacity={0.7}
-                          onPress={() =>
-                            navigation.navigate('SearchResult', {
-                              query: searchQuery,
-                              searchType: 'hashtag',
-                            })
-                          }
-                        >
-                          <Text style={styles.detailTagText}>{label}</Text>
-                        </TouchableOpacity>
-                      );
-                    })}
-                  </View>
-                ) : null}
-                <View style={styles.detailFooter}>
-                  <View style={styles.detailStats}>
-                    <TouchableOpacity
-                      style={styles.detailStatItem}
-                      onPress={handlePostLike}
-                      activeOpacity={0.7}
-                      hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                    >
-                      <FontAwesome
-                        name={postLiked ? 'heart' : 'heart-o'}
-                        size={normalize(14)}
-                        color={colors.alert}
-                      />
-                      <Text style={styles.detailStatText}>{post.likes}</Text>
-                    </TouchableOpacity>
-                    <View style={styles.detailStatItem}>
-                      <Ionicons name="chatbubble-outline" size={normalize(15)} color={colors.primary} />
-                      <Text style={styles.detailStatText}>{post.comments}</Text>
-                    </View>
-                    <TouchableOpacity
-                      style={styles.detailStatItem}
-                      onPress={handlePostScrap}
-                      activeOpacity={0.7}
-                      hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                    >
-                      <Ionicons
-                        name={postScrapped ? 'bookmark' : 'bookmark-outline'}
-                        size={normalize(14)}
-                        color={colors.scrap}
-                      />
-                      <Text style={styles.detailStatText}>{post.scraps ?? 0}</Text>
-                    </TouchableOpacity>
-                  </View>
-                  <View ref={postMenuButtonRef} collapsable={false}>
-                    <TouchableOpacity
-                      style={styles.detailMenuBtn}
-                      hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                      onPress={() => openFloatingMenu('post', postMenuButtonRef.current)}
-                    >
-                      <Entypo name="dots-three-vertical" size={normalize(14)} color={colors.textSecondary} />
-                    </TouchableOpacity>
-                  </View>
-                </View>
-              </View>
-              {/* 광고 영역 */}
-              <View style={styles.adSection}>
-                <Text style={styles.adSectionText}>광고</Text>
-              </View>
-
-              {/* 댓글: 최상위는 전부 노출, 각 댓글의 대댓글만 3개 제한 후 더보기 */}
-              <View style={styles.commentSection}>
-                {visibleComments.map((c) => renderCommentTree(c))}
-              </View>
-            </ScrollView>
-
-            {/* 하단 댓글 입력: Chat과 동일한 래퍼(키보드 높이는 전역 Animated로 올라감) */}
-            <View
-              style={{
-                backgroundColor: colors.background,
-                paddingBottom: Math.max(insets.bottom, normalize(12)),
-              }}
+            <Animated.View
+              style={[
+                {
+                  backgroundColor: colors.background,
+                  paddingBottom: Math.max(insets.bottom, normalize(12)),
+                },
+                inputAnimStyle,
+              ]}
             >
               <CommentInput
                 bottomInputRef={bottomInputRef}
@@ -1134,149 +382,27 @@ export default function BoardDetail({ navigation, route }) {
                 styles={styles}
                 normalize={normalize}
               />
-            </View>
+            </Animated.View>
           </View>
         </View>
 
-        {/* 플로팅 메뉴 (boardDetail 인라인) */}
-        <Modal
+        <BoardFloatingMenu
           visible={floatingMenuVisible}
-          transparent
-          animationType="fade"
-          onRequestClose={closeFloatingMenu}
-        >
-          <TouchableWithoutFeedback onPress={closeFloatingMenu}>
-            <View
-              style={{
-                flex: 1,
-                backgroundColor: 'rgba(0,0,0,0.3)',
-                ...(floatingMenuAnchor ? {} : { justifyContent: 'center', alignItems: 'center' }),
-              }}
-            >
-              <TouchableWithoutFeedback>
-                <View
-                  style={{
-                    backgroundColor: colors.background,
-                    borderRadius: normalize(12),
-                    minWidth: width * 0.45,
-                    maxWidth: width * 0.7,
-                    paddingVertical: normalize(4),
-                    shadowColor: colors.shadow,
-                    shadowOffset: { width: 0, height: 2 },
-                    shadowOpacity: 0.15,
-                    shadowRadius: 5,
-                    elevation: 5,
-                    ...(floatingMenuAnchor
-                      ? {
-                          position: 'absolute',
-                          right: width - floatingMenuAnchor.x,
-                          top: floatingMenuAnchor.y,
-                        }
-                      : {}),
-                  }}
-                >
-                  {(() => {
-                    const isPostMenu = floatingMenuContext === 'post';
-                    const isCommentMenu = isPostMenu ? null : floatingMenuContext;
-                    const commentForMenu =
-                      isCommentMenu != null ? findCommentById(allComments, isCommentMenu) : null;
-                    const isMyComment = commentForMenu?.isMyComment === true;
-                    const isMyPostMenu = isMyPostFromApi;
-
-                    // 메뉴 항목 결정
-                    let menuItems;
-                    if (isPostMenu && isMyPostMenu) {
-                      // 내가 쓴 게시글 - 공유하기, 삭제하기
-                      menuItems = [
-                        { label: '공유하기', iconName: 'share-outline', onPress: handleSharePost },
-                        { label: '삭제하기', iconName: 'trash-outline', onPress: handleDeletePost },
-                      ];
-                    } else if (isPostMenu) {
-                      // 다른 사람 게시글 - 쪽지/공유/신고
-                      menuItems = postMenuItemsOthers;
-                    } else if (isMyComment) {
-                      // 내가 쓴 댓글 - 삭제하기만
-                      menuItems = [
-                        {
-                          label: '삭제하기',
-                          iconName: 'trash-outline',
-                          onPress: () => handleDeleteComment(isCommentMenu),
-                        },
-                      ];
-                    } else if (commentForMenu) {
-                      // 다른 사람 댓글 - 쪽지/신고
-                      menuItems = [
-                        {
-                          label: '쪽지 보내기',
-                          iconName: 'chatbubble-outline',
-                          onPress: () => {
-                            if (commentForMenu.userId && currentUserId && commentForMenu.userId === currentUserId) {
-                              Alert.alert('안내', '자기 자신에게는 쪽지를 보낼 수 없습니다.');
-                              return;
-                            }
-                            startNoteToUser(commentForMenu.userId, 'comment');
-                          },
-                        },
-                        {
-                          label: '신고하기',
-                          iconName: 'flag-outline',
-                          onPress: () => {
-                            // TODO: 댓글 신고 기능 연결
-                          },
-                        },
-                      ];
-                    } else {
-                      menuItems = commentMenuItemsOthers;
-                    }
-
-                    return menuItems.map((item, index) => (
-                    <React.Fragment key={index}>
-                      <TouchableOpacity
-                        style={{
-                          flexDirection: 'row',
-                          alignItems: 'center',
-                          justifyContent: 'space-between',
-                          paddingVertical: normalize(10),
-                          paddingHorizontal: normalize(14),
-                        }}
-                        activeOpacity={0.7}
-                        onPress={() => {
-                          if (item.onPress) item.onPress();
-                          closeFloatingMenu();
-                        }}
-                      >
-                        <Text
-                          style={{
-                            fontSize: normalize(13),
-                            fontFamily: fonts.regular,
-                            color: colors.textPrimary,
-                          }}
-                        >
-                          {item.label}
-                        </Text>
-                        <Ionicons
-                          name={item.iconName}
-                          size={normalize(17)}
-                          color={colors.textSecondary}
-                        />
-                      </TouchableOpacity>
-                      {index < menuItems.length - 1 && (
-                        <View
-                          style={{
-                            height: 1,
-                            backgroundColor: colors.textLight10,
-                            marginHorizontal: normalize(8),
-                          }}
-                        />
-                      )}
-                    </React.Fragment>
-                  ));
-                  })()}
-                </View>
-              </TouchableWithoutFeedback>
-            </View>
-          </TouchableWithoutFeedback>
-        </Modal>
+          anchor={floatingMenuAnchor}
+          context={floatingMenuContext}
+          allComments={allComments}
+          isMyPostFromApi={isMyPostFromApi}
+          currentUserId={currentUserId}
+          postAuthorId={postAuthorId}
+          onClose={closeFloatingMenu}
+          onDeletePost={handleDeletePost}
+          onDeleteComment={handleDeleteComment}
+          onSharePost={handleSharePost}
+          onNoteToUser={{ start: startNoteToUser, postUserId: postAuthorId }}
+          styles={styles}
+          normalize={normalize}
+          width={width}
+        />
 
         <ImageViewer
           visible={Boolean(viewerUri)}

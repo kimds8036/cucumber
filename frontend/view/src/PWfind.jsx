@@ -8,6 +8,8 @@ import {
   TextInput,
   TouchableOpacity,
   View,
+  Keyboard,
+  TouchableWithoutFeedback,
   useWindowDimensions,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -99,15 +101,17 @@ const PWfind = ({ navigation }) => {
         </Text>
       </View>
 
-      <KeyboardAvoidingView
-        style={styles.contentSection}
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      >
-        <ScrollView
-          showsVerticalScrollIndicator={false}
-          keyboardShouldPersistTaps="handled"
-          contentContainerStyle={{ paddingBottom: normalize(20) }}
+      <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+        <KeyboardAvoidingView
+          style={styles.contentSection}
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         >
+          <ScrollView
+            showsVerticalScrollIndicator={false}
+            keyboardShouldPersistTaps="handled"
+            keyboardDismissMode="on-drag"
+            contentContainerStyle={{ paddingBottom: normalize(20) }}
+          >
           {step === 1 ? (
             <>
               <Text style={styles.inputLabel}>이름</Text>
@@ -180,8 +184,9 @@ const PWfind = ({ navigation }) => {
               </View>
             </>
           )}
-        </ScrollView>
-      </KeyboardAvoidingView>
+          </ScrollView>
+        </KeyboardAvoidingView>
+      </TouchableWithoutFeedback>
 
       <View style={styles.footerSection}>
         <TouchableOpacity

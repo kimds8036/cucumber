@@ -1,12 +1,15 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
-  KeyboardAvoidingView,
-  Platform,
   StyleSheet,
   Text,
   TouchableOpacity,
   View,
 } from 'react-native';
+import Animated, {
+  useAnimatedStyle,
+  useSharedValue,
+} from 'react-native-reanimated';
+import { useKeyboardHandler } from 'react-native-keyboard-controller';
 import {
   SafeAreaView,
   useSafeAreaInsets,
@@ -60,6 +63,7 @@ export default function ChatScreen({
     () => createChatStyles(width, normalize),
     [width, normalize],
   );
+  const inputTranslateY = useSharedValue(0);
 
   // 훅 호출: (roomId, socket) 2개 인자
   const chat = useChatHook(hookConfig.roomId, hookConfig.socket);
@@ -192,6 +196,24 @@ export default function ChatScreen({
     opponentName,
   };
 
+  useKeyboardHandler(
+    {
+      onMove: (e) => {
+        'worklet';
+        inputTranslateY.value = -Math.max(e.height - insets.bottom, 0);
+      },
+      onEnd: (e) => {
+        'worklet';
+        inputTranslateY.value = -Math.max(e.height - insets.bottom, 0);
+      },
+    },
+    [insets.bottom],
+  );
+
+  const inputAnimStyle = useAnimatedStyle(() => ({
+    transform: [{ translateY: inputTranslateY.value }],
+  }));
+
   return (
     <SafeAreaView style={detailStyles.container} edges={['top']}>
       <SubHeader
@@ -201,13 +223,7 @@ export default function ChatScreen({
       />
 
       <View style={{ flex: 1 }}>
-        <KeyboardAvoidingView
-          style={{ flex: 1, backgroundColor: colors.background }}
-          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-          keyboardVerticalOffset={
-            Platform.OS === 'ios' ? insets.top + normalize(48) : 0
-          }
-        >
+        <View style={{ flex: 1, backgroundColor: colors.background }}>
           {chatType === 'room' && (
             <PostCard
               roomId={roomId}
@@ -348,22 +364,23 @@ export default function ChatScreen({
           </TouchableOpacity>
         ) : null}
 
-          <MessageInput
-            value={inputText}
-            onChange={setInputText}
-            onSend={handleSend}
-            images={chatImages}
-            onImagesChange={setChatImages}
-            styles={detailStyles}
-            normalize={normalize}
-            replyToMessage={replyToMessage}
-            clearReplyTarget={() => setReplyToMessage(null)}
-            keyboardHeight={scroll.keyboardHeight}
-            bottomInset={insets.bottom}
-            mainPlaceholder={mainPlaceholder}
-            chatInputStyles={chatInputStyles}
-          />
-        </KeyboardAvoidingView>
+          <Animated.View style={inputAnimStyle}>
+            <MessageInput
+              value={inputText}
+              onChange={setInputText}
+              onSend={handleSend}
+              images={chatImages}
+              onImagesChange={setChatImages}
+              styles={detailStyles}
+              normalize={normalize}
+              replyToMessage={replyToMessage}
+              clearReplyTarget={() => setReplyToMessage(null)}
+              bottomInset={insets.bottom}
+              mainPlaceholder={mainPlaceholder}
+              chatInputStyles={chatInputStyles}
+            />
+          </Animated.View>
+        </View>
 
         {combinedLoading ? (
           <View

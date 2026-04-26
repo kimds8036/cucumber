@@ -104,6 +104,7 @@ const SignStep1_2 = ({ styles, normalize, onChange, disableValidation = false })
             }}
             showsVerticalScrollIndicator={false}
             keyboardShouldPersistTaps="handled"
+            keyboardDismissMode="on-drag"
           >
             <View
               style={{

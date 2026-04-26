@@ -31,6 +31,7 @@ const SignStepNumber = ({ styles, normalize, onChange }) => {
             }}
             showsVerticalScrollIndicator={false}
             keyboardShouldPersistTaps="handled"
+            keyboardDismissMode="on-drag"
           >
             <Text style={styles.inputLabel}>열람용 주소</Text>
             <View style={styles.inputWrapper}>

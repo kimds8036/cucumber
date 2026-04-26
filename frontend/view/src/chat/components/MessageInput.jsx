@@ -12,14 +12,12 @@ export default function MessageInput({
   normalize,
   replyToMessage,
   clearReplyTarget,
-  keyboardHeight,
   bottomInset,
   mainPlaceholder,
   chatInputStyles,
 }) {
   const n = typeof normalize === 'function' ? normalize : (v) => v;
-  const paddingBottom =
-    keyboardHeight > 0 ? 0 : bottomInset > 0 ? bottomInset : n(12);
+  const paddingBottom = bottomInset > 0 ? bottomInset : n(12);
 
   return (
     <View

@@ -35,6 +35,7 @@ const SignStep2 = ({ styles, normalize, verifiedName, verifiedBirthDate, onChang
             }}
             showsVerticalScrollIndicator={false}
             keyboardShouldPersistTaps="handled"
+            keyboardDismissMode="on-drag"
           >
       {/* 이름 */}
       <Text style={styles.inputLabel}>이름</Text>

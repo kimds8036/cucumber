@@ -9,9 +9,13 @@ import {
   Modal,
   TouchableWithoutFeedback,
   Platform,
-  Keyboard,
   Alert,
 } from 'react-native';
+import Animated, {
+  useAnimatedStyle,
+  useSharedValue,
+  runOnJS,
+} from 'react-native-reanimated';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { Entypo } from '@expo/vector-icons';
@@ -25,6 +29,7 @@ import { createSchoolMailDetailStyles } from '../../styles/SchoolMail.style';
 import { api } from '../../utils/api';
 import { emitSchoolMailLike } from '../../utils/listSyncEvents';
 import { getSchoolMailFromLabel } from './utils/schoolMailFromLabel';
+import { useKeyboardHandler } from 'react-native-keyboard-controller';
 
 const INITIAL_REPLIES = 3;
 
@@ -208,6 +213,7 @@ export default function SchoolMailDetail({ navigation, route }) {
   const commentMenuRefs = useRef({});
   const commentWrapperRefs = useRef({});
   const scrollToCommentIdRef = useRef(null);
+  const inputTranslateY = useSharedValue(0);
 
   useEffect(() => {
     let cancelled = false;
@@ -389,27 +395,39 @@ export default function SchoolMailDetail({ navigation, route }) {
     }, 260);
   };
 
-  useEffect(() => {
-    let scrollTimeoutId;
-    const showEvent = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
-    const onShow = () => {
-      const delay = Platform.OS === 'ios' ? 380 : 250;
-      scrollTimeoutId = setTimeout(() => {
-        const cid = scrollToCommentIdRef.current;
-        if (cid) {
-          scrollToComment(cid);
-          scrollToCommentIdRef.current = null;
-        } else {
-          scrollViewRef.current?.scrollToEnd({ animated: true });
-        }
-      }, delay);
-    };
-    const subShow = Keyboard.addListener(showEvent, onShow);
-    return () => {
-      if (scrollTimeoutId) clearTimeout(scrollTimeoutId);
-      subShow.remove();
-    };
+  const handleKeyboardShowScroll = useCallback(() => {
+    const delay = Platform.OS === 'ios' ? 380 : 250;
+    setTimeout(() => {
+      const cid = scrollToCommentIdRef.current;
+      if (cid) {
+        scrollToComment(cid);
+        scrollToCommentIdRef.current = null;
+      } else {
+        scrollViewRef.current?.scrollToEnd({ animated: true });
+      }
+    }, delay);
   }, [scrollToComment]);
+
+  useKeyboardHandler(
+    {
+      onMove: (e) => {
+        'worklet';
+        inputTranslateY.value = -Math.max(e.height - insets.bottom, 0);
+      },
+      onEnd: (e) => {
+        'worklet';
+        inputTranslateY.value = -Math.max(e.height - insets.bottom, 0);
+        if (e.height > 0) {
+          runOnJS(handleKeyboardShowScroll)();
+        }
+      },
+    },
+    [handleKeyboardShowScroll, insets.bottom]
+  );
+
+  const inputAnimStyle = useAnimatedStyle(() => ({
+    transform: [{ translateY: inputTranslateY.value }],
+  }));
 
   useEffect(() => {
     if (!replyToCommentId) return;
@@ -709,11 +727,14 @@ export default function SchoolMailDetail({ navigation, route }) {
                 </View>
               </ScrollView>
 
-              <View
-                style={{
-                  backgroundColor: colors.background,
-                  paddingBottom: Math.max(insets.bottom, normalize(12)),
-                }}
+              <Animated.View
+                style={[
+                  {
+                    backgroundColor: colors.background,
+                    paddingBottom: Math.max(insets.bottom, normalize(12)),
+                  },
+                  inputAnimStyle,
+                ]}
               >
                 <CommentInput
                   bottomInputRef={inputRef}
@@ -727,7 +748,7 @@ export default function SchoolMailDetail({ navigation, route }) {
                   normalize={normalize}
                   mainPlaceholder="댓글 남기기"
                 />
-              </View>
+              </Animated.View>
             </View>
           )}
         </View>

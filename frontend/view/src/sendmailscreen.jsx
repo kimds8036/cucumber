@@ -4,15 +4,13 @@ import {
   Text,
   TextInput,
   TouchableOpacity,
-  ScrollView,
-  KeyboardAvoidingView,
-  Platform,
   Keyboard,
   TouchableWithoutFeedback,
   Alert,
   useWindowDimensions,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
 import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import Ionicons from '@expo/vector-icons/Ionicons';
@@ -157,16 +155,14 @@ const SendMailScreen = ({ navigation }) => {
         <SubHeader title="우편 보내기" onBack={() => navigation?.goBack()} />
       </View>
       <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
-        <KeyboardAvoidingView
-          style={styles.keyboardView}
-          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-          keyboardVerticalOffset={0}
-        >
-          <ScrollView
+        <View style={styles.keyboardView}>
+          <KeyboardAwareScrollView
             style={styles.scrollView}
             contentContainerStyle={styles.sendScrollContent}
             keyboardShouldPersistTaps="handled"
+            keyboardDismissMode="on-drag"
             showsVerticalScrollIndicator={false}
+            bottomOffset={Math.max(bottomCtaHeight, 16)}
           >
             {/* 섹션 1: 보낼 학교 */}
             <View
@@ -486,7 +482,7 @@ const SendMailScreen = ({ navigation }) => {
                 </View>
               </View>
             </View>
-          </ScrollView>
+          </KeyboardAwareScrollView>
 
           <View
             style={styles.bottomCtaWrapper}
@@ -509,7 +505,7 @@ const SendMailScreen = ({ navigation }) => {
               )}
             </TouchableOpacity>
           </View>
-        </KeyboardAvoidingView>
+        </View>
       </TouchableWithoutFeedback>
     </SafeAreaView>
   );

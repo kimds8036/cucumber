@@ -8,6 +8,10 @@ import {
   TextInput,
   Alert,
   PanResponder,
+  KeyboardAvoidingView,
+  Platform,
+  Keyboard,
+  TouchableWithoutFeedback,
   useWindowDimensions,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -437,9 +441,20 @@ const Settings = ({ navigation, route }) => {
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
-      <SubHeader title={headerTitle} onBack={() => navigation.goBack()} />
+      <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+        <KeyboardAvoidingView
+          style={{ flex: 1 }}
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          keyboardVerticalOffset={0}
+        >
+          <SubHeader title={headerTitle} onBack={() => navigation.goBack()} />
 
-      <ScrollView style={styles.scroll} showsVerticalScrollIndicator={false}>
+          <ScrollView
+            style={styles.scroll}
+            showsVerticalScrollIndicator={false}
+            keyboardShouldPersistTaps="handled"
+            keyboardDismissMode="on-drag"
+          >
         {showPrefs && (
           <>
         {/* ────────────── 알림 설정 ────────────── */}
@@ -628,8 +643,10 @@ const Settings = ({ navigation, route }) => {
           </>
         )}
 
-        <View style={styles.scrollBottomSpacer} />
-      </ScrollView>
+            <View style={styles.scrollBottomSpacer} />
+          </ScrollView>
+        </KeyboardAvoidingView>
+      </TouchableWithoutFeedback>
     </SafeAreaView>
   );
 };

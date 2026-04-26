@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from 'react';
-import { View, Text, TextInput, TouchableOpacity, useWindowDimensions, ScrollView, KeyboardAvoidingView, Platform, Keyboard, TouchableWithoutFeedback, Alert } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, useWindowDimensions, Platform, Keyboard, TouchableWithoutFeedback, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
 import { createLoginStyles } from '../../styles/login.style';
 import { colors } from '../../styles/colors';
 import { Ionicons } from '@expo/vector-icons';
@@ -55,11 +56,8 @@ const Login = ({ navigation }) => {
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
       <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
-        <KeyboardAvoidingView
-          style={{ flex: 1 }}
-          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        >
-          <ScrollView
+        <View style={{ flex: 1 }}>
+          <KeyboardAwareScrollView
             contentContainerStyle={{
               flexGrow: 1,
               justifyContent: 'center',
@@ -68,7 +66,9 @@ const Login = ({ navigation }) => {
               paddingVertical: normalize(40),
             }}
             keyboardShouldPersistTaps="handled"
+            keyboardDismissMode="on-drag"
             showsVerticalScrollIndicator={false}
+            bottomOffset={16}
           >
             {/* 로고 */}
             <View style={styles.logoContainer}>
@@ -232,8 +232,8 @@ const Login = ({ navigation }) => {
                 <Text style={styles.linkText}>회원가입</Text>
               </TouchableOpacity>
             </View>
-          </ScrollView>
-        </KeyboardAvoidingView>
+          </KeyboardAwareScrollView>
+        </View>
       </TouchableWithoutFeedback>
     </SafeAreaView>
   );
