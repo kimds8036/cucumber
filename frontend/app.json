@@ -1,7 +1,7 @@
 {
   "expo": {
-    "name": "cucumber",
-    "slug": "cucumber",
+    "name": "Youth Paper",
+    "slug": "youth-paper",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -94,7 +94,7 @@
     "extra": {
       "apiBaseUrl": "https://nonvenous-patriotically-bud.ngrok-free.dev",
       "eas": {
-        "projectId": "bcae2a6b-d034-4a03-924f-6c377622a6b3"
+        "projectId": "39e0f4f8-dd46-4921-a4bf-68856fdfc85c"
       }
     },
     "owner": "kds8036"
