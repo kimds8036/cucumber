@@ -25,7 +25,6 @@ import * as socketManager from './socketManager';
 import { useToast } from '../../context/ToastContext';
 import { useNotification } from '../../context/NotificationContext';
 import { getProfileInnerColor } from '../../utils/profileIconColor';
-import { openNativeChatIOS } from '../../utils/openNativeChatIOS';
 
 // DB에 UTC로 저장된 날짜 문자열을 기기 로컬 시간대로 변환해서 파싱
 function parseUtcToLocal(createdAt) {
@@ -688,15 +687,6 @@ export function MessageContent({ navigation }) {
                                 : r
                             )
                           );
-                          if (Platform.OS === 'ios') {
-                            const opened = await openNativeChatIOS({
-                              roomId: item.id,
-                              title: item.other_user_name || item.name || '친구',
-                              subtitle: item.other_user_school_name || '',
-                              chatChannel: 'dm',
-                            });
-                            if (opened) return;
-                          }
                           navigation?.navigate('DMChat', {
                             roomId: item.id,
                             friend: {
@@ -765,14 +755,6 @@ export function MessageContent({ navigation }) {
                             room.id === item.id ? { ...room, unreadCount: 0 } : room
                           )
                         );
-                        if (Platform.OS === 'ios') {
-                          const opened = await openNativeChatIOS({
-                            roomId: item.id,
-                            title: '쪽지',
-                            chatChannel: 'messages',
-                          });
-                          if (opened) return;
-                        }
                         navigation?.navigate('Chat', {
                           roomId: item.id,
                         });

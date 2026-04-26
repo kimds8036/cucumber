@@ -94,8 +94,9 @@
     "extra": {
       "apiBaseUrl": "https://nonvenous-patriotically-bud.ngrok-free.dev",
       "eas": {
-        "projectId": "0659e4b4-b396-4c6d-a4b3-3e3e345c5132"
+        "projectId": "bcae2a6b-d034-4a03-924f-6c377622a6b3"
       }
-    }
+    },
+    "owner": "kds8036"
   }
 }

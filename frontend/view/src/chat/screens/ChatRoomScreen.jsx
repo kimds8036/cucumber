@@ -1,10 +1,8 @@
-import React, { useEffect, useMemo, useState } from 'react';
-import { Platform, StyleSheet, View } from 'react-native';
+import React, { useMemo, useState } from 'react';
+import { StyleSheet, View } from 'react-native';
 import ChatScreen from './ChatScreen';
 import useChat from '../hooks/useChat';
 import * as socketManager from '../../socketManager';
-import { openNativeChatAndroid } from '../../../../utils/openNativeChatAndroid';
-import { openNativeChatIOS } from '../../../../utils/openNativeChatIOS';
 import { colors } from '../../../../styles/colors';
 import Skeleton from '../../../../components/common/Skeleton';
 
@@ -12,36 +10,9 @@ export default function ChatRoomScreen({ navigation, route }) {
   const roomId = route?.params?.roomId;
   const [showJsxChat, setShowJsxChat] = useState(false);
 
-  useEffect(() => {
-    if (!roomId) {
-      setShowJsxChat(true);
-      return;
-    }
-    let cancelled = false;
-    (async () => {
-      let ok = false;
-      if (Platform.OS === 'android') {
-        ok = await openNativeChatAndroid({
-          roomId,
-          title: '쪽지',
-          chatChannel: 'messages',
-        });
-      } else if (Platform.OS === 'ios') {
-        ok = await openNativeChatIOS({
-          roomId,
-          title: '쪽지',
-          chatChannel: 'messages',
-        });
-      }
-      if (cancelled) return;
-      if (ok) {
-        navigation.goBack();
-        return;
-      }
-      setShowJsxChat(true);
-    })();
-    return () => { cancelled = true; };
-  }, [roomId, navigation]);
+  React.useEffect(() => {
+    setShowJsxChat(true);
+  }, []);
 
   const hookConfig = useMemo(
     () => ({

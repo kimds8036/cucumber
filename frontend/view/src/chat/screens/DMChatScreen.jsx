@@ -1,6 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import {
-  Platform,
   StyleSheet,
   Text,
   View,
@@ -9,8 +8,6 @@ import {
 import ChatScreen from './ChatScreen';
 import useDMChat from '../hooks/useDMChat';
 import * as socketManager from '../../socketManager';
-import { openNativeChatAndroid } from '../../../../utils/openNativeChatAndroid';
-import { openNativeChatIOS } from '../../../../utils/openNativeChatIOS';
 import {
   getNormalize as getBoardNormalize,
   createDetailStyles,
@@ -28,39 +25,8 @@ export default function DMChatScreen({ navigation, route }) {
   const [showJsxChat, setShowJsxChat] = useState(false);
 
   useEffect(() => {
-    if (!roomId) {
-      setShowJsxChat(true);
-      return;
-    }
-    let cancelled = false;
-    (async () => {
-      let ok = false;
-      if (Platform.OS === 'android') {
-        ok = await openNativeChatAndroid({
-          roomId,
-          title: friendName,
-          subtitle: friendSchool,
-          chatChannel: 'dm',
-        });
-      } else if (Platform.OS === 'ios') {
-        ok = await openNativeChatIOS({
-          roomId,
-          title: friendName,
-          subtitle: friendSchool,
-          chatChannel: 'dm',
-        });
-      }
-      if (cancelled) return;
-      if (ok) {
-        navigation.goBack();
-        return;
-      }
-      setShowJsxChat(true);
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [roomId, navigation, friendName, friendSchool]);
+    setShowJsxChat(true);
+  }, []);
 
   const { width } = useWindowDimensions();
   const normalize = useMemo(() => getBoardNormalize(width), [width]);
