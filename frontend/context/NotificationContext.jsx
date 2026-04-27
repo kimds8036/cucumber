@@ -173,8 +173,10 @@ export function NotificationProvider({ children }) {
         payload?.relatedType === 'dm_room';
       const isStudySummary = isStudySummaryNotification(payload);
       if (!isChatNotification) {
+        // 벨 점은 DB 알림 목록 기준으로만 갱신한다.
+        // (실시간 신호만으로 점을 켜면 알림 목록과 불일치 가능)
         setBellSuppressed(false);
-        setHasUnread(true);
+        refreshHasUnread();
       }
       if (isStudySummary) {
         // 타이머 화면이 활성화된 경우에는 타이머 전용 토스트를 우선 사용한다.
@@ -223,8 +225,10 @@ export function NotificationProvider({ children }) {
         payload?.senderName ??
         '',
       ).trim();
+      // friend_poke는 즉시 토스트는 띄우되, 벨 점은 DB 목록 기준으로만 갱신.
+      // 온라인 즉시 전달 poke는 알림 목록에 없을 수 있다.
       setBellSuppressed(false);
-      setHasUnread(true);
+      refreshHasUnread();
       showToast({
         message: senderName
           ? `${senderName} 님이 쿡 찔렀어요`

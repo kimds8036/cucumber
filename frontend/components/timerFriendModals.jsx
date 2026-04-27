@@ -14,6 +14,7 @@ import {
   useWindowDimensions,
   Keyboard,
   TouchableWithoutFeedback,
+  Platform,
 } from 'react-native';
 import Reanimated, {
   useAnimatedStyle,
@@ -279,6 +280,7 @@ export const FriendPokeController = ({ visible, friend, onClose }) => {
 // ── 친구 추가 팝업 ──────────────────────────────────────
 export const AddFriendModal = ({ visible, onClose, onAdd }) => {
   const [query, setQuery] = useState('');
+  const isAndroid = Platform.OS === 'android';
   const { width } = useWindowDimensions();
   const normalize = useMemo(() => getNormalize(width), [width]);
   const s = useMemo(() => createTimerFriendModalStyles(normalize), [normalize]);
@@ -288,14 +290,16 @@ export const AddFriendModal = ({ visible, onClose, onAdd }) => {
     {
       onMove: (e) => {
         'worklet';
+        if (!isAndroid) return;
         translateY.value = -e.height;
       },
       onEnd: (e) => {
         'worklet';
+        if (!isAndroid) return;
         translateY.value = -e.height;
       },
     },
-    [],
+    [isAndroid],
   );
 
   const animStyle = useAnimatedStyle(() => ({
@@ -322,8 +326,58 @@ export const AddFriendModal = ({ visible, onClose, onAdd }) => {
       <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
         <View style={{ flex: 1 }}>
           <TouchableOpacity style={s.addFriendOverlay} onPress={onClose} activeOpacity={1} />
-          <Reanimated.View style={[s.addFriendWrapper, animStyle]}>
-            <View style={s.addFriendPopup}>
+          {isAndroid ? (
+            <Reanimated.View style={[s.addFriendWrapper, animStyle]}>
+              <View style={s.addFriendPopup}>
+                <Text style={s.addFriendTitle}>친구 추가</Text>
+
+                <View style={s.addFriendInputRow}>
+                  <Ionicons
+                    name="search-outline"
+                    size={normalize(18)}
+                    color={colors.textSecondary}
+                  />
+                  <TextInput
+                    style={s.addFriendInput}
+                    placeholder="@아이디 입력"
+                    placeholderTextColor={colors.textLight20}
+                    value={query}
+                    onChangeText={setQuery}
+                    autoFocus
+                  />
+                  {query.length > 0 && (
+                    <TouchableOpacity onPress={() => setQuery('')}>
+                      <Ionicons
+                        name="close-circle"
+                        size={normalize(18)}
+                        color={colors.textLight20}
+                      />
+                    </TouchableOpacity>
+                  )}
+                </View>
+
+                <TouchableOpacity
+                  style={[
+                    s.addFriendPrimaryBtn,
+                    !query.trim() && s.addFriendPrimaryBtnDisabled,
+                  ]}
+                  onPress={handleAdd}
+                  activeOpacity={0.8}
+                  disabled={!query.trim()}
+                >
+                  <FontAwesome5
+                    name="user-plus"
+                    size={normalize(16)}
+                    color={colors.textWhite}
+                    style={s.addFriendPrimaryBtnIcon}
+                  />
+                  <Text style={s.addFriendPrimaryBtnText}>추가하기</Text>
+                </TouchableOpacity>
+              </View>
+            </Reanimated.View>
+          ) : (
+            <View style={s.addFriendWrapper}>
+              <View style={s.addFriendPopup}>
               <Text style={s.addFriendTitle}>친구 추가</Text>
 
               <View style={s.addFriendInputRow}>
@@ -369,7 +423,8 @@ export const AddFriendModal = ({ visible, onClose, onAdd }) => {
                 <Text style={s.addFriendPrimaryBtnText}>추가하기</Text>
               </TouchableOpacity>
             </View>
-          </Reanimated.View>
+            </View>
+          )}
         </View>
       </TouchableWithoutFeedback>
     </Modal>

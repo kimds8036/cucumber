@@ -4,9 +4,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { createHeaderStyles, getNormalize } from '../../styles/frame.style';
 import FontAwesome5 from '@expo/vector-icons/FontAwesome5';
 import { colors } from '../../styles/colors';
-import Octicons from '@expo/vector-icons/Octicons';
 import { useNotification } from '../../context/NotificationContext';
-import { useFriend } from '../../context/FriendContext';
 
 const MainHeader = ({ activeTab = 'board', navigation }) => {
   const { width, height } = useWindowDimensions();
@@ -14,7 +12,6 @@ const MainHeader = ({ activeTab = 'board', navigation }) => {
   const normalize = useMemo(() => getNormalize(width), [width]);
 
   const { hasUnread } = useNotification();
-  const { hasUnreadFriendRequestsForBell } = useFriend();
 
   // activeTab에 따른 헤더 텍스트
   const getTabTitle = () => {
@@ -54,8 +51,8 @@ const MainHeader = ({ activeTab = 'board', navigation }) => {
           onPress={() => navigation?.navigate('Notification')}
         >
           <FontAwesome5 name="bell" size={normalize(22)} color={colors.primary} />
-          {/* hasUnread: NotificationContext — 쪽지/DM 소켓·알림 행은 제외된 뒤의 미읽음만 반영 */}
-          {(hasUnread || hasUnreadFriendRequestsForBell) && <View style={headerStyles.badge} />}
+          {/* 알림센터 목록 기준 미읽음만 벨 점으로 표시 */}
+          {hasUnread && <View style={headerStyles.badge} />}
         </TouchableOpacity>
       </View>
     </View>
