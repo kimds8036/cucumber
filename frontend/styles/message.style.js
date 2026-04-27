@@ -232,7 +232,7 @@ export const createChatStyles = (width, normalize) => {
       marginTop: normalize(2),
     },
     chatTimeOpponent: {
-      fontSize: normalize(fontSizes.lg),
+      fontSize: normalize(fontSizes.md),
       fontFamily: fonts.regular,
       color: colors.textSecondary,
       marginLeft: normalize(7),
@@ -243,7 +243,7 @@ export const createChatStyles = (width, normalize) => {
       flexDirection: 'row',
       justifyContent: 'flex-end',
       alignItems: 'flex-end',
-      marginBottom: normalize(14),
+      marginBottom: 0,
     },
     userTimeColumn: {
       alignItems: 'flex-end',
@@ -253,17 +253,17 @@ export const createChatStyles = (width, normalize) => {
       alignSelf: 'flex-end',
     },
     chatUnreadCount: {
-      fontSize: normalize(fontSizes.lg),
+      fontSize: normalize(fontSizes.md),
       fontFamily: fonts.bold,
       color: colors.primary,
-      marginBottom: normalize(-2),
+      marginBottom: 0,
       marginRight: normalize(4),
     },
     userBubble: {
-      paddingVertical: normalize(5),
+      paddingVertical: normalize(6),
       paddingHorizontal: normalize(14),
       borderRadius: normalize(16),
-      borderBottomRightRadius: normalize(4),
+      borderTopRightRadius: normalize(0),
       backgroundColor: colors.primaryLight30,
       flexShrink: 1,
       minWidth: 0,
@@ -274,10 +274,10 @@ export const createChatStyles = (width, normalize) => {
       color: colors.textPrimary,
     },
     chatTimeUser: {
-      fontSize: normalize(fontSizes.lg),
+      fontSize: normalize(fontSizes.md),
       fontFamily: fonts.regular,
       color: colors.textSecondary,
-      marginBottom: -5,
+      marginBottom: 0,
     },
 
     // ─────────────────────────────────────────────
@@ -307,25 +307,29 @@ export const createChatStyles = (width, normalize) => {
     },
 
     replyQuoteBox: {
-      borderLeftWidth: normalize(3),
-      borderLeftColor: colors.primary,
+      borderBottomWidth: normalize(1),
+      borderBottomColor: colors.textLight10,
       paddingVertical: normalize(6),
       paddingHorizontal: normalize(10),
       marginBottom: normalize(6),
-      borderRadius: normalize(6),
-      backgroundColor: colors.textLight10, // 투명 → 연한 배경으로
       opacity: 1,
+      alignItems: 'flex-start',
+      alignSelf: 'stretch',
     },
     replyQuoteSender: {
       fontSize: normalize(fontSizes.lg),
       fontFamily: fonts.bold,
       color: colors.primary,
       marginBottom: normalize(2),
+      textAlign: 'left',
+      alignSelf: 'stretch',
     },
     replyQuoteText: {
       fontSize: normalize(fontSizes.lg),
       fontFamily: fonts.regular,
       color: colors.textSecondary, // textPrimary → textSecondary로 구분감
+      textAlign: 'left',
+      alignSelf: 'stretch',
     },
   });
 };

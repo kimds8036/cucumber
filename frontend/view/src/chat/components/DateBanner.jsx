@@ -24,9 +24,10 @@ export default function DateBanner({ date, normalize }) {
       <View
         style={{
           backgroundColor: colors.textLight10,
-          paddingHorizontal: n(12),
-          paddingVertical: n(3),
+          paddingHorizontal: n(14),
           borderRadius: n(12),
+          height: n(24),
+          justifyContent: 'center',
         }}
       >
         <Text
