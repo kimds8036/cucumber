@@ -15,7 +15,7 @@ import {
   Keyboard,
   TouchableWithoutFeedback,
 } from 'react-native';
-import Reanimated, { runOnJS, useAnimatedStyle, useSharedValue } from 'react-native-reanimated';
+import Reanimated, { useAnimatedStyle, useSharedValue } from 'react-native-reanimated';
 import { useKeyboardHandler } from 'react-native-keyboard-controller';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import FontAwesome5 from '@expo/vector-icons/FontAwesome5';
@@ -287,16 +287,10 @@ export const AddFriendModal = ({ visible, onClose, onAdd }) => {
       onMove: (e) => {
         'worklet';
         translateY.value = -e.height;
-        runOnJS(console.log)(`${LOG_PREFIX} keyboard onMove`, {
-          height: e.height,
-        });
       },
       onEnd: (e) => {
         'worklet';
         translateY.value = -e.height;
-        runOnJS(console.log)(`${LOG_PREFIX} keyboard onEnd`, {
-          height: e.height,
-        });
       },
     },
     [],
