@@ -137,7 +137,7 @@ export default function ToastHost() {
       return;
     }
     if (relatedType === 'timer_poke' || type === 'poke' || type === 'friend_poke') {
-      reset('Timer');
+      reset('Main', { initialTab: 'timer' });
       return;
     }
     if (relatedType === 'friendship' || type === 'friend_request') {
