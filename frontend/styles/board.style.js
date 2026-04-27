@@ -888,9 +888,8 @@ export const createDetailStyles = (width, normalize) => {
     },
     commentReplyLabel: {
       fontSize: normalize(fontSizes.lg),
-      fontFamily: fonts.regular,
-      color: colors.primaryDark,
-      marginBottom: normalize(4),
+      fontFamily: fonts.bold,
+      color: colors.primary,
     },
     commentFooter: {
       flexDirection: 'row',
@@ -950,7 +949,7 @@ export const createDetailStyles = (width, normalize) => {
       borderTopColor: colors.textLight10,
       paddingHorizontal: width * 0.03,
       paddingVertical: normalize(12),
-      paddingBottom: Platform.OS === 'ios' ? normalize(34) : normalize(12),
+      paddingBottom: Platform.OS === 'ios' ? normalize(14) : normalize(12),
     },
     replyTargetRow: {
       flexDirection: 'row',

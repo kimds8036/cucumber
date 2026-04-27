@@ -236,7 +236,7 @@ export function createMailStyles(normalize) {
       borderRadius: normalize(12),
       paddingHorizontal: normalize(16),
       paddingTop: normalize(18),
-      paddingBottom: normalize(24),
+      paddingBottom: normalize(10),
       flexDirection: 'column',
       // 경계선 대신 카드 그림자 처리 (detailLetterCard와 톤 맞춤)
       ...shadow.md,
@@ -257,13 +257,13 @@ export function createMailStyles(normalize) {
       fontSize: normalize(fontSizes.xl),
       color: colors.textPrimary,
       paddingVertical: 0,
-      marginBottom: normalize(8),
+      marginBottom: normalize(4),
     },
     replyFormMetaRow: {
       flexDirection: 'row',
       justifyContent: 'flex-end',
       alignItems: 'flex-end',
-      marginTop: 'auto',
+      marginTop: normalize(6),
     },
     replyFormCount: {
       fontSize: normalize(fontSizes.lg),

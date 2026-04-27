@@ -77,9 +77,11 @@ export default function BoardCommentTree({
             </Text>
           </View>
           {parentAuthorLabel ? (
-            <Text style={styles.commentReplyLabel}>@{parentAuthorLabel}에게 답글</Text>
-          ) : null}
-          {contentEl}
+            <View style={{ flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: normalize(2) }}>
+              <Text style={styles.commentReplyLabel}>@{parentAuthorLabel} </Text>
+              {contentEl}
+            </View>
+          ) : contentEl}
           <View style={styles.commentFooter}>
             <View style={styles.commentFooterLeft}>
               <TouchableOpacity
