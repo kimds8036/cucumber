@@ -15,7 +15,7 @@ import {
   Keyboard,
   TouchableWithoutFeedback,
 } from 'react-native';
-import Reanimated, { useAnimatedStyle, useSharedValue } from 'react-native-reanimated';
+import Reanimated, { runOnJS, useAnimatedStyle, useSharedValue } from 'react-native-reanimated';
 import { useKeyboardHandler } from 'react-native-keyboard-controller';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import FontAwesome5 from '@expo/vector-icons/FontAwesome5';
@@ -280,16 +280,23 @@ export const AddFriendModal = ({ visible, onClose, onAdd }) => {
   const normalize = useMemo(() => getNormalize(width), [width]);
   const s = useMemo(() => createTimerFriendModalStyles(normalize), [normalize]);
   const translateY = useSharedValue(0);
+  const LOG_PREFIX = '[AddFriendModal]';
 
   useKeyboardHandler(
     {
       onMove: (e) => {
         'worklet';
         translateY.value = -e.height;
+        runOnJS(console.log)(`${LOG_PREFIX} keyboard onMove`, {
+          height: e.height,
+        });
       },
       onEnd: (e) => {
         'worklet';
         translateY.value = -e.height;
+        runOnJS(console.log)(`${LOG_PREFIX} keyboard onEnd`, {
+          height: e.height,
+        });
       },
     },
     [],
@@ -300,6 +307,7 @@ export const AddFriendModal = ({ visible, onClose, onAdd }) => {
   }));
 
   useEffect(() => {
+    console.log(`${LOG_PREFIX} visible changed`, { visible });
     if (!visible) setQuery('');
   }, [visible]);
 
@@ -308,6 +316,7 @@ export const AddFriendModal = ({ visible, onClose, onAdd }) => {
   }, [translateY, visible]);
 
   const handleAdd = () => {
+    console.log(`${LOG_PREFIX} handleAdd pressed`, { query });
     if (!query.trim()) return;
     onAdd(query.trim());
     setQuery('');
@@ -315,10 +324,22 @@ export const AddFriendModal = ({ visible, onClose, onAdd }) => {
 
   if (!visible) return null;
   return (
-    <Modal transparent animationType="fade" onRequestClose={onClose}>
+    <Modal
+      transparent
+      animationType="fade"
+      onRequestClose={onClose}
+      onShow={() => console.log(`${LOG_PREFIX} modal onShow`)}
+    >
       <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
         <View style={{ flex: 1 }}>
-          <TouchableOpacity style={s.addFriendOverlay} onPress={onClose} activeOpacity={1} />
+          <TouchableOpacity
+            style={s.addFriendOverlay}
+            onPress={() => {
+              console.log(`${LOG_PREFIX} overlay pressed`);
+              onClose?.();
+            }}
+            activeOpacity={1}
+          />
           <Reanimated.View style={[s.addFriendWrapper, animStyle]}>
             <View style={s.addFriendPopup}>
               <Text style={s.addFriendTitle}>친구 추가</Text>
@@ -336,6 +357,7 @@ export const AddFriendModal = ({ visible, onClose, onAdd }) => {
                   value={query}
                   onChangeText={setQuery}
                   autoFocus
+                  onFocus={() => console.log(`${LOG_PREFIX} input onFocus`)}
                 />
                 {query.length > 0 && (
                   <TouchableOpacity onPress={() => setQuery('')}>
