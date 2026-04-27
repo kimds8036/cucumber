@@ -276,6 +276,7 @@ export const FriendPokeController = ({ visible, friend, onClose }) => {
 // ── 친구 추가 팝업 ──────────────────────────────────────
 export const AddFriendModal = ({ visible, onClose, onAdd }) => {
   const [query, setQuery] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const { width } = useWindowDimensions();
   const normalize = useMemo(() => getNormalize(width), [width]);
   const s = useMemo(() => createTimerFriendModalStyles(normalize), [normalize]);
@@ -300,17 +301,28 @@ export const AddFriendModal = ({ visible, onClose, onAdd }) => {
   }));
 
   useEffect(() => {
-    if (!visible) setQuery('');
+    if (!visible) {
+      setQuery('');
+      setIsSubmitting(false);
+    }
   }, [visible]);
 
   useEffect(() => {
     if (!visible) translateY.value = 0;
   }, [translateY, visible]);
 
-  const handleAdd = () => {
-    if (!query.trim()) return;
-    onAdd(query.trim());
-    setQuery('');
+  const handleAdd = async () => {
+    if (!query.trim() || isSubmitting) return;
+    setIsSubmitting(true);
+    Keyboard.dismiss();
+    // iOS에서 키보드 dismiss/레이아웃 갱신과 버튼 탭 처리가 충돌하지 않도록 한 틱 미룬다.
+    await new Promise((resolve) => requestAnimationFrame(resolve));
+    try {
+      await onAdd(query.trim());
+      setQuery('');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   if (!visible) return null;
@@ -318,9 +330,19 @@ export const AddFriendModal = ({ visible, onClose, onAdd }) => {
     <Modal transparent animationType="fade" onRequestClose={onClose}>
       <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
         <View style={{ flex: 1 }}>
-          <TouchableOpacity style={s.addFriendOverlay} onPress={onClose} activeOpacity={1} />
+          <TouchableOpacity
+            style={s.addFriendOverlay}
+            onPress={() => {
+              if (isSubmitting) return;
+              onClose?.();
+            }}
+            activeOpacity={1}
+          />
           <Reanimated.View style={[s.addFriendWrapper, animStyle]}>
-            <View style={s.addFriendPopup}>
+            <View
+              style={s.addFriendPopup}
+              onStartShouldSetResponder={() => true}
+            >
               <Text style={s.addFriendTitle}>친구 추가</Text>
 
               <View style={s.addFriendInputRow}>
@@ -351,11 +373,11 @@ export const AddFriendModal = ({ visible, onClose, onAdd }) => {
               <TouchableOpacity
                 style={[
                   s.addFriendPrimaryBtn,
-                  !query.trim() && s.addFriendPrimaryBtnDisabled,
+                  (!query.trim() || isSubmitting) && s.addFriendPrimaryBtnDisabled,
                 ]}
                 onPress={handleAdd}
                 activeOpacity={0.8}
-                disabled={!query.trim()}
+                disabled={!query.trim() || isSubmitting}
               >
                 <FontAwesome5
                   name="user-plus"
