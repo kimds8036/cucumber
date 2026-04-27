@@ -55,8 +55,6 @@ export default function BoardDetail({ navigation, route }) {
 
   const closeFloatingMenu = () => {
     setFloatingMenuVisible(false);
-    setFloatingMenuContext(null);
-    setFloatingMenuAnchor(null);
   };
 
   const openReportModal = (targetType, targetId) => {

@@ -37,6 +37,9 @@ export default function BoardFloatingMenu({
   const commentForMenu = isCommentMenu != null ? findCommentById(allComments, isCommentMenu) : null;
   const isMyComment = commentForMenu?.isMyComment === true;
 
+  // iOS fade-out 동안 context가 비는 중간 렌더를 막아 중앙 깜빡임을 방지한다.
+  if (!visible || context == null) return null;
+
   let menuItems;
   if (isPostMenu && isMyPostFromApi) {
     menuItems = [

@@ -11,11 +11,13 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import Octicons from '@expo/vector-icons/Octicons';
 import SubHeader from '../frame/subHeader';
 import Skeleton from '../../components/common/Skeleton';
-import { colors, PROFILE_COLORS } from '../../styles/colors';
+import { colors } from '../../styles/colors';
 import { getNormalize } from '../../styles/frame.style';
 import { createMailStyles } from '../../styles/mail.style';
 import { api } from '../../utils/api';
 import { useNotification } from '../../context/NotificationContext';
+import ProfileIcon from '../../assets/Profile.svg';
+import { getProfileInnerColor } from '../../utils/profileIconColor';
 
 function parseUtcToLocal(createdAt) {
   if (!createdAt) return null;
@@ -41,10 +43,6 @@ function formatListTime(createdAt) {
   const hh = String(d.getHours()).padStart(2, '0');
   const mi = String(d.getMinutes()).padStart(2, '0');
   return `${yy}/${mm}/${dd} ${hh}:${mi}`;
-}
-
-function getProfileColorById(colorId) {
-  return PROFILE_COLORS[String(colorId)] || colors.primary;
 }
 
 function extractMailListFromResponse(res) {
@@ -158,6 +156,13 @@ function extractPaginationFromResponse(res) {
 }
 
 function mapMailToListItem(mail, isReceived) {
+  const profileColorId =
+    (isReceived
+      ? mail.sender_color_id
+      : mail.recipient_color_id) ??
+    mail.profile_color_id ??
+    mail.profileColorId ??
+    null;
   return {
     id: mail.id,
     raw: mail,
@@ -170,6 +175,7 @@ function mapMailToListItem(mail, isReceived) {
     receivedAt: formatListTime(mail.created_at),
     isUnread: isReceived ? !mail.is_read : false,
     replyToMySent: Boolean(mail.reply_to_my_sent ?? mail.replyToMySent),
+    profileColorId,
   };
 }
 
@@ -316,48 +322,62 @@ function MailInbox({ onOpen, onBack, navigation }) {
             <Text>우편이 없습니다.</Text>
           </View>
         )}
-        {items.map((mail) => (
-          <TouchableOpacity
-            key={mail.listKey || String(mail.id)}
-            style={[
-              styles.mailCard,
-              mail.isUnread && styles.mailCardUnread,
-              mail.rowKind === 'parent' && styles.mailCardParent,
-              mail.rowKind === 'reply' && styles.mailCardReply,
-            ]}
-            onPress={() => onOpen(mail)}
-            activeOpacity={0.8}
-          >
-            <View style={styles.mailCardHeader}>
-              <Text style={styles.anonLabel}>
-                {mail.rowKind === 'parent'
-                  ? '원본 우편'
-                  : counterpartyDisplayNameForCurrentUser({
-                      isReceived: Boolean(mail.isReceived),
-                      senderNameFromApi: mail.raw?.sender_name,
-                      recipientNameFromApi: mail.raw?.recipient_name,
-                      isRootAuthorForCurrentUser: Boolean(
-                        mail.raw?.is_root_author_for_current_user
-                      ),
-                    })}
-              {mail.rowKind !== 'parent' &&
-                console.log('[MailLabelDecision][MailInboxRow]', {
-                  mailId: mail.raw?.id ?? mail.id,
-                  rowKind: mail.rowKind ?? 'normal',
-                  isReceived: Boolean(mail.isReceived),
-                  isRootAuthorForCurrentUser: Boolean(
-                    mail.raw?.is_root_author_for_current_user
-                  ),
-                  senderNameFromApi: mail.raw?.sender_name ?? null,
-                  recipientNameFromApi: mail.raw?.recipient_name ?? null,
-                })}
-              </Text>
-              <Text style={styles.dotSep}>•</Text>
-              <Text style={styles.mailTime}>{mail.receivedAt}</Text>
-            </View>
-            <Text style={styles.mailPreview} numberOfLines={1}>{mail.preview}</Text>
-          </TouchableOpacity>
-        ))}
+        {items.map((mail) => {
+          const iconColor = getProfileInnerColor(mail.profileColorId);
+          return (
+            <TouchableOpacity
+              key={mail.listKey || String(mail.id)}
+              style={[
+                styles.mailCard,
+                mail.isUnread && styles.mailCardUnread,
+                mail.rowKind === 'parent' && styles.mailCardParent,
+                mail.rowKind === 'reply' && styles.mailCardReply,
+              ]}
+              onPress={() => onOpen(mail)}
+              activeOpacity={0.8}
+            >
+              <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                <View style={{ marginRight: normalize(10), justifyContent: 'center' }}>
+                  <ProfileIcon
+                    width={normalize(30)}
+                    height={normalize(30)}
+                    color={iconColor}
+                  />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <View style={styles.mailCardHeader}>
+                    <Text style={styles.anonLabel}>
+                      {mail.rowKind === 'parent'
+                        ? '원본 우편'
+                        : counterpartyDisplayNameForCurrentUser({
+                            isReceived: Boolean(mail.isReceived),
+                            senderNameFromApi: mail.raw?.sender_name,
+                            recipientNameFromApi: mail.raw?.recipient_name,
+                            isRootAuthorForCurrentUser: Boolean(
+                              mail.raw?.is_root_author_for_current_user
+                            ),
+                          })}
+                    {mail.rowKind !== 'parent' &&
+                      console.log('[MailLabelDecision][MailInboxRow]', {
+                        mailId: mail.raw?.id ?? mail.id,
+                        rowKind: mail.rowKind ?? 'normal',
+                        isReceived: Boolean(mail.isReceived),
+                        isRootAuthorForCurrentUser: Boolean(
+                          mail.raw?.is_root_author_for_current_user
+                        ),
+                        senderNameFromApi: mail.raw?.sender_name ?? null,
+                        recipientNameFromApi: mail.raw?.recipient_name ?? null,
+                      })}
+                    </Text>
+                    <Text style={styles.dotSep}>•</Text>
+                    <Text style={styles.mailTime}>{mail.receivedAt}</Text>
+                  </View>
+                  <Text style={styles.mailPreview} numberOfLines={1}>{mail.preview}</Text>
+                </View>
+              </View>
+            </TouchableOpacity>
+          );
+        })}
         {!loading && hasMore && (
           <TouchableOpacity
             style={styles.inboxLoadMoreButton}
@@ -531,6 +551,9 @@ function MailDetail({ mail: initialMail, onBack, navigation }) {
   const isDisplayMine = threadLatest
     ? threadLatest === latestMyReply
     : mail?.isReceived === false;
+  const detailOtherColorId = mail?.isReceived ? mail?.senderColorId : mail?.recipientColorId;
+  const detailMyColorId = mail?.isReceived ? mail?.recipientColorId : mail?.senderColorId;
+  const detailIconColor = getProfileInnerColor(isDisplayMine ? detailMyColorId : detailOtherColorId);
 
   const counterpartyKnownName =
     mail?.isReceived === true
@@ -630,14 +653,13 @@ function MailDetail({ mail: initialMail, onBack, navigation }) {
             {isDisplayMine ? (
               <>
                 <View style={styles.detailSenderRow}>
-                  <View
-                    style={[
-                      styles.detailAvatar,
-                      {
-                        backgroundColor: colors.backgroundGray,
-                      },
-                    ]}
-                  />
+                  <View style={[styles.detailAvatar, { justifyContent: 'center', alignItems: 'center' }]}>
+                    <ProfileIcon
+                      width={normalize(28)}
+                      height={normalize(28)}
+                      color={detailIconColor}
+                    />
+                  </View>
                   <View style={styles.detailSenderTexts}>
                     <Text style={styles.detailSenderName}>{cardSenderLabel}</Text>
                     <Text style={styles.detailTime}>{singleTimeLabel}</Text>
@@ -650,14 +672,13 @@ function MailDetail({ mail: initialMail, onBack, navigation }) {
             ) : (
               <>
                 <View style={styles.detailSenderRow}>
-                  <View
-                    style={[
-                      styles.detailAvatar,
-                      {
-                        backgroundColor: colors.primary,
-                      },
-                    ]}
-                  />
+                  <View style={[styles.detailAvatar, { justifyContent: 'center', alignItems: 'center' }]}>
+                    <ProfileIcon
+                      width={normalize(28)}
+                      height={normalize(28)}
+                      color={detailIconColor}
+                    />
+                  </View>
                   <View style={styles.detailSenderTexts}>
                     <Text style={styles.detailSenderName}>{cardSenderLabel}</Text>
                     <Text style={styles.detailTime}>{singleTimeLabel}</Text>
@@ -686,6 +707,7 @@ function MailDetail({ mail: initialMail, onBack, navigation }) {
                     content: mail?.content,
                     receivedAt: mail?.receivedAt,
                     senderLabel: cardSenderLabel,
+                    profileColorId: detailOtherColorId,
                   },
                   onSent: () => fetchDetail(),
                 })

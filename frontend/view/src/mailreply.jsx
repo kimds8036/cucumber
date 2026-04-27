@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { View, Text, ScrollView, TextInput, Modal, TouchableOpacity, useWindowDimensions, Alert } from 'react-native';
+import { View, Text, ScrollView, TextInput, Modal, TouchableOpacity, useWindowDimensions, Alert, TouchableWithoutFeedback, Keyboard } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
 import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
@@ -9,6 +9,8 @@ import { getNormalize } from '../../styles/frame.style';
 import { createMailStyles } from '../../styles/mail.style';
 import { api } from '../../utils/api';
 import Skeleton from '../../components/common/Skeleton';
+import ProfileIcon from '../../assets/Profile.svg';
+import { getProfileInnerColor } from '../../utils/profileIconColor';
 
 export default function MailReplyScreen({ navigation, route }) {
   const { width, height } = useWindowDimensions();
@@ -23,6 +25,12 @@ export default function MailReplyScreen({ navigation, route }) {
     String(route.params.mail.senderLabel).trim()
       ? String(route.params.mail.senderLabel).trim()
       : '익명';
+  const profileColorId =
+    route?.params?.mail?.profileColorId ??
+    route?.params?.mail?.senderColorId ??
+    route?.params?.mail?.recipientColorId ??
+    null;
+  const profileIconColor = getProfileInnerColor(profileColorId);
   const onSent = route?.params?.onSent;
   const [replyText, setReplyText] = useState('');
   const [showToast, setShowToast] = useState(false);
@@ -135,20 +143,18 @@ export default function MailReplyScreen({ navigation, route }) {
             >
               {/* 상세 화면과 동일한 헤더 디자인 */}
               <View style={styles.detailSenderRow}>
-                <View
-                  style={[
-                    styles.detailAvatar,
-                    { backgroundColor: colors.primary },
-                  ]}
-                />
+                <View style={[styles.detailAvatar, { justifyContent: 'center', alignItems: 'center' }]}>
+                  <ProfileIcon
+                    width={normalize(28)}
+                    height={normalize(28)}
+                    color={profileIconColor}
+                  />
+                </View>
                 <View style={styles.detailSenderTexts}>
                   <Text style={styles.detailSenderName}>{senderLabel}</Text>
                   <Text style={styles.detailTime}>
                     {mail?.receivedAt ?? ''}
                   </Text>
-                </View>
-                <View style={styles.detailReplyBadge}>
-                  <Text style={styles.detailReplyBadgeText}>받은 우편</Text>
                 </View>
               </View>
 
