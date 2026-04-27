@@ -136,6 +136,10 @@ export default function ToastHost() {
       });
       return;
     }
+    if (relatedType === 'timer_poke' || type === 'poke' || type === 'friend_poke') {
+      navigate('Timer');
+      return;
+    }
     if (relatedType === 'friendship' || type === 'friend_request') {
       navigate('Friends');
       return;

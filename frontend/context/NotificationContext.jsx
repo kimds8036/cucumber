@@ -149,6 +149,24 @@ export function NotificationProvider({ children }) {
   useEffect(() => {
     if (!socket) return;
 
+    const fallbackToastMessage = (payload) => {
+      const category = String(payload?.category ?? '').trim();
+      const type = String(payload?.type ?? '').trim();
+      if (type === 'poke' || payload?.relatedType === 'timer_poke') {
+        return '친구가 쿡 찔렀어요';
+      }
+      if (category === 'post' || payload?.relatedType === 'post') {
+        return '게시글에 새 소식이 도착했어요';
+      }
+      if (category === 'mail' || type === 'mail') {
+        return '새로운 우편이 도착했어요';
+      }
+      if (category === 'system') {
+        return '새로운 알림이 도착했어요';
+      }
+      return '새로운 소식이 도착했어요';
+    };
+
     const handler = (payload) => {
       const isChatNotification =
         payload?.relatedType === 'message_room' ||
@@ -179,7 +197,7 @@ export function NotificationProvider({ children }) {
       const bodyText = String(payload?.body ?? '').trim();
       const composedMessage = isChatNotification
         ? `${titleText || '새 메시지'}: ${bodyText || '(이미지)'}`
-        : (titleText || bodyText);
+        : (titleText || bodyText || fallbackToastMessage(payload));
 
       if (!composedMessage) return;
       showToast({
@@ -198,7 +216,27 @@ export function NotificationProvider({ children }) {
       });
     };
 
-    const pokeHandler = () => setHasUnread(true);
+    const pokeHandler = (payload) => {
+      const senderName = String(
+        payload?.fromName ??
+        payload?.fromNickname ??
+        payload?.senderName ??
+        '',
+      ).trim();
+      setBellSuppressed(false);
+      setHasUnread(true);
+      showToast({
+        message: senderName
+          ? `${senderName} 님이 쿡 찔렀어요`
+          : '친구가 쿡 찔렀어요',
+        relatedType: 'timer_poke',
+        relatedId:
+          payload?.fromUserId != null ? String(payload.fromUserId) : null,
+        type: 'poke',
+        category: 'timer',
+        isChat: false,
+      });
+    };
     const studyFinishedSummaryHandler = (payload) => {
       cacheStudySummaryWatchers(payload);
       refreshHasUnread();

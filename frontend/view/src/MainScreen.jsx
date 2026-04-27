@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { View } from 'react-native';
+import { BackHandler, Platform, ToastAndroid, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import MainHeader from '../frame/mainHeader';
 import MainFooter from '../frame/mainFooter';
@@ -17,6 +17,7 @@ const MAIN_TABS = new Set(['board', 'message', 'school', 'timer', 'mypage']);
 const MainScreen = ({ navigation, route }) => {
   const [activeTab, setActiveTab] = useState('board'); // 'board' | 'message' | 'school' | 'timer' | 'mypage'
   const [screenReady, setScreenReady] = useState(false);
+  const [lastBackPressedAt, setLastBackPressedAt] = useState(0);
 
   useEffect(() => {
     const requestedTab = route?.params?.initialTab;
@@ -29,6 +30,25 @@ const MainScreen = ({ navigation, route }) => {
     const timer = setTimeout(() => setScreenReady(true), 180);
     return () => clearTimeout(timer);
   }, []);
+
+  useEffect(() => {
+    if (Platform.OS !== 'android') return undefined;
+    const sub = BackHandler.addEventListener('hardwareBackPress', () => {
+      if (activeTab !== 'board') {
+        setActiveTab('board');
+        return true;
+      }
+      const now = Date.now();
+      if (now - lastBackPressedAt < 2000) {
+        BackHandler.exitApp();
+        return true;
+      }
+      setLastBackPressedAt(now);
+      ToastAndroid.show('뒤로가기를 한 번 더 누르면 종료됩니다.', ToastAndroid.SHORT);
+      return true;
+    });
+    return () => sub.remove();
+  }, [activeTab, lastBackPressedAt]);
 
   const renderContent = () => {
     switch (activeTab) {

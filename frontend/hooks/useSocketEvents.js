@@ -6,7 +6,11 @@ import { useSocket } from '../context/SocketContext';
  * - onFriendTimerStatus(payload) : 친구 공부 상태 변경 수신
  * - onFriendPoke(payload)       : 친구 찌르기 수신
  */
-export function useSocketEvents({ onFriendTimerStatus, onFriendPoke } = {}) {
+export function useSocketEvents({
+  onFriendTimerStatus,
+  onFriendPoke,
+  onFriendPokeResult,
+} = {}) {
   const { socket } = useSocket();
 
   useEffect(() => {
@@ -18,6 +22,9 @@ export function useSocketEvents({ onFriendTimerStatus, onFriendPoke } = {}) {
     if (onFriendPoke) {
       socket.on('friend_poke', onFriendPoke);
     }
+    if (onFriendPokeResult) {
+      socket.on('friend_poke_result', onFriendPokeResult);
+    }
 
     return () => {
       if (!socket) return;
@@ -27,8 +34,11 @@ export function useSocketEvents({ onFriendTimerStatus, onFriendPoke } = {}) {
       if (onFriendPoke) {
         socket.off('friend_poke', onFriendPoke);
       }
+      if (onFriendPokeResult) {
+        socket.off('friend_poke_result', onFriendPokeResult);
+      }
     };
-  }, [socket, onFriendTimerStatus, onFriendPoke]);
+  }, [socket, onFriendTimerStatus, onFriendPoke, onFriendPokeResult]);
 
   const emitFriendPoke = useCallback(
     (targetUserId) => {

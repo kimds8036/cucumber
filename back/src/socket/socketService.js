@@ -116,9 +116,26 @@ export async function sendFriendPoke({ fromUserId, targetUserId }) {
   lastPokeAtMap.set(key, now);
 
   const io = getIO();
+  let senderName = '친구';
+  try {
+    const [senderRows] = await pool.execute(
+      'SELECT name FROM users WHERE id = ? LIMIT 1',
+      [fromUserId],
+    );
+    const resolved = String(senderRows?.[0]?.name ?? '').trim();
+    if (resolved) senderName = resolved;
+  } catch (error) {
+    console.warn('[FriendSocket] friend_poke sender 조회 실패:', {
+      fromUserId,
+      message: error?.message,
+    });
+  }
+
   const payload = {
     type: 'friend_poke',
     fromUserId,
+    fromName: senderName,
+    fromNickname: senderName,
     createdAt: new Date().toISOString(),
   };
 
@@ -137,8 +154,8 @@ export async function sendFriendPoke({ fromUserId, targetUserId }) {
       userId: targetUserId,
       type: 'poke',
       category: 'timer',
-      title: '친구가 쿡 찔렀어요',
-      body: '타이머를 실행해 함께 공부해요',
+      title: `${senderName} 님이 쿡 찔렀어요`,
+      body: '타이머에서 함께 공부를 시작해보세요',
       relatedType: 'timer_poke',
       relatedId: fromUserId,
     });

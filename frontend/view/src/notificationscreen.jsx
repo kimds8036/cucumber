@@ -30,6 +30,7 @@ import {
 } from '../../utils/studySummaryNotification';
 
 const PAGE_SIZE = 20;
+const INITIAL_PREFETCH_PAGES = 3;
 /** 초기 로드 시 '좋아요'만 있는 연속 페이지를 건너뛸 때 상한 */
 const MAX_INITIAL_PAGE_SWEEP = 30;
 /** 초기 진입 시 최소 확보할 표시 알림 수 (필터 적용 후 기준) */
@@ -161,6 +162,7 @@ const NotificationScreen = ({ navigation }) => {
   const endReachedLockRef = useRef(false);
   const pageRef = useRef(1);
   const hasMoreRef = useRef(true);
+  const didRunInitialFocusSyncRef = useRef(false);
   /** 알림에서 상세 등으로 push 후 복귀 시 목록·페이지 유지 (벨/뒤로가기로 빠졌다 다시 오면 false) */
   const preserveListOnNextFocusRef = useRef(false);
   const pendingReadIdsRef = useRef(new Set());
@@ -212,10 +214,31 @@ const NotificationScreen = ({ navigation }) => {
     }, 300);
   };
 
+  const handleMarkAllRead = useCallback(async () => {
+    try {
+      await api.post('/api/notifications/mark-all-read');
+      setNotifications((prev) =>
+        prev.map((item) => ({
+          ...item,
+          isRead: true,
+        })),
+      );
+      setTappedIds({});
+      markNotificationsSeenForBell?.();
+      markFriendRequestsSeenForBell?.();
+    } catch (error) {
+      console.error('알림 모두 읽음 처리 실패:', error?.response?.data || error);
+    }
+  }, [markNotificationsSeenForBell, markFriendRequestsSeenForBell]);
+
   const fetchNotifications = useCallback(async (nextPage = 1, append = false) => {
     // reset / append 동시 실행 방지
     if (append) {
-      if (isAppendFetchingRef.current || isResetFetchingRef.current || !hasMore) return;
+      if (
+        isAppendFetchingRef.current ||
+        isResetFetchingRef.current ||
+        !hasMoreRef.current
+      ) return;
       isAppendFetchingRef.current = true;
       setLoadingMore(true);
     } else {
@@ -271,6 +294,7 @@ const NotificationScreen = ({ navigation }) => {
         let lastList = [];
         let lastMeta = null;
         let sweepIdx = 0;
+        let prefetchCount = 0;
 
         for (; sweepIdx < MAX_INITIAL_PAGE_SWEEP; sweepIdx += 1) {
           const res = await api.get('/api/notifications', {
@@ -295,6 +319,9 @@ const NotificationScreen = ({ navigation }) => {
 
           // 서버 페이지가 끝났으면 종료
           if (lastList.length < PAGE_SIZE) break;
+          prefetchCount += 1;
+          // 초기 진입에서는 최소 3페이지까지 넉넉히 로드해 탭 빨간점 깜빡임을 줄인다.
+          if (prefetchCount >= INITIAL_PREFETCH_PAGES) break;
           // 필터 후 표시 가능한 알림이 충분히 쌓였으면 종료
           if (accumulated.length >= MIN_INITIAL_VISIBLE_COUNT) break;
           pageCursor += 1;
@@ -335,7 +362,7 @@ const NotificationScreen = ({ navigation }) => {
         setLoadingMore(false);
       }
     }
-  }, [hasMore, markNotificationsSeenForBell]);
+  }, [markNotificationsSeenForBell]);
 
   // 화면이 최초로 열릴 때 한 번, 소켓 경로 디버그용 ping을 날려본다.
   // - 이 호출 시 서버 로그에 [POST /api/notifications/debug/socket-ping] 이 찍히고
@@ -381,6 +408,14 @@ const NotificationScreen = ({ navigation }) => {
 
     const unsubscribe = navigation?.addListener?.('focus', onFocus);
     const blurUnsubscribe = navigation?.addListener?.('blur', onBlur);
+
+    // focus 리스너 등록 시점에 이미 화면이 포커스 상태일 수 있어
+    // 초기 진입에서 최신 알림 로드가 누락되지 않도록 1회 즉시 실행한다.
+    if (navigation?.isFocused?.() && !didRunInitialFocusSyncRef.current) {
+      didRunInitialFocusSyncRef.current = true;
+      onFocus();
+    }
+
     return () => {
       unsubscribe?.();
       blurUnsubscribe?.();
@@ -441,33 +476,32 @@ const NotificationScreen = ({ navigation }) => {
     hasMoreRef.current = hasMore;
   }, [hasMore]);
 
-  // 탭 전환/새로고침 시, 현재 탭에서 페이지가 중간중간 쌓여 보이지 않도록
-  // 남은 페이지를 순차로 끝까지 당겨온 뒤 한 번에 보여준다.
   useEffect(() => {
+    if (selectedTab === 'all') {
+      setTabHydrating(false);
+      return undefined;
+    }
+    if (loading || loadingMore) return undefined;
+    if (!hasMoreRef.current) {
+      setTabHydrating(false);
+      return undefined;
+    }
     let cancelled = false;
-    const run = async () => {
-      if (loading || loadingMore) return;
-      if (!hasMoreRef.current) {
-        if (!cancelled) setTabHydrating(false);
-        return;
-      }
-      if (!cancelled) setTabHydrating(true);
+    const hydrate = async () => {
+      setTabHydrating(true);
       while (!cancelled && hasMoreRef.current) {
         const nextPage = pageRef.current + 1;
         await fetchNotifications(nextPage, true);
       }
-      if (!cancelled) setTabHydrating(false);
+      if (!cancelled) {
+        setTabHydrating(false);
+      }
     };
-    run();
+    hydrate();
     return () => {
       cancelled = true;
     };
-  }, [
-    selectedTab,
-    loading,
-    loadingMore,
-    fetchNotifications,
-  ]);
+  }, [selectedTab, loading, loadingMore, fetchNotifications]);
 
   const unreadCounts = useMemo(() => {
     const list = notifications;
@@ -680,7 +714,12 @@ const NotificationScreen = ({ navigation }) => {
   return (
     <View style={[styles.rootWrapper, getDebugBorderStyle('#FF3B30')]}>
       <SafeAreaView style={[styles.container, getDebugBorderStyle('#FF9500')]} edges={['top']}>
-        <SubHeader title="알림" onBack={() => navigation?.goBack()} />
+        <SubHeader
+          title="알림"
+          onBack={() => navigation?.goBack()}
+          rightButtonText="모두 읽음"
+          onRightPress={handleMarkAllRead}
+        />
 
       {/* 탭 메뉴 */}
       <View style={[styles.tabContainer, getDebugBorderStyle('#FFCC00')]}>

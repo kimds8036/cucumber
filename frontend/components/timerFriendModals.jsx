@@ -53,6 +53,7 @@ export const PokeModal = ({
   onPoke,
   onNotifyLater,
   onMessage,
+  pokeLockedSeconds = 0,
 }) => {
   const { width } = useWindowDimensions();
   const normalize = useMemo(() => getNormalize(width), [width]);
@@ -123,9 +124,13 @@ export const PokeModal = ({
           ) : (
             <>
               <TouchableOpacity
-                style={s.pokePrimaryBtn}
+                style={[
+                  s.pokePrimaryBtn,
+                  pokeLockedSeconds > 0 && s.btnDisabled,
+                ]}
                 onPress={onPoke}
                 activeOpacity={0.8}
+                disabled={pokeLockedSeconds > 0}
               >
                 <View style={s.pokePrimaryBtnContent}>
                   <MaterialCommunityIcons
@@ -135,7 +140,9 @@ export const PokeModal = ({
                   <View style={s.pokePrimaryBtnTextGroup}>
                     <Text style={s.pokeInfoTitle}>쿡 찌르기</Text>
                     <Text style={s.pokeInfoDesc}>
-                      친구에게 공부하자고 알림을 보낼 수 있어요.
+                      {pokeLockedSeconds > 0
+                        ? `${pokeLockedSeconds}초 후 다시 보낼 수 있어요.`
+                        : '친구에게 공부하자고 알림을 보낼 수 있어요.'}
                     </Text>
                   </View>
                 </View>
@@ -168,8 +175,36 @@ export const PokeModal = ({
  */
 export const FriendPokeController = ({ visible, friend, onClose }) => {
   const { showToast } = useToast();
-  const { emitFriendPoke, emitFriendNotifyOnStop } = useFriendSocketEvents();
+  const [cooldownByUserId, setCooldownByUserId] = useState({});
+  const [nowMs, setNowMs] = useState(Date.now());
+  const activeFriendId = friend?.id != null ? String(friend.id) : null;
+  const pokeLockedSeconds = activeFriendId
+    ? Math.max(
+        0,
+        Math.ceil(((cooldownByUserId[activeFriendId] ?? 0) - nowMs) / 1000),
+      )
+    : 0;
+  const { emitFriendPoke, emitFriendNotifyOnStop } = useFriendSocketEvents({
+    onFriendPokeResult: (payload) => {
+      if (payload?.throttled) {
+        if (activeFriendId) {
+          setCooldownByUserId((prev) => ({
+            ...prev,
+            [activeFriendId]: Date.now() + 30 * 1000,
+          }));
+        }
+        showToast('같은 친구에게는 30초 뒤 다시 쿡 찌르기 할 수 있어요');
+      }
+    },
+  });
   const navigation = useNavigation();
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setNowMs(Date.now());
+    }, 500);
+    return () => clearInterval(timer);
+  }, []);
+
 
   const pushToast = (senderName, body) => {
     const s = String(senderName || '').trim();
@@ -177,7 +212,7 @@ export const FriendPokeController = ({ visible, friend, onClose }) => {
     if (!b) return;
     const hasSender = s.length > 0;
     showToast({
-      message: hasSender ? `${s}: ${b}` : b,
+      message: hasSender ? `${s} ${b}` : b,
       senderName: hasSender ? s : null,
       body: hasSender ? b : null,
       showProgress: true,
@@ -205,8 +240,16 @@ export const FriendPokeController = ({ visible, friend, onClose }) => {
   };
 
   const handlePoke = () => {
+    if (pokeLockedSeconds > 0) {
+      showToast(`${pokeLockedSeconds}초 후 다시 쿡 찌르기 할 수 있어요`);
+      return;
+    }
     if (friend) {
       emitFriendPoke(friend.id);
+      setCooldownByUserId((prev) => ({
+        ...prev,
+        [String(friend.id)]: Date.now() + 30 * 1000,
+      }));
       pushToast('', `${friend.name} 님에게 공부하자는 알림을 보냈어요`);
     }
     handleClose();
@@ -228,6 +271,7 @@ export const FriendPokeController = ({ visible, friend, onClose }) => {
       onPoke={handlePoke}
       onNotifyLater={handleNotifyLater}
       onMessage={handleMessage}
+      pokeLockedSeconds={pokeLockedSeconds}
     />
   );
 };

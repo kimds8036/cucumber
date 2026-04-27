@@ -877,9 +877,19 @@ export const TimerContent = () => {
   useFriendStudyEvents({
     onFriendStudyFinished: () => {},
     onPoke: (payload) => {
+      const senderName = String(
+        payload?.fromNickname ??
+          payload?.fromName ??
+          payload?.senderName ??
+          payload?.nickname ??
+          payload?.name ??
+          '',
+      ).trim();
       pushTimerToast(
-        payload?.fromNickname ?? '친구',
-        '쿡 찌르기 알림이 왔어요!',
+        '',
+        senderName
+          ? `${senderName} 님이 쿡 찔렀어요`
+          : '누군가 쿡 찔렀어요',
       );
     },
     onMyStudyFinishedSummary: ({ toastText, watchers, createdAt, type }) => {
