@@ -284,19 +284,20 @@ export const AddFriendModal = ({ visible, onClose, onAdd }) => {
   const s = useMemo(() => createTimerFriendModalStyles(normalize), [normalize]);
   const translateY = useSharedValue(0);
 
-  useKeyboardHandler(
-    {
-      onMove: (e) => {
-        'worklet';
-        translateY.value = -e.height;
-      },
-      onEnd: (e) => {
-        'worklet';
-        translateY.value = -e.height;
-      },
-    },
-    [],
-  );
+  // STEP 1 테스트: iOS 먹통 원인 분리용 (키보드 핸들러 비활성화)
+  // useKeyboardHandler(
+  //   {
+  //     onMove: (e) => {
+  //       'worklet';
+  //       translateY.value = -e.height;
+  //     },
+  //     onEnd: (e) => {
+  //       'worklet';
+  //       translateY.value = -e.height;
+  //     },
+  //   },
+  //   [],
+  // );
 
   const animStyle = useAnimatedStyle(() => ({
     transform: [{ translateY: translateY.value }],
@@ -322,7 +323,8 @@ export const AddFriendModal = ({ visible, onClose, onAdd }) => {
       <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
         <View style={{ flex: 1 }}>
           <TouchableOpacity style={s.addFriendOverlay} onPress={onClose} activeOpacity={1} />
-          <Reanimated.View style={[s.addFriendWrapper, animStyle]}>
+          {/* STEP 1 테스트: translateY 애니메이션 적용 제거 */}
+          <Reanimated.View style={s.addFriendWrapper}>
             <View style={s.addFriendPopup}>
               <Text style={s.addFriendTitle}>친구 추가</Text>
 
