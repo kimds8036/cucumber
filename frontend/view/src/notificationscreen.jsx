@@ -32,6 +32,8 @@ import {
 const PAGE_SIZE = 20;
 /** 초기 로드 시 '좋아요'만 있는 연속 페이지를 건너뛸 때 상한 */
 const MAX_INITIAL_PAGE_SWEEP = 30;
+/** 초기 진입 시 최소 확보할 표시 알림 수 (필터 적용 후 기준) */
+const MIN_INITIAL_VISIBLE_COUNT = 20;
 const SHOW_LAYOUT_BORDERS = false;
 
 const popToMainRoot = (navigation) => {
@@ -148,9 +150,17 @@ const NotificationScreen = ({ navigation }) => {
   const [expandedSummaryById, setExpandedSummaryById] = useState({});
   const [loading, setLoading] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
+  const [tabHydrating, setTabHydrating] = useState(false);
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
   const isRefreshingRef = useRef(false);
+  const isResetFetchingRef = useRef(false);
+  const isAppendFetchingRef = useRef(false);
+  const fetchSeqRef = useRef(0);
+  const latestAppliedSeqRef = useRef(0);
+  const endReachedLockRef = useRef(false);
+  const pageRef = useRef(1);
+  const hasMoreRef = useRef(true);
   /** 알림에서 상세 등으로 push 후 복귀 시 목록·페이지 유지 (벨/뒤로가기로 빠졌다 다시 오면 false) */
   const preserveListOnNextFocusRef = useRef(false);
   const pendingReadIdsRef = useRef(new Set());
@@ -203,19 +213,26 @@ const NotificationScreen = ({ navigation }) => {
   };
 
   const fetchNotifications = useCallback(async (nextPage = 1, append = false) => {
-    if (!append && isRefreshingRef.current) return;
-    try {
-      if (!append) isRefreshingRef.current = true;
-      if (nextPage === 1 && !append) {
-        setLoading(true);
-        setHasMore(true);
-      } else if (append) {
-        setLoadingMore(true);
-      }
+    // reset / append 동시 실행 방지
+    if (append) {
+      if (isAppendFetchingRef.current || isResetFetchingRef.current || !hasMore) return;
+      isAppendFetchingRef.current = true;
+      setLoadingMore(true);
+    } else {
+      if (isResetFetchingRef.current || isAppendFetchingRef.current || isRefreshingRef.current) return;
+      isResetFetchingRef.current = true;
+      isRefreshingRef.current = true;
+      setLoading(true);
+      setHasMore(true);
+    }
 
+    const seq = ++fetchSeqRef.current;
+
+    try {
       console.log('[NotificationScreen] fetchNotifications 호출', {
         page: nextPage,
         append,
+        seq,
       });
 
       if (append) {
@@ -229,6 +246,8 @@ const NotificationScreen = ({ navigation }) => {
           .filter((n) => !isChatNotificationRow(n));
         const mapped = filtered.map(mapRowToNotificationItem);
 
+        // reset 요청이 더 최신이면 append 결과를 버림
+        if (latestAppliedSeqRef.current > seq) return;
         setNotifications((prev) => {
           const ids = new Set(prev.map((x) => String(x.id)));
           const addition = mapped.filter((m) => !ids.has(String(m.id)));
@@ -241,8 +260,11 @@ const NotificationScreen = ({ navigation }) => {
           });
           return [...prev, ...addition];
         });
-        setHasMore(list.length >= PAGE_SIZE);
-        setPage(nextPage);
+        if (latestAppliedSeqRef.current <= seq) {
+          latestAppliedSeqRef.current = seq;
+          setHasMore(list.length >= PAGE_SIZE);
+          setPage(nextPage);
+        }
       } else {
         let pageCursor = nextPage;
         let accumulated = [];
@@ -271,8 +293,10 @@ const NotificationScreen = ({ navigation }) => {
             meta: lastMeta,
           });
 
+          // 서버 페이지가 끝났으면 종료
           if (lastList.length < PAGE_SIZE) break;
-          if (mapped.length > 0) break;
+          // 필터 후 표시 가능한 알림이 충분히 쌓였으면 종료
+          if (accumulated.length >= MIN_INITIAL_VISIBLE_COUNT) break;
           pageCursor += 1;
         }
 
@@ -281,10 +305,14 @@ const NotificationScreen = ({ navigation }) => {
           accumulated.length === 0 &&
           lastList.length >= PAGE_SIZE;
 
-        setNotifications(accumulated);
-        setHasMore(lastList.length >= PAGE_SIZE && !hitSweepCap);
-        setPage(pageCursor);
-        markNotificationsSeenForBell?.();
+        // 최신 reset 결과만 반영
+        if (seq >= latestAppliedSeqRef.current) {
+          latestAppliedSeqRef.current = seq;
+          setNotifications(accumulated);
+          setHasMore(lastList.length >= PAGE_SIZE && !hitSweepCap);
+          setPage(pageCursor);
+          markNotificationsSeenForBell?.();
+        }
 
         console.log('[NotificationScreen] 알림 초기 로드 완료', {
           endPage: pageCursor,
@@ -298,11 +326,16 @@ const NotificationScreen = ({ navigation }) => {
     } catch (error) {
       console.error('[NotificationScreen] 알림 목록 불러오기 실패:', error?.response?.data || error);
     } finally {
-      if (!append) isRefreshingRef.current = false;
-      setLoading(false);
-      setLoadingMore(false);
+      if (!append) {
+        isRefreshingRef.current = false;
+        isResetFetchingRef.current = false;
+        setLoading(false);
+      } else {
+        isAppendFetchingRef.current = false;
+        setLoadingMore(false);
+      }
     }
-  }, []);
+  }, [hasMore, markNotificationsSeenForBell]);
 
   // 화면이 최초로 열릴 때 한 번, 소켓 경로 디버그용 ping을 날려본다.
   // - 이 호출 시 서버 로그에 [POST /api/notifications/debug/socket-ping] 이 찍히고
@@ -399,6 +432,42 @@ const NotificationScreen = ({ navigation }) => {
     });
     return sortNotificationsByCreatedDesc(enriched);
   }, [baseFiltered, getStudySummaryWatchers]);
+
+  useEffect(() => {
+    pageRef.current = page;
+  }, [page]);
+
+  useEffect(() => {
+    hasMoreRef.current = hasMore;
+  }, [hasMore]);
+
+  // 탭 전환/새로고침 시, 현재 탭에서 페이지가 중간중간 쌓여 보이지 않도록
+  // 남은 페이지를 순차로 끝까지 당겨온 뒤 한 번에 보여준다.
+  useEffect(() => {
+    let cancelled = false;
+    const run = async () => {
+      if (loading || loadingMore) return;
+      if (!hasMoreRef.current) {
+        if (!cancelled) setTabHydrating(false);
+        return;
+      }
+      if (!cancelled) setTabHydrating(true);
+      while (!cancelled && hasMoreRef.current) {
+        const nextPage = pageRef.current + 1;
+        await fetchNotifications(nextPage, true);
+      }
+      if (!cancelled) setTabHydrating(false);
+    };
+    run();
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    selectedTab,
+    loading,
+    loadingMore,
+    fetchNotifications,
+  ]);
 
   const unreadCounts = useMemo(() => {
     const list = notifications;
@@ -645,9 +714,9 @@ const NotificationScreen = ({ navigation }) => {
       {/* 알림 목록 - FlatList + 무한 스크롤 */}
       <FlatList
         style={[styles.scrollView, getDebugBorderStyle('#5856D6')]}
-        data={filteredNotifications}
+        data={tabHydrating ? [] : filteredNotifications}
         keyExtractor={(item) => String(item.id)}
-        refreshing={loading && !loadingMore}
+        refreshing={(loading || tabHydrating) && !loadingMore}
         onRefresh={() => fetchNotifications(1, false)}
         renderItem={({ item: notification }) => {
           const isTapped = tappedIds[notification.id];
@@ -731,7 +800,7 @@ const NotificationScreen = ({ navigation }) => {
           );
         }}
         ListEmptyComponent={
-          loading ? (
+          (loading || tabHydrating) ? (
             <View style={[styles.skeletonContainer, getDebugBorderStyle('#32D74B')]}>
               {[1, 2, 3, 4, 5, 6].map((key) => (
                 <SkeletonRow key={key} skeletonStyles={skeletonStyles} />
@@ -761,14 +830,19 @@ const NotificationScreen = ({ navigation }) => {
           )
         }
         ListFooterComponent={
-          loadingMore ? (
+          loadingMore && !tabHydrating ? (
             <View style={[styles.footerLoader, getDebugBorderStyle('#BF5AF2')]}>
               <Text style={styles.footerLoaderText}>더 불러오는 중...</Text>
             </View>
           ) : null
         }
+        onMomentumScrollBegin={() => {
+          endReachedLockRef.current = false;
+        }}
         onEndReached={() => {
-          if (!loadingMore && hasMore) {
+          if (endReachedLockRef.current) return;
+          endReachedLockRef.current = true;
+          if (!tabHydrating && !loadingMore && hasMore) {
             fetchNotifications(page + 1, true);
           }
         }}

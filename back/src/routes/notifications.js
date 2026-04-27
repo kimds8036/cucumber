@@ -70,13 +70,17 @@ router.get('/', authenticate, async (req, res) => {
     });
 
     const [countRows] = await pool.execute(
-      `SELECT COUNT(*) AS total FROM notifications WHERE user_id = ?`,
+      `SELECT COUNT(*) AS total
+       FROM notifications
+       WHERE user_id = ?
+         AND type <> 'like'
+         AND (related_type IS NULL OR related_type NOT IN ('message_room', 'dm_room'))`,
       [userId],
     );
     const total = Number(countRows?.[0]?.total) || 0;
 
     const [rows] = await pool.execute(
-      `SELECT 
+      `SELECT
          id,
          type,
          category,
@@ -90,6 +94,8 @@ router.get('/', authenticate, async (req, res) => {
          read_at
        FROM notifications
        WHERE user_id = ?
+         AND type <> 'like'
+         AND (related_type IS NULL OR related_type NOT IN ('message_room', 'dm_room'))
        ORDER BY created_at DESC
        LIMIT ${limitSql} OFFSET ${offsetSql}`,
       [userId]

@@ -888,9 +888,9 @@ export const TimerContent = () => {
       const summaryBody = String(toastText || '').trim();
       if (!summaryBody) return;
       showToast({
-        message: `타이머: ${summaryBody}`,
-        senderName: '타이머',
-        body: summaryBody,
+        message: summaryBody,
+        senderName: null,
+        body: null,
         relatedType: 'friend_study_finished_summary',
         relatedId: createdAt ? String(createdAt) : null,
         type: type || 'study_finished_summary',
@@ -1721,7 +1721,7 @@ export const TimerContent = () => {
                 setSelectedDayKey(currentDayKey);
               }
               pushTimerToast(
-                '타이머',
+                '',
                 '백그라운드 유지 시간이 길어 세션이 자동으로 종료되었어요',
               );
             } catch (error) {

@@ -215,7 +215,7 @@ export const FriendPokeController = ({ visible, friend, onClose }) => {
   const handleNotifyLater = () => {
     if (friend) {
       emitFriendNotifyOnStop(friend.id);
-      pushToast('', `${friend.name} 님의 공부가 끝나면 알려드릴게요`);
+      pushToast('', `${friend.name} 님의 공부가 끝나면 기다렸다는 알림을 보낼게요`);
     }
     handleClose();
   };

@@ -8,7 +8,7 @@ import React, {
 } from 'react';
 import { Alert, AppState } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { api, clearAuthToken, setAuthToken } from '../utils/api';
+import { api, clearUserSessionStorage, setAuthToken } from '../utils/api';
 import { useAuth } from './AuthContext';
 import * as socketManager from '../view/src/socketManager';
 
@@ -81,7 +81,7 @@ export function SocketProvider({ children }) {
         });
       }
 
-      await clearAuthToken();
+      await clearUserSessionStorage();
       setConnected(false);
       setSocket(null);
       logout();

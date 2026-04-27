@@ -75,6 +75,21 @@ export async function clearAuthToken() {
   await AsyncStorage.removeItem(AUTH_TOKEN_KEY);
 }
 
+/**
+ * 로그아웃 시 사용자 세션/캐시 데이터 정리
+ * - `@` prefix: 앱에서 쓰는 고정 키들
+ * - `_chat_cache_`: 채팅방별 동적 캐시 키
+ */
+export async function clearUserSessionStorage() {
+  const allKeys = await AsyncStorage.getAllKeys();
+  const userScopedKeys = allKeys.filter(
+    (key) => key.startsWith('@') || key.includes('_chat_cache_'),
+  );
+  if (userScopedKeys.length > 0) {
+    await AsyncStorage.multiRemove(userScopedKeys);
+  }
+}
+
 if (__DEV__) {
   console.log('[API] baseURL:', api.defaults.baseURL, {
     fromEnv: Boolean(

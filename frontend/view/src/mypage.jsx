@@ -19,7 +19,7 @@ import {
 } from '../../styles/mypage.style';
 import ProfileCard from '../../components/Profilecard';
 // import TimetableView from '../../components/Timetableview'; // 시간표 UI 복구 시 주석 해제
-import { api, clearAuthToken } from '../../utils/api';
+import { api, clearUserSessionStorage } from '../../utils/api';
 import { useAuth } from '../../context/AuthContext';
 
 const MyPage = ({ navigation }) => {
@@ -48,9 +48,7 @@ const MyPage = ({ navigation }) => {
     try {
       // 서버 로그아웃은 실패해도 로컬 세션 정리는 진행
       await api.post('/api/auth/logout').catch(() => null);
-      await clearAuthToken();
-      await AsyncStorage.removeItem(TIMETABLE_CACHE_KEY);
-      await AsyncStorage.removeItem(PROFILE_CACHE_KEY);
+      await clearUserSessionStorage();
     } catch (error) {
       console.error('로그아웃 처리 실패:', error);
     } finally {

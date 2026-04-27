@@ -730,7 +730,7 @@
           </table>
         </div>
         <div id="report-detail-host"></div>
-      </div>
+          </div>
 
       <!-- ────────── 처리 이력 ────────── -->
       <div class="panel" id="panel-processedReports">
@@ -751,12 +751,12 @@
           <input type="date" id="processed-filter-from-date">
           <input type="date" id="processed-filter-to-date">
           <button class="btn btn-sm" onclick="loadProcessedReports()">필터 적용</button>
-        </div>
+            </div>
         <div class="bulk-bar" id="processed-bulk-bar">
           <span id="processed-bulk-count">0건 선택됨</span>
           <button class="btn btn-sm btn-primary" onclick="bulkReopenProcessed()">선택 재오픈</button>
           <button class="btn btn-sm" onclick="clearProcessedSelection()">선택 해제</button>
-        </div>
+            </div>
         <div class="table-wrap">
           <table>
             <thead>
@@ -1177,7 +1177,7 @@
     state.selected.clear();
     if (chk.checked) {
       state.reports.forEach((r) => state.selected.add(String(r.id)));
-    }
+  }
     renderReports();
   }
 
