@@ -2,7 +2,7 @@ import React from 'react';
 import { View } from 'react-native';
 import GlobalToast from './GlobalToast';
 import { useToast } from '../../context/ToastContext';
-import { navigate } from '../../navigation/navigationRef';
+import { navigate, reset } from '../../navigation/navigationRef';
 import { api } from '../../utils/api';
 import {
   isStudySummaryNotification,
@@ -137,7 +137,7 @@ export default function ToastHost() {
       return;
     }
     if (relatedType === 'timer_poke' || type === 'poke' || type === 'friend_poke') {
-      navigate('Timer');
+      reset('Timer');
       return;
     }
     if (relatedType === 'friendship' || type === 'friend_request') {
