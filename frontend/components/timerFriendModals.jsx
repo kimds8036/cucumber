@@ -14,9 +14,9 @@ import {
   useWindowDimensions,
   Keyboard,
   TouchableWithoutFeedback,
-  KeyboardAvoidingView,
-  Platform,
 } from 'react-native';
+import { useSharedValue } from 'react-native-reanimated';
+import { useKeyboardHandler } from 'react-native-keyboard-controller';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import FontAwesome5 from '@expo/vector-icons/FontAwesome5';
 import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
@@ -279,10 +279,29 @@ export const AddFriendModal = ({ visible, onClose, onAdd }) => {
   const { width } = useWindowDimensions();
   const normalize = useMemo(() => getNormalize(width), [width]);
   const s = useMemo(() => createTimerFriendModalStyles(normalize), [normalize]);
+  const translateY = useSharedValue(0);
+
+  useKeyboardHandler(
+    {
+      onMove: (e) => {
+        'worklet';
+        translateY.value = -e.height;
+      },
+      onEnd: (e) => {
+        'worklet';
+        translateY.value = -e.height;
+      },
+    },
+    [],
+  );
 
   useEffect(() => {
     if (!visible) setQuery('');
   }, [visible]);
+
+  useEffect(() => {
+    if (!visible) translateY.value = 0;
+  }, [translateY, visible]);
 
   const handleAdd = () => {
     if (!query.trim()) return;
@@ -293,16 +312,12 @@ export const AddFriendModal = ({ visible, onClose, onAdd }) => {
   if (!visible) return null;
   return (
     <Modal transparent animationType="fade" onRequestClose={onClose}>
-      <KeyboardAvoidingView
-        style={{ flex: 1 }}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        keyboardVerticalOffset={0}
-      >
-        <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
-          <View style={{ flex: 1 }}>
-            <TouchableOpacity style={s.addFriendOverlay} onPress={onClose} activeOpacity={1} />
-            <View style={s.addFriendWrapper}>
-              <View style={s.addFriendPopup}>
+      <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+        <View style={{ flex: 1 }}>
+          <TouchableOpacity style={s.addFriendOverlay} onPress={onClose} activeOpacity={1} />
+          {/* STEP 1 테스트: Reanimated.View -> 일반 View (애니메이션 제거) */}
+          <View style={s.addFriendWrapper}>
+            <View style={s.addFriendPopup}>
               <Text style={s.addFriendTitle}>친구 추가</Text>
 
               <View style={s.addFriendInputRow}>
@@ -347,11 +362,10 @@ export const AddFriendModal = ({ visible, onClose, onAdd }) => {
                 />
                 <Text style={s.addFriendPrimaryBtnText}>추가하기</Text>
               </TouchableOpacity>
-              </View>
             </View>
           </View>
-        </TouchableWithoutFeedback>
-      </KeyboardAvoidingView>
+        </View>
+      </TouchableWithoutFeedback>
     </Modal>
   );
 };
