@@ -30,6 +30,7 @@ import { api } from '../../utils/api';
 import { emitSchoolMailLike } from '../../utils/listSyncEvents';
 import { getSchoolMailFromLabel } from './utils/schoolMailFromLabel';
 import { useKeyboardHandler } from 'react-native-keyboard-controller';
+import ReportModal from '../../components/common/ReportModal.jsx';
 
 const INITIAL_REPLIES = 3;
 
@@ -205,6 +206,9 @@ export default function SchoolMailDetail({ navigation, route }) {
   const [floatingMenuVisible, setFloatingMenuVisible] = useState(false);
   const [floatingMenuContext, setFloatingMenuContext] = useState(null);
   const [floatingMenuAnchor, setFloatingMenuAnchor] = useState(null);
+  const [reportModalVisible, setReportModalVisible] = useState(false);
+  const [reportTargetType, setReportTargetType] = useState('schoolMail');
+  const [reportTargetId, setReportTargetId] = useState(null);
 
   const scrollViewRef = useRef(null);
   const commentLayoutMap = useRef({});
@@ -329,17 +333,37 @@ export default function SchoolMailDetail({ navigation, route }) {
   );
 
   const openFloatingMenu = (context, ref) => {
-    ref?.measureInWindow?.((x, y) => {
-      setFloatingMenuAnchor({ x, y });
-      setFloatingMenuContext(context);
-      setFloatingMenuVisible(true);
-    });
+    if (ref?.measureInWindow) {
+      ref.measureInWindow((x, y) => {
+        setFloatingMenuAnchor({ x, y });
+        setFloatingMenuContext(context);
+        setFloatingMenuVisible(true);
+      });
+      return;
+    }
+    // ref 측정 실패 시에도 메뉴가 열리도록 중앙 오픈 fallback
+    setFloatingMenuAnchor(null);
+    setFloatingMenuContext(context);
+    setFloatingMenuVisible(true);
   };
 
   const closeFloatingMenu = () => {
     setFloatingMenuVisible(false);
     setFloatingMenuAnchor(null);
     setFloatingMenuContext(null);
+  };
+
+  const openReportModal = (targetType, targetId) => {
+    if (!targetId) return;
+    setReportTargetType(targetType);
+    setReportTargetId(targetId);
+    setReportModalVisible(true);
+  };
+
+  const closeReportModal = () => {
+    setReportModalVisible(false);
+    setReportTargetId(null);
+    setReportTargetType('schoolMail');
   };
 
   const handlePostLike = async () => {
@@ -467,10 +491,14 @@ export default function SchoolMailDetail({ navigation, route }) {
 
   const commentMenuItems = useMemo(
     () => [
-      { label: '신고하기', iconName: 'flag-outline', onPress: () => {} },
+      {
+        label: '신고하기',
+        iconName: 'flag-outline',
+        onPress: () => openReportModal('schoolMailComment', floatingMenuContext),
+      },
       { label: '차단하기', iconName: 'remove-circle-outline', onPress: () => {} },
     ],
-    []
+    [floatingMenuContext]
   );
 
   const showLikes = Number(mail?.like_count ?? 0);
@@ -809,7 +837,12 @@ export default function SchoolMailDetail({ navigation, route }) {
                             paddingHorizontal: normalize(14),
                           }}
                           activeOpacity={0.7}
-                          onPress={closeFloatingMenu}
+                          onPress={() => {
+                            if (label === '신고하기') {
+                              openReportModal('schoolMail', mail?.id);
+                            }
+                            closeFloatingMenu();
+                          }}
                         >
                           <Text
                             style={{
@@ -884,6 +917,12 @@ export default function SchoolMailDetail({ navigation, route }) {
             </View>
           </TouchableWithoutFeedback>
         </Modal>
+        <ReportModal
+          visible={reportModalVisible}
+          onClose={closeReportModal}
+          targetType={reportTargetType}
+          targetId={reportTargetId}
+        />
       </SafeAreaView>
     </View>
   );

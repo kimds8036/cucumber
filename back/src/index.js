@@ -18,6 +18,8 @@ import schoolsRoutes from './routes/schools.js';
 import usersRoutes from './routes/users.js';
 import searchRoutes from './routes/search.js';
 import dmRoutes from './routes/dm.js';
+import adminReportsRoutes from './routes/adminReports.js';
+import adminWebRoutes from './routes/adminWeb.js';
 import swaggerSpec from './swagger.js';
 import { initSocketServer } from './socketServer.js';
 import { initFirebase } from './config/firebase.js';
@@ -46,6 +48,9 @@ app.get('/health', (req, res) => {
   res.json({ status: 'ok', message: 'Server is running' });
 });
 
+// Admin web routes (로그인/가드/페이지 제공)
+app.use('/admin', adminWebRoutes);
+
 // DB 연결 테스트
 app.get('/api/test-db', async (req, res) => {
   try {
@@ -71,6 +76,7 @@ app.use('/api/schools', schoolsRoutes);
 app.use('/api/users', usersRoutes);
 app.use('/api/search', searchRoutes);
 app.use('/api/dm', dmRoutes);
+app.use('/api/admin', adminReportsRoutes);
 
 // HTTP 서버 + Socket.io 초기화
 const httpServer = createServer(app);

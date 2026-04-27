@@ -16,6 +16,7 @@ import BoardPostContent from './board/BoardPostContent';
 import BoardCommentTree from './board/BoardCommentTree';
 import BoardFloatingMenu from './board/BoardFloatingMenu';
 import Skeleton from '../../components/common/Skeleton';
+import ReportModal from '../../components/common/ReportModal.jsx';
 
 export default function BoardDetail({ navigation, route }) {
   const { coords } = useLocationContext();
@@ -39,6 +40,9 @@ export default function BoardDetail({ navigation, route }) {
   const [imageRatios, setImageRatios] = useState({});
   const [keyboardHeight, setKeyboardHeight] = useState(0);
   const [imageRevealBypass, setImageRevealBypass] = useState(false);
+  const [reportModalVisible, setReportModalVisible] = useState(false);
+  const [reportTargetType, setReportTargetType] = useState('post');
+  const [reportTargetId, setReportTargetId] = useState(null);
 
   const insets = usePlatformInsets();
   const inputTranslateY = useSharedValue(0);
@@ -53,6 +57,19 @@ export default function BoardDetail({ navigation, route }) {
     setFloatingMenuVisible(false);
     setFloatingMenuContext(null);
     setFloatingMenuAnchor(null);
+  };
+
+  const openReportModal = (targetType, targetId) => {
+    if (!targetId) return;
+    setReportTargetType(targetType);
+    setReportTargetId(targetId);
+    setReportModalVisible(true);
+  };
+
+  const closeReportModal = () => {
+    setReportModalVisible(false);
+    setReportTargetId(null);
+    setReportTargetType('post');
   };
 
   const {
@@ -499,9 +516,18 @@ export default function BoardDetail({ navigation, route }) {
           onDeleteComment={handleDeleteComment}
           onSharePost={handleSharePost}
           onNoteToUser={{ start: startNoteToUser, postUserId: postAuthorId }}
+          onReportPost={() => openReportModal('post', post?.id)}
+          onReportComment={(commentId) => openReportModal('comment', commentId)}
           styles={styles}
           normalize={normalize}
           width={width}
+        />
+
+        <ReportModal
+          visible={reportModalVisible}
+          onClose={closeReportModal}
+          targetType={reportTargetType}
+          targetId={reportTargetId}
         />
 
         <ImageViewer

@@ -390,6 +390,12 @@ const MyPage = ({ navigation }) => {
         {/* ── 메뉴 ── */}
         <View style={styles.menuSection}>
           <MenuItem
+            icon="shield-checkmark-outline"
+            title="클린 센터"
+            subtitle="내 신고 처리 현황과 제한 내역을 확인해요"
+            onPress={() => navigation.navigate('HiddenPostsAppeals')}
+          />
+          <MenuItem
             icon="notifications-outline"
             title="설정"
             onPress={() =>

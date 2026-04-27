@@ -2,7 +2,7 @@ import express from 'express';
 import pool from '../config/database.js';
 import { authenticate, optionalAuthenticate } from '../middleware/auth.js';
 import { enqueueNotification } from '../utils/notificationWorker.js';
-import { getNowForDB } from '../utils/dateUtils.js';
+import { getKstTodayRangeUtcForSql, getNowForDB } from '../utils/dateUtils.js';
 import { cloudinary, upload } from '../config/cloudinary.js';
 
 const router = express.Router();
@@ -373,6 +373,7 @@ router.post('/:commentId/report', authenticate, async (req, res) => {
     const reporterId = req.user.userId;
     const { commentId } = req.params;
     const { reason, description } = req.body;
+    const DAILY_REPORT_QUOTA = 5;
 
     if (!reason) {
       return res.status(400).json({
@@ -393,6 +394,24 @@ router.post('/:commentId/report', authenticate, async (req, res) => {
       });
     }
 
+    // 일일 신고 횟수 제한 (KST 기준)
+    const { start, end } = getKstTodayRangeUtcForSql();
+    const [dailyCountRows] = await pool.execute(
+      `SELECT COUNT(*) AS c
+       FROM reports
+       WHERE reporter_id = ?
+         AND created_at >= ?
+         AND created_at <= ?`,
+      [reporterId, start, end]
+    );
+    const todayCount = Number(dailyCountRows[0]?.c ?? 0);
+    if (todayCount >= DAILY_REPORT_QUOTA) {
+      return res.status(429).json({
+        success: false,
+        message: '오늘 신고 가능 횟수를 모두 사용했어요. 내일 다시 이용해 주세요.',
+      });
+    }
+
     // 중복 신고 확인
     const [existingReports] = await pool.execute(
       'SELECT id FROM reports WHERE reporter_id = ? AND target_type = ? AND target_id = ?',
@@ -402,7 +421,7 @@ router.post('/:commentId/report', authenticate, async (req, res) => {
     if (existingReports.length > 0) {
       return res.status(400).json({
         success: false,
-        message: '이미 신고한 댓글입니다.',
+        message: '이미 신고한 게시물입니다.',
       });
     }
 
@@ -415,7 +434,8 @@ router.post('/:commentId/report', authenticate, async (req, res) => {
 
     res.status(201).json({
       success: true,
-      message: '신고가 접수되었습니다.',
+      message:
+        '신고가 접수되었습니다. 더 안전한 커뮤니티를 위해 함께해 주셔서 감사합니다. 허위 신고가 반복되면 이용이 제한될 수 있습니다.',
     });
   } catch (error) {
     console.error('댓글 신고 오류:', error);

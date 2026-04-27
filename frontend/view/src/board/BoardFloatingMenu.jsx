@@ -26,6 +26,8 @@ export default function BoardFloatingMenu({
   onDeleteComment,
   onSharePost,
   onNoteToUser,
+  onReportPost,
+  onReportComment,
   styles,
   normalize,
   width,
@@ -56,7 +58,7 @@ export default function BoardFloatingMenu({
         },
       },
       { label: '공유하기', iconName: 'share-outline', onPress: onSharePost },
-      { label: '신고하기', iconName: 'flag-outline', onPress: () => {} },
+      { label: '신고하기', iconName: 'flag-outline', onPress: onReportPost },
     ];
   } else if (isMyComment) {
     menuItems = [
@@ -82,7 +84,7 @@ export default function BoardFloatingMenu({
       {
         label: '신고하기',
         iconName: 'flag-outline',
-        onPress: () => {},
+        onPress: () => onReportComment?.(isCommentMenu),
       },
     ];
   } else {
@@ -92,7 +94,7 @@ export default function BoardFloatingMenu({
         iconName: 'chatbubble-outline',
         onPress: () => {},
       },
-      { label: '신고하기', iconName: 'flag-outline', onPress: () => {} },
+      { label: '신고하기', iconName: 'flag-outline', onPress: onReportPost },
     ];
   }
 

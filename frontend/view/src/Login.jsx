@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useMemo } from 'react';
-import { View, Text, TextInput, TouchableOpacity, useWindowDimensions, ScrollView, KeyboardAvoidingView, Platform, Keyboard, TouchableWithoutFeedback, Alert } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, useWindowDimensions, ScrollView, KeyboardAvoidingView, Platform, Keyboard, TouchableWithoutFeedback, Alert, Modal } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
 import { createLoginStyles } from '../../styles/login.style';
@@ -41,6 +41,18 @@ function buildLoginFailureMessage(error) {
   return lines.join('\n');
 }
 
+function formatSuspendedUntil(raw) {
+  if (!raw) return null;
+  const dt = new Date(raw);
+  if (Number.isNaN(dt.getTime())) return null;
+  const y = dt.getFullYear();
+  const m = String(dt.getMonth() + 1).padStart(2, '0');
+  const d = String(dt.getDate()).padStart(2, '0');
+  const hh = String(dt.getHours()).padStart(2, '0');
+  const mm = String(dt.getMinutes()).padStart(2, '0');
+  return `${y}.${m}.${d} ${hh}:${mm}`;
+}
+
 const Login = ({ navigation }) => {
   const { login } = useAuth();
   const { width } = useWindowDimensions();
@@ -51,6 +63,12 @@ const Login = ({ navigation }) => {
   const [password, setPassword] = useState('');
   const [rememberMe, setRememberMe] = useState(false);
   const [screenReady, setScreenReady] = useState(false);
+  const [policyModal, setPolicyModal] = useState({
+    visible: false,
+    title: '',
+    highlight: '',
+    body: '',
+  });
 
   const styles = useMemo(() => createLoginStyles(width, normalize), [width]);
   const debugLogin = (...args) => console.log('[LoginDebug]', ...args);
@@ -227,6 +245,30 @@ const Login = ({ navigation }) => {
                         : 'CLIENT_SETUP_ERROR',
                   });
 
+                  const serverCode = error?.response?.data?.code;
+                  const suspendedUntil = error?.response?.data?.suspendedUntil;
+                  if (serverCode === 'ACCOUNT_BANNED') {
+                    setPolicyModal({
+                      visible: true,
+                      title: '로그인 제한',
+                      highlight: '영구 정지된 계정입니다.',
+                      body: '운영정책 위반으로 서비스 이용이 제한되었습니다.\n문의가 필요하면 고객센터로 연락해주세요.',
+                    });
+                    return;
+                  }
+                  if (serverCode === 'ACCOUNT_SUSPENDED') {
+                    const until = formatSuspendedUntil(suspendedUntil);
+                    setPolicyModal({
+                      visible: true,
+                      title: '로그인 제한',
+                      highlight: '임시 정지된 계정입니다.',
+                      body: until
+                        ? `해제 예정 시각: ${until}\n해제 시각 이후 다시 로그인해주세요.`
+                        : '해제 시각 이후 다시 로그인해주세요.',
+                    });
+                    return;
+                  }
+
                   Alert.alert('로그인 실패', buildLoginFailureMessage(error));
                 }
               }}
@@ -259,6 +301,43 @@ const Login = ({ navigation }) => {
           </KeyboardAwareScrollView>
         </View>
       </TouchableWithoutFeedback>
+      <Modal
+        visible={policyModal.visible}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setPolicyModal((prev) => ({ ...prev, visible: false }))}
+      >
+        <TouchableWithoutFeedback onPress={() => setPolicyModal((prev) => ({ ...prev, visible: false }))}>
+          <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.38)', justifyContent: 'center', paddingHorizontal: normalize(24) }}>
+            <TouchableWithoutFeedback>
+              <View style={{ backgroundColor: '#fff', borderRadius: normalize(14), padding: normalize(18) }}>
+                <Text style={{ fontSize: normalize(17), fontWeight: '700', color: colors.textPrimary, marginBottom: normalize(10) }}>
+                  {policyModal.title}
+                </Text>
+                <Text style={{ fontSize: normalize(15), fontWeight: '700', color: '#D32F2F', marginBottom: normalize(10) }}>
+                  {policyModal.highlight}
+                </Text>
+                <Text style={{ fontSize: normalize(14), lineHeight: normalize(20), color: colors.textSecondary }}>
+                  {policyModal.body}
+                </Text>
+                <TouchableOpacity
+                  style={{
+                    marginTop: normalize(16),
+                    alignSelf: 'flex-end',
+                    backgroundColor: colors.primary,
+                    borderRadius: normalize(10),
+                    paddingVertical: normalize(8),
+                    paddingHorizontal: normalize(14),
+                  }}
+                  onPress={() => setPolicyModal((prev) => ({ ...prev, visible: false }))}
+                >
+                  <Text style={{ color: '#fff', fontWeight: '700' }}>확인</Text>
+                </TouchableOpacity>
+              </View>
+            </TouchableWithoutFeedback>
+          </View>
+        </TouchableWithoutFeedback>
+      </Modal>
     </SafeAreaView>
   );
 };

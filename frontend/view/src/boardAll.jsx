@@ -24,6 +24,7 @@ import Skeleton from '../../components/common/Skeleton';
 import { useLocationContext } from '../../context/LocationContext';
 import { invalidateProfileCountsCache } from '../../utils/profileCountsCache';
 import { useFocusEffect } from '@react-navigation/native';
+import ReportModal from '../../components/common/ReportModal.jsx';
 
 /** 서버 created_at(UTC)을 "n분 전" 형식으로 변환. 화면에서는 기기 로컬 시간 기준으로 계산 */
 function formatTimeAgo(createdAt) {
@@ -67,6 +68,9 @@ export function BoardAllContent({ navigation, posts }) {
   const [floatingMenuVisible, setFloatingMenuVisible] = useState(false);
   const [floatingMenuAnchor, setFloatingMenuAnchor] = useState(null);
   const [floatingMenuPost, setFloatingMenuPost] = useState(null);
+  const [reportModalVisible, setReportModalVisible] = useState(false);
+  const [reportTargetType, setReportTargetType] = useState('post');
+  const [reportTargetId, setReportTargetId] = useState(null);
 
   const fetchPostsRef = useRef(null);
   const didMountSortEffectRef = useRef(false);
@@ -122,16 +126,34 @@ export function BoardAllContent({ navigation, posts }) {
   );
 
   const openFloatingMenu = (post, ref) => {
-    ref?.measureInWindow((x, y) => {
-      setFloatingMenuAnchor({ x, y });
-      setFloatingMenuPost(post);
-      setFloatingMenuVisible(true);
-    });
+    if (ref?.measureInWindow) {
+      ref.measureInWindow((x, y) => {
+        setFloatingMenuAnchor({ x, y });
+        setFloatingMenuPost(post);
+        setFloatingMenuVisible(true);
+      });
+      return;
+    }
+    // ref 측정 실패 시에도 메뉴가 열리도록 중앙 오픈 fallback
+    setFloatingMenuAnchor(null);
+    setFloatingMenuPost(post);
+    setFloatingMenuVisible(true);
   };
   const closeFloatingMenu = () => {
     setFloatingMenuVisible(false);
     setFloatingMenuAnchor(null);
     setFloatingMenuPost(null);
+  };
+  const openReportModal = (targetType, targetId) => {
+    if (!targetId) return;
+    setReportTargetType(targetType);
+    setReportTargetId(targetId);
+    setReportModalVisible(true);
+  };
+  const closeReportModal = () => {
+    setReportModalVisible(false);
+    setReportTargetId(null);
+    setReportTargetType('post');
   };
   const startNoteToPostAuthorFromList = async (post) => {
     if (!post?.authorUserId || !post?.id) {
@@ -493,6 +515,8 @@ export function BoardAllContent({ navigation, posts }) {
                           startNoteToPostAuthorFromList(floatingMenuPost);
                         } else if (item.label === '공유하기') {
                           handleShareFromList(floatingMenuPost);
+                        } else if (item.label === '신고하기') {
+                          openReportModal('post', floatingMenuPost?.id);
                         } else if (item.onPress) {
                           item.onPress();
                         }
@@ -530,6 +554,13 @@ export function BoardAllContent({ navigation, posts }) {
           </View>
         </TouchableWithoutFeedback>
       </Modal>
+
+      <ReportModal
+        visible={reportModalVisible}
+        onClose={closeReportModal}
+        targetType={reportTargetType}
+        targetId={reportTargetId}
+      />
     </>
   );
 }

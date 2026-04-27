@@ -1,0 +1,1719 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Focux Admin</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #ffffff;
+      --bg-secondary: #f5f5f4;
+      --bg-tertiary: #efeeeb;
+      --border: rgba(0,0,0,0.10);
+      --border-md: rgba(0,0,0,0.18);
+      --text-primary: #1a1a18;
+      --text-secondary: #5f5e5a;
+      --text-tertiary: #888780;
+      --green: #a6da95;
+      --green-dark: #27500A;
+      --green-bg: #EAF3DE;
+      --green-border: #C0DD97;
+      --amber-bg: #FAEEDA;
+      --amber-border: #FAC775;
+      --amber-text: #633806;
+      --red-bg: #FCEBEB;
+      --red-border: #F09595;
+      --red-text: #A32D2D;
+      --blue-bg: #E6F1FB;
+      --blue-text: #0C447C;
+      --purple-bg: #EEEDFE;
+      --purple-text: #3C3489;
+      --radius-sm: 6px;
+      --radius-md: 8px;
+      --radius-lg: 12px;
+    }
+
+    html, body {
+      height: 100%;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      font-size: 13px;
+      background: var(--bg-tertiary);
+      color: var(--text-primary);
+    }
+
+    /* ── Layout ─────────────────────────────────────── */
+    .layout {
+      display: grid;
+      grid-template-columns: 210px 1fr;
+      height: 100vh;
+    }
+
+    /* ── Sidebar ─────────────────────────────────────── */
+    .sidebar {
+      background: var(--bg-secondary);
+      border-right: 0.5px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      overflow-y: auto;
+    }
+    .sidebar-logo {
+      padding: 20px 18px 16px;
+      font-size: 16px;
+      font-weight: 500;
+      border-bottom: 0.5px solid var(--border);
+      flex-shrink: 0;
+    }
+    .sidebar-logo span { color: #a6da95; }
+    .sidebar-section {
+      padding: 14px 18px 6px;
+      font-size: 10px;
+      font-weight: 500;
+      letter-spacing: .6px;
+      color: var(--text-tertiary);
+      text-transform: uppercase;
+    }
+    .nav-item {
+      display: flex;
+      align-items: center;
+      gap: 9px;
+      padding: 9px 18px;
+      font-size: 13px;
+      color: var(--text-secondary);
+      cursor: pointer;
+      transition: background .1s, color .1s;
+      position: relative;
+      user-select: none;
+    }
+    .nav-item:hover { background: var(--bg); color: var(--text-primary); }
+    .nav-item.active {
+      background: var(--bg);
+      color: var(--text-primary);
+      font-weight: 500;
+    }
+    .nav-item.active::after {
+      content: '';
+      position: absolute;
+      right: 0; top: 4px; bottom: 4px;
+      width: 2px;
+      background: var(--green);
+      border-radius: 2px 0 0 2px;
+    }
+    .nav-dot {
+      width: 6px; height: 6px;
+      border-radius: 50%;
+      background: var(--border-md);
+      flex-shrink: 0;
+    }
+    .nav-item.active .nav-dot { background: var(--green); }
+    .nav-badge {
+      margin-left: auto;
+      background: #f87171;
+      color: #fff;
+      border-radius: 10px;
+      padding: 1px 6px;
+      font-size: 10px;
+      font-weight: 500;
+    }
+
+    /* ── Main ─────────────────────────────────────── */
+    .main {
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+    .topbar {
+      padding: 14px 24px;
+      border-bottom: 0.5px solid var(--border);
+      background: var(--bg);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-shrink: 0;
+    }
+    .topbar-title { font-size: 15px; font-weight: 500; }
+    .topbar-sub { font-size: 11px; color: var(--text-tertiary); margin-top: 2px; }
+    .content {
+      flex: 1;
+      overflow-y: auto;
+      padding: 20px 24px 32px;
+    }
+    .panel { display: none; }
+    .panel.active { display: block; }
+
+    /* ── Buttons ─────────────────────────────────────── */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 7px 13px;
+      border-radius: var(--radius-md);
+      border: 0.5px solid var(--border-md);
+      background: transparent;
+      color: var(--text-primary);
+      font-size: 12px;
+      font-family: inherit;
+      cursor: pointer;
+      transition: background .1s;
+      white-space: nowrap;
+    }
+    .btn:hover { background: var(--bg-secondary); }
+    .btn:active { transform: scale(.98); }
+    .btn-sm { padding: 5px 10px; font-size: 11px; }
+    .btn-green { background: var(--green-bg); border-color: var(--green-border); color: var(--green-dark); }
+    .btn-green:hover { background: #d4edbd; }
+    .btn-red { background: var(--red-bg); border-color: var(--red-border); color: var(--red-text); }
+    .btn-red:hover { background: #f7c1c1; }
+    .btn-amber { background: var(--amber-bg); border-color: var(--amber-border); color: var(--amber-text); }
+    .btn-amber:hover { background: #f5e0b0; }
+    .btn-primary { background: var(--green); border-color: #8fcb7e; color: var(--green-dark); }
+    .btn-primary:hover { background: #97c459; }
+
+    /* ── Pills ─────────────────────────────────────── */
+    .pill {
+      display: inline-block;
+      padding: 2px 6px;
+      border-radius: 20px;
+      font-size: 11px;
+      font-weight: 500;
+    }
+    .pill-pending { background: var(--amber-bg); color: var(--amber-text); }
+    .pill-resolved { background: var(--green-bg); color: var(--green-dark); }
+    .pill-rejected { background: var(--red-bg); color: var(--red-text); }
+    .pill-post     { background: var(--blue-bg); color: var(--blue-text); }
+    .pill-comment  { background: var(--purple-bg); color: var(--purple-text); }
+    .pill-mail     { background: #FBEAF0; color: #72243E; }
+    .pill-ok       { background: var(--green-bg); color: var(--green-dark); }
+    .pill-warn     { background: var(--amber-bg); color: var(--amber-text); }
+    .pill-danger   { background: var(--red-bg); color: var(--red-text); }
+    .pill-white    { background: var(--blue-bg); color: var(--blue-text); }
+
+    /* ── Stat cards ─────────────────────────────────── */
+    .stat-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 10px;
+      margin-bottom: 20px;
+    }
+    .stat-card {
+      background: var(--bg-secondary);
+      border-radius: var(--radius-md);
+      padding: 14px 16px;
+    }
+    .stat-num { font-size: 24px; font-weight: 500; line-height: 1.1; }
+    .stat-label { font-size: 11px; color: var(--text-tertiary); margin-top: 5px; }
+    .stat-danger .stat-num { color: #f87171; }
+    .stat-warn .stat-num   { color: #f59e0b; }
+    .stat-ok .stat-num     { color: var(--green); }
+
+    /* ── Section title ─────────────────────────────── */
+    .section-title {
+      font-size: 11px;
+      font-weight: 500;
+      color: var(--text-tertiary);
+      text-transform: uppercase;
+      letter-spacing: .5px;
+      margin-bottom: 10px;
+    }
+
+    /* ── Table ─────────────────────────────────────── */
+    .table-wrap {
+      border: 0.5px solid var(--border);
+      border-radius: var(--radius-lg);
+      overflow: hidden;
+      margin-bottom: 14px;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      table-layout: fixed;
+    }
+    th {
+      background: var(--bg-secondary);
+      padding: 9px 12px;
+      font-size: 11px;
+      font-weight: 500;
+      color: var(--text-secondary);
+      text-align: left;
+      border-bottom: 0.5px solid var(--border);
+    }
+    td {
+      padding: 9px 12px;
+      font-size: 12px;
+      border-bottom: 0.5px solid var(--border);
+      vertical-align: middle;
+      color: var(--text-primary);
+    }
+    tr:last-child td { border-bottom: none; }
+    tr.clickable { cursor: pointer; }
+    tr.clickable:hover td { background: var(--bg-secondary); }
+    tr.selected-row td { background: #EAF3DE; }
+    .txt-ellipsis {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      max-width: 0;
+    }
+    .txt-center { text-align: center; }
+    .txt-muted { color: var(--text-tertiary); }
+    .txt-danger { color: #f87171; font-weight: 500; }
+    .txt-warn   { color: #f59e0b; font-weight: 500; }
+    .txt-ok     { color: var(--green); font-weight: 500; }
+
+    /* ── Filter row ─────────────────────────────────── */
+    .filter-row {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      align-items: center;
+      margin-bottom: 14px;
+    }
+    .filter-row select,
+    .filter-row input[type="text"] {
+      height: 32px;
+      padding: 0 10px;
+      border-radius: var(--radius-md);
+      border: 0.5px solid var(--border-md);
+      background: var(--bg);
+      color: var(--text-primary);
+      font-size: 12px;
+      font-family: inherit;
+      outline: none;
+    }
+    .filter-row input[type="text"] { width: 180px; }
+    .filter-row select:focus,
+    .filter-row input:focus { border-color: var(--green); }
+
+    /* ── Bulk bar ───────────────────────────────────── */
+    .bulk-bar {
+      display: none;
+      align-items: center;
+      gap: 10px;
+      padding: 8px 14px;
+      background: var(--green-bg);
+      border: 0.5px solid var(--green-border);
+      border-radius: var(--radius-md);
+      margin-bottom: 12px;
+      font-size: 12px;
+      color: var(--green-dark);
+    }
+    .bulk-bar.show { display: flex; }
+
+    /* ── Checkbox ───────────────────────────────────── */
+    input[type="checkbox"] {
+      width: 15px; height: 15px;
+      accent-color: var(--green);
+      cursor: pointer;
+      flex-shrink: 0;
+    }
+
+    /* ── Detail panel ───────────────────────────────── */
+    .detail-panel {
+      border: 0.5px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 18px;
+      margin-top: 0;
+      display: none;
+      margin-bottom: 14px;
+    }
+    .detail-panel.open { display: block; }
+    .detail-panel-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 16px;
+      padding-bottom: 12px;
+      border-bottom: 0.5px solid var(--border);
+    }
+    .detail-panel-title { font-size: 14px; font-weight: 500; }
+    .detail-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+    .detail-block {
+      background: var(--bg-secondary);
+      border-radius: var(--radius-md);
+      padding: 12px 14px;
+    }
+    .detail-block-label {
+      font-size: 11px;
+      color: var(--text-tertiary);
+      margin-bottom: 5px;
+    }
+    .detail-block-value { font-size: 13px; color: var(--text-primary); line-height: 1.5; }
+    .original-content {
+      background: var(--bg-secondary);
+      border-left: 3px solid var(--border-md);
+      padding: 12px 14px;
+      font-size: 13px;
+      line-height: 1.6;
+      color: var(--text-primary);
+      margin-bottom: 16px;
+      border-radius: 0;
+    }
+    .image-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+      gap: 8px;
+      margin-bottom: 16px;
+    }
+    .image-item {
+      width: 100%;
+      height: 120px;
+      object-fit: cover;
+      border-radius: var(--radius-md);
+      border: 0.5px solid var(--border);
+      background: var(--bg-secondary);
+    }
+
+    /* ── Template chips ─────────────────────────────── */
+    .template-chips {
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+      margin-bottom: 10px;
+    }
+    .template-chip {
+      padding: 4px 11px;
+      border-radius: 20px;
+      background: var(--bg-secondary);
+      border: 0.5px solid var(--border-md);
+      font-size: 11px;
+      color: var(--text-secondary);
+      cursor: pointer;
+      transition: background .1s, color .1s;
+    }
+    .template-chip:hover {
+      background: var(--bg);
+      color: var(--text-primary);
+      border-color: var(--green);
+    }
+
+    /* ── Textarea ───────────────────────────────────── */
+    .note-input {
+      width: 100%;
+      min-height: 64px;
+      padding: 9px 11px;
+      border-radius: var(--radius-md);
+      border: 0.5px solid var(--border-md);
+      background: var(--bg);
+      color: var(--text-primary);
+      font-size: 12px;
+      font-family: inherit;
+      resize: vertical;
+      outline: none;
+      line-height: 1.5;
+    }
+    .note-input:focus { border-color: var(--green); }
+
+    /* ── Malicious check ────────────────────────────── */
+    .malicious-row {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      margin-top: 10px;
+      font-size: 12px;
+      color: var(--text-secondary);
+    }
+
+    /* ── Action row ─────────────────────────────────── */
+    .action-row {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      flex-wrap: wrap;
+      margin-top: 14px;
+      padding-top: 14px;
+      border-top: 0.5px solid var(--border);
+    }
+
+    /* ── Audit log (inline) ─────────────────────────── */
+    .audit-log-inline { margin-top: 16px; padding-top: 16px; border-top: 0.5px solid var(--border); }
+    .audit-item {
+      display: flex;
+      gap: 12px;
+      padding: 7px 0;
+      border-bottom: 0.5px solid var(--border);
+      font-size: 12px;
+    }
+    .audit-item:last-child { border-bottom: none; }
+    .audit-time { color: var(--text-tertiary); white-space: nowrap; min-width: 115px; }
+
+    /* ── Appeal card ────────────────────────────────── */
+    .appeal-card {
+      border: 0.5px solid var(--border);
+      border-radius: var(--radius-lg);
+      overflow: hidden;
+      margin-bottom: 12px;
+    }
+    .appeal-header {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 11px 16px;
+      background: var(--bg-secondary);
+      border-bottom: 0.5px solid var(--border);
+    }
+    .appeal-header-title { font-size: 13px; font-weight: 500; }
+    .appeal-body { padding: 14px 16px; }
+    .appeal-content {
+      background: var(--bg-secondary);
+      border-radius: var(--radius-md);
+      padding: 10px 12px;
+      font-size: 12px;
+      color: var(--text-primary);
+      line-height: 1.6;
+      margin: 8px 0 12px;
+    }
+    .appeal-actions {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      flex-wrap: wrap;
+      margin-top: 10px;
+    }
+
+    /* ── User card ──────────────────────────────────── */
+    .user-card {
+      border: 0.5px solid var(--border);
+      border-radius: var(--radius-lg);
+      overflow: hidden;
+      margin-bottom: 12px;
+    }
+    .user-header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 12px 16px;
+      background: var(--bg-secondary);
+      border-bottom: 0.5px solid var(--border);
+    }
+    .user-avatar {
+      width: 36px; height: 36px;
+      border-radius: 50%;
+      background: var(--blue-bg);
+      color: var(--blue-text);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 12px; font-weight: 500;
+      flex-shrink: 0;
+    }
+    .user-name { font-size: 13px; font-weight: 500; }
+    .user-sub { font-size: 11px; color: var(--text-tertiary); margin-top: 2px; }
+    .user-stats-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      padding: 14px 16px;
+      gap: 0;
+    }
+    .user-stat { text-align: center; }
+    .user-stat-num { font-size: 20px; font-weight: 500; }
+    .user-stat-label { font-size: 11px; color: var(--text-tertiary); margin-top: 3px; }
+    .user-actions-row {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      padding: 10px 16px;
+      border-top: 0.5px solid var(--border);
+      background: var(--bg-secondary);
+    }
+    .dialog-backdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.35);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 9999;
+    }
+    .dialog-backdrop.show { display: flex; }
+    .dialog {
+      width: min(460px, 92vw);
+      background: #fff;
+      border-radius: var(--radius-lg);
+      border: 0.5px solid var(--border);
+      padding: 16px;
+    }
+    .dialog-title { font-size: 14px; font-weight: 600; margin-bottom: 10px; }
+    .dialog-actions {
+      margin-top: 10px;
+      display: flex;
+      gap: 8px;
+      justify-content: flex-end;
+    }
+
+    /* ── Dashboard extras ───────────────────────────── */
+    .policy-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      margin-bottom: 20px;
+    }
+    .policy-card {
+      background: var(--bg-secondary);
+      border-radius: var(--radius-md);
+      padding: 14px;
+    }
+    .policy-label { font-size: 12px; color: var(--text-secondary); margin-bottom: 10px; }
+    .policy-bar-track {
+      height: 6px;
+      background: var(--bg-tertiary);
+      border-radius: 3px;
+      overflow: hidden;
+    }
+    .policy-bar-fill {
+      height: 100%;
+      background: var(--green);
+      border-radius: 3px;
+    }
+    .policy-status { font-size: 11px; color: var(--text-tertiary); margin-top: 6px; }
+
+    /* ── Scrollbar ──────────────────────────────────── */
+    ::-webkit-scrollbar { width: 5px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: var(--border-md); border-radius: 3px; }
+  </style>
+</head>
+<body>
+
+<div class="layout">
+
+  <!-- ── Sidebar ───────────────────────────────────── -->
+  <div class="sidebar">
+    <div class="sidebar-logo">Focux <span>admin</span></div>
+
+    <div class="sidebar-section">운영</div>
+    <div class="nav-item active" onclick="go('dashboard')">
+      <span class="nav-dot"></span>대시보드
+    </div>
+    <div class="nav-item" onclick="go('reports')">
+      <span class="nav-dot"></span>신고 관리
+      <span class="nav-badge" id="badge-reports">4</span>
+    </div>
+    <div class="nav-item" onclick="go('processedReports')">
+      <span class="nav-dot"></span>처리 이력
+    </div>
+    <div class="nav-item" onclick="go('appeals')">
+      <span class="nav-dot"></span>이의신청
+      <span class="nav-badge" id="badge-appeals">2</span>
+    </div>
+
+    <div class="sidebar-section" style="margin-top:8px">사용자</div>
+    <div class="nav-item" onclick="go('users')">
+      <span class="nav-dot"></span>사용자 제재 현황
+    </div>
+
+    <div class="sidebar-section" style="margin-top:8px">기록</div>
+    <div class="nav-item" onclick="go('logs')">
+      <span class="nav-dot"></span>변경 이력 (Audit Log)
+    </div>
+  </div>
+
+  <!-- ── Main ──────────────────────────────────────── -->
+  <div class="main">
+    <div class="topbar">
+      <div>
+        <div class="topbar-title" id="topbar-title">대시보드</div>
+        <div class="topbar-sub" id="topbar-sub">2026년 4월 27일 기준</div>
+      </div>
+      <div style="display:flex;gap:8px;">
+        <button class="btn btn-sm" onclick="alert('API: GET /api/admin/stats — 통계 데이터를 불러옵니다.')">통계 내보내기</button>
+        <button class="btn btn-sm btn-primary" onclick="go('reports')">신규 신고 확인 →</button>
+      </div>
+    </div>
+
+    <div class="content">
+
+      <!-- ────────── 대시보드 ────────── -->
+      <div class="panel active" id="panel-dashboard">
+        <div class="stat-grid">
+          <div class="stat-card stat-danger">
+            <div class="stat-num" id="stat-today-new">0</div>
+            <div class="stat-label">오늘 신규 신고</div>
+          </div>
+          <div class="stat-card stat-warn">
+            <div class="stat-num" id="stat-pending-reports">0</div>
+            <div class="stat-label">미처리 신고</div>
+          </div>
+          <div class="stat-card stat-warn">
+            <div class="stat-num" id="stat-pending-appeals">0</div>
+            <div class="stat-label">이의신청 대기</div>
+          </div>
+          <div class="stat-card stat-ok">
+            <div class="stat-num" id="stat-today-handled">0</div>
+            <div class="stat-label">오늘 처리 완료</div>
+          </div>
+        </div>
+
+        <div class="section-title">자동화 정책 상태</div>
+        <div class="policy-grid">
+          <div class="policy-card">
+            <div class="policy-label">일일 신고 한도 정책 (5회/일)</div>
+            <div class="policy-bar-track"><div class="policy-bar-fill" style="width:100%"></div></div>
+            <div class="policy-status">정상 작동 중</div>
+          </div>
+          <div class="policy-card">
+            <div class="policy-label">자동 숨김 임계치 (게시글 신고 3회)</div>
+            <div class="policy-bar-track"><div class="policy-bar-fill" style="width:100%"></div></div>
+            <div class="policy-status">정상 작동 중</div>
+          </div>
+        </div>
+
+        <div class="section-title">지연 처리 경고 (3일 이상 미처리)</div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th style="width:65px">ID</th>
+                <th style="width:75px">타입</th>
+                <th>사유</th>
+                <th style="width:110px">접수일</th>
+                <th style="width:65px">경과</th>
+                <th style="width:75px">액션</th>
+              </tr>
+            </thead>
+            <tbody id="dashboard-delayed-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- ────────── 신고 관리 ────────── -->
+      <div class="panel" id="panel-reports">
+        <div class="filter-row">
+          <input type="text" placeholder="신고자 UID 검색" id="search-reporter">
+          <select id="filter-type">
+            <option value="">전체 타입</option>
+            <option value="post">게시글(post)</option>
+            <option value="comment">댓글(comment)</option>
+            <option value="school_mail">학교메일(school_mail)</option>
+            <option value="school_mail_comment">학교메일 댓글(school_mail_comment)</option>
+          </select>
+          <select id="filter-reason">
+            <option value="">전체 사유</option>
+            <option value="spam">스팸/광고(spam)</option>
+            <option value="hate">욕설/혐오(hate)</option>
+            <option value="sexual">음란/선정적(sexual)</option>
+            <option value="privacy">개인정보(privacy)</option>
+            <option value="etc">기타(etc)</option>
+          </select>
+          <input type="date" id="filter-from-date">
+          <input type="date" id="filter-to-date">
+          <button class="btn btn-sm" onclick="applyFilter()">필터 적용</button>
+        </div>
+
+        <div class="bulk-bar" id="bulk-bar">
+          <span id="bulk-count">0건 선택됨</span>
+          <button class="btn btn-green btn-sm" onclick="bulkAction('confirm')">일괄 확정(confirm)</button>
+          <button class="btn btn-red btn-sm"   onclick="bulkAction('reject')">일괄 기각(reject)</button>
+          <button class="btn btn-sm"            onclick="clearSelection()">선택 해제</button>
+        </div>
+
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th style="width:34px">
+                  <input type="checkbox" id="chk-all" onchange="toggleAll(this)">
+                </th>
+                <th style="width:60px">ID</th>
+                <th style="width:70px">타입</th>
+                <th style="width:90px">사유</th>
+                <th>원문 미리보기</th>
+                <th style="width:55px;text-align:center">누적</th>
+                <th style="width:100px">접수일</th>
+                <th style="width:70px">상태</th>
+              </tr>
+            </thead>
+            <tbody id="report-tbody"></tbody>
+          </table>
+        </div>
+        <div id="report-detail-host"></div>
+      </div>
+
+      <!-- ────────── 처리 이력 ────────── -->
+      <div class="panel" id="panel-processedReports">
+        <div class="filter-row">
+          <input type="text" placeholder="신고자 ID(username) 검색" id="processed-search-reporter">
+          <select id="processed-filter-type">
+            <option value="">전체 타입</option>
+            <option value="post">게시글</option>
+            <option value="comment">댓글</option>
+            <option value="school_mail">학교메일</option>
+            <option value="school_mail_comment">학교메일 댓글</option>
+          </select>
+          <select id="processed-filter-status">
+            <option value="">전체 상태</option>
+            <option value="resolved">처리완료</option>
+            <option value="rejected">기각</option>
+          </select>
+          <input type="date" id="processed-filter-from-date">
+          <input type="date" id="processed-filter-to-date">
+          <button class="btn btn-sm" onclick="loadProcessedReports()">필터 적용</button>
+        </div>
+        <div class="bulk-bar" id="processed-bulk-bar">
+          <span id="processed-bulk-count">0건 선택됨</span>
+          <button class="btn btn-sm btn-primary" onclick="bulkReopenProcessed()">선택 재오픈</button>
+          <button class="btn btn-sm" onclick="clearProcessedSelection()">선택 해제</button>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th style="width:34px">
+                  <input type="checkbox" id="processed-chk-all" onchange="toggleAllProcessed(this)">
+                </th>
+                <th style="width:70px">ID</th>
+                <th style="width:90px">신고자</th>
+                <th style="width:80px">타입</th>
+                <th style="width:110px">사유</th>
+                <th>원문 미리보기</th>
+                <th style="width:110px">처리일</th>
+                <th style="width:70px">상태</th>
+                <th style="width:110px">액션</th>
+              </tr>
+            </thead>
+            <tbody id="processed-report-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- ────────── 이의신청 ────────── -->
+      <div class="panel" id="panel-appeals">
+        <div id="appeals-list"></div>
+      </div>
+
+      <!-- ────────── 사용자 제재 현황 ────────── -->
+      <div class="panel" id="panel-users">
+        <div class="filter-row">
+          <input type="text" placeholder="로그인 ID(username)/UID 검색" style="width:200px" id="users-search-q">
+          <select id="users-filter">
+            <option value="">전체</option>
+            <option value="warned">경고 있음</option>
+            <option value="suspended">제재 중</option>
+            <option value="whitelisted">화이트리스트</option>
+          </select>
+          <input type="text" placeholder="위반경고 ≥ N" style="width:110px" id="users-min-violation">
+          <input type="text" placeholder="허위신고 ≥ N" style="width:110px" id="users-min-false-report">
+          <input type="text" placeholder="신고당한수 ≥ N" style="width:110px" id="users-min-reported">
+          <select id="users-sanction-filter">
+            <option value="">제재상태 전체</option>
+            <option value="suspended">임시정지</option>
+            <option value="banned">영구정지</option>
+            <option value="whitelisted">화이트리스트</option>
+          </select>
+          <button class="btn btn-sm" onclick="applyUsersFilter()">적용</button>
+        </div>
+
+        <div id="users-list"></div>
+      </div>
+
+      <!-- ────────── 변경 이력 ────────── -->
+      <div class="panel" id="panel-logs">
+        <div class="filter-row">
+          <input type="text" placeholder="관리자 ID / 대상 ID 검색" style="width:220px" id="logs-search-q">
+          <select id="logs-action">
+            <option value="">전체 액션</option>
+            <option value="report_confirm">신고 확정(report_confirm)</option>
+            <option value="report_reject">신고 기각(report_reject)</option>
+            <option value="appeal_update">이의신청 처리(appeal_update)</option>
+            <option value="user_suspend">사용자 정지(user_suspend)</option>
+            <option value="user_whitelist">화이트리스트 추가(user_whitelist)</option>
+            <option value="user_unwhitelist">화이트리스트 해제(user_unwhitelist)</option>
+            <option value="user_ban">사용자 영구정지(user_ban)</option>
+          </select>
+          <input type="date" id="logs-from-date">
+          <input type="date" id="logs-to-date">
+          <button class="btn btn-sm" onclick="applyLogsFilter()">적용</button>
+        </div>
+
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th style="width:140px">일시</th>
+                <th style="width:90px">관리자</th>
+                <th style="width:75px">대상 ID</th>
+                <th style="width:110px">액션</th>
+                <th>메모</th>
+              </tr>
+            </thead>
+            <tbody id="logs-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<div class="dialog-backdrop" id="reopen-dialog-backdrop" onclick="closeReopenDialogByBackdrop(event)">
+  <div class="dialog">
+    <div class="dialog-title" id="reopen-dialog-title">재판정 메모 입력</div>
+    <textarea class="note-input" id="reopen-note-input" placeholder="재판정 사유를 입력하세요 (필수)"></textarea>
+    <div class="dialog-actions">
+      <button class="btn btn-sm" onclick="closeReopenDialog()">취소</button>
+      <button class="btn btn-sm btn-primary" onclick="submitReopenDialog()">확인</button>
+    </div>
+  </div>
+</div>
+
+<div class="dialog-backdrop" id="bulk-action-dialog-backdrop" onclick="closeBulkActionDialogByBackdrop(event)">
+  <div class="dialog">
+    <div class="dialog-title" id="bulk-action-dialog-title">일괄 처리 메모 입력</div>
+    <textarea class="note-input" id="bulk-action-note-input" placeholder="처리 메모를 입력하세요 (필수)"></textarea>
+    <div class="malicious-row" id="bulk-action-malicious-row" style="display:none;">
+      <input type="checkbox" id="bulk-action-malicious-check">
+      <label for="bulk-action-malicious-check">허위신고 판정(신고자 경고 +1)</label>
+    </div>
+    <div class="dialog-actions">
+      <button class="btn btn-sm" onclick="closeBulkActionDialog()">취소</button>
+      <button class="btn btn-sm btn-primary" onclick="submitBulkActionDialog()">확인</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  const API_BASE = '/api/admin';
+  const PAGE_META = {
+    dashboard: { title: '대시보드', sub: '실시간 운영 지표' },
+    reports: { title: '신고 관리', sub: '미처리 신고 전용' },
+    processedReports: { title: '처리 이력', sub: '처리 완료/기각 신고 이력 및 재오픈' },
+    appeals: { title: '이의신청 관리', sub: '소명 검토 및 상태 변경' },
+    users: { title: '사용자 제재 현황', sub: '경고 / 임시정지 / 화이트리스트' },
+    logs: { title: '변경 이력 (Audit Log)', sub: '모든 판정 및 상태 변경 기록' },
+  };
+
+  const state = {
+    reports: [],
+    processedReports: [],
+    selectedReportId: null,
+    selected: new Set(),
+    expandedThreads: new Set(),
+    processedSelected: new Set(),
+    processedExpandedThreads: new Set(),
+    reopenReportId: null,
+    reopenBulkMode: false,
+    bulkActionMode: null, // confirm | reject
+  };
+
+  function threadKeyOf(report) {
+    return `${report.target_type}:${report.target_id}`;
+  }
+
+  function fmtDate(v) {
+    if (!v) return '-';
+    const d = new Date(v);
+    if (Number.isNaN(d.getTime())) return '-';
+    const yy = String(d.getFullYear()).slice(2);
+    const mm = String(d.getMonth() + 1).padStart(2, '0');
+    const dd = String(d.getDate()).padStart(2, '0');
+    const hh = String(d.getHours()).padStart(2, '0');
+    const mi = String(d.getMinutes()).padStart(2, '0');
+    return `${yy}.${mm}.${dd} ${hh}:${mi}`;
+  }
+
+  function esc(v) {
+    return String(v ?? '')
+      .replaceAll('&', '&amp;')
+      .replaceAll('<', '&lt;')
+      .replaceAll('>', '&gt;')
+      .replaceAll('"', '&quot;')
+      .replaceAll("'", '&#39;');
+  }
+
+  function statusPill(status) {
+    const s = String(status || '').toLowerCase();
+    if (s === 'resolved' || s === 'accepted') return 'pill-resolved';
+    if (s === 'rejected') return 'pill-rejected';
+    return 'pill-pending';
+  }
+
+  function statusLabel(status) {
+    const s = String(status || '').toLowerCase();
+    if (s === 'pending') return '대기';
+    if (s === 'resolved') return '처리완료';
+    if (s === 'rejected') return '기각';
+    if (s === 'accepted') return '승인';
+    return s ? `${s}` : '-';
+  }
+
+  function reportTypeLabel(type) {
+    const t = String(type || '').toLowerCase();
+    if (t === 'post') return '게시글';
+    if (t === 'comment') return '댓글';
+    if (t === 'school_mail') return '학교메일';
+    if (t === 'school_mail_comment') return '학교메일 댓글';
+    if (t === 'mail') return '학교메일';
+    if (t === 'mail_comment') return '학교메일 댓글';
+    return t || '-';
+  }
+
+  function actionTypeLabel(actionType) {
+    const a = String(actionType || '').toLowerCase();
+    if (a === 'report_confirm') return '신고 확정(report_confirm)';
+    if (a === 'report_reject') return '신고 기각(report_reject)';
+    if (a === 'appeal_update') return '이의신청 처리(appeal_update)';
+    if (a === 'user_suspend') return '사용자 정지(user_suspend)';
+    if (a === 'user_whitelist') return '화이트리스트 추가(user_whitelist)';
+    if (a === 'user_unwhitelist') return '화이트리스트 해제(user_unwhitelist)';
+    if (a === 'user_ban') return '사용자 영구정지(user_ban)';
+    return a || '-';
+  }
+
+  function renderTargetImages(imageUrls) {
+    const urls = Array.isArray(imageUrls) ? imageUrls.filter(Boolean) : [];
+    if (!urls.length) return '';
+    return `
+      <div class="section-title">첨부 이미지</div>
+      <div class="image-grid">
+        ${urls.map((url, idx) => `<a href="${esc(url)}" target="_blank" rel="noreferrer"><img class="image-item" src="${esc(url)}" alt="첨부 이미지 ${idx + 1}"></a>`).join('')}
+      </div>
+    `;
+  }
+
+  function reasonLabel(reason) {
+    const r = String(reason || '').toLowerCase();
+    if (r === 'spam') return '스팸/광고(spam)';
+    if (r === 'hate') return '욕설/혐오(hate)';
+    if (r === 'sexual') return '음란/선정적(sexual)';
+    if (r === 'privacy') return '개인정보(privacy)';
+    if (r === 'etc') return '기타(etc)';
+    return reason ? `${reason}` : '-';
+  }
+
+  function reportTypePill(type) {
+    if (type === 'comment') return 'pill-comment';
+    if (type === 'school_mail' || type === 'mail') return 'pill-mail';
+    if (type === 'school_mail_comment' || type === 'mail_comment') return 'pill-mail';
+    return 'pill-post';
+  }
+
+  async function api(path, init = {}) {
+    const res = await fetch(`${API_BASE}${path}`, {
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json', ...(init.headers || {}) },
+      ...init,
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok || !data?.success) {
+      throw new Error(data?.message || `요청 실패 (${res.status})`);
+    }
+    return data;
+  }
+
+  function go(page) {
+    document.querySelectorAll('.nav-item').forEach((n) => n.classList.remove('active'));
+    document.querySelectorAll('.panel').forEach((p) => p.classList.remove('active'));
+    document.querySelectorAll('.nav-item').forEach((n) => {
+      if (n.getAttribute('onclick') === `go('${page}')`) n.classList.add('active');
+    });
+    const panel = document.getElementById(`panel-${page}`);
+    if (panel) panel.classList.add('active');
+    const m = PAGE_META[page];
+    document.getElementById('topbar-title').textContent = m.title;
+    document.getElementById('topbar-sub').textContent = m.sub;
+  }
+
+  async function loadDashboard() {
+    const { data } = await api('/stats');
+    document.getElementById('stat-today-new').textContent = String(data.todayNewReports);
+    document.getElementById('stat-pending-reports').textContent = String(data.pendingReports);
+    document.getElementById('stat-pending-appeals').textContent = String(data.pendingAppeals);
+    document.getElementById('stat-today-handled').textContent = String(data.todayHandledReports);
+    document.getElementById('badge-reports').textContent = String(data.pendingReports);
+    document.getElementById('badge-appeals').textContent = String(data.pendingAppeals);
+  }
+
+  function renderReports() {
+    const tbody = document.getElementById('report-tbody');
+    if (!state.reports.length) {
+      tbody.innerHTML = `<tr><td colspan="8" class="txt-muted">데이터가 없습니다.</td></tr>`;
+      document.getElementById('report-detail-host').innerHTML = '';
+      updateBulk();
+      return;
+    }
+    const groupsMap = new Map();
+    state.reports.forEach((r) => {
+      const key = threadKeyOf(r);
+      if (!groupsMap.has(key)) groupsMap.set(key, []);
+      groupsMap.get(key).push(r);
+    });
+    const groups = [...groupsMap.entries()].map(([key, items]) => {
+      const sorted = [...items].sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+      return { key, items: sorted, latest: sorted[0] };
+    });
+
+    tbody.innerHTML = groups.map((g) => {
+      const isExpanded = state.expandedThreads.has(g.key);
+      const allChecked = g.items.every((r) => state.selected.has(String(r.id)));
+      const someChecked = g.items.some((r) => state.selected.has(String(r.id)));
+      const titlePrefix = isExpanded ? '▼' : '▶';
+      const summaryRow = `
+        <tr class="clickable" onclick="toggleThread('${esc(g.key)}')">
+          <td onclick="event.stopPropagation()">
+            <input type="checkbox" class="thread-chk" data-thread="${esc(g.key)}" ${allChecked ? 'checked' : ''} ${!allChecked && someChecked ? 'data-indeterminate=\"true\"' : ''} onchange="toggleThreadSelection('${esc(g.key)}', this.checked)">
+          </td>
+          <td>${titlePrefix} #T-${esc(g.latest.target_type)}-${esc(g.latest.target_id)}</td>
+          <td><span class="pill ${reportTypePill(g.latest.target_type)}">${esc(reportTypeLabel(g.latest.target_type))}</span></td>
+          <td>${esc(reasonLabel(g.latest.reason))}</td>
+          <td class="txt-ellipsis">${esc(g.latest.target_content || g.latest.description || '-')}</td>
+          <td class="txt-center ${g.items.length >= 3 ? 'txt-danger' : ''}">${g.items.length}</td>
+          <td class="txt-muted">${fmtDate(g.latest.created_at)}</td>
+          <td><span class="pill ${statusPill(g.latest.status)}">${esc(statusLabel(g.latest.status))}</span></td>
+        </tr>
+      `;
+      if (!isExpanded) return summaryRow;
+      const children = g.items.map((r) => `
+        <tr class="clickable ${state.selectedReportId === r.id ? 'selected-row' : ''}" onclick="toggleDetail(${r.id}, event)">
+          <td onclick="event.stopPropagation()">
+            <input type="checkbox" class="row-chk" data-id="${r.id}" ${state.selected.has(String(r.id)) ? 'checked' : ''} onchange="toggleRowSelection(${r.id}, this.checked)">
+          </td>
+          <td style="padding-left:22px;">└ #R-${r.id}</td>
+          <td><span class="pill ${reportTypePill(r.target_type)}">${esc(reportTypeLabel(r.target_type))}</span></td>
+          <td>${esc(reasonLabel(r.reason))}</td>
+          <td class="txt-ellipsis">${esc(r.target_content || r.description || '-')}</td>
+          <td class="txt-center">-</td>
+          <td class="txt-muted">${fmtDate(r.created_at)}</td>
+          <td><span class="pill ${statusPill(r.status)}">${esc(statusLabel(r.status))}</span></td>
+        </tr>
+      `).join('');
+      return `${summaryRow}${children}`;
+    }).join('');
+    document.querySelectorAll('.thread-chk[data-indeterminate="true"]').forEach((el) => {
+      el.indeterminate = true;
+    });
+    updateBulk();
+    renderReportDetail();
+  }
+
+  function toggleThread(key) {
+    if (state.expandedThreads.has(key)) state.expandedThreads.delete(key);
+    else state.expandedThreads.add(key);
+    renderReports();
+  }
+
+  function toggleThreadSelection(key, checked) {
+    const ids = state.reports.filter((r) => threadKeyOf(r) === key).map((r) => String(r.id));
+    if (checked) ids.forEach((id) => state.selected.add(id));
+    else ids.forEach((id) => state.selected.delete(id));
+    renderReports();
+  }
+
+  function toggleRowSelection(id, checked) {
+    const key = String(id);
+    if (checked) state.selected.add(key);
+    else state.selected.delete(key);
+    renderReports();
+  }
+
+  function renderReportDetail() {
+    const host = document.getElementById('report-detail-host');
+    const r = state.reports.find((x) => x.id === state.selectedReportId);
+    if (!r) {
+      host.innerHTML = '';
+      return;
+    }
+    host.innerHTML = `
+      <div class="detail-panel open" id="detail-${r.id}">
+        <div class="detail-panel-header">
+          <span class="detail-panel-title">#R-${r.id} — 신고 상세 검토</span>
+          <button class="btn btn-sm" onclick="closeDetail(${r.id})">닫기</button>
+        </div>
+        <div class="detail-grid">
+          <div class="detail-block"><div class="detail-block-label">신고 사유</div><div class="detail-block-value">${esc(reasonLabel(r.reason))}</div></div>
+          <div class="detail-block"><div class="detail-block-label">신고자 정보</div><div class="detail-block-value">${esc(r.reporter_username || '-')} (ID: ${esc(r.reporter_id)})</div></div>
+          <div class="detail-block"><div class="detail-block-label">대상 타입</div><div class="detail-block-value">${esc(reportTypeLabel(r.target_type))} #${esc(r.target_id)}</div></div>
+          <div class="detail-block"><div class="detail-block-label">동일 대상 pending</div><div class="detail-block-value ${Number(r.pending_target_count || 0) >= 3 ? 'txt-danger' : ''}">${Number(r.pending_target_count || 0)}건</div></div>
+        </div>
+        <div class="section-title">원문 내용</div>
+        <div class="original-content">${esc(r.target_content || r.description || '-')}</div>
+        ${renderTargetImages(r.target_image_urls)}
+        <div class="section-title">판정 메모</div>
+        <textarea class="note-input" id="note-${r.id}" placeholder="판정 메모를 입력하세요"></textarea>
+        <div class="malicious-row">
+          <input type="checkbox" id="malicious-${r.id}">
+          <label for="malicious-${r.id}">악의적 허위 신고로 판정 (false_report_warning_count +1)</label>
+        </div>
+        <div class="action-row">
+          <button class="btn btn-green" onclick="doAction(${r.id}, 'confirm')">확정(confirm) — 정당 신고</button>
+          <button class="btn btn-red" onclick="doAction(${r.id}, 'reject')">기각(reject) — 기각/복구</button>
+        </div>
+      </div>
+    `;
+  }
+
+  function toggleDetail(id) {
+    state.selectedReportId = state.selectedReportId === id ? null : id;
+    renderReports();
+  }
+
+  function closeDetail() {
+    state.selectedReportId = null;
+    renderReports();
+  }
+
+  async function doAction(id, action) {
+    const note = document.getElementById(`note-${id}`)?.value?.trim() || null;
+    const malicious = !!document.getElementById(`malicious-${id}`)?.checked;
+    try {
+      await api(`/reports/${id}`, {
+        method: 'PATCH',
+        body: JSON.stringify({
+          action: action === 'confirm' ? 'CONFIRM' : 'REJECT',
+          note,
+          malicious: action === 'reject' ? malicious : false,
+        }),
+      });
+      await Promise.all([loadDashboard(), loadReports(), loadLogs()]);
+      alert('처리되었습니다.');
+    } catch (error) {
+      alert(error.message);
+    }
+  }
+
+  function toggleAll(chk) {
+    state.selected.clear();
+    if (chk.checked) {
+      state.reports.forEach((r) => state.selected.add(String(r.id)));
+    }
+    renderReports();
+  }
+
+  function updateBulk() {
+    const loadedIds = new Set(state.reports.map((r) => String(r.id)));
+    const effectiveSelectedCount = [...state.selected].filter((id) => loadedIds.has(id)).length;
+    document.getElementById('bulk-count').textContent = `${effectiveSelectedCount}건 선택됨`;
+    document.getElementById('bulk-bar').classList.toggle('show', effectiveSelectedCount > 0);
+    document.querySelectorAll('#report-tbody tr').forEach((tr) => {
+      const chk = tr.querySelector('.row-chk');
+      tr.classList.toggle('selected-row', chk && chk.checked);
+    });
+    const all = document.getElementById('chk-all');
+    if (all) all.checked = state.reports.length > 0 && effectiveSelectedCount === state.reports.length;
+  }
+
+  function clearSelection() {
+    state.selected.clear();
+    renderReports();
+  }
+
+  async function bulkAction(action) {
+    const loadedIds = new Set(state.reports.map((r) => String(r.id)));
+    const ids = [...state.selected].filter((id) => loadedIds.has(id)).map((v) => Number(v));
+    if (!ids.length) return;
+    openBulkActionDialog(action);
+  }
+
+  function openBulkActionDialog(action) {
+    state.bulkActionMode = action;
+    const title = document.getElementById('bulk-action-dialog-title');
+    const noteInput = document.getElementById('bulk-action-note-input');
+    const maliciousRow = document.getElementById('bulk-action-malicious-row');
+    const maliciousCheck = document.getElementById('bulk-action-malicious-check');
+    const backdrop = document.getElementById('bulk-action-dialog-backdrop');
+    if (title) {
+      title.textContent = action === 'confirm' ? '일괄 확정 메모 입력' : '일괄 기각 메모 입력';
+    }
+    if (noteInput) noteInput.value = '';
+    if (maliciousCheck) maliciousCheck.checked = false;
+    if (maliciousRow) maliciousRow.style.display = action === 'reject' ? 'flex' : 'none';
+    if (backdrop) backdrop.classList.add('show');
+    if (noteInput) noteInput.focus();
+  }
+
+  function closeBulkActionDialog() {
+    state.bulkActionMode = null;
+    const backdrop = document.getElementById('bulk-action-dialog-backdrop');
+    if (backdrop) backdrop.classList.remove('show');
+  }
+
+  function closeBulkActionDialogByBackdrop(event) {
+    if (event.target?.id === 'bulk-action-dialog-backdrop') closeBulkActionDialog();
+  }
+
+  async function submitBulkActionDialog() {
+    const action = state.bulkActionMode;
+    if (!action) return;
+    const loadedIds = new Set(state.reports.map((r) => String(r.id)));
+    const ids = [...state.selected].filter((id) => loadedIds.has(id)).map((v) => Number(v));
+    if (!ids.length) {
+      alert('선택된 신고가 없습니다.');
+      return;
+    }
+    const note = String(document.getElementById('bulk-action-note-input')?.value || '').trim();
+    if (!note) {
+      alert('처리 메모는 필수입니다.');
+      return;
+    }
+    const malicious = !!document.getElementById('bulk-action-malicious-check')?.checked;
+    if (!confirm(`${ids.length}건을 일괄 ${action === 'confirm' ? '확정' : '기각'} 처리할까요?`)) return;
+    try {
+      await api(`/reports/bulk-${action}`, {
+        method: 'POST',
+        body: JSON.stringify({ ids, note, malicious: action === 'reject' ? malicious : false }),
+      });
+      state.selected.clear();
+      closeBulkActionDialog();
+      await Promise.all([loadDashboard(), loadReports(), loadLogs()]);
+      alert('일괄 처리되었습니다.');
+    } catch (error) {
+      alert(error.message);
+    }
+  }
+
+  async function applyFilter() {
+    await loadReports();
+  }
+
+  async function loadReports() {
+    const reporter = document.getElementById('search-reporter')?.value?.trim() || '';
+    const type = document.getElementById('filter-type')?.value || '';
+    const reason = document.getElementById('filter-reason')?.value || '';
+    const fromDate = document.getElementById('filter-from-date')?.value || '';
+    const toDate = document.getElementById('filter-to-date')?.value || '';
+    const q = new URLSearchParams();
+    q.set('view', 'pending');
+    if (reporter) q.set('reporter', reporter);
+    if (type) q.set('type', type);
+    if (reason) q.set('reason', reason);
+    if (fromDate) q.set('fromDate', fromDate);
+    if (toDate) q.set('toDate', toDate);
+    const { data } = await api(`/reports?${q.toString()}`);
+    state.reports = data.reports || [];
+    if (!state.reports.some((r) => r.id === state.selectedReportId)) state.selectedReportId = null;
+    renderReports();
+  }
+
+  function renderProcessedReports() {
+    const tbody = document.getElementById('processed-report-tbody');
+    if (!state.processedReports.length) {
+      tbody.innerHTML = `<tr><td colspan="9" class="txt-muted">처리 이력이 없습니다.</td></tr>`;
+      updateProcessedBulk();
+      return;
+    }
+    const groupsMap = new Map();
+    state.processedReports.forEach((r) => {
+      const key = threadKeyOf(r);
+      if (!groupsMap.has(key)) groupsMap.set(key, []);
+      groupsMap.get(key).push(r);
+    });
+    const groups = [...groupsMap.entries()].map(([key, items]) => {
+      const sorted = [...items].sort((a, b) => new Date(b.reviewed_at || b.created_at) - new Date(a.reviewed_at || a.created_at));
+      return { key, items: sorted, latest: sorted[0] };
+    });
+
+    tbody.innerHTML = groups.map((g) => {
+      const isExpanded = state.processedExpandedThreads.has(g.key);
+      const allChecked = g.items.every((r) => state.processedSelected.has(String(r.id)));
+      const someChecked = g.items.some((r) => state.processedSelected.has(String(r.id)));
+      const titlePrefix = isExpanded ? '▼' : '▶';
+      const summaryRow = `
+        <tr class="clickable" onclick="toggleProcessedThread('${esc(g.key)}')">
+          <td onclick="event.stopPropagation()">
+            <input type="checkbox" class="processed-thread-chk" data-thread="${esc(g.key)}" ${allChecked ? 'checked' : ''} ${!allChecked && someChecked ? 'data-indeterminate=\"true\"' : ''} onchange="toggleProcessedThreadSelection('${esc(g.key)}', this.checked)">
+          </td>
+          <td>${titlePrefix} #T-${esc(g.latest.target_type)}-${esc(g.latest.target_id)}</td>
+          <td>${esc(g.latest.reporter_username || '-')}</td>
+          <td><span class="pill ${reportTypePill(g.latest.target_type)}">${esc(reportTypeLabel(g.latest.target_type))}</span></td>
+          <td>${esc(reasonLabel(g.latest.reason))}</td>
+          <td class="txt-ellipsis">${esc(g.latest.target_content || g.latest.description || '-')}</td>
+          <td class="txt-muted">${fmtDate(g.latest.reviewed_at || g.latest.created_at)}</td>
+          <td><span class="pill ${statusPill(g.latest.status)}">${esc(statusLabel(g.latest.status))}</span></td>
+          <td><button class="btn btn-sm" onclick="event.stopPropagation();reopenReport(${g.latest.id})">재오픈</button></td>
+        </tr>
+      `;
+      if (!isExpanded) return summaryRow;
+      const children = g.items.map((r) => `
+        <tr>
+          <td><input type="checkbox" class="processed-row-chk" ${state.processedSelected.has(String(r.id)) ? 'checked' : ''} onchange="toggleProcessedRowSelection(${r.id}, this.checked)"></td>
+          <td style="padding-left:22px;">└ #R-${r.id}</td>
+          <td>${esc(r.reporter_username || '-')}</td>
+          <td><span class="pill ${reportTypePill(r.target_type)}">${esc(reportTypeLabel(r.target_type))}</span></td>
+          <td>${esc(reasonLabel(r.reason))}</td>
+          <td class="txt-ellipsis">${esc(r.target_content || r.description || '-')}</td>
+          <td class="txt-muted">${fmtDate(r.reviewed_at || r.created_at)}</td>
+          <td><span class="pill ${statusPill(r.status)}">${esc(statusLabel(r.status))}</span></td>
+          <td><button class="btn btn-sm" onclick="reopenReport(${r.id})">재오픈</button></td>
+        </tr>
+      `).join('');
+      return `${summaryRow}${children}`;
+    }).join('');
+    document.querySelectorAll('.processed-thread-chk[data-indeterminate="true"]').forEach((el) => {
+      el.indeterminate = true;
+    });
+    updateProcessedBulk();
+  }
+
+  function toggleProcessedThread(key) {
+    if (state.processedExpandedThreads.has(key)) state.processedExpandedThreads.delete(key);
+    else state.processedExpandedThreads.add(key);
+    renderProcessedReports();
+  }
+
+  function toggleProcessedThreadSelection(key, checked) {
+    const ids = state.processedReports.filter((r) => threadKeyOf(r) === key).map((r) => String(r.id));
+    if (checked) ids.forEach((id) => state.processedSelected.add(id));
+    else ids.forEach((id) => state.processedSelected.delete(id));
+    renderProcessedReports();
+  }
+
+  function toggleProcessedRowSelection(id, checked) {
+    const key = String(id);
+    if (checked) state.processedSelected.add(key);
+    else state.processedSelected.delete(key);
+    renderProcessedReports();
+  }
+
+  function toggleAllProcessed(chk) {
+    state.processedSelected.clear();
+    if (chk.checked) {
+      state.processedReports.forEach((r) => state.processedSelected.add(String(r.id)));
+    }
+    renderProcessedReports();
+  }
+
+  function clearProcessedSelection() {
+    state.processedSelected.clear();
+    renderProcessedReports();
+  }
+
+  function updateProcessedBulk() {
+    const loadedIds = new Set(state.processedReports.map((r) => String(r.id)));
+    const effectiveSelectedCount = [...state.processedSelected].filter((id) => loadedIds.has(id)).length;
+    const bar = document.getElementById('processed-bulk-bar');
+    const countEl = document.getElementById('processed-bulk-count');
+    if (countEl) countEl.textContent = `${effectiveSelectedCount}건 선택됨`;
+    if (bar) bar.classList.toggle('show', effectiveSelectedCount > 0);
+    const all = document.getElementById('processed-chk-all');
+    if (all) all.checked = state.processedReports.length > 0 && effectiveSelectedCount === state.processedReports.length;
+  }
+
+  async function loadProcessedReports() {
+    const reporter = document.getElementById('processed-search-reporter')?.value?.trim() || '';
+    const type = document.getElementById('processed-filter-type')?.value || '';
+    const status = document.getElementById('processed-filter-status')?.value || '';
+    const fromDate = document.getElementById('processed-filter-from-date')?.value || '';
+    const toDate = document.getElementById('processed-filter-to-date')?.value || '';
+    const q = new URLSearchParams();
+    q.set('view', 'processed');
+    if (reporter) q.set('reporter', reporter);
+    if (type) q.set('type', type);
+    if (status) q.set('status', status);
+    if (fromDate) q.set('fromDate', fromDate);
+    if (toDate) q.set('toDate', toDate);
+    const { data } = await api(`/reports?${q.toString()}`);
+    state.processedReports = data.reports || [];
+    state.processedSelected.clear();
+    renderProcessedReports();
+  }
+
+  function reopenReport(reportId) {
+    state.reopenReportId = reportId;
+    state.reopenBulkMode = false;
+    const backdrop = document.getElementById('reopen-dialog-backdrop');
+    const title = document.getElementById('reopen-dialog-title');
+    const input = document.getElementById('reopen-note-input');
+    if (title) title.textContent = `#R-${reportId} 재판정 메모 입력`;
+    if (input) input.value = '';
+    if (backdrop) backdrop.classList.add('show');
+    if (input) input.focus();
+  }
+
+  function closeReopenDialog() {
+    state.reopenReportId = null;
+    state.reopenBulkMode = false;
+    const backdrop = document.getElementById('reopen-dialog-backdrop');
+    if (backdrop) backdrop.classList.remove('show');
+  }
+
+  function closeReopenDialogByBackdrop(event) {
+    if (event.target?.id === 'reopen-dialog-backdrop') {
+      closeReopenDialog();
+    }
+  }
+
+  async function submitReopenDialog() {
+    const reportId = state.reopenReportId;
+    const loadedIds = new Set(state.processedReports.map((r) => String(r.id)));
+    const selectedIds = [...state.processedSelected].filter((id) => loadedIds.has(id)).map((id) => Number(id));
+    const isBulk = state.reopenBulkMode === true;
+    if (!reportId && !isBulk) return;
+    const input = document.getElementById('reopen-note-input');
+    const trimmed = String(input?.value || '').trim();
+    if (!trimmed) {
+      alert('재판정 메모는 필수입니다.');
+      return;
+    }
+    if (isBulk) {
+      if (!selectedIds.length) {
+        alert('선택된 신고가 없습니다.');
+        return;
+      }
+      if (!confirm(`${selectedIds.length}건을 미처리 상태로 일괄 재오픈할까요?`)) return;
+    } else {
+      if (!confirm(`#R-${reportId} 신고를 미처리 상태로 되돌릴까요?`)) return;
+    }
+    try {
+      if (isBulk) {
+        await api(`/reports/bulk-reopen`, { method: 'PATCH', body: JSON.stringify({ ids: selectedIds, note: trimmed }) });
+      } else {
+        await api(`/reports/${reportId}/reopen`, { method: 'PATCH', body: JSON.stringify({ note: trimmed }) });
+      }
+      await Promise.all([loadDashboard(), loadReports(), loadProcessedReports(), loadLogs()]);
+      closeReopenDialog();
+      alert(isBulk ? '선택 건을 미처리 상태로 되돌렸습니다.' : '미처리 상태로 되돌렸습니다.');
+    } catch (error) {
+      alert(error.message);
+    }
+  }
+
+  function bulkReopenProcessed() {
+    const loadedIds = new Set(state.processedReports.map((r) => String(r.id)));
+    const selectedCount = [...state.processedSelected].filter((id) => loadedIds.has(id)).length;
+    if (!selectedCount) {
+      alert('선택된 신고가 없습니다.');
+      return;
+    }
+    state.reopenReportId = null;
+    state.reopenBulkMode = true;
+    const backdrop = document.getElementById('reopen-dialog-backdrop');
+    const title = document.getElementById('reopen-dialog-title');
+    const input = document.getElementById('reopen-note-input');
+    if (title) title.textContent = `선택 ${selectedCount}건 재판정 메모 입력`;
+    if (input) input.value = '';
+    if (backdrop) backdrop.classList.add('show');
+    if (input) input.focus();
+  }
+
+  async function loadAppeals() {
+    const { data } = await api('/appeals');
+    const list = data.appeals || [];
+    const container = document.getElementById('appeals-list');
+    if (!list.length) {
+      container.innerHTML = `<div class="txt-muted">이의신청이 없습니다.</div>`;
+      return;
+    }
+    container.innerHTML = list.map((a) => `
+      <div class="appeal-card">
+        <div class="appeal-header">
+          <span class="appeal-header-title">#A-${a.id}</span>
+          <span class="pill ${statusPill(a.status)}">${esc(statusLabel(a.status))}</span>
+          <span style="margin-left:auto;font-size:11px;color:var(--text-tertiary)">${fmtDate(a.created_at)} 접수</span>
+        </div>
+        <div class="appeal-body">
+          <div class="detail-grid" style="margin-bottom:12px">
+            <div class="detail-block"><div class="detail-block-label">신청자</div><div class="detail-block-value">UID #${esc(a.appellant_id)}</div></div>
+            <div class="detail-block"><div class="detail-block-label">대상 게시글</div><div class="detail-block-value">post #${esc(a.post_id)}</div></div>
+          </div>
+          <div class="section-title">소명 내용</div>
+          <div class="appeal-content">${esc(a.content)}</div>
+          <div class="section-title">관리자 검토 메모</div>
+          <textarea class="note-input" id="note-appeal-${a.id}" placeholder="검토 메모를 입력하세요">${esc(a.review_note || '')}</textarea>
+          <div class="appeal-actions">
+            <button class="btn btn-green" onclick="appealAction(${a.id}, 'accepted')">승인(accepted) — 게시글 복구</button>
+            <button class="btn btn-red" onclick="appealAction(${a.id}, 'rejected')">반려(rejected) — 제재 유지</button>
+          </div>
+        </div>
+      </div>
+    `).join('');
+  }
+
+  async function appealAction(id, action) {
+    const note = document.getElementById(`note-appeal-${id}`)?.value?.trim() || null;
+    try {
+      await api(`/appeals/${id}`, {
+        method: 'PATCH',
+        body: JSON.stringify({ status: action, review_note: note }),
+      });
+      await Promise.all([loadDashboard(), loadAppeals(), loadLogs()]);
+      alert('이의신청 처리가 완료되었습니다.');
+    } catch (error) {
+      alert(error.message);
+    }
+  }
+
+  async function loadUsers() {
+    const qInput = document.getElementById('users-search-q')?.value?.trim() || '';
+    const filter = document.getElementById('users-filter')?.value || '';
+    const minViolationWarning = document.getElementById('users-min-violation')?.value?.trim() || '';
+    const minFalseReportWarning = document.getElementById('users-min-false-report')?.value?.trim() || '';
+    const minReported = document.getElementById('users-min-reported')?.value?.trim() || '';
+    const sanction = document.getElementById('users-sanction-filter')?.value || '';
+    const qs = new URLSearchParams();
+    if (qInput) qs.set('q', qInput);
+    if (filter) qs.set('filter', filter);
+    if (minViolationWarning) qs.set('minViolationWarning', minViolationWarning);
+    if (minFalseReportWarning) qs.set('minFalseReportWarning', minFalseReportWarning);
+    if (minReported) qs.set('minReported', minReported);
+    if (sanction) qs.set('sanction', sanction);
+    const { data } = await api(`/users?${qs.toString()}`);
+    const list = data.users || [];
+    const container = document.getElementById('users-list');
+    if (!list.length) {
+      container.innerHTML = `<div class="txt-muted">사용자 데이터가 없습니다.</div>`;
+      return;
+    }
+    container.innerHTML = list.map((u) => `
+      <div class="user-card">
+        <div class="user-header">
+          <div class="user-avatar">${esc((u.username || u.name || `U${u.id}`).slice(0, 2).toUpperCase())}</div>
+          <div>
+            <div class="user-name">
+              ${esc(u.username || '-')} <span style="font-size:11px;color:var(--text-tertiary);font-weight:400;">(UID #${u.id})</span>
+              ${u.is_whitelisted ? '<span class="pill pill-white" style="margin-left:8px;font-size:10px">화이트리스트</span>' : ''}
+              ${u.is_banned ? '<span class="pill pill-danger" style="margin-left:8px;font-size:10px">영구 정지</span>' : ''}
+              ${u.is_suspended && !u.is_banned ? '<span class="pill pill-warn" style="margin-left:8px;font-size:10px">임시 정지</span>' : ''}
+            </div>
+            <div class="user-sub">${esc(u.name || '-')}</div>
+          </div>
+        </div>
+        <div class="user-stats-grid">
+          <div class="user-stat"><div class="user-stat-num ${u.violation_warning_count > 0 ? 'txt-danger' : 'txt-ok'}">${u.violation_warning_count || 0}</div><div class="user-stat-label">위반 경고</div></div>
+          <div class="user-stat"><div class="user-stat-num">${u.false_report_warning_count || 0}</div><div class="user-stat-label">허위신고 경고</div></div>
+          <div class="user-stat"><div class="user-stat-num">${u.post_count || 0}</div><div class="user-stat-label">총 게시글</div></div>
+          <div class="user-stat"><div class="user-stat-num ${Number(u.reported_count || 0) > 0 ? 'txt-danger' : ''}">${u.reported_count || 0}</div><div class="user-stat-label">신고당한 수</div></div>
+        </div>
+        <div class="user-actions-row">
+          <button class="btn btn-sm btn-amber" onclick="suspendUser(${u.id})">임시 정지</button>
+          ${u.is_whitelisted
+            ? `<button class="btn btn-sm btn-red" onclick="unwhitelistUser(${u.id})">화이트리스트 해제</button>`
+            : `<button class="btn btn-sm" onclick="whitelistUser(${u.id})">화이트리스트 추가</button>`}
+          <button class="btn btn-sm btn-red" onclick="banUser(${u.id})">영구 정지</button>
+          <span style="margin-left:auto;font-size:11px;color:var(--text-tertiary)">${u.suspended_until ? `정지 해제 예정: ${fmtDate(u.suspended_until)}` : ''}</span>
+        </div>
+      </div>
+    `).join('');
+  }
+
+  async function suspendUser(uid) {
+    const days = prompt('임시 정지 기간(일)을 입력하세요', '3');
+    if (!days) return;
+    try {
+      await api(`/users/${uid}/suspend`, {
+        method: 'POST',
+        body: JSON.stringify({ days: Number(days) || 3 }),
+      });
+      await Promise.all([loadUsers(), loadLogs()]);
+      alert('임시 정지 처리되었습니다.');
+    } catch (error) {
+      alert(error.message);
+    }
+  }
+
+  async function whitelistUser(uid) {
+    try {
+      await api(`/users/${uid}/whitelist`, { method: 'POST' });
+      await Promise.all([loadUsers(), loadLogs()]);
+      alert('화이트리스트에 추가되었습니다.');
+    } catch (error) {
+      alert(error.message);
+    }
+  }
+
+  async function unwhitelistUser(uid) {
+    try {
+      await api(`/users/${uid}/whitelist`, { method: 'DELETE' });
+      await Promise.all([loadUsers(), loadLogs()]);
+      alert('화이트리스트에서 해제되었습니다.');
+    } catch (error) {
+      alert(error.message);
+    }
+  }
+
+  async function banUser(uid) {
+    if (!confirm(`UID #${uid}을 영구 정지하시겠습니까?`)) return;
+    try {
+      await api(`/users/${uid}/ban`, { method: 'POST' });
+      await Promise.all([loadUsers(), loadLogs()]);
+      alert('영구 정지 처리되었습니다.');
+    } catch (error) {
+      alert(error.message);
+    }
+  }
+
+  async function applyUsersFilter() {
+    try {
+      await loadUsers();
+    } catch (error) {
+      alert(error.message);
+    }
+  }
+
+  async function loadLogs() {
+    const qInput = document.getElementById('logs-search-q')?.value?.trim() || '';
+    const action = document.getElementById('logs-action')?.value || '';
+    const fromDate = document.getElementById('logs-from-date')?.value || '';
+    const toDate = document.getElementById('logs-to-date')?.value || '';
+    const qs = new URLSearchParams();
+    if (qInput) qs.set('q', qInput);
+    if (action) qs.set('action', action);
+    if (fromDate) qs.set('fromDate', fromDate);
+    if (toDate) qs.set('toDate', toDate);
+    const { data } = await api(`/logs?${qs.toString()}`);
+    const list = data.logs || [];
+    const tbody = document.getElementById('logs-tbody');
+    if (!list.length) {
+      tbody.innerHTML = `<tr><td colspan="5" class="txt-muted">변경 이력이 없습니다.</td></tr>`;
+      return;
+    }
+    tbody.innerHTML = list.map((l) => `
+      <tr>
+        <td class="txt-muted">${fmtDate(l.created_at)}</td>
+        <td>admin #${esc(l.admin_user_id)}</td>
+        <td>${esc(l.target_type)} #${esc(l.target_id)}</td>
+        <td><span class="pill ${statusPill(l.action_type.includes('reject') ? 'rejected' : l.action_type.includes('confirm') || l.action_type.includes('accept') ? 'resolved' : 'pending')}">${esc(actionTypeLabel(l.action_type))}</span></td>
+        <td style="color:var(--text-secondary)">${esc(l.note || '-')}</td>
+      </tr>
+    `).join('');
+  }
+
+  async function applyLogsFilter() {
+    try {
+      await loadLogs();
+    } catch (error) {
+      alert(error.message);
+    }
+  }
+
+  async function loadDelayed() {
+    const delayed = state.reports.filter((r) => {
+      const created = new Date(r.created_at).getTime();
+      if (!created) return false;
+      const diffDays = (Date.now() - created) / (1000 * 60 * 60 * 24);
+      return r.status === 'pending' && diffDays >= 3;
+    });
+    const tbody = document.getElementById('dashboard-delayed-tbody');
+    if (!delayed.length) {
+      tbody.innerHTML = `<tr><td colspan="6" class="txt-muted">3일 이상 미처리 건이 없습니다.</td></tr>`;
+      return;
+    }
+    tbody.innerHTML = delayed.slice(0, 10).map((r) => {
+      const days = Math.floor((Date.now() - new Date(r.created_at).getTime()) / (1000 * 60 * 60 * 24));
+      return `
+        <tr>
+          <td>#R-${r.id}</td>
+          <td><span class="pill ${reportTypePill(r.target_type)}">${esc(r.target_type)}</span></td>
+          <td>${esc(r.reason)}</td>
+          <td class="txt-muted">${fmtDate(r.created_at)}</td>
+          <td class="txt-danger">${days}일</td>
+          <td><button class="btn btn-sm" onclick="go('reports');toggleDetail(${r.id});">검토 →</button></td>
+        </tr>
+      `;
+    }).join('');
+  }
+
+  async function bootstrap() {
+    try {
+      await Promise.all([loadDashboard(), loadReports(), loadProcessedReports(), loadAppeals(), loadUsers(), loadLogs()]);
+      await loadDelayed();
+    } catch (error) {
+      alert(`관리자 데이터 로딩 실패: ${error.message}\n\n세션 쿠키/ADMIN_USER_IDS/백엔드 서버 상태를 확인해주세요.`);
+    }
+  }
+
+  bootstrap();
+</script>
+</body>
+</html>

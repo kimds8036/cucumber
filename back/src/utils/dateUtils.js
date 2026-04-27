@@ -50,3 +50,17 @@ export function getKstThreeDaysThroughToday235959UtcForSql() {
   const end = toSqlUtcFromKstDateTime(`${kstYmd}T23:59:59+09:00`);
   return { start, end };
 }
+
+/**
+ * @returns {{ start: string, end: string }} KST 당일 00:00:00 ~ 23:59:59의 UTC SQL 문자열
+ */
+export function getKstTodayRangeUtcForSql() {
+  const kstYmd = new Intl.DateTimeFormat('sv-SE', {
+    timeZone: 'Asia/Seoul',
+  })
+    .format(new Date())
+    .slice(0, 10);
+  const start = toSqlUtcFromKstDateTime(`${kstYmd}T00:00:00+09:00`);
+  const end = toSqlUtcFromKstDateTime(`${kstYmd}T23:59:59+09:00`);
+  return { start, end };
+}

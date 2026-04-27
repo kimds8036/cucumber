@@ -4,6 +4,7 @@ import { authenticate, optionalAuthenticate } from '../middleware/auth.js';
 import { createNotification } from '../utils/notifications.js';
 import {
   getKstThreeDaysThroughToday235959UtcForSql,
+  getKstTodayRangeUtcForSql,
   getKstYesterday0000ThroughToday235959UtcForSql,
   getNowForDB,
 } from '../utils/dateUtils.js';
@@ -36,34 +37,34 @@ function normalizePostImagesFromRow(raw) {
 /** 좋아요/댓글/스크랩 **발생 시각**이 [start, end] 안에 드는 행을 게시물별로 집계 (전국) */
 const SQL_ENGAGED_EVENTS_NATIONAL = `
 (SELECT pl.post_id AS post_id FROM post_likes pl
-  INNER JOIN posts p ON p.id = pl.post_id AND p.board_type = 'national' AND p.is_deleted = FALSE
+  INNER JOIN posts p ON p.id = pl.post_id AND p.board_type = 'national' AND p.is_deleted = FALSE AND p.is_hidden = FALSE
   WHERE pl.created_at >= ? AND pl.created_at <= ?)
 UNION ALL
 (SELECT c.post_id FROM comments c
-  INNER JOIN posts p ON p.id = c.post_id AND p.board_type = 'national' AND p.is_deleted = FALSE
+  INNER JOIN posts p ON p.id = c.post_id AND p.board_type = 'national' AND p.is_deleted = FALSE AND p.is_hidden = FALSE
   WHERE (c.is_deleted = FALSE OR c.is_deleted IS NULL)
     AND c.created_at >= ? AND c.created_at <= ?)
 UNION ALL
 (SELECT ps.post_id FROM post_scraps ps
-  INNER JOIN posts p ON p.id = ps.post_id AND p.board_type = 'national' AND p.is_deleted = FALSE
+  INNER JOIN posts p ON p.id = ps.post_id AND p.board_type = 'national' AND p.is_deleted = FALSE AND p.is_hidden = FALSE
   WHERE ps.created_at >= ? AND ps.created_at <= ?)`;
 
 /** 학교 게시물 한정, 동일 집계 */
 const SQL_ENGAGED_EVENTS_SCHOOL = `
 (SELECT pl.post_id AS post_id FROM post_likes pl
   INNER JOIN posts p ON p.id = pl.post_id
-    AND p.board_type = 'school' AND p.school_id = ? AND p.is_deleted = FALSE
+    AND p.board_type = 'school' AND p.school_id = ? AND p.is_deleted = FALSE AND p.is_hidden = FALSE
   WHERE pl.created_at >= ? AND pl.created_at <= ?)
 UNION ALL
 (SELECT c.post_id FROM comments c
   INNER JOIN posts p ON p.id = c.post_id
-    AND p.board_type = 'school' AND p.school_id = ? AND p.is_deleted = FALSE
+    AND p.board_type = 'school' AND p.school_id = ? AND p.is_deleted = FALSE AND p.is_hidden = FALSE
   WHERE (c.is_deleted = FALSE OR c.is_deleted IS NULL)
     AND c.created_at >= ? AND c.created_at <= ?)
 UNION ALL
 (SELECT ps.post_id FROM post_scraps ps
   INNER JOIN posts p ON p.id = ps.post_id
-    AND p.board_type = 'school' AND p.school_id = ? AND p.is_deleted = FALSE
+    AND p.board_type = 'school' AND p.school_id = ? AND p.is_deleted = FALSE AND p.is_hidden = FALSE
   WHERE ps.created_at >= ? AND ps.created_at <= ?)`;
 
 function engagementWindowParams6(start, end) {
@@ -140,7 +141,7 @@ async function loadPostsRowsByIdOrder(
     FROM posts p
     LEFT JOIN users u ON p.user_id = u.id
     LEFT JOIN schools s ON p.school_id = s.school_id
-    WHERE p.id IN (${placeholders}) AND p.is_deleted = FALSE
+    WHERE p.id IN (${placeholders}) AND p.is_deleted = FALSE AND p.is_hidden = FALSE
       AND (${whereAndSql})
     ORDER BY FIELD(p.id, ${orderByField})`,
     popularParams
@@ -263,8 +264,8 @@ router.get('/', optionalAuthenticate, async (req, res) => {
 
     const whereClause =
       conditions.length > 0
-        ? `WHERE ${conditions.join(' AND ')} AND p.is_deleted = FALSE`
-        : 'WHERE p.is_deleted = FALSE';
+        ? `WHERE ${conditions.join(' AND ')} AND p.is_deleted = FALSE AND p.is_hidden = FALSE`
+        : 'WHERE p.is_deleted = FALSE AND p.is_hidden = FALSE';
 
     const likeScrapUserId = userId ?? 0;
 
@@ -544,8 +545,8 @@ router.get('/my', authenticate, async (req, res) => {
 
     const whereClause =
       conditions.length > 0
-        ? `WHERE ${conditions.join(' AND ')} AND p.is_deleted = FALSE`
-        : 'WHERE p.is_deleted = FALSE';
+        ? `WHERE ${conditions.join(' AND ')} AND p.is_deleted = FALSE AND p.is_hidden = FALSE`
+        : 'WHERE p.is_deleted = FALSE AND p.is_hidden = FALSE';
 
     let orderBy = 'p.created_at DESC';
     if (sort === 'popular') {
@@ -630,6 +631,69 @@ router.get('/my', authenticate, async (req, res) => {
   }
 });
 
+// 내가 쓴 숨김 글 목록
+router.get('/my/hidden', authenticate, async (req, res) => {
+  try {
+    const userId = req.user.userId;
+    const { page = 1, limit = 20 } = req.query;
+
+    const limitNum = Math.max(1, Math.min(100, parseInt(limit, 10) || 20));
+    const offsetNum = Math.max(0, (parseInt(page, 10) - 1) * limitNum);
+
+    const [posts] = await pool.execute(
+      `SELECT
+         p.id,
+         p.board_type,
+         p.school_id,
+         p.content,
+         p.like_count,
+         p.comment_count,
+         p.created_at,
+         p.hidden_reason,
+         p.hidden_at,
+         p.hidden_by_report_count,
+         s.name AS school_name
+       FROM posts p
+       LEFT JOIN schools s ON p.school_id = s.school_id
+       WHERE p.user_id = ?
+         AND p.is_deleted = FALSE
+         AND p.is_hidden = TRUE
+       ORDER BY p.hidden_at DESC, p.created_at DESC
+       LIMIT ${limitNum} OFFSET ${offsetNum}`,
+      [userId]
+    );
+
+    const [countRows] = await pool.execute(
+      `SELECT COUNT(*) AS total
+       FROM posts p
+       WHERE p.user_id = ?
+         AND p.is_deleted = FALSE
+         AND p.is_hidden = TRUE`,
+      [userId]
+    );
+    const total = Number(countRows[0]?.total ?? 0);
+
+    res.json({
+      success: true,
+      data: {
+        posts,
+        pagination: {
+          page: parseInt(page, 10),
+          limit: limitNum,
+          total,
+          totalPages: Math.ceil(total / limitNum) || 1,
+        },
+      },
+    });
+  } catch (error) {
+    console.error('내 숨김 글 목록 조회 오류:', error);
+    res.status(500).json({
+      success: false,
+      message: '내 숨김 글 목록 조회 중 오류가 발생했습니다.',
+    });
+  }
+});
+
 // 좋아요 누른 글 목록
 router.get('/liked', authenticate, async (req, res) => {
   try {
@@ -669,8 +733,8 @@ router.get('/liked', authenticate, async (req, res) => {
 
     const whereClause =
       conditions.length > 0
-        ? `WHERE ${conditions.join(' AND ')} AND p.is_deleted = FALSE`
-        : 'WHERE p.is_deleted = FALSE';
+        ? `WHERE ${conditions.join(' AND ')} AND p.is_deleted = FALSE AND p.is_hidden = FALSE`
+        : 'WHERE p.is_deleted = FALSE AND p.is_hidden = FALSE';
 
     let orderBy = 'p.created_at DESC';
     if (sort === 'popular') {
@@ -777,8 +841,8 @@ router.get('/scrapped', authenticate, async (req, res) => {
 
     const whereClause =
       conditions.length > 0
-        ? `WHERE ${conditions.join(' AND ')} AND p.is_deleted = FALSE`
-        : 'WHERE p.is_deleted = FALSE';
+        ? `WHERE ${conditions.join(' AND ')} AND p.is_deleted = FALSE AND p.is_hidden = FALSE`
+        : 'WHERE p.is_deleted = FALSE AND p.is_hidden = FALSE';
 
     let orderBy = 'p.created_at DESC';
     if (sort === 'popular') {
@@ -865,6 +929,65 @@ router.get('/scrapped', authenticate, async (req, res) => {
   }
 });
 
+// 내가 접수한 신고 내역
+router.get('/reports/my', authenticate, async (req, res) => {
+  try {
+    const userId = req.user.userId;
+    const { page = 1, limit = 20 } = req.query;
+    const limitNum = Math.max(1, Math.min(100, parseInt(limit, 10) || 20));
+    const offsetNum = Math.max(0, (parseInt(page, 10) - 1) * limitNum);
+
+    const [rows] = await pool.execute(
+      `SELECT
+         r.id,
+         r.target_type,
+         r.target_id,
+         r.reason,
+         r.description,
+         r.status,
+         r.created_at,
+         r.reviewed_at,
+         CASE
+           WHEN r.target_type = 'post' THEN (SELECT p.content FROM posts p WHERE p.id = r.target_id)
+           WHEN r.target_type = 'comment' THEN (SELECT c.content FROM comments c WHERE c.id = r.target_id)
+           WHEN r.target_type = 'school_mail' THEN (SELECT sm.content FROM school_mails sm WHERE sm.id = r.target_id)
+           WHEN r.target_type = 'school_mail_comment' THEN (SELECT smc.content FROM school_mail_comments smc WHERE smc.id = r.target_id)
+           ELSE NULL
+         END AS target_content
+       FROM reports r
+       WHERE r.reporter_id = ?
+       ORDER BY r.created_at DESC
+       LIMIT ${limitNum} OFFSET ${offsetNum}`,
+      [userId]
+    );
+
+    const [countRows] = await pool.execute(
+      'SELECT COUNT(*) AS total FROM reports WHERE reporter_id = ?',
+      [userId]
+    );
+    const total = Number(countRows[0]?.total ?? 0);
+
+    res.json({
+      success: true,
+      data: {
+        reports: rows,
+        pagination: {
+          page: parseInt(page, 10),
+          limit: limitNum,
+          total,
+          totalPages: Math.ceil(total / limitNum) || 1,
+        },
+      },
+    });
+  } catch (error) {
+    console.error('내 신고 내역 조회 오류:', error);
+    res.status(500).json({
+      success: false,
+      message: '내 신고 내역 조회 중 오류가 발생했습니다.',
+    });
+  }
+});
+
 // 게시글 상세 조회 - 선택적 인증으로 본인 글 여부 반환
 router.get('/:id', optionalAuthenticate, async (req, res) => {
   try {
@@ -890,6 +1013,7 @@ router.get('/:id', optionalAuthenticate, async (req, res) => {
         p.board_type, 
         p.school_id, 
         p.content,
+        p.is_hidden,
         p.latitude,
         p.longitude,
         p.like_count, 
@@ -926,6 +1050,12 @@ router.get('/:id', optionalAuthenticate, async (req, res) => {
     }
 
     const post = posts[0];
+    if (post.is_hidden && post.user_id !== userId) {
+      return res.status(404).json({
+        success: false,
+        message: '게시글을 찾을 수 없습니다.',
+      });
+    }
     const images = normalizePostImagesFromRow(post.images);
 
     console.log('[GET /api/posts/:id] 게시글 조회 성공', {
@@ -1366,6 +1496,8 @@ router.post('/:id/report', authenticate, async (req, res) => {
     const reporterId = req.user.userId;
     const { id } = req.params;
     const { reason, description } = req.body;
+    const DAILY_REPORT_QUOTA = 5;
+    const AUTO_HIDE_REPORT_THRESHOLD = 3;
 
     if (!reason) {
       return res.status(400).json({ 
@@ -1375,11 +1507,32 @@ router.post('/:id/report', authenticate, async (req, res) => {
     }
 
     // 게시글 존재 확인 (삭제된 글은 신고 불가)
-    const [posts] = await pool.execute('SELECT id FROM posts WHERE id = ? AND is_deleted = FALSE', [id]);
+    const [posts] = await pool.execute(
+      'SELECT id FROM posts WHERE id = ? AND is_deleted = FALSE',
+      [id]
+    );
     if (posts.length === 0) {
       return res.status(404).json({ 
         success: false, 
         message: '게시글을 찾을 수 없습니다.' 
+      });
+    }
+
+    // 일일 신고 횟수 제한 (KST 기준)
+    const { start, end } = getKstTodayRangeUtcForSql();
+    const [dailyCountRows] = await pool.execute(
+      `SELECT COUNT(*) AS c
+       FROM reports
+       WHERE reporter_id = ?
+         AND created_at >= ?
+         AND created_at <= ?`,
+      [reporterId, start, end]
+    );
+    const todayCount = Number(dailyCountRows[0]?.c ?? 0);
+    if (todayCount >= DAILY_REPORT_QUOTA) {
+      return res.status(429).json({
+        success: false,
+        message: '오늘 신고 가능 횟수를 모두 사용했어요. 내일 다시 이용해 주세요.',
       });
     }
 
@@ -1392,26 +1545,198 @@ router.post('/:id/report', authenticate, async (req, res) => {
     if (existingReports.length > 0) {
       return res.status(400).json({ 
         success: false, 
-        message: '이미 신고한 게시글입니다.' 
+        message: '이미 신고한 게시물입니다.' 
       });
     }
 
-    // 신고 생성
-    await pool.execute(
-      `INSERT INTO reports (reporter_id, target_type, target_id, reason, description) 
-       VALUES (?, ?, ?, ?, ?)`,
-      [reporterId, 'post', id, reason, description || null]
-    );
+    const connection = await pool.getConnection();
+    let autoHidden = false;
+    try {
+      await connection.beginTransaction();
+
+      // 신고 생성
+      await connection.execute(
+        `INSERT INTO reports (reporter_id, target_type, target_id, reason, description) 
+         VALUES (?, ?, ?, ?, ?)`,
+        [reporterId, 'post', id, reason, description || null]
+      );
+
+      // pending 신고 누적 집계 후 자동 숨김
+      const [pendingRows] = await connection.execute(
+        `SELECT COUNT(*) AS c
+         FROM reports
+         WHERE target_type = 'post'
+           AND target_id = ?
+           AND status = 'pending'`,
+        [id]
+      );
+      const pendingCount = Number(pendingRows[0]?.c ?? 0);
+      if (pendingCount >= AUTO_HIDE_REPORT_THRESHOLD) {
+        autoHidden = true;
+        await connection.execute(
+          `UPDATE posts
+           SET is_hidden = TRUE,
+               hidden_reason = 'REPORT_THRESHOLD',
+               hidden_at = ?,
+               hidden_by_report_count = ?
+           WHERE id = ?
+             AND is_deleted = FALSE`,
+          [getNowForDB(), pendingCount, id]
+        );
+      }
+
+      await connection.commit();
+    } catch (txError) {
+      await connection.rollback();
+      throw txError;
+    } finally {
+      connection.release();
+    }
 
     res.status(201).json({
       success: true,
-      message: '신고가 접수되었습니다.'
+      message: '신고가 접수되었습니다. 더 안전한 커뮤니티를 위해 함께해 주셔서 감사합니다. 허위 신고가 반복되면 이용이 제한될 수 있습니다.',
+      data: {
+        autoHidden,
+      },
     });
   } catch (error) {
     console.error('게시글 신고 오류:', error);
     res.status(500).json({ 
       success: false, 
       message: '신고 처리 중 오류가 발생했습니다.' 
+    });
+  }
+});
+
+// 숨김 게시글 이의신청 등록
+router.post('/:id/appeal', authenticate, async (req, res) => {
+  try {
+    const userId = req.user.userId;
+    const { id } = req.params;
+    const { content } = req.body;
+
+    const appealContent = String(content ?? '').trim();
+    if (!appealContent) {
+      return res.status(400).json({
+        success: false,
+        message: '소명 내용을 입력해주세요.',
+      });
+    }
+
+    const [posts] = await pool.execute(
+      `SELECT id, user_id, is_hidden, is_deleted
+       FROM posts
+       WHERE id = ?`,
+      [id]
+    );
+    if (posts.length === 0 || posts[0].is_deleted) {
+      return res.status(404).json({
+        success: false,
+        message: '게시글을 찾을 수 없습니다.',
+      });
+    }
+    const post = posts[0];
+    if (post.user_id !== userId) {
+      return res.status(403).json({
+        success: false,
+        message: '본인 게시글에만 이의신청할 수 있습니다.',
+      });
+    }
+    if (!post.is_hidden) {
+      return res.status(400).json({
+        success: false,
+        message: '현재 숨김 처리된 게시글이 아닙니다.',
+      });
+    }
+
+    const [existingAppeals] = await pool.execute(
+      `SELECT id
+       FROM report_appeals
+       WHERE post_id = ?
+         AND appellant_id = ?
+         AND status = 'pending'
+       LIMIT 1`,
+      [id, userId]
+    );
+    if (existingAppeals.length > 0) {
+      return res.status(400).json({
+        success: false,
+        message: '이미 접수된 이의신청이 있습니다.',
+      });
+    }
+
+    await pool.execute(
+      `INSERT INTO report_appeals (post_id, appellant_id, content)
+       VALUES (?, ?, ?)`,
+      [id, userId, appealContent]
+    );
+
+    res.status(201).json({
+      success: true,
+      message: '이의신청이 접수되었습니다.',
+    });
+  } catch (error) {
+    console.error('이의신청 등록 오류:', error);
+    res.status(500).json({
+      success: false,
+      message: '이의신청 처리 중 오류가 발생했습니다.',
+    });
+  }
+});
+
+// 내 이의신청 내역 조회
+router.get('/appeals/my', authenticate, async (req, res) => {
+  try {
+    const userId = req.user.userId;
+    const { page = 1, limit = 20 } = req.query;
+    const limitNum = Math.max(1, Math.min(100, parseInt(limit, 10) || 20));
+    const offsetNum = Math.max(0, (parseInt(page, 10) - 1) * limitNum);
+
+    const [rows] = await pool.execute(
+      `SELECT
+         ra.id,
+         ra.post_id,
+         ra.content,
+         ra.status,
+         ra.review_note,
+         ra.reviewed_by,
+         ra.reviewed_at,
+         ra.created_at,
+         p.content AS post_content,
+         p.hidden_reason,
+         p.hidden_at
+       FROM report_appeals ra
+       INNER JOIN posts p ON p.id = ra.post_id
+       WHERE ra.appellant_id = ?
+       ORDER BY ra.created_at DESC
+       LIMIT ${limitNum} OFFSET ${offsetNum}`,
+      [userId]
+    );
+
+    const [countRows] = await pool.execute(
+      'SELECT COUNT(*) AS total FROM report_appeals WHERE appellant_id = ?',
+      [userId]
+    );
+    const total = Number(countRows[0]?.total ?? 0);
+
+    res.json({
+      success: true,
+      data: {
+        appeals: rows,
+        pagination: {
+          page: parseInt(page, 10),
+          limit: limitNum,
+          total,
+          totalPages: Math.ceil(total / limitNum) || 1,
+        },
+      },
+    });
+  } catch (error) {
+    console.error('내 이의신청 내역 조회 오류:', error);
+    res.status(500).json({
+      success: false,
+      message: '이의신청 내역 조회 중 오류가 발생했습니다.',
     });
   }
 });

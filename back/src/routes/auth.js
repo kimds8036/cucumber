@@ -552,7 +552,7 @@ router.post('/login', async (req, res) => {
 
     // 사용자 조회
     const [users] = await pool.execute(
-      `SELECT id, username, password, name, phone, is_deleted 
+      `SELECT id, username, password, name, phone, is_deleted, is_banned, is_suspended, suspended_until
        FROM users WHERE username = ?`,
       [username]
     );
@@ -571,6 +571,24 @@ router.post('/login', async (req, res) => {
         success: false, 
         message: '탈퇴한 사용자입니다.' 
       });
+    }
+    if (user.is_banned) {
+      return res.status(403).json({
+        success: false,
+        message: '영구 정지된 계정입니다.',
+        code: 'ACCOUNT_BANNED',
+      });
+    }
+    if (user.is_suspended) {
+      const until = user.suspended_until ? new Date(user.suspended_until) : null;
+      if (!until || until > new Date()) {
+        return res.status(403).json({
+          success: false,
+          message: '임시 정지된 계정입니다.',
+          code: 'ACCOUNT_SUSPENDED',
+          suspendedUntil: user.suspended_until || null,
+        });
+      }
     }
 
     // 비밀번호 확인

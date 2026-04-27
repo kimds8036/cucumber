@@ -30,6 +30,7 @@ import OtherSchoolScreen from './view/src/otherschool';
 import MealCalender from './view/src/mealcalender';
 import Timer from './view/src/timer';
 import FriendsScreen from './view/src/friendsscreen';
+import HiddenPostsAppeals from './view/src/hiddenPostsAppeals';
 import { useFonts } from 'expo-font';
 import * as SplashScreen from 'expo-splash-screen';
 import { useEffect, useRef } from 'react';
@@ -120,6 +121,7 @@ function MainStack() {
       <Stack.Screen name="SendSchoolMail" component={SendSchoolMailScreen} />
       <Stack.Screen name="Timer" component={Timer} />
       <Stack.Screen name="Friends" component={FriendsScreen} />
+      <Stack.Screen name="HiddenPostsAppeals" component={HiddenPostsAppeals} />
       <Stack.Screen name="SearchScreen" component={SearchScreen} />
       <Stack.Screen name="SearchResult" component={SearchResult} />
       <Stack.Screen name="OtherSchool" component={OtherSchoolScreen} />
