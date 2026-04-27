@@ -222,13 +222,13 @@ const makeStyles = (N) =>
       alignItems: 'center',
       justifyContent: 'space-between',
       paddingHorizontal: N(20),
-      paddingVertical: N(14),
+      paddingVertical: N(20),
       borderBottomWidth: 1,
       borderBottomColor: colors.textLight10,
     },
     title: {
       fontFamily: fonts.bold,
-      fontSize: N(16),
+      fontSize: N(18),
       color: colors.textPrimary,
     },
     closeBtn: {
@@ -255,7 +255,7 @@ const makeStyles = (N) =>
     },
     chip: {
       paddingHorizontal: N(14),
-      paddingVertical: N(8),
+      paddingVertical: N(6),
       borderRadius: N(20),
       borderWidth: 1,
       borderColor: colors.textLight20,
@@ -277,7 +277,7 @@ const makeStyles = (N) =>
     textInput: {
       borderWidth: 1,
       borderColor: colors.textLight20,
-      borderRadius: N(10),
+      borderRadius: N(8),
       padding: N(12),
       fontFamily: fonts.regular,
       fontSize: N(13),
@@ -294,7 +294,8 @@ const makeStyles = (N) =>
     },
     footer: {
       paddingHorizontal: N(20),
-      paddingTop: N(12),
+      paddingTop: N(6),
+      paddingBottom: N(20),
     },
     submitBtn: {
       backgroundColor: colors.primary,
