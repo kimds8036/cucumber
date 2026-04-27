@@ -12,9 +12,7 @@ import {
   getNormalize as getBoardNormalize,
   createDetailStyles,
 } from '../../../../styles/board.style';
-import { colors, fonts } from '../../../../styles/colors';
-import MessageTabIcon from '../../../../assets/Logo.svg';
-import { getFriendIconColorByIndex } from '../../../../components/timerFriendModals';
+import { colors } from '../../../../styles/colors';
 import Skeleton from '../../../../components/common/Skeleton';
 
 export default function DMChatScreen({ navigation, route }) {
@@ -43,78 +41,6 @@ export default function DMChatScreen({ navigation, route }) {
       sendButton: detailStyles.sendButton,
     }),
     [detailStyles],
-  );
-
-  const titleElement = useMemo(
-    () => (
-      <View
-        style={{
-          flexDirection: 'row',
-          alignItems: 'center',
-          flex: 1,
-          marginLeft: 20,
-          minWidth: 0,
-        }}
-      >
-        <View
-          style={{
-            width: normalize(36),
-            height: normalize(36),
-            borderRadius: normalize(18),
-            backgroundColor: colors.primaryLight30,
-            justifyContent: 'center',
-            alignItems: 'center',
-            marginRight: normalize(10),
-          }}
-        >
-          <MessageTabIcon
-            width={normalize(22)}
-            height={normalize(22)}
-            color={getFriendIconColorByIndex(
-              friend.colorIndex != null ? friend.colorIndex : 0,
-            )}
-          />
-        </View>
-        <View
-          style={{
-            flex: 1,
-            minWidth: 0,
-            flexDirection: 'column',
-            justifyContent: 'center',
-          }}
-        >
-          <Text
-            numberOfLines={1}
-            style={{
-              fontSize: normalize(16),
-              lineHeight: normalize(20),
-              fontWeight: '700',
-              fontFamily: fonts.bold,
-              color: colors.textPrimary,
-              includeFontPadding: false,
-              marginTop: normalize(9),
-              marginBottom: normalize(2),
-            }}
-          >
-            {friendName}
-          </Text>
-          {friendSchool ? (
-            <Text
-              numberOfLines={1}
-              style={{
-                fontSize: normalize(11),
-                fontFamily: fonts.regular,
-                color: colors.textSecondary,
-                marginTop: normalize(0),
-              }}
-            >
-              {friendSchool}
-            </Text>
-          ) : null}
-        </View>
-      </View>
-    ),
-    [normalize, friendName, friendSchool, friend.colorIndex],
   );
 
   const hookConfig = useMemo(
@@ -164,8 +90,7 @@ export default function DMChatScreen({ navigation, route }) {
       hookConfig={hookConfig}
       chatType="dm"
       headerConfig={{
-        title: ' ',
-        titleElement,
+        title: friendName,
         onBack: () => navigation.goBack(),
       }}
       mainPlaceholder="메시지를 입력하세요"

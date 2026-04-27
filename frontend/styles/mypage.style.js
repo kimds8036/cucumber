@@ -328,7 +328,7 @@ export const createNotificationSettingsStyles = (normalize) => {
       flex: 1,
     },
     scrollBottomSpacer: {
-      height: normalize(80),
+      height: normalize(60),
     },
 
     sectionHeader: {
@@ -637,7 +637,7 @@ export const createMyPostsStyles = (normalize) => {
       paddingTop: normalize(16),
     },
     scrollBottomSpacer: {
-      height: normalize(80),
+      height: normalize(40),
     },
     list: {
       marginHorizontal: normalize(16),

@@ -131,7 +131,7 @@ const ActivityPage = ({ navigation, route }) => {
         style={styles.scroll}
         contentContainerStyle={[
           styles.scrollContent,
-          { paddingHorizontal: width * 0.04, paddingTop: normalize(8) },
+          { paddingHorizontal: width * 0.04, paddingTop: normalize(16) },
         ]}
         showsVerticalScrollIndicator={false}
       >

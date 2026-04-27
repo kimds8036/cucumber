@@ -272,7 +272,7 @@ export default function MailHistoryScreen({ navigation, route }) {
                     style={{
                       width: accentW,
                       alignSelf: 'stretch',
-                      backgroundColor: colors.textLight20,
+                      backgroundColor: colors.textLight10,
                       borderTopLeftRadius: r,
                       borderBottomLeftRadius: r,
                     }}
