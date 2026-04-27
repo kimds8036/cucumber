@@ -15,7 +15,7 @@ import {
   Keyboard,
   TouchableWithoutFeedback,
 } from 'react-native';
-import { useSharedValue } from 'react-native-reanimated';
+import Reanimated, { useAnimatedStyle, useSharedValue } from 'react-native-reanimated';
 import { useKeyboardHandler } from 'react-native-keyboard-controller';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import FontAwesome5 from '@expo/vector-icons/FontAwesome5';
@@ -295,6 +295,10 @@ export const AddFriendModal = ({ visible, onClose, onAdd }) => {
     [],
   );
 
+  const animStyle = useAnimatedStyle(() => ({
+    transform: [{ translateY: translateY.value }],
+  }));
+
   useEffect(() => {
     if (!visible) setQuery('');
   }, [visible]);
@@ -315,8 +319,7 @@ export const AddFriendModal = ({ visible, onClose, onAdd }) => {
       <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
         <View style={{ flex: 1 }}>
           <TouchableOpacity style={s.addFriendOverlay} onPress={onClose} activeOpacity={1} />
-          {/* STEP 1 테스트: Reanimated.View -> 일반 View (애니메이션 제거) */}
-          <View style={s.addFriendWrapper}>
+          <Reanimated.View style={[s.addFriendWrapper, animStyle]}>
             <View style={s.addFriendPopup}>
               <Text style={s.addFriendTitle}>친구 추가</Text>
 
@@ -363,7 +366,7 @@ export const AddFriendModal = ({ visible, onClose, onAdd }) => {
                 <Text style={s.addFriendPrimaryBtnText}>추가하기</Text>
               </TouchableOpacity>
             </View>
-          </View>
+          </Reanimated.View>
         </View>
       </TouchableWithoutFeedback>
     </Modal>
