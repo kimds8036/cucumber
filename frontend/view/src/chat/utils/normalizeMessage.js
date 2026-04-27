@@ -51,12 +51,19 @@ export default function normalizeMessage(raw, meId) {
     raw.senderName ??
     (isMe ? null : raw.opponentName ?? null) ??
     (isMe ? '나' : '익명');
+  const senderColorId =
+    raw.sender_color_id ??
+    raw.senderColorId ??
+    raw.other_user_color_id ??
+    raw.otherUserColorId ??
+    null;
 
   return {
     id: String(raw.id),
     clientId: raw.client_id ?? raw.clientId ?? null,
     senderId: senderId != null ? Number(senderId) : null,
     senderName,
+    senderColorId,
     isMe,
     content: raw.content ?? null,
     images,

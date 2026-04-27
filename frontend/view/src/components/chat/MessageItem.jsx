@@ -8,8 +8,9 @@ import {
 import { Image } from 'expo-image';
 import Loading from '../../../../components/Loading';
 import { colors } from '../../../../styles/colors';
-import MessageTabIcon from '../../../../assets/Logo.svg';
+import ProfileIcon from '../../../../assets/Profile.svg';
 import Skeleton from '../../../../components/common/Skeleton';
+import { getProfileInnerColor } from '../../../../utils/profileIconColor';
 
 function formatChatDateBanner(dateKey) {
   if (!dateKey) return '';
@@ -146,12 +147,12 @@ const DateBanner = ({ msg, normalize }) => (
  * 상대방 메시지일 때만 보이는 프로필 영역
  * @param {{ chatStyles: any, normalize: Function }} props
  */
-const SenderProfile = ({ chatStyles, normalize }) => (
+const SenderProfile = ({ chatStyles, normalize, colorId }) => (
   <View style={chatStyles.chatProfileCircle}>
-    <MessageTabIcon
-      width={normalize(24)}
-      height={normalize(24)}
-      color={colors.green}
+    <ProfileIcon
+      width={normalize(30)}
+      height={normalize(30)}
+      color={getProfileInnerColor(colorId)}
     />
   </View>
 );
@@ -532,7 +533,11 @@ const MessageItem = memo(
         ]}
       >
         {msg.showProfile ? (
-          <SenderProfile chatStyles={chatStyles} normalize={normalize} />
+          <SenderProfile
+            chatStyles={chatStyles}
+            normalize={normalize}
+            colorId={msg.senderColorId}
+          />
         ) : (
           <View style={chatStyles.chatProfileSpacer} pointerEvents="none" />
         )}

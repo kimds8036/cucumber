@@ -1,6 +1,6 @@
 import React from 'react';
 import { Text, View } from 'react-native';
-import { fonts } from '../../../../styles/colors';
+import { colors, fonts, fontSizes } from '../../../../styles/colors';
 
 function formatBannerDate(dateKey) {
   if (!dateKey) return '';
@@ -23,16 +23,16 @@ export default function DateBanner({ date, normalize }) {
     <View style={{ alignItems: 'center', paddingVertical: n(10) }}>
       <View
         style={{
-          backgroundColor: '#EEEEEE',
+          backgroundColor: colors.textLight10,
           paddingHorizontal: n(12),
-          paddingVertical: n(4),
+          paddingVertical: n(3),
           borderRadius: n(12),
         }}
       >
         <Text
           style={{
-            fontSize: n(12),
-            color: '#666666',
+            fontSize: n(fontSizes.md),
+            color: colors.textSecondary,
             fontFamily: fonts?.regular,
           }}
         >
