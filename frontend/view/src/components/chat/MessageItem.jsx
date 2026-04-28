@@ -223,6 +223,17 @@ const MessageBubble = ({
 
   // 내 메시지
   if (msg.isMe) {
+    const userBubbleStyle = [
+      chatStyles.userBubble,
+      msg.showProfile === false
+        ? {
+            borderTopLeftRadius: normalize(16),
+            borderBottomLeftRadius: normalize(16),
+            borderTopRightRadius: normalize(16),
+            borderBottomRightRadius: normalize(16),
+          }
+        : null,
+    ];
     return (
       <View
         style={[chatStyles.chatRowUser, chatGroupRowMargins(msg, normalize)]}
@@ -250,7 +261,7 @@ const MessageBubble = ({
             </TouchableOpacity>
           ) : (
             <>
-              {msg.isReadByOther === false && !msg.isSending && (
+              {msg.showTimestamp === true && msg.isReadByOther === false && !msg.isSending && (
                 <Text style={chatStyles.chatUnreadCount}>1</Text>
               )}
               <View
@@ -280,7 +291,7 @@ const MessageBubble = ({
           <TouchableOpacity
             style={[
               !isImageOnly
-                ? chatStyles.userBubble
+                ? userBubbleStyle
                 : {
                     backgroundColor: 'transparent',
                     paddingHorizontal: 0,
@@ -347,6 +358,18 @@ const MessageBubble = ({
   }
 
   // 상대방 메시지: [말풍선/이미지] [시간] — 내 메시지 [시간][말풍선]과 대칭, 바닥 정렬
+  const opponentBubbleStyle = [
+    chatStyles.opponentBubble,
+    msg.showProfile === false
+      ? {
+          borderTopLeftRadius: normalize(16),
+          borderBottomLeftRadius: normalize(16),
+          borderTopRightRadius: normalize(16),
+          borderBottomRightRadius: normalize(16),
+        }
+      : null,
+  ];
+
   return (
     <View style={chatStyles.opponentNameAndBubble}>
       {msg.showProfile ? (
@@ -396,7 +419,7 @@ const MessageBubble = ({
                       openMenuFromBubble();
                     }}
                   >
-                    <View style={chatStyles.opponentBubble}>
+                    <View style={opponentBubbleStyle}>
                     {msg.parent_content ? (
                       <ReplyQuote
                         chatStyles={chatStyles}
