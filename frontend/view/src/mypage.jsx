@@ -30,7 +30,7 @@ const MyPage = ({ navigation }) => {
   const TIMETABLE_CACHE_KEY = '@mypage_timetable_cache_v1';
   const TIMETABLE_CACHE_TTL_MS = 24 * 60 * 60 * 1000;
   const PROFILE_CACHE_KEY = '@mypage_profile_cache_v1';
-  const PROFILE_CACHE_TTL_MS = 24 * 60 * 60 * 1000;
+  const PROFILE_CACHE_TTL_MS = 2 * 60 * 60 * 1000;
   const [userInfo, setUserInfo] = useState(null);
   const [timetable, setTimetable] = useState(null);
   const [initialTimetable, setInitialTimetable] = useState(null);
@@ -43,6 +43,20 @@ const MyPage = ({ navigation }) => {
   const [className, setClassName] = useState('');
   const [loading, setLoading] = useState(false);
   const [timetableLoading, setTimetableLoading] = useState(false);
+  const isSameProfileInfo = (a, b) => {
+    if (!a || !b) return false;
+    return (
+      a.name === b.name &&
+      a.username === b.username &&
+      a.colorId === b.colorId &&
+      a.school === b.school &&
+      a.gradeClass === b.gradeClass &&
+      a.profileColorHex === b.profileColorHex &&
+      a.profileColorId === b.profileColorId &&
+      a.profileColorNumber === b.profileColorNumber &&
+      a.friendCount === b.friendCount
+    );
+  };
 
   const handleLogout = async () => {
     try {
@@ -85,11 +99,14 @@ const MyPage = ({ navigation }) => {
         setLoading(true);
         let cachedTimetable = null;
         let cachedProfile = null;
+        let cachedProfileTs = 0;
         try {
           const rawProfile = await AsyncStorage.getItem(PROFILE_CACHE_KEY);
           if (rawProfile) {
             const parsed = JSON.parse(rawProfile);
-            if (Date.now() - Number(parsed?.ts || 0) < PROFILE_CACHE_TTL_MS) {
+            const profileTs = Number(parsed?.ts || 0);
+            cachedProfileTs = profileTs;
+            if (Date.now() - profileTs < PROFILE_CACHE_TTL_MS) {
               cachedProfile = parsed?.userInfo || null;
               if (mounted && cachedProfile) {
                 setUserInfo(cachedProfile);
@@ -145,13 +162,18 @@ const MyPage = ({ navigation }) => {
           };
           setUserInfo(nextUserInfo);
           try {
-            await AsyncStorage.setItem(
-              PROFILE_CACHE_KEY,
-              JSON.stringify({
-                ts: Date.now(),
-                userInfo: nextUserInfo,
-              }),
-            );
+            const cacheExpired =
+              !cachedProfileTs || Date.now() - cachedProfileTs >= PROFILE_CACHE_TTL_MS;
+            const profileChanged = !isSameProfileInfo(cachedProfile, nextUserInfo);
+            if (cacheExpired || profileChanged || !cachedProfile) {
+              await AsyncStorage.setItem(
+                PROFILE_CACHE_KEY,
+                JSON.stringify({
+                  ts: Date.now(),
+                  userInfo: nextUserInfo,
+                }),
+              );
+            }
           } catch (profileSaveErr) {
             console.warn('프로필 캐시 저장 실패:', profileSaveErr);
           }

@@ -2018,40 +2018,43 @@ export const TimerContent = () => {
           const trimmed = raw.trim();
           const username = trimmed.startsWith('@') ? trimmed.slice(1) : trimmed;
           if (!username) return;
-
-          Alert.alert(
-            '친구 요청',
-            `@${username} 님에게 친구 요청을 보내시겠어요?`,
-            [
-              { text: '취소', style: 'cancel' },
-              {
-                text: '보내기',
-                onPress: async () => {
-                  try {
-                    const res = await api.post('/api/friends/requests', {
-                      username,
-                    });
-                    const data = res.data?.data || {};
-                    const targetName =
-                      data.targetName || data.targetUsername || `@${username}`;
-                    setShowAddFriend(false);
-                    pushTimerToast(targetName, '친구 요청을 보냈어요');
-                  } catch (error) {
-                    console.error('[Timer][FriendRequest] API 실패', {
-                      username,
-                      status: error.response?.status,
-                      message: error.response?.data?.message,
-                    });
-                    Alert.alert(
-                      '친구 요청 실패',
-                      error.response?.data?.message ||
-                        '친구 요청 중 문제가 발생했어요. 잠시 후 다시 시도해 주세요',
-                    );
-                  }
+          // iOS에서 모달 위 Alert(커스텀 모달) 중첩 시 터치가 막히는 현상 방지:
+          // 친구추가 모달을 먼저 닫고, 다음 프레임에서 확인 팝업을 띄운다.
+          setShowAddFriend(false);
+          requestAnimationFrame(() => {
+            Alert.alert(
+              '친구 요청',
+              `@${username} 님에게 친구 요청을 보내시겠어요?`,
+              [
+                { text: '취소', style: 'cancel' },
+                {
+                  text: '보내기',
+                  onPress: async () => {
+                    try {
+                      const res = await api.post('/api/friends/requests', {
+                        username,
+                      });
+                      const data = res.data?.data || {};
+                      const targetName =
+                        data.targetName || data.targetUsername || `@${username}`;
+                      pushTimerToast(targetName, '친구 요청을 보냈어요');
+                    } catch (error) {
+                      console.error('[Timer][FriendRequest] API 실패', {
+                        username,
+                        status: error.response?.status,
+                        message: error.response?.data?.message,
+                      });
+                      Alert.alert(
+                        '친구 요청 실패',
+                        error.response?.data?.message ||
+                          '친구 요청 중 문제가 발생했어요. 잠시 후 다시 시도해 주세요',
+                      );
+                    }
+                  },
                 },
-              },
-            ],
-          );
+              ],
+            );
+          });
         }}
       />
     </>
