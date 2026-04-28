@@ -32,6 +32,7 @@ const ProfileCard = ({ userInfo, navigation }) => {
   const profileEyeColor = getProfileHexByColorId(userInfo?.colorId);
 
   const loadCounts = useCallback(async ({ force = false } = {}) => {
+    const fallbackFriendCount = Number(userInfo?.friendCount ?? 0);
     try {
       const raw = await AsyncStorage.getItem(PROFILE_COUNTS_CACHE_KEY);
       let shouldFetch = true;
@@ -44,7 +45,10 @@ const ProfileCard = ({ userInfo, navigation }) => {
           const isFresh = Date.now() - ts < PROFILE_COUNTS_CACHE_TTL_MS;
           if (cachedCounts) {
             setCounts((prev) => ({
-              friendCount: Number(cachedCounts.friendCount ?? prev.friendCount ?? 0),
+              // /api/auth/me 의 friendCount를 우선 신뢰해 캐시 역주입으로 숫자가 되돌아가지 않게 한다.
+              friendCount: Number.isFinite(fallbackFriendCount)
+                ? fallbackFriendCount
+                : Number(cachedCounts.friendCount ?? prev.friendCount ?? 0),
               postCount: Number(cachedCounts.postCount ?? 0),
               scrapCount: Number(cachedCounts.scrapCount ?? 0),
             }));
@@ -60,7 +64,10 @@ const ProfileCard = ({ userInfo, navigation }) => {
 
       const res = await api.get('/api/users/me/stats');
       const nextCounts = {
-        friendCount: Number(res.data?.data?.friendCount ?? 0),
+        // 통계 API보다 /api/auth/me 의 최신 friendCount를 우선 사용
+        friendCount: Number.isFinite(fallbackFriendCount)
+          ? fallbackFriendCount
+          : Number(res.data?.data?.friendCount ?? 0),
         postCount: Number(res.data?.data?.postCount ?? 0),
         scrapCount: Number(res.data?.data?.scrapCount ?? 0),
       };
@@ -77,7 +84,7 @@ const ProfileCard = ({ userInfo, navigation }) => {
       console.warn('[ProfileCard] 통계 로드 실패:', e?.message || e);
       setCountsLoading(false);
     }
-  }, []);
+  }, [userInfo?.friendCount]);
 
   useEffect(() => {
     loadCounts();
@@ -89,7 +96,8 @@ const ProfileCard = ({ userInfo, navigation }) => {
     const fallbackFriendCount = Number(userInfo?.friendCount ?? 0);
     setCounts((prev) => ({
       ...prev,
-      friendCount: prev.friendCount || fallbackFriendCount,
+      // friendCount는 사용자 기본정보가 바뀌면 항상 즉시 동기화
+      friendCount: Number.isFinite(fallbackFriendCount) ? fallbackFriendCount : prev.friendCount,
     }));
   }, [userInfo?.friendCount]);
 

@@ -56,8 +56,11 @@ import {
   showTimerRunningNotification,
 } from './utils/timerRunNotification';
 import { getTimerRuntimeState } from './utils/timerRuntimeStore';
-// TEMP(expo-go): Firebase Messaging은 네이티브 빌드에서만 사용
-// import { initFCM, setupFCMHandlers } from './utils/fcmService';
+import {
+  getInitialFCMNotification,
+  initFCM,
+  setupFCMHandlers,
+} from './utils/fcmService';
 
 const Stack = createNativeStackNavigator();
 const linking = {
@@ -135,12 +138,30 @@ function RootNavigator() {
 
   useEffect(() => {
     if (!isLoggedIn) return undefined;
-    // TEMP(expo-go): RNFirebase 의존 코드 임시 비활성화
+    const isExpoGo = Constants.appOwnership === 'expo';
+    if (isExpoGo) return undefined;
+
     let cleanup;
-    // (async () => {
-    //   await initFCM();
-    //   cleanup = setupFCMHandlers();
-    // })();
+    const handleNotificationOpened = (remoteMessage) => {
+      const data = remoteMessage?.data || {};
+      const targetScreen = data?.targetScreen;
+      if (!targetScreen || !navigationRef.isReady()) return;
+      navigationRef.navigate(targetScreen, data);
+    };
+
+    (async () => {
+      await initFCM();
+      cleanup = setupFCMHandlers({
+        onNotificationOpened: handleNotificationOpened,
+      });
+
+      const initialMessage = await getInitialFCMNotification();
+      if (initialMessage) {
+        console.log('[FCM] 종료 상태에서 알림 탭으로 앱 오픈:', initialMessage);
+        handleNotificationOpened(initialMessage);
+      }
+    })();
+
     return () => {
       if (typeof cleanup === 'function') cleanup();
     };

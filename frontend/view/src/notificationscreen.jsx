@@ -5,7 +5,6 @@ import {
   ScrollView,
   TouchableOpacity,
   FlatList,
-  Animated,
   useWindowDimensions,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -114,24 +113,13 @@ const sortNotificationsByCreatedDesc = (items) =>
 
 // 스켈레톤 행 (로딩 중 리스트 모양)
 const SkeletonRow = ({ skeletonStyles }) => {
-  const opacity = useRef(new Animated.Value(0.3)).current;
-  useEffect(() => {
-    const loop = Animated.loop(
-      Animated.sequence([
-        Animated.timing(opacity, { toValue: 0.7, useNativeDriver: true, duration: 600 }),
-        Animated.timing(opacity, { toValue: 0.3, useNativeDriver: true, duration: 600 }),
-      ])
-    );
-    loop.start();
-    return () => loop.stop();
-  }, [opacity]);
   return (
     <View style={skeletonStyles.row}>
-      <Animated.View style={[skeletonStyles.icon, { opacity }]} />
+      <View style={skeletonStyles.icon} />
       <View style={skeletonStyles.content}>
-        <Animated.View style={[skeletonStyles.line, skeletonStyles.titleLine, { opacity }]} />
-        <Animated.View style={[skeletonStyles.line, skeletonStyles.textLine, { opacity }]} />
-        <Animated.View style={[skeletonStyles.line, skeletonStyles.timeLine, { opacity }]} />
+        <View style={[skeletonStyles.line, skeletonStyles.titleLine]} />
+        <View style={[skeletonStyles.line, skeletonStyles.textLine]} />
+        <View style={[skeletonStyles.line, skeletonStyles.timeLine]} />
       </View>
     </View>
   );
@@ -152,6 +140,7 @@ const NotificationScreen = ({ navigation }) => {
   const [loading, setLoading] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
   const [tabHydrating, setTabHydrating] = useState(false);
+  const [isPullRefreshing, setIsPullRefreshing] = useState(false);
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
   const isRefreshingRef = useRef(false);
@@ -197,6 +186,18 @@ const NotificationScreen = ({ navigation }) => {
       isFlushingRef.current = false;
     }
   }, []);
+
+  const applyOptimisticReadState = useCallback(
+    (items) =>
+      items.map((item) => {
+        const idKey = String(item.id);
+        const tapped = Boolean(tappedIds[item.id] || tappedIds[idKey]);
+        const pending = pendingReadIdsRef.current.has(item.id) || pendingReadIdsRef.current.has(idKey);
+        if (!tapped && !pending) return item;
+        return { ...item, isRead: true };
+      }),
+    [tappedIds],
+  );
 
   const scheduleFlush = () => {
     const count = pendingReadIdsRef.current.size;
@@ -267,7 +268,7 @@ const NotificationScreen = ({ navigation }) => {
         const filtered = list
           .filter((n) => n.type !== 'like')
           .filter((n) => !isChatNotificationRow(n));
-        const mapped = filtered.map(mapRowToNotificationItem);
+        const mapped = applyOptimisticReadState(filtered.map(mapRowToNotificationItem));
 
         // reset 요청이 더 최신이면 append 결과를 버림
         if (latestAppliedSeqRef.current > seq) return;
@@ -305,7 +306,7 @@ const NotificationScreen = ({ navigation }) => {
           const filtered = lastList
             .filter((n) => n.type !== 'like')
             .filter((n) => !isChatNotificationRow(n));
-          const mapped = filtered.map(mapRowToNotificationItem);
+          const mapped = applyOptimisticReadState(filtered.map(mapRowToNotificationItem));
           accumulated.push(...mapped);
 
           console.log('[NotificationScreen] 알림 초기 스윕', {
@@ -362,7 +363,18 @@ const NotificationScreen = ({ navigation }) => {
         setLoadingMore(false);
       }
     }
-  }, [markNotificationsSeenForBell]);
+  }, [markNotificationsSeenForBell, applyOptimisticReadState]);
+
+  const handleRefresh = useCallback(async () => {
+    if (isPullRefreshing || loading || loadingMore) return;
+    setIsPullRefreshing(true);
+    if (selectedTab !== 'all') setTabHydrating(true);
+    try {
+      await fetchNotifications(1, false);
+    } finally {
+      setIsPullRefreshing(false);
+    }
+  }, [isPullRefreshing, loading, loadingMore, fetchNotifications, selectedTab]);
 
   // 화면이 최초로 열릴 때 한 번, 소켓 경로 디버그용 ping을 날려본다.
   // - 이 호출 시 서버 로그에 [POST /api/notifications/debug/socket-ping] 이 찍히고
@@ -379,6 +391,7 @@ const NotificationScreen = ({ navigation }) => {
         preserveListOnNextFocusRef.current = false;
         return;
       }
+      if (selectedTab !== 'all') setTabHydrating(true);
       fetchNotifications(1, false);
     };
 
@@ -420,18 +433,35 @@ const NotificationScreen = ({ navigation }) => {
       unsubscribe?.();
       blurUnsubscribe?.();
     };
-  }, [navigation, flushPendingReads, fetchNotifications, markNotificationsSeenForBell, markFriendRequestsSeenForBell]);
+  }, [
+    navigation,
+    flushPendingReads,
+    fetchNotifications,
+    markNotificationsSeenForBell,
+    markFriendRequestsSeenForBell,
+    selectedTab,
+  ]);
 
   // 알림 화면이 열려 있는 동안 소켓으로 새 알림(hasUnread=true)이 들어오면
   // 목록을 즉시 새로고침해서 방금 도착한 알림도 리스트에 바로 보이도록 한다.
   useEffect(() => {
     if (!hasUnread) return;
     if (!navigation?.isFocused || !navigation.isFocused()) return;
+    if (isPullRefreshing || loading || loadingMore || tabHydrating || isResetFetchingRef.current) return;
 
     // 서버 기준 최신 알림 목록을 불러오고, 화면에서는 이미 본 것으로 간주하므로 빨간 점은 다시 끈다.
     fetchNotifications(1, false);
     markNotificationsSeenForBell?.();
-  }, [hasUnread, navigation, fetchNotifications, markNotificationsSeenForBell]);
+  }, [
+    hasUnread,
+    navigation,
+    fetchNotifications,
+    markNotificationsSeenForBell,
+    isPullRefreshing,
+    loading,
+    loadingMore,
+    tabHydrating,
+  ]);
 
   // 5️⃣ 앱 종료/백그라운드 대비: 상태 전환 시, 그리고 언마운트 시 pending 읽음 요청 강제 전송
   useEffect(() => {
@@ -481,7 +511,7 @@ const NotificationScreen = ({ navigation }) => {
       setTabHydrating(false);
       return undefined;
     }
-    if (loading || loadingMore) return undefined;
+    if (loading || loadingMore || isPullRefreshing) return undefined;
     if (!hasMoreRef.current) {
       setTabHydrating(false);
       return undefined;
@@ -501,7 +531,7 @@ const NotificationScreen = ({ navigation }) => {
     return () => {
       cancelled = true;
     };
-  }, [selectedTab, loading, loadingMore, fetchNotifications]);
+  }, [selectedTab, loading, loadingMore, isPullRefreshing, fetchNotifications]);
 
   const unreadCounts = useMemo(() => {
     const list = notifications;
@@ -522,6 +552,7 @@ const NotificationScreen = ({ navigation }) => {
     ],
     [unreadCounts],
   );
+  const showSkeleton = loading || isPullRefreshing || tabHydrating;
 
   const openDmRoom = useCallback(async (watcher) => {
     if (!watcher?.userId) {
@@ -736,7 +767,11 @@ const NotificationScreen = ({ navigation }) => {
                 selectedTab === tab.key && styles.tabButtonActive,
                 getDebugBorderStyle('#007AFF'),
               ]}
-              onPress={() => setSelectedTab(tab.key)}>
+              onPress={() => {
+                if (tab.key !== 'all') setTabHydrating(true);
+                else setTabHydrating(false);
+                setSelectedTab(tab.key);
+              }}>
               <Text
                 style={[
                   styles.tabText,
@@ -753,10 +788,10 @@ const NotificationScreen = ({ navigation }) => {
       {/* 알림 목록 - FlatList + 무한 스크롤 */}
       <FlatList
         style={[styles.scrollView, getDebugBorderStyle('#5856D6')]}
-        data={tabHydrating ? [] : filteredNotifications}
+        data={showSkeleton ? [] : filteredNotifications}
         keyExtractor={(item) => String(item.id)}
-        refreshing={(loading || tabHydrating) && !loadingMore}
-        onRefresh={() => fetchNotifications(1, false)}
+        refreshing={false}
+        onRefresh={handleRefresh}
         renderItem={({ item: notification }) => {
           const isTapped = tappedIds[notification.id];
           const isUnreadFromServer = !notification.isRead;
@@ -839,7 +874,7 @@ const NotificationScreen = ({ navigation }) => {
           );
         }}
         ListEmptyComponent={
-          (loading || tabHydrating) ? (
+          showSkeleton ? (
             <View style={[styles.skeletonContainer, getDebugBorderStyle('#32D74B')]}>
               {[1, 2, 3, 4, 5, 6].map((key) => (
                 <SkeletonRow key={key} skeletonStyles={skeletonStyles} />
