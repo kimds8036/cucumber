@@ -28,6 +28,32 @@ const toYmd = (date) => {
   return `${y}${m}${d}`;
 };
 
+const KST_TIMEZONE = 'Asia/Seoul';
+
+const getKstParts = (date = new Date()) => {
+  const formatter = new Intl.DateTimeFormat('en-CA', {
+    timeZone: KST_TIMEZONE,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    hour12: false,
+  });
+  const parts = formatter.formatToParts(date);
+  const pick = (type) => parts.find((p) => p.type === type)?.value || '00';
+  return {
+    year: Number(pick('year')),
+    month: Number(pick('month')),
+    day: Number(pick('day')),
+    hour: Number(pick('hour')),
+  };
+};
+
+const toKstYmd = (date = new Date()) => {
+  const p = getKstParts(date);
+  return `${String(p.year)}${String(p.month).padStart(2, '0')}${String(p.day).padStart(2, '0')}`;
+};
+
 const toDateKey = (date) => {
   const y = date.getFullYear();
   const m = String(date.getMonth() + 1).padStart(2, '0');
@@ -75,7 +101,7 @@ async function fetchStudyGrassSeries({ schoolId, days }) {
 }
 
 const mealPriorityAfterNow = (now) => {
-  const h = now.getHours();
+  const h = getKstParts(now).hour;
   if (h < 10) return ['1', '2', '3'];
   if (h < 14) return ['2', '3', '1'];
   if (h < 20) return ['3', '1', '2'];
@@ -136,7 +162,7 @@ const sortNextMeals = (meals, now, priorityNow) => {
 };
 
 const currentMealCodeByHour = (now) => {
-  const h = now.getHours();
+  const h = getKstParts(now).hour;
   if (h < 10) return '1'; // 조식 시간대
   if (h < 14) return '2'; // 중식 시간대
   if (h < 20) return '3'; // 석식 시간대
@@ -370,17 +396,18 @@ router.get('/me/meals/next', authenticate, async (req, res) => {
 
     const now = new Date();
     const priorityNow = mealPriorityAfterNow(now);
-    const todayYmd = toYmd(now);
+    const todayYmd = toKstYmd(now);
     const currentMealCode = currentMealCodeByHour(now);
     const meals = [];
     for (let d = 0; d <= 14 && meals.length < count; d += 1) {
-      const date = new Date(now);
-      date.setDate(now.getDate() + d);
-      const ymd = toYmd(date);
+      const date = new Date(now.getTime() + d * 24 * 60 * 60 * 1000);
+      const ymd = toKstYmd(date);
       const order = d === 0 ? priorityNow : MEAL_CODES;
       for (const code of order) {
         if (!codes.includes(code)) continue;
         // 오늘은 이미 지난 끼니(조/중/석)를 제외한다.
+        // 20시 이후(currentMealCode=null)는 오늘 급식을 모두 제외하고 다음 날짜부터 노출한다.
+        if (ymd === todayYmd && !currentMealCode) continue;
         if (ymd === todayYmd && currentMealCode && Number(code) < Number(currentMealCode)) continue;
         const item = map.get(`${ymd}_${code}`);
         if (!item || !item.menus.length) continue;
@@ -424,17 +451,18 @@ router.get('/:schoolId/meals/next', async (req, res) => {
     }
     const now = new Date();
     const priorityNow = mealPriorityAfterNow(now);
-    const todayYmd = toYmd(now);
+    const todayYmd = toKstYmd(now);
     const currentMealCode = currentMealCodeByHour(now);
     const meals = [];
     for (let d = 0; d <= 14 && meals.length < count; d += 1) {
-      const date = new Date(now);
-      date.setDate(now.getDate() + d);
-      const ymd = toYmd(date);
+      const date = new Date(now.getTime() + d * 24 * 60 * 60 * 1000);
+      const ymd = toKstYmd(date);
       const order = d === 0 ? priorityNow : MEAL_CODES;
       for (const code of order) {
         if (!codes.includes(code)) continue;
         // 오늘은 이미 지난 끼니(조/중/석)를 제외한다.
+        // 20시 이후(currentMealCode=null)는 오늘 급식을 모두 제외하고 다음 날짜부터 노출한다.
+        if (ymd === todayYmd && !currentMealCode) continue;
         if (ymd === todayYmd && currentMealCode && Number(code) < Number(currentMealCode)) continue;
         const item = map.get(`${ymd}_${code}`);
         if (!item || !item.menus.length) continue;
