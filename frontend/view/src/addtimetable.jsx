@@ -11,10 +11,7 @@ import {
   Keyboard,
   TouchableWithoutFeedback,
 } from 'react-native';
-import Animated, {
-  useAnimatedStyle,
-  useSharedValue,
-} from 'react-native-reanimated';
+import Animated from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import SubHeader from '../frame/subHeader';
@@ -216,7 +213,7 @@ const AddTimetable = ({ navigation, route }) => {
       >
         <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
           <View style={styles.modalOverlay}>
-            <Animated.View style={[styles.modalContent, animStyle]}>
+            <Animated.View style={styles.modalContent}>
               <Text style={styles.modalTitle}>
                 {selectedDay}요일 {selectedPeriod}교시
               </Text>

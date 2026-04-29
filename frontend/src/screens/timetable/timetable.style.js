@@ -1,7 +1,15 @@
 import { StyleSheet } from 'react-native';
-import { COLORS } from '@/constants/color';
-import { fontSizes, normalize } from '@/utils/normalize';
-import { fonts } from '@/constants/fonts';
+import { colors, fonts, fontSizes } from '../../../styles/colors';
+
+const normalize = (size) => size;
+const COLORS = {
+  ...colors,
+  inputBackground: colors.surface,
+  selectedBackground: colors.primaryLight20,
+  textDisabled: colors.textLight20,
+  textTertiary: colors.textSecondary,
+  white: colors.textWhite,
+};
 
 export const DAYS = ['월', '화', '수', '목', '금'];
 export const PERIODS = [1, 2, 3, 4, 5, 6, 7];

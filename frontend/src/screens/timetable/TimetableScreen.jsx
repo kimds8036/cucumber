@@ -9,11 +9,19 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import SubHeader from '@/components/common/SubHeader';
-import { COLORS } from '@/constants/color';
-import { normalize } from '@/utils/normalize';
-import styles, { CELL_GAP, CELL_HEIGHT, DAYS, PERIODS, PERIOD_COL_WIDTH } from './timetable.style';
+import SubHeader from '../../../view/frame/subHeader';
+import { colors } from '../../../styles/colors';
+import styles, { CELL_GAP, CELL_HEIGHT, DAYS, PERIODS } from './timetable.style';
 import { SUBJECT_COLORS, TIMETABLE_DUMMY } from './TimetableDummy';
+
+const COLORS = {
+  ...colors,
+  textDisabled: colors.textLight20,
+  periodStart: colors.primary,
+  periodCont: colors.primaryLight20,
+  periodStartText: colors.textWhite,
+  periodContText: colors.textPrimary,
+};
 
 function formatClassSummary(cls) {
   return cls.blocks

@@ -235,8 +235,8 @@ export const createProfileCardStyles = (normalize) =>
       alignItems: 'center',
     },
     profileCircle: {
-      width: normalize(56),
-      height: normalize(56),
+      width: normalize(70),
+      height: normalize(70),
       borderRadius: normalize(28),
       justifyContent: 'center',
       alignItems: 'center',
@@ -246,12 +246,12 @@ export const createProfileCardStyles = (normalize) =>
       flex: 1,
     },
     profileName: {
-      fontSize: normalize(fontSizes.xxl),
+      fontSize: normalize(fontSizes.title),
       fontFamily: fonts.bold,
       color: colors.textPrimary,
     },
     profileUsername: {
-      fontSize: normalize(fontSizes.lg),
+      fontSize: normalize(fontSizes.xl),
       fontFamily: fonts.regular,
       color: colors.textSecondary,
     },
@@ -263,19 +263,14 @@ export const createProfileCardStyles = (normalize) =>
     },
     quickLinksRow: {
       flexDirection: 'row',
-      marginTop: normalize(14),
-      gap: normalize(8),
+      justifyContent: 'flex-start',
+      gap: normalize(20),
     },
     quickLinkCard: {
-      flex: 1,
-      backgroundColor: colors.primaryLight20,
-      borderRadius: normalize(12),
-      paddingVertical: normalize(8),
-      paddingHorizontal: normalize(4),
-      alignItems: 'center',
+      alignSelf: 'flex-start',
       justifyContent: 'center',
-      gap: normalize(2),
       position: 'relative',
+      paddingTop: normalize(8),
     },
     quickLinkLabel: {
       alignSelf: 'stretch',
@@ -286,10 +281,29 @@ export const createProfileCardStyles = (normalize) =>
     },
     quickLinkMeta: {
       alignSelf: 'stretch',
-      fontSize: normalize(fontSizes.xxl),
+      fontSize: normalize(fontSizes.xl),
       fontFamily: fonts.bold,
       color: colors.textPrimary,
       textAlign: 'center',
+    },
+    quickLinkInlineRow: {
+      flexDirection: 'row',
+      alignItems: 'baseline',
+      gap: normalize(4),
+    },
+    quickLinkLabelInline: {
+      fontSize: normalize(fontSizes.xl),
+      lineHeight: normalize(fontSizes.xl + 2),
+      fontFamily: fonts.regular,
+      color: colors.textSecondary,
+      includeFontPadding: false,
+    },
+    quickLinkMetaInline: {
+      fontSize: normalize(fontSizes.xxl),
+      lineHeight: normalize(fontSizes.xxl + 2),
+      fontFamily: fonts.bold,
+      color: colors.textPrimary,
+      includeFontPadding: false,
     },
     quickLinkDot: {
       position: 'absolute',
@@ -314,6 +328,31 @@ export const createProfileCardStyles = (normalize) =>
       height: normalize(15),
       borderRadius: normalize(4),
       backgroundColor: colors.primaryLight30,
+    },
+    timetableActionRow: {
+      flexDirection: 'row',
+      marginTop: normalize(4),
+    },
+    timetableActionCard: {
+      flex: 1,
+      alignItems: 'center',
+      justifyContent: 'center',
+      position: 'relative',
+      paddingVertical: normalize(8),
+    },
+    timetableActionMeta: {
+      alignSelf: 'stretch',
+      fontSize: normalize(fontSizes.xl),
+      fontFamily: fonts.bold,
+      color: colors.textPrimary,
+      textAlign: 'center',
+    },
+    timetableActionLabel: {
+      alignSelf: 'stretch',
+      fontSize: normalize(fontSizes.md),
+      fontFamily: fonts.regular,
+      color: colors.textSecondary,
+      textAlign: 'center',
     },
   });
 

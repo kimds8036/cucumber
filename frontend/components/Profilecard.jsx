@@ -6,6 +6,7 @@ import {
   useWindowDimensions,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import Feather from '@expo/vector-icons/Feather';
 import ProfileIcon from '../assets/Profile.svg';
 import { getNormalize, createProfileCardStyles } from '../styles/mypage.style';
 import { useFriend } from '../context/FriendContext';
@@ -45,7 +46,6 @@ const ProfileCard = ({ userInfo, navigation }) => {
           const isFresh = Date.now() - ts < PROFILE_COUNTS_CACHE_TTL_MS;
           if (cachedCounts) {
             setCounts((prev) => ({
-              // /api/auth/me 의 friendCount를 우선 신뢰해 캐시 역주입으로 숫자가 되돌아가지 않게 한다.
               friendCount: Number.isFinite(fallbackFriendCount)
                 ? fallbackFriendCount
                 : Number(cachedCounts.friendCount ?? prev.friendCount ?? 0),
@@ -64,7 +64,6 @@ const ProfileCard = ({ userInfo, navigation }) => {
 
       const res = await api.get('/api/users/me/stats');
       const nextCounts = {
-        // 통계 API보다 /api/auth/me 의 최신 friendCount를 우선 사용
         friendCount: Number.isFinite(fallbackFriendCount)
           ? fallbackFriendCount
           : Number(res.data?.data?.friendCount ?? 0),
@@ -96,7 +95,6 @@ const ProfileCard = ({ userInfo, navigation }) => {
     const fallbackFriendCount = Number(userInfo?.friendCount ?? 0);
     setCounts((prev) => ({
       ...prev,
-      // friendCount는 사용자 기본정보가 바뀌면 항상 즉시 동기화
       friendCount: Number.isFinite(fallbackFriendCount) ? fallbackFriendCount : prev.friendCount,
     }));
   }, [userInfo?.friendCount]);
@@ -105,77 +103,97 @@ const ProfileCard = ({ userInfo, navigation }) => {
     <View style={styles.profileCard}>
       <View style={styles.profileHeader}>
         <View style={[styles.profileCircle]}>
-          <ProfileIcon width={normalize(56)} height={normalize(56)} color={profileEyeColor} />
+          <ProfileIcon width={normalize(70)} height={normalize(70)} color={profileEyeColor} />
         </View>
 
         <View style={styles.profileInfo}>
-          <Text style={styles.profileName}>{userInfo.name}</Text>
-          <Text style={styles.profileUsername}>{userInfo.username}</Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: normalize(6) }}>
+            <Text style={styles.profileName}>{userInfo.name}</Text>
+            <Text style={styles.profileUsername}>{userInfo.username}</Text>
+          </View>
           <Text style={styles.profileSchool}>
             {userInfo.school} {userInfo.gradeClass}
           </Text>
+          <View style={styles.quickLinksRow}>
+            <TouchableOpacity
+              style={styles.quickLinkCard}
+              onPress={() => navigation.navigate('Friends')}
+              activeOpacity={0.7}
+              disabled={countsLoading}
+            >
+              {countsLoading ? (
+                <>
+                  <View style={styles.quickLinkSkeletonMeta} />
+                  <View style={styles.quickLinkSkeletonLabel} />
+                </>
+              ) : (
+                <>
+                  <View style={[styles.quickLinkInlineRow, { alignSelf: 'flex-start' }]}>
+                    <Text style={styles.quickLinkLabelInline}>친구</Text>
+                    <Text style={styles.quickLinkMetaInline}>{counts.friendCount}</Text>
+                  </View>
+                </>
+              )}
+              {!countsLoading && hasUnreadFriendRequests ? (
+                <View style={styles.quickLinkDot} />
+              ) : null}
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.quickLinkCard}
+              onPress={() => navigation.navigate('MyPosts', { tab: 'written' })}
+              activeOpacity={0.7}
+              disabled={countsLoading}
+            >
+              {countsLoading ? (
+                <>
+                  <View style={styles.quickLinkSkeletonMeta} />
+                  <View style={styles.quickLinkSkeletonLabel} />
+                </>
+              ) : (
+                <>
+                  <View style={[styles.quickLinkInlineRow, { alignSelf: 'flex-start' }]}>
+                    <Text style={styles.quickLinkLabelInline}>게시글</Text>
+                    <Text style={styles.quickLinkMetaInline}>{counts.postCount}</Text>
+                  </View>
+                </>
+              )}
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.quickLinkCard}
+              onPress={() => navigation.navigate('MyPosts', { tab: 'scrapped' })}
+              activeOpacity={0.7}
+              disabled={countsLoading}
+            >
+              {countsLoading ? (
+                <>
+                  <View style={styles.quickLinkSkeletonMeta} />
+                  <View style={styles.quickLinkSkeletonLabel} />
+                </>
+              ) : (
+                <>
+                  <View style={[styles.quickLinkInlineRow, { alignSelf: 'flex-start' }]}>
+                    <Text style={styles.quickLinkLabelInline}>스크랩</Text>
+                    <Text style={styles.quickLinkMetaInline}>{counts.scrapCount}</Text>
+                  </View>
+                </>
+              )}
+            </TouchableOpacity>
+          </View>
         </View>
       </View>
 
-      <View style={styles.quickLinksRow}>
+      <View style={styles.timetableActionRow}>
         <TouchableOpacity
-          style={styles.quickLinkCard}
-          onPress={() => navigation.navigate('Friends')}
+          style={styles.timetableActionCard}
+          onPress={() => navigation.navigate('AddTimetable')}
           activeOpacity={0.7}
-          disabled={countsLoading}
         >
-          {countsLoading ? (
-            <>
-              <View style={styles.quickLinkSkeletonMeta} />
-              <View style={styles.quickLinkSkeletonLabel} />
-            </>
-          ) : (
-            <>
-              <Text style={styles.quickLinkMeta}>{counts.friendCount}</Text>
-              <Text style={styles.quickLinkLabel}>친구</Text>
-            </>
-          )}
-          {!countsLoading && hasUnreadFriendRequests ? (
-            <View style={styles.quickLinkDot} />
-          ) : null}
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={styles.quickLinkCard}
-          onPress={() => navigation.navigate('MyPosts', { tab: 'written' })}
-          activeOpacity={0.7}
-          disabled={countsLoading}
-        >
-          {countsLoading ? (
-            <>
-              <View style={styles.quickLinkSkeletonMeta} />
-              <View style={styles.quickLinkSkeletonLabel} />
-            </>
-          ) : (
-            <>
-              <Text style={styles.quickLinkMeta}>{counts.postCount}</Text>
-              <Text style={styles.quickLinkLabel}>게시글</Text>
-            </>
-          )}
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={styles.quickLinkCard}
-          onPress={() => navigation.navigate('MyPosts', { tab: 'scrapped' })}
-          activeOpacity={0.7}
-          disabled={countsLoading}
-        >
-          {countsLoading ? (
-            <>
-              <View style={styles.quickLinkSkeletonMeta} />
-              <View style={styles.quickLinkSkeletonLabel} />
-            </>
-          ) : (
-            <>
-              <Text style={styles.quickLinkMeta}>{counts.scrapCount}</Text>
-              <Text style={styles.quickLinkLabel}>스크랩</Text>
-            </>
-          )}
+          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: normalize(4) }}>
+            <Text style={styles.timetableActionMeta}>시간표 추가하기</Text>
+            <Feather name="plus-circle" size={normalize(14)} color={styles.timetableActionMeta.color} />
+          </View>
         </TouchableOpacity>
       </View>
     </View>

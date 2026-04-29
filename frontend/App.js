@@ -6,7 +6,7 @@ import Sign from './view/src/Sign';
 import IDfind from './view/src/IDfind';
 import PWfind from './view/src/PWfind';
 import MainScreen from './view/src/MainScreen';
-import AddTimetable from './view/src/addtimetable';
+import AddTimetable from './src/screens/timetable/TimetableScreen';
 import MyPosts from './view/src/myposts';
 import NotificationSettings from './view/src/notificationsettings';
 import ChangePassword from './view/src/changepassword';
