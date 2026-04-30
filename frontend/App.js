@@ -7,6 +7,7 @@ import IDfind from './view/src/IDfind';
 import PWfind from './view/src/PWfind';
 import MainScreen from './view/src/MainScreen';
 import AddTimetable from './src/screens/timetable/TimetableScreen';
+import TimetabelChoice from './src/screens/timetable/timetabelChoice';
 import MyPosts from './view/src/myposts';
 import NotificationSettings from './view/src/notificationsettings';
 import ChangePassword from './view/src/changepassword';
@@ -104,6 +105,7 @@ function MainStack() {
       <Stack.Screen name="BoardDetail" component={BoardDetail} />
       <Stack.Screen name="Chat" component={ChatRoomScreen} />
       <Stack.Screen name="DMChat" component={DMChatScreen} />
+      <Stack.Screen name="TimetabelChoice" component={TimetabelChoice} />
       <Stack.Screen name="AddTimetable" component={AddTimetable} />
       <Stack.Screen name="MyPosts" component={MyPosts} />
       <Stack.Screen

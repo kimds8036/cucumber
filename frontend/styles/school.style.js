@@ -28,6 +28,7 @@ export const createOurSchoolStyles = (normalize) => {
       padding: normalize(16),
       borderWidth: 2,
       borderColor: colors.primary,
+      ...shadow.md,
     },
     schoolNameRow: {
       flexDirection: 'row',

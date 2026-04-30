@@ -17,7 +17,8 @@ export const CELL_HEIGHT = 34;
 export const CELL_GAP = 1;
 export const PERIOD_COL_WIDTH = 22;
 
-const tableHeight = PERIODS.length * CELL_HEIGHT + (PERIODS.length - 1) * CELL_GAP;
+const tableHeight =
+  PERIODS.length * CELL_HEIGHT + (PERIODS.length - 1) * CELL_GAP;
 
 const styles = StyleSheet.create({
   container: {
@@ -28,7 +29,6 @@ const styles = StyleSheet.create({
     flexGrow: 1,
     paddingHorizontal: normalize(16),
     paddingTop: normalize(12),
-    paddingBottom: normalize(20),
   },
   schoolInfoRow: {
     flexDirection: 'row',
@@ -306,7 +306,72 @@ const styles = StyleSheet.create({
     fontSize: fontSizes.sm,
     color: COLORS.white,
   },
+  choiceScroll: {
+    flex: 1,
+  },
+  choiceContent: {
+    flexGrow: 1,
+    paddingHorizontal: normalize(16),
+    paddingTop: normalize(16),
+    paddingBottom: normalize(24),
+    gap: normalize(12),
+    justifyContent: 'center',
+  },
+  choiceCard: {
+    alignSelf: 'center',
+    width: '100%',
+    height: normalize(300),
+    borderRadius: normalize(14),
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    paddingHorizontal: normalize(14),
+    paddingVertical: normalize(14),
+  },
+  choiceTitle: {
+    fontFamily: fonts.bold,
+    fontSize: fontSizes.title,
+    color: COLORS.textPrimary,
+  },
+  choiceDescription: {
+    fontFamily: fonts.regular,
+    fontSize: fontSizes.lg,
+    color: COLORS.textSecondary,
+  },
+  choicePreviewWrap: {
+    marginTop: normalize(10),
+    borderRadius: normalize(10),
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    overflow: 'hidden',
+    backgroundColor: COLORS.background,
+  },
+  choicePreviewHeaderRow: {
+    flexDirection: 'row',
+    backgroundColor: COLORS.primaryLight20,
+  },
+  choicePreviewBodyRow: {
+    flexDirection: 'row',
+    borderTopWidth: 1,
+    borderTopColor: COLORS.border,
+  },
+  choicePreviewPeriodCell: {
+    width: normalize(20),
+    height: normalize(18),
+    backgroundColor: COLORS.primaryLight30,
+  },
+  choicePreviewDayCell: {
+    flex: 1,
+    height: normalize(18),
+    borderLeftWidth: 1,
+    borderLeftColor: COLORS.background,
+    backgroundColor: COLORS.primaryLight20,
+  },
+  choicePreviewClassCell: {
+    flex: 1,
+    height: normalize(22),
+    borderLeftWidth: 1,
+    borderLeftColor: COLORS.border,
+  },
 });
 
 export default styles;
-

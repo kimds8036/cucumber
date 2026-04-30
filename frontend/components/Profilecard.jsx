@@ -16,7 +16,7 @@ import { getProfileHexByColorId } from '../utils/profileColor';
 
 const PROFILE_COUNTS_CACHE_TTL_MS = 10 * 60 * 1000;
 
-const ProfileCard = ({ userInfo, navigation }) => {
+const ProfileCard = ({ userInfo, navigation, timetableSection }) => {
   const { width } = useWindowDimensions();
   const normalize = useMemo(() => getNormalize(width), [width]);
   const styles = useMemo(
@@ -184,18 +184,22 @@ const ProfileCard = ({ userInfo, navigation }) => {
         </View>
       </View>
 
-      <View style={styles.timetableActionRow}>
-        <TouchableOpacity
-          style={styles.timetableActionCard}
-          onPress={() => navigation.navigate('AddTimetable')}
-          activeOpacity={0.7}
-        >
-          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: normalize(4) }}>
-            <Text style={styles.timetableActionMeta}>시간표 추가하기</Text>
-            <Feather name="plus-circle" size={normalize(14)} color={styles.timetableActionMeta.color} />
-          </View>
-        </TouchableOpacity>
-      </View>
+      {timetableSection ? (
+        timetableSection
+      ) : (
+        <View style={styles.timetableActionRow}>
+          <TouchableOpacity
+            style={styles.timetableActionCard}
+            onPress={() => navigation.navigate('TimetabelChoice')}
+            activeOpacity={0.7}
+          >
+            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: normalize(4) }}>
+              <Text style={styles.timetableActionMeta}>시간표 추가하기</Text>
+              <Feather name="plus-circle" size={normalize(14)} color={styles.timetableActionMeta.color} />
+            </View>
+          </TouchableOpacity>
+        </View>
+      )}
     </View>
   );
 };

@@ -18,7 +18,7 @@ import {
   themedTextInputProps,
 } from '../../styles/mypage.style';
 import ProfileCard from '../../components/Profilecard';
-// import TimetableView from '../../components/Timetableview'; // 시간표 UI 복구 시 주석 해제
+import TimetableView from '../../components/Timetableview';
 import { api, clearUserSessionStorage } from '../../utils/api';
 import { useAuth } from '../../context/AuthContext';
 
@@ -357,7 +357,40 @@ const MyPage = ({ navigation }) => {
 
         {/* ── 학생 정보 카드 ── */}
         {userInfo ? (
-          <ProfileCard userInfo={userInfo} navigation={navigation} />
+          <ProfileCard
+            userInfo={userInfo}
+            navigation={navigation}
+            timetableSection={
+              timetableLoading && !isEditMode ? (
+                <View style={styles.ttSkeletonCard}>
+                  <View style={styles.ttSkeletonHeader} />
+                  {[...Array(7)].map((_, idx) => (
+                    <View style={styles.ttSkeletonRow} key={`tt-sk-${idx}`}>
+                      <View style={styles.ttSkeletonCellSmall} />
+                      <View style={styles.ttSkeletonCell} />
+                      <View style={styles.ttSkeletonCell} />
+                      <View style={styles.ttSkeletonCell} />
+                      <View style={styles.ttSkeletonCell} />
+                      <View style={styles.ttSkeletonCell} />
+                    </View>
+                  ))}
+                  <Text style={styles.ttSkeletonText}>시간표를 불러오는 중입니다...</Text>
+                </View>
+              ) : (timetable || isEditMode) ? (
+                <TimetableView
+                  timetable={isEditMode ? (editingTimetable || {}) : (timetable || {})}
+                  onAddOrEdit={handleStartEdit}
+                  editMode={isEditMode}
+                  onToggleEdit={handleStartEdit}
+                  onSaveEdit={handleSaveEdit}
+                  onCancelEdit={handleCancelEdit}
+                  onCellPress={handleCellPress}
+                  onResetPress={handleResetTimetable}
+                  colorSeed={colorSeed}
+                />
+              ) : null
+            }
+          />
         ) : (
           <View style={styles.profileSkeletonCard}>
             <View style={styles.profileSkeletonHeader}>
@@ -375,37 +408,6 @@ const MyPage = ({ navigation }) => {
             </View>
           </View>
         )}
-
-        {/* ── 시간표 (일시 비표시 — 복구 시 아래 블록 주석 해제 + TimetableView import 주석 해제) ──
-        {timetableLoading && !isEditMode ? (
-          <View style={styles.ttSkeletonCard}>
-            <View style={styles.ttSkeletonHeader} />
-            {[...Array(7)].map((_, idx) => (
-              <View style={styles.ttSkeletonRow} key={`tt-sk-${idx}`}>
-                <View style={styles.ttSkeletonCellSmall} />
-                <View style={styles.ttSkeletonCell} />
-                <View style={styles.ttSkeletonCell} />
-                <View style={styles.ttSkeletonCell} />
-                <View style={styles.ttSkeletonCell} />
-                <View style={styles.ttSkeletonCell} />
-              </View>
-            ))}
-            <Text style={styles.ttSkeletonText}>시간표를 불러오는 중입니다...</Text>
-          </View>
-        ) : (
-          <TimetableView
-            timetable={isEditMode ? (editingTimetable || {}) : (timetable || {})}
-            onAddOrEdit={handleStartEdit}
-            editMode={isEditMode}
-            onToggleEdit={handleStartEdit}
-            onSaveEdit={handleSaveEdit}
-            onCancelEdit={handleCancelEdit}
-            onCellPress={handleCellPress}
-            onResetPress={handleResetTimetable}
-            colorSeed={colorSeed}
-          />
-        )}
-        */}
 
         {/* ── 메뉴 ── */}
         <View style={styles.menuSection}>
@@ -445,7 +447,6 @@ const MyPage = ({ navigation }) => {
 
         <View style={styles.bottomPadding} />
       </ScrollView>
-      {/* 시간표 셀 편집 모달 — 시간표 UI 복구 시 주석 해제
       <Modal
         animationType="slide"
         transparent
@@ -491,7 +492,6 @@ const MyPage = ({ navigation }) => {
           </View>
         </View>
       </Modal>
-      */}
 
     </View>
   );

@@ -1,4 +1,5 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
   KeyboardAvoidingView,
   Modal,
@@ -9,8 +10,10 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import SubHeader from '../../../view/frame/subHeader';
 import { colors } from '../../../styles/colors';
+import { api } from '../../../utils/api';
 import styles, { CELL_GAP, CELL_HEIGHT, DAYS, PERIODS } from './timetable.style';
 import { SUBJECT_COLORS, TIMETABLE_DUMMY } from './TimetableDummy';
 
@@ -71,6 +74,27 @@ function groupClassesByRoom(classes) {
   }, {});
 }
 
+function buildMyPageTimetable(myChoices) {
+  const timetable = {};
+
+  Object.entries(myChoices).forEach(([subjectId, choice]) => {
+    const subject = TIMETABLE_DUMMY.find((v) => v.id === Number(subjectId));
+    if (!subject) return;
+    const selectedClass = subject.classes[choice.classIdx];
+    if (!selectedClass) return;
+
+    selectedClass.blocks.forEach((block) => {
+      const dayLabel = DAYS[block.day];
+      if (!dayLabel) return;
+      block.periods.forEach((period) => {
+        timetable[`${dayLabel}-${period}`] = subject.name;
+      });
+    });
+  });
+
+  return timetable;
+}
+
 function PeriodBadges({ blocks }) {
   return (
     <View style={styles.badgeRow}>
@@ -106,12 +130,20 @@ function PeriodBadges({ blocks }) {
   );
 }
 
-export default function TimetableScreen() {
+export default function TimetableScreen({ navigation }) {
   const [keyword, setKeyword] = useState('');
   const [myChoices, setMyChoices] = useState({});
   const [selectedSubject, setSelectedSubject] = useState(null);
   const [selectedClassIdx, setSelectedClassIdx] = useState(0);
   const [modalVisible, setModalVisible] = useState(false);
+  const [schoolGradeText, setSchoolGradeText] = useState('-');
+  const termTitle = useMemo(() => {
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = now.getMonth() + 1;
+    const semester = month >= 2 && month <= 7 ? '1학기' : '2학기';
+    return `${year}년 ${semester}`;
+  }, []);
 
   const filteredSubjects = useMemo(() => {
     const q = keyword.trim();
@@ -129,8 +161,27 @@ export default function TimetableScreen() {
     setModalVisible(true);
   };
 
-  const handleDone = () => {
-    // TODO: 서버 저장 연결
+  const handleDone = async () => {
+    const nextTimetable = buildMyPageTimetable(myChoices);
+    const hasEntries = Object.keys(nextTimetable).length > 0;
+    if (!hasEntries) return;
+
+    try {
+      await AsyncStorage.setItem(
+        '@mypage_timetable_cache_v1',
+        JSON.stringify({
+          ts: Date.now(),
+          timetable: nextTimetable,
+        }),
+      );
+    } catch (error) {
+      console.warn(
+        '[TimetableScreen] MyPage 시간표 캐시 저장 실패:',
+        error?.message || error,
+      );
+    }
+
+    navigation.navigate('Main', { initialTab: 'mypage' });
   };
 
   const handleCompleteSelect = () => {
@@ -149,20 +200,47 @@ export default function TimetableScreen() {
     setModalVisible(false);
   };
 
+  useEffect(() => {
+    let mounted = true;
+
+    const fetchSchoolAndGrade = async () => {
+      try {
+        const res = await api.get('/api/auth/me');
+        if (!mounted) return;
+
+        const me = res.data?.data;
+        const schoolName = me?.school?.name || '-';
+        const gradeText = me?.grade ? `${me.grade}학년` : '';
+        setSchoolGradeText(gradeText ? `${schoolName} · ${gradeText}` : schoolName);
+      } catch (error) {
+        if (mounted) {
+          setSchoolGradeText('-');
+        }
+        console.warn(
+          '[TimetableScreen] 사용자 학교/학년 조회 실패:',
+          error?.response?.data || error?.message || error,
+        );
+      }
+    };
+
+    fetchSchoolAndGrade();
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
   return (
-    <View style={styles.container}>
-      <SubHeader title="시간표 만들기" rightLabel="완료" onRightPress={handleDone} />
+    <SafeAreaView style={styles.container} edges={['top']}>
+      <SubHeader title={termTitle} rightButtonText="완료" onRightPress={handleDone} />
 
       <KeyboardAvoidingView
         style={styles.container}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        keyboardVerticalOffset={0}
       >
         <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
           <View style={styles.schoolInfoRow}>
-            <Text style={styles.schoolInfoText}>하나고등학교 · 3학년 · 2026년 1학기</Text>
-            <View style={styles.neisBadge}>
-              <Text style={styles.neisBadgeText}>NEIS</Text>
-            </View>
+            <Text style={styles.schoolInfoText}>{schoolGradeText}</Text>
           </View>
 
           <TextInput
@@ -371,7 +449,7 @@ export default function TimetableScreen() {
           </TouchableOpacity>
         </TouchableOpacity>
       </Modal>
-    </View>
+    </SafeAreaView>
   );
 }
 
