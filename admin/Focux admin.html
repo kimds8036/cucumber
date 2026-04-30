@@ -504,7 +504,7 @@
     .user-sub { font-size: 11px; color: var(--text-tertiary); margin-top: 2px; }
     .user-stats-grid {
       display: grid;
-      grid-template-columns: repeat(4, 1fr);
+      grid-template-columns: repeat(5, 1fr);
       padding: 14px 16px;
       gap: 0;
     }
@@ -797,6 +797,7 @@
           <input type="text" placeholder="위반경고 ≥ N" style="width:110px" id="users-min-violation">
           <input type="text" placeholder="허위신고 ≥ N" style="width:110px" id="users-min-false-report">
           <input type="text" placeholder="신고당한수 ≥ N" style="width:110px" id="users-min-reported">
+          <input type="text" placeholder="차단당한수 ≥ N" style="width:110px" id="users-min-blocked-by">
           <select id="users-sanction-filter">
             <option value="">제재상태 전체</option>
             <option value="suspended">임시정지</option>
@@ -1540,6 +1541,7 @@
     const minViolationWarning = document.getElementById('users-min-violation')?.value?.trim() || '';
     const minFalseReportWarning = document.getElementById('users-min-false-report')?.value?.trim() || '';
     const minReported = document.getElementById('users-min-reported')?.value?.trim() || '';
+    const minBlockedBy = document.getElementById('users-min-blocked-by')?.value?.trim() || '';
     const sanction = document.getElementById('users-sanction-filter')?.value || '';
     const qs = new URLSearchParams();
     if (qInput) qs.set('q', qInput);
@@ -1549,7 +1551,11 @@
     if (minReported) qs.set('minReported', minReported);
     if (sanction) qs.set('sanction', sanction);
     const { data } = await api(`/users?${qs.toString()}`);
-    const list = data.users || [];
+    let list = data.users || [];
+    const minBlockedByNum = Number(minBlockedBy);
+    if (Number.isFinite(minBlockedByNum) && minBlockedByNum > 0) {
+      list = list.filter((u) => Number(u.blocked_by_count || 0) >= minBlockedByNum);
+    }
     const container = document.getElementById('users-list');
     if (!list.length) {
       container.innerHTML = `<div class="txt-muted">사용자 데이터가 없습니다.</div>`;
@@ -1574,6 +1580,7 @@
           <div class="user-stat"><div class="user-stat-num">${u.false_report_warning_count || 0}</div><div class="user-stat-label">허위신고 경고</div></div>
           <div class="user-stat"><div class="user-stat-num">${u.post_count || 0}</div><div class="user-stat-label">총 게시글</div></div>
           <div class="user-stat"><div class="user-stat-num ${Number(u.reported_count || 0) > 0 ? 'txt-danger' : ''}">${u.reported_count || 0}</div><div class="user-stat-label">신고당한 수</div></div>
+          <div class="user-stat"><div class="user-stat-num">${u.blocked_by_count || 0}</div><div class="user-stat-label">차단당한 수</div></div>
         </div>
         <div class="user-actions-row">
           <button class="btn btn-sm btn-amber" onclick="suspendUser(${u.id})">임시 정지</button>

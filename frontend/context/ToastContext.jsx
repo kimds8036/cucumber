@@ -11,6 +11,7 @@ import { DeviceEventEmitter, Platform } from 'react-native';
 import { navigate } from '../navigation/navigationRef';
 
 const ToastContext = createContext(null);
+const ENABLE_NATIVE_CHAT_BRIDGE = false;
 
 export function ToastProvider({ children }) {
   const [visible, setVisible] = useState(false);
@@ -111,7 +112,7 @@ export function ToastProvider({ children }) {
 
   /** Android 네이티브 채팅(ChatLauncherActivity) 포그라운드 시 RN 토스트/알림 억제와 동기화 */
   useEffect(() => {
-    if (Platform.OS !== 'android') return undefined;
+    if (Platform.OS !== 'android' || !ENABLE_NATIVE_CHAT_BRIDGE) return undefined;
     const sub = DeviceEventEmitter.addListener('nativeChatActiveRoom', (payload) => {
       const rid = payload?.roomId;
       setActiveChatRoomId(
@@ -123,7 +124,7 @@ export function ToastProvider({ children }) {
 
   /** 네이티브 쪽지방 상단 게시글 카드 탭 → BoardDetail (ChatScreen과 동일 파라미터) */
   useEffect(() => {
-    if (Platform.OS !== 'android') return undefined;
+    if (Platform.OS !== 'android' || !ENABLE_NATIVE_CHAT_BRIDGE) return undefined;
     console.log('[NativeOpenBoardDetail] listener registered');
     const sub = DeviceEventEmitter.addListener('nativeOpenBoardDetail', (payload) => {
       const postId = payload?.postId;

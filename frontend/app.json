@@ -14,7 +14,6 @@
     },
     "ios": {
       "supportsTablet": true,
-      "googleServicesFile": "./GoogleService-Info.plist",
       "infoPlist": {
         "UIViewControllerBasedStatusBarAppearance": false,
         "NSCameraUsageDescription": "학생증 인증을 위해 카메라 접근 권한이 필요합니다.",
@@ -89,8 +88,7 @@
             ]
           }
         }
-      ],
-      "./plugins/with-cucumber-chat"
+      ]
     ],
     "extra": {
       "apiBaseUrl": "https://nonvenous-patriotically-bud.ngrok-free.dev",

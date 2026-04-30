@@ -660,6 +660,13 @@ router.post('/login', async (req, res) => {
       username: user.username 
     });
 
+    console.log('[API][POST /api/auth/login] 로그인 성공 토큰 발급', {
+      userId: user.id,
+      username: user.username,
+      deviceId: currentDeviceId,
+      token,
+    });
+
     res.json({ 
       success: true, 
       message: '로그인 성공',

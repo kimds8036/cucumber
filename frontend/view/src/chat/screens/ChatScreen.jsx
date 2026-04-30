@@ -64,6 +64,7 @@ export default function ChatScreen({
     [width, normalize],
   );
   const inputTranslateY = useSharedValue(0);
+  const keyboardOffset = useSharedValue(0);
 
   // 훅 호출: (roomId, socket) 2개 인자
   const chat = useChatHook(hookConfig.roomId, hookConfig.socket);
@@ -149,6 +150,9 @@ export default function ChatScreen({
     setInputText('');
     setChatImages([]);
     setReplyToMessage(null);
+    setTimeout(() => {
+      scroll.scrollToLatest?.({ animated: true });
+    }, 40);
   };
 
   const handleCopyMessage = async (content) => {
@@ -200,11 +204,13 @@ export default function ChatScreen({
     {
       onMove: (e) => {
         'worklet';
-        inputTranslateY.value = -Math.max(e.height - insets.bottom, 0);
+        keyboardOffset.value = Math.max(e.height - insets.bottom, 0);
+        inputTranslateY.value = -keyboardOffset.value;
       },
       onEnd: (e) => {
         'worklet';
-        inputTranslateY.value = -Math.max(e.height - insets.bottom, 0);
+        keyboardOffset.value = Math.max(e.height - insets.bottom, 0);
+        inputTranslateY.value = -keyboardOffset.value;
       },
     },
     [insets.bottom],
@@ -212,6 +218,9 @@ export default function ChatScreen({
 
   const inputAnimStyle = useAnimatedStyle(() => ({
     transform: [{ translateY: inputTranslateY.value }],
+  }));
+  const listAnimStyle = useAnimatedStyle(() => ({
+    paddingBottom: keyboardOffset.value,
   }));
 
   return (
@@ -241,7 +250,42 @@ export default function ChatScreen({
             />
           )}
 
-        <View style={{ flex: 1, position: 'relative' }}>
+        <Animated.View style={[{ flex: 1, position: 'relative' }, listAnimStyle]}>
+          {!combinedLoading && chat.hasMore && scroll.showLoadMoreButton ? (
+            <View
+              style={{
+                position: 'absolute',
+                top: normalize(8),
+                left: 0,
+                right: 0,
+                alignItems: 'center',
+                zIndex: 25,
+              }}
+            >
+              <TouchableOpacity
+                activeOpacity={0.9}
+                disabled={chat.isLoadingMore}
+                onPress={() => scroll.triggerLoadMore?.()}
+                style={{
+                  backgroundColor: 'rgba(255,255,255,0.98)',
+                  borderWidth: 1,
+                  borderColor: '#E0E0E0',
+                  borderRadius: normalize(14),
+                  paddingHorizontal: normalize(12),
+                  paddingVertical: normalize(7),
+                }}
+              >
+                <Text
+                  style={{
+                    fontSize: normalize(12),
+                    color: colors.textPrimary,
+                  }}
+                >
+                  {chat.isLoadingMore ? '불러오는 중...' : '이전대화 더불러오기'}
+                </Text>
+              </TouchableOpacity>
+            </View>
+          ) : null}
           <MessageList
             roomId={roomId}
             data={flatData}
@@ -281,7 +325,7 @@ export default function ChatScreen({
               </View>
             </View>
           ) : null}
-        </View>
+        </Animated.View>
 
         {/* 토스트 */}
         {toastText ? (

@@ -4,8 +4,8 @@ import {
   Text,
   TouchableOpacity,
   ScrollView,
-  RefreshControl,
   useWindowDimensions,
+  Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Octicons from '@expo/vector-icons/Octicons';
@@ -165,6 +165,7 @@ function mapMailToListItem(mail, isReceived) {
     null;
   return {
     id: mail.id,
+    roomId: mail.room_id ?? null,
     raw: mail,
     isReceived,
     parentMailId: mail.parent_mail_id != null ? mail.parent_mail_id : null,
@@ -189,7 +190,6 @@ function MailInbox({ onOpen, onBack, navigation }) {
   const [hasMore, setHasMore] = useState(false);
   const [loading, setLoading] = useState(true);
   const [isInitialLoading, setIsInitialLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState('');
 
   const fetchList = useCallback(async (nextPage = 1, append = false) => {
@@ -226,18 +226,12 @@ function MailInbox({ onOpen, onBack, navigation }) {
     } finally {
       setLoading(false);
       if (nextPage === 1 && !append) setIsInitialLoading(false);
-      setRefreshing(false);
     }
   }, [tab]);
 
   useEffect(() => {
     fetchList(1, false);
   }, [fetchList]);
-
-  const handleRefresh = () => {
-    setRefreshing(true);
-    fetchList(1, false);
-  };
 
   if (isInitialLoading && loading) {
     return (
@@ -305,7 +299,6 @@ function MailInbox({ onOpen, onBack, navigation }) {
         style={styles.scroll}
         contentContainerStyle={styles.inboxContainer}
         showsVerticalScrollIndicator={false}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />}
       >
         {loading && (
           <View style={styles.inboxStateWrapper}>
@@ -333,6 +326,42 @@ function MailInbox({ onOpen, onBack, navigation }) {
                 mail.rowKind === 'parent' && styles.mailCardParent,
                 mail.rowKind === 'reply' && styles.mailCardReply,
               ]}
+              onLongPress={() => {
+                const counterpartyUserId = mail.counterpartyUserId;
+                Alert.alert('개인 우편 옵션', '원하는 작업을 선택해주세요.', [
+                  {
+                    text: '차단',
+                    style: 'destructive',
+                    onPress: async () => {
+                      if (!counterpartyUserId) return;
+                      try {
+                        await api.post(`/api/friends/${counterpartyUserId}/block`, {
+                          reason: 'mail_block',
+                        });
+                        if (mail.roomId) {
+                          setItems((prev) => prev.filter((it) => it.roomId !== mail.roomId));
+                        }
+                      } catch {
+                        Alert.alert('오류', '차단 처리에 실패했습니다.');
+                      }
+                    },
+                  },
+                  {
+                    text: '삭제',
+                    style: 'destructive',
+                    onPress: async () => {
+                      if (!mail.roomId) return;
+                      try {
+                        await api.delete(`/api/mails/personal/rooms/${mail.roomId}`);
+                        setItems((prev) => prev.filter((it) => it.roomId !== mail.roomId));
+                      } catch {
+                        Alert.alert('오류', '우편 삭제에 실패했습니다.');
+                      }
+                    },
+                  },
+                  { text: '취소', style: 'cancel' },
+                ]);
+              }}
               onPress={() => onOpen(mail)}
               activeOpacity={0.8}
             >
@@ -725,25 +754,30 @@ function MailDetail({ mail: initialMail, onBack, navigation }) {
 
 export default function AnonymousMailScreen({ navigation, route }) {
   const detailMail = route.params?.mail;
+  const fallbackRelatedId = route.params?.relatedId;
+  const mailForDetail =
+    detailMail?.raw != null
+      ? {
+          ...detailMail.raw,
+          isReceived: detailMail.isReceived,
+          replyToMySent: detailMail.replyToMySent,
+        }
+      : (detailMail || {
+          id: fallbackRelatedId,
+          isReceived: true,
+          replyToMySent: false,
+        });
 
-  if (detailMail) {
-    const mailForDetail =
-      detailMail?.raw != null
-        ? {
-            ...detailMail.raw,
-            isReceived: detailMail.isReceived,
-            replyToMySent: detailMail.replyToMySent,
-          }
-        : detailMail;
-    return (
-      <MailDetail
-        mail={mailForDetail}
-        onBack={() => navigation.goBack()}
-        navigation={navigation}
-      />
-    );
-  }
+  return (
+    <MailDetail
+      mail={mailForDetail}
+      onBack={() => navigation.goBack()}
+      navigation={navigation}
+    />
+  );
 
+  /*
+  // Legacy 분기 (목록 모드): MailDetail 단일 진입으로 통일하여 현재 미사용
   return (
     <MailInbox
       navigation={navigation}
@@ -751,4 +785,5 @@ export default function AnonymousMailScreen({ navigation, route }) {
       onOpen={(mail) => navigation.navigate('MailDetail', { mail })}
     />
   );
+  */
 }

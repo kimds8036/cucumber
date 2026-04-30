@@ -2,6 +2,7 @@ import express from 'express';
 import pool from '../config/database.js';
 import { authenticate } from '../middleware/auth.js';
 import { emitNotification, getIO } from '../socketServer.js';
+import { getMessaging } from '../config/firebase.js';
 
 const router = express.Router();
 
@@ -28,6 +29,12 @@ function emitNotificationReadToUser(userId, payload = {}) {
   } catch {
     // no-op
   }
+}
+
+function maskToken(token = '') {
+  if (!token) return '';
+  if (token.length <= 16) return token;
+  return `${token.slice(0, 8)}...${token.slice(-8)}`;
 }
 
 // 클라이언트에서 직접 알림 한 건 기록 (타이머 요약 등)
@@ -296,6 +303,110 @@ router.post('/debug/socket-ping', authenticate, async (req, res) => {
     res.status(500).json({
       success: false,
       message: 'socket-ping 처리 중 오류가 발생했습니다.',
+    });
+  }
+});
+
+// 디버그용: Firebase Admin SDK로 FCM 직접 전송
+// - 목적: iOS/Android 토큰 대상 전송 결과(messageId, error.code)를 즉시 확인
+// - 기본은 "로그인한 내 계정에 저장된 fcm_token" 사용, 필요 시 body.token으로 override 가능
+router.post('/debug/fcm-test', authenticate, async (req, res) => {
+  try {
+    const userId = req.user.userId;
+    const {
+      token: inputToken,
+      title = 'FCM 디버그 테스트',
+      body = '서버 직접 전송 테스트 알림입니다.',
+      data = {},
+      dryRun = false,
+    } = req.body || {};
+
+    let token = String(inputToken || '').trim();
+    if (!token) {
+      const [rows] = await pool.execute(
+        'SELECT fcm_token FROM users WHERE id = ? LIMIT 1',
+        [userId],
+      );
+      token = String(rows?.[0]?.fcm_token || '').trim();
+    }
+
+    if (!token) {
+      return res.status(400).json({
+        success: false,
+        message: '테스트 대상 FCM 토큰이 없습니다. body.token 또는 저장된 fcm_token이 필요합니다.',
+      });
+    }
+
+    const messaging = getMessaging();
+    if (!messaging) {
+      return res.status(500).json({
+        success: false,
+        message: 'Firebase Admin SDK(messaging) 초기화에 실패했습니다.',
+      });
+    }
+
+    const payload = {
+      token,
+      notification: {
+        title: String(title),
+        body: String(body),
+      },
+      data: Object.fromEntries(
+        Object.entries(data || {}).map(([k, v]) => [String(k), String(v)]),
+      ),
+      apns: {
+        headers: {
+          'apns-push-type': 'alert',
+          'apns-priority': '10',
+        },
+        payload: {
+          aps: {
+            sound: 'default',
+          },
+        },
+      },
+    };
+
+    console.log('[POST /api/notifications/debug/fcm-test] 전송 시도', {
+      userId,
+      dryRun: !!dryRun,
+      token: maskToken(token),
+    });
+
+    const messageId = await messaging.send(payload, !!dryRun);
+
+    console.log('[POST /api/notifications/debug/fcm-test] 전송 성공', {
+      userId,
+      dryRun: !!dryRun,
+      token: maskToken(token),
+      messageId,
+    });
+
+    return res.json({
+      success: true,
+      message: 'FCM 테스트 전송 성공',
+      data: {
+        dryRun: !!dryRun,
+        token: maskToken(token),
+        messageId,
+      },
+    });
+  } catch (error) {
+    console.error('[POST /api/notifications/debug/fcm-test] 전송 실패', {
+      code: error?.code || null,
+      errorInfo: error?.errorInfo || null,
+      message: error?.message || null,
+      stack: error?.stack || null,
+    });
+
+    return res.status(500).json({
+      success: false,
+      message: 'FCM 테스트 전송 실패',
+      error: {
+        code: error?.code || null,
+        errorInfo: error?.errorInfo || null,
+        message: error?.message || null,
+      },
     });
   }
 });

@@ -33,6 +33,7 @@ import Bull from 'bull';
 import { createNotification } from './notifications.js';
 import { emitNotification } from '../socketServer.js';
 import { checkNotificationAllowed } from './notificationUtils.js';
+import { sendPush } from './pushNotification.js';
 
 // ── Redis 연결 설정 ──────────────────────────────────
 const REDIS_CONFIG = {
@@ -91,6 +92,30 @@ notificationQueue.process(async (job) => {
   } catch (err) {
     console.error('[NotifQueue] 소켓 알림 emit 실패(무시):', err.message);
   }
+
+  // FCM 푸시 전송 (실패해도 큐/메인 비즈니스 영향 없음)
+  try {
+    const pushContent = buildPushContent({
+      title,
+      body,
+      relatedType,
+    });
+
+    await sendPush({
+      userId,
+      title: pushContent.title,
+      body: pushContent.body,
+      data: {
+        type,
+        category: category || '',
+        relatedType: relatedType || '',
+        relatedId: relatedId != null ? String(relatedId) : '',
+        targetScreen: resolveTargetScreen(relatedType),
+      },
+    });
+  } catch (err) {
+    console.error('[NotifQueue] FCM 발송 실패(무시):', err.message);
+  }
 });
 
 // ── 이벤트 로깅 ─────────────────────────────────────
@@ -132,4 +157,40 @@ export async function enqueueNotification(params) {
     // 큐 추가 실패 시 에러 로그만 남기고 메인 로직은 계속 진행
     console.error('[NotifQueue] 잡 추가 실패 (무시):', err.message);
   }
+}
+
+function resolveTargetScreen(relatedType) {
+  switch (relatedType) {
+    case 'post':
+      return 'PostDetail';
+    case 'dm_room':
+    case 'message_room':
+      return 'ChatRoom';
+    case 'friend_request':
+      return 'FriendRequests';
+    case 'personal_mail':
+      return 'MailDetail';
+    default:
+      return 'Notifications';
+  }
+}
+
+function buildPushContent({ title, body, relatedType }) {
+  // 익명 우편/익명 채팅은 푸시에서도 발신자 노출을 막는다.
+  if (relatedType === 'personal_mail') {
+    return {
+      title: '새로운 익명 우편',
+      body: '새 메시지가 도착했어요',
+    };
+  }
+  if (relatedType === 'message_room') {
+    return {
+      title: '익명 채팅',
+      body: body || '새 메시지가 도착했어요',
+    };
+  }
+  return {
+    title,
+    body,
+  };
 }

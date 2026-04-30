@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, TextInput, Alert, ScrollView, KeyboardAvoidingView, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import { CommonActions } from '@react-navigation/native';
 import { colors } from '../../styles/colors';
 import Skeleton from '../../components/common/Skeleton';
 
@@ -35,7 +36,18 @@ const ChangePassword = ({ navigation }) => {
     Alert.alert(
       '비밀번호 변경',
       '비밀번호가 성공적으로 변경되었습니다.',
-      [{ text: '확인', onPress: () => navigation.goBack() }]
+      [
+        {
+          text: '확인',
+          onPress: () =>
+            navigation?.dispatch(
+              CommonActions.reset({
+                index: 0,
+                routes: [{ name: 'Main', params: { initialTab: 'mypage' } }],
+              }),
+            ),
+        },
+      ]
     );
   };
 

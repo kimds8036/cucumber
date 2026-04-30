@@ -526,6 +526,8 @@ router.get('/users', authenticate, async (req, res) => {
          u.suspended_until,
          u.is_banned,
          u.is_whitelisted,
+         (SELECT COUNT(*) FROM user_blocks ub WHERE ub.user_id = u.id) AS block_count,
+         (SELECT COUNT(*) FROM user_blocks ub2 WHERE ub2.blocked_user_id = u.id) AS blocked_by_count,
          (SELECT COUNT(*) FROM posts p WHERE p.user_id = u.id AND p.is_deleted = FALSE) AS post_count,
          (SELECT COUNT(*) FROM reports r2
           WHERE (r2.target_type = 'post' AND r2.target_id IN (SELECT p2.id FROM posts p2 WHERE p2.user_id = u.id))
@@ -673,6 +675,78 @@ router.post('/users/:userId/ban', authenticate, async (req, res) => {
     await connection.rollback();
     console.error('관리자 사용자 밴 오류:', error);
     res.status(500).json({ success: false, message: '영구 정지 처리 중 오류가 발생했습니다.' });
+  } finally {
+    connection.release();
+  }
+});
+
+router.get('/blocks', authenticate, async (req, res) => {
+  const adminUserId = req.user.userId;
+  if (!isAdminUser(adminUserId)) {
+    return res.status(403).json({ success: false, message: '관리자 권한이 필요합니다.' });
+  }
+  try {
+    const [rows] = await pool.execute(
+      `SELECT
+         ub.id,
+         ub.user_id,
+         u1.username AS user_username,
+         u1.name AS user_name,
+         ub.blocked_user_id,
+         u2.username AS blocked_username,
+         u2.name AS blocked_name,
+         ub.reason,
+         ub.created_at
+       FROM user_blocks ub
+       LEFT JOIN users u1 ON u1.id = ub.user_id
+       LEFT JOIN users u2 ON u2.id = ub.blocked_user_id
+       ORDER BY ub.created_at DESC
+       LIMIT 500`
+    );
+    return res.json({ success: true, data: { blocks: rows } });
+  } catch (error) {
+    console.error('관리자 차단 목록 조회 오류:', error);
+    return res.status(500).json({ success: false, message: '차단 목록 조회 중 오류가 발생했습니다.' });
+  }
+});
+
+router.delete('/blocks/:blockId', authenticate, async (req, res) => {
+  const adminUserId = req.user.userId;
+  if (!isAdminUser(adminUserId)) {
+    return res.status(403).json({ success: false, message: '관리자 권한이 필요합니다.' });
+  }
+  const blockId = Number(req.params.blockId);
+  if (!Number.isFinite(blockId) || blockId <= 0) {
+    return res.status(400).json({ success: false, message: '유효하지 않은 차단 ID입니다.' });
+  }
+  const connection = await pool.getConnection();
+  try {
+    await connection.beginTransaction();
+    const [rows] = await connection.execute(
+      `SELECT id, user_id, blocked_user_id FROM user_blocks WHERE id = ? FOR UPDATE`,
+      [blockId]
+    );
+    if (!rows.length) {
+      await connection.rollback();
+      return res.status(404).json({ success: false, message: '차단 내역을 찾을 수 없습니다.' });
+    }
+    await connection.execute(`DELETE FROM user_blocks WHERE id = ?`, [blockId]);
+    await writeAuditLog(connection, {
+      adminUserId,
+      actionType: 'user_block_release',
+      targetType: 'user_block',
+      targetId: blockId,
+      extra: {
+        userId: rows[0].user_id,
+        blockedUserId: rows[0].blocked_user_id,
+      },
+    });
+    await connection.commit();
+    return res.json({ success: true, message: '차단을 해제했습니다.' });
+  } catch (error) {
+    await connection.rollback();
+    console.error('관리자 차단 해제 오류:', error);
+    return res.status(500).json({ success: false, message: '차단 해제 중 오류가 발생했습니다.' });
   } finally {
     connection.release();
   }

@@ -1,6 +1,7 @@
 import express from 'express';
 import pool from '../config/database.js';
 import { authenticate } from '../middleware/auth.js';
+import { upsertFcmToken } from '../utils/pushTokens.js';
 
 const router = express.Router();
 
@@ -8,16 +9,15 @@ const router = express.Router();
 router.post('/fcm-token', authenticate, async (req, res) => {
   try {
     const token = String(req.body?.token || '').trim();
+    const deviceType = req.body?.deviceType;
+    const appVersion = req.body?.appVersion;
     const userId = req.user.userId;
 
     if (!token) {
       return res.status(400).json({ success: false, message: 'token 필요' });
     }
 
-    await pool.execute('UPDATE users SET fcm_token = ? WHERE id = ?', [
-      token,
-      userId,
-    ]);
+    await upsertFcmToken({ userId, token, deviceType, appVersion });
 
     return res.json({ success: true });
   } catch (error) {

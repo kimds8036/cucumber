@@ -20,6 +20,7 @@ const NotificationContext = createContext(null);
 export function NotificationProvider({ children }) {
   const { socket } = useSocket();
   const { showToast, activeChatRoomId, isMessageTab, isTimerScreenActive } = useToast();
+  const appStateRef = useRef(AppState.currentState);
   const [hasUnread, setHasUnread] = useState(false);
   const [initialized, setInitialized] = useState(false);
   const [bellSuppressed, setBellSuppressed] = useState(false);
@@ -130,6 +131,7 @@ export function NotificationProvider({ children }) {
     refreshHasUnread();
 
     const handleAppStateChange = (nextState) => {
+      appStateRef.current = nextState;
       if (nextState === 'active') refreshHasUnread();
     };
 
@@ -168,6 +170,7 @@ export function NotificationProvider({ children }) {
     };
 
     const handler = (payload) => {
+      const isForeground = appStateRef.current === 'active';
       const isChatNotification =
         payload?.relatedType === 'message_room' ||
         payload?.relatedType === 'dm_room';
@@ -202,6 +205,7 @@ export function NotificationProvider({ children }) {
         : (titleText || bodyText || fallbackToastMessage(payload));
 
       if (!composedMessage) return;
+      if (!isForeground) return;
       showToast({
         message: composedMessage,
         senderName: isChatNotification
@@ -219,6 +223,7 @@ export function NotificationProvider({ children }) {
     };
 
     const pokeHandler = (payload) => {
+      const isForeground = appStateRef.current === 'active';
       const senderName = String(
         payload?.fromName ??
         payload?.fromNickname ??
@@ -229,6 +234,7 @@ export function NotificationProvider({ children }) {
       // 온라인 즉시 전달 poke는 알림 목록에 없을 수 있다.
       setBellSuppressed(false);
       refreshHasUnread();
+      if (!isForeground) return;
       showToast({
         message: senderName
           ? `${senderName} 님이 쿡 찔렀어요`
@@ -246,6 +252,7 @@ export function NotificationProvider({ children }) {
       refreshHasUnread();
     };
     const newMessageHandler = (payload) => {
+      const isForeground = appStateRef.current === 'active';
       const roomId = payload?.message?.room_id;
       const senderName = payload?.message?.sender_name || '새 메시지';
       const content = payload?.message?.content || '(이미지)';
@@ -276,6 +283,14 @@ export function NotificationProvider({ children }) {
           reason: 'activeChatRoomId matched',
           roomId,
           activeChatRoomId,
+        });
+        return;
+      }
+      if (!isForeground) {
+        console.log('[NotificationSocket] toast skipped', {
+          reason: 'app_not_active',
+          roomId,
+          appState: appStateRef.current,
         });
         return;
       }
