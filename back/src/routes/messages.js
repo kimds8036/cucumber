@@ -20,6 +20,7 @@ import { getNowForDB } from '../utils/dateUtils.js';
 import { emitNewMessage, emitReadReceipt, isUserInRoom } from '../socketServer.js';
 import { enqueueNotification } from '../utils/notificationWorker.js';
 import { cloudinary, upload } from '../config/cloudinary.js';
+import { isBlockedBy } from '../utils/userBlock.js';
 
 const router = express.Router();
 
@@ -58,6 +59,7 @@ router.get('/rooms', authenticate, async (req, res) => {
             AND m.sender_id != ?
             AND m.is_read = FALSE
             AND (m.is_deleted IS NULL OR m.is_deleted = FALSE)
+            AND (m.is_shadow_blocked = FALSE OR m.shadow_blocked_for_user_id IS NULL OR m.shadow_blocked_for_user_id != ?)
         ) AS unread_count
       FROM message_rooms mr
       LEFT JOIN posts  p  ON mr.post_id  = p.id
@@ -68,9 +70,15 @@ router.get('/rooms', authenticate, async (req, res) => {
         OR
         (mr.user2_id = ? AND (mr.is_deleted_by_user2 IS NULL OR mr.is_deleted_by_user2 = FALSE))
       )
+        AND EXISTS (
+          SELECT 1
+          FROM messages m0
+          WHERE m0.room_id = mr.id
+            AND (m0.is_deleted IS NULL OR m0.is_deleted = FALSE)
+        )
       ORDER BY mr.last_message_at DESC, mr.created_at DESC
       LIMIT ${limitNum} OFFSET ${offsetNum}`,
-      [userId, userId, userId, userId, userId, userId],
+      [userId, userId, userId, userId, userId, userId, userId],
     );
     const [countResult] = await pool.execute(
       `SELECT COUNT(*) AS total FROM message_rooms mr
@@ -78,7 +86,13 @@ router.get('/rooms', authenticate, async (req, res) => {
          (mr.user1_id = ? AND (mr.is_deleted_by_user1 IS NULL OR mr.is_deleted_by_user1 = FALSE))
          OR
          (mr.user2_id = ? AND (mr.is_deleted_by_user2 IS NULL OR mr.is_deleted_by_user2 = FALSE))
-       )`,
+       )
+         AND EXISTS (
+           SELECT 1
+           FROM messages m0
+           WHERE m0.room_id = mr.id
+             AND (m0.is_deleted IS NULL OR m0.is_deleted = FALSE)
+         )`,
       [userId, userId],
     );
     const total = Number(countResult[0]?.total ?? 0);
@@ -317,13 +331,13 @@ router.get('/rooms/:roomId', authenticate, async (req, res) => {
 
     const whereClause =
       beforeParsed != null
-        ? 'WHERE m.room_id = ? AND m.id > ? AND m.id < ?'
-        : 'WHERE m.room_id = ? AND m.id > ?';
+        ? 'WHERE m.room_id = ? AND m.id > ? AND m.id < ? AND (m.is_shadow_blocked = FALSE OR m.shadow_blocked_for_user_id IS NULL OR m.shadow_blocked_for_user_id != ?)'
+        : 'WHERE m.room_id = ? AND m.id > ? AND (m.is_shadow_blocked = FALSE OR m.shadow_blocked_for_user_id IS NULL OR m.shadow_blocked_for_user_id != ?)';
 
     const queryParams =
       beforeParsed != null
-        ? [roomIdNum, cursorId, beforeParsed]
-        : [roomIdNum, cursorId];
+        ? [roomIdNum, cursorId, beforeParsed, userId]
+        : [roomIdNum, cursorId, userId];
 
     console.log('--- QUERY DEBUG START ---');
     console.log('beforeParsed:', beforeParsed);
@@ -419,6 +433,10 @@ router.post(
       const room = rooms[0];
       const otherUserId =
         room.user1_id === userId ? room.user2_id : room.user1_id;
+      const isShadowBlocked = await isBlockedBy({
+        blockerUserId: otherUserId,
+        targetUserId: userId,
+      });
       const trimmedContent = content?.trim() || null;
       const parentMessageId = parent_message_id
         ? parseInt(parent_message_id, 10)
@@ -441,8 +459,24 @@ router.post(
       // ── 메시지 저장 ─────────────────────────────
       const now = getNowForDB();
       const [result] = await pool.execute(
-        `INSERT INTO messages (room_id, sender_id, parent_message_id, content, created_at) VALUES (?, ?, ?, ?, ?)`,
-        [roomId, userId, parentMessageId, trimmedContent, now],
+        `INSERT INTO messages (
+          room_id,
+          sender_id,
+          parent_message_id,
+          content,
+          created_at,
+          is_shadow_blocked,
+          shadow_blocked_for_user_id
+        ) VALUES (?, ?, ?, ?, ?, ?, ?)`,
+        [
+          roomId,
+          userId,
+          parentMessageId,
+          trimmedContent,
+          now,
+          isShadowBlocked,
+          isShadowBlocked ? otherUserId : null,
+        ],
       );
       const messageId = result.insertId;
       if (req.files && req.files.length > 0) {
@@ -513,6 +547,7 @@ WHERE m.id = ?`,
       if (
         otherUserId &&
         otherUserId !== userId &&
+        !isShadowBlocked &&
         !isUserInRoom(roomId, otherUserId)
       ) {
         const senderName = savedMessage?.sender_name || '새 메시지';
@@ -619,8 +654,9 @@ router.get('/unread-count', authenticate, async (req, res) => {
        )
          AND m.sender_id != ?
          AND m.is_read = FALSE
-         AND (m.is_deleted IS NULL OR m.is_deleted = FALSE)`,
-      [userId, userId, userId],
+         AND (m.is_deleted IS NULL OR m.is_deleted = FALSE)
+         AND (m.is_shadow_blocked = FALSE OR m.shadow_blocked_for_user_id IS NULL OR m.shadow_blocked_for_user_id != ?)`,
+      [userId, userId, userId, userId],
     );
 
     const [roomCounts] = await pool.execute(
@@ -630,6 +666,7 @@ router.get('/unread-count', authenticate, async (req, res) => {
          AND m.sender_id != ?
          AND m.is_read = FALSE
          AND (m.is_deleted IS NULL OR m.is_deleted = FALSE)
+         AND (m.is_shadow_blocked = FALSE OR m.shadow_blocked_for_user_id IS NULL OR m.shadow_blocked_for_user_id != ?)
        WHERE (
          (mr.user1_id = ? AND (mr.is_deleted_by_user1 IS NULL OR mr.is_deleted_by_user1 = FALSE))
          OR
@@ -637,7 +674,7 @@ router.get('/unread-count', authenticate, async (req, res) => {
        )
        GROUP BY mr.id
        HAVING unread_count > 0`,
-      [userId, userId, userId],
+      [userId, userId, userId, userId],
     );
 
     res.json({

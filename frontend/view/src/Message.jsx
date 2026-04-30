@@ -4,7 +4,6 @@ import {
   Text,
   TouchableOpacity,
   ScrollView,
-  RefreshControl,
   useWindowDimensions,
   Animated,
   Alert,
@@ -258,8 +257,6 @@ export function MessageContent({ navigation }) {
   const [mails, setMails] = useState([]);
   const [loadingNote, setLoadingNote] = useState(false);
   const [loadingMail, setLoadingMail] = useState(false);
-  const [refreshingNote, setRefreshingNote] = useState(false);
-  const [refreshingMail, setRefreshingMail] = useState(false);
   const { setIsMessageTab } = useToast();
   const { refreshHasUnread } = useNotification();
   const confirmDelete = useCallback(
@@ -294,13 +291,9 @@ export function MessageContent({ navigation }) {
     }).start();
   };
 
-  const fetchRooms = useCallback(async ({ isPullRefresh = false } = {}) => {
+  const fetchRooms = useCallback(async () => {
     try {
-      if (isPullRefresh) {
-        setRefreshingNote(true);
-      } else {
-        setLoadingNote(true);
-      }
+      setLoadingNote(true);
       const [noteRes, dmRes] = await Promise.all([
         api.get('/api/messages/rooms', { params: { page: 1, limit: 50 } }).catch((e) => {
           console.error('채팅방 목록 조회 실패:', e);
@@ -324,6 +317,8 @@ export function MessageContent({ navigation }) {
           time: formatListTime(at),
           unreadCount: r.unread_count || 0,
           sortTime: parseUtcToLocal(at)?.getTime() ?? 0,
+          other_user_id: r.other_user_id ?? null,
+          other_user_name: r.other_user_name ?? null,
         };
       });
 
@@ -351,11 +346,7 @@ export function MessageContent({ navigation }) {
     } catch (error) {
       console.error('쪽지 목록 조회 실패:', error);
     } finally {
-      if (isPullRefresh) {
-        setRefreshingNote(false);
-      } else {
-        setLoadingNote(false);
-      }
+      setLoadingNote(false);
     }
   }, []);
 
@@ -450,13 +441,9 @@ export function MessageContent({ navigation }) {
     };
   }, [setIsMessageTab]);
 
-  const fetchMails = useCallback(async ({ isPullRefresh = false } = {}) => {
+  const fetchMails = useCallback(async () => {
     try {
-      if (isPullRefresh) {
-        setRefreshingMail(true);
-      } else {
-        setLoadingMail(true);
-      }
+      setLoadingMail(true);
       const [receivedRes, sentRes, meRes] = await Promise.all([
         api.get('/api/mails/personal/received', { params: { page: 1, limit: 50 } }),
         api.get('/api/mails/personal/sent', { params: { page: 1, limit: 50 } }),
@@ -573,11 +560,7 @@ export function MessageContent({ navigation }) {
     } catch (error) {
       console.error('개인 우편 목록 조회 실패:', error);
     } finally {
-      if (isPullRefresh) {
-        setRefreshingMail(false);
-      } else {
-        setLoadingMail(false);
-      }
+      setLoadingMail(false);
     }
   }, []);
 
@@ -634,14 +617,6 @@ export function MessageContent({ navigation }) {
             <ScrollView
               style={styles.list}
               showsVerticalScrollIndicator={false}
-              refreshControl={
-                <RefreshControl
-                  refreshing={refreshingNote}
-                  onRefresh={() => fetchRooms({ isPullRefresh: true })}
-                  tintColor={colors.primary}
-                  colors={[colors.primary]}
-                />
-              }
             >
               {loadingNote && noteRooms.length === 0 ? (
                 <MessageListSkeleton styles={styles} normalize={normalize} rowCount={9} />
@@ -658,28 +633,43 @@ export function MessageContent({ navigation }) {
                     item.other_user_color_id ?? item.profileColorId ?? item.profileColorIndex ?? 0;
                   const iconColor = getProfileInnerColor(colorIdx);
                   return (
-                    <SwipeableRow
-                      key={`dm-${item.id}`}
-                      onDelete={async () => {
-                        confirmDelete({
-                          title: 'DM 대화 삭제',
-                          message:
-                            '대화 내용을 삭제하시겠습니까?\n삭제하면 내 목록에서만 사라지고, 이후 새 메시지는 새 대화처럼 표시됩니다.',
-                          onConfirm: async () => {
-                            try {
-                              await api.delete(`/api/dm/rooms/${item.id}`);
-                              setNoteRooms((prev) => prev.filter((r) => !(r.type === 'dm' && r.id === item.id)));
-                            } catch (e) {
-                              Alert.alert('오류', 'DM 삭제에 실패했습니다.');
-                            }
-                          },
-                        });
-                      }}
-                    >
                       <TouchableOpacity
+                        key={`dm-${item.id}`}
                         style={styles.listItem}
                         activeOpacity={0.7}
-                      onPress={async () => {
+                        onLongPress={() => {
+                          Alert.alert('DM 옵션', '원하는 작업을 선택해주세요.', [
+                            {
+                              text: '차단',
+                              style: 'destructive',
+                              onPress: async () => {
+                                if (!item.other_user_id) return;
+                                try {
+                                  await api.post(`/api/friends/${item.other_user_id}/block`, {
+                                    reason: 'chat_block',
+                                  });
+                                  setNoteRooms((prev) => prev.filter((r) => !(r.type === 'dm' && r.id === item.id)));
+                                } catch {
+                                  Alert.alert('오류', '차단 처리에 실패했습니다.');
+                                }
+                              },
+                            },
+                            {
+                              text: '삭제',
+                              style: 'destructive',
+                              onPress: async () => {
+                                try {
+                                  await api.delete(`/api/dm/rooms/${item.id}`);
+                                  setNoteRooms((prev) => prev.filter((r) => !(r.type === 'dm' && r.id === item.id)));
+                                } catch {
+                                  Alert.alert('오류', 'DM 삭제에 실패했습니다.');
+                                }
+                              },
+                            },
+                            { text: '취소', style: 'cancel' },
+                          ]);
+                        }}
+                        onPress={async () => {
                           setNoteRooms((prev) =>
                             prev.map((r) =>
                               r.id === item.id && r.type === 'dm'
@@ -722,33 +712,47 @@ export function MessageContent({ navigation }) {
                           ) : null}
                         </View>
                       </TouchableOpacity>
-                    </SwipeableRow>
                   );
                 }
 
                 const iconColor = getProfileInnerColor(item.profileColorId ?? item.profileColorIndex);
                 return (
-                  <SwipeableRow
-                    key={`note-${item.id}`}
-                    onDelete={async () => {
-                      confirmDelete({
-                        title: '쪽지 삭제',
-                        message:
-                          '대화 내용을 삭제하시겠습니까?\n삭제하면 내 목록에서만 사라지고, 이후 새 메시지는 새 대화처럼 표시됩니다.',
-                        onConfirm: async () => {
-                          try {
-                            await api.delete(`/api/messages/rooms/${item.id}`);
-                            setNoteRooms((prev) => prev.filter((r) => r.id !== item.id));
-                          } catch (e) {
-                            Alert.alert('오류', '삭제에 실패했습니다.');
-                          }
-                        },
-                      });
-                    }}
-                  >
                     <TouchableOpacity
+                      key={`note-${item.id}`}
                       style={styles.listItem}
                       activeOpacity={0.7}
+                      onLongPress={() => {
+                        Alert.alert('쪽지 옵션', '원하는 작업을 선택해주세요.', [
+                          {
+                            text: '차단',
+                            style: 'destructive',
+                            onPress: async () => {
+                              if (!item.other_user_id) return;
+                              try {
+                                await api.post(`/api/friends/${item.other_user_id}/block`, {
+                                  reason: 'anonymous_chat_block',
+                                });
+                                setNoteRooms((prev) => prev.filter((r) => r.id !== item.id));
+                              } catch {
+                                Alert.alert('오류', '차단 처리에 실패했습니다.');
+                              }
+                            },
+                          },
+                          {
+                            text: '삭제',
+                            style: 'destructive',
+                            onPress: async () => {
+                              try {
+                                await api.delete(`/api/messages/rooms/${item.id}`);
+                                setNoteRooms((prev) => prev.filter((r) => r.id !== item.id));
+                              } catch {
+                                Alert.alert('오류', '삭제에 실패했습니다.');
+                              }
+                            },
+                          },
+                          { text: '취소', style: 'cancel' },
+                        ]);
+                      }}
                       onPress={async () => {
                         setNoteRooms((prev) =>
                           prev.map((room) =>
@@ -784,7 +788,6 @@ export function MessageContent({ navigation }) {
                         ) : null}
                       </View>
                     </TouchableOpacity>
-                  </SwipeableRow>
                 );
               }))}
             </ScrollView>
@@ -794,14 +797,6 @@ export function MessageContent({ navigation }) {
             <ScrollView
               style={styles.list}
               showsVerticalScrollIndicator={false}
-              refreshControl={
-                <RefreshControl
-                  refreshing={refreshingMail}
-                  onRefresh={() => fetchMails({ isPullRefresh: true })}
-                  tintColor={colors.primary}
-                  colors={[colors.primary]}
-                />
-              }
             >
               {loadingMail && mails.length === 0 ? (
                 <MessageListSkeleton styles={styles} normalize={normalize} rowCount={9} />
@@ -819,31 +814,48 @@ export function MessageContent({ navigation }) {
                   item.directionText ||
                   '익명';
                 return (
-                  <SwipeableRow
-                    key={`mail-${item.id}-${item.isReceived ? 'r' : 's'}`}
-                    onDelete={async () => {
-                      confirmDelete({
-                        title: '개인 우편 삭제',
-                        message:
-                          '대화 내용을 삭제하시겠습니까?\n삭제하면 내 목록에서만 사라지고, 이후 새 우편은 새 대화처럼 표시됩니다.',
-                        onConfirm: async () => {
-                          if (!item.roomId) {
-                            Alert.alert('오류', '우편 룸 정보를 찾을 수 없습니다.');
-                            return;
-                          }
-                          try {
-                            await api.delete(`/api/mails/personal/rooms/${item.roomId}`);
-                            setMails((prev) => prev.filter((m) => m.roomId !== item.roomId));
-                          } catch (e) {
-                            Alert.alert('오류', '우편 삭제에 실패했습니다.');
-                          }
-                        },
-                      });
-                    }}
-                  >
                     <TouchableOpacity
+                      key={`mail-${item.id}-${item.isReceived ? 'r' : 's'}`}
                       style={styles.listItem}
                       activeOpacity={0.7}
+                      onLongPress={() => {
+                        Alert.alert('개인 우편 옵션', '원하는 작업을 선택해주세요.', [
+                          {
+                            text: '차단',
+                            style: 'destructive',
+                            onPress: async () => {
+                              if (!item.counterpartyUserId) return;
+                              try {
+                                await api.post(`/api/friends/${item.counterpartyUserId}/block`, {
+                                  reason: 'mail_block',
+                                });
+                                if (item.roomId) {
+                                  setMails((prev) => prev.filter((m) => m.roomId !== item.roomId));
+                                }
+                              } catch {
+                                Alert.alert('오류', '차단 처리에 실패했습니다.');
+                              }
+                            },
+                          },
+                          {
+                            text: '삭제',
+                            style: 'destructive',
+                            onPress: async () => {
+                              if (!item.roomId) {
+                                Alert.alert('오류', '우편 룸 정보를 찾을 수 없습니다.');
+                                return;
+                              }
+                              try {
+                                await api.delete(`/api/mails/personal/rooms/${item.roomId}`);
+                                setMails((prev) => prev.filter((m) => m.roomId !== item.roomId));
+                              } catch {
+                                Alert.alert('오류', '우편 삭제에 실패했습니다.');
+                              }
+                            },
+                          },
+                          { text: '취소', style: 'cancel' },
+                        ]);
+                      }}
                       onPress={async () => {
                         const mailId = item.id;
                         const rawMail = item.raw || item;
@@ -916,7 +928,6 @@ export function MessageContent({ navigation }) {
                         ) : null}
                       </View>
                     </TouchableOpacity>
-                  </SwipeableRow>
                 );
               }))}
             </ScrollView>

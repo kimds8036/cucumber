@@ -66,12 +66,14 @@ export default function useChatScroll({
   const pagingScrollOffsetRef = useRef(0);
   /** prepend 직전 바닥까지 거리 — near-bottom이면 scrollToEnd */
   const pagingDistanceFromBottomRef = useRef(0);
+  const loadMoreTopLockOffsetRef = useRef(null);
   const flatDataRef = useRef(flatData);
   /** id -> (index, item) 캐시 */
   const idToFlatIndexRef = useRef(new Map());
   const idToItemRef = useRef(new Map());
 
   const [listShellVisible, setListShellVisible] = useState(false);
+  const [showLoadMoreButton, setShowLoadMoreButton] = useState(false);
   /** 방 진입 직후: 백그라운드 프리페치·prepend 앵커가 끝날 때까지 터치 차단(스크롤 튐 방지) */
   const [initialScrollSettling, setInitialScrollSettling] = useState(false);
 
@@ -105,7 +107,9 @@ export default function useChatScroll({
     pagingAnchorMessageIdRef.current = null;
     pagingScrollOffsetRef.current = 0;
     pagingDistanceFromBottomRef.current = 0;
+    loadMoreTopLockOffsetRef.current = null;
     setListShellVisible(false);
+    setShowLoadMoreButton(false);
     setInitialScrollSettling(false);
   }, [roomId]);
 
@@ -210,13 +214,14 @@ export default function useChatScroll({
     return () => clearTimeout(t);
   }, [initialScrollSettling, roomId, finishInitialScrollSettling]);
 
-  // 공통 loadMore 트리거 (onStartReached)
+  // 수동 "이전대화 더불러오기" 트리거
   const triggerLoadMore = useCallback(() => {
     if (isInitialLoadRef.current || !didInitialAnchorRef.current) return;
-    if (!loadOlderAllowedRef.current) return;
     if (isLoading || isLoadingMore) return;
     if (isLoadingMoreRef.current) return;
+    if (!hasMore) return;
     const { anchorId } = beginPagingSessionSnapshot();
+    loadMoreTopLockOffsetRef.current = Math.max(0, currentOffsetRef.current ?? 0);
     // eslint-disable-next-line no-console
     console.log('[ChatScroll] 페이징 직전 앵커', {
       roomId,
@@ -226,6 +231,7 @@ export default function useChatScroll({
     loadMore().finally(() => {
       setTimeout(() => {
         isLoadingMoreRef.current = false;
+        loadMoreTopLockOffsetRef.current = null;
       }, 500);
     });
   }, [isLoading, isLoadingMore, loadMore, roomId, beginPagingSessionSnapshot]);
@@ -316,7 +322,7 @@ export default function useChatScroll({
     topVisibleMessageIdRef.current = String(top.item.id);
   }, []);
 
-  // 스크롤 이벤트 핸들러 + 프리페치 기반 페이징
+  // 스크롤 이벤트 핸들러
   const handleScroll = useCallback(
     (e) => {
       const offsetY = e?.nativeEvent?.contentOffset?.y ?? 0;
@@ -329,6 +335,20 @@ export default function useChatScroll({
       contentHeightRef.current = contentH;
       if (viewportH > 0) viewportHeightRef.current = viewportH;
       currentOffsetRef.current = Math.max(0, offsetY);
+      if (
+        isLoadingMoreRef.current &&
+        loadMoreTopLockOffsetRef.current != null &&
+        offsetY < loadMoreTopLockOffsetRef.current - 8
+      ) {
+        const lockOffset = loadMoreTopLockOffsetRef.current;
+        const list = listRef.current;
+        if (typeof list?.scrollTo === 'function') {
+          list.scrollTo({ y: lockOffset, animated: false });
+        } else if (typeof list?.scrollToOffset === 'function') {
+          list.scrollToOffset({ offset: lockOffset, animated: false });
+        }
+        return;
+      }
       let bottomDist = distanceFromBottomRef.current;
       if (viewportH > 0) {
         bottomDist = computeDistanceFromBottom(contentH, offsetY, viewportH);
@@ -360,6 +380,9 @@ export default function useChatScroll({
       const threshold = Math.max(80, viewportH * 0.1);
       const oyClamped = Math.max(0, offsetY);
       isNearBottomRef.current = oyClamped + viewportH >= contentH - threshold;
+      const topThreshold = Math.max(50, viewportH * 0.08);
+      const isNearTopNow = oyClamped <= topThreshold;
+      setShowLoadMoreButton((prev) => (prev === isNearTopNow ? prev : isNearTopNow));
       // 초기 앵커링이 끝난 뒤, 사용자가 하단에서 벗어나 위로 스크롤한 이후에만 과거 로딩 허용
       if (
         didInitialAnchorRef.current &&
@@ -369,24 +392,8 @@ export default function useChatScroll({
         loadOlderAllowedRef.current = true;
       }
 
-      // inverted: offsetY ≈ 상단(과거)까지 거리 — viewportH * 2 남았을 때 미리 페이징
-      if (
-        viewportH > 0 &&
-        didInitialAnchorRef.current &&
-        !isInitialLoadRef.current &&
-        loadOlderAllowedRef.current &&
-        !isLoadingMoreRef.current &&
-        !pagingAnchorPendingRef.current &&
-        hasMore
-      ) {
-        const distanceFromTop = Math.max(0, offsetY);
-        const PREFETCH_THRESHOLD = viewportH * 2;
-        if (distanceFromTop < PREFETCH_THRESHOLD) {
-          triggerLoadMore();
-        }
-      }
     },
-    [roomId, hasMore, triggerLoadMore],
+    [roomId],
   );
 
   // 새 메시지 자동 스크롤
@@ -506,10 +513,10 @@ export default function useChatScroll({
     });
   }, [isLoading, messages, roomId]);
 
-  // 과거 로딩 (handleStartReached) — 맨 꼭대기 도달 시 백업용 트리거
+  // 자동 페이징 제거: onStartReached는 no-op
   const handleStartReached = useCallback(() => {
-    triggerLoadMore();
-  }, [triggerLoadMore]);
+    // no-op (manual only)
+  }, []);
 
   // FlashList onContentSizeChange 기반 스크롤 위치 보정
   /** 리스트 뷰포트 높이가 바뀐 뒤(예: 상단 PostCard 로드) 최신 메시지 쪽으로 다시 맞출 때 */
@@ -661,6 +668,8 @@ export default function useChatScroll({
     handleContentSizeChange,
     handleViewableItemsChanged,
     scrollToLatest,
+    triggerLoadMore,
+    showLoadMoreButton,
     isNearBottomRef,
     currentOffsetRef,
     contentHeightRef,

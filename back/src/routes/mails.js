@@ -3,6 +3,7 @@ import pool from '../config/database.js';
 import { authenticate, optionalAuthenticate } from '../middleware/auth.js';
 import { enqueueNotification } from '../utils/notificationWorker.js';
 import { getKstTodayRangeUtcForSql, getNowForDB } from '../utils/dateUtils.js';
+import { isBlockedBy } from '../utils/userBlock.js';
 
 const router = express.Router();
 let ensurePersonalMailRoomSoftDeleteColumnsPromise = null;
@@ -87,6 +88,7 @@ router.get('/personal/received', authenticate, async (req, res) => {
       LEFT JOIN personal_mails par ON par.id = pm.parent_mail_id AND par.is_deleted = FALSE
       LEFT JOIN personal_mails root_pm ON root_pm.id = COALESCE(pm.root_mail_id, pm.id) AND root_pm.is_deleted = FALSE
       WHERE pm.recipient_id = ? AND pm.is_deleted = FALSE
+        AND (pm.is_shadow_blocked = FALSE OR pm.shadow_blocked_for_user_id IS NULL OR pm.shadow_blocked_for_user_id != ?)
         AND (
           (pmr.user1_id = ? AND (pmr.is_deleted_by_user1 IS NULL OR pmr.is_deleted_by_user1 = FALSE))
           OR
@@ -95,22 +97,23 @@ router.get('/personal/received', authenticate, async (req, res) => {
       ORDER BY pm.created_at DESC
       LIMIT ${limitNum} OFFSET ${offsetNum}`,
       isRead !== undefined
-        ? [userId, userId, userId, userId, userId, isRead === 'true' ? 1 : 0]
-        : [userId, userId, userId, userId, userId]
+        ? [userId, userId, userId, userId, userId, userId, isRead === 'true' ? 1 : 0]
+        : [userId, userId, userId, userId, userId, userId]
     );
 
     const [countResult] = await pool.execute(
       `SELECT COUNT(*) as total FROM personal_mails pm
        INNER JOIN personal_mail_rooms pmr ON pm.room_id = pmr.id
        WHERE pm.recipient_id = ? AND pm.is_deleted = FALSE
+         AND (pm.is_shadow_blocked = FALSE OR pm.shadow_blocked_for_user_id IS NULL OR pm.shadow_blocked_for_user_id != ?)
          AND (
            (pmr.user1_id = ? AND (pmr.is_deleted_by_user1 IS NULL OR pmr.is_deleted_by_user1 = FALSE))
            OR
            (pmr.user2_id = ? AND (pmr.is_deleted_by_user2 IS NULL OR pmr.is_deleted_by_user2 = FALSE))
          )${isRead !== undefined ? ' AND pm.is_read = ?' : ''}`,
       isRead !== undefined
-        ? [userId, userId, userId, isRead === 'true' ? 1 : 0]
-        : [userId, userId, userId]
+        ? [userId, userId, userId, userId, isRead === 'true' ? 1 : 0]
+        : [userId, userId, userId, userId]
     );
     const total = Number(countResult[0]?.total ?? 0);
 
@@ -275,8 +278,9 @@ router.get('/personal/:mailId/thread', authenticate, async (req, res) => {
     const [baseRows] = await pool.execute(
       `SELECT id, sender_id, recipient_id, root_mail_id
        FROM personal_mails
-       WHERE id = ? AND is_deleted = FALSE`,
-      [mailId]
+       WHERE id = ? AND is_deleted = FALSE
+         AND (is_shadow_blocked = FALSE OR shadow_blocked_for_user_id IS NULL OR shadow_blocked_for_user_id != ?)`,
+      [mailId, userId]
     );
 
     if (baseRows.length === 0) {
@@ -294,8 +298,9 @@ router.get('/personal/:mailId/thread', authenticate, async (req, res) => {
        FROM personal_mails pm
        WHERE (pm.id = ? OR pm.root_mail_id = ?)
          AND pm.is_deleted = FALSE
+         AND (pm.is_shadow_blocked = FALSE OR pm.shadow_blocked_for_user_id IS NULL OR pm.shadow_blocked_for_user_id != ?)
          AND (pm.sender_id = ? OR pm.recipient_id = ?)`,
-      [threadRootId, threadRootId, userId, userId]
+      [threadRootId, threadRootId, userId, userId, userId]
     );
 
     if (Number(participationRows[0]?.cnt ?? 0) === 0) {
@@ -325,8 +330,9 @@ router.get('/personal/:mailId/thread', authenticate, async (req, res) => {
        LEFT JOIN personal_mails root_pm ON root_pm.id = COALESCE(pm.root_mail_id, pm.id) AND root_pm.is_deleted = FALSE
        WHERE (pm.id = ? OR pm.root_mail_id = ?)
          AND pm.is_deleted = FALSE
+         AND (pm.is_shadow_blocked = FALSE OR pm.shadow_blocked_for_user_id IS NULL OR pm.shadow_blocked_for_user_id != ?)
        ORDER BY pm.created_at ASC`,
-      [userId, threadRootId, threadRootId]
+      [userId, threadRootId, threadRootId, userId]
     );
 
     res.json({
@@ -377,8 +383,9 @@ router.get('/personal/:mailId', authenticate, async (req, res) => {
       LEFT JOIN personal_mails root_pm ON root_pm.id = COALESCE(pm.root_mail_id, pm.id) AND root_pm.is_deleted = FALSE
       WHERE pm.id = ? 
         AND (pm.sender_id = ? OR pm.recipient_id = ?)
-        AND pm.is_deleted = FALSE`,
-      [userId, userId, mailId, userId, userId]
+        AND pm.is_deleted = FALSE
+        AND (pm.is_shadow_blocked = FALSE OR pm.shadow_blocked_for_user_id IS NULL OR pm.shadow_blocked_for_user_id != ?)`,
+      [userId, userId, mailId, userId, userId, userId]
     );
 
     if (mails.length === 0) {
@@ -410,9 +417,10 @@ router.get('/personal/:mailId', authenticate, async (req, res) => {
          root_mail_id
        FROM personal_mails
        WHERE parent_mail_id = ?
-         AND is_deleted = FALSE
+        AND is_deleted = FALSE
+        AND (is_shadow_blocked = FALSE OR shadow_blocked_for_user_id IS NULL OR shadow_blocked_for_user_id != ?)
        ORDER BY created_at ASC`,
-      [mailId]
+      [mailId, userId]
     );
 
     res.json({
@@ -468,11 +476,25 @@ router.post('/personal', authenticate, async (req, res) => {
     let result;
     try {
       await connection.beginTransaction();
+      const isShadowBlocked = await isBlockedBy({
+        blockerUserId: Number(recipientId),
+        targetUserId: userId,
+      });
       // 루트 우편 생성 (room_id는 생성 후 업데이트)
       [result] = await connection.execute(
-        `INSERT INTO personal_mails (sender_id, recipient_id, content, root_mail_id, created_at)
-         VALUES (?, ?, ?, NULL, ?)`,
-        [userId, recipientId, content.trim(), getNowForDB()]
+        `INSERT INTO personal_mails (
+          sender_id, recipient_id, content, root_mail_id, created_at,
+          is_shadow_blocked, shadow_blocked_for_user_id
+        )
+         VALUES (?, ?, ?, NULL, ?, ?, ?)`,
+        [
+          userId,
+          recipientId,
+          content.trim(),
+          getNowForDB(),
+          isShadowBlocked,
+          isShadowBlocked ? Number(recipientId) : null,
+        ]
       );
       const rootMailId = Number(result.insertId);
 
@@ -537,15 +559,21 @@ router.post('/personal', authenticate, async (req, res) => {
     );
 
     // 수신자에게 알림 생성 (비동기 큐 + 소켓 emit)
-    await enqueueNotification({
-      userId: Number(recipientId),
-      type: 'mail',
-      category: 'mail',
-      title: '새로운 익명 우편이 도착했습니다',
-      body: content.trim().slice(0, 80),
-      relatedType: 'personal_mail',
-      relatedId: result.insertId,
+    const blockedForReceiver = await isBlockedBy({
+      blockerUserId: Number(recipientId),
+      targetUserId: userId,
     });
+    if (!blockedForReceiver) {
+      await enqueueNotification({
+        userId: Number(recipientId),
+        type: 'mail',
+        category: 'mail',
+        title: '새로운 익명 우편이 도착했습니다',
+        body: content.trim().slice(0, 80),
+        relatedType: 'personal_mail',
+        relatedId: result.insertId,
+      });
+    }
 
     res.status(201).json({
       success: true,
@@ -669,11 +697,28 @@ router.post('/personal/:mailId/reply', authenticate, async (req, res) => {
       });
     }
 
+    const isShadowBlocked = await isBlockedBy({
+      blockerUserId: Number(recipientId),
+      targetUserId: userId,
+    });
     // 답장 우편 생성
     const [result] = await connection.execute(
-      `INSERT INTO personal_mails (sender_id, recipient_id, content, parent_mail_id, root_mail_id, room_id, created_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?)`,
-      [userId, recipientId, content.trim(), Number(mailId), rootMailId, Number(room.id), getNowForDB()]
+      `INSERT INTO personal_mails (
+        sender_id, recipient_id, content, parent_mail_id, root_mail_id, room_id, created_at,
+        is_shadow_blocked, shadow_blocked_for_user_id
+      )
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [
+        userId,
+        recipientId,
+        content.trim(),
+        Number(mailId),
+        rootMailId,
+        Number(room.id),
+        getNowForDB(),
+        isShadowBlocked,
+        isShadowBlocked ? Number(recipientId) : null,
+      ]
     );
 
     await connection.execute(
@@ -709,15 +754,17 @@ router.post('/personal/:mailId/reply', authenticate, async (req, res) => {
     await connection.commit();
 
     // 원본 발신자(=이번 답장 수신자)에게 알림 생성 (비동기 큐 + 소켓 emit)
-    await enqueueNotification({
-      userId: Number(recipientId),
-      type: 'mail',
-      category: 'mail',
-      title: '새로운 익명 우편 답장이 도착했습니다',
-      body: content.trim().slice(0, 80),
-      relatedType: 'personal_mail',
-      relatedId: result.insertId,
-    });
+    if (!isShadowBlocked) {
+      await enqueueNotification({
+        userId: Number(recipientId),
+        type: 'mail',
+        category: 'mail',
+        title: '새로운 익명 우편 답장이 도착했습니다',
+        body: content.trim().slice(0, 80),
+        relatedType: 'personal_mail',
+        relatedId: result.insertId,
+      });
+    }
 
     res.status(201).json({
       success: true,
@@ -829,8 +876,11 @@ router.get('/personal/unread-count', authenticate, async (req, res) => {
     const [result] = await pool.execute(
       `SELECT COUNT(*) as total_unread
        FROM personal_mails
-       WHERE recipient_id = ? AND is_read = FALSE AND is_deleted = FALSE`,
-      [userId]
+       WHERE recipient_id = ?
+         AND is_read = FALSE
+         AND is_deleted = FALSE
+         AND (is_shadow_blocked = FALSE OR shadow_blocked_for_user_id IS NULL OR shadow_blocked_for_user_id != ?)`,
+      [userId, userId]
     );
 
     res.json({

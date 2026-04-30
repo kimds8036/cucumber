@@ -14,6 +14,7 @@ import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
 import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import Ionicons from '@expo/vector-icons/Ionicons';
+import { CommonActions } from '@react-navigation/native';
 import SubHeader from '../frame/subHeader';
 import { getNormalize } from '../../styles/frame.style';
 import { createMailStyles } from '../../styles/mail.style';
@@ -73,7 +74,13 @@ const SendMailScreen = ({ navigation }) => {
       Alert.alert('완료', '우편이 전송되었습니다.', [
         {
           text: '확인',
-          onPress: () => navigation?.goBack(),
+          onPress: () =>
+            navigation?.dispatch(
+              CommonActions.reset({
+                index: 0,
+                routes: [{ name: 'Main', params: { initialTab: 'message' } }],
+              }),
+            ),
         },
       ]);
     } catch (error) {

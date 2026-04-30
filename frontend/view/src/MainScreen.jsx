@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { BackHandler, Platform, ToastAndroid, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useFocusEffect } from '@react-navigation/native';
 import MainHeader from '../frame/mainHeader';
 import MainFooter from '../frame/mainFooter';
 import { BoardAllContent } from './boardAll';
@@ -31,24 +32,22 @@ const MainScreen = ({ navigation, route }) => {
     return () => clearTimeout(timer);
   }, []);
 
-  useEffect(() => {
-    if (Platform.OS !== 'android') return undefined;
-    const sub = BackHandler.addEventListener('hardwareBackPress', () => {
-      if (activeTab !== 'board') {
-        setActiveTab('board');
+  useFocusEffect(
+    React.useCallback(() => {
+      if (Platform.OS !== 'android') return undefined;
+      const sub = BackHandler.addEventListener('hardwareBackPress', () => {
+        const now = Date.now();
+        if (now - lastBackPressedAt < 2000) {
+          BackHandler.exitApp();
+          return true;
+        }
+        setLastBackPressedAt(now);
+        ToastAndroid.show('뒤로가기를 한 번 더 누르면 종료됩니다.', ToastAndroid.SHORT);
         return true;
-      }
-      const now = Date.now();
-      if (now - lastBackPressedAt < 2000) {
-        BackHandler.exitApp();
-        return true;
-      }
-      setLastBackPressedAt(now);
-      ToastAndroid.show('뒤로가기를 한 번 더 누르면 종료됩니다.', ToastAndroid.SHORT);
-      return true;
-    });
-    return () => sub.remove();
-  }, [activeTab, lastBackPressedAt]);
+      });
+      return () => sub.remove();
+    }, [lastBackPressedAt]),
+  );
 
   const renderContent = () => {
     switch (activeTab) {

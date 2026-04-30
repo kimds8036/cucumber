@@ -14,6 +14,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import { CommonActions } from '@react-navigation/native';
 import { colors } from '../../styles/colors';
 import { createFindStyles } from '../../styles/find.style';
 import { api } from '../../utils/api';
@@ -79,8 +80,18 @@ const PWfind = ({ navigation }) => {
     }
 
     // TODO: 비밀번호 재설정 API 연동
-    Alert.alert('완료', '비밀번호가 변경되었습니다.');
-    navigation.goBack();
+    Alert.alert('완료', '비밀번호가 변경되었습니다.', [
+      {
+        text: '확인',
+        onPress: () =>
+          navigation?.dispatch(
+            CommonActions.reset({
+              index: 0,
+              routes: [{ name: 'Login' }],
+            }),
+          ),
+      },
+    ]);
   };
 
   if (!screenReady) {

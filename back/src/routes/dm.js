@@ -8,6 +8,7 @@ import { getNowForDB } from '../utils/dateUtils.js';
 import { upload } from '../config/cloudinary.js';
 import { emitNewMessage, emitReadReceipt, isUserInRoom } from '../socketServer.js';
 import { enqueueNotification } from '../utils/notificationWorker.js';
+import { isBlockedBy } from '../utils/userBlock.js';
 
 const router = express.Router();
 let ensureDmSoftDeleteColumnsPromise = null;
@@ -98,6 +99,7 @@ router.get('/rooms', authenticate, async (req, res) => {
           WHERE dm.room_id = dr.id
             AND dm.sender_id != ?
             AND dm.is_read = FALSE
+            AND (dm.is_shadow_blocked = FALSE OR dm.shadow_blocked_for_user_id IS NULL OR dm.shadow_blocked_for_user_id != ?)
         ) AS unread_count
       FROM dm_rooms dr
       INNER JOIN users u ON u.id = (CASE WHEN dr.user1_id = ? THEN dr.user2_id ELSE dr.user1_id END)
@@ -107,10 +109,15 @@ router.get('/rooms', authenticate, async (req, res) => {
           OR
           (dr.user2_id = ? AND (dr.is_deleted_by_user2 IS NULL OR dr.is_deleted_by_user2 = FALSE))
         )
+        AND EXISTS (
+          SELECT 1
+          FROM dm_messages dm0
+          WHERE dm0.room_id = dr.id
+        )
         AND u.is_deleted = FALSE
       ORDER BY COALESCE(dr.last_message_at, dr.created_at) DESC
       LIMIT ${safeLimit} OFFSET ${safeOffset}`,
-      [userId, userId, userId, userId, userId],
+      [userId, userId, userId, userId, userId, userId],
     );
 
     const [countRows] = await pool.execute(
@@ -119,7 +126,12 @@ router.get('/rooms', authenticate, async (req, res) => {
          (user1_id = ? AND (is_deleted_by_user1 IS NULL OR is_deleted_by_user1 = FALSE))
          OR
          (user2_id = ? AND (is_deleted_by_user2 IS NULL OR is_deleted_by_user2 = FALSE))
-       )`,
+       )
+         AND EXISTS (
+           SELECT 1
+           FROM dm_messages dm0
+           WHERE dm0.room_id = dm_rooms.id
+         )`,
       [userId, userId],
     );
     const total = Number(countRows[0]?.total ?? 0);
@@ -251,8 +263,9 @@ router.get('/unread-count', authenticate, async (req, res) => {
          (r.user2_id = ? AND (r.is_deleted_by_user2 IS NULL OR r.is_deleted_by_user2 = FALSE))
        )
          AND m.sender_id != ?
-         AND m.is_read = FALSE`,
-      [userId, userId, userId],
+         AND m.is_read = FALSE
+         AND (m.is_shadow_blocked = FALSE OR m.shadow_blocked_for_user_id IS NULL OR m.shadow_blocked_for_user_id != ?)`,
+      [userId, userId, userId, userId],
     );
 
     res.json({
@@ -343,9 +356,10 @@ router.get('/rooms/:roomId', authenticate, async (req, res) => {
              LEFT JOIN dm_messages pm ON m.parent_message_id = pm.id
              LEFT JOIN users pu ON pm.sender_id = pu.id
              WHERE m.room_id = ? AND m.id > ? AND m.id < ?
+               AND (m.is_shadow_blocked = FALSE OR m.shadow_blocked_for_user_id IS NULL OR m.shadow_blocked_for_user_id != ?)
              ORDER BY m.id DESC
              LIMIT ${fetchLimit}`;
-      params = [roomIdNum, Number(deletedAtMsgId) || 0, safeBefore];
+      params = [roomIdNum, Number(deletedAtMsgId) || 0, safeBefore, userId];
     } else {
       sql = `SELECT m.id, m.room_id, m.sender_id, m.parent_message_id, m.content, m.is_read, m.created_at,
                     pm.content AS parent_content, pu.name AS parent_sender_name,
@@ -356,9 +370,10 @@ router.get('/rooms/:roomId', authenticate, async (req, res) => {
              LEFT JOIN dm_messages pm ON m.parent_message_id = pm.id
              LEFT JOIN users pu ON pm.sender_id = pu.id
              WHERE m.room_id = ? AND m.id > ?
+               AND (m.is_shadow_blocked = FALSE OR m.shadow_blocked_for_user_id IS NULL OR m.shadow_blocked_for_user_id != ?)
              ORDER BY m.id DESC
              LIMIT ${fetchLimit}`;
-      params = [roomIdNum, Number(deletedAtMsgId) || 0];
+      params = [roomIdNum, Number(deletedAtMsgId) || 0, userId];
     }
 
     const [messages] = await pool.execute(sql, params);
@@ -438,6 +453,10 @@ router.post(
       const room = rooms[0];
       const otherUserId =
         room.user1_id === userId ? room.user2_id : room.user1_id;
+      const isShadowBlocked = await isBlockedBy({
+        blockerUserId: otherUserId,
+        targetUserId: userId,
+      });
 
       // 답장 대상이 있다면, 같은 방에 속한 메시지인지 확인합니다.
       if (parentMessageId && !Number.isNaN(parentMessageId)) {
@@ -457,9 +476,25 @@ router.post(
 
       const now = getNowForDB();
       const [result] = await pool.execute(
-        `INSERT INTO dm_messages (room_id, sender_id, content, parent_message_id, created_at)
-         VALUES (?, ?, ?, ?, ?)`,
-        [roomId, userId, trimmed, parentMessageId, now],
+        `INSERT INTO dm_messages (
+          room_id,
+          sender_id,
+          content,
+          parent_message_id,
+          created_at,
+          is_shadow_blocked,
+          shadow_blocked_for_user_id
+        )
+         VALUES (?, ?, ?, ?, ?, ?, ?)`,
+        [
+          roomId,
+          userId,
+          trimmed,
+          parentMessageId,
+          now,
+          isShadowBlocked,
+          isShadowBlocked ? otherUserId : null,
+        ],
       );
       const messageId = result.insertId;
 
@@ -528,6 +563,7 @@ router.post(
       if (
         otherUserId &&
         otherUserId !== userId &&
+        !isShadowBlocked &&
         !isUserInRoom(roomId, otherUserId)
       ) {
         const senderName = savedMessage?.sender_name || '새 메시지';
