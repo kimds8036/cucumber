@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   View,
   Text,
@@ -6,7 +6,6 @@ import {
   TouchableOpacity,
   Alert,
   Modal,
-  TextInput,
   useWindowDimensions,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -15,17 +14,22 @@ import { colors } from '../../styles/colors';
 import {
   createMyPageStyles,
   getNormalize,
-  themedTextInputProps,
 } from '../../styles/mypage.style';
 import ProfileCard from '../../components/Profilecard';
 import TimetableView from '../../components/Timetableview';
+import { createTimetableViewStyles } from '../../src/screens/timetable/timetable.style';
 import { api, clearUserSessionStorage } from '../../utils/api';
 import { useAuth } from '../../context/AuthContext';
+import { useFocusEffect } from '@react-navigation/native';
 
 const MyPage = ({ navigation }) => {
   const { width } = useWindowDimensions();
   const normalize = useMemo(() => getNormalize(width), [width]);
   const styles = useMemo(() => createMyPageStyles(normalize), [normalize]);
+  const timetableModalStyles = useMemo(
+    () => createTimetableViewStyles(normalize),
+    [normalize],
+  );
   const { logout } = useAuth();
   const TIMETABLE_CACHE_KEY = '@mypage_timetable_cache_v1';
   const TIMETABLE_CACHE_TTL_MS = 24 * 60 * 60 * 1000;
@@ -33,16 +37,10 @@ const MyPage = ({ navigation }) => {
   const PROFILE_CACHE_TTL_MS = 2 * 60 * 60 * 1000;
   const [userInfo, setUserInfo] = useState(null);
   const [timetable, setTimetable] = useState(null);
-  const [initialTimetable, setInitialTimetable] = useState(null);
-  const [editingTimetable, setEditingTimetable] = useState({});
   const [colorSeed, setColorSeed] = useState(0);
-  const [isEditMode, setIsEditMode] = useState(false);
-  const [modalVisible, setModalVisible] = useState(false);
-  const [selectedDay, setSelectedDay] = useState(null);
-  const [selectedPeriod, setSelectedPeriod] = useState(null);
-  const [className, setClassName] = useState('');
   const [loading, setLoading] = useState(false);
   const [timetableLoading, setTimetableLoading] = useState(false);
+  const [showResetTimetableModal, setShowResetTimetableModal] = useState(false);
   const isSameProfileInfo = (a, b) => {
     if (!a || !b) return false;
     return (
@@ -98,6 +96,7 @@ const MyPage = ({ navigation }) => {
       try {
         setLoading(true);
         let cachedTimetable = null;
+        let timetableClearedByUser = false;
         let cachedProfile = null;
         let cachedProfileTs = 0;
         try {
@@ -121,12 +120,12 @@ const MyPage = ({ navigation }) => {
           const raw = await AsyncStorage.getItem(TIMETABLE_CACHE_KEY);
           if (raw) {
             const parsed = JSON.parse(raw);
+            timetableClearedByUser = Boolean(parsed?.clearedByUser);
             if (Date.now() - Number(parsed?.ts || 0) < TIMETABLE_CACHE_TTL_MS) {
-              cachedTimetable = parsed?.timetable || null;
+              cachedTimetable = parsed?.timetable ?? null;
               if (mounted) {
                 const normalized = cachedTimetable && Object.keys(cachedTimetable).length > 0 ? cachedTimetable : null;
                 setTimetable(normalized);
-                setInitialTimetable(normalized);
               }
             } else {
               setTimetableLoading(true);
@@ -182,25 +181,30 @@ const MyPage = ({ navigation }) => {
         }
 
         // 캐시가 없거나 비어 있으면 서버 시간표를 1회 조회하여 채운다.
-        if ((!cachedTimetable || Object.keys(cachedTimetable || {}).length === 0) && mounted) {
+        // 사용자가 새로고침으로 삭제한 경우(clearedByUser)에는 서버로 다시 채우지 않는다.
+        const needsServerTimetable =
+          mounted &&
+          !timetableClearedByUser &&
+          (!cachedTimetable || Object.keys(cachedTimetable || {}).length === 0);
+
+        if (needsServerTimetable) {
           try {
             const ttRes = await api.get('/api/timetable');
             const tt = ttRes.data?.data?.timetable || {};
             const hasEntries = Object.keys(tt).length > 0;
             const normalized = hasEntries ? tt : null;
             setTimetable(normalized);
-            setInitialTimetable(normalized);
             await AsyncStorage.setItem(
               TIMETABLE_CACHE_KEY,
               JSON.stringify({
                 ts: Date.now(),
                 timetable: normalized,
+                clearedByUser: false,
               }),
             );
           } catch (ttError) {
             console.error('[MyPage] /api/timetable 조회 실패:', ttError?.response?.data || ttError?.message || ttError);
             setTimetable(null);
-            setInitialTimetable(null);
           } finally {
             setTimetableLoading(false);
           }
@@ -220,101 +224,54 @@ const MyPage = ({ navigation }) => {
     };
   }, []);
 
-  const handleStartEdit = () => {
-    setEditingTimetable(timetable || {});
-    setIsEditMode(true);
+  // 다른 화면(시간표 선택 등)에서 캐시를 갱신한 뒤 돌아올 때 표시 동기화
+  useFocusEffect(
+    useCallback(() => {
+      let cancelled = false;
+      (async () => {
+        try {
+          const raw = await AsyncStorage.getItem(TIMETABLE_CACHE_KEY);
+          if (!raw || cancelled) return;
+          const parsed = JSON.parse(raw);
+          if (Date.now() - Number(parsed?.ts || 0) >= TIMETABLE_CACHE_TTL_MS) return;
+          const cached = parsed?.timetable ?? null;
+          const normalized = cached && Object.keys(cached).length > 0 ? cached : null;
+          if (cancelled) return;
+          setTimetable(normalized);
+        } catch (e) {
+          console.warn('[MyPage] 포커스 시 시간표 캐시 동기화 실패:', e);
+        }
+      })();
+      return () => {
+        cancelled = true;
+      };
+    }, []),
+  );
+
+  const handleNavigateToTimetableEdit = () => {
+    navigation.navigate('TimetabelChoice');
   };
 
-  const handleCancelEdit = () => {
-    setIsEditMode(false);
-    setEditingTimetable({});
+  const handleResetTimetable = () => {
+    setShowResetTimetableModal(true);
   };
 
-  const handleSaveEdit = async () => {
-    const hasEntries = editingTimetable && Object.keys(editingTimetable).length > 0;
-    const next = hasEntries ? editingTimetable : null;
-    setTimetable(next);
-    setIsEditMode(false);
+  const performResetTimetable = async () => {
+    setTimetable(null);
+    setColorSeed((prev) => prev + 1);
+    setShowResetTimetableModal(false);
     try {
       await AsyncStorage.setItem(
         TIMETABLE_CACHE_KEY,
         JSON.stringify({
           ts: Date.now(),
-          timetable: next,
+          timetable: null,
+          clearedByUser: true,
         }),
       );
     } catch (error) {
-      console.error('시간표 저장 실패:', error);
+      console.error('시간표 삭제 저장 실패:', error);
     }
-  };
-
-  const handleResetTimetable = () => {
-    Alert.alert(
-      '시간표 초기화',
-      '시간표를 초기 상태로 되돌릴까요?\n저장한 최신 편집 내용은 사라지고, 과목 색상도 다시 재배치됩니다.',
-      [
-        { text: '취소', style: 'cancel' },
-        {
-          text: '초기화',
-          style: 'destructive',
-          onPress: async () => {
-            const resetValue = initialTimetable && Object.keys(initialTimetable).length > 0
-              ? { ...initialTimetable }
-              : null;
-            setTimetable(resetValue);
-            setEditingTimetable(resetValue || {});
-            setIsEditMode(false);
-            setColorSeed((prev) => prev + 1);
-            try {
-              await AsyncStorage.setItem(
-                TIMETABLE_CACHE_KEY,
-                JSON.stringify({
-                  ts: Date.now(),
-                  timetable: resetValue,
-                }),
-              );
-            } catch (error) {
-              console.error('시간표 초기화 저장 실패:', error);
-            }
-          },
-        },
-      ],
-    );
-  };
-
-  const handleCellPress = (day, period) => {
-    if (!isEditMode) return;
-    setSelectedDay(day);
-    setSelectedPeriod(period);
-    const key = `${day}-${period}`;
-    setClassName(editingTimetable[key] || '');
-    setModalVisible(true);
-  };
-
-  const handleApplyCell = () => {
-    if (!selectedDay || !selectedPeriod) return;
-    const key = `${selectedDay}-${selectedPeriod}`;
-    const trimmed = className.trim();
-    const next = { ...editingTimetable };
-    if (!trimmed) delete next[key];
-    else next[key] = trimmed;
-    setEditingTimetable(next);
-    setModalVisible(false);
-    setSelectedDay(null);
-    setSelectedPeriod(null);
-    setClassName('');
-  };
-
-  const handleDeleteCell = () => {
-    if (!selectedDay || !selectedPeriod) return;
-    const key = `${selectedDay}-${selectedPeriod}`;
-    const next = { ...editingTimetable };
-    delete next[key];
-    setEditingTimetable(next);
-    setModalVisible(false);
-    setSelectedDay(null);
-    setSelectedPeriod(null);
-    setClassName('');
   };
 
   const MenuItem = ({
@@ -361,7 +318,7 @@ const MyPage = ({ navigation }) => {
             userInfo={userInfo}
             navigation={navigation}
             timetableSection={
-              timetableLoading && !isEditMode ? (
+              timetableLoading ? (
                 <View style={styles.ttSkeletonCard}>
                   <View style={styles.ttSkeletonHeader} />
                   {[...Array(7)].map((_, idx) => (
@@ -376,15 +333,10 @@ const MyPage = ({ navigation }) => {
                   ))}
                   <Text style={styles.ttSkeletonText}>시간표를 불러오는 중입니다...</Text>
                 </View>
-              ) : (timetable || isEditMode) ? (
+              ) : timetable ? (
                 <TimetableView
-                  timetable={isEditMode ? (editingTimetable || {}) : (timetable || {})}
-                  onAddOrEdit={handleStartEdit}
-                  editMode={isEditMode}
-                  onToggleEdit={handleStartEdit}
-                  onSaveEdit={handleSaveEdit}
-                  onCancelEdit={handleCancelEdit}
-                  onCellPress={handleCellPress}
+                  timetable={timetable}
+                  onNavigateToEdit={handleNavigateToTimetableEdit}
                   onResetPress={handleResetTimetable}
                   colorSeed={colorSeed}
                 />
@@ -447,52 +399,44 @@ const MyPage = ({ navigation }) => {
 
         <View style={styles.bottomPadding} />
       </ScrollView>
+
       <Modal
-        animationType="slide"
+        visible={showResetTimetableModal}
         transparent
-        visible={modalVisible}
-        onRequestClose={() => setModalVisible(false)}
+        animationType="none"
+        onRequestClose={() => setShowResetTimetableModal(false)}
       >
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>
-              {selectedDay}요일 {selectedPeriod}교시
+        <View style={timetableModalStyles.saveSuccessModalOverlay}>
+          <View style={timetableModalStyles.saveSuccessModalCard}>
+            <Text style={timetableModalStyles.saveSuccessModalTitle}>
+              시간표 삭제
             </Text>
-            <TextInput
-              style={styles.input}
-              placeholder="과목명을 입력하세요 (비우면 삭제)"
-              {...themedTextInputProps}
-              value={className}
-              onChangeText={setClassName}
-              autoFocus
-            />
-            <View style={styles.modalButtons}>
+            <Text style={timetableModalStyles.saveSuccessModalBody}>
+              시간표를 모두 지우고 초기화할까요?
+            </Text>
+            <View style={timetableModalStyles.timetableResetModalActions}>
               <TouchableOpacity
-                style={[styles.modalButton, styles.cancelButton]}
-                onPress={() => {
-                  setModalVisible(false);
-                  setClassName('');
-                }}
+                style={timetableModalStyles.timetableResetModalCancel}
+                onPress={() => setShowResetTimetableModal(false)}
+                activeOpacity={0.85}
               >
-                <Text style={styles.cancelButtonText}>취소</Text>
+                <Text style={timetableModalStyles.timetableResetModalCancelText}>
+                  취소
+                </Text>
               </TouchableOpacity>
               <TouchableOpacity
-                style={[styles.modalButton, styles.deleteButton]}
-                onPress={handleDeleteCell}
+                style={timetableModalStyles.timetableResetModalDelete}
+                onPress={performResetTimetable}
+                activeOpacity={0.85}
               >
-                <Text style={styles.deleteButtonText}>삭제</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[styles.modalButton, styles.confirmButton]}
-                onPress={handleApplyCell}
-              >
-                <Text style={styles.confirmButtonText}>적용</Text>
+                <Text style={timetableModalStyles.timetableResetModalDeleteText}>
+                  삭제
+                </Text>
               </TouchableOpacity>
             </View>
           </View>
         </View>
       </Modal>
-
     </View>
   );
 };

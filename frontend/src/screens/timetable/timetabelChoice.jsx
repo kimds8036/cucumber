@@ -1,8 +1,19 @@
-import React from 'react';
+import React, { useCallback, useState } from 'react';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Text, TouchableOpacity, View } from 'react-native';
+import {
+  ActivityIndicator,
+  Alert,
+  Text,
+  TouchableOpacity,
+  View,
+} from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import SubHeader from '../../../view/frame/subHeader';
 import styles from './timetable.style';
+import { colors } from '../../../styles/colors';
+import { api } from '../../../utils/api';
+
+const TIMETABLE_CACHE_KEY = '@mypage_timetable_cache_v1';
 
 const CHOICE_ITEMS = [
   {
@@ -43,19 +54,68 @@ function TimetablePreview() {
 }
 
 export default function TimetabelChoice({ navigation }) {
+  const [autoLoading, setAutoLoading] = useState(false);
+
+  const fetchAndApplyAutoTimetable = useCallback(async () => {
+    try {
+      setAutoLoading(true);
+      const ttRes = await api.get('/api/timetable');
+      const tt = ttRes.data?.data?.timetable || {};
+      const hasEntries = Object.keys(tt).length > 0;
+      if (!hasEntries) {
+        Alert.alert(
+          '시간표 없음',
+          '불러올 시간표가 없습니다. NEIS 연동 정보(학교 코드 등)를 확인하거나, 「시간표 직접 선택」으로 만들어 주세요.',
+        );
+        return;
+      }
+      await AsyncStorage.setItem(
+        TIMETABLE_CACHE_KEY,
+        JSON.stringify({
+          ts: Date.now(),
+          timetable: tt,
+          clearedByUser: false,
+        }),
+      );
+      navigation.navigate('Main', { initialTab: 'mypage' });
+    } catch (e) {
+      console.warn(
+        '[TimetabelChoice] /api/timetable 자동 조회 실패:',
+        e?.response?.data || e?.message || e,
+      );
+      Alert.alert(
+        '불러오기 실패',
+        e?.response?.data?.message || '시간표를 가져오는 중 오류가 발생했습니다.',
+      );
+    } finally {
+      setAutoLoading(false);
+    }
+  }, [navigation]);
+
   const handleSelect = (mode) => {
+    if (mode === 'auto') {
+      fetchAndApplyAutoTimetable();
+      return;
+    }
     navigation.navigate('AddTimetable', { selectionMode: mode });
   };
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
       <SubHeader title="시간표 선택" onBack={() => navigation.goBack()} />
+      {autoLoading ? (
+        <View style={styles.choiceLoadingOverlay}>
+          <ActivityIndicator size="large" color={colors.primary} />
+          <Text style={styles.choiceLoadingText}>학교 시간표를 불러오는 중…</Text>
+        </View>
+      ) : null}
       <View style={styles.choiceContent}>
         {CHOICE_ITEMS.map((item) => (
           <TouchableOpacity
             key={item.key}
             activeOpacity={0.8}
-            style={styles.choiceCard}
+            style={[styles.choiceCard, autoLoading && styles.choiceCardDisabled]}
+            disabled={autoLoading}
             onPress={() => handleSelect(item.key)}
           >
             <Text style={styles.choiceTitle}>{item.title}</Text>

@@ -172,6 +172,7 @@ export default function TimetableScreen({ navigation }) {
         JSON.stringify({
           ts: Date.now(),
           timetable: nextTimetable,
+          clearedByUser: false,
         }),
       );
     } catch (error) {
@@ -231,7 +232,12 @@ export default function TimetableScreen({ navigation }) {
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
-      <SubHeader title={termTitle} rightButtonText="완료" onRightPress={handleDone} />
+      <SubHeader
+        title={termTitle}
+        onBack={() => navigation.goBack()}
+        rightButtonText="완료"
+        onRightPress={handleDone}
+      />
 
       <KeyboardAvoidingView
         style={styles.container}

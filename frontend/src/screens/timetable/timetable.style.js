@@ -8,7 +8,7 @@ const COLORS = {
   selectedBackground: colors.primaryLight20,
   textDisabled: colors.textLight20,
   textTertiary: colors.textSecondary,
-  white: colors.textWhite,
+  white: colors.background,
 };
 
 export const DAYS = ['월', '화', '수', '목', '금'];
@@ -134,7 +134,7 @@ const styles = StyleSheet.create({
   blockRoom: {
     fontFamily: fonts.regular,
     fontSize: normalize(7),
-    color: 'rgba(255, 255, 255, 0.75)',
+    color: COLORS.textLight70,
     marginTop: normalize(1),
   },
   subjectList: {
@@ -191,7 +191,7 @@ const styles = StyleSheet.create({
   },
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.4)',
+    backgroundColor: COLORS.overlay,
     justifyContent: 'flex-end',
   },
   bottomSheet: {
@@ -320,7 +320,7 @@ const styles = StyleSheet.create({
   choiceCard: {
     alignSelf: 'center',
     width: '100%',
-    height: normalize(300),
+    height: normalize(270),
     borderRadius: normalize(14),
     borderWidth: 1,
     borderColor: COLORS.border,
@@ -372,6 +372,214 @@ const styles = StyleSheet.create({
     borderLeftWidth: 1,
     borderLeftColor: COLORS.border,
   },
+  choiceLoadingOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: COLORS.textLight70,
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 10,
+  },
+  choiceLoadingText: {
+    marginTop: normalize(12),
+    fontFamily: fonts.regular,
+    fontSize: fontSizes.md,
+    color: COLORS.textSecondary,
+    textAlign: 'center',
+    paddingHorizontal: normalize(24),
+  },
+  choiceCardDisabled: {
+    opacity: 0.55,
+  },
 });
+
+/** 마이페이지 `TimetableView` 전용 — `getNormalize(width)`로 만든 normalize 전달 */
+export function createTimetableViewStyles(normalize) {
+  return StyleSheet.create({
+    wrapper: {
+      marginTop: normalize(16),
+    },
+    refreshButton: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      backgroundColor: COLORS.primaryLight20,
+      paddingHorizontal: normalize(10),
+      paddingVertical: normalize(4),
+      borderRadius: normalize(20),
+    },
+    footerResetLabel: {
+      fontFamily: fonts.bold,
+      fontSize: fontSizes.lg,
+      color: COLORS.primaryDark,
+    },
+    timetableContainer: {
+      borderRadius: normalize(8),
+      overflow: 'hidden',
+      borderWidth: 1,
+      borderColor: COLORS.textLight10,
+    },
+    /** 이미지 저장용: 요일~교시 격자만 (푸터 제외) */
+    timetableViewShot: {
+      backgroundColor: COLORS.background,
+    },
+    daysRow: {
+      flexDirection: 'row',
+      backgroundColor: COLORS.textLight5,
+    },
+    periodHeaderCell: {
+      width: normalize(20),
+      height: normalize(20),
+      backgroundColor: COLORS.textLight5,
+    },
+    dayCell: {
+      flex: 1,
+      height: normalize(20),
+      justifyContent: 'center',
+      alignItems: 'center',
+      borderLeftWidth: 1,
+      borderLeftColor: COLORS.textLight10,
+    },
+    dayText: {
+      fontFamily: fonts.regular,
+      fontSize: fontSizes.md,
+      color: COLORS.textSecondary,
+    },
+    row: {
+      flexDirection: 'row',
+      borderTopWidth: 1,
+      borderTopColor: COLORS.textLight10,
+    },
+    periodCell: {
+      width: normalize(20),
+      height: normalize(40),
+      justifyContent: 'center',
+      alignItems: 'center',
+      backgroundColor: COLORS.textLight5,
+    },
+    periodText: {
+      fontFamily: fonts.regular,
+      fontSize: fontSizes.md,
+      color: COLORS.textSecondary,
+    },
+    mergedFooterRow: {
+      flexDirection: 'row',
+      borderTopWidth: 1,
+      borderTopColor: COLORS.textLight10,
+    },
+    mergedFooterFullCell: {
+      flex: 1,
+      flexDirection: 'row',
+      alignItems: 'center',
+      minHeight: normalize(35),
+      backgroundColor: COLORS.background,
+    },
+    mergedFooterActionRow: {
+      flex: 1,
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'flex-end',
+      gap: normalize(8),
+      paddingHorizontal: normalize(8),
+    },
+    classCell: {
+      flex: 1,
+      height: normalize(40),
+      justifyContent: 'center',
+      alignItems: 'center',
+      borderLeftWidth: 1,
+      borderLeftColor: COLORS.textLight10,
+      backgroundColor: COLORS.background,
+      padding: normalize(2),
+    },
+    classCellFilled: {
+      backgroundColor: COLORS.primaryLight30,
+    },
+    classCellText: {
+      fontFamily: fonts.regular,
+      fontSize: fontSizes.md,
+      color: COLORS.textLight20,
+      textAlign: 'center',
+    },
+    classCellTextFilled: {
+      fontFamily: fonts.bold,
+      fontSize: fontSizes.md,
+      color: COLORS.textPrimary,
+    },
+    saveSuccessModalOverlay: {
+      flex: 1,
+      backgroundColor: COLORS.overlay,
+      justifyContent: 'center',
+      alignItems: 'center',
+      paddingHorizontal: normalize(24),
+    },
+    saveSuccessModalCard: {
+      width: '85%',
+      maxWidth: normalize(340),
+      backgroundColor: COLORS.background,
+      borderRadius: normalize(20),
+      padding: normalize(24),
+      alignItems: 'center',
+    },
+    saveSuccessModalTitle: {
+      fontFamily: fonts.bold,
+      fontSize: fontSizes.title,
+      color: COLORS.textPrimary,
+      marginBottom: normalize(10),
+      textAlign: 'center',
+    },
+    saveSuccessModalBody: {
+      fontFamily: fonts.regular,
+      fontSize: fontSizes.lg,
+      color: COLORS.textSecondary,
+      textAlign: 'center',
+      marginBottom: normalize(20),
+    },
+    saveSuccessModalConfirm: {
+      width: '100%',
+      height: normalize(45),
+      backgroundColor: COLORS.primary,
+      borderRadius: normalize(24),
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    saveSuccessModalConfirmText: {
+      fontFamily: fonts.bold,
+      fontSize: fontSizes.xxl,
+      color: COLORS.background,
+    },
+    /** 마이페이지 시간표 초기화 확인 (저장 완료 모달과 동일 셸 + 이중 버튼) */
+    timetableResetModalActions: {
+      flexDirection: 'row',
+      width: '100%',
+      gap: normalize(10),
+    },
+    timetableResetModalCancel: {
+      flex: 1,
+      height: normalize(40),
+      backgroundColor: COLORS.surface,
+      borderRadius: normalize(24),
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    timetableResetModalCancelText: {
+      fontFamily: fonts.bold,
+      fontSize: fontSizes.lg,
+      color: COLORS.textSecondary,
+    },
+    timetableResetModalDelete: {
+      flex: 1,
+      height: normalize(40),
+      backgroundColor: COLORS.alert,
+      borderRadius: normalize(24),
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    timetableResetModalDeleteText: {
+      fontFamily: fonts.bold,
+      fontSize: fontSizes.lg,
+      color: COLORS.textWhite,
+    },
+  });
+}
 
 export default styles;

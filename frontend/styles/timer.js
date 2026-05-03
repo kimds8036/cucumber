@@ -547,7 +547,7 @@ export const createTimerStyles = (width, normalize) => {
       ...shadow.sm,
     },
     timetableTitle: {
-      fontSize: normalize(fontSizes.xxl),
+      fontSize: normalize(fontSizes.xl),
       fontFamily: fonts.bold,
       color: colors.textPrimary,
       marginBottom: normalize(10),
@@ -633,7 +633,6 @@ export const createTimerStyles = (width, normalize) => {
     },
     plannerCaptureRow: {
       flexDirection: 'row',
-      flex: 1,
     },
     plannerLeftColumn: {
       width: width * 0.6,
@@ -651,13 +650,13 @@ export const createTimerStyles = (width, normalize) => {
       fontSize: normalize(fontSizes.lg),
       fontFamily: fonts.regular,
       color: colors.textSecondary,
-      marginBottom: normalize(4),
+      marginBottom: normalize(2),
     },
     plannerValue: {
-      fontSize: normalize(fontSizes.xl),
+      fontSize: normalize(fontSizes.xxl),
       fontFamily: fonts.bold,
       color: colors.textPrimary,
-      marginBottom: normalize(12),
+      marginBottom: normalize(8),
     },
     plannerMemoLine: {
       height: 1,

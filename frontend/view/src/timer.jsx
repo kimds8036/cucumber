@@ -23,12 +23,14 @@ import {
   useWindowDimensions,
   Alert,
   AppState,
+  Modal,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { CommonActions } from '@react-navigation/native';
 import MainHeader from '../frame/mainHeader';
 import MainFooter from '../frame/mainFooter';
 import { createTimerStyles, getNormalize } from '../../styles/timer';
+import { createTimetableViewStyles } from '../../src/screens/timetable/timetable.style';
 import { colors } from '../../styles/colors';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import Feather from '@expo/vector-icons/Feather';
@@ -846,6 +848,10 @@ export const TimerContent = () => {
     () => createTimerStyles(width, normalize),
     [width, normalize],
   );
+  const saveModalStyles = useMemo(
+    () => createTimetableViewStyles(normalize),
+    [normalize],
+  );
   const isFocused = useIsFocused();
 
   // ── 친구 상태 ─────────────────────────────────────────
@@ -1002,6 +1008,7 @@ export const TimerContent = () => {
   const [viewState, setViewState] = useState(null);
   const capturePlannerRef = useRef(null);
   const [showCalendar, setShowCalendar] = useState(false);
+  const [showSaveModal, setShowSaveModal] = useState(false);
   const latestSnapshotRef = useRef({
     timerDayKey: null,
     sessions: [],
@@ -1794,7 +1801,7 @@ export const TimerContent = () => {
       }
       const uri = await capturePlannerRef.current.capture();
       await MediaLibrary.saveToLibraryAsync(uri);
-      Alert.alert('저장 완료', '갤러리에 저장되었어요');
+      setShowSaveModal(true);
     } catch (e) {
       Alert.alert('저장 실패', e?.message || '이미지 저장에 실패했어요. 다시 시도해 주세요');
     }
@@ -2057,6 +2064,27 @@ export const TimerContent = () => {
           });
         }}
       />
+
+      <Modal
+        visible={showSaveModal}
+        transparent
+        animationType="none"
+        onRequestClose={() => setShowSaveModal(false)}
+      >
+        <View style={saveModalStyles.saveSuccessModalOverlay}>
+          <View style={saveModalStyles.saveSuccessModalCard}>
+            <Text style={saveModalStyles.saveSuccessModalTitle}>저장 완료</Text>
+            <Text style={saveModalStyles.saveSuccessModalBody}>갤러리에 저장되었어요</Text>
+            <TouchableOpacity
+              style={saveModalStyles.saveSuccessModalConfirm}
+              onPress={() => setShowSaveModal(false)}
+              activeOpacity={0.85}
+            >
+              <Text style={saveModalStyles.saveSuccessModalConfirmText}>확인</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
     </>
   );
 };

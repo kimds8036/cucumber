@@ -21,7 +21,7 @@ import Skeleton from '../../components/common/Skeleton';
 const DISABLE_SIGN_VALIDATION_FOR_REDESIGN = true;
 
 /** true: 첫 화면이 보호자 인증(SignStep1-2). false: 약관 동의(SignStepConsent)부터 시작. */
-const SIGNUP_START_AT_GUARDIAN_STEP_FOR_PREVIEW = true;
+const SIGNUP_START_AT_GUARDIAN_STEP_FOR_PREVIEW = false;
 
 const Sign = ({ navigation }) => {
   const { resetTo } = useAppNavigation();
