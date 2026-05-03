@@ -35,7 +35,9 @@
 npm-debug.*
 yarn-debug.*
 yarn-error.*
+# Firebase Admin SDK JSON (비밀키 — 커밋 금지)
 back/cucumber-bf4b4-firebase-adminsdk-fbsvc-5ff4ab6933.json
+back/**/*firebase-adminsdk*.json
 
 # ==========================================
 # [환경변수 & 보안]
