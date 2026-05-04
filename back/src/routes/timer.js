@@ -371,17 +371,20 @@ router.post('/day', authenticate, async (req, res) => {
     // 클라이언트 payload(totalElapsedMs)는 오염될 수 있으므로 세션 합계를 단일 진실원으로 사용
     const safeElapsedMs = computedElapsedMs;
 
+    const [userSchoolRows] = await connection.execute(
+      `SELECT school_id FROM users WHERE id = ? LIMIT 1`,
+      [userId],
+    );
+    const snapshotSchoolId = userSchoolRows?.[0]?.school_id ?? null;
+
     await connection.execute(
-      `INSERT INTO study_days (user_id, day_key, total_elapsed_ms)
-       VALUES (?, ?, ?)
+      `INSERT INTO study_days (user_id, day_key, total_elapsed_ms, school_id)
+       VALUES (?, ?, ?, ?)
        ON DUPLICATE KEY UPDATE
          total_elapsed_ms = VALUES(total_elapsed_ms),
-         updated_at = CURRENT_TIMESTAMP`,
-      [
-        userId,
-        normalizedDayKey,
-        safeElapsedMs,
-      ],
+         updated_at = CURRENT_TIMESTAMP,
+         school_id = IFNULL(study_days.school_id, VALUES(school_id))`,
+      [userId, normalizedDayKey, safeElapsedMs, snapshotSchoolId],
     );
 
     await connection.commit();

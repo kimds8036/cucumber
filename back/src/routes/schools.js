@@ -1,5 +1,6 @@
 import express from 'express';
 import pool from '../config/database.js';
+import { STUDY_GRASS_REDIS_TTL_SECONDS } from '../config/studyGrass.js';
 import { authenticate } from '../middleware/auth.js';
 import { getBatchRedis } from '../services/batchRedis.service.js';
 import {
@@ -67,7 +68,45 @@ const parseStudyGrassDaysParam = (value) => {
   return Math.min(Math.max(Math.floor(n), 1), MAX_STUDY_GRASS_DAYS);
 };
 
+/** 잔디 API 평균 분모: schools.total_students, 없거나 0이면 재학 중인 유저 수 */
+async function getStudyGrassStudentDenominator(schoolId) {
+  const [[schoolRow]] = await pool.execute(
+    `SELECT COALESCE(total_students, 0) AS ts FROM schools WHERE school_id = ? LIMIT 1`,
+    [schoolId],
+  );
+  let n = Number(schoolRow?.ts ?? 0);
+  if (n > 0) return n;
+  const [[live]] = await pool.execute(
+    `SELECT COUNT(*) AS c FROM users WHERE school_id = ? AND is_deleted = FALSE`,
+    [schoolId],
+  );
+  return Number(live?.c ?? 0);
+}
+
+function parseStudyGrassRedisRow(row) {
+  if (!row || Object.keys(row).length === 0) return null;
+  return {
+    rawTotalMs: Number(row.total_elapsed_ms || 0),
+    activeUserCount: Number(row.active_user_count || 0),
+  };
+}
+
+function studyGrassSeriesFromRaw(rawTotalMs, activeUserCount, studentDenominator) {
+  if (studentDenominator <= 0) {
+    return { totalElapsedMs: null, activeUserCount: null, hasData: false };
+  }
+  const hasActivity = rawTotalMs > 0 || activeUserCount > 0;
+  const avgMs = hasActivity ? Math.round(rawTotalMs / studentDenominator) : 0;
+  const hasData = hasActivity;
+  return {
+    totalElapsedMs: hasData ? avgMs : null,
+    activeUserCount: hasData ? activeUserCount : null,
+    hasData,
+  };
+}
+
 async function fetchStudyGrassSeries({ schoolId, days }) {
+  const studentDenominator = await getStudyGrassStudentDenominator(schoolId);
   const redis = await getBatchRedis();
   const dateKeys = [];
   for (let offset = days - 1; offset >= 0; offset -= 1) {
@@ -80,17 +119,89 @@ async function fetchStudyGrassSeries({ schoolId, days }) {
   dateKeys.forEach((dayKey) => {
     pipeline.hgetall(`study:grass:school:${schoolId}:${dayKey}`);
   });
-  const rows = await pipeline.exec();
+  const redisRows = await pipeline.exec();
 
-  const series = dateKeys.map((dayKey, idx) => {
-    const row = rows?.[idx]?.[1];
-    const hasData = row && Object.keys(row).length > 0;
-    return {
-      dayKey,
-      totalElapsedMs: hasData ? Number(row.total_elapsed_ms || 0) : null,
-      activeUserCount: hasData ? Number(row.active_user_count || 0) : null,
-      hasData,
-    };
+  const resolved = new Map();
+  for (let idx = 0; idx < dateKeys.length; idx += 1) {
+    const dayKey = dateKeys[idx];
+    const row = redisRows?.[idx]?.[1];
+    const parsed = parseStudyGrassRedisRow(row);
+    if (parsed != null) {
+      resolved.set(dayKey, parsed);
+    }
+  }
+
+  const missingKeys = dateKeys.filter((k) => !resolved.has(k));
+
+  if (missingKeys.length > 0) {
+    const placeholders = missingKeys.map(() => '?').join(',');
+    const [aggRows] = await pool.execute(
+      `SELECT
+         sd.day_key AS day_key,
+         COUNT(DISTINCT sd.user_id) AS active_user_count,
+         COALESCE(SUM(sd.total_elapsed_ms), 0) AS total_elapsed_ms
+       FROM study_days sd
+       INNER JOIN users u ON u.id = sd.user_id
+       WHERE sd.school_id = ?
+         AND sd.day_key IN (${placeholders})
+         AND sd.total_elapsed_ms > 0
+         AND u.is_deleted = FALSE
+       GROUP BY sd.day_key`,
+      [schoolId, ...missingKeys],
+    );
+
+    const byDay = new Map(
+      (aggRows || []).map((r) => {
+        const dk =
+          r.day_key instanceof Date
+            ? toDateKey(r.day_key)
+            : String(r.day_key).slice(0, 10);
+        return [
+          dk,
+          {
+            active_user_count: Number(r.active_user_count || 0),
+            total_elapsed_ms: Number(r.total_elapsed_ms || 0),
+          },
+        ];
+      }),
+    );
+
+    const writePipe = redis.pipeline();
+    for (const dayKey of missingKeys) {
+      const agg = byDay.get(dayKey);
+      const totalRaw = agg ? agg.total_elapsed_ms : 0;
+      const activeRaw = agg ? agg.active_user_count : 0;
+      resolved.set(dayKey, {
+        rawTotalMs: totalRaw,
+        activeUserCount: activeRaw,
+      });
+      writePipe.hset(`study:grass:school:${schoolId}:${dayKey}`, {
+        school_id: schoolId,
+        day_key: dayKey,
+        active_user_count: String(activeRaw),
+        total_elapsed_ms: String(totalRaw),
+        updated_at: new Date().toISOString(),
+      });
+      writePipe.expire(
+        `study:grass:school:${schoolId}:${dayKey}`,
+        STUDY_GRASS_REDIS_TTL_SECONDS,
+      );
+    }
+    await writePipe.exec();
+  }
+
+  const series = dateKeys.map((dayKey) => {
+    const r = resolved.get(dayKey);
+    if (!r) {
+      return {
+        dayKey,
+        totalElapsedMs: null,
+        activeUserCount: null,
+        hasData: false,
+      };
+    }
+    const out = studyGrassSeriesFromRaw(r.rawTotalMs, r.activeUserCount, studentDenominator);
+    return { dayKey, ...out };
   });
 
   return {

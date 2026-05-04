@@ -38,7 +38,6 @@ export default function BoardDetail({ navigation, route }) {
   const [floatingMenuAnchor, setFloatingMenuAnchor] = useState(null);
   const [viewerUri, setViewerUri] = useState(null);
   const [imageRatios, setImageRatios] = useState({});
-  const [keyboardHeight, setKeyboardHeight] = useState(0);
   const [imageRevealBypass, setImageRevealBypass] = useState(false);
   const [reportModalVisible, setReportModalVisible] = useState(false);
   const [reportTargetType, setReportTargetType] = useState('post');
@@ -46,6 +45,7 @@ export default function BoardDetail({ navigation, route }) {
 
   const insets = usePlatformInsets();
   const inputTranslateY = useSharedValue(0);
+  const keyboardOffset = useSharedValue(0);
   const bottomInputRef = useRef(null);
   const scrollViewRef = useRef(null);
   const postMenuButtonRef = useRef(null);
@@ -210,7 +210,7 @@ export default function BoardDetail({ navigation, route }) {
       if (commentId) {
         scrollToCommentIdRef.current = null;
         scrollToComment(commentId);
-      } else {
+      } else if (!replyToCommentId) {
         scrollViewRef.current?.scrollToEnd({ animated: true });
       }
     }, delay);
@@ -220,22 +220,26 @@ export default function BoardDetail({ navigation, route }) {
     {
       onMove: (e) => {
         'worklet';
-        inputTranslateY.value = -Math.max(e.height - insets.bottom, 0);
+        keyboardOffset.value = Math.max(e.height - insets.bottom, 0);
+        inputTranslateY.value = -keyboardOffset.value;
       },
       onEnd: (e) => {
         'worklet';
-        inputTranslateY.value = -Math.max(e.height - insets.bottom, 0);
-        runOnJS(setKeyboardHeight)(e.height);
+        keyboardOffset.value = Math.max(e.height - insets.bottom, 0);
+        inputTranslateY.value = -keyboardOffset.value;
         if (e.height > 0) {
           runOnJS(handleKeyboardShowScroll)();
         }
       },
     },
-    [insets.bottom]
+    [insets.bottom, replyToCommentId]
   );
 
   const inputAnimStyle = useAnimatedStyle(() => ({
     transform: [{ translateY: inputTranslateY.value }],
+  }));
+  const listAnimStyle = useAnimatedStyle(() => ({
+    paddingBottom: keyboardOffset.value,
   }));
 
   const focusReplyInput = (commentId) => {
@@ -281,6 +285,14 @@ export default function BoardDetail({ navigation, route }) {
   const clearReplyTarget = () => {
     setReplyToCommentId(null);
     setReplyToAuthorLabel('');
+  };
+
+  const handleSendCommentWithScroll = async () => {
+    await Promise.resolve(handleSendComment());
+    if (replyToCommentId) return;
+    setTimeout(() => {
+      scrollViewRef.current?.scrollToEnd({ animated: true });
+    }, Platform.OS === 'ios' ? 120 : 80);
   };
 
   const onTagPress = (label) => {
@@ -353,7 +365,8 @@ export default function BoardDetail({ navigation, route }) {
           pointerEvents="box-none"
         >
           <View style={{ flex: 1, flexDirection: 'column' }}>
-            <FlatList
+            <Animated.View style={[{ flex: 1 }, listAnimStyle]}>
+              <FlatList
               ref={scrollViewRef}
               style={[{ flex: 1 }, showInitialSkeleton && { opacity: 0 }]}
               pointerEvents={showInitialSkeleton ? 'none' : 'auto'}
@@ -386,7 +399,7 @@ export default function BoardDetail({ navigation, route }) {
               }
               contentContainerStyle={[
                 styles.scrollContent,
-                { paddingBottom: keyboardHeight },
+                { paddingBottom: 0 },
               ]}
               onScrollToIndexFailed={(info) => {
                 setTimeout(() => {
@@ -401,6 +414,7 @@ export default function BoardDetail({ navigation, route }) {
               keyboardShouldPersistTaps="handled"
               keyboardDismissMode="on-drag"
             />
+            </Animated.View>
             {showInitialSkeleton ? (
               <View
                 pointerEvents="none"
@@ -492,7 +506,7 @@ export default function BoardDetail({ navigation, route }) {
                 replyToCommentId={replyToCommentId}
                 replyToAuthorLabel={replyToAuthorLabel}
                 clearReplyTarget={clearReplyTarget}
-                handleSendComment={handleSendComment}
+                handleSendComment={handleSendCommentWithScroll}
                 isSendingComment={isSendingComment}
                 styles={styles}
                 normalize={normalize}
