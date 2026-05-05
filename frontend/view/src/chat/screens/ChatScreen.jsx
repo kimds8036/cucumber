@@ -119,6 +119,12 @@ export default function ChatScreen({
     loadMoreSilent: chat.loadMoreSilent,
     hasMore: chat.hasMore,
   });
+  const hasMessages = (chat.messages?.length ?? 0) > 0;
+  const shouldShowChatSkeleton =
+    combinedLoading ||
+    scroll.initialScrollSettling ||
+    !scroll.listShellVisible ||
+    (!hasMessages && chat.isLoadingMore);
 
   const postCardLayoutAnchorDoneRef = useRef(false);
   const postCardThumbAnchorDoneRef = useRef(false);
@@ -301,28 +307,46 @@ export default function ChatScreen({
             handleContentSizeChange={scroll.handleContentSizeChange}
             onViewableItemsChanged={scroll.handleViewableItemsChanged}
           />
-          {scroll.initialScrollSettling ? (
+          {shouldShowChatSkeleton ? (
             <View
               pointerEvents="auto"
               style={{
                 ...StyleSheet.absoluteFillObject,
-                justifyContent: 'center',
-                alignItems: 'center',
-                backgroundColor: 'rgba(255,255,255,0.72)',
-                zIndex: 20,
+                backgroundColor: colors.background,
+                justifyContent: 'space-between',
+                zIndex: 50,
               }}
             >
-              <View style={{ width: '92%', gap: normalize(12) }}>
-                <View style={{ alignItems: 'flex-start' }}>
-                  <Skeleton width="48%" height={normalize(14)} borderRadius={normalize(7)} />
+              <View style={{ paddingTop: normalize(12), paddingHorizontal: normalize(14) }}>
+                <Skeleton
+                  width={normalize(120)}
+                  height={normalize(12)}
+                  borderRadius={normalize(6)}
+                />
+              </View>
+              <View style={{ width: '100%', paddingHorizontal: normalize(14), gap: normalize(14) }}>
+                <View style={{ flexDirection: 'row', alignItems: 'flex-end', gap: normalize(8) }}>
+                  <Skeleton width={normalize(28)} height={normalize(28)} borderRadius={normalize(14)} />
+                  <View style={{ gap: normalize(6), maxWidth: '72%' }}>
+                    <Skeleton width={normalize(140)} height={normalize(12)} borderRadius={normalize(6)} />
+                    <Skeleton width={normalize(190)} height={normalize(14)} borderRadius={normalize(8)} />
+                  </View>
                 </View>
                 <View style={{ alignItems: 'flex-end' }}>
-                  <Skeleton width="62%" height={normalize(14)} borderRadius={normalize(7)} />
+                  <View style={{ gap: normalize(6), width: '72%', alignItems: 'flex-end' }}>
+                    <Skeleton width={normalize(160)} height={normalize(14)} borderRadius={normalize(8)} />
+                    <Skeleton width={normalize(110)} height={normalize(12)} borderRadius={normalize(6)} />
+                  </View>
                 </View>
-                <View style={{ alignItems: 'flex-start' }}>
-                  <Skeleton width="44%" height={normalize(14)} borderRadius={normalize(7)} />
+                <View style={{ flexDirection: 'row', alignItems: 'flex-end', gap: normalize(8) }}>
+                  <Skeleton width={normalize(28)} height={normalize(28)} borderRadius={normalize(14)} />
+                  <View style={{ gap: normalize(6), maxWidth: '68%' }}>
+                    <Skeleton width={normalize(120)} height={normalize(12)} borderRadius={normalize(6)} />
+                    <Skeleton width={normalize(170)} height={normalize(14)} borderRadius={normalize(8)} />
+                  </View>
                 </View>
               </View>
+              <View style={{ height: normalize(12) }} />
             </View>
           ) : null}
         </Animated.View>
@@ -427,33 +451,6 @@ export default function ChatScreen({
           </Animated.View>
         </View>
 
-        {combinedLoading ? (
-          <View
-            pointerEvents="auto"
-            style={[
-              StyleSheet.absoluteFillObject,
-              {
-                backgroundColor: colors.background,
-                justifyContent: 'center',
-                alignItems: 'center',
-                zIndex: 50,
-              },
-            ]}
-          >
-            <View style={{ width: '92%', gap: normalize(12) }}>
-              <View style={{ alignItems: 'flex-start' }}>
-                <Skeleton width="52%" height={normalize(14)} borderRadius={normalize(7)} />
-              </View>
-              <View style={{ alignItems: 'flex-end' }}>
-                <Skeleton width="58%" height={normalize(14)} borderRadius={normalize(7)} />
-              </View>
-              <View style={{ alignItems: 'flex-start' }}>
-                <Skeleton width="40%" height={normalize(14)} borderRadius={normalize(7)} />
-              </View>
-              <Skeleton width="100%" height={normalize(44)} borderRadius={normalize(22)} style={{ marginTop: normalize(8) }} />
-            </View>
-          </View>
-        ) : null}
       </View>
 
       <MessageActions

@@ -1,4 +1,5 @@
 import pool from '../config/database.js';
+import { STUDY_GRASS_REDIS_TTL_SECONDS } from '../config/studyGrass.js';
 import {
   acquireBatchLock,
   releaseBatchLock,
@@ -16,7 +17,6 @@ import {
 const JOB_NAME = 'study-grass-aggregate';
 const LOCK_KEY = 'batch:lock:study-grass-aggregate';
 const LOCK_TTL_SECONDS = 180;
-const CACHE_TTL_SECONDS = 60 * 60 * 24 * 3;
 
 function getSeoulDayKey(date = new Date()) {
   const formatter = new Intl.DateTimeFormat('en-CA', {
@@ -45,16 +45,16 @@ export async function runStudyGrassAggregateJob() {
         const redis = await getBatchRedis();
         const [rows] = await pool.execute(
           `SELECT
-            u.school_id,
+            sd.school_id AS school_id,
             COUNT(DISTINCT sd.user_id) AS active_user_count,
             COALESCE(SUM(sd.total_elapsed_ms), 0) AS total_elapsed_ms
            FROM study_days sd
            INNER JOIN users u ON u.id = sd.user_id
            WHERE sd.day_key = ?
              AND sd.total_elapsed_ms > 0
-             AND u.school_id IS NOT NULL
+             AND sd.school_id IS NOT NULL
              AND u.is_deleted = FALSE
-           GROUP BY u.school_id`,
+           GROUP BY sd.school_id`,
           [targetDayKey]
         );
 
@@ -77,9 +77,9 @@ export async function runStudyGrassAggregateJob() {
             total_elapsed_ms: String(totalElapsedMs),
             updated_at: new Date().toISOString(),
           });
-          pipeline.expire(hashKey, CACHE_TTL_SECONDS);
+          pipeline.expire(hashKey, STUDY_GRASS_REDIS_TTL_SECONDS);
           pipeline.zadd(rankKey, totalElapsedMs, schoolId);
-          pipeline.expire(rankKey, CACHE_TTL_SECONDS);
+          pipeline.expire(rankKey, STUDY_GRASS_REDIS_TTL_SECONDS);
           schoolCount += 1;
         }
 
