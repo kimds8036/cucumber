@@ -57,6 +57,7 @@
   },
   "private": true,
   "devDependencies": {
+    "license-checker": "^25.0.1",
     "react-native-asset": "^2.2.8"
   }
 }

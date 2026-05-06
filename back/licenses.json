@@ -1,0 +1,1401 @@
+{
+  "@faker-js/faker@10.4.0": {
+    "licenses": "MIT",
+    "repository": "https://github.com/faker-js/faker",
+    "path": "C:\\cucumber\\back\\node_modules\\@faker-js\\faker",
+    "licenseFile": "C:\\cucumber\\back\\node_modules\\@faker-js\\faker\\LICENSE"
+  },
+  "@ioredis/commands@1.5.1": {
+    "licenses": "MIT",
+    "repository": "https://github.com/ioredis/commands",
+    "publisher": "Zihua Li",
+    "email": "i@zihua.li",
+    "url": "http://zihua.li",
+    "path": "C:\\cucumber\\back\\node_modules\\@ioredis\\commands",
+    "licenseFile": "C:\\cucumber\\back\\node_modules\\@ioredis\\commands\\LICENSE"
+  },
+  "@msgpackr-extract/msgpackr-extract-win32-x64@3.0.3": {
+    "licenses": "MIT",
+    "repository": "https://github.com/kriszyp/msgpackr-extract",
+    "publisher": "Kris Zyp",
+    "path": "C:\\cucumber\\back\\node_modules\\@msgpackr-extract\\msgpackr-extract-win32-x64",
+    "licenseFile": "C:\\cucumber\\back\\node_modules\\@msgpackr-extract\\msgpackr-extract-win32-x64\\README.md"
+  },
+  "@scarf/scarf@1.4.0": {
+    "licenses": "Apache-2.0",
+    "repository": "https://github.com/scarf-sh/scarf-js",
+    "publisher": "Scarf Systems",
+    "path": "C:\\cucumber\\back\\node_modules\\@scarf\\scarf",
+    "licenseFile": "C:\\cucumber\\back\\node_modules\\@scarf\\scarf\\LICENSE"
+  },
+  "@socket.io/component-emitter@3.1.2": {
+    "licenses": "MIT",
+    "repository": "https://github.com/socketio/emitter",
+    "path": "C:\\cucumber\\back\\node_modules\\@socket.io\\component-emitter",
+    "licenseFile": "C:\\cucumber\\back\\node_modules\\@socket.io\\component-emitter\\LICENSE"
+  },
+  "@types/cors@2.8.19": {
+    "licenses": "MIT",
+    "repository": "https://github.com/DefinitelyTyped/DefinitelyTyped",
+    "path": "C:\\cucumber\\back\\node_modules\\@types\\cors",
+    "licenseFile": "C:\\cucumber\\back\\node_modules\\@types\\cors\\LICENSE"
+  },
+  "@types/node@25.5.0": {
+    "licenses": "MIT",
+    "repository": "https://github.com/DefinitelyTyped/DefinitelyTyped",
+    "path": "C:\\cucumber\\back\\node_modules\\@types\\node",
+    "licenseFile": "C:\\cucumber\\back\\node_modules\\@types\\node\\LICENSE"
+  },
+  "@types/ws@8.18.1": {
+    "licenses": "MIT",
+    "repository": "https://github.com/DefinitelyTyped/DefinitelyTyped",
+    "path": "C:\\cucumber\\back\\node_modules\\@types\\ws",
+    "licenseFile": "C:\\cucumber\\back\\node_modules\\@types\\ws\\LICENSE"
+  },
+  "accepts@1.3.8": {
+    "licenses": "MIT",
+    "repository": "https://github.com/jshttp/accepts",
+    "path": "C:\\cucumber\\back\\node_modules\\accepts",
+    "licenseFile": "C:\\cucumber\\back\\node_modules\\accepts\\LICENSE"
+  },
+  "anymatch@3.1.3": {
+    "licenses": "ISC",
+    "repository": "https://github.com/micromatch/anymatch",
+    "publisher": "Elan Shanker",
+    "url": "https://github.com/es128",
+    "path": "C:\\cucumber\\back\\node_modules\\anymatch",
+    "licenseFile": "C:\\cucumber\\back\\node_modules\\anymatch\\LICENSE"
+  },
+  "append-field@1.0.0": {
+    "licenses": "MIT",
+    "repository": "https://github.com/LinusU/node-append-field",
+    "publisher": "Linus Unnebäck",
+    "email": "linus@folkdatorn.se",
+    "path": "C:\\cucumber\\back\\node_modules\\append-field",
+    "licenseFile": "C:\\cucumber\\back\\node_modules\\append-field\\LICENSE"
+  },
+  "array-flatten@1.1.1": {
+    "licenses": "MIT",
+    "repository": "https://github.com/blakeembrey/array-flatten",
+    "publisher": "Blake Embrey",
+    "email": "hello@blakeembrey.com",
+    "url": "http://blakeembrey.me",
+    "path": "C:\\cucumber\\back\\node_modules\\array-flatten",
+    "licenseFile": "C:\\cucumber\\back\\node_modules\\array-flatten\\LICENSE"
+  },
+  "aws-ssl-profiles@1.1.2": {
+    "licenses": "MIT",
+    "repository": "https://github.com/mysqljs/aws-ssl-profiles",
+    "publisher": "https://github.com/wellwelwel",
+    "path": "C:\\cucumber\\back\\node_modules\\aws-ssl-profiles",
+    "licenseFile": "C:\\cucumber\\back\\node_modules\\aws-ssl-profiles\\LICENSE"
+  },
+  "balanced-match@4.0.4": {
+    "licenses": "MIT",
+    "repository": "https://github.com/juliangruber/balanced-match",
+    "path": "C:\\cucumber\\back\\node_modules\\balanced-match",
+    "licenseFile": "C:\\cucumber\\back\\node_modules\\balanced-match\\LICENSE.md"
+  },
+  "base64id@2.0.0": {
+    "licenses": "MIT",
+    "repository": "https://github.com/faeldt/base64id",
+    "publisher": "Kristian Faeldt",
+    "email": "faeldt_kristian@cyberagent.co.jp",
+    "path": "C:\\cucumber\\back\\node_modules\\base64id",
+    "licenseFile": "C:\\cucumber\\back\\node_modules\\base64id\\LICENSE"
+  },
+  "bcrypt@6.0.0": {
+    "licenses": "MIT",
+    "repository": "https://github.com/kelektiv/node.bcrypt.js",
+    "publisher": "Nick Campbell",
+    "url": "https://github.com/ncb000gt",
+    "path": "C:\\cucumber\\back\\node_modules\\bcrypt",
+    "licenseFile": "C:\\cucumber\\back\\node_modules\\bcrypt\\LICENSE"
+  },
+  "bcryptjs@2.4.3": {
+    "licenses": "MIT",
+    "repository": "https://github.com/dcodeIO/bcrypt.js",
+    "publisher": "Daniel Wirtz",
+    "email": "dcode@dcode.io",
+    "path": "C:\\cucumber\\back\\node_modules\\bcryptjs",
+    "licenseFile": "C:\\cucumber\\back\\node_modules\\bcryptjs\\LICENSE"
+  },
+  "binary-extensions@2.3.0": {
+    "licenses": "MIT",
+    "repository": "https://github.com/sindresorhus/binary-extensions",
+    "publisher": "Sindre Sorhus",
+    "email": "sindresorhus@gmail.com",
+    "url": "https://sindresorhus.com",
+    "path": "C:\\cucumber\\back\\node_modules\\binary-extensions",
+    "licenseFile": "C:\\cucumber\\back\\node_modules\\binary-extensions\\license"
+  },
+  "body-parser@1.20.4": {
+    "licenses": "MIT",
+    "repository": "https://github.com/expressjs/body-parser",
+    "path": "C:\\cucumber\\back\\node_modules\\body-parser",
+    "licenseFile": "C:\\cucumber\\back\\node_modules\\body-parser\\LICENSE"
+  },
+  "brace-expansion@5.0.5": {
+    "licenses": "MIT",
+    "repository": "https://github.com/juliangruber/brace-expansion",
+    "path": "C:\\cucumber\\back\\node_modules\\brace-expansion",
+    "licenseFile": "C:\\cucumber\\back\\node_modules\\brace-expansion\\LICENSE"
+  },
+  "braces@3.0.3": {
+    "licenses": "MIT",
+    "repository": "https://github.com/micromatch/braces",
+    "publisher": "Jon Schlinkert",
+    "url": "https://github.com/jonschlinkert",
+    "path": "C:\\cucumber\\back\\node_modules\\braces",
+    "licenseFile": "C:\\cucumber\\back\\node_modules\\braces\\LICENSE"
+  },
+  "buffer-equal-constant-time@1.0.1": {
+    "licenses": "BSD-3-Clause",
+    "repository": "https://github.com/goinstant/buffer-equal-constant-time",
+    "publisher": "GoInstant Inc., a salesforce.com company",
+    "path": "C:\\cucumber\\back\\node_modules\\buffer-equal-constant-time",
+    "licenseFile": "C:\\cucumber\\back\\node_modules\\buffer-equal-constant-time\\LICENSE.txt"
+  },
+  "buffer-from@1.1.2": {
+    "licenses": "MIT",
+    "repository": "https://github.com/LinusU/buffer-from",
+    "path": "C:\\cucumber\\back\\node_modules\\buffer-from",
+    "licenseFile": "C:\\cucumber\\back\\node_modules\\buffer-from\\LICENSE"
+  },
+  "bull@4.16.5": {
+    "licenses": "MIT",
+    "repository": "https://github.com/OptimalBits/bull",
+    "publisher": "OptimalBits",
+    "path": "C:\\cucumber\\back\\node_modules\\bull",
+    "licenseFile": "C:\\cucumber\\back\\node_modules\\bull\\LICENSE.md"
+  },
+  "busboy@1.6.0": {
+    "licenses": "MIT",
+    "repository": "https://github.com/mscdex/busboy",
+    "publisher": "Brian White",
+    "email": "mscdex@mscdex.net",
+    "path": "C:\\cucumber\\back\\node_modules\\busboy",
+    "licenseFile": "C:\\cucumber\\back\\node_modules\\busboy\\LICENSE"
+  },
+  "bytes@3.1.2": {
+    "licenses": "MIT",
+    "repository": "https://github.com/visionmedia/bytes.js",
+    "publisher": "TJ Holowaychuk",
+    "email": "tj@vision-media.ca",
+    "url": "http://tjholowaychuk.com",
+    "path": "C:\\cucumber\\back\\node_modules\\bytes",
+    "licenseFile": "C:\\cucumber\\back\\node_modules\\bytes\\LICENSE"
+  },
+  "call-bind-apply-helpers@1.0.2": {
+    "licenses": "MIT",
+    "repository": "https://github.com/ljharb/call-bind-apply-helpers",
+    "publisher": "Jordan Harband",
+    "email": "ljharb@gmail.com",
+    "path": "C:\\cucumber\\back\\node_modules\\call-bind-apply-helpers",
+    "licenseFile": "C:\\cucumber\\back\\node_modules\\call-bind-apply-helpers\\LICENSE"
+  },
+  "call-bound@1.0.4": {
+    "licenses": "MIT",
+    "repository": "https://github.com/ljharb/call-bound",
+    "publisher": "Jordan Harband",
+    "email": "ljharb@gmail.com",
+    "path": "C:\\cucumber\\back\\node_modules\\call-bound",
+    "licenseFile": "C:\\cucumber\\back\\node_modules\\call-bound\\LICENSE"
+  },
+  "chokidar@3.6.0": {
+    "licenses": "MIT",
+    "repository": "https://github.com/paulmillr/chokidar",
+    "publisher": "Paul Miller",
+    "url": "https://paulmillr.com",
+    "path": "C:\\cucumber\\back\\node_modules\\chokidar",
+    "licenseFile": "C:\\cucumber\\back\\node_modules\\chokidar\\LICENSE"
+  },
+  "cloudinary-core@2.14.1": {
+    "licenses": "MIT",
+    "repository": "https://github.com/cloudinary/cloudinary_js",
+    "publisher": "Cloudinary",
+    "email": "info@cloudinary.com",
+    "path": "C:\\cucumber\\back\\node_modules\\cloudinary-core",
+    "licenseFile": "C:\\cucumber\\back\\node_modules\\cloudinary-core\\README.md"
+  },
+  "cloudinary@1.41.3": {
+    "licenses": "MIT",
+    "repository": "https://github.com/cloudinary/cloudinary_npm",
+    "publisher": "Cloudinary",
+    "email": "info@cloudinary.com",
+    "path": "C:\\cucumber\\back\\node_modules\\cloudinary",
+    "licenseFile": "C:\\cucumber\\back\\node_modules\\cloudinary\\README.md"
+  },
+  "cluster-key-slot@1.1.2": {
+    "licenses": "Apache-2.0",
+    "repository": "https://github.com/Salakar/cluster-key-slot",
+    "publisher": "Mike Diarmid",
+    "email": "mike.diarmid@gmail.com",
+    "url": "http://github.com/Salakar/",
+    "path": "C:\\cucumber\\back\\node_modules\\cluster-key-slot",
+    "licenseFile": "C:\\cucumber\\back\\node_modules\\cluster-key-slot\\LICENSE"
+  },
+  "concat-stream@1.6.2": {
+    "licenses": "MIT",
+    "repository": "https://github.com/maxogden/concat-stream",
+    "publisher": "Max Ogden",
+    "email": "max@maxogden.com",
+    "path": "C:\\cucumber\\back\\node_modules\\concat-stream",
+    "licenseFile": "C:\\cucumber\\back\\node_modules\\concat-stream\\LICENSE"
+  },
+  "content-disposition@0.5.4": {
+    "licenses": "MIT",
+    "repository": "https://github.com/jshttp/content-disposition",
+    "publisher": "Douglas Christopher Wilson",
+    "email": "doug@somethingdoug.com",
+    "path": "C:\\cucumber\\back\\node_modules\\content-disposition",
+    "licenseFile": "C:\\cucumber\\back\\node_modules\\content-disposition\\LICENSE"
+  },
+  "content-type@1.0.5": {
+    "licenses": "MIT",
+    "repository": "https://github.com/jshttp/content-type",
+    "publisher": "Douglas Christopher Wilson",
+    "email": "doug@somethingdoug.com",
+    "path": "C:\\cucumber\\back\\node_modules\\content-type",
+    "licenseFile": "C:\\cucumber\\back\\node_modules\\content-type\\LICENSE"
+  },
+  "cookie-signature@1.0.7": {
+    "licenses": "MIT",
+    "repository": "https://github.com/visionmedia/node-cookie-signature",
+    "publisher": "TJ Holowaychuk",
+    "email": "tj@learnboost.com",
+    "path": "C:\\cucumber\\back\\node_modules\\cookie-signature",
+    "licenseFile": "C:\\cucumber\\back\\node_modules\\cookie-signature\\Readme.md"
+  },
+  "cookie@0.7.2": {
+    "licenses": "MIT",
+    "repository": "https://github.com/jshttp/cookie",
+    "publisher": "Roman Shtylman",
+    "email": "shtylman@gmail.com",
+    "path": "C:\\cucumber\\back\\node_modules\\cookie",
+    "licenseFile": "C:\\cucumber\\back\\node_modules\\cookie\\LICENSE"
+  },
+  "core-js@3.49.0": {
+    "licenses": "MIT",
+    "repository": "https://github.com/zloirock/core-js",
+    "publisher": "Denis Pushkarev",
+    "email": "zloirock@zloirock.ru",
+    "url": "http://zloirock.ru",
+    "path": "C:\\cucumber\\back\\node_modules\\core-js",
+    "licenseFile": "C:\\cucumber\\back\\node_modules\\core-js\\LICENSE"
+  },
+  "core-util-is@1.0.3": {
+    "licenses": "MIT",
+    "repository": "https://github.com/isaacs/core-util-is",
+    "publisher": "Isaac Z. Schlueter",
+    "email": "i@izs.me",
+    "url": "http://blog.izs.me/",
+    "path": "C:\\cucumber\\back\\node_modules\\core-util-is",
+    "licenseFile": "C:\\cucumber\\back\\node_modules\\core-util-is\\LICENSE"
+  },
+  "cors@2.8.6": {
+    "licenses": "MIT",
+    "repository": "https://github.com/expressjs/cors",
+    "publisher": "Troy Goode",
+    "email": "troygoode@gmail.com",
+    "url": "https://github.com/troygoode/",
+    "path": "C:\\cucumber\\back\\node_modules\\cors",
+    "licenseFile": "C:\\cucumber\\back\\node_modules\\cors\\LICENSE"
+  },
+  "cron-parser@4.9.0": {
+    "licenses": "MIT",
+    "repository": "https://github.com/harrisiirak/cron-parser",
+    "publisher": "Harri Siirak",
+    "path": "C:\\cucumber\\back\\node_modules\\cron-parser",
+    "licenseFile": "C:\\cucumber\\back\\node_modules\\cron-parser\\LICENSE"
+  },
+  "cucumber-backend@1.0.0": {
+    "licenses": "ISC",
+    "path": "C:\\cucumber\\back",
+    "licenseFile": "C:\\cucumber\\back\\README.md"
+  },
+  "debug@2.6.9": {
+    "licenses": "MIT",
+    "repository": "https://github.com/visionmedia/debug",
+    "publisher": "TJ Holowaychuk",
+    "email": "tj@vision-media.ca",
+    "path": "C:\\cucumber\\back\\node_modules\\debug",
+    "licenseFile": "C:\\cucumber\\back\\node_modules\\debug\\LICENSE"
+  },
+  "debug@4.4.3": {
+    "licenses": "MIT",
+    "repository": "https://github.com/debug-js/debug",
+    "publisher": "Josh Junon",
+    "url": "https://github.com/qix-",
+    "path": "C:\\cucumber\\back\\node_modules\\ioredis\\node_modules\\debug",
+    "licenseFile": "C:\\cucumber\\back\\node_modules\\ioredis\\node_modules\\debug\\LICENSE"
+  },
+  "denque@2.1.0": {
+    "licenses": "Apache-2.0",
+    "repository": "https://github.com/invertase/denque",
+    "publisher": "Invertase",
+    "email": "oss@invertase.io",
+    "url": "http://github.com/invertase/",
+    "path": "C:\\cucumber\\back\\node_modules\\denque",
+    "licenseFile": "C:\\cucumber\\back\\node_modules\\denque\\LICENSE"
+  },
+  "depd@2.0.0": {
+    "licenses": "MIT",
+    "repository": "https://github.com/dougwilson/nodejs-depd",
+    "publisher": "Douglas Christopher Wilson",
+    "email": "doug@somethingdoug.com",
+    "path": "C:\\cucumber\\back\\node_modules\\depd",
+    "licenseFile": "C:\\cucumber\\back\\node_modules\\depd\\LICENSE"
+  },
+  "destroy@1.2.0": {
+    "licenses": "MIT",
+    "repository": "https://github.com/stream-utils/destroy",
+    "publisher": "Jonathan Ong",
+    "email": "me@jongleberry.com",
+    "url": "http://jongleberry.com",
+    "path": "C:\\cucumber\\back\\node_modules\\destroy",
+    "licenseFile": "C:\\cucumber\\back\\node_modules\\destroy\\LICENSE"
+  },
+  "detect-libc@2.1.2": {
+    "licenses": "Apache-2.0",
+    "repository": "https://github.com/lovell/detect-libc",
+    "publisher": "Lovell Fuller",
+    "email": "npm@lovell.info",
+    "path": "C:\\cucumber\\back\\node_modules\\detect-libc",
+    "licenseFile": "C:\\cucumber\\back\\node_modules\\detect-libc\\LICENSE"
+  },
+  "dotenv@16.6.1": {
+    "licenses": "BSD-2-Clause",
+    "repository": "https://github.com/motdotla/dotenv",
+    "path": "C:\\cucumber\\back\\node_modules\\dotenv",
+    "licenseFile": "C:\\cucumber\\back\\node_modules\\dotenv\\LICENSE"
+  },
+  "dunder-proto@1.0.1": {
+    "licenses": "MIT",
+    "repository": "https://github.com/es-shims/dunder-proto",
+    "publisher": "Jordan Harband",
+    "email": "ljharb@gmail.com",
+    "path": "C:\\cucumber\\back\\node_modules\\dunder-proto",
+    "licenseFile": "C:\\cucumber\\back\\node_modules\\dunder-proto\\LICENSE"
+  },
+  "ecdsa-sig-formatter@1.0.11": {
+    "licenses": "Apache-2.0",
+    "repository": "https://github.com/Brightspace/node-ecdsa-sig-formatter",
+    "publisher": "D2L Corporation",
+    "path": "C:\\cucumber\\back\\node_modules\\ecdsa-sig-formatter",
+    "licenseFile": "C:\\cucumber\\back\\node_modules\\ecdsa-sig-formatter\\LICENSE"
+  },
+  "ee-first@1.1.1": {
+    "licenses": "MIT",
+    "repository": "https://github.com/jonathanong/ee-first",
+    "publisher": "Jonathan Ong",
+    "email": "me@jongleberry.com",
+    "url": "http://jongleberry.com",
+    "path": "C:\\cucumber\\back\\node_modules\\ee-first",
+    "licenseFile": "C:\\cucumber\\back\\node_modules\\ee-first\\LICENSE"
+  },
+  "encodeurl@2.0.0": {
+    "licenses": "MIT",
+    "repository": "https://github.com/pillarjs/encodeurl",
+    "path": "C:\\cucumber\\back\\node_modules\\encodeurl",
+    "licenseFile": "C:\\cucumber\\back\\node_modules\\encodeurl\\LICENSE"
+  },
+  "engine.io-parser@5.2.3": {
+    "licenses": "MIT",
+    "repository": "https://github.com/socketio/socket.io",
+    "path": "C:\\cucumber\\back\\node_modules\\engine.io-parser",
+    "licenseFile": "C:\\cucumber\\back\\node_modules\\engine.io-parser\\LICENSE"
+  },
+  "engine.io@6.6.6": {
+    "licenses": "MIT",
+    "repository": "https://github.com/socketio/socket.io",
+    "publisher": "Guillermo Rauch",
+    "email": "guillermo@learnboost.com",
+    "path": "C:\\cucumber\\back\\node_modules\\engine.io",
+    "licenseFile": "C:\\cucumber\\back\\node_modules\\engine.io\\LICENSE"
+  },
+  "es-define-property@1.0.1": {
+    "licenses": "MIT",
+    "repository": "https://github.com/ljharb/es-define-property",
+    "publisher": "Jordan Harband",
+    "email": "ljharb@gmail.com",
+    "path": "C:\\cucumber\\back\\node_modules\\es-define-property",
+    "licenseFile": "C:\\cucumber\\back\\node_modules\\es-define-property\\LICENSE"
+  },
+  "es-errors@1.3.0": {
+    "licenses": "MIT",
+    "repository": "https://github.com/ljharb/es-errors",
+    "publisher": "Jordan Harband",
+    "email": "ljharb@gmail.com",
+    "path": "C:\\cucumber\\back\\node_modules\\es-errors",
+    "licenseFile": "C:\\cucumber\\back\\node_modules\\es-errors\\LICENSE"
+  },
+  "es-object-atoms@1.1.1": {
+    "licenses": "MIT",
+    "repository": "https://github.com/ljharb/es-object-atoms",
+    "publisher": "Jordan Harband",
+    "email": "ljharb@gmail.com",
+    "path": "C:\\cucumber\\back\\node_modules\\es-object-atoms",
+    "licenseFile": "C:\\cucumber\\back\\node_modules\\es-object-atoms\\LICENSE"
+  },
+  "escape-html@1.0.3": {
+    "licenses": "MIT",
+    "repository": "https://github.com/component/escape-html",
+    "path": "C:\\cucumber\\back\\node_modules\\escape-html",
+    "licenseFile": "C:\\cucumber\\back\\node_modules\\escape-html\\LICENSE"
+  },
+  "etag@1.8.1": {
+    "licenses": "MIT",
+    "repository": "https://github.com/jshttp/etag",
+    "path": "C:\\cucumber\\back\\node_modules\\etag",
+    "licenseFile": "C:\\cucumber\\back\\node_modules\\etag\\LICENSE"
+  },
+  "express@4.22.1": {
+    "licenses": "MIT",
+    "repository": "https://github.com/expressjs/express",
+    "publisher": "TJ Holowaychuk",
+    "email": "tj@vision-media.ca",
+    "path": "C:\\cucumber\\back\\node_modules\\express",
+    "licenseFile": "C:\\cucumber\\back\\node_modules\\express\\LICENSE"
+  },
+  "fill-range@7.1.1": {
+    "licenses": "MIT",
+    "repository": "https://github.com/jonschlinkert/fill-range",
+    "publisher": "Jon Schlinkert",
+    "url": "https://github.com/jonschlinkert",
+    "path": "C:\\cucumber\\back\\node_modules\\fill-range",
+    "licenseFile": "C:\\cucumber\\back\\node_modules\\fill-range\\LICENSE"
+  },
+  "finalhandler@1.3.2": {
+    "licenses": "MIT",
+    "repository": "https://github.com/pillarjs/finalhandler",
+    "publisher": "Douglas Christopher Wilson",
+    "email": "doug@somethingdoug.com",
+    "path": "C:\\cucumber\\back\\node_modules\\finalhandler",
+    "licenseFile": "C:\\cucumber\\back\\node_modules\\finalhandler\\LICENSE"
+  },
+  "forwarded@0.2.0": {
+    "licenses": "MIT",
+    "repository": "https://github.com/jshttp/forwarded",
+    "path": "C:\\cucumber\\back\\node_modules\\forwarded",
+    "licenseFile": "C:\\cucumber\\back\\node_modules\\forwarded\\LICENSE"
+  },
+  "fresh@0.5.2": {
+    "licenses": "MIT",
+    "repository": "https://github.com/jshttp/fresh",
+    "publisher": "TJ Holowaychuk",
+    "email": "tj@vision-media.ca",
+    "url": "http://tjholowaychuk.com",
+    "path": "C:\\cucumber\\back\\node_modules\\fresh",
+    "licenseFile": "C:\\cucumber\\back\\node_modules\\fresh\\LICENSE"
+  },
+  "function-bind@1.1.2": {
+    "licenses": "MIT",
+    "repository": "https://github.com/Raynos/function-bind",
+    "publisher": "Raynos",
+    "email": "raynos2@gmail.com",
+    "path": "C:\\cucumber\\back\\node_modules\\function-bind",
+    "licenseFile": "C:\\cucumber\\back\\node_modules\\function-bind\\LICENSE"
+  },
+  "generate-function@2.3.1": {
+    "licenses": "MIT",
+    "repository": "https://github.com/mafintosh/generate-function",
+    "publisher": "Mathias Buus",
+    "path": "C:\\cucumber\\back\\node_modules\\generate-function",
+    "licenseFile": "C:\\cucumber\\back\\node_modules\\generate-function\\LICENSE"
+  },
+  "get-intrinsic@1.3.0": {
+    "licenses": "MIT",
+    "repository": "https://github.com/ljharb/get-intrinsic",
+    "publisher": "Jordan Harband",
+    "email": "ljharb@gmail.com",
+    "path": "C:\\cucumber\\back\\node_modules\\get-intrinsic",
+    "licenseFile": "C:\\cucumber\\back\\node_modules\\get-intrinsic\\LICENSE"
+  },
+  "get-port@5.1.1": {
+    "licenses": "MIT",
+    "repository": "https://github.com/sindresorhus/get-port",
+    "publisher": "Sindre Sorhus",
+    "email": "sindresorhus@gmail.com",
+    "url": "sindresorhus.com",
+    "path": "C:\\cucumber\\back\\node_modules\\get-port",
+    "licenseFile": "C:\\cucumber\\back\\node_modules\\get-port\\license"
+  },
+  "get-proto@1.0.1": {
+    "licenses": "MIT",
+    "repository": "https://github.com/ljharb/get-proto",
+    "publisher": "Jordan Harband",
+    "email": "ljharb@gmail.com",
+    "path": "C:\\cucumber\\back\\node_modules\\get-proto",
+    "licenseFile": "C:\\cucumber\\back\\node_modules\\get-proto\\LICENSE"
+  },
+  "glob-parent@5.1.2": {
+    "licenses": "ISC",
+    "repository": "https://github.com/gulpjs/glob-parent",
+    "publisher": "Gulp Team",
+    "email": "team@gulpjs.com",
+    "url": "https://gulpjs.com/",
+    "path": "C:\\cucumber\\back\\node_modules\\glob-parent",
+    "licenseFile": "C:\\cucumber\\back\\node_modules\\glob-parent\\LICENSE"
+  },
+  "gopd@1.2.0": {
+    "licenses": "MIT",
+    "repository": "https://github.com/ljharb/gopd",
+    "publisher": "Jordan Harband",
+    "email": "ljharb@gmail.com",
+    "path": "C:\\cucumber\\back\\node_modules\\gopd",
+    "licenseFile": "C:\\cucumber\\back\\node_modules\\gopd\\LICENSE"
+  },
+  "has-flag@3.0.0": {
+    "licenses": "MIT",
+    "repository": "https://github.com/sindresorhus/has-flag",
+    "publisher": "Sindre Sorhus",
+    "email": "sindresorhus@gmail.com",
+    "url": "sindresorhus.com",
+    "path": "C:\\cucumber\\back\\node_modules\\has-flag",
+    "licenseFile": "C:\\cucumber\\back\\node_modules\\has-flag\\license"
+  },
+  "has-symbols@1.1.0": {
+    "licenses": "MIT",
+    "repository": "https://github.com/inspect-js/has-symbols",
+    "publisher": "Jordan Harband",
+    "email": "ljharb@gmail.com",
+    "url": "http://ljharb.codes",
+    "path": "C:\\cucumber\\back\\node_modules\\has-symbols",
+    "licenseFile": "C:\\cucumber\\back\\node_modules\\has-symbols\\LICENSE"
+  },
+  "hasown@2.0.2": {
+    "licenses": "MIT",
+    "repository": "https://github.com/inspect-js/hasOwn",
+    "publisher": "Jordan Harband",
+    "email": "ljharb@gmail.com",
+    "path": "C:\\cucumber\\back\\node_modules\\hasown",
+    "licenseFile": "C:\\cucumber\\back\\node_modules\\hasown\\LICENSE"
+  },
+  "http-errors@2.0.1": {
+    "licenses": "MIT",
+    "repository": "https://github.com/jshttp/http-errors",
+    "publisher": "Jonathan Ong",
+    "email": "me@jongleberry.com",
+    "url": "http://jongleberry.com",
+    "path": "C:\\cucumber\\back\\node_modules\\http-errors",
+    "licenseFile": "C:\\cucumber\\back\\node_modules\\http-errors\\LICENSE"
+  },
+  "iconv-lite@0.4.24": {
+    "licenses": "MIT",
+    "repository": "https://github.com/ashtuchkin/iconv-lite",
+    "publisher": "Alexander Shtuchkin",
+    "email": "ashtuchkin@gmail.com",
+    "path": "C:\\cucumber\\back\\node_modules\\iconv-lite",
+    "licenseFile": "C:\\cucumber\\back\\node_modules\\iconv-lite\\LICENSE"
+  },
+  "iconv-lite@0.7.2": {
+    "licenses": "MIT",
+    "repository": "https://github.com/pillarjs/iconv-lite",
+    "publisher": "Alexander Shtuchkin",
+    "email": "ashtuchkin@gmail.com",
+    "path": "C:\\cucumber\\back\\node_modules\\mysql2\\node_modules\\iconv-lite",
+    "licenseFile": "C:\\cucumber\\back\\node_modules\\mysql2\\node_modules\\iconv-lite\\LICENSE"
+  },
+  "ignore-by-default@1.0.1": {
+    "licenses": "ISC",
+    "repository": "https://github.com/novemberborn/ignore-by-default",
+    "publisher": "Mark Wubben",
+    "url": "https://novemberborn.net/",
+    "path": "C:\\cucumber\\back\\node_modules\\ignore-by-default",
+    "licenseFile": "C:\\cucumber\\back\\node_modules\\ignore-by-default\\LICENSE"
+  },
+  "inherits@2.0.4": {
+    "licenses": "ISC",
+    "repository": "https://github.com/isaacs/inherits",
+    "path": "C:\\cucumber\\back\\node_modules\\inherits",
+    "licenseFile": "C:\\cucumber\\back\\node_modules\\inherits\\LICENSE"
+  },
+  "ioredis@5.10.1": {
+    "licenses": "MIT",
+    "repository": "https://github.com/luin/ioredis",
+    "publisher": "Zihua Li",
+    "email": "i@zihua.li",
+    "url": "http://zihua.li",
+    "path": "C:\\cucumber\\back\\node_modules\\ioredis",
+    "licenseFile": "C:\\cucumber\\back\\node_modules\\ioredis\\LICENSE"
+  },
+  "ipaddr.js@1.9.1": {
+    "licenses": "MIT",
+    "repository": "https://github.com/whitequark/ipaddr.js",
+    "publisher": "whitequark",
+    "email": "whitequark@whitequark.org",
+    "path": "C:\\cucumber\\back\\node_modules\\ipaddr.js",
+    "licenseFile": "C:\\cucumber\\back\\node_modules\\ipaddr.js\\LICENSE"
+  },
+  "is-binary-path@2.1.0": {
+    "licenses": "MIT",
+    "repository": "https://github.com/sindresorhus/is-binary-path",
+    "publisher": "Sindre Sorhus",
+    "email": "sindresorhus@gmail.com",
+    "url": "sindresorhus.com",
+    "path": "C:\\cucumber\\back\\node_modules\\is-binary-path",
+    "licenseFile": "C:\\cucumber\\back\\node_modules\\is-binary-path\\license"
+  },
+  "is-extglob@2.1.1": {
+    "licenses": "MIT",
+    "repository": "https://github.com/jonschlinkert/is-extglob",
+    "publisher": "Jon Schlinkert",
+    "url": "https://github.com/jonschlinkert",
+    "path": "C:\\cucumber\\back\\node_modules\\is-extglob",
+    "licenseFile": "C:\\cucumber\\back\\node_modules\\is-extglob\\LICENSE"
+  },
+  "is-glob@4.0.3": {
+    "licenses": "MIT",
+    "repository": "https://github.com/micromatch/is-glob",
+    "publisher": "Jon Schlinkert",
+    "url": "https://github.com/jonschlinkert",
+    "path": "C:\\cucumber\\back\\node_modules\\is-glob",
+    "licenseFile": "C:\\cucumber\\back\\node_modules\\is-glob\\LICENSE"
+  },
+  "is-number@7.0.0": {
+    "licenses": "MIT",
+    "repository": "https://github.com/jonschlinkert/is-number",
+    "publisher": "Jon Schlinkert",
+    "url": "https://github.com/jonschlinkert",
+    "path": "C:\\cucumber\\back\\node_modules\\is-number",
+    "licenseFile": "C:\\cucumber\\back\\node_modules\\is-number\\LICENSE"
+  },
+  "is-property@1.0.2": {
+    "licenses": "MIT",
+    "repository": "https://github.com/mikolalysenko/is-property",
+    "publisher": "Mikola Lysenko",
+    "path": "C:\\cucumber\\back\\node_modules\\is-property",
+    "licenseFile": "C:\\cucumber\\back\\node_modules\\is-property\\LICENSE"
+  },
+  "isarray@1.0.0": {
+    "licenses": "MIT",
+    "repository": "https://github.com/juliangruber/isarray",
+    "publisher": "Julian Gruber",
+    "email": "mail@juliangruber.com",
+    "url": "http://juliangruber.com",
+    "path": "C:\\cucumber\\back\\node_modules\\isarray",
+    "licenseFile": "C:\\cucumber\\back\\node_modules\\isarray\\README.md"
+  },
+  "jsonwebtoken@9.0.3": {
+    "licenses": "MIT",
+    "repository": "https://github.com/auth0/node-jsonwebtoken",
+    "publisher": "auth0",
+    "path": "C:\\cucumber\\back\\node_modules\\jsonwebtoken",
+    "licenseFile": "C:\\cucumber\\back\\node_modules\\jsonwebtoken\\LICENSE"
+  },
+  "jwa@2.0.1": {
+    "licenses": "MIT",
+    "repository": "https://github.com/brianloveswords/node-jwa",
+    "publisher": "Brian J. Brennan",
+    "email": "brianloveswords@gmail.com",
+    "path": "C:\\cucumber\\back\\node_modules\\jwa",
+    "licenseFile": "C:\\cucumber\\back\\node_modules\\jwa\\LICENSE"
+  },
+  "jws@4.0.1": {
+    "licenses": "MIT",
+    "repository": "https://github.com/brianloveswords/node-jws",
+    "publisher": "Brian J Brennan",
+    "path": "C:\\cucumber\\back\\node_modules\\jws",
+    "licenseFile": "C:\\cucumber\\back\\node_modules\\jws\\LICENSE"
+  },
+  "lodash.defaults@4.2.0": {
+    "licenses": "MIT",
+    "repository": "https://github.com/lodash/lodash",
+    "publisher": "John-David Dalton",
+    "email": "john.david.dalton@gmail.com",
+    "url": "http://allyoucanleet.com/",
+    "path": "C:\\cucumber\\back\\node_modules\\lodash.defaults",
+    "licenseFile": "C:\\cucumber\\back\\node_modules\\lodash.defaults\\LICENSE"
+  },
+  "lodash.includes@4.3.0": {
+    "licenses": "MIT",
+    "repository": "https://github.com/lodash/lodash",
+    "publisher": "John-David Dalton",
+    "email": "john.david.dalton@gmail.com",
+    "url": "http://allyoucanleet.com/",
+    "path": "C:\\cucumber\\back\\node_modules\\lodash.includes",
+    "licenseFile": "C:\\cucumber\\back\\node_modules\\lodash.includes\\LICENSE"
+  },
+  "lodash.isarguments@3.1.0": {
+    "licenses": "MIT",
+    "repository": "https://github.com/lodash/lodash",
+    "publisher": "John-David Dalton",
+    "email": "john.david.dalton@gmail.com",
+    "url": "http://allyoucanleet.com/",
+    "path": "C:\\cucumber\\back\\node_modules\\lodash.isarguments",
+    "licenseFile": "C:\\cucumber\\back\\node_modules\\lodash.isarguments\\LICENSE"
+  },
+  "lodash.isboolean@3.0.3": {
+    "licenses": "MIT",
+    "repository": "https://github.com/lodash/lodash",
+    "publisher": "John-David Dalton",
+    "email": "john.david.dalton@gmail.com",
+    "url": "http://allyoucanleet.com/",
+    "path": "C:\\cucumber\\back\\node_modules\\lodash.isboolean",
+    "licenseFile": "C:\\cucumber\\back\\node_modules\\lodash.isboolean\\LICENSE"
+  },
+  "lodash.isinteger@4.0.4": {
+    "licenses": "MIT",
+    "repository": "https://github.com/lodash/lodash",
+    "publisher": "John-David Dalton",
+    "email": "john.david.dalton@gmail.com",
+    "url": "http://allyoucanleet.com/",
+    "path": "C:\\cucumber\\back\\node_modules\\lodash.isinteger",
+    "licenseFile": "C:\\cucumber\\back\\node_modules\\lodash.isinteger\\LICENSE"
+  },
+  "lodash.isnumber@3.0.3": {
+    "licenses": "MIT",
+    "repository": "https://github.com/lodash/lodash",
+    "publisher": "John-David Dalton",
+    "email": "john.david.dalton@gmail.com",
+    "url": "http://allyoucanleet.com/",
+    "path": "C:\\cucumber\\back\\node_modules\\lodash.isnumber",
+    "licenseFile": "C:\\cucumber\\back\\node_modules\\lodash.isnumber\\LICENSE"
+  },
+  "lodash.isplainobject@4.0.6": {
+    "licenses": "MIT",
+    "repository": "https://github.com/lodash/lodash",
+    "publisher": "John-David Dalton",
+    "email": "john.david.dalton@gmail.com",
+    "url": "http://allyoucanleet.com/",
+    "path": "C:\\cucumber\\back\\node_modules\\lodash.isplainobject",
+    "licenseFile": "C:\\cucumber\\back\\node_modules\\lodash.isplainobject\\LICENSE"
+  },
+  "lodash.isstring@4.0.1": {
+    "licenses": "MIT",
+    "repository": "https://github.com/lodash/lodash",
+    "publisher": "John-David Dalton",
+    "email": "john.david.dalton@gmail.com",
+    "url": "http://allyoucanleet.com/",
+    "path": "C:\\cucumber\\back\\node_modules\\lodash.isstring",
+    "licenseFile": "C:\\cucumber\\back\\node_modules\\lodash.isstring\\LICENSE"
+  },
+  "lodash.once@4.1.1": {
+    "licenses": "MIT",
+    "repository": "https://github.com/lodash/lodash",
+    "publisher": "John-David Dalton",
+    "email": "john.david.dalton@gmail.com",
+    "url": "http://allyoucanleet.com/",
+    "path": "C:\\cucumber\\back\\node_modules\\lodash.once",
+    "licenseFile": "C:\\cucumber\\back\\node_modules\\lodash.once\\LICENSE"
+  },
+  "lodash@4.17.23": {
+    "licenses": "MIT",
+    "repository": "https://github.com/lodash/lodash",
+    "publisher": "John-David Dalton",
+    "email": "john.david.dalton@gmail.com",
+    "path": "C:\\cucumber\\back\\node_modules\\lodash",
+    "licenseFile": "C:\\cucumber\\back\\node_modules\\lodash\\LICENSE"
+  },
+  "long@5.3.2": {
+    "licenses": "Apache-2.0",
+    "repository": "https://github.com/dcodeIO/long.js",
+    "publisher": "Daniel Wirtz",
+    "email": "dcode@dcode.io",
+    "path": "C:\\cucumber\\back\\node_modules\\long",
+    "licenseFile": "C:\\cucumber\\back\\node_modules\\long\\LICENSE"
+  },
+  "lru.min@1.1.4": {
+    "licenses": "MIT",
+    "repository": "https://github.com/wellwelwel/lru.min",
+    "publisher": "https://github.com/wellwelwel",
+    "path": "C:\\cucumber\\back\\node_modules\\lru.min",
+    "licenseFile": "C:\\cucumber\\back\\node_modules\\lru.min\\LICENSE"
+  },
+  "luxon@3.7.2": {
+    "licenses": "MIT",
+    "repository": "https://github.com/moment/luxon",
+    "publisher": "Isaac Cambron",
+    "path": "C:\\cucumber\\back\\node_modules\\luxon",
+    "licenseFile": "C:\\cucumber\\back\\node_modules\\luxon\\LICENSE.md"
+  },
+  "math-intrinsics@1.1.0": {
+    "licenses": "MIT",
+    "repository": "https://github.com/es-shims/math-intrinsics",
+    "publisher": "Jordan Harband",
+    "email": "ljharb@gmail.com",
+    "path": "C:\\cucumber\\back\\node_modules\\math-intrinsics",
+    "licenseFile": "C:\\cucumber\\back\\node_modules\\math-intrinsics\\LICENSE"
+  },
+  "media-typer@0.3.0": {
+    "licenses": "MIT",
+    "repository": "https://github.com/jshttp/media-typer",
+    "publisher": "Douglas Christopher Wilson",
+    "email": "doug@somethingdoug.com",
+    "path": "C:\\cucumber\\back\\node_modules\\media-typer",
+    "licenseFile": "C:\\cucumber\\back\\node_modules\\media-typer\\LICENSE"
+  },
+  "merge-descriptors@1.0.3": {
+    "licenses": "MIT",
+    "repository": "https://github.com/sindresorhus/merge-descriptors",
+    "publisher": "Jonathan Ong",
+    "email": "me@jongleberry.com",
+    "url": "http://jongleberry.com",
+    "path": "C:\\cucumber\\back\\node_modules\\merge-descriptors",
+    "licenseFile": "C:\\cucumber\\back\\node_modules\\merge-descriptors\\LICENSE"
+  },
+  "methods@1.1.2": {
+    "licenses": "MIT",
+    "repository": "https://github.com/jshttp/methods",
+    "path": "C:\\cucumber\\back\\node_modules\\methods",
+    "licenseFile": "C:\\cucumber\\back\\node_modules\\methods\\LICENSE"
+  },
+  "mime-db@1.52.0": {
+    "licenses": "MIT",
+    "repository": "https://github.com/jshttp/mime-db",
+    "path": "C:\\cucumber\\back\\node_modules\\mime-db",
+    "licenseFile": "C:\\cucumber\\back\\node_modules\\mime-db\\LICENSE"
+  },
+  "mime-types@2.1.35": {
+    "licenses": "MIT",
+    "repository": "https://github.com/jshttp/mime-types",
+    "path": "C:\\cucumber\\back\\node_modules\\mime-types",
+    "licenseFile": "C:\\cucumber\\back\\node_modules\\mime-types\\LICENSE"
+  },
+  "mime@1.6.0": {
+    "licenses": "MIT",
+    "repository": "https://github.com/broofa/node-mime",
+    "publisher": "Robert Kieffer",
+    "email": "robert@broofa.com",
+    "url": "http://github.com/broofa",
+    "path": "C:\\cucumber\\back\\node_modules\\mime",
+    "licenseFile": "C:\\cucumber\\back\\node_modules\\mime\\LICENSE"
+  },
+  "minimatch@10.2.5": {
+    "licenses": "BlueOak-1.0.0",
+    "repository": "https://github.com/isaacs/minimatch",
+    "publisher": "Isaac Z. Schlueter",
+    "email": "i@izs.me",
+    "url": "http://blog.izs.me",
+    "path": "C:\\cucumber\\back\\node_modules\\minimatch",
+    "licenseFile": "C:\\cucumber\\back\\node_modules\\minimatch\\LICENSE.md"
+  },
+  "minimist@1.2.8": {
+    "licenses": "MIT",
+    "repository": "https://github.com/minimistjs/minimist",
+    "publisher": "James Halliday",
+    "email": "mail@substack.net",
+    "url": "http://substack.net",
+    "path": "C:\\cucumber\\back\\node_modules\\minimist",
+    "licenseFile": "C:\\cucumber\\back\\node_modules\\minimist\\LICENSE"
+  },
+  "mkdirp@0.5.6": {
+    "licenses": "MIT",
+    "repository": "https://github.com/substack/node-mkdirp",
+    "publisher": "James Halliday",
+    "email": "mail@substack.net",
+    "url": "http://substack.net",
+    "path": "C:\\cucumber\\back\\node_modules\\mkdirp",
+    "licenseFile": "C:\\cucumber\\back\\node_modules\\mkdirp\\LICENSE"
+  },
+  "ms@2.0.0": {
+    "licenses": "MIT",
+    "repository": "https://github.com/zeit/ms",
+    "path": "C:\\cucumber\\back\\node_modules\\ms",
+    "licenseFile": "C:\\cucumber\\back\\node_modules\\ms\\license.md"
+  },
+  "ms@2.1.3": {
+    "licenses": "MIT",
+    "repository": "https://github.com/vercel/ms",
+    "path": "C:\\cucumber\\back\\node_modules\\ioredis\\node_modules\\ms",
+    "licenseFile": "C:\\cucumber\\back\\node_modules\\ioredis\\node_modules\\ms\\license.md"
+  },
+  "msgpackr-extract@3.0.3": {
+    "licenses": "MIT",
+    "repository": "https://github.com/kriszyp/msgpackr-extract",
+    "publisher": "Kris Zyp",
+    "path": "C:\\cucumber\\back\\node_modules\\msgpackr-extract",
+    "licenseFile": "C:\\cucumber\\back\\node_modules\\msgpackr-extract\\LICENSE"
+  },
+  "msgpackr@1.11.9": {
+    "licenses": "MIT",
+    "repository": "https://github.com/kriszyp/msgpackr",
+    "publisher": "Kris Zyp",
+    "path": "C:\\cucumber\\back\\node_modules\\msgpackr",
+    "licenseFile": "C:\\cucumber\\back\\node_modules\\msgpackr\\LICENSE"
+  },
+  "multer-storage-cloudinary@4.0.0": {
+    "licenses": "MIT",
+    "repository": "https://github.com/affanshahid/multer-storage-cloudinary",
+    "publisher": "Affan Shahid",
+    "path": "C:\\cucumber\\back\\node_modules\\multer-storage-cloudinary",
+    "licenseFile": "C:\\cucumber\\back\\node_modules\\multer-storage-cloudinary\\LICENSE"
+  },
+  "multer@1.4.5-lts.2": {
+    "licenses": "MIT",
+    "repository": "https://github.com/expressjs/multer",
+    "path": "C:\\cucumber\\back\\node_modules\\multer",
+    "licenseFile": "C:\\cucumber\\back\\node_modules\\multer\\LICENSE"
+  },
+  "mysql2@3.20.0": {
+    "licenses": "MIT",
+    "repository": "https://github.com/sidorares/node-mysql2",
+    "publisher": "Andrey Sidorov",
+    "email": "andrey.sidorov@gmail.com",
+    "path": "C:\\cucumber\\back\\node_modules\\mysql2",
+    "licenseFile": "C:\\cucumber\\back\\node_modules\\mysql2\\License"
+  },
+  "named-placeholders@1.1.6": {
+    "licenses": "MIT",
+    "repository": "https://github.com/mysqljs/named-placeholders",
+    "publisher": "Andrey Sidorov",
+    "email": "sidorares@yandex.com",
+    "path": "C:\\cucumber\\back\\node_modules\\named-placeholders",
+    "licenseFile": "C:\\cucumber\\back\\node_modules\\named-placeholders\\LICENSE"
+  },
+  "negotiator@0.6.3": {
+    "licenses": "MIT",
+    "repository": "https://github.com/jshttp/negotiator",
+    "path": "C:\\cucumber\\back\\node_modules\\negotiator",
+    "licenseFile": "C:\\cucumber\\back\\node_modules\\negotiator\\LICENSE"
+  },
+  "node-addon-api@8.7.0": {
+    "licenses": "MIT",
+    "repository": "https://github.com/nodejs/node-addon-api",
+    "path": "C:\\cucumber\\back\\node_modules\\node-addon-api",
+    "licenseFile": "C:\\cucumber\\back\\node_modules\\node-addon-api\\LICENSE.md"
+  },
+  "node-gyp-build-optional-packages@5.2.2": {
+    "licenses": "MIT",
+    "repository": "https://github.com/prebuild/node-gyp-build",
+    "publisher": "Mathias Buus",
+    "url": "@mafintosh",
+    "path": "C:\\cucumber\\back\\node_modules\\node-gyp-build-optional-packages",
+    "licenseFile": "C:\\cucumber\\back\\node_modules\\node-gyp-build-optional-packages\\LICENSE"
+  },
+  "node-gyp-build@4.8.4": {
+    "licenses": "MIT",
+    "repository": "https://github.com/prebuild/node-gyp-build",
+    "publisher": "Mathias Buus",
+    "url": "@mafintosh",
+    "path": "C:\\cucumber\\back\\node_modules\\node-gyp-build",
+    "licenseFile": "C:\\cucumber\\back\\node_modules\\node-gyp-build\\LICENSE"
+  },
+  "nodemon@3.1.14": {
+    "licenses": "MIT",
+    "repository": "https://github.com/remy/nodemon",
+    "publisher": "Remy Sharp",
+    "url": "https://github.com/remy",
+    "path": "C:\\cucumber\\back\\node_modules\\nodemon",
+    "licenseFile": "C:\\cucumber\\back\\node_modules\\nodemon\\LICENSE"
+  },
+  "normalize-path@3.0.0": {
+    "licenses": "MIT",
+    "repository": "https://github.com/jonschlinkert/normalize-path",
+    "publisher": "Jon Schlinkert",
+    "url": "https://github.com/jonschlinkert",
+    "path": "C:\\cucumber\\back\\node_modules\\normalize-path",
+    "licenseFile": "C:\\cucumber\\back\\node_modules\\normalize-path\\LICENSE"
+  },
+  "object-assign@4.1.1": {
+    "licenses": "MIT",
+    "repository": "https://github.com/sindresorhus/object-assign",
+    "publisher": "Sindre Sorhus",
+    "email": "sindresorhus@gmail.com",
+    "url": "sindresorhus.com",
+    "path": "C:\\cucumber\\back\\node_modules\\object-assign",
+    "licenseFile": "C:\\cucumber\\back\\node_modules\\object-assign\\license"
+  },
+  "object-inspect@1.13.4": {
+    "licenses": "MIT",
+    "repository": "https://github.com/inspect-js/object-inspect",
+    "publisher": "James Halliday",
+    "email": "mail@substack.net",
+    "url": "http://substack.net",
+    "path": "C:\\cucumber\\back\\node_modules\\object-inspect",
+    "licenseFile": "C:\\cucumber\\back\\node_modules\\object-inspect\\LICENSE"
+  },
+  "on-finished@2.4.1": {
+    "licenses": "MIT",
+    "repository": "https://github.com/jshttp/on-finished",
+    "path": "C:\\cucumber\\back\\node_modules\\on-finished",
+    "licenseFile": "C:\\cucumber\\back\\node_modules\\on-finished\\LICENSE"
+  },
+  "parseurl@1.3.3": {
+    "licenses": "MIT",
+    "repository": "https://github.com/pillarjs/parseurl",
+    "path": "C:\\cucumber\\back\\node_modules\\parseurl",
+    "licenseFile": "C:\\cucumber\\back\\node_modules\\parseurl\\LICENSE"
+  },
+  "path-to-regexp@0.1.13": {
+    "licenses": "MIT",
+    "repository": "https://github.com/pillarjs/path-to-regexp",
+    "path": "C:\\cucumber\\back\\node_modules\\path-to-regexp",
+    "licenseFile": "C:\\cucumber\\back\\node_modules\\path-to-regexp\\LICENSE"
+  },
+  "picomatch@2.3.2": {
+    "licenses": "MIT",
+    "repository": "https://github.com/micromatch/picomatch",
+    "publisher": "Jon Schlinkert",
+    "url": "https://github.com/jonschlinkert",
+    "path": "C:\\cucumber\\back\\node_modules\\picomatch",
+    "licenseFile": "C:\\cucumber\\back\\node_modules\\picomatch\\LICENSE"
+  },
+  "process-nextick-args@2.0.1": {
+    "licenses": "MIT",
+    "repository": "https://github.com/calvinmetcalf/process-nextick-args",
+    "path": "C:\\cucumber\\back\\node_modules\\process-nextick-args",
+    "licenseFile": "C:\\cucumber\\back\\node_modules\\process-nextick-args\\license.md"
+  },
+  "proxy-addr@2.0.7": {
+    "licenses": "MIT",
+    "repository": "https://github.com/jshttp/proxy-addr",
+    "publisher": "Douglas Christopher Wilson",
+    "email": "doug@somethingdoug.com",
+    "path": "C:\\cucumber\\back\\node_modules\\proxy-addr",
+    "licenseFile": "C:\\cucumber\\back\\node_modules\\proxy-addr\\LICENSE"
+  },
+  "pstree.remy@1.1.8": {
+    "licenses": "MIT",
+    "repository": "https://github.com/remy/pstree",
+    "publisher": "Remy Sharp",
+    "path": "C:\\cucumber\\back\\node_modules\\pstree.remy",
+    "licenseFile": "C:\\cucumber\\back\\node_modules\\pstree.remy\\LICENSE"
+  },
+  "q@1.5.1": {
+    "licenses": "MIT",
+    "repository": "https://github.com/kriskowal/q",
+    "publisher": "Kris Kowal",
+    "email": "kris@cixar.com",
+    "url": "https://github.com/kriskowal",
+    "path": "C:\\cucumber\\back\\node_modules\\q",
+    "licenseFile": "C:\\cucumber\\back\\node_modules\\q\\LICENSE"
+  },
+  "qs@6.14.2": {
+    "licenses": "BSD-3-Clause",
+    "repository": "https://github.com/ljharb/qs",
+    "path": "C:\\cucumber\\back\\node_modules\\qs",
+    "licenseFile": "C:\\cucumber\\back\\node_modules\\qs\\LICENSE.md"
+  },
+  "range-parser@1.2.1": {
+    "licenses": "MIT",
+    "repository": "https://github.com/jshttp/range-parser",
+    "publisher": "TJ Holowaychuk",
+    "email": "tj@vision-media.ca",
+    "url": "http://tjholowaychuk.com",
+    "path": "C:\\cucumber\\back\\node_modules\\range-parser",
+    "licenseFile": "C:\\cucumber\\back\\node_modules\\range-parser\\LICENSE"
+  },
+  "raw-body@2.5.3": {
+    "licenses": "MIT",
+    "repository": "https://github.com/stream-utils/raw-body",
+    "publisher": "Jonathan Ong",
+    "email": "me@jongleberry.com",
+    "url": "http://jongleberry.com",
+    "path": "C:\\cucumber\\back\\node_modules\\raw-body",
+    "licenseFile": "C:\\cucumber\\back\\node_modules\\raw-body\\LICENSE"
+  },
+  "readable-stream@2.3.8": {
+    "licenses": "MIT",
+    "repository": "https://github.com/nodejs/readable-stream",
+    "path": "C:\\cucumber\\back\\node_modules\\readable-stream",
+    "licenseFile": "C:\\cucumber\\back\\node_modules\\readable-stream\\LICENSE"
+  },
+  "readdirp@3.6.0": {
+    "licenses": "MIT",
+    "repository": "https://github.com/paulmillr/readdirp",
+    "publisher": "Thorsten Lorenz",
+    "email": "thlorenz@gmx.de",
+    "url": "thlorenz.com",
+    "path": "C:\\cucumber\\back\\node_modules\\readdirp",
+    "licenseFile": "C:\\cucumber\\back\\node_modules\\readdirp\\LICENSE"
+  },
+  "redis-errors@1.2.0": {
+    "licenses": "MIT",
+    "repository": "https://github.com/NodeRedis/redis-errors",
+    "publisher": "Ruben Bridgewater",
+    "path": "C:\\cucumber\\back\\node_modules\\redis-errors",
+    "licenseFile": "C:\\cucumber\\back\\node_modules\\redis-errors\\LICENSE"
+  },
+  "redis-parser@3.0.0": {
+    "licenses": "MIT",
+    "repository": "https://github.com/NodeRedis/node-redis-parser",
+    "publisher": "Ruben Bridgewater",
+    "path": "C:\\cucumber\\back\\node_modules\\redis-parser",
+    "licenseFile": "C:\\cucumber\\back\\node_modules\\redis-parser\\LICENSE"
+  },
+  "safe-buffer@5.1.2": {
+    "licenses": "MIT",
+    "repository": "https://github.com/feross/safe-buffer",
+    "publisher": "Feross Aboukhadijeh",
+    "email": "feross@feross.org",
+    "url": "http://feross.org",
+    "path": "C:\\cucumber\\back\\node_modules\\readable-stream\\node_modules\\safe-buffer",
+    "licenseFile": "C:\\cucumber\\back\\node_modules\\readable-stream\\node_modules\\safe-buffer\\LICENSE"
+  },
+  "safe-buffer@5.2.1": {
+    "licenses": "MIT",
+    "repository": "https://github.com/feross/safe-buffer",
+    "publisher": "Feross Aboukhadijeh",
+    "email": "feross@feross.org",
+    "url": "https://feross.org",
+    "path": "C:\\cucumber\\back\\node_modules\\safe-buffer",
+    "licenseFile": "C:\\cucumber\\back\\node_modules\\safe-buffer\\LICENSE"
+  },
+  "safer-buffer@2.1.2": {
+    "licenses": "MIT",
+    "repository": "https://github.com/ChALkeR/safer-buffer",
+    "publisher": "Nikita Skovoroda",
+    "email": "chalkerx@gmail.com",
+    "url": "https://github.com/ChALkeR",
+    "path": "C:\\cucumber\\back\\node_modules\\safer-buffer",
+    "licenseFile": "C:\\cucumber\\back\\node_modules\\safer-buffer\\LICENSE"
+  },
+  "semver@7.7.4": {
+    "licenses": "ISC",
+    "repository": "https://github.com/npm/node-semver",
+    "publisher": "GitHub Inc.",
+    "path": "C:\\cucumber\\back\\node_modules\\semver",
+    "licenseFile": "C:\\cucumber\\back\\node_modules\\semver\\LICENSE"
+  },
+  "send@0.19.2": {
+    "licenses": "MIT",
+    "repository": "https://github.com/pillarjs/send",
+    "publisher": "TJ Holowaychuk",
+    "email": "tj@vision-media.ca",
+    "path": "C:\\cucumber\\back\\node_modules\\send",
+    "licenseFile": "C:\\cucumber\\back\\node_modules\\send\\LICENSE"
+  },
+  "serve-static@1.16.3": {
+    "licenses": "MIT",
+    "repository": "https://github.com/expressjs/serve-static",
+    "publisher": "Douglas Christopher Wilson",
+    "email": "doug@somethingdoug.com",
+    "path": "C:\\cucumber\\back\\node_modules\\serve-static",
+    "licenseFile": "C:\\cucumber\\back\\node_modules\\serve-static\\LICENSE"
+  },
+  "setprototypeof@1.2.0": {
+    "licenses": "ISC",
+    "repository": "https://github.com/wesleytodd/setprototypeof",
+    "publisher": "Wes Todd",
+    "path": "C:\\cucumber\\back\\node_modules\\setprototypeof",
+    "licenseFile": "C:\\cucumber\\back\\node_modules\\setprototypeof\\LICENSE"
+  },
+  "side-channel-list@1.0.0": {
+    "licenses": "MIT",
+    "repository": "https://github.com/ljharb/side-channel-list",
+    "publisher": "Jordan Harband",
+    "email": "ljharb@gmail.com",
+    "path": "C:\\cucumber\\back\\node_modules\\side-channel-list",
+    "licenseFile": "C:\\cucumber\\back\\node_modules\\side-channel-list\\LICENSE"
+  },
+  "side-channel-map@1.0.1": {
+    "licenses": "MIT",
+    "repository": "https://github.com/ljharb/side-channel-map",
+    "publisher": "Jordan Harband",
+    "email": "ljharb@gmail.com",
+    "path": "C:\\cucumber\\back\\node_modules\\side-channel-map",
+    "licenseFile": "C:\\cucumber\\back\\node_modules\\side-channel-map\\LICENSE"
+  },
+  "side-channel-weakmap@1.0.2": {
+    "licenses": "MIT",
+    "repository": "https://github.com/ljharb/side-channel-weakmap",
+    "publisher": "Jordan Harband",
+    "email": "ljharb@gmail.com",
+    "path": "C:\\cucumber\\back\\node_modules\\side-channel-weakmap",
+    "licenseFile": "C:\\cucumber\\back\\node_modules\\side-channel-weakmap\\LICENSE"
+  },
+  "side-channel@1.1.0": {
+    "licenses": "MIT",
+    "repository": "https://github.com/ljharb/side-channel",
+    "publisher": "Jordan Harband",
+    "email": "ljharb@gmail.com",
+    "path": "C:\\cucumber\\back\\node_modules\\side-channel",
+    "licenseFile": "C:\\cucumber\\back\\node_modules\\side-channel\\LICENSE"
+  },
+  "simple-update-notifier@2.0.0": {
+    "licenses": "MIT",
+    "repository": "https://github.com/alexbrazier/simple-update-notifier",
+    "publisher": "alexbrazier",
+    "path": "C:\\cucumber\\back\\node_modules\\simple-update-notifier",
+    "licenseFile": "C:\\cucumber\\back\\node_modules\\simple-update-notifier\\LICENSE"
+  },
+  "socket.io-adapter@2.5.6": {
+    "licenses": "MIT",
+    "repository": "https://github.com/socketio/socket.io",
+    "path": "C:\\cucumber\\back\\node_modules\\socket.io-adapter",
+    "licenseFile": "C:\\cucumber\\back\\node_modules\\socket.io-adapter\\LICENSE"
+  },
+  "socket.io-parser@4.2.6": {
+    "licenses": "MIT",
+    "repository": "https://github.com/socketio/socket.io",
+    "path": "C:\\cucumber\\back\\node_modules\\socket.io-parser",
+    "licenseFile": "C:\\cucumber\\back\\node_modules\\socket.io-parser\\LICENSE"
+  },
+  "socket.io@4.8.3": {
+    "licenses": "MIT",
+    "repository": "https://github.com/socketio/socket.io",
+    "path": "C:\\cucumber\\back\\node_modules\\socket.io",
+    "licenseFile": "C:\\cucumber\\back\\node_modules\\socket.io\\LICENSE"
+  },
+  "sql-escaper@1.3.3": {
+    "licenses": "MIT",
+    "repository": "https://github.com/mysqljs/sql-escaper",
+    "publisher": "https://github.com/mysqljs",
+    "path": "C:\\cucumber\\back\\node_modules\\sql-escaper",
+    "licenseFile": "C:\\cucumber\\back\\node_modules\\sql-escaper\\LICENSE"
+  },
+  "standard-as-callback@2.1.0": {
+    "licenses": "MIT",
+    "repository": "https://github.com/luin/asCallback",
+    "publisher": "luin",
+    "email": "i@zihua.li",
+    "path": "C:\\cucumber\\back\\node_modules\\standard-as-callback",
+    "licenseFile": "C:\\cucumber\\back\\node_modules\\standard-as-callback\\LICENSE"
+  },
+  "statuses@2.0.2": {
+    "licenses": "MIT",
+    "repository": "https://github.com/jshttp/statuses",
+    "path": "C:\\cucumber\\back\\node_modules\\statuses",
+    "licenseFile": "C:\\cucumber\\back\\node_modules\\statuses\\LICENSE"
+  },
+  "streamsearch@1.1.0": {
+    "licenses": "MIT",
+    "repository": "https://github.com/mscdex/streamsearch",
+    "publisher": "Brian White",
+    "email": "mscdex@mscdex.net",
+    "path": "C:\\cucumber\\back\\node_modules\\streamsearch",
+    "licenseFile": "C:\\cucumber\\back\\node_modules\\streamsearch\\LICENSE"
+  },
+  "string_decoder@1.1.1": {
+    "licenses": "MIT",
+    "repository": "https://github.com/nodejs/string_decoder",
+    "path": "C:\\cucumber\\back\\node_modules\\string_decoder",
+    "licenseFile": "C:\\cucumber\\back\\node_modules\\string_decoder\\LICENSE"
+  },
+  "supports-color@5.5.0": {
+    "licenses": "MIT",
+    "repository": "https://github.com/chalk/supports-color",
+    "publisher": "Sindre Sorhus",
+    "email": "sindresorhus@gmail.com",
+    "url": "sindresorhus.com",
+    "path": "C:\\cucumber\\back\\node_modules\\supports-color",
+    "licenseFile": "C:\\cucumber\\back\\node_modules\\supports-color\\license"
+  },
+  "swagger-ui-dist@5.32.1": {
+    "licenses": "Apache-2.0",
+    "repository": "https://github.com/swagger-api/swagger-ui",
+    "path": "C:\\cucumber\\back\\node_modules\\swagger-ui-dist",
+    "licenseFile": "C:\\cucumber\\back\\node_modules\\swagger-ui-dist\\LICENSE",
+    "noticeFile": "C:\\cucumber\\back\\node_modules\\swagger-ui-dist\\NOTICE"
+  },
+  "swagger-ui-express@5.0.1": {
+    "licenses": "MIT",
+    "repository": "https://github.com/scottie1984/swagger-ui-express",
+    "publisher": "Stephen Scott",
+    "email": "scottie1984@gmail.com",
+    "path": "C:\\cucumber\\back\\node_modules\\swagger-ui-express",
+    "licenseFile": "C:\\cucumber\\back\\node_modules\\swagger-ui-express\\LICENSE"
+  },
+  "to-regex-range@5.0.1": {
+    "licenses": "MIT",
+    "repository": "https://github.com/micromatch/to-regex-range",
+    "publisher": "Jon Schlinkert",
+    "url": "https://github.com/jonschlinkert",
+    "path": "C:\\cucumber\\back\\node_modules\\to-regex-range",
+    "licenseFile": "C:\\cucumber\\back\\node_modules\\to-regex-range\\LICENSE"
+  },
+  "toidentifier@1.0.1": {
+    "licenses": "MIT",
+    "repository": "https://github.com/component/toidentifier",
+    "publisher": "Douglas Christopher Wilson",
+    "email": "doug@somethingdoug.com",
+    "path": "C:\\cucumber\\back\\node_modules\\toidentifier",
+    "licenseFile": "C:\\cucumber\\back\\node_modules\\toidentifier\\LICENSE"
+  },
+  "touch@3.1.1": {
+    "licenses": "ISC",
+    "repository": "https://github.com/isaacs/node-touch",
+    "publisher": "Isaac Z. Schlueter",
+    "email": "i@izs.me",
+    "url": "http://blog.izs.me/",
+    "path": "C:\\cucumber\\back\\node_modules\\touch",
+    "licenseFile": "C:\\cucumber\\back\\node_modules\\touch\\LICENSE"
+  },
+  "type-is@1.6.18": {
+    "licenses": "MIT",
+    "repository": "https://github.com/jshttp/type-is",
+    "path": "C:\\cucumber\\back\\node_modules\\type-is",
+    "licenseFile": "C:\\cucumber\\back\\node_modules\\type-is\\LICENSE"
+  },
+  "typedarray@0.0.6": {
+    "licenses": "MIT",
+    "repository": "https://github.com/substack/typedarray",
+    "publisher": "James Halliday",
+    "email": "mail@substack.net",
+    "url": "http://substack.net",
+    "path": "C:\\cucumber\\back\\node_modules\\typedarray",
+    "licenseFile": "C:\\cucumber\\back\\node_modules\\typedarray\\LICENSE"
+  },
+  "undefsafe@2.0.5": {
+    "licenses": "MIT",
+    "repository": "https://github.com/remy/undefsafe",
+    "publisher": "Remy Sharp",
+    "path": "C:\\cucumber\\back\\node_modules\\undefsafe",
+    "licenseFile": "C:\\cucumber\\back\\node_modules\\undefsafe\\LICENSE"
+  },
+  "undici-types@7.18.2": {
+    "licenses": "MIT",
+    "repository": "https://github.com/nodejs/undici",
+    "path": "C:\\cucumber\\back\\node_modules\\undici-types",
+    "licenseFile": "C:\\cucumber\\back\\node_modules\\undici-types\\LICENSE"
+  },
+  "unpipe@1.0.0": {
+    "licenses": "MIT",
+    "repository": "https://github.com/stream-utils/unpipe",
+    "publisher": "Douglas Christopher Wilson",
+    "email": "doug@somethingdoug.com",
+    "path": "C:\\cucumber\\back\\node_modules\\unpipe",
+    "licenseFile": "C:\\cucumber\\back\\node_modules\\unpipe\\LICENSE"
+  },
+  "util-deprecate@1.0.2": {
+    "licenses": "MIT",
+    "repository": "https://github.com/TooTallNate/util-deprecate",
+    "publisher": "Nathan Rajlich",
+    "email": "nathan@tootallnate.net",
+    "url": "http://n8.io/",
+    "path": "C:\\cucumber\\back\\node_modules\\util-deprecate",
+    "licenseFile": "C:\\cucumber\\back\\node_modules\\util-deprecate\\LICENSE"
+  },
+  "utils-merge@1.0.1": {
+    "licenses": "MIT",
+    "repository": "https://github.com/jaredhanson/utils-merge",
+    "publisher": "Jared Hanson",
+    "email": "jaredhanson@gmail.com",
+    "url": "http://www.jaredhanson.net/",
+    "path": "C:\\cucumber\\back\\node_modules\\utils-merge",
+    "licenseFile": "C:\\cucumber\\back\\node_modules\\utils-merge\\LICENSE"
+  },
+  "uuid@8.3.2": {
+    "licenses": "MIT",
+    "repository": "https://github.com/uuidjs/uuid",
+    "path": "C:\\cucumber\\back\\node_modules\\uuid",
+    "licenseFile": "C:\\cucumber\\back\\node_modules\\uuid\\LICENSE.md"
+  },
+  "vary@1.1.2": {
+    "licenses": "MIT",
+    "repository": "https://github.com/jshttp/vary",
+    "publisher": "Douglas Christopher Wilson",
+    "email": "doug@somethingdoug.com",
+    "path": "C:\\cucumber\\back\\node_modules\\vary",
+    "licenseFile": "C:\\cucumber\\back\\node_modules\\vary\\LICENSE"
+  },
+  "ws@8.18.3": {
+    "licenses": "MIT",
+    "repository": "https://github.com/websockets/ws",
+    "publisher": "Einar Otto Stangvik",
+    "email": "einaros@gmail.com",
+    "url": "http://2x.io",
+    "path": "C:\\cucumber\\back\\node_modules\\ws",
+    "licenseFile": "C:\\cucumber\\back\\node_modules\\ws\\LICENSE"
+  },
+  "xtend@4.0.2": {
+    "licenses": "MIT",
+    "repository": "https://github.com/Raynos/xtend",
+    "publisher": "Raynos",
+    "email": "raynos2@gmail.com",
+    "path": "C:\\cucumber\\back\\node_modules\\xtend",
+    "licenseFile": "C:\\cucumber\\back\\node_modules\\xtend\\LICENSE"
+  }
+}
