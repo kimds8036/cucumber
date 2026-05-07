@@ -55,6 +55,6 @@ export function initJobs() {
   );
 
   console.log(
-    `[BatchJob] started timezone=${TZ} studyGrass="${studyGrassSchedule}" trending="${trendingSchedule}" schoolStats="${schoolStatsSchedule}" timerGuard="${timerGuardSchedule}" timerStaleMinutes="${process.env.CRON_TIMER_STALE_MINUTES || '60'}"`
+    `[BatchJob] started timezone=${TZ} studyGrass="${studyGrassSchedule}" trending="${trendingSchedule}" schoolStats="${schoolStatsSchedule}" timerGuard="${timerGuardSchedule}" timerStaleMinutes="${process.env.CRON_TIMER_STALE_MINUTES || '60'}" timerMaxOpenHours="${process.env.CRON_TIMER_MAX_OPEN_HOURS || '15'} marathonClamp="${(process.env.CRON_TIMER_MARATHON_CLAMP ?? 'true').toLowerCase()}" staleClose="${(process.env.CRON_TIMER_STALE_CLOSE ?? 'true').toLowerCase()}"`
   );
 }

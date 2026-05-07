@@ -2,6 +2,7 @@ import pool from '../config/database.js';
 import { getIO } from '../socketServer.js';
 import { enqueueNotification } from '../utils/notificationWorker.js';
 import { getTimerDayKey } from '../utils/timerDayKey.js';
+import { upsertStudyDayTotalForUserKey } from '../utils/studyDayTotal.js';
 
 // in-memory throttle map: key = `${fromUserId}:${targetUserId}`
 const lastPokeAtMap = new Map();
@@ -13,52 +14,50 @@ const notifyOnStopMap = new Map();
 // 현재 공부 상태 in-memory 캐시 (실시간 소켓 수신용 보조, REST 조회는 DB 사용)
 const currentTimerStatusMap = new Map();
 
-const KST_NOW_SECONDS_SQL = `
-  (
-    (
-      HOUR(CONVERT_TZ(UTC_TIMESTAMP(), '+00:00', '+09:00')) * 3600
-      + MINUTE(CONVERT_TZ(UTC_TIMESTAMP(), '+00:00', '+09:00')) * 60
-      + SECOND(CONVERT_TZ(UTC_TIMESTAMP(), '+00:00', '+09:00'))
-      - 21600
-      + 86400
-    ) % 86400
-  )
-`;
+const KST_NOW_DATETIME_SQL = `CONVERT_TZ(UTC_TIMESTAMP(3), '+00:00', '+09:00')`;
 
 // ── 세션 DB 저장 (소켓 수신 시 호출) ─────────────────────
 
 /**
  * 타이머 시작 시: 기존 미완료 세션 종료 후 새 세션 INSERT
- * @param {{ userId: number, dayKey: string, subjectId?: number|null, subjectName?: string|null, startSeconds: number }}
+ * @param {{ userId: number, dayKey: string, subjectId?: number|null, subjectName?: string|null }}
  */
-export async function upsertStudySessionStart({ userId, dayKey, subjectId, subjectName, startSeconds }) {
+export async function upsertStudySessionStart({ userId, dayKey, subjectId, subjectName }) {
   const connection = await pool.getConnection();
   try {
     await connection.beginTransaction();
-    // 같은 유저의 최근 미완료 세션 1건만 현재 시각(초)으로 종료
-    await connection.execute(
-      `UPDATE study_sessions
-       SET end_seconds = ${KST_NOW_SECONDS_SQL}
-       WHERE id = (
-         SELECT id FROM (
-           SELECT id
-           FROM study_sessions
-           WHERE user_id = ? AND end_seconds IS NULL
-           ORDER BY id DESC
-           LIMIT 1
-         ) AS latest_open
-       )`,
+    const [prevRows] = await connection.execute(
+      `SELECT id, DATE_FORMAT(day_key, '%Y-%m-%d') AS day_key_fmt
+       FROM study_sessions
+       WHERE user_id = ? AND ended_at IS NULL
+       ORDER BY id DESC
+       LIMIT 1`,
       [userId],
     );
+    const prev = prevRows[0];
+    if (prev?.id != null) {
+      const [endPrev] = await connection.execute(
+        `UPDATE study_sessions
+         SET ended_at = ${KST_NOW_DATETIME_SQL}
+         WHERE id = ? AND user_id = ? AND ended_at IS NULL`,
+        [prev.id, userId],
+      );
+      if (endPrev.affectedRows > 0 && prev.day_key_fmt) {
+        await upsertStudyDayTotalForUserKey(
+          connection,
+          userId,
+          prev.day_key_fmt.slice(0, 10),
+        );
+      }
+    }
     await connection.execute(
-      `INSERT INTO study_sessions (user_id, day_key, subject_id, subject_name, start_seconds, end_seconds)
-       VALUES (?, ?, ?, ?, ?, NULL)`,
+      `INSERT INTO study_sessions (user_id, day_key, subject_id, subject_name, started_at, ended_at)
+       VALUES (?, ?, ?, ?, ${KST_NOW_DATETIME_SQL}, NULL)`,
       [
         userId,
         dayKey,
         subjectId != null ? subjectId : null,
         subjectName != null && subjectName !== '' ? String(subjectName).slice(0, 100) : null,
-        Number(startSeconds) || 0,
       ],
     );
     await connection.commit();
@@ -74,20 +73,29 @@ export async function upsertStudySessionStart({ userId, dayKey, subjectId, subje
  * 타이머 종료 시: 해당 유저의 미완료 세션 1건을 현재 시각 기준으로 종료
  */
 export async function closeStudySession({ userId }) {
-  await pool.execute(
-    `UPDATE study_sessions
-     SET end_seconds = ${KST_NOW_SECONDS_SQL}
-     WHERE id = (
-       SELECT id FROM (
-         SELECT id
-         FROM study_sessions
-         WHERE user_id = ? AND end_seconds IS NULL
-         ORDER BY id DESC
-         LIMIT 1
-       ) AS latest_open
-     )`,
+  const [rows] = await pool.execute(
+    `SELECT id, DATE_FORMAT(day_key, '%Y-%m-%d') AS day_key_fmt
+     FROM study_sessions
+     WHERE user_id = ? AND ended_at IS NULL
+     ORDER BY id DESC
+     LIMIT 1`,
     [userId],
   );
+  const row = rows[0];
+  if (!row?.id) return;
+  const [upd] = await pool.execute(
+    `UPDATE study_sessions
+     SET ended_at = ${KST_NOW_DATETIME_SQL}
+     WHERE id = ? AND user_id = ? AND ended_at IS NULL`,
+    [row.id, userId],
+  );
+  if (upd.affectedRows > 0 && row.day_key_fmt) {
+    await upsertStudyDayTotalForUserKey(
+      pool,
+      userId,
+      String(row.day_key_fmt).slice(0, 10),
+    );
+  }
 }
 
 /**
@@ -95,7 +103,7 @@ export async function closeStudySession({ userId }) {
  */
 export async function closeIncompleteStudySessions({ userId }) {
   const [rows] = await pool.execute(
-    'SELECT id FROM study_sessions WHERE user_id = ? AND end_seconds IS NULL',
+    'SELECT id FROM study_sessions WHERE user_id = ? AND ended_at IS NULL',
     [userId],
   );
   if (rows.length === 0) return;
@@ -300,7 +308,7 @@ export async function broadcastTimerStatus({ userId, status }) {
 /**
  * REST에서 사용할 현재 공부 중인 친구 목록 조회
  * - 친구가 나중에 앱을 켜도 DB에 저장된 세션(진행 중)을 기준으로 조회
- * - user_friendships 로 친구 ID 조회 후, study_sessions 에서 end_seconds IS NULL && day_key = 오늘 인 유저만 반환
+ * - study_sessions 에서 ended_at IS NULL && day_key = 오늘(타임머일 키) 인 유저만 반환
  */
 export async function getStudyingFriends({ userId }) {
   const [friendRows] = await pool.execute(
@@ -323,8 +331,8 @@ export async function getStudyingFriends({ userId }) {
   const [studyingRows] = await pool.execute(
     `SELECT DISTINCT user_id
      FROM study_sessions
-     WHERE user_id IN (${placeholders})
-       AND end_seconds IS NULL
+       WHERE user_id IN (${placeholders})
+       AND ended_at IS NULL
        AND day_key = ?`,
     [...friendIds, todayTimerDayKey],
   );

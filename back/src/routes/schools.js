@@ -1,6 +1,9 @@
 import express from 'express';
 import pool from '../config/database.js';
-import { STUDY_GRASS_REDIS_TTL_SECONDS } from '../config/studyGrass.js';
+import {
+  STUDY_GRASS_AVG_MULTIPLIER,
+  STUDY_GRASS_REDIS_TTL_SECONDS,
+} from '../config/studyGrass.js';
 import { authenticate } from '../middleware/auth.js';
 import { getBatchRedis } from '../services/batchRedis.service.js';
 import {
@@ -96,7 +99,10 @@ function studyGrassSeriesFromRaw(rawTotalMs, activeUserCount, studentDenominator
     return { totalElapsedMs: null, activeUserCount: null, hasData: false };
   }
   const hasActivity = rawTotalMs > 0 || activeUserCount > 0;
-  const avgMs = hasActivity ? Math.round(rawTotalMs / studentDenominator) : 0;
+  // 평균 완화: (총시간/학생수) × STUDY_GRASS_AVG_MULTIPLIER — 계수는 ../config/studyGrass.js
+  const avgMs = hasActivity
+    ? Math.round((rawTotalMs / studentDenominator) * STUDY_GRASS_AVG_MULTIPLIER)
+    : 0;
   const hasData = hasActivity;
   return {
     totalElapsedMs: hasData ? avgMs : null,

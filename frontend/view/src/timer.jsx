@@ -45,6 +45,8 @@ import {
   getPreviousDayKey,
   getNextDayKey,
   loadDayFromDb,
+  normalizeSessionsArray,
+  timerDayBoundaryMs,
 } from '../../utils/timerStorage';
 import { AddSubjectModal, AddTaskModal, CalendarModal } from './timerModals';
 
@@ -63,9 +65,7 @@ import { useFriendSocketEvents } from '../../hooks/useFriendSocketEvents';
 import { useFriend } from '../../context/FriendContext';
 import { useFocusEffect, useIsFocused } from '@react-navigation/native';
 import { useFriendStudyEvents } from '../../hooks/useFriendStudyEvents';
-import {
-  cancelTimerRunningNotification,
-} from '../../utils/timerRunNotification';
+import { cancelTimerRunningNotification } from '../../utils/timerRunNotification';
 import {
   getTimerRuntimeState,
   registerTimerStopHandler,
@@ -90,7 +90,6 @@ const TIMER_RUNNING_AUTOSAVE_INTERVAL_MS = 5 * 60 * 1000;
 const TIMER_TIMEZONE = 'Asia/Seoul';
 const TIMER_SECONDS_PER_DAY = 24 * 60 * 60;
 const TIMER_DAY_END_SECONDS = 24 * 60 * 60;
-let hasLoggedHour24Debug = false;
 
 // ── 유틸 ─────────────────────────────────────────────────
 function getKstDateParts(date = new Date()) {
@@ -106,15 +105,6 @@ function getKstDateParts(date = new Date()) {
   });
   const parts = formatter.formatToParts(date);
   const part = (type) => parts.find((p) => p.type === type)?.value || '00';
-  const rawHour = part('hour');
-  if (__DEV__ && rawHour === '24' && !hasLoggedHour24Debug) {
-    hasLoggedHour24Debug = true;
-    console.log('[Timer][Hour24Debug] Intl hour parsed as 24', {
-      iso: date.toISOString(),
-      timezone: TIMER_TIMEZONE,
-      parts,
-    });
-  }
   return {
     year: Number(part('year')),
     month: Number(part('month')),
@@ -128,21 +118,31 @@ function getKstDateParts(date = new Date()) {
 const getMinutesFromSixAM = (d) => {
   const kst = getKstDateParts(d);
   const secFromSix =
-    ((kst.hour * 3600 + kst.minute * 60 + kst.second) - TIMER_DAY_START_HOUR * 3600 + TIMER_SECONDS_PER_DAY) %
+    (kst.hour * 3600 +
+      kst.minute * 60 +
+      kst.second -
+      TIMER_DAY_START_HOUR * 3600 +
+      TIMER_SECONDS_PER_DAY) %
     TIMER_SECONDS_PER_DAY;
   return Math.floor(secFromSix / 60);
 };
 const getSecondsFromSixAM = (d) => {
   const kst = getKstDateParts(d);
   return (
-    ((kst.hour * 3600 + kst.minute * 60 + kst.second) -
+    (kst.hour * 3600 +
+      kst.minute * 60 +
+      kst.second -
       TIMER_DAY_START_HOUR * 3600 +
       TIMER_SECONDS_PER_DAY) %
     TIMER_SECONDS_PER_DAY
   );
 };
 
-function normalizeClockSeconds(value, fallback = null, { allowDayEnd = false } = {}) {
+function normalizeClockSeconds(
+  value,
+  fallback = null,
+  { allowDayEnd = false } = {},
+) {
   const n = Number(value);
   if (!Number.isFinite(n)) return fallback;
   // 단위 오염 방지: Unix seconds/ms가 들어오면 시각의 "오늘 경과 초"로 보정
@@ -150,9 +150,7 @@ function normalizeClockSeconds(value, fallback = null, { allowDayEnd = false } =
   if (n >= 1e9) return getSecondsFromSixAM(new Date(n * 1000));
   const max = allowDayEnd ? TIMER_DAY_END_SECONDS : TIMER_SECONDS_PER_DAY - 1;
   if (n < 0) {
-    return fallback != null
-      ? fallback
-      : getSecondsFromSixAM(new Date());
+    return fallback != null ? fallback : getSecondsFromSixAM(new Date());
   }
   if (n > max) return max;
   return Math.floor(n);
@@ -168,7 +166,56 @@ function toTimerDayEndAwareSeconds(rawSeconds) {
   });
 }
 
+/** 타임테이블/슬롯 색칠용: 해당 day_key 뷰에 맞춰 startSeconds/endSeconds 부착 */
+function sessionToDerivedTimelineSeconds(session, viewingDayKey) {
+  const a = timerDayBoundaryMs(viewingDayKey);
+  if (!Number.isFinite(a) || session?.startedAtMs == null)
+    return null;
+  const ss = Number(session.startedAtMs);
+  if (!Number.isFinite(ss)) return null;
+  const dayLenMs = TIMER_SECONDS_PER_DAY * 1000;
+  const b = a + dayLenMs;
+
+  const open =
+    session.endedAtMs == null || !Number.isFinite(Number(session.endedAtMs));
+
+  if (open) {
+    const vs = Math.max(ss, a);
+    if (vs >= b) return null;
+    return {
+      ...session,
+      startSeconds: Math.floor((vs - a) / 1000),
+      endSeconds: null,
+    };
+  }
+
+  const ee = Number(session.endedAtMs);
+  const vs = Math.max(ss, a);
+  const ve = Math.min(ee, b);
+  if (!(ve > vs)) return null;
+
+  let endFloor = Math.floor((ve - a) / 1000);
+  if (endFloor > TIMER_DAY_END_SECONDS) endFloor = TIMER_DAY_END_SECONDS;
+  return {
+    ...session,
+    startSeconds: Math.floor((vs - a) / 1000),
+    endSeconds: endFloor,
+  };
+}
+
 function getSessionDurationMs(session, nowSecRaw = null) {
+  if (
+    session?.startedAtMs != null &&
+    Number.isFinite(Number(session.startedAtMs))
+  ) {
+    const start = Number(session.startedAtMs);
+    const end =
+      session?.endedAtMs != null &&
+      Number.isFinite(Number(session.endedAtMs))
+        ? Number(session.endedAtMs)
+        : Date.now();
+    return Math.max(0, end - start);
+  }
   const start = toTimerDayTimelineSeconds(session?.startSeconds);
   const endRaw = session?.endSeconds != null ? session.endSeconds : nowSecRaw;
   const end =
@@ -187,11 +234,120 @@ function resolveSessionColor(session, subjects = []) {
   return linkedColor || session?.subjectColor || TIMETABLE_GRAY;
 }
 
-function buildSnapshotCompleteSessions(sessions = [], subjects = []) {
+/** 슬롯 [slotStart, slotEnd) ∩ 세션 구간 [rangeStart, rangeEnd) (타임라인 0~86400초, rangeEnd는 상한으로 사용) */
+function pushSlotSegmentForRange(
+  segments,
+  session,
+  displaySubjects,
+  slotStart,
+  slotEnd,
+  rangeStart,
+  rangeEnd,
+) {
+  if (rangeEnd <= slotStart || rangeStart >= slotEnd) return;
+  const overlapStart = Math.max(rangeStart, slotStart);
+  const overlapEnd = Math.min(rangeEnd, slotEnd);
+  const widthFraction = (overlapEnd - overlapStart) / 600;
+  if (widthFraction <= 0) return;
+  const color = resolveSessionColor(session, displaySubjects);
+  if (!color) return;
+  segments.push({
+    color,
+    widthFraction,
+    startFraction: (overlapStart - slotStart) / 600,
+  });
+}
+
+/** 자정 넘김(end < start)은 [start,86400)·[0,end] 두 구간으로 슬롯 겹침 계산 */
+function appendSessionSegmentsForSlot(
+  segments,
+  session,
+  slotStart,
+  slotEnd,
+  nowSec,
+  displaySubjects,
+) {
+  const startSec = toTimerDayTimelineSeconds(session?.startSeconds);
+  const endSecRaw = session?.endSeconds != null ? session.endSeconds : nowSec;
+  const closed = session?.endSeconds != null;
+  const endSec = closed
+    ? toTimerDayEndAwareSeconds(endSecRaw)
+    : toTimerDayTimelineSeconds(endSecRaw);
+
+  if (closed) {
+    if (endSec < startSec) {
+      pushSlotSegmentForRange(
+        segments,
+        session,
+        displaySubjects,
+        slotStart,
+        slotEnd,
+        startSec,
+        TIMER_SECONDS_PER_DAY,
+      );
+      pushSlotSegmentForRange(
+        segments,
+        session,
+        displaySubjects,
+        slotStart,
+        slotEnd,
+        0,
+        endSec,
+      );
+      return;
+    }
+    pushSlotSegmentForRange(
+      segments,
+      session,
+      displaySubjects,
+      slotStart,
+      slotEnd,
+      startSec,
+      endSec,
+    );
+    return;
+  }
+  if (endSec < startSec) {
+    pushSlotSegmentForRange(
+      segments,
+      session,
+      displaySubjects,
+      slotStart,
+      slotEnd,
+      startSec,
+      TIMER_SECONDS_PER_DAY,
+    );
+    pushSlotSegmentForRange(
+      segments,
+      session,
+      displaySubjects,
+      slotStart,
+      slotEnd,
+      0,
+      endSec,
+    );
+  } else {
+    pushSlotSegmentForRange(
+      segments,
+      session,
+      displaySubjects,
+      slotStart,
+      slotEnd,
+      startSec,
+      endSec,
+    );
+  }
+}
+
+/** 로컬 상태용: 과목 메타만 과목 카드와 맞춘다(SSOT 타임스탬프 유지). */
+function injectSubjectSnapshotsIntoSessions(sessions = [], subjects = []) {
   const subjectMetaMap = new Map(
     (subjects || [])
       .filter((s) => s?.id != null)
-      .map((s) => [Number(s.id), { name: s?.name || null, color: s?.color || null }]),
+      .map((s) => [
+        Number(s.id),
+        { name: s?.name || null, color: s?.color || null },
+      ]),
   );
   return (sessions || []).map((session) => {
     const subjectMeta =
@@ -200,13 +356,71 @@ function buildSnapshotCompleteSessions(sessions = [], subjects = []) {
         : null;
     return {
       ...session,
-      startSeconds: normalizeClockSeconds(session?.startSeconds, 0),
-      endSeconds:
-        session?.endSeconds == null
-          ? null
-          : normalizeClockSeconds(session?.endSeconds, null, { allowDayEnd: true }),
       subjectName: session?.subjectName ?? subjectMeta?.name ?? null,
       subjectColor: session?.subjectColor ?? subjectMeta?.color ?? null,
+    };
+  });
+}
+
+function buildSnapshotCompleteSessions(
+  sessions = [],
+  subjects = [],
+  persistDayKey = null,
+) {
+  const subjectMetaMap = new Map(
+    (subjects || [])
+      .filter((s) => s?.id != null)
+      .map((s) => [
+        Number(s.id),
+        { name: s?.name || null, color: s?.color || null },
+      ]),
+  );
+  return (sessions || []).map((session) => {
+    const subjectMeta =
+      session?.subjectId != null
+        ? subjectMetaMap.get(Number(session.subjectId))
+        : null;
+    const sm =
+      session?.startedAtMs != null &&
+      Number.isFinite(Number(session.startedAtMs))
+        ? Number(session.startedAtMs)
+        : null;
+    const em =
+      session?.endedAtMs != null &&
+      Number.isFinite(Number(session.endedAtMs))
+        ? Number(session.endedAtMs)
+        : null;
+
+    let startedIso;
+    let endedIso = null;
+    if (sm != null) {
+      startedIso = new Date(sm).toISOString();
+      endedIso = em == null ? null : new Date(em).toISOString();
+    } else {
+      const dk =
+        (typeof persistDayKey === 'string' && persistDayKey.trim()) ||
+        getTimerDayKey(new Date());
+      const anchor = timerDayBoundaryMs(dk);
+      const s0 =
+        normalizeClockSeconds(session?.startSeconds, 0);
+      const e0 =
+        session?.endSeconds == null
+          ? null
+          : normalizeClockSeconds(session?.endSeconds, null, {
+              allowDayEnd: true,
+            });
+      const startMsSynth = anchor + s0 * 1000;
+      startedIso = new Date(startMsSynth).toISOString();
+      endedIso =
+        e0 == null ? null : new Date(anchor + e0 * 1000).toISOString();
+    }
+
+    return {
+      subjectId: session?.subjectId != null ? Number(session.subjectId) : null,
+      subjectName: session?.subjectName ?? subjectMeta?.name ?? null,
+      subjectColor: session?.subjectColor ?? subjectMeta?.color ?? null,
+      startedAt: startedIso,
+      endedAt: endedIso,
     };
   });
 }
@@ -234,17 +448,15 @@ function buildSubjectIdHistogram(items = [], key = 'subjectId') {
   return map;
 }
 
-function normalizeDayPayload(data) {
-  const sessions = Array.isArray(data?.sessions)
-    ? data.sessions.map((session) => ({
-        ...session,
-        startSeconds: normalizeClockSeconds(session?.startSeconds, 0),
-        endSeconds:
-          session?.endSeconds == null
-            ? null
-            : normalizeClockSeconds(session?.endSeconds, null, { allowDayEnd: true }),
-      }))
-    : [];
+function normalizeDayPayload(data, dayKeyForSessions) {
+  const dk =
+    typeof dayKeyForSessions === 'string' && dayKeyForSessions.trim() !== ''
+      ? dayKeyForSessions.trim().slice(0, 10)
+      : getTimerDayKey(new Date());
+
+  const sessions =
+    normalizeSessionsArray(data?.sessions ?? [], dk);
+
   return {
     sessions,
     totalElapsedMs: Number(data?.totalElapsedMs) || 0,
@@ -259,6 +471,25 @@ function getPayloadSignature(payload) {
     totalElapsedMs: Number(payload?.totalElapsedMs) || 0,
     subjects: payload?.subjects ?? [],
     tasks: payload?.tasks ?? [],
+  });
+}
+
+/** 스냅샷 상태 → 저장 API와 같은 ISO 세션 서명(자동저장 무한 루프 방지) */
+function getPersistPayloadSignature(snapshot) {
+  const dayKey =
+    snapshot?.timerDayKey != null
+      ? String(snapshot.timerDayKey).slice(0, 10)
+      : getTimerDayKey(new Date());
+  const sessionsPayload = buildSnapshotCompleteSessions(
+    snapshot?.sessions ?? [],
+    snapshot?.subjects ?? [],
+    dayKey,
+  );
+  return getPayloadSignature({
+    sessions: sessionsPayload,
+    totalElapsedMs: Number(snapshot?.totalElapsedMs) || 0,
+    subjects: snapshot?.subjects ?? [],
+    tasks: snapshot?.tasks ?? [],
   });
 }
 
@@ -339,22 +570,14 @@ function TimerLiveScrollInner({
     const nowSec = getSecondsFromSixAM(new Date());
     const segments = [];
     displaySessions.forEach((s) => {
-      const startSec = toTimerDayTimelineSeconds(s.startSeconds);
-      const endSecRaw = s.endSeconds != null ? s.endSeconds : nowSec;
-      const endSec =
-        s.endSeconds != null
-          ? toTimerDayEndAwareSeconds(endSecRaw)
-          : toTimerDayTimelineSeconds(endSecRaw);
-      const adjustedEndSec = endSec < startSec ? endSec + 86400 : endSec;
-      if (adjustedEndSec <= slotStart || startSec >= slotEnd) return;
-      const overlapStart = Math.max(startSec, slotStart);
-      const overlapEnd = Math.min(adjustedEndSec, slotEnd);
-      const startFraction = (overlapStart - slotStart) / 600;
-      const widthFraction = (overlapEnd - overlapStart) / 600;
-      if (widthFraction <= 0) return;
-      const color = resolveSessionColor(s, displaySubjects);
-      if (!color) return;
-      segments.push({ color, widthFraction, startFraction });
+      appendSessionSegmentsForSlot(
+        segments,
+        s,
+        slotStart,
+        slotEnd,
+        nowSec,
+        displaySubjects,
+      );
     });
     segments.sort((a, b) => a.startFraction - b.startFraction);
     return segments;
@@ -669,22 +892,14 @@ function TimerLivePlannerCapture({
     const nowSec = getSecondsFromSixAM(new Date());
     const segments = [];
     displaySessions.forEach((s) => {
-      const startSec = toTimerDayTimelineSeconds(s.startSeconds);
-      const endSecRaw = s.endSeconds != null ? s.endSeconds : nowSec;
-      const endSec =
-        s.endSeconds != null
-          ? toTimerDayEndAwareSeconds(endSecRaw)
-          : toTimerDayTimelineSeconds(endSecRaw);
-      const adjustedEndSec = endSec < startSec ? endSec + 86400 : endSec;
-      if (adjustedEndSec <= slotStart || startSec >= slotEnd) return;
-      const overlapStart = Math.max(startSec, slotStart);
-      const overlapEnd = Math.min(adjustedEndSec, slotEnd);
-      const startFraction = (overlapStart - slotStart) / 600;
-      const widthFraction = (overlapEnd - overlapStart) / 600;
-      if (widthFraction <= 0) return;
-      const color = resolveSessionColor(s, displaySubjects);
-      if (!color) return;
-      segments.push({ color, widthFraction, startFraction });
+      appendSessionSegmentsForSlot(
+        segments,
+        s,
+        slotStart,
+        slotEnd,
+        nowSec,
+        displaySubjects,
+      );
     });
     segments.sort((a, b) => a.startFraction - b.startFraction);
     return segments;
@@ -745,10 +960,7 @@ function TimerLivePlannerCapture({
     });
 
   return (
-    <View
-      style={styles.plannerCaptureOffscreen}
-      pointerEvents="none"
-    >
+    <View style={styles.plannerCaptureOffscreen} pointerEvents="none">
       <ViewShot
         ref={capturePlannerRef}
         options={{ format: 'png', quality: 1 }}
@@ -893,9 +1105,7 @@ export const TimerContent = () => {
       ).trim();
       pushTimerToast(
         '',
-        senderName
-          ? `${senderName} 님이 쿡 찔렀어요`
-          : '누군가 쿡 찔렀어요',
+        senderName ? `${senderName} 님이 쿡 찔렀어요` : '누군가 쿡 찔렀어요',
       );
     },
     onMyStudyFinishedSummary: ({ toastText, watchers, createdAt, type }) => {
@@ -929,7 +1139,11 @@ export const TimerContent = () => {
           list.map((f, index) => ({
             id: f.userId,
             name: f.name || f.username || '친구',
-            colorId: f.colorId ?? f.profileColorId ?? f.profile_color_id ?? f.profileColor?.id,
+            colorId:
+              f.colorId ??
+              f.profileColorId ??
+              f.profile_color_id ??
+              f.profileColor?.id,
             colorIndex: index % FRIEND_ICON_COLORS.length,
           })),
         );
@@ -1037,57 +1251,42 @@ export const TimerContent = () => {
     };
   }, [timerDayKey, sessions, totalElapsedMs, subjects, tasks]);
 
-  useEffect(() => {
-    if (!__DEV__) return;
-    console.log('[TimerState][isRunning_change]', {
-      at: new Date().toISOString(),
-      isRunning,
-      startTimestamp,
-      activeSubjectId,
-      timerDayKey,
-      selectedDayKey,
-      appState: appStateRef.current,
-    });
-  }, [isRunning, startTimestamp, activeSubjectId, timerDayKey, selectedDayKey]);
-
-  const persistTimerSnapshot = useCallback(
-    (reason, override = null) => {
-      const snapshot = override ?? latestSnapshotRef.current;
-      const dayKey = snapshot?.timerDayKey;
-      if (!dayKey) return Promise.resolve(false);
-      const snapshotSessions = buildSnapshotCompleteSessions(
-        snapshot?.sessions ?? [],
-        snapshot?.subjects ?? [],
-      );
-      const payload = {
-        sessions: snapshotSessions,
-        totalElapsedMs: snapshot?.totalElapsedMs ?? 0,
-        subjects: snapshot?.subjects ?? [],
-        tasks: snapshot?.tasks ?? [],
-      };
-      const hasSubjectBoundSession = payload.sessions.some(
-        (s) => s?.subjectId != null,
-      );
-      const shouldBlockEmptyOverwrite =
-        hasSubjectBoundSession && payload.subjects.length === 0;
-      if (shouldBlockEmptyOverwrite) {
-        return Promise.resolve(false);
+  const persistTimerSnapshot = useCallback((reason, override = null) => {
+    const snapshot = override ?? latestSnapshotRef.current;
+    const dayKey = snapshot?.timerDayKey;
+    if (!dayKey) return Promise.resolve(false);
+    const snapshotSessions = buildSnapshotCompleteSessions(
+      snapshot?.sessions ?? [],
+      snapshot?.subjects ?? [],
+      snapshot?.timerDayKey,
+    );
+    const payload = {
+      sessions: snapshotSessions,
+      totalElapsedMs: snapshot?.totalElapsedMs ?? 0,
+      subjects: snapshot?.subjects ?? [],
+      tasks: snapshot?.tasks ?? [],
+    };
+    const hasSubjectBoundSession = payload.sessions.some(
+      (s) => s?.subjectId != null,
+    );
+    const shouldBlockEmptyOverwrite =
+      hasSubjectBoundSession && payload.subjects.length === 0;
+    if (shouldBlockEmptyOverwrite) {
+      return Promise.resolve(false);
+    }
+    const requestId = ++persistRequestIdRef.current;
+    persistChainRef.current = persistChainRef.current.then(async () => {
+      if (requestId !== persistRequestIdRef.current) {
+        return false;
       }
-      const requestId = ++persistRequestIdRef.current;
-      persistChainRef.current = persistChainRef.current.then(async () => {
-        if (requestId !== persistRequestIdRef.current) {
-          return false;
-        }
-        const ok = await saveDayToDb(dayKey, payload);
-        if (ok && dayKey === latestSnapshotRef.current?.timerDayKey) {
-          baselineSignatureRef.current = getPayloadSignature(payload);
-        }
-        return ok;
-      });
-      return persistChainRef.current;
-    },
-    [],
-  );
+      const ok = await saveDayToDb(dayKey, payload);
+      if (ok && dayKey === latestSnapshotRef.current?.timerDayKey) {
+        baselineSignatureRef.current = getPayloadSignature(payload);
+      }
+      return ok;
+    });
+    return persistChainRef.current;
+  }, []);
 
   const requestImmediatePersist = useCallback((reason) => {
     pendingImmediatePersistReasonRef.current = reason || 'immediate';
@@ -1106,23 +1305,27 @@ export const TimerContent = () => {
           ? snapshot.subjects
           : [];
         const prevTasks = Array.isArray(snapshot?.tasks) ? snapshot.tasks : [];
-        const prevSessions = buildSnapshotCompleteSessions(
+        const prevSessions = injectSubjectSnapshotsIntoSessions(
           snapshot?.sessions ?? [],
           prevSubjects,
         );
         const activeMeta =
           activeSubjectId == null
             ? null
-            : prevSubjects.find((s) => Number(s?.id) === Number(activeSubjectId)) ||
-              null;
+            : prevSubjects.find(
+                (s) => Number(s?.id) === Number(activeSubjectId),
+              ) || null;
 
+        const nextAnchorMs = timerDayBoundaryMs(nextDayKey);
         const closedPrevSessions = (() => {
           const next = [...prevSessions];
           for (let i = next.length - 1; i >= 0; i -= 1) {
-            if (next[i]?.endSeconds == null) {
+            if (next[i]?.endedAtMs == null) {
               next[i] = {
                 ...next[i],
-                endSeconds: TIMER_DAY_END_SECONDS,
+                endedAtMs: Number.isFinite(nextAnchorMs)
+                  ? nextAnchorMs
+                  : Date.now(),
               };
               return next;
             }
@@ -1144,11 +1347,13 @@ export const TimerContent = () => {
         setTotalElapsedMs(0);
         setSessions([
           {
-            subjectId: activeSubjectId != null ? Number(activeSubjectId) : null,
+            subjectId:
+              activeSubjectId != null ? Number(activeSubjectId) : null,
             subjectName: activeMeta?.name ?? null,
             subjectColor: activeMeta?.color ?? null,
-            startSeconds: 0,
-            endSeconds: null,
+            startedAtMs:
+              Number.isFinite(nextAnchorMs) ? nextAnchorMs : Date.now(),
+            endedAtMs: null,
           },
         ]);
         setStartTimestamp(Date.now());
@@ -1170,8 +1375,20 @@ export const TimerContent = () => {
     const dayKey = getTimerDayKey(new Date());
     loadDayFromDb(dayKey).then((data) => {
       if (!mounted) return;
-      const normalized = normalizeDayPayload(data);
-      baselineSignatureRef.current = getPayloadSignature(normalized);
+      const normalized =
+        data != null
+          ? data
+          : normalizeDayPayload(
+              { sessions: [], subjects: [], tasks: [], totalElapsedMs: 0 },
+              dayKey,
+            );
+      baselineSignatureRef.current = getPersistPayloadSignature({
+        timerDayKey: dayKey,
+        sessions: normalized.sessions,
+        totalElapsedMs: normalized.totalElapsedMs,
+        subjects: normalized.subjects,
+        tasks: normalized.tasks,
+      });
       setTimerDayKey(dayKey);
       setSelectedDayKey(dayKey);
       if (data != null) {
@@ -1181,37 +1398,30 @@ export const TimerContent = () => {
         setSubjects(normalized.subjects);
         setTasks(normalized.tasks);
 
-        // 진행 중 세션이 있으면 타이머 상태 복구
-        const now = new Date();
-        const nowSec = getSecondsFromSixAM(now);
         let openSession = null;
         for (let i = loadedSessions.length - 1; i >= 0; i -= 1) {
-          if (loadedSessions[i].endSeconds == null) {
+          if (loadedSessions[i].endedAtMs == null) {
             openSession = loadedSessions[i];
             break;
           }
         }
         if (openSession) {
-          const startSec = toTimerDayTimelineSeconds(openSession.startSeconds);
-          const nowTimelineSec = toTimerDayTimelineSeconds(nowSec);
-          const adjustedNowSec =
-            nowTimelineSec < startSec ? nowTimelineSec + 86400 : nowTimelineSec;
-          const elapsedSec = Math.max(0, adjustedNowSec - startSec);
+          const startMs = Number(openSession.startedAtMs);
+          const elapsedMs = Math.max(0, Date.now() - startMs);
           const isGhostOpenSession =
-            elapsedSec > TIMER_RECOVER_OPEN_SESSION_MAX_SECONDS;
+            elapsedMs >
+            TIMER_RECOVER_OPEN_SESSION_MAX_SECONDS * 1000;
 
           if (isGhostOpenSession) {
             setIsRunning(false);
             setActiveSubjectId(null);
             setStartTimestamp(null);
           } else {
-            const diffMs = elapsedSec * 1000;
             setIsRunning(true);
             setActiveSubjectId(
               openSession.subjectId != null ? openSession.subjectId : null,
             );
-            const ts = Date.now() - diffMs;
-            setStartTimestamp(ts);
+            setStartTimestamp(Number.isFinite(startMs) ? startMs : Date.now());
           }
         } else {
           setIsRunning(false);
@@ -1233,28 +1443,29 @@ export const TimerContent = () => {
       return;
     }
     loadDayData(selectedDayKey).then((data) => {
-      setViewState(
-        data
-          ? {
-              sessions: data.sessions ?? [],
-              totalElapsedMs: data.totalElapsedMs ?? 0,
-              subjects: data.subjects?.length
-                ? data.subjects
-                : DEFAULT_SUBJECTS,
-              tasks: data.tasks?.length ? data.tasks : DEFAULT_TASKS,
-            }
-          : {
-              sessions: [],
-              totalElapsedMs: 0,
-              subjects: DEFAULT_SUBJECTS,
-              tasks: DEFAULT_TASKS,
-            },
-      );
+      const nextView = data
+        ? {
+            sessions: data.sessions ?? [],
+            totalElapsedMs: data.totalElapsedMs ?? 0,
+            subjects: data.subjects?.length ? data.subjects : DEFAULT_SUBJECTS,
+            tasks: data.tasks?.length ? data.tasks : DEFAULT_TASKS,
+          }
+        : {
+            sessions: [],
+            totalElapsedMs: 0,
+            subjects: DEFAULT_SUBJECTS,
+            tasks: DEFAULT_TASKS,
+          };
+      setViewState(nextView);
     });
   }, [selectedDayKey, todayKey, initialLoadDone]);
 
   useEffect(() => {
-    if (!initialLoadDone || timerDayKey == null || selectedDayKey !== todayKey) {
+    if (
+      !initialLoadDone ||
+      timerDayKey == null ||
+      selectedDayKey !== todayKey
+    ) {
       pendingImmediatePersistReasonRef.current = null;
       return;
     }
@@ -1275,12 +1486,16 @@ export const TimerContent = () => {
   ]);
 
   useEffect(() => {
-    if (!initialLoadDone || timerDayKey == null || selectedDayKey !== todayKey) {
+    if (
+      !initialLoadDone ||
+      timerDayKey == null ||
+      selectedDayKey !== todayKey
+    ) {
       return undefined;
     }
     if (!isRunning) return undefined;
     const autosaveInterval = setInterval(() => {
-      const currentSig = getPayloadSignature(latestSnapshotRef.current);
+      const currentSig = getPersistPayloadSignature(latestSnapshotRef.current);
       if (baselineSignatureRef.current === currentSig) return;
       persistTimerSnapshot('running-interval-autosave');
     }, TIMER_RUNNING_AUTOSAVE_INTERVAL_MS);
@@ -1415,13 +1630,13 @@ export const TimerContent = () => {
   const closeOpenSession = (subjectId) =>
     setSessions((prev) => {
       const next = [...prev];
-      const nowSec = normalizeClockSeconds(getSecondsFromSixAM(new Date()), 0);
+      const endedAtMs = Date.now();
       let closed = false;
       for (let i = next.length - 1; i >= 0; i--) {
-        if (next[i].subjectId === subjectId && next[i].endSeconds == null) {
+        if (next[i].subjectId === subjectId && next[i].endedAtMs == null) {
           next[i] = {
             ...next[i],
-            endSeconds: nowSec,
+            endedAtMs,
           };
           closed = true;
           break;
@@ -1429,10 +1644,10 @@ export const TimerContent = () => {
       }
       if (!closed) {
         for (let i = next.length - 1; i >= 0; i--) {
-          if (next[i].endSeconds == null) {
+          if (next[i].endedAtMs == null) {
             next[i] = {
               ...next[i],
-              endSeconds: nowSec,
+              endedAtMs,
             };
             break;
           }
@@ -1442,14 +1657,6 @@ export const TimerContent = () => {
     });
 
   const startForSubject = (subjectId) => {
-    if (__DEV__) {
-      console.log('[TimerAction][startForSubject]', {
-        at: new Date().toISOString(),
-        subjectId,
-        wasRunning: isRunning,
-        activeSubjectId,
-      });
-    }
     if (isRunning && activeSubjectId === subjectId) return;
     if (isRunning) {
       endCurrentSession();
@@ -1459,74 +1666,68 @@ export const TimerContent = () => {
     const selectedSubject = subjects.find((s) => s.id === subjectId);
     const subjectName = selectedSubject?.name ?? null;
     const subjectColor = selectedSubject?.color ?? null;
-    const nowSec = normalizeClockSeconds(getSecondsFromSixAM(new Date()), 0);
+    const nowSecForFriends = normalizeClockSeconds(
+      getSecondsFromSixAM(new Date()),
+      0,
+    );
+    const startWall = Date.now();
     setActiveSubjectId(subjectId);
     setIsRunning(true);
-    setStartTimestamp(Date.now());
+    setStartTimestamp(startWall);
     setSessions((prev) => [
       ...prev,
       {
         subjectId,
         subjectName,
         subjectColor,
-        startSeconds: nowSec,
-        endSeconds: null,
+        startedAtMs: startWall,
+        endedAtMs: null,
       },
     ]);
     emitTimerStatus('studying', {
       dayKey: timerDayKey ?? getTimerDayKey(new Date()),
       subjectId,
       subjectName,
-      startSeconds: nowSec,
+      startSeconds: nowSecForFriends,
     });
     requestImmediatePersist('timer-start');
   };
 
   const startTimerTop = () => {
-    if (__DEV__) {
-      console.log('[TimerAction][startTimerTop]', {
-        at: new Date().toISOString(),
-        wasRunning: isRunning,
-        activeSubjectId,
-      });
-    }
     if (isRunning && activeSubjectId === null) return;
     if (isRunning) {
       endCurrentSession();
       closeOpenSession(activeSubjectId);
       requestImmediatePersist('subject-switch');
     }
-    const nowSec = normalizeClockSeconds(getSecondsFromSixAM(new Date()), 0);
+    const nowSecForFriends = normalizeClockSeconds(
+      getSecondsFromSixAM(new Date()),
+      0,
+    );
+    const startWall = Date.now();
     setActiveSubjectId(null);
     setIsRunning(true);
-    setStartTimestamp(Date.now());
+    setStartTimestamp(startWall);
     setSessions((prev) => [
       ...prev,
       {
         subjectId: null,
         subjectName: null,
         subjectColor: null,
-        startSeconds: nowSec,
-        endSeconds: null,
+        startedAtMs: startWall,
+        endedAtMs: null,
       },
     ]);
     emitTimerStatus('studying', {
       dayKey: timerDayKey ?? getTimerDayKey(new Date()),
       subjectId: null,
       subjectName: null,
-      startSeconds: nowSec,
+      startSeconds: nowSecForFriends,
     });
     requestImmediatePersist('timer-start');
   };
 
   const pauseTimer = () => {
-    if (__DEV__) {
-      console.log('[TimerAction][pauseTimer]', {
-        at: new Date().toISOString(),
-        isRunning,
-        activeSubjectId,
-      });
-    }
     if (!isRunning) return;
     endCurrentSession();
     closeOpenSession(activeSubjectId);
@@ -1542,49 +1743,47 @@ export const TimerContent = () => {
     const dayKey = timerDayKey ?? getTimerDayKey(new Date());
     const data = await loadDayFromDb(dayKey);
     if (data == null) return;
-    const normalized = normalizeDayPayload(data);
-    setSessions(normalized.sessions);
-    setTotalElapsedMs(normalized.totalElapsedMs);
-    setSubjects(normalized.subjects);
-    setTasks(normalized.tasks);
+    setSessions(data.sessions ?? []);
+    setTotalElapsedMs(data.totalElapsedMs ?? 0);
+    setSubjects(data.subjects ?? []);
+    setTasks(data.tasks ?? []);
   }, [timerDayKey]);
 
   const deleteSubject = useCallback(
     (subject) => {
       if (!isViewingToday || !subject?.id) return;
       const isDeletingActiveSubject = activeSubjectId === subject.id;
-      const alertMessage = isDeletingActiveSubject && isRunning
-        ? '과목을 삭제하시겠습니까? 관련 할 일도 삭제되지만, 공부 기록은 보존됩니다.\n\n현재 측정 중인 과목입니다. 삭제 시 타이머가 일시정지됩니다.'
-        : '과목을 삭제하시겠습니까? 관련 할 일도 삭제되지만, 공부 기록은 보존됩니다.';
-      Alert.alert(
-        '과목 삭제',
-        alertMessage,
-        [
-          { text: '취소', style: 'cancel' },
-          {
-            text: '삭제',
-            style: 'destructive',
-            onPress: async () => {
-              try {
-                await api.delete(`/api/timer/subjects/${subject.id}`);
-                setSubjects((prev) => prev.filter((s) => s.id !== subject.id));
-                setTasks((prev) => prev.filter((t) => t.subjectId !== subject.id));
-                if (isDeletingActiveSubject && isRunning) {
-                  pauseTimer();
-                  setActiveSubjectId(null);
-                  persistTimerSnapshot('delete-active-subject');
-                } else if (isDeletingActiveSubject) {
-                  setActiveSubjectId(null);
-                }
-                await reloadTodayFromServer();
-              } catch (error) {
-                console.error('[Timer] 과목 삭제 실패:', error);
-                Alert.alert('삭제 실패', '과목 삭제 중 문제가 발생했어요');
+      const alertMessage =
+        isDeletingActiveSubject && isRunning
+          ? '과목을 삭제하시겠습니까? 관련 할 일도 삭제되지만, 공부 기록은 보존됩니다.\n\n현재 측정 중인 과목입니다. 삭제 시 타이머가 일시정지됩니다.'
+          : '과목을 삭제하시겠습니까? 관련 할 일도 삭제되지만, 공부 기록은 보존됩니다.';
+      Alert.alert('과목 삭제', alertMessage, [
+        { text: '취소', style: 'cancel' },
+        {
+          text: '삭제',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await api.delete(`/api/timer/subjects/${subject.id}`);
+              setSubjects((prev) => prev.filter((s) => s.id !== subject.id));
+              setTasks((prev) =>
+                prev.filter((t) => t.subjectId !== subject.id),
+              );
+              if (isDeletingActiveSubject && isRunning) {
+                pauseTimer();
+                setActiveSubjectId(null);
+                persistTimerSnapshot('delete-active-subject');
+              } else if (isDeletingActiveSubject) {
+                setActiveSubjectId(null);
               }
-            },
+              await reloadTodayFromServer();
+            } catch (error) {
+              console.error('[Timer] 과목 삭제 실패:', error);
+              Alert.alert('삭제 실패', '과목 삭제 중 문제가 발생했어요');
+            }
           },
-        ],
-      );
+        },
+      ]);
     },
     [
       isViewingToday,
@@ -1796,14 +1995,20 @@ export const TimerContent = () => {
     try {
       const { status } = await MediaLibrary.requestPermissionsAsync();
       if (status !== 'granted') {
-        Alert.alert('권한 필요', '사진 저장을 위해 갤러리 접근 권한이 필요해요');
+        Alert.alert(
+          '권한 필요',
+          '사진 저장을 위해 갤러리 접근 권한이 필요해요',
+        );
         return;
       }
       const uri = await capturePlannerRef.current.capture();
       await MediaLibrary.saveToLibraryAsync(uri);
       setShowSaveModal(true);
     } catch (e) {
-      Alert.alert('저장 실패', e?.message || '이미지 저장에 실패했어요. 다시 시도해 주세요');
+      Alert.alert(
+        '저장 실패',
+        e?.message || '이미지 저장에 실패했어요. 다시 시도해 주세요',
+      );
     }
   };
 
@@ -1823,6 +2028,14 @@ export const TimerContent = () => {
   const displaySessions = isViewingToday
     ? sessions
     : (viewState?.sessions ?? []);
+
+  const displaySessionsForTimetable = useMemo(() => {
+    if (!selectedDayKey) return [];
+    return displaySessions
+      .map((s) => sessionToDerivedTimelineSeconds(s, selectedDayKey))
+      .filter(Boolean);
+  }, [displaySessions, selectedDayKey]);
+
   const displayTotalElapsedMs = isViewingToday
     ? totalElapsedMs
     : (viewState?.totalElapsedMs ?? 0);
@@ -1883,32 +2096,80 @@ export const TimerContent = () => {
         <View style={styles.friendStoryRow}>
           <View style={styles.friendStoryScroll}>
             {[0, 1, 2, 3].map((idx) => (
-              <View key={`timer-friend-skel-${idx}`} style={styles.friendStoryCircleWrap}>
-                <Skeleton width={normalize(56)} height={normalize(56)} borderRadius={normalize(28)} />
-                <Skeleton width={normalize(44)} height={normalize(11)} borderRadius={normalize(6)} style={styles.timerSkelFriendName} />
+              <View
+                key={`timer-friend-skel-${idx}`}
+                style={styles.friendStoryCircleWrap}
+              >
+                <Skeleton
+                  width={normalize(56)}
+                  height={normalize(56)}
+                  borderRadius={normalize(28)}
+                />
+                <Skeleton
+                  width={normalize(44)}
+                  height={normalize(11)}
+                  borderRadius={normalize(6)}
+                  style={styles.timerSkelFriendName}
+                />
               </View>
             ))}
           </View>
         </View>
 
         <View style={styles.timerCard}>
-          <Skeleton width={normalize(180)} height={normalize(30)} borderRadius={normalize(10)} style={styles.timerSkelDateLine1} />
-          <Skeleton width={normalize(92)} height={normalize(12)} borderRadius={normalize(6)} style={styles.timerSkelDateLine2} />
-          <Skeleton width={normalize(140)} height={normalize(40)} borderRadius={normalize(20)} style={styles.timerSkelTimerBtn} />
+          <Skeleton
+            width={normalize(180)}
+            height={normalize(30)}
+            borderRadius={normalize(10)}
+            style={styles.timerSkelDateLine1}
+          />
+          <Skeleton
+            width={normalize(92)}
+            height={normalize(12)}
+            borderRadius={normalize(6)}
+            style={styles.timerSkelDateLine2}
+          />
+          <Skeleton
+            width={normalize(140)}
+            height={normalize(40)}
+            borderRadius={normalize(20)}
+            style={styles.timerSkelTimerBtn}
+          />
         </View>
 
         <View style={styles.todoTimetableRow}>
           <View style={styles.todoColumn}>
-            <Skeleton width={normalize(80)} height={normalize(13)} borderRadius={normalize(6)} style={styles.timerSkelColTitle} />
+            <Skeleton
+              width={normalize(80)}
+              height={normalize(13)}
+              borderRadius={normalize(6)}
+              style={styles.timerSkelColTitle}
+            />
             {[0, 1, 2].map((idx) => (
-              <View key={`timer-task-skel-${idx}`} style={styles.timerSkelTaskRow}>
-                <Skeleton width={normalize(22)} height={normalize(22)} borderRadius={normalize(4)} />
-                <Skeleton width="70%" height={normalize(13)} borderRadius={normalize(6)} />
+              <View
+                key={`timer-task-skel-${idx}`}
+                style={styles.timerSkelTaskRow}
+              >
+                <Skeleton
+                  width={normalize(22)}
+                  height={normalize(22)}
+                  borderRadius={normalize(4)}
+                />
+                <Skeleton
+                  width="70%"
+                  height={normalize(13)}
+                  borderRadius={normalize(6)}
+                />
               </View>
             ))}
           </View>
           <View style={styles.timetableColumn}>
-            <Skeleton width={normalize(80)} height={normalize(13)} borderRadius={normalize(6)} style={styles.timerSkelColTitle} />
+            <Skeleton
+              width={normalize(80)}
+              height={normalize(13)}
+              borderRadius={normalize(6)}
+              style={styles.timerSkelColTitle}
+            />
             {[0, 1, 2, 3].map((idx) => (
               <Skeleton
                 key={`timer-table-skel-${idx}`}
@@ -1947,7 +2208,7 @@ export const TimerContent = () => {
               isViewingToday={isViewingToday}
               totalElapsedMs={totalElapsedMs}
               displayTotalElapsedMs={displayTotalElapsedMs}
-              displaySessions={displaySessions}
+              displaySessions={displaySessionsForTimetable}
               displaySubjects={effectiveDisplaySubjects}
               displayTasks={displayTasks}
               isRunning={isRunning}
@@ -1977,7 +2238,7 @@ export const TimerContent = () => {
             isRunning={isRunning}
             totalElapsedMs={totalElapsedMs}
             displayTotalElapsedMs={displayTotalElapsedMs}
-            displaySessions={displaySessions}
+            displaySessions={displaySessionsForTimetable}
             displaySubjects={effectiveDisplaySubjects}
             displayTasks={displayTasks}
             selectedDayKey={selectedDayKey}
@@ -2043,7 +2304,9 @@ export const TimerContent = () => {
                       });
                       const data = res.data?.data || {};
                       const targetName =
-                        data.targetName || data.targetUsername || `@${username}`;
+                        data.targetName ||
+                        data.targetUsername ||
+                        `@${username}`;
                       pushTimerToast(targetName, '친구 요청을 보냈어요');
                     } catch (error) {
                       console.error('[Timer][FriendRequest] API 실패', {
@@ -2074,13 +2337,17 @@ export const TimerContent = () => {
         <View style={saveModalStyles.saveSuccessModalOverlay}>
           <View style={saveModalStyles.saveSuccessModalCard}>
             <Text style={saveModalStyles.saveSuccessModalTitle}>저장 완료</Text>
-            <Text style={saveModalStyles.saveSuccessModalBody}>갤러리에 저장되었어요</Text>
+            <Text style={saveModalStyles.saveSuccessModalBody}>
+              갤러리에 저장되었어요
+            </Text>
             <TouchableOpacity
               style={saveModalStyles.saveSuccessModalConfirm}
               onPress={() => setShowSaveModal(false)}
               activeOpacity={0.85}
             >
-              <Text style={saveModalStyles.saveSuccessModalConfirmText}>확인</Text>
+              <Text style={saveModalStyles.saveSuccessModalConfirmText}>
+                확인
+              </Text>
             </TouchableOpacity>
           </View>
         </View>
