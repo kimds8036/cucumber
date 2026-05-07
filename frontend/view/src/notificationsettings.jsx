@@ -10,8 +10,6 @@ import {
   PanResponder,
   KeyboardAvoidingView,
   Platform,
-  Keyboard,
-  TouchableWithoutFeedback,
   useWindowDimensions,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -53,7 +51,7 @@ const Settings = ({ navigation, route }) => {
   const variant = route?.params?.variant;
   const showPrefs = variant !== 'profile';
   const showProfile = variant !== 'prefs';
-  const headerTitle = variant === 'profile' ? '변경' : '설정';
+  const headerTitle = variant === 'profile' ? '계정 관리' : '설정';
   // ── 알림 설정 ──
   const [notifications, setNotifications] = useState({
     pushEnabled: true,
@@ -441,20 +439,19 @@ const Settings = ({ navigation, route }) => {
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
-      <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
-        <KeyboardAvoidingView
-          style={{ flex: 1 }}
-          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-          keyboardVerticalOffset={0}
-        >
-          <SubHeader title={headerTitle} onBack={() => navigation.goBack()} />
+      <KeyboardAvoidingView
+        style={{ flex: 1 }}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        keyboardVerticalOffset={0}
+      >
+        <SubHeader title={headerTitle} onBack={() => navigation.goBack()} />
 
-          <ScrollView
-            style={styles.scroll}
-            showsVerticalScrollIndicator={false}
-            keyboardShouldPersistTaps="handled"
-            keyboardDismissMode="on-drag"
-          >
+        <ScrollView
+          style={styles.scroll}
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+          keyboardDismissMode="on-drag"
+        >
         {showPrefs && (
           <>
         {/* ────────────── 알림 설정 ────────────── */}
@@ -643,10 +640,9 @@ const Settings = ({ navigation, route }) => {
           </>
         )}
 
-            <View style={styles.scrollBottomSpacer} />
-          </ScrollView>
-        </KeyboardAvoidingView>
-      </TouchableWithoutFeedback>
+          <View style={styles.scrollBottomSpacer} />
+        </ScrollView>
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 };

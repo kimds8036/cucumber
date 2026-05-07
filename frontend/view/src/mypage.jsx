@@ -377,10 +377,17 @@ const MyPage = ({ navigation }) => {
             }
           />
           <MenuItem
-            icon="create-outline"
-            title="변경"
+            icon="person-circle-outline"
+            title="계정 관리"
             onPress={() =>
               navigation.navigate('NotificationSettings', { variant: 'profile' })
+            }
+          />
+          <MenuItem
+            icon="information-circle-outline"
+            title="고객 지원"
+            onPress={() =>
+              navigation.navigate('Info')
             }
           />
           <MenuItem
