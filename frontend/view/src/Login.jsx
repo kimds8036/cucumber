@@ -320,19 +320,46 @@ const Login = ({ navigation }) => {
                 <Text style={{ fontSize: normalize(14), lineHeight: normalize(20), color: colors.textSecondary }}>
                   {policyModal.body}
                 </Text>
-                <TouchableOpacity
+                <View
                   style={{
                     marginTop: normalize(16),
-                    alignSelf: 'flex-end',
-                    backgroundColor: colors.primary,
-                    borderRadius: normalize(10),
-                    paddingVertical: normalize(8),
-                    paddingHorizontal: normalize(14),
+                    flexDirection: 'row',
+                    justifyContent: 'flex-end',
+                    alignItems: 'center',
+                    gap: normalize(8),
                   }}
-                  onPress={() => setPolicyModal((prev) => ({ ...prev, visible: false }))}
                 >
-                  <Text style={{ color: '#fff', fontWeight: '700' }}>확인</Text>
-                </TouchableOpacity>
+                  <TouchableOpacity
+                    style={{
+                      borderWidth: 1,
+                      borderColor: colors.primary,
+                      borderRadius: normalize(10),
+                      paddingVertical: normalize(8),
+                      paddingHorizontal: normalize(14),
+                      marginRight: normalize(8),
+                    }}
+                    onPress={() => {
+                      setPolicyModal((prev) => ({ ...prev, visible: false }));
+                      navigation.navigate('Inquiry', {
+                        category: 'account_suspension',
+                        contactUsername: id?.trim() || '',
+                      });
+                    }}
+                  >
+                    <Text style={{ color: colors.primary, fontWeight: '700' }}>문의하기</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={{
+                      backgroundColor: colors.primary,
+                      borderRadius: normalize(10),
+                      paddingVertical: normalize(8),
+                      paddingHorizontal: normalize(14),
+                    }}
+                    onPress={() => setPolicyModal((prev) => ({ ...prev, visible: false }))}
+                  >
+                    <Text style={{ color: '#fff', fontWeight: '700' }}>확인</Text>
+                  </TouchableOpacity>
+                </View>
               </View>
             </TouchableWithoutFeedback>
           </View>

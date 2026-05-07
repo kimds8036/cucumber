@@ -19,7 +19,9 @@ import usersRoutes from './routes/users.js';
 import searchRoutes from './routes/search.js';
 import dmRoutes from './routes/dm.js';
 import adminReportsRoutes from './routes/adminReports.js';
+import adminInquiriesRoutes from './routes/adminInquiries.js';
 import adminWebRoutes from './routes/adminWeb.js';
+import inquiriesRoutes from './routes/inquiries.js';
 import swaggerSpec from './swagger.js';
 import { initSocketServer } from './socketServer.js';
 import { initFirebase } from './config/firebase.js';
@@ -76,7 +78,9 @@ app.use('/api/schools', schoolsRoutes);
 app.use('/api/users', usersRoutes);
 app.use('/api/search', searchRoutes);
 app.use('/api/dm', dmRoutes);
+app.use('/api/inquiries', inquiriesRoutes);
 app.use('/api/admin', adminReportsRoutes);
+app.use('/api/admin/inquiries', adminInquiriesRoutes);
 
 // HTTP 서버 + Socket.io 초기화
 const httpServer = createServer(app);

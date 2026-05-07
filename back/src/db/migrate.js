@@ -63,6 +63,8 @@ async function runMigrations() {
             console.warn('  ⏭️  Foreign Key 이름 이미 존재, 스킵');
           else if (err.errno === 1146)
             console.warn('  ⏭️  테이블 없음, 스킵');
+          else if (err.errno === 1054)
+            console.warn('  ⏭️  필드 없음(이미 변경된 멱등 마이그레이션), 스킵');
           else throw err;
         }
       }

@@ -32,6 +32,7 @@ import MealCalender from './view/src/mealcalender';
 import Timer from './view/src/timer';
 import FriendsScreen from './view/src/friendsscreen';
 import HiddenPostsAppeals from './view/src/hiddenPostsAppeals';
+import Inquiry from './view/src/Inquiry';
 import Info from './view/src/info';
 import { useFonts } from 'expo-font';
 import * as SplashScreen from 'expo-splash-screen';
@@ -91,6 +92,7 @@ function AuthStack() {
       <Stack.Screen name="Sign" component={Sign} />
       <Stack.Screen name="IDfind" component={IDfind} />
       <Stack.Screen name="PWfind" component={PWfind} />
+      <Stack.Screen name="Inquiry" component={Inquiry} />
     </Stack.Navigator>
   );
 }
@@ -128,6 +130,7 @@ function MainStack() {
       <Stack.Screen name="Timer" component={Timer} />
       <Stack.Screen name="Friends" component={FriendsScreen} />
       <Stack.Screen name="HiddenPostsAppeals" component={HiddenPostsAppeals} />
+      <Stack.Screen name="Inquiry" component={Inquiry} />
       <Stack.Screen name="Info" component={Info} />
       <Stack.Screen name="SearchScreen" component={SearchScreen} />
       <Stack.Screen name="SearchResult" component={SearchResult} />

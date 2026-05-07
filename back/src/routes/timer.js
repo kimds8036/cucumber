@@ -2,6 +2,16 @@ import express from 'express';
 import pool from '../config/database.js';
 import { authenticate } from '../middleware/auth.js';
 import { closeIncompleteStudySessions } from '../socket/socketService.js';
+import {
+  expandLegacyInvertedIntervalSessions,
+  flattenSessionsForTimerIntervals,
+  isoFromMysqlKstNaiveString,
+  legacySecondsRangeToUtcMs,
+  parseClientInstant,
+  timerDayAnchorUtcMs,
+  utcMsToKstMysqlDatetime3,
+} from '../utils/timerSessionTimes.js';
+import { upsertStudyDayTotalForUserKey } from '../utils/studyDayTotal.js';
 
 const router = express.Router();
 
@@ -30,23 +40,38 @@ const sanitizeTask = (task) => ({
   status: task?.status === 'done' ? 'done' : 'pending',
 });
 
-const sanitizeSession = (session) => ({
-  id: session?.id != null ? Number(session.id) : null,
-  subjectId: session?.subjectId != null ? Number(session.subjectId) : null,
-  subjectName:
-    session?.subjectName != null
-      ? String(session.subjectName).trim().slice(0, 100)
-      : null,
-  subjectColor:
-    session?.subjectColor != null
-      ? String(session.subjectColor).trim().slice(0, 20)
-      : null,
-  startSeconds: clampSecond(session?.startSeconds, { allowDayEnd: false }),
-  endSeconds:
-    session?.endSeconds != null
-      ? clampSecond(session.endSeconds, { allowDayEnd: true })
-      : null,
-});
+const sanitizeSession = (session, postDayKey) => {
+  const id = session?.id != null ? Number(session.id) : null;
+  let startedAtMs = parseClientInstant(session?.startedAt ?? session?.started_at);
+  let endedAtMs = parseClientInstant(session?.endedAt ?? session?.ended_at);
+
+  if (startedAtMs == null) {
+    const startSec = clampSecond(session?.startSeconds, { allowDayEnd: false });
+    const endSec =
+      session?.endSeconds != null
+        ? clampSecond(session.endSeconds, { allowDayEnd: true })
+        : null;
+    const legacy = legacySecondsRangeToUtcMs(postDayKey, startSec, endSec);
+    startedAtMs = legacy.startMs;
+    endedAtMs = legacy.endMs;
+  }
+
+  return {
+    id: Number.isFinite(id) ? id : null,
+    subjectId: session?.subjectId != null ? Number(session.subjectId) : null,
+    subjectName:
+      session?.subjectName != null
+        ? String(session.subjectName).trim().slice(0, 100)
+        : null,
+    subjectColor:
+      session?.subjectColor != null
+        ? String(session.subjectColor).trim().slice(0, 20)
+        : null,
+    startedAtMs,
+    endedAtMs:
+      endedAtMs != null && !Number.isFinite(endedAtMs) ? null : endedAtMs,
+  };
+};
 
 const deriveSubjectsFromSessions = (sessions = []) => {
   const byId = new Map();
@@ -67,31 +92,172 @@ const dedupeSessionsPreferClosed = (sessions = []) => {
   sessions.forEach((session) => {
     const subjectKey =
       session?.subjectId == null ? 'null' : String(Number(session.subjectId));
-    const startKey = String(Number(session?.startSeconds) || 0);
+    const startKey = String(Number(session?.startedAtMs) || 0);
     const key = `${subjectKey}:${startKey}`;
     const existing = byKey.get(key);
     if (!existing) {
       byKey.set(key, session);
       return;
     }
-    const existingClosed = existing.endSeconds != null;
-    const incomingClosed = session.endSeconds != null;
+    const existingClosed = existing.endedAtMs != null;
+    const incomingClosed = session.endedAtMs != null;
     if (!existingClosed && incomingClosed) {
       byKey.set(key, session);
       return;
     }
     if (existingClosed === incomingClosed) {
-      const existingEnd = existing.endSeconds != null ? Number(existing.endSeconds) : -1;
-      const incomingEnd = session.endSeconds != null ? Number(session.endSeconds) : -1;
+      const existingEnd =
+        existing.endedAtMs != null ? Number(existing.endedAtMs) : -1;
+      const incomingEnd =
+        session.endedAtMs != null ? Number(session.endedAtMs) : -1;
       if (incomingEnd > existingEnd) {
         byKey.set(key, session);
       }
     }
   });
   return Array.from(byKey.values()).sort(
-    (a, b) => Number(a.startSeconds || 0) - Number(b.startSeconds || 0),
+    (a, b) => Number(a.startedAtMs || 0) - Number(b.startedAtMs || 0),
   );
 };
+
+function groupAndDedupeSessionsByDay(rows) {
+  const byDay = new Map();
+  rows.forEach((r) => {
+    if (!byDay.has(r.targetDayKey)) {
+      byDay.set(r.targetDayKey, []);
+    }
+    byDay.get(r.targetDayKey).push(r.session);
+  });
+  const out = new Map();
+  for (const [dk, arr] of byDay) {
+    out.set(dk, dedupeSessionsPreferClosed(arr));
+  }
+  return out;
+}
+
+async function persistStudySessionsForDayKey(
+  connection,
+  userId,
+  dayKey,
+  sessionsList,
+  subjectIdMap,
+) {
+  if (!sessionsList || sessionsList.length === 0) return;
+
+  const subjectMetaMap = new Map();
+  const [dbSubjects] = await connection.execute(
+    `SELECT id, name, color
+     FROM timer_subjects
+     WHERE user_id = ? AND day_key = ? AND is_deleted = FALSE`,
+    [userId, dayKey],
+  );
+  dbSubjects.forEach((s) => {
+    subjectMetaMap.set(Number(s.id), { name: s.name, color: s.color });
+  });
+
+  for (const session of sessionsList) {
+    const resolvedSubjectId = session.subjectId != null
+      ? (subjectIdMap.get(session.subjectId) || session.subjectId)
+      : null;
+    const subjectMeta =
+      resolvedSubjectId != null
+        ? subjectMetaMap.get(Number(resolvedSubjectId))
+        : null;
+    const snapshotName = session.subjectName || subjectMeta?.name || null;
+    const snapshotColor = session.subjectColor || subjectMeta?.color || null;
+
+    const startedSql = utcMsToKstMysqlDatetime3(session.startedAtMs);
+    const endedSql =
+      session.endedAtMs == null
+        ? null
+        : utcMsToKstMysqlDatetime3(session.endedAtMs);
+
+    if (session.id != null) {
+      const [updateResult] = await connection.execute(
+        `UPDATE study_sessions
+         SET subject_id = ?, subject_name = ?, subject_color = ?, started_at = ?, ended_at = ?
+         WHERE id = ? AND user_id = ? AND day_key = ?`,
+        [
+          resolvedSubjectId != null ? Number(resolvedSubjectId) : null,
+          snapshotName,
+          snapshotColor,
+          startedSql,
+          endedSql,
+          Number(session.id),
+          userId,
+          dayKey,
+        ],
+      );
+      if (updateResult.affectedRows > 0) continue;
+    }
+
+    const [openRows] = await connection.execute(
+      `SELECT id
+       FROM study_sessions
+       WHERE user_id = ? AND day_key = ? AND subject_id <=> ? AND started_at = ? AND ended_at IS NULL
+       ORDER BY id DESC
+       LIMIT 1`,
+      [
+        userId,
+        dayKey,
+        resolvedSubjectId != null ? Number(resolvedSubjectId) : null,
+        startedSql,
+      ],
+    );
+
+    if (openRows.length > 0) {
+      await connection.execute(
+        `UPDATE study_sessions
+         SET ended_at = COALESCE(?, ended_at),
+             subject_name = COALESCE(?, subject_name),
+             subject_color = COALESCE(?, subject_color),
+             subject_id = COALESCE(?, subject_id)
+         WHERE id = ?`,
+        [
+          endedSql,
+          snapshotName,
+          snapshotColor,
+          resolvedSubjectId != null ? Number(resolvedSubjectId) : null,
+          Number(openRows[0].id),
+        ],
+      );
+      continue;
+    }
+
+    const [existingRows] = await connection.execute(
+      `SELECT id
+       FROM study_sessions
+       WHERE user_id = ? AND day_key = ? AND subject_id <=> ? AND started_at = ? AND ended_at <=> ?
+       ORDER BY id DESC
+       LIMIT 1`,
+      [
+        userId,
+        dayKey,
+        resolvedSubjectId != null ? Number(resolvedSubjectId) : null,
+        startedSql,
+        endedSql,
+      ],
+    );
+    if (existingRows.length > 0) {
+      continue;
+    }
+
+    await connection.execute(
+      `INSERT INTO study_sessions
+         (user_id, day_key, subject_name, subject_color, subject_id, started_at, ended_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?)`,
+      [
+        userId,
+        dayKey,
+        snapshotName,
+        snapshotColor,
+        resolvedSubjectId != null ? Number(resolvedSubjectId) : null,
+        startedSql,
+        endedSql,
+      ],
+    );
+  }
+}
 
 async function loadNormalizedDayData(connection, userId, dayKey) {
   const [subjectRows] = await connection.execute(
@@ -130,32 +296,24 @@ router.post('/day', authenticate, async (req, res) => {
     const userId = req.user.userId;
     const { dayKey, sessions, totalElapsedMs, subjects, tasks } = req.body;
     const normalizedDayKey = sanitizeDayKey(dayKey);
-    const sessionsArrRaw = Array.isArray(sessions) ? sessions.map(sanitizeSession) : [];
-    const sessionsArr = dedupeSessionsPreferClosed(sessionsArrRaw);
+    const sessionsArrRaw = Array.isArray(sessions)
+      ? sessions.map((s) => sanitizeSession(s, normalizedDayKey))
+      : [];
+    const expandedSessions = expandLegacyInvertedIntervalSessions(
+      sessionsArrRaw,
+      normalizedDayKey,
+    );
+    const dedupedInputSessions = dedupeSessionsPreferClosed(expandedSessions);
+    const splitRows = flattenSessionsForTimerIntervals(dedupedInputSessions);
+    const sessionsByDay = groupAndDedupeSessionsByDay(splitRows);
+    const primarySessionsForDerive =
+      sessionsByDay.get(normalizedDayKey) || [];
     const subjectsArr = Array.isArray(subjects)
       ? subjects.map(sanitizeSubject).filter((s) => s.name.length > 0)
       : [];
     const tasksArr = Array.isArray(tasks)
       ? tasks.map(sanitizeTask).filter((t) => t.content.length > 0)
       : [];
-
-    if (process.env.NODE_ENV !== 'production') {
-      const sessionSubjectNullCount = sessionsArr.filter(
-        (s) => s?.subjectId == null,
-      ).length;
-      console.log('[Timer][POST /day] payload summary', {
-        userId,
-        normalizedDayKey,
-        totalElapsedMs: Number(totalElapsedMs) || 0,
-        subjectsCount: subjectsArr.length,
-        tasksCount: tasksArr.length,
-        sessionsCount: sessionsArr.length,
-        sessionsNullSubjectCount: sessionSubjectNullCount,
-        subjectsSample: subjectsArr.slice(0, 2),
-        tasksSample: tasksArr.slice(0, 2),
-        sessionsSample: sessionsArr.slice(0, 2),
-      });
-    }
 
     if (!normalizedDayKey) {
       return res.status(400).json({
@@ -169,7 +327,23 @@ router.post('/day', authenticate, async (req, res) => {
     const subjectIdMap = new Map();
     const normalizedSubjects = subjectsArr.length > 0
       ? subjectsArr
-      : deriveSubjectsFromSessions(sessionsArr);
+      : deriveSubjectsFromSessions(primarySessionsForDerive);
+
+    if (process.env.NODE_ENV !== 'production') {
+      const sessionsPersistedByDay = {};
+      sessionsByDay.forEach((arr, dk) => {
+        sessionsPersistedByDay[dk] = arr;
+      });
+      console.log('[TimerTimetablePaint][POST /day]', {
+        userId,
+        dayKey: normalizedDayKey,
+        sessionsPersistedByDay,
+        legacyInvertedExpandedCount:
+          expandedSessions.length - sessionsArrRaw.length,
+        subjects: normalizedSubjects,
+        clientTotalElapsedMs: Number(totalElapsedMs) || 0,
+      });
+    }
 
     if (normalizedSubjects.length > 0) {
       for (const subject of normalizedSubjects) {
@@ -246,146 +420,26 @@ router.post('/day', authenticate, async (req, res) => {
       }
     }
 
-    if (sessionsArr.length > 0) {
-      const subjectMetaMap = new Map();
-      const [dbSubjects] = await connection.execute(
-        `SELECT id, name, color
-         FROM timer_subjects
-         WHERE user_id = ? AND day_key = ? AND is_deleted = FALSE`,
-        [userId, normalizedDayKey],
+    const sortedPersistDays = [...sessionsByDay.entries()].sort((a, b) =>
+      a[0].localeCompare(b[0]),
+    );
+    for (const [persistDayKey, sessionsList] of sortedPersistDays) {
+      await persistStudySessionsForDayKey(
+        connection,
+        userId,
+        persistDayKey,
+        sessionsList,
+        subjectIdMap,
       );
-      dbSubjects.forEach((s) => {
-        subjectMetaMap.set(Number(s.id), { name: s.name, color: s.color });
-      });
-
-      for (const session of sessionsArr) {
-        const resolvedSubjectId = session.subjectId != null
-          ? (subjectIdMap.get(session.subjectId) || session.subjectId)
-          : null;
-        const subjectMeta = resolvedSubjectId != null ? subjectMetaMap.get(Number(resolvedSubjectId)) : null;
-        const snapshotName = session.subjectName || subjectMeta?.name || null;
-        const snapshotColor = session.subjectColor || subjectMeta?.color || null;
-
-        if (session.id != null) {
-          const [updateResult] = await connection.execute(
-            `UPDATE study_sessions
-             SET subject_id = ?, subject_name = ?, subject_color = ?, start_seconds = ?, end_seconds = ?
-             WHERE id = ? AND user_id = ? AND day_key = ?`,
-            [
-              resolvedSubjectId != null ? Number(resolvedSubjectId) : null,
-              snapshotName,
-              snapshotColor,
-              session.startSeconds,
-              session.endSeconds,
-              Number(session.id),
-              userId,
-              normalizedDayKey,
-            ],
-          );
-          if (updateResult.affectedRows > 0) continue;
-        }
-
-        const [openRows] = await connection.execute(
-          `SELECT id
-           FROM study_sessions
-           WHERE user_id = ? AND day_key = ? AND subject_id <=> ? AND start_seconds = ? AND end_seconds IS NULL
-           ORDER BY id DESC
-           LIMIT 1`,
-          [
-            userId,
-            normalizedDayKey,
-            resolvedSubjectId != null ? Number(resolvedSubjectId) : null,
-            session.startSeconds,
-          ],
-        );
-
-        if (openRows.length > 0) {
-          await connection.execute(
-            `UPDATE study_sessions
-             SET end_seconds = COALESCE(?, end_seconds),
-                 subject_name = COALESCE(?, subject_name),
-                 subject_color = COALESCE(?, subject_color),
-                 subject_id = COALESCE(?, subject_id)
-             WHERE id = ?`,
-            [
-              session.endSeconds,
-              snapshotName,
-              snapshotColor,
-              resolvedSubjectId != null ? Number(resolvedSubjectId) : null,
-              Number(openRows[0].id),
-            ],
-          );
-          continue;
-        }
-
-        const [existingRows] = await connection.execute(
-          `SELECT id
-           FROM study_sessions
-           WHERE user_id = ? AND day_key = ? AND subject_id <=> ? AND start_seconds = ? AND end_seconds <=> ?
-           ORDER BY id DESC
-           LIMIT 1`,
-          [
-            userId,
-            normalizedDayKey,
-            resolvedSubjectId != null ? Number(resolvedSubjectId) : null,
-            session.startSeconds,
-            session.endSeconds,
-          ],
-        );
-        if (existingRows.length > 0) {
-          // 동일 세션이 이미 존재하면 추가 UPDATE를 생략해 데드락 가능성을 낮춘다.
-          // (스냅샷은 open 세션 close 단계에서 이미 보강된다.)
-          continue;
-        }
-
-        await connection.execute(
-          `INSERT INTO study_sessions
-             (user_id, day_key, subject_name, subject_color, subject_id, start_seconds, end_seconds)
-           VALUES (?, ?, ?, ?, ?, ?, ?)`,
-          [
-            userId,
-            normalizedDayKey,
-            snapshotName,
-            snapshotColor,
-            resolvedSubjectId != null ? Number(resolvedSubjectId) : null,
-            session.startSeconds,
-            session.endSeconds,
-          ],
-        );
-      }
     }
 
-    const [sessionAggRows] = await connection.execute(
-      `SELECT COALESCE(SUM(
-        CASE
-          WHEN end_seconds IS NULL THEN 0
-          WHEN end_seconds < start_seconds THEN 0
-          ELSE (LEAST(end_seconds, 86400) - start_seconds) * 1000
-        END
-      ), 0) AS total_ms
-       FROM study_sessions
-       WHERE user_id = ? AND day_key = ?`,
-      [userId, normalizedDayKey],
-    );
-    const computedElapsedMs = Number(sessionAggRows?.[0]?.total_ms || 0);
-    // 클라이언트 payload(totalElapsedMs)는 오염될 수 있으므로 세션 합계를 단일 진실원으로 사용
-    const safeElapsedMs = computedElapsedMs;
+    const dayKeysForTotals = [
+      ...new Set([normalizedDayKey, ...sessionsByDay.keys()]),
+    ].sort((a, b) => a.localeCompare(b));
 
-    const [userSchoolRows] = await connection.execute(
-      `SELECT school_id FROM users WHERE id = ? LIMIT 1`,
-      [userId],
-    );
-    const snapshotSchoolId = userSchoolRows?.[0]?.school_id ?? null;
-
-    await connection.execute(
-      `INSERT INTO study_days (user_id, day_key, total_elapsed_ms, school_id)
-       VALUES (?, ?, ?, ?)
-       ON DUPLICATE KEY UPDATE
-         total_elapsed_ms = VALUES(total_elapsed_ms),
-         updated_at = CURRENT_TIMESTAMP,
-         school_id = IFNULL(study_days.school_id, VALUES(school_id))`,
-      [userId, normalizedDayKey, safeElapsedMs, snapshotSchoolId],
-    );
+    for (const dk of dayKeysForTotals) {
+      await upsertStudyDayTotalForUserKey(connection, userId, dk);
+    }
 
     await connection.commit();
 
@@ -546,21 +600,56 @@ router.get('/day', authenticate, async (req, res) => {
     );
 
     const [sessionsRows] = await pool.execute(
-      `SELECT subject_id, subject_name, subject_color, start_seconds, end_seconds 
+      `SELECT subject_id, subject_name, subject_color,
+         CAST(started_at AS CHAR(30)) AS started_at_s,
+         CAST(ended_at AS CHAR(30)) AS ended_at_s
        FROM study_sessions 
        WHERE user_id = ? AND day_key = ?
-       ORDER BY start_seconds ASC`,
-      [userId, dayKey]
+       ORDER BY started_at ASC`,
+      [userId, dayKey],
     );
 
     const day = days[0] || null;
-    const sessionsDataRaw = sessionsRows.map((s) => ({
-      subjectId: s.subject_id != null ? Number(s.subject_id) : null,
-      subjectName: s.subject_name || null,
-      subjectColor: s.subject_color || null,
-      startSeconds: s.start_seconds,
-      endSeconds: s.end_seconds,
-    }));
+    const anchorMs = timerDayAnchorUtcMs(dayKey);
+    const sessionsDataRaw = sessionsRows.map((s) => {
+      const startedAt = isoFromMysqlKstNaiveString(s.started_at_s);
+      const endedAt = s.ended_at_s
+        ? isoFromMysqlKstNaiveString(s.ended_at_s)
+        : null;
+      const startedAtMs =
+        typeof startedAt === 'string' ? Date.parse(startedAt) : NaN;
+      const endedAtMs =
+        typeof endedAt === 'string' ? Date.parse(endedAt) : null;
+      const startSeconds =
+        Number.isFinite(anchorMs) && Number.isFinite(startedAtMs)
+          ? Math.round((startedAtMs - anchorMs) / 1000)
+          : 0;
+      let endSeconds =
+        endedAtMs == null
+          ? null
+          : Number.isFinite(anchorMs) && Number.isFinite(endedAtMs)
+            ? Math.round((endedAtMs - anchorMs) / 1000)
+            : null;
+      if (
+        endSeconds != null &&
+        Number.isFinite(startSeconds) &&
+        endSeconds < startSeconds
+      ) {
+        endSeconds = 86400;
+      }
+      return {
+        subjectId: s.subject_id != null ? Number(s.subject_id) : null,
+        subjectName: s.subject_name || null,
+        subjectColor: s.subject_color || null,
+        startedAt,
+        endedAt,
+        startedAtMs: Number.isFinite(startedAtMs) ? startedAtMs : undefined,
+        endedAtMs:
+          endedAtMs != null && Number.isFinite(endedAtMs) ? endedAtMs : undefined,
+        startSeconds,
+        endSeconds,
+      };
+    });
     const sessionsData = dedupeSessionsPreferClosed(sessionsDataRaw);
     const normalized = await loadNormalizedDayData(pool, userId, dayKey);
     const subjectsData = normalized.subjects;
@@ -570,31 +659,27 @@ router.get('/day', authenticate, async (req, res) => {
 
     const tasksData = normalized.tasks;
 
+    const responseData = {
+      sessions: sessionsData,
+      totalElapsedMs: day ? Number(day.total_elapsed_ms) : 0,
+      subjects: effectiveSubjectsData,
+      tasks: tasksData,
+    };
+
     if (process.env.NODE_ENV !== 'production') {
-      const nullSubjectCount = sessionsData.filter(
-        (s) => s.subjectId == null,
-      ).length;
-      console.log('[Timer][GET /day] payload summary', {
+      console.log('[TimerTimetablePaint][GET /day]', {
         userId,
         dayKey,
-        subjectsCount: effectiveSubjectsData.length,
-        tasksCount: tasksData.length,
-        sessionsCount: sessionsData.length,
-        sessionsNullSubjectCount: nullSubjectCount,
-        subjectsSample: effectiveSubjectsData.slice(0, 2),
-        tasksSample: tasksData.slice(0, 2),
-        sessionsSample: sessionsData.slice(0, 2),
+        studyDaysRowExists: Boolean(day),
+        totalElapsedMs: responseData.totalElapsedMs,
+        sessions: responseData.sessions,
+        subjects: responseData.subjects,
       });
     }
 
     res.json({
       success: true,
-      data: {
-        sessions: sessionsData,
-        totalElapsedMs: day ? Number(day.total_elapsed_ms) : 0,
-        subjects: effectiveSubjectsData,
-        tasks: tasksData,
-      },
+      data: responseData,
     });
   } catch (error) {
     console.error('타이머 데이터 조회 오류:', error);

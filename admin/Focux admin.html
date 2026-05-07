@@ -192,9 +192,12 @@
     /* ── Stat cards ─────────────────────────────────── */
     .stat-grid {
       display: grid;
-      grid-template-columns: repeat(4, 1fr);
+      grid-template-columns: repeat(6, 1fr);
       gap: 10px;
       margin-bottom: 20px;
+    }
+    @media (max-width: 1280px) {
+      .stat-grid { grid-template-columns: repeat(3, 1fr); }
     }
     .stat-card {
       background: var(--bg-secondary);
@@ -600,6 +603,14 @@
       <span class="nav-badge" id="badge-appeals">2</span>
     </div>
 
+    <div class="nav-item" onclick="go('inquiries')">
+      <span class="nav-dot"></span>문의 관리
+      <span class="nav-badge" id="badge-inquiries">0</span>
+    </div>
+    <div class="nav-item" onclick="go('processedInquiries')">
+      <span class="nav-dot"></span>문의 처리 이력
+    </div>
+
     <div class="sidebar-section" style="margin-top:8px">사용자</div>
     <div class="nav-item" onclick="go('users')">
       <span class="nav-dot"></span>사용자 제재 현황
@@ -644,6 +655,14 @@
           <div class="stat-card stat-ok">
             <div class="stat-num" id="stat-today-handled">0</div>
             <div class="stat-label">오늘 처리 완료</div>
+          </div>
+          <div class="stat-card stat-warn">
+            <div class="stat-num" id="stat-pending-inquiries">0</div>
+            <div class="stat-label">미처리 문의</div>
+          </div>
+          <div class="stat-card stat-ok">
+            <div class="stat-num" id="stat-today-answered-inquiries">0</div>
+            <div class="stat-label">오늘 답변한 문의</div>
           </div>
         </div>
 
@@ -784,6 +803,90 @@
         <div id="appeals-list"></div>
       </div>
 
+      <!-- ────────── 문의 관리 (미처리) ────────── -->
+      <div class="panel" id="panel-inquiries">
+        <div class="filter-row">
+          <input type="text" placeholder="제목/작성자/연락처 검색" id="inquiry-search-q" style="width:220px">
+          <select id="inquiry-filter-category">
+            <option value="">전체 카테고리</option>
+            <option value="login_error">로그인 오류</option>
+            <option value="account_suspension">계정 정지 문의</option>
+            <option value="bug">버그 신고</option>
+            <option value="feedback">제안/피드백</option>
+          </select>
+          <input type="date" id="inquiry-filter-from-date">
+          <input type="date" id="inquiry-filter-to-date">
+          <button class="btn btn-sm" onclick="loadInquiries()">필터 적용</button>
+        </div>
+
+        <div class="bulk-bar" id="inquiry-bulk-bar">
+          <span id="inquiry-bulk-count">0건 선택됨</span>
+          <button class="btn btn-sm btn-amber" onclick="bulkCloseInquiries()">선택 종결(close)</button>
+          <button class="btn btn-sm" onclick="clearInquirySelection()">선택 해제</button>
+        </div>
+
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th style="width:34px">
+                  <input type="checkbox" id="inquiry-chk-all" onchange="toggleAllInquiries(this)">
+                </th>
+                <th style="width:60px">ID</th>
+                <th style="width:110px">카테고리</th>
+                <th style="width:110px">작성자</th>
+                <th>제목</th>
+                <th style="width:110px">접수일</th>
+                <th style="width:70px">상태</th>
+              </tr>
+            </thead>
+            <tbody id="inquiry-tbody"></tbody>
+          </table>
+        </div>
+        <div id="inquiry-detail-host"></div>
+      </div>
+
+      <!-- ────────── 문의 처리 이력 ────────── -->
+      <div class="panel" id="panel-processedInquiries">
+        <div class="filter-row">
+          <input type="text" placeholder="제목/작성자/연락처 검색" id="processed-inquiry-search-q" style="width:220px">
+          <select id="processed-inquiry-filter-category">
+            <option value="">전체 카테고리</option>
+            <option value="login_error">로그인 오류</option>
+            <option value="account_suspension">계정 정지 문의</option>
+            <option value="bug">버그 신고</option>
+            <option value="feedback">제안/피드백</option>
+          </select>
+          <select id="processed-inquiry-filter-status">
+            <option value="">전체 상태</option>
+            <option value="answered">답변완료</option>
+            <option value="closed">종결</option>
+          </select>
+          <input type="date" id="processed-inquiry-filter-from-date">
+          <input type="date" id="processed-inquiry-filter-to-date">
+          <button class="btn btn-sm" onclick="loadProcessedInquiries()">필터 적용</button>
+        </div>
+
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th style="width:60px">ID</th>
+                <th style="width:110px">카테고리</th>
+                <th style="width:110px">작성자</th>
+                <th>제목</th>
+                <th style="width:110px">답변자</th>
+                <th style="width:110px">처리일</th>
+                <th style="width:80px">상태</th>
+                <th style="width:90px">액션</th>
+              </tr>
+            </thead>
+            <tbody id="processed-inquiry-tbody"></tbody>
+          </table>
+        </div>
+        <div id="processed-inquiry-detail-host"></div>
+      </div>
+
       <!-- ────────── 사용자 제재 현황 ────────── -->
       <div class="panel" id="panel-users">
         <div class="filter-row">
@@ -823,6 +926,10 @@
             <option value="user_whitelist">화이트리스트 추가(user_whitelist)</option>
             <option value="user_unwhitelist">화이트리스트 해제(user_unwhitelist)</option>
             <option value="user_ban">사용자 영구정지(user_ban)</option>
+            <option value="inquiry_answer">문의 답변(inquiry_answer)</option>
+            <option value="inquiry_close">문의 종결(inquiry_close)</option>
+            <option value="inquiry_reopen">문의 재오픈(inquiry_reopen)</option>
+            <option value="inquiry_delete">문의 삭제(inquiry_delete)</option>
           </select>
           <input type="date" id="logs-from-date">
           <input type="date" id="logs-to-date">
@@ -875,6 +982,28 @@
   </div>
 </div>
 
+<div class="dialog-backdrop" id="inquiry-reopen-dialog-backdrop" onclick="closeInquiryReopenDialogByBackdrop(event)">
+  <div class="dialog">
+    <div class="dialog-title">문의 재오픈 사유</div>
+    <textarea class="note-input" id="inquiry-reopen-note-input" placeholder="재오픈 사유를 입력하세요 (필수)"></textarea>
+    <div class="dialog-actions">
+      <button class="btn btn-sm" onclick="closeInquiryReopenDialog()">취소</button>
+      <button class="btn btn-sm btn-primary" onclick="submitInquiryReopenDialog()">확인</button>
+    </div>
+  </div>
+</div>
+
+<div class="dialog-backdrop" id="inquiry-bulk-close-dialog-backdrop" onclick="closeInquiryBulkCloseDialogByBackdrop(event)">
+  <div class="dialog">
+    <div class="dialog-title">문의 일괄 종결</div>
+    <textarea class="note-input" id="inquiry-bulk-close-note-input" placeholder="종결 메모(선택)"></textarea>
+    <div class="dialog-actions">
+      <button class="btn btn-sm" onclick="closeInquiryBulkCloseDialog()">취소</button>
+      <button class="btn btn-sm btn-primary" onclick="submitInquiryBulkCloseDialog()">확인</button>
+    </div>
+  </div>
+</div>
+
 <script>
   const API_BASE = '/api/admin';
   const PAGE_META = {
@@ -882,6 +1011,8 @@
     reports: { title: '신고 관리', sub: '미처리 신고 전용' },
     processedReports: { title: '처리 이력', sub: '처리 완료/기각 신고 이력 및 재오픈' },
     appeals: { title: '이의신청 관리', sub: '소명 검토 및 상태 변경' },
+    inquiries: { title: '문의 관리', sub: '미처리 문의 — 답변 작성 / 종결' },
+    processedInquiries: { title: '문의 처리 이력', sub: '답변 완료 / 종결 문의 — 재오픈 가능' },
     users: { title: '사용자 제재 현황', sub: '경고 / 임시정지 / 화이트리스트' },
     logs: { title: '변경 이력 (Audit Log)', sub: '모든 판정 및 상태 변경 기록' },
   };
@@ -897,6 +1028,12 @@
     reopenReportId: null,
     reopenBulkMode: false,
     bulkActionMode: null, // confirm | reject
+    inquiries: [],
+    processedInquiries: [],
+    inquirySelected: new Set(),
+    selectedInquiryId: null,
+    selectedProcessedInquiryId: null,
+    inquiryReopenId: null,
   };
 
   function threadKeyOf(report) {
@@ -955,12 +1092,51 @@
     const a = String(actionType || '').toLowerCase();
     if (a === 'report_confirm') return '신고 확정(report_confirm)';
     if (a === 'report_reject') return '신고 기각(report_reject)';
+    if (a === 'report_reopen') return '신고 재오픈(report_reopen)';
     if (a === 'appeal_update') return '이의신청 처리(appeal_update)';
     if (a === 'user_suspend') return '사용자 정지(user_suspend)';
     if (a === 'user_whitelist') return '화이트리스트 추가(user_whitelist)';
     if (a === 'user_unwhitelist') return '화이트리스트 해제(user_unwhitelist)';
     if (a === 'user_ban') return '사용자 영구정지(user_ban)';
+    if (a === 'user_block_release') return '사용자 차단 해제(user_block_release)';
+    if (a === 'inquiry_answer') return '문의 답변(inquiry_answer)';
+    if (a === 'inquiry_close') return '문의 종결(inquiry_close)';
+    if (a === 'inquiry_reopen') return '문의 재오픈(inquiry_reopen)';
+    if (a === 'inquiry_delete') return '문의 삭제(inquiry_delete)';
     return a || '-';
+  }
+
+  function inquiryCategoryLabel(c) {
+    const v = String(c || '').toLowerCase();
+    if (v === 'login_error') return '로그인 오류';
+    if (v === 'account_suspension') return '계정 정지';
+    if (v === 'bug') return '버그';
+    if (v === 'feedback') return '피드백';
+    return c || '-';
+  }
+
+  function inquiryCategoryPill(c) {
+    const v = String(c || '').toLowerCase();
+    if (v === 'login_error') return 'pill-rejected';
+    if (v === 'account_suspension') return 'pill-warn';
+    if (v === 'bug') return 'pill-comment';
+    if (v === 'feedback') return 'pill-post';
+    return 'pill-pending';
+  }
+
+  function inquiryStatusLabel(s) {
+    const v = String(s || '').toLowerCase();
+    if (v === 'pending') return '미처리';
+    if (v === 'answered') return '답변완료';
+    if (v === 'closed') return '종결';
+    return s || '-';
+  }
+
+  function inquiryStatusPill(s) {
+    const v = String(s || '').toLowerCase();
+    if (v === 'answered') return 'pill-resolved';
+    if (v === 'closed') return 'pill-rejected';
+    return 'pill-pending';
   }
 
   function renderTargetImages(imageUrls) {
@@ -1025,6 +1201,16 @@
     document.getElementById('stat-today-handled').textContent = String(data.todayHandledReports);
     document.getElementById('badge-reports').textContent = String(data.pendingReports);
     document.getElementById('badge-appeals').textContent = String(data.pendingAppeals);
+
+    try {
+      const res = await api('/inquiries/stats');
+      const d = res.data || {};
+      document.getElementById('stat-pending-inquiries').textContent = String(d.pendingInquiries || 0);
+      document.getElementById('stat-today-answered-inquiries').textContent = String(d.todayAnsweredInquiries || 0);
+      document.getElementById('badge-inquiries').textContent = String(d.pendingInquiries || 0);
+    } catch (e) {
+      // 통계 실패는 비치명
+    }
   }
 
   function renderReports() {
@@ -1711,9 +1897,391 @@
     }).join('');
   }
 
+  // ───────────────────────── 문의 관리 ─────────────────────────
+
+  async function loadInquiries() {
+    const q = document.getElementById('inquiry-search-q')?.value?.trim() || '';
+    const category = document.getElementById('inquiry-filter-category')?.value || '';
+    const fromDate = document.getElementById('inquiry-filter-from-date')?.value || '';
+    const toDate = document.getElementById('inquiry-filter-to-date')?.value || '';
+    const qs = new URLSearchParams();
+    qs.set('view', 'pending');
+    if (q) qs.set('q', q);
+    if (category) qs.set('category', category);
+    if (fromDate) qs.set('fromDate', fromDate);
+    if (toDate) qs.set('toDate', toDate);
+    qs.set('limit', '50');
+    const { data } = await api(`/inquiries?${qs.toString()}`);
+    state.inquiries = data.inquiries || [];
+    renderInquiries();
+  }
+
+  async function loadProcessedInquiries() {
+    const q = document.getElementById('processed-inquiry-search-q')?.value?.trim() || '';
+    const category = document.getElementById('processed-inquiry-filter-category')?.value || '';
+    const status = document.getElementById('processed-inquiry-filter-status')?.value || '';
+    const fromDate = document.getElementById('processed-inquiry-filter-from-date')?.value || '';
+    const toDate = document.getElementById('processed-inquiry-filter-to-date')?.value || '';
+    const qs = new URLSearchParams();
+    qs.set('view', 'processed');
+    if (q) qs.set('q', q);
+    if (category) qs.set('category', category);
+    if (status) qs.set('status', status);
+    if (fromDate) qs.set('fromDate', fromDate);
+    if (toDate) qs.set('toDate', toDate);
+    qs.set('limit', '50');
+    const { data } = await api(`/inquiries?${qs.toString()}`);
+    state.processedInquiries = data.inquiries || [];
+    renderProcessedInquiries();
+  }
+
+  function renderInquiries() {
+    const tbody = document.getElementById('inquiry-tbody');
+    if (!state.inquiries.length) {
+      tbody.innerHTML = `<tr><td colspan="7" class="txt-muted">미처리 문의가 없습니다.</td></tr>`;
+      document.getElementById('inquiry-detail-host').innerHTML = '';
+      updateInquiryBulk();
+      return;
+    }
+    tbody.innerHTML = state.inquiries.map((i) => {
+      const checked = state.inquirySelected.has(String(i.id)) ? 'checked' : '';
+      const isSelected = state.selectedInquiryId === i.id;
+      const author = i.user_id
+        ? `${esc(i.author_username || `UID #${i.user_id}`)}`
+        : `<span class="txt-muted">비로그인</span>`;
+      return `
+        <tr class="clickable ${isSelected ? 'selected-row' : ''}" onclick="toggleInquiryDetail(${i.id}, event)">
+          <td onclick="event.stopPropagation()">
+            <input type="checkbox" class="inquiry-row-chk" data-id="${i.id}" ${checked} onchange="toggleInquirySelection(${i.id}, this.checked)">
+          </td>
+          <td>#Q-${i.id}</td>
+          <td><span class="pill ${inquiryCategoryPill(i.category)}">${esc(inquiryCategoryLabel(i.category))}</span></td>
+          <td>${author}</td>
+          <td class="txt-ellipsis">${esc(i.title || '-')}</td>
+          <td class="txt-muted">${fmtDate(i.created_at)}</td>
+          <td><span class="pill ${inquiryStatusPill(i.status)}">${esc(inquiryStatusLabel(i.status))}</span></td>
+        </tr>
+      `;
+    }).join('');
+    updateInquiryBulk();
+    renderInquiryDetail();
+  }
+
+  function renderProcessedInquiries() {
+    const tbody = document.getElementById('processed-inquiry-tbody');
+    if (!state.processedInquiries.length) {
+      tbody.innerHTML = `<tr><td colspan="8" class="txt-muted">처리된 문의가 없습니다.</td></tr>`;
+      document.getElementById('processed-inquiry-detail-host').innerHTML = '';
+      return;
+    }
+    tbody.innerHTML = state.processedInquiries.map((i) => {
+      const isSelected = state.selectedProcessedInquiryId === i.id;
+      const author = i.user_id
+        ? `${esc(i.author_username || `UID #${i.user_id}`)}`
+        : `<span class="txt-muted">비로그인</span>`;
+      return `
+        <tr class="clickable ${isSelected ? 'selected-row' : ''}" onclick="toggleProcessedInquiryDetail(${i.id}, event)">
+          <td>#Q-${i.id}</td>
+          <td><span class="pill ${inquiryCategoryPill(i.category)}">${esc(inquiryCategoryLabel(i.category))}</span></td>
+          <td>${author}</td>
+          <td class="txt-ellipsis">${esc(i.title || '-')}</td>
+          <td>${esc(i.answered_by_username || (i.answered_by ? `admin #${i.answered_by}` : '-'))}</td>
+          <td class="txt-muted">${fmtDate(i.answered_at || i.updated_at)}</td>
+          <td><span class="pill ${inquiryStatusPill(i.status)}">${esc(inquiryStatusLabel(i.status))}</span></td>
+          <td onclick="event.stopPropagation()">
+            <button class="btn btn-sm" onclick="openInquiryReopenDialog(${i.id})">재오픈</button>
+          </td>
+        </tr>
+      `;
+    }).join('');
+    renderProcessedInquiryDetail();
+  }
+
+  function toggleInquirySelection(id, checked) {
+    const key = String(id);
+    if (checked) state.inquirySelected.add(key);
+    else state.inquirySelected.delete(key);
+    updateInquiryBulk();
+  }
+
+  function toggleAllInquiries(chk) {
+    state.inquirySelected.clear();
+    if (chk.checked) state.inquiries.forEach((i) => state.inquirySelected.add(String(i.id)));
+    renderInquiries();
+  }
+
+  function clearInquirySelection() {
+    state.inquirySelected.clear();
+    renderInquiries();
+  }
+
+  function updateInquiryBulk() {
+    const loadedIds = new Set(state.inquiries.map((i) => String(i.id)));
+    const count = [...state.inquirySelected].filter((id) => loadedIds.has(id)).length;
+    const bar = document.getElementById('inquiry-bulk-bar');
+    document.getElementById('inquiry-bulk-count').textContent = `${count}건 선택됨`;
+    if (bar) bar.classList.toggle('show', count > 0);
+    document.querySelectorAll('#inquiry-tbody tr').forEach((tr) => {
+      const chk = tr.querySelector('.inquiry-row-chk');
+      tr.classList.toggle('selected-row', chk && chk.checked);
+    });
+    const all = document.getElementById('inquiry-chk-all');
+    if (all) all.checked = state.inquiries.length > 0 && count === state.inquiries.length;
+  }
+
+  function toggleInquiryDetail(id) {
+    state.selectedInquiryId = state.selectedInquiryId === id ? null : id;
+    renderInquiries();
+    if (state.selectedInquiryId) {
+      loadInquiryDetail(id, 'inquiry-detail-host', false);
+    }
+  }
+
+  function toggleProcessedInquiryDetail(id) {
+    state.selectedProcessedInquiryId = state.selectedProcessedInquiryId === id ? null : id;
+    renderProcessedInquiries();
+    if (state.selectedProcessedInquiryId) {
+      loadInquiryDetail(id, 'processed-inquiry-detail-host', true);
+    }
+  }
+
+  function renderInquiryDetail() {
+    if (!state.selectedInquiryId) {
+      document.getElementById('inquiry-detail-host').innerHTML = '';
+    }
+  }
+
+  function renderProcessedInquiryDetail() {
+    if (!state.selectedProcessedInquiryId) {
+      document.getElementById('processed-inquiry-detail-host').innerHTML = '';
+    }
+  }
+
+  async function loadInquiryDetail(id, hostElId, processed) {
+    const host = document.getElementById(hostElId);
+    if (!host) return;
+    host.innerHTML = `<div class="detail-panel open"><div class="detail-panel-header"><span class="detail-panel-title">#Q-${id} 로딩 중...</span></div></div>`;
+    try {
+      const { data } = await api(`/inquiries/${id}`);
+      const i = data.inquiry;
+      const images = Array.isArray(data.images) ? data.images : [];
+      const author = i.user_id
+        ? `${esc(i.author_username || '-')} (UID #${esc(i.user_id)})${i.author_is_banned ? ' <span class="pill pill-danger" style="font-size:10px">영구정지</span>' : i.author_is_suspended ? ' <span class="pill pill-warn" style="font-size:10px">임시정지</span>' : ''}`
+        : `비로그인 사용자`;
+      const contact = [
+        i.contact_username ? `ID: ${esc(i.contact_username)}` : null,
+        i.contact_phone ? `Tel: ${esc(i.contact_phone)}` : null,
+        i.contact_email ? `Email: ${esc(i.contact_email)}` : null,
+      ].filter(Boolean).join(' / ') || '-';
+      const meta = [
+        i.app_version ? `App: ${esc(i.app_version)}` : null,
+        i.device_info ? `Device: ${esc(i.device_info)}` : null,
+      ].filter(Boolean).join(' / ') || '-';
+      const isProcessed = i.status === 'answered' || i.status === 'closed';
+      const closeBtn = `<button class="btn btn-amber" onclick="closeInquiry(${i.id})">답변 없이 종결</button>`;
+      const reopenBtn = `<button class="btn btn-sm" onclick="openInquiryReopenDialog(${i.id})">재오픈</button>`;
+      const deleteBtn = `<button class="btn btn-sm btn-red" onclick="deleteInquiry(${i.id})">삭제</button>`;
+
+      host.innerHTML = `
+        <div class="detail-panel open">
+          <div class="detail-panel-header">
+            <span class="detail-panel-title">#Q-${i.id} — 문의 상세</span>
+            <button class="btn btn-sm" onclick="closeInquiryDetail(${processed ? 'true' : 'false'})">닫기</button>
+          </div>
+          <div class="detail-grid">
+            <div class="detail-block"><div class="detail-block-label">카테고리</div><div class="detail-block-value">${esc(inquiryCategoryLabel(i.category))}</div></div>
+            <div class="detail-block"><div class="detail-block-label">상태</div><div class="detail-block-value">${esc(inquiryStatusLabel(i.status))}</div></div>
+            <div class="detail-block"><div class="detail-block-label">작성자</div><div class="detail-block-value">${author}</div></div>
+            <div class="detail-block"><div class="detail-block-label">연락처</div><div class="detail-block-value">${contact}</div></div>
+            <div class="detail-block"><div class="detail-block-label">접수일</div><div class="detail-block-value">${fmtDate(i.created_at)}</div></div>
+            <div class="detail-block"><div class="detail-block-label">메타</div><div class="detail-block-value">${meta}</div></div>
+          </div>
+          <div class="section-title">제목</div>
+          <div class="original-content">${esc(i.title || '-')}</div>
+          <div class="section-title">본문</div>
+          <div class="original-content">${esc(i.content || '-')}</div>
+          ${images.length ? renderTargetImages(images.map((img) => img.cloudinary_url)) : ''}
+          ${i.answered_at ? `
+            <div class="section-title">기존 답변 (${fmtDate(i.answered_at)} · ${esc(i.answered_by_username || `admin #${i.answered_by}`)})</div>
+            <div class="original-content">${esc(i.answer_content || '-')}</div>
+            ${i.answer_note ? `<div class="section-title">내부 메모</div><div class="original-content">${esc(i.answer_note)}</div>` : ''}
+          ` : ''}
+          <div class="section-title">${i.answered_at ? '답변 수정' : '답변 작성'} (사용자에게 표시)</div>
+          <textarea class="note-input" id="inquiry-answer-${i.id}" placeholder="답변 내용을 입력하세요">${esc(i.answer_content || '')}</textarea>
+          <div class="section-title">내부 메모 (사용자 비공개)</div>
+          <textarea class="note-input" id="inquiry-note-${i.id}" placeholder="운영 내부 메모(선택)">${esc(i.answer_note || '')}</textarea>
+          <div class="action-row">
+            <button class="btn btn-green" onclick="answerInquiry(${i.id}, false)">답변 등록 (status=answered)</button>
+            <button class="btn btn-primary" onclick="answerInquiry(${i.id}, true)">답변 + 종결 (status=closed)</button>
+            ${!isProcessed ? closeBtn : ''}
+            ${isProcessed ? reopenBtn : ''}
+            ${deleteBtn}
+          </div>
+        </div>
+      `;
+    } catch (error) {
+      host.innerHTML = `<div class="txt-danger">문의 상세 조회 실패: ${esc(error.message)}</div>`;
+    }
+  }
+
+  function closeInquiryDetail(processed) {
+    if (processed === true || processed === 'true') {
+      state.selectedProcessedInquiryId = null;
+      renderProcessedInquiries();
+    } else {
+      state.selectedInquiryId = null;
+      renderInquiries();
+    }
+  }
+
+  async function answerInquiry(id, close) {
+    const answer = document.getElementById(`inquiry-answer-${id}`)?.value?.trim() || '';
+    const note = document.getElementById(`inquiry-note-${id}`)?.value?.trim() || null;
+    if (!answer) {
+      alert('답변 내용을 입력해주세요.');
+      return;
+    }
+    try {
+      // 이미 답변이 있는지 확인 — 있으면 PATCH, 없으면 POST
+      const inquiryRow = state.inquiries.find((x) => x.id === id) || state.processedInquiries.find((x) => x.id === id);
+      const isEdit = inquiryRow && inquiryRow.status !== 'pending';
+      const method = isEdit ? 'PATCH' : 'POST';
+      await api(`/inquiries/${id}/answer`, {
+        method,
+        body: JSON.stringify({ answer_content: answer, answer_note: note, close }),
+      });
+      await Promise.all([loadDashboard(), loadInquiries(), loadProcessedInquiries(), loadLogs()]);
+      alert(isEdit ? '답변이 수정되었습니다.' : '답변이 등록되었습니다.');
+      state.selectedInquiryId = null;
+      state.selectedProcessedInquiryId = null;
+      renderInquiries();
+      renderProcessedInquiries();
+    } catch (error) {
+      alert(error.message);
+    }
+  }
+
+  async function closeInquiry(id) {
+    const note = prompt('종결 메모(선택)', '');
+    try {
+      await api(`/inquiries/${id}/close`, {
+        method: 'PATCH',
+        body: JSON.stringify({ note: note || null }),
+      });
+      await Promise.all([loadDashboard(), loadInquiries(), loadProcessedInquiries(), loadLogs()]);
+      alert('문의를 종결 처리했습니다.');
+      state.selectedInquiryId = null;
+      renderInquiries();
+    } catch (error) {
+      alert(error.message);
+    }
+  }
+
+  async function deleteInquiry(id) {
+    if (!confirm(`#Q-${id} 문의를 삭제(soft delete) 하시겠습니까?`)) return;
+    const note = prompt('삭제 메모(선택)', '');
+    try {
+      await api(`/inquiries/${id}`, {
+        method: 'DELETE',
+        body: JSON.stringify({ note: note || null }),
+      });
+      await Promise.all([loadDashboard(), loadInquiries(), loadProcessedInquiries(), loadLogs()]);
+      alert('문의를 삭제 처리했습니다.');
+      state.selectedInquiryId = null;
+      state.selectedProcessedInquiryId = null;
+      renderInquiries();
+      renderProcessedInquiries();
+    } catch (error) {
+      alert(error.message);
+    }
+  }
+
+  function openInquiryReopenDialog(id) {
+    state.inquiryReopenId = id;
+    const input = document.getElementById('inquiry-reopen-note-input');
+    if (input) input.value = '';
+    document.getElementById('inquiry-reopen-dialog-backdrop').classList.add('show');
+  }
+  function closeInquiryReopenDialog() {
+    state.inquiryReopenId = null;
+    document.getElementById('inquiry-reopen-dialog-backdrop').classList.remove('show');
+  }
+  function closeInquiryReopenDialogByBackdrop(e) {
+    if (e.target === e.currentTarget) closeInquiryReopenDialog();
+  }
+  async function submitInquiryReopenDialog() {
+    const id = state.inquiryReopenId;
+    if (!id) return;
+    const note = document.getElementById('inquiry-reopen-note-input')?.value?.trim();
+    if (!note) {
+      alert('재오픈 사유를 입력해주세요.');
+      return;
+    }
+    try {
+      await api(`/inquiries/${id}/reopen`, {
+        method: 'PATCH',
+        body: JSON.stringify({ note }),
+      });
+      closeInquiryReopenDialog();
+      await Promise.all([loadDashboard(), loadInquiries(), loadProcessedInquiries(), loadLogs()]);
+      alert('문의를 미처리 상태로 되돌렸습니다.');
+    } catch (error) {
+      alert(error.message);
+    }
+  }
+
+  function bulkCloseInquiries() {
+    const loadedIds = new Set(state.inquiries.map((i) => String(i.id)));
+    const ids = [...state.inquirySelected].filter((id) => loadedIds.has(id));
+    if (!ids.length) return;
+    document.getElementById('inquiry-bulk-close-note-input').value = '';
+    document.getElementById('inquiry-bulk-close-dialog-backdrop').classList.add('show');
+  }
+  function closeInquiryBulkCloseDialog() {
+    document.getElementById('inquiry-bulk-close-dialog-backdrop').classList.remove('show');
+  }
+  function closeInquiryBulkCloseDialogByBackdrop(e) {
+    if (e.target === e.currentTarget) closeInquiryBulkCloseDialog();
+  }
+  async function submitInquiryBulkCloseDialog() {
+    const loadedIds = new Set(state.inquiries.map((i) => String(i.id)));
+    const ids = [...state.inquirySelected].filter((id) => loadedIds.has(id)).map((v) => Number(v));
+    if (!ids.length) {
+      closeInquiryBulkCloseDialog();
+      return;
+    }
+    const note = document.getElementById('inquiry-bulk-close-note-input')?.value?.trim() || null;
+    try {
+      const { data } = await api(`/inquiries/bulk-close`, {
+        method: 'POST',
+        body: JSON.stringify({ ids, note }),
+      });
+      closeInquiryBulkCloseDialog();
+      state.inquirySelected.clear();
+      await Promise.all([loadDashboard(), loadInquiries(), loadProcessedInquiries(), loadLogs()]);
+      alert(`${data?.processed ?? 0}건 종결 처리되었습니다.`);
+    } catch (error) {
+      alert(error.message);
+    }
+  }
+
+  // /api/admin/inquiries/* 호출용 (상위 API_BASE='/api/admin' 기준 경로 변환)
+  // adminInquiries 라우터는 /api/admin/inquiries 에 마운트되어 있으므로
+  // 위 호출들은 모두 `${API_BASE}${'/inquiries' + path}` 로 가야 한다.
+  // 위 함수들에서 사용한 api('/inquiries...') 는 정상 동작한다.
+
   async function bootstrap() {
     try {
-      await Promise.all([loadDashboard(), loadReports(), loadProcessedReports(), loadAppeals(), loadUsers(), loadLogs()]);
+      await Promise.all([
+        loadDashboard(),
+        loadReports(),
+        loadProcessedReports(),
+        loadAppeals(),
+        loadInquiries(),
+        loadProcessedInquiries(),
+        loadUsers(),
+        loadLogs(),
+      ]);
       await loadDelayed();
     } catch (error) {
       alert(`관리자 데이터 로딩 실패: ${error.message}\n\n세션 쿠키/ADMIN_USER_IDS/백엔드 서버 상태를 확인해주세요.`);

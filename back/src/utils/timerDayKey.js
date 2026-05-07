@@ -51,3 +51,21 @@ export function getTimerSecondsFromDayStart(date = new Date()) {
     (24 * 3600)
   );
 }
+
+/**
+ * 타이머 day_key(YYYY-MM-DD)의 다음 캘린더 날.
+ * 서버 세션 분할 시 익 타임머 일자 레코드를 넣기 위해 사용.
+ */
+export function getNextTimerDayKeyYmd(dayKeyStr) {
+  const s =
+    typeof dayKeyStr === 'string'
+      ? String(dayKeyStr).trim().slice(0, 10)
+      : '';
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(s);
+  if (!m) return null;
+  const base = new Date(
+    Date.UTC(Number(m[1]), Number(m[2]) - 1, Number(m[3])),
+  );
+  base.setUTCDate(base.getUTCDate() + 1);
+  return formatUtcDateAsYmd(base);
+}
