@@ -1,13 +1,15 @@
-import React from 'react';
-import { View, Text, ScrollView, Modal, StyleSheet, Platform } from 'react-native';
+import React, { useMemo } from 'react';
+import { ScrollView, Text, View, useWindowDimensions } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { colors, fonts, fontSizes } from '../../../styles/colors';
+import SubHeader from '../../../view/frame/subHeader';
+import { getNormalize } from '../../../styles/mypage.style';
+import { createServiceStyles } from '../../../styles/service.style';
 
 const SERVICE_TERMS_MARKDOWN = `# 서비스 이용 약관
 
-**제정일**: [2026-05-04]
+제정일: [2026-05-04]
 
-**시행일**: [2026-05-11]
+시행일: [2026-05-11]
 
 ---
 
@@ -15,29 +17,29 @@ const SERVICE_TERMS_MARKDOWN = `# 서비스 이용 약관
 
 ### 제1조 (목적)
 
-1. 본 약관은 **유코스트**(이하 "회사")가 제공하는 모바일 애플리케이션 서비스 **「Youth Paper」**(이하 "서비스")의 이용과 관련하여 회사와 이용자 간의 권리·의무 및 책임사항, 서비스 이용 조건과 절차에 관한 사항을 규정함을 목적으로 합니다. 앱 스토어에 표시되는 상표·앱 이름이 상이한 경우에도 본 약관은 동일 서비스에 적용됩니다.
+1. 본 약관은 유코스트(이하 "회사")가 제공하는 모바일 애플리케이션 서비스 「Youth Paper」(이하 "서비스")의 이용과 관련하여 회사와 이용자 간의 권리·의무 및 책임사항, 서비스 이용 조건과 절차에 관한 사항을 규정함을 목적으로 합니다. 앱 스토어에 표시되는 상표·앱 이름이 상이한 경우에도 본 약관은 동일 서비스에 적용됩니다.
 2. 본 약관에서 정하지 아니한 사항은 「전기통신사업법」, 「전자상거래 등에서의 소비자보호에 관한 법률」, 「약관의 규제에 관한 법률」, 「정보통신망 이용촉진 및 정보보호 등에 관한 법률」(이하 "정보통신망법"), 「개인정보 보호법」 등 대한민국 관련 법령 및 상관례에 따릅니다.
 
 ### 제2조 (정의)
 
 본 약관에서 사용하는 용어의 정의는 다음과 같습니다.
 
-1. **서비스**: 회사가 이용자에게 모바일 애플리케이션 및 이에 수반되는 네트워크·시스템을 통해 제공하는 학교 단위 커뮤니티, 게시판, 쪽지(실시간 대화), 우편, 친구 관계, 알림, 검색, 내 활동(작성 글·스크랩 등) 조회, 학습·생활 보조 기능 등 일체의 온라인 서비스를 말합니다.
-2. **회원**: 회사와 이용계약을 체결하고 아이디(계정)를 부여받아 서비스를 이용하는 자를 말합니다.
-3. **아이디(계정)**: 회원의 식별과 서비스 이용을 위하여 회원이 설정하고 회사가 승인한 문자·숫자 등의 조합(예: 사용자명)을 말합니다.
-4. **비밀번호**: 회원 본인 여부 확인 및 권익 보호를 위하여 회원이 설정한 문자·숫자·특수문자 등의 조합을 말합니다.
-5. **게시물**: 회원이 서비스 내에 게시한 문자, 사진, 링크, 댓글, 우편 내용, 쪽지(채팅) 메시지 등 일체의 정보를 말합니다.
-6. **게시판**: 회사가 제공하는 전체 단위 또는 소속 학교 단위의 게시 공간을 말합니다.
-7. **쪽지(실시간 대화)**: 회원 간 1:1로 주고받는 실시간 메시지 기능을 말하며, 게시글을 기반으로 한 익명 쪽지와 친구 관계 회원 간 실명 쪽지로 구분됩니다(소켓 등 실시간 통신 기술을 통해 제공될 수 있습니다).
+1. 서비스: 회사가 이용자에게 모바일 애플리케이션 및 이에 수반되는 네트워크·시스템을 통해 제공하는 학교 단위 커뮤니티, 게시판, 쪽지(실시간 대화), 우편, 친구 관계, 알림, 검색, 내 활동(작성 글·스크랩 등) 조회, 학습·생활 보조 기능 등 일체의 온라인 서비스를 말합니다.
+2. 회원: 회사와 이용계약을 체결하고 아이디(계정)를 부여받아 서비스를 이용하는 자를 말합니다.
+3. 아이디(계정): 회원의 식별과 서비스 이용을 위하여 회원이 설정하고 회사가 승인한 문자·숫자 등의 조합(예: 사용자명)을 말합니다.
+4. 비밀번호: 회원 본인 여부 확인 및 권익 보호를 위하여 회원이 설정한 문자·숫자·특수문자 등의 조합을 말합니다.
+5. 게시물: 회원이 서비스 내에 게시한 문자, 사진, 링크, 댓글, 우편 내용, 쪽지(채팅) 메시지 등 일체의 정보를 말합니다.
+6. 게시판: 회사가 제공하는 전체 단위 또는 소속 학교 단위의 게시 공간을 말합니다.
+7. 쪽지(실시간 대화): 회원 간 1:1로 주고받는 실시간 메시지 기능을 말하며, 게시글을 기반으로 한 익명 쪽지와 친구 관계 회원 간 실명 쪽지로 구분됩니다(소켓 등 실시간 통신 기술을 통해 제공될 수 있습니다).
 
     ※ 실시간 대화 내용은 서비스 운영 및 기기 변경 시 대화 복구 등을 위해 일정 기간 서버에 암호화되어 저장될 수 있으며, 운영정책에서 정한 기간이 경과한 데이터는 복구가 불가능할 수 있습니다.
 
-8. **우편**: 회원 간 또는 학교 단위로 주고받는 비실시간 메시지 형태의 기능(개인 우편, 학교 우편 등)을 말합니다.
-9. **학생 인증**: 회원이 재학 사실 등을 확인하기 위해 회사가 정한 절차(예: 학생증 촬영·OCR 등)에 따라 제출·검증하는 행위를 말합니다.
-10. **신고**: 게시물 등이 약관 또는 운영정책, 법령에 위반된다고 판단될 때 회사에 그 사실을 알리는 기능을 말합니다.
-11. **운영정책**: 회사가 서비스 운영을 위해 별도로 정하여 게시하는 세부 규정·가이드라인을 말하며, 본 약관의 일부를 구성할 수 있습니다.
-12. **개인위치정보**: 이용자의 위치를 특정할 수 있는 위도·경도 등의 정보를 말합니다.
-13. **위치기반서비스**: 이용자의 위치정보를 활용하여 제공하는 근처 게시글 필터링, 게시글 거리 표시 등의 서비스를 말합니다.
+8. 우편: 회원 간 또는 학교 단위로 주고받는 비실시간 메시지 형태의 기능(개인 우편, 학교 우편 등)을 말합니다.
+9. 학생 인증: 회원이 재학 사실 등을 확인하기 위해 회사가 정한 절차(예: 학생증 촬영·OCR 등)에 따라 제출·검증하는 행위를 말합니다.
+10. 신고: 게시물 등이 약관 또는 운영정책, 법령에 위반된다고 판단될 때 회사에 그 사실을 알리는 기능을 말합니다.
+11. 운영정책: 회사가 서비스 운영을 위해 별도로 정하여 게시하는 세부 규정·가이드라인을 말하며, 본 약관의 일부를 구성할 수 있습니다.
+12. 개인위치정보: 이용자의 위치를 특정할 수 있는 위도·경도 등의 정보를 말합니다.
+13. 위치기반서비스: 이용자의 위치정보를 활용하여 제공하는 근처 게시글 필터링, 게시글 거리 표시 등의 서비스를 말합니다.
 14. 본 조에서 정하지 아니한 용어는 관련 법령, 개인정보처리방침 및 일반 상관례에 따릅니다.
 
 ### 제3조 (약관의 게시·효력·개정)
@@ -130,26 +132,26 @@ const SERVICE_TERMS_MARKDOWN = `# 서비스 이용 약관
 
 회사가 현재 제공하거나 추가 개발할 수 있는 서비스의 예시는 다음과 같습니다.
 
-1. **회원가입·로그인**: 전화번호 인증(인증 코드 발송·검증), 아이디·비밀번호 기반 로그인, 로그아웃, 보안 토큰 방식을 이용한 인증 상태 유지.
-2. **게시판**: 전체 게시판 및 소속 학교 단위 게시판에서의 게시글 작성·조회·삭제, 좋아요, 스크랩(저장), 태그 검색 등.
-3. **댓글**: 게시글에 대한 댓글·답글 작성·조회·삭제, 댓글 좋아요 등.
-4. **신고**: 게시글·댓글 등에 대한 신고 접수(사유·설명 포함).
-5. **쪽지(실시간 대화)**: 특정 게시글 등을 기준으로 한 1:1 대화방 생성·목록·메시지 송수신, 읽음 처리·미읽음 표시, 실시간 수신(소켓 등), 대화방·메시지 삭제(소프트 삭제 방식 등 시스템 설계에 따름).
-6. **우편**: 개인 우편(발송·수신·답장·읽음·삭제 등), 학교 우편(학교 단위 수신·작성·댓글 등).
-7. **학교·커뮤니티**: 우리학교·다른 학교 관련 화면, 학교 변경, 학교 우편함·학교 게시판 연계 등.
-8. **학습·생활 보조**: 집중 타이머, 친구 및 학습 이벤트 연동, 시간표 추가·조회, 급식 캘린더 등.
-9. **검색·탐색**: 게시글·사용자 등 검색 화면 및 결과 제공.
-10. **알림**: 푸시·서비스 내 알림 등(설정에 따라 일부 제한 가능).
-11. **위치 정보**: 이용자 동의 하에, 게시판에서 근처 글·거리 표시 등에 한하여 앱 사용 중 위치 정보(위도·경도)를 이용할 수 있습니다. 백그라운드 위치 정보는 수집하지 않습니다. 세부 목적·보유 기간 등은 개인정보처리방침 및 본 약관 제3장의2에 따릅니다.
-12. **카메라·사진·갤러리**: **학생증 인증** 등을 위해 카메라를 사용하거나, 게시물 첨부 등을 위해 갤러리·미디어 라이브러리에 접근할 수 있습니다. OS 권한 요청 문구는 앱 스토어 등록 정보와 같을 수 있습니다.
-13. **학생 인증**: 회사가 정한 바에 따라 학생증 촬영·OCR 또는 수동 입력 등을 통한 인증 절차를 제공할 수 있습니다.
-14. **친구**: 회원 간 친구 신청·수락·거절·삭제 및 친구 목록 조회 등.
-15. **차단**: 특정 회원의 쪽지·우편 등 상호작용 차단 및 회사 정책에 따른 차단 해제 절차 등. (게시물 피드 필터링 등 추가 차단 범위는 순차적으로 확대될 수 있습니다.)
+1. 회원가입·로그인: 전화번호 인증(인증 코드 발송·검증), 아이디·비밀번호 기반 로그인, 로그아웃, 보안 토큰 방식을 이용한 인증 상태 유지.
+2. 게시판: 전체 게시판 및 소속 학교 단위 게시판에서의 게시글 작성·조회·삭제, 좋아요, 스크랩(저장), 태그 검색 등.
+3. 댓글: 게시글에 대한 댓글·답글 작성·조회·삭제, 댓글 좋아요 등.
+4. 신고: 게시글·댓글 등에 대한 신고 접수(사유·설명 포함).
+5. 쪽지(실시간 대화): 특정 게시글 등을 기준으로 한 1:1 대화방 생성·목록·메시지 송수신, 읽음 처리·미읽음 표시, 실시간 수신(소켓 등), 대화방·메시지 삭제(소프트 삭제 방식 등 시스템 설계에 따름).
+6. 우편: 개인 우편(발송·수신·답장·읽음·삭제 등), 학교 우편(학교 단위 수신·작성·댓글 등).
+7. 학교·커뮤니티: 우리학교·다른 학교 관련 화면, 학교 변경, 학교 우편함·학교 게시판 연계 등.
+8. 학습·생활 보조: 집중 타이머, 친구 및 학습 이벤트 연동, 시간표 추가·조회, 급식 캘린더 등.
+9. 검색·탐색: 게시글·사용자 등 검색 화면 및 결과 제공.
+10. 알림: 푸시·서비스 내 알림 등(설정에 따라 일부 제한 가능).
+11. 위치 정보: 이용자 동의 하에, 게시판에서 근처 글·거리 표시 등에 한하여 앱 사용 중 위치 정보(위도·경도)를 이용할 수 있습니다. 백그라운드 위치 정보는 수집하지 않습니다. 세부 목적·보유 기간 등은 개인정보처리방침 및 본 약관 제3장의2에 따릅니다.
+12. 카메라·사진·갤러리: 학생증 인증 등을 위해 카메라를 사용하거나, 게시물 첨부 등을 위해 갤러리·미디어 라이브러리에 접근할 수 있습니다. OS 권한 요청 문구는 앱 스토어 등록 정보와 같을 수 있습니다.
+13. 학생 인증: 회사가 정한 바에 따라 학생증 촬영·OCR 또는 수동 입력 등을 통한 인증 절차를 제공할 수 있습니다.
+14. 친구: 회원 간 친구 신청·수락·거절·삭제 및 친구 목록 조회 등.
+15. 차단: 특정 회원의 쪽지·우편 등 상호작용 차단 및 회사 정책에 따른 차단 해제 절차 등. (게시물 피드 필터링 등 추가 차단 범위는 순차적으로 확대될 수 있습니다.)
 16. 기타 회사가 정하는 부가 서비스 및 제휴 서비스.
 
 ### 제11조 (서비스 이용료)
 
-현재 서비스는 원칙적으로 무료로 제공됩니다. 향후 유료 기능·유료 멤버십·인앱 결제 등을 도입하는 경우, 회사는 요금·결제 방식·환불 규정 등을 사전에 고지합니다. 유료 서비스 도입 시 디지털 콘텐츠의 특성상 사용을 시작하거나 일정 시간이 경과한 경우 「전자상거래 등에서의 소비자보호에 관한 법률」 등 관련 법령에 따라 청약철회가 제한될 수 있습니다**.**
+현재 서비스는 원칙적으로 무료로 제공됩니다. 향후 유료 기능·유료 멤버십·인앱 결제 등을 도입하는 경우, 회사는 요금·결제 방식·환불 규정 등을 사전에 고지합니다. 유료 서비스 도입 시 디지털 콘텐츠의 특성상 사용을 시작하거나 일정 시간이 경과한 경우 「전자상거래 등에서의 소비자보호에 관한 법률」 등 관련 법령에 따라 청약철회가 제한될 수 있습니다.
 
 ### 제12조 (정보 제공 및 광고)
 
@@ -168,9 +170,9 @@ const SERVICE_TERMS_MARKDOWN = `# 서비스 이용 약관
 
 회사는 이용자의 위치정보를 이용하여 다음과 같은 위치기반서비스를 제공합니다.
 
-1. **근처 게시글 제공**: 이용자의 현재 위치 기준으로 설정된 반경 내에 작성된 게시글을 필터링하여 제공합니다.
-2. **게시글 거리 표시**: 게시글 목록 및 상세 화면에서 이용자 현재 위치와 게시글 작성 위치 간의 거리를 표시합니다.
-3. **게시글 위치 첨부(선택)**: 게시글 작성 시 이용자가 위치 첨부 기능을 직접 활성화한 경우에 한하여 현재 위치를 게시글에 저장합니다.
+1. 근처 게시글 제공: 이용자의 현재 위치 기준으로 설정된 반경 내에 작성된 게시글을 필터링하여 제공합니다.
+2. 게시글 거리 표시: 게시글 목록 및 상세 화면에서 이용자 현재 위치와 게시글 작성 위치 간의 거리를 표시합니다.
+3. 게시글 위치 첨부(선택): 게시글 작성 시 이용자가 위치 첨부 기능을 직접 활성화한 경우에 한하여 현재 위치를 게시글에 저장합니다.
 
 ### 제13조의3 (위치정보 수집 및 보유)
 
@@ -291,10 +293,10 @@ const SERVICE_TERMS_MARKDOWN = `# 서비스 이용 약관
 1. 회원이 본 약관을 위반하여 회사에 손해를 끼친 경우, 회원은 회사에 그 손해를 배상하여야 합니다.
 2. 회사가 회원에게 손해를 끼친 경우, 회사는 관련 법령이 정하는 범위 내에서 이를 배상합니다. 다만 회사의 고의 또는 중대한 과실이 없는 한 책임을 지지 않습니다.
 
-### 제23조 (준거법 및 관할)**
+### 제23조 (준거법 및 관할)
 
 1. 본 약관의 해석 및 회사와 회원 간 분쟁에는 대한민국법을 적용합니다.
-2. 소송이 제기되는 경우 관할법원은 **「민사소송법」 등 관련 법령에 따른 관할**에 따르며, [**회사의 주소지]**를 관할하는 지방법원을 제1심 관할로 할 수 있습니다(필요 시 실제 주소에 맞게 조정).
+2. 소송이 제기되는 경우 관할법원은 「민사소송법」 등 관련 법령에 따른 관할에 따르며, [회사의 주소지]를 관할하는 지방법원을 제1심 관할로 할 수 있습니다(필요 시 실제 주소에 맞게 조정).
 
 ---
 
@@ -303,155 +305,56 @@ const SERVICE_TERMS_MARKDOWN = `# 서비스 이용 약관
 1. 본 약관은 [2026-05-11]부터 시행합니다.
 2. 개정 약관은 개정 공지에 명시된 시행일부터 효력이 발생합니다.`;
 
-// 약관 모달: 서비스 이용약관 전문 보기 화면
-const SignStepTermsOfService = ({ normalize, onBack }) => {
-  const s = makeStyles(normalize);
+const TERMS_LINES = SERVICE_TERMS_MARKDOWN.split('\n');
 
-  const lines = SERVICE_TERMS_MARKDOWN.split('\n');
+const ServiceTermsOfService = ({ navigation }) => {
+  const { width } = useWindowDimensions();
+  const normalize = useMemo(() => getNormalize(width), [width]);
+  const styles = useMemo(() => createServiceStyles(normalize), [normalize]);
 
   return (
-    <Modal
-      visible
-      animationType="slide"
-      presentationStyle={Platform.OS === 'ios' ? 'pageSheet' : 'fullScreen'}
-      statusBarTranslucent
-      onRequestClose={onBack}
-    >
-      <SafeAreaView style={s.container} edges={['top', 'bottom']}>
-        <View style={s.sheetHeader}>
-          {Platform.OS === 'ios' && <View style={s.grabber} />}
-          <View style={s.sheetHeaderRow}>
-            <View style={s.leftPlaceholder} />
-            <Text style={s.sheetTitle}>서비스 이용약관</Text>
-            <View style={s.rightPlaceholder} />
-          </View>
-        </View>
-        <View style={s.headerDivider} />
-        <ScrollView
-          style={s.scroll}
-          contentContainerStyle={s.scrollContent}
-          showsVerticalScrollIndicator={false}
-        >
-          {lines.map((line, idx) => {
-            const trimmed = line.trim();
-            if (!trimmed || trimmed === '# 서비스 이용 약관') return null;
-            if (trimmed === '---') return <View key={`d-${idx}`} style={s.divider} />;
-            if (trimmed.startsWith('## ')) {
-              return (
-                <Text key={`c-${idx}`} style={s.chapterTitle}>
-                  {trimmed.replace('## ', '')}
-                </Text>
-              );
-            }
-            if (trimmed.startsWith('### ')) {
-              return (
-                <Text key={`s-${idx}`} style={s.sectionTitle}>
-                  {trimmed.replace('### ', '')}
-                </Text>
-              );
-            }
-            if (trimmed.startsWith('- ')) {
-              return (
-                <Text key={`b-${idx}`} style={s.numItem}>
-                  {'• '}
-                  {trimmed.replace('- ', '')}
-                </Text>
-              );
-            }
+    <SafeAreaView style={styles.container} edges={['top']}>
+      <SubHeader title="서비스 이용약관" onBack={() => navigation.goBack()} />
+      <ScrollView
+        style={styles.scroll}
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+      >
+        {TERMS_LINES.map((line, idx) => {
+          const trimmed = line.trim();
+          if (!trimmed || trimmed === '# 서비스 이용 약관') return null;
+          if (line === '---') return <View key={`d-${idx}`} style={styles.divider} />;
+          if (trimmed.startsWith('## ')) {
             return (
-              <Text key={`p-${idx}`} style={s.para}>
-                {line}
+              <Text key={`c-${idx}`} style={styles.chapterTitle}>
+                {trimmed.replace('## ', '')}
               </Text>
             );
-          })}
-        </ScrollView>
-      </SafeAreaView>
-    </Modal>
+          }
+          if (trimmed.startsWith('### ')) {
+            return (
+              <Text key={`s-${idx}`} style={styles.sectionTitle}>
+                {trimmed.replace('### ', '')}
+              </Text>
+            );
+          }
+          if (trimmed.startsWith('- ')) {
+            return (
+              <Text key={`b-${idx}`} style={styles.bullet}>
+                {'• '}
+                {trimmed.replace('- ', '')}
+              </Text>
+            );
+          }
+          return (
+            <Text key={`p-${idx}`} style={styles.para}>
+              {line}
+            </Text>
+          );
+        })}
+      </ScrollView>
+    </SafeAreaView>
   );
 };
 
-const makeStyles = (normalize) =>
-  StyleSheet.create({
-    container: {
-      flex: 1,
-      backgroundColor: colors.background,
-    },
-    sheetHeader: {
-      backgroundColor: colors.background,
-      paddingVertical: normalize(10),
-      paddingHorizontal: normalize(12),
-    },
-    grabber: {
-      alignSelf: 'center',
-      width: normalize(36),
-      height: normalize(5),
-      borderRadius: normalize(999),
-      backgroundColor: colors.textLight20,
-      marginTop: normalize(2),
-      marginBottom: normalize(8),
-    },
-    sheetHeaderRow: {
-      height: normalize(34),
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'space-between',
-    },
-    leftPlaceholder: {
-      minWidth: normalize(44),
-    },
-    sheetTitle: {
-      fontSize: normalize(fontSizes.xxl),
-      fontFamily: fonts.bold,
-      color: colors.textPrimary,
-    },
-    rightPlaceholder: {
-      minWidth: normalize(44),
-    },
-    headerDivider: {
-      height: 1,
-      backgroundColor: colors.textLight20,
-    },
-    scroll: {
-      flex: 1,
-    },
-    scrollContent: {
-      paddingHorizontal: normalize(20),
-      paddingTop: normalize(16),
-      paddingBottom: normalize(32),
-      gap: normalize(8),
-    },
-    chapterTitle: {
-      fontSize: normalize(fontSizes.xl),
-      fontFamily: fonts.bold,
-      color: colors.primaryDark,
-      marginTop: normalize(8),
-      marginBottom: normalize(2),
-    },
-    sectionTitle: {
-      fontSize: normalize(fontSizes.xl),
-      fontFamily: fonts.bold,
-      color: colors.textPrimary,
-      marginTop: normalize(4),
-      marginBottom: normalize(6),
-    },
-    para: {
-      fontSize: normalize(fontSizes.lg),
-      fontFamily: fonts.regular,
-      color: colors.textPrimary,
-      lineHeight: normalize(20),
-    },
-    numItem: {
-      fontSize: normalize(fontSizes.lg),
-      fontFamily: fonts.regular,
-      color: colors.textPrimary,
-      lineHeight: normalize(20),
-      paddingLeft: normalize(4),
-    },
-    divider: {
-      height: 1,
-      backgroundColor: colors.textLight10,
-      marginVertical: normalize(6),
-    },
-  });
-
-export default SignStepTermsOfService;
+export default ServiceTermsOfService;
