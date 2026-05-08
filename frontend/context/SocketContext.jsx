@@ -165,13 +165,14 @@ export function SocketProvider({ children }) {
     }, delay);
   }, [clearReconnectTimer, logSocket]);
 
-  const connect = useCallback(async () => {
-    try {
-      // 자동로그인 OFF(인메모리만 보관) 사용자도 소켓이 붙도록 인메모리 폴백까지 본다.
-      const token = await getAuthToken();
-      if (!token || cancelledRef.current) return;
-
-      const s = await socketManager.connectSocket?.(null, token);
+  /**
+   * socketManager 가 들고 있는 인스턴스에 SocketContext 전용 lifecycle 을 붙인다.
+   * - setAuthTokenAndReconnect 가 removeAllListeners 로 기존 인스턴스를 비운 뒤
+   *   새 인스턴스만 남기므로, 반드시 여기서 다시 connect/disconnect/error 를 등록하고
+   *   React state(socket) 를 최신 참조로 맞춰 Notification/Friend 리스너 useEffect 가 재실행되게 한다.
+   */
+  const attachSocketLifecycle = useCallback(
+    (s) => {
       if (!s || cancelledRef.current) return;
 
       cleanupContextListeners(s);
@@ -219,13 +220,34 @@ export function SocketProvider({ children }) {
 
       setSocket(s);
       if (!s.connected) s.connect();
+    },
+    [
+      cleanupContextListeners,
+      clearReconnectTimer,
+      isAuthConnectError,
+      logSocket,
+      recoverSocketAuth,
+      scheduleReconnect,
+    ],
+  );
+
+  const connect = useCallback(async () => {
+    try {
+      // 자동로그인 OFF(인메모리만 보관) 사용자도 소켓이 붙도록 인메모리 폴백까지 본다.
+      const token = await getAuthToken();
+      if (!token || cancelledRef.current) return;
+
+      const s = await socketManager.connectSocket?.(null, token);
+      if (!s || cancelledRef.current) return;
+
+      attachSocketLifecycle(s);
     } catch (e) {
       console.error('[SocketContext][connect_failed]', {
         at: new Date().toISOString(),
         message: e?.message,
       });
     }
-  }, [cleanupContextListeners, clearReconnectTimer, isAuthConnectError, logSocket, recoverSocketAuth, scheduleReconnect]);
+  }, [attachSocketLifecycle]);
 
   useEffect(() => {
     cancelledRef.current = false;
@@ -283,6 +305,10 @@ export function SocketProvider({ children }) {
         if (!token || cancelledRef.current) return;
         try {
           await socketManager.setAuthTokenAndReconnect?.(token);
+          const s = socketManager.getSocket?.();
+          if (s && !cancelledRef.current) {
+            attachSocketLifecycle(s);
+          }
         } catch (e) {
           if (__DEV__) {
             console.warn('[SocketContext] setAuthTokenAndReconnect 실패:', e?.message);
@@ -300,7 +326,7 @@ export function SocketProvider({ children }) {
     }
     setConnected(false);
     setSocket(null);
-  }, [isLoggedIn]);
+  }, [isLoggedIn, attachSocketLifecycle]);
 
   const value = {
     socket,
