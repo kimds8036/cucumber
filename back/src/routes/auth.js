@@ -1,4 +1,5 @@
 import express from 'express';
+import { body } from 'express-validator';
 import pool from '../config/database.js';
 import { 
   generateVerificationCode, 
@@ -10,8 +11,59 @@ import {
 } from '../utils/auth.js';
 import { validatePhone, validateUsername, validatePassword, validateBirthDate } from '../utils/validation.js';
 import { authenticate } from '../middleware/auth.js';
+import { validate } from '../middleware/validate.js';
 
 const router = express.Router();
+
+// ─────────────────────────────────────────────────────────────────────────────
+// express-validator 체이너 모음
+// 핸들러 내부의 ad-hoc 체크(정규식, 중복 확인 등) 는 그대로 둔다.
+// 여기서는 타입/길이/필수값 같은 1차 게이트만 깐다.
+// ─────────────────────────────────────────────────────────────────────────────
+
+const loginValidators = [
+  body('username').isString().withMessage('사용자명을 입력해주세요.')
+    .bail().trim().isLength({ min: 1, max: 50 }).withMessage('사용자명 형식이 올바르지 않습니다.'),
+  body('password').isString().withMessage('비밀번호를 입력해주세요.')
+    .bail().isLength({ min: 1, max: 200 }).withMessage('비밀번호 형식이 올바르지 않습니다.'),
+  body('deviceId').optional({ values: 'falsy' }).isString().isLength({ max: 200 }),
+];
+
+const signupValidators = [
+  body('username').isString().bail().trim().isLength({ min: 3, max: 20 })
+    .withMessage('사용자명은 3-20자여야 합니다.'),
+  body('password').isString().bail().isLength({ min: 8, max: 200 })
+    .withMessage('비밀번호는 8자 이상이어야 합니다.'),
+  body('name').isString().bail().trim().isLength({ min: 1, max: 50 })
+    .withMessage('이름을 입력해주세요.'),
+  body('phone').isString().bail().trim().isLength({ min: 1, max: 20 })
+    .withMessage('전화번호를 입력해주세요.'),
+  body('birthDate').isString().bail().trim().isLength({ min: 1, max: 20 })
+    .withMessage('생년월일을 입력해주세요.'),
+  body('schoolId').exists({ checkNull: true }).withMessage('학교를 선택해주세요.')
+    .bail().isString().trim().isLength({ min: 1, max: 50 }),
+  body('grade').exists({ checkNull: true }).withMessage('학년을 선택해주세요.')
+    .bail().toInt().isInt({ min: 1, max: 6 }).withMessage('학년이 올바르지 않습니다.'),
+  body('classNumber').exists({ checkNull: true }).withMessage('반을 선택해주세요.')
+    .bail().toInt().isInt({ min: 1, max: 50 }).withMessage('반이 올바르지 않습니다.'),
+  body('graduationYear').exists({ checkNull: true }).withMessage('졸업년도를 선택해주세요.')
+    .bail().toInt().isInt({ min: 1900, max: 2100 }).withMessage('졸업년도가 올바르지 않습니다.'),
+  body('colorId').exists({ checkNull: true }).withMessage('컬러를 선택해주세요.')
+    .bail().toInt().isInt({ min: 1 }).withMessage('컬러 ID가 올바르지 않습니다.'),
+];
+
+const updateUsernameValidators = [
+  body('username').isString().bail().trim()
+    .customSanitizer((v) => (typeof v === 'string' && v.startsWith('@') ? v.slice(1) : v))
+    .isLength({ min: 3, max: 20 }).withMessage('아이디는 3-20자여야 합니다.'),
+];
+
+const updatePasswordValidators = [
+  body('currentPassword').isString().bail().isLength({ min: 1, max: 200 })
+    .withMessage('현재 비밀번호를 입력해주세요.'),
+  body('newPassword').isString().bail().isLength({ min: 8, max: 200 })
+    .withMessage('새 비밀번호는 8자 이상이어야 합니다.'),
+];
 
 // 내 프로필 조회
 router.get('/me', authenticate, async (req, res) => {
@@ -104,7 +156,7 @@ router.get('/me', authenticate, async (req, res) => {
 });
 
 // 내 아이디(username) 변경
-router.patch('/me/username', authenticate, async (req, res) => {
+router.patch('/me/username', authenticate, validate(updateUsernameValidators), async (req, res) => {
   try {
     const userId = req.user.userId;
     const input = String(req.body?.username ?? '').trim();
@@ -185,7 +237,7 @@ router.patch('/me/username', authenticate, async (req, res) => {
 });
 
 // 내 비밀번호 변경
-router.patch('/me/password', authenticate, async (req, res) => {
+router.patch('/me/password', authenticate, validate(updatePasswordValidators), async (req, res) => {
   try {
     const userId = req.user.userId;
     const currentPassword = String(req.body?.currentPassword ?? '');
@@ -355,7 +407,7 @@ router.post('/verify-phone', async (req, res) => {
 });
 
 // 회원가입
-router.post('/signup', async (req, res) => {
+router.post('/signup', validate(signupValidators), async (req, res) => {
   try {
     const { 
       username, 
@@ -539,7 +591,7 @@ router.post('/verify-student', authenticate, async (req, res) => {
 });
 
 // 로그인
-router.post('/login', async (req, res) => {
+router.post('/login', validate(loginValidators), async (req, res) => {
   try {
     const { username, password, deviceId } = req.body;
 

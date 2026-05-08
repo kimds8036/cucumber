@@ -5,12 +5,30 @@
  *   학교/학년/반/사용 여부(in_use) 와 함께 반환.
  *
  * 운영 배포 시에는 이 라우트를 비활성화하거나 보호 미들웨어로 감싸야 함.
+ *
+ * ⚠️ ⚠️ ⚠️ 임시 개방 안내 ⚠️ ⚠️ ⚠️
+ * 현재 production(Railway) 환경 변수에 ENABLE_TEST_API=true 가 설정되어 있어
+ * 이 라우트가 외부에 노출된 상태다. 테스트 기간이 끝나면 반드시
+ *   1) Railway 대시보드 → cucumber 서비스 → Variables → ENABLE_TEST_API=false
+ *      (또는 변수 자체 삭제)
+ *   2) `railway variables --service cucumber --set "ENABLE_TEST_API=false"`
+ *      후 `railway redeploy --service cucumber --yes`
+ * 둘 중 하나로 다시 닫아야 한다.
+ * 닫지 않고 출시하면 모든 테스트 계정 username 이 인증 없이 노출된다.
  */
 
 import express from 'express';
 import pool from '../config/database.js';
 
 const router = express.Router();
+
+// 프로덕션에서는 ENABLE_TEST_API=true 가 명시되어야만 사용 가능. 그 외엔 라우터 자체를 404 로 가린다.
+router.use((req, res, next) => {
+  if (process.env.NODE_ENV === 'production' && process.env.ENABLE_TEST_API !== 'true') {
+    return res.status(404).json({ success: false, message: 'Not found' });
+  }
+  next();
+});
 
 // GET /api/test/users
 // query: ?prefix=user (기본값) — 해당 prefix로 시작하고 뒤에 숫자가 붙은 username 만 반환

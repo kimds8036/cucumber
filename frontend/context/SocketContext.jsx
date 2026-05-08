@@ -7,12 +7,10 @@ import React, {
   useCallback,
 } from 'react';
 import { Alert, AppState } from 'react-native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import { api, clearUserSessionStorage, setAuthToken } from '../utils/api';
+import { api, clearUserSessionStorage, getAuthToken, setAuthToken } from '../utils/api';
 import { useAuth } from './AuthContext';
 import * as socketManager from '../view/src/socketManager';
 
-const AUTH_TOKEN_KEY = '@auth_token';
 const SOCKET_AUTH_ERROR_CODE = 'AUTH_FAILED';
 const AUTH_ERROR_KEYWORDS = ['토큰', '인증', 'invalid', 'Unauthorized', '만료'];
 const SOCKET_HEALTHCHECK_MS = 15000;
@@ -20,7 +18,7 @@ const SOCKET_HEALTHCHECK_MS = 15000;
 const SocketContext = createContext(null);
 
 export function SocketProvider({ children }) {
-  const { logout } = useAuth();
+  const { isLoggedIn, logout } = useAuth();
   const [connected, setConnected] = useState(false);
   const [socket, setSocket] = useState(null);
   const appStateRef = useRef(AppState.currentState);
@@ -169,7 +167,8 @@ export function SocketProvider({ children }) {
 
   const connect = useCallback(async () => {
     try {
-      const token = await AsyncStorage.getItem(AUTH_TOKEN_KEY);
+      // 자동로그인 OFF(인메모리만 보관) 사용자도 소켓이 붙도록 인메모리 폴백까지 본다.
+      const token = await getAuthToken();
       if (!token || cancelledRef.current) return;
 
       const s = await socketManager.connectSocket?.(null, token);
@@ -271,6 +270,37 @@ export function SocketProvider({ children }) {
       setConnected(false);
     };
   }, [clearReconnectTimer, connect, cleanupContextListeners, logSocket, recoverSocketAuth, scheduleReconnect]);
+
+  // 로그인 상태가 바뀌면 소켓을 새 토큰으로 갈아끼우거나, 로그아웃 시 안전하게 끊는다.
+  // - 로그인: 새 JWT 로 setAuthTokenAndReconnect → 옛 토큰으로 INVALID_TOKEN 무한 재시도 방지
+  // - 로그아웃: 소켓을 강제 종료해 다음 로그인 때 깔끔하게 새로 붙도록
+  useEffect(() => {
+    if (cancelledRef.current) return;
+
+    if (isLoggedIn) {
+      (async () => {
+        const token = await getAuthToken();
+        if (!token || cancelledRef.current) return;
+        try {
+          await socketManager.setAuthTokenAndReconnect?.(token);
+        } catch (e) {
+          if (__DEV__) {
+            console.warn('[SocketContext] setAuthTokenAndReconnect 실패:', e?.message);
+          }
+        }
+      })();
+      return;
+    }
+
+    // 로그아웃 상태: 기존 소켓 정리
+    try {
+      socketManager.disconnectSocket?.({ force: true, reason: 'auth_logged_out' });
+    } catch {
+      // ignore
+    }
+    setConnected(false);
+    setSocket(null);
+  }, [isLoggedIn]);
 
   const value = {
     socket,
