@@ -1,12 +1,29 @@
 import express from 'express';
+import { body, param } from 'express-validator';
 import pool from '../config/database.js';
 import { authenticate } from '../middleware/auth.js';
+import { validate } from '../middleware/validate.js';
 import { createNotification } from '../utils/notifications.js';
 import { emitNotification } from '../socketServer.js';
 import { checkNotificationAllowed } from '../utils/notificationUtils.js';
 import { getStudyingFriends } from '../socket/socketService.js';
 
 const router = express.Router();
+
+// 검증 체이너 — username 정규화(@ prefix 제거 등) 는 핸들러에 그대로 둔다.
+const sendFriendRequestValidators = [
+  body('username').isString().withMessage('username 이(가) 필요합니다.')
+    .bail().trim().isLength({ min: 1, max: 50 })
+    .withMessage('username 형식이 올바르지 않습니다.'),
+];
+
+const friendshipIdParamValidator = [
+  param('id').toInt().isInt({ min: 1 }).withMessage('유효하지 않은 친구 요청 ID 입니다.'),
+];
+
+const friendUserIdParamValidator = [
+  param('friendUserId').toInt().isInt({ min: 1 }).withMessage('유효하지 않은 사용자 ID 입니다.'),
+];
 
 // 친구 목록 조회
 router.get('/list', authenticate, async (req, res) => {
@@ -160,7 +177,7 @@ router.get('/requests/received', authenticate, async (req, res) => {
 });
 
 // 친구 요청 수락
-router.post('/requests/:id/accept', authenticate, async (req, res) => {
+router.post('/requests/:id/accept', authenticate, validate(friendshipIdParamValidator), async (req, res) => {
   try {
     const userId = req.user.userId;
     const { id } = req.params;
@@ -215,7 +232,7 @@ router.post('/requests/:id/accept', authenticate, async (req, res) => {
 });
 
 // 친구 요청 거절
-router.post('/requests/:id/reject', authenticate, async (req, res) => {
+router.post('/requests/:id/reject', authenticate, validate(friendshipIdParamValidator), async (req, res) => {
   try {
     const userId = req.user.userId;
     const { id } = req.params;
@@ -270,7 +287,7 @@ router.post('/requests/:id/reject', authenticate, async (req, res) => {
 });
 
 // 친구 삭제
-router.delete('/:friendUserId', authenticate, async (req, res) => {
+router.delete('/:friendUserId', authenticate, validate(friendUserIdParamValidator), async (req, res) => {
   try {
     const userId = req.user.userId;
     const { friendUserId } = req.params;
@@ -307,7 +324,7 @@ router.delete('/:friendUserId', authenticate, async (req, res) => {
 });
 
 // 사용자 차단
-router.post('/:friendUserId/block', authenticate, async (req, res) => {
+router.post('/:friendUserId/block', authenticate, validate(friendUserIdParamValidator), async (req, res) => {
   try {
     const userId = req.user.userId;
     const { friendUserId } = req.params;
@@ -349,7 +366,7 @@ router.post('/:friendUserId/block', authenticate, async (req, res) => {
 });
 
 // 친구 요청 보내기
-router.post('/requests', authenticate, async (req, res) => {
+router.post('/requests', authenticate, validate(sendFriendRequestValidators), async (req, res) => {
   try {
     const requesterId = req.user.userId;
     const { username } = req.body || {};
