@@ -10,6 +10,7 @@ import { AppState, DeviceEventEmitter, Platform } from 'react-native';
 import { api } from '../utils/api';
 import { useSocket } from './SocketContext';
 import { useToast } from './ToastContext';
+import { useAuth } from './AuthContext';
 import {
   isStudySummaryNotification,
   normalizeStudySummaryWatchers,
@@ -19,6 +20,7 @@ const NotificationContext = createContext(null);
 
 export function NotificationProvider({ children }) {
   const { socket } = useSocket();
+  const { isLoggedIn } = useAuth();
   const { showToast, activeChatRoomId, isMessageTab, isTimerScreenActive } = useToast();
   const appStateRef = useRef(AppState.currentState);
   const [hasUnread, setHasUnread] = useState(false);
@@ -93,6 +95,12 @@ export function NotificationProvider({ children }) {
   }, []);
 
   const refreshHasUnread = useCallback(async () => {
+    // 비로그인 상태에서는 호출 자체를 스킵 (토큰 없이 401 노이즈 방지)
+    if (!isLoggedIn) {
+      setHasUnread(false);
+      setInitialized(true);
+      return;
+    }
     try {
       const res = await api.get('/api/notifications', {
         params: { page: 1, limit: 20 },
@@ -125,7 +133,7 @@ export function NotificationProvider({ children }) {
       // 조회 실패 시 기존 표시 상태를 유지해서, 임시 네트워크 오류로 점이 갑자기 바뀌지 않게 한다.
       setInitialized(true);
     }
-  }, [bellSuppressed, lastBellSeenAt]);
+  }, [bellSuppressed, lastBellSeenAt, isLoggedIn]);
 
   useEffect(() => {
     refreshHasUnread();

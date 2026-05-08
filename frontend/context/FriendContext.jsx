@@ -17,6 +17,7 @@ import React, {
 import { AppState } from 'react-native';
 import { api } from '../utils/api';
 import { useSocket } from './SocketContext';
+import { useAuth } from './AuthContext';
 
 const FriendContext = createContext(null);
 
@@ -25,6 +26,7 @@ const FB = '[FriendBadge]';
 
 export function FriendProvider({ children }) {
   const { socket } = useSocket();
+  const { isLoggedIn } = useAuth();
   const [hasUnreadFriendRequests, setHasUnreadFriendRequests] = useState(false);
   const [hasUnreadFriendRequestsForBell, setHasUnreadFriendRequestsForBell] =
     useState(false);
@@ -41,6 +43,13 @@ export function FriendProvider({ children }) {
 
   const refreshFriendRequestBadge = useCallback(async (opts = {}) => {
     const { updateBell = false, reason = 'unspecified' } = opts;
+    // 비로그인 상태에서는 호출 자체를 스킵 (토큰 없이 401 노이즈 방지)
+    if (!isLoggedIn) {
+      setHasUnreadFriendRequests(false);
+      if (updateBell) setHasUnreadFriendRequestsForBell(false);
+      console.log(FB, 'refresh SKIP (not logged in)', { reason, updateBell });
+      return;
+    }
     console.log(FB, 'refresh START', {
       reason,
       updateBell,
@@ -75,10 +84,14 @@ export function FriendProvider({ children }) {
       setHasUnreadFriendRequests(false);
       if (updateBell) setHasUnreadFriendRequestsForBell(false);
     }
-  }, []);
+  }, [isLoggedIn]);
 
   /** 타이머 화면 진입 시, 놓친 이벤트 보완용: 현재 공부 중인 친구 목록을 REST로 조회 */
   const refreshStudyingFriends = useCallback(async () => {
+    if (!isLoggedIn) {
+      setStudyingFriends({});
+      return;
+    }
     try {
       const res = await api.get('/api/friends/studying-status');
       const list = res.data?.data || [];
@@ -92,7 +105,7 @@ export function FriendProvider({ children }) {
     } catch (error) {
       console.error('[FriendContext] 공부 중 친구 상태 조회 실패:', error);
     }
-  }, []);
+  }, [isLoggedIn]);
 
   useEffect(() => {
     refreshFriendRequestBadge({ updateBell: true, reason: 'mount' });
