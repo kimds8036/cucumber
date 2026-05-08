@@ -10,7 +10,7 @@
 
 ## 1. 목표
 
-- `frontend/KEYBOARD_INPUT_ANALYSIS.md`에 정리된 입력 화면 전부를 대상으로
+- `KEYBOARD_INPUT_ANALYSIS.md`(동일 폴더)에 정리된 입력 화면 전부를 대상으로
   - iOS/Android에서 입력창 가림 없음
   - 포커스 시 스크롤 위치 안정화
   - 키보드 열림/닫힘 시 튐(jump) 최소화
@@ -18,7 +18,7 @@
 
 ---
 
-## 2. 참고 기준 (`expo keyboard.md` 반영)
+## 2. 참고 기준 (`expo keyboard.md`, 동일 폴더 반영)
 
 - 기본 원칙:
   - iOS: `KeyboardAvoidingView`의 `behavior="padding"` 우선

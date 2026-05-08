@@ -29,7 +29,7 @@ JWT_SECRET=your-super-secret-jwt-key-change-in-production
 JWT_EXPIRES_IN=7d
 ```
 
-자세한 내용은 `ENV_EXAMPLE.md`를 참고하세요.
+자세한 내용은 `docs/ENV_EXAMPLE.md`를 참고하세요.
 
 ## 데이터베이스 스키마 작성
 
