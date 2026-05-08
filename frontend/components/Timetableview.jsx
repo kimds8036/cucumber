@@ -9,13 +9,15 @@ import {
 import ViewShot from 'react-native-view-shot';
 import * as MediaLibrary from 'expo-media-library';
 import AppPopupModal from '../components/common/AppPopupModal';
+import AntDesign from '@expo/vector-icons/AntDesign';
+import Feather from '@expo/vector-icons/Feather';
 import { colors } from '../styles/colors';
 import { TIMETABLE_SUBJECT_COLORS } from '../styles/colors';
 import { getNormalize } from '../styles/mypage.style';
 import { createTimetableViewStyles } from '../src/screens/timetable/timetable.style';
+import { getMaxPeriodFromTimetableKeys } from '../src/screens/timetable/periodUtils';
 
 const DAYS = ['월', '화', '수', '목', '금'];
-const PERIODS = [1, 2, 3, 4, 5, 6, 7, 8, 9];
 const normalizeSubject = (value) => String(value || '').trim().toLowerCase();
 
 const getSubjectColorIndex = (subject) => {
@@ -41,6 +43,14 @@ const TimetableView = ({
   const [showSaveModal, setShowSaveModal] = useState(false);
 
   const safeTimetable = timetable || {};
+  const maxPeriod = useMemo(
+    () => getMaxPeriodFromTimetableKeys(safeTimetable, 7),
+    [safeTimetable],
+  );
+  const periods = useMemo(
+    () => Array.from({ length: maxPeriod }, (_, i) => i + 1),
+    [maxPeriod],
+  );
 
   const subjectColorMap = useMemo(() => {
     const map = {};
@@ -112,7 +122,7 @@ const TimetableView = ({
             ))}
           </View>
 
-          {PERIODS.map((period) => (
+          {periods.map((period) => (
             <View key={period} style={styles.row}>
               <View style={styles.periodCell}>
                 <Text style={styles.periodText}>{period}</Text>
@@ -144,21 +154,33 @@ const TimetableView = ({
           <View style={styles.mergedFooterFullCell} pointerEvents="box-none">
             <View style={styles.mergedFooterActionRow}>
               <TouchableOpacity style={styles.refreshButton} onPress={onResetPress} activeOpacity={0.7}>
-                <Text style={styles.footerResetLabel}>초기화</Text>
+                <AntDesign
+                  name="reload"
+                  size={16}
+                  color={styles.footerResetLabel.color}
+                />
               </TouchableOpacity>
               <TouchableOpacity
                 style={styles.refreshButton}
                 onPress={onNavigateToEdit}
                 activeOpacity={0.7}
               >
-                <Text style={styles.footerResetLabel}>수정</Text>
+                <Feather
+                  name="edit"
+                  size={16}
+                  color={styles.footerResetLabel.color}
+                />
               </TouchableOpacity>
               <TouchableOpacity
                 style={styles.refreshButton}
                 onPress={handleSaveAsImage}
                 activeOpacity={0.7}
               >
-                <Text style={styles.footerResetLabel}>저장</Text>
+                <Feather
+                  name="download"
+                  size={16}
+                  color={styles.footerResetLabel.color}
+                />
               </TouchableOpacity>
             </View>
           </View>

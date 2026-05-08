@@ -209,7 +209,7 @@ const BoardWrite = ({ navigation, route }) => {
       const formData = new FormData();
       formData.append('boardType', boardType);
       if (schoolId) formData.append('schoolId', String(schoolId));
-      formData.append('content', content.trim());
+      formData.append('content', content);
       hashtags.forEach((tag) => formData.append('tags[]', tag));
       postImages.forEach((uri, index) => {
         formData.append('images', {

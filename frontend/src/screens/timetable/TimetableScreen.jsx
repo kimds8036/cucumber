@@ -14,8 +14,9 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import SubHeader from '../../../view/frame/subHeader';
 import { colors } from '../../../styles/colors';
 import { api } from '../../../utils/api';
-import styles, { CELL_GAP, CELL_HEIGHT, DAYS, PERIODS } from './timetable.style';
+import styles, { CELL_GAP, CELL_HEIGHT, DAYS } from './timetable.style';
 import { SUBJECT_COLORS, TIMETABLE_DUMMY } from './TimetableDummy';
+import { getMaxPeriodFromTimetableKeys } from './periodUtils';
 
 const COLORS = {
   ...colors,
@@ -170,8 +171,17 @@ export default function TimetableScreen({ navigation, route }) {
   }, [keyword]);
 
   const cellMap = useMemo(() => buildCellMap(myChoices), [myChoices]);
+  const previewTimetable = useMemo(() => buildMyPageTimetable(myChoices), [myChoices]);
+  const maxPeriod = useMemo(
+    () => getMaxPeriodFromTimetableKeys(previewTimetable, 7),
+    [previewTimetable],
+  );
+  const periods = useMemo(() => {
+    const upperBound = maxPeriod <= 9 ? 9 : maxPeriod;
+    return Array.from({ length: upperBound }, (_, i) => i + 1);
+  }, [maxPeriod]);
   const totalTableHeight =
-    PERIODS.length * CELL_HEIGHT + (PERIODS.length - 1) * CELL_GAP;
+    periods.length * CELL_HEIGHT + (periods.length - 1) * CELL_GAP;
 
   const openBottomSheet = (subject) => {
     setSelectedSubject(subject);
@@ -293,7 +303,7 @@ export default function TimetableScreen({ navigation, route }) {
 
             <View style={styles.tableBodyRow}>
               <View style={styles.periodCol}>
-                {PERIODS.map((period) => (
+                {periods.map((period) => (
                   <View key={period} style={styles.periodCell}>
                     <Text style={styles.periodText}>{period}</Text>
                   </View>
@@ -305,11 +315,11 @@ export default function TimetableScreen({ navigation, route }) {
                   key={`day-col-${dayIndex}`}
                   style={[styles.dayCol, dayIndex === DAYS.length - 1 && styles.dayColLast]}
                 >
-                  {PERIODS.map((period) => (
+                  {periods.map((period) => (
                     <View key={`empty-${dayIndex}-${period}`} style={styles.emptyCell} />
                   ))}
 
-                  {PERIODS.map((period) => {
+                  {periods.map((period) => {
                     const cell = cellMap[`${dayIndex}-${period}`];
                     if (!cell || cell.skip || !cell.isStart) return null;
                     const height = cell.span * CELL_HEIGHT + (cell.span - 1) * CELL_GAP;

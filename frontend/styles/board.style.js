@@ -781,7 +781,6 @@ export const createDetailStyles = (width, normalize) => {
     adSection: {
       minHeight: normalize(40),
       marginHorizontal: width * 0,
-      marginVertical: normalize(3),
       backgroundColor: colors.backgroundGray,
       justifyContent: 'center',
       alignItems: 'center',
@@ -793,9 +792,8 @@ export const createDetailStyles = (width, normalize) => {
     },
     // 댓글 섹션 (SchoolMail.style.js smDetailComment* 와 동일 톤·간격)
     commentSection: {
-      paddingHorizontal: width * 0.03,
-      paddingTop: normalize(8),
-      paddingBottom: normalize(10),
+      paddingHorizontal: width * 0,
+      paddingVertical: normalize(10),
     },
     commentSectionTitle: {
       fontSize: normalize(fontSizes.xl),
@@ -816,9 +814,8 @@ export const createDetailStyles = (width, normalize) => {
     /** 댓글·대댓글 공통 말풍선 (= smDetailCommentBubble) */
     commentBubble: {
       backgroundColor: colors.background,
-      borderRadius: normalize(12),
-      paddingVertical: normalize(8),
-      paddingLeft: normalize(10),
+      paddingVertical: normalize(10),
+      paddingHorizontal: normalize(14),
     },
     /** 대댓글 말풍선 가로 확장 (= smDetailCommentBubbleReply) */
     commentBubbleReply: {

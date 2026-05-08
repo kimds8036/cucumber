@@ -58,12 +58,9 @@ export const colors = {
 };
 
 export const TIMETABLE_SUBJECT_COLORS = [
-  '#FFF4F4', '#FFF7F3', '#FFFCED', '#F4FBF2', '#F0F7FF', '#F5F3FF', '#FBF3FF',
-  '#FFECEC', '#FFF4EC', '#FFF9E2', '#EDF8E8', '#EAF4FF', '#F0EBFF', '#F8ECFF',
-  '#FFE5E5', '#FFF0E6', '#FFF6D7', '#E5F4DF', '#E4EFFF', '#EAE3FF', '#F4E3FF',
-  '#FFDDDD', '#FFEDE0', '#FFF3CC', '#DDF0D6', '#DDEBFF', '#E5DCFF', '#F0DCFF',
-  '#FFD6D6', '#FFE9DA', '#FFEFC1', '#D6ECCD', '#D7E6FF', '#E0D5FF', '#ECD4FF',
-  '#FFCFCF', '#FFE6D4', '#FFECB7', '#CEE9C4', '#D1E1FF', '#DACEFF', '#E8CDFF',
+  '#FFF4F4', '#FFFCED', '#F4FBF2', '#F0F7FF', '#FBF3FF',
+  '#FFECEC', '#FFF9E2', '#EDF8E8', '#EAF4FF', '#F8ECFF',
+  '#FFE5E5', '#FFF6D7', '#E5F4DF', '#E4EFFF', '#F4E3FF',
 ];
 
 export const PROFILE_COLORS = {
