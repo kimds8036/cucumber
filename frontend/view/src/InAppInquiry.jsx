@@ -1,6 +1,7 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   Alert,
+  Image,
   Platform,
   Text,
   TextInput,
@@ -12,9 +13,12 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
 import { Ionicons } from '@expo/vector-icons';
+import * as ImagePicker from 'expo-image-picker';
 import Constants from 'expo-constants';
 import { colors, fonts, fontSizes } from '../../styles/colors';
 import { api } from '../../utils/api';
+
+const MAX_IMAGES = 3;
 
 function isValidEmail(s) {
   const t = String(s || '').trim();
@@ -31,16 +35,15 @@ function FieldLabel({ text, required, styles }) {
   );
 }
 
-const Inquiry = ({ navigation, route }) => {
+const InAppInquiry = ({ navigation }) => {
   const { width } = useWindowDimensions();
   const scale = width / 375;
   const normalize = (size) => Math.round(scale * size);
 
-  const initialContactUsername = String(route?.params?.contactUsername || '').trim();
-
   const [content, setContent] = useState('');
-  const [contactUsername] = useState(initialContactUsername);
+  const [contactUsername, setContactUsername] = useState('');
   const [contactEmail, setContactEmail] = useState('');
+  const [images, setImages] = useState([]);
   const [submitting, setSubmitting] = useState(false);
   const [resultModal, setResultModal] = useState({ visible: false, message: '' });
   const [footerHeight, setFooterHeight] = useState(0);
@@ -49,6 +52,50 @@ const Inquiry = ({ navigation, route }) => {
     (Constants.expoConfig?.version || Constants.manifest?.version || '') + '';
   const deviceInfo = `${Platform.OS} ${Platform.Version || ''}`.trim();
 
+  // 로그인 사용자 본인의 username 자동 prefill (수정 불가 — 본인 식별용)
+  useEffect(() => {
+    let mounted = true;
+    (async () => {
+      try {
+        const meRes = await api.get('/api/auth/me');
+        const me = meRes?.data?.data;
+        if (mounted && me?.username) {
+          setContactUsername(String(me.username));
+        }
+      } catch (e) {
+        // ignore — 자동 입력 실패 시 사용자에게 안내
+      }
+    })();
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  const handlePickImages = async () => {
+    if (images.length >= MAX_IMAGES) {
+      Alert.alert('알림', `이미지는 최대 ${MAX_IMAGES}장까지 첨부할 수 있어요.`);
+      return;
+    }
+    try {
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: 'images',
+        allowsMultipleSelection: true,
+        quality: 0.8,
+        selectionLimit: MAX_IMAGES - images.length,
+      });
+      if (!result.canceled) {
+        const uris = result.assets.map((a) => a.uri);
+        setImages((prev) => [...prev, ...uris].slice(0, MAX_IMAGES));
+      }
+    } catch (e) {
+      Alert.alert('오류', '이미지를 불러오지 못했습니다.');
+    }
+  };
+
+  const handleRemoveImage = (idx) => {
+    setImages((prev) => prev.filter((_, i) => i !== idx));
+  };
+
   const handleSubmit = async () => {
     if (submitting) return;
     if (!content.trim()) {
@@ -56,7 +103,7 @@ const Inquiry = ({ navigation, route }) => {
       return;
     }
     if (!contactUsername.trim()) {
-      Alert.alert('알림', '아이디 정보가 없어 문의를 보낼 수 없습니다.');
+      Alert.alert('알림', '아이디 정보를 불러오지 못했습니다. 잠시 후 다시 시도해주세요.');
       return;
     }
     if (!isValidEmail(contactEmail)) {
@@ -71,6 +118,13 @@ const Inquiry = ({ navigation, route }) => {
       formData.append('contact_email', contactEmail.trim());
       if (appVersion) formData.append('app_version', appVersion);
       if (deviceInfo) formData.append('device_info', deviceInfo);
+      images.forEach((uri, index) => {
+        formData.append('images', {
+          uri,
+          type: 'image/jpeg',
+          name: `inquiry_${index}.jpg`,
+        });
+      });
 
       await api.post('/api/inquiries', formData, {
         headers: { 'Content-Type': 'multipart/form-data' },
@@ -83,7 +137,9 @@ const Inquiry = ({ navigation, route }) => {
           '문의가 접수되었습니다.\n답변은 입력하신 이메일로 안내드립니다.',
       });
     } catch (error) {
-      const msg = error?.response?.data?.message || '문의 전송에 실패했습니다. 잠시 후 다시 시도해주세요.';
+      const msg =
+        error?.response?.data?.message ||
+        '문의 전송에 실패했습니다. 잠시 후 다시 시도해주세요.';
       Alert.alert('오류', msg);
     } finally {
       setSubmitting(false);
@@ -137,7 +193,7 @@ const Inquiry = ({ navigation, route }) => {
             ]}
             numberOfLines={1}
           >
-            {contactUsername ? `@${contactUsername}` : '아이디 정보 없음'}
+            {contactUsername ? `@${contactUsername}` : '아이디 불러오는 중...'}
           </Text>
         </View>
 
@@ -153,6 +209,29 @@ const Inquiry = ({ navigation, route }) => {
           autoCorrect={false}
           maxLength={255}
         />
+
+        <View style={styles.imageHeaderRow}>
+          <Text style={styles.sectionLabelText}>이미지 첨부</Text>
+          <Text style={styles.imageCountText}>{images.length}/{MAX_IMAGES}</Text>
+        </View>
+        <View style={styles.imageRow}>
+          {images.map((uri, idx) => (
+            <View key={`${uri}-${idx}`} style={styles.imageThumbWrap}>
+              <Image source={{ uri }} style={styles.imageThumb} />
+              <TouchableOpacity
+                style={styles.imageRemoveBtn}
+                onPress={() => handleRemoveImage(idx)}
+              >
+                <Ionicons name="close" size={normalize(14)} color="#fff" />
+              </TouchableOpacity>
+            </View>
+          ))}
+          {images.length < MAX_IMAGES ? (
+            <TouchableOpacity style={styles.imageAddBtn} onPress={handlePickImages}>
+              <Ionicons name="camera-outline" size={normalize(24)} color={colors.textSecondary} />
+            </TouchableOpacity>
+          ) : null}
+        </View>
 
         <Text style={[styles.helperText, { marginTop: normalize(16) }]}>
           앱 버전: {appVersion || '-'} · {deviceInfo}
@@ -289,6 +368,60 @@ const createStyles = (width, normalize) => ({
     minHeight: normalize(140),
     paddingTop: normalize(12),
   },
+  imageHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginTop: normalize(16),
+    marginBottom: normalize(8),
+    paddingHorizontal: normalize(4),
+  },
+  imageCountText: {
+    fontSize: normalize(fontSizes.lg),
+    fontFamily: fonts.regular,
+    color: colors.textSecondary,
+  },
+  imageRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: normalize(8),
+  },
+  imageThumbWrap: {
+    width: normalize(70),
+    height: normalize(70),
+    borderRadius: normalize(10),
+    overflow: 'hidden',
+    marginRight: normalize(8),
+    marginBottom: normalize(8),
+    position: 'relative',
+  },
+  imageThumb: {
+    width: '100%',
+    height: '100%',
+    resizeMode: 'cover',
+  },
+  imageRemoveBtn: {
+    position: 'absolute',
+    top: normalize(2),
+    right: normalize(2),
+    width: normalize(20),
+    height: normalize(20),
+    borderRadius: normalize(10),
+    backgroundColor: 'rgba(0,0,0,0.55)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  imageAddBtn: {
+    width: normalize(70),
+    height: normalize(70),
+    borderRadius: normalize(10),
+    borderWidth: 1,
+    borderColor: colors.textLight20,
+    borderStyle: 'dashed',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.background,
+  },
   footerSection: {
     paddingTop: normalize(8),
     paddingBottom: normalize(12),
@@ -348,4 +481,4 @@ const createStyles = (width, normalize) => ({
   },
 });
 
-export default Inquiry;
+export default InAppInquiry;

@@ -40,6 +40,14 @@ export async function upsertFcmToken({
     safeToken,
     userId,
   ]);
+
+  // 동일한 토큰을 가지고 있는 다른 사용자의 legacy fcm_token 컬럼은 NULL 처리
+  // (한 디바이스에서 여러 계정으로 로그인했을 때 이전 사용자에게 푸시가 가지 않도록)
+  await pool.execute(
+    'UPDATE users SET fcm_token = NULL WHERE fcm_token = ? AND id <> ?',
+    [safeToken, userId],
+  );
+
   return true;
 }
 

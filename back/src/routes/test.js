@@ -1,0 +1,73 @@
+/**
+ * 테스트 환경 전용 라우트
+ *
+ * - GET /api/test/users : seed-admin-users.js 로 만든 user1~userN 계정 목록을
+ *   학교/학년/반/사용 여부(in_use) 와 함께 반환.
+ *
+ * 운영 배포 시에는 이 라우트를 비활성화하거나 보호 미들웨어로 감싸야 함.
+ */
+
+import express from 'express';
+import pool from '../config/database.js';
+
+const router = express.Router();
+
+// GET /api/test/users
+// query: ?prefix=user (기본값) — 해당 prefix로 시작하고 뒤에 숫자가 붙은 username 만 반환
+router.get('/users', async (req, res) => {
+  try {
+    const prefix = String(req.query?.prefix || 'user').replace(/[^a-zA-Z0-9_]/g, '');
+    if (!prefix) {
+      return res.status(400).json({ success: false, message: 'prefix가 유효하지 않습니다.' });
+    }
+
+    const likePattern = `${prefix}%`;
+    const regexPattern = `^${prefix}[0-9]+$`;
+    const offsetForSort = prefix.length + 1; // SUBSTRING(... , offset)
+
+    const [rows] = await pool.execute(
+      `SELECT
+         u.id,
+         u.username,
+         u.name,
+         u.school_id,
+         s.name AS school_name,
+         u.grade,
+         u.class_number,
+         CASE
+           WHEN u.fcm_token IS NOT NULL AND u.fcm_token <> '' THEN 1
+           ELSE 0
+         END AS in_use
+       FROM users u
+       LEFT JOIN schools s ON s.school_id = u.school_id
+       WHERE u.username LIKE ?
+         AND u.username REGEXP ?
+       ORDER BY CAST(SUBSTRING(u.username, ?) AS UNSIGNED) ASC`,
+      [likePattern, regexPattern, offsetForSort],
+    );
+
+    return res.json({
+      success: true,
+      data: {
+        users: rows.map((r) => ({
+          id: r.id,
+          username: r.username,
+          name: r.name,
+          school_id: r.school_id,
+          school_name: r.school_name,
+          grade: r.grade,
+          class_number: r.class_number,
+          in_use: !!r.in_use,
+        })),
+      },
+    });
+  } catch (error) {
+    console.error('테스트 사용자 목록 조회 오류:', error);
+    return res.status(500).json({
+      success: false,
+      message: '테스트 사용자 목록 조회 중 오류가 발생했습니다.',
+    });
+  }
+});
+
+export default router;

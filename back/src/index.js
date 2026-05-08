@@ -22,6 +22,7 @@ import adminReportsRoutes from './routes/adminReports.js';
 import adminInquiriesRoutes from './routes/adminInquiries.js';
 import adminWebRoutes from './routes/adminWeb.js';
 import inquiriesRoutes from './routes/inquiries.js';
+import testRoutes from './routes/test.js';
 import swaggerSpec from './swagger.js';
 import { initSocketServer } from './socketServer.js';
 import { initFirebase } from './config/firebase.js';
@@ -81,6 +82,7 @@ app.use('/api/dm', dmRoutes);
 app.use('/api/inquiries', inquiriesRoutes);
 app.use('/api/admin', adminReportsRoutes);
 app.use('/api/admin/inquiries', adminInquiriesRoutes);
+app.use('/api/test', testRoutes);
 
 // HTTP 서버 + Socket.io 초기화
 const httpServer = createServer(app);

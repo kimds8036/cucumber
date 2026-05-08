@@ -31,33 +31,33 @@ const Info = ({ navigation }) => {
     { key: 'opensource', title: '오픈소스 라이선스' },
   ];
 
-  const handleMenuPress = (key, title, isStatic) => {
-    if (isStatic) return;
-    if (key === 'contact') {
-      navigation.navigate('Inquiry');
+  const handleMenuPress = (menu) => {
+    if (menu.isStatic) return;
+    if (menu.key === 'contact') {
+      navigation.navigate('InAppInquiry');
       return;
     }
-    if (key === 'notice') {
+    if (menu.key === 'notice') {
       navigation.navigate('Announcement');
       return;
     }
-    if (key === 'terms') {
+    if (menu.key === 'terms') {
       navigation.navigate('ServiceTermsOfService');
       return;
     }
-    if (key === 'privacy') {
+    if (menu.key === 'privacy') {
       navigation.navigate('PrivacyPolicy');
       return;
     }
-    if (key === 'youth') {
+    if (menu.key === 'youth') {
       navigation.navigate('YouthProtectionPolicy');
       return;
     }
-    if (key === 'opensource') {
+    if (menu.key === 'opensource') {
       navigation.navigate('OpenSourceLicenses');
       return;
     }
-    Alert.alert('안내', `${title} 페이지는 준비 중입니다.`);
+    Alert.alert('안내', `${menu.title} 페이지는 준비 중입니다.`);
   };
 
   return (
@@ -74,7 +74,7 @@ const Info = ({ navigation }) => {
             key={menu.key}
             style={styles.notificationItem}
             activeOpacity={menu.isStatic ? 1 : 0.7}
-            onPress={() => handleMenuPress(menu.key, menu.title, menu.isStatic)}
+            onPress={() => handleMenuPress(menu)}
           >
             <View style={styles.notificationContent}>
               <Text style={styles.notificationTitle}>{menu.title}</Text>

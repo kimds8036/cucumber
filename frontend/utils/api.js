@@ -5,6 +5,13 @@ import Constants from 'expo-constants';
 
 const AUTH_TOKEN_KEY = '@auth_token';
 
+/**
+ * 자동로그인 OFF 상태에서 사용하는 인메모리 토큰.
+ * 앱이 살아있는 동안만 유효하며, 종료 시 자연스럽게 사라져
+ * 다음 부팅에서는 다시 로그인 화면이 나오도록 한다.
+ */
+let inMemoryAuthToken = null;
+
 /** 터널/개발 기본값 — 릴리스에서도 env 미설정 시 폴백 (--no-dev 로컬 검증용) */
 const DEFAULT_API_BASE = 'https://nonvenous-patriotically-bud.ngrok-free.dev';
 
@@ -46,10 +53,12 @@ export const api = axios.create({
 });
 
 // 요청 시 저장된 토큰을 Authorization 헤더에 붙임
+// (영속 토큰 → 인메모리 토큰 순서로 폴백)
 api.interceptors.request.use(
   async (config) => {
     try {
-      const token = await AsyncStorage.getItem(AUTH_TOKEN_KEY);
+      const stored = await AsyncStorage.getItem(AUTH_TOKEN_KEY);
+      const token = stored || inMemoryAuthToken;
       if (token) {
         config.headers.Authorization = `Bearer ${token}`;
       }
@@ -61,10 +70,21 @@ api.interceptors.request.use(
   (err) => Promise.reject(err),
 );
 
-/** 로그인 성공 시 토큰 저장 */
-export async function setAuthToken(token) {
-  if (token) {
-    await AsyncStorage.setItem(AUTH_TOKEN_KEY, token);
+/**
+ * 로그인 성공 시 토큰 저장.
+ * @param {string|null} token
+ * @param {{ persist?: boolean }} [options]
+ *   - persist=true (기본): AsyncStorage 영속 저장 → 다음 부팅 자동로그인
+ *   - persist=false: 인메모리만 저장 + 영속 토큰 삭제 → 이번 세션만 유지
+ */
+export async function setAuthToken(token, { persist = true } = {}) {
+  inMemoryAuthToken = token || null;
+  if (persist) {
+    if (token) {
+      await AsyncStorage.setItem(AUTH_TOKEN_KEY, token);
+    } else {
+      await AsyncStorage.removeItem(AUTH_TOKEN_KEY);
+    }
   } else {
     await AsyncStorage.removeItem(AUTH_TOKEN_KEY);
   }
@@ -72,6 +92,7 @@ export async function setAuthToken(token) {
 
 /** 로그아웃 시 토큰 제거 */
 export async function clearAuthToken() {
+  inMemoryAuthToken = null;
   await AsyncStorage.removeItem(AUTH_TOKEN_KEY);
 }
 
