@@ -1,8 +1,10 @@
 import express from 'express';
+import { body } from 'express-validator';
 import multer from 'multer';
 import { CloudinaryStorage } from 'multer-storage-cloudinary';
 import pool from '../config/database.js';
 import { authenticate, optionalAuthenticate } from '../middleware/auth.js';
+import { validate } from '../middleware/validate.js';
 import { cloudinary } from '../config/cloudinary.js';
 import { getNowForDB } from '../utils/dateUtils.js';
 
@@ -29,6 +31,22 @@ const CONTACT_EMAIL_MAX = 255;
 const APP_VERSION_MAX = 30;
 const DEVICE_INFO_MAX = 255;
 const MAX_IMAGES = 3;
+
+// 1차 게이트 — 본문 길이/이메일 형식 검증.
+//   * multer 가 multipart 파싱 후 req.body 에 텍스트 필드를 채우므로
+//     uploadInquiry.array() 다음에 validate() 가 동작하도록 라우트 미들웨어를 배치한다.
+const inquiryCreateValidators = [
+  body('content').isString().withMessage('내용을 입력해주세요.')
+    .bail().trim().isLength({ min: 1, max: CONTENT_MAX })
+    .withMessage(`내용은 1-${CONTENT_MAX}자 이내여야 합니다.`),
+  body('contact_email').isString().withMessage('답변 수신용 이메일을 입력해주세요.')
+    .bail().trim().isEmail().withMessage('올바른 이메일 형식이 아닙니다.')
+    .isLength({ max: CONTACT_EMAIL_MAX }),
+  body('contact_username').isString().withMessage('아이디를 입력해주세요.')
+    .bail().trim().isLength({ min: 1, max: CONTACT_USERNAME_MAX }),
+  body('app_version').optional({ values: 'falsy' }).isString().trim().isLength({ max: APP_VERSION_MAX }),
+  body('device_info').optional({ values: 'falsy' }).isString().trim().isLength({ max: DEVICE_INFO_MAX }),
+];
 
 function trimOrNull(v, max) {
   if (v == null) return null;
@@ -88,7 +106,7 @@ function maskInquiryRow(row, { includeAdminFields = false } = {}) {
  * - 비로그인/로그인 모두 가능 (optionalAuthenticate)
  * - 로그인 사용자만 첨부 이미지 최대 3장
  */
-router.post('/', optionalAuthenticate, uploadInquiry.array('images', MAX_IMAGES), async (req, res) => {
+router.post('/', optionalAuthenticate, uploadInquiry.array('images', MAX_IMAGES), validate(inquiryCreateValidators), async (req, res) => {
   try {
     const userId = req.user?.userId ? Number(req.user.userId) : null;
 

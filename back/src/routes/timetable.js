@@ -1,8 +1,40 @@
 import express from 'express';
+import { body } from 'express-validator';
 import pool from '../config/database.js';
 import { authenticate } from '../middleware/auth.js';
+import { validate } from '../middleware/validate.js';
 
 const router = express.Router();
+
+// PUT /api/timetable — 사용자 override 시간표를 통째로 받는다.
+//   - timetable: { "월-1": "수학", ... } 형태의 평면 객체
+//   - 키 개수와 값 길이 한도만 1차 게이트로 강제. 키 형식 검사는 별도 PR.
+const TIMETABLE_MAX_KEYS = 200;
+const TIMETABLE_VALUE_MAX = 50;
+const updateTimetableValidators = [
+  body('timetable').exists({ checkNull: true }).withMessage('유효한 시간표 데이터가 필요합니다.')
+    .bail()
+    .custom((v) => {
+      if (!v || typeof v !== 'object' || Array.isArray(v)) {
+        throw new Error('timetable 은 객체여야 합니다.');
+      }
+      const keys = Object.keys(v);
+      if (keys.length > TIMETABLE_MAX_KEYS) {
+        throw new Error(`timetable 항목이 너무 많습니다. (≤ ${TIMETABLE_MAX_KEYS})`);
+      }
+      for (const k of keys) {
+        const val = v[k];
+        if (val == null) continue;
+        if (typeof val !== 'string') {
+          throw new Error('timetable 값은 문자열이어야 합니다.');
+        }
+        if (val.length > TIMETABLE_VALUE_MAX) {
+          throw new Error(`timetable 값은 ${TIMETABLE_VALUE_MAX}자 이내여야 합니다.`);
+        }
+      }
+      return true;
+    }),
+];
 const NEIS_MIDDLE_URL = 'https://open.neis.go.kr/hub/misTimetable';
 const NEIS_HIGH_URL = 'https://open.neis.go.kr/hub/hisTimetable';
 const NEIS_API_KEY = process.env.NEIS_API_KEY || process.env.NEIS_KEY || '';
@@ -163,7 +195,7 @@ router.get('/', authenticate, async (req, res) => {
   }
 });
 
-router.put('/', authenticate, async (req, res) => {
+router.put('/', authenticate, validate(updateTimetableValidators), async (req, res) => {
   try {
     const userId = req.user.userId;
     const { timetable } = req.body;

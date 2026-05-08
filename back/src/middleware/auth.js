@@ -34,12 +34,21 @@ export const authenticate = async (req, res, next) => {
         message: '인증 토큰이 필요합니다.' 
       });
     }
-    const decoded = verifyToken(token);
-
-    if (!decoded) {
-      return res.status(401).json({ 
-        success: false, 
-        message: '유효하지 않은 토큰입니다.' 
+    let decoded;
+    try {
+      decoded = verifyToken(token);
+    } catch (err) {
+      if (err?.code === 'TOKEN_EXPIRED') {
+        return res.status(401).json({
+          success: false,
+          message: '토큰이 만료되었습니다.',
+          code: 'TOKEN_EXPIRED',
+        });
+      }
+      return res.status(401).json({
+        success: false,
+        message: '유효하지 않은 토큰입니다.',
+        code: 'INVALID_TOKEN',
       });
     }
 
@@ -91,7 +100,7 @@ export const authenticate = async (req, res, next) => {
   }
 };
 
-// 선택적 인증: 토큰이 있으면 req.user 설정, 없으면 req.user = null
+// 선택적 인증: 토큰이 있으면 req.user 설정, 없거나 만료/위조이면 req.user = null
 export const optionalAuthenticate = (req, res, next) => {
   try {
     const token = extractToken(req);
@@ -99,7 +108,13 @@ export const optionalAuthenticate = (req, res, next) => {
       req.user = null;
       return next();
     }
-    const decoded = verifyToken(token);
+    // verifyToken 은 만료/위조 시 throw 하므로 여기서 흡수하고 익명 요청으로 통과시킨다.
+    let decoded = null;
+    try {
+      decoded = verifyToken(token);
+    } catch {
+      decoded = null;
+    }
     req.user = decoded || null;
     next();
   } catch (error) {

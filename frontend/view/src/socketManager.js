@@ -1,29 +1,13 @@
 import { io } from 'socket.io-client';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import { api } from '../../utils/api';
-
-const AUTH_TOKEN_KEY = '@auth_token';
+import { api, getAuthToken } from '../../utils/api';
 
 // 싱글톤 소켓 인스턴스 유지
 let socket = null;
 let currentRoomId = null;
+let currentToken = null;
 
-export const connectSocket = async (roomId, token) => {
-  if (socket && socket.connected) {
-    // 이미 연결된 상태면 room만 갱신(필요 시)
-    if (roomId && currentRoomId !== roomId) {
-      if (currentRoomId) {
-        socket.emit('leave_room', { roomId: currentRoomId });
-      }
-      currentRoomId = roomId;
-      socket.emit('join_room', { roomId });
-    }
-    return socket;
-  }
-
-  const resolvedToken = token ?? (await AsyncStorage.getItem(AUTH_TOKEN_KEY));
-
-  socket = io(api.defaults.baseURL, {
+const createSocket = (resolvedToken, roomId) => {
+  const next = io(api.defaults.baseURL, {
     auth: { token: resolvedToken },
     transports: ['websocket'],
     reconnection: true,
@@ -34,12 +18,71 @@ export const connectSocket = async (roomId, token) => {
     timeout: 10000,
   });
 
+  currentToken = resolvedToken ?? null;
   currentRoomId = roomId ?? null;
 
-  socket.on('connect', () => {
-    if (roomId) socket.emit('join_room', { roomId });
+  next.on('connect', () => {
+    if (currentRoomId) next.emit('join_room', { roomId: currentRoomId });
   });
 
+  return next;
+};
+
+export const connectSocket = async (roomId, token) => {
+  const resolvedToken = token ?? (await getAuthToken());
+
+  // 토큰이 바뀌었거나 끊긴 소켓이 남아 있으면 깨끗이 정리하고 새로 만든다.
+  // (옛 JWT를 들고 있던 좀비 소켓이 INVALID_TOKEN 으로 무한 재시도하는 상황 방지)
+  if (socket && currentToken && currentToken !== resolvedToken) {
+    try {
+      socket.removeAllListeners?.();
+      socket.disconnect();
+    } catch {
+      // ignore
+    }
+    socket = null;
+  }
+
+  if (socket && socket.connected) {
+    if (roomId && currentRoomId !== roomId) {
+      if (currentRoomId) {
+        socket.emit('leave_room', { roomId: currentRoomId });
+      }
+      currentRoomId = roomId;
+      socket.emit('join_room', { roomId });
+    }
+    return socket;
+  }
+
+  if (!socket) {
+    socket = createSocket(resolvedToken, roomId);
+  } else {
+    // 인스턴스는 살아있고 토큰만 동일한데 끊겨 있는 케이스 → 재연결만 트리거
+    if (roomId) currentRoomId = roomId;
+    if (!socket.connected) socket.connect();
+  }
+
+  return socket;
+};
+
+/**
+ * 새 토큰으로 소켓 인증을 갱신한다.
+ * - 로그인 직후/토큰 회전 시 호출.
+ * - 기존 인스턴스가 있으면 disconnect 후 새 토큰으로 connect, 없으면 새로 생성.
+ */
+export const setAuthTokenAndReconnect = async (newToken) => {
+  if (!newToken) return null;
+  if (socket) {
+    try {
+      socket.auth = { token: newToken };
+      socket.removeAllListeners?.();
+      socket.disconnect();
+    } catch {
+      // ignore
+    }
+    socket = null;
+  }
+  socket = createSocket(newToken, currentRoomId);
   return socket;
 };
 

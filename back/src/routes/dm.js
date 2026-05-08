@@ -2,8 +2,10 @@
  * DM (친구 간 다이렉트 메시지) — dm_rooms / dm_messages
  */
 import express from 'express';
+import { body, param } from 'express-validator';
 import pool from '../config/database.js';
 import { authenticate } from '../middleware/auth.js';
+import { validate } from '../middleware/validate.js';
 import { getNowForDB } from '../utils/dateUtils.js';
 import { upload } from '../config/cloudinary.js';
 import { emitNewMessage, emitReadReceipt, isUserInRoom } from '../socketServer.js';
@@ -11,6 +13,28 @@ import { enqueueNotification } from '../utils/notificationWorker.js';
 import { isBlockedBy } from '../utils/userBlock.js';
 
 const router = express.Router();
+
+// 검증 체이너 — 권한/존재 확인은 핸들러가 본다.
+const DM_MESSAGE_MAX = 2000;
+const dmCreateRoomValidators = [
+  body('otherUserId').exists({ checkNull: true }).withMessage('상대방 사용자 ID를 입력해주세요.')
+    .bail().toInt().isInt({ min: 1 }).withMessage('유효하지 않은 사용자 ID입니다.'),
+];
+const dmSendMessageValidators = [
+  param('roomId').toInt().isInt({ min: 1 }).withMessage('유효하지 않은 대화방 ID 입니다.'),
+  body('content').optional({ values: 'falsy' }).isString().trim()
+    .isLength({ max: DM_MESSAGE_MAX })
+    .withMessage(`메시지는 ${DM_MESSAGE_MAX}자 이내여야 합니다.`),
+  body('parent_message_id').optional({ values: 'falsy' }).toInt().isInt({ min: 1 })
+    .withMessage('답장 대상 메시지 ID가 올바르지 않습니다.'),
+  body('clientId').optional({ values: 'falsy' }).isString().isLength({ max: 100 }),
+];
+const dmRoomIdParamValidator = [
+  param('roomId').toInt().isInt({ min: 1 }).withMessage('유효하지 않은 대화방 ID 입니다.'),
+];
+const dmMessageIdParamValidator = [
+  param('messageId').toInt().isInt({ min: 1 }).withMessage('유효하지 않은 메시지 ID 입니다.'),
+];
 let ensureDmSoftDeleteColumnsPromise = null;
 
 async function addColumnIfMissing(tableName, columnName, definitionSql) {
@@ -168,7 +192,7 @@ router.get('/rooms', authenticate, async (req, res) => {
 // ─────────────────────────────────────────────────────
 // POST /api/dm/rooms — 방 생성 또는 기존 방 반환
 // ─────────────────────────────────────────────────────
-router.post('/rooms', authenticate, async (req, res) => {
+router.post('/rooms', authenticate, validate(dmCreateRoomValidators), async (req, res) => {
   try {
     const userId = req.user.userId;
     const { otherUserId } = req.body;
@@ -427,6 +451,7 @@ router.post(
   '/rooms/:roomId/messages',
   authenticate,
   upload.array('images', 5),
+  validate(dmSendMessageValidators),
   async (req, res) => {
     try {
       await ensureDmSoftDeleteColumns();
@@ -605,7 +630,7 @@ router.post(
 // ─────────────────────────────────────────────────────
 // PUT /api/dm/rooms/:roomId/read — 읽음 처리
 // ─────────────────────────────────────────────────────
-router.put('/rooms/:roomId/read', authenticate, async (req, res) => {
+router.put('/rooms/:roomId/read', authenticate, validate(dmRoomIdParamValidator), async (req, res) => {
   try {
     const userId = req.user.userId;
     const { roomId } = req.params;
@@ -653,7 +678,7 @@ router.put('/rooms/:roomId/read', authenticate, async (req, res) => {
 // ─────────────────────────────────────────────────────
 // DELETE /api/dm/messages/:messageId — 본인 메시지 삭제
 // ─────────────────────────────────────────────────────
-router.delete('/messages/:messageId', authenticate, async (req, res) => {
+router.delete('/messages/:messageId', authenticate, validate(dmMessageIdParamValidator), async (req, res) => {
   try {
     await ensureDmSoftDeleteColumns();
     const userId = req.user.userId;
@@ -686,7 +711,7 @@ router.delete('/messages/:messageId', authenticate, async (req, res) => {
 // ─────────────────────────────────────────────────────
 // DELETE /api/dm/rooms/:roomId — 내 목록에서 DM 방 숨김(소프트 삭제)
 // ─────────────────────────────────────────────────────
-router.delete('/rooms/:roomId', authenticate, async (req, res) => {
+router.delete('/rooms/:roomId', authenticate, validate(dmRoomIdParamValidator), async (req, res) => {
   try {
     await ensureDmSoftDeleteColumns();
     const userId = req.user.userId;

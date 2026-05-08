@@ -1,11 +1,25 @@
 import express from 'express';
+import { body, param } from 'express-validator';
 import pool from '../config/database.js';
 import { authenticate, optionalAuthenticate } from '../middleware/auth.js';
+import { validate } from '../middleware/validate.js';
 import { enqueueNotification } from '../utils/notificationWorker.js';
 import { getKstTodayRangeUtcForSql, getNowForDB } from '../utils/dateUtils.js';
 import { cloudinary, upload } from '../config/cloudinary.js';
 
 const router = express.Router();
+
+// 검증 체이너 — content 가 비어있어도 첨부가 있으면 허용하는 비즈니스 룰은
+// 핸들러 안에서 그대로 본다. 여기서는 타입/길이/숫자 검증만 깐다.
+const COMMENT_CONTENT_MAX = 2000;
+const commentCreateValidators = [
+  param('postId').toInt().isInt({ min: 1 }).withMessage('게시글 ID 가 올바르지 않습니다.'),
+  body('content').optional({ values: 'falsy' }).isString().trim()
+    .isLength({ max: COMMENT_CONTENT_MAX })
+    .withMessage(`댓글은 ${COMMENT_CONTENT_MAX}자 이내여야 합니다.`),
+  body('parentCommentId').optional({ values: 'falsy' }).toInt().isInt({ min: 1 })
+    .withMessage('부모 댓글 ID 가 올바르지 않습니다.'),
+];
 
 // 댓글 삭제 (본인 댓글만, 소프트 삭제)
 router.delete('/comments/:commentId', authenticate, async (req, res) => {
@@ -53,7 +67,7 @@ router.delete('/comments/:commentId', authenticate, async (req, res) => {
 });
 
 // 댓글 작성 (대댓글 포함)
-router.post('/:postId/comments', authenticate, upload.array('images', 5), async (req, res) => {
+router.post('/:postId/comments', authenticate, upload.array('images', 5), validate(commentCreateValidators), async (req, res) => {
   try {
     const userId = req.user.userId;
     const { postId } = req.params;

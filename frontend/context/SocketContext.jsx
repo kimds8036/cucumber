@@ -7,12 +7,10 @@ import React, {
   useCallback,
 } from 'react';
 import { Alert, AppState } from 'react-native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import { api, clearUserSessionStorage, setAuthToken } from '../utils/api';
+import { api, clearUserSessionStorage, getAuthToken, setAuthToken } from '../utils/api';
 import { useAuth } from './AuthContext';
 import * as socketManager from '../view/src/socketManager';
 
-const AUTH_TOKEN_KEY = '@auth_token';
 const SOCKET_AUTH_ERROR_CODE = 'AUTH_FAILED';
 const AUTH_ERROR_KEYWORDS = ['토큰', '인증', 'invalid', 'Unauthorized', '만료'];
 const SOCKET_HEALTHCHECK_MS = 15000;
@@ -20,7 +18,7 @@ const SOCKET_HEALTHCHECK_MS = 15000;
 const SocketContext = createContext(null);
 
 export function SocketProvider({ children }) {
-  const { logout } = useAuth();
+  const { isLoggedIn, logout } = useAuth();
   const [connected, setConnected] = useState(false);
   const [socket, setSocket] = useState(null);
   const appStateRef = useRef(AppState.currentState);
@@ -167,12 +165,14 @@ export function SocketProvider({ children }) {
     }, delay);
   }, [clearReconnectTimer, logSocket]);
 
-  const connect = useCallback(async () => {
-    try {
-      const token = await AsyncStorage.getItem(AUTH_TOKEN_KEY);
-      if (!token || cancelledRef.current) return;
-
-      const s = await socketManager.connectSocket?.(null, token);
+  /**
+   * socketManager 가 들고 있는 인스턴스에 SocketContext 전용 lifecycle 을 붙인다.
+   * - setAuthTokenAndReconnect 가 removeAllListeners 로 기존 인스턴스를 비운 뒤
+   *   새 인스턴스만 남기므로, 반드시 여기서 다시 connect/disconnect/error 를 등록하고
+   *   React state(socket) 를 최신 참조로 맞춰 Notification/Friend 리스너 useEffect 가 재실행되게 한다.
+   */
+  const attachSocketLifecycle = useCallback(
+    (s) => {
       if (!s || cancelledRef.current) return;
 
       cleanupContextListeners(s);
@@ -220,13 +220,34 @@ export function SocketProvider({ children }) {
 
       setSocket(s);
       if (!s.connected) s.connect();
+    },
+    [
+      cleanupContextListeners,
+      clearReconnectTimer,
+      isAuthConnectError,
+      logSocket,
+      recoverSocketAuth,
+      scheduleReconnect,
+    ],
+  );
+
+  const connect = useCallback(async () => {
+    try {
+      // 자동로그인 OFF(인메모리만 보관) 사용자도 소켓이 붙도록 인메모리 폴백까지 본다.
+      const token = await getAuthToken();
+      if (!token || cancelledRef.current) return;
+
+      const s = await socketManager.connectSocket?.(null, token);
+      if (!s || cancelledRef.current) return;
+
+      attachSocketLifecycle(s);
     } catch (e) {
       console.error('[SocketContext][connect_failed]', {
         at: new Date().toISOString(),
         message: e?.message,
       });
     }
-  }, [cleanupContextListeners, clearReconnectTimer, isAuthConnectError, logSocket, recoverSocketAuth, scheduleReconnect]);
+  }, [attachSocketLifecycle]);
 
   useEffect(() => {
     cancelledRef.current = false;
@@ -271,6 +292,41 @@ export function SocketProvider({ children }) {
       setConnected(false);
     };
   }, [clearReconnectTimer, connect, cleanupContextListeners, logSocket, recoverSocketAuth, scheduleReconnect]);
+
+  // 로그인 상태가 바뀌면 소켓을 새 토큰으로 갈아끼우거나, 로그아웃 시 안전하게 끊는다.
+  // - 로그인: 새 JWT 로 setAuthTokenAndReconnect → 옛 토큰으로 INVALID_TOKEN 무한 재시도 방지
+  // - 로그아웃: 소켓을 강제 종료해 다음 로그인 때 깔끔하게 새로 붙도록
+  useEffect(() => {
+    if (cancelledRef.current) return;
+
+    if (isLoggedIn) {
+      (async () => {
+        const token = await getAuthToken();
+        if (!token || cancelledRef.current) return;
+        try {
+          await socketManager.setAuthTokenAndReconnect?.(token);
+          const s = socketManager.getSocket?.();
+          if (s && !cancelledRef.current) {
+            attachSocketLifecycle(s);
+          }
+        } catch (e) {
+          if (__DEV__) {
+            console.warn('[SocketContext] setAuthTokenAndReconnect 실패:', e?.message);
+          }
+        }
+      })();
+      return;
+    }
+
+    // 로그아웃 상태: 기존 소켓 정리
+    try {
+      socketManager.disconnectSocket?.({ force: true, reason: 'auth_logged_out' });
+    } catch {
+      // ignore
+    }
+    setConnected(false);
+    setSocket(null);
+  }, [isLoggedIn, attachSocketLifecycle]);
 
   const value = {
     socket,
