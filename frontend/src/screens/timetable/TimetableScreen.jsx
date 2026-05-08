@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
   KeyboardAvoidingView,
@@ -140,6 +140,21 @@ export default function TimetableScreen({ navigation, route }) {
   const [timetableCacheKey, setTimetableCacheKey] = useState(
     route?.params?.timetableCacheKey || '@mypage_timetable_cache_v1',
   );
+  const resolveTimetableCacheKey = useCallback(async () => {
+    if (route?.params?.timetableCacheKey) {
+      return route.params.timetableCacheKey;
+    }
+    try {
+      const res = await api.get('/api/auth/me');
+      const me = res.data?.data;
+      const userScope =
+        me?.id != null ? String(me.id) : me?.username || me?.email || null;
+      if (userScope) return `@mypage_timetable_cache_v1:${userScope}`;
+    } catch (e) {
+      console.warn('[TimetableScreen] 시간표 캐시 키 계산 실패:', e?.message || e);
+    }
+    return '@mypage_timetable_cache_v1';
+  }, [route?.params?.timetableCacheKey]);
   const termTitle = useMemo(() => {
     const now = new Date();
     const year = now.getFullYear();
@@ -170,8 +185,9 @@ export default function TimetableScreen({ navigation, route }) {
     if (!hasEntries) return;
 
     try {
+      const keyToUse = await resolveTimetableCacheKey();
       await AsyncStorage.setItem(
-        timetableCacheKey,
+        keyToUse,
         JSON.stringify({
           ts: Date.now(),
           timetable: nextTimetable,

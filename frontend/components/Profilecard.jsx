@@ -16,7 +16,12 @@ import { getProfileHexByColorId } from '../utils/profileColor';
 
 const PROFILE_COUNTS_CACHE_TTL_MS = 10 * 60 * 1000;
 
-const ProfileCard = ({ userInfo, navigation, timetableSection }) => {
+const ProfileCard = ({
+  userInfo,
+  navigation,
+  timetableSection,
+  onNavigateToTimetableChoice,
+}) => {
   const { width } = useWindowDimensions();
   const normalize = useMemo(() => getNormalize(width), [width]);
   const styles = useMemo(
@@ -190,7 +195,10 @@ const ProfileCard = ({ userInfo, navigation, timetableSection }) => {
         <View style={styles.timetableActionRow}>
           <TouchableOpacity
             style={styles.timetableActionCard}
-            onPress={() => navigation.navigate('TimetabelChoice')}
+            onPress={
+              onNavigateToTimetableChoice ||
+              (() => navigation.navigate('TimetabelChoice'))
+            }
             activeOpacity={0.7}
           >
             <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: normalize(4) }}>

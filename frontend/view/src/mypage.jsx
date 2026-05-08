@@ -299,6 +299,7 @@ const MyPage = ({ navigation }) => {
           <ProfileCard
             userInfo={userInfo}
             navigation={navigation}
+            onNavigateToTimetableChoice={handleNavigateToTimetableEdit}
             timetableSection={
               timetableLoading ? (
                 <View style={styles.ttSkeletonCard}>
