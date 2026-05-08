@@ -71,10 +71,10 @@
 
 ---
 
-## 🛠 Phase 2 — 입력 검증 (express-validator) — 진행 중
+## ✅ Phase 2 Step 1 — 입력 검증 (express-validator) — 완료
 
-브랜치: `feat/back-validation`
-PR 대상: `develop`
+브랜치: `feat/back-validation` → `develop` 머지됨 (PR #4, 단 base 가 main 으로 잘못 잡혀 main 에 먼저 들어간 뒤 main → develop fast-forward 동기화)
+관련 프론트 작업: `feat/front-422-handler` → `develop` 머지됨 (PR #5, 커밋 `cc7c4e2`)
 
 ### 설계 원칙
 
@@ -100,50 +100,118 @@ PR 대상: `develop`
   - [x] `POST /api/posts/:postId/comments` → postId 정수 / content(≤2000) / parentCommentId 정수
 - [x] deps: `express-validator` 설치
 
-### Step 2 (다음 PR 후보)
+### Step 2 (예정 — 별도 PR)
 
-- [ ] `back/src/routes/messages.js` — DM/그룹 메시지 본문 길이
-- [ ] `back/src/routes/friends.js` — 친구 요청/응답 페이로드
-- [ ] `back/src/routes/timer.js` — start/stop payload, day_key 형식
-- [ ] `back/src/routes/timetable.js` — 시간표 슬롯 인덱스 범위
-- [ ] `back/src/routes/dm.js` — DM 룸 생성/조회 파라미터
-- [ ] `back/src/routes/adminInquiries.js`, `adminReports.js` — admin 액션 페이로드
-- [ ] `back/src/routes/users.js` — 검색/프로필 변경 파라미터
-- [ ] `back/src/routes/search.js`, `schools.js` — 쿼리 파라미터 범위/길이
+> Step 2 는 별도 PR(`feat/back-validation-2`) 로 분리. 아래 "배포 후 할 작업" 섹션의 1번 항목과 동일.
 
-> Step 2 는 별도 PR (`feat/back-validation-2`) 로 분리 — 한 PR 에 너무 많은 라우트가 묶이면 리뷰가 어려움.
+### 프론트 422 인터셉터 (`feat/front-422-handler`, 커밋 `cc7c4e2`)
 
-### 알려진 영향 (프론트 측 확인 필요)
+`frontend/utils/api.js` 에 다음을 추가해 400/422 를 동일 UX 로 처리:
 
-| 라우트 | 새 응답 | 기존 응답 | 프론트 처리 |
-|---|---|---|---|
-| `/api/auth/login` | 422 + `code: 'VALIDATION_ERROR'` | 400 | username/password 비어있을 때 토스트 메시지 출처 변경. 기존 401(자격 불일치)은 유지. |
-| `/api/auth/signup` | 422 + first error msg | 400 | 동일 — 메시지는 그대로 토스트하면 됨 |
-| `/api/posts (POST)` | 422 boardType 잘못됨 | 400 | 정상 클라이언트는 영향 없음 |
+- `API_INPUT_ERROR_HTTP_STATUSES = [400, 422]`
+- 응답 인터셉터: 400/422 일 때 `error.response.data.message` 를 `error.userFacingMessage` 로 복사
+- 헬퍼: `isApiInputValidationHttpError(error)`, `getApiUserFacingMessage(error, fallback)`
+- 기존 화면은 `error.response?.data?.message` 를 쓰고 있어 회귀 없음. 신규 코드는 헬퍼 사용 권장.
 
-422 가 발생하면 글로벌 axios 인터셉터가 `error.response.data.message` 를 그대로 토스트할지 확인 필요. (현재 `frontend/utils/api.js` 가 이 포맷을 다룬다고 가정하지만, 다음 PR 머지 후 한번 검증.)
+### 영향이 있던 라우트
+
+| 라우트 | 응답 변화 | 비고 |
+|---|---|---|
+| `/api/auth/login` | 빈 입력 시 400 → 422 + `code: 'VALIDATION_ERROR'` | 401(자격 불일치)은 유지 |
+| `/api/auth/signup` | 422 + 첫 에러 메시지 | 메시지를 그대로 토스트 가능 |
+| `/api/posts (POST)` | boardType 잘못 시 422 | 정상 클라이언트 영향 없음 |
 
 ---
 
-## 🗓 Phase 3 — 추가 보강 (계획)
+## 🗓 Phase 3 — 추가 보강 (장기 계획, 배포 후 작업과 별개)
 
 - [ ] **CSP 점진 적용** — 현재 `helmet` CSP off. admin/Swagger 인라인 정리 후 좁히기
 - [ ] **rate-limit-redis + ioredis 어댑터** — 멀티 인스턴스 확장 시점에 적용
 - [ ] **로그인 실패 카운트 → 계정 잠금** — 같은 username 으로 10분에 5회 실패 시 임시 잠금
 - [ ] **`/api/admin/*` 별도 rate limit** — 관리자 라우트는 더 엄격하게 (분당 30회 등)
-- [ ] **express-validator Step 2** (위 라우트들 전부)
 - [ ] **공통 SQL 인젝션 회귀 방지 lint 룰** — `pool.query(\`...${...}\`)` 패턴 차단
 
 ---
 
-## 🗓 Phase 4 — Refresh Token (별도 작업)
+## 🚀 배포 후 할 작업 (Post-Deploy TODO)
 
-- [ ] `feat/back-refresh-token`: access(15m) + refresh(30d) + DB 저장 + rotate
-- [ ] `feat/front-token-interceptor`: axios 인터셉터에서 401 + `TOKEN_EXPIRED` 받으면 자동 refresh
-- [ ] 동시 요청 race 처리(refresh in-flight queue)
-- [ ] 강제 로그아웃 / 디바이스별 revoke API
+Railway 배포 + 학생 베타 테스트 진행 중 / 종료 후 처리할 작업 목록.
+완료할 때 체크박스를 채우고 그 아래에 PR 링크/날짜를 남긴다.
 
-> 백엔드·프론트 동시 작업이라 별도 사이클로 분리. Phase 2 완료 후 착수 권장.
+### 1. Validation Step 2 — 나머지 라우트 입력 검증
+
+대상 라우트 (`feat/back-validation-2` 브랜치):
+
+- [ ] `back/src/routes/messages.js` — DM/그룹 메시지 본문 길이, room id 정수, 첨부 카운트
+- [ ] `back/src/routes/friends.js` — 친구 요청/수락/거절 페이로드
+- [ ] `back/src/routes/timer.js` — start/stop payload, `day_key` 형식, 과목 길이
+- [ ] `back/src/routes/timetable.js` — 시간표 슬롯 인덱스 범위, day 상수
+- [ ] `back/src/routes/dm.js` — DM 룸 생성/조회 파라미터
+- [ ] `back/src/routes/users.js` — 검색 q, 프로필 변경 페이로드
+- [ ] `back/src/routes/search.js` — q 길이, 페이징 한도
+- [ ] `back/src/routes/schools.js` — school id 길이/형식
+- [ ] `back/src/routes/adminInquiries.js`, `adminReports.js` — admin 액션 페이로드
+
+> 라우트가 많아 `feat/back-validation-2a` (사용자: messages/friends/timer/timetable/dm) + `feat/back-validation-2b` (admin/search/schools/users) 로 분할 PR 권장.
+
+### 2. Refresh Token 도입 (백 + 프론트 동시 작업)
+
+현재는 access token 단일 (`JWT_EXPIRES_IN=7d`) 운영. 학생 테스트가 안정화된 다음 단축 + refresh 도입.
+
+- [ ] **백엔드** (`feat/back-refresh-token`)
+  - `refresh_tokens` 테이블 (user_id, token_hash, device_id, expires_at, revoked_at)
+  - `POST /api/auth/refresh` 엔드포인트 — refresh 검증 후 access 재발급 + rotate
+  - `POST /api/auth/logout` 에서 해당 디바이스 refresh revoke
+  - 강제 로그아웃 / 디바이스별 revoke admin API
+  - access TTL 을 `15m` 로 단축, refresh TTL `30d`
+- [ ] **프론트엔드** (`feat/front-token-interceptor`)
+  - axios 응답 인터셉터에서 `401 + code: 'TOKEN_EXPIRED'` 시 자동 refresh
+  - 동시 요청 race 처리 (refresh in-flight queue)
+  - refresh 실패 시 `clearAuthToken()` + 로그인 화면으로 reset
+- [ ] **운영 변수**
+  - `JWT_REFRESH_SECRET` — JWT_SECRET 과 다른 별도 시크릿
+  - `JWT_REFRESH_EXPIRES_IN=30d`
+  - `JWT_EXPIRES_IN` 을 운영에서 `15m` 로 변경
+
+### 3. main / production 보호 규칙 status check 점검
+
+PR #4, #5 가 `protect-release` 워크플로우에도 불구하고 main 에 머지된 정황이 있어 한 번 더 점검 필요.
+
+- [ ] GitHub Settings → Branches → `main` rule
+  - "Require status checks to pass before merging" ON
+  - 검색창에 `protect-release`, `check-scope` 추가
+- [ ] 동일하게 `production` rule 점검
+- [ ] (자동화) 임시 브랜치로 base=main PR 한 번 만들어서 머지 차단되는지 검증
+
+### 4. bcrypt saltRounds 10 → 12 상향
+
+현재 `back/src/utils/auth.js` 의 `hashPassword` 가 `bcrypt.hash(pw, 10)` 으로 호출됨 (확인 필요).
+
+- [ ] `back/src/utils/auth.js` — saltRounds 12 로 상향
+- [ ] 기존 사용자 비밀번호는 그대로 (bcrypt 는 verify 시 해시 안에 저장된 cost 를 사용 → 호환성 OK)
+- [ ] 다음 비밀번호 변경/회원가입 시점부터 12 cost 로 저장됨
+- [ ] 로그인 응답 시간 지연 측정 (12 cost 는 ~250ms, 운영 CPU 부하 확인)
+
+> 상향 시점: Refresh token 도입과 함께 같은 PR 에서 처리하면 회귀 테스트 한 번에 끝낼 수 있음.
+
+### 5. Multer 파일 타입 / 사이즈 제한 점검
+
+현재 멀티파트 업로드를 받는 라우트:
+
+- `back/src/routes/posts.js` — `upload.array('images', 5)`
+- `back/src/routes/comments.js` — `upload.array('images', 5)`
+- `back/src/routes/inquiries.js` — `uploadInquiry.array('images', 3)` (5MB/장 명시)
+- `back/src/routes/messages.js` — 채팅 첨부 (확인 필요)
+- `back/src/routes/auth.js` — `/ocr` 학생증 (확인 필요)
+- `back/src/routes/users.js` — 프로필 (확인 필요)
+
+- [ ] 모든 multer 인스턴스에 `limits.fileSize` 명시 (이미지 ≤ 5MB, OCR 이미지 ≤ 10MB 등)
+- [ ] `fileFilter` 또는 CloudinaryStorage `allowed_formats` 로 MIME 화이트리스트
+  - 이미지: `image/jpeg`, `image/png`, `image/webp`
+  - OCR 학생증만 별도 허용 (필요 시 PDF)
+- [ ] 파일 개수 한도 명시 (`upload.array('images', N)`)
+- [ ] body limit 1MB 와의 충돌 여부 점검 — multipart 는 별도 라우트라 영향 없을 텐데 한 번 확인
+- [ ] 거부 응답 통일: `LIMIT_FILE_SIZE` / `LIMIT_FILE_COUNT` → 422 로 변환하는 multer 에러 미들웨어 추가
 
 ---
 
