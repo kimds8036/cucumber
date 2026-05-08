@@ -33,7 +33,9 @@ import Timer from './view/src/timer';
 import FriendsScreen from './view/src/friendsscreen';
 import HiddenPostsAppeals from './view/src/hiddenPostsAppeals';
 import Inquiry from './view/src/Inquiry';
+import InAppInquiry from './view/src/InAppInquiry';
 import Info from './view/src/info';
+import TestLogin from './view/src/TestLogin';
 import { useFonts } from 'expo-font';
 import * as SplashScreen from 'expo-splash-screen';
 import { useEffect, useRef } from 'react';
@@ -85,9 +87,10 @@ SplashScreen.preventAutoHideAsync();
 function AuthStack() {
   return (
     <Stack.Navigator
-      initialRouteName="Login"
+      initialRouteName="TestLogin"
       screenOptions={{ headerShown: false }}
     >
+      <Stack.Screen name="TestLogin" component={TestLogin} />
       <Stack.Screen name="Login" component={Login} />
       <Stack.Screen name="Sign" component={Sign} />
       <Stack.Screen name="IDfind" component={IDfind} />
@@ -131,6 +134,7 @@ function MainStack() {
       <Stack.Screen name="Friends" component={FriendsScreen} />
       <Stack.Screen name="HiddenPostsAppeals" component={HiddenPostsAppeals} />
       <Stack.Screen name="Inquiry" component={Inquiry} />
+      <Stack.Screen name="InAppInquiry" component={InAppInquiry} />
       <Stack.Screen name="Info" component={Info} />
       <Stack.Screen name="SearchScreen" component={SearchScreen} />
       <Stack.Screen name="SearchResult" component={SearchResult} />

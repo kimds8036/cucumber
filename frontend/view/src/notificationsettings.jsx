@@ -2,17 +2,15 @@ import React, { useEffect, useMemo, useState, useRef } from 'react';
 import {
   View,
   Text,
-  ScrollView,
   Switch,
   TouchableOpacity,
   TextInput,
   Alert,
   PanResponder,
-  KeyboardAvoidingView,
-  Platform,
   useWindowDimensions,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
 import { Ionicons } from '@expo/vector-icons';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import SubHeader from '../frame/subHeader';
@@ -439,19 +437,15 @@ const Settings = ({ navigation, route }) => {
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
-      <KeyboardAvoidingView
-        style={{ flex: 1 }}
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        keyboardVerticalOffset={0}
-      >
-        <SubHeader title={headerTitle} onBack={() => navigation.goBack()} />
+      <SubHeader title={headerTitle} onBack={() => navigation.goBack()} />
 
-        <ScrollView
-          style={styles.scroll}
-          showsVerticalScrollIndicator={false}
-          keyboardShouldPersistTaps="handled"
-          keyboardDismissMode="on-drag"
-        >
+      <KeyboardAwareScrollView
+        style={styles.scroll}
+        showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
+        keyboardDismissMode="on-drag"
+        bottomOffset={normalize(16)}
+      >
         {showPrefs && (
           <>
         {/* ────────────── 알림 설정 ────────────── */}
@@ -640,9 +634,8 @@ const Settings = ({ navigation, route }) => {
           </>
         )}
 
-          <View style={styles.scrollBottomSpacer} />
-        </ScrollView>
-      </KeyboardAvoidingView>
+        <View style={styles.scrollBottomSpacer} />
+      </KeyboardAwareScrollView>
     </SafeAreaView>
   );
 };

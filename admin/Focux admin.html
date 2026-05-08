@@ -264,6 +264,51 @@
     .txt-warn   { color: #f59e0b; font-weight: 500; }
     .txt-ok     { color: var(--green); font-weight: 500; }
 
+    /* ── Contact cell (이메일/전화번호 + 복사 버튼) ── */
+    .contact-cell {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      min-width: 0;
+    }
+    .contact-row {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      min-width: 0;
+    }
+    .contact-text {
+      flex: 1;
+      min-width: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      font-size: 12px;
+      color: var(--text-primary);
+    }
+    .contact-empty {
+      font-size: 11px;
+      color: var(--text-tertiary);
+    }
+    .copy-btn {
+      flex-shrink: 0;
+      border: 0.5px solid var(--border-md);
+      background: var(--bg);
+      color: var(--text-secondary);
+      border-radius: 6px;
+      padding: 2px 8px;
+      font-size: 10px;
+      font-family: inherit;
+      cursor: pointer;
+      transition: background .1s, color .1s;
+    }
+    .copy-btn:hover {
+      background: var(--green-bg);
+      color: var(--green-dark);
+      border-color: var(--green-border);
+    }
+    .copy-btn:active { transform: scale(.96); }
+
     /* ── Filter row ─────────────────────────────────── */
     .filter-row {
       display: flex;
@@ -806,14 +851,7 @@
       <!-- ────────── 문의 관리 (미처리) ────────── -->
       <div class="panel" id="panel-inquiries">
         <div class="filter-row">
-          <input type="text" placeholder="제목/작성자/연락처 검색" id="inquiry-search-q" style="width:220px">
-          <select id="inquiry-filter-category">
-            <option value="">전체 카테고리</option>
-            <option value="login_error">로그인 오류</option>
-            <option value="account_suspension">계정 정지 문의</option>
-            <option value="bug">버그 신고</option>
-            <option value="feedback">제안/피드백</option>
-          </select>
+          <input type="text" placeholder="내용/작성자/연락처 검색" id="inquiry-search-q" style="width:220px">
           <input type="date" id="inquiry-filter-from-date">
           <input type="date" id="inquiry-filter-to-date">
           <button class="btn btn-sm" onclick="loadInquiries()">필터 적용</button>
@@ -833,9 +871,9 @@
                   <input type="checkbox" id="inquiry-chk-all" onchange="toggleAllInquiries(this)">
                 </th>
                 <th style="width:60px">ID</th>
-                <th style="width:110px">카테고리</th>
-                <th style="width:110px">작성자</th>
-                <th>제목</th>
+                <th style="width:90px">작성자</th>
+                <th>내용</th>
+                <th style="width:230px">연락처</th>
                 <th style="width:110px">접수일</th>
                 <th style="width:70px">상태</th>
               </tr>
@@ -849,14 +887,7 @@
       <!-- ────────── 문의 처리 이력 ────────── -->
       <div class="panel" id="panel-processedInquiries">
         <div class="filter-row">
-          <input type="text" placeholder="제목/작성자/연락처 검색" id="processed-inquiry-search-q" style="width:220px">
-          <select id="processed-inquiry-filter-category">
-            <option value="">전체 카테고리</option>
-            <option value="login_error">로그인 오류</option>
-            <option value="account_suspension">계정 정지 문의</option>
-            <option value="bug">버그 신고</option>
-            <option value="feedback">제안/피드백</option>
-          </select>
+          <input type="text" placeholder="내용/작성자/연락처 검색" id="processed-inquiry-search-q" style="width:220px">
           <select id="processed-inquiry-filter-status">
             <option value="">전체 상태</option>
             <option value="answered">답변완료</option>
@@ -872,10 +903,10 @@
             <thead>
               <tr>
                 <th style="width:60px">ID</th>
-                <th style="width:110px">카테고리</th>
-                <th style="width:110px">작성자</th>
-                <th>제목</th>
-                <th style="width:110px">답변자</th>
+                <th style="width:90px">작성자</th>
+                <th>내용</th>
+                <th style="width:230px">연락처</th>
+                <th style="width:100px">답변자</th>
                 <th style="width:110px">처리일</th>
                 <th style="width:80px">상태</th>
                 <th style="width:90px">액션</th>
@@ -1104,24 +1135,6 @@
     if (a === 'inquiry_reopen') return '문의 재오픈(inquiry_reopen)';
     if (a === 'inquiry_delete') return '문의 삭제(inquiry_delete)';
     return a || '-';
-  }
-
-  function inquiryCategoryLabel(c) {
-    const v = String(c || '').toLowerCase();
-    if (v === 'login_error') return '로그인 오류';
-    if (v === 'account_suspension') return '계정 정지';
-    if (v === 'bug') return '버그';
-    if (v === 'feedback') return '피드백';
-    return c || '-';
-  }
-
-  function inquiryCategoryPill(c) {
-    const v = String(c || '').toLowerCase();
-    if (v === 'login_error') return 'pill-rejected';
-    if (v === 'account_suspension') return 'pill-warn';
-    if (v === 'bug') return 'pill-comment';
-    if (v === 'feedback') return 'pill-post';
-    return 'pill-pending';
   }
 
   function inquiryStatusLabel(s) {
@@ -1901,13 +1914,11 @@
 
   async function loadInquiries() {
     const q = document.getElementById('inquiry-search-q')?.value?.trim() || '';
-    const category = document.getElementById('inquiry-filter-category')?.value || '';
     const fromDate = document.getElementById('inquiry-filter-from-date')?.value || '';
     const toDate = document.getElementById('inquiry-filter-to-date')?.value || '';
     const qs = new URLSearchParams();
     qs.set('view', 'pending');
     if (q) qs.set('q', q);
-    if (category) qs.set('category', category);
     if (fromDate) qs.set('fromDate', fromDate);
     if (toDate) qs.set('toDate', toDate);
     qs.set('limit', '50');
@@ -1918,14 +1929,12 @@
 
   async function loadProcessedInquiries() {
     const q = document.getElementById('processed-inquiry-search-q')?.value?.trim() || '';
-    const category = document.getElementById('processed-inquiry-filter-category')?.value || '';
     const status = document.getElementById('processed-inquiry-filter-status')?.value || '';
     const fromDate = document.getElementById('processed-inquiry-filter-from-date')?.value || '';
     const toDate = document.getElementById('processed-inquiry-filter-to-date')?.value || '';
     const qs = new URLSearchParams();
     qs.set('view', 'processed');
     if (q) qs.set('q', q);
-    if (category) qs.set('category', category);
     if (status) qs.set('status', status);
     if (fromDate) qs.set('fromDate', fromDate);
     if (toDate) qs.set('toDate', toDate);
@@ -1933,6 +1942,18 @@
     const { data } = await api(`/inquiries?${qs.toString()}`);
     state.processedInquiries = data.inquiries || [];
     renderProcessedInquiries();
+  }
+
+  function renderContactCell(i) {
+    const email = i.contact_email || '';
+    const username = i.contact_username || '';
+    const emailRow = email
+      ? `<div class="contact-row"><span class="contact-text" title="${esc(email)}">${esc(email)}</span><button type="button" class="copy-btn" title="이메일 복사" onclick="copyTextFromAttr(event, this)" data-copy="${esc(email)}" data-label="이메일">복사</button></div>`
+      : `<div class="contact-row contact-empty">이메일 없음</div>`;
+    const usernameRow = username
+      ? `<div class="contact-row"><span class="contact-text" title="${esc(username)}">@${esc(username)}</span><button type="button" class="copy-btn" title="아이디 복사" onclick="copyTextFromAttr(event, this)" data-copy="${esc(username)}" data-label="아이디">복사</button></div>`
+      : `<div class="contact-row contact-empty">아이디 미입력</div>`;
+    return `<div class="contact-cell" onclick="event.stopPropagation()">${emailRow}${usernameRow}</div>`;
   }
 
   function renderInquiries() {
@@ -1955,9 +1976,9 @@
             <input type="checkbox" class="inquiry-row-chk" data-id="${i.id}" ${checked} onchange="toggleInquirySelection(${i.id}, this.checked)">
           </td>
           <td>#Q-${i.id}</td>
-          <td><span class="pill ${inquiryCategoryPill(i.category)}">${esc(inquiryCategoryLabel(i.category))}</span></td>
           <td>${author}</td>
-          <td class="txt-ellipsis">${esc(i.title || '-')}</td>
+          <td class="txt-ellipsis">${esc(i.content || '-')}</td>
+          <td>${renderContactCell(i)}</td>
           <td class="txt-muted">${fmtDate(i.created_at)}</td>
           <td><span class="pill ${inquiryStatusPill(i.status)}">${esc(inquiryStatusLabel(i.status))}</span></td>
         </tr>
@@ -1982,9 +2003,9 @@
       return `
         <tr class="clickable ${isSelected ? 'selected-row' : ''}" onclick="toggleProcessedInquiryDetail(${i.id}, event)">
           <td>#Q-${i.id}</td>
-          <td><span class="pill ${inquiryCategoryPill(i.category)}">${esc(inquiryCategoryLabel(i.category))}</span></td>
           <td>${author}</td>
-          <td class="txt-ellipsis">${esc(i.title || '-')}</td>
+          <td class="txt-ellipsis">${esc(i.content || '-')}</td>
+          <td>${renderContactCell(i)}</td>
           <td>${esc(i.answered_by_username || (i.answered_by ? `admin #${i.answered_by}` : '-'))}</td>
           <td class="txt-muted">${fmtDate(i.answered_at || i.updated_at)}</td>
           <td><span class="pill ${inquiryStatusPill(i.status)}">${esc(inquiryStatusLabel(i.status))}</span></td>
@@ -1995,6 +2016,73 @@
       `;
     }).join('');
     renderProcessedInquiryDetail();
+  }
+
+  // ───────── 클립보드 복사 (관리자 페이지 공용) ─────────
+  function showCopyToast(message) {
+    let host = document.getElementById('copy-toast-host');
+    if (!host) {
+      host = document.createElement('div');
+      host.id = 'copy-toast-host';
+      host.style.cssText =
+        'position:fixed;left:50%;bottom:32px;transform:translateX(-50%);z-index:9999;display:flex;flex-direction:column;gap:6px;align-items:center;pointer-events:none;';
+      document.body.appendChild(host);
+    }
+    const el = document.createElement('div');
+    el.textContent = message;
+    el.style.cssText =
+      'background:#1a1a18;color:#fff;padding:8px 14px;border-radius:18px;font-size:12px;box-shadow:0 4px 14px rgba(0,0,0,0.18);opacity:0;transition:opacity .15s ease;';
+    host.appendChild(el);
+    requestAnimationFrame(() => {
+      el.style.opacity = '1';
+    });
+    setTimeout(() => {
+      el.style.opacity = '0';
+      setTimeout(() => el.remove(), 200);
+    }, 1400);
+  }
+
+  async function copyTextToClipboard(text) {
+    if (!text) return false;
+    try {
+      if (navigator.clipboard && window.isSecureContext) {
+        await navigator.clipboard.writeText(text);
+        return true;
+      }
+    } catch (e) {
+      // fallback below
+    }
+    try {
+      const ta = document.createElement('textarea');
+      ta.value = text;
+      ta.setAttribute('readonly', '');
+      ta.style.position = 'fixed';
+      ta.style.opacity = '0';
+      ta.style.left = '-9999px';
+      document.body.appendChild(ta);
+      ta.select();
+      const ok = document.execCommand('copy');
+      document.body.removeChild(ta);
+      return ok;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  async function copyTextFromAttr(event, btn) {
+    if (event) {
+      event.preventDefault();
+      event.stopPropagation();
+    }
+    if (!btn) return;
+    const text = btn.getAttribute('data-copy') || '';
+    const label = btn.getAttribute('data-label') || '';
+    if (!text) {
+      showCopyToast('복사할 값이 없습니다.');
+      return;
+    }
+    const ok = await copyTextToClipboard(text);
+    showCopyToast(ok ? `${label}이(가) 복사되었습니다.` : '복사에 실패했습니다.');
   }
 
   function toggleInquirySelection(id, checked) {
@@ -2068,11 +2156,16 @@
       const author = i.user_id
         ? `${esc(i.author_username || '-')} (UID #${esc(i.user_id)})${i.author_is_banned ? ' <span class="pill pill-danger" style="font-size:10px">영구정지</span>' : i.author_is_suspended ? ' <span class="pill pill-warn" style="font-size:10px">임시정지</span>' : ''}`
         : `비로그인 사용자`;
-      const contact = [
-        i.contact_username ? `ID: ${esc(i.contact_username)}` : null,
-        i.contact_phone ? `Tel: ${esc(i.contact_phone)}` : null,
-        i.contact_email ? `Email: ${esc(i.contact_email)}` : null,
-      ].filter(Boolean).join(' / ') || '-';
+      const renderDetailContact = (value, label) => {
+        if (!value) {
+          return `<span class="txt-muted">${label} 없음</span>`;
+        }
+        return `<div class="contact-row"><span class="contact-text" title="${esc(value)}">${esc(value)}</span><button type="button" class="copy-btn" title="${label} 복사" onclick="copyTextFromAttr(event, this)" data-copy="${esc(value)}" data-label="${label}">복사</button></div>`;
+      };
+      const emailCell = renderDetailContact(i.contact_email, '이메일');
+      const usernameCell = i.contact_username
+        ? `<div class="contact-row"><span class="contact-text" title="${esc(i.contact_username)}">${esc(i.contact_username)}</span><button type="button" class="copy-btn" title="아이디 복사" onclick="copyTextFromAttr(event, this)" data-copy="${esc(i.contact_username)}" data-label="아이디">복사</button></div>`
+        : `<span class="txt-muted">아이디 없음</span>`;
       const meta = [
         i.app_version ? `App: ${esc(i.app_version)}` : null,
         i.device_info ? `Device: ${esc(i.device_info)}` : null,
@@ -2089,15 +2182,13 @@
             <button class="btn btn-sm" onclick="closeInquiryDetail(${processed ? 'true' : 'false'})">닫기</button>
           </div>
           <div class="detail-grid">
-            <div class="detail-block"><div class="detail-block-label">카테고리</div><div class="detail-block-value">${esc(inquiryCategoryLabel(i.category))}</div></div>
             <div class="detail-block"><div class="detail-block-label">상태</div><div class="detail-block-value">${esc(inquiryStatusLabel(i.status))}</div></div>
             <div class="detail-block"><div class="detail-block-label">작성자</div><div class="detail-block-value">${author}</div></div>
-            <div class="detail-block"><div class="detail-block-label">연락처</div><div class="detail-block-value">${contact}</div></div>
+            <div class="detail-block"><div class="detail-block-label">아이디</div><div class="detail-block-value">${usernameCell}</div></div>
+            <div class="detail-block"><div class="detail-block-label">이메일</div><div class="detail-block-value">${emailCell}</div></div>
             <div class="detail-block"><div class="detail-block-label">접수일</div><div class="detail-block-value">${fmtDate(i.created_at)}</div></div>
             <div class="detail-block"><div class="detail-block-label">메타</div><div class="detail-block-value">${meta}</div></div>
           </div>
-          <div class="section-title">제목</div>
-          <div class="original-content">${esc(i.title || '-')}</div>
           <div class="section-title">본문</div>
           <div class="original-content">${esc(i.content || '-')}</div>
           ${images.length ? renderTargetImages(images.map((img) => img.cloudinary_url)) : ''}

@@ -32,9 +32,13 @@ const Info = ({ navigation }) => {
     { key: 'opensource', title: '오픈소스 라이선스' },
   ];
 
-  const handleMenuPress = (title, isStatic) => {
-    if (isStatic) return;
-    Alert.alert('안내', `${title} 페이지는 준비 중입니다.`);
+  const handleMenuPress = (menu) => {
+    if (menu.isStatic) return;
+    if (menu.key === 'contact') {
+      navigation.navigate('InAppInquiry');
+      return;
+    }
+    Alert.alert('안내', `${menu.title} 페이지는 준비 중입니다.`);
   };
 
   return (
@@ -51,7 +55,7 @@ const Info = ({ navigation }) => {
             key={menu.key}
             style={styles.notificationItem}
             activeOpacity={menu.isStatic ? 1 : 0.7}
-            onPress={() => handleMenuPress(menu.title, menu.isStatic)}
+            onPress={() => handleMenuPress(menu)}
           >
             <View style={styles.notificationContent}>
               <Text style={styles.notificationTitle}>{menu.title}</Text>

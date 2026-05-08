@@ -122,10 +122,7 @@ const Login = ({ navigation }) => {
                 />
               </View>
               <View style={styles.titleContainer}>
-                <Text style={styles.titleLarge}>오</Text>
-                <Text style={styles.titleSmall}>늘의  </Text>
-                <Text style={styles.titleLarge}>이</Text>
-                <Text style={styles.titleSmall}>야기</Text>
+                <Text style={styles.titleLarge}>YOUTH PAPER</Text>
               </View>
             </View>
 
@@ -152,7 +149,7 @@ const Login = ({ navigation }) => {
               />
             </View>
 
-            {/* 아이디 저장 체크박스 */}
+            {/* 자동 로그인 체크박스 — 체크 시에만 다음 부팅에서 자동로그인 */}
             <TouchableOpacity
               style={styles.checkboxContainer}
               onPress={() => setRememberMe(!rememberMe)}
@@ -163,7 +160,7 @@ const Login = ({ navigation }) => {
                   <Ionicons name="checkmark" size={normalize(14)} color={colors.background} />
                 )}
               </View>
-              <Text style={styles.checkboxText}>아이디 저장</Text>
+              <Text style={styles.checkboxText}>자동 로그인</Text>
             </TouchableOpacity>
 
             {/* 로그인 버튼 */}
@@ -212,8 +209,8 @@ const Login = ({ navigation }) => {
                   });
 
                   if (token) {
-                    debugLogin('토큰 저장 시작');
-                    await setAuthToken(token);
+                    debugLogin('토큰 저장 시작', { persist: rememberMe });
+                    await setAuthToken(token, { persist: rememberMe });
                     debugLogin('토큰 저장 완료');
                   }
                   debugLogin('로그인 상태 반영 → Main 스택으로 전환');
@@ -284,17 +281,29 @@ const Login = ({ navigation }) => {
               </Text>
             </TouchableOpacity>
 
-            {/* 링크들 */}
+            {/* 링크들 — 테스트 빌드에서는 기능 비활성화 (회원가입/아이디·비번 찾기 화면 차단) */}
             <View style={styles.linkContainer}>
-              <TouchableOpacity onPress={() => navigation.navigate('IDfind')}>
+              <TouchableOpacity
+                onPress={() => {
+                  // navigation.navigate('IDfind'); // [TEST] 비활성화
+                }}
+              >
                 <Text style={styles.linkText}>아이디 찾기</Text>
               </TouchableOpacity>
               <Text style={styles.linkDivider}>|</Text>
-              <TouchableOpacity onPress={() => navigation.navigate('PWfind')}>
+              <TouchableOpacity
+                onPress={() => {
+                  // navigation.navigate('PWfind'); // [TEST] 비활성화
+                }}
+              >
                 <Text style={styles.linkText}>비밀번호 찾기</Text>
               </TouchableOpacity>
               <Text style={styles.linkDivider}>|</Text>
-              <TouchableOpacity onPress={() => navigation.navigate('Sign')}>
+              <TouchableOpacity
+                onPress={() => {
+                  // navigation.navigate('Sign'); // [TEST] 비활성화
+                }}
+              >
                 <Text style={styles.linkText}>회원가입</Text>
               </TouchableOpacity>
             </View>
@@ -341,7 +350,6 @@ const Login = ({ navigation }) => {
                     onPress={() => {
                       setPolicyModal((prev) => ({ ...prev, visible: false }));
                       navigation.navigate('Inquiry', {
-                        category: 'account_suspension',
                         contactUsername: id?.trim() || '',
                       });
                     }}

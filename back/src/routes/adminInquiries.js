@@ -5,7 +5,6 @@ import { getNowForDB } from '../utils/dateUtils.js';
 
 const router = express.Router();
 
-const VALID_CATEGORIES = ['login_error', 'account_suspension', 'bug', 'feedback'];
 const VALID_STATUSES = ['pending', 'answered', 'closed'];
 
 function parseAdminUserIds() {
@@ -76,20 +75,6 @@ router.get('/stats', authenticate, async (req, res) => {
        WHERE answered_at IS NOT NULL
          AND DATE(answered_at) = DATE(UTC_TIMESTAMP())`
     );
-    const [byCategoryRows] = await pool.execute(
-      `SELECT category, COUNT(*) AS c
-       FROM inquiries
-       WHERE status = 'pending' AND is_deleted = FALSE
-       GROUP BY category`
-    );
-
-    const pendingByCategory = VALID_CATEGORIES.reduce((acc, cat) => {
-      acc[cat] = 0;
-      return acc;
-    }, {});
-    byCategoryRows.forEach((r) => {
-      pendingByCategory[r.category] = Number(r.c);
-    });
 
     return res.json({
       success: true,
@@ -97,7 +82,6 @@ router.get('/stats', authenticate, async (req, res) => {
         todayNewInquiries: Number(todayNewRows[0]?.c ?? 0),
         pendingInquiries: Number(pendingRows[0]?.c ?? 0),
         todayAnsweredInquiries: Number(todayAnsweredRows[0]?.c ?? 0),
-        pendingByCategory,
       },
     });
   } catch (error) {
@@ -108,7 +92,7 @@ router.get('/stats', authenticate, async (req, res) => {
 
 /**
  * GET /api/admin/inquiries
- * 관리자 문의 목록 (필터: category, status, view, q, fromDate, toDate)
+ * 관리자 문의 목록 (필터: status, view, q, fromDate, toDate)
  */
 router.get('/', authenticate, async (req, res) => {
   const adminUserId = req.user.userId;
@@ -117,7 +101,6 @@ router.get('/', authenticate, async (req, res) => {
   }
   try {
     const {
-      category = '',
       status = '',
       view = 'pending',
       q = '',
@@ -132,10 +115,6 @@ router.get('/', authenticate, async (req, res) => {
     const conditions = ['i.is_deleted = FALSE'];
     const params = [];
 
-    if (category && VALID_CATEGORIES.includes(String(category).trim())) {
-      conditions.push('i.category = ?');
-      params.push(String(category).trim());
-    }
     if (status && VALID_STATUSES.includes(String(status).trim())) {
       conditions.push('i.status = ?');
       params.push(String(status).trim());
@@ -147,9 +126,9 @@ router.get('/', authenticate, async (req, res) => {
     if (q) {
       const like = `%${String(q).trim()}%`;
       conditions.push(
-        '(CAST(i.id AS CHAR) LIKE ? OR CAST(i.user_id AS CHAR) LIKE ? OR i.contact_username LIKE ? OR i.contact_phone LIKE ? OR i.contact_email LIKE ? OR i.title LIKE ?)'
+        '(CAST(i.id AS CHAR) LIKE ? OR CAST(i.user_id AS CHAR) LIKE ? OR i.contact_username LIKE ? OR i.contact_email LIKE ? OR i.content LIKE ?)'
       );
-      params.push(like, like, like, like, like, like);
+      params.push(like, like, like, like, like);
     }
     if (fromDate) {
       conditions.push('DATE(i.created_at) >= ?');
@@ -164,16 +143,14 @@ router.get('/', authenticate, async (req, res) => {
     const [rows] = await pool.execute(
       `SELECT
          i.id,
-         i.category,
          i.user_id,
          u.username AS author_username,
          u.name AS author_name,
          u.is_suspended AS author_is_suspended,
          u.is_banned AS author_is_banned,
          i.contact_username,
-         i.contact_phone,
          i.contact_email,
-         i.title,
+         i.content,
          i.status,
          i.answered_by,
          a.username AS answered_by_username,
