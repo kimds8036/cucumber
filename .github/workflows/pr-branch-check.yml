@@ -1,0 +1,50 @@
+name: PR Branch Scope Check
+
+# develop 으로 들어오는 PR 의 브랜치 네이밍과 변경 폴더 정합성을 검사한다.
+#  - feat/back-*    → back/ 만 수정해야 한다
+#  - feat/front-*   → frontend/ 만 수정해야 한다
+# 어긋나면 fail 처리해서 PR 체크에 빨간불을 띄운다.
+
+on:
+  pull_request:
+    branches: [develop]
+
+jobs:
+  check-scope:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: 변경된 파일 폴더 분류
+        id: changed
+        uses: dorny/paths-filter@v3
+        with:
+          # PR base(=develop) 와 head 사이의 diff 를 본다
+          base: ${{ github.event.pull_request.base.ref }}
+          filters: |
+            back:
+              - 'back/**'
+            frontend:
+              - 'frontend/**'
+
+      - name: feat/back-* 브랜치가 frontend/ 를 건드렸는지 검사
+        if: |
+          startsWith(github.head_ref, 'feat/back-') &&
+          steps.changed.outputs.frontend == 'true'
+        run: |
+          echo "::error::feat/back-* 브랜치는 frontend/ 폴더를 수정할 수 없습니다. 의도한 변경이라면 별도 PR 로 분리하거나 chore 브랜치명을 사용하세요."
+          exit 1
+
+      - name: feat/front-* 브랜치가 back/ 를 건드렸는지 검사
+        if: |
+          startsWith(github.head_ref, 'feat/front-') &&
+          steps.changed.outputs.back == 'true'
+        run: |
+          echo "::error::feat/front-* 브랜치는 back/ 폴더를 수정할 수 없습니다. 의도한 변경이라면 별도 PR 로 분리하거나 chore 브랜치명을 사용하세요."
+          exit 1
+
+      - name: 검사 통과 (정상)
+        if: success()
+        run: echo "Branch scope check passed."
