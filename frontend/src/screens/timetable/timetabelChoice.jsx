@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {
   ActivityIndicator,
@@ -53,8 +53,12 @@ function TimetablePreview() {
   );
 }
 
-export default function TimetabelChoice({ navigation }) {
+export default function TimetabelChoice({ navigation, route }) {
   const [autoLoading, setAutoLoading] = useState(false);
+  const scopedTimetableCacheKey = useMemo(
+    () => route?.params?.timetableCacheKey || TIMETABLE_CACHE_KEY,
+    [route?.params?.timetableCacheKey],
+  );
 
   const fetchAndApplyAutoTimetable = useCallback(async () => {
     try {
@@ -70,7 +74,7 @@ export default function TimetabelChoice({ navigation }) {
         return;
       }
       await AsyncStorage.setItem(
-        TIMETABLE_CACHE_KEY,
+        scopedTimetableCacheKey,
         JSON.stringify({
           ts: Date.now(),
           timetable: tt,
@@ -90,14 +94,17 @@ export default function TimetabelChoice({ navigation }) {
     } finally {
       setAutoLoading(false);
     }
-  }, [navigation]);
+  }, [navigation, scopedTimetableCacheKey]);
 
   const handleSelect = (mode) => {
     if (mode === 'auto') {
       fetchAndApplyAutoTimetable();
       return;
     }
-    navigation.navigate('AddTimetable', { selectionMode: mode });
+    navigation.navigate('AddTimetable', {
+      selectionMode: mode,
+      timetableCacheKey: scopedTimetableCacheKey,
+    });
   };
 
   return (

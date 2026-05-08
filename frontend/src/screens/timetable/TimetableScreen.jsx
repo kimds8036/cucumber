@@ -130,13 +130,16 @@ function PeriodBadges({ blocks }) {
   );
 }
 
-export default function TimetableScreen({ navigation }) {
+export default function TimetableScreen({ navigation, route }) {
   const [keyword, setKeyword] = useState('');
   const [myChoices, setMyChoices] = useState({});
   const [selectedSubject, setSelectedSubject] = useState(null);
   const [selectedClassIdx, setSelectedClassIdx] = useState(0);
   const [modalVisible, setModalVisible] = useState(false);
   const [schoolGradeText, setSchoolGradeText] = useState('-');
+  const [timetableCacheKey, setTimetableCacheKey] = useState(
+    route?.params?.timetableCacheKey || '@mypage_timetable_cache_v1',
+  );
   const termTitle = useMemo(() => {
     const now = new Date();
     const year = now.getFullYear();
@@ -168,7 +171,7 @@ export default function TimetableScreen({ navigation }) {
 
     try {
       await AsyncStorage.setItem(
-        '@mypage_timetable_cache_v1',
+        timetableCacheKey,
         JSON.stringify({
           ts: Date.now(),
           timetable: nextTimetable,
@@ -210,6 +213,11 @@ export default function TimetableScreen({ navigation }) {
         if (!mounted) return;
 
         const me = res.data?.data;
+        const userScope =
+          me?.id != null ? String(me.id) : me?.username || me?.email || null;
+        if (userScope) {
+          setTimetableCacheKey(`@mypage_timetable_cache_v1:${userScope}`);
+        }
         const schoolName = me?.school?.name || '-';
         const gradeText = me?.grade ? `${me.grade}학년` : '';
         setSchoolGradeText(gradeText ? `${schoolName} · ${gradeText}` : schoolName);

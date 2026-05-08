@@ -20,7 +20,7 @@ export const createMyPageStyles = (normalize) => {
     menuSection: {
       marginHorizontal: normalize(16),
       marginTop: normalize(8),
-      marginBottom: normalize(16),
+      marginBottom: normalize(8),
     },
     menuItem: {
       flexDirection: 'row',
@@ -52,9 +52,6 @@ export const createMyPageStyles = (normalize) => {
       fontFamily: fonts.regular,
       color: colors.textSecondary,
       marginTop: normalize(2),
-    },
-    bottomPadding: {
-      height: normalize(80),
     },
     modalOverlay: {
       flex: 1,

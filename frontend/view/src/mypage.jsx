@@ -32,6 +32,7 @@ const MyPage = ({ navigation }) => {
   );
   const { logout } = useAuth();
   const TIMETABLE_CACHE_KEY = '@mypage_timetable_cache_v1';
+  const TIMETABLE_CACHE_KEY_PREFIX = '@mypage_timetable_cache_v1:';
   const TIMETABLE_CACHE_TTL_MS = 24 * 60 * 60 * 1000;
   const PROFILE_CACHE_KEY = '@mypage_profile_cache_v1';
   const PROFILE_CACHE_TTL_MS = 2 * 60 * 60 * 1000;
@@ -41,6 +42,7 @@ const MyPage = ({ navigation }) => {
   const [loading, setLoading] = useState(false);
   const [timetableLoading, setTimetableLoading] = useState(false);
   const [showResetTimetableModal, setShowResetTimetableModal] = useState(false);
+  const [timetableCacheKey, setTimetableCacheKey] = useState(TIMETABLE_CACHE_KEY);
   const isSameProfileInfo = (a, b) => {
     if (!a || !b) return false;
     return (
@@ -116,15 +118,33 @@ const MyPage = ({ navigation }) => {
           console.warn('프로필 캐시 읽기 실패:', profileCacheErr);
         }
 
+        const meRes = await api.get('/api/auth/me');
+        // TEMP TEST: /api/auth/me 응답 raw 전체 확인 (확인 후 삭제)
+        console.log('[TEMP][MyPage] /api/auth/me raw response =', JSON.stringify(meRes?.data));
+        if (!mounted) return;
+
+        const me = meRes.data?.data;
+        const userScope =
+          me?.id != null ? String(me.id) : me?.username || me?.email || null;
+        const scopedTimetableCacheKey = userScope
+          ? `${TIMETABLE_CACHE_KEY_PREFIX}${userScope}`
+          : TIMETABLE_CACHE_KEY;
+        if (mounted) {
+          setTimetableCacheKey(scopedTimetableCacheKey);
+        }
+
         try {
-          const raw = await AsyncStorage.getItem(TIMETABLE_CACHE_KEY);
+          const raw = await AsyncStorage.getItem(scopedTimetableCacheKey);
           if (raw) {
             const parsed = JSON.parse(raw);
             timetableClearedByUser = Boolean(parsed?.clearedByUser);
             if (Date.now() - Number(parsed?.ts || 0) < TIMETABLE_CACHE_TTL_MS) {
               cachedTimetable = parsed?.timetable ?? null;
               if (mounted) {
-                const normalized = cachedTimetable && Object.keys(cachedTimetable).length > 0 ? cachedTimetable : null;
+                const normalized =
+                  cachedTimetable && Object.keys(cachedTimetable).length > 0
+                    ? cachedTimetable
+                    : null;
                 setTimetable(normalized);
               }
             } else {
@@ -138,12 +158,6 @@ const MyPage = ({ navigation }) => {
           setTimetableLoading(true);
         }
 
-        const meRes = await api.get('/api/auth/me');
-        // TEMP TEST: /api/auth/me 응답 raw 전체 확인 (확인 후 삭제)
-        console.log('[TEMP][MyPage] /api/auth/me raw response =', JSON.stringify(meRes?.data));
-        if (!mounted) return;
-
-        const me = meRes.data?.data;
         if (me) {
           const nextUserInfo = {
             name: me.name,
@@ -195,7 +209,7 @@ const MyPage = ({ navigation }) => {
             const normalized = hasEntries ? tt : null;
             setTimetable(normalized);
             await AsyncStorage.setItem(
-              TIMETABLE_CACHE_KEY,
+              scopedTimetableCacheKey,
               JSON.stringify({
                 ts: Date.now(),
                 timetable: normalized,
@@ -230,7 +244,7 @@ const MyPage = ({ navigation }) => {
       let cancelled = false;
       (async () => {
         try {
-          const raw = await AsyncStorage.getItem(TIMETABLE_CACHE_KEY);
+          const raw = await AsyncStorage.getItem(timetableCacheKey);
           if (!raw || cancelled) return;
           const parsed = JSON.parse(raw);
           if (Date.now() - Number(parsed?.ts || 0) >= TIMETABLE_CACHE_TTL_MS) return;
@@ -245,11 +259,11 @@ const MyPage = ({ navigation }) => {
       return () => {
         cancelled = true;
       };
-    }, []),
+    }, [timetableCacheKey]),
   );
 
   const handleNavigateToTimetableEdit = () => {
-    navigation.navigate('TimetabelChoice');
+    navigation.navigate('TimetabelChoice', { timetableCacheKey });
   };
 
   const handleResetTimetable = () => {
@@ -262,7 +276,7 @@ const MyPage = ({ navigation }) => {
     setShowResetTimetableModal(false);
     try {
       await AsyncStorage.setItem(
-        TIMETABLE_CACHE_KEY,
+        timetableCacheKey,
         JSON.stringify({
           ts: Date.now(),
           timetable: null,
