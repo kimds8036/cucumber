@@ -127,7 +127,8 @@ const TimetableView = ({
                   <View key={`${day}-${period}`} style={cellStyle}>
                     <Text
                       style={[styles.classCellText, content ? styles.classCellTextFilled : null]}
-                      numberOfLines={1}
+                      lineBreakMode="wordWrapping"
+                      lineBreakStrategyIOS="hangul-word"
                     >
                       {content}
                     </Text>
