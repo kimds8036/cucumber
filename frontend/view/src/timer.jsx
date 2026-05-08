@@ -23,7 +23,6 @@ import {
   useWindowDimensions,
   Alert,
   AppState,
-  Modal,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { CommonActions } from '@react-navigation/native';
@@ -49,6 +48,7 @@ import {
   timerDayBoundaryMs,
 } from '../../utils/timerStorage';
 import { AddSubjectModal, AddTaskModal, CalendarModal } from './timerModals';
+import AppPopupModal from '../../components/common/AppPopupModal';
 
 // ── 친구 관련 (분리된 파일) ─────────────────────────────
 // - FriendStoryBar: 상단 친구 스토리/상태 바
@@ -2328,30 +2328,55 @@ export const TimerContent = () => {
         }}
       />
 
-      <Modal
+      <AppPopupModal
         visible={showSaveModal}
-        transparent
-        animationType="none"
-        onRequestClose={() => setShowSaveModal(false)}
+        onClose={() => setShowSaveModal(false)}
+        dismissOnBackdrop={false}
       >
-        <View style={saveModalStyles.saveSuccessModalOverlay}>
-          <View style={saveModalStyles.saveSuccessModalCard}>
-            <Text style={saveModalStyles.saveSuccessModalTitle}>저장 완료</Text>
-            <Text style={saveModalStyles.saveSuccessModalBody}>
-              갤러리에 저장되었어요
-            </Text>
-            <TouchableOpacity
-              style={saveModalStyles.saveSuccessModalConfirm}
-              onPress={() => setShowSaveModal(false)}
-              activeOpacity={0.85}
-            >
-              <Text style={saveModalStyles.saveSuccessModalConfirmText}>
-                확인
-              </Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      </Modal>
+        <Text
+          style={{
+            fontSize: 18,
+            color: colors.textPrimary,
+            fontWeight: '700',
+            textAlign: 'center',
+            marginBottom: 10,
+          }}
+        >
+          저장 완료
+        </Text>
+        <Text
+          style={{
+            fontSize: 14,
+            color: colors.textSecondary,
+            textAlign: 'center',
+            lineHeight: 22,
+            marginBottom: 16,
+          }}
+        >
+          갤러리에 저장되었어요
+        </Text>
+        <TouchableOpacity
+          style={{
+            height: 42,
+            borderRadius: 10,
+            backgroundColor: colors.primary,
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}
+          onPress={() => setShowSaveModal(false)}
+          activeOpacity={0.85}
+        >
+          <Text
+            style={{
+              fontSize: 14,
+              fontWeight: '700',
+              color: colors.textWhite,
+            }}
+          >
+            확인
+          </Text>
+        </TouchableOpacity>
+      </AppPopupModal>
     </>
   );
 };

@@ -12,6 +12,14 @@ import pool from '../config/database.js';
 
 const router = express.Router();
 
+// 프로덕션에서는 ENABLE_TEST_API=true 가 명시되어야만 사용 가능. 그 외엔 라우터 자체를 404 로 가린다.
+router.use((req, res, next) => {
+  if (process.env.NODE_ENV === 'production' && process.env.ENABLE_TEST_API !== 'true') {
+    return res.status(404).json({ success: false, message: 'Not found' });
+  }
+  next();
+});
+
 // GET /api/test/users
 // query: ?prefix=user (기본값) — 해당 prefix로 시작하고 뒤에 숫자가 붙은 username 만 반환
 router.get('/users', async (req, res) => {

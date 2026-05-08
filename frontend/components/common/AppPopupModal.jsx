@@ -44,7 +44,7 @@ export default function AppPopupModal({
                 backgroundColor: colors.background,
                 borderRadius: 18,
                 paddingHorizontal: 18,
-                paddingVertical: 18,
+                paddingVertical: 25,
                 // 바깥은 86%/maxWidth인데, 카드에 width가 없으면 콘텐츠만큼만 줄어들어 좁게 보임
                 ...(useDefaultContainerWidth
                   ? { alignSelf: 'stretch', width: '100%' }

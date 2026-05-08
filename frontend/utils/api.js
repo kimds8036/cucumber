@@ -52,6 +52,38 @@ export const api = axios.create({
   },
 });
 
+/**
+ * 서버가 "요청 형식/입력값" 문제로 응답할 때 쓰는 HTTP 상태.
+ * - 전통적으로 400(Bad Request)을 쓰던 엔드포인트와
+ * - express-validator 도입 후 422(Unprocessable Entity)를 쓰는 엔드포인트를
+ *   프론트에서 동일하게 취급하기 위한 상수.
+ */
+export const API_INPUT_ERROR_HTTP_STATUSES = Object.freeze([400, 422]);
+
+/**
+ * @param {unknown} error — axios catch 블록의 error
+ * @returns {boolean}
+ */
+export function isApiInputValidationHttpError(error) {
+  const status = error?.response?.status;
+  return API_INPUT_ERROR_HTTP_STATUSES.includes(status);
+}
+
+/**
+ * 사용자에게 보여줄 한 줄 메시지.
+ * - 응답 인터셉터가 400/422일 때 `error.userFacingMessage`에 복사해 둔 값을 우선 사용
+ * - 그다음 `response.data.message` (백엔드 공통 포맷)
+ */
+export function getApiUserFacingMessage(error, fallback = '요청에 실패했습니다.') {
+  const fromInterceptor =
+    typeof error?.userFacingMessage === 'string' && error.userFacingMessage.trim();
+  if (fromInterceptor) return fromInterceptor.trim();
+  const data = error?.response?.data;
+  if (typeof data?.message === 'string' && data.message.trim()) return data.message.trim();
+  if (typeof data === 'string' && data.trim()) return data.trim();
+  return fallback;
+}
+
 // 요청 시 저장된 토큰을 Authorization 헤더에 붙임
 // (영속 토큰 → 인메모리 토큰 순서로 폴백)
 api.interceptors.request.use(
@@ -68,6 +100,26 @@ api.interceptors.request.use(
     return config;
   },
   (err) => Promise.reject(err),
+);
+
+// 응답: 입력 검증 실패(400·422) 시 서버 메시지를 한곳에 심어 두어,
+// `status === 400` 만 보던 구식 분기 없이도 getApiUserFacingMessage 로 동일 UX 유지
+api.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    const status = error?.response?.status;
+    const data = error?.response?.data;
+    if (API_INPUT_ERROR_HTTP_STATUSES.includes(status)) {
+      const msg =
+        (data && typeof data.message === 'string' && data.message.trim()) ||
+        (typeof data === 'string' && data.trim()) ||
+        null;
+      if (msg) {
+        error.userFacingMessage = msg;
+      }
+    }
+    return Promise.reject(error);
+  },
 );
 
 /**
