@@ -223,4 +223,34 @@ export const createNotificationStyles = (normalize) =>
       width: normalize(12),
       height: normalize(12),
     },
+    announcementListContainer: {
+      paddingHorizontal: normalize(20),
+      paddingTop: normalize(6),
+      paddingBottom: normalize(24),
+      gap: normalize(8),
+    },
+    announcementItem: {
+      backgroundColor: colors.background,
+      paddingVertical: normalize(10),
+      borderBottomWidth: 1,
+      borderColor: colors.textLight10,
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+    },
+    announcementContent: {
+      flex: 1,
+      paddingRight: normalize(10),
+    },
+    announcementTitle: {
+      fontSize: normalize(fontSizes.xl),
+      fontFamily: fonts.bold,
+      color: colors.textPrimary,
+      marginBottom: normalize(4),
+    },
+    announcementMeta: {
+      fontSize: normalize(fontSizes.lg),
+      fontFamily: fonts.regular,
+      color: colors.textLight40,
+    },
   });

@@ -26,7 +26,6 @@ const Info = ({ navigation }) => {
     { key: 'contact', title: '문의하기' },
     { key: 'notice', title: '공지사항' },
     { key: 'terms', title: '서비스 이용약관' },
-    { key: 'locationTerms', title: '위치기반 서비스 이용약관' },
     { key: 'privacy', title: '개인정보 처리방침' },
     { key: 'youth', title: '청소년 보호정책' },
     { key: 'opensource', title: '오픈소스 라이선스' },
@@ -36,6 +35,26 @@ const Info = ({ navigation }) => {
     if (menu.isStatic) return;
     if (menu.key === 'contact') {
       navigation.navigate('InAppInquiry');
+      return;
+    }
+    if (menu.key === 'notice') {
+      navigation.navigate('Announcement');
+      return;
+    }
+    if (menu.key === 'terms') {
+      navigation.navigate('ServiceTermsOfService');
+      return;
+    }
+    if (menu.key === 'privacy') {
+      navigation.navigate('PrivacyPolicy');
+      return;
+    }
+    if (menu.key === 'youth') {
+      navigation.navigate('YouthProtectionPolicy');
+      return;
+    }
+    if (menu.key === 'opensource') {
+      navigation.navigate('OpenSourceLicenses');
       return;
     }
     Alert.alert('안내', `${menu.title} 페이지는 준비 중입니다.`);

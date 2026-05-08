@@ -36,6 +36,11 @@ import Inquiry from './view/src/Inquiry';
 import InAppInquiry from './view/src/InAppInquiry';
 import Info from './view/src/info';
 import TestLogin from './view/src/TestLogin';
+import Announcement from './view/src/announcement';
+import ServiceTermsOfService from './src/screens/Terms-of-Service/ServiceTermsOfService';
+import PrivacyPolicy from './src/screens/Terms-of-Service/PrivacyPolicy';
+import YouthProtectionPolicy from './src/screens/Terms-of-Service/YouthProtectionPolicy';
+import OpenSourceLicenses from './src/screens/Terms-of-Service/OpenSourceLicenses';
 import { useFonts } from 'expo-font';
 import * as SplashScreen from 'expo-splash-screen';
 import { useEffect, useRef } from 'react';
@@ -136,6 +141,11 @@ function MainStack() {
       <Stack.Screen name="Inquiry" component={Inquiry} />
       <Stack.Screen name="InAppInquiry" component={InAppInquiry} />
       <Stack.Screen name="Info" component={Info} />
+      <Stack.Screen name="Announcement" component={Announcement} />
+      <Stack.Screen name="ServiceTermsOfService" component={ServiceTermsOfService} />
+      <Stack.Screen name="PrivacyPolicy" component={PrivacyPolicy} />
+      <Stack.Screen name="YouthProtectionPolicy" component={YouthProtectionPolicy} />
+      <Stack.Screen name="OpenSourceLicenses" component={OpenSourceLicenses} />
       <Stack.Screen name="SearchScreen" component={SearchScreen} />
       <Stack.Screen name="SearchResult" component={SearchResult} />
       <Stack.Screen name="OtherSchool" component={OtherSchoolScreen} />
