@@ -1,5 +1,7 @@
 import express from 'express';
 import cors from 'cors';
+import helmet from 'helmet';
+import rateLimit from 'express-rate-limit';
 import dotenv from 'dotenv';
 import swaggerUi from 'swagger-ui-express';
 import { createServer } from 'http';
@@ -38,10 +40,60 @@ const PORT = process.env.PORT || 3000;
 const HOST = process.env.HOST || 'localhost';
 const BASE_URL = `http://${HOST}:${PORT}`;
 
-// Middleware
-app.use(cors());
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+// ============ 보안 설정 ============
+
+// 1. trust proxy — ngrok / Railway 등 리버스 프록시 뒤에서 req.ip 가 정확히 잡히도록
+app.set('trust proxy', 1);
+
+// 2. Helmet — 일반적인 보안 헤더 자동 설정
+//    /admin 페이지·Swagger UI 가 인라인 스크립트/스타일을 사용하므로 CSP 는 끔
+//    (점진적으로 좁혀가는 방향 권장)
+app.use(helmet({ contentSecurityPolicy: false }));
+
+// 3. CORS
+//    - 운영(NODE_ENV=production): CORS_ORIGIN(콤마 구분) 만 허용. 모바일 앱은 origin 이 없으므로 통과
+//    - 그 외(개발): 로컬 dev 호스트만 허용
+const allowedOrigins = process.env.NODE_ENV === 'production'
+  ? (process.env.CORS_ORIGIN ? process.env.CORS_ORIGIN.split(',').map((s) => s.trim()).filter(Boolean) : [])
+  : ['http://localhost:3000', 'http://localhost:8081'];
+
+app.use(cors({
+  origin: (origin, callback) => {
+    if (!origin || allowedOrigins.includes(origin)) {
+      return callback(null, true);
+    }
+    return callback(new Error('CORS 정책에 의해 차단되었습니다.'));
+  },
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'],
+}));
+
+// 4. Body 사이즈 제한 (대용량 페이로드 / DoS 완화)
+app.use(express.json({ limit: '1mb' }));
+app.use(express.urlencoded({ extended: true, limit: '1mb' }));
+
+// 5. Rate Limit
+//    NOTE: 현재는 단일 인스턴스 운영 가정의 in-memory store.
+//          멀티 인스턴스로 확장 시 rate-limit-redis + ioredis 어댑터로 교체 필요.
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 10,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { success: false, message: '요청이 너무 많습니다. 15분 후 다시 시도해주세요.' },
+});
+app.use('/api/auth', authLimiter);
+
+const generalLimiter = rateLimit({
+  windowMs: 1 * 60 * 1000,
+  max: 120,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { success: false, message: '요청이 너무 많습니다. 잠시 후 다시 시도해주세요.' },
+});
+app.use('/api', generalLimiter);
+
+// ============ 보안 설정 끝 ============
 
 // Swagger UI (OpenAPI 문서)
 app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
@@ -83,6 +135,21 @@ app.use('/api/inquiries', inquiriesRoutes);
 app.use('/api/admin', adminReportsRoutes);
 app.use('/api/admin/inquiries', adminInquiriesRoutes);
 app.use('/api/test', testRoutes);
+
+// ============ 글로벌 에러 핸들러 ============
+// 모든 라우트 등록 이후에 위치해야 한다.
+// - CORS 차단은 403 으로 변환
+// - 그 외 5xx 는 운영에선 메시지 마스킹, 개발에선 원본 메시지 노출
+app.use((err, req, res, _next) => {
+  if (err?.message?.includes('CORS')) {
+    return res.status(403).json({ success: false, message: 'CORS 정책에 의해 차단되었습니다.' });
+  }
+  console.error(`[ERROR] ${req.method} ${req.path}`, err?.stack || err);
+  if (process.env.NODE_ENV === 'production') {
+    return res.status(500).json({ success: false, message: '서버 오류가 발생했습니다.' });
+  }
+  return res.status(500).json({ success: false, message: err?.message || 'Internal Server Error' });
+});
 
 // HTTP 서버 + Socket.io 초기화
 const httpServer = createServer(app);

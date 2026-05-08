@@ -60,11 +60,16 @@ export function initSocketServer(httpServer) {
       return next(err);
     }
 
-    const decoded = verifyToken(token);
-    if (!decoded) {
-      console.warn('[Socket] auth failed: verifyToken returned null');
-      const err = new Error('토큰이 만료되었거나 유효하지 않습니다.');
-      err.data = { code: 'AUTH_FAILED' };
+    let decoded;
+    try {
+      decoded = verifyToken(token);
+    } catch (verifyErr) {
+      const code = verifyErr?.code === 'TOKEN_EXPIRED' ? 'TOKEN_EXPIRED' : 'INVALID_TOKEN';
+      console.warn('[Socket] auth failed:', code);
+      const err = new Error(
+        code === 'TOKEN_EXPIRED' ? '토큰이 만료되었습니다.' : '유효하지 않은 토큰입니다.',
+      );
+      err.data = { code };
       return next(err);
     }
 
