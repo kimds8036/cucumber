@@ -12,6 +12,7 @@ import SubHeader from '../../../view/frame/subHeader';
 import styles from './timetable.style';
 import { colors } from '../../../styles/colors';
 import { api } from '../../../utils/api';
+import AppPopupModal from '../../../components/common/AppPopupModal';
 
 const TIMETABLE_CACHE_KEY = '@mypage_timetable_cache_v1';
 
@@ -55,6 +56,7 @@ function TimetablePreview() {
 
 export default function TimetabelChoice({ navigation, route }) {
   const [autoLoading, setAutoLoading] = useState(false);
+  const [showAutoAddedModal, setShowAutoAddedModal] = useState(false);
   const scopedTimetableCacheKey = useMemo(
     () => route?.params?.timetableCacheKey || TIMETABLE_CACHE_KEY,
     [route?.params?.timetableCacheKey],
@@ -69,7 +71,7 @@ export default function TimetabelChoice({ navigation, route }) {
       if (!hasEntries) {
         Alert.alert(
           '시간표 없음',
-          '불러올 시간표가 없습니다. NEIS 연동 정보(학교 코드 등)를 확인하거나, 「시간표 직접 선택」으로 만들어 주세요.',
+          '불러올 시간표가 없습니다. "시간표 직접 선택"으로 만들어 주세요.',
         );
         return;
       }
@@ -81,7 +83,7 @@ export default function TimetabelChoice({ navigation, route }) {
           clearedByUser: false,
         }),
       );
-      navigation.navigate('Main', { initialTab: 'mypage' });
+      setShowAutoAddedModal(true);
     } catch (e) {
       console.warn(
         '[TimetabelChoice] /api/timetable 자동 조회 실패:',
@@ -107,6 +109,11 @@ export default function TimetabelChoice({ navigation, route }) {
     });
   };
 
+  const handleConfirmAutoAdded = useCallback(() => {
+    setShowAutoAddedModal(false);
+    navigation.navigate('Main', { initialTab: 'mypage' });
+  }, [navigation]);
+
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
       <SubHeader title="시간표 선택" onBack={() => navigation.goBack()} />
@@ -131,6 +138,54 @@ export default function TimetabelChoice({ navigation, route }) {
           </TouchableOpacity>
         ))}
       </View>
+      <AppPopupModal
+        visible={showAutoAddedModal}
+        onClose={() => setShowAutoAddedModal(false)}
+      >
+        <Text
+          style={{
+            fontSize: 18,
+            color: colors.textPrimary,
+            fontWeight: '700',
+            textAlign: 'center',
+            marginBottom: 10,
+          }}
+        >
+          시간표가 추가되었습니다.
+        </Text>
+        <Text
+          style={{
+            fontSize: 14,
+            color: colors.textSecondary,
+            textAlign: 'center',
+            lineHeight: 22,
+            marginBottom: 16,
+          }}
+        >
+          NEIS(교육행정정보시스템) 기반 데이터로, 실제 시간표와 다를 경우 '수정' 버튼으로 편집할 수 있습니다.
+        </Text>
+        <TouchableOpacity
+          style={{
+            height: 42,
+            borderRadius: 10,
+            backgroundColor: colors.primary,
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}
+          onPress={handleConfirmAutoAdded}
+          activeOpacity={0.85}
+        >
+          <Text
+            style={{
+              fontSize: 14,
+              fontWeight: '700',
+              color: colors.textWhite,
+            }}
+          >
+            확인
+          </Text>
+        </TouchableOpacity>
+      </AppPopupModal>
     </SafeAreaView>
   );
 }

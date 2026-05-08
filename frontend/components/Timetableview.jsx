@@ -5,10 +5,11 @@ import {
   TouchableOpacity,
   useWindowDimensions,
   Alert,
-  Modal,
 } from 'react-native';
 import ViewShot from 'react-native-view-shot';
 import * as MediaLibrary from 'expo-media-library';
+import AppPopupModal from '../components/common/AppPopupModal';
+import { colors } from '../styles/colors';
 import { TIMETABLE_SUBJECT_COLORS } from '../styles/colors';
 import { getNormalize } from '../styles/mypage.style';
 import { createTimetableViewStyles } from '../src/screens/timetable/timetable.style';
@@ -165,26 +166,55 @@ const TimetableView = ({
       </View>
     </View>
 
-    <Modal
+    <AppPopupModal
       visible={showSaveModal}
-      transparent
-      animationType="none"
-      onRequestClose={() => setShowSaveModal(false)}
+      onClose={() => setShowSaveModal(false)}
+      dismissOnBackdrop={false}
     >
-      <View style={styles.saveSuccessModalOverlay}>
-        <View style={styles.saveSuccessModalCard}>
-          <Text style={styles.saveSuccessModalTitle}>저장 완료</Text>
-          <Text style={styles.saveSuccessModalBody}>갤러리에 저장되었어요</Text>
-          <TouchableOpacity
-            style={styles.saveSuccessModalConfirm}
-            onPress={() => setShowSaveModal(false)}
-            activeOpacity={0.85}
-          >
-            <Text style={styles.saveSuccessModalConfirmText}>확인</Text>
-          </TouchableOpacity>
-        </View>
-      </View>
-    </Modal>
+      <Text
+        style={{
+          fontSize: 18,
+          color: colors.textPrimary,
+          fontWeight: '700',
+          textAlign: 'center',
+          marginBottom: 10,
+        }}
+      >
+        저장 완료
+      </Text>
+      <Text
+        style={{
+          fontSize: 14,
+          color: colors.textSecondary,
+          textAlign: 'center',
+          lineHeight: 22,
+          marginBottom: 16,
+        }}
+      >
+        갤러리에 저장되었어요
+      </Text>
+      <TouchableOpacity
+        style={{
+          height: 42,
+          borderRadius: 10,
+          backgroundColor: colors.primary,
+          alignItems: 'center',
+          justifyContent: 'center',
+        }}
+        onPress={() => setShowSaveModal(false)}
+        activeOpacity={0.85}
+      >
+        <Text
+          style={{
+            fontSize: 14,
+            fontWeight: '700',
+            color: colors.textWhite,
+          }}
+        >
+          확인
+        </Text>
+      </TouchableOpacity>
+    </AppPopupModal>
     </>
   );
 };
