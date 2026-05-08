@@ -613,7 +613,7 @@ export const createNotificationSettingsStyles = (normalize) => {
   });
 };
 
-/** 스크랩한 글 목록 (`scrapedposts.jsx`) */
+/** 스크랩한 글 목록 UI 스타일 (전용 화면 미연결, 스타일만 유지) */
 export const createScrapedPostsStyles = (normalize) => {
   return StyleSheet.create({
     container: {

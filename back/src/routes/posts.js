@@ -1,6 +1,8 @@
 import express from 'express';
+import { body, param } from 'express-validator';
 import pool from '../config/database.js';
 import { authenticate, optionalAuthenticate } from '../middleware/auth.js';
+import { validate } from '../middleware/validate.js';
 import { createNotification } from '../utils/notifications.js';
 import {
   getKstThreeDaysThroughToday235959UtcForSql,
@@ -11,6 +13,36 @@ import {
 import { cloudinary, upload } from '../config/cloudinary.js';
 import { haversineKm, sqlHaversineKmLessOrEqual } from '../utils/geo.js';
 const router = express.Router();
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 검증 체이너 — 핸들러 안의 비즈니스 가드(작성자 본인 학교 확인 등) 는 그대로 둔다.
+// ─────────────────────────────────────────────────────────────────────────────
+const POST_CONTENT_MAX = 5000;
+// 현재 운영 중인 게시판 유형. 새 유형 추가 시 여기에 등록한다.
+const VALID_BOARD_TYPES = ['school', 'national'];
+
+const postCreateValidators = [
+  body('boardType').isString().withMessage('게시판 유형을 선택해주세요.')
+    .bail().trim().isIn(VALID_BOARD_TYPES).withMessage('유효하지 않은 게시판 유형입니다.'),
+  body('content').isString().withMessage('내용을 입력해주세요.')
+    .bail().trim().isLength({ min: 1, max: POST_CONTENT_MAX })
+    .withMessage(`내용은 1-${POST_CONTENT_MAX}자 이내여야 합니다.`),
+  body('schoolId').optional({ values: 'falsy' }).isString().trim().isLength({ max: 50 }),
+  body('latitude').optional({ values: 'falsy' }).isFloat({ min: -90, max: 90 })
+    .withMessage('위도가 올바르지 않습니다.'),
+  body('longitude').optional({ values: 'falsy' }).isFloat({ min: -180, max: 180 })
+    .withMessage('경도가 올바르지 않습니다.'),
+];
+
+const postIdParamValidator = [
+  param('id').toInt().isInt({ min: 1 }).withMessage('게시글 ID 가 올바르지 않습니다.'),
+];
+
+const postReportValidators = [
+  ...postIdParamValidator,
+  body('reason').optional({ values: 'falsy' }).isString().trim().isLength({ max: 100 }),
+  body('detail').optional({ values: 'falsy' }).isString().trim().isLength({ max: 1000 }),
+];
 
 /** message_images 조회(messages.js)와 동일 패턴 — JSON_ARRAYAGG / mysql2 반환 타입을 string[] 로 통일 */
 function normalizePostImagesFromRow(raw) {
@@ -1152,7 +1184,7 @@ router.get('/:id', optionalAuthenticate, async (req, res) => {
 });
 
 // 게시글 작성
-router.post('/', authenticate, upload.array('images', 5), async (req, res) => {
+router.post('/', authenticate, upload.array('images', 5), validate(postCreateValidators), async (req, res) => {
   try {
     const userId = req.user.userId;
     const { boardType, schoolId, content, tags } = req.body;
@@ -1492,7 +1524,7 @@ router.post('/:id/scrap', authenticate, async (req, res) => {
 });
 
 // 게시글 신고
-router.post('/:id/report', authenticate, async (req, res) => {
+router.post('/:id/report', authenticate, validate(postReportValidators), async (req, res) => {
   try {
     const reporterId = req.user.userId;
     const { id } = req.params;

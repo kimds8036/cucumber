@@ -1,16 +1,19 @@
 name: PR Branch Scope Check
 
-# develop 으로 들어오는 PR 의 브랜치 네이밍과 변경 폴더 정합성을 검사한다.
-#  - feat/back-*    → back/ 만 수정해야 한다
-#  - feat/front-*   → frontend/ 만 수정해야 한다
-# 어긋나면 fail 처리해서 PR 체크에 빨간불을 띄운다.
+# 브랜치 워크플로우 정합성을 PR 단계에서 강제한다.
+#  [develop 으로 오는 PR]
+#    - feat/back-*    → back/ 만 수정 가능
+#    - feat/front-*   → frontend/ 만 수정 가능
+#  [production / main 으로 오는 PR]
+#    - 반드시 develop 브랜치에서만 와야 한다 (핫픽스도 일단 develop 거쳐서 올림)
 
 on:
   pull_request:
-    branches: [develop]
+    branches: [develop, production, main]
 
 jobs:
   check-scope:
+    if: github.event.pull_request.base.ref == 'develop'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -21,7 +24,6 @@ jobs:
         id: changed
         uses: dorny/paths-filter@v3
         with:
-          # PR base(=develop) 와 head 사이의 diff 를 본다
           base: ${{ github.event.pull_request.base.ref }}
           filters: |
             back:
@@ -48,3 +50,20 @@ jobs:
       - name: 검사 통과 (정상)
         if: success()
         run: echo "Branch scope check passed."
+
+  protect-release:
+    # production / main 보호: develop 외 브랜치에서 PR 못 만들게 막는다.
+    if: |
+      github.event.pull_request.base.ref == 'production' ||
+      github.event.pull_request.base.ref == 'main'
+    runs-on: ubuntu-latest
+    steps:
+      - name: develop 외 브랜치에서 production/main 으로의 PR 차단
+        if: github.head_ref != 'develop'
+        run: |
+          echo "::error::${{ github.event.pull_request.base.ref }} 브랜치는 develop 에서만 PR 을 받을 수 있습니다. (현재 head: ${{ github.head_ref }})"
+          exit 1
+
+      - name: develop → ${{ github.event.pull_request.base.ref }} PR 통과
+        if: github.head_ref == 'develop'
+        run: echo "Release PR (develop → ${{ github.event.pull_request.base.ref }}) check passed."
