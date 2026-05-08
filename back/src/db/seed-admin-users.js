@@ -30,7 +30,7 @@ const ADMIN_ACCOUNTS = [
   { username: 'gangaz2', password: 'kimds300272!', name: '관리자 2' },
 ];
 
-const TESTER_COUNT = 30;
+const TESTER_COUNT = 45;
 
 const SCHOOL_IDS = [
   'B000012093',
