@@ -14,8 +14,10 @@
  */
 
 import express from 'express';
+import { body, param } from 'express-validator';
 import pool from '../config/database.js';
 import { authenticate } from '../middleware/auth.js';
+import { validate } from '../middleware/validate.js';
 import { getNowForDB } from '../utils/dateUtils.js';
 import { emitNewMessage, emitReadReceipt, isUserInRoom } from '../socketServer.js';
 import { enqueueNotification } from '../utils/notificationWorker.js';
@@ -23,6 +25,37 @@ import { cloudinary, upload } from '../config/cloudinary.js';
 import { isBlockedBy } from '../utils/userBlock.js';
 
 const router = express.Router();
+
+// ─────────────────────────────────────────────────────
+// 검증 체이너 — 핸들러 안의 비즈니스 가드(권한/존재 확인) 는 그대로 둔다.
+// ─────────────────────────────────────────────────────
+const MESSAGE_CONTENT_MAX = 2000;
+
+const createRoomValidators = [
+  body('postId').exists({ checkNull: true }).withMessage('게시글 ID가 필요합니다.')
+    .bail().toInt().isInt({ min: 1 }).withMessage('유효하지 않은 게시글 ID 입니다.'),
+  body('otherUserId').exists({ checkNull: true }).withMessage('상대방 사용자 ID가 필요합니다.')
+    .bail().toInt().isInt({ min: 1 }).withMessage('유효하지 않은 사용자 ID 입니다.'),
+];
+
+const sendMessageValidators = [
+  param('roomId').toInt().isInt({ min: 1 }).withMessage('유효하지 않은 채팅방 ID 입니다.'),
+  // 본문은 비어있어도 첨부가 있으면 허용 — 비즈니스 규칙은 핸들러가 본다.
+  body('content').optional({ values: 'falsy' }).isString().trim()
+    .isLength({ max: MESSAGE_CONTENT_MAX })
+    .withMessage(`메시지는 ${MESSAGE_CONTENT_MAX}자 이내여야 합니다.`),
+  body('parent_message_id').optional({ values: 'falsy' }).toInt().isInt({ min: 1 })
+    .withMessage('답장 대상 메시지 ID가 올바르지 않습니다.'),
+  body('clientId').optional({ values: 'falsy' }).isString().isLength({ max: 100 }),
+];
+
+const roomIdParamValidator = [
+  param('roomId').toInt().isInt({ min: 1 }).withMessage('유효하지 않은 채팅방 ID 입니다.'),
+];
+
+const messageIdParamValidator = [
+  param('messageId').toInt().isInt({ min: 1 }).withMessage('유효하지 않은 메시지 ID 입니다.'),
+];
 
 // ─────────────────────────────────────────────────────
 // 채팅방 목록 조회
@@ -121,7 +154,7 @@ router.get('/rooms', authenticate, async (req, res) => {
 // ─────────────────────────────────────────────────────
 // 채팅방 생성
 // ─────────────────────────────────────────────────────
-router.post('/rooms', authenticate, async (req, res) => {
+router.post('/rooms', authenticate, validate(createRoomValidators), async (req, res) => {
   try {
     const userId = req.user.userId;
     const { postId, otherUserId } = req.body;
@@ -406,6 +439,7 @@ router.post(
   '/rooms/:roomId/messages',
   authenticate,
   upload.array('images', 5),
+  validate(sendMessageValidators),
   async (req, res) => {
     try {
       const userId = req.user.userId;
@@ -588,7 +622,7 @@ WHERE m.id = ?`,
 // 메시지 읽음 처리
 // [변경] 읽음 처리 후 메시지를 보낸 사람에게 read_receipt emit
 // ─────────────────────────────────────────────────────
-router.put('/rooms/:roomId/read', authenticate, async (req, res) => {
+router.put('/rooms/:roomId/read', authenticate, validate(roomIdParamValidator), async (req, res) => {
   try {
     const userId = req.user.userId;
     const { roomId } = req.params;
@@ -699,7 +733,7 @@ router.get('/unread-count', authenticate, async (req, res) => {
 // ─────────────────────────────────────────────────────
 // 채팅방 나가기 (소프트 삭제: 내 쪽에서만 목록에서 숨김)
 // ─────────────────────────────────────────────────────
-router.delete('/rooms/:roomId', authenticate, async (req, res) => {
+router.delete('/rooms/:roomId', authenticate, validate(roomIdParamValidator), async (req, res) => {
   try {
     const userId = req.user.userId;
     const { roomId } = req.params;
@@ -766,7 +800,7 @@ router.delete('/rooms/:roomId', authenticate, async (req, res) => {
 // ─────────────────────────────────────────────────────
 // 내 메시지 삭제 (소프트 삭제)
 // ─────────────────────────────────────────────────────
-router.delete('/:messageId', authenticate, async (req, res) => {
+router.delete('/:messageId', authenticate, validate(messageIdParamValidator), async (req, res) => {
   try {
     const userId = req.user.userId;
     const { messageId } = req.params;

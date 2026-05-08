@@ -1,6 +1,8 @@
 import express from 'express';
+import { body, param } from 'express-validator';
 import pool from '../config/database.js';
 import { authenticate } from '../middleware/auth.js';
+import { validate } from '../middleware/validate.js';
 import { closeIncompleteStudySessions } from '../socket/socketService.js';
 import {
   expandLegacyInvertedIntervalSessions,
@@ -14,6 +16,58 @@ import {
 import { upsertStudyDayTotalForUserKey } from '../utils/studyDayTotal.js';
 
 const router = express.Router();
+
+// ─────────────────────────────────────────────────────
+// 검증 체이너 — sanitizeDayKey 같은 후처리는 핸들러에 그대로 둔다.
+// dayKey 형식은 너무 빡빡하게 잡으면 정상 클라이언트가 막힐 수 있어
+// "비어있지 않은 짧은 문자열" 정도로만 1차 게이트를 깐다.
+// ─────────────────────────────────────────────────────
+const SUBJECT_NAME_MAX = 100;
+const SUBJECT_COLOR_MAX = 20;
+const TASK_CONTENT_MAX = 500;
+const VALID_TASK_STATUS = ['pending', 'done'];
+
+const dayBodyValidators = [
+  body('dayKey').isString().withMessage('dayKey가 필요합니다.')
+    .bail().trim().isLength({ min: 1, max: 32 })
+    .withMessage('dayKey 형식이 올바르지 않습니다.'),
+  body('totalElapsedMs').optional({ values: 'falsy' }).toFloat().isFloat({ min: 0 })
+    .withMessage('totalElapsedMs 가 올바르지 않습니다.'),
+  body('sessions').optional({ values: 'null' }).isArray().withMessage('sessions 는 배열이어야 합니다.'),
+  body('subjects').optional({ values: 'null' }).isArray().withMessage('subjects 는 배열이어야 합니다.'),
+  body('tasks').optional({ values: 'null' }).isArray().withMessage('tasks 는 배열이어야 합니다.'),
+];
+
+const createSubjectValidators = [
+  body('dayKey').isString().bail().trim().isLength({ min: 1, max: 32 })
+    .withMessage('dayKey가 필요합니다.'),
+  body('name').isString().bail().trim().isLength({ min: 1, max: SUBJECT_NAME_MAX })
+    .withMessage('과목 이름은 1-100자여야 합니다.'),
+  body('color').optional({ values: 'falsy' }).isString().trim().isLength({ max: SUBJECT_COLOR_MAX }),
+];
+
+const createTaskValidators = [
+  body('dayKey').isString().bail().trim().isLength({ min: 1, max: 32 })
+    .withMessage('dayKey가 필요합니다.'),
+  body('content').isString().bail().trim().isLength({ min: 1, max: TASK_CONTENT_MAX })
+    .withMessage(`할 일 내용은 1-${TASK_CONTENT_MAX}자여야 합니다.`),
+  body('subjectId').optional({ values: 'falsy' }).toInt().isInt({ min: 1 })
+    .withMessage('subjectId 가 올바르지 않습니다.'),
+  body('status').optional({ values: 'falsy' }).isIn(VALID_TASK_STATUS),
+];
+
+const updateTaskStatusValidators = [
+  param('taskId').toInt().isInt({ min: 1 }).withMessage('유효하지 않은 taskId 입니다.'),
+  body('status').optional({ values: 'falsy' }).isIn(VALID_TASK_STATUS),
+];
+
+const subjectIdParamValidator = [
+  param('subjectId').toInt().isInt({ min: 1 }).withMessage('유효하지 않은 subjectId 입니다.'),
+];
+
+const taskIdParamValidator = [
+  param('taskId').toInt().isInt({ min: 1 }).withMessage('유효하지 않은 taskId 입니다.'),
+];
 
 const sanitizeDayKey = (dayKey) =>
   typeof dayKey === 'string' ? dayKey.slice(0, 10) : null;
@@ -290,7 +344,7 @@ async function loadNormalizedDayData(connection, userId, dayKey) {
 }
 
 // 하루 요약/세션 저장
-router.post('/day', authenticate, async (req, res) => {
+router.post('/day', authenticate, validate(dayBodyValidators), async (req, res) => {
   const connection = await pool.getConnection();
   try {
     const userId = req.user.userId;
@@ -462,7 +516,7 @@ router.post('/day', authenticate, async (req, res) => {
 // 정규화 과목 삭제 (메타데이터 정리)
 // - timer_tasks: 함께 소프트 삭제
 // - study_sessions: 레코드는 보존, subject_id만 NULL로 분리
-router.delete('/subjects/:subjectId', authenticate, async (req, res) => {
+router.delete('/subjects/:subjectId', authenticate, validate(subjectIdParamValidator), async (req, res) => {
   const connection = await pool.getConnection();
   try {
     const userId = req.user.userId;
@@ -526,7 +580,7 @@ router.delete('/subjects/:subjectId', authenticate, async (req, res) => {
 });
 
 // 정규화 할일 삭제 (소프트 삭제)
-router.delete('/tasks/:taskId', authenticate, async (req, res) => {
+router.delete('/tasks/:taskId', authenticate, validate(taskIdParamValidator), async (req, res) => {
   try {
     const userId = req.user.userId;
     const taskId = Number(req.params.taskId);
@@ -691,7 +745,7 @@ router.get('/day', authenticate, async (req, res) => {
 });
 
 // 정규화 과목 생성 (서버 발급 ID)
-router.post('/subjects', authenticate, async (req, res) => {
+router.post('/subjects', authenticate, validate(createSubjectValidators), async (req, res) => {
   try {
     const userId = req.user.userId;
     const dayKey = sanitizeDayKey(req.body?.dayKey);
@@ -726,7 +780,7 @@ router.post('/subjects', authenticate, async (req, res) => {
 });
 
 // 정규화 할일 생성 (서버 발급 ID)
-router.post('/tasks', authenticate, async (req, res) => {
+router.post('/tasks', authenticate, validate(createTaskValidators), async (req, res) => {
   try {
     const userId = req.user.userId;
     const dayKey = sanitizeDayKey(req.body?.dayKey);
@@ -763,7 +817,7 @@ router.post('/tasks', authenticate, async (req, res) => {
 });
 
 // 정규화 할일 상태 수정
-router.patch('/tasks/:taskId', authenticate, async (req, res) => {
+router.patch('/tasks/:taskId', authenticate, validate(updateTaskStatusValidators), async (req, res) => {
   try {
     const userId = req.user.userId;
     const taskId = Number(req.params.taskId);
