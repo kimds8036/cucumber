@@ -149,6 +149,21 @@ export async function clearAuthToken() {
 }
 
 /**
+ * 현재 살아있는 인증 토큰을 가져온다.
+ * - 영속(AsyncStorage) → 인메모리 순서로 폴백한다.
+ * - SocketContext 등 axios interceptor 외부에서 토큰을 직접 써야 할 때 사용.
+ */
+export async function getAuthToken() {
+  try {
+    const stored = await AsyncStorage.getItem(AUTH_TOKEN_KEY);
+    if (stored) return stored;
+  } catch {
+    // AsyncStorage 접근 실패 시 인메모리 폴백
+  }
+  return inMemoryAuthToken;
+}
+
+/**
  * 로그아웃 시 사용자 세션/캐시 데이터 정리
  * - `@` prefix: 앱에서 쓰는 고정 키들
  * - `_chat_cache_`: 채팅방별 동적 캐시 키
