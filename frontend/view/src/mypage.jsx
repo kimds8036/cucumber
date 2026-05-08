@@ -5,7 +5,6 @@ import {
   ScrollView,
   TouchableOpacity,
   Alert,
-  Modal,
   useWindowDimensions,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -17,6 +16,7 @@ import {
 } from '../../styles/mypage.style';
 import ProfileCard from '../../components/Profilecard';
 import TimetableView from '../../components/Timetableview';
+import AppPopupModal from '../../components/common/AppPopupModal';
 import { createTimetableViewStyles } from '../../src/screens/timetable/timetable.style';
 import { api, clearUserSessionStorage } from '../../utils/api';
 import { useAuth } from '../../context/AuthContext';
@@ -390,43 +390,82 @@ const MyPage = ({ navigation }) => {
         <View style={styles.bottomPadding} />
       </ScrollView>
 
-      <Modal
+      <AppPopupModal
         visible={showResetTimetableModal}
-        transparent
-        animationType="none"
-        onRequestClose={() => setShowResetTimetableModal(false)}
+        onClose={() => setShowResetTimetableModal(false)}
+        dismissOnBackdrop={false}
       >
-        <View style={timetableModalStyles.saveSuccessModalOverlay}>
-          <View style={timetableModalStyles.saveSuccessModalCard}>
-            <Text style={timetableModalStyles.saveSuccessModalTitle}>
-              시간표 삭제
+        <Text
+          style={{
+            fontSize: 18,
+            color: colors.textPrimary,
+            fontWeight: '700',
+            textAlign: 'center',
+            marginBottom: 10,
+          }}
+        >
+          시간표 삭제
+        </Text>
+        <Text
+          style={{
+            fontSize: 14,
+            color: colors.textSecondary,
+            textAlign: 'center',
+            lineHeight: 22,
+            marginBottom: 16,
+          }}
+        >
+          시간표를 모두 지우고 초기화할까요?
+        </Text>
+        <View style={timetableModalStyles.timetableResetModalActions}>
+          <TouchableOpacity
+            style={[
+              timetableModalStyles.timetableResetModalCancel,
+              {
+                height: 42,
+                borderRadius: 10,
+                backgroundColor: colors.textLight5,
+                alignItems: 'center',
+                justifyContent: 'center',
+              },
+            ]}
+            onPress={() => setShowResetTimetableModal(false)}
+            activeOpacity={0.85}
+          >
+            <Text
+              style={[
+                timetableModalStyles.timetableResetModalCancelText,
+                { fontSize: 14, fontWeight: '700', color: colors.textSecondary },
+              ]}
+            >
+              취소
             </Text>
-            <Text style={timetableModalStyles.saveSuccessModalBody}>
-              시간표를 모두 지우고 초기화할까요?
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[
+              timetableModalStyles.timetableResetModalDelete,
+              {
+                height: 42,
+                borderRadius: 10,
+                backgroundColor: colors.primary,
+                alignItems: 'center',
+                justifyContent: 'center',
+              },
+            ]}
+            onPress={performResetTimetable}
+            activeOpacity={0.85}
+          >
+            <Text
+              style={[
+                timetableModalStyles.timetableResetModalDeleteText,
+                { fontSize: 14, fontWeight: '700', color: colors.textWhite },
+              ]}
+            >
+              삭제
             </Text>
-            <View style={timetableModalStyles.timetableResetModalActions}>
-              <TouchableOpacity
-                style={timetableModalStyles.timetableResetModalCancel}
-                onPress={() => setShowResetTimetableModal(false)}
-                activeOpacity={0.85}
-              >
-                <Text style={timetableModalStyles.timetableResetModalCancelText}>
-                  취소
-                </Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={timetableModalStyles.timetableResetModalDelete}
-                onPress={performResetTimetable}
-                activeOpacity={0.85}
-              >
-                <Text style={timetableModalStyles.timetableResetModalDeleteText}>
-                  삭제
-                </Text>
-              </TouchableOpacity>
-            </View>
-          </View>
+          </TouchableOpacity>
         </View>
-      </Modal>
+      </AppPopupModal>
     </View>
   );
 };
