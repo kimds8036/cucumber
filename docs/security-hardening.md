@@ -140,19 +140,36 @@ Railway 배포 + 학생 베타 테스트 진행 중 / 종료 후 처리할 작�
 
 ### 1. Validation Step 2 — 나머지 라우트 입력 검증
 
-대상 라우트 (`feat/back-validation-2` 브랜치):
+라우트가 많아 두 PR 로 분할:
 
-- [ ] `back/src/routes/messages.js` — DM/그룹 메시지 본문 길이, room id 정수, 첨부 카운트
-- [ ] `back/src/routes/friends.js` — 친구 요청/수락/거절 페이로드
-- [ ] `back/src/routes/timer.js` — start/stop payload, `day_key` 형식, 과목 길이
-- [ ] `back/src/routes/timetable.js` — 시간표 슬롯 인덱스 범위, day 상수
-- [ ] `back/src/routes/dm.js` — DM 룸 생성/조회 파라미터
+#### Step 2a — 사용자 핵심 라우트 (브랜치: `feat/back-validation-2a`)
+
+- [x] `back/src/routes/messages.js`
+  - `POST /rooms` (postId / otherUserId 정수)
+  - `POST /rooms/:roomId/messages` (roomId 정수, content ≤ 2000, parent_message_id 정수)
+  - `PUT /rooms/:roomId/read`, `DELETE /rooms/:roomId`, `DELETE /:messageId` (param 정수)
+- [x] `back/src/routes/friends.js`
+  - `POST /requests` (username 1-50)
+  - `POST /requests/:id/accept|reject`, `DELETE /:friendUserId`, `POST /:friendUserId/block` (param 정수)
+- [x] `back/src/routes/timer.js`
+  - `POST /day` (dayKey 1-32, totalElapsedMs ≥ 0, sessions/subjects/tasks 배열)
+  - `POST /subjects` (dayKey, name 1-100, color ≤ 20)
+  - `POST /tasks` (dayKey, content 1-500, subjectId 정수, status enum)
+  - `PATCH /tasks/:taskId` (taskId 정수, status enum)
+  - `DELETE /subjects/:subjectId`, `DELETE /tasks/:taskId` (param 정수)
+- [x] `back/src/routes/timetable.js`
+  - `PUT /` (timetable 객체, ≤ 200 keys, 각 값 ≤ 50자)
+- [x] `back/src/routes/dm.js`
+  - `POST /rooms` (otherUserId 정수)
+  - `POST /rooms/:roomId/messages` (roomId 정수, content ≤ 2000, parent_message_id 정수)
+  - `PUT /rooms/:roomId/read`, `DELETE /rooms/:roomId`, `DELETE /messages/:messageId` (param 정수)
+
+#### Step 2b — 검색/관리자/계정 라우트 (브랜치: `feat/back-validation-2b`)
+
 - [ ] `back/src/routes/users.js` — 검색 q, 프로필 변경 페이로드
 - [ ] `back/src/routes/search.js` — q 길이, 페이징 한도
 - [ ] `back/src/routes/schools.js` — school id 길이/형식
 - [ ] `back/src/routes/adminInquiries.js`, `adminReports.js` — admin 액션 페이로드
-
-> 라우트가 많아 `feat/back-validation-2a` (사용자: messages/friends/timer/timetable/dm) + `feat/back-validation-2b` (admin/search/schools/users) 로 분할 PR 권장.
 
 ### 2. Refresh Token 도입 (백 + 프론트 동시 작업)
 
