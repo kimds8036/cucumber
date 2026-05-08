@@ -1,6 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
-  StyleSheet,
   Text,
   TouchableOpacity,
   View,
@@ -23,7 +22,6 @@ import {
   createDetailStyles,
 } from '../../../../styles/board.style';
 import { createChatStyles } from '../../../../styles/message.style';
-import { colors } from '../../../../styles/colors';
 import Skeleton from '../../../../components/common/Skeleton';
 import SubHeader from '../../../frame/subHeader';
 
@@ -237,8 +235,8 @@ export default function ChatScreen({
         titleElement={headerConfig?.titleElement}
       />
 
-      <View style={{ flex: 1 }}>
-        <View style={{ flex: 1, backgroundColor: colors.background }}>
+      <View style={chatStyles.chatScreenBody}>
+        <View style={chatStyles.chatScreenMain}>
           {chatType === 'room' && (
             <PostCard
               roomId={roomId}
@@ -256,37 +254,16 @@ export default function ChatScreen({
             />
           )}
 
-        <Animated.View style={[{ flex: 1, position: 'relative' }, listAnimStyle]}>
+        <Animated.View style={[chatStyles.chatListContainer, listAnimStyle]}>
           {!combinedLoading && chat.hasMore && scroll.showLoadMoreButton ? (
-            <View
-              style={{
-                position: 'absolute',
-                top: normalize(8),
-                left: 0,
-                right: 0,
-                alignItems: 'center',
-                zIndex: 25,
-              }}
-            >
+            <View style={chatStyles.loadMoreWrap}>
               <TouchableOpacity
                 activeOpacity={0.9}
                 disabled={chat.isLoadingMore}
                 onPress={() => scroll.triggerLoadMore?.()}
-                style={{
-                  backgroundColor: 'rgba(255,255,255,0.98)',
-                  borderWidth: 1,
-                  borderColor: '#E0E0E0',
-                  borderRadius: normalize(14),
-                  paddingHorizontal: normalize(12),
-                  paddingVertical: normalize(7),
-                }}
+                style={chatStyles.loadMoreButton}
               >
-                <Text
-                  style={{
-                    fontSize: normalize(12),
-                    color: colors.textPrimary,
-                  }}
-                >
+                <Text style={chatStyles.loadMoreButtonText}>
                   {chat.isLoadingMore ? '불러오는 중...' : '이전대화 더불러오기'}
                 </Text>
               </TouchableOpacity>
@@ -308,132 +285,79 @@ export default function ChatScreen({
             onViewableItemsChanged={scroll.handleViewableItemsChanged}
           />
           {shouldShowChatSkeleton ? (
-            <View
-              pointerEvents="auto"
-              style={{
-                ...StyleSheet.absoluteFillObject,
-                backgroundColor: colors.background,
-                justifyContent: 'space-between',
-                zIndex: 50,
-              }}
-            >
-              <View style={{ paddingTop: normalize(12), paddingHorizontal: normalize(14) }}>
+            <View pointerEvents="auto" style={chatStyles.chatSkeletonOverlay}>
+              <View style={chatStyles.chatSkeletonTop}>
                 <Skeleton
                   width={normalize(120)}
                   height={normalize(12)}
                   borderRadius={normalize(6)}
                 />
               </View>
-              <View style={{ width: '100%', paddingHorizontal: normalize(14), gap: normalize(14) }}>
-                <View style={{ flexDirection: 'row', alignItems: 'flex-end', gap: normalize(8) }}>
+              <View style={chatStyles.chatSkeletonBody}>
+                <View style={chatStyles.chatSkeletonRowLeft}>
                   <Skeleton width={normalize(28)} height={normalize(28)} borderRadius={normalize(14)} />
-                  <View style={{ gap: normalize(6), maxWidth: '72%' }}>
+                  <View style={chatStyles.chatSkeletonBubbleWrap72}>
                     <Skeleton width={normalize(140)} height={normalize(12)} borderRadius={normalize(6)} />
                     <Skeleton width={normalize(190)} height={normalize(14)} borderRadius={normalize(8)} />
                   </View>
                 </View>
-                <View style={{ alignItems: 'flex-end' }}>
-                  <View style={{ gap: normalize(6), width: '72%', alignItems: 'flex-end' }}>
+                <View style={chatStyles.chatSkeletonRowRight}>
+                  <View style={chatStyles.chatSkeletonBubbleWrap72Right}>
                     <Skeleton width={normalize(160)} height={normalize(14)} borderRadius={normalize(8)} />
                     <Skeleton width={normalize(110)} height={normalize(12)} borderRadius={normalize(6)} />
                   </View>
                 </View>
-                <View style={{ flexDirection: 'row', alignItems: 'flex-end', gap: normalize(8) }}>
+                <View style={chatStyles.chatSkeletonRowLeft}>
                   <Skeleton width={normalize(28)} height={normalize(28)} borderRadius={normalize(14)} />
-                  <View style={{ gap: normalize(6), maxWidth: '68%' }}>
+                  <View style={chatStyles.chatSkeletonBubbleWrap68}>
                     <Skeleton width={normalize(120)} height={normalize(12)} borderRadius={normalize(6)} />
                     <Skeleton width={normalize(170)} height={normalize(14)} borderRadius={normalize(8)} />
                   </View>
                 </View>
               </View>
-              <View style={{ height: normalize(12) }} />
+              <View style={chatStyles.chatSkeletonBottomSpacer} />
             </View>
           ) : null}
         </Animated.View>
 
         {/* 토스트 */}
         {toastText ? (
-          <View
-            pointerEvents="none"
-            style={{
-              position: 'absolute',
-              left: 0,
-              right: 0,
-              bottom: normalize(100),
-              alignItems: 'center',
-            }}
-          >
-            <View
-              style={{
-                backgroundColor: 'rgba(255,255,255,0.97)',
-                borderWidth: 1,
-                borderColor: '#E0E0E0',
-                borderRadius: normalize(8),
-                paddingHorizontal: normalize(16),
-                paddingVertical: normalize(10),
-              }}
-            >
-              <Text
-                style={{
-                  fontSize: normalize(13),
-                  color: colors.textPrimary,
-                }}
-              >
+          <View pointerEvents="none" style={chatStyles.chatToastWrap}>
+            <View style={chatStyles.chatToastCard}>
+              <Text style={chatStyles.chatToastText}>
                 {toastText}
               </Text>
             </View>
           </View>
         ) : null}
 
-        {/* 답장 프리뷰 */}
-        {replyToMessage ? (
-          <TouchableOpacity
-            onPress={() => setReplyToMessage(null)}
-            style={
-              chatStyles.replyPreviewContainer || {
-                flexDirection: 'row',
-                alignItems: 'center',
-                paddingHorizontal: normalize(16),
-                paddingVertical: normalize(8),
-                backgroundColor: '#F5F5F5',
-                borderTopWidth: 1,
-                borderTopColor: '#E0E0E0',
-              }
-            }
-          >
-            <View style={{ flex: 1 }}>
-              <Text
-                style={
-                  chatStyles.replyPreviewTitle || {
-                    fontSize: normalize(12),
-                    color: colors.primary,
-                    fontWeight: 'bold',
-                  }
-                }
-              >
-                {replyToMessage.isMe ? '내' : '상대방에게'} 답장 중
-              </Text>
-              <Text
-                numberOfLines={1}
-                style={
-                  chatStyles.replyPreviewContent || {
-                    fontSize: normalize(12),
-                    color: '#666',
-                  }
-                }
-              >
-                {replyToMessage.content || '(이미지 메시지)'}
-              </Text>
-            </View>
-            <Ionicons
-              name="close-circle"
-              size={normalize(24)}
-              color={colors.textSecondary || '#999'}
-            />
-          </TouchableOpacity>
-        ) : null}
-
           <Animated.View style={inputAnimStyle}>
+            {/* 답장 프리뷰 */}
+            {replyToMessage ? (
+              <TouchableOpacity
+                onPress={() => setReplyToMessage(null)}
+                style={chatStyles.replyPreviewContainer || chatStyles.replyPreviewFallback}
+              >
+                <View style={chatStyles.replyPreviewMetaWrap}>
+                  <Text
+                    style={chatStyles.replyPreviewTitle || chatStyles.replyPreviewTitleFallback}
+                  >
+                    {replyToMessage.isMe ? '나에게' : '상대방에게'} 답장 중
+                  </Text>
+                  <Text
+                    numberOfLines={1}
+                    style={chatStyles.replyPreviewContent || chatStyles.replyPreviewContentFallback}
+                  >
+                    {replyToMessage.content || '(이미지 메시지)'}
+                  </Text>
+                </View>
+                <Ionicons
+                  name="close-circle"
+                  size={normalize(18)}
+                  color={chatStyles.replyPreviewContentFallback.color}
+                />
+              </TouchableOpacity>
+            ) : null}
             <MessageInput
               value={inputText}
               onChange={setInputText}

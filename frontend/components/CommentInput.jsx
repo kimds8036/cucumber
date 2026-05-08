@@ -20,6 +20,7 @@ export default function CommentInput({
   onImagesChange = () => {},
   showImageAttach = false,
   isSendingComment = false,
+  inputScrollEnabled = true,
 }) {
   return (
     <View style={styles.bottomInputRow}>
@@ -82,6 +83,8 @@ export default function CommentInput({
           value={bottomComment}
           onChangeText={setBottomComment}
           multiline
+          scrollEnabled={inputScrollEnabled}
+          showsVerticalScrollIndicator={false}
           maxLength={1000}
           editable={!isSendingComment}
           onSubmitEditing={() => {

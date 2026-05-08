@@ -893,13 +893,6 @@ const NotificationScreen = ({ navigation }) => {
                 마케팅 동의 사용자 대상으로
                 "인기 게시글을 확인해 보세요" 알림 문구/플로우 적용 예정
               */}
-              <TouchableOpacity
-                style={styles.emptyButton}
-                onPress={() => popToMainRoot(navigation)}
-                activeOpacity={0.8}
-              >
-                <Text style={styles.emptyButtonText}>인기글 보러가기</Text>
-              </TouchableOpacity>
             </View>
           )
         }
