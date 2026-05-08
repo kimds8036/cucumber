@@ -98,7 +98,6 @@ const MyPage = ({ navigation }) => {
       try {
         setLoading(true);
         let cachedTimetable = null;
-        let timetableClearedByUser = false;
         let cachedProfile = null;
         let cachedProfileTs = 0;
         try {
@@ -137,7 +136,6 @@ const MyPage = ({ navigation }) => {
           const raw = await AsyncStorage.getItem(scopedTimetableCacheKey);
           if (raw) {
             const parsed = JSON.parse(raw);
-            timetableClearedByUser = Boolean(parsed?.clearedByUser);
             if (Date.now() - Number(parsed?.ts || 0) < TIMETABLE_CACHE_TTL_MS) {
               cachedTimetable = parsed?.timetable ?? null;
               if (mounted) {
@@ -148,14 +146,14 @@ const MyPage = ({ navigation }) => {
                 setTimetable(normalized);
               }
             } else {
-              setTimetableLoading(true);
+              setTimetable(null);
             }
           } else {
-            setTimetableLoading(true);
+            setTimetable(null);
           }
         } catch (cacheErr) {
           console.warn('시간표 캐시 읽기 실패:', cacheErr);
-          setTimetableLoading(true);
+          setTimetable(null);
         }
 
         if (me) {
@@ -194,37 +192,7 @@ const MyPage = ({ navigation }) => {
           setUserInfo(null);
         }
 
-        // 캐시가 없거나 비어 있으면 서버 시간표를 1회 조회하여 채운다.
-        // 사용자가 새로고침으로 삭제한 경우(clearedByUser)에는 서버로 다시 채우지 않는다.
-        const needsServerTimetable =
-          mounted &&
-          !timetableClearedByUser &&
-          (!cachedTimetable || Object.keys(cachedTimetable || {}).length === 0);
-
-        if (needsServerTimetable) {
-          try {
-            const ttRes = await api.get('/api/timetable');
-            const tt = ttRes.data?.data?.timetable || {};
-            const hasEntries = Object.keys(tt).length > 0;
-            const normalized = hasEntries ? tt : null;
-            setTimetable(normalized);
-            await AsyncStorage.setItem(
-              scopedTimetableCacheKey,
-              JSON.stringify({
-                ts: Date.now(),
-                timetable: normalized,
-                clearedByUser: false,
-              }),
-            );
-          } catch (ttError) {
-            console.error('[MyPage] /api/timetable 조회 실패:', ttError?.response?.data || ttError?.message || ttError);
-            setTimetable(null);
-          } finally {
-            setTimetableLoading(false);
-          }
-        } else {
-          setTimetableLoading(false);
-        }
+        setTimetableLoading(false);
       } catch (error) {
         console.error('[MyPage] 데이터 로드 실패:', error?.response?.data || error?.message || error);
       } finally {
