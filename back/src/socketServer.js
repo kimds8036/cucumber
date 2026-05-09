@@ -91,6 +91,11 @@ export function initSocketServer(httpServer) {
 
     // ── 채팅방 입장 ─────────────────────────────
     socket.on('join_room', async ({ roomId }) => {
+      console.log('[Socket][join_room] 요청', {
+        socketId: socket.id,
+        socketUserId: userId,
+        roomId,
+      });
       if (!roomId) return;
 
       // 권한 확인: 실제로 이 룸의 참여자인지 DB 검증
@@ -106,6 +111,11 @@ export function initSocketServer(httpServer) {
           [roomId, userId, userId],
         );
         if (msgRows.length === 0 && dmRows.length === 0) {
+          console.warn('[Socket][join_room] 권한 없음', {
+            socketId: socket.id,
+            socketUserId: userId,
+            roomId,
+          });
           socket.emit('error', { message: '채팅방 접근 권한이 없습니다.' });
           return;
         }
@@ -122,7 +132,11 @@ export function initSocketServer(httpServer) {
     socket.on('leave_room', ({ roomId }) => {
       if (!roomId) return;
       socket.leave(`room:${roomId}`);
-      console.log(`[Socket] userId=${userId} → room:${roomId} 퇴장`);
+      console.log('[Socket][leave_room] 퇴장', {
+        socketId: socket.id,
+        socketUserId: userId,
+        roomId,
+      });
     });
 
     // ── 타이핑 이벤트(상대방 표시) ────────────────
@@ -172,6 +186,10 @@ export function emitNewMessage(roomId, message) {
  */
 export function emitReadReceipt(targetUserId, roomId) {
   if (!io) return;
+  console.log('[Socket][emitReadReceipt] emit', {
+    targetUserId,
+    roomId,
+  });
   io.to(`user:${targetUserId}`).emit('read_receipt', {
     type: 'read_receipt',
     roomId,
