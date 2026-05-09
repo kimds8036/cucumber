@@ -625,6 +625,7 @@ router.put('/rooms/:roomId/read', authenticate, validate(dmRoomIdParamValidator)
   try {
     const userId = req.user.userId;
     const { roomId } = req.params;
+    console.log('[ReadChain][dm] read 요청', { userId, roomId });
 
     const [rooms] = await pool.execute(
       `SELECT id, user1_id, user2_id FROM dm_rooms
@@ -647,6 +648,12 @@ router.put('/rooms/:roomId/read', authenticate, validate(dmRoomIdParamValidator)
        WHERE room_id = ? AND sender_id != ? AND is_read = FALSE`,
       [roomId, userId],
     );
+    console.log('[ReadChain][dm] update 결과', {
+      userId,
+      roomId,
+      affectedRows: updateResult.affectedRows,
+      otherUserId,
+    });
 
     if (updateResult.affectedRows > 0 && otherUserId) {
       emitReadReceipt(otherUserId, roomId);
