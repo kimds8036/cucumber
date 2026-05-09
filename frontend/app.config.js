@@ -99,7 +99,7 @@ export default ({ config }) => ({
       ],
   
       extra: {
-        apiBaseUrl: "https://nonvenous-patriotically-bud.ngrok-free.dev",
+        apiBaseUrl: "https://cucumber-develop.up.railway.app",
         eas: {
           projectId: "39e0f4f8-dd46-4921-a4bf-68856fdfc85c",
         },
