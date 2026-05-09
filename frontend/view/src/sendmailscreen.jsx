@@ -125,6 +125,12 @@ const SendMailScreen = ({ navigation }) => {
       setUserError('');
       return;
     }
+    // 아이디(@…) 형태로는 검색하지 않음 — 실명(name) 검색만 허용
+    if (q.startsWith('@')) {
+      setUserResults([]);
+      setUserError('');
+      return;
+    }
     const t = setTimeout(async () => {
       try {
         setUserLoading(true);
@@ -133,7 +139,10 @@ const SendMailScreen = ({ navigation }) => {
           params: { schoolId: selectedSchool.id, query: q, limit: 10 },
         });
         console.log('[SendMail] users/search 응답:', res.data?.data);
-        setUserResults(res.data?.data?.users || []);
+        const raw = res.data?.data?.users || [];
+        setUserResults(
+          raw.filter((u) => String(u?.name ?? '').trim() === q),
+        );
       } catch (error) {
         setUserError(error.response?.data?.message || '유저 검색 중 오류가 발생했습니다.');
         setUserResults([]);

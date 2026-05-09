@@ -78,10 +78,7 @@ router.get('/me/stats', authenticate, async (req, res) => {
 router.get('/search', authenticate, async (req, res) => {
   try {
     const schoolId = String(req.query?.schoolId || '').trim();
-    let matchStr = String(req.query?.query || '').trim();
-    if (matchStr.startsWith('@')) {
-      matchStr = matchStr.slice(1).trim();
-    }
+    const matchStr = String(req.query?.query || '').trim();
 
     if (!schoolId) {
       return res.status(400).json({ success: false, message: 'schoolId가 필요합니다.' });
@@ -91,7 +88,8 @@ router.get('/search', authenticate, async (req, res) => {
       return res.json({ success: true, data: { users: [] } });
     }
 
-    const params = [schoolId, matchStr, matchStr];
+    // 우편 받는 사람 검색: 실명(name) 전체 일치만 (username으로 검색하지 않음)
+    const params = [schoolId, matchStr];
     const [rows] = await pool.execute(
       `SELECT
          u.id,
@@ -104,7 +102,7 @@ router.get('/search', authenticate, async (req, res) => {
        LEFT JOIN schools s ON u.school_id = s.school_id
        WHERE u.is_deleted = FALSE
          AND u.school_id = ?
-         AND (u.username = ? OR u.name = ?)
+         AND u.name = ?
        ORDER BY u.name ASC
        LIMIT 10`,
       params

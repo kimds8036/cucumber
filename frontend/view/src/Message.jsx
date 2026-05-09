@@ -9,11 +9,13 @@ import {
   Alert,
   PanResponder,
   Platform,
+  Modal,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import MainHeader from '../frame/mainHeader';
 import MainFooter from '../frame/mainFooter';
 import { createMessageStyles, getNormalize } from '../../styles/message.style';
+import { createMessageRoomMenuSheetStyles } from '../../styles/messageRoomMenuSheet.style';
 import { colors, fonts, fontSizes } from '../../styles/colors';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import Feather from '@expo/vector-icons/Feather';
@@ -251,6 +253,10 @@ export function MessageContent({ navigation }) {
   const { width } = useWindowDimensions();
   const normalize = useMemo(() => getNormalize(width), [width]);
   const styles = useMemo(() => createMessageStyles(width, normalize), [width, normalize]);
+  const roomMenuSheetStyles = useMemo(
+    () => createMessageRoomMenuSheetStyles(normalize),
+    [normalize],
+  );
 
   const [messageType, setMessageType] = useState('note'); // 'note' | 'mail' (쪽지 탭에 익명+DM 혼합)
   const slideAnim = useRef(new Animated.Value(0)).current; // 0=쪽지, 1=개인우편
@@ -258,8 +264,114 @@ export function MessageContent({ navigation }) {
   const [mails, setMails] = useState([]);
   const [loadingNote, setLoadingNote] = useState(false);
   const [loadingMail, setLoadingMail] = useState(false);
+  /** 친구 화면과 동일 바텀시트 — DM / 쪽지 / 개인 우편 롱프레스 */
+  const [roomMenuModalVisible, setRoomMenuModalVisible] = useState(false);
+  const [roomMenuTarget, setRoomMenuTarget] = useState(null);
   const { setIsMessageTab } = useToast();
   const { refreshHasUnread } = useNotification();
+
+  const closeRoomMenuModal = useCallback(() => {
+    setRoomMenuModalVisible(false);
+    setRoomMenuTarget(null);
+  }, []);
+
+  const openRoomMenuModal = useCallback((kind, item) => {
+    setRoomMenuTarget({ kind, item });
+    setRoomMenuModalVisible(true);
+  }, []);
+
+  const runRoomMenuDelete = useCallback((target) => {
+    if (!target) return;
+    const { kind, item } = target;
+    if (kind === 'dm') {
+      (async () => {
+        try {
+          await api.delete(`/api/dm/rooms/${item.id}`);
+          setNoteRooms((prev) =>
+            prev.filter((r) => !(r.type === 'dm' && r.id === item.id)),
+          );
+        } catch {
+          Alert.alert('오류', 'DM 삭제에 실패했습니다.');
+        }
+      })();
+      return;
+    }
+    if (kind === 'note') {
+      (async () => {
+        try {
+          await api.delete(`/api/messages/rooms/${item.id}`);
+          setNoteRooms((prev) => prev.filter((r) => r.id !== item.id));
+        } catch {
+          Alert.alert('오류', '삭제에 실패했습니다.');
+        }
+      })();
+      return;
+    }
+    if (kind === 'mail') {
+      if (!item.roomId) {
+        Alert.alert('오류', '우편 룸 정보를 찾을 수 없습니다.');
+        return;
+      }
+      (async () => {
+        try {
+          await api.delete(`/api/mails/personal/rooms/${item.roomId}`);
+          setMails((prev) => prev.filter((m) => m.roomId !== item.roomId));
+        } catch {
+          Alert.alert('오류', '우편 삭제에 실패했습니다.');
+        }
+      })();
+    }
+  }, []);
+
+  const runRoomMenuBlock = useCallback((target) => {
+    if (!target) return;
+    const { kind, item } = target;
+    if (kind === 'dm') {
+      if (!item.other_user_id) return;
+      (async () => {
+        try {
+          await api.post(`/api/friends/${item.other_user_id}/block`, {
+            reason: 'chat_block',
+          });
+          setNoteRooms((prev) =>
+            prev.filter((r) => !(r.type === 'dm' && r.id === item.id)),
+          );
+        } catch {
+          Alert.alert('오류', '차단 처리에 실패했습니다.');
+        }
+      })();
+      return;
+    }
+    if (kind === 'note') {
+      if (!item.other_user_id) return;
+      (async () => {
+        try {
+          await api.post(`/api/friends/${item.other_user_id}/block`, {
+            reason: 'anonymous_chat_block',
+          });
+          setNoteRooms((prev) => prev.filter((r) => r.id !== item.id));
+        } catch {
+          Alert.alert('오류', '차단 처리에 실패했습니다.');
+        }
+      })();
+      return;
+    }
+    if (kind === 'mail') {
+      if (!item.counterpartyUserId) return;
+      (async () => {
+        try {
+          await api.post(`/api/friends/${item.counterpartyUserId}/block`, {
+            reason: 'mail_block',
+          });
+          if (item.roomId) {
+            setMails((prev) => prev.filter((m) => m.roomId !== item.roomId));
+          }
+        } catch {
+          Alert.alert('오류', '차단 처리에 실패했습니다.');
+        }
+      })();
+    }
+  }, []);
 
   const noteRoomsWithAds = useMemo(() => {
     const items = [];
@@ -558,9 +670,15 @@ export function MessageContent({ navigation }) {
           const rowLabel = firstMailSentByMe
             ? (firstRecipientName || latestRecipientName || '익명')
             : '익명';
+          const senderIdNum = Number(rawMail.sender_id);
+          const recipientIdNum = Number(rawMail.recipient_id);
+          const counterpartyUserId = isReceived
+            ? (Number.isFinite(senderIdNum) ? senderIdNum : null)
+            : (Number.isFinite(recipientIdNum) ? recipientIdNum : null);
           return {
             id: rawMail.id,
             roomId: rawMail.room_id ?? null,
+            counterpartyUserId,
             profileColorIndex: idx,
             profileColorId:
               rawMail.sender_color_id ??
@@ -675,38 +793,7 @@ export function MessageContent({ navigation }) {
                         key={`dm-${item.id}`}
                         style={styles.listItem}
                         activeOpacity={0.7}
-                        onLongPress={() => {
-                          Alert.alert('DM 옵션', '원하는 작업을 선택해주세요.', [
-                            {
-                              text: '차단',
-                              style: 'destructive',
-                              onPress: async () => {
-                                if (!item.other_user_id) return;
-                                try {
-                                  await api.post(`/api/friends/${item.other_user_id}/block`, {
-                                    reason: 'chat_block',
-                                  });
-                                  setNoteRooms((prev) => prev.filter((r) => !(r.type === 'dm' && r.id === item.id)));
-                                } catch {
-                                  Alert.alert('오류', '차단 처리에 실패했습니다.');
-                                }
-                              },
-                            },
-                            {
-                              text: '삭제',
-                              style: 'destructive',
-                              onPress: async () => {
-                                try {
-                                  await api.delete(`/api/dm/rooms/${item.id}`);
-                                  setNoteRooms((prev) => prev.filter((r) => !(r.type === 'dm' && r.id === item.id)));
-                                } catch {
-                                  Alert.alert('오류', 'DM 삭제에 실패했습니다.');
-                                }
-                              },
-                            },
-                            { text: '취소', style: 'cancel' },
-                          ]);
-                        }}
+                        onLongPress={() => openRoomMenuModal('dm', item)}
                         onPress={async () => {
                           setNoteRooms((prev) =>
                             prev.map((r) =>
@@ -759,38 +846,7 @@ export function MessageContent({ navigation }) {
                       key={`note-${item.id}`}
                       style={styles.listItem}
                       activeOpacity={0.7}
-                      onLongPress={() => {
-                        Alert.alert('쪽지 옵션', '원하는 작업을 선택해주세요.', [
-                          {
-                            text: '차단',
-                            style: 'destructive',
-                            onPress: async () => {
-                              if (!item.other_user_id) return;
-                              try {
-                                await api.post(`/api/friends/${item.other_user_id}/block`, {
-                                  reason: 'anonymous_chat_block',
-                                });
-                                setNoteRooms((prev) => prev.filter((r) => r.id !== item.id));
-                              } catch {
-                                Alert.alert('오류', '차단 처리에 실패했습니다.');
-                              }
-                            },
-                          },
-                          {
-                            text: '삭제',
-                            style: 'destructive',
-                            onPress: async () => {
-                              try {
-                                await api.delete(`/api/messages/rooms/${item.id}`);
-                                setNoteRooms((prev) => prev.filter((r) => r.id !== item.id));
-                              } catch {
-                                Alert.alert('오류', '삭제에 실패했습니다.');
-                              }
-                            },
-                          },
-                          { text: '취소', style: 'cancel' },
-                        ]);
-                      }}
+                      onLongPress={() => openRoomMenuModal('note', item)}
                       onPress={async () => {
                         setNoteRooms((prev) =>
                           prev.map((room) =>
@@ -871,44 +927,7 @@ export function MessageContent({ navigation }) {
                       key={`mail-${item.id}-${item.isReceived ? 'r' : 's'}`}
                       style={styles.listItem}
                       activeOpacity={0.7}
-                      onLongPress={() => {
-                        Alert.alert('개인 우편 옵션', '원하는 작업을 선택해주세요.', [
-                          {
-                            text: '차단',
-                            style: 'destructive',
-                            onPress: async () => {
-                              if (!item.counterpartyUserId) return;
-                              try {
-                                await api.post(`/api/friends/${item.counterpartyUserId}/block`, {
-                                  reason: 'mail_block',
-                                });
-                                if (item.roomId) {
-                                  setMails((prev) => prev.filter((m) => m.roomId !== item.roomId));
-                                }
-                              } catch {
-                                Alert.alert('오류', '차단 처리에 실패했습니다.');
-                              }
-                            },
-                          },
-                          {
-                            text: '삭제',
-                            style: 'destructive',
-                            onPress: async () => {
-                              if (!item.roomId) {
-                                Alert.alert('오류', '우편 룸 정보를 찾을 수 없습니다.');
-                                return;
-                              }
-                              try {
-                                await api.delete(`/api/mails/personal/rooms/${item.roomId}`);
-                                setMails((prev) => prev.filter((m) => m.roomId !== item.roomId));
-                              } catch {
-                                Alert.alert('오류', '우편 삭제에 실패했습니다.');
-                              }
-                            },
-                          },
-                          { text: '취소', style: 'cancel' },
-                        ]);
-                      }}
+                      onLongPress={() => openRoomMenuModal('mail', item)}
                       onPress={async () => {
                         const mailId = item.id;
                         const rawMail = item.raw || item;
@@ -996,6 +1015,71 @@ export function MessageContent({ navigation }) {
           </>
         )}
       </View>
+
+      <Modal
+        visible={roomMenuModalVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={closeRoomMenuModal}
+        onDismiss={() => setRoomMenuTarget(null)}
+      >
+        <TouchableOpacity
+          style={roomMenuSheetStyles.modalOverlay}
+          onPress={closeRoomMenuModal}
+          activeOpacity={1}
+        />
+        <View style={roomMenuSheetStyles.bottomSheet}>
+          {roomMenuTarget ? (
+            <>
+              <TouchableOpacity
+                style={roomMenuSheetStyles.sheetDeleteAction}
+                onPress={() => {
+                  const snapshot = roomMenuTarget;
+                  closeRoomMenuModal();
+                  runRoomMenuDelete(snapshot);
+                }}
+                activeOpacity={0.85}
+              >
+                <View
+                  style={[
+                    roomMenuSheetStyles.sheetActionIcon,
+                    roomMenuSheetStyles.deleteActionIcon,
+                  ]}
+                >
+                </View>
+                <View>
+                  <Text style={roomMenuSheetStyles.sheetDeleteActionTitle}>
+                    삭제
+                  </Text>
+                </View>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={roomMenuSheetStyles.sheetBlockAction}
+                onPress={() => {
+                  const snapshot = roomMenuTarget;
+                  closeRoomMenuModal();
+                  runRoomMenuBlock(snapshot);
+                }}
+                activeOpacity={0.85}
+              >
+                <View
+                  style={[
+                    roomMenuSheetStyles.sheetActionIcon,
+                    roomMenuSheetStyles.blockActionIcon,
+                  ]}
+                >
+                </View>
+                <View>
+                  <Text style={roomMenuSheetStyles.sheetBlockActionTitle}>
+                    차단
+                  </Text>
+                </View>
+              </TouchableOpacity>
+            </>
+          ) : null}
+        </View>
+      </Modal>
     </>
   );
 }

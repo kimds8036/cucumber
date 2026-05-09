@@ -221,7 +221,7 @@ export default function MailReplyScreen({ navigation, route }) {
       </SafeAreaView>
 
       {/* 전송 완료 토스트 */}
-      <Modal visible={showToast} transparent animationType="fade">
+      <Modal visible={showToast} transparent animationType="none">
         <View style={styles.toastOverlay}>
           <View style={styles.toastCard}>
             <Text style={styles.toastIcon}>📮</Text>

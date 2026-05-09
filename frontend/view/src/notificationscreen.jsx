@@ -27,6 +27,7 @@ import {
   isStudySummaryNotification,
   normalizeStudySummaryWatchers,
 } from '../../utils/studySummaryNotification';
+import NotificationAdPlaceholder from '../../src/screens/ad/NotificationAdPlaceholder';
 
 const PAGE_SIZE = 20;
 const INITIAL_PREFETCH_PAGES = 3;
@@ -498,6 +499,17 @@ const NotificationScreen = ({ navigation }) => {
     return sortNotificationsByCreatedDesc(enriched);
   }, [baseFiltered, getStudySummaryWatchers]);
 
+  const filteredWithAds = useMemo(
+    () =>
+      filteredNotifications.flatMap((item, index) => {
+        if ((index + 1) % 5 === 0) {
+          return [item, { id: 'noti_ad_' + index, type: 'notiAd' }];
+        }
+        return [item];
+      }),
+    [filteredNotifications],
+  );
+
   useEffect(() => {
     pageRef.current = page;
   }, [page]);
@@ -788,11 +800,14 @@ const NotificationScreen = ({ navigation }) => {
       {/* 알림 목록 - FlatList + 무한 스크롤 */}
       <FlatList
         style={[styles.scrollView, getDebugBorderStyle('#5856D6')]}
-        data={showSkeleton ? [] : filteredNotifications}
-        keyExtractor={(item) => String(item.id)}
+        data={showSkeleton ? [] : filteredWithAds}
+        keyExtractor={(item) =>
+          item.type === 'notiAd' ? item.id : String(item.id)
+        }
         refreshing={false}
         onRefresh={handleRefresh}
         renderItem={({ item: notification }) => {
+          if (notification.type === 'notiAd') return <NotificationAdPlaceholder />;
           const isTapped = tappedIds[notification.id];
           const isUnreadFromServer = !notification.isRead;
           const isStudySummary = isStudySummaryNotification(notification);

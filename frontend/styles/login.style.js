@@ -1,4 +1,4 @@
-import { StyleSheet } from 'react-native';
+import { Platform, StyleSheet } from 'react-native';
 import { colors, fonts, fontSizes } from './colors';
 import { shadow } from './tokens';
 
@@ -45,7 +45,7 @@ export const createLoginStyles = (width, normalize) => {
       borderColor: colors.primary,
       borderRadius: normalize(20),
       paddingHorizontal: normalize(20),
-      fontSize: normalize(fontSizes.xxl),
+      fontSize: normalize(fontSizes.xl),
       fontFamily: fonts.regular,
       color: colors.textSecondary,
       marginBottom: normalize(12),

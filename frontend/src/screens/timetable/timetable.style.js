@@ -402,7 +402,7 @@ export function createTimetableViewStyles(normalize) {
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'center',
-      backgroundColor: COLORS.primaryLight20,
+      backgroundColor: COLORS.background,
       paddingHorizontal: normalize(10),
       paddingVertical: normalize(4),
       borderRadius: normalize(20),
