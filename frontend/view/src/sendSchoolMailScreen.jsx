@@ -5,7 +5,6 @@ import {
   TextInput,
   TouchableOpacity,
   Keyboard,
-  TouchableWithoutFeedback,
   Alert,
   useWindowDimensions,
 } from 'react-native';
@@ -29,19 +28,25 @@ const SendSchoolMailScreen = ({ navigation, route }) => {
   /** 학교 우편함 등에서 navigate 시 전달 (별도 조회 API 없음) */
   const schoolId = route?.params?.schoolId ?? null;
   const schoolName = route?.params?.schoolName ?? '';
+  const sourceScreen = route?.params?.sourceScreen ?? null;
 
   const [mailContent, setMailContent] = useState('');
+  const [charLimit, setCharLimit] = useState(50);
   const [sending, setSending] = useState(false);
   const [subHeaderHeight, setSubHeaderHeight] = useState(0);
   const [schoolSectionHeight, setSchoolSectionHeight] = useState(0);
   const [bottomCtaHeight, setBottomCtaHeight] = useState(0);
 
   const handleMailContentChange = (text) => {
-    if (text.length > 50) {
+    if (text.length > charLimit) {
       Alert.alert('알림', '광고를 보면 더 길게 작성할 수 있어요.');
       return;
     }
     setMailContent(text);
+  };
+
+  const handleAdReward = () => {
+    setCharLimit(prev => prev * 2);
   };
 
   const handleSend = async () => {
@@ -64,13 +69,33 @@ const SendSchoolMailScreen = ({ navigation, route }) => {
       Alert.alert('완료', '우편이 전송되었습니다.', [
         {
           text: '확인',
-          onPress: () =>
+          onPress: () => {
+            if (sourceScreen === 'OtherSchool') {
+              navigation?.dispatch(
+                CommonActions.reset({
+                  index: 2,
+                  routes: [
+                    { name: 'Main', params: { initialTab: 'school' } },
+                    { name: 'OtherSchool', params: { schoolId, schoolName } },
+                    {
+                      name: 'SchoolMailbox',
+                      params: { schoolId, schoolName, sourceScreen: 'OtherSchool' },
+                    },
+                  ],
+                }),
+              );
+              return;
+            }
             navigation?.dispatch(
               CommonActions.reset({
-                index: 0,
-                routes: [{ name: 'Main', params: { initialTab: 'school' } }],
+                index: 1,
+                routes: [
+                  { name: 'Main', params: { initialTab: 'school' } },
+                  { name: 'SchoolMailbox', params: { schoolId, schoolName } },
+                ],
               }),
-            ),
+            );
+          },
         },
       ]);
     } catch (error) {
@@ -99,14 +124,14 @@ const SendSchoolMailScreen = ({ navigation, route }) => {
       <View onLayout={(e) => setSubHeaderHeight(e.nativeEvent.layout.height)}>
         <SubHeader title="우편 보내기" onBack={() => navigation?.goBack()} />
       </View>
-      <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
-        <View style={styles.keyboardView}>
+      <View style={styles.keyboardView}>
           <KeyboardAwareScrollView
             style={styles.scrollView}
             contentContainerStyle={styles.sendScrollContent}
-            keyboardShouldPersistTaps="handled"
+            keyboardShouldPersistTaps="always"
             keyboardDismissMode="on-drag"
             showsVerticalScrollIndicator={false}
+            onScrollBeginDrag={Keyboard.dismiss}
             bottomOffset={Math.max(bottomCtaHeight, 16)}
           >
             <View
@@ -145,11 +170,18 @@ const SendSchoolMailScreen = ({ navigation, route }) => {
                 />
                 <View style={styles.replyFormMetaRow}>
                   <View style={styles.sendMetaRight}>
-                    <Text style={styles.replyFormCount}>{mailContent.length}/50자</Text>
-                    <View style={styles.replyFormChip}>
+                    <Text style={styles.replyFormCount}>{mailContent.length}/{charLimit}자</Text>
+                    <TouchableOpacity
+                      style={styles.replyFormChip}
+                      onPress={() => {
+                        // 나중에 애드몹 RewardedAd 로직으로 교체할 자리
+                        handleAdReward();
+                      }}
+                      activeOpacity={0.8}
+                    >
                       <MaterialCommunityIcons name="television-classic" size={15} color={colors.textPrimary} />
                       <Text style={styles.replyFormChipText}>x 2</Text>
-                    </View>
+                    </TouchableOpacity>
                   </View>
                 </View>
               </View>
@@ -177,7 +209,6 @@ const SendSchoolMailScreen = ({ navigation, route }) => {
             </TouchableOpacity>
           </View>
         </View>
-      </TouchableWithoutFeedback>
     </SafeAreaView>
   );
 };

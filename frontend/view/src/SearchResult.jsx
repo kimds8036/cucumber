@@ -14,13 +14,13 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
-import SubHeader from '../frame/subHeader';
 import { colors } from '../../styles/colors';
 import { getNormalize } from '../../styles/search.style';
 import { createSearchResultStyles } from '../../styles/result.style';
 import { api } from '../../utils/api';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Skeleton from '../../components/common/Skeleton';
+import SearchAdPlaceholder from '../../src/screens/ad/SearchAdPlaceholder';
 
 const TABS_FOR_TEXT = ['전체', '전체게시판', '학교게시판', '학교우편'];
 const TABS_FOR_HASHTAG = ['전체', '전체게시판', '학교게시판', '학교우편'];
@@ -121,7 +121,6 @@ export default function SearchResult({ route, navigation }) {
   const [forceHashtagMode, setForceHashtagMode] = useState(initialForcedHashtag);
   const [mode, setMode] = useState('result'); // 'input' | 'result'
   const [activeTab, setActiveTab] = useState('전체');
-  const [expandedSection, setExpandedSection] = useState(null);
   const [sections, setSections] = useState({});
   const [matchedSchools, setMatchedSchools] = useState([]);
   const [schoolMails, setSchoolMails] = useState([]);
@@ -148,6 +147,18 @@ export default function SearchResult({ route, navigation }) {
   const { width } = useWindowDimensions();
   const normalize = useMemo(() => getNormalize(width), [width]);
   const s = useMemo(() => createSearchResultStyles(normalize), [normalize]);
+
+  const renderWithAds = (items, renderFn) =>
+    items.flatMap((item, index) => {
+      const el = renderFn(item, index);
+      if ((index + 1) % 5 === 0) {
+        return [
+          el,
+          <SearchAdPlaceholder key={`search_ad_${index}`} />,
+        ];
+      }
+      return [el];
+    });
 
   const highlightSnippet = (text, query, baseStyle) => {
     if (!query) return <Text style={baseStyle}>{text}</Text>;
@@ -325,72 +336,6 @@ export default function SearchResult({ route, navigation }) {
     [sections],
   );
 
-  /* ── 섹션 전체 보기 ── */
-  if (expandedSection) {
-    const items = sections[expandedSection] || [];
-    return (
-      <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
-        <SafeAreaView style={s.container} edges={['top']}>
-          <KeyboardAvoidingView
-            style={s.flexOne}
-            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-          >
-            <SubHeader
-              title={expandedSection}
-              onBack={() => setExpandedSection(null)}
-            />
-            <ScrollView
-              style={s.scrollView}
-              showsVerticalScrollIndicator={false}
-              keyboardShouldPersistTaps="handled"
-              keyboardDismissMode="on-drag"
-            >
-              {items.map((item, idx) => (
-                <View
-                  key={item.id}
-                  style={[
-                    s.fullCard,
-                    idx < items.length - 1 && s.fullCardBorder,
-                  ]}
-                >
-                  <View style={s.contentTimeRow}>
-                    <View style={s.snippetWrap}>
-                      {highlightSnippet(
-                        makeSnippet(item.content, normalizedQuery),
-                        normalizedQuery,
-                        s.fullSnippet,
-                      )}
-                    </View>
-                    <Text style={s.metaTimeInline}>{getTimeText(item)}</Text>
-                  </View>
-                  <View style={s.metaBottomRow}>
-                    <View style={s.metaStatItem}>
-                        <FontAwesome
-                          name="heart-o"
-                          size={normalize(14)}
-                          color={colors.alert}
-                        />
-                        <Text style={s.metaStatText}>{getLikeCount(item)}</Text>
-                      </View>
-                      <View style={s.metaStatItem}>
-                        <Ionicons
-                          name="chatbubble-outline"
-                          size={normalize(15)}
-                          color={colors.primary}
-                        />
-                        <Text style={s.metaStatText}>{getCommentCount(item)}</Text>
-                      </View>
-                    </View>
-                </View>
-              ))}
-              <View style={s.scrollBottomSpacer} />
-            </ScrollView>
-          </KeyboardAvoidingView>
-        </SafeAreaView>
-      </TouchableWithoutFeedback>
-    );
-  }
-
   return (
     <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
       <SafeAreaView style={s.container} edges={['top']}>
@@ -455,18 +400,6 @@ export default function SearchResult({ route, navigation }) {
                 placeholderTextColor={colors.textSecondary}
                 returnKeyType="search"
               />
-              {searchText.length > 0 && (
-                <TouchableOpacity
-                  onPress={() => setSearchText('')}
-                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                >
-                  <Ionicons
-                    name="close-circle"
-                    size={normalize(17)}
-                    color={colors.textLight20}
-                  />
-                </TouchableOpacity>
-              )}
             </View>
           </View>
 
@@ -597,13 +530,15 @@ export default function SearchResult({ route, navigation }) {
                             </View>
                           </View>
 
-                          {items.slice(0, 3).map((item, idx) => (
+                          {items.slice(0, 3).map((item, idx) => {
+                            const previewLen = Math.min(items.length, 3);
+                            const showCardDivider =
+                              idx < previewLen - 1 ||
+                              (idx === previewLen - 1 && items.length > 3);
+                            return (
                             <TouchableOpacity
                               key={item.id}
-                              style={[
-                                s.card,
-                                idx < Math.min(items.length, 3) - 1 && s.cardBorder,
-                              ]}
+                              style={[s.card, showCardDivider && s.cardBorder]}
                               activeOpacity={0.7}
                               onPress={() => {
                                 navigation.navigate('BoardDetail', {
@@ -647,12 +582,13 @@ export default function SearchResult({ route, navigation }) {
                                 </View>
                               </View>
                             </TouchableOpacity>
-                          ))}
+                          );
+                          })}
 
                           {items.length > 3 && (
                             <TouchableOpacity
                               style={s.moreBtn}
-                              onPress={() => setExpandedSection(section)}
+                              onPress={() => setActiveTab(section)}
                               activeOpacity={0.7}
                             >
                               <Text style={s.moreBtnText}>
@@ -673,7 +609,7 @@ export default function SearchResult({ route, navigation }) {
                       sections[activeTab] &&
                       sections[activeTab].length > 0 && (
                         <View style={s.section}>
-                          {sections[activeTab].map((item, idx) => (
+                          {renderWithAds(sections[activeTab], (item, idx) => (
                             <TouchableOpacity
                               key={item.id}
                               style={[
