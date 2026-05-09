@@ -638,6 +638,15 @@ export const createDetailStyles = (width, normalize) => {
   const metaTextAndroid =
     Platform.OS === 'android' ? { includeFontPadding: false } : {};
 
+  /** CommentInput / MessageInput 공통 — placeholder·본문 동일 메트릭 */
+  const bottomInputFontSize = normalize(fontSizes.xl);
+  const bottomInputLineHeight = Math.round(bottomInputFontSize * (20 / 14));
+  const bottomInputMinHeight = normalize(44);
+  const bottomInputPaddingV = Math.max(
+    normalize(6),
+    Math.round((bottomInputMinHeight - bottomInputLineHeight) / 2),
+  );
+
   return StyleSheet.create({
     container: {
       flex: 1,
@@ -971,14 +980,22 @@ export const createDetailStyles = (width, normalize) => {
     },
     bottomInput: {
       flex: 1,
-      paddingVertical: normalize(12),
+      minHeight: bottomInputMinHeight,
+      paddingVertical: bottomInputPaddingV,
       paddingHorizontal: normalize(16),
       borderRadius: normalize(24),
       backgroundColor: colors.textLight5,
-      fontSize: normalize(fontSizes.xl),
+      fontSize: bottomInputFontSize,
+      lineHeight: bottomInputLineHeight,
       fontFamily: fonts.regular,
       color: colors.textPrimary,
       maxHeight: normalize(80),
+      textAlignVertical: 'center',
+      ...Platform.select({
+        android: {
+          includeFontPadding: false,
+        },
+      }),
     },
     sendButton: {
       width: normalize(44),

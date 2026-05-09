@@ -1,4 +1,4 @@
-import { StyleSheet } from 'react-native';
+import { Platform, StyleSheet } from 'react-native';
 import { colors, fonts, fontSizes } from './colors';
 import { shadow } from './tokens';
 
@@ -217,13 +217,16 @@ export const createChatStyles = (width, normalize) => {
       borderTopRightRadius: normalize(16),
       borderBottomRightRadius: normalize(16),
       backgroundColor: colors.textLight5,
-      flexShrink: 1,
       alignSelf: 'flex-start',
     },
     opponentBubbleText: {
       fontSize: normalize(fontSizes.xl),
+      lineHeight: normalize(fontSizes.xl) * 1.4,
       fontFamily: fonts.regular,
       color: colors.textPrimary,
+      ...Platform.select({
+        android: { includeFontPadding: false },
+      }),
     },
     opponentTimeRow: {
       flexDirection: 'row',
@@ -268,13 +271,16 @@ export const createChatStyles = (width, normalize) => {
       borderRadius: normalize(16),
       borderTopRightRadius: normalize(0),
       backgroundColor: colors.primaryLight30,
-      flexShrink: 1,
       minWidth: 0,
     },
     userBubbleText: {
       fontSize: normalize(fontSizes.xl),
+      lineHeight: normalize(fontSizes.xl) * 1.4,
       fontFamily: fonts.regular,
       color: colors.textPrimary,
+      ...Platform.select({
+        android: { includeFontPadding: false },
+      }),
     },
     deletedMessageText: {
       fontSize: normalize(fontSizes.xl),

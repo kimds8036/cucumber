@@ -17,7 +17,7 @@ import BoardCommentTree from './board/BoardCommentTree';
 import BoardFloatingMenu from './board/BoardFloatingMenu';
 import Skeleton from '../../components/common/Skeleton';
 import ReportModal from '../../components/common/ReportModal.jsx';
-import AdSection from '../../components/common/AdSection.jsx';
+import BoarddetailADplaceholder from '../../src/screens/ad/boarddetailADplaceholder.jsx';
 
 export default function BoardDetail({ navigation, route }) {
   const { coords } = useLocationContext();
@@ -393,7 +393,7 @@ export default function BoardDetail({ navigation, route }) {
                     width={width}
                     postMenuButtonRef={postMenuButtonRef}
                   />
-                  <AdSection styles={styles} />
+                  <BoarddetailADplaceholder styles={styles} />
                 </View>
               }
               contentContainerStyle={[

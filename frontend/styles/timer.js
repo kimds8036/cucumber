@@ -190,11 +190,13 @@ export const createTimerStyles = (width, normalize) => {
       flex: 1,
       minHeight: normalize(320),
       gap: normalize(12),
+      alignItems: 'stretch',
     },
     todoColumn: {
       flex: 1,
       minWidth: width * 0.5,
       maxWidth: width * 0.6,
+      alignSelf: 'stretch',
     },
     todoHeader: {
       flexDirection: 'row',
@@ -229,19 +231,29 @@ export const createTimerStyles = (width, normalize) => {
       color: colors.primaryDark,
     },
     todoList: {
-      maxHeight: normalize(400),
+      flex: 1,
+    },
+    subjectAccordionWrap: {
+      overflow: 'hidden',
+      borderRadius: normalize(12),
     },
     subjectBlock: {
-      marginBottom: normalize(14),
+      marginBottom: normalize(8),
+      borderRadius: normalize(12),
+      overflow: 'hidden',
+      borderWidth: 0.5,
+      borderColor: colors.border,
     },
     subjectRow: {
       flexDirection: 'row',
       alignItems: 'center',
-      marginBottom: normalize(6),
+      paddingVertical: normalize(10),
+      paddingHorizontal: normalize(12),
     },
     subjectColorBar: {
       width: normalize(4),
-      height: normalize(36),
+      alignSelf: 'stretch',
+      minHeight: normalize(36),
       borderRadius: 2,
       marginRight: normalize(8),
     },
@@ -257,7 +269,7 @@ export const createTimerStyles = (width, normalize) => {
       fontSize: normalize(fontSizes.lg),
       fontFamily: fonts.regular,
       color: colors.textSecondary,
-      marginTop: 2,
+      marginTop: normalize(2),
     },
     subjectStartBtn: {
       paddingVertical: normalize(6),
@@ -286,7 +298,13 @@ export const createTimerStyles = (width, normalize) => {
     subjectStartBtnText: {
       fontSize: normalize(fontSizes.lg),
       fontFamily: fonts.bold,
-      color: colors.textWhite,
+      color: colors.background,
+    },
+    subjectTasksArea: {
+      backgroundColor: colors.background || colors.background,
+      paddingVertical: normalize(6),
+      borderTopWidth: 0.5,
+      borderTopColor: colors.border,
     },
     taskRow: {
       flexDirection: 'row',
@@ -297,8 +315,8 @@ export const createTimerStyles = (width, normalize) => {
       gap: normalize(8),
     },
     taskCheckbox: {
-      width: normalize(22),
-      height: normalize(22),
+      width: normalize(18),
+      height: normalize(18),
       borderRadius: normalize(4),
       borderWidth: 2,
       borderColor: colors.textLight20,
@@ -321,8 +339,7 @@ export const createTimerStyles = (width, normalize) => {
     },
     todoAddUnderSubject: {
       paddingVertical: normalize(6),
-      paddingLeft: normalize(12),
-      marginBottom: normalize(8),
+      paddingLeft: normalize(18),
     },
     todoAddUnderSubjectText: {
       fontSize: normalize(fontSizes.xl),
@@ -358,6 +375,7 @@ export const createTimerStyles = (width, normalize) => {
     timetableColumn: {
       flex: 1,
       minWidth: width * 0.4,
+      alignSelf: 'stretch',
     },
     timetableScroll: {
       // 높이 제한을 없애 전체 페이지 스크롤에서 00~05까지 노출
@@ -848,9 +866,21 @@ export const createTimerFriendModalStyles = (normalize) =>
       fontSize: normalize(fontSizes.xxl),
       fontFamily: fonts.bold,
       color: colors.textPrimary,
-      lineHeight: normalize(20),
+      lineHeight: normalize(24),
       includeFontPadding: false,
       textAlignVertical: 'center',
+    },
+    pokeFriendNameRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: normalize(6),
+    },
+    pokeFriendUsername: {
+      fontSize: normalize(fontSizes.lg),
+      fontFamily: fonts.regular,
+      color: colors.textSecondary,
+      lineHeight: normalize(20),
+      includeFontPadding: false,
     },
     pokeStatusText: {
       fontSize: normalize(fontSizes.xl),
@@ -859,6 +889,29 @@ export const createTimerFriendModalStyles = (normalize) =>
       marginTop: normalize(4),
       lineHeight: normalize(20),
       includeFontPadding: false,
+    },
+    pokeOutsideDescWrap: {
+      alignItems: 'center',
+      paddingHorizontal: normalize(24),
+      marginBottom: normalize(8),
+    },
+    pokeOutsideDesc: {
+      fontSize: normalize(fontSizes.title),
+      fontFamily: fonts.bold,
+      color: colors.background,
+      lineHeight: normalize(24),
+      includeFontPadding: false,
+      textAlign: 'center',
+    },
+    pokeOutsideDescHighlight: {
+      fontSize: normalize(fontSizes.title),
+      fontFamily: fonts.bold,
+      color: colors.greenDark,
+    },
+    pokeOutsideDescRest: {
+      fontSize: normalize(fontSizes.xxl),
+      fontFamily: fonts.bold,
+      color: colors.background,
     },
     pokeDivider: {
       height: 1,
@@ -875,7 +928,7 @@ export const createTimerFriendModalStyles = (normalize) =>
       marginBottom: normalize(16),
     },
     pokeInfoEmoji: {
-      fontSize: normalize(fontSizes.heading + 3),
+      fontSize: normalize(fontSizes.heading + 5),
       color: colors.primary,
     },
     pokeInfoTitle: {
@@ -902,18 +955,41 @@ export const createTimerFriendModalStyles = (normalize) =>
       width: '100%',
       flexDirection: 'row',
       alignItems: 'center',
-      justifyContent: 'flex-start',
+      justifyContent: 'center',
       paddingHorizontal: normalize(16),
       gap: normalize(12),
     },
     pokePrimaryBtnTextGroup: {
       flex: 1,
-      alignItems: 'flex-start',
+      alignItems: 'center',
     },
     pokePrimaryBtnText: {
       fontSize: normalize(15),
       fontFamily: fonts.bold,
       color: colors.primary,
+    },
+    // 쿡 찌르기 전용 버튼
+    pokeActionBtn: {
+      backgroundColor: colors.primaryLight20,
+      borderRadius: normalize(10),
+      paddingVertical: normalize(14),
+      alignItems: 'center',
+      marginBottom: normalize(10),
+    },
+    pokeActionBtnContent: {
+      width: '100%',
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      paddingHorizontal: normalize(14),
+      gap: normalize(6),
+    },
+    pokeActionBtnText: {
+      fontSize: normalize(fontSizes.title),
+      fontFamily: fonts.bold,
+      color: colors.primary,
+      includeFontPadding: false,
+      textAlignVertical: 'center',
     },
     pokeMessageBtn: {
       backgroundColor: colors.primaryLight20,
@@ -921,6 +997,29 @@ export const createTimerFriendModalStyles = (normalize) =>
       paddingVertical: normalize(12),
       alignItems: 'center',
       marginBottom: normalize(10),
+    },
+    // 메시지 보내기 전용 버튼
+    pokeMessageActionBtn: {
+      backgroundColor: colors.textLight5,
+      borderRadius: normalize(10),
+      paddingVertical: normalize(8),
+      alignItems: 'center',
+      marginBottom: normalize(10),
+    },
+    pokeMessageActionBtnContent: {
+      width: '100%',
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      paddingHorizontal: normalize(16),
+      gap: normalize(6),
+    },
+    pokeMessageActionBtnText: {
+      fontSize: normalize(fontSizes.xxl),
+      fontFamily: fonts.bold,
+      color: colors.background2,
+      includeFontPadding: false,
+      textAlignVertical: 'center',
     },
     pokeMessageBtnContent: {
       width: '100%',
@@ -931,7 +1030,7 @@ export const createTimerFriendModalStyles = (normalize) =>
       gap: normalize(12),
     },
     pokeMessageBtnIcon: {
-      color: colors.primary,
+      color: colors.background2,
       fontSize: normalize(fontSizes.xxl),
       alignSelf: 'center',
       paddingHorizontal: normalize(4),
@@ -1074,6 +1173,13 @@ export const createTimerModalsStyles = (normalize) =>
     centered: {
       width: '86%',
     },
+    bottomSheetContainer: {
+      position: 'absolute',
+      left: 0,
+      right: 0,
+      bottom: 0,
+      width: '100%',
+    },
     centeredJustify: {
       justifyContent: 'center',
     },
@@ -1082,6 +1188,14 @@ export const createTimerModalsStyles = (normalize) =>
       borderRadius: normalize(18),
       paddingHorizontal: normalize(18),
       paddingVertical: normalize(18),
+    },
+    bottomSheetCard: {
+      backgroundColor: colors.background,
+      borderTopLeftRadius: normalize(24),
+      borderTopRightRadius: normalize(24),
+      paddingHorizontal: normalize(18),
+      paddingTop: normalize(18),
+      paddingBottom: normalize(24),
     },
     cardMaxWidth: {
       maxWidth: normalize(360),
@@ -1111,10 +1225,46 @@ export const createTimerModalsStyles = (normalize) =>
       fontFamily: fonts.regular,
       color: colors.textPrimary,
       marginBottom: normalize(12),
+      textAlignVertical: 'center',
+      includeFontPadding: false,
     },
     inputMultiline: {
       minHeight: normalize(60),
       textAlignVertical: 'top',
+    },
+    subjectPresetSection: {
+      marginBottom: normalize(10),
+    },
+    subjectPresetTitle: {
+      fontSize: normalize(fontSizes.lg),
+      fontFamily: fonts.bold,
+      color: colors.textSecondary,
+      marginBottom: normalize(6),
+    },
+    subjectPresetRow: {
+      gap: normalize(8),
+      paddingRight: normalize(8),
+    },
+    subjectPresetChip: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: normalize(6),
+      paddingHorizontal: normalize(10),
+      paddingVertical: normalize(6),
+      borderRadius: normalize(14),
+      backgroundColor: colors.surface,
+      borderWidth: 1,
+      borderColor: colors.textLight10,
+    },
+    subjectPresetDot: {
+      width: normalize(10),
+      height: normalize(10),
+      borderRadius: normalize(5),
+    },
+    subjectPresetText: {
+      fontSize: normalize(fontSizes.lg),
+      fontFamily: fonts.regular,
+      color: colors.textPrimary,
     },
     emptySubjectHint: {
       fontSize: normalize(fontSizes.xl),
@@ -1177,15 +1327,19 @@ export const createTimerModalsStyles = (normalize) =>
     },
     row: {
       flexDirection: 'row',
-      justifyContent: 'flex-end',
+      justifyContent: 'center',
       marginTop: normalize(10),
       gap: normalize(8),
     },
     cancelBtn: {
+      flex: 1,
       paddingHorizontal: normalize(14),
       paddingVertical: normalize(10),
       borderRadius: normalize(10),
       backgroundColor: colors.surface,
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
     },
     cancelText: {
       fontSize: normalize(fontSizes.lg),
@@ -1193,6 +1347,7 @@ export const createTimerModalsStyles = (normalize) =>
       color: colors.textSecondary,
     },
     primaryBtn: {
+      flex: 1,
       paddingHorizontal: normalize(16),
       paddingVertical: normalize(10),
       borderRadius: normalize(10),
@@ -1263,6 +1418,33 @@ export const createTimerModalsStyles = (normalize) =>
       fontSize: normalize(fontSizes.lg),
       fontFamily: fonts.regular,
       color: colors.textPrimary,
+    },
+    timerSaveModalTitle: {
+      fontSize: normalize(fontSizes.title),
+      fontFamily: fonts.bold,
+      color: colors.textPrimary,
+      textAlign: 'center',
+      marginBottom: normalize(10),
+    },
+    timerSaveModalBody: {
+      fontSize: normalize(fontSizes.xl),
+      fontFamily: fonts.regular,
+      color: colors.textSecondary,
+      textAlign: 'center',
+      lineHeight: normalize(22),
+      marginBottom: normalize(16),
+    },
+    timerSaveModalConfirmBtn: {
+      height: normalize(42),
+      borderRadius: normalize(10),
+      backgroundColor: colors.primary,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    timerSaveModalConfirmText: {
+      fontSize: normalize(fontSizes.xl),
+      fontFamily: fonts.bold,
+      color: colors.textWhite,
     },
     dayTextSelected: {
       fontFamily: fonts.bold,

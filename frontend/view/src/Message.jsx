@@ -24,6 +24,7 @@ import * as socketManager from './socketManager';
 import { useToast } from '../../context/ToastContext';
 import { useNotification } from '../../context/NotificationContext';
 import { getProfileInnerColor } from '../../utils/profileIconColor';
+import ChatAdPlaceholder from '../../src/screens/ad/ChatAdPlaceholder';
 
 // DB에 UTC로 저장된 날짜 문자열을 기기 로컬 시간대로 변환해서 파싱
 function parseUtcToLocal(createdAt) {
@@ -259,6 +260,28 @@ export function MessageContent({ navigation }) {
   const [loadingMail, setLoadingMail] = useState(false);
   const { setIsMessageTab } = useToast();
   const { refreshHasUnread } = useNotification();
+
+  const noteRoomsWithAds = useMemo(() => {
+    const items = [];
+    noteRooms.forEach((room, index) => {
+      items.push({ ...room, type: room.type || 'note' });
+      if ((index + 1) % 5 === 0) {
+        items.push({ id: `note_ad_${index}`, type: 'chatAd' });
+      }
+    });
+    return items;
+  }, [noteRooms]);
+
+  const mailsWithAds = useMemo(() => {
+    const items = [];
+    mails.forEach((mail, index) => {
+      items.push({ ...mail, type: 'mail' });
+      if ((index + 1) % 5 === 0) {
+        items.push({ id: `mail_ad_${index}`, type: 'chatAd' });
+      }
+    });
+    return items;
+  }, [mails]);
   const confirmDelete = useCallback(
     ({ title, message, onConfirm }) => {
       Alert.alert(
@@ -627,7 +650,22 @@ export function MessageContent({ navigation }) {
                   </Text>
                 </View>
               ) : (
-              noteRooms.map((item) => {
+              noteRoomsWithAds.map((item) => {
+                if (item.type === 'chatAd') {
+                  return (
+                    <ChatAdPlaceholder
+                      key={item.id}
+                      styles={styles}
+                      normalize={normalize}
+                      item={{
+                        name: '광고',
+                        content: '스폰서 메시지 영역입니다.',
+                        time: 'AD',
+                        unreadCount: 0,
+                      }}
+                    />
+                  );
+                }
                 if (item.type === 'dm') {
                   const colorIdx =
                     item.other_user_color_id ?? item.profileColorId ?? item.profileColorIndex ?? 0;
@@ -807,7 +845,22 @@ export function MessageContent({ navigation }) {
                   </Text>
                 </View>
               ) : (
-              mails.map((item) => {
+              mailsWithAds.map((item) => {
+                if (item.type === 'chatAd') {
+                  return (
+                    <ChatAdPlaceholder
+                      key={item.id}
+                      styles={styles}
+                      normalize={normalize}
+                      item={{
+                        name: '광고',
+                        content: '스폰서 메시지 영역입니다.',
+                        time: 'AD',
+                        unreadCount: 0,
+                      }}
+                    />
+                  );
+                }
                 const iconColor = getProfileInnerColor(item.profileColorId ?? item.profileColorIndex);
                 const displayName =
                   item.senderName ||

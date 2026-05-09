@@ -7,6 +7,7 @@ export const colors = {
   primaryDark: '#6f9163',    // 진한 초록색
   scrap: '#F5A623',          // 스크랩 황금색
   green: '#F7FFF3', 
+  greenDark: '#C8EDB2', 
 
   // 배경 컬러
   background: '#fff',        // 기본 배경 (흰색)
@@ -29,6 +30,7 @@ export const colors = {
 
   // 알림
   alert: '#FF9F9F',
+  alertLight: '#FFF0F0',
   subcolor: '#AAD7FF',
 
   // 추가 컬러
