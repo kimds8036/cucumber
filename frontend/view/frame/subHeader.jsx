@@ -47,7 +47,14 @@ const SubHeader = ({
                 : rightIcon ? (
                     <Ionicons name={rightIcon} size={normalize(22)} color={colors.textPrimary} />
                   ) : (
-                    <Text style={styles.rightButtonText}>{rightButtonText}</Text>
+                    <Text
+                      style={[
+                        styles.rightButtonText,
+                        rightDisabled ? { color: colors.background2 } : null,
+                      ]}
+                    >
+                      {rightButtonText}
+                    </Text>
                   )}
             </TouchableOpacity>
           )}

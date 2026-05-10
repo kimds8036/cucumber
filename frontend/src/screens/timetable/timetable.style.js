@@ -690,7 +690,7 @@ export function createManualTimetableScreenStyles(normalize) {
   return StyleSheet.create({
     manualTsHint: {
       fontFamily: fonts.regular,
-      fontSize: fontSizes.md,
+      fontSize: fontSizes.lg,
       color: COLORS.textSecondary,
       marginBottom: normalize(10),
       lineHeight: normalize(15),
@@ -812,13 +812,12 @@ export function createManualTimetableScreenStyles(normalize) {
       flexDirection: 'row',
       alignItems: 'center',
       paddingVertical: normalize(16),
-      paddingHorizontal: normalize(4),
+      paddingHorizontal: normalize(8),
       borderBottomWidth: StyleSheet.hairlineWidth,
       borderBottomColor: COLORS.textLight10,
     },
     manualTsSubjectRowPaintSelected: {
-      backgroundColor: COLORS.selectedBackground,
-      borderRadius: normalize(8),
+      backgroundColor: COLORS.primaryLight20,
       borderBottomWidth: 0,
     },
     manualTsSubjectDot: {
@@ -840,6 +839,50 @@ export function createManualTimetableScreenStyles(normalize) {
       fontSize: fontSizes.sm,
       color: COLORS.textSecondary,
       marginTop: normalize(2),
+    },
+    /** 완료 후 확인 모달 — timetabelChoice 자동선택 모달과 동일 카피, 스타일만 분리 */
+    manualTsDoneModalTitle: {
+      fontFamily: fonts.bold,
+      fontSize: fontSizes.title,
+      color: COLORS.textPrimary,
+      textAlign: 'center',
+      marginBottom: normalize(10),
+    },
+    manualTsDoneModalHintWrap: {
+      marginBottom: normalize(16),
+      alignItems: 'center',
+    },
+    manualTsDoneModalHintLine: {
+      fontFamily: fonts.regular,
+      fontSize: fontSizes.xl,
+      color: COLORS.textSecondary,
+      textAlign: 'center',
+      lineHeight: normalize(22),
+    },
+    manualTsDoneModalHintRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      marginTop: normalize(2),
+      gap: normalize(4),
+    },
+    manualTsDoneModalHintAfterIcon: {
+      fontFamily: fonts.regular,
+      fontSize: fontSizes.xl,
+      color: COLORS.textSecondary,
+      lineHeight: normalize(22),
+    },
+    manualTsDoneModalConfirmBtn: {
+      height: normalize(42),
+      borderRadius: normalize(10),
+      backgroundColor: COLORS.primary,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    manualTsDoneModalConfirmText: {
+      fontFamily: fonts.bold,
+      fontSize: fontSizes.xl,
+      color: COLORS.textWhite,
     },
   });
 }

@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import Feather from '@expo/vector-icons/Feather';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
   KeyboardAvoidingView,
@@ -15,6 +16,7 @@ import SubHeader from '../../../view/frame/subHeader';
 import { colors, TIMETABLE_SUBJECT_COLORS } from '../../../styles/colors';
 import { getNormalize } from '../../../styles/mypage.style';
 import { api } from '../../../utils/api';
+import AppPopupModal from '../../../components/common/AppPopupModal';
 import styles, { DAYS, createManualTimetableScreenStyles } from './timetable.style';
 import { TIMETABLE_DUMMY } from './TimetableDummy';
 
@@ -46,6 +48,7 @@ export default function TimetableScreen({ navigation, route }) {
   const [timetable, setTimetable] = useState({});
   const [paintSubjectId, setPaintSubjectId] = useState(null);
   const [schoolGradeText, setSchoolGradeText] = useState('-');
+  const [showDoneAddedModal, setShowDoneAddedModal] = useState(false);
 
   const resolveTimetableCacheKey = useCallback(async () => {
     if (route?.params?.timetableCacheKey) {
@@ -79,6 +82,10 @@ export default function TimetableScreen({ navigation, route }) {
 
   const colorSeed = 0;
   const safeTimetable = timetable || {};
+  const hasTimetableEntries = useMemo(
+    () => Object.keys(safeTimetable).length > 0,
+    [safeTimetable],
+  );
   const periods = useMemo(
     () => Array.from({ length: MANUAL_TS_MAX_PERIOD }, (_, i) => i + 1),
     [],
@@ -158,15 +165,19 @@ export default function TimetableScreen({ navigation, route }) {
           clearedByUser: false,
         }),
       );
+      setShowDoneAddedModal(true);
     } catch (error) {
       console.warn(
         '[TimetableScreen] MyPage 시간표 캐시 저장 실패:',
         error?.message || error,
       );
     }
-
-    navigation.navigate('Main', { initialTab: 'mypage' });
   };
+
+  const handleConfirmDoneAddedModal = useCallback(() => {
+    setShowDoneAddedModal(false);
+    navigation.navigate('Main', { initialTab: 'mypage' });
+  }, [navigation]);
 
   useEffect(() => {
     let mounted = true;
@@ -204,6 +215,7 @@ export default function TimetableScreen({ navigation, route }) {
         onBack={() => navigation.goBack()}
         rightButtonText="완료"
         onRightPress={handleDone}
+        rightDisabled={!hasTimetableEntries}
       />
 
       <KeyboardAvoidingView
@@ -213,7 +225,7 @@ export default function TimetableScreen({ navigation, route }) {
       >
         <View style={mt.manualTsPageBody}>
           <Text style={mt.manualTsHint}>
-          아래 목록에서 과목을 선택한 후 시간표 칸을 눌러 배치하세요. {'\n'}같은 과목을 여러 칸에 연속으로 추가할 수 있으며, 칸을 길게 누르면 해당 과목이 제거됩니다.
+          아래 목록에서 과목을 선택한 후 시간표 칸을 눌러 배치하세요. {'\n'}칸을 길게 누르면 제거됩니다.
           </Text>
 
           <View style={mt.manualTsWrapper}>
@@ -300,8 +312,8 @@ export default function TimetableScreen({ navigation, route }) {
                 const paintSelected = paintSubjectId === subject.id;
                 const onTimetable = Object.values(safeTimetable).includes(subject.name);
                 const dotColor = onTimetable
-                  ? getCellColor(subject.name) || COLORS.textDisabled
-                  : COLORS.textDisabled;
+                  ? getCellColor(subject.name) || COLORS.textLight10
+                  : COLORS.textLight10;
 
                 return (
                   <TouchableOpacity
@@ -326,6 +338,29 @@ export default function TimetableScreen({ navigation, route }) {
           </ScrollView>
         </View>
       </KeyboardAvoidingView>
+
+      <AppPopupModal
+        visible={showDoneAddedModal}
+        onClose={() => setShowDoneAddedModal(false)}
+      >
+        <Text style={mt.manualTsDoneModalTitle}>시간표가 추가되었습니다.</Text>
+        <View style={mt.manualTsDoneModalHintWrap}>
+          <Text style={mt.manualTsDoneModalHintLine}>추후 시간표가 달라질 경우</Text>
+          <View style={mt.manualTsDoneModalHintRow}>
+            <Feather name="edit" size={normalize(16)} color={COLORS.textSecondary} />
+            <Text style={mt.manualTsDoneModalHintAfterIcon}>
+              버튼으로 편집할 수 있습니다.
+            </Text>
+          </View>
+        </View>
+        <TouchableOpacity
+          style={mt.manualTsDoneModalConfirmBtn}
+          onPress={handleConfirmDoneAddedModal}
+          activeOpacity={0.85}
+        >
+          <Text style={mt.manualTsDoneModalConfirmText}>확인</Text>
+        </TouchableOpacity>
+      </AppPopupModal>
     </SafeAreaView>
   );
 }
