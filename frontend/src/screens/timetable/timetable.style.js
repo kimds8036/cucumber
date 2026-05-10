@@ -312,65 +312,51 @@ const styles = StyleSheet.create({
   choiceContent: {
     flexGrow: 1,
     paddingHorizontal: normalize(16),
-    paddingTop: normalize(16),
+    paddingTop: normalize(70),
     paddingBottom: normalize(24),
     gap: normalize(12),
-    justifyContent: 'center',
   },
-  choiceCard: {
+  choiceCardRight: {
     alignSelf: 'center',
     width: '100%',
-    height: normalize(270),
     borderRadius: normalize(14),
-    borderWidth: 1,
-    borderColor: COLORS.border,
+    backgroundColor: COLORS.primary,
     paddingHorizontal: normalize(14),
-    paddingVertical: normalize(14),
+    paddingVertical: normalize(12),
+    marginTop: normalize(10),
+  },
+  choiceCardWrong: {
+    alignSelf: 'center',
+    width: '100%',
+    borderRadius: normalize(14),
+    backgroundColor: COLORS.textLight5,
+    paddingHorizontal: normalize(14),
+    paddingVertical: normalize(12),
+    marginTop: normalize(10),
   },
   choiceTitle: {
     fontFamily: fonts.bold,
-    fontSize: fontSizes.title,
+    fontSize: fontSizes.heading+2,
     color: COLORS.textPrimary,
+    textAlign: 'center',
+  },
+  choiceRightTitle: {
+    fontFamily: fonts.bold,
+    fontSize: fontSizes.title,
+    color: COLORS.background,
+    textAlign: 'center',
+  },
+  choiceWrongTitle: {
+    fontFamily: fonts.bold,
+    fontSize: fontSizes.title,
+    color: COLORS.textSecondary,
+    textAlign: 'center',
   },
   choiceDescription: {
     fontFamily: fonts.regular,
     fontSize: fontSizes.lg,
     color: COLORS.textSecondary,
-  },
-  choicePreviewWrap: {
-    marginTop: normalize(10),
-    borderRadius: normalize(10),
-    borderWidth: 1,
-    borderColor: COLORS.border,
-    overflow: 'hidden',
-    backgroundColor: COLORS.background,
-  },
-  choicePreviewHeaderRow: {
-    flexDirection: 'row',
-    backgroundColor: COLORS.primaryLight20,
-  },
-  choicePreviewBodyRow: {
-    flexDirection: 'row',
-    borderTopWidth: 1,
-    borderTopColor: COLORS.border,
-  },
-  choicePreviewPeriodCell: {
-    width: normalize(20),
-    height: normalize(18),
-    backgroundColor: COLORS.primaryLight30,
-  },
-  choicePreviewDayCell: {
-    flex: 1,
-    height: normalize(18),
-    borderLeftWidth: 1,
-    borderLeftColor: COLORS.background,
-    backgroundColor: COLORS.primaryLight20,
-  },
-  choicePreviewClassCell: {
-    flex: 1,
-    height: normalize(22),
-    borderLeftWidth: 1,
-    borderLeftColor: COLORS.border,
+    textAlign: 'center',
   },
   choiceLoadingOverlay: {
     ...StyleSheet.absoluteFillObject,
@@ -578,6 +564,115 @@ export function createTimetableViewStyles(normalize) {
       fontFamily: fonts.bold,
       fontSize: fontSizes.lg,
       color: COLORS.textWhite,
+    },
+  });
+}
+
+/** 시간표 선택 화면 미리보기 — `TimetableView`와 동일 규격, 스타일 키만 분리 */
+export function createTimetableChoicePreviewStyles(normalize) {
+  return StyleSheet.create({
+    choicePreviewWrapper: {
+    },
+    choicePreviewRefreshButton: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      backgroundColor: COLORS.background,
+      paddingHorizontal: normalize(8),
+      paddingVertical: normalize(4),
+      borderRadius: normalize(20),
+    },
+    choicePreviewTimetableContainer: {
+      borderRadius: normalize(8),
+      overflow: 'hidden',
+      borderWidth: 1,
+      borderColor: COLORS.textLight10,
+    },
+    choicePreviewGrid: {
+      backgroundColor: COLORS.background,
+    },
+    choicePreviewDaysRow: {
+      flexDirection: 'row',
+      backgroundColor: COLORS.textLight5,
+    },
+    choicePreviewPeriodHeaderCell: {
+      width: normalize(20),
+      height: normalize(20),
+      backgroundColor: COLORS.textLight5,
+    },
+    choicePreviewDayCell: {
+      flex: 1,
+      height: normalize(20),
+      justifyContent: 'center',
+      alignItems: 'center',
+      borderLeftWidth: 1,
+      borderLeftColor: COLORS.textLight10,
+    },
+    choicePreviewDayText: {
+      fontFamily: fonts.regular,
+      fontSize: fontSizes.md,
+      color: COLORS.textSecondary,
+    },
+    choicePreviewRow: {
+      flexDirection: 'row',
+      borderTopWidth: 1,
+      borderTopColor: COLORS.textLight10,
+    },
+    choicePreviewPeriodCell: {
+      width: normalize(20),
+      height: normalize(40),
+      justifyContent: 'center',
+      alignItems: 'center',
+      backgroundColor: COLORS.textLight5,
+    },
+    choicePreviewPeriodText: {
+      fontFamily: fonts.regular,
+      fontSize: fontSizes.md,
+      color: COLORS.textSecondary,
+    },
+    choicePreviewMergedFooterRow: {
+      flexDirection: 'row',
+      borderTopWidth: 1,
+      borderTopColor: COLORS.textLight10,
+    },
+    choicePreviewMergedFooterFullCell: {
+      flex: 1,
+      flexDirection: 'row',
+      alignItems: 'center',
+      minHeight: normalize(35),
+      backgroundColor: COLORS.background,
+    },
+    choicePreviewMergedFooterActionRow: {
+      flex: 1,
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'flex-end',
+      gap: normalize(8),
+      paddingHorizontal: normalize(8),
+    },
+    choicePreviewClassCell: {
+      flex: 1,
+      height: normalize(40),
+      justifyContent: 'center',
+      alignItems: 'center',
+      borderLeftWidth: 1,
+      borderLeftColor: COLORS.textLight10,
+      backgroundColor: COLORS.background,
+      padding: normalize(2),
+    },
+    choicePreviewClassCellFilled: {
+      backgroundColor: COLORS.primaryLight30,
+    },
+    choicePreviewClassCellText: {
+      fontFamily: fonts.regular,
+      fontSize: fontSizes.md,
+      color: COLORS.textLight20,
+      textAlign: 'center',
+    },
+    choicePreviewClassCellTextFilled: {
+      fontFamily: fonts.bold,
+      fontSize: fontSizes.md,
+      color: COLORS.textPrimary,
     },
   });
 }
