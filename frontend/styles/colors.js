@@ -6,6 +6,8 @@ export const colors = {
   primary: '#A6DA95',        // 메인 초록색
   primaryDark: '#6f9163',    // 진한 초록색
   scrap: '#F5A623',          // 스크랩 황금색
+  /** primary→primaryDark와 동일 채널 비율(R×111/166, G×145/218, B×99/149)로 진하게 */
+  scrapDark: '#A46E17',
   green: '#F7FFF3', 
   greenDark: '#C8EDB2', 
 
@@ -31,6 +33,8 @@ export const colors = {
 
   // 알림
   alert: '#FF9F9F',
+  /** scrapDark와 동일 규칙(primary 다운틴트 비율) */
+  alertDark: '#AB6A6A',
   alertLight: '#FFF0F0',
   subcolor: '#AAD7FF',
 
@@ -61,9 +65,10 @@ export const colors = {
 };
 
 export const TIMETABLE_SUBJECT_COLORS = [
-  '#FFF4F4', '#FFFCED', '#F4FBF2', '#F0F7FF', '#FBF3FF',
-  '#FFECEC', '#FFF9E2', '#EDF8E8', '#EAF4FF', '#F8ECFF',
+  // 연한 톤
   '#FFE5E5', '#FFF6D7', '#E5F4DF', '#E4EFFF', '#F4E3FF',
+  // 동일 계열, 한 단계 진한 톤
+  '#FFD0D0', '#FFE8B8', '#C8E8C0', '#C8DCFA', '#E8CEFA',
 ];
 
 export const PROFILE_COLORS = {

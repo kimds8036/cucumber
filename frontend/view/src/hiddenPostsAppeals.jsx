@@ -1,7 +1,8 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
+  Animated,
   ScrollView,
   Text,
   TextInput,
@@ -9,11 +10,18 @@ import {
   View,
   useWindowDimensions,
 } from 'react-native';
+import Entypo from '@expo/vector-icons/Entypo';
+import Feather from '@expo/vector-icons/Feather';
+import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import SubHeader from '../frame/subHeader';
 import { api } from '../../utils/api';
-import { colors, fonts } from '../../styles/colors';
-import { getNormalize } from '../../styles/frame.style';
+import { colors } from '../../styles/colors';
+import {
+  createHiddenPostsAppealsStyles,
+  getHiddenPostsAppealsStatusColor,
+  getNormalize,
+} from '../../styles/mypage.style';
 
 function formatTimeAgo(createdAt) {
   if (!createdAt) return '';
@@ -39,9 +47,9 @@ function formatTimeAgo(createdAt) {
 
 // ─── 상태 레이블 / 메시지 ───────────────────────────────────────────────────
 
-function getReporterStatusLabel(status) {
-  const s = String(status || '').toLowerCase();
-  if (s === 'resolved') return '조치 완료';
+function getReporterStatusLabel(report) {
+  const s = String(report?.status || '').toLowerCase();
+  if (s === 'resolved') return '처리 완료';
   if (s === 'rejected') return '반려';
   return '검토 중';
 }
@@ -55,94 +63,59 @@ function getReporterStatusMessage(status) {
 
 function getRestrictedStatus(postId, appealsByPostId) {
   const appeal = appealsByPostId.get(postId);
-  if (!appeal) return { label: '검토 대기', message: '신고 누적 내역을 운영팀이 확인하고 있습니다.' };
+  if (!appeal) return { label: '대기 중', message: '아직 소명 없음' };
   const s = String(appeal.status || '').toLowerCase();
-  if (s === 'accepted') return { label: '복구 완료', message: '소명 내용이 인정되어 게시글이 복구되었습니다.' };
-  if (s === 'rejected') return { label: '제재 확정', message: '검토 결과 위반이 확인되어 조치가 유지됩니다.' };
-  return { label: '소명 검토 중', message: '접수된 소명 내용을 운영팀이 검토하고 있습니다.' };
-}
-
-// ─── 상태별 컬러 매핑 ──────────────────────────────────────────────────────
-
-const STATUS_COLOR = {
-  '조치 완료': { bar: colors.primary,       bg: '#edf7e9', text: '#3a7c2e' },
-  '복구 완료': { bar: colors.primary,       bg: '#edf7e9', text: '#3a7c2e' },
-  '검토 중':   { bar: '#f59e0b',            bg: '#fef3e2', text: '#b45309' },
-  '소명 검토 중': { bar: '#f59e0b',         bg: '#fef3e2', text: '#b45309' },
-  '검토 대기': { bar: '#f59e0b',            bg: '#fef3e2', text: '#b45309' },
-  '반려':      { bar: '#f87171',            bg: '#fde8e8', text: '#b91c1c' },
-  '제재 확정': { bar: '#f87171',            bg: '#fde8e8', text: '#b91c1c' },
-};
-
-function getStatusColor(label) {
-  return STATUS_COLOR[label] ?? { bar: colors.textLight20, bg: colors.textLight5, text: colors.textSecondary };
+  if (s === 'accepted') return { label: '복구 완료', message: '소명 accepted' };
+  if (s === 'rejected') return { label: '제재 확정', message: '소명 rejected' };
+  return { label: '검토 중', message: '소명 접수됐고 검토 중' };
 }
 
 // ─── 공통 카드 ─────────────────────────────────────────────────────────────
 
-function Card({ statusLabel, normalize, children }) {
-  const sc = getStatusColor(statusLabel);
+function Card({ statusLabel, styles: hpa, children }) {
+  const sc = getHiddenPostsAppealsStatusColor(statusLabel, colors);
   return (
-    <View
-      style={{
-        flexDirection: 'row',
-        backgroundColor: colors.background,
-        borderRadius: normalize(14),
-        borderWidth: 1,
-        borderColor: colors.textLight10,
-        marginBottom: normalize(12),
-        overflow: 'hidden',
-      }}
-    >
-      {/* 왼쪽 컬러 바 */}
-      <View style={{ width: normalize(4), backgroundColor: sc.bar }} />
+    <View style={hpa.card}>
+      <View style={[hpa.cardAccent, { backgroundColor: sc.bar }]} />
+      <View style={hpa.cardInner}>{children}</View>
+    </View>
+  );
+}
 
-      <View style={{ flex: 1, padding: normalize(14) }}>
-        {children}
+function StatusChipLeadingIcon({ label, color, normalize }) {
+  const size = normalize(10);
+  if (label === '처리 완료' || label === '복구 완료') {
+    return <Entypo name="check" size={size} color={color} />;
+  }
+  if (label === '검토 중' || label === '대기 중') {
+    return <Feather name="clock" size={size} color={color} />;
+  }
+  if (label === '반려' || label === '제재 확정') {
+    return <Feather name="alert-triangle" size={size} color={color} />;
+  }
+  return null;
+}
+
+function StatusChip({ label, styles: hpa, wrapStyle, normalize }) {
+  const sc = getHiddenPostsAppealsStatusColor(label, colors);
+  const lead = <StatusChipLeadingIcon label={label} color={sc.text} normalize={normalize} />;
+  return (
+    <View style={[hpa.statusChip, wrapStyle, { backgroundColor: sc.bg }]}>
+      <View style={hpa.statusChipContent}>
+        {lead}
+        <Text style={[hpa.statusChipText, { color: sc.text }]}>{label}</Text>
       </View>
     </View>
   );
 }
 
-function StatusChip({ label, normalize }) {
-  const sc = getStatusColor(label);
+function EmptyState({ message, styles: hpa, normalize }) {
   return (
-    <View
-      style={{
-        alignSelf: 'flex-start',
-        backgroundColor: sc.bg,
-        borderRadius: normalize(20),
-        paddingHorizontal: normalize(9),
-        paddingVertical: normalize(3),
-      }}
-    >
-      <Text style={{ fontFamily: fonts.regular, fontSize: normalize(11), color: sc.text }}>
-        {label}
-      </Text>
-    </View>
-  );
-}
-
-// ─── 빈 상태 ───────────────────────────────────────────────────────────────
-
-function EmptyState({ message, normalize }) {
-  return (
-    <View style={{ paddingTop: normalize(48), alignItems: 'center', gap: normalize(10) }}>
-      <View
-        style={{
-          width: normalize(48),
-          height: normalize(48),
-          borderRadius: normalize(24),
-          backgroundColor: colors.textLight5,
-          borderWidth: 1,
-          borderColor: colors.textLight10,
-          alignItems: 'center',
-          justifyContent: 'center',
-        }}
-      />
-      <Text style={{ fontFamily: fonts.regular, fontSize: normalize(13), color: colors.textSecondary }}>
-        {message}
-      </Text>
+    <View style={hpa.emptyWrap}>
+      <View style={hpa.emptyIcon}>
+        <MaterialCommunityIcons name="flag-off-outline" size={normalize(48)} color={colors.textLight40} />
+      </View>
+      <Text style={hpa.emptyText}>{message}</Text>
     </View>
   );
 }
@@ -152,8 +125,10 @@ function EmptyState({ message, normalize }) {
 export default function HiddenPostsAppeals({ navigation }) {
   const { width } = useWindowDimensions();
   const normalize = useMemo(() => getNormalize(width), [width]);
+  const hpa = useMemo(() => createHiddenPostsAppealsStyles(width, normalize), [width, normalize]);
 
   const [tab, setTab] = useState('myReports');
+  const slideAnim = useRef(new Animated.Value(0)).current;
   const [loading, setLoading] = useState(false);
   const [submittingPostId, setSubmittingPostId] = useState(null);
   const [myReports, setMyReports] = useState([]);
@@ -172,12 +147,18 @@ export default function HiddenPostsAppeals({ navigation }) {
     return map;
   }, [appeals]);
 
-  // 요약 통계
-  const reportStats = useMemo(() => ({
-    total: myReports.length,
-    pending: myReports.filter((r) => String(r.status || '').toLowerCase() === 'pending').length,
-    resolved: myReports.filter((r) => String(r.status || '').toLowerCase() === 'resolved').length,
-  }), [myReports]);
+  const reportStats = useMemo(() => {
+    let resolved = 0;
+    let rejected = 0;
+    let pending = 0;
+    for (const r of myReports) {
+      const s = String(r.status || '').toLowerCase();
+      if (s === 'resolved') resolved += 1;
+      else if (s === 'rejected') rejected += 1;
+      else pending += 1;
+    }
+    return { resolved, rejected, pending };
+  }, [myReports]);
 
   const loadData = useCallback(async () => {
     try {
@@ -197,14 +178,19 @@ export default function HiddenPostsAppeals({ navigation }) {
     }
   }, []);
 
-  useEffect(() => { loadData(); }, [loadData]);
+  useEffect(() => {
+    loadData();
+  }, [loadData]);
 
   const handleChangeAppealInput = (postId, text) =>
     setAppealInputs((prev) => ({ ...prev, [postId]: text }));
 
   const handleSubmitAppeal = async (postId) => {
     const content = String(appealInputs[postId] ?? '').trim();
-    if (!content) { Alert.alert('안내', '소명 내용을 입력해 주세요.'); return; }
+    if (!content) {
+      Alert.alert('안내', '소명 내용을 입력해 주세요.');
+      return;
+    }
     try {
       setSubmittingPostId(postId);
       await api.post(`/api/posts/${postId}/appeal`, { content });
@@ -218,121 +204,59 @@ export default function HiddenPostsAppeals({ navigation }) {
     }
   };
 
-  // ─── 탭: 내가 한 신고 ────────────────────────────────────────────────────
-
   const renderMyReports = () => {
-    if (myReports.length === 0) return <EmptyState message="접수한 신고 내역이 없습니다." normalize={normalize} />;
+    if (myReports.length === 0) {
+      return <EmptyState message="접수한 신고 내역이 없습니다." styles={hpa} normalize={normalize} />;
+    }
 
     return (
       <>
-        {/* 요약 통계 */}
-        <View
-          style={{
-            flexDirection: 'row',
-            gap: normalize(8),
-            marginBottom: normalize(14),
-          }}
-        >
+        <View style={hpa.statSummaryBox}>
           {[
-            { num: reportStats.total,    label: '전체 신고' },
-            { num: reportStats.pending,  label: '검토 중' },
-            { num: reportStats.resolved, label: '처리 완료' },
-          ].map(({ num, label }) => (
-            <View
-              key={label}
-              style={{
-                flex: 1,
-                backgroundColor: colors.textLight5,
-                borderRadius: normalize(10),
-                borderWidth: 1,
-                borderColor: colors.textLight10,
-                paddingVertical: normalize(12),
-                alignItems: 'center',
-              }}
-            >
-              <Text
-                style={{
-                  fontFamily: fonts.regular,
-                  fontSize: normalize(20),
-                  color: label === '처리 완료' ? colors.primary : colors.textPrimary,
-                }}
-              >
-                {num}
-              </Text>
-              <Text
-                style={{
-                  fontFamily: fonts.regular,
-                  fontSize: normalize(11),
-                  color: colors.textSecondary,
-                  marginTop: normalize(3),
-                }}
-              >
-                {label}
-              </Text>
-            </View>
+            { num: reportStats.pending, label: '검토 중', highlight: false },
+            { num: reportStats.rejected, label: '반려', highlight: false },
+            { num: reportStats.resolved, label: '처리 완료', highlight: true },
+          ].map(({ num, label, highlight }, index) => (
+            <React.Fragment key={label}>
+              {index > 0 ? <View style={hpa.statSummaryDivider} /> : null}
+              <View style={hpa.statSummaryCell}>
+                <Text style={[hpa.statNumber, highlight && hpa.statNumberHighlight]}>{num}</Text>
+                <Text style={hpa.statLabel}>{label}</Text>
+              </View>
+            </React.Fragment>
           ))}
         </View>
 
         {myReports.map((report) => {
-          const statusLabel = getReporterStatusLabel(report.status);
+          const statusLabel = getReporterStatusLabel(report);
           return (
-            <Card key={report.id} statusLabel={statusLabel} normalize={normalize}>
-              {/* 행 1: 타입 pill + 상태 chip */}
-              <View
-                style={{
-                  flexDirection: 'row',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                  marginBottom: normalize(6),
-                }}
-              >
-                <View
-                  style={{
-                    backgroundColor: colors.textLight10,
-                    borderRadius: normalize(20),
-                    paddingHorizontal: normalize(9),
-                    paddingVertical: normalize(3),
-                  }}
-                >
-                  <Text style={{ fontFamily: fonts.regular, fontSize: normalize(11), color: colors.textSecondary }}>
-                    게시글
-                  </Text>
+            <Card key={report.id} statusLabel={statusLabel} styles={hpa}>
+              <View style={hpa.rowBetween}>
+                <View style={hpa.pillNeutral}>
+                  <Text style={hpa.pillNeutralText}>게시글</Text>
                 </View>
-                <StatusChip label={statusLabel} normalize={normalize} />
               </View>
 
-              {/* 원문 미리보기 */}
-              <Text
-                numberOfLines={2}
-                style={{
-                  fontFamily: fonts.regular,
-                  fontSize: normalize(14),
-                  color: colors.textPrimary,
-                  lineHeight: normalize(21),
-                  marginBottom: normalize(8),
-                }}
-              >
+              <Text numberOfLines={2} style={hpa.previewText}>
                 {report.target_content || '(원문을 확인할 수 없는 신고 대상입니다)'}
               </Text>
 
-              {/* 구분선 + 메타 */}
-              <View
-                style={{
-                  borderTopWidth: 1,
-                  borderTopColor: colors.textLight10,
-                  paddingTop: normalize(8),
-                }}
-              >
-                <Text
-                  style={{
-                    fontFamily: fonts.regular,
-                    fontSize: normalize(12),
-                    color: colors.textSecondary,
-                    lineHeight: normalize(18),
-                  }}
-                >
-                  {getReporterStatusMessage(report.status)}
-                </Text>
+              <View style={hpa.dividerSection}>
+                <View style={hpa.reportMetaRow}>
+                  <StatusChip
+                    label={statusLabel}
+                    styles={hpa}
+                    wrapStyle={{ alignSelf: 'center' }}
+                    normalize={normalize}
+                  />
+                  <Text
+                    style={[hpa.metaText, hpa.reportMetaTextFlex]}
+                    numberOfLines={1}
+                    ellipsizeMode="tail"
+                  >
+                    {getReporterStatusMessage(report.status)}
+                  </Text>
+                </View>
               </View>
             </Card>
           );
@@ -341,10 +265,10 @@ export default function HiddenPostsAppeals({ navigation }) {
     );
   };
 
-  // ─── 탭: 제한된 내역 (이의신청) ──────────────────────────────────────────
-
   const renderRestricted = () => {
-    if (hiddenPosts.length === 0) return <EmptyState message="숨김 처리된 게시글이 없습니다." normalize={normalize} />;
+    if (hiddenPosts.length === 0) {
+      return <EmptyState message="숨김 처리된 게시글이 없습니다." styles={hpa} normalize={normalize} />;
+    }
 
     return hiddenPosts.map((post) => {
       const input = appealInputs[post.id] ?? '';
@@ -353,96 +277,36 @@ export default function HiddenPostsAppeals({ navigation }) {
       const hasAppeal = appealsByPostId.has(post.id);
 
       return (
-        <Card key={post.id} statusLabel={label} normalize={normalize}>
-          {/* 행 1: 제한 유형 pill + 상태 chip */}
-          <View
-            style={{
-              flexDirection: 'row',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              marginBottom: normalize(6),
-            }}
-          >
-            <View
-              style={{
-                backgroundColor: '#fde8e8',
-                borderRadius: normalize(20),
-                paddingHorizontal: normalize(9),
-                paddingVertical: normalize(3),
-              }}
-            >
-              <Text style={{ fontFamily: fonts.regular, fontSize: normalize(11), color: '#b91c1c' }}>
-                게시글 제한
-              </Text>
+        <Card key={post.id} statusLabel={label} styles={hpa}>
+          <View style={hpa.rowBetween}>
+            <View style={hpa.pillDanger}>
+              <Text style={hpa.pillDangerText}>게시글 제한</Text>
             </View>
-            <Text style={{ fontFamily: fonts.regular, fontSize: normalize(11), color: colors.textSecondary }}>
-              {formatTimeAgo(post.hidden_at)}
-            </Text>
+            <Text style={hpa.metaTime}>{formatTimeAgo(post.hidden_at)}</Text>
           </View>
 
-          {/* 게시글 내용 미리보기 */}
-          <Text
-            numberOfLines={2}
-            style={{
-              fontFamily: fonts.regular,
-              fontSize: normalize(14),
-              color: colors.textPrimary,
-              lineHeight: normalize(21),
-              marginBottom: normalize(8),
-            }}
-          >
+          <Text numberOfLines={2} style={hpa.previewText}>
             {post.content}
           </Text>
 
-          {/* 상태 안내 박스 */}
-          <View
-            style={{
-              backgroundColor: colors.textLight5,
-              borderRadius: normalize(10),
-              borderWidth: 1,
-              borderColor: colors.textLight10,
-              padding: normalize(12),
-              marginBottom: normalize(10),
-              gap: normalize(6),
-            }}
-          >
-            <StatusChip label={label} normalize={normalize} />
-            <Text
-              style={{
-                fontFamily: fonts.regular,
-                fontSize: normalize(12),
-                color: colors.textSecondary,
-                lineHeight: normalize(18),
-              }}
-            >
-              {message}
-            </Text>
+          <View style={hpa.noticeBox}>
+            <StatusChip label={label} styles={hpa} normalize={normalize} />
+            <Text style={hpa.metaText}>{message}</Text>
           </View>
 
-          {/* 가이드라인 링크 */}
           <TouchableOpacity
             activeOpacity={0.7}
             onPress={() =>
               Alert.alert(
                 '커뮤니티 가이드라인',
-                '게시글 작성 전 커뮤니티 가이드라인을 확인해 주세요.\n욕설/혐오/개인정보 노출/광고성 콘텐츠는 제재 대상입니다.'
+                '게시글 작성 전 커뮤니티 가이드라인을 확인해 주세요.\n욕설/혐오/개인정보 노출/광고성 콘텐츠는 제재 대상입니다.',
               )
             }
-            style={{ marginBottom: normalize(10) }}
+            style={hpa.guideLink}
           >
-            <Text
-              style={{
-                fontFamily: fonts.regular,
-                fontSize: normalize(12),
-                color: colors.primaryDark,
-                textDecorationLine: 'underline',
-              }}
-            >
-              커뮤니티 가이드라인 확인하기
-            </Text>
+            <Text style={hpa.guideLinkText}>커뮤니티 가이드라인 확인하기</Text>
           </TouchableOpacity>
 
-          {/* 이의신청 입력 — 아직 신청 안 한 경우만 */}
           {!hasAppeal && (
             <>
               <TextInput
@@ -451,35 +315,14 @@ export default function HiddenPostsAppeals({ navigation }) {
                 placeholder="소명 내용을 작성해 주세요"
                 placeholderTextColor={colors.textLight40}
                 multiline
-                style={{
-                  minHeight: normalize(82),
-                  borderWidth: 1,
-                  borderColor: colors.textLight10,
-                  borderRadius: normalize(10),
-                  backgroundColor: colors.textLight5,
-                  paddingHorizontal: normalize(10),
-                  paddingVertical: normalize(10),
-                  fontFamily: fonts.regular,
-                  fontSize: normalize(13),
-                  color: colors.textPrimary,
-                  textAlignVertical: 'top',
-                }}
+                style={hpa.appealInput}
               />
               <TouchableOpacity
                 disabled={isSubmitting}
                 onPress={() => handleSubmitAppeal(post.id)}
-                style={{
-                  marginTop: normalize(10),
-                  alignSelf: 'flex-end',
-                  backgroundColor: isSubmitting ? colors.textLight20 : colors.primary,
-                  borderRadius: normalize(10),
-                  paddingHorizontal: normalize(14),
-                  paddingVertical: normalize(8),
-                }}
+                style={[hpa.appealSubmit, isSubmitting && hpa.appealSubmitDisabled]}
               >
-                <Text style={{ fontFamily: fonts.regular, fontSize: normalize(12), color: colors.textWhite }}>
-                  {isSubmitting ? '접수 중...' : '이의신청 접수'}
-                </Text>
+                <Text style={hpa.appealSubmitText}>{isSubmitting ? '접수 중...' : '이의신청 접수'}</Text>
               </TouchableOpacity>
             </>
           )}
@@ -488,73 +331,66 @@ export default function HiddenPostsAppeals({ navigation }) {
     });
   };
 
-  // ─── 탭 버튼 ─────────────────────────────────────────────────────────────
-
   const TAB_ITEMS = [
-    { key: 'myReports',  label: '내가 한 신고' },
+    { key: 'myReports', label: '내가 한 신고' },
     { key: 'restricted', label: '제한된 내역' },
   ];
 
+  const handleTabChange = (key) => {
+    setTab(key);
+    const toValue = key === 'myReports' ? 0 : 1;
+    Animated.spring(slideAnim, {
+      toValue,
+      useNativeDriver: false,
+      tension: 60,
+      friction: 10,
+    }).start();
+  };
+
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }} edges={['top']}>
+    <SafeAreaView style={hpa.safeArea} edges={['top']}>
       <SubHeader title="클린 센터" onBack={() => navigation.goBack()} />
 
-      {/* 세그먼트 탭 */}
-      <View
-        style={{
-          flexDirection: 'row',
-          marginHorizontal: normalize(16),
-          marginTop: normalize(14),
-          marginBottom: normalize(4),
-          backgroundColor: colors.textLight5,
-          borderRadius: normalize(10),
-          borderWidth: 1,
-          borderColor: colors.textLight10,
-          padding: normalize(3),
-          gap: normalize(3),
-        }}
-      >
-        {TAB_ITEMS.map(({ key, label }) => (
-          <TouchableOpacity
-            key={key}
-            onPress={() => setTab(key)}
-            style={{
-              flex: 1,
-              paddingVertical: normalize(9),
-              borderRadius: normalize(8),
-              alignItems: 'center',
-              backgroundColor: tab === key ? colors.background : 'transparent',
-              borderWidth: tab === key ? 1 : 0,
-              borderColor: colors.textLight10,
-            }}
-          >
-            <Text
-              style={{
-                fontFamily: fonts.regular,
-                fontSize: normalize(13),
-                color: tab === key ? colors.textPrimary : colors.textSecondary,
-              }}
+      <View style={hpa.toggleContainer}>
+        <View style={hpa.toggleTrack}>
+          <Animated.View
+            style={[
+              hpa.togglePill,
+              {
+                left: slideAnim.interpolate({
+                  inputRange: [0, 1],
+                  outputRange: ['0%', '50%'],
+                }),
+              },
+            ]}
+          />
+          {TAB_ITEMS.map(({ key, label }) => (
+            <TouchableOpacity
+              key={key}
+              style={hpa.toggleOption}
+              onPress={() => handleTabChange(key)}
+              activeOpacity={1}
             >
-              {label}
-            </Text>
-          </TouchableOpacity>
-        ))}
+              <Text style={[hpa.toggleOptionText, tab === key && hpa.toggleOptionTextActive]}>{label}</Text>
+            </TouchableOpacity>
+          ))}
+        </View>
       </View>
 
       <ScrollView
-        style={{ flex: 1 }}
-        contentContainerStyle={{
-          paddingHorizontal: normalize(16),
-          paddingTop: normalize(14),
-          paddingBottom: normalize(28),
-        }}
+        style={hpa.scroll}
+        contentContainerStyle={hpa.scrollContent}
         showsVerticalScrollIndicator={false}
       >
         {loading ? (
-          <View style={{ paddingTop: normalize(36), alignItems: 'center' }}>
+          <View style={hpa.loadingWrap}>
             <ActivityIndicator size="small" color={colors.primary} />
           </View>
-        ) : tab === 'myReports' ? renderMyReports() : renderRestricted()}
+        ) : tab === 'myReports' ? (
+          renderMyReports()
+        ) : (
+          renderRestricted()
+        )}
       </ScrollView>
     </SafeAreaView>
   );

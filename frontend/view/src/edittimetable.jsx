@@ -7,13 +7,15 @@ import {
   TextInput,
   Alert,
   KeyboardAvoidingView,
+  Modal,
   Platform,
   ScrollView,
   useWindowDimensions,
 } from 'react-native';
+import { Picker } from '@react-native-picker/picker';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import SubHeader from '../frame/subHeader';
-import { TIMETABLE_SUBJECT_COLORS } from '../../styles/colors';
+import { colors, fonts, fontSizes, TIMETABLE_SUBJECT_COLORS } from '../../styles/colors';
 import { getNormalize } from '../../styles/mypage.style';
 import {
   DAYS,
@@ -23,8 +25,13 @@ import {
   getEditTimetableAccordionMinFooterPadding,
   getEditTimetableKeyboardVerticalOffset,
 } from '../../src/screens/timetable/timetable.style';
+import { getMaxPeriodFromTimetableKeys } from '../../src/screens/timetable/periodUtils';
 
-const EDIT_TS_MAX_PERIOD = 10;
+/** 빈 시간표일 때 격자에 보이는 최소 행 수 (1교시~여기까지) */
+const EDIT_TS_GRID_INITIAL_MIN = 10;
+/** 교시 선택 모달 범위 */
+const EDIT_TS_PICKER_MIN = 1;
+const EDIT_TS_PICKER_MAX = 20;
 
 const normalizeSubject = (value) => String(value || '').trim().toLowerCase();
 
@@ -38,7 +45,7 @@ const getSubjectColorIndex = (subject) => {
   return Math.abs(hash) % TIMETABLE_SUBJECT_COLORS.length;
 };
 
-/** MyPage 등에서 넘긴 existingTimetable 만 수정·삭제 (빈 칸 과목 추가 불가) */
+/** MyPage 등에서 넘긴 existingTimetable 수정·삭제; 빈 칸에서도 탭해 과목 입력 가능 */
 const EditTimetable = ({ navigation, route }) => {
   const { existingTimetable, onSave, timetableCacheKey } = route.params || {};
   const { width } = useWindowDimensions();
@@ -55,7 +62,6 @@ const EditTimetable = ({ navigation, route }) => {
 
   const [selectedDay, setSelectedDay] = useState(null);
   const [selectedPeriod, setSelectedPeriod] = useState(null);
-  const [accordionExpanded, setAccordionExpanded] = useState(true);
   const [className, setClassName] = useState('');
   const [timetable, setTimetable] = useState(() =>
     existingTimetable && typeof existingTimetable === 'object'
@@ -63,9 +69,25 @@ const EditTimetable = ({ navigation, route }) => {
       : {},
   );
 
+  const initialMaxPeriod = useMemo(() => {
+    const tt =
+      existingTimetable && typeof existingTimetable === 'object' ? existingTimetable : {};
+    const fromData = Math.max(
+      EDIT_TS_GRID_INITIAL_MIN,
+      getMaxPeriodFromTimetableKeys(tt, EDIT_TS_GRID_INITIAL_MIN),
+    );
+    return Math.min(EDIT_TS_PICKER_MAX, fromData);
+  }, [existingTimetable]);
+
+  const [maxPeriodCount, setMaxPeriodCount] = useState(initialMaxPeriod);
+
+  useEffect(() => {
+    setMaxPeriodCount(initialMaxPeriod);
+  }, [initialMaxPeriod]);
+
   const periods = useMemo(
-    () => Array.from({ length: EDIT_TS_MAX_PERIOD }, (_, i) => i + 1),
-    [],
+    () => Array.from({ length: maxPeriodCount }, (_, i) => i + 1),
+    [maxPeriodCount],
   );
   const colorSeed = 0;
   const safeTimetable = timetable || {};
@@ -104,20 +126,13 @@ const EditTimetable = ({ navigation, route }) => {
     );
   };
 
-  const hasEditableCells = useCallback((tt) => {
-    if (!tt || typeof tt !== 'object') return false;
-    return Object.keys(tt).some((k) => String(tt[k] || '').trim().length > 0);
-  }, []);
-
   useEffect(() => {
-    if (!hasEditableCells(existingTimetable)) {
-      Alert.alert('알림', '수정할 시간표가 없습니다.', [
-        { text: '확인', onPress: () => navigation.goBack() },
-      ]);
-      return;
+    if (existingTimetable != null && typeof existingTimetable === 'object') {
+      setTimetable({ ...existingTimetable });
+    } else {
+      setTimetable({});
     }
-    setTimetable({ ...existingTimetable });
-  }, [existingTimetable, hasEditableCells, navigation]);
+  }, [existingTimetable]);
 
   useEffect(() => {
     if (selectedDay == null || selectedPeriod == null) {
@@ -126,22 +141,70 @@ const EditTimetable = ({ navigation, route }) => {
     }
     const key = `${selectedDay}-${selectedPeriod}`;
     setClassName(String(timetable[key] || '').trim());
-    setAccordionExpanded(true);
     // eslint-disable-next-line react-hooks/exhaustive-deps -- timetable 제외: 입력 중 필드 덮어쓰기 방지
   }, [selectedDay, selectedPeriod]);
 
-  const closeEditPanel = () => {
+  const closeEditPanel = useCallback(() => {
     setSelectedDay(null);
     setSelectedPeriod(null);
     setClassName('');
-    setAccordionExpanded(true);
+  }, []);
+
+  const pruneTimetableAbovePeriod = useCallback((cap, tt) => {
+    const next = { ...tt };
+    Object.keys(next).forEach((k) => {
+      const m = k.match(/-(\d+)$/);
+      if (m && Number(m[1]) > cap) delete next[k];
+    });
+    return next;
+  }, []);
+
+  useEffect(() => {
+    if (selectedPeriod != null && selectedPeriod > maxPeriodCount) {
+      closeEditPanel();
+    }
+  }, [maxPeriodCount, selectedPeriod, closeEditPanel]);
+
+  const periodPickerItems = useMemo(
+    () =>
+      Array.from({ length: EDIT_TS_PICKER_MAX - EDIT_TS_PICKER_MIN + 1 }, (_, i) => EDIT_TS_PICKER_MIN + i),
+    [],
+  );
+
+  const [periodModalVisible, setPeriodModalVisible] = useState(false);
+  const [periodDraft, setPeriodDraft] = useState(EDIT_TS_GRID_INITIAL_MIN);
+
+  /** 모달·휠에서 확정 시에만 호출 — 격자 칸 탭만 할 때는 호출되지 않음 */
+  const handlePeriodPickerChange = useCallback(
+    (itemValue) => {
+      const p = Number(itemValue);
+      if (!Number.isFinite(p)) return;
+      const clamped = Math.min(EDIT_TS_PICKER_MAX, Math.max(EDIT_TS_PICKER_MIN, p));
+      setSelectedPeriod(clamped);
+      setMaxPeriodCount((prev) => {
+        if (clamped > prev) return clamped;
+        if (clamped < prev) {
+          setTimetable((tt) => pruneTimetableAbovePeriod(clamped, tt));
+          return clamped;
+        }
+        return prev;
+      });
+    },
+    [pruneTimetableAbovePeriod],
+  );
+
+  const openPeriodModal = () => {
+    if (selectedPeriod == null) return;
+    setPeriodDraft(selectedPeriod);
+    setPeriodModalVisible(true);
+  };
+
+  const confirmPeriodModal = () => {
+    handlePeriodPickerChange(periodDraft);
+    setPeriodModalVisible(false);
   };
 
   const handleCellPress = (day, period) => {
-    const key = `${day}-${period}`;
-    const current = String(timetable[key] || '').trim();
-    if (!current) return;
-
     setSelectedDay(day);
     setSelectedPeriod(period);
   };
@@ -173,20 +236,22 @@ const EditTimetable = ({ navigation, route }) => {
   };
 
   const handleSave = async () => {
+    const timetableToSave = pruneTimetableAbovePeriod(maxPeriodCount, timetable);
     try {
       if (onSave) {
-        onSave(timetable);
+        onSave(timetableToSave);
       }
       if (timetableCacheKey) {
         await AsyncStorage.setItem(
           timetableCacheKey,
           JSON.stringify({
             ts: Date.now(),
-            timetable,
+            timetable: timetableToSave,
             clearedByUser: false,
           }),
         );
       }
+      setTimetable(timetableToSave);
     } catch (error) {
       console.error('시간표 저장 실패:', error);
     }
@@ -251,43 +316,29 @@ const EditTimetable = ({ navigation, route }) => {
                       et.editTsClassCell,
                       filled ? et.editTsClassCellFilled : null,
                       filled ? { backgroundColor: getCellColor(content) } : null,
-                      filled && isSelected ? et.editTsClassCellSelected : null,
+                      isSelected ? et.editTsClassCellSelected : null,
                     ];
 
-                    if (filled) {
-                      return (
-                        <TouchableOpacity
-                          key={`${day}-${period}`}
-                          activeOpacity={0.65}
-                          style={cellStyle}
-                          onPress={() => handleCellPress(day, period)}
-                        >
-                          <Text
-                            style={[
-                              et.editTsClassCellText,
-                              et.editTsClassCellTextFilled,
-                            ]}
-                            pointerEvents="none"
-                            lineBreakMode="wordWrapping"
-                            lineBreakStrategyIOS="hangul-word"
-                            numberOfLines={2}
-                          >
-                            {content}
-                          </Text>
-                        </TouchableOpacity>
-                      );
-                    }
-
                     return (
-                      <View key={`${day}-${period}`} style={cellStyle}>
+                      <TouchableOpacity
+                        key={`${day}-${period}`}
+                        activeOpacity={0.65}
+                        style={cellStyle}
+                        onPress={() => handleCellPress(day, period)}
+                      >
                         <Text
-                          style={et.editTsClassCellText}
+                          style={[
+                            et.editTsClassCellText,
+                            filled ? et.editTsClassCellTextFilled : null,
+                          ]}
                           pointerEvents="none"
+                          lineBreakMode="wordWrapping"
+                          lineBreakStrategyIOS="hangul-word"
                           numberOfLines={2}
                         >
                           {content}
                         </Text>
-                      </View>
+                      </TouchableOpacity>
                     );
                   })}
                 </View>
@@ -299,62 +350,117 @@ const EditTimetable = ({ navigation, route }) => {
 
       {selectionActive ? (
         <View style={et.editTsAccordion}>
-          <View style={et.editTsAccordionHeader}>
-            <Text style={et.editTsAccordionHeaderTitle}>
-              {selectedDay}요일 {selectedPeriod}교시
-            </Text>
-          </View>
-
-          {accordionExpanded ? (
-            <View style={et.editTsAccordionBody}>
-              <TextInput
-                style={et.editTsAccordionInput}
-                placeholder="과목명"
-                placeholderTextColor={EDIT_TIMETABLE_INPUT_PLACEHOLDER_COLOR}
-                value={className}
-                onChangeText={setClassName}
-                onFocus={scrollAccordionAboveKeyboard}
-              />
-              <View style={et.editTsAccordionActions}>
-                <TouchableOpacity
-                  style={[et.editTsAccordionBtn, et.editTsAccordionBtnMuted]}
-                  onPress={closeEditPanel}
-                  activeOpacity={0.85}
-                >
-                  <Text style={et.editTsAccordionBtnTextMuted}>닫기</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={[et.editTsAccordionBtn, et.editTsAccordionBtnDanger]}
-                  onPress={handleDeleteClass}
-                  activeOpacity={0.85}
-                >
-                  <Text style={et.editTsAccordionBtnTextDanger}>삭제</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={[et.editTsAccordionBtn, et.editTsAccordionBtnPrimary]}
-                  onPress={handleConfirmEdit}
-                  activeOpacity={0.85}
-                >
-                  <Text style={et.editTsAccordionBtnTextPrimary}>적용</Text>
-                </TouchableOpacity>
-              </View>
+          <View style={et.editTsAccordionBody}>
+            <View
+              style={[
+                et.editTsAccordionCellTitle,
+                { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap' },
+              ]}
+            >
+              <Text style={[et.editTsAccordionCellTitle, { marginBottom: 0 }]}>{selectedDay}요일 </Text>
+              <TouchableOpacity onPress={openPeriodModal} activeOpacity={0.65} accessibilityRole="button">
+                <Text style={[et.editTsAccordionCellTitle, { marginBottom: 0 }]}>{selectedPeriod}교시</Text>
+              </TouchableOpacity>
             </View>
-          ) : null}
+            <TextInput
+              style={et.editTsAccordionInput}
+              placeholder="과목명"
+              placeholderTextColor={EDIT_TIMETABLE_INPUT_PLACEHOLDER_COLOR}
+              value={className}
+              onChangeText={setClassName}
+              onFocus={scrollAccordionAboveKeyboard}
+            />
+            <View style={et.editTsAccordionActions}>
+              <TouchableOpacity
+                style={[et.editTsAccordionBtn, et.editTsAccordionBtnMuted]}
+                onPress={closeEditPanel}
+                activeOpacity={0.85}
+              >
+                <Text style={et.editTsAccordionBtnTextMuted}>닫기</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[et.editTsAccordionBtn, et.editTsAccordionBtnDanger]}
+                onPress={handleDeleteClass}
+                activeOpacity={0.85}
+              >
+                <Text style={et.editTsAccordionBtnTextDanger}>삭제</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[et.editTsAccordionBtn, et.editTsAccordionBtnPrimary]}
+                onPress={handleConfirmEdit}
+                activeOpacity={0.85}
+              >
+                <Text style={et.editTsAccordionBtnTextPrimary}>적용</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
         </View>
       ) : null}
     </ScrollView>
   );
 
-  if (!hasEditableCells(existingTimetable)) {
-    return (
-      <View style={editTsScreenChromeStyles.rootFill}>
-        <SafeAreaView style={editTsScreenChromeStyles.safeFill} edges={['top']} />
-      </View>
-    );
-  }
-
   return (
     <View style={editTsScreenChromeStyles.rootFill}>
+      <Modal
+        visible={periodModalVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setPeriodModalVisible(false)}
+      >
+        <View style={{ flex: 1, justifyContent: 'flex-end' }}>
+          <TouchableOpacity
+            style={{ flex: 1, backgroundColor: colors.overlay }}
+            activeOpacity={1}
+            onPress={() => setPeriodModalVisible(false)}
+          />
+          <View
+            style={{
+              backgroundColor: colors.background,
+              borderTopLeftRadius: normalize(14),
+              borderTopRightRadius: normalize(14),
+              paddingBottom: Math.max(insets.bottom, normalize(12)),
+              paddingTop: normalize(12),
+              paddingHorizontal: normalize(16),
+            }}
+          >
+            <Picker
+              selectedValue={periodDraft}
+              onValueChange={(v) => setPeriodDraft(Number(v))}
+              {...(Platform.OS === 'android' ? { mode: 'dialog' } : {})}
+              style={Platform.OS === 'ios' ? { width: '100%' } : { width: '100%', height: normalize(180) }}
+              itemStyle={
+                Platform.OS === 'ios'
+                  ? {
+                      fontFamily: fonts.bold,
+                      fontSize: normalize(fontSizes.xl),
+                      color: colors.textPrimary,
+                    }
+                  : undefined
+              }
+            >
+              {periodPickerItems.map((p) => (
+                <Picker.Item key={p} label={`${p}교시`} value={p} />
+              ))}
+            </Picker>
+            <TouchableOpacity
+              onPress={confirmPeriodModal}
+              style={{
+                marginTop: normalize(8),
+                paddingVertical: normalize(14),
+                borderRadius: normalize(10),
+                backgroundColor: colors.primary,
+                alignItems: 'center',
+              }}
+              activeOpacity={0.85}
+            >
+              <Text style={{ fontFamily: fonts.bold, fontSize: normalize(fontSizes.xl), color: colors.background }}>
+                완료
+              </Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
       <SafeAreaView style={editTsScreenChromeStyles.safeFill} edges={['top']}>
         {Platform.OS === 'ios' ? (
           <View style={et.editTsKeyboardRoot}>

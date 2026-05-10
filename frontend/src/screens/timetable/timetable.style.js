@@ -887,7 +887,7 @@ export function createManualTimetableScreenStyles(normalize) {
   });
 }
 
-/** 편집 화면(EditTimetable) — manualTs와 동일 격자 규격, 스크롤 없이 10교시 전체 노출 */
+/** 편집 화면(EditTimetable) — manualTs와 동일 격자 규격; 최소 10교시, 아코디언에서 최대 교시(상한) 확장 */
 export function createEditTimetableScreenStyles(normalize) {
   return StyleSheet.create({
     /** 시간표 높이만큼만 차지 — 아코디언이 격자 바로 아래 오도록 flex 미사용 */
@@ -1005,7 +1005,14 @@ export function createEditTimetableScreenStyles(normalize) {
     },
     editTsAccordionBody: {
       paddingHorizontal: normalize(14),
+      paddingTop: normalize(4),
       paddingBottom: normalize(12),
+    },
+    editTsAccordionCellTitle: {
+      fontFamily: fonts.bold,
+      fontSize: fontSizes.xl,
+      color: COLORS.textPrimary,
+      marginBottom: normalize(10),
     },
     editTsAccordionInput: {
       borderWidth: 1,

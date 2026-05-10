@@ -89,14 +89,6 @@ const TimetableView = ({
   };
 
   const handleNavigateToCellEdit = useCallback(() => {
-    const safe = timetable || {};
-    const hasCells = Object.keys(safe).some(
-      (k) => String(safe[k] || '').trim().length > 0,
-    );
-    if (!hasCells) {
-      Alert.alert('알림', '수정할 시간표가 없습니다.');
-      return;
-    }
     if (!timetableCacheKey) {
       Alert.alert('알림', '시간표 수정 화면을 열 수 없습니다.');
       return;

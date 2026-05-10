@@ -235,9 +235,9 @@ const MyPage = ({ navigation }) => {
   };
 
   const handleNavigateToTimetableCellEdit = useCallback(() => {
-    if (!timetable || typeof timetable !== 'object') return;
     navigation.navigate('EditTimetable', {
-      existingTimetable: timetable,
+      existingTimetable:
+        timetable != null && typeof timetable === 'object' ? timetable : {},
       timetableCacheKey,
     });
   }, [navigation, timetable, timetableCacheKey]);
