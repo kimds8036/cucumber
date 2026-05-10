@@ -2,145 +2,51 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
   KeyboardAvoidingView,
-  Modal,
   Platform,
   ScrollView,
   Text,
   TextInput,
   TouchableOpacity,
   View,
+  useWindowDimensions,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import SubHeader from '../../../view/frame/subHeader';
-import { colors } from '../../../styles/colors';
+import { colors, TIMETABLE_SUBJECT_COLORS } from '../../../styles/colors';
+import { getNormalize } from '../../../styles/mypage.style';
 import { api } from '../../../utils/api';
-import styles, { CELL_GAP, CELL_HEIGHT, DAYS } from './timetable.style';
-import { SUBJECT_COLORS, TIMETABLE_DUMMY } from './TimetableDummy';
-import { getMaxPeriodFromTimetableKeys } from './periodUtils';
+import styles, { DAYS, createManualTimetableScreenStyles } from './timetable.style';
+import { TIMETABLE_DUMMY } from './TimetableDummy';
+
+const MANUAL_TS_MAX_PERIOD = 10;
 
 const COLORS = {
   ...colors,
   textDisabled: colors.textLight20,
-  periodStart: colors.primary,
-  periodCont: colors.primaryLight20,
-  periodStartText: colors.textWhite,
-  periodContText: colors.textPrimary,
 };
 
-function formatClassSummary(cls) {
-  return cls.blocks
-    .map((block) => `${DAYS[block.day]}${block.periods.join('')}`)
-    .join(' · ');
-}
+const normalizeSubject = (value) => String(value || '').trim().toLowerCase();
 
-function buildCellMap(myChoices) {
-  const cellMap = {};
-
-  Object.entries(myChoices).forEach(([subjectId, choice]) => {
-    const subject = TIMETABLE_DUMMY.find((v) => v.id === Number(subjectId));
-    if (!subject) return;
-    const selectedClass = subject.classes[choice.classIdx];
-    if (!selectedClass) return;
-
-    selectedClass.blocks.forEach((block) => {
-      const periods = [...block.periods].sort((a, b) => a - b);
-      if (periods.length === 0) return;
-      const start = periods[0];
-      const span = periods.length;
-
-      cellMap[`${block.day}-${start}`] = {
-        name: subject.name,
-        room: selectedClass.room,
-        color: choice.color,
-        isStart: true,
-        span,
-      };
-
-      periods.slice(1).forEach((period) => {
-        cellMap[`${block.day}-${period}`] = {
-          skip: true,
-        };
-      });
-    });
-  });
-
-  return cellMap;
-}
-
-function groupClassesByRoom(classes) {
-  return classes.reduce((acc, cls, idx) => {
-    if (!acc[cls.room]) acc[cls.room] = [];
-    acc[cls.room].push({ cls, idx });
-    return acc;
-  }, {});
-}
-
-function buildMyPageTimetable(myChoices) {
-  const timetable = {};
-
-  Object.entries(myChoices).forEach(([subjectId, choice]) => {
-    const subject = TIMETABLE_DUMMY.find((v) => v.id === Number(subjectId));
-    if (!subject) return;
-    const selectedClass = subject.classes[choice.classIdx];
-    if (!selectedClass) return;
-
-    selectedClass.blocks.forEach((block) => {
-      const dayLabel = DAYS[block.day];
-      if (!dayLabel) return;
-      block.periods.forEach((period) => {
-        timetable[`${dayLabel}-${period}`] = subject.name;
-      });
-    });
-  });
-
-  return timetable;
-}
-
-function PeriodBadges({ blocks }) {
-  return (
-    <View style={styles.badgeRow}>
-      {blocks.map((block) => (
-        <React.Fragment key={`${block.day}-${block.periods.join('-')}`}>
-          <Text style={styles.daySeparator}>{DAYS[block.day]}</Text>
-          {block.periods.map((period, index) => {
-            const isStart = index === 0;
-            return (
-              <View
-                key={`${block.day}-${period}`}
-                style={[
-                  styles.periodBadge,
-                  {
-                    backgroundColor: isStart ? COLORS.periodStart : COLORS.periodCont,
-                  },
-                ]}
-              >
-                <Text
-                  style={[
-                    styles.periodBadgeText,
-                    { color: isStart ? COLORS.periodStartText : COLORS.periodContText },
-                  ]}
-                >
-                  {period}
-                </Text>
-              </View>
-            );
-          })}
-        </React.Fragment>
-      ))}
-    </View>
-  );
-}
+const getSubjectColorIndex = (subject) => {
+  const key = normalizeSubject(subject);
+  if (!key) return 0;
+  let hash = 0;
+  for (let i = 0; i < key.length; i += 1) {
+    hash = (hash * 31 + key.charCodeAt(i)) % 2147483647;
+  }
+  return Math.abs(hash) % TIMETABLE_SUBJECT_COLORS.length;
+};
 
 export default function TimetableScreen({ navigation, route }) {
+  const { width } = useWindowDimensions();
+  const normalize = useMemo(() => getNormalize(width), [width]);
+  const mt = useMemo(() => createManualTimetableScreenStyles(normalize), [normalize]);
+
   const [keyword, setKeyword] = useState('');
-  const [myChoices, setMyChoices] = useState({});
-  const [selectedSubject, setSelectedSubject] = useState(null);
-  const [selectedClassIdx, setSelectedClassIdx] = useState(0);
-  const [modalVisible, setModalVisible] = useState(false);
+  const [timetable, setTimetable] = useState({});
+  const [paintSubjectId, setPaintSubjectId] = useState(null);
   const [schoolGradeText, setSchoolGradeText] = useState('-');
-  const [timetableCacheKey, setTimetableCacheKey] = useState(
-    route?.params?.timetableCacheKey || '@mypage_timetable_cache_v1',
-  );
+
   const resolveTimetableCacheKey = useCallback(async () => {
     if (route?.params?.timetableCacheKey) {
       return route.params.timetableCacheKey;
@@ -156,6 +62,7 @@ export default function TimetableScreen({ navigation, route }) {
     }
     return '@mypage_timetable_cache_v1';
   }, [route?.params?.timetableCacheKey]);
+
   const termTitle = useMemo(() => {
     const now = new Date();
     const year = now.getFullYear();
@@ -170,27 +77,74 @@ export default function TimetableScreen({ navigation, route }) {
     return TIMETABLE_DUMMY.filter((subject) => subject.name.includes(q));
   }, [keyword]);
 
-  const cellMap = useMemo(() => buildCellMap(myChoices), [myChoices]);
-  const previewTimetable = useMemo(() => buildMyPageTimetable(myChoices), [myChoices]);
-  const maxPeriod = useMemo(
-    () => getMaxPeriodFromTimetableKeys(previewTimetable, 7),
-    [previewTimetable],
+  const colorSeed = 0;
+  const safeTimetable = timetable || {};
+  const periods = useMemo(
+    () => Array.from({ length: MANUAL_TS_MAX_PERIOD }, (_, i) => i + 1),
+    [],
   );
-  const periods = useMemo(() => {
-    const upperBound = maxPeriod <= 9 ? 9 : maxPeriod;
-    return Array.from({ length: upperBound }, (_, i) => i + 1);
-  }, [maxPeriod]);
-  const totalTableHeight =
-    periods.length * CELL_HEIGHT + (periods.length - 1) * CELL_GAP;
 
-  const openBottomSheet = (subject) => {
-    setSelectedSubject(subject);
-    setSelectedClassIdx(myChoices[subject.id]?.classIdx ?? 0);
-    setModalVisible(true);
+  const subjectColorMap = useMemo(() => {
+    const map = {};
+    const used = new Set();
+    const subjects = [
+      ...new Set(
+        Object.values(safeTimetable)
+          .map((v) => normalizeSubject(v))
+          .filter(Boolean),
+      ),
+    ];
+
+    subjects.forEach((subject) => {
+      const base = getSubjectColorIndex(subject);
+      let idx = base;
+      for (let step = 0; step < TIMETABLE_SUBJECT_COLORS.length; step += 1) {
+        idx = (base + colorSeed + step) % TIMETABLE_SUBJECT_COLORS.length;
+        if (!used.has(idx)) break;
+      }
+      used.add(idx);
+      map[subject] = TIMETABLE_SUBJECT_COLORS[idx];
+    });
+
+    return map;
+  }, [safeTimetable, colorSeed]);
+
+  const getCellContent = (day, period) => safeTimetable[`${day}-${period}`] || '';
+
+  const getCellColor = (content) => {
+    const key = normalizeSubject(content);
+    if (!key) return null;
+    return (
+      subjectColorMap[key] ||
+      TIMETABLE_SUBJECT_COLORS[getSubjectColorIndex(key)]
+    );
   };
 
+  const handleCellPress = useCallback(
+    (day, period) => {
+      if (paintSubjectId == null) return;
+      const sub = TIMETABLE_DUMMY.find((s) => s.id === paintSubjectId);
+      if (!sub) return;
+      setTimetable((prev) => ({
+        ...prev,
+        [`${day}-${period}`]: sub.name,
+      }));
+    },
+    [paintSubjectId],
+  );
+
+  const handleCellLongPress = useCallback((day, period) => {
+    const key = `${day}-${period}`;
+    setTimetable((prev) => {
+      if (!(key in prev)) return prev;
+      const next = { ...prev };
+      delete next[key];
+      return next;
+    });
+  }, []);
+
   const handleDone = async () => {
-    const nextTimetable = buildMyPageTimetable(myChoices);
+    const nextTimetable = timetable || {};
     const hasEntries = Object.keys(nextTimetable).length > 0;
     if (!hasEntries) return;
 
@@ -214,22 +168,6 @@ export default function TimetableScreen({ navigation, route }) {
     navigation.navigate('Main', { initialTab: 'mypage' });
   };
 
-  const handleCompleteSelect = () => {
-    if (!selectedSubject) return;
-    const subjectId = selectedSubject.id;
-    const existing = myChoices[subjectId];
-    const defaultColor = SUBJECT_COLORS[Object.keys(myChoices).length % SUBJECT_COLORS.length];
-
-    setMyChoices((prev) => ({
-      ...prev,
-      [subjectId]: {
-        classIdx: selectedClassIdx,
-        color: existing?.color || defaultColor,
-      },
-    }));
-    setModalVisible(false);
-  };
-
   useEffect(() => {
     let mounted = true;
 
@@ -239,11 +177,6 @@ export default function TimetableScreen({ navigation, route }) {
         if (!mounted) return;
 
         const me = res.data?.data;
-        const userScope =
-          me?.id != null ? String(me.id) : me?.username || me?.email || null;
-        if (userScope) {
-          setTimetableCacheKey(`@mypage_timetable_cache_v1:${userScope}`);
-        }
         const schoolName = me?.school?.name || '-';
         const gradeText = me?.grade ? `${me.grade}학년` : '';
         setSchoolGradeText(gradeText ? `${schoolName} · ${gradeText}` : schoolName);
@@ -278,218 +211,121 @@ export default function TimetableScreen({ navigation, route }) {
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         keyboardVerticalOffset={0}
       >
-        <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-          <View style={styles.schoolInfoRow}>
-            <Text style={styles.schoolInfoText}>{schoolGradeText}</Text>
-          </View>
+        <View style={mt.manualTsPageBody}>
+          <Text style={mt.manualTsHint}>
+          아래 목록에서 과목을 선택한 후 시간표 칸을 눌러 배치하세요. {'\n'}같은 과목을 여러 칸에 연속으로 추가할 수 있으며, 칸을 길게 누르면 해당 과목이 제거됩니다.
+          </Text>
 
-          <TextInput
-            value={keyword}
-            onChangeText={setKeyword}
-            placeholder="과목 검색"
-            placeholderTextColor={COLORS.textSecondary}
-            style={styles.searchInput}
-          />
-
-          <View style={styles.tableWrap}>
-            <View style={styles.tableHeaderRow}>
-              <View style={styles.periodHeaderCell} />
-              {DAYS.map((day) => (
-                <View key={day} style={styles.dayHeaderCell}>
-                  <Text style={styles.dayHeaderText}>{day}</Text>
-                </View>
-              ))}
-            </View>
-
-            <View style={styles.tableBodyRow}>
-              <View style={styles.periodCol}>
-                {periods.map((period) => (
-                  <View key={period} style={styles.periodCell}>
-                    <Text style={styles.periodText}>{period}</Text>
-                  </View>
-                ))}
-              </View>
-
-              {DAYS.map((_, dayIndex) => (
-                <View
-                  key={`day-col-${dayIndex}`}
-                  style={[styles.dayCol, dayIndex === DAYS.length - 1 && styles.dayColLast]}
+          <View style={mt.manualTsWrapper}>
+            <View style={mt.manualTsTimetableContainer}>
+              <View style={mt.manualTsGrid} collapsable={false}>
+                <ScrollView
+                  style={mt.manualTsPeriodScroll}
+                  contentContainerStyle={mt.manualTsPeriodScrollContent}
+                  nestedScrollEnabled
+                  showsVerticalScrollIndicator={false}
+                  keyboardShouldPersistTaps="handled"
+                  bounces={false}
+                  alwaysBounceVertical={false}
+                  overScrollMode="never"
                 >
+                  <View style={mt.manualTsDaysRow}>
+                    <View style={mt.manualTsPeriodHeaderCell} />
+                    {DAYS.map((day) => (
+                      <View key={day} style={mt.manualTsDayCell}>
+                        <Text style={mt.manualTsDayText}>{day}</Text>
+                      </View>
+                    ))}
+                  </View>
+
                   {periods.map((period) => (
-                    <View key={`empty-${dayIndex}-${period}`} style={styles.emptyCell} />
-                  ))}
-
-                  {periods.map((period) => {
-                    const cell = cellMap[`${dayIndex}-${period}`];
-                    if (!cell || cell.skip || !cell.isStart) return null;
-                    const height = cell.span * CELL_HEIGHT + (cell.span - 1) * CELL_GAP;
-                    const top = (period - 1) * (CELL_HEIGHT + CELL_GAP);
-
-                    return (
-                      <View
-                        key={`block-${dayIndex}-${period}`}
-                        style={[
-                          styles.blockCell,
-                          {
-                            top,
-                            height,
-                            backgroundColor: cell.color,
-                          },
-                        ]}
-                      >
-                        <Text style={styles.blockTitle} numberOfLines={1}>
-                          {cell.name}
-                        </Text>
-                        <Text style={styles.blockRoom} numberOfLines={1}>
-                          {cell.room}
-                        </Text>
+                    <View key={period} style={mt.manualTsRow}>
+                      <View style={mt.manualTsPeriodCell}>
+                        <Text style={mt.manualTsPeriodText}>{period}</Text>
                       </View>
-                    );
-                  })}
-                </View>
-              ))}
+                      {DAYS.map((day) => {
+                        const content = getCellContent(day, period);
+                        const paintReady = paintSubjectId != null && !content;
+                        const cellStyle = [
+                          mt.manualTsClassCell,
+                          content ? mt.manualTsClassCellFilled : null,
+                          paintReady ? mt.manualTsClassCellPaintReady : null,
+                          content ? { backgroundColor: getCellColor(content) } : null,
+                        ];
+                        return (
+                          <TouchableOpacity
+                            key={`${day}-${period}`}
+                            activeOpacity={0.65}
+                            style={cellStyle}
+                            onPress={() => handleCellPress(day, period)}
+                            onLongPress={() => handleCellLongPress(day, period)}
+                            delayLongPress={380}
+                          >
+                            <Text
+                              style={[
+                                mt.manualTsClassCellText,
+                                content ? mt.manualTsClassCellTextFilled : null,
+                              ]}
+                              lineBreakMode="wordWrapping"
+                              lineBreakStrategyIOS="hangul-word"
+                            >
+                              {content}
+                            </Text>
+                          </TouchableOpacity>
+                        );
+                      })}
+                    </View>
+                  ))}
+                </ScrollView>
+              </View>
             </View>
           </View>
 
-          <ScrollView style={styles.subjectList} showsVerticalScrollIndicator={false}>
-            {filteredSubjects.map((subject, index) => {
-              const isSelected = Boolean(myChoices[subject.id]);
-              const selectedClass = isSelected
-                ? subject.classes[myChoices[subject.id].classIdx]
-                : null;
-              const dotColor = isSelected
-                ? myChoices[subject.id].color
-                : COLORS.textDisabled;
+          <ScrollView
+            style={mt.manualTsSubjectSectionScroll}
+            contentContainerStyle={mt.manualTsSubjectSectionScrollContent}
+            keyboardShouldPersistTaps="handled"
+            showsVerticalScrollIndicator={false}
+          >
+            <TextInput
+              value={keyword}
+              onChangeText={setKeyword}
+              placeholder="과목 검색"
+              placeholderTextColor={COLORS.textSecondary}
+              style={mt.manualTsSearchInput}
+            />
 
-              return (
-                <TouchableOpacity
-                  key={subject.id}
-                  activeOpacity={0.75}
-                  style={[styles.subjectRow, isSelected && styles.subjectRowSelected]}
-                  onPress={() => openBottomSheet(subject)}
-                >
-                  <View style={[styles.colorDot, { backgroundColor: dotColor }]} />
-                  <View style={styles.subjectBody}>
-                    <Text
-                      style={[
-                        styles.subjectTitle,
-                        !isSelected && styles.subjectTitleDisabled,
-                      ]}
-                    >
-                      {subject.name}
-                    </Text>
-                    <Text style={styles.subjectMeta}>
-                      {subject.category} · {subject.units}단위 · {subject.classes.length}개 반 개설 ·{' '}
-                      {selectedClass?.room || subject.classes[0]?.room || '-'}
-                    </Text>
-                  </View>
-                  <View
+            <View style={mt.manualTsSubjectList}>
+              {filteredSubjects.map((subject) => {
+                const paintSelected = paintSubjectId === subject.id;
+                const onTimetable = Object.values(safeTimetable).includes(subject.name);
+                const dotColor = onTimetable
+                  ? getCellColor(subject.name) || COLORS.textDisabled
+                  : COLORS.textDisabled;
+
+                return (
+                  <TouchableOpacity
+                    key={subject.id}
+                    activeOpacity={0.75}
                     style={[
-                      styles.checkCircle,
-                      {
-                        borderColor: isSelected ? myChoices[subject.id].color : COLORS.border,
-                      },
+                      mt.manualTsSubjectRow,
+                      paintSelected && mt.manualTsSubjectRowPaintSelected,
                     ]}
+                    onPress={() =>
+                      setPaintSubjectId((prev) => (prev === subject.id ? null : subject.id))
+                    }
                   >
-                    {isSelected ? (
-                      <View
-                        style={[
-                          styles.checkCircleInner,
-                          { backgroundColor: myChoices[subject.id].color },
-                        ]}
-                      />
-                    ) : null}
-                  </View>
-                </TouchableOpacity>
-              );
-            })}
+                    <View style={[mt.manualTsSubjectDot, { backgroundColor: dotColor }]} />
+                    <View style={mt.manualTsSubjectBody}>
+                      <Text style={mt.manualTsSubjectTitle}>{subject.name}</Text>
+                    </View>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
           </ScrollView>
-        </ScrollView>
+        </View>
       </KeyboardAvoidingView>
-
-      <Modal
-        visible={modalVisible}
-        transparent
-        animationType="slide"
-        onRequestClose={() => setModalVisible(false)}
-      >
-        <TouchableOpacity
-          style={styles.modalOverlay}
-          activeOpacity={1}
-          onPress={() => setModalVisible(false)}
-        >
-          <TouchableOpacity activeOpacity={1} style={styles.bottomSheet}>
-            <View style={styles.handleBar} />
-            <Text style={styles.bsTitle}>{selectedSubject?.name || ''}</Text>
-            <Text style={styles.bsSub}>
-              {selectedSubject
-                ? `${selectedSubject.category} · ${selectedSubject.units}단위 · 반 선택`
-                : ''}
-            </Text>
-            <View style={styles.bsDivider} />
-
-            <ScrollView showsVerticalScrollIndicator={false}>
-              {selectedSubject
-                ? Object.entries(groupClassesByRoom(selectedSubject.classes)).map(
-                    ([room, entries]) => (
-                      <View key={room}>
-                        <Text style={styles.bsRoomLabel}>{room}</Text>
-                        {entries.map(({ cls, idx }) => {
-                          const selected = idx === selectedClassIdx;
-                          return (
-                            <TouchableOpacity
-                              key={`${room}-${idx}`}
-                              activeOpacity={0.75}
-                              style={styles.classOption}
-                              onPress={() => setSelectedClassIdx(idx)}
-                            >
-                              <View
-                                style={[
-                                  styles.radioOuter,
-                                  {
-                                    borderColor: selected ? COLORS.primary : COLORS.border,
-                                  },
-                                ]}
-                              >
-                                {selected ? (
-                                  <View
-                                    style={[
-                                      styles.radioDot,
-                                      { backgroundColor: COLORS.primary },
-                                    ]}
-                                  />
-                                ) : null}
-                              </View>
-
-                              <View style={styles.classInfoWrap}>
-                                <Text style={styles.classMain}>
-                                  {cls.classId} · {cls.teacher}
-                                </Text>
-                                <Text style={styles.classSchedule}>
-                                  {formatClassSummary(cls)}
-                                </Text>
-                                <PeriodBadges blocks={cls.blocks} />
-                              </View>
-                            </TouchableOpacity>
-                          );
-                        })}
-                      </View>
-                    ),
-                  )
-                : null}
-            </ScrollView>
-
-            <TouchableOpacity
-              activeOpacity={0.75}
-              style={styles.completeButton}
-              onPress={handleCompleteSelect}
-            >
-              <Text style={styles.completeButtonText}>선택 완료</Text>
-            </TouchableOpacity>
-          </TouchableOpacity>
-        </TouchableOpacity>
-      </Modal>
     </SafeAreaView>
   );
 }
-

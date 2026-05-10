@@ -1,28 +1,61 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
   View,
   Text,
-  StyleSheet,
-  ScrollView,
   TouchableOpacity,
   TextInput,
-  Modal,
   Alert,
-  Keyboard,
-  TouchableWithoutFeedback,
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
+  useWindowDimensions,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import SubHeader from '../frame/subHeader';
-import { colors } from '../../styles/colors';
+import { TIMETABLE_SUBJECT_COLORS } from '../../styles/colors';
+import { getNormalize } from '../../styles/mypage.style';
+import {
+  DAYS,
+  createEditTimetableScreenStyles,
+  EDIT_TIMETABLE_INPUT_PLACEHOLDER_COLOR,
+  editTsScreenChromeStyles,
+  getEditTimetableAccordionMinFooterPadding,
+  getEditTimetableKeyboardVerticalOffset,
+} from '../../src/screens/timetable/timetable.style';
+
+const EDIT_TS_MAX_PERIOD = 10;
+
+const normalizeSubject = (value) => String(value || '').trim().toLowerCase();
+
+const getSubjectColorIndex = (subject) => {
+  const key = normalizeSubject(subject);
+  if (!key) return 0;
+  let hash = 0;
+  for (let i = 0; i < key.length; i += 1) {
+    hash = (hash * 31 + key.charCodeAt(i)) % 2147483647;
+  }
+  return Math.abs(hash) % TIMETABLE_SUBJECT_COLORS.length;
+};
 
 /** MyPage 등에서 넘긴 existingTimetable 만 수정·삭제 (빈 칸 과목 추가 불가) */
 const EditTimetable = ({ navigation, route }) => {
   const { existingTimetable, onSave, timetableCacheKey } = route.params || {};
+  const { width } = useWindowDimensions();
+  const insets = useSafeAreaInsets();
+  const normalize = useMemo(() => getNormalize(width), [width]);
+  const et = useMemo(() => createEditTimetableScreenStyles(normalize), [normalize]);
+  const scrollRef = useRef(null);
+
+  const scrollAccordionAboveKeyboard = useCallback(() => {
+    requestAnimationFrame(() => {
+      scrollRef.current?.scrollToEnd({ animated: true });
+    });
+  }, []);
 
   const [selectedDay, setSelectedDay] = useState(null);
   const [selectedPeriod, setSelectedPeriod] = useState(null);
-  const [modalVisible, setModalVisible] = useState(false);
+  const [accordionExpanded, setAccordionExpanded] = useState(true);
   const [className, setClassName] = useState('');
   const [timetable, setTimetable] = useState(() =>
     existingTimetable && typeof existingTimetable === 'object'
@@ -30,8 +63,46 @@ const EditTimetable = ({ navigation, route }) => {
       : {},
   );
 
-  const days = ['월', '화', '수', '목', '금'];
-  const periods = [1, 2, 3, 4, 5, 6, 7];
+  const periods = useMemo(
+    () => Array.from({ length: EDIT_TS_MAX_PERIOD }, (_, i) => i + 1),
+    [],
+  );
+  const colorSeed = 0;
+  const safeTimetable = timetable || {};
+
+  const subjectColorMap = useMemo(() => {
+    const map = {};
+    const used = new Set();
+    const subjects = [
+      ...new Set(
+        Object.values(safeTimetable)
+          .map((v) => normalizeSubject(v))
+          .filter(Boolean),
+      ),
+    ];
+
+    subjects.forEach((subject) => {
+      const base = getSubjectColorIndex(subject);
+      let idx = base;
+      for (let step = 0; step < TIMETABLE_SUBJECT_COLORS.length; step += 1) {
+        idx = (base + colorSeed + step) % TIMETABLE_SUBJECT_COLORS.length;
+        if (!used.has(idx)) break;
+      }
+      used.add(idx);
+      map[subject] = TIMETABLE_SUBJECT_COLORS[idx];
+    });
+
+    return map;
+  }, [safeTimetable, colorSeed]);
+
+  const getCellColor = (content) => {
+    const key = normalizeSubject(content);
+    if (!key) return null;
+    return (
+      subjectColorMap[key] ||
+      TIMETABLE_SUBJECT_COLORS[getSubjectColorIndex(key)]
+    );
+  };
 
   const hasEditableCells = useCallback((tt) => {
     if (!tt || typeof tt !== 'object') return false;
@@ -48,6 +119,24 @@ const EditTimetable = ({ navigation, route }) => {
     setTimetable({ ...existingTimetable });
   }, [existingTimetable, hasEditableCells, navigation]);
 
+  useEffect(() => {
+    if (selectedDay == null || selectedPeriod == null) {
+      setClassName('');
+      return;
+    }
+    const key = `${selectedDay}-${selectedPeriod}`;
+    setClassName(String(timetable[key] || '').trim());
+    setAccordionExpanded(true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- timetable 제외: 입력 중 필드 덮어쓰기 방지
+  }, [selectedDay, selectedPeriod]);
+
+  const closeEditPanel = () => {
+    setSelectedDay(null);
+    setSelectedPeriod(null);
+    setClassName('');
+    setAccordionExpanded(true);
+  };
+
   const handleCellPress = (day, period) => {
     const key = `${day}-${period}`;
     const current = String(timetable[key] || '').trim();
@@ -55,15 +144,6 @@ const EditTimetable = ({ navigation, route }) => {
 
     setSelectedDay(day);
     setSelectedPeriod(period);
-    setClassName(timetable[key] || '');
-    setModalVisible(true);
-  };
-
-  const closeModal = () => {
-    setModalVisible(false);
-    setClassName('');
-    setSelectedDay(null);
-    setSelectedPeriod(null);
   };
 
   const handleConfirmEdit = () => {
@@ -78,7 +158,7 @@ const EditTimetable = ({ navigation, route }) => {
       [key]: className.trim(),
     }));
 
-    closeModal();
+    closeEditPanel();
   };
 
   const handleDeleteClass = () => {
@@ -89,7 +169,7 @@ const EditTimetable = ({ navigation, route }) => {
       return next;
     });
 
-    closeModal();
+    closeEditPanel();
   };
 
   const handleSave = async () => {
@@ -124,272 +204,186 @@ const EditTimetable = ({ navigation, route }) => {
     return timetable[key] || '';
   };
 
+  const selectionActive = selectedDay != null && selectedPeriod != null;
+
+  const scrollPaddingBottom = Math.max(
+    insets.bottom,
+    getEditTimetableAccordionMinFooterPadding(normalize),
+  );
+
+  /** iOS: KeyboardAvoidingView 와 겹치면 키보드 높이가 이중 적용되어 큰 빈 공간이 생김 → ScrollView inset 만 사용 */
+  const scrollViewEl = (
+    <ScrollView
+      ref={scrollRef}
+      style={et.editTsKeyboardScroll}
+      contentContainerStyle={{ paddingBottom: scrollPaddingBottom }}
+      keyboardShouldPersistTaps="handled"
+      keyboardDismissMode={Platform.OS === 'ios' ? 'interactive' : 'on-drag'}
+      automaticallyAdjustKeyboardInsets={Platform.OS === 'ios'}
+      showsVerticalScrollIndicator={false}
+    >
+      <View style={et.editTsPageBody}>
+        <View style={et.editTsWrapper}>
+          <View style={et.editTsTimetableContainer}>
+            <View style={et.editTsGrid} collapsable={false}>
+              <View style={et.editTsDaysRow}>
+                <View style={et.editTsPeriodHeaderCell} />
+                {DAYS.map((day) => (
+                  <View key={day} style={et.editTsDayCell}>
+                    <Text style={et.editTsDayText}>{day}</Text>
+                  </View>
+                ))}
+              </View>
+
+              {periods.map((period) => (
+                <View key={period} style={et.editTsRow}>
+                  <View style={et.editTsPeriodCell}>
+                    <Text style={et.editTsPeriodText}>{period}</Text>
+                  </View>
+                  {DAYS.map((day) => {
+                    const content = getCellContent(day, period);
+                    const filled = Boolean(String(content).trim());
+                    const isSelected =
+                      selectionActive &&
+                      selectedDay === day &&
+                      selectedPeriod === period;
+                    const cellStyle = [
+                      et.editTsClassCell,
+                      filled ? et.editTsClassCellFilled : null,
+                      filled ? { backgroundColor: getCellColor(content) } : null,
+                      filled && isSelected ? et.editTsClassCellSelected : null,
+                    ];
+
+                    if (filled) {
+                      return (
+                        <TouchableOpacity
+                          key={`${day}-${period}`}
+                          activeOpacity={0.65}
+                          style={cellStyle}
+                          onPress={() => handleCellPress(day, period)}
+                        >
+                          <Text
+                            style={[
+                              et.editTsClassCellText,
+                              et.editTsClassCellTextFilled,
+                            ]}
+                            pointerEvents="none"
+                            lineBreakMode="wordWrapping"
+                            lineBreakStrategyIOS="hangul-word"
+                            numberOfLines={2}
+                          >
+                            {content}
+                          </Text>
+                        </TouchableOpacity>
+                      );
+                    }
+
+                    return (
+                      <View key={`${day}-${period}`} style={cellStyle}>
+                        <Text
+                          style={et.editTsClassCellText}
+                          pointerEvents="none"
+                          numberOfLines={2}
+                        >
+                          {content}
+                        </Text>
+                      </View>
+                    );
+                  })}
+                </View>
+              ))}
+            </View>
+          </View>
+        </View>
+      </View>
+
+      {selectionActive ? (
+        <View style={et.editTsAccordion}>
+          <View style={et.editTsAccordionHeader}>
+            <Text style={et.editTsAccordionHeaderTitle}>
+              {selectedDay}요일 {selectedPeriod}교시
+            </Text>
+          </View>
+
+          {accordionExpanded ? (
+            <View style={et.editTsAccordionBody}>
+              <TextInput
+                style={et.editTsAccordionInput}
+                placeholder="과목명"
+                placeholderTextColor={EDIT_TIMETABLE_INPUT_PLACEHOLDER_COLOR}
+                value={className}
+                onChangeText={setClassName}
+                onFocus={scrollAccordionAboveKeyboard}
+              />
+              <View style={et.editTsAccordionActions}>
+                <TouchableOpacity
+                  style={[et.editTsAccordionBtn, et.editTsAccordionBtnMuted]}
+                  onPress={closeEditPanel}
+                  activeOpacity={0.85}
+                >
+                  <Text style={et.editTsAccordionBtnTextMuted}>닫기</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[et.editTsAccordionBtn, et.editTsAccordionBtnDanger]}
+                  onPress={handleDeleteClass}
+                  activeOpacity={0.85}
+                >
+                  <Text style={et.editTsAccordionBtnTextDanger}>삭제</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[et.editTsAccordionBtn, et.editTsAccordionBtnPrimary]}
+                  onPress={handleConfirmEdit}
+                  activeOpacity={0.85}
+                >
+                  <Text style={et.editTsAccordionBtnTextPrimary}>적용</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          ) : null}
+        </View>
+      ) : null}
+    </ScrollView>
+  );
+
   if (!hasEditableCells(existingTimetable)) {
     return (
-      <View style={{ flex: 1, backgroundColor: styles.container.backgroundColor }}>
-        <SafeAreaView style={styles.container} edges={['top']} />
+      <View style={editTsScreenChromeStyles.rootFill}>
+        <SafeAreaView style={editTsScreenChromeStyles.safeFill} edges={['top']} />
       </View>
     );
   }
 
   return (
-    <View
-      style={{ flex: 1, backgroundColor: styles.container.backgroundColor }}
-    >
-      <SafeAreaView style={styles.container} edges={['top']}>
-        <SubHeader
-          title="시간표 편집"
-          onBack={() => navigation.goBack()}
-          rightButtonText="저장"
-          onRightPress={handleSave}
-        />
-
-        <ScrollView
-          style={styles.scrollView}
-          showsVerticalScrollIndicator={false}
-        >
-          <View style={styles.timetableContainer}>
-            <View style={styles.daysRow}>
-              <View style={styles.periodHeader} />
-              {days.map((day) => (
-                <View key={day} style={styles.dayCell}>
-                  <Text style={styles.dayText}>{day}</Text>
-                </View>
-              ))}
-            </View>
-
-            {periods.map((period) => (
-              <View key={period} style={styles.row}>
-                <View style={styles.periodCell}>
-                  <Text style={styles.periodText}>{period}</Text>
-                </View>
-                {days.map((day) => {
-                  const content = getCellContent(day, period);
-                  const filled = Boolean(String(content).trim());
-                  const CellWrapper = filled ? TouchableOpacity : View;
-                  const cellProps = filled
-                    ? {
-                        activeOpacity: 0.7,
-                        onPress: () => handleCellPress(day, period),
-                      }
-                    : {};
-
-                  return (
-                    <CellWrapper
-                      key={`${day}-${period}`}
-                      style={[
-                        styles.classCell,
-                        filled ? styles.classCellFilled : styles.classCellEmpty,
-                      ]}
-                      {...cellProps}
-                    >
-                      <Text
-                        style={[
-                          styles.classCellText,
-                          filled ? styles.classCellTextFilled : null,
-                        ]}
-                        numberOfLines={2}
-                      >
-                        {content}
-                      </Text>
-                    </CellWrapper>
-                  );
-                })}
-              </View>
-            ))}
+    <View style={editTsScreenChromeStyles.rootFill}>
+      <SafeAreaView style={editTsScreenChromeStyles.safeFill} edges={['top']}>
+        {Platform.OS === 'ios' ? (
+          <View style={et.editTsKeyboardRoot}>
+            <SubHeader
+              title="시간표 편집"
+              onBack={() => navigation.goBack()}
+              rightButtonText="저장"
+              onRightPress={handleSave}
+            />
+            {scrollViewEl}
           </View>
-        </ScrollView>
+        ) : (
+          <KeyboardAvoidingView
+            style={et.editTsKeyboardRoot}
+            behavior="padding"
+            keyboardVerticalOffset={getEditTimetableKeyboardVerticalOffset()}
+          >
+            <SubHeader
+              title="시간표 편집"
+              onBack={() => navigation.goBack()}
+              rightButtonText="저장"
+              onRightPress={handleSave}
+            />
+            {scrollViewEl}
+          </KeyboardAvoidingView>
+        )}
       </SafeAreaView>
-
-      <Modal
-        animationType="slide"
-        transparent
-        visible={modalVisible}
-        onRequestClose={closeModal}
-      >
-        <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
-          <View style={styles.modalOverlay}>
-            <View style={styles.modalContent}>
-              <Text style={styles.modalTitle}>
-                {selectedDay}요일 {selectedPeriod}교시
-              </Text>
-              <TextInput
-                style={styles.input}
-                placeholder="과목명"
-                value={className}
-                onChangeText={setClassName}
-                autoFocus
-              />
-              <View style={styles.modalButtons}>
-                <TouchableOpacity
-                  style={[styles.modalButton, styles.cancelButton]}
-                  onPress={closeModal}
-                >
-                  <Text style={styles.cancelButtonText}>취소</Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                  style={[styles.modalButton, styles.deleteButton]}
-                  onPress={handleDeleteClass}
-                >
-                  <Text style={styles.deleteButtonText}>삭제</Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                  style={[styles.modalButton, styles.confirmButton]}
-                  onPress={handleConfirmEdit}
-                >
-                  <Text style={styles.confirmButtonText}>수정</Text>
-                </TouchableOpacity>
-              </View>
-            </View>
-          </View>
-        </TouchableWithoutFeedback>
-      </Modal>
     </View>
   );
 };
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.background,
-  },
-  scrollView: {
-    flex: 1,
-  },
-  timetableContainer: {
-    margin: 16,
-    borderRadius: 12,
-    overflow: 'hidden',
-    borderWidth: 1,
-    borderColor: '#e0e0e0',
-  },
-  daysRow: {
-    flexDirection: 'row',
-    backgroundColor: '#8FD397',
-  },
-  periodHeader: {
-    width: 40,
-    height: 40,
-    backgroundColor: '#8FD397',
-  },
-  dayCell: {
-    flex: 1,
-    height: 40,
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderLeftWidth: 1,
-    borderLeftColor: '#fff',
-  },
-  dayText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#fff',
-  },
-  row: {
-    flexDirection: 'row',
-    borderTopWidth: 1,
-    borderTopColor: '#e0e0e0',
-  },
-  periodCell: {
-    width: 40,
-    height: 60,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#f5f5f5',
-  },
-  periodText: {
-    fontSize: 13,
-    fontWeight: '500',
-    color: '#666',
-  },
-  classCell: {
-    flex: 1,
-    height: 60,
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderLeftWidth: 1,
-    borderLeftColor: '#e0e0e0',
-    padding: 4,
-  },
-  classCellFilled: {
-    backgroundColor: '#f0f9f1',
-  },
-  classCellEmpty: {
-    backgroundColor: '#fafafa',
-  },
-  classCellText: {
-    fontSize: 11,
-    color: '#bbb',
-    textAlign: 'center',
-  },
-  classCellTextFilled: {
-    color: '#333',
-    fontWeight: '500',
-  },
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  modalContent: {
-    width: '80%',
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    padding: 20,
-  },
-  modalTitle: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: '#333',
-    marginBottom: 16,
-    textAlign: 'center',
-  },
-  input: {
-    borderWidth: 1,
-    borderColor: '#ddd',
-    borderRadius: 8,
-    padding: 12,
-    fontSize: 15,
-    marginBottom: 16,
-  },
-  modalButtons: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-  },
-  modalButton: {
-    flex: 1,
-    paddingVertical: 12,
-    borderRadius: 8,
-    alignItems: 'center',
-    marginHorizontal: 4,
-  },
-  cancelButton: {
-    backgroundColor: '#f5f5f5',
-  },
-  deleteButton: {
-    backgroundColor: '#ff6b6b',
-  },
-  confirmButton: {
-    backgroundColor: '#8FD397',
-  },
-  cancelButtonText: {
-    fontSize: 15,
-    color: '#666',
-    fontWeight: '600',
-  },
-  deleteButtonText: {
-    fontSize: 15,
-    color: '#fff',
-    fontWeight: '600',
-  },
-  confirmButtonText: {
-    fontSize: 15,
-    color: '#fff',
-    fontWeight: '600',
-  },
-});
 
 export default EditTimetable;

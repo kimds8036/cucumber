@@ -677,4 +677,369 @@ export function createTimetableChoicePreviewStyles(normalize) {
   });
 }
 
+/** 직접 선택(TimetableScreen) — 교시 스크롤 영역에 보이는 행 수 */
+export const MANUAL_TS_VISIBLE_PERIOD_ROWS = 6;
+
+/** 직접 선택(TimetableScreen) — 미리보기와 동일 레이아웃 규격, 스타일 키만 분리 */
+export function createManualTimetableScreenStyles(normalize) {
+  /** 요일 헤더 행(교시 코너·요일 칸 공통 높이 `normalize(20)`) */
+  const manualTsDaysHeaderHeight = normalize(20);
+  /** 한 교시 행 높이(교시 셀 `normalize(40)`) + 행 구분 `borderTop` 1px 근사 */
+  const manualTsPeriodRowStride = normalize(40) + 1;
+
+  return StyleSheet.create({
+    manualTsHint: {
+      fontFamily: fonts.regular,
+      fontSize: fontSizes.md,
+      color: COLORS.textSecondary,
+      marginBottom: normalize(10),
+      lineHeight: normalize(15),
+      textAlign: 'center',
+    },
+    /** 페이지 전체 스크롤 없음 — 상단 고정 + 하단 과목 영역만 스크롤 */
+    manualTsPageBody: {
+      flex: 1,
+      paddingHorizontal: normalize(16),
+      paddingTop: normalize(12),
+    },
+    manualTsSubjectSectionScroll: {
+      flex: 1,
+    },
+    manualTsSubjectSectionScrollContent: {
+      paddingBottom: normalize(24),
+    },
+    manualTsWrapper: {
+      width: '100%',
+    },
+    manualTsTimetableContainer: {
+      borderRadius: normalize(8),
+      overflow: 'hidden',
+      borderWidth: 1,
+      borderColor: COLORS.textLight10,
+      marginBottom: normalize(14),
+    },
+    manualTsGrid: {
+      backgroundColor: COLORS.background,
+    },
+    /** 스크롤 뷰포트: 요일 헤더 + 교시 `MANUAL_TS_VISIBLE_PERIOD_ROWS`행까지 한 화면에 */
+    manualTsPeriodScroll: {
+      maxHeight:
+        manualTsDaysHeaderHeight +
+        manualTsPeriodRowStride * MANUAL_TS_VISIBLE_PERIOD_ROWS,
+    },
+    manualTsPeriodScrollContent: {
+      flexGrow: 0,
+    },
+    manualTsDaysRow: {
+      flexDirection: 'row',
+      backgroundColor: COLORS.textLight5,
+    },
+    manualTsPeriodHeaderCell: {
+      width: normalize(20),
+      height: normalize(20),
+      backgroundColor: COLORS.textLight5,
+    },
+    manualTsDayCell: {
+      flex: 1,
+      height: normalize(20),
+      justifyContent: 'center',
+      alignItems: 'center',
+      borderLeftWidth: 1,
+      borderLeftColor: COLORS.textLight10,
+    },
+    manualTsDayText: {
+      fontFamily: fonts.regular,
+      fontSize: fontSizes.md,
+      color: COLORS.textSecondary,
+    },
+    manualTsRow: {
+      flexDirection: 'row',
+      borderTopWidth: 1,
+      borderTopColor: COLORS.textLight10,
+    },
+    manualTsPeriodCell: {
+      width: normalize(20),
+      height: normalize(40),
+      justifyContent: 'center',
+      alignItems: 'center',
+      backgroundColor: COLORS.textLight5,
+    },
+    manualTsPeriodText: {
+      fontFamily: fonts.regular,
+      fontSize: fontSizes.md,
+      color: COLORS.textSecondary,
+    },
+    manualTsClassCell: {
+      flex: 1,
+      height: normalize(40),
+      justifyContent: 'center',
+      alignItems: 'center',
+      borderLeftWidth: 1,
+      borderLeftColor: COLORS.textLight10,
+      backgroundColor: COLORS.background,
+      padding: normalize(2),
+    },
+    manualTsClassCellFilled: {
+      backgroundColor: COLORS.primaryLight30,
+    },
+    manualTsClassCellPaintReady: {
+      borderWidth: 1,
+      borderColor: COLORS.background,
+    },
+    manualTsClassCellText: {
+      fontFamily: fonts.regular,
+      fontSize: fontSizes.md,
+      color: COLORS.textLight20,
+      textAlign: 'center',
+    },
+    manualTsClassCellTextFilled: {
+      fontFamily: fonts.bold,
+      fontSize: fontSizes.md,
+      color: COLORS.textPrimary,
+    },
+    manualTsSearchInput: {
+      borderRadius: normalize(10),
+      backgroundColor: COLORS.textLight5,
+      paddingHorizontal: normalize(12),
+      paddingVertical: normalize(10),
+      fontFamily: fonts.regular,
+      fontSize: fontSizes.lg,
+      color: COLORS.textPrimary,
+      marginBottom: normalize(12),
+    },
+    manualTsSubjectList: {},
+    manualTsSubjectRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      paddingVertical: normalize(16),
+      paddingHorizontal: normalize(4),
+      borderBottomWidth: StyleSheet.hairlineWidth,
+      borderBottomColor: COLORS.textLight10,
+    },
+    manualTsSubjectRowPaintSelected: {
+      backgroundColor: COLORS.selectedBackground,
+      borderRadius: normalize(8),
+      borderBottomWidth: 0,
+    },
+    manualTsSubjectDot: {
+      width: normalize(10),
+      height: normalize(10),
+      borderRadius: normalize(5),
+      marginRight: normalize(10),
+    },
+    manualTsSubjectBody: {
+      flex: 1,
+    },
+    manualTsSubjectTitle: {
+      fontFamily: fonts.bold,
+      fontSize: fontSizes.lg,
+      color: COLORS.textPrimary,
+    },
+    manualTsSubjectMeta: {
+      fontFamily: fonts.regular,
+      fontSize: fontSizes.sm,
+      color: COLORS.textSecondary,
+      marginTop: normalize(2),
+    },
+  });
+}
+
+/** 편집 화면(EditTimetable) — manualTs와 동일 격자 규격, 스크롤 없이 10교시 전체 노출 */
+export function createEditTimetableScreenStyles(normalize) {
+  return StyleSheet.create({
+    /** 시간표 높이만큼만 차지 — 아코디언이 격자 바로 아래 오도록 flex 미사용 */
+    editTsPageBody: {
+      paddingHorizontal: normalize(16),
+      paddingTop: normalize(12),
+    },
+    editTsWrapper: {
+      width: '100%',
+    },
+    editTsTimetableContainer: {
+      borderRadius: normalize(8),
+      overflow: 'hidden',
+      borderWidth: 1,
+      borderColor: COLORS.textLight10,
+    },
+    editTsGrid: {
+      backgroundColor: COLORS.background,
+    },
+    editTsDaysRow: {
+      flexDirection: 'row',
+      backgroundColor: COLORS.textLight5,
+    },
+    editTsPeriodHeaderCell: {
+      width: normalize(20),
+      height: normalize(20),
+      backgroundColor: COLORS.textLight5,
+    },
+    editTsDayCell: {
+      flex: 1,
+      height: normalize(20),
+      justifyContent: 'center',
+      alignItems: 'center',
+      borderLeftWidth: 1,
+      borderLeftColor: COLORS.textLight10,
+    },
+    editTsDayText: {
+      fontFamily: fonts.regular,
+      fontSize: fontSizes.md,
+      color: COLORS.textSecondary,
+    },
+    editTsRow: {
+      flexDirection: 'row',
+      borderTopWidth: 1,
+      borderTopColor: COLORS.textLight10,
+    },
+    editTsPeriodCell: {
+      width: normalize(20),
+      height: normalize(40),
+      justifyContent: 'center',
+      alignItems: 'center',
+      backgroundColor: COLORS.textLight5,
+    },
+    editTsPeriodText: {
+      fontFamily: fonts.regular,
+      fontSize: fontSizes.md,
+      color: COLORS.textSecondary,
+    },
+    editTsClassCell: {
+      flex: 1,
+      height: normalize(40),
+      justifyContent: 'center',
+      alignItems: 'center',
+      borderLeftWidth: 1,
+      borderLeftColor: COLORS.textLight10,
+      backgroundColor: COLORS.background,
+      padding: normalize(2),
+    },
+    editTsClassCellFilled: {
+      backgroundColor: COLORS.primaryLight30,
+    },
+    editTsClassCellText: {
+      fontFamily: fonts.regular,
+      fontSize: fontSizes.md,
+      color: COLORS.textLight20,
+      textAlign: 'center',
+    },
+    editTsClassCellTextFilled: {
+      fontFamily: fonts.bold,
+      fontSize: fontSizes.md,
+      color: COLORS.textPrimary,
+    },
+    editTsClassCellSelected: {
+      backgroundColor: COLORS.background2,
+    },
+    editTsKeyboardRoot: {
+      flex: 1,
+    },
+    editTsKeyboardScroll: {
+      flex: 1,
+    },
+    editTsAccordion: {
+      marginTop: normalize(4),
+      marginHorizontal: normalize(6),
+      borderRadius: normalize(10),
+      overflow: 'hidden',
+    },
+    editTsAccordionHeader: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      paddingVertical: normalize(12),
+      paddingHorizontal: normalize(14),
+    },
+    editTsAccordionHeaderTitle: {
+      fontFamily: fonts.bold,
+      fontSize: fontSizes.xl,
+      color: COLORS.textPrimary,
+    },
+    editTsAccordionChevron: {
+      fontFamily: fonts.regular,
+      fontSize: fontSizes.md,
+      color: COLORS.textSecondary,
+      marginLeft: normalize(8),
+    },
+    editTsAccordionBody: {
+      paddingHorizontal: normalize(14),
+      paddingBottom: normalize(12),
+    },
+    editTsAccordionInput: {
+      borderWidth: 1,
+      borderColor: COLORS.textLight10,
+      borderRadius: normalize(10),
+      paddingHorizontal: normalize(12),
+      paddingVertical: normalize(10),
+      fontFamily: fonts.regular,
+      fontSize: fontSizes.xl,
+      color: COLORS.textPrimary,
+      backgroundColor: COLORS.background,
+      marginBottom: normalize(12),
+    },
+    editTsAccordionActions: {
+      flexDirection: 'row',
+      gap: normalize(8),
+    },
+    editTsAccordionBtn: {
+      flex: 1,
+      paddingVertical: normalize(12),
+      borderRadius: normalize(10),
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    editTsAccordionBtnMuted: {
+      backgroundColor: COLORS.textLight5,
+    },
+    editTsAccordionBtnDanger: {
+      backgroundColor: COLORS.alert,
+    },
+    editTsAccordionBtnPrimary: {
+      backgroundColor: COLORS.primary,
+    },
+    editTsAccordionBtnTextMuted: {
+      fontFamily: fonts.bold,
+      fontSize: fontSizes.lg,
+      color: COLORS.textSecondary,
+    },
+    editTsAccordionBtnTextDanger: {
+      fontFamily: fonts.bold,
+      fontSize: fontSizes.lg,
+      color: COLORS.background,
+    },
+    editTsAccordionBtnTextPrimary: {
+      fontFamily: fonts.bold,
+      fontSize: fontSizes.lg,
+      color: COLORS.background,
+    },
+  });
+}
+
+/** EditTimetable 루트 · normalize 불필요(full bleed 배경만 테마 연동) */
+export const editTsScreenChromeStyles = StyleSheet.create({
+  rootFill: {
+    flex: 1,
+    backgroundColor: COLORS.background,
+  },
+  safeFill: {
+    flex: 1,
+    backgroundColor: COLORS.background,
+  },
+});
+
+/** EditTimetable TextInput placeholderTextColor */
+export const EDIT_TIMETABLE_INPUT_PLACEHOLDER_COLOR = COLORS.textSecondary;
+
+/** EditTimetable 아코디언 하단 패딩과 함께 쓸 최소값용(scale 반영) */
+export function getEditTimetableAccordionMinFooterPadding(normalize) {
+  return normalize(8);
+}
+
+/**
+ * KeyboardAvoidingView keyboardVerticalOffset.
+ * 서브헤더가 KAV 안에 있으면 보통 0. 네이티브 스택 헤더만 바깥에 있을 때는 헤더 높이만큼 설정.
+ */
+export function getEditTimetableKeyboardVerticalOffset() {
+  return 0;
+}
+
 export default styles;
