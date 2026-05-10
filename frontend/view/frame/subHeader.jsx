@@ -28,7 +28,7 @@ const SubHeader = ({
       <View style={styles.header}>
         <View style={styles.headerTop}>
           <TouchableOpacity style={styles.backButton} onPress={onBack}>
-            <Ionicons name="chevron-back" size={normalize(24)} color={colors.textPrimary} />
+            <Ionicons name="chevron-back" size={normalize(20)} color={colors.textPrimary} />
           </TouchableOpacity>
           {titleElement ? (
             titleElement
@@ -54,7 +54,6 @@ const SubHeader = ({
         </View>
       </View>
       {/* 경계선 */}
-      <View style={styles.divider} />
     </>
   );
 };

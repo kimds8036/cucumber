@@ -403,14 +403,14 @@ export function createTimetableViewStyles(normalize) {
       alignItems: 'center',
       justifyContent: 'center',
       backgroundColor: COLORS.background,
-      paddingHorizontal: normalize(10),
+      paddingHorizontal: normalize(8),
       paddingVertical: normalize(4),
       borderRadius: normalize(20),
     },
     footerResetLabel: {
       fontFamily: fonts.bold,
       fontSize: fontSizes.lg,
-      color: COLORS.primaryDark,
+      color: COLORS.textLight70,
     },
     timetableContainer: {
       borderRadius: normalize(8),

@@ -32,6 +32,7 @@ const getSubjectColorIndex = (subject) => {
 
 const TimetableView = ({
   timetable,
+  timetableCacheKey,
   onNavigateToEdit,
   onResetPress,
   colorSeed = 0,
@@ -86,6 +87,26 @@ const TimetableView = ({
     if (!key) return null;
     return subjectColorMap[key] || TIMETABLE_SUBJECT_COLORS[getSubjectColorIndex(key)];
   };
+
+  const handleNavigateToCellEdit = useCallback(() => {
+    const safe = timetable || {};
+    const hasCells = Object.keys(safe).some(
+      (k) => String(safe[k] || '').trim().length > 0,
+    );
+    if (!hasCells) {
+      Alert.alert('알림', '수정할 시간표가 없습니다.');
+      return;
+    }
+    if (!timetableCacheKey) {
+      Alert.alert('알림', '시간표 수정 화면을 열 수 없습니다.');
+      return;
+    }
+    if (typeof onNavigateToEdit !== 'function') {
+      Alert.alert('알림', '시간표 수정 화면을 열 수 없습니다.');
+      return;
+    }
+    onNavigateToEdit();
+  }, [timetable, timetableCacheKey, onNavigateToEdit]);
 
   const handleSaveAsImage = useCallback(async () => {
     if (!captureTimetableRef.current) return;
@@ -162,7 +183,7 @@ const TimetableView = ({
               </TouchableOpacity>
               <TouchableOpacity
                 style={styles.refreshButton}
-                onPress={onNavigateToEdit}
+                onPress={handleNavigateToCellEdit}
                 activeOpacity={0.7}
               >
                 <Feather

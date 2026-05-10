@@ -234,6 +234,14 @@ const MyPage = ({ navigation }) => {
     navigation.navigate('TimetabelChoice', { timetableCacheKey });
   };
 
+  const handleNavigateToTimetableCellEdit = useCallback(() => {
+    if (!timetable || typeof timetable !== 'object') return;
+    navigation.navigate('EditTimetable', {
+      existingTimetable: timetable,
+      timetableCacheKey,
+    });
+  }, [navigation, timetable, timetableCacheKey]);
+
   const handleResetTimetable = () => {
     setShowResetTimetableModal(true);
   };
@@ -319,7 +327,8 @@ const MyPage = ({ navigation }) => {
               ) : timetable ? (
                 <TimetableView
                   timetable={timetable}
-                  onNavigateToEdit={handleNavigateToTimetableEdit}
+                  timetableCacheKey={timetableCacheKey}
+                  onNavigateToEdit={handleNavigateToTimetableCellEdit}
                   onResetPress={handleResetTimetable}
                   colorSeed={colorSeed}
                 />

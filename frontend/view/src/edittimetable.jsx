@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
   View,
   Text,
@@ -11,94 +12,100 @@ import {
   Keyboard,
   TouchableWithoutFeedback,
 } from 'react-native';
-import Animated from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Ionicons } from '@expo/vector-icons';
 import SubHeader from '../frame/subHeader';
 import { colors } from '../../styles/colors';
-import Skeleton from '../../components/common/Skeleton';
-const AddTimetable = ({ navigation, route }) => {
-  // MyPage에서 전달받은 기존 시간표와 저장 함수
-  const { existingTimetable, onSave } = route.params || {};
+
+/** MyPage 등에서 넘긴 existingTimetable 만 수정·삭제 (빈 칸 과목 추가 불가) */
+const EditTimetable = ({ navigation, route }) => {
+  const { existingTimetable, onSave, timetableCacheKey } = route.params || {};
 
   const [selectedDay, setSelectedDay] = useState(null);
   const [selectedPeriod, setSelectedPeriod] = useState(null);
   const [modalVisible, setModalVisible] = useState(false);
   const [className, setClassName] = useState('');
-  const [timetable, setTimetable] = useState(existingTimetable || {});
-  const [screenReady, setScreenReady] = useState(false);
+  const [timetable, setTimetable] = useState(() =>
+    existingTimetable && typeof existingTimetable === 'object'
+      ? { ...existingTimetable }
+      : {},
+  );
 
   const days = ['월', '화', '수', '목', '금'];
   const periods = [1, 2, 3, 4, 5, 6, 7];
 
-  useEffect(() => {
-    // 캐시-only 모드: MyPage에서 전달된 시간표를 편집
-    setTimetable(existingTimetable || {});
-  }, [existingTimetable]);
-
-  useEffect(() => {
-    const timer = setTimeout(() => setScreenReady(true), 220);
-    return () => clearTimeout(timer);
+  const hasEditableCells = useCallback((tt) => {
+    if (!tt || typeof tt !== 'object') return false;
+    return Object.keys(tt).some((k) => String(tt[k] || '').trim().length > 0);
   }, []);
 
+  useEffect(() => {
+    if (!hasEditableCells(existingTimetable)) {
+      Alert.alert('알림', '수정할 시간표가 없습니다.', [
+        { text: '확인', onPress: () => navigation.goBack() },
+      ]);
+      return;
+    }
+    setTimetable({ ...existingTimetable });
+  }, [existingTimetable, hasEditableCells, navigation]);
+
   const handleCellPress = (day, period) => {
+    const key = `${day}-${period}`;
+    const current = String(timetable[key] || '').trim();
+    if (!current) return;
+
     setSelectedDay(day);
     setSelectedPeriod(period);
-
-    // 이미 입력된 과목이 있으면 수정 모드
-    const key = `${day}-${period}`;
-    if (timetable[key]) {
-      setClassName(timetable[key]);
-    }
-
+    setClassName(timetable[key] || '');
     setModalVisible(true);
   };
 
-  const handleAddClass = () => {
+  const closeModal = () => {
+    setModalVisible(false);
+    setClassName('');
+    setSelectedDay(null);
+    setSelectedPeriod(null);
+  };
+
+  const handleConfirmEdit = () => {
     if (className.trim() === '') {
       Alert.alert('알림', '과목명을 입력해주세요.');
       return;
     }
 
     const key = `${selectedDay}-${selectedPeriod}`;
-    setTimetable({
-      ...timetable,
-      [key]: className,
-    });
+    setTimetable((prev) => ({
+      ...prev,
+      [key]: className.trim(),
+    }));
 
-    setClassName('');
-    setModalVisible(false);
-    setSelectedDay(null);
-    setSelectedPeriod(null);
+    closeModal();
   };
 
   const handleDeleteClass = () => {
     const key = `${selectedDay}-${selectedPeriod}`;
-    const newTimetable = { ...timetable };
-    delete newTimetable[key];
-    setTimetable(newTimetable);
+    setTimetable((prev) => {
+      const next = { ...prev };
+      delete next[key];
+      return next;
+    });
 
-    setClassName('');
-    setModalVisible(false);
-    setSelectedDay(null);
-    setSelectedPeriod(null);
+    closeModal();
   };
 
   const handleSave = async () => {
-    // 시간표가 비어있는지 확인
-    if (Object.keys(timetable).length === 0) {
-      Alert.alert(
-        '시간표가 비어있습니다',
-        '최소 1개 이상의 과목을 추가해주세요.',
-        [{ text: '확인' }],
-      );
-      return;
-    }
-
-    // MyPage로 시간표 데이터 전달 (캐시-only)
     try {
       if (onSave) {
         onSave(timetable);
+      }
+      if (timetableCacheKey) {
+        await AsyncStorage.setItem(
+          timetableCacheKey,
+          JSON.stringify({
+            ts: Date.now(),
+            timetable,
+            clearedByUser: false,
+          }),
+        );
       }
     } catch (error) {
       console.error('시간표 저장 실패:', error);
@@ -117,16 +124,10 @@ const AddTimetable = ({ navigation, route }) => {
     return timetable[key] || '';
   };
 
-  if (!screenReady) {
+  if (!hasEditableCells(existingTimetable)) {
     return (
       <View style={{ flex: 1, backgroundColor: styles.container.backgroundColor }}>
-        <SafeAreaView style={styles.container} edges={['top']}>
-          <View style={{ padding: 16 }}>
-            <Skeleton width={120} height={18} borderRadius={8} style={{ marginBottom: 16 }} />
-            <Skeleton width="100%" height={320} borderRadius={12} style={{ marginBottom: 12 }} />
-            <Skeleton width="100%" height={52} borderRadius={8} />
-          </View>
-        </SafeAreaView>
+        <SafeAreaView style={styles.container} edges={['top']} />
       </View>
     );
   }
@@ -148,7 +149,6 @@ const AddTimetable = ({ navigation, route }) => {
           showsVerticalScrollIndicator={false}
         >
           <View style={styles.timetableContainer}>
-            {/* Days Header */}
             <View style={styles.daysRow}>
               <View style={styles.periodHeader} />
               {days.map((day) => (
@@ -158,7 +158,6 @@ const AddTimetable = ({ navigation, route }) => {
               ))}
             </View>
 
-            {/* Timetable Grid */}
             {periods.map((period) => (
               <View key={period} style={styles.row}>
                 <View style={styles.periodCell}>
@@ -166,60 +165,57 @@ const AddTimetable = ({ navigation, route }) => {
                 </View>
                 {days.map((day) => {
                   const content = getCellContent(day, period);
+                  const filled = Boolean(String(content).trim());
+                  const CellWrapper = filled ? TouchableOpacity : View;
+                  const cellProps = filled
+                    ? {
+                        activeOpacity: 0.7,
+                        onPress: () => handleCellPress(day, period),
+                      }
+                    : {};
+
                   return (
-                    <TouchableOpacity
+                    <CellWrapper
                       key={`${day}-${period}`}
                       style={[
                         styles.classCell,
-                        content ? styles.classCellFilled : null,
+                        filled ? styles.classCellFilled : styles.classCellEmpty,
                       ]}
-                      onPress={() => handleCellPress(day, period)}
+                      {...cellProps}
                     >
                       <Text
                         style={[
                           styles.classCellText,
-                          content ? styles.classCellTextFilled : null,
+                          filled ? styles.classCellTextFilled : null,
                         ]}
                         numberOfLines={2}
                       >
                         {content}
                       </Text>
-                    </TouchableOpacity>
+                    </CellWrapper>
                   );
                 })}
               </View>
             ))}
           </View>
-
-          <View style={styles.infoBox}>
-            <Ionicons
-              name="information-circle-outline"
-              size={20}
-              color="#666"
-            />
-            <Text style={styles.infoText}>
-              시간표를 탭하여 과목을 추가/수정하세요
-            </Text>
-          </View>
         </ScrollView>
       </SafeAreaView>
 
-      {/* Add/Edit Class Modal */}
       <Modal
         animationType="slide"
-        transparent={true}
+        transparent
         visible={modalVisible}
-        onRequestClose={() => setModalVisible(false)}
+        onRequestClose={closeModal}
       >
         <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
           <View style={styles.modalOverlay}>
-            <Animated.View style={styles.modalContent}>
+            <View style={styles.modalContent}>
               <Text style={styles.modalTitle}>
                 {selectedDay}요일 {selectedPeriod}교시
               </Text>
               <TextInput
                 style={styles.input}
-                placeholder="과목명을 입력하세요"
+                placeholder="과목명"
                 value={className}
                 onChangeText={setClassName}
                 autoFocus
@@ -227,36 +223,26 @@ const AddTimetable = ({ navigation, route }) => {
               <View style={styles.modalButtons}>
                 <TouchableOpacity
                   style={[styles.modalButton, styles.cancelButton]}
-                  onPress={() => {
-                    setModalVisible(false);
-                    setClassName('');
-                  }}
+                  onPress={closeModal}
                 >
                   <Text style={styles.cancelButtonText}>취소</Text>
                 </TouchableOpacity>
 
-                {/* 이미 과목이 있으면 삭제 버튼 표시 */}
-                {timetable[`${selectedDay}-${selectedPeriod}`] && (
-                  <TouchableOpacity
-                    style={[styles.modalButton, styles.deleteButton]}
-                    onPress={handleDeleteClass}
-                  >
-                    <Text style={styles.deleteButtonText}>삭제</Text>
-                  </TouchableOpacity>
-                )}
+                <TouchableOpacity
+                  style={[styles.modalButton, styles.deleteButton]}
+                  onPress={handleDeleteClass}
+                >
+                  <Text style={styles.deleteButtonText}>삭제</Text>
+                </TouchableOpacity>
 
                 <TouchableOpacity
                   style={[styles.modalButton, styles.confirmButton]}
-                  onPress={handleAddClass}
+                  onPress={handleConfirmEdit}
                 >
-                  <Text style={styles.confirmButtonText}>
-                    {timetable[`${selectedDay}-${selectedPeriod}`]
-                      ? '수정'
-                      : '추가'}
-                  </Text>
+                  <Text style={styles.confirmButtonText}>수정</Text>
                 </TouchableOpacity>
               </View>
-            </Animated.View>
+            </View>
           </View>
         </TouchableWithoutFeedback>
       </Modal>
@@ -325,34 +311,22 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     borderLeftWidth: 1,
     borderLeftColor: '#e0e0e0',
-    backgroundColor: '#fff',
     padding: 4,
   },
   classCellFilled: {
     backgroundColor: '#f0f9f1',
   },
+  classCellEmpty: {
+    backgroundColor: '#fafafa',
+  },
   classCellText: {
     fontSize: 11,
-    color: '#999',
+    color: '#bbb',
     textAlign: 'center',
   },
   classCellTextFilled: {
-    fontSize: 11,
     color: '#333',
     fontWeight: '500',
-  },
-  infoBox: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    margin: 16,
-    padding: 12,
-    backgroundColor: '#f5f5f5',
-    borderRadius: 8,
-  },
-  infoText: {
-    fontSize: 13,
-    color: '#666',
-    marginLeft: 8,
   },
   modalOverlay: {
     flex: 1,
@@ -418,4 +392,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default AddTimetable;
+export default EditTimetable;
