@@ -18,7 +18,6 @@ import { getNormalize } from '../../../styles/mypage.style';
 import { api } from '../../../utils/api';
 import AppPopupModal from '../../../components/common/AppPopupModal';
 import styles, { DAYS, createManualTimetableScreenStyles } from './timetable.style';
-import { TIMETABLE_DUMMY } from './TimetableDummy';
 
 const MANUAL_TS_MAX_PERIOD = 10;
 
@@ -39,16 +38,57 @@ const getSubjectColorIndex = (subject) => {
   return Math.abs(hash) % TIMETABLE_SUBJECT_COLORS.length;
 };
 
+/** API 시간표 맵에서 과목명 유니크 목록 (정규화 키 기준, 표시는 첫 원문). */
+function dedupeSubjectsFromTimetable(timetable) {
+  const map = new Map();
+  for (const v of Object.values(timetable || {})) {
+    const raw = String(v ?? '').trim();
+    if (!raw) continue;
+    const key = normalizeSubject(raw);
+    if (!key) continue;
+    if (!map.has(key)) map.set(key, raw);
+  }
+  return [...map.entries()]
+    .sort((a, b) => a[1].localeCompare(b[1], 'ko'))
+    .map(([id, name]) => ({ id, name }));
+}
+
 export default function TimetableScreen({ navigation, route }) {
   const { width } = useWindowDimensions();
   const normalize = useMemo(() => getNormalize(width), [width]);
   const mt = useMemo(() => createManualTimetableScreenStyles(normalize), [normalize]);
 
   const [keyword, setKeyword] = useState('');
-  const [timetable, setTimetable] = useState({});
+  const [timetable, setTimetable] = useState(() => {
+    const raw = route?.params?.initialTimetable;
+    return raw && typeof raw === 'object' && !Array.isArray(raw) ? { ...raw } : {};
+  });
   const [paintSubjectId, setPaintSubjectId] = useState(null);
   const [schoolGradeText, setSchoolGradeText] = useState('-');
   const [showDoneAddedModal, setShowDoneAddedModal] = useState(false);
+  const [profileScopeOk, setProfileScopeOk] = useState(
+    () => route?.params?.timetableScope == null,
+  );
+
+  const initialTimetableSnapshot = useMemo(() => {
+    const raw = route?.params?.initialTimetable;
+    return raw && typeof raw === 'object' && !Array.isArray(raw) ? { ...raw } : {};
+  }, [route?.params?.initialTimetable]);
+
+  const routeTimetableSerial = useMemo(
+    () => JSON.stringify(route?.params?.initialTimetable ?? null),
+    [route?.params?.initialTimetable],
+  );
+
+  useEffect(() => {
+    const raw = route?.params?.initialTimetable;
+    if (raw && typeof raw === 'object' && !Array.isArray(raw)) {
+      setTimetable({ ...raw });
+    } else {
+      setTimetable({});
+    }
+    setPaintSubjectId(null);
+  }, [routeTimetableSerial]);
 
   const resolveTimetableCacheKey = useCallback(async () => {
     if (route?.params?.timetableCacheKey) {
@@ -74,11 +114,16 @@ export default function TimetableScreen({ navigation, route }) {
     return `${year}년 ${semester}`;
   }, []);
 
+  const apiSubjectList = useMemo(() => {
+    if (!profileScopeOk) return [];
+    return dedupeSubjectsFromTimetable(initialTimetableSnapshot);
+  }, [initialTimetableSnapshot, profileScopeOk]);
+
   const filteredSubjects = useMemo(() => {
     const q = keyword.trim();
-    if (!q) return TIMETABLE_DUMMY;
-    return TIMETABLE_DUMMY.filter((subject) => subject.name.includes(q));
-  }, [keyword]);
+    if (!q) return apiSubjectList;
+    return apiSubjectList.filter((subject) => subject.name.includes(q));
+  }, [apiSubjectList, keyword]);
 
   const colorSeed = 0;
   const safeTimetable = timetable || {};
@@ -130,14 +175,14 @@ export default function TimetableScreen({ navigation, route }) {
   const handleCellPress = useCallback(
     (day, period) => {
       if (paintSubjectId == null) return;
-      const sub = TIMETABLE_DUMMY.find((s) => s.id === paintSubjectId);
+      const sub = apiSubjectList.find((s) => s.id === paintSubjectId);
       if (!sub) return;
       setTimetable((prev) => ({
         ...prev,
         [`${day}-${period}`]: sub.name,
       }));
     },
-    [paintSubjectId],
+    [apiSubjectList, paintSubjectId],
   );
 
   const handleCellLongPress = useCallback((day, period) => {
@@ -191,9 +236,21 @@ export default function TimetableScreen({ navigation, route }) {
         const schoolName = me?.school?.name || '-';
         const gradeText = me?.grade ? `${me.grade}학년` : '';
         setSchoolGradeText(gradeText ? `${schoolName} · ${gradeText}` : schoolName);
+
+        const scope = route?.params?.timetableScope;
+        if (scope == null) {
+          setProfileScopeOk(true);
+        } else {
+          const schoolMatch =
+            String(me?.school?.id ?? '') === String(scope.schoolId ?? '');
+          const gradeMatch =
+            Number(me?.grade ?? NaN) === Number(scope.grade ?? NaN);
+          setProfileScopeOk(schoolMatch && gradeMatch);
+        }
       } catch (error) {
         if (mounted) {
           setSchoolGradeText('-');
+          setProfileScopeOk(false);
         }
         console.warn(
           '[TimetableScreen] 사용자 학교/학년 조회 실패:',
@@ -206,7 +263,7 @@ export default function TimetableScreen({ navigation, route }) {
     return () => {
       mounted = false;
     };
-  }, []);
+  }, [route?.params?.timetableScope]);
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
@@ -257,7 +314,8 @@ export default function TimetableScreen({ navigation, route }) {
                       </View>
                       {DAYS.map((day) => {
                         const content = getCellContent(day, period);
-                        const paintReady = paintSubjectId != null && !content;
+                        const paintReady =
+                          paintSubjectId != null && !content;
                         const cellStyle = [
                           mt.manualTsClassCell,
                           content ? mt.manualTsClassCellFilled : null,
@@ -310,7 +368,9 @@ export default function TimetableScreen({ navigation, route }) {
             <View style={mt.manualTsSubjectList}>
               {filteredSubjects.map((subject) => {
                 const paintSelected = paintSubjectId === subject.id;
-                const onTimetable = Object.values(safeTimetable).includes(subject.name);
+                const onTimetable = Object.values(safeTimetable).some(
+                  (cell) => normalizeSubject(cell) === subject.id,
+                );
                 const dotColor = onTimetable
                   ? getCellColor(subject.name) || COLORS.textLight10
                   : COLORS.textLight10;

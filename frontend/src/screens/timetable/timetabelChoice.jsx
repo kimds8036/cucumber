@@ -231,15 +231,41 @@ export default function TimetabelChoice({ navigation, route }) {
     }
   }, [navigation, scopedTimetableCacheKey]);
 
-  const handleSelect = (mode) => {
+  const handleSelect = async (mode) => {
     if (mode === 'auto') {
       fetchAndApplyAutoTimetable();
       return;
     }
-    navigation.navigate('AddTimetable', {
-      selectionMode: mode,
-      timetableCacheKey: scopedTimetableCacheKey,
-    });
+    try {
+      const [meRes, ttRes] = await Promise.all([
+        api.get('/api/auth/me'),
+        api.get('/api/timetable'),
+      ]);
+      const me = meRes.data?.data;
+      const tt = ttRes.data?.data?.timetable;
+      const initialTimetable =
+        tt && typeof tt === 'object' && !Array.isArray(tt) ? { ...tt } : {};
+      const timetableScope = {
+        schoolId: me?.school?.id ?? null,
+        grade: me?.grade ?? null,
+      };
+      navigation.navigate('AddTimetable', {
+        selectionMode: mode,
+        timetableCacheKey: scopedTimetableCacheKey,
+        initialTimetable,
+        timetableScope,
+      });
+    } catch (e) {
+      console.warn(
+        '[TimetabelChoice] 직접 선택 진입 전 시간표/프로필 조회 실패:',
+        e?.response?.data || e?.message || e,
+      );
+      navigation.navigate('AddTimetable', {
+        selectionMode: mode,
+        timetableCacheKey: scopedTimetableCacheKey,
+        initialTimetable: {},
+      });
+    }
   };
 
   const handleConfirmAutoAdded = useCallback(() => {
