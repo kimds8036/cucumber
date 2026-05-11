@@ -279,11 +279,7 @@ const BoardWrite = ({ navigation, route }) => {
   const guideBlock = (
     <View style={styles.box2}>
       <View style={styles.guideContainer}>
-        <Text style={styles.guideText}>비방/욕설 게시글은 </Text>
-        <TouchableOpacity onPress={() => setCommunityGuideVisible(true)}>
-          <Text style={styles.guideLink}>커뮤니티 가이드</Text>
-        </TouchableOpacity>
-        <Text style={styles.guideText}>에 따라 삭제될 수 있어요</Text>
+        <Text style={styles.guideText}>비방/욕설 게시글은 커뮤니티 가이드에 따라 삭제될 수 있어요</Text>
       </View>
     </View>
   );
