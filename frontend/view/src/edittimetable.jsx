@@ -9,11 +9,13 @@ import {
   KeyboardAvoidingView,
   Modal,
   Platform,
+  Pressable,
   ScrollView,
   useWindowDimensions,
 } from 'react-native';
 import { Picker } from '@react-native-picker/picker';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import Feather from '@expo/vector-icons/Feather';
 import SubHeader from '../frame/subHeader';
 import { colors, fonts, fontSizes, TIMETABLE_SUBJECT_COLORS } from '../../styles/colors';
 import { getNormalize } from '../../styles/mypage.style';
@@ -89,6 +91,11 @@ const EditTimetable = ({ navigation, route }) => {
     () => Array.from({ length: maxPeriodCount }, (_, i) => i + 1),
     [maxPeriodCount],
   );
+
+  const handleAddPeriodRow = useCallback(() => {
+    setMaxPeriodCount((n) => (n >= EDIT_TS_PICKER_MAX ? n : n + 1));
+  }, []);
+
   const colorSeed = 0;
   const safeTimetable = timetable || {};
 
@@ -343,6 +350,32 @@ const EditTimetable = ({ navigation, route }) => {
                   })}
                 </View>
               ))}
+
+              <View style={et.editTsAddPeriodFooterRow}>
+                <Pressable
+                  style={et.editTsAddPeriodFooterCell}
+                  onPress={handleAddPeriodRow}
+                  disabled={maxPeriodCount >= EDIT_TS_PICKER_MAX}
+                >
+                  <View style={et.editTsAddPeriodFooterActions}>
+                    <TouchableOpacity
+                      style={et.editTsAddPeriodFooterIconBtn}
+                      onPress={handleAddPeriodRow}
+                      activeOpacity={0.7}
+                      disabled={maxPeriodCount >= EDIT_TS_PICKER_MAX}
+                    >
+                      <Feather
+                        name="plus"
+                        size={normalize(16)}
+                        color={colors.background2}
+                        style={{
+                          opacity: maxPeriodCount >= EDIT_TS_PICKER_MAX ? 0.35 : 1,
+                        }}
+                      />
+                    </TouchableOpacity>
+                  </View>
+                </Pressable>
+              </View>
             </View>
           </View>
         </View>
@@ -357,10 +390,7 @@ const EditTimetable = ({ navigation, route }) => {
                 { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap' },
               ]}
             >
-              <Text style={[et.editTsAccordionCellTitle, { marginBottom: 0 }]}>{selectedDay}요일 </Text>
-              <TouchableOpacity onPress={openPeriodModal} activeOpacity={0.65} accessibilityRole="button">
-                <Text style={[et.editTsAccordionCellTitle, { marginBottom: 0 }]}>{selectedPeriod}교시</Text>
-              </TouchableOpacity>
+              <Text style={[et.editTsAccordionCellTitle, { marginBottom: 0 }]}>{selectedDay}요일 {selectedPeriod}교시</Text>
             </View>
             <TextInput
               style={et.editTsAccordionInput}

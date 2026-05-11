@@ -725,6 +725,44 @@ export function createManualTimetableScreenStyles(normalize) {
     manualTsGrid: {
       backgroundColor: COLORS.background,
     },
+    /** 이미지 저장: 격자(스크롤)만 캡처, 푸터 제외 */
+    manualTsTimetableViewShot: {
+      backgroundColor: COLORS.background,
+    },
+    manualTsRefreshButton: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      backgroundColor: COLORS.background,
+      paddingHorizontal: normalize(8),
+      paddingVertical: normalize(4),
+      borderRadius: normalize(20),
+    },
+    manualTsFooterIconLabel: {
+      fontFamily: fonts.bold,
+      fontSize: fontSizes.lg,
+      color: COLORS.textLight70,
+    },
+    manualTsMergedFooterRow: {
+      flexDirection: 'row',
+      borderTopWidth: 1,
+      borderTopColor: COLORS.timetableBorder,
+    },
+    manualTsMergedFooterFullCell: {
+      flex: 1,
+      flexDirection: 'row',
+      alignItems: 'center',
+      minHeight: normalize(30),
+      backgroundColor: COLORS.background,
+    },
+    manualTsMergedFooterActionRow: {
+      flex: 1,
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: normalize(8),
+      paddingHorizontal: normalize(8),
+    },
     /** 스크롤 뷰포트: 요일 헤더 + 교시 `MANUAL_TS_VISIBLE_PERIOD_ROWS`행까지 한 화면에 */
     manualTsPeriodScroll: {
       maxHeight:
@@ -792,8 +830,7 @@ export function createManualTimetableScreenStyles(normalize) {
     },
     /** 목록에서 선택한 과목이 격자에 배치된 칸 강조(배경색은 기존 과목색 유지) */
     manualTsClassCellSubjectHighlight: {
-      borderWidth: 2,
-      borderColor: COLORS.primaryDark,
+      backgroundColor: COLORS.textLight20,
     },
     manualTsClassCellText: {
       fontFamily: fonts.regular,
@@ -916,6 +953,36 @@ export function createEditTimetableScreenStyles(normalize) {
     editTsGrid: {
       backgroundColor: COLORS.background,
     },
+    /** 교시 추가 푸터(+ 행) — EditTimetable 전용 키 */
+    editTsAddPeriodFooterRow: {
+      flexDirection: 'row',
+      borderTopWidth: 1,
+      borderTopColor: COLORS.timetableBorder,
+    },
+    editTsAddPeriodFooterCell: {
+      flex: 1,
+      flexDirection: 'row',
+      alignItems: 'center',
+      minHeight: normalize(35),
+      backgroundColor: COLORS.background,
+    },
+    editTsAddPeriodFooterActions: {
+      flex: 1,
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: normalize(8),
+      paddingHorizontal: normalize(8),
+    },
+    editTsAddPeriodFooterIconBtn: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      backgroundColor: COLORS.background,
+      paddingHorizontal: normalize(8),
+      paddingVertical: normalize(4),
+      borderRadius: normalize(20),
+    },
     editTsDaysRow: {
       flexDirection: 'row',
       backgroundColor: COLORS.textLight5,
@@ -1014,14 +1081,14 @@ export function createEditTimetableScreenStyles(normalize) {
     },
     editTsAccordionBody: {
       paddingHorizontal: normalize(14),
-      paddingTop: normalize(4),
+      paddingTop: normalize(6),
       paddingBottom: normalize(12),
     },
     editTsAccordionCellTitle: {
       fontFamily: fonts.bold,
       fontSize: fontSizes.xl,
       color: COLORS.textPrimary,
-      marginBottom: normalize(10),
+      marginBottom: normalize(6),
     },
     editTsAccordionInput: {
       borderWidth: 1,

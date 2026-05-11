@@ -1,9 +1,14 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import AntDesign from '@expo/vector-icons/AntDesign';
 import Feather from '@expo/vector-icons/Feather';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as MediaLibrary from 'expo-media-library';
+import ViewShot from 'react-native-view-shot';
 import {
+  Alert,
   KeyboardAvoidingView,
   Platform,
+  Pressable,
   ScrollView,
   Text,
   TextInput,
@@ -17,9 +22,23 @@ import { colors, TIMETABLE_SUBJECT_COLORS } from '../../../styles/colors';
 import { getNormalize } from '../../../styles/mypage.style';
 import { api } from '../../../utils/api';
 import AppPopupModal from '../../../components/common/AppPopupModal';
+import { getMaxPeriodFromTimetableKeys } from './periodUtils';
 import styles, { DAYS, createManualTimetableScreenStyles } from './timetable.style';
 
-const MANUAL_TS_MAX_PERIOD = 10;
+/** 기본으로 보이는 교시 수(행) */
+const MANUAL_TS_INITIAL_VISIBLE_PERIODS = 10;
+/** + 버튼으로 늘릴 수 있는 교시 상한 */
+const MANUAL_TS_MAX_PERIODS = 20;
+
+function computeVisiblePeriodCount(timetable) {
+  const tt =
+    timetable && typeof timetable === 'object' && !Array.isArray(timetable) ? timetable : {};
+  const fromData = getMaxPeriodFromTimetableKeys(tt, MANUAL_TS_INITIAL_VISIBLE_PERIODS);
+  return Math.min(
+    MANUAL_TS_MAX_PERIODS,
+    Math.max(MANUAL_TS_INITIAL_VISIBLE_PERIODS, fromData),
+  );
+}
 
 const COLORS = {
   ...colors,
@@ -66,9 +85,14 @@ export default function TimetableScreen({ navigation, route }) {
   const [paintSubjectId, setPaintSubjectId] = useState(null);
   const [schoolGradeText, setSchoolGradeText] = useState('-');
   const [showDoneAddedModal, setShowDoneAddedModal] = useState(false);
+  const [showSaveImageModal, setShowSaveImageModal] = useState(false);
   const [profileScopeOk, setProfileScopeOk] = useState(
     () => route?.params?.timetableScope == null,
   );
+  const [visiblePeriodCount, setVisiblePeriodCount] = useState(() =>
+    computeVisiblePeriodCount(route?.params?.initialTimetable),
+  );
+  const captureTimetableRef = useRef(null);
 
   const initialTimetableSnapshot = useMemo(() => {
     const raw = route?.params?.initialTimetable;
@@ -88,6 +112,7 @@ export default function TimetableScreen({ navigation, route }) {
       setTimetable({});
     }
     setPaintSubjectId(null);
+    setVisiblePeriodCount(computeVisiblePeriodCount(raw));
   }, [routeTimetableSerial]);
 
   const resolveTimetableCacheKey = useCallback(async () => {
@@ -132,9 +157,13 @@ export default function TimetableScreen({ navigation, route }) {
     [safeTimetable],
   );
   const periods = useMemo(
-    () => Array.from({ length: MANUAL_TS_MAX_PERIOD }, (_, i) => i + 1),
-    [],
+    () => Array.from({ length: visiblePeriodCount }, (_, i) => i + 1),
+    [visiblePeriodCount],
   );
+
+  const handleAddPeriodRow = useCallback(() => {
+    setVisiblePeriodCount((n) => (n >= MANUAL_TS_MAX_PERIODS ? n : n + 1));
+  }, []);
 
   const subjectColorMap = useMemo(() => {
     const map = {};
@@ -224,6 +253,54 @@ export default function TimetableScreen({ navigation, route }) {
     navigation.navigate('Main', { initialTab: 'mypage' });
   }, [navigation]);
 
+  const timetableCacheKey = route?.params?.timetableCacheKey;
+
+  const handleFooterReload = useCallback(() => {
+    Alert.alert(
+      '시간표 되돌리기',
+      '학교에서 불러온 시간표로 다시 채울까요? 지금 화면에서 입력한 내용은 사라집니다.',
+      [
+        { text: '취소', style: 'cancel' },
+        {
+          text: '되돌리기',
+          style: 'destructive',
+          onPress: () => {
+            setTimetable({ ...initialTimetableSnapshot });
+            setPaintSubjectId(null);
+            setVisiblePeriodCount(computeVisiblePeriodCount(initialTimetableSnapshot));
+          },
+        },
+      ],
+    );
+  }, [initialTimetableSnapshot]);
+
+  const handleFooterEdit = useCallback(() => {
+    if (!timetableCacheKey) {
+      Alert.alert('알림', '시간표 수정 화면을 열 수 없습니다.');
+      return;
+    }
+    navigation.navigate('EditTimetable', {
+      existingTimetable: timetable || {},
+      timetableCacheKey,
+    });
+  }, [navigation, timetable, timetableCacheKey]);
+
+  const handleSaveAsImage = useCallback(async () => {
+    if (!captureTimetableRef.current) return;
+    try {
+      const { status } = await MediaLibrary.requestPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert('권한 필요', '사진 저장을 위해 갤러리 접근 권한이 필요해요');
+        return;
+      }
+      const uri = await captureTimetableRef.current.capture();
+      await MediaLibrary.saveToLibraryAsync(uri);
+      setShowSaveImageModal(true);
+    } catch (e) {
+      Alert.alert('저장 실패', e?.message || '이미지 저장에 실패했어요. 다시 시도해 주세요');
+    }
+  }, []);
+
   useEffect(() => {
     let mounted = true;
 
@@ -288,73 +365,108 @@ export default function TimetableScreen({ navigation, route }) {
           <View style={mt.manualTsWrapper}>
             <View style={mt.manualTsTimetableContainer}>
               <View style={mt.manualTsGrid} collapsable={false}>
-                <ScrollView
-                  style={mt.manualTsPeriodScroll}
-                  contentContainerStyle={mt.manualTsPeriodScrollContent}
-                  nestedScrollEnabled
-                  showsVerticalScrollIndicator={false}
-                  keyboardShouldPersistTaps="handled"
-                  bounces={false}
-                  alwaysBounceVertical={false}
-                  overScrollMode="never"
+                <ViewShot
+                  ref={captureTimetableRef}
+                  options={{ format: 'png', quality: 1 }}
+                  style={mt.manualTsTimetableViewShot}
+                  collapsable={false}
                 >
-                  <View style={mt.manualTsDaysRow}>
-                    <View style={mt.manualTsPeriodHeaderCell} />
-                    {DAYS.map((day) => (
-                      <View key={day} style={mt.manualTsDayCell}>
-                        <Text style={mt.manualTsDayText}>{day}</Text>
+                  <ScrollView
+                    style={mt.manualTsPeriodScroll}
+                    contentContainerStyle={mt.manualTsPeriodScrollContent}
+                    nestedScrollEnabled
+                    showsVerticalScrollIndicator={false}
+                    keyboardShouldPersistTaps="handled"
+                    bounces={false}
+                    alwaysBounceVertical={false}
+                    overScrollMode="never"
+                  >
+                    <View style={mt.manualTsDaysRow}>
+                      <View style={mt.manualTsPeriodHeaderCell} />
+                      {DAYS.map((day) => (
+                        <View key={day} style={mt.manualTsDayCell}>
+                          <Text style={mt.manualTsDayText}>{day}</Text>
+                        </View>
+                      ))}
+                    </View>
+
+                    {periods.map((period) => (
+                      <View key={period} style={mt.manualTsRow}>
+                        <View style={mt.manualTsPeriodCell}>
+                          <Text style={mt.manualTsPeriodText}>{period}</Text>
+                        </View>
+                        {DAYS.map((day) => {
+                          const content = getCellContent(day, period);
+                          const paintReady =
+                            paintSubjectId != null && !content;
+                          const subjectLocHighlight =
+                            paintSubjectId != null &&
+                            Boolean(content) &&
+                            normalizeSubject(content) === paintSubjectId;
+                          const cellStyle = [
+                            mt.manualTsClassCell,
+                            content ? mt.manualTsClassCellFilled : null,
+                            paintReady ? mt.manualTsClassCellPaintReady : null,
+                            content ? { backgroundColor: getCellColor(content) } : null,
+                            subjectLocHighlight
+                              ? mt.manualTsClassCellSubjectHighlight
+                              : null,
+                          ];
+                          return (
+                            <TouchableOpacity
+                              key={`${day}-${period}`}
+                              activeOpacity={0.65}
+                              style={cellStyle}
+                              onPress={() => handleCellPress(day, period)}
+                              onLongPress={() => handleCellLongPress(day, period)}
+                              delayLongPress={380}
+                            >
+                              <Text
+                                style={[
+                                  mt.manualTsClassCellText,
+                                  content ? mt.manualTsClassCellTextFilled : null,
+                                ]}
+                                lineBreakMode="wordWrapping"
+                                lineBreakStrategyIOS="hangul-word"
+                              >
+                                {content}
+                              </Text>
+                            </TouchableOpacity>
+                          );
+                        })}
                       </View>
                     ))}
-                  </View>
-
-                  {periods.map((period) => (
-                    <View key={period} style={mt.manualTsRow}>
-                      <View style={mt.manualTsPeriodCell}>
-                        <Text style={mt.manualTsPeriodText}>{period}</Text>
-                      </View>
-                      {DAYS.map((day) => {
-                        const content = getCellContent(day, period);
-                        const paintReady =
-                          paintSubjectId != null && !content;
-                        const subjectLocHighlight =
-                          paintSubjectId != null &&
-                          Boolean(content) &&
-                          normalizeSubject(content) === paintSubjectId;
-                        const cellStyle = [
-                          mt.manualTsClassCell,
-                          content ? mt.manualTsClassCellFilled : null,
-                          paintReady ? mt.manualTsClassCellPaintReady : null,
-                          content ? { backgroundColor: getCellColor(content) } : null,
-                          subjectLocHighlight
-                            ? mt.manualTsClassCellSubjectHighlight
-                            : null,
-                        ];
-                        return (
+                    <View style={mt.manualTsMergedFooterRow}>
+                      <Pressable
+                        style={mt.manualTsMergedFooterFullCell}
+                        onPress={handleAddPeriodRow}
+                        disabled={visiblePeriodCount >= MANUAL_TS_MAX_PERIODS}
+                      >
+                        <View style={mt.manualTsMergedFooterActionRow}>
                           <TouchableOpacity
-                            key={`${day}-${period}`}
-                            activeOpacity={0.65}
-                            style={cellStyle}
-                            onPress={() => handleCellPress(day, period)}
-                            onLongPress={() => handleCellLongPress(day, period)}
-                            delayLongPress={380}
+                            style={mt.manualTsRefreshButton}
+                            onPress={handleAddPeriodRow}
+                            activeOpacity={0.7}
+                            disabled={visiblePeriodCount >= MANUAL_TS_MAX_PERIODS}
                           >
-                            <Text
-                              style={[
-                                mt.manualTsClassCellText,
-                                content ? mt.manualTsClassCellTextFilled : null,
-                              ]}
-                              lineBreakMode="wordWrapping"
-                              lineBreakStrategyIOS="hangul-word"
-                            >
-                              {content}
-                            </Text>
+                            <Feather
+                              name="plus"
+                              size={normalize(16)}
+                              color={COLORS.background2}
+                              style={{
+                                opacity:
+                                  visiblePeriodCount >= MANUAL_TS_MAX_PERIODS ? 0.35 : 1,
+                              }}
+                            />
                           </TouchableOpacity>
-                        );
-                      })}
+                        </View>
+                      </Pressable>
                     </View>
-                  ))}
-                </ScrollView>
+                  </ScrollView>
+                </ViewShot>
               </View>
+
+              
             </View>
           </View>
 
@@ -405,6 +517,56 @@ export default function TimetableScreen({ navigation, route }) {
           </ScrollView>
         </View>
       </KeyboardAvoidingView>
+
+      <AppPopupModal
+        visible={showSaveImageModal}
+        onClose={() => setShowSaveImageModal(false)}
+        dismissOnBackdrop={false}
+      >
+        <Text
+          style={{
+            fontSize: 18,
+            color: COLORS.textPrimary,
+            fontWeight: '700',
+            textAlign: 'center',
+            marginBottom: 10,
+          }}
+        >
+          저장 완료
+        </Text>
+        <Text
+          style={{
+            fontSize: 14,
+            color: COLORS.textSecondary,
+            textAlign: 'center',
+            lineHeight: 22,
+            marginBottom: 16,
+          }}
+        >
+          갤러리에 저장되었어요
+        </Text>
+        <TouchableOpacity
+          style={{
+            height: 42,
+            borderRadius: 10,
+            backgroundColor: COLORS.primary,
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}
+          onPress={() => setShowSaveImageModal(false)}
+          activeOpacity={0.85}
+        >
+          <Text
+            style={{
+              fontSize: 14,
+              fontWeight: '700',
+              color: COLORS.textWhite,
+            }}
+          >
+            확인
+          </Text>
+        </TouchableOpacity>
+      </AppPopupModal>
 
       <AppPopupModal
         visible={showDoneAddedModal}
