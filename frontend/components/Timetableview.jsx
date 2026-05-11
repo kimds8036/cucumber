@@ -39,7 +39,13 @@ const TimetableView = ({
 }) => {
   const { width } = useWindowDimensions();
   const normalize = useMemo(() => getNormalize(width), [width]);
-  const styles = useMemo(() => createTimetableViewStyles(normalize), [normalize]);
+  const styles = useMemo(
+    () =>
+      createTimetableViewStyles(normalize, {
+        dividerColor: colors.timetableBorder,
+      }),
+    [normalize],
+  );
   const captureTimetableRef = useRef(null);
   const [showSaveModal, setShowSaveModal] = useState(false);
 

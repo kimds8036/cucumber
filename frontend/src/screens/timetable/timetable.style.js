@@ -378,8 +378,12 @@ const styles = StyleSheet.create({
   },
 });
 
-/** 마이페이지 `TimetableView` 전용 — `getNormalize(width)`로 만든 normalize 전달 */
-export function createTimetableViewStyles(normalize) {
+/**
+ * 마이페이지 `TimetableView` 등 — `getNormalize(width)`로 만든 normalize 전달
+ * @param {{ dividerColor?: string }} [options] — 격자·외곽 구분선 색 (기본 `textLight10`)
+ */
+export function createTimetableViewStyles(normalize, options = {}) {
+  const dividerColor = options.dividerColor ?? COLORS.textLight10;
   return StyleSheet.create({
     wrapper: {
       marginTop: normalize(16),
@@ -402,7 +406,7 @@ export function createTimetableViewStyles(normalize) {
       borderRadius: normalize(8),
       overflow: 'hidden',
       borderWidth: 1,
-      borderColor: COLORS.textLight10,
+      borderColor: dividerColor,
     },
     /** 이미지 저장용: 요일~교시 격자만 (푸터 제외) */
     timetableViewShot: {
@@ -423,7 +427,7 @@ export function createTimetableViewStyles(normalize) {
       justifyContent: 'center',
       alignItems: 'center',
       borderLeftWidth: 1,
-      borderLeftColor: COLORS.textLight10,
+      borderLeftColor: dividerColor,
     },
     dayText: {
       fontFamily: fonts.regular,
@@ -433,7 +437,7 @@ export function createTimetableViewStyles(normalize) {
     row: {
       flexDirection: 'row',
       borderTopWidth: 1,
-      borderTopColor: COLORS.textLight10,
+      borderTopColor: dividerColor,
     },
     periodCell: {
       width: normalize(20),
@@ -450,7 +454,7 @@ export function createTimetableViewStyles(normalize) {
     mergedFooterRow: {
       flexDirection: 'row',
       borderTopWidth: 1,
-      borderTopColor: COLORS.textLight10,
+      borderTopColor: dividerColor,
     },
     mergedFooterFullCell: {
       flex: 1,
@@ -473,7 +477,7 @@ export function createTimetableViewStyles(normalize) {
       justifyContent: 'center',
       alignItems: 'center',
       borderLeftWidth: 1,
-      borderLeftColor: COLORS.textLight10,
+      borderLeftColor: dividerColor,
       backgroundColor: COLORS.background,
       padding: normalize(2),
     },
@@ -586,7 +590,7 @@ export function createTimetableChoicePreviewStyles(normalize) {
       borderRadius: normalize(8),
       overflow: 'hidden',
       borderWidth: 1,
-      borderColor: COLORS.textLight10,
+      borderColor: COLORS.timetableBorder,
     },
     choicePreviewGrid: {
       backgroundColor: COLORS.background,
@@ -606,7 +610,7 @@ export function createTimetableChoicePreviewStyles(normalize) {
       justifyContent: 'center',
       alignItems: 'center',
       borderLeftWidth: 1,
-      borderLeftColor: COLORS.textLight10,
+      borderLeftColor: COLORS.timetableBorder,
     },
     choicePreviewDayText: {
       fontFamily: fonts.regular,
@@ -616,7 +620,7 @@ export function createTimetableChoicePreviewStyles(normalize) {
     choicePreviewRow: {
       flexDirection: 'row',
       borderTopWidth: 1,
-      borderTopColor: COLORS.textLight10,
+      borderTopColor: COLORS.timetableBorder,
     },
     choicePreviewPeriodCell: {
       width: normalize(20),
@@ -633,7 +637,7 @@ export function createTimetableChoicePreviewStyles(normalize) {
     choicePreviewMergedFooterRow: {
       flexDirection: 'row',
       borderTopWidth: 1,
-      borderTopColor: COLORS.textLight10,
+      borderTopColor: COLORS.timetableBorder,
     },
     choicePreviewMergedFooterFullCell: {
       flex: 1,
@@ -656,7 +660,7 @@ export function createTimetableChoicePreviewStyles(normalize) {
       justifyContent: 'center',
       alignItems: 'center',
       borderLeftWidth: 1,
-      borderLeftColor: COLORS.textLight10,
+      borderLeftColor: COLORS.timetableBorder,
       backgroundColor: COLORS.background,
       padding: normalize(2),
     },
@@ -715,7 +719,7 @@ export function createManualTimetableScreenStyles(normalize) {
       borderRadius: normalize(8),
       overflow: 'hidden',
       borderWidth: 1,
-      borderColor: COLORS.textLight10,
+      borderColor: COLORS.timetableBorder,
       marginBottom: normalize(14),
     },
     manualTsGrid: {
@@ -745,7 +749,7 @@ export function createManualTimetableScreenStyles(normalize) {
       justifyContent: 'center',
       alignItems: 'center',
       borderLeftWidth: 1,
-      borderLeftColor: COLORS.textLight10,
+      borderLeftColor: COLORS.timetableBorder,
     },
     manualTsDayText: {
       fontFamily: fonts.regular,
@@ -755,7 +759,7 @@ export function createManualTimetableScreenStyles(normalize) {
     manualTsRow: {
       flexDirection: 'row',
       borderTopWidth: 1,
-      borderTopColor: COLORS.textLight10,
+      borderTopColor: COLORS.timetableBorder,
     },
     manualTsPeriodCell: {
       width: normalize(20),
@@ -775,7 +779,7 @@ export function createManualTimetableScreenStyles(normalize) {
       justifyContent: 'center',
       alignItems: 'center',
       borderLeftWidth: 1,
-      borderLeftColor: COLORS.textLight10,
+      borderLeftColor: COLORS.timetableBorder,
       backgroundColor: COLORS.background,
       padding: normalize(2),
     },
@@ -785,6 +789,11 @@ export function createManualTimetableScreenStyles(normalize) {
     manualTsClassCellPaintReady: {
       borderWidth: 1,
       borderColor: COLORS.background,
+    },
+    /** 목록에서 선택한 과목이 격자에 배치된 칸 강조(배경색은 기존 과목색 유지) */
+    manualTsClassCellSubjectHighlight: {
+      borderWidth: 2,
+      borderColor: COLORS.primaryDark,
     },
     manualTsClassCellText: {
       fontFamily: fonts.regular,
@@ -902,7 +911,7 @@ export function createEditTimetableScreenStyles(normalize) {
       borderRadius: normalize(8),
       overflow: 'hidden',
       borderWidth: 1,
-      borderColor: COLORS.textLight10,
+      borderColor: COLORS.timetableBorder,
     },
     editTsGrid: {
       backgroundColor: COLORS.background,
@@ -922,7 +931,7 @@ export function createEditTimetableScreenStyles(normalize) {
       justifyContent: 'center',
       alignItems: 'center',
       borderLeftWidth: 1,
-      borderLeftColor: COLORS.textLight10,
+      borderLeftColor: COLORS.timetableBorder,
     },
     editTsDayText: {
       fontFamily: fonts.regular,
@@ -932,7 +941,7 @@ export function createEditTimetableScreenStyles(normalize) {
     editTsRow: {
       flexDirection: 'row',
       borderTopWidth: 1,
-      borderTopColor: COLORS.textLight10,
+      borderTopColor: COLORS.timetableBorder,
     },
     editTsPeriodCell: {
       width: normalize(20),
@@ -952,7 +961,7 @@ export function createEditTimetableScreenStyles(normalize) {
       justifyContent: 'center',
       alignItems: 'center',
       borderLeftWidth: 1,
-      borderLeftColor: COLORS.textLight10,
+      borderLeftColor: COLORS.timetableBorder,
       backgroundColor: COLORS.background,
       padding: normalize(2),
     },

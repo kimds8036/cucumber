@@ -316,11 +316,18 @@ export default function TimetableScreen({ navigation, route }) {
                         const content = getCellContent(day, period);
                         const paintReady =
                           paintSubjectId != null && !content;
+                        const subjectLocHighlight =
+                          paintSubjectId != null &&
+                          Boolean(content) &&
+                          normalizeSubject(content) === paintSubjectId;
                         const cellStyle = [
                           mt.manualTsClassCell,
                           content ? mt.manualTsClassCellFilled : null,
                           paintReady ? mt.manualTsClassCellPaintReady : null,
                           content ? { backgroundColor: getCellColor(content) } : null,
+                          subjectLocHighlight
+                            ? mt.manualTsClassCellSubjectHighlight
+                            : null,
                         ];
                         return (
                           <TouchableOpacity
