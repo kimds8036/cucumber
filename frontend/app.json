@@ -23,7 +23,7 @@
         },
         "ITSAppUsesNonExemptEncryption": false
       },
-      "bundleIdentifier": "com.eunchae0215.cucumber"
+      "bundleIdentifier": "com.ucost.Youth_Paper"
     },
     "android": {
       "usesCleartextTraffic": true,
@@ -45,7 +45,7 @@
         "android.permission.READ_MEDIA_IMAGES",
         "android.permission.READ_MEDIA_AUDIO"
       ],
-      "package": "com.eunchae0215.cucumber",
+      "package": "com.ucost.Youth_Paper",
       "softwareKeyboardLayoutMode": "pan"
     },
     "web": {
