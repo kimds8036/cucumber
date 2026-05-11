@@ -23,7 +23,7 @@
         },
         "ITSAppUsesNonExemptEncryption": false
       },
-      "bundleIdentifier": "com.ucost.Youth_Paper"
+      "bundleIdentifier": "com.ucost.YouthPaper"
     },
     "android": {
       "usesCleartextTraffic": true,
@@ -45,7 +45,7 @@
         "android.permission.READ_MEDIA_IMAGES",
         "android.permission.READ_MEDIA_AUDIO"
       ],
-      "package": "com.ucost.Youth_Paper",
+      "package": "com.ucost.YouthPaper",
       "softwareKeyboardLayoutMode": "pan"
     },
     "web": {
