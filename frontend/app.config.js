@@ -31,7 +31,7 @@ export default ({ config }) => ({
           },
           ITSAppUsesNonExemptEncryption: false,
         },
-        bundleIdentifier: "com.eunchae0215.cucumber",
+        bundleIdentifier: "com.ucost.Youth_Paper",
       },
   
       android: {
@@ -56,7 +56,7 @@ export default ({ config }) => ({
           "android.permission.READ_MEDIA_IMAGES",
           "android.permission.READ_MEDIA_AUDIO",
         ],
-        package: "com.eunchae0215.cucumber",
+        package: "com.ucost.Youth_Paper",
         softwareKeyboardLayoutMode: "pan",
       },
   
