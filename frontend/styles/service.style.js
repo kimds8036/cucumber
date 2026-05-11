@@ -48,4 +48,15 @@ export const createServiceStyles = (normalize) =>
       backgroundColor: colors.textLight10,
       marginVertical: normalize(6),
     },
+    blockquote: {
+      fontSize: normalize(fontSizes.lg),
+      fontFamily: fonts.regular,
+      color: colors.textSecondary,
+      lineHeight: normalize(20),
+      marginLeft: normalize(4),
+      paddingLeft: normalize(12),
+      borderLeftWidth: normalize(3),
+      borderLeftColor: colors.textLight10,
+      fontStyle: 'italic',
+    },
   });

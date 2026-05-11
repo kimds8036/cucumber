@@ -42,6 +42,7 @@ import ServiceTermsOfService from './src/screens/Terms-of-Service/ServiceTermsOf
 import PrivacyPolicy from './src/screens/Terms-of-Service/PrivacyPolicy';
 import YouthProtectionPolicy from './src/screens/Terms-of-Service/YouthProtectionPolicy';
 import OpenSourceLicenses from './src/screens/Terms-of-Service/OpenSourceLicenses';
+import CommunityGuide from './src/screens/Terms-of-Service/CommunityGuide';
 import { useFonts } from 'expo-font';
 import * as SplashScreen from 'expo-splash-screen';
 import { useEffect, useRef } from 'react';
@@ -148,6 +149,7 @@ function MainStack() {
       <Stack.Screen name="PrivacyPolicy" component={PrivacyPolicy} />
       <Stack.Screen name="YouthProtectionPolicy" component={YouthProtectionPolicy} />
       <Stack.Screen name="OpenSourceLicenses" component={OpenSourceLicenses} />
+      <Stack.Screen name="CommunityGuide" component={CommunityGuide} />
       <Stack.Screen name="SearchScreen" component={SearchScreen} />
       <Stack.Screen name="SearchResult" component={SearchResult} />
       <Stack.Screen name="OtherSchool" component={OtherSchoolScreen} />

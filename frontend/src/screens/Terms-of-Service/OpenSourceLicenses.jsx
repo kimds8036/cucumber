@@ -6,8 +6,11 @@ import { getNormalize } from '../../../styles/mypage.style';
 import { createServiceStyles } from '../../../styles/service.style';
 
 const LICENSE_LINES = [
-  '본 앱(Youth Paper)은 아래의 오픈소스 소프트웨어를 사용합니다. 각 소프트웨어의 저작권 및 라이선스 조건은 다음과 같습니다.',
+  '제정일: [2026-05-04]',
+  '시행일: [2026-05-11]',
+  '버전: v1.0.0',
   '---',
+  '본 앱(Youth Paper)은 아래의 오픈소스 소프트웨어를 사용합니다. 각 소프트웨어의 저작권 및 라이선스 조건은 다음과 같습니다.',
   '## MIT License',
   '전문: https://opensource.org/licenses/MIT',
   '- React Native (Meta Platforms, Inc.)',

@@ -23,7 +23,6 @@ import { createWriteStyles, getNormalize } from '../../styles/board.style';
 import { api } from '../../utils/api';
 import { invalidateProfileCountsCache } from '../../utils/profileCountsCache';
 import { colors, fonts, fontSizes } from '../../styles/colors';
-import BoardCommunityGuideModal from './BoardCommunityGuideModal';
 import { useLocationContext } from '../../context/LocationContext';
 import * as Location from 'expo-location';
 
@@ -53,7 +52,6 @@ const BoardWrite = ({ navigation, route }) => {
   const [boardDropdownVisible, setBoardDropdownVisible] = useState(false);
   const tagInputRef = useRef(null);
   const tagPanelAnim = useRef(new Animated.Value(0)).current;
-  const [communityGuideVisible, setCommunityGuideVisible] = useState(false);
   const TAG_PANEL_HEIGHT = normalize(56);
 
   const handleBack = () => {
@@ -559,11 +557,6 @@ const BoardWrite = ({ navigation, route }) => {
       accessible={false}
     >
       <View style={styles.screen}>
-        <BoardCommunityGuideModal
-          visible={communityGuideVisible}
-          normalize={normalize}
-          onClose={() => setCommunityGuideVisible(false)}
-        />
         <View style={styles.keyboardAvoiding}>
           <View style={styles.fullFlex}>
             <SafeAreaView style={styles.container} edges={['top']}>
