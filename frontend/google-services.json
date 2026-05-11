@@ -7,9 +7,9 @@
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:717250057310:android:f53c8492e3753d533290cf",
+        "mobilesdk_app_id": "1:717250057310:android:817136327de94a403290cf",
         "android_client_info": {
-          "package_name": "com.ucost.Youth_Paper"
+          "package_name": "com.ucost.YouthPaper"
         }
       },
       "oauth_client": [],

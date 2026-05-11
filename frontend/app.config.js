@@ -31,7 +31,7 @@ export default ({ config }) => ({
           },
           ITSAppUsesNonExemptEncryption: false,
         },
-        bundleIdentifier: "com.ucost.Youth_Paper",
+        bundleIdentifier: "com.ucost.YouthPaper",
       },
   
       android: {
@@ -56,7 +56,7 @@ export default ({ config }) => ({
           "android.permission.READ_MEDIA_IMAGES",
           "android.permission.READ_MEDIA_AUDIO",
         ],
-        package: "com.ucost.Youth_Paper",
+        package: "com.ucost.YouthPaper",
         softwareKeyboardLayoutMode: "pan",
       },
   
