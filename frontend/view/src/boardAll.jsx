@@ -20,6 +20,7 @@ import FontAwesome5 from '@expo/vector-icons/FontAwesome5';
 import { api } from '../../utils/api';
 import { normalizeTagsFromApi } from '../../utils/normalizePostTags';
 import BoardPostCard from '../../components/Boardpostcard';
+import AdPlaceholder from '../../src/screens/ad/AdPlaceholder';
 import Skeleton from '../../components/common/Skeleton';
 import { useLocationContext } from '../../context/LocationContext';
 import { invalidateProfileCountsCache } from '../../utils/profileCountsCache';
@@ -336,6 +337,16 @@ export function BoardAllContent({ navigation, posts }) {
 
   const postsInjected = Boolean(posts && posts.length > 0);
   const hideListBehindLoader = loading && !postsInjected;
+  const dataWithAds = useMemo(() => {
+    const next = [];
+    data.forEach((post, index) => {
+      next.push({ ...post, type: 'post' });
+      if ((index + 1) % 5 === 0 && index !== 0) {
+        next.push({ id: `ad_${index}`, type: 'ad' });
+      }
+    });
+    return next;
+  }, [data]);
 
   const renderPostItem = ({ item: post }) => (
     <BoardPostCard
@@ -352,6 +363,12 @@ export function BoardAllContent({ navigation, posts }) {
       onMenuPress={(p, ref) => openFloatingMenu(p, ref)}
     />
   );
+  const renderItem = ({ item }) => {
+    if (item.type === 'ad') {
+      return <AdPlaceholder normalize={normalize} styles={styles} />;
+    }
+    return renderPostItem({ item });
+  };
 
   return (
     <>
@@ -388,9 +405,9 @@ export function BoardAllContent({ navigation, posts }) {
         <FlatList
           style={[styles.postList, hideListBehindLoader && { opacity: 0 }]}
           pointerEvents={hideListBehindLoader ? 'none' : 'auto'}
-          data={data}
-          keyExtractor={(item) => String(item.id)}
-          renderItem={renderPostItem}
+          data={dataWithAds}
+          keyExtractor={(item) => (item.type === 'ad' ? item.id : String(item.id))}
+          renderItem={renderItem}
           showsVerticalScrollIndicator={false}
           onEndReached={handleLoadMore}
           onEndReachedThreshold={0.5}

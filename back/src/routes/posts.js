@@ -1188,8 +1188,9 @@ router.post('/', authenticate, upload.array('images', 5), validate(postCreateVal
   try {
     const userId = req.user.userId;
     const { boardType, schoolId, content, tags } = req.body;
+    const rawContent = typeof content === 'string' ? content : String(content ?? '');
 
-    if (!boardType || !content) {
+    if (!boardType || !rawContent.trim()) {
       return res.status(400).json({ 
         success: false, 
         message: '게시판 유형과 내용을 입력해주세요.' 
@@ -1261,7 +1262,7 @@ router.post('/', authenticate, upload.array('images', 5), validate(postCreateVal
           userId,
           boardType,
           boardType === 'school' ? schoolId : null,
-          content,
+          rawContent,
           postLat,
           postLng,
           now,

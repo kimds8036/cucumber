@@ -18,6 +18,7 @@ import { createOtherSchoolStyles } from '../../styles/otherschool.style';
 import { api } from '../../utils/api';
 import StudyGrassMap from '../../components/studygrassmap';
 import Skeleton from '../../components/common/Skeleton';
+import SchoolAdPlaceholder from '../../src/screens/ad/SchoolAdPlaceholder';
 
 const OtherSchoolScreen = ({ route, navigation }) => {
   const { width } = useWindowDimensions();
@@ -63,7 +64,8 @@ const OtherSchoolScreen = ({ route, navigation }) => {
       start = new Date(year - 1, 8, 1);
       end = new Date(year, 2, 0);
     }
-    const diffDays = Math.floor((end.getTime() - start.getTime()) / 86400000) + 1;
+    const diffDays =
+      Math.floor((end.getTime() - start.getTime()) / 86400000) + 1;
     return diffDays;
   };
 
@@ -88,7 +90,8 @@ const OtherSchoolScreen = ({ route, navigation }) => {
           postCount: data.postCount || 0,
           mailCount: data.mailCount || 0,
           eduOfficeCode: data.eduOfficeCode || data.edu_office_code || '',
-          adminStandardCode: data.adminStandardCode || data.admin_standard_code || '',
+          adminStandardCode:
+            data.adminStandardCode || data.admin_standard_code || '',
         });
       } catch (e) {
         console.error('학교 정보 조회 실패:', e?.response?.data || e.message);
@@ -198,10 +201,29 @@ const OtherSchoolScreen = ({ route, navigation }) => {
     return (
       <SafeAreaView style={styles.container} edges={['top']}>
         <SubHeader title={routeName} onBack={() => navigation?.goBack()} />
-        <View style={{ paddingHorizontal: normalize(16), paddingTop: normalize(12) }}>
-          <Skeleton width="100%" height={normalize(130)} borderRadius={normalize(14)} style={{ marginBottom: normalize(12) }} />
-          <Skeleton width="100%" height={normalize(180)} borderRadius={normalize(14)} style={{ marginBottom: normalize(12) }} />
-          <Skeleton width="100%" height={normalize(140)} borderRadius={normalize(14)} />
+        <View
+          style={{
+            paddingHorizontal: normalize(16),
+            paddingTop: normalize(12),
+          }}
+        >
+          <Skeleton
+            width="100%"
+            height={normalize(130)}
+            borderRadius={normalize(14)}
+            style={{ marginBottom: normalize(12) }}
+          />
+          <Skeleton
+            width="100%"
+            height={normalize(180)}
+            borderRadius={normalize(14)}
+            style={{ marginBottom: normalize(12) }}
+          />
+          <Skeleton
+            width="100%"
+            height={normalize(140)}
+            borderRadius={normalize(14)}
+          />
         </View>
       </SafeAreaView>
     );
@@ -209,10 +231,7 @@ const OtherSchoolScreen = ({ route, navigation }) => {
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
-      <SubHeader
-        title={routeName}
-        onBack={() => navigation?.goBack()}
-      />
+      <SubHeader title={routeName} onBack={() => navigation?.goBack()} />
 
       <ScrollView
         style={styles.scrollView}
@@ -222,14 +241,39 @@ const OtherSchoolScreen = ({ route, navigation }) => {
         <View style={styles.schoolCardBlock}>
           <View style={styles.schoolCard}>
             {loading ? (
-              <View style={{ minHeight: normalize(110), justifyContent: 'center' }}>
-                <View style={{ height: normalize(18), width: '45%', backgroundColor: '#ECECEC', borderRadius: 6, marginBottom: 10 }} />
-                <View style={{ height: normalize(14), width: '65%', backgroundColor: '#F0F0F0', borderRadius: 6, marginBottom: 12 }} />
+              <View
+                style={{ minHeight: normalize(110), justifyContent: 'center' }}
+              >
+                <View
+                  style={{
+                    height: normalize(18),
+                    width: '45%',
+                    backgroundColor: '#ECECEC',
+                    borderRadius: 6,
+                    marginBottom: 10,
+                  }}
+                />
+                <View
+                  style={{
+                    height: normalize(14),
+                    width: '65%',
+                    backgroundColor: '#F0F0F0',
+                    borderRadius: 6,
+                    marginBottom: 12,
+                  }}
+                />
                 <View style={styles.schoolInfoDivider} />
                 <View style={styles.statsContainer}>
                   {[0, 1, 2].map((idx) => (
                     <View key={idx} style={styles.statItem}>
-                      <View style={{ height: normalize(16), width: normalize(58), backgroundColor: '#F0F0F0', borderRadius: 6 }} />
+                      <View
+                        style={{
+                          height: normalize(16),
+                          width: normalize(58),
+                          backgroundColor: '#F0F0F0',
+                          borderRadius: 6,
+                        }}
+                      />
                     </View>
                   ))}
                 </View>
@@ -240,27 +284,49 @@ const OtherSchoolScreen = ({ route, navigation }) => {
                   <Text style={styles.schoolName}>{schoolInfo.name}</Text>
                 </View>
                 <View style={styles.locationContainer}>
-                  <Ionicons name="location-outline" size={normalize(14)} color={colors.textSecondary} />
+                  <Ionicons
+                    name="location-outline"
+                    size={normalize(14)}
+                    color={colors.textSecondary}
+                  />
                   <Text style={styles.locationText}>{schoolInfo.location}</Text>
                 </View>
                 <View style={styles.schoolInfoDivider} />
                 <View style={styles.statsContainer}>
                   <View style={styles.statItem}>
                     <View style={styles.statValueContainer}>
-                      <Ionicons name="person" size={normalize(18)} color={colors.primary} />
-                      <Text style={styles.statValue}>{schoolInfo.studentCount}명</Text>
+                      <Ionicons
+                        name="person"
+                        size={normalize(18)}
+                        color={colors.primary}
+                      />
+                      <Text style={styles.statValue}>
+                        {schoolInfo.studentCount}명
+                      </Text>
                     </View>
                   </View>
                   <View style={styles.statItem}>
                     <View style={styles.statValueContainer}>
-                      <Ionicons name="chatbubbles" size={normalize(18)} color={colors.primary} />
-                      <Text style={styles.statValue}>{schoolInfo.postCount}개</Text>
+                      <Ionicons
+                        name="chatbubbles"
+                        size={normalize(18)}
+                        color={colors.primary}
+                      />
+                      <Text style={styles.statValue}>
+                        {schoolInfo.postCount}개
+                      </Text>
                     </View>
                   </View>
                   <View style={styles.statItem}>
                     <View style={styles.statValueContainer}>
-                      <Ionicons name="mail" size={normalize(18)} color={colors.primary} />
-                      <Text style={styles.statValue}>{schoolInfo.mailCount}개</Text>
+                      <Ionicons
+                        name="mail"
+                        size={normalize(18)}
+                        color={colors.primary}
+                      />
+                      <Text style={styles.statValue}>
+                        {schoolInfo.mailCount}개
+                      </Text>
                     </View>
                   </View>
                 </View>
@@ -270,8 +336,19 @@ const OtherSchoolScreen = ({ route, navigation }) => {
         </View>
 
         {error ? (
-          <View style={{ marginBottom: normalize(12), paddingHorizontal: normalize(4) }}>
-            <Text style={{ fontSize: normalize(fontSizes.lg), color: colors.alert, fontFamily: fonts.regular }}>
+          <View
+            style={{
+              marginBottom: normalize(12),
+              paddingHorizontal: normalize(4),
+            }}
+          >
+            <Text
+              style={{
+                fontSize: normalize(fontSizes.lg),
+                color: colors.alert,
+                fontFamily: fonts.regular,
+              }}
+            >
               {error}
             </Text>
           </View>
@@ -296,93 +373,110 @@ const OtherSchoolScreen = ({ route, navigation }) => {
             </View>
 
             <View style={styles.mealSlotsRow}>
-              {mealLoading ? (
-                [0, 1, 2].map((idx) => (
-                  <View key={`meal-skeleton-${idx}`} style={[styles.mealSlot, idx === 2 && styles.mealSlotLast]}>
-                    <View style={[styles.mealCard, { minHeight: normalize(96) }]}>
-                      <View style={styles.mealSlotHeader}>
-                        <View style={styles.mealSlotTitleRow}>
-                          <View
-                            style={{
-                              height: normalize(fontSizes.xl),
-                              width: '58%',
-                              backgroundColor: '#ECECEC',
-                              borderRadius: 6,
-                            }}
-                          />
-                        </View>
-                        <View style={styles.mealSlotBadge}>
-                          <View
-                            style={{
-                              height: normalize(fontSizes.lg),
-                              width: normalize(32),
-                              backgroundColor: '#E8E8E8',
-                              borderRadius: 6,
-                            }}
-                          />
-                        </View>
-                      </View>
-                      <View style={styles.mealSlotMenus}>
-                        {[0, 1, 2, 3].map((line) => (
-                          <View
-                            key={`meal-skel-line-${idx}-${line}`}
-                            style={{
-                              height: normalize(fontSizes.lg),
-                              marginBottom: normalize(2),
-                              width: line === 3 ? '62%' : '100%',
-                              backgroundColor: '#F0F0F0',
-                              borderRadius: 4,
-                            }}
-                          />
-                        ))}
-                      </View>
-                    </View>
-                  </View>
-                ))
-              ) : (
-                mealSlots.map((slot, index) => (
-                  <View
-                    key={`${slot.ymd}-${slot.mealType}-${index}`}
-                    style={[
-                      styles.mealSlot,
-                      index === mealSlots.length - 1 && styles.mealSlotLast,
-                    ]}
-                  >
-                    <TouchableOpacity
-                      style={styles.mealSlotTouch}
-                      activeOpacity={0.85}
-                      onPress={() => setSelectedMealSlot(slot)}
+              {mealLoading
+                ? [0, 1, 2].map((idx) => (
+                    <View
+                      key={`meal-skeleton-${idx}`}
+                      style={[
+                        styles.mealSlot,
+                        idx === 2 && styles.mealSlotLast,
+                      ]}
                     >
-                      <View style={[styles.mealCard, { minHeight: normalize(96) }]}>
+                      <View
+                        style={[styles.mealCard, { minHeight: normalize(96) }]}
+                      >
                         <View style={styles.mealSlotHeader}>
                           <View style={styles.mealSlotTitleRow}>
-                            <Text style={styles.mealSlotTitle}>{slot.mealType}</Text>
+                            <View
+                              style={{
+                                height: normalize(fontSizes.xl),
+                                width: '58%',
+                                backgroundColor: '#ECECEC',
+                                borderRadius: 6,
+                              }}
+                            />
                           </View>
                           <View style={styles.mealSlotBadge}>
-                            <Text style={styles.mealSlotBadgeText}>{getDayBadge(slot.ymd)}</Text>
+                            <View
+                              style={{
+                                height: normalize(fontSizes.lg),
+                                width: normalize(32),
+                                backgroundColor: '#E8E8E8',
+                                borderRadius: 6,
+                              }}
+                            />
                           </View>
                         </View>
-
                         <View style={styles.mealSlotMenus}>
-                          {slot.menus && slot.menus.length > 0 ? (
-                            slot.menus.map((menu, idx) => (
-                              <Text
-                                key={`${idx}-${menu}`}
-                                style={styles.mealSlotMenuText}
-                                numberOfLines={1}
-                              >
-                                {menu}
-                              </Text>
-                            ))
-                          ) : (
-                            <Text style={styles.mealSlotEmptyText}>정보 없음</Text>
-                          )}
+                          {[0, 1, 2, 3].map((line) => (
+                            <View
+                              key={`meal-skel-line-${idx}-${line}`}
+                              style={{
+                                height: normalize(fontSizes.lg),
+                                marginBottom: normalize(2),
+                                width: line === 3 ? '62%' : '100%',
+                                backgroundColor: '#F0F0F0',
+                                borderRadius: 4,
+                              }}
+                            />
+                          ))}
                         </View>
                       </View>
-                    </TouchableOpacity>
-                  </View>
-                ))
-              )}
+                    </View>
+                  ))
+                : mealSlots.map((slot, index) => (
+                    <View
+                      key={`${slot.ymd}-${slot.mealType}-${index}`}
+                      style={[
+                        styles.mealSlot,
+                        index === mealSlots.length - 1 && styles.mealSlotLast,
+                      ]}
+                    >
+                      <TouchableOpacity
+                        style={styles.mealSlotTouch}
+                        activeOpacity={0.85}
+                        onPress={() => setSelectedMealSlot(slot)}
+                      >
+                        <View
+                          style={[
+                            styles.mealCard,
+                            { minHeight: normalize(96) },
+                          ]}
+                        >
+                          <View style={styles.mealSlotHeader}>
+                            <View style={styles.mealSlotTitleRow}>
+                              <Text style={styles.mealSlotTitle}>
+                                {slot.mealType}
+                              </Text>
+                            </View>
+                            <View style={styles.mealSlotBadge}>
+                              <Text style={styles.mealSlotBadgeText}>
+                                {getDayBadge(slot.ymd)}
+                              </Text>
+                            </View>
+                          </View>
+
+                          <View style={styles.mealSlotMenus}>
+                            {slot.menus && slot.menus.length > 0 ? (
+                              slot.menus.map((menu, idx) => (
+                                <Text
+                                  key={`${idx}-${menu}`}
+                                  style={styles.mealSlotMenuText}
+                                  numberOfLines={1}
+                                >
+                                  {menu}
+                                </Text>
+                              ))
+                            ) : (
+                              <Text style={styles.mealSlotEmptyText}>
+                                정보 없음
+                              </Text>
+                            )}
+                          </View>
+                        </View>
+                      </TouchableOpacity>
+                    </View>
+                  ))}
             </View>
           </View>
         </View>
@@ -392,6 +486,7 @@ const OtherSchoolScreen = ({ route, navigation }) => {
           <Text style={styles.grassCardTitle}>{grassTitle}</Text>
           <StudyGrassMap days={grassDays} />
         </View>
+        <SchoolAdPlaceholder />
 
         {/* 학교 우편함 — 이전 가로형 카드 디자인 */}
         <View style={otherSchoolStyles.mailboxWideBlock}>
@@ -402,14 +497,21 @@ const OtherSchoolScreen = ({ route, navigation }) => {
               navigation?.navigate('SchoolMailbox', {
                 schoolName: schoolInfo.name || routeName,
                 schoolId: routeSchoolId,
+                sourceScreen: 'OtherSchool',
               })
             }
           >
             <View style={otherSchoolStyles.mailboxWideIconWrap}>
-              <Ionicons name="mail" size={normalize(26)} color={colors.primary} />
+              <Ionicons
+                name="mail"
+                size={normalize(26)}
+                color={colors.primary}
+              />
             </View>
             <View style={otherSchoolStyles.mailboxWideTextCol}>
-              <Text style={otherSchoolStyles.mailboxWideTitle}>학교 우편함</Text>
+              <Text style={otherSchoolStyles.mailboxWideTitle}>
+                학교 우편함
+              </Text>
             </View>
             <View style={otherSchoolStyles.mailboxWideChevronWrap}>
               <Ionicons
@@ -456,9 +558,7 @@ const OtherSchoolScreen = ({ route, navigation }) => {
                       </Text>
                     ))
                   ) : (
-                    <Text style={styles.mealModalEmptyText}>
-                      정보 없음
-                    </Text>
+                    <Text style={styles.mealModalEmptyText}>정보 없음</Text>
                   )}
                 </ScrollView>
               </View>

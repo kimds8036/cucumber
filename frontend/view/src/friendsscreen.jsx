@@ -166,7 +166,6 @@ const FriendsScreen = ({ navigation }) => {
 
   const closeModal = () => {
     setModalVisible(false);
-    setSelectedFriend(null);
   };
 
   const handleDelete = () => {
@@ -407,8 +406,9 @@ const FriendsScreen = ({ navigation }) => {
       <Modal
         visible={modalVisible}
         transparent
-        animationType="slide"
+        animationType="fade"
         onRequestClose={closeModal}
+        onDismiss={() => setSelectedFriend(null)}
       >
         {/* 딤 배경 */}
         <TouchableOpacity
@@ -427,8 +427,8 @@ const FriendsScreen = ({ navigation }) => {
               <View style={styles.sheetFriendInfo}>
                 <View style={styles.sheetAvatar}>
                   <ProfileIcon
-                    width={normalize(35)}
-                    height={normalize(35)}
+                    width={normalize(45)}
+                    height={normalize(45)}
                     color={
                       getProfileInnerColor(selectedFriend.profileColorId) ||
                       getProfileInnerColorBySeed(selectedFriend.id)
@@ -436,21 +436,21 @@ const FriendsScreen = ({ navigation }) => {
                   />
                 </View>
                 <View>
-                  <Text style={styles.sheetName}>{selectedFriend.name}</Text>
-                  <Text style={styles.sheetUsername}>
-                    {selectedFriend.username}
-                  </Text>
+                  <View style={styles.sheetNameRow}>
+                    <Text style={styles.sheetName}>{selectedFriend.name}</Text>
+                    <Text style={styles.sheetUsername}>
+                      {selectedFriend.username}
+                    </Text>
+                  </View>
                   <Text style={styles.sheetSchool}>
-                    {selectedFriend.school} · {selectedFriend.grade}
+                    {selectedFriend.school} {selectedFriend.grade}
                   </Text>
                 </View>
               </View>
 
-              <View style={styles.sheetDivider} />
-
               {/* 액션 버튼 */}
               <TouchableOpacity
-                style={styles.sheetAction}
+                style={styles.sheetDeleteAction}
                 onPress={handleDelete}
               >
                 <View style={[styles.sheetActionIcon, styles.deleteActionIcon]}>
@@ -461,31 +461,24 @@ const FriendsScreen = ({ navigation }) => {
                   />
                 </View>
                 <View>
-                  <Text style={[styles.sheetActionTitle, styles.deleteActionTitle]}>
+                  <Text style={styles.sheetDeleteActionTitle}>
                     친구 삭제
                   </Text>
                 </View>
               </TouchableOpacity>
 
               <TouchableOpacity
-                style={styles.sheetAction}
+                style={styles.sheetBlockAction}
                 onPress={handleBlock}
               >
                 <View style={[styles.sheetActionIcon, styles.blockActionIcon]}>
-                  <Ionicons name="ban-outline" size={20} color={colors.textSecondary} />
+                  <Ionicons name="ban-outline" size={16} color={colors.textSecondary} />
                 </View>
                 <View>
-                  <Text style={[styles.sheetActionTitle, styles.blockActionTitle]}>
+                  <Text style={styles.sheetBlockActionTitle}>
                     차단
                   </Text>
                 </View>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={styles.sheetCancelBtn}
-                onPress={closeModal}
-              >
-                <Text style={styles.sheetCancelText}>취소</Text>
               </TouchableOpacity>
             </>
           )}

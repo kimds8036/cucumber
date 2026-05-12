@@ -3,67 +3,80 @@
 
 export const colors = {
   // 메인 컬러
-  primary: '#A6DA95',        // 메인 초록색
-  primaryDark: '#6f9163',    // 진한 초록색
-  scrap: '#F5A623',          // 스크랩 황금색
-  green: '#F7FFF3', 
+  primary: '#A6DA95', // 메인 초록색
+  primaryDark: '#6f9163', // 진한 초록색
+  scrap: '#F5A623', // 스크랩 황금색
+  scrapDark: '#A46E17',
+  green: '#F7FFF3',
+  greenDark: '#C8EDB2',
 
   // 배경 컬러
-  background: '#fff',        // 기본 배경 (흰색)
+  background: '#fff', // 기본 배경 (흰색)
   backgroundGray: '#D3D3D3', // 회색 배경
-  surface: '#F7F7F7',        // 카드 배경 약간 다른 톤
-  border: '#E0E0E0',         // 구분선/dashed border용
+  surface: '#F7F7F7', // 카드 배경 약간 다른 톤
+  border: '#E0E0E0', // 구분선/dashed border용
 
   // 검정 컬러
-  textPrimary: '#272A26',       // 기본 텍스트 (진한 회색)
-  textSecondary: 'rgba(39, 42, 38, 0.5)',     // 보조 텍스트 (중간 회색)
-  background2: 'rgba(39, 42, 38, 0.3)',      // 비활성 텍스트 (밝은 회색)
-  textWhite: '#fff',         // 흰색 텍스트
+  textPrimary: '#272A26', // 기본 텍스트 (진한 회색)
+  textSecondary: 'rgba(39, 42, 38, 0.5)', // 보조 텍스트 (중간 회색)
+  background2: 'rgba(39, 42, 38, 0.3)', // 비활성 텍스트 (밝은 회색)
+  textWhite: '#fff', // 흰색 텍스트
+  textwhite2: 'rgba(255, 255, 255, 0.3)',
 
   // 로고 컬러
-  lightgreen: '#E8FFDD',         // 초록
-  yellow: '#FFFCD7',        // 노랑
-  red: '#FFF3F3',        // 빨강
-  blue: '#E5F0FF',           // 파랑
-  white: '#FFFFFF',           // 흰색
+  lightgreen: '#E8FFDD', // 초록
+  yellow: '#FFFCD7', // 노랑
+  red: '#FFF3F3', // 빨강
+  blue: '#E5F0FF', // 파랑
+  white: '#FFFFFF', // 흰색
 
   // 알림
   alert: '#FF9F9F',
+  /** scrapDark와 동일 규칙(primary 다운틴트 비율) */
+  alertDark: '#AB6A6A',
+  alertLight: '#FFF0F0',
   subcolor: '#AAD7FF',
 
   // 추가 컬러
-  shadow: '#000000',            // 그림자
+  shadow: '#000000', // 그림자
   transparent: 'transparent', // 투명
-  disabled: '#ECECEC',       // 비활성/삭제된 말풍선 배경 등
+  disabled: '#ECECEC', // 비활성/삭제된 말풍선 배경 등
+  timetableBorder: '#E6E6E6',
 
   // 투명도 버전 (Opacity)
-  textLight5: 'rgba(39, 42, 38, 0.05)',   // 5%
-  textLight10: 'rgba(0,0,0,0.1)',   // 10%
-  textLight20: 'rgba(39, 42, 38, 0.2)',   // 20%
-  textLight40: 'rgba(39, 42, 38, 0.4)',   // 40%
-  textLight70: 'rgba(39, 42, 38, 0.7)',   // 70%
+  textLight5: 'rgba(39, 42, 38, 0.05)', // 5%
+  textLight10: 'rgba(0,0,0,0.1)', // 10%
+  textLight20: 'rgba(39, 42, 38, 0.2)', // 20%
+  textLight40: 'rgba(39, 42, 38, 0.4)', // 40%
+  textLight70: 'rgba(39, 42, 38, 0.7)', // 70%
   primaryLight70: 'rgba(166,218,149, 0.7)', // 70%
   primaryLight50: 'rgba(166,218,149, 0.5)', // 50%
   primaryLight30: 'rgba(166,218,149, 0.3)', // 30%
   primaryLight20: 'rgba(166,218,149, 0.2)', // 20%
   primaryLight10: 'rgba(166,218,149, 0.1)', // 10%
 
-  shadowLight: 'rgba(0, 0, 0, 0.1)',          // 밝은 그림자
-  shadowMedium: 'rgba(0, 0, 0, 0.2)',         // 중간 그림자
-  shadowDark: 'rgba(0, 0, 0, 0.3)',           // 진한 그림자
+  shadowLight: 'rgba(0, 0, 0, 0.1)', // 밝은 그림자
+  shadowMedium: 'rgba(0, 0, 0, 0.2)', // 중간 그림자
+  shadowDark: 'rgba(0, 0, 0, 0.3)', // 진한 그림자
 
-  overlay: 'rgba(0, 0, 0, 0.5)',              // 오버레이 (50%)
-  overlayLight: 'rgba(0, 0, 0, 0.3)',         // 밝은 오버레이
-  overlayDark: 'rgba(0, 0, 0, 0.7)',          // 진한 오버레이
+  overlay: 'rgba(0, 0, 0, 0.5)', // 오버레이 (50%)
+  overlayLight: 'rgba(0, 0, 0, 0.3)', // 밝은 오버레이
+  overlayDark: 'rgba(0, 0, 0, 0.7)', // 진한 오버레이
 };
 
 export const TIMETABLE_SUBJECT_COLORS = [
-  '#FFF4F4', '#FFF7F3', '#FFFCED', '#F4FBF2', '#F0F7FF', '#F5F3FF', '#FBF3FF',
-  '#FFECEC', '#FFF4EC', '#FFF9E2', '#EDF8E8', '#EAF4FF', '#F0EBFF', '#F8ECFF',
-  '#FFE5E5', '#FFF0E6', '#FFF6D7', '#E5F4DF', '#E4EFFF', '#EAE3FF', '#F4E3FF',
-  '#FFDDDD', '#FFEDE0', '#FFF3CC', '#DDF0D6', '#DDEBFF', '#E5DCFF', '#F0DCFF',
-  '#FFD6D6', '#FFE9DA', '#FFEFC1', '#D6ECCD', '#D7E6FF', '#E0D5FF', '#ECD4FF',
-  '#FFCFCF', '#FFE6D4', '#FFECB7', '#CEE9C4', '#D1E1FF', '#DACEFF', '#E8CDFF',
+  // 연한 톤
+  '#FFE8E8',
+  '#FFF8DB',
+  '#E8F6E3',
+  '#E8F2FF',
+  '#F6EAFF',
+  // 동일 계열, 한 단계 진한 톤
+  '#FFD6D6',
+  '#FFEAC1',
+  '#CBEBC5',
+  '#CCE2FC',
+  '#EAD4FC',
 ];
 
 export const PROFILE_COLORS = {
@@ -92,10 +105,3 @@ export const fontSizes = {
   title: 18,
   heading: 20,
 };
-
-
-
-
-
-
-

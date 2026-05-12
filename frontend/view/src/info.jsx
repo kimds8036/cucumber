@@ -25,6 +25,7 @@ const Info = ({ navigation }) => {
     { key: 'version', title: '앱 버전', subtitle: `v${appVersion}`, isStatic: true },
     { key: 'contact', title: '문의하기' },
     { key: 'notice', title: '공지사항' },
+    { key: 'community-guide', title: '커뮤니티 가이드' },
     { key: 'terms', title: '서비스 이용약관' },
     { key: 'privacy', title: '개인정보 처리방침' },
     { key: 'youth', title: '청소년 보호정책' },
@@ -39,6 +40,10 @@ const Info = ({ navigation }) => {
     }
     if (menu.key === 'notice') {
       navigation.navigate('Announcement');
+      return;
+    }
+    if (menu.key === 'community-guide') {
+      navigation.navigate('CommunityGuide');
       return;
     }
     if (menu.key === 'terms') {

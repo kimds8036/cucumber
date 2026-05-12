@@ -40,19 +40,27 @@ export default function AlertHost() {
     }
   };
 
+  const titleText = String(currentAlert?.title ?? '').trim();
+
   return (
-    <AppPopupModal visible={Boolean(currentAlert)} onClose={close}>
-      <Text
-        style={{
-          fontSize: 18,
-          color: colors.textPrimary,
-          fontWeight: '700',
-          textAlign: 'center',
-          marginBottom: 10,
-        }}
-      >
-        {currentAlert?.title || '알림'}
-      </Text>
+    <AppPopupModal
+      visible={Boolean(currentAlert)}
+      onClose={close}
+      animationType="none"
+    >
+      {titleText !== '' ? (
+        <Text
+          style={{
+            fontSize: 18,
+            color: colors.textPrimary,
+            fontWeight: '700',
+            textAlign: 'center',
+            marginBottom: 10,
+          }}
+        >
+          {titleText}
+        </Text>
+      ) : null}
       {!!currentAlert?.message && (
         <Text
           style={{
@@ -103,4 +111,3 @@ export default function AlertHost() {
     </AppPopupModal>
   );
 }
-

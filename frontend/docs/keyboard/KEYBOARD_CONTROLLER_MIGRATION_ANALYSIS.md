@@ -24,7 +24,7 @@
 
 ### 추가로 확인된 키보드 사용 화면
 - `frontend/view/src/timerModals.jsx`: `AddSubjectModal`, `AddTaskModal`에서 Modal + KAV 사용.
-- `frontend/view/src/addtimetable.jsx`: Modal + KAV 사용.
+- `frontend/view/src/edittimetable.jsx`: Modal + KAV 사용.
 - `frontend/view/src/mailreply.jsx`: 화면 루트 KAV 사용.
 - 즉, 친구추가 모달 이슈와 같은 **Modal+KAV 패턴이 프로젝트에 다수 존재**.
 
@@ -71,7 +71,7 @@ Modal 내부 KAV로 인해 닫힘/복귀 시 레이아웃 잔여 오프셋이 �
 
 - `frontend/components/timerFriendModals.jsx` (`AddFriendModal`)
 - (추가 후보) `frontend/view/src/timerModals.jsx` (`AddSubjectModal`, `AddTaskModal`)
-- (추가 후보) `frontend/view/src/addtimetable.jsx` (입력 모달)
+- (추가 후보) `frontend/view/src/edittimetable.jsx` (입력 모달)
 
 적용 방향:
 - Modal 내부 KAV를 keyboard-controller 모달 패턴(또는 모달 컨테이너용 handler)로 통일.
@@ -97,7 +97,7 @@ Modal 내부 KAV로 인해 닫힘/복귀 시 레이아웃 잔여 오프셋이 �
 ## 4) 교체 우선순위 (의존성 + 위험도 기준)
 
 1. **Modal C군 선행 정리**
-   - 대상: `timerFriendModals.jsx` (필수), `timerModals.jsx`, `addtimetable.jsx`
+   - 대상: `timerFriendModals.jsx` (필수), `timerModals.jsx`, `edittimetable.jsx`
    - 이유: 현재 실제 버그(복귀 유격)와 직접 연결, 회귀 여부가 명확함.
 
 2. **댓글 입력 B군 (board/schoolMail)**

@@ -1,11 +1,7 @@
-import React, { memo, useRef, useState } from 'react';
-import {
-  View,
-  Text,
-  TouchableOpacity,
-  Pressable,
-} from 'react-native';
+import React, { memo, useState } from 'react';
+import { View, Text, TouchableOpacity, Pressable } from 'react-native';
 import { Image } from 'expo-image';
+import { MenuView } from '@react-native-menu/menu';
 import Loading from '../../../../components/Loading';
 import { colors } from '../../../../styles/colors';
 import ProfileIcon from '../../../../assets/Profile.svg';
@@ -118,8 +114,7 @@ const OptimizedImage = memo(({ uri, onPress, isSending }) => (
 function chatGroupRowMargins(msg, normalize) {
   return {
     marginTop: msg.showProfile === false ? normalize(2) : 0,
-    marginBottom:
-      msg.showTimestamp === false ? normalize(2) : normalize(14),
+    marginBottom: msg.showTimestamp === false ? normalize(2) : normalize(14),
   };
 }
 
@@ -157,12 +152,7 @@ const SenderProfile = ({ chatStyles, normalize, colorId }) => (
   </View>
 );
 
-const ReplyQuote = ({
-  chatStyles,
-  senderName,
-  content,
-  onPress,
-}) => (
+const ReplyQuote = ({ chatStyles, senderName, content, onPress }) => (
   <TouchableOpacity
     activeOpacity={onPress ? 0.75 : 1}
     disabled={!onPress}
@@ -177,6 +167,64 @@ const ReplyQuote = ({
     </Text>
   </TouchableOpacity>
 );
+
+const buildContextMenuActions = (msg) => {
+  const actions = [];
+  const hasCopy = Boolean(msg?.content && String(msg.content).trim());
+  const canDelete = Boolean(msg?.isMe && !msg?.is_deleted);
+
+  if (hasCopy)
+    actions.push({
+      id: 'copy',
+      title: '복사',
+      image: 'doc.on.doc',
+      imageColor: '#000000',
+    });
+  actions.push({
+    id: 'reply',
+    title: '답장',
+    image: 'arrowshape.turn.up.left',
+    imageColor: '#000000',
+  });
+  if (canDelete) {
+    actions.push({
+      id: 'delete',
+      title: '삭제',
+      image: 'trash',
+      imageColor: '#FF3B30',
+      attributes: { destructive: true },
+    });
+  }
+  return actions;
+};
+
+const NativeLongPressMenu = ({
+  msg,
+  onCopyMessage,
+  onReplyMessage,
+  onDeleteMessage,
+  children,
+}) => {
+  const actions = buildContextMenuActions(msg);
+  if (actions.length === 0) return children;
+
+  const handleMenuPress = ({ nativeEvent }) => {
+    const actionId = nativeEvent?.event;
+    if (actionId === 'copy') return onCopyMessage?.(msg?.content);
+    if (actionId === 'reply') return onReplyMessage?.(msg);
+    if (actionId === 'delete') return onDeleteMessage?.(msg?.id);
+  };
+
+  return (
+    <MenuView
+      actions={actions}
+      onPressAction={handleMenuPress}
+      shouldOpenOnLongPress
+    >
+      <View>{children}</View>
+    </MenuView>
+  );
+};
 
 /**
  * 실제 메시지(내용/이미지) + 시간/읽음 상태 표시
@@ -206,18 +254,9 @@ const MessageBubble = ({
   onReplyMessage,
   onPressReplyTarget,
   opponentName,
-  onOpenLongPressMenu,
   isImageOnly,
 }) => {
-  const bubbleRef = useRef(null);
   const [isExpanded, setIsExpanded] = useState(false);
-
-  const openMenuFromBubble = () => {
-    if (!onOpenLongPressMenu) return;
-    bubbleRef.current?.measureInWindow((x, y, w, h) => {
-      onOpenLongPressMenu(msg, { x, y, width: w, height: h });
-    });
-  };
   const messageText = String(msg.content ?? '');
   const isLongMessage = messageText.length > 180;
 
@@ -261,9 +300,13 @@ const MessageBubble = ({
             </TouchableOpacity>
           ) : (
             <>
-              {msg.showTimestamp === true && msg.isReadByOther === false && !msg.isSending && (
-                <Text style={chatStyles.chatUnreadCount}>1</Text>
-              )}
+              {msg.showTimestamp === true &&
+                msg.isReadByOther === false &&
+                !msg.isSending && (
+                  <Text style={chatStyles.chatUnreadCount}>
+                    1
+                  </Text>
+                )}
               <View
                 style={{
                   flexDirection: 'row',
@@ -272,7 +315,9 @@ const MessageBubble = ({
                 }}
               >
                 {(msg.status === 'sending' || msg.isSending) && (
-                  <Skeleton width={14} height={14} borderRadius={7} />
+                  <View>
+                    <Skeleton width={14} height={14} borderRadius={7} />
+                  </View>
                 )}
                 {msg.showTimestamp === true ? (
                   <Text style={chatStyles.chatTimeUser}>
@@ -287,71 +332,77 @@ const MessageBubble = ({
         </View>
 
         {/* 말풍선 (우측) */}
-        <View ref={bubbleRef} collapsable={false} style={{ maxWidth: '78%' }}>
-          <TouchableOpacity
-            style={[
-              !isImageOnly
-                ? userBubbleStyle
-                : {
-                    backgroundColor: 'transparent',
-                    paddingHorizontal: 0,
-                    paddingVertical: 0,
-                  },
-              msg.isFailed && { borderWidth: 1, borderColor: colors.alert },
-              msg.is_deleted && { backgroundColor: colors.disabled },
-            ]}
-            onLongPress={() => {
-              if (msg.is_deleted || msg.isSending) return;
-              openMenuFromBubble();
-            }}
-            activeOpacity={0.8}
+        <View collapsable={false} style={{ maxWidth: '78%' }}>
+          <NativeLongPressMenu
+            msg={msg}
+            onCopyMessage={onCopyMessage}
+            onReplyMessage={onReplyMessage}
+            onDeleteMessage={onDeleteMessage}
           >
-            {/* 답장 인용구 (카카오톡 스타일) */}
-            {msg.parent_content ? (
-              <ReplyQuote
-                chatStyles={chatStyles}
-                senderName={msg.parent_sender_name}
-                content={msg.parent_content}
-                onPress={() => onPressReplyTarget?.(msg.parent_message_id)}
-              />
-            ) : null}
-
-            {msg.images &&
-              msg.images.length > 0 &&
-              !msg.is_deleted &&
-              msg.images.map((uri, index) => (
-                <OptimizedImage
-                  key={`${uri}-${index}`}
-                  uri={uri}
-                  onPress={() => onImagePress?.(uri)}
-                  isSending={msg.isSending}
+            <TouchableOpacity
+              style={[
+                !isImageOnly
+                  ? userBubbleStyle
+                  : {
+                      backgroundColor: 'transparent',
+                      paddingHorizontal: 0,
+                      paddingVertical: 0,
+                    },
+                msg.isFailed && { borderWidth: 1, borderColor: colors.alert },
+                msg.is_deleted && { backgroundColor: colors.textLight10 },
+              ]}
+              disabled={msg.is_deleted || msg.isSending}
+              activeOpacity={0.8}
+            >
+              {/* 답장 인용구 (카카오톡 스타일) */}
+              {msg.parent_content ? (
+                <ReplyQuote
+                  chatStyles={chatStyles}
+                  senderName={msg.parent_sender_name}
+                  content={msg.parent_content}
+                  onPress={() => onPressReplyTarget?.(msg.parent_message_id)}
                 />
-              ))}
-            {msg.is_deleted ? (
-              <Text style={chatStyles.userBubbleText}>
-                삭제된 메시지입니다.
-              </Text>
-            ) : msg.content ? (
-              <>
-                <Text
-                  style={chatStyles.userBubbleText}
-                  numberOfLines={isExpanded ? undefined : (isLongMessage ? 4 : undefined)}
-                >
-                  {msg.content}
+              ) : null}
+
+              {msg.images &&
+                msg.images.length > 0 &&
+                !msg.is_deleted &&
+                msg.images.map((uri, index) => (
+                  <OptimizedImage
+                    key={`${uri}-${index}`}
+                    uri={uri}
+                    onPress={() => onImagePress?.(uri)}
+                    isSending={msg.isSending}
+                  />
+                ))}
+              {msg.is_deleted ? (
+                <Text style={chatStyles.deletedMessageText}>
+                  삭제된 메시지입니다.
                 </Text>
-                {isLongMessage ? (
-                  <TouchableOpacity
-                    onPress={() => setIsExpanded((prev) => !prev)}
-                    activeOpacity={0.8}
+              ) : msg.content ? (
+                <>
+                  <Text
+                    style={chatStyles.userBubbleText}
+                    numberOfLines={
+                      isExpanded ? undefined : isLongMessage ? 4 : undefined
+                    }
                   >
-                    <Text style={chatStyles.chatTimeUser}>
-                      {isExpanded ? '접기' : '전체보기'}
-                    </Text>
-                  </TouchableOpacity>
-                ) : null}
-              </>
-            ) : null}
-          </TouchableOpacity>
+                    {msg.content}
+                  </Text>
+                  {isLongMessage ? (
+                    <TouchableOpacity
+                      onPress={() => setIsExpanded((prev) => !prev)}
+                      activeOpacity={0.8}
+                    >
+                      <Text style={chatStyles.chatTimeUser}>
+                        {isExpanded ? '접기' : '전체보기'}
+                      </Text>
+                    </TouchableOpacity>
+                  ) : null}
+                </>
+              ) : null}
+            </TouchableOpacity>
+          </NativeLongPressMenu>
         </View>
       </View>
     );
@@ -379,53 +430,23 @@ const MessageBubble = ({
       <View style={{ flexDirection: 'row', alignItems: 'flex-end' }}>
         <View style={{ flexShrink: 1, minWidth: 0 }}>
           {isImageOnly ? (
-            <View ref={bubbleRef} collapsable={false}>
-              <Pressable
-                onLongPress={() => {
-                  if (msg.is_deleted || msg.isSending) return;
-                  openMenuFromBubble();
-                }}
+            <View collapsable={false}>
+              <NativeLongPressMenu
+                msg={msg}
+                onCopyMessage={onCopyMessage}
+                onReplyMessage={onReplyMessage}
+                onDeleteMessage={onDeleteMessage}
               >
-                <View style={{ alignItems: 'flex-start' }}>
-                {msg.parent_content ? (
-                  <ReplyQuote
-                    chatStyles={chatStyles}
-                    senderName={msg.parent_sender_name}
-                    content={msg.parent_content}
-                    onPress={() => onPressReplyTarget?.(msg.parent_message_id)}
-                  />
-                ) : null}
-                {msg.images &&
-                  msg.images.length > 0 &&
-                  !msg.is_deleted &&
-                  msg.images.map((uri, index) => (
-                    <OptimizedImage
-                      key={`${uri}-${index}`}
-                      uri={uri}
-                      onPress={() => onImagePress?.(uri)}
-                      isSending={msg.isSending}
-                    />
-                  ))}
-                </View>
-              </Pressable>
-            </View>
-          ) : (
-            <>
-              {msg.content || msg.is_deleted ? (
-                <View ref={bubbleRef} collapsable={false}>
-                  <Pressable
-                    onLongPress={() => {
-                      if (msg.is_deleted || msg.isSending) return;
-                      openMenuFromBubble();
-                    }}
-                  >
-                    <View style={opponentBubbleStyle}>
+                <Pressable disabled={msg.is_deleted || msg.isSending}>
+                  <View style={{ alignItems: 'flex-start' }}>
                     {msg.parent_content ? (
                       <ReplyQuote
                         chatStyles={chatStyles}
                         senderName={msg.parent_sender_name}
                         content={msg.parent_content}
-                        onPress={() => onPressReplyTarget?.(msg.parent_message_id)}
+                        onPress={() =>
+                          onPressReplyTarget?.(msg.parent_message_id)
+                        }
                       />
                     ) : null}
                     {msg.images &&
@@ -439,42 +460,76 @@ const MessageBubble = ({
                           isSending={msg.isSending}
                         />
                       ))}
-                    {msg.is_deleted ? (
-                      <Text
-                        style={[
-                          chatStyles.opponentBubbleText,
-                          {
-                            color: colors.textSecondary,
-                            fontStyle: 'italic',
-                          },
-                        ]}
-                      >
-                        삭제된 메시지입니다.
-                      </Text>
-                    ) : msg.content ? (
-                      <>
-                        <Text
-                          style={chatStyles.opponentBubbleText}
-                          numberOfLines={
-                            isExpanded ? undefined : (isLongMessage ? 4 : undefined)
-                          }
-                        >
-                          {msg.content}
-                        </Text>
-                        {isLongMessage ? (
-                          <TouchableOpacity
-                            onPress={() => setIsExpanded((prev) => !prev)}
-                            activeOpacity={0.8}
-                          >
-                            <Text style={chatStyles.chatTimeOpponent}>
-                              {isExpanded ? '접기' : '전체보기'}
-                            </Text>
-                          </TouchableOpacity>
+                  </View>
+                </Pressable>
+              </NativeLongPressMenu>
+            </View>
+          ) : (
+            <>
+              {msg.content || msg.is_deleted ? (
+                <View collapsable={false}>
+                  <NativeLongPressMenu
+                    msg={msg}
+                    onCopyMessage={onCopyMessage}
+                    onReplyMessage={onReplyMessage}
+                    onDeleteMessage={onDeleteMessage}
+                  >
+                    <Pressable disabled={msg.is_deleted || msg.isSending}>
+                      <View style={opponentBubbleStyle}>
+                        {msg.parent_content ? (
+                          <ReplyQuote
+                            chatStyles={chatStyles}
+                            senderName={msg.parent_sender_name}
+                            content={msg.parent_content}
+                            onPress={() =>
+                              onPressReplyTarget?.(msg.parent_message_id)
+                            }
+                          />
                         ) : null}
-                      </>
-                    ) : null}
-                    </View>
-                  </Pressable>
+                        {msg.images &&
+                          msg.images.length > 0 &&
+                          !msg.is_deleted &&
+                          msg.images.map((uri, index) => (
+                            <OptimizedImage
+                              key={`${uri}-${index}`}
+                              uri={uri}
+                              onPress={() => onImagePress?.(uri)}
+                              isSending={msg.isSending}
+                            />
+                          ))}
+                        {msg.is_deleted ? (
+                          <Text style={chatStyles.deletedMessageText}>
+                            삭제된 메시지입니다.
+                          </Text>
+                        ) : msg.content ? (
+                          <>
+                            <Text
+                              style={chatStyles.opponentBubbleText}
+                              numberOfLines={
+                                isExpanded
+                                  ? undefined
+                                  : isLongMessage
+                                    ? 4
+                                    : undefined
+                              }
+                            >
+                              {msg.content}
+                            </Text>
+                            {isLongMessage ? (
+                              <TouchableOpacity
+                                onPress={() => setIsExpanded((prev) => !prev)}
+                                activeOpacity={0.8}
+                              >
+                                <Text style={chatStyles.chatTimeOpponent}>
+                                  {isExpanded ? '접기' : '전체보기'}
+                                </Text>
+                              </TouchableOpacity>
+                            ) : null}
+                          </>
+                        ) : null}
+                      </View>
+                    </Pressable>
+                  </NativeLongPressMenu>
                 </View>
               ) : null}
             </>
@@ -519,7 +574,6 @@ const MessageItem = memo(
     onReplyMessage,
     onPressReplyTarget,
     opponentName,
-    onOpenLongPressMenu,
   }) => {
     if (msg.type === 'dateBanner') {
       return <DateBanner msg={msg} normalize={normalize} />;
@@ -542,7 +596,6 @@ const MessageItem = memo(
           onReplyMessage={onReplyMessage}
           onPressReplyTarget={onPressReplyTarget}
           opponentName={opponentName}
-          onOpenLongPressMenu={onOpenLongPressMenu}
           isImageOnly={isImageOnly}
         />
       );
@@ -575,7 +628,6 @@ const MessageItem = memo(
           onReplyMessage={onReplyMessage}
           onPressReplyTarget={onPressReplyTarget}
           opponentName={opponentName}
-          onOpenLongPressMenu={onOpenLongPressMenu}
           isImageOnly={isImageOnly}
         />
       </View>
@@ -585,8 +637,6 @@ const MessageItem = memo(
     // chatStyles/normalize 참조 안정성 체크
     if (prevProps.chatStyles !== nextProps.chatStyles) return false;
     if (prevProps.normalize !== nextProps.normalize) return false;
-    if (prevProps.onOpenLongPressMenu !== nextProps.onOpenLongPressMenu)
-      return false;
     if (prevProps.onPressReplyTarget !== nextProps.onPressReplyTarget)
       return false;
 

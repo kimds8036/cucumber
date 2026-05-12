@@ -474,7 +474,6 @@ export function createMailStyles(normalize) {
     // SendMail 전용 레이아웃
     sendScrollContent: {
       flexGrow: 1,
-      paddingBottom: normalize(40),
       paddingHorizontal: normalize(16),
       paddingTop: normalize(16),
     },

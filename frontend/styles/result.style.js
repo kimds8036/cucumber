@@ -195,7 +195,7 @@ export const createSearchResultStyles = (normalize) => {
     },
 
     card: {
-      marginHorizontal: normalize(18),
+      paddingHorizontal: normalize(18),
       paddingVertical: normalize(14),
     },
     cardBorder: {
@@ -224,8 +224,11 @@ export const createSearchResultStyles = (normalize) => {
     fullCard: {
       paddingHorizontal: normalize(18),
       paddingVertical: normalize(16),
+      borderBottomWidth: 1,
+      borderBottomColor: colors.textLight10,
     },
-    fullCardBorder: {},
+    fullCardBorder: {
+    },
     fullTitle: {
       fontSize: normalize(fontSizes.xxl),
       fontFamily: fonts.bold,
