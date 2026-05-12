@@ -77,6 +77,11 @@ async function ensureDmSoftDeleteColumns() {
         'deleted_at_msg_id_user2',
         'INT DEFAULT NULL',
       );
+      await addColumnIfMissing(
+        'dm_messages',
+        'is_deleted',
+        'BOOLEAN DEFAULT FALSE',
+      );
     })().catch((error) => {
       ensureDmSoftDeleteColumnsPromise = null;
       throw error;
@@ -123,6 +128,7 @@ router.get('/rooms', authenticate, async (req, res) => {
           WHERE dm.room_id = dr.id
             AND dm.sender_id != ?
             AND dm.is_read = FALSE
+            AND (dm.is_deleted IS NULL OR dm.is_deleted = FALSE)
             AND (dm.is_shadow_blocked = FALSE OR dm.shadow_blocked_for_user_id IS NULL OR dm.shadow_blocked_for_user_id != ?)
         ) AS unread_count
       FROM dm_rooms dr
@@ -137,6 +143,7 @@ router.get('/rooms', authenticate, async (req, res) => {
           SELECT 1
           FROM dm_messages dm0
           WHERE dm0.room_id = dr.id
+            AND (dm0.is_deleted IS NULL OR dm0.is_deleted = FALSE)
         )
         AND u.is_deleted = FALSE
       ORDER BY COALESCE(dr.last_message_at, dr.created_at) DESC
@@ -155,6 +162,7 @@ router.get('/rooms', authenticate, async (req, res) => {
            SELECT 1
            FROM dm_messages dm0
            WHERE dm0.room_id = dm_rooms.id
+            AND (dm0.is_deleted IS NULL OR dm0.is_deleted = FALSE)
          )`,
       [userId, userId],
     );
@@ -288,6 +296,7 @@ router.get('/unread-count', authenticate, async (req, res) => {
        )
          AND m.sender_id != ?
          AND m.is_read = FALSE
+        AND (m.is_deleted IS NULL OR m.is_deleted = FALSE)
          AND (m.is_shadow_blocked = FALSE OR m.shadow_blocked_for_user_id IS NULL OR m.shadow_blocked_for_user_id != ?)`,
       [userId, userId, userId, userId],
     );
@@ -371,7 +380,7 @@ router.get('/rooms/:roomId', authenticate, async (req, res) => {
              ) di) AS images`;
 
     if (safeBefore != null) {
-      sql = `SELECT m.id, m.room_id, m.sender_id, m.parent_message_id, m.content, m.is_read, m.created_at,
+      sql = `SELECT m.id, m.room_id, m.sender_id, m.parent_message_id, m.content, m.is_read, m.is_deleted, m.created_at,
                     pm.content AS parent_content, pu.name AS parent_sender_name,
                     u.name AS sender_name, u.color_id AS sender_color_id,
                     ${imageSub}
@@ -385,7 +394,7 @@ router.get('/rooms/:roomId', authenticate, async (req, res) => {
              LIMIT ${fetchLimit}`;
       params = [roomIdNum, Number(deletedAtMsgId) || 0, safeBefore, userId];
     } else {
-      sql = `SELECT m.id, m.room_id, m.sender_id, m.parent_message_id, m.content, m.is_read, m.created_at,
+      sql = `SELECT m.id, m.room_id, m.sender_id, m.parent_message_id, m.content, m.is_read, m.is_deleted, m.created_at,
                     pm.content AS parent_content, pu.name AS parent_sender_name,
                     u.name AS sender_name, u.color_id AS sender_color_id,
                     ${imageSub}
@@ -548,7 +557,7 @@ router.post(
       );
 
       const [rows] = await pool.execute(
-        `SELECT m.id, m.room_id, m.sender_id, m.parent_message_id, m.content, m.is_read, m.created_at,
+        `SELECT m.id, m.room_id, m.sender_id, m.parent_message_id, m.content, m.is_read, m.is_deleted, m.created_at,
                 pm.content AS parent_content, pu.name AS parent_sender_name,
                 u.name AS sender_name, u.color_id AS sender_color_id,
                 (SELECT JSON_ARRAYAGG(cloudinary_url)
@@ -678,12 +687,14 @@ router.put('/rooms/:roomId/read', authenticate, validate(dmRoomIdParamValidator)
 // ─────────────────────────────────────────────────────
 router.delete('/messages/:messageId', authenticate, validate(dmMessageIdParamValidator), async (req, res) => {
   try {
+    await ensureDmSoftDeleteColumns();
     const userId = req.user.userId;
     const { messageId } = req.params;
 
     const [del] = await pool.execute(
-      `DELETE FROM dm_messages
-       WHERE id = ? AND sender_id = ?`,
+      `UPDATE dm_messages
+       SET is_deleted = TRUE
+       WHERE id = ? AND sender_id = ? AND (is_deleted IS NULL OR is_deleted = FALSE)`,
       [messageId, userId],
     );
 

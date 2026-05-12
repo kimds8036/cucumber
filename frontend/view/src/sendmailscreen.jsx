@@ -5,7 +5,6 @@ import {
   TextInput,
   TouchableOpacity,
   Keyboard,
-  TouchableWithoutFeedback,
   Alert,
   useWindowDimensions,
 } from 'react-native';
@@ -39,6 +38,7 @@ const SendMailScreen = ({ navigation }) => {
   const [userError, setUserError] = useState('');
   const [selectedUser, setSelectedUser] = useState(null);
   const [mailContent, setMailContent] = useState('');
+  const [charLimit, setCharLimit] = useState(50);
   const [sending, setSending] = useState(false);
   const [subHeaderHeight, setSubHeaderHeight] = useState(0);
   const [schoolSectionHeight, setSchoolSectionHeight] = useState(0);
@@ -46,11 +46,15 @@ const SendMailScreen = ({ navigation }) => {
   const [bottomCtaHeight, setBottomCtaHeight] = useState(0);
 
   const handleMailContentChange = (text) => {
-    if (text.length > 50) {
+    if (text.length > charLimit) {
       Alert.alert('알림', '광고를 보면 더 길게 작성할 수 있어요.');
       return;
     }
     setMailContent(text);
+  };
+
+  const handleAdReward = () => {
+    setCharLimit(prev => prev * 2);
   };
 
   const handleSend = async () => {
@@ -121,6 +125,12 @@ const SendMailScreen = ({ navigation }) => {
       setUserError('');
       return;
     }
+    // 아이디(@…) 형태로는 검색하지 않음 — 실명(name) 검색만 허용
+    if (q.startsWith('@')) {
+      setUserResults([]);
+      setUserError('');
+      return;
+    }
     const t = setTimeout(async () => {
       try {
         setUserLoading(true);
@@ -129,7 +139,10 @@ const SendMailScreen = ({ navigation }) => {
           params: { schoolId: selectedSchool.id, query: q, limit: 10 },
         });
         console.log('[SendMail] users/search 응답:', res.data?.data);
-        setUserResults(res.data?.data?.users || []);
+        const raw = res.data?.data?.users || [];
+        setUserResults(
+          raw.filter((u) => String(u?.name ?? '').trim() === q),
+        );
       } catch (error) {
         setUserError(error.response?.data?.message || '유저 검색 중 오류가 발생했습니다.');
         setUserResults([]);
@@ -161,14 +174,14 @@ const SendMailScreen = ({ navigation }) => {
       <View onLayout={(e) => setSubHeaderHeight(e.nativeEvent.layout.height)}>
         <SubHeader title="우편 보내기" onBack={() => navigation?.goBack()} />
       </View>
-      <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
-        <View style={styles.keyboardView}>
+      <View style={styles.keyboardView}>
           <KeyboardAwareScrollView
             style={styles.scrollView}
             contentContainerStyle={styles.sendScrollContent}
-            keyboardShouldPersistTaps="handled"
+            keyboardShouldPersistTaps="always"
             keyboardDismissMode="on-drag"
             showsVerticalScrollIndicator={false}
+            onScrollBeginDrag={Keyboard.dismiss}
             bottomOffset={Math.max(bottomCtaHeight, 16)}
           >
             {/* 섹션 1: 보낼 학교 */}
@@ -480,11 +493,19 @@ const SendMailScreen = ({ navigation }) => {
                 />
                 <View style={styles.replyFormMetaRow}>
                   <View style={styles.sendMetaRight}>
-                    <Text style={styles.replyFormCount}>{mailContent.length}/50자</Text>
-                    <View style={styles.replyFormChip}>
+                    <Text style={styles.replyFormCount}>{mailContent.length}/{charLimit}자</Text>
+                    <TouchableOpacity
+                      style={styles.replyFormChip}
+                      onPress={() => {
+                        // 나중에 애드몹 RewardedAd 로직으로 교체할 자리
+                        // 광고 시청 완료 시 아래 보상 지급 함수 호출
+                        handleAdReward();
+                      }}
+                      activeOpacity={0.8}
+                    >
                       <MaterialCommunityIcons name="television-classic" size={15} color={colors.textPrimary} />
                       <Text style={styles.replyFormChipText}>x 2</Text>
-                    </View>
+                    </TouchableOpacity>
                   </View>
                 </View>
               </View>
@@ -513,7 +534,6 @@ const SendMailScreen = ({ navigation }) => {
             </TouchableOpacity>
           </View>
         </View>
-      </TouchableWithoutFeedback>
     </SafeAreaView>
   );
 };

@@ -18,6 +18,7 @@ import {
   TouchableWithoutFeedback,
   useWindowDimensions,
 } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import Animated, {
   useAnimatedStyle,
   useSharedValue,
@@ -39,7 +40,14 @@ const SUBJECT_COLORS = [
   '#B19CD9',
   '#FFB366',
   '#9FB5C7',
+  '#FFD166',
+  '#6EC6FF',
+  '#A3E635',
+  '#F9A8D4',
+  '#34D399',
 ];
+const SUBJECT_PRESETS_KEY = '@timer_subject_presets_v1';
+const SUBJECT_PRESETS_MAX = 12;
 
 const dateFromDayKey = (dayKey) => new Date(dayKey + 'T06:00:00');
 
@@ -56,12 +64,46 @@ export const AddSubjectModal = ({ visible, onClose, onAdd }) => {
   const [name, setName] = useState('');
   const [color, setColor] = useState(SUBJECT_COLORS[0]);
   const [ready, setReady] = useState(false);
+  const [subjectPresets, setSubjectPresets] = useState([]);
 
   useEffect(() => {
     if (!visible) return undefined;
     setReady(false);
     const timer = setTimeout(() => setReady(true), 120);
     return () => clearTimeout(timer);
+  }, [visible]);
+
+  useEffect(() => {
+    if (!visible) return undefined;
+    let mounted = true;
+    const loadPresets = async () => {
+      try {
+        const raw = await AsyncStorage.getItem(SUBJECT_PRESETS_KEY);
+        const parsed = raw ? JSON.parse(raw) : [];
+        if (!mounted) return;
+        if (Array.isArray(parsed)) {
+          const normalized = parsed
+            .map((item) => ({
+              name: String(item?.name ?? '').trim(),
+              color:
+                typeof item?.color === 'string' && item.color.trim()
+                  ? item.color.trim()
+                  : SUBJECT_COLORS[0],
+            }))
+            .filter((item) => item.name.length > 0)
+            .slice(0, SUBJECT_PRESETS_MAX);
+          setSubjectPresets(normalized);
+        } else {
+          setSubjectPresets([]);
+        }
+      } catch {
+        if (mounted) setSubjectPresets([]);
+      }
+    };
+    loadPresets();
+    return () => {
+      mounted = false;
+    };
   }, [visible]);
   const translateY = useSharedValue(0);
 
@@ -90,9 +132,25 @@ export const AddSubjectModal = ({ visible, onClose, onAdd }) => {
   const pickRandom = () =>
     setColor(SUBJECT_COLORS[Math.floor(Math.random() * SUBJECT_COLORS.length)]);
 
-  const handleAdd = () => {
-    if (!name.trim()) return;
-    onAdd({ name: name.trim(), color });
+  const handleAdd = async () => {
+    const trimmedName = name.trim();
+    if (!trimmedName) return;
+    onAdd({ name: trimmedName, color });
+    try {
+      const nextPresets = [
+        { name: trimmedName, color },
+        ...subjectPresets.filter(
+          (item) => item.name.toLowerCase() !== trimmedName.toLowerCase(),
+        ),
+      ].slice(0, SUBJECT_PRESETS_MAX);
+      setSubjectPresets(nextPresets);
+      await AsyncStorage.setItem(
+        SUBJECT_PRESETS_KEY,
+        JSON.stringify(nextPresets),
+      );
+    } catch {
+      // 저장 실패해도 과목 추가 기능은 유지
+    }
     setName('');
     setColor(SUBJECT_COLORS[0]);
     onClose();
@@ -103,8 +161,8 @@ export const AddSubjectModal = ({ visible, onClose, onAdd }) => {
     return (
       <Modal transparent animationType="fade" onRequestClose={onClose}>
         <View style={m.wrapper}>
-          <View style={m.centered}>
-            <View style={m.card}>
+          <View style={m.bottomSheetContainer}>
+            <View style={m.bottomSheetCard}>
               <Skeleton width={110} height={18} borderRadius={8} style={m.skelLineMb10} />
               <Skeleton width="100%" height={42} borderRadius={10} style={m.skelLineMb12} />
               <Skeleton width="100%" height={36} borderRadius={10} />
@@ -123,8 +181,8 @@ export const AddSubjectModal = ({ visible, onClose, onAdd }) => {
             onPress={onClose}
             activeOpacity={1}
           />
-          <Animated.View style={[m.centered, animStyle]}>
-            <View style={m.card}>
+          <Animated.View style={[m.bottomSheetContainer, animStyle]}>
+            <View style={m.bottomSheetCard}>
             <Text style={m.title}>과목 추가</Text>
             <TextInput
               style={m.input}
@@ -132,7 +190,39 @@ export const AddSubjectModal = ({ visible, onClose, onAdd }) => {
               placeholderTextColor={colors.textSecondary}
               value={name}
               onChangeText={setName}
+              autoFocus
             />
+            {subjectPresets.length > 0 ? (
+              <View style={m.subjectPresetSection}>
+                <Text style={m.subjectPresetTitle}>최근 사용</Text>
+                <ScrollView
+                  horizontal
+                  showsHorizontalScrollIndicator={false}
+                  contentContainerStyle={m.subjectPresetRow}
+                  keyboardShouldPersistTaps="always"
+                >
+                  {subjectPresets.map((preset, idx) => (
+                    <TouchableOpacity
+                      key={`${preset.name}-${preset.color}-${idx}`}
+                      style={m.subjectPresetChip}
+                      activeOpacity={0.8}
+                      onPress={() => {
+                        setName(preset.name);
+                        setColor(preset.color);
+                      }}
+                    >
+                      <View
+                        style={[
+                          m.subjectPresetDot,
+                          { backgroundColor: preset.color || SUBJECT_COLORS[0] },
+                        ]}
+                      />
+                      <Text style={m.subjectPresetText}>{preset.name}</Text>
+                    </TouchableOpacity>
+                  ))}
+                </ScrollView>
+              </View>
+            ) : null}
             <View style={m.colorRow}>
               <View style={m.colorLabelRow}>
                 <Text style={[m.label, m.labelNoMargin]}>색상</Text>
@@ -141,6 +231,7 @@ export const AddSubjectModal = ({ visible, onClose, onAdd }) => {
                 horizontal
                 showsHorizontalScrollIndicator={false}
                 style={m.colorScroll}
+                keyboardShouldPersistTaps="always"
               >
                 <View style={m.colorWrap}>
                   {SUBJECT_COLORS.map((c) => (
@@ -254,8 +345,8 @@ export const AddTaskModal = ({
     return (
       <Modal transparent animationType="fade" onRequestClose={handleClose}>
         <View style={m.wrapper}>
-          <View style={m.centered}>
-            <View style={m.card}>
+          <View style={m.bottomSheetContainer}>
+            <View style={m.bottomSheetCard}>
               <Skeleton width={110} height={18} borderRadius={8} style={m.skelLineMb10} />
               <Skeleton width="100%" height={66} borderRadius={10} style={m.skelLineMb12} />
               <Skeleton width="100%" height={36} borderRadius={10} />
@@ -274,8 +365,8 @@ export const AddTaskModal = ({
             onPress={handleClose}
             activeOpacity={1}
           />
-          <View style={m.centered}>
-            <View style={m.card}>
+          <View style={m.bottomSheetContainer}>
+            <View style={m.bottomSheetCard}>
               <Text style={m.title}>할일 추가</Text>
               <Text style={m.emptySubjectHint}>
                 과목을 먼저 추가해주세요.
@@ -301,8 +392,8 @@ export const AddTaskModal = ({
             onPress={handleClose}
             activeOpacity={1}
           />
-          <Animated.View style={[m.centered, animStyle]}>
-            <View style={m.card}>
+          <Animated.View style={[m.bottomSheetContainer, animStyle]}>
+            <View style={m.bottomSheetCard}>
             <Text style={m.title}>할일 추가</Text>
             <Text style={m.label}>내용</Text>
             <TextInput
@@ -312,6 +403,7 @@ export const AddTaskModal = ({
               value={content}
               onChangeText={setContent}
               multiline
+              autoFocus
             />
               <View style={m.row}>
               <TouchableOpacity

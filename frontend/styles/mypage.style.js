@@ -790,3 +790,268 @@ export const themedTextInputProps = {
   placeholderTextColor: colors.textLight20,
   selectionColor: colors.primary,
 };
+
+/** 클린 센터(숨김·신고·소명) 화면 — 상태 칩/바 색 (`colors.js` 토큰 기준) */
+export const getHiddenPostsAppealsStatusColors = (c) => ({
+  '처리 완료': { bar: c.primary, bg: c.primaryLight10, text: c.primaryDark },
+  '복구 완료': { bar: c.primary, bg: c.primaryLight10, text: c.primaryDark },
+  '검토 중': { bar: c.scrap, bg: c.yellow, text: c.scrapDark },
+  '대기 중': { bar: c.scrap, bg: c.yellow, text: c.scrapDark },
+  '반려': { bar: c.alert, bg: c.alertLight, text: c.alertDark },
+  '제재 확정': { bar: c.alert, bg: c.alertLight, text: c.alertDark },
+});
+
+export const getHiddenPostsAppealsStatusColor = (label, c) =>
+  getHiddenPostsAppealsStatusColors(c)[label] ?? {
+    bar: c.textLight20,
+    bg: c.textLight5,
+    text: c.textSecondary,
+  };
+
+/** 클린 센터 탭 — Message.jsx 쪽지/개인우편 슬라이딩 pill과 동일 패턴 */
+export const createHiddenPostsAppealsStyles = (width, normalize) =>
+  StyleSheet.create({
+    safeArea: {
+      flex: 1,
+      backgroundColor: colors.background,
+    },
+    scroll: {
+      flex: 1,
+    },
+    scrollContent: {
+      paddingHorizontal: normalize(16),
+      paddingTop: normalize(14),
+      paddingBottom: normalize(28),
+    },
+    loadingWrap: {
+      paddingTop: normalize(36),
+      alignItems: 'center',
+    },
+    toggleContainer: {
+      flexDirection: 'row',
+      paddingHorizontal: width * 0.1,
+      paddingVertical: normalize(10),
+      paddingTop: normalize(8),
+      gap: normalize(8),
+    },
+    toggleTrack: {
+      flex: 1,
+      flexDirection: 'row',
+      backgroundColor: colors.background,
+      borderRadius: normalize(20),
+      borderWidth: 1,
+      borderColor: colors.primaryLight50,
+      position: 'relative',
+      height: normalize(40),
+    },
+    togglePill: {
+      position: 'absolute',
+      width: '50%',
+      top: 0,
+      bottom: 0,
+      backgroundColor: colors.primary,
+      borderRadius: normalize(18),
+      ...shadow.sm,
+    },
+    toggleOption: {
+      flex: 1,
+      paddingVertical: normalize(6),
+      borderRadius: normalize(16),
+      alignItems: 'center',
+      justifyContent: 'center',
+      zIndex: 1,
+    },
+    toggleOptionText: {
+      fontSize: normalize(fontSizes.xl),
+      fontFamily: fonts.bold,
+      color: colors.textSecondary,
+    },
+    toggleOptionTextActive: {
+      color: colors.background,
+      fontFamily: fonts.bold,
+    },
+    statSummaryBox: {
+      flexDirection: 'row',
+      alignItems: 'stretch',
+      backgroundColor: colors.background,
+      borderRadius: normalize(16),
+      borderWidth: 2,
+      borderColor: colors.primary,
+      paddingVertical: normalize(12),
+      marginBottom: normalize(14),
+      ...shadow.md,
+    },
+    statSummaryCell: {
+      flex: 1,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    statSummaryDivider: {
+      width: 1,
+      alignSelf: 'stretch',
+      backgroundColor: colors.textLight10,
+      marginVertical: normalize(4),
+    },
+    statNumber: {
+      fontFamily: fonts.regular,
+      fontSize: normalize(fontSizes.heading),
+      color: colors.textPrimary,
+    },
+    statNumberHighlight: {
+      color: colors.primary,
+    },
+    statLabel: {
+      fontFamily: fonts.regular,
+      fontSize: normalize(fontSizes.lg - 1),
+      color: colors.textSecondary,
+      marginTop: normalize(3),
+    },
+    card: {
+      flexDirection: 'row',
+      backgroundColor: colors.background,
+      borderRadius: normalize(14),
+      borderWidth: 1,
+      borderColor: colors.textLight10,
+      marginBottom: normalize(12),
+      overflow: 'hidden',
+    },
+    cardAccent: {
+      width: normalize(4),
+    },
+    cardInner: {
+      flex: 1,
+      padding: normalize(14),
+    },
+    rowBetween: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      marginBottom: normalize(6),
+    },
+    pillNeutral: {
+    },
+    pillNeutralText: {
+      fontFamily: fonts.regular,
+      fontSize: normalize(fontSizes.lg - 1),
+      color: colors.textSecondary,
+    },
+    pillDanger: {
+      backgroundColor: colors.alertLight,
+      borderRadius: normalize(20),
+      paddingHorizontal: normalize(9),
+      paddingVertical: normalize(3),
+    },
+    pillDangerText: {
+      fontFamily: fonts.regular,
+      fontSize: normalize(fontSizes.lg - 1),
+      color: colors.textPrimary,
+    },
+    previewText: {
+      fontFamily: fonts.regular,
+      fontSize: normalize(fontSizes.xl),
+      color: colors.textPrimary,
+      lineHeight: normalize(fontSizes.xl + 7),
+      marginBottom: normalize(8),
+    },
+    dividerSection: {
+      borderTopWidth: 1,
+      borderTopColor: colors.textLight10,
+      paddingTop: normalize(8),
+    },
+    metaText: {
+      fontFamily: fonts.regular,
+      fontSize: normalize(fontSizes.lg),
+      color: colors.textSecondary,
+      lineHeight: normalize(fontSizes.lg + 6),
+    },
+    reportMetaRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: normalize(8),
+    },
+    reportMetaTextFlex: {
+      flex: 1,
+      minWidth: 0,
+    },
+    statusChip: {
+      alignSelf: 'flex-start',
+      borderRadius: normalize(20),
+      paddingHorizontal: normalize(9),
+      paddingVertical: normalize(3),
+    },
+    statusChipContent: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: normalize(4),
+    },
+    statusChipText: {
+      fontFamily: fonts.regular,
+      fontSize: normalize(fontSizes.lg - 1),
+    },
+    metaTime: {
+      fontFamily: fonts.regular,
+      fontSize: normalize(fontSizes.lg - 1),
+      color: colors.textSecondary,
+    },
+    noticeBox: {
+      backgroundColor: colors.textLight5,
+      borderRadius: normalize(10),
+      borderWidth: 1,
+      borderColor: colors.textLight10,
+      padding: normalize(12),
+      marginBottom: normalize(10),
+      gap: normalize(6),
+    },
+    guideLink: {
+      marginBottom: normalize(10),
+    },
+    guideLinkText: {
+      fontFamily: fonts.regular,
+      fontSize: normalize(fontSizes.lg),
+      color: colors.primaryDark,
+      textDecorationLine: 'underline',
+    },
+    appealInput: {
+      minHeight: normalize(82),
+      borderWidth: 1,
+      borderColor: colors.textLight10,
+      borderRadius: normalize(10),
+      backgroundColor: colors.textLight5,
+      paddingHorizontal: normalize(10),
+      paddingVertical: normalize(10),
+      fontFamily: fonts.regular,
+      fontSize: normalize(fontSizes.xl - 1),
+      color: colors.textPrimary,
+      textAlignVertical: 'top',
+    },
+    appealSubmit: {
+      marginTop: normalize(10),
+      alignSelf: 'flex-end',
+      backgroundColor: colors.primary,
+      borderRadius: normalize(10),
+      paddingHorizontal: normalize(14),
+      paddingVertical: normalize(8),
+    },
+    appealSubmitDisabled: {
+      backgroundColor: colors.textLight20,
+    },
+    appealSubmitText: {
+      fontFamily: fonts.regular,
+      fontSize: normalize(fontSizes.lg),
+      color: colors.textWhite,
+    },
+    emptyWrap: {
+      paddingTop: normalize(80),
+      alignItems: 'center',
+      gap: normalize(10),
+    },
+    emptyIcon: {
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    emptyText: {
+      fontFamily: fonts.regular,
+      fontSize: normalize(fontSizes.xl - 1),
+      color: colors.textSecondary,
+    },
+  });

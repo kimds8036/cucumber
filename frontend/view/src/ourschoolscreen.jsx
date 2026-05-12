@@ -10,6 +10,7 @@ import { getNormalize } from '../../styles/frame.style';
 import { createOurSchoolStyles } from '../../styles/school.style';
 import StudyGrassMap from '../../components/studygrassmap';
 import Skeleton from '../../components/common/Skeleton';
+import SchoolAdPlaceholder from '../../src/screens/ad/SchoolAdPlaceholder';
 
 const OurSchoolScreen = ({ navigation }) => {
   const SCHOOL_CACHE_KEY = '@our_school_screen_cache_v1';
@@ -451,6 +452,7 @@ const OurSchoolScreen = ({ navigation }) => {
           <Text style={styles.grassCardTitle}>우리 학교 공부 잔디밭</Text>
           <StudyGrassMap days={grassDays} />
         </View>
+        <SchoolAdPlaceholder />
 
         {/* 게시판 / 우편함 바로가기 */}
         <View style={styles.shortcutContainer}>

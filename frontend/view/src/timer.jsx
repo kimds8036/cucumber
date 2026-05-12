@@ -438,6 +438,26 @@ function formatHMS(ms) {
   return `${pad(h)}:${pad(m)}:${pad(s)}`;
 }
 
+function lightenHex(hex, amount = 0.85) {
+  if (!hex) return '#F7F7F7';
+  const clean = String(hex).replace('#', '');
+  const full =
+    clean.length === 3
+      ? clean
+          .split('')
+          .map((c) => c + c)
+          .join('')
+      : clean;
+  if (!/^[0-9a-fA-F]{6}$/.test(full)) return '#F7F7F7';
+
+  const r = Number.parseInt(full.slice(0, 2), 16);
+  const g = Number.parseInt(full.slice(2, 4), 16);
+  const b = Number.parseInt(full.slice(4, 6), 16);
+  const mix = (v) => Math.round(v + (255 - v) * amount);
+  const toHex = (v) => v.toString(16).padStart(2, '0');
+  return `#${toHex(mix(r))}${toHex(mix(g))}${toHex(mix(b))}`;
+}
+
 function buildSubjectIdHistogram(items = [], key = 'subjectId') {
   const map = {};
   items.forEach((item) => {
@@ -739,110 +759,114 @@ function TimerLiveScrollInner({
                 : formatHMS(totalMs);
               const isCollapsed = collapsedSubjects[sub.id] === true;
               return (
-                <View key={sub.id} style={styles.subjectBlock}>
-                  <TouchableOpacity
-                    style={styles.subjectRow}
-                    activeOpacity={1}
-                    onLongPress={() => deleteSubject?.(sub)}
-                    delayLongPress={350}
-                    disabled={!isViewingToday}
+                <View
+                  key={sub.id}
+                  style={styles.subjectAccordionWrap}
+                >
+                  <View
+                    style={[
+                      styles.subjectBlock,
+                      { backgroundColor: lightenHex(sub.color, 0.9) },
+                    ]}
                   >
-                    <View
-                      style={[
-                        styles.subjectColorBar,
-                        { backgroundColor: sub.color },
-                      ]}
-                    />
-                    <View style={styles.subjectBody}>
-                      <Text style={styles.subjectName}>{sub.name}</Text>
-                      <Text style={styles.subjectTime}>{totalStr}</Text>
-                    </View>
                     <TouchableOpacity
-                      style={[
-                        styles.subjectPlayBtn,
-                        { backgroundColor: sub.color },
-                        isThisRunning && styles.subjectPlayBtnActive,
-                      ]}
-                      onPress={() =>
-                        isRunning && activeSubjectId === sub.id
-                          ? pauseTimer()
-                          : startForSubject(sub.id)
-                      }
+                      style={styles.subjectRow}
+                      activeOpacity={1}
+                      onLongPress={() => deleteSubject?.(sub)}
+                      delayLongPress={350}
                       disabled={!isViewingToday}
                     >
-                      <Ionicons
-                        name={isThisRunning ? 'pause' : 'play'}
-                        size={normalize(18)}
-                        color={colors.textWhite}
-                      />
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                      style={styles.subjectCollapseBtn}
-                      onPress={() => toggleSubjectCollapsed(sub.id)}
-                    >
-                      <Ionicons
-                        name={isCollapsed ? 'chevron-down' : 'chevron-up'}
-                        size={normalize(20)}
-                        color={colors.textSecondary}
-                      />
-                    </TouchableOpacity>
-                  </TouchableOpacity>
-                  {!isCollapsed && (
-                    <>
-                      {subTasks.map((task) => (
-                        <TouchableOpacity
-                          key={task.id}
-                          style={styles.taskRow}
-                          activeOpacity={1}
-                          onLongPress={() => deleteTask?.(task)}
-                          delayLongPress={350}
-                          disabled={!isViewingToday}
-                        >
-                          <TouchableOpacity
-                            style={[
-                              styles.taskCheckbox,
-                              task.status === 'done' &&
-                                styles.taskCheckboxChecked,
-                            ]}
-                            onPress={() =>
-                              isViewingToday &&
-                              setTaskStatus(
-                                task.id,
-                                task.status === 'done' ? 'pending' : 'done',
-                              )
-                            }
-                            disabled={!isViewingToday}
-                          >
-                            {task.status === 'done' && (
-                              <Ionicons
-                                name="checkmark"
-                                size={normalize(14)}
-                                color={colors.textWhite}
-                              />
-                            )}
-                          </TouchableOpacity>
-                          <Text
-                            style={[
-                              styles.taskContent,
-                              task.status === 'done' && styles.taskContentDone,
-                            ]}
-                            numberOfLines={1}
-                          >
-                            {task.content}
-                          </Text>
-                        </TouchableOpacity>
-                      ))}
+                      <View style={[styles.subjectBody]}>
+                        <Text style={styles.subjectName}>{sub.name}</Text>
+                        <Text style={styles.subjectTime}>{totalStr}</Text>
+                      </View>
                       <TouchableOpacity
-                        style={styles.todoAddUnderSubject}
-                        onPress={() => openAddTaskForSubject(sub.id)}
+                        style={[
+                          styles.subjectPlayBtn,
+                          { backgroundColor: sub.color },
+                          isThisRunning && styles.subjectPlayBtnActive,
+                        ]}
+                        onPress={() =>
+                          isRunning && activeSubjectId === sub.id
+                            ? pauseTimer()
+                            : startForSubject(sub.id)
+                        }
                         disabled={!isViewingToday}
                       >
-                        <Text style={styles.todoAddUnderSubjectText}>
-                          + 추가
-                        </Text>
+                        <Ionicons
+                          name={isThisRunning ? 'pause' : 'play'}
+                          size={normalize(18)}
+                          color={colors.textWhite}
+                        />
                       </TouchableOpacity>
-                    </>
-                  )}
+                      <TouchableOpacity
+                        style={styles.subjectCollapseBtn}
+                        onPress={() => toggleSubjectCollapsed(sub.id)}
+                      >
+                        <Ionicons
+                          name={isCollapsed ? 'chevron-down' : 'chevron-up'}
+                          size={normalize(20)}
+                          color={colors.textSecondary}
+                        />
+                      </TouchableOpacity>
+                    </TouchableOpacity>
+                    {!isCollapsed && (
+                      <View style={styles.subjectTasksArea}>
+                        {subTasks.map((task) => (
+                          <TouchableOpacity
+                            key={task.id}
+                            style={styles.taskRow}
+                            activeOpacity={1}
+                            onLongPress={() => deleteTask?.(task)}
+                            delayLongPress={350}
+                            disabled={!isViewingToday}
+                          >
+                            <TouchableOpacity
+                              style={[
+                                styles.taskCheckbox,
+                                task.status === 'done' &&
+                                  styles.taskCheckboxChecked,
+                              ]}
+                              onPress={() =>
+                                isViewingToday &&
+                                setTaskStatus(
+                                  task.id,
+                                  task.status === 'done' ? 'pending' : 'done',
+                                )
+                              }
+                              disabled={!isViewingToday}
+                            >
+                              {task.status === 'done' && (
+                                <Ionicons
+                                  name="checkmark"
+                                  size={normalize(14)}
+                                  color={colors.textWhite}
+                                />
+                              )}
+                            </TouchableOpacity>
+                            <Text
+                              style={[
+                                styles.taskContent,
+                                task.status === 'done' && styles.taskContentDone,
+                              ]}
+                              numberOfLines={1}
+                            >
+                              {task.content}
+                            </Text>
+                          </TouchableOpacity>
+                        ))}
+                        <TouchableOpacity
+                          style={styles.todoAddUnderSubject}
+                          onPress={() => openAddTaskForSubject(sub.id)}
+                          disabled={!isViewingToday}
+                        >
+                          <Text style={styles.todoAddUnderSubjectText}>
+                            + 할 일 추가
+                          </Text>
+                        </TouchableOpacity>
+                      </View>
+                    )}
+                  </View>
                 </View>
               );
             })}
@@ -1139,6 +1163,7 @@ export const TimerContent = () => {
           list.map((f, index) => ({
             id: f.userId,
             name: f.name || f.username || '친구',
+            username: f.username,
             colorId:
               f.colorId ??
               f.profileColorId ??
@@ -2333,46 +2358,18 @@ export const TimerContent = () => {
         onClose={() => setShowSaveModal(false)}
         dismissOnBackdrop={false}
       >
-        <Text
-          style={{
-            fontSize: 18,
-            color: colors.textPrimary,
-            fontWeight: '700',
-            textAlign: 'center',
-            marginBottom: 10,
-          }}
-        >
+        <Text style={styles.timerSaveModalTitle}>
           저장 완료
         </Text>
-        <Text
-          style={{
-            fontSize: 14,
-            color: colors.textSecondary,
-            textAlign: 'center',
-            lineHeight: 22,
-            marginBottom: 16,
-          }}
-        >
+        <Text style={styles.timerSaveModalBody}>
           갤러리에 저장되었어요
         </Text>
         <TouchableOpacity
-          style={{
-            height: 42,
-            borderRadius: 10,
-            backgroundColor: colors.primary,
-            alignItems: 'center',
-            justifyContent: 'center',
-          }}
+          style={styles.timerSaveModalConfirmBtn}
           onPress={() => setShowSaveModal(false)}
           activeOpacity={0.85}
         >
-          <Text
-            style={{
-              fontSize: 14,
-              fontWeight: '700',
-              color: colors.textWhite,
-            }}
-          >
+          <Text style={styles.timerSaveModalConfirmText}>
             확인
           </Text>
         </TouchableOpacity>

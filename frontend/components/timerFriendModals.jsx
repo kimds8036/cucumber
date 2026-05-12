@@ -67,6 +67,22 @@ export const PokeModal = ({
         activeOpacity={1}
       />
       <View style={s.pokeWrapper}>
+        {!isStudying ? (
+          <View style={s.pokeOutsideDescWrap}>
+            {pokeLockedSeconds > 0 ? (
+              <Text style={s.pokeOutsideDesc}>
+                {`${pokeLockedSeconds}초 후 다시 보낼 수 있어요`}
+              </Text>
+            ) : (
+              <Text style={s.pokeOutsideDesc}>
+                <Text style={s.pokeOutsideDescHighlight}>쿡 찌르기</Text>
+                <Text style={s.pokeOutsideDescRest}>
+                  로 공부하자고 알림을 보내보세요!
+                </Text>
+              </Text>
+            )}
+          </View>
+        ) : null}
         <View style={s.pokePopup}>
 
           {/* 친구 정보 */}
@@ -89,13 +105,19 @@ export const PokeModal = ({
               )}
             </View>
             <View>
-              <Text style={s.pokeFriendName}>{friend.name}</Text>
+              <View style={s.pokeFriendNameRow}>
+                <Text style={s.pokeFriendName}>{friend.name}</Text>
+                {friend.username ? (
+                  <Text style={s.pokeFriendUsername}>
+                    {friend.username}
+                  </Text>
+                ) : null}
+              </View>
               <Text style={s.pokeStatusText}>
                 {isStudying ? '공부 중' : '쉬는 중'}
               </Text>
             </View>
           </View>
-
           {/* 상태별 분기 */}
           {isStudying ? (
             <>
@@ -122,41 +144,32 @@ export const PokeModal = ({
             <>
               <TouchableOpacity
                 style={[
-                  s.pokePrimaryBtn,
+                  s.pokeActionBtn,
                   pokeLockedSeconds > 0 && s.btnDisabled,
                 ]}
                 onPress={onPoke}
                 activeOpacity={0.8}
                 disabled={pokeLockedSeconds > 0}
               >
-                <View style={s.pokePrimaryBtnContent}>
+                <View style={s.pokeActionBtnContent}>
                   <MaterialCommunityIcons
                     name="hand-pointing-right"
                     style={s.pokeInfoEmoji}
                   />
-                  <View style={s.pokePrimaryBtnTextGroup}>
-                    <Text style={s.pokeInfoTitle}>쿡 찌르기</Text>
-                    <Text style={s.pokeInfoDesc}>
-                      {pokeLockedSeconds > 0
-                        ? `${pokeLockedSeconds}초 후 다시 보낼 수 있어요.`
-                        : '친구에게 공부하자고 알림을 보낼 수 있어요.'}
-                    </Text>
-                  </View>
+                  <Text style={s.pokeActionBtnText}>쿡 찌르기</Text>
                 </View>
               </TouchableOpacity>
             </>
           )}
 
           <TouchableOpacity
-            style={s.pokeMessageBtn}
+            style={s.pokeMessageActionBtn}
             onPress={() => onMessage?.()}
             activeOpacity={0.8}
           >
-            <View style={s.pokePrimaryBtnContent}>
+            <View style={s.pokeMessageActionBtnContent}>
               <Ionicons name="chatbubble" style={s.pokeMessageBtnIcon} />
-              <View style={s.pokePrimaryBtnTextGroup}>
-                <Text style={s.pokeInfoTitle}>메시지 보내기</Text>
-              </View>
+              <Text style={s.pokeMessageActionBtnText}>메시지 보내기</Text>
             </View>
           </TouchableOpacity>
         </View>

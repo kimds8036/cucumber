@@ -137,13 +137,13 @@ export const createSubHeaderStyles = (width, height) => {
     header: {
       paddingTop: normalize(10),
       backgroundColor: colors.background,
-      paddingHorizontal: width * 0.08,
+      paddingHorizontal: width * 0.07,
     },
     headerTop: {
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'center',
-      height: normalize(30),
+      height: normalize(20),
       marginBottom: normalize(10),
       position: 'relative',
     },
@@ -152,7 +152,7 @@ export const createSubHeaderStyles = (width, height) => {
       left: -5,
     },
     headerTitle: {
-      fontSize: normalize(fontSizes.heading),
+      fontSize: normalize(fontSizes.xxl),
       fontFamily: fonts.bold,
       color: colors.textPrimary,
     },
@@ -161,7 +161,7 @@ export const createSubHeaderStyles = (width, height) => {
       right: -5,
     },
     rightButtonText: {
-      fontSize: normalize(fontSizes.xxl),
+      fontSize: normalize(fontSizes.xl),
       fontFamily: fonts.bold,
       color: colors.primaryDark,
     },

@@ -1,4 +1,4 @@
-import { StyleSheet } from 'react-native';
+import { Platform, StyleSheet } from 'react-native';
 import { colors, fonts, fontSizes } from './colors';
 import { shadow } from './tokens';
 
@@ -217,13 +217,16 @@ export const createChatStyles = (width, normalize) => {
       borderTopRightRadius: normalize(16),
       borderBottomRightRadius: normalize(16),
       backgroundColor: colors.textLight5,
-      flexShrink: 1,
       alignSelf: 'flex-start',
     },
     opponentBubbleText: {
       fontSize: normalize(fontSizes.xl),
+      lineHeight: normalize(fontSizes.xl) * 1.4,
       fontFamily: fonts.regular,
       color: colors.textPrimary,
+      ...Platform.select({
+        android: { includeFontPadding: false },
+      }),
     },
     opponentTimeRow: {
       flexDirection: 'row',
@@ -257,7 +260,10 @@ export const createChatStyles = (width, normalize) => {
       fontFamily: fonts.bold,
       color: colors.primary,
       marginBottom: 0,
-      marginRight: normalize(4),
+      lineHeight: normalize(fontSizes.md + 2),
+      includeFontPadding: false,
+      paddingVertical: 0,
+      textAlignVertical: 'bottom',
     },
     userBubble: {
       paddingVertical: normalize(6),
@@ -265,19 +271,30 @@ export const createChatStyles = (width, normalize) => {
       borderRadius: normalize(16),
       borderTopRightRadius: normalize(0),
       backgroundColor: colors.primaryLight30,
-      flexShrink: 1,
       minWidth: 0,
     },
     userBubbleText: {
       fontSize: normalize(fontSizes.xl),
+      lineHeight: normalize(fontSizes.xl) * 1.4,
       fontFamily: fonts.regular,
       color: colors.textPrimary,
+      ...Platform.select({
+        android: { includeFontPadding: false },
+      }),
+    },
+    deletedMessageText: {
+      fontSize: normalize(fontSizes.xl),
+      fontFamily: fonts.regular,
+      color: colors.textSecondary,
+      fontStyle: 'italic',
     },
     chatTimeUser: {
       fontSize: normalize(fontSizes.md),
       fontFamily: fonts.regular,
       color: colors.textSecondary,
-      marginBottom: 0,
+      lineHeight: normalize(fontSizes.md + 2),
+      includeFontPadding: false,
+      textAlignVertical: 'bottom',
     },
 
     // ─────────────────────────────────────────────
@@ -287,8 +304,6 @@ export const createChatStyles = (width, normalize) => {
       backgroundColor: colors.surface,
       paddingHorizontal: normalize(12),
       paddingVertical: normalize(8),
-      borderBottomWidth: 1,
-      borderBottomColor: colors.textLight5,
       flexDirection: 'row',
       justifyContent: 'space-between',
       alignItems: 'center',
@@ -297,7 +312,7 @@ export const createChatStyles = (width, normalize) => {
       flex: 1,
     },
     replyPreviewTitle: {
-      fontSize: normalize(fontSizes.lg),
+      fontSize: normalize(fontSizes.md),
       color: colors.textSecondary,
     },
     replyPreviewContent: {
@@ -310,10 +325,13 @@ export const createChatStyles = (width, normalize) => {
       borderBottomWidth: normalize(1),
       borderBottomColor: colors.textLight10,
       paddingVertical: normalize(6),
-      paddingHorizontal: normalize(10),
+      paddingRight: normalize(24),
       marginBottom: normalize(6),
       opacity: 1,
+      width: '100%',
+      justifyContent: 'flex-start',
       alignItems: 'flex-start',
+      alignContent: 'flex-start',
       alignSelf: 'stretch',
     },
     replyQuoteSender: {
@@ -330,6 +348,121 @@ export const createChatStyles = (width, normalize) => {
       color: colors.textSecondary, // textPrimary → textSecondary로 구분감
       textAlign: 'left',
       alignSelf: 'stretch',
+    },
+
+    // ─────────────────────────────────────────────
+    // ChatScreen 레이아웃/토스트/스켈레톤
+    // ─────────────────────────────────────────────
+    chatScreenBody: {
+      flex: 1,
+    },
+    chatScreenMain: {
+      flex: 1,
+      backgroundColor: colors.background,
+    },
+    chatListContainer: {
+      flex: 1,
+      position: 'relative',
+    },
+    loadMoreWrap: {
+      position: 'absolute',
+      top: normalize(8),
+      left: 0,
+      right: 0,
+      alignItems: 'center',
+      zIndex: 25,
+    },
+    loadMoreButton: {
+      backgroundColor: 'rgba(255,255,255,0.98)',
+      borderWidth: 1,
+      borderColor: colors.textLight20,
+      borderRadius: normalize(14),
+      paddingHorizontal: normalize(12),
+      paddingVertical: normalize(7),
+    },
+    loadMoreButtonText: {
+      fontSize: normalize(fontSizes.lg),
+      fontFamily: fonts.regular,
+      color: colors.textPrimary,
+    },
+    chatSkeletonOverlay: {
+      ...StyleSheet.absoluteFillObject,
+      backgroundColor: colors.background,
+      justifyContent: 'space-between',
+      zIndex: 50,
+    },
+    chatSkeletonTop: {
+      paddingTop: normalize(12),
+      paddingHorizontal: normalize(14),
+    },
+    chatSkeletonBody: {
+      width: '100%',
+      paddingHorizontal: normalize(14),
+      gap: normalize(14),
+    },
+    chatSkeletonRowLeft: {
+      flexDirection: 'row',
+      alignItems: 'flex-end',
+      gap: normalize(8),
+    },
+    chatSkeletonRowRight: {
+      alignItems: 'flex-end',
+    },
+    chatSkeletonBubbleWrap72: {
+      gap: normalize(6),
+      maxWidth: '72%',
+    },
+    chatSkeletonBubbleWrap68: {
+      gap: normalize(6),
+      maxWidth: '68%',
+    },
+    chatSkeletonBubbleWrap72Right: {
+      gap: normalize(6),
+      width: '72%',
+      alignItems: 'flex-end',
+    },
+    chatSkeletonBottomSpacer: {
+      height: normalize(12),
+    },
+    chatToastWrap: {
+      position: 'absolute',
+      left: 0,
+      right: 0,
+      bottom: normalize(200),
+      alignItems: 'center',
+    },
+    chatToastCard: {
+      backgroundColor: colors.textLight10,
+      borderRadius: normalize(999),
+      paddingHorizontal: normalize(16),
+      paddingVertical: normalize(10),
+    },
+    chatToastText: {
+      fontSize: normalize(fontSizes.lg),
+      fontFamily: fonts.regular,
+      color: colors.textPrimary,
+    },
+    replyPreviewFallback: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      paddingHorizontal: normalize(16),
+      paddingVertical: normalize(8),
+      backgroundColor: colors.surface,
+      borderTopWidth: 1,
+      borderTopColor: colors.textLight20,
+    },
+    replyPreviewMetaWrap: {
+      flex: 1,
+    },
+    replyPreviewTitleFallback: {
+      fontSize: normalize(fontSizes.lg),
+      fontFamily: fonts.bold,
+      color: colors.primary,
+    },
+    replyPreviewContentFallback: {
+      fontSize: normalize(fontSizes.lg),
+      fontFamily: fonts.regular,
+      color: colors.textSecondary,
     },
   });
 };
