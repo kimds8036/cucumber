@@ -255,8 +255,9 @@ export default function useChatCore(config) {
       (async () => {
         try {
           const cached = await loadCache(cacheScope, roomId);
+          let cachedMsgs = [];
           if (cached && isMounted && !controller.signal.aborted) {
-            const cachedMsgs = cached.messageIds
+            cachedMsgs = cached.messageIds
               .map((id) => cached.messagesById[id])
               .filter(Boolean);
             if (cachedMsgs.length) {
@@ -287,6 +288,18 @@ export default function useChatCore(config) {
           const normalized = [];
           for (let i = msgs.length - 1; i >= 0; i--) {
             normalized.push(normalizeMessage(msgs[i], currentMeId));
+          }
+
+          // 서버가 삭제 메시지를 내려주지 않는 경우를 대비해,
+          // 캐시에 이미 있던 tombstone(is_deleted) 메시지는 유지한다.
+          if (cachedMsgs.length) {
+            const normalizedIds = new Set(normalized.map((m) => String(m.id)));
+            const missingDeletedFromCache = cachedMsgs.filter(
+              (m) => m?.is_deleted && !normalizedIds.has(String(m.id)),
+            );
+            if (missingDeletedFromCache.length) {
+              normalized.push(...missingDeletedFromCache);
+            }
           }
 
           if (!controller.signal.aborted && isMounted) {

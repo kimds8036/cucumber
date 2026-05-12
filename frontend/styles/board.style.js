@@ -638,6 +638,15 @@ export const createDetailStyles = (width, normalize) => {
   const metaTextAndroid =
     Platform.OS === 'android' ? { includeFontPadding: false } : {};
 
+  /** CommentInput / MessageInput 공통 — placeholder·본문 동일 메트릭 */
+  const bottomInputFontSize = normalize(fontSizes.xl);
+  const bottomInputLineHeight = Math.round(bottomInputFontSize * (20 / 14));
+  const bottomInputMinHeight = normalize(44);
+  const bottomInputPaddingV = Math.max(
+    normalize(6),
+    Math.round((bottomInputMinHeight - bottomInputLineHeight) / 2),
+  );
+
   return StyleSheet.create({
     container: {
       flex: 1,
@@ -781,7 +790,6 @@ export const createDetailStyles = (width, normalize) => {
     adSection: {
       minHeight: normalize(40),
       marginHorizontal: width * 0,
-      marginVertical: normalize(3),
       backgroundColor: colors.backgroundGray,
       justifyContent: 'center',
       alignItems: 'center',
@@ -793,9 +801,8 @@ export const createDetailStyles = (width, normalize) => {
     },
     // 댓글 섹션 (SchoolMail.style.js smDetailComment* 와 동일 톤·간격)
     commentSection: {
-      paddingHorizontal: width * 0.03,
-      paddingTop: normalize(8),
-      paddingBottom: normalize(10),
+      paddingHorizontal: width * 0,
+      paddingVertical: normalize(10),
     },
     commentSectionTitle: {
       fontSize: normalize(fontSizes.xl),
@@ -816,9 +823,8 @@ export const createDetailStyles = (width, normalize) => {
     /** 댓글·대댓글 공통 말풍선 (= smDetailCommentBubble) */
     commentBubble: {
       backgroundColor: colors.background,
-      borderRadius: normalize(12),
-      paddingVertical: normalize(8),
-      paddingLeft: normalize(10),
+      paddingVertical: normalize(10),
+      paddingHorizontal: normalize(14),
     },
     /** 대댓글 말풍선 가로 확장 (= smDetailCommentBubbleReply) */
     commentBubbleReply: {
@@ -974,14 +980,22 @@ export const createDetailStyles = (width, normalize) => {
     },
     bottomInput: {
       flex: 1,
-      paddingVertical: normalize(12),
+      minHeight: bottomInputMinHeight,
+      paddingVertical: bottomInputPaddingV,
       paddingHorizontal: normalize(16),
       borderRadius: normalize(24),
       backgroundColor: colors.textLight5,
-      fontSize: normalize(fontSizes.xl),
+      fontSize: bottomInputFontSize,
+      lineHeight: bottomInputLineHeight,
       fontFamily: fonts.regular,
       color: colors.textPrimary,
       maxHeight: normalize(80),
+      textAlignVertical: 'center',
+      ...Platform.select({
+        android: {
+          includeFontPadding: false,
+        },
+      }),
     },
     sendButton: {
       width: normalize(44),

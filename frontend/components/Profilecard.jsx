@@ -9,7 +9,6 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import Feather from '@expo/vector-icons/Feather';
 import ProfileIcon from '../assets/Profile.svg';
 import { getNormalize, createProfileCardStyles } from '../styles/mypage.style';
-import { useFriend } from '../context/FriendContext';
 import { api } from '../utils/api';
 import { PROFILE_COUNTS_CACHE_KEY } from '../utils/profileCountsCache';
 import { getProfileHexByColorId } from '../utils/profileColor';
@@ -28,7 +27,6 @@ const ProfileCard = ({
     () => createProfileCardStyles(normalize),
     [normalize],
   );
-  const { hasUnreadFriendRequests } = useFriend();
   const [counts, setCounts] = useState({
     friendCount: Number(userInfo?.friendCount ?? 0),
     postCount: 0,
@@ -139,9 +137,6 @@ const ProfileCard = ({
                   </View>
                 </>
               )}
-              {!countsLoading && hasUnreadFriendRequests ? (
-                <View style={styles.quickLinkDot} />
-              ) : null}
             </TouchableOpacity>
 
             <TouchableOpacity

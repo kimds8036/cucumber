@@ -68,7 +68,7 @@
 ## C. 보강 필요 후보 (키보드 보정 약한 화면)
 - [x] `frontend/components/timerFriendModals.jsx` (실제 수정 완료: 모달 KAV + dismiss 적용)
 - [x] `frontend/view/src/mailreply.jsx` (1차 적용 완료)
-- [x] `frontend/view/src/addtimetable.jsx` (1차 적용 완료)
+- [x] `frontend/view/src/edittimetable.jsx` (1차 적용 완료)
 - [x] `frontend/view/src/friendsscreen.jsx` (1차 적용 완료)
 - [x] `frontend/view/src/notificationsettings.jsx` (1차 적용 완료)
 - [x] `frontend/view/src/timerModals.jsx` (1차 적용 완료)
@@ -101,7 +101,7 @@
 
 ## 4단계: 보강 후보 화면 처리
 - `mailreply.jsx`에 키보드 회피 구조 추가
-- 모달 입력(`addtimetable`, `timerModals`)의 작은 화면 가림 대응
+- 모달 입력(`edittimetable`, `timerModals`)의 작은 화면 가림 대응
 - `friendsscreen`, `notificationsettings` 입력 UX 최소 보정
 
 ## 5단계: 선택적 고급화 검토

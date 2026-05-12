@@ -18,12 +18,17 @@ import Skeleton from '../../components/common/Skeleton';
 import { api } from '../../utils/api';
 import { subscribeSchoolMailLike } from '../../utils/listSyncEvents';
 import { getSchoolMailFromLabel } from './utils/schoolMailFromLabel';
+import MailboxAdPlaceholder from '../../src/screens/ad/MailboxAdPlaceholder';
 
 function formatTimeAgo(createdAt) {
   if (!createdAt) return '';
-  let dateStr = typeof createdAt === 'string' ? createdAt.trim() : String(createdAt);
+  let dateStr =
+    typeof createdAt === 'string' ? createdAt.trim() : String(createdAt);
   if (!dateStr) return '';
-  if (/^\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}:\d{2}(\.\d+)?$/.test(dateStr) && !/[Z+-]/.test(dateStr)) {
+  if (
+    /^\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}:\d{2}(\.\d+)?$/.test(dateStr) &&
+    !/[Z+-]/.test(dateStr)
+  ) {
     dateStr = dateStr.replace(' ', 'T') + 'Z';
   }
   const date = new Date(dateStr);
@@ -43,8 +48,12 @@ function formatTimeAgo(createdAt) {
 
 function isMailNew(createdAt) {
   if (!createdAt) return false;
-  let dateStr = typeof createdAt === 'string' ? createdAt.trim() : String(createdAt);
-  if (/^\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}:\d{2}(\.\d+)?$/.test(dateStr) && !/[Z+-]/.test(dateStr)) {
+  let dateStr =
+    typeof createdAt === 'string' ? createdAt.trim() : String(createdAt);
+  if (
+    /^\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}:\d{2}(\.\d+)?$/.test(dateStr) &&
+    !/[Z+-]/.test(dateStr)
+  ) {
     dateStr = dateStr.replace(' ', 'T') + 'Z';
   }
   const t = new Date(dateStr).getTime();
@@ -68,16 +77,30 @@ function mapMailForCard(raw, mailboxSchoolId) {
 const SchoolMailboxScreen = ({ navigation, route }) => {
   const { width } = useWindowDimensions();
   const normalize = useMemo(() => getNormalize(width), [width]);
-  const styles = useMemo(() => createSchoolMailStyles(width, normalize), [width, normalize]);
+  const styles = useMemo(
+    () => createSchoolMailStyles(width, normalize),
+    [width, normalize],
+  );
 
   const schoolName = route?.params?.schoolName ?? 'OO고등학교';
   const schoolId = route?.params?.schoolId ?? null;
+  const sourceScreen = route?.params?.sourceScreen ?? null;
 
   const [mails, setMails] = useState([]);
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
+  const mailsWithAds = useMemo(() => {
+    const next = [];
+    mails.forEach((mail, index) => {
+      next.push(mail);
+      if ((index + 1) % 5 === 0) {
+        next.push({ id: `mail_ad_${index}`, type: 'mailAd' });
+      }
+    });
+    return next;
+  }, [mails]);
 
   const fetchMails = useCallback(
     async (nextPage = 1, append = false) => {
@@ -112,7 +135,10 @@ const SchoolMailboxScreen = ({ navigation, route }) => {
         setPage(nextPage);
         setHasMore(nextPage < totalPages && list.length > 0);
       } catch (e) {
-        console.error('학교 우편 목록 로드 실패:', e?.response?.data || e.message);
+        console.error(
+          '학교 우편 목록 로드 실패:',
+          e?.response?.data || e.message,
+        );
         if (!append) setMails([]);
       } finally {
         setLoading(false);
@@ -136,8 +162,10 @@ const SchoolMailboxScreen = ({ navigation, route }) => {
     const unsub = subscribeSchoolMailLike(({ mailId, liked, likeCount }) => {
       setMails((prev) =>
         prev.map((m) =>
-          m.id === mailId ? { ...m, is_liked: liked, like_count: likeCount } : m
-        )
+          m.id === mailId
+            ? { ...m, is_liked: liked, like_count: likeCount }
+            : m,
+        ),
       );
     });
     return () => unsub();
@@ -154,6 +182,9 @@ const SchoolMailboxScreen = ({ navigation, route }) => {
   }, [schoolId, fetchMails]);
 
   const renderItem = ({ item: raw }) => {
+    if (raw.type === 'mailAd') {
+      return <MailboxAdPlaceholder styles={styles} />;
+    }
     const mail = mapMailForCard(raw, schoolId);
     return (
       <TouchableOpacity
@@ -199,7 +230,11 @@ const SchoolMailboxScreen = ({ navigation, route }) => {
               <Text style={styles.statText}>{mail.likes}</Text>
             </View>
             <View style={styles.statItem}>
-              <Ionicons name="chatbubble-outline" size={normalize(15)} color={colors.primary} />
+              <Ionicons
+                name="chatbubble-outline"
+                size={normalize(15)}
+                color={colors.primary}
+              />
               <Text style={styles.statText}>{mail.comments}</Text>
             </View>
           </View>
@@ -214,23 +249,57 @@ const SchoolMailboxScreen = ({ navigation, route }) => {
         {[0, 1, 2, 3].map((idx) => (
           <View key={`school-mailbox-skel-${idx}`} style={styles.card}>
             <View style={styles.cardTopRow}>
-              <Skeleton width={normalize(62)} height={normalize(11)} borderRadius={normalize(6)} />
-              <Skeleton width={normalize(44)} height={normalize(10)} borderRadius={normalize(5)} />
+              <Skeleton
+                width={normalize(62)}
+                height={normalize(11)}
+                borderRadius={normalize(6)}
+              />
+              <Skeleton
+                width={normalize(44)}
+                height={normalize(10)}
+                borderRadius={normalize(5)}
+              />
             </View>
-            <Skeleton width="100%" height={normalize(13)} borderRadius={normalize(6)} style={{ marginBottom: normalize(4) }} />
-            <Skeleton width="82%" height={normalize(13)} borderRadius={normalize(6)} style={{ marginBottom: normalize(8) }} />
+            <Skeleton
+              width="100%"
+              height={normalize(13)}
+              borderRadius={normalize(6)}
+              style={{ marginBottom: normalize(4) }}
+            />
+            <Skeleton
+              width="82%"
+              height={normalize(13)}
+              borderRadius={normalize(6)}
+              style={{ marginBottom: normalize(8) }}
+            />
             <View style={styles.cardFooterRow}>
               <View style={styles.statRow}>
-                <Skeleton width={normalize(24)} height={normalize(11)} borderRadius={normalize(5)} />
-                <Skeleton width={normalize(24)} height={normalize(11)} borderRadius={normalize(5)} />
+                <Skeleton
+                  width={normalize(24)}
+                  height={normalize(11)}
+                  borderRadius={normalize(5)}
+                />
+                <Skeleton
+                  width={normalize(24)}
+                  height={normalize(11)}
+                  borderRadius={normalize(5)}
+                />
               </View>
             </View>
           </View>
         ))}
       </View>
     ) : !loading && (!schoolId || mails.length === 0) ? (
-      <View style={{ paddingVertical: normalize(40), alignItems: 'center', width: '100%' }}>
-        <Text style={{ fontFamily: fonts.regular, color: colors.textSecondary }}>
+      <View
+        style={{
+          paddingVertical: normalize(40),
+          alignItems: 'center',
+          width: '100%',
+        }}
+      >
+        <Text
+          style={{ fontFamily: fonts.regular, color: colors.textSecondary }}
+        >
           {!schoolId ? '학교 정보가 없습니다.' : '아직 우편이 없습니다'}
         </Text>
       </View>
@@ -243,9 +312,14 @@ const SchoolMailboxScreen = ({ navigation, route }) => {
       <View style={styles.container}>
         <FlatList
           style={styles.list}
-          contentContainerStyle={[styles.gridContainer, mails.length === 0 && { flexGrow: 1 }]}
-          data={mails}
-          keyExtractor={(item) => String(item.id)}
+          contentContainerStyle={[
+            styles.gridContainer,
+            mails.length === 0 && { flexGrow: 1 },
+          ]}
+          data={mailsWithAds}
+          keyExtractor={(item) =>
+            item.type === 'mailAd' ? item.id : String(item.id)
+          }
           numColumns={2}
           columnWrapperStyle={{ justifyContent: 'space-between' }}
           renderItem={renderItem}
@@ -256,8 +330,18 @@ const SchoolMailboxScreen = ({ navigation, route }) => {
           onEndReachedThreshold={0.4}
           ListFooterComponent={
             loadingMore ? (
-              <View style={{ paddingVertical: normalize(16), width: '100%', alignItems: 'center' }}>
-                <Skeleton width={normalize(16)} height={normalize(16)} borderRadius={normalize(8)} />
+              <View
+                style={{
+                  paddingVertical: normalize(16),
+                  width: '100%',
+                  alignItems: 'center',
+                }}
+              >
+                <Skeleton
+                  width={normalize(16)}
+                  height={normalize(16)}
+                  borderRadius={normalize(8)}
+                />
               </View>
             ) : null
           }
@@ -271,6 +355,7 @@ const SchoolMailboxScreen = ({ navigation, route }) => {
             navigation?.navigate('SendSchoolMail', {
               schoolName,
               schoolId,
+              sourceScreen,
             })
           }
         >

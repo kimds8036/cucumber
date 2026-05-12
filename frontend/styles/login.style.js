@@ -1,4 +1,4 @@
-import { StyleSheet } from 'react-native';
+import { Platform, StyleSheet } from 'react-native';
 import { colors, fonts, fontSizes } from './colors';
 import { shadow } from './tokens';
 
@@ -13,19 +13,19 @@ export const createLoginStyles = (width, normalize) => {
     },
     logoContainer: {
       alignItems: 'center',
-      marginBottom: normalize(60),
+      marginBottom: normalize(20),
     },
     logo: {
-      width: normalize(140),
-      height: normalize(140),
-      marginBottom: normalize(20),
+      width: normalize(100),
+      height: normalize(100),
+      marginBottom: normalize(10),
     },
     titleContainer: {
       flexDirection: 'row',
       alignItems: 'baseline',
     },
     titleLarge: {
-      fontSize: normalize(fontSizes.heading + 6),
+      fontSize: normalize(fontSizes.heading + 4),
       fontFamily: fonts.bold,
       color: colors.primary,
     },
@@ -45,7 +45,7 @@ export const createLoginStyles = (width, normalize) => {
       borderColor: colors.primary,
       borderRadius: normalize(20),
       paddingHorizontal: normalize(20),
-      fontSize: normalize(fontSizes.xxl),
+      fontSize: normalize(fontSizes.xl),
       fontFamily: fonts.regular,
       color: colors.textSecondary,
       marginBottom: normalize(12),

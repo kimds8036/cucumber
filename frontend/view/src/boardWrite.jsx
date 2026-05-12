@@ -17,13 +17,12 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
-import { StackActions } from '@react-navigation/native';
+import { CommonActions, StackActions } from '@react-navigation/native';
 import SubHeader from '../frame/subHeader';
 import { createWriteStyles, getNormalize } from '../../styles/board.style';
 import { api } from '../../utils/api';
 import { invalidateProfileCountsCache } from '../../utils/profileCountsCache';
 import { colors, fonts, fontSizes } from '../../styles/colors';
-import BoardCommunityGuideModal from './BoardCommunityGuideModal';
 import { useLocationContext } from '../../context/LocationContext';
 import * as Location from 'expo-location';
 
@@ -53,7 +52,6 @@ const BoardWrite = ({ navigation, route }) => {
   const [boardDropdownVisible, setBoardDropdownVisible] = useState(false);
   const tagInputRef = useRef(null);
   const tagPanelAnim = useRef(new Animated.Value(0)).current;
-  const [communityGuideVisible, setCommunityGuideVisible] = useState(false);
   const TAG_PANEL_HEIGHT = normalize(56);
 
   const handleBack = () => {
@@ -209,7 +207,7 @@ const BoardWrite = ({ navigation, route }) => {
       const formData = new FormData();
       formData.append('boardType', boardType);
       if (schoolId) formData.append('schoolId', String(schoolId));
-      formData.append('content', content.trim());
+      formData.append('content', content);
       hashtags.forEach((tag) => formData.append('tags[]', tag));
       postImages.forEach((uri, index) => {
         formData.append('images', {
@@ -250,7 +248,15 @@ const BoardWrite = ({ navigation, route }) => {
           text: '확인',
           onPress: () => {
             if (boardContext === 'school') {
-              navigation.dispatch(StackActions.replace('SchoolBoardAll'));
+              navigation.dispatch(
+                CommonActions.reset({
+                  index: 1,
+                  routes: [
+                    { name: 'Main', params: { initialTab: 'school' } },
+                    { name: 'SchoolBoardAll' },
+                  ],
+                }),
+              );
             } else {
               navigation.dispatch(StackActions.popToTop());
             }
@@ -271,11 +277,7 @@ const BoardWrite = ({ navigation, route }) => {
   const guideBlock = (
     <View style={styles.box2}>
       <View style={styles.guideContainer}>
-        <Text style={styles.guideText}>비방/욕설 게시글은 </Text>
-        <TouchableOpacity onPress={() => setCommunityGuideVisible(true)}>
-          <Text style={styles.guideLink}>커뮤니티 가이드</Text>
-        </TouchableOpacity>
-        <Text style={styles.guideText}>에 따라 삭제될 수 있어요</Text>
+        <Text style={styles.guideText}>비방/욕설 게시글은 커뮤니티 가이드에 따라 삭제될 수 있어요</Text>
       </View>
     </View>
   );
@@ -555,11 +557,6 @@ const BoardWrite = ({ navigation, route }) => {
       accessible={false}
     >
       <View style={styles.screen}>
-        <BoardCommunityGuideModal
-          visible={communityGuideVisible}
-          normalize={normalize}
-          onClose={() => setCommunityGuideVisible(false)}
-        />
         <View style={styles.keyboardAvoiding}>
           <View style={styles.fullFlex}>
             <SafeAreaView style={styles.container} edges={['top']}>

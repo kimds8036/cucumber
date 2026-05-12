@@ -154,7 +154,7 @@
   - 현재는 모달에 `KeyboardAvoidingView` + 배경 탭 dismiss 보정 적용됨.
 - `frontend/view/src/mailreply.jsx`
   - 답장 입력(`TextInput multiline`)은 있으나 `KeyboardAvoidingView`/dismiss 처리 없음.
-- `frontend/view/src/addtimetable.jsx`
+- `frontend/view/src/edittimetable.jsx`
   - 과목 입력 모달 `TextInput`(`autoFocus`) 사용, 별도 키보드 보정 없음.
 - `frontend/view/src/friendsscreen.jsx`
   - 친구 검색창 `TextInput`만 사용, 키보드 전용 처리 없음.

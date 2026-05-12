@@ -1,5 +1,5 @@
-import React, { useEffect, useState, useMemo } from 'react';
-import { View, Text, TextInput, TouchableOpacity, useWindowDimensions, ScrollView, KeyboardAvoidingView, Platform, Keyboard, TouchableWithoutFeedback, Alert, Modal } from 'react-native';
+import React, { useEffect, useState, useMemo, useRef, useCallback } from 'react';
+import { View, Text, TextInput, TouchableOpacity, useWindowDimensions, Platform, Keyboard, TouchableWithoutFeedback, Alert, Modal } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
 import { createLoginStyles } from '../../styles/login.style';
@@ -69,9 +69,36 @@ const Login = ({ navigation }) => {
     highlight: '',
     body: '',
   });
+  const [keyboardOpen, setKeyboardOpen] = useState(false);
+  const scrollRef = useRef(null);
 
   const styles = useMemo(() => createLoginStyles(width, normalize), [width]);
   const debugLogin = (...args) => console.log('[LoginDebug]', ...args);
+
+  /** 시간표 편집 `scrollAccordionAboveKeyboard`와 같이 포커스 시 입력란이 키보드에 가리지 않도록 */
+  const scrollLoginInputsAboveKeyboard = useCallback(() => {
+    requestAnimationFrame(() => {
+      scrollRef.current?.assureFocusedInputVisible?.();
+    });
+  }, []);
+
+  useEffect(() => {
+    const showEvent = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
+    const hideEvent = Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide';
+    const showSub = Keyboard.addListener(showEvent, () => setKeyboardOpen(true));
+    const hideSub = Keyboard.addListener(hideEvent, () => setKeyboardOpen(false));
+    return () => {
+      showSub.remove();
+      hideSub.remove();
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!keyboardOpen) return;
+    requestAnimationFrame(() => {
+      scrollRef.current?.assureFocusedInputVisible?.();
+    });
+  }, [keyboardOpen]);
 
   useEffect(() => {
     const timer = setTimeout(() => setScreenReady(true), 250);
@@ -100,6 +127,8 @@ const Login = ({ navigation }) => {
       <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
         <View style={{ flex: 1 }}>
           <KeyboardAwareScrollView
+            ref={scrollRef}
+            mode="layout"
             contentContainerStyle={{
               flexGrow: 1,
               justifyContent: 'center',
@@ -111,13 +140,14 @@ const Login = ({ navigation }) => {
             keyboardDismissMode="on-drag"
             showsVerticalScrollIndicator={false}
             bottomOffset={16}
+            scrollEnabled={keyboardOpen}
           >
             {/* 로고 */}
             <View style={styles.logoContainer}>
               <View style={styles.logo}>
                 <LogoIcon
-                  width={normalize(140)}
-                  height={normalize(140)}
+                  width={normalize(100)}
+                  height={normalize(100)}
                   color={colors.primary}
                 />
               </View>
@@ -134,6 +164,7 @@ const Login = ({ navigation }) => {
                 placeholderTextColor={colors.textSecondary}
                 value={id}
                 onChangeText={setId}
+                onFocus={scrollLoginInputsAboveKeyboard}
                 autoCapitalize="none"
               />
 
@@ -144,6 +175,7 @@ const Login = ({ navigation }) => {
                 placeholderTextColor={colors.textSecondary}
                 value={password}
                 onChangeText={setPassword}
+                onFocus={scrollLoginInputsAboveKeyboard}
                 secureTextEntry
                 autoCapitalize="none"
               />

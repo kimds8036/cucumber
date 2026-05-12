@@ -37,8 +37,8 @@ export default function MessageInput({
         selectedImages={images}
         onImagesChange={onImagesChange}
         showImageAttach
-        replyToCommentId={replyToMessage?.id ?? null}
-        replyToAuthorLabel={replyToMessage?.senderName || ''}
+        replyToCommentId={null}
+        replyToAuthorLabel=""
         clearReplyTarget={clearReplyTarget}
         handleSendComment={onSend}
         styles={styles}

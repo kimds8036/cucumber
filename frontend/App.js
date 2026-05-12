@@ -8,6 +8,7 @@ import PWfind from './view/src/PWfind';
 import MainScreen from './view/src/MainScreen';
 import AddTimetable from './src/screens/timetable/TimetableScreen';
 import TimetabelChoice from './src/screens/timetable/timetabelChoice';
+import EditTimetable from './view/src/edittimetable';
 import MyPosts from './view/src/myposts';
 import NotificationSettings from './view/src/notificationsettings';
 import ChangePassword from './view/src/changepassword';
@@ -41,6 +42,7 @@ import ServiceTermsOfService from './src/screens/Terms-of-Service/ServiceTermsOf
 import PrivacyPolicy from './src/screens/Terms-of-Service/PrivacyPolicy';
 import YouthProtectionPolicy from './src/screens/Terms-of-Service/YouthProtectionPolicy';
 import OpenSourceLicenses from './src/screens/Terms-of-Service/OpenSourceLicenses';
+import CommunityGuide from './src/screens/Terms-of-Service/CommunityGuide';
 import { useFonts } from 'expo-font';
 import * as SplashScreen from 'expo-splash-screen';
 import { useEffect, useRef } from 'react';
@@ -118,6 +120,7 @@ function MainStack() {
       <Stack.Screen name="DMChat" component={DMChatScreen} />
       <Stack.Screen name="TimetabelChoice" component={TimetabelChoice} />
       <Stack.Screen name="AddTimetable" component={AddTimetable} />
+      <Stack.Screen name="EditTimetable" component={EditTimetable} />
       <Stack.Screen name="MyPosts" component={MyPosts} />
       <Stack.Screen
         name="NotificationSettings"
@@ -146,6 +149,7 @@ function MainStack() {
       <Stack.Screen name="PrivacyPolicy" component={PrivacyPolicy} />
       <Stack.Screen name="YouthProtectionPolicy" component={YouthProtectionPolicy} />
       <Stack.Screen name="OpenSourceLicenses" component={OpenSourceLicenses} />
+      <Stack.Screen name="CommunityGuide" component={CommunityGuide} />
       <Stack.Screen name="SearchScreen" component={SearchScreen} />
       <Stack.Screen name="SearchResult" component={SearchResult} />
       <Stack.Screen name="OtherSchool" component={OtherSchoolScreen} />

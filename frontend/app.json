@@ -14,6 +14,7 @@
     },
     "ios": {
       "supportsTablet": true,
+      "googleServicesFile": "./GoogleService-Info.plist",
       "infoPlist": {
         "UIViewControllerBasedStatusBarAppearance": false,
         "NSCameraUsageDescription": "학생증 인증을 위해 카메라 접근 권한이 필요합니다.",
@@ -91,7 +92,7 @@
       ]
     ],
     "extra": {
-      "apiBaseUrl": "https://cucumber-production.up.railway.app",
+      "apiBaseUrl": "https://cucumber-develop.up.railway.app",
       "eas": {
         "projectId": "39e0f4f8-dd46-4921-a4bf-68856fdfc85c"
       }

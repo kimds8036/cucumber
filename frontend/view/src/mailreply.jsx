@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { View, Text, ScrollView, TextInput, Modal, TouchableOpacity, useWindowDimensions, Alert, TouchableWithoutFeedback, Keyboard } from 'react-native';
+import { View, Text, ScrollView, TextInput, Modal, TouchableOpacity, useWindowDimensions, Alert, Keyboard } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
 import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
@@ -33,6 +33,7 @@ export default function MailReplyScreen({ navigation, route }) {
   const profileIconColor = getProfileInnerColor(profileColorId);
   const onSent = route?.params?.onSent;
   const [replyText, setReplyText] = useState('');
+  const [charLimit, setCharLimit] = useState(50);
   const [showToast, setShowToast] = useState(false);
   const [sending, setSending] = useState(false);
   const [previewExpanded, setPreviewExpanded] = useState(false);
@@ -46,11 +47,15 @@ export default function MailReplyScreen({ navigation, route }) {
   }, []);
 
   const handleReplyTextChange = (text) => {
-    if (text.length > 50) {
+    if (text.length > charLimit) {
       Alert.alert('알림', '광고를 보면 더 길게 작성할 수 있어요.');
       return;
     }
     setReplyText(text);
+  };
+
+  const handleAdReward = () => {
+    setCharLimit(prev => prev * 2);
   };
 
   const availableHeight = Math.max(
@@ -117,7 +122,6 @@ export default function MailReplyScreen({ navigation, route }) {
   return (
     <>
       <SafeAreaView style={styles.modalFullSafe} edges={['top', 'bottom']}>
-        <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
           <View style={{ flex: 1 }}>
             <View onLayout={(e) => setSubHeaderHeight(e.nativeEvent.layout.height)}>
               <SubHeader
@@ -131,8 +135,9 @@ export default function MailReplyScreen({ navigation, route }) {
                 style={styles.modalFullScroll}
                 contentContainerStyle={styles.modalFullContent}
                 showsVerticalScrollIndicator={false}
-                keyboardShouldPersistTaps="handled"
+                keyboardShouldPersistTaps="always"
                 keyboardDismissMode="on-drag"
+                onScrollBeginDrag={Keyboard.dismiss}
                 bottomOffset={Math.max(bottomHeight, 16)}
               >
             <View
@@ -181,11 +186,18 @@ export default function MailReplyScreen({ navigation, route }) {
 
               <View style={styles.replyFormMetaRow}>
                 <View style={{ marginLeft: 'auto', alignItems: 'flex-end', justifyContent: 'flex-end' }}>
-                  <Text style={styles.replyFormCount}>{replyText.length}/50자</Text>
-                  <View style={styles.replyFormChip}>
+                  <Text style={styles.replyFormCount}>{replyText.length}/{charLimit}자</Text>
+                  <TouchableOpacity
+                    style={styles.replyFormChip}
+                    onPress={() => {
+                      // 나중에 애드몹 RewardedAd 로직으로 교체할 자리
+                      handleAdReward();
+                    }}
+                    activeOpacity={0.8}
+                  >
                     <MaterialCommunityIcons name="television-classic" size={15} color={colors.textPrimary} />
                     <Text style={styles.replyFormChipText}>x 2</Text>
-                  </View>
+                  </TouchableOpacity>
                 </View>
               </View>
             </View>
@@ -206,11 +218,10 @@ export default function MailReplyScreen({ navigation, route }) {
               </View>
             </View>
           </View>
-        </TouchableWithoutFeedback>
       </SafeAreaView>
 
       {/* 전송 완료 토스트 */}
-      <Modal visible={showToast} transparent animationType="fade">
+      <Modal visible={showToast} transparent animationType="none">
         <View style={styles.toastOverlay}>
           <View style={styles.toastCard}>
             <Text style={styles.toastIcon}>📮</Text>
