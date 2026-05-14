@@ -58,7 +58,7 @@ export function BoardAllContent({ navigation, posts }) {
   const { width } = useWindowDimensions();
   const normalize = useMemo(() => getNormalize(width), [width]);
   const styles = useMemo(() => createBoardStyles(width, normalize), [width]);
-  const { coords, refreshLocation } = useLocationContext();
+  const { coords, refreshLocation, permissionGranted } = useLocationContext();
 
   const [sortType, setSortType] = useState('latest'); // latest, popular, nearby
   const [serverPosts, setServerPosts] = useState([]);
@@ -354,6 +354,7 @@ export function BoardAllContent({ navigation, posts }) {
       post={post}
       normalize={normalize}
       styles={styles}
+      distanceLoading={sortType === 'nearby' && permissionGranted && !coords}
       onPress={() =>
         navigation.navigate('BoardDetail', {
           post: { ...post, author: post.author },
@@ -415,9 +416,11 @@ export function BoardAllContent({ navigation, posts }) {
             !loading ? (
               <View style={{ paddingVertical: normalize(40), alignItems: 'center' }}>
                 <Text style={{ fontFamily: fonts.regular, color: colors.textSecondary }}>
-                  {sortType === 'nearby' && !coords
-                    ? '현재 위치를 불러올 수 없어요. 아래로 당겨 다시 시도해 주세요.'
-                    : '아직 게시글이 없습니다.'}
+                  {sortType === 'nearby' && !permissionGranted
+                    ? '게시판 거리·근처 글을 보려면 위치 권한이 필요해요.'
+                    : sortType === 'nearby' && permissionGranted && !coords
+                      ? '위치 정보를 가져오는 중입니다...'
+                      : '아직 게시글이 없습니다.'}
                 </Text>
               </View>
             ) : null
