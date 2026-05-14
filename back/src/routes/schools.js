@@ -228,6 +228,8 @@ const mealPriorityAfterNow = (now) => {
 const cleanMenuText = (raw) =>
   String(raw || '')
     .replace(/\([^)]*\)/g, '')           // 괄호 제거
+    // NEIS: 한글 뒤 `1.2.5` 형 알레르기 번호(점으로 구분된 구간만). `우유200`처럼 끝이 숫자만인 경우는 제외
+    .replace(/(?<=[가-힣])\s*\d+(?:\.\d+)+$/u, '')
     .replace(/[＃#♯]/g, '')              // 샵류 제거
     .replace(/[·*＊✱✳✴]/g, ' ')         // 별표류 제거
     .replace(/[\\／/]/g, ' ')            // 백슬래시/슬래시류 제거
