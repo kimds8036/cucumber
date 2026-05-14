@@ -233,6 +233,8 @@ const cleanMenuText = (raw) =>
     .replace(/[\\／/]/g, ' ')            // 백슬래시/슬래시류 제거
     .replace(/^[^\p{L}\p{N}가-힣]+/u, '') // 맨 앞 특수문자 제거
     .replace(/[^\p{L}\p{N}가-힣]+$/u, '') // 맨 뒤 특수문자 제거
+    // NEIS DDISH_NM: 한글 뒤에 붙는 라틴 접미(알레르기 표기 등, 예: 쌀밥m·물쫄면H) 제거. 숫자 뒤는 단위(200ml 등) 보존
+    .replace(/(?<=[가-힣])[a-zA-Z]+$/u, '')
     .replace(/\s+/g, ' ')
     .trim();
 
