@@ -36,18 +36,22 @@ export function LocationProvider({ children }) {
       return;
     }
     setPermissionGranted(true);
-    try {
-      const pos = await Location.getCurrentPositionAsync({
-        accuracy: Location.Accuracy.Balanced,
-      });
-      setCoords({
-        latitude: pos.coords.latitude,
-        longitude: pos.coords.longitude,
-      });
-    } catch {
-      setCoords(null);
-    }
+    setCoords(null);
+    // 권한 통과 직후 게이트 해제 — GPS/네트워크 픽스는 비동기로 진행 (로그인 직후 체감 지연 완화)
     setIsReady(true);
+    (async () => {
+      try {
+        const pos = await Location.getCurrentPositionAsync({
+          accuracy: Location.Accuracy.Balanced,
+        });
+        setCoords({
+          latitude: pos.coords.latitude,
+          longitude: pos.coords.longitude,
+        });
+      } catch {
+        setCoords(null);
+      }
+    })();
   }, []);
 
   useEffect(() => {
@@ -105,7 +109,7 @@ export function useLocationContext() {
 
 /**
  * 로그인 후 메인 앱 진입 시 위치 권한이 없으면 앱 사용을 막습니다.
- * 권한은 있으나 좌표 획득 실패 시에는 메인 진입을 허용하고 coords 만 null 입니다.
+ * 권한이 허용되면 좌표 수신 전에도 메인으로 진입합니다(좌표는 비동기 적재, 실패 시 coords 만 null).
  */
 export function LocationGate({ children }) {
   const { isReady, permissionGranted, retryPermission } = useLocationContext();
