@@ -46,28 +46,31 @@ const BoardPostCard = ({
   }, [post.tags]);
 
   const TAG_GAP = normalize(6);
-  const MORE_BADGE_WIDTH = normalize(36);
+  /** onLayout·dp 반올림 차이로 첫 태그가 통째로 사라지는 것 방지 */
+  const WIDTH_FIT_EPSILON = 1;
+
+  const tagsSignature = useMemo(() => tags.join('\u0001'), [tags]);
 
   useEffect(() => {
     setTagWidths(new Array(tags.length).fill(0));
-  }, [tags.length]);
+  }, [tagsSignature, tags.length]);
 
   const allMeasured =
     tags.length > 0 &&
     tagWidths.length === tags.length &&
     tagWidths.every((w) => typeof w === 'number' && w > 0);
 
-  const { visibleCount, hiddenTagCount } = useMemo(() => {
+  const visibleCount = useMemo(() => {
     if (!allMeasured || containerWidth <= 0) {
-      return { visibleCount: tags.length, hiddenTagCount: 0 };
+      return tags.length;
     }
 
     const totalWidth =
       tagWidths.reduce((sum, width) => sum + width, 0) +
       TAG_GAP * Math.max(0, tags.length - 1);
 
-    if (totalWidth <= containerWidth) {
-      return { visibleCount: tags.length, hiddenTagCount: 0 };
+    if (totalWidth <= containerWidth + WIDTH_FIT_EPSILON) {
+      return tags.length;
     }
 
     let used = 0;
@@ -75,12 +78,9 @@ const BoardPostCard = ({
 
     for (let i = 0; i < tags.length; i += 1) {
       const gapBefore = count > 0 ? TAG_GAP : 0;
-      const remainingAfterCurrent = tags.length - (i + 1);
-      const reserveForMore =
-        remainingAfterCurrent > 0 ? TAG_GAP + MORE_BADGE_WIDTH : 0;
       const nextUsed = used + gapBefore + tagWidths[i];
 
-      if (nextUsed + reserveForMore <= containerWidth) {
+      if (nextUsed <= containerWidth + WIDTH_FIT_EPSILON) {
         used = nextUsed;
         count += 1;
       } else {
@@ -88,17 +88,14 @@ const BoardPostCard = ({
       }
     }
 
-    return {
-      visibleCount: count,
-      hiddenTagCount: Math.max(0, tags.length - count),
-    };
+    return count;
   }, [
     allMeasured,
     containerWidth,
     tagWidths,
     tags.length,
     TAG_GAP,
-    MORE_BADGE_WIDTH,
+    WIDTH_FIT_EPSILON,
   ]);
 
   const isMeasuring = tags.length > 0 && (!allMeasured || containerWidth <= 0);
@@ -212,7 +209,10 @@ const BoardPostCard = ({
 
           {tags.length > 0 ? (
             <View
-              style={styles.postTagsWrap}
+              style={[
+                styles.postTagsWrap,
+                { opacity: isMeasuring ? 0 : 1 },
+              ]}
               onLayout={({ nativeEvent: { layout } }) => {
                 if (layout.width !== containerWidth)
                   setContainerWidth(layout.width);
@@ -246,11 +246,6 @@ const BoardPostCard = ({
                   </View>
                 );
               })}
-              {!isMeasuring && hiddenTagCount > 0 ? (
-                <View style={[styles.postTagChip, styles.postTagMoreChip]}>
-                  <Text style={styles.postTagText}>+{hiddenTagCount}</Text>
-                </View>
-              ) : null}
             </View>
           ) : null}
 
