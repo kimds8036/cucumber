@@ -206,18 +206,36 @@ export function NotificationProvider({ children }) {
           relatedId: payload?.relatedId,
         });
       }
-      const titleText = String(payload?.title ?? '').trim();
+      const relatedType = String(payload?.relatedType ?? '').trim();
+      const isAnonymousMessageRoom = relatedType === 'message_room';
+      const ANONYMOUS_MAIL_LABEL = '익명 쪽지';
+
+      let titleText = String(payload?.title ?? '').trim();
+      if (isAnonymousMessageRoom) {
+        titleText = ANONYMOUS_MAIL_LABEL;
+      }
+
       const bodyText = String(payload?.body ?? '').trim();
       const composedMessage = isChatNotification
-        ? `${titleText || '새 메시지'}: ${bodyText || '(이미지)'}`
+        ? `${titleText || (isAnonymousMessageRoom ? ANONYMOUS_MAIL_LABEL : '새 메시지')}: ${bodyText || '(이미지)'}`
         : (titleText || bodyText || fallbackToastMessage(payload));
 
       if (!composedMessage) return;
       if (!isForeground) return;
+
+      const dmSenderName =
+        payload?.senderName != null && String(payload.senderName).trim() !== ''
+          ? String(payload.senderName).trim()
+          : relatedType === 'dm_room'
+            ? titleText || null
+            : null;
+
       showToast({
         message: composedMessage,
         senderName: isChatNotification
-          ? titleText || '새 메시지'
+          ? isAnonymousMessageRoom
+            ? ANONYMOUS_MAIL_LABEL
+            : dmSenderName || titleText || '새 메시지'
           : null,
         body: isChatNotification ? bodyText || '(이미지)' : null,
         roomId: isChatNotification ? payload?.relatedId : null,
@@ -227,6 +245,14 @@ export function NotificationProvider({ children }) {
         category: payload?.category,
         isChat: isChatNotification,
         watchers: payload?.watchers,
+        senderUserId:
+          payload?.senderUserId != null ? String(payload.senderUserId) : null,
+        senderSchoolName:
+          payload?.senderSchoolName != null
+            ? String(payload.senderSchoolName)
+            : null,
+        senderColorId:
+          payload?.senderColorId != null ? Number(payload.senderColorId) : null,
       });
     };
 
