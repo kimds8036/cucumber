@@ -47,6 +47,7 @@
         "android.permission.READ_MEDIA_AUDIO"
       ],
       "package": "com.ucost.YouthPaper",
+      "versionCode": 3,
       "softwareKeyboardLayoutMode": "pan"
     },
     "web": {
