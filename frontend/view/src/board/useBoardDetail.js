@@ -117,6 +117,9 @@ export function useBoardDetail({
   const [isInitialLoading, setIsInitialLoading] = useState(true);
   const isSendingCommentRef = useRef(false);
   const refreshHasUnreadRef = useRef(refreshHasUnread);
+  const coordsRef = useRef(coords);
+  const initialFetchDoneRef = useRef(false);
+  coordsRef.current = coords;
 
   useEffect(() => {
     refreshHasUnreadRef.current = refreshHasUnread;
@@ -128,9 +131,10 @@ export function useBoardDetail({
     try {
       setIsInitialLoading(true);
       const detailParams = {};
-      if (coords) {
-        detailParams.viewerLat = coords.latitude;
-        detailParams.viewerLng = coords.longitude;
+      const c = coordsRef.current;
+      if (c) {
+        detailParams.viewerLat = c.latitude;
+        detailParams.viewerLng = c.longitude;
       }
       const postRes = await api.get(`/api/posts/${postId}`, { params: detailParams });
       const data = postRes.data?.data;
@@ -150,7 +154,9 @@ export function useBoardDetail({
           distanceKm:
             typeof data.distanceKm === 'number' && !Number.isNaN(data.distanceKm)
               ? data.distanceKm
-              : null,
+              : typeof routePost?.distanceKm === 'number' && !Number.isNaN(routePost.distanceKm)
+                ? routePost.distanceKm
+                : null,
         });
         setPostLiked(Boolean(data.isLiked));
         setPostScrapped(Boolean(data.isScrapped));
@@ -180,11 +186,45 @@ export function useBoardDetail({
     } finally {
       setIsInitialLoading(false);
     }
-  }, [coords, routePostId, routePost?.id]);
+  }, [routePostId, routePost?.id, routePost?.distanceKm]);
+
+  const patchPostDistance = useCallback(async () => {
+    const postId = routePostId ?? routePost?.id;
+    const c = coordsRef.current;
+    if (postId == null || postId === '' || !c) return;
+    try {
+      const postRes = await api.get(`/api/posts/${postId}`, {
+        params: { viewerLat: c.latitude, viewerLng: c.longitude },
+      });
+      const data = postRes.data?.data;
+      const d =
+        typeof data?.distanceKm === 'number' && !Number.isNaN(data.distanceKm)
+          ? data.distanceKm
+          : null;
+      if (d == null) return;
+      setPost((prev) => (prev ? { ...prev, distanceKm: d } : prev));
+    } catch (e) {
+      console.error('[BoardDetail] 거리 보정 로드 실패:', e);
+    }
+  }, [routePostId, routePost?.id]);
 
   useEffect(() => {
+    initialFetchDoneRef.current = false;
+  }, [routePostId, routePost?.id]);
+
+  useEffect(() => {
+    const postId = routePostId ?? routePost?.id;
+    if (postId == null || postId === '') return;
+    if (initialFetchDoneRef.current) return;
+
+    initialFetchDoneRef.current = true;
     fetchPostAndComments();
-  }, [fetchPostAndComments]);
+  }, [fetchPostAndComments, routePostId, routePost?.id]);
+
+  useEffect(() => {
+    if (isInitialLoading || !coords) return;
+    patchPostDistance();
+  }, [isInitialLoading, coords?.latitude, coords?.longitude, patchPostDistance]);
 
   const startNoteToUser = useCallback(
     async (targetUserId, source) => {

@@ -2,9 +2,9 @@ import React from 'react';
 import { View, Text, TouchableOpacity, Image } from 'react-native';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import Entypo from '@expo/vector-icons/Entypo';
-import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { colors, fonts } from '../../../styles/colors';
+import DistanceBadge from '../../../components/DistanceBadge';
 
 export default function BoardPostContent({
   post,
@@ -20,7 +20,12 @@ export default function BoardPostContent({
   styles,
   normalize,
   postMenuButtonRef,
+  distanceStale = false,
+  distanceLoading = false,
+  showDistanceBadge = true,
 }) {
+  const distanceValid =
+    typeof post.distanceKm === 'number' && !Number.isNaN(post.distanceKm);
   return (
     <View style={styles.contentSection}>
       <View style={styles.detailHeader}>
@@ -47,49 +52,17 @@ export default function BoardPostContent({
             </View>
           ) : null}
         </View>
-        {typeof post.distanceKm === 'number' && !Number.isNaN(post.distanceKm) ? (
-          <View
-            style={{
-              flexDirection: 'row',
-              alignItems: 'center',
+        {showDistanceBadge ? (
+          <DistanceBadge
+            distanceKm={distanceValid ? post.distanceKm : null}
+            stale={distanceStale}
+            loading={distanceLoading}
+            normalize={normalize}
+            wrapStyle={{
               marginLeft: normalize(8),
               flexShrink: 0,
             }}
-          >
-            <View
-              style={{
-                flexDirection: 'row',
-                alignItems: 'center',
-                gap: normalize(1),
-                backgroundColor: colors.primaryLight20,
-                borderRadius: normalize(10),
-                paddingHorizontal: normalize(7),
-                paddingVertical: normalize(2),
-              }}
-            >
-              <MaterialIcons name="location-on" size={normalize(10)} color={colors.primaryDark} />
-              <View style={{ flexDirection: 'row', alignItems: 'baseline' }}>
-                <Text
-                  style={{
-                    fontSize: normalize(11),
-                    fontFamily: fonts.regular,
-                    color: colors.primaryDark,
-                  }}
-                >
-                  {post.distanceKm < 1 ? '1' : String(Math.round(post.distanceKm))}
-                </Text>
-                <Text
-                  style={{
-                    fontSize: normalize(10),
-                    fontFamily: fonts.regular,
-                    color: colors.primaryDark,
-                  }}
-                >
-                  {post.distanceKm < 1 ? 'km 미만' : 'km'}
-                </Text>
-              </View>
-            </View>
-          </View>
+          />
         ) : null}
       </View>
 
@@ -97,18 +70,23 @@ export default function BoardPostContent({
       {Array.isArray(post.images) && post.images.length > 0 ? (
         <View style={styles.detailImagesWrap}>
           {post.images.map((uri, idx) => (
-            <TouchableOpacity key={`${uri}-${idx}`} activeOpacity={0.85} onPress={() => onImagePress(uri)} style={{ width: '100%' }}>
+            <TouchableOpacity
+              key={`${uri}-${idx}`}
+              activeOpacity={0.85}
+              onPress={() => onImagePress(uri)}
+              style={{ width: '100%' }}
+            >
               <Image
                 source={{ uri }}
                 style={[
                   styles.detailImage,
                   imageRatios[uri]
-                    ? { width: undefined, maxWidth: '100%', aspectRatio: imageRatios[uri] }
+                    ? { aspectRatio: imageRatios[uri] }
                     : styles.detailImageFallback,
                   idx === post.images.length - 1 && styles.detailImageLast,
                 ]}
                 onLoad={(e) => onImageLoad(uri, e)}
-                resizeMode="contain"
+                resizeMode="cover"
               />
             </TouchableOpacity>
           ))}

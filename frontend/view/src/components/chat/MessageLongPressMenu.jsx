@@ -138,13 +138,14 @@ export default function MessageLongPressMenu({
 
   const handleCopy = async () => {
     if (!canCopy) return;
-    const copyMsg = msg;
+    const text = String(msg.content ?? '').trim();
     onClose();
     requestAnimationFrame(async () => {
       try {
-        const result = await Promise.resolve(onCopy(copyMsg));
-        const ok = result !== false;
-        onToast?.(ok ? '복사되었습니다' : '복사에 실패했습니다');
+        const result = await Promise.resolve(onCopy(text));
+        if (result === false) {
+          onToast?.('복사에 실패했습니다');
+        }
       } catch {
         onToast?.('복사에 실패했습니다');
       }
