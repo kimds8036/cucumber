@@ -7,6 +7,9 @@ export const colors = {
   primaryDark: '#6f9163', // 진한 초록색
   scrap: '#F5A623', // 스크랩 황금색
   scrapDark: '#A46E17',
+  /** 캐시(대략) 거리 배지 — 주황 칩 배경 + 그 위 텍스트/아이콘 */
+  distanceStaleChipBg: 'rgba(245, 166, 35, 0.42)',
+  distanceStaleOnChip: '#5C3A08',
   green: '#F7FFF3',
   greenDark: '#C8EDB2',
 

@@ -725,16 +725,16 @@ export const createDetailStyles = (width, normalize) => {
       marginBottom: normalize(10),
     },
     detailImagesWrap: {
+      width: '100%',
       marginBottom: normalize(7),
-      alignItems: 'flex-start',
     },
     detailImage: {
-      height: normalize(260),
+      width: '100%',
       marginBottom: normalize(8),
-      alignSelf: 'flex-start',
     },
     detailImageFallback: {
       width: '100%',
+      height: normalize(260),
     },
     detailImageLast: {
       marginBottom: 0,

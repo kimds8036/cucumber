@@ -58,7 +58,8 @@ export function BoardAllContent({ navigation, posts }) {
   const { width } = useWindowDimensions();
   const normalize = useMemo(() => getNormalize(width), [width]);
   const styles = useMemo(() => createBoardStyles(width, normalize), [width]);
-  const { coords, refreshLocation, permissionGranted } = useLocationContext();
+  const { coords, coordsIsFresh, refreshLocation, permissionGranted } = useLocationContext();
+  const distanceStale = permissionGranted && (!coordsIsFresh || !coords);
 
   const [sortType, setSortType] = useState('latest'); // latest, popular, nearby
   const [serverPosts, setServerPosts] = useState([]);
@@ -75,6 +76,9 @@ export function BoardAllContent({ navigation, posts }) {
 
   const fetchPostsRef = useRef(null);
   const didMountSortEffectRef = useRef(false);
+  const serverPostsRef = useRef(serverPosts);
+  const skipNextFocusFetchRef = useRef(true);
+  serverPostsRef.current = serverPosts;
 
   const defaultMenuItemsOthers = useMemo(
     () => [
@@ -197,7 +201,7 @@ export function BoardAllContent({ navigation, posts }) {
   };
 
   const fetchPosts = useCallback(
-    async (nextPage = 1, append = false) => {
+    async (nextPage = 1, append = false, silent = false) => {
       try {
         if (sortType === 'nearby' && !coords) {
           if (nextPage === 1) {
@@ -209,10 +213,10 @@ export function BoardAllContent({ navigation, posts }) {
           setLoadingMore(false);
           return;
         }
-        if (nextPage === 1) {
+        if (nextPage === 1 && !silent) {
           setLoading(true);
           setHasMore(true);
-        } else {
+        } else if (nextPage !== 1) {
           setLoadingMore(true);
         }
         const sortParam =
@@ -258,6 +262,22 @@ export function BoardAllContent({ navigation, posts }) {
             const filtered = mapped.filter((p) => !existingIds.has(p.id));
             return [...prev, ...filtered];
           });
+        } else if (silent) {
+          setServerPosts((prev) => {
+            if (!prev?.length) return mapped;
+            const byId = new Map(mapped.map((p) => [p.id, p]));
+            return prev.map((p) => {
+              const n = byId.get(p.id);
+              if (
+                n &&
+                typeof n.distanceKm === 'number' &&
+                !Number.isNaN(n.distanceKm)
+              ) {
+                return { ...p, distanceKm: n.distanceKm };
+              }
+              return p;
+            });
+          });
         } else {
           setServerPosts(mapped);
         }
@@ -286,16 +306,26 @@ export function BoardAllContent({ navigation, posts }) {
   }, [fetchPosts]);
 
   useEffect(() => {
-    const init = async () => {
-      await Promise.all([refreshLocation(), fetchPosts(1, false)]);
-    };
-    init();
+    refreshLocation();
+    fetchPostsRef.current?.(1, false);
   }, []);
+
+  useEffect(() => {
+    if (!permissionGranted || !coords) return;
+    const silent = serverPostsRef.current.length > 0;
+    fetchPostsRef.current?.(1, false, silent);
+  }, [permissionGranted, coords]);
 
   useFocusEffect(
     useCallback(() => {
-      fetchPostsRef.current?.(1, false);
-    }, [])
+      if (skipNextFocusFetchRef.current) {
+        skipNextFocusFetchRef.current = false;
+        return;
+      }
+      if (posts && posts.length > 0) return;
+      const silent = serverPostsRef.current.length > 0;
+      fetchPostsRef.current?.(1, false, silent);
+    }, [posts])
   );
 
   useEffect(() => {
@@ -337,6 +367,7 @@ export function BoardAllContent({ navigation, posts }) {
 
   const postsInjected = Boolean(posts && posts.length > 0);
   const hideListBehindLoader = loading && !postsInjected;
+
   const dataWithAds = useMemo(() => {
     const next = [];
     data.forEach((post, index) => {
@@ -348,13 +379,59 @@ export function BoardAllContent({ navigation, posts }) {
     return next;
   }, [data]);
 
-  const renderPostItem = ({ item: post }) => (
+  const skeletonListData = useMemo(
+    () =>
+      [0, 1, 2, 3].map((idx) => ({
+        type: 'skeleton',
+        id: `board-skel-${idx}`,
+      })),
+    [],
+  );
+
+  const flatListData = useMemo(() => {
+    if (hideListBehindLoader) return skeletonListData;
+    return dataWithAds;
+  }, [hideListBehindLoader, dataWithAds, skeletonListData]);
+
+  const renderBoardSkeletonCard = () => (
+    <View style={styles.postItem}>
+      <View style={{ flexDirection: 'row', marginBottom: normalize(8) }}>
+        <Skeleton width={normalize(52)} height={normalize(12)} borderRadius={normalize(6)} />
+        <View style={{ width: normalize(8) }} />
+        <Skeleton width={normalize(44)} height={normalize(12)} borderRadius={normalize(6)} />
+      </View>
+      <Skeleton
+        width="100%"
+        height={normalize(14)}
+        borderRadius={normalize(6)}
+        style={{ marginBottom: normalize(6) }}
+      />
+      <Skeleton
+        width="86%"
+        height={normalize(14)}
+        borderRadius={normalize(6)}
+        style={{ marginBottom: normalize(10) }}
+      />
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: normalize(12) }}>
+        <Skeleton width={normalize(26)} height={normalize(12)} borderRadius={normalize(6)} />
+        <Skeleton width={normalize(26)} height={normalize(12)} borderRadius={normalize(6)} />
+        <Skeleton width={normalize(26)} height={normalize(12)} borderRadius={normalize(6)} />
+      </View>
+    </View>
+  );
+
+  const renderPostItem = ({ item: post }) => {
+    const postHasKm =
+      typeof post.distanceKm === 'number' && !Number.isNaN(post.distanceKm);
+    return (
     <BoardPostCard
       key={post.id}
       post={post}
       normalize={normalize}
       styles={styles}
-      distanceLoading={sortType === 'nearby' && permissionGranted && !coords}
+      showDistanceBadge={permissionGranted}
+      distanceStale={distanceStale}
+      distanceLoading={permissionGranted && !postHasKm && distanceStale}
       onPress={() =>
         navigation.navigate('BoardDetail', {
           post: { ...post, author: post.author },
@@ -363,8 +440,12 @@ export function BoardAllContent({ navigation, posts }) {
       }
       onMenuPress={(p, ref) => openFloatingMenu(p, ref)}
     />
-  );
+    );
+  };
   const renderItem = ({ item }) => {
+    if (item.type === 'skeleton') {
+      return renderBoardSkeletonCard();
+    }
     if (item.type === 'ad') {
       return <AdPlaceholder normalize={normalize} styles={styles} />;
     }
@@ -401,26 +482,24 @@ export function BoardAllContent({ navigation, posts }) {
         </TouchableOpacity>
       </View>
 
-      {/* 게시글 목록 — 로딩 중에는 목록을 그리되 가려 두고, 게이트 종료 후 한 번에 표시 */}
+      {/* 게시글 목록 — 초기 로딩 시 스켈레톤 행을 리스트 데이터로 렌더(측정 방해 방지) */}
       <View style={{ flex: 1 }}>
         <FlatList
-          style={[styles.postList, hideListBehindLoader && { opacity: 0 }]}
-          pointerEvents={hideListBehindLoader ? 'none' : 'auto'}
-          data={dataWithAds}
-          keyExtractor={(item) => (item.type === 'ad' ? item.id : String(item.id))}
+          style={styles.postList}
+          data={flatListData}
+          keyExtractor={(item) => String(item.id)}
           renderItem={renderItem}
           showsVerticalScrollIndicator={false}
           onEndReached={handleLoadMore}
           onEndReachedThreshold={0.5}
+          ListHeaderComponent={null}
           ListEmptyComponent={
             !loading ? (
               <View style={{ paddingVertical: normalize(40), alignItems: 'center' }}>
                 <Text style={{ fontFamily: fonts.regular, color: colors.textSecondary }}>
                   {sortType === 'nearby' && !permissionGranted
                     ? '게시판 거리·근처 글을 보려면 위치 권한이 필요해요.'
-                    : sortType === 'nearby' && permissionGranted && !coords
-                      ? '위치 정보를 가져오는 중입니다...'
-                      : '아직 게시글이 없습니다.'}
+                    : '아직 게시글이 없습니다.'}
                 </Text>
               </View>
             ) : null
@@ -433,44 +512,21 @@ export function BoardAllContent({ navigation, posts }) {
                   height={normalize(16)}
                   borderRadius={normalize(8)}
                 />
+                <Text
+                  style={{
+                    marginTop: normalize(8),
+                    fontFamily: fonts.regular,
+                    color: colors.textSecondary,
+                    fontSize: normalize(12),
+                  }}
+                >
+                  더 불러오는 중…
+                </Text>
               </View>
             ) : null
           }
           contentContainerStyle={{ paddingBottom: normalize(80) }}
         />
-        {hideListBehindLoader ? (
-          <View
-            pointerEvents="box-none"
-            style={{
-              position: 'absolute',
-              left: 0,
-              right: 0,
-              top: 0,
-              bottom: 0,
-              backgroundColor: colors.background,
-              paddingHorizontal: width * 0.04,
-              paddingTop: normalize(8),
-              zIndex: 2,
-            }}
-          >
-            {[0, 1, 2, 3].map((idx) => (
-              <View key={`board-list-skel-${idx}`} style={styles.postItem}>
-                <View style={{ flexDirection: 'row', marginBottom: normalize(8) }}>
-                  <Skeleton width={normalize(52)} height={normalize(12)} borderRadius={normalize(6)} />
-                  <View style={{ width: normalize(8) }} />
-                  <Skeleton width={normalize(44)} height={normalize(12)} borderRadius={normalize(6)} />
-                </View>
-                <Skeleton width="100%" height={normalize(14)} borderRadius={normalize(6)} style={{ marginBottom: normalize(6) }} />
-                <Skeleton width="86%" height={normalize(14)} borderRadius={normalize(6)} style={{ marginBottom: normalize(10) }} />
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: normalize(12) }}>
-                  <Skeleton width={normalize(26)} height={normalize(12)} borderRadius={normalize(6)} />
-                  <Skeleton width={normalize(26)} height={normalize(12)} borderRadius={normalize(6)} />
-                  <Skeleton width={normalize(26)} height={normalize(12)} borderRadius={normalize(6)} />
-                </View>
-              </View>
-            ))}
-          </View>
-        ) : null}
       </View>
 
       {/* 글쓰기 플로팅 버튼 */}

@@ -4,9 +4,11 @@ import React, {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from 'react';
 import {
+  AppState,
   Linking,
   Platform,
   Text,
@@ -17,6 +19,11 @@ import * as Location from 'expo-location';
 import { useAuth } from './AuthContext';
 import { colors, fonts } from '../styles/colors';
 import Skeleton from '../components/common/Skeleton';
+import {
+  clearLastLocation,
+  loadLastLocation,
+  saveLastLocation,
+} from '../utils/lastLocationCache';
 
 const LocationContext = createContext(null);
 
@@ -24,60 +31,136 @@ export function LocationProvider({ children }) {
   const { isLoggedIn } = useAuth();
   const [isReady, setIsReady] = useState(false);
   const [permissionGranted, setPermissionGranted] = useState(false);
-  const [coords, setCoords] = useState(null);
+  const [coords, setCoordsState] = useState(null);
+  const [coordsIsFresh, setCoordsIsFresh] = useState(false);
+  const coordsRef = useRef(null);
+  const permissionGrantedRef = useRef(false);
+
+  /** @param {{ fresh?: boolean, persist?: boolean }} opts — fresh: GPS 확정, persist: AsyncStorage 저장 */
+  const applyCoords = useCallback((next, { fresh = false, persist = false } = {}) => {
+    coordsRef.current = next;
+    setCoordsState(next);
+    setCoordsIsFresh(Boolean(next) && fresh);
+    if (next && persist) {
+      saveLastLocation(next);
+    }
+  }, []);
+
+  useEffect(() => {
+    permissionGrantedRef.current = permissionGranted;
+  }, [permissionGranted]);
 
   const runLocationFlow = useCallback(async () => {
-    setIsReady(false);
+    const hadCoords = coordsRef.current != null;
+    if (!hadCoords) {
+      setIsReady(false);
+    }
+
     const { status } = await Location.requestForegroundPermissionsAsync();
     if (status !== Location.PermissionStatus.GRANTED) {
       setPermissionGranted(false);
-      setCoords(null);
+      setCoordsState(null);
+      coordsRef.current = null;
+      setCoordsIsFresh(false);
+      await clearLastLocation();
       setIsReady(true);
       return;
     }
+
     setPermissionGranted(true);
-    setCoords(null);
-    // 권한 통과 직후 게이트 해제 — GPS/네트워크 픽스는 비동기로 진행 (로그인 직후 체감 지연 완화)
+
+    if (!coordsRef.current) {
+      const cached = await loadLastLocation();
+      if (cached) {
+        applyCoords(cached, { fresh: false });
+      }
+    }
+
     setIsReady(true);
-    (async () => {
-      try {
-        const pos = await Location.getCurrentPositionAsync({
-          accuracy: Location.Accuracy.Balanced,
-        });
-        setCoords({
+
+    try {
+      const pos = await Location.getCurrentPositionAsync({
+        accuracy: Location.Accuracy.Balanced,
+      });
+      applyCoords(
+        {
           latitude: pos.coords.latitude,
           longitude: pos.coords.longitude,
-        });
-      } catch {
-        setCoords(null);
+        },
+        { fresh: true, persist: true },
+      );
+    } catch {
+      if (!coordsRef.current) {
+        setCoordsState(null);
+        setCoordsIsFresh(false);
       }
-    })();
-  }, []);
+    }
+  }, [applyCoords]);
 
   useEffect(() => {
     if (!isLoggedIn) {
       setIsReady(true);
       setPermissionGranted(false);
-      setCoords(null);
+      setCoordsState(null);
+      coordsRef.current = null;
+      setCoordsIsFresh(false);
+      clearLastLocation();
       return;
     }
-    runLocationFlow();
-  }, [isLoggedIn, runLocationFlow]);
+
+    let cancelled = false;
+
+    (async () => {
+      const cached = await loadLastLocation();
+      if (cancelled) return;
+      if (cached) {
+        applyCoords(cached, { fresh: false });
+        setIsReady(true);
+      }
+      await runLocationFlow();
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [isLoggedIn, runLocationFlow, applyCoords]);
 
   const refreshLocation = useCallback(async () => {
-    if (!isLoggedIn || !permissionGranted) return;
+    if (!isLoggedIn || !permissionGrantedRef.current) return;
     try {
       const pos = await Location.getCurrentPositionAsync({
         accuracy: Location.Accuracy.Balanced,
       });
-      setCoords({
-        latitude: pos.coords.latitude,
-        longitude: pos.coords.longitude,
-      });
+      applyCoords(
+        {
+          latitude: pos.coords.latitude,
+          longitude: pos.coords.longitude,
+        },
+        { fresh: true, persist: true },
+      );
     } catch {
-      setCoords(null);
+      /* 캐시 좌표 유지 */
     }
-  }, [isLoggedIn, permissionGranted]);
+  }, [isLoggedIn, applyCoords]);
+
+  useEffect(() => {
+    if (!isLoggedIn) return undefined;
+
+    const sub = AppState.addEventListener('change', (nextState) => {
+      if (nextState === 'background' || nextState === 'inactive') {
+        const c = coordsRef.current;
+        if (c && permissionGrantedRef.current) {
+          saveLastLocation(c);
+        }
+        return;
+      }
+      if (nextState === 'active') {
+        refreshLocation();
+      }
+    });
+
+    return () => sub.remove();
+  }, [isLoggedIn, refreshLocation]);
 
   const retryPermission = useCallback(async () => {
     await runLocationFlow();
@@ -88,10 +171,11 @@ export function LocationProvider({ children }) {
       isReady,
       permissionGranted,
       coords,
+      coordsIsFresh,
       refreshLocation,
       retryPermission,
     }),
-    [isReady, permissionGranted, coords, refreshLocation, retryPermission],
+    [isReady, permissionGranted, coords, coordsIsFresh, refreshLocation, retryPermission],
   );
 
   return (
@@ -109,7 +193,7 @@ export function useLocationContext() {
 
 /**
  * 로그인 후 메인 앱 진입 시 위치 권한이 없으면 앱 사용을 막습니다.
- * 권한이 허용되면 좌표 수신 전에도 메인으로 진입합니다(좌표는 비동기 적재, 실패 시 coords 만 null).
+ * 권한이 허용되면 좌표 수신 전에도 메인으로 진입합니다(캐시·비동기 GPS).
  */
 export function LocationGate({ children }) {
   const { isReady, permissionGranted, retryPermission } = useLocationContext();
