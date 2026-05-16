@@ -560,6 +560,7 @@ router.post(
         `SELECT m.id, m.room_id, m.sender_id, m.parent_message_id, m.content, m.is_read, m.is_deleted, m.created_at,
                 pm.content AS parent_content, pu.name AS parent_sender_name,
                 u.name AS sender_name, u.color_id AS sender_color_id,
+                s.name AS sender_school_name,
                 (SELECT JSON_ARRAYAGG(cloudinary_url)
                  FROM (
                    SELECT cloudinary_url
@@ -569,6 +570,7 @@ router.post(
                  ) di) AS images
          FROM dm_messages m
          LEFT JOIN users u ON m.sender_id = u.id
+         LEFT JOIN schools s ON u.school_id = s.school_id
          LEFT JOIN dm_messages pm ON m.parent_message_id = pm.id
          LEFT JOIN users pu ON pm.sender_id = pu.id
          WHERE m.id = ?`,
@@ -592,7 +594,7 @@ router.post(
         savedMessage.client_id = String(clientId);
       }
 
-      emitNewMessage(roomId, savedMessage);
+      emitNewMessage(roomId, savedMessage, { roomType: 'dm' });
 
       if (
         otherUserId &&
@@ -609,6 +611,10 @@ router.post(
           body: (trimmed ?? '사진').slice(0, 80),
           relatedType: 'dm_room',
           relatedId: roomId,
+          senderUserId: userId,
+          senderName,
+          senderSchoolName: savedMessage?.sender_school_name || null,
+          senderColorId: savedMessage?.sender_color_id ?? null,
         });
       }
 

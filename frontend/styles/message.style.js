@@ -388,41 +388,7 @@ export const createChatStyles = (width, normalize) => {
     chatSkeletonOverlay: {
       ...StyleSheet.absoluteFillObject,
       backgroundColor: colors.background,
-      justifyContent: 'space-between',
       zIndex: 50,
-    },
-    chatSkeletonTop: {
-      paddingTop: normalize(12),
-      paddingHorizontal: normalize(14),
-    },
-    chatSkeletonBody: {
-      width: '100%',
-      paddingHorizontal: normalize(14),
-      gap: normalize(14),
-    },
-    chatSkeletonRowLeft: {
-      flexDirection: 'row',
-      alignItems: 'flex-end',
-      gap: normalize(8),
-    },
-    chatSkeletonRowRight: {
-      alignItems: 'flex-end',
-    },
-    chatSkeletonBubbleWrap72: {
-      gap: normalize(6),
-      maxWidth: '72%',
-    },
-    chatSkeletonBubbleWrap68: {
-      gap: normalize(6),
-      maxWidth: '68%',
-    },
-    chatSkeletonBubbleWrap72Right: {
-      gap: normalize(6),
-      width: '72%',
-      alignItems: 'flex-end',
-    },
-    chatSkeletonBottomSpacer: {
-      height: normalize(12),
     },
     chatToastWrap: {
       position: 'absolute',

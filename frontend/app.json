@@ -2,7 +2,7 @@
   "expo": {
     "name": "Youth Paper",
     "slug": "youth-paper",
-    "version": "1.0.0",
+    "version": "1.0.1",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
@@ -47,6 +47,7 @@
         "android.permission.READ_MEDIA_AUDIO"
       ],
       "package": "com.ucost.YouthPaper",
+      "versionCode": 3,
       "softwareKeyboardLayoutMode": "pan"
     },
     "web": {
