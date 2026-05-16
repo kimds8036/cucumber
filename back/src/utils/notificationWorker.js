@@ -58,7 +58,20 @@ export const notificationQueue = new Bull('notifications', {
 
 // ── 잡 처리 핸들러 ───────────────────────────────────
 notificationQueue.process(async (job) => {
-  const { userId, type, category, title, body, relatedType, relatedId, watchers } = job.data;
+  const {
+    userId,
+    type,
+    category,
+    title,
+    body,
+    relatedType,
+    relatedId,
+    watchers,
+    senderUserId,
+    senderName,
+    senderSchoolName,
+    senderColorId,
+  } = job.data;
   console.log('[NotifQueue] processing', {
     jobId: job.id,
     userId,
@@ -80,14 +93,27 @@ notificationQueue.process(async (job) => {
 
   // DB 알림 생성 후, 해당 유저에게 소켓 알림도 함께 push (실패해도 메인 로직에는 영향 없음)
   try {
+    const socketTitle =
+      relatedType === 'message_room'
+        ? buildPushContent({ title, body, relatedType }).title
+        : title;
+
     emitNotification(userId, {
       type,
       category,
-      title,
+      title: socketTitle,
       body,
       relatedType,
       relatedId,
       watchers,
+      ...(relatedType === 'dm_room'
+        ? {
+            senderUserId: senderUserId ?? null,
+            senderName: senderName ?? null,
+            senderSchoolName: senderSchoolName ?? null,
+            senderColorId: senderColorId ?? null,
+          }
+        : {}),
     });
   } catch (err) {
     console.error('[NotifQueue] 소켓 알림 emit 실패(무시):', err.message);
@@ -147,6 +173,10 @@ notificationQueue.on('error', (err) => {
  * @param {string}  [params.relatedType]
  * @param {number}  [params.relatedId]
  * @param {Array<{userId:number,name:string}>} [params.watchers]
+ * @param {number}  [params.senderUserId]   DM 등: 발신자 user id (토스트/진입 메타)
+ * @param {string}  [params.senderName]     DM 등: 발신자 표시 이름
+ * @param {string}  [params.senderSchoolName]
+ * @param {number}  [params.senderColorId]
  */
 export async function enqueueNotification(params) {
   try {
