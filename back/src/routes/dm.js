@@ -594,7 +594,7 @@ router.post(
         savedMessage.client_id = String(clientId);
       }
 
-      emitNewMessage(roomId, savedMessage);
+      emitNewMessage(roomId, savedMessage, { roomType: 'dm' });
 
       if (
         otherUserId &&
