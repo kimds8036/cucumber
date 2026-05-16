@@ -88,7 +88,26 @@ export default function ToastHost() {
     hideToast();
 
     if (relatedType === 'dm_room' && roomId) {
-      navigate('DMChat', { roomId });
+      const senderName = String(toast?.senderName ?? '').trim();
+      const senderUserId =
+        toast?.senderUserId != null ? String(toast.senderUserId) : null;
+      const senderSchoolName = String(toast?.senderSchoolName ?? '').trim();
+      const colorIndexRaw =
+        toast?.senderColorId != null ? Number(toast.senderColorId) : null;
+      const colorIndex =
+        Number.isFinite(colorIndexRaw) && colorIndexRaw >= 0
+          ? colorIndexRaw % DM_ICON_COLOR_COUNT
+          : 0;
+
+      navigate('DMChat', {
+        roomId,
+        friend: {
+          ...(senderUserId ? { id: senderUserId } : {}),
+          name: senderName || '친구',
+          ...(senderSchoolName ? { schoolName: senderSchoolName } : {}),
+          colorIndex,
+        },
+      });
       return;
     }
     if (relatedType === 'message_room' && roomId) {

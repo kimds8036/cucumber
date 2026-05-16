@@ -28,6 +28,9 @@ export function ToastProvider({ children }) {
     isChat: false,
     showProgress: false,
     watchers: [],
+    senderUserId: null,
+    senderSchoolName: null,
+    senderColorId: null,
   });
   const [activeChatRoomId, setActiveChatRoomIdState] = useState(null);
   const [isMessageTab, setIsMessageTab] = useState(false);
@@ -84,6 +87,19 @@ export function ToastProvider({ children }) {
         isChat: Boolean(next.isChat),
         showProgress: Boolean(next.showProgress),
         watchers: Array.isArray(next.watchers) ? next.watchers : [],
+        senderUserId:
+          next.senderUserId != null && next.senderUserId !== ''
+            ? String(next.senderUserId)
+            : null,
+        senderSchoolName:
+          next.senderSchoolName != null &&
+          String(next.senderSchoolName).trim() !== ''
+            ? String(next.senderSchoolName).trim()
+            : null,
+        senderColorId:
+          next.senderColorId != null && Number.isFinite(Number(next.senderColorId))
+            ? Number(next.senderColorId)
+            : null,
       });
       setVisible(true);
       console.log('[ToastSystem] Triggered:', {
