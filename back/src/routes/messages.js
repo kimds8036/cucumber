@@ -573,7 +573,7 @@ WHERE m.id = ?`,
       if (clientId) {
         savedMessage.client_id = String(clientId);
       }
-      emitNewMessage(roomId, savedMessage);
+      emitNewMessage(roomId, savedMessage, { roomType: 'message' });
 
       // ── [변경] 알림을 큐에 위임 (비동기, fire-and-forget) ──
       // createNotification을 직접 await 하지 않으므로
