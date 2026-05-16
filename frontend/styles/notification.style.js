@@ -253,4 +253,14 @@ export const createNotificationStyles = (normalize) =>
       fontFamily: fonts.regular,
       color: colors.textLight40,
     },
+    announcementEmptyContainer: {
+      flexGrow: 1,
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    announcementEmptyText: {
+      fontSize: normalize(fontSizes.xl),
+      fontFamily: fonts.regular,
+      color: colors.textLight20,
+    },
   });
