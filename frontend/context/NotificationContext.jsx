@@ -285,10 +285,30 @@ export function NotificationProvider({ children }) {
       cacheStudySummaryWatchers(payload);
       refreshHasUnread();
     };
+    const resolveNewMessageRoomType = (payload) => {
+      const raw = String(
+        payload?.roomType ??
+          payload?.room_type ??
+          payload?.message?.room_type ??
+          '',
+      )
+        .trim()
+        .toLowerCase();
+      if (raw === 'dm' || raw === 'dm_room') return 'dm_room';
+      if (raw === 'message' || raw === 'message_room') return 'message_room';
+      return 'message_room';
+    };
+
     const newMessageHandler = (payload) => {
       const isForeground = appStateRef.current === 'active';
       const roomId = payload?.message?.room_id;
-      const senderName = payload?.message?.sender_name || '새 메시지';
+      const relatedType = resolveNewMessageRoomType(payload);
+      const isDm = relatedType === 'dm_room';
+      const ANONYMOUS_MAIL_LABEL = '익명 쪽지';
+      const senderNameRaw = String(payload?.message?.sender_name ?? '').trim();
+      const senderName = isDm
+        ? senderNameRaw || '새 메시지'
+        : ANONYMOUS_MAIL_LABEL;
       const content = payload?.message?.content || '(이미지)';
       const isActiveRoom =
         roomId != null &&
@@ -297,10 +317,12 @@ export function NotificationProvider({ children }) {
 
       console.log('[NotificationSocket] new_message received', {
         roomId,
+        relatedType,
+        isDm,
         activeChatRoomId,
         isActiveRoom,
         isMessageTab,
-        senderName,
+        senderName: isDm ? senderName : ANONYMOUS_MAIL_LABEL,
         hasContent: Boolean(payload?.message?.content),
         receivedAt: new Date().toISOString(),
       });
@@ -330,6 +352,7 @@ export function NotificationProvider({ children }) {
       }
       console.log('[NotificationSocket] toast shown', {
         roomId,
+        relatedType,
         senderName,
       });
       showToast({
@@ -337,11 +360,27 @@ export function NotificationProvider({ children }) {
         senderName,
         body: content,
         roomId,
-        relatedType: 'message_room',
+        relatedType,
         relatedId: roomId,
         type: 'mail',
         category: 'mail',
         isChat: true,
+        ...(isDm
+          ? {
+              senderUserId:
+                payload?.message?.sender_id != null
+                  ? String(payload.message.sender_id)
+                  : null,
+              senderSchoolName:
+                payload?.message?.sender_school_name != null
+                  ? String(payload.message.sender_school_name)
+                  : null,
+              senderColorId:
+                payload?.message?.sender_color_id != null
+                  ? Number(payload.message.sender_color_id)
+                  : null,
+            }
+          : {}),
       });
     };
 
