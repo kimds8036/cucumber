@@ -570,7 +570,7 @@ router.post(
                  ) di) AS images
          FROM dm_messages m
          LEFT JOIN users u ON m.sender_id = u.id
-         LEFT JOIN schools s ON u.school_id = s.id
+         LEFT JOIN schools s ON u.school_id = s.school_id
          LEFT JOIN dm_messages pm ON m.parent_message_id = pm.id
          LEFT JOIN users pu ON pm.sender_id = pu.id
          WHERE m.id = ?`,
