@@ -1,4 +1,4 @@
-/**
+﻿/**
  * timerFriendModals.jsx
  * 친구 목록 UI + PokeModal + AddFriendModal + Toast
  */
@@ -67,22 +67,26 @@ export const PokeModal = ({
         activeOpacity={1}
       />
       <View style={s.pokeWrapper}>
-        {!isStudying ? (
-          <View style={s.pokeOutsideDescWrap}>
-            {pokeLockedSeconds > 0 ? (
-              <Text style={s.pokeOutsideDesc}>
-                {`${pokeLockedSeconds}초 후 다시 보낼 수 있어요`}
+        <View style={s.pokeOutsideDescWrap}>
+          {isStudying ? (
+            <Text style={s.pokeOutsideDesc}>
+              <Text style={s.pokeOutsideDescRest}>
+                공부가 끝나면 기다렸다고 알림을 보낼게요
               </Text>
-            ) : (
+            </Text>
+          ) : pokeLockedSeconds > 0 ? (
+            <Text style={s.pokeOutsideDesc}>
+              {`${pokeLockedSeconds}초 후 다시 보낼 수 있어요`}
+            </Text>
+          ) : (
               <Text style={s.pokeOutsideDesc}>
                 <Text style={s.pokeOutsideDescHighlight}>쿡 찌르기</Text>
                 <Text style={s.pokeOutsideDescRest}>
                   로 공부하자고 알림을 보내보세요!
                 </Text>
               </Text>
-            )}
-          </View>
-        ) : null}
+          )}
+        </View>
         <View style={s.pokePopup}>
 
           {/* 친구 정보 */}
@@ -131,12 +135,7 @@ export const PokeModal = ({
                     name="notifications"
                     style={[s.pokeNotificationBtnIcon, { color: colors.primary }]}
                   />
-                  <View style={s.pokePrimaryBtnTextGroup}>
-                    <Text style={s.pokeInfoTitle}>기다림 알림 보내기</Text>
-                    <Text style={s.pokeInfoDesc}>
-                      공부가 끝나면 기다렸다고 알림을 보낼게요
-                    </Text>
-                  </View>
+                  <Text style={s.pokeInfoTitle}>기다림 알림 보내기</Text>
                 </View>
               </TouchableOpacity>
             </>

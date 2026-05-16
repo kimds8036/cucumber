@@ -77,6 +77,13 @@ function TimetablePreview() {
   }, []);
 
   const safeTimetable = previewTimetable || {};
+  const hasTimetableData = useMemo(
+    () =>
+      Object.values(safeTimetable).some((value) =>
+        Boolean(normalizeSubject(value)),
+      ),
+    [safeTimetable],
+  );
   const maxPeriod = useMemo(
     () => getMaxPeriodFromTimetableKeys(safeTimetable, 7),
     [safeTimetable],
@@ -138,6 +145,12 @@ function TimetablePreview() {
             }}
           >
             <ActivityIndicator size="large" color={colors.primary} />
+          </View>
+        ) : !hasTimetableData ? (
+          <View style={pv.choicePreviewEmptyContainer}>
+            <Text style={pv.choicePreviewEmptyText}>
+              시간표 데이터가 없습니다.{'\n'}직접 선택을 눌러 시간표를 구성해주세요
+            </Text>
           </View>
         ) : (
           <>
