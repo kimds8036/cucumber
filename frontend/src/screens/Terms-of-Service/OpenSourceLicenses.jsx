@@ -1,67 +1,97 @@
 import React, { useMemo } from 'react';
-import { ScrollView, Text, View, useWindowDimensions } from 'react-native';
+import { Linking, ScrollView, Text, View, useWindowDimensions } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import SubHeader from '../../../view/frame/subHeader';
 import { getNormalize } from '../../../styles/mypage.style';
 import { createServiceStyles } from '../../../styles/service.style';
+import { groupMarkdownBlocks } from './markdownBlocks';
 
-const LICENSE_LINES = [
-  '제정일: [2026-05-04]',
-  '시행일: [2026-05-11]',
-  '버전: v1.0.0',
-  '---',
-  '본 앱(Youth Paper)은 아래의 오픈소스 소프트웨어를 사용합니다. 각 소프트웨어의 저작권 및 라이선스 조건은 다음과 같습니다.',
-  '## MIT License',
-  '전문: https://opensource.org/licenses/MIT',
-  '- React Native (Meta Platforms, Inc.)',
-  '- React (Meta Platforms, Inc.)',
-  '- Expo 및 expo-* 패키지 (650 Industries, Inc.)',
-  '- @react-navigation/* (React Navigation Contributors)',
-  '- react-native-safe-area-context, react-native-screens, react-native-reanimated 등',
-  '- @react-native-firebase/*, axios, express, socket.io, ioredis, bull, mysql2 등 다수',
-  '---',
-  '## Apache License 2.0',
-  '전문: https://www.apache.org/licenses/LICENSE-2.0',
-  '- Firebase JS SDK (@firebase/*), TypeScript, @grpc/* 등',
-  '---',
-  '## BSD 3-Clause License',
-  '전문: https://opensource.org/licenses/BSD-3-Clause',
-  '- protobufjs, source-map, terser, qs, node-forge 등',
-  '---',
-  '## BSD 2-Clause License',
-  '전문: https://opensource.org/licenses/BSD-2-Clause',
-  '- css-select, css-what, domhandler, dotenv(backend), fontfaceobserver 등',
-  '---',
-  '## ISC License',
-  '전문: https://opensource.org/licenses/ISC',
-  '- graceful-fs, glob, rimraf, lru-cache, semver, yaml, yargs-parser 등',
-  '---',
-  '## CC-BY-4.0',
-  '전문: https://creativecommons.org/licenses/by/4.0/',
-  '- caniuse-lite, @fortawesome/free-solid-svg-icons(아이콘 리소스)',
-  '---',
-  '## MPL-2.0',
-  '전문: https://www.mozilla.org/en-US/MPL/2.0/',
-  '- lightningcss, lightningcss-win32-x64-msvc',
-  '---',
-  '## BlueOak-1.0.0 License',
-  '전문: https://blueoakcouncil.org/license/1.0.0',
-  '- minimatch, minipass, glob(일부 버전)',
-  '---',
-  '## 기타 라이선스',
-  '- big-integer (Unlicense)',
-  '- argparse@2.0.1 (Python-2.0)',
-  '- spdx-exceptions (CC-BY-3.0)',
-  '- spdx-ranges (MIT AND CC-BY-3.0)',
-  '- rc (BSD-2-Clause OR MIT OR Apache-2.0)',
-  '---',
-  '※ 본 고지는 앱 배포 시점 기준이며, 라이브러리 업데이트에 따라 변경될 수 있습니다.',
-];
+const OPEN_SOURCE_MARKDOWN = require('./_opensource_md.json');
+const LICENSE_BLOCKS = groupMarkdownBlocks(OPEN_SOURCE_MARKDOWN.split('\n'));
+const HIDDEN_TITLE_LINES = new Set(['# 버전 v1.0']);
+
+const INLINE_TOKEN = /(\*\*[^*]+\*\*|\[[^\]]+\]\([^)]+\))/g;
+
+function buildInlineNodes(line, linkStyle) {
+  const nodes = [];
+  let last = 0;
+  let m;
+  const re = new RegExp(INLINE_TOKEN.source, 'g');
+  while ((m = re.exec(line)) !== null) {
+    if (m.index > last) {
+      nodes.push(line.slice(last, m.index));
+    }
+    const token = m[1];
+    if (token.startsWith('**')) {
+      nodes.push(
+        <Text key={`ib-${m.index}`} style={{ fontWeight: '700' }}>
+          {token.slice(2, -2)}
+        </Text>,
+      );
+    } else {
+      const lm = /^\[([^\]]+)\]\(([^)]+)\)$/.exec(token);
+      if (lm) {
+        const url = lm[2];
+        nodes.push(
+          <Text
+            key={`il-${m.index}`}
+            style={linkStyle}
+            onPress={() => Linking.openURL(url)}
+          >
+            {lm[1]}
+          </Text>,
+        );
+      } else {
+        nodes.push(token);
+      }
+    }
+    last = m.index + token.length;
+  }
+  if (last < line.length) {
+    nodes.push(line.slice(last));
+  }
+  if (nodes.length === 0) {
+    nodes.push(line);
+  }
+  return nodes;
+}
 
 const OpenSourceLicenses = ({ navigation }) => {
   const { width } = useWindowDimensions();
   const normalize = useMemo(() => getNormalize(width), [width]);
   const styles = useMemo(() => createServiceStyles(normalize), [normalize]);
+  const linkStyle = useMemo(
+    () => ({
+      ...styles.para,
+      color: '#2563eb',
+      textDecorationLine: 'underline',
+    }),
+    [styles.para],
+  );
+  const bulletLinkStyle = useMemo(
+    () => ({
+      ...styles.bullet,
+      color: '#2563eb',
+      textDecorationLine: 'underline',
+    }),
+    [styles.bullet],
+  );
+  const nestedBulletLinkStyle = useMemo(
+    () => ({
+      ...styles.bulletNested,
+      color: '#2563eb',
+      textDecorationLine: 'underline',
+    }),
+    [styles.bulletNested],
+  );
+  const chapterLinkStyle = useMemo(
+    () => ({
+      ...styles.chapterTitle,
+      color: '#2563eb',
+      textDecorationLine: 'underline',
+    }),
+    [styles.chapterTitle],
+  );
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
@@ -71,26 +101,31 @@ const OpenSourceLicenses = ({ navigation }) => {
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
-        {LICENSE_LINES.map((line, idx) => {
-          if (line === '---') return <View key={`d-${idx}`} style={styles.divider} />;
-          if (line.startsWith('## ')) {
+        {LICENSE_BLOCKS.map((block, idx) => {
+          const { trimmed } = block;
+          if (HIDDEN_TITLE_LINES.has(trimmed)) return null;
+          if (trimmed === '---') {
+            return <View key={`d-${idx}`} style={styles.divider} />;
+          }
+          if (trimmed.startsWith('## ')) {
             return (
               <Text key={`c-${idx}`} style={styles.chapterTitle}>
-                {line.replace('## ', '')}
+                {buildInlineNodes(trimmed.replace('## ', ''), chapterLinkStyle)}
               </Text>
             );
           }
-          if (line.startsWith('- ')) {
+          if (block.type === 'bullet' || block.type === 'bulletNested') {
+            const isNested = block.type === 'bulletNested';
             return (
-              <Text key={`b-${idx}`} style={styles.bullet}>
+              <Text key={`b-${idx}`} style={isNested ? styles.bulletNested : styles.bullet}>
                 {'• '}
-                {line.replace('- ', '')}
+                {buildInlineNodes(trimmed, isNested ? nestedBulletLinkStyle : bulletLinkStyle)}
               </Text>
             );
           }
           return (
             <Text key={`p-${idx}`} style={styles.para}>
-              {line}
+              {buildInlineNodes(trimmed, linkStyle)}
             </Text>
           );
         })}
