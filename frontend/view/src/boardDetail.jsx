@@ -20,7 +20,7 @@ import ReportModal from '../../components/common/ReportModal.jsx';
 import BoarddetailADplaceholder from '../../src/screens/ad/boarddetailADplaceholder.jsx';
 
 export default function BoardDetail({ navigation, route }) {
-  const { coords } = useLocationContext();
+  const { coords, coordsIsFresh, permissionGranted } = useLocationContext();
   const { refreshHasUnread } = useNotification();
   const { width } = useWindowDimensions();
   const normalize = useMemo(() => getNormalize(width), [width]);
@@ -108,6 +108,11 @@ export default function BoardDetail({ navigation, route }) {
     setReplyToAuthorLabel,
     onCloseMenu: closeFloatingMenu,
   });
+
+  const distanceStale = permissionGranted && (!coordsIsFresh || !coords);
+  const postHasKm =
+    typeof post?.distanceKm === 'number' && !Number.isNaN(post.distanceKm);
+  const distanceLoading = permissionGranted && !postHasKm && distanceStale;
 
   const findCommentById = (comments, id) => {
     for (const c of comments) {
@@ -392,6 +397,9 @@ export default function BoardDetail({ navigation, route }) {
                     normalize={normalize}
                     width={width}
                     postMenuButtonRef={postMenuButtonRef}
+                    showDistanceBadge={permissionGranted}
+                    distanceStale={distanceStale}
+                    distanceLoading={distanceLoading}
                   />
                   <BoarddetailADplaceholder styles={styles} />
                 </View>

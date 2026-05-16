@@ -1,7 +1,6 @@
-import React, { memo, useState } from 'react';
+import React, { memo, useCallback, useRef, useState } from 'react';
 import { View, Text, TouchableOpacity, Pressable } from 'react-native';
 import { Image } from 'expo-image';
-import { MenuView } from '@react-native-menu/menu';
 import Loading from '../../../../components/Loading';
 import { colors } from '../../../../styles/colors';
 import ProfileIcon from '../../../../assets/Profile.svg';
@@ -35,11 +34,12 @@ const areImagesEqual = (a, b) => {
 /** 채팅 썸네일: 로딩 전·후 동일 영역(고정 1:1) → 리스트 높이 추정과 스크롤 안정화 */
 const CHAT_IMAGE_BOX = 200;
 
-const OptimizedImage = memo(({ uri, onPress, isSending }) => (
-  <TouchableOpacity
-    activeOpacity={0.9}
+const OptimizedImage = memo(({ uri, onPress, onLongPress, isSending }) => (
+  <Pressable
     onPress={onPress}
-    style={{
+    onLongPress={onLongPress}
+    delayLongPress={320}
+    style={({ pressed }) => ({
       width: CHAT_IMAGE_BOX,
       height: CHAT_IMAGE_BOX,
       aspectRatio: 1,
@@ -47,7 +47,8 @@ const OptimizedImage = memo(({ uri, onPress, isSending }) => (
       marginBottom: 4,
       position: 'relative',
       overflow: 'hidden',
-    }}
+      opacity: pressed ? 0.9 : 1,
+    })}
   >
     <Image
       source={{ uri }}
@@ -88,7 +89,7 @@ const OptimizedImage = memo(({ uri, onPress, isSending }) => (
         </Text>
       </View>
     ) : null}
-  </TouchableOpacity>
+  </Pressable>
 ));
 
 /**
@@ -168,61 +169,38 @@ const ReplyQuote = ({ chatStyles, senderName, content, onPress }) => (
   </TouchableOpacity>
 );
 
-const buildContextMenuActions = (msg) => {
-  const actions = [];
-  const hasCopy = Boolean(msg?.content && String(msg.content).trim());
-  const canDelete = Boolean(msg?.isMe && !msg?.is_deleted);
-
-  if (hasCopy)
-    actions.push({
-      id: 'copy',
-      title: '복사',
-      image: 'doc.on.doc',
-      imageColor: '#000000',
-    });
-  actions.push({
-    id: 'reply',
-    title: '답장',
-    image: 'arrowshape.turn.up.left',
-    imageColor: '#000000',
-  });
-  if (canDelete) {
-    actions.push({
-      id: 'delete',
-      title: '삭제',
-      image: 'trash',
-      imageColor: '#FF3B30',
-      attributes: { destructive: true },
-    });
-  }
-  return actions;
-};
-
-const NativeLongPressMenu = ({
+/** 말풍선 롱프레스 → ChatScreen MessageLongPressMenu 앵커 오픈 (단일 Pressable, 자식 Touchable 없음) */
+const LongPressMenuTrigger = ({
   msg,
-  onCopyMessage,
-  onReplyMessage,
-  onDeleteMessage,
+  onOpenLongPressMenu,
+  disabled,
+  style,
   children,
 }) => {
-  const actions = buildContextMenuActions(msg);
-  if (actions.length === 0) return children;
+  const anchorRef = useRef(null);
 
-  const handleMenuPress = ({ nativeEvent }) => {
-    const actionId = nativeEvent?.event;
-    if (actionId === 'copy') return onCopyMessage?.(msg?.content);
-    if (actionId === 'reply') return onReplyMessage?.(msg);
-    if (actionId === 'delete') return onDeleteMessage?.(msg?.id);
-  };
+  const handleLongPress = useCallback(() => {
+    if (disabled || !onOpenLongPressMenu) return;
+    const node = anchorRef.current;
+    if (!node?.measureInWindow) return;
+    node.measureInWindow((x, y, width, height) => {
+      onOpenLongPressMenu(msg, { x, y, width, height });
+    });
+  }, [disabled, msg, onOpenLongPressMenu]);
 
   return (
-    <MenuView
-      actions={actions}
-      onPressAction={handleMenuPress}
-      shouldOpenOnLongPress
+    <Pressable
+      ref={anchorRef}
+      style={({ pressed }) => [
+        style,
+        pressed && !disabled ? { opacity: 0.85 } : null,
+      ]}
+      onLongPress={handleLongPress}
+      delayLongPress={320}
+      disabled={disabled}
     >
-      <View>{children}</View>
-    </MenuView>
+      {typeof children === 'function' ? children(handleLongPress) : children}
+    </Pressable>
   );
 };
 
@@ -254,8 +232,10 @@ const MessageBubble = ({
   onReplyMessage,
   onPressReplyTarget,
   opponentName,
+  onOpenLongPressMenu,
   isImageOnly,
 }) => {
+  const longPressDisabled = Boolean(msg.is_deleted || msg.isSending);
   const [isExpanded, setIsExpanded] = useState(false);
   const messageText = String(msg.content ?? '');
   const isLongMessage = messageText.length > 180;
@@ -333,76 +313,73 @@ const MessageBubble = ({
 
         {/* 말풍선 (우측) */}
         <View collapsable={false} style={{ maxWidth: '78%' }}>
-          <NativeLongPressMenu
+          <LongPressMenuTrigger
             msg={msg}
-            onCopyMessage={onCopyMessage}
-            onReplyMessage={onReplyMessage}
-            onDeleteMessage={onDeleteMessage}
+            onOpenLongPressMenu={onOpenLongPressMenu}
+            disabled={longPressDisabled}
+            style={[
+              !isImageOnly
+                ? userBubbleStyle
+                : {
+                    backgroundColor: 'transparent',
+                    paddingHorizontal: 0,
+                    paddingVertical: 0,
+                  },
+              msg.isFailed && { borderWidth: 1, borderColor: colors.alert },
+              msg.is_deleted && { backgroundColor: colors.textLight10 },
+            ]}
           >
-            <TouchableOpacity
-              style={[
-                !isImageOnly
-                  ? userBubbleStyle
-                  : {
-                      backgroundColor: 'transparent',
-                      paddingHorizontal: 0,
-                      paddingVertical: 0,
-                    },
-                msg.isFailed && { borderWidth: 1, borderColor: colors.alert },
-                msg.is_deleted && { backgroundColor: colors.textLight10 },
-              ]}
-              disabled={msg.is_deleted || msg.isSending}
-              activeOpacity={0.8}
-            >
-              {/* 답장 인용구 (카카오톡 스타일) */}
-              {msg.parent_content ? (
-                <ReplyQuote
-                  chatStyles={chatStyles}
-                  senderName={msg.parent_sender_name}
-                  content={msg.parent_content}
-                  onPress={() => onPressReplyTarget?.(msg.parent_message_id)}
-                />
-              ) : null}
-
-              {msg.images &&
-                msg.images.length > 0 &&
-                !msg.is_deleted &&
-                msg.images.map((uri, index) => (
-                  <OptimizedImage
-                    key={`${uri}-${index}`}
-                    uri={uri}
-                    onPress={() => onImagePress?.(uri)}
-                    isSending={msg.isSending}
+            {(onBubbleLongPress) => (
+              <>
+                {msg.parent_content ? (
+                  <ReplyQuote
+                    chatStyles={chatStyles}
+                    senderName={msg.parent_sender_name}
+                    content={msg.parent_content}
+                    onPress={() => onPressReplyTarget?.(msg.parent_message_id)}
                   />
-                ))}
-              {msg.is_deleted ? (
-                <Text style={chatStyles.deletedMessageText}>
-                  삭제된 메시지입니다.
-                </Text>
-              ) : msg.content ? (
-                <>
-                  <Text
-                    style={chatStyles.userBubbleText}
-                    numberOfLines={
-                      isExpanded ? undefined : isLongMessage ? 4 : undefined
-                    }
-                  >
-                    {msg.content}
+                ) : null}
+
+                {msg.images &&
+                  msg.images.length > 0 &&
+                  !msg.is_deleted &&
+                  msg.images.map((uri, index) => (
+                    <OptimizedImage
+                      key={`${uri}-${index}`}
+                      uri={uri}
+                      onPress={() => onImagePress?.(uri)}
+                      onLongPress={onBubbleLongPress}
+                      isSending={msg.isSending}
+                    />
+                  ))}
+                {msg.is_deleted ? (
+                  <Text style={chatStyles.deletedMessageText}>
+                    삭제된 메시지입니다.
                   </Text>
-                  {isLongMessage ? (
-                    <TouchableOpacity
-                      onPress={() => setIsExpanded((prev) => !prev)}
-                      activeOpacity={0.8}
+                ) : msg.content ? (
+                  <>
+                    <Text
+                      style={chatStyles.userBubbleText}
+                      numberOfLines={
+                        isExpanded ? undefined : isLongMessage ? 4 : undefined
+                      }
                     >
-                      <Text style={chatStyles.chatTimeUser}>
-                        {isExpanded ? '접기' : '전체보기'}
-                      </Text>
-                    </TouchableOpacity>
-                  ) : null}
-                </>
-              ) : null}
-            </TouchableOpacity>
-          </NativeLongPressMenu>
+                      {msg.content}
+                    </Text>
+                    {isLongMessage ? (
+                      <Pressable
+                        onPress={() => setIsExpanded((prev) => !prev)}
+                      >
+                        <Text style={chatStyles.chatTimeUser}>
+                          {isExpanded ? '접기' : '전체보기'}
+                        </Text>
+                      </Pressable>
+                    ) : null}
+                  </>
+                ) : null}
+              </>
+            )}
+          </LongPressMenuTrigger>
         </View>
       </View>
     );
@@ -431,13 +408,13 @@ const MessageBubble = ({
         <View style={{ flexShrink: 1, minWidth: 0 }}>
           {isImageOnly ? (
             <View collapsable={false}>
-              <NativeLongPressMenu
+              <LongPressMenuTrigger
                 msg={msg}
-                onCopyMessage={onCopyMessage}
-                onReplyMessage={onReplyMessage}
-                onDeleteMessage={onDeleteMessage}
+                onOpenLongPressMenu={onOpenLongPressMenu}
+                disabled={longPressDisabled}
+                style={{ alignItems: 'flex-start' }}
               >
-                <Pressable disabled={msg.is_deleted || msg.isSending}>
+                {(onBubbleLongPress) => (
                   <View style={{ alignItems: 'flex-start' }}>
                     {msg.parent_content ? (
                       <ReplyQuote
@@ -457,25 +434,26 @@ const MessageBubble = ({
                           key={`${uri}-${index}`}
                           uri={uri}
                           onPress={() => onImagePress?.(uri)}
+                          onLongPress={onBubbleLongPress}
                           isSending={msg.isSending}
                         />
                       ))}
                   </View>
-                </Pressable>
-              </NativeLongPressMenu>
+                )}
+              </LongPressMenuTrigger>
             </View>
           ) : (
             <>
               {msg.content || msg.is_deleted ? (
                 <View collapsable={false}>
-                  <NativeLongPressMenu
+                  <LongPressMenuTrigger
                     msg={msg}
-                    onCopyMessage={onCopyMessage}
-                    onReplyMessage={onReplyMessage}
-                    onDeleteMessage={onDeleteMessage}
+                    onOpenLongPressMenu={onOpenLongPressMenu}
+                    disabled={longPressDisabled}
+                    style={opponentBubbleStyle}
                   >
-                    <Pressable disabled={msg.is_deleted || msg.isSending}>
-                      <View style={opponentBubbleStyle}>
+                    {(onBubbleLongPress) => (
+                      <>
                         {msg.parent_content ? (
                           <ReplyQuote
                             chatStyles={chatStyles}
@@ -494,6 +472,7 @@ const MessageBubble = ({
                               key={`${uri}-${index}`}
                               uri={uri}
                               onPress={() => onImagePress?.(uri)}
+                              onLongPress={onBubbleLongPress}
                               isSending={msg.isSending}
                             />
                           ))}
@@ -516,20 +495,19 @@ const MessageBubble = ({
                               {msg.content}
                             </Text>
                             {isLongMessage ? (
-                              <TouchableOpacity
+                              <Pressable
                                 onPress={() => setIsExpanded((prev) => !prev)}
-                                activeOpacity={0.8}
                               >
                                 <Text style={chatStyles.chatTimeOpponent}>
                                   {isExpanded ? '접기' : '전체보기'}
                                 </Text>
-                              </TouchableOpacity>
+                              </Pressable>
                             ) : null}
                           </>
                         ) : null}
-                      </View>
-                    </Pressable>
-                  </NativeLongPressMenu>
+                      </>
+                    )}
+                  </LongPressMenuTrigger>
                 </View>
               ) : null}
             </>
@@ -574,6 +552,7 @@ const MessageItem = memo(
     onReplyMessage,
     onPressReplyTarget,
     opponentName,
+    onOpenLongPressMenu,
   }) => {
     if (msg.type === 'dateBanner') {
       return <DateBanner msg={msg} normalize={normalize} />;
@@ -596,6 +575,7 @@ const MessageItem = memo(
           onReplyMessage={onReplyMessage}
           onPressReplyTarget={onPressReplyTarget}
           opponentName={opponentName}
+          onOpenLongPressMenu={onOpenLongPressMenu}
           isImageOnly={isImageOnly}
         />
       );
@@ -628,6 +608,7 @@ const MessageItem = memo(
           onReplyMessage={onReplyMessage}
           onPressReplyTarget={onPressReplyTarget}
           opponentName={opponentName}
+          onOpenLongPressMenu={onOpenLongPressMenu}
           isImageOnly={isImageOnly}
         />
       </View>
@@ -638,6 +619,8 @@ const MessageItem = memo(
     if (prevProps.chatStyles !== nextProps.chatStyles) return false;
     if (prevProps.normalize !== nextProps.normalize) return false;
     if (prevProps.onPressReplyTarget !== nextProps.onPressReplyTarget)
+      return false;
+    if (prevProps.onOpenLongPressMenu !== nextProps.onOpenLongPressMenu)
       return false;
 
     const pm = prevProps.msg;

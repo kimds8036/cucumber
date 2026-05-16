@@ -22,7 +22,6 @@ import {
   createDetailStyles,
 } from '../../../../styles/board.style';
 import { createChatStyles } from '../../../../styles/message.style';
-import Skeleton from '../../../../components/common/Skeleton';
 import SubHeader from '../../../frame/subHeader';
 
 import useChatScroll from '../hooks/useChatScroll';
@@ -32,6 +31,7 @@ import MessageList from '../components/MessageList';
 import MessageInput from '../components/MessageInput';
 import MessageActions from '../components/MessageActions';
 import ImageViewer from '../components/ImageViewer';
+import ChatLoadingSkeleton from '../components/ChatLoadingSkeleton';
 
 import {
   withMessageGroupFlags,
@@ -126,12 +126,45 @@ export default function ChatScreen({
 
   const postCardLayoutAnchorDoneRef = useRef(false);
   const postCardThumbAnchorDoneRef = useRef(false);
+  const dmListLayoutAnchorDoneRef = useRef(false);
   const scrollToLatestRef = useRef(scroll.scrollToLatest);
   scrollToLatestRef.current = scroll.scrollToLatest;
   useEffect(() => {
     postCardLayoutAnchorDoneRef.current = false;
     postCardThumbAnchorDoneRef.current = false;
+    dmListLayoutAnchorDoneRef.current = false;
   }, [roomId]);
+
+  const runDmScrollAnchor = useCallback(() => {
+    if (chatType !== 'dm') return;
+    if (combinedLoading || !hasMessages) return;
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        scrollToLatestRef.current?.({ animated: false });
+      });
+    });
+  }, [chatType, combinedLoading, hasMessages]);
+
+  const handleDmChatListLayout = useCallback(() => {
+    if (chatType !== 'dm' || dmListLayoutAnchorDoneRef.current) return;
+    if (combinedLoading || !hasMessages) return;
+    dmListLayoutAnchorDoneRef.current = true;
+    runDmScrollAnchor();
+  }, [chatType, combinedLoading, hasMessages, runDmScrollAnchor]);
+
+  useEffect(() => {
+    if (chatType !== 'dm' || combinedLoading || !hasMessages) return;
+    if (!scroll.listShellVisible || scroll.initialScrollSettling) return;
+    runDmScrollAnchor();
+  }, [
+    chatType,
+    combinedLoading,
+    hasMessages,
+    scroll.listShellVisible,
+    scroll.initialScrollSettling,
+    roomId,
+    runDmScrollAnchor,
+  ]);
 
   const handlePostCardReady = useCallback(() => {
     if (postCardLayoutAnchorDoneRef.current) return;
@@ -254,7 +287,10 @@ export default function ChatScreen({
             />
           )}
 
-        <Animated.View style={[chatStyles.chatListContainer, listAnimStyle]}>
+        <Animated.View
+          style={[chatStyles.chatListContainer, listAnimStyle]}
+          onLayout={chatType === 'dm' ? handleDmChatListLayout : undefined}
+        >
           {!combinedLoading && chat.hasMore && scroll.showLoadMoreButton ? (
             <View style={chatStyles.loadMoreWrap}>
               <TouchableOpacity
@@ -286,36 +322,7 @@ export default function ChatScreen({
           />
           {shouldShowChatSkeleton ? (
             <View pointerEvents="auto" style={chatStyles.chatSkeletonOverlay}>
-              <View style={chatStyles.chatSkeletonTop}>
-                <Skeleton
-                  width={normalize(120)}
-                  height={normalize(12)}
-                  borderRadius={normalize(6)}
-                />
-              </View>
-              <View style={chatStyles.chatSkeletonBody}>
-                <View style={chatStyles.chatSkeletonRowLeft}>
-                  <Skeleton width={normalize(28)} height={normalize(28)} borderRadius={normalize(14)} />
-                  <View style={chatStyles.chatSkeletonBubbleWrap72}>
-                    <Skeleton width={normalize(140)} height={normalize(12)} borderRadius={normalize(6)} />
-                    <Skeleton width={normalize(190)} height={normalize(14)} borderRadius={normalize(8)} />
-                  </View>
-                </View>
-                <View style={chatStyles.chatSkeletonRowRight}>
-                  <View style={chatStyles.chatSkeletonBubbleWrap72Right}>
-                    <Skeleton width={normalize(160)} height={normalize(14)} borderRadius={normalize(8)} />
-                    <Skeleton width={normalize(110)} height={normalize(12)} borderRadius={normalize(6)} />
-                  </View>
-                </View>
-                <View style={chatStyles.chatSkeletonRowLeft}>
-                  <Skeleton width={normalize(28)} height={normalize(28)} borderRadius={normalize(14)} />
-                  <View style={chatStyles.chatSkeletonBubbleWrap68}>
-                    <Skeleton width={normalize(120)} height={normalize(12)} borderRadius={normalize(6)} />
-                    <Skeleton width={normalize(170)} height={normalize(14)} borderRadius={normalize(8)} />
-                  </View>
-                </View>
-              </View>
-              <View style={chatStyles.chatSkeletonBottomSpacer} />
+              <ChatLoadingSkeleton normalize={normalize} />
             </View>
           ) : null}
         </Animated.View>

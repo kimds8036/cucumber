@@ -170,11 +170,16 @@ export function initSocketServer(httpServer) {
  * @param {number|string} roomId
  * @param {object}        message  - DB에서 조회한 메시지 행
  */
-export function emitNewMessage(roomId, message) {
+export function emitNewMessage(roomId, message, options = {}) {
   if (!io) return;
+  const roomType =
+    options.roomType === 'dm' || options.roomType === 'message'
+      ? options.roomType
+      : 'message';
   io.to(`room:${roomId}`).emit('new_message', {
     type: 'new_message',
-    message,
+    roomType,
+    message: message ? { ...message, room_type: roomType } : message,
   });
 }
 

@@ -725,16 +725,16 @@ export const createDetailStyles = (width, normalize) => {
       marginBottom: normalize(10),
     },
     detailImagesWrap: {
+      width: '100%',
       marginBottom: normalize(7),
-      alignItems: 'flex-start',
     },
     detailImage: {
-      height: normalize(260),
+      width: '100%',
       marginBottom: normalize(8),
-      alignSelf: 'flex-start',
     },
     detailImageFallback: {
       width: '100%',
+      height: normalize(260),
     },
     detailImageLast: {
       marginBottom: 0,
@@ -842,6 +842,12 @@ export const createDetailStyles = (width, normalize) => {
     },
     commentReplyBody: {
       flex: 1,
+    },
+    /** 댓글 본문(작성자·내용·푸터) 한 덩어리 */
+    commentBlock: {
+      flex: 1,
+      paddingHorizontal: width * 0.01,
+      paddingVertical: normalize(4),
     },
     commentRow: {
       flexDirection: 'row',
@@ -951,7 +957,7 @@ export const createDetailStyles = (width, normalize) => {
     bottomInputRow: {
       flexDirection: 'column',
       backgroundColor: colors.background,
-      borderTopWidth: 1,
+      borderTopWidth: 0.5,
       borderTopColor: colors.textLight10,
       paddingHorizontal: width * 0.03,
       paddingVertical: normalize(12),

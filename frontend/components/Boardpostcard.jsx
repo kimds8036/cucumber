@@ -1,10 +1,10 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { View, Text, TouchableOpacity, Image } from 'react-native';
 import Ionicons from '@expo/vector-icons/Ionicons';
-import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
-import { colors } from '../styles/colors';
+import { colors, fonts, fontSizes } from '../styles/colors';
 import { normalizeTagsFromApi } from '../utils/normalizePostTags';
+import DistanceBadge from './DistanceBadge';
 
 /**
  * BoardPostCard
@@ -18,6 +18,9 @@ import { normalizeTagsFromApi } from '../utils/normalizePostTags';
  *  - onLayoutStable : (postId, layoutEpoch) => void — 태그 줄·칩 측정이 끝난 뒤(또는 태그 없음) 1회
  *  - layoutStableEpoch : 목록이 배치한 로드 배치 번호(부모 ref). 콜백과 짝을 맞출 때 사용
  *  - hideDistanceBadge : true면 우측 거리(km) 뱃지만 숨김
+ *  - showDistanceBadge : 위치 권한 등으로 배지 영역 표시
+ *  - distanceStale : 캐시·대기(주황 칩), false면 GPS 확정(초록)
+ *  - distanceLoading : 거리 미계산 시 주황 칩 + 점 로딩
  */
 const BoardPostCard = ({
   post,
@@ -28,11 +31,20 @@ const BoardPostCard = ({
   onLayoutStable,
   layoutStableEpoch = 0,
   hideDistanceBadge = false,
+  showDistanceBadge = true,
+  distanceStale = false,
+  distanceLoading = false,
 }) => {
   const hasThumb =
     typeof post.thumbnail === 'string' && post.thumbnail.trim().length > 0;
   const [containerWidth, setContainerWidth] = useState(0);
   const [tagWidths, setTagWidths] = useState([]);
+  const [measureFallback, setMeasureFallback] = useState(false);
+  const measureOkRef = useRef(false);
+
+  const TAG_GAP = normalize(6);
+  const WIDTH_FIT_EPSILON = 1;
+  const MORE_CHIP_RESERVE = normalize(40);
 
   const tags = useMemo(() => {
     const rawList = normalizeTagsFromApi(post.tags);
@@ -45,29 +57,53 @@ const BoardPostCard = ({
       .filter(Boolean);
   }, [post.tags]);
 
-  const TAG_GAP = normalize(6);
-  const MORE_BADGE_WIDTH = normalize(36);
-
-  useEffect(() => {
-    setTagWidths(new Array(tags.length).fill(0));
-  }, [tags.length]);
+  const tagsSignature = useMemo(() => tags.join('\u0001'), [tags]);
 
   const allMeasured =
     tags.length > 0 &&
     tagWidths.length === tags.length &&
     tagWidths.every((w) => typeof w === 'number' && w > 0);
 
-  const { visibleCount, hiddenTagCount } = useMemo(() => {
-    if (!allMeasured || containerWidth <= 0) {
-      return { visibleCount: tags.length, hiddenTagCount: 0 };
+  useEffect(() => {
+    setContainerWidth(0);
+    setTagWidths(new Array(tags.length).fill(0));
+    setMeasureFallback(false);
+    measureOkRef.current = false;
+  }, [tagsSignature, tags.length, post?.id]);
+
+  useEffect(() => {
+    measureOkRef.current = containerWidth > 0 && allMeasured;
+    if (measureOkRef.current) {
+      setMeasureFallback(false);
+    }
+  }, [containerWidth, allMeasured, tags.length]);
+
+  useEffect(() => {
+    setMeasureFallback(false);
+    if (tags.length === 0) return undefined;
+    const t = setTimeout(() => {
+      if (!measureOkRef.current) {
+        setMeasureFallback(true);
+      }
+    }, 300);
+    return () => clearTimeout(t);
+  }, [tagsSignature, post?.id, tags.length]);
+
+  const layoutComplete = containerWidth > 0 && allMeasured;
+  const useFallbackDisplay = measureFallback && !layoutComplete;
+
+  const visibleCount = useMemo(() => {
+    if (tags.length === 0) return 0;
+    if (!layoutComplete || useFallbackDisplay) {
+      return tags.length;
     }
 
     const totalWidth =
       tagWidths.reduce((sum, width) => sum + width, 0) +
       TAG_GAP * Math.max(0, tags.length - 1);
 
-    if (totalWidth <= containerWidth) {
-      return { visibleCount: tags.length, hiddenTagCount: 0 };
+    if (totalWidth <= containerWidth + WIDTH_FIT_EPSILON) {
+      return tags.length;
     }
 
     let used = 0;
@@ -75,36 +111,41 @@ const BoardPostCard = ({
 
     for (let i = 0; i < tags.length; i += 1) {
       const gapBefore = count > 0 ? TAG_GAP : 0;
-      const remainingAfterCurrent = tags.length - (i + 1);
+      const remainingAfterThis = tags.length - i - 1;
       const reserveForMore =
-        remainingAfterCurrent > 0 ? TAG_GAP + MORE_BADGE_WIDTH : 0;
-      const nextUsed = used + gapBefore + tagWidths[i];
+        remainingAfterThis > 0 ? TAG_GAP + MORE_CHIP_RESERVE : 0;
+      const nextUsed = used + gapBefore + tagWidths[i] + reserveForMore;
 
-      if (nextUsed + reserveForMore <= containerWidth) {
-        used = nextUsed;
+      if (nextUsed <= containerWidth + WIDTH_FIT_EPSILON) {
+        used += gapBefore + tagWidths[i];
         count += 1;
       } else {
         break;
       }
     }
 
-    return {
-      visibleCount: count,
-      hiddenTagCount: Math.max(0, tags.length - count),
-    };
+    return Math.max(1, count);
   }, [
-    allMeasured,
+    layoutComplete,
+    useFallbackDisplay,
     containerWidth,
     tagWidths,
     tags.length,
     TAG_GAP,
-    MORE_BADGE_WIDTH,
+    WIDTH_FIT_EPSILON,
+    MORE_CHIP_RESERVE,
   ]);
 
-  const isMeasuring = tags.length > 0 && (!allMeasured || containerWidth <= 0);
+  const hiddenTagCount =
+    layoutComplete && !useFallbackDisplay && tags.length > visibleCount
+      ? tags.length - visibleCount
+      : 0;
+
+  const showAllTagsForMeasure = tags.length > 0 && !layoutComplete && !useFallbackDisplay;
+
+  const layoutStable = tags.length === 0 || layoutComplete || useFallbackDisplay;
 
   const layoutStableKeyRef = useRef('');
-  const layoutStable = tags.length === 0 || !isMeasuring;
   useEffect(() => {
     if (!onLayoutStable) return undefined;
     if (!layoutStable) return undefined;
@@ -124,15 +165,6 @@ const BoardPostCard = ({
 
   const km = post.distanceKm;
   const hasKm = typeof km === 'number' && !Number.isNaN(km);
-  let distanceNumberText = '';
-  let distanceUnitText = '';
-  if (hasKm && km < 1) {
-    distanceNumberText = '1';
-    distanceUnitText = 'km 미만';
-  } else if (hasKm) {
-    distanceNumberText = String(Math.round(km));
-    distanceUnitText = 'km';
-  }
 
   const likesCount = Number(post.likes) || 0;
   const commentsCount = Number(post.comments) || 0;
@@ -175,22 +207,15 @@ const BoardPostCard = ({
             </View>
           ) : null}
         </View>
-        {!hideDistanceBadge && hasKm ? (
-          <View style={styles.distanceBadgeWrap}>
-            <View style={styles.distanceBadgeChip}>
-              <MaterialIcons
-                name="location-on"
-                size={normalize(10)}
-                color={colors.primaryDark}
-              />
-              <View style={styles.distanceBadgeTextRow}>
-                <Text style={styles.distanceBadgeNumber}>
-                  {distanceNumberText}
-                </Text>
-                <Text style={styles.distanceBadgeUnit}>{distanceUnitText}</Text>
-              </View>
-            </View>
-          </View>
+        {!hideDistanceBadge && showDistanceBadge ? (
+          <DistanceBadge
+            distanceKm={hasKm ? km : null}
+            stale={distanceStale}
+            loading={distanceLoading}
+            normalize={normalize}
+            wrapStyle={styles.distanceBadgeWrap}
+            chipStyle={styles.distanceBadgeChip}
+          />
         ) : null}
       </View>
 
@@ -214,41 +239,97 @@ const BoardPostCard = ({
             <View
               style={styles.postTagsWrap}
               onLayout={({ nativeEvent: { layout } }) => {
-                if (layout.width !== containerWidth)
-                  setContainerWidth(layout.width);
+                const w = layout.width;
+                if (w > 0 && w !== containerWidth) {
+                  setContainerWidth(w);
+                }
               }}
             >
               {tags.map((label, idx) => {
-                if (!isMeasuring && idx >= visibleCount) return null;
-                return (
-                  <View
-                    key={`tag-${idx}-${label}`}
-                    style={styles.postTagChip}
-                    onLayout={({ nativeEvent: { layout } }) => {
-                      const measuredWidth = layout.width;
-                      setTagWidths((prev) => {
-                        if (
-                          !Array.isArray(prev) ||
-                          prev.length !== tags.length
-                        ) {
-                          const next = new Array(tags.length).fill(0);
+                if (showAllTagsForMeasure) {
+                  return (
+                    <View
+                      key={`tag-${post?.id}-${idx}`}
+                      style={styles.postTagChip}
+                      onLayout={({ nativeEvent: { layout } }) => {
+                        const measuredWidth = layout.width;
+                        setTagWidths((prev) => {
+                          if (
+                            !Array.isArray(prev) ||
+                            prev.length !== tags.length
+                          ) {
+                            const next = new Array(tags.length).fill(0);
+                            next[idx] = measuredWidth;
+                            return next;
+                          }
+                          if (prev[idx] === measuredWidth) return prev;
+                          const next = [...prev];
                           next[idx] = measuredWidth;
                           return next;
-                        }
-                        if (prev[idx] === measuredWidth) return prev;
-                        const next = [...prev];
-                        next[idx] = measuredWidth;
-                        return next;
-                      });
-                    }}
-                  >
-                    <Text style={styles.postTagText}>{label}</Text>
-                  </View>
-                );
+                        });
+                      }}
+                    >
+                      <Text style={styles.postTagText}>{label}</Text>
+                    </View>
+                  );
+                }
+                if (useFallbackDisplay) {
+                  return (
+                    <View
+                      key={`tag-${post?.id}-${idx}`}
+                      style={styles.postTagChip}
+                    >
+                      <Text style={styles.postTagText} numberOfLines={1}>
+                        {label}
+                      </Text>
+                    </View>
+                  );
+                }
+                if (idx < visibleCount) {
+                  return (
+                    <View
+                      key={`tag-${post?.id}-${idx}`}
+                      style={styles.postTagChip}
+                      onLayout={({ nativeEvent: { layout } }) => {
+                        const measuredWidth = layout.width;
+                        setTagWidths((prev) => {
+                          if (
+                            !Array.isArray(prev) ||
+                            prev.length !== tags.length
+                          ) {
+                            const next = new Array(tags.length).fill(0);
+                            next[idx] = measuredWidth;
+                            return next;
+                          }
+                          if (prev[idx] === measuredWidth) return prev;
+                          const next = [...prev];
+                          next[idx] = measuredWidth;
+                          return next;
+                        });
+                      }}
+                    >
+                      <Text style={styles.postTagText} numberOfLines={1}>
+                        {label}
+                      </Text>
+                    </View>
+                  );
+                }
+                return null;
               })}
-              {!isMeasuring && hiddenTagCount > 0 ? (
+              {hiddenTagCount > 0 ? (
                 <View style={[styles.postTagChip, styles.postTagMoreChip]}>
-                  <Text style={styles.postTagText}>+{hiddenTagCount}</Text>
+                  <Text
+                    style={{
+                      fontSize: normalize(fontSizes.md),
+                      fontFamily: fonts.bold,
+                      color: colors.primaryDark,
+                      paddingHorizontal: normalize(6),
+                      paddingVertical: normalize(2),
+                    }}
+                    numberOfLines={1}
+                  >
+                    +{hiddenTagCount}
+                  </Text>
                 </View>
               ) : null}
             </View>
