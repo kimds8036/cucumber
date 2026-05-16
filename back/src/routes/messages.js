@@ -626,6 +626,7 @@ router.put('/rooms/:roomId/read', authenticate, validate(roomIdParamValidator), 
   try {
     const userId = req.user.userId;
     const { roomId } = req.params;
+    console.log('[ReadChain][messages] read 요청', { userId, roomId });
 
     const [rooms] = await pool.execute(
       `SELECT id, user1_id, user2_id FROM message_rooms
@@ -649,6 +650,12 @@ router.put('/rooms/:roomId/read', authenticate, validate(roomIdParamValidator), 
        WHERE room_id = ? AND sender_id != ? AND is_read = FALSE`,
       [roomId, userId],
     );
+    console.log('[ReadChain][messages] update 결과', {
+      userId,
+      roomId,
+      affectedRows: result.affectedRows,
+      otherUserId,
+    });
 
     // ── [변경] 내가 읽었음을 메시지 발신자에게 소켓 push ──
     // 상대방의 채팅 화면에서 '1' 안읽음 표시가 즉시 사라짐

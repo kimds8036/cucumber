@@ -1,9 +1,9 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { View, Text, TouchableOpacity, Image } from 'react-native';
+import { View, Text, TouchableOpacity, Image, ActivityIndicator } from 'react-native';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
-import { colors } from '../styles/colors';
+import { colors, fonts } from '../styles/colors';
 import { normalizeTagsFromApi } from '../utils/normalizePostTags';
 
 /**
@@ -18,6 +18,7 @@ import { normalizeTagsFromApi } from '../utils/normalizePostTags';
  *  - onLayoutStable : (postId, layoutEpoch) => void — 태그 줄·칩 측정이 끝난 뒤(또는 태그 없음) 1회
  *  - layoutStableEpoch : 목록이 배치한 로드 배치 번호(부모 ref). 콜백과 짝을 맞출 때 사용
  *  - hideDistanceBadge : true면 우측 거리(km) 뱃지만 숨김
+ *  - distanceLoading : true면 좌표 픽스 전 등 거리 배지 자리에 로딩 표시
  */
 const BoardPostCard = ({
   post,
@@ -28,6 +29,7 @@ const BoardPostCard = ({
   onLayoutStable,
   layoutStableEpoch = 0,
   hideDistanceBadge = false,
+  distanceLoading = false,
 }) => {
   const hasThumb =
     typeof post.thumbnail === 'string' && post.thumbnail.trim().length > 0;
@@ -137,6 +139,9 @@ const BoardPostCard = ({
   const hasVisibleStats =
     likesCount > 0 || commentsCount > 0 || scrapCount > 0;
 
+  const showDistancePending =
+    distanceLoading && !hideDistanceBadge && !hasKm;
+
   return (
     <TouchableOpacity
       style={styles.postItem}
@@ -186,6 +191,28 @@ const BoardPostCard = ({
                 </Text>
                 <Text style={styles.distanceBadgeUnit}>{distanceUnitText}</Text>
               </View>
+            </View>
+          </View>
+        ) : showDistancePending ? (
+          <View style={styles.distanceBadgeWrap}>
+            <View
+              style={[
+                styles.distanceBadgeChip,
+                { flexDirection: 'row', alignItems: 'center' },
+              ]}
+            >
+              <ActivityIndicator size="small" color={colors.primaryDark} />
+              <Text
+                style={{
+                  marginLeft: normalize(6),
+                  fontFamily: fonts.regular,
+                  fontSize: normalize(11),
+                  color: colors.textSecondary,
+                }}
+                numberOfLines={1}
+              >
+                거리 계산 중…
+              </Text>
             </View>
           </View>
         ) : null}

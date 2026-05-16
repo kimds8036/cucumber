@@ -89,8 +89,8 @@ export const createFooterStyles = (width, height) => {
       paddingVertical: normalize(10),
       paddingBottom: normalize(-8),
       height: normalize(65),
-      borderTopWidth: 1,
-      borderColor: colors.textLight10,
+      borderTopWidth: 0.5,
+      borderColor: colors.textLight5,
     },
     tabButton: {
       flex: 1,
@@ -122,7 +122,7 @@ export const createFooterStyles = (width, height) => {
       fontWeight: '500',
     },
     activeTabText: {
-      color: colors.textSecondary,
+      color: colors.primary,
       fontWeight: '500',
     },
   });
