@@ -65,9 +65,9 @@ export default function BoardCommentTree({
         <Text style={styles.commentBody}>{item.content}</Text>
       );
       const isReplyingToThis = replyToCommentId === item.id;
-      const commentBlockInner = (
-        <>
-          <View style={[styles.detailAuthorRow, { flex: 1, minWidth: 0, marginBottom: normalize(6) }]}>
+      const commentBlock = (
+        <View style={styles.commentBlock}>
+          <View style={[styles.detailAuthorRow, { marginBottom: normalize(6) }]}>
             <Text style={isAuthorLabel ? styles.detailAuthor : styles.detailAuthorAnonymous} numberOfLines={1}>
               {item.authorLabel}
             </Text>
@@ -81,7 +81,9 @@ export default function BoardCommentTree({
               <Text style={styles.commentReplyLabel}>@{parentAuthorLabel} </Text>
               {contentEl}
             </View>
-          ) : contentEl}
+          ) : (
+            contentEl
+          )}
           <View style={styles.commentFooter}>
             <View style={styles.commentFooterLeft}>
               <TouchableOpacity
@@ -120,7 +122,7 @@ export default function BoardCommentTree({
               </TouchableOpacity>
             </View>
           </View>
-        </>
+        </View>
       );
 
       const bubble = (
@@ -131,7 +133,7 @@ export default function BoardCommentTree({
             isReplyingToThis && styles.commentBubbleReplying,
           ]}
         >
-          <View style={styles.commentReplyBody}>{commentBlockInner}</View>
+          {commentBlock}
         </View>
       );
 

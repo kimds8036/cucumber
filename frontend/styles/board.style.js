@@ -801,7 +801,7 @@ export const createDetailStyles = (width, normalize) => {
     },
     // 댓글 섹션 (SchoolMail.style.js smDetailComment* 와 동일 톤·간격)
     commentSection: {
-      paddingHorizontal: width * 0.01,
+      paddingHorizontal: width * 0,
       paddingVertical: normalize(10),
     },
     commentSectionTitle: {
@@ -842,6 +842,12 @@ export const createDetailStyles = (width, normalize) => {
     },
     commentReplyBody: {
       flex: 1,
+    },
+    /** 댓글 본문(작성자·내용·푸터) 한 덩어리 */
+    commentBlock: {
+      flex: 1,
+      paddingHorizontal: width * 0.01,
+      paddingVertical: normalize(4),
     },
     commentRow: {
       flexDirection: 'row',
