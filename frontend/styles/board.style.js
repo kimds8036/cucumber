@@ -801,7 +801,7 @@ export const createDetailStyles = (width, normalize) => {
     },
     // 댓글 섹션 (SchoolMail.style.js smDetailComment* 와 동일 톤·간격)
     commentSection: {
-      paddingHorizontal: width * 0,
+      paddingHorizontal: width * 0.01,
       paddingVertical: normalize(10),
     },
     commentSectionTitle: {
@@ -951,7 +951,7 @@ export const createDetailStyles = (width, normalize) => {
     bottomInputRow: {
       flexDirection: 'column',
       backgroundColor: colors.background,
-      borderTopWidth: 1,
+      borderTopWidth: 0.5,
       borderTopColor: colors.textLight10,
       paddingHorizontal: width * 0.03,
       paddingVertical: normalize(12),

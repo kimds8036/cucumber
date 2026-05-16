@@ -24,8 +24,6 @@ export default function MessageInput({
       style={[
         {
           paddingBottom,
-          borderTopWidth: 1,
-          borderTopColor: '#E0E0E0',
         },
         chatInputStyles,
       ]}

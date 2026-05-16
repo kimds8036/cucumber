@@ -126,12 +126,45 @@ export default function ChatScreen({
 
   const postCardLayoutAnchorDoneRef = useRef(false);
   const postCardThumbAnchorDoneRef = useRef(false);
+  const dmListLayoutAnchorDoneRef = useRef(false);
   const scrollToLatestRef = useRef(scroll.scrollToLatest);
   scrollToLatestRef.current = scroll.scrollToLatest;
   useEffect(() => {
     postCardLayoutAnchorDoneRef.current = false;
     postCardThumbAnchorDoneRef.current = false;
+    dmListLayoutAnchorDoneRef.current = false;
   }, [roomId]);
+
+  const runDmScrollAnchor = useCallback(() => {
+    if (chatType !== 'dm') return;
+    if (combinedLoading || !hasMessages) return;
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        scrollToLatestRef.current?.({ animated: false });
+      });
+    });
+  }, [chatType, combinedLoading, hasMessages]);
+
+  const handleDmChatListLayout = useCallback(() => {
+    if (chatType !== 'dm' || dmListLayoutAnchorDoneRef.current) return;
+    if (combinedLoading || !hasMessages) return;
+    dmListLayoutAnchorDoneRef.current = true;
+    runDmScrollAnchor();
+  }, [chatType, combinedLoading, hasMessages, runDmScrollAnchor]);
+
+  useEffect(() => {
+    if (chatType !== 'dm' || combinedLoading || !hasMessages) return;
+    if (!scroll.listShellVisible || scroll.initialScrollSettling) return;
+    runDmScrollAnchor();
+  }, [
+    chatType,
+    combinedLoading,
+    hasMessages,
+    scroll.listShellVisible,
+    scroll.initialScrollSettling,
+    roomId,
+    runDmScrollAnchor,
+  ]);
 
   const handlePostCardReady = useCallback(() => {
     if (postCardLayoutAnchorDoneRef.current) return;
@@ -254,7 +287,10 @@ export default function ChatScreen({
             />
           )}
 
-        <Animated.View style={[chatStyles.chatListContainer, listAnimStyle]}>
+        <Animated.View
+          style={[chatStyles.chatListContainer, listAnimStyle]}
+          onLayout={chatType === 'dm' ? handleDmChatListLayout : undefined}
+        >
           {!combinedLoading && chat.hasMore && scroll.showLoadMoreButton ? (
             <View style={chatStyles.loadMoreWrap}>
               <TouchableOpacity
