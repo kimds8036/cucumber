@@ -1,8 +1,8 @@
 import { StyleSheet } from 'react-native';
 import { colors, fonts, fontSizes } from './colors';
 
-/** Message.jsx 롱프레스 방 메뉴(삭제·차단) — friend.style.js 바텀시트와 동일 규격 */
-export const createMessageRoomMenuSheetStyles = (normalize) =>
+/** mailscreen.jsx MailInbox 롱프레스(삭제·차단) — friend.style.js 바텀시트와 동일 규격 */
+export const createMailInboxMenuSheetStyles = (normalize) =>
   StyleSheet.create({
     modalOverlay: {
       flex: 1,
@@ -56,11 +56,6 @@ export const createMessageRoomMenuSheetStyles = (normalize) =>
       flexDirection: 'row',
       alignItems: 'center',
       gap: normalize(6),
-    },
-    sheetUsername: {
-      fontSize: normalize(fontSizes.lg),
-      fontFamily: fonts.regular,
-      color: colors.textSecondary,
     },
     sheetSubtitle: {
       fontSize: normalize(fontSizes.lg),

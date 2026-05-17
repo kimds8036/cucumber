@@ -280,6 +280,37 @@ export function MessageContent({ navigation }) {
     setRoomMenuModalVisible(true);
   }, []);
 
+  const roomMenuSheetMeta = useMemo(() => {
+    if (!roomMenuTarget) return null;
+    const { kind, item } = roomMenuTarget;
+    if (kind === 'dm') {
+      const colorIdx =
+        item.other_user_color_id ?? item.profileColorId ?? item.profileColorIndex ?? 0;
+      return {
+        name: item.other_user_name || item.name || '친구',
+        subtitle: item.other_user_school_name || '',
+        profileColorId: colorIdx,
+      };
+    }
+    if (kind === 'note') {
+      return {
+        name: item.name || '익명 쪽지',
+        subtitle: '',
+        profileColorId: item.profileColorId ?? item.profileColorIndex ?? 0,
+      };
+    }
+    if (kind === 'mail') {
+      return {
+        name: item.senderName || item.directionText || '익명',
+        subtitle: item.content
+          ? String(item.content).slice(0, 40)
+          : String(item.preview || '').slice(0, 40),
+        profileColorId: item.profileColorId ?? item.profileColorIndex ?? 0,
+      };
+    }
+    return null;
+  }, [roomMenuTarget]);
+
   const runRoomMenuDelete = useCallback((target) => {
     if (!target) return;
     const { kind, item } = target;
@@ -323,55 +354,73 @@ export function MessageContent({ navigation }) {
     }
   }, []);
 
-  const runRoomMenuBlock = useCallback((target) => {
-    if (!target) return;
-    const { kind, item } = target;
-    if (kind === 'dm') {
-      if (!item.other_user_id) return;
-      (async () => {
-        try {
-          await api.post(`/api/friends/${item.other_user_id}/block`, {
-            reason: 'chat_block',
-          });
+  const runRoomMenuBlock = useCallback(
+    (target) => {
+      if (!target) return;
+      const { kind, item } = target;
+
+      let userId = null;
+      let displayName = '상대';
+      let reason = null;
+      let onSuccess = null;
+
+      if (kind === 'dm') {
+        userId = item.other_user_id;
+        displayName = item.other_user_name || item.name || '친구';
+        reason = 'chat_block';
+        onSuccess = () => {
           setNoteRooms((prev) =>
             prev.filter((r) => !(r.type === 'dm' && r.id === item.id)),
           );
-        } catch {
-          Alert.alert('오류', '차단 처리에 실패했습니다.');
-        }
-      })();
-      return;
-    }
-    if (kind === 'note') {
-      if (!item.other_user_id) return;
-      (async () => {
-        try {
-          await api.post(`/api/friends/${item.other_user_id}/block`, {
-            reason: 'anonymous_chat_block',
-          });
+        };
+      } else if (kind === 'note') {
+        userId = item.other_user_id;
+        displayName = item.name || '익명';
+        reason = 'anonymous_chat_block';
+        onSuccess = () => {
           setNoteRooms((prev) => prev.filter((r) => r.id !== item.id));
-        } catch {
-          Alert.alert('오류', '차단 처리에 실패했습니다.');
-        }
-      })();
-      return;
-    }
-    if (kind === 'mail') {
-      if (!item.counterpartyUserId) return;
-      (async () => {
-        try {
-          await api.post(`/api/friends/${item.counterpartyUserId}/block`, {
-            reason: 'mail_block',
-          });
+        };
+      } else if (kind === 'mail') {
+        userId = item.counterpartyUserId;
+        displayName = item.senderName || item.directionText || '익명';
+        reason = 'mail_block';
+        onSuccess = () => {
           if (item.roomId) {
             setMails((prev) => prev.filter((m) => m.roomId !== item.roomId));
           }
-        } catch {
-          Alert.alert('오류', '차단 처리에 실패했습니다.');
-        }
-      })();
-    }
-  }, []);
+        };
+      }
+
+      if (!userId || !reason || !onSuccess) return;
+
+      closeRoomMenuModal();
+      Alert.alert(
+        '차단',
+        `${displayName}님을 차단할까요?\n차단하면 다시 되돌릴 수 없어요`,
+        [
+          { text: '취소', style: 'cancel' },
+          {
+            text: '차단',
+            style: 'destructive',
+            onPress: async () => {
+              try {
+                await api.post(`/api/friends/${userId}/block`, { reason });
+                onSuccess();
+                Alert.alert('차단 완료', '차단되었습니다.', [{ text: '확인' }]);
+              } catch (error) {
+                console.error('사용자 차단 실패:', error);
+                Alert.alert(
+                  '오류',
+                  error.response?.data?.message || '차단 처리에 실패했습니다.',
+                );
+              }
+            },
+          },
+        ],
+      );
+    },
+    [closeRoomMenuModal],
+  );
 
   const noteRoomsWithAds = useMemo(() => {
     const items = [];
@@ -1029,8 +1078,29 @@ export function MessageContent({ navigation }) {
           activeOpacity={1}
         />
         <View style={roomMenuSheetStyles.bottomSheet}>
-          {roomMenuTarget ? (
+          <View style={roomMenuSheetStyles.sheetHandle} />
+          {roomMenuTarget && roomMenuSheetMeta ? (
             <>
+              <View style={roomMenuSheetStyles.sheetRoomInfo}>
+                <View style={roomMenuSheetStyles.sheetAvatar}>
+                  <ProfileIcon
+                    width={normalize(45)}
+                    height={normalize(45)}
+                    color={getProfileInnerColor(roomMenuSheetMeta.profileColorId)}
+                  />
+                </View>
+                <View>
+                  <Text style={roomMenuSheetStyles.sheetName}>
+                    {roomMenuSheetMeta.name}
+                  </Text>
+                  {roomMenuSheetMeta.subtitle ? (
+                    <Text style={roomMenuSheetStyles.sheetSubtitle} numberOfLines={1}>
+                      {roomMenuSheetMeta.subtitle}
+                    </Text>
+                  ) : null}
+                </View>
+              </View>
+
               <TouchableOpacity
                 style={roomMenuSheetStyles.sheetDeleteAction}
                 onPress={() => {
@@ -1046,6 +1116,7 @@ export function MessageContent({ navigation }) {
                     roomMenuSheetStyles.deleteActionIcon,
                   ]}
                 >
+                  <Ionicons name="trash-outline" size={20} color={colors.alert} />
                 </View>
                 <View>
                   <Text style={roomMenuSheetStyles.sheetDeleteActionTitle}>
@@ -1056,11 +1127,7 @@ export function MessageContent({ navigation }) {
 
               <TouchableOpacity
                 style={roomMenuSheetStyles.sheetBlockAction}
-                onPress={() => {
-                  const snapshot = roomMenuTarget;
-                  closeRoomMenuModal();
-                  runRoomMenuBlock(snapshot);
-                }}
+                onPress={() => runRoomMenuBlock(roomMenuTarget)}
                 activeOpacity={0.85}
               >
                 <View
@@ -1069,6 +1136,7 @@ export function MessageContent({ navigation }) {
                     roomMenuSheetStyles.blockActionIcon,
                   ]}
                 >
+                  <Ionicons name="ban-outline" size={16} color={colors.textSecondary} />
                 </View>
                 <View>
                   <Text style={roomMenuSheetStyles.sheetBlockActionTitle}>
