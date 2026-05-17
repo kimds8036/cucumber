@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   View,
   Text,
@@ -6,10 +6,7 @@ import {
   TouchableOpacity,
   TextInput,
   StyleSheet,
-  KeyboardAvoidingView,
-  Platform,
   ScrollView,
-  Alert,
   TouchableWithoutFeedback,
   Keyboard,
   ActivityIndicator,
@@ -18,6 +15,7 @@ import { useWindowDimensions } from 'react-native';
 import { colors, fonts } from '../../styles/colors';
 import { getNormalize } from '../../styles/frame.style';
 import { api } from '../../utils/api';
+import AppPopupModal from './AppPopupModal';
 import Reanimated, { useAnimatedStyle, useSharedValue } from 'react-native-reanimated';
 import { useKeyboardHandler } from 'react-native-keyboard-controller';
 
@@ -45,7 +43,17 @@ export default function ReportModal({ visible, onClose, targetType, targetId }) 
   const [selectedReason, setSelectedReason] = useState(null);
   const [description, setDescription] = useState('');
   const [loading, setLoading] = useState(false);
+  const [resultPopup, setResultPopup] = useState(null);
   const translateY = useSharedValue(0);
+
+  useEffect(() => {
+    if (!visible) {
+      setResultPopup(null);
+      setSelectedReason(null);
+      setDescription('');
+      setLoading(false);
+    }
+  }, [visible]);
 
   useKeyboardHandler(
     {
@@ -65,11 +73,25 @@ export default function ReportModal({ visible, onClose, targetType, targetId }) 
     transform: [{ translateY: translateY.value }],
   }));
 
-  const handleClose = () => {
-    if (loading) return;
+  const resetForm = () => {
     setSelectedReason(null);
     setDescription('');
+  };
+
+  const handleClose = () => {
+    if (loading) return;
+    setResultPopup(null);
+    resetForm();
     onClose();
+  };
+
+  const handleResultConfirm = () => {
+    const wasSuccess = resultPopup?.success === true;
+    setResultPopup(null);
+    if (wasSuccess) {
+      resetForm();
+      onClose();
+    }
   };
 
   const handleSubmit = async () => {
@@ -85,7 +107,11 @@ export default function ReportModal({ visible, onClose, targetType, targetId }) 
       };
       const endpoint = endpointMap[targetType];
       if (!endpoint) {
-        Alert.alert('오류', '신고 대상을 확인할 수 없습니다.');
+        setResultPopup({
+          success: false,
+          title: '오류',
+          message: '신고 대상을 확인할 수 없습니다.',
+        });
         return;
       }
 
@@ -94,23 +120,31 @@ export default function ReportModal({ visible, onClose, targetType, targetId }) 
         description: description.trim() || undefined,
       });
 
-      Alert.alert('신고 접수', '신고가 접수되었습니다.', [
-        { text: '확인', onPress: handleClose },
-      ]);
+      setResultPopup({
+        success: true,
+        title: '신고 접수',
+        message: '신고가 접수되었습니다.',
+      });
     } catch (err) {
       const message =
         err?.response?.data?.message || '신고 처리 중 오류가 발생했습니다.';
-      Alert.alert('오류', message);
+      setResultPopup({
+        success: false,
+        title: '오류',
+        message,
+      });
     } finally {
       setLoading(false);
     }
   };
 
   const s = makeStyles(N);
+  const showReportSheet = visible && !resultPopup;
 
   return (
+    <>
     <Modal
-      visible={visible}
+      visible={showReportSheet}
       transparent
       animationType="fade"
       onRequestClose={handleClose}
@@ -194,6 +228,58 @@ export default function ReportModal({ visible, onClose, targetType, targetId }) 
         </View>
       </TouchableWithoutFeedback>
     </Modal>
+
+    <AppPopupModal
+      visible={Boolean(resultPopup)}
+      onClose={handleResultConfirm}
+    >
+      <Text
+        style={{
+          fontSize: 18,
+          color: colors.textPrimary,
+          fontWeight: '700',
+          textAlign: 'center',
+          marginBottom: 10,
+        }}
+      >
+        {resultPopup?.title}
+      </Text>
+      {resultPopup?.message ? (
+        <Text
+          style={{
+            fontSize: 14,
+            color: colors.textSecondary,
+            textAlign: 'center',
+            lineHeight: 22,
+            marginBottom: 16,
+          }}
+        >
+          {resultPopup.message}
+        </Text>
+      ) : null}
+      <TouchableOpacity
+        style={{
+          height: 42,
+          borderRadius: 10,
+          backgroundColor: colors.primary,
+          alignItems: 'center',
+          justifyContent: 'center',
+        }}
+        onPress={handleResultConfirm}
+        activeOpacity={0.85}
+      >
+        <Text
+          style={{
+            fontSize: 14,
+            fontWeight: '700',
+            color: colors.textWhite,
+          }}
+        >
+          확인
+        </Text>
+      </TouchableOpacity>
+    </AppPopupModal>
+    </>
   );
 }
 
