@@ -1,4 +1,4 @@
-﻿/**
+/**
  * timerFriendModals.jsx
  * 친구 목록 UI + PokeModal + AddFriendModal + Toast
  */

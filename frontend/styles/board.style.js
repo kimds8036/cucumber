@@ -90,7 +90,6 @@ export const createBoardStyles = (width, normalize) => {
     postTimeRow: {
       flexDirection: 'row',
       alignItems: 'baseline',
-      gap: normalize(4),
     },
     postAuthor: {
       fontSize: normalize(fontSizes.lg),
@@ -121,12 +120,11 @@ export const createBoardStyles = (width, normalize) => {
       flexDirection: 'row',
       alignItems: 'center',
       backgroundColor: colors.primaryLight30,
-      paddingHorizontal: normalize(10),
+      paddingHorizontal: normalize(6),
       borderRadius: normalize(13),
-      gap: normalize(4),
     },
     postLocationText: {
-      fontSize: normalize(fontSizes.xl),
+      fontSize: normalize(fontSizes.lg),
       fontFamily: fonts.regular,
       color: colors.textSecondary,
     },
