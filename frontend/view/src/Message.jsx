@@ -19,6 +19,7 @@ import { createMessageRoomMenuSheetStyles } from '../../styles/messageRoomMenuSh
 import { colors, fonts, fontSizes } from '../../styles/colors';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import Feather from '@expo/vector-icons/Feather';
+import FontAwesome6 from '@expo/vector-icons/FontAwesome6';
 import { StackActions } from '@react-navigation/native';
 import ProfileIcon from '../../assets/Profile.svg';
 import { api } from '../../utils/api';
@@ -1046,7 +1047,13 @@ export function MessageContent({ navigation }) {
                           <View style={styles.unreadBadge}>
                             <Text style={styles.unreadBadgeText}>{item.unreadCount}</Text>
                           </View>
-                        ) : null}
+                        ) : (
+                          <FontAwesome6
+                            name={item.isReceived ? 'arrow-left-long' : 'arrow-right-long'}
+                            size={normalize(14)}
+                            color={colors.background2}
+                          />
+                        )}
                       </View>
                     </TouchableOpacity>
                 );
