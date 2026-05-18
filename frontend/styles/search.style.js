@@ -316,6 +316,15 @@ export const createSearchStyles = (width, normalize) => {
 
 // 검색 화면(SearchScreen) 전용 — searchscreen.jsx
 export const createSearchScreenStyles = (width, normalize) => {
+  /** bottomInput(댓글·채팅)과 동일: pill 높이 고정 + TextInput 내부 padding으로 세로 중앙 */
+  const searchInputFontSize = normalize(fontSizes.xl);
+  const searchInputLineHeight = Math.round(searchInputFontSize * (20 / 14));
+  const searchInputRowHeight = normalize(40);
+  const searchInputPaddingV = Math.max(
+    normalize(2),
+    Math.round((searchInputRowHeight - searchInputLineHeight) / 2),
+  );
+
   return StyleSheet.create({
     root: {
       flex: 1,
@@ -349,8 +358,7 @@ export const createSearchScreenStyles = (width, normalize) => {
       backgroundColor: colors.textLight5,
       borderRadius: normalize(999),
       paddingHorizontal: normalize(12),
-      paddingVertical:
-        Platform.OS === 'android' ? normalize(6) : normalize(7),
+      height: searchInputRowHeight,
       gap: normalize(8),
       flex: 1,
     },
@@ -362,11 +370,26 @@ export const createSearchScreenStyles = (width, normalize) => {
     },
     searchInput: {
       flex: 1,
-      fontSize: normalize(fontSizes.xl),
+      minHeight: searchInputRowHeight,
+      paddingVertical: searchInputPaddingV,
+      paddingHorizontal: 0,
+      fontSize: searchInputFontSize,
+      lineHeight: searchInputLineHeight,
       fontFamily: fonts.regular,
       color: colors.textPrimary,
-      padding: 0,
-      includeFontPadding: false,
+      textAlignVertical: 'center',
+      ...Platform.select({
+        android: { includeFontPadding: false },
+        ios: {
+          paddingTop: searchInputPaddingV + normalize(2),
+          paddingBottom: Math.max(0, searchInputPaddingV - normalize(2)),
+        }
+      }),
+    },
+    searchClearSlot: {
+      width: normalize(17),
+      alignItems: 'center',
+      justifyContent: 'center',
     },
 
     previewDropdown: {
