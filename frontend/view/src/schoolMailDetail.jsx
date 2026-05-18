@@ -28,7 +28,10 @@ import { getNormalize } from '../../styles/frame.style';
 import { createSchoolMailDetailStyles } from '../../styles/SchoolMail.style';
 import { api } from '../../utils/api';
 import { emitSchoolMailLike } from '../../utils/listSyncEvents';
-import { getSchoolMailFromLabel } from './utils/schoolMailFromLabel';
+import {
+  getSchoolMailFromLabel,
+  getSchoolMailCommentAuthorLabel,
+} from './utils/schoolMailFromLabel';
 import { useKeyboardHandler } from 'react-native-keyboard-controller';
 import ReportModal from '../../components/common/ReportModal.jsx';
 
@@ -100,15 +103,12 @@ function bumpLikeInTree(nodes, id, liked, likeCount) {
 }
 
 /** API 평면 댓글 → parent_id 기준 트리 */
-function buildCommentTree(flat, mailSchoolId) {
+function buildCommentTree(flat, mailSchoolId, mailAuthorUserId) {
   if (!flat?.length) return [];
   const sorted = [...flat].sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
   const map = new Map();
   sorted.forEach((raw) => {
-    const authorLabel = getSchoolMailFromLabel(
-      { author_school_id: raw.author_school_id, author_school_name: raw.author_school_name, school_id: mailSchoolId },
-      mailSchoolId
-    );
+    const authorLabel = getSchoolMailCommentAuthorLabel(raw, mailSchoolId, mailAuthorUserId);
     map.set(raw.id, {
       ...raw,
       replies: [],
@@ -116,7 +116,7 @@ function buildCommentTree(flat, mailSchoolId) {
       time: formatTimeAgo(raw.created_at),
       likes: Number(raw.like_count ?? 0),
       is_liked: Boolean(raw.is_liked),
-      isWriter: false,
+      isWriter: authorLabel === '작성자',
     });
   });
   const roots = [];
@@ -240,7 +240,7 @@ export default function SchoolMailDetail({ navigation, route }) {
             const cr = await api.get(`/api/mails/school/${mailId}/comments`);
             if (cancelled) return;
             const flat = cr.data?.data?.comments ?? [];
-            setComments(buildCommentTree(flat, data.school_id));
+            setComments(buildCommentTree(flat, data.school_id, data.user_id));
           } catch (ce) {
             console.error('학교 우편 댓글 로드 실패:', ce?.response?.data || ce.message);
             setComments([]);
@@ -275,7 +275,7 @@ export default function SchoolMailDetail({ navigation, route }) {
         try {
           const cr = await api.get(`/api/mails/school/${mailId}/comments`);
           const flat = cr.data?.data?.comments ?? [];
-          setComments(buildCommentTree(flat, data.school_id));
+          setComments(buildCommentTree(flat, data.school_id, data.user_id));
         } catch (ce) {
           console.error('학교 우편 댓글 로드 실패:', ce?.response?.data || ce.message);
           setComments([]);
@@ -483,7 +483,7 @@ export default function SchoolMailDetail({ navigation, route }) {
       setMail(m ?? null);
       if (m) setPostLiked(Boolean(m.is_liked));
       const flat = comRes.data?.data?.comments ?? [];
-      setComments(buildCommentTree(flat, m?.school_id));
+      setComments(buildCommentTree(flat, m?.school_id, m?.user_id));
     } catch (e) {
       Alert.alert('오류', e?.response?.data?.message ?? '댓글 전송에 실패했습니다.');
     }

@@ -30,7 +30,7 @@ export default function BoardPostContent({
     <View style={styles.contentSection}>
       <View style={styles.detailHeader}>
         <View style={[styles.detailAuthorRow, { flex: 1, minWidth: 0 }]}>
-          <Text style={post.author === '작성자' ? styles.detailAuthor : styles.detailAuthorAnonymous} numberOfLines={1}>
+          <Text style={styles.detailAuthorAnonymous} numberOfLines={1}>
             {post.author}
           </Text>
           <Text style={styles.detailDot}>•</Text>
