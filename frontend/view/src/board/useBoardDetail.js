@@ -96,7 +96,7 @@ export function useBoardDetail({
     return {
       ...base,
       id: routePostId ?? routePost?.id ?? base.id ?? null,
-      author: fromParams ? (routePost?.isMine ? '작성자' : '익명') : '익명',
+      author: '익명',
       images: Array.isArray(base.images) ? base.images : [],
       tags: normalizeTagsFromApi(base.tags),
       distanceKm:
@@ -142,7 +142,7 @@ export function useBoardDetail({
         const imageUrls = Array.isArray(data.images) ? data.images.filter((u) => typeof u === 'string') : [];
         setPost({
           id: data.id,
-          author: data.isMine ? '작성자' : '익명',
+          author: '익명',
           time: formatTimeAgo(data.created_at),
           location: data.location ?? '',
           content: data.content,
