@@ -179,7 +179,7 @@ const Inquiry = ({ navigation, route }) => {
         visible={resultModal.visible}
         transparent
         animationType="fade"
-        onRequestClose={closeResultAndExit}
+        onRequestClose={() => {}}
       >
         <View style={styles.resultBackdrop}>
           <View style={styles.resultCard}>

@@ -571,6 +571,7 @@ export default function TimetableScreen({ navigation, route }) {
       <AppPopupModal
         visible={showDoneAddedModal}
         onClose={() => setShowDoneAddedModal(false)}
+        dismissOnBackdrop={false}
       >
         <Text style={mt.manualTsDoneModalTitle}>시간표가 추가되었습니다.</Text>
         <View style={mt.manualTsDoneModalHintWrap}>
