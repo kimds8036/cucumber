@@ -1,7 +1,12 @@
 import { useState, useEffect } from "react";
+import Constants from "expo-constants";
+import { API_URLS } from "../config/apiEnv.js";
 
-const BASE_URL =
-  process.env.EXPO_PUBLIC_API_URL || "http://localhost:3000";
+const BASE_URL = (
+  process.env.EXPO_PUBLIC_API_URL ||
+  Constants.expoConfig?.extra?.apiBaseUrl ||
+  API_URLS.develop
+).replace(/\/+$/, "");
 
 /**
  * 현재 달 yyyymm (YYYYMM) 계산

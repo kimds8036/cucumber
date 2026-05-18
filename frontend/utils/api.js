@@ -2,6 +2,7 @@ import axios from 'axios';
 import { Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Constants from 'expo-constants';
+import { API_URLS } from '../config/apiEnv.js';
 
 const AUTH_TOKEN_KEY = '@auth_token';
 
@@ -12,13 +13,12 @@ const AUTH_TOKEN_KEY = '@auth_token';
  */
 let inMemoryAuthToken = null;
 
-/** 터널/개발 기본값 — 릴리스에서도 env 미설정 시 폴백 (--no-dev 로컬 검증용) */
-const DEFAULT_API_BASE = 'https://nonvenous-patriotically-bud.ngrok-free.dev';
+/** env·extra 미설정 시 develop Railway (app.config.js가 보통 extra에 박아 둠) */
+const DEFAULT_API_BASE = API_URLS.develop;
 
 /**
  * baseURL은 항상 슬래시로 끝난다.
- * 우선순위: EXPO_PUBLIC_API_URL → app.json extra.apiBaseUrl → DEFAULT_API_BASE
- * (__DEV__ 전용 분기 없음 — 프로덕션/미니파이에서도 동일 규칙)
+ * 우선순위: EXPO_PUBLIC_API_URL → expo.extra.apiBaseUrl → DEFAULT_API_BASE
  */
 const getBaseURL = () => {
   const fromEnv =
