@@ -18,7 +18,7 @@ export default function AppPopupModal({
       visible={visible}
       transparent
       animationType={animationType}
-      onRequestClose={onClose}
+      onRequestClose={dismissOnBackdrop ? onClose : () => {}}
     >
       <View
         style={{

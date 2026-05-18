@@ -568,6 +568,7 @@ const Sign = ({ navigation }) => {
           visible={showCompleteModal}
           transparent={true}
           animationType="fade"
+          onRequestClose={() => {}}
         >
           <View style={{
             flex: 1,
