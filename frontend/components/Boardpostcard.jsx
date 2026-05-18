@@ -181,14 +181,7 @@ const BoardPostCard = ({
       {/* 헤더: 좌측 작성자|시간(·위치), 우측 거리 배지 */}
       <View style={styles.postHeader}>
         <View style={styles.postAuthorRow}>
-          <Text
-            style={
-              post.author === '작성자'
-                ? styles.postAuthorVerified
-                : styles.postAuthor
-            }
-            numberOfLines={1}
-          >
+          <Text style={styles.postAuthor} numberOfLines={1}>
             {post.author}
           </Text>
           <Text style={styles.postDot}>•</Text>
