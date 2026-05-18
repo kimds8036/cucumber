@@ -1,4 +1,9 @@
 // app.config.js
+import { resolveApiBaseUrl, resolveAppEnv } from './config/apiEnv.js';
+
+const apiBaseUrl = resolveApiBaseUrl();
+const appEnv = resolveAppEnv();
+
 export default ({ config }) => ({
     expo: {
       name: "Youth Paper",
@@ -100,9 +105,12 @@ export default ({ config }) => ({
       ],
   
       extra: {
-        apiBaseUrl: "https://cucumber-develop.up.railway.app",
+        ...(config?.expo?.extra ?? {}),
+        apiBaseUrl,
+        appEnv,
         eas: {
           projectId: "39e0f4f8-dd46-4921-a4bf-68856fdfc85c",
+          ...(config?.expo?.extra?.eas ?? {}),
         },
       },
   
