@@ -45,6 +45,9 @@ back/**/*firebase-adminsdk*.json
 .env
 .env*.local
 *.pem
+credentials.json
+**/credentials.json
+!**/credentials.json.example
 
 # ==========================================
 # [TypeScript]
