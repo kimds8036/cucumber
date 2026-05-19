@@ -102,6 +102,7 @@ export default ({ config }) => ({
             },
           },
         ],
+        "./plugins/withAndroidReleaseSigning.cjs",
       ],
   
       extra: {
