@@ -59,9 +59,10 @@ export default function BoardDetail({ navigation, route }) {
   };
 
   const openReportModal = (targetType, targetId) => {
-    if (!targetId) return;
+    const id = targetType === 'comment' ? Number(targetId) : targetId;
+    if (id == null || id === '' || (targetType === 'comment' && !Number.isFinite(id))) return;
     setReportTargetType(targetType);
-    setReportTargetId(targetId);
+    setReportTargetId(id);
     setReportModalVisible(true);
   };
 
@@ -179,15 +180,17 @@ export default function BoardDetail({ navigation, route }) {
   );
 
   const openFloatingMenu = (context, ref) => {
+    const menuContext =
+      context === 'post' ? 'post' : Number.isFinite(Number(context)) ? Number(context) : context;
     if (ref?.measureInWindow) {
       ref.measureInWindow((x, y) => {
         setFloatingMenuAnchor({ x, y });
-        setFloatingMenuContext(context);
+        setFloatingMenuContext(menuContext);
         setFloatingMenuVisible(true);
       });
     } else {
       setFloatingMenuAnchor(null);
-      setFloatingMenuContext(context);
+      setFloatingMenuContext(menuContext);
       setFloatingMenuVisible(true);
     }
   };
