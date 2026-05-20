@@ -23,7 +23,7 @@ import {
   themedTextInputProps,
 } from '../../styles/mypage.style';
 
-const SCHOOL_CHANGE_EMAIL = 'kimds8036@naver.com';
+const SCHOOL_CHANGE_EMAIL = 'team.ucost@gmail.com';
 
 const NOTIFICATION_ITEMS = [
   { key: 'newComment', label: '게시글 댓글' },

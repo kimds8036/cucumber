@@ -43,7 +43,14 @@ async function fetchTimetableFromApi() {
   return ttRes.data?.data?.timetable || {};
 }
 
-function TimetablePreview() {
+function hasTimetableEntries(timetable) {
+  const tt = timetable && typeof timetable === 'object' && !Array.isArray(timetable)
+    ? timetable
+    : {};
+  return Object.values(tt).some((value) => Boolean(normalizeSubject(value)));
+}
+
+function TimetablePreview({ timetable, loading }) {
   const { width } = useWindowDimensions();
   const normalize = useMemo(() => getNormalize(width), [width]);
   const pv = useMemo(
@@ -52,31 +59,11 @@ function TimetablePreview() {
   );
   const colorSeed = 0;
 
-  const [previewTimetable, setPreviewTimetable] = useState({});
-  const [previewLoading, setPreviewLoading] = useState(true);
-
-  useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      try {
-        const tt = await fetchTimetableFromApi();
-        if (!cancelled) setPreviewTimetable(tt);
-      } catch (e) {
-        console.warn(
-          '[TimetabelChoice] TimetablePreview /api/timetable 조회 실패:',
-          e?.response?.data || e?.message || e,
-        );
-        if (!cancelled) setPreviewTimetable({});
-      } finally {
-        if (!cancelled) setPreviewLoading(false);
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
-  const safeTimetable = previewTimetable || {};
+  const safeTimetable = timetable || {};
+  const hasTimetableData = useMemo(
+    () => hasTimetableEntries(safeTimetable),
+    [safeTimetable],
+  );
   const maxPeriod = useMemo(
     () => getMaxPeriodFromTimetableKeys(safeTimetable, 7),
     [safeTimetable],
@@ -128,7 +115,7 @@ function TimetablePreview() {
   return (
     <View style={pv.choicePreviewWrapper}>
       <View style={pv.choicePreviewTimetableContainer}>
-        {previewLoading ? (
+        {loading ? (
           <View
             style={{
               minHeight: normalize(200),
@@ -138,6 +125,12 @@ function TimetablePreview() {
             }}
           >
             <ActivityIndicator size="large" color={colors.primary} />
+          </View>
+        ) : !hasTimetableData ? (
+          <View style={pv.choicePreviewEmptyContainer}>
+            <Text style={pv.choicePreviewEmptyText}>
+              시간표 데이터가 없습니다.{'\n'}직접 선택을 눌러 시간표를 구성해주세요
+            </Text>
           </View>
         ) : (
           <>
@@ -191,10 +184,33 @@ function TimetablePreview() {
 export default function TimetabelChoice({ navigation, route }) {
   const [autoLoading, setAutoLoading] = useState(false);
   const [showAutoAddedModal, setShowAutoAddedModal] = useState(false);
+  const [previewTimetable, setPreviewTimetable] = useState({});
+  const [previewLoading, setPreviewLoading] = useState(true);
   const scopedTimetableCacheKey = useMemo(
     () => route?.params?.timetableCacheKey || TIMETABLE_CACHE_KEY,
     [route?.params?.timetableCacheKey],
   );
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const tt = await fetchTimetableFromApi();
+        if (!cancelled) setPreviewTimetable(tt);
+      } catch (e) {
+        console.warn(
+          '[TimetabelChoice] /api/timetable 조회 실패:',
+          e?.response?.data || e?.message || e,
+        );
+        if (!cancelled) setPreviewTimetable({});
+      } finally {
+        if (!cancelled) setPreviewLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const fetchAndApplyAutoTimetable = useCallback(async () => {
     try {
@@ -236,6 +252,32 @@ export default function TimetabelChoice({ navigation, route }) {
       fetchAndApplyAutoTimetable();
       return;
     }
+
+    let timetableForManual = previewTimetable;
+    if (previewLoading) {
+      try {
+        timetableForManual = await fetchTimetableFromApi();
+        setPreviewTimetable(timetableForManual);
+      } catch (e) {
+        console.warn(
+          '[TimetabelChoice] 직접 선택 진입 전 시간표 조회 실패:',
+          e?.response?.data || e?.message || e,
+        );
+        timetableForManual = {};
+      } finally {
+        setPreviewLoading(false);
+      }
+    }
+
+    if (!hasTimetableEntries(timetableForManual)) {
+      navigation.navigate('EditTimetable', {
+        existingTimetable: {},
+        timetableCacheKey: scopedTimetableCacheKey,
+        returnToMypage: true,
+      });
+      return;
+    }
+
     try {
       const [meRes, ttRes] = await Promise.all([
         api.get('/api/auth/me'),
@@ -287,7 +329,7 @@ export default function TimetabelChoice({ navigation, route }) {
         <Text style={styles.choiceDescription}>
           Neis(교육행정정보시스템)에서 제공하는 시간표예요. {'\n'}실제와 같으면 자동 선택, 다르면 직접 선택으로 구성해보세요.
         </Text>
-        <TimetablePreview />
+        <TimetablePreview timetable={previewTimetable} loading={previewLoading} />
         <View style={{ flexDirection: 'row', gap: 12 }}>
           <TouchableOpacity
             activeOpacity={0.8}

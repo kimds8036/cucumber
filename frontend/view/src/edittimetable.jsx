@@ -49,7 +49,8 @@ const getSubjectColorIndex = (subject) => {
 
 /** MyPage 등에서 넘긴 existingTimetable 수정·삭제; 빈 칸에서도 탭해 과목 입력 가능 */
 const EditTimetable = ({ navigation, route }) => {
-  const { existingTimetable, onSave, timetableCacheKey } = route.params || {};
+  const { existingTimetable, onSave, timetableCacheKey, returnToMypage } =
+    route.params || {};
   const { width } = useWindowDimensions();
   const insets = useSafeAreaInsets();
   const normalize = useMemo(() => getNormalize(width), [width]);
@@ -266,7 +267,13 @@ const EditTimetable = ({ navigation, route }) => {
     Alert.alert('저장 완료', '시간표가 저장되었습니다.', [
       {
         text: '확인',
-        onPress: () => navigation.goBack(),
+        onPress: () => {
+          if (returnToMypage) {
+            navigation.navigate('Main', { initialTab: 'mypage' });
+            return;
+          }
+          navigation.goBack();
+        },
       },
     ]);
   };

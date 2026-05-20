@@ -16,8 +16,8 @@ export default ({ config }) => ({
   
       splash: {
         image: "./assets/splash-icon.png",
-        resizeMode: "contain",
-        backgroundColor: "#ffffff",
+        resizeMode: "cover",
+        backgroundColor: "#E5F4E0",
       },
   
       ios: {
@@ -48,6 +48,11 @@ export default ({ config }) => ({
         adaptiveIcon: {
           foregroundImage: "./assets/adaptive-icon.png",
           backgroundColor: "#ffffff",
+        },
+        splash: {
+          image: "./assets/splash-icon.png",
+          resizeMode: "cover",
+          backgroundColor: "#E5F4E0",
         },
         edgeToEdgeEnabled: true,
         permissions: [

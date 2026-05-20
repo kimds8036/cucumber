@@ -190,7 +190,7 @@ const BoardPostCard = ({
           </Text>
           {post.location ? (
             <View style={[styles.postTimeRow, styles.postLocationWrap]}>
-              <Text style={styles.postTime}>{' · '}</Text>
+              <Text style={styles.postDot}>•</Text>
               <Text
                 style={[styles.postLocationText, styles.postLocationInlineText]}
                 numberOfLines={1}
