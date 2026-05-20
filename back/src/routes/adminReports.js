@@ -19,6 +19,36 @@ function isAdminUser(userId) {
   return adminIds.includes(Number(userId));
 }
 
+/** 신고 확정/기각 시 대상 콘텐츠 후처리 (게시글·댓글) */
+async function applyReportTargetModeration(connection, report, actionRaw) {
+  if (actionRaw === 'REJECT' && report.target_type === 'post') {
+    await connection.execute(
+      `UPDATE posts
+       SET is_hidden = FALSE,
+           hidden_reason = NULL,
+           hidden_at = NULL
+       WHERE id = ?`,
+      [report.target_id]
+    );
+    return;
+  }
+
+  if (actionRaw !== 'CONFIRM') return;
+
+  if (report.target_type === 'comment') {
+    await connection.execute(
+      'UPDATE comments SET is_deleted = TRUE WHERE id = ? AND is_deleted = FALSE',
+      [report.target_id]
+    );
+  }
+  if (report.target_type === 'school_mail_comment') {
+    await connection.execute(
+      'UPDATE school_mail_comments SET is_deleted = TRUE WHERE id = ? AND is_deleted = FALSE',
+      [report.target_id]
+    );
+  }
+}
+
 async function getTargetOwnerId(connection, targetType, targetId) {
   if (targetType === 'post') {
     const [rows] = await connection.execute('SELECT user_id FROM posts WHERE id = ?', [targetId]);
@@ -857,17 +887,7 @@ router.patch('/reports/:reportId', authenticate, async (req, res) => {
       [nextStatus, reviewerId, getNowForDB(), note, malicious, malicious, reportId]
     );
 
-    // 대상 복구/유지 처리
-    if (actionRaw === 'REJECT' && report.target_type === 'post') {
-      await connection.execute(
-        `UPDATE posts
-         SET is_hidden = FALSE,
-             hidden_reason = NULL,
-             hidden_at = NULL
-         WHERE id = ?`,
-        [report.target_id]
-      );
-    }
+    await applyReportTargetModeration(connection, report, actionRaw);
 
     // 정당 신고 확정 시 작성자 경고 +1
     if (actionRaw === 'CONFIRM') {
@@ -968,14 +988,7 @@ async function bulkHandle(req, res) {
         [nextStatus, adminUserId, getNowForDB(), note, malicious, malicious, reportId]
       );
 
-      if (actionRaw === 'REJECT' && report.target_type === 'post') {
-        await connection.execute(
-          `UPDATE posts
-           SET is_hidden = FALSE, hidden_reason = NULL, hidden_at = NULL
-           WHERE id = ?`,
-          [report.target_id]
-        );
-      }
+      await applyReportTargetModeration(connection, report, actionRaw);
       if (actionRaw === 'CONFIRM') {
         const ownerId = await getTargetOwnerId(connection, report.target_type, report.target_id);
         if (ownerId) {
