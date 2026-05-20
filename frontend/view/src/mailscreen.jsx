@@ -6,14 +6,17 @@ import {
   ScrollView,
   useWindowDimensions,
   Alert,
+  Modal,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Octicons from '@expo/vector-icons/Octicons';
+import Ionicons from '@expo/vector-icons/Ionicons';
 import SubHeader from '../frame/subHeader';
 import Skeleton from '../../components/common/Skeleton';
 import { colors } from '../../styles/colors';
 import { getNormalize } from '../../styles/frame.style';
 import { createMailStyles } from '../../styles/mail.style';
+import { createMailInboxMenuSheetStyles } from '../../styles/mailInboxMenuSheet.style';
 import { api } from '../../utils/api';
 import { useNotification } from '../../context/NotificationContext';
 import ProfileIcon from '../../assets/Profile.svg';
@@ -184,6 +187,10 @@ function MailInbox({ onOpen, onBack, navigation }) {
   const { width } = useWindowDimensions();
   const normalize = useMemo(() => getNormalize(width), [width]);
   const styles = useMemo(() => createMailStyles(normalize), [normalize]);
+  const inboxMenuSheetStyles = useMemo(
+    () => createMailInboxMenuSheetStyles(normalize),
+    [normalize],
+  );
   const [tab, setTab] = useState('received');
   const [items, setItems] = useState([]);
   const [page, setPage] = useState(1);
@@ -191,6 +198,70 @@ function MailInbox({ onOpen, onBack, navigation }) {
   const [loading, setLoading] = useState(true);
   const [isInitialLoading, setIsInitialLoading] = useState(true);
   const [error, setError] = useState('');
+  const [inboxMenuVisible, setInboxMenuVisible] = useState(false);
+  const [inboxMenuMail, setInboxMenuMail] = useState(null);
+
+  const closeInboxMenu = useCallback(() => {
+    setInboxMenuVisible(false);
+    setInboxMenuMail(null);
+  }, []);
+
+  const openInboxMenu = useCallback((mail) => {
+    setInboxMenuMail(mail);
+    setInboxMenuVisible(true);
+  }, []);
+
+  const inboxMenuSheetMeta = useMemo(() => {
+    if (!inboxMenuMail) return null;
+    const mail = inboxMenuMail;
+    const name =
+      mail.rowKind === 'parent'
+        ? '원본 우편'
+        : counterpartyDisplayNameForCurrentUser({
+            isReceived: Boolean(mail.isReceived),
+            senderNameFromApi: mail.raw?.sender_name,
+            recipientNameFromApi: mail.raw?.recipient_name,
+            isRootAuthorForCurrentUser: Boolean(mail.raw?.is_root_author_for_current_user),
+          });
+    return {
+      name,
+      subtitle: mail.preview || '',
+      profileColorId: mail.profileColorId ?? 0,
+    };
+  }, [inboxMenuMail]);
+
+  const handleInboxMenuDelete = useCallback(() => {
+    const mail = inboxMenuMail;
+    closeInboxMenu();
+    if (!mail?.roomId) return;
+    (async () => {
+      try {
+        await api.delete(`/api/mails/personal/rooms/${mail.roomId}`);
+        setItems((prev) => prev.filter((it) => it.roomId !== mail.roomId));
+      } catch {
+        Alert.alert('오류', '우편 삭제에 실패했습니다.');
+      }
+    })();
+  }, [closeInboxMenu, inboxMenuMail]);
+
+  const handleInboxMenuBlock = useCallback(() => {
+    const mail = inboxMenuMail;
+    closeInboxMenu();
+    const counterpartyUserId = mail?.counterpartyUserId;
+    if (!counterpartyUserId) return;
+    (async () => {
+      try {
+        await api.post(`/api/friends/${counterpartyUserId}/block`, {
+          reason: 'mail_block',
+        });
+        if (mail?.roomId) {
+          setItems((prev) => prev.filter((it) => it.roomId !== mail.roomId));
+        }
+      } catch {
+        Alert.alert('오류', '차단 처리에 실패했습니다.');
+      }
+    })();
+  }, [closeInboxMenu, inboxMenuMail]);
 
   const fetchList = useCallback(async (nextPage = 1, append = false) => {
     try {
@@ -326,42 +397,7 @@ function MailInbox({ onOpen, onBack, navigation }) {
                 mail.rowKind === 'parent' && styles.mailCardParent,
                 mail.rowKind === 'reply' && styles.mailCardReply,
               ]}
-              onLongPress={() => {
-                const counterpartyUserId = mail.counterpartyUserId;
-                Alert.alert('개인 우편 옵션', '원하는 작업을 선택해주세요.', [
-                  {
-                    text: '차단',
-                    style: 'destructive',
-                    onPress: async () => {
-                      if (!counterpartyUserId) return;
-                      try {
-                        await api.post(`/api/friends/${counterpartyUserId}/block`, {
-                          reason: 'mail_block',
-                        });
-                        if (mail.roomId) {
-                          setItems((prev) => prev.filter((it) => it.roomId !== mail.roomId));
-                        }
-                      } catch {
-                        Alert.alert('오류', '차단 처리에 실패했습니다.');
-                      }
-                    },
-                  },
-                  {
-                    text: '삭제',
-                    style: 'destructive',
-                    onPress: async () => {
-                      if (!mail.roomId) return;
-                      try {
-                        await api.delete(`/api/mails/personal/rooms/${mail.roomId}`);
-                        setItems((prev) => prev.filter((it) => it.roomId !== mail.roomId));
-                      } catch {
-                        Alert.alert('오류', '우편 삭제에 실패했습니다.');
-                      }
-                    },
-                  },
-                  { text: '취소', style: 'cancel' },
-                ]);
-              }}
+              onLongPress={() => openInboxMenu(mail)}
               onPress={() => onOpen(mail)}
               activeOpacity={0.8}
             >
@@ -423,6 +459,86 @@ function MailInbox({ onOpen, onBack, navigation }) {
       >
         <Text style={styles.floatingButtonText}>+</Text>
       </TouchableOpacity>
+
+      <Modal
+        visible={inboxMenuVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={closeInboxMenu}
+        onDismiss={() => setInboxMenuMail(null)}
+      >
+        <TouchableOpacity
+          style={inboxMenuSheetStyles.modalOverlay}
+          onPress={closeInboxMenu}
+          activeOpacity={1}
+        />
+        <View style={inboxMenuSheetStyles.bottomSheet}>
+          <View style={inboxMenuSheetStyles.sheetHandle} />
+          {inboxMenuMail && inboxMenuSheetMeta ? (
+            <>
+              <View style={inboxMenuSheetStyles.sheetRoomInfo}>
+                <View style={inboxMenuSheetStyles.sheetAvatar}>
+                  <ProfileIcon
+                    width={normalize(45)}
+                    height={normalize(45)}
+                    color={getProfileInnerColor(inboxMenuSheetMeta.profileColorId)}
+                  />
+                </View>
+                <View>
+                  <Text style={inboxMenuSheetStyles.sheetName}>
+                    {inboxMenuSheetMeta.name}
+                  </Text>
+                  {inboxMenuSheetMeta.subtitle ? (
+                    <Text style={inboxMenuSheetStyles.sheetSubtitle} numberOfLines={1}>
+                      {inboxMenuSheetMeta.subtitle}
+                    </Text>
+                  ) : null}
+                </View>
+              </View>
+
+              <TouchableOpacity
+                style={inboxMenuSheetStyles.sheetDeleteAction}
+                onPress={handleInboxMenuDelete}
+                activeOpacity={0.85}
+              >
+                <View
+                  style={[
+                    inboxMenuSheetStyles.sheetActionIcon,
+                    inboxMenuSheetStyles.deleteActionIcon,
+                  ]}
+                >
+                  <Ionicons name="trash-outline" size={20} color={colors.alert} />
+                </View>
+                <View>
+                  <Text style={inboxMenuSheetStyles.sheetDeleteActionTitle}>
+                    삭제
+                  </Text>
+                </View>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={inboxMenuSheetStyles.sheetBlockAction}
+                onPress={handleInboxMenuBlock}
+                activeOpacity={0.85}
+              >
+                <View
+                  style={[
+                    inboxMenuSheetStyles.sheetActionIcon,
+                    inboxMenuSheetStyles.blockActionIcon,
+                  ]}
+                >
+                  <Ionicons name="ban-outline" size={16} color={colors.textSecondary} />
+                </View>
+                <View>
+                  <Text style={inboxMenuSheetStyles.sheetBlockActionTitle}>
+                    차단
+                  </Text>
+                </View>
+              </TouchableOpacity>
+            </>
+          ) : null}
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }

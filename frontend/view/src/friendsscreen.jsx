@@ -202,7 +202,7 @@ const FriendsScreen = ({ navigation }) => {
     closeModal();
     Alert.alert(
       '차단',
-      `${selectedFriend.name}님을 차단할까요?\n차단하면 개인우편과 타이머 활동 기능을 사용할수없어요`,
+      `${selectedFriend.name}님을 차단할까요?\n차단하면 다시 되돌릴 수 없어요`,
       [
         { text: '취소', style: 'cancel' },
         {
@@ -214,6 +214,7 @@ const FriendsScreen = ({ navigation }) => {
               setFriends((prev) =>
                 prev.filter((f) => f.id !== selectedFriend.id),
               );
+              Alert.alert('차단 완료', '차단되었습니다.', [{ text: '확인' }]);
             } catch (error) {
               console.error('사용자 차단 실패:', error);
               Alert.alert(

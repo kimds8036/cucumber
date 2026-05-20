@@ -592,6 +592,21 @@ export function createTimetableChoicePreviewStyles(normalize) {
       borderWidth: 1,
       borderColor: COLORS.timetableBorder,
     },
+    choicePreviewEmptyContainer: {
+      minHeight: normalize(200),
+      justifyContent: 'center',
+      alignItems: 'center',
+      paddingVertical: normalize(32),
+      paddingHorizontal: normalize(20),
+      backgroundColor: COLORS.background,
+    },
+    choicePreviewEmptyText: {
+      fontFamily: fonts.regular,
+      fontSize: fontSizes.lg,
+      color: COLORS.textSecondary,
+      textAlign: 'center',
+      lineHeight: normalize(22),
+    },
     choicePreviewGrid: {
       backgroundColor: COLORS.background,
     },

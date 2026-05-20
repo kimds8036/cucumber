@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState, useRef, useCallback } from 'react';
 import {
   View,
   Text,
@@ -6,10 +6,14 @@ import {
   TouchableOpacity,
   Keyboard,
   Alert,
+  Platform,
   useWindowDimensions,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
-import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
+import {
+  KeyboardAwareScrollView,
+  KeyboardAvoidingView,
+} from 'react-native-keyboard-controller';
 import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import Ionicons from '@expo/vector-icons/Ionicons';
@@ -44,6 +48,79 @@ const SendMailScreen = ({ navigation }) => {
   const [schoolSectionHeight, setSchoolSectionHeight] = useState(0);
   const [recipientSectionHeight, setRecipientSectionHeight] = useState(0);
   const [bottomCtaHeight, setBottomCtaHeight] = useState(0);
+  const [keyboardOpen, setKeyboardOpen] = useState(false);
+  const [keyboardHeight, setKeyboardHeight] = useState(0);
+  const [contentFocused, setContentFocused] = useState(false);
+  const [contentSectionLayout, setContentSectionLayout] = useState({ y: 0, height: 0 });
+  const scrollRef = useRef(null);
+  const scrollContentRef = useRef(null);
+  const contentSectionRef = useRef(null);
+
+  const updateContentSectionLayout = useCallback(() => {
+    const section = contentSectionRef.current;
+    const content = scrollContentRef.current;
+    if (!section || !content) return;
+    section.measureLayout(content, (_x, y, _w, h) => {
+      setContentSectionLayout({ y, height: h });
+    });
+  }, []);
+
+  /** 「내용」 라벨이 키보드 위 가시 영역 상단에 오도록 (중앙보다 살짝 덜 스크롤) */
+  const scrollContentSectionToVisibleTop = useCallback(() => {
+    if (!contentFocused || keyboardHeight <= 0) return;
+    const { y: sectionY } = contentSectionLayout;
+    if (sectionY <= 0 && contentSectionLayout.height <= 0) return;
+
+    const topInset = normalize(8);
+    const targetScrollY = sectionY - topInset;
+
+    scrollRef.current?.scrollTo({
+      y: Math.max(0, targetScrollY),
+      animated: true,
+    });
+  }, [contentFocused, keyboardHeight, contentSectionLayout, normalize]);
+
+  const handleContentFocus = useCallback(() => {
+    setContentFocused(true);
+  }, []);
+
+  const handleContentBlur = useCallback(() => {
+    setContentFocused(false);
+  }, []);
+
+  useEffect(() => {
+    const showEvent = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
+    const hideEvent = Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide';
+    const showSub = Keyboard.addListener(showEvent, (e) => {
+      setKeyboardOpen(true);
+      setKeyboardHeight(e.endCoordinates?.height ?? 0);
+    });
+    const hideSub = Keyboard.addListener(hideEvent, () => {
+      setKeyboardOpen(false);
+      setKeyboardHeight(0);
+    });
+    return () => {
+      showSub.remove();
+      hideSub.remove();
+    };
+  }, []);
+
+  useEffect(() => {
+    updateContentSectionLayout();
+  }, [
+    schoolSectionHeight,
+    recipientSectionHeight,
+    updateContentSectionLayout,
+  ]);
+
+  useEffect(() => {
+    if (!keyboardOpen || !contentFocused) return;
+    const timer = setTimeout(
+      scrollContentSectionToVisibleTop,
+      Platform.OS === 'ios' ? 50 : 120,
+    );
+    return () => clearTimeout(timer);
+  }, [keyboardOpen, contentFocused, keyboardHeight, scrollContentSectionToVisibleTop]);
 
   const handleMailContentChange = (text) => {
     if (text.length > charLimit) {
@@ -170,20 +247,38 @@ const SendMailScreen = ({ navigation }) => {
   );
 
   return (
-    <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
+    <SafeAreaView style={styles.container} edges={['top']}>
       <View onLayout={(e) => setSubHeaderHeight(e.nativeEvent.layout.height)}>
         <SubHeader title="우편 보내기" onBack={() => navigation?.goBack()} />
       </View>
-      <View style={styles.keyboardView}>
+      <KeyboardAvoidingView
+        style={styles.keyboardView}
+        behavior="padding"
+        automaticOffset
+        enabled={contentFocused}
+      >
           <KeyboardAwareScrollView
+            ref={scrollRef}
             style={styles.scrollView}
-            contentContainerStyle={styles.sendScrollContent}
+            contentContainerStyle={[
+              styles.sendScrollContent,
+              {
+                paddingBottom: contentFocused
+                  ? Math.max(bottomCtaHeight, normalize(16))
+                  : normalize(16),
+              },
+            ]}
             keyboardShouldPersistTaps="always"
             keyboardDismissMode="on-drag"
             showsVerticalScrollIndicator={false}
             onScrollBeginDrag={Keyboard.dismiss}
-            bottomOffset={Math.max(bottomCtaHeight, 16)}
+            bottomOffset={
+              contentFocused
+                ? Math.max(bottomCtaHeight, normalize(16))
+                : normalize(16)
+            }
           >
+            <View ref={scrollContentRef} collapsable={false}>
             {/* 섹션 1: 보낼 학교 */}
             <View
               style={styles.section}
@@ -475,10 +570,12 @@ const SendMailScreen = ({ navigation }) => {
 
             {/* 섹션 3: 내용 */}
             <View
+              ref={contentSectionRef}
               style={[
                 styles.section,
                 { flex: 1, minHeight: contentSectionMinHeight },
               ]}
+              onLayout={updateContentSectionLayout}
             >
               <Text style={styles.label}>내용</Text>
               <View style={styles.textAreaWrapper}>
@@ -487,6 +584,8 @@ const SendMailScreen = ({ navigation }) => {
                   placeholder="보낼 내용을 입력하세요"
                   value={mailContent}
                   onChangeText={handleMailContentChange}
+                  onFocus={handleContentFocus}
+                  onBlur={handleContentBlur}
                   multiline
                   textAlignVertical="top"
                   placeholderTextColor={colors.textSecondary}
@@ -510,10 +609,14 @@ const SendMailScreen = ({ navigation }) => {
                 </View>
               </View>
             </View>
+            </View>
           </KeyboardAwareScrollView>
 
           <View
-            style={styles.bottomCtaWrapper}
+            style={[
+              styles.bottomCtaWrapper,
+              { paddingBottom: Math.max(normalize(16), insets.bottom) },
+            ]}
             onLayout={(e) => setBottomCtaHeight(e.nativeEvent.layout.height)}
           >
             <TouchableOpacity
@@ -533,7 +636,7 @@ const SendMailScreen = ({ navigation }) => {
               )}
             </TouchableOpacity>
           </View>
-        </View>
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 };

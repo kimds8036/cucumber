@@ -297,7 +297,7 @@ const createStyles = (width, normalize) => ({
   primaryButton: {
     width: '100%',
     backgroundColor: colors.primary,
-    borderRadius: normalize(20),
+    borderRadius: normalize(8),
     justifyContent: 'center',
     alignItems: 'center',
     paddingVertical: normalize(14),
