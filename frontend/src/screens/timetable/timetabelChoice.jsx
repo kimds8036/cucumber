@@ -376,6 +376,7 @@ export default function TimetabelChoice({ navigation, route }) {
       <AppPopupModal
         visible={showAutoAddedModal}
         onClose={() => setShowAutoAddedModal(false)}
+        dismissOnBackdrop={false}
       >
         <Text
           style={{

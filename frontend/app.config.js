@@ -1,9 +1,14 @@
 // app.config.js
+import { resolveApiBaseUrl, resolveAppEnv } from './config/apiEnv.js';
+
+const apiBaseUrl = resolveApiBaseUrl();
+const appEnv = resolveAppEnv();
+
 export default ({ config }) => ({
     expo: {
       name: "Youth Paper",
       slug: "youth-paper",
-      version: "1.0.1",
+      version: "1.0.2",
       orientation: "portrait",
       icon: "./assets/icon.png",
       userInterfaceStyle: "light",
@@ -35,7 +40,7 @@ export default ({ config }) => ({
       },
   
       android: {
-        versionCode: 3,
+        versionCode: 4,
         usesCleartextTraffic: true,
         // (선택) 안드로이드도 같은 방식으로 secret 적용 가능
         googleServicesFile:
@@ -97,12 +102,16 @@ export default ({ config }) => ({
             },
           },
         ],
+        "./plugins/withAndroidReleaseSigning.cjs",
       ],
   
       extra: {
-        apiBaseUrl: "https://cucumber-develop.up.railway.app",
+        ...(config?.expo?.extra ?? {}),
+        apiBaseUrl,
+        appEnv,
         eas: {
           projectId: "39e0f4f8-dd46-4921-a4bf-68856fdfc85c",
+          ...(config?.expo?.extra?.eas ?? {}),
         },
       },
   

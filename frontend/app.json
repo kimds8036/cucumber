@@ -2,7 +2,7 @@
   "expo": {
     "name": "Youth Paper",
     "slug": "youth-paper",
-    "version": "1.0.1",
+    "version": "1.0.2",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
@@ -52,7 +52,7 @@
         "android.permission.READ_MEDIA_AUDIO"
       ],
       "package": "com.ucost.YouthPaper",
-      "versionCode": 3,
+      "versionCode": 4,
       "softwareKeyboardLayoutMode": "pan"
     },
     "web": {
@@ -98,7 +98,6 @@
       ]
     ],
     "extra": {
-      "apiBaseUrl": "https://cucumber-develop.up.railway.app",
       "eas": {
         "projectId": "39e0f4f8-dd46-4921-a4bf-68856fdfc85c"
       }

@@ -171,17 +171,21 @@ const SearchScreen = ({ navigation, route }) => {
               onSubmitEditing={() => runSearch()}
               placeholderTextColor={colors.textSecondary}
               returnKeyType="search"
+              multiline={false}
+              numberOfLines={1}
             />
-            {searchText.length > 0 && (
-              <TouchableOpacity
-                onPress={() => {
-                  setSearchText('');
-                }}
-                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-              >
-                <Ionicons name="close-circle" size={normalize(17)} color={colors.textLight20} />
-              </TouchableOpacity>
-            )}
+            <View style={styles.searchClearSlot}>
+              {searchText.length > 0 ? (
+                <TouchableOpacity
+                  onPress={() => {
+                    setSearchText('');
+                  }}
+                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                >
+                  <Ionicons name="close-circle" size={normalize(17)} color={colors.textLight20} />
+                </TouchableOpacity>
+              ) : null}
+            </View>
           </View>
         </View>
 

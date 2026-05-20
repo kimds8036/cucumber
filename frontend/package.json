@@ -4,8 +4,15 @@
   "main": "index.js",
   "scripts": {
     "start": "expo start",
+    "start:prod": "cross-env APP_ENV=production expo start",
     "android": "expo run:android",
+    "android:prod": "cross-env APP_ENV=production expo run:android",
+    "android:bundle-dev": "cross-env APP_ENV=development expo run:android --variant release",
+    "android:bundle-prod": "cross-env APP_ENV=production expo run:android --variant release",
+    "android:aab-prod": "cross-env APP_ENV=production expo prebuild --platform android && cd android && gradlew.bat bundleRelease",
+    "credentials:android": "eas credentials -p android",
     "ios": "expo run:ios",
+    "ios:prod": "cross-env APP_ENV=production expo run:ios",
     "web": "expo start --web"
   },
   "dependencies": {
@@ -59,6 +66,7 @@
   },
   "private": true,
   "devDependencies": {
+    "cross-env": "^7.0.3",
     "license-checker": "^25.0.1",
     "react-native-asset": "^2.2.8"
   }
