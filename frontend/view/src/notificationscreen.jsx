@@ -13,7 +13,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { StackActions } from '@react-navigation/native';
 import SubHeader from '../frame/subHeader';
 import { api } from '../../utils/api';
-import { colors } from '../../styles/colors';
+import { colors, fonts } from '../../styles/colors';
 import { getNormalize } from '../../styles/frame.style';
 import {
   createNotificationSkeletonStyles,
@@ -28,6 +28,11 @@ import {
   normalizeStudySummaryWatchers,
 } from '../../utils/studySummaryNotification';
 import NotificationAdPlaceholder from '../../src/screens/ad/NotificationAdPlaceholder';
+import {
+  isMailReturnedNotification,
+  mergeTestReturnedMailNotification,
+  navigateToResendPersonalMail,
+} from '../../utils/personalMail';
 
 const PAGE_SIZE = 20;
 const INITIAL_PREFETCH_PAGES = 3;
@@ -106,6 +111,9 @@ const mapRowToNotificationItem = (n) => {
     relatedType: n.relatedType,
     relatedId: n.relatedId,
     watchers: normalizeWatchers(n.watchers),
+    isReturned: isMailReturnedNotification(n),
+    // TODO: 반송 알림 prefill — API 확정 후 metadata 필드 매핑
+    prefillMeta: n.metadata ?? n.mail_prefill ?? {},
   };
 };
 
@@ -337,7 +345,7 @@ const NotificationScreen = ({ navigation }) => {
         // 최신 reset 결과만 반영
         if (seq >= latestAppliedSeqRef.current) {
           latestAppliedSeqRef.current = seq;
-          setNotifications(accumulated);
+          setNotifications(mergeTestReturnedMailNotification(accumulated));
           setHasMore(lastList.length >= PAGE_SIZE && !hitSweepCap);
           setPage(pageCursor);
           markNotificationsSeenForBell?.();
@@ -715,6 +723,9 @@ const NotificationScreen = ({ navigation }) => {
             receivedAt: n.time,
             content: n.content,
             is_read: false,
+            isReceived: false,
+            is_returned: isMailReturnedNotification(n),
+            prefillMeta: n.prefillMeta,
           },
         });
         return;
@@ -843,7 +854,9 @@ const NotificationScreen = ({ navigation }) => {
               </View>
 
               <View style={[styles.notificationContent, getDebugBorderStyle('#5AC8FA')]}>
-                <Text style={styles.notificationTitle}>{notification.title}</Text>
+                <View style={{ flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap' }}>
+                  <Text style={styles.notificationTitle}>{notification.title}</Text>
+                </View>
                 {!hidePreviewText ? (
                   <Text style={styles.notificationText} numberOfLines={2}>
                     {notification.content}

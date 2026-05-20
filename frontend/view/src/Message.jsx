@@ -20,6 +20,7 @@ import { colors, fonts, fontSizes } from '../../styles/colors';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import Feather from '@expo/vector-icons/Feather';
 import FontAwesome6 from '@expo/vector-icons/FontAwesome6';
+import Entypo from '@expo/vector-icons/Entypo';
 import { StackActions } from '@react-navigation/native';
 import ProfileIcon from '../../assets/Profile.svg';
 import { api } from '../../utils/api';
@@ -28,6 +29,10 @@ import { useToast } from '../../context/ToastContext';
 import { useNotification } from '../../context/NotificationContext';
 import { getProfileInnerColor } from '../../utils/profileIconColor';
 import ChatAdPlaceholder from '../../src/screens/ad/ChatAdPlaceholder';
+import {
+  isPersonalMailReturned,
+  navigateToResendPersonalMail,
+} from '../../utils/personalMail';
 
 // DB에 UTC로 저장된 날짜 문자열을 기기 로컬 시간대로 변환해서 파싱
 function parseUtcToLocal(createdAt) {
@@ -725,6 +730,7 @@ export function MessageContent({ navigation }) {
           const counterpartyUserId = isReceived
             ? (Number.isFinite(senderIdNum) ? senderIdNum : null)
             : (Number.isFinite(recipientIdNum) ? recipientIdNum : null);
+          const isReturned = !isReceived && isPersonalMailReturned(rawMail);
           return {
             id: rawMail.id,
             roomId: rawMail.room_id ?? null,
@@ -737,6 +743,7 @@ export function MessageContent({ navigation }) {
               rawMail.profileColorId ??
               null,
             isReceived,
+            isReturned,
             replyToMySent,
             senderName: rowLabel,
             directionText: rowLabel,
@@ -1006,6 +1013,7 @@ export function MessageContent({ navigation }) {
                           mail: {
                             raw: item.raw || item,
                             isReceived: item.isReceived,
+                            is_returned: item.isReturned,
                             replyToMySent: Boolean(
                               item.replyToMySent ??
                                 item.raw?.reply_to_my_sent ??
@@ -1035,7 +1043,9 @@ export function MessageContent({ navigation }) {
                           />
                         </View>
                         <View style={styles.listItemBody}>
-                          <Text style={styles.listItemName}>{displayName}</Text>
+                          <View style={{ flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap' }}>
+                            <Text style={styles.listItemName}>{displayName}</Text>
+                          </View>
                           <Text style={styles.listItemContent} numberOfLines={1}>
                             {item.previewText || (item.isReceived ? '받은 우편' : '보낸 우편')}
                           </Text>
@@ -1047,6 +1057,8 @@ export function MessageContent({ navigation }) {
                           <View style={styles.unreadBadge}>
                             <Text style={styles.unreadBadgeText}>{item.unreadCount}</Text>
                           </View>
+                        ) : item.isReturned ? (
+                          <Entypo name="cross" size={normalize(16)} color={colors.alert} />
                         ) : (
                           <FontAwesome6
                             name={item.isReceived ? 'arrow-left-long' : 'arrow-right-long'}
