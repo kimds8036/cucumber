@@ -3,9 +3,17 @@ import { Modal, TouchableWithoutFeedback, View, Text, TouchableOpacity, Alert } 
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { colors, fonts } from '../../../styles/colors';
 
+function normalizeCommentId(id) {
+  if (id == null || id === '') return null;
+  const n = Number(id);
+  return Number.isFinite(n) && n > 0 ? n : null;
+}
+
 function findCommentById(comments, id) {
+  const targetId = normalizeCommentId(id);
+  if (targetId == null) return null;
   for (const c of comments) {
-    if (c.id === id) return c;
+    if (Number(c.id) === targetId) return c;
     if (c.replies?.length) {
       const found = findCommentById(c.replies, id);
       if (found) return found;
@@ -33,7 +41,7 @@ export default function BoardFloatingMenu({
   width,
 }) {
   const isPostMenu = context === 'post';
-  const isCommentMenu = isPostMenu ? null : context;
+  const isCommentMenu = isPostMenu ? null : normalizeCommentId(context);
   const commentForMenu = isCommentMenu != null ? findCommentById(allComments, isCommentMenu) : null;
   const isMyComment = commentForMenu?.isMyComment === true;
 
@@ -90,13 +98,16 @@ export default function BoardFloatingMenu({
         onPress: () => onReportComment?.(isCommentMenu),
       },
     ];
-  } else {
+  } else if (isCommentMenu != null) {
     menuItems = [
       {
-        label: '쪽지 보내기',
-        iconName: 'chatbubble-outline',
-        onPress: () => {},
+        label: '신고하기',
+        iconName: 'flag-outline',
+        onPress: () => onReportComment?.(isCommentMenu),
       },
+    ];
+  } else {
+    menuItems = [
       { label: '신고하기', iconName: 'flag-outline', onPress: onReportPost },
     ];
   }
