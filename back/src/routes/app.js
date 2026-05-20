@@ -7,7 +7,7 @@ const DEFAULT_ANDROID_STORE_URL =
   'https://play.google.com/store/apps/details?id=com.ucost.YouthPaper';
 
 /**
- * GET /api/app/version-check?platform=android|ios&version=1.0.2
+ * GET /api/app/version-check?platform=android|ios&version=1.1.0
  * 인증 없음 — 앱 실행 직후 강제 업데이트 여부 확인
  */
 router.get('/version-check', (req, res) => {
