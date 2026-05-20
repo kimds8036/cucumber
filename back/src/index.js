@@ -30,6 +30,7 @@ import { initSocketServer } from './socketServer.js';
 import { initFirebase } from './config/firebase.js';
 import './utils/notificationWorker.js';
 import { initJobs } from './jobs/index.js';
+import { isProductionEnv, sendErrorResponse } from './utils/httpError.js';
 
 
 dotenv.config();
@@ -39,6 +40,8 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 const HOST = process.env.HOST || 'localhost';
 const BASE_URL = `http://${HOST}:${PORT}`;
+
+const notFoundJson = { success: false, message: 'Not found' };
 
 // ============ 보안 설정 ============
 
@@ -53,7 +56,7 @@ app.use(helmet({ contentSecurityPolicy: false }));
 // 3. CORS
 //    - 운영(NODE_ENV=production): CORS_ORIGIN(콤마 구분) 만 허용. 모바일 앱은 origin 이 없으므로 통과
 //    - 그 외(개발): 로컬 dev 호스트만 허용
-const allowedOrigins = process.env.NODE_ENV === 'production'
+const allowedOrigins = isProductionEnv()
   ? (process.env.CORS_ORIGIN ? process.env.CORS_ORIGIN.split(',').map((s) => s.trim()).filter(Boolean) : [])
   : ['http://localhost:3000', 'http://localhost:8081'];
 
@@ -96,10 +99,33 @@ const generalLimiter = rateLimit({
 });
 app.use('/api', generalLimiter);
 
+// 관리자 로그인 무차별 대입 방지 (POST /admin/login 전용, /api limiter 밖)
+const adminLoginLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: Number(process.env.RATE_LIMIT_ADMIN_LOGIN_MAX || 10),
+  standardHeaders: true,
+  legacyHeaders: false,
+  skipSuccessfulRequests: true,
+  message: {
+    success: false,
+    message: '로그인 시도가 너무 많습니다. 15분 후 다시 시도해주세요.',
+  },
+});
+app.use('/admin', (req, res, next) => {
+  if (req.method === 'POST' && req.path === '/login') {
+    return adminLoginLimiter(req, res, next);
+  }
+  next();
+});
+
 // ============ 보안 설정 끝 ============
 
-// Swagger UI (OpenAPI 문서)
-app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
+// Swagger UI — 운영 환경에서는 404 (API 정찰 방지)
+if (isProductionEnv()) {
+  app.use('/api-docs', (_req, res) => res.status(404).json(notFoundJson));
+} else {
+  app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
+}
 
 // Health check
 app.get('/health', (req, res) => {
@@ -109,15 +135,19 @@ app.get('/health', (req, res) => {
 // Admin web routes (로그인/가드/페이지 제공)
 app.use('/admin', adminWebRoutes);
 
-// DB 연결 테스트
-app.get('/api/test-db', async (req, res) => {
-  try {
-    const [rows] = await pool.execute('SELECT 1 as test');
-    res.json({ status: 'ok', message: 'Database connected', data: rows });
-  } catch (error) {
-    res.status(500).json({ status: 'error', message: error.message });
-  }
-});
+// DB 연결 테스트 — 운영 환경에서는 404
+if (isProductionEnv()) {
+  app.get('/api/test-db', (_req, res) => res.status(404).json(notFoundJson));
+} else {
+  app.get('/api/test-db', async (req, res) => {
+    try {
+      const [rows] = await pool.execute('SELECT 1 as test');
+      res.json({ status: 'ok', message: 'Database connected', data: rows });
+    } catch (error) {
+      sendErrorResponse(res, 500, error, { logLabel: '[test-db]' });
+    }
+  });
+}
 
 // Routes
 app.use('/api/auth', authRoutes);
@@ -142,16 +172,16 @@ app.use('/api/test', testRoutes);
 // ============ 글로벌 에러 핸들러 ============
 // 모든 라우트 등록 이후에 위치해야 한다.
 // - CORS 차단은 403 으로 변환
-// - 그 외 5xx 는 운영에선 메시지 마스킹, 개발에선 원본 메시지 노출
+// - 운영: DB/SQL/스택 등 내부 정보는 응답에 포함하지 않음 (console.error 만 유지)
 app.use((err, req, res, _next) => {
   if (err?.message?.includes('CORS')) {
     return res.status(403).json({ success: false, message: 'CORS 정책에 의해 차단되었습니다.' });
   }
   console.error(`[ERROR] ${req.method} ${req.path}`, err?.stack || err);
-  if (process.env.NODE_ENV === 'production') {
-    return res.status(500).json({ success: false, message: '서버 오류가 발생했습니다.' });
-  }
-  return res.status(500).json({ success: false, message: err?.message || 'Internal Server Error' });
+  const message = isProductionEnv()
+    ? 'Internal Server Error'
+    : err?.message || 'Internal Server Error';
+  return res.status(500).json({ success: false, message });
 });
 
 // HTTP 서버 + Socket.io 초기화
@@ -166,7 +196,9 @@ httpServer.listen(PORT, async () => {
   console.log(`🔌 PORT: ${PORT}`);
   console.log(`🔗 BASE URL: ${BASE_URL}`);
   console.log(`📡 Health check: ${BASE_URL}/health`);
-  console.log(`📚 API 문서 (Swagger): ${BASE_URL}/api-docs`);
+  if (!isProductionEnv()) {
+    console.log(`📚 API 문서 (Swagger): ${BASE_URL}/api-docs`);
+  }
 
   try {
     const [rows] = await pool.execute('SELECT 1 as test');
