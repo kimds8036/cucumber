@@ -24,6 +24,7 @@ import adminReportsRoutes from './routes/adminReports.js';
 import adminInquiriesRoutes from './routes/adminInquiries.js';
 import adminWebRoutes from './routes/adminWeb.js';
 import inquiriesRoutes from './routes/inquiries.js';
+import appRoutes from './routes/app.js';
 import testRoutes from './routes/test.js';
 import swaggerSpec from './swagger.js';
 import { initSocketServer } from './socketServer.js';
@@ -150,6 +151,7 @@ if (isProductionEnv()) {
 }
 
 // Routes
+app.use('/api/app', appRoutes);
 app.use('/api/auth', authRoutes);
 app.use('/api/posts', postRoutes);
 app.use('/api', commentRoutes);
