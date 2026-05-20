@@ -53,6 +53,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { KeyboardProvider } from 'react-native-keyboard-controller';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { LocationProvider, LocationGate } from './context/LocationContext';
+import ForceUpdateGate from './components/common/ForceUpdateGate';
 import { SocketProvider } from './context/SocketContext';
 import { NotificationProvider } from './context/NotificationContext';
 import { FriendProvider } from './context/FriendContext';
@@ -505,6 +506,7 @@ export default function App() {
 
   return (
     <SafeAreaProvider>
+      <ForceUpdateGate>
       <KeyboardProvider>
         <AuthProvider>
           <LocationProvider>
@@ -527,6 +529,7 @@ export default function App() {
           </LocationProvider>
         </AuthProvider>
       </KeyboardProvider>
+      </ForceUpdateGate>
     </SafeAreaProvider>
   );
 }
