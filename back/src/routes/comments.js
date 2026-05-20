@@ -381,8 +381,8 @@ router.post('/:commentId/like', authenticate, async (req, res) => {
   }
 });
 
-// 댓글 신고
-router.post('/:commentId/report', authenticate, async (req, res) => {
+// 댓글 신고 (경로는 /api/comments/:commentId/report — ReportModal 과 동일)
+router.post('/comments/:commentId/report', authenticate, async (req, res) => {
   try {
     const reporterId = req.user.userId;
     const { commentId } = req.params;
@@ -396,15 +396,21 @@ router.post('/:commentId/report', authenticate, async (req, res) => {
       });
     }
 
-    // 댓글 존재 확인
+    // 댓글 존재 확인 (본인 댓글 신고 불가)
     const [comments] = await pool.execute(
-      'SELECT id FROM comments WHERE id = ? AND is_deleted = FALSE',
+      'SELECT id, user_id FROM comments WHERE id = ? AND is_deleted = FALSE',
       [commentId],
     );
     if (comments.length === 0) {
       return res.status(404).json({
         success: false,
         message: '댓글을 찾을 수 없습니다.',
+      });
+    }
+    if (Number(comments[0].user_id) === Number(reporterId)) {
+      return res.status(400).json({
+        success: false,
+        message: '본인이 작성한 댓글은 신고할 수 없습니다.',
       });
     }
 
