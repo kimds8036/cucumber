@@ -9,15 +9,19 @@ const router = express.Router();
 router.post('/fcm-token', authenticate, async (req, res) => {
   try {
     const token = String(req.body?.token || '').trim();
-    const deviceType = req.body?.deviceType;
-    const appVersion = req.body?.appVersion;
+    const deviceId = String(req.body?.deviceId || req.body?.device_id || '').trim();
+    const deviceType = req.body?.deviceType ?? req.body?.device_type;
+    const appVersion = req.body?.appVersion ?? req.body?.app_version;
     const userId = req.user.userId;
 
     if (!token) {
       return res.status(400).json({ success: false, message: 'token 필요' });
     }
+    if (!deviceId) {
+      return res.status(400).json({ success: false, message: 'deviceId 필요' });
+    }
 
-    await upsertFcmToken({ userId, token, deviceType, appVersion });
+    await upsertFcmToken({ userId, token, deviceId, deviceType, appVersion });
 
     return res.json({ success: true });
   } catch (error) {

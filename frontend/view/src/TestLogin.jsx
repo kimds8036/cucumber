@@ -3,8 +3,8 @@
  *
  * - 백엔드 /api/test/users 에서 user1~userN 목록을 가져와 표시
  * - 계정 클릭 시 매칭 비밀번호(passN) 로 자동 로그인
- * - in_use(legacy fcm_token 보유) 인 계정은 빨간점=사용중, 미보유는 초록점=대기중
- *   (FCM 토큰 dedup 로직 덕분에 다른 디바이스에서 로그인하면 자동으로 빨간점이 이전됨)
+ * - in_use(fcm_tokens 활성 토큰 보유) 인 계정은 빨간점=사용중, 미보유는 초록점=대기중
+ *   (다른 디바이스에서 로그인·토큰 이전 시 이전 계정은 비활성화됨)
  * - 우상단 "관리자 로그인" 버튼은 기존 Login 화면으로 이동
  *
  * NOTE: 운영 빌드에서는 AuthStack initialRouteName 을 다시 'Login' 으로 돌려야 함.

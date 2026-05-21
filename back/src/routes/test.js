@@ -53,7 +53,10 @@ router.get('/users', async (req, res) => {
          u.grade,
          u.class_number,
          CASE
-           WHEN u.fcm_token IS NOT NULL AND u.fcm_token <> '' THEN 1
+           WHEN EXISTS (
+             SELECT 1 FROM fcm_tokens ft
+             WHERE ft.user_id = u.id AND ft.is_active = TRUE
+           ) THEN 1
            ELSE 0
          END AS in_use
        FROM users u

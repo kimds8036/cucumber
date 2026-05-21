@@ -1,10 +1,47 @@
 import pool from '../config/database.js';
 
+const DEDUPE_WINDOW_MINUTES = 5;
+
 /**
- * notifications 테이블에 알림 한 건을 기록합니다.
- * 이 함수 실패로 인해 원래 비즈니스 로직이 깨지지 않도록 내부에서 오류는 잡아서 로그만 남깁니다.
+ * 큐 재시도 등으로 동일 알림이 중복 INSERT 되지 않도록 최근 건 조회
  */
-export async function createNotification({
+async function findRecentDuplicateNotification({
+  userId,
+  type,
+  category,
+  title,
+  relatedType,
+  relatedId,
+}) {
+  const [rows] = await pool.execute(
+    `SELECT id
+     FROM notifications
+     WHERE user_id = ?
+       AND type = ?
+       AND COALESCE(category, '') = COALESCE(?, '')
+       AND title = ?
+       AND COALESCE(related_type, '') = COALESCE(?, '')
+       AND COALESCE(related_id, 0) = COALESCE(?, 0)
+       AND created_at >= DATE_SUB(NOW(), INTERVAL ? MINUTE)
+     ORDER BY id DESC
+     LIMIT 1`,
+    [
+      userId,
+      type,
+      category ?? null,
+      title,
+      relatedType ?? null,
+      relatedId ?? null,
+      DEDUPE_WINDOW_MINUTES,
+    ],
+  );
+  return rows[0]?.id ?? null;
+}
+
+/**
+ * @returns {{ id: number|null, created: boolean }}
+ */
+export async function createNotificationOnce({
   userId,
   type,
   category,
@@ -15,13 +52,26 @@ export async function createNotification({
   watchers = null,
 }) {
   try {
-    if (!userId) return;
+    if (!userId) return { id: null, created: false };
+
+    const existingId = await findRecentDuplicateNotification({
+      userId,
+      type,
+      category,
+      title,
+      relatedType,
+      relatedId,
+    });
+    if (existingId) {
+      return { id: Number(existingId), created: false };
+    }
+
     const watchersPayload =
       Array.isArray(watchers) && watchers.length > 0
         ? JSON.stringify(watchers)
         : null;
 
-    await pool.execute(
+    const [result] = await pool.execute(
       `INSERT INTO notifications
          (user_id, type, category, title, body, related_type, related_id, watchers_json)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
@@ -36,9 +86,17 @@ export async function createNotification({
         watchersPayload,
       ],
     );
+
+    return { id: Number(result.insertId), created: true };
   } catch (error) {
     console.error('알림 생성 오류:', error);
-    // 알림 오류는 메인 요청을 막지 않음
+    return { id: null, created: false };
   }
 }
 
+/**
+ * @deprecated 큐/멱등 경로는 createNotificationOnce 사용
+ */
+export async function createNotification(params) {
+  await createNotificationOnce(params);
+}

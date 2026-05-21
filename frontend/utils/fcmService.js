@@ -1,6 +1,8 @@
 import { Platform } from 'react-native';
+import Constants from 'expo-constants';
 import { api } from './api';
 import { ensureFirebaseApp } from './firebaseApp';
+import { getDeviceId } from './deviceId';
 
 function getMessagingInstance() {
   try {
@@ -15,8 +17,18 @@ function getMessagingInstance() {
 async function uploadFCMToken(token) {
   if (!token) return;
   try {
-    await api.post('/api/users/fcm-token', { token });
-    console.log('[FCM] 서버에 토큰 저장 완료');
+    const deviceId = await getDeviceId();
+    const appVersion =
+      Constants.expoConfig?.version ||
+      Constants.nativeAppVersion ||
+      null;
+    await api.post('/api/users/fcm-token', {
+      token,
+      deviceId,
+      deviceType: Platform.OS,
+      appVersion,
+    });
+    console.log('[FCM] 서버에 토큰 저장 완료', { deviceId });
   } catch (error) {
     console.error('[FCM] 서버 토큰 저장 실패:', error?.response?.data || error?.message || error);
   }
@@ -32,7 +44,6 @@ export const getFCMToken = async () => {
     const token = await messaging.getToken();
     if (token) {
       console.log('[FCM] 토큰 발급 성공');
-      console.log('[FCM] Token:', token);
     }
     return token || null;
   } catch (e) {
@@ -50,8 +61,8 @@ export const initFCM = async () => {
     if (Platform.OS === 'ios') {
       const authStatus = await messaging.requestPermission();
       const authorized =
-        authStatus === 1 || // messaging.AuthorizationStatus.AUTHORIZED
-        authStatus === 2;   // messaging.AuthorizationStatus.PROVISIONAL
+        authStatus === 1 ||
+        authStatus === 2;
       if (!authorized) {
         console.warn('[FCM] iOS 알림 권한이 허용되지 않았습니다.');
         return null;
