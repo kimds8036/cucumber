@@ -714,6 +714,11 @@ const NotificationScreen = ({ navigation }) => {
 
     // 3) 우편/쪽지 관련
     if (n.category === 'mail' || n.type === 'mail') {
+      if (isMailReturnedNotification(n)) {
+        navigateToResendPersonalMail(navigation, n);
+        return;
+      }
+
       // (1) 개인 익명 우편 (personal_mail)
       if (n.relatedType === 'personal_mail' && n.relatedId) {
         preserveListOnNextFocusRef.current = true;

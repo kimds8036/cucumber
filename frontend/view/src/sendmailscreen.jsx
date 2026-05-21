@@ -23,7 +23,7 @@ import { getNormalize } from '../../styles/frame.style';
 import { createMailStyles } from '../../styles/mail.style';
 import { colors, fonts } from '../../styles/colors';
 import Loading from '../../components/Loading';
-import { api } from '../../utils/api';
+import { api, getApiUserFacingMessage } from '../../utils/api';
 import { buildSendMailPrefill } from '../../utils/personalMail';
 
 const SendMailScreen = ({ navigation, route }) => {
@@ -74,7 +74,7 @@ const SendMailScreen = ({ navigation, route }) => {
     if (!prefill || prefillAppliedRef.current) return;
     prefillAppliedRef.current = true;
     const p = buildSendMailPrefill({ prefillMeta: prefill });
-    if (p.school?.name) setSelectedSchool(p.school);
+    if (p.school?.id || p.school?.name) setSelectedSchool(p.school);
     if (p.grade) setRecipientGrade(p.grade);
     if (p.classNumber) setRecipientClass(p.classNumber);
     if (p.name) setRecipientName(p.name);
@@ -202,22 +202,17 @@ const SendMailScreen = ({ navigation, route }) => {
 
     try {
       setSending(true);
-      // TODO: POST /api/mails/personal
-      // payload: {
-      //   schoolId: selectedSchool.id,
-      //   grade: Number(recipientGrade),
-      //   classNumber: Number(recipientClass),
-      //   recipientName: recipientName.trim(),
-      //   recipientUsername: showHomonymUI ? recipientUsername.trim() : undefined,
-      //   content: mailContent.trim(),
-      // }
-      // 프로덕션 반송: 수신자 미확인 시 7일 후 반송 (백엔드 job)
-      // const RETURN_AFTER_MS = 7 * 24 * 60 * 60 * 1000;
-      // schedulePersonalMailReturn(mailId, RETURN_AFTER_MS);
-      // 테스트 반송: personalMail.js 의 PERSONAL_MAIL_TEST_IMMEDIATE_RETURN = true
-      // 동명이인 응답 시 (예: code === 'DUPLICATE_RECIPIENT'):
-      //   setShowHomonymUI(true);
-      //   return;
+      const payload = {
+        school_id: selectedSchool.id,
+        grade: Number(recipientGrade),
+        class_num: Number(recipientClass),
+        name: recipientName.trim(),
+        content: mailContent.trim(),
+      };
+      const username = recipientUsername.trim();
+      if (showHomonymUI && username) payload.user_id = username;
+
+      await api.post('/api/mails/personal/send', payload);
 
       Alert.alert('완료', '우편이 전송되었습니다.', [
         {
@@ -232,7 +227,18 @@ const SendMailScreen = ({ navigation, route }) => {
         },
       ]);
     } catch (error) {
-      Alert.alert('오류', error.response?.data?.message || '우편 전송 중 오류가 발생했습니다.');
+      const code = error?.response?.data?.code;
+      if (
+        error?.response?.status === 409 &&
+        (code === 'DUPLICATE_RECIPIENT' || error?.response?.data?.status === 'DUPLICATE')
+      ) {
+        setShowHomonymUI(true);
+        return;
+      }
+      Alert.alert(
+        '오류',
+        getApiUserFacingMessage(error, '우편 전송 중 오류가 발생했습니다.'),
+      );
     } finally {
       setSending(false);
     }

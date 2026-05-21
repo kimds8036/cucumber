@@ -749,7 +749,11 @@ export function MessageContent({ navigation }) {
             directionText: rowLabel,
             previewText: String(rawMail.content || '').slice(0, 40),
             time: formatTimeAgo(rawMail.created_at || ''),
-            unreadCount: isReceived ? (rawMail.is_read ? 0 : 1) : 0,
+            unreadCount: isReceived
+              ? (String(rawMail.status || '').toLowerCase() === 'read' || rawMail.is_read
+                  ? 0
+                  : 1)
+              : 0,
             raw: rawMail,
           };
         });

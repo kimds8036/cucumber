@@ -1,10 +1,7 @@
-/**
- * 프로덕션(백엔드 연동 후): 수신자 미확인 우편은 발송 후 7일 뒤 반송 처리
- *
- * const PERSONAL_MAIL_RETURN_AFTER_MS = 7 * 24 * 60 * 60 * 1000;
- * schedulePersonalMailReturn(mailId, PERSONAL_MAIL_RETURN_AFTER_MS);
- * // cron/job: processPersonalMailReturn(mailId) → is_returned = true, mail_returned 알림 발송
- */
+import { api } from './api';
+
+/** 백엔드 반송 기간(일) — UI 문구·주석용 */
+export const PERSONAL_MAIL_RETURN_DAYS = 1;
 
 /** 테스트용: true면 보낸 우편·반송 알림 UI를 즉시 확인 가능 (배포 전 false) */
 export const PERSONAL_MAIL_TEST_IMMEDIATE_RETURN = false;
@@ -104,6 +101,22 @@ export function isMailReturnedNotification(n) {
 }
 
 /** 우편 작성 화면 prefill 객체 */
+/** GET /api/mails/personal/:id/retry 응답 → SendMail prefill */
+export function mapRetryApiToPrefill(data) {
+  if (!data) return buildSendMailPrefill({});
+  const schoolId = data.school_id ?? data.schoolId;
+  return {
+    school: schoolId
+      ? { id: schoolId, name: String(data.school_name ?? data.schoolName ?? '').trim() }
+      : null,
+    grade: String(data.grade ?? ''),
+    classNumber: String(data.class_num ?? data.classNumber ?? ''),
+    name: String(data.name ?? ''),
+    content: String(data.content ?? ''),
+    recipientUsername: String(data.user_id ?? data.recipientUsername ?? ''),
+  };
+}
+
 export function buildSendMailPrefill(source) {
   const m = source?.raw ?? source ?? {};
   const meta = source?.prefillMeta ?? m.prefill ?? m.return_prefill ?? {};
@@ -141,7 +154,22 @@ export function buildSendMailPrefill(source) {
   };
 }
 
-export function navigateToResendPersonalMail(navigation, source) {
+export async function navigateToResendPersonalMail(navigation, source) {
+  const mailId = Number(
+    source?.relatedId ?? source?.raw?.id ?? source?.id ?? 0,
+  );
+  if (Number.isFinite(mailId) && mailId > 0) {
+    try {
+      const res = await api.get(`/api/mails/personal/${mailId}/retry`);
+      const data = res.data?.data;
+      if (data) {
+        navigation?.navigate?.('SendMail', { prefill: mapRetryApiToPrefill(data) });
+        return;
+      }
+    } catch {
+      // 알림 prefill 등으로 폴백
+    }
+  }
   navigation?.navigate?.('SendMail', {
     prefill: buildSendMailPrefill(source),
   });

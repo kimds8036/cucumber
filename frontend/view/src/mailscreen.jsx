@@ -181,7 +181,9 @@ function mapMailToListItem(mail, isReceived) {
     counterpartyUserId: isReceived ? mail.sender_id : mail.recipient_id,
     preview: String(mail.content || '').slice(0, 40),
     receivedAt: formatListTime(mail.created_at),
-    isUnread: isReceived ? !mail.is_read : false,
+    isUnread: isReceived
+      ? String(mail.status || '').toLowerCase() !== 'read' && !mail.is_read
+      : false,
     replyToMySent: Boolean(mail.reply_to_my_sent ?? mail.replyToMySent),
     profileColorId,
   };
