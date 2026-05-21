@@ -161,6 +161,7 @@ npm run android:device:prod
 
 | 증상 | 원인 | 대처 |
 |------|------|------|
+| `exports is not defined in ES module scope` (app.config.js) | `app.config.js`에서 `@expo/env`를 ESM `import` 함 | 최신 코드는 제거됨 — `git pull` 후 재시도 |
 | Play AAB가 develop DB | AAB 시 `APP_ENV` 없이 `gradlew`만 실행, 예전 `android/` 재사용 | `npm run android:aab:prod` 사용 (`--clean` 포함) |
 | 로컬은 prod, 스토어는 dev | 폰 테스트는 `--clean` 했는데 AAB는 예전 스크립트 | 위 표대로 스크립트 통일 |
 | URL이 이상함 | `EXPO_PUBLIC_API_URL` 환경 변수가 develop을 가리킴 | 빌드 전 `Remove-Item Env:EXPO_PUBLIC_API_URL` |
