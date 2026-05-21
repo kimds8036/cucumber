@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState, useRef, useCallback } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   Alert,
   Image,
@@ -12,12 +12,7 @@ import {
   Modal,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
-import {
-  KeyboardAwareScrollView,
-  KeyboardAvoidingView,
-  useKeyboardHandler,
-} from 'react-native-keyboard-controller';
-import { runOnJS } from 'react-native-reanimated';
+import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import Constants from 'expo-constants';
@@ -42,7 +37,7 @@ function FieldLabel({ text, required, styles }) {
 }
 
 const InAppInquiry = ({ navigation }) => {
-  const { width, height } = useWindowDimensions();
+  const { width } = useWindowDimensions();
   const insets = useSafeAreaInsets();
   const scale = width / 375;
   const normalize = (size) => Math.round(scale * size);
@@ -54,96 +49,8 @@ const InAppInquiry = ({ navigation }) => {
   const [submitting, setSubmitting] = useState(false);
   const [resultModal, setResultModal] = useState({ visible: false, message: '' });
   const [footerHeight, setFooterHeight] = useState(0);
-  const [headerHeight, setHeaderHeight] = useState(0);
-  const [keyboardOpen, setKeyboardOpen] = useState(false);
-  const [keyboardHeight, setKeyboardHeight] = useState(0);
-  const [focusedField, setFocusedField] = useState(null);
-  const [emailSectionLayout, setEmailSectionLayout] = useState({ y: 0, height: 0 });
-  const scrollRef = useRef(null);
-  const scrollContentRef = useRef(null);
-  const emailSectionRef = useRef(null);
 
-  /** 키보드가 실제로 열렸을 때만 푸터 이동 (포커스만으로 enabled 시 닫힌 뒤 padding 잔류) */
-  const keyboardFooterActive = keyboardOpen;
-
-  const updateEmailSectionLayout = useCallback(() => {
-    const section = emailSectionRef.current;
-    const content = scrollContentRef.current;
-    if (!section || !content) return;
-    section.measureLayout(content, (_x, y, _w, h) => {
-      setEmailSectionLayout({ y, height: h });
-    });
-  }, []);
-
-  const centerEmailInView = useCallback(() => {
-    if (focusedField !== 'email' || keyboardHeight <= 0) return;
-    const { y: sectionY, height: sectionH } = emailSectionLayout;
-    if (sectionH <= 0) return;
-
-    const visibleHeight =
-      height - insets.top - headerHeight - keyboardHeight - footerHeight;
-    const targetScrollY = sectionY - visibleHeight / 2 + sectionH / 2;
-
-    scrollRef.current?.scrollTo({
-      y: Math.max(0, targetScrollY),
-      animated: true,
-    });
-  }, [
-    focusedField,
-    keyboardHeight,
-    emailSectionLayout,
-    height,
-    insets.top,
-    headerHeight,
-    footerHeight,
-  ]);
-
-  const scheduleClearFocus = useCallback((field) => {
-    setTimeout(() => {
-      setFocusedField((prev) => (prev === field ? null : prev));
-    }, 100);
-  }, []);
-
-  const handleContentFocus = useCallback(() => {
-    setFocusedField('content');
-  }, []);
-
-  const handleContentBlur = useCallback(() => {
-    scheduleClearFocus('content');
-  }, [scheduleClearFocus]);
-
-  const handleEmailFocus = useCallback(() => {
-    setFocusedField('email');
-  }, []);
-
-  const handleEmailBlur = useCallback(() => {
-    scheduleClearFocus('email');
-  }, [scheduleClearFocus]);
-
-  const syncKeyboardHeight = useCallback((h) => {
-    setKeyboardOpen(h > 0);
-    setKeyboardHeight(h);
-  }, []);
-
-  useKeyboardHandler(
-    {
-      onMove: (e) => {
-        'worklet';
-        runOnJS(syncKeyboardHeight)(e.height);
-      },
-      onEnd: (e) => {
-        'worklet';
-        runOnJS(syncKeyboardHeight)(e.height);
-      },
-    },
-    [syncKeyboardHeight],
-  );
-
-  useEffect(() => {
-    if (!keyboardOpen || focusedField !== 'email') return;
-    const timer = setTimeout(centerEmailInView, Platform.OS === 'ios' ? 50 : 120);
-    return () => clearTimeout(timer);
-  }, [keyboardOpen, focusedField, keyboardHeight, centerEmailInView]);
+  const bottomOffset = Math.max(footerHeight, normalize(16));
 
   const appVersion =
     (Constants.expoConfig?.version || Constants.manifest?.version || '') + '';
@@ -252,10 +159,7 @@ const InAppInquiry = ({ navigation }) => {
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
-      <View
-        style={styles.headerSection}
-        onLayout={(e) => setHeaderHeight(e.nativeEvent.layout.height)}
-      >
+      <View style={styles.headerSection}>
         <View style={styles.headerTop}>
           <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
             <Ionicons name="chevron-back" size={normalize(24)} color={colors.textPrimary} />
@@ -264,108 +168,84 @@ const InAppInquiry = ({ navigation }) => {
         </View>
       </View>
 
-      <KeyboardAvoidingView
-        style={{ flex: 1 }}
-        behavior="padding"
-        automaticOffset
-        enabled={keyboardFooterActive}
-      >
+      <View style={styles.body}>
         <KeyboardAwareScrollView
-          ref={scrollRef}
           style={{ flex: 1 }}
           contentContainerStyle={[
             styles.scrollContent,
-            {
-              paddingBottom: keyboardFooterActive
-                ? Math.max(footerHeight, normalize(16))
-                : normalize(24),
-            },
+            { paddingBottom: bottomOffset },
           ]}
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
           keyboardDismissMode="on-drag"
           onScrollBeginDrag={Keyboard.dismiss}
-          bottomOffset={
-            keyboardFooterActive
-              ? Math.max(footerHeight, normalize(16))
-              : normalize(16)
-          }
+          bottomOffset={bottomOffset}
         >
-          <View ref={scrollContentRef} collapsable={false}>
-            <FieldLabel text="내용" required styles={styles} />
-            <TextInput
-              style={[styles.input, styles.textarea]}
-              value={content}
-              onChangeText={setContent}
-              onFocus={handleContentFocus}
-              onBlur={handleContentBlur}
-              placeholder="문의 내용을 자세히 입력해주세요"
-              placeholderTextColor={colors.textLight40}
-              multiline
-              textAlignVertical="top"
-              maxLength={5000}
-            />
+          <FieldLabel text="내용" required styles={styles} />
+          <TextInput
+            style={[styles.input, styles.textarea]}
+            value={content}
+            onChangeText={setContent}
+            placeholder="문의 내용을 자세히 입력해주세요"
+            placeholderTextColor={colors.textLight40}
+            multiline
+            textAlignVertical="top"
+            maxLength={5000}
+          />
 
-            <FieldLabel text="아이디" styles={styles} />
-            <View style={styles.lockedFieldWrap}>
-              <Text
-                style={[
-                  styles.lockedFieldText,
-                  !contactUsername && styles.lockedFieldPlaceholder,
-                ]}
-                numberOfLines={1}
-              >
-                {contactUsername ? `@${contactUsername}` : '아이디 불러오는 중...'}
-              </Text>
-            </View>
-
-            <View
-              ref={emailSectionRef}
-              onLayout={updateEmailSectionLayout}
-              collapsable={false}
+          <FieldLabel text="아이디" styles={styles} />
+          <View style={styles.lockedFieldWrap}>
+            <Text
+              style={[
+                styles.lockedFieldText,
+                !contactUsername && styles.lockedFieldPlaceholder,
+              ]}
+              numberOfLines={1}
             >
-              <FieldLabel text="답변 받을 이메일" required styles={styles} />
-              <TextInput
-                style={styles.input}
-                value={contactEmail}
-                onChangeText={setContactEmail}
-                onFocus={handleEmailFocus}
-                onBlur={handleEmailBlur}
-                placeholder="example@email.com"
-                placeholderTextColor={colors.textLight40}
-                keyboardType="email-address"
-                autoCapitalize="none"
-                autoCorrect={false}
-                maxLength={255}
-              />
-            </View>
+              {contactUsername ? `@${contactUsername}` : '아이디 불러오는 중...'}
+            </Text>
+          </View>
 
-            <View style={styles.imageHeaderRow}>
-              <Text style={styles.sectionLabelText}>이미지 첨부</Text>
-              <Text style={styles.imageCountText}>{images.length}/{MAX_IMAGES}</Text>
-            </View>
-            <View style={styles.imageRow}>
-              {images.map((uri, idx) => (
-                <View key={`${uri}-${idx}`} style={styles.imageThumbWrap}>
-                  <Image source={{ uri }} style={styles.imageThumb} />
-                  <TouchableOpacity
-                    style={styles.imageRemoveBtn}
-                    onPress={() => handleRemoveImage(idx)}
-                  >
-                    <Ionicons name="close" size={normalize(14)} color="#fff" />
-                  </TouchableOpacity>
-                </View>
-              ))}
-              {images.length < MAX_IMAGES ? (
-                <TouchableOpacity style={styles.imageAddBtn} onPress={handlePickImages}>
-                  <Ionicons
-                    name="camera-outline"
-                    size={normalize(24)}
-                    color={colors.textSecondary}
-                  />
+          <FieldLabel text="답변 받을 이메일" required styles={styles} />
+          <TextInput
+            style={styles.input}
+            value={contactEmail}
+            onChangeText={setContactEmail}
+            placeholder="example@email.com"
+            placeholderTextColor={colors.textLight40}
+            keyboardType="email-address"
+            autoCapitalize="none"
+            autoCorrect={false}
+            maxLength={255}
+          />
+
+          <View style={styles.imageHeaderRow}>
+            <Text style={styles.sectionLabelText}>이미지 첨부</Text>
+            <Text style={styles.imageCountText}>
+              {images.length}/{MAX_IMAGES}
+            </Text>
+          </View>
+          <View style={styles.imageRow}>
+            {images.map((uri, idx) => (
+              <View key={`${uri}-${idx}`} style={styles.imageThumbWrap}>
+                <Image source={{ uri }} style={styles.imageThumb} />
+                <TouchableOpacity
+                  style={styles.imageRemoveBtn}
+                  onPress={() => handleRemoveImage(idx)}
+                >
+                  <Ionicons name="close" size={normalize(14)} color="#fff" />
                 </TouchableOpacity>
-              ) : null}
-            </View>
+              </View>
+            ))}
+            {images.length < MAX_IMAGES ? (
+              <TouchableOpacity style={styles.imageAddBtn} onPress={handlePickImages}>
+                <Ionicons
+                  name="camera-outline"
+                  size={normalize(24)}
+                  color={colors.textSecondary}
+                />
+              </TouchableOpacity>
+            ) : null}
           </View>
         </KeyboardAwareScrollView>
 
@@ -387,7 +267,7 @@ const InAppInquiry = ({ navigation }) => {
             </Text>
           </TouchableOpacity>
         </View>
-      </KeyboardAvoidingView>
+      </View>
 
       <Modal
         visible={resultModal.visible}
@@ -435,6 +315,9 @@ const createStyles = (width, normalize) => ({
     fontSize: normalize(fontSizes.heading),
     fontFamily: fonts.bold,
     color: colors.textPrimary,
+  },
+  body: {
+    flex: 1,
   },
   scrollContent: {
     paddingBottom: normalize(24),
