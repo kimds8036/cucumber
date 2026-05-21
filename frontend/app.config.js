@@ -1,10 +1,7 @@
-// app.config.js — gradlew 단독 실행 시에도 .env.* 로드
-import { load as loadExpoEnv } from '@expo/env';
-import { dirname } from 'path';
-import { fileURLToPath } from 'url';
+// app.config.js
+// .env 로드: expo prebuild/run 시 CLI가 처리, AAB gradlew 시 scripts/gradle-bundle-release.mjs
 import { resolveApiBaseUrl, resolveAppEnv } from './config/apiEnv.js';
 
-loadExpoEnv(dirname(fileURLToPath(import.meta.url)));
 const apiBaseUrl = resolveApiBaseUrl();
 const appEnv = resolveAppEnv();
 
