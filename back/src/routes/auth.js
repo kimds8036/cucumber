@@ -13,7 +13,6 @@ import {
 import { validatePhone, validateUsername, validatePassword, validateBirthDate } from '../utils/validation.js';
 import { authenticate } from '../middleware/auth.js';
 import { validate } from '../middleware/validate.js';
-import { deactivateFcmTokenForSession } from '../utils/pushTokens.js';
 
 const router = express.Router();
 
