@@ -9,7 +9,7 @@ export default ({ config }) => ({
     expo: {
       name: "Youth Paper",
       slug: "youth-paper",
-      version: "1.1.0",
+      version: "1.2.0",
       orientation: "portrait",
       icon: "./assets/icon.png",
       userInterfaceStyle: "light",
@@ -41,7 +41,7 @@ export default ({ config }) => ({
       },
   
       android: {
-        versionCode: 5,
+        versionCode: 6,
         usesCleartextTraffic: true,
         // (선택) 안드로이드도 같은 방식으로 secret 적용 가능
         googleServicesFile:
