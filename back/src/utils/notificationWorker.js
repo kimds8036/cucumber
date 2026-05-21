@@ -199,6 +199,7 @@ function resolveTargetScreen(relatedType) {
     case 'friend_request':
       return 'FriendRequests';
     case 'personal_mail':
+    case 'personal_mail_returned':
       return 'MailDetail';
     default:
       return 'Notifications';

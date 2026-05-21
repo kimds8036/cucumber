@@ -169,9 +169,14 @@ async function seed() {
     for (let i = 0; i < 8; i++) {
       const [sender, recipient] = faker.helpers.arrayElements(userIds, 2);
       await connection.execute(
-        `INSERT INTO personal_mails (sender_id, recipient_id, content, is_read)
-         VALUES (?, ?, ?, ?)`,
-        [sender, recipient, faker.lorem.paragraph(), faker.datatype.boolean()]
+        `INSERT INTO personal_mails (sender_id, recipient_id, content, status, sent_at)
+         VALUES (?, ?, ?, ?, NOW())`,
+        [
+          sender,
+          recipient,
+          faker.lorem.paragraph(),
+          faker.datatype.boolean() ? 'read' : 'sent',
+        ]
       );
     }
     console.log('✅ personal_mails 완료');

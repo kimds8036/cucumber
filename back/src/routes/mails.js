@@ -4,8 +4,13 @@ import { authenticate, optionalAuthenticate } from '../middleware/auth.js';
 import { enqueueNotification } from '../utils/notificationWorker.js';
 import { getKstTodayRangeUtcForSql, getNowForDB } from '../utils/dateUtils.js';
 import { isBlockedBy } from '../utils/userBlock.js';
+import { ensurePersonalMailSchema } from '../db/ensurePersonalMailSchema.js';
+import { registerPersonalMailSendRoutes } from './personalMailSend.js';
+import { PERSONAL_MAIL_STATUS } from '../constants/personalMail.js';
 
 const router = express.Router();
+
+registerPersonalMailSendRoutes(router, authenticate);
 let ensurePersonalMailRoomSoftDeleteColumnsPromise = null;
 
 async function addColumnIfMissing(tableName, columnName, definitionSql) {
@@ -64,7 +69,9 @@ router.get('/personal/received', authenticate, async (req, res) => {
         pm.sender_id,
         pm.recipient_id,
         pm.content,
-        pm.is_read,
+        pm.status,
+        pm.is_match_failed,
+        pm.returned_at,
         pm.is_deleted,
         pm.parent_mail_id,
         pm.root_mail_id,
@@ -79,6 +86,7 @@ router.get('/personal/received', authenticate, async (req, res) => {
             AND r.is_deleted = FALSE
         ) > 0 AS has_reply,
         pm.created_at,
+        pm.sent_at,
         u.name as sender_name,
         u.color_id as sender_color_id,
         (pm.parent_mail_id IS NOT NULL AND par.sender_id = ?) AS reply_to_my_sent
@@ -88,32 +96,64 @@ router.get('/personal/received', authenticate, async (req, res) => {
       LEFT JOIN personal_mails par ON par.id = pm.parent_mail_id AND par.is_deleted = FALSE
       LEFT JOIN personal_mails root_pm ON root_pm.id = COALESCE(pm.root_mail_id, pm.id) AND root_pm.is_deleted = FALSE
       WHERE pm.recipient_id = ? AND pm.is_deleted = FALSE
+        AND pm.status != ?
         AND (pm.is_shadow_blocked = FALSE OR pm.shadow_blocked_for_user_id IS NULL OR pm.shadow_blocked_for_user_id != ?)
         AND (
           (pmr.user1_id = ? AND (pmr.is_deleted_by_user1 IS NULL OR pmr.is_deleted_by_user1 = FALSE))
           OR
           (pmr.user2_id = ? AND (pmr.is_deleted_by_user2 IS NULL OR pmr.is_deleted_by_user2 = FALSE))
-        )${isRead !== undefined ? ' AND pm.is_read = ?' : ''}
+        )${isRead !== undefined ? " AND pm.status = ?" : ''}
       ORDER BY pm.created_at DESC
       LIMIT ${limitNum} OFFSET ${offsetNum}`,
-      isRead !== undefined
-        ? [userId, userId, userId, userId, userId, userId, isRead === 'true' ? 1 : 0]
-        : [userId, userId, userId, userId, userId, userId]
+      (() => {
+        const base = [
+          userId,
+          userId,
+          userId,
+          PERSONAL_MAIL_STATUS.RETURNED,
+          userId,
+          userId,
+          userId,
+        ];
+        return isRead !== undefined
+          ? [
+              ...base,
+              isRead === 'true'
+                ? PERSONAL_MAIL_STATUS.READ
+                : PERSONAL_MAIL_STATUS.SENT,
+            ]
+          : base;
+      })()
     );
 
     const [countResult] = await pool.execute(
       `SELECT COUNT(*) as total FROM personal_mails pm
        INNER JOIN personal_mail_rooms pmr ON pm.room_id = pmr.id
        WHERE pm.recipient_id = ? AND pm.is_deleted = FALSE
+         AND pm.status != ?
          AND (pm.is_shadow_blocked = FALSE OR pm.shadow_blocked_for_user_id IS NULL OR pm.shadow_blocked_for_user_id != ?)
          AND (
            (pmr.user1_id = ? AND (pmr.is_deleted_by_user1 IS NULL OR pmr.is_deleted_by_user1 = FALSE))
            OR
            (pmr.user2_id = ? AND (pmr.is_deleted_by_user2 IS NULL OR pmr.is_deleted_by_user2 = FALSE))
-         )${isRead !== undefined ? ' AND pm.is_read = ?' : ''}`,
-      isRead !== undefined
-        ? [userId, userId, userId, userId, isRead === 'true' ? 1 : 0]
-        : [userId, userId, userId, userId]
+         )${isRead !== undefined ? ' AND pm.status = ?' : ''}`,
+      (() => {
+        const base = [
+          userId,
+          PERSONAL_MAIL_STATUS.RETURNED,
+          userId,
+          userId,
+          userId,
+        ];
+        return isRead !== undefined
+          ? [
+              ...base,
+              isRead === 'true'
+                ? PERSONAL_MAIL_STATUS.READ
+                : PERSONAL_MAIL_STATUS.SENT,
+            ]
+          : base;
+      })()
     );
     const total = Number(countResult[0]?.total ?? 0);
 
@@ -147,14 +187,21 @@ router.get('/personal/sent', authenticate, async (req, res) => {
     const limitNum = Math.max(1, Math.min(100, parseInt(limit, 10) || 20));
     const offsetNum = Math.max(0, (parseInt(page, 10) - 1) * limitNum);
 
-    // 보낸 우편 조회
+    // 보낸 우편 조회 (매칭 실패·반송 포함)
     const [mails] = await pool.execute(
       `SELECT 
         pm.id,
         pm.sender_id,
         pm.recipient_id,
         pm.content,
-        pm.is_read,
+        pm.status,
+        pm.is_match_failed,
+        pm.returned_at,
+        pm.recipient_school_id,
+        pm.recipient_grade,
+        pm.recipient_class_num,
+        pm.recipient_name AS recipient_snapshot_name,
+        pm.recipient_user_id,
         pm.is_deleted,
         pm.parent_mail_id,
         pm.root_mail_id,
@@ -169,19 +216,24 @@ router.get('/personal/sent', authenticate, async (req, res) => {
             AND r.is_deleted = FALSE
         ) > 0 AS has_reply,
         pm.created_at,
+        pm.sent_at,
         u.name as recipient_name,
         u.color_id as recipient_color_id
       FROM personal_mails pm
-      INNER JOIN personal_mail_rooms pmr ON pm.room_id = pmr.id
+      LEFT JOIN personal_mail_rooms pmr ON pm.room_id = pmr.id
       LEFT JOIN users u ON pm.recipient_id = u.id
       LEFT JOIN personal_mails root_pm ON root_pm.id = COALESCE(pm.root_mail_id, pm.id) AND root_pm.is_deleted = FALSE
       WHERE pm.sender_id = ? AND pm.is_deleted = FALSE
+        AND pm.parent_mail_id IS NULL
         AND (
-          (pmr.user1_id = ? AND (pmr.is_deleted_by_user1 IS NULL OR pmr.is_deleted_by_user1 = FALSE))
-          OR
-          (pmr.user2_id = ? AND (pmr.is_deleted_by_user2 IS NULL OR pmr.is_deleted_by_user2 = FALSE))
+          pm.room_id IS NULL
+          OR (
+            (pmr.user1_id = ? AND (pmr.is_deleted_by_user1 IS NULL OR pmr.is_deleted_by_user1 = FALSE))
+            OR
+            (pmr.user2_id = ? AND (pmr.is_deleted_by_user2 IS NULL OR pmr.is_deleted_by_user2 = FALSE))
+          )
         )
-      ORDER BY pm.created_at DESC
+      ORDER BY COALESCE(pm.sent_at, pm.created_at) DESC
       LIMIT ${limitNum} OFFSET ${offsetNum}`,
       [userId, userId, userId, userId]
     );
@@ -190,12 +242,16 @@ router.get('/personal/sent', authenticate, async (req, res) => {
     const [countResult] = await pool.execute(
       `SELECT COUNT(*) as total
        FROM personal_mails pm
-       INNER JOIN personal_mail_rooms pmr ON pm.room_id = pmr.id
+       LEFT JOIN personal_mail_rooms pmr ON pm.room_id = pmr.id
        WHERE pm.sender_id = ? AND pm.is_deleted = FALSE
+         AND pm.parent_mail_id IS NULL
          AND (
-           (pmr.user1_id = ? AND (pmr.is_deleted_by_user1 IS NULL OR pmr.is_deleted_by_user1 = FALSE))
-           OR
-           (pmr.user2_id = ? AND (pmr.is_deleted_by_user2 IS NULL OR pmr.is_deleted_by_user2 = FALSE))
+           pm.room_id IS NULL
+           OR (
+             (pmr.user1_id = ? AND (pmr.is_deleted_by_user1 IS NULL OR pmr.is_deleted_by_user1 = FALSE))
+             OR
+             (pmr.user2_id = ? AND (pmr.is_deleted_by_user2 IS NULL OR pmr.is_deleted_by_user2 = FALSE))
+           )
          )`,
       [userId, userId, userId]
     );
@@ -364,13 +420,16 @@ router.get('/personal/:mailId', authenticate, async (req, res) => {
         pm.sender_id,
         pm.recipient_id,
         pm.content,
-        pm.is_read,
+        pm.status,
+        pm.is_match_failed,
+        pm.returned_at,
         pm.is_deleted,
         pm.parent_mail_id,
         pm.root_mail_id,
         root_pm.sender_id AS root_sender_id,
         (root_pm.sender_id = ?) AS is_root_author_for_current_user,
         pm.created_at,
+        pm.sent_at,
         u1.name as sender_name,
         u1.color_id as sender_color_id,
         u2.name as recipient_name,
@@ -398,12 +457,15 @@ router.get('/personal/:mailId', authenticate, async (req, res) => {
     const mail = mails[0];
 
     // 받은 우편인 경우 읽음 처리
-    if (mail.recipient_id === userId && !mail.is_read) {
+    if (
+      mail.recipient_id === userId &&
+      mail.status === PERSONAL_MAIL_STATUS.SENT
+    ) {
       await pool.execute(
-        'UPDATE personal_mails SET is_read = TRUE WHERE id = ?',
-        [mailId]
+        'UPDATE personal_mails SET status = ? WHERE id = ?',
+        [PERSONAL_MAIL_STATUS.READ, mailId]
       );
-      mail.is_read = true;
+      mail.status = PERSONAL_MAIL_STATUS.READ;
     }
 
     const [replies] = await pool.execute(
@@ -481,17 +543,20 @@ router.post('/personal', authenticate, async (req, res) => {
         targetUserId: userId,
       });
       // 루트 우편 생성 (room_id는 생성 후 업데이트)
+      const now = getNowForDB();
       [result] = await connection.execute(
         `INSERT INTO personal_mails (
-          sender_id, recipient_id, content, root_mail_id, created_at,
+          sender_id, recipient_id, content, status, sent_at, root_mail_id, created_at,
           is_shadow_blocked, shadow_blocked_for_user_id
         )
-         VALUES (?, ?, ?, NULL, ?, ?, ?)`,
+         VALUES (?, ?, ?, ?, ?, NULL, ?, ?, ?)`,
         [
           userId,
           recipientId,
           content.trim(),
-          getNowForDB(),
+          PERSONAL_MAIL_STATUS.SENT,
+          now,
+          now,
           isShadowBlocked,
           isShadowBlocked ? Number(recipientId) : null,
         ]
@@ -546,10 +611,11 @@ router.post('/personal', authenticate, async (req, res) => {
         pm.sender_id,
         pm.recipient_id,
         pm.content,
-        pm.is_read,
+        pm.status,
         pm.is_deleted,
         pm.room_id,
         pm.created_at,
+        pm.sent_at,
         u.name as recipient_name,
         u.color_id as recipient_color_id
       FROM personal_mails pm
@@ -702,20 +768,24 @@ router.post('/personal/:mailId/reply', authenticate, async (req, res) => {
       targetUserId: userId,
     });
     // 답장 우편 생성
+    const now = getNowForDB();
     const [result] = await connection.execute(
       `INSERT INTO personal_mails (
-        sender_id, recipient_id, content, parent_mail_id, root_mail_id, room_id, created_at,
+        sender_id, recipient_id, content, status, sent_at,
+        parent_mail_id, root_mail_id, room_id, created_at,
         is_shadow_blocked, shadow_blocked_for_user_id
       )
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         userId,
         recipientId,
         content.trim(),
+        PERSONAL_MAIL_STATUS.SENT,
+        now,
         Number(mailId),
         rootMailId,
         Number(room.id),
-        getNowForDB(),
+        now,
         isShadowBlocked,
         isShadowBlocked ? Number(recipientId) : null,
       ]
@@ -737,12 +807,13 @@ router.post('/personal/:mailId/reply', authenticate, async (req, res) => {
         pm.sender_id,
         pm.recipient_id,
         pm.content,
-        pm.is_read,
+        pm.status,
         pm.is_deleted,
         pm.parent_mail_id,
         pm.root_mail_id,
         pm.room_id,
         pm.created_at,
+        pm.sent_at,
         u.name as recipient_name,
         u.color_id as recipient_color_id
       FROM personal_mails pm
@@ -809,8 +880,8 @@ const markPersonalMailAsRead = async (req, res) => {
 
     // 읽음 처리
     await pool.execute(
-      'UPDATE personal_mails SET is_read = TRUE WHERE id = ?',
-      [mailId]
+      'UPDATE personal_mails SET status = ? WHERE id = ?',
+      [PERSONAL_MAIL_STATUS.READ, mailId]
     );
 
     res.json({
@@ -877,10 +948,10 @@ router.get('/personal/unread-count', authenticate, async (req, res) => {
       `SELECT COUNT(*) as total_unread
        FROM personal_mails
        WHERE recipient_id = ?
-         AND is_read = FALSE
+         AND status = ?
          AND is_deleted = FALSE
          AND (is_shadow_blocked = FALSE OR shadow_blocked_for_user_id IS NULL OR shadow_blocked_for_user_id != ?)`,
-      [userId, userId]
+      [userId, PERSONAL_MAIL_STATUS.SENT, userId]
     );
 
     res.json({

@@ -62,5 +62,7 @@ credentials.json
 # ==========================================
 # [프로젝트 전용]
 # ==========================================
-# DB 마이그레이션 SQL (로컬 환경별 변경 분리)
-back/src/db/migrations/
+# DB 마이그레이션 SQL — 로컬 전용 파일만 무시, *.sql 은 커밋
+back/src/db/migrations/*
+!back/src/db/migrations/
+!back/src/db/migrations/*.sql
