@@ -3,6 +3,7 @@ import { runStudyGrassAggregateJob } from './studyGrass.aggregate.js';
 import { runTrendingSettleJob } from './trending.settle.js';
 import { runSchoolStatsJob } from './schoolStats.js';
 import { runTimerSessionGuardJob } from './timerSession.guard.js';
+import { runPersonalMailReturnBatchJob } from './personalMail.return.js';
 
 const TZ = process.env.CRON_TIMEZONE || 'Asia/Seoul';
 
@@ -21,6 +22,8 @@ export function initJobs() {
   const trendingSchedule = process.env.CRON_TRENDING_SETTLE || '*/10 * * * *';
   const schoolStatsSchedule = process.env.CRON_SCHOOL_STATS || '0 * * * *';
   const timerGuardSchedule = process.env.CRON_TIMER_GUARD || '*/10 * * * *';
+  const personalMailReturnSchedule =
+    process.env.CRON_PERSONAL_MAIL_RETURN || '0 4 * * *';
 
   cron.schedule(
     studyGrassSchedule,
@@ -54,7 +57,15 @@ export function initJobs() {
     { timezone: TZ }
   );
 
+  cron.schedule(
+    personalMailReturnSchedule,
+    async () => {
+      await runPersonalMailReturnBatchJob();
+    },
+    { timezone: TZ }
+  );
+
   console.log(
-    `[BatchJob] started timezone=${TZ} studyGrass="${studyGrassSchedule}" trending="${trendingSchedule}" schoolStats="${schoolStatsSchedule}" timerGuard="${timerGuardSchedule}" timerStaleMinutes="${process.env.CRON_TIMER_STALE_MINUTES || '60'}" timerMaxOpenHours="${process.env.CRON_TIMER_MAX_OPEN_HOURS || '15'} marathonClamp="${(process.env.CRON_TIMER_MARATHON_CLAMP ?? 'true').toLowerCase()}" staleClose="${(process.env.CRON_TIMER_STALE_CLOSE ?? 'true').toLowerCase()}"`
+    `[BatchJob] started timezone=${TZ} studyGrass="${studyGrassSchedule}" trending="${trendingSchedule}" schoolStats="${schoolStatsSchedule}" timerGuard="${timerGuardSchedule}" personalMailReturn="${personalMailReturnSchedule}" timerStaleMinutes="${process.env.CRON_TIMER_STALE_MINUTES || '60'}" timerMaxOpenHours="${process.env.CRON_TIMER_MAX_OPEN_HOURS || '15'} marathonClamp="${(process.env.CRON_TIMER_MARATHON_CLAMP ?? 'true').toLowerCase()}" staleClose="${(process.env.CRON_TIMER_STALE_CLOSE ?? 'true').toLowerCase()}"`
   );
 }

@@ -31,6 +31,7 @@ import { initSocketServer } from './socketServer.js';
 import { initFirebase } from './config/firebase.js';
 import './utils/notificationWorker.js';
 import { initJobs } from './jobs/index.js';
+import { ensurePersonalMailSchema } from './db/ensurePersonalMailSchema.js';
 import { isProductionEnv, sendErrorResponse } from './utils/httpError.js';
 
 
@@ -209,6 +210,8 @@ httpServer.listen(PORT, async () => {
     } else {
       console.log('⚠️ DB 연결 상태: 응답은 있었지만 결과가 비정상입니다.');
     }
+    await ensurePersonalMailSchema();
+    console.log('✅ personal_mails 스키마 확인 완료');
   } catch (error) {
     console.log('❌ DB 연결 상태: 오류 발생');
     console.log(`   ↳ ${error.message}`);
