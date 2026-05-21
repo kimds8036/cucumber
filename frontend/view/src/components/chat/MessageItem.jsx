@@ -4,7 +4,6 @@ import { Image } from 'expo-image';
 import Loading from '../../../../components/Loading';
 import { colors } from '../../../../styles/colors';
 import ProfileIcon from '../../../../assets/Profile.svg';
-import Skeleton from '../../../../components/common/Skeleton';
 import { getProfileInnerColor } from '../../../../utils/profileIconColor';
 
 function formatChatDateBanner(dateKey) {
@@ -287,26 +286,9 @@ const MessageBubble = ({
                     1
                   </Text>
                 )}
-              <View
-                style={{
-                  flexDirection: 'row',
-                  alignItems: 'center',
-                  justifyContent: 'flex-end',
-                }}
-              >
-                {(msg.status === 'sending' || msg.isSending) && (
-                  <View>
-                    <Skeleton width={14} height={14} borderRadius={7} />
-                  </View>
-                )}
-                {msg.showTimestamp === true ? (
-                  <Text style={chatStyles.chatTimeUser}>
-                    {msg.status === 'sending' || msg.isSending
-                      ? '...'
-                      : msg.time}
-                  </Text>
-                ) : null}
-              </View>
+              {msg.showTimestamp === true ? (
+                <Text style={chatStyles.chatTimeUser}>{msg.time}</Text>
+              ) : null}
             </>
           )}
         </View>
