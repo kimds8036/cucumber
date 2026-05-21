@@ -21,6 +21,10 @@ import { api } from '../../utils/api';
 import { useNotification } from '../../context/NotificationContext';
 import ProfileIcon from '../../assets/Profile.svg';
 import { getProfileInnerColor } from '../../utils/profileIconColor';
+import {
+  isPersonalMailReturned,
+  navigateToResendPersonalMail,
+} from '../../utils/personalMail';
 
 function parseUtcToLocal(createdAt) {
   if (!createdAt) return null;
@@ -177,7 +181,9 @@ function mapMailToListItem(mail, isReceived) {
     counterpartyUserId: isReceived ? mail.sender_id : mail.recipient_id,
     preview: String(mail.content || '').slice(0, 40),
     receivedAt: formatListTime(mail.created_at),
-    isUnread: isReceived ? !mail.is_read : false,
+    isUnread: isReceived
+      ? String(mail.status || '').toLowerCase() !== 'read' && !mail.is_read
+      : false,
     replyToMySent: Boolean(mail.reply_to_my_sent ?? mail.replyToMySent),
     profileColorId,
   };
@@ -617,18 +623,20 @@ function MailDetail({ mail: initialMail, onBack, navigation }) {
       setLatestMyReply(myLatestSent);
       setLatestOtherReply(otherLatestSent);
       setThreadMessages(Array.isArray(threadMsgs) ? threadMsgs : []);
+      const isReceived =
+        initialMail?.isReceived != null ? initialMail?.isReceived : true;
       setMail({
         id: m.id,
         receivedAt: formatListTime(m.created_at),
         content: m.content || '',
-        isReceived: initialMail?.isReceived != null ? initialMail?.isReceived : true,
+        isReceived,
+        raw: m,
         senderId: m.sender_id,
         senderName: m.sender_name || '익명',
         recipientName: m.recipient_name || '',
         senderColorId: m.sender_color_id != null ? m.sender_color_id : null,
         recipientColorId: m.recipient_color_id != null ? m.recipient_color_id : null,
-        counterpartyUserId:
-          (initialMail?.isReceived != null ? initialMail?.isReceived : true) ? m.sender_id : m.recipient_id,
+        counterpartyUserId: isReceived ? m.sender_id : m.recipient_id,
         replyToMySent: Boolean(
           m.reply_to_my_sent ?? m.replyToMySent ?? initialMail?.replyToMySent
         ),
@@ -637,6 +645,9 @@ function MailDetail({ mail: initialMail, onBack, navigation }) {
           initialMail?.is_root_author_for_current_user ??
           initialMail?.isRootAuthorForCurrentUser
         ),
+        isReturned:
+          !isReceived &&
+          (isPersonalMailReturned(m) || isPersonalMailReturned(initialMail)),
       });
 
       if (Number.isFinite(computedThreadRootId)) {
@@ -723,8 +734,9 @@ function MailDetail({ mail: initialMail, onBack, navigation }) {
   });
 
   // 보낸 우편 흐름에서, 상자에 보이는 최신 글이 내 것일 때(상대가 아직 답하지 않음)
+  const showReturnedResend = Boolean(mail?.isReturned);
   const showWaitingForReply =
-    mail?.isReceived === false && isDisplayMine;
+    mail?.isReceived === false && isDisplayMine && !showReturnedResend;
   const showReplyCta = mail?.isReceived === true && !isDisplayMine;
 
   if (loading) {
@@ -809,6 +821,11 @@ function MailDetail({ mail: initialMail, onBack, navigation }) {
                     <Text style={styles.detailSenderName}>{cardSenderLabel}</Text>
                     <Text style={styles.detailTime}>{singleTimeLabel}</Text>
                   </View>
+                  {showReturnedResend ? (
+                    <View style={[styles.mailReturnedBadge, styles.mailReturnedBadgeRowEnd]}>
+                      <Text style={styles.mailReturnedBadgeText}>반송됨</Text>
+                    </View>
+                  ) : null}
                 </View>
                 <View style={styles.detailReplyBodyContainer}>
                   <Text style={styles.detailBody}>{singleBody}</Text>
@@ -828,6 +845,11 @@ function MailDetail({ mail: initialMail, onBack, navigation }) {
                     <Text style={styles.detailSenderName}>{cardSenderLabel}</Text>
                     <Text style={styles.detailTime}>{singleTimeLabel}</Text>
                   </View>
+                  {showReturnedResend ? (
+                    <View style={[styles.mailReturnedBadge, styles.mailReturnedBadgeRowEnd]}>
+                      <Text style={styles.mailReturnedBadgeText}>반송됨</Text>
+                    </View>
+                  ) : null}
                 </View>
                 <View style={styles.detailBodyContainer}>
                   <Text style={styles.detailBody}>{singleBody}</Text>
@@ -838,7 +860,15 @@ function MailDetail({ mail: initialMail, onBack, navigation }) {
         </ScrollView>
 
         <View style={styles.bottomCtaWrapper}>
-          {showWaitingForReply ? (
+          {showReturnedResend ? (
+            <TouchableOpacity
+              style={styles.bottomCtaButton}
+              onPress={() => navigateToResendPersonalMail(navigation, mail)}
+              activeOpacity={0.9}
+            >
+              <Text style={styles.bottomCtaText}>다시 보내기</Text>
+            </TouchableOpacity>
+          ) : showWaitingForReply ? (
             <Text style={styles.bottomWaitingText}>
               상대방의 답장을 기다리고 있어요
             </Text>

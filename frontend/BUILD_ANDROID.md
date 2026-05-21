@@ -106,6 +106,18 @@ frontend\android\app\build\outputs\bundle\release\app-release.aab
 
 Play Console → App Bundle 업로드.
 
+### R8 가독화(mapping) 파일 (Play Console 경고 대응)
+
+release AAB는 `app.config.js`의 `expo-build-properties`로 **R8 난독화·리소스 축소**가 켜져 있습니다.  
+`bundleRelease` 후 mapping 파일 경로:
+
+```text
+frontend\android\app\build\outputs\mapping\release\mapping.txt
+```
+
+Play Console → 해당 버전 → **App Bundle** → **가독화 파일 업로드**에 `mapping.txt`를 올리면 비정상 종료·ANR 분석이 쉬워집니다.  
+(AAB와 **같은 빌드**에서 나온 파일만 유효합니다.)
+
 ### URL 확인
 
 ```powershell

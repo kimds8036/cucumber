@@ -106,6 +106,11 @@ export default ({ config }) => ({
                 { name: "FirebaseCoreInternal", modular_headers: true },
               ],
             },
+            android: {
+              enableMinifyInReleaseBuilds: true,
+              enableShrinkResourcesInReleaseBuilds: true,
+              extraProguardRules: "-keep class com.facebook.react.** { *; }\n-keep class com.facebook.hermes.** { *; }\n-keep class com.facebook.jni.** { *; }\n-dontwarn com.facebook.react.**\n",
+            },
           },
         ],
         "./plugins/withAndroidReleaseSigning.cjs",
