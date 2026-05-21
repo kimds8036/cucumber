@@ -1,6 +1,7 @@
 import express from 'express';
 import { body } from 'express-validator';
 import pool from '../config/database.js';
+import { deactivateFcmTokenForSession } from '../utils/pushTokens.js';
 import { 
   generateVerificationCode, 
   hashPassword, 
@@ -12,6 +13,7 @@ import {
 import { validatePhone, validateUsername, validatePassword, validateBirthDate } from '../utils/validation.js';
 import { authenticate } from '../middleware/auth.js';
 import { validate } from '../middleware/validate.js';
+import { deactivateFcmTokenForSession } from '../utils/pushTokens.js';
 
 const router = express.Router();
 
@@ -745,19 +747,25 @@ router.post('/login', validate(loginValidators), async (req, res) => {
 router.post('/logout', authenticate, async (req, res) => {
   try {
     const userId = req.user.userId;
-    const deviceId = req.body.deviceId;
+    const deviceId = req.body?.deviceId ?? req.body?.device_id;
+    const token = req.body?.token ?? req.body?.fcmToken;
 
-    // 디바이스 삭제 (선택사항 - 보안이 중요한 경우)
     if (deviceId) {
       await pool.execute(
         'DELETE FROM user_devices WHERE user_id = ? AND device_id = ?',
-        [userId, deviceId]
+        [userId, deviceId],
       );
     }
 
-    res.json({ 
-      success: true, 
-      message: '로그아웃되었습니다.' 
+    await deactivateFcmTokenForSession({
+      userId,
+      deviceId,
+      token,
+    });
+
+    res.json({
+      success: true,
+      message: '로그아웃되었습니다.',
     });
   } catch (error) {
     console.error('로그아웃 오류:', error);

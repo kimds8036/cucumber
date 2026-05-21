@@ -20,6 +20,8 @@ import AppPopupModal from '../../components/common/AppPopupModal';
 import { createTimetableViewStyles } from '../../src/screens/timetable/timetable.style';
 import { api, clearUserSessionStorage } from '../../utils/api';
 import { useAuth } from '../../context/AuthContext';
+import { getDeviceId } from '../../utils/deviceId';
+import { getFCMToken } from '../../utils/fcmService';
 import { useFocusEffect } from '@react-navigation/native';
 
 const MyPage = ({ navigation }) => {
@@ -60,8 +62,14 @@ const MyPage = ({ navigation }) => {
 
   const handleLogout = async () => {
     try {
-      // 서버 로그아웃은 실패해도 로컬 세션 정리는 진행
-      await api.post('/api/auth/logout').catch(() => null);
+      const deviceId = await getDeviceId();
+      const fcmToken = await getFCMToken().catch(() => null);
+      await api
+        .post('/api/auth/logout', {
+          deviceId,
+          token: fcmToken || undefined,
+        })
+        .catch(() => null);
       await clearUserSessionStorage();
     } catch (error) {
       console.error('로그아웃 처리 실패:', error);

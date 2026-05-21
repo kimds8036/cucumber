@@ -1,5 +1,6 @@
 import express from 'express';
 import pool from '../config/database.js';
+import { getUserFcmTokens } from '../utils/pushTokens.js';
 import { authenticate } from '../middleware/auth.js';
 import { emitNotification, getIO } from '../socketServer.js';
 import { getMessaging } from '../config/firebase.js';
@@ -309,7 +310,7 @@ router.post('/debug/socket-ping', authenticate, async (req, res) => {
 
 // 디버그용: Firebase Admin SDK로 FCM 직접 전송
 // - 목적: iOS/Android 토큰 대상 전송 결과(messageId, error.code)를 즉시 확인
-// - 기본은 "로그인한 내 계정에 저장된 fcm_token" 사용, 필요 시 body.token으로 override 가능
+// - 기본은 fcm_tokens 활성 토큰 1개, 필요 시 body.token으로 override
 router.post('/debug/fcm-test', authenticate, async (req, res) => {
   try {
     const userId = req.user.userId;
@@ -323,17 +324,15 @@ router.post('/debug/fcm-test', authenticate, async (req, res) => {
 
     let token = String(inputToken || '').trim();
     if (!token) {
-      const [rows] = await pool.execute(
-        'SELECT fcm_token FROM users WHERE id = ? LIMIT 1',
-        [userId],
-      );
-      token = String(rows?.[0]?.fcm_token || '').trim();
+      const tokens = await getUserFcmTokens(userId);
+      token = tokens[0] || '';
     }
 
     if (!token) {
       return res.status(400).json({
         success: false,
-        message: '테스트 대상 FCM 토큰이 없습니다. body.token 또는 저장된 fcm_token이 필요합니다.',
+        message:
+          '테스트 대상 FCM 토큰이 없습니다. body.token 또는 fcm_tokens 활성 토큰이 필요합니다.',
       });
     }
 
