@@ -41,6 +41,18 @@ function buildLoginFailureMessage(error) {
   return lines.join('\n');
 }
 
+/**
+ * [TEST_BUILD] 스토어·심사용: 회원가입 / 아이디·비번 찾기 화면 진입 차단.
+ * 복구 시: 아래 Alert 호출을 제거하고 linkContainer의 navigation.navigate(...) 주석을 해제.
+ */
+const TEST_ENTRY_GUIDE_TITLE = '안내';
+const TEST_ENTRY_GUIDE_MESSAGE =
+  '현재는 앱 실행 시 표시되는 계정 목록에서 계정을 선택해 로그인해 주세요.';
+
+function showTestEntryGuideAlert() {
+  Alert.alert(TEST_ENTRY_GUIDE_TITLE, TEST_ENTRY_GUIDE_MESSAGE, [{ text: '확인' }]);
+}
+
 function formatSuspendedUntil(raw) {
   if (!raw) return null;
   const dt = new Date(raw);
@@ -313,31 +325,20 @@ const Login = ({ navigation }) => {
               </Text>
             </TouchableOpacity>
 
-            {/* 링크들 — 테스트 빌드에서는 기능 비활성화 (회원가입/아이디·비번 찾기 화면 차단) */}
+            {/* [TEST_BUILD] 링크 탭 시 안내만 표시 — Sign / IDfind / PWfind navigate는 아래 주석 참고 */}
             <View style={styles.linkContainer}>
-              <TouchableOpacity
-                onPress={() => {
-                  // navigation.navigate('IDfind'); // [TEST] 비활성화
-                }}
-              >
+              <TouchableOpacity onPress={showTestEntryGuideAlert}>
                 <Text style={styles.linkText}>아이디 찾기</Text>
               </TouchableOpacity>
               <Text style={styles.linkDivider}>|</Text>
-              <TouchableOpacity
-                onPress={() => {
-                  // navigation.navigate('PWfind'); // [TEST] 비활성화
-                }}
-              >
+              <TouchableOpacity onPress={showTestEntryGuideAlert}>
                 <Text style={styles.linkText}>비밀번호 찾기</Text>
               </TouchableOpacity>
               <Text style={styles.linkDivider}>|</Text>
-              <TouchableOpacity
-                onPress={() => {
-                  // navigation.navigate('Sign'); // [TEST] 비활성화
-                }}
-              >
+              <TouchableOpacity onPress={showTestEntryGuideAlert}>
                 <Text style={styles.linkText}>회원가입</Text>
               </TouchableOpacity>
+              {/* 복구 예: onPress={() => navigation.navigate('IDfind'|'PWfind'|'Sign')} */}
             </View>
           </KeyboardAwareScrollView>
         </View>
