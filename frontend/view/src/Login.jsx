@@ -42,15 +42,17 @@ function buildLoginFailureMessage(error) {
 }
 
 /**
- * [TEST_BUILD] 스토어·심사용: 회원가입 / 아이디·비번 찾기 화면 진입 차단.
- * 복구 시: 아래 Alert 호출을 제거하고 linkContainer의 navigation.navigate(...) 주석을 해제.
+ * [PRE_RELEASE] 회원가입·아이디/비번 찾기: 화면·API는 있으나 navigate 미연결(정식 출시 시 오픈).
+ * 복구 시: showPreReleaseAuthFeatureAlert 제거 후 linkContainer에서 navigation.navigate 복원.
  */
-const TEST_ENTRY_GUIDE_TITLE = '안내';
-const TEST_ENTRY_GUIDE_MESSAGE =
-  '현재는 앱 실행 시 표시되는 계정 목록에서 계정을 선택해 로그인해 주세요.';
+const PRE_RELEASE_AUTH_FEATURE_TITLE = '안내';
+const PRE_RELEASE_AUTH_FEATURE_MESSAGE =
+  '해당 기능은 이미 구현되어 있으나, 아직 로그인 화면과 연결되어 있지 않습니다.\n정식 출시 시 이용하실 수 있습니다.';
 
-function showTestEntryGuideAlert() {
-  Alert.alert(TEST_ENTRY_GUIDE_TITLE, TEST_ENTRY_GUIDE_MESSAGE, [{ text: '확인' }]);
+function showPreReleaseAuthFeatureAlert() {
+  Alert.alert(PRE_RELEASE_AUTH_FEATURE_TITLE, PRE_RELEASE_AUTH_FEATURE_MESSAGE, [
+    { text: '확인' },
+  ]);
 }
 
 function formatSuspendedUntil(raw) {
@@ -325,20 +327,19 @@ const Login = ({ navigation }) => {
               </Text>
             </TouchableOpacity>
 
-            {/* [TEST_BUILD] 링크 탭 시 안내만 표시 — Sign / IDfind / PWfind navigate는 아래 주석 참고 */}
+            {/* [PRE_RELEASE] 링크 탭 시 미연결 안내 — 복구: navigate('IDfind'|'PWfind'|'Sign') */}
             <View style={styles.linkContainer}>
-              <TouchableOpacity onPress={showTestEntryGuideAlert}>
+              <TouchableOpacity onPress={showPreReleaseAuthFeatureAlert}>
                 <Text style={styles.linkText}>아이디 찾기</Text>
               </TouchableOpacity>
               <Text style={styles.linkDivider}>|</Text>
-              <TouchableOpacity onPress={showTestEntryGuideAlert}>
+              <TouchableOpacity onPress={showPreReleaseAuthFeatureAlert}>
                 <Text style={styles.linkText}>비밀번호 찾기</Text>
               </TouchableOpacity>
               <Text style={styles.linkDivider}>|</Text>
-              <TouchableOpacity onPress={showTestEntryGuideAlert}>
+              <TouchableOpacity onPress={showPreReleaseAuthFeatureAlert}>
                 <Text style={styles.linkText}>회원가입</Text>
               </TouchableOpacity>
-              {/* 복구 예: onPress={() => navigation.navigate('IDfind'|'PWfind'|'Sign')} */}
             </View>
           </KeyboardAwareScrollView>
         </View>
