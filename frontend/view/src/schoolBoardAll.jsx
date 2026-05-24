@@ -1,4 +1,10 @@
-import React, { useMemo, useState, useEffect, useCallback, useRef } from 'react';
+import React, {
+  useMemo,
+  useState,
+  useEffect,
+  useCallback,
+  useRef,
+} from 'react';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {
   useWindowDimensions,
@@ -11,7 +17,10 @@ import {
 import Ionicons from '@expo/vector-icons/Ionicons';
 import FontAwesome5 from '@expo/vector-icons/FontAwesome5';
 import SubHeader from '../frame/subHeader';
-import { createSchoolBoardStyles, getNormalize } from '../../styles/schoolBoard.style';
+import {
+  createSchoolBoardStyles,
+  getNormalize,
+} from '../../styles/schoolBoard.style';
 import { colors, fonts } from '../../styles/colors';
 import { api } from '../../utils/api';
 import { normalizeTagsFromApi } from '../../utils/normalizePostTags';
@@ -23,11 +32,15 @@ import Skeleton from '../../components/common/Skeleton';
 /** 서버 created_at(UTC)을 "n분 전" 형식으로 변환. 화면에서는 기기 로컬 시간 기준으로 계산 */
 function formatTimeAgo(createdAt) {
   if (!createdAt) return '';
-  let dateStr = typeof createdAt === 'string' ? createdAt.trim() : String(createdAt);
+  let dateStr =
+    typeof createdAt === 'string' ? createdAt.trim() : String(createdAt);
   if (!dateStr) return '';
   // MySQL "YYYY-MM-DD HH:mm:ss" 또는 "YYYY-MM-DDTHH:mm:ss" 형태이고
   // 타임존 문자가 없으면 UTC로 간주해 Z(=+00:00) 를 붙인다.
-  if (/^\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}:\d{2}(\.\d+)?$/.test(dateStr) && !/[Z+-]/.test(dateStr)) {
+  if (
+    /^\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}:\d{2}(\.\d+)?$/.test(dateStr) &&
+    !/[Z+-]/.test(dateStr)
+  ) {
     dateStr = dateStr.replace(' ', 'T') + 'Z';
   }
   const date = new Date(dateStr);
@@ -48,7 +61,10 @@ function formatTimeAgo(createdAt) {
 const SchoolBoardAll = ({ navigation }) => {
   const { width } = useWindowDimensions();
   const normalize = useMemo(() => getNormalize(width), [width]);
-  const styles = useMemo(() => createSchoolBoardStyles(width, normalize), [width]);
+  const styles = useMemo(
+    () => createSchoolBoardStyles(width, normalize),
+    [width],
+  );
   const { coords, refreshLocation } = useLocationContext();
 
   const [schoolPosts, setSchoolPosts] = useState([]);
@@ -69,13 +85,13 @@ const SchoolBoardAll = ({ navigation }) => {
           const cur = p.scrapCount ?? 0;
           const next = scrapped ? cur + 1 : Math.max(0, cur - 1);
           return { ...p, scrapped, scrapCount: next };
-        })
+        }),
       );
     } catch (error) {
       console.error('스크랩 토글 오류:', error);
       Alert.alert(
         '오류',
-        error.response?.data?.message || '스크랩 처리에 실패했습니다.'
+        error.response?.data?.message || '스크랩 처리에 실패했습니다.',
       );
     }
   }, []);
@@ -112,7 +128,9 @@ const SchoolBoardAll = ({ navigation }) => {
         const apiPosts = postsRes.data?.data?.posts || [];
         const mapped = apiPosts.map((p) => {
           const thumb =
-            typeof p.thumbnail === 'string' && p.thumbnail.trim() ? p.thumbnail.trim() : null;
+            typeof p.thumbnail === 'string' && p.thumbnail.trim()
+              ? p.thumbnail.trim()
+              : null;
           const tags = normalizeTagsFromApi(p.tags);
           return {
             id: p.id,
@@ -130,7 +148,9 @@ const SchoolBoardAll = ({ navigation }) => {
             thumbnail: thumb,
             tags,
             distanceKm:
-              typeof p.distanceKm === 'number' && !Number.isNaN(p.distanceKm) ? p.distanceKm : null,
+              typeof p.distanceKm === 'number' && !Number.isNaN(p.distanceKm)
+                ? p.distanceKm
+                : null,
           };
         });
         if (append) {
@@ -171,9 +191,17 @@ const SchoolBoardAll = ({ navigation }) => {
     if (!__DEV__) return;
     const sample = schoolPosts.slice(0, 8).map((p) => ({
       id: p.id,
-      tagsLen: Array.isArray(p.tags) ? p.tags.length : p.tags == null ? 'null' : typeof p.tags,
+      tagsLen: Array.isArray(p.tags)
+        ? p.tags.length
+        : p.tags == null
+          ? 'null'
+          : typeof p.tags,
     }));
-    console.log('[SchoolBoardAll:list]', { dataSource: 'serverPosts(API)', total: schoolPosts.length, sample });
+    console.log('[SchoolBoardAll:list]', {
+      dataSource: 'serverPosts(API)',
+      total: schoolPosts.length,
+      sample,
+    });
   }, [schoolPosts]);
 
   const handleRefresh = async () => {
@@ -227,7 +255,11 @@ const SchoolBoardAll = ({ navigation }) => {
         rightIcon="search"
         onRightPress={() => navigation?.navigate('SearchScreen')}
         rightElement={
-          <Ionicons name="search" size={normalize(22)} color={colors.textPrimary} />
+          <Ionicons
+            name="search"
+            size={normalize(22)}
+            color={colors.textPrimary}
+          />
         }
       />
 
@@ -237,7 +269,9 @@ const SchoolBoardAll = ({ navigation }) => {
           style={[styles.postList, hideListBehindLoader && { opacity: 0 }]}
           pointerEvents={hideListBehindLoader ? 'none' : 'auto'}
           data={dataWithAds}
-          keyExtractor={(item) => (item.type === 'ad' ? item.id : String(item.id))}
+          keyExtractor={(item) =>
+            item.type === 'ad' ? item.id : String(item.id)
+          }
           renderItem={renderItem}
           showsVerticalScrollIndicator={false}
           refreshing={loading && !hideListBehindLoader}
@@ -283,17 +317,55 @@ const SchoolBoardAll = ({ navigation }) => {
           >
             {[0, 1, 2, 3].map((idx) => (
               <View key={`school-list-skel-${idx}`} style={styles.postItem}>
-                <View style={{ flexDirection: 'row', marginBottom: normalize(8) }}>
-                  <Skeleton width={normalize(52)} height={normalize(12)} borderRadius={normalize(6)} />
+                <View
+                  style={{ flexDirection: 'row', marginBottom: normalize(8) }}
+                >
+                  <Skeleton
+                    width={normalize(52)}
+                    height={normalize(12)}
+                    borderRadius={normalize(6)}
+                  />
                   <View style={{ width: normalize(8) }} />
-                  <Skeleton width={normalize(44)} height={normalize(12)} borderRadius={normalize(6)} />
+                  <Skeleton
+                    width={normalize(44)}
+                    height={normalize(12)}
+                    borderRadius={normalize(6)}
+                  />
                 </View>
-                <Skeleton width="100%" height={normalize(14)} borderRadius={normalize(6)} style={{ marginBottom: normalize(6) }} />
-                <Skeleton width="86%" height={normalize(14)} borderRadius={normalize(6)} style={{ marginBottom: normalize(10) }} />
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: normalize(12) }}>
-                  <Skeleton width={normalize(26)} height={normalize(12)} borderRadius={normalize(6)} />
-                  <Skeleton width={normalize(26)} height={normalize(12)} borderRadius={normalize(6)} />
-                  <Skeleton width={normalize(26)} height={normalize(12)} borderRadius={normalize(6)} />
+                <Skeleton
+                  width="100%"
+                  height={normalize(14)}
+                  borderRadius={normalize(6)}
+                  style={{ marginBottom: normalize(6) }}
+                />
+                <Skeleton
+                  width="86%"
+                  height={normalize(14)}
+                  borderRadius={normalize(6)}
+                  style={{ marginBottom: normalize(10) }}
+                />
+                <View
+                  style={{
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    gap: normalize(12),
+                  }}
+                >
+                  <Skeleton
+                    width={normalize(26)}
+                    height={normalize(12)}
+                    borderRadius={normalize(6)}
+                  />
+                  <Skeleton
+                    width={normalize(26)}
+                    height={normalize(12)}
+                    borderRadius={normalize(6)}
+                  />
+                  <Skeleton
+                    width={normalize(26)}
+                    height={normalize(12)}
+                    borderRadius={normalize(6)}
+                  />
                 </View>
               </View>
             ))}
@@ -305,14 +377,18 @@ const SchoolBoardAll = ({ navigation }) => {
       <TouchableOpacity
         style={styles.floatingButton}
         activeOpacity={0.8}
-        onPress={() => navigation.navigate('BoardWrite', { boardContext: 'school' })}
+        onPress={() =>
+          navigation.navigate('BoardWrite', { boardContext: 'school' })
+        }
       >
-        <FontAwesome5 name="plus" size={normalize(24)} color={colors.background} />
+        <FontAwesome5
+          name="plus"
+          size={normalize(24)}
+          color={colors.background}
+        />
       </TouchableOpacity>
-
     </SafeAreaView>
   );
 };
 
 export default SchoolBoardAll;
-

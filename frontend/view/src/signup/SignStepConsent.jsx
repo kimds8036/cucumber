@@ -31,13 +31,7 @@ const SignStepConsent = ({ normalize, selectedAgeGroup, onChange }) => {
    * (개인정보처리방침은 상단 링크로만 열람, 체크박스 없음)
    */
   const checkboxRequiredKeys = isUnder14
-    ? [
-        'termsOfService',
-        'dataCollection',
-        'guardian',
-        'studentOcr',
-        'location',
-      ]
+    ? ['termsOfService', 'dataCollection', 'guardian', 'studentOcr', 'location']
     : ['termsOfService', 'dataCollection', 'studentOcr', 'location'];
 
   /** 1) 상단 전체 동의: 위 필수 전부 + 마케팅(성인 5+1=6 UI개에 해당, 만14미만 6개) */
@@ -208,7 +202,9 @@ const SignStepConsent = ({ normalize, selectedAgeGroup, onChange }) => {
                     >
                       개인정보처리방침
                     </Text>
-                    <Text style={s.legalAckPlain}>을 읽었으며 이에 모두 동의합니다.</Text>
+                    <Text style={s.legalAckPlain}>
+                      을 읽었으며 이에 모두 동의합니다.
+                    </Text>
                   </Text>
                 </View>
               </View>

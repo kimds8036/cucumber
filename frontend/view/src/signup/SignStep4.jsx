@@ -1,5 +1,14 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, TextInput, ScrollView, KeyboardAvoidingView, Platform, Keyboard, TouchableWithoutFeedback } from 'react-native';
+import {
+  View,
+  Text,
+  TextInput,
+  ScrollView,
+  KeyboardAvoidingView,
+  Platform,
+  Keyboard,
+  TouchableWithoutFeedback,
+} from 'react-native';
 import { colors } from '../../../styles/colors';
 
 // 회원가입 최종 단계: 학생 정보 확인/보정 후 제출 화면
@@ -55,67 +64,67 @@ const SignStep4 = ({ styles, normalize, recognizedData, onChange }) => {
             keyboardShouldPersistTaps="handled"
             keyboardDismissMode="on-drag"
           >
-      {/* 이름 */}
-      <Text style={styles.inputLabel}>이름</Text>
-      <View style={styles.inputWrapper}>
-        <TextInput
-          style={styles.input}
-          placeholder="이름"
-          placeholderTextColor={colors.textSecondary}
-          value={name}
-          onChangeText={(text) => {
-            setName(text);
-            notifyChange({ name: text });
-          }}
-        />
-      </View>
+            {/* 이름 */}
+            <Text style={styles.inputLabel}>이름</Text>
+            <View style={styles.inputWrapper}>
+              <TextInput
+                style={styles.input}
+                placeholder="이름"
+                placeholderTextColor={colors.textSecondary}
+                value={name}
+                onChangeText={(text) => {
+                  setName(text);
+                  notifyChange({ name: text });
+                }}
+              />
+            </View>
 
-      {/* 학교 */}
-      <Text style={styles.inputLabel}>학교</Text>
-      <View style={styles.inputWrapper}>
-        <TextInput
-          style={styles.input}
-          placeholder="학교"
-          placeholderTextColor={colors.textSecondary}
-          value={school}
-          onChangeText={(text) => {
-            setSchool(text);
-            notifyChange({ school: text });
-          }}
-        />
-      </View>
+            {/* 학교 */}
+            <Text style={styles.inputLabel}>학교</Text>
+            <View style={styles.inputWrapper}>
+              <TextInput
+                style={styles.input}
+                placeholder="학교"
+                placeholderTextColor={colors.textSecondary}
+                value={school}
+                onChangeText={(text) => {
+                  setSchool(text);
+                  notifyChange({ school: text });
+                }}
+              />
+            </View>
 
-      {/* 학년 */}
-      <Text style={styles.inputLabel}>학년</Text>
-      <View style={styles.inputWrapper}>
-        <TextInput
-          style={styles.input}
-          placeholder="학년을 입력해 주세요"
-          placeholderTextColor={colors.textSecondary}
-          value={grade}
-          onChangeText={(text) => {
-            setGrade(text);
-            notifyChange({ grade: text });
-          }}
-          keyboardType="number-pad"
-        />
-      </View>
+            {/* 학년 */}
+            <Text style={styles.inputLabel}>학년</Text>
+            <View style={styles.inputWrapper}>
+              <TextInput
+                style={styles.input}
+                placeholder="학년을 입력해 주세요"
+                placeholderTextColor={colors.textSecondary}
+                value={grade}
+                onChangeText={(text) => {
+                  setGrade(text);
+                  notifyChange({ grade: text });
+                }}
+                keyboardType="number-pad"
+              />
+            </View>
 
-      {/* 반 */}
-      <Text style={styles.inputLabel}>반</Text>
-      <View style={styles.inputWrapper}>
-        <TextInput
-          style={styles.input}
-          placeholder="반을 입력해 주세요"
-          placeholderTextColor={colors.textSecondary}
-          value={classNum}
-          onChangeText={(text) => {
-            setClassNum(text);
-            notifyChange({ classNum: text });
-          }}
-          keyboardType="number-pad"
-        />
-      </View>
+            {/* 반 */}
+            <Text style={styles.inputLabel}>반</Text>
+            <View style={styles.inputWrapper}>
+              <TextInput
+                style={styles.input}
+                placeholder="반을 입력해 주세요"
+                placeholderTextColor={colors.textSecondary}
+                value={classNum}
+                onChangeText={(text) => {
+                  setClassNum(text);
+                  notifyChange({ classNum: text });
+                }}
+                keyboardType="number-pad"
+              />
+            </View>
           </ScrollView>
         </KeyboardAvoidingView>
       </TouchableWithoutFeedback>

@@ -18,7 +18,10 @@ const Announcement = ({ navigation }) => {
   const [announcements] = useState([]);
   const { width } = useWindowDimensions();
   const normalize = useMemo(() => getNormalize(width), [width]);
-  const styles = useMemo(() => createNotificationStyles(normalize), [normalize]);
+  const styles = useMemo(
+    () => createNotificationStyles(normalize),
+    [normalize],
+  );
   const isEmpty = announcements.length === 0;
 
   const handlePressItem = (title) => {
@@ -37,7 +40,9 @@ const Announcement = ({ navigation }) => {
         showsVerticalScrollIndicator={false}
       >
         {isEmpty ? (
-          <Text style={styles.announcementEmptyText}>아직 공지사항이 없습니다</Text>
+          <Text style={styles.announcementEmptyText}>
+            아직 공지사항이 없습니다
+          </Text>
         ) : (
           announcements.map((item) => (
             <TouchableOpacity

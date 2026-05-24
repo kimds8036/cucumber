@@ -383,7 +383,7 @@ export const createSearchScreenStyles = (width, normalize) => {
         ios: {
           paddingTop: searchInputPaddingV + normalize(2),
           paddingBottom: Math.max(0, searchInputPaddingV - normalize(2)),
-        }
+        },
       }),
     },
     searchClearSlot: {
@@ -598,4 +598,3 @@ export const createSchoolSearchStyles = (normalize) => {
     },
   });
 };
-

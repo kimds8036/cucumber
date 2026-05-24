@@ -146,9 +146,15 @@ function MainStack() {
       <Stack.Screen name="InAppInquiry" component={InAppInquiry} />
       <Stack.Screen name="Info" component={Info} />
       <Stack.Screen name="Announcement" component={Announcement} />
-      <Stack.Screen name="ServiceTermsOfService" component={ServiceTermsOfService} />
+      <Stack.Screen
+        name="ServiceTermsOfService"
+        component={ServiceTermsOfService}
+      />
       <Stack.Screen name="PrivacyPolicy" component={PrivacyPolicy} />
-      <Stack.Screen name="YouthProtectionPolicy" component={YouthProtectionPolicy} />
+      <Stack.Screen
+        name="YouthProtectionPolicy"
+        component={YouthProtectionPolicy}
+      />
       <Stack.Screen name="OpenSourceLicenses" component={OpenSourceLicenses} />
       <Stack.Screen name="CommunityGuide" component={CommunityGuide} />
       <Stack.Screen name="SearchScreen" component={SearchScreen} />
@@ -163,11 +169,16 @@ function RootNavigator() {
   const { isLoggedIn } = useAuth();
 
   const getInitialTabForPush = (relatedType = '', fallbackScreen = '') => {
-    if (relatedType === 'dm_room' || relatedType === 'message_room' || relatedType === 'personal_mail') {
+    if (
+      relatedType === 'dm_room' ||
+      relatedType === 'message_room' ||
+      relatedType === 'personal_mail'
+    ) {
       return 'message';
     }
     if (relatedType === 'post') return 'board';
-    if (relatedType === 'friend_request' || fallbackScreen === 'Friends') return 'mypage';
+    if (relatedType === 'friend_request' || fallbackScreen === 'Friends')
+      return 'mypage';
     return 'board';
   };
 
@@ -195,7 +206,9 @@ function RootNavigator() {
     const relatedType = String(data?.relatedType || '').trim();
     const relatedId = data?.relatedId != null ? String(data.relatedId) : null;
     const notificationTitle = String(
-      remoteMessage?.notification?.title || remoteMessage?.data?.senderName || '',
+      remoteMessage?.notification?.title ||
+        remoteMessage?.data?.senderName ||
+        '',
     ).trim();
 
     if (
@@ -345,7 +358,9 @@ export default function App() {
   useEffect(() => {
     const isExpoGo = Constants.appOwnership === 'expo';
     if (isExpoGo) {
-      console.log('[Notification] Expo Go 환경에서는 원격 푸시 기능을 초기화하지 않습니다.');
+      console.log(
+        '[Notification] Expo Go 환경에서는 원격 푸시 기능을 초기화하지 않습니다.',
+      );
       return undefined;
     }
 
@@ -353,93 +368,99 @@ export default function App() {
     Notifications.requestPermissionsAsync().catch((error) => {
       console.warn('[Notification] 권한 요청 실패:', error?.message ?? error);
     });
-    const sub = Notifications.addNotificationResponseReceivedListener((response) => {
-      const targetScreen = response?.notification?.request?.content?.data?.targetScreen;
-      const responseId = response?.notification?.request?.identifier ?? null;
-      if (targetScreen === 'Timer' && navigationRef.isReady()) {
-        const currentRouteBefore = navigationRef.getCurrentRoute?.();
-        if (__DEV__) {
-          console.log('[TimerNotifNav][response_received]', {
-            at: new Date().toISOString(),
-            appState: appStateRef.current,
-            targetScreen,
-            responseId,
-            currentRouteName: currentRouteBefore?.name ?? null,
-            currentRouteKey: currentRouteBefore?.key ?? null,
-            sinceBackgroundMs: Date.now() - lastBackgroundAtRef.current,
-          });
-        }
-        const sinceBgMs = Date.now() - lastBackgroundAtRef.current;
-        // stale 응답(이미 포그라운드에서 다른 화면 이동 중 뒤늦게 도착) 차단
-        if (
-          appStateRef.current === 'active' &&
-          sinceBgMs > TIMER_NOTIFICATION_HANDLE_WINDOW_MS
-        ) {
+    const sub = Notifications.addNotificationResponseReceivedListener(
+      (response) => {
+        const targetScreen =
+          response?.notification?.request?.content?.data?.targetScreen;
+        const responseId = response?.notification?.request?.identifier ?? null;
+        if (targetScreen === 'Timer' && navigationRef.isReady()) {
+          const currentRouteBefore = navigationRef.getCurrentRoute?.();
           if (__DEV__) {
-            console.log('[TimerNotifNav][response_ignored_stale]', {
+            console.log('[TimerNotifNav][response_received]', {
               at: new Date().toISOString(),
               appState: appStateRef.current,
+              targetScreen,
               responseId,
-              sinceBackgroundMs: sinceBgMs,
-              handleWindowMs: TIMER_NOTIFICATION_HANDLE_WINDOW_MS,
+              currentRouteName: currentRouteBefore?.name ?? null,
+              currentRouteKey: currentRouteBefore?.key ?? null,
+              sinceBackgroundMs: Date.now() - lastBackgroundAtRef.current,
             });
           }
-          return;
-        }
-        const now = Date.now();
-        // 알림 탭 처리 직후 발생하는 중복/지연 응답으로 인한 재-reset 방지
-        if (now - lastHandledTimerNotificationAtRef.current < 1500) {
-          if (__DEV__) {
-            console.log('[TimerNotifNav][response_ignored_cooldown]', {
-              at: new Date().toISOString(),
-              appState: appStateRef.current,
-              responseId,
-              diffMs: now - lastHandledTimerNotificationAtRef.current,
-            });
+          const sinceBgMs = Date.now() - lastBackgroundAtRef.current;
+          // stale 응답(이미 포그라운드에서 다른 화면 이동 중 뒤늦게 도착) 차단
+          if (
+            appStateRef.current === 'active' &&
+            sinceBgMs > TIMER_NOTIFICATION_HANDLE_WINDOW_MS
+          ) {
+            if (__DEV__) {
+              console.log('[TimerNotifNav][response_ignored_stale]', {
+                at: new Date().toISOString(),
+                appState: appStateRef.current,
+                responseId,
+                sinceBackgroundMs: sinceBgMs,
+                handleWindowMs: TIMER_NOTIFICATION_HANDLE_WINDOW_MS,
+              });
+            }
+            return;
           }
-          return;
-        }
-        // 동일 알림 응답 중복 전달/중복 탭 방지
-        if (responseId && lastHandledTimerNotificationRef.current === responseId) {
-          if (__DEV__) {
-            console.log('[TimerNotifNav][response_ignored_duplicate_id]', {
-              at: new Date().toISOString(),
-              responseId,
-            });
+          const now = Date.now();
+          // 알림 탭 처리 직후 발생하는 중복/지연 응답으로 인한 재-reset 방지
+          if (now - lastHandledTimerNotificationAtRef.current < 1500) {
+            if (__DEV__) {
+              console.log('[TimerNotifNav][response_ignored_cooldown]', {
+                at: new Date().toISOString(),
+                appState: appStateRef.current,
+                responseId,
+                diffMs: now - lastHandledTimerNotificationAtRef.current,
+              });
+            }
+            return;
           }
-          return;
-        }
-        if (responseId) {
-          lastHandledTimerNotificationRef.current = responseId;
-        }
-        lastHandledTimerNotificationAtRef.current = now;
-        const currentRoute = navigationRef.getCurrentRoute?.();
-        if (currentRoute?.name === 'Timer') {
+          // 동일 알림 응답 중복 전달/중복 탭 방지
+          if (
+            responseId &&
+            lastHandledTimerNotificationRef.current === responseId
+          ) {
+            if (__DEV__) {
+              console.log('[TimerNotifNav][response_ignored_duplicate_id]', {
+                at: new Date().toISOString(),
+                responseId,
+              });
+            }
+            return;
+          }
+          if (responseId) {
+            lastHandledTimerNotificationRef.current = responseId;
+          }
+          lastHandledTimerNotificationAtRef.current = now;
+          const currentRoute = navigationRef.getCurrentRoute?.();
+          if (currentRoute?.name === 'Timer') {
+            if (__DEV__) {
+              console.log('[TimerNotifNav][response_ignored_already_timer]', {
+                at: new Date().toISOString(),
+                responseId,
+                currentRouteName: currentRoute?.name ?? null,
+              });
+            }
+            return;
+          }
           if (__DEV__) {
-            console.log('[TimerNotifNav][response_ignored_already_timer]', {
+            console.log('[TimerNotifNav][dispatch_reset_to_timer]', {
               at: new Date().toISOString(),
               responseId,
               currentRouteName: currentRoute?.name ?? null,
             });
           }
-          return;
+          navigationRef.dispatch(
+            CommonActions.reset({
+              index: 0,
+              routes: [{ name: 'Timer' }],
+            }),
+          );
+          Notifications.clearLastNotificationResponseAsync?.().catch(() => {});
         }
-        if (__DEV__) {
-          console.log('[TimerNotifNav][dispatch_reset_to_timer]', {
-            at: new Date().toISOString(),
-            responseId,
-            currentRouteName: currentRoute?.name ?? null,
-          });
-        }
-        navigationRef.dispatch(
-          CommonActions.reset({
-            index: 0,
-            routes: [{ name: 'Timer' }],
-          }),
-        );
-        Notifications.clearLastNotificationResponseAsync?.().catch(() => {});
-      }
-    });
+      },
+    );
     return () => {
       sub.remove();
     };
@@ -507,28 +528,28 @@ export default function App() {
   return (
     <SafeAreaProvider>
       <ForceUpdateGate>
-      <KeyboardProvider>
-        <AuthProvider>
-          <LocationProvider>
-          <SocketProvider>
-            <ToastProvider>
-              <NotificationProvider>
-                <FriendProvider>
-                  <NavigationContainer
-                    ref={navigationRef}
-                    linking={linking}
-                  >
-                    <RootNavigator />
-                    <ToastHost />
-                    <AlertHost />
-                  </NavigationContainer>
-                </FriendProvider>
-              </NotificationProvider>
-            </ToastProvider>
-          </SocketProvider>
-          </LocationProvider>
-        </AuthProvider>
-      </KeyboardProvider>
+        <KeyboardProvider>
+          <AuthProvider>
+            <LocationProvider>
+              <SocketProvider>
+                <ToastProvider>
+                  <NotificationProvider>
+                    <FriendProvider>
+                      <NavigationContainer
+                        ref={navigationRef}
+                        linking={linking}
+                      >
+                        <RootNavigator />
+                        <ToastHost />
+                        <AlertHost />
+                      </NavigationContainer>
+                    </FriendProvider>
+                  </NotificationProvider>
+                </ToastProvider>
+              </SocketProvider>
+            </LocationProvider>
+          </AuthProvider>
+        </KeyboardProvider>
       </ForceUpdateGate>
     </SafeAreaProvider>
   );

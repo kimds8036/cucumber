@@ -1,4 +1,8 @@
-import { useNavigation, CommonActions, StackActions } from '@react-navigation/native';
+import {
+  useNavigation,
+  CommonActions,
+  StackActions,
+} from '@react-navigation/native';
 
 /**
  * 앱 전역에서 사용하는 공통 네비게이션 훅.
@@ -22,9 +26,7 @@ export function useAppNavigation() {
 
     /** 현재 화면을 새 화면으로 대체 (뒤로가기 시 이전 화면으로 돌아가지 않음) */
     replaceWith: (name, params) => {
-      navigation.dispatch(
-        StackActions.replace(name, params ?? {})
-      );
+      navigation.dispatch(StackActions.replace(name, params ?? {}));
     },
 
     /** 전체 스택을 비우고 해당 화면만 루트로 설정 (로그인/로그아웃 등) */
@@ -33,7 +35,7 @@ export function useAppNavigation() {
         CommonActions.reset({
           index: 0,
           routes: [{ name, params: params ?? {} }],
-        })
+        }),
       );
     },
 

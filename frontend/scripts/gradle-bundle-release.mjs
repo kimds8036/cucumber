@@ -45,10 +45,9 @@ if (result.status === 0) {
     'outputs',
     'bundle',
     'release',
-    'app-release.aab'
+    'app-release.aab',
   );
   console.log(`[aab] 완료 → ${aab}`);
 }
 
 process.exit(result.status ?? 1);
-

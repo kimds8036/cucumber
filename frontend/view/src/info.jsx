@@ -18,11 +18,19 @@ import { createNotificationStyles } from '../../styles/notification.style';
 const Info = ({ navigation }) => {
   const { width } = useWindowDimensions();
   const normalize = useMemo(() => getNormalize(width), [width]);
-  const styles = useMemo(() => createNotificationStyles(normalize), [normalize]);
+  const styles = useMemo(
+    () => createNotificationStyles(normalize),
+    [normalize],
+  );
   const appVersion = Constants.expoConfig?.version || '확인 불가';
 
   const supportMenus = [
-    { key: 'version', title: '앱 버전', subtitle: `v${appVersion}`, isStatic: true },
+    {
+      key: 'version',
+      title: '앱 버전',
+      subtitle: `v${appVersion}`,
+      isStatic: true,
+    },
     { key: 'contact', title: '문의하기' },
     { key: 'notice', title: '공지사항' },
     { key: 'community-guide', title: '커뮤니티 가이드' },

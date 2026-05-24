@@ -1,5 +1,17 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, TextInput, Alert, ScrollView, KeyboardAvoidingView, Platform } from 'react-native';
+import {
+  View,
+  Text,
+  StyleSheet,
+  TouchableOpacity,
+  TextInput,
+  Alert,
+  ScrollView,
+  KeyboardAvoidingView,
+  Platform,
+  Keyboard,
+  TouchableWithoutFeedback,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { CommonActions } from '@react-navigation/native';
@@ -33,22 +45,18 @@ const ChangePassword = ({ navigation }) => {
       return;
     }
 
-    Alert.alert(
-      '비밀번호 변경',
-      '비밀번호가 성공적으로 변경되었습니다.',
-      [
-        {
-          text: '확인',
-          onPress: () =>
-            navigation?.dispatch(
-              CommonActions.reset({
-                index: 0,
-                routes: [{ name: 'Main', params: { initialTab: 'mypage' } }],
-              }),
-            ),
-        },
-      ]
-    );
+    Alert.alert('비밀번호 변경', '비밀번호가 성공적으로 변경되었습니다.', [
+      {
+        text: '확인',
+        onPress: () =>
+          navigation?.dispatch(
+            CommonActions.reset({
+              index: 0,
+              routes: [{ name: 'Main', params: { initialTab: 'mypage' } }],
+            }),
+          ),
+      },
+    ]);
   };
 
   if (!screenReady) {
@@ -62,11 +70,21 @@ const ChangePassword = ({ navigation }) => {
         <View style={styles.content}>
           {[0, 1, 2].map((idx) => (
             <View key={`change-pw-skel-${idx}`} style={styles.inputGroup}>
-              <Skeleton width={110} height={12} borderRadius={6} style={{ marginBottom: 8 }} />
+              <Skeleton
+                width={110}
+                height={12}
+                borderRadius={6}
+                style={{ marginBottom: 8 }}
+              />
               <Skeleton width="100%" height={46} borderRadius={8} />
             </View>
           ))}
-          <Skeleton width="100%" height={48} borderRadius={8} style={{ marginTop: 8 }} />
+          <Skeleton
+            width="100%"
+            height={48}
+            borderRadius={8}
+            style={{ marginTop: 8 }}
+          />
         </View>
       </SafeAreaView>
     );
@@ -86,53 +104,56 @@ const ChangePassword = ({ navigation }) => {
             keyboardDismissMode="on-drag"
             showsVerticalScrollIndicator={false}
           >
-          {/* Header */}
-          <View style={styles.header}>
-            <TouchableOpacity onPress={() => navigation.goBack()}>
-              <Ionicons name="arrow-back" size={24} color="#333" />
-            </TouchableOpacity>
-            <Text style={styles.headerTitle}>비밀번호 변경</Text>
-            <View style={{ width: 24 }} />
-          </View>
-
-          <View style={styles.content}>
-            <View style={styles.inputGroup}>
-              <Text style={styles.label}>현재 비밀번호</Text>
-              <TextInput
-                style={styles.input}
-                placeholder="현재 비밀번호를 입력하세요"
-                secureTextEntry
-                value={currentPassword}
-                onChangeText={setCurrentPassword}
-              />
+            {/* Header */}
+            <View style={styles.header}>
+              <TouchableOpacity onPress={() => navigation.goBack()}>
+                <Ionicons name="arrow-back" size={24} color="#333" />
+              </TouchableOpacity>
+              <Text style={styles.headerTitle}>비밀번호 변경</Text>
+              <View style={{ width: 24 }} />
             </View>
 
-            <View style={styles.inputGroup}>
-              <Text style={styles.label}>새 비밀번호</Text>
-              <TextInput
-                style={styles.input}
-                placeholder="새 비밀번호를 입력하세요"
-                secureTextEntry
-                value={newPassword}
-                onChangeText={setNewPassword}
-              />
-            </View>
+            <View style={styles.content}>
+              <View style={styles.inputGroup}>
+                <Text style={styles.label}>현재 비밀번호</Text>
+                <TextInput
+                  style={styles.input}
+                  placeholder="현재 비밀번호를 입력하세요"
+                  secureTextEntry
+                  value={currentPassword}
+                  onChangeText={setCurrentPassword}
+                />
+              </View>
 
-            <View style={styles.inputGroup}>
-              <Text style={styles.label}>새 비밀번호 확인</Text>
-              <TextInput
-                style={styles.input}
-                placeholder="새 비밀번호를 다시 입력하세요"
-                secureTextEntry
-                value={confirmPassword}
-                onChangeText={setConfirmPassword}
-              />
-            </View>
+              <View style={styles.inputGroup}>
+                <Text style={styles.label}>새 비밀번호</Text>
+                <TextInput
+                  style={styles.input}
+                  placeholder="새 비밀번호를 입력하세요"
+                  secureTextEntry
+                  value={newPassword}
+                  onChangeText={setNewPassword}
+                />
+              </View>
 
-            <TouchableOpacity style={styles.button} onPress={handleChangePassword}>
-              <Text style={styles.buttonText}>비밀번호 변경</Text>
-            </TouchableOpacity>
-          </View>
+              <View style={styles.inputGroup}>
+                <Text style={styles.label}>새 비밀번호 확인</Text>
+                <TextInput
+                  style={styles.input}
+                  placeholder="새 비밀번호를 다시 입력하세요"
+                  secureTextEntry
+                  value={confirmPassword}
+                  onChangeText={setConfirmPassword}
+                />
+              </View>
+
+              <TouchableOpacity
+                style={styles.button}
+                onPress={handleChangePassword}
+              >
+                <Text style={styles.buttonText}>비밀번호 변경</Text>
+              </TouchableOpacity>
+            </View>
           </ScrollView>
         </KeyboardAvoidingView>
       </TouchableWithoutFeedback>

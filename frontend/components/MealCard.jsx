@@ -1,24 +1,25 @@
-import React from "react";
-import { View, Text, StyleSheet } from "react-native";
-import { colors } from "../styles/colors";
-import { useMealData } from "../hooks/useMealData.js";
+import React from 'react';
+import { View, Text, StyleSheet } from 'react-native';
+import { colors } from '../styles/colors';
+import { useMealData } from '../hooks/useMealData.js';
 
 /**
  * useMealData(schulCode)로 오늘 이후 급식 3건 표시.
  * 로딩 시 스켈레톤, 데이터 없을 때 "오늘은 급식이 없어요" 중앙 정렬.
  */
-export default function MealCard({ schulCode, atptCode = "" }) {
-  const { upcomingMeals: meals, loading: isLoading, error: err } = useMealData(
-    schulCode,
-    atptCode
-  );
+export default function MealCard({ schulCode, atptCode = '' }) {
+  const {
+    upcomingMeals: meals,
+    loading: isLoading,
+    error: err,
+  } = useMealData(schulCode, atptCode);
 
   if (isLoading) {
     return (
       <View style={styles.card}>
         <View style={styles.skeletonLine} />
-        <View style={[styles.skeletonLine, { width: "70%", marginTop: 8 }]} />
-        <View style={[styles.skeletonLine, { width: "50%", marginTop: 8 }]} />
+        <View style={[styles.skeletonLine, { width: '70%', marginTop: 8 }]} />
+        <View style={[styles.skeletonLine, { width: '50%', marginTop: 8 }]} />
       </View>
     );
   }
@@ -44,10 +45,11 @@ export default function MealCard({ schulCode, atptCode = "" }) {
       {meals.map((item, index) => (
         <View key={`${item.date}-${item.mealType}-${index}`} style={styles.row}>
           <Text style={styles.dateBadge}>
-            {item.date.slice(6, 8)}/{item.date.slice(4, 6)} ({item.dayBadge}) {item.mealType}
+            {item.date.slice(6, 8)}/{item.date.slice(4, 6)} ({item.dayBadge}){' '}
+            {item.mealType}
           </Text>
           <Text style={styles.menu} numberOfLines={2}>
-            {Array.isArray(item.menu) ? item.menu.join(", ") : ""}
+            {Array.isArray(item.menu) ? item.menu.join(', ') : ''}
           </Text>
           {item.calories ? (
             <Text style={styles.calories}>{item.calories}</Text>
@@ -64,7 +66,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     padding: 16,
     minHeight: 120,
-    justifyContent: "center",
+    justifyContent: 'center',
     shadowColor: colors.shadow,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
@@ -77,12 +79,12 @@ const styles = StyleSheet.create({
     borderRadius: 4,
   },
   emptyText: {
-    textAlign: "center",
+    textAlign: 'center',
     color: colors.textSecondary,
     fontSize: 14,
   },
   errorText: {
-    textAlign: "center",
+    textAlign: 'center',
     color: colors.alert,
     fontSize: 14,
   },

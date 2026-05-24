@@ -12,7 +12,8 @@ const getSortedUniqueIds = (ids, messagesById) => {
   // 정렬 결과: index 0 이 가장 "과거" (정렬값이 작은) 메시지
   unique.sort(
     (a, b) =>
-      getMessageSortValue(messagesById[a]) - getMessageSortValue(messagesById[b]),
+      getMessageSortValue(messagesById[a]) -
+      getMessageSortValue(messagesById[b]),
   );
   return unique;
 };

@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState, useRef } from 'react';
 import {
   View,
   Text,
@@ -8,8 +8,14 @@ import {
   Alert,
   useWindowDimensions,
 } from 'react-native';
-import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
-import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
+import {
+  SafeAreaView,
+  useSafeAreaInsets,
+} from 'react-native-safe-area-context';
+import {
+  KeyboardAwareScrollView,
+  KeyboardAvoidingView,
+} from 'react-native-keyboard-controller';
 import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
 import { CommonActions } from '@react-navigation/native';
 import SubHeader from '../frame/subHeader';
@@ -18,6 +24,7 @@ import { createMailStyles } from '../../styles/mail.style';
 import { colors } from '../../styles/colors';
 import Loading from '../../components/Loading';
 import { api } from '../../utils/api';
+import { useMailContentKeyboardScroll } from '../../hooks/useMailContentKeyboardScroll';
 
 const SendSchoolMailScreen = ({ navigation, route }) => {
   const { width, height } = useWindowDimensions();
@@ -32,13 +39,24 @@ const SendSchoolMailScreen = ({ navigation, route }) => {
   const [mailContent, setMailContent] = useState('');
   const [charLimit, setCharLimit] = useState(50);
   const [sending, setSending] = useState(false);
+  const [subHeaderHeight, setSubHeaderHeight] = useState(0);
+  const [schoolSectionHeight, setSchoolSectionHeight] = useState(0);
   const [bottomCtaHeight, setBottomCtaHeight] = useState(0);
+  const scrollRef = useRef(null);
+  const scrollContentRef = useRef(null);
+  const contentSectionRef = useRef(null);
 
-  const bottomOffset = Math.max(bottomCtaHeight, normalize(16));
-  const contentSectionMinHeight = useMemo(
-    () => Math.max(normalize(200), Math.round(height * 0.28)),
-    [height, normalize],
-  );
+  const { contentFocused, handleContentFocus, handleContentBlur } =
+    useMailContentKeyboardScroll({
+      scrollRef,
+      scrollContentRef,
+      contentSectionRef,
+      normalize,
+    });
+
+  const scrollBottomInset = contentFocused
+    ? Math.max(bottomCtaHeight, normalize(16))
+    : normalize(16);
 
   const handleMailContentChange = (text) => {
     if (text.length > charLimit) {
@@ -81,7 +99,11 @@ const SendSchoolMailScreen = ({ navigation, route }) => {
                     { name: 'OtherSchool', params: { schoolId, schoolName } },
                     {
                       name: 'SchoolMailbox',
-                      params: { schoolId, schoolName, sourceScreen: 'OtherSchool' },
+                      params: {
+                        schoolId,
+                        schoolName,
+                        sourceScreen: 'OtherSchool',
+                      },
                     },
                   ],
                 }),
@@ -101,75 +123,115 @@ const SendSchoolMailScreen = ({ navigation, route }) => {
         },
       ]);
     } catch (error) {
-      Alert.alert('오류', error.response?.data?.message || '우편 전송 중 오류가 발생했습니다.');
+      Alert.alert(
+        '오류',
+        error.response?.data?.message || '우편 전송 중 오류가 발생했습니다.',
+      );
     } finally {
       setSending(false);
     }
   };
 
+  const scrollPadding = 16 * 2;
+  const sectionGap = 12;
+  const contentSectionMinHeight = Math.max(
+    normalize(200),
+    height -
+      insets.top -
+      insets.bottom -
+      subHeaderHeight -
+      schoolSectionHeight -
+      bottomCtaHeight -
+      scrollPadding -
+      sectionGap,
+  );
+
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
-      <SubHeader title="우편 보내기" onBack={() => navigation?.goBack()} />
+      <View onLayout={(e) => setSubHeaderHeight(e.nativeEvent.layout.height)}>
+        <SubHeader title="우편 보내기" onBack={() => navigation?.goBack()} />
+      </View>
 
-      <View style={styles.keyboardView}>
+      <KeyboardAvoidingView
+        style={styles.keyboardView}
+        behavior="padding"
+        automaticOffset
+        enabled={contentFocused}
+      >
         <KeyboardAwareScrollView
+          ref={scrollRef}
           style={styles.scrollView}
           contentContainerStyle={[
             styles.sendScrollContent,
-            { paddingBottom: bottomOffset },
+            { paddingBottom: scrollBottomInset },
           ]}
           keyboardShouldPersistTaps="always"
           keyboardDismissMode="on-drag"
           showsVerticalScrollIndicator={false}
           onScrollBeginDrag={Keyboard.dismiss}
-          bottomOffset={bottomOffset}
+          bottomOffset={scrollBottomInset}
         >
-          <View style={styles.section}>
-            <Text style={styles.label}>보낼 학교</Text>
-            <View style={styles.inputWrapper}>
-              <MaterialCommunityIcons
-                name="school-outline"
-                size={normalize(18)}
-                color={colors.textSecondary}
-              />
-              <TextInput
-                style={[styles.input, { marginLeft: normalize(6) }]}
-                value={schoolName || '(학교 정보 없음)'}
-                editable={false}
-                pointerEvents="none"
-              />
+          <View ref={scrollContentRef} collapsable={false}>
+            <View
+              style={styles.section}
+              onLayout={(e) =>
+                setSchoolSectionHeight(e.nativeEvent.layout.height)
+              }
+            >
+              <Text style={styles.label}>보낼 학교</Text>
+              <View style={styles.inputWrapper}>
+                <MaterialCommunityIcons
+                  name="school-outline"
+                  size={normalize(18)}
+                  color={colors.textSecondary}
+                />
+                <TextInput
+                  style={[styles.input, { marginLeft: normalize(6) }]}
+                  value={schoolName || '(학교 정보 없음)'}
+                  editable={false}
+                  pointerEvents="none"
+                />
+              </View>
             </View>
-          </View>
 
-          <View style={[styles.section, { minHeight: contentSectionMinHeight }]}>
-            <Text style={styles.label}>내용</Text>
-            <View style={styles.textAreaWrapper}>
-              <TextInput
-                style={styles.textArea}
-                placeholder="보낼 내용을 입력하세요"
-                value={mailContent}
-                onChangeText={handleMailContentChange}
-                multiline
-                textAlignVertical="top"
-                placeholderTextColor={colors.textSecondary}
-              />
-              <View style={styles.replyFormMetaRow}>
-                <View style={styles.sendMetaRight}>
-                  <Text style={styles.replyFormCount}>
-                    {mailContent.length}/{charLimit}자
-                  </Text>
-                  <TouchableOpacity
-                    style={styles.replyFormChip}
-                    onPress={handleAdReward}
-                    activeOpacity={0.8}
-                  >
-                    <MaterialCommunityIcons
-                      name="television-classic"
-                      size={15}
-                      color={colors.textPrimary}
-                    />
-                    <Text style={styles.replyFormChipText}>x 2</Text>
-                  </TouchableOpacity>
+            <View
+              ref={contentSectionRef}
+              style={[
+                styles.section,
+                { flex: 1, minHeight: contentSectionMinHeight },
+              ]}
+            >
+              <Text style={styles.label}>내용</Text>
+              <View style={styles.textAreaWrapper}>
+                <TextInput
+                  style={styles.textArea}
+                  placeholder="보낼 내용을 입력하세요"
+                  value={mailContent}
+                  onChangeText={handleMailContentChange}
+                  onFocus={handleContentFocus}
+                  onBlur={handleContentBlur}
+                  multiline
+                  textAlignVertical="top"
+                  placeholderTextColor={colors.textSecondary}
+                />
+                <View style={styles.replyFormMetaRow}>
+                  <View style={styles.sendMetaRight}>
+                    <Text style={styles.replyFormCount}>
+                      {mailContent.length}/{charLimit}자
+                    </Text>
+                    <TouchableOpacity
+                      style={styles.replyFormChip}
+                      onPress={handleAdReward}
+                      activeOpacity={0.8}
+                    >
+                      <MaterialCommunityIcons
+                        name="television-classic"
+                        size={15}
+                        color={colors.textPrimary}
+                      />
+                      <Text style={styles.replyFormChipText}>x 2</Text>
+                    </TouchableOpacity>
+                  </View>
                 </View>
               </View>
             </View>
@@ -186,7 +248,8 @@ const SendSchoolMailScreen = ({ navigation, route }) => {
           <TouchableOpacity
             style={[
               styles.bottomCtaButton,
-              (!mailContent.trim() || !schoolId || sending) && styles.bottomCtaDisabled,
+              (!mailContent.trim() || !schoolId || sending) &&
+                styles.bottomCtaDisabled,
             ]}
             onPress={handleSend}
             disabled={!mailContent.trim() || !schoolId || sending}
@@ -199,7 +262,7 @@ const SendSchoolMailScreen = ({ navigation, route }) => {
             )}
           </TouchableOpacity>
         </View>
-      </View>
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 };

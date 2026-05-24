@@ -26,9 +26,10 @@ export default function AlertHost() {
   }, []);
 
   const buttons = useMemo(
-    () => (Array.isArray(currentAlert?.buttons) && currentAlert.buttons.length > 0
-      ? currentAlert.buttons
-      : [{ text: '확인' }]),
+    () =>
+      Array.isArray(currentAlert?.buttons) && currentAlert.buttons.length > 0
+        ? currentAlert.buttons
+        : [{ text: '확인' }],
     [currentAlert],
   );
 
@@ -78,7 +79,9 @@ export default function AlertHost() {
         </Text>
       )}
 
-      <View style={{ flexDirection: buttons.length > 2 ? 'column' : 'row', gap: 8 }}>
+      <View
+        style={{ flexDirection: buttons.length > 2 ? 'column' : 'row', gap: 8 }}
+      >
         {buttons.map((button, idx) => {
           const text = button?.text || '확인';
           const isDestructive = button?.style === 'destructive';
@@ -92,7 +95,9 @@ export default function AlertHost() {
                 borderRadius: 10,
                 backgroundColor: isDestructive
                   ? colors.alert
-                  : (isCancel ? colors.textLight5 : colors.primary),
+                  : isCancel
+                    ? colors.textLight5
+                    : colors.primary,
                 alignItems: 'center',
                 justifyContent: 'center',
               }}

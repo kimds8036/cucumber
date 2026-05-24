@@ -74,10 +74,7 @@ const tabFromRoute = (route) =>
 const ActivityPage = ({ navigation, route }) => {
   const { width } = useWindowDimensions();
   const normalize = useMemo(() => getNormalize(width), [width]);
-  const styles = useMemo(
-    () => createMyPostsStyles(normalize),
-    [normalize],
-  );
+  const styles = useMemo(() => createMyPostsStyles(normalize), [normalize]);
   const boardStyles = useMemo(
     () => createBoardStyles(width, normalize),
     [width, normalize],
@@ -119,8 +116,7 @@ const ActivityPage = ({ navigation, route }) => {
     };
   }, [route?.params?.tab]);
 
-  const screenTitle =
-    listKind === 'written' ? '내가 쓴 글' : '스크랩한 글';
+  const screenTitle = listKind === 'written' ? '내가 쓴 글' : '스크랩한 글';
   const layoutEpoch = layoutEpochRef.current;
 
   return (

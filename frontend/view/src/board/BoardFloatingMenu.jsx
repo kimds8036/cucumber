@@ -1,5 +1,12 @@
 import React from 'react';
-import { Modal, TouchableWithoutFeedback, View, Text, TouchableOpacity, Alert } from 'react-native';
+import {
+  Modal,
+  TouchableWithoutFeedback,
+  View,
+  Text,
+  TouchableOpacity,
+  Alert,
+} from 'react-native';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { colors, fonts } from '../../../styles/colors';
 
@@ -42,7 +49,8 @@ export default function BoardFloatingMenu({
 }) {
   const isPostMenu = context === 'post';
   const isCommentMenu = isPostMenu ? null : normalizeCommentId(context);
-  const commentForMenu = isCommentMenu != null ? findCommentById(allComments, isCommentMenu) : null;
+  const commentForMenu =
+    isCommentMenu != null ? findCommentById(allComments, isCommentMenu) : null;
   const isMyComment = commentForMenu?.isMyComment === true;
 
   // iOS fade-out 동안 context가 비는 중간 렌더를 막아 중앙 깜빡임을 방지한다.
@@ -85,7 +93,11 @@ export default function BoardFloatingMenu({
         label: '쪽지 보내기',
         iconName: 'chatbubble-outline',
         onPress: () => {
-          if (commentForMenu.userId && currentUserId && commentForMenu.userId === currentUserId) {
+          if (
+            commentForMenu.userId &&
+            currentUserId &&
+            commentForMenu.userId === currentUserId
+          ) {
             Alert.alert('안내', '자기 자신에게는 쪽지를 보낼 수 없습니다.');
             return;
           }
@@ -113,13 +125,20 @@ export default function BoardFloatingMenu({
   }
 
   return (
-    <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
+    <Modal
+      visible={visible}
+      transparent
+      animationType="fade"
+      onRequestClose={onClose}
+    >
       <TouchableWithoutFeedback onPress={onClose}>
         <View
           style={{
             flex: 1,
             backgroundColor: 'rgba(0,0,0,0.3)',
-            ...(anchor ? {} : { justifyContent: 'center', alignItems: 'center' }),
+            ...(anchor
+              ? {}
+              : { justifyContent: 'center', alignItems: 'center' }),
           }}
         >
           <TouchableWithoutFeedback>
@@ -169,7 +188,11 @@ export default function BoardFloatingMenu({
                     >
                       {item.label}
                     </Text>
-                    <Ionicons name={item.iconName} size={normalize(17)} color={colors.textSecondary} />
+                    <Ionicons
+                      name={item.iconName}
+                      size={normalize(17)}
+                      color={colors.textSecondary}
+                    />
                   </TouchableOpacity>
                   {index < menuItems.length - 1 && (
                     <View
@@ -189,4 +212,3 @@ export default function BoardFloatingMenu({
     </Modal>
   );
 }
-

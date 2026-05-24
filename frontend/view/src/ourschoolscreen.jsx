@@ -1,5 +1,14 @@
 import React, { useEffect, useState, useMemo } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TouchableWithoutFeedback, useWindowDimensions, Modal } from 'react-native';
+import {
+  View,
+  Text,
+  StyleSheet,
+  ScrollView,
+  TouchableOpacity,
+  TouchableWithoutFeedback,
+  useWindowDimensions,
+  Modal,
+} from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Ionicons } from '@expo/vector-icons';
 import FontAwesome6 from '@expo/vector-icons/FontAwesome6';
@@ -51,7 +60,8 @@ const OurSchoolScreen = ({ navigation }) => {
       start = new Date(year - 1, 8, 1);
       end = new Date(year, 2, 0);
     }
-    const diffDays = Math.floor((end.getTime() - start.getTime()) / 86400000) + 1;
+    const diffDays =
+      Math.floor((end.getTime() - start.getTime()) / 86400000) + 1;
     return diffDays;
   };
 
@@ -72,7 +82,8 @@ const OurSchoolScreen = ({ navigation }) => {
           const cached = JSON.parse(cachedRaw);
           if (cached?.ts && isFreshCache(cached.ts)) {
             if (cached.schoolInfo) setSchoolInfo(cached.schoolInfo);
-            if (Array.isArray(cached.popularPosts)) setPopularPosts(cached.popularPosts);
+            if (Array.isArray(cached.popularPosts))
+              setPopularPosts(cached.popularPosts);
             usedCache = true;
             if (mounted) setLoading(false);
           }
@@ -89,7 +100,8 @@ const OurSchoolScreen = ({ navigation }) => {
             postCount: data.postCount ?? 0,
             mailCount: data.mailCount ?? 0,
             eduOfficeCode: data.eduOfficeCode || data.edu_office_code || '',
-            adminStandardCode: data.adminStandardCode || data.admin_standard_code || '',
+            adminStandardCode:
+              data.adminStandardCode || data.admin_standard_code || '',
           };
           setSchoolInfo(nextSchoolInfo);
 
@@ -107,7 +119,8 @@ const OurSchoolScreen = ({ navigation }) => {
             const apiPosts = postsRes.data?.data?.posts || [];
             const mapped = apiPosts.map((p) => ({
               id: p.id,
-              title: (p.content || '').split('\n')[0].slice(0, 40) || '제목 없음',
+              title:
+                (p.content || '').split('\n')[0].slice(0, 40) || '제목 없음',
               type: 'post',
               likes: p.like_count,
               comments: p.comment_count,
@@ -153,7 +166,11 @@ const OurSchoolScreen = ({ navigation }) => {
         const cachedRaw = await AsyncStorage.getItem(mealCacheKey);
         if (cachedRaw) {
           const cached = JSON.parse(cachedRaw);
-          if (cached?.ts && isFreshCache(cached.ts) && Array.isArray(cached.meals)) {
+          if (
+            cached?.ts &&
+            isFreshCache(cached.ts) &&
+            Array.isArray(cached.meals)
+          ) {
             setNextMeals(cached.meals);
             usedCache = true;
             if (mounted) setMealLoading(false);
@@ -248,10 +265,29 @@ const OurSchoolScreen = ({ navigation }) => {
   if (showInitialSkeleton) {
     return (
       <View style={styles.container}>
-        <View style={{ paddingHorizontal: normalize(16), paddingTop: normalize(12) }}>
-          <Skeleton width="100%" height={normalize(130)} borderRadius={normalize(14)} style={{ marginBottom: normalize(12) }} />
-          <Skeleton width="100%" height={normalize(180)} borderRadius={normalize(14)} style={{ marginBottom: normalize(12) }} />
-          <Skeleton width="100%" height={normalize(140)} borderRadius={normalize(14)} />
+        <View
+          style={{
+            paddingHorizontal: normalize(16),
+            paddingTop: normalize(12),
+          }}
+        >
+          <Skeleton
+            width="100%"
+            height={normalize(130)}
+            borderRadius={normalize(14)}
+            style={{ marginBottom: normalize(12) }}
+          />
+          <Skeleton
+            width="100%"
+            height={normalize(180)}
+            borderRadius={normalize(14)}
+            style={{ marginBottom: normalize(12) }}
+          />
+          <Skeleton
+            width="100%"
+            height={normalize(140)}
+            borderRadius={normalize(14)}
+          />
         </View>
       </View>
     );
@@ -267,7 +303,9 @@ const OurSchoolScreen = ({ navigation }) => {
         <View style={styles.schoolCardBlock}>
           <View style={styles.schoolCard}>
             {loading ? (
-              <View style={{ minHeight: normalize(110), justifyContent: 'center' }}>
+              <View
+                style={{ minHeight: normalize(110), justifyContent: 'center' }}
+              >
                 <View
                   style={{
                     height: normalize(18),
@@ -289,7 +327,7 @@ const OurSchoolScreen = ({ navigation }) => {
                 <View style={styles.schoolInfoDivider} />
                 <View style={styles.statsContainer}>
                   {[0, 1, 2].map((idx) => (
-                      <View key={idx} style={styles.statItem}>
+                    <View key={idx} style={styles.statItem}>
                       <View
                         style={{
                           height: normalize(16),
@@ -308,27 +346,49 @@ const OurSchoolScreen = ({ navigation }) => {
                   <Text style={styles.schoolName}>{schoolInfo.name}</Text>
                 </View>
                 <View style={styles.locationContainer}>
-                  <Ionicons name="location-outline" size={normalize(14)} color={colors.textSecondary} />
+                  <Ionicons
+                    name="location-outline"
+                    size={normalize(14)}
+                    color={colors.textSecondary}
+                  />
                   <Text style={styles.locationText}>{schoolInfo.location}</Text>
                 </View>
                 <View style={styles.schoolInfoDivider} />
                 <View style={styles.statsContainer}>
                   <View style={styles.statItem}>
                     <View style={styles.statValueContainer}>
-                      <Ionicons name="person" size={normalize(18)} color={colors.primary} />
-                      <Text style={styles.statValue}>{schoolInfo.studentCount}명</Text>
+                      <Ionicons
+                        name="person"
+                        size={normalize(18)}
+                        color={colors.primary}
+                      />
+                      <Text style={styles.statValue}>
+                        {schoolInfo.studentCount}명
+                      </Text>
                     </View>
                   </View>
                   <View style={styles.statItem}>
                     <View style={styles.statValueContainer}>
-                      <Ionicons name="chatbubbles" size={normalize(18)} color={colors.primary} />
-                      <Text style={styles.statValue}>{schoolInfo.postCount}개</Text>
+                      <Ionicons
+                        name="chatbubbles"
+                        size={normalize(18)}
+                        color={colors.primary}
+                      />
+                      <Text style={styles.statValue}>
+                        {schoolInfo.postCount}개
+                      </Text>
                     </View>
                   </View>
                   <View style={styles.statItem}>
                     <View style={styles.statValueContainer}>
-                      <Ionicons name="mail" size={normalize(18)} color={colors.primary} />
-                      <Text style={styles.statValue}>{schoolInfo.mailCount}개</Text>
+                      <Ionicons
+                        name="mail"
+                        size={normalize(18)}
+                        color={colors.primary}
+                      />
+                      <Text style={styles.statValue}>
+                        {schoolInfo.mailCount}개
+                      </Text>
                     </View>
                   </View>
                 </View>
@@ -356,93 +416,110 @@ const OurSchoolScreen = ({ navigation }) => {
             </View>
 
             <View style={styles.mealSlotsRow}>
-              {mealLoading ? (
-                [0, 1, 2].map((idx) => (
-                  <View key={`meal-skeleton-${idx}`} style={[styles.mealSlot, idx === 2 && styles.mealSlotLast]}>
-                    <View style={[styles.mealCard, { minHeight: normalize(96) }]}>
-                      <View style={styles.mealSlotHeader}>
-                        <View style={styles.mealSlotTitleRow}>
-                          <View
-                            style={{
-                              height: normalize(fontSizes.xl),
-                              width: '58%',
-                              backgroundColor: colors.disabled,
-                              borderRadius: 6,
-                            }}
-                          />
+              {mealLoading
+                ? [0, 1, 2].map((idx) => (
+                    <View
+                      key={`meal-skeleton-${idx}`}
+                      style={[
+                        styles.mealSlot,
+                        idx === 2 && styles.mealSlotLast,
+                      ]}
+                    >
+                      <View
+                        style={[styles.mealCard, { minHeight: normalize(96) }]}
+                      >
+                        <View style={styles.mealSlotHeader}>
+                          <View style={styles.mealSlotTitleRow}>
+                            <View
+                              style={{
+                                height: normalize(fontSizes.xl),
+                                width: '58%',
+                                backgroundColor: colors.disabled,
+                                borderRadius: 6,
+                              }}
+                            />
+                          </View>
+                          <View style={styles.mealSlotBadge}>
+                            <View
+                              style={{
+                                height: normalize(fontSizes.lg),
+                                width: normalize(32),
+                                backgroundColor: colors.border,
+                                borderRadius: 6,
+                              }}
+                            />
+                          </View>
                         </View>
-                        <View style={styles.mealSlotBadge}>
-                          <View
-                            style={{
-                              height: normalize(fontSizes.lg),
-                              width: normalize(32),
-                              backgroundColor: colors.border,
-                              borderRadius: 6,
-                            }}
-                          />
+                        <View style={styles.mealSlotMenus}>
+                          {[0, 1, 2, 3].map((line) => (
+                            <View
+                              key={`meal-skel-line-${idx}-${line}`}
+                              style={{
+                                height: normalize(fontSizes.lg),
+                                marginBottom: normalize(2),
+                                width: line === 3 ? '62%' : '100%',
+                                backgroundColor: colors.surface,
+                                borderRadius: 4,
+                              }}
+                            />
+                          ))}
                         </View>
-                      </View>
-                      <View style={styles.mealSlotMenus}>
-                        {[0, 1, 2, 3].map((line) => (
-                          <View
-                            key={`meal-skel-line-${idx}-${line}`}
-                            style={{
-                              height: normalize(fontSizes.lg),
-                              marginBottom: normalize(2),
-                              width: line === 3 ? '62%' : '100%',
-                              backgroundColor: colors.surface,
-                              borderRadius: 4,
-                            }}
-                          />
-                        ))}
                       </View>
                     </View>
-                  </View>
-                ))
-              ) : (
-                mealSlots.map((slot, index) => (
-                <View
-                  key={`${slot.ymd}-${slot.mealType}-${index}`}
-                  style={[
-                    styles.mealSlot,
-                    index === mealSlots.length - 1 && styles.mealSlotLast,
-                  ]}
-                >
-                  <TouchableOpacity
-                    style={styles.mealSlotTouch}
-                    activeOpacity={0.85}
-                    onPress={() => setSelectedMealSlot(slot)}
-                  >
-                  <View style={[styles.mealCard, { minHeight: normalize(96) }]}>
-                    <View style={styles.mealSlotHeader}>
-                      <View style={styles.mealSlotTitleRow}>
-                        <Text style={styles.mealSlotTitle}>{slot.mealType}</Text>
-                      </View>
-                      <View style={styles.mealSlotBadge}>
-                        <Text style={styles.mealSlotBadgeText}>{getDayBadge(slot.ymd)}</Text>
-                      </View>
-                    </View>
+                  ))
+                : mealSlots.map((slot, index) => (
+                    <View
+                      key={`${slot.ymd}-${slot.mealType}-${index}`}
+                      style={[
+                        styles.mealSlot,
+                        index === mealSlots.length - 1 && styles.mealSlotLast,
+                      ]}
+                    >
+                      <TouchableOpacity
+                        style={styles.mealSlotTouch}
+                        activeOpacity={0.85}
+                        onPress={() => setSelectedMealSlot(slot)}
+                      >
+                        <View
+                          style={[
+                            styles.mealCard,
+                            { minHeight: normalize(96) },
+                          ]}
+                        >
+                          <View style={styles.mealSlotHeader}>
+                            <View style={styles.mealSlotTitleRow}>
+                              <Text style={styles.mealSlotTitle}>
+                                {slot.mealType}
+                              </Text>
+                            </View>
+                            <View style={styles.mealSlotBadge}>
+                              <Text style={styles.mealSlotBadgeText}>
+                                {getDayBadge(slot.ymd)}
+                              </Text>
+                            </View>
+                          </View>
 
-                    <View style={styles.mealSlotMenus}>
-                      {slot.menus && slot.menus.length > 0 ? (
-                        slot.menus.map((menu, idx) => (
-                          <Text
-                            key={`${idx}-${menu}`}
-                            style={styles.mealSlotMenuText}
-                            numberOfLines={1}
-                          >
-                            {menu}
-                          </Text>
-                        ))
-                      ) : (
-                        <Text style={styles.mealSlotEmptyText}>정보 없음</Text>
-                      )}
+                          <View style={styles.mealSlotMenus}>
+                            {slot.menus && slot.menus.length > 0 ? (
+                              slot.menus.map((menu, idx) => (
+                                <Text
+                                  key={`${idx}-${menu}`}
+                                  style={styles.mealSlotMenuText}
+                                  numberOfLines={1}
+                                >
+                                  {menu}
+                                </Text>
+                              ))
+                            ) : (
+                              <Text style={styles.mealSlotEmptyText}>
+                                정보 없음
+                              </Text>
+                            )}
+                          </View>
+                        </View>
+                      </TouchableOpacity>
                     </View>
-                  </View>
-                  </TouchableOpacity>
-                </View>
-                ))
-              )}
+                  ))}
             </View>
           </View>
         </View>
@@ -462,7 +539,11 @@ const OurSchoolScreen = ({ navigation }) => {
             onPress={() => navigation?.navigate('SchoolBoardAll')}
           >
             <View style={styles.shortcutTopRow}>
-              <Ionicons name="chatbubbles" size={normalize(22)} color={colors.primary} />
+              <Ionicons
+                name="chatbubbles"
+                size={normalize(22)}
+                color={colors.primary}
+              />
               <Text style={styles.shortcutTitle}>학교 게시판</Text>
             </View>
             <Text style={styles.shortcutSubtitle}>→ 보러 가기</Text>
@@ -479,7 +560,11 @@ const OurSchoolScreen = ({ navigation }) => {
             }
           >
             <View style={styles.shortcutTopRow}>
-              <Ionicons name="mail" size={normalize(22)} color={colors.primary} />
+              <Ionicons
+                name="mail"
+                size={normalize(22)}
+                color={colors.primary}
+              />
               <Text style={styles.shortcutTitle}>학교 우편함</Text>
             </View>
             <Text style={styles.shortcutSubtitle}>→ 보러 가기</Text>
@@ -525,7 +610,11 @@ const OurSchoolScreen = ({ navigation }) => {
 
                 <View style={styles.popularItemRight}>
                   <View style={styles.countBadge}>
-                    <Ionicons name="heart-outline" size={14} color={colors.alert} />
+                    <Ionicons
+                      name="heart-outline"
+                      size={14}
+                      color={colors.alert}
+                    />
                     <Text style={styles.countText}>{post.likes ?? 0}</Text>
                   </View>
                   <View style={styles.countBadge}>
@@ -537,7 +626,11 @@ const OurSchoolScreen = ({ navigation }) => {
                     <Text style={styles.countText}>{post.comments ?? 0}</Text>
                   </View>
                   <View style={styles.countBadge}>
-                    <Ionicons name="bookmark-outline" size={normalize(14)} color={colors.scrap} />
+                    <Ionicons
+                      name="bookmark-outline"
+                      size={normalize(14)}
+                      color={colors.scrap}
+                    />
                     <Text style={styles.countText}>{post.scrapCount ?? 0}</Text>
                   </View>
                 </View>
@@ -592,9 +685,7 @@ const OurSchoolScreen = ({ navigation }) => {
                       </Text>
                     ))
                   ) : (
-                    <Text style={styles.mealModalEmptyText}>
-                      정보 없음
-                    </Text>
+                    <Text style={styles.mealModalEmptyText}>정보 없음</Text>
                   )}
                 </ScrollView>
               </View>

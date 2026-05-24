@@ -8,20 +8,24 @@
 ## 0. 핵심 원칙
 
 ### 0-1. 디자인은 건드리지 않는다
+
 - 색상, 폰트, 간격, 그림자, 아이콘 — 원본 그대로 이식
 - `normalize()`, `chatStyles`, `detailStyles`, `fonts`, `colors` 전부 유지
 - DM 헤더의 `MessageTabIcon` + `getFriendIconColorByIndex` 완전 보존
 
 ### 0-2. 성능 코드는 원본이 정답이다
+
 - `maintainVisibleContentPosition`, `overrideItemLayout`, `estimateRowHeight` → 원본 그대로 이식
 - `listShellVisible` opacity 패턴, `initialScrollIndex`, `loadOlderAllowedRef` → 삭제 금지
 - `drawDistance`, `maxToRenderPerBatch`, `windowSize` → 원본 값 유지
 
 ### 0-3. 중복은 한쪽에서만 존재해야 한다
+
 - 기능이 새 구조로 이식 완료되면, 원본에서 해당 코드를 반드시 제거
 - 이식 전까지는 원본 코드를 건드리지 않는다 (점진적 교체)
 
 ### 0-4. 사이드 이펙트는 무조건 useEffect
+
 - `useMemo` 안에서 `setState` 절대 금지
 - `setTimeout`으로 상태 변경하는 패턴 → `useEffect` + `dispatch`로 교체
 
@@ -68,6 +72,7 @@ chat/
 ## 2. 작업 순서 (점진적 교체 — 반드시 이 순서)
 
 ### Phase 1: 데이터 레이어 완성
+
 1. `chatReducer.js` — 원본 상태 구조 완전 반영
 2. `normalizeMessage.js` — `isReadByOther`/`isReadByMe` 포함
 3. `cacheManager.js` — `INITIAL_FETCH_LIMIT` 슬라이싱 포함
@@ -75,6 +80,7 @@ chat/
 5. `useChatCore.js` — 원본 useChat/useDMChat의 모든 기능을 config 기반으로 통합
 
 ### Phase 2: 어댑터 훅 → 원본 훅 교체
+
 6. `chat/hooks/useChat.js` — meId 추출, 소켓/읽음/알림 config 완성
 7. `chat/hooks/useDMChat.js` — /api/auth/me, 소켓/읽음/알림 config 완성
 8. `hooks/useChat.js` → `chat/hooks/useChat.js`를 re-export하는 한 줄로 축소
@@ -82,12 +88,14 @@ chat/
 10. 이 시점에서 앱 동작 검증 (데이터 레이어 교체 완료)
 
 ### Phase 3: UI 레이어 이식
+
 11. `useChatScroll.js` — 원본의 모든 ref/스크롤 로직 이관
 12. `useChatUI.js` — toast, reply, longPress, viewer, input 상태
 13. 컴포넌트들 생성 (MessageList, MessageInput, PostCard, ChatToast 등)
 14. `ChatScreen.jsx` — KAV + 전체 레이아웃 조립
 
 ### Phase 4: 스크린 교체
+
 15. `ChatRoomScreen.jsx` — 게시글 카드 포함
 16. `DMChatScreen.jsx` — 친구 헤더 포함
 17. `Chat.jsx` → `return <ChatRoomScreen />`으로 축소
@@ -98,10 +106,11 @@ chat/
 ## 3. chatReducer.js
 
 ### 3-1. 상태 구조
+
 ```js
 export const initialState = {
-  messagesById: {},    // { [id]: normalizedMessage }
-  messageIds: [],      // 시간순(ASC) 정렬된 id 배열
+  messagesById: {}, // { [id]: normalizedMessage }
+  messageIds: [], // 시간순(ASC) 정렬된 id 배열
   isLoading: false,
   isLoadingMore: false,
   hasMore: true,
@@ -109,24 +118,26 @@ export const initialState = {
 ```
 
 ### 3-2. 액션 목록
-| 액션 | 용도 |
-|---|---|
-| `SET_MESSAGES` | 초기 로딩 — 완전 교체 |
-| `ADD_MESSAGES_PREPEND` | 페이징(과거 로드) — 앞에 prepend |
-| `ADD_MESSAGE` | 소켓/optimistic — 뒤에 append (dedupe) |
-| `UPDATE_MESSAGE` | 부분 업데이트 (status 변경 등) |
+
+| 액션                   | 용도                                                 |
+| ---------------------- | ---------------------------------------------------- |
+| `SET_MESSAGES`         | 초기 로딩 — 완전 교체                                |
+| `ADD_MESSAGES_PREPEND` | 페이징(과거 로드) — 앞에 prepend                     |
+| `ADD_MESSAGE`          | 소켓/optimistic — 뒤에 append (dedupe)               |
+| `UPDATE_MESSAGE`       | 부분 업데이트 (status 변경 등)                       |
 | `REPLACE_TEMP_MESSAGE` | clientId → serverId 교체 (id 변경 + 데이터 업데이트) |
-| `DELETE_MESSAGE` | 소프트 삭제 (is_deleted: true) |
-| `REMOVE_MESSAGE` | id 기반 완전 제거 |
-| `TRIM_MESSAGES` | MEMORY_LIMIT 초과 시 오래된 메시지 제거 |
-| `MARK_ALL_READ` | 내가 아닌 메시지 전부 isReadByMe: true |
-| `MARK_MY_READ` | 내 메시지 전부 isReadByOther: true |
-| `SET_LOADING` | 초기 로딩 상태 |
-| `SET_LOADING_MORE` | 페이징 로딩 상태 |
-| `SET_HAS_MORE` | 더보기 가능 여부 |
-| `RESET` | roomId 변경 시 전체 초기화 |
+| `DELETE_MESSAGE`       | 소프트 삭제 (is_deleted: true)                       |
+| `REMOVE_MESSAGE`       | id 기반 완전 제거                                    |
+| `TRIM_MESSAGES`        | MEMORY_LIMIT 초과 시 오래된 메시지 제거              |
+| `MARK_ALL_READ`        | 내가 아닌 메시지 전부 isReadByMe: true               |
+| `MARK_MY_READ`         | 내 메시지 전부 isReadByOther: true                   |
+| `SET_LOADING`          | 초기 로딩 상태                                       |
+| `SET_LOADING_MORE`     | 페이징 로딩 상태                                     |
+| `SET_HAS_MORE`         | 더보기 가능 여부                                     |
+| `RESET`                | roomId 변경 시 전체 초기화                           |
 
 ### 3-3. 핵심 구현 — REPLACE_TEMP_MESSAGE (원본 핵심 로직)
+
 ```js
 case 'REPLACE_TEMP_MESSAGE': {
   const { tempId, serverMessage } = action.payload;
@@ -156,6 +167,7 @@ case 'REPLACE_TEMP_MESSAGE': {
 ```
 
 ### 3-4. 핵심 구현 — ADD_MESSAGES_PREPEND (페이징)
+
 ```js
 case 'ADD_MESSAGES_PREPEND': {
   const { messages } = action.payload;
@@ -186,7 +198,9 @@ case 'ADD_MESSAGES_PREPEND': {
 ```
 
 ### 3-5. useMemo→setState 패턴 제거
+
 원본의 `useMemo` 안 `setTimeout(() => setChatData(...))` → `useEffect` + `dispatch({ type: 'TRIM_MESSAGES' })`
+
 ```js
 // useChatCore 내부
 useEffect(() => {
@@ -201,6 +215,7 @@ useEffect(() => {
 ## 4. useChatCore.js — 데이터 엔진
 
 ### 4-1. 인터페이스
+
 ```js
 export default function useChatCore(config) {
   // config 구조:
@@ -221,7 +236,7 @@ export default function useChatCore(config) {
   // }
 
   return {
-    messages,        // normalized array (시간순 ASC)
+    messages, // normalized array (시간순 ASC)
     isLoading,
     isLoadingMore,
     hasMore,
@@ -235,6 +250,7 @@ export default function useChatCore(config) {
 ```
 
 ### 4-2. 메시지 정렬 — 원본 방식 유지 (ID 기반)
+
 ```js
 const getMessageSortValue = (msg) => {
   if (!msg) return Number.MIN_SAFE_INTEGER;
@@ -247,7 +263,7 @@ const getMessageSortValue = (msg) => {
 
 const messages = useMemo(() => {
   const arr = state.messageIds
-    .map(id => state.messagesById[id])
+    .map((id) => state.messagesById[id])
     .filter(Boolean);
   arr.sort((a, b) => getMessageSortValue(a) - getMessageSortValue(b));
   return arr;
@@ -255,6 +271,7 @@ const messages = useMemo(() => {
 ```
 
 ### 4-3. 초기 로딩 — InteractionManager + AbortController (원본 보존)
+
 ```js
 useEffect(() => {
   if (!roomId) return;
@@ -315,6 +332,7 @@ useEffect(() => {
 ```
 
 ### 4-4. 소켓 연결 — 원본 패턴 완전 보존
+
 ```js
 useEffect(() => {
   if (!roomId || !config.socket) return;
@@ -357,49 +375,58 @@ useEffect(() => {
 ```
 
 ### 4-5. 소켓 new_message 핸들러 — clientId 매칭 포함 (원본 핵심)
+
 ```js
-const handleSocketNewMessage = useCallback((payload) => {
-  if (!payload?.message) return;
-  if (String(payload.message.room_id) !== String(roomId)) return;
+const handleSocketNewMessage = useCallback(
+  (payload) => {
+    if (!payload?.message) return;
+    if (String(payload.message.room_id) !== String(roomId)) return;
 
-  const newMsg = normalizeMessage(payload.message, meIdRef.current);
+    const newMsg = normalizeMessage(payload.message, meIdRef.current);
 
-  // clientId 기반 대기 타이머 정리
-  if (newMsg.clientId) {
-    const key = String(newMsg.clientId);
-    const tid = pendingClientIdTimeoutsRef.current.get(key);
-    if (tid) {
-      clearTimeout(tid);
-      pendingClientIdTimeoutsRef.current.delete(key);
+    // clientId 기반 대기 타이머 정리
+    if (newMsg.clientId) {
+      const key = String(newMsg.clientId);
+      const tid = pendingClientIdTimeoutsRef.current.get(key);
+      if (tid) {
+        clearTimeout(tid);
+        pendingClientIdTimeoutsRef.current.delete(key);
+      }
     }
-  }
 
-  // temp→server 교체 or 신규 추가
-  if (newMsg.clientId && state.messagesById[String(newMsg.clientId)]) {
-    dispatch({
-      type: 'REPLACE_TEMP_MESSAGE',
-      payload: { tempId: String(newMsg.clientId), serverMessage: newMsg },
-    });
-  } else {
-    dispatch({ type: 'ADD_MESSAGE', payload: newMsg });
-  }
+    // temp→server 교체 or 신규 추가
+    if (newMsg.clientId && state.messagesById[String(newMsg.clientId)]) {
+      dispatch({
+        type: 'REPLACE_TEMP_MESSAGE',
+        payload: { tempId: String(newMsg.clientId), serverMessage: newMsg },
+      });
+    } else {
+      dispatch({ type: 'ADD_MESSAGE', payload: newMsg });
+    }
 
-  // 상대 메시지 수신 시 읽음 처리
-  if (!newMsg.isMe) {
-    config.api.markRead(roomId).catch(() => {});
-  }
-}, [roomId]);
+    // 상대 메시지 수신 시 읽음 처리
+    if (!newMsg.isMe) {
+      config.api.markRead(roomId).catch(() => {});
+    }
+  },
+  [roomId],
+);
 ```
 
 ### 4-6. read_receipt 핸들러
+
 ```js
-const handleSocketReadReceipt = useCallback((payload) => {
-  if (String(payload.roomId) !== String(roomId)) return;
-  dispatch({ type: 'MARK_MY_READ' });
-}, [roomId]);
+const handleSocketReadReceipt = useCallback(
+  (payload) => {
+    if (String(payload.roomId) !== String(roomId)) return;
+    dispatch({ type: 'MARK_MY_READ' });
+  },
+  [roomId],
+);
 ```
 
 ### 4-7. 폴링 — 소켓 fallback (원본 보존)
+
 ```js
 const startPolling = useCallback(() => {
   if (pollRef.current || !roomId) return;
@@ -407,11 +434,11 @@ const startPolling = useCallback(() => {
     try {
       const res = await config.api.fetchMessages(roomId, PAGE_SIZE * 2);
       const meId = meIdRef.current;
-      const mapped = res.messages.map(m => normalizeMessage(m, meId));
+      const mapped = res.messages.map((m) => normalizeMessage(m, meId));
 
       // optimistic 메시지 보호: isSending/isFailed는 서버 데이터로 덮지 않음
       dispatch({
-        type: 'MERGE_POLL_MESSAGES',  // 새 액션: 기존 optimistic 보호하면서 union
+        type: 'MERGE_POLL_MESSAGES', // 새 액션: 기존 optimistic 보호하면서 union
         payload: { messages: mapped },
       });
     } catch (e) {
@@ -422,6 +449,7 @@ const startPolling = useCallback(() => {
 ```
 
 ### 4-8. 캐시 저장 debounce (원본 보존)
+
 ```js
 useEffect(() => {
   if (!roomId) return;
@@ -438,123 +466,151 @@ useEffect(() => {
 ```
 
 ### 4-9. sendMessage — Optimistic UI + 5초 딜레이 교체 (원본 핵심)
+
 ```js
-const sendMessage = useCallback(async ({ text, images, replyTo }) => {
-  if (!roomId) return;
-  const trimmed = (text ?? '').trim();
-  const imgArr = Array.isArray(images) ? images : [];
-  if (!trimmed && imgArr.length === 0) return;
+const sendMessage = useCallback(
+  async ({ text, images, replyTo }) => {
+    if (!roomId) return;
+    const trimmed = (text ?? '').trim();
+    const imgArr = Array.isArray(images) ? images : [];
+    if (!trimmed && imgArr.length === 0) return;
 
-  const clientId = `temp_${Date.now()}`;
-  const nowIso = new Date().toISOString();
-  const d = parseUtcToLocal(nowIso);
+    const clientId = `temp_${Date.now()}`;
+    const nowIso = new Date().toISOString();
+    const d = parseUtcToLocal(nowIso);
 
-  // 1) Optimistic 메시지 즉시 표시
-  const optimisticMsg = {
-    id: clientId,
-    clientId,
-    type: 'message',
-    isMe: true,
-    senderId: meIdRef.current != null ? Number(meIdRef.current) : null,
-    content: trimmed || null,
-    images: [...imgArr],
-    is_deleted: false,
-    createdAt: nowIso,
-    dateKey: getDateKey(d),
-    time: formatChatTime(nowIso),
-    parent_message_id: replyTo?.id ? String(replyTo.id) : null,
-    parent_content: replyTo?.content ?? null,
-    parent_sender_name: replyTo?.senderName ?? null,
-    isReadByOther: false,
-    isReadByMe: undefined,
-    isSending: true,
-    isFailed: false,
-    status: 'sending',
-  };
-  dispatch({ type: 'ADD_MESSAGE', payload: optimisticMsg });
+    // 1) Optimistic 메시지 즉시 표시
+    const optimisticMsg = {
+      id: clientId,
+      clientId,
+      type: 'message',
+      isMe: true,
+      senderId: meIdRef.current != null ? Number(meIdRef.current) : null,
+      content: trimmed || null,
+      images: [...imgArr],
+      is_deleted: false,
+      createdAt: nowIso,
+      dateKey: getDateKey(d),
+      time: formatChatTime(nowIso),
+      parent_message_id: replyTo?.id ? String(replyTo.id) : null,
+      parent_content: replyTo?.content ?? null,
+      parent_sender_name: replyTo?.senderName ?? null,
+      isReadByOther: false,
+      isReadByMe: undefined,
+      isSending: true,
+      isFailed: false,
+      status: 'sending',
+    };
+    dispatch({ type: 'ADD_MESSAGE', payload: optimisticMsg });
 
-  try {
-    // 2) FormData에 clientId 포함 (서버→소켓 매칭용)
-    const formData = new FormData();
-    if (trimmed) formData.append('content', trimmed);
-    imgArr.forEach((uri, i) => {
-      formData.append('images', { uri, type: 'image/jpeg', name: `image_${i}.jpg` });
-    });
-    formData.append('clientId', clientId);
-    if (replyTo?.id) formData.append('parent_message_id', String(replyTo.id));
-
-    const res = await config.api.sendMessage(roomId, formData);
-    const serverMsg = normalizeMessage(res, meIdRef.current);
-
-    // 3) 소켓으로 먼저 올 수 있으므로 5초 대기 후 교체
-    const timeoutId = setTimeout(() => {
-      dispatch({
-        type: 'REPLACE_TEMP_MESSAGE',
-        payload: { tempId: clientId, serverMessage: serverMsg },
+    try {
+      // 2) FormData에 clientId 포함 (서버→소켓 매칭용)
+      const formData = new FormData();
+      if (trimmed) formData.append('content', trimmed);
+      imgArr.forEach((uri, i) => {
+        formData.append('images', {
+          uri,
+          type: 'image/jpeg',
+          name: `image_${i}.jpg`,
+        });
       });
-      pendingClientIdTimeoutsRef.current.delete(clientId);
-    }, 5000);
+      formData.append('clientId', clientId);
+      if (replyTo?.id) formData.append('parent_message_id', String(replyTo.id));
 
-    pendingClientIdTimeoutsRef.current.set(clientId, timeoutId);
+      const res = await config.api.sendMessage(roomId, formData);
+      const serverMsg = normalizeMessage(res, meIdRef.current);
 
-  } catch (error) {
-    // 4) 실패 → failed 상태로 전환
-    dispatch({
-      type: 'UPDATE_MESSAGE',
-      payload: { id: clientId, updates: { isSending: false, isFailed: true, status: 'failed' } },
-    });
-  }
-}, [roomId]);
+      // 3) 소켓으로 먼저 올 수 있으므로 5초 대기 후 교체
+      const timeoutId = setTimeout(() => {
+        dispatch({
+          type: 'REPLACE_TEMP_MESSAGE',
+          payload: { tempId: clientId, serverMessage: serverMsg },
+        });
+        pendingClientIdTimeoutsRef.current.delete(clientId);
+      }, 5000);
+
+      pendingClientIdTimeoutsRef.current.set(clientId, timeoutId);
+    } catch (error) {
+      // 4) 실패 → failed 상태로 전환
+      dispatch({
+        type: 'UPDATE_MESSAGE',
+        payload: {
+          id: clientId,
+          updates: { isSending: false, isFailed: true, status: 'failed' },
+        },
+      });
+    }
+  },
+  [roomId],
+);
 ```
 
 ### 4-10. retryMessage — 원본 동작 보존 (같은 clientId 재사용)
+
 ```js
-const retryMessage = useCallback(async (failedMsg) => {
-  if (!roomId) return;
-  const clientId = String(failedMsg?.clientId ?? failedMsg?.id);
-  const text = String(failedMsg?.content ?? '').trim();
-  const images = Array.isArray(failedMsg?.images) ? failedMsg.images : [];
-  if (!text && images.length === 0) return;
+const retryMessage = useCallback(
+  async (failedMsg) => {
+    if (!roomId) return;
+    const clientId = String(failedMsg?.clientId ?? failedMsg?.id);
+    const text = String(failedMsg?.content ?? '').trim();
+    const images = Array.isArray(failedMsg?.images) ? failedMsg.images : [];
+    if (!text && images.length === 0) return;
 
-  // sending 상태로 복원
-  dispatch({
-    type: 'UPDATE_MESSAGE',
-    payload: { id: clientId, updates: { isSending: true, isFailed: false, status: 'sending' } },
-  });
-
-  try {
-    const formData = new FormData();
-    if (text) formData.append('content', text);
-    images.forEach((uri, i) => {
-      formData.append('images', { uri, type: 'image/jpeg', name: `image_${i}.jpg` });
-    });
-    formData.append('clientId', clientId);
-    if (failedMsg?.parent_message_id) {
-      formData.append('parent_message_id', String(failedMsg.parent_message_id));
-    }
-
-    const res = await config.api.sendMessage(roomId, formData);
-    const serverMsg = normalizeMessage(res, meIdRef.current);
-
-    const timeoutId = setTimeout(() => {
-      dispatch({
-        type: 'REPLACE_TEMP_MESSAGE',
-        payload: { tempId: clientId, serverMessage: serverMsg },
-      });
-      pendingClientIdTimeoutsRef.current.delete(clientId);
-    }, 5000);
-
-    pendingClientIdTimeoutsRef.current.set(clientId, timeoutId);
-  } catch {
+    // sending 상태로 복원
     dispatch({
       type: 'UPDATE_MESSAGE',
-      payload: { id: clientId, updates: { isSending: false, isFailed: true, status: 'failed' } },
+      payload: {
+        id: clientId,
+        updates: { isSending: true, isFailed: false, status: 'sending' },
+      },
     });
-  }
-}, [roomId]);
+
+    try {
+      const formData = new FormData();
+      if (text) formData.append('content', text);
+      images.forEach((uri, i) => {
+        formData.append('images', {
+          uri,
+          type: 'image/jpeg',
+          name: `image_${i}.jpg`,
+        });
+      });
+      formData.append('clientId', clientId);
+      if (failedMsg?.parent_message_id) {
+        formData.append(
+          'parent_message_id',
+          String(failedMsg.parent_message_id),
+        );
+      }
+
+      const res = await config.api.sendMessage(roomId, formData);
+      const serverMsg = normalizeMessage(res, meIdRef.current);
+
+      const timeoutId = setTimeout(() => {
+        dispatch({
+          type: 'REPLACE_TEMP_MESSAGE',
+          payload: { tempId: clientId, serverMessage: serverMsg },
+        });
+        pendingClientIdTimeoutsRef.current.delete(clientId);
+      }, 5000);
+
+      pendingClientIdTimeoutsRef.current.set(clientId, timeoutId);
+    } catch {
+      dispatch({
+        type: 'UPDATE_MESSAGE',
+        payload: {
+          id: clientId,
+          updates: { isSending: false, isFailed: true, status: 'failed' },
+        },
+      });
+    }
+  },
+  [roomId],
+);
 ```
 
 ### 4-11. deleteMessage — temp 방지 + Alert (원본 보존)
+
 ```js
 const deleteMessage = useCallback(async (messageId) => {
   if (String(messageId).startsWith('temp_')) return;
@@ -571,6 +627,7 @@ const deleteMessage = useCallback(async (messageId) => {
 ```
 
 ### 4-12. loadMore — oldestIdRef + prepend 방식 (원본 보존)
+
 ```js
 const loadMore = useCallback(async () => {
   if (!roomId || !hasMore || isLoadingMore) return;
@@ -579,7 +636,11 @@ const loadMore = useCallback(async () => {
   dispatch({ type: 'SET_LOADING_MORE', payload: true });
 
   try {
-    const res = await config.api.fetchMore(roomId, oldestIdRef.current, PAGE_SIZE);
+    const res = await config.api.fetchMore(
+      roomId,
+      oldestIdRef.current,
+      PAGE_SIZE,
+    );
     const msgs = res.messages;
 
     if (!msgs.length) {
@@ -589,8 +650,8 @@ const loadMore = useCallback(async () => {
     }
 
     const meId = meIdRef.current;
-    const mapped = msgs.map(m => normalizeMessage(m, meId));
-    const chronological = [...mapped].reverse();  // 서버 DESC → ASC
+    const mapped = msgs.map((m) => normalizeMessage(m, meId));
+    const chronological = [...mapped].reverse(); // 서버 DESC → ASC
 
     dispatch({
       type: 'ADD_MESSAGES_PREPEND',
@@ -598,7 +659,7 @@ const loadMore = useCallback(async () => {
     });
 
     // 가장 작은 ID 추적
-    const minId = Math.min(...mapped.map(m => Number(m.id)));
+    const minId = Math.min(...mapped.map((m) => Number(m.id)));
     if (minId && minId !== Infinity) oldestIdRef.current = minId.toString();
 
     dispatch({ type: 'SET_HAS_MORE', payload: Boolean(res.hasMore) });
@@ -615,38 +676,66 @@ const loadMore = useCallback(async () => {
 ## 5. useChat.js / useDMChat.js — 어댑터 (얇은 래퍼)
 
 ### 5-1. useChat.js
+
 ```js
 export default function useChat(roomId, socket) {
   const { refreshHasUnread } = useNotification();
   const [meId, setMeId] = useState(null);
 
   // meId는 첫 API 응답에서 추출 (room.user1_id/user2_id/other_user_id)
-  const apiAdapter = useMemo(() => ({
-    fetchMessages: async (roomId, limit, signal) => {
-      const res = await api.get(`/api/messages/rooms/${roomId}?limit=${limit}`, { signal });
-      const room = res.data?.room;
-      const otherId = room?.other_user_id;
-      const calculatedMeId = room?.user1_id === otherId ? room?.user2_id
-        : room?.user2_id === otherId ? room?.user1_id : null;
-      setMeId(calculatedMeId);
-      return { messages: res.data?.data || [], hasMore: Boolean(res.data?.hasMore), room };
-    },
-    fetchMore: async (roomId, beforeId, limit) => {
-      const res = await api.get(`/api/messages/rooms/${roomId}?before=${beforeId}&limit=${limit}`);
-      return { messages: res.data?.data || [], hasMore: Boolean(res.data?.hasMore) };
-    },
-    sendMessage: async (roomId, formData) => {
-      const res = await api.post(`/api/messages/rooms/${roomId}/messages`, formData, {
-        headers: { 'Content-Type': 'multipart/form-data' },
-      });
-      return res.data?.data;
-    },
-    deleteMessage: (id) => api.delete(`/api/messages/${id}`),
-    markRead: (roomId) => api.put(`/api/messages/rooms/${roomId}/read`),
-    markNotificationRead: () => api.post('/api/notifications/read-by-related', {
-      relatedType: 'message_room', relatedId: roomId,
-    }).catch(() => {}),
-  }), [roomId]);
+  const apiAdapter = useMemo(
+    () => ({
+      fetchMessages: async (roomId, limit, signal) => {
+        const res = await api.get(
+          `/api/messages/rooms/${roomId}?limit=${limit}`,
+          { signal },
+        );
+        const room = res.data?.room;
+        const otherId = room?.other_user_id;
+        const calculatedMeId =
+          room?.user1_id === otherId
+            ? room?.user2_id
+            : room?.user2_id === otherId
+              ? room?.user1_id
+              : null;
+        setMeId(calculatedMeId);
+        return {
+          messages: res.data?.data || [],
+          hasMore: Boolean(res.data?.hasMore),
+          room,
+        };
+      },
+      fetchMore: async (roomId, beforeId, limit) => {
+        const res = await api.get(
+          `/api/messages/rooms/${roomId}?before=${beforeId}&limit=${limit}`,
+        );
+        return {
+          messages: res.data?.data || [],
+          hasMore: Boolean(res.data?.hasMore),
+        };
+      },
+      sendMessage: async (roomId, formData) => {
+        const res = await api.post(
+          `/api/messages/rooms/${roomId}/messages`,
+          formData,
+          {
+            headers: { 'Content-Type': 'multipart/form-data' },
+          },
+        );
+        return res.data?.data;
+      },
+      deleteMessage: (id) => api.delete(`/api/messages/${id}`),
+      markRead: (roomId) => api.put(`/api/messages/rooms/${roomId}/read`),
+      markNotificationRead: () =>
+        api
+          .post('/api/notifications/read-by-related', {
+            relatedType: 'message_room',
+            relatedId: roomId,
+          })
+          .catch(() => {}),
+    }),
+    [roomId],
+  );
 
   return useChatCore({
     roomId,
@@ -660,38 +749,60 @@ export default function useChat(roomId, socket) {
 ```
 
 ### 5-2. useDMChat.js
+
 ```js
 export default function useDMChat(roomId, socket) {
   const { refreshHasUnread } = useNotification();
   const [meId, setMeId] = useState(null);
 
-  const apiAdapter = useMemo(() => ({
-    fetchMessages: async (roomId, limit, signal) => {
-      const [res, meRes] = await Promise.all([
-        api.get(`/api/dm/rooms/${roomId}?limit=${limit}`, { signal }),
-        api.get('/api/auth/me', { signal }),
-      ]);
-      const mePayload = meRes.data?.data;
-      const calculatedMeId = Number(mePayload?.id ?? mePayload?.userId);
-      if (!Number.isNaN(calculatedMeId)) setMeId(calculatedMeId);
-      return { messages: res.data?.data || [], hasMore: Boolean(res.data?.hasMore), room: res.data?.room };
-    },
-    fetchMore: async (roomId, beforeId, limit) => {
-      const res = await api.get(`/api/dm/rooms/${roomId}?before=${beforeId}&limit=${limit}`);
-      return { messages: res.data?.data || [], hasMore: Boolean(res.data?.hasMore) };
-    },
-    sendMessage: async (roomId, formData) => {
-      const res = await api.post(`/api/dm/rooms/${roomId}/messages`, formData, {
-        headers: { 'Content-Type': 'multipart/form-data' },
-      });
-      return res.data?.data;
-    },
-    deleteMessage: (id) => api.delete(`/api/dm/messages/${id}`),
-    markRead: (roomId) => api.put(`/api/dm/rooms/${roomId}/read`).catch(() => {}),
-    markNotificationRead: () => api.post('/api/notifications/read-by-related', {
-      relatedType: 'dm_room', relatedId: roomId,
-    }).catch(() => {}),
-  }), [roomId]);
+  const apiAdapter = useMemo(
+    () => ({
+      fetchMessages: async (roomId, limit, signal) => {
+        const [res, meRes] = await Promise.all([
+          api.get(`/api/dm/rooms/${roomId}?limit=${limit}`, { signal }),
+          api.get('/api/auth/me', { signal }),
+        ]);
+        const mePayload = meRes.data?.data;
+        const calculatedMeId = Number(mePayload?.id ?? mePayload?.userId);
+        if (!Number.isNaN(calculatedMeId)) setMeId(calculatedMeId);
+        return {
+          messages: res.data?.data || [],
+          hasMore: Boolean(res.data?.hasMore),
+          room: res.data?.room,
+        };
+      },
+      fetchMore: async (roomId, beforeId, limit) => {
+        const res = await api.get(
+          `/api/dm/rooms/${roomId}?before=${beforeId}&limit=${limit}`,
+        );
+        return {
+          messages: res.data?.data || [],
+          hasMore: Boolean(res.data?.hasMore),
+        };
+      },
+      sendMessage: async (roomId, formData) => {
+        const res = await api.post(
+          `/api/dm/rooms/${roomId}/messages`,
+          formData,
+          {
+            headers: { 'Content-Type': 'multipart/form-data' },
+          },
+        );
+        return res.data?.data;
+      },
+      deleteMessage: (id) => api.delete(`/api/dm/messages/${id}`),
+      markRead: (roomId) =>
+        api.put(`/api/dm/rooms/${roomId}/read`).catch(() => {}),
+      markNotificationRead: () =>
+        api
+          .post('/api/notifications/read-by-related', {
+            relatedType: 'dm_room',
+            relatedId: roomId,
+          })
+          .catch(() => {}),
+    }),
+    [roomId],
+  );
 
   return useChatCore({
     roomId,
@@ -709,6 +820,7 @@ export default function useDMChat(roomId, socket) {
 ## 6. useChatScroll.js — 스크롤 시스템 (원본 완전 이식)
 
 ### 6-1. 관리해야 할 ref (원본 전부 보존)
+
 ```js
 const listRef = useRef(null);
 const currentOffsetRef = useRef(0);
@@ -726,6 +838,7 @@ const keyboardTimeoutRef = useRef(null);
 ```
 
 ### 6-2. roomId 변경 시 ref 초기화 (원본 보존)
+
 ```js
 useEffect(() => {
   isLoadingMoreRef.current = false;
@@ -743,6 +856,7 @@ useEffect(() => {
 ```
 
 ### 6-3. 스크롤 이벤트 핸들러 (원본 보존)
+
 ```js
 const handleScroll = useCallback((e) => {
   const offsetY = e?.nativeEvent?.contentOffset?.y ?? 0;
@@ -765,6 +879,7 @@ const handleScroll = useCallback((e) => {
 ```
 
 ### 6-4. 새 메시지 자동 스크롤 (원본 보존)
+
 ```js
 // messages 변경 시 자동 스크롤 판단
 useEffect(() => {
@@ -786,6 +901,7 @@ useEffect(() => {
 ```
 
 ### 6-5. 키보드 이벤트 → 자동 스크롤 (원본 Chat.jsx 보존)
+
 ```js
 useEffect(() => {
   const show = Keyboard.addListener(
@@ -793,9 +909,12 @@ useEffect(() => {
     (e) => {
       setKeyboardHeight(e?.endCoordinates?.height ?? 0);
       if (messages?.length > 0 && isNearBottomRef.current) {
-        keyboardTimeoutRef.current = setTimeout(() => {
-          listRef.current?.scrollToEnd?.({ animated: true });
-        }, Platform.OS === 'ios' ? 100 : 200);
+        keyboardTimeoutRef.current = setTimeout(
+          () => {
+            listRef.current?.scrollToEnd?.({ animated: true });
+          },
+          Platform.OS === 'ios' ? 100 : 200,
+        );
       }
     },
   );
@@ -807,13 +926,15 @@ useEffect(() => {
     },
   );
   return () => {
-    show.remove(); hide.remove();
+    show.remove();
+    hide.remove();
     if (keyboardTimeoutRef.current) clearTimeout(keyboardTimeoutRef.current);
   };
 }, [messages?.length]);
 ```
 
 ### 6-6. 초기 앵커링 + opacity 제어 (원본 보존 — 스크롤 튐 방지의 핵심)
+
 ```js
 const [listShellVisible, setListShellVisible] = useState(false);
 
@@ -849,6 +970,7 @@ useEffect(() => {
 ```
 
 ### 6-7. 과거 로딩 (handleStartReached) — 오호출 방지 (원본 보존)
+
 ```js
 const handleStartReached = useCallback(() => {
   if (!loadOlderAllowedRef.current) return;
@@ -859,12 +981,13 @@ const handleStartReached = useCallback(() => {
   loadMore().finally(() => {
     setTimeout(() => {
       isLoadingMoreRef.current = false;
-    }, 500);  // 500ms 쿨다운
+    }, 500); // 500ms 쿨다운
   });
 }, [isLoading, isLoadingMore, loadMore]);
 ```
 
 ### 6-8. return
+
 ```js
 return {
   listRef,
@@ -884,6 +1007,7 @@ return {
 ## 7. normalizeMessage.js — 필드 완전 포함
 
 ### 7-1. 반드시 포함할 필드 (원본 기준)
+
 ```js
 return {
   id: String(m.id),
@@ -913,49 +1037,48 @@ return {
 ## 8. MessageList.jsx — FlashList 전체 튜닝 보존
 
 ### 8-1. 절대 생략하면 안 되는 props
+
 ```jsx
 <FlashList
   ref={listRef}
-  key={roomId}                                          // roomId 변경 시 리스트 리셋
+  key={roomId} // roomId 변경 시 리스트 리셋
   data={flatData}
-  extraData={messages.length}                           // 메시지 수 변경 감지
+  extraData={messages.length} // 메시지 수 변경 감지
   keyExtractor={keyExtractor}
   getItemType={getFlashListItemType}
   renderItem={renderItem}
-
   // ===== 성능 핵심 (원본 값 보존) =====
   estimatedItemSize={90}
   drawDistance={1000}
-  overrideItemLayout={overrideItemLayout}               // item별 정밀 높이
+  overrideItemLayout={overrideItemLayout} // item별 정밀 높이
   maxToRenderPerBatch={8}
   windowSize={7}
   initialNumToRender={20}
   removeClippedSubviews={true}
-  disableAutoLayout={true}                              // 안드로이드 레이아웃 안정화
-
+  disableAutoLayout={true} // 안드로이드 레이아웃 안정화
   // ===== 스크롤 안정화 핵심 (삭제 금지) =====
-  initialScrollIndex={initialScrollIndex}               // 맨 아래부터 시작
-  maintainVisibleContentPosition={{ minIndexForVisible: 0 }}  // 페이징 시 위치 고정
-
+  initialScrollIndex={initialScrollIndex} // 맨 아래부터 시작
+  maintainVisibleContentPosition={{ minIndexForVisible: 0 }} // 페이징 시 위치 고정
   // ===== 과거 로딩 =====
   onStartReached={handleStartReached}
   onStartReachedThreshold={0.01}
   ListHeaderComponent={isLoadingMore ? <Loading /> : null}
-
   // ===== 키보드 =====
   keyboardShouldPersistTaps="handled"
   keyboardDismissMode="on-drag"
-
   // ===== 기타 =====
   showsVerticalScrollIndicator={false}
   scrollEventThrottle={16}
   decelerationRate="normal"
-  onContentSizeChange={(_, h) => { contentHeightRef.current = h; }}
+  onContentSizeChange={(_, h) => {
+    contentHeightRef.current = h;
+  }}
   onScroll={handleScroll}
 />
 ```
 
 ### 8-2. overrideItemLayout — 원본의 정밀 추정 보존
+
 ```js
 const estimateRowHeight = useCallback((item, index, totalCount) => {
   if (!item || item.type === 'dateBanner') return 78;
@@ -966,7 +1089,9 @@ const estimateRowHeight = useCallback((item, index, totalCount) => {
   if (item.parent_content) h += 58;
   const n = Array.isArray(item.images) ? item.images.length : 0;
   if (n > 0) h += n * 204;
-  const hasText = Boolean((item.content && String(item.content).trim()) || item.is_deleted);
+  const hasText = Boolean(
+    (item.content && String(item.content).trim()) || item.is_deleted,
+  );
   if (hasText) h += 46;
   if (item.isFailed || item.status === 'failed') h += 6;
   if (index === totalCount - 1) h += 0;
@@ -975,6 +1100,7 @@ const estimateRowHeight = useCallback((item, index, totalCount) => {
 ```
 
 ### 8-3. MessageItem memo — 원본 수준의 비교 함수
+
 ```js
 export default React.memo(MessageItem, (prev, next) => {
   const a = prev.msg;
@@ -999,6 +1125,7 @@ export default React.memo(MessageItem, (prev, next) => {
 ## 9. ChatScreen.jsx — 공통 화면
 
 ### 9-1. 필수 포함 요소
+
 ```
 SafeAreaView
   ├─ SubHeader (headerConfig로 Chat/DM 분기)
@@ -1014,6 +1141,7 @@ SafeAreaView
 ```
 
 ### 9-2. KeyboardAvoidingView (필수)
+
 ```jsx
 <KeyboardAvoidingView
   style={{ flex: 1, backgroundColor: colors.background }}
@@ -1023,6 +1151,7 @@ SafeAreaView
 ```
 
 ### 9-3. 로딩 화면 (원본 보존)
+
 ```jsx
 if (isLoading && messages.length === 0) {
   return (
@@ -1037,6 +1166,7 @@ if (isLoading && messages.length === 0) {
 ```
 
 ### 9-4. opacity 제어 (원본 보존)
+
 ```jsx
 <View
   style={{ flex: 1, opacity: listShellVisible ? 1 : 0 }}
@@ -1047,6 +1177,7 @@ if (isLoading && messages.length === 0) {
 ```
 
 ### 9-5. flatData 생성 — withMessageGroupFlags 필수
+
 ```js
 const flatData = useMemo(
   () => injectDateBanners(withMessageGroupFlags(messages)),
@@ -1055,23 +1186,30 @@ const flatData = useMemo(
 ```
 
 ### 9-6. 답장 프리뷰 UI (원본 Chat.jsx 보존)
+
 ```jsx
-{replyToMessage && (
-  <TouchableOpacity onPress={() => setReplyToMessage(null)} style={chatStyles.replyPreviewContainer}>
-    <View style={chatStyles.replyPreviewMeta}>
-      <Text style={chatStyles.replyPreviewTitle}>
-        {replyToMessage.isMe ? '내' : '상대방에게'} 답장 중
-      </Text>
-      <Text style={chatStyles.replyPreviewContent} numberOfLines={1}>
-        {replyToMessage.content || '(이미지 메시지)'}
-      </Text>
-    </View>
-    <Ionicons name="close-circle" size={24} color={colors.textSecondary} />
-  </TouchableOpacity>
-)}
+{
+  replyToMessage && (
+    <TouchableOpacity
+      onPress={() => setReplyToMessage(null)}
+      style={chatStyles.replyPreviewContainer}
+    >
+      <View style={chatStyles.replyPreviewMeta}>
+        <Text style={chatStyles.replyPreviewTitle}>
+          {replyToMessage.isMe ? '내' : '상대방에게'} 답장 중
+        </Text>
+        <Text style={chatStyles.replyPreviewContent} numberOfLines={1}>
+          {replyToMessage.content || '(이미지 메시지)'}
+        </Text>
+      </View>
+      <Ionicons name="close-circle" size={24} color={colors.textSecondary} />
+    </TouchableOpacity>
+  );
+}
 ```
 
 ### 9-7. 토스트 UI (원본 Chat.jsx 보존)
+
 ```jsx
 {toastText && (
   <View pointerEvents="none" style={{ position: 'absolute', ... }}>
@@ -1083,6 +1221,7 @@ const flatData = useMemo(
 ```
 
 ### 9-8. 입력 paddingBottom (원본 보존)
+
 ```jsx
 <View style={{
   paddingBottom: keyboardHeight > 0 ? 0
@@ -1093,19 +1232,27 @@ const flatData = useMemo(
 ```
 
 ### 9-9. handlePressReplyTarget (원본 보존)
+
 ```js
-const handlePressReplyTarget = useCallback((parentMessageId) => {
-  const targetId = parentMessageId != null ? String(parentMessageId) : null;
-  if (!targetId) return;
-  const targetIndex = flatData.findIndex(
-    item => item?.type !== 'dateBanner' && String(item?.id) === targetId,
-  );
-  if (targetIndex < 0) {
-    showChatToast('상단으로 더 올려서 과거 메시지를 확인해 주세요');
-    return;
-  }
-  listRef.current?.scrollToIndex?.({ index: targetIndex, animated: true, viewPosition: 0.5 });
-}, [flatData, showChatToast]);
+const handlePressReplyTarget = useCallback(
+  (parentMessageId) => {
+    const targetId = parentMessageId != null ? String(parentMessageId) : null;
+    if (!targetId) return;
+    const targetIndex = flatData.findIndex(
+      (item) => item?.type !== 'dateBanner' && String(item?.id) === targetId,
+    );
+    if (targetIndex < 0) {
+      showChatToast('상단으로 더 올려서 과거 메시지를 확인해 주세요');
+      return;
+    }
+    listRef.current?.scrollToIndex?.({
+      index: targetIndex,
+      animated: true,
+      viewPosition: 0.5,
+    });
+  },
+  [flatData, showChatToast],
+);
 ```
 
 ---
@@ -1113,34 +1260,69 @@ const handlePressReplyTarget = useCallback((parentMessageId) => {
 ## 10. DMChatScreen.jsx — DM 전용
 
 ### 10-1. 헤더 (원본 완전 보존)
+
 ```jsx
-const titleElement = useMemo(() => (
-  <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1, marginLeft: 20, minWidth: 0 }}>
-    <View style={{ width: normalize(36), height: normalize(36), borderRadius: normalize(18),
-      backgroundColor: colors.primaryLight30, justifyContent: 'center', alignItems: 'center',
-      marginRight: normalize(10) }}>
-      <MessageTabIcon
-        width={normalize(22)} height={normalize(22)}
-        color={getFriendIconColorByIndex(friend.colorIndex ?? 0)}
-      />
-    </View>
-    <View style={{ flex: 1, minWidth: 0 }}>
-      <Text numberOfLines={1} style={{ fontSize: normalize(16), fontWeight: '700',
-        fontFamily: fonts.bold, color: colors.textPrimary }}>
-        {friendName}
-      </Text>
-      {friendSchool ? (
-        <Text numberOfLines={1} style={{ fontSize: normalize(11),
-          fontFamily: fonts.regular, color: colors.textSecondary }}>
-          {friendSchool}
+const titleElement = useMemo(
+  () => (
+    <View
+      style={{
+        flexDirection: 'row',
+        alignItems: 'center',
+        flex: 1,
+        marginLeft: 20,
+        minWidth: 0,
+      }}
+    >
+      <View
+        style={{
+          width: normalize(36),
+          height: normalize(36),
+          borderRadius: normalize(18),
+          backgroundColor: colors.primaryLight30,
+          justifyContent: 'center',
+          alignItems: 'center',
+          marginRight: normalize(10),
+        }}
+      >
+        <MessageTabIcon
+          width={normalize(22)}
+          height={normalize(22)}
+          color={getFriendIconColorByIndex(friend.colorIndex ?? 0)}
+        />
+      </View>
+      <View style={{ flex: 1, minWidth: 0 }}>
+        <Text
+          numberOfLines={1}
+          style={{
+            fontSize: normalize(16),
+            fontWeight: '700',
+            fontFamily: fonts.bold,
+            color: colors.textPrimary,
+          }}
+        >
+          {friendName}
         </Text>
-      ) : null}
+        {friendSchool ? (
+          <Text
+            numberOfLines={1}
+            style={{
+              fontSize: normalize(11),
+              fontFamily: fonts.regular,
+              color: colors.textSecondary,
+            }}
+          >
+            {friendSchool}
+          </Text>
+        ) : null}
+      </View>
     </View>
-  </View>
-), [normalize, friendName, friendSchool, friend.colorIndex]);
+  ),
+  [normalize, friendName, friendSchool, friend.colorIndex],
+);
 ```
 
 ### 10-2. DM 전용 props
+
 - `opponentName={friendName}` → MessageItem에 전달
 - `mainPlaceholder="메시지를 입력하세요"` → MessageInput에 전달
 - `chatInputStyles` → DM 전용 입력 스타일
@@ -1150,6 +1332,7 @@ const titleElement = useMemo(() => (
 ## 11. ChatRoomScreen.jsx — Chat 전용
 
 ### 11-1. 게시글 카드 (PostCard)
+
 - 원본 Chat.jsx의 게시글 로드 + 카드 UI를 `PostCard.jsx`로 분리
 - roomId 변경 시 게시글 재로드
 - 카드 클릭 → `navigation.navigate('BoardDetail', ...)`
@@ -1159,6 +1342,7 @@ const titleElement = useMemo(() => (
 ## 12. DateBanner.jsx — 날짜 포맷
 
 ### 12-1. 포맷 규칙 (chat.md 4-8)
+
 ```js
 function formatBannerDate(dateKey) {
   // dateKey: "2026-3-31" 형식
@@ -1179,24 +1363,28 @@ function formatBannerDate(dateKey) {
 ## 13. 오류 최소화 전략
 
 ### 13-1. 원본에서 확인된 위험 패턴 & 수정 방향
-| 위험 패턴 | 위치 | 수정 방향 |
-|---|---|---|
-| `useMemo` 안 `setTimeout(() => setChatData(...))` | useChat/useDMChat | `useEffect` + `dispatch({ type: 'TRIM_MESSAGES' })` |
-| `setChatData` 연속 호출 (배치 불보장) | 소켓/폴링 핸들러 | 단일 `dispatch`로 통합 |
-| `abortController` 없는 fetch | 초기 로딩 | `AbortController` 필수 적용 |
-| unmount 후 setState | 소켓 핸들러 | `isMounted` 체크 + `useReducer` (setState 대신) |
-| `String(roomId) === String(roomId)` 의미 없는 비교 | useDMChat 초기 로딩 | 제거 |
+
+| 위험 패턴                                          | 위치                | 수정 방향                                           |
+| -------------------------------------------------- | ------------------- | --------------------------------------------------- |
+| `useMemo` 안 `setTimeout(() => setChatData(...))`  | useChat/useDMChat   | `useEffect` + `dispatch({ type: 'TRIM_MESSAGES' })` |
+| `setChatData` 연속 호출 (배치 불보장)              | 소켓/폴링 핸들러    | 단일 `dispatch`로 통합                              |
+| `abortController` 없는 fetch                       | 초기 로딩           | `AbortController` 필수 적용                         |
+| unmount 후 setState                                | 소켓 핸들러         | `isMounted` 체크 + `useReducer` (setState 대신)     |
+| `String(roomId) === String(roomId)` 의미 없는 비교 | useDMChat 초기 로딩 | 제거                                                |
 
 ### 13-2. 테스트 시나리오 (Phase별 검증)
-| Phase | 검증 항목 |
-|---|---|
+
+| Phase        | 검증 항목                                      |
+| ------------ | ---------------------------------------------- |
 | Phase 1 완료 | 채팅방 진입 → 메시지 로드 → 전송 → 수신 → 삭제 |
-| Phase 2 완료 | 원본 훅 축소 후 동일 동작 확인 |
+| Phase 2 완료 | 원본 훅 축소 후 동일 동작 확인                 |
 | Phase 3 완료 | 스크롤 튐 없음, 페이징 시 위치 고정, 키보드 UX |
-| Phase 4 완료 | Chat.jsx/DMChat.jsx 껍데기화 후 전체 동작 |
+| Phase 4 완료 | Chat.jsx/DMChat.jsx 껍데기화 후 전체 동작      |
 
 ### 13-3. import 경로 주의
+
 새 구조(`chat/hooks/`, `chat/screens/`)에서 기존 유틸/컴포넌트 참조 시:
+
 ```
 chat/hooks/      → ../../../../utils/api (4단계 위)
 chat/screens/    → ../../../../styles/colors (4단계 위)

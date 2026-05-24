@@ -1,5 +1,14 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, ScrollView, KeyboardAvoidingView, Platform, Keyboard, TouchableWithoutFeedback } from 'react-native';
+import {
+  View,
+  Text,
+  TextInput,
+  ScrollView,
+  KeyboardAvoidingView,
+  Platform,
+  Keyboard,
+  TouchableWithoutFeedback,
+} from 'react-native';
 import { colors } from '../../../styles/colors';
 
 // 증명서 제출 완료 단계: 보관함 URL/접수번호 입력 화면

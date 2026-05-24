@@ -61,7 +61,9 @@ export function getTestReturnedMailNotification() {
 export function mergeTestReturnedMailNotification(items) {
   const mock = getTestReturnedMailNotification();
   if (!mock) return items;
-  const hasMock = items.some((n) => String(n.id) === TEST_RETURNED_NOTIFICATION_ID);
+  const hasMock = items.some(
+    (n) => String(n.id) === TEST_RETURNED_NOTIFICATION_ID,
+  );
   if (hasMock) return items;
   return [mock, ...items];
 }
@@ -88,12 +90,18 @@ export function isPersonalMailReturned(mailOrRaw) {
 export function isMailReturnedNotification(n) {
   if (!n) return false;
   if (n.isReturned || n.is_returned) return true;
-  if (n.type === 'mail_returned' || n.relatedType === 'personal_mail_returned') {
+  if (
+    n.type === 'mail_returned' ||
+    n.relatedType === 'personal_mail_returned'
+  ) {
     return true;
   }
   if (PERSONAL_MAIL_TEST_IMMEDIATE_RETURN) {
     if (String(n.id) === TEST_RETURNED_NOTIFICATION_ID) return true;
-    if (n.category === 'mail' && /반송/.test(`${n.title || ''}${n.content || ''}`)) {
+    if (
+      n.category === 'mail' &&
+      /반송/.test(`${n.title || ''}${n.content || ''}`)
+    ) {
       return true;
     }
   }
@@ -107,7 +115,10 @@ export function mapRetryApiToPrefill(data) {
   const schoolId = data.school_id ?? data.schoolId;
   return {
     school: schoolId
-      ? { id: schoolId, name: String(data.school_name ?? data.schoolName ?? '').trim() }
+      ? {
+          id: schoolId,
+          name: String(data.school_name ?? data.schoolName ?? '').trim(),
+        }
       : null,
     grade: String(data.grade ?? ''),
     classNumber: String(data.class_num ?? data.classNumber ?? ''),
@@ -145,11 +156,18 @@ export function buildSendMailPrefill(source) {
         '',
     ),
     name: String(
-      meta.name ?? meta.recipient_name ?? m.recipient_name ?? source?.senderName ?? '',
+      meta.name ??
+        meta.recipient_name ??
+        m.recipient_name ??
+        source?.senderName ??
+        '',
     ),
     content: String(meta.content ?? m.content ?? source?.previewText ?? ''),
     recipientUsername: String(
-      meta.recipient_username ?? meta.recipientUsername ?? m.recipient_username ?? '',
+      meta.recipient_username ??
+        meta.recipientUsername ??
+        m.recipient_username ??
+        '',
     ),
   };
 }
@@ -163,7 +181,9 @@ export async function navigateToResendPersonalMail(navigation, source) {
       const res = await api.get(`/api/mails/personal/${mailId}/retry`);
       const data = res.data?.data;
       if (data) {
-        navigation?.navigate?.('SendMail', { prefill: mapRetryApiToPrefill(data) });
+        navigation?.navigate?.('SendMail', {
+          prefill: mapRetryApiToPrefill(data),
+        });
         return;
       }
     } catch {

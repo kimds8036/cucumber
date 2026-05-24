@@ -39,6 +39,7 @@
   - `[x]` 완료
 
 ## A. 핵심 키보드 로직 파일 (우선순위 최상)
+
 - [x] `frontend/context/KeyboardContext.jsx` (검토 완료: 이벤트/애니메이션 구조 유지)
 - [x] `frontend/view/src/chat/hooks/useChatScroll.js` (검토 완료: 키보드 스크롤 보정 로직 유지)
 - [x] `frontend/view/src/boardDetail.jsx` (검토 완료: 댓글 포커스/스크롤 보정 이미 적용됨)
@@ -48,6 +49,7 @@
 - [x] `frontend/components/CommentInput.jsx` (검토 완료: 상위 제어 구조 유지)
 
 ## B. 폼/입력 화면 (중요)
+
 - [x] `frontend/view/src/Login.jsx` (1차 적용 완료)
 - [x] `frontend/view/src/searchscreen.jsx` (1차 적용 완료)
 - [x] `frontend/view/src/SearchResult.jsx` (1차 적용 완료)
@@ -66,6 +68,7 @@
 - [x] `frontend/view/frame/SearchSubHeader.jsx` (누락 보정: 입력 컴포넌트 분석 반영)
 
 ## C. 보강 필요 후보 (키보드 보정 약한 화면)
+
 - [x] `frontend/components/timerFriendModals.jsx` (실제 수정 완료: 모달 KAV + dismiss 적용)
 - [x] `frontend/view/src/mailreply.jsx` (1차 적용 완료)
 - [x] `frontend/view/src/edittimetable.jsx` (1차 적용 완료)
@@ -78,6 +81,7 @@
 ## 4. 구현 전략 (단계별)
 
 ## 1단계: 공통 키보드 정책 정규화
+
 - 공통 규칙 문서화 및 코드 기준 통일:
   - 배경 탭 dismiss 정책
   - `keyboardShouldPersistTaps` 기본값 정책
@@ -86,25 +90,29 @@
 - `KeyboardContext`의 이벤트 선택(iOS will*, Android did*) 유지하되 예외 화면 규칙 명시
 
 ## 2단계: 채팅/댓글 고난도 화면 안정화
+
 - `useChatScroll`의 show/hide 지연값 및 스크롤 조건 재검증
 - `boardDetail` / `schoolMailDetail`의
   - reply 포커스 시점
   - `scrollToComment` 타이밍
   - 백업 포커스 로직
-  최적화
+    최적화
 - 목표: 입력 전환/대댓글 이동 시 키보드 미노출, 스크롤 튐, 입력창 가림 제거
 
 ## 3단계: 폼 화면 공통 패턴 정리
+
 - `KeyboardAvoidingView + ScrollView + dismiss` 패턴 일괄 점검
 - Android에서 `behavior="height"` vs `undefined` A/B 검증
 - `Search`, `BoardWrite`, `SendMail*` 등 입력량 많은 화면 우선 보정
 
 ## 4단계: 보강 후보 화면 처리
+
 - `mailreply.jsx`에 키보드 회피 구조 추가
 - 모달 입력(`edittimetable`, `timerModals`)의 작은 화면 가림 대응
 - `friendsscreen`, `notificationsettings` 입력 UX 최소 보정
 
 ## 5단계: 선택적 고급화 검토
+
 - 필요 시 `react-native-keyboard-controller` 도입 파일 제한 적용
   - 도입 조건: 현재 구조로 실기기 이슈 재현/해결이 어려운 화면
   - 도입 전/후 성능 및 동작 비교 기록 필수
@@ -114,6 +122,7 @@
 ## 5. 테스트 계획 (실기기 필수)
 
 ## 공통 시나리오 (모든 입력 화면)
+
 - 입력창 포커스 시 키보드 노출
 - 입력창이 키보드에 가려지지 않는지 확인
 - 배경 탭/뒤로가기/스크롤 시 키보드 정상 dismiss
@@ -121,16 +130,19 @@
 - 화면 회전(가능 시), 다크모드(디자인 변경 없이 동작만) 확인
 
 ## iOS 실기기 체크
+
 - `keyboardWillShow/Hide` 타이밍과 애니메이션 동기화
 - safe area + 헤더 offset 충돌 여부
 - multiline 입력창 높이 증가 시 하단 가림 여부
 
 ## Android 실기기 체크
+
 - 키보드 종류(Gboard/삼성키보드)별 레이아웃 차이
 - `softwareKeyboardLayoutMode` 영향(`pan` 여부) 확인
 - 키보드 열림 시 탭/하단 요소 밀림 여부
 
 ## 고난도 화면 추가 체크
+
 - 채팅: 하단 고정 상태에서 메시지 입력/전송 연속 동작
 - 댓글: 특정 댓글 답글 포커스 시 해당 댓글로 정확히 이동
 - 검색: 포커스 이동(`SearchResult` -> `SearchScreen`) 시 키보드 상태 일관성
@@ -140,9 +152,9 @@
 ## 6. 산출물 계획
 
 - 코드 수정 PR(또는 커밋) 단위:
-  1) 공통 정책 + 핵심 화면
-  2) 일반 폼 화면
-  3) 보강 후보 화면
+  1. 공통 정책 + 핵심 화면
+  2. 일반 폼 화면
+  3. 보강 후보 화면
 - 문서:
   - 변경 전/후 이슈 목록
   - 플랫폼별 테스트 체크리스트 결과
@@ -168,4 +180,3 @@
   - 입력창 가림/스크롤 튐/포커스 실패 재현 불가
   - **디자인 변경 없음** 확인
 - 테스트 결과 문서화 완료
-

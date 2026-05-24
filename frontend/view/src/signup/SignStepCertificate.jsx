@@ -8,8 +8,8 @@ const SignStepCertificate = ({ styles }) => {
       <View style={styles.ageGateCard}>
         <Text style={styles.ageGateCardTitle}>졸업(예정)증명서 제출 안내</Text>
         <Text style={styles.ageGateCardDescription}>
-          학생증이 없는 학교 재학생은 네이버에서 재학 중인 학교의 졸업(예정)증명서를 발급받아
-          우리 회사 보관함으로 제출해주세요.
+          학생증이 없는 학교 재학생은 네이버에서 재학 중인 학교의
+          졸업(예정)증명서를 발급받아 우리 회사 보관함으로 제출해주세요.
         </Text>
       </View>
 

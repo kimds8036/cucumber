@@ -6,9 +6,13 @@ import { invalidateProfileCountsCache } from '../../../utils/profileCountsCache'
 
 function formatTimeAgo(createdAt) {
   if (!createdAt) return '';
-  let dateStr = typeof createdAt === 'string' ? createdAt.trim() : String(createdAt);
+  let dateStr =
+    typeof createdAt === 'string' ? createdAt.trim() : String(createdAt);
   if (!dateStr) return '';
-  if (/^\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}:\d{2}(\.\d+)?$/.test(dateStr) && !/[Z+-]/.test(dateStr)) {
+  if (
+    /^\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}:\d{2}(\.\d+)?$/.test(dateStr) &&
+    !/[Z+-]/.test(dateStr)
+  ) {
     dateStr = dateStr.replace(' ', 'T') + 'Z';
   }
   const date = new Date(dateStr);
@@ -92,7 +96,9 @@ export function useBoardDetail({
 
   const [post, setPost] = useState(() => {
     const fromParams = routePost != null;
-    const base = fromParams ? { ...emptyPostShell, ...routePost } : emptyPostShell;
+    const base = fromParams
+      ? { ...emptyPostShell, ...routePost }
+      : emptyPostShell;
     return {
       ...base,
       id: routePostId ?? routePost?.id ?? base.id ?? null,
@@ -107,9 +113,13 @@ export function useBoardDetail({
   });
   const [allComments, setAllComments] = useState([]);
   const [postLiked, setPostLiked] = useState(Boolean(routePost?.liked));
-  const [postScrapped, setPostScrapped] = useState(Boolean(routePost?.isScrapped));
+  const [postScrapped, setPostScrapped] = useState(
+    Boolean(routePost?.isScrapped),
+  );
   const [commentLikedState, setCommentLikedState] = useState({});
-  const [isMyPostFromApi, setIsMyPostFromApi] = useState(Boolean(routePost?.isMine));
+  const [isMyPostFromApi, setIsMyPostFromApi] = useState(
+    Boolean(routePost?.isMine),
+  );
   const [postAuthorId, setPostAuthorId] = useState(null);
   const [currentUserId, setCurrentUserId] = useState(null);
   const [deletedCommentIds, setDeletedCommentIds] = useState([]);
@@ -136,10 +146,14 @@ export function useBoardDetail({
         detailParams.viewerLat = c.latitude;
         detailParams.viewerLng = c.longitude;
       }
-      const postRes = await api.get(`/api/posts/${postId}`, { params: detailParams });
+      const postRes = await api.get(`/api/posts/${postId}`, {
+        params: detailParams,
+      });
       const data = postRes.data?.data;
       if (data) {
-        const imageUrls = Array.isArray(data.images) ? data.images.filter((u) => typeof u === 'string') : [];
+        const imageUrls = Array.isArray(data.images)
+          ? data.images.filter((u) => typeof u === 'string')
+          : [];
         setPost({
           id: data.id,
           author: '익명',
@@ -152,9 +166,11 @@ export function useBoardDetail({
           images: imageUrls,
           tags: normalizeTagsFromApi(data.tags),
           distanceKm:
-            typeof data.distanceKm === 'number' && !Number.isNaN(data.distanceKm)
+            typeof data.distanceKm === 'number' &&
+            !Number.isNaN(data.distanceKm)
               ? data.distanceKm
-              : typeof routePost?.distanceKm === 'number' && !Number.isNaN(routePost.distanceKm)
+              : typeof routePost?.distanceKm === 'number' &&
+                  !Number.isNaN(routePost.distanceKm)
                 ? routePost.distanceKm
                 : null,
         });
@@ -162,14 +178,17 @@ export function useBoardDetail({
         setPostScrapped(Boolean(data.isScrapped));
         if (data.isMine !== undefined) setIsMyPostFromApi(data.isMine);
         if (data.post_author_id != null) setPostAuthorId(data.post_author_id);
-        if (data.current_user_id != null) setCurrentUserId(data.current_user_id);
+        if (data.current_user_id != null)
+          setCurrentUserId(data.current_user_id);
       }
 
       const commentRes = await api.get(`/api/${postId}/comments`);
       const comments = commentRes.data?.data?.comments || [];
       const postAuthorIdForTree = postRes.data?.data?.post_author_id ?? null;
       const currentUserIdForTree = postRes.data?.data?.current_user_id ?? null;
-      setAllComments(buildTree(comments, postAuthorIdForTree, currentUserIdForTree));
+      setAllComments(
+        buildTree(comments, postAuthorIdForTree, currentUserIdForTree),
+      );
 
       try {
         await api.post('/api/notifications/read-by-related', {
@@ -182,7 +201,11 @@ export function useBoardDetail({
       }
     } catch (error) {
       console.error('게시글/댓글 로드 실패:', error);
-      Alert.alert('오류', error.response?.data?.message || '게시글을 불러오는 중 오류가 발생했습니다.');
+      Alert.alert(
+        '오류',
+        error.response?.data?.message ||
+          '게시글을 불러오는 중 오류가 발생했습니다.',
+      );
     } finally {
       setIsInitialLoading(false);
     }
@@ -224,7 +247,12 @@ export function useBoardDetail({
   useEffect(() => {
     if (isInitialLoading || !coords) return;
     patchPostDistance();
-  }, [isInitialLoading, coords?.latitude, coords?.longitude, patchPostDistance]);
+  }, [
+    isInitialLoading,
+    coords?.latitude,
+    coords?.longitude,
+    patchPostDistance,
+  ]);
 
   const startNoteToUser = useCallback(
     async (targetUserId, source) => {
@@ -250,11 +278,18 @@ export function useBoardDetail({
         }
         navigation.navigate('Chat', { roomId: room.id });
       } catch (error) {
-        console.error('[BoardDetail] 쪽지방 생성/조회 실패:', error?.response?.data || error);
-        Alert.alert('오류', error.response?.data?.message || '쪽지방을 여는 중 오류가 발생했습니다.');
+        console.error(
+          '[BoardDetail] 쪽지방 생성/조회 실패:',
+          error?.response?.data || error,
+        );
+        Alert.alert(
+          '오류',
+          error.response?.data?.message ||
+            '쪽지방을 여는 중 오류가 발생했습니다.',
+        );
       }
     },
-    [navigation, post?.id]
+    [navigation, post?.id],
   );
 
   const handleSharePost = useCallback(async () => {
@@ -287,7 +322,11 @@ export function useBoardDetail({
             ]);
           } catch (error) {
             console.error('게시글 삭제 오류:', error);
-            Alert.alert('오류', error.response?.data?.message || '게시글 삭제 중 오류가 발생했습니다.');
+            Alert.alert(
+              '오류',
+              error.response?.data?.message ||
+                '게시글 삭제 중 오류가 발생했습니다.',
+            );
           }
         },
       },
@@ -307,18 +346,24 @@ export function useBoardDetail({
               await api.delete(`/api/comments/${commentId}`);
               setDeletedCommentIds((prev) => [...prev, commentId]);
               setPost((prev) =>
-                prev ? { ...prev, comments: Math.max(0, (prev.comments || 0) - 1) } : prev
+                prev
+                  ? { ...prev, comments: Math.max(0, (prev.comments || 0) - 1) }
+                  : prev,
               );
               Alert.alert('삭제됨', '댓글이 삭제되었습니다.');
             } catch (error) {
               console.error('댓글 삭제 오류:', error);
-              Alert.alert('오류', error.response?.data?.message || '댓글 삭제 중 오류가 발생했습니다.');
+              Alert.alert(
+                '오류',
+                error.response?.data?.message ||
+                  '댓글 삭제 중 오류가 발생했습니다.',
+              );
             }
           },
         },
       ]);
     },
-    [onCloseMenu]
+    [onCloseMenu],
   );
 
   const handlePostLike = useCallback(async () => {
@@ -332,12 +377,19 @@ export function useBoardDetail({
               ...prev,
               likes: prev.likes + (isLiked ? 1 : -1),
             }
-          : prev
+          : prev,
       );
-      emitBoardPostLike?.(post.id, Boolean(isLiked), post.likes + (isLiked ? 1 : -1));
+      emitBoardPostLike?.(
+        post.id,
+        Boolean(isLiked),
+        post.likes + (isLiked ? 1 : -1),
+      );
     } catch (error) {
       console.error('게시글 좋아요 오류:', error);
-      Alert.alert('오류', error.response?.data?.message || '좋아요 처리 중 오류가 발생했습니다.');
+      Alert.alert(
+        '오류',
+        error.response?.data?.message || '좋아요 처리 중 오류가 발생했습니다.',
+      );
     }
   }, [emitBoardPostLike, post?.id, post?.likes]);
 
@@ -365,7 +417,10 @@ export function useBoardDetail({
     try {
       const res = await api.post(`/api/${commentId}/like`);
       const isLiked = res.data?.data?.isLiked;
-      setCommentLikedState((prev) => ({ ...prev, [commentId]: Boolean(isLiked) }));
+      setCommentLikedState((prev) => ({
+        ...prev,
+        [commentId]: Boolean(isLiked),
+      }));
       setAllComments((prev) =>
         prev.map((c) => {
           const updateNode = (node) => {
@@ -381,11 +436,15 @@ export function useBoardDetail({
             return node;
           };
           return updateNode(c);
-        })
+        }),
       );
     } catch (error) {
       console.error('댓글 좋아요 오류:', error);
-      Alert.alert('오류', error.response?.data?.message || '댓글 좋아요 처리 중 오류가 발생했습니다.');
+      Alert.alert(
+        '오류',
+        error.response?.data?.message ||
+          '댓글 좋아요 처리 중 오류가 발생했습니다.',
+      );
     }
   }, []);
 
@@ -422,7 +481,7 @@ export function useBoardDetail({
                 ...prev,
                 comments: prev.comments + 1,
               }
-            : prev
+            : prev,
         );
       }
       setBottomComment('');
@@ -431,7 +490,10 @@ export function useBoardDetail({
       setReplyToAuthorLabel('');
     } catch (error) {
       console.error('댓글 작성 오류:', error);
-      Alert.alert('오류', error.response?.data?.message || '댓글 작성 중 오류가 발생했습니다.');
+      Alert.alert(
+        '오류',
+        error.response?.data?.message || '댓글 작성 중 오류가 발생했습니다.',
+      );
     } finally {
       isSendingCommentRef.current = false;
       setIsSendingComment(false);
@@ -478,4 +540,3 @@ export function useBoardDetail({
     handleSharePost,
   };
 }
-

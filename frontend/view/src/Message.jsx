@@ -1,4 +1,10 @@
-import React, { useState, useMemo, useRef, useEffect, useCallback } from 'react';
+import React, {
+  useState,
+  useMemo,
+  useRef,
+  useEffect,
+  useCallback,
+} from 'react';
 import {
   View,
   Text,
@@ -56,9 +62,13 @@ function parseUtcToLocal(createdAt) {
 /** 게시판(boardAll)과 동일: 서버 created_at(UTC) → 방금/n분 전/…/월 일 */
 function formatTimeAgo(createdAt) {
   if (!createdAt) return '';
-  let dateStr = typeof createdAt === 'string' ? createdAt.trim() : String(createdAt);
+  let dateStr =
+    typeof createdAt === 'string' ? createdAt.trim() : String(createdAt);
   if (!dateStr) return '';
-  if (/^\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}:\d{2}(\.\d+)?$/.test(dateStr) && !/[Z+-]/.test(dateStr)) {
+  if (
+    /^\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}:\d{2}(\.\d+)?$/.test(dateStr) &&
+    !/[Z+-]/.test(dateStr)
+  ) {
     dateStr = dateStr.replace(' ', 'T') + 'Z';
   }
   const date = new Date(dateStr);
@@ -105,6 +115,60 @@ function extractMailListFromResponse(res) {
   return [];
 }
 
+async function fetchThreadLatestMail(mailId) {
+  if (!mailId) return null;
+  try {
+    const threadRes = await api.get(`/api/mails/personal/${mailId}/thread`);
+    const messages = threadRes?.data?.data?.messages;
+    if (!Array.isArray(messages) || messages.length === 0) return null;
+    return messages.reduce((best, msg) => {
+      const bestTime = parseUtcToLocal(best?.created_at)?.getTime() ?? 0;
+      const msgTime = parseUtcToLocal(msg?.created_at)?.getTime() ?? 0;
+      return msgTime >= bestTime ? msg : best;
+    });
+  } catch {
+    return null;
+  }
+}
+
+async function resolveLatestMailForThread(mail, meId) {
+  const hasReply = Boolean(mail?.has_reply ?? mail?.hasReply);
+  if (!hasReply) return mail;
+
+  const latestFromThread = await fetchThreadLatestMail(mail.id);
+  if (!latestFromThread) return mail;
+
+  const latestTime =
+    parseUtcToLocal(latestFromThread.created_at)?.getTime() ?? 0;
+  const currentTime = parseUtcToLocal(mail.created_at)?.getTime() ?? 0;
+  if (latestTime < currentTime) return mail;
+
+  return {
+    ...mail,
+    ...latestFromThread,
+    has_reply: latestFromThread.has_reply ?? mail.has_reply,
+    hasReply: latestFromThread.hasReply ?? mail.hasReply,
+    reply_to_my_sent:
+      latestFromThread.reply_to_my_sent ??
+      mail.reply_to_my_sent ??
+      latestFromThread.replyToMySent ??
+      mail.replyToMySent,
+    replyToMySent:
+      latestFromThread.replyToMySent ??
+      mail.replyToMySent ??
+      latestFromThread.reply_to_my_sent ??
+      mail.reply_to_my_sent,
+    sender_name: latestFromThread.sender_name ?? mail.sender_name,
+    recipient_name: latestFromThread.recipient_name ?? mail.recipient_name,
+    sender_color_id: latestFromThread.sender_color_id ?? mail.sender_color_id,
+    recipient_color_id:
+      latestFromThread.recipient_color_id ?? mail.recipient_color_id,
+    is_root_author_for_current_user:
+      latestFromThread.is_root_author_for_current_user ??
+      mail.is_root_author_for_current_user,
+  };
+}
+
 /** Text 줄박스는 fontSize보다 크므로(특히 Android includeFontPadding) 실제 목록과 맞는 줄 높이로 맞춤 */
 function messageListSkeletonLineHeight(normalize, fontSizeToken) {
   const base = normalize(Math.ceil(fontSizeToken * 1.42));
@@ -123,10 +187,7 @@ function MessageListSkeleton({ styles, normalize, rowCount = 9 }) {
         <View key={`msg-skel-${i}`} style={styles.listItem}>
           <View style={styles.listItemLeft}>
             <View
-              style={[
-                styles.profileCircle,
-                { backgroundColor: '#E8E8E8' },
-              ]}
+              style={[styles.profileCircle, { backgroundColor: '#E8E8E8' }]}
             />
             <View style={[styles.listItemBody, { justifyContent: 'center' }]}>
               <View
@@ -171,25 +232,29 @@ const SwipeableRow = ({ children, onDelete }) => {
   const [containerWidth, setContainerWidth] = useState(windowWidth);
   const translateX = useRef(new Animated.Value(0)).current;
   const openedRef = useRef(false);
-  const animateTo = useCallback((toValue) => {
-    translateX.stopAnimation((current) => {
-      if (Math.abs(current - toValue) < 0.5) {
-        openedRef.current = toValue === -60;
-        return;
-      }
-      Animated.spring(translateX, {
-        toValue,
-        useNativeDriver: true,
-        bounciness: 0,
-      }).start(() => {
-        openedRef.current = toValue === -60;
+  const animateTo = useCallback(
+    (toValue) => {
+      translateX.stopAnimation((current) => {
+        if (Math.abs(current - toValue) < 0.5) {
+          openedRef.current = toValue === -60;
+          return;
+        }
+        Animated.spring(translateX, {
+          toValue,
+          useNativeDriver: true,
+          bounciness: 0,
+        }).start(() => {
+          openedRef.current = toValue === -60;
+        });
       });
-    });
-  }, [translateX]);
+    },
+    [translateX],
+  );
 
   const panResponder = useRef(
     PanResponder.create({
-      onMoveShouldSetPanResponder: (_, g) => Math.abs(g.dx) > 5 && Math.abs(g.dy) < 20,
+      onMoveShouldSetPanResponder: (_, g) =>
+        Math.abs(g.dx) > 5 && Math.abs(g.dy) < 20,
       onPanResponderMove: (_, g) => {
         if (g.dx < 0) {
           const base = openedRef.current ? -60 : 0;
@@ -204,7 +269,7 @@ const SwipeableRow = ({ children, onDelete }) => {
           animateTo(0);
         }
       },
-    })
+    }),
   ).current;
 
   const closeSwipe = () => {
@@ -258,7 +323,10 @@ const SwipeableRow = ({ children, onDelete }) => {
 export function MessageContent({ navigation }) {
   const { width } = useWindowDimensions();
   const normalize = useMemo(() => getNormalize(width), [width]);
-  const styles = useMemo(() => createMessageStyles(width, normalize), [width, normalize]);
+  const styles = useMemo(
+    () => createMessageStyles(width, normalize),
+    [width, normalize],
+  );
   const roomMenuSheetStyles = useMemo(
     () => createMessageRoomMenuSheetStyles(normalize),
     [normalize],
@@ -291,7 +359,10 @@ export function MessageContent({ navigation }) {
     const { kind, item } = roomMenuTarget;
     if (kind === 'dm') {
       const colorIdx =
-        item.other_user_color_id ?? item.profileColorId ?? item.profileColorIndex ?? 0;
+        item.other_user_color_id ??
+        item.profileColorId ??
+        item.profileColorIndex ??
+        0;
       return {
         name: item.other_user_name || item.name || '친구',
         subtitle: item.other_user_school_name || '',
@@ -449,26 +520,23 @@ export function MessageContent({ navigation }) {
     });
     return items;
   }, [mails]);
-  const confirmDelete = useCallback(
-    ({ title, message, onConfirm }) => {
-      Alert.alert(
-        title,
-        message,
-        [
-          { text: '취소', style: 'cancel' },
-          {
-            text: '삭제',
-            style: 'destructive',
-            onPress: () => {
-              onConfirm?.();
-            },
+  const confirmDelete = useCallback(({ title, message, onConfirm }) => {
+    Alert.alert(
+      title,
+      message,
+      [
+        { text: '취소', style: 'cancel' },
+        {
+          text: '삭제',
+          style: 'destructive',
+          onPress: () => {
+            onConfirm?.();
           },
-        ],
-        { cancelable: true },
-      );
-    },
-    [],
-  );
+        },
+      ],
+      { cancelable: true },
+    );
+  }, []);
 
   const handleMessageTypeChange = (type) => {
     setMessageType(type);
@@ -485,14 +553,18 @@ export function MessageContent({ navigation }) {
     try {
       setLoadingNote(true);
       const [noteRes, dmRes] = await Promise.all([
-        api.get('/api/messages/rooms', { params: { page: 1, limit: 50 } }).catch((e) => {
-          console.error('채팅방 목록 조회 실패:', e);
-          return { data: {} };
-        }),
-        api.get('/api/dm/rooms', { params: { page: 1, limit: 50 } }).catch((e) => {
-          console.error('DM 목록 조회 실패:', e);
-          return { data: {} };
-        }),
+        api
+          .get('/api/messages/rooms', { params: { page: 1, limit: 50 } })
+          .catch((e) => {
+            console.error('채팅방 목록 조회 실패:', e);
+            return { data: {} };
+          }),
+        api
+          .get('/api/dm/rooms', { params: { page: 1, limit: 50 } })
+          .catch((e) => {
+            console.error('DM 목록 조회 실패:', e);
+            return { data: {} };
+          }),
       ]);
 
       const noteList = (noteRes.data?.data?.rooms ?? []).map((r, idx) => {
@@ -501,7 +573,11 @@ export function MessageContent({ navigation }) {
           type: 'note',
           id: r.id,
           profileColorIndex: idx,
-          profileColorId: r.other_user_color_id ?? r.profile_color_id ?? r.profileColorId ?? null,
+          profileColorId:
+            r.other_user_color_id ??
+            r.profile_color_id ??
+            r.profileColorId ??
+            null,
           name: '익명',
           content: r.last_message || r.post_content || '',
           time: formatListTime(at),
@@ -518,7 +594,11 @@ export function MessageContent({ navigation }) {
           type: 'dm',
           id: r.id,
           profileColorIndex: idx,
-          profileColorId: r.other_user_color_id ?? r.profile_color_id ?? r.profileColorId ?? null,
+          profileColorId:
+            r.other_user_color_id ??
+            r.profile_color_id ??
+            r.profileColorId ??
+            null,
           name: r.other_user_name || '친구',
           content: r.last_message || '',
           time: formatListTime(at),
@@ -531,12 +611,168 @@ export function MessageContent({ navigation }) {
         };
       });
 
-      const merged = [...noteList, ...dmList].sort((a, b) => b.sortTime - a.sortTime);
+      const merged = [...noteList, ...dmList].sort(
+        (a, b) => b.sortTime - a.sortTime,
+      );
       setNoteRooms(merged);
     } catch (error) {
       console.error('쪽지 목록 조회 실패:', error);
     } finally {
       setLoadingNote(false);
+    }
+  }, []);
+
+  const fetchMails = useCallback(async () => {
+    try {
+      setLoadingMail(true);
+      const [receivedRes, sentRes, meRes] = await Promise.all([
+        api.get('/api/mails/personal/received', {
+          params: { page: 1, limit: 50 },
+        }),
+        api.get('/api/mails/personal/sent', { params: { page: 1, limit: 50 } }),
+        api.get('/api/auth/me'),
+      ]);
+      const received = extractMailListFromResponse(receivedRes);
+      const sent = extractMailListFromResponse(sentRes);
+      const me = meRes?.data?.data;
+      const meId = Number(me?.id != null ? me.id : me?.userId);
+      const candidates = [
+        ...received.map((m) => ({ ...m, _isReceived: true })),
+        ...sent.map((m) => ({ ...m, _isReceived: false })),
+      ];
+
+      if (candidates.length === 0) {
+        setMails([]);
+        return;
+      }
+
+      const getThreadGroupKey = (mail) => {
+        const roomKey = Number(
+          mail.room_id != null
+            ? mail.room_id
+            : mail.thread_key != null
+              ? mail.thread_key
+              : mail.root_mail_id != null
+                ? mail.root_mail_id
+                : mail.id,
+        );
+        return Number.isFinite(roomKey) ? roomKey : Number(mail.id);
+      };
+
+      const latestByRoom = new Map();
+      const firstByRoom = new Map();
+      candidates.forEach((candidate) => {
+        const key = getThreadGroupKey(candidate);
+
+        const prevLatest = latestByRoom.get(key);
+        if (!prevLatest) {
+          latestByRoom.set(key, candidate);
+        } else {
+          const prevTime =
+            parseUtcToLocal(prevLatest.created_at)?.getTime() ?? 0;
+          const nextTime =
+            parseUtcToLocal(candidate.created_at)?.getTime() ?? 0;
+          if (nextTime >= prevTime) latestByRoom.set(key, candidate);
+        }
+
+        const prevFirst = firstByRoom.get(key);
+        if (!prevFirst) {
+          firstByRoom.set(key, candidate);
+        } else {
+          const prevTime =
+            parseUtcToLocal(prevFirst.created_at)?.getTime() ?? 0;
+          const nextTime =
+            parseUtcToLocal(candidate.created_at)?.getTime() ?? 0;
+          if (nextTime < prevTime) firstByRoom.set(key, candidate);
+        }
+      });
+
+      const rows = await Promise.all(
+        Array.from(latestByRoom.values())
+          .sort((a, b) => {
+            const ad = parseUtcToLocal(a.created_at);
+            const bd = parseUtcToLocal(b.created_at);
+            if (!ad || !bd) return 0;
+            return bd - ad;
+          })
+          .map(async (mail, idx) => {
+            const resolvedMail = await resolveLatestMailForThread(mail, meId);
+            const roomKey = getThreadGroupKey(resolvedMail);
+            const firstMail = firstByRoom.get(roomKey) || resolvedMail;
+            const senderIdNum = Number(resolvedMail.sender_id);
+            const isReceived = Number.isFinite(meId)
+              ? !Number.isFinite(senderIdNum) || senderIdNum !== meId
+              : Boolean(resolvedMail._isReceived);
+            const rawMail = { ...resolvedMail };
+            delete rawMail._isReceived;
+            const rawFirstMail = { ...firstMail };
+            delete rawFirstMail._isReceived;
+
+            const replyToMySent =
+              isReceived &&
+              Boolean(rawMail.reply_to_my_sent ?? rawMail.replyToMySent);
+
+            const latestRecipientName =
+              rawMail.recipient_name != null &&
+              String(rawMail.recipient_name).trim()
+                ? String(rawMail.recipient_name).trim()
+                : '';
+            const firstRecipientName =
+              rawFirstMail.recipient_name != null &&
+              String(rawFirstMail.recipient_name).trim()
+                ? String(rawFirstMail.recipient_name).trim()
+                : '';
+            const firstSenderId = Number(rawFirstMail.sender_id);
+            const firstMailSentByMe = Number.isFinite(meId)
+              ? Number.isFinite(firstSenderId) && firstSenderId === meId
+              : !Boolean(firstMail._isReceived);
+            // 방 라벨은 최신 메시지와 무관하게 "첫 메일" 기준으로 고정한다.
+            const rowLabel = firstMailSentByMe
+              ? firstRecipientName || latestRecipientName || '익명'
+              : '익명';
+            const recipientIdNum = Number(rawMail.recipient_id);
+            const counterpartyUserId = isReceived
+              ? Number.isFinite(senderIdNum)
+                ? senderIdNum
+                : null
+              : Number.isFinite(recipientIdNum)
+                ? recipientIdNum
+                : null;
+            const isReturned = !isReceived && isPersonalMailReturned(rawMail);
+            return {
+              id: rawMail.id,
+              roomId: rawMail.room_id ?? null,
+              counterpartyUserId,
+              profileColorIndex: idx,
+              profileColorId:
+                rawMail.sender_color_id ??
+                rawMail.recipient_color_id ??
+                rawMail.profile_color_id ??
+                rawMail.profileColorId ??
+                null,
+              isReceived,
+              isReturned,
+              replyToMySent,
+              senderName: rowLabel,
+              directionText: rowLabel,
+              previewText: String(rawMail.content || '').slice(0, 40),
+              time: formatTimeAgo(rawMail.created_at || ''),
+              unreadCount: isReceived
+                ? String(rawMail.status || '').toLowerCase() === 'read' ||
+                  rawMail.is_read
+                  ? 0
+                  : 1
+                : 0,
+              raw: rawMail,
+            };
+          }),
+      );
+
+      setMails(rows);
+    } catch (error) {
+      console.error('개인 우편 목록 조회 실패:', error);
+    } finally {
+      setLoadingMail(false);
     }
   }, []);
 
@@ -595,6 +831,7 @@ export function MessageContent({ navigation }) {
           relatedId: payload?.relatedId,
         });
         fetchRooms();
+        fetchMails();
       }
     };
 
@@ -621,7 +858,7 @@ export function MessageContent({ navigation }) {
       socketManager.off('new_message', handleNewMessage);
       socketManager.off('notification', handleNotification);
     };
-  }, [fetchRooms]);
+  }, [fetchRooms, fetchMails]);
 
   // 메시지 목록 화면 진입/이탈 상태를 전역 알림 정책에 공유
   useEffect(() => {
@@ -630,141 +867,6 @@ export function MessageContent({ navigation }) {
       setIsMessageTab(false);
     };
   }, [setIsMessageTab]);
-
-  const fetchMails = useCallback(async () => {
-    try {
-      setLoadingMail(true);
-      const [receivedRes, sentRes, meRes] = await Promise.all([
-        api.get('/api/mails/personal/received', { params: { page: 1, limit: 50 } }),
-        api.get('/api/mails/personal/sent', { params: { page: 1, limit: 50 } }),
-        api.get('/api/auth/me'),
-      ]);
-      const received = extractMailListFromResponse(receivedRes);
-      const sent = extractMailListFromResponse(sentRes);
-      const me = meRes?.data?.data;
-      const meId = Number(me?.id != null ? me.id : me?.userId);
-      const candidates = [
-        ...received.map((m) => ({ ...m, _isReceived: true })),
-        ...sent.map((m) => ({ ...m, _isReceived: false })),
-      ];
-
-      if (candidates.length === 0) {
-        setMails([]);
-        return;
-      }
-
-      const getThreadGroupKey = (mail) => {
-        const roomKey = Number(
-          mail.room_id != null
-            ? mail.room_id
-            : (mail.thread_key != null
-                ? mail.thread_key
-                : (mail.root_mail_id != null ? mail.root_mail_id : mail.id))
-        );
-        return Number.isFinite(roomKey) ? roomKey : Number(mail.id);
-      };
-
-      const latestByRoom = new Map();
-      const firstByRoom = new Map();
-      candidates.forEach((candidate) => {
-        const key = getThreadGroupKey(candidate);
-
-        const prevLatest = latestByRoom.get(key);
-        if (!prevLatest) {
-          latestByRoom.set(key, candidate);
-        } else {
-          const prevTime = parseUtcToLocal(prevLatest.created_at)?.getTime() ?? 0;
-          const nextTime = parseUtcToLocal(candidate.created_at)?.getTime() ?? 0;
-          if (nextTime >= prevTime) latestByRoom.set(key, candidate);
-        }
-
-        const prevFirst = firstByRoom.get(key);
-        if (!prevFirst) {
-          firstByRoom.set(key, candidate);
-        } else {
-          const prevTime = parseUtcToLocal(prevFirst.created_at)?.getTime() ?? 0;
-          const nextTime = parseUtcToLocal(candidate.created_at)?.getTime() ?? 0;
-          if (nextTime < prevTime) firstByRoom.set(key, candidate);
-        }
-      });
-
-      const rows = Array.from(latestByRoom.values())
-        .sort((a, b) => {
-          const ad = parseUtcToLocal(a.created_at);
-          const bd = parseUtcToLocal(b.created_at);
-          if (!ad || !bd) return 0;
-          return bd - ad;
-        })
-        .map((mail, idx) => {
-          const roomKey = getThreadGroupKey(mail);
-          const firstMail = firstByRoom.get(roomKey) || mail;
-          const isReceived = Boolean(mail._isReceived);
-          const rawMail = { ...mail };
-          delete rawMail._isReceived;
-          const rawFirstMail = { ...firstMail };
-          delete rawFirstMail._isReceived;
-
-          const replyToMySent =
-            isReceived &&
-            Boolean(rawMail.reply_to_my_sent ?? rawMail.replyToMySent);
-
-          const latestRecipientName =
-            rawMail.recipient_name != null && String(rawMail.recipient_name).trim()
-              ? String(rawMail.recipient_name).trim()
-              : '';
-          const firstRecipientName =
-            rawFirstMail.recipient_name != null &&
-            String(rawFirstMail.recipient_name).trim()
-              ? String(rawFirstMail.recipient_name).trim()
-              : '';
-          const firstSenderId = Number(rawFirstMail.sender_id);
-          const firstMailSentByMe = Number.isFinite(meId)
-            ? Number.isFinite(firstSenderId) && firstSenderId === meId
-            : !Boolean(firstMail._isReceived);
-          // 방 라벨은 최신 메시지와 무관하게 "첫 메일" 기준으로 고정한다.
-          const rowLabel = firstMailSentByMe
-            ? (firstRecipientName || latestRecipientName || '익명')
-            : '익명';
-          const senderIdNum = Number(rawMail.sender_id);
-          const recipientIdNum = Number(rawMail.recipient_id);
-          const counterpartyUserId = isReceived
-            ? (Number.isFinite(senderIdNum) ? senderIdNum : null)
-            : (Number.isFinite(recipientIdNum) ? recipientIdNum : null);
-          const isReturned = !isReceived && isPersonalMailReturned(rawMail);
-          return {
-            id: rawMail.id,
-            roomId: rawMail.room_id ?? null,
-            counterpartyUserId,
-            profileColorIndex: idx,
-            profileColorId:
-              rawMail.sender_color_id ??
-              rawMail.recipient_color_id ??
-              rawMail.profile_color_id ??
-              rawMail.profileColorId ??
-              null,
-            isReceived,
-            isReturned,
-            replyToMySent,
-            senderName: rowLabel,
-            directionText: rowLabel,
-            previewText: String(rawMail.content || '').slice(0, 40),
-            time: formatTimeAgo(rawMail.created_at || ''),
-            unreadCount: isReceived
-              ? (String(rawMail.status || '').toLowerCase() === 'read' || rawMail.is_read
-                  ? 0
-                  : 1)
-              : 0,
-            raw: rawMail,
-          };
-        });
-
-      setMails(rows);
-    } catch (error) {
-      console.error('개인 우편 목록 조회 실패:', error);
-    } finally {
-      setLoadingMail(false);
-    }
-  }, []);
 
   // 개인 우편 요약 목록 불러오기 (처음 + 화면 복귀 시마다 새로고침)
   useEffect(() => {
@@ -796,7 +898,12 @@ export function MessageContent({ navigation }) {
             onPress={() => handleMessageTypeChange('note')}
             activeOpacity={1}
           >
-            <Text style={[styles.toggleOptionText, messageType === 'note' && styles.toggleOptionTextActive]}>
+            <Text
+              style={[
+                styles.toggleOptionText,
+                messageType === 'note' && styles.toggleOptionTextActive,
+              ]}
+            >
               쪽지
             </Text>
           </TouchableOpacity>
@@ -805,7 +912,12 @@ export function MessageContent({ navigation }) {
             onPress={() => handleMessageTypeChange('mail')}
             activeOpacity={1}
           >
-            <Text style={[styles.toggleOptionText, messageType === 'mail' && styles.toggleOptionTextActive]}>
+            <Text
+              style={[
+                styles.toggleOptionText,
+                messageType === 'mail' && styles.toggleOptionTextActive,
+              ]}
+            >
               개인 우편
             </Text>
           </TouchableOpacity>
@@ -821,35 +933,52 @@ export function MessageContent({ navigation }) {
               showsVerticalScrollIndicator={false}
             >
               {loadingNote && noteRooms.length === 0 ? (
-                <MessageListSkeleton styles={styles} normalize={normalize} rowCount={9} />
+                <MessageListSkeleton
+                  styles={styles}
+                  normalize={normalize}
+                  rowCount={9}
+                />
               ) : noteRooms.length === 0 ? (
-                <View style={{ paddingVertical: normalize(40), alignItems: 'center' }}>
-                  <Text style={{ fontFamily: fonts.regular, color: colors.textSecondary }}>
+                <View
+                  style={{
+                    paddingVertical: normalize(40),
+                    alignItems: 'center',
+                  }}
+                >
+                  <Text
+                    style={{
+                      fontFamily: fonts.regular,
+                      color: colors.textSecondary,
+                    }}
+                  >
                     아직 시작된 쪽지가 없습니다.
                   </Text>
                 </View>
               ) : (
-              noteRoomsWithAds.map((item) => {
-                if (item.type === 'chatAd') {
-                  return (
-                    <ChatAdPlaceholder
-                      key={item.id}
-                      styles={styles}
-                      normalize={normalize}
-                      item={{
-                        name: '광고',
-                        content: '스폰서 메시지 영역입니다.',
-                        time: 'AD',
-                        unreadCount: 0,
-                      }}
-                    />
-                  );
-                }
-                if (item.type === 'dm') {
-                  const colorIdx =
-                    item.other_user_color_id ?? item.profileColorId ?? item.profileColorIndex ?? 0;
-                  const iconColor = getProfileInnerColor(colorIdx);
-                  return (
+                noteRoomsWithAds.map((item) => {
+                  if (item.type === 'chatAd') {
+                    return (
+                      <ChatAdPlaceholder
+                        key={item.id}
+                        styles={styles}
+                        normalize={normalize}
+                        item={{
+                          name: '광고',
+                          content: '스폰서 메시지 영역입니다.',
+                          time: 'AD',
+                          unreadCount: 0,
+                        }}
+                      />
+                    );
+                  }
+                  if (item.type === 'dm') {
+                    const colorIdx =
+                      item.other_user_color_id ??
+                      item.profileColorId ??
+                      item.profileColorIndex ??
+                      0;
+                    const iconColor = getProfileInnerColor(colorIdx);
+                    return (
                       <TouchableOpacity
                         key={`dm-${item.id}`}
                         style={styles.listItem}
@@ -860,8 +989,8 @@ export function MessageContent({ navigation }) {
                             prev.map((r) =>
                               r.id === item.id && r.type === 'dm'
                                 ? { ...r, unreadCount: 0 }
-                                : r
-                            )
+                                : r,
+                            ),
                           );
                           navigation?.navigate('DMChat', {
                             roomId: item.id,
@@ -884,7 +1013,10 @@ export function MessageContent({ navigation }) {
                           </View>
                           <View style={styles.listItemBody}>
                             <Text style={styles.listItemName}>{item.name}</Text>
-                            <Text style={styles.listItemContent} numberOfLines={1}>
+                            <Text
+                              style={styles.listItemContent}
+                              numberOfLines={1}
+                            >
                               {item.content}
                             </Text>
                           </View>
@@ -893,16 +1025,20 @@ export function MessageContent({ navigation }) {
                           <Text style={styles.listItemTime}>{item.time}</Text>
                           {item.unreadCount > 0 ? (
                             <View style={styles.unreadBadge}>
-                              <Text style={styles.unreadBadgeText}>{item.unreadCount}</Text>
+                              <Text style={styles.unreadBadgeText}>
+                                {item.unreadCount}
+                              </Text>
                             </View>
                           ) : null}
                         </View>
                       </TouchableOpacity>
-                  );
-                }
+                    );
+                  }
 
-                const iconColor = getProfileInnerColor(item.profileColorId ?? item.profileColorIndex);
-                return (
+                  const iconColor = getProfileInnerColor(
+                    item.profileColorId ?? item.profileColorIndex,
+                  );
+                  return (
                     <TouchableOpacity
                       key={`note-${item.id}`}
                       style={styles.listItem}
@@ -911,8 +1047,10 @@ export function MessageContent({ navigation }) {
                       onPress={async () => {
                         setNoteRooms((prev) =>
                           prev.map((room) =>
-                            room.id === item.id ? { ...room, unreadCount: 0 } : room
-                          )
+                            room.id === item.id
+                              ? { ...room, unreadCount: 0 }
+                              : room,
+                          ),
                         );
                         navigation?.navigate('Chat', {
                           roomId: item.id,
@@ -929,7 +1067,10 @@ export function MessageContent({ navigation }) {
                         </View>
                         <View style={styles.listItemBody}>
                           <Text style={styles.listItemName}>{item.name}</Text>
-                          <Text style={styles.listItemContent} numberOfLines={1}>
+                          <Text
+                            style={styles.listItemContent}
+                            numberOfLines={1}
+                          >
                             {item.content}
                           </Text>
                         </View>
@@ -938,13 +1079,16 @@ export function MessageContent({ navigation }) {
                         <Text style={styles.listItemTime}>{item.time}</Text>
                         {item.unreadCount > 0 ? (
                           <View style={styles.unreadBadge}>
-                            <Text style={styles.unreadBadgeText}>{item.unreadCount}</Text>
+                            <Text style={styles.unreadBadgeText}>
+                              {item.unreadCount}
+                            </Text>
                           </View>
                         ) : null}
                       </View>
                     </TouchableOpacity>
-                );
-              }))}
+                  );
+                })
+              )}
             </ScrollView>
           </>
         ) : (
@@ -954,36 +1098,50 @@ export function MessageContent({ navigation }) {
               showsVerticalScrollIndicator={false}
             >
               {loadingMail && mails.length === 0 ? (
-                <MessageListSkeleton styles={styles} normalize={normalize} rowCount={9} />
+                <MessageListSkeleton
+                  styles={styles}
+                  normalize={normalize}
+                  rowCount={9}
+                />
               ) : mails.length === 0 ? (
-                <View style={{ paddingVertical: normalize(40), alignItems: 'center' }}>
-                  <Text style={{ fontFamily: fonts.regular, color: colors.textSecondary }}>
+                <View
+                  style={{
+                    paddingVertical: normalize(40),
+                    alignItems: 'center',
+                  }}
+                >
+                  <Text
+                    style={{
+                      fontFamily: fonts.regular,
+                      color: colors.textSecondary,
+                    }}
+                  >
                     아직 도착한 우편이 없습니다.
                   </Text>
                 </View>
               ) : (
-              mailsWithAds.map((item) => {
-                if (item.type === 'chatAd') {
-                  return (
-                    <ChatAdPlaceholder
-                      key={item.id}
-                      styles={styles}
-                      normalize={normalize}
-                      item={{
-                        name: '광고',
-                        content: '스폰서 메시지 영역입니다.',
-                        time: 'AD',
-                        unreadCount: 0,
-                      }}
-                    />
+                mailsWithAds.map((item) => {
+                  if (item.type === 'chatAd') {
+                    return (
+                      <ChatAdPlaceholder
+                        key={item.id}
+                        styles={styles}
+                        normalize={normalize}
+                        item={{
+                          name: '광고',
+                          content: '스폰서 메시지 영역입니다.',
+                          time: 'AD',
+                          unreadCount: 0,
+                        }}
+                      />
+                    );
+                  }
+                  const iconColor = getProfileInnerColor(
+                    item.profileColorId ?? item.profileColorIndex,
                   );
-                }
-                const iconColor = getProfileInnerColor(item.profileColorId ?? item.profileColorIndex);
-                const displayName =
-                  item.senderName ||
-                  item.directionText ||
-                  '익명';
-                return (
+                  const displayName =
+                    item.senderName || item.directionText || '익명';
+                  return (
                     <TouchableOpacity
                       key={`mail-${item.id}-${item.isReceived ? 'r' : 's'}`}
                       style={styles.listItem}
@@ -993,13 +1151,19 @@ export function MessageContent({ navigation }) {
                         const mailId = item.id;
                         const rawMail = item.raw || item;
                         const threadRootId =
-                          rawMail.root_mail_id ?? rawMail.thread_key ?? rawMail.id ?? mailId;
+                          rawMail.root_mail_id ??
+                          rawMail.thread_key ??
+                          rawMail.id ??
+                          mailId;
 
                         // 알림 센터를 거치지 않고도 personal_mail 스레드 관련 알림을 즉시 읽음 처리
                         try {
-                          await api.post('/api/notifications/read-personal-mail-thread', {
-                            threadRootId,
-                          });
+                          await api.post(
+                            '/api/notifications/read-personal-mail-thread',
+                            {
+                              threadRootId,
+                            },
+                          );
                         } catch {
                           // ignore
                         } finally {
@@ -1008,8 +1172,10 @@ export function MessageContent({ navigation }) {
                         // 1️⃣ Optimistic UI: 목록에서 즉시 빨간 숫자 제거 + 아이콘 open 상태로
                         setMails((prev) =>
                           prev.map((m) =>
-                            m.id === mailId ? { ...m, unreadCount: 0, is_read: true } : m
-                          )
+                            m.id === mailId
+                              ? { ...m, unreadCount: 0, is_read: true }
+                              : m,
+                          ),
                         );
 
                         // 2️⃣ 개인 우편 상세로 이동
@@ -1020,11 +1186,13 @@ export function MessageContent({ navigation }) {
                             is_returned: item.isReturned,
                             replyToMySent: Boolean(
                               item.replyToMySent ??
-                                item.raw?.reply_to_my_sent ??
-                                item.raw?.replyToMySent
+                              item.raw?.reply_to_my_sent ??
+                              item.raw?.replyToMySent,
                             ),
                             counterpartyUserId:
-                              item.raw?.sender_id ?? item.raw?.recipient_id ?? null,
+                              item.raw?.sender_id ??
+                              item.raw?.recipient_id ??
+                              null,
                           },
                         });
 
@@ -1047,11 +1215,23 @@ export function MessageContent({ navigation }) {
                           />
                         </View>
                         <View style={styles.listItemBody}>
-                          <View style={{ flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap' }}>
-                            <Text style={styles.listItemName}>{displayName}</Text>
+                          <View
+                            style={{
+                              flexDirection: 'row',
+                              alignItems: 'center',
+                              flexWrap: 'wrap',
+                            }}
+                          >
+                            <Text style={styles.listItemName}>
+                              {displayName}
+                            </Text>
                           </View>
-                          <Text style={styles.listItemContent} numberOfLines={1}>
-                            {item.previewText || (item.isReceived ? '받은 우편' : '보낸 우편')}
+                          <Text
+                            style={styles.listItemContent}
+                            numberOfLines={1}
+                          >
+                            {item.previewText ||
+                              (item.isReceived ? '받은 우편' : '보낸 우편')}
                           </Text>
                         </View>
                       </View>
@@ -1059,21 +1239,32 @@ export function MessageContent({ navigation }) {
                         <Text style={styles.listItemTime}>{item.time}</Text>
                         {item.unreadCount > 0 ? (
                           <View style={styles.unreadBadge}>
-                            <Text style={styles.unreadBadgeText}>{item.unreadCount}</Text>
+                            <Text style={styles.unreadBadgeText}>
+                              {item.unreadCount}
+                            </Text>
                           </View>
                         ) : item.isReturned ? (
-                          <Entypo name="cross" size={normalize(16)} color={colors.alert} />
+                          <Entypo
+                            name="cross"
+                            size={normalize(16)}
+                            color={colors.alert}
+                          />
                         ) : (
                           <FontAwesome6
-                            name={item.isReceived ? 'arrow-left-long' : 'arrow-right-long'}
+                            name={
+                              item.isReceived
+                                ? 'arrow-left-long'
+                                : 'arrow-right-long'
+                            }
                             size={normalize(14)}
                             color={colors.background2}
                           />
                         )}
                       </View>
                     </TouchableOpacity>
-                );
-              }))}
+                  );
+                })
+              )}
             </ScrollView>
 
             {/* 개인 우편함: 우측 하단 글쓰기(비행기) 플로팅 버튼 */}
@@ -1082,7 +1273,13 @@ export function MessageContent({ navigation }) {
               activeOpacity={0.8}
               onPress={() => navigation?.navigate('SendMail')}
             >
-              <Feather name="send" size={normalize(30)} top={normalize(2)} right={normalize(1)} color={colors.background} />
+              <Feather
+                name="send"
+                size={normalize(30)}
+                top={normalize(2)}
+                right={normalize(1)}
+                color={colors.background}
+              />
             </TouchableOpacity>
           </>
         )}
@@ -1109,7 +1306,9 @@ export function MessageContent({ navigation }) {
                   <ProfileIcon
                     width={normalize(45)}
                     height={normalize(45)}
-                    color={getProfileInnerColor(roomMenuSheetMeta.profileColorId)}
+                    color={getProfileInnerColor(
+                      roomMenuSheetMeta.profileColorId,
+                    )}
                   />
                 </View>
                 <View>
@@ -1117,7 +1316,10 @@ export function MessageContent({ navigation }) {
                     {roomMenuSheetMeta.name}
                   </Text>
                   {roomMenuSheetMeta.subtitle ? (
-                    <Text style={roomMenuSheetStyles.sheetSubtitle} numberOfLines={1}>
+                    <Text
+                      style={roomMenuSheetStyles.sheetSubtitle}
+                      numberOfLines={1}
+                    >
                       {roomMenuSheetMeta.subtitle}
                     </Text>
                   ) : null}
@@ -1139,7 +1341,11 @@ export function MessageContent({ navigation }) {
                     roomMenuSheetStyles.deleteActionIcon,
                   ]}
                 >
-                  <Ionicons name="trash-outline" size={20} color={colors.alert} />
+                  <Ionicons
+                    name="trash-outline"
+                    size={20}
+                    color={colors.alert}
+                  />
                 </View>
                 <View>
                   <Text style={roomMenuSheetStyles.sheetDeleteActionTitle}>
@@ -1159,7 +1365,11 @@ export function MessageContent({ navigation }) {
                     roomMenuSheetStyles.blockActionIcon,
                   ]}
                 >
-                  <Ionicons name="ban-outline" size={16} color={colors.textSecondary} />
+                  <Ionicons
+                    name="ban-outline"
+                    size={16}
+                    color={colors.textSecondary}
+                  />
                 </View>
                 <View>
                   <Text style={roomMenuSheetStyles.sheetBlockActionTitle}>

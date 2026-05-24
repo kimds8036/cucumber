@@ -39,8 +39,7 @@ export async function openNativeChatAndroid({
       title: String(title ?? ''),
       subtitle: String(subtitle ?? ''),
       chatChannel: String(chatChannel ?? ''),
-      myUserId:
-        myUserId != null && myUserId !== '' ? String(myUserId) : '',
+      myUserId: myUserId != null && myUserId !== '' ? String(myUserId) : '',
     });
     return true;
   } catch {

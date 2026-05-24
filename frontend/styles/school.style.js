@@ -476,32 +476,31 @@ export const createSchoolMailStyles = (width, normalize) => {
     },
     statRow: {
       flexDirection: 'row',
-        alignItems: 'center',
-        gap: normalize(6),
-      },
-      statItem: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: normalize(2),
-      },
-      statText: {
-        fontSize: normalize(fontSizes.lg),
-        fontFamily: fonts.regular,
-        color: colors.textSecondary,
-      },
+      alignItems: 'center',
+      gap: normalize(6),
+    },
+    statItem: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: normalize(2),
+    },
+    statText: {
+      fontSize: normalize(fontSizes.lg),
+      fontFamily: fonts.regular,
+      color: colors.textSecondary,
+    },
 
-      floatingButton: {
-        position: 'absolute',
-        right: normalize(20),
-        bottom: normalize(50),
-        width: normalize(50),
-        height: normalize(50),
-        borderRadius: normalize(28),
-        backgroundColor: colors.primary,
-        justifyContent: 'center',
-        alignItems: 'center',
-        ...shadow.lg,
-      },
-    });
+    floatingButton: {
+      position: 'absolute',
+      right: normalize(20),
+      bottom: normalize(50),
+      width: normalize(50),
+      height: normalize(50),
+      borderRadius: normalize(28),
+      backgroundColor: colors.primary,
+      justifyContent: 'center',
+      alignItems: 'center',
+      ...shadow.lg,
+    },
+  });
 };
-

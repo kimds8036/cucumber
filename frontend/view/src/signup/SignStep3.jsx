@@ -32,10 +32,7 @@ const SignStep3 = ({ styles, normalize, onNext, onManualInput }) => {
   };
 
   if (!permission || !permission.granted) {
-    return (
-      <View style={styles.content}>
-      </View>
-    );
+    return <View style={styles.content}></View>;
   }
 
   return (
@@ -57,7 +54,9 @@ const SignStep3 = ({ styles, normalize, onNext, onManualInput }) => {
             </View>
             <View style={styles.overlayBottom}>
               <Text style={styles.cameraGuideText}>
-                {isRecognizing ? '학생증을 인식중입니다...' : '학생증을 틀에 맞춰주세요'}
+                {isRecognizing
+                  ? '학생증을 인식중입니다...'
+                  : '학생증을 틀에 맞춰주세요'}
               </Text>
             </View>
           </View>

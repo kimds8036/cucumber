@@ -30,7 +30,6 @@ const estimateRowHeight = (item, index, totalCount) => {
   return Math.max(120, Math.min(h, 2400));
 };
 
-
 export default function MessageList({
   roomId,
   data,
@@ -47,10 +46,7 @@ export default function MessageList({
   onViewableItemsChanged,
 }) {
   const initialScrollIndex = Math.max(0, (data?.length ?? 1) - 1);
-  const n =
-    typeof normalize === 'function'
-      ? normalize
-      : (v) => v;
+  const n = typeof normalize === 'function' ? normalize : (v) => v;
   const renderItem = useCallback(
     ({ item }) => {
       if (item.type === 'dateBanner')

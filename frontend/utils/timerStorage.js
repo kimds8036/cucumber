@@ -129,8 +129,7 @@ export function normalizeSessionsArray(sessionsRaw, contextDayKey) {
 
     return {
       subjectId: s.subjectId != null ? Number(s.subjectId) : null,
-      subjectName:
-        s.subjectName != null ? String(s.subjectName).trim() : null,
+      subjectName: s.subjectName != null ? String(s.subjectName).trim() : null,
       subjectColor:
         s.subjectColor != null ? String(s.subjectColor).trim() : null,
       startedAtMs,
@@ -143,7 +142,8 @@ function normalizeLoadedPayload(data, contextDayKey) {
   if (!data || typeof data !== 'object') return null;
   return {
     sessions: normalizeSessionsArray(data.sessions, contextDayKey),
-    totalElapsedMs: typeof data.totalElapsedMs === 'number' ? data.totalElapsedMs : 0,
+    totalElapsedMs:
+      typeof data.totalElapsedMs === 'number' ? data.totalElapsedMs : 0,
     subjects: Array.isArray(data.subjects) ? data.subjects : [],
     tasks: Array.isArray(data.tasks) ? data.tasks : [],
   };

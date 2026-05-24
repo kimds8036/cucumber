@@ -41,50 +41,53 @@ export function FriendProvider({ children }) {
     });
   }, [hasUnreadFriendRequests, hasUnreadFriendRequestsForBell]);
 
-  const refreshFriendRequestBadge = useCallback(async (opts = {}) => {
-    const { updateBell = false, reason = 'unspecified' } = opts;
-    // 비로그인 상태에서는 호출 자체를 스킵 (토큰 없이 401 노이즈 방지)
-    if (!isLoggedIn) {
-      setHasUnreadFriendRequests(false);
-      if (updateBell) setHasUnreadFriendRequestsForBell(false);
-      console.log(FB, 'refresh SKIP (not logged in)', { reason, updateBell });
-      return;
-    }
-    console.log(FB, 'refresh START', {
-      reason,
-      updateBell,
-      at: new Date().toISOString(),
-    });
-    try {
-      const res = await api.get('/api/friends/requests/received');
-      const list = res.data?.data || [];
-      const hasPending = list.length > 0;
-      const preview = list.slice(0, 3).map((r) => ({
-        requestId: r.requestId,
-        fromUserId: r.userId,
-        name: r.name,
-      }));
-      console.log(FB, 'refresh RESULT (REST /requests/received)', {
+  const refreshFriendRequestBadge = useCallback(
+    async (opts = {}) => {
+      const { updateBell = false, reason = 'unspecified' } = opts;
+      // 비로그인 상태에서는 호출 자체를 스킵 (토큰 없이 401 노이즈 방지)
+      if (!isLoggedIn) {
+        setHasUnreadFriendRequests(false);
+        if (updateBell) setHasUnreadFriendRequestsForBell(false);
+        console.log(FB, 'refresh SKIP (not logged in)', { reason, updateBell });
+        return;
+      }
+      console.log(FB, 'refresh START', {
         reason,
         updateBell,
-        receivedCount: list.length,
-        hasPending,
-        preview,
+        at: new Date().toISOString(),
       });
-      setHasUnreadFriendRequests(hasPending);
-      if (updateBell) setHasUnreadFriendRequestsForBell(hasPending);
-      console.log(FB, 'refresh APPLY', {
-        reason,
-        setProfileDot: hasPending,
-        setBellDot: updateBell ? hasPending : '(bell unchanged)',
-      });
-    } catch (error) {
-      console.error('[FriendContext] 친구 요청 수 조회 실패:', error);
-      console.log(FB, 'refresh ERROR → dots OFF', { reason, updateBell });
-      setHasUnreadFriendRequests(false);
-      if (updateBell) setHasUnreadFriendRequestsForBell(false);
-    }
-  }, [isLoggedIn]);
+      try {
+        const res = await api.get('/api/friends/requests/received');
+        const list = res.data?.data || [];
+        const hasPending = list.length > 0;
+        const preview = list.slice(0, 3).map((r) => ({
+          requestId: r.requestId,
+          fromUserId: r.userId,
+          name: r.name,
+        }));
+        console.log(FB, 'refresh RESULT (REST /requests/received)', {
+          reason,
+          updateBell,
+          receivedCount: list.length,
+          hasPending,
+          preview,
+        });
+        setHasUnreadFriendRequests(hasPending);
+        if (updateBell) setHasUnreadFriendRequestsForBell(hasPending);
+        console.log(FB, 'refresh APPLY', {
+          reason,
+          setProfileDot: hasPending,
+          setBellDot: updateBell ? hasPending : '(bell unchanged)',
+        });
+      } catch (error) {
+        console.error('[FriendContext] 친구 요청 수 조회 실패:', error);
+        console.log(FB, 'refresh ERROR → dots OFF', { reason, updateBell });
+        setHasUnreadFriendRequests(false);
+        if (updateBell) setHasUnreadFriendRequestsForBell(false);
+      }
+    },
+    [isLoggedIn],
+  );
 
   /** 타이머 화면 진입 시, 놓친 이벤트 보완용: 현재 공부 중인 친구 목록을 REST로 조회 */
   const refreshStudyingFriends = useCallback(async () => {
@@ -113,7 +116,10 @@ export function FriendProvider({ children }) {
     const handleAppStateChange = (nextState) => {
       console.log(FB, 'AppState', { nextState, at: new Date().toISOString() });
       if (nextState === 'active') {
-        refreshFriendRequestBadge({ updateBell: true, reason: 'appstate_active' });
+        refreshFriendRequestBadge({
+          updateBell: true,
+          reason: 'appstate_active',
+        });
       }
     };
 
@@ -134,7 +140,10 @@ export function FriendProvider({ children }) {
         title: payload?.title,
         at: new Date().toISOString(),
       });
-      console.log(FB, 'SOCKET → set profileDot=true, bellDot=true (no REST here)');
+      console.log(
+        FB,
+        'SOCKET → set profileDot=true, bellDot=true (no REST here)',
+      );
       setHasUnreadFriendRequests(true);
       setHasUnreadFriendRequestsForBell(true);
     };
@@ -166,7 +175,10 @@ export function FriendProvider({ children }) {
 
   /** 알림 화면 진입 시 호출 → 헤더 벨 빨간점만 끔. 프로필카드 친구 아이콘은 그대로 */
   const markFriendRequestsSeenForBell = useCallback(() => {
-    console.log(FB, 'markFriendRequestsSeenForBell → bellDot=false (프로필 점은 유지)');
+    console.log(
+      FB,
+      'markFriendRequestsSeenForBell → bellDot=false (프로필 점은 유지)',
+    );
     setHasUnreadFriendRequestsForBell(false);
   }, []);
 

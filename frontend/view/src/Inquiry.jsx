@@ -36,13 +36,18 @@ const Inquiry = ({ navigation, route }) => {
   const scale = width / 375;
   const normalize = (size) => Math.round(scale * size);
 
-  const initialContactUsername = String(route?.params?.contactUsername || '').trim();
+  const initialContactUsername = String(
+    route?.params?.contactUsername || '',
+  ).trim();
 
   const [content, setContent] = useState('');
   const [contactUsername] = useState(initialContactUsername);
   const [contactEmail, setContactEmail] = useState('');
   const [submitting, setSubmitting] = useState(false);
-  const [resultModal, setResultModal] = useState({ visible: false, message: '' });
+  const [resultModal, setResultModal] = useState({
+    visible: false,
+    message: '',
+  });
   const [footerHeight, setFooterHeight] = useState(0);
 
   const appVersion =
@@ -83,7 +88,9 @@ const Inquiry = ({ navigation, route }) => {
           '문의가 접수되었습니다.\n답변은 입력하신 이메일로 안내드립니다.',
       });
     } catch (error) {
-      const msg = error?.response?.data?.message || '문의 전송에 실패했습니다. 잠시 후 다시 시도해주세요.';
+      const msg =
+        error?.response?.data?.message ||
+        '문의 전송에 실패했습니다. 잠시 후 다시 시도해주세요.';
       Alert.alert('오류', msg);
     } finally {
       setSubmitting(false);
@@ -101,8 +108,15 @@ const Inquiry = ({ navigation, route }) => {
     <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
       <View style={styles.headerSection}>
         <View style={styles.headerTop}>
-          <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
-            <Ionicons name="chevron-back" size={normalize(24)} color={colors.textPrimary} />
+          <TouchableOpacity
+            style={styles.backButton}
+            onPress={() => navigation.goBack()}
+          >
+            <Ionicons
+              name="chevron-back"
+              size={normalize(24)}
+              color={colors.textPrimary}
+            />
           </TouchableOpacity>
           <Text style={styles.headerTitle}>문의하기</Text>
         </View>
@@ -164,7 +178,10 @@ const Inquiry = ({ navigation, route }) => {
         onLayout={(e) => setFooterHeight(e.nativeEvent.layout.height)}
       >
         <TouchableOpacity
-          style={[styles.primaryButton, submitting && styles.primaryButtonDisabled]}
+          style={[
+            styles.primaryButton,
+            submitting && styles.primaryButtonDisabled,
+          ]}
           activeOpacity={0.9}
           onPress={handleSubmit}
           disabled={submitting}
@@ -185,7 +202,10 @@ const Inquiry = ({ navigation, route }) => {
           <View style={styles.resultCard}>
             <Text style={styles.resultTitle}>접수 완료</Text>
             <Text style={styles.resultBody}>{resultModal.message}</Text>
-            <TouchableOpacity style={styles.resultBtn} onPress={closeResultAndExit}>
+            <TouchableOpacity
+              style={styles.resultBtn}
+              onPress={closeResultAndExit}
+            >
               <Text style={styles.resultBtnText}>확인</Text>
             </TouchableOpacity>
           </View>

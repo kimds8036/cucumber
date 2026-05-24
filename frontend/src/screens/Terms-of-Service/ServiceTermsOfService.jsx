@@ -1,5 +1,11 @@
 import React, { useMemo } from 'react';
-import { Linking, ScrollView, Text, View, useWindowDimensions } from 'react-native';
+import {
+  Linking,
+  ScrollView,
+  Text,
+  View,
+  useWindowDimensions,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import SubHeader from '../../../view/frame/subHeader';
 import { getNormalize } from '../../../styles/mypage.style';
@@ -125,16 +131,25 @@ const ServiceTermsOfService = ({ navigation }) => {
           if (trimmed.startsWith('### ')) {
             return (
               <Text key={`s-${idx}`} style={styles.sectionTitle}>
-                {buildInlineNodes(trimmed.replace('### ', ''), sectionLinkStyle)}
+                {buildInlineNodes(
+                  trimmed.replace('### ', ''),
+                  sectionLinkStyle,
+                )}
               </Text>
             );
           }
           if (block.type === 'bullet' || block.type === 'bulletNested') {
             const isNested = block.type === 'bulletNested';
             return (
-              <Text key={`b-${idx}`} style={isNested ? styles.bulletNested : styles.bullet}>
+              <Text
+                key={`b-${idx}`}
+                style={isNested ? styles.bulletNested : styles.bullet}
+              >
                 {'• '}
-                {buildInlineNodes(trimmed, isNested ? nestedBulletLinkStyle : bulletLinkStyle)}
+                {buildInlineNodes(
+                  trimmed,
+                  isNested ? nestedBulletLinkStyle : bulletLinkStyle,
+                )}
               </Text>
             );
           }

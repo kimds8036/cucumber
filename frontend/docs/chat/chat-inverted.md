@@ -7,14 +7,14 @@
 
 ## 0. 공통 원칙
 
-- [x] **디자인 불변**  
-  - `message.style`, `chatStyles`, `board.style`, 색상/폰트/마진/패딩 등 **UI 관련 코드는 변경 금지**  
+- [x] **디자인 불변**
+  - `message.style`, `chatStyles`, `board.style`, 색상/폰트/마진/패딩 등 **UI 관련 코드는 변경 금지**
   - 변경 가능한 것: 데이터 정렬, 리스트 방향, 스크롤/페이징 로직, 리듀서/훅 내부 로직
 
-- [x] **정렬 기준 단일화**  
+- [x] **정렬 기준 단일화**
   - 모든 메시지는 내부적으로 **id (또는 createdAt)** 한 가지 기준으로만 정렬
 
-- [ ] **중복 ID 금지**  
+- [ ] **중복 ID 금지**
   - 하나의 `id`(또는 clientId/serverId)가 리스트에 **절대 두 번 이상 존재하지 않도록** 보장
 
 ---
@@ -23,11 +23,11 @@
 
 ### 1-1. `useChatCore` / `chatReducer`
 
-- [x] `messages`를 **[최신 → 과거]** 순서로 유지하는 `selector` 또는 변환 로직 추가  
+- [x] `messages`를 **[최신 → 과거]** 순서로 유지하는 `selector` 또는 변환 로직 추가
   - 예: `sortedMessages = [...Object.values(messagesById)].sort((a, b) => b.id - a.id)`
 
 - [x] `SET_MESSAGES`, `MERGE_POLL_MESSAGES`, `ADD_MESSAGE`, `ADD_MESSAGES_PREPEND / fetchMore` 등  
-  모든 진입 경로에서 **정렬 이후에만** `messageIds`를 확정하도록 수정
+      모든 진입 경로에서 **정렬 이후에만** `messageIds`를 확정하도록 수정
 
 - [x] ID 기준 정렬과 createdAt 기준 정렬이 섞이지 않도록, 기준을 **한 가지로 고정**
 
@@ -56,12 +56,12 @@
   ```
 
 - [x] `data` 배열은 항상 **[최신 → 과거]** 로 내려가도록 구성  
-  (`flatData` 생성 시 정렬 방향 고려)
+      (`flatData` 생성 시 정렬 방향 고려)
 
 ### 2-2. `onEndReached` 기반 페이징
 
-- [x] 기존 `onStartReached` 제거  
-- [x] `onEndReached={handleEndReached}` / `onEndReachedThreshold` 설정  
+- [x] 기존 `onStartReached` 제거
+- [x] `onEndReached={handleEndReached}` / `onEndReachedThreshold` 설정
   - Inverted 리스트에서 **위(과거)** 에 도달했을 때 `onEndReached`가 호출되도록 실제 동작 확인
 
 - [x] `handleEndReached` → `loadMore` 호출 경로로 연결
@@ -75,7 +75,7 @@
     - `scrollToIndex({ index, animated:false, viewPosition:0 })` 로 **동일 위치로 복원**
 
 - [x] FlashList의 `maintainVisibleContentPosition`는 inverted 조합에서 문제가 되면  
-  **끄는 것도 고려** (앵커를 우리가 직접 관리)
+      **끄는 것도 고려** (앵커를 우리가 직접 관리)
 
 ---
 
@@ -83,7 +83,7 @@
 
 ### 3-1. 초기 진입 앵커링
 
-- [x] 방 진입 후, 첫 로딩이 끝났을 때 **한 번만** `scrollToEnd(false)` 호출  
+- [x] 방 진입 후, 첫 로딩이 끝났을 때 **한 번만** `scrollToEnd(false)` 호출
   - Inverted 리스트에서 `scrollToEnd`가 실제로 “최신 메시지 위치”를 가리키는지 기기별로 확인
 
 - [x] roomId 변경 시:
@@ -117,7 +117,7 @@
 
 - [ ] Inverted 전환 후에도:
   - 이미지 로딩 전/후 스크롤이 튀지 않는지 확인  
-  (특히 상단 근처에서 페이징 직후 이미지가 로딩될 때)
+    (특히 상단 근처에서 페이징 직후 이미지가 로딩될 때)
 
 ### 4-2. 성능 옵션
 
@@ -136,28 +136,27 @@
 
 ### 5-1. 기능 테스트 시나리오
 
-- [ ] **최신 메시지 하단 고정**  
+- [ ] **최신 메시지 하단 고정**
   - 방 진입 → 스크롤 없이 → 항상 최신 메시지가 화면 하단에 위치
 
-- [ ] **과거 페이징**  
-  - 위로 천천히 스크롤 → 부드럽게 이전 메시지가 이어짐 (점프 없음)  
+- [ ] **과거 페이징**
+  - 위로 천천히 스크롤 → 부드럽게 이전 메시지가 이어짐 (점프 없음)
   - 매우 빠르게 위로 스크롤해도, 순서/위치가 틀어지지 않는지 확인
 
-- [ ] **낙관적 전송(텍스트/이미지)**  
-  - 보낸 직후 바로 말풍선이 추가되고,  
+- [ ] **낙관적 전송(텍스트/이미지)**
+  - 보낸 직후 바로 말풍선이 추가되고,
   - 서버 응답이 늦어도 순서/정렬이 유지되는지
 
-- [ ] **재진입/리로드**  
-  - 방을 나갔다 다시 들어와도  
-    - 내/상대 메시지 구분,  
-    - 순서,  
+- [ ] **재진입/리로드**
+  - 방을 나갔다 다시 들어와도
+    - 내/상대 메시지 구분,
+    - 순서,
     - 하단 앵커링이 그대로 유지되는지
 
 ### 5-2. 오류 검사
 
-- [ ] Metro/콘솔에 경고/에러 없는지 확인  
-- [x] `useChatCore`, `MessageList`, `useChatScroll` 등 수정 파일에 대한 ESLint/TS 오류 확인  
+- [ ] Metro/콘솔에 경고/에러 없는지 확인
+- [x] `useChatCore`, `MessageList`, `useChatScroll` 등 수정 파일에 대한 ESLint/TS 오류 확인
 - [ ] 실제 디바이스(Android/iOS)에서:
-  - 스크롤 버벅임/프레임 드랍이 없는지  
+  - 스크롤 버벅임/프레임 드랍이 없는지
   - “알 수 없는 점프”가 더 이상 발생하지 않는지 반복 검증
-

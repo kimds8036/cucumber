@@ -1,4 +1,10 @@
-import React, { createContext, useContext, useState, useCallback, useEffect } from 'react';
+import React, {
+  createContext,
+  useContext,
+  useState,
+  useCallback,
+  useEffect,
+} from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const AUTH_TOKEN_KEY = '@auth_token';

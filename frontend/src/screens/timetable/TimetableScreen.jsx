@@ -1,4 +1,10 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import AntDesign from '@expo/vector-icons/AntDesign';
 import Feather from '@expo/vector-icons/Feather';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -23,7 +29,10 @@ import { getNormalize } from '../../../styles/mypage.style';
 import { api } from '../../../utils/api';
 import AppPopupModal from '../../../components/common/AppPopupModal';
 import { getMaxPeriodFromTimetableKeys } from './periodUtils';
-import styles, { DAYS, createManualTimetableScreenStyles } from './timetable.style';
+import styles, {
+  DAYS,
+  createManualTimetableScreenStyles,
+} from './timetable.style';
 
 /** 기본으로 보이는 교시 수(행) */
 const MANUAL_TS_INITIAL_VISIBLE_PERIODS = 10;
@@ -32,8 +41,13 @@ const MANUAL_TS_MAX_PERIODS = 20;
 
 function computeVisiblePeriodCount(timetable) {
   const tt =
-    timetable && typeof timetable === 'object' && !Array.isArray(timetable) ? timetable : {};
-  const fromData = getMaxPeriodFromTimetableKeys(tt, MANUAL_TS_INITIAL_VISIBLE_PERIODS);
+    timetable && typeof timetable === 'object' && !Array.isArray(timetable)
+      ? timetable
+      : {};
+  const fromData = getMaxPeriodFromTimetableKeys(
+    tt,
+    MANUAL_TS_INITIAL_VISIBLE_PERIODS,
+  );
   return Math.min(
     MANUAL_TS_MAX_PERIODS,
     Math.max(MANUAL_TS_INITIAL_VISIBLE_PERIODS, fromData),
@@ -45,7 +59,10 @@ const COLORS = {
   textDisabled: colors.textLight20,
 };
 
-const normalizeSubject = (value) => String(value || '').trim().toLowerCase();
+const normalizeSubject = (value) =>
+  String(value || '')
+    .trim()
+    .toLowerCase();
 
 const getSubjectColorIndex = (subject) => {
   const key = normalizeSubject(subject);
@@ -75,12 +92,17 @@ function dedupeSubjectsFromTimetable(timetable) {
 export default function TimetableScreen({ navigation, route }) {
   const { width } = useWindowDimensions();
   const normalize = useMemo(() => getNormalize(width), [width]);
-  const mt = useMemo(() => createManualTimetableScreenStyles(normalize), [normalize]);
+  const mt = useMemo(
+    () => createManualTimetableScreenStyles(normalize),
+    [normalize],
+  );
 
   const [keyword, setKeyword] = useState('');
   const [timetable, setTimetable] = useState(() => {
     const raw = route?.params?.initialTimetable;
-    return raw && typeof raw === 'object' && !Array.isArray(raw) ? { ...raw } : {};
+    return raw && typeof raw === 'object' && !Array.isArray(raw)
+      ? { ...raw }
+      : {};
   });
   const [paintSubjectId, setPaintSubjectId] = useState(null);
   const [schoolGradeText, setSchoolGradeText] = useState('-');
@@ -96,7 +118,9 @@ export default function TimetableScreen({ navigation, route }) {
 
   const initialTimetableSnapshot = useMemo(() => {
     const raw = route?.params?.initialTimetable;
-    return raw && typeof raw === 'object' && !Array.isArray(raw) ? { ...raw } : {};
+    return raw && typeof raw === 'object' && !Array.isArray(raw)
+      ? { ...raw }
+      : {};
   }, [route?.params?.initialTimetable]);
 
   const routeTimetableSerial = useMemo(
@@ -126,7 +150,10 @@ export default function TimetableScreen({ navigation, route }) {
         me?.id != null ? String(me.id) : me?.username || me?.email || null;
       if (userScope) return `@mypage_timetable_cache_v1:${userScope}`;
     } catch (e) {
-      console.warn('[TimetableScreen] 시간표 캐시 키 계산 실패:', e?.message || e);
+      console.warn(
+        '[TimetableScreen] 시간표 캐시 키 계산 실패:',
+        e?.message || e,
+      );
     }
     return '@mypage_timetable_cache_v1';
   }, [route?.params?.timetableCacheKey]);
@@ -190,7 +217,8 @@ export default function TimetableScreen({ navigation, route }) {
     return map;
   }, [safeTimetable, colorSeed]);
 
-  const getCellContent = (day, period) => safeTimetable[`${day}-${period}`] || '';
+  const getCellContent = (day, period) =>
+    safeTimetable[`${day}-${period}`] || '';
 
   const getCellColor = (content) => {
     const key = normalizeSubject(content);
@@ -267,7 +295,9 @@ export default function TimetableScreen({ navigation, route }) {
           onPress: () => {
             setTimetable({ ...initialTimetableSnapshot });
             setPaintSubjectId(null);
-            setVisiblePeriodCount(computeVisiblePeriodCount(initialTimetableSnapshot));
+            setVisiblePeriodCount(
+              computeVisiblePeriodCount(initialTimetableSnapshot),
+            );
           },
         },
       ],
@@ -290,14 +320,20 @@ export default function TimetableScreen({ navigation, route }) {
     try {
       const { status } = await MediaLibrary.requestPermissionsAsync();
       if (status !== 'granted') {
-        Alert.alert('권한 필요', '사진 저장을 위해 갤러리 접근 권한이 필요해요');
+        Alert.alert(
+          '권한 필요',
+          '사진 저장을 위해 갤러리 접근 권한이 필요해요',
+        );
         return;
       }
       const uri = await captureTimetableRef.current.capture();
       await MediaLibrary.saveToLibraryAsync(uri);
       setShowSaveImageModal(true);
     } catch (e) {
-      Alert.alert('저장 실패', e?.message || '이미지 저장에 실패했어요. 다시 시도해 주세요');
+      Alert.alert(
+        '저장 실패',
+        e?.message || '이미지 저장에 실패했어요. 다시 시도해 주세요',
+      );
     }
   }, []);
 
@@ -312,7 +348,9 @@ export default function TimetableScreen({ navigation, route }) {
         const me = res.data?.data;
         const schoolName = me?.school?.name || '-';
         const gradeText = me?.grade ? `${me.grade}학년` : '';
-        setSchoolGradeText(gradeText ? `${schoolName} · ${gradeText}` : schoolName);
+        setSchoolGradeText(
+          gradeText ? `${schoolName} · ${gradeText}` : schoolName,
+        );
 
         const scope = route?.params?.timetableScope;
         if (scope == null) {
@@ -359,7 +397,8 @@ export default function TimetableScreen({ navigation, route }) {
       >
         <View style={mt.manualTsPageBody}>
           <Text style={mt.manualTsHint}>
-          아래 목록에서 과목을 선택한 후 시간표 칸을 눌러 배치하세요. {'\n'}칸을 길게 누르면 제거됩니다.
+            아래 목록에서 과목을 선택한 후 시간표 칸을 눌러 배치하세요. {'\n'}
+            칸을 길게 누르면 제거됩니다.
           </Text>
 
           <View style={mt.manualTsWrapper}>
@@ -397,8 +436,7 @@ export default function TimetableScreen({ navigation, route }) {
                         </View>
                         {DAYS.map((day) => {
                           const content = getCellContent(day, period);
-                          const paintReady =
-                            paintSubjectId != null && !content;
+                          const paintReady = paintSubjectId != null && !content;
                           const subjectLocHighlight =
                             paintSubjectId != null &&
                             Boolean(content) &&
@@ -407,7 +445,9 @@ export default function TimetableScreen({ navigation, route }) {
                             mt.manualTsClassCell,
                             content ? mt.manualTsClassCellFilled : null,
                             paintReady ? mt.manualTsClassCellPaintReady : null,
-                            content ? { backgroundColor: getCellColor(content) } : null,
+                            content
+                              ? { backgroundColor: getCellColor(content) }
+                              : null,
                             subjectLocHighlight
                               ? mt.manualTsClassCellSubjectHighlight
                               : null,
@@ -418,13 +458,17 @@ export default function TimetableScreen({ navigation, route }) {
                               activeOpacity={0.65}
                               style={cellStyle}
                               onPress={() => handleCellPress(day, period)}
-                              onLongPress={() => handleCellLongPress(day, period)}
+                              onLongPress={() =>
+                                handleCellLongPress(day, period)
+                              }
                               delayLongPress={380}
                             >
                               <Text
                                 style={[
                                   mt.manualTsClassCellText,
-                                  content ? mt.manualTsClassCellTextFilled : null,
+                                  content
+                                    ? mt.manualTsClassCellTextFilled
+                                    : null,
                                 ]}
                                 lineBreakMode="wordWrapping"
                                 lineBreakStrategyIOS="hangul-word"
@@ -447,7 +491,9 @@ export default function TimetableScreen({ navigation, route }) {
                             style={mt.manualTsRefreshButton}
                             onPress={handleAddPeriodRow}
                             activeOpacity={0.7}
-                            disabled={visiblePeriodCount >= MANUAL_TS_MAX_PERIODS}
+                            disabled={
+                              visiblePeriodCount >= MANUAL_TS_MAX_PERIODS
+                            }
                           >
                             <Feather
                               name="plus"
@@ -455,7 +501,9 @@ export default function TimetableScreen({ navigation, route }) {
                               color={COLORS.background2}
                               style={{
                                 opacity:
-                                  visiblePeriodCount >= MANUAL_TS_MAX_PERIODS ? 0.35 : 1,
+                                  visiblePeriodCount >= MANUAL_TS_MAX_PERIODS
+                                    ? 0.35
+                                    : 1,
                               }}
                             />
                           </TouchableOpacity>
@@ -465,8 +513,6 @@ export default function TimetableScreen({ navigation, route }) {
                   </ScrollView>
                 </ViewShot>
               </View>
-
-              
             </View>
           </View>
 
@@ -503,12 +549,21 @@ export default function TimetableScreen({ navigation, route }) {
                       paintSelected && mt.manualTsSubjectRowPaintSelected,
                     ]}
                     onPress={() =>
-                      setPaintSubjectId((prev) => (prev === subject.id ? null : subject.id))
+                      setPaintSubjectId((prev) =>
+                        prev === subject.id ? null : subject.id,
+                      )
                     }
                   >
-                    <View style={[mt.manualTsSubjectDot, { backgroundColor: dotColor }]} />
+                    <View
+                      style={[
+                        mt.manualTsSubjectDot,
+                        { backgroundColor: dotColor },
+                      ]}
+                    />
                     <View style={mt.manualTsSubjectBody}>
-                      <Text style={mt.manualTsSubjectTitle}>{subject.name}</Text>
+                      <Text style={mt.manualTsSubjectTitle}>
+                        {subject.name}
+                      </Text>
                     </View>
                   </TouchableOpacity>
                 );
@@ -575,9 +630,15 @@ export default function TimetableScreen({ navigation, route }) {
       >
         <Text style={mt.manualTsDoneModalTitle}>시간표가 추가되었습니다.</Text>
         <View style={mt.manualTsDoneModalHintWrap}>
-          <Text style={mt.manualTsDoneModalHintLine}>추후 시간표가 달라질 경우</Text>
+          <Text style={mt.manualTsDoneModalHintLine}>
+            추후 시간표가 달라질 경우
+          </Text>
           <View style={mt.manualTsDoneModalHintRow}>
-            <Feather name="edit" size={normalize(16)} color={COLORS.textSecondary} />
+            <Feather
+              name="edit"
+              size={normalize(16)}
+              color={COLORS.textSecondary}
+            />
             <Text style={mt.manualTsDoneModalHintAfterIcon}>
               버튼으로 편집할 수 있습니다.
             </Text>

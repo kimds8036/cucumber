@@ -16,7 +16,10 @@ import { colors, fonts } from '../../styles/colors';
 import { getNormalize } from '../../styles/frame.style';
 import { api } from '../../utils/api';
 import AppPopupModal from './AppPopupModal';
-import Reanimated, { useAnimatedStyle, useSharedValue } from 'react-native-reanimated';
+import Reanimated, {
+  useAnimatedStyle,
+  useSharedValue,
+} from 'react-native-reanimated';
 import { useKeyboardHandler } from 'react-native-keyboard-controller';
 
 const REASONS = [
@@ -36,7 +39,12 @@ const REASONS = [
  *   targetType    'post' | 'comment' | 'schoolMail' | 'schoolMailComment'
  *   targetId      number
  */
-export default function ReportModal({ visible, onClose, targetType, targetId }) {
+export default function ReportModal({
+  visible,
+  onClose,
+  targetType,
+  targetId,
+}) {
   const { width } = useWindowDimensions();
   const N = getNormalize(width);
 
@@ -66,7 +74,7 @@ export default function ReportModal({ visible, onClose, targetType, targetId }) 
         translateY.value = -e.height;
       },
     },
-    []
+    [],
   );
 
   const animStyle = useAnimatedStyle(() => ({
@@ -143,142 +151,155 @@ export default function ReportModal({ visible, onClose, targetType, targetId }) 
 
   return (
     <>
-    <Modal
-      visible={showReportSheet}
-      transparent
-      animationType="fade"
-      onRequestClose={handleClose}
-    >
-      <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
-        <View style={s.root}>
-          {/* 배경 딤 */}
-          <TouchableOpacity style={s.backdrop} onPress={handleClose} activeOpacity={1} />
+      <Modal
+        visible={showReportSheet}
+        transparent
+        animationType="fade"
+        onRequestClose={handleClose}
+      >
+        <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+          <View style={s.root}>
+            {/* 배경 딤 */}
+            <TouchableOpacity
+              style={s.backdrop}
+              onPress={handleClose}
+              activeOpacity={1}
+            />
 
-          <Reanimated.View style={[s.sheetWrapper, animStyle]}>
-            <View style={s.sheet}>
-              {/* 헤더 */}
-              <View style={s.header}>
-                <Text style={s.title}>신고하기</Text>
-                <TouchableOpacity onPress={handleClose} hitSlop={12} disabled={loading}>
-                  <Text style={s.closeBtn}>✕</Text>
-                </TouchableOpacity>
-              </View>
-
-              <ScrollView
-                contentContainerStyle={s.body}
-                keyboardShouldPersistTaps="handled"
-                showsVerticalScrollIndicator={false}
-              >
-                {/* 안내 문구 */}
-                <Text style={s.guide}>
-                  신고 사유를 선택하고 필요한 내용을 작성해 주세요.
-                </Text>
-
-                {/* 사유 칩 */}
-                <View style={s.chipRow}>
-                  {REASONS.map((r) => {
-                    const active = selectedReason === r.key;
-                    return (
-                      <TouchableOpacity
-                        key={r.key}
-                        style={[s.chip, active && s.chipActive]}
-                        onPress={() => setSelectedReason(r.key)}
-                        activeOpacity={0.75}
-                      >
-                        <Text style={[s.chipText, active && s.chipTextActive]}>
-                          {r.label}
-                        </Text>
-                      </TouchableOpacity>
-                    );
-                  })}
+            <Reanimated.View style={[s.sheetWrapper, animStyle]}>
+              <View style={s.sheet}>
+                {/* 헤더 */}
+                <View style={s.header}>
+                  <Text style={s.title}>신고하기</Text>
+                  <TouchableOpacity
+                    onPress={handleClose}
+                    hitSlop={12}
+                    disabled={loading}
+                  >
+                    <Text style={s.closeBtn}>✕</Text>
+                  </TouchableOpacity>
                 </View>
 
-                {/* 상세 입력 */}
-                <TextInput
-                  style={s.textInput}
-                  placeholder="상세 사유를 입력해 주세요 (선택)"
-                  placeholderTextColor={colors.textLight40}
-                  multiline
-                  numberOfLines={4}
-                  textAlignVertical="top"
-                  value={description}
-                  onChangeText={setDescription}
-                  maxLength={500}
-                />
-                <Text style={s.charCount}>{description.length} / 500</Text>
-              </ScrollView>
-
-              {/* 제출 버튼 */}
-              <View style={s.footer}>
-                <TouchableOpacity
-                  style={[s.submitBtn, !selectedReason && s.submitBtnDisabled]}
-                  onPress={handleSubmit}
-                  disabled={!selectedReason || loading}
-                  activeOpacity={0.85}
+                <ScrollView
+                  contentContainerStyle={s.body}
+                  keyboardShouldPersistTaps="handled"
+                  showsVerticalScrollIndicator={false}
                 >
-                  {loading ? (
-                    <ActivityIndicator color="#fff" size="small" />
-                  ) : (
-                    <Text style={s.submitText}>신고 접수</Text>
-                  )}
-                </TouchableOpacity>
-              </View>
-            </View>
-          </Reanimated.View>
-        </View>
-      </TouchableWithoutFeedback>
-    </Modal>
+                  {/* 안내 문구 */}
+                  <Text style={s.guide}>
+                    신고 사유를 선택하고 필요한 내용을 작성해 주세요.
+                  </Text>
 
-    <AppPopupModal
-      visible={Boolean(resultPopup)}
-      onClose={handleResultConfirm}
-    >
-      <Text
-        style={{
-          fontSize: 18,
-          color: colors.textPrimary,
-          fontWeight: '700',
-          textAlign: 'center',
-          marginBottom: 10,
-        }}
+                  {/* 사유 칩 */}
+                  <View style={s.chipRow}>
+                    {REASONS.map((r) => {
+                      const active = selectedReason === r.key;
+                      return (
+                        <TouchableOpacity
+                          key={r.key}
+                          style={[s.chip, active && s.chipActive]}
+                          onPress={() => setSelectedReason(r.key)}
+                          activeOpacity={0.75}
+                        >
+                          <Text
+                            style={[s.chipText, active && s.chipTextActive]}
+                          >
+                            {r.label}
+                          </Text>
+                        </TouchableOpacity>
+                      );
+                    })}
+                  </View>
+
+                  {/* 상세 입력 */}
+                  <TextInput
+                    style={s.textInput}
+                    placeholder="상세 사유를 입력해 주세요 (선택)"
+                    placeholderTextColor={colors.textLight40}
+                    multiline
+                    numberOfLines={4}
+                    textAlignVertical="top"
+                    value={description}
+                    onChangeText={setDescription}
+                    maxLength={500}
+                  />
+                  <Text style={s.charCount}>{description.length} / 500</Text>
+                </ScrollView>
+
+                {/* 제출 버튼 */}
+                <View style={s.footer}>
+                  <TouchableOpacity
+                    style={[
+                      s.submitBtn,
+                      !selectedReason && s.submitBtnDisabled,
+                    ]}
+                    onPress={handleSubmit}
+                    disabled={!selectedReason || loading}
+                    activeOpacity={0.85}
+                  >
+                    {loading ? (
+                      <ActivityIndicator color="#fff" size="small" />
+                    ) : (
+                      <Text style={s.submitText}>신고 접수</Text>
+                    )}
+                  </TouchableOpacity>
+                </View>
+              </View>
+            </Reanimated.View>
+          </View>
+        </TouchableWithoutFeedback>
+      </Modal>
+
+      <AppPopupModal
+        visible={Boolean(resultPopup)}
+        onClose={handleResultConfirm}
       >
-        {resultPopup?.title}
-      </Text>
-      {resultPopup?.message ? (
         <Text
           style={{
-            fontSize: 14,
-            color: colors.textSecondary,
-            textAlign: 'center',
-            lineHeight: 22,
-            marginBottom: 16,
-          }}
-        >
-          {resultPopup.message}
-        </Text>
-      ) : null}
-      <TouchableOpacity
-        style={{
-          height: 42,
-          borderRadius: 10,
-          backgroundColor: colors.primary,
-          alignItems: 'center',
-          justifyContent: 'center',
-        }}
-        onPress={handleResultConfirm}
-        activeOpacity={0.85}
-      >
-        <Text
-          style={{
-            fontSize: 14,
+            fontSize: 18,
+            color: colors.textPrimary,
             fontWeight: '700',
-            color: colors.textWhite,
+            textAlign: 'center',
+            marginBottom: 10,
           }}
         >
-          확인
+          {resultPopup?.title}
         </Text>
-      </TouchableOpacity>
-    </AppPopupModal>
+        {resultPopup?.message ? (
+          <Text
+            style={{
+              fontSize: 14,
+              color: colors.textSecondary,
+              textAlign: 'center',
+              lineHeight: 22,
+              marginBottom: 16,
+            }}
+          >
+            {resultPopup.message}
+          </Text>
+        ) : null}
+        <TouchableOpacity
+          style={{
+            height: 42,
+            borderRadius: 10,
+            backgroundColor: colors.primary,
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}
+          onPress={handleResultConfirm}
+          activeOpacity={0.85}
+        >
+          <Text
+            style={{
+              fontSize: 14,
+              fontWeight: '700',
+              color: colors.textWhite,
+            }}
+          >
+            확인
+          </Text>
+        </TouchableOpacity>
+      </AppPopupModal>
     </>
   );
 }

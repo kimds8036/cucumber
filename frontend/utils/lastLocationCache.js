@@ -9,7 +9,12 @@ export async function loadLastLocation() {
     const parsed = JSON.parse(raw);
     const lat = parsed?.latitude;
     const lng = parsed?.longitude;
-    if (typeof lat !== 'number' || typeof lng !== 'number' || Number.isNaN(lat) || Number.isNaN(lng)) {
+    if (
+      typeof lat !== 'number' ||
+      typeof lng !== 'number' ||
+      Number.isNaN(lat) ||
+      Number.isNaN(lng)
+    ) {
       return null;
     }
     return { latitude: lat, longitude: lng };

@@ -12,7 +12,6 @@ import MyPage from './mypage';
 import OurSchoolScreen from './ourschoolscreen';
 import Skeleton from '../../components/common/Skeleton';
 
-
 const MAIN_TABS = new Set(['board', 'message', 'school', 'timer', 'mypage']);
 
 const MainScreen = ({ navigation, route }) => {
@@ -42,7 +41,10 @@ const MainScreen = ({ navigation, route }) => {
           return true;
         }
         setLastBackPressedAt(now);
-        ToastAndroid.show('뒤로가기를 한 번 더 누르면 종료됩니다.', ToastAndroid.SHORT);
+        ToastAndroid.show(
+          '뒤로가기를 한 번 더 누르면 종료됩니다.',
+          ToastAndroid.SHORT,
+        );
         return true;
       });
       return () => sub.remove();
@@ -67,7 +69,10 @@ const MainScreen = ({ navigation, route }) => {
   };
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }} edges={['top', 'bottom']}>
+    <SafeAreaView
+      style={{ flex: 1, backgroundColor: colors.background }}
+      edges={['top', 'bottom']}
+    >
       <MainHeader activeTab={activeTab} navigation={navigation} />
       <View style={{ flex: 1, backgroundColor: colors.background }}>
         {screenReady ? (
@@ -86,15 +91,28 @@ const MainScreen = ({ navigation, route }) => {
                   marginBottom: 12,
                 }}
               >
-                <Skeleton width="55%" height={14} borderRadius={7} style={{ marginBottom: 10 }} />
-                <Skeleton width="100%" height={12} borderRadius={6} style={{ marginBottom: 8 }} />
+                <Skeleton
+                  width="55%"
+                  height={14}
+                  borderRadius={7}
+                  style={{ marginBottom: 10 }}
+                />
+                <Skeleton
+                  width="100%"
+                  height={12}
+                  borderRadius={6}
+                  style={{ marginBottom: 8 }}
+                />
                 <Skeleton width="85%" height={12} borderRadius={6} />
               </View>
             ))}
           </View>
         )}
       </View>
-      <MainFooter activeTab={activeTab} onTabPress={(tab) => setActiveTab(tab)} />
+      <MainFooter
+        activeTab={activeTab}
+        onTabPress={(tab) => setActiveTab(tab)}
+      />
     </SafeAreaView>
   );
 };

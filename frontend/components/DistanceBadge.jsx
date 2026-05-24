@@ -8,7 +8,16 @@ import Animated, {
 } from 'react-native-reanimated';
 import { colors, fonts } from '../styles/colors';
 
-const DOT_PHASES = ['.', '..', '...', '....', '.....', '......', '.......', '........'];
+const DOT_PHASES = [
+  '.',
+  '..',
+  '...',
+  '....',
+  '.....',
+  '......',
+  '.......',
+  '........',
+];
 
 function formatDistance(km) {
   if (typeof km !== 'number' || Number.isNaN(km)) return null;
@@ -117,7 +126,11 @@ export default function DistanceBadge({
           animStyle,
         ]}
       >
-        <MaterialIcons name="location-on" size={normalize(10)} color={theme.accent} />
+        <MaterialIcons
+          name="location-on"
+          size={normalize(10)}
+          color={theme.accent}
+        />
         {showDots ? (
           <BadgeDots accent={theme.accent} normalize={normalize} />
         ) : (

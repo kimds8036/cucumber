@@ -26,9 +26,10 @@ export const appAlert = {
     const payload = {
       title: toText(title),
       message: toText(message),
-      buttons: Array.isArray(buttons) && buttons.length > 0
-        ? buttons
-        : [{ text: '확인' }],
+      buttons:
+        Array.isArray(buttons) && buttons.length > 0
+          ? buttons
+          : [{ text: '확인' }],
       options: options || {},
     };
 
@@ -49,10 +50,14 @@ export const appAlert = {
         listener(payload);
       } catch (e) {
         if (nativeAlert) {
-          nativeAlert(payload.title, payload.message, payload.buttons, payload.options);
+          nativeAlert(
+            payload.title,
+            payload.message,
+            payload.buttons,
+            payload.options,
+          );
         }
       }
     });
   },
 };
-

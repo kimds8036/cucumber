@@ -10,10 +10,7 @@ import {
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { colors } from '../../styles/colors';
-import {
-  createMyPageStyles,
-  getNormalize,
-} from '../../styles/mypage.style';
+import { createMyPageStyles, getNormalize } from '../../styles/mypage.style';
 import ProfileCard from '../../components/Profilecard';
 import TimetableView from '../../components/Timetableview';
 import AppPopupModal from '../../components/common/AppPopupModal';
@@ -44,7 +41,8 @@ const MyPage = ({ navigation }) => {
   const [loading, setLoading] = useState(false);
   const [timetableLoading, setTimetableLoading] = useState(false);
   const [showResetTimetableModal, setShowResetTimetableModal] = useState(false);
-  const [timetableCacheKey, setTimetableCacheKey] = useState(TIMETABLE_CACHE_KEY);
+  const [timetableCacheKey, setTimetableCacheKey] =
+    useState(TIMETABLE_CACHE_KEY);
   const isSameProfileInfo = (a, b) => {
     if (!a || !b) return false;
     return (
@@ -96,7 +94,7 @@ const MyPage = ({ navigation }) => {
           style: 'destructive',
           onPress: () => Alert.alert('계정 탈퇴', '계정이 삭제되었습니다.'),
         },
-      ]
+      ],
     );
   };
 
@@ -127,7 +125,10 @@ const MyPage = ({ navigation }) => {
 
         const meRes = await api.get('/api/auth/me');
         // TEMP TEST: /api/auth/me 응답 raw 전체 확인 (확인 후 삭제)
-        console.log('[TEMP][MyPage] /api/auth/me raw response =', JSON.stringify(meRes?.data));
+        console.log(
+          '[TEMP][MyPage] /api/auth/me raw response =',
+          JSON.stringify(meRes?.data),
+        );
         if (!mounted) return;
 
         const me = meRes.data?.data;
@@ -182,8 +183,12 @@ const MyPage = ({ navigation }) => {
           setUserInfo(nextUserInfo);
           try {
             const cacheExpired =
-              !cachedProfileTs || Date.now() - cachedProfileTs >= PROFILE_CACHE_TTL_MS;
-            const profileChanged = !isSameProfileInfo(cachedProfile, nextUserInfo);
+              !cachedProfileTs ||
+              Date.now() - cachedProfileTs >= PROFILE_CACHE_TTL_MS;
+            const profileChanged = !isSameProfileInfo(
+              cachedProfile,
+              nextUserInfo,
+            );
             if (cacheExpired || profileChanged || !cachedProfile) {
               await AsyncStorage.setItem(
                 PROFILE_CACHE_KEY,
@@ -202,7 +207,10 @@ const MyPage = ({ navigation }) => {
 
         setTimetableLoading(false);
       } catch (error) {
-        console.error('[MyPage] 데이터 로드 실패:', error?.response?.data || error?.message || error);
+        console.error(
+          '[MyPage] 데이터 로드 실패:',
+          error?.response?.data || error?.message || error,
+        );
       } finally {
         if (mounted) setLoading(false);
       }
@@ -223,9 +231,11 @@ const MyPage = ({ navigation }) => {
           const raw = await AsyncStorage.getItem(timetableCacheKey);
           if (!raw || cancelled) return;
           const parsed = JSON.parse(raw);
-          if (Date.now() - Number(parsed?.ts || 0) >= TIMETABLE_CACHE_TTL_MS) return;
+          if (Date.now() - Number(parsed?.ts || 0) >= TIMETABLE_CACHE_TTL_MS)
+            return;
           const cached = parsed?.timetable ?? null;
-          const normalized = cached && Object.keys(cached).length > 0 ? cached : null;
+          const normalized =
+            cached && Object.keys(cached).length > 0 ? cached : null;
           if (cancelled) return;
           setTimetable(normalized);
         } catch (e) {
@@ -280,7 +290,11 @@ const MyPage = ({ navigation }) => {
     hideChevron = false,
   }) => {
     return (
-      <TouchableOpacity style={styles.menuItem} onPress={onPress} activeOpacity={0.7}>
+      <TouchableOpacity
+        style={styles.menuItem}
+        onPress={onPress}
+        activeOpacity={0.7}
+      >
         <View style={styles.menuLeft}>
           <Ionicons
             name={icon}
@@ -308,8 +322,10 @@ const MyPage = ({ navigation }) => {
 
   return (
     <View style={styles.container}>
-      <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
-
+      <ScrollView
+        style={styles.scrollView}
+        showsVerticalScrollIndicator={false}
+      >
         {/* ── 학생 정보 카드 ── */}
         {userInfo ? (
           <ProfileCard
@@ -330,7 +346,9 @@ const MyPage = ({ navigation }) => {
                       <View style={styles.ttSkeletonCell} />
                     </View>
                   ))}
-                  <Text style={styles.ttSkeletonText}>시간표를 불러오는 중입니다...</Text>
+                  <Text style={styles.ttSkeletonText}>
+                    시간표를 불러오는 중입니다...
+                  </Text>
                 </View>
               ) : timetable ? (
                 <TimetableView
@@ -380,15 +398,15 @@ const MyPage = ({ navigation }) => {
             icon="person-circle-outline"
             title="계정 관리"
             onPress={() =>
-              navigation.navigate('NotificationSettings', { variant: 'profile' })
+              navigation.navigate('NotificationSettings', {
+                variant: 'profile',
+              })
             }
           />
           <MenuItem
             icon="information-circle-outline"
             title="고객 지원"
-            onPress={() =>
-              navigation.navigate('Info')
-            }
+            onPress={() => navigation.navigate('Info')}
           />
           <MenuItem
             icon="log-out-outline"
@@ -452,7 +470,11 @@ const MyPage = ({ navigation }) => {
             <Text
               style={[
                 timetableModalStyles.timetableResetModalCancelText,
-                { fontSize: 14, fontWeight: '700', color: colors.textSecondary },
+                {
+                  fontSize: 14,
+                  fontWeight: '700',
+                  color: colors.textSecondary,
+                },
               ]}
             >
               취소

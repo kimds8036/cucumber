@@ -158,7 +158,11 @@ const TestLogin = ({ navigation }) => {
           activeOpacity={0.85}
           onPress={() => navigation.navigate('Login')}
         >
-          <Ionicons name="shield-checkmark-outline" size={normalize(14)} color={colors.primaryDark} />
+          <Ionicons
+            name="shield-checkmark-outline"
+            size={normalize(14)}
+            color={colors.primaryDark}
+          />
           <Text style={styles.adminButtonText}>관리자 로그인</Text>
         </TouchableOpacity>
       </View>
@@ -173,7 +177,12 @@ const TestLogin = ({ navigation }) => {
           activeOpacity={0.7}
           hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
         >
-          <View style={[styles.autoLoginBox, autoLogin && styles.autoLoginBoxChecked]}>
+          <View
+            style={[
+              styles.autoLoginBox,
+              autoLogin && styles.autoLoginBoxChecked,
+            ]}
+          >
             {autoLogin && (
               <Ionicons name="checkmark" size={normalize(12)} color="#fff" />
             )}
@@ -192,7 +201,11 @@ const TestLogin = ({ navigation }) => {
           keyExtractor={(item) => String(item.id)}
           renderItem={renderItem}
           refreshControl={
-            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primaryDark} />
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={onRefresh}
+              tintColor={colors.primaryDark}
+            />
           }
           contentContainerStyle={styles.listContent}
           ItemSeparatorComponent={() => <View style={styles.separator} />}

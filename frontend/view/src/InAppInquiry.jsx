@@ -11,7 +11,10 @@ import {
   useWindowDimensions,
   Modal,
 } from 'react-native';
-import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import {
+  SafeAreaView,
+  useSafeAreaInsets,
+} from 'react-native-safe-area-context';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
@@ -47,7 +50,10 @@ const InAppInquiry = ({ navigation }) => {
   const [contactEmail, setContactEmail] = useState('');
   const [images, setImages] = useState([]);
   const [submitting, setSubmitting] = useState(false);
-  const [resultModal, setResultModal] = useState({ visible: false, message: '' });
+  const [resultModal, setResultModal] = useState({
+    visible: false,
+    message: '',
+  });
   const [footerHeight, setFooterHeight] = useState(0);
 
   const bottomOffset = Math.max(footerHeight, normalize(16));
@@ -77,7 +83,10 @@ const InAppInquiry = ({ navigation }) => {
 
   const handlePickImages = async () => {
     if (images.length >= MAX_IMAGES) {
-      Alert.alert('알림', `이미지는 최대 ${MAX_IMAGES}장까지 첨부할 수 있어요.`);
+      Alert.alert(
+        '알림',
+        `이미지는 최대 ${MAX_IMAGES}장까지 첨부할 수 있어요.`,
+      );
       return;
     }
     try {
@@ -107,7 +116,10 @@ const InAppInquiry = ({ navigation }) => {
       return;
     }
     if (!contactUsername.trim()) {
-      Alert.alert('알림', '아이디 정보를 불러오지 못했습니다. 잠시 후 다시 시도해주세요.');
+      Alert.alert(
+        '알림',
+        '아이디 정보를 불러오지 못했습니다. 잠시 후 다시 시도해주세요.',
+      );
       return;
     }
     if (!isValidEmail(contactEmail)) {
@@ -161,8 +173,15 @@ const InAppInquiry = ({ navigation }) => {
     <SafeAreaView style={styles.container} edges={['top']}>
       <View style={styles.headerSection}>
         <View style={styles.headerTop}>
-          <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
-            <Ionicons name="chevron-back" size={normalize(24)} color={colors.textPrimary} />
+          <TouchableOpacity
+            style={styles.backButton}
+            onPress={() => navigation.goBack()}
+          >
+            <Ionicons
+              name="chevron-back"
+              size={normalize(24)}
+              color={colors.textPrimary}
+            />
           </TouchableOpacity>
           <Text style={styles.headerTitle}>문의하기</Text>
         </View>
@@ -202,7 +221,9 @@ const InAppInquiry = ({ navigation }) => {
               ]}
               numberOfLines={1}
             >
-              {contactUsername ? `@${contactUsername}` : '아이디 불러오는 중...'}
+              {contactUsername
+                ? `@${contactUsername}`
+                : '아이디 불러오는 중...'}
             </Text>
           </View>
 
@@ -238,7 +259,10 @@ const InAppInquiry = ({ navigation }) => {
               </View>
             ))}
             {images.length < MAX_IMAGES ? (
-              <TouchableOpacity style={styles.imageAddBtn} onPress={handlePickImages}>
+              <TouchableOpacity
+                style={styles.imageAddBtn}
+                onPress={handlePickImages}
+              >
                 <Ionicons
                   name="camera-outline"
                   size={normalize(24)}
@@ -257,7 +281,10 @@ const InAppInquiry = ({ navigation }) => {
           onLayout={(e) => setFooterHeight(e.nativeEvent.layout.height)}
         >
           <TouchableOpacity
-            style={[styles.primaryButton, submitting && styles.primaryButtonDisabled]}
+            style={[
+              styles.primaryButton,
+              submitting && styles.primaryButtonDisabled,
+            ]}
             activeOpacity={0.9}
             onPress={handleSubmit}
             disabled={submitting}
@@ -279,7 +306,10 @@ const InAppInquiry = ({ navigation }) => {
           <View style={styles.resultCard}>
             <Text style={styles.resultTitle}>접수 완료</Text>
             <Text style={styles.resultBody}>{resultModal.message}</Text>
-            <TouchableOpacity style={styles.resultBtn} onPress={closeResultAndExit}>
+            <TouchableOpacity
+              style={styles.resultBtn}
+              onPress={closeResultAndExit}
+            >
               <Text style={styles.resultBtnText}>확인</Text>
             </TouchableOpacity>
           </View>

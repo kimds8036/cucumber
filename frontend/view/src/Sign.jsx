@@ -1,5 +1,12 @@
 import React, { useEffect, useState, useMemo } from 'react';
-import { View, Text, TouchableOpacity, useWindowDimensions, Modal, Alert } from 'react-native';
+import {
+  View,
+  Text,
+  TouchableOpacity,
+  useWindowDimensions,
+  Modal,
+  Alert,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { createSignupStyles } from '../../styles/login.style';
@@ -43,7 +50,8 @@ const Sign = ({ navigation }) => {
   const [selectedAgeGroup, setSelectedAgeGroup] = useState(() =>
     SIGNUP_START_AT_GUARDIAN_STEP_FOR_PREVIEW ? 'under14' : '',
   );
-  const [selectedVerificationMethod, setSelectedVerificationMethod] = useState('');
+  const [selectedVerificationMethod, setSelectedVerificationMethod] =
+    useState('');
   const [consentData, setConsentData] = useState({ allConsented: false });
   const [completeModalType, setCompleteModalType] = useState('signup');
   const [screenReady, setScreenReady] = useState(false);
@@ -79,7 +87,8 @@ const Sign = ({ navigation }) => {
     let age = today.getFullYear() - birth.getFullYear();
     const hasNotHadBirthdayYet =
       today.getMonth() < birth.getMonth() ||
-      (today.getMonth() === birth.getMonth() && today.getDate() < birth.getDate());
+      (today.getMonth() === birth.getMonth() &&
+        today.getDate() < birth.getDate());
     if (hasNotHadBirthdayYet) age -= 1;
 
     return age < 14;
@@ -117,7 +126,10 @@ const Sign = ({ navigation }) => {
       return;
     }
 
-    if (!DISABLE_SIGN_VALIDATION_FOR_REDESIGN && !guardianStepData.guardianIsVerified) {
+    if (
+      !DISABLE_SIGN_VALIDATION_FOR_REDESIGN &&
+      !guardianStepData.guardianIsVerified
+    ) {
       Alert.alert('알림', '보호자 본인인증을 먼저 완료해주세요.');
       return;
     }
@@ -128,7 +140,11 @@ const Sign = ({ navigation }) => {
   // 정보 입력 단계 완료
   const handleStep3Next = () => {
     if (!DISABLE_SIGN_VALIDATION_FOR_REDESIGN) {
-      if (!stepInfoData.username || !stepInfoData.password || !stepInfoData.passwordConfirm) {
+      if (
+        !stepInfoData.username ||
+        !stepInfoData.password ||
+        !stepInfoData.passwordConfirm
+      ) {
         Alert.alert('알림', '아이디와 비밀번호 정보를 모두 입력해주세요.');
         return;
       }
@@ -263,7 +279,9 @@ const Sign = ({ navigation }) => {
         case 5:
           return '학생 인증';
         case 6:
-          return selectedVerificationMethod === 'certificate' ? '증명서 제출 정보' : '학생 인증';
+          return selectedVerificationMethod === 'certificate'
+            ? '증명서 제출 정보'
+            : '학생 인증';
         default:
           return '회원가입';
       }
@@ -281,7 +299,9 @@ const Sign = ({ navigation }) => {
       case 4:
         return '학생 인증';
       case 5:
-        return selectedVerificationMethod === 'certificate' ? '증명서 제출 정보' : '학생 인증';
+        return selectedVerificationMethod === 'certificate'
+          ? '증명서 제출 정보'
+          : '학생 인증';
       default:
         return '회원가입';
     }
@@ -347,18 +367,47 @@ const Sign = ({ navigation }) => {
         <View style={styles.headerSection}>
           <View style={styles.header}>
             <View style={styles.headerTop}>
-              <Skeleton width={normalize(24)} height={normalize(24)} borderRadius={normalize(12)} />
-              <Skeleton width={normalize(120)} height={normalize(18)} borderRadius={normalize(8)} />
+              <Skeleton
+                width={normalize(24)}
+                height={normalize(24)}
+                borderRadius={normalize(12)}
+              />
+              <Skeleton
+                width={normalize(120)}
+                height={normalize(18)}
+                borderRadius={normalize(8)}
+              />
             </View>
-            <Skeleton width="100%" height={normalize(8)} borderRadius={normalize(999)} style={{ marginTop: normalize(10), marginBottom: normalize(10) }} />
-            <Skeleton width="80%" height={normalize(13)} borderRadius={normalize(6)} />
+            <Skeleton
+              width="100%"
+              height={normalize(8)}
+              borderRadius={normalize(999)}
+              style={{ marginTop: normalize(10), marginBottom: normalize(10) }}
+            />
+            <Skeleton
+              width="80%"
+              height={normalize(13)}
+              borderRadius={normalize(6)}
+            />
           </View>
         </View>
         <View style={styles.contentSection}>
           {[0, 1, 2].map((idx) => (
-            <View key={`sign-skeleton-${idx}`} style={{ marginBottom: normalize(16) }}>
-              <Skeleton width={normalize(90)} height={normalize(12)} borderRadius={normalize(6)} style={{ marginBottom: normalize(8) }} />
-              <Skeleton width="100%" height={normalize(46)} borderRadius={normalize(12)} />
+            <View
+              key={`sign-skeleton-${idx}`}
+              style={{ marginBottom: normalize(16) }}
+            >
+              <Skeleton
+                width={normalize(90)}
+                height={normalize(12)}
+                borderRadius={normalize(6)}
+                style={{ marginBottom: normalize(8) }}
+              />
+              <Skeleton
+                width="100%"
+                height={normalize(46)}
+                borderRadius={normalize(12)}
+              />
             </View>
           ))}
         </View>
@@ -368,272 +417,317 @@ const Sign = ({ navigation }) => {
 
   return (
     <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
-        <View style={styles.headerSection}>
-          {/* 헤더 */}
-          <View style={styles.header}>
-            <View style={styles.headerTop}>
-              <TouchableOpacity style={styles.backButton} onPress={handleBack}>
-                <Ionicons name="chevron-back" size={normalize(24)} color={colors.textPrimary} />
-              </TouchableOpacity>
-              <Text style={styles.headerTitle}>{getStepTitle()}</Text>
-            </View>
-
-            {/* 진행바 */}
-            <View style={styles.progressBarContainer}>
-              <View style={[styles.progressBar, { width: `${progressWidth}%` }]} />
-            </View>
-
-            {/* 단계별 설명 */}
-            <Text style={styles.description}>{getStepDescription()}</Text>
+      <View style={styles.headerSection}>
+        {/* 헤더 */}
+        <View style={styles.header}>
+          <View style={styles.headerTop}>
+            <TouchableOpacity style={styles.backButton} onPress={handleBack}>
+              <Ionicons
+                name="chevron-back"
+                size={normalize(24)}
+                color={colors.textPrimary}
+              />
+            </TouchableOpacity>
+            <Text style={styles.headerTitle}>{getStepTitle()}</Text>
           </View>
-        </View>
 
-        {/* 단계별 컨텐츠 */}
-        <View style={styles.contentSection}>
-          {currentStep === 0 && (
-            <SignStepConsent
-              normalize={normalize}
-              selectedAgeGroup={selectedAgeGroup}
-              onChange={setConsentData}
+          {/* 진행바 */}
+          <View style={styles.progressBarContainer}>
+            <View
+              style={[styles.progressBar, { width: `${progressWidth}%` }]}
             />
-          )}
-          {currentStep === 1 && (
-            <SignStep1
+          </View>
+
+          {/* 단계별 설명 */}
+          <Text style={styles.description}>{getStepDescription()}</Text>
+        </View>
+      </View>
+
+      {/* 단계별 컨텐츠 */}
+      <View style={styles.contentSection}>
+        {currentStep === 0 && (
+          <SignStepConsent
+            normalize={normalize}
+            selectedAgeGroup={selectedAgeGroup}
+            onChange={setConsentData}
+          />
+        )}
+        {currentStep === 1 && (
+          <SignStep1
+            styles={styles}
+            normalize={normalize}
+            onChange={setStep1Data}
+            disableValidation={DISABLE_SIGN_VALIDATION_FOR_REDESIGN}
+            passMode={true}
+          />
+        )}
+        {currentStep === 2 &&
+          (isUnder14Flow ? (
+            <SignStep1_2
               styles={styles}
               normalize={normalize}
-              onChange={setStep1Data}
+              onChange={setGuardianStepData}
               disableValidation={DISABLE_SIGN_VALIDATION_FOR_REDESIGN}
-              passMode={true}
             />
-          )}
-          {currentStep === 2 && (
-            isUnder14Flow ? (
-              <SignStep1_2
-                styles={styles}
-                normalize={normalize}
-                onChange={setGuardianStepData}
-                disableValidation={DISABLE_SIGN_VALIDATION_FOR_REDESIGN}
-              />
-            ) : (
-              <SignStep2
-                styles={styles}
-                normalize={normalize}
-                verifiedName={formData.name || step1Data.name || ''}
-                verifiedBirthDate={formData.birthDate || step1Data.birthDate || ''}
-                onChange={setStepInfoData}
-              />
-            )
-          )}
-          {currentStep === 3 && (
-            isUnder14Flow ? (
-              <SignStep2
-                styles={styles}
-                normalize={normalize}
-                verifiedName={formData.name || step1Data.name || ''}
-                verifiedBirthDate={formData.birthDate || step1Data.birthDate || ''}
-                onChange={setStepInfoData}
-              />
-            ) : (
-              <SignStepVerificationMethod
-                styles={styles}
-                selectedMethod={selectedVerificationMethod}
-                onSelect={handleVerificationMethodSelect}
-              />
-            )
-          )}
-          {currentStep === 4 && (
-            isUnder14Flow ? (
-              <SignStepVerificationMethod
-                styles={styles}
-                selectedMethod={selectedVerificationMethod}
-                onSelect={handleVerificationMethodSelect}
-              />
-            ) : (
-              selectedVerificationMethod === 'certificate' ? (
-                <SignStepCertificate styles={styles} />
-              ) : (
-                <SignStep3
-                  styles={styles}
-                  normalize={normalize}
-                  onNext={handleStudentVerificationNext}
-                  onManualInput={handleManualInput}
-                />
-              )
-            )
-          )}
-          {isUnder14Flow && currentStep === 5 && (
-            selectedVerificationMethod === 'certificate' ? (
-              <SignStepCertificate styles={styles} />
-            ) : (
-              <SignStep3
-                styles={styles}
-                normalize={normalize}
-                onNext={handleStudentVerificationNext}
-                onManualInput={handleManualInput}
-              />
-            )
-          )}
-          {isUnder14Flow && currentStep === 6 && (
-            selectedVerificationMethod === 'certificate' ? (
-              <SignStepNumber
-                styles={styles}
-                normalize={normalize}
-                onChange={setStepNumberData}
-              />
-            ) : (
-              <SignStep4
-                styles={styles}
-                normalize={normalize}
-                recognizedData={recognizedData}
-                onChange={setStep4Data}
-              />
-            )
-          )}
-          {!isUnder14Flow && currentStep === 5 && (
-            selectedVerificationMethod === 'certificate' ? (
-              <SignStepNumber
-                styles={styles}
-                normalize={normalize}
-                onChange={setStepNumberData}
-              />
-            ) : (
-              <SignStep4
-                styles={styles}
-                normalize={normalize}
-                recognizedData={recognizedData}
-                onChange={setStep4Data}
-              />
-            )
-          )}
-        </View>
+          ) : (
+            <SignStep2
+              styles={styles}
+              normalize={normalize}
+              verifiedName={formData.name || step1Data.name || ''}
+              verifiedBirthDate={
+                formData.birthDate || step1Data.birthDate || ''
+              }
+              onChange={setStepInfoData}
+            />
+          ))}
+        {currentStep === 3 &&
+          (isUnder14Flow ? (
+            <SignStep2
+              styles={styles}
+              normalize={normalize}
+              verifiedName={formData.name || step1Data.name || ''}
+              verifiedBirthDate={
+                formData.birthDate || step1Data.birthDate || ''
+              }
+              onChange={setStepInfoData}
+            />
+          ) : (
+            <SignStepVerificationMethod
+              styles={styles}
+              selectedMethod={selectedVerificationMethod}
+              onSelect={handleVerificationMethodSelect}
+            />
+          ))}
+        {currentStep === 4 &&
+          (isUnder14Flow ? (
+            <SignStepVerificationMethod
+              styles={styles}
+              selectedMethod={selectedVerificationMethod}
+              onSelect={handleVerificationMethodSelect}
+            />
+          ) : selectedVerificationMethod === 'certificate' ? (
+            <SignStepCertificate styles={styles} />
+          ) : (
+            <SignStep3
+              styles={styles}
+              normalize={normalize}
+              onNext={handleStudentVerificationNext}
+              onManualInput={handleManualInput}
+            />
+          ))}
+        {isUnder14Flow &&
+          currentStep === 5 &&
+          (selectedVerificationMethod === 'certificate' ? (
+            <SignStepCertificate styles={styles} />
+          ) : (
+            <SignStep3
+              styles={styles}
+              normalize={normalize}
+              onNext={handleStudentVerificationNext}
+              onManualInput={handleManualInput}
+            />
+          ))}
+        {isUnder14Flow &&
+          currentStep === 6 &&
+          (selectedVerificationMethod === 'certificate' ? (
+            <SignStepNumber
+              styles={styles}
+              normalize={normalize}
+              onChange={setStepNumberData}
+            />
+          ) : (
+            <SignStep4
+              styles={styles}
+              normalize={normalize}
+              recognizedData={recognizedData}
+              onChange={setStep4Data}
+            />
+          ))}
+        {!isUnder14Flow &&
+          currentStep === 5 &&
+          (selectedVerificationMethod === 'certificate' ? (
+            <SignStepNumber
+              styles={styles}
+              normalize={normalize}
+              onChange={setStepNumberData}
+            />
+          ) : (
+            <SignStep4
+              styles={styles}
+              normalize={normalize}
+              recognizedData={recognizedData}
+              onChange={setStep4Data}
+            />
+          ))}
+      </View>
 
-        {/* 하단 고정 버튼 (3단계 제외) */}
-        {!isCameraStep && (
-          <View style={styles.footerSection}>
-            <View style={styles.bottomButtonContainer}>
-              <View style={styles.nextButtonWrapper}>
-                <TouchableOpacity
-                  style={[
-                    styles.nextButton,
-                    currentStep === 0 && !consentData.allConsented && { backgroundColor: colors.textLight20 },
-                    currentStep === verificationMethodStep && !selectedVerificationMethod && { backgroundColor: colors.textLight20 },
-                    ((isUnder14Flow && currentStep === 6) || (!isUnder14Flow && currentStep === 5)) &&
+      {/* 하단 고정 버튼 (3단계 제외) */}
+      {!isCameraStep && (
+        <View style={styles.footerSection}>
+          <View style={styles.bottomButtonContainer}>
+            <View style={styles.nextButtonWrapper}>
+              <TouchableOpacity
+                style={[
+                  styles.nextButton,
+                  currentStep === 0 &&
+                    !consentData.allConsented && {
+                      backgroundColor: colors.textLight20,
+                    },
+                  currentStep === verificationMethodStep &&
+                    !selectedVerificationMethod && {
+                      backgroundColor: colors.textLight20,
+                    },
+                  ((isUnder14Flow && currentStep === 6) ||
+                    (!isUnder14Flow && currentStep === 5)) &&
                     selectedVerificationMethod === 'certificate' &&
-                    (!stepNumberData.certificateUrl || !stepNumberData.submissionNumber) && { backgroundColor: colors.textLight20 },
-                  ]}
-                  activeOpacity={0.9}
-                  disabled={
-                    (currentStep === 0 && !consentData.allConsented) ||
-                    (currentStep === verificationMethodStep && !selectedVerificationMethod) ||
-                    (((isUnder14Flow && currentStep === 6) || (!isUnder14Flow && currentStep === 5)) &&
-                      selectedVerificationMethod === 'certificate' &&
-                      (!stepNumberData.certificateUrl || !stepNumberData.submissionNumber))
+                    (!stepNumberData.certificateUrl ||
+                      !stepNumberData.submissionNumber) && {
+                      backgroundColor: colors.textLight20,
+                    },
+                ]}
+                activeOpacity={0.9}
+                disabled={
+                  (currentStep === 0 && !consentData.allConsented) ||
+                  (currentStep === verificationMethodStep &&
+                    !selectedVerificationMethod) ||
+                  (((isUnder14Flow && currentStep === 6) ||
+                    (!isUnder14Flow && currentStep === 5)) &&
+                    selectedVerificationMethod === 'certificate' &&
+                    (!stepNumberData.certificateUrl ||
+                      !stepNumberData.submissionNumber))
+                }
+                onPress={() => {
+                  if (currentStep === 0) handleConsentNext();
+                  else if (currentStep === 1) handleStep1Next();
+                  else if (currentStep === 2) handleStep2Next();
+                  else if (currentStep === 3 && isUnder14Flow)
+                    handleStep3Next();
+                  else if (currentStep === 3 && !isUnder14Flow)
+                    handleVerificationMethodNext();
+                  else if (currentStep === 4 && isUnder14Flow)
+                    handleVerificationMethodNext();
+                  else if (
+                    currentStep === 4 &&
+                    !isUnder14Flow &&
+                    selectedVerificationMethod === 'certificate'
+                  ) {
+                    handleManualInput();
+                  } else if (
+                    currentStep === 5 &&
+                    isUnder14Flow &&
+                    selectedVerificationMethod === 'certificate'
+                  ) {
+                    handleManualInput();
+                  } else if (
+                    (isUnder14Flow && currentStep === 6) ||
+                    (!isUnder14Flow && currentStep === 5)
+                  ) {
+                    if (selectedVerificationMethod === 'certificate') {
+                      handleCertificateSubmit();
+                    } else {
+                      handleComplete();
+                    }
                   }
-                  onPress={() => {
-                    if (currentStep === 0) handleConsentNext();
-                    else if (currentStep === 1) handleStep1Next();
-                    else if (currentStep === 2) handleStep2Next();
-                    else if (currentStep === 3 && isUnder14Flow) handleStep3Next();
-                    else if (currentStep === 3 && !isUnder14Flow) handleVerificationMethodNext();
-                    else if (currentStep === 4 && isUnder14Flow) handleVerificationMethodNext();
-                    else if (currentStep === 4 && !isUnder14Flow && selectedVerificationMethod === 'certificate') {
-                      handleManualInput();
-                    }
-                    else if (currentStep === 5 && isUnder14Flow && selectedVerificationMethod === 'certificate') {
-                      handleManualInput();
-                    }
-                    else if ((isUnder14Flow && currentStep === 6) || (!isUnder14Flow && currentStep === 5)) {
-                      if (selectedVerificationMethod === 'certificate') {
-                        handleCertificateSubmit();
-                      } else {
-                        handleComplete();
-                      }
-                    }
-                  }}
-                >
-                  <Text style={styles.nextButtonText}>
-                    {(isUnder14Flow && currentStep === 6) || (!isUnder14Flow && currentStep === 5)
-                      ? selectedVerificationMethod === 'certificate'
-                        ? '제출하기'
-                        : '회원가입'
-                      : '다음 단계'}
-                  </Text>
-                </TouchableOpacity>
-              </View>
+                }}
+              >
+                <Text style={styles.nextButtonText}>
+                  {(isUnder14Flow && currentStep === 6) ||
+                  (!isUnder14Flow && currentStep === 5)
+                    ? selectedVerificationMethod === 'certificate'
+                      ? '제출하기'
+                      : '회원가입'
+                    : '다음 단계'}
+                </Text>
+              </TouchableOpacity>
             </View>
           </View>
-        )}
-        {/* 회원가입 완료 모달 */}
-        <Modal
-          visible={showCompleteModal}
-          transparent={true}
-          animationType="fade"
-          onRequestClose={() => {}}
-        >
-          <View style={{
+        </View>
+      )}
+      {/* 회원가입 완료 모달 */}
+      <Modal
+        visible={showCompleteModal}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => {}}
+      >
+        <View
+          style={{
             flex: 1,
             backgroundColor: colors.textSecondary,
             justifyContent: 'center',
             alignItems: 'center',
-          }}>
-            <View style={{
+          }}
+        >
+          <View
+            style={{
               width: '85%',
               backgroundColor: colors.background,
               borderRadius: normalize(20),
               padding: normalize(25),
               alignItems: 'center',
-            }}>
-              <Text style={{
+            }}
+          >
+            <Text
+              style={{
                 fontSize: normalize(20),
                 fontFamily: 'Baloo2-Bold',
                 color: colors.textPrimary,
                 marginBottom: normalize(10),
-              }}>
-                {completeModalType === 'certificate' ? '제출 성공🎉' : '회원가입 성공🎉'}
-              </Text>
-              <Text style={{
+              }}
+            >
+              {completeModalType === 'certificate'
+                ? '제출 성공🎉'
+                : '회원가입 성공🎉'}
+            </Text>
+            <Text
+              style={{
                 fontSize: normalize(14),
                 fontFamily: 'Baloo2-Regular',
                 color: colors.textSecondary,
                 textAlign: 'center',
-              }}>
-                {completeModalType === 'certificate'
-                  ? '증명서 제출이 완료되었습니다!'
-                  : '회원가입이 완료되었습니다!'}
-              </Text>
-              <Text style={{
+              }}
+            >
+              {completeModalType === 'certificate'
+                ? '증명서 제출이 완료되었습니다!'
+                : '회원가입이 완료되었습니다!'}
+            </Text>
+            <Text
+              style={{
                 fontSize: normalize(14),
                 fontFamily: 'Baloo2-Regular',
                 color: colors.textSecondary,
                 textAlign: 'center',
                 marginBottom: normalize(10),
-              }}>
-                {completeModalType === 'certificate'
-                  ? '관리자 검토 후 로그인이 가능하며, 결과는 푸시 알림으로 보내드릴게요.'
-                  : '지금 바로 서비스를 이용해보세요.'}
-              </Text>
-              <TouchableOpacity
+              }}
+            >
+              {completeModalType === 'certificate'
+                ? '관리자 검토 후 로그인이 가능하며, 결과는 푸시 알림으로 보내드릴게요.'
+                : '지금 바로 서비스를 이용해보세요.'}
+            </Text>
+            <TouchableOpacity
+              style={{
+                width: '100%',
+                height: normalize(45),
+                backgroundColor: colors.primary,
+                borderRadius: normalize(24),
+                justifyContent: 'center',
+                alignItems: 'center',
+              }}
+              onPress={handleGoToLogin}
+            >
+              <Text
                 style={{
-                  width: '100%',
-                  height: normalize(45),
-                  backgroundColor: colors.primary,
-                  borderRadius: normalize(24),
-                  justifyContent: 'center',
-                  alignItems: 'center',
-                }}
-                onPress={handleGoToLogin}
-              >
-                <Text style={{
                   fontSize: normalize(16),
                   fontFamily: 'Baloo2-Bold',
                   color: colors.background,
-                }}>
-                  확인
-                </Text>
-              </TouchableOpacity>
-            </View>
+                }}
+              >
+                확인
+              </Text>
+            </TouchableOpacity>
           </View>
-        </Modal>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 };

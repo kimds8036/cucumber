@@ -39,7 +39,8 @@ function toHours(dayEntry) {
   if (typeof dayEntry !== 'object') return null;
   if (dayEntry.hours != null) return Number(dayEntry.hours);
   if (dayEntry.minutes != null) return Number(dayEntry.minutes) / 60;
-  if (dayEntry.totalElapsedMs != null) return Number(dayEntry.totalElapsedMs) / 3600000;
+  if (dayEntry.totalElapsedMs != null)
+    return Number(dayEntry.totalElapsedMs) / 3600000;
   return null;
 }
 
@@ -99,11 +100,13 @@ function buildWeekColumns(days, weekCountOverride = null) {
   const lastWeekEnd = new Date(semesterEnd);
   lastWeekEnd.setDate(semesterEnd.getDate() + (6 - semesterEnd.getDay()));
   const totalDays =
-    Math.floor((lastWeekEnd.getTime() - firstWeekStart.getTime()) / 86400000) + 1;
+    Math.floor((lastWeekEnd.getTime() - firstWeekStart.getTime()) / 86400000) +
+    1;
   const calculatedWeeks = Math.ceil(totalDays / 7);
-  const weekCount = weekCountOverride && weekCountOverride > 0
-    ? Math.floor(weekCountOverride)
-    : calculatedWeeks;
+  const weekCount =
+    weekCountOverride && weekCountOverride > 0
+      ? Math.floor(weekCountOverride)
+      : calculatedWeeks;
 
   const result = [];
   const monthLabels = [];
@@ -170,11 +173,15 @@ const DAY_LABELS = ['일', '월', '화', '수', '목', '금', '토'];
 const WEEKS = 27;
 
 const StudyGrassMap = ({ days = null, weeks = WEEKS }) => {
-  const safeWeeksProp = Number.isFinite(weeks) && weeks > 0 ? Math.floor(weeks) : WEEKS;
-  const { weekColumns, monthLabels, weeks: derivedWeeks, semesterStartKey, semesterEndKey } = useMemo(
-    () => buildWeekColumns(days, safeWeeksProp),
-    [days, weeks],
-  );
+  const safeWeeksProp =
+    Number.isFinite(weeks) && weeks > 0 ? Math.floor(weeks) : WEEKS;
+  const {
+    weekColumns,
+    monthLabels,
+    weeks: derivedWeeks,
+    semesterStartKey,
+    semesterEndKey,
+  } = useMemo(() => buildWeekColumns(days, safeWeeksProp), [days, weeks]);
   const safeWeeks = derivedWeeks || safeWeeksProp;
   const legendColors = useMemo(() => renderLegendColors(), []);
 
@@ -331,7 +338,10 @@ const StudyGrassMap = ({ days = null, weeks = WEEKS }) => {
               {monthLabels.map((m) => (
                 <Text
                   key={m.label}
-                  style={[styles.monthLabel, { left: m.weekIndex * layout.STEP }]}
+                  style={[
+                    styles.monthLabel,
+                    { left: m.weekIndex * layout.STEP },
+                  ]}
                 >
                   {m.label}
                 </Text>

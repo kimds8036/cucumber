@@ -10,7 +10,9 @@ const root = path.join(path.dirname(fileURLToPath(import.meta.url)), '..');
 load(root);
 
 const apiEnvModule = pathToFileURL(path.join(root, 'config', 'apiEnv.js')).href;
-const { resolveApiBaseUrl, resolveAppEnv, API_URLS } = await import(apiEnvModule);
+const { resolveApiBaseUrl, resolveAppEnv, API_URLS } = await import(
+  apiEnvModule
+);
 
 const appEnv = resolveAppEnv();
 const apiBaseUrl = resolveApiBaseUrl();
@@ -18,7 +20,10 @@ const apiBaseUrl = resolveApiBaseUrl();
 console.log('--- API 환경 (빌드 시 app.config.js와 동일 규칙) ---');
 console.log('APP_ENV (resolved):', appEnv);
 console.log('apiBaseUrl:', apiBaseUrl);
-console.log('EXPO_PUBLIC_API_URL:', process.env.EXPO_PUBLIC_API_URL || '(없음)');
+console.log(
+  'EXPO_PUBLIC_API_URL:',
+  process.env.EXPO_PUBLIC_API_URL || '(없음)',
+);
 console.log('develop URL:', API_URLS.develop);
 console.log('production URL:', API_URLS.production);
 

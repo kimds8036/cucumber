@@ -28,9 +28,10 @@ export default function normalizeMessage(raw, meId) {
   const createdAt = raw.created_at || raw.createdAt || new Date().toISOString();
   const d = parseUtcToLocal(createdAt);
   const senderId = raw.sender_id ?? raw.senderId ?? null;
-  const isMe = meId != null && senderId != null
-    ? Number(senderId) === Number(meId)
-    : false;
+  const isMe =
+    meId != null && senderId != null
+      ? Number(senderId) === Number(meId)
+      : false;
 
   const images = (() => {
     const value = raw.images;
@@ -38,7 +39,9 @@ export default function normalizeMessage(raw, meId) {
     if (typeof value === 'string') {
       try {
         const parsed = JSON.parse(value);
-        return Array.isArray(parsed) ? parsed.filter((v) => typeof v === 'string') : [value];
+        return Array.isArray(parsed)
+          ? parsed.filter((v) => typeof v === 'string')
+          : [value];
       } catch {
         return [value];
       }
@@ -49,7 +52,7 @@ export default function normalizeMessage(raw, meId) {
   const senderName =
     raw.sender_name ??
     raw.senderName ??
-    (isMe ? null : raw.opponentName ?? null) ??
+    (isMe ? null : (raw.opponentName ?? null)) ??
     (isMe ? '나' : '익명');
   const senderColorId =
     raw.sender_color_id ??
@@ -76,7 +79,9 @@ export default function normalizeMessage(raw, meId) {
     is_deleted: Boolean(raw.is_deleted),
     isReadByOther: isMe ? Boolean(raw.is_read) : undefined,
     isReadByMe: !isMe ? Boolean(raw.is_read) : undefined,
-    status: raw.status ?? (raw.isFailed ? 'failed' : raw.isSending ? 'sending' : 'sent'),
+    status:
+      raw.status ??
+      (raw.isFailed ? 'failed' : raw.isSending ? 'sending' : 'sent'),
     isSending: Boolean(raw.isSending),
     isFailed: Boolean(raw.isFailed),
   };

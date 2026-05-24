@@ -6,10 +6,7 @@ import { createAdStyles } from '../../../styles/ad.style';
 const SearchAdPlaceholder = () => {
   const { width } = useWindowDimensions();
   const normalize = useMemo(() => getNormalize(width), [width]);
-  const s = useMemo(
-    () => createAdStyles(normalize, width),
-    [normalize, width],
-  );
+  const s = useMemo(() => createAdStyles(normalize, width), [normalize, width]);
 
   return (
     <View style={s.fullCard}>

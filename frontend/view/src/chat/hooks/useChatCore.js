@@ -68,9 +68,7 @@ export default function useChatCore(config) {
   // ─── derived messages ([과거 → 최신] — 리듀서 정렬 기준 사용) ───
   const messages = useMemo(() => {
     // messageIds 는 getSortedUniqueIds 에 의해 "과거가 앞, 최신이 뒤" 순서로 관리된다.
-    return state.messageIds
-      .map((id) => state.messagesById[id])
-      .filter(Boolean);
+    return state.messageIds.map((id) => state.messagesById[id]).filter(Boolean);
   }, [state.messageIds, state.messagesById]);
 
   const hasMore = state.hasMore;
@@ -139,7 +137,10 @@ export default function useChatCore(config) {
         const mapped = (res.messages || []).map((m) =>
           normalizeMessage(m, currentMeId),
         );
-        dispatch({ type: 'MERGE_POLL_MESSAGES', payload: { messages: mapped } });
+        dispatch({
+          type: 'MERGE_POLL_MESSAGES',
+          payload: { messages: mapped },
+        });
       } catch (e) {
         console.error('[useChatCore][Poll] 오류:', e);
       }
@@ -347,16 +348,10 @@ export default function useChatCore(config) {
   // ─── 캐시 저장 (debounce) ───
   useEffect(() => {
     if (!roomId) return;
-    if (cacheSaveTimeoutRef.current)
-      clearTimeout(cacheSaveTimeoutRef.current);
+    if (cacheSaveTimeoutRef.current) clearTimeout(cacheSaveTimeoutRef.current);
 
     cacheSaveTimeoutRef.current = setTimeout(() => {
-      saveCache(
-        cacheScope,
-        roomId,
-        state.messagesById,
-        state.messageIds,
-      );
+      saveCache(cacheScope, roomId, state.messagesById, state.messageIds);
     }, CHAT_CACHE_SAVE_DEBOUNCE);
 
     return () => {
@@ -390,8 +385,7 @@ export default function useChatCore(config) {
           clientId,
           type: 'message',
           isMe: true,
-          senderId:
-            meIdRef.current != null ? Number(meIdRef.current) : null,
+          senderId: meIdRef.current != null ? Number(meIdRef.current) : null,
           content: contentStr ? String(contentStr).trim() || null : null,
           images: [...(imageUris || [])],
           is_deleted: false,

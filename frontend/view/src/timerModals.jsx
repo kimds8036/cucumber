@@ -163,8 +163,18 @@ export const AddSubjectModal = ({ visible, onClose, onAdd }) => {
         <View style={m.wrapper}>
           <View style={m.bottomSheetContainer}>
             <View style={m.bottomSheetCard}>
-              <Skeleton width={110} height={18} borderRadius={8} style={m.skelLineMb10} />
-              <Skeleton width="100%" height={42} borderRadius={10} style={m.skelLineMb12} />
+              <Skeleton
+                width={110}
+                height={18}
+                borderRadius={8}
+                style={m.skelLineMb10}
+              />
+              <Skeleton
+                width="100%"
+                height={42}
+                borderRadius={10}
+                style={m.skelLineMb12}
+              />
               <Skeleton width="100%" height={36} borderRadius={10} />
             </View>
           </View>
@@ -183,97 +193,94 @@ export const AddSubjectModal = ({ visible, onClose, onAdd }) => {
           />
           <Animated.View style={[m.bottomSheetContainer, animStyle]}>
             <View style={m.bottomSheetCard}>
-            <Text style={m.title}>과목 추가</Text>
-            <TextInput
-              style={m.input}
-              placeholder="과목명"
-              placeholderTextColor={colors.textSecondary}
-              value={name}
-              onChangeText={setName}
-              autoFocus
-            />
-            {subjectPresets.length > 0 ? (
-              <View style={m.subjectPresetSection}>
-                <Text style={m.subjectPresetTitle}>최근 사용</Text>
+              <Text style={m.title}>과목 추가</Text>
+              <TextInput
+                style={m.input}
+                placeholder="과목명"
+                placeholderTextColor={colors.textSecondary}
+                value={name}
+                onChangeText={setName}
+                autoFocus
+              />
+              {subjectPresets.length > 0 ? (
+                <View style={m.subjectPresetSection}>
+                  <Text style={m.subjectPresetTitle}>최근 사용</Text>
+                  <ScrollView
+                    horizontal
+                    showsHorizontalScrollIndicator={false}
+                    contentContainerStyle={m.subjectPresetRow}
+                    keyboardShouldPersistTaps="always"
+                  >
+                    {subjectPresets.map((preset, idx) => (
+                      <TouchableOpacity
+                        key={`${preset.name}-${preset.color}-${idx}`}
+                        style={m.subjectPresetChip}
+                        activeOpacity={0.8}
+                        onPress={() => {
+                          setName(preset.name);
+                          setColor(preset.color);
+                        }}
+                      >
+                        <View
+                          style={[
+                            m.subjectPresetDot,
+                            {
+                              backgroundColor:
+                                preset.color || SUBJECT_COLORS[0],
+                            },
+                          ]}
+                        />
+                        <Text style={m.subjectPresetText}>{preset.name}</Text>
+                      </TouchableOpacity>
+                    ))}
+                  </ScrollView>
+                </View>
+              ) : null}
+              <View style={m.colorRow}>
+                <View style={m.colorLabelRow}>
+                  <Text style={[m.label, m.labelNoMargin]}>색상</Text>
+                </View>
                 <ScrollView
                   horizontal
                   showsHorizontalScrollIndicator={false}
-                  contentContainerStyle={m.subjectPresetRow}
+                  style={m.colorScroll}
                   keyboardShouldPersistTaps="always"
                 >
-                  {subjectPresets.map((preset, idx) => (
-                    <TouchableOpacity
-                      key={`${preset.name}-${preset.color}-${idx}`}
-                      style={m.subjectPresetChip}
-                      activeOpacity={0.8}
-                      onPress={() => {
-                        setName(preset.name);
-                        setColor(preset.color);
-                      }}
-                    >
-                      <View
+                  <View style={m.colorWrap}>
+                    {SUBJECT_COLORS.map((c) => (
+                      <TouchableOpacity
+                        key={c}
+                        onPress={() => setColor(c)}
                         style={[
-                          m.subjectPresetDot,
-                          { backgroundColor: preset.color || SUBJECT_COLORS[0] },
+                          m.colorDot,
+                          { backgroundColor: c },
+                          color === c && m.colorDotSelected,
                         ]}
                       />
-                      <Text style={m.subjectPresetText}>{preset.name}</Text>
-                    </TouchableOpacity>
-                  ))}
+                    ))}
+                  </View>
                 </ScrollView>
+                <TouchableOpacity onPress={pickRandom} style={m.randomBtn}>
+                  <Ionicons
+                    name="shuffle"
+                    size={normalize(14)}
+                    color={colors.textSecondary}
+                    style={m.randomIcon}
+                  />
+                  <Text style={m.randomText}>랜덤</Text>
+                </TouchableOpacity>
               </View>
-            ) : null}
-            <View style={m.colorRow}>
-              <View style={m.colorLabelRow}>
-                <Text style={[m.label, m.labelNoMargin]}>색상</Text>
-              </View>
-              <ScrollView
-                horizontal
-                showsHorizontalScrollIndicator={false}
-                style={m.colorScroll}
-                keyboardShouldPersistTaps="always"
-              >
-                <View style={m.colorWrap}>
-                  {SUBJECT_COLORS.map((c) => (
-                    <TouchableOpacity
-                      key={c}
-                      onPress={() => setColor(c)}
-                      style={[
-                        m.colorDot,
-                        { backgroundColor: c },
-                        color === c && m.colorDotSelected,
-                      ]}
-                    />
-                  ))}
-                </View>
-              </ScrollView>
-              <TouchableOpacity
-                onPress={pickRandom}
-                style={m.randomBtn}
-              >
-                <Ionicons
-                  name="shuffle"
-                  size={normalize(14)}
-                  color={colors.textSecondary}
-                  style={m.randomIcon}
-                />
-                <Text style={m.randomText}>랜덤</Text>
-              </TouchableOpacity>
-            </View>
               <View style={m.row}>
-              <TouchableOpacity style={m.cancelBtn} onPress={onClose}>
-                <Text style={m.cancelText}>취소</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[
-                  m.primaryBtn,
-                  !name.trim() && m.btnDisabled,
-                ]}
-                onPress={handleAdd}
-                disabled={!name.trim()}
-              >
-                <Text style={m.primaryText}>추가</Text>
-              </TouchableOpacity>
+                <TouchableOpacity style={m.cancelBtn} onPress={onClose}>
+                  <Text style={m.cancelText}>취소</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[m.primaryBtn, !name.trim() && m.btnDisabled]}
+                  onPress={handleAdd}
+                  disabled={!name.trim()}
+                >
+                  <Text style={m.primaryText}>추가</Text>
+                </TouchableOpacity>
               </View>
             </View>
           </Animated.View>
@@ -347,8 +354,18 @@ export const AddTaskModal = ({
         <View style={m.wrapper}>
           <View style={m.bottomSheetContainer}>
             <View style={m.bottomSheetCard}>
-              <Skeleton width={110} height={18} borderRadius={8} style={m.skelLineMb10} />
-              <Skeleton width="100%" height={66} borderRadius={10} style={m.skelLineMb12} />
+              <Skeleton
+                width={110}
+                height={18}
+                borderRadius={8}
+                style={m.skelLineMb10}
+              />
+              <Skeleton
+                width="100%"
+                height={66}
+                borderRadius={10}
+                style={m.skelLineMb12}
+              />
               <Skeleton width="100%" height={36} borderRadius={10} />
             </View>
           </View>
@@ -368,13 +385,8 @@ export const AddTaskModal = ({
           <View style={m.bottomSheetContainer}>
             <View style={m.bottomSheetCard}>
               <Text style={m.title}>할일 추가</Text>
-              <Text style={m.emptySubjectHint}>
-                과목을 먼저 추가해주세요.
-              </Text>
-              <TouchableOpacity
-                style={m.primaryBtn}
-                onPress={handleClose}
-              >
+              <Text style={m.emptySubjectHint}>과목을 먼저 추가해주세요.</Text>
+              <TouchableOpacity style={m.primaryBtn} onPress={handleClose}>
                 <Text style={m.primaryText}>확인</Text>
               </TouchableOpacity>
             </View>
@@ -394,34 +406,28 @@ export const AddTaskModal = ({
           />
           <Animated.View style={[m.bottomSheetContainer, animStyle]}>
             <View style={m.bottomSheetCard}>
-            <Text style={m.title}>할일 추가</Text>
-            <Text style={m.label}>내용</Text>
-            <TextInput
-              style={[m.input, m.inputMultiline]}
-              placeholder="할 일 내용"
-              placeholderTextColor={colors.textSecondary}
-              value={content}
-              onChangeText={setContent}
-              multiline
-              autoFocus
-            />
+              <Text style={m.title}>할일 추가</Text>
+              <Text style={m.label}>내용</Text>
+              <TextInput
+                style={[m.input, m.inputMultiline]}
+                placeholder="할 일 내용"
+                placeholderTextColor={colors.textSecondary}
+                value={content}
+                onChangeText={setContent}
+                multiline
+                autoFocus
+              />
               <View style={m.row}>
-              <TouchableOpacity
-                style={m.cancelBtn}
-                onPress={handleClose}
-              >
-                <Text style={m.cancelText}>취소</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[
-                  m.primaryBtn,
-                  !content.trim() && m.btnDisabled,
-                ]}
-                onPress={handleAdd}
-                disabled={!content.trim()}
-              >
-                <Text style={m.primaryText}>추가</Text>
-              </TouchableOpacity>
+                <TouchableOpacity style={m.cancelBtn} onPress={handleClose}>
+                  <Text style={m.cancelText}>취소</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[m.primaryBtn, !content.trim() && m.btnDisabled]}
+                  onPress={handleAdd}
+                  disabled={!content.trim()}
+                >
+                  <Text style={m.primaryText}>추가</Text>
+                </TouchableOpacity>
               </View>
             </View>
           </Animated.View>
@@ -432,7 +438,12 @@ export const AddTaskModal = ({
 };
 
 // ── 달력 모달 ─────────────────────────────────────────────
-export const CalendarModal = ({ visible, onClose, currentDayKey, onSelectDay }) => {
+export const CalendarModal = ({
+  visible,
+  onClose,
+  currentDayKey,
+  onSelectDay,
+}) => {
   const { m, normalize } = useTimerModalStyles();
   const [yearMonth, setYearMonth] = useState(() => {
     const d = dateFromDayKey(currentDayKey || getTimerDayKey(new Date()));
@@ -485,9 +496,20 @@ export const CalendarModal = ({ visible, onClose, currentDayKey, onSelectDay }) 
         <View style={m.wrapper}>
           <View style={[m.centered, m.centeredJustify]}>
             <View style={[m.card, m.cardMaxWidth]}>
-              <Skeleton width={140} height={18} borderRadius={8} style={m.skelTitleMb14} />
+              <Skeleton
+                width={140}
+                height={18}
+                borderRadius={8}
+                style={m.skelTitleMb14}
+              />
               {[0, 1, 2, 3].map((idx) => (
-                <Skeleton key={`calendar-skel-${idx}`} width="100%" height={34} borderRadius={8} style={m.skelLineMb8} />
+                <Skeleton
+                  key={`calendar-skel-${idx}`}
+                  width="100%"
+                  height={34}
+                  borderRadius={8}
+                  style={m.skelLineMb8}
+                />
               ))}
             </View>
           </View>
@@ -506,13 +528,23 @@ export const CalendarModal = ({ visible, onClose, currentDayKey, onSelectDay }) 
         <View style={[m.centered, m.centeredJustify]}>
           <View style={[m.card, m.cardMaxWidth]}>
             <View style={m.calendarHeader}>
-              <TouchableOpacity onPress={goPrevMonth} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-                <Ionicons name="chevron-back" size={normalize(20)} color={colors.textPrimary} />
+              <TouchableOpacity
+                onPress={goPrevMonth}
+                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              >
+                <Ionicons
+                  name="chevron-back"
+                  size={normalize(20)}
+                  color={colors.textPrimary}
+                />
               </TouchableOpacity>
               <Text style={m.calendarMonthTitle}>
                 {yearMonth.year}년 {yearMonth.month + 1}월
               </Text>
-              <TouchableOpacity onPress={goNextMonth} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+              <TouchableOpacity
+                onPress={goNextMonth}
+                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              >
                 <Ionicons
                   name="chevron-forward"
                   size={normalize(20)}
@@ -524,9 +556,7 @@ export const CalendarModal = ({ visible, onClose, currentDayKey, onSelectDay }) 
             <View style={m.weekRow}>
               {['일', '월', '화', '수', '목', '금', '토'].map((d) => (
                 <View key={d} style={m.weekDayCell}>
-                  <Text style={m.weekDayText}>
-                    {d}
-                  </Text>
+                  <Text style={m.weekDayText}>{d}</Text>
                 </View>
               ))}
             </View>
@@ -550,16 +580,10 @@ export const CalendarModal = ({ visible, onClose, currentDayKey, onSelectDay }) 
                   >
                     {day && (
                       <View
-                        style={[
-                          m.dayInner,
-                          isSelected && m.dayInnerSelected,
-                        ]}
+                        style={[m.dayInner, isSelected && m.dayInnerSelected]}
                       >
                         <Text
-                          style={[
-                            m.dayText,
-                            isSelected && m.dayTextSelected,
-                          ]}
+                          style={[m.dayText, isSelected && m.dayTextSelected]}
                         >
                           {day}
                         </Text>
@@ -575,4 +599,3 @@ export const CalendarModal = ({ visible, onClose, currentDayKey, onSelectDay }) 
     </Modal>
   );
 };
-

@@ -1,6 +1,7 @@
 export function sameMessageSender(a, b) {
   if (!a || !b) return false;
-  if (a.senderId != null && b.senderId != null) return a.senderId === b.senderId;
+  if (a.senderId != null && b.senderId != null)
+    return a.senderId === b.senderId;
   return a.isMe === b.isMe;
 }
 
@@ -11,8 +12,10 @@ export function withMessageGroupFlags(messages) {
     const next = messages[i + 1];
     return {
       ...msg,
-      showProfile: !prev || !sameMessageSender(prev, msg) || prev.time !== msg.time,
-      showTimestamp: !next || !sameMessageSender(msg, next) || msg.time !== next.time,
+      showProfile:
+        !prev || !sameMessageSender(prev, msg) || prev.time !== msg.time,
+      showTimestamp:
+        !next || !sameMessageSender(msg, next) || msg.time !== next.time,
     };
   });
 }
@@ -59,7 +62,7 @@ export function injectDateBanners(messages, options = {}) {
   const leftWithBanners = injectDateBannersEveryChange(left, null);
 
   const lastLeftDateKey =
-    left.length > 0 ? left[left.length - 1]?.dateKey ?? null : null;
+    left.length > 0 ? (left[left.length - 1]?.dateKey ?? null) : null;
   const rightWithBanners = injectDateBannersEveryChange(right, lastLeftDateKey);
 
   return [...leftWithBanners, ...rightWithBanners];

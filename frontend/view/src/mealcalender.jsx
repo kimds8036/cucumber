@@ -23,7 +23,10 @@ const MEAL_LABEL = {
   dinner: '석식',
 };
 
-if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
+if (
+  Platform.OS === 'android' &&
+  UIManager.setLayoutAnimationEnabledExperimental
+) {
   UIManager.setLayoutAnimationEnabledExperimental(true);
 }
 
@@ -48,7 +51,10 @@ const buildMonthMatrix = (year, month) => {
 const MealCalender = ({ route }) => {
   const { width } = useWindowDimensions();
   const normalize = useMemo(() => getNormalize(width), [width]);
-  const styles = useMemo(() => createCalendarStyles(width, normalize), [width, normalize]);
+  const styles = useMemo(
+    () => createCalendarStyles(width, normalize),
+    [width, normalize],
+  );
 
   const now = new Date();
   const initialYear = now.getFullYear();
@@ -56,7 +62,9 @@ const MealCalender = ({ route }) => {
 
   const [year, setYear] = useState(initialYear);
   const [month, setMonth] = useState(initialMonth);
-  const [monthMatrix, setMonthMatrix] = useState(() => buildMonthMatrix(initialYear, initialMonth));
+  const [monthMatrix, setMonthMatrix] = useState(() =>
+    buildMonthMatrix(initialYear, initialMonth),
+  );
   const [mealsByDate, setMealsByDate] = useState({});
   const [mealLoading, setMealLoading] = useState(false);
 
@@ -96,7 +104,11 @@ const MealCalender = ({ route }) => {
       try {
         setMealLoading(true);
         const fromYmd = formatYMD(year, month, 1);
-        const toYmd = formatYMD(year, month, new Date(year, month + 1, 0).getDate());
+        const toYmd = formatYMD(
+          year,
+          month,
+          new Date(year, month + 1, 0).getDate(),
+        );
         const schoolId = route?.params?.schoolId;
         const endpoint = schoolId
           ? `/api/schools/${schoolId}/meals/calendar`
@@ -146,7 +158,8 @@ const MealCalender = ({ route }) => {
   };
 
   const today = new Date();
-  const isViewingCurrentMonth = year === today.getFullYear() && month === today.getMonth();
+  const isViewingCurrentMonth =
+    year === today.getFullYear() && month === today.getMonth();
 
   const onPressDate = (day) => {
     if (!day) return;
@@ -167,7 +180,10 @@ const MealCalender = ({ route }) => {
     }
     const key = formatYMD(year, month, day);
     const mealInfo = mealsByDate[key];
-    const isToday = day === now.getDate() && month === now.getMonth() && year === now.getFullYear();
+    const isToday =
+      day === now.getDate() &&
+      month === now.getMonth() &&
+      year === now.getFullYear();
     const isSelected = selectedDate === key;
     const hasMeals = !!mealInfo;
 
@@ -212,8 +228,16 @@ const MealCalender = ({ route }) => {
   return (
     <View style={styles.container}>
       <View style={styles.monthHeader}>
-        <TouchableOpacity style={styles.monthNav} onPress={handlePrevMonth} activeOpacity={0.7}>
-          <Ionicons name="chevron-back" size={normalize(18)} color={colors.textSecondary} />
+        <TouchableOpacity
+          style={styles.monthNav}
+          onPress={handlePrevMonth}
+          activeOpacity={0.7}
+        >
+          <Ionicons
+            name="chevron-back"
+            size={normalize(18)}
+            color={colors.textSecondary}
+          />
         </TouchableOpacity>
         <Text style={styles.monthTitle}>{monthLabel}</Text>
         <TouchableOpacity
@@ -225,7 +249,9 @@ const MealCalender = ({ route }) => {
           <Ionicons
             name="chevron-forward"
             size={normalize(18)}
-            color={isViewingCurrentMonth ? colors.background : colors.textSecondary}
+            color={
+              isViewingCurrentMonth ? colors.background : colors.textSecondary
+            }
           />
         </TouchableOpacity>
       </View>
@@ -256,7 +282,11 @@ const MealCalender = ({ route }) => {
               ]}
             >
               {week.map((day, colIndex) =>
-                renderDayCell(day, colIndex, rowIndex === monthMatrix.length - 1),
+                renderDayCell(
+                  day,
+                  colIndex,
+                  rowIndex === monthMatrix.length - 1,
+                ),
               )}
             </View>
           ))}
@@ -269,8 +299,10 @@ const MealCalender = ({ route }) => {
                 {['breakfast', 'lunch', 'dinner'].map((mealType) => {
                   const label = MEAL_LABEL[mealType] || mealType;
                   const mealsForDay = mealsByDate[selectedDate];
-                  const menus = mealsForDay.meals && mealsForDay.meals[mealType];
-                  const calories = mealsForDay.calories && mealsForDay.calories[mealType];
+                  const menus =
+                    mealsForDay.meals && mealsForDay.meals[mealType];
+                  const calories =
+                    mealsForDay.calories && mealsForDay.calories[mealType];
                   const hasMenus = menus && menus.length > 0;
                   return (
                     <View key={mealType} style={styles.mealDetailCard}>
@@ -285,7 +317,9 @@ const MealCalender = ({ route }) => {
                             {menus.join(', ')}
                           </Text>
                         ) : (
-                          <Text style={styles.mealDetailMenuEmpty}>급식 정보가 없어요</Text>
+                          <Text style={styles.mealDetailMenuEmpty}>
+                            급식 정보가 없어요
+                          </Text>
                         )}
                         {calories ? (
                           <Text
@@ -305,7 +339,9 @@ const MealCalender = ({ route }) => {
               </View>
             ) : (
               <Text style={styles.noMealText}>
-                {mealLoading ? '급식 정보를 불러오는 중이에요' : '급식 정보가 없어요'}
+                {mealLoading
+                  ? '급식 정보를 불러오는 중이에요'
+                  : '급식 정보가 없어요'}
               </Text>
             )}
           </View>
@@ -316,4 +352,3 @@ const MealCalender = ({ route }) => {
 };
 
 export default MealCalender;
-

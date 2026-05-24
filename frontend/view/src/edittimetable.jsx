@@ -1,4 +1,10 @@
-import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import React, {
+  useState,
+  useEffect,
+  useCallback,
+  useMemo,
+  useRef,
+} from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
   View,
@@ -14,10 +20,18 @@ import {
   useWindowDimensions,
 } from 'react-native';
 import { Picker } from '@react-native-picker/picker';
-import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import {
+  SafeAreaView,
+  useSafeAreaInsets,
+} from 'react-native-safe-area-context';
 import Feather from '@expo/vector-icons/Feather';
 import SubHeader from '../frame/subHeader';
-import { colors, fonts, fontSizes, TIMETABLE_SUBJECT_COLORS } from '../../styles/colors';
+import {
+  colors,
+  fonts,
+  fontSizes,
+  TIMETABLE_SUBJECT_COLORS,
+} from '../../styles/colors';
 import { getNormalize } from '../../styles/mypage.style';
 import {
   DAYS,
@@ -35,7 +49,10 @@ const EDIT_TS_GRID_INITIAL_MIN = 10;
 const EDIT_TS_PICKER_MIN = 1;
 const EDIT_TS_PICKER_MAX = 20;
 
-const normalizeSubject = (value) => String(value || '').trim().toLowerCase();
+const normalizeSubject = (value) =>
+  String(value || '')
+    .trim()
+    .toLowerCase();
 
 const getSubjectColorIndex = (subject) => {
   const key = normalizeSubject(subject);
@@ -54,7 +71,10 @@ const EditTimetable = ({ navigation, route }) => {
   const { width } = useWindowDimensions();
   const insets = useSafeAreaInsets();
   const normalize = useMemo(() => getNormalize(width), [width]);
-  const et = useMemo(() => createEditTimetableScreenStyles(normalize), [normalize]);
+  const et = useMemo(
+    () => createEditTimetableScreenStyles(normalize),
+    [normalize],
+  );
   const scrollRef = useRef(null);
 
   const scrollAccordionAboveKeyboard = useCallback(() => {
@@ -74,7 +94,9 @@ const EditTimetable = ({ navigation, route }) => {
 
   const initialMaxPeriod = useMemo(() => {
     const tt =
-      existingTimetable && typeof existingTimetable === 'object' ? existingTimetable : {};
+      existingTimetable && typeof existingTimetable === 'object'
+        ? existingTimetable
+        : {};
     const fromData = Math.max(
       EDIT_TS_GRID_INITIAL_MIN,
       getMaxPeriodFromTimetableKeys(tt, EDIT_TS_GRID_INITIAL_MIN),
@@ -175,7 +197,10 @@ const EditTimetable = ({ navigation, route }) => {
 
   const periodPickerItems = useMemo(
     () =>
-      Array.from({ length: EDIT_TS_PICKER_MAX - EDIT_TS_PICKER_MIN + 1 }, (_, i) => EDIT_TS_PICKER_MIN + i),
+      Array.from(
+        { length: EDIT_TS_PICKER_MAX - EDIT_TS_PICKER_MIN + 1 },
+        (_, i) => EDIT_TS_PICKER_MIN + i,
+      ),
     [],
   );
 
@@ -187,7 +212,10 @@ const EditTimetable = ({ navigation, route }) => {
     (itemValue) => {
       const p = Number(itemValue);
       if (!Number.isFinite(p)) return;
-      const clamped = Math.min(EDIT_TS_PICKER_MAX, Math.max(EDIT_TS_PICKER_MIN, p));
+      const clamped = Math.min(
+        EDIT_TS_PICKER_MAX,
+        Math.max(EDIT_TS_PICKER_MIN, p),
+      );
       setSelectedPeriod(clamped);
       setMaxPeriodCount((prev) => {
         if (clamped > prev) return clamped;
@@ -244,7 +272,10 @@ const EditTimetable = ({ navigation, route }) => {
   };
 
   const handleSave = async () => {
-    const timetableToSave = pruneTimetableAbovePeriod(maxPeriodCount, timetable);
+    const timetableToSave = pruneTimetableAbovePeriod(
+      maxPeriodCount,
+      timetable,
+    );
     try {
       if (onSave) {
         onSave(timetableToSave);
@@ -329,7 +360,9 @@ const EditTimetable = ({ navigation, route }) => {
                     const cellStyle = [
                       et.editTsClassCell,
                       filled ? et.editTsClassCellFilled : null,
-                      filled ? { backgroundColor: getCellColor(content) } : null,
+                      filled
+                        ? { backgroundColor: getCellColor(content) }
+                        : null,
                       isSelected ? et.editTsClassCellSelected : null,
                     ];
 
@@ -376,7 +409,8 @@ const EditTimetable = ({ navigation, route }) => {
                         size={normalize(16)}
                         color={colors.background2}
                         style={{
-                          opacity: maxPeriodCount >= EDIT_TS_PICKER_MAX ? 0.35 : 1,
+                          opacity:
+                            maxPeriodCount >= EDIT_TS_PICKER_MAX ? 0.35 : 1,
                         }}
                       />
                     </TouchableOpacity>
@@ -394,10 +428,16 @@ const EditTimetable = ({ navigation, route }) => {
             <View
               style={[
                 et.editTsAccordionCellTitle,
-                { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap' },
+                {
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  flexWrap: 'wrap',
+                },
               ]}
             >
-              <Text style={[et.editTsAccordionCellTitle, { marginBottom: 0 }]}>{selectedDay}요일 {selectedPeriod}교시</Text>
+              <Text style={[et.editTsAccordionCellTitle, { marginBottom: 0 }]}>
+                {selectedDay}요일 {selectedPeriod}교시
+              </Text>
             </View>
             <TextInput
               style={et.editTsAccordionInput}
@@ -464,7 +504,11 @@ const EditTimetable = ({ navigation, route }) => {
               selectedValue={periodDraft}
               onValueChange={(v) => setPeriodDraft(Number(v))}
               {...(Platform.OS === 'android' ? { mode: 'dialog' } : {})}
-              style={Platform.OS === 'ios' ? { width: '100%' } : { width: '100%', height: normalize(180) }}
+              style={
+                Platform.OS === 'ios'
+                  ? { width: '100%' }
+                  : { width: '100%', height: normalize(180) }
+              }
               itemStyle={
                 Platform.OS === 'ios'
                   ? {
@@ -490,7 +534,13 @@ const EditTimetable = ({ navigation, route }) => {
               }}
               activeOpacity={0.85}
             >
-              <Text style={{ fontFamily: fonts.bold, fontSize: normalize(fontSizes.xl), color: colors.background }}>
+              <Text
+                style={{
+                  fontFamily: fonts.bold,
+                  fontSize: normalize(fontSizes.xl),
+                  color: colors.background,
+                }}
+              >
                 완료
               </Text>
             </TouchableOpacity>

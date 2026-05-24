@@ -74,12 +74,17 @@ export function isApiInputValidationHttpError(error) {
  * - 응답 인터셉터가 400/422일 때 `error.userFacingMessage`에 복사해 둔 값을 우선 사용
  * - 그다음 `response.data.message` (백엔드 공통 포맷)
  */
-export function getApiUserFacingMessage(error, fallback = '요청에 실패했습니다.') {
+export function getApiUserFacingMessage(
+  error,
+  fallback = '요청에 실패했습니다.',
+) {
   const fromInterceptor =
-    typeof error?.userFacingMessage === 'string' && error.userFacingMessage.trim();
+    typeof error?.userFacingMessage === 'string' &&
+    error.userFacingMessage.trim();
   if (fromInterceptor) return fromInterceptor.trim();
   const data = error?.response?.data;
-  if (typeof data?.message === 'string' && data.message.trim()) return data.message.trim();
+  if (typeof data?.message === 'string' && data.message.trim())
+    return data.message.trim();
   if (typeof data === 'string' && data.trim()) return data.trim();
   return fallback;
 }
@@ -182,7 +187,7 @@ if (__DEV__) {
   console.log('[API] baseURL:', api.defaults.baseURL, {
     fromEnv: Boolean(
       typeof process.env.EXPO_PUBLIC_API_URL === 'string' &&
-        process.env.EXPO_PUBLIC_API_URL.trim(),
+      process.env.EXPO_PUBLIC_API_URL.trim(),
     ),
     platform: Platform.OS,
   });

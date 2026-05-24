@@ -17,8 +17,16 @@ export const createNotificationSkeletonStyles = (normalize) =>
     },
     content: { flex: 1 },
     line: { backgroundColor: colors.border, borderRadius: normalize(4) },
-    titleLine: { height: normalize(16), width: '60%', marginBottom: normalize(8) },
-    textLine: { height: normalize(14), width: '90%', marginBottom: normalize(6) },
+    titleLine: {
+      height: normalize(16),
+      width: '60%',
+      marginBottom: normalize(8),
+    },
+    textLine: {
+      height: normalize(14),
+      width: '90%',
+      marginBottom: normalize(6),
+    },
     timeLine: { height: normalize(12), width: '30%' },
   });
 

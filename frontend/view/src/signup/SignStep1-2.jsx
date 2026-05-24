@@ -1,18 +1,35 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, ScrollView, KeyboardAvoidingView, Platform, Alert, Keyboard, TouchableWithoutFeedback } from 'react-native';
+import {
+  View,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  ScrollView,
+  KeyboardAvoidingView,
+  Platform,
+  Alert,
+  Keyboard,
+  TouchableWithoutFeedback,
+} from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { colors } from '../../../styles/colors';
 import { api } from '../../../utils/api';
 
 // 회원가입 2단계(14세 미만): 보호자 PASS 인증 화면
-const SignStep1_2 = ({ styles, normalize, onChange, disableValidation = false }) => {
+const SignStep1_2 = ({
+  styles,
+  normalize,
+  onChange,
+  disableValidation = false,
+}) => {
   const [phoneNumber, setPhoneNumber] = useState('');
   const [verificationCode, setVerificationCode] = useState('');
   const [isCodeSent, setIsCodeSent] = useState(false);
   const [isVerified, setIsVerified] = useState(false);
   /** 법정대리인 고지 확인: null | 'na'(만 14세 이상 해당 없음) | 'guardian'(동의) */
   const [guardianLegalAck, setGuardianLegalAck] = useState(null);
-  const isPhoneReadyForVerification = phoneNumber.replace(/\D/g, '').length === 11;
+  const isPhoneReadyForVerification =
+    phoneNumber.replace(/\D/g, '').length === 11;
 
   const notifyChange = (override = {}) => {
     onChange &&
@@ -59,7 +76,11 @@ const SignStep1_2 = ({ styles, normalize, onChange, disableValidation = false })
       Alert.alert('알림', '인증 코드가 발송되었습니다.');
     } catch (error) {
       console.error(error);
-      Alert.alert('오류', error.response?.data?.message || '인증 코드 발송 중 오류가 발생했습니다.');
+      Alert.alert(
+        '오류',
+        error.response?.data?.message ||
+          '인증 코드 발송 중 오류가 발생했습니다.',
+      );
     }
   };
 
@@ -85,7 +106,11 @@ const SignStep1_2 = ({ styles, normalize, onChange, disableValidation = false })
       Alert.alert('알림', '보호자 본인인증이 완료되었습니다.');
     } catch (error) {
       console.error(error);
-      Alert.alert('오류', error.response?.data?.message || '인증번호 확인 중 오류가 발생했습니다.');
+      Alert.alert(
+        '오류',
+        error.response?.data?.message ||
+          '인증번호 확인 중 오류가 발생했습니다.',
+      );
     }
   };
 
@@ -128,7 +153,11 @@ const SignStep1_2 = ({ styles, normalize, onChange, disableValidation = false })
                 }}
               >
                 [필수 3] 만 14세 미만 회원의 법정대리인 동의{' '}
-                <Text style={{ fontWeight: '400', color: colors.textSecondary }}>(해당자만)</Text>
+                <Text
+                  style={{ fontWeight: '400', color: colors.textSecondary }}
+                >
+                  (해당자만)
+                </Text>
               </Text>
               <Text
                 style={{
@@ -140,12 +169,19 @@ const SignStep1_2 = ({ styles, normalize, onChange, disableValidation = false })
               >
                 자세한 내용은 개인정보 처리방침 제1조·제6조를 참고하세요.
               </Text>
-              <Text style={{ fontSize: normalize(12), color: colors.textPrimary, lineHeight: normalize(19) }}>
-                · <Text style={{ fontWeight: '600' }}>수집</Text> 법정대리인 이름·연락처 등 법령상 필요한 최소 정보(실제
-                항목은 가입 화면에서 안내){'\n'}
-                · <Text style={{ fontWeight: '600' }}>목적</Text> 만 14세 미만 아동 정보 수집·이용에 대한 법정대리인
-                동의 확인{'\n'}· <Text style={{ fontWeight: '600' }}>보관</Text> 동의 목적 달성 후 지체 없이 파기(별도
-                법령 보존 제외)
+              <Text
+                style={{
+                  fontSize: normalize(12),
+                  color: colors.textPrimary,
+                  lineHeight: normalize(19),
+                }}
+              >
+                · <Text style={{ fontWeight: '600' }}>수집</Text> 법정대리인
+                이름·연락처 등 법령상 필요한 최소 정보(실제 항목은 가입 화면에서
+                안내){'\n'}· <Text style={{ fontWeight: '600' }}>목적</Text> 만
+                14세 미만 아동 정보 수집·이용에 대한 법정대리인 동의 확인{'\n'}·{' '}
+                <Text style={{ fontWeight: '600' }}>보관</Text> 동의 목적 달성
+                후 지체 없이 파기(별도 법령 보존 제외)
               </Text>
               <Text
                 style={{
@@ -159,17 +195,33 @@ const SignStep1_2 = ({ styles, normalize, onChange, disableValidation = false })
               </Text>
 
               <TouchableOpacity
-                style={{ flexDirection: 'row', alignItems: 'center', marginBottom: normalize(8) }}
+                style={{
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  marginBottom: normalize(8),
+                }}
                 onPress={() => selectLegalAck('na')}
                 activeOpacity={0.7}
               >
                 <Ionicons
-                  name={guardianLegalAck === 'na' ? 'checkbox' : 'square-outline'}
+                  name={
+                    guardianLegalAck === 'na' ? 'checkbox' : 'square-outline'
+                  }
                   size={normalize(22)}
-                  color={guardianLegalAck === 'na' ? colors.primaryDark : colors.textSecondary}
+                  color={
+                    guardianLegalAck === 'na'
+                      ? colors.primaryDark
+                      : colors.textSecondary
+                  }
                   style={{ marginRight: normalize(8) }}
                 />
-                <Text style={{ flex: 1, fontSize: normalize(13), color: colors.textPrimary }}>
+                <Text
+                  style={{
+                    flex: 1,
+                    fontSize: normalize(13),
+                    color: colors.textPrimary,
+                  }}
+                >
                   해당 없음 (만 14세 이상)
                 </Text>
               </TouchableOpacity>
@@ -179,12 +231,26 @@ const SignStep1_2 = ({ styles, normalize, onChange, disableValidation = false })
                 activeOpacity={0.7}
               >
                 <Ionicons
-                  name={guardianLegalAck === 'guardian' ? 'checkbox' : 'square-outline'}
+                  name={
+                    guardianLegalAck === 'guardian'
+                      ? 'checkbox'
+                      : 'square-outline'
+                  }
                   size={normalize(22)}
-                  color={guardianLegalAck === 'guardian' ? colors.primaryDark : colors.textSecondary}
+                  color={
+                    guardianLegalAck === 'guardian'
+                      ? colors.primaryDark
+                      : colors.textSecondary
+                  }
                   style={{ marginRight: normalize(8) }}
                 />
-                <Text style={{ flex: 1, fontSize: normalize(13), color: colors.textPrimary }}>
+                <Text
+                  style={{
+                    flex: 1,
+                    fontSize: normalize(13),
+                    color: colors.textPrimary,
+                  }}
+                >
                   법정대리인으로서 동의합니다
                 </Text>
               </TouchableOpacity>
@@ -205,7 +271,9 @@ const SignStep1_2 = ({ styles, normalize, onChange, disableValidation = false })
                 <TouchableOpacity
                   style={[
                     styles.guardianVerifyButton,
-                    !isPhoneReadyForVerification && { backgroundColor: colors.textLight10 },
+                    !isPhoneReadyForVerification && {
+                      backgroundColor: colors.textLight10,
+                    },
                   ]}
                   onPress={handleSendCode}
                   disabled={!isPhoneReadyForVerification}
@@ -231,7 +299,10 @@ const SignStep1_2 = ({ styles, normalize, onChange, disableValidation = false })
 
             {isCodeSent && (
               <View style={styles.guardianInputWrapper}>
-                <TouchableOpacity style={styles.guardianVerifyButton} onPress={handleVerifyCode}>
+                <TouchableOpacity
+                  style={styles.guardianVerifyButton}
+                  onPress={handleVerifyCode}
+                >
                   <Text style={styles.guardianVerifyButtonText}>인증 확인</Text>
                 </TouchableOpacity>
               </View>

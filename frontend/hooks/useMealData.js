@@ -1,12 +1,12 @@
-import { useState, useEffect } from "react";
-import Constants from "expo-constants";
-import { API_URLS } from "../config/apiEnv.js";
+import { useState, useEffect } from 'react';
+import Constants from 'expo-constants';
+import { API_URLS } from '../config/apiEnv.js';
 
 const BASE_URL = (
   process.env.EXPO_PUBLIC_API_URL ||
   Constants.expoConfig?.extra?.apiBaseUrl ||
   API_URLS.develop
-).replace(/\/+$/, "");
+).replace(/\/+$/, '');
 
 /**
  * 현재 달 yyyymm (YYYYMM) 계산
@@ -14,7 +14,7 @@ const BASE_URL = (
 function getCurrentYyyymm() {
   const now = new Date();
   const y = now.getFullYear();
-  const m = String(now.getMonth() + 1).padStart(2, "0");
+  const m = String(now.getMonth() + 1).padStart(2, '0');
   return `${y}${m}`;
 }
 
@@ -24,8 +24,8 @@ function getCurrentYyyymm() {
 function getTodayYmd() {
   const now = new Date();
   const y = now.getFullYear();
-  const m = String(now.getMonth() + 1).padStart(2, "0");
-  const d = String(now.getDate()).padStart(2, "0");
+  const m = String(now.getMonth() + 1).padStart(2, '0');
+  const d = String(now.getDate()).padStart(2, '0');
   return `${y}${m}${d}`;
 }
 
@@ -35,7 +35,7 @@ function getTodayYmd() {
  * @param {string} [atptCode] - 시도교육청코드 (선택, query로 전달)
  * @returns {{ upcomingMeals: Array, loading: boolean, error: string | null }}
  */
-export function useMealData(schulCode, atptCode = "") {
+export function useMealData(schulCode, atptCode = '') {
   const [upcomingMeals, setUpcomingMeals] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -60,7 +60,7 @@ export function useMealData(schulCode, atptCode = "") {
 
     fetch(url)
       .then((res) => {
-        if (!res.ok) throw new Error("급식 정보를 불러오지 못했습니다.");
+        if (!res.ok) throw new Error('급식 정보를 불러오지 못했습니다.');
         return res.json();
       })
       .then((data) => {
@@ -74,7 +74,7 @@ export function useMealData(schulCode, atptCode = "") {
       })
       .catch((err) => {
         if (!cancelled) {
-          setError(err.message || "오류가 발생했습니다.");
+          setError(err.message || '오류가 발생했습니다.');
           setUpcomingMeals([]);
         }
       })

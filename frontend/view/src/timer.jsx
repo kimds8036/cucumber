@@ -169,8 +169,7 @@ function toTimerDayEndAwareSeconds(rawSeconds) {
 /** 타임테이블/슬롯 색칠용: 해당 day_key 뷰에 맞춰 startSeconds/endSeconds 부착 */
 function sessionToDerivedTimelineSeconds(session, viewingDayKey) {
   const a = timerDayBoundaryMs(viewingDayKey);
-  if (!Number.isFinite(a) || session?.startedAtMs == null)
-    return null;
+  if (!Number.isFinite(a) || session?.startedAtMs == null) return null;
   const ss = Number(session.startedAtMs);
   if (!Number.isFinite(ss)) return null;
   const dayLenMs = TIMER_SECONDS_PER_DAY * 1000;
@@ -210,8 +209,7 @@ function getSessionDurationMs(session, nowSecRaw = null) {
   ) {
     const start = Number(session.startedAtMs);
     const end =
-      session?.endedAtMs != null &&
-      Number.isFinite(Number(session.endedAtMs))
+      session?.endedAtMs != null && Number.isFinite(Number(session.endedAtMs))
         ? Number(session.endedAtMs)
         : Date.now();
     return Math.max(0, end - start);
@@ -386,8 +384,7 @@ function buildSnapshotCompleteSessions(
         ? Number(session.startedAtMs)
         : null;
     const em =
-      session?.endedAtMs != null &&
-      Number.isFinite(Number(session.endedAtMs))
+      session?.endedAtMs != null && Number.isFinite(Number(session.endedAtMs))
         ? Number(session.endedAtMs)
         : null;
 
@@ -401,8 +398,7 @@ function buildSnapshotCompleteSessions(
         (typeof persistDayKey === 'string' && persistDayKey.trim()) ||
         getTimerDayKey(new Date());
       const anchor = timerDayBoundaryMs(dk);
-      const s0 =
-        normalizeClockSeconds(session?.startSeconds, 0);
+      const s0 = normalizeClockSeconds(session?.startSeconds, 0);
       const e0 =
         session?.endSeconds == null
           ? null
@@ -411,8 +407,7 @@ function buildSnapshotCompleteSessions(
             });
       const startMsSynth = anchor + s0 * 1000;
       startedIso = new Date(startMsSynth).toISOString();
-      endedIso =
-        e0 == null ? null : new Date(anchor + e0 * 1000).toISOString();
+      endedIso = e0 == null ? null : new Date(anchor + e0 * 1000).toISOString();
     }
 
     return {
@@ -474,8 +469,7 @@ function normalizeDayPayload(data, dayKeyForSessions) {
       ? dayKeyForSessions.trim().slice(0, 10)
       : getTimerDayKey(new Date());
 
-  const sessions =
-    normalizeSessionsArray(data?.sessions ?? [], dk);
+  const sessions = normalizeSessionsArray(data?.sessions ?? [], dk);
 
   return {
     sessions,
@@ -759,10 +753,7 @@ function TimerLiveScrollInner({
                 : formatHMS(totalMs);
               const isCollapsed = collapsedSubjects[sub.id] === true;
               return (
-                <View
-                  key={sub.id}
-                  style={styles.subjectAccordionWrap}
-                >
+                <View key={sub.id} style={styles.subjectAccordionWrap}>
                   <View
                     style={[
                       styles.subjectBlock,
@@ -847,7 +838,8 @@ function TimerLiveScrollInner({
                             <Text
                               style={[
                                 styles.taskContent,
-                                task.status === 'done' && styles.taskContentDone,
+                                task.status === 'done' &&
+                                  styles.taskContentDone,
                               ]}
                               numberOfLines={1}
                             >
@@ -1372,12 +1364,12 @@ export const TimerContent = () => {
         setTotalElapsedMs(0);
         setSessions([
           {
-            subjectId:
-              activeSubjectId != null ? Number(activeSubjectId) : null,
+            subjectId: activeSubjectId != null ? Number(activeSubjectId) : null,
             subjectName: activeMeta?.name ?? null,
             subjectColor: activeMeta?.color ?? null,
-            startedAtMs:
-              Number.isFinite(nextAnchorMs) ? nextAnchorMs : Date.now(),
+            startedAtMs: Number.isFinite(nextAnchorMs)
+              ? nextAnchorMs
+              : Date.now(),
             endedAtMs: null,
           },
         ]);
@@ -1434,8 +1426,7 @@ export const TimerContent = () => {
           const startMs = Number(openSession.startedAtMs);
           const elapsedMs = Math.max(0, Date.now() - startMs);
           const isGhostOpenSession =
-            elapsedMs >
-            TIMER_RECOVER_OPEN_SESSION_MAX_SECONDS * 1000;
+            elapsedMs > TIMER_RECOVER_OPEN_SESSION_MAX_SECONDS * 1000;
 
           if (isGhostOpenSession) {
             setIsRunning(false);
@@ -2358,20 +2349,14 @@ export const TimerContent = () => {
         onClose={() => setShowSaveModal(false)}
         dismissOnBackdrop={false}
       >
-        <Text style={styles.timerSaveModalTitle}>
-          저장 완료
-        </Text>
-        <Text style={styles.timerSaveModalBody}>
-          갤러리에 저장되었어요
-        </Text>
+        <Text style={styles.timerSaveModalTitle}>저장 완료</Text>
+        <Text style={styles.timerSaveModalBody}>갤러리에 저장되었어요</Text>
         <TouchableOpacity
           style={styles.timerSaveModalConfirmBtn}
           onPress={() => setShowSaveModal(false)}
           activeOpacity={0.85}
         >
-          <Text style={styles.timerSaveModalConfirmText}>
-            확인
-          </Text>
+          <Text style={styles.timerSaveModalConfirmText}>확인</Text>
         </TouchableOpacity>
       </AppPopupModal>
     </>

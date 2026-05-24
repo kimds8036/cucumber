@@ -12,7 +12,12 @@ function loadKeystoreCredentials() {
   try {
     const raw = JSON.parse(fs.readFileSync(CREDENTIALS_PATH, 'utf8'));
     const k = raw?.android?.keystore;
-    if (!k?.keystorePath || !k?.keystorePassword || !k?.keyAlias || !k?.keyPassword) {
+    if (
+      !k?.keystorePath ||
+      !k?.keystorePassword ||
+      !k?.keyAlias ||
+      !k?.keyPassword
+    ) {
       return null;
     }
     const keystorePath = path.isAbsolute(k.keystorePath)
@@ -21,7 +26,7 @@ function loadKeystoreCredentials() {
     if (!fs.existsSync(keystorePath)) {
       console.warn(
         `[withAndroidReleaseSigning] keystore 파일 없음: ${keystorePath}\n` +
-          '  → npm run credentials:android 로 EAS에서 다운로드하세요.'
+          '  → npm run credentials:android 로 EAS에서 다운로드하세요.',
       );
       return null;
     }
@@ -32,7 +37,10 @@ function loadKeystoreCredentials() {
       keyPassword: String(k.keyPassword),
     };
   } catch (e) {
-    console.warn('[withAndroidReleaseSigning] credentials.json 읽기 실패:', e?.message ?? e);
+    console.warn(
+      '[withAndroidReleaseSigning] credentials.json 읽기 실패:',
+      e?.message ?? e,
+    );
     return null;
   }
 }
@@ -62,17 +70,20 @@ function withAndroidReleaseSigning(config) {
 
       contents = contents.replace(
         /(signingConfigs\s*\{\s*debug\s*\{[\s\S]*?\n        \}\n)(    \}\n    buildTypes)/,
-        `$1${releaseSigning}\n$2`
+        `$1${releaseSigning}\n$2`,
       );
     }
 
     // buildTypes.release 만 교체 (signingConfigs.release 와 혼동하지 않음)
     contents = contents.replace(
       /(buildTypes\s*\{[\s\S]*?release\s*\{[\s\S]*?)signingConfig\s+signingConfigs\.debug/,
-      '$1signingConfig signingConfigs.release'
+      '$1signingConfig signingConfigs.release',
     );
 
-    console.log('[withAndroidReleaseSigning] release 서명 적용:', cred.keystorePath);
+    console.log(
+      '[withAndroidReleaseSigning] release 서명 적용:',
+      cred.keystorePath,
+    );
     mod.modResults.contents = contents;
     return mod;
   });

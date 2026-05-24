@@ -6,7 +6,10 @@ import { createAdStyles } from '../../../styles/ad.style';
 const SchoolAdPlaceholder = () => {
   const { width } = useWindowDimensions();
   const normalize = useMemo(() => getNormalize(width), [width]);
-  const styles = useMemo(() => createAdStyles(normalize, width), [normalize, width]);
+  const styles = useMemo(
+    () => createAdStyles(normalize, width),
+    [normalize, width],
+  );
 
   return (
     <View style={styles.container}>

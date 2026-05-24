@@ -44,7 +44,9 @@ const IOSActionSheet = ({
                     {action.label}
                   </Text>
                 </TouchableOpacity>
-                {idx < actions.length - 1 ? <View style={styles.divider} /> : null}
+                {idx < actions.length - 1 ? (
+                  <View style={styles.divider} />
+                ) : null}
               </View>
             ))}
           </View>

@@ -13,55 +13,53 @@ npx expo install react-native-keyboard-controller
 
 복사
 
-
 스낵 에서 열기
-
 
 import { TextInput, View, StyleSheet } from 'react-native';
 import { KeyboardAwareScrollView, KeyboardToolbar } from 'react-native-keyboard-controller';
 
 export default function FormScreen() {
-  return (
-    <>
-      <KeyboardAwareScrollView bottomOffset={62} contentContainerStyle={styles.container}>
-        <View>
-          <TextInput placeholder="Type a message..." style={styles.textInput} />
-          <TextInput placeholder="Type a message..." style={styles.textInput} />
-        </View>
-        <TextInput placeholder="Type a message..." style={styles.textInput} />
-        <View>
-          <TextInput placeholder="Type a message..." style={styles.textInput} />
-          <TextInput placeholder="Type a message..." style={styles.textInput} />
-          <TextInput placeholder="Type a message..." style={styles.textInput} />
-        </View>
-        <TextInput placeholder="Type a message..." style={styles.textInput} />
-      </KeyboardAwareScrollView>
-      <KeyboardToolbar />
-    </>
-  );
+return (
+<>
+<KeyboardAwareScrollView bottomOffset={62} contentContainerStyle={styles.container}>
+<View>
+<TextInput placeholder="Type a message..." style={styles.textInput} />
+<TextInput placeholder="Type a message..." style={styles.textInput} />
+</View>
+<TextInput placeholder="Type a message..." style={styles.textInput} />
+<View>
+<TextInput placeholder="Type a message..." style={styles.textInput} />
+<TextInput placeholder="Type a message..." style={styles.textInput} />
+<TextInput placeholder="Type a message..." style={styles.textInput} />
+</View>
+<TextInput placeholder="Type a message..." style={styles.textInput} />
+</KeyboardAwareScrollView>
+<KeyboardToolbar />
+</>
+);
 }
 
 const styles = StyleSheet.create({
-  container: {
-    gap: 16,
-    padding: 16,
-  },
-  listStyle: {
-    padding: 16,
-    gap: 16,
-  },
-  textInput: {
-    width: 'auto',
-    flexGrow: 1,
-    flexShrink: 1,
-    height: 45,
-    borderWidth: 1,
-    borderRadius: 8,
-    borderColor: '#d8d8d8',
-    backgroundColor: '#fff',
-    padding: 8,
-    marginBottom: 8,
-  },
+container: {
+gap: 16,
+padding: 16,
+},
+listStyle: {
+padding: 16,
+gap: 16,
+},
+textInput: {
+width: 'auto',
+flexGrow: 1,
+flexShrink: 1,
+height: 45,
+borderWidth: 1,
+borderRadius: 8,
+borderColor: '#d8d8d8',
+backgroundColor: '#fff',
+padding: 8,
+marginBottom: 8,
+},
 });
 
 더 보기
@@ -77,15 +75,14 @@ Android와 iOS는 `<input>` 속성을 다르게 처리합니다 behavior. iOS에
 
 복사
 
-
 import { KeyboardAvoidingView, TextInput } from 'react-native';
 
 export default function HomeScreen() {
-  return (
-    <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1 }}>
-      <TextInput placeholder="Type here..." />
-    </KeyboardAvoidingView>;
-  );
+return (
+<KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1 }}>
+<TextInput placeholder="Type here..." />
+</KeyboardAvoidingView>;
+);
 }
 위 예시에서처럼 입력란의 높이는 KeyboardAvoidingView기기의 키보드 높이에 따라 자동으로 조절되므로 입력 내용이 항상 보이도록 합니다.
 
@@ -95,32 +92,30 @@ Android에서 하단 탭 네비게이터를 사용할 때 입력 필드에 포�
 
 복사
 
-
 "expo" {
-  "android": {
-    "softwareKeyboardLayoutMode": "pan"
-  }
+"android": {
+"softwareKeyboardLayoutMode": "pan"
+}
 }
 이 속성을 추가한 후 개발 서버를 다시 시작하고 앱을 다시 로드하여 변경 사항을 적용하세요.
 
 키보드가 열릴 때 하단 탭을 숨기는 것도 가능합니다 tabBarHideOnKeyboard. 이는 Bottom Tab Navigator의 옵션 중 하나이며, 이 옵션을 로 설정하면 true키보드가 열릴 때 하단 탭이 숨겨집니다.
 
-src/app/_layout.tsx
+src/app/\_layout.tsx
 
 복사
-
 
 import { Tabs } from 'expo-router';
 
 export default function TabLayout() {
-  return (
-    <Tabs
-      screenOptions={{
+return (
+<Tabs
+screenOptions={{
         tabBarHideOnKeyboard: true,
       }}>
-      <Tabs.Screen name="index" />
-    </Tabs>
-  );
+<Tabs.Screen name="index" />
+</Tabs>
+);
 }
 키보드 이벤트
 React Native의 모듈 Keyboard을 사용하면 네이티브 이벤트를 수신하고, 이에 반응하여 키보드를 숨기는 등의 변경을 수행할 수 있습니다.
@@ -133,37 +128,37 @@ React Native의 모듈 Keyboard을 사용하면 네이티브 이벤트를 수신
 
 복사
 
-
 import { useEffect, useState } from 'react';
 import { Keyboard, View, Button, TextInput } from 'react-native';
 
 export default function HomeScreen() {
-  const [isKeyboardVisible, setIsKeyboardVisible] = useState(false);
+const [isKeyboardVisible, setIsKeyboardVisible] = useState(false);
 
-  useEffect(() => {
-    const showSubscription = Keyboard.addListener('keyboardDidShow', handleKeyboardShow);
-    const hideSubscription = Keyboard.addListener('keyboardDidHide', handleKeyboardHide);
+useEffect(() => {
+const showSubscription = Keyboard.addListener('keyboardDidShow', handleKeyboardShow);
+const hideSubscription = Keyboard.addListener('keyboardDidHide', handleKeyboardHide);
 
     return () => {
       showSubscription.remove();
       hideSubscription.remove();
     };
-  }, []);
 
-  const handleKeyboardShow = event => {
-    setIsKeyboardVisible(true);
-  };
+}, []);
 
-  const handleKeyboardHide = event => {
-    setIsKeyboardVisible(false);
-  };
+const handleKeyboardShow = event => {
+setIsKeyboardVisible(true);
+};
 
-  return (
-    <View>
-      {isKeyboardVisible && <Button title="Dismiss keyboard" onPress={Keyboard.dismiss} />}
-      <TextInput placeholder="Type here..." />
-    </View>
-  );
+const handleKeyboardHide = event => {
+setIsKeyboardVisible(false);
+};
+
+return (
+<View>
+{isKeyboardVisible && <Button title="Dismiss keyboard" onPress={Keyboard.dismiss} />}
+<TextInput placeholder="Type here..." />
+</View>
+);
 }
 키보드 컨트롤러를 이용한 고급 키보드 조작
 여러 개의 텍스트 입력 필드가 있는 스크롤 가능한 대형 입력 양식과 같이 더 복잡한 키보드 상호 작용의 경우 react-native-keyboard-controller(Keyboard Controller) 라이브러리 사용을 고려해 보세요. 이 라이브러리는 React Native의 내장 키보드 API보다 더 많은 기능을 제공하며, 최소한의 설정으로 Android와 iOS에서 일관성을 유지하고 사용자가 기대하는 네이티브 앱과 같은 느낌을 제공합니다.
@@ -184,23 +179,22 @@ npx expo install react-native-keyboard-controller
 설정 제공업체
 설정을 완료하려면 KeyboardProvider앱에 추가하세요.
 
-src/app/_layout.tsx
+src/app/\_layout.tsx
 
 복사
-
 
 import { Stack } from 'expo-router';
 import { KeyboardProvider } from 'react-native-keyboard-controller';
 
 export default function RootLayout() {
-  return (
-    <KeyboardProvider>
-      <Stack>
-        <Stack.Screen name="home" />
-        <Stack.Screen name="chat" />
-      </Stack>
-    </KeyboardProvider>
-  );
+return (
+<KeyboardProvider>
+<Stack>
+<Stack.Screen name="home" />
+<Stack.Screen name="chat" />
+</Stack>
+</KeyboardProvider>
+);
 }
 여러 입력값 처리
 이 KeyboardAvoidingView구성 요소는 프로토타입 제작에 매우 유용하지만, 플랫폼별 구성이 필요하고 사용자 정의 기능이 제한적입니다.
@@ -213,52 +207,51 @@ export default function RootLayout() {
 
 복사
 
-
 import { TextInput, View, StyleSheet } from 'react-native';
 import { KeyboardAwareScrollView, KeyboardToolbar } from 'react-native-keyboard-controller';
 
 export default function FormScreen() {
-  return (
-    <>
-      <KeyboardAwareScrollView bottomOffset={62} contentContainerStyle={styles.container}>
-        <View>
-          <TextInput placeholder="Type a message..." style={styles.textInput} />
-          <TextInput placeholder="Type a message..." style={styles.textInput} />
-        </View>
-        <TextInput placeholder="Type a message..." style={styles.textInput} />
-        <View>
-          <TextInput placeholder="Type a message..." style={styles.textInput} />
-          <TextInput placeholder="Type a message..." style={styles.textInput} />
-          <TextInput placeholder="Type a message..." style={styles.textInput} />
-        </View>
-        <TextInput placeholder="Type a message..." style={styles.textInput} />
-      </KeyboardAwareScrollView>
-      <KeyboardToolbar />
-    </>
-  );
+return (
+<>
+<KeyboardAwareScrollView bottomOffset={62} contentContainerStyle={styles.container}>
+<View>
+<TextInput placeholder="Type a message..." style={styles.textInput} />
+<TextInput placeholder="Type a message..." style={styles.textInput} />
+</View>
+<TextInput placeholder="Type a message..." style={styles.textInput} />
+<View>
+<TextInput placeholder="Type a message..." style={styles.textInput} />
+<TextInput placeholder="Type a message..." style={styles.textInput} />
+<TextInput placeholder="Type a message..." style={styles.textInput} />
+</View>
+<TextInput placeholder="Type a message..." style={styles.textInput} />
+</KeyboardAwareScrollView>
+<KeyboardToolbar />
+</>
+);
 }
 
 const styles = StyleSheet.create({
-  container: {
-    gap: 16,
-    padding: 16,
-  },
-  listStyle: {
-    padding: 16,
-    gap: 16,
-  },
-  textInput: {
-    width: 'auto',
-    flexGrow: 1,
-    flexShrink: 1,
-    height: 45,
-    borderWidth: 1,
-    borderRadius: 8,
-    borderColor: '#d8d8d8',
-    backgroundColor: '#fff',
-    padding: 8,
-    marginBottom: 8,
-  },
+container: {
+gap: 16,
+padding: 16,
+},
+listStyle: {
+padding: 16,
+gap: 16,
+},
+textInput: {
+width: 'auto',
+flexGrow: 1,
+flexShrink: 1,
+height: 45,
+borderWidth: 1,
+borderRadius: 8,
+borderColor: '#d8d8d8',
+backgroundColor: '#fff',
+padding: 8,
+marginBottom: 8,
+},
 });
 
 더 보기
@@ -273,23 +266,22 @@ const styles = StyleSheet.create({
 
 복사
 
-
 import { useKeyboardHandler } from 'react-native-keyboard-controller';
 import Animated, { useAnimatedStyle, useSharedValue } from 'react-native-reanimated';
 
 const useGradualAnimation = () => {
-  const height = useSharedValue(0);
+const height = useSharedValue(0);
 
-  useKeyboardHandler(
-    {
-      onMove: event => {
-        'worklet';
-        height.value = Math.max(event.height, 0);
-      },
-    },
-    []
-  );
-  return { height };
+useKeyboardHandler(
+{
+onMove: event => {
+'worklet';
+height.value = Math.max(event.height, 0);
+},
+},
+[]
+);
+return { height };
 };
 useGradualAnimation`reanimated` 훅을 사용하면 키보드가 활성화되거나 닫힐 때 뷰에 부드러운 애니메이션 효과를 줄 수 있습니다. 예를 들어 아래 예시의 채팅 화면 컴포넌트에서 사용할 수 있습니다. 이 컴포넌트는 `reanimated` 훅을 통해 키보드 높이를 가져옵니다. 그런 다음 `reanimated` 훅을 fakeView사용하여 `animated`라는 애니메이션 스타일을 생성합니다. 이 스타일에는 `keyboard`의 높이를 값으로 하는 `style` useAnimatedStyle이라는 속성 하나만 포함됩니다 .height
 
@@ -299,7 +291,6 @@ useGradualAnimation`reanimated` 훅을 사용하면 키보드가 활성화되거
 
 복사
 
-
 import { StyleSheet, Platform, FlatList, View, StatusBar, TextInput } from 'react-native';
 import Animated, { useAnimatedStyle, useSharedValue } from 'react-native-reanimated';
 import { useKeyboardHandler } from 'react-native-keyboard-controller';
@@ -308,52 +299,52 @@ import MessageItem from '@/components/MessageItem';
 import { messages } from '@/messages';
 
 const useGradualAnimation = () => {
-  // Code remains same from previous example 
+// Code remains same from previous example
 };
 
 export default function ChatScreen() {
-  const { height } = useGradualAnimation();
+const { height } = useGradualAnimation();
 
-  const fakeView = useAnimatedStyle(() => {
-    return {
-      height: Math.abs(height.value),
-    };
-  }, []);
+const fakeView = useAnimatedStyle(() => {
+return {
+height: Math.abs(height.value),
+};
+}, []);
 
-  return (
-    <View style={styles.container}>
-      <FlatList
-        data={messages}
-        renderItem={({ item }) => <MessageItem message={item} />}
-        keyExtractor={item => item.createdAt.toString()}
-        contentContainerStyle={styles.listStyle}
-      />
-      <TextInput placeholder="Type a message..." style={styles.textInput} />
-      <Animated.View style={fakeView} />
-    </View>
-  );
+return (
+<View style={styles.container}>
+<FlatList
+data={messages}
+renderItem={({ item }) => <MessageItem message={item} />}
+keyExtractor={item => item.createdAt.toString()}
+contentContainerStyle={styles.listStyle}
+/>
+<TextInput placeholder="Type a message..." style={styles.textInput} />
+<Animated.View style={fakeView} />
+</View>
+);
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    paddingTop: Platform.OS === 'android' ? StatusBar.currentHeight : 0,
-  },
-  listStyle: {
-    padding: 16,
-    gap: 16,
-  },
-  textInput: {
-    width: '95%',
-    height: 45,
-    borderWidth: 1,
-    borderRadius: 8,
-    borderColor: '#d8d8d8',
-    backgroundColor: '#fff',
-    padding: 8,
-    alignSelf: 'center',
-    marginBottom: 8,
-  },
+container: {
+flex: 1,
+paddingTop: Platform.OS === 'android' ? StatusBar.currentHeight : 0,
+},
+listStyle: {
+padding: 16,
+gap: 16,
+},
+textInput: {
+width: '95%',
+height: 45,
+borderWidth: 1,
+borderRadius: 8,
+borderColor: '#d8d8d8',
+backgroundColor: '#fff',
+padding: 8,
+alignSelf: 'center',
+marginBottom: 8,
+},
 });
 
 더 보기

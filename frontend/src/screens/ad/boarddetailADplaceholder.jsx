@@ -9,7 +9,7 @@ export default function boarddetailADplaceholder({ styles, label = '광고' }) {
   const normalize = useMemo(() => getNormalize(width), [width]);
   const adStyles = useMemo(
     () => createAdStyles(normalize, width),
-    [normalize, width]
+    [normalize, width],
   );
   const s = styles || adStyles;
 

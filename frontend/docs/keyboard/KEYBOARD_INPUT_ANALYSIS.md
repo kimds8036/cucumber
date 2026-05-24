@@ -5,6 +5,7 @@
 ## 1) 전역 키보드 처리 (핵심)
 
 ### `frontend/context/KeyboardContext.jsx`
+
 - **역할**: 앱 전역 키보드 높이를 `Animated.Value`로 관리.
 - **키보드 이벤트**
   - iOS: `keyboardWillShow` / `keyboardWillHide`
@@ -17,6 +18,7 @@
   - `frontend/App.js`에서 `KeyboardProvider`로 앱 전체 감쌈
 
 ### `frontend/App.js`
+
 - **역할**: `KeyboardProvider`를 루트에 배치하여 하위 입력 컴포넌트들이 동일 키보드 상태를 공유하도록 구성.
 
 ---
@@ -24,6 +26,7 @@
 ## 2) 키보드 이벤트 리스너 직접 사용 화면 (핵심)
 
 ### `frontend/view/src/chat/hooks/useChatScroll.js`
+
 - **역할**: 채팅 리스트 스크롤 + 키보드 연동의 핵심 훅.
 - **키보드 이벤트**
   - show/hide 리스너 등록 후 `keyboardHeight` 상태 관리.
@@ -36,6 +39,7 @@
   - `setKeyboardHeight(...)`
 
 ### `frontend/view/src/boardDetail.jsx`
+
 - **역할**: 게시글 상세 + 댓글 입력.
 - **키보드 올라올 때 로직**
   - 댓글/대댓글 포커스 대상이 있으면 해당 댓글로 스크롤, 없으면 맨 아래로 스크롤.
@@ -46,6 +50,7 @@
   - `scrollToComment(commentId)`
 
 ### `frontend/view/src/schoolMailDetail.jsx`
+
 - **역할**: 학교 우편 상세 + 댓글 입력.
 - **키보드 올라올 때 로직**
   - `scrollToCommentIdRef`가 있으면 해당 댓글 위치로, 없으면 하단으로 이동.
@@ -60,6 +65,7 @@
 ## 3) 채팅 입력 컴포넌트 계층
 
 ### `frontend/view/src/chat/screens/ChatScreen.jsx`
+
 - **역할**: 채팅 화면의 메인 컨테이너.
 - **키보드 대응**
   - `KeyboardAvoidingView` 사용 (`iOS: padding`, `Android: height`)
@@ -69,12 +75,14 @@
   - `handleSend()`
 
 ### `frontend/view/src/chat/components/MessageInput.jsx`
+
 - **역할**: 채팅 입력 영역.
 - **키보드 대응**
   - `keyboardHeight > 0`일 때 하단 패딩을 0으로 줄여 입력창 위치를 키보드에 맞춤.
   - 실제 입력 UI는 `CommentInput` 재사용.
 
 ### `frontend/components/CommentInput.jsx`
+
 - **역할**: 공통 입력 컴포넌트(댓글/채팅 공용).
 - **키보드 관련 포인트**
   - 멀티라인 `TextInput`.
@@ -82,6 +90,7 @@
   - 직접 키보드 이벤트 리스너는 없음(상위 화면에서 제어).
 
 ### `frontend/view/src/chat/components/MessageList.jsx`
+
 - **키보드 관련 포인트**
   - 리스트에 `keyboardShouldPersistTaps="handled"` 적용(입력 중 탭 처리 안정화).
 
@@ -92,6 +101,7 @@
 아래 파일들은 공통적으로 `KeyboardAvoidingView` + `ScrollView` + `keyboardShouldPersistTaps="handled"` 패턴을 사용하며, 대부분 `TouchableWithoutFeedback onPress={Keyboard.dismiss}`로 배경 탭 시 키보드 내림 처리합니다.
 
 ### 인증/로그인/회원가입
+
 - `frontend/view/src/Login.jsx`
   - 배경 탭 `Keyboard.dismiss`, 기본 `KeyboardAvoidingView` 적용.
 - `frontend/view/src/PWfind.jsx`
@@ -110,6 +120,7 @@
   - 열람 주소/번호 입력 폼.
 
 ### 검색
+
 - `frontend/view/src/searchscreen.jsx`
   - `searchInputRef.focus()`(route 파라미터 기반 자동 포커스).
   - `onSubmitEditing -> runSearch()`.
@@ -123,6 +134,7 @@
   - 개별 컴포넌트이므로 직접 키보드 회피는 없고, 포함된 화면이 키보드 컨테이너를 담당.
 
 ### 우편 작성
+
 - `frontend/view/src/sendmailscreen.jsx`
   - 학교/사용자 검색 + 본문 입력 폼.
   - `KeyboardAvoidingView` 및 dismiss 패턴 적용.
@@ -131,6 +143,7 @@
   - `KeyboardAvoidingView` + dismiss 패턴 적용.
 
 ### 게시글 작성
+
 - `frontend/view/src/boardWrite.jsx`
   - `KeyboardAvoidingView` + 최상위 배경 탭 dismiss.
   - `onScrollBeginDrag={Keyboard.dismiss}`로 스크롤 시작 시 키보드 내림.
@@ -138,6 +151,7 @@
   - 주석상 의도: 태그 패널 열 때 자동 포커스 제거(키보드 자동 상승 방지).
 
 ### 기타
+
 - `frontend/view/src/changepassword.jsx`
   - 단순 비밀번호 변경 폼, `KeyboardAvoidingView`.
 - `frontend/view/src/changeschool.jsx`
@@ -171,9 +185,9 @@
 
 프로젝트에서 반복되는 핵심 패턴은 아래 4가지입니다.
 
-1. **레이아웃 회피**: `KeyboardAvoidingView` (`padding`/`height`)  
-2. **배경 탭 종료**: `TouchableWithoutFeedback + Keyboard.dismiss`  
-3. **입력 중 탭 안정화**: `ScrollView.keyboardShouldPersistTaps="handled"`  
+1. **레이아웃 회피**: `KeyboardAvoidingView` (`padding`/`height`)
+2. **배경 탭 종료**: `TouchableWithoutFeedback + Keyboard.dismiss`
+3. **입력 중 탭 안정화**: `ScrollView.keyboardShouldPersistTaps="handled"`
 4. **고급 스크롤 보정**: 채팅/댓글 화면에서 `Keyboard.addListener`로 키보드 show 시 `scrollToEnd` 또는 특정 댓글 위치로 이동
 
 ---

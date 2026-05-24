@@ -1,4 +1,10 @@
-import React, { useState, useMemo, useRef, useEffect, useCallback } from 'react';
+import React, {
+  useState,
+  useMemo,
+  useRef,
+  useEffect,
+  useCallback,
+} from 'react';
 import {
   View,
   Text,
@@ -30,11 +36,15 @@ import ReportModal from '../../components/common/ReportModal.jsx';
 /** 서버 created_at(UTC)을 "n분 전" 형식으로 변환. 화면에서는 기기 로컬 시간 기준으로 계산 */
 function formatTimeAgo(createdAt) {
   if (!createdAt) return '';
-  let dateStr = typeof createdAt === 'string' ? createdAt.trim() : String(createdAt);
+  let dateStr =
+    typeof createdAt === 'string' ? createdAt.trim() : String(createdAt);
   if (!dateStr) return '';
   // MySQL "YYYY-MM-DD HH:mm:ss" 또는 "YYYY-MM-DDTHH:mm:ss" 형태이고
   // 타임존 문자가 없으면 UTC로 간주해 Z(=+00:00) 를 붙인다.
-  if (/^\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}:\d{2}(\.\d+)?$/.test(dateStr) && !/[Z+-]/.test(dateStr)) {
+  if (
+    /^\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}:\d{2}(\.\d+)?$/.test(dateStr) &&
+    !/[Z+-]/.test(dateStr)
+  ) {
     dateStr = dateStr.replace(' ', 'T') + 'Z';
   }
   const date = new Date(dateStr);
@@ -58,7 +68,8 @@ export function BoardAllContent({ navigation, posts }) {
   const { width } = useWindowDimensions();
   const normalize = useMemo(() => getNormalize(width), [width]);
   const styles = useMemo(() => createBoardStyles(width, normalize), [width]);
-  const { coords, coordsIsFresh, refreshLocation, permissionGranted } = useLocationContext();
+  const { coords, coordsIsFresh, refreshLocation, permissionGranted } =
+    useLocationContext();
   const distanceStale = permissionGranted && (!coordsIsFresh || !coords);
 
   const [sortType, setSortType] = useState('latest'); // latest, popular, nearby
@@ -86,7 +97,7 @@ export function BoardAllContent({ navigation, posts }) {
       { label: '공유하기', iconName: 'share-outline' },
       { label: '신고하기', iconName: 'flag-outline' },
     ],
-    []
+    [],
   );
 
   const defaultMenuItemsMine = useMemo(
@@ -99,35 +110,34 @@ export function BoardAllContent({ navigation, posts }) {
           const postToDelete = floatingMenuPost;
           closeFloatingMenu();
           if (!postToDelete) return;
-          Alert.alert(
-            '게시글 삭제',
-            '이 게시글을 삭제할까요?',
-            [
-              { text: '취소', style: 'cancel' },
-              {
-                text: '삭제',
-                style: 'destructive',
-                onPress: async () => {
-                  try {
-                    await api.delete(`/api/posts/${postToDelete.id}`);
-                    await invalidateProfileCountsCache();
-                    setServerPosts((prev) => prev.filter((p) => p.id !== postToDelete.id));
-                    Alert.alert('삭제됨', '게시글이 삭제되었습니다.');
-                  } catch (error) {
-                    console.error('게시글 삭제 오류:', error);
-                    Alert.alert(
-                      '오류',
-                      error.response?.data?.message || '게시글 삭제 중 오류가 발생했습니다.'
-                    );
-                  }
-                },
+          Alert.alert('게시글 삭제', '이 게시글을 삭제할까요?', [
+            { text: '취소', style: 'cancel' },
+            {
+              text: '삭제',
+              style: 'destructive',
+              onPress: async () => {
+                try {
+                  await api.delete(`/api/posts/${postToDelete.id}`);
+                  await invalidateProfileCountsCache();
+                  setServerPosts((prev) =>
+                    prev.filter((p) => p.id !== postToDelete.id),
+                  );
+                  Alert.alert('삭제됨', '게시글이 삭제되었습니다.');
+                } catch (error) {
+                  console.error('게시글 삭제 오류:', error);
+                  Alert.alert(
+                    '오류',
+                    error.response?.data?.message ||
+                      '게시글 삭제 중 오류가 발생했습니다.',
+                  );
+                }
               },
-            ]
-          );
+            },
+          ]);
         },
       },
     ],
-    [floatingMenuPost]
+    [floatingMenuPost],
   );
 
   const openFloatingMenu = (post, ref) => {
@@ -181,7 +191,8 @@ export function BoardAllContent({ navigation, posts }) {
       console.error('쪽지방 생성/조회 실패:', error);
       Alert.alert(
         '오류',
-        error.response?.data?.message || '쪽지방을 여는 중 오류가 발생했습니다.'
+        error.response?.data?.message ||
+          '쪽지방을 여는 중 오류가 발생했습니다.',
       );
     }
   };
@@ -220,7 +231,11 @@ export function BoardAllContent({ navigation, posts }) {
           setLoadingMore(true);
         }
         const sortParam =
-          sortType === 'popular' ? 'popular' : sortType === 'nearby' ? 'nearby' : 'latest';
+          sortType === 'popular'
+            ? 'popular'
+            : sortType === 'nearby'
+              ? 'nearby'
+              : 'latest';
         const params = {
           boardType: 'national',
           sort: sortParam,
@@ -235,7 +250,9 @@ export function BoardAllContent({ navigation, posts }) {
         const apiPosts = response.data?.data?.posts || [];
         const mapped = apiPosts.map((p) => {
           const thumb =
-            typeof p.thumbnail === 'string' && p.thumbnail.trim() ? p.thumbnail.trim() : null;
+            typeof p.thumbnail === 'string' && p.thumbnail.trim()
+              ? p.thumbnail.trim()
+              : null;
           const tags = normalizeTagsFromApi(p.tags);
           return {
             id: p.id,
@@ -253,7 +270,9 @@ export function BoardAllContent({ navigation, posts }) {
             thumbnail: thumb,
             tags,
             distanceKm:
-              typeof p.distanceKm === 'number' && !Number.isNaN(p.distanceKm) ? p.distanceKm : null,
+              typeof p.distanceKm === 'number' && !Number.isNaN(p.distanceKm)
+                ? p.distanceKm
+                : null,
           };
         });
         if (append) {
@@ -325,7 +344,7 @@ export function BoardAllContent({ navigation, posts }) {
       if (posts && posts.length > 0) return;
       const silent = serverPostsRef.current.length > 0;
       fetchPostsRef.current?.(1, false, silent);
-    }, [posts])
+    }, [posts]),
   );
 
   useEffect(() => {
@@ -354,13 +373,13 @@ export function BoardAllContent({ navigation, posts }) {
           const cur = p.scrapCount ?? 0;
           const next = scrapped ? cur + 1 : Math.max(0, cur - 1);
           return { ...p, scrapped, scrapCount: next };
-        })
+        }),
       );
     } catch (error) {
       console.error('스크랩 토글 오류:', error);
       Alert.alert(
         '오류',
-        error.response?.data?.message || '스크랩 처리에 실패했습니다.'
+        error.response?.data?.message || '스크랩 처리에 실패했습니다.',
       );
     }
   }, []);
@@ -396,9 +415,17 @@ export function BoardAllContent({ navigation, posts }) {
   const renderBoardSkeletonCard = () => (
     <View style={styles.postItem}>
       <View style={{ flexDirection: 'row', marginBottom: normalize(8) }}>
-        <Skeleton width={normalize(52)} height={normalize(12)} borderRadius={normalize(6)} />
+        <Skeleton
+          width={normalize(52)}
+          height={normalize(12)}
+          borderRadius={normalize(6)}
+        />
         <View style={{ width: normalize(8) }} />
-        <Skeleton width={normalize(44)} height={normalize(12)} borderRadius={normalize(6)} />
+        <Skeleton
+          width={normalize(44)}
+          height={normalize(12)}
+          borderRadius={normalize(6)}
+        />
       </View>
       <Skeleton
         width="100%"
@@ -412,10 +439,28 @@ export function BoardAllContent({ navigation, posts }) {
         borderRadius={normalize(6)}
         style={{ marginBottom: normalize(10) }}
       />
-      <View style={{ flexDirection: 'row', alignItems: 'center', gap: normalize(12) }}>
-        <Skeleton width={normalize(26)} height={normalize(12)} borderRadius={normalize(6)} />
-        <Skeleton width={normalize(26)} height={normalize(12)} borderRadius={normalize(6)} />
-        <Skeleton width={normalize(26)} height={normalize(12)} borderRadius={normalize(6)} />
+      <View
+        style={{
+          flexDirection: 'row',
+          alignItems: 'center',
+          gap: normalize(12),
+        }}
+      >
+        <Skeleton
+          width={normalize(26)}
+          height={normalize(12)}
+          borderRadius={normalize(6)}
+        />
+        <Skeleton
+          width={normalize(26)}
+          height={normalize(12)}
+          borderRadius={normalize(6)}
+        />
+        <Skeleton
+          width={normalize(26)}
+          height={normalize(12)}
+          borderRadius={normalize(6)}
+        />
       </View>
     </View>
   );
@@ -424,22 +469,22 @@ export function BoardAllContent({ navigation, posts }) {
     const postHasKm =
       typeof post.distanceKm === 'number' && !Number.isNaN(post.distanceKm);
     return (
-    <BoardPostCard
-      key={post.id}
-      post={post}
-      normalize={normalize}
-      styles={styles}
-      showDistanceBadge={permissionGranted}
-      distanceStale={distanceStale}
-      distanceLoading={permissionGranted && !postHasKm && distanceStale}
-      onPress={() =>
-        navigation.navigate('BoardDetail', {
-          post: { ...post, author: post.author },
-          isMyPost: post.isMyPost ?? false,
-        })
-      }
-      onMenuPress={(p, ref) => openFloatingMenu(p, ref)}
-    />
+      <BoardPostCard
+        key={post.id}
+        post={post}
+        normalize={normalize}
+        styles={styles}
+        showDistanceBadge={permissionGranted}
+        distanceStale={distanceStale}
+        distanceLoading={permissionGranted && !postHasKm && distanceStale}
+        onPress={() =>
+          navigation.navigate('BoardDetail', {
+            post: { ...post, author: post.author },
+            isMyPost: post.isMyPost ?? false,
+          })
+        }
+        onMenuPress={(p, ref) => openFloatingMenu(p, ref)}
+      />
     );
   };
   const renderItem = ({ item }) => {
@@ -457,26 +502,50 @@ export function BoardAllContent({ navigation, posts }) {
       {/* 정렬 버튼 영역 */}
       <View style={styles.sortContainer}>
         <TouchableOpacity
-          style={[styles.sortButton, sortType === 'latest' && styles.sortButtonActive]}
+          style={[
+            styles.sortButton,
+            sortType === 'latest' && styles.sortButtonActive,
+          ]}
           onPress={() => setSortType('latest')}
         >
-          <Text style={[styles.sortButtonText, sortType === 'latest' && styles.sortButtonTextActive]}>
+          <Text
+            style={[
+              styles.sortButtonText,
+              sortType === 'latest' && styles.sortButtonTextActive,
+            ]}
+          >
             최신
           </Text>
         </TouchableOpacity>
         <TouchableOpacity
-          style={[styles.sortButton, sortType === 'popular' && styles.sortButtonActive]}
+          style={[
+            styles.sortButton,
+            sortType === 'popular' && styles.sortButtonActive,
+          ]}
           onPress={() => setSortType('popular')}
         >
-          <Text style={[styles.sortButtonText, sortType === 'popular' && styles.sortButtonTextActive]}>
+          <Text
+            style={[
+              styles.sortButtonText,
+              sortType === 'popular' && styles.sortButtonTextActive,
+            ]}
+          >
             인기
           </Text>
         </TouchableOpacity>
         <TouchableOpacity
-          style={[styles.sortButton, sortType === 'nearby' && styles.sortButtonActive]}
+          style={[
+            styles.sortButton,
+            sortType === 'nearby' && styles.sortButtonActive,
+          ]}
           onPress={() => setSortType('nearby')}
         >
-          <Text style={[styles.sortButtonText, sortType === 'nearby' && styles.sortButtonTextActive]}>
+          <Text
+            style={[
+              styles.sortButtonText,
+              sortType === 'nearby' && styles.sortButtonTextActive,
+            ]}
+          >
             근처
           </Text>
         </TouchableOpacity>
@@ -495,8 +564,15 @@ export function BoardAllContent({ navigation, posts }) {
           ListHeaderComponent={null}
           ListEmptyComponent={
             !loading ? (
-              <View style={{ paddingVertical: normalize(40), alignItems: 'center' }}>
-                <Text style={{ fontFamily: fonts.regular, color: colors.textSecondary }}>
+              <View
+                style={{ paddingVertical: normalize(40), alignItems: 'center' }}
+              >
+                <Text
+                  style={{
+                    fontFamily: fonts.regular,
+                    color: colors.textSecondary,
+                  }}
+                >
                   {sortType === 'nearby' && !permissionGranted
                     ? '게시판 거리·근처 글을 보려면 위치 권한이 필요해요.'
                     : '아직 게시글이 없습니다.'}
@@ -506,7 +582,9 @@ export function BoardAllContent({ navigation, posts }) {
           }
           ListFooterComponent={
             loadingMore && hasMore ? (
-              <View style={{ paddingVertical: normalize(16), alignItems: 'center' }}>
+              <View
+                style={{ paddingVertical: normalize(16), alignItems: 'center' }}
+              >
                 <Skeleton
                   width={normalize(16)}
                   height={normalize(16)}
@@ -535,7 +613,11 @@ export function BoardAllContent({ navigation, posts }) {
         activeOpacity={0.8}
         onPress={() => navigation.navigate('BoardWrite', { from: 'Main' })}
       >
-        <FontAwesome5 name="plus" size={normalize(24)} color={colors.background} />
+        <FontAwesome5
+          name="plus"
+          size={normalize(24)}
+          color={colors.background}
+        />
       </TouchableOpacity>
 
       {/* 플로팅 메뉴 (boardAll 인라인 - boardDetail과 동일한 UI) */}
@@ -550,7 +632,9 @@ export function BoardAllContent({ navigation, posts }) {
             style={{
               flex: 1,
               backgroundColor: 'rgba(0,0,0,0.3)',
-              ...(floatingMenuAnchor ? {} : { justifyContent: 'center', alignItems: 'center' }),
+              ...(floatingMenuAnchor
+                ? {}
+                : { justifyContent: 'center', alignItems: 'center' }),
             }}
           >
             <TouchableWithoutFeedback>
@@ -575,7 +659,10 @@ export function BoardAllContent({ navigation, posts }) {
                     : {}),
                 }}
               >
-                {((floatingMenuPost?.isMyPost) ? defaultMenuItemsMine : defaultMenuItemsOthers).map((item, index) => (
+                {(floatingMenuPost?.isMyPost
+                  ? defaultMenuItemsMine
+                  : defaultMenuItemsOthers
+                ).map((item, index) => (
                   <React.Fragment key={index}>
                     <TouchableOpacity
                       style={{
@@ -614,7 +701,12 @@ export function BoardAllContent({ navigation, posts }) {
                         color={colors.textSecondary}
                       />
                     </TouchableOpacity>
-                    {index < ((floatingMenuPost?.isMyPost) ? defaultMenuItemsMine : defaultMenuItemsOthers).length - 1 && (
+                    {index <
+                      (floatingMenuPost?.isMyPost
+                        ? defaultMenuItemsMine
+                        : defaultMenuItemsOthers
+                      ).length -
+                        1 && (
                       <View
                         style={{
                           height: 1,

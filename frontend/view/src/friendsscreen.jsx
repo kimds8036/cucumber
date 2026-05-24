@@ -23,6 +23,7 @@ import ProfileIcon from '../../assets/Profile.svg';
 import { getNormalize } from '../../styles/frame.style';
 import {
   getProfileInnerColor,
+  getProfileInnerColorBySeed,
 } from '../../utils/profileIconColor';
 import Skeleton from '../../components/common/Skeleton';
 
@@ -57,30 +58,36 @@ const FriendsScreen = ({ navigation }) => {
         const friendsData = friendsRes.data?.data || [];
         const requestsData = reqRes.data?.data || [];
         if (__DEV__) {
-          console.log('[ColorIdDebug][FriendsScreen] /api/friends/list sample:', {
-            count: friendsData.length,
-            first: friendsData[0]
-              ? {
-                  userId: friendsData[0].userId,
-                  colorId: friendsData[0].colorId,
-                  profileColorId: friendsData[0].profileColorId,
-                  profile_color_id: friendsData[0].profile_color_id,
-                  profileColor: friendsData[0].profileColor,
-                }
-              : null,
-          });
-          console.log('[ColorIdDebug][FriendsScreen] /api/friends/requests/received sample:', {
-            count: requestsData.length,
-            first: requestsData[0]
-              ? {
-                  userId: requestsData[0].userId,
-                  colorId: requestsData[0].colorId,
-                  profileColorId: requestsData[0].profileColorId,
-                  profile_color_id: requestsData[0].profile_color_id,
-                  profileColor: requestsData[0].profileColor,
-                }
-              : null,
-          });
+          console.log(
+            '[ColorIdDebug][FriendsScreen] /api/friends/list sample:',
+            {
+              count: friendsData.length,
+              first: friendsData[0]
+                ? {
+                    userId: friendsData[0].userId,
+                    colorId: friendsData[0].colorId,
+                    profileColorId: friendsData[0].profileColorId,
+                    profile_color_id: friendsData[0].profile_color_id,
+                    profileColor: friendsData[0].profileColor,
+                  }
+                : null,
+            },
+          );
+          console.log(
+            '[ColorIdDebug][FriendsScreen] /api/friends/requests/received sample:',
+            {
+              count: requestsData.length,
+              first: requestsData[0]
+                ? {
+                    userId: requestsData[0].userId,
+                    colorId: requestsData[0].colorId,
+                    profileColorId: requestsData[0].profileColorId,
+                    profile_color_id: requestsData[0].profile_color_id,
+                    profileColor: requestsData[0].profileColor,
+                  }
+                : null,
+            },
+          );
         }
 
         setFriends(
@@ -92,7 +99,10 @@ const FriendsScreen = ({ navigation }) => {
             school: f.school,
             grade: f.grade,
             profileColorId:
-              f.colorId ?? f.profileColorId ?? f.profile_color_id ?? f.profileColor?.id,
+              f.colorId ??
+              f.profileColorId ??
+              f.profile_color_id ??
+              f.profileColor?.id,
             profileColorHex: f.profileColor?.hexCode ?? null,
           })),
         );
@@ -106,7 +116,10 @@ const FriendsScreen = ({ navigation }) => {
             school: r.school,
             grade: r.grade,
             profileColorId:
-              r.colorId ?? r.profileColorId ?? r.profile_color_id ?? r.profileColor?.id,
+              r.colorId ??
+              r.profileColorId ??
+              r.profile_color_id ??
+              r.profileColor?.id,
             profileColorHex: r.profileColor?.hexCode ?? null,
           })),
         );
@@ -236,11 +249,13 @@ const FriendsScreen = ({ navigation }) => {
           <SubHeader
             title="친구"
             onBack={() => navigation?.goBack()}
-            rightElement={<Text style={styles.friendCountChip}>{friends.length}명</Text>}
+            rightElement={
+              <Text style={styles.friendCountChip}>{friends.length}명</Text>
+            }
             rightDisabled
           />
 
-      {/* ── 검색창 ── */}
+          {/* ── 검색창 ── */}
           <View style={styles.searchWrapper}>
             <Ionicons
               name="search-outline"
@@ -257,234 +272,312 @@ const FriendsScreen = ({ navigation }) => {
             />
             {searchQuery.length > 0 && (
               <TouchableOpacity onPress={() => setSearchQuery('')}>
-                <Ionicons name="close-circle" size={16} color={colors.textLight40} />
+                <Ionicons
+                  name="close-circle"
+                  size={16}
+                  color={colors.textLight40}
+                />
               </TouchableOpacity>
             )}
           </View>
 
-      {/* ── 스크롤: 친구 요청 + 친구 목록 (함께 스크롤) ── */}
-      <ScrollView
-        style={styles.mainScroll}
-        contentContainerStyle={styles.mainScrollContent}
-        showsVerticalScrollIndicator={false}
-      >
-        {isInitialLoading ? (
-          <>
-            <View style={styles.requestsSection}>
-              <View style={styles.requestsHeader}>
-                <Skeleton width={normalize(64)} height={normalize(14)} borderRadius={normalize(6)} />
-                <Skeleton width={normalize(34)} height={normalize(12)} borderRadius={normalize(6)} />
-              </View>
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.requestsScroll}>
-                {[0, 1, 2].map((idx) => (
-                  <View key={`friend-req-skel-${idx}`} style={styles.requestCard}>
-                    <Skeleton width={normalize(40)} height={normalize(40)} borderRadius={normalize(20)} style={{ marginBottom: normalize(8) }} />
-                    <Skeleton width={normalize(56)} height={normalize(12)} borderRadius={normalize(6)} style={{ marginBottom: normalize(6) }} />
-                    <Skeleton width={normalize(62)} height={normalize(11)} borderRadius={normalize(6)} style={{ marginBottom: normalize(10) }} />
-                    <View style={styles.reqButtons}>
-                      <Skeleton width={normalize(44)} height={normalize(24)} borderRadius={normalize(12)} />
-                      <Skeleton width={normalize(44)} height={normalize(24)} borderRadius={normalize(12)} />
-                    </View>
-                  </View>
-                ))}
-              </ScrollView>
-            </View>
-
-            <Text style={styles.listSectionTitle}>친구 목록</Text>
-            {[0, 1, 2, 3].map((idx) => (
-              <View key={`friend-row-skel-${idx}`} style={styles.friendRow}>
-                <Skeleton width={normalize(35)} height={normalize(35)} borderRadius={normalize(18)} />
-                <View style={[styles.friendInfo, { gap: normalize(6) }]}>
-                  <Skeleton width={normalize(90)} height={normalize(12)} borderRadius={normalize(6)} />
-                  <Skeleton width={normalize(120)} height={normalize(11)} borderRadius={normalize(6)} />
-                </View>
-                <Skeleton width={normalize(24)} height={normalize(24)} borderRadius={normalize(12)} />
-              </View>
-            ))}
-          </>
-        ) : (
-        <>
-        {/* 친구 요청 (검색바 ↔ 친구목록 사이) */}
-        {friendRequests.length > 0 && (
-          <View style={styles.requestsSection}>
-            <View style={styles.requestsHeader}>
-              <Text style={styles.requestsTitle}>친구 요청</Text>
-              <Text style={styles.requestsCount}>
-                {friendRequests.length}건
-              </Text>
-            </View>
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              contentContainerStyle={styles.requestsScroll}
-            >
-              {friendRequests.map((req) => (
-                <View key={req.id} style={styles.requestCard}>
-                  <View style={styles.reqAvatar}>
-                    <ProfileIcon
-                      width={normalize(40)}
-                      height={normalize(40)}
-                      color={getProfileInnerColor(req.profileColorId) || getProfileInnerColorBySeed(req.id)}
+          {/* ── 스크롤: 친구 요청 + 친구 목록 (함께 스크롤) ── */}
+          <ScrollView
+            style={styles.mainScroll}
+            contentContainerStyle={styles.mainScrollContent}
+            showsVerticalScrollIndicator={false}
+          >
+            {isInitialLoading ? (
+              <>
+                <View style={styles.requestsSection}>
+                  <View style={styles.requestsHeader}>
+                    <Skeleton
+                      width={normalize(64)}
+                      height={normalize(14)}
+                      borderRadius={normalize(6)}
+                    />
+                    <Skeleton
+                      width={normalize(34)}
+                      height={normalize(12)}
+                      borderRadius={normalize(6)}
                     />
                   </View>
-                  <Text style={styles.reqName} numberOfLines={1}>
-                    {req.name}
-                  </Text>
-                  <Text style={styles.reqUsername} numberOfLines={1}>
-                    {req.username}
-                  </Text>
-                  <View style={styles.reqButtons}>
-                    <TouchableOpacity
-                      style={styles.reqAcceptBtn}
-                      onPress={() => handleAcceptRequest(req)}
-                      activeOpacity={0.8}
-                    >
-                      <Text style={styles.reqAcceptText}>수락</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                      style={styles.reqRejectBtn}
-                      onPress={() => handleRejectRequest(req)}
-                      activeOpacity={0.8}
-                    >
-                      <Text style={styles.reqRejectText}>거절</Text>
-                    </TouchableOpacity>
+                  <ScrollView
+                    horizontal
+                    showsHorizontalScrollIndicator={false}
+                    contentContainerStyle={styles.requestsScroll}
+                  >
+                    {[0, 1, 2].map((idx) => (
+                      <View
+                        key={`friend-req-skel-${idx}`}
+                        style={styles.requestCard}
+                      >
+                        <Skeleton
+                          width={normalize(40)}
+                          height={normalize(40)}
+                          borderRadius={normalize(20)}
+                          style={{ marginBottom: normalize(8) }}
+                        />
+                        <Skeleton
+                          width={normalize(56)}
+                          height={normalize(12)}
+                          borderRadius={normalize(6)}
+                          style={{ marginBottom: normalize(6) }}
+                        />
+                        <Skeleton
+                          width={normalize(62)}
+                          height={normalize(11)}
+                          borderRadius={normalize(6)}
+                          style={{ marginBottom: normalize(10) }}
+                        />
+                        <View style={styles.reqButtons}>
+                          <Skeleton
+                            width={normalize(44)}
+                            height={normalize(24)}
+                            borderRadius={normalize(12)}
+                          />
+                          <Skeleton
+                            width={normalize(44)}
+                            height={normalize(24)}
+                            borderRadius={normalize(12)}
+                          />
+                        </View>
+                      </View>
+                    ))}
+                  </ScrollView>
+                </View>
+
+                <Text style={styles.listSectionTitle}>친구 목록</Text>
+                {[0, 1, 2, 3].map((idx) => (
+                  <View key={`friend-row-skel-${idx}`} style={styles.friendRow}>
+                    <Skeleton
+                      width={normalize(35)}
+                      height={normalize(35)}
+                      borderRadius={normalize(18)}
+                    />
+                    <View style={[styles.friendInfo, { gap: normalize(6) }]}>
+                      <Skeleton
+                        width={normalize(90)}
+                        height={normalize(12)}
+                        borderRadius={normalize(6)}
+                      />
+                      <Skeleton
+                        width={normalize(120)}
+                        height={normalize(11)}
+                        borderRadius={normalize(6)}
+                      />
+                    </View>
+                    <Skeleton
+                      width={normalize(24)}
+                      height={normalize(24)}
+                      borderRadius={normalize(12)}
+                    />
                   </View>
-                </View>
-              ))}
-            </ScrollView>
-          </View>
-        )}
+                ))}
+              </>
+            ) : (
+              <>
+                {/* 친구 요청 (검색바 ↔ 친구목록 사이) */}
+                {friendRequests.length > 0 && (
+                  <View style={styles.requestsSection}>
+                    <View style={styles.requestsHeader}>
+                      <Text style={styles.requestsTitle}>친구 요청</Text>
+                      <Text style={styles.requestsCount}>
+                        {friendRequests.length}건
+                      </Text>
+                    </View>
+                    <ScrollView
+                      horizontal
+                      showsHorizontalScrollIndicator={false}
+                      contentContainerStyle={styles.requestsScroll}
+                    >
+                      {friendRequests.map((req) => (
+                        <View key={req.id} style={styles.requestCard}>
+                          <View style={styles.reqAvatar}>
+                            <ProfileIcon
+                              width={normalize(40)}
+                              height={normalize(40)}
+                              color={
+                                getProfileInnerColor(req.profileColorId) ||
+                                getProfileInnerColorBySeed(req.id)
+                              }
+                            />
+                          </View>
+                          <Text style={styles.reqName} numberOfLines={1}>
+                            {req.name}
+                          </Text>
+                          <Text style={styles.reqUsername} numberOfLines={1}>
+                            {req.username}
+                          </Text>
+                          <View style={styles.reqButtons}>
+                            <TouchableOpacity
+                              style={styles.reqAcceptBtn}
+                              onPress={() => handleAcceptRequest(req)}
+                              activeOpacity={0.8}
+                            >
+                              <Text style={styles.reqAcceptText}>수락</Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity
+                              style={styles.reqRejectBtn}
+                              onPress={() => handleRejectRequest(req)}
+                              activeOpacity={0.8}
+                            >
+                              <Text style={styles.reqRejectText}>거절</Text>
+                            </TouchableOpacity>
+                          </View>
+                        </View>
+                      ))}
+                    </ScrollView>
+                  </View>
+                )}
 
-        {/* 친구 목록 */}
-        <Text style={styles.listSectionTitle}>친구 목록</Text>
-        {filtered.length === 0 ? (
-          <View style={styles.empty}>
-            <Ionicons name="people-outline" size={48} color={colors.textLight20} />
-            <Text style={styles.emptyText}>
-              {searchQuery.trim().length > 0
-                ? '검색 결과가 없어요'
-                : '친구 목록이 비어 있어요'}
-            </Text>
-          </View>
-        ) : (
-          filtered.map((friend) => (
-            <View key={friend.id} style={styles.friendRow}>
-              <View style={styles.avatar}>
-                <ProfileIcon
-                  width={normalize(35)}
-                  height={normalize(35)}
-                  color={getProfileInnerColor(friend.profileColorId) || getProfileInnerColorBySeed(friend.id)}
-                />
-              </View>
-              <View style={styles.friendInfo}>
-                <View style={styles.nameRow}>
-                  <Text style={styles.friendName}>{friend.name}</Text>
-                  <Text style={styles.friendUsername}>{friend.username}</Text>
-                </View>
-                <Text style={styles.friendSchool}>
-                  {friend.school} {friend.grade}
-                </Text>
-              </View>
-              <TouchableOpacity
-                style={styles.friendIconBtn}
-                onPress={() => openModal(friend)}
-                activeOpacity={0.7}
-              >
-                <Ionicons
-                  name="trash-outline"
-                  size={18}
-                  color={colors.alert}
-                />
-              </TouchableOpacity>
-            </View>
-          ))
-        )}
-        </>
-        )}
-      </ScrollView>
-
-      {/* ── 바텀시트 모달 ── */}
-      <Modal
-        visible={modalVisible}
-        transparent
-        animationType="fade"
-        onRequestClose={closeModal}
-        onDismiss={() => setSelectedFriend(null)}
-      >
-        {/* 딤 배경 */}
-        <TouchableOpacity
-          style={styles.modalOverlay}
-          onPress={closeModal}
-          activeOpacity={1}
-        />
-
-        <View style={styles.bottomSheet}>
-          {/* 핸들 */}
-          <View style={styles.sheetHandle} />
-
-          {/* 대상 친구 정보 */}
-          {selectedFriend && (
-            <>
-              <View style={styles.sheetFriendInfo}>
-                <View style={styles.sheetAvatar}>
-                  <ProfileIcon
-                    width={normalize(45)}
-                    height={normalize(45)}
-                    color={
-                      getProfileInnerColor(selectedFriend.profileColorId) ||
-                      getProfileInnerColorBySeed(selectedFriend.id)
-                    }
-                  />
-                </View>
-                <View>
-                  <View style={styles.sheetNameRow}>
-                    <Text style={styles.sheetName}>{selectedFriend.name}</Text>
-                    <Text style={styles.sheetUsername}>
-                      {selectedFriend.username}
+                {/* 친구 목록 */}
+                <Text style={styles.listSectionTitle}>친구 목록</Text>
+                {filtered.length === 0 ? (
+                  <View style={styles.empty}>
+                    <Ionicons
+                      name="people-outline"
+                      size={48}
+                      color={colors.textLight20}
+                    />
+                    <Text style={styles.emptyText}>
+                      {searchQuery.trim().length > 0
+                        ? '검색 결과가 없어요'
+                        : '친구 목록이 비어 있어요'}
                     </Text>
                   </View>
-                  <Text style={styles.sheetSchool}>
-                    {selectedFriend.school} {selectedFriend.grade}
-                  </Text>
-                </View>
-              </View>
+                ) : (
+                  filtered.map((friend) => (
+                    <View key={friend.id} style={styles.friendRow}>
+                      <View style={styles.avatar}>
+                        <ProfileIcon
+                          width={normalize(35)}
+                          height={normalize(35)}
+                          color={
+                            getProfileInnerColor(friend.profileColorId) ||
+                            getProfileInnerColorBySeed(friend.id)
+                          }
+                        />
+                      </View>
+                      <View style={styles.friendInfo}>
+                        <View style={styles.nameRow}>
+                          <Text style={styles.friendName}>{friend.name}</Text>
+                          <Text style={styles.friendUsername}>
+                            {friend.username}
+                          </Text>
+                        </View>
+                        <Text style={styles.friendSchool}>
+                          {friend.school} {friend.grade}
+                        </Text>
+                      </View>
+                      <TouchableOpacity
+                        style={styles.friendIconBtn}
+                        onPress={() => openModal(friend)}
+                        activeOpacity={0.7}
+                      >
+                        <Ionicons
+                          name="trash-outline"
+                          size={18}
+                          color={colors.alert}
+                        />
+                      </TouchableOpacity>
+                    </View>
+                  ))
+                )}
+              </>
+            )}
+          </ScrollView>
 
-              {/* 액션 버튼 */}
-              <TouchableOpacity
-                style={styles.sheetDeleteAction}
-                onPress={handleDelete}
-              >
-                <View style={[styles.sheetActionIcon, styles.deleteActionIcon]}>
-                  <Ionicons
-                    name="trash-outline"
-                    size={20}
-                    color={colors.alert}
-                  />
-                </View>
-                <View>
-                  <Text style={styles.sheetDeleteActionTitle}>
-                    친구 삭제
-                  </Text>
-                </View>
-              </TouchableOpacity>
+          {/* ── 바텀시트 모달 ── */}
+          <Modal
+            visible={modalVisible}
+            transparent
+            animationType="fade"
+            onRequestClose={closeModal}
+            onDismiss={() => setSelectedFriend(null)}
+          >
+            {/* 딤 배경 */}
+            <TouchableOpacity
+              style={styles.modalOverlay}
+              onPress={closeModal}
+              activeOpacity={1}
+            />
 
-              <TouchableOpacity
-                style={styles.sheetBlockAction}
-                onPress={handleBlock}
-              >
-                <View style={[styles.sheetActionIcon, styles.blockActionIcon]}>
-                  <Ionicons name="ban-outline" size={16} color={colors.textSecondary} />
-                </View>
-                <View>
-                  <Text style={styles.sheetBlockActionTitle}>
-                    차단
-                  </Text>
-                </View>
-              </TouchableOpacity>
-            </>
-          )}
-        </View>
-      </Modal>
+            <View style={styles.bottomSheet}>
+              {/* 핸들 */}
+              <View style={styles.sheetHandle} />
+
+              {/* 대상 친구 정보 */}
+              {selectedFriend && (
+                <>
+                  <View style={styles.sheetFriendInfo}>
+                    <View style={styles.sheetAvatar}>
+                      <ProfileIcon
+                        width={normalize(45)}
+                        height={normalize(45)}
+                        color={
+                          getProfileInnerColor(selectedFriend.profileColorId) ||
+                          getProfileInnerColorBySeed(selectedFriend.id)
+                        }
+                      />
+                    </View>
+                    <View>
+                      <View style={styles.sheetNameRow}>
+                        <Text style={styles.sheetName}>
+                          {selectedFriend.name}
+                        </Text>
+                        <Text style={styles.sheetUsername}>
+                          {selectedFriend.username}
+                        </Text>
+                      </View>
+                      <Text style={styles.sheetSchool}>
+                        {selectedFriend.school} {selectedFriend.grade}
+                      </Text>
+                    </View>
+                  </View>
+
+                  {/* 액션 버튼 */}
+                  <TouchableOpacity
+                    style={styles.sheetDeleteAction}
+                    onPress={handleDelete}
+                  >
+                    <View
+                      style={[styles.sheetActionIcon, styles.deleteActionIcon]}
+                    >
+                      <Ionicons
+                        name="trash-outline"
+                        size={20}
+                        color={colors.alert}
+                      />
+                    </View>
+                    <View>
+                      <Text style={styles.sheetDeleteActionTitle}>
+                        친구 삭제
+                      </Text>
+                    </View>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
+                    style={styles.sheetBlockAction}
+                    onPress={handleBlock}
+                  >
+                    <View
+                      style={[styles.sheetActionIcon, styles.blockActionIcon]}
+                    >
+                      <Ionicons
+                        name="ban-outline"
+                        size={16}
+                        color={colors.textSecondary}
+                      />
+                    </View>
+                    <View>
+                      <Text style={styles.sheetBlockActionTitle}>차단</Text>
+                    </View>
+                  </TouchableOpacity>
+                </>
+              )}
+            </View>
+          </Modal>
         </View>
       </TouchableWithoutFeedback>
     </SafeAreaView>

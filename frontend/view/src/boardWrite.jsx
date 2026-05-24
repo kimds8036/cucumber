@@ -277,7 +277,9 @@ const BoardWrite = ({ navigation, route }) => {
   const guideBlock = (
     <View style={styles.box2}>
       <View style={styles.guideContainer}>
-        <Text style={styles.guideText}>비방/욕설 게시글은 커뮤니티 가이드에 따라 삭제될 수 있어요</Text>
+        <Text style={styles.guideText}>
+          비방/욕설 게시글은 커뮤니티 가이드에 따라 삭제될 수 있어요
+        </Text>
       </View>
     </View>
   );
@@ -316,7 +318,7 @@ const BoardWrite = ({ navigation, route }) => {
         <View style={styles.topToolbar}>
           <TouchableOpacity
             style={styles.boardChip}
-            onPress={() => setBoardDropdownVisible(v => !v)}
+            onPress={() => setBoardDropdownVisible((v) => !v)}
           >
             <Text style={styles.boardChipText}>{selectedBoard}</Text>
             <Text style={styles.boardChipArrow}>▼</Text>
@@ -407,7 +409,11 @@ const BoardWrite = ({ navigation, route }) => {
                   }
                   style={styles.photoDeleteButton}
                 >
-                  <Ionicons name="close-circle" size={18} color={colors.background} />
+                  <Ionicons
+                    name="close-circle"
+                    size={18}
+                    color={colors.background}
+                  />
                 </TouchableOpacity>
               </View>
             ))}

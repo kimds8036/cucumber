@@ -239,7 +239,10 @@ const Settings = ({ navigation, route }) => {
         },
       ]);
     } catch (error) {
-      Alert.alert('오류', error.response?.data?.message || '비밀번호 변경에 실패했습니다.');
+      Alert.alert(
+        '오류',
+        error.response?.data?.message || '비밀번호 변경에 실패했습니다.',
+      );
     }
   };
   const canSubmitPasswordChange =
@@ -274,14 +277,15 @@ const Settings = ({ navigation, route }) => {
   const nextChangeDate = getNextChangeDate();
   const canChangeId = nextChangeDate === null || new Date() >= nextChangeDate;
 
+  const handleNewUsernameChange = (text) => {
+    setNewUsername(String(text).replace(/^@+/, ''));
+  };
+
   const handleIdChange = async () => {
-    const trimmed = newUsername.trim();
-    if (!trimmed) {
+    const body = newUsername.trim().replace(/^@+/, '');
+    const trimmed = `@${body}`;
+    if (!body) {
       Alert.alert('입력 오류', '새 아이디를 입력해주세요.');
-      return;
-    }
-    if (!trimmed.startsWith('@')) {
-      Alert.alert('입력 오류', '아이디는 @로 시작해야 합니다.');
       return;
     }
     if (trimmed.length < 4) {
@@ -304,7 +308,8 @@ const Settings = ({ navigation, route }) => {
         username: trimmed,
       });
       const changedUsername = res.data?.data?.username;
-      const changedAt = res.data?.data?.lastUsernameChangeAt || new Date().toISOString();
+      const changedAt =
+        res.data?.data?.lastUsernameChangeAt || new Date().toISOString();
       if (changedUsername) {
         setCurrentUsername(`@${changedUsername}`);
       } else {
@@ -314,7 +319,10 @@ const Settings = ({ navigation, route }) => {
       setLastIdChangeAt(changedAt);
       Alert.alert('완료', '아이디가 변경되었습니다.');
     } catch (error) {
-      Alert.alert('오류', error.response?.data?.message || '아이디 변경에 실패했습니다.');
+      Alert.alert(
+        '오류',
+        error.response?.data?.message || '아이디 변경에 실패했습니다.',
+      );
     }
   };
 
@@ -332,7 +340,10 @@ const Settings = ({ navigation, route }) => {
               Alert.alert('알림', '메일 주소를 클립보드에 복사했습니다.');
             } catch (e) {
               console.warn('클립보드 복사 실패:', e);
-              Alert.alert('오류', '복사에 실패했습니다. 메일 주소를 직접 입력해 주세요.');
+              Alert.alert(
+                '오류',
+                '복사에 실패했습니다. 메일 주소를 직접 입력해 주세요.',
+              );
             }
           },
         },
@@ -373,9 +384,7 @@ const Settings = ({ navigation, route }) => {
           {title}
         </Text>
         {subtitle ? (
-          <Text
-            style={[styles.notifSubtitle, disabled && styles.textDisabled]}
-          >
+          <Text style={[styles.notifSubtitle, disabled && styles.textDisabled]}>
             {subtitle}
           </Text>
         ) : null}
@@ -448,189 +457,223 @@ const Settings = ({ navigation, route }) => {
       >
         {showPrefs && (
           <>
-        {/* ────────────── 알림 설정 ────────────── */}
-        <SectionHeader
-          icon="notifications-outline"
-          title="알림 설정"
-          description="모든 알림의 수신 여부를 결정합니다"
-        />
-        <View style={styles.card}>
-          <NotificationRow
-            title="푸시 알림"
-            titleBold
-            value={notifications.pushEnabled}
-            onToggle={() => toggleNotification('pushEnabled')}
-          />
-          <View style={styles.divider} />
-          {NOTIFICATION_ITEMS.map((item, idx, arr) => {
-            const value = item.isPromo
-              ? !!(
-                  notifications.newPost &&
-                  notifications.newLike &&
-                  notifications.announcement
-                )
-              : notifications[item.key];
-            const onToggle = item.isPromo
-              ? togglePromo
-              : () => toggleNotification(item.key);
-            return (
-              <React.Fragment key={item.key}>
-                <NotificationRow
-                  title={item.label}
-                  subtitle={item.subtitle}
-                  value={value}
-                  onToggle={onToggle}
-                  disabled={!notifications.pushEnabled}
-                />
-                {idx < arr.length - 1 && <View style={styles.innerDivider} />}
-              </React.Fragment>
-            );
-          })}
-        </View>
-
-        {/* ────────────── 게시판 거리 설정 ────────────── */}
-        <SectionHeader
-          icon="social-distance"
-          title="게시판 거리 설정"
-          Icon={MaterialIcons}
-          description="근처 게시글의 반경을 설정해요 (1 ~ 100km)"
-        />
-        <View style={styles.card}>
-          {/* 슬라이더 트랙 */}
-          <View
-            style={styles.sliderWrapper}
-            onLayout={handleDistanceTrackLayout}
-            {...distancePanResponder.panHandlers}
-          >
-            {/* 배경 트랙 */}
-            <View style={styles.sliderTrack}>
-              {/* 채워진 부분 */}
-              <View
-                style={[styles.sliderFill, { width: `${thumbLeftPercent}%` }]}
-              />
-            </View>
-            {/* thumb — 퍼센트 위치에 absolute 배치 */}
-            <View
-              style={[styles.sliderThumb, { left: `${thumbLeftPercent}%` }]}
+            {/* ────────────── 알림 설정 ────────────── */}
+            <SectionHeader
+              icon="notifications-outline"
+              title="알림 설정"
+              description="모든 알림의 수신 여부를 결정합니다"
             />
-          </View>
-
-          <View style={styles.distanceValueRow}>
-            <Text style={styles.distanceValueText}>{distanceKm} km</Text>
-            <View style={styles.distanceHintRow}>
-              <Text style={styles.distanceHint}>100km</Text>
+            <View style={styles.card}>
+              <NotificationRow
+                title="푸시 알림"
+                titleBold
+                value={notifications.pushEnabled}
+                onToggle={() => toggleNotification('pushEnabled')}
+              />
+              <View style={styles.divider} />
+              {NOTIFICATION_ITEMS.map((item, idx, arr) => {
+                const value = item.isPromo
+                  ? !!(
+                      notifications.newPost &&
+                      notifications.newLike &&
+                      notifications.announcement
+                    )
+                  : notifications[item.key];
+                const onToggle = item.isPromo
+                  ? togglePromo
+                  : () => toggleNotification(item.key);
+                return (
+                  <React.Fragment key={item.key}>
+                    <NotificationRow
+                      title={item.label}
+                      subtitle={item.subtitle}
+                      value={value}
+                      onToggle={onToggle}
+                      disabled={!notifications.pushEnabled}
+                    />
+                    {idx < arr.length - 1 && (
+                      <View style={styles.innerDivider} />
+                    )}
+                  </React.Fragment>
+                );
+              })}
             </View>
-          </View>
-        </View>
+
+            {/* ────────────── 게시판 거리 설정 ────────────── */}
+            <SectionHeader
+              icon="social-distance"
+              title="게시판 거리 설정"
+              Icon={MaterialIcons}
+              description="근처 게시글의 반경을 설정해요 (1 ~ 100km)"
+            />
+            <View style={styles.card}>
+              {/* 슬라이더 트랙 */}
+              <View
+                style={styles.sliderWrapper}
+                onLayout={handleDistanceTrackLayout}
+                {...distancePanResponder.panHandlers}
+              >
+                {/* 배경 트랙 */}
+                <View style={styles.sliderTrack}>
+                  {/* 채워진 부분 */}
+                  <View
+                    style={[
+                      styles.sliderFill,
+                      { width: `${thumbLeftPercent}%` },
+                    ]}
+                  />
+                </View>
+                {/* thumb — 퍼센트 위치에 absolute 배치 */}
+                <View
+                  style={[styles.sliderThumb, { left: `${thumbLeftPercent}%` }]}
+                />
+              </View>
+
+              <View style={styles.distanceValueRow}>
+                <Text style={styles.distanceValueText}>{distanceKm} km</Text>
+                <View style={styles.distanceHintRow}>
+                  <Text style={styles.distanceHint}>100km</Text>
+                </View>
+              </View>
+            </View>
           </>
         )}
 
         {showProfile && (
           <>
-        {/* ────────────── 아이디 변경 ────────────── */}
-        <SectionHeader
-          icon="at-outline"
-          title="아이디 변경"
-          description="아이디는 6개월에 1번만 변경할 수 있습니다."
-        />
-        <View style={styles.card}>
-          <View style={styles.idFieldFirst}>
-            <Text style={styles.pwLabel}>현재 아이디</Text>
-            <View style={styles.pwInputWrap}>
-              <Text
-                style={[
-                  styles.pwInput,
-                  { color: colors.textSecondary },
-                ]}
-                numberOfLines={1}
-              >
-                {currentUsername}
-              </Text>
-            </View>
-          </View>
-          <View style={styles.idFieldSecond}>
-            <Text style={styles.pwLabel}>새 아이디</Text>
-            <View style={styles.pwInputWrap}>
-              <TextInput
-                style={styles.pwInput}
-                value={newUsername}
-                onChangeText={setNewUsername}
-                placeholder="@아이디 입력"
-                {...themedTextInputProps}
-                autoCapitalize="none"
-                autoCorrect={false}
-              />
-            </View>
-          </View>
-          {nextChangeDate && !canChangeId && (
-            <Text style={styles.idNextDate}>
-              다음 변경 가능일: {nextChangeDate.toLocaleDateString('ko-KR')}
-            </Text>
-          )}
-          <TouchableOpacity
-            style={[
-              styles.actionButton,
-              (!canChangeId || !newUsername.trim()) &&
-                styles.actionButtonDisabled,
-            ]}
-            onPress={handleIdChange}
-            disabled={!canChangeId || !newUsername.trim()}
-          >
-            <Text style={styles.actionButtonText}>아이디 변경하기</Text>
-          </TouchableOpacity>
-        </View>
-
-        {/* ────────────── 비밀번호 변경 ────────────── */}
-        <SectionHeader icon="lock-closed-outline" title="비밀번호 변경" />
-        <View style={styles.card}>
-          {renderPwInput({ label: '현재 비밀번호', fieldKey: 'current', density: 'first' })}
-          {renderPwInput({ label: '새 비밀번호', fieldKey: 'next', density: 'middle' })}
-          {renderPwInput({ label: '새 비밀번호 확인', fieldKey: 'confirm', density: 'last' })}
-          <TouchableOpacity
-            style={[
-              styles.actionButton,
-              !canSubmitPasswordChange && styles.actionButtonDisabled,
-            ]}
-            onPress={handlePasswordChange}
-            disabled={!canSubmitPasswordChange}
-          >
-            <Text style={styles.actionButtonText}>변경하기</Text>
-          </TouchableOpacity>
-          {!canSubmitPasswordChange && !!passwordGuideText && (
-            <Text style={[styles.pwLabel, { marginTop: 0, marginBottom: normalize(14) }]}>
-              {passwordGuideText}
-            </Text>
-          )}
-        </View>
-
-        {/* ────────────── 학교 변경 ────────────── */}
-        <SectionHeader icon="school-outline" title="학교 변경" />
-        <View style={styles.card}>
-          <View style={styles.schoolRow}>
-            <View style={styles.schoolInfo}>
-              <Ionicons
-                name="information-circle-outline"
-                size={normalize(16)}
-                color={colors.primary}
-              />
-              <Text style={styles.schoolDesc}>
-                학교 변경은 관리자 검토 후 처리됩니다.{'\n'}초중고 졸업(예정) 증명서를 메일로 보내주세요.
-              </Text>
-            </View>
-          </View>
-          <TouchableOpacity
-            style={[styles.actionButton, styles.schoolButton]}
-            onPress={handleSchoolChange}
-          >
-            <Ionicons
-              name="mail-outline"
-              size={normalize(16)}
-              color={colors.textWhite}
-              style={styles.schoolButtonIcon}
+            {/* ────────────── 아이디 변경 ────────────── */}
+            <SectionHeader
+              icon="at-outline"
+              title="아이디 변경"
+              description="아이디는 6개월에 1번만 변경할 수 있습니다."
             />
-            <Text style={styles.actionButtonText}>메일로 문의하기</Text>
-          </TouchableOpacity>
-        </View>
+            <View style={styles.card}>
+              <View style={styles.idFieldFirst}>
+                <Text style={styles.pwLabel}>현재 아이디</Text>
+                <View style={styles.pwInputWrap}>
+                  <Text
+                    style={[styles.pwInput, { color: colors.textSecondary }]}
+                    numberOfLines={1}
+                  >
+                    {currentUsername}
+                  </Text>
+                </View>
+              </View>
+              <View style={styles.idFieldSecond}>
+                <Text style={styles.pwLabel}>새 아이디</Text>
+                <View style={styles.pwInputWrap}>
+                  <Text
+                    style={[
+                      styles.pwInput,
+                      styles.usernameAtPrefix,
+                      {
+                        color:
+                          newUsername.trim().length > 0
+                            ? colors.textPrimary
+                            : colors.textLight20,
+                      },
+                    ]}
+                  >
+                    @
+                  </Text>
+                  <TextInput
+                    style={styles.pwInput}
+                    value={newUsername}
+                    onChangeText={handleNewUsernameChange}
+                    placeholder="아이디 입력"
+                    {...themedTextInputProps}
+                    autoCapitalize="none"
+                    autoCorrect={false}
+                  />
+                </View>
+              </View>
+              {nextChangeDate && !canChangeId && (
+                <Text style={styles.idNextDate}>
+                  다음 변경 가능일: {nextChangeDate.toLocaleDateString('ko-KR')}
+                </Text>
+              )}
+              <TouchableOpacity
+                style={[
+                  styles.actionButton,
+                  (!canChangeId || newUsername.trim().length < 3) &&
+                    styles.actionButtonDisabled,
+                ]}
+                onPress={handleIdChange}
+                disabled={!canChangeId || newUsername.trim().length < 3}
+              >
+                <Text style={styles.actionButtonText}>아이디 변경하기</Text>
+              </TouchableOpacity>
+            </View>
+
+            {/* ────────────── 비밀번호 변경 ────────────── */}
+            <SectionHeader icon="lock-closed-outline" title="비밀번호 변경" />
+            <View style={styles.card}>
+              {renderPwInput({
+                label: '현재 비밀번호',
+                fieldKey: 'current',
+                density: 'first',
+              })}
+              {renderPwInput({
+                label: '새 비밀번호',
+                fieldKey: 'next',
+                density: 'middle',
+              })}
+              {renderPwInput({
+                label: '새 비밀번호 확인',
+                fieldKey: 'confirm',
+                density: 'last',
+              })}
+              <TouchableOpacity
+                style={[
+                  styles.actionButton,
+                  !canSubmitPasswordChange && styles.actionButtonDisabled,
+                ]}
+                onPress={handlePasswordChange}
+                disabled={!canSubmitPasswordChange}
+              >
+                <Text style={styles.actionButtonText}>변경하기</Text>
+              </TouchableOpacity>
+              {!canSubmitPasswordChange && !!passwordGuideText && (
+                <Text
+                  style={[
+                    styles.pwLabel,
+                    { marginTop: 0, marginBottom: normalize(14) },
+                  ]}
+                >
+                  {passwordGuideText}
+                </Text>
+              )}
+            </View>
+
+            {/* ────────────── 학교 변경 ────────────── */}
+            <SectionHeader icon="school-outline" title="학교 변경" />
+            <View style={styles.card}>
+              <View style={styles.schoolRow}>
+                <View style={styles.schoolInfo}>
+                  <Ionicons
+                    name="information-circle-outline"
+                    size={normalize(16)}
+                    color={colors.primary}
+                  />
+                  <Text style={styles.schoolDesc}>
+                    학교 변경은 관리자 검토 후 처리됩니다.{'\n'}초중고
+                    졸업(예정) 증명서를 메일로 보내주세요.
+                  </Text>
+                </View>
+              </View>
+              <TouchableOpacity
+                style={[styles.actionButton, styles.schoolButton]}
+                onPress={handleSchoolChange}
+              >
+                <Ionicons
+                  name="mail-outline"
+                  size={normalize(16)}
+                  color={colors.textWhite}
+                  style={styles.schoolButtonIcon}
+                />
+                <Text style={styles.actionButtonText}>메일로 문의하기</Text>
+              </TouchableOpacity>
+            </View>
           </>
         )}
 

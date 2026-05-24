@@ -1,5 +1,12 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { Animated, Easing, Text, TouchableOpacity, View, useWindowDimensions } from 'react-native';
+import {
+  Animated,
+  Easing,
+  Text,
+  TouchableOpacity,
+  View,
+  useWindowDimensions,
+} from 'react-native';
 import { colors, fonts, fontSizes } from '../../styles/colors';
 import { getNormalize } from '../../styles/timer';
 
@@ -101,7 +108,16 @@ export default function GlobalToast({
         onHide?.();
       });
     }
-  }, [visible, message, toastId, translateY, opacity, contentOpacity, contentTranslateY, onHide]);
+  }, [
+    visible,
+    message,
+    toastId,
+    translateY,
+    opacity,
+    contentOpacity,
+    contentTranslateY,
+    onHide,
+  ]);
 
   /* 로딩바 애니메이션 — 사용 시 아래 progress 블록과 함께 복구
   useEffect(() => {

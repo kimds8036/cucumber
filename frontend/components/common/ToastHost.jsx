@@ -16,14 +16,19 @@ export default function ToastHost() {
 
   const openDmRoom = async (watcher) => {
     if (!watcher?.userId) {
-      console.log('[ToastHost] DM 이동 실패: watcher.userId 없음, Notification으로 이동', {
-        watcher,
-      });
+      console.log(
+        '[ToastHost] DM 이동 실패: watcher.userId 없음, Notification으로 이동',
+        {
+          watcher,
+        },
+      );
       navigate('Notification');
       return;
     }
     try {
-      const res = await api.post('/api/dm/rooms', { otherUserId: watcher.userId });
+      const res = await api.post('/api/dm/rooms', {
+        otherUserId: watcher.userId,
+      });
       const roomId = res?.data?.data?.id;
       if (roomId == null) {
         console.log('[ToastHost] DM roomId 없음, Notification으로 이동', {
@@ -34,8 +39,12 @@ export default function ToastHost() {
       }
       let friendPayload = { id: watcher.userId, name: watcher.name };
       try {
-        const roomsRes = await api.get('/api/dm/rooms', { params: { page: 1, limit: 100 } });
-        const rooms = Array.isArray(roomsRes?.data?.data?.rooms) ? roomsRes.data.data.rooms : [];
+        const roomsRes = await api.get('/api/dm/rooms', {
+          params: { page: 1, limit: 100 },
+        });
+        const rooms = Array.isArray(roomsRes?.data?.data?.rooms)
+          ? roomsRes.data.data.rooms
+          : [];
         const room = rooms.find((r) => String(r?.id) === String(roomId));
         if (room) {
           const colorIndexRaw =
@@ -155,7 +164,11 @@ export default function ToastHost() {
       });
       return;
     }
-    if (relatedType === 'timer_poke' || type === 'poke' || type === 'friend_poke') {
+    if (
+      relatedType === 'timer_poke' ||
+      type === 'poke' ||
+      type === 'friend_poke'
+    ) {
       reset('Main', { initialTab: 'timer' });
       return;
     }
@@ -199,4 +212,3 @@ export default function ToastHost() {
     </View>
   );
 }
-

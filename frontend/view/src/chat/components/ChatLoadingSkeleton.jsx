@@ -11,7 +11,9 @@ function OpponentMessageSkeleton({
 }) {
   const profile = n(38);
   return (
-    <View style={{ flexDirection: 'row', alignItems: 'flex-end', maxWidth: '92%' }}>
+    <View
+      style={{ flexDirection: 'row', alignItems: 'flex-end', maxWidth: '92%' }}
+    >
       <Skeleton width={profile} height={profile} borderRadius={n(19)} />
       <View style={{ flex: 1, minWidth: 0, marginLeft: n(5), maxWidth: '78%' }}>
         {withName ? (

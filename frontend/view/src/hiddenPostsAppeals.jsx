@@ -1,4 +1,10 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -25,9 +31,13 @@ import {
 
 function formatTimeAgo(createdAt) {
   if (!createdAt) return '';
-  let dateStr = typeof createdAt === 'string' ? createdAt.trim() : String(createdAt);
+  let dateStr =
+    typeof createdAt === 'string' ? createdAt.trim() : String(createdAt);
   if (!dateStr) return '';
-  if (/^\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}:\d{2}(\.\d+)?$/.test(dateStr) && !/[Z+-]/.test(dateStr)) {
+  if (
+    /^\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}:\d{2}(\.\d+)?$/.test(dateStr) &&
+    !/[Z+-]/.test(dateStr)
+  ) {
     dateStr = dateStr.replace(' ', 'T') + 'Z';
   }
   const date = new Date(dateStr);
@@ -56,8 +66,10 @@ function getReporterStatusLabel(report) {
 
 function getReporterStatusMessage(status) {
   const s = String(status || '').toLowerCase();
-  if (s === 'resolved') return '운영 정책 위반이 확인되어 해당 게시물이 삭제/숨김 처리되었습니다.';
-  if (s === 'rejected') return '검토 결과 정책 위반 사항이 확인되지 않았습니다. (반복적인 허위 신고는 제재 대상입니다.)';
+  if (s === 'resolved')
+    return '운영 정책 위반이 확인되어 해당 게시물이 삭제/숨김 처리되었습니다.';
+  if (s === 'rejected')
+    return '검토 결과 정책 위반 사항이 확인되지 않았습니다. (반복적인 허위 신고는 제재 대상입니다.)';
   return '신고하신 내용을 운영팀에서 확인하고 있습니다.';
 }
 
@@ -98,7 +110,13 @@ function StatusChipLeadingIcon({ label, color, normalize }) {
 
 function StatusChip({ label, styles: hpa, wrapStyle, normalize }) {
   const sc = getHiddenPostsAppealsStatusColor(label, colors);
-  const lead = <StatusChipLeadingIcon label={label} color={sc.text} normalize={normalize} />;
+  const lead = (
+    <StatusChipLeadingIcon
+      label={label}
+      color={sc.text}
+      normalize={normalize}
+    />
+  );
   return (
     <View style={[hpa.statusChip, wrapStyle, { backgroundColor: sc.bg }]}>
       <View style={hpa.statusChipContent}>
@@ -113,7 +131,11 @@ function EmptyState({ message, styles: hpa, normalize }) {
   return (
     <View style={hpa.emptyWrap}>
       <View style={hpa.emptyIcon}>
-        <MaterialCommunityIcons name="flag-off-outline" size={normalize(48)} color={colors.textLight40} />
+        <MaterialCommunityIcons
+          name="flag-off-outline"
+          size={normalize(48)}
+          color={colors.textLight40}
+        />
       </View>
       <Text style={hpa.emptyText}>{message}</Text>
     </View>
@@ -125,7 +147,10 @@ function EmptyState({ message, styles: hpa, normalize }) {
 export default function HiddenPostsAppeals({ navigation }) {
   const { width } = useWindowDimensions();
   const normalize = useMemo(() => getNormalize(width), [width]);
-  const hpa = useMemo(() => createHiddenPostsAppealsStyles(width, normalize), [width, normalize]);
+  const hpa = useMemo(
+    () => createHiddenPostsAppealsStyles(width, normalize),
+    [width, normalize],
+  );
 
   const [tab, setTab] = useState('myReports');
   const slideAnim = useRef(new Animated.Value(0)).current;
@@ -198,7 +223,11 @@ export default function HiddenPostsAppeals({ navigation }) {
       Alert.alert('접수 완료', '이의신청이 접수되었습니다.');
       await loadData();
     } catch (error) {
-      Alert.alert('오류', error?.response?.data?.message || '이의신청 접수 중 오류가 발생했습니다.');
+      Alert.alert(
+        '오류',
+        error?.response?.data?.message ||
+          '이의신청 접수 중 오류가 발생했습니다.',
+      );
     } finally {
       setSubmittingPostId(null);
     }
@@ -206,7 +235,13 @@ export default function HiddenPostsAppeals({ navigation }) {
 
   const renderMyReports = () => {
     if (myReports.length === 0) {
-      return <EmptyState message="접수한 신고 내역이 없습니다." styles={hpa} normalize={normalize} />;
+      return (
+        <EmptyState
+          message="접수한 신고 내역이 없습니다."
+          styles={hpa}
+          normalize={normalize}
+        />
+      );
     }
 
     return (
@@ -220,7 +255,11 @@ export default function HiddenPostsAppeals({ navigation }) {
             <React.Fragment key={label}>
               {index > 0 ? <View style={hpa.statSummaryDivider} /> : null}
               <View style={hpa.statSummaryCell}>
-                <Text style={[hpa.statNumber, highlight && hpa.statNumberHighlight]}>{num}</Text>
+                <Text
+                  style={[hpa.statNumber, highlight && hpa.statNumberHighlight]}
+                >
+                  {num}
+                </Text>
                 <Text style={hpa.statLabel}>{label}</Text>
               </View>
             </React.Fragment>
@@ -238,7 +277,8 @@ export default function HiddenPostsAppeals({ navigation }) {
               </View>
 
               <Text numberOfLines={2} style={hpa.previewText}>
-                {report.target_content || '(원문을 확인할 수 없는 신고 대상입니다)'}
+                {report.target_content ||
+                  '(원문을 확인할 수 없는 신고 대상입니다)'}
               </Text>
 
               <View style={hpa.dividerSection}>
@@ -267,7 +307,13 @@ export default function HiddenPostsAppeals({ navigation }) {
 
   const renderRestricted = () => {
     if (hiddenPosts.length === 0) {
-      return <EmptyState message="숨김 처리된 게시글이 없습니다." styles={hpa} normalize={normalize} />;
+      return (
+        <EmptyState
+          message="숨김 처리된 게시글이 없습니다."
+          styles={hpa}
+          normalize={normalize}
+        />
+      );
     }
 
     return hiddenPosts.map((post) => {
@@ -320,9 +366,14 @@ export default function HiddenPostsAppeals({ navigation }) {
               <TouchableOpacity
                 disabled={isSubmitting}
                 onPress={() => handleSubmitAppeal(post.id)}
-                style={[hpa.appealSubmit, isSubmitting && hpa.appealSubmitDisabled]}
+                style={[
+                  hpa.appealSubmit,
+                  isSubmitting && hpa.appealSubmitDisabled,
+                ]}
               >
-                <Text style={hpa.appealSubmitText}>{isSubmitting ? '접수 중...' : '이의신청 접수'}</Text>
+                <Text style={hpa.appealSubmitText}>
+                  {isSubmitting ? '접수 중...' : '이의신청 접수'}
+                </Text>
               </TouchableOpacity>
             </>
           )}
@@ -371,7 +422,14 @@ export default function HiddenPostsAppeals({ navigation }) {
               onPress={() => handleTabChange(key)}
               activeOpacity={1}
             >
-              <Text style={[hpa.toggleOptionText, tab === key && hpa.toggleOptionTextActive]}>{label}</Text>
+              <Text
+                style={[
+                  hpa.toggleOptionText,
+                  tab === key && hpa.toggleOptionTextActive,
+                ]}
+              >
+                {label}
+              </Text>
             </TouchableOpacity>
           ))}
         </View>

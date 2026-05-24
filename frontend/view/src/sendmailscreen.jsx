@@ -8,8 +8,14 @@ import {
   Alert,
   useWindowDimensions,
 } from 'react-native';
-import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
-import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
+import {
+  SafeAreaView,
+  useSafeAreaInsets,
+} from 'react-native-safe-area-context';
+import {
+  KeyboardAwareScrollView,
+  KeyboardAvoidingView,
+} from 'react-native-keyboard-controller';
 import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import Ionicons from '@expo/vector-icons/Ionicons';
@@ -21,6 +27,7 @@ import { colors, fonts } from '../../styles/colors';
 import Loading from '../../components/Loading';
 import { api, getApiUserFacingMessage } from '../../utils/api';
 import { buildSendMailPrefill } from '../../utils/personalMail';
+import { useMailContentKeyboardScroll } from '../../hooks/useMailContentKeyboardScroll';
 
 const SendMailScreen = ({ navigation, route }) => {
   const prefill = route?.params?.prefill;
@@ -41,15 +48,26 @@ const SendMailScreen = ({ navigation, route }) => {
   const [mailContent, setMailContent] = useState('');
   const [charLimit, setCharLimit] = useState(50);
   const [sending, setSending] = useState(false);
+  const [subHeaderHeight, setSubHeaderHeight] = useState(0);
+  const [schoolSectionHeight, setSchoolSectionHeight] = useState(0);
+  const [recipientSectionHeight, setRecipientSectionHeight] = useState(0);
   const [bottomCtaHeight, setBottomCtaHeight] = useState(0);
+  const scrollRef = useRef(null);
+  const scrollContentRef = useRef(null);
+  const contentSectionRef = useRef(null);
   const prefillAppliedRef = useRef(false);
 
-  const bottomOffset = Math.max(bottomCtaHeight, normalize(16));
+  const { contentFocused, handleContentFocus, handleContentBlur } =
+    useMailContentKeyboardScroll({
+      scrollRef,
+      scrollContentRef,
+      contentSectionRef,
+      normalize,
+    });
 
-  const contentSectionMinHeight = useMemo(
-    () => Math.max(normalize(200), Math.round(height * 0.28)),
-    [height, normalize],
-  );
+  const scrollBottomInset = contentFocused
+    ? Math.max(bottomCtaHeight, normalize(16))
+    : normalize(16);
 
   const recipientFilled =
     recipientGrade.trim().length > 0 &&
@@ -142,7 +160,8 @@ const SendMailScreen = ({ navigation, route }) => {
       const code = error?.response?.data?.code;
       if (
         error?.response?.status === 409 &&
-        (code === 'DUPLICATE_RECIPIENT' || error?.response?.data?.status === 'DUPLICATE')
+        (code === 'DUPLICATE_RECIPIENT' ||
+          error?.response?.data?.status === 'DUPLICATE')
       ) {
         setShowHomonymUI(true);
         return;
@@ -167,10 +186,14 @@ const SendMailScreen = ({ navigation, route }) => {
       try {
         setSchoolLoading(true);
         setSchoolError('');
-        const res = await api.get('/api/schools/search', { params: { query: q, limit: 5 } });
+        const res = await api.get('/api/schools/search', {
+          params: { query: q, limit: 5 },
+        });
         setSchoolResults(res.data?.data?.schools || []);
       } catch (error) {
-        setSchoolError(error.response?.data?.message || '학교 검색 중 오류가 발생했습니다.');
+        setSchoolError(
+          error.response?.data?.message || '학교 검색 중 오류가 발생했습니다.',
+        );
         setSchoolResults([]);
       } finally {
         setSchoolLoading(false);
@@ -179,28 +202,136 @@ const SendMailScreen = ({ navigation, route }) => {
     return () => clearTimeout(t);
   }, [schoolQuery]);
 
+  const scrollPadding = 16 * 2;
+  const sectionGap = 12 * 3;
+  const contentSectionMinHeight = Math.max(
+    normalize(200),
+    height -
+      insets.top -
+      insets.bottom -
+      subHeaderHeight -
+      schoolSectionHeight -
+      recipientSectionHeight -
+      bottomCtaHeight -
+      scrollPadding -
+      sectionGap,
+  );
+
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
-      <SubHeader title="우편 보내기" onBack={() => navigation?.goBack()} />
+      <View onLayout={(e) => setSubHeaderHeight(e.nativeEvent.layout.height)}>
+        <SubHeader title="우편 보내기" onBack={() => navigation?.goBack()} />
+      </View>
 
-      <View style={styles.keyboardView}>
+      <KeyboardAvoidingView
+        style={styles.keyboardView}
+        behavior="padding"
+        automaticOffset
+        enabled={contentFocused}
+      >
         <KeyboardAwareScrollView
+          ref={scrollRef}
           style={styles.scrollView}
           contentContainerStyle={[
             styles.sendScrollContent,
-            { paddingBottom: bottomOffset },
+            { paddingBottom: scrollBottomInset },
           ]}
           keyboardShouldPersistTaps="always"
           keyboardDismissMode="on-drag"
           showsVerticalScrollIndicator={false}
           onScrollBeginDrag={Keyboard.dismiss}
-          bottomOffset={bottomOffset}
+          bottomOffset={scrollBottomInset}
         >
-          {/* 섹션 1: 보낼 학교 */}
-          <View style={styles.section}>
-            <Text style={styles.label}>보낼 학교</Text>
-            {!selectedSchool ? (
-              <View>
+          <View ref={scrollContentRef} collapsable={false}>
+            {/* 섹션 1: 보낼 학교 */}
+            <View
+              style={styles.section}
+              onLayout={(e) =>
+                setSchoolSectionHeight(e.nativeEvent.layout.height)
+              }
+            >
+              <Text style={styles.label}>보낼 학교</Text>
+              {!selectedSchool ? (
+                <View>
+                  <View style={styles.inputWrapper}>
+                    <MaterialCommunityIcons
+                      name="school-outline"
+                      size={normalize(18)}
+                      color={colors.textSecondary}
+                    />
+                    <TextInput
+                      style={[styles.input, { marginLeft: normalize(6) }]}
+                      placeholder="학교 검색하기"
+                      value={schoolQuery}
+                      onChangeText={setSchoolQuery}
+                      placeholderTextColor={colors.textSecondary}
+                    />
+                  </View>
+                  {schoolLoading && (
+                    <Loading style={styles.loadingBelowInput} />
+                  )}
+                  {!!schoolError && (
+                    <Text style={styles.sendInlineErrorText}>
+                      {schoolError}
+                    </Text>
+                  )}
+                  {schoolResults.length > 0 && (
+                    <View
+                      style={{
+                        marginTop: normalize(8),
+                        borderWidth: 1,
+                        borderColor: '#EEE',
+                        borderRadius: normalize(10),
+                        backgroundColor: '#FFF',
+                      }}
+                    >
+                      {schoolResults.map((school, index) => (
+                        <TouchableOpacity
+                          key={school.id}
+                          style={{
+                            paddingHorizontal: normalize(12),
+                            paddingVertical: normalize(10),
+                            borderBottomWidth:
+                              index === schoolResults.length - 1 ? 0 : 1,
+                            borderBottomColor: '#F2F2F2',
+                          }}
+                          onPress={() => {
+                            setSelectedSchool(school);
+                            setSchoolQuery('');
+                            setSchoolResults([]);
+                          }}
+                        >
+                          <Text
+                            style={{
+                              color: colors.textPrimary,
+                              fontFamily: fonts.bold,
+                            }}
+                          >
+                            {school.name}
+                          </Text>
+                          <Text
+                            style={{
+                              color: colors.textSecondary,
+                              fontSize: normalize(12),
+                              fontFamily: fonts.regular,
+                            }}
+                          >
+                            {school.region || '-'}
+                          </Text>
+                        </TouchableOpacity>
+                      ))}
+                    </View>
+                  )}
+                  {!schoolLoading &&
+                    !schoolError &&
+                    schoolQuery.trim().length > 0 &&
+                    schoolResults.length === 0 && (
+                      <Text style={styles.sendInlineHelperText}>
+                        검색 결과 없음
+                      </Text>
+                    )}
+                </View>
+              ) : (
                 <View style={styles.inputWrapper}>
                   <MaterialCommunityIcons
                     name="school-outline"
@@ -209,211 +340,166 @@ const SendMailScreen = ({ navigation, route }) => {
                   />
                   <TextInput
                     style={[styles.input, { marginLeft: normalize(6) }]}
-                    placeholder="학교 검색하기"
-                    value={schoolQuery}
-                    onChangeText={setSchoolQuery}
+                    value={selectedSchool.name}
+                    editable={false}
+                    pointerEvents="none"
+                  />
+                  <TouchableOpacity
+                    hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                    onPress={() => {
+                      setSelectedSchool(null);
+                      setSchoolQuery('');
+                      setSchoolResults([]);
+                      resetRecipientFields();
+                    }}
+                  >
+                    <Ionicons
+                      name="close-circle"
+                      size={normalize(18)}
+                      color={colors.textSecondary}
+                    />
+                  </TouchableOpacity>
+                </View>
+              )}
+            </View>
+
+            {/* 섹션 2: 받는 사람 */}
+            <View
+              style={styles.section}
+              onLayout={(e) =>
+                setRecipientSectionHeight(e.nativeEvent.layout.height)
+              }
+            >
+              <Text style={styles.label}>받는 사람</Text>
+              {!selectedSchool ? (
+                <View style={styles.inputWrapper}>
+                  <MaterialIcons
+                    name="person-outline"
+                    size={normalize(20)}
+                    color={colors.textSecondary}
+                  />
+                  <TextInput
+                    style={[
+                      styles.input,
+                      { opacity: 0.4, marginLeft: normalize(6) },
+                    ]}
+                    placeholder="학교를 먼저 선택하세요"
+                    editable={false}
                     placeholderTextColor={colors.textSecondary}
                   />
                 </View>
-                {schoolLoading && <Loading style={styles.loadingBelowInput} />}
-                {!!schoolError && (
-                  <Text style={styles.sendInlineErrorText}>{schoolError}</Text>
-                )}
-                {schoolResults.length > 0 && (
-                  <View
-                    style={{
-                      marginTop: normalize(8),
-                      borderWidth: 1,
-                      borderColor: '#EEE',
-                      borderRadius: normalize(10),
-                      backgroundColor: '#FFF',
-                    }}
-                  >
-                    {schoolResults.map((school, index) => (
-                      <TouchableOpacity
-                        key={school.id}
-                        style={{
-                          paddingHorizontal: normalize(12),
-                          paddingVertical: normalize(10),
-                          borderBottomWidth: index === schoolResults.length - 1 ? 0 : 1,
-                          borderBottomColor: '#F2F2F2',
-                        }}
-                        onPress={() => {
-                          setSelectedSchool(school);
-                          setSchoolQuery('');
-                          setSchoolResults([]);
-                        }}
-                      >
-                        <Text style={{ color: colors.textPrimary, fontFamily: fonts.bold }}>
-                          {school.name}
-                        </Text>
-                        <Text
-                          style={{
-                            color: colors.textSecondary,
-                            fontSize: normalize(12),
-                            fontFamily: fonts.regular,
-                          }}
-                        >
-                          {school.region || '-'}
-                        </Text>
-                      </TouchableOpacity>
-                    ))}
-                  </View>
-                )}
-                {!schoolLoading &&
-                  !schoolError &&
-                  schoolQuery.trim().length > 0 &&
-                  schoolResults.length === 0 && (
-                    <Text style={styles.sendInlineHelperText}>검색 결과 없음</Text>
-                  )}
-              </View>
-            ) : (
-              <View style={styles.inputWrapper}>
-                <MaterialCommunityIcons
-                  name="school-outline"
-                  size={normalize(18)}
-                  color={colors.textSecondary}
-                />
-                <TextInput
-                  style={[styles.input, { marginLeft: normalize(6) }]}
-                  value={selectedSchool.name}
-                  editable={false}
-                  pointerEvents="none"
-                />
-                <TouchableOpacity
-                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                  onPress={() => {
-                    setSelectedSchool(null);
-                    setSchoolQuery('');
-                    setSchoolResults([]);
-                    resetRecipientFields();
-                  }}
-                >
-                  <Ionicons
-                    name="close-circle"
-                    size={normalize(18)}
-                    color={colors.textSecondary}
-                  />
-                </TouchableOpacity>
-              </View>
-            )}
-          </View>
-
-          {/* 섹션 2: 받는 사람 */}
-          <View style={styles.section}>
-            <Text style={styles.label}>받는 사람</Text>
-            {!selectedSchool ? (
-              <View style={styles.inputWrapper}>
-                <MaterialIcons
-                  name="person-outline"
-                  size={normalize(20)}
-                  color={colors.textSecondary}
-                />
-                <TextInput
-                  style={[styles.input, { opacity: 0.4, marginLeft: normalize(6) }]}
-                  placeholder="학교를 먼저 선택하세요"
-                  editable={false}
-                  placeholderTextColor={colors.textSecondary}
-                />
-              </View>
-            ) : (
-              <View>
-                <View style={styles.recipientFieldsRow}>
-                  <View style={styles.recipientFieldWrapper}>
-                    <View style={styles.recipientGradeClassInner}>
-                      <View style={styles.recipientSubField}>
-                        <TextInput
-                          style={styles.recipientFieldInput}
-                          placeholder="학년"
-                          value={recipientGrade}
-                          onChangeText={setRecipientGrade}
-                          keyboardType="number-pad"
-                          maxLength={2}
-                          placeholderTextColor={colors.textSecondary}
-                        />
-                      </View>
-                      <View style={styles.recipientSubField}>
-                        <TextInput
-                          style={styles.recipientFieldInput}
-                          placeholder="반"
-                          value={recipientClass}
-                          onChangeText={setRecipientClass}
-                          keyboardType="number-pad"
-                          maxLength={3}
-                          placeholderTextColor={colors.textSecondary}
-                        />
+              ) : (
+                <View>
+                  <View style={styles.recipientFieldsRow}>
+                    <View style={styles.recipientFieldWrapper}>
+                      <View style={styles.recipientGradeClassInner}>
+                        <View style={styles.recipientSubField}>
+                          <TextInput
+                            style={styles.recipientFieldInput}
+                            placeholder="학년"
+                            value={recipientGrade}
+                            onChangeText={setRecipientGrade}
+                            keyboardType="number-pad"
+                            maxLength={2}
+                            placeholderTextColor={colors.textSecondary}
+                          />
+                        </View>
+                        <View style={styles.recipientSubField}>
+                          <TextInput
+                            style={styles.recipientFieldInput}
+                            placeholder="반"
+                            value={recipientClass}
+                            onChangeText={setRecipientClass}
+                            keyboardType="number-pad"
+                            maxLength={3}
+                            placeholderTextColor={colors.textSecondary}
+                          />
+                        </View>
                       </View>
                     </View>
-                  </View>
-                  <View style={styles.namerecipientFieldWrapper}>
-                    <TextInput
-                      style={styles.recipientFieldInput}
-                      placeholder="이름"
-                      value={recipientName}
-                      onChangeText={setRecipientName}
-                      maxLength={20}
-                      placeholderTextColor={colors.textSecondary}
-                    />
-                  </View>
-                </View>
-
-                {showHomonymUI ? (
-                  <>
-                    <Text style={styles.homonymNoticeText}>
-                      동명이인이 있습니다. 아이디를 추가로 입력해주세요
-                    </Text>
-                    <View style={[styles.inputWrapper, { marginTop: normalize(10) }]}>
-                      <MaterialIcons
-                        name="alternate-email"
-                        size={normalize(20)}
-                        color={colors.textSecondary}
-                      />
+                    <View style={styles.namerecipientFieldWrapper}>
                       <TextInput
-                        style={[styles.input, { marginLeft: normalize(6) }]}
-                        placeholder="아이디 입력"
-                        value={recipientUsername}
-                        onChangeText={setRecipientUsername}
-                        autoCapitalize="none"
-                        autoCorrect={false}
+                        style={styles.recipientFieldInput}
+                        placeholder="이름"
+                        value={recipientName}
+                        onChangeText={setRecipientName}
+                        maxLength={20}
                         placeholderTextColor={colors.textSecondary}
                       />
                     </View>
-                  </>
-                ) : null}
-              </View>
-            )}
-          </View>
+                  </View>
 
-          {/* 섹션 3: 내용 */}
-          <View style={[styles.section, { minHeight: contentSectionMinHeight }]}>
-            <Text style={styles.label}>내용</Text>
-            <View style={styles.textAreaWrapper}>
-              <TextInput
-                style={styles.textArea}
-                placeholder="보낼 내용을 입력해주세요"
-                value={mailContent}
-                onChangeText={handleMailContentChange}
-                multiline
-                textAlignVertical="top"
-                placeholderTextColor={colors.textSecondary}
-              />
-              <View style={styles.replyFormMetaRow}>
-                <View style={styles.sendMetaRight}>
-                  <Text style={styles.replyFormCount}>
-                    {mailContent.length}/{charLimit}자
-                  </Text>
-                  <TouchableOpacity
-                    style={styles.replyFormChip}
-                    onPress={handleAdReward}
-                    activeOpacity={0.8}
-                  >
-                    <MaterialCommunityIcons
-                      name="television-classic"
-                      size={15}
-                      color={colors.textPrimary}
-                    />
-                    <Text style={styles.replyFormChipText}>x 2</Text>
-                  </TouchableOpacity>
+                  {showHomonymUI ? (
+                    <>
+                      <Text style={styles.homonymNoticeText}>
+                        동명이인이 있습니다. 아이디를 추가로 입력해주세요
+                      </Text>
+                      <View
+                        style={[
+                          styles.inputWrapper,
+                          { marginTop: normalize(10) },
+                        ]}
+                      >
+                        <MaterialIcons
+                          name="alternate-email"
+                          size={normalize(20)}
+                          color={colors.textSecondary}
+                        />
+                        <TextInput
+                          style={[styles.input, { marginLeft: normalize(6) }]}
+                          placeholder="아이디 입력"
+                          value={recipientUsername}
+                          onChangeText={setRecipientUsername}
+                          autoCapitalize="none"
+                          autoCorrect={false}
+                          placeholderTextColor={colors.textSecondary}
+                        />
+                      </View>
+                    </>
+                  ) : null}
+                </View>
+              )}
+            </View>
+
+            {/* 섹션 3: 내용 */}
+            <View
+              ref={contentSectionRef}
+              style={[
+                styles.section,
+                { flex: 1, minHeight: contentSectionMinHeight },
+              ]}
+            >
+              <Text style={styles.label}>내용</Text>
+              <View style={styles.textAreaWrapper}>
+                <TextInput
+                  style={styles.textArea}
+                  placeholder="보낼 내용을 입력해주세요"
+                  value={mailContent}
+                  onChangeText={handleMailContentChange}
+                  onFocus={handleContentFocus}
+                  onBlur={handleContentBlur}
+                  multiline
+                  textAlignVertical="top"
+                  placeholderTextColor={colors.textSecondary}
+                />
+                <View style={styles.replyFormMetaRow}>
+                  <View style={styles.sendMetaRight}>
+                    <Text style={styles.replyFormCount}>
+                      {mailContent.length}/{charLimit}자
+                    </Text>
+                    <TouchableOpacity
+                      style={styles.replyFormChip}
+                      onPress={handleAdReward}
+                      activeOpacity={0.8}
+                    >
+                      <MaterialCommunityIcons
+                        name="television-classic"
+                        size={15}
+                        color={colors.textPrimary}
+                      />
+                      <Text style={styles.replyFormChipText}>x 2</Text>
+                    </TouchableOpacity>
+                  </View>
                 </View>
               </View>
             </View>
@@ -421,11 +507,17 @@ const SendMailScreen = ({ navigation, route }) => {
         </KeyboardAwareScrollView>
 
         <View
-          style={[styles.bottomCtaWrapper, { paddingBottom: Math.max(normalize(16), insets.bottom) }]}
+          style={[
+            styles.bottomCtaWrapper,
+            { paddingBottom: Math.max(normalize(16), insets.bottom) },
+          ]}
           onLayout={(e) => setBottomCtaHeight(e.nativeEvent.layout.height)}
         >
           <TouchableOpacity
-            style={[styles.bottomCtaButton, (!canSend || sending) && styles.bottomCtaDisabled]}
+            style={[
+              styles.bottomCtaButton,
+              (!canSend || sending) && styles.bottomCtaDisabled,
+            ]}
             onPress={handleSend}
             disabled={!canSend || sending}
             activeOpacity={0.9}
@@ -439,7 +531,7 @@ const SendMailScreen = ({ navigation, route }) => {
             )}
           </TouchableOpacity>
         </View>
-      </View>
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 };

@@ -7,7 +7,12 @@ import React, {
   useCallback,
 } from 'react';
 import { Alert, AppState } from 'react-native';
-import { api, clearUserSessionStorage, getAuthToken, setAuthToken } from '../utils/api';
+import {
+  api,
+  clearUserSessionStorage,
+  getAuthToken,
+  setAuthToken,
+} from '../utils/api';
 import { useAuth } from './AuthContext';
 import * as socketManager from '../view/src/socketManager';
 
@@ -109,14 +114,22 @@ export function SocketProvider({ children }) {
       return nextToken;
     } catch (error) {
       if (__DEV__) {
-        console.warn('[SocketContext] RT 갱신 실패:', error?.response?.status ?? error?.message);
+        console.warn(
+          '[SocketContext] RT 갱신 실패:',
+          error?.response?.status ?? error?.message,
+        );
       }
       return null;
     }
   }, []);
 
   const recoverSocketAuth = useCallback(async () => {
-    if (isRecoveringAuthRef.current || cancelledRef.current || isLoggingOutRef.current) return;
+    if (
+      isRecoveringAuthRef.current ||
+      cancelledRef.current ||
+      isLoggingOutRef.current
+    )
+      return;
     isRecoveringAuthRef.current = true;
 
     try {
@@ -147,23 +160,26 @@ export function SocketProvider({ children }) {
     }
   }, [forceLogoutBySessionExpired, tryRefreshAccessToken]);
 
-  const scheduleReconnect = useCallback((reason = 'unspecified') => {
-    if (cancelledRef.current || isLoggingOutRef.current) return;
-    clearReconnectTimer();
-    const delay = reconnectBackoffMsRef.current;
-    reconnectBackoffMsRef.current = Math.min(
-      Math.floor(reconnectBackoffMsRef.current * 1.8),
-      15000,
-    );
-    logSocket('reconnect_scheduled', { reason, delayMs: delay });
-    reconnectTimerRef.current = setTimeout(() => {
-      const latest = socketManager.getSocket?.();
-      if (latest && !latest.connected) {
-        logSocket('reconnect_attempt', { reason });
-        latest.connect();
-      }
-    }, delay);
-  }, [clearReconnectTimer, logSocket]);
+  const scheduleReconnect = useCallback(
+    (reason = 'unspecified') => {
+      if (cancelledRef.current || isLoggingOutRef.current) return;
+      clearReconnectTimer();
+      const delay = reconnectBackoffMsRef.current;
+      reconnectBackoffMsRef.current = Math.min(
+        Math.floor(reconnectBackoffMsRef.current * 1.8),
+        15000,
+      );
+      logSocket('reconnect_scheduled', { reason, delayMs: delay });
+      reconnectTimerRef.current = setTimeout(() => {
+        const latest = socketManager.getSocket?.();
+        if (latest && !latest.connected) {
+          logSocket('reconnect_attempt', { reason });
+          latest.connect();
+        }
+      }, delay);
+    },
+    [clearReconnectTimer, logSocket],
+  );
 
   /**
    * socketManager 가 들고 있는 인스턴스에 SocketContext 전용 lifecycle 을 붙인다.
@@ -291,7 +307,14 @@ export function SocketProvider({ children }) {
       setSocket(null);
       setConnected(false);
     };
-  }, [clearReconnectTimer, connect, cleanupContextListeners, logSocket, recoverSocketAuth, scheduleReconnect]);
+  }, [
+    clearReconnectTimer,
+    connect,
+    cleanupContextListeners,
+    logSocket,
+    recoverSocketAuth,
+    scheduleReconnect,
+  ]);
 
   // 로그인 상태가 바뀌면 소켓을 새 토큰으로 갈아끼우거나, 로그아웃 시 안전하게 끊는다.
   // - 로그인: 새 JWT 로 setAuthTokenAndReconnect → 옛 토큰으로 INVALID_TOKEN 무한 재시도 방지
@@ -311,7 +334,10 @@ export function SocketProvider({ children }) {
           }
         } catch (e) {
           if (__DEV__) {
-            console.warn('[SocketContext] setAuthTokenAndReconnect 실패:', e?.message);
+            console.warn(
+              '[SocketContext] setAuthTokenAndReconnect 실패:',
+              e?.message,
+            );
           }
         }
       })();
@@ -320,7 +346,10 @@ export function SocketProvider({ children }) {
 
     // 로그아웃 상태: 기존 소켓 정리
     try {
-      socketManager.disconnectSocket?.({ force: true, reason: 'auth_logged_out' });
+      socketManager.disconnectSocket?.({
+        force: true,
+        reason: 'auth_logged_out',
+      });
     } catch {
       // ignore
     }
@@ -335,9 +364,7 @@ export function SocketProvider({ children }) {
   };
 
   return (
-    <SocketContext.Provider value={value}>
-      {children}
-    </SocketContext.Provider>
+    <SocketContext.Provider value={value}>{children}</SocketContext.Provider>
   );
 }
 

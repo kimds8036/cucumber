@@ -37,14 +37,17 @@ export function LocationProvider({ children }) {
   const permissionGrantedRef = useRef(false);
 
   /** @param {{ fresh?: boolean, persist?: boolean }} opts — fresh: GPS 확정, persist: AsyncStorage 저장 */
-  const applyCoords = useCallback((next, { fresh = false, persist = false } = {}) => {
-    coordsRef.current = next;
-    setCoordsState(next);
-    setCoordsIsFresh(Boolean(next) && fresh);
-    if (next && persist) {
-      saveLastLocation(next);
-    }
-  }, []);
+  const applyCoords = useCallback(
+    (next, { fresh = false, persist = false } = {}) => {
+      coordsRef.current = next;
+      setCoordsState(next);
+      setCoordsIsFresh(Boolean(next) && fresh);
+      if (next && persist) {
+        saveLastLocation(next);
+      }
+    },
+    [],
+  );
 
   useEffect(() => {
     permissionGrantedRef.current = permissionGranted;
@@ -175,11 +178,20 @@ export function LocationProvider({ children }) {
       refreshLocation,
       retryPermission,
     }),
-    [isReady, permissionGranted, coords, coordsIsFresh, refreshLocation, retryPermission],
+    [
+      isReady,
+      permissionGranted,
+      coords,
+      coordsIsFresh,
+      refreshLocation,
+      retryPermission,
+    ],
   );
 
   return (
-    <LocationContext.Provider value={value}>{children}</LocationContext.Provider>
+    <LocationContext.Provider value={value}>
+      {children}
+    </LocationContext.Provider>
   );
 }
 
@@ -254,8 +266,8 @@ export function LocationGate({ children }) {
             marginBottom: 28,
           }}
         >
-          게시판 거리·근처 글 보기를 위해 위치 접근을 허용해 주세요. 설정에서 권한을 켠 뒤
-          앱으로 돌아오면 계속할 수 있어요.
+          게시판 거리·근처 글 보기를 위해 위치 접근을 허용해 주세요. 설정에서
+          권한을 켠 뒤 앱으로 돌아오면 계속할 수 있어요.
         </Text>
         <TouchableOpacity
           onPress={() => retryPermission()}
@@ -268,7 +280,13 @@ export function LocationGate({ children }) {
             marginBottom: 10,
           }}
         >
-          <Text style={{ fontFamily: fonts.bold, color: colors.textPrimary, fontSize: 15 }}>
+          <Text
+            style={{
+              fontFamily: fonts.bold,
+              color: colors.textPrimary,
+              fontSize: 15,
+            }}
+          >
             권한 다시 요청
           </Text>
         </TouchableOpacity>
@@ -287,7 +305,13 @@ export function LocationGate({ children }) {
           </Text>
         </TouchableOpacity>
         {Platform.OS === 'android' ? (
-          <Text style={{ fontFamily: fonts.regular, fontSize: 12, color: colors.textSecondary }}>
+          <Text
+            style={{
+              fontFamily: fonts.regular,
+              fontSize: 12,
+              color: colors.textSecondary,
+            }}
+          >
             일부 기기에서는 위치 권한을 “앱 사용 중에만”으로 설정해 주세요.
           </Text>
         ) : null}

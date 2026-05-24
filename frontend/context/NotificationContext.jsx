@@ -5,7 +5,14 @@
  * - 리스너 등록 후 반드시 socket.off 로 클린업
  */
 
-import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
+import React, {
+  createContext,
+  useContext,
+  useState,
+  useEffect,
+  useCallback,
+  useRef,
+} from 'react';
 import { AppState, DeviceEventEmitter, Platform } from 'react-native';
 import { api } from '../utils/api';
 import { useSocket } from './SocketContext';
@@ -21,7 +28,8 @@ const NotificationContext = createContext(null);
 export function NotificationProvider({ children }) {
   const { socket } = useSocket();
   const { isLoggedIn } = useAuth();
-  const { showToast, activeChatRoomId, isMessageTab, isTimerScreenActive } = useToast();
+  const { showToast, activeChatRoomId, isMessageTab, isTimerScreenActive } =
+    useToast();
   const appStateRef = useRef(AppState.currentState);
   const [hasUnread, setHasUnread] = useState(false);
   const [initialized, setInitialized] = useState(false);
@@ -54,7 +62,11 @@ export function NotificationProvider({ children }) {
       toSummaryKey(payload?.createdAt),
       toSummaryKey(payload?.id),
       toSummaryKey(payload?.notificationId),
-      toSummaryKey(payload?.title && payload?.body ? `${payload.title}::${payload.body}` : null),
+      toSummaryKey(
+        payload?.title && payload?.body
+          ? `${payload.title}::${payload.body}`
+          : null,
+      ),
     ].filter(Boolean);
     if (!keys.length) return;
     keys.forEach((key) => {
@@ -119,13 +131,16 @@ export function NotificationProvider({ children }) {
       }, 0);
       const lastSeenMs = parseDateMs(lastBellSeenAt);
       const hasNewSinceBellSeen =
-        bellSuppressed && latestCreatedAtMs > 0 && latestCreatedAtMs > lastSeenMs;
+        bellSuppressed &&
+        latestCreatedAtMs > 0 &&
+        latestCreatedAtMs > lastSeenMs;
 
       if (hasNewSinceBellSeen) {
         setBellSuppressed(false);
       }
 
-      const shouldShowBell = anyUnread && (!bellSuppressed || hasNewSinceBellSeen);
+      const shouldShowBell =
+        anyUnread && (!bellSuppressed || hasNewSinceBellSeen);
       setHasUnread(shouldShowBell);
       setInitialized(true);
     } catch (error) {
@@ -150,9 +165,12 @@ export function NotificationProvider({ children }) {
   /** 네이티브 채팅에서 read-by-related 후 벨 배지와 JSX 동기화 */
   useEffect(() => {
     if (Platform.OS !== 'android') return undefined;
-    const sub = DeviceEventEmitter.addListener('nativeRequestRefreshUnread', () => {
-      refreshHasUnread();
-    });
+    const sub = DeviceEventEmitter.addListener(
+      'nativeRequestRefreshUnread',
+      () => {
+        refreshHasUnread();
+      },
+    );
     return () => sub.remove();
   }, [refreshHasUnread]);
 
@@ -192,19 +210,25 @@ export function NotificationProvider({ children }) {
       if (isStudySummary) {
         // 타이머 화면이 활성화된 경우에는 타이머 전용 토스트를 우선 사용한다.
         if (isTimerScreenActive) {
-          console.log('[NotificationContext] study summary toast skipped (timer screen active)', {
-            relatedType: payload?.relatedType,
-            type: payload?.type,
-            relatedId: payload?.relatedId,
-          });
+          console.log(
+            '[NotificationContext] study summary toast skipped (timer screen active)',
+            {
+              relatedType: payload?.relatedType,
+              type: payload?.type,
+              relatedId: payload?.relatedId,
+            },
+          );
           return;
         }
         // 타이머 화면이 아닐 땐 일반 알림 토스트로 fallback 한다.
-        console.log('[NotificationContext] study summary toast fallback (timer screen inactive)', {
-          relatedType: payload?.relatedType,
-          type: payload?.type,
-          relatedId: payload?.relatedId,
-        });
+        console.log(
+          '[NotificationContext] study summary toast fallback (timer screen inactive)',
+          {
+            relatedType: payload?.relatedType,
+            type: payload?.type,
+            relatedId: payload?.relatedId,
+          },
+        );
       }
       const relatedType = String(payload?.relatedType ?? '').trim();
       const isAnonymousMessageRoom = relatedType === 'message_room';
@@ -218,7 +242,7 @@ export function NotificationProvider({ children }) {
       const bodyText = String(payload?.body ?? '').trim();
       const composedMessage = isChatNotification
         ? `${titleText || (isAnonymousMessageRoom ? ANONYMOUS_MAIL_LABEL : '새 메시지')}: ${bodyText || '(이미지)'}`
-        : (titleText || bodyText || fallbackToastMessage(payload));
+        : titleText || bodyText || fallbackToastMessage(payload);
 
       if (!composedMessage) return;
       if (!isForeground) return;
@@ -259,10 +283,7 @@ export function NotificationProvider({ children }) {
     const pokeHandler = (payload) => {
       const isForeground = appStateRef.current === 'active';
       const senderName = String(
-        payload?.fromName ??
-        payload?.fromNickname ??
-        payload?.senderName ??
-        '',
+        payload?.fromName ?? payload?.fromNickname ?? payload?.senderName ?? '',
       ).trim();
       // friend_poke는 즉시 토스트는 띄우되, 벨 점은 DB 목록 기준으로만 갱신.
       // 온라인 즉시 전달 poke는 알림 목록에 없을 수 있다.
@@ -408,7 +429,14 @@ export function NotificationProvider({ children }) {
       socket.off('notification_read', notificationReadHandler);
       socket.off('connect', onConnect);
     };
-  }, [socket, refreshHasUnread, showToast, activeChatRoomId, isMessageTab, isTimerScreenActive]);
+  }, [
+    socket,
+    refreshHasUnread,
+    showToast,
+    activeChatRoomId,
+    isMessageTab,
+    isTimerScreenActive,
+  ]);
 
   const value = {
     hasUnread,
@@ -429,7 +457,9 @@ export function NotificationProvider({ children }) {
 export function useNotification() {
   const ctx = useContext(NotificationContext);
   if (!ctx) {
-    throw new Error('useNotification must be used within a NotificationProvider');
+    throw new Error(
+      'useNotification must be used within a NotificationProvider',
+    );
   }
   return ctx;
 }

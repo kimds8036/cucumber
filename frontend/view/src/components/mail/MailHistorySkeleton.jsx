@@ -6,7 +6,11 @@ import { colors } from '../../../../styles/colors';
 /**
  * 우편 내역(history) — 실제 카드(액센트 막대 · 이름·시간 · 본문)와 동일 구조
  */
-export default function MailHistorySkeleton({ styles, normalize, rowCount = 5 }) {
+export default function MailHistorySkeleton({
+  styles,
+  normalize,
+  rowCount = 5,
+}) {
   const n = typeof normalize === 'function' ? normalize : (v) => v;
   const r = n(12);
   const accentW = r;
@@ -69,7 +73,11 @@ export default function MailHistorySkeleton({ styles, normalize, rowCount = 5 })
                       borderRadius={n(4)}
                       style={{ marginHorizontal: n(4) }}
                     />
-                    <Skeleton width={n(88)} height={n(13)} borderRadius={n(6)} />
+                    <Skeleton
+                      width={n(88)}
+                      height={n(13)}
+                      borderRadius={n(6)}
+                    />
                   </View>
                   {Array.from({ length: row.bodyLines }, (_, lineIdx) => (
                     <Skeleton
@@ -77,7 +85,9 @@ export default function MailHistorySkeleton({ styles, normalize, rowCount = 5 })
                       width={lineIdx === row.bodyLines - 1 ? '82%' : '100%'}
                       height={n(14)}
                       borderRadius={n(6)}
-                      style={{ marginBottom: lineIdx < row.bodyLines - 1 ? n(6) : 0 }}
+                      style={{
+                        marginBottom: lineIdx < row.bodyLines - 1 ? n(6) : 0,
+                      }}
                     />
                   ))}
                 </View>

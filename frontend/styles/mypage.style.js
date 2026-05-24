@@ -549,6 +549,10 @@ export const createNotificationSettingsStyles = (normalize) => {
       paddingVertical: normalize(2),
       textAlignVertical: 'center',
     },
+    usernameAtPrefix: {
+      flex: 0,
+      marginRight: normalize(2),
+    },
 
     /** 아이디 변경: 두 블록 사이만 촘촘히 (첫 블록 하단 / 둘째 블록 상단만 축소) */
     idFieldFirst: {
@@ -797,7 +801,7 @@ export const getHiddenPostsAppealsStatusColors = (c) => ({
   '복구 완료': { bar: c.primary, bg: c.primaryLight10, text: c.primaryDark },
   '검토 중': { bar: c.scrap, bg: c.yellow, text: c.scrapDark },
   '대기 중': { bar: c.scrap, bg: c.yellow, text: c.scrapDark },
-  '반려': { bar: c.alert, bg: c.alertLight, text: c.alertDark },
+  반려: { bar: c.alert, bg: c.alertLight, text: c.alertDark },
   '제재 확정': { bar: c.alert, bg: c.alertLight, text: c.alertDark },
 });
 
@@ -928,8 +932,7 @@ export const createHiddenPostsAppealsStyles = (width, normalize) =>
       justifyContent: 'space-between',
       marginBottom: normalize(6),
     },
-    pillNeutral: {
-    },
+    pillNeutral: {},
     pillNeutralText: {
       fontFamily: fonts.regular,
       fontSize: normalize(fontSizes.lg - 1),

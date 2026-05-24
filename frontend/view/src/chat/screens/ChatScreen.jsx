@@ -1,9 +1,11 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import {
-  Text,
-  TouchableOpacity,
-  View,
-} from 'react-native';
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
+import { Text, TouchableOpacity, View } from 'react-native';
 import Animated, {
   useAnimatedStyle,
   useSharedValue,
@@ -83,7 +85,8 @@ export default function ChatScreen({
   }, []);
 
   const combinedLoading =
-    chat.isLoading || (chatType === 'room' && Boolean(roomId) && postCardLoading);
+    chat.isLoading ||
+    (chatType === 'room' && Boolean(roomId) && postCardLoading);
 
   const {
     replyToMessage,
@@ -199,12 +202,10 @@ export default function ChatScreen({
   };
 
   const handlePressReplyTarget = (parentMessageId) => {
-    const targetId =
-      parentMessageId != null ? String(parentMessageId) : null;
+    const targetId = parentMessageId != null ? String(parentMessageId) : null;
     if (!targetId) return;
     const targetIndex = flatData.findIndex(
-      (item) =>
-        item?.type !== 'dateBanner' && String(item?.id) === targetId,
+      (item) => item?.type !== 'dateBanner' && String(item?.id) === targetId,
     );
     if (targetIndex < 0) {
       showChatToast('상단으로 더 올려서 과거 메시지를 확인해 주세요');
@@ -287,73 +288,82 @@ export default function ChatScreen({
             />
           )}
 
-        <Animated.View
-          style={[chatStyles.chatListContainer, listAnimStyle]}
-          onLayout={chatType === 'dm' ? handleDmChatListLayout : undefined}
-        >
-          {!combinedLoading && chat.hasMore && scroll.showLoadMoreButton ? (
-            <View style={chatStyles.loadMoreWrap}>
-              <TouchableOpacity
-                activeOpacity={0.9}
-                disabled={chat.isLoadingMore}
-                onPress={() => scroll.triggerLoadMore?.()}
-                style={chatStyles.loadMoreButton}
-              >
-                <Text style={chatStyles.loadMoreButtonText}>
-                  {chat.isLoadingMore ? '불러오는 중...' : '이전대화 더불러오기'}
-                </Text>
-              </TouchableOpacity>
-            </View>
-          ) : null}
-          <MessageList
-            roomId={roomId}
-            data={flatData}
-            listRef={scroll.listRef}
-            isLoadingMore={chat.isLoadingMore}
-            handleScroll={scroll.handleScroll}
-            handleStartReached={scroll.handleStartReached}
-            handleListShellLayout={scroll.handleListShellLayout}
-            listShellVisible={scroll.listShellVisible}
-            contentHeightRef={scroll.contentHeightRef}
-            renderMessageProps={renderMessageProps}
-            normalize={normalize}
-            handleContentSizeChange={scroll.handleContentSizeChange}
-            onViewableItemsChanged={scroll.handleViewableItemsChanged}
-          />
-          {shouldShowChatSkeleton ? (
-            <View pointerEvents="auto" style={chatStyles.chatSkeletonOverlay}>
-              <ChatLoadingSkeleton normalize={normalize} />
-            </View>
-          ) : null}
-        </Animated.View>
+          <Animated.View
+            style={[chatStyles.chatListContainer, listAnimStyle]}
+            onLayout={chatType === 'dm' ? handleDmChatListLayout : undefined}
+          >
+            {!combinedLoading && chat.hasMore && scroll.showLoadMoreButton ? (
+              <View style={chatStyles.loadMoreWrap}>
+                <TouchableOpacity
+                  activeOpacity={0.9}
+                  disabled={chat.isLoadingMore}
+                  onPress={() => scroll.triggerLoadMore?.()}
+                  style={chatStyles.loadMoreButton}
+                >
+                  <Text style={chatStyles.loadMoreButtonText}>
+                    {chat.isLoadingMore
+                      ? '불러오는 중...'
+                      : '이전대화 더불러오기'}
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            ) : null}
+            <MessageList
+              roomId={roomId}
+              data={flatData}
+              listRef={scroll.listRef}
+              isLoadingMore={chat.isLoadingMore}
+              handleScroll={scroll.handleScroll}
+              handleStartReached={scroll.handleStartReached}
+              handleListShellLayout={scroll.handleListShellLayout}
+              listShellVisible={scroll.listShellVisible}
+              contentHeightRef={scroll.contentHeightRef}
+              renderMessageProps={renderMessageProps}
+              normalize={normalize}
+              handleContentSizeChange={scroll.handleContentSizeChange}
+              onViewableItemsChanged={scroll.handleViewableItemsChanged}
+            />
+            {shouldShowChatSkeleton ? (
+              <View pointerEvents="auto" style={chatStyles.chatSkeletonOverlay}>
+                <ChatLoadingSkeleton normalize={normalize} />
+              </View>
+            ) : null}
+          </Animated.View>
 
-        {/* 토스트 */}
-        {toastText ? (
-          <View pointerEvents="none" style={chatStyles.chatToastWrap}>
-            <View style={chatStyles.chatToastCard}>
-              <Text style={chatStyles.chatToastText}>
-                {toastText}
-              </Text>
+          {/* 토스트 */}
+          {toastText ? (
+            <View pointerEvents="none" style={chatStyles.chatToastWrap}>
+              <View style={chatStyles.chatToastCard}>
+                <Text style={chatStyles.chatToastText}>{toastText}</Text>
+              </View>
             </View>
-          </View>
-        ) : null}
+          ) : null}
 
           <Animated.View style={inputAnimStyle}>
             {/* 답장 프리뷰 */}
             {replyToMessage ? (
               <TouchableOpacity
                 onPress={() => setReplyToMessage(null)}
-                style={chatStyles.replyPreviewContainer || chatStyles.replyPreviewFallback}
+                style={
+                  chatStyles.replyPreviewContainer ||
+                  chatStyles.replyPreviewFallback
+                }
               >
                 <View style={chatStyles.replyPreviewMetaWrap}>
                   <Text
-                    style={chatStyles.replyPreviewTitle || chatStyles.replyPreviewTitleFallback}
+                    style={
+                      chatStyles.replyPreviewTitle ||
+                      chatStyles.replyPreviewTitleFallback
+                    }
                   >
                     {replyToMessage.isMe ? '나에게' : '상대방에게'} 답장 중
                   </Text>
                   <Text
                     numberOfLines={1}
-                    style={chatStyles.replyPreviewContent || chatStyles.replyPreviewContentFallback}
+                    style={
+                      chatStyles.replyPreviewContent ||
+                      chatStyles.replyPreviewContentFallback
+                    }
                   >
                     {replyToMessage.content || '(이미지 메시지)'}
                   </Text>
@@ -381,7 +391,6 @@ export default function ChatScreen({
             />
           </Animated.View>
         </View>
-
       </View>
 
       <MessageActions

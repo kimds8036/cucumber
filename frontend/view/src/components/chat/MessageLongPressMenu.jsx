@@ -196,10 +196,7 @@ export default function MessageLongPressMenu({
         <Pressable style={styles.overlayFill} onPress={overlayPress} />
 
         {deleteConfirm ? (
-          <View
-            style={styles.confirmLayer}
-            pointerEvents="box-none"
-          >
+          <View style={styles.confirmLayer} pointerEvents="box-none">
             <Animated.View
               style={{
                 opacity: confirmOpacity,
@@ -209,7 +206,13 @@ export default function MessageLongPressMenu({
                 paddingHorizontal: normalize(20),
               }}
             >
-              <View style={[cardStyle, styles.confirmCard, { padding: normalize(18) }]}>
+              <View
+                style={[
+                  cardStyle,
+                  styles.confirmCard,
+                  { padding: normalize(18) },
+                ]}
+              >
                 <Text
                   style={{
                     fontSize: normalize(17),
@@ -302,7 +305,9 @@ export default function MessageLongPressMenu({
               }}
               style={[
                 styles.shadowWrap,
-                Platform.OS === 'ios' ? styles.shadowSoftIos : styles.shadowSoftAndroid,
+                Platform.OS === 'ios'
+                  ? styles.shadowSoftIos
+                  : styles.shadowSoftAndroid,
               ]}
               pointerEvents="auto"
             >

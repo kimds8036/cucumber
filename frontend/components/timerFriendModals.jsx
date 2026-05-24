@@ -15,7 +15,10 @@ import {
   Keyboard,
   TouchableWithoutFeedback,
 } from 'react-native';
-import Reanimated, { useAnimatedStyle, useSharedValue } from 'react-native-reanimated';
+import Reanimated, {
+  useAnimatedStyle,
+  useSharedValue,
+} from 'react-native-reanimated';
 import { useKeyboardHandler } from 'react-native-keyboard-controller';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import FontAwesome5 from '@expo/vector-icons/FontAwesome5';
@@ -79,16 +82,15 @@ export const PokeModal = ({
               {`${pokeLockedSeconds}초 후 다시 보낼 수 있어요`}
             </Text>
           ) : (
-              <Text style={s.pokeOutsideDesc}>
-                <Text style={s.pokeOutsideDescHighlight}>쿡 찌르기</Text>
-                <Text style={s.pokeOutsideDescRest}>
-                  로 공부하자고 알림을 보내보세요!
-                </Text>
+            <Text style={s.pokeOutsideDesc}>
+              <Text style={s.pokeOutsideDescHighlight}>쿡 찌르기</Text>
+              <Text style={s.pokeOutsideDescRest}>
+                로 공부하자고 알림을 보내보세요!
               </Text>
+            </Text>
           )}
         </View>
         <View style={s.pokePopup}>
-
           {/* 친구 정보 */}
           <View style={s.pokeFriendRow}>
             <View style={s.pokeAvatar}>
@@ -112,9 +114,7 @@ export const PokeModal = ({
               <View style={s.pokeFriendNameRow}>
                 <Text style={s.pokeFriendName}>{friend.name}</Text>
                 {friend.username ? (
-                  <Text style={s.pokeFriendUsername}>
-                    {friend.username}
-                  </Text>
+                  <Text style={s.pokeFriendUsername}>{friend.username}</Text>
                 ) : null}
               </View>
               <Text style={s.pokeStatusText}>
@@ -133,7 +133,10 @@ export const PokeModal = ({
                 <View style={s.pokePrimaryBtnContent}>
                   <Ionicons
                     name="notifications"
-                    style={[s.pokeNotificationBtnIcon, { color: colors.primary }]}
+                    style={[
+                      s.pokeNotificationBtnIcon,
+                      { color: colors.primary },
+                    ]}
                   />
                   <Text style={s.pokeInfoTitle}>기다림 알림 보내기</Text>
                 </View>
@@ -214,7 +217,6 @@ export const FriendPokeController = ({ visible, friend, onClose }) => {
     return () => clearInterval(timer);
   }, []);
 
-
   const pushToast = (senderName, body) => {
     const s = String(senderName || '').trim();
     const b = String(body || '').trim();
@@ -238,13 +240,19 @@ export const FriendPokeController = ({ visible, friend, onClose }) => {
       const res = await api.post('/api/dm/rooms', { otherUserId: friend.id });
       const roomId = res.data?.data?.id;
       if (roomId == null) {
-        pushToast('메시지', '전송 준비 중 문제가 발생했어요. 잠시 후 다시 시도해 주세요');
+        pushToast(
+          '메시지',
+          '전송 준비 중 문제가 발생했어요. 잠시 후 다시 시도해 주세요',
+        );
         return;
       }
       handleClose();
       navigation.navigate('DMChat', { roomId, friend });
     } catch (e) {
-      pushToast('메시지', '전송 준비 중 문제가 발생했어요. 잠시 후 다시 시도해 주세요');
+      pushToast(
+        '메시지',
+        '전송 준비 중 문제가 발생했어요. 잠시 후 다시 시도해 주세요',
+      );
     }
   };
 
@@ -267,7 +275,10 @@ export const FriendPokeController = ({ visible, friend, onClose }) => {
   const handleNotifyLater = () => {
     if (friend) {
       emitFriendNotifyOnStop(friend.id);
-      pushToast('', `${friend.name} 님의 공부가 끝나면 기다렸다는 알림을 보낼게요`);
+      pushToast(
+        '',
+        `${friend.name} 님의 공부가 끝나면 기다렸다는 알림을 보낼게요`,
+      );
     }
     handleClose();
   };
@@ -330,7 +341,11 @@ export const AddFriendModal = ({ visible, onClose, onAdd }) => {
     <Modal transparent animationType="fade" onRequestClose={onClose}>
       <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
         <View style={{ flex: 1 }}>
-          <TouchableOpacity style={s.addFriendOverlay} onPress={onClose} activeOpacity={1} />
+          <TouchableOpacity
+            style={s.addFriendOverlay}
+            onPress={onClose}
+            activeOpacity={1}
+          />
           <Reanimated.View style={[s.addFriendWrapper, animStyle]}>
             <View style={s.addFriendPopup}>
               <Text style={s.addFriendTitle}>친구 추가</Text>
@@ -430,10 +445,20 @@ export const FriendStoryBar = memo(function FriendStoryBar({
           onPress={onAddFriendPress}
           activeOpacity={0.8}
         >
-          <View style={[styles.friendStoryAddCircle, debugFriendStoryBorder('#34C759')]}>
+          <View
+            style={[
+              styles.friendStoryAddCircle,
+              debugFriendStoryBorder('#34C759'),
+            ]}
+          >
             <Ionicons name="add" size={normalize(28)} color={colors.primary} />
           </View>
-          <Text style={[styles.friendStoryAddLabel, debugFriendStoryBorder('#30B0C7')]}>
+          <Text
+            style={[
+              styles.friendStoryAddLabel,
+              debugFriendStoryBorder('#30B0C7'),
+            ]}
+          >
             친구 추가
           </Text>
         </TouchableOpacity>
@@ -457,7 +482,12 @@ export const FriendStoryBar = memo(function FriendStoryBar({
               onPress={() => onFriendPress(friend)}
               activeOpacity={0.8}
             >
-              <View style={[styles.friendStoryCircle, debugFriendStoryBorder('#5E5CE6')]}>
+              <View
+                style={[
+                  styles.friendStoryCircle,
+                  debugFriendStoryBorder('#5E5CE6'),
+                ]}
+              >
                 <ProfileIcon
                   width={normalize(56)}
                   height={normalize(56)}
@@ -474,7 +504,10 @@ export const FriendStoryBar = memo(function FriendStoryBar({
                 />
               </View>
               <Text
-                style={[styles.friendStoryName, debugFriendStoryBorder('#FF2D55')]}
+                style={[
+                  styles.friendStoryName,
+                  debugFriendStoryBorder('#FF2D55'),
+                ]}
                 numberOfLines={1}
               >
                 {friend.name}

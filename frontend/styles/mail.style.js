@@ -3,11 +3,15 @@ import { colors, fonts, fontSizes } from './colors';
 import { shadow } from './tokens';
 export function createMailStyles(normalize) {
   return StyleSheet.create({
-    safe: { flex: 1, backgroundColor: colors.background, },
-    scroll: { flex: 1, backgroundColor: colors.background, },
+    safe: { flex: 1, backgroundColor: colors.background },
+    scroll: { flex: 1, backgroundColor: colors.background },
 
     // 목록
-    inboxContainer: { padding: normalize(12), paddingBottom: normalize(20), gap: normalize(8) },
+    inboxContainer: {
+      padding: normalize(12),
+      paddingBottom: normalize(20),
+      gap: normalize(8),
+    },
     inboxTabRow: {
       flexDirection: 'row',
       paddingHorizontal: normalize(16),
@@ -63,16 +67,50 @@ export function createMailStyles(normalize) {
       borderLeftWidth: 3,
       borderLeftColor: colors.primary,
     },
-    mailCardHeader: { flexDirection: 'row', alignItems: 'center', gap: normalize(6), marginBottom: normalize(8) },
-    anonLabel: { fontSize: normalize(fontSizes.xl), fontFamily: fonts.bold, color: colors.textPrimary },
+    mailCardHeader: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: normalize(6),
+      marginBottom: normalize(8),
+    },
+    anonLabel: {
+      fontSize: normalize(fontSizes.xl),
+      fontFamily: fonts.bold,
+      color: colors.textPrimary,
+    },
     dotSep: { fontSize: normalize(fontSizes.xl), color: colors.textSecondary },
-    mailTime: { fontSize: normalize(fontSizes.lg), color: colors.textSecondary },
-    mailPreview: { fontSize: normalize(fontSizes.xl), color: colors.textSecondary, marginBottom: normalize(10) },
-    cardDivider: { height: 1, backgroundColor: colors.textLight10, marginBottom: normalize(10) },
-    mailCardFooter: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-    replyStatus: { flexDirection: 'row', alignItems: 'center', gap: normalize(5) },
-    replyStatusDoneText: { fontSize: normalize(fontSizes.lg), color: colors.primary },
-    replyStatusPendingText: { fontSize: normalize(fontSizes.lg), color: colors.textSecondary },
+    mailTime: {
+      fontSize: normalize(fontSizes.lg),
+      color: colors.textSecondary,
+    },
+    mailPreview: {
+      fontSize: normalize(fontSizes.xl),
+      color: colors.textSecondary,
+      marginBottom: normalize(10),
+    },
+    cardDivider: {
+      height: 1,
+      backgroundColor: colors.textLight10,
+      marginBottom: normalize(10),
+    },
+    mailCardFooter: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+    },
+    replyStatus: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: normalize(5),
+    },
+    replyStatusDoneText: {
+      fontSize: normalize(fontSizes.lg),
+      color: colors.primary,
+    },
+    replyStatusPendingText: {
+      fontSize: normalize(fontSizes.lg),
+      color: colors.textSecondary,
+    },
     mailCardParent: {
       backgroundColor: '#f7f7f7',
     },
@@ -639,13 +677,49 @@ export function createMailStyles(normalize) {
       backgroundColor: colors.background,
     },
 
-    toastOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.45)', justifyContent: 'center', alignItems: 'center', padding: normalize(24) },
-    toastCard: { backgroundColor: colors.background, borderRadius: normalize(16), padding: normalize(28), maxWidth: 300, width: '85%', alignItems: 'center' },
-    toastIcon: { fontSize: normalize(fontSizes.heading + 6), marginBottom: normalize(12) },
-    toastTitle: { fontSize: normalize(fontSizes.xxl), fontFamily: fonts.bold, color: colors.textPrimary, marginBottom: normalize(8) },
-    toastDesc: { fontSize: normalize(fontSizes.lg), color: colors.textSecondary, lineHeight: normalize(20), marginBottom: normalize(18), textAlign: 'center' },
-    toastOk: { backgroundColor: colors.primary, borderRadius: normalize(8), paddingVertical: normalize(12), width: '100%', alignItems: 'center' },
-    toastOkText: { fontSize: normalize(fontSizes.xl), fontFamily: fonts.bold, color: colors.textWhite },
+    toastOverlay: {
+      flex: 1,
+      backgroundColor: 'rgba(0,0,0,0.45)',
+      justifyContent: 'center',
+      alignItems: 'center',
+      padding: normalize(24),
+    },
+    toastCard: {
+      backgroundColor: colors.background,
+      borderRadius: normalize(16),
+      padding: normalize(28),
+      maxWidth: 300,
+      width: '85%',
+      alignItems: 'center',
+    },
+    toastIcon: {
+      fontSize: normalize(fontSizes.heading + 6),
+      marginBottom: normalize(12),
+    },
+    toastTitle: {
+      fontSize: normalize(fontSizes.xxl),
+      fontFamily: fonts.bold,
+      color: colors.textPrimary,
+      marginBottom: normalize(8),
+    },
+    toastDesc: {
+      fontSize: normalize(fontSizes.lg),
+      color: colors.textSecondary,
+      lineHeight: normalize(20),
+      marginBottom: normalize(18),
+      textAlign: 'center',
+    },
+    toastOk: {
+      backgroundColor: colors.primary,
+      borderRadius: normalize(8),
+      paddingVertical: normalize(12),
+      width: '100%',
+      alignItems: 'center',
+    },
+    toastOkText: {
+      fontSize: normalize(fontSizes.xl),
+      fontFamily: fonts.bold,
+      color: colors.textWhite,
+    },
   });
 }
-

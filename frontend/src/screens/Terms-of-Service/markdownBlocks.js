@@ -37,7 +37,8 @@ function isTableHeaderRow(row) {
 
 /** 표 행을 "레이블: 내용" 형식의 글머리 줄글로 변환 */
 export function tableRowsToBulletLines(rows) {
-  const dataRows = rows.length > 1 && isTableHeaderRow(rows[0]) ? rows.slice(1) : rows;
+  const dataRows =
+    rows.length > 1 && isTableHeaderRow(rows[0]) ? rows.slice(1) : rows;
 
   return dataRows.map((row) => {
     const cols = row.filter((cell) => cell !== undefined && cell !== '');

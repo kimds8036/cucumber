@@ -141,9 +141,11 @@ const BoardPostCard = ({
       ? tags.length - visibleCount
       : 0;
 
-  const showAllTagsForMeasure = tags.length > 0 && !layoutComplete && !useFallbackDisplay;
+  const showAllTagsForMeasure =
+    tags.length > 0 && !layoutComplete && !useFallbackDisplay;
 
-  const layoutStable = tags.length === 0 || layoutComplete || useFallbackDisplay;
+  const layoutStable =
+    tags.length === 0 || layoutComplete || useFallbackDisplay;
 
   const layoutStableKeyRef = useRef('');
   useEffect(() => {
@@ -169,8 +171,7 @@ const BoardPostCard = ({
   const likesCount = Number(post.likes) || 0;
   const commentsCount = Number(post.comments) || 0;
   const scrapCount = Number(post.scrapCount) || 0;
-  const hasVisibleStats =
-    likesCount > 0 || commentsCount > 0 || scrapCount > 0;
+  const hasVisibleStats = likesCount > 0 || commentsCount > 0 || scrapCount > 0;
 
   return (
     <TouchableOpacity

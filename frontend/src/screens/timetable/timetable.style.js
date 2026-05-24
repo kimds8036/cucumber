@@ -336,7 +336,7 @@ const styles = StyleSheet.create({
   },
   choiceTitle: {
     fontFamily: fonts.bold,
-    fontSize: fontSizes.heading+2,
+    fontSize: fontSizes.heading + 2,
     color: COLORS.textPrimary,
     textAlign: 'center',
   },
@@ -575,8 +575,7 @@ export function createTimetableViewStyles(normalize, options = {}) {
 /** 시간표 선택 화면 미리보기 — `TimetableView`와 동일 규격, 스타일 키만 분리 */
 export function createTimetableChoicePreviewStyles(normalize) {
   return StyleSheet.create({
-    choicePreviewWrapper: {
-    },
+    choicePreviewWrapper: {},
     choicePreviewRefreshButton: {
       flexDirection: 'row',
       alignItems: 'center',

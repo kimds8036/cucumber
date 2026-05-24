@@ -1,4 +1,10 @@
-import React, { useState, useMemo, useRef, useEffect, useCallback } from 'react';
+import React, {
+  useState,
+  useMemo,
+  useRef,
+  useEffect,
+  useCallback,
+} from 'react';
 import {
   View,
   Text,
@@ -16,7 +22,10 @@ import Animated, {
   useSharedValue,
   runOnJS,
 } from 'react-native-reanimated';
-import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import {
+  SafeAreaView,
+  useSafeAreaInsets,
+} from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { Entypo } from '@expo/vector-icons';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
@@ -39,9 +48,13 @@ const INITIAL_REPLIES = 3;
 
 function formatTimeAgo(createdAt) {
   if (!createdAt) return '';
-  let dateStr = typeof createdAt === 'string' ? createdAt.trim() : String(createdAt);
+  let dateStr =
+    typeof createdAt === 'string' ? createdAt.trim() : String(createdAt);
   if (!dateStr) return '';
-  if (/^\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}:\d{2}(\.\d+)?$/.test(dateStr) && !/[Z+-]/.test(dateStr)) {
+  if (
+    /^\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}:\d{2}(\.\d+)?$/.test(dateStr) &&
+    !/[Z+-]/.test(dateStr)
+  ) {
     dateStr = dateStr.replace(' ', 'T') + 'Z';
   }
   const date = new Date(dateStr);
@@ -75,7 +88,9 @@ function filterCommentsTree(comments, deletedSet) {
     .filter((c) => !deletedSet.has(c.id))
     .map((c) => ({
       ...c,
-      replies: c.replies?.length ? filterCommentsTree(c.replies, deletedSet) : [],
+      replies: c.replies?.length
+        ? filterCommentsTree(c.replies, deletedSet)
+        : [],
     }));
 }
 
@@ -105,10 +120,16 @@ function bumpLikeInTree(nodes, id, liked, likeCount) {
 /** API 평면 댓글 → parent_id 기준 트리 */
 function buildCommentTree(flat, mailSchoolId, mailAuthorUserId) {
   if (!flat?.length) return [];
-  const sorted = [...flat].sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
+  const sorted = [...flat].sort(
+    (a, b) => new Date(a.created_at) - new Date(b.created_at),
+  );
   const map = new Map();
   sorted.forEach((raw) => {
-    const authorLabel = getSchoolMailCommentAuthorLabel(raw, mailSchoolId, mailAuthorUserId);
+    const authorLabel = getSchoolMailCommentAuthorLabel(
+      raw,
+      mailSchoolId,
+      mailAuthorUserId,
+    );
     map.set(raw.id, {
       ...raw,
       replies: [],
@@ -157,13 +178,13 @@ function CommentBody({ content, styles: st }) {
       parts.push(
         <Text key={`t-${last}`} style={st.commentBody}>
           {text.slice(last, m.index)}
-        </Text>
+        </Text>,
       );
     }
     parts.push(
       <Text key={`tag-${m.index}`} style={[st.commentBody, st.commentTag]}>
         @{m[1]}
-      </Text>
+      </Text>,
     );
     last = regex.lastIndex;
   }
@@ -171,7 +192,7 @@ function CommentBody({ content, styles: st }) {
     parts.push(
       <Text key={`t-${last}`} style={st.commentBody}>
         {text.slice(last)}
-      </Text>
+      </Text>,
     );
   }
   if (parts.length === 0) {
@@ -183,7 +204,10 @@ function CommentBody({ content, styles: st }) {
 export default function SchoolMailDetail({ navigation, route }) {
   const { width } = useWindowDimensions();
   const normalize = useMemo(() => getNormalize(width), [width]);
-  const styles = useMemo(() => createSchoolMailDetailStyles(width, normalize), [width, normalize]);
+  const styles = useMemo(
+    () => createSchoolMailDetailStyles(width, normalize),
+    [width, normalize],
+  );
   const insets = useSafeAreaInsets();
 
   const schoolName = route?.params?.schoolName;
@@ -242,14 +266,20 @@ export default function SchoolMailDetail({ navigation, route }) {
             const flat = cr.data?.data?.comments ?? [];
             setComments(buildCommentTree(flat, data.school_id, data.user_id));
           } catch (ce) {
-            console.error('학교 우편 댓글 로드 실패:', ce?.response?.data || ce.message);
+            console.error(
+              '학교 우편 댓글 로드 실패:',
+              ce?.response?.data || ce.message,
+            );
             setComments([]);
           }
         }
         if (!data) setError('우편을 찾을 수 없습니다.');
       } catch (e) {
         if (!cancelled) {
-          console.error('학교 우편 상세 로드 실패:', e?.response?.data || e.message);
+          console.error(
+            '학교 우편 상세 로드 실패:',
+            e?.response?.data || e.message,
+          );
           setMail(null);
           setError(e?.response?.data?.message ?? '우편을 불러오지 못했습니다.');
         }
@@ -277,13 +307,19 @@ export default function SchoolMailDetail({ navigation, route }) {
           const flat = cr.data?.data?.comments ?? [];
           setComments(buildCommentTree(flat, data.school_id, data.user_id));
         } catch (ce) {
-          console.error('학교 우편 댓글 로드 실패:', ce?.response?.data || ce.message);
+          console.error(
+            '학교 우편 댓글 로드 실패:',
+            ce?.response?.data || ce.message,
+          );
           setComments([]);
         }
       }
       if (!data) setError('우편을 찾을 수 없습니다.');
     } catch (e) {
-      console.error('학교 우편 상세 새로고침 실패:', e?.response?.data || e.message);
+      console.error(
+        '학교 우편 상세 새로고침 실패:',
+        e?.response?.data || e.message,
+      );
       setMail(null);
       setError(e?.response?.data?.message ?? '우편을 불러오지 못했습니다.');
     } finally {
@@ -292,14 +328,21 @@ export default function SchoolMailDetail({ navigation, route }) {
   }, [mailId]);
 
   const mailBody = mail?.content ?? '';
-  const fromLine = getSchoolMailFromLabel(mail, routeSchoolId ?? mail?.school_id);
-  const timeLabel = formatTimeAgo(mail?.created_at) || String(mail?.created_at ?? '');
+  const fromLine = getSchoolMailFromLabel(
+    mail,
+    routeSchoolId ?? mail?.school_id,
+  );
+  const timeLabel =
+    formatTimeAgo(mail?.created_at) || String(mail?.created_at ?? '');
 
   const visibleComments = useMemo(
     () => filterCommentsTree(comments, new Set(deletedCommentIds)),
-    [comments, deletedCommentIds]
+    [comments, deletedCommentIds],
   );
-  const treeCommentCount = useMemo(() => countCommentsTree(visibleComments), [visibleComments]);
+  const treeCommentCount = useMemo(
+    () => countCommentsTree(visibleComments),
+    [visibleComments],
+  );
   const displayCommentCount = mail?.comment_count ?? treeCommentCount;
 
   const commentParseStyles = useMemo(
@@ -307,7 +350,7 @@ export default function SchoolMailDetail({ navigation, route }) {
       commentBody: styles.smDetailCommentBody,
       commentTag: styles.smDetailCommentTag,
     }),
-    [styles]
+    [styles],
   );
 
   const scrollToComment = useCallback(
@@ -315,7 +358,10 @@ export default function SchoolMailDetail({ navigation, route }) {
       const yCached = commentLayoutMap.current[commentId];
       const ref = commentWrapperRefs.current[commentId];
       if (scrollViewRef.current && yCached != null) {
-        scrollViewRef.current.scrollTo({ y: Math.max(0, yCached - normalize(80)), animated: true });
+        scrollViewRef.current.scrollTo({
+          y: Math.max(0, yCached - normalize(80)),
+          animated: true,
+        });
         return;
       }
       if (ref && scrollViewRef.current) {
@@ -325,11 +371,11 @@ export default function SchoolMailDetail({ navigation, route }) {
             const ly = Math.max(0, y - normalize(80));
             scrollViewRef.current?.scrollTo({ y: ly, animated: true });
           },
-          () => {}
+          () => {},
         );
       }
     },
-    [normalize]
+    [normalize],
   );
 
   const openFloatingMenu = (context, ref) => {
@@ -372,18 +418,31 @@ export default function SchoolMailDetail({ navigation, route }) {
     const prevCount = Number(mail?.like_count ?? 0);
     setPostLiked((p) => !p);
     setMail((m) =>
-      m ? { ...m, like_count: prevCount + (prevLiked ? -1 : 1), is_liked: !prevLiked } : m
+      m
+        ? {
+            ...m,
+            like_count: prevCount + (prevLiked ? -1 : 1),
+            is_liked: !prevLiked,
+          }
+        : m,
     );
     try {
       const res = await api.post(`/api/mails/school/${mailId}/like`);
       const { liked, likeCount } = res.data;
       setPostLiked(Boolean(liked));
-      setMail((m) => (m ? { ...m, like_count: likeCount, is_liked: liked } : m));
+      setMail((m) =>
+        m ? { ...m, like_count: likeCount, is_liked: liked } : m,
+      );
       emitSchoolMailLike(mailId, Boolean(liked), likeCount);
     } catch (e) {
       setPostLiked(prevLiked);
-      setMail((m) => (m ? { ...m, like_count: prevCount, is_liked: prevLiked } : m));
-      Alert.alert('오류', e?.response?.data?.message ?? '좋아요 처리에 실패했습니다.');
+      setMail((m) =>
+        m ? { ...m, like_count: prevCount, is_liked: prevLiked } : m,
+      );
+      Alert.alert(
+        '오류',
+        e?.response?.data?.message ?? '좋아요 처리에 실패했습니다.',
+      );
     }
   };
 
@@ -392,14 +451,28 @@ export default function SchoolMailDetail({ navigation, route }) {
     if (!node) return;
     const prevLiked = Boolean(node.is_liked);
     const prevCount = Number(node.like_count ?? 0);
-    setComments((prev) => bumpLikeInTree(prev, commentId, !prevLiked, prevCount + (prevLiked ? -1 : 1)));
+    setComments((prev) =>
+      bumpLikeInTree(
+        prev,
+        commentId,
+        !prevLiked,
+        prevCount + (prevLiked ? -1 : 1),
+      ),
+    );
     try {
-      const res = await api.post(`/api/mails/school/comments/${commentId}/like`);
+      const res = await api.post(
+        `/api/mails/school/comments/${commentId}/like`,
+      );
       const { liked, likeCount } = res.data;
       setComments((prev) => bumpLikeInTree(prev, commentId, liked, likeCount));
     } catch (e) {
-      setComments((prev) => bumpLikeInTree(prev, commentId, prevLiked, prevCount));
-      Alert.alert('오류', e?.response?.data?.message ?? '댓글 좋아요 처리에 실패했습니다.');
+      setComments((prev) =>
+        bumpLikeInTree(prev, commentId, prevLiked, prevCount),
+      );
+      Alert.alert(
+        '오류',
+        e?.response?.data?.message ?? '댓글 좋아요 처리에 실패했습니다.',
+      );
     }
   };
 
@@ -410,7 +483,8 @@ export default function SchoolMailDetail({ navigation, route }) {
 
   const focusReplyInput = (commentId, authorLabel) => {
     setReplyToCommentId(commentId);
-    const raw = authorLabel != null ? String(authorLabel).replace(/^@/, '') : '';
+    const raw =
+      authorLabel != null ? String(authorLabel).replace(/^@/, '') : '';
     setReplyToAuthorLabel(raw ? `@${raw}` : '');
     scrollToCommentIdRef.current = commentId;
     scrollToComment(commentId);
@@ -446,7 +520,7 @@ export default function SchoolMailDetail({ navigation, route }) {
         }
       },
     },
-    [handleKeyboardShowScroll, insets.bottom]
+    [handleKeyboardShowScroll, insets.bottom],
   );
 
   const inputAnimStyle = useAnimatedStyle(() => ({
@@ -485,7 +559,10 @@ export default function SchoolMailDetail({ navigation, route }) {
       const flat = comRes.data?.data?.comments ?? [];
       setComments(buildCommentTree(flat, m?.school_id, m?.user_id));
     } catch (e) {
-      Alert.alert('오류', e?.response?.data?.message ?? '댓글 전송에 실패했습니다.');
+      Alert.alert(
+        '오류',
+        e?.response?.data?.message ?? '댓글 전송에 실패했습니다.',
+      );
     }
   };
 
@@ -494,11 +571,16 @@ export default function SchoolMailDetail({ navigation, route }) {
       {
         label: '신고하기',
         iconName: 'flag-outline',
-        onPress: () => openReportModal('schoolMailComment', floatingMenuContext),
+        onPress: () =>
+          openReportModal('schoolMailComment', floatingMenuContext),
       },
-      { label: '차단하기', iconName: 'remove-circle-outline', onPress: () => {} },
+      {
+        label: '차단하기',
+        iconName: 'remove-circle-outline',
+        onPress: () => {},
+      },
     ],
-    [floatingMenuContext]
+    [floatingMenuContext],
   );
 
   const showLikes = Number(mail?.like_count ?? 0);
@@ -548,7 +630,9 @@ export default function SchoolMailDetail({ navigation, route }) {
               activeOpacity={0.7}
               onPress={() => onFocusReply?.()}
             >
-              <Text style={styles.smDetailCommentReplyButtonText}>댓글 달기</Text>
+              <Text style={styles.smDetailCommentReplyButtonText}>
+                댓글 달기
+              </Text>
             </TouchableOpacity>
           </View>
           <View
@@ -560,9 +644,15 @@ export default function SchoolMailDetail({ navigation, route }) {
             <TouchableOpacity
               style={{ padding: normalize(4) }}
               hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-              onPress={() => openFloatingMenu(item.id, commentMenuRefs.current[item.id])}
+              onPress={() =>
+                openFloatingMenu(item.id, commentMenuRefs.current[item.id])
+              }
             >
-              <Entypo name="dots-three-vertical" size={normalize(14)} color={colors.textSecondary} />
+              <Entypo
+                name="dots-three-vertical"
+                size={normalize(14)}
+                color={colors.textSecondary}
+              />
             </TouchableOpacity>
           </View>
         </View>
@@ -589,7 +679,7 @@ export default function SchoolMailDetail({ navigation, route }) {
         (_x, y) => {
           commentLayoutMap.current[item.id] = y;
         },
-        () => {}
+        () => {},
       );
     };
 
@@ -605,7 +695,11 @@ export default function SchoolMailDetail({ navigation, route }) {
           onLayout={onLayoutComment}
         >
           <View style={styles.smDetailCommentReplyArrow}>
-            <Ionicons name="return-down-forward" size={normalize(16)} color={colors.textSecondary} />
+            <Ionicons
+              name="return-down-forward"
+              size={normalize(16)}
+              color={colors.textSecondary}
+            />
           </View>
           {bubble}
         </View>
@@ -630,14 +724,19 @@ export default function SchoolMailDetail({ navigation, route }) {
     const replies = c.replies || [];
     const flattened = flattenReplies(replies, 0, c.authorLabel);
     const showAllRepliesForThis = expandedReplies[c.id];
-    const repliesToShow = showAllRepliesForThis ? flattened : flattened.slice(0, INITIAL_REPLIES);
-    const hasMoreReplies = flattened.length > INITIAL_REPLIES && !showAllRepliesForThis;
+    const repliesToShow = showAllRepliesForThis
+      ? flattened
+      : flattened.slice(0, INITIAL_REPLIES);
+    const hasMoreReplies =
+      flattened.length > INITIAL_REPLIES && !showAllRepliesForThis;
 
     const nodes = [
       renderComment(c, false, () => focusReplyInput(c.id, c.authorLabel)),
     ];
     repliesToShow.forEach(({ reply: r }) => {
-      nodes.push(renderComment(r, true, () => focusReplyInput(r.id, r.authorLabel)));
+      nodes.push(
+        renderComment(r, true, () => focusReplyInput(r.id, r.authorLabel)),
+      );
     });
     if (hasMoreReplies) {
       nodes.push(
@@ -647,9 +746,13 @@ export default function SchoolMailDetail({ navigation, route }) {
           onPress={() => toggleRepliesExpand(c.id)}
           activeOpacity={0.7}
         >
-          <Ionicons name="chevron-down" size={normalize(18)} color={colors.textSecondary} />
+          <Ionicons
+            name="chevron-down"
+            size={normalize(18)}
+            color={colors.textSecondary}
+          />
           <Text style={styles.smDetailLoadMoreText}>댓글 더보기</Text>
-        </TouchableOpacity>
+        </TouchableOpacity>,
       );
     }
     if (showAllRepliesForThis && flattened.length > INITIAL_REPLIES) {
@@ -660,18 +763,30 @@ export default function SchoolMailDetail({ navigation, route }) {
           onPress={() => toggleRepliesExpand(c.id)}
           activeOpacity={0.7}
         >
-          <Ionicons name="chevron-up" size={normalize(18)} color={colors.textSecondary} />
+          <Ionicons
+            name="chevron-up"
+            size={normalize(18)}
+            color={colors.textSecondary}
+          />
           <Text style={styles.smDetailLoadMoreText}>댓글 접기</Text>
-        </TouchableOpacity>
+        </TouchableOpacity>,
       );
     }
     return <React.Fragment key={c.id}>{nodes}</React.Fragment>;
   };
 
   return (
-    <View style={{ flex: 1, backgroundColor: styles.container.backgroundColor }}>
+    <View
+      style={{ flex: 1, backgroundColor: styles.container.backgroundColor }}
+    >
       <SafeAreaView style={styles.container} edges={['top']}>
-        <View style={{ zIndex: 1, elevation: 0, backgroundColor: colors.background }}>
+        <View
+          style={{
+            zIndex: 1,
+            elevation: 0,
+            backgroundColor: colors.background,
+          }}
+        >
           <SubHeader title="받은 우편" onBack={() => navigation.goBack()} />
         </View>
 
@@ -680,20 +795,64 @@ export default function SchoolMailDetail({ navigation, route }) {
           pointerEvents="box-none"
         >
           {loading ? (
-            <View style={{ flex: 1, paddingHorizontal: normalize(16), paddingTop: normalize(16) }}>
+            <View
+              style={{
+                flex: 1,
+                paddingHorizontal: normalize(16),
+                paddingTop: normalize(16),
+              }}
+            >
               <View style={styles.smDetailLetterCard}>
-                <Skeleton width={normalize(90)} height={normalize(12)} borderRadius={normalize(6)} style={{ marginBottom: normalize(8) }} />
-                <Skeleton width="100%" height={normalize(14)} borderRadius={normalize(6)} style={{ marginBottom: normalize(6) }} />
-                <Skeleton width="86%" height={normalize(14)} borderRadius={normalize(6)} style={{ marginBottom: normalize(10) }} />
+                <Skeleton
+                  width={normalize(90)}
+                  height={normalize(12)}
+                  borderRadius={normalize(6)}
+                  style={{ marginBottom: normalize(8) }}
+                />
+                <Skeleton
+                  width="100%"
+                  height={normalize(14)}
+                  borderRadius={normalize(6)}
+                  style={{ marginBottom: normalize(6) }}
+                />
+                <Skeleton
+                  width="86%"
+                  height={normalize(14)}
+                  borderRadius={normalize(6)}
+                  style={{ marginBottom: normalize(10) }}
+                />
                 <View style={{ flexDirection: 'row', gap: normalize(12) }}>
-                  <Skeleton width={normalize(30)} height={normalize(12)} borderRadius={normalize(6)} />
-                  <Skeleton width={normalize(30)} height={normalize(12)} borderRadius={normalize(6)} />
+                  <Skeleton
+                    width={normalize(30)}
+                    height={normalize(12)}
+                    borderRadius={normalize(6)}
+                  />
+                  <Skeleton
+                    width={normalize(30)}
+                    height={normalize(12)}
+                    borderRadius={normalize(6)}
+                  />
                 </View>
               </View>
             </View>
           ) : error ? (
-            <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', paddingHorizontal: normalize(24) }}>
-              <Text style={{ fontFamily: fonts.regular, color: colors.textSecondary, textAlign: 'center' }}>{error}</Text>
+            <View
+              style={{
+                flex: 1,
+                justifyContent: 'center',
+                alignItems: 'center',
+                paddingHorizontal: normalize(24),
+              }}
+            >
+              <Text
+                style={{
+                  fontFamily: fonts.regular,
+                  color: colors.textSecondary,
+                  textAlign: 'center',
+                }}
+              >
+                {error}
+              </Text>
             </View>
           ) : (
             <View style={{ flex: 1, flexDirection: 'column' }}>
@@ -718,7 +877,9 @@ export default function SchoolMailDetail({ navigation, route }) {
                   <View style={styles.smDetailLetterCard}>
                     <View style={styles.smDetailLetterTopRow}>
                       <View style={styles.smDetailFromToCol}>
-                        <Text style={styles.smDetailFromToText}>From. {fromLine}</Text>
+                        <Text style={styles.smDetailFromToText}>
+                          From. {fromLine}
+                        </Text>
                       </View>
                       <Text style={styles.smDetailMailTime}>{timeLabel}</Text>
                     </View>
@@ -737,20 +898,34 @@ export default function SchoolMailDetail({ navigation, route }) {
                             size={normalize(14)}
                             color={colors.alert}
                           />
-                          <Text style={styles.smDetailStatText}>{showLikes}</Text>
+                          <Text style={styles.smDetailStatText}>
+                            {showLikes}
+                          </Text>
                         </TouchableOpacity>
                         <View style={styles.smDetailStatItem}>
-                          <Ionicons name="chatbubble-outline" size={normalize(15)} color={colors.primary} />
-                          <Text style={styles.smDetailStatText}>{displayCommentCount}</Text>
+                          <Ionicons
+                            name="chatbubble-outline"
+                            size={normalize(15)}
+                            color={colors.primary}
+                          />
+                          <Text style={styles.smDetailStatText}>
+                            {displayCommentCount}
+                          </Text>
                         </View>
                       </View>
                       <View ref={postMenuButtonRef} collapsable={false}>
                         <TouchableOpacity
                           style={{ padding: normalize(4) }}
                           hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                          onPress={() => openFloatingMenu('post', postMenuButtonRef.current)}
+                          onPress={() =>
+                            openFloatingMenu('post', postMenuButtonRef.current)
+                          }
                         >
-                          <Entypo name="dots-three-vertical" size={normalize(14)} color={colors.textSecondary} />
+                          <Entypo
+                            name="dots-three-vertical"
+                            size={normalize(14)}
+                            color={colors.textSecondary}
+                          />
                         </TouchableOpacity>
                       </View>
                     </View>
@@ -758,7 +933,9 @@ export default function SchoolMailDetail({ navigation, route }) {
                 </View>
 
                 <View style={styles.smDetailCommentSection}>
-                  <Text style={styles.smDetailCommentCountTitle}>댓글 {displayCommentCount}개</Text>
+                  <Text style={styles.smDetailCommentCountTitle}>
+                    댓글 {displayCommentCount}개
+                  </Text>
                   {visibleComments.map((c) => renderCommentTree(c))}
                 </View>
               </ScrollView>
@@ -800,7 +977,9 @@ export default function SchoolMailDetail({ navigation, route }) {
               style={{
                 flex: 1,
                 backgroundColor: 'rgba(0,0,0,0.3)',
-                ...(floatingMenuAnchor ? {} : { justifyContent: 'center', alignItems: 'center' }),
+                ...(floatingMenuAnchor
+                  ? {}
+                  : { justifyContent: 'center', alignItems: 'center' }),
               }}
             >
               <TouchableWithoutFeedback>
@@ -855,7 +1034,11 @@ export default function SchoolMailDetail({ navigation, route }) {
                           </Text>
                           <Ionicons
                             name={
-                              index === 0 ? 'flag-outline' : index === 1 ? 'remove-circle-outline' : 'share-outline'
+                              index === 0
+                                ? 'flag-outline'
+                                : index === 1
+                                  ? 'remove-circle-outline'
+                                  : 'share-outline'
                             }
                             size={normalize(17)}
                             color={colors.textSecondary}
@@ -899,7 +1082,11 @@ export default function SchoolMailDetail({ navigation, route }) {
                           >
                             {item.label}
                           </Text>
-                          <Ionicons name={item.iconName} size={normalize(17)} color={colors.textSecondary} />
+                          <Ionicons
+                            name={item.iconName}
+                            size={normalize(17)}
+                            color={colors.textSecondary}
+                          />
                         </TouchableOpacity>
                         {index < commentMenuItems.length - 1 && (
                           <View

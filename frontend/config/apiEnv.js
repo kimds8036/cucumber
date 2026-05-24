@@ -8,7 +8,9 @@ export const API_URLS = {
  * @returns {'development' | 'production'}
  */
 export function resolveAppEnv(env = process.env) {
-  const appEnv = (env.APP_ENV || env.EXPO_PUBLIC_APP_ENV || '').trim().toLowerCase();
+  const appEnv = (env.APP_ENV || env.EXPO_PUBLIC_APP_ENV || '')
+    .trim()
+    .toLowerCase();
   if (appEnv === 'production' || appEnv === 'prod') return 'production';
   if (appEnv === 'development' || appEnv === 'develop' || appEnv === 'dev') {
     return 'development';
@@ -26,8 +28,13 @@ export function resolveAppEnv(env = process.env) {
  * @returns {string} 슬래시 없는 base URL
  */
 export function resolveApiBaseUrl(env = process.env) {
-  const explicit = typeof env.EXPO_PUBLIC_API_URL === 'string' ? env.EXPO_PUBLIC_API_URL.trim() : '';
+  const explicit =
+    typeof env.EXPO_PUBLIC_API_URL === 'string'
+      ? env.EXPO_PUBLIC_API_URL.trim()
+      : '';
   if (explicit) return explicit.replace(/\/+$/, '');
 
-  return resolveAppEnv(env) === 'production' ? API_URLS.production : API_URLS.develop;
+  return resolveAppEnv(env) === 'production'
+    ? API_URLS.production
+    : API_URLS.develop;
 }

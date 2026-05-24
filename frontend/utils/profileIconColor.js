@@ -33,4 +33,3 @@ export function getProfileInnerColorBySeed(seed) {
   const id = (safe % 5) + 1;
   return PROFILE_INNER_COLOR_BY_ID[id];
 }
-

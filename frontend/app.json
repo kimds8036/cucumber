@@ -71,10 +71,7 @@
         {
           "photosPermission": "갤러리에서 사진을 불러오기 위해 접근 권한이 필요합니다.",
           "savePhotosPermission": "캡처한 이미지를 갤러리에 저장하기 위해 권한이 필요합니다.",
-          "granularPermissions": [
-            "photo",
-            "audio"
-          ]
+          "granularPermissions": ["photo", "audio"]
         }
       ],
       "@react-native-firebase/app",

@@ -1,5 +1,12 @@
 import React from 'react';
-import { View, Text, ScrollView, Modal, StyleSheet, Platform } from 'react-native';
+import {
+  View,
+  Text,
+  ScrollView,
+  Modal,
+  StyleSheet,
+  Platform,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { colors, fonts, fontSizes } from '../../../styles/colors';
 
@@ -335,7 +342,8 @@ const SignStepTermsOfService = ({ normalize, onBack }) => {
           {lines.map((line, idx) => {
             const trimmed = line.trim();
             if (!trimmed || trimmed === '# 서비스 이용 약관') return null;
-            if (trimmed === '---') return <View key={`d-${idx}`} style={s.divider} />;
+            if (trimmed === '---')
+              return <View key={`d-${idx}`} style={s.divider} />;
             if (trimmed.startsWith('## ')) {
               return (
                 <Text key={`c-${idx}`} style={s.chapterTitle}>

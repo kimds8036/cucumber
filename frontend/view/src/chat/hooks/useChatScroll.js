@@ -221,7 +221,10 @@ export default function useChatScroll({
     if (isLoadingMoreRef.current) return;
     if (!hasMore) return;
     const { anchorId } = beginPagingSessionSnapshot();
-    loadMoreTopLockOffsetRef.current = Math.max(0, currentOffsetRef.current ?? 0);
+    loadMoreTopLockOffsetRef.current = Math.max(
+      0,
+      currentOffsetRef.current ?? 0,
+    );
     // eslint-disable-next-line no-console
     console.log('[ChatScroll] 페이징 직전 앵커', {
       roomId,
@@ -382,7 +385,9 @@ export default function useChatScroll({
       isNearBottomRef.current = oyClamped + viewportH >= contentH - threshold;
       const topThreshold = Math.max(50, viewportH * 0.08);
       const isNearTopNow = oyClamped <= topThreshold;
-      setShowLoadMoreButton((prev) => (prev === isNearTopNow ? prev : isNearTopNow));
+      setShowLoadMoreButton((prev) =>
+        prev === isNearTopNow ? prev : isNearTopNow,
+      );
       // 초기 앵커링이 끝난 뒤, 사용자가 하단에서 벗어나 위로 스크롤한 이후에만 과거 로딩 허용
       if (
         didInitialAnchorRef.current &&
@@ -391,7 +396,6 @@ export default function useChatScroll({
       ) {
         loadOlderAllowedRef.current = true;
       }
-
     },
     [roomId],
   );

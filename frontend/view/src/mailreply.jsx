@@ -1,6 +1,19 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { View, Text, ScrollView, TextInput, Modal, TouchableOpacity, useWindowDimensions, Alert, Keyboard } from 'react-native';
-import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import {
+  View,
+  Text,
+  ScrollView,
+  TextInput,
+  Modal,
+  TouchableOpacity,
+  useWindowDimensions,
+  Alert,
+  Keyboard,
+} from 'react-native';
+import {
+  SafeAreaView,
+  useSafeAreaInsets,
+} from 'react-native-safe-area-context';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
 import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
 import SubHeader from '../frame/subHeader';
@@ -55,7 +68,7 @@ export default function MailReplyScreen({ navigation, route }) {
   };
 
   const handleAdReward = () => {
-    setCharLimit(prev => prev * 2);
+    setCharLimit((prev) => prev * 2);
   };
 
   const availableHeight = Math.max(
@@ -88,7 +101,10 @@ export default function MailReplyScreen({ navigation, route }) {
       });
       setShowToast(true);
     } catch (error) {
-      Alert.alert('오류', error.response?.data?.message || '답장 전송에 실패했습니다.');
+      Alert.alert(
+        '오류',
+        error.response?.data?.message || '답장 전송에 실패했습니다.',
+      );
     } finally {
       setSending(false);
     }
@@ -109,11 +125,35 @@ export default function MailReplyScreen({ navigation, route }) {
   if (!screenReady) {
     return (
       <SafeAreaView style={styles.modalFullSafe} edges={['top', 'bottom']}>
-        <View style={{ paddingHorizontal: normalize(16), paddingTop: normalize(16) }}>
-          <Skeleton width={normalize(110)} height={normalize(20)} borderRadius={normalize(8)} style={{ marginBottom: normalize(12) }} />
-          <Skeleton width="100%" height={normalize(190)} borderRadius={normalize(14)} style={{ marginBottom: normalize(12) }} />
-          <Skeleton width="100%" height={normalize(220)} borderRadius={normalize(14)} style={{ marginBottom: normalize(14) }} />
-          <Skeleton width="100%" height={normalize(50)} borderRadius={normalize(14)} />
+        <View
+          style={{
+            paddingHorizontal: normalize(16),
+            paddingTop: normalize(16),
+          }}
+        >
+          <Skeleton
+            width={normalize(110)}
+            height={normalize(20)}
+            borderRadius={normalize(8)}
+            style={{ marginBottom: normalize(12) }}
+          />
+          <Skeleton
+            width="100%"
+            height={normalize(190)}
+            borderRadius={normalize(14)}
+            style={{ marginBottom: normalize(12) }}
+          />
+          <Skeleton
+            width="100%"
+            height={normalize(220)}
+            borderRadius={normalize(14)}
+            style={{ marginBottom: normalize(14) }}
+          />
+          <Skeleton
+            width="100%"
+            height={normalize(50)}
+            borderRadius={normalize(14)}
+          />
         </View>
       </SafeAreaView>
     );
@@ -122,102 +162,129 @@ export default function MailReplyScreen({ navigation, route }) {
   return (
     <>
       <SafeAreaView style={styles.modalFullSafe} edges={['top', 'bottom']}>
-          <View style={{ flex: 1 }}>
-            <View onLayout={(e) => setSubHeaderHeight(e.nativeEvent.layout.height)}>
-              <SubHeader
-                title="우편 보내기"
-                onBack={() => navigation.goBack()}
-              />
-            </View>
+        <View style={{ flex: 1 }}>
+          <View
+            onLayout={(e) => setSubHeaderHeight(e.nativeEvent.layout.height)}
+          >
+            <SubHeader title="우편 보내기" onBack={() => navigation.goBack()} />
+          </View>
 
-            <View style={styles.modalFullRoot}>
-              <KeyboardAwareScrollView
-                style={styles.modalFullScroll}
-                contentContainerStyle={styles.modalFullContent}
-                showsVerticalScrollIndicator={false}
-                keyboardShouldPersistTaps="always"
-                keyboardDismissMode="on-drag"
-                onScrollBeginDrag={Keyboard.dismiss}
-                bottomOffset={Math.max(bottomHeight, 16)}
-              >
-            <View
-              style={[
-                styles.modalLetterPreviewCard,
-                { minHeight: halfCardHeight, marginBottom: 12 },
-              ]}
+          <View style={styles.modalFullRoot}>
+            <KeyboardAwareScrollView
+              style={styles.modalFullScroll}
+              contentContainerStyle={styles.modalFullContent}
+              showsVerticalScrollIndicator={false}
+              keyboardShouldPersistTaps="always"
+              keyboardDismissMode="on-drag"
+              onScrollBeginDrag={Keyboard.dismiss}
+              bottomOffset={Math.max(bottomHeight, 16)}
             >
-              {/* 상세 화면과 동일한 헤더 디자인 */}
-              <View style={styles.detailSenderRow}>
-                <View style={[styles.detailAvatar, { justifyContent: 'center', alignItems: 'center' }]}>
-                  <ProfileIcon
-                    width={normalize(28)}
-                    height={normalize(28)}
-                    color={profileIconColor}
-                  />
-                </View>
-                <View style={styles.detailSenderTexts}>
-                  <Text style={styles.detailSenderName}>{senderLabel}</Text>
-                  <Text style={styles.detailTime}>
-                    {mail?.receivedAt ?? ''}
-                  </Text>
-                </View>
-              </View>
-
-              <View style={styles.detailDivider} />
-              {previewExpanded ? (
-                <Text style={styles.detailBody}>{mail?.content ?? ''}</Text>
-              ) : (
-                <Text style={styles.detailBody} numberOfLines={1} ellipsizeMode="tail">
-                  {mail?.content ?? ''}
-                </Text>
-              )}
-            </View>
-
-            <View style={[styles.replyFormCard, { minHeight: halfCardHeight }]}>
-              <TextInput
-                style={styles.replyFormInput}
-                placeholder="내용을 입력하세요"
-                placeholderTextColor={colors.textSecondary}
-                value={replyText}
-                onChangeText={handleReplyTextChange}
-                multiline
-                textAlignVertical="top"
-              />
-
-              <View style={styles.replyFormMetaRow}>
-                <View style={{ marginLeft: 'auto', alignItems: 'flex-end', justifyContent: 'flex-end' }}>
-                  <Text style={styles.replyFormCount}>{replyText.length}/{charLimit}자</Text>
-                  <TouchableOpacity
-                    style={styles.replyFormChip}
-                    onPress={() => {
-                      // 나중에 애드몹 RewardedAd 로직으로 교체할 자리
-                      handleAdReward();
-                    }}
-                    activeOpacity={0.8}
+              <View
+                style={[
+                  styles.modalLetterPreviewCard,
+                  { minHeight: halfCardHeight, marginBottom: 12 },
+                ]}
+              >
+                {/* 상세 화면과 동일한 헤더 디자인 */}
+                <View style={styles.detailSenderRow}>
+                  <View
+                    style={[
+                      styles.detailAvatar,
+                      { justifyContent: 'center', alignItems: 'center' },
+                    ]}
                   >
-                    <MaterialCommunityIcons name="television-classic" size={15} color={colors.textPrimary} />
-                    <Text style={styles.replyFormChipText}>x 2</Text>
-                  </TouchableOpacity>
+                    <ProfileIcon
+                      width={normalize(28)}
+                      height={normalize(28)}
+                      color={profileIconColor}
+                    />
+                  </View>
+                  <View style={styles.detailSenderTexts}>
+                    <Text style={styles.detailSenderName}>{senderLabel}</Text>
+                    <Text style={styles.detailTime}>
+                      {mail?.receivedAt ?? ''}
+                    </Text>
+                  </View>
                 </View>
+
+                <View style={styles.detailDivider} />
+                {previewExpanded ? (
+                  <Text style={styles.detailBody}>{mail?.content ?? ''}</Text>
+                ) : (
+                  <Text
+                    style={styles.detailBody}
+                    numberOfLines={1}
+                    ellipsizeMode="tail"
+                  >
+                    {mail?.content ?? ''}
+                  </Text>
+                )}
               </View>
-            </View>
-              </KeyboardAwareScrollView>
 
               <View
-                style={styles.modalFullBottom}
-                onLayout={(e) => setBottomHeight(e.nativeEvent.layout.height)}
+                style={[styles.replyFormCard, { minHeight: halfCardHeight }]}
               >
-                <TouchableOpacity
-                  style={[styles.bottomCtaButton, !replyText.trim() && styles.bottomCtaDisabled]}
-                  onPress={handleSend}
-                  disabled={!replyText.trim() || sending}
-                  activeOpacity={0.9}
-                >
-                  <Text style={styles.bottomCtaText}>{sending ? '전송 중...' : '보내기'}</Text>
-                </TouchableOpacity>
+                <TextInput
+                  style={styles.replyFormInput}
+                  placeholder="내용을 입력하세요"
+                  placeholderTextColor={colors.textSecondary}
+                  value={replyText}
+                  onChangeText={handleReplyTextChange}
+                  multiline
+                  textAlignVertical="top"
+                />
+
+                <View style={styles.replyFormMetaRow}>
+                  <View
+                    style={{
+                      marginLeft: 'auto',
+                      alignItems: 'flex-end',
+                      justifyContent: 'flex-end',
+                    }}
+                  >
+                    <Text style={styles.replyFormCount}>
+                      {replyText.length}/{charLimit}자
+                    </Text>
+                    <TouchableOpacity
+                      style={styles.replyFormChip}
+                      onPress={() => {
+                        // 나중에 애드몹 RewardedAd 로직으로 교체할 자리
+                        handleAdReward();
+                      }}
+                      activeOpacity={0.8}
+                    >
+                      <MaterialCommunityIcons
+                        name="television-classic"
+                        size={15}
+                        color={colors.textPrimary}
+                      />
+                      <Text style={styles.replyFormChipText}>x 2</Text>
+                    </TouchableOpacity>
+                  </View>
+                </View>
               </View>
+            </KeyboardAwareScrollView>
+
+            <View
+              style={styles.modalFullBottom}
+              onLayout={(e) => setBottomHeight(e.nativeEvent.layout.height)}
+            >
+              <TouchableOpacity
+                style={[
+                  styles.bottomCtaButton,
+                  !replyText.trim() && styles.bottomCtaDisabled,
+                ]}
+                onPress={handleSend}
+                disabled={!replyText.trim() || sending}
+                activeOpacity={0.9}
+              >
+                <Text style={styles.bottomCtaText}>
+                  {sending ? '전송 중...' : '보내기'}
+                </Text>
+              </TouchableOpacity>
             </View>
           </View>
+        </View>
       </SafeAreaView>
 
       {/* 전송 완료 토스트 */}
@@ -229,7 +296,11 @@ export default function MailReplyScreen({ navigation, route }) {
             <Text style={styles.toastDesc}>
               익명의 상대에게 우편이 전달됐습니다.
             </Text>
-            <TouchableOpacity style={styles.toastOk} onPress={handleToastClose} activeOpacity={0.8}>
+            <TouchableOpacity
+              style={styles.toastOk}
+              onPress={handleToastClose}
+              activeOpacity={0.8}
+            >
               <Text style={styles.toastOkText}>확인</Text>
             </TouchableOpacity>
           </View>
@@ -238,4 +309,3 @@ export default function MailReplyScreen({ navigation, route }) {
     </>
   );
 }
-

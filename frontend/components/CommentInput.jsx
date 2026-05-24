@@ -1,5 +1,12 @@
 import React from 'react';
-import { View, Text, TextInput, TouchableOpacity, Image, ScrollView } from 'react-native';
+import {
+  View,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  Image,
+  ScrollView,
+} from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import { colors } from '../styles/colors';
@@ -34,20 +41,47 @@ export default function CommentInput({
             hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
             style={styles.replyTargetCancel}
           >
-            <Ionicons name="close-circle" size={normalize(18)} color={colors.textSecondary} />
+            <Ionicons
+              name="close-circle"
+              size={normalize(18)}
+              color={colors.textSecondary}
+            />
           </TouchableOpacity>
         </View>
       ) : null}
       {selectedImages.length > 0 && (
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ paddingHorizontal: 8, paddingVertical: 6 }}>
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          style={{ paddingHorizontal: 8, paddingVertical: 6 }}
+        >
           {selectedImages.map((uri, index) => (
             <View key={index} style={{ marginRight: 8, position: 'relative' }}>
-              <Image source={{ uri }} style={{ width: normalize(72), height: normalize(72), borderRadius: 8 }} />
+              <Image
+                source={{ uri }}
+                style={{
+                  width: normalize(72),
+                  height: normalize(72),
+                  borderRadius: 8,
+                }}
+              />
               <TouchableOpacity
-                onPress={() => onImagesChange(selectedImages.filter((_, i) => i !== index))}
-                style={{ position: 'absolute', top: -6, right: -6, backgroundColor: '#000', borderRadius: 10 }}
+                onPress={() =>
+                  onImagesChange(selectedImages.filter((_, i) => i !== index))
+                }
+                style={{
+                  position: 'absolute',
+                  top: -6,
+                  right: -6,
+                  backgroundColor: '#000',
+                  borderRadius: 10,
+                }}
               >
-                <Ionicons name="close-circle" size={normalize(18)} color="#fff" />
+                <Ionicons
+                  name="close-circle"
+                  size={normalize(18)}
+                  color="#fff"
+                />
               </TouchableOpacity>
             </View>
           ))}
@@ -64,7 +98,7 @@ export default function CommentInput({
                 selectionLimit: 5,
               });
               if (!result.canceled) {
-                const uris = result.assets.map(a => a.uri);
+                const uris = result.assets.map((a) => a.uri);
                 onImagesChange([...selectedImages, ...uris].slice(0, 5));
               }
             }}
@@ -77,7 +111,9 @@ export default function CommentInput({
           ref={bottomInputRef}
           style={styles.bottomInput}
           placeholder={
-            replyToCommentId ? `${replyToAuthorLabel}에게 답글 입력...` : mainPlaceholder ?? '댓글을 입력하세요'
+            replyToCommentId
+              ? `${replyToAuthorLabel}에게 답글 입력...`
+              : (mainPlaceholder ?? '댓글을 입력하세요')
           }
           placeholderTextColor={colors.textSecondary}
           value={bottomComment}
@@ -103,7 +139,11 @@ export default function CommentInput({
           }}
           activeOpacity={0.8}
         >
-          <Ionicons name="arrow-up" size={normalize(22)} color={colors.background} />
+          <Ionicons
+            name="arrow-up"
+            size={normalize(22)}
+            color={colors.background}
+          />
         </TouchableOpacity>
       </View>
     </View>

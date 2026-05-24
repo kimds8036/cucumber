@@ -1,4 +1,10 @@
-import React, { useMemo, useState, useEffect, useRef, useCallback } from 'react';
+import React, {
+  useMemo,
+  useState,
+  useEffect,
+  useRef,
+  useCallback,
+} from 'react';
 import {
   View,
   Text,
@@ -47,14 +53,20 @@ const popToMainRoot = (navigation) => {
 };
 
 const mapTypeToIcon = (type, category) => {
-  if (category === 'mail') return { name: 'mail', color: colors.scrap, bg: colors.blue };
-  if (category === 'system') return { name: 'notifications', color: colors.alert, bg: colors.red };
+  if (category === 'mail')
+    return { name: 'mail', color: colors.scrap, bg: colors.blue };
+  if (category === 'system')
+    return { name: 'notifications', color: colors.alert, bg: colors.red };
   switch (type) {
     case 'like':
       return { name: 'heart', color: colors.alert, bg: colors.red };
     case 'comment':
     case 'reply':
-      return { name: 'chatbubble', color: colors.primary, bg: colors.lightgreen };
+      return {
+        name: 'chatbubble',
+        color: colors.primary,
+        bg: colors.lightgreen,
+      };
     case 'mention':
       return { name: 'at', color: colors.subcolor, bg: colors.blue };
     default:
@@ -137,7 +149,10 @@ const SkeletonRow = ({ skeletonStyles }) => {
 const NotificationScreen = ({ navigation }) => {
   const { width } = useWindowDimensions();
   const normalize = useMemo(() => getNormalize(width), [width]);
-  const styles = useMemo(() => createNotificationStyles(normalize), [normalize]);
+  const styles = useMemo(
+    () => createNotificationStyles(normalize),
+    [normalize],
+  );
   const skeletonStyles = useMemo(
     () => createNotificationSkeletonStyles(normalize),
     [normalize],
@@ -167,13 +182,12 @@ const NotificationScreen = ({ navigation }) => {
   const flushTimerRef = useRef(null);
   const isFlushingRef = useRef(false);
   const appStateRef = useRef(AppState.currentState);
-  const { hasUnread, markNotificationsSeenForBell, getStudySummaryWatchers } = useNotification();
+  const { hasUnread, markNotificationsSeenForBell, getStudySummaryWatchers } =
+    useNotification();
   const { markFriendRequestsSeenForBell } = useFriend();
   const getDebugBorderStyle = useCallback(
     (color = '#FF3B30') =>
-      SHOW_LAYOUT_BORDERS
-        ? { borderWidth: 1, borderColor: color }
-        : null,
+      SHOW_LAYOUT_BORDERS ? { borderWidth: 1, borderColor: color } : null,
     [],
   );
 
@@ -201,7 +215,9 @@ const NotificationScreen = ({ navigation }) => {
       items.map((item) => {
         const idKey = String(item.id);
         const tapped = Boolean(tappedIds[item.id] || tappedIds[idKey]);
-        const pending = pendingReadIdsRef.current.has(item.id) || pendingReadIdsRef.current.has(idKey);
+        const pending =
+          pendingReadIdsRef.current.has(item.id) ||
+          pendingReadIdsRef.current.has(idKey);
         if (!tapped && !pending) return item;
         return { ...item, isRead: true };
       }),
@@ -237,142 +253,161 @@ const NotificationScreen = ({ navigation }) => {
       markNotificationsSeenForBell?.();
       markFriendRequestsSeenForBell?.();
     } catch (error) {
-      console.error('알림 모두 읽음 처리 실패:', error?.response?.data || error);
+      console.error(
+        '알림 모두 읽음 처리 실패:',
+        error?.response?.data || error,
+      );
     }
   }, [markNotificationsSeenForBell, markFriendRequestsSeenForBell]);
 
-  const fetchNotifications = useCallback(async (nextPage = 1, append = false) => {
-    // reset / append 동시 실행 방지
-    if (append) {
-      if (
-        isAppendFetchingRef.current ||
-        isResetFetchingRef.current ||
-        !hasMoreRef.current
-      ) return;
-      isAppendFetchingRef.current = true;
-      setLoadingMore(true);
-    } else {
-      if (isResetFetchingRef.current || isAppendFetchingRef.current || isRefreshingRef.current) return;
-      isResetFetchingRef.current = true;
-      isRefreshingRef.current = true;
-      setLoading(true);
-      setHasMore(true);
-    }
-
-    const seq = ++fetchSeqRef.current;
-
-    try {
-      console.log('[NotificationScreen] fetchNotifications 호출', {
-        page: nextPage,
-        append,
-        seq,
-      });
-
+  const fetchNotifications = useCallback(
+    async (nextPage = 1, append = false) => {
+      // reset / append 동시 실행 방지
       if (append) {
-        const res = await api.get('/api/notifications', {
-          params: { page: nextPage, limit: PAGE_SIZE },
-        });
-        const list = res.data?.data || [];
-        const meta = res.data?.meta;
-        const filtered = list
-          .filter((n) => n.type !== 'like')
-          .filter((n) => !isChatNotificationRow(n));
-        const mapped = applyOptimisticReadState(filtered.map(mapRowToNotificationItem));
-
-        // reset 요청이 더 최신이면 append 결과를 버림
-        if (latestAppliedSeqRef.current > seq) return;
-        setNotifications((prev) => {
-          const ids = new Set(prev.map((x) => String(x.id)));
-          const addition = mapped.filter((m) => !ids.has(String(m.id)));
-          console.log('[NotificationScreen] 알림 추가 로드', {
-            page: nextPage,
-            serverReturned: list.length,
-            afterLikeFilter: filtered.length,
-            appendedUnique: addition.length,
-            meta,
-          });
-          return [...prev, ...addition];
-        });
-        if (latestAppliedSeqRef.current <= seq) {
-          latestAppliedSeqRef.current = seq;
-          setHasMore(list.length >= PAGE_SIZE);
-          setPage(nextPage);
-        }
+        if (
+          isAppendFetchingRef.current ||
+          isResetFetchingRef.current ||
+          !hasMoreRef.current
+        )
+          return;
+        isAppendFetchingRef.current = true;
+        setLoadingMore(true);
       } else {
-        let pageCursor = nextPage;
-        let accumulated = [];
-        let lastList = [];
-        let lastMeta = null;
-        let sweepIdx = 0;
-        let prefetchCount = 0;
+        if (
+          isResetFetchingRef.current ||
+          isAppendFetchingRef.current ||
+          isRefreshingRef.current
+        )
+          return;
+        isResetFetchingRef.current = true;
+        isRefreshingRef.current = true;
+        setLoading(true);
+        setHasMore(true);
+      }
 
-        for (; sweepIdx < MAX_INITIAL_PAGE_SWEEP; sweepIdx += 1) {
+      const seq = ++fetchSeqRef.current;
+
+      try {
+        console.log('[NotificationScreen] fetchNotifications 호출', {
+          page: nextPage,
+          append,
+          seq,
+        });
+
+        if (append) {
           const res = await api.get('/api/notifications', {
-            params: { page: pageCursor, limit: PAGE_SIZE },
+            params: { page: nextPage, limit: PAGE_SIZE },
           });
-          lastList = res.data?.data || [];
-          lastMeta = res.data?.meta ?? null;
-          const filtered = lastList
+          const list = res.data?.data || [];
+          const meta = res.data?.meta;
+          const filtered = list
             .filter((n) => n.type !== 'like')
             .filter((n) => !isChatNotificationRow(n));
-          const mapped = applyOptimisticReadState(filtered.map(mapRowToNotificationItem));
-          accumulated.push(...mapped);
+          const mapped = applyOptimisticReadState(
+            filtered.map(mapRowToNotificationItem),
+          );
 
-          console.log('[NotificationScreen] 알림 초기 스윕', {
-            page: pageCursor,
-            sweep: sweepIdx,
-            rawCount: lastList.length,
-            afterLikeFilter: filtered.length,
-            serverTotal: lastMeta?.total,
-            meta: lastMeta,
+          // reset 요청이 더 최신이면 append 결과를 버림
+          if (latestAppliedSeqRef.current > seq) return;
+          setNotifications((prev) => {
+            const ids = new Set(prev.map((x) => String(x.id)));
+            const addition = mapped.filter((m) => !ids.has(String(m.id)));
+            console.log('[NotificationScreen] 알림 추가 로드', {
+              page: nextPage,
+              serverReturned: list.length,
+              afterLikeFilter: filtered.length,
+              appendedUnique: addition.length,
+              meta,
+            });
+            return [...prev, ...addition];
           });
+          if (latestAppliedSeqRef.current <= seq) {
+            latestAppliedSeqRef.current = seq;
+            setHasMore(list.length >= PAGE_SIZE);
+            setPage(nextPage);
+          }
+        } else {
+          let pageCursor = nextPage;
+          let accumulated = [];
+          let lastList = [];
+          let lastMeta = null;
+          let sweepIdx = 0;
+          let prefetchCount = 0;
 
-          // 서버 페이지가 끝났으면 종료
-          if (lastList.length < PAGE_SIZE) break;
-          prefetchCount += 1;
-          // 초기 진입에서는 최소 3페이지까지 넉넉히 로드해 탭 빨간점 깜빡임을 줄인다.
-          if (prefetchCount >= INITIAL_PREFETCH_PAGES) break;
-          // 필터 후 표시 가능한 알림이 충분히 쌓였으면 종료
-          if (accumulated.length >= MIN_INITIAL_VISIBLE_COUNT) break;
-          pageCursor += 1;
+          for (; sweepIdx < MAX_INITIAL_PAGE_SWEEP; sweepIdx += 1) {
+            const res = await api.get('/api/notifications', {
+              params: { page: pageCursor, limit: PAGE_SIZE },
+            });
+            lastList = res.data?.data || [];
+            lastMeta = res.data?.meta ?? null;
+            const filtered = lastList
+              .filter((n) => n.type !== 'like')
+              .filter((n) => !isChatNotificationRow(n));
+            const mapped = applyOptimisticReadState(
+              filtered.map(mapRowToNotificationItem),
+            );
+            accumulated.push(...mapped);
+
+            console.log('[NotificationScreen] 알림 초기 스윕', {
+              page: pageCursor,
+              sweep: sweepIdx,
+              rawCount: lastList.length,
+              afterLikeFilter: filtered.length,
+              serverTotal: lastMeta?.total,
+              meta: lastMeta,
+            });
+
+            // 서버 페이지가 끝났으면 종료
+            if (lastList.length < PAGE_SIZE) break;
+            prefetchCount += 1;
+            // 초기 진입에서는 최소 3페이지까지 넉넉히 로드해 탭 빨간점 깜빡임을 줄인다.
+            if (prefetchCount >= INITIAL_PREFETCH_PAGES) break;
+            // 필터 후 표시 가능한 알림이 충분히 쌓였으면 종료
+            if (accumulated.length >= MIN_INITIAL_VISIBLE_COUNT) break;
+            pageCursor += 1;
+          }
+
+          const hitSweepCap =
+            sweepIdx >= MAX_INITIAL_PAGE_SWEEP &&
+            accumulated.length === 0 &&
+            lastList.length >= PAGE_SIZE;
+
+          // 최신 reset 결과만 반영
+          if (seq >= latestAppliedSeqRef.current) {
+            latestAppliedSeqRef.current = seq;
+            setNotifications(mergeTestReturnedMailNotification(accumulated));
+            setHasMore(lastList.length >= PAGE_SIZE && !hitSweepCap);
+            setPage(pageCursor);
+            markNotificationsSeenForBell?.();
+          }
+
+          console.log('[NotificationScreen] 알림 초기 로드 완료', {
+            endPage: pageCursor,
+            listRowCount: accumulated.length,
+            chatRowsHidden: true,
+            serverTotal: lastMeta?.total,
+            likeRowsHidden: true,
+            hitSweepCap,
+          });
         }
-
-        const hitSweepCap =
-          sweepIdx >= MAX_INITIAL_PAGE_SWEEP &&
-          accumulated.length === 0 &&
-          lastList.length >= PAGE_SIZE;
-
-        // 최신 reset 결과만 반영
-        if (seq >= latestAppliedSeqRef.current) {
-          latestAppliedSeqRef.current = seq;
-          setNotifications(mergeTestReturnedMailNotification(accumulated));
-          setHasMore(lastList.length >= PAGE_SIZE && !hitSweepCap);
-          setPage(pageCursor);
-          markNotificationsSeenForBell?.();
+      } catch (error) {
+        console.error(
+          '[NotificationScreen] 알림 목록 불러오기 실패:',
+          error?.response?.data || error,
+        );
+      } finally {
+        if (!append) {
+          isRefreshingRef.current = false;
+          isResetFetchingRef.current = false;
+          setLoading(false);
+        } else {
+          isAppendFetchingRef.current = false;
+          setLoadingMore(false);
         }
-
-        console.log('[NotificationScreen] 알림 초기 로드 완료', {
-          endPage: pageCursor,
-          listRowCount: accumulated.length,
-          chatRowsHidden: true,
-          serverTotal: lastMeta?.total,
-          likeRowsHidden: true,
-          hitSweepCap,
-        });
       }
-    } catch (error) {
-      console.error('[NotificationScreen] 알림 목록 불러오기 실패:', error?.response?.data || error);
-    } finally {
-      if (!append) {
-        isRefreshingRef.current = false;
-        isResetFetchingRef.current = false;
-        setLoading(false);
-      } else {
-        isAppendFetchingRef.current = false;
-        setLoadingMore(false);
-      }
-    }
-  }, [markNotificationsSeenForBell, applyOptimisticReadState]);
+    },
+    [markNotificationsSeenForBell, applyOptimisticReadState],
+  );
 
   const handleRefresh = useCallback(async () => {
     if (isPullRefreshing || loading || loadingMore) return;
@@ -414,7 +449,9 @@ const NotificationScreen = ({ navigation }) => {
           return;
         }
         const topIdx = state.index;
-        const notifIdx = state.routes.findIndex((r) => r.name === 'Notification');
+        const notifIdx = state.routes.findIndex(
+          (r) => r.name === 'Notification',
+        );
         if (notifIdx === -1) {
           preserveListOnNextFocusRef.current = false;
           return;
@@ -456,7 +493,14 @@ const NotificationScreen = ({ navigation }) => {
   useEffect(() => {
     if (!hasUnread) return;
     if (!navigation?.isFocused || !navigation.isFocused()) return;
-    if (isPullRefreshing || loading || loadingMore || tabHydrating || isResetFetchingRef.current) return;
+    if (
+      isPullRefreshing ||
+      loading ||
+      loadingMore ||
+      tabHydrating ||
+      isResetFetchingRef.current
+    )
+      return;
 
     // 서버 기준 최신 알림 목록을 불러오고, 화면에서는 이미 본 것으로 간주하므로 빨간 점은 다시 끈다.
     fetchNotifications(1, false);
@@ -500,7 +544,9 @@ const NotificationScreen = ({ navigation }) => {
   const filteredNotifications = useMemo(() => {
     const enriched = baseFiltered.map((item) => {
       if (!isStudySummaryNotification(item)) return item;
-      const fallbackWatchers = normalizeWatchers(getStudySummaryWatchers?.(item));
+      const fallbackWatchers = normalizeWatchers(
+        getStudySummaryWatchers?.(item),
+      );
       const watchers = item.watchers?.length ? item.watchers : fallbackWatchers;
       return { ...item, watchers };
     });
@@ -556,10 +602,18 @@ const NotificationScreen = ({ navigation }) => {
   const unreadCounts = useMemo(() => {
     const list = notifications;
     const getUnreadFlag = (n) => !n?.isRead;
-    const allUnread = list.filter((n) => getUnreadFlag(n) && !tappedIds[n.id]).length;
-    const postUnread = list.filter((n) => n.category === 'post' && getUnreadFlag(n) && !tappedIds[n.id]).length;
-    const mailUnread = list.filter((n) => n.category === 'mail' && getUnreadFlag(n) && !tappedIds[n.id]).length;
-    const systemUnread = list.filter((n) => n.category === 'system' && getUnreadFlag(n) && !tappedIds[n.id]).length;
+    const allUnread = list.filter(
+      (n) => getUnreadFlag(n) && !tappedIds[n.id],
+    ).length;
+    const postUnread = list.filter(
+      (n) => n.category === 'post' && getUnreadFlag(n) && !tappedIds[n.id],
+    ).length;
+    const mailUnread = list.filter(
+      (n) => n.category === 'mail' && getUnreadFlag(n) && !tappedIds[n.id],
+    ).length;
+    const systemUnread = list.filter(
+      (n) => n.category === 'system' && getUnreadFlag(n) && !tappedIds[n.id],
+    ).length;
     return { allUnread, postUnread, mailUnread, systemUnread };
   }, [notifications, tappedIds]);
 
@@ -574,62 +628,79 @@ const NotificationScreen = ({ navigation }) => {
   );
   const showSkeleton = loading || isPullRefreshing || tabHydrating;
 
-  const openDmRoom = useCallback(async (watcher) => {
-    if (!watcher?.userId) {
-      console.log('[NotificationScreen] DM 이동 스킵: watcher.userId 없음', { watcher });
-      return;
-    }
-    try {
-      const res = await api.post('/api/dm/rooms', { otherUserId: watcher.userId });
-      const roomId = res?.data?.data?.id;
-      if (roomId == null) {
-        console.log('[NotificationScreen] DM 이동 실패: roomId 없음', {
-          watcherUserId: watcher.userId,
+  const openDmRoom = useCallback(
+    async (watcher) => {
+      if (!watcher?.userId) {
+        console.log('[NotificationScreen] DM 이동 스킵: watcher.userId 없음', {
+          watcher,
         });
         return;
       }
-      let friendPayload = { id: watcher.userId, name: watcher.name };
       try {
-        const roomsRes = await api.get('/api/dm/rooms', { params: { page: 1, limit: 100 } });
-        const rooms = Array.isArray(roomsRes?.data?.data?.rooms) ? roomsRes.data.data.rooms : [];
-        const room = rooms.find((r) => String(r?.id) === String(roomId));
-        if (room) {
-          const colorIndexRaw =
-            room.other_user_color_id != null
-              ? Number(room.other_user_color_id)
-              : null;
-          const safeColorIndex =
-            Number.isFinite(colorIndexRaw) && colorIndexRaw >= 0
-              ? colorIndexRaw % DM_ICON_COLOR_COUNT
-              : 0;
-          friendPayload = {
-            id: room.other_user_id ?? watcher.userId,
-            name: room.other_user_name || watcher.name || '친구',
-            schoolName: room.other_user_school_name || '',
-            colorIndex: safeColorIndex,
-          };
-        }
-      } catch (friendError) {
-        console.log('[NotificationScreen] DM friend 정보 보강 실패, 기본 payload 사용', {
-          watcherUserId: watcher.userId,
-          message: friendError?.message,
+        const res = await api.post('/api/dm/rooms', {
+          otherUserId: watcher.userId,
         });
+        const roomId = res?.data?.data?.id;
+        if (roomId == null) {
+          console.log('[NotificationScreen] DM 이동 실패: roomId 없음', {
+            watcherUserId: watcher.userId,
+          });
+          return;
+        }
+        let friendPayload = { id: watcher.userId, name: watcher.name };
+        try {
+          const roomsRes = await api.get('/api/dm/rooms', {
+            params: { page: 1, limit: 100 },
+          });
+          const rooms = Array.isArray(roomsRes?.data?.data?.rooms)
+            ? roomsRes.data.data.rooms
+            : [];
+          const room = rooms.find((r) => String(r?.id) === String(roomId));
+          if (room) {
+            const colorIndexRaw =
+              room.other_user_color_id != null
+                ? Number(room.other_user_color_id)
+                : null;
+            const safeColorIndex =
+              Number.isFinite(colorIndexRaw) && colorIndexRaw >= 0
+                ? colorIndexRaw % DM_ICON_COLOR_COUNT
+                : 0;
+            friendPayload = {
+              id: room.other_user_id ?? watcher.userId,
+              name: room.other_user_name || watcher.name || '친구',
+              schoolName: room.other_user_school_name || '',
+              colorIndex: safeColorIndex,
+            };
+          }
+        } catch (friendError) {
+          console.log(
+            '[NotificationScreen] DM friend 정보 보강 실패, 기본 payload 사용',
+            {
+              watcherUserId: watcher.userId,
+              message: friendError?.message,
+            },
+          );
+        }
+        preserveListOnNextFocusRef.current = true;
+        console.log('[NotificationScreen] study summary -> DMChat 이동', {
+          watcherUserId: watcher.userId,
+          watcherName: watcher.name,
+          roomId,
+          friendPayload,
+        });
+        navigation?.navigate('DMChat', {
+          roomId,
+          friend: friendPayload,
+        });
+      } catch (error) {
+        console.error(
+          '[NotificationScreen] DM 이동 실패:',
+          error?.response?.data || error,
+        );
       }
-      preserveListOnNextFocusRef.current = true;
-      console.log('[NotificationScreen] study summary -> DMChat 이동', {
-        watcherUserId: watcher.userId,
-        watcherName: watcher.name,
-        roomId,
-        friendPayload,
-      });
-      navigation?.navigate('DMChat', {
-        roomId,
-        friend: friendPayload,
-      });
-    } catch (error) {
-      console.error('[NotificationScreen] DM 이동 실패:', error?.response?.data || error);
-    }
-  }, [navigation]);
+    },
+    [navigation],
+  );
 
   const handlePressNotification = (n) => {
     // 실제로 눌렀을 때만 배경색 제거 (확인한 알림으로 표시)
@@ -662,10 +733,13 @@ const NotificationScreen = ({ navigation }) => {
           n.relatedType === 'study_summary_single') &&
         n.relatedId != null
       ) {
-        console.log('[NotificationScreen] study summary single fallback -> relatedId로 DM 이동', {
-          notificationId: n.id,
-          relatedId: n.relatedId,
-        });
+        console.log(
+          '[NotificationScreen] study summary single fallback -> relatedId로 DM 이동',
+          {
+            notificationId: n.id,
+            relatedId: n.relatedId,
+          },
+        );
         openDmRoom({ userId: String(n.relatedId), name: '친구' });
         return;
       }
@@ -674,9 +748,12 @@ const NotificationScreen = ({ navigation }) => {
         return;
       }
       if (watchers.length > 1) {
-        console.log('[NotificationScreen] study summary 다중 대기자 드롭다운 토글', {
-          notificationId: n.id,
-        });
+        console.log(
+          '[NotificationScreen] study summary 다중 대기자 드롭다운 토글',
+          {
+            notificationId: n.id,
+          },
+        );
         setExpandedSummaryById((prev) => ({
           ...prev,
           [n.id]: !prev[n.id],
@@ -772,7 +849,10 @@ const NotificationScreen = ({ navigation }) => {
 
   return (
     <View style={[styles.rootWrapper, getDebugBorderStyle('#FF3B30')]}>
-      <SafeAreaView style={[styles.container, getDebugBorderStyle('#FF9500')]} edges={['top']}>
+      <SafeAreaView
+        style={[styles.container, getDebugBorderStyle('#FF9500')]}
+        edges={['top']}
+      >
         <SubHeader
           title="알림"
           onBack={() => navigation?.goBack()}
@@ -780,179 +860,209 @@ const NotificationScreen = ({ navigation }) => {
           onRightPress={handleMarkAllRead}
         />
 
-      {/* 탭 메뉴 */}
-      <View style={[styles.tabContainer, getDebugBorderStyle('#FFCC00')]}>
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={[styles.tabContent, getDebugBorderStyle('#34C759')]}
-        >
-          {tabs.map((tab) => (
-            <TouchableOpacity
-              key={tab.key}
-              style={[
-                styles.tabButton,
-                selectedTab === tab.key && styles.tabButtonActive,
-                getDebugBorderStyle('#007AFF'),
-              ]}
-              onPress={() => {
-                if (tab.key !== 'all') setTabHydrating(true);
-                else setTabHydrating(false);
-                setSelectedTab(tab.key);
-              }}>
-              <Text
+        {/* 탭 메뉴 */}
+        <View style={[styles.tabContainer, getDebugBorderStyle('#FFCC00')]}>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={[
+              styles.tabContent,
+              getDebugBorderStyle('#34C759'),
+            ]}
+          >
+            {tabs.map((tab) => (
+              <TouchableOpacity
+                key={tab.key}
                 style={[
-                  styles.tabText,
-                  selectedTab === tab.key && styles.tabTextActive,
-                ]}>
-                {tab.label}
-              </Text>
-              {tab.count > 0 && <View style={styles.tabUnreadDot} />}
-            </TouchableOpacity>
-          ))}
-        </ScrollView>
-      </View>
+                  styles.tabButton,
+                  selectedTab === tab.key && styles.tabButtonActive,
+                  getDebugBorderStyle('#007AFF'),
+                ]}
+                onPress={() => {
+                  if (tab.key !== 'all') setTabHydrating(true);
+                  else setTabHydrating(false);
+                  setSelectedTab(tab.key);
+                }}
+              >
+                <Text
+                  style={[
+                    styles.tabText,
+                    selectedTab === tab.key && styles.tabTextActive,
+                  ]}
+                >
+                  {tab.label}
+                </Text>
+                {tab.count > 0 && <View style={styles.tabUnreadDot} />}
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
+        </View>
 
-      {/* 알림 목록 - FlatList + 무한 스크롤 */}
-      <FlatList
-        style={[styles.scrollView, getDebugBorderStyle('#5856D6')]}
-        data={showSkeleton ? [] : filteredWithAds}
-        keyExtractor={(item) =>
-          item.type === 'notiAd' ? item.id : String(item.id)
-        }
-        refreshing={false}
-        onRefresh={handleRefresh}
-        renderItem={({ item: notification }) => {
-          if (notification.type === 'notiAd') return <NotificationAdPlaceholder />;
-          const isTapped = tappedIds[notification.id];
-          const isUnreadFromServer = !notification.isRead;
-          const isStudySummary = isStudySummaryNotification(notification);
-          const watchers = normalizeWatchers(notification.watchers);
-          const canExpandWatchers = isStudySummary && watchers.length > 1;
-          const isExpanded = Boolean(expandedSummaryById[notification.id]);
-          // 서버 기준으로 아직 안 읽은 알림 + 실제로 눌러서 확인하지 않은 것만 연한 초록 배경 + 점 표시
-          const showUnreadStyle = isUnreadFromServer && !isTapped;
-          const hidePreviewText =
-            notification.category === 'mail' ||
-            notification.type === 'comment' ||
-            notification.type === 'reply';
-          return (
-            <TouchableOpacity
-              style={[
-                styles.notificationItem,
-                showUnreadStyle && styles.notificationItemUnread,
-                getDebugBorderStyle('#AF52DE'),
-              ]}
-              onPress={() => handlePressNotification(notification)}
-              activeOpacity={0.7}
-            >
+        {/* 알림 목록 - FlatList + 무한 스크롤 */}
+        <FlatList
+          style={[styles.scrollView, getDebugBorderStyle('#5856D6')]}
+          data={showSkeleton ? [] : filteredWithAds}
+          keyExtractor={(item) =>
+            item.type === 'notiAd' ? item.id : String(item.id)
+          }
+          refreshing={false}
+          onRefresh={handleRefresh}
+          renderItem={({ item: notification }) => {
+            if (notification.type === 'notiAd')
+              return <NotificationAdPlaceholder />;
+            const isTapped = tappedIds[notification.id];
+            const isUnreadFromServer = !notification.isRead;
+            const isStudySummary = isStudySummaryNotification(notification);
+            const watchers = normalizeWatchers(notification.watchers);
+            const canExpandWatchers = isStudySummary && watchers.length > 1;
+            const isExpanded = Boolean(expandedSummaryById[notification.id]);
+            // 서버 기준으로 아직 안 읽은 알림 + 실제로 눌러서 확인하지 않은 것만 연한 초록 배경 + 점 표시
+            const showUnreadStyle = isUnreadFromServer && !isTapped;
+            const hidePreviewText =
+              notification.category === 'mail' ||
+              notification.type === 'comment' ||
+              notification.type === 'reply';
+            return (
+              <TouchableOpacity
+                style={[
+                  styles.notificationItem,
+                  showUnreadStyle && styles.notificationItemUnread,
+                  getDebugBorderStyle('#AF52DE'),
+                ]}
+                onPress={() => handlePressNotification(notification)}
+                activeOpacity={0.7}
+              >
+                <View style={[styles.iconContainer]}>
+                  <Ionicons
+                    name={notification.icon}
+                    size={styles.notificationIcon.size}
+                    color={notification.iconColor}
+                  />
+                </View>
+
+                <View
+                  style={[
+                    styles.notificationContent,
+                    getDebugBorderStyle('#5AC8FA'),
+                  ]}
+                >
+                  <View
+                    style={{
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                      flexWrap: 'wrap',
+                    }}
+                  >
+                    <Text style={styles.notificationTitle}>
+                      {notification.title}
+                    </Text>
+                  </View>
+                  {!hidePreviewText ? (
+                    <Text style={styles.notificationText} numberOfLines={2}>
+                      {notification.content}
+                    </Text>
+                  ) : null}
+                  <Text style={styles.notificationTime}>
+                    {notification.time}
+                  </Text>
+                  {canExpandWatchers && isExpanded ? (
+                    <ScrollView
+                      horizontal
+                      showsHorizontalScrollIndicator={false}
+                      contentContainerStyle={[
+                        styles.summaryWatcherRow,
+                        getDebugBorderStyle('#30B0C7'),
+                      ]}
+                    >
+                      {watchers.map((watcher, idx) => (
+                        <TouchableOpacity
+                          key={`${notification.id}-${watcher.userId}-${idx}`}
+                          style={[
+                            styles.summaryWatcherChip,
+                            getDebugBorderStyle('#64D2FF'),
+                          ]}
+                          activeOpacity={0.8}
+                          onPress={() => openDmRoom(watcher)}
+                        >
+                          <View style={styles.summaryWatcherAvatar}>
+                            <ProfileIcon
+                              width={styles.summaryWatcherProfileIcon.width}
+                              height={styles.summaryWatcherProfileIcon.height}
+                              color={getProfileInnerColor(watcher.colorId)}
+                            />
+                          </View>
+                          <Text
+                            style={styles.summaryWatcherName}
+                            numberOfLines={1}
+                          >
+                            {watcher.name}
+                          </Text>
+                        </TouchableOpacity>
+                      ))}
+                    </ScrollView>
+                  ) : null}
+                </View>
+
+                {showUnreadStyle && <View style={styles.unreadDot} />}
+              </TouchableOpacity>
+            );
+          }}
+          ListEmptyComponent={
+            showSkeleton ? (
               <View
                 style={[
-                  styles.iconContainer,
+                  styles.skeletonContainer,
+                  getDebugBorderStyle('#32D74B'),
                 ]}
               >
+                {[1, 2, 3, 4, 5, 6].map((key) => (
+                  <SkeletonRow key={key} skeletonStyles={skeletonStyles} />
+                ))}
+              </View>
+            ) : (
+              <View
+                style={[styles.emptyContainer, getDebugBorderStyle('#0A84FF')]}
+              >
                 <Ionicons
-                  name={notification.icon}
-                  size={styles.notificationIcon.size}
-                  color={notification.iconColor}
+                  name="notifications-off-outline"
+                  size={styles.emptyIcon.size}
+                  color={styles.emptyIcon.color}
                 />
-              </View>
-
-              <View style={[styles.notificationContent, getDebugBorderStyle('#5AC8FA')]}>
-                <View style={{ flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap' }}>
-                  <Text style={styles.notificationTitle}>{notification.title}</Text>
-                </View>
-                {!hidePreviewText ? (
-                  <Text style={styles.notificationText} numberOfLines={2}>
-                    {notification.content}
-                  </Text>
-                ) : null}
-                <Text style={styles.notificationTime}>{notification.time}</Text>
-                {canExpandWatchers && isExpanded ? (
-                  <ScrollView
-                    horizontal
-                    showsHorizontalScrollIndicator={false}
-                    contentContainerStyle={[
-                      styles.summaryWatcherRow,
-                      getDebugBorderStyle('#30B0C7'),
-                    ]}
-                  >
-                    {watchers.map((watcher, idx) => (
-                      <TouchableOpacity
-                        key={`${notification.id}-${watcher.userId}-${idx}`}
-                        style={[styles.summaryWatcherChip, getDebugBorderStyle('#64D2FF')]}
-                        activeOpacity={0.8}
-                        onPress={() => openDmRoom(watcher)}
-                      >
-                        <View
-                          style={styles.summaryWatcherAvatar}
-                        >
-                          <ProfileIcon
-                            width={styles.summaryWatcherProfileIcon.width}
-                            height={styles.summaryWatcherProfileIcon.height}
-                            color={getProfileInnerColor(watcher.colorId)}
-                          />
-                        </View>
-                        <Text style={styles.summaryWatcherName} numberOfLines={1}>
-                          {watcher.name}
-                        </Text>
-                      </TouchableOpacity>
-                    ))}
-                  </ScrollView>
-                ) : null}
-              </View>
-
-              {showUnreadStyle && <View style={styles.unreadDot} />}
-            </TouchableOpacity>
-          );
-        }}
-        ListEmptyComponent={
-          showSkeleton ? (
-            <View style={[styles.skeletonContainer, getDebugBorderStyle('#32D74B')]}>
-              {[1, 2, 3, 4, 5, 6].map((key) => (
-                <SkeletonRow key={key} skeletonStyles={skeletonStyles} />
-              ))}
-            </View>
-          ) : (
-            <View style={[styles.emptyContainer, getDebugBorderStyle('#0A84FF')]}>
-              <Ionicons
-                name="notifications-off-outline"
-                size={styles.emptyIcon.size}
-                color={styles.emptyIcon.color}
-              />
-              <Text style={styles.emptyTitle}>아직 새로운 소식이 없어요</Text>
-              {/*
+                <Text style={styles.emptyTitle}>아직 새로운 소식이 없어요</Text>
+                {/*
                 TODO(marketing-consent):
                 마케팅 동의 사용자 대상으로
                 "인기 게시글을 확인해 보세요" 알림 문구/플로우 적용 예정
               */}
-            </View>
-          )
-        }
-        ListFooterComponent={
-          loadingMore && !tabHydrating ? (
-            <View style={[styles.footerLoader, getDebugBorderStyle('#BF5AF2')]}>
-              <Text style={styles.footerLoaderText}>더 불러오는 중...</Text>
-            </View>
-          ) : null
-        }
-        onMomentumScrollBegin={() => {
-          endReachedLockRef.current = false;
-        }}
-        onEndReached={() => {
-          if (endReachedLockRef.current) return;
-          endReachedLockRef.current = true;
-          if (!tabHydrating && !loadingMore && hasMore) {
-            fetchNotifications(page + 1, true);
+              </View>
+            )
           }
-        }}
-        onEndReachedThreshold={0.4}
-        contentContainerStyle={[
-          styles.contentContainer,
-          filteredNotifications.length === 0 && { flex: 1 },
-          getDebugBorderStyle('#FFD60A'),
-        ]}
-      />
+          ListFooterComponent={
+            loadingMore && !tabHydrating ? (
+              <View
+                style={[styles.footerLoader, getDebugBorderStyle('#BF5AF2')]}
+              >
+                <Text style={styles.footerLoaderText}>더 불러오는 중...</Text>
+              </View>
+            ) : null
+          }
+          onMomentumScrollBegin={() => {
+            endReachedLockRef.current = false;
+          }}
+          onEndReached={() => {
+            if (endReachedLockRef.current) return;
+            endReachedLockRef.current = true;
+            if (!tabHydrating && !loadingMore && hasMore) {
+              fetchNotifications(page + 1, true);
+            }
+          }}
+          onEndReachedThreshold={0.4}
+          contentContainerStyle={[
+            styles.contentContainer,
+            filteredNotifications.length === 0 && { flex: 1 },
+            getDebugBorderStyle('#FFD60A'),
+          ]}
+        />
       </SafeAreaView>
     </View>
   );

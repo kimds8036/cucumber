@@ -1,5 +1,11 @@
 import React, { useMemo } from 'react';
-import { Linking, ScrollView, Text, View, useWindowDimensions } from 'react-native';
+import {
+  Linking,
+  ScrollView,
+  Text,
+  View,
+  useWindowDimensions,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import SubHeader from '../../../view/frame/subHeader';
 import { getNormalize } from '../../../styles/mypage.style';
@@ -278,14 +284,20 @@ const CommunityGuide = ({ navigation }) => {
           if (trimmed.startsWith('#### ')) {
             return (
               <Text key={`h4-${idx}`} style={styles.sectionTitle}>
-                {buildInlineNodes(trimmed.replace('#### ', ''), sectionLinkStyle)}
+                {buildInlineNodes(
+                  trimmed.replace('#### ', ''),
+                  sectionLinkStyle,
+                )}
               </Text>
             );
           }
           if (trimmed.startsWith('### ')) {
             return (
               <Text key={`s-${idx}`} style={styles.sectionTitle}>
-                {buildInlineNodes(trimmed.replace('### ', ''), sectionLinkStyle)}
+                {buildInlineNodes(
+                  trimmed.replace('### ', ''),
+                  sectionLinkStyle,
+                )}
               </Text>
             );
           }

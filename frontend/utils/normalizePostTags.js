@@ -10,7 +10,8 @@ function devWarnUnexpected(raw, reason) {
   let preview = '';
   try {
     if (typeof raw === 'string') preview = raw.slice(0, TAG_PREVIEW_LEN);
-    else if (typeof raw === 'object') preview = JSON.stringify(raw).slice(0, TAG_PREVIEW_LEN);
+    else if (typeof raw === 'object')
+      preview = JSON.stringify(raw).slice(0, TAG_PREVIEW_LEN);
     else preview = String(raw).slice(0, TAG_PREVIEW_LEN);
   } catch {
     preview = '[preview error]';

@@ -62,7 +62,11 @@ function extractMailListFromResponse(res) {
 }
 
 /** 스레드에서 해당 메시지가 '내가 보낸 우편'에 대한 답장인지 (부모 발신자가 나) */
-export function replyToMySentFromThread(message, threadMessages, currentUserId) {
+export function replyToMySentFromThread(
+  message,
+  threadMessages,
+  currentUserId,
+) {
   if (!message || !Array.isArray(threadMessages)) return false;
   const me = Number(currentUserId);
   if (!Number.isFinite(me)) return false;
@@ -164,9 +168,7 @@ function extractPaginationFromResponse(res) {
 
 function mapMailToListItem(mail, isReceived) {
   const profileColorId =
-    (isReceived
-      ? mail.sender_color_id
-      : mail.recipient_color_id) ??
+    (isReceived ? mail.sender_color_id : mail.recipient_color_id) ??
     mail.profile_color_id ??
     mail.profileColorId ??
     null;
@@ -176,7 +178,13 @@ function mapMailToListItem(mail, isReceived) {
     raw: mail,
     isReceived,
     parentMailId: mail.parent_mail_id != null ? mail.parent_mail_id : null,
-    threadKey: Number(mail.thread_key != null ? mail.thread_key : (mail.root_mail_id != null ? mail.root_mail_id : mail.id)),
+    threadKey: Number(
+      mail.thread_key != null
+        ? mail.thread_key
+        : mail.root_mail_id != null
+          ? mail.root_mail_id
+          : mail.id,
+    ),
     createdAt: mail.created_at,
     counterpartyUserId: isReceived ? mail.sender_id : mail.recipient_id,
     preview: String(mail.content || '').slice(0, 40),
@@ -227,7 +235,9 @@ function MailInbox({ onOpen, onBack, navigation }) {
             isReceived: Boolean(mail.isReceived),
             senderNameFromApi: mail.raw?.sender_name,
             recipientNameFromApi: mail.raw?.recipient_name,
-            isRootAuthorForCurrentUser: Boolean(mail.raw?.is_root_author_for_current_user),
+            isRootAuthorForCurrentUser: Boolean(
+              mail.raw?.is_root_author_for_current_user,
+            ),
           });
     return {
       name,
@@ -269,42 +279,51 @@ function MailInbox({ onOpen, onBack, navigation }) {
     })();
   }, [closeInboxMenu, inboxMenuMail]);
 
-  const fetchList = useCallback(async (nextPage = 1, append = false) => {
-    try {
-      if (nextPage === 1 && !append) setLoading(true);
-      setError('');
-      const isReceived = tab === 'received';
-      const endpoint = isReceived ? '/api/mails/personal/received' : '/api/mails/personal/sent';
-      const res = await api.get(endpoint, { params: { page: nextPage, limit: 20 } });
-      const mails = extractMailListFromResponse(res);
-      const pagination = extractPaginationFromResponse(res);
-      const mapped = mails.map((mail) => mapMailToListItem(mail, isReceived));
-      let displayItems = mapped;
+  const fetchList = useCallback(
+    async (nextPage = 1, append = false) => {
+      try {
+        if (nextPage === 1 && !append) setLoading(true);
+        setError('');
+        const isReceived = tab === 'received';
+        const endpoint = isReceived
+          ? '/api/mails/personal/received'
+          : '/api/mails/personal/sent';
+        const res = await api.get(endpoint, {
+          params: { page: nextPage, limit: 20 },
+        });
+        const mails = extractMailListFromResponse(res);
+        const pagination = extractPaginationFromResponse(res);
+        const mapped = mails.map((mail) => mapMailToListItem(mail, isReceived));
+        let displayItems = mapped;
 
-      if (!isReceived) {
-        // 보낸 우편은 thread_key 기준 병합을 하지 않고, 발송 단위(행)로만 노출한다.
-        displayItems = mapped
-          .slice()
-          .sort((a, b) => {
-            const ad = parseUtcToLocal(a.createdAt);
-            const bd = parseUtcToLocal(b.createdAt);
-            if (!ad || !bd) return 0;
-            return bd - ad;
-          })
-          .map((m) => ({ ...m, rowKind: 'normal' }));
+        if (!isReceived) {
+          // 보낸 우편은 thread_key 기준 병합을 하지 않고, 발송 단위(행)로만 노출한다.
+          displayItems = mapped
+            .slice()
+            .sort((a, b) => {
+              const ad = parseUtcToLocal(a.createdAt);
+              const bd = parseUtcToLocal(b.createdAt);
+              if (!ad || !bd) return 0;
+              return bd - ad;
+            })
+            .map((m) => ({ ...m, rowKind: 'normal' }));
+        }
+        const totalPages = Number(pagination?.totalPages || 1);
+
+        setItems((prev) =>
+          append ? [...prev, ...displayItems] : displayItems,
+        );
+        setPage(nextPage);
+        setHasMore(nextPage < totalPages);
+      } catch (e) {
+        setError(e.response?.data?.message || '우편함을 불러오지 못했습니다.');
+      } finally {
+        setLoading(false);
+        if (nextPage === 1 && !append) setIsInitialLoading(false);
       }
-      const totalPages = Number(pagination?.totalPages || 1);
-
-      setItems((prev) => (append ? [...prev, ...displayItems] : displayItems));
-      setPage(nextPage);
-      setHasMore(nextPage < totalPages);
-    } catch (e) {
-      setError(e.response?.data?.message || '우편함을 불러오지 못했습니다.');
-    } finally {
-      setLoading(false);
-      if (nextPage === 1 && !append) setIsInitialLoading(false);
-    }
-  }, [tab]);
+    },
+    [tab],
+  );
 
   useEffect(() => {
     fetchList(1, false);
@@ -312,15 +331,33 @@ function MailInbox({ onOpen, onBack, navigation }) {
 
   if (isInitialLoading && loading) {
     return (
-      <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
-        <View style={{ flex: 1, paddingHorizontal: normalize(14), paddingTop: normalize(10) }}>
+      <SafeAreaView style={styles.safe} edges={['top']}>
+        <View
+          style={{
+            flex: 1,
+            paddingHorizontal: normalize(14),
+            paddingTop: normalize(10),
+          }}
+        >
           {[0, 1, 2].map((idx) => (
             <View key={`mail-list-skel-${idx}`} style={styles.mailCard}>
               <View style={styles.mailCardHeader}>
-                <Skeleton width={normalize(66)} height={normalize(12)} borderRadius={normalize(6)} />
-                <Skeleton width={normalize(48)} height={normalize(11)} borderRadius={normalize(6)} />
+                <Skeleton
+                  width={normalize(66)}
+                  height={normalize(12)}
+                  borderRadius={normalize(6)}
+                />
+                <Skeleton
+                  width={normalize(48)}
+                  height={normalize(11)}
+                  borderRadius={normalize(6)}
+                />
               </View>
-              <Skeleton width="92%" height={normalize(14)} borderRadius={normalize(6)} />
+              <Skeleton
+                width="92%"
+                height={normalize(14)}
+                borderRadius={normalize(6)}
+              />
             </View>
           ))}
         </View>
@@ -329,12 +366,16 @@ function MailInbox({ onOpen, onBack, navigation }) {
   }
 
   return (
-    <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
+    <SafeAreaView style={styles.safe} edges={['top']}>
       <SubHeader
         title="익명 우편함"
         onBack={onBack}
         rightElement={
-          <Octicons name="history" size={normalize(22)} color={colors.textPrimary} />
+          <Octicons
+            name="history"
+            size={normalize(22)}
+            color={colors.textPrimary}
+          />
         }
         onRightPress={() => navigation?.navigate('MailHistory')}
       />
@@ -342,7 +383,9 @@ function MailInbox({ onOpen, onBack, navigation }) {
         <TouchableOpacity
           style={[
             styles.inboxTabButton,
-            tab === 'received' ? styles.inboxTabButtonReceivedActive : styles.inboxTabButtonInactive,
+            tab === 'received'
+              ? styles.inboxTabButtonReceivedActive
+              : styles.inboxTabButtonInactive,
           ]}
           onPress={() => setTab('received')}
         >
@@ -358,7 +401,9 @@ function MailInbox({ onOpen, onBack, navigation }) {
         <TouchableOpacity
           style={[
             styles.inboxTabButton,
-            tab === 'sent' ? styles.inboxTabButtonSentActive : styles.inboxTabButtonInactive,
+            tab === 'sent'
+              ? styles.inboxTabButtonSentActive
+              : styles.inboxTabButtonInactive,
           ]}
           onPress={() => setTab('sent')}
         >
@@ -379,7 +424,11 @@ function MailInbox({ onOpen, onBack, navigation }) {
       >
         {loading && (
           <View style={styles.inboxStateWrapper}>
-            <Skeleton width={normalize(18)} height={normalize(18)} borderRadius={normalize(9)} />
+            <Skeleton
+              width={normalize(18)}
+              height={normalize(18)}
+              borderRadius={normalize(9)}
+            />
           </View>
         )}
         {!loading && !!error && (
@@ -408,7 +457,12 @@ function MailInbox({ onOpen, onBack, navigation }) {
               activeOpacity={0.8}
             >
               <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                <View style={{ marginRight: normalize(10), justifyContent: 'center' }}>
+                <View
+                  style={{
+                    marginRight: normalize(10),
+                    justifyContent: 'center',
+                  }}
+                >
                   <ProfileIcon
                     width={normalize(30)}
                     height={normalize(30)}
@@ -425,25 +479,28 @@ function MailInbox({ onOpen, onBack, navigation }) {
                             senderNameFromApi: mail.raw?.sender_name,
                             recipientNameFromApi: mail.raw?.recipient_name,
                             isRootAuthorForCurrentUser: Boolean(
-                              mail.raw?.is_root_author_for_current_user
+                              mail.raw?.is_root_author_for_current_user,
                             ),
                           })}
-                    {mail.rowKind !== 'parent' &&
-                      console.log('[MailLabelDecision][MailInboxRow]', {
-                        mailId: mail.raw?.id ?? mail.id,
-                        rowKind: mail.rowKind ?? 'normal',
-                        isReceived: Boolean(mail.isReceived),
-                        isRootAuthorForCurrentUser: Boolean(
-                          mail.raw?.is_root_author_for_current_user
-                        ),
-                        senderNameFromApi: mail.raw?.sender_name ?? null,
-                        recipientNameFromApi: mail.raw?.recipient_name ?? null,
-                      })}
+                      {mail.rowKind !== 'parent' &&
+                        console.log('[MailLabelDecision][MailInboxRow]', {
+                          mailId: mail.raw?.id ?? mail.id,
+                          rowKind: mail.rowKind ?? 'normal',
+                          isReceived: Boolean(mail.isReceived),
+                          isRootAuthorForCurrentUser: Boolean(
+                            mail.raw?.is_root_author_for_current_user,
+                          ),
+                          senderNameFromApi: mail.raw?.sender_name ?? null,
+                          recipientNameFromApi:
+                            mail.raw?.recipient_name ?? null,
+                        })}
                     </Text>
                     <Text style={styles.dotSep}>•</Text>
                     <Text style={styles.mailTime}>{mail.receivedAt}</Text>
                   </View>
-                  <Text style={styles.mailPreview} numberOfLines={1}>{mail.preview}</Text>
+                  <Text style={styles.mailPreview} numberOfLines={1}>
+                    {mail.preview}
+                  </Text>
                 </View>
               </View>
             </TouchableOpacity>
@@ -487,7 +544,9 @@ function MailInbox({ onOpen, onBack, navigation }) {
                   <ProfileIcon
                     width={normalize(45)}
                     height={normalize(45)}
-                    color={getProfileInnerColor(inboxMenuSheetMeta.profileColorId)}
+                    color={getProfileInnerColor(
+                      inboxMenuSheetMeta.profileColorId,
+                    )}
                   />
                 </View>
                 <View>
@@ -495,7 +554,10 @@ function MailInbox({ onOpen, onBack, navigation }) {
                     {inboxMenuSheetMeta.name}
                   </Text>
                   {inboxMenuSheetMeta.subtitle ? (
-                    <Text style={inboxMenuSheetStyles.sheetSubtitle} numberOfLines={1}>
+                    <Text
+                      style={inboxMenuSheetStyles.sheetSubtitle}
+                      numberOfLines={1}
+                    >
                       {inboxMenuSheetMeta.subtitle}
                     </Text>
                   ) : null}
@@ -513,7 +575,11 @@ function MailInbox({ onOpen, onBack, navigation }) {
                     inboxMenuSheetStyles.deleteActionIcon,
                   ]}
                 >
-                  <Ionicons name="trash-outline" size={20} color={colors.alert} />
+                  <Ionicons
+                    name="trash-outline"
+                    size={20}
+                    color={colors.alert}
+                  />
                 </View>
                 <View>
                   <Text style={inboxMenuSheetStyles.sheetDeleteActionTitle}>
@@ -533,7 +599,11 @@ function MailInbox({ onOpen, onBack, navigation }) {
                     inboxMenuSheetStyles.blockActionIcon,
                   ]}
                 >
-                  <Ionicons name="ban-outline" size={16} color={colors.textSecondary} />
+                  <Ionicons
+                    name="ban-outline"
+                    size={16}
+                    color={colors.textSecondary}
+                  />
                 </View>
                 <View>
                   <Text style={inboxMenuSheetStyles.sheetBlockActionTitle}>
@@ -591,7 +661,9 @@ function MailDetail({ mail: initialMail, onBack, navigation }) {
       const [detailRes, meRes, threadRes] = await Promise.all([
         api.get(`/api/mails/personal/${initialMail.id}`),
         api.get('/api/auth/me'),
-        api.get(`/api/mails/personal/${initialMail.id}/thread`).catch(() => null),
+        api
+          .get(`/api/mails/personal/${initialMail.id}/thread`)
+          .catch(() => null),
       ]);
       const m = detailRes.data?.data;
       const me = meRes.data?.data;
@@ -623,8 +695,17 @@ function MailDetail({ mail: initialMail, onBack, navigation }) {
       setLatestMyReply(myLatestSent);
       setLatestOtherReply(otherLatestSent);
       setThreadMessages(Array.isArray(threadMsgs) ? threadMsgs : []);
+      const threadLatestMessage = pickLatestThreadMessage(
+        myLatestSent,
+        otherLatestSent,
+      );
+      const latestSenderId = Number(threadLatestMessage?.sender_id);
       const isReceived =
-        initialMail?.isReceived != null ? initialMail?.isReceived : true;
+        Number.isFinite(meId) && threadLatestMessage
+          ? !Number.isFinite(latestSenderId) || latestSenderId !== meId
+          : initialMail?.isReceived != null
+            ? initialMail?.isReceived
+            : true;
       setMail({
         id: m.id,
         receivedAt: formatListTime(m.created_at),
@@ -635,15 +716,16 @@ function MailDetail({ mail: initialMail, onBack, navigation }) {
         senderName: m.sender_name || '익명',
         recipientName: m.recipient_name || '',
         senderColorId: m.sender_color_id != null ? m.sender_color_id : null,
-        recipientColorId: m.recipient_color_id != null ? m.recipient_color_id : null,
+        recipientColorId:
+          m.recipient_color_id != null ? m.recipient_color_id : null,
         counterpartyUserId: isReceived ? m.sender_id : m.recipient_id,
         replyToMySent: Boolean(
-          m.reply_to_my_sent ?? m.replyToMySent ?? initialMail?.replyToMySent
+          m.reply_to_my_sent ?? m.replyToMySent ?? initialMail?.replyToMySent,
         ),
         isRootAuthorForCurrentUser: Boolean(
           m.is_root_author_for_current_user ??
           initialMail?.is_root_author_for_current_user ??
-          initialMail?.isRootAuthorForCurrentUser
+          initialMail?.isRootAuthorForCurrentUser,
         ),
         isReturned:
           !isReceived &&
@@ -703,18 +785,26 @@ function MailDetail({ mail: initialMail, onBack, navigation }) {
     threadLatest?.content ?? (mail?.content != null ? mail.content : '') ?? '';
   const singleTimeLabel = threadLatest?.created_at
     ? formatListTime(threadLatest.created_at)
-    : mail?.receivedAt ?? '';
+    : (mail?.receivedAt ?? '');
   const isDisplayMine = threadLatest
     ? threadLatest === latestMyReply
     : mail?.isReceived === false;
-  const detailOtherColorId = mail?.isReceived ? mail?.senderColorId : mail?.recipientColorId;
-  const detailMyColorId = mail?.isReceived ? mail?.recipientColorId : mail?.senderColorId;
-  const detailIconColor = getProfileInnerColor(isDisplayMine ? detailMyColorId : detailOtherColorId);
+  const detailOtherColorId = mail?.isReceived
+    ? mail?.senderColorId
+    : mail?.recipientColorId;
+  const detailMyColorId = mail?.isReceived
+    ? mail?.recipientColorId
+    : mail?.senderColorId;
+  const detailIconColor = getProfileInnerColor(
+    isDisplayMine ? detailMyColorId : detailOtherColorId,
+  );
 
   const counterpartyKnownName =
     mail?.isReceived === true
-      ? (threadMessages.find((msg) => Number(msg.sender_id) !== Number(currentUserId))?.sender_name || mail?.senderName)
-      : (mail?.recipientName || '');
+      ? threadMessages.find(
+          (msg) => Number(msg.sender_id) !== Number(currentUserId),
+        )?.sender_name || mail?.senderName
+      : mail?.recipientName || '';
   const cardSenderLabel = isDisplayMine
     ? '나'
     : counterpartyDisplayNameForCurrentUser({
@@ -735,18 +825,28 @@ function MailDetail({ mail: initialMail, onBack, navigation }) {
 
   // 보낸 우편 흐름에서, 상자에 보이는 최신 글이 내 것일 때(상대가 아직 답하지 않음)
   const showReturnedResend = Boolean(mail?.isReturned);
-  const showWaitingForReply =
-    mail?.isReceived === false && isDisplayMine && !showReturnedResend;
-  const showReplyCta = mail?.isReceived === true && !isDisplayMine;
+  const showWaitingForReply = isDisplayMine && !showReturnedResend;
+  const showReplyCta = !isDisplayMine && !showReturnedResend;
 
   if (loading) {
     return (
       <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
         <SubHeader
-          title={mail?.isReceived === false ? '보낸 우편' : '받은 우편'}
+          title={
+            initialMail?.isReceived === false ||
+            initialMail?.isReceived === true
+              ? initialMail.isReceived
+                ? '받은 우편'
+                : '보낸 우편'
+              : '받은 우편'
+          }
           onBack={onBack}
           rightElement={
-            <Octicons name="history" size={normalize(18)} color={colors.textPrimary} />
+            <Octicons
+              name="history"
+              size={normalize(18)}
+              color={colors.textPrimary}
+            />
           }
           onRightPress={() =>
             navigation.navigate('MailHistory', {
@@ -755,15 +855,54 @@ function MailDetail({ mail: initialMail, onBack, navigation }) {
           }
         />
         <View style={styles.detailRoot}>
-          <View style={{ flex: 1, paddingHorizontal: normalize(16), paddingTop: normalize(16) }}>
-            <View style={[styles.detailLetterCard, { minHeight: singleCardMinHeight }]}>
-              <Skeleton width={normalize(84)} height={normalize(12)} borderRadius={normalize(6)} style={{ marginBottom: normalize(8) }} />
-              <Skeleton width="100%" height={normalize(14)} borderRadius={normalize(6)} style={{ marginBottom: normalize(6) }} />
-              <Skeleton width="92%" height={normalize(14)} borderRadius={normalize(6)} style={{ marginBottom: normalize(6) }} />
-              <Skeleton width="74%" height={normalize(14)} borderRadius={normalize(6)} style={{ marginBottom: normalize(12) }} />
+          <View
+            style={{
+              flex: 1,
+              paddingHorizontal: normalize(16),
+              paddingTop: normalize(16),
+            }}
+          >
+            <View
+              style={[
+                styles.detailLetterCard,
+                { minHeight: singleCardMinHeight },
+              ]}
+            >
+              <Skeleton
+                width={normalize(84)}
+                height={normalize(12)}
+                borderRadius={normalize(6)}
+                style={{ marginBottom: normalize(8) }}
+              />
+              <Skeleton
+                width="100%"
+                height={normalize(14)}
+                borderRadius={normalize(6)}
+                style={{ marginBottom: normalize(6) }}
+              />
+              <Skeleton
+                width="92%"
+                height={normalize(14)}
+                borderRadius={normalize(6)}
+                style={{ marginBottom: normalize(6) }}
+              />
+              <Skeleton
+                width="74%"
+                height={normalize(14)}
+                borderRadius={normalize(6)}
+                style={{ marginBottom: normalize(12) }}
+              />
               <View style={{ flexDirection: 'row', gap: normalize(12) }}>
-                <Skeleton width={normalize(30)} height={normalize(12)} borderRadius={normalize(6)} />
-                <Skeleton width={normalize(30)} height={normalize(12)} borderRadius={normalize(6)} />
+                <Skeleton
+                  width={normalize(30)}
+                  height={normalize(12)}
+                  borderRadius={normalize(6)}
+                />
+                <Skeleton
+                  width={normalize(30)}
+                  height={normalize(12)}
+                  borderRadius={normalize(6)}
+                />
               </View>
             </View>
           </View>
@@ -775,10 +914,14 @@ function MailDetail({ mail: initialMail, onBack, navigation }) {
   return (
     <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
       <SubHeader
-        title={mail?.isReceived === false ? '보낸 우편' : '받은 우편'}
+        title={isDisplayMine ? '보낸 우편' : '받은 우편'}
         onBack={onBack}
         rightElement={
-          <Octicons name="history" size={normalize(18)} color={colors.textPrimary} />
+          <Octicons
+            name="history"
+            size={normalize(18)}
+            color={colors.textPrimary}
+          />
         }
         onRightPress={() =>
           navigation.navigate('MailHistory', {
@@ -788,9 +931,7 @@ function MailDetail({ mail: initialMail, onBack, navigation }) {
       />
 
       <View style={styles.detailRoot}>
-        {!!error && (
-          <Text style={styles.detailErrorText}>{error}</Text>
-        )}
+        {!!error && <Text style={styles.detailErrorText}>{error}</Text>}
         <ScrollView
           style={styles.scroll}
           contentContainerStyle={[
@@ -810,7 +951,12 @@ function MailDetail({ mail: initialMail, onBack, navigation }) {
             {isDisplayMine ? (
               <>
                 <View style={styles.detailSenderRow}>
-                  <View style={[styles.detailAvatar, { justifyContent: 'center', alignItems: 'center' }]}>
+                  <View
+                    style={[
+                      styles.detailAvatar,
+                      { justifyContent: 'center', alignItems: 'center' },
+                    ]}
+                  >
                     <ProfileIcon
                       width={normalize(28)}
                       height={normalize(28)}
@@ -818,11 +964,18 @@ function MailDetail({ mail: initialMail, onBack, navigation }) {
                     />
                   </View>
                   <View style={styles.detailSenderTexts}>
-                    <Text style={styles.detailSenderName}>{cardSenderLabel}</Text>
+                    <Text style={styles.detailSenderName}>
+                      {cardSenderLabel}
+                    </Text>
                     <Text style={styles.detailTime}>{singleTimeLabel}</Text>
                   </View>
                   {showReturnedResend ? (
-                    <View style={[styles.mailReturnedBadge, styles.mailReturnedBadgeRowEnd]}>
+                    <View
+                      style={[
+                        styles.mailReturnedBadge,
+                        styles.mailReturnedBadgeRowEnd,
+                      ]}
+                    >
                       <Text style={styles.mailReturnedBadgeText}>반송됨</Text>
                     </View>
                   ) : null}
@@ -834,7 +987,12 @@ function MailDetail({ mail: initialMail, onBack, navigation }) {
             ) : (
               <>
                 <View style={styles.detailSenderRow}>
-                  <View style={[styles.detailAvatar, { justifyContent: 'center', alignItems: 'center' }]}>
+                  <View
+                    style={[
+                      styles.detailAvatar,
+                      { justifyContent: 'center', alignItems: 'center' },
+                    ]}
+                  >
                     <ProfileIcon
                       width={normalize(28)}
                       height={normalize(28)}
@@ -842,11 +1000,18 @@ function MailDetail({ mail: initialMail, onBack, navigation }) {
                     />
                   </View>
                   <View style={styles.detailSenderTexts}>
-                    <Text style={styles.detailSenderName}>{cardSenderLabel}</Text>
+                    <Text style={styles.detailSenderName}>
+                      {cardSenderLabel}
+                    </Text>
                     <Text style={styles.detailTime}>{singleTimeLabel}</Text>
                   </View>
                   {showReturnedResend ? (
-                    <View style={[styles.mailReturnedBadge, styles.mailReturnedBadgeRowEnd]}>
+                    <View
+                      style={[
+                        styles.mailReturnedBadge,
+                        styles.mailReturnedBadgeRowEnd,
+                      ]}
+                    >
                       <Text style={styles.mailReturnedBadgeText}>반송됨</Text>
                     </View>
                   ) : null}
@@ -857,42 +1022,48 @@ function MailDetail({ mail: initialMail, onBack, navigation }) {
               </>
             )}
           </View>
+
+          {showWaitingForReply ? (
+            <Text
+              style={[styles.bottomWaitingText, { marginTop: normalize(16) }]}
+            >
+              상대방의 답장을 기다리는 중입니다.
+            </Text>
+          ) : null}
         </ScrollView>
 
-        <View style={styles.bottomCtaWrapper}>
-          {showReturnedResend ? (
-            <TouchableOpacity
-              style={styles.bottomCtaButton}
-              onPress={() => navigateToResendPersonalMail(navigation, mail)}
-              activeOpacity={0.9}
-            >
-              <Text style={styles.bottomCtaText}>다시 보내기</Text>
-            </TouchableOpacity>
-          ) : showWaitingForReply ? (
-            <Text style={styles.bottomWaitingText}>
-              상대방의 답장을 기다리고 있어요
-            </Text>
-          ) : showReplyCta ? (
-            <TouchableOpacity
-              style={styles.bottomCtaButton}
-              onPress={() =>
-                navigation.navigate('MailReply', {
-                  mail: {
-                    id: initialMail?.id,
-                    content: mail?.content,
-                    receivedAt: mail?.receivedAt,
-                    senderLabel: cardSenderLabel,
-                    profileColorId: detailOtherColorId,
-                  },
-                  onSent: () => fetchDetail(),
-                })
-              }
-              activeOpacity={0.9}
-            >
-              <Text style={styles.bottomCtaText}>답장하기</Text>
-            </TouchableOpacity>
-          ) : null}
-        </View>
+        {showReturnedResend || showReplyCta ? (
+          <View style={styles.bottomCtaWrapper}>
+            {showReturnedResend ? (
+              <TouchableOpacity
+                style={styles.bottomCtaButton}
+                onPress={() => navigateToResendPersonalMail(navigation, mail)}
+                activeOpacity={0.9}
+              >
+                <Text style={styles.bottomCtaText}>다시 보내기</Text>
+              </TouchableOpacity>
+            ) : (
+              <TouchableOpacity
+                style={styles.bottomCtaButton}
+                onPress={() =>
+                  navigation.navigate('MailReply', {
+                    mail: {
+                      id: initialMail?.id,
+                      content: mail?.content,
+                      receivedAt: mail?.receivedAt,
+                      senderLabel: cardSenderLabel,
+                      profileColorId: detailOtherColorId,
+                    },
+                    onSent: () => fetchDetail(),
+                  })
+                }
+                activeOpacity={0.9}
+              >
+                <Text style={styles.bottomCtaText}>답장하기</Text>
+              </TouchableOpacity>
+            )}
+          </View>
+        ) : null}
       </View>
     </SafeAreaView>
   );
@@ -908,11 +1079,11 @@ export default function AnonymousMailScreen({ navigation, route }) {
           isReceived: detailMail.isReceived,
           replyToMySent: detailMail.replyToMySent,
         }
-      : (detailMail || {
+      : detailMail || {
           id: fallbackRelatedId,
           isReceived: true,
           replyToMySent: false,
-        });
+        };
 
   return (
     <MailDetail

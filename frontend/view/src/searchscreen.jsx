@@ -14,16 +14,23 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { colors } from '../../styles/colors';
-import { getNormalize, createSearchScreenStyles } from '../../styles/search.style';
+import {
+  getNormalize,
+  createSearchScreenStyles,
+} from '../../styles/search.style';
 import { api } from '../../utils/api';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import BoarddetailADplaceholder from '../../src/screens/ad/boarddetailADplaceholder.jsx';
 
 function formatTimeAgo(createdAt) {
   if (!createdAt) return '';
-  let dateStr = typeof createdAt === 'string' ? createdAt.trim() : String(createdAt);
+  let dateStr =
+    typeof createdAt === 'string' ? createdAt.trim() : String(createdAt);
   if (!dateStr) return '';
-  if (/^\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}:\d{2}(\.\d+)?$/.test(dateStr) && !/[Z+-]/.test(dateStr)) {
+  if (
+    /^\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}:\d{2}(\.\d+)?$/.test(dateStr) &&
+    !/[Z+-]/.test(dateStr)
+  ) {
     dateStr = dateStr.replace(' ', 'T') + 'Z';
   }
   const date = new Date(dateStr);
@@ -50,7 +57,10 @@ function normalizeSearchText(q) {
 const SearchScreen = ({ navigation, route }) => {
   const { width } = useWindowDimensions();
   const normalize = useMemo(() => getNormalize(width), [width]);
-  const styles = useMemo(() => createSearchScreenStyles(width, normalize), [width, normalize]);
+  const styles = useMemo(
+    () => createSearchScreenStyles(width, normalize),
+    [width, normalize],
+  );
   const searchInputRef = useRef(null);
 
   const [searchText, setSearchText] = useState('');
@@ -87,10 +97,18 @@ const SearchScreen = ({ navigation, route }) => {
     (async () => {
       try {
         setTrendingLoading(true);
-        const res = await api.get('/api/search/trending', { params: { limit: 10 } });
-        const hashtags = Array.isArray(res?.data?.data?.hashtags) ? res.data.data.hashtags : [];
+        const res = await api.get('/api/search/trending', {
+          params: { limit: 10 },
+        });
+        const hashtags = Array.isArray(res?.data?.data?.hashtags)
+          ? res.data.data.hashtags
+          : [];
         const tags = hashtags
-          .map((tag) => String(tag || '').trim().replace(/^#+/, ''))
+          .map((tag) =>
+            String(tag || '')
+              .trim()
+              .replace(/^#+/, ''),
+          )
           .filter(Boolean);
         setRecommendedTags(tags);
       } catch {
@@ -147,119 +165,141 @@ const SearchScreen = ({ navigation, route }) => {
             behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
             keyboardVerticalOffset={0}
           >
-        <View style={styles.searchBarWrapper}>
-          <TouchableOpacity
-            onPress={() =>
-              navigation.reset({
-                index: 0,
-                routes: [{ name: 'Main' }],
-              })
-            }
-            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-            style={styles.searchBackButton}
-          >
-            <Ionicons name="chevron-back" size={normalize(24)} color={colors.textPrimary} />
-          </TouchableOpacity>
-          <View style={styles.searchInputRow}>
-            <Ionicons name="search-outline" size={normalize(18)} color={colors.textSecondary} />
-            <TextInput
-              ref={searchInputRef}
-              style={styles.searchInput}
-              placeholder="검색어를 입력하세요"
-              value={searchText}
-              onChangeText={handleChangeText}
-              onSubmitEditing={() => runSearch()}
-              placeholderTextColor={colors.textSecondary}
-              returnKeyType="search"
-              multiline={false}
-              numberOfLines={1}
-            />
-            <View style={styles.searchClearSlot}>
-              {searchText.length > 0 ? (
-                <TouchableOpacity
-                  onPress={() => {
-                    setSearchText('');
-                  }}
-                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                >
-                  <Ionicons name="close-circle" size={normalize(17)} color={colors.textLight20} />
-                </TouchableOpacity>
-              ) : null}
-            </View>
-          </View>
-        </View>
-
-        <ScrollView
-          style={styles.scrollView}
-          showsVerticalScrollIndicator={false}
-          keyboardShouldPersistTaps="handled"
-          keyboardDismissMode="on-drag"
-        >
-          <BoarddetailADplaceholder />
-          {recentSearches.length > 0 && (
-            <View style={styles.section}>
-              <View style={styles.sectionHeader}>
-                <Text style={styles.sectionTitle}>최근 검색어</Text>
-                <TouchableOpacity
-                  onPress={handleClearAll}
-                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                >
-                  <Text style={styles.dimAction}>전체 삭제</Text>
-                </TouchableOpacity>
+            <View style={styles.searchBarWrapper}>
+              <TouchableOpacity
+                onPress={() =>
+                  navigation.reset({
+                    index: 0,
+                    routes: [{ name: 'Main' }],
+                  })
+                }
+                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                style={styles.searchBackButton}
+              >
+                <Ionicons
+                  name="chevron-back"
+                  size={normalize(24)}
+                  color={colors.textPrimary}
+                />
+              </TouchableOpacity>
+              <View style={styles.searchInputRow}>
+                <Ionicons
+                  name="search-outline"
+                  size={normalize(18)}
+                  color={colors.textSecondary}
+                />
+                <TextInput
+                  ref={searchInputRef}
+                  style={styles.searchInput}
+                  placeholder="검색어를 입력하세요"
+                  value={searchText}
+                  onChangeText={handleChangeText}
+                  onSubmitEditing={() => runSearch()}
+                  placeholderTextColor={colors.textSecondary}
+                  returnKeyType="search"
+                  multiline={false}
+                  numberOfLines={1}
+                />
+                <View style={styles.searchClearSlot}>
+                  {searchText.length > 0 ? (
+                    <TouchableOpacity
+                      onPress={() => {
+                        setSearchText('');
+                      }}
+                      hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                    >
+                      <Ionicons
+                        name="close-circle"
+                        size={normalize(17)}
+                        color={colors.textLight20}
+                      />
+                    </TouchableOpacity>
+                  ) : null}
+                </View>
               </View>
-              {recentSearches.map((search, index) => (
-                <TouchableOpacity
-                  key={index}
-                  style={styles.recentRow}
-                  onPress={() => {
-                    const q = normalizeSearchText(search);
-                    setSearchText(q);
-                    runSearch(q);
-                  }}
-                  activeOpacity={0.6}
-                >
-                  <Ionicons name="time-outline" size={normalize(15)} color={colors.textLight20} />
-                  <Text style={styles.recentText}>{search}</Text>
-                  <TouchableOpacity
-                    onPress={() => handleDeleteRecent(index)}
-                    hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                    style={styles.recentDeleteBtn}
-                  >
-                    <Ionicons name="close" size={normalize(15)} color={colors.textLight20} />
-                  </TouchableOpacity>
-                </TouchableOpacity>
-              ))}
             </View>
-          )}
 
-          <View style={styles.sectionRecommendTags}>
-            <View style={styles.sectionHeader}>
-              <Text style={styles.sectionTitle}>인기 해시태그</Text>
-            </View>
-            <View style={styles.tagRow}>
-              {trendingLoading ? (
-                <Text style={styles.dimAction}>불러오는 중...</Text>
-              ) : recommendedTags.length > 0 ? (
-                recommendedTags.map((tag) => (
-                  <TouchableOpacity
-                    key={tag}
-                    style={styles.tag}
-                    onPress={() => {
-                      const q = normalizeSearchText(`#${tag}`);
-                      setSearchText(q);
-                      runSearch(q);
-                    }}
-                    activeOpacity={0.7}
-                  >
-                    <Text style={styles.tagText}># {tag}</Text>
-                  </TouchableOpacity>
-                ))
-              ) : (
-                <Text style={styles.dimAction}>해시태그 데이터를 집계 중입니다</Text>
+            <ScrollView
+              style={styles.scrollView}
+              showsVerticalScrollIndicator={false}
+              keyboardShouldPersistTaps="handled"
+              keyboardDismissMode="on-drag"
+            >
+              <BoarddetailADplaceholder />
+              {recentSearches.length > 0 && (
+                <View style={styles.section}>
+                  <View style={styles.sectionHeader}>
+                    <Text style={styles.sectionTitle}>최근 검색어</Text>
+                    <TouchableOpacity
+                      onPress={handleClearAll}
+                      hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                    >
+                      <Text style={styles.dimAction}>전체 삭제</Text>
+                    </TouchableOpacity>
+                  </View>
+                  {recentSearches.map((search, index) => (
+                    <TouchableOpacity
+                      key={index}
+                      style={styles.recentRow}
+                      onPress={() => {
+                        const q = normalizeSearchText(search);
+                        setSearchText(q);
+                        runSearch(q);
+                      }}
+                      activeOpacity={0.6}
+                    >
+                      <Ionicons
+                        name="time-outline"
+                        size={normalize(15)}
+                        color={colors.textLight20}
+                      />
+                      <Text style={styles.recentText}>{search}</Text>
+                      <TouchableOpacity
+                        onPress={() => handleDeleteRecent(index)}
+                        hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                        style={styles.recentDeleteBtn}
+                      >
+                        <Ionicons
+                          name="close"
+                          size={normalize(15)}
+                          color={colors.textLight20}
+                        />
+                      </TouchableOpacity>
+                    </TouchableOpacity>
+                  ))}
+                </View>
               )}
-            </View>
-          </View>
-        </ScrollView>
+
+              <View style={styles.sectionRecommendTags}>
+                <View style={styles.sectionHeader}>
+                  <Text style={styles.sectionTitle}>인기 해시태그</Text>
+                </View>
+                <View style={styles.tagRow}>
+                  {trendingLoading ? (
+                    <Text style={styles.dimAction}>불러오는 중...</Text>
+                  ) : recommendedTags.length > 0 ? (
+                    recommendedTags.map((tag) => (
+                      <TouchableOpacity
+                        key={tag}
+                        style={styles.tag}
+                        onPress={() => {
+                          const q = normalizeSearchText(`#${tag}`);
+                          setSearchText(q);
+                          runSearch(q);
+                        }}
+                        activeOpacity={0.7}
+                      >
+                        <Text style={styles.tagText}># {tag}</Text>
+                      </TouchableOpacity>
+                    ))
+                  ) : (
+                    <Text style={styles.dimAction}>
+                      해시태그 데이터를 집계 중입니다
+                    </Text>
+                  )}
+                </View>
+              </View>
+            </ScrollView>
           </KeyboardAvoidingView>
         </SafeAreaView>
       </TouchableWithoutFeedback>

@@ -101,9 +101,7 @@ const SearchSubHeader = ({
         </View>
 
         {/* 우측 추가 요소 (선택) */}
-        {rightElement && (
-          <View style={styles.rightSlot}>{rightElement}</View>
-        )}
+        {rightElement && <View style={styles.rightSlot}>{rightElement}</View>}
       </View>
     </>
   );

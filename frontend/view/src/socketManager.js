@@ -95,7 +95,9 @@ export const disconnectSocket = (opts = {}) => {
   const { force = false, reason = 'unspecified' } = opts;
   if (!force) {
     if (__DEV__) {
-      console.warn('[SocketManager] disconnectSocket 차단(force=false)', { reason });
+      console.warn('[SocketManager] disconnectSocket 차단(force=false)', {
+        reason,
+      });
     }
     return;
   }
@@ -126,4 +128,3 @@ export const off = (event, handler) => {
 };
 
 export const getSocket = () => socket;
-

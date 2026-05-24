@@ -114,11 +114,14 @@ function formatTimeAgo(createdAt) {
 
 export default function SearchResult({ route, navigation }) {
   const initialFromRoute = normalizeSearchText(route?.params?.query ?? '');
-  const initialSearchType = normalizeSearchText(route?.params?.searchType ?? '').toLowerCase();
+  const initialSearchType = normalizeSearchText(
+    route?.params?.searchType ?? '',
+  ).toLowerCase();
   const initialForcedHashtag = initialSearchType === 'hashtag';
   const [searchText, setSearchText] = useState(initialFromRoute);
   const [committedQuery, setCommittedQuery] = useState(initialFromRoute);
-  const [forceHashtagMode, setForceHashtagMode] = useState(initialForcedHashtag);
+  const [forceHashtagMode, setForceHashtagMode] =
+    useState(initialForcedHashtag);
   const [mode, setMode] = useState('result'); // 'input' | 'result'
   const [activeTab, setActiveTab] = useState('전체');
   const [sections, setSections] = useState({});
@@ -152,10 +155,7 @@ export default function SearchResult({ route, navigation }) {
     items.flatMap((item, index) => {
       const el = renderFn(item, index);
       if ((index + 1) % 5 === 0) {
-        return [
-          el,
-          <SearchAdPlaceholder key={`search_ad_${index}`} />,
-        ];
+        return [el, <SearchAdPlaceholder key={`search_ad_${index}`} />];
       }
       return [el];
     });
@@ -212,7 +212,9 @@ export default function SearchResult({ route, navigation }) {
       const mails = Array.isArray(data.schoolMails) ? data.schoolMails : [];
       const filteredPosts = searchIntent.isHashtag
         ? posts
-        : posts.filter((post) => includesIgnoreCase(post?.content, normalizedQuery));
+        : posts.filter((post) =>
+            includesIgnoreCase(post?.content, normalizedQuery),
+          );
       const filteredMails = searchIntent.isHashtag
         ? []
         : mails.filter((mail) =>
@@ -272,10 +274,18 @@ export default function SearchResult({ route, navigation }) {
     (async () => {
       try {
         setTrendingLoading(true);
-        const res = await api.get('/api/search/trending', { params: { limit: 10 } });
-        const hashtags = Array.isArray(res?.data?.data?.hashtags) ? res.data.data.hashtags : [];
+        const res = await api.get('/api/search/trending', {
+          params: { limit: 10 },
+        });
+        const hashtags = Array.isArray(res?.data?.data?.hashtags)
+          ? res.data.data.hashtags
+          : [];
         const tags = hashtags
-          .map((tag) => String(tag || '').trim().replace(/^#+/, ''))
+          .map((tag) =>
+            String(tag || '')
+              .trim()
+              .replace(/^#+/, ''),
+          )
           .filter(Boolean);
         setRecommendedTags(tags);
       } catch {
@@ -288,7 +298,9 @@ export default function SearchResult({ route, navigation }) {
 
   useEffect(() => {
     const q = normalizeSearchText(route?.params?.query ?? '');
-    const routeSearchType = normalizeSearchText(route?.params?.searchType ?? '').toLowerCase();
+    const routeSearchType = normalizeSearchText(
+      route?.params?.searchType ?? '',
+    ).toLowerCase();
     const isForcedHashtag = routeSearchType === 'hashtag';
     setSearchText(q);
     setCommittedQuery(q);
@@ -437,9 +449,17 @@ export default function SearchResult({ route, navigation }) {
                 keyboardDismissMode="on-drag"
               >
                 {!isInitialRenderReady ? (
-                  <View style={{ paddingHorizontal: normalize(18), paddingTop: normalize(14) }}>
+                  <View
+                    style={{
+                      paddingHorizontal: normalize(18),
+                      paddingTop: normalize(14),
+                    }}
+                  >
                     {[0, 1, 2, 3].map((idx) => (
-                      <View key={`search-skel-${idx}`} style={{ marginBottom: normalize(14) }}>
+                      <View
+                        key={`search-skel-${idx}`}
+                        style={{ marginBottom: normalize(14) }}
+                      >
                         <Skeleton
                           width={normalize(90)}
                           height={normalize(13)}
@@ -464,12 +484,7 @@ export default function SearchResult({ route, navigation }) {
                   <>
                     {/* 학교 매칭 카드들 (최대 5개) */}
                     {activeTab === '전체' && matchedSchools.length > 0 && (
-                      <View
-                        style={[
-                          s.section,
-                          s.sectionGapAfterSchool,
-                        ]}
-                      >
+                      <View style={[s.section, s.sectionGapAfterSchool]}>
                         <View style={s.sectionHeader}>
                           <View style={s.sectionTitleRow}>
                             <Text style={s.sectionTitle}>학교</Text>
@@ -526,7 +541,9 @@ export default function SearchResult({ route, navigation }) {
                               <Text style={s.sectionTitle}>{section}</Text>
                             </View>
                             <View style={s.countBadge}>
-                              <Text style={s.countBadgeText}>{items.length}건</Text>
+                              <Text style={s.countBadgeText}>
+                                {items.length}건
+                              </Text>
                             </View>
                           </View>
 
@@ -536,53 +553,59 @@ export default function SearchResult({ route, navigation }) {
                               idx < previewLen - 1 ||
                               (idx === previewLen - 1 && items.length > 3);
                             return (
-                            <TouchableOpacity
-                              key={item.id}
-                              style={[s.card, showCardDivider && s.cardBorder]}
-                              activeOpacity={0.7}
-                              onPress={() => {
-                                navigation.navigate('BoardDetail', {
-                                  postId: item.id,
-                                  fromSearch: true,
-                                });
-                              }}
-                            >
-                              <View style={s.contentTimeRow}>
-                                <View style={s.snippetWrap}>
-                                  {highlightSnippet(
-                                    makeSnippet(item.content, normalizedQuery),
-                                    normalizedQuery,
-                                    s.cardSnippet,
-                                  )}
-                                </View>
-                                <Text style={s.metaTimeInline}>
-                                  {getTimeText(item)}
-                                </Text>
-                              </View>
-                              <View style={s.metaBottomRow}>
-                                <View style={s.metaStatItem}>
-                                  <FontAwesome
-                                    name="heart-o"
-                                    size={normalize(14)}
-                                    color={colors.alert}
-                                  />
-                                  <Text style={s.metaStatText}>
-                                    {getLikeCount(item)}
+                              <TouchableOpacity
+                                key={item.id}
+                                style={[
+                                  s.card,
+                                  showCardDivider && s.cardBorder,
+                                ]}
+                                activeOpacity={0.7}
+                                onPress={() => {
+                                  navigation.navigate('BoardDetail', {
+                                    postId: item.id,
+                                    fromSearch: true,
+                                  });
+                                }}
+                              >
+                                <View style={s.contentTimeRow}>
+                                  <View style={s.snippetWrap}>
+                                    {highlightSnippet(
+                                      makeSnippet(
+                                        item.content,
+                                        normalizedQuery,
+                                      ),
+                                      normalizedQuery,
+                                      s.cardSnippet,
+                                    )}
+                                  </View>
+                                  <Text style={s.metaTimeInline}>
+                                    {getTimeText(item)}
                                   </Text>
                                 </View>
-                                <View style={s.metaStatItem}>
-                                  <Ionicons
-                                    name="chatbubble-outline"
-                                    size={normalize(15)}
-                                    color={colors.primary}
-                                  />
-                                  <Text style={s.metaStatText}>
-                                    {getCommentCount(item)}
-                                  </Text>
+                                <View style={s.metaBottomRow}>
+                                  <View style={s.metaStatItem}>
+                                    <FontAwesome
+                                      name="heart-o"
+                                      size={normalize(14)}
+                                      color={colors.alert}
+                                    />
+                                    <Text style={s.metaStatText}>
+                                      {getLikeCount(item)}
+                                    </Text>
+                                  </View>
+                                  <View style={s.metaStatItem}>
+                                    <Ionicons
+                                      name="chatbubble-outline"
+                                      size={normalize(15)}
+                                      color={colors.primary}
+                                    />
+                                    <Text style={s.metaStatText}>
+                                      {getCommentCount(item)}
+                                    </Text>
+                                  </View>
                                 </View>
-                              </View>
-                            </TouchableOpacity>
-                          );
+                              </TouchableOpacity>
+                            );
                           })}
 
                           {items.length > 3 && (
@@ -797,35 +820,35 @@ export default function SearchResult({ route, navigation }) {
                   {trendingLoading ? (
                     <Text style={s.dimAction}>불러오는 중...</Text>
                   ) : recommendedTags.length > 0 ? (
-                    recommendedTags.map(
-                      (tag) => (
-                        <TouchableOpacity
-                          key={tag}
-                          style={s.tag}
-                          onPress={() => {
-                            const q = normalizeSearchText(`#${tag}`);
-                            setSearchText(q);
-                            setCommittedQuery(q);
-                            setMode('result');
-                            setRecentSearches((prev) => {
-                              const filtered = prev.filter((item) => item !== q);
-                              const next = [q, ...filtered].slice(0, 10);
-                              saveRecent(next);
-                              return next;
-                            });
-                          }}
-                          activeOpacity={0.7}
-                        >
-                          <Text style={s.tagText}># {tag}</Text>
-                        </TouchableOpacity>
-                      ),
-                    )
+                    recommendedTags.map((tag) => (
+                      <TouchableOpacity
+                        key={tag}
+                        style={s.tag}
+                        onPress={() => {
+                          const q = normalizeSearchText(`#${tag}`);
+                          setSearchText(q);
+                          setCommittedQuery(q);
+                          setMode('result');
+                          setRecentSearches((prev) => {
+                            const filtered = prev.filter((item) => item !== q);
+                            const next = [q, ...filtered].slice(0, 10);
+                            saveRecent(next);
+                            return next;
+                          });
+                        }}
+                        activeOpacity={0.7}
+                      >
+                        <Text style={s.tagText}># {tag}</Text>
+                      </TouchableOpacity>
+                    ))
                   ) : (
                     <TouchableOpacity
                       onPress={() => navigation.navigate('BoardWrite')}
                       activeOpacity={0.7}
                     >
-                      <Text style={s.dimAction}>해시태그를 첨부하여 글을 작성해보세요!</Text>
+                      <Text style={s.dimAction}>
+                        해시태그를 첨부하여 글을 작성해보세요!
+                      </Text>
                     </TouchableOpacity>
                   )}
                 </View>

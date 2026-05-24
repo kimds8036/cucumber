@@ -34,8 +34,7 @@ export const createSearchResultStyles = (normalize) => {
       backgroundColor: colors.textLight5,
       borderRadius: normalize(999),
       paddingHorizontal: normalize(12),
-      paddingVertical:
-        Platform.OS === 'android' ? normalize(6) : normalize(7),
+      paddingVertical: Platform.OS === 'android' ? normalize(6) : normalize(7),
       gap: normalize(8),
       flex: 1,
     },
@@ -227,8 +226,7 @@ export const createSearchResultStyles = (normalize) => {
       borderBottomWidth: 1,
       borderBottomColor: colors.textLight10,
     },
-    fullCardBorder: {
-    },
+    fullCardBorder: {},
     fullTitle: {
       fontSize: normalize(fontSizes.xxl),
       fontFamily: fonts.bold,

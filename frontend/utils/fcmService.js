@@ -9,7 +9,10 @@ function getMessagingInstance() {
     const mod = require('@react-native-firebase/messaging');
     return mod?.default?.();
   } catch (error) {
-    console.warn('[FCM] messaging 모듈을 불러오지 못했습니다:', error?.message || error);
+    console.warn(
+      '[FCM] messaging 모듈을 불러오지 못했습니다:',
+      error?.message || error,
+    );
     return null;
   }
 }
@@ -19,9 +22,7 @@ async function uploadFCMToken(token) {
   try {
     const deviceId = await getDeviceId();
     const appVersion =
-      Constants.expoConfig?.version ||
-      Constants.nativeAppVersion ||
-      null;
+      Constants.expoConfig?.version || Constants.nativeAppVersion || null;
     await api.post('/api/users/fcm-token', {
       token,
       deviceId,
@@ -30,7 +31,10 @@ async function uploadFCMToken(token) {
     });
     console.log('[FCM] 서버에 토큰 저장 완료', { deviceId });
   } catch (error) {
-    console.error('[FCM] 서버 토큰 저장 실패:', error?.response?.data || error?.message || error);
+    console.error(
+      '[FCM] 서버 토큰 저장 실패:',
+      error?.response?.data || error?.message || error,
+    );
   }
 }
 
@@ -60,9 +64,7 @@ export const initFCM = async () => {
 
     if (Platform.OS === 'ios') {
       const authStatus = await messaging.requestPermission();
-      const authorized =
-        authStatus === 1 ||
-        authStatus === 2;
+      const authorized = authStatus === 1 || authStatus === 2;
       if (!authorized) {
         console.warn('[FCM] iOS 알림 권한이 허용되지 않았습니다.');
         return null;
@@ -98,10 +100,15 @@ export const setupFCMHandlers = (options = {}) => {
     onForegroundMessage?.(remoteMessage);
   });
 
-  const unsubscribeOnOpened = messaging.onNotificationOpenedApp((remoteMessage) => {
-    console.log('[FCM] 알림 탭으로 앱 오픈(onNotificationOpenedApp):', remoteMessage);
-    onNotificationOpened?.(remoteMessage);
-  });
+  const unsubscribeOnOpened = messaging.onNotificationOpenedApp(
+    (remoteMessage) => {
+      console.log(
+        '[FCM] 알림 탭으로 앱 오픈(onNotificationOpenedApp):',
+        remoteMessage,
+      );
+      onNotificationOpened?.(remoteMessage);
+    },
+  );
 
   const unsubscribeTokenRefresh = messaging.onTokenRefresh(async (token) => {
     console.log('[FCM] 토큰 갱신 이벤트');

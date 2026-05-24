@@ -88,7 +88,11 @@ export default function ImageViewer({ visible, uri, onClose }) {
       return;
     }
 
-    applyTranslation(lastTranslateXRef.current, lastTranslateYRef.current, clamped);
+    applyTranslation(
+      lastTranslateXRef.current,
+      lastTranslateYRef.current,
+      clamped,
+    );
   };
 
   const handleTouchStart = (e) => {
@@ -130,7 +134,11 @@ export default function ImageViewer({ visible, uri, onClose }) {
       }
 
       const ratio = dist / initialDistanceRef.current;
-      const nextScale = clamp(initialScaleRef.current * ratio, MIN_SCALE, MAX_SCALE);
+      const nextScale = clamp(
+        initialScaleRef.current * ratio,
+        MIN_SCALE,
+        MAX_SCALE,
+      );
       scaleRef.current = nextScale;
       scale.setValue(nextScale);
 
@@ -140,7 +148,11 @@ export default function ImageViewer({ visible, uri, onClose }) {
         translateX.setValue(0);
         translateY.setValue(0);
       } else {
-        applyTranslation(lastTranslateXRef.current, lastTranslateYRef.current, nextScale);
+        applyTranslation(
+          lastTranslateXRef.current,
+          lastTranslateYRef.current,
+          nextScale,
+        );
       }
       return;
     }

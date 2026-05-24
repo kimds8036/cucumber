@@ -242,7 +242,7 @@ export const createSignupStyles = (width, normalize) => {
       color: colors.textPrimary,
       marginBottom: normalize(12),
       backgroundColor: colors.background,
-      ...shadow.sm ,
+      ...shadow.sm,
     },
     inputReadonly: {
       backgroundColor: colors.textLight5,

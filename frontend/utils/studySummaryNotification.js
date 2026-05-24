@@ -19,7 +19,8 @@ export function normalizeStudySummaryWatchers(watchers) {
       const name = String(w.name ?? w.username ?? '').trim();
       const idRaw = w.userId ?? w.id ?? null;
       const userId = idRaw == null ? null : String(idRaw).trim();
-      const colorIdRaw = w.colorId ?? w.profileColorId ?? w.profile_color_id ?? null;
+      const colorIdRaw =
+        w.colorId ?? w.profileColorId ?? w.profile_color_id ?? null;
       const colorIdNum = Number(colorIdRaw);
       const colorId = Number.isFinite(colorIdNum) ? colorIdNum : null;
       if (!name && !userId) return null;

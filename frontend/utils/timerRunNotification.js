@@ -88,7 +88,8 @@ export async function cancelTimerRunningNotification() {
       ]);
       const targets = scheduled.filter(
         (n) =>
-          n?.content?.data?.identifier === TIMER_RUNNING_NOTIFICATION_IDENTIFIER,
+          n?.content?.data?.identifier ===
+          TIMER_RUNNING_NOTIFICATION_IDENTIFIER,
       );
       for (const n of targets) {
         await Notifications.cancelScheduledNotificationAsync(n.identifier);
@@ -106,9 +107,11 @@ export async function cancelTimerRunningNotification() {
         dismissedPresented: presentedTargets.length,
       });
     } catch (error) {
-      console.warn('[TimerNotification] cancel failed:', error?.message ?? error);
+      console.warn(
+        '[TimerNotification] cancel failed:',
+        error?.message ?? error,
+      );
     }
   });
   return timerNotificationOp;
 }
-

@@ -282,9 +282,7 @@ const MessageBubble = ({
               {msg.showTimestamp === true &&
                 msg.isReadByOther === false &&
                 !msg.isSending && (
-                  <Text style={chatStyles.chatUnreadCount}>
-                    1
-                  </Text>
+                  <Text style={chatStyles.chatUnreadCount}>1</Text>
                 )}
               {msg.showTimestamp === true ? (
                 <Text style={chatStyles.chatTimeUser}>{msg.time}</Text>
@@ -349,9 +347,7 @@ const MessageBubble = ({
                       {msg.content}
                     </Text>
                     {isLongMessage ? (
-                      <Pressable
-                        onPress={() => setIsExpanded((prev) => !prev)}
-                      >
+                      <Pressable onPress={() => setIsExpanded((prev) => !prev)}>
                         <Text style={chatStyles.chatTimeUser}>
                           {isExpanded ? '접기' : '전체보기'}
                         </Text>

@@ -31,7 +31,12 @@ const ChangeSchool = ({ navigation }) => {
   }, []);
 
   // TODO: 실제 학교 검색 API 연동
-  const mockSchools = ['오이고등학교', '서울고등학교', '부산고등학교', '대구고등학교'];
+  const mockSchools = [
+    '오이고등학교',
+    '서울고등학교',
+    '부산고등학교',
+    '대구고등학교',
+  ];
   const filtered = mockSchools.filter((name) => name.includes(query));
 
   const handleSelectSchool = (name) => {
@@ -45,8 +50,18 @@ const ChangeSchool = ({ navigation }) => {
       <SafeAreaView style={styles.root} edges={['top']}>
         <View style={{ flex: 1 }}>
           <View style={{ padding: 16 }}>
-            <Skeleton width={normalize(110)} height={normalize(18)} borderRadius={normalize(8)} style={{ marginBottom: normalize(14) }} />
-            <Skeleton width="100%" height={normalize(44)} borderRadius={normalize(12)} style={{ marginBottom: normalize(12) }} />
+            <Skeleton
+              width={normalize(110)}
+              height={normalize(18)}
+              borderRadius={normalize(8)}
+              style={{ marginBottom: normalize(14) }}
+            />
+            <Skeleton
+              width="100%"
+              height={normalize(44)}
+              borderRadius={normalize(12)}
+              style={{ marginBottom: normalize(12) }}
+            />
             {[0, 1, 2, 3].map((idx) => (
               <Skeleton
                 key={`change-school-skel-${idx}`}
@@ -70,13 +85,15 @@ const ChangeSchool = ({ navigation }) => {
           behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
           keyboardVerticalOffset={0}
         >
-          <SubHeader
-            title="학교 변경"
-            onBack={() => navigation.goBack()}
-          />
+          <SubHeader title="학교 변경" onBack={() => navigation.goBack()} />
           <View style={[styles.container, { paddingTop: normalize(8) }]}>
             <View style={styles.searchBox}>
-              <Ionicons name="search-outline" size={20} color="#999" style={{ marginRight: 8 }} />
+              <Ionicons
+                name="search-outline"
+                size={20}
+                color="#999"
+                style={{ marginRight: 8 }}
+              />
               <TextInput
                 style={styles.searchInput}
                 placeholder="학교 이름을 입력하세요"
@@ -159,4 +176,3 @@ const styles = StyleSheet.create({
 });
 
 export default ChangeSchool;
-

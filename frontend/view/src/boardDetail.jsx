@@ -1,6 +1,17 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { FlatList, InteractionManager, Platform, Text, View, useWindowDimensions } from 'react-native';
-import Animated, { runOnJS, useAnimatedStyle, useSharedValue } from 'react-native-reanimated';
+import {
+  FlatList,
+  InteractionManager,
+  Platform,
+  Text,
+  View,
+  useWindowDimensions,
+} from 'react-native';
+import Animated, {
+  runOnJS,
+  useAnimatedStyle,
+  useSharedValue,
+} from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import SubHeader from '../frame/subHeader';
 import CommentInput from '../../components/CommentInput.jsx';
@@ -24,7 +35,10 @@ export default function BoardDetail({ navigation, route }) {
   const { refreshHasUnread } = useNotification();
   const { width } = useWindowDimensions();
   const normalize = useMemo(() => getNormalize(width), [width]);
-  const styles = useMemo(() => createDetailStyles(width, normalize), [width, normalize]);
+  const styles = useMemo(
+    () => createDetailStyles(width, normalize),
+    [width, normalize],
+  );
 
   const routePost = route?.params?.post;
   const routePostId = route?.params?.postId;
@@ -60,7 +74,12 @@ export default function BoardDetail({ navigation, route }) {
 
   const openReportModal = (targetType, targetId) => {
     const id = targetType === 'comment' ? Number(targetId) : targetId;
-    if (id == null || id === '' || (targetType === 'comment' && !Number.isFinite(id))) return;
+    if (
+      id == null ||
+      id === '' ||
+      (targetType === 'comment' && !Number.isFinite(id))
+    )
+      return;
     setReportTargetType(targetType);
     setReportTargetId(id);
     setReportModalVisible(true);
@@ -132,7 +151,9 @@ export default function BoardDetail({ navigation, route }) {
       .filter((c) => !deletedSet.has(c.id))
       .map((c) => ({
         ...c,
-        replies: c.replies?.length ? filterCommentsTree(c.replies, deletedSet) : [],
+        replies: c.replies?.length
+          ? filterCommentsTree(c.replies, deletedSet)
+          : [],
       }));
   };
 
@@ -154,13 +175,19 @@ export default function BoardDetail({ navigation, route }) {
       const replies = c.replies || [];
       const flattened = flattenReplies(replies, 0, c.authorLabel);
       const isExpanded = expandedRepliesMap[c.id];
-      const repliesToShow = isExpanded ? flattened : flattened.slice(0, INITIAL_REPLIES);
+      const repliesToShow = isExpanded
+        ? flattened
+        : flattened.slice(0, INITIAL_REPLIES);
 
       for (const { reply, parentAuthorLabel } of repliesToShow) {
         result.push({ type: 'reply', data: reply, parentAuthorLabel });
       }
       if (flattened.length > INITIAL_REPLIES && !isExpanded) {
-        result.push({ type: 'more', commentId: c.id, count: flattened.length - INITIAL_REPLIES });
+        result.push({
+          type: 'more',
+          commentId: c.id,
+          count: flattened.length - INITIAL_REPLIES,
+        });
       }
       if (isExpanded && flattened.length > INITIAL_REPLIES) {
         result.push({ type: 'collapse', commentId: c.id });
@@ -171,17 +198,21 @@ export default function BoardDetail({ navigation, route }) {
 
   const visibleComments = useMemo(
     () => filterCommentsTree(allComments ?? [], new Set(deletedCommentIds)),
-    [allComments, deletedCommentIds]
+    [allComments, deletedCommentIds],
   );
 
   const flatComments = useMemo(
     () => buildFlatComments(visibleComments, expandedReplies),
-    [visibleComments, expandedReplies]
+    [visibleComments, expandedReplies],
   );
 
   const openFloatingMenu = (context, ref) => {
     const menuContext =
-      context === 'post' ? 'post' : Number.isFinite(Number(context)) ? Number(context) : context;
+      context === 'post'
+        ? 'post'
+        : Number.isFinite(Number(context))
+          ? Number(context)
+          : context;
     if (ref?.measureInWindow) {
       ref.measureInWindow((x, y) => {
         setFloatingMenuAnchor({ x, y });
@@ -197,7 +228,9 @@ export default function BoardDetail({ navigation, route }) {
 
   const scrollToComment = (commentId) => {
     const index = flatComments.findIndex(
-      (item) => (item.type === 'comment' || item.type === 'reply') && item.data.id === commentId
+      (item) =>
+        (item.type === 'comment' || item.type === 'reply') &&
+        item.data.id === commentId,
     );
     if (index === -1 || !scrollViewRef.current) return;
     try {
@@ -241,7 +274,7 @@ export default function BoardDetail({ navigation, route }) {
         }
       },
     },
-    [insets.bottom, replyToCommentId]
+    [insets.bottom, replyToCommentId],
   );
 
   const inputAnimStyle = useAnimatedStyle(() => ({
@@ -299,9 +332,12 @@ export default function BoardDetail({ navigation, route }) {
   const handleSendCommentWithScroll = async () => {
     await Promise.resolve(handleSendComment());
     if (replyToCommentId) return;
-    setTimeout(() => {
-      scrollViewRef.current?.scrollToEnd({ animated: true });
-    }, Platform.OS === 'ios' ? 120 : 80);
+    setTimeout(
+      () => {
+        scrollViewRef.current?.scrollToEnd({ animated: true });
+      },
+      Platform.OS === 'ios' ? 120 : 80,
+    );
   };
 
   const onTagPress = (label) => {
@@ -340,7 +376,8 @@ export default function BoardDetail({ navigation, route }) {
 
   const postImages = Array.isArray(post?.images) ? post.images : [];
   const hasAllImageRatios =
-    postImages.length === 0 || postImages.every((uri) => Boolean(imageRatios[uri]));
+    postImages.length === 0 ||
+    postImages.every((uri) => Boolean(imageRatios[uri]));
   const isWaitingImageLayout =
     !isInitialLoading &&
     postImages.length > 0 &&
@@ -364,66 +401,81 @@ export default function BoardDetail({ navigation, route }) {
   }, [isInitialLoading, hasAllImageRatios, postImages.length, post?.id]);
 
   return (
-    <View style={{ flex: 1, backgroundColor: styles.container.backgroundColor }}>
+    <View
+      style={{ flex: 1, backgroundColor: styles.container.backgroundColor }}
+    >
       <SafeAreaView style={styles.container} edges={['top']}>
-        <View style={{ zIndex: 1, elevation: 0, backgroundColor: colors.background }}>
+        <View
+          style={{
+            zIndex: 1,
+            elevation: 0,
+            backgroundColor: colors.background,
+          }}
+        >
           <SubHeader title="게시판" onBack={() => navigation.goBack()} />
         </View>
         <View
-          style={{ flex: 1, backgroundColor: colors.background, overflow: 'hidden', zIndex: 0 }}
+          style={{
+            flex: 1,
+            backgroundColor: colors.background,
+            overflow: 'hidden',
+            zIndex: 0,
+          }}
           pointerEvents="box-none"
         >
           <View style={{ flex: 1, flexDirection: 'column' }}>
             <Animated.View style={[{ flex: 1 }, listAnimStyle]}>
               <FlatList
-              ref={scrollViewRef}
-              style={[{ flex: 1 }, showInitialSkeleton && { opacity: 0 }]}
-              pointerEvents={showInitialSkeleton ? 'none' : 'auto'}
-              data={flatComments}
-              keyExtractor={commentTree.keyExtractor}
-              renderItem={commentTree.renderItem}
-              ListHeaderComponent={
-                <View>
-                  <BoardPostContent
-                    post={post}
-                    postLiked={postLiked}
-                    postScrapped={postScrapped}
-                    isMyPostFromApi={isMyPostFromApi}
-                    onLike={handlePostLike}
-                    onScrap={handlePostScrap}
-                    onMenu={() => openFloatingMenu('post', postMenuButtonRef.current)}
-                    onTagPress={onTagPress}
-                    onImagePress={setViewerUri}
-                    onImageLoad={onImageLoad}
-                    imageRatios={imageRatios}
-                    styles={styles}
-                    normalize={normalize}
-                    width={width}
-                    postMenuButtonRef={postMenuButtonRef}
-                    showDistanceBadge={permissionGranted}
-                    distanceStale={distanceStale}
-                    distanceLoading={distanceLoading}
-                  />
-                  <BoarddetailADplaceholder styles={styles} />
-                </View>
-              }
-              contentContainerStyle={[
-                styles.scrollContent,
-                { paddingBottom: 0 },
-              ]}
-              onScrollToIndexFailed={(info) => {
-                setTimeout(() => {
-                  scrollViewRef.current?.scrollToIndex({
-                    index: info.index,
-                    animated: true,
-                    viewOffset: normalize(80),
-                  });
-                }, 100);
-              }}
-              showsVerticalScrollIndicator={false}
-              keyboardShouldPersistTaps="handled"
-              keyboardDismissMode="on-drag"
-            />
+                ref={scrollViewRef}
+                style={[{ flex: 1 }, showInitialSkeleton && { opacity: 0 }]}
+                pointerEvents={showInitialSkeleton ? 'none' : 'auto'}
+                data={flatComments}
+                keyExtractor={commentTree.keyExtractor}
+                renderItem={commentTree.renderItem}
+                ListHeaderComponent={
+                  <View>
+                    <BoardPostContent
+                      post={post}
+                      postLiked={postLiked}
+                      postScrapped={postScrapped}
+                      isMyPostFromApi={isMyPostFromApi}
+                      onLike={handlePostLike}
+                      onScrap={handlePostScrap}
+                      onMenu={() =>
+                        openFloatingMenu('post', postMenuButtonRef.current)
+                      }
+                      onTagPress={onTagPress}
+                      onImagePress={setViewerUri}
+                      onImageLoad={onImageLoad}
+                      imageRatios={imageRatios}
+                      styles={styles}
+                      normalize={normalize}
+                      width={width}
+                      postMenuButtonRef={postMenuButtonRef}
+                      showDistanceBadge={permissionGranted}
+                      distanceStale={distanceStale}
+                      distanceLoading={distanceLoading}
+                    />
+                    <BoarddetailADplaceholder styles={styles} />
+                  </View>
+                }
+                contentContainerStyle={[
+                  styles.scrollContent,
+                  { paddingBottom: 0 },
+                ]}
+                onScrollToIndexFailed={(info) => {
+                  setTimeout(() => {
+                    scrollViewRef.current?.scrollToIndex({
+                      index: info.index,
+                      animated: true,
+                      viewOffset: normalize(80),
+                    });
+                  }, 100);
+                }}
+                showsVerticalScrollIndicator={false}
+                keyboardShouldPersistTaps="handled"
+                keyboardDismissMode="on-drag"
+              />
             </Animated.View>
             {showInitialSkeleton ? (
               <View
@@ -438,10 +490,20 @@ export default function BoardDetail({ navigation, route }) {
                 }}
               >
                 <View style={styles.contentSection}>
-                  <View style={{ flexDirection: 'row', marginBottom: normalize(8) }}>
-                    <Skeleton width={normalize(52)} height={normalize(12)} borderRadius={normalize(6)} />
+                  <View
+                    style={{ flexDirection: 'row', marginBottom: normalize(8) }}
+                  >
+                    <Skeleton
+                      width={normalize(52)}
+                      height={normalize(12)}
+                      borderRadius={normalize(6)}
+                    />
                     <View style={{ width: normalize(8) }} />
-                    <Skeleton width={normalize(68)} height={normalize(12)} borderRadius={normalize(6)} />
+                    <Skeleton
+                      width={normalize(68)}
+                      height={normalize(12)}
+                      borderRadius={normalize(6)}
+                    />
                   </View>
                   <Skeleton
                     width="100%"
@@ -461,18 +523,45 @@ export default function BoardDetail({ navigation, route }) {
                     borderRadius={normalize(10)}
                     style={{ marginBottom: normalize(10) }}
                   />
-                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: normalize(14) }}>
-                    <Skeleton width={normalize(34)} height={normalize(14)} borderRadius={normalize(6)} />
-                    <Skeleton width={normalize(34)} height={normalize(14)} borderRadius={normalize(6)} />
-                    <Skeleton width={normalize(34)} height={normalize(14)} borderRadius={normalize(6)} />
+                  <View
+                    style={{
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                      gap: normalize(14),
+                    }}
+                  >
+                    <Skeleton
+                      width={normalize(34)}
+                      height={normalize(14)}
+                      borderRadius={normalize(6)}
+                    />
+                    <Skeleton
+                      width={normalize(34)}
+                      height={normalize(14)}
+                      borderRadius={normalize(6)}
+                    />
+                    <Skeleton
+                      width={normalize(34)}
+                      height={normalize(14)}
+                      borderRadius={normalize(6)}
+                    />
                   </View>
                 </View>
                 <View style={styles.adSection}>
-                  <Skeleton width={normalize(36)} height={normalize(12)} borderRadius={normalize(6)} />
+                  <Skeleton
+                    width={normalize(36)}
+                    height={normalize(12)}
+                    borderRadius={normalize(6)}
+                  />
                 </View>
-                <View style={[styles.commentSection, { paddingTop: normalize(10) }]}>
+                <View
+                  style={[styles.commentSection, { paddingTop: normalize(10) }]}
+                >
                   {[0, 1, 2].map((idx) => (
-                    <View key={`board-detail-comment-skel-${idx}`} style={styles.commentItem}>
+                    <View
+                      key={`board-detail-comment-skel-${idx}`}
+                      style={styles.commentItem}
+                    >
                       <Skeleton
                         width={normalize(120)}
                         height={normalize(11)}

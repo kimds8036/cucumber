@@ -17,7 +17,9 @@ export function useFriendStudyEvents({
     };
 
     const summaryHandler = (payload) => {
-      const rawWatchers = Array.isArray(payload?.watchers) ? payload.watchers : [];
+      const rawWatchers = Array.isArray(payload?.watchers)
+        ? payload.watchers
+        : [];
       const watchers = rawWatchers
         .map((w, idx) => {
           if (!w || typeof w !== 'object') return null;

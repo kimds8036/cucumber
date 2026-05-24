@@ -1,5 +1,22 @@
-import React, { useEffect, useState, useMemo, useRef, useCallback } from 'react';
-import { View, Text, TextInput, TouchableOpacity, useWindowDimensions, Platform, Keyboard, TouchableWithoutFeedback, Alert, Modal } from 'react-native';
+import React, {
+  useEffect,
+  useState,
+  useMemo,
+  useRef,
+  useCallback,
+} from 'react';
+import {
+  View,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  useWindowDimensions,
+  Platform,
+  Keyboard,
+  TouchableWithoutFeedback,
+  Alert,
+  Modal,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
 import { createLoginStyles } from '../../styles/login.style';
@@ -50,9 +67,11 @@ const PRE_RELEASE_AUTH_FEATURE_MESSAGE =
   '해당 기능은 이미 구현되어 있으나, 아직 로그인 화면과 연결되어 있지 않습니다.\n정식 출시 시 이용하실 수 있습니다.';
 
 function showPreReleaseAuthFeatureAlert() {
-  Alert.alert(PRE_RELEASE_AUTH_FEATURE_TITLE, PRE_RELEASE_AUTH_FEATURE_MESSAGE, [
-    { text: '확인' },
-  ]);
+  Alert.alert(
+    PRE_RELEASE_AUTH_FEATURE_TITLE,
+    PRE_RELEASE_AUTH_FEATURE_MESSAGE,
+    [{ text: '확인' }],
+  );
 }
 
 function formatSuspendedUntil(raw) {
@@ -97,10 +116,16 @@ const Login = ({ navigation }) => {
   }, []);
 
   useEffect(() => {
-    const showEvent = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
-    const hideEvent = Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide';
-    const showSub = Keyboard.addListener(showEvent, () => setKeyboardOpen(true));
-    const hideSub = Keyboard.addListener(hideEvent, () => setKeyboardOpen(false));
+    const showEvent =
+      Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
+    const hideEvent =
+      Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide';
+    const showSub = Keyboard.addListener(showEvent, () =>
+      setKeyboardOpen(true),
+    );
+    const hideSub = Keyboard.addListener(hideEvent, () =>
+      setKeyboardOpen(false),
+    );
     return () => {
       showSub.remove();
       hideSub.remove();
@@ -122,15 +147,49 @@ const Login = ({ navigation }) => {
   if (!screenReady) {
     return (
       <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
-        <View style={{ flex: 1, justifyContent: 'center', paddingHorizontal: normalize(24) }}>
+        <View
+          style={{
+            flex: 1,
+            justifyContent: 'center',
+            paddingHorizontal: normalize(24),
+          }}
+        >
           <View style={{ alignItems: 'center', marginBottom: normalize(28) }}>
-            <Skeleton width={normalize(120)} height={normalize(120)} borderRadius={normalize(60)} />
-            <Skeleton width={normalize(130)} height={normalize(22)} borderRadius={normalize(8)} style={{ marginTop: normalize(14) }} />
+            <Skeleton
+              width={normalize(120)}
+              height={normalize(120)}
+              borderRadius={normalize(60)}
+            />
+            <Skeleton
+              width={normalize(130)}
+              height={normalize(22)}
+              borderRadius={normalize(8)}
+              style={{ marginTop: normalize(14) }}
+            />
           </View>
-          <Skeleton width="100%" height={normalize(50)} borderRadius={normalize(20)} style={{ marginBottom: normalize(12) }} />
-          <Skeleton width="100%" height={normalize(50)} borderRadius={normalize(20)} style={{ marginBottom: normalize(12) }} />
-          <Skeleton width={normalize(92)} height={normalize(16)} borderRadius={normalize(8)} style={{ marginBottom: normalize(24) }} />
-          <Skeleton width="95%" height={normalize(50)} borderRadius={normalize(20)} />
+          <Skeleton
+            width="100%"
+            height={normalize(50)}
+            borderRadius={normalize(20)}
+            style={{ marginBottom: normalize(12) }}
+          />
+          <Skeleton
+            width="100%"
+            height={normalize(50)}
+            borderRadius={normalize(20)}
+            style={{ marginBottom: normalize(12) }}
+          />
+          <Skeleton
+            width={normalize(92)}
+            height={normalize(16)}
+            borderRadius={normalize(8)}
+            style={{ marginBottom: normalize(24) }}
+          />
+          <Skeleton
+            width="95%"
+            height={normalize(50)}
+            borderRadius={normalize(20)}
+          />
         </View>
       </SafeAreaView>
     );
@@ -201,9 +260,15 @@ const Login = ({ navigation }) => {
               onPress={() => setRememberMe(!rememberMe)}
               activeOpacity={0.7}
             >
-              <View style={[styles.checkbox, rememberMe && styles.checkboxChecked]}>
+              <View
+                style={[styles.checkbox, rememberMe && styles.checkboxChecked]}
+              >
                 {rememberMe && (
-                  <Ionicons name="checkmark" size={normalize(14)} color={colors.background} />
+                  <Ionicons
+                    name="checkmark"
+                    size={normalize(14)}
+                    color={colors.background}
+                  />
                 )}
               </View>
               <Text style={styles.checkboxText}>자동 로그인</Text>
@@ -348,19 +413,58 @@ const Login = ({ navigation }) => {
         visible={policyModal.visible}
         transparent
         animationType="fade"
-        onRequestClose={() => setPolicyModal((prev) => ({ ...prev, visible: false }))}
+        onRequestClose={() =>
+          setPolicyModal((prev) => ({ ...prev, visible: false }))
+        }
       >
-        <TouchableWithoutFeedback onPress={() => setPolicyModal((prev) => ({ ...prev, visible: false }))}>
-          <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.38)', justifyContent: 'center', paddingHorizontal: normalize(24) }}>
+        <TouchableWithoutFeedback
+          onPress={() =>
+            setPolicyModal((prev) => ({ ...prev, visible: false }))
+          }
+        >
+          <View
+            style={{
+              flex: 1,
+              backgroundColor: 'rgba(0,0,0,0.38)',
+              justifyContent: 'center',
+              paddingHorizontal: normalize(24),
+            }}
+          >
             <TouchableWithoutFeedback>
-              <View style={{ backgroundColor: '#fff', borderRadius: normalize(14), padding: normalize(18) }}>
-                <Text style={{ fontSize: normalize(17), fontWeight: '700', color: colors.textPrimary, marginBottom: normalize(10) }}>
+              <View
+                style={{
+                  backgroundColor: '#fff',
+                  borderRadius: normalize(14),
+                  padding: normalize(18),
+                }}
+              >
+                <Text
+                  style={{
+                    fontSize: normalize(17),
+                    fontWeight: '700',
+                    color: colors.textPrimary,
+                    marginBottom: normalize(10),
+                  }}
+                >
                   {policyModal.title}
                 </Text>
-                <Text style={{ fontSize: normalize(15), fontWeight: '700', color: '#D32F2F', marginBottom: normalize(10) }}>
+                <Text
+                  style={{
+                    fontSize: normalize(15),
+                    fontWeight: '700',
+                    color: '#D32F2F',
+                    marginBottom: normalize(10),
+                  }}
+                >
                   {policyModal.highlight}
                 </Text>
-                <Text style={{ fontSize: normalize(14), lineHeight: normalize(20), color: colors.textSecondary }}>
+                <Text
+                  style={{
+                    fontSize: normalize(14),
+                    lineHeight: normalize(20),
+                    color: colors.textSecondary,
+                  }}
+                >
                   {policyModal.body}
                 </Text>
                 <View
@@ -388,7 +492,9 @@ const Login = ({ navigation }) => {
                       });
                     }}
                   >
-                    <Text style={{ color: colors.primary, fontWeight: '700' }}>문의하기</Text>
+                    <Text style={{ color: colors.primary, fontWeight: '700' }}>
+                      문의하기
+                    </Text>
                   </TouchableOpacity>
                   <TouchableOpacity
                     style={{
@@ -397,9 +503,13 @@ const Login = ({ navigation }) => {
                       paddingVertical: normalize(8),
                       paddingHorizontal: normalize(14),
                     }}
-                    onPress={() => setPolicyModal((prev) => ({ ...prev, visible: false }))}
+                    onPress={() =>
+                      setPolicyModal((prev) => ({ ...prev, visible: false }))
+                    }
                   >
-                    <Text style={{ color: '#fff', fontWeight: '700' }}>확인</Text>
+                    <Text style={{ color: '#fff', fontWeight: '700' }}>
+                      확인
+                    </Text>
                   </TouchableOpacity>
                 </View>
               </View>

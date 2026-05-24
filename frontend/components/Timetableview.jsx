@@ -18,7 +18,10 @@ import { createTimetableViewStyles } from '../src/screens/timetable/timetable.st
 import { getMaxPeriodFromTimetableKeys } from '../src/screens/timetable/periodUtils';
 
 const DAYS = ['월', '화', '수', '목', '금'];
-const normalizeSubject = (value) => String(value || '').trim().toLowerCase();
+const normalizeSubject = (value) =>
+  String(value || '')
+    .trim()
+    .toLowerCase();
 
 const getSubjectColorIndex = (subject) => {
   const key = normalizeSubject(subject);
@@ -64,11 +67,13 @@ const TimetableView = ({
     if (!safeTimetable) return map;
 
     const used = new Set();
-    const subjects = [...new Set(
-      Object.values(safeTimetable)
-        .map((v) => normalizeSubject(v))
-        .filter(Boolean),
-    )];
+    const subjects = [
+      ...new Set(
+        Object.values(safeTimetable)
+          .map((v) => normalizeSubject(v))
+          .filter(Boolean),
+      ),
+    ];
 
     subjects.forEach((subject) => {
       const base = getSubjectColorIndex(subject);
@@ -91,7 +96,10 @@ const TimetableView = ({
   const getCellColor = (content) => {
     const key = normalizeSubject(content);
     if (!key) return null;
-    return subjectColorMap[key] || TIMETABLE_SUBJECT_COLORS[getSubjectColorIndex(key)];
+    return (
+      subjectColorMap[key] ||
+      TIMETABLE_SUBJECT_COLORS[getSubjectColorIndex(key)]
+    );
   };
 
   const handleNavigateToCellEdit = useCallback(() => {
@@ -111,151 +119,164 @@ const TimetableView = ({
     try {
       const { status } = await MediaLibrary.requestPermissionsAsync();
       if (status !== 'granted') {
-        Alert.alert('권한 필요', '사진 저장을 위해 갤러리 접근 권한이 필요해요');
+        Alert.alert(
+          '권한 필요',
+          '사진 저장을 위해 갤러리 접근 권한이 필요해요',
+        );
         return;
       }
       const uri = await captureTimetableRef.current.capture();
       await MediaLibrary.saveToLibraryAsync(uri);
       setShowSaveModal(true);
     } catch (e) {
-      Alert.alert('저장 실패', e?.message || '이미지 저장에 실패했어요. 다시 시도해 주세요');
+      Alert.alert(
+        '저장 실패',
+        e?.message || '이미지 저장에 실패했어요. 다시 시도해 주세요',
+      );
     }
   }, []);
 
   return (
     <>
-    <View style={styles.wrapper}>
-      <View style={styles.timetableContainer}>
-        <ViewShot
-          ref={captureTimetableRef}
-          options={{ format: 'png', quality: 1 }}
-          style={styles.timetableViewShot}
-          collapsable={false}
-        >
-          <View style={styles.daysRow}>
-            <View style={styles.periodHeaderCell} />
-            {DAYS.map((day) => (
-              <View key={day} style={styles.dayCell}>
-                <Text style={styles.dayText}>{day}</Text>
+      <View style={styles.wrapper}>
+        <View style={styles.timetableContainer}>
+          <ViewShot
+            ref={captureTimetableRef}
+            options={{ format: 'png', quality: 1 }}
+            style={styles.timetableViewShot}
+            collapsable={false}
+          >
+            <View style={styles.daysRow}>
+              <View style={styles.periodHeaderCell} />
+              {DAYS.map((day) => (
+                <View key={day} style={styles.dayCell}>
+                  <Text style={styles.dayText}>{day}</Text>
+                </View>
+              ))}
+            </View>
+
+            {periods.map((period) => (
+              <View key={period} style={styles.row}>
+                <View style={styles.periodCell}>
+                  <Text style={styles.periodText}>{period}</Text>
+                </View>
+                {DAYS.map((day) => {
+                  const content = getCellContent(day, period);
+                  const cellStyle = [
+                    styles.classCell,
+                    content ? styles.classCellFilled : null,
+                    content ? { backgroundColor: getCellColor(content) } : null,
+                  ];
+                  return (
+                    <View key={`${day}-${period}`} style={cellStyle}>
+                      <Text
+                        style={[
+                          styles.classCellText,
+                          content ? styles.classCellTextFilled : null,
+                        ]}
+                        lineBreakMode="wordWrapping"
+                        lineBreakStrategyIOS="hangul-word"
+                      >
+                        {content}
+                      </Text>
+                    </View>
+                  );
+                })}
               </View>
             ))}
-          </View>
+          </ViewShot>
 
-          {periods.map((period) => (
-            <View key={period} style={styles.row}>
-              <View style={styles.periodCell}>
-                <Text style={styles.periodText}>{period}</Text>
+          <View style={styles.mergedFooterRow}>
+            <View style={styles.mergedFooterFullCell} pointerEvents="box-none">
+              <View style={styles.mergedFooterActionRow}>
+                <TouchableOpacity
+                  style={styles.refreshButton}
+                  onPress={onResetPress}
+                  activeOpacity={0.7}
+                >
+                  <AntDesign
+                    name="reload"
+                    size={16}
+                    color={styles.footerResetLabel.color}
+                  />
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={styles.refreshButton}
+                  onPress={handleNavigateToCellEdit}
+                  activeOpacity={0.7}
+                >
+                  <Feather
+                    name="edit"
+                    size={16}
+                    color={styles.footerResetLabel.color}
+                  />
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={styles.refreshButton}
+                  onPress={handleSaveAsImage}
+                  activeOpacity={0.7}
+                >
+                  <Feather
+                    name="download"
+                    size={16}
+                    color={styles.footerResetLabel.color}
+                  />
+                </TouchableOpacity>
               </View>
-              {DAYS.map((day) => {
-                const content = getCellContent(day, period);
-                const cellStyle = [
-                  styles.classCell,
-                  content ? styles.classCellFilled : null,
-                  content ? { backgroundColor: getCellColor(content) } : null,
-                ];
-                return (
-                  <View key={`${day}-${period}`} style={cellStyle}>
-                    <Text
-                      style={[styles.classCellText, content ? styles.classCellTextFilled : null]}
-                      lineBreakMode="wordWrapping"
-                      lineBreakStrategyIOS="hangul-word"
-                    >
-                      {content}
-                    </Text>
-                  </View>
-                );
-              })}
-            </View>
-          ))}
-        </ViewShot>
-
-        <View style={styles.mergedFooterRow}>
-          <View style={styles.mergedFooterFullCell} pointerEvents="box-none">
-            <View style={styles.mergedFooterActionRow}>
-              <TouchableOpacity style={styles.refreshButton} onPress={onResetPress} activeOpacity={0.7}>
-                <AntDesign
-                  name="reload"
-                  size={16}
-                  color={styles.footerResetLabel.color}
-                />
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={styles.refreshButton}
-                onPress={handleNavigateToCellEdit}
-                activeOpacity={0.7}
-              >
-                <Feather
-                  name="edit"
-                  size={16}
-                  color={styles.footerResetLabel.color}
-                />
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={styles.refreshButton}
-                onPress={handleSaveAsImage}
-                activeOpacity={0.7}
-              >
-                <Feather
-                  name="download"
-                  size={16}
-                  color={styles.footerResetLabel.color}
-                />
-              </TouchableOpacity>
             </View>
           </View>
         </View>
       </View>
-    </View>
 
-    <AppPopupModal
-      visible={showSaveModal}
-      onClose={() => setShowSaveModal(false)}
-      dismissOnBackdrop={false}
-    >
-      <Text
-        style={{
-          fontSize: 18,
-          color: colors.textPrimary,
-          fontWeight: '700',
-          textAlign: 'center',
-          marginBottom: 10,
-        }}
-      >
-        저장 완료
-      </Text>
-      <Text
-        style={{
-          fontSize: 14,
-          color: colors.textSecondary,
-          textAlign: 'center',
-          lineHeight: 22,
-          marginBottom: 16,
-        }}
-      >
-        갤러리에 저장되었어요
-      </Text>
-      <TouchableOpacity
-        style={{
-          height: 42,
-          borderRadius: 10,
-          backgroundColor: colors.primary,
-          alignItems: 'center',
-          justifyContent: 'center',
-        }}
-        onPress={() => setShowSaveModal(false)}
-        activeOpacity={0.85}
+      <AppPopupModal
+        visible={showSaveModal}
+        onClose={() => setShowSaveModal(false)}
+        dismissOnBackdrop={false}
       >
         <Text
           style={{
-            fontSize: 14,
+            fontSize: 18,
+            color: colors.textPrimary,
             fontWeight: '700',
-            color: colors.textWhite,
+            textAlign: 'center',
+            marginBottom: 10,
           }}
         >
-          확인
+          저장 완료
         </Text>
-      </TouchableOpacity>
-    </AppPopupModal>
+        <Text
+          style={{
+            fontSize: 14,
+            color: colors.textSecondary,
+            textAlign: 'center',
+            lineHeight: 22,
+            marginBottom: 16,
+          }}
+        >
+          갤러리에 저장되었어요
+        </Text>
+        <TouchableOpacity
+          style={{
+            height: 42,
+            borderRadius: 10,
+            backgroundColor: colors.primary,
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}
+          onPress={() => setShowSaveModal(false)}
+          activeOpacity={0.85}
+        >
+          <Text
+            style={{
+              fontSize: 14,
+              fontWeight: '700',
+              color: colors.textWhite,
+            }}
+          >
+            확인
+          </Text>
+        </TouchableOpacity>
+      </AppPopupModal>
     </>
   );
 };

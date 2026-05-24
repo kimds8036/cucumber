@@ -334,7 +334,7 @@ export const createFriendStyles = (normalize) =>
       color: colors.alert,
     },
     sheetBlockActionTitle: {
-      fontSize: normalize(fontSizes.xl+1),
+      fontSize: normalize(fontSizes.xl + 1),
       fontFamily: fonts.regular,
       color: colors.textSecondary,
     },

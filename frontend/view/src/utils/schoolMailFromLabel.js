@@ -8,9 +8,10 @@ export function getSchoolMailFromLabel(mail, mailboxSchoolId) {
     mailboxSchoolId != null && mailboxSchoolId !== ''
       ? String(mailboxSchoolId)
       : String(mail.school_id ?? '');
-  const author = mail.author_school_id != null && mail.author_school_id !== ''
-    ? String(mail.author_school_id)
-    : '';
+  const author =
+    mail.author_school_id != null && mail.author_school_id !== ''
+      ? String(mail.author_school_id)
+      : '';
   if (box && author && author === box) return '재학생';
   const name = (mail.author_school_name || '').trim();
   return name ? name : '학생';
@@ -22,12 +23,20 @@ export function getSchoolMailFromLabel(mail, mailboxSchoolId) {
  * - 우편함 학교와 동일 학교 → "재학생"
  * - 그 외 → 타학교명 (getSchoolMailFromLabel 과 동일)
  */
-export function getSchoolMailCommentAuthorLabel(comment, mailboxSchoolId, mailAuthorUserId) {
+export function getSchoolMailCommentAuthorLabel(
+  comment,
+  mailboxSchoolId,
+  mailAuthorUserId,
+) {
   if (!comment) return '학생';
   const commentUserId =
-    comment.user_id != null && comment.user_id !== '' ? Number(comment.user_id) : null;
+    comment.user_id != null && comment.user_id !== ''
+      ? Number(comment.user_id)
+      : null;
   const mailUid =
-    mailAuthorUserId != null && mailAuthorUserId !== '' ? Number(mailAuthorUserId) : null;
+    mailAuthorUserId != null && mailAuthorUserId !== ''
+      ? Number(mailAuthorUserId)
+      : null;
   if (
     commentUserId != null &&
     mailUid != null &&

@@ -191,4 +191,3 @@ export const SUBJECT_COLORS = [
   '#36b2c8',
   '#e06ead',
 ];
-

@@ -43,16 +43,37 @@ const IDfind = ({ navigation }) => {
       <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
         <View style={styles.headerSection}>
           <View style={styles.headerTop}>
-            <Skeleton width={normalize(24)} height={normalize(24)} borderRadius={normalize(12)} />
-            <Skeleton width={normalize(84)} height={normalize(18)} borderRadius={normalize(8)} />
+            <Skeleton
+              width={normalize(24)}
+              height={normalize(24)}
+              borderRadius={normalize(12)}
+            />
+            <Skeleton
+              width={normalize(84)}
+              height={normalize(18)}
+              borderRadius={normalize(8)}
+            />
           </View>
         </View>
         <View style={styles.contentSection}>
-          <Skeleton width="70%" height={normalize(14)} borderRadius={normalize(6)} style={{ marginBottom: normalize(16) }} />
-          <Skeleton width="100%" height={normalize(92)} borderRadius={normalize(12)} />
+          <Skeleton
+            width="70%"
+            height={normalize(14)}
+            borderRadius={normalize(6)}
+            style={{ marginBottom: normalize(16) }}
+          />
+          <Skeleton
+            width="100%"
+            height={normalize(92)}
+            borderRadius={normalize(12)}
+          />
         </View>
         <View style={styles.footerSection}>
-          <Skeleton width="100%" height={normalize(50)} borderRadius={normalize(14)} />
+          <Skeleton
+            width="100%"
+            height={normalize(50)}
+            borderRadius={normalize(14)}
+          />
         </View>
       </SafeAreaView>
     );
@@ -62,8 +83,15 @@ const IDfind = ({ navigation }) => {
     <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
       <View style={styles.headerSection}>
         <View style={styles.headerTop}>
-          <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
-            <Ionicons name="chevron-back" size={normalize(24)} color={colors.textPrimary} />
+          <TouchableOpacity
+            style={styles.backButton}
+            onPress={() => navigation.goBack()}
+          >
+            <Ionicons
+              name="chevron-back"
+              size={normalize(24)}
+              color={colors.textPrimary}
+            />
           </TouchableOpacity>
           <Text style={styles.headerTitle}>아이디 찾기</Text>
         </View>
@@ -80,20 +108,26 @@ const IDfind = ({ navigation }) => {
             keyboardDismissMode="on-drag"
             contentContainerStyle={{ paddingBottom: normalize(20) }}
           >
-          <Text style={styles.helperText}>PASS 인증은 다음 배포에서 실제 연동됩니다.</Text>
+            <Text style={styles.helperText}>
+              PASS 인증은 다음 배포에서 실제 연동됩니다.
+            </Text>
 
-          {foundId ? (
-            <View style={styles.resultCard}>
-              <Text style={styles.resultTitle}>확인된 아이디</Text>
-              <Text style={styles.resultValue}>{foundId}</Text>
-            </View>
-          ) : null}
+            {foundId ? (
+              <View style={styles.resultCard}>
+                <Text style={styles.resultTitle}>확인된 아이디</Text>
+                <Text style={styles.resultValue}>{foundId}</Text>
+              </View>
+            ) : null}
           </ScrollView>
         </KeyboardAvoidingView>
       </TouchableWithoutFeedback>
 
       <View style={styles.footerSection}>
-        <TouchableOpacity style={styles.primaryButton} activeOpacity={0.9} onPress={handlePassVerify}>
+        <TouchableOpacity
+          style={styles.primaryButton}
+          activeOpacity={0.9}
+          onPress={handlePassVerify}
+        >
           <Text style={styles.primaryButtonText}>PASS 본인인증</Text>
         </TouchableOpacity>
       </View>

@@ -13,4 +13,3 @@ export function getProfileHexByColorId(colorId, fallback = colors.white) {
   if (!Number.isFinite(id)) return fallback;
   return COLOR_ID_TO_HEX[id] || fallback;
 }
-

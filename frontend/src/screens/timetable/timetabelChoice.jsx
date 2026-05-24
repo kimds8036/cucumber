@@ -26,7 +26,10 @@ import AppPopupModal from '../../../components/common/AppPopupModal';
 
 const TIMETABLE_CACHE_KEY = '@mypage_timetable_cache_v1';
 
-const normalizeSubject = (value) => String(value || '').trim().toLowerCase();
+const normalizeSubject = (value) =>
+  String(value || '')
+    .trim()
+    .toLowerCase();
 
 const getSubjectColorIndex = (subject) => {
   const key = normalizeSubject(subject);
@@ -44,9 +47,10 @@ async function fetchTimetableFromApi() {
 }
 
 function hasTimetableEntries(timetable) {
-  const tt = timetable && typeof timetable === 'object' && !Array.isArray(timetable)
-    ? timetable
-    : {};
+  const tt =
+    timetable && typeof timetable === 'object' && !Array.isArray(timetable)
+      ? timetable
+      : {};
   return Object.values(tt).some((value) => Boolean(normalizeSubject(value)));
 }
 
@@ -129,7 +133,8 @@ function TimetablePreview({ timetable, loading }) {
         ) : !hasTimetableData ? (
           <View style={pv.choicePreviewEmptyContainer}>
             <Text style={pv.choicePreviewEmptyText}>
-              시간표 데이터가 없습니다.{'\n'}직접 선택을 눌러 시간표를 구성해주세요
+              시간표 데이터가 없습니다.{'\n'}직접 선택을 눌러 시간표를
+              구성해주세요
             </Text>
           </View>
         ) : (
@@ -154,14 +159,18 @@ function TimetablePreview({ timetable, loading }) {
                     const cellStyle = [
                       pv.choicePreviewClassCell,
                       content ? pv.choicePreviewClassCellFilled : null,
-                      content ? { backgroundColor: getCellColor(content) } : null,
+                      content
+                        ? { backgroundColor: getCellColor(content) }
+                        : null,
                     ];
                     return (
                       <View key={`${day}-${period}`} style={cellStyle}>
                         <Text
                           style={[
                             pv.choicePreviewClassCellText,
-                            content ? pv.choicePreviewClassCellTextFilled : null,
+                            content
+                              ? pv.choicePreviewClassCellTextFilled
+                              : null,
                           ]}
                           lineBreakMode="wordWrapping"
                           lineBreakStrategyIOS="hangul-word"
@@ -240,7 +249,8 @@ export default function TimetabelChoice({ navigation, route }) {
       );
       Alert.alert(
         '불러오기 실패',
-        e?.response?.data?.message || '시간표를 가져오는 중 오류가 발생했습니다.',
+        e?.response?.data?.message ||
+          '시간표를 가져오는 중 오류가 발생했습니다.',
       );
     } finally {
       setAutoLoading(false);
@@ -321,19 +331,29 @@ export default function TimetabelChoice({ navigation, route }) {
       {autoLoading ? (
         <View style={styles.choiceLoadingOverlay}>
           <ActivityIndicator size="large" color={colors.primary} />
-          <Text style={styles.choiceLoadingText}>학교 시간표를 불러오는 중…</Text>
+          <Text style={styles.choiceLoadingText}>
+            학교 시간표를 불러오는 중…
+          </Text>
         </View>
       ) : null}
       <View style={styles.choiceContent}>
         <Text style={styles.choiceTitle}>이 시간표가 맞나요?</Text>
         <Text style={styles.choiceDescription}>
-          Neis(교육행정정보시스템)에서 제공하는 시간표예요. {'\n'}실제와 같으면 자동 선택, 다르면 직접 선택으로 구성해보세요.
+          Neis(교육행정정보시스템)에서 제공하는 시간표예요. {'\n'}실제와 같으면
+          자동 선택, 다르면 직접 선택으로 구성해보세요.
         </Text>
-        <TimetablePreview timetable={previewTimetable} loading={previewLoading} />
+        <TimetablePreview
+          timetable={previewTimetable}
+          loading={previewLoading}
+        />
         <View style={{ flexDirection: 'row', gap: 12 }}>
           <TouchableOpacity
             activeOpacity={0.8}
-            style={[styles.choiceCardRight, { flex: 1 }, autoLoading && styles.choiceCardDisabled]}
+            style={[
+              styles.choiceCardRight,
+              { flex: 1 },
+              autoLoading && styles.choiceCardDisabled,
+            ]}
             disabled={autoLoading}
             onPress={() => handleSelect('auto')}
           >
@@ -351,7 +371,11 @@ export default function TimetabelChoice({ navigation, route }) {
           </TouchableOpacity>
           <TouchableOpacity
             activeOpacity={0.8}
-            style={[styles.choiceCardWrong, { flex: 1 }, autoLoading && styles.choiceCardDisabled]}
+            style={[
+              styles.choiceCardWrong,
+              { flex: 1 },
+              autoLoading && styles.choiceCardDisabled,
+            ]}
             disabled={autoLoading}
             onPress={() => handleSelect('manual')}
           >
@@ -416,7 +440,8 @@ export default function TimetabelChoice({ navigation, route }) {
                 lineHeight: 22,
               }}
             >
-              {' '} 버튼으로 편집할 수 있습니다.
+              {' '}
+              버튼으로 편집할 수 있습니다.
             </Text>
           </View>
         </View>
