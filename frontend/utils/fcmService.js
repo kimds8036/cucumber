@@ -62,15 +62,6 @@ export const initFCM = async () => {
     const messaging = getMessagingInstance();
     if (!messaging) return null;
 
-    if (Platform.OS === 'ios') {
-      const authStatus = await messaging.requestPermission();
-      const authorized = authStatus === 1 || authStatus === 2;
-      if (!authorized) {
-        console.warn('[FCM] iOS 알림 권한이 허용되지 않았습니다.');
-        return null;
-      }
-    }
-
     const token = await getFCMToken();
     if (token) {
       await uploadFCMToken(token);

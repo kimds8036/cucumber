@@ -294,6 +294,17 @@ function RootNavigator() {
     };
 
     (async () => {
+      try {
+        const { status } = await Notifications.requestPermissionsAsync();
+        if (status !== 'granted') {
+          console.warn('[Notification] 알림 권한이 허용되지 않았습니다:', status);
+          return;
+        }
+      } catch (error) {
+        console.warn('[Notification] 권한 요청 실패:', error?.message ?? error);
+        return;
+      }
+
       await initFCM();
       cleanup = setupFCMHandlers({
         onNotificationOpened: handleNotificationOpened,
@@ -365,9 +376,6 @@ export default function App() {
     }
 
     configureTimerNotificationHandler();
-    Notifications.requestPermissionsAsync().catch((error) => {
-      console.warn('[Notification] 권한 요청 실패:', error?.message ?? error);
-    });
     const sub = Notifications.addNotificationResponseReceivedListener(
       (response) => {
         const targetScreen =

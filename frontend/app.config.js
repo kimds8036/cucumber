@@ -4,6 +4,7 @@ import { resolveApiBaseUrl, resolveAppEnv } from './config/apiEnv.js';
 
 const apiBaseUrl = resolveApiBaseUrl();
 const appEnv = resolveAppEnv();
+const isProduction = appEnv === 'production';
 
 export default ({ config }) => ({
   expo: {
@@ -42,7 +43,7 @@ export default ({ config }) => ({
 
     android: {
       versionCode: 6,
-      usesCleartextTraffic: true,
+      usesCleartextTraffic: !isProduction,
       // (선택) 안드로이드도 같은 방식으로 secret 적용 가능
       googleServicesFile:
         process.env.GOOGLE_SERVICES_JSON || './google-services.json',
@@ -66,7 +67,6 @@ export default ({ config }) => ({
         'android.permission.WRITE_EXTERNAL_STORAGE',
         'android.permission.READ_MEDIA_VISUAL_USER_SELECTED',
         'android.permission.READ_MEDIA_IMAGES',
-        'android.permission.READ_MEDIA_AUDIO',
       ],
       package: 'com.ucost.YouthPaper',
       softwareKeyboardLayoutMode: 'pan',
@@ -92,7 +92,7 @@ export default ({ config }) => ({
             '갤러리에서 사진을 불러오기 위해 접근 권한이 필요합니다.',
           savePhotosPermission:
             '캡처한 이미지를 갤러리에 저장하기 위해 권한이 필요합니다.',
-          granularPermissions: ['photo', 'audio'],
+          granularPermissions: ['photo'],
         },
       ],
       '@react-native-firebase/app',
