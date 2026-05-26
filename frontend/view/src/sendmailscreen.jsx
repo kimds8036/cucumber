@@ -503,6 +503,7 @@ const SendMailScreen = ({ navigation, route }) => {
                 </View>
               </View>
             </View>
+            <Text style={styles.replyFormChipTextNotice}>받는 사람을 잘못 입력하면 반송될 수 있어요</Text>
           </View>
         </KeyboardAwareScrollView>
 

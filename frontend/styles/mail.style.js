@@ -326,6 +326,13 @@ export function createMailStyles(normalize) {
       color: colors.textPrimary,
       fontFamily: fonts.regular,
     },
+    replyFormChipTextNotice: {
+      fontSize: normalize(fontSizes.lg),
+      marginLeft: normalize(4),
+      color: colors.background2,
+      fontFamily: fonts.regular,
+      textAlign: 'center',
+    },
     modalLetterPreviewCard: {
       backgroundColor: colors.background,
       borderRadius: normalize(12),
