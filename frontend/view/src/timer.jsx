@@ -78,6 +78,11 @@ import {
 // - 더미 과목/할일 대신, 처음에는 비어 있고 사용자가 추가하면 저장된다.
 const DEFAULT_SUBJECTS = [];
 const DEFAULT_TASKS = [];
+
+/** 레이아웃 위치 확인용 — 확인 끝나면 false 로 변경 */
+const DEBUG_TIMER_LAYOUT_BORDERS = false;
+const tdb = (color) =>
+  DEBUG_TIMER_LAYOUT_BORDERS ? { borderWidth: 1, borderColor: color } : null;
 const HOURS = Array.from({ length: 24 }, (_, i) => i);
 const TIMETABLE_GRAY = '#A6DA95';
 const TIMER_DAY_START_HOUR = 6;
@@ -602,19 +607,25 @@ function TimerLiveScrollInner({
       const hour = (6 + rowIndex) % 24;
       const slotStartBaseSeconds = ((hour - 6 + 24) % 24) * 3600;
       return (
-        <View key={rowIndex} style={styles.timetableRow}>
-          <View style={styles.timetableHourCell}>
+        <View
+          key={rowIndex}
+          style={[styles.timetableRow, tdb('#708090')]}
+        >
+          <View style={[styles.timetableHourCell, tdb('#B8860B')]}>
             <Text style={styles.timetableHourText}>
               {hour.toString().padStart(2, '0')}
             </Text>
           </View>
-          <View style={styles.timetableSlotsRow}>
+          <View style={[styles.timetableSlotsRow, tdb('#556B2F')]}>
             {[0, 10, 20, 30, 40, 50].map((m) => {
               const slotStartSeconds = slotStartBaseSeconds + m * 60;
               const segments = getSlotSegments(slotStartSeconds);
               let pos = 0;
               return (
-                <View key={m} style={styles.timetableSlotCell}>
+                <View
+                  key={m}
+                  style={[styles.timetableSlotCell, tdb('#8B4513')]}
+                >
                   {segments.map((seg, idx) => {
                     const spacerFlex = Math.max(0, seg.startFraction - pos);
                     pos = seg.startFraction + seg.widthFraction;
@@ -653,9 +664,9 @@ function TimerLiveScrollInner({
 
   return (
     <>
-      <View style={styles.timerCard}>
-        <View style={styles.dateBar}>
-          <View style={styles.dateBarLeft}>
+      <View style={[styles.timerCard, tdb('#34C759')]}>
+        <View style={[styles.dateBar, tdb('#30B0C7')]}>
+          <View style={[styles.dateBarLeft, tdb('#0A84FF')]}>
             <TouchableOpacity
               onPress={goPrevDay}
               hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
@@ -694,7 +705,7 @@ function TimerLiveScrollInner({
           </TouchableOpacity>
         </View>
 
-        <View style={styles.timerBlock}>
+        <View style={[styles.timerBlock, tdb('#5E5CE6')]}>
           <Text style={styles.timerTime}>{formatHMS(displayTotalMs)}</Text>
           {isViewingToday && (
             <TouchableOpacity
@@ -720,9 +731,9 @@ function TimerLiveScrollInner({
         </View>
       </View>
 
-      <View style={styles.todoTimetableRow}>
-        <View style={styles.todoColumn}>
-          <View style={styles.todoHeader}>
+      <View style={[styles.todoTimetableRow, tdb('#BF5AF2')]}>
+        <View style={[styles.todoColumn, tdb('#FF2D55')]}>
+          <View style={[styles.todoHeader, tdb('#64D2FF')]}>
             <Text style={styles.todoTitle}>투두리스트</Text>
             {isViewingToday && (
               <TouchableOpacity
@@ -739,7 +750,7 @@ function TimerLiveScrollInner({
             )}
           </View>
           <ScrollView
-            style={styles.todoList}
+            style={[styles.todoList, tdb('#AC8E68')]}
             showsVerticalScrollIndicator={false}
           >
             {displaySubjects.map((sub) => {
@@ -753,21 +764,25 @@ function TimerLiveScrollInner({
                 : formatHMS(totalMs);
               const isCollapsed = collapsedSubjects[sub.id] === true;
               return (
-                <View key={sub.id} style={styles.subjectAccordionWrap}>
+                <View
+                  key={sub.id}
+                  style={[styles.subjectAccordionWrap, tdb('#FF6B35')]}
+                >
                   <View
                     style={[
                       styles.subjectBlock,
                       { backgroundColor: lightenHex(sub.color, 0.9) },
+                      tdb('#7B68EE'),
                     ]}
                   >
                     <TouchableOpacity
-                      style={styles.subjectRow}
+                      style={[styles.subjectRow, tdb('#20B2AA')]}
                       activeOpacity={1}
                       onLongPress={() => deleteSubject?.(sub)}
                       delayLongPress={350}
                       disabled={!isViewingToday}
                     >
-                      <View style={[styles.subjectBody]}>
+                      <View style={[styles.subjectBody, tdb('#DA70D6')]}>
                         <Text style={styles.subjectName}>{sub.name}</Text>
                         <Text style={styles.subjectTime}>{totalStr}</Text>
                       </View>
@@ -802,11 +817,11 @@ function TimerLiveScrollInner({
                       </TouchableOpacity>
                     </TouchableOpacity>
                     {!isCollapsed && (
-                      <View style={styles.subjectTasksArea}>
+                      <View style={[styles.subjectTasksArea, tdb('#9ACD32')]}>
                         {subTasks.map((task) => (
                           <TouchableOpacity
                             key={task.id}
-                            style={styles.taskRow}
+                            style={[styles.taskRow, tdb('#2E8B57')]}
                             activeOpacity={1}
                             onLongPress={() => deleteTask?.(task)}
                             delayLongPress={350}
@@ -865,9 +880,11 @@ function TimerLiveScrollInner({
           </ScrollView>
         </View>
 
-        <View style={styles.timetableColumn}>
+        <View style={[styles.timetableColumn, tdb('#4682B4')]}>
           <Text style={styles.timetableTitle}>공부 기록</Text>
-          <View style={styles.timetableScroll}>{renderTimetable()}</View>
+          <View style={[styles.timetableScroll, tdb('#CD853F')]}>
+            {renderTimetable()}
+          </View>
         </View>
       </View>
     </>
@@ -926,19 +943,25 @@ function TimerLivePlannerCapture({
       const hour = (6 + rowIndex) % 24;
       const slotStartBaseSeconds = ((hour - 6 + 24) % 24) * 3600;
       return (
-        <View key={rowIndex} style={styles.timetableRow}>
-          <View style={styles.timetableHourCell}>
+        <View
+          key={rowIndex}
+          style={[styles.timetableRow, tdb('#708090')]}
+        >
+          <View style={[styles.timetableHourCell, tdb('#B8860B')]}>
             <Text style={styles.timetableHourText}>
               {hour.toString().padStart(2, '0')}
             </Text>
           </View>
-          <View style={styles.timetableSlotsRow}>
+          <View style={[styles.timetableSlotsRow, tdb('#556B2F')]}>
             {[0, 10, 20, 30, 40, 50].map((m) => {
               const slotStartSeconds = slotStartBaseSeconds + m * 60;
               const segments = getSlotSegments(slotStartSeconds);
               let pos = 0;
               return (
-                <View key={m} style={styles.timetableSlotCell}>
+                <View
+                  key={m}
+                  style={[styles.timetableSlotCell, tdb('#8B4513')]}
+                >
                   {segments.map((seg, idx) => {
                     const spacerFlex = Math.max(0, seg.startFraction - pos);
                     pos = seg.startFraction + seg.widthFraction;
@@ -976,15 +999,18 @@ function TimerLivePlannerCapture({
     });
 
   return (
-    <View style={styles.plannerCaptureOffscreen} pointerEvents="none">
+    <View
+      style={[styles.plannerCaptureOffscreen, tdb('#A0522D')]}
+      pointerEvents="none"
+    >
       <ViewShot
         ref={capturePlannerRef}
         options={{ format: 'png', quality: 1 }}
-        style={styles.viewShotBg}
+        style={[styles.viewShotBg, tdb('#8B7355')]}
       >
-        <View style={styles.plannerCaptureWrap}>
-          <View style={styles.plannerCaptureRow}>
-            <View style={styles.plannerLeftColumn}>
+        <View style={[styles.plannerCaptureWrap, tdb('#6B8E23')]}>
+          <View style={[styles.plannerCaptureRow, tdb('#483D8B')]}>
+            <View style={[styles.plannerLeftColumn, tdb('#008B8B')]}>
               <Text style={styles.plannerLabel}>Date</Text>
               <Text style={styles.plannerValue}>
                 {selectedDayKey
@@ -1053,9 +1079,11 @@ function TimerLivePlannerCapture({
                 );
               })}
             </View>
-            <View style={styles.plannerRightColumn}>
+            <View style={[styles.plannerRightColumn, tdb('#B22222')]}>
               <Text style={styles.timetableTitle}>공부 기록</Text>
-              <View style={styles.timetableScroll}>{renderTimetable()}</View>
+              <View style={[styles.timetableScroll, tdb('#CD853F')]}>
+                {renderTimetable()}
+              </View>
             </View>
           </View>
         </View>
@@ -2105,12 +2133,12 @@ export const TimerContent = () => {
   if (!initialLoadDone) {
     return (
       <ScrollView
-        style={styles.scroll}
-        contentContainerStyle={styles.scrollContent}
+        style={[styles.scroll, tdb('#FF3B30')]}
+        contentContainerStyle={[styles.scrollContent, tdb('#FF9500')]}
         showsVerticalScrollIndicator={false}
       >
-        <View style={styles.friendStoryRow}>
-          <View style={styles.friendStoryScroll}>
+        <View style={[styles.friendStoryRow, tdb('#FFCC00')]}>
+          <View style={[styles.friendStoryScroll, tdb('#34C759')]}>
             {[0, 1, 2, 3].map((idx) => (
               <View
                 key={`timer-friend-skel-${idx}`}
@@ -2132,7 +2160,7 @@ export const TimerContent = () => {
           </View>
         </View>
 
-        <View style={styles.timerCard}>
+        <View style={[styles.timerCard, tdb('#30B0C7')]}>
           <Skeleton
             width={normalize(180)}
             height={normalize(30)}
@@ -2153,8 +2181,8 @@ export const TimerContent = () => {
           />
         </View>
 
-        <View style={styles.todoTimetableRow}>
-          <View style={styles.todoColumn}>
+        <View style={[styles.todoTimetableRow, tdb('#0A84FF')]}>
+          <View style={[styles.todoColumn, tdb('#5E5CE6')]}>
             <Skeleton
               width={normalize(80)}
               height={normalize(13)}
@@ -2164,7 +2192,7 @@ export const TimerContent = () => {
             {[0, 1, 2].map((idx) => (
               <View
                 key={`timer-task-skel-${idx}`}
-                style={styles.timerSkelTaskRow}
+                style={[styles.timerSkelTaskRow, tdb('#BF5AF2')]}
               >
                 <Skeleton
                   width={normalize(22)}
@@ -2179,7 +2207,7 @@ export const TimerContent = () => {
               </View>
             ))}
           </View>
-          <View style={styles.timetableColumn}>
+          <View style={[styles.timetableColumn, tdb('#FF2D55')]}>
             <Skeleton
               width={normalize(80)}
               height={normalize(13)}
@@ -2206,8 +2234,8 @@ export const TimerContent = () => {
       <LiveElapsedTicker isRunning={isRunning} startTimestamp={startTimestamp}>
         <>
           <ScrollView
-            style={styles.scroll}
-            contentContainerStyle={styles.scrollContent}
+            style={[styles.scroll, tdb('#FF3B30')]}
+            contentContainerStyle={[styles.scrollContent, tdb('#FF9500')]}
             showsVerticalScrollIndicator={false}
           >
             <FriendStoryBar
@@ -2384,10 +2412,18 @@ const Timer = ({ navigation }) => {
     [navigation],
   );
   return (
-    <SafeAreaView style={styles.safeAreaFlex} edges={['top', 'bottom']}>
-      <MainHeader activeTab="timer" navigation={navigation} />
-      <TimerContent />
-      <MainFooter
+    <SafeAreaView
+      style={[styles.safeAreaFlex, tdb('#FF3B30')]}
+      edges={['top', 'bottom']}
+    >
+      <View style={tdb('#FF9500')}>
+        <MainHeader activeTab="timer" navigation={navigation} />
+      </View>
+      <View style={[{ flex: 1 }, tdb('#34C759')]}>
+        <TimerContent />
+      </View>
+      <View style={tdb('#30B0C7')}>
+        <MainFooter
         activeTab="timer"
         onTabPress={(tab) => {
           if (tab === 'board') goMainTab('board');
@@ -2395,7 +2431,8 @@ const Timer = ({ navigation }) => {
           if (tab === 'school') goMainTab('school');
           if (tab === 'mypage') goMainTab('mypage');
         }}
-      />
+        />
+      </View>
     </SafeAreaView>
   );
 };

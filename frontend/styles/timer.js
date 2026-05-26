@@ -374,7 +374,7 @@ export const createTimerStyles = (width, normalize) => {
     },
     timetableColumn: {
       flex: 1,
-      minWidth: width * 0.4,
+      minWidth: width * 0.35,
       alignSelf: 'stretch',
     },
     timetableScroll: {
@@ -603,7 +603,7 @@ export const createTimerStyles = (width, normalize) => {
       borderColor: colors.textLight10,
     },
     timetableHourCell: {
-      width: normalize(30),
+      width: normalize(20),
       paddingVertical: normalize(4),
       alignItems: 'center',
       justifyContent: 'center',
