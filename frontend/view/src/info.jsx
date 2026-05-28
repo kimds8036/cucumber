@@ -51,6 +51,10 @@ const Info = ({ navigation }) => {
       navigation.navigate('Announcement');
       return;
     }
+    if (menu.key === 'user-guide') {
+      navigation.navigate('GuideOverlay', { mode: 'guide' });
+      return;
+    }
     if (menu.key === 'community-guide') {
       navigation.navigate('CommunityGuide');
       return;

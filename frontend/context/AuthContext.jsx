@@ -17,6 +17,7 @@ const AuthContext = createContext(null);
  */
 export function AuthProvider({ children }) {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [postLoginRoute, setPostLoginRoute] = useState('Main');
 
   useEffect(() => {
     let mounted = true;
@@ -33,15 +34,19 @@ export function AuthProvider({ children }) {
     };
   }, []);
 
-  const login = useCallback(() => {
+  const login = useCallback((options = {}) => {
+    const nextRoute =
+      options?.postLoginRoute === 'GuideOverlay' ? 'GuideOverlay' : 'Main';
+    setPostLoginRoute(nextRoute);
     setIsLoggedIn(true);
   }, []);
 
   const logout = useCallback(() => {
+    setPostLoginRoute('Main');
     setIsLoggedIn(false);
   }, []);
 
-  const value = { isLoggedIn, login, logout };
+  const value = { isLoggedIn, login, logout, postLoginRoute, setPostLoginRoute };
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 

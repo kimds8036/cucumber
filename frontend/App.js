@@ -43,6 +43,7 @@ import PrivacyPolicy from './src/screens/Terms-of-Service/PrivacyPolicy';
 import YouthProtectionPolicy from './src/screens/Terms-of-Service/YouthProtectionPolicy';
 import OpenSourceLicenses from './src/screens/Terms-of-Service/OpenSourceLicenses';
 import CommunityGuide from './src/screens/Terms-of-Service/CommunityGuide';
+import GuideOverlayScreen from './src/screens/UserGuide/GuideOverlayScreen';
 import { useFonts } from 'expo-font';
 import * as SplashScreen from 'expo-splash-screen';
 import { useEffect, useRef } from 'react';
@@ -108,10 +109,10 @@ function AuthStack() {
   );
 }
 
-function MainStack() {
+function MainStack({ initialRouteName = 'Main' }) {
   return (
     <Stack.Navigator
-      initialRouteName="Main"
+      initialRouteName={initialRouteName}
       screenOptions={{ headerShown: false }}
     >
       <Stack.Screen name="Main" component={MainScreen} />
@@ -161,12 +162,24 @@ function MainStack() {
       <Stack.Screen name="SearchResult" component={SearchResult} />
       <Stack.Screen name="OtherSchool" component={OtherSchoolScreen} />
       <Stack.Screen name="MealCalendar" component={MealCalender} />
+      <Stack.Screen
+        name="GuideOverlay"
+        component={GuideOverlayScreen}
+        options={{ headerShown: false }}
+      />
     </Stack.Navigator>
   );
 }
 
 function RootNavigator() {
-  const { isLoggedIn } = useAuth();
+  const { isLoggedIn, postLoginRoute, setPostLoginRoute } = useAuth();
+
+  useEffect(() => {
+    if (!isLoggedIn) return;
+    if (postLoginRoute !== 'Main') {
+      setPostLoginRoute('Main');
+    }
+  }, [isLoggedIn, postLoginRoute, setPostLoginRoute]);
 
   const getInitialTabForPush = (relatedType = '', fallbackScreen = '') => {
     if (
@@ -323,9 +336,12 @@ function RootNavigator() {
   }, [isLoggedIn]);
 
   if (!isLoggedIn) return <AuthStack />;
+
+  const mainInitialRoute =
+    postLoginRoute === 'GuideOverlay' ? 'GuideOverlay' : 'Main';
   return (
     <LocationGate>
-      <MainStack />
+      <MainStack initialRouteName={mainInitialRoute} />
     </LocationGate>
   );
 }
