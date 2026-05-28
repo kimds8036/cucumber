@@ -12,6 +12,8 @@ import { getNormalize, createProfileCardStyles } from '../styles/mypage.style';
 import { api } from '../utils/api';
 import { PROFILE_COUNTS_CACHE_KEY } from '../utils/profileCountsCache';
 import { getProfileHexByColorId } from '../utils/profileColor';
+import { useGuidePreview } from '../context/GuidePreviewContext';
+import { getGuideMyPageStats } from '../src/screens/UserGuide/guidePreviewData';
 
 const PROFILE_COUNTS_CACHE_TTL_MS = 10 * 60 * 1000;
 
@@ -30,10 +32,16 @@ const ProfileCard = ({
     scrapCount: 0,
   });
   const [countsLoading, setCountsLoading] = useState(true);
+  const { isGuidePreview } = useGuidePreview();
   const profileEyeColor = getProfileHexByColorId(userInfo?.colorId);
 
   const loadCounts = useCallback(
     async ({ force = false } = {}) => {
+      if (isGuidePreview) {
+        setCounts(getGuideMyPageStats());
+        setCountsLoading(false);
+        return;
+      }
       const fallbackFriendCount = Number(userInfo?.friendCount ?? 0);
       try {
         const raw = await AsyncStorage.getItem(PROFILE_COUNTS_CACHE_KEY);
@@ -85,7 +93,7 @@ const ProfileCard = ({
         setCountsLoading(false);
       }
     },
-    [userInfo?.friendCount],
+    [userInfo?.friendCount, isGuidePreview],
   );
 
   useEffect(() => {

@@ -20,8 +20,14 @@ import { useAuth } from '../../context/AuthContext';
 import { getDeviceId } from '../../utils/deviceId';
 import { getFCMToken } from '../../utils/fcmService';
 import { useFocusEffect } from '@react-navigation/native';
+import { useGuidePreview } from '../../context/GuidePreviewContext';
+import {
+  getGuideMyPageUserInfo,
+  getGuideTimetable,
+} from '../../src/screens/UserGuide/guidePreviewData';
 
 const MyPage = ({ navigation }) => {
+  const { isGuidePreview } = useGuidePreview();
   const { width } = useWindowDimensions();
   const normalize = useMemo(() => getNormalize(width), [width]);
   const styles = useMemo(() => createMyPageStyles(normalize), [normalize]);
@@ -101,6 +107,13 @@ const MyPage = ({ navigation }) => {
   useEffect(() => {
     let mounted = true;
     const fetchMeAndTimetable = async () => {
+      if (isGuidePreview) {
+        setUserInfo(getGuideMyPageUserInfo());
+        setTimetable(getGuideTimetable());
+        setLoading(false);
+        setTimetableLoading(false);
+        return;
+      }
       try {
         setLoading(true);
         let cachedTimetable = null;
@@ -220,11 +233,12 @@ const MyPage = ({ navigation }) => {
     return () => {
       mounted = false;
     };
-  }, []);
+  }, [isGuidePreview]);
 
   // 다른 화면(시간표 선택 등)에서 캐시를 갱신한 뒤 돌아올 때 표시 동기화
   useFocusEffect(
     useCallback(() => {
+      if (isGuidePreview) return undefined;
       let cancelled = false;
       (async () => {
         try {
@@ -245,7 +259,7 @@ const MyPage = ({ navigation }) => {
       return () => {
         cancelled = true;
       };
-    }, [timetableCacheKey]),
+    }, [timetableCacheKey, isGuidePreview]),
   );
 
   const handleNavigateToTimetableEdit = () => {

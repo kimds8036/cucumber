@@ -29,6 +29,8 @@ import BoardPostCard from '../../components/Boardpostcard';
 import AdPlaceholder from '../../src/screens/ad/AdPlaceholder';
 import Skeleton from '../../components/common/Skeleton';
 import { useLocationContext } from '../../context/LocationContext';
+import { useGuidePreview } from '../../context/GuidePreviewContext';
+import { getGuideBoardPosts } from '../../src/screens/UserGuide/guidePreviewData';
 import { invalidateProfileCountsCache } from '../../utils/profileCountsCache';
 import { useFocusEffect } from '@react-navigation/native';
 import ReportModal from '../../components/common/ReportModal.jsx';
@@ -68,6 +70,7 @@ export function BoardAllContent({ navigation, posts }) {
   const { width } = useWindowDimensions();
   const normalize = useMemo(() => getNormalize(width), [width]);
   const styles = useMemo(() => createBoardStyles(width, normalize), [width]);
+  const { isGuidePreview } = useGuidePreview();
   const { coords, coordsIsFresh, refreshLocation, permissionGranted } =
     useLocationContext();
   const distanceStale = permissionGranted && (!coordsIsFresh || !coords);
@@ -213,6 +216,16 @@ export function BoardAllContent({ navigation, posts }) {
 
   const fetchPosts = useCallback(
     async (nextPage = 1, append = false, silent = false) => {
+      if (isGuidePreview) {
+        if (nextPage === 1 && !append) {
+          setServerPosts(getGuideBoardPosts());
+          setPage(1);
+          setHasMore(false);
+        }
+        setLoading(false);
+        setLoadingMore(false);
+        return;
+      }
       try {
         if (sortType === 'nearby' && !coords) {
           if (nextPage === 1) {
@@ -317,7 +330,7 @@ export function BoardAllContent({ navigation, posts }) {
         setLoadingMore(false);
       }
     },
-    [sortType, coords, posts],
+    [sortType, coords, posts, isGuidePreview],
   );
 
   useEffect(() => {
@@ -325,11 +338,16 @@ export function BoardAllContent({ navigation, posts }) {
   }, [fetchPosts]);
 
   useEffect(() => {
+    if (isGuidePreview) {
+      fetchPostsRef.current?.(1, false);
+      return;
+    }
     refreshLocation();
     fetchPostsRef.current?.(1, false);
-  }, []);
+  }, [isGuidePreview]);
 
   useEffect(() => {
+    if (isGuidePreview) return;
     if (!permissionGranted || !coords) return;
     const silent = serverPostsRef.current.length > 0;
     fetchPostsRef.current?.(1, false, silent);
@@ -337,6 +355,7 @@ export function BoardAllContent({ navigation, posts }) {
 
   useFocusEffect(
     useCallback(() => {
+      if (isGuidePreview) return;
       if (skipNextFocusFetchRef.current) {
         skipNextFocusFetchRef.current = false;
         return;
@@ -344,16 +363,17 @@ export function BoardAllContent({ navigation, posts }) {
       if (posts && posts.length > 0) return;
       const silent = serverPostsRef.current.length > 0;
       fetchPostsRef.current?.(1, false, silent);
-    }, [posts]),
+    }, [posts, isGuidePreview]),
   );
 
   useEffect(() => {
+    if (isGuidePreview) return;
     if (!didMountSortEffectRef.current) {
       didMountSortEffectRef.current = true;
       return;
     }
     fetchPosts(1, false);
-  }, [sortType]);
+  }, [sortType, isGuidePreview]);
 
   const data = posts && posts.length > 0 ? posts : serverPosts;
 

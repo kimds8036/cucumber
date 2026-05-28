@@ -20,8 +20,15 @@ import { createOurSchoolStyles } from '../../styles/school.style';
 import StudyGrassMap from '../../components/studygrassmap';
 import Skeleton from '../../components/common/Skeleton';
 import SchoolAdPlaceholder from '../../src/screens/ad/SchoolAdPlaceholder';
+import { useGuidePreview } from '../../context/GuidePreviewContext';
+import {
+  getGuideSchoolInfo,
+  getGuideSchoolMeals,
+  getGuideStudyGrassDays,
+} from '../../src/screens/UserGuide/guidePreviewData';
 
 const OurSchoolScreen = ({ navigation }) => {
+  const { isGuidePreview } = useGuidePreview();
   const SCHOOL_CACHE_KEY = '@our_school_screen_cache_v1';
   const MEAL_CACHE_KEY_PREFIX = '@our_school_meal_cache_v1_';
   const CACHE_TTL_MS = 24 * 60 * 60 * 1000;
@@ -74,6 +81,12 @@ const OurSchoolScreen = ({ navigation }) => {
     let mounted = true;
 
     const fetchSchool = async () => {
+      if (isGuidePreview) {
+        setSchoolInfo(getGuideSchoolInfo());
+        setPopularPosts([]);
+        setLoading(false);
+        return;
+      }
       let usedCache = false;
       try {
         setLoading(true);
@@ -150,11 +163,16 @@ const OurSchoolScreen = ({ navigation }) => {
     return () => {
       mounted = false;
     };
-  }, []);
+  }, [isGuidePreview]);
 
   useEffect(() => {
     let mounted = true;
     const fetchMeals = async () => {
+      if (isGuidePreview) {
+        setNextMeals(getGuideSchoolMeals());
+        setMealLoading(false);
+        return;
+      }
       if (!schoolInfo.id) {
         setNextMeals([]);
         return;
@@ -197,11 +215,15 @@ const OurSchoolScreen = ({ navigation }) => {
     return () => {
       mounted = false;
     };
-  }, [schoolInfo.id]);
+  }, [schoolInfo.id, isGuidePreview]);
 
   useEffect(() => {
     let mounted = true;
     const fetchStudyGrass = async () => {
+      if (isGuidePreview) {
+        setGrassDays(getGuideStudyGrassDays());
+        return;
+      }
       try {
         const res = await api.get('/api/schools/me/study-grass', {
           params: { days: getCurrentSemesterDays() },
@@ -223,7 +245,7 @@ const OurSchoolScreen = ({ navigation }) => {
     return () => {
       mounted = false;
     };
-  }, []);
+  }, [isGuidePreview]);
 
   const mealTypeLabel = {
     breakfast: '조식',

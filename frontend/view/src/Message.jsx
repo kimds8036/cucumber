@@ -33,6 +33,11 @@ import { api } from '../../utils/api';
 import * as socketManager from './socketManager';
 import { useToast } from '../../context/ToastContext';
 import { useNotification } from '../../context/NotificationContext';
+import { useGuidePreview } from '../../context/GuidePreviewContext';
+import {
+  getGuideMails,
+  getGuideNoteRooms,
+} from '../../src/screens/UserGuide/guidePreviewData';
 import { getProfileInnerColor } from '../../utils/profileIconColor';
 import ChatAdPlaceholder from '../../src/screens/ad/ChatAdPlaceholder';
 import {
@@ -321,6 +326,7 @@ const SwipeableRow = ({ children, onDelete }) => {
 
 // 메인 화면(MainScreen)에서 헤더/푸터 없이 메인 영역만 렌더할 때 사용
 export function MessageContent({ navigation }) {
+  const { isGuidePreview, guideMessageTab } = useGuidePreview();
   const { width } = useWindowDimensions();
   const normalize = useMemo(() => getNormalize(width), [width]);
   const styles = useMemo(
@@ -550,6 +556,11 @@ export function MessageContent({ navigation }) {
   };
 
   const fetchRooms = useCallback(async () => {
+    if (isGuidePreview) {
+      setNoteRooms(getGuideNoteRooms());
+      setLoadingNote(false);
+      return;
+    }
     try {
       setLoadingNote(true);
       const [noteRes, dmRes] = await Promise.all([
@@ -620,9 +631,14 @@ export function MessageContent({ navigation }) {
     } finally {
       setLoadingNote(false);
     }
-  }, []);
+  }, [isGuidePreview]);
 
   const fetchMails = useCallback(async () => {
+    if (isGuidePreview) {
+      setMails(getGuideMails());
+      setLoadingMail(false);
+      return;
+    }
     try {
       setLoadingMail(true);
       const [receivedRes, sentRes, meRes] = await Promise.all([
@@ -774,7 +790,18 @@ export function MessageContent({ navigation }) {
     } finally {
       setLoadingMail(false);
     }
-  }, []);
+  }, [isGuidePreview]);
+
+  useEffect(() => {
+    if (!isGuidePreview) return;
+    if (guideMessageTab === 'mail') {
+      setMessageType('mail');
+      slideAnim.setValue(1);
+      return;
+    }
+    setMessageType('note');
+    slideAnim.setValue(0);
+  }, [isGuidePreview, guideMessageTab, slideAnim]);
 
   // 쪽지 탭: 익명 채팅방 + DM 방 동시 조회 후 최신순 병합
   useEffect(() => {
@@ -787,6 +814,7 @@ export function MessageContent({ navigation }) {
 
   // 채팅 관련 소켓 이벤트 수신 시 목록 실시간 갱신
   useEffect(() => {
+    if (isGuidePreview) return undefined;
     let isMounted = true;
 
     const handleNewMessage = (payload) => {
@@ -858,15 +886,16 @@ export function MessageContent({ navigation }) {
       socketManager.off('new_message', handleNewMessage);
       socketManager.off('notification', handleNotification);
     };
-  }, [fetchRooms, fetchMails]);
+  }, [fetchRooms, fetchMails, isGuidePreview]);
 
   // 메시지 목록 화면 진입/이탈 상태를 전역 알림 정책에 공유
   useEffect(() => {
+    if (isGuidePreview) return undefined;
     setIsMessageTab(true);
     return () => {
       setIsMessageTab(false);
     };
-  }, [setIsMessageTab]);
+  }, [setIsMessageTab, isGuidePreview]);
 
   // 개인 우편 요약 목록 불러오기 (처음 + 화면 복귀 시마다 새로고침)
   useEffect(() => {

@@ -65,6 +65,11 @@ import { useFriendSocketEvents } from '../../hooks/useFriendSocketEvents';
 import { useFriend } from '../../context/FriendContext';
 import { useFocusEffect, useIsFocused } from '@react-navigation/native';
 import { useFriendStudyEvents } from '../../hooks/useFriendStudyEvents';
+import { useGuidePreview } from '../../context/GuidePreviewContext';
+import {
+  getGuideTimerDayPayload,
+  getGuideTimerFriends,
+} from '../../src/screens/UserGuide/guidePreviewData';
 import { cancelTimerRunningNotification } from '../../utils/timerRunNotification';
 import {
   getTimerRuntimeState,
@@ -1098,6 +1103,7 @@ function TimerLivePlannerCapture({
 // - 중간: 과목/할일 리스트 + 공부 기록 타임테이블
 // - 하단: 각종 모달들(AddSubject/AddTask/Calendar/친구 관련)
 export const TimerContent = () => {
+  const { isGuidePreview } = useGuidePreview();
   const { width } = useWindowDimensions();
   const normalize = useMemo(() => getNormalize(width), [width]);
   const styles = useMemo(
@@ -1175,6 +1181,11 @@ export const TimerContent = () => {
   useEffect(() => {
     let mounted = true;
     const loadFriends = async () => {
+      if (isGuidePreview) {
+        if (!mounted) return;
+        setFriends(getGuideTimerFriends());
+        return;
+      }
       try {
         const res = await api.get('/api/friends/list');
         const list = res.data?.data ?? [];
@@ -1200,11 +1211,12 @@ export const TimerContent = () => {
     return () => {
       mounted = false;
     };
-  }, []);
+  }, [isGuidePreview]);
 
   // 타이머 화면 진입 시: 놓친 친구 공부 상태 REST로만 보완 + 소켓 미연결 시 재연결
   useFocusEffect(
     React.useCallback(() => {
+      if (isGuidePreview) return undefined;
       setIsTimerScreenActive?.(true);
       refreshStudyingFriends?.();
       if (isRunning) {
@@ -1225,7 +1237,7 @@ export const TimerContent = () => {
         }
         setIsTimerScreenActive?.(false);
       };
-    }, [refreshStudyingFriends, setIsTimerScreenActive, isRunning]),
+    }, [refreshStudyingFriends, setIsTimerScreenActive, isRunning, isGuidePreview]),
   );
 
   // 친구 관련 핸들러 (모달 열기까지만 담당, 쿡 찌르기 로직은 FriendPokeController 에서 처리)
@@ -1297,6 +1309,7 @@ export const TimerContent = () => {
   }, [timerDayKey, sessions, totalElapsedMs, subjects, tasks]);
 
   const persistTimerSnapshot = useCallback((reason, override = null) => {
+    if (isGuidePreview) return Promise.resolve(false);
     const snapshot = override ?? latestSnapshotRef.current;
     const dayKey = snapshot?.timerDayKey;
     if (!dayKey) return Promise.resolve(false);
@@ -1331,7 +1344,7 @@ export const TimerContent = () => {
       return ok;
     });
     return persistChainRef.current;
-  }, []);
+  }, [isGuidePreview]);
 
   const requestImmediatePersist = useCallback((reason) => {
     pendingImmediatePersistReasonRef.current = reason || 'immediate';
@@ -1417,8 +1430,7 @@ export const TimerContent = () => {
 
   useEffect(() => {
     let mounted = true;
-    const dayKey = getTimerDayKey(new Date());
-    loadDayFromDb(dayKey).then((data) => {
+    const applyDayPayload = (data, dayKey) => {
       if (!mounted) return;
       const normalized =
         data != null
@@ -1474,13 +1486,36 @@ export const TimerContent = () => {
         }
       }
       setInitialLoadDone(true);
+    };
+
+    if (isGuidePreview) {
+      const guide = getGuideTimerDayPayload();
+      const normalized = normalizeDayPayload(
+        {
+          sessions: guide.sessions,
+          subjects: guide.subjects,
+          tasks: guide.tasks,
+          totalElapsedMs: guide.totalElapsedMs,
+        },
+        guide.dayKey,
+      );
+      applyDayPayload(normalized, guide.dayKey);
+      return () => {
+        mounted = false;
+      };
+    }
+
+    const dayKey = getTimerDayKey(new Date());
+    loadDayFromDb(dayKey).then((data) => {
+      applyDayPayload(data, dayKey);
     });
     return () => {
       mounted = false;
     };
-  }, []);
+  }, [isGuidePreview]);
 
   useEffect(() => {
+    if (isGuidePreview) return;
     if (!initialLoadDone || selectedDayKey == null) return;
     if (selectedDayKey === todayKey) {
       setViewState(null);
@@ -1502,9 +1537,13 @@ export const TimerContent = () => {
           };
       setViewState(nextView);
     });
-  }, [selectedDayKey, todayKey, initialLoadDone]);
+  }, [selectedDayKey, todayKey, initialLoadDone, isGuidePreview]);
 
   useEffect(() => {
+    if (isGuidePreview) {
+      pendingImmediatePersistReasonRef.current = null;
+      return;
+    }
     if (
       !initialLoadDone ||
       timerDayKey == null ||
@@ -1527,6 +1566,7 @@ export const TimerContent = () => {
     subjects,
     tasks,
     persistTimerSnapshot,
+    isGuidePreview,
   ]);
 
   useEffect(() => {
@@ -1556,6 +1596,7 @@ export const TimerContent = () => {
   ]);
 
   useEffect(() => {
+    if (isGuidePreview) return undefined;
     const checkDayChange = () => {
       const nowKey = getTimerDayKey(new Date());
       if (timerDayKey != null && nowKey !== timerDayKey) {
@@ -1603,6 +1644,7 @@ export const TimerContent = () => {
     tasks,
     isRunning,
     performTimerDayRollover,
+    isGuidePreview,
   ]);
 
   // ── 투두/과목 핸들러 ──────────────────────────────────
