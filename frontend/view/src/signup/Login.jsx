@@ -59,21 +59,7 @@ function buildLoginFailureMessage(error) {
   return lines.join('\n');
 }
 
-/**
- * [PRE_RELEASE] 회원가입·아이디/비번 찾기: 화면·API는 있으나 navigate 미연결(정식 출시 시 오픈).
- * 복구 시: showPreReleaseAuthFeatureAlert 제거 후 linkContainer에서 navigation.navigate 복원.
- */
-const PRE_RELEASE_AUTH_FEATURE_TITLE = '안내';
-const PRE_RELEASE_AUTH_FEATURE_MESSAGE =
-  '해당 기능은 이미 구현되어 있으나, 아직 로그인 화면과 연결되어 있지 않습니다.\n정식 출시 시 이용하실 수 있습니다.';
-
-function showPreReleaseAuthFeatureAlert() {
-  Alert.alert(
-    PRE_RELEASE_AUTH_FEATURE_TITLE,
-    PRE_RELEASE_AUTH_FEATURE_MESSAGE,
-    [{ text: '확인' }],
-  );
-}
+import { showComingSoonAuthFeatureAlert } from './authFeatureAlerts';
 
 function formatSuspendedUntil(raw) {
   if (!raw) return null;
@@ -401,17 +387,20 @@ const Login = ({ navigation }) => {
               </Text>
             </TouchableOpacity>
 
-            {/* [PRE_RELEASE] 링크 탭 시 미연결 안내 — 복구: navigate('IDfind'|'PWfind'|'Sign') */}
             <View style={styles.linkContainer}>
-              <TouchableOpacity onPress={showPreReleaseAuthFeatureAlert}>
+              <TouchableOpacity
+                onPress={() => navigation.navigate('IDfind')}
+              >
                 <Text style={styles.linkText}>아이디 찾기</Text>
               </TouchableOpacity>
               <Text style={styles.linkDivider}>|</Text>
-              <TouchableOpacity onPress={showPreReleaseAuthFeatureAlert}>
+              <TouchableOpacity
+                onPress={() => navigation.navigate('PWfind')}
+              >
                 <Text style={styles.linkText}>비밀번호 찾기</Text>
               </TouchableOpacity>
               <Text style={styles.linkDivider}>|</Text>
-              <TouchableOpacity onPress={showPreReleaseAuthFeatureAlert}>
+              <TouchableOpacity onPress={() => navigation.navigate('Sign')}>
                 <Text style={styles.linkText}>회원가입</Text>
               </TouchableOpacity>
             </View>

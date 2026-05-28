@@ -74,8 +74,8 @@ app.use(cors({
 }));
 
 // 4. Body 사이즈 제한 (대용량 페이로드 / DoS 완화)
-app.use(express.json({ limit: '1mb' }));
-app.use(express.urlencoded({ extended: true, limit: '1mb' }));
+app.use(express.json({ limit: '8mb' }));
+app.use(express.urlencoded({ extended: true, limit: '8mb' }));
 
 // 5. Rate Limit
 //    NOTE: 현재는 단일 인스턴스 운영 가정의 in-memory store.

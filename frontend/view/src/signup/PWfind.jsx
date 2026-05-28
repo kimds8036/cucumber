@@ -14,11 +14,10 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { CommonActions } from '@react-navigation/native';
 import { colors } from '../../../styles/colors';
 import { createFindStyles } from '../../../styles/find.style';
-import { api } from '../../../utils/api';
 import Skeleton from '../../../components/common/Skeleton';
+import { showComingSoonAuthFeatureAlert } from './authFeatureAlerts';
 
 const PWfind = ({ navigation }) => {
   const { width } = useWindowDimensions();
@@ -44,58 +43,12 @@ const PWfind = ({ navigation }) => {
   const canResetPassword =
     newPassword.length > 0 && newPasswordConfirm.length > 0;
 
-  const handleCheckUser = async () => {
-    if (!canCheckUser) {
-      Alert.alert('알림', '성함과 아이디를 입력해주세요.');
-      return;
-    }
-
-    try {
-      setCheckingUser(true);
-      // TODO: 백엔드 사용자 확인 API 확정 후 실제 엔드포인트로 교체
-      // 예시:
-      // await api.post('/api/auth/password/find-user', {
-      //   name: name.trim(),
-      //   username: username.trim(),
-      // });
-      // 임시로 필수값 기반 확인 처리
-      await Promise.resolve();
-      setVerifiedUser({ name: name.trim(), username: username.trim() });
-      setStep(2);
-    } catch (error) {
-      console.error('사용자 확인 실패:', error);
-      Alert.alert(
-        '확인 실패',
-        '입력한 성함/아이디와 일치하는 사용자를 찾지 못했습니다.',
-      );
-    } finally {
-      setCheckingUser(false);
-    }
+  const handleCheckUser = () => {
+    showComingSoonAuthFeatureAlert();
   };
 
   const handleResetPassword = () => {
-    if (!canResetPassword) {
-      Alert.alert('알림', '새 비밀번호 정보를 모두 입력해주세요.');
-      return;
-    }
-    if (newPassword !== newPasswordConfirm) {
-      Alert.alert('알림', '새 비밀번호와 확인 값이 일치하지 않습니다.');
-      return;
-    }
-
-    // TODO: 비밀번호 재설정 API 연동
-    Alert.alert('완료', '비밀번호가 변경되었습니다.', [
-      {
-        text: '확인',
-        onPress: () =>
-          navigation?.dispatch(
-            CommonActions.reset({
-              index: 0,
-              routes: [{ name: 'Login' }],
-            }),
-          ),
-      },
-    ]);
+    showComingSoonAuthFeatureAlert();
   };
 
   if (!screenReady) {
