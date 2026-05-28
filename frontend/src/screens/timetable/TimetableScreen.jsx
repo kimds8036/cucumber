@@ -85,6 +85,20 @@ function dedupeSubjectsFromTimetable(timetable) {
     if (!map.has(key)) map.set(key, raw);
   }
   return [...map.entries()]
+    .sort((a, b) => a[1].localeCompare(b, 'ko'))
+    .map(([id, name]) => ({ id, name }));
+}
+
+function subjectsFromApiList(subjectList) {
+  const map = new Map();
+  for (const name of subjectList || []) {
+    const raw = String(name ?? '').trim();
+    if (!raw) continue;
+    const key = normalizeSubject(raw);
+    if (!key) continue;
+    if (!map.has(key)) map.set(key, raw);
+  }
+  return [...map.entries()]
     .sort((a, b) => a[1].localeCompare(b[1], 'ko'))
     .map(([id, name]) => ({ id, name }));
 }
@@ -122,6 +136,11 @@ export default function TimetableScreen({ navigation, route }) {
       ? { ...raw }
       : {};
   }, [route?.params?.initialTimetable]);
+
+  const routeSubjectList = useMemo(() => {
+    const raw = route?.params?.subjectList;
+    return Array.isArray(raw) ? raw.filter((s) => String(s || '').trim()) : [];
+  }, [route?.params?.subjectList]);
 
   const routeTimetableSerial = useMemo(
     () => JSON.stringify(route?.params?.initialTimetable ?? null),
@@ -168,8 +187,10 @@ export default function TimetableScreen({ navigation, route }) {
 
   const apiSubjectList = useMemo(() => {
     if (!profileScopeOk) return [];
+    const fromApi = subjectsFromApiList(routeSubjectList);
+    if (fromApi.length > 0) return fromApi;
     return dedupeSubjectsFromTimetable(initialTimetableSnapshot);
-  }, [initialTimetableSnapshot, profileScopeOk]);
+  }, [initialTimetableSnapshot, profileScopeOk, routeSubjectList]);
 
   const filteredSubjects = useMemo(() => {
     const q = keyword.trim();
