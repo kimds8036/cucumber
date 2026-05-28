@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useMemo } from 'react';
+import React, { useEffect, useState, useMemo, useRef, useCallback } from 'react';
 import {
   View,
   Text,
@@ -28,7 +28,8 @@ import {
 } from '../../src/screens/UserGuide/guidePreviewData';
 
 const OurSchoolScreen = ({ navigation }) => {
-  const { isGuidePreview } = useGuidePreview();
+  const { isGuidePreview, guideSchoolScrollTo } = useGuidePreview();
+  const scrollRef = useRef(null);
   const SCHOOL_CACHE_KEY = '@our_school_screen_cache_v1';
   const MEAL_CACHE_KEY_PREFIX = '@our_school_meal_cache_v1_';
   const CACHE_TTL_MS = 24 * 60 * 60 * 1000;
@@ -76,6 +77,17 @@ const OurSchoolScreen = ({ navigation }) => {
     if (!ts) return false;
     return Date.now() - Number(ts) < CACHE_TTL_MS;
   };
+
+  const applyGuideScroll = useCallback(() => {
+    if (!isGuidePreview || guideSchoolScrollTo !== 'shortcuts') return;
+    requestAnimationFrame(() => {
+      scrollRef.current?.scrollToEnd({ animated: false });
+    });
+  }, [isGuidePreview, guideSchoolScrollTo]);
+
+  useEffect(() => {
+    applyGuideScroll();
+  }, [applyGuideScroll, schoolInfo.name, grassDays.length, nextMeals.length]);
 
   useEffect(() => {
     let mounted = true;
@@ -318,8 +330,11 @@ const OurSchoolScreen = ({ navigation }) => {
   return (
     <View style={styles.container}>
       <ScrollView
+        ref={scrollRef}
         style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}
+        scrollEnabled={!isGuidePreview}
+        onContentSizeChange={applyGuideScroll}
       >
         {/* 학교 정보 카드 — 풀 너비 단독 */}
         <View style={styles.schoolCardBlock}>
@@ -551,7 +566,7 @@ const OurSchoolScreen = ({ navigation }) => {
           <Text style={styles.grassCardTitle}>우리 학교 공부 잔디밭</Text>
           <StudyGrassMap days={grassDays} />
         </View>
-        <SchoolAdPlaceholder />
+        {!isGuidePreview ? <SchoolAdPlaceholder /> : null}
 
         {/* 게시판 / 우편함 바로가기 */}
         <View style={styles.shortcutContainer}>

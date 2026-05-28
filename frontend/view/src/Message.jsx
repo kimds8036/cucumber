@@ -509,23 +509,23 @@ export function MessageContent({ navigation }) {
     const items = [];
     noteRooms.forEach((room, index) => {
       items.push({ ...room, type: room.type || 'note' });
-      if ((index + 1) % 5 === 0) {
+      if (!isGuidePreview && (index + 1) % 5 === 0) {
         items.push({ id: `note_ad_${index}`, type: 'chatAd' });
       }
     });
     return items;
-  }, [noteRooms]);
+  }, [noteRooms, isGuidePreview]);
 
   const mailsWithAds = useMemo(() => {
     const items = [];
     mails.forEach((mail, index) => {
       items.push({ ...mail, type: 'mail' });
-      if ((index + 1) % 5 === 0) {
+      if (!isGuidePreview && (index + 1) % 5 === 0) {
         items.push({ id: `mail_ad_${index}`, type: 'chatAd' });
       }
     });
     return items;
-  }, [mails]);
+  }, [mails, isGuidePreview]);
   const confirmDelete = useCallback(({ title, message, onConfirm }) => {
     Alert.alert(
       title,
