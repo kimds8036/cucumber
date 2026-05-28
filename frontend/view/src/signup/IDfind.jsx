@@ -13,9 +13,9 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { colors } from '../../styles/colors';
-import { createFindStyles } from '../../styles/find.style';
-import Skeleton from '../../components/common/Skeleton';
+import { colors } from '../../../styles/colors';
+import { createFindStyles } from '../../../styles/find.style';
+import Skeleton from '../../../components/common/Skeleton';
 
 const IDfind = ({ navigation }) => {
   const { width } = useWindowDimensions();

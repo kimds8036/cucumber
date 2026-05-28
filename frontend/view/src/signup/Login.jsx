@@ -19,13 +19,13 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
-import { createLoginStyles } from '../../styles/login.style';
-import { colors } from '../../styles/colors';
+import { createLoginStyles } from '../../../styles/login.style';
+import { colors } from '../../../styles/colors';
 import { Ionicons } from '@expo/vector-icons';
-import LogoIcon from '../../assets/Logo.svg';
-import { api, setAuthToken } from '../../utils/api';
-import { useAuth } from '../../context/AuthContext';
-import Skeleton from '../../components/common/Skeleton';
+import LogoIcon from '../../../assets/Logo.svg';
+import { api, setAuthToken } from '../../../utils/api';
+import { useAuth } from '../../../context/AuthContext';
+import Skeleton from '../../../components/common/Skeleton';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 /** --no-dev 등에서도 원인 파악용(Alert 본문) */

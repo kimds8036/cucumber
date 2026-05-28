@@ -9,20 +9,20 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { createSignupStyles } from '../../styles/login.style';
-import { colors } from '../../styles/colors';
-import SignStepConsent from './signup/SignStepConsent';
-import SignStep1 from './signup/SignStep1';
-import SignStep2 from './signup/SignStep2';
-import SignStep1_2 from './signup/SignStep1-2';
-import SignStep3 from './signup/SignStep3';
-import SignStep4 from './signup/SignStep4';
-import SignStepVerificationMethod from './signup/SignStepVerificationMethod';
-import SignStepCertificate from './signup/SignStepCertificate';
-import SignStepNumber from './signup/SignStepNumber';
-import { api } from '../../utils/api';
-import { useAppNavigation } from '../../navigation/useAppNavigation';
-import Skeleton from '../../components/common/Skeleton';
+import { createSignupStyles } from '../../../styles/login.style';
+import { colors } from '../../../styles/colors';
+import SignStepConsent from './SignStepConsent';
+import SignStep1 from './SignStep1';
+import SignStep2 from './SignStep2';
+import SignStep1_2 from './SignStep1-2';
+import SignStep3 from './SignStep3';
+import SignStep4 from './SignStep4';
+import SignStepVerificationMethod from './SignStepVerificationMethod';
+import SignStepCertificate from './SignStepCertificate';
+import SignStepNumber from './SignStepNumber';
+import { api } from '../../../utils/api';
+import { useAppNavigation } from '../../../navigation/useAppNavigation';
+import Skeleton from '../../../components/common/Skeleton';
 
 // TODO: 재디자인 완료 후 false로 되돌려 유효성 검사를 다시 활성화하세요.
 const DISABLE_SIGN_VALIDATION_FOR_REDESIGN = true;

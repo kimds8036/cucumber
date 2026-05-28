@@ -43,7 +43,19 @@ const getSubjectColorIndex = (subject) => {
 
 async function fetchTimetableFromApi() {
   const ttRes = await api.get('/api/timetable');
-  return ttRes.data?.data?.timetable || {};
+  const data = ttRes.data?.data || {};
+  const timetable =
+    data.timetable && typeof data.timetable === 'object' && !Array.isArray(data.timetable)
+      ? data.timetable
+      : {};
+  const subjects = Array.isArray(data.subjects)
+    ? data.subjects.filter((s) => String(s || '').trim())
+    : [];
+  return { timetable, subjects };
+}
+
+function hasSubjectList(subjects) {
+  return Array.isArray(subjects) && subjects.some((s) => Boolean(normalizeSubject(s)));
 }
 
 function hasTimetableEntries(timetable) {
@@ -130,15 +142,15 @@ function TimetablePreview({ timetable, loading }) {
           >
             <ActivityIndicator size="large" color={colors.primary} />
           </View>
-        ) : !hasTimetableData ? (
-          <View style={pv.choicePreviewEmptyContainer}>
-            <Text style={pv.choicePreviewEmptyText}>
-              시간표 데이터가 없습니다.{'\n'}직접 선택을 눌러 시간표를
-              구성해주세요
-            </Text>
-          </View>
         ) : (
           <>
+            {!hasTimetableData ? (
+              <View style={pv.choicePreviewNoticeBanner}>
+                <Text style={pv.choicePreviewNoticeText}>
+                  나이스에서 제공한 시간표가 없어요.
+                </Text>
+              </View>
+            ) : null}
             <View style={pv.choicePreviewGrid} collapsable={false}>
               <View style={pv.choicePreviewDaysRow}>
                 <View style={pv.choicePreviewPeriodHeaderCell} />
@@ -194,6 +206,7 @@ export default function TimetabelChoice({ navigation, route }) {
   const [autoLoading, setAutoLoading] = useState(false);
   const [showAutoAddedModal, setShowAutoAddedModal] = useState(false);
   const [previewTimetable, setPreviewTimetable] = useState({});
+  const [previewSubjects, setPreviewSubjects] = useState([]);
   const [previewLoading, setPreviewLoading] = useState(true);
   const scopedTimetableCacheKey = useMemo(
     () => route?.params?.timetableCacheKey || TIMETABLE_CACHE_KEY,
@@ -204,8 +217,11 @@ export default function TimetabelChoice({ navigation, route }) {
     let cancelled = false;
     (async () => {
       try {
-        const tt = await fetchTimetableFromApi();
-        if (!cancelled) setPreviewTimetable(tt);
+        const { timetable: tt, subjects } = await fetchTimetableFromApi();
+        if (!cancelled) {
+          setPreviewTimetable(tt);
+          setPreviewSubjects(subjects);
+        }
       } catch (e) {
         console.warn(
           '[TimetabelChoice] /api/timetable 조회 실패:',
@@ -224,9 +240,8 @@ export default function TimetabelChoice({ navigation, route }) {
   const fetchAndApplyAutoTimetable = useCallback(async () => {
     try {
       setAutoLoading(true);
-      const tt = await fetchTimetableFromApi();
-      const hasEntries = Object.keys(tt).length > 0;
-      if (!hasEntries) {
+      const { timetable: tt } = await fetchTimetableFromApi();
+      if (!hasTimetableEntries(tt)) {
         Alert.alert(
           '시간표 없음',
           '불러올 시간표가 없습니다. "시간표 직접 선택"으로 만들어 주세요.',
@@ -264,22 +279,31 @@ export default function TimetabelChoice({ navigation, route }) {
     }
 
     let timetableForManual = previewTimetable;
+    let subjectsForManual = previewSubjects;
     if (previewLoading) {
       try {
-        timetableForManual = await fetchTimetableFromApi();
+        const fetched = await fetchTimetableFromApi();
+        timetableForManual = fetched.timetable;
+        subjectsForManual = fetched.subjects;
         setPreviewTimetable(timetableForManual);
+        setPreviewSubjects(subjectsForManual);
       } catch (e) {
         console.warn(
           '[TimetabelChoice] 직접 선택 진입 전 시간표 조회 실패:',
           e?.response?.data || e?.message || e,
         );
         timetableForManual = {};
+        subjectsForManual = [];
       } finally {
         setPreviewLoading(false);
       }
     }
 
-    if (!hasTimetableEntries(timetableForManual)) {
+    const canManualPick =
+      hasTimetableEntries(timetableForManual) ||
+      hasSubjectList(subjectsForManual);
+
+    if (!canManualPick) {
       navigation.navigate('EditTimetable', {
         existingTimetable: {},
         timetableCacheKey: scopedTimetableCacheKey,
@@ -294,7 +318,11 @@ export default function TimetabelChoice({ navigation, route }) {
         api.get('/api/timetable'),
       ]);
       const me = meRes.data?.data;
-      const tt = ttRes.data?.data?.timetable;
+      const payload = ttRes.data?.data || {};
+      const tt = payload.timetable;
+      const apiSubjects = Array.isArray(payload.subjects)
+        ? payload.subjects.filter((s) => String(s || '').trim())
+        : subjectsForManual;
       const initialTimetable =
         tt && typeof tt === 'object' && !Array.isArray(tt) ? { ...tt } : {};
       const timetableScope = {
@@ -305,6 +333,7 @@ export default function TimetabelChoice({ navigation, route }) {
         selectionMode: mode,
         timetableCacheKey: scopedTimetableCacheKey,
         initialTimetable,
+        subjectList: apiSubjects,
         timetableScope,
       });
     } catch (e) {
@@ -316,6 +345,7 @@ export default function TimetabelChoice({ navigation, route }) {
         selectionMode: mode,
         timetableCacheKey: scopedTimetableCacheKey,
         initialTimetable: {},
+        subjectList: subjectsForManual,
       });
     }
   };
