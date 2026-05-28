@@ -39,6 +39,8 @@ const NEIS_MIDDLE_URL = 'https://open.neis.go.kr/hub/misTimetable';
 const NEIS_HIGH_URL = 'https://open.neis.go.kr/hub/hisTimetable';
 const NEIS_API_KEY = process.env.NEIS_API_KEY || process.env.NEIS_KEY || '';
 const BASE_TTL_MS = 24 * 60 * 60 * 1000;
+/** 반 매칭 로직 변경 시 bump — 잘못된 NEIS 캐시 무효화 */
+const TIMETABLE_CACHE_VERSION = 'v2';
 const baseCache = new Map();
 const userOverrideCache = new Map();
 const DAYS = ['월', '화', '수', '목', '금'];
@@ -93,26 +95,43 @@ function pickSubjectField(row) {
   return '';
 }
 
+/** NEIS CLASS_NM / users.class_number → 반 번호(정수 문자열). 파싱 불가 시 null. */
+function parseHomeroomNumber(raw) {
+  const s = String(raw ?? '').trim();
+  if (!s) return null;
+
+  const banSuffix = s.match(/(\d+)\s*반\s*$/);
+  if (banSuffix) {
+    const n = Number.parseInt(banSuffix[1], 10);
+    return Number.isFinite(n) ? String(n) : null;
+  }
+
+  if (/^\d+$/.test(s)) {
+    const n = Number.parseInt(s, 10);
+    return Number.isFinite(n) ? String(n) : null;
+  }
+
+  return null;
+}
+
+/** 미리보기 격자용: 반 번호 완전 일치만 허용 (빈 학급명·endsWith 매칭 없음). */
 function classNmMatches(userClass, rowClassNm) {
-  const u = String(userClass ?? '').trim();
-  const r = String(rowClassNm ?? '').trim();
-  if (!u) return true;
-  if (!r) return true;
-  if (u === r) return true;
-  if (r === `${u}반` || r.endsWith(`${u}반`)) return true;
-  const rDigits = r.replace(/[^\d]/g, '');
-  const uDigits = u.replace(/[^\d]/g, '');
-  if (uDigits && rDigits && uDigits === rDigits) return true;
-  return false;
+  const userNum = parseHomeroomNumber(userClass);
+  const rowNum = parseHomeroomNumber(rowClassNm);
+  if (userNum == null || rowNum == null) return false;
+  return userNum === rowNum;
 }
 
 /** 학년 전체 NEIS row 중 사용자 반에 맞는 row만 격자용으로 쓴다. 매칭 실패 시 빈 배열. */
 function filterRowsForUserTimetable(rows = [], classNumber) {
   if (!rows.length) return [];
+  if (classNumber == null || String(classNumber).trim() === '') return [];
+  if (parseHomeroomNumber(classNumber) == null) return [];
+
   const withClass = rows.filter((r) => String(r?.CLASS_NM ?? '').trim());
   if (withClass.length === 0) return [];
-  if (classNumber == null || String(classNumber).trim() === '') return [];
-  return rows.filter((r) => classNmMatches(classNumber, r.CLASS_NM));
+
+  return withClass.filter((r) => classNmMatches(classNumber, r.CLASS_NM));
 }
 
 function parseNeisRows(rows = []) {
@@ -156,7 +175,7 @@ function mergeTimetable(base = {}, override = {}) {
 }
 
 function getCacheKey(user, schoolLevel, weekKey) {
-  return `${user.school_id}:${user.grade}:${schoolLevel}:${weekKey}`;
+  return `${user.school_id}:${user.grade}:${schoolLevel}:${weekKey}:${TIMETABLE_CACHE_VERSION}`;
 }
 
 function normalizeNeisRowArray(rowField) {
