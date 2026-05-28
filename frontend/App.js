@@ -1,10 +1,10 @@
 import { StatusBar } from 'expo-status-bar';
 import { CommonActions, NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
-import Login from './view/src/Login';
-import Sign from './view/src/Sign';
-import IDfind from './view/src/IDfind';
-import PWfind from './view/src/PWfind';
+import Login from './view/src/signup/Login';
+import Sign from './view/src/signup/Sign';
+import IDfind from './view/src/signup/IDfind';
+import PWfind from './view/src/signup/PWfind';
 import MainScreen from './view/src/MainScreen';
 import AddTimetable from './src/screens/timetable/TimetableScreen';
 import TimetabelChoice from './src/screens/timetable/timetabelChoice';

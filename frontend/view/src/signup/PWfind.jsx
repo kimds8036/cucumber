@@ -15,10 +15,10 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { CommonActions } from '@react-navigation/native';
-import { colors } from '../../styles/colors';
-import { createFindStyles } from '../../styles/find.style';
-import { api } from '../../utils/api';
-import Skeleton from '../../components/common/Skeleton';
+import { colors } from '../../../styles/colors';
+import { createFindStyles } from '../../../styles/find.style';
+import { api } from '../../../utils/api';
+import Skeleton from '../../../components/common/Skeleton';
 
 const PWfind = ({ navigation }) => {
   const { width } = useWindowDimensions();
