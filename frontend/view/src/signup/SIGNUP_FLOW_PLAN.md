@@ -166,14 +166,18 @@ detectSchoolLevelInText(ocrText):
 | # | 작업 |
 |---|------|
 | V2-1 ~ V2-6 | `Sign.jsx` 스텝 재배치, `SignStepIdentity`, 연령 검사, OCR 학교 유추, 학교 확인 Alert |
+| V2-10 | Firebase Phone Auth (`SignStepIdentity`), `verify-firebase-phone`, 번호 교차 검증·중복 선검사 |
 
 ### 🔲 v2 후속
 
 | # | 작업 |
 |---|------|
-| V2-7 | `DISABLE_SIGN_VALIDATION_FOR_REDESIGN` → `false` (운영 전) |
+| V2-7 | `DISABLE_SIGN_VALIDATION_FOR_REDESIGN` → `false` (운영 전 E2E) |
 | V2-8 | `SignStepSchoolSelect.jsx` 파일 삭제(선택) |
-| V2-9 | Railway develop 배포 후 실기기 OCR 검증 |
+| V2-9 | Railway develop 배포 후 실기기 OCR·Phone Auth 검증 |
+| V2-11 | `IDfind` / `PWfind` / `SignStep1` → `firebasePhoneAuth.js` 공통화 (자체 SMS API 폐기) |
+
+**전화번호 저장 규칙:** DB·API 전역 `01012345678` (숫자만). Firebase E.164는 `normalizeLocalKrPhone` / `localKrToE164`로 변환.
 
 ---
 

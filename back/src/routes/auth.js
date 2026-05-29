@@ -17,6 +17,11 @@ import {
   extractTextFromImageBase64,
   verifyStudentIdOcrForSignup,
 } from '../services/studentIdOcr.service.js';
+import { verifyFirebaseIdToken } from '../config/firebase.js';
+import {
+  normalizeLocalKrPhone,
+  SQL_PHONE_NORM,
+} from '../utils/phone.js';
 
 const router = express.Router();
 
@@ -304,7 +309,7 @@ router.patch('/me/password', authenticate, validate(updatePasswordValidators), a
 // 전화번호 인증 코드 발송
 router.post('/send-verification', async (req, res) => {
   try {
-    const { phone } = req.body;
+    const phone = normalizeLocalKrPhone(req.body?.phone);
 
     if (!phone) {
       return res.status(400).json({ 
@@ -358,7 +363,8 @@ router.post('/send-verification', async (req, res) => {
 // 전화번호 인증 코드 확인
 router.post('/verify-phone', async (req, res) => {
   try {
-    const { phone, verificationCode } = req.body;
+    const phone = normalizeLocalKrPhone(req.body?.phone);
+    const { verificationCode } = req.body;
 
     if (!phone || !verificationCode) {
       return res.status(400).json({ 
@@ -411,6 +417,131 @@ router.post('/verify-phone', async (req, res) => {
   }
 });
 
+// 회원가입 전 전화번호 중복 확인 (Firebase SMS 발송 전)
+router.post('/check-phone-available', async (req, res) => {
+  try {
+    const phone = normalizeLocalKrPhone(req.body?.phone);
+
+    if (!phone) {
+      return res.status(400).json({
+        success: false,
+        message: '전화번호를 입력해주세요.',
+      });
+    }
+
+    if (!validatePhone(phone)) {
+      return res.status(400).json({
+        success: false,
+        message: '올바른 전화번호 형식이 아닙니다.',
+      });
+    }
+
+    const [existing] = await pool.execute(
+      `SELECT id FROM users WHERE ${SQL_PHONE_NORM} = ? LIMIT 1`,
+      [phone],
+    );
+
+    return res.json({
+      success: true,
+      data: {
+        phone,
+        available: existing.length === 0,
+      },
+    });
+  } catch (error) {
+    console.error('전화번호 중복 확인 오류:', error);
+    return res.status(500).json({
+      success: false,
+      message: '전화번호 확인 중 오류가 발생했습니다.',
+    });
+  }
+});
+
+// Firebase Phone Auth ID Token 검증 → phone_verifications 기록
+router.post('/verify-firebase-phone', async (req, res) => {
+  try {
+    const { idToken, phone: clientPhone } = req.body || {};
+
+    if (!idToken || typeof idToken !== 'string') {
+      return res.status(400).json({
+        success: false,
+        message: '인증 토큰이 필요합니다.',
+      });
+    }
+
+    const normalizedClient = normalizeLocalKrPhone(clientPhone);
+    if (!normalizedClient || !validatePhone(normalizedClient)) {
+      return res.status(400).json({
+        success: false,
+        message: '올바른 전화번호 형식이 아닙니다.',
+      });
+    }
+
+    let decoded;
+    try {
+      decoded = await verifyFirebaseIdToken(idToken);
+    } catch (tokenErr) {
+      console.warn('[verify-firebase-phone] token invalid:', tokenErr?.message || tokenErr);
+      return res.status(401).json({
+        success: false,
+        message: '유효하지 않거나 만료된 인증 토큰입니다.',
+      });
+    }
+
+    if (decoded.firebase?.sign_in_provider !== 'phone') {
+      return res.status(400).json({
+        success: false,
+        message: '전화번호 인증 토큰이 아닙니다.',
+      });
+    }
+
+    const normalizedToken = normalizeLocalKrPhone(decoded.phone_number);
+    if (!normalizedToken || !validatePhone(normalizedToken)) {
+      return res.status(400).json({
+        success: false,
+        message: '인증 토큰의 전화번호 형식이 올바르지 않습니다.',
+      });
+    }
+
+    if (normalizedClient !== normalizedToken) {
+      console.warn('[verify-firebase-phone] phone mismatch', {
+        client: normalizedClient,
+        token: normalizedToken,
+      });
+      return res.status(400).json({
+        success: false,
+        message: '인증한 전화번호와 입력한 전화번호가 일치하지 않습니다.',
+      });
+    }
+
+    const phone = normalizedToken;
+    const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
+
+    await pool.execute(
+      'DELETE FROM phone_verifications WHERE phone = ? AND is_verified = FALSE',
+      [phone],
+    );
+
+    await pool.execute(
+      `INSERT INTO phone_verifications (phone, verification_code, expires_at, is_verified)
+       VALUES (?, ?, ?, TRUE)`,
+      [phone, 'FIREBASE', expiresAt],
+    );
+
+    return res.json({
+      success: true,
+      message: '전화번호 인증이 완료되었습니다.',
+      data: { phone },
+    });
+  } catch (error) {
+    console.error('Firebase 전화번호 인증 오류:', error);
+    return res.status(500).json({
+      success: false,
+      message: '전화번호 인증 처리 중 오류가 발생했습니다.',
+    });
+  }
+});
+
 // 회원가입
 router.post('/signup', validate(signupValidators), async (req, res) => {
   try {
@@ -418,7 +549,7 @@ router.post('/signup', validate(signupValidators), async (req, res) => {
       username, 
       password, 
       name, 
-      phone, 
+      phone: rawPhone, 
       birthDate, 
       schoolId, 
       grade, 
@@ -426,6 +557,8 @@ router.post('/signup', validate(signupValidators), async (req, res) => {
       graduationYear, 
       colorId 
     } = req.body;
+
+    const phone = normalizeLocalKrPhone(rawPhone);
 
     // 필수 필드 검증
     if (!username || !password || !name || !phone || !birthDate || 
@@ -482,8 +615,8 @@ router.post('/signup', validate(signupValidators), async (req, res) => {
 
     // 중복 확인
     const [existingUsers] = await pool.execute(
-      'SELECT id FROM users WHERE username = ? OR phone = ?',
-      [username, phone]
+      `SELECT id FROM users WHERE username = ? OR ${SQL_PHONE_NORM} = ?`,
+      [username, phone],
     );
 
     if (existingUsers.length > 0) {

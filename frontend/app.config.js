@@ -96,6 +96,7 @@ export default ({ config }) => ({
         },
       ],
       '@react-native-firebase/app',
+      '@react-native-firebase/auth',
       '@react-native-firebase/messaging',
       [
         'expo-build-properties',

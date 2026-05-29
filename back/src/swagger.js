@@ -83,6 +83,54 @@ export default {
         },
       },
     },
+    '/api/auth/check-phone-available': {
+      post: {
+        tags: ['인증'],
+        summary: '회원가입 전 전화번호 중복 확인',
+        requestBody: {
+          required: true,
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                required: ['phone'],
+                properties: {
+                  phone: { type: 'string', example: '01012345678' },
+                },
+              },
+            },
+          },
+        },
+        responses: {
+          200: { description: '확인 완료' },
+        },
+      },
+    },
+    '/api/auth/verify-firebase-phone': {
+      post: {
+        tags: ['인증'],
+        summary: 'Firebase Phone Auth ID Token 검증 및 phone_verifications 기록',
+        requestBody: {
+          required: true,
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                required: ['idToken', 'phone'],
+                properties: {
+                  idToken: { type: 'string', description: 'Firebase Phone Auth ID Token' },
+                  phone: { type: 'string', example: '01012345678', description: '가입 화면 입력 번호 (토큰과 교차 검증)' },
+                },
+              },
+            },
+          },
+        },
+        responses: {
+          200: { description: '인증 완료', content: { 'application/json': { schema: { $ref: '#/components/schemas/SuccessMessage' } } } },
+          401: { description: '토큰 무효', content: { 'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } } } },
+        },
+      },
+    },
     '/api/auth/signup': {
       post: {
         tags: ['인증'],
