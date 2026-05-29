@@ -1,6 +1,6 @@
-import { createWorker } from 'tesseract.js';
 import pool from '../config/database.js';
 import { cropBase64Image } from '../utils/imageCrop.js';
+import { recognizeImageBuffer } from './naverClovaOcr.service.js';
 import {
   buildSafeSchoolSearchTerm,
   buildSchoolSearchSql,
@@ -86,6 +86,7 @@ export async function inferSchoolFromOcrText(ocrText, birthDate) {
   return null;
 }
 
+/** base64 학생증 이미지 → CLOVA General OCR 텍스트 */
 export async function extractTextFromImageBase64(imageBase64, cropRegion = null) {
   const raw = String(imageBase64 || '').replace(/^data:image\/\w+;base64,/, '');
   if (!raw) return '';
@@ -94,17 +95,7 @@ export async function extractTextFromImageBase64(imageBase64, cropRegion = null)
   if (cropRegion && typeof cropRegion === 'object') {
     buffer = await cropBase64Image(imageBase64, cropRegion);
   }
-  const worker = await createWorker('kor+eng', 1, {
-    logger: () => {},
-  });
-  try {
-    const {
-      data: { text },
-    } = await worker.recognize(buffer);
-    return String(text || '');
-  } finally {
-    await worker.terminate();
-  }
+  return recognizeImageBuffer(buffer);
 }
 
 /**

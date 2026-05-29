@@ -1011,7 +1011,7 @@ router.post('/logout', authenticate, async (req, res) => {
   }
 });
 
-// 회원가입 중 학생증 Tesseract 3중 검증 (비로그인)
+// 회원가입 중 학생증 CLOVA OCR 3중 검증 (비로그인)
 router.post('/signup/verify-student-id', async (req, res) => {
   try {
     const { name, birthDate, imageBase64, cropRegion } = req.body || {};
@@ -1027,7 +1027,7 @@ router.post('/signup/verify-student-id', async (req, res) => {
     try {
       ocrText = await extractTextFromImageBase64(imageBase64, cropRegion);
     } catch (ocrErr) {
-      console.error('Tesseract OCR 오류:', ocrErr);
+      console.error('CLOVA OCR 오류:', ocrErr);
       return res.status(500).json({
         success: false,
         message: '학생증 이미지 인식에 실패했습니다. 다시 촬영해 주세요.',

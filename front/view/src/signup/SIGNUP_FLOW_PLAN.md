@@ -11,7 +11,7 @@
 
 - 애플 Guideline 1.2(UGC)·청소년 보호에 맞는 **가입·학생 인증** 완성
 - **중·고등 재학 연령만** 가입 허용 (그 외 연령·만 14세 미만 차단)
-- 유료 OCR 없이 **Tesseract** + 키워드 매칭
+- **네이버 클라우드 CLOVA General OCR** + 키워드·DB 학교 매칭
 - **학교 검색 화면 없음** → OCR 텍스트로 학교·학교급 유추
 
 ---
@@ -72,7 +72,7 @@
 
 ---
 
-## 4. Tesseract 검증 (v2)
+## 4. CLOVA OCR 검증 (v2)
 
 **원칙:** 전체 파싱 신뢰 X → `includes()` · DB 검색 · 생년월일 기반 학교급.
 
@@ -157,7 +157,7 @@ detectSchoolLevelInText(ocrText):
 |------|------|
 | signup 폴더 정리, `App.js` import | |
 | `Login` → `Sign` / `IDfind` / `PWfind` | |
-| Tesseract 3중 검증 API (실명·학교급·**선택 학교명**) | v2에서 3번만 변경 |
+| CLOVA OCR 3중 검증 API (실명·학교급·**선택 학교명**) | v2에서 3번만 변경 |
 | `SignStepStudentIdVerify` 촬영 UI | |
 | 만 14세 미만 팝업 | Step 위치 v2에서 이동 예정 |
 
@@ -206,7 +206,7 @@ detectSchoolLevelInText(ocrText):
 |------|------|
 | 중·고 만 나이 구간 | `12~15` / `16~19` 확정 여부, 경계 학년(만 15·16) |
 | OCR 학교 유추 | 동명이교·줄임말(예: 「한울고」) 매칭 규칙 |
-| Tesseract Railway | WASM 메모리·첫 호출 지연 |
+| CLOVA OCR | Invoke URL·Secret, NCP 요금·쿼터 |
 | 증명서 제출 플로우 | v2에서 유지 여부 |
 
 ---
