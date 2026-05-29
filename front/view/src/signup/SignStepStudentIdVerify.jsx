@@ -5,39 +5,22 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   Alert,
+  StyleSheet,
 } from 'react-native';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import { colors } from '../../../styles/colors';
 import { api } from '../../../utils/api';
 
-/** 학생증 촬영 → OCR 학교 유추 + 3중 검증 (학교 선택 화면 없음) */
-const SignStepStudentIdVerify = ({
-  styles,
-  identity,
-  onVerified,
-  disableValidation = false,
-}) => {
+/** 학생증 촬영 → OCR (가입 DB 기록은 마지막 POST /signup 에서만) */
+const SignStepStudentIdVerify = ({ styles, identity, onVerified }) => {
   const [permission, requestPermission] = useCameraPermissions();
   const cameraRef = useRef(null);
   const [busy, setBusy] = useState(false);
-  const [statusText, setStatusText] = useState('학생증을 틀에 맞춰 주세요.');
+  const [statusText, setStatusText] = useState('학생증을 가운데 틀에 맞춰 주세요.');
 
   const runVerify = useCallback(async () => {
     if (!identity?.name?.trim() || !identity?.birthDate) {
       Alert.alert('알림', '이름·생년월일·전화번호 인증을 먼저 완료해 주세요.');
-      return;
-    }
-
-    if (disableValidation) {
-      onVerified?.({
-        name: identity.name,
-        school: '테스트고등학교',
-        schoolId: 'MOCK',
-        grade: '1',
-        class: '1',
-        graduationYear: String(new Date().getFullYear() + 1),
-        verification: { passed: true, mock: true },
-      });
       return;
     }
 
@@ -76,11 +59,11 @@ const SignStepStudentIdVerify = ({
 
       onVerified?.({
         name: identity.name,
-        school: data.school?.name,
+        school: data.school,
         schoolId: data.school?.id,
-        grade: data.grade || '',
-        class: data.classNumber || '',
-        graduationYear: data.graduationYear || '',
+        grade: data.suggestedGrade ?? '',
+        class: data.suggestedClassNumber ?? '',
+        graduationYear: data.suggestedGraduationYear ?? '',
         verification: data,
       });
     } catch (e) {
@@ -92,17 +75,17 @@ const SignStepStudentIdVerify = ({
       setStatusText('오류가 발생했습니다. 다시 시도해 주세요.');
     } finally {
       setBusy(false);
-      setStatusText('학생증을 틀에 맞춰 주세요.');
+      setStatusText('학생증을 가운데 틀에 맞춰 주세요.');
     }
-  }, [identity, disableValidation, onVerified]);
+  }, [identity, onVerified]);
 
   if (!permission) {
-    return <View style={styles.content} />;
+    return <View style={[styles.content, { flex: 1 }]} />;
   }
 
   if (!permission.granted) {
     return (
-      <View style={styles.content}>
+      <View style={[styles.content, { flex: 1 }]}>
         <Text style={styles.inputLabel}>카메라 권한이 필요합니다.</Text>
         <TouchableOpacity style={styles.manualButton} onPress={requestPermission}>
           <Text style={styles.manualButtonText}>권한 허용하기</Text>
@@ -112,9 +95,9 @@ const SignStepStudentIdVerify = ({
   }
 
   return (
-    <View style={styles.content}>
-      <View style={styles.cameraContainer}>
-        <CameraView style={styles.camera} facing="back" ref={cameraRef}>
+    <View style={localStyles.root}>
+      <View style={[styles.cameraContainer, localStyles.cameraFill]}>
+        <CameraView style={StyleSheet.absoluteFillObject} facing="back" ref={cameraRef}>
           <View style={styles.cameraOverlay}>
             <View style={styles.overlayTop} />
             <View style={styles.overlayMiddle}>
@@ -130,7 +113,7 @@ const SignStepStudentIdVerify = ({
       </View>
 
       <TouchableOpacity
-        style={[styles.nextButton, { marginTop: 16 }, busy && { opacity: 0.6 }]}
+        style={[styles.nextButton, localStyles.captureBtn, busy && { opacity: 0.6 }]}
         disabled={busy}
         onPress={runVerify}
       >
@@ -143,5 +126,20 @@ const SignStepStudentIdVerify = ({
     </View>
   );
 };
+
+const localStyles = StyleSheet.create({
+  root: {
+    flex: 1,
+  },
+  cameraFill: {
+    flex: 1,
+    minHeight: 320,
+    marginBottom: 0,
+  },
+  captureBtn: {
+    marginTop: 12,
+    marginBottom: 8,
+  },
+});
 
 export default SignStepStudentIdVerify;

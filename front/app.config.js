@@ -78,6 +78,8 @@ export default ({ config }) => ({
 
     plugins: [
       'expo-font',
+      'expo-image',
+      'expo-status-bar',
       [
         'expo-location',
         {

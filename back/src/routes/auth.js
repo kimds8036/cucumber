@@ -17,6 +17,12 @@ import {
   extractTextFromImageBase64,
   verifyStudentIdOcrForSignup,
 } from '../services/studentIdOcr.service.js';
+import {
+  inferExpectedSchoolLevel,
+  inferGradeFromBirthDate,
+  inferGraduationYear,
+  pickRandomProfileColorId,
+} from '../utils/signupEnrollment.js';
 import { verifyFirebaseIdToken } from '../config/firebase.js';
 import {
   normalizeLocalKrPhone,
@@ -50,16 +56,18 @@ const signupValidators = [
     .withMessage('전화번호를 입력해주세요.'),
   body('birthDate').isString().bail().trim().isLength({ min: 1, max: 20 })
     .withMessage('생년월일을 입력해주세요.'),
-  body('schoolId').exists({ checkNull: true }).withMessage('학교를 선택해주세요.')
-    .bail().isString().trim().isLength({ min: 1, max: 50 }),
+  body('schoolId').optional({ values: 'falsy' }).isString().trim().isLength({ min: 1, max: 50 }),
+  body('claimedSchoolName').optional({ values: 'falsy' }).isString().trim().isLength({ max: 100 }),
   body('grade').exists({ checkNull: true }).withMessage('학년을 선택해주세요.')
     .bail().toInt().isInt({ min: 1, max: 6 }).withMessage('학년이 올바르지 않습니다.'),
   body('classNumber').exists({ checkNull: true }).withMessage('반을 선택해주세요.')
     .bail().toInt().isInt({ min: 1, max: 50 }).withMessage('반이 올바르지 않습니다.'),
   body('graduationYear').exists({ checkNull: true }).withMessage('졸업년도를 선택해주세요.')
     .bail().toInt().isInt({ min: 1900, max: 2100 }).withMessage('졸업년도가 올바르지 않습니다.'),
-  body('colorId').exists({ checkNull: true }).withMessage('컬러를 선택해주세요.')
-    .bail().toInt().isInt({ min: 1 }).withMessage('컬러 ID가 올바르지 않습니다.'),
+  body('colorId').optional({ values: 'falsy' }).toInt().isInt({ min: 1, max: 4 }),
+  body('verificationMethod').optional({ values: 'falsy' }).isString().isIn(['student_id', 'certificate']),
+  body('certificateViewUrl').optional({ values: 'falsy' }).isString().isLength({ max: 500 }),
+  body('certificateAccessCode').optional({ values: 'falsy' }).isString().isLength({ max: 100 }),
 ];
 
 const updateUsernameValidators = [
@@ -525,7 +533,7 @@ router.post('/verify-firebase-phone', async (req, res) => {
     await pool.execute(
       `INSERT INTO phone_verifications (phone, verification_code, expires_at, is_verified)
        VALUES (?, ?, ?, TRUE)`,
-      [phone, 'FIREBASE', expiresAt],
+      [phone, 'FB0000', expiresAt],
     );
 
     return res.json({
@@ -555,19 +563,56 @@ router.post('/signup', validate(signupValidators), async (req, res) => {
       grade, 
       classNumber, 
       graduationYear, 
-      colorId 
+      colorId: rawColorId,
+      verificationMethod = 'student_id',
+      certificateViewUrl,
+      certificateAccessCode,
+      claimedSchoolName,
     } = req.body;
 
     const phone = normalizeLocalKrPhone(rawPhone);
+    const isCertificateSignup = verificationMethod === 'certificate';
+    const resolvedSchoolId = isCertificateSignup
+      ? (schoolId?.trim() || 'CERT_PENDING')
+      : schoolId;
 
     // 필수 필드 검증
     if (!username || !password || !name || !phone || !birthDate || 
-        !schoolId || !grade || !classNumber || !graduationYear || !colorId) {
+        !resolvedSchoolId || !grade || !classNumber || !graduationYear) {
       return res.status(400).json({ 
         success: false, 
         message: '모든 필드를 입력해주세요.' 
       });
     }
+
+    if (isCertificateSignup) {
+      if (!certificateViewUrl?.trim() || !certificateAccessCode?.trim()) {
+        return res.status(400).json({
+          success: false,
+          message: '증명서 열람 주소와 열람 번호를 입력해주세요.',
+        });
+      }
+    } else if (!schoolId?.trim()) {
+      return res.status(400).json({
+        success: false,
+        message: '학생증 인증으로 학교를 확인해 주세요.',
+      });
+    }
+
+    const resolvedColorId = Number(rawColorId) || pickRandomProfileColorId();
+
+    const expectedLevel = inferExpectedSchoolLevel(birthDate);
+    let resolvedGrade = Number(grade);
+    let resolvedGraduationYear = Number(graduationYear);
+    if (!Number.isFinite(resolvedGrade) || resolvedGrade < 1) {
+      resolvedGrade = inferGradeFromBirthDate(birthDate, expectedLevel) || 1;
+    }
+    if (!Number.isFinite(resolvedGraduationYear)) {
+      resolvedGraduationYear =
+        inferGraduationYear(birthDate, expectedLevel, resolvedGrade) ||
+        new Date().getFullYear() + 1;
+    }
+    const resolvedClassNumber = Number(classNumber) || 1;
 
     // 입력값 검증
     if (!validateUsername(username)) {
@@ -626,8 +671,8 @@ router.post('/signup', validate(signupValidators), async (req, res) => {
       });
     }
 
-    // 컬러 ID 유효성 확인
-    const [colors] = await pool.execute('SELECT id FROM colors WHERE id = ?', [colorId]);
+    // 컬러 ID 유효성 확인 (1~4 랜덤 배정 가능)
+    const [colors] = await pool.execute('SELECT id FROM colors WHERE id = ?', [resolvedColorId]);
     if (colors.length === 0) {
       return res.status(400).json({ 
         success: false, 
@@ -635,22 +680,76 @@ router.post('/signup', validate(signupValidators), async (req, res) => {
       });
     }
 
+    // student_verified: 학생증 OCR 가입은 즉시 TRUE.
+    // 등교·학적 검증 등 운영 로직에서 FALSE 로 내릴 수 있음 (users.student_verified).
+    // 증명서 가입은 관리자 검수 승인 전까지 FALSE.
+    const studentVerifiedOnInsert = !isCertificateSignup;
+
     // 비밀번호 해싱
     const hashedPassword = await hashPassword(password);
 
-    // 사용자 생성
-    const [result] = await pool.execute(
-      `INSERT INTO users 
-       (username, password, name, phone, birth_date, school_id, grade, class_number, graduation_year, color_id, phone_verified) 
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, TRUE)`,
-      [username, hashedPassword, name, phone, birthDate, schoolId, grade, classNumber, graduationYear, colorId]
-    );
+    const connection = await pool.getConnection();
+    try {
+      await connection.beginTransaction();
 
-    res.status(201).json({ 
-      success: true, 
-      message: '회원가입이 완료되었습니다.',
-      data: { userId: result.insertId }
-    });
+      const [result] = await connection.execute(
+        `INSERT INTO users 
+         (username, password, name, phone, birth_date, school_id, grade, class_number, graduation_year, color_id, phone_verified, student_verified) 
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, TRUE, ?)`,
+        [
+          username,
+          hashedPassword,
+          name,
+          phone,
+          birthDate,
+          resolvedSchoolId,
+          resolvedGrade,
+          resolvedClassNumber,
+          resolvedGraduationYear,
+          resolvedColorId,
+          studentVerifiedOnInsert,
+        ],
+      );
+
+      const userId = result.insertId;
+
+      if (isCertificateSignup) {
+        await connection.execute(
+          `INSERT INTO signup_certificate_submissions
+           (user_id, name, phone, birth_date, certificate_view_url, certificate_access_code, claimed_school_name, status)
+           VALUES (?, ?, ?, ?, ?, ?, ?, 'pending')`,
+          [
+            userId,
+            name,
+            phone,
+            birthDate,
+            certificateViewUrl.trim(),
+            certificateAccessCode.trim(),
+            claimedSchoolName?.trim() || null,
+          ],
+        );
+      }
+
+      await connection.commit();
+
+      res.status(201).json({ 
+        success: true, 
+        message: isCertificateSignup
+          ? '회원가입이 완료되었습니다. 증명서 검수 후 학생 인증이 완료됩니다.'
+          : '회원가입이 완료되었습니다.',
+        data: {
+          userId,
+          colorId: resolvedColorId,
+          studentVerified: studentVerifiedOnInsert,
+          certificateReviewPending: isCertificateSignup,
+        },
+      });
+    } catch (txErr) {
+      await connection.rollback();
+      throw txErr;
+    } finally {
+      connection.release();
+    }
   } catch (error) {
     console.error('회원가입 오류:', error);
     
@@ -952,6 +1051,14 @@ router.post('/signup/verify-student-id', async (req, res) => {
       birthDate,
     });
 
+    const expectedLevel = verification.expectedLevel;
+    const suggestedGrade = inferGradeFromBirthDate(birthDate, expectedLevel);
+    const suggestedGraduationYear = inferGraduationYear(
+      birthDate,
+      expectedLevel,
+      suggestedGrade,
+    );
+
     return res.json({
       success: true,
       data: {
@@ -963,6 +1070,9 @@ router.post('/signup/verify-student-id', async (req, res) => {
         expectedLevel: verification.expectedLevel,
         detectedLevel: verification.detectedLevel,
         school: verification.school,
+        suggestedGrade,
+        suggestedGraduationYear,
+        suggestedClassNumber: 1,
       },
     });
   } catch (error) {

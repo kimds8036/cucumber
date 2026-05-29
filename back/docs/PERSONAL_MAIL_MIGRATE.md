@@ -15,7 +15,7 @@
 2. 로컬에서 `back/.env` (또는 일회성 env)에 develop DB 설정
 
 ```powershell
-cd c:\cucumber\back
+cd C:\y\back
 # .env 예: DB_HOST, DB_PORT, DB_USER, DB_PASSWORD, DB_NAME (develop DB)
 npm run migrate
 ```

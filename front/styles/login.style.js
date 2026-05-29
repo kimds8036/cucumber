@@ -244,9 +244,30 @@ export const createSignupStyles = (width, normalize) => {
       backgroundColor: colors.background,
       ...shadow.sm,
     },
+    /** @deprecated 회원가입 잠금 필드는 lockedFieldText 사용 */
     inputReadonly: {
-      backgroundColor: colors.textLight5,
       color: colors.textSecondary,
+    },
+    lockedFieldInner: {
+      justifyContent: 'center',
+      paddingVertical: normalize(12),
+    },
+    lockedFieldText: {
+      fontSize: normalize(fontSizes.xxl),
+      fontFamily: fonts.regular,
+      color: colors.textSecondary,
+    },
+    lockedFieldPlaceholder: {
+      color: colors.textLight40,
+    },
+    enrollmentNotice: {
+      fontSize: normalize(fontSizes.md),
+      fontFamily: fonts.regular,
+      color: colors.textSecondary,
+      lineHeight: normalize(20),
+      marginTop: normalize(20),
+      marginBottom: normalize(8),
+      paddingHorizontal: normalize(4),
     },
     passGuideText: {
       fontSize: normalize(fontSizes.xl),
@@ -395,8 +416,6 @@ export const createSignupStyles = (width, normalize) => {
     },
     cameraOverlay: {
       ...StyleSheet.absoluteFillObject,
-      justifyContent: 'center',
-      alignItems: 'center',
     },
     overlayTop: {
       flex: 1,
@@ -406,17 +425,21 @@ export const createSignupStyles = (width, normalize) => {
     overlayMiddle: {
       flexDirection: 'row',
       width: '100%',
+      alignItems: 'center',
+      justifyContent: 'center',
     },
     overlaySide: {
       flex: 1,
+      alignSelf: 'stretch',
       backgroundColor: colors.overlayDark,
     },
     cardFrame: {
-      width: width * 0.7,
+      width: width * 0.72,
       height: width * 0.45,
       borderWidth: 3,
       borderColor: colors.primary,
-      borderRadius: normalize(24),
+      borderRadius: normalize(16),
+      backgroundColor: 'transparent',
     },
     overlayBottom: {
       flex: 1,
@@ -424,6 +447,7 @@ export const createSignupStyles = (width, normalize) => {
       backgroundColor: colors.overlayDark,
       justifyContent: 'center',
       alignItems: 'center',
+      paddingHorizontal: normalize(16),
     },
     cameraGuideText: {
       fontSize: normalize(fontSizes.xl),

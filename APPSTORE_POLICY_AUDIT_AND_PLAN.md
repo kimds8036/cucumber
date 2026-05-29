@@ -1,7 +1,7 @@
 # App Store 심사 대응 Audit & 개선 설계
 
 작성일: 2026-05-28  
-범위: `frontend`(React Native), `back`(Node.js/Express), DB 마이그레이션/조회 구조  
+범위: `front`(React Native), `back`(Node.js/Express), DB 마이그레이션/조회 구조  
 원칙: 코드 수정 없이 현황 점검 + 개선 설계만 문서화
 
 ---
@@ -16,10 +16,10 @@
   - Auth 초기 진입이 `TestLogin`으로 설정되어 테스트 진입 경로가 운영 동선에 남아 있음.
 
 - **근거 파일**
-  - `frontend/view/src/signup/SignStepConsent.jsx`
-  - `frontend/view/src/Sign.jsx`
-  - `frontend/view/src/Login.jsx`
-  - `frontend/App.js`
+  - `front/view/src/signup/SignStepConsent.jsx`
+  - `front/view/src/Sign.jsx`
+  - `front/view/src/Login.jsx`
+  - `front/App.js`
 
 - **진단**
   - 회원가입 시점 동의는 구현되어 있으나, 운영/심사 관점에서 로그인 진입 동선과 약관 고지 일관성은 보완 필요.
@@ -40,16 +40,16 @@
 
 - **근거 파일**
   - 신고:
-    - `frontend/components/common/ReportModal.jsx`
-    - `frontend/view/src/boardAll.jsx`
-    - `frontend/view/src/boardDetail.jsx`
+    - `front/components/common/ReportModal.jsx`
+    - `front/view/src/boardAll.jsx`
+    - `front/view/src/boardDetail.jsx`
     - `back/src/routes/posts.js`
     - `back/src/routes/comments.js`
   - 차단:
     - `back/src/db/migrations/001_initial_schema.sql` (`user_blocks`)
     - `back/src/routes/friends.js`
     - `back/src/utils/userBlock.js`
-    - `frontend/view/src/schoolMailDetail.jsx` (차단 핸들러 미완성 흔적)
+    - `front/view/src/schoolMailDetail.jsx` (차단 핸들러 미완성 흔적)
 
 - **진단**
   - 신고는 “구현됨”으로 판단.
@@ -65,15 +65,15 @@
   - 프리릴리즈 안내 문구 기반 임시 차단 UI
 
 - **대표 근거 파일**
-  - `frontend/App.js`
-  - `frontend/view/src/TestLogin.jsx`
+  - `front/App.js`
+  - `front/view/src/TestLogin.jsx`
   - `back/src/routes/test.js`
-  - `frontend/view/src/Login.jsx`
-  - `frontend/view/src/Sign.jsx`
-  - `frontend/view/src/PWfind.jsx`
-  - `frontend/view/src/IDfind.jsx`
-  - `frontend/view/src/boardAll.jsx`
-  - `frontend/view/src/schoolMailDetail.jsx`
+  - `front/view/src/Login.jsx`
+  - `front/view/src/Sign.jsx`
+  - `front/view/src/PWfind.jsx`
+  - `front/view/src/IDfind.jsx`
+  - `front/view/src/boardAll.jsx`
+  - `front/view/src/schoolMailDetail.jsx`
 
 - **진단**
   - 심사/운영 전환 시 숨김 또는 제거가 필요한 베타 흔적이 다수 존재.

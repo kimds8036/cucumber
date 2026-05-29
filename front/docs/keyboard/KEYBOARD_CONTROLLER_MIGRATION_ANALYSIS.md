@@ -10,24 +10,24 @@
 
 | 파일                                                 | KeyboardAvoidingView 사용 | KeyboardContext(useKeyboard) 사용 | Keyboard 이벤트 리스너 사용         | keyboardHeightAnimated 사용 위치/방식                               | 메모                                                           |
 | ---------------------------------------------------- | ------------------------- | --------------------------------- | ----------------------------------- | ------------------------------------------------------------------- | -------------------------------------------------------------- |
-| `frontend/context/KeyboardContext.jsx`               | 아니오                    | Provider/Hook 정의만 존재         | 있음 (`keyboardWill/DidShow/Hide`)  | `Animated.Value` 생성 후 `timing/setValue`, `useNativeDriver: true` | 전역 컨텍스트 정의 파일                                        |
-| `frontend/view/src/chat/screens/ChatScreen.jsx`      | 예 (루트 1개)             | 아니오                            | 아니오 (직접 없음)                  | 없음                                                                | `scroll.keyboardHeight`를 `MessageInput`으로 전달              |
-| `frontend/view/src/chat/components/MessageInput.jsx` | 아니오                    | 아니오                            | 아니오                              | 없음                                                                | `keyboardHeight` prop으로 paddingBottom 제어                   |
-| `frontend/view/src/chat/hooks/useChatScroll.js`      | 아니오                    | 아니오                            | 있음 (`Keyboard.addListener`)       | 없음                                                                | 키보드 높이를 state로 보관 + 키보드 show/hide 시 `scrollToEnd` |
-| `frontend/view/src/boardDetail.jsx`                  | 아니오                    | 아니오                            | 있음 (`Keyboard.addListener(show)`) | 없음                                                                | 키보드 show 후 지연 `scrollToComment/scrollToEnd`              |
-| `frontend/view/src/schoolMailDetail.jsx`             | 아니오                    | 아니오                            | 있음 (`Keyboard.addListener(show)`) | 없음                                                                | boardDetail과 유사한 댓글 입력/답글 포커스 패턴                |
-| `frontend/components/CommentInput.jsx`               | 아니오                    | 아니오                            | 아니오                              | 없음                                                                | 순수 입력 UI 컴포넌트                                          |
-| `frontend/components/timerFriendModals.jsx`          | 예 (`AddFriendModal`)     | 아니오                            | 아니오 (`Keyboard.dismiss`만)       | 없음                                                                | Modal 내부 KAV 구조 (친구추가)                                 |
-| `frontend/view/src/boardWrite.jsx`                   | 예 (화면 루트)            | 아니오                            | 아니오 (`Keyboard.dismiss`만)       | 없음                                                                | KAV + ScrollView + 하단 툴바/패널                              |
-| `frontend/view/src/sendmailscreen.jsx`               | 예 (화면 루트)            | 아니오                            | 아니오 (`Keyboard.dismiss`만)       | 없음                                                                | KAV + ScrollView + 하단 CTA                                    |
-| `frontend/view/src/sendSchoolMailScreen.jsx`         | 예 (화면 루트)            | 아니오                            | 아니오 (`Keyboard.dismiss`만)       | 없음                                                                | sendmailscreen과 구조 유사                                     |
-| `frontend/view/src/Login.jsx`                        | 예 (화면 루트)            | 아니오                            | 아니오 (`Keyboard.dismiss`만)       | 없음                                                                | KAV + ScrollView 로그인 폼                                     |
+| `front/context/KeyboardContext.jsx`               | 아니오                    | Provider/Hook 정의만 존재         | 있음 (`keyboardWill/DidShow/Hide`)  | `Animated.Value` 생성 후 `timing/setValue`, `useNativeDriver: true` | 전역 컨텍스트 정의 파일                                        |
+| `front/view/src/chat/screens/ChatScreen.jsx`      | 예 (루트 1개)             | 아니오                            | 아니오 (직접 없음)                  | 없음                                                                | `scroll.keyboardHeight`를 `MessageInput`으로 전달              |
+| `front/view/src/chat/components/MessageInput.jsx` | 아니오                    | 아니오                            | 아니오                              | 없음                                                                | `keyboardHeight` prop으로 paddingBottom 제어                   |
+| `front/view/src/chat/hooks/useChatScroll.js`      | 아니오                    | 아니오                            | 있음 (`Keyboard.addListener`)       | 없음                                                                | 키보드 높이를 state로 보관 + 키보드 show/hide 시 `scrollToEnd` |
+| `front/view/src/boardDetail.jsx`                  | 아니오                    | 아니오                            | 있음 (`Keyboard.addListener(show)`) | 없음                                                                | 키보드 show 후 지연 `scrollToComment/scrollToEnd`              |
+| `front/view/src/schoolMailDetail.jsx`             | 아니오                    | 아니오                            | 있음 (`Keyboard.addListener(show)`) | 없음                                                                | boardDetail과 유사한 댓글 입력/답글 포커스 패턴                |
+| `front/components/CommentInput.jsx`               | 아니오                    | 아니오                            | 아니오                              | 없음                                                                | 순수 입력 UI 컴포넌트                                          |
+| `front/components/timerFriendModals.jsx`          | 예 (`AddFriendModal`)     | 아니오                            | 아니오 (`Keyboard.dismiss`만)       | 없음                                                                | Modal 내부 KAV 구조 (친구추가)                                 |
+| `front/view/src/boardWrite.jsx`                   | 예 (화면 루트)            | 아니오                            | 아니오 (`Keyboard.dismiss`만)       | 없음                                                                | KAV + ScrollView + 하단 툴바/패널                              |
+| `front/view/src/sendmailscreen.jsx`               | 예 (화면 루트)            | 아니오                            | 아니오 (`Keyboard.dismiss`만)       | 없음                                                                | KAV + ScrollView + 하단 CTA                                    |
+| `front/view/src/sendSchoolMailScreen.jsx`         | 예 (화면 루트)            | 아니오                            | 아니오 (`Keyboard.dismiss`만)       | 없음                                                                | sendmailscreen과 구조 유사                                     |
+| `front/view/src/Login.jsx`                        | 예 (화면 루트)            | 아니오                            | 아니오 (`Keyboard.dismiss`만)       | 없음                                                                | KAV + ScrollView 로그인 폼                                     |
 
 ### 추가로 확인된 키보드 사용 화면
 
-- `frontend/view/src/timerModals.jsx`: `AddSubjectModal`, `AddTaskModal`에서 Modal + KAV 사용.
-- `frontend/view/src/edittimetable.jsx`: Modal + KAV 사용.
-- `frontend/view/src/mailreply.jsx`: 화면 루트 KAV 사용.
+- `front/view/src/timerModals.jsx`: `AddSubjectModal`, `AddTaskModal`에서 Modal + KAV 사용.
+- `front/view/src/edittimetable.jsx`: Modal + KAV 사용.
+- `front/view/src/mailreply.jsx`: 화면 루트 KAV 사용.
 - 즉, 친구추가 모달 이슈와 같은 **Modal+KAV 패턴이 프로젝트에 다수 존재**.
 
 ### 핵심 관찰
@@ -42,11 +42,11 @@
 
 기존 KAV + ScrollView 중심, 하단 고정 입력창 애니메이션이 없는 화면.
 
-- `frontend/view/src/boardWrite.jsx`
-- `frontend/view/src/sendmailscreen.jsx`
-- `frontend/view/src/sendSchoolMailScreen.jsx`
-- `frontend/view/src/Login.jsx`
-- (추가 후보) `frontend/view/src/mailreply.jsx`
+- `front/view/src/boardWrite.jsx`
+- `front/view/src/sendmailscreen.jsx`
+- `front/view/src/sendSchoolMailScreen.jsx`
+- `front/view/src/Login.jsx`
+- (추가 후보) `front/view/src/mailreply.jsx`
 
 적용 방향:
 
@@ -58,12 +58,12 @@
 
 키보드 높이/타이밍에 맞춘 스크롤 보정 또는 하단 입력 동작 제어가 필요한 구조.
 
-- `frontend/view/src/chat/screens/ChatScreen.jsx`
-- `frontend/view/src/chat/hooks/useChatScroll.js`
-- `frontend/view/src/chat/components/MessageInput.jsx`
-- `frontend/view/src/boardDetail.jsx`
-- `frontend/view/src/schoolMailDetail.jsx`
-- `frontend/components/CommentInput.jsx` (직접 핸들러는 아니지만 B 화면의 공통 입력부)
+- `front/view/src/chat/screens/ChatScreen.jsx`
+- `front/view/src/chat/hooks/useChatScroll.js`
+- `front/view/src/chat/components/MessageInput.jsx`
+- `front/view/src/boardDetail.jsx`
+- `front/view/src/schoolMailDetail.jsx`
+- `front/components/CommentInput.jsx` (직접 핸들러는 아니지만 B 화면의 공통 입력부)
 
 적용 방향:
 
@@ -77,9 +77,9 @@
 
 Modal 내부 KAV로 인해 닫힘/복귀 시 레이아웃 잔여 오프셋이 생기기 쉬운 구조.
 
-- `frontend/components/timerFriendModals.jsx` (`AddFriendModal`)
-- (추가 후보) `frontend/view/src/timerModals.jsx` (`AddSubjectModal`, `AddTaskModal`)
-- (추가 후보) `frontend/view/src/edittimetable.jsx` (입력 모달)
+- `front/components/timerFriendModals.jsx` (`AddFriendModal`)
+- (추가 후보) `front/view/src/timerModals.jsx` (`AddSubjectModal`, `AddTaskModal`)
+- (추가 후보) `front/view/src/edittimetable.jsx` (입력 모달)
 
 적용 방향:
 

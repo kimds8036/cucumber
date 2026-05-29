@@ -13,7 +13,7 @@
 ## 공통 준비 (최초·의존성 변경 시)
 
 ```powershell
-cd c:\cucumber\frontend
+cd C:\y\front
 npm install
 ```
 
@@ -23,7 +23,7 @@ release AAB 서명용 `credentials.json`이 없으면:
 npm run credentials:android
 ```
 
-`frontend/credentials.json` (gitignore)
+`front/credentials.json` (gitignore)
 
 ---
 
@@ -32,7 +32,7 @@ npm run credentials:android
 ### 브랜치
 
 ```powershell
-cd c:\cucumber
+cd C:\\y
 git checkout develop
 git pull origin develop
 ```
@@ -42,7 +42,7 @@ git pull origin develop
 USB 디버깅 켠 뒤:
 
 ```powershell
-cd c:\cucumber\frontend
+cd C:\y\front
 Remove-Item Env:EXPO_PUBLIC_API_URL -ErrorAction SilentlyContinue
 npm run android:device:dev
 ```
@@ -78,7 +78,7 @@ npx cross-env APP_ENV=development expo run:android
 ### 브랜치
 
 ```powershell
-cd c:\cucumber
+cd C:\\y
 git checkout production
 git pull origin production
 ```
@@ -86,7 +86,7 @@ git pull origin production
 ### AAB 빌드 (권장)
 
 ```powershell
-cd c:\cucumber\frontend
+cd C:\y\front
 Remove-Item Env:EXPO_PUBLIC_API_URL -ErrorAction SilentlyContinue
 npm run android:aab:prod
 ```
@@ -101,7 +101,7 @@ npm run android:aab:prod
 ### 결과 파일
 
 ```text
-frontend\android\app\build\outputs\bundle\release\app-release.aab
+front\android\app\build\outputs\bundle\release\app-release.aab
 ```
 
 Play Console → App Bundle 업로드.
@@ -112,7 +112,7 @@ release AAB는 `app.config.js`의 `expo-build-properties`로 **R8 난독화·리
 `bundleRelease` 후 mapping 파일 경로:
 
 ```text
-frontend\android\app\build\outputs\mapping\release\mapping.txt
+front\android\app\build\outputs\mapping\release\mapping.txt
 ```
 
 Play Console → 해당 버전 → **App Bundle** → **가독화 파일 업로드**에 `mapping.txt`를 올리면 비정상 종료·ANR 분석이 쉬워집니다.  
@@ -144,7 +144,7 @@ cross-env APP_ENV=production NODE_ENV=production node scripts/gradle-bundle-rele
 
 ```powershell
 git checkout production
-cd c:\cucumber\frontend
+cd C:\y\front
 Remove-Item Env:EXPO_PUBLIC_API_URL -ErrorAction SilentlyContinue
 npm run android:device:prod
 ```

@@ -22,6 +22,7 @@ import searchRoutes from './routes/search.js';
 import dmRoutes from './routes/dm.js';
 import adminReportsRoutes from './routes/adminReports.js';
 import adminInquiriesRoutes from './routes/adminInquiries.js';
+import adminSignupCertificatesRoutes from './routes/adminSignupCertificates.js';
 import adminWebRoutes from './routes/adminWeb.js';
 import inquiriesRoutes from './routes/inquiries.js';
 import appRoutes from './routes/app.js';
@@ -170,6 +171,7 @@ app.use('/api/dm', dmRoutes);
 app.use('/api/inquiries', inquiriesRoutes);
 app.use('/api/admin', adminReportsRoutes);
 app.use('/api/admin/inquiries', adminInquiriesRoutes);
+app.use('/api/admin/signup-certificates', adminSignupCertificatesRoutes);
 app.use('/api/test', testRoutes);
 
 // ============ 글로벌 에러 핸들러 ============

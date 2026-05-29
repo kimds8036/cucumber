@@ -3,8 +3,8 @@
  * 032 마이그레이션 후: started_at 이 타이머일 day_key(06:00 경계)와 맞는지 샘플 검사
  * - 0~6시 새벽 타임스탬프는 "표시 day_key"와 캘린더 날짜가 다를 수 있음 → getTimerDayKey 기대값과 비교
  *
- *   cd C:\cucumber\back
- *   $env:NODE_PATH="C:\cucumber\back\node_modules"
+ *   cd C:\y\back
+ *   $env:NODE_PATH="C:\y\back\node_modules"
  *   node ..\scripts\verify-study-sessions-migration.js
  *   node ..\scripts\verify-study-sessions-migration.js --limit=200
  */
