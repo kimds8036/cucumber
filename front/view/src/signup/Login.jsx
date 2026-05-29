@@ -26,7 +26,7 @@ import LogoIcon from '../../../assets/Logo.svg';
 import { api, setAuthToken } from '../../../utils/api';
 import { useAuth } from '../../../context/AuthContext';
 import Skeleton from '../../../components/common/Skeleton';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+// import AsyncStorage from '@react-native-async-storage/async-storage';
 
 /** --no-dev 등에서도 원인 파악용(Alert 본문) */
 function buildLoginFailureMessage(error) {
@@ -309,16 +309,15 @@ const Login = ({ navigation }) => {
                     await setAuthToken(token, { persist: rememberMe });
                     debugLogin('토큰 저장 완료');
                   }
-                  const onboardingDone = await AsyncStorage.getItem(
-                    '@cucumber/onboarding_completed_v1',
-                  );
-                  const shouldOpenGuide = onboardingDone == null;
-                  debugLogin('로그인 상태 반영 → 스택 전환', {
-                    shouldOpenGuide,
-                  });
-                  login({
-                    postLoginRoute: shouldOpenGuide ? 'GuideOverlay' : 'Main',
-                  });
+                  // const onboardingDone = await AsyncStorage.getItem(
+                  //   '@cucumber/onboarding_completed_v1',
+                  // );
+                  // const shouldOpenGuide = onboardingDone == null;
+                  debugLogin('로그인 상태 반영 → 스택 전환');
+                  login();
+                  // login({
+                  //   postLoginRoute: shouldOpenGuide ? 'GuideOverlay' : 'Main',
+                  // });
                 } catch (error) {
                   const hasResponse = Boolean(error?.response);
                   const hasRequest = Boolean(error?.request);
