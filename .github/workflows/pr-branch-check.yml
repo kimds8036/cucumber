@@ -3,7 +3,7 @@ name: PR Branch Scope Check
 # 브랜치 워크플로우 정합성을 PR 단계에서 강제한다.
 #  [develop 으로 오는 PR]
 #    - feat/back-*    → back/ 만 수정 가능
-#    - feat/front-*   → frontend/ 만 수정 가능
+#    - feat/front-*   → front/ 만 수정 가능
 #  [production / main 으로 오는 PR]
 #    - 반드시 develop 브랜치에서만 와야 한다 (핫픽스도 일단 develop 거쳐서 올림)
 
@@ -28,15 +28,15 @@ jobs:
           filters: |
             back:
               - 'back/**'
-            frontend:
-              - 'frontend/**'
+            front:
+              - 'front/**'
 
-      - name: feat/back-* 브랜치가 frontend/ 를 건드렸는지 검사
+      - name: feat/back-* 브랜치가 front/ 를 건드렸는지 검사
         if: |
           startsWith(github.head_ref, 'feat/back-') &&
-          steps.changed.outputs.frontend == 'true'
+          steps.changed.outputs.front == 'true'
         run: |
-          echo "::error::feat/back-* 브랜치는 frontend/ 폴더를 수정할 수 없습니다. 의도한 변경이라면 별도 PR 로 분리하거나 chore 브랜치명을 사용하세요."
+          echo "::error::feat/back-* 브랜치는 front/ 폴더를 수정할 수 없습니다. 의도한 변경이라면 별도 PR 로 분리하거나 chore 브랜치명을 사용하세요."
           exit 1
 
       - name: feat/front-* 브랜치가 back/ 를 건드렸는지 검사

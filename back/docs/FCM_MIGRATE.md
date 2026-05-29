@@ -11,7 +11,7 @@
 ## Railway 적용
 
 ```powershell
-cd c:\cucumber\back
+cd C:\y\back
 npm run migrate
 ```
 
@@ -31,6 +31,6 @@ WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'users' AND COLUMN_NAME = 'fcm_
 
 ## 앱
 
-- `frontend/utils/deviceId.js` — 설치 ID
+- `front/utils/deviceId.js` — 설치 ID
 - FCM 업로드: `token`, `deviceId`, `deviceType`, `appVersion`
 - 로그아웃: `deviceId`, `token` 전달

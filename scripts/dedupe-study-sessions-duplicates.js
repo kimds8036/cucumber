@@ -4,8 +4,8 @@
  * - id가 큰 행만 삭제 (가장 작은 id 1행 유지)
  *
  * 사용: 노드가 back/node_modules 의 mysql2 를 찾을 수 있게 NODE_PATH 설정 권장
- *   cd C:\cucumber\back
- *   $env:NODE_PATH="C:\cucumber\back\node_modules"
+ *   cd C:\y\back
+ *   $env:NODE_PATH="C:\y\back\node_modules"
  *   node ..\scripts\dedupe-study-sessions-duplicates.js
  *   node ..\scripts\dedupe-study-sessions-duplicates.js --apply
  */

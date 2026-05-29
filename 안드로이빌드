@@ -1,2 +1,2 @@
-cd c:\cucumber\frontend
+cd C:\y\front
 npx expo run:android

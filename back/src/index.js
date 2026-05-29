@@ -22,6 +22,7 @@ import searchRoutes from './routes/search.js';
 import dmRoutes from './routes/dm.js';
 import adminReportsRoutes from './routes/adminReports.js';
 import adminInquiriesRoutes from './routes/adminInquiries.js';
+import adminSignupCertificatesRoutes from './routes/adminSignupCertificates.js';
 import adminWebRoutes from './routes/adminWeb.js';
 import inquiriesRoutes from './routes/inquiries.js';
 import appRoutes from './routes/app.js';
@@ -74,8 +75,8 @@ app.use(cors({
 }));
 
 // 4. Body 사이즈 제한 (대용량 페이로드 / DoS 완화)
-app.use(express.json({ limit: '1mb' }));
-app.use(express.urlencoded({ extended: true, limit: '1mb' }));
+app.use(express.json({ limit: '8mb' }));
+app.use(express.urlencoded({ extended: true, limit: '8mb' }));
 
 // 5. Rate Limit
 //    NOTE: 현재는 단일 인스턴스 운영 가정의 in-memory store.
@@ -170,6 +171,7 @@ app.use('/api/dm', dmRoutes);
 app.use('/api/inquiries', inquiriesRoutes);
 app.use('/api/admin', adminReportsRoutes);
 app.use('/api/admin/inquiries', adminInquiriesRoutes);
+app.use('/api/admin/signup-certificates', adminSignupCertificatesRoutes);
 app.use('/api/test', testRoutes);
 
 // ============ 글로벌 에러 핸들러 ============
