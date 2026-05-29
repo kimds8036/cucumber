@@ -59,8 +59,6 @@ function buildLoginFailureMessage(error) {
   return lines.join('\n');
 }
 
-import { showComingSoonAuthFeatureAlert } from './authFeatureAlerts';
-
 function formatSuspendedUntil(raw) {
   if (!raw) return null;
   const dt = new Date(raw);

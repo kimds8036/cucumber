@@ -1,16 +1,19 @@
 import React, { useCallback, useRef, useState } from 'react';
-import { View, Text, TouchableOpacity, ActivityIndicator, Alert } from 'react-native';
+import {
+  View,
+  Text,
+  TouchableOpacity,
+  ActivityIndicator,
+  Alert,
+} from 'react-native';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import { colors } from '../../../styles/colors';
 import { api } from '../../../utils/api';
 
-/**
- * Step 5: 학생증 촬영 → 서버 Tesseract 3중 검증
- */
+/** 학생증 촬영 → OCR 학교 유추 + 3중 검증 (학교 선택 화면 없음) */
 const SignStepStudentIdVerify = ({
   styles,
   identity,
-  selectedSchool,
   onVerified,
   disableValidation = false,
 }) => {
@@ -20,19 +23,16 @@ const SignStepStudentIdVerify = ({
   const [statusText, setStatusText] = useState('학생증을 틀에 맞춰 주세요.');
 
   const runVerify = useCallback(async () => {
-    if (!selectedSchool?.id) {
-      Alert.alert('알림', '학교를 먼저 선택해 주세요.');
-      return;
-    }
-    if (!identity?.name || !identity?.birthDate) {
-      Alert.alert('알림', '본인인증(이름·생년월일)을 먼저 완료해 주세요.');
+    if (!identity?.name?.trim() || !identity?.birthDate) {
+      Alert.alert('알림', '이름·생년월일·전화번호 인증을 먼저 완료해 주세요.');
       return;
     }
 
     if (disableValidation) {
       onVerified?.({
-        school: selectedSchool.name,
-        schoolId: selectedSchool.id,
+        name: identity.name,
+        school: '테스트고등학교',
+        schoolId: 'MOCK',
         grade: '1',
         class: '1',
         graduationYear: String(new Date().getFullYear() + 1),
@@ -58,9 +58,8 @@ const SignStepStudentIdVerify = ({
       }
 
       const res = await api.post('/api/auth/signup/verify-student-id', {
-        name: identity.name,
+        name: identity.name.trim(),
         birthDate: identity.birthDate,
-        schoolId: selectedSchool.id,
         imageBase64: photo.base64,
       });
 
@@ -77,8 +76,8 @@ const SignStepStudentIdVerify = ({
 
       onVerified?.({
         name: identity.name,
-        school: data.school?.name || selectedSchool.name,
-        schoolId: data.school?.id || selectedSchool.id,
+        school: data.school?.name,
+        schoolId: data.school?.id,
         grade: data.grade || '',
         class: data.classNumber || '',
         graduationYear: data.graduationYear || '',
@@ -93,9 +92,9 @@ const SignStepStudentIdVerify = ({
       setStatusText('오류가 발생했습니다. 다시 시도해 주세요.');
     } finally {
       setBusy(false);
-      if (!busy) setStatusText('학생증을 틀에 맞춰 주세요.');
+      setStatusText('학생증을 틀에 맞춰 주세요.');
     }
-  }, [selectedSchool, identity, disableValidation, onVerified]);
+  }, [identity, disableValidation, onVerified]);
 
   if (!permission) {
     return <View style={styles.content} />;

@@ -19,3 +19,12 @@ export function showUnder14BlockAlert(onConfirm) {
     { text: '확인', onPress: onConfirm },
   ]);
 }
+
+export const INELIGIBLE_AGE_MESSAGE =
+  'Youth Paper는 중·고등학생을 위한 서비스입니다. 입력하신 생년월일 기준으로 가입할 수 없습니다.';
+
+export function showIneligibleAgeAlert(onConfirm) {
+  Alert.alert('안내 (Youth Paper)', INELIGIBLE_AGE_MESSAGE, [
+    { text: '확인', onPress: onConfirm },
+  ]);
+}

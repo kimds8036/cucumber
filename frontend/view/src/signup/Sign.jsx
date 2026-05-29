@@ -11,33 +11,33 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { createSignupStyles } from '../../../styles/login.style';
 import { colors } from '../../../styles/colors';
-import SignStepAgeGate from './SignStepAgeGate';
 import SignStepConsent from './SignStepConsent';
-import SignStep1 from './SignStep1';
+import SignStepIdentity from './SignStepIdentity';
 import SignStep2 from './SignStep2';
 import SignStep4 from './SignStep4';
 import SignStepVerificationMethod from './SignStepVerificationMethod';
 import SignStepCertificate from './SignStepCertificate';
 import SignStepNumber from './SignStepNumber';
-import SignStepSchoolSelect from './SignStepSchoolSelect';
 import SignStepStudentIdVerify from './SignStepStudentIdVerify';
 import { api } from '../../../utils/api';
 import { useAppNavigation } from '../../../navigation/useAppNavigation';
 import Skeleton from '../../../components/common/Skeleton';
-import { showUnder14BlockAlert } from './authFeatureAlerts';
+import {
+  showUnder14BlockAlert,
+  showIneligibleAgeAlert,
+} from './authFeatureAlerts';
+import { getSignupEligibility } from './signupAgeUtils';
 
 const DISABLE_SIGN_VALIDATION_FOR_REDESIGN = true;
 
-/** Target Flow step indices (만 14세 미만은 Step 0에서 차단) */
+/** Target Flow v2 */
 const STEP = {
-  AGE: 0,
-  CONSENT: 1,
-  PASS: 2,
-  SCHOOL: 3,
-  VERIFY_METHOD: 4,
-  STUDENT_VERIFY: 5,
-  ACCOUNT: 6,
-  PROFILE: 7,
+  CONSENT: 0,
+  IDENTITY: 1,
+  VERIFY_METHOD: 2,
+  STUDENT_VERIFY: 3,
+  ACCOUNT: 4,
+  PROFILE: 5,
 };
 
 const Sign = ({ navigation }) => {
@@ -46,14 +46,12 @@ const Sign = ({ navigation }) => {
   const scale = width / 375;
   const normalize = (size) => Math.round(scale * size);
 
-  const [currentStep, setCurrentStep] = useState(STEP.AGE);
+  const [currentStep, setCurrentStep] = useState(STEP.CONSENT);
   const [formData, setFormData] = useState({});
-  const [ageGateBirthDate, setAgeGateBirthDate] = useState('');
+  const [identityData, setIdentityData] = useState({});
   const [recognizedData, setRecognizedData] = useState(null);
   const [studentVerified, setStudentVerified] = useState(false);
-  const [selectedSchool, setSelectedSchool] = useState(null);
   const [showCompleteModal, setShowCompleteModal] = useState(false);
-  const [step1Data, setStep1Data] = useState({});
   const [stepInfoData, setStepInfoData] = useState({});
   const [step4Data, setStep4Data] = useState({});
   const [stepNumberData, setStepNumberData] = useState({});
@@ -74,84 +72,66 @@ const Sign = ({ navigation }) => {
 
   const identity = useMemo(
     () => ({
-      name: step1Data.name || formData.name || '',
-      birthDate:
-        step1Data.birthDate || formData.birthDate || ageGateBirthDate || '',
-      phoneNumber: step1Data.phoneNumber || formData.phoneNumber || '',
+      name: identityData.name || formData.name || '',
+      birthDate: identityData.birthDate || formData.birthDate || '',
+      phoneNumber: identityData.phoneNumber || formData.phoneNumber || '',
     }),
-    [step1Data, formData, ageGateBirthDate],
+    [identityData, formData],
   );
 
-  const isUnder14ByBirthDate = useCallback((birthDate) => {
-    if (!birthDate) return false;
-    const birth = new Date(birthDate);
-    if (Number.isNaN(birth.getTime())) return false;
-    const today = new Date();
-    let age = today.getFullYear() - birth.getFullYear();
-    const hasNotHadBirthdayYet =
-      today.getMonth() < birth.getMonth() ||
-      (today.getMonth() === birth.getMonth() &&
-        today.getDate() < birth.getDate());
-    if (hasNotHadBirthdayYet) age -= 1;
-    return age < 14;
-  }, []);
+  const blockIfIneligibleBirthDate = useCallback(
+    (birthDate) => {
+      const eligibility = getSignupEligibility(birthDate);
+      if (eligibility === 'invalid') {
+        Alert.alert('알림', '생년월일을 올바르게 입력해 주세요.');
+        return true;
+      }
+      if (eligibility === 'under14') {
+        showUnder14BlockAlert(() => resetTo('Login'));
+        return true;
+      }
+      if (eligibility === 'ineligible') {
+        showIneligibleAgeAlert(() => resetTo('Login'));
+        return true;
+      }
+      return false;
+    },
+    [resetTo],
+  );
 
   const handleBack = () => {
-    if (currentStep === STEP.AGE) {
+    if (currentStep === STEP.CONSENT) {
       navigation.goBack();
     } else {
       setCurrentStep((s) => s - 1);
     }
   };
 
-  const handleAgeGateNext = () => {
-    const birthDate = ageGateBirthDate;
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(birthDate || '')) {
-      Alert.alert('알림', '생년월일을 올바르게 입력해 주세요.');
-      return;
-    }
-    if (isUnder14ByBirthDate(birthDate)) {
-      showUnder14BlockAlert(() => resetTo('Login'));
-      return;
-    }
-    setFormData((prev) => ({ ...prev, birthDate }));
-    setCurrentStep(STEP.CONSENT);
-  };
-
   const handleConsentNext = () => {
     if (!consentData.allConsented) return;
-    setCurrentStep(STEP.PASS);
+    setCurrentStep(STEP.IDENTITY);
   };
 
-  const handleStep1Next = () => {
-    if (!DISABLE_SIGN_VALIDATION_FOR_REDESIGN && !step1Data.isVerified) {
-      Alert.alert('알림', '본인인증을 완료해 주세요.');
-      return;
-    }
-    const merged = {
-      ...formData,
-      name: step1Data.name || '',
-      birthDate: step1Data.birthDate || formData.birthDate || ageGateBirthDate,
-      phoneNumber: step1Data.phoneNumber || '',
-      ...step1Data,
-    };
-    if (isUnder14ByBirthDate(merged.birthDate)) {
-      showUnder14BlockAlert(() => resetTo('Login'));
-      return;
-    }
-    setFormData(merged);
-    setCurrentStep(STEP.SCHOOL);
-  };
+  const handleIdentityNext = () => {
+    const birthDate = identityData.birthDate;
+    if (blockIfIneligibleBirthDate(birthDate)) return;
 
-  const handleSchoolNext = () => {
-    if (!selectedSchool?.id) {
-      Alert.alert('알림', '학교를 선택해 주세요.');
-      return;
+    if (!DISABLE_SIGN_VALIDATION_FOR_REDESIGN) {
+      if (!identityData.name?.trim()) {
+        Alert.alert('알림', '이름을 입력해 주세요.');
+        return;
+      }
+      if (!identityData.isVerified) {
+        Alert.alert('알림', '전화번호 인증을 완료해 주세요.');
+        return;
+      }
     }
+
     setFormData((prev) => ({
       ...prev,
-      schoolId: selectedSchool.id,
-      schoolName: selectedSchool.name,
+      name: identityData.name?.trim() || prev.name,
+      birthDate,
+      phoneNumber: identityData.phoneNumber || prev.phoneNumber,
     }));
     setCurrentStep(STEP.VERIFY_METHOD);
   };
@@ -167,20 +147,23 @@ const Sign = ({ navigation }) => {
   };
 
   const handleStudentVerified = (data) => {
+    const school = data?.school || data?.verification?.school;
+    const schoolName = school?.name || data?.school;
+    const region = school?.region || '';
+
     setRecognizedData(data);
     setStudentVerified(true);
     setFormData((prev) => ({
       ...prev,
-      schoolId: data.schoolId || selectedSchool?.id,
-      schoolName: data.school || selectedSchool?.name,
+      schoolId: data.schoolId || school?.id,
+      schoolName,
       grade: data.grade,
       classNum: data.class,
     }));
+
     Alert.alert(
       '학교 확인',
-      `${data.school || selectedSchool?.name}\n${
-        selectedSchool?.region ? `${selectedSchool.region}\n` : ''
-      }이 학교가 맞나요?`,
+      `${schoolName}${region ? `\n${region}` : ''}\n\n이 학교가 맞나요?`,
       [
         {
           text: '다시 촬영',
@@ -246,7 +229,7 @@ const Sign = ({ navigation }) => {
         name: finalData.name || identity.name,
         phone: finalData.phoneNumber || identity.phoneNumber,
         birthDate: finalData.birthDate || identity.birthDate,
-        schoolId: finalData.schoolId || selectedSchool?.id,
+        schoolId: finalData.schoolId,
         grade: Number(finalData.grade) || 1,
         classNumber: Number(finalData.classNum) || 1,
         graduationYear:
@@ -273,14 +256,10 @@ const Sign = ({ navigation }) => {
 
   const getStepTitle = () => {
     switch (currentStep) {
-      case STEP.AGE:
-        return '연령 확인';
       case STEP.CONSENT:
         return '약관 동의';
-      case STEP.PASS:
-        return '본인 인증';
-      case STEP.SCHOOL:
-        return '학교 선택';
+      case STEP.IDENTITY:
+        return '본인 확인';
       case STEP.VERIFY_METHOD:
         return '학생 인증 방식';
       case STEP.STUDENT_VERIFY:
@@ -296,20 +275,16 @@ const Sign = ({ navigation }) => {
 
   const getStepDescription = () => {
     switch (currentStep) {
-      case STEP.AGE:
-        return '생년월일을 입력해 주세요.';
       case STEP.CONSENT:
         return '서비스 이용을 위한 필수 동의 항목을 확인해 주세요.';
-      case STEP.PASS:
-        return '휴대폰 본인인증으로 이름과 생년월일을 확인합니다.';
-      case STEP.SCHOOL:
-        return '재학 중인 학교를 검색해 선택해 주세요.';
+      case STEP.IDENTITY:
+        return '이름·생년월일·전화번호를 입력하고 인증해 주세요.';
       case STEP.VERIFY_METHOD:
         return '학생증 OCR 인증 또는 증명서 제출 중 선택해 주세요.';
       case STEP.STUDENT_VERIFY:
         return isCertificateFlow
           ? '학생증이 없는 경우 증명서 제출 안내를 확인해 주세요.'
-          : '학생증을 촬영하면 이름·학교·학교급을 자동으로 확인합니다.';
+          : '학생증을 촬영하면 학교와 학교급을 자동으로 확인합니다.';
       case STEP.ACCOUNT:
         return '아이디와 비밀번호를 설정해 주세요.';
       case STEP.PROFILE:
@@ -321,17 +296,11 @@ const Sign = ({ navigation }) => {
 
   const handlePrimaryPress = () => {
     switch (currentStep) {
-      case STEP.AGE:
-        handleAgeGateNext();
-        break;
       case STEP.CONSENT:
         handleConsentNext();
         break;
-      case STEP.PASS:
-        handleStep1Next();
-        break;
-      case STEP.SCHOOL:
-        handleSchoolNext();
+      case STEP.IDENTITY:
+        handleIdentityNext();
         break;
       case STEP.VERIFY_METHOD:
         handleVerificationMethodNext();
@@ -340,11 +309,8 @@ const Sign = ({ navigation }) => {
         if (isCertificateFlow) setCurrentStep(STEP.ACCOUNT);
         break;
       case STEP.ACCOUNT:
-        if (isCertificateFlow) {
-          handleCertificateSubmit();
-        } else {
-          handleAccountNext();
-        }
+        if (isCertificateFlow) handleCertificateSubmit();
+        else handleAccountNext();
         break;
       case STEP.PROFILE:
         handleComplete();
@@ -358,9 +324,11 @@ const Sign = ({ navigation }) => {
     if (currentStep === STEP.CONSENT && !consentData.allConsented) return true;
     if (currentStep === STEP.VERIFY_METHOD && !selectedVerificationMethod)
       return true;
-    if (currentStep === STEP.SCHOOL && !selectedSchool?.id) return true;
-    if (currentStep === STEP.AGE && !/^\d{4}-\d{2}-\d{2}$/.test(ageGateBirthDate))
-      return true;
+    if (currentStep === STEP.IDENTITY) {
+      if (!identityData.birthDate) return true;
+      if (!DISABLE_SIGN_VALIDATION_FOR_REDESIGN && !identityData.isVerified)
+        return true;
+    }
     if (
       currentStep === STEP.ACCOUNT &&
       isCertificateFlow &&
@@ -416,13 +384,6 @@ const Sign = ({ navigation }) => {
       </View>
 
       <View style={styles.contentSection}>
-        {currentStep === STEP.AGE && (
-          <SignStepAgeGate
-            styles={styles}
-            normalize={normalize}
-            onBirthDateChange={setAgeGateBirthDate}
-          />
-        )}
         {currentStep === STEP.CONSENT && (
           <SignStepConsent
             normalize={normalize}
@@ -430,21 +391,12 @@ const Sign = ({ navigation }) => {
             onChange={setConsentData}
           />
         )}
-        {currentStep === STEP.PASS && (
-          <SignStep1
+        {currentStep === STEP.IDENTITY && (
+          <SignStepIdentity
             styles={styles}
             normalize={normalize}
-            onChange={setStep1Data}
+            onChange={setIdentityData}
             disableValidation={DISABLE_SIGN_VALIDATION_FOR_REDESIGN}
-            passMode
-          />
-        )}
-        {currentStep === STEP.SCHOOL && (
-          <SignStepSchoolSelect
-            styles={styles}
-            normalize={normalize}
-            selectedSchool={selectedSchool}
-            onSelect={setSelectedSchool}
           />
         )}
         {currentStep === STEP.VERIFY_METHOD && (
@@ -461,7 +413,6 @@ const Sign = ({ navigation }) => {
             <SignStepStudentIdVerify
               styles={styles}
               identity={identity}
-              selectedSchool={selectedSchool}
               onVerified={handleStudentVerified}
               disableValidation={DISABLE_SIGN_VALIDATION_FOR_REDESIGN}
             />
@@ -540,9 +491,7 @@ const Sign = ({ navigation }) => {
                 marginBottom: normalize(10),
               }}
             >
-              {completeModalType === 'certificate'
-                ? '제출 성공'
-                : '회원가입 성공'}
+              {completeModalType === 'certificate' ? '제출 성공' : '회원가입 성공'}
             </Text>
             <Text
               style={{

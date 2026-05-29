@@ -16,8 +16,6 @@ import { Ionicons } from '@expo/vector-icons';
 import { colors } from '../../../styles/colors';
 import { createFindStyles } from '../../../styles/find.style';
 import Skeleton from '../../../components/common/Skeleton';
-import { showComingSoonAuthFeatureAlert } from './authFeatureAlerts';
-
 const IDfind = ({ navigation }) => {
   const { width } = useWindowDimensions();
   const scale = width / 375;
@@ -33,7 +31,8 @@ const IDfind = ({ navigation }) => {
   }, []);
 
   const handlePassVerify = () => {
-    showComingSoonAuthFeatureAlert();
+    // TODO: PASS 본인인증 API 연동 후 응답값으로 아이디 설정
+    setFoundId('cucumber_user01');
   };
 
   if (!screenReady) {
@@ -107,7 +106,7 @@ const IDfind = ({ navigation }) => {
             contentContainerStyle={{ paddingBottom: normalize(20) }}
           >
             <Text style={styles.helperText}>
-              아이디 찾기는 정식 출시 후 제공될 예정입니다.
+              PASS 본인인증으로 가입 시 사용한 아이디를 확인할 수 있습니다.
             </Text>
 
             {foundId ? (

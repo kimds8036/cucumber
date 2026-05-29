@@ -15,8 +15,7 @@ import { authenticate } from '../middleware/auth.js';
 import { validate } from '../middleware/validate.js';
 import {
   extractTextFromImageBase64,
-  verifyStudentIdOcr,
-  loadSchoolById,
+  verifyStudentIdOcrForSignup,
 } from '../services/studentIdOcr.service.js';
 
 const router = express.Router();
@@ -783,20 +782,12 @@ router.post('/logout', authenticate, async (req, res) => {
 // 회원가입 중 학생증 Tesseract 3중 검증 (비로그인)
 router.post('/signup/verify-student-id', async (req, res) => {
   try {
-    const { name, birthDate, schoolId, imageBase64 } = req.body || {};
+    const { name, birthDate, imageBase64 } = req.body || {};
 
-    if (!name || !birthDate || !schoolId || !imageBase64) {
+    if (!name || !birthDate || !imageBase64) {
       return res.status(400).json({
         success: false,
-        message: '이름, 생년월일, 학교, 학생증 이미지가 필요합니다.',
-      });
-    }
-
-    const school = await loadSchoolById(String(schoolId));
-    if (!school) {
-      return res.status(404).json({
-        success: false,
-        message: '학교를 찾을 수 없습니다.',
+        message: '이름, 생년월일, 학생증 이미지가 필요합니다.',
       });
     }
 
@@ -817,20 +808,15 @@ router.post('/signup/verify-student-id', async (req, res) => {
         data: {
           passed: false,
           reasons: ['학생증에서 텍스트를 읽을 수 없습니다. 밝은 곳에서 다시 촬영해 주세요.'],
-          school: {
-            id: school.school_id,
-            name: school.name,
-            region: school.region || '',
-          },
+          school: null,
         },
       });
     }
 
-    const verification = verifyStudentIdOcr({
+    const verification = await verifyStudentIdOcrForSignup({
       ocrText,
       verifiedName: name,
       birthDate,
-      schoolName: school.name,
     });
 
     return res.json({
@@ -843,11 +829,7 @@ router.post('/signup/verify-student-id', async (req, res) => {
         schoolOk: verification.schoolOk,
         expectedLevel: verification.expectedLevel,
         detectedLevel: verification.detectedLevel,
-        school: {
-          id: school.school_id,
-          name: school.name,
-          region: school.region || '',
-        },
+        school: verification.school,
       },
     });
   } catch (error) {
