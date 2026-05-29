@@ -81,6 +81,13 @@ export default ({ config }) => ({
       'expo-image',
       'expo-status-bar',
       [
+        'expo-camera',
+        {
+          cameraPermission:
+            '학생증 인증을 위해 카메라 접근 권한이 필요합니다.',
+        },
+      ],
+      [
         'expo-location',
         {
           locationWhenInUsePermission:
@@ -118,6 +125,7 @@ export default ({ config }) => ({
         },
       ],
       './plugins/withAndroidReleaseSigning.cjs',
+      './plugins/withAndroidCameraPreviewCompatible.cjs',
     ],
 
     extra: {

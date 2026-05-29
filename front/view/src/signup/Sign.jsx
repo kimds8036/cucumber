@@ -32,6 +32,20 @@ import {
   pickRandomProfileColorId,
 } from './signupEnrollmentUtils';
 
+/**
+ * OCR·카메라 UI 테스트 전까지 앞단계(약관~인증방식)만 검증 생략.
+ * OCR(학생증 촬영) 및 이후 단계는 실제 검증·API 유지.
+ * 테스트 끝나면 false 로 변경.
+ */
+const SKIP_SIGNUP_VALIDATION_UNTIL_OCR_TEST = true;
+
+/** OCR API 호출용 임시 본인 정보 (SKIP 모드) */
+const OCR_TEST_MOCK_IDENTITY = {
+  name: '테스트학생',
+  birthDate: '2010-05-15',
+  phoneNumber: '01000000000',
+};
+
 /** Target Flow v2 — 가입 데이터는 State에만 쌓고, 마지막에 POST /api/auth/signup */
 const STEP = {
   CONSENT: 0,
@@ -112,36 +126,58 @@ const Sign = ({ navigation }) => {
   };
 
   const handleConsentNext = () => {
-    if (!consentData.allConsented) return;
+    if (!SKIP_SIGNUP_VALIDATION_UNTIL_OCR_TEST && !consentData.allConsented) return;
     setCurrentStep(STEP.IDENTITY);
   };
 
   const handleIdentityNext = () => {
-    const birthDate = identityData.birthDate;
-    if (blockIfIneligibleBirthDate(birthDate)) return;
+    const birthDate =
+      identityData.birthDate || OCR_TEST_MOCK_IDENTITY.birthDate;
+    const name =
+      identityData.name?.trim() || OCR_TEST_MOCK_IDENTITY.name;
+    const phoneNumber =
+      identityData.phoneNumber || OCR_TEST_MOCK_IDENTITY.phoneNumber;
 
-    if (!identityData.name?.trim()) {
-      Alert.alert('알림', '이름을 입력해 주세요.');
-      return;
-    }
-    if (!identityData.isVerified) {
-      Alert.alert('알림', '전화번호 인증을 완료해 주세요.');
+    if (!SKIP_SIGNUP_VALIDATION_UNTIL_OCR_TEST) {
+      if (blockIfIneligibleBirthDate(birthDate)) return;
+      if (!identityData.name?.trim()) {
+        Alert.alert('알림', '이름을 입력해 주세요.');
+        return;
+      }
+      if (!identityData.isVerified) {
+        Alert.alert('알림', '전화번호 인증을 완료해 주세요.');
+        return;
+      }
+    } else if (blockIfIneligibleBirthDate(birthDate)) {
       return;
     }
 
     setFormData((prev) => ({
       ...prev,
-      name: identityData.name?.trim() || prev.name,
+      name,
       birthDate,
-      phoneNumber: identityData.phoneNumber || prev.phoneNumber,
+      phoneNumber,
+    }));
+    setIdentityData((prev) => ({
+      ...prev,
+      name,
+      birthDate,
+      phoneNumber,
+      isVerified: true,
     }));
     setCurrentStep(STEP.VERIFY_METHOD);
   };
 
   const handleVerificationMethodNext = () => {
-    if (!selectedVerificationMethod) {
+    const method =
+      selectedVerificationMethod ||
+      (SKIP_SIGNUP_VALIDATION_UNTIL_OCR_TEST ? 'studentId' : '');
+    if (!method) {
       Alert.alert('알림', '학생 인증 방식을 선택해 주세요.');
       return;
+    }
+    if (!selectedVerificationMethod) {
+      setSelectedVerificationMethod(method);
     }
     setRecognizedData(null);
     setStudentVerified(false);
@@ -381,6 +417,13 @@ const Sign = ({ navigation }) => {
   };
 
   const isPrimaryDisabled = () => {
+    if (
+      SKIP_SIGNUP_VALIDATION_UNTIL_OCR_TEST &&
+      currentStep <= STEP.VERIFY_METHOD
+    ) {
+      if (submitting) return true;
+      return false;
+    }
     if (currentStep === STEP.CONSENT && !consentData.allConsented) return true;
     if (currentStep === STEP.VERIFY_METHOD && !selectedVerificationMethod)
       return true;
@@ -413,6 +456,18 @@ const Sign = ({ navigation }) => {
   useEffect(() => {
     const timer = setTimeout(() => setScreenReady(true), 250);
     return () => clearTimeout(timer);
+  }, []);
+
+  useEffect(() => {
+    if (!SKIP_SIGNUP_VALIDATION_UNTIL_OCR_TEST) return;
+    setConsentData({ allConsented: true });
+    setIdentityData((prev) => ({
+      ...OCR_TEST_MOCK_IDENTITY,
+      ...prev,
+      isVerified: true,
+      isCodeSent: true,
+    }));
+    setSelectedVerificationMethod((prev) => prev || 'studentId');
   }, []);
 
   if (!screenReady) {

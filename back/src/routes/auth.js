@@ -1014,7 +1014,7 @@ router.post('/logout', authenticate, async (req, res) => {
 // 회원가입 중 학생증 Tesseract 3중 검증 (비로그인)
 router.post('/signup/verify-student-id', async (req, res) => {
   try {
-    const { name, birthDate, imageBase64 } = req.body || {};
+    const { name, birthDate, imageBase64, cropRegion } = req.body || {};
 
     if (!name || !birthDate || !imageBase64) {
       return res.status(400).json({
@@ -1025,7 +1025,7 @@ router.post('/signup/verify-student-id', async (req, res) => {
 
     let ocrText = '';
     try {
-      ocrText = await extractTextFromImageBase64(imageBase64);
+      ocrText = await extractTextFromImageBase64(imageBase64, cropRegion);
     } catch (ocrErr) {
       console.error('Tesseract OCR 오류:', ocrErr);
       return res.status(500).json({
@@ -1051,6 +1051,23 @@ router.post('/signup/verify-student-id', async (req, res) => {
       birthDate,
     });
 
+    const ocrDebug =
+      process.env.NODE_ENV !== 'production' ||
+      process.env.ENABLE_OCR_DEBUG === 'true';
+    if (ocrDebug) {
+      console.log('[verify-student-id] OCR raw (first 800 chars):', String(ocrText || '').slice(0, 800));
+      console.log('[verify-student-id] checks:', {
+        passed: verification.passed,
+        nameOk: verification.nameOk,
+        levelOk: verification.levelOk,
+        schoolOk: verification.schoolOk,
+        expectedLevel: verification.expectedLevel,
+        detectedLevel: verification.detectedLevel,
+        school: verification.school,
+        reasons: verification.reasons,
+      });
+    }
+
     const expectedLevel = verification.expectedLevel;
     const suggestedGrade = inferGradeFromBirthDate(birthDate, expectedLevel);
     const suggestedGraduationYear = inferGraduationYear(
@@ -1073,6 +1090,9 @@ router.post('/signup/verify-student-id', async (req, res) => {
         suggestedGrade,
         suggestedGraduationYear,
         suggestedClassNumber: 1,
+        ...(ocrDebug && {
+          ocrTextPreview: verification.ocrTextPreview,
+        }),
       },
     });
   } catch (error) {

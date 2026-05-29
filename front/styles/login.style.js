@@ -120,6 +120,7 @@ export const createSignupStyles = (width, normalize) => {
     },
     contentSection: {
       flex: 1,
+      minHeight: 0,
       paddingTop: normalize(16),
       ...debugBorder,
     },
@@ -174,6 +175,7 @@ export const createSignupStyles = (width, normalize) => {
     // 컨텐츠 영역
     content: {
       flex: 1,
+      minHeight: 0,
       ...debugBorder,
     },
     description: {
@@ -402,20 +404,87 @@ export const createSignupStyles = (width, normalize) => {
       color: colors.background,
     },
 
-    // 카메라 영역 (3단계)
+    // 카메라 영역 (학생증 OCR) — preview zIndex:0 / guide zIndex:1, elevation 0 (Android)
     cameraContainer: {
       flex: 1,
-      marginBottom: normalize(20),
+      minHeight: normalize(280),
+      marginBottom: normalize(12),
+      backgroundColor: 'transparent',
+      ...debugBorder,
+    },
+    cameraStage: {
+      flex: 1,
+      minHeight: normalize(280),
+      position: 'relative',
+      borderRadius: normalize(24),
+      overflow: 'hidden',
+      backgroundColor: Platform.OS === 'android' ? 'transparent' : '#000',
+      ...Platform.select({
+        android: { elevation: 0 },
+        default: {},
+      }),
+      ...debugBorder,
+    },
+    cameraStageStack: {
+      flex: 1,
+      width: '100%',
+      position: 'relative',
+      backgroundColor: 'transparent',
+      overflow: 'hidden',
+      ...Platform.select({
+        android: { elevation: 0 },
+        default: {},
+      }),
+      ...debugBorder,
+    },
+    cameraPreview: {
+      position: 'absolute',
+      left: 0,
+      right: 0,
+      top: 0,
+      bottom: 0,
+      zIndex: 0,
+      backgroundColor: 'transparent',
+      ...Platform.select({
+        android: { elevation: 0 },
+        default: {},
+      }),
+      ...debugBorder,
+    },
+    cameraGuideOverlay: {
+      position: 'absolute',
+      left: 0,
+      right: 0,
+      top: 0,
+      bottom: 0,
+      zIndex: 1,
+      backgroundColor: 'transparent',
+      ...Platform.select({
+        android: { elevation: 0 },
+        default: {},
+      }),
+      ...debugBorder,
+    },
+    /** StudentIdCameraGuideOverlay 딤 4조각 — overlayDark 고정 (루트 transparent 와 분리) */
+    cameraGuideDim: {
+      position: 'absolute',
+      elevation: 0,
+      backgroundColor: colors.overlayDark,
       ...debugBorder,
     },
     camera: {
       flex: 1,
-      borderRadius: normalize(24),
-      overflow: 'hidden',
+      width: '100%',
+      alignSelf: 'stretch',
+      backgroundColor: 'transparent',
       ...debugBorder,
     },
     cameraOverlay: {
       ...StyleSheet.absoluteFillObject,
+      zIndex: 1,
+      elevation: 0,
+      backgroundColor: 'transparent',
+      ...debugBorder,
     },
     overlayTop: {
       flex: 1,
@@ -434,9 +503,9 @@ export const createSignupStyles = (width, normalize) => {
       backgroundColor: colors.overlayDark,
     },
     cardFrame: {
-      width: width * 0.72,
-      height: width * 0.45,
-      borderWidth: 3,
+      width: width * 0.8,
+      height: width * 0.5,
+      borderWidth: 2,
       borderColor: colors.primary,
       borderRadius: normalize(16),
       backgroundColor: 'transparent',
@@ -453,7 +522,8 @@ export const createSignupStyles = (width, normalize) => {
       fontSize: normalize(fontSizes.xl),
       fontFamily: fonts.regular,
       color: colors.background,
-      marginTop: normalize(20),
+      textAlign: 'center',
+      marginTop: normalize(12),
     },
 
     // 직접 입력하기 버튼

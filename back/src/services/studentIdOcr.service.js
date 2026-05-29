@@ -1,5 +1,6 @@
 import { createWorker } from 'tesseract.js';
 import pool from '../config/database.js';
+import { cropBase64Image } from '../utils/imageCrop.js';
 import {
   buildSafeSchoolSearchTerm,
   buildSchoolSearchSql,
@@ -85,11 +86,14 @@ export async function inferSchoolFromOcrText(ocrText, birthDate) {
   return null;
 }
 
-export async function extractTextFromImageBase64(imageBase64) {
+export async function extractTextFromImageBase64(imageBase64, cropRegion = null) {
   const raw = String(imageBase64 || '').replace(/^data:image\/\w+;base64,/, '');
   if (!raw) return '';
 
-  const buffer = Buffer.from(raw, 'base64');
+  let buffer = Buffer.from(raw, 'base64');
+  if (cropRegion && typeof cropRegion === 'object') {
+    buffer = await cropBase64Image(imageBase64, cropRegion);
+  }
   const worker = await createWorker('kor+eng', 1, {
     logger: () => {},
   });
