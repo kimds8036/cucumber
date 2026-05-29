@@ -30,6 +30,8 @@ import AdPlaceholder from '../../src/screens/ad/AdPlaceholder';
 import Skeleton from '../../components/common/Skeleton';
 import { useLocationContext } from '../../context/LocationContext';
 import { useGuidePreview } from '../../context/GuidePreviewContext';
+import { GuideFocusTarget } from '../../components/guide/GuideFocusTarget';
+import { GUIDE_FOCUS_TARGETS as T } from '../../src/screens/UserGuide/guideFocusTargets';
 import { getGuideBoardPosts } from '../../src/screens/UserGuide/guidePreviewData';
 import { invalidateProfileCountsCache } from '../../utils/profileCountsCache';
 import { useFocusEffect } from '@react-navigation/native';
@@ -628,17 +630,19 @@ export function BoardAllContent({ navigation, posts }) {
       </View>
 
       {/* 글쓰기 플로팅 버튼 */}
-      <TouchableOpacity
-        style={styles.floatingButton}
-        activeOpacity={0.8}
-        onPress={() => navigation.navigate('BoardWrite', { from: 'Main' })}
-      >
-        <FontAwesome5
-          name="plus"
-          size={normalize(24)}
-          color={colors.background}
-        />
-      </TouchableOpacity>
+      <GuideFocusTarget name={T.BOARD_WRITE_FAB}>
+        <TouchableOpacity
+          style={styles.floatingButton}
+          activeOpacity={0.8}
+          onPress={() => navigation.navigate('BoardWrite', { from: 'Main' })}
+        >
+          <FontAwesome5
+            name="plus"
+            size={normalize(24)}
+            color={colors.background}
+          />
+        </TouchableOpacity>
+      </GuideFocusTarget>
 
       {/* 플로팅 메뉴 (boardAll 인라인 - boardDetail과 동일한 UI) */}
       <Modal

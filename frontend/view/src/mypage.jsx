@@ -21,6 +21,8 @@ import { getDeviceId } from '../../utils/deviceId';
 import { getFCMToken } from '../../utils/fcmService';
 import { useFocusEffect } from '@react-navigation/native';
 import { useGuidePreview } from '../../context/GuidePreviewContext';
+import { GuideFocusTarget } from '../../components/guide/GuideFocusTarget';
+import { GUIDE_FOCUS_TARGETS as T } from '../../src/screens/UserGuide/guideFocusTargets';
 import {
   getGuideMyPageUserInfo,
   getGuideTimetable,
@@ -365,13 +367,15 @@ const MyPage = ({ navigation }) => {
                   </Text>
                 </View>
               ) : timetable ? (
-                <TimetableView
-                  timetable={timetable}
-                  timetableCacheKey={timetableCacheKey}
-                  onNavigateToEdit={handleNavigateToTimetableCellEdit}
-                  onResetPress={handleResetTimetable}
-                  colorSeed={colorSeed}
-                />
+                <GuideFocusTarget name={T.MYPAGE_TIMETABLE}>
+                  <TimetableView
+                    timetable={timetable}
+                    timetableCacheKey={timetableCacheKey}
+                    onNavigateToEdit={handleNavigateToTimetableCellEdit}
+                    onResetPress={handleResetTimetable}
+                    colorSeed={colorSeed}
+                  />
+                </GuideFocusTarget>
               ) : null
             }
           />

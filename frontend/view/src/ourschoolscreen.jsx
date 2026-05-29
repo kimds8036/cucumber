@@ -21,6 +21,8 @@ import StudyGrassMap from '../../components/studygrassmap';
 import Skeleton from '../../components/common/Skeleton';
 import SchoolAdPlaceholder from '../../src/screens/ad/SchoolAdPlaceholder';
 import { useGuidePreview } from '../../context/GuidePreviewContext';
+import { GuideFocusTarget } from '../../components/guide/GuideFocusTarget';
+import { GUIDE_FOCUS_TARGETS as T } from '../../src/screens/UserGuide/guideFocusTargets';
 import {
   getGuideSchoolInfo,
   getGuideSchoolMeals,
@@ -562,19 +564,23 @@ const OurSchoolScreen = ({ navigation }) => {
         </View>
 
         {/* 공부 잔디 카드 */}
-        <View style={styles.grassCard}>
+        <GuideFocusTarget name={T.SCHOOL_GRASS_CARD} style={styles.grassCard}>
           <Text style={styles.grassCardTitle}>우리 학교 공부 잔디밭</Text>
           <StudyGrassMap days={grassDays} />
-        </View>
+        </GuideFocusTarget>
         {!isGuidePreview ? <SchoolAdPlaceholder /> : null}
 
         {/* 게시판 / 우편함 바로가기 */}
         <View style={styles.shortcutContainer}>
-          <TouchableOpacity
+          <GuideFocusTarget
+            name={T.SCHOOL_SHORTCUT_BOARD}
             style={styles.shortcutButton}
-            activeOpacity={0.7}
-            onPress={() => navigation?.navigate('SchoolBoardAll')}
           >
+            <TouchableOpacity
+              style={{ flex: 1 }}
+              activeOpacity={0.7}
+              onPress={() => navigation?.navigate('SchoolBoardAll')}
+            >
             <View style={styles.shortcutTopRow}>
               <Ionicons
                 name="chatbubbles"
@@ -584,18 +590,23 @@ const OurSchoolScreen = ({ navigation }) => {
               <Text style={styles.shortcutTitle}>학교 게시판</Text>
             </View>
             <Text style={styles.shortcutSubtitle}>→ 보러 가기</Text>
-          </TouchableOpacity>
+            </TouchableOpacity>
+          </GuideFocusTarget>
 
-          <TouchableOpacity
+          <GuideFocusTarget
+            name={T.SCHOOL_SHORTCUT_MAIL}
             style={styles.shortcutButton}
-            activeOpacity={0.7}
-            onPress={() =>
-              navigation?.navigate('SchoolMailbox', {
-                schoolId: schoolInfo.id,
-                schoolName: schoolInfo.name,
-              })
-            }
           >
+            <TouchableOpacity
+              style={{ flex: 1 }}
+              activeOpacity={0.7}
+              onPress={() =>
+                navigation?.navigate('SchoolMailbox', {
+                  schoolId: schoolInfo.id,
+                  schoolName: schoolInfo.name,
+                })
+              }
+            >
             <View style={styles.shortcutTopRow}>
               <Ionicons
                 name="mail"
@@ -605,7 +616,8 @@ const OurSchoolScreen = ({ navigation }) => {
               <Text style={styles.shortcutTitle}>학교 우편함</Text>
             </View>
             <Text style={styles.shortcutSubtitle}>→ 보러 가기</Text>
-          </TouchableOpacity>
+            </TouchableOpacity>
+          </GuideFocusTarget>
         </View>
 
         {/* 실시간 인기 */}

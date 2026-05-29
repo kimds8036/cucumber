@@ -66,6 +66,8 @@ import { useFriend } from '../../context/FriendContext';
 import { useFocusEffect, useIsFocused } from '@react-navigation/native';
 import { useFriendStudyEvents } from '../../hooks/useFriendStudyEvents';
 import { useGuidePreview } from '../../context/GuidePreviewContext';
+import { GuideFocusTarget } from '../../components/guide/GuideFocusTarget';
+import { GUIDE_FOCUS_TARGETS as T } from '../../src/screens/UserGuide/guideFocusTargets';
 import {
   getGuideTimerDayPayload,
   getGuideTimerFriends,
@@ -669,7 +671,7 @@ function TimerLiveScrollInner({
 
   return (
     <>
-      <View style={[styles.timerCard, tdb('#34C759')]}>
+      <GuideFocusTarget name={T.TIMER_TIMER_CARD} style={[styles.timerCard, tdb('#34C759')]}>
         <View style={[styles.dateBar, tdb('#30B0C7')]}>
           <View style={[styles.dateBarLeft, tdb('#0A84FF')]}>
             <TouchableOpacity
@@ -734,10 +736,10 @@ function TimerLiveScrollInner({
             </TouchableOpacity>
           )}
         </View>
-      </View>
+      </GuideFocusTarget>
 
       <View style={[styles.todoTimetableRow, tdb('#BF5AF2')]}>
-        <View style={[styles.todoColumn, tdb('#FF2D55')]}>
+        <GuideFocusTarget name={T.TIMER_TODO_COLUMN} style={[styles.todoColumn, tdb('#FF2D55')]}>
           <View style={[styles.todoHeader, tdb('#64D2FF')]}>
             <Text style={styles.todoTitle}>투두리스트</Text>
             {isViewingToday && (
@@ -883,14 +885,17 @@ function TimerLiveScrollInner({
               );
             })}
           </ScrollView>
-        </View>
+        </GuideFocusTarget>
 
-        <View style={[styles.timetableColumn, tdb('#4682B4')]}>
+        <GuideFocusTarget
+          name={T.TIMER_TIMETABLE_COLUMN}
+          style={[styles.timetableColumn, tdb('#4682B4')]}
+        >
           <Text style={styles.timetableTitle}>공부 기록</Text>
           <View style={[styles.timetableScroll, tdb('#CD853F')]}>
             {renderTimetable()}
           </View>
-        </View>
+        </GuideFocusTarget>
       </View>
     </>
   );

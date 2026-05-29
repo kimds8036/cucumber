@@ -23,6 +23,8 @@ import { useKeyboardHandler } from 'react-native-keyboard-controller';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import FontAwesome5 from '@expo/vector-icons/FontAwesome5';
 import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
+import { GuideFocusTarget } from './guide/GuideFocusTarget';
+import { GUIDE_FOCUS_TARGETS as T } from '../src/screens/UserGuide/guideFocusTargets';
 import ProfileIcon from '../assets/Profile.svg';
 import { colors } from '../styles/colors';
 import { createTimerFriendModalStyles, getNormalize } from '../styles/timer';
@@ -427,7 +429,10 @@ export const FriendStoryBar = memo(function FriendStoryBar({
   }, [friends, studyingFriends]);
 
   return (
-    <View style={[styles.friendStoryRow, debugFriendStoryBorder('#FF3B30')]}>
+    <GuideFocusTarget
+      name={T.TIMER_FRIEND_BAR}
+      style={[styles.friendStoryRow, debugFriendStoryBorder('#FF3B30')]}
+    >
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
@@ -516,6 +521,6 @@ export const FriendStoryBar = memo(function FriendStoryBar({
           );
         })}
       </ScrollView>
-    </View>
+    </GuideFocusTarget>
   );
 });

@@ -34,6 +34,8 @@ import * as socketManager from './socketManager';
 import { useToast } from '../../context/ToastContext';
 import { useNotification } from '../../context/NotificationContext';
 import { useGuidePreview } from '../../context/GuidePreviewContext';
+import { GuideFocusTarget } from '../../components/guide/GuideFocusTarget';
+import { GUIDE_FOCUS_TARGETS as T } from '../../src/screens/UserGuide/guideFocusTargets';
 import {
   getGuideMails,
   getGuideNoteRooms,
@@ -515,6 +517,11 @@ export function MessageContent({ navigation }) {
     });
     return items;
   }, [noteRooms, isGuidePreview]);
+
+  const firstGuideNoteItemId = useMemo(
+    () => noteRoomsWithAds.find((x) => x.type === 'note')?.id ?? null,
+    [noteRoomsWithAds],
+  );
 
   const mailsWithAds = useMemo(() => {
     const items = [];
@@ -1008,12 +1015,15 @@ export function MessageContent({ navigation }) {
                       0;
                     const iconColor = getProfileInnerColor(colorIdx);
                     return (
-                      <TouchableOpacity
+                      <GuideFocusTarget
                         key={`dm-${item.id}`}
-                        style={styles.listItem}
-                        activeOpacity={0.7}
-                        onLongPress={() => openRoomMenuModal('dm', item)}
-                        onPress={async () => {
+                        name={T.MESSAGE_DM_ROW}
+                      >
+                        <TouchableOpacity
+                          style={styles.listItem}
+                          activeOpacity={0.7}
+                          onLongPress={() => openRoomMenuModal('dm', item)}
+                          onPress={async () => {
                           setNoteRooms((prev) =>
                             prev.map((r) =>
                               r.id === item.id && r.type === 'dm'
@@ -1060,16 +1070,17 @@ export function MessageContent({ navigation }) {
                             </View>
                           ) : null}
                         </View>
-                      </TouchableOpacity>
+                        </TouchableOpacity>
+                      </GuideFocusTarget>
                     );
                   }
 
                   const iconColor = getProfileInnerColor(
                     item.profileColorId ?? item.profileColorIndex,
                   );
-                  return (
+                  const isFirstGuideNoteRow = item.id === firstGuideNoteItemId;
+                  const noteRow = (
                     <TouchableOpacity
-                      key={`note-${item.id}`}
                       style={styles.listItem}
                       activeOpacity={0.7}
                       onLongPress={() => openRoomMenuModal('note', item)}
@@ -1115,6 +1126,21 @@ export function MessageContent({ navigation }) {
                         ) : null}
                       </View>
                     </TouchableOpacity>
+                  );
+                  if (isFirstGuideNoteRow) {
+                    return (
+                      <GuideFocusTarget
+                        key={`note-${item.id}`}
+                        name={T.MESSAGE_NOTE_FIRST_ROW}
+                      >
+                        {noteRow}
+                      </GuideFocusTarget>
+                    );
+                  }
+                  return (
+                    <React.Fragment key={`note-${item.id}`}>
+                      {noteRow}
+                    </React.Fragment>
                   );
                 })
               )}
@@ -1297,19 +1323,21 @@ export function MessageContent({ navigation }) {
             </ScrollView>
 
             {/* 개인 우편함: 우측 하단 글쓰기(비행기) 플로팅 버튼 */}
-            <TouchableOpacity
-              style={styles.floatingButton}
-              activeOpacity={0.8}
-              onPress={() => navigation?.navigate('SendMail')}
-            >
-              <Feather
-                name="send"
-                size={normalize(30)}
-                top={normalize(2)}
-                right={normalize(1)}
-                color={colors.background}
-              />
-            </TouchableOpacity>
+            <GuideFocusTarget name={T.MESSAGE_MAIL_WRITE_FAB}>
+              <TouchableOpacity
+                style={styles.floatingButton}
+                activeOpacity={0.8}
+                onPress={() => navigation?.navigate('SendMail')}
+              >
+                <Feather
+                  name="send"
+                  size={normalize(30)}
+                  top={normalize(2)}
+                  right={normalize(1)}
+                  color={colors.background}
+                />
+              </TouchableOpacity>
+            </GuideFocusTarget>
           </>
         )}
       </View>

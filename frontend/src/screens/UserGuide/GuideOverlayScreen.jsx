@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Text, TouchableOpacity, View, useWindowDimensions } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -14,6 +14,7 @@ import { MessageContent } from '../../../view/src/Message';
 import OurSchoolScreen from '../../../view/src/ourschoolscreen';
 import { TimerContent } from '../../../view/src/timer';
 import MyPage from '../../../view/src/mypage';
+import { GUIDE_FOCUS_TARGETS as T } from './guideFocusTargets';
 
 const ONBOARDING_KEY = '@cucumber/onboarding_completed_v1';
 
@@ -161,7 +162,7 @@ const GUIDE_STEPS = [
     backgroundComponent: BoardAllContent,
     backgroundProps: { navigation: GUIDE_NAVIGATION },
     activeTab: 'board',
-    focusArea: { x: 0.78, y: 0.78, width: 0.2, height: 0.09 },
+    focusTarget: T.BOARD_WRITE_FAB,
     focusRadius: 999,
     tooltipPosition: 'top',
     tooltip: { gap: 16, aboveHeight: 72, offsetY: -4, offsetX: 10, textAlign: 'right' },
@@ -172,7 +173,7 @@ const GUIDE_STEPS = [
     backgroundProps: { navigation: GUIDE_NAVIGATION },
     activeTab: 'message',
     guideMessageTab: 'note',
-    focusArea: { x: 0, y: 0.215, width: 1, height: 0.08 },
+    focusTarget: T.MESSAGE_NOTE_FIRST_ROW,
     tooltipPosition: 'bottom',
     tooltip: { textAlign: 'left', offsetX: -10, offsetY: -10 },
     description: '게시글에서 못 다한 이야기는 쪽지로 이어가요',
@@ -182,7 +183,7 @@ const GUIDE_STEPS = [
     backgroundProps: { navigation: GUIDE_NAVIGATION },
     activeTab: 'message',
     guideMessageTab: 'note',
-    focusArea: { x: 0, y: 0.445, width: 1, height: 0.08 },
+    focusTarget: T.MESSAGE_DM_ROW,
     tooltipPosition: 'bottom',
     tooltip: { textAlign: 'left', offsetX: 10, offsetY: -10 },
     description: '친구와 단둘이 대화를 나눌 수도 있어요',
@@ -192,7 +193,7 @@ const GUIDE_STEPS = [
     backgroundProps: { navigation: GUIDE_NAVIGATION },
     activeTab: 'message',
     guideMessageTab: 'mail',
-    focusArea: { x: 0.78, y: 0.78, width: 0.2, height: 0.09 },
+    focusTarget: T.MESSAGE_MAIL_WRITE_FAB,
     focusRadius: 999,
     tooltipPosition: 'top',
     tooltip: { gap: 16, aboveHeight: 72, offsetY: -4, offsetX: 10, textAlign: 'right' },
@@ -202,7 +203,7 @@ const GUIDE_STEPS = [
     backgroundComponent: OurSchoolScreen,
     backgroundProps: { navigation: GUIDE_NAVIGATION },
     activeTab: 'school',
-    focusArea: { x: 0.025, y: 0.62, width: 0.95, height: 0.225 },
+    focusTarget: T.SCHOOL_GRASS_CARD,
     focusRadius: 20,
     tooltipPosition: 'top',
     tooltip: { gap: 16, aboveHeight: 72, offsetY: -4, offsetX: -20, textAlign: 'left' },
@@ -212,7 +213,7 @@ const GUIDE_STEPS = [
     backgroundComponent: OurSchoolScreen,
     backgroundProps: { navigation: GUIDE_NAVIGATION },
     activeTab: 'school',
-    focusArea: { x: 0.025, y: 0.585, width: 0.475, height: 0.12 },
+    focusTarget: T.SCHOOL_SHORTCUT_BOARD,
     focusRadius: 20,
     tooltipPosition: 'top',
     tooltip: { gap: 16, aboveHeight: 72, offsetY: 15, offsetX: -20, textAlign: 'left' },
@@ -223,7 +224,7 @@ const GUIDE_STEPS = [
     backgroundComponent: OurSchoolScreen,
     backgroundProps: { navigation: GUIDE_NAVIGATION },
     activeTab: 'school',
-    focusArea: { x: 0.5, y: 0.585, width: 0.475, height: 0.12 },
+    focusTarget: T.SCHOOL_SHORTCUT_MAIL,
     focusRadius: 20,
     tooltipPosition: 'top',
     tooltip: { gap: 16, aboveHeight: 72, offsetY: 0, offsetX: 20, textAlign: 'right' },
@@ -234,7 +235,7 @@ const GUIDE_STEPS = [
     backgroundComponent: TimerContent,
     backgroundProps: {},
     activeTab: 'timer',
-    focusArea: { x: 0, y: 0.135, width: 1, height: 0.13 },
+    focusTarget: T.TIMER_FRIEND_BAR,
     tooltipPosition: 'bottom',
     tooltip: { gap: 16, aboveHeight: 72, offsetY: -20, offsetX: -20, textAlign: 'left' },
     description: '친구들이 공부 중인지 확인할 수 있어요\n친구가 쉬고 있다면 쿡 찔러서 같이 공부해 보세요',
@@ -243,7 +244,7 @@ const GUIDE_STEPS = [
     backgroundComponent: TimerContent,
     backgroundProps: {},
     activeTab: 'timer',
-    focusArea: { x: 0.025, y: 0.26, width: 0.95, height: 0.245 },
+    focusTarget: T.TIMER_TIMER_CARD,
     focusRadius: 20,
     tooltipPosition: 'bottom',
     tooltip: { gap: 16, aboveHeight: 72, offsetY: -20, offsetX: -20, textAlign: 'left' },
@@ -253,7 +254,7 @@ const GUIDE_STEPS = [
     backgroundComponent: TimerContent,
     backgroundProps: {},
     activeTab: 'timer',
-    focusArea: { x: 0.025, y: 0.515, width: 0.55, height: 0.36 },
+    focusTarget: T.TIMER_TODO_COLUMN,
     focusRadius: 20,
     tooltipPosition: 'top',
     tooltip: { gap: 16, aboveHeight: 72, offsetY: 15, offsetX: -20, textAlign: 'left' },
@@ -263,7 +264,7 @@ const GUIDE_STEPS = [
     backgroundComponent: TimerContent,
     backgroundProps: {},
     activeTab: 'timer',
-    focusArea: { x: 0.57, y: 0.515, width: 0.41, height: 0.36 },
+    focusTarget: T.TIMER_TIMETABLE_COLUMN,
     focusRadius: 20,
     tooltipPosition: 'top',
     tooltip: { gap: 16, aboveHeight: 72, offsetY: 0, offsetX: 20, textAlign: 'right' },
@@ -273,7 +274,7 @@ const GUIDE_STEPS = [
     backgroundComponent: MyPage,
     backgroundProps: { navigation: GUIDE_NAVIGATION },
     activeTab: 'mypage',
-    focusArea: { x: 0.06, y: 0.265, width: 0.88, height: 0.45 },
+    focusTarget: T.MYPAGE_TIMETABLE,
     focusRadius: 15,
     tooltipPosition: 'bottom',
     tooltip: { gap: 16, aboveHeight: 72, offsetY: -20, offsetX: -20, textAlign: 'left' },
@@ -285,16 +286,15 @@ export default function GuideOverlayScreen({ navigation, route }) {
   const { width, height } = useWindowDimensions();
   const mode = route?.params?.mode === 'guide' ? 'guide' : 'onboarding';
   const [stepIndex, setStepIndex] = useState(0);
+  const [focusRect, setFocusRect] = useState(null);
   const step = GUIDE_STEPS[stepIndex];
   const Background = step.backgroundComponent;
 
-  const focus = useMemo(() => {
-    const x = step.focusArea.x * width;
-    const y = step.focusArea.y * height;
-    const w = step.focusArea.width * width;
-    const h = step.focusArea.height * height;
-    return { x, y, w, h };
-  }, [step, width, height]);
+  useEffect(() => {
+    setFocusRect(null);
+  }, [stepIndex]);
+
+  const focus = focusRect ?? { x: 0, y: 0, w: 0, h: 0 };
 
   const focusHolePath = useMemo(
     () =>
@@ -330,6 +330,9 @@ export default function GuideOverlayScreen({ navigation, route }) {
       <GuidePreviewProvider
         messageTab={step.guideMessageTab || 'note'}
         schoolScrollTo={step.guideSchoolScrollTo}
+        focusTarget={step.focusTarget}
+        onFocusRect={setFocusRect}
+        focusMeasureKey={stepIndex}
       >
         <SafeAreaView
           style={{ flex: 1, backgroundColor: colors.background }}

@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   View,
   Text,
@@ -14,7 +14,10 @@ import {
   SafeAreaView,
   useSafeAreaInsets,
 } from 'react-native-safe-area-context';
-import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
+import {
+  KeyboardAwareScrollView,
+  KeyboardAvoidingView,
+} from 'react-native-keyboard-controller';
 import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
 import SubHeader from '../frame/subHeader';
 import { colors } from '../../styles/colors';
@@ -24,6 +27,7 @@ import { api } from '../../utils/api';
 import Skeleton from '../../components/common/Skeleton';
 import ProfileIcon from '../../assets/Profile.svg';
 import { getProfileInnerColor } from '../../utils/profileIconColor';
+import { useMailContentKeyboardScroll } from '../../hooks/useMailContentKeyboardScroll';
 
 export default function MailReplyScreen({ navigation, route }) {
   const { width, height } = useWindowDimensions();
@@ -53,6 +57,21 @@ export default function MailReplyScreen({ navigation, route }) {
   const [subHeaderHeight, setSubHeaderHeight] = useState(0);
   const [bottomHeight, setBottomHeight] = useState(0);
   const [screenReady, setScreenReady] = useState(false);
+  const scrollRef = useRef(null);
+  const scrollContentRef = useRef(null);
+  const replyFormRef = useRef(null);
+
+  const { contentFocused, handleContentFocus, handleContentBlur } =
+    useMailContentKeyboardScroll({
+      scrollRef,
+      scrollContentRef,
+      contentSectionRef: replyFormRef,
+      normalize,
+    });
+
+  const scrollBottomInset = contentFocused
+    ? Math.max(bottomHeight, normalize(16))
+    : normalize(16);
 
   useEffect(() => {
     const timer = setTimeout(() => setScreenReady(true), 220);
@@ -81,13 +100,6 @@ export default function MailReplyScreen({ navigation, route }) {
     240,
     Math.floor((availableHeight - scrollPadding - cardGap) / 2),
   );
-  console.log('height', height);
-  console.log('insets', insets.top, insets.bottom);
-  console.log('subHeaderHeight', subHeaderHeight);
-  console.log('bottomHeight', bottomHeight);
-  console.log('availableHeight', availableHeight);
-  console.log('halfCardHeight', halfCardHeight);
-
   const handleSend = async () => {
     if (!replyText.trim()) return;
     if (!mailId) {
@@ -124,7 +136,7 @@ export default function MailReplyScreen({ navigation, route }) {
 
   if (!screenReady) {
     return (
-      <SafeAreaView style={styles.modalFullSafe} edges={['top', 'bottom']}>
+      <SafeAreaView style={styles.container} edges={['top']}>
         <View
           style={{
             paddingHorizontal: normalize(16),
@@ -161,30 +173,39 @@ export default function MailReplyScreen({ navigation, route }) {
 
   return (
     <>
-      <SafeAreaView style={styles.modalFullSafe} edges={['top', 'bottom']}>
-        <View style={{ flex: 1 }}>
-          <View
-            onLayout={(e) => setSubHeaderHeight(e.nativeEvent.layout.height)}
-          >
-            <SubHeader title="우편 보내기" onBack={() => navigation.goBack()} />
-          </View>
+      <SafeAreaView style={styles.container} edges={['top']}>
+        <View
+          onLayout={(e) => setSubHeaderHeight(e.nativeEvent.layout.height)}
+        >
+          <SubHeader title="우편 보내기" onBack={() => navigation.goBack()} />
+        </View>
 
-          <View style={styles.modalFullRoot}>
-            <KeyboardAwareScrollView
-              style={styles.modalFullScroll}
-              contentContainerStyle={styles.modalFullContent}
-              showsVerticalScrollIndicator={false}
-              keyboardShouldPersistTaps="always"
-              keyboardDismissMode="on-drag"
-              onScrollBeginDrag={Keyboard.dismiss}
-              bottomOffset={Math.max(bottomHeight, 16)}
-            >
-              <View
-                style={[
-                  styles.modalLetterPreviewCard,
-                  { minHeight: halfCardHeight, marginBottom: 12 },
-                ]}
-              >
+        <KeyboardAvoidingView
+          style={styles.keyboardView}
+          behavior="padding"
+          automaticOffset
+          enabled={contentFocused}
+        >
+          <KeyboardAwareScrollView
+            ref={scrollRef}
+            style={styles.scrollView}
+            contentContainerStyle={[
+              styles.modalFullContent,
+              { paddingBottom: scrollBottomInset },
+            ]}
+            showsVerticalScrollIndicator={false}
+            keyboardShouldPersistTaps="always"
+            keyboardDismissMode="on-drag"
+            onScrollBeginDrag={Keyboard.dismiss}
+            bottomOffset={scrollBottomInset}
+          >
+                <View ref={scrollContentRef} collapsable={false}>
+                  <View
+                    style={[
+                      styles.modalLetterPreviewCard,
+                      { minHeight: halfCardHeight, marginBottom: 12 },
+                    ]}
+                  >
                 {/* 상세 화면과 동일한 헤더 디자인 */}
                 <View style={styles.detailSenderRow}>
                   <View
@@ -219,20 +240,23 @@ export default function MailReplyScreen({ navigation, route }) {
                     {mail?.content ?? ''}
                   </Text>
                 )}
-              </View>
+                  </View>
 
-              <View
-                style={[styles.replyFormCard, { minHeight: halfCardHeight }]}
-              >
-                <TextInput
-                  style={styles.replyFormInput}
-                  placeholder="내용을 입력하세요"
-                  placeholderTextColor={colors.textSecondary}
-                  value={replyText}
-                  onChangeText={handleReplyTextChange}
-                  multiline
-                  textAlignVertical="top"
-                />
+                  <View
+                    ref={replyFormRef}
+                    style={[styles.replyFormCard, { minHeight: halfCardHeight }]}
+                  >
+                    <TextInput
+                      style={styles.replyFormInput}
+                      placeholder="내용을 입력하세요"
+                      placeholderTextColor={colors.textSecondary}
+                      value={replyText}
+                      onChangeText={handleReplyTextChange}
+                      onFocus={handleContentFocus}
+                      onBlur={handleContentBlur}
+                      multiline
+                      textAlignVertical="top"
+                    />
 
                 <View style={styles.replyFormMetaRow}>
                   <View
@@ -261,30 +285,33 @@ export default function MailReplyScreen({ navigation, route }) {
                       <Text style={styles.replyFormChipText}>x 2</Text>
                     </TouchableOpacity>
                   </View>
+                    </View>
+                  </View>
                 </View>
-              </View>
-            </KeyboardAwareScrollView>
+          </KeyboardAwareScrollView>
 
-            <View
-              style={styles.modalFullBottom}
-              onLayout={(e) => setBottomHeight(e.nativeEvent.layout.height)}
+          <View
+            style={[
+              styles.bottomCtaWrapper,
+              { paddingBottom: Math.max(normalize(16), insets.bottom) },
+            ]}
+            onLayout={(e) => setBottomHeight(e.nativeEvent.layout.height)}
+          >
+            <TouchableOpacity
+              style={[
+                styles.bottomCtaButton,
+                !replyText.trim() && styles.bottomCtaDisabled,
+              ]}
+              onPress={handleSend}
+              disabled={!replyText.trim() || sending}
+              activeOpacity={0.9}
             >
-              <TouchableOpacity
-                style={[
-                  styles.bottomCtaButton,
-                  !replyText.trim() && styles.bottomCtaDisabled,
-                ]}
-                onPress={handleSend}
-                disabled={!replyText.trim() || sending}
-                activeOpacity={0.9}
-              >
-                <Text style={styles.bottomCtaText}>
-                  {sending ? '전송 중...' : '보내기'}
-                </Text>
-              </TouchableOpacity>
-            </View>
+              <Text style={styles.bottomCtaText}>
+                {sending ? '전송 중...' : '보내기'}
+              </Text>
+            </TouchableOpacity>
           </View>
-        </View>
+        </KeyboardAvoidingView>
       </SafeAreaView>
 
       {/* 전송 완료 토스트 */}
