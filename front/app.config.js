@@ -111,6 +111,7 @@ export default ({ config }) => ({
         'expo-build-properties',
         {
           ios: {
+            useFrameworks: 'static',
             extraPods: [
               { name: 'GoogleUtilities', modular_headers: true },
               { name: 'FirebaseCoreInternal', modular_headers: true },
@@ -124,6 +125,7 @@ export default ({ config }) => ({
           },
         },
       ],
+      './plugins/withFirebaseModularHeaders',
       './plugins/withAndroidReleaseSigning.cjs',
       './plugins/withAndroidCameraPreviewCompatible.cjs',
     ],
