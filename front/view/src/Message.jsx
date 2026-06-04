@@ -1147,10 +1147,11 @@ export function MessageContent({ navigation }) {
             </ScrollView>
           </>
         ) : (
-          <>
+          <View style={{ flex: 1 }}>
             <ScrollView
               style={styles.list}
               showsVerticalScrollIndicator={false}
+              contentContainerStyle={{ paddingBottom: normalize(80) }}
             >
               {loadingMail && mails.length === 0 ? (
                 <MessageListSkeleton
@@ -1321,26 +1322,28 @@ export function MessageContent({ navigation }) {
                 })
               )}
             </ScrollView>
-
-            {/* 개인 우편함: 우측 하단 글쓰기(비행기) 플로팅 버튼 */}
-            <GuideFocusTarget name={T.MESSAGE_MAIL_WRITE_FAB}>
-              <TouchableOpacity
-                style={styles.floatingButton}
-                activeOpacity={0.8}
-                onPress={() => navigation?.navigate('SendMail')}
-              >
-                <Feather
-                  name="send"
-                  size={normalize(30)}
-                  top={normalize(2)}
-                  right={normalize(1)}
-                  color={colors.background}
-                />
-              </TouchableOpacity>
-            </GuideFocusTarget>
-          </>
+          </View>
         )}
       </View>
+
+      {/* 개인 우편함: 우측 하단 글쓰기(비행기) 플로팅 버튼 */}
+      {messageType === 'mail' ? (
+        <GuideFocusTarget name={T.MESSAGE_MAIL_WRITE_FAB}>
+          <TouchableOpacity
+            style={styles.floatingButton}
+            activeOpacity={0.8}
+            onPress={() => navigation?.navigate('SendMail')}
+          >
+            <Feather
+              name="send"
+              size={normalize(30)}
+              top={normalize(2)}
+              right={normalize(1)}
+              color={colors.background}
+            />
+          </TouchableOpacity>
+        </GuideFocusTarget>
+      ) : null}
 
       <Modal
         visible={roomMenuModalVisible}
