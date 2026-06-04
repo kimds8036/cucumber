@@ -358,14 +358,6 @@ export default function TimetabelChoice({ navigation, route }) {
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
       <SubHeader title="시간표 선택" onBack={() => navigation.goBack()} />
-      {autoLoading ? (
-        <View style={styles.choiceLoadingOverlay}>
-          <ActivityIndicator size="large" color={colors.primary} />
-          <Text style={styles.choiceLoadingText}>
-            학교 시간표를 불러오는 중…
-          </Text>
-        </View>
-      ) : null}
       <View style={styles.choiceContent}>
         <Text style={styles.choiceTitle}>이 시간표가 맞나요?</Text>
         <Text style={styles.choiceDescription}>
