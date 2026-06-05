@@ -77,7 +77,11 @@ export default function BoardFloatingMenu({
         },
       },
       { label: '공유하기', iconName: 'share-outline', onPress: onSharePost },
-      { label: '신고하기', iconName: 'flag-outline', onPress: onReportPost },
+      {
+        label: '신고 / 차단',
+        iconName: 'flag-outline',
+        onPress: onReportPost,
+      },
     ];
   } else if (isMyComment) {
     menuItems = [
@@ -105,7 +109,7 @@ export default function BoardFloatingMenu({
         },
       },
       {
-        label: '신고하기',
+        label: '신고 / 차단',
         iconName: 'flag-outline',
         onPress: () => onReportComment?.(isCommentMenu),
       },
@@ -113,14 +117,18 @@ export default function BoardFloatingMenu({
   } else if (isCommentMenu != null) {
     menuItems = [
       {
-        label: '신고하기',
+        label: '신고 / 차단',
         iconName: 'flag-outline',
         onPress: () => onReportComment?.(isCommentMenu),
       },
     ];
   } else {
     menuItems = [
-      { label: '신고하기', iconName: 'flag-outline', onPress: onReportPost },
+      {
+        label: '신고 / 차단',
+        iconName: 'flag-outline',
+        onPress: onReportPost,
+      },
     ];
   }
 

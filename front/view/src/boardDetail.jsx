@@ -28,6 +28,7 @@ import BoardCommentTree from './board/BoardCommentTree';
 import BoardFloatingMenu from './board/BoardFloatingMenu';
 import Skeleton from '../../components/common/Skeleton';
 import ReportModal from '../../components/common/ReportModal.jsx';
+import { filterCommentTreeExcludingUser } from '../../utils/blockUser';
 import BoarddetailADplaceholder from '../../src/screens/ad/boarddetailADplaceholder.jsx';
 import { useAdSlots } from '../../hooks/useAdSlots';
 
@@ -59,6 +60,7 @@ export default function BoardDetail({ navigation, route }) {
   const [reportModalVisible, setReportModalVisible] = useState(false);
   const [reportTargetType, setReportTargetType] = useState('post');
   const [reportTargetId, setReportTargetId] = useState(null);
+  const [reportReportedUserId, setReportReportedUserId] = useState(null);
 
   const insets = usePlatformInsets();
   const inputTranslateY = useSharedValue(0);
@@ -74,7 +76,7 @@ export default function BoardDetail({ navigation, route }) {
     setFloatingMenuVisible(false);
   };
 
-  const openReportModal = (targetType, targetId) => {
+  const openReportModal = (targetType, targetId, reportedUserId) => {
     const id = targetType === 'comment' ? Number(targetId) : targetId;
     if (
       id == null ||
@@ -84,6 +86,7 @@ export default function BoardDetail({ navigation, route }) {
       return;
     setReportTargetType(targetType);
     setReportTargetId(id);
+    setReportReportedUserId(reportedUserId ?? null);
     setReportModalVisible(true);
   };
 
@@ -91,6 +94,7 @@ export default function BoardDetail({ navigation, route }) {
     setReportModalVisible(false);
     setReportTargetId(null);
     setReportTargetType('post');
+    setReportReportedUserId(null);
   };
 
   const {
@@ -130,6 +134,19 @@ export default function BoardDetail({ navigation, route }) {
     setReplyToAuthorLabel,
     onCloseMenu: closeFloatingMenu,
   });
+
+  const handleBlockedUser = (blockedUserId) => {
+    const uid = Number(blockedUserId);
+    if (!Number.isFinite(uid)) return;
+    if (reportTargetType === 'post') {
+      if (navigation.canGoBack()) navigation.goBack();
+      else navigation.navigate('Main');
+      return;
+    }
+    if (reportTargetType === 'comment') {
+      setAllComments((prev) => filterCommentTreeExcludingUser(prev, uid));
+    }
+  };
 
   const distanceStale = permissionGranted && (!coordsIsFresh || !coords);
   const postHasKm =
@@ -634,8 +651,15 @@ export default function BoardDetail({ navigation, route }) {
           onDeleteComment={handleDeleteComment}
           onSharePost={handleSharePost}
           onNoteToUser={{ start: startNoteToUser, postUserId: postAuthorId }}
-          onReportPost={() => openReportModal('post', post?.id)}
-          onReportComment={(commentId) => openReportModal('comment', commentId)}
+          onReportPost={() => {
+            if (!postAuthorId || postAuthorId === currentUserId) return;
+            openReportModal('post', post?.id, postAuthorId);
+          }}
+          onReportComment={(commentId) => {
+            const target = findCommentById(allComments, commentId);
+            if (!target?.userId || target.userId === currentUserId) return;
+            openReportModal('comment', commentId, target.userId);
+          }}
           styles={styles}
           normalize={normalize}
           width={width}
@@ -646,6 +670,8 @@ export default function BoardDetail({ navigation, route }) {
           onClose={closeReportModal}
           targetType={reportTargetType}
           targetId={reportTargetId}
+          reportedUserId={reportReportedUserId}
+          onBlocked={handleBlockedUser}
         />
 
         <ImageViewer

@@ -39,6 +39,7 @@ export default function MessageList({
   handleStartReached,
   handleListShellLayout,
   listShellVisible,
+  hideWhileSkeleton = false,
   contentHeightRef,
   renderMessageProps,
   normalize,
@@ -80,7 +81,11 @@ export default function MessageList({
 
   return (
     <View
-      style={{ flex: 1, opacity: listShellVisible ? 1 : 0 }}
+      style={{
+        flex: 1,
+        opacity: listShellVisible && !hideWhileSkeleton ? 1 : 0,
+      }}
+      pointerEvents={hideWhileSkeleton ? 'none' : 'auto'}
       onLayout={handleListShellLayout}
     >
       <FlashList

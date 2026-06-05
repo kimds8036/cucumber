@@ -22,7 +22,12 @@ import StudentIdCameraGuideOverlay from './StudentIdCameraGuideOverlay';
 
 const OCR_VERIFY_TIMEOUT_MS = 120_000;
 
-const SignStepStudentIdVerify = ({ styles, identity, onVerified }) => {
+const SignStepStudentIdVerify = ({
+  styles,
+  identity,
+  alreadyVerified = false,
+  onVerified,
+}) => {
   const isFocused = useIsFocused();
   const { width: screenWidth, height: screenHeight } = useWindowDimensions();
   const [stageSize, setStageSize] = useState({ width: 0, height: 0 });
@@ -59,6 +64,11 @@ const SignStepStudentIdVerify = ({ styles, identity, onVerified }) => {
   }, [permission, requestPermission]);
 
   const runVerify = useCallback(async () => {
+    if (alreadyVerified) {
+      Alert.alert('알림', '이미 학생증 인증이 완료되었습니다. 다음 단계로 진행해 주세요.');
+      return;
+    }
+    if (busy) return;
     if (!identity?.name?.trim() || !identity?.birthDate) {
       Alert.alert('알림', '이름·생년월일·전화번호 인증을 먼저 완료해 주세요.');
       return;
@@ -105,6 +115,7 @@ const SignStepStudentIdVerify = ({ styles, identity, onVerified }) => {
         {
           name: identity.name.trim(),
           birthDate: identity.birthDate,
+          phone: identity.phoneNumber,
           imageBase64: photo.base64,
           cropRegion,
         },
@@ -144,6 +155,7 @@ const SignStepStudentIdVerify = ({ styles, identity, onVerified }) => {
         grade: data.suggestedGrade ?? '',
         class: data.suggestedClassNumber ?? '',
         graduationYear: data.suggestedGraduationYear ?? '',
+        studentVerificationToken: data.studentVerificationToken,
         verification: data,
       });
     } catch (e) {
@@ -151,17 +163,42 @@ const SignStepStudentIdVerify = ({ styles, identity, onVerified }) => {
       const timedOut = e?.code === 'ECONNABORTED';
       const networkLike =
         timedOut || !e?.response || e?.message === 'Network Error';
-      const msg = networkLike
-        ? '학생증 인식에 시간이 걸리거나 연결이 끊겼습니다. Wi‑Fi·데이터를 확인한 뒤 다시 시도해 주세요.'
-        : e?.response?.data?.message ||
-          '학생증 인증 중 오류가 발생했습니다.';
+      const msg =
+        e?.response?.status === 429
+          ? e?.response?.data?.message ||
+            '학생증 인식 요청 한도를 초과했습니다. 잠시 후 다시 시도해 주세요.'
+          : networkLike
+            ? '학생증 인식에 시간이 걸리거나 연결이 끊겼습니다. Wi‑Fi·데이터를 확인한 뒤 다시 시도해 주세요.'
+            : e?.response?.data?.message ||
+              '학생증 인증 중 오류가 발생했습니다.';
       Alert.alert('인증 오류', msg);
       setStatusText('오류가 발생했습니다. 다시 시도해 주세요.');
     } finally {
       setBusy(false);
       setStatusText('학생증을 가운데 틀에 맞춰 주세요.');
     }
-  }, [identity, onVerified, frameWidth, frameHeight]);
+  }, [identity, onVerified, frameWidth, frameHeight, alreadyVerified, busy]);
+
+  if (alreadyVerified) {
+    return (
+      <View style={[styles.content, localStyles.stepRoot, localStyles.centered]}>
+        <Text style={[styles.inputLabel, { textAlign: 'center' }]}>
+          학생증 인증이 완료되었습니다.
+        </Text>
+        <Text
+          style={{
+            marginTop: 8,
+            color: colors.textSecondary,
+            fontFamily: 'Baloo2-Regular',
+            fontSize: 13,
+            textAlign: 'center',
+          }}
+        >
+          뒤로 가도 인증 결과가 유지됩니다. 다음 단계로 진행해 주세요.
+        </Text>
+      </View>
+    );
+  }
 
   if (!permission) {
     return (

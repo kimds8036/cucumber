@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useMemo, useCallback } from 'react';
+import React, { useEffect, useState, useMemo, useCallback, useRef } from 'react';
 import {
   View,
   Text,
@@ -37,7 +37,7 @@ import {
  * OCR(학생증 촬영) 및 이후 단계는 실제 검증·API 유지.
  * 테스트 끝나면 false 로 변경.
  */
-const SKIP_SIGNUP_VALIDATION_UNTIL_OCR_TEST = true;
+const SKIP_SIGNUP_VALIDATION_UNTIL_OCR_TEST = false;
 
 /** OCR API 호출용 임시 본인 정보 (SKIP 모드) */
 const OCR_TEST_MOCK_IDENTITY = {
@@ -67,13 +67,18 @@ const Sign = ({ navigation }) => {
   const [identityData, setIdentityData] = useState({});
   const [recognizedData, setRecognizedData] = useState(null);
   const [studentVerified, setStudentVerified] = useState(false);
+  const [studentVerificationToken, setStudentVerificationToken] =
+    useState(null);
   const [showCompleteModal, setShowCompleteModal] = useState(false);
   const [stepInfoData, setStepInfoData] = useState({});
   const [step4Data, setStep4Data] = useState({});
   const [stepNumberData, setStepNumberData] = useState({});
   const [selectedVerificationMethod, setSelectedVerificationMethod] =
     useState('');
-  const [consentData, setConsentData] = useState({ allConsented: false });
+  const [consentData, setConsentData] = useState({
+    allConsented: false,
+    consents: {},
+  });
   const [completeModalType, setCompleteModalType] = useState('signup');
   const [screenReady, setScreenReady] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -117,6 +122,9 @@ const Sign = ({ navigation }) => {
     [resetTo],
   );
 
+  const prevVerificationMethodRef = useRef('');
+  const ocrIdentityAnchorRef = useRef({ name: '', phone: '' });
+
   const handleBack = () => {
     if (currentStep === STEP.CONSENT) {
       navigation.goBack();
@@ -124,6 +132,30 @@ const Sign = ({ navigation }) => {
       setCurrentStep((s) => s - 1);
     }
   };
+
+  /** 이름·전화 변경 시 OCR 토큰 무효화 (재과금·변조 방지) */
+  useEffect(() => {
+    const name = identityData.name?.trim() || '';
+    const phone = identityData.phoneNumber || '';
+    if (!studentVerificationToken) {
+      ocrIdentityAnchorRef.current = { name, phone };
+      return;
+    }
+    const anchor = ocrIdentityAnchorRef.current;
+    if (
+      anchor.name &&
+      (anchor.name !== name || anchor.phone !== phone)
+    ) {
+      setStudentVerificationToken(null);
+      setRecognizedData(null);
+      setStudentVerified(false);
+    }
+    ocrIdentityAnchorRef.current = { name, phone };
+  }, [
+    identityData.name,
+    identityData.phoneNumber,
+    studentVerificationToken,
+  ]);
 
   const handleConsentNext = () => {
     if (!SKIP_SIGNUP_VALIDATION_UNTIL_OCR_TEST && !consentData.allConsented) return;
@@ -179,8 +211,15 @@ const Sign = ({ navigation }) => {
     if (!selectedVerificationMethod) {
       setSelectedVerificationMethod(method);
     }
-    setRecognizedData(null);
-    setStudentVerified(false);
+    if (
+      prevVerificationMethodRef.current &&
+      prevVerificationMethodRef.current !== method
+    ) {
+      setRecognizedData(null);
+      setStudentVerified(false);
+      setStudentVerificationToken(null);
+    }
+    prevVerificationMethodRef.current = method;
     setCurrentStep(STEP.STUDENT_VERIFY);
   };
 
@@ -206,6 +245,15 @@ const Sign = ({ navigation }) => {
 
     setRecognizedData(data);
     setStudentVerified(true);
+    setStudentVerificationToken(
+      data?.studentVerificationToken ||
+        data?.verification?.studentVerificationToken ||
+        null,
+    );
+    ocrIdentityAnchorRef.current = {
+      name: identity.name?.trim() || '',
+      phone: identity.phoneNumber || '',
+    };
     setFormData((prev) => ({
       ...prev,
       schoolId: data.schoolId || school?.id,
@@ -226,6 +274,7 @@ const Sign = ({ navigation }) => {
           onPress: () => {
             setStudentVerified(false);
             setRecognizedData(null);
+            setStudentVerificationToken(null);
           },
         },
         {
@@ -253,6 +302,13 @@ const Sign = ({ navigation }) => {
       Alert.alert('알림', '학생증 인증을 완료해 주세요.');
       return;
     }
+    if (
+      selectedVerificationMethod === 'studentId' &&
+      !studentVerificationToken
+    ) {
+      Alert.alert('알림', '학생증 인증이 만료되었습니다. 다시 촬영해 주세요.');
+      return;
+    }
     setFormData((prev) => ({ ...prev, ...stepInfoData }));
     setCurrentStep(STEP.PROFILE);
   };
@@ -267,7 +323,7 @@ const Sign = ({ navigation }) => {
     const graduationYear =
       Number(finalData.graduationYear) || enrollment.graduationYear;
 
-    return {
+    const payload = {
       username: finalData.username,
       password: finalData.password,
       name: (finalData.name || identity.name || '').trim(),
@@ -281,12 +337,21 @@ const Sign = ({ navigation }) => {
       graduationYear,
       colorId: pickRandomProfileColorId(),
       verificationMethod,
+      consents: consentData.consents || {},
       ...certificateMeta,
     };
+    if (verificationMethod === 'student_id' && studentVerificationToken) {
+      payload.studentVerificationToken = studentVerificationToken;
+    }
+    return payload;
   };
 
   const handleCertificateSubmit = async () => {
     const merged = { ...formData, ...stepInfoData, ...stepNumberData };
+    if (!consentData.allConsented) {
+      Alert.alert('알림', '필수 약관에 동의해 주세요.');
+      return;
+    }
     if (!stepNumberData.certificateUrl || !stepNumberData.submissionNumber) {
       Alert.alert('알림', '증명서 열람 주소와 열람 번호를 입력해 주세요.');
       return;
@@ -326,6 +391,10 @@ const Sign = ({ navigation }) => {
 
     if (!finalData.grade || !finalData.classNum) {
       Alert.alert('알림', '학년과 반을 입력해 주세요.');
+      return;
+    }
+    if (!studentVerificationToken) {
+      Alert.alert('알림', '학생증 인증이 만료되었습니다. 다시 촬영해 주세요.');
       return;
     }
 
@@ -516,6 +585,7 @@ const Sign = ({ navigation }) => {
             styles={styles}
             normalize={normalize}
             bottomOffset={footerHeight}
+            initialData={identityData}
             onChange={setIdentityData}
           />
         )}
@@ -533,6 +603,7 @@ const Sign = ({ navigation }) => {
             <SignStepStudentIdVerify
               styles={styles}
               identity={identity}
+              alreadyVerified={studentVerified}
               onVerified={handleStudentVerified}
             />
           ))}

@@ -12,6 +12,9 @@ import {
 } from '../utils/dateUtils.js';
 import { cloudinary, upload } from '../config/cloudinary.js';
 import { haversineKm, sqlHaversineKmLessOrEqual } from '../utils/geo.js';
+import { appendUserBlockFilter } from '../utils/userBlockFilter.js';
+import { isBlockedBy } from '../utils/userBlock.js';
+import { submitContentReport } from '../services/reportSubmission.service.js';
 const router = express.Router();
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -294,6 +297,8 @@ router.get('/', optionalAuthenticate, async (req, res) => {
       params.push(searchTerm);
     }
 
+    appendUserBlockFilter(conditions, params, userId, 'p.user_id');
+
     const whereClause =
       conditions.length > 0
         ? `WHERE ${conditions.join(' AND ')} AND p.is_deleted = FALSE AND p.is_hidden = FALSE`
@@ -575,6 +580,8 @@ router.get('/my', authenticate, async (req, res) => {
       params.push(`%${search}%`);
     }
 
+    appendUserBlockFilter(conditions, params, userId, 'p.user_id');
+
     const whereClause =
       conditions.length > 0
         ? `WHERE ${conditions.join(' AND ')} AND p.is_deleted = FALSE AND p.is_hidden = FALSE`
@@ -763,6 +770,8 @@ router.get('/liked', authenticate, async (req, res) => {
       params.push(`%${search}%`);
     }
 
+    appendUserBlockFilter(conditions, params, userId, 'p.user_id');
+
     const whereClause =
       conditions.length > 0
         ? `WHERE ${conditions.join(' AND ')} AND p.is_deleted = FALSE AND p.is_hidden = FALSE`
@@ -870,6 +879,8 @@ router.get('/scrapped', authenticate, async (req, res) => {
       conditions.push('p.content LIKE ?');
       params.push(`%${search}%`);
     }
+
+    appendUserBlockFilter(conditions, params, userId, 'p.user_id');
 
     const whereClause =
       conditions.length > 0
@@ -1083,6 +1094,17 @@ router.get('/:id', optionalAuthenticate, async (req, res) => {
 
     const post = posts[0];
     if (post.is_hidden && post.user_id !== userId) {
+      return res.status(404).json({
+        success: false,
+        message: '게시글을 찾을 수 없습니다.',
+      });
+    }
+
+    if (
+      userId &&
+      post.user_id !== userId &&
+      (await isBlockedBy({ blockerUserId: userId, targetUserId: post.user_id }))
+    ) {
       return res.status(404).json({
         success: false,
         message: '게시글을 찾을 수 없습니다.',
@@ -1529,115 +1551,34 @@ router.post('/:id/report', authenticate, validate(postReportValidators), async (
     const reporterId = req.user.userId;
     const { id } = req.params;
     const { reason, description } = req.body;
-    const DAILY_REPORT_QUOTA = 5;
-    const AUTO_HIDE_REPORT_THRESHOLD = 3;
 
-    if (!reason) {
-      return res.status(400).json({ 
-        success: false, 
-        message: '신고 사유를 입력해주세요.' 
-      });
-    }
-
-    // 게시글 존재 확인 (삭제된 글은 신고 불가)
-    const [posts] = await pool.execute(
-      'SELECT id FROM posts WHERE id = ? AND is_deleted = FALSE',
-      [id]
-    );
-    if (posts.length === 0) {
-      return res.status(404).json({ 
-        success: false, 
-        message: '게시글을 찾을 수 없습니다.' 
-      });
-    }
-
-    // 일일 신고 횟수 제한 (KST 기준)
-    const { start, end } = getKstTodayRangeUtcForSql();
-    const [dailyCountRows] = await pool.execute(
-      `SELECT COUNT(*) AS c
-       FROM reports
-       WHERE reporter_id = ?
-         AND created_at >= ?
-         AND created_at <= ?`,
-      [reporterId, start, end]
-    );
-    const todayCount = Number(dailyCountRows[0]?.c ?? 0);
-    if (todayCount >= DAILY_REPORT_QUOTA) {
-      return res.status(429).json({
-        success: false,
-        message: '오늘 신고 가능 횟수를 모두 사용했어요. 내일 다시 이용해 주세요.',
-      });
-    }
-
-    // 중복 신고 확인 (같은 사용자가 같은 게시글을 신고)
-    const [existingReports] = await pool.execute(
-      'SELECT id FROM reports WHERE reporter_id = ? AND target_type = ? AND target_id = ?',
-      [reporterId, 'post', id]
-    );
-
-    if (existingReports.length > 0) {
-      return res.status(400).json({ 
-        success: false, 
-        message: '이미 신고한 게시물입니다.' 
-      });
-    }
-
-    const connection = await pool.getConnection();
-    let autoHidden = false;
-    try {
-      await connection.beginTransaction();
-
-      // 신고 생성
-      await connection.execute(
-        `INSERT INTO reports (reporter_id, target_type, target_id, reason, description) 
-         VALUES (?, ?, ?, ?, ?)`,
-        [reporterId, 'post', id, reason, description || null]
-      );
-
-      // pending 신고 누적 집계 후 자동 숨김
-      const [pendingRows] = await connection.execute(
-        `SELECT COUNT(*) AS c
-         FROM reports
-         WHERE target_type = 'post'
-           AND target_id = ?
-           AND status = 'pending'`,
-        [id]
-      );
-      const pendingCount = Number(pendingRows[0]?.c ?? 0);
-      if (pendingCount >= AUTO_HIDE_REPORT_THRESHOLD) {
-        autoHidden = true;
-        await connection.execute(
-          `UPDATE posts
-           SET is_hidden = TRUE,
-               hidden_reason = 'REPORT_THRESHOLD',
-               hidden_at = ?,
-               hidden_by_report_count = ?
-           WHERE id = ?
-             AND is_deleted = FALSE`,
-          [getNowForDB(), pendingCount, id]
-        );
-      }
-
-      await connection.commit();
-    } catch (txError) {
-      await connection.rollback();
-      throw txError;
-    } finally {
-      connection.release();
-    }
-
-    res.status(201).json({
-      success: true,
-      message: '신고가 접수되었습니다. 더 안전한 커뮤니티를 위해 함께해 주셔서 감사합니다. 허위 신고가 반복되면 이용이 제한될 수 있습니다.',
-      data: {
-        autoHidden,
+    const result = await submitContentReport({
+      reporterId,
+      targetType: 'post',
+      targetId: id,
+      reason,
+      description,
+      options: {
+        autoHidePost: true,
+        targetExistsCheck: {
+          notFoundMessage: '게시글을 찾을 수 없습니다.',
+          check: async (db) => {
+            const [rows] = await db.execute(
+              'SELECT id FROM posts WHERE id = ? AND is_deleted = FALSE',
+              [id],
+            );
+            return rows.length > 0;
+          },
+        },
       },
     });
+
+    return res.status(result.httpStatus).json(result.body);
   } catch (error) {
     console.error('게시글 신고 오류:', error);
-    res.status(500).json({ 
-      success: false, 
-      message: '신고 처리 중 오류가 발생했습니다.' 
+    res.status(500).json({
+      success: false,
+      message: '신고 처리 중 오류가 발생했습니다.',
     });
   }
 });

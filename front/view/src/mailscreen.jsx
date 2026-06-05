@@ -25,6 +25,7 @@ import {
   isPersonalMailReturned,
   navigateToResendPersonalMail,
 } from '../../utils/personalMail';
+import ReportModal from '../../components/common/ReportModal.jsx';
 
 function parseUtcToLocal(createdAt) {
   if (!createdAt) return null;
@@ -214,6 +215,9 @@ function MailInbox({ onOpen, onBack, navigation }) {
   const [error, setError] = useState('');
   const [inboxMenuVisible, setInboxMenuVisible] = useState(false);
   const [inboxMenuMail, setInboxMenuMail] = useState(null);
+  const [reportModalVisible, setReportModalVisible] = useState(false);
+  const [reportUserId, setReportUserId] = useState(null);
+  const reportBlockRoomIdRef = React.useRef(null);
 
   const closeInboxMenu = useCallback(() => {
     setInboxMenuVisible(false);
@@ -260,23 +264,14 @@ function MailInbox({ onOpen, onBack, navigation }) {
     })();
   }, [closeInboxMenu, inboxMenuMail]);
 
-  const handleInboxMenuBlock = useCallback(() => {
+  const handleInboxMenuReportBlock = useCallback(() => {
     const mail = inboxMenuMail;
-    closeInboxMenu();
     const counterpartyUserId = mail?.counterpartyUserId;
     if (!counterpartyUserId) return;
-    (async () => {
-      try {
-        await api.post(`/api/friends/${counterpartyUserId}/block`, {
-          reason: 'mail_block',
-        });
-        if (mail?.roomId) {
-          setItems((prev) => prev.filter((it) => it.roomId !== mail.roomId));
-        }
-      } catch {
-        Alert.alert('오류', '차단 처리에 실패했습니다.');
-      }
-    })();
+    closeInboxMenu();
+    reportBlockRoomIdRef.current = mail?.roomId ?? null;
+    setReportUserId(counterpartyUserId);
+    setReportModalVisible(true);
   }, [closeInboxMenu, inboxMenuMail]);
 
   const fetchList = useCallback(
@@ -590,7 +585,7 @@ function MailInbox({ onOpen, onBack, navigation }) {
 
               <TouchableOpacity
                 style={inboxMenuSheetStyles.sheetBlockAction}
-                onPress={handleInboxMenuBlock}
+                onPress={handleInboxMenuReportBlock}
                 activeOpacity={0.85}
               >
                 <View
@@ -600,14 +595,14 @@ function MailInbox({ onOpen, onBack, navigation }) {
                   ]}
                 >
                   <Ionicons
-                    name="ban-outline"
+                    name="flag-outline"
                     size={16}
                     color={colors.textSecondary}
                   />
                 </View>
                 <View>
                   <Text style={inboxMenuSheetStyles.sheetBlockActionTitle}>
-                    차단
+                    신고 / 차단
                   </Text>
                 </View>
               </TouchableOpacity>
@@ -615,6 +610,26 @@ function MailInbox({ onOpen, onBack, navigation }) {
           ) : null}
         </View>
       </Modal>
+
+      <ReportModal
+        visible={reportModalVisible}
+        onClose={() => {
+          setReportModalVisible(false);
+          setReportUserId(null);
+          reportBlockRoomIdRef.current = null;
+        }}
+        targetType="user"
+        targetId={reportUserId}
+        reportedUserId={reportUserId}
+        blockReason="mail_block"
+        onBlocked={() => {
+          const roomId = reportBlockRoomIdRef.current;
+          if (roomId) {
+            setItems((prev) => prev.filter((it) => it.roomId !== roomId));
+          }
+          reportBlockRoomIdRef.current = null;
+        }}
+      />
     </SafeAreaView>
   );
 }

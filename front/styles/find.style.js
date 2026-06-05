@@ -126,5 +126,45 @@ export const createFindStyles = (width, normalize) => {
       fontFamily: fonts.bold,
       color: colors.textWhite,
     },
+    inputWithButton: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      width: '98%',
+      marginBottom: normalize(12),
+    },
+    inputFlex: {
+      flex: 1,
+      marginBottom: 0,
+      marginRight: normalize(8),
+    },
+    verifyButton: {
+      paddingHorizontal: normalize(18),
+      height: normalize(50),
+      backgroundColor: colors.primary,
+      borderRadius: normalize(24),
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    verifyButtonDisabled: {
+      backgroundColor: colors.textLight20,
+    },
+    verifyButtonWide: {
+      width: '98%',
+      alignSelf: 'center',
+      marginBottom: normalize(12),
+    },
+    verifyButtonText: {
+      fontSize: normalize(fontSizes.xxl),
+      fontFamily: fonts.bold,
+      color: colors.textWhite,
+    },
+    verifiedHint: {
+      marginTop: normalize(4),
+      marginBottom: normalize(12),
+      marginLeft: normalize(20),
+      fontSize: normalize(fontSizes.lg),
+      fontFamily: fonts.regular,
+      color: colors.primary,
+    },
   });
 };

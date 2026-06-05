@@ -1,8 +1,9 @@
 # App Store 심사 대응 Audit & 개선 설계
 
 작성일: 2026-05-28  
+최종 반영: 2026-05-29 — 지금까지 구현된 항목만 체크리스트에 표시  
 범위: `front`(React Native), `back`(Node.js/Express), DB 마이그레이션/조회 구조  
-원칙: 코드 수정 없이 현황 점검 + 개선 설계만 문서화
+원칙: 1차는 Audit·설계 문서; 하단 **진행 체크리스트**는 실제 코드 기준으로 갱신
 
 ---
 
@@ -98,7 +99,9 @@
 
 ### 권장 UI 위치
 - 1차: 회원가입 Step 0(현재 동의 단계 유지/강화)
+<!-- 보류: 로그인 시 약관 재동의 — 타 서비스도 로그인마다 재동의하지 않아 v1에서는 미적용
 - 2차(권장): 로그인 화면 진입 시 “약관 버전 변경 시 재동의 모달” 조건부 표시
+-->
 
 ### 필수 문구(예시)
 - 학교폭력·언어폭력·성적/혐오/불법 콘텐츠 무관용
@@ -116,8 +119,7 @@
 ### API 흐름 제안
 1. 앱 시작/회원가입 진입: `GET /api/app/terms/active`
 2. 동의 제출: `POST /api/auth/consent` (필수 항목 체크)
-3. 로그인 후 검증(선택): `GET /api/auth/consent/status`  
-   - 최신 버전 미동의면 재동의 강제
+<!-- 3. 로그인 후 검증(선택): `GET /api/auth/consent/status` — 재동의 강제는 v1 보류 -->
 
 ---
 
@@ -214,3 +216,87 @@ setComments((prev) => prev.filter((c) => c.userId !== blockedUserId));
 ## 비고
 
 - 본 문서는 “현행 코드 점검 + 구조 제안” 문서이며, 실제 반영 시에는 마이그레이션/엔드포인트/프론트 상태 관리를 함께 적용해야 함.
+
+---
+
+## 진행 체크리스트 (코드 반영 현황, 2026-05-29)
+
+> **규칙:** 저장소에서 동작·구현이 확인된 항목만 `[x]`. 미완·심사 전 보완 필요·테스트 전용은 `[ ]` 유지.
+
+### A. 단계 1 Audit — 현재 구현 상태
+
+#### A-1. 로그인/회원가입 EULA·약관
+
+- [x] 회원가입 Step 0 필수 동의 UI (`SignStepConsent.jsx`) — 약관·수집·학생증 OCR·위치·(만 14세 미만) 법정대리인
+- [x] 이용약관·개인정보 처리방침 전문 화면 (`SignStepTermsOfService`, `SignStepPrivacyPolicy`, `info.jsx`)
+- [x] 가입 v2 플로우 — 약관 선행 → 본인확인 → 인증방식 → 학생증/증명서 → 계정·프로필 (`Sign.jsx`)
+- [x] 로그인 시 약관 재동의 **미적용** (의도적 — 가입 시 동의만, 타 앱 관행과 동일)
+<!-- - [ ] 로그인 화면 약관 재동의·버전 검증 API -->
+- [ ] 약관 버전 DB·서버 동의 저장 (`terms_versions`, `user_terms_consents`, `/api/auth/consent` — 미구현)
+
+#### A-2. 신고·차단 (UGC)
+
+- [x] 게시글·댓글 신고 UI·API (`ReportModal`, `boardAll`/`boardDetail`, `posts.js`/`comments.js`)
+- [x] `user_blocks` 테이블·차단 API (`friends.js`, `userBlock.js`)
+- [x] 게시글·댓글 목록·상세에서 차단 유저 **즉시 제외** (`userBlockFilter.js`, `posts.js`, `comments.js`)
+- [x] 차단 성공 시 프론트 optimistic 제거 (`blockUser.js`, `boardAll.jsx`, `boardDetail.jsx`)
+- [x] **신고 / 차단** 통합 UI + 신고 후 차단 유도 모달 (`ReportModal.jsx`)
+- [x] 중복 신고 시 `code: ALREADY_REPORTED` (409) → 차단 유도만 표시
+- [x] DM·개인우편·학교우편·게시판·댓글 메뉴 통합 (친구 목록은 **차단** 단독 유지)
+
+#### A-3. 테스트·베타 흔적
+
+- [x] `App.js` 초기 라우트 `Login` ( `TestLogin` 스택 연결 해제, 파일은 주석 보관)
+- [x] 백엔드 테스트 API — `ENABLE_TEST_API !== 'true'` 시 production 404 (`test.js`, `.env.example` 기본 `false`)
+- [ ] 가입 OCR 테스트 스킵 플래그 해제 (`Sign.jsx` `SKIP_SIGNUP_VALIDATION_UNTIL_OCR_TEST = true` — 심사 빌드 전 `false` 필요)
+- [ ] `FEATURE_FLAGS` 단일 소스·미완성 UI 렌더 숨김 정리
+
+---
+
+### B. 가입·본인확인 (v2/v3, App Store 연계)
+
+- [x] Firebase Phone Auth + `POST /api/auth/verify-firebase-phone` → `phone_verifications`
+- [x] `POST /api/auth/signup/verify-student-id` — **네이버 CLOVA General OCR** (`naverClovaOcr.service.js`, Tesseract 제거)
+- [x] 학생증 가입 시 `student_verified = TRUE` INSERT (`auth.js`)
+- [x] 증명서 가입 경로 + `signup_certificate_submissions` + 관리자 검수 API (`SignStepCertificate`, `adminSignupCertificates.js`)
+- [x] 생년월일 기반 학교급·학년·졸업년도 유추 (`signupEnrollment.js`, OCR 3중 검증)
+- [x] 연령 미달·중·고 외 차단 + `team.ucost@gmail.com` 안내 (`signupAgeUtils`, `authFeatureAlerts`)
+- [x] 가입 State 누적 후 마지막 `POST /api/auth/signup` 일괄 전송 (`DISABLE_SIGN_VALIDATION` 해제)
+- [x] 프로필 색 1~4 랜덤 (`pickRandomProfileColorId`)
+- [ ] OCR·가입 E2E 심사용 검증 완료 (Railway `NAVER_CLOVA_OCR_*` 설정·실기기 통과 — 운영 변수·crop 품질 확인 중)
+- [ ] `IDfind` / `PWfind` Firebase 전화 재사용 완료 (플랜 C2 — 후속)
+
+---
+
+### C. 단계 2 설계안 — 우선순위 실행
+
+문서 §「우선순위 제안 (실행 순)」과 동일 순서.
+
+1. [x] 게시글/댓글 차단 필터 (백엔드 쿼리 + 프론트 즉시 제거)
+2. [x] 운영 빌드 `TestLogin` 진입 해제 (`ENABLE_TEST_API` production 가드는 기존 유지)
+3. [ ] 약관 동의 버전 관리/서버 저장
+4. [ ] 미완성 버튼·빈 `onPress` 숨김 정리
+5. [ ] 신고/차단 관리자 Webhook 알림 (`BATCH_ALERT_WEBHOOK_URL` 등)
+
+---
+
+### D. 심사 빌드 전 필수 확인 (미체크 = 출시 전 작업)
+
+- [ ] `SKIP_SIGNUP_VALIDATION_UNTIL_OCR_TEST` → `false`
+- [ ] `App.js` `initialRouteName` 프로덕션 정상화
+- [ ] Railway develop/production: `NAVER_CLOVA_OCR_INVOKE_URL`, `NAVER_CLOVA_OCR_SECRET` 설정
+- [ ] Railway production: `ENABLE_TEST_API=false` 유지
+- [ ] 계정 탈퇴 — 약관 문구 대비 실제 API 연동 (`mypage.jsx` 현재 Alert 스텁)
+<!-- - [ ] 로그인 후 최신 약관 미동의 시 재동의 모달 (v1 보류) -->
+
+---
+
+### E. 단계 1 결론 요약 (갱신)
+
+| 항목 | 상태 |
+|------|------|
+| 회원가입 약관 동의 | **구현됨** (버전·서버 저장은 미구현) |
+| 신고 | **구현됨** |
+| 차단 | **부분** (API·테이블 있음, 피드 필터·UI 미흡) |
+| 가입 본인확인·학생증 OCR | **구현됨** (CLOVA 전환, E2E·테스트 플래그 정리 필요) |
+| 베타/테스트 흔적 | **잔존** (`TestLogin`, 가입 OCR 스킵 플래그) |

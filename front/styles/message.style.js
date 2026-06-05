@@ -353,11 +353,20 @@ export const createChatStyles = (width, normalize) => {
     // ─────────────────────────────────────────────
     // ChatScreen 레이아웃/토스트/스켈레톤
     // ─────────────────────────────────────────────
+    chatPinnedHeader: {
+      flexShrink: 0,
+      flexGrow: 0,
+      backgroundColor: colors.background,
+      zIndex: 20,
+      elevation: 4,
+    },
     chatScreenBody: {
       flex: 1,
+      minHeight: 0,
     },
     chatScreenMain: {
       flex: 1,
+      minHeight: 0,
       backgroundColor: colors.background,
     },
     chatListContainer: {

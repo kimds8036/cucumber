@@ -13,6 +13,7 @@ import Animated, {
 import { useKeyboardHandler } from 'react-native-keyboard-controller';
 import {
   SafeAreaView,
+  initialWindowMetrics,
   useSafeAreaInsets,
 } from 'react-native-safe-area-context';
 import { useWindowDimensions } from 'react-native';
@@ -55,6 +56,12 @@ export default function ChatScreen({
   const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
   const normalize = useMemo(() => getBoardNormalize(width), [width]);
+  const topInset =
+    initialWindowMetrics?.insets.top ?? insets.top ?? 0;
+  const chatSubHeaderBlockHeight = useMemo(
+    () => normalize(10) + normalize(20) + normalize(10),
+    [normalize],
+  );
   const detailStyles = useMemo(
     () => createDetailStyles(width, normalize),
     [width, normalize],
@@ -262,12 +269,22 @@ export default function ChatScreen({
   }));
 
   return (
-    <SafeAreaView style={detailStyles.container} edges={['top']}>
-      <SubHeader
-        title={headerConfig?.title || '채팅'}
-        onBack={headerConfig?.onBack}
-        titleElement={headerConfig?.titleElement}
-      />
+    <SafeAreaView style={detailStyles.container} edges={[]}>
+      <View
+        style={[
+          chatStyles.chatPinnedHeader,
+          {
+            paddingTop: topInset,
+            minHeight: topInset + chatSubHeaderBlockHeight,
+          },
+        ]}
+      >
+        <SubHeader
+          title={headerConfig?.title || '채팅'}
+          onBack={headerConfig?.onBack}
+          titleElement={headerConfig?.titleElement}
+        />
+      </View>
 
       <View style={chatStyles.chatScreenBody}>
         <View style={chatStyles.chatScreenMain}>
@@ -313,6 +330,7 @@ export default function ChatScreen({
               data={flatData}
               listRef={scroll.listRef}
               isLoadingMore={chat.isLoadingMore}
+              hideWhileSkeleton={shouldShowChatSkeleton}
               handleScroll={scroll.handleScroll}
               handleStartReached={scroll.handleStartReached}
               handleListShellLayout={scroll.handleListShellLayout}
