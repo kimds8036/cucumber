@@ -6,6 +6,8 @@ import { validate } from '../middleware/validate.js';
 import { enqueueNotification } from '../utils/notificationWorker.js';
 import { getKstTodayRangeUtcForSql, getNowForDB } from '../utils/dateUtils.js';
 import { cloudinary, upload } from '../config/cloudinary.js';
+import { appendUserBlockFilter } from '../utils/userBlockFilter.js';
+import { submitContentReport } from '../services/reportSubmission.service.js';
 
 const router = express.Router();
 
@@ -245,7 +247,10 @@ router.get('/:postId/comments', optionalAuthenticate, async (req, res) => {
       });
     }
 
-    // 댓글 조회 (대댓글 포함, 삭제된 댓글 제외)
+    const commentConditions = ['c.post_id = ?', 'c.is_deleted = FALSE'];
+    const commentParams = [postId];
+    appendUserBlockFilter(commentConditions, commentParams, userId, 'c.user_id');
+
     const [comments] = await pool.execute(
       `SELECT 
         c.id,
@@ -264,9 +269,9 @@ router.get('/:postId/comments', optionalAuthenticate, async (req, res) => {
           ORDER BY display_order ASC) AS images
       FROM comments c
       LEFT JOIN users u ON c.user_id = u.id
-      WHERE c.post_id = ? AND c.is_deleted = FALSE
+      WHERE ${commentConditions.join(' AND ')}
       ORDER BY c.parent_comment_id IS NULL DESC, c.created_at ASC`,
-      [postId],
+      commentParams,
     );
 
     // 사용자가 좋아요를 눌렀는지 확인
@@ -387,76 +392,28 @@ router.post('/comments/:commentId/report', authenticate, async (req, res) => {
     const reporterId = req.user.userId;
     const { commentId } = req.params;
     const { reason, description } = req.body;
-    const DAILY_REPORT_QUOTA = 5;
 
-    if (!reason) {
-      return res.status(400).json({
-        success: false,
-        message: '신고 사유를 입력해주세요.',
-      });
-    }
-
-    // 댓글 존재 확인 (본인 댓글 신고 불가)
-    const [comments] = await pool.execute(
-      'SELECT id, user_id FROM comments WHERE id = ? AND is_deleted = FALSE',
-      [commentId],
-    );
-    if (comments.length === 0) {
-      return res.status(404).json({
-        success: false,
-        message: '댓글을 찾을 수 없습니다.',
-      });
-    }
-    if (Number(comments[0].user_id) === Number(reporterId)) {
-      return res.status(400).json({
-        success: false,
-        message: '본인이 작성한 댓글은 신고할 수 없습니다.',
-      });
-    }
-
-    // 일일 신고 횟수 제한 (KST 기준)
-    const { start, end } = getKstTodayRangeUtcForSql();
-    const [dailyCountRows] = await pool.execute(
-      `SELECT COUNT(*) AS c
-       FROM reports
-       WHERE reporter_id = ?
-         AND created_at >= ?
-         AND created_at <= ?`,
-      [reporterId, start, end]
-    );
-    const todayCount = Number(dailyCountRows[0]?.c ?? 0);
-    if (todayCount >= DAILY_REPORT_QUOTA) {
-      return res.status(429).json({
-        success: false,
-        message: '오늘 신고 가능 횟수를 모두 사용했어요. 내일 다시 이용해 주세요.',
-      });
-    }
-
-    // 중복 신고 확인
-    const [existingReports] = await pool.execute(
-      'SELECT id FROM reports WHERE reporter_id = ? AND target_type = ? AND target_id = ?',
-      [reporterId, 'comment', commentId],
-    );
-
-    if (existingReports.length > 0) {
-      return res.status(400).json({
-        success: false,
-        message: '이미 신고한 게시물입니다.',
-      });
-    }
-
-    // 신고 생성
-    await pool.execute(
-      `INSERT INTO reports (reporter_id, target_type, target_id, reason, description) 
-       VALUES (?, ?, ?, ?, ?)`,
-      [reporterId, 'comment', commentId, reason, description || null],
-    );
-
-    res.status(201).json({
-      success: true,
-      message:
-        '신고가 접수되었습니다. 더 안전한 커뮤니티를 위해 함께해 주셔서 감사합니다. 허위 신고가 반복되면 이용이 제한될 수 있습니다.',
+    const result = await submitContentReport({
+      reporterId,
+      targetType: 'comment',
+      targetId: commentId,
+      reason,
+      description,
+      options: {
+        targetExistsCheck: {
+          notFoundMessage: '댓글을 찾을 수 없습니다.',
+          check: async (db) => {
+            const [rows] = await db.execute(
+              'SELECT id FROM comments WHERE id = ? AND is_deleted = FALSE',
+              [commentId],
+            );
+            return rows.length > 0;
+          },
+        },
+      },
     });
+
+    return res.status(result.httpStatus).json(result.body);
   } catch (error) {
     console.error('댓글 신고 오류:', error);
     res.status(500).json({

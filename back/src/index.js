@@ -2,6 +2,10 @@ import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
 import rateLimit from 'express-rate-limit';
+import {
+  createRedisRateLimitStore,
+  logRateLimitStoreMode,
+} from './middleware/rateLimitStore.js';
 import dotenv from 'dotenv';
 import swaggerUi from 'swagger-ui-express';
 import { createServer } from 'http';
@@ -22,6 +26,7 @@ import searchRoutes from './routes/search.js';
 import dmRoutes from './routes/dm.js';
 import adminReportsRoutes from './routes/adminReports.js';
 import adminInquiriesRoutes from './routes/adminInquiries.js';
+import adminSignupCertificatesRoutes from './routes/adminSignupCertificates.js';
 import adminWebRoutes from './routes/adminWeb.js';
 import inquiriesRoutes from './routes/inquiries.js';
 import appRoutes from './routes/app.js';
@@ -74,12 +79,15 @@ app.use(cors({
 }));
 
 // 4. Body 사이즈 제한 (대용량 페이로드 / DoS 완화)
-app.use(express.json({ limit: '1mb' }));
-app.use(express.urlencoded({ extended: true, limit: '1mb' }));
+app.use(express.json({ limit: '8mb' }));
+app.use(express.urlencoded({ extended: true, limit: '8mb' }));
 
-// 5. Rate Limit
-//    NOTE: 현재는 단일 인스턴스 운영 가정의 in-memory store.
-//          멀티 인스턴스로 확장 시 rate-limit-redis + ioredis 어댑터로 교체 필요.
+// 5. Rate Limit — Redis 설정 시 rate-limit-redis + 기존 ioredis 공유, 없으면 in-memory
+logRateLimitStoreMode();
+const authRateLimitStore = createRedisRateLimitStore('auth');
+const apiRateLimitStore = createRedisRateLimitStore('api');
+const adminLoginRateLimitStore = createRedisRateLimitStore('admin-login');
+
 // /api/auth: 로그인·가입 등 POST만 엄격히 제한하고, GET(/me 등)은 앱 초기화·탭 전환에서
 // 짧은 시간에 여러 번 호출되므로 제외해 429(15분 락)로 전체 기능이 막히는 것을 방지합니다.
 const authLimiter = rateLimit({
@@ -88,6 +96,7 @@ const authLimiter = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
   skip: (req) => req.method === 'GET',
+  ...(authRateLimitStore ? { store: authRateLimitStore } : {}),
   message: { success: false, message: '요청이 너무 많습니다. 15분 후 다시 시도해주세요.' },
 });
 app.use('/api/auth', authLimiter);
@@ -97,6 +106,7 @@ const generalLimiter = rateLimit({
   max: Number(process.env.RATE_LIMIT_API_PER_MIN || 300),
   standardHeaders: true,
   legacyHeaders: false,
+  ...(apiRateLimitStore ? { store: apiRateLimitStore } : {}),
   message: { success: false, message: '요청이 너무 많습니다. 잠시 후 다시 시도해주세요.' },
 });
 app.use('/api', generalLimiter);
@@ -108,6 +118,7 @@ const adminLoginLimiter = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
   skipSuccessfulRequests: true,
+  ...(adminLoginRateLimitStore ? { store: adminLoginRateLimitStore } : {}),
   message: {
     success: false,
     message: '로그인 시도가 너무 많습니다. 15분 후 다시 시도해주세요.',
@@ -170,6 +181,7 @@ app.use('/api/dm', dmRoutes);
 app.use('/api/inquiries', inquiriesRoutes);
 app.use('/api/admin', adminReportsRoutes);
 app.use('/api/admin/inquiries', adminInquiriesRoutes);
+app.use('/api/admin/signup-certificates', adminSignupCertificatesRoutes);
 app.use('/api/test', testRoutes);
 
 // ============ 글로벌 에러 핸들러 ============

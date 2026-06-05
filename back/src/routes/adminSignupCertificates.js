@@ -1,0 +1,177 @@
+import express from 'express';
+import { body } from 'express-validator';
+import pool from '../config/database.js';
+import { authenticate } from '../middleware/auth.js';
+import { validate } from '../middleware/validate.js';
+import { getNowForDB } from '../utils/dateUtils.js';
+
+const router = express.Router();
+
+const VALID_STATUSES = ['pending', 'approved', 'rejected'];
+
+function parseAdminUserIds() {
+  const raw = process.env.ADMIN_USER_IDS || '';
+  return raw
+    .split(',')
+    .map((v) => Number(String(v).trim()))
+    .filter((n) => Number.isFinite(n) && n > 0);
+}
+
+function isAdminUser(userId) {
+  const adminIds = parseAdminUserIds();
+  if (adminIds.length === 0) return false;
+  return adminIds.includes(Number(userId));
+}
+
+async function writeAuditLog(connection, { adminUserId, actionType, targetId, note }) {
+  await connection.execute(
+    `INSERT INTO admin_audit_logs (admin_user_id, action_type, target_type, target_id, note, extra)
+     VALUES (?, ?, 'signup_certificate', ?, ?, NULL)`,
+    [adminUserId, actionType, targetId, note || null],
+  );
+}
+
+/**
+ * GET /api/admin/signup-certificates
+ */
+router.get('/', authenticate, async (req, res) => {
+  const adminUserId = req.user.userId;
+  if (!isAdminUser(adminUserId)) {
+    return res.status(403).json({ success: false, message: '관리자 권한이 필요합니다.' });
+  }
+
+  const status = String(req.query.status || 'pending');
+  const limit = Math.min(Number(req.query.limit) || 50, 100);
+  const offset = Math.max(Number(req.query.offset) || 0, 0);
+
+  try {
+    const where = status === 'all' ? '1=1' : 's.status = ?';
+    const params = status === 'all' ? [] : [status];
+
+    const [rows] = await pool.execute(
+      `SELECT s.*, u.username, u.grade AS user_grade, u.class_number AS user_class_number
+       FROM signup_certificate_submissions s
+       JOIN users u ON u.id = s.user_id
+       WHERE ${where}
+       ORDER BY s.created_at DESC
+       LIMIT ? OFFSET ?`,
+      [...params, limit, offset],
+    );
+
+    return res.json({ success: true, data: { submissions: rows } });
+  } catch (error) {
+    console.error('증명서 검수 목록 오류:', error);
+    return res.status(500).json({
+      success: false,
+      message: '증명서 목록 조회 중 오류가 발생했습니다.',
+    });
+  }
+});
+
+const reviewValidators = [
+  body('status').isIn(['approved', 'rejected']).withMessage('status는 approved 또는 rejected 여야 합니다.'),
+  body('reviewNote').optional({ values: 'falsy' }).isString().isLength({ max: 2000 }),
+  body('schoolId').optional({ values: 'falsy' }).isString().trim().isLength({ min: 1, max: 50 }),
+];
+
+/**
+ * PATCH /api/admin/signup-certificates/:id
+ * 승인 시 student_verified=TRUE, 필요 시 school_id 갱신
+ */
+router.patch('/:id', authenticate, validate(reviewValidators), async (req, res) => {
+  const adminUserId = req.user.userId;
+  if (!isAdminUser(adminUserId)) {
+    return res.status(403).json({ success: false, message: '관리자 권한이 필요합니다.' });
+  }
+
+  const submissionId = Number(req.params.id);
+  if (!Number.isFinite(submissionId) || submissionId <= 0) {
+    return res.status(400).json({ success: false, message: '잘못된 ID입니다.' });
+  }
+
+  const { status, reviewNote, schoolId } = req.body;
+
+  const connection = await pool.getConnection();
+  try {
+    await connection.beginTransaction();
+
+    const [rows] = await connection.execute(
+      `SELECT * FROM signup_certificate_submissions WHERE id = ? FOR UPDATE`,
+      [submissionId],
+    );
+    if (rows.length === 0) {
+      await connection.rollback();
+      return res.status(404).json({ success: false, message: '제출 건을 찾을 수 없습니다.' });
+    }
+
+    const submission = rows[0];
+    if (submission.status !== 'pending') {
+      await connection.rollback();
+      return res.status(400).json({
+        success: false,
+        message: '이미 검수가 완료된 건입니다.',
+      });
+    }
+
+    const now = getNowForDB();
+
+    if (status === 'approved') {
+      const targetSchoolId = schoolId?.trim();
+      if (targetSchoolId) {
+        const [schoolRows] = await connection.execute(
+          'SELECT school_id FROM schools WHERE school_id = ? LIMIT 1',
+          [targetSchoolId],
+        );
+        if (schoolRows.length === 0) {
+          await connection.rollback();
+          return res.status(400).json({
+            success: false,
+            message: '유효하지 않은 학교 ID입니다.',
+          });
+        }
+        await connection.execute('UPDATE users SET school_id = ? WHERE id = ?', [
+          targetSchoolId,
+          submission.user_id,
+        ]);
+      }
+
+      // 증명서 승인 → 학생 인증 완료 (등교 로직 등에서 이후 FALSE 로 변경 가능)
+      await connection.execute(
+        'UPDATE users SET student_verified = TRUE WHERE id = ?',
+        [submission.user_id],
+      );
+    }
+
+    await connection.execute(
+      `UPDATE signup_certificate_submissions
+       SET status = ?, review_note = ?, reviewed_by = ?, reviewed_at = ?
+       WHERE id = ?`,
+      [status, reviewNote?.trim() || null, adminUserId, now, submissionId],
+    );
+
+    await writeAuditLog(connection, {
+      adminUserId,
+      actionType: status === 'approved' ? 'certificate_approve' : 'certificate_reject',
+      targetId: submissionId,
+      note: reviewNote,
+    });
+
+    await connection.commit();
+
+    return res.json({
+      success: true,
+      message: status === 'approved' ? '증명서가 승인되었습니다.' : '증명서가 반려되었습니다.',
+    });
+  } catch (error) {
+    await connection.rollback();
+    console.error('증명서 검수 처리 오류:', error);
+    return res.status(500).json({
+      success: false,
+      message: '증명서 검수 처리 중 오류가 발생했습니다.',
+    });
+  } finally {
+    connection.release();
+  }
+});
+
+export default router;

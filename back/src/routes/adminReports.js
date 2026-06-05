@@ -66,6 +66,9 @@ async function getTargetOwnerId(connection, targetType, targetId) {
     const [rows] = await connection.execute('SELECT user_id FROM school_mail_comments WHERE id = ?', [targetId]);
     return rows[0]?.user_id ?? null;
   }
+  if (targetType === 'user') {
+    return Number(targetId) || null;
+  }
   return null;
 }
 

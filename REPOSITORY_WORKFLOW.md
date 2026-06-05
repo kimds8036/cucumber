@@ -12,7 +12,7 @@
 | **Production** | 스토어·실사용자 | `cucumber-production` (Railway) |
 
 - 프론트는 `APP_ENV` / EAS 빌드 프로필 / `EXPO_PUBLIC_API_URL`로 어느 Railway를 바라볼지 결정합니다.  
-  자세한 설정은 `frontend/config/apiEnv.js`, `frontend/eas.json`, `frontend/.env.development` · `.env.production`을 참고하세요.
+  자세한 설정은 `front/config/apiEnv.js`, `front/eas.json`, `front/.env.development` · `.env.production`을 참고하세요.
 - **develop 브랜치**에서 로컬 앱을 띄우면 기본적으로 **develop Railway**에 붙습니다.
 - **production 브랜치** 또는 `APP_ENV=production` / EAS `production` 프로필 빌드는 **production Railway**를 사용합니다.
 
@@ -47,7 +47,7 @@
 ```powershell
 git checkout develop
 git pull origin develop
-cd frontend
+cd front
 npm install   # 최초 또는 의존성 변경 시
 npm start
 # 또는 안드로이드: npm run android
@@ -60,7 +60,7 @@ npm start
 
 ## 관련 경로
 
-- 프론트: `frontend/`
+- 프론트: `front/`
 - 백엔드: `back/`
 - 관리자 웹(신고 등): `back`의 `/admin` · `admin/Focux admin.html` 등 기존 구조 유지
 

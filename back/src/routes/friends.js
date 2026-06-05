@@ -7,6 +7,7 @@ import { createNotification } from '../utils/notifications.js';
 import { emitNotification } from '../socketServer.js';
 import { checkNotificationAllowed } from '../utils/notificationUtils.js';
 import { getStudyingFriends } from '../socket/socketService.js';
+import { submitContentReport } from '../services/reportSubmission.service.js';
 
 const router = express.Router();
 
@@ -322,6 +323,56 @@ router.delete('/:friendUserId', authenticate, validate(friendUserIdParamValidato
     });
   }
 });
+
+// 사용자 신고 (DM·개인우편 등 — target_type user)
+router.post(
+  '/:friendUserId/report',
+  authenticate,
+  validate(friendUserIdParamValidator),
+  async (req, res) => {
+    try {
+      const reporterId = req.user.userId;
+      const { friendUserId } = req.params;
+      const { reason, description } = req.body;
+
+      if (Number(friendUserId) === reporterId) {
+        return res.status(400).json({
+          success: false,
+          message: '본인은 신고할 수 없습니다.',
+        });
+      }
+
+      const result = await submitContentReport({
+        reporterId,
+        targetType: 'user',
+        targetId: friendUserId,
+        reason,
+        description,
+        options: {
+          forbidSelfReport: true,
+          targetExistsCheck: {
+            notFoundMessage: '사용자를 찾을 수 없습니다.',
+            check: async (db) => {
+              const [rows] = await db.execute(
+                'SELECT id FROM users WHERE id = ? LIMIT 1',
+                [friendUserId],
+              );
+              return rows.length > 0;
+            },
+          },
+        },
+      });
+
+      return res.status(result.httpStatus).json(result.body);
+    } catch (error) {
+      console.error('사용자 신고 오류:', error);
+      return res.status(500).json({
+        success: false,
+        message: '신고 처리 중 오류가 발생했습니다.',
+      });
+    }
+  },
+);
 
 // 사용자 차단
 router.post('/:friendUserId/block', authenticate, validate(friendUserIdParamValidator), async (req, res) => {

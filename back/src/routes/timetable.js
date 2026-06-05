@@ -39,6 +39,8 @@ const NEIS_MIDDLE_URL = 'https://open.neis.go.kr/hub/misTimetable';
 const NEIS_HIGH_URL = 'https://open.neis.go.kr/hub/hisTimetable';
 const NEIS_API_KEY = process.env.NEIS_API_KEY || process.env.NEIS_KEY || '';
 const BASE_TTL_MS = 24 * 60 * 60 * 1000;
+/** 반 매칭 로직 변경 시 bump — 잘못된 NEIS 캐시 무효화 */
+const TIMETABLE_CACHE_VERSION = 'v2';
 const baseCache = new Map();
 const userOverrideCache = new Map();
 const DAYS = ['월', '화', '수', '목', '금'];
@@ -93,6 +95,45 @@ function pickSubjectField(row) {
   return '';
 }
 
+/** NEIS CLASS_NM / users.class_number → 반 번호(정수 문자열). 파싱 불가 시 null. */
+function parseHomeroomNumber(raw) {
+  const s = String(raw ?? '').trim();
+  if (!s) return null;
+
+  const banSuffix = s.match(/(\d+)\s*반\s*$/);
+  if (banSuffix) {
+    const n = Number.parseInt(banSuffix[1], 10);
+    return Number.isFinite(n) ? String(n) : null;
+  }
+
+  if (/^\d+$/.test(s)) {
+    const n = Number.parseInt(s, 10);
+    return Number.isFinite(n) ? String(n) : null;
+  }
+
+  return null;
+}
+
+/** 미리보기 격자용: 반 번호 완전 일치만 허용 (빈 학급명·endsWith 매칭 없음). */
+function classNmMatches(userClass, rowClassNm) {
+  const userNum = parseHomeroomNumber(userClass);
+  const rowNum = parseHomeroomNumber(rowClassNm);
+  if (userNum == null || rowNum == null) return false;
+  return userNum === rowNum;
+}
+
+/** 학년 전체 NEIS row 중 사용자 반에 맞는 row만 격자용으로 쓴다. 매칭 실패 시 빈 배열. */
+function filterRowsForUserTimetable(rows = [], classNumber) {
+  if (!rows.length) return [];
+  if (classNumber == null || String(classNumber).trim() === '') return [];
+  if (parseHomeroomNumber(classNumber) == null) return [];
+
+  const withClass = rows.filter((r) => String(r?.CLASS_NM ?? '').trim());
+  if (withClass.length === 0) return [];
+
+  return withClass.filter((r) => classNmMatches(classNumber, r.CLASS_NM));
+}
+
 function parseNeisRows(rows = []) {
   const cells = {};
   rows.forEach((row) => {
@@ -112,6 +153,17 @@ function parseNeisRows(rows = []) {
   return cells;
 }
 
+function extractSubjectsFromRows(rows = []) {
+  const map = new Map();
+  for (const row of rows) {
+    const subject = pickSubjectField(row);
+    if (!subject) continue;
+    const key = subject.trim().toLowerCase();
+    if (!map.has(key)) map.set(key, subject.trim());
+  }
+  return [...map.values()].sort((a, b) => a.localeCompare(b, 'ko'));
+}
+
 function mergeTimetable(base = {}, override = {}) {
   const merged = { ...base };
   Object.keys(override || {}).forEach((k) => {
@@ -123,12 +175,45 @@ function mergeTimetable(base = {}, override = {}) {
 }
 
 function getCacheKey(user, schoolLevel, weekKey) {
-  return `${user.school_id}:${user.grade}:${user.class_number}:${schoolLevel}:${weekKey}`;
+  return `${user.school_id}:${user.grade}:${schoolLevel}:${weekKey}:${TIMETABLE_CACHE_VERSION}`;
 }
 
 function normalizeNeisRowArray(rowField) {
   if (!rowField) return [];
   return Array.isArray(rowField) ? rowField : [rowField];
+}
+
+async function fetchNeisRowsForUser(user, schoolLevel, fromYmd, toYmd) {
+  const endpoint = schoolLevel === 'middle' ? NEIS_MIDDLE_URL : NEIS_HIGH_URL;
+  const rootKey = schoolLevel === 'middle' ? 'misTimetable' : 'hisTimetable';
+  const pageSize = 1000;
+  const allRows = [];
+
+  for (let page = 1; page <= 20; page += 1) {
+    const qs = new URLSearchParams({
+      KEY: NEIS_API_KEY,
+      Type: 'json',
+      pIndex: String(page),
+      pSize: String(pageSize),
+      ATPT_OFCDC_SC_CODE: String(user.edu_office_code),
+      SD_SCHUL_CODE: String(user.admin_standard_code),
+      GRADE: String(user.grade),
+      TI_FROM_YMD: fromYmd,
+      TI_TO_YMD: toYmd,
+      SEM: String(getSemester()),
+    });
+
+    const res = await fetch(`${endpoint}?${qs.toString()}`);
+    const json = await res.json();
+    const resultCode = json?.[rootKey]?.[0]?.head?.[1]?.RESULT?.CODE;
+    if (resultCode && resultCode !== 'INFO-000') break;
+    const rows = normalizeNeisRowArray(json?.[rootKey]?.[1]?.row);
+    if (!rows.length) break;
+    allRows.push(...rows);
+    if (rows.length < pageSize) break;
+  }
+
+  return allRows;
 }
 
 async function fetchBaseTimetableByUser(user) {
@@ -140,13 +225,14 @@ async function fetchBaseTimetableByUser(user) {
   const { fromYmd, toYmd, weekKey } = getWeekRange();
   const key = getCacheKey(user, schoolLevel, weekKey);
   const cached = baseCache.get(key);
-  if (cached && Date.now() - cached.ts < BASE_TTL_MS) return cached.timetable;
-
-  if (!NEIS_API_KEY || !user.edu_office_code || !user.admin_standard_code || !user.grade || !user.class_number) {
-    return {};
+  if (cached && Date.now() - cached.ts < BASE_TTL_MS) {
+    return { timetable: cached.timetable, subjects: cached.subjects || [] };
   }
 
-  const endpoint = schoolLevel === 'middle' ? NEIS_MIDDLE_URL : NEIS_HIGH_URL;
+  if (!NEIS_API_KEY || !user.edu_office_code || !user.admin_standard_code || !user.grade) {
+    return { timetable: {}, subjects: [] };
+  }
+
   const rootKey = schoolLevel === 'middle' ? 'misTimetable' : 'hisTimetable';
 
   if (process.env.TIMETABLE_DEBUG_NEIS === '1') {
@@ -156,33 +242,19 @@ async function fetchBaseTimetableByUser(user) {
       school_level: user.school_level,
       school_type: user.school_type,
       school_name: user.school_name,
+      grade: user.grade,
       TI_FROM_YMD: fromYmd,
       TI_TO_YMD: toYmd,
+      scope: 'school+grade (no CLASS_NM)',
     });
   }
 
-  const qs = new URLSearchParams({
-    KEY: NEIS_API_KEY,
-    Type: 'json',
-    pIndex: '1',
-    pSize: '1000',
-    ATPT_OFCDC_SC_CODE: String(user.edu_office_code),
-    SD_SCHUL_CODE: String(user.admin_standard_code),
-    GRADE: String(user.grade),
-    CLASS_NM: String(user.class_number),
-    TI_FROM_YMD: fromYmd,
-    TI_TO_YMD: toYmd,
-    SEM: String(getSemester()),
-  });
-
-  const res = await fetch(`${endpoint}?${qs.toString()}`);
-  const json = await res.json();
-  const resultCode = json?.[rootKey]?.[0]?.head?.[1]?.RESULT?.CODE;
-  if (resultCode && resultCode !== 'INFO-000') return {};
-  const rows = normalizeNeisRowArray(json?.[rootKey]?.[1]?.row);
-  const timetable = parseNeisRows(rows);
-  baseCache.set(key, { ts: Date.now(), timetable });
-  return timetable;
+  const rows = await fetchNeisRowsForUser(user, schoolLevel, fromYmd, toYmd);
+  const subjects = extractSubjectsFromRows(rows);
+  const gridRows = filterRowsForUserTimetable(rows, user.class_number);
+  const timetable = parseNeisRows(gridRows);
+  baseCache.set(key, { ts: Date.now(), timetable, subjects });
+  return { timetable, subjects };
 }
 
 router.get('/', authenticate, async (req, res) => {
@@ -208,16 +280,19 @@ router.get('/', authenticate, async (req, res) => {
       return res.status(404).json({ success: false, message: '사용자를 찾을 수 없습니다.' });
     }
     const user = rows[0];
-    const baseTimetable = await fetchBaseTimetableByUser(user);
+    const { timetable: baseTimetable, subjects: baseSubjects } =
+      await fetchBaseTimetableByUser(user);
     const override = userOverrideCache.get(userId) || {};
     const timetable = mergeTimetable(baseTimetable, override);
     return res.json({
       success: true,
       data: {
         timetable,
+        subjects: baseSubjects,
         source: {
-          neis: Object.keys(baseTimetable).length > 0,
+          neis: Object.keys(baseTimetable).length > 0 || baseSubjects.length > 0,
           override: Object.keys(override).length > 0,
+          scope: 'school_grade',
         },
       },
     });

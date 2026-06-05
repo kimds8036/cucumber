@@ -56,3 +56,19 @@ export function getMessaging() {
   }
   return initialized ? admin.messaging() : null;
 }
+
+export function getAuthAdmin() {
+  if (!initialized) {
+    initFirebase();
+  }
+  return initialized ? admin.auth() : null;
+}
+
+/** Firebase Phone Auth ID Token 검증 */
+export async function verifyFirebaseIdToken(idToken) {
+  const authAdmin = getAuthAdmin();
+  if (!authAdmin) {
+    throw new Error('Firebase Admin SDK가 초기화되지 않았습니다.');
+  }
+  return authAdmin.verifyIdToken(idToken);
+}

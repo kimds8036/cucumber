@@ -4,7 +4,7 @@
  * 사용:
  *  - cd back
  *  - npm run seed:schools
- *  - (옵션) node src/db/seed-schools-from-csv.js "C:\\cucumber\\back\\src\\db\\schools_merged.csv"
+ *  - (옵션) node src/db/seed-schools-from-csv.js "C:\\y\\back\\src\\db\\schools_merged.csv"
  */
 
 import fs from "node:fs/promises";
