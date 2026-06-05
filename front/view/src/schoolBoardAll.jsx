@@ -28,6 +28,7 @@ import BoardPostCard from '../../components/Boardpostcard';
 import AdPlaceholder from '../../src/screens/ad/AdPlaceholder';
 import { useLocationContext } from '../../context/LocationContext';
 import Skeleton from '../../components/common/Skeleton';
+import { injectAdSlots, useAdSlots } from '../../hooks/useAdSlots';
 
 /** 서버 created_at(UTC)을 "n분 전" 형식으로 변환. 화면에서는 기기 로컬 시간 기준으로 계산 */
 function formatTimeAgo(createdAt) {
@@ -66,6 +67,7 @@ const SchoolBoardAll = ({ navigation }) => {
     [width],
   );
   const { coords, refreshLocation } = useLocationContext();
+  const { adSlots } = useAdSlots();
 
   const [schoolPosts, setSchoolPosts] = useState([]);
   const [sortType] = useState('latest');
@@ -215,16 +217,16 @@ const SchoolBoardAll = ({ navigation }) => {
   };
 
   const hideListBehindLoader = loading;
-  const dataWithAds = useMemo(() => {
-    const next = [];
-    schoolPosts.forEach((post, index) => {
-      next.push({ ...post, type: 'post' });
-      if ((index + 1) % 5 === 0 && index !== 0) {
-        next.push({ id: `ad_${index}`, type: 'ad' });
-      }
-    });
-    return next;
-  }, [schoolPosts]);
+  const dataWithAds = useMemo(
+    () =>
+      injectAdSlots(schoolPosts, adSlots, {
+        adType: 'ad',
+        idPrefix: 'ad',
+        skipFirstIndex: true,
+        wrapItem: (post) => ({ ...post, type: 'post' }),
+      }),
+    [schoolPosts, adSlots],
+  );
 
   const renderPostItem = ({ item: post }) => (
     <BoardPostCard
@@ -242,7 +244,13 @@ const SchoolBoardAll = ({ navigation }) => {
   );
   const renderItem = ({ item }) => {
     if (item.type === 'ad') {
-      return <AdPlaceholder normalize={normalize} styles={styles} />;
+      return (
+        <AdPlaceholder
+          normalize={normalize}
+          styles={styles}
+          adData={item.adData}
+        />
+      );
     }
     return renderPostItem({ item });
   };

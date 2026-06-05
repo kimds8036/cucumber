@@ -42,6 +42,7 @@ import {
 } from '../../src/screens/UserGuide/guidePreviewData';
 import { getProfileInnerColor } from '../../utils/profileIconColor';
 import ChatAdPlaceholder from '../../src/screens/ad/ChatAdPlaceholder';
+import { injectAdSlots, useAdSlots } from '../../hooks/useAdSlots';
 import {
   isPersonalMailReturned,
   navigateToResendPersonalMail,
@@ -329,6 +330,7 @@ const SwipeableRow = ({ children, onDelete }) => {
 // 메인 화면(MainScreen)에서 헤더/푸터 없이 메인 영역만 렌더할 때 사용
 export function MessageContent({ navigation }) {
   const { isGuidePreview, guideMessageTab } = useGuidePreview();
+  const { adSlots } = useAdSlots();
   const { width } = useWindowDimensions();
   const normalize = useMemo(() => getNormalize(width), [width]);
   const styles = useMemo(
@@ -507,32 +509,32 @@ export function MessageContent({ navigation }) {
     [closeRoomMenuModal],
   );
 
-  const noteRoomsWithAds = useMemo(() => {
-    const items = [];
-    noteRooms.forEach((room, index) => {
-      items.push({ ...room, type: room.type || 'note' });
-      if (!isGuidePreview && (index + 1) % 5 === 0) {
-        items.push({ id: `note_ad_${index}`, type: 'chatAd' });
-      }
-    });
-    return items;
-  }, [noteRooms, isGuidePreview]);
+  const noteRoomsWithAds = useMemo(
+    () =>
+      injectAdSlots(noteRooms, isGuidePreview ? [] : adSlots, {
+        adType: 'chatAd',
+        idPrefix: 'note_ad',
+        skipFirstIndex: false,
+        wrapItem: (room) => ({ ...room, type: room.type || 'note' }),
+      }),
+    [noteRooms, adSlots, isGuidePreview],
+  );
 
   const firstGuideNoteItemId = useMemo(
     () => noteRoomsWithAds.find((x) => x.type === 'note')?.id ?? null,
     [noteRoomsWithAds],
   );
 
-  const mailsWithAds = useMemo(() => {
-    const items = [];
-    mails.forEach((mail, index) => {
-      items.push({ ...mail, type: 'mail' });
-      if (!isGuidePreview && (index + 1) % 5 === 0) {
-        items.push({ id: `mail_ad_${index}`, type: 'chatAd' });
-      }
-    });
-    return items;
-  }, [mails, isGuidePreview]);
+  const mailsWithAds = useMemo(
+    () =>
+      injectAdSlots(mails, isGuidePreview ? [] : adSlots, {
+        adType: 'chatAd',
+        idPrefix: 'mail_ad',
+        skipFirstIndex: false,
+        wrapItem: (mail) => ({ ...mail, type: 'mail' }),
+      }),
+    [mails, adSlots, isGuidePreview],
+  );
   const confirmDelete = useCallback(({ title, message, onConfirm }) => {
     Alert.alert(
       title,
@@ -998,12 +1000,7 @@ export function MessageContent({ navigation }) {
                         key={item.id}
                         styles={styles}
                         normalize={normalize}
-                        item={{
-                          name: '광고',
-                          content: '스폰서 메시지 영역입니다.',
-                          time: 'AD',
-                          unreadCount: 0,
-                        }}
+                        adData={item.adData}
                       />
                     );
                   }
@@ -1183,12 +1180,7 @@ export function MessageContent({ navigation }) {
                         key={item.id}
                         styles={styles}
                         normalize={normalize}
-                        item={{
-                          name: '광고',
-                          content: '스폰서 메시지 영역입니다.',
-                          time: 'AD',
-                          unreadCount: 0,
-                        }}
+                        adData={item.adData}
                       />
                     );
                   }

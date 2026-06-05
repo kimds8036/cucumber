@@ -29,10 +29,12 @@ import BoardFloatingMenu from './board/BoardFloatingMenu';
 import Skeleton from '../../components/common/Skeleton';
 import ReportModal from '../../components/common/ReportModal.jsx';
 import BoarddetailADplaceholder from '../../src/screens/ad/boarddetailADplaceholder.jsx';
+import { useAdSlots } from '../../hooks/useAdSlots';
 
 export default function BoardDetail({ navigation, route }) {
   const { coords, coordsIsFresh, permissionGranted } = useLocationContext();
   const { refreshHasUnread } = useNotification();
+  const { adSlots } = useAdSlots();
   const { width } = useWindowDimensions();
   const normalize = useMemo(() => getNormalize(width), [width]);
   const styles = useMemo(
@@ -456,7 +458,12 @@ export default function BoardDetail({ navigation, route }) {
                       distanceStale={distanceStale}
                       distanceLoading={distanceLoading}
                     />
-                    <BoarddetailADplaceholder styles={styles} />
+                    {adSlots.length > 0 ? (
+                      <BoarddetailADplaceholder
+                        styles={styles}
+                        adData={adSlots[0]}
+                      />
+                    ) : null}
                   </View>
                 }
                 contentContainerStyle={[

@@ -4,7 +4,11 @@ import { useWindowDimensions } from 'react-native';
 import { getNormalize } from '../../../styles/frame.style';
 import { createAdStyles } from '../../../styles/ad.style';
 
-export default function boarddetailADplaceholder({ styles, label = '광고' }) {
+export default function boarddetailADplaceholder({
+  styles,
+  label = '광고',
+  adData,
+}) {
   const { width } = useWindowDimensions();
   const normalize = useMemo(() => getNormalize(width), [width]);
   const adStyles = useMemo(
@@ -12,10 +16,12 @@ export default function boarddetailADplaceholder({ styles, label = '광고' }) {
     [normalize, width],
   );
   const s = styles || adStyles;
+  const displayLabel =
+    adData?.label ?? adData?.title ?? adData?.content ?? label;
 
   return (
     <View style={s.adSection}>
-      <Text style={s.adSectionText}>{label}</Text>
+      <Text style={s.adSectionText}>{displayLabel}</Text>
     </View>
   );
 }
