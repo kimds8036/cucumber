@@ -43,6 +43,7 @@ import {
 } from './utils/schoolMailFromLabel';
 import { useKeyboardHandler } from 'react-native-keyboard-controller';
 import ReportModal from '../../components/common/ReportModal.jsx';
+import { filterCommentTreeExcludingUser } from '../../utils/blockUser';
 
 const INITIAL_REPLIES = 3;
 
@@ -132,6 +133,7 @@ function buildCommentTree(flat, mailSchoolId, mailAuthorUserId) {
     );
     map.set(raw.id, {
       ...raw,
+      userId: raw.user_id,
       replies: [],
       authorLabel,
       time: formatTimeAgo(raw.created_at),
@@ -233,6 +235,7 @@ export default function SchoolMailDetail({ navigation, route }) {
   const [reportModalVisible, setReportModalVisible] = useState(false);
   const [reportTargetType, setReportTargetType] = useState('schoolMail');
   const [reportTargetId, setReportTargetId] = useState(null);
+  const [reportReportedUserId, setReportReportedUserId] = useState(null);
 
   const scrollViewRef = useRef(null);
   const commentLayoutMap = useRef({});
@@ -399,16 +402,18 @@ export default function SchoolMailDetail({ navigation, route }) {
     setFloatingMenuContext(null);
   };
 
-  const openReportModal = (targetType, targetId) => {
+  const openReportModal = (targetType, targetId, reportedUserId) => {
     if (!targetId) return;
     setReportTargetType(targetType);
     setReportTargetId(targetId);
+    setReportReportedUserId(reportedUserId ?? null);
     setReportModalVisible(true);
   };
 
   const closeReportModal = () => {
     setReportModalVisible(false);
     setReportTargetId(null);
+    setReportReportedUserId(null);
     setReportTargetType('schoolMail');
   };
 
@@ -566,22 +571,26 @@ export default function SchoolMailDetail({ navigation, route }) {
     }
   };
 
-  const commentMenuItems = useMemo(
-    () => [
+  const commentMenuItems = useMemo(() => {
+    const comment =
+      floatingMenuContext != null
+        ? findCommentInTree(comments, floatingMenuContext)
+        : null;
+    return [
       {
-        label: '신고하기',
+        label: '신고 / 차단',
         iconName: 'flag-outline',
-        onPress: () =>
-          openReportModal('schoolMailComment', floatingMenuContext),
+        onPress: () => {
+          if (!comment?.userId) return;
+          openReportModal(
+            'schoolMailComment',
+            floatingMenuContext,
+            comment.userId,
+          );
+        },
       },
-      {
-        label: '차단하기',
-        iconName: 'remove-circle-outline',
-        onPress: () => {},
-      },
-    ],
-    [floatingMenuContext],
-  );
+    ];
+  }, [floatingMenuContext, comments]);
 
   const showLikes = Number(mail?.like_count ?? 0);
 
@@ -1005,7 +1014,7 @@ export default function SchoolMailDetail({ navigation, route }) {
                   }}
                 >
                   {floatingMenuContext === 'post' &&
-                    ['신고하기', '차단하기', '공유하기'].map((label, index) => (
+                    ['신고 / 차단', '공유하기'].map((label, index) => (
                       <React.Fragment key={label}>
                         <TouchableOpacity
                           style={{
@@ -1017,8 +1026,14 @@ export default function SchoolMailDetail({ navigation, route }) {
                           }}
                           activeOpacity={0.7}
                           onPress={() => {
-                            if (label === '신고하기') {
-                              openReportModal('schoolMail', mail?.id);
+                            if (label === '신고 / 차단') {
+                              if (mail?.user_id) {
+                                openReportModal(
+                                  'schoolMail',
+                                  mail?.id,
+                                  mail.user_id,
+                                );
+                              }
                             }
                             closeFloatingMenu();
                           }}
@@ -1034,17 +1049,13 @@ export default function SchoolMailDetail({ navigation, route }) {
                           </Text>
                           <Ionicons
                             name={
-                              index === 0
-                                ? 'flag-outline'
-                                : index === 1
-                                  ? 'remove-circle-outline'
-                                  : 'share-outline'
+                              index === 0 ? 'flag-outline' : 'share-outline'
                             }
                             size={normalize(17)}
                             color={colors.textSecondary}
                           />
                         </TouchableOpacity>
-                        {index < 2 && (
+                        {index < 1 && (
                           <View
                             style={{
                               height: 1,
@@ -1109,6 +1120,16 @@ export default function SchoolMailDetail({ navigation, route }) {
           onClose={closeReportModal}
           targetType={reportTargetType}
           targetId={reportTargetId}
+          reportedUserId={reportReportedUserId}
+          onBlocked={(uid) => {
+            if (reportTargetType === 'schoolMailComment') {
+              setComments((prev) =>
+                filterCommentTreeExcludingUser(prev, uid),
+              );
+            } else if (reportTargetType === 'schoolMail') {
+              navigation?.goBack?.();
+            }
+          }}
         />
       </SafeAreaView>
     </View>

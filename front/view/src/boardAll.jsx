@@ -33,6 +33,7 @@ import { useGuidePreview } from '../../context/GuidePreviewContext';
 import { GuideFocusTarget } from '../../components/guide/GuideFocusTarget';
 import { GUIDE_FOCUS_TARGETS as T } from '../../src/screens/UserGuide/guideFocusTargets';
 import { getGuideBoardPosts } from '../../src/screens/UserGuide/guidePreviewData';
+import { filterPostsExcludingUser } from '../../utils/blockUser';
 import { invalidateProfileCountsCache } from '../../utils/profileCountsCache';
 import { useFocusEffect } from '@react-navigation/native';
 import ReportModal from '../../components/common/ReportModal.jsx';
@@ -89,6 +90,7 @@ export function BoardAllContent({ navigation, posts }) {
   const [reportModalVisible, setReportModalVisible] = useState(false);
   const [reportTargetType, setReportTargetType] = useState('post');
   const [reportTargetId, setReportTargetId] = useState(null);
+  const [reportReportedUserId, setReportReportedUserId] = useState(null);
 
   const fetchPostsRef = useRef(null);
   const didMountSortEffectRef = useRef(false);
@@ -100,7 +102,7 @@ export function BoardAllContent({ navigation, posts }) {
     () => [
       { label: '쪽지 보내기', iconName: 'chatbubble-outline' },
       { label: '공유하기', iconName: 'share-outline' },
-      { label: '신고하기', iconName: 'flag-outline' },
+      { label: '신고 / 차단', iconName: 'flag-outline' },
     ],
     [],
   );
@@ -164,16 +166,18 @@ export function BoardAllContent({ navigation, posts }) {
     setFloatingMenuAnchor(null);
     setFloatingMenuPost(null);
   };
-  const openReportModal = (targetType, targetId) => {
+  const openReportModal = (targetType, targetId, reportedUserId) => {
     if (!targetId) return;
     setReportTargetType(targetType);
     setReportTargetId(targetId);
+    setReportReportedUserId(reportedUserId ?? null);
     setReportModalVisible(true);
   };
   const closeReportModal = () => {
     setReportModalVisible(false);
     setReportTargetId(null);
     setReportTargetType('post');
+    setReportReportedUserId(null);
   };
   const startNoteToPostAuthorFromList = async (post) => {
     if (!post?.authorUserId || !post?.id) {
@@ -702,8 +706,11 @@ export function BoardAllContent({ navigation, posts }) {
                           startNoteToPostAuthorFromList(floatingMenuPost);
                         } else if (item.label === '공유하기') {
                           handleShareFromList(floatingMenuPost);
-                        } else if (item.label === '신고하기') {
-                          openReportModal('post', floatingMenuPost?.id);
+                        } else if (item.label === '신고 / 차단') {
+                          const authorId =
+                            floatingMenuPost?.authorUserId ??
+                            floatingMenuPost?.author_user_id;
+                          openReportModal('post', floatingMenuPost?.id, authorId);
                         } else if (item.onPress) {
                           item.onPress();
                         }
@@ -752,6 +759,11 @@ export function BoardAllContent({ navigation, posts }) {
         onClose={closeReportModal}
         targetType={reportTargetType}
         targetId={reportTargetId}
+        reportedUserId={reportReportedUserId}
+        onBlocked={(uid) => {
+          closeFloatingMenu();
+          setServerPosts((prev) => filterPostsExcludingUser(prev, uid));
+        }}
       />
     </>
   );

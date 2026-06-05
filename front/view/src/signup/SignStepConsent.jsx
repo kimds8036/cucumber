@@ -69,8 +69,11 @@ const SignStepConsent = ({ normalize, selectedAgeGroup, onChange }) => {
     allRequiredChecked;
 
   useEffect(() => {
-    onChange && onChange({ allConsented: canProceedToNext });
-  }, [canProceedToNext, onChange]);
+    onChange?.({
+      allConsented: canProceedToNext,
+      consents: { ...consents },
+    });
+  }, [canProceedToNext, consents, onChange]);
 
   const toggle = (key) => {
     setConsents((prev) => ({ ...prev, [key]: !prev[key] }));

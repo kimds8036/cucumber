@@ -36,7 +36,7 @@ import HiddenPostsAppeals from './view/src/hiddenPostsAppeals';
 import Inquiry from './view/src/Inquiry';
 import InAppInquiry from './view/src/InAppInquiry';
 import Info from './view/src/info';
-import TestLogin from './view/src/TestLogin';
+// import TestLogin from './view/src/TestLogin'; // 테스트 로그인 화면 — 운영 진입에서는 미사용
 import Announcement from './view/src/announcement';
 import ServiceTermsOfService from './src/screens/Terms-of-Service/ServiceTermsOfService';
 import PrivacyPolicy from './src/screens/Terms-of-Service/PrivacyPolicy';
@@ -96,10 +96,10 @@ SplashScreen.preventAutoHideAsync();
 function AuthStack() {
   return (
     <Stack.Navigator
-      initialRouteName="TestLogin"
+      initialRouteName="Login"
       screenOptions={{ headerShown: false }}
     >
-      <Stack.Screen name="TestLogin" component={TestLogin} />
+      {/* <Stack.Screen name="TestLogin" component={TestLogin} /> */}
       <Stack.Screen name="Login" component={Login} />
       <Stack.Screen name="Sign" component={Sign} />
       <Stack.Screen name="IDfind" component={IDfind} />

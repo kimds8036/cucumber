@@ -46,6 +46,7 @@ import {
   isPersonalMailReturned,
   navigateToResendPersonalMail,
 } from '../../utils/personalMail';
+import ReportModal from '../../components/common/ReportModal.jsx';
 
 // DB에 UTC로 저장된 날짜 문자열을 기기 로컬 시간대로 변환해서 파싱
 function parseUtcToLocal(createdAt) {
@@ -349,6 +350,10 @@ export function MessageContent({ navigation }) {
   /** 친구 화면과 동일 바텀시트 — DM / 쪽지 / 개인 우편 롱프레스 */
   const [roomMenuModalVisible, setRoomMenuModalVisible] = useState(false);
   const [roomMenuTarget, setRoomMenuTarget] = useState(null);
+  const [reportModalVisible, setReportModalVisible] = useState(false);
+  const [reportUserId, setReportUserId] = useState(null);
+  const [reportBlockReason, setReportBlockReason] = useState(null);
+  const reportBlockSuccessRef = useRef(null);
   const { setIsMessageTab } = useToast();
   const { refreshHasUnread } = useNotification();
 
@@ -439,19 +444,17 @@ export function MessageContent({ navigation }) {
     }
   }, []);
 
-  const runRoomMenuBlock = useCallback(
+  const runRoomMenuReportBlock = useCallback(
     (target) => {
       if (!target) return;
       const { kind, item } = target;
 
       let userId = null;
-      let displayName = '상대';
       let reason = null;
       let onSuccess = null;
 
       if (kind === 'dm') {
         userId = item.other_user_id;
-        displayName = item.other_user_name || item.name || '친구';
         reason = 'chat_block';
         onSuccess = () => {
           setNoteRooms((prev) =>
@@ -460,14 +463,12 @@ export function MessageContent({ navigation }) {
         };
       } else if (kind === 'note') {
         userId = item.other_user_id;
-        displayName = item.name || '익명';
         reason = 'anonymous_chat_block';
         onSuccess = () => {
           setNoteRooms((prev) => prev.filter((r) => r.id !== item.id));
         };
       } else if (kind === 'mail') {
         userId = item.counterpartyUserId;
-        displayName = item.senderName || item.directionText || '익명';
         reason = 'mail_block';
         onSuccess = () => {
           if (item.roomId) {
@@ -479,30 +480,10 @@ export function MessageContent({ navigation }) {
       if (!userId || !reason || !onSuccess) return;
 
       closeRoomMenuModal();
-      Alert.alert(
-        '차단',
-        `${displayName}님을 차단할까요?\n차단하면 다시 되돌릴 수 없어요`,
-        [
-          { text: '취소', style: 'cancel' },
-          {
-            text: '차단',
-            style: 'destructive',
-            onPress: async () => {
-              try {
-                await api.post(`/api/friends/${userId}/block`, { reason });
-                onSuccess();
-                Alert.alert('차단 완료', '차단되었습니다.', [{ text: '확인' }]);
-              } catch (error) {
-                console.error('사용자 차단 실패:', error);
-                Alert.alert(
-                  '오류',
-                  error.response?.data?.message || '차단 처리에 실패했습니다.',
-                );
-              }
-            },
-          },
-        ],
-      );
+      reportBlockSuccessRef.current = onSuccess;
+      setReportUserId(userId);
+      setReportBlockReason(reason);
+      setReportModalVisible(true);
     },
     [closeRoomMenuModal],
   );
@@ -1416,7 +1397,7 @@ export function MessageContent({ navigation }) {
 
               <TouchableOpacity
                 style={roomMenuSheetStyles.sheetBlockAction}
-                onPress={() => runRoomMenuBlock(roomMenuTarget)}
+                onPress={() => runRoomMenuReportBlock(roomMenuTarget)}
                 activeOpacity={0.85}
               >
                 <View
@@ -1426,14 +1407,14 @@ export function MessageContent({ navigation }) {
                   ]}
                 >
                   <Ionicons
-                    name="ban-outline"
+                    name="flag-outline"
                     size={16}
                     color={colors.textSecondary}
                   />
                 </View>
                 <View>
                   <Text style={roomMenuSheetStyles.sheetBlockActionTitle}>
-                    차단
+                    신고 / 차단
                   </Text>
                 </View>
               </TouchableOpacity>
@@ -1441,6 +1422,24 @@ export function MessageContent({ navigation }) {
           ) : null}
         </View>
       </Modal>
+
+      <ReportModal
+        visible={reportModalVisible}
+        onClose={() => {
+          setReportModalVisible(false);
+          setReportUserId(null);
+          setReportBlockReason(null);
+          reportBlockSuccessRef.current = null;
+        }}
+        targetType="user"
+        targetId={reportUserId}
+        reportedUserId={reportUserId}
+        blockReason={reportBlockReason}
+        onBlocked={() => {
+          reportBlockSuccessRef.current?.();
+          reportBlockSuccessRef.current = null;
+        }}
+      />
     </>
   );
 }

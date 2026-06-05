@@ -19,11 +19,8 @@ const SubHeader = ({
   rightDisabled,
   titleElement, // 제목 자리에 커스텀 요소(검색창 등)를 넣고 싶을 때 사용
 }) => {
-  const { width, height } = useWindowDimensions();
-  const styles = useMemo(
-    () => createSubHeaderStyles(width, height),
-    [width, height],
-  );
+  const { width } = useWindowDimensions();
+  const styles = useMemo(() => createSubHeaderStyles(width, 0), [width]);
   const normalize = useMemo(() => getNormalize(width), [width]);
   const hasRight = rightButtonText || rightIcon || rightElement;
 

@@ -1,4 +1,4 @@
-import React, { useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   View,
   Text,
@@ -17,22 +17,50 @@ import {
 import { e164ToLocalKr, normalizeLocalKrPhone } from '../../../utils/phoneFormat';
 import SignupStepScroll from './SignupStepScroll';
 
-const SignStepIdentity = ({ styles, normalize, bottomOffset, onChange }) => {
-  const [name, setName] = useState('');
-  const [year, setYear] = useState('');
-  const [month, setMonth] = useState('');
-  const [day, setDay] = useState('');
-  const [phoneNumber, setPhoneNumber] = useState('');
+const SMS_RESEND_COOLDOWN_SEC = 60;
+
+function parseBirthParts(birthDate) {
+  if (!birthDate || !/^\d{4}-\d{2}-\d{2}$/.test(birthDate)) {
+    return { year: '', month: '', day: '' };
+  }
+  const [year, month, day] = birthDate.split('-');
+  return { year, month, day };
+}
+
+const SignStepIdentity = ({
+  styles,
+  normalize,
+  bottomOffset,
+  initialData,
+  onChange,
+}) => {
+  const initialParts = parseBirthParts(initialData?.birthDate);
+  const [name, setName] = useState(initialData?.name || '');
+  const [year, setYear] = useState(initialParts.year);
+  const [month, setMonth] = useState(initialParts.month);
+  const [day, setDay] = useState(initialParts.day);
+  const [phoneNumber, setPhoneNumber] = useState(initialData?.phoneNumber || '');
   const [verificationCode, setVerificationCode] = useState('');
-  const [isCodeSent, setIsCodeSent] = useState(false);
-  const [isVerified, setIsVerified] = useState(false);
+  const [isCodeSent, setIsCodeSent] = useState(Boolean(initialData?.isCodeSent));
+  const [isVerified, setIsVerified] = useState(Boolean(initialData?.isVerified));
   const [sendingCode, setSendingCode] = useState(false);
   const [verifyingCode, setVerifyingCode] = useState(false);
+  const [resendCooldownSec, setResendCooldownSec] = useState(0);
 
   const confirmResultRef = useRef(null);
+  /** 인증 완료 시점 스냅샷 — 이름·전화 변경 시 인증 초기화 */
+  const verifiedSnapshotRef = useRef(
+    initialData?.isVerified
+      ? {
+          name: (initialData?.name || '').trim(),
+          phoneNumber: initialData?.phoneNumber || '',
+        }
+      : null,
+  );
 
   const birthDate = buildBirthDate(year, month, day);
   const isPhoneReady = phoneNumber.replace(/\D/g, '').length >= 10;
+  const isBusy = sendingCode || verifyingCode;
 
   const notifyChange = (override = {}) => {
     onChange?.({
@@ -45,6 +73,45 @@ const SignStepIdentity = ({ styles, normalize, bottomOffset, onChange }) => {
       ...override,
     });
   };
+
+  const resetPhoneVerification = (reason) => {
+    setIsVerified(false);
+    setIsCodeSent(false);
+    setVerificationCode('');
+    confirmResultRef.current = null;
+    verifiedSnapshotRef.current = null;
+    notifyChange({
+      isVerified: false,
+      isCodeSent: false,
+      verificationCode: '',
+    });
+    if (reason === 'identity_changed') {
+      Alert.alert(
+        '알림',
+        '이름 또는 전화번호가 변경되어 전화번호 인증을 다시 진행해 주세요.',
+      );
+    }
+  };
+
+  useEffect(() => {
+    if (!isVerified || !verifiedSnapshotRef.current) return;
+    const snap = verifiedSnapshotRef.current;
+    const nameChanged = name.trim() !== snap.name;
+    const phoneChanged =
+      normalizeLocalKrPhone(phoneNumber) !==
+      normalizeLocalKrPhone(snap.phoneNumber);
+    if (nameChanged || phoneChanged) {
+      resetPhoneVerification('identity_changed');
+    }
+  }, [name, phoneNumber, isVerified]);
+
+  useEffect(() => {
+    if (resendCooldownSec <= 0) return undefined;
+    const t = setInterval(() => {
+      setResendCooldownSec((s) => (s <= 1 ? 0 : s - 1));
+    }, 1000);
+    return () => clearInterval(t);
+  }, [resendCooldownSec]);
 
   const mapFirebaseError = (error) => {
     const code = error?.code || '';
@@ -60,10 +127,17 @@ const SignStepIdentity = ({ styles, normalize, bottomOffset, onChange }) => {
     if (code === 'auth/code-expired') {
       return '인증번호가 만료되었습니다. 다시 요청해 주세요.';
     }
+    if (error?.response?.status === 429) {
+      return (
+        error?.response?.data?.message ||
+        '요청이 너무 많습니다. 잠시 후 다시 시도해 주세요.'
+      );
+    }
     return error?.message || '전화번호 인증 중 오류가 발생했습니다.';
   };
 
   const handleSendCode = async () => {
+    if (isBusy || isVerified) return;
     if (!name.trim()) {
       Alert.alert('알림', '이름을 입력해 주세요.');
       return;
@@ -76,6 +150,7 @@ const SignStepIdentity = ({ styles, normalize, bottomOffset, onChange }) => {
       Alert.alert('알림', '전화번호를 입력해 주세요.');
       return;
     }
+    if (resendCooldownSec > 0) return;
 
     setSendingCode(true);
     try {
@@ -96,6 +171,7 @@ const SignStepIdentity = ({ styles, normalize, bottomOffset, onChange }) => {
       confirmResultRef.current = await requestPhoneVerification(normalized);
       setPhoneNumber(normalized);
       setIsCodeSent(true);
+      setResendCooldownSec(SMS_RESEND_COOLDOWN_SEC);
       notifyChange({ isCodeSent: true, phoneNumber: normalized });
       Alert.alert('알림', '인증 코드가 발송되었습니다.');
     } catch (error) {
@@ -107,6 +183,7 @@ const SignStepIdentity = ({ styles, normalize, bottomOffset, onChange }) => {
   };
 
   const handleVerifyCode = async () => {
+    if (isBusy || isVerified) return;
     if (!name.trim() || !birthDate) {
       Alert.alert('알림', '이름과 생년월일을 먼저 입력해 주세요.');
       return;
@@ -137,6 +214,10 @@ const SignStepIdentity = ({ styles, normalize, bottomOffset, onChange }) => {
 
       setIsVerified(true);
       setPhoneNumber(verifiedPhone);
+      verifiedSnapshotRef.current = {
+        name: name.trim(),
+        phoneNumber: verifiedPhone,
+      };
       notifyChange({
         isVerified: true,
         name: name.trim(),
@@ -159,6 +240,13 @@ const SignStepIdentity = ({ styles, normalize, bottomOffset, onChange }) => {
     }
   };
 
+  const sendButtonLabel = () => {
+    if (sendingCode) return null;
+    if (isVerified) return '완료';
+    if (resendCooldownSec > 0) return `${resendCooldownSec}초`;
+    return isCodeSent ? '재발송' : '인증';
+  };
+
   return (
     <View style={{ flex: 1 }}>
       <SignupStepScroll normalize={normalize} bottomOffset={bottomOffset}>
@@ -173,6 +261,7 @@ const SignStepIdentity = ({ styles, normalize, bottomOffset, onChange }) => {
             }}
             placeholder="실명"
             placeholderTextColor={colors.textSecondary}
+            editable={!isBusy}
           />
         </View>
 
@@ -192,6 +281,7 @@ const SignStepIdentity = ({ styles, normalize, bottomOffset, onChange }) => {
                 placeholderTextColor={colors.textSecondary}
                 keyboardType="number-pad"
                 maxLength={4}
+                editable={!isBusy}
               />
             </View>
           </View>
@@ -209,6 +299,7 @@ const SignStepIdentity = ({ styles, normalize, bottomOffset, onChange }) => {
                 placeholderTextColor={colors.textSecondary}
                 keyboardType="number-pad"
                 maxLength={2}
+                editable={!isBusy}
               />
             </View>
           </View>
@@ -226,6 +317,7 @@ const SignStepIdentity = ({ styles, normalize, bottomOffset, onChange }) => {
                 placeholderTextColor={colors.textSecondary}
                 keyboardType="number-pad"
                 maxLength={2}
+                editable={!isBusy}
               />
             </View>
           </View>
@@ -244,22 +336,30 @@ const SignStepIdentity = ({ styles, normalize, bottomOffset, onChange }) => {
               keyboardType="phone-pad"
               placeholder="01012345678"
               placeholderTextColor={colors.textSecondary}
-              editable={!isVerified}
+              editable={!isVerified && !isBusy}
             />
             <TouchableOpacity
               style={[
                 styles.verifyButton,
-                (!isPhoneReady || sendingCode || isVerified) && {
+                (!isPhoneReady ||
+                  isBusy ||
+                  isVerified ||
+                  resendCooldownSec > 0) && {
                   backgroundColor: colors.textLight10,
                 },
               ]}
               onPress={handleSendCode}
-              disabled={!isPhoneReady || sendingCode || isVerified}
+              disabled={
+                !isPhoneReady ||
+                isBusy ||
+                isVerified ||
+                resendCooldownSec > 0
+              }
             >
               {sendingCode ? (
                 <ActivityIndicator size="small" color={colors.background} />
               ) : (
-                <Text style={styles.verifyButtonText}>인증</Text>
+                <Text style={styles.verifyButtonText}>{sendButtonLabel()}</Text>
               )}
             </TouchableOpacity>
           </View>
@@ -275,7 +375,7 @@ const SignStepIdentity = ({ styles, normalize, bottomOffset, onChange }) => {
               notifyChange({ verificationCode: t });
             }}
             keyboardType="number-pad"
-            editable={isCodeSent && !isVerified}
+            editable={isCodeSent && !isVerified && !isBusy}
             placeholder="6자리"
             placeholderTextColor={colors.textSecondary}
           />
@@ -285,10 +385,10 @@ const SignStepIdentity = ({ styles, normalize, bottomOffset, onChange }) => {
             style={[
               styles.verifyButton,
               { marginTop: 8 },
-              verifyingCode && { opacity: 0.6 },
+              isBusy && { opacity: 0.6 },
             ]}
             onPress={handleVerifyCode}
-            disabled={verifyingCode}
+            disabled={isBusy}
           >
             {verifyingCode ? (
               <ActivityIndicator size="small" color={colors.background} />

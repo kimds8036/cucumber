@@ -1,13 +1,12 @@
 /**
- * 테스트 빌드 전용 진입 화면
+ * [테스트 로그인할 때 썼던 화면 — 현재 App.js AuthStack 에서 연결 해제됨]
  *
+ * 테스트 빌드 전용 진입 화면이었음.
  * - 백엔드 /api/test/users 에서 user1~userN 목록을 가져와 표시
  * - 계정 클릭 시 매칭 비밀번호(passN) 로 자동 로그인
- * - in_use(fcm_tokens 활성 토큰 보유) 인 계정은 빨간점=사용중, 미보유는 초록점=대기중
- *   (다른 디바이스에서 로그인·토큰 이전 시 이전 계정은 비활성화됨)
- * - 우상단 "관리자 로그인" 버튼은 기존 Login 화면으로 이동
+ * - 우상단 "관리자 로그인" → Login 화면
  *
- * NOTE: 운영 빌드에서는 AuthStack initialRouteName 을 다시 'Login' 으로 돌려야 함.
+ * 다시 쓰려면 App.js 에서 TestLogin import·Stack.Screen·initialRouteName 복구.
  */
 
 import React, { useCallback, useEffect, useMemo, useState } from 'react';

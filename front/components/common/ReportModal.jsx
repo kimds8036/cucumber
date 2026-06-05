@@ -15,6 +15,7 @@ import { useWindowDimensions } from 'react-native';
 import { colors, fonts } from '../../styles/colors';
 import { getNormalize } from '../../styles/frame.style';
 import { api } from '../../utils/api';
+import { blockUserById } from '../../utils/blockUser';
 import AppPopupModal from './AppPopupModal';
 import Reanimated, {
   useAnimatedStyle,
@@ -30,20 +31,30 @@ const REASONS = [
   { key: 'etc', label: '기타' },
 ];
 
+const ENDPOINT_MAP = {
+  post: (id) => `/api/posts/${id}/report`,
+  comment: (id) => `/api/comments/${id}/report`,
+  schoolMail: (id) => `/api/mails/school/${id}/report`,
+  schoolMailComment: (id) => `/api/mails/school/comments/${id}/report`,
+  user: (id) => `/api/friends/${id}/report`,
+};
+
 /**
- * ReportModal
+ * 신고 사유 선택 → 신고 API → (성공/이미 신고) 차단 유도 모달
  *
  * Props:
- *   visible       boolean
- *   onClose       () => void
- *   targetType    'post' | 'comment' | 'schoolMail' | 'schoolMailComment'
- *   targetId      number
+ *   reportedUserId — 차단 대상 users.id (필수)
+ *   blockReason — 차단 API reason (DM/우편 등, 선택)
+ *   onBlocked — 차단 성공 시 콜백
  */
 export default function ReportModal({
   visible,
   onClose,
   targetType,
   targetId,
+  reportedUserId,
+  blockReason = null,
+  onBlocked,
 }) {
   const { width } = useWindowDimensions();
   const N = getNormalize(width);
@@ -51,15 +62,26 @@ export default function ReportModal({
   const [selectedReason, setSelectedReason] = useState(null);
   const [description, setDescription] = useState('');
   const [loading, setLoading] = useState(false);
-  const [resultPopup, setResultPopup] = useState(null);
+  const [blockPrompt, setBlockPrompt] = useState(null);
+  const [errorPopup, setErrorPopup] = useState(null);
+  const [blocking, setBlocking] = useState(false);
   const translateY = useSharedValue(0);
+
+  const [blockTargetUserId, setBlockTargetUserId] = useState(null);
+
+  const resolvedReportedUserId =
+    blockTargetUserId ??
+    (reportedUserId != null ? Number(reportedUserId) : null);
 
   useEffect(() => {
     if (!visible) {
-      setResultPopup(null);
+      setBlockPrompt(null);
+      setErrorPopup(null);
       setSelectedReason(null);
       setDescription('');
       setLoading(false);
+      setBlocking(false);
+      setBlockTargetUserId(null);
     }
   }, [visible]);
 
@@ -87,59 +109,87 @@ export default function ReportModal({
   };
 
   const handleClose = () => {
-    if (loading) return;
-    setResultPopup(null);
+    if (loading || blocking) return;
+    setBlockPrompt(null);
+    setErrorPopup(null);
     resetForm();
     onClose();
   };
 
-  const handleResultConfirm = () => {
-    const wasSuccess = resultPopup?.success === true;
-    setResultPopup(null);
-    if (wasSuccess) {
-      resetForm();
-      onClose();
+  const finishAfterDismissBlock = () => {
+    setBlockPrompt(null);
+    resetForm();
+    onClose();
+  };
+
+  const runBlock = async () => {
+    if (!resolvedReportedUserId) {
+      setErrorPopup({
+        title: '오류',
+        message: '차단할 사용자를 확인할 수 없습니다.',
+      });
+      return;
     }
+    setBlocking(true);
+    try {
+      await blockUserById(resolvedReportedUserId, { reason: blockReason });
+      onBlocked?.(resolvedReportedUserId);
+      finishAfterDismissBlock();
+    } catch (err) {
+      setErrorPopup({
+        title: '오류',
+        message:
+          err?.response?.data?.message || '차단 처리 중 오류가 발생했습니다.',
+      });
+    } finally {
+      setBlocking(false);
+    }
+  };
+
+  const openBlockPrompt = (mode) => {
+    resetForm();
+    setBlockPrompt(mode);
   };
 
   const handleSubmit = async () => {
     if (!selectedReason || loading) return;
 
+    const buildEndpoint = ENDPOINT_MAP[targetType];
+    const endpoint = buildEndpoint?.(targetId);
+    if (!endpoint) {
+      setErrorPopup({
+        title: '오류',
+        message: '신고 대상을 확인할 수 없습니다.',
+      });
+      return;
+    }
+
     setLoading(true);
     try {
-      const endpointMap = {
-        post: `/api/posts/${targetId}/report`,
-        comment: `/api/comments/${targetId}/report`,
-        schoolMail: `/api/mails/school/${targetId}/report`,
-        schoolMailComment: `/api/mails/school/comments/${targetId}/report`,
-      };
-      const endpoint = endpointMap[targetType];
-      if (!endpoint) {
-        setResultPopup({
-          success: false,
-          title: '오류',
-          message: '신고 대상을 확인할 수 없습니다.',
-        });
-        return;
-      }
-
-      await api.post(endpoint, {
+      const res = await api.post(endpoint, {
         reason: selectedReason,
         description: description.trim() || undefined,
       });
 
-      setResultPopup({
-        success: true,
-        title: '신고 접수',
-        message: '신고가 접수되었습니다.',
-      });
+      const uid =
+        res?.data?.data?.reportedUserId ??
+        (reportedUserId != null ? Number(reportedUserId) : null);
+      if (uid != null) setBlockTargetUserId(uid);
+      openBlockPrompt('success');
     } catch (err) {
-      const message =
-        err?.response?.data?.message || '신고 처리 중 오류가 발생했습니다.';
-      setResultPopup({
-        success: false,
+      const data = err?.response?.data;
+      const code = data?.code;
+      if (code === 'ALREADY_REPORTED') {
+        const uid =
+          data?.data?.reportedUserId ??
+          (reportedUserId != null ? Number(reportedUserId) : null);
+        if (uid != null) setBlockTargetUserId(uid);
+        openBlockPrompt('already_reported');
+        return;
+      }
+      setErrorPopup({
         title: '오류',
-        message,
+        message: data?.message || '신고 처리 중 오류가 발생했습니다.',
       });
     } finally {
       setLoading(false);
@@ -147,7 +197,14 @@ export default function ReportModal({
   };
 
   const s = makeStyles(N);
-  const showReportSheet = visible && !resultPopup;
+  const showReportSheet = visible && !blockPrompt && !errorPopup;
+
+  const blockTitle =
+    blockPrompt === 'already_reported' ? '안내' : '신고 완료';
+  const blockMessage =
+    blockPrompt === 'already_reported'
+      ? '이미 신고 접수가 완료된 사용자입니다. 이 사용자가 작성한 게시물, 댓글, 쪽지 등 모든 상호작용을 보이지 않게 차단하시겠습니까?'
+      : '신고가 정상적으로 접수되었습니다. 해당 사용자의 글, 댓글, 쪽지가 더 이상 보이지 않도록 즉시 차단하시겠습니까?';
 
   return (
     <>
@@ -159,7 +216,6 @@ export default function ReportModal({
       >
         <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
           <View style={s.root}>
-            {/* 배경 딤 */}
             <TouchableOpacity
               style={s.backdrop}
               onPress={handleClose}
@@ -168,9 +224,8 @@ export default function ReportModal({
 
             <Reanimated.View style={[s.sheetWrapper, animStyle]}>
               <View style={s.sheet}>
-                {/* 헤더 */}
                 <View style={s.header}>
-                  <Text style={s.title}>신고하기</Text>
+                  <Text style={s.title}>신고 / 차단</Text>
                   <TouchableOpacity
                     onPress={handleClose}
                     hitSlop={12}
@@ -185,12 +240,11 @@ export default function ReportModal({
                   keyboardShouldPersistTaps="handled"
                   showsVerticalScrollIndicator={false}
                 >
-                  {/* 안내 문구 */}
                   <Text style={s.guide}>
-                    신고 사유를 선택하고 필요한 내용을 작성해 주세요.
+                    신고 사유를 선택해 주세요. 신고 접수 후 차단 여부를
+                    안내합니다.
                   </Text>
 
-                  {/* 사유 칩 */}
                   <View style={s.chipRow}>
                     {REASONS.map((r) => {
                       const active = selectedReason === r.key;
@@ -211,7 +265,6 @@ export default function ReportModal({
                     })}
                   </View>
 
-                  {/* 상세 입력 */}
                   <TextInput
                     style={s.textInput}
                     placeholder="상세 사유를 입력해 주세요 (선택)"
@@ -226,7 +279,6 @@ export default function ReportModal({
                   <Text style={s.charCount}>{description.length} / 500</Text>
                 </ScrollView>
 
-                {/* 제출 버튼 */}
                 <View style={s.footer}>
                   <TouchableOpacity
                     style={[
@@ -251,53 +303,49 @@ export default function ReportModal({
       </Modal>
 
       <AppPopupModal
-        visible={Boolean(resultPopup)}
-        onClose={handleResultConfirm}
+        visible={Boolean(blockPrompt)}
+        onClose={finishAfterDismissBlock}
       >
-        <Text
-          style={{
-            fontSize: 18,
-            color: colors.textPrimary,
-            fontWeight: '700',
-            textAlign: 'center',
-            marginBottom: 10,
-          }}
-        >
-          {resultPopup?.title}
-        </Text>
-        {resultPopup?.message ? (
-          <Text
-            style={{
-              fontSize: 14,
-              color: colors.textSecondary,
-              textAlign: 'center',
-              lineHeight: 22,
-              marginBottom: 16,
-            }}
+        <Text style={s.popupTitle}>{blockTitle}</Text>
+        <Text style={s.popupMessage}>{blockMessage}</Text>
+        <View style={s.popupBtnRow}>
+          <TouchableOpacity
+            style={[s.popupBtn, s.popupBtnCancel]}
+            onPress={finishAfterDismissBlock}
+            disabled={blocking}
+            activeOpacity={0.85}
           >
-            {resultPopup.message}
-          </Text>
+            <Text style={s.popupBtnCancelText}>그냥 둘래요</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[s.popupBtn, s.popupBtnConfirm]}
+            onPress={runBlock}
+            disabled={blocking}
+            activeOpacity={0.85}
+          >
+            {blocking ? (
+              <ActivityIndicator color={colors.textWhite} size="small" />
+            ) : (
+              <Text style={s.popupBtnConfirmText}>차단하기</Text>
+            )}
+          </TouchableOpacity>
+        </View>
+      </AppPopupModal>
+
+      <AppPopupModal
+        visible={Boolean(errorPopup)}
+        onClose={() => setErrorPopup(null)}
+      >
+        <Text style={s.popupTitle}>{errorPopup?.title}</Text>
+        {errorPopup?.message ? (
+          <Text style={s.popupMessage}>{errorPopup.message}</Text>
         ) : null}
         <TouchableOpacity
-          style={{
-            height: 42,
-            borderRadius: 10,
-            backgroundColor: colors.primary,
-            alignItems: 'center',
-            justifyContent: 'center',
-          }}
-          onPress={handleResultConfirm}
+          style={[s.popupBtn, s.popupBtnConfirm, { alignSelf: 'stretch' }]}
+          onPress={() => setErrorPopup(null)}
           activeOpacity={0.85}
         >
-          <Text
-            style={{
-              fontSize: 14,
-              fontWeight: '700',
-              color: colors.textWhite,
-            }}
-          >
-            확인
-          </Text>
+          <Text style={s.popupBtnConfirmText}>확인</Text>
         </TouchableOpacity>
       </AppPopupModal>
     </>
@@ -306,17 +354,12 @@ export default function ReportModal({
 
 const makeStyles = (N) =>
   StyleSheet.create({
-    root: {
-      flex: 1,
-    },
+    root: { flex: 1 },
     backdrop: {
       ...StyleSheet.absoluteFillObject,
       backgroundColor: 'rgba(0,0,0,0.35)',
     },
-    sheetWrapper: {
-      flex: 1,
-      justifyContent: 'flex-end',
-    },
+    sheetWrapper: { flex: 1, justifyContent: 'flex-end' },
     sheet: {
       backgroundColor: '#fff',
       borderTopLeftRadius: N(20),
@@ -338,10 +381,7 @@ const makeStyles = (N) =>
       fontSize: N(18),
       color: colors.textPrimary,
     },
-    closeBtn: {
-      fontSize: N(16),
-      color: colors.textSecondary,
-    },
+    closeBtn: { fontSize: N(16), color: colors.textSecondary },
     body: {
       paddingHorizontal: N(20),
       paddingTop: N(18),
@@ -410,12 +450,52 @@ const makeStyles = (N) =>
       paddingVertical: N(14),
       alignItems: 'center',
     },
-    submitBtnDisabled: {
-      backgroundColor: colors.textLight20,
-    },
+    submitBtnDisabled: { backgroundColor: colors.textLight20 },
     submitText: {
       fontFamily: fonts.bold,
       fontSize: N(15),
       color: '#fff',
+    },
+    popupTitle: {
+      fontSize: 18,
+      color: colors.textPrimary,
+      fontWeight: '700',
+      textAlign: 'center',
+      marginBottom: 10,
+    },
+    popupMessage: {
+      fontSize: 14,
+      color: colors.textSecondary,
+      textAlign: 'center',
+      lineHeight: 22,
+      marginBottom: 16,
+    },
+    popupBtnRow: {
+      flexDirection: 'row',
+      gap: 10,
+      alignSelf: 'stretch',
+    },
+    popupBtn: {
+      flex: 1,
+      height: 42,
+      borderRadius: 10,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    popupBtnCancel: {
+      backgroundColor: colors.textLight10,
+    },
+    popupBtnConfirm: {
+      backgroundColor: colors.primary,
+    },
+    popupBtnCancelText: {
+      fontSize: 14,
+      fontWeight: '600',
+      color: colors.textSecondary,
+    },
+    popupBtnConfirmText: {
+      fontSize: 14,
+      fontWeight: '700',
+      color: colors.textWhite,
     },
   });
