@@ -31,7 +31,16 @@ import {
 import {
   signupOcrLimiter,
   signupPhoneBackendLimiter,
+  recoveryPhoneBackendLimiter,
 } from '../middleware/signupRateLimit.js';
+import {
+  assertFirebasePhoneToken,
+  findRegisteredUserByPhoneAndName,
+  findRegisteredUserByPhoneNameUsername,
+  issuePasswordRecoveryToken,
+  consumePasswordRecoveryToken,
+  mapRecoveryError,
+} from '../services/accountRecovery.service.js';
 import {
   issueStudentOcrVerificationToken,
   consumeStudentOcrVerificationToken,
@@ -561,6 +570,160 @@ router.post('/verify-firebase-phone', signupPhoneBackendLimiter, async (req, res
     return res.status(500).json({
       success: false,
       message: '전화번호 인증 처리 중 오류가 발생했습니다.',
+    });
+  }
+});
+
+// ── 아이디/비밀번호 찾기 (Firebase 전화 인증 + rate limit) ──
+
+router.post('/recovery/check-phone-registered', recoveryPhoneBackendLimiter, async (req, res) => {
+  try {
+    const phone = normalizeLocalKrPhone(req.body?.phone);
+    if (!phone || !validatePhone(phone)) {
+      return res.status(400).json({
+        success: false,
+        message: '올바른 전화번호 형식이 아닙니다.',
+      });
+    }
+
+    const [existing] = await pool.execute(
+      `SELECT id FROM users
+       WHERE ${SQL_PHONE_NORM} = ?
+         AND is_deleted = FALSE
+         AND (is_banned IS NULL OR is_banned = FALSE)
+       LIMIT 1`,
+      [phone],
+    );
+
+    return res.json({
+      success: true,
+      data: {
+        phone,
+        registered: existing.length > 0,
+      },
+    });
+  } catch (error) {
+    console.error('[recovery/check-phone-registered]', error);
+    return res.status(500).json({
+      success: false,
+      message: '전화번호 확인 중 오류가 발생했습니다.',
+    });
+  }
+});
+
+router.post('/recovery/find-username', recoveryPhoneBackendLimiter, async (req, res) => {
+  try {
+    const { idToken, phone, name } = req.body || {};
+    const verifiedPhone = await assertFirebasePhoneToken(idToken, phone);
+    const user = await findRegisteredUserByPhoneAndName(verifiedPhone, name);
+
+    return res.json({
+      success: true,
+      message: '아이디를 확인했습니다.',
+      data: {
+        username: user.username,
+        name: user.name,
+        phone: verifiedPhone,
+      },
+    });
+  } catch (error) {
+    const mapped = mapRecoveryError(error);
+    if (mapped.status < 500) {
+      return res.status(mapped.status).json({ success: false, message: mapped.message });
+    }
+    console.error('[recovery/find-username]', error);
+    return res.status(500).json({
+      success: false,
+      message: '아이디 찾기 중 오류가 발생했습니다.',
+    });
+  }
+});
+
+router.post('/recovery/verify-account', recoveryPhoneBackendLimiter, async (req, res) => {
+  try {
+    const { idToken, phone, name, username } = req.body || {};
+    const verifiedPhone = await assertFirebasePhoneToken(idToken, phone);
+    const user = await findRegisteredUserByPhoneNameUsername(
+      verifiedPhone,
+      name,
+      username,
+    );
+
+    const recoveryToken = await issuePasswordRecoveryToken({
+      userId: user.id,
+      phone: verifiedPhone,
+      username: user.username,
+    });
+
+    return res.json({
+      success: true,
+      message: '본인 확인이 완료되었습니다.',
+      data: {
+        recoveryToken,
+        username: user.username,
+        name: user.name,
+        phone: verifiedPhone,
+      },
+    });
+  } catch (error) {
+    const mapped = mapRecoveryError(error);
+    if (mapped.status < 500) {
+      return res.status(mapped.status).json({ success: false, message: mapped.message });
+    }
+    console.error('[recovery/verify-account]', error);
+    return res.status(500).json({
+      success: false,
+      message: '본인 확인 중 오류가 발생했습니다.',
+    });
+  }
+});
+
+const recoveryResetValidators = [
+  body('recoveryToken').isString().bail().isLength({ min: 10, max: 2000 })
+    .withMessage('비밀번호 재설정 토큰이 필요합니다.'),
+  body('phone').isString().bail().trim().isLength({ min: 1, max: 20 }),
+  body('username').isString().bail().trim().isLength({ min: 3, max: 20 }),
+  body('newPassword').isString().bail().isLength({ min: 8, max: 200 })
+    .withMessage('새 비밀번호는 8자 이상이어야 합니다.'),
+];
+
+router.post('/recovery/reset-password', validate(recoveryResetValidators), async (req, res) => {
+  try {
+    const { recoveryToken, phone, username, newPassword } = req.body;
+    const normalizedPhone = normalizeLocalKrPhone(phone);
+    const trimmedUsername = String(username || '').trim();
+
+    if (!validatePassword(newPassword)) {
+      return res.status(400).json({
+        success: false,
+        message: '비밀번호는 영문과 숫자를 포함하여 최소 8자 이상이어야 합니다.',
+      });
+    }
+
+    const { userId } = await consumePasswordRecoveryToken(recoveryToken, {
+      phone: normalizedPhone,
+      username: trimmedUsername,
+    });
+
+    const hashed = await hashPassword(newPassword);
+    await pool.execute(
+      `UPDATE users SET password = ? WHERE id = ? AND is_deleted = FALSE`,
+      [hashed, userId],
+    );
+
+    return res.json({
+      success: true,
+      message: '비밀번호가 변경되었습니다.',
+    });
+  } catch (error) {
+    const mapped = mapRecoveryError(error);
+    if (mapped.status < 500) {
+      return res.status(mapped.status).json({ success: false, message: mapped.message });
+    }
+    console.error('[recovery/reset-password]', error);
+    return res.status(500).json({
+      success: false,
+      message: '비밀번호 변경 중 오류가 발생했습니다.',
     });
   }
 });

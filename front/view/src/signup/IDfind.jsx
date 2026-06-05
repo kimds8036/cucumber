@@ -1,10 +1,8 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import {
   Alert,
-  KeyboardAvoidingView,
-  Platform,
-  ScrollView,
   Text,
+  TextInput,
   TouchableOpacity,
   View,
   Keyboard,
@@ -13,16 +11,25 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import { CommonActions } from '@react-navigation/native';
 import { colors } from '../../../styles/colors';
 import { createFindStyles } from '../../../styles/find.style';
 import Skeleton from '../../../components/common/Skeleton';
+import { api } from '../../../utils/api';
+import RecoveryPhoneFields from './RecoveryPhoneFields';
+import SignupStepScroll from './SignupStepScroll';
+
 const IDfind = ({ navigation }) => {
   const { width } = useWindowDimensions();
   const scale = width / 375;
   const normalize = (size) => Math.round(scale * size);
   const styles = useMemo(() => createFindStyles(width, normalize), [width]);
 
-  const [foundId, setFoundId] = useState('');
+  const [name, setName] = useState('');
+  const [phoneNumber, setPhoneNumber] = useState('');
+  const [isPhoneVerified, setIsPhoneVerified] = useState(false);
+  const [phoneIdToken, setPhoneIdToken] = useState(null);
+  const [submitting, setSubmitting] = useState(false);
   const [screenReady, setScreenReady] = useState(false);
 
   useEffect(() => {
@@ -30,9 +37,62 @@ const IDfind = ({ navigation }) => {
     return () => clearTimeout(timer);
   }, []);
 
-  const handlePassVerify = () => {
-    // TODO: PASS 본인인증 API 연동 후 응답값으로 아이디 설정
-    setFoundId('cucumber_user01');
+  const goToLogin = () => {
+    navigation?.dispatch(
+      CommonActions.reset({
+        index: 0,
+        routes: [{ name: 'Login' }],
+      }),
+    );
+  };
+
+  const handlePhoneVerified = ({ isVerified, phoneNumber: phone, idToken }) => {
+    setIsPhoneVerified(isVerified);
+    setPhoneNumber(phone);
+    setPhoneIdToken(idToken);
+    if (isVerified) {
+      handleFindUsername(phone, idToken);
+    } else {
+      setPhoneIdToken(null);
+    }
+  };
+
+  const handleFindUsername = async (phoneOverride, tokenOverride) => {
+    const phone = phoneOverride || phoneNumber;
+    const idToken = tokenOverride || phoneIdToken;
+    if (!name.trim()) {
+      Alert.alert('알림', '이름을 입력해 주세요.');
+      return;
+    }
+    if (!isPhoneVerified || !idToken) {
+      Alert.alert('알림', '전화번호 인증을 먼저 완료해 주세요.');
+      return;
+    }
+
+    setSubmitting(true);
+    try {
+      const res = await api.post('/api/auth/recovery/find-username', {
+        idToken,
+        phone,
+        name: name.trim(),
+      });
+      const username = res.data?.data?.username;
+      if (!username) {
+        Alert.alert('알림', '아이디를 확인하지 못했습니다.');
+        return;
+      }
+
+      Alert.alert('아이디 확인', `회원님의 아이디는\n\n${username}\n\n입니다.`, [
+        { text: '로그인하기', onPress: goToLogin },
+      ]);
+    } catch (error) {
+      const msg =
+        error?.response?.data?.message ||
+        '아이디 찾기 중 오류가 발생했습니다.';
+      Alert.alert('알림', msg);
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   if (!screenReady) {
@@ -92,40 +152,58 @@ const IDfind = ({ navigation }) => {
           </TouchableOpacity>
           <Text style={styles.headerTitle}>아이디 찾기</Text>
         </View>
+        <Text style={styles.description}>
+          가입 시 등록한 이름과 전화번호로 본인 확인 후 아이디를 안내해 드립니다.
+        </Text>
       </View>
 
       <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
-        <KeyboardAvoidingView
-          style={styles.contentSection}
-          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        >
-          <ScrollView
-            showsVerticalScrollIndicator={false}
-            keyboardShouldPersistTaps="handled"
-            keyboardDismissMode="on-drag"
-            contentContainerStyle={{ paddingBottom: normalize(20) }}
-          >
-            <Text style={styles.helperText}>
-              PASS 본인인증으로 가입 시 사용한 아이디를 확인할 수 있습니다.
-            </Text>
+        <View style={styles.contentSection}>
+          <SignupStepScroll normalize={normalize} bottomOffset={100}>
+            <Text style={styles.inputLabel}>이름</Text>
+            <View style={styles.inputWrapper}>
+              <TextInput
+                style={styles.input}
+                placeholder="이름 입력"
+                placeholderTextColor={colors.textSecondary}
+                value={name}
+                onChangeText={(t) => {
+                  setName(t);
+                  if (isPhoneVerified) {
+                    setIsPhoneVerified(false);
+                    setPhoneIdToken(null);
+                  }
+                }}
+                editable={!submitting}
+              />
+            </View>
 
-            {foundId ? (
-              <View style={styles.resultCard}>
-                <Text style={styles.resultTitle}>확인된 아이디</Text>
-                <Text style={styles.resultValue}>{foundId}</Text>
-              </View>
-            ) : null}
-          </ScrollView>
-        </KeyboardAvoidingView>
+            <RecoveryPhoneFields
+              styles={styles}
+              normalize={normalize}
+              name={name}
+              phoneNumber={phoneNumber}
+              onPhoneChange={setPhoneNumber}
+              isVerified={isPhoneVerified}
+              onVerified={handlePhoneVerified}
+            />
+          </SignupStepScroll>
+        </View>
       </TouchableWithoutFeedback>
 
       <View style={styles.footerSection}>
         <TouchableOpacity
-          style={styles.primaryButton}
+          style={[
+            styles.primaryButton,
+            (!isPhoneVerified || submitting) && styles.primaryButtonDisabled,
+          ]}
           activeOpacity={0.9}
-          onPress={handlePassVerify}
+          disabled={!isPhoneVerified || submitting}
+          onPress={() => handleFindUsername()}
         >
-          <Text style={styles.primaryButtonText}>PASS 본인인증</Text>
+          <Text style={styles.primaryButtonText}>
+            {submitting ? '확인 중...' : '아이디 확인'}
+          </Text>
         </TouchableOpacity>
       </View>
     </SafeAreaView>

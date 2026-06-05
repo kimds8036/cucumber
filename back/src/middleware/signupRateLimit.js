@@ -26,24 +26,35 @@ const limitMessage = (msg) => ({
   message: msg,
 });
 
-const signupPhoneStore = createRedisRateLimitStore('signup-phone');
+const phoneVerifyStore = createRedisRateLimitStore('phone-verify');
 const signupOcrStore = createRedisRateLimitStore('signup-ocr');
 
-/**
- * Firebase SMS 직전 백엔드 호출 (check-phone-available, verify-firebase-phone)
- * 기본: 15분에 IP+번호당 8회
- */
-export const signupPhoneBackendLimiter = rateLimit({
+const phoneLimiterOptions = {
   windowMs: Number(process.env.SIGNUP_PHONE_RATE_WINDOW_MS || 15 * 60 * 1000),
   max: Number(process.env.SIGNUP_PHONE_RATE_MAX || 8),
   standardHeaders: true,
   legacyHeaders: false,
   keyGenerator: phoneAndIpKey,
-  ...(signupPhoneStore ? { store: signupPhoneStore } : {}),
-  message: limitMessage(
-    '전화번호 인증 요청이 너무 많습니다. 잠시 후 다시 시도해 주세요.',
-  ),
+};
+
+const phoneVerificationMessage = limitMessage(
+  '전화번호 인증 요청이 너무 많습니다. 잠시 후 다시 시도해 주세요.',
+);
+
+/**
+ * Firebase SMS 관련 백엔드 호출 공통 한도 (가입·아이디/비밀번호 찾기 공유)
+ * check-phone-available, verify-firebase-phone, recovery/* 등
+ */
+export const phoneVerificationBackendLimiter = rateLimit({
+  ...phoneLimiterOptions,
+  ...(phoneVerifyStore ? { store: phoneVerifyStore } : {}),
+  message: phoneVerificationMessage,
 });
+
+/** @deprecated alias — phoneVerificationBackendLimiter 와 동일 카운터 */
+export const signupPhoneBackendLimiter = phoneVerificationBackendLimiter;
+/** @deprecated alias — phoneVerificationBackendLimiter 와 동일 카운터 */
+export const recoveryPhoneBackendLimiter = phoneVerificationBackendLimiter;
 
 /**
  * 학생증 CLOVA OCR (verify-student-id)
