@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   View,
   Text,
@@ -6,11 +6,12 @@ import {
   TouchableOpacity,
   ScrollView,
   ActivityIndicator,
+  StyleSheet,
 } from 'react-native';
-import { colors } from '../../../styles/colors';
+import { colors, fonts } from '../../../styles/colors';
 import { api } from '../../../utils/api';
 
-/** 학교 검색·선택 (이름 + 지역/주소 표시) */
+/** 학교 검색·선택 — 입력은 회원가입 공통 스타일, 드롭다운만 심플 */
 const SchoolSearchField = ({
   styles,
   normalize = (n) => n,
@@ -19,6 +20,7 @@ const SchoolSearchField = ({
   label = '재학 중인 학교',
   disabled = false,
 }) => {
+  const dropdownStyles = useMemo(() => makeDropdownStyles(normalize), [normalize]);
   const [query, setQuery] = useState(selectedSchool?.name || '');
   const [schools, setSchools] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -56,6 +58,15 @@ const SchoolSearchField = ({
     return parts.join(' · ');
   };
 
+  const trimmedQuery = query.trim();
+  const pendingSelection =
+    !selectedSchool || trimmedQuery !== String(selectedSchool.name || '').trim();
+  const showDropdown =
+    !disabled &&
+    pendingSelection &&
+    trimmedQuery.length >= 2 &&
+    (loading || schools.length > 0);
+
   return (
     <View>
       <Text style={[styles.inputLabel, { marginTop: normalize(16) }]}>{label}</Text>
@@ -74,59 +85,59 @@ const SchoolSearchField = ({
         />
       </View>
 
-      {loading ? (
+      {loading && !showDropdown ? (
         <ActivityIndicator
           style={{ marginTop: normalize(12) }}
           color={colors.primary}
         />
       ) : null}
 
-      {schools.length > 0 ? (
-        <ScrollView
-          style={{ maxHeight: normalize(180), marginTop: normalize(8) }}
-          keyboardShouldPersistTaps="handled"
-          nestedScrollEnabled
-        >
-          {schools.map((s) => {
-            const active = selectedSchool?.id === s.id;
-            return (
-              <TouchableOpacity
-                key={s.id}
-                style={[
-                  styles.ageGateCard,
-                  { marginBottom: normalize(6) },
-                  active && styles.ageGateCardSelected,
-                ]}
-                onPress={() => {
-                  onSelect?.(s);
-                  setQuery(s.name);
-                  setSchools([]);
-                }}
-                activeOpacity={0.85}
-                disabled={disabled}
-              >
-                <Text style={styles.ageGateCardTitle}>{s.name}</Text>
-                {formatSubtitle(s) ? (
-                  <Text
-                    style={[
-                      styles.ageGateCardDescription,
-                      { color: colors.textLight20 },
-                    ]}
+      {showDropdown ? (
+        <View style={dropdownStyles.dropdown}>
+          {loading && schools.length === 0 ? (
+            <Text style={dropdownStyles.emptyText}>검색 중…</Text>
+          ) : (
+            <ScrollView
+              keyboardShouldPersistTaps="handled"
+              nestedScrollEnabled
+              style={dropdownStyles.dropdownScroll}
+            >
+              {schools.map((school, index) => {
+                const subtitle = formatSubtitle(school);
+                const isLast = index === schools.length - 1;
+                return (
+                  <TouchableOpacity
+                    key={school.id}
+                    style={[dropdownStyles.row, !isLast && dropdownStyles.rowBorder]}
+                    onPress={() => {
+                      onSelect?.(school);
+                      setQuery(school.name);
+                      setSchools([]);
+                    }}
+                    activeOpacity={0.6}
+                    disabled={disabled}
                   >
-                    {formatSubtitle(s)}
-                  </Text>
-                ) : null}
-              </TouchableOpacity>
-            );
-          })}
-        </ScrollView>
+                    <Text style={dropdownStyles.rowTitle} numberOfLines={1}>
+                      {school.name}
+                    </Text>
+                    {subtitle ? (
+                      <Text style={dropdownStyles.rowSubtitle} numberOfLines={1}>
+                        {subtitle}
+                      </Text>
+                    ) : null}
+                  </TouchableOpacity>
+                );
+              })}
+            </ScrollView>
+          )}
+        </View>
       ) : null}
 
       {selectedSchool ? (
         <Text
           style={{
             marginTop: normalize(10),
-            fontFamily: 'Baloo2-Regular',
+            fontFamily: fonts.regular,
             fontSize: normalize(13),
             color: colors.primary,
           }}
@@ -140,5 +151,47 @@ const SchoolSearchField = ({
     </View>
   );
 };
+
+const makeDropdownStyles = (normalize) =>
+  StyleSheet.create({
+    dropdown: {
+      marginTop: normalize(6),
+      borderWidth: 1,
+      borderColor: colors.border,
+      borderRadius: normalize(8),
+      backgroundColor: colors.background,
+      overflow: 'hidden',
+    },
+    dropdownScroll: {
+      maxHeight: normalize(180),
+    },
+    emptyText: {
+      paddingVertical: normalize(12),
+      paddingHorizontal: normalize(12),
+      fontFamily: fonts.regular,
+      fontSize: normalize(13),
+      color: colors.textSecondary,
+      textAlign: 'center',
+    },
+    row: {
+      paddingVertical: normalize(10),
+      paddingHorizontal: normalize(12),
+    },
+    rowBorder: {
+      borderBottomWidth: StyleSheet.hairlineWidth,
+      borderBottomColor: colors.border,
+    },
+    rowTitle: {
+      fontFamily: fonts.regular,
+      fontSize: normalize(14),
+      color: colors.textPrimary,
+    },
+    rowSubtitle: {
+      marginTop: normalize(2),
+      fontFamily: fonts.regular,
+      fontSize: normalize(12),
+      color: colors.textSecondary,
+    },
+  });
 
 export default SchoolSearchField;
