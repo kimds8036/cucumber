@@ -23,8 +23,8 @@ import {
 const router = express.Router();
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-const adminHtmlPath = path.resolve(__dirname, '../../../admin/Focux admin.html');
-const adminLoginHtmlPath = path.resolve(__dirname, '../../../admin/login.html');
+const adminHtmlPath = path.resolve(__dirname, '../../admin/Focux admin.html');
+const adminLoginHtmlPath = path.resolve(__dirname, '../../admin/login.html');
 
 function getCookieValue(req, key) {
   const raw = req.headers.cookie || '';
