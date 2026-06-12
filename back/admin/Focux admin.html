@@ -169,6 +169,8 @@
     .btn-amber:hover { background: #f5e0b0; }
     .btn-primary { background: var(--green); border-color: #8fcb7e; color: var(--green-dark); }
     .btn-primary:hover { background: #97c459; }
+    .btn-danger { background: var(--red-bg); border-color: var(--red-border); color: var(--red-text); }
+    .btn-danger:hover { background: #f5d4d4; }
 
     /* ── Pills ─────────────────────────────────────── */
     .pill {
@@ -656,6 +658,12 @@
       <span class="nav-dot"></span>문의 처리 이력
     </div>
 
+    <div class="sidebar-section" style="margin-top:8px">가입·인증</div>
+    <div class="nav-item" onclick="go('studentIds')">
+      <span class="nav-dot"></span>학생증 인증
+      <span class="nav-badge" id="badge-student-ids">0</span>
+    </div>
+
     <div class="sidebar-section" style="margin-top:8px">사용자</div>
     <div class="nav-item" onclick="go('users')">
       <span class="nav-dot"></span>사용자 제재 현황
@@ -675,6 +683,11 @@
         <div class="topbar-sub" id="topbar-sub">2026년 4월 27일 기준</div>
       </div>
       <div style="display:flex;gap:8px;align-items:center;">
+        <div id="admin-session-wrap" style="display:flex;align-items:center;gap:8px;padding:4px 10px;border:0.5px solid var(--border-md);border-radius:var(--radius-sm);background:var(--bg-secondary);">
+          <span style="font-size:12px;color:var(--text-secondary);">세션</span>
+          <span id="session-countdown" style="font-size:13px;font-weight:600;font-variant-numeric:tabular-nums;">30:00</span>
+          <button class="btn btn-sm" type="button" onclick="extendAdminSession()">연장하기</button>
+        </div>
         <button class="btn btn-sm" onclick="alert('API: GET /api/admin/stats — 통계 데이터를 불러옵니다.')">통계 내보내기</button>
         <select id="admin-env-select" style="height:32px;padding:0 8px;border-radius:6px;border:0.5px solid var(--border-md);background:var(--bg);">
           <option value="production">Production</option>
@@ -923,6 +936,20 @@
         <div id="processed-inquiry-detail-host"></div>
       </div>
 
+      <!-- ────────── 학생증 인증 ────────── -->
+      <div class="panel" id="panel-studentIds">
+        <div class="filter-row">
+          <select id="student-id-filter" onchange="loadStudentIds()">
+            <option value="pending">승인 대기</option>
+            <option value="all">전체</option>
+            <option value="approved">승인됨</option>
+            <option value="rejected">거절됨</option>
+          </select>
+          <button class="btn btn-sm" onclick="loadStudentIds()">새로고침</button>
+        </div>
+        <div id="student-id-list"></div>
+      </div>
+
       <!-- ────────── 사용자 제재 현황 ────────── -->
       <div class="panel" id="panel-users">
         <div class="filter-row">
@@ -988,6 +1015,24 @@
         </div>
       </div>
 
+    </div>
+  </div>
+</div>
+
+<div class="dialog-backdrop" id="student-id-reject-dialog" onclick="closeStudentIdRejectByBackdrop(event)">
+  <div class="dialog">
+    <div class="dialog-title">학생증 거절 사유</div>
+    <select id="student-id-reject-reason" style="width:100%;height:36px;margin-bottom:8px;">
+      <option value="학생증 사진이 흐리거나 잘린 경우">학생증 사진이 흐리거나 잘린 경우</option>
+      <option value="이름이 일치하지 않음">이름이 일치하지 않음</option>
+      <option value="학교 정보가 일치하지 않음">학교 정보가 일치하지 않음</option>
+      <option value="학생증이 아닌 사진">학생증이 아닌 사진</option>
+      <option value="custom">기타 (직접 입력)</option>
+    </select>
+    <textarea class="note-input" id="student-id-reject-custom" placeholder="기타 사유를 입력하세요" style="display:none;"></textarea>
+    <div class="dialog-actions">
+      <button class="btn btn-sm" onclick="closeStudentIdRejectDialog()">취소</button>
+      <button class="btn btn-sm btn-danger" onclick="submitStudentIdReject()">거절</button>
     </div>
   </div>
 </div>
@@ -1093,8 +1138,88 @@
   function adminLogout() {
     const env = getAdminEnv();
     sessionStorage.removeItem(`adminToken_${env}`);
+    sessionStorage.removeItem(`adminSessionExpiresAt_${env}`);
     window.location.href = '/admin/login';
   }
+
+  let sessionExpiresAt = 0;
+  let sessionTimerInterval = null;
+
+  function sessionExpiresKey() {
+    return `adminSessionExpiresAt_${getAdminEnv()}`;
+  }
+
+  function initSessionTimer() {
+    const stored = Number(sessionStorage.getItem(sessionExpiresKey()) || 0);
+    sessionExpiresAt = stored > Date.now() ? stored : Date.now() + 30 * 60 * 1000;
+    sessionStorage.setItem(sessionExpiresKey(), String(sessionExpiresAt));
+    updateSessionCountdown();
+    if (sessionTimerInterval) clearInterval(sessionTimerInterval);
+    sessionTimerInterval = setInterval(updateSessionCountdown, 1000);
+  }
+
+  function updateSessionCountdown() {
+    const el = document.getElementById('session-countdown');
+    if (!el) return;
+    const remainMs = Math.max(0, sessionExpiresAt - Date.now());
+    const totalSec = Math.ceil(remainMs / 1000);
+    const min = String(Math.floor(totalSec / 60)).padStart(2, '0');
+    const sec = String(totalSec % 60).padStart(2, '0');
+    el.textContent = `${min}:${sec}`;
+    if (remainMs <= 0) {
+      alert('관리자 세션이 만료되었습니다. 다시 로그인해 주세요.');
+      adminLogout();
+    }
+  }
+
+  async function extendAdminSession() {
+    try {
+      const token = getAdminToken();
+      const res = await fetch(`${getAdminHost()}/admin/session/extend`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        credentials: 'include',
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || !data?.success) {
+        throw new Error(data?.message || '세션 연장에 실패했습니다.');
+      }
+      if (data.token) {
+        sessionStorage.setItem(`adminToken_${getAdminEnv()}`, data.token);
+      }
+      if (data.expiresAt) {
+        sessionExpiresAt = Number(data.expiresAt);
+        sessionStorage.setItem(sessionExpiresKey(), String(sessionExpiresAt));
+      } else {
+        sessionExpiresAt = Date.now() + 30 * 60 * 1000;
+        sessionStorage.setItem(sessionExpiresKey(), String(sessionExpiresAt));
+      }
+      updateSessionCountdown();
+    } catch (e) {
+      alert(e.message || '세션 연장 중 오류가 발생했습니다.');
+    }
+  }
+
+  function initAdminHistoryGuard() {
+    history.pushState({ adminGuard: true }, '', '/admin');
+    window.addEventListener('popstate', () => {
+      if (getAdminToken()) {
+        history.pushState({ adminGuard: true }, '', '/admin');
+      }
+    });
+  }
+
+  const STUDENT_ID_REJECT_PRESET = [
+    '학생증 사진이 흐리거나 잘린 경우',
+    '이름이 일치하지 않음',
+    '학교 정보가 일치하지 않음',
+    '학생증이 아닌 사진',
+  ];
+  let pendingStudentIdRejectId = null;
+
   const PAGE_META = {
     dashboard: { title: '대시보드', sub: '실시간 운영 지표' },
     reports: { title: '신고 관리', sub: '미처리 신고 전용' },
@@ -1103,10 +1228,12 @@
     inquiries: { title: '문의 관리', sub: '미처리 문의 — 답변 작성 / 종결' },
     processedInquiries: { title: '문의 처리 이력', sub: '답변 완료 / 종결 문의 — 재오픈 가능' },
     users: { title: '사용자 제재 현황', sub: '경고 / 임시정지 / 화이트리스트' },
+    studentIds: { title: '학생증 인증', sub: '가입 학생증 수동 검수 — 승인 / 거절' },
     logs: { title: '변경 이력 (Audit Log)', sub: '모든 판정 및 상태 변경 기록' },
   };
 
   const state = {
+    studentIdSubmissions: [],
     reports: [],
     processedReports: [],
     selectedReportId: null,
@@ -1272,6 +1399,123 @@
     const m = PAGE_META[page];
     document.getElementById('topbar-title').textContent = m.title;
     document.getElementById('topbar-sub').textContent = m.sub;
+    if (page === 'studentIds') loadStudentIds();
+  }
+
+  async function loadStudentIds() {
+    const status = document.getElementById('student-id-filter')?.value || 'pending';
+    const host = document.getElementById('student-id-list');
+    if (!host) return;
+    host.innerHTML = '<p class="txt-muted">불러오는 중…</p>';
+    try {
+      const { data } = await api(`/signup-student-ids?status=${encodeURIComponent(status)}&limit=50`);
+      state.studentIdSubmissions = data.submissions || [];
+      renderStudentIds();
+      if (status === 'pending') {
+        document.getElementById('badge-student-ids').textContent = String(state.studentIdSubmissions.length);
+      }
+    } catch (e) {
+      host.innerHTML = `<p class="txt-danger">${esc(e.message)}</p>`;
+    }
+  }
+
+  function renderStudentIds() {
+    const host = document.getElementById('student-id-list');
+    if (!state.studentIdSubmissions.length) {
+      host.innerHTML = '<p class="txt-muted">표시할 제출 건이 없습니다.</p>';
+      return;
+    }
+    host.innerHTML = state.studentIdSubmissions.map((s) => {
+      const addr = [s.school_region, s.school_address].filter(Boolean).join(' · ');
+      const statusClass = statusPill(s.status);
+      const canReview = String(s.status).toLowerCase() === 'pending';
+      return `
+        <div class="user-card" style="margin-bottom:12px;">
+          <div class="user-card-header">
+            <div>
+              <div class="user-name">${esc(s.name)} <span class="txt-muted">(@${esc(s.username)})</span></div>
+              <div class="user-sub">${esc(s.school_name || '-')} ${addr ? `· ${esc(addr)}` : ''}</div>
+              <div class="user-sub">전화: ${esc(s.phone || '-')} · 제출: ${fmtDate(s.created_at)}</div>
+            </div>
+            <span class="pill ${statusClass}">${esc(statusLabel(s.status))}</span>
+          </div>
+          <div style="display:grid;grid-template-columns:220px 1fr;gap:16px;padding:14px 16px;">
+            <a href="${esc(s.cloudinary_url)}" target="_blank" rel="noopener">
+              <img src="${esc(s.cloudinary_url)}" alt="학생증" style="width:100%;max-width:220px;border-radius:8px;border:0.5px solid var(--border);" />
+            </a>
+            <div>
+              ${s.review_note ? `<p class="txt-muted" style="margin-bottom:8px;">메모: ${esc(s.review_note)}</p>` : ''}
+              ${canReview ? `
+                <div style="display:flex;gap:8px;margin-top:12px;">
+                  <button class="btn btn-sm btn-primary" onclick="approveStudentId(${s.id})">승인</button>
+                  <button class="btn btn-sm btn-danger" onclick="openStudentIdRejectDialog(${s.id})">거절</button>
+                </div>
+              ` : ''}
+            </div>
+          </div>
+        </div>
+      `;
+    }).join('');
+  }
+
+  async function approveStudentId(id) {
+    if (!confirm('이 학생증을 승인하시겠습니까?')) return;
+    try {
+      await api(`/signup-student-ids/${id}`, {
+        method: 'PATCH',
+        body: JSON.stringify({ status: 'approved' }),
+      });
+      await loadStudentIds();
+      alert('승인되었습니다.');
+    } catch (e) {
+      alert(e.message);
+    }
+  }
+
+  function openStudentIdRejectDialog(id) {
+    pendingStudentIdRejectId = id;
+    document.getElementById('student-id-reject-reason').value = STUDENT_ID_REJECT_PRESET[0];
+    document.getElementById('student-id-reject-custom').value = '';
+    document.getElementById('student-id-reject-custom').style.display = 'none';
+    document.getElementById('student-id-reject-dialog').classList.add('show');
+  }
+
+  function closeStudentIdRejectDialog() {
+    pendingStudentIdRejectId = null;
+    document.getElementById('student-id-reject-dialog').classList.remove('show');
+  }
+
+  function closeStudentIdRejectByBackdrop(e) {
+    if (e.target.id === 'student-id-reject-dialog') closeStudentIdRejectDialog();
+  }
+
+  document.getElementById('student-id-reject-reason')?.addEventListener('change', (e) => {
+    const custom = document.getElementById('student-id-reject-custom');
+    custom.style.display = e.target.value === 'custom' ? 'block' : 'none';
+  });
+
+  async function submitStudentIdReject() {
+    if (!pendingStudentIdRejectId) return;
+    const sel = document.getElementById('student-id-reject-reason').value;
+    let note = sel;
+    if (sel === 'custom') {
+      note = document.getElementById('student-id-reject-custom').value.trim();
+      if (!note) {
+        alert('거절 사유를 입력해 주세요.');
+        return;
+      }
+    }
+    try {
+      await api(`/signup-student-ids/${pendingStudentIdRejectId}`, {
+        method: 'PATCH',
+        body: JSON.stringify({ status: 'rejected', reviewNote: note }),
+      });
+      closeStudentIdRejectDialog();
+      await loadStudentIds();
+      alert('거절 처리되었습니다.');
+    } catch (e) {
+      alert(e.message);
+    }
   }
 
   async function loadDashboard() {
@@ -2432,6 +2676,8 @@
   async function bootstrap() {
     if (!ensureAdminAuth()) return;
     initAdminEnvSelect();
+    initSessionTimer();
+    initAdminHistoryGuard();
     try {
       await Promise.all([
         loadDashboard(),
@@ -2440,6 +2686,7 @@
         loadAppeals(),
         loadInquiries(),
         loadProcessedInquiries(),
+        loadStudentIds(),
         loadUsers(),
         loadLogs(),
       ]);

@@ -16,6 +16,7 @@ import {
 } from '../../../utils/firebasePhoneAuth';
 import { e164ToLocalKr, normalizeLocalKrPhone } from '../../../utils/phoneFormat';
 import SignupStepScroll from './SignupStepScroll';
+import SchoolSearchField from './SchoolSearchField';
 
 const SMS_RESEND_COOLDOWN_SEC = 60;
 
@@ -32,6 +33,8 @@ const SignStepIdentity = ({
   normalize,
   bottomOffset,
   initialData,
+  selectedSchool,
+  onSchoolSelect,
   onChange,
 }) => {
   const initialParts = parseBirthParts(initialData?.birthDate);
@@ -322,6 +325,14 @@ const SignStepIdentity = ({
             </View>
           </View>
         </View>
+
+        <SchoolSearchField
+          styles={styles}
+          normalize={normalize}
+          selectedSchool={selectedSchool}
+          onSelect={onSchoolSelect}
+          disabled={isBusy || isVerified}
+        />
 
         <Text style={[styles.inputLabel, { marginTop: 16 }]}>전화번호</Text>
         <View style={styles.inputWrapper}>

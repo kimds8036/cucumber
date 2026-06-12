@@ -18,7 +18,6 @@ import SignStep4 from './SignStep4';
 import SignStepVerificationMethod from './SignStepVerificationMethod';
 import SignStepCertificate from './SignStepCertificate';
 import SignStepStudentIdVerify from './SignStepStudentIdVerify';
-import SignStepSchoolSelect from './SignStepSchoolSelect';
 import { api } from '../../../utils/api';
 import { useAppNavigation } from '../../../navigation/useAppNavigation';
 import Skeleton from '../../../components/common/Skeleton';
@@ -53,9 +52,8 @@ const STEP = {
   IDENTITY: 1,
   VERIFY_METHOD: 2,
   STUDENT_VERIFY: 3,
-  SCHOOL_SELECT: 4,
-  ACCOUNT: 5,
-  PROFILE: 6,
+  ACCOUNT: 4,
+  PROFILE: 5,
 };
 
 const Sign = ({ navigation }) => {
@@ -136,27 +134,31 @@ const Sign = ({ navigation }) => {
     }
   };
 
-  /** 이름·전화 변경 시 OCR 토큰 무효화 (재과금·변조 방지) */
+  /** 이름·전화·학교 변경 시 OCR 토큰 무효화 (재과금·변조 방지) */
   useEffect(() => {
     const name = identityData.name?.trim() || '';
     const phone = identityData.phoneNumber || '';
+    const schoolId = selectedSchool?.id || '';
     if (!studentVerificationToken) {
-      ocrIdentityAnchorRef.current = { name, phone };
+      ocrIdentityAnchorRef.current = { name, phone, schoolId };
       return;
     }
     const anchor = ocrIdentityAnchorRef.current;
     if (
       anchor.name &&
-      (anchor.name !== name || anchor.phone !== phone)
+      (anchor.name !== name ||
+        anchor.phone !== phone ||
+        (anchor.schoolId && anchor.schoolId !== schoolId))
     ) {
       setStudentVerificationToken(null);
       setRecognizedData(null);
       setStudentVerified(false);
     }
-    ocrIdentityAnchorRef.current = { name, phone };
+    ocrIdentityAnchorRef.current = { name, phone, schoolId };
   }, [
     identityData.name,
     identityData.phoneNumber,
+    selectedSchool?.id,
     studentVerificationToken,
   ]);
 
@@ -179,6 +181,10 @@ const Sign = ({ navigation }) => {
         Alert.alert('알림', '이름을 입력해 주세요.');
         return;
       }
+      if (!selectedSchool?.id) {
+        Alert.alert('알림', '재학 중인 학교를 선택해 주세요.');
+        return;
+      }
       if (!identityData.isVerified) {
         Alert.alert('알림', '전화번호 인증을 완료해 주세요.');
         return;
@@ -192,6 +198,8 @@ const Sign = ({ navigation }) => {
       name,
       birthDate,
       phoneNumber,
+      schoolId: selectedSchool?.id,
+      schoolName: selectedSchool?.name,
     }));
     setIdentityData((prev) => ({
       ...prev,
@@ -270,31 +278,15 @@ const Sign = ({ navigation }) => {
       grade: String(grade),
       classNum: String(classNum),
       graduationYear: String(graduationYear),
+      schoolId: selectedSchool?.id || prev.schoolId,
+      schoolName: selectedSchool?.name || prev.schoolName,
     }));
 
     Alert.alert(
       '학생증 제출 완료',
-      '촬영한 학생증은 관리자가 확인합니다. 재학 중인 학교를 선택해 주세요.',
-      [{ text: '다음', onPress: () => setCurrentStep(STEP.SCHOOL_SELECT) }],
+      '촬영한 학생증은 관리자가 확인합니다. 다음 단계에서 계정 정보를 입력해 주세요.',
+      [{ text: '다음', onPress: () => setCurrentStep(STEP.ACCOUNT) }],
     );
-  };
-
-  const handleSchoolSelectNext = () => {
-    if (!selectedSchool?.id) {
-      Alert.alert('알림', '재학 중인 학교를 선택해 주세요.');
-      return;
-    }
-    setFormData((prev) => ({
-      ...prev,
-      schoolId: selectedSchool.id,
-      schoolName: selectedSchool.name,
-    }));
-    setRecognizedData((prev) => ({
-      ...(prev || {}),
-      school: selectedSchool,
-      schoolId: selectedSchool.id,
-    }));
-    setCurrentStep(STEP.ACCOUNT);
   };
 
   const handleAccountNext = () => {
@@ -441,8 +433,6 @@ const Sign = ({ navigation }) => {
         return '학생 인증 방식';
       case STEP.STUDENT_VERIFY:
         return isCertificateFlow ? '증명서 제출 안내' : '학생증 제출';
-      case STEP.SCHOOL_SELECT:
-        return '학교 선택';
       case STEP.ACCOUNT:
         return '계정 정보';
       case STEP.PROFILE:
@@ -463,9 +453,7 @@ const Sign = ({ navigation }) => {
       case STEP.STUDENT_VERIFY:
         return isCertificateFlow
           ? '학생증이 없는 경우 증명서 제출 안내를 확인해 주세요.'
-          : '학생증을 촬영해 제출하면 관리자가 확인합니다.';
-      case STEP.SCHOOL_SELECT:
-        return '재학 중인 학교를 검색해 선택해 주세요.';
+          : '선택한 학교 정보와 일치하는 학생증을 촬영해 제출해 주세요.';
       case STEP.ACCOUNT:
         return '아이디와 비밀번호를 설정해 주세요.';
       case STEP.PROFILE:
@@ -488,9 +476,6 @@ const Sign = ({ navigation }) => {
         break;
       case STEP.STUDENT_VERIFY:
         if (isCertificateFlow) setCurrentStep(STEP.ACCOUNT);
-        break;
-      case STEP.SCHOOL_SELECT:
-        handleSchoolSelectNext();
         break;
       case STEP.ACCOUNT:
         if (isCertificateFlow) handleCertificateSubmit();
@@ -515,7 +500,7 @@ const Sign = ({ navigation }) => {
     if (currentStep === STEP.CONSENT && !consentData.allConsented) return true;
     if (currentStep === STEP.VERIFY_METHOD && !selectedVerificationMethod)
       return true;
-    if (currentStep === STEP.SCHOOL_SELECT && !selectedSchool?.id) return true;
+    if (currentStep === STEP.IDENTITY && !selectedSchool?.id) return true;
     if (currentStep === STEP.IDENTITY) {
       if (!identityData.birthDate) return true;
       if (!identityData.isVerified) return true;
@@ -606,6 +591,8 @@ const Sign = ({ navigation }) => {
             normalize={normalize}
             bottomOffset={footerHeight}
             initialData={identityData}
+            selectedSchool={selectedSchool}
+            onSchoolSelect={setSelectedSchool}
             onChange={setIdentityData}
           />
         )}
@@ -623,18 +610,11 @@ const Sign = ({ navigation }) => {
             <SignStepStudentIdVerify
               styles={styles}
               identity={identity}
+              schoolId={selectedSchool?.id}
               alreadyVerified={studentVerified}
               onVerified={handleStudentVerified}
             />
           ))}
-        {currentStep === STEP.SCHOOL_SELECT && !isCertificateFlow && (
-          <SignStepSchoolSelect
-            styles={styles}
-            normalize={normalize}
-            selectedSchool={selectedSchool}
-            onSelect={setSelectedSchool}
-          />
-        )}
         {currentStep === STEP.ACCOUNT &&
           (isCertificateFlow ? (
             <SignStep2

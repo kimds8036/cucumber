@@ -383,6 +383,7 @@ router.get('/search', async (req, res) => {
       id: s.school_id,
       name: s.name,
       region: s.region || '',
+      address: s.address || '',
     }));
 
     res.json({ success: true, data: { schools } });

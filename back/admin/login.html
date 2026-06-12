@@ -80,6 +80,20 @@
     const savedEnv = localStorage.getItem('adminEnv');
     if (savedEnv && HOSTS[savedEnv]) envSelect.value = savedEnv;
 
+    function sessionExpiresKey() {
+      return `adminSessionExpiresAt_${getEnv()}`;
+    }
+
+    function redirectIfLoggedIn() {
+      if (sessionStorage.getItem(tokenKey())) {
+        window.location.replace('/admin');
+      }
+    }
+    redirectIfLoggedIn();
+    window.addEventListener('pageshow', (e) => {
+      if (e.persisted) redirectIfLoggedIn();
+    });
+
     envSelect.addEventListener('change', () => {
       localStorage.setItem('adminEnv', getEnv());
       resetPhase();
@@ -121,6 +135,9 @@
 
         if (data?.success && data?.token) {
           sessionStorage.setItem(tokenKey(), data.token);
+          if (data.expiresAt) {
+            sessionStorage.setItem(sessionExpiresKey(), String(data.expiresAt));
+          }
           localStorage.setItem('adminEnv', getEnv());
           window.location.href = '/admin';
           return;

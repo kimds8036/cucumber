@@ -309,15 +309,12 @@ const Login = ({ navigation }) => {
                     await setAuthToken(token, { persist: rememberMe });
                     debugLogin('토큰 저장 완료');
                   }
-                  // const onboardingDone = await AsyncStorage.getItem(
-                  //   '@cucumber/onboarding_completed_v1',
-                  // );
-                  // const shouldOpenGuide = onboardingDone == null;
                   debugLogin('로그인 상태 반영 → 스택 전환');
-                  login();
-                  // login({
-                  //   postLoginRoute: shouldOpenGuide ? 'GuideOverlay' : 'Main',
-                  // });
+                  await login({
+                    studentVerificationStatus:
+                      response.data.data?.studentVerificationStatus || 'APPROVED',
+                    rejectReason: response.data.data?.rejectReason || null,
+                  });
                 } catch (error) {
                   const hasResponse = Boolean(error?.response);
                   const hasRequest = Boolean(error?.request);

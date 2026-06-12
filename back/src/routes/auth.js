@@ -47,6 +47,7 @@ import {
   issueStudentIdManualVerificationToken,
   consumeStudentIdManualVerificationToken,
 } from '../services/signupVerificationToken.service.js';
+import { getStudentVerificationStatus } from '../services/studentVerificationStatus.service.js';
 
 const router = express.Router();
 
@@ -126,6 +127,7 @@ router.get('/me', authenticate, async (req, res) => {
          u.color_id,
          c.hex_code AS profile_color_hex,
          c.color_number AS profile_color_number,
+         u.student_verified,
          s.name AS school_name
        FROM users u
        LEFT JOIN schools s ON u.school_id = s.school_id
@@ -153,6 +155,8 @@ router.get('/me', authenticate, async (req, res) => {
 
     const friendCount = Number(friendRows[0]?.cnt ?? 0);
 
+    const verification = await getStudentVerificationStatus(userId);
+
     res.json({
       success: true,
       data: {
@@ -173,6 +177,9 @@ router.get('/me', authenticate, async (req, res) => {
           colorNumber: user.profile_color_number,
         },
         friendCount,
+        studentVerificationStatus: verification.status,
+        rejectReason: verification.rejectReason,
+        studentVerified: Boolean(user.student_verified),
       },
     });
   } catch (error) {
@@ -1195,6 +1202,8 @@ router.post('/login', validate(loginValidators), async (req, res) => {
       username: user.username 
     });
 
+    const verification = await getStudentVerificationStatus(user.id);
+
     res.json({ 
       success: true, 
       message: '로그인 성공',
@@ -1205,7 +1214,9 @@ router.post('/login', validate(loginValidators), async (req, res) => {
           username: user.username,
           name: user.name
         },
-        needsVerification // 새 디바이스/IP 변경 시 추가 인증 필요
+        needsVerification,
+        studentVerificationStatus: verification.status,
+        rejectReason: verification.rejectReason,
       }
     });
   } catch (error) {
@@ -1253,13 +1264,32 @@ router.post('/logout', authenticate, async (req, res) => {
 // 회원가입 중 학생증 촬영 → Cloudinary 업로드 (관리자 수동 검수, OCR 미사용)
 router.post('/signup/upload-student-id', signupOcrLimiter, async (req, res) => {
   try {
-    const { name, birthDate, imageBase64, cropRegion, phone: rawPhone } =
+    const { name, birthDate, imageBase64, cropRegion, phone: rawPhone, schoolId } =
       req.body || {};
 
     if (!name || !birthDate || !imageBase64) {
       return res.status(400).json({
         success: false,
         message: '이름, 생년월일, 학생증 이미지가 필요합니다.',
+      });
+    }
+
+    const trimmedSchoolId = schoolId ? String(schoolId).trim() : '';
+    if (!trimmedSchoolId) {
+      return res.status(400).json({
+        success: false,
+        message: '재학 중인 학교를 먼저 선택해 주세요.',
+      });
+    }
+
+    const [schoolRows] = await pool.execute(
+      'SELECT school_id FROM schools WHERE school_id = ? LIMIT 1',
+      [trimmedSchoolId],
+    );
+    if (!schoolRows.length) {
+      return res.status(400).json({
+        success: false,
+        message: '유효하지 않은 학교 정보입니다.',
       });
     }
 
@@ -1287,6 +1317,7 @@ router.post('/signup/upload-student-id', signupOcrLimiter, async (req, res) => {
       name: String(name).trim(),
       birthDate,
       phone: normalizedPhone,
+      schoolId: trimmedSchoolId,
       cloudinaryUrl: uploaded.cloudinaryUrl,
       cloudinaryPublicId: uploaded.cloudinaryPublicId,
     });
@@ -1309,6 +1340,88 @@ router.post('/signup/upload-student-id', signupOcrLimiter, async (req, res) => {
     return res.status(500).json({
       success: false,
       message: '학생증 제출 중 오류가 발생했습니다.',
+    });
+  }
+});
+
+/** 거절된 사용자 — 학생증 재제출 (로그인 후) */
+router.post('/resubmit-student-id', authenticate, signupOcrLimiter, async (req, res) => {
+  try {
+    const userId = req.user.userId;
+    const { imageBase64, cropRegion } = req.body || {};
+
+    if (!imageBase64) {
+      return res.status(400).json({
+        success: false,
+        message: '학생증 이미지가 필요합니다.',
+      });
+    }
+
+    const verification = await getStudentVerificationStatus(userId);
+    if (verification.status === 'APPROVED') {
+      return res.status(400).json({
+        success: false,
+        message: '이미 학생 인증이 완료된 계정입니다.',
+      });
+    }
+    if (verification.status !== 'REJECTED') {
+      return res.status(400).json({
+        success: false,
+        message: '재제출은 거절된 경우에만 가능합니다.',
+      });
+    }
+
+    const [userRows] = await pool.execute(
+      `SELECT id, name, phone, birth_date, school_id FROM users WHERE id = ? LIMIT 1`,
+      [userId],
+    );
+    if (!userRows.length) {
+      return res.status(404).json({
+        success: false,
+        message: '사용자를 찾을 수 없습니다.',
+      });
+    }
+    const user = userRows[0];
+
+    let uploaded;
+    try {
+      uploaded = await uploadSignupStudentIdPhoto({ imageBase64, cropRegion });
+    } catch (uploadErr) {
+      console.error('[resubmit-student-id] Cloudinary 오류:', uploadErr);
+      return res.status(500).json({
+        success: false,
+        message: '학생증 이미지 업로드에 실패했습니다.',
+      });
+    }
+
+    await pool.execute(
+      `INSERT INTO signup_student_id_submissions
+         (user_id, name, phone, birth_date, school_id, cloudinary_url, cloudinary_public_id, status)
+       VALUES (?, ?, ?, ?, ?, ?, ?, 'pending')`,
+      [
+        userId,
+        user.name,
+        user.phone,
+        user.birth_date,
+        user.school_id,
+        uploaded.cloudinaryUrl,
+        uploaded.cloudinaryPublicId,
+      ],
+    );
+
+    return res.json({
+      success: true,
+      message: '학생증이 재제출되었습니다. 관리자 승인을 기다려 주세요.',
+      data: {
+        studentVerificationStatus: 'PENDING',
+        rejectReason: null,
+      },
+    });
+  } catch (error) {
+    console.error('[resubmit-student-id] 오류:', error);
+    return res.status(500).json({
+      success: false,
+      message: '학생증 재제출 중 오류가 발생했습니다.',
     });
   }
 });

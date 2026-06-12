@@ -6,8 +6,10 @@ import {
   comparePassword,
   generateAdminOtpSetupToken,
   generateAdminSessionToken,
+  getTokenExpiresAtMs,
   verifyToken,
 } from '../utils/auth.js';
+import { authenticate } from '../middleware/auth.js';
 import { isAdminUser } from '../middleware/adminAuth.js';
 import {
   buildTotpQrDataUrl,
@@ -66,6 +68,7 @@ function issueAdminLoginSuccess(res, { userId, username }) {
     success: true,
     message: '로그인 성공',
     token,
+    expiresAt: getTokenExpiresAtMs(token),
   });
 }
 
@@ -223,6 +226,33 @@ router.post('/login', async (req, res) => {
 router.post('/logout', (req, res) => {
   clearAdminCookie(res);
   res.redirect('/admin/login');
+});
+
+/** 관리자 세션 연장 (30분 재발급) */
+router.post('/session/extend', authenticate, (req, res) => {
+  const userId = req.user?.userId;
+  if (!isAdminUser(userId)) {
+    return res.status(403).json({ success: false, message: '관리자 권한이 없습니다.' });
+  }
+  if (req.user?.adminMfa !== true) {
+    return res.status(403).json({
+      success: false,
+      message: '관리자 2차 인증(OTP)이 필요합니다.',
+      code: 'ADMIN_MFA_REQUIRED',
+    });
+  }
+
+  const token = generateAdminSessionToken({
+    userId,
+    username: req.user.username,
+  });
+  setAdminCookie(res, token);
+  return res.json({
+    success: true,
+    message: '세션이 연장되었습니다.',
+    token,
+    expiresAt: getTokenExpiresAtMs(token),
+  });
 });
 
 /** 관리자 SPA — 클라이언트에서 환경별 토큰 검사 (API는 requireAdminApi로 보호) */

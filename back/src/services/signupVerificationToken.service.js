@@ -152,11 +152,13 @@ export async function issueStudentIdManualVerificationToken({
   name,
   birthDate,
   phone,
+  schoolId,
   cloudinaryUrl,
   cloudinaryPublicId,
 }) {
   const jti = crypto.randomUUID();
   const normalizedPhone = phone ? normalizeLocalKrPhone(phone) : null;
+  const trimmedSchoolId = schoolId ? String(schoolId).trim() : null;
   const expiresAt = new Date(Date.now() + 30 * 60 * 1000);
 
   const token = jwt.sign(
@@ -166,6 +168,7 @@ export async function issueStudentIdManualVerificationToken({
       name: String(name || '').trim(),
       birthDate,
       phone: normalizedPhone,
+      schoolId: trimmedSchoolId,
     },
     JWT_SECRET,
     { expiresIn: MANUAL_TOKEN_TTL, algorithm: 'HS256' },
@@ -174,11 +177,12 @@ export async function issueStudentIdManualVerificationToken({
   await pool.execute(
     `INSERT INTO signup_verification_tokens
        (jti, token_type, name, birth_date, school_id, phone, cloudinary_url, cloudinary_public_id, expires_at)
-     VALUES (?, 'student_id_manual', ?, ?, NULL, ?, ?, ?, ?)`,
+     VALUES (?, 'student_id_manual', ?, ?, ?, ?, ?, ?, ?)`,
     [
       jti,
       String(name || '').trim(),
       birthDate,
+      trimmedSchoolId,
       normalizedPhone,
       cloudinaryUrl,
       cloudinaryPublicId || null,
@@ -228,6 +232,16 @@ export async function consumeStudentIdManualVerificationToken(
   }
 
   if (decoded.name !== trimmedName || decoded.birthDate !== birthDate) {
+    const err = new Error('STUDENT_VERIFICATION_MISMATCH');
+    err.code = 'STUDENT_VERIFICATION_MISMATCH';
+    throw err;
+  }
+
+  if (
+    decoded.schoolId &&
+    trimmedSchoolId &&
+    decoded.schoolId !== trimmedSchoolId
+  ) {
     const err = new Error('STUDENT_VERIFICATION_MISMATCH');
     err.code = 'STUDENT_VERIFICATION_MISMATCH';
     throw err;

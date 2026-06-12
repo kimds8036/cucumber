@@ -25,6 +25,7 @@ const UPLOAD_TIMEOUT_MS = 120_000;
 const SignStepStudentIdVerify = ({
   styles,
   identity,
+  schoolId,
   alreadyVerified = false,
   onVerified,
 }) => {
@@ -75,6 +76,10 @@ const SignStepStudentIdVerify = ({
       Alert.alert('알림', '이름·생년월일·전화번호 인증을 먼저 완료해 주세요.');
       return;
     }
+    if (!schoolId) {
+      Alert.alert('알림', '재학 중인 학교를 먼저 선택해 주세요.');
+      return;
+    }
 
     if (!cameraRef.current) return;
 
@@ -118,6 +123,7 @@ const SignStepStudentIdVerify = ({
           name: identity.name.trim(),
           birthDate: identity.birthDate,
           phone: identity.phoneNumber,
+          schoolId,
           imageBase64: photo.base64,
           cropRegion,
         },
@@ -164,7 +170,7 @@ const SignStepStudentIdVerify = ({
       setBusy(false);
       setStatusText('학생증을 가운데 틀에 맞춰 주세요.');
     }
-  }, [identity, onVerified, frameWidth, frameHeight, alreadyVerified, busy]);
+  }, [identity, schoolId, onVerified, frameWidth, frameHeight, alreadyVerified, busy]);
 
   if (alreadyVerified) {
     return (

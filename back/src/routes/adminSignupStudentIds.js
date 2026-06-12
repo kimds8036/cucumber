@@ -34,7 +34,7 @@ router.get('/', requireAdminApi, async (req, res) => {
 
     const [rows] = await pool.execute(
       `SELECT s.*, u.username, u.grade AS user_grade, u.class_number AS user_class_number,
-              sch.name AS school_name, sch.region AS school_region
+              sch.name AS school_name, sch.region AS school_region, sch.address AS school_address
        FROM signup_student_id_submissions s
        JOIN users u ON u.id = s.user_id
        LEFT JOIN schools sch ON sch.school_id = s.school_id

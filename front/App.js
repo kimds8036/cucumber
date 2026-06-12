@@ -46,7 +46,7 @@ import CommunityGuide from './src/screens/Terms-of-Service/CommunityGuide';
 import GuideOverlayScreen from './src/screens/UserGuide/GuideOverlayScreen';
 import { useFonts } from 'expo-font';
 import * as SplashScreen from 'expo-splash-screen';
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Alert, AppState } from 'react-native';
 import * as Notifications from 'expo-notifications';
 import Constants from 'expo-constants';
@@ -54,7 +54,9 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { KeyboardProvider } from 'react-native-keyboard-controller';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { LocationProvider, LocationGate } from './context/LocationContext';
-import ForceUpdateGate from './components/common/ForceUpdateGate';
+import StudentVerificationGate from './components/auth/StudentVerificationGate';
+import StudentVerificationRejected from './components/auth/StudentVerificationRejected';
+import StudentIdResubmit from './view/src/signup/StudentIdResubmit';
 import { SocketProvider } from './context/SocketContext';
 import { NotificationProvider } from './context/NotificationContext';
 import { FriendProvider } from './context/FriendContext';
@@ -172,7 +174,14 @@ function MainStack({ initialRouteName = 'Main' }) {
 }
 
 function RootNavigator() {
-  const { isLoggedIn, postLoginRoute, setPostLoginRoute } = useAuth();
+  const {
+    isLoggedIn,
+    authHydrated,
+    postLoginRoute,
+    setPostLoginRoute,
+    studentVerificationStatus,
+  } = useAuth();
+  const [showResubmit, setShowResubmit] = useState(false);
 
   useEffect(() => {
     if (!isLoggedIn) return;
@@ -335,7 +344,25 @@ function RootNavigator() {
     };
   }, [isLoggedIn]);
 
+  if (!authHydrated) return null;
+
   if (!isLoggedIn) return <AuthStack />;
+
+  if (showResubmit) {
+    return (
+      <StudentIdResubmit navigation={{ goBack: () => setShowResubmit(false) }} />
+    );
+  }
+
+  if (studentVerificationStatus === 'PENDING') {
+    return <StudentVerificationGate />;
+  }
+
+  if (studentVerificationStatus === 'REJECTED') {
+    return (
+      <StudentVerificationRejected onResubmit={() => setShowResubmit(true)} />
+    );
+  }
 
   const mainInitialRoute =
     postLoginRoute === 'GuideOverlay' ? 'GuideOverlay' : 'Main';
