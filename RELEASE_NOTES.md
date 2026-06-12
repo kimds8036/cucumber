@@ -144,7 +144,7 @@ Play Console **「새 버전의 변경사항」**에 붙여 넣을 때는 각 �
 | 변경사항 언어 | 한국어 — 위 **1.2.0 스토어용** 블록 |
 | 글자 수 | 한 블록 약 500자 이내 유지(필요 시 불릿 줄이기) |
 
-**배포 순서:** AAB 업로드 → 출시(또는 단계적 출시) → Railway `MIN_ANDROID_VERSION=1.2.0` → `production` 브랜치 push (`푸쉬규칙.md` 참고)
+**배포 순서:** AAB 업로드 → 출시(또는 단계적 출시) → Railway `MIN_ANDROID_VERSION=1.2.0` → `production` 브랜치 push (`WORKFLOW.md` 참고)
 
 ---
 

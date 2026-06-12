@@ -24,7 +24,7 @@ npm run migrate
 
 동일하게 **cucumber-production** DB 변수로 `npm run migrate` 실행.
 
-Play AAB·`MIN_ANDROID_VERSION` 배포 **전후**는 `푸쉬규칙.md` 순서를 따릅니다.
+Play AAB·`MIN_ANDROID_VERSION` 배포 **전후**는 `WORKFLOW.md` 순서를 따릅니다.
 
 ## 환경 변수 (선택)
 

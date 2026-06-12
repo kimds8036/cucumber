@@ -185,8 +185,8 @@ npm run android:device:prod
 1. `production` 브랜치에서 `npm run android:aab:prod`
 2. Play에 AAB 업로드
 3. Railway production에 `MIN_ANDROID_VERSION` 등 설정
-4. `git push origin production` (`푸쉬규칙.md` 참고)
+4. `git push origin production` (`WORKFLOW.md` 참고)
 
 ---
 
-관련: `config/apiEnv.js`, `.env.development`, `.env.production`, `푸쉬규칙.md`
+관련: `config/apiEnv.js`, `.env.development`, `.env.production`, `WORKFLOW.md`
