@@ -674,8 +674,13 @@
         <div class="topbar-title" id="topbar-title">대시보드</div>
         <div class="topbar-sub" id="topbar-sub">2026년 4월 27일 기준</div>
       </div>
-      <div style="display:flex;gap:8px;">
+      <div style="display:flex;gap:8px;align-items:center;">
         <button class="btn btn-sm" onclick="alert('API: GET /api/admin/stats — 통계 데이터를 불러옵니다.')">통계 내보내기</button>
+        <select id="admin-env-select" style="height:32px;padding:0 8px;border-radius:6px;border:0.5px solid var(--border-md);background:var(--bg);">
+          <option value="production">Production</option>
+          <option value="develop">Develop</option>
+        </select>
+        <button class="btn btn-sm" onclick="adminLogout()">로그아웃</button>
         <button class="btn btn-sm btn-primary" onclick="go('reports')">신규 신고 확인 →</button>
       </div>
     </div>
@@ -1036,7 +1041,60 @@
 </div>
 
 <script>
-  const API_BASE = '/api/admin';
+  const ADMIN_HOSTS = {
+    production: 'https://cucumber-production.up.railway.app',
+    develop: 'https://cucumber-develop.up.railway.app',
+  };
+
+  function getAdminEnv() {
+    return localStorage.getItem('adminEnv') || 'production';
+  }
+
+  function getAdminHost() {
+    const host = window.location.hostname;
+    if (host === 'localhost' || host === '127.0.0.1') {
+      return window.location.origin;
+    }
+    return ADMIN_HOSTS[getAdminEnv()] || ADMIN_HOSTS.production;
+  }
+
+  function getApiBase() {
+    return `${getAdminHost()}/api/admin`;
+  }
+
+  function getAdminToken() {
+    return sessionStorage.getItem(`adminToken_${getAdminEnv()}`) || '';
+  }
+
+  function ensureAdminAuth() {
+    if (!getAdminToken()) {
+      window.location.href = '/admin/login';
+      return false;
+    }
+    return true;
+  }
+
+  function initAdminEnvSelect() {
+    const sel = document.getElementById('admin-env-select');
+    if (!sel) return;
+    sel.value = getAdminEnv();
+    sel.addEventListener('change', () => {
+      const next = sel.value;
+      localStorage.setItem('adminEnv', next);
+      if (!sessionStorage.getItem(`adminToken_${next}`)) {
+        alert('선택한 환경에 로그인되어 있지 않습니다. 로그인 화면으로 이동합니다.');
+        window.location.href = '/admin/login';
+        return;
+      }
+      window.location.reload();
+    });
+  }
+
+  function adminLogout() {
+    const env = getAdminEnv();
+    sessionStorage.removeItem(`adminToken_${env}`);
+    window.location.href = '/admin/login';
+  }
   const PAGE_META = {
     dashboard: { title: '대시보드', sub: '실시간 운영 지표' },
     reports: { title: '신고 관리', sub: '미처리 신고 전용' },
@@ -1181,12 +1239,22 @@
   }
 
   async function api(path, init = {}) {
-    const res = await fetch(`${API_BASE}${path}`, {
+    const token = getAdminToken();
+    const res = await fetch(`${getApiBase()}${path}`, {
       credentials: 'include',
-      headers: { 'Content-Type': 'application/json', ...(init.headers || {}) },
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        ...(init.headers || {}),
+      },
       ...init,
     });
     const data = await res.json().catch(() => ({}));
+    if (res.status === 401 || (res.status === 403 && data?.code === 'ADMIN_MFA_REQUIRED')) {
+      sessionStorage.removeItem(`adminToken_${getAdminEnv()}`);
+      window.location.href = '/admin/login';
+      throw new Error(data?.message || '로그인이 필요합니다.');
+    }
     if (!res.ok || !data?.success) {
       throw new Error(data?.message || `요청 실패 (${res.status})`);
     }
@@ -2362,6 +2430,8 @@
   // 위 함수들에서 사용한 api('/inquiries...') 는 정상 동작한다.
 
   async function bootstrap() {
+    if (!ensureAdminAuth()) return;
+    initAdminEnvSelect();
     try {
       await Promise.all([
         loadDashboard(),

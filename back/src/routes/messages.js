@@ -372,8 +372,6 @@ router.get('/rooms/:roomId', authenticate, async (req, res) => {
         ? [roomIdNum, cursorId, beforeParsed, userId]
         : [roomIdNum, cursorId, userId];
 
-    console.log('--- QUERY DEBUG START ---');
-    console.log('beforeParsed:', beforeParsed);
     const sql = `SELECT
         m.id, m.room_id, m.sender_id, m.content, m.is_read, m.is_deleted, m.created_at,
         u.name AS sender_name, u.color_id AS sender_color_id,
@@ -389,14 +387,6 @@ router.get('/rooms/:roomId', authenticate, async (req, res) => {
        ${whereClause}
        ORDER BY m.id DESC
       LIMIT ${limitFetchNum}`;
-    console.log('SQL:', sql);
-    console.log('PARAMS:', queryParams);
-    console.log('PARAMS LENGTH:', queryParams.length);
-    console.log(
-      'PARAM TYPES:',
-      queryParams.map((v) => typeof v),
-    );
-    console.log('--- QUERY DEBUG END ---');
 
     const [messages] = await pool.execute(sql, queryParams);
 

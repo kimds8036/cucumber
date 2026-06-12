@@ -7,18 +7,16 @@ import { getNowForDB } from '../utils/dateUtils.js';
 
 const router = express.Router();
 
-const VALID_STATUSES = ['pending', 'approved', 'rejected'];
-
 async function writeAuditLog(connection, { adminUserId, actionType, targetId, note }) {
   await connection.execute(
     `INSERT INTO admin_audit_logs (admin_user_id, action_type, target_type, target_id, note, extra)
-     VALUES (?, ?, 'signup_certificate', ?, ?, NULL)`,
+     VALUES (?, ?, 'signup_student_id', ?, ?, NULL)`,
     [adminUserId, actionType, targetId, note || null],
   );
 }
 
 /**
- * GET /api/admin/signup-certificates
+ * GET /api/admin/signup-student-ids
  */
 router.get('/', requireAdminApi, async (req, res) => {
   const adminUserId = req.user.userId;
@@ -35,9 +33,11 @@ router.get('/', requireAdminApi, async (req, res) => {
     const params = status === 'all' ? [] : [status];
 
     const [rows] = await pool.execute(
-      `SELECT s.*, u.username, u.grade AS user_grade, u.class_number AS user_class_number
-       FROM signup_certificate_submissions s
+      `SELECT s.*, u.username, u.grade AS user_grade, u.class_number AS user_class_number,
+              sch.name AS school_name, sch.region AS school_region
+       FROM signup_student_id_submissions s
        JOIN users u ON u.id = s.user_id
+       LEFT JOIN schools sch ON sch.school_id = s.school_id
        WHERE ${where}
        ORDER BY s.created_at DESC
        LIMIT ? OFFSET ?`,
@@ -46,10 +46,10 @@ router.get('/', requireAdminApi, async (req, res) => {
 
     return res.json({ success: true, data: { submissions: rows } });
   } catch (error) {
-    console.error('증명서 검수 목록 오류:', error);
+    console.error('[admin/signup-student-ids] 목록 오류:', error);
     return res.status(500).json({
       success: false,
-      message: '증명서 목록 조회 중 오류가 발생했습니다.',
+      message: '학생증 검수 목록 조회 중 오류가 발생했습니다.',
     });
   }
 });
@@ -61,8 +61,7 @@ const reviewValidators = [
 ];
 
 /**
- * PATCH /api/admin/signup-certificates/:id
- * 승인 시 student_verified=TRUE, 필요 시 school_id 갱신
+ * PATCH /api/admin/signup-student-ids/:id
  */
 router.patch('/:id', requireAdminApi, validate(reviewValidators), async (req, res) => {
   const adminUserId = req.user.userId;
@@ -82,7 +81,7 @@ router.patch('/:id', requireAdminApi, validate(reviewValidators), async (req, re
     await connection.beginTransaction();
 
     const [rows] = await connection.execute(
-      `SELECT * FROM signup_certificate_submissions WHERE id = ? FOR UPDATE`,
+      `SELECT * FROM signup_student_id_submissions WHERE id = ? FOR UPDATE`,
       [submissionId],
     );
     if (rows.length === 0) {
@@ -102,7 +101,7 @@ router.patch('/:id', requireAdminApi, validate(reviewValidators), async (req, re
     const now = getNowForDB();
 
     if (status === 'approved') {
-      const targetSchoolId = schoolId?.trim();
+      const targetSchoolId = schoolId?.trim() || submission.school_id;
       if (targetSchoolId) {
         const [schoolRows] = await connection.execute(
           'SELECT school_id FROM schools WHERE school_id = ? LIMIT 1',
@@ -121,7 +120,6 @@ router.patch('/:id', requireAdminApi, validate(reviewValidators), async (req, re
         ]);
       }
 
-      // 증명서 승인 → 학생 인증 완료 (등교 로직 등에서 이후 FALSE 로 변경 가능)
       await connection.execute(
         'UPDATE users SET student_verified = TRUE WHERE id = ?',
         [submission.user_id],
@@ -129,7 +127,7 @@ router.patch('/:id', requireAdminApi, validate(reviewValidators), async (req, re
     }
 
     await connection.execute(
-      `UPDATE signup_certificate_submissions
+      `UPDATE signup_student_id_submissions
        SET status = ?, review_note = ?, reviewed_by = ?, reviewed_at = ?
        WHERE id = ?`,
       [status, reviewNote?.trim() || null, adminUserId, now, submissionId],
@@ -137,7 +135,7 @@ router.patch('/:id', requireAdminApi, validate(reviewValidators), async (req, re
 
     await writeAuditLog(connection, {
       adminUserId,
-      actionType: status === 'approved' ? 'certificate_approve' : 'certificate_reject',
+      actionType: status === 'approved' ? 'student_id_approve' : 'student_id_reject',
       targetId: submissionId,
       note: reviewNote,
     });
@@ -146,14 +144,14 @@ router.patch('/:id', requireAdminApi, validate(reviewValidators), async (req, re
 
     return res.json({
       success: true,
-      message: status === 'approved' ? '증명서가 승인되었습니다.' : '증명서가 반려되었습니다.',
+      message: status === 'approved' ? '학생증이 승인되었습니다.' : '학생증이 반려되었습니다.',
     });
   } catch (error) {
     await connection.rollback();
-    console.error('증명서 검수 처리 오류:', error);
+    console.error('[admin/signup-student-ids] 검수 오류:', error);
     return res.status(500).json({
       success: false,
-      message: '증명서 검수 처리 중 오류가 발생했습니다.',
+      message: '학생증 검수 처리 중 오류가 발생했습니다.',
     });
   } finally {
     connection.release();

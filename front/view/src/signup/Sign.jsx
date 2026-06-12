@@ -18,6 +18,7 @@ import SignStep4 from './SignStep4';
 import SignStepVerificationMethod from './SignStepVerificationMethod';
 import SignStepCertificate from './SignStepCertificate';
 import SignStepStudentIdVerify from './SignStepStudentIdVerify';
+import SignStepSchoolSelect from './SignStepSchoolSelect';
 import { api } from '../../../utils/api';
 import { useAppNavigation } from '../../../navigation/useAppNavigation';
 import Skeleton from '../../../components/common/Skeleton';
@@ -52,8 +53,9 @@ const STEP = {
   IDENTITY: 1,
   VERIFY_METHOD: 2,
   STUDENT_VERIFY: 3,
-  ACCOUNT: 4,
-  PROFILE: 5,
+  SCHOOL_SELECT: 4,
+  ACCOUNT: 5,
+  PROFILE: 6,
 };
 
 const Sign = ({ navigation }) => {
@@ -80,6 +82,7 @@ const Sign = ({ navigation }) => {
     consents: {},
   });
   const [completeModalType, setCompleteModalType] = useState('signup');
+  const [selectedSchool, setSelectedSchool] = useState(null);
   const [screenReady, setScreenReady] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [footerHeight, setFooterHeight] = useState(88);
@@ -218,17 +221,16 @@ const Sign = ({ navigation }) => {
       setRecognizedData(null);
       setStudentVerified(false);
       setStudentVerificationToken(null);
+      setSelectedSchool(null);
     }
     prevVerificationMethodRef.current = method;
     setCurrentStep(STEP.STUDENT_VERIFY);
   };
 
   const handleStudentVerified = (data) => {
-    const school = data?.school || data?.verification?.school;
-    const schoolName = school?.name || data?.school;
-    const region = school?.region || '';
     const birthDate = identity.birthDate;
     const level =
+      data?.expectedLevel ||
       data?.verification?.expectedLevel ||
       inferExpectedSchoolLevel(birthDate);
     const enrollment = buildEnrollmentFromBirthDate(birthDate, level);
@@ -243,21 +245,27 @@ const Sign = ({ navigation }) => {
       data?.graduationYear ??
       enrollment.graduationYear;
 
-    setRecognizedData(data);
+    const recognized = {
+      ...data,
+      grade,
+      class: classNum,
+      graduationYear,
+    };
+
+    setRecognizedData(recognized);
     setStudentVerified(true);
     setStudentVerificationToken(
       data?.studentVerificationToken ||
         data?.verification?.studentVerificationToken ||
         null,
     );
+    setSelectedSchool(null);
     ocrIdentityAnchorRef.current = {
       name: identity.name?.trim() || '',
       phone: identity.phoneNumber || '',
     };
     setFormData((prev) => ({
       ...prev,
-      schoolId: data.schoolId || school?.id,
-      schoolName,
       schoolLevel: level,
       grade: String(grade),
       classNum: String(classNum),
@@ -265,24 +273,28 @@ const Sign = ({ navigation }) => {
     }));
 
     Alert.alert(
-      '학교 확인',
-      `${schoolName}${region ? `\n${region}` : ''}\n\n이 학교가 맞나요?`,
-      [
-        {
-          text: '다시 촬영',
-          style: 'cancel',
-          onPress: () => {
-            setStudentVerified(false);
-            setRecognizedData(null);
-            setStudentVerificationToken(null);
-          },
-        },
-        {
-          text: '맞아요',
-          onPress: () => setCurrentStep(STEP.ACCOUNT),
-        },
-      ],
+      '학생증 제출 완료',
+      '촬영한 학생증은 관리자가 확인합니다. 재학 중인 학교를 선택해 주세요.',
+      [{ text: '다음', onPress: () => setCurrentStep(STEP.SCHOOL_SELECT) }],
     );
+  };
+
+  const handleSchoolSelectNext = () => {
+    if (!selectedSchool?.id) {
+      Alert.alert('알림', '재학 중인 학교를 선택해 주세요.');
+      return;
+    }
+    setFormData((prev) => ({
+      ...prev,
+      schoolId: selectedSchool.id,
+      schoolName: selectedSchool.name,
+    }));
+    setRecognizedData((prev) => ({
+      ...(prev || {}),
+      school: selectedSchool,
+      schoolId: selectedSchool.id,
+    }));
+    setCurrentStep(STEP.ACCOUNT);
   };
 
   const handleAccountNext = () => {
@@ -402,7 +414,7 @@ const Sign = ({ navigation }) => {
     try {
       const payload = buildSignupPayload(finalData, 'student_id');
       await api.post('/api/auth/signup', payload);
-      setCompleteModalType('signup');
+      setCompleteModalType('studentId');
       setShowCompleteModal(true);
     } catch (error) {
       Alert.alert(
@@ -428,7 +440,9 @@ const Sign = ({ navigation }) => {
       case STEP.VERIFY_METHOD:
         return '학생 인증 방식';
       case STEP.STUDENT_VERIFY:
-        return isCertificateFlow ? '증명서 제출 안내' : '학생증 인증';
+        return isCertificateFlow ? '증명서 제출 안내' : '학생증 제출';
+      case STEP.SCHOOL_SELECT:
+        return '학교 선택';
       case STEP.ACCOUNT:
         return '계정 정보';
       case STEP.PROFILE:
@@ -445,11 +459,13 @@ const Sign = ({ navigation }) => {
       case STEP.IDENTITY:
         return '이름·생년월일·전화번호를 입력하고 인증해 주세요.';
       case STEP.VERIFY_METHOD:
-        return '학생증 OCR 인증 또는 증명서 제출 중 선택해 주세요.';
+        return '학생증 제출 또는 증명서 제출 중 선택해 주세요.';
       case STEP.STUDENT_VERIFY:
         return isCertificateFlow
           ? '학생증이 없는 경우 증명서 제출 안내를 확인해 주세요.'
-          : '학생증을 촬영하면 학교와 학교급을 자동으로 확인합니다.';
+          : '학생증을 촬영해 제출하면 관리자가 확인합니다.';
+      case STEP.SCHOOL_SELECT:
+        return '재학 중인 학교를 검색해 선택해 주세요.';
       case STEP.ACCOUNT:
         return '아이디와 비밀번호를 설정해 주세요.';
       case STEP.PROFILE:
@@ -472,6 +488,9 @@ const Sign = ({ navigation }) => {
         break;
       case STEP.STUDENT_VERIFY:
         if (isCertificateFlow) setCurrentStep(STEP.ACCOUNT);
+        break;
+      case STEP.SCHOOL_SELECT:
+        handleSchoolSelectNext();
         break;
       case STEP.ACCOUNT:
         if (isCertificateFlow) handleCertificateSubmit();
@@ -496,6 +515,7 @@ const Sign = ({ navigation }) => {
     if (currentStep === STEP.CONSENT && !consentData.allConsented) return true;
     if (currentStep === STEP.VERIFY_METHOD && !selectedVerificationMethod)
       return true;
+    if (currentStep === STEP.SCHOOL_SELECT && !selectedSchool?.id) return true;
     if (currentStep === STEP.IDENTITY) {
       if (!identityData.birthDate) return true;
       if (!identityData.isVerified) return true;
@@ -607,6 +627,14 @@ const Sign = ({ navigation }) => {
               onVerified={handleStudentVerified}
             />
           ))}
+        {currentStep === STEP.SCHOOL_SELECT && !isCertificateFlow && (
+          <SignStepSchoolSelect
+            styles={styles}
+            normalize={normalize}
+            selectedSchool={selectedSchool}
+            onSelect={setSelectedSchool}
+          />
+        )}
         {currentStep === STEP.ACCOUNT &&
           (isCertificateFlow ? (
             <SignStep2
@@ -697,7 +725,11 @@ const Sign = ({ navigation }) => {
                 marginBottom: normalize(10),
               }}
             >
-              {completeModalType === 'certificate' ? '제출 성공' : '회원가입 성공'}
+              {completeModalType === 'certificate'
+                ? '제출 성공'
+                : completeModalType === 'studentId'
+                  ? '가입 완료'
+                  : '회원가입 성공'}
             </Text>
             <Text
               style={{
@@ -709,8 +741,10 @@ const Sign = ({ navigation }) => {
               }}
             >
               {completeModalType === 'certificate'
-                ? '증명서 제출이 완료되었습니다.'
-                : '회원가입이 완료되었습니다!'}
+                ? '증명서 제출이 완료되었습니다. 검수 후 학생 인증이 완료됩니다.'
+                : completeModalType === 'studentId'
+                  ? '회원가입이 완료되었습니다. 학생증 검수 후 학생 인증이 완료됩니다.'
+                  : '회원가입이 완료되었습니다!'}
             </Text>
             <TouchableOpacity
               style={{

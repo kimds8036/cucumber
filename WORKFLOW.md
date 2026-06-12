@@ -327,7 +327,7 @@ npm run android:prod
 | 배포 전 점검 | `DEPLOY_PREFLIGHT_CHECKLIST.md` |
 | 릴리스 노트 | `RELEASE_NOTES.md` |
 | DB 마이그레이션 | `back/docs/` (예: `PERSONAL_MAIL_MIGRATE.md`) |
-| 관리자 웹 | `{production 백엔드 URL}/admin` |
+| 관리자 웹 | `{백엔드 URL}/admin` — OTP·CORS: `docs/ADMIN_ACCESS.md` |
 | 로컬 경로 | `WORKSPACE.md` |
 
 ---

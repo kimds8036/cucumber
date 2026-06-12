@@ -10,11 +10,36 @@ const JWT_SECRET = process.env.JWT_SECRET;
 const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '1h';
 
 // JWT 토큰 생성
-export const generateToken = (payload) => {
+export const generateToken = (payload, options = {}) => {
   return jwt.sign(payload, JWT_SECRET, {
     algorithm: 'HS256',
-    expiresIn: JWT_EXPIRES_IN,
+    expiresIn: options.expiresIn || JWT_EXPIRES_IN,
   });
+};
+
+/** 관리자 세션 (OTP 통과 후) */
+export const generateAdminSessionToken = ({ userId, username }) => {
+  return generateToken(
+    {
+      userId,
+      username,
+      type: 'admin_session',
+      adminMfa: true,
+    },
+    { expiresIn: process.env.ADMIN_JWT_EXPIRES_IN || JWT_EXPIRES_IN },
+  );
+};
+
+/** OTP 등록 1회용 (10분) */
+export const generateAdminOtpSetupToken = ({ userId, username }) => {
+  return generateToken(
+    {
+      userId,
+      username,
+      type: 'admin_otp_setup',
+    },
+    { expiresIn: '10m' },
+  );
 };
 
 /**

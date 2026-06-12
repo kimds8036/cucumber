@@ -1,23 +1,9 @@
 import express from 'express';
 import pool from '../config/database.js';
-import { authenticate } from '../middleware/auth.js';
+import { requireAdminApi, isAdminUser } from '../middleware/adminAuth.js';
 import { getNowForDB } from '../utils/dateUtils.js';
 
 const router = express.Router();
-
-function parseAdminUserIds() {
-  const raw = process.env.ADMIN_USER_IDS || '';
-  return raw
-    .split(',')
-    .map((v) => Number(String(v).trim()))
-    .filter((n) => Number.isFinite(n) && n > 0);
-}
-
-function isAdminUser(userId) {
-  const adminIds = parseAdminUserIds();
-  if (adminIds.length === 0) return false;
-  return adminIds.includes(Number(userId));
-}
 
 /** 신고 확정/기각 시 대상 콘텐츠 후처리 (게시글·댓글) */
 async function applyReportTargetModeration(connection, report, actionRaw) {
@@ -142,7 +128,7 @@ async function attachTargetImages(rows) {
   });
 }
 
-router.get('/stats', authenticate, async (req, res) => {
+router.get('/stats', requireAdminApi, async (req, res) => {
   const adminUserId = req.user.userId;
   if (!isAdminUser(adminUserId)) {
     return res.status(403).json({ success: false, message: '관리자 권한이 필요합니다.' });
@@ -179,7 +165,7 @@ router.get('/stats', authenticate, async (req, res) => {
   }
 });
 
-router.get('/reports', authenticate, async (req, res) => {
+router.get('/reports', requireAdminApi, async (req, res) => {
   const adminUserId = req.user.userId;
   if (!isAdminUser(adminUserId)) {
     return res.status(403).json({ success: false, message: '관리자 권한이 필요합니다.' });
@@ -299,7 +285,7 @@ router.get('/reports', authenticate, async (req, res) => {
   }
 });
 
-router.patch('/reports/:reportId/reopen', authenticate, async (req, res) => {
+router.patch('/reports/:reportId/reopen', requireAdminApi, async (req, res) => {
   const adminUserId = req.user.userId;
   if (!isAdminUser(adminUserId)) {
     return res.status(403).json({ success: false, message: '관리자 권한이 필요합니다.' });
@@ -356,7 +342,7 @@ router.patch('/reports/:reportId/reopen', authenticate, async (req, res) => {
   }
 });
 
-router.patch('/reports/bulk-reopen', authenticate, async (req, res) => {
+router.patch('/reports/bulk-reopen', requireAdminApi, async (req, res) => {
   const adminUserId = req.user.userId;
   if (!isAdminUser(adminUserId)) {
     return res.status(403).json({ success: false, message: '관리자 권한이 필요합니다.' });
@@ -416,7 +402,7 @@ router.patch('/reports/bulk-reopen', authenticate, async (req, res) => {
   }
 });
 
-router.get('/appeals', authenticate, async (req, res) => {
+router.get('/appeals', requireAdminApi, async (req, res) => {
   const adminUserId = req.user.userId;
   if (!isAdminUser(adminUserId)) {
     return res.status(403).json({ success: false, message: '관리자 권한이 필요합니다.' });
@@ -445,7 +431,7 @@ router.get('/appeals', authenticate, async (req, res) => {
   }
 });
 
-router.patch('/appeals/:appealId', authenticate, async (req, res) => {
+router.patch('/appeals/:appealId', requireAdminApi, async (req, res) => {
   const adminUserId = req.user.userId;
   if (!isAdminUser(adminUserId)) {
     return res.status(403).json({ success: false, message: '관리자 권한이 필요합니다.' });
@@ -507,7 +493,7 @@ router.patch('/appeals/:appealId', authenticate, async (req, res) => {
   }
 });
 
-router.get('/users', authenticate, async (req, res) => {
+router.get('/users', requireAdminApi, async (req, res) => {
   const adminUserId = req.user.userId;
   if (!isAdminUser(adminUserId)) {
     return res.status(403).json({ success: false, message: '관리자 권한이 필요합니다.' });
@@ -580,7 +566,7 @@ router.get('/users', authenticate, async (req, res) => {
   }
 });
 
-router.post('/users/:userId/suspend', authenticate, async (req, res) => {
+router.post('/users/:userId/suspend', requireAdminApi, async (req, res) => {
   const adminUserId = req.user.userId;
   if (!isAdminUser(adminUserId)) {
     return res.status(403).json({ success: false, message: '관리자 권한이 필요합니다.' });
@@ -618,7 +604,7 @@ router.post('/users/:userId/suspend', authenticate, async (req, res) => {
   }
 });
 
-router.post('/users/:userId/whitelist', authenticate, async (req, res) => {
+router.post('/users/:userId/whitelist', requireAdminApi, async (req, res) => {
   const adminUserId = req.user.userId;
   if (!isAdminUser(adminUserId)) {
     return res.status(403).json({ success: false, message: '관리자 권한이 필요합니다.' });
@@ -648,7 +634,7 @@ router.post('/users/:userId/whitelist', authenticate, async (req, res) => {
   }
 });
 
-router.delete('/users/:userId/whitelist', authenticate, async (req, res) => {
+router.delete('/users/:userId/whitelist', requireAdminApi, async (req, res) => {
   const adminUserId = req.user.userId;
   if (!isAdminUser(adminUserId)) {
     return res.status(403).json({ success: false, message: '관리자 권한이 필요합니다.' });
@@ -678,7 +664,7 @@ router.delete('/users/:userId/whitelist', authenticate, async (req, res) => {
   }
 });
 
-router.post('/users/:userId/ban', authenticate, async (req, res) => {
+router.post('/users/:userId/ban', requireAdminApi, async (req, res) => {
   const adminUserId = req.user.userId;
   if (!isAdminUser(adminUserId)) {
     return res.status(403).json({ success: false, message: '관리자 권한이 필요합니다.' });
@@ -713,7 +699,7 @@ router.post('/users/:userId/ban', authenticate, async (req, res) => {
   }
 });
 
-router.get('/blocks', authenticate, async (req, res) => {
+router.get('/blocks', requireAdminApi, async (req, res) => {
   const adminUserId = req.user.userId;
   if (!isAdminUser(adminUserId)) {
     return res.status(403).json({ success: false, message: '관리자 권한이 필요합니다.' });
@@ -743,7 +729,7 @@ router.get('/blocks', authenticate, async (req, res) => {
   }
 });
 
-router.delete('/blocks/:blockId', authenticate, async (req, res) => {
+router.delete('/blocks/:blockId', requireAdminApi, async (req, res) => {
   const adminUserId = req.user.userId;
   if (!isAdminUser(adminUserId)) {
     return res.status(403).json({ success: false, message: '관리자 권한이 필요합니다.' });
@@ -785,7 +771,7 @@ router.delete('/blocks/:blockId', authenticate, async (req, res) => {
   }
 });
 
-router.get('/logs', authenticate, async (req, res) => {
+router.get('/logs', requireAdminApi, async (req, res) => {
   const adminUserId = req.user.userId;
   if (!isAdminUser(adminUserId)) {
     return res.status(403).json({ success: false, message: '관리자 권한이 필요합니다.' });
@@ -835,7 +821,7 @@ router.get('/logs', authenticate, async (req, res) => {
   }
 });
 
-router.patch('/reports/:reportId', authenticate, async (req, res) => {
+router.patch('/reports/:reportId', requireAdminApi, async (req, res) => {
   const reviewerId = req.user.userId;
   if (!isAdminUser(reviewerId)) {
     return res.status(403).json({
@@ -942,12 +928,12 @@ router.patch('/reports/:reportId', authenticate, async (req, res) => {
   }
 });
 
-router.post('/reports/bulk-confirm', authenticate, async (req, res) => {
+router.post('/reports/bulk-confirm', requireAdminApi, async (req, res) => {
   req.body = { ...(req.body || {}), action: 'CONFIRM', malicious: false, note: req.body?.note || null };
   return bulkHandle(req, res);
 });
 
-router.post('/reports/bulk-reject', authenticate, async (req, res) => {
+router.post('/reports/bulk-reject', requireAdminApi, async (req, res) => {
   req.body = { ...(req.body || {}), action: 'REJECT', malicious: !!req.body?.malicious, note: req.body?.note || null };
   return bulkHandle(req, res);
 });

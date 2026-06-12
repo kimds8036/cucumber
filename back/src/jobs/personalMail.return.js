@@ -3,6 +3,7 @@ import {
   acquireBatchLock,
   releaseBatchLock,
 } from '../services/batchLock.service.js';
+import { sendBatchFailureAlert } from '../services/batchAlert.service.js';
 import {
   createBatchExecutionContext,
   logBatchFailure,
@@ -29,6 +30,11 @@ export async function runPersonalMailReturnBatchJob() {
     return result;
   } catch (error) {
     logBatchFailure(context, error);
+    await sendBatchFailureAlert({
+      jobName: JOB_NAME,
+      error,
+      meta: { lockKey: LOCK_KEY },
+    });
     throw error;
   } finally {
     await releaseBatchLock(LOCK_KEY, owner);

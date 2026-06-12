@@ -1,25 +1,11 @@
 import express from 'express';
 import pool from '../config/database.js';
-import { authenticate } from '../middleware/auth.js';
+import { requireAdminApi, isAdminUser } from '../middleware/adminAuth.js';
 import { getNowForDB } from '../utils/dateUtils.js';
 
 const router = express.Router();
 
 const VALID_STATUSES = ['pending', 'answered', 'closed'];
-
-function parseAdminUserIds() {
-  const raw = process.env.ADMIN_USER_IDS || '';
-  return raw
-    .split(',')
-    .map((v) => Number(String(v).trim()))
-    .filter((n) => Number.isFinite(n) && n > 0);
-}
-
-function isAdminUser(userId) {
-  const adminIds = parseAdminUserIds();
-  if (adminIds.length === 0) return false;
-  return adminIds.includes(Number(userId));
-}
 
 async function writeAuditLog(connection, { adminUserId, actionType, targetType, targetId, note, extra }) {
   await connection.execute(
@@ -54,7 +40,7 @@ async function attachInquiryImages(rows) {
  * GET /api/admin/inquiries/stats
  * 문의 처리 통계
  */
-router.get('/stats', authenticate, async (req, res) => {
+router.get('/stats', requireAdminApi, async (req, res) => {
   const adminUserId = req.user.userId;
   if (!isAdminUser(adminUserId)) {
     return res.status(403).json({ success: false, message: '관리자 권한이 필요합니다.' });
@@ -94,7 +80,7 @@ router.get('/stats', authenticate, async (req, res) => {
  * GET /api/admin/inquiries
  * 관리자 문의 목록 (필터: status, view, q, fromDate, toDate)
  */
-router.get('/', authenticate, async (req, res) => {
+router.get('/', requireAdminApi, async (req, res) => {
   const adminUserId = req.user.userId;
   if (!isAdminUser(adminUserId)) {
     return res.status(403).json({ success: false, message: '관리자 권한이 필요합니다.' });
@@ -195,7 +181,7 @@ router.get('/', authenticate, async (req, res) => {
  * GET /api/admin/inquiries/:id
  * 관리자 단건 조회 (작성자 정지 상태/이미지 포함)
  */
-router.get('/:id', authenticate, async (req, res) => {
+router.get('/:id', requireAdminApi, async (req, res) => {
   const adminUserId = req.user.userId;
   if (!isAdminUser(adminUserId)) {
     return res.status(403).json({ success: false, message: '관리자 권한이 필요합니다.' });
@@ -252,7 +238,7 @@ router.get('/:id', authenticate, async (req, res) => {
  * 답변 작성 (status='answered', close 옵션 시 'closed')
  * body: { answer_content: string, answer_note?: string, close?: boolean }
  */
-router.post('/:id/answer', authenticate, async (req, res) => {
+router.post('/:id/answer', requireAdminApi, async (req, res) => {
   const adminUserId = req.user.userId;
   if (!isAdminUser(adminUserId)) {
     return res.status(403).json({ success: false, message: '관리자 권한이 필요합니다.' });
@@ -322,7 +308,7 @@ router.post('/:id/answer', authenticate, async (req, res) => {
  * PATCH /api/admin/inquiries/:id/answer
  * 답변 수정 (이미 답변한 문의)
  */
-router.patch('/:id/answer', authenticate, async (req, res) => {
+router.patch('/:id/answer', requireAdminApi, async (req, res) => {
   const adminUserId = req.user.userId;
   if (!isAdminUser(adminUserId)) {
     return res.status(403).json({ success: false, message: '관리자 권한이 필요합니다.' });
@@ -395,7 +381,7 @@ router.patch('/:id/answer', authenticate, async (req, res) => {
  * PATCH /api/admin/inquiries/:id/close
  * 답변 없이 종결
  */
-router.patch('/:id/close', authenticate, async (req, res) => {
+router.patch('/:id/close', requireAdminApi, async (req, res) => {
   const adminUserId = req.user.userId;
   if (!isAdminUser(adminUserId)) {
     return res.status(403).json({ success: false, message: '관리자 권한이 필요합니다.' });
@@ -448,7 +434,7 @@ router.patch('/:id/close', authenticate, async (req, res) => {
  * PATCH /api/admin/inquiries/:id/reopen
  * 종결/답변 상태를 pending으로 되돌림
  */
-router.patch('/:id/reopen', authenticate, async (req, res) => {
+router.patch('/:id/reopen', requireAdminApi, async (req, res) => {
   const adminUserId = req.user.userId;
   if (!isAdminUser(adminUserId)) {
     return res.status(403).json({ success: false, message: '관리자 권한이 필요합니다.' });
@@ -506,7 +492,7 @@ router.patch('/:id/reopen', authenticate, async (req, res) => {
  * 일괄 종결 (스팸/중복 처리용)
  * body: { ids: number[], note?: string }
  */
-router.post('/bulk-close', authenticate, async (req, res) => {
+router.post('/bulk-close', requireAdminApi, async (req, res) => {
   const adminUserId = req.user.userId;
   if (!isAdminUser(adminUserId)) {
     return res.status(403).json({ success: false, message: '관리자 권한이 필요합니다.' });
@@ -565,7 +551,7 @@ router.post('/bulk-close', authenticate, async (req, res) => {
  * DELETE /api/admin/inquiries/:id
  * 관리자 강제 삭제 (스팸/악성 문의용 soft delete)
  */
-router.delete('/:id', authenticate, async (req, res) => {
+router.delete('/:id', requireAdminApi, async (req, res) => {
   const adminUserId = req.user.userId;
   if (!isAdminUser(adminUserId)) {
     return res.status(403).json({ success: false, message: '관리자 권한이 필요합니다.' });
