@@ -8,13 +8,50 @@ if (!process.env.JWT_SECRET) {
 }
 const JWT_SECRET = process.env.JWT_SECRET;
 const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '1h';
+const ADMIN_JWT_EXPIRES_IN = process.env.ADMIN_JWT_EXPIRES_IN || '30m';
 
 // JWT 토큰 생성
-export const generateToken = (payload) => {
+export const generateToken = (payload, options = {}) => {
   return jwt.sign(payload, JWT_SECRET, {
     algorithm: 'HS256',
-    expiresIn: JWT_EXPIRES_IN,
+    expiresIn: options.expiresIn || JWT_EXPIRES_IN,
   });
+};
+
+/** 관리자 세션 (OTP 통과 후, 기본 30분) */
+export const generateAdminSessionToken = ({ userId, username }) => {
+  return generateToken(
+    {
+      userId,
+      username,
+      type: 'admin_session',
+      adminMfa: true,
+    },
+    { expiresIn: ADMIN_JWT_EXPIRES_IN },
+  );
+};
+
+/** JWT exp 클레임 → Unix ms */
+export function getTokenExpiresAtMs(token) {
+  try {
+    const payload = jwt.decode(token);
+    if (payload?.exp) return payload.exp * 1000;
+  } catch {
+    // ignore
+  }
+  return Date.now() + 30 * 60 * 1000;
+}
+
+/** OTP 등록 1회용 (10분) */
+export const generateAdminOtpSetupToken = ({ userId, username }) => {
+  return generateToken(
+    {
+      userId,
+      username,
+      type: 'admin_otp_setup',
+    },
+    { expiresIn: '10m' },
+  );
 };
 
 /**

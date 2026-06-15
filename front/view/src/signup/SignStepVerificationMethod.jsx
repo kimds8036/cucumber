@@ -15,10 +15,10 @@ const SignStepVerificationMethod = ({ styles, onSelect, selectedMethod }) => {
         onPress={() => onSelect && onSelect('studentId')}
       >
         <Text style={styles.ageGateCardTitle}>
-          학생증 인증 <Text style={{ color: colors.alert }}>(권장)</Text>
+          학생증 제출 <Text style={{ color: colors.alert }}>(권장)</Text>
         </Text>
         <Text style={styles.ageGateCardDescription}>
-          학생증을 OCR로 인식해 재학 정보를 빠르게 불러옵니다.
+          학생증을 촬영해 제출하면 관리자가 확인 후 학생 인증이 완료됩니다.
         </Text>
       </TouchableOpacity>
 

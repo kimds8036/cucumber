@@ -13,10 +13,12 @@ import {
 import { validatePhone, validateUsername, validatePassword, validateBirthDate } from '../utils/validation.js';
 import { authenticate } from '../middleware/auth.js';
 import { validate } from '../middleware/validate.js';
-import {
-  extractTextFromImageBase64,
-  verifyStudentIdOcrForSignup,
-} from '../services/studentIdOcr.service.js';
+// OCR 자동 인증 — 수동 검수 전환으로 당분간 미사용 (studentIdOcr.service.js 참고)
+// import {
+//   extractTextFromImageBase64,
+//   verifyStudentIdOcrForSignup,
+// } from '../services/studentIdOcr.service.js';
+import { uploadSignupStudentIdPhoto } from '../services/signupStudentIdPhoto.service.js';
 import {
   inferExpectedSchoolLevel,
   inferGradeFromBirthDate,
@@ -42,9 +44,10 @@ import {
   mapRecoveryError,
 } from '../services/accountRecovery.service.js';
 import {
-  issueStudentOcrVerificationToken,
-  consumeStudentOcrVerificationToken,
+  issueStudentIdManualVerificationToken,
+  consumeStudentIdManualVerificationToken,
 } from '../services/signupVerificationToken.service.js';
+import { getStudentVerificationStatus } from '../services/studentVerificationStatus.service.js';
 
 const router = express.Router();
 
@@ -111,7 +114,6 @@ const updatePasswordValidators = [
 router.get('/me', authenticate, async (req, res) => {
   try {
     const userId = req.user.userId;
-    console.log('[API][GET /api/auth/me] 요청 수신:', { userId });
 
     const [rows] = await pool.execute(
       `SELECT 
@@ -125,6 +127,7 @@ router.get('/me', authenticate, async (req, res) => {
          u.color_id,
          c.hex_code AS profile_color_hex,
          c.color_number AS profile_color_number,
+         u.student_verified,
          s.name AS school_name
        FROM users u
        LEFT JOIN schools s ON u.school_id = s.school_id
@@ -141,16 +144,6 @@ router.get('/me', authenticate, async (req, res) => {
     }
 
     const user = rows[0];
-    console.log('[API][GET /api/auth/me] 사용자 기준 정보:', {
-      userId: user.id,
-      colorId: user.color_id,
-      schoolId: user.school_id,
-      schoolName: user.school_name,
-      grade: user.grade,
-      classNumber: user.class_number,
-      colorId: user.color_id,
-      profileColorHex: user.profile_color_hex,
-    });
 
     const [friendRows] = await pool.execute(
       `SELECT COUNT(*) as cnt
@@ -161,6 +154,8 @@ router.get('/me', authenticate, async (req, res) => {
     );
 
     const friendCount = Number(friendRows[0]?.cnt ?? 0);
+
+    const verification = await getStudentVerificationStatus(userId);
 
     res.json({
       success: true,
@@ -182,11 +177,10 @@ router.get('/me', authenticate, async (req, res) => {
           colorNumber: user.profile_color_number,
         },
         friendCount,
+        studentVerificationStatus: verification.status,
+        rejectReason: verification.rejectReason,
+        studentVerified: Boolean(user.student_verified),
       },
-    });
-    console.log('[API][GET /api/auth/me] 응답 완료:', {
-      userId: user.id,
-      friendCount,
     });
   } catch (error) {
     console.error('내 프로필 조회 오류:', error);
@@ -374,9 +368,6 @@ router.post('/send-verification', async (req, res) => {
     );
 
     // 실제로는 SMS 발송 서비스 연동 (예: 알리고, 카카오톡 등)
-    // 여기서는 개발용으로 코드를 반환
-    console.log(`[개발용] ${phone}로 인증 코드 발송: ${verificationCode}`);
-
     res.json({ 
       success: true, 
       message: '인증 코드가 발송되었습니다.',
@@ -775,7 +766,7 @@ router.post('/signup', validate(signupValidators), async (req, res) => {
     } else if (!schoolId?.trim()) {
       return res.status(400).json({
         success: false,
-        message: '학생증 인증으로 학교를 확인해 주세요.',
+        message: '재학 중인 학교를 선택해 주세요.',
       });
     }
 
@@ -792,34 +783,41 @@ router.post('/signup', validate(signupValidators), async (req, res) => {
       });
     }
 
+    let studentIdManualVerification = null;
     if (!isCertificateSignup) {
       try {
-        await consumeStudentOcrVerificationToken(studentVerificationToken, {
-          name: String(name).trim(),
-          birthDate,
-          schoolId: String(schoolId).trim(),
-          phone,
-        });
+        studentIdManualVerification = await consumeStudentIdManualVerificationToken(
+          studentVerificationToken,
+          {
+            name: String(name).trim(),
+            birthDate,
+            schoolId: String(schoolId).trim(),
+            phone,
+          },
+        );
       } catch (tokenErr) {
         const code = tokenErr?.code || 'INVALID_STUDENT_VERIFICATION_TOKEN';
         const messages = {
           STUDENT_VERIFICATION_TOKEN_REQUIRED:
-            '학생증 인증을 먼저 완료해 주세요.',
+            '학생증 촬영을 먼저 완료해 주세요.',
           INVALID_STUDENT_VERIFICATION_TOKEN:
-            '학생증 인증이 만료되었거나 유효하지 않습니다. 다시 촬영해 주세요.',
+            '학생증 제출이 만료되었거나 유효하지 않습니다. 다시 촬영해 주세요.',
           STUDENT_VERIFICATION_TOKEN_USED:
-            '이미 사용된 학생증 인증입니다. 다시 촬영해 주세요.',
+            '이미 사용된 학생증 제출입니다. 다시 촬영해 주세요.',
           STUDENT_VERIFICATION_TOKEN_EXPIRED:
-            '학생증 인증이 만료되었습니다. 다시 촬영해 주세요.',
+            '학생증 제출이 만료되었습니다. 다시 촬영해 주세요.',
           STUDENT_VERIFICATION_MISMATCH:
-            '제출 정보가 학생증 인증 결과와 일치하지 않습니다.',
+            '제출 정보가 학생증 촬영 시점과 일치하지 않습니다.',
           STUDENT_VERIFICATION_PHONE_MISMATCH:
-            '전화번호가 학생증 인증 시점과 일치하지 않습니다.',
+            '전화번호가 학생증 촬영 시점과 일치하지 않습니다.',
+          SCHOOL_ID_REQUIRED: '재학 학교를 선택해 주세요.',
+          STUDENT_ID_IMAGE_MISSING:
+            '학생증 이미지가 없습니다. 다시 촬영해 주세요.',
           INVALID_SCHOOL_ID: '유효하지 않은 학교 정보입니다.',
         };
         return res.status(400).json({
           success: false,
-          message: messages[code] || '학생증 인증 검증에 실패했습니다.',
+          message: messages[code] || '학생증 제출 검증에 실패했습니다.',
           code,
         });
       }
@@ -906,10 +904,8 @@ router.post('/signup', validate(signupValidators), async (req, res) => {
       });
     }
 
-    // student_verified: 학생증 OCR 가입은 즉시 TRUE.
-    // 등교·학적 검증 등 운영 로직에서 FALSE 로 내릴 수 있음 (users.student_verified).
-    // 증명서 가입은 관리자 검수 승인 전까지 FALSE.
-    const studentVerifiedOnInsert = !isCertificateSignup;
+    // student_verified: 학생증·증명서 가입 모두 관리자 검수 승인 전까지 FALSE.
+    const studentVerifiedOnInsert = false;
 
     // 비밀번호 해싱
     const hashedPassword = await hashPassword(password);
@@ -954,6 +950,22 @@ router.post('/signup', validate(signupValidators), async (req, res) => {
             claimedSchoolName?.trim() || null,
           ],
         );
+      } else if (studentIdManualVerification) {
+        await connection.execute(
+          `INSERT INTO signup_student_id_submissions
+           (user_id, name, phone, birth_date, school_id, cloudinary_url, cloudinary_public_id, status, verification_jti)
+           VALUES (?, ?, ?, ?, ?, ?, ?, 'pending', ?)`,
+          [
+            userId,
+            name,
+            phone,
+            birthDate,
+            studentIdManualVerification.schoolId,
+            studentIdManualVerification.cloudinaryUrl,
+            studentIdManualVerification.cloudinaryPublicId,
+            studentIdManualVerification.jti,
+          ],
+        );
       }
 
       await connection.execute(
@@ -976,12 +988,13 @@ router.post('/signup', validate(signupValidators), async (req, res) => {
         success: true, 
         message: isCertificateSignup
           ? '회원가입이 완료되었습니다. 증명서 검수 후 학생 인증이 완료됩니다.'
-          : '회원가입이 완료되었습니다.',
+          : '회원가입이 완료되었습니다. 학생증 검수 후 학생 인증이 완료됩니다.',
         data: {
           userId,
           colorId: resolvedColorId,
           studentVerified: studentVerifiedOnInsert,
           certificateReviewPending: isCertificateSignup,
+          studentIdReviewPending: !isCertificateSignup,
         },
       });
     } catch (txErr) {
@@ -1189,12 +1202,7 @@ router.post('/login', validate(loginValidators), async (req, res) => {
       username: user.username 
     });
 
-    console.log('[API][POST /api/auth/login] 로그인 성공 토큰 발급', {
-      userId: user.id,
-      username: user.username,
-      deviceId: currentDeviceId,
-      token,
-    });
+    const verification = await getStudentVerificationStatus(user.id);
 
     res.json({ 
       success: true, 
@@ -1206,7 +1214,9 @@ router.post('/login', validate(loginValidators), async (req, res) => {
           username: user.username,
           name: user.name
         },
-        needsVerification // 새 디바이스/IP 변경 시 추가 인증 필요
+        needsVerification,
+        studentVerificationStatus: verification.status,
+        rejectReason: verification.rejectReason,
       }
     });
   } catch (error) {
@@ -1251,10 +1261,10 @@ router.post('/logout', authenticate, async (req, res) => {
   }
 });
 
-// 회원가입 중 학생증 CLOVA OCR 3중 검증 (비로그인)
-router.post('/signup/verify-student-id', signupOcrLimiter, async (req, res) => {
+// 회원가입 중 학생증 촬영 → Cloudinary 업로드 (관리자 수동 검수, OCR 미사용)
+router.post('/signup/upload-student-id', signupOcrLimiter, async (req, res) => {
   try {
-    const { name, birthDate, imageBase64, cropRegion, phone: rawPhone } =
+    const { name, birthDate, imageBase64, cropRegion, phone: rawPhone, schoolId } =
       req.body || {};
 
     if (!name || !birthDate || !imageBase64) {
@@ -1264,52 +1274,38 @@ router.post('/signup/verify-student-id', signupOcrLimiter, async (req, res) => {
       });
     }
 
-    let ocrText = '';
+    const trimmedSchoolId = schoolId ? String(schoolId).trim() : '';
+    if (!trimmedSchoolId) {
+      return res.status(400).json({
+        success: false,
+        message: '재학 중인 학교를 먼저 선택해 주세요.',
+      });
+    }
+
+    const [schoolRows] = await pool.execute(
+      'SELECT school_id FROM schools WHERE school_id = ? LIMIT 1',
+      [trimmedSchoolId],
+    );
+    if (!schoolRows.length) {
+      return res.status(400).json({
+        success: false,
+        message: '유효하지 않은 학교 정보입니다.',
+      });
+    }
+
+    let uploaded;
     try {
-      ocrText = await extractTextFromImageBase64(imageBase64, cropRegion);
-    } catch (ocrErr) {
-      console.error('CLOVA OCR 오류:', ocrErr);
+      uploaded = await uploadSignupStudentIdPhoto({ imageBase64, cropRegion });
+    } catch (uploadErr) {
+      console.error('[signup/upload-student-id] Cloudinary 오류:', uploadErr);
       return res.status(500).json({
         success: false,
-        message: '학생증 이미지 인식에 실패했습니다. 다시 촬영해 주세요.',
+        message: '학생증 이미지 업로드에 실패했습니다. 다시 촬영해 주세요.',
       });
     }
 
-    if (!String(ocrText || '').trim()) {
-      return res.json({
-        success: true,
-        data: {
-          passed: false,
-          reasons: ['학생증에서 텍스트를 읽을 수 없습니다. 밝은 곳에서 다시 촬영해 주세요.'],
-          school: null,
-        },
-      });
-    }
-
-    const verification = await verifyStudentIdOcrForSignup({
-      ocrText,
-      verifiedName: name,
-      birthDate,
-    });
-
-    const ocrDebug =
-      process.env.NODE_ENV !== 'production' ||
-      process.env.ENABLE_OCR_DEBUG === 'true';
-    if (ocrDebug) {
-      console.log('[verify-student-id] OCR raw (first 800 chars):', String(ocrText || '').slice(0, 800));
-      console.log('[verify-student-id] checks:', {
-        passed: verification.passed,
-        nameOk: verification.nameOk,
-        levelOk: verification.levelOk,
-        schoolOk: verification.schoolOk,
-        expectedLevel: verification.expectedLevel,
-        detectedLevel: verification.detectedLevel,
-        school: verification.school,
-        reasons: verification.reasons,
-      });
-    }
-
-    const expectedLevel = verification.expectedLevel;
+    const normalizedPhone = rawPhone ? normalizeLocalKrPhone(rawPhone) : null;
+    const expectedLevel = inferExpectedSchoolLevel(birthDate);
     const suggestedGrade = inferGradeFromBirthDate(birthDate, expectedLevel);
     const suggestedGraduationYear = inferGraduationYear(
       birthDate,
@@ -1317,47 +1313,127 @@ router.post('/signup/verify-student-id', signupOcrLimiter, async (req, res) => {
       suggestedGrade,
     );
 
-    let studentVerificationToken = null;
-    if (verification.passed && verification.school?.id) {
-      const normalizedPhone = rawPhone
-        ? normalizeLocalKrPhone(rawPhone)
-        : null;
-      studentVerificationToken = await issueStudentOcrVerificationToken({
-        name: String(name).trim(),
-        birthDate,
-        schoolId: verification.school.id,
-        phone: normalizedPhone,
-      });
-    }
+    const studentVerificationToken = await issueStudentIdManualVerificationToken({
+      name: String(name).trim(),
+      birthDate,
+      phone: normalizedPhone,
+      schoolId: trimmedSchoolId,
+      cloudinaryUrl: uploaded.cloudinaryUrl,
+      cloudinaryPublicId: uploaded.cloudinaryPublicId,
+    });
 
     return res.json({
       success: true,
       data: {
-        passed: verification.passed,
-        reasons: verification.reasons,
-        nameOk: verification.nameOk,
-        levelOk: verification.levelOk,
-        schoolOk: verification.schoolOk,
-        expectedLevel: verification.expectedLevel,
-        detectedLevel: verification.detectedLevel,
-        school: verification.school,
+        passed: true,
+        manualReview: true,
+        cloudinaryUrl: uploaded.cloudinaryUrl,
+        studentVerificationToken,
         suggestedGrade,
         suggestedGraduationYear,
         suggestedClassNumber: 1,
-        studentVerificationToken,
-        ...(ocrDebug && {
-          ocrTextPreview: verification.ocrTextPreview,
-        }),
+        expectedLevel,
       },
     });
   } catch (error) {
-    console.error('학생증 가입 검증 오류:', error);
+    console.error('[signup/upload-student-id] 오류:', error);
     return res.status(500).json({
       success: false,
-      message: '학생증 검증 중 오류가 발생했습니다.',
+      message: '학생증 제출 중 오류가 발생했습니다.',
     });
   }
 });
+
+/** 거절된 사용자 — 학생증 재제출 (로그인 후) */
+router.post('/resubmit-student-id', authenticate, signupOcrLimiter, async (req, res) => {
+  try {
+    const userId = req.user.userId;
+    const { imageBase64, cropRegion } = req.body || {};
+
+    if (!imageBase64) {
+      return res.status(400).json({
+        success: false,
+        message: '학생증 이미지가 필요합니다.',
+      });
+    }
+
+    const verification = await getStudentVerificationStatus(userId);
+    if (verification.status === 'APPROVED') {
+      return res.status(400).json({
+        success: false,
+        message: '이미 학생 인증이 완료된 계정입니다.',
+      });
+    }
+    if (verification.status !== 'REJECTED') {
+      return res.status(400).json({
+        success: false,
+        message: '재제출은 거절된 경우에만 가능합니다.',
+      });
+    }
+
+    const [userRows] = await pool.execute(
+      `SELECT id, name, phone, birth_date, school_id FROM users WHERE id = ? LIMIT 1`,
+      [userId],
+    );
+    if (!userRows.length) {
+      return res.status(404).json({
+        success: false,
+        message: '사용자를 찾을 수 없습니다.',
+      });
+    }
+    const user = userRows[0];
+
+    let uploaded;
+    try {
+      uploaded = await uploadSignupStudentIdPhoto({ imageBase64, cropRegion });
+    } catch (uploadErr) {
+      console.error('[resubmit-student-id] Cloudinary 오류:', uploadErr);
+      return res.status(500).json({
+        success: false,
+        message: '학생증 이미지 업로드에 실패했습니다.',
+      });
+    }
+
+    await pool.execute(
+      `INSERT INTO signup_student_id_submissions
+         (user_id, name, phone, birth_date, school_id, cloudinary_url, cloudinary_public_id, status)
+       VALUES (?, ?, ?, ?, ?, ?, ?, 'pending')`,
+      [
+        userId,
+        user.name,
+        user.phone,
+        user.birth_date,
+        user.school_id,
+        uploaded.cloudinaryUrl,
+        uploaded.cloudinaryPublicId,
+      ],
+    );
+
+    return res.json({
+      success: true,
+      message: '학생증이 재제출되었습니다. 관리자 승인을 기다려 주세요.',
+      data: {
+        studentVerificationStatus: 'PENDING',
+        rejectReason: null,
+      },
+    });
+  } catch (error) {
+    console.error('[resubmit-student-id] 오류:', error);
+    return res.status(500).json({
+      success: false,
+      message: '학생증 재제출 중 오류가 발생했습니다.',
+    });
+  }
+});
+
+/*
+ * ── [보관] CLOVA OCR 자동 검증 — 수동 검수 전환으로 비활성화 ──
+ * 재활성화 시 studentIdOcr.service.js import 및 아래 로직 복구
+ *
+router.post('/signup/verify-student-id', signupOcrLimiter, async (req, res) => {
+  // extractTextFromImageBase64 → verifyStudentIdOcrForSignup → issueStudentOcrVerificationToken
+});
+ */
 
 // OCR 학생증 인증
 router.post('/ocr', authenticate, async (req, res) => {

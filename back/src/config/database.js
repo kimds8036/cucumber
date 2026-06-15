@@ -3,9 +3,10 @@ import dotenv from 'dotenv';
 
 dotenv.config();
 
+// Railway: Public Networking Off 후 DB_PRIVATE_HOST(또는 *.railway.internal) 사용 권장
 const dbConfig = {
-  host: process.env.DB_HOST || '127.0.0.1',
-  port: Number(process.env.DB_PORT) || 3307,
+  host: process.env.DB_PRIVATE_HOST || process.env.DB_HOST || '127.0.0.1',
+  port: Number(process.env.DB_PRIVATE_PORT || process.env.DB_PORT) || 3307,
   user: process.env.DB_USER || 'cucumber',
   password: process.env.DB_PASSWORD || 'cucumber0425',
   database: process.env.DB_NAME || 'cucumber',

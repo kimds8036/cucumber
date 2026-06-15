@@ -27,6 +27,7 @@ import dmRoutes from './routes/dm.js';
 import adminReportsRoutes from './routes/adminReports.js';
 import adminInquiriesRoutes from './routes/adminInquiries.js';
 import adminSignupCertificatesRoutes from './routes/adminSignupCertificates.js';
+import adminSignupStudentIdsRoutes from './routes/adminSignupStudentIds.js';
 import adminWebRoutes from './routes/adminWeb.js';
 import inquiriesRoutes from './routes/inquiries.js';
 import appRoutes from './routes/app.js';
@@ -38,6 +39,7 @@ import './utils/notificationWorker.js';
 import { initJobs } from './jobs/index.js';
 import { ensurePersonalMailSchema } from './db/ensurePersonalMailSchema.js';
 import { isProductionEnv, sendErrorResponse } from './utils/httpError.js';
+import { requireMinAppVersion } from './middleware/requireMinAppVersion.js';
 
 
 dotenv.config();
@@ -63,9 +65,16 @@ app.use(helmet({ contentSecurityPolicy: false }));
 // 3. CORS
 //    - 운영(NODE_ENV=production): CORS_ORIGIN(콤마 구분) 만 허용. 모바일 앱은 origin 이 없으므로 통과
 //    - 그 외(개발): 로컬 dev 호스트만 허용
+const defaultAdminOrigins = [
+  'https://cucumber-production.up.railway.app',
+  'https://cucumber-develop.up.railway.app',
+];
+const corsFromEnv = process.env.CORS_ORIGIN
+  ? process.env.CORS_ORIGIN.split(',').map((s) => s.trim()).filter(Boolean)
+  : [];
 const allowedOrigins = isProductionEnv()
-  ? (process.env.CORS_ORIGIN ? process.env.CORS_ORIGIN.split(',').map((s) => s.trim()).filter(Boolean) : [])
-  : ['http://localhost:3000', 'http://localhost:8081'];
+  ? [...new Set([...corsFromEnv, ...defaultAdminOrigins])]
+  : ['http://localhost:3000', 'http://localhost:8081', ...defaultAdminOrigins];
 
 app.use(cors({
   origin: (origin, callback) => {
@@ -145,6 +154,9 @@ app.get('/health', (req, res) => {
   res.json({ status: 'ok', message: 'Server is running' });
 });
 
+// App-Version 미들웨어 (방법 A — DEPLOY_PREFLIGHT §2)
+app.use(requireMinAppVersion);
+
 // Admin web routes (로그인/가드/페이지 제공)
 app.use('/admin', adminWebRoutes);
 
@@ -182,6 +194,7 @@ app.use('/api/inquiries', inquiriesRoutes);
 app.use('/api/admin', adminReportsRoutes);
 app.use('/api/admin/inquiries', adminInquiriesRoutes);
 app.use('/api/admin/signup-certificates', adminSignupCertificatesRoutes);
+app.use('/api/admin/signup-student-ids', adminSignupStudentIdsRoutes);
 app.use('/api/test', testRoutes);
 
 // ============ 글로벌 에러 핸들러 ============

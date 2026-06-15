@@ -282,8 +282,8 @@ git commit
 
 | 항목 | 현재 기준 (develop / production 동일 유지) |
 |------|---------------------------------------------|
-| `version` | `1.3.0` (`app.json` / `app.config.js`) |
-| Android `versionCode` | `7` |
+| `version` | `1.4.0` (`app.json` / `app.config.js`) |
+| Android `versionCode` | `8` |
 
 버전 올릴 때: develop 반영·push → AAB·Play → production 반영(체리픽 또는 merge) → push.  
 스토어 문구: `RELEASE_NOTES.md`
@@ -327,7 +327,7 @@ npm run android:prod
 | 배포 전 점검 | `DEPLOY_PREFLIGHT_CHECKLIST.md` |
 | 릴리스 노트 | `RELEASE_NOTES.md` |
 | DB 마이그레이션 | `back/docs/` (예: `PERSONAL_MAIL_MIGRATE.md`) |
-| 관리자 웹 | `{production 백엔드 URL}/admin` |
+| 관리자 웹 | `{백엔드 URL}/admin` — OTP·CORS: `docs/ADMIN_ACCESS.md` |
 | 로컬 경로 | `WORKSPACE.md` |
 
 ---

@@ -19,6 +19,7 @@ import { api } from '../../utils/api';
 import { subscribeSchoolMailLike } from '../../utils/listSyncEvents';
 import { getSchoolMailFromLabel } from './utils/schoolMailFromLabel';
 import MailboxAdPlaceholder from '../../src/screens/ad/MailboxAdPlaceholder';
+import { injectAdSlots, useAdSlots } from '../../hooks/useAdSlots';
 
 function formatTimeAgo(createdAt) {
   if (!createdAt) return '';
@@ -85,22 +86,22 @@ const SchoolMailboxScreen = ({ navigation, route }) => {
   const schoolName = route?.params?.schoolName ?? 'OO고등학교';
   const schoolId = route?.params?.schoolId ?? null;
   const sourceScreen = route?.params?.sourceScreen ?? null;
+  const { adSlots } = useAdSlots();
 
   const [mails, setMails] = useState([]);
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
-  const mailsWithAds = useMemo(() => {
-    const next = [];
-    mails.forEach((mail, index) => {
-      next.push(mail);
-      if ((index + 1) % 5 === 0) {
-        next.push({ id: `mail_ad_${index}`, type: 'mailAd' });
-      }
-    });
-    return next;
-  }, [mails]);
+  const mailsWithAds = useMemo(
+    () =>
+      injectAdSlots(mails, adSlots, {
+        adType: 'mailAd',
+        idPrefix: 'mail_ad',
+        skipFirstIndex: false,
+      }),
+    [mails, adSlots],
+  );
 
   const fetchMails = useCallback(
     async (nextPage = 1, append = false) => {
@@ -183,7 +184,9 @@ const SchoolMailboxScreen = ({ navigation, route }) => {
 
   const renderItem = ({ item: raw }) => {
     if (raw.type === 'mailAd') {
-      return <MailboxAdPlaceholder styles={styles} />;
+      return (
+        <MailboxAdPlaceholder styles={styles} adData={raw.adData} />
+      );
     }
     const mail = mapMailForCard(raw, schoolId);
     return (

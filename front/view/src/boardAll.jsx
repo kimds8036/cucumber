@@ -37,6 +37,7 @@ import { filterPostsExcludingUser } from '../../utils/blockUser';
 import { invalidateProfileCountsCache } from '../../utils/profileCountsCache';
 import { useFocusEffect } from '@react-navigation/native';
 import ReportModal from '../../components/common/ReportModal.jsx';
+import { injectAdSlots, useAdSlots } from '../../hooks/useAdSlots';
 
 /** 서버 created_at(UTC)을 "n분 전" 형식으로 변환. 화면에서는 기기 로컬 시간 기준으로 계산 */
 function formatTimeAgo(createdAt) {
@@ -74,6 +75,7 @@ export function BoardAllContent({ navigation, posts }) {
   const normalize = useMemo(() => getNormalize(width), [width]);
   const styles = useMemo(() => createBoardStyles(width, normalize), [width]);
   const { isGuidePreview } = useGuidePreview();
+  const { adSlots } = useAdSlots();
   const { coords, coordsIsFresh, refreshLocation, permissionGranted } =
     useLocationContext();
   const distanceStale = permissionGranted && (!coordsIsFresh || !coords);
@@ -413,16 +415,16 @@ export function BoardAllContent({ navigation, posts }) {
   const postsInjected = Boolean(posts && posts.length > 0);
   const hideListBehindLoader = loading && !postsInjected;
 
-  const dataWithAds = useMemo(() => {
-    const next = [];
-    data.forEach((post, index) => {
-      next.push({ ...post, type: 'post' });
-      if ((index + 1) % 5 === 0 && index !== 0) {
-        next.push({ id: `ad_${index}`, type: 'ad' });
-      }
-    });
-    return next;
-  }, [data]);
+  const dataWithAds = useMemo(
+    () =>
+      injectAdSlots(data, adSlots, {
+        adType: 'ad',
+        idPrefix: 'ad',
+        skipFirstIndex: true,
+        wrapItem: (post) => ({ ...post, type: 'post' }),
+      }),
+    [data, adSlots],
+  );
 
   const skeletonListData = useMemo(
     () =>
@@ -518,7 +520,13 @@ export function BoardAllContent({ navigation, posts }) {
       return renderBoardSkeletonCard();
     }
     if (item.type === 'ad') {
-      return <AdPlaceholder normalize={normalize} styles={styles} />;
+      return (
+        <AdPlaceholder
+          normalize={normalize}
+          styles={styles}
+          adData={item.adData}
+        />
+      );
     }
     return renderPostItem({ item });
   };

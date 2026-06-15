@@ -20,11 +20,12 @@ import {
 } from '../../../utils/studentIdFrameCrop';
 import StudentIdCameraGuideOverlay from './StudentIdCameraGuideOverlay';
 
-const OCR_VERIFY_TIMEOUT_MS = 120_000;
+const UPLOAD_TIMEOUT_MS = 120_000;
 
 const SignStepStudentIdVerify = ({
   styles,
   identity,
+  schoolId,
   alreadyVerified = false,
   onVerified,
 }) => {
@@ -47,7 +48,9 @@ const SignStepStudentIdVerify = ({
   const cameraRef = useRef(null);
   const previewLayoutRef = useRef({ width: 0, height: 0 });
   const [busy, setBusy] = useState(false);
-  const [statusText, setStatusText] = useState('학생증을 가운데 틀에 맞춰 주세요.');
+  const [statusText, setStatusText] = useState(
+    '학생증을 가운데 틀에 맞춘 뒤 촬영해 주세요. 관리자가 확인합니다.',
+  );
 
   const onStageLayout = useCallback((e) => {
     const { width, height } = e.nativeEvent.layout;
@@ -73,6 +76,10 @@ const SignStepStudentIdVerify = ({
       Alert.alert('알림', '이름·생년월일·전화번호 인증을 먼저 완료해 주세요.');
       return;
     }
+    if (!schoolId) {
+      Alert.alert('알림', '재학 중인 학교를 먼저 선택해 주세요.');
+      return;
+    }
 
     if (!cameraRef.current) return;
 
@@ -83,7 +90,7 @@ const SignStepStudentIdVerify = ({
     }
 
     setBusy(true);
-    setStatusText('학생증을 인식하는 중…');
+    setStatusText('학생증을 업로드하는 중…');
     try {
       const photo = await cameraRef.current.takePictureAsync({
         base64: true,
@@ -111,50 +118,36 @@ const SignStepStudentIdVerify = ({
           : null;
 
       const res = await api.post(
-        '/api/auth/signup/verify-student-id',
+        '/api/auth/signup/upload-student-id',
         {
           name: identity.name.trim(),
           birthDate: identity.birthDate,
           phone: identity.phoneNumber,
+          schoolId,
           imageBase64: photo.base64,
           cropRegion,
         },
-        { timeout: OCR_VERIFY_TIMEOUT_MS },
+        { timeout: UPLOAD_TIMEOUT_MS },
       );
 
       const data = res.data?.data;
-      if (__DEV__) {
-        console.log('[SignStepStudentIdVerify] OCR API response', {
-          passed: data?.passed,
-          nameOk: data?.nameOk,
-          levelOk: data?.levelOk,
-          schoolOk: data?.schoolOk,
-          expectedLevel: data?.expectedLevel,
-          detectedLevel: data?.detectedLevel,
-          school: data?.school,
-          reasons: data?.reasons,
-          suggestedGrade: data?.suggestedGrade,
-          suggestedGraduationYear: data?.suggestedGraduationYear,
-          ocrTextPreview: data?.ocrTextPreview,
-        });
-      }
       if (!res.data?.success || !data?.passed) {
-        const reasons = (data?.reasons || []).join('\n');
         Alert.alert(
-          '학생증 인증 실패',
-          reasons || res.data?.message || '학생증을 다시 촬영해 주세요.',
+          '학생증 제출 실패',
+          res.data?.message || '학생증을 다시 촬영해 주세요.',
         );
-        setStatusText('인식에 실패했습니다. 다시 맞춰 주세요.');
+        setStatusText('업로드에 실패했습니다. 다시 시도해 주세요.');
         return;
       }
 
       onVerified?.({
         name: identity.name,
-        school: data.school,
-        schoolId: data.school?.id,
+        manualReview: true,
+        cloudinaryUrl: data.cloudinaryUrl,
         grade: data.suggestedGrade ?? '',
         class: data.suggestedClassNumber ?? '',
         graduationYear: data.suggestedGraduationYear ?? '',
+        expectedLevel: data.expectedLevel,
         studentVerificationToken: data.studentVerificationToken,
         verification: data,
       });
@@ -166,24 +159,24 @@ const SignStepStudentIdVerify = ({
       const msg =
         e?.response?.status === 429
           ? e?.response?.data?.message ||
-            '학생증 인식 요청 한도를 초과했습니다. 잠시 후 다시 시도해 주세요.'
+            '학생증 업로드 요청 한도를 초과했습니다. 잠시 후 다시 시도해 주세요.'
           : networkLike
-            ? '학생증 인식에 시간이 걸리거나 연결이 끊겼습니다. Wi‑Fi·데이터를 확인한 뒤 다시 시도해 주세요.'
+            ? '학생증 업로드에 시간이 걸리거나 연결이 끊겼습니다. Wi‑Fi·데이터를 확인한 뒤 다시 시도해 주세요.'
             : e?.response?.data?.message ||
-              '학생증 인증 중 오류가 발생했습니다.';
+              '학생증 제출 중 오류가 발생했습니다.';
       Alert.alert('인증 오류', msg);
       setStatusText('오류가 발생했습니다. 다시 시도해 주세요.');
     } finally {
       setBusy(false);
       setStatusText('학생증을 가운데 틀에 맞춰 주세요.');
     }
-  }, [identity, onVerified, frameWidth, frameHeight, alreadyVerified, busy]);
+  }, [identity, schoolId, onVerified, frameWidth, frameHeight, alreadyVerified, busy]);
 
   if (alreadyVerified) {
     return (
       <View style={[styles.content, localStyles.stepRoot, localStyles.centered]}>
         <Text style={[styles.inputLabel, { textAlign: 'center' }]}>
-          학생증 인증이 완료되었습니다.
+          학생증 촬영이 완료되었습니다.
         </Text>
         <Text
           style={{
@@ -192,9 +185,12 @@ const SignStepStudentIdVerify = ({
             fontFamily: 'Baloo2-Regular',
             fontSize: 13,
             textAlign: 'center',
+            lineHeight: 20,
+            paddingHorizontal: 16,
           }}
         >
-          뒤로 가도 인증 결과가 유지됩니다. 다음 단계로 진행해 주세요.
+          아래 [제출하기]를 누르면 가입이 완료되고, 관리자 승인 대기 화면으로
+          이동합니다.
         </Text>
       </View>
     );
@@ -273,7 +269,7 @@ const SignStepStudentIdVerify = ({
         {busy ? (
           <ActivityIndicator color={colors.background} />
         ) : (
-          <Text style={styles.nextButtonText}>촬영 및 인증하기</Text>
+          <Text style={styles.nextButtonText}>촬영 및 제출하기</Text>
         )}
       </TouchableOpacity>
     </View>

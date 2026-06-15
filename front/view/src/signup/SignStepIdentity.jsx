@@ -16,6 +16,7 @@ import {
 } from '../../../utils/firebasePhoneAuth';
 import { e164ToLocalKr, normalizeLocalKrPhone } from '../../../utils/phoneFormat';
 import SignupStepScroll from './SignupStepScroll';
+import SchoolSearchField from './SchoolSearchField';
 
 const SMS_RESEND_COOLDOWN_SEC = 60;
 
@@ -32,6 +33,8 @@ const SignStepIdentity = ({
   normalize,
   bottomOffset,
   initialData,
+  selectedSchool,
+  onSchoolSelect,
   onChange,
 }) => {
   const initialParts = parseBirthParts(initialData?.birthDate);
@@ -323,8 +326,16 @@ const SignStepIdentity = ({
           </View>
         </View>
 
+        <SchoolSearchField
+          styles={styles}
+          normalize={normalize}
+          selectedSchool={selectedSchool}
+          onSelect={onSchoolSelect}
+          disabled={isBusy || isVerified}
+        />
+
         <Text style={[styles.inputLabel, { marginTop: 16 }]}>전화번호</Text>
-        <View style={styles.inputWrapper}>
+        <View style={[styles.inputWrapper, styles.inputRow]}>
           <View style={styles.inputWithButton}>
             <TextInput
               style={[styles.input, styles.inputFlex]}
@@ -400,12 +411,7 @@ const SignStepIdentity = ({
 
         {isVerified ? (
           <Text
-            style={{
-              marginTop: 12,
-              color: colors.primary,
-              fontFamily: 'Baloo2-Regular',
-              fontSize: 13,
-            }}
+            style={[styles.fieldHelperText, styles.fieldHelperTextSuccess]}
           >
             전화번호 인증이 완료되었습니다.
           </Text>

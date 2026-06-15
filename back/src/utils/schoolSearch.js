@@ -9,7 +9,7 @@ export function buildSafeSchoolSearchTerm(raw) {
 }
 
 const SCHOOL_SEARCH_CORE = `
-  SELECT school_id, name, region
+  SELECT school_id, name, region, address
   FROM schools
   WHERE name LIKE ?
   ORDER BY

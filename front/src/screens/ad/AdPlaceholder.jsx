@@ -5,7 +5,7 @@ import { useWindowDimensions } from 'react-native';
 import { getNormalize } from '../../../styles/frame.style';
 import { createAdStyles } from '../../../styles/ad.style';
 
-const AdPlaceholder = ({ styles, normalize }) => {
+const AdPlaceholder = ({ styles, normalize, adData }) => {
   const { width } = useWindowDimensions();
   const localNormalize = useMemo(() => getNormalize(width), [width]);
   const adStyles = useMemo(
@@ -13,12 +13,15 @@ const AdPlaceholder = ({ styles, normalize }) => {
     [normalize, localNormalize, width],
   );
   const s = styles || adStyles;
+  const sponsorLabel = adData?.sponsor ?? adData?.author ?? '스폰서';
+  const contentText =
+    adData?.content ?? adData?.body ?? '여기에 광고가 표시됩니다.';
 
   return (
     <View style={s.postItem}>
       <View style={s.postHeader}>
         <View style={s.postAuthorRow}>
-          <Text style={s.postAuthor}>스폰서</Text>
+          <Text style={s.postAuthor}>{sponsorLabel}</Text>
           <Text style={s.postDot}>•</Text>
           <Text style={s.postTime}>광고</Text>
         </View>
@@ -27,7 +30,7 @@ const AdPlaceholder = ({ styles, normalize }) => {
       <View style={s.postBodyRow}>
         <View style={s.postBodyColumn}>
           <Text style={[s.postContent, s.postContentCompact]}>
-            여기에 광고가 표시됩니다.
+            {contentText}
           </Text>
           <View style={s.postFooter}>
             <View style={s.postStats}>

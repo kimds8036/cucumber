@@ -5,13 +5,15 @@ import { colors } from '../../../styles/colors';
 import { getNormalize } from '../../../styles/frame.style';
 import { createAdStyles } from '../../../styles/ad.style';
 
-const NotificationAdPlaceholder = () => {
+const NotificationAdPlaceholder = ({ adData }) => {
   const { width } = useWindowDimensions();
   const normalize = useMemo(() => getNormalize(width), [width]);
   const styles = useMemo(
     () => createAdStyles(normalize, width),
     [normalize, width],
   );
+  const contentText =
+    adData?.content ?? adData?.body ?? '여기에 광고가 표시됩니다.';
 
   return (
     <View style={styles.notificationItem}>
@@ -25,7 +27,7 @@ const NotificationAdPlaceholder = () => {
       <View style={styles.notificationContent}>
         <Text style={styles.notificationTitle}>광고</Text>
         <Text style={styles.notificationText} numberOfLines={2}>
-          여기에 광고가 표시됩니다.
+          {contentText}
         </Text>
         <Text style={styles.notificationTime}>AD</Text>
       </View>
