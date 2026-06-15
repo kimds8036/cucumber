@@ -1,0 +1,18 @@
+﻿{
+    "original":  "ìì¤ì ì¬ì©íì§ ã\u0085\u0085ã\u0085 ë§ì¸ì.",
+    "filtered":  "ìì¤ì ì¬ì©íì§ ** ë§ì¸ì.",
+    "is_profane":  true,
+    "source":  "local_fallback"
+}
+{
+    "original":  "10ìê¹ì§ ìì§ ë§",
+    "filtered":  "10ìê¹ì§ ìì§ ë§",
+    "is_profane":  false,
+    "source":  "local_fallback"
+}
+{
+    "original":  "ìë³´ì§ ë§ë¼",
+    "filtered":  "ìë³´ì§ ë§ë¼",
+    "is_profane":  false,
+    "source":  "local_fallback"
+}

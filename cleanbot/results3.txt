@@ -1,0 +1,112 @@
+{
+  "original": "욕설 ㅅㅂ 하지 마",
+  "filtered": "욕설 ** 하지 마",
+  "is_profane": true,
+  "source": "korcen"
+}
+
+{
+  "original": "시발 이게 말이 돼?",
+  "filtered": "** 이게 말이 돼?",
+  "is_profane": true,
+  "source": "korcen"
+}
+
+{
+  "original": "개새끼가 어딜 감히",
+  "filtered": "개**가 어딜 감히",
+  "is_profane": true,
+  "source": "korcen"
+}
+
+{
+  "original": "자지 볼래?",
+  "filtered": "** 볼래?",
+  "is_profane": true,
+  "source": "korcen"
+}
+
+{
+  "original": "이 보지같은 놈",
+  "filtered": "이 **같은 놈",
+  "is_profane": true,
+  "source": "korcen"
+}
+
+{
+  "original": "이 병신아 꺼져",
+  "filtered": "이 **아 **",
+  "is_profane": true,
+  "source": "korcen"
+}
+
+{
+  "original": "닥쳐 그냥",
+  "filtered": "** 그냥",
+  "is_profane": true,
+  "source": "korcen"
+}
+
+{
+  "original": "10시까지 자지 마",
+  "filtered": "10시까지 자지 마",
+  "is_profane": false,
+  "source": "korcen"
+}
+
+{
+  "original": "얕보지 마라 진짜로",
+  "filtered": "얕보지 마라 진짜로",
+  "is_profane": false,
+  "source": "korcen"
+}
+
+{
+  "original": "병신년 새해 복 많이 받으세요",
+  "filtered": "병신년 새해 복 많이 받으세요",
+  "is_profane": false,
+  "source": "korcen"
+}
+
+{
+  "original": "강아지 새끼 너무 귀여워",
+  "filtered": "강아지 새끼 너무 귀여워",
+  "is_profane": false,
+  "source": "korcen"
+}
+
+{
+  "original": "피곤해서 빨리 자지",
+  "filtered": "피곤해서 빨리 자지",
+  "is_profane": false,
+  "source": "korcen"
+}
+
+{
+  "original": "한번 읽어보지",
+  "filtered": "한번 읽어보지",
+  "is_profane": false,
+  "source": "korcen"
+}
+
+{
+  "original": "오늘 급식 진짜 맛있었다",
+  "filtered": "오늘 급식 진짜 맛있었다",
+  "is_profane": false,
+  "source": "korcen"
+}
+
+{
+  "original": "내일 시험 화이팅",
+  "filtered": "내일 시험 화이팅",
+  "is_profane": false,
+  "source": "korcen"
+}
+
+{
+  "original": "숙제 다 끝냈어?",
+  "filtered": "숙제 다 끝냈어?",
+  "is_profane": false,
+  "source": "korcen"
+}
+

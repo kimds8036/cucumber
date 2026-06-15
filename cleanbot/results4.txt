@@ -1,0 +1,18 @@
+{
+  "original": "욕설을 사용하지 ㅅㅂ 마세요.",
+  "filtered": "욕설을 사용하지 ** 마세요.",
+  "is_profane": true,
+  "source": "korcen"
+}
+{
+  "original": "자지 볼래?",
+  "filtered": "** 볼래?",
+  "is_profane": true,
+  "source": "korcen"
+}
+{
+  "original": "얕보지 마라",
+  "filtered": "얕보지 마라",
+  "is_profane": false,
+  "source": "korcen"
+}
