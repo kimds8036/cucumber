@@ -39,6 +39,7 @@ import './utils/notificationWorker.js';
 import { initJobs } from './jobs/index.js';
 import { ensurePersonalMailSchema } from './db/ensurePersonalMailSchema.js';
 import { isProductionEnv, sendErrorResponse } from './utils/httpError.js';
+import { requireMinAppVersion } from './middleware/requireMinAppVersion.js';
 
 
 dotenv.config();
@@ -152,6 +153,9 @@ if (isProductionEnv()) {
 app.get('/health', (req, res) => {
   res.json({ status: 'ok', message: 'Server is running' });
 });
+
+// App-Version 미들웨어 (방법 A — DEPLOY_PREFLIGHT §2)
+app.use(requireMinAppVersion);
 
 // Admin web routes (로그인/가드/페이지 제공)
 app.use('/admin', adminWebRoutes);

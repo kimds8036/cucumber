@@ -15,6 +15,12 @@ import SignStepIdentity from './SignStepIdentity';
 import SignStep2 from './SignStep2';
 import SignStepStudentIdVerify from './SignStepStudentIdVerify';
 import { api, setAuthToken } from '../../../utils/api';
+import {
+  isValidUsername,
+  isValidPassword,
+  USERNAME_ERROR,
+  PASSWORD_ERROR,
+} from '../../../utils/signupValidation';
 import { useAuth } from '../../../context/AuthContext';
 import { useAppNavigation } from '../../../navigation/useAppNavigation';
 import Skeleton from '../../../components/common/Skeleton';
@@ -209,6 +215,14 @@ const Sign = ({ navigation }) => {
       !stepInfoData.passwordConfirm
     ) {
       Alert.alert('알림', '아이디와 비밀번호를 입력해 주세요.');
+      return;
+    }
+    if (!isValidUsername(stepInfoData.username)) {
+      Alert.alert('알림', USERNAME_ERROR);
+      return;
+    }
+    if (!isValidPassword(stepInfoData.password)) {
+      Alert.alert('알림', PASSWORD_ERROR);
       return;
     }
     if (stepInfoData.password !== stepInfoData.passwordConfirm) {
@@ -415,6 +429,8 @@ const Sign = ({ navigation }) => {
         !stepInfoData.username ||
         !stepInfoData.password ||
         !stepInfoData.passwordConfirm ||
+        !isValidUsername(stepInfoData.username) ||
+        !isValidPassword(stepInfoData.password) ||
         stepInfoData.password !== stepInfoData.passwordConfirm
       ) {
         return true;

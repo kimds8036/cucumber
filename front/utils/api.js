@@ -1,5 +1,5 @@
 import axios from 'axios';
-import { Platform } from 'react-native';
+import { Platform, Linking, Alert } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Constants from 'expo-constants';
 import { API_URLS } from '../config/apiEnv.js';
@@ -42,6 +42,15 @@ const getBaseURL = () => {
 /** 슬래시 없는 베이스 URL (네이티브 채팅 Intent 등) */
 export function getApiBaseUrlNoSlash() {
   return getBaseURL().replace(/\/+$/, '');
+}
+
+function getAppVersionHeader() {
+  return String(
+    Constants.expoConfig?.version ||
+      Constants.manifest2?.extra?.expoClient?.version ||
+      Constants.manifest?.version ||
+      '',
+  ).trim();
 }
 
 export const api = axios.create({
@@ -93,6 +102,11 @@ export function getApiUserFacingMessage(
 // (영속 토큰 → 인메모리 토큰 순서로 폴백)
 api.interceptors.request.use(
   async (config) => {
+    const appVersion = getAppVersionHeader();
+    if (appVersion) {
+      config.headers['App-Version'] = appVersion;
+    }
+    config.headers['App-Platform'] = Platform.OS === 'ios' ? 'ios' : 'android';
     try {
       const stored = await AsyncStorage.getItem(AUTH_TOKEN_KEY);
       const token = stored || inMemoryAuthToken;
@@ -121,6 +135,20 @@ api.interceptors.response.use(
         null;
       if (msg) {
         error.userFacingMessage = msg;
+      }
+    }
+    if (status === 426) {
+      const msg =
+        (data && typeof data.message === 'string' && data.message.trim()) ||
+        '앱 업데이트가 필요합니다. 스토어에서 최신 버전으로 업데이트해 주세요.';
+      error.userFacingMessage = msg;
+      error.isUpgradeRequired = true;
+      const storeUrl = data?.data?.storeUrl;
+      if (storeUrl && !error.config?.skipUpgradeAlert) {
+        Alert.alert('업데이트 필요', msg, [
+          { text: '스토어 열기', onPress: () => Linking.openURL(storeUrl).catch(() => {}) },
+          { text: '닫기', style: 'cancel' },
+        ]);
       }
     }
     return Promise.reject(error);

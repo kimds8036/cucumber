@@ -278,6 +278,25 @@ export const createSignupStyles = (width, normalize) => {
       marginBottom: normalize(12),
       marginLeft: normalize(20),
     },
+    fieldHelperText: {
+      fontSize: normalize(fontSizes.lg),
+      fontFamily: fonts.regular,
+      color: colors.textSecondary,
+      marginLeft: normalize(20),
+      marginTop: normalize(4),
+      marginBottom: normalize(8),
+      lineHeight: normalize(18),
+    },
+    fieldHelperTextSuccess: {
+      color: colors.primaryDark,
+    },
+    fieldHelperTextError: {
+      color: colors.alert,
+    },
+    inputRow: {
+      width: '98%',
+      alignSelf: 'center',
+    },
 
     // 생년월일 드롭다운
     birthdayContainer: {
@@ -329,14 +348,15 @@ export const createSignupStyles = (width, normalize) => {
     inputWithButton: {
       flexDirection: 'row',
       alignItems: 'center',
-      marginBottom: normalize(16),
+      width: '100%',
+      marginBottom: normalize(4),
       ...debugBorder,
     },
     inputFlex: {
       flex: 1,
       marginBottom: 0,
       marginRight: normalize(8),
-      marginLeft: normalize(4),
+      marginLeft: 0,
     },
     verifyButton: {
       paddingHorizontal: normalize(20),

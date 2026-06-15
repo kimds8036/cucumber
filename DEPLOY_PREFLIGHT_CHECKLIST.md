@@ -129,11 +129,11 @@ PERSONAL_MAIL_RETURN_DAYS=1
 | **ForceUpdateGate (B)** | 앱 켤 때 친절한 전면 차단 UX |
 | **App-Version 미들웨어 (A)** | 구버전의 API 호출 자체를 막는 보안 장벽 |
 
-**병행 권장** — v1.3.0 배포 시점에는 B만으로도 가능, A는 배포 후 스프린트.
+**병행 권장** — v1.3.0 배포 시점에는 B만으로도 가능. **방법 A**는 `back/src/middleware/requireMinAppVersion.js`로 코드 반영 완료 (Railway env·E2E는 §2.5).
 
 ### 2.4 미들웨어 구현 시 화이트리스트 주의
 
-`/health`, `/api/app/version-check` 외에도 **비로그인 허용 경로**를 빠짐없이 넣어야 앱 진입이 터지지 않습니다.
+`/health`, `/api/app/version-check` 외에도 **비로그인 허용 경로**를 빠짐없이 넣어야 앱 진입이 터지지 않습니다. 구현: `back/src/middleware/requireMinAppVersion.js`.
 
 | 예외 후보 | 이유 |
 |-----------|------|
@@ -147,10 +147,10 @@ PERSONAL_MAIL_RETURN_DAYS=1
 
 ### 2.5 방법 A 도입 체크 (배포 후 스프린트)
 
-- [ ] `api.js` — `App-Version` / `App-Platform` 헤더
-- [ ] `requireMinAppVersion` 미들웨어 + 화이트리스트 정교화
-- [ ] 426 → 프론트 공통 핸들러 (스토어 링크)
-- [ ] develop `MIN_ANDROID_VERSION=1.0.0` 유지
+- [x] `front/utils/api.js` — `App-Version` / `App-Platform` 헤더
+- [x] `back/src/middleware/requireMinAppVersion.js` + `back/src/index.js` 마운트 + 화이트리스트
+- [x] 426 → `api.js` 공통 핸들러 (스토어 링크 Alert)
+- [ ] develop Railway `MIN_ANDROID_VERSION=1.0.0` 유지 (배포 시 확인)
 - [ ] 구버전 앱으로 로그인·게시판·가입 플로우 E2E
 
 ---
@@ -412,7 +412,7 @@ ENABLE_TEST_API=false
 | Cron | `back/src/jobs/index.js` |
 | 배치 락 | `back/src/services/batchLock.service.js` |
 | 배치 알림 | `back/src/services/batchAlert.service.js` |
-| 강제 업데이트 | `back/src/routes/app.js`, `front/components/common/ForceUpdateGate.jsx` |
+| 강제 업데이트 | `back/src/routes/app.js`, `back/src/middleware/requireMinAppVersion.js`, `front/components/common/ForceUpdateGate.jsx`, `front/utils/api.js` |
 | 인증·PII 수정 | `back/src/routes/auth.js` |
 | 학생증 업로드 | `back/src/services/signupStudentIdPhoto.service.js` |
 | 학생증 검수 API | `back/src/routes/adminSignupStudentIds.js` |

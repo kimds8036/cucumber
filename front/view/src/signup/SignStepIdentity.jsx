@@ -335,7 +335,7 @@ const SignStepIdentity = ({
         />
 
         <Text style={[styles.inputLabel, { marginTop: 16 }]}>전화번호</Text>
-        <View style={styles.inputWrapper}>
+        <View style={[styles.inputWrapper, styles.inputRow]}>
           <View style={styles.inputWithButton}>
             <TextInput
               style={[styles.input, styles.inputFlex]}
@@ -411,12 +411,7 @@ const SignStepIdentity = ({
 
         {isVerified ? (
           <Text
-            style={{
-              marginTop: 12,
-              color: colors.primary,
-              fontFamily: 'Baloo2-Regular',
-              fontSize: 13,
-            }}
+            style={[styles.fieldHelperText, styles.fieldHelperTextSuccess]}
           >
             전화번호 인증이 완료되었습니다.
           </Text>

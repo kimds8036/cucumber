@@ -135,12 +135,11 @@ const SchoolSearchField = ({
 
       {selectedSchool ? (
         <Text
-          style={{
-            marginTop: normalize(10),
-            fontFamily: fonts.regular,
-            fontSize: normalize(13),
-            color: colors.primary,
-          }}
+          style={[
+            styles.fieldHelperText,
+            styles.fieldHelperTextSuccess,
+            { marginTop: normalize(6) },
+          ]}
         >
           선택: {selectedSchool.name}
           {formatSubtitle(selectedSchool)

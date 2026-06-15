@@ -1,7 +1,15 @@
 import React, { useMemo, useState, useEffect } from 'react';
 import { View, Text, TextInput, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { colors, fonts } from '../../../styles/colors';
+import { colors } from '../../../styles/colors';
+import {
+  USERNAME_HINT,
+  PASSWORD_HINT,
+  USERNAME_ERROR,
+  PASSWORD_ERROR,
+  isValidUsername,
+  isValidPassword,
+} from '../../../utils/signupValidation';
 import SignupLockedField from './SignupLockedField';
 import SignupStepScroll from './SignupStepScroll';
 
@@ -52,6 +60,16 @@ const SignStep2 = ({
     if (showCertificateFields) notifyCertificate();
   }, [claimedSchoolName, certificateUrl, submissionNumber, showCertificateFields]);
 
+  const usernameStatus = useMemo(() => {
+    if (!username) return 'idle';
+    return isValidUsername(username) ? 'valid' : 'invalid';
+  }, [username]);
+
+  const passwordStatus = useMemo(() => {
+    if (!password) return 'idle';
+    return isValidPassword(password) ? 'valid' : 'invalid';
+  }, [password]);
+
   const passwordConfirmStatus = useMemo(() => {
     if (!passwordConfirm) return 'idle';
     return password === passwordConfirm ? 'match' : 'mismatch';
@@ -65,11 +83,11 @@ const SignStep2 = ({
     onToggleVisible,
     wrapperStyle,
     inputStyle,
-    placeholder = '8자 이상, 영문+숫자',
+    placeholder = PASSWORD_HINT,
   }) => (
     <>
       <Text style={styles.inputLabel}>{label}</Text>
-      <View style={[styles.inputWrapper, wrapperStyle]}>
+      <View style={[styles.inputWrapper, styles.inputRow, wrapperStyle]}>
         <View style={styles.inputWithButton}>
           <TextInput
             style={[styles.input, styles.inputFlex, inputStyle]}
@@ -97,6 +115,25 @@ const SignStep2 = ({
       </View>
     </>
   );
+
+  const renderFieldFeedback = (status, { validText, invalidText, hintText }) => {
+    if (status === 'idle') {
+      return hintText ? (
+        <Text style={styles.fieldHelperText}>{hintText}</Text>
+      ) : null;
+    }
+    const isOk = status === 'valid' || status === 'match';
+    return (
+      <Text
+        style={[
+          styles.fieldHelperText,
+          isOk ? styles.fieldHelperTextSuccess : styles.fieldHelperTextError,
+        ]}
+      >
+        {isOk ? validText : invalidText}
+      </Text>
+    );
+  };
 
   return (
     <View style={{ flex: 1 }}>
@@ -128,7 +165,7 @@ const SignStep2 = ({
         <Text style={[styles.inputLabel, { marginTop: accountOnly ? 0 : 8 }]}>
           아이디
         </Text>
-        <View style={styles.inputWrapper}>
+        <View style={[styles.inputWrapper, styles.inputRow]}>
           <TextInput
             style={styles.input}
             value={username}
@@ -136,12 +173,17 @@ const SignStep2 = ({
               setUsername(text);
               notifyChange({ username: text });
             }}
-            placeholder="3~20자 영문·숫자·_"
+            placeholder={USERNAME_HINT}
             placeholderTextColor={colors.textSecondary}
             autoCapitalize="none"
             autoCorrect={false}
           />
         </View>
+        {renderFieldFeedback(usernameStatus, {
+          hintText: USERNAME_HINT,
+          validText: '사용 가능한 아이디 형식입니다.',
+          invalidText: USERNAME_ERROR,
+        })}
 
         {renderPasswordField({
           label: '비밀번호',
@@ -152,6 +194,11 @@ const SignStep2 = ({
           },
           visible: showPassword,
           onToggleVisible: () => setShowPassword((v) => !v),
+        })}
+        {renderFieldFeedback(passwordStatus, {
+          hintText: PASSWORD_HINT,
+          validText: '사용 가능한 비밀번호 형식입니다.',
+          invalidText: PASSWORD_ERROR,
         })}
 
         {renderPasswordField({
@@ -171,45 +218,10 @@ const SignStep2 = ({
                 ? { borderColor: colors.alert, borderWidth: 1.5 }
                 : undefined,
         })}
-
-        {passwordConfirmStatus !== 'idle' ? (
-          <View
-            style={{
-              flexDirection: 'row',
-              alignItems: 'center',
-              marginTop: 6,
-              gap: 4,
-            }}
-          >
-            <Ionicons
-              name={
-                passwordConfirmStatus === 'match'
-                  ? 'checkmark-circle'
-                  : 'close-circle'
-              }
-              size={16}
-              color={
-                passwordConfirmStatus === 'match'
-                  ? colors.primaryDark
-                  : colors.alert
-              }
-            />
-            <Text
-              style={{
-                fontFamily: fonts.regular,
-                fontSize: 12,
-                color:
-                  passwordConfirmStatus === 'match'
-                    ? colors.primaryDark
-                    : colors.alert,
-              }}
-            >
-              {passwordConfirmStatus === 'match'
-                ? '비밀번호가 일치합니다'
-                : '비밀번호가 일치하지 않습니다'}
-            </Text>
-          </View>
-        ) : null}
+        {renderFieldFeedback(passwordConfirmStatus, {
+          validText: '비밀번호가 일치합니다.',
+          invalidText: '비밀번호가 일치하지 않습니다.',
+        })}
 
         {showCertificateFields ? (
           <>
