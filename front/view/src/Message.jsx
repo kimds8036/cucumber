@@ -43,6 +43,8 @@ import {
 import { getProfileInnerColor } from '../../utils/profileIconColor';
 import ChatAdPlaceholder from '../../src/screens/ad/ChatAdPlaceholder';
 import { injectAdSlots, useAdSlots } from '../../hooks/useAdSlots';
+import PersonalMailMailboxHub from './components/mail/PersonalMailMailboxHub';
+import { createPersonalMailHubStyles } from '../../styles/personalMailHub.style';
 import {
   isPersonalMailReturned,
   navigateToResendPersonalMail,
@@ -342,8 +344,14 @@ export function MessageContent({ navigation }) {
     () => createMessageRoomMenuSheetStyles(normalize),
     [normalize],
   );
+  const personalMailHubStyles = useMemo(
+    () => createPersonalMailHubStyles(normalize),
+    [normalize],
+  );
 
   const [messageType, setMessageType] = useState('note'); // 'note' | 'mail' (쪽지 탭에 익명+DM 혼합)
+  const [personalMailScreen, setPersonalMailScreen] = useState('hub'); // hub | list
+  const [mailListFilter, setMailListFilter] = useState('all'); // all | received | returned | sent
   const slideAnim = useRef(new Animated.Value(0)).current; // 0=쪽지, 1=개인우편
   const [noteRooms, setNoteRooms] = useState([]);
   const [mails, setMails] = useState([]);
@@ -516,6 +524,53 @@ export function MessageContent({ navigation }) {
       }),
     [mails, adSlots, isGuidePreview],
   );
+
+  const mailHubStats = useMemo(
+    () => ({
+      unreadCount: mails.filter((m) => m.isReceived && m.unreadCount > 0).length,
+      receivedCount: mails.filter((m) => m.isReceived).length,
+      returnedCount: mails.filter((m) => m.isReturned).length,
+      sentCount: mails.filter((m) => !m.isReceived).length,
+    }),
+    [mails],
+  );
+
+  const filteredMails = useMemo(() => {
+    if (mailListFilter === 'received') {
+      return mails.filter((m) => m.isReceived);
+    }
+    if (mailListFilter === 'returned') {
+      return mails.filter((m) => m.isReturned);
+    }
+    if (mailListFilter === 'sent') {
+      return mails.filter((m) => !m.isReceived);
+    }
+    return mails;
+  }, [mails, mailListFilter]);
+
+  const filteredMailsWithAds = useMemo(
+    () =>
+      injectAdSlots(filteredMails, isGuidePreview ? [] : adSlots, {
+        adType: 'chatAd',
+        idPrefix: 'mail_ad',
+        skipFirstIndex: false,
+        wrapItem: (mail) => ({ ...mail, type: 'mail' }),
+      }),
+    [filteredMails, adSlots, isGuidePreview],
+  );
+
+  const mailListTitle = useMemo(() => {
+    switch (mailListFilter) {
+      case 'received':
+        return '받은 우편';
+      case 'returned':
+        return '반송된 우편';
+      case 'sent':
+        return '보낸 우편';
+      default:
+        return '개인 우편';
+    }
+  }, [mailListFilter]);
   const confirmDelete = useCallback(({ title, message, onConfirm }) => {
     Alert.alert(
       title,
@@ -536,6 +591,9 @@ export function MessageContent({ navigation }) {
 
   const handleMessageTypeChange = (type) => {
     setMessageType(type);
+    if (type === 'mail') {
+      setPersonalMailScreen('hub');
+    }
     const toValue = type === 'note' ? 0 : 1;
     Animated.spring(slideAnim, {
       toValue,
@@ -1124,20 +1182,54 @@ export function MessageContent({ navigation }) {
               )}
             </ScrollView>
           </>
+        ) : personalMailScreen === 'hub' ? (
+          <PersonalMailMailboxHub
+            normalize={normalize}
+            stats={mailHubStats}
+            onOpenReceived={() => {
+              setMailListFilter('received');
+              setPersonalMailScreen('list');
+            }}
+            onOpenReturned={() => {
+              setMailListFilter('returned');
+              setPersonalMailScreen('list');
+            }}
+            onOpenSent={() => {
+              setMailListFilter('sent');
+              setPersonalMailScreen('list');
+            }}
+            onCompose={() => navigation?.navigate('SendMail')}
+          />
         ) : (
           <View style={{ flex: 1 }}>
+            <View style={personalMailHubStyles.listHeader}>
+              <TouchableOpacity
+                style={personalMailHubStyles.listHeaderBack}
+                onPress={() => setPersonalMailScreen('hub')}
+                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              >
+                <Ionicons
+                  name="chevron-back"
+                  size={normalize(22)}
+                  color={colors.textPrimary}
+                />
+              </TouchableOpacity>
+              <Text style={personalMailHubStyles.listHeaderTitle}>
+                {mailListTitle}
+              </Text>
+            </View>
             <ScrollView
               style={styles.list}
               showsVerticalScrollIndicator={false}
               contentContainerStyle={{ paddingBottom: normalize(80) }}
             >
-              {loadingMail && mails.length === 0 ? (
+              {loadingMail && filteredMails.length === 0 ? (
                 <MessageListSkeleton
                   styles={styles}
                   normalize={normalize}
                   rowCount={9}
                 />
-              ) : mails.length === 0 ? (
+              ) : filteredMails.length === 0 ? (
                 <View
                   style={{
                     paddingVertical: normalize(40),
@@ -1150,11 +1242,15 @@ export function MessageContent({ navigation }) {
                       color: colors.textSecondary,
                     }}
                   >
-                    아직 도착한 우편이 없습니다.
+                    {mailListFilter === 'returned'
+                      ? '반송된 우편이 없습니다.'
+                      : mailListFilter === 'sent'
+                        ? '보낸 우편이 없습니다.'
+                        : '아직 도착한 우편이 없습니다.'}
                   </Text>
                 </View>
               ) : (
-                mailsWithAds.map((item) => {
+                filteredMailsWithAds.map((item) => {
                   if (item.type === 'chatAd') {
                     return (
                       <ChatAdPlaceholder
@@ -1299,8 +1395,8 @@ export function MessageContent({ navigation }) {
         )}
       </View>
 
-      {/* 개인 우편함: 우측 하단 글쓰기(비행기) 플로팅 버튼 */}
-      {messageType === 'mail' ? (
+      {/* 개인 우편함: 목록 화면에서만 글쓰기 FAB */}
+      {messageType === 'mail' && personalMailScreen === 'list' ? (
         <GuideFocusTarget name={T.MESSAGE_MAIL_WRITE_FAB}>
           <TouchableOpacity
             style={styles.floatingButton}
