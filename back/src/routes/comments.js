@@ -8,6 +8,7 @@ import { getKstTodayRangeUtcForSql, getNowForDB } from '../utils/dateUtils.js';
 import { cloudinary, upload } from '../config/cloudinary.js';
 import { appendUserBlockFilter } from '../utils/userBlockFilter.js';
 import { submitContentReport } from '../services/reportSubmission.service.js';
+import { softDeletePostComment } from '../services/commentCount.service.js';
 
 const router = express.Router();
 
@@ -25,11 +26,12 @@ const commentCreateValidators = [
 
 // 댓글 삭제 (본인 댓글만, 소프트 삭제)
 router.delete('/comments/:commentId', authenticate, async (req, res) => {
+  const connection = await pool.getConnection();
   try {
     const userId = req.user.userId;
     const { commentId } = req.params;
 
-    const [comments] = await pool.execute(
+    const [comments] = await connection.execute(
       'SELECT id, user_id, post_id FROM comments WHERE id = ? AND is_deleted = FALSE',
       [commentId],
     );
@@ -46,25 +48,30 @@ router.delete('/comments/:commentId', authenticate, async (req, res) => {
       });
     }
 
-    await pool.execute('UPDATE comments SET is_deleted = TRUE WHERE id = ?', [
-      commentId,
-    ]);
-    const postId = comments[0].post_id;
-    await pool.execute(
-      'UPDATE posts SET comment_count = comment_count - 1 WHERE id = ?',
-      [postId],
-    );
+    await connection.beginTransaction();
+    const { deleted } = await softDeletePostComment(connection, commentId);
+    if (!deleted) {
+      await connection.rollback();
+      return res.status(404).json({
+        success: false,
+        message: '댓글을 찾을 수 없습니다.',
+      });
+    }
+    await connection.commit();
 
     res.json({
       success: true,
       message: '댓글이 삭제되었습니다.',
     });
   } catch (error) {
+    await connection.rollback().catch(() => {});
     console.error('댓글 삭제 오류:', error);
     res.status(500).json({
       success: false,
       message: '댓글 삭제 중 오류가 발생했습니다.',
     });
+  } finally {
+    connection.release();
   }
 });
 

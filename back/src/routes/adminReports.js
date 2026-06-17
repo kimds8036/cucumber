@@ -2,6 +2,10 @@ import express from 'express';
 import pool from '../config/database.js';
 import { requireAdminApi, isAdminUser } from '../middleware/adminAuth.js';
 import { getNowForDB } from '../utils/dateUtils.js';
+import {
+  softDeletePostComment,
+  softDeleteSchoolMailComment,
+} from '../services/commentCount.service.js';
 
 const router = express.Router();
 
@@ -22,16 +26,10 @@ async function applyReportTargetModeration(connection, report, actionRaw) {
   if (actionRaw !== 'CONFIRM') return;
 
   if (report.target_type === 'comment') {
-    await connection.execute(
-      'UPDATE comments SET is_deleted = TRUE WHERE id = ? AND is_deleted = FALSE',
-      [report.target_id]
-    );
+    await softDeletePostComment(connection, report.target_id);
   }
   if (report.target_type === 'school_mail_comment') {
-    await connection.execute(
-      'UPDATE school_mail_comments SET is_deleted = TRUE WHERE id = ? AND is_deleted = FALSE',
-      [report.target_id]
-    );
+    await softDeleteSchoolMailComment(connection, report.target_id);
   }
 }
 
