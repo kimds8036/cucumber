@@ -20,7 +20,8 @@ const LOCK_TTL_SECONDS = 300;
  * - true: sent_at 기준 TEST_RETURN_AFTER_MINUTES 경과 후 반송 후보
  * - false: PERSONAL_MAIL_RETURN_DAYS(일) — 운영 기본값
  *
- * 배치가 1분마다 돌게 하려면 CRON_PERSONAL_MAIL_RETURN='*/1 * * * *' 도 설정.
+ * 배치가 1분마다 돌게 하려면 CRON_PERSONAL_MAIL_RETURN='* /1 * * * *' 도 설정
+ * (실제 cron 값은 별+/1, 공백 없음 — .env.example 참고).
  * 테스트 끝나면 USE_TEST_RETURN_INTERVAL=false 로 되돌릴 것.
  */
 const USE_TEST_RETURN_INTERVAL = true;
