@@ -1,57 +1,8 @@
-import React, { useEffect, useMemo, useState } from 'react';
-import { View, Text, TouchableOpacity, ScrollView } from 'react-native';
-import LottieView from 'lottie-react-native';
-import { createPersonalMailHubStyles } from '../../../styles/personalMailHub.style';
-
-const MAILBOX_LINES = {
-  intro: '안녕! 나는 개인 우편함이야. 무엇을 도와줄까?',
-  received: (n) =>
-    n > 0
-      ? `받은 우편 ${n}통이 있어. 안 읽은 우편도 확인해 볼래?`
-      : '아직 받은 우편이 없어. 우편을 써 볼까?',
-  returned: (n) =>
-    n > 0
-      ? `반송된 우편이 ${n}통 있어. 다시 보낼 수 있어.`
-      : '반송된 우편은 없어. 다행이네!',
-  compose: '좋아! 새 우편을 쓰러 가자.',
-  sent: (n) =>
-    n > 0
-      ? `보낸 우편 ${n}통이 있어. 목록을 열어줄게.`
-      : '아직 보낸 우편이 없어.',
-};
-
-function Bubble({ styles, side, children, onPress, disabled }) {
-  const isUser = side === 'user';
-  const Wrapper = onPress ? TouchableOpacity : View;
-  return (
-    <View
-      style={[
-        styles.bubbleRow,
-        isUser ? styles.bubbleRowUser : styles.bubbleRowMailbox,
-      ]}
-    >
-      <Wrapper
-        style={[
-          onPress ? styles.optionButton : styles.bubble,
-          !onPress && (isUser ? styles.bubbleUser : styles.bubbleMailbox),
-        ]}
-        onPress={onPress}
-        disabled={disabled}
-        activeOpacity={onPress ? 0.75 : 1}
-      >
-        <Text
-          style={[
-            styles.bubbleText,
-            isUser && !onPress ? styles.bubbleTextUser : null,
-            onPress ? styles.optionButtonText : null,
-          ]}
-        >
-          {children}
-        </Text>
-      </Wrapper>
-    </View>
-  );
-}
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { View, TouchableOpacity, Pressable, Animated } from 'react-native';
+import { createPersonalMailHubStyles } from '../../../../styles/personalMailHub.style';
+import MailboxLottieAnimation from './MailboxLottieAnimation';
+import CloudSpeechMenu from './CloudSpeechMenu';
 
 export default function PersonalMailMailboxHub({
   normalize,
@@ -65,30 +16,50 @@ export default function PersonalMailMailboxHub({
     () => createPersonalMailHubStyles(normalize),
     [normalize],
   );
-  const [lines, setLines] = useState([]);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [bubbleMounted, setBubbleMounted] = useState(false);
+  const bubbleProgress = useRef(new Animated.Value(0)).current;
 
-  const {
-    unreadCount = 0,
-    receivedCount = 0,
-    returnedCount = 0,
-    sentCount = 0,
-  } = stats;
+  const { unreadCount = 0, returnedCount = 0 } = stats;
+  const slideOffset = normalize(16);
 
   useEffect(() => {
-    const intro = [MAILBOX_LINES.intro];
-    if (unreadCount > 0) {
-      intro.push(`읽지 않은 우편이 ${unreadCount}통 도착했어!`);
+    if (menuOpen) {
+      setBubbleMounted(true);
+      Animated.spring(bubbleProgress, {
+        toValue: 1,
+        useNativeDriver: true,
+        tension: 68,
+        friction: 10,
+      }).start();
+      return;
     }
-    setLines(intro.map((text) => ({ side: 'mailbox', text })));
-  }, [unreadCount]);
 
-  const appendExchange = (userText, mailboxText, action) => {
-    setLines((prev) => [
-      ...prev,
-      { side: 'user', text: userText },
-      { side: 'mailbox', text: mailboxText },
-    ]);
-    setTimeout(() => action?.(), 450);
+    Animated.timing(bubbleProgress, {
+      toValue: 0,
+      duration: 200,
+      useNativeDriver: true,
+    }).start(({ finished }) => {
+      if (finished) setBubbleMounted(false);
+    });
+  }, [menuOpen, bubbleProgress, slideOffset]);
+
+  const cloudAnimatedStyle = {
+    opacity: bubbleProgress,
+    transform: [
+      {
+        translateY: bubbleProgress.interpolate({
+          inputRange: [0, 1],
+          outputRange: [slideOffset, 0],
+        }),
+      },
+      {
+        scale: bubbleProgress.interpolate({
+          inputRange: [0, 1],
+          outputRange: [0.92, 1],
+        }),
+      },
+    ],
   };
 
   const options = [
@@ -98,12 +69,7 @@ export default function PersonalMailMailboxHub({
         unreadCount > 0
           ? `온 우편 확인 (${unreadCount}통 안 읽음)`
           : '온 우편 확인',
-      onPress: () =>
-        appendExchange(
-          '온 우편 확인해줘',
-          MAILBOX_LINES.received(receivedCount),
-          onOpenReceived,
-        ),
+      onPress: onOpenReceived,
     },
     {
       key: 'returned',
@@ -111,67 +77,64 @@ export default function PersonalMailMailboxHub({
         returnedCount > 0
           ? `반송된 우편 (${returnedCount}통)`
           : '반송된 우편',
-      onPress: () =>
-        appendExchange(
-          '반송된 우편 있어?',
-          MAILBOX_LINES.returned(returnedCount),
-          onOpenReturned,
-        ),
+      onPress: onOpenReturned,
     },
     {
       key: 'compose',
       label: '우편 쓰기',
-      onPress: () =>
-        appendExchange('우편 쓰고 싶어', MAILBOX_LINES.compose, onCompose),
+      onPress: onCompose,
     },
     {
       key: 'sent',
       label: '보낸 우편 보기',
-      onPress: () =>
-        appendExchange(
-          '보낸 우편 보여줘',
-          MAILBOX_LINES.sent(sentCount),
-          onOpenSent,
-        ),
+      onPress: onOpenSent,
     },
   ];
 
+  const handleMailboxPress = () => {
+    setMenuOpen((open) => !open);
+  };
+
+  const handleChoice = (action) => {
+    setMenuOpen(false);
+    action?.();
+  };
+
   return (
-    <View style={styles.container}>
-      <View style={styles.lottieWrap}>
-        <LottieView
-          source={require('../../../assets/lottie/mailbox.json')}
-          autoPlay
-          loop
-          style={styles.lottie}
-        />
-      </View>
-
-      <ScrollView
-        style={styles.dialogueScroll}
-        contentContainerStyle={styles.dialogueContent}
-        showsVerticalScrollIndicator={false}
-        keyboardShouldPersistTaps="handled"
-      >
-        {lines.map((line, index) => (
-          <Bubble key={`${line.side}-${index}`} styles={styles} side={line.side}>
-            {line.text}
-          </Bubble>
-        ))}
-
-        {lines.length > 0
-          ? options.map((opt) => (
-              <Bubble
-                key={opt.key}
+    <Pressable
+      style={styles.container}
+      onPress={() => menuOpen && setMenuOpen(false)}
+    >
+      <View style={styles.centerStage}>
+        <View style={styles.mailboxSlot}>
+          {bubbleMounted ? (
+            <Animated.View
+              style={[styles.cloudOverlay, cloudAnimatedStyle]}
+              pointerEvents={menuOpen ? 'auto' : 'none'}
+            >
+              <CloudSpeechMenu
                 styles={styles}
-                side="user"
-                onPress={opt.onPress}
-              >
-                {opt.label}
-              </Bubble>
-            ))
-          : null}
-      </ScrollView>
-    </View>
+                normalize={normalize}
+                options={options}
+                onSelect={handleChoice}
+              />
+            </Animated.View>
+          ) : null}
+
+          <TouchableOpacity
+            style={styles.mailboxPressable}
+            onPress={handleMailboxPress}
+            activeOpacity={0.92}
+            accessibilityRole="button"
+            accessibilityLabel="우편함 열기"
+          >
+            <MailboxLottieAnimation
+              style={styles.lottie}
+              normalize={normalize}
+            />
+          </TouchableOpacity>
+        </View>
+      </View>
+    </Pressable>
   );
 }

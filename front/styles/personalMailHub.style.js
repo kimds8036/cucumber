@@ -1,79 +1,74 @@
 import { StyleSheet } from 'react-native';
 import { colors, fonts, fontSizes } from './colors';
+import { shadow } from './tokens';
 
-export const createPersonalMailHubStyles = (normalize) =>
-  StyleSheet.create({
+export const createPersonalMailHubStyles = (normalize) => {
+  const lottieSize = normalize(450);
+
+  return StyleSheet.create({
     container: {
       flex: 1,
       paddingHorizontal: normalize(16),
     },
-    lottieWrap: {
+    centerStage: {
+      flex: 1,
       alignItems: 'center',
       justifyContent: 'center',
-      marginTop: normalize(8),
-      marginBottom: normalize(4),
+      paddingTop: normalize(56),
+      paddingBottom: normalize(16),
     },
-    lottie: {
-      width: normalize(240),
-      height: normalize(240),
-    },
-    dialogueScroll: {
-      flex: 1,
-    },
-    dialogueContent: {
-      paddingBottom: normalize(24),
-      gap: normalize(10),
-    },
-    bubbleRow: {
-      flexDirection: 'row',
-      width: '100%',
-    },
-    bubbleRowMailbox: {
-      justifyContent: 'flex-start',
-    },
-    bubbleRowUser: {
+    /** 우편함 위치 고정 슬롯 — 말풍선은 absolute로만 겹침 */
+    mailboxSlot: {
+      position: 'relative',
+      width: lottieSize,
+      height: lottieSize,
+      alignItems: 'center',
       justifyContent: 'flex-end',
     },
-    bubble: {
-      maxWidth: '82%',
-      borderRadius: normalize(18),
-      paddingHorizontal: normalize(14),
-      paddingVertical: normalize(10),
+    cloudOverlay: {
+      position: 'absolute',
+      left: 0,
+      right: 0,
+      bottom: normalize(318),
+      alignItems: 'center',
+      zIndex: 10,
     },
-    bubbleMailbox: {
-      backgroundColor: colors.background2,
-      borderTopLeftRadius: normalize(4),
+    cloudRoot: {
+      position: 'relative',
+      ...shadow.md,
     },
-    bubbleUser: {
-      backgroundColor: colors.primaryLight20,
-      borderTopRightRadius: normalize(4),
-      borderWidth: 1,
-      borderColor: colors.primary,
+    cloudMenuContent: {
+      position: 'absolute',
+      top: 0,
+      left: 0,
+      right: 0,
+      bottom: 0,
+      justifyContent: 'flex-start',
     },
-    bubbleText: {
-      fontFamily: fonts.regular,
-      fontSize: normalize(fontSizes.lg),
-      color: colors.textPrimary,
-      lineHeight: normalize(20),
+    optionRow: {
+      paddingVertical: normalize(11),
+      paddingHorizontal: normalize(4),
     },
-    bubbleTextUser: {
+    optionDivider: {
+      height: StyleSheet.hairlineWidth * 2,
+      backgroundColor: colors.primary,
+      opacity: 0.35,
+    },
+    optionRowText: {
       fontFamily: fonts.bold,
-      color: colors.primaryDark,
-    },
-    optionButton: {
-      maxWidth: '82%',
-      borderRadius: normalize(18),
-      borderTopRightRadius: normalize(4),
-      paddingHorizontal: normalize(14),
-      paddingVertical: normalize(10),
-      backgroundColor: colors.background,
-      borderWidth: 1.5,
-      borderColor: colors.primary,
-    },
-    optionButtonText: {
-      fontFamily: fonts.regular,
       fontSize: normalize(fontSizes.lg),
       color: colors.primaryDark,
+      textAlign: 'center',
+    },
+    mailboxPressable: {
+      width: lottieSize,
+      height: lottieSize,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    lottie: {
+      width: lottieSize,
+      height: lottieSize,
     },
     listHeader: {
       flexDirection: 'row',
@@ -92,3 +87,4 @@ export const createPersonalMailHubStyles = (normalize) =>
       color: colors.textPrimary,
     },
   });
+};
