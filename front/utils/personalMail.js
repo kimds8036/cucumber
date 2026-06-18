@@ -114,6 +114,26 @@ export function isMailReturnedNotification(n) {
   return false;
 }
 
+/** school id만 있고 이름이 없을 때 GET /api/schools/:id 로 보완 */
+export async function resolveSchoolPrefill(school) {
+  if (!school?.id) return school ?? null;
+  const name = String(school.name ?? '').trim();
+  if (name) return school;
+
+  try {
+    const res = await api.get(`/api/schools/${school.id}`);
+    const data = res.data?.data;
+    if (!data) return school;
+    return {
+      id: data.schoolId ?? school.id,
+      name: String(data.name ?? '').trim(),
+      region: String(data.location ?? school.region ?? '').trim(),
+    };
+  } catch {
+    return school;
+  }
+}
+
 /** 우편 작성 화면 prefill 객체 */
 /** GET /api/mails/personal/:id/retry 응답 → SendMail prefill */
 export function mapRetryApiToPrefill(data) {
@@ -124,6 +144,9 @@ export function mapRetryApiToPrefill(data) {
       ? {
           id: schoolId,
           name: String(data.school_name ?? data.schoolName ?? '').trim(),
+          region: String(
+            data.school_region ?? data.schoolRegion ?? data.region ?? '',
+          ).trim(),
         }
       : null,
     grade: String(data.grade ?? ''),
@@ -187,8 +210,12 @@ export async function navigateToResendPersonalMail(navigation, source) {
       const res = await api.get(`/api/mails/personal/${mailId}/retry`);
       const data = res.data?.data;
       if (data) {
+        const prefill = mapRetryApiToPrefill(data);
+        if (prefill.school) {
+          prefill.school = await resolveSchoolPrefill(prefill.school);
+        }
         navigation?.navigate?.('SendMail', {
-          prefill: mapRetryApiToPrefill(data),
+          prefill,
         });
         return;
       }

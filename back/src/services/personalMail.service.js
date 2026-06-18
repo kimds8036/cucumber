@@ -264,15 +264,18 @@ export async function sendPersonalMailByAddress(senderId, body) {
 export async function getPersonalMailRetryPayload(mailId, senderId) {
   await ensurePersonalMailSchema();
   const [rows] = await pool.execute(
-    `SELECT id, sender_id, status,
-            recipient_school_id AS school_id,
-            recipient_grade AS grade,
-            recipient_class_num AS class_num,
-            recipient_name AS name,
-            recipient_user_id AS user_id,
-            content
-     FROM personal_mails
-     WHERE id = ? AND sender_id = ? AND is_deleted = FALSE`,
+    `SELECT pm.id, pm.sender_id, pm.status,
+            pm.recipient_school_id AS school_id,
+            s.name AS school_name,
+            s.region AS school_region,
+            pm.recipient_grade AS grade,
+            pm.recipient_class_num AS class_num,
+            pm.recipient_name AS name,
+            pm.recipient_user_id AS user_id,
+            pm.content
+     FROM personal_mails pm
+     LEFT JOIN schools s ON s.school_id = pm.recipient_school_id
+     WHERE pm.id = ? AND pm.sender_id = ? AND pm.is_deleted = FALSE`,
     [mailId, senderId],
   );
   if (rows.length === 0) {
@@ -345,8 +348,8 @@ export async function runPersonalMailReturnJob(options = {}) {
       userId: Number(row.sender_id),
       type: PERSONAL_MAIL_RETURN_NOTIFICATION_TYPE,
       category: 'mail',
-      title: '보내신 우편이 반송되었습니다',
-      body: '보내신 우편이 반송되었습니다',
+      title: '보낸 우편이 반송되었습니다',
+      body: '보낸 우편이 반송되었습니다',
       relatedType: PERSONAL_MAIL_RETURN_RELATED_TYPE,
       relatedId: Number(row.id),
     });

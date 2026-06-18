@@ -25,7 +25,10 @@ import { createMailStyles } from '../../styles/mail.style';
 import { colors, fonts } from '../../styles/colors';
 import Loading from '../../components/Loading';
 import { api, getApiUserFacingMessage } from '../../utils/api';
-import { buildSendMailPrefill } from '../../utils/personalMail';
+import {
+  buildSendMailPrefill,
+  resolveSchoolPrefill,
+} from '../../utils/personalMail';
 import { usePersonalMailCharLimit } from '../../hooks/usePersonalMailCharLimit';
 
 const SendMailScreen = ({ navigation, route }) => {
@@ -72,13 +75,17 @@ const SendMailScreen = ({ navigation, route }) => {
   useEffect(() => {
     if (!prefill || prefillAppliedRef.current) return;
     prefillAppliedRef.current = true;
-    const p = buildSendMailPrefill({ prefillMeta: prefill });
-    if (p.school?.id || p.school?.name) setSelectedSchool(p.school);
-    if (p.grade) setRecipientGrade(p.grade);
-    if (p.classNumber) setRecipientClass(p.classNumber);
-    if (p.name) setRecipientName(p.name);
-    if (p.content) setMailContent(p.content);
-    if (p.recipientUsername) setRecipientUsername(p.recipientUsername);
+
+    (async () => {
+      const p = buildSendMailPrefill({ prefillMeta: prefill });
+      const school = p.school ? await resolveSchoolPrefill(p.school) : null;
+      if (school?.id || school?.name) setSelectedSchool(school);
+      if (p.grade) setRecipientGrade(p.grade);
+      if (p.classNumber) setRecipientClass(p.classNumber);
+      if (p.name) setRecipientName(p.name);
+      if (p.content) setMailContent(p.content);
+      if (p.recipientUsername) setRecipientUsername(p.recipientUsername);
+    })();
   }, [prefill]);
 
   const handleMailContentChange = (text) => {
