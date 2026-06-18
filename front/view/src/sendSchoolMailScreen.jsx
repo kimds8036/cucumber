@@ -14,7 +14,6 @@ import {
 } from 'react-native-safe-area-context';
 import {
   KeyboardAwareScrollView,
-  KeyboardAvoidingView,
 } from 'react-native-keyboard-controller';
 import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
 import { CommonActions } from '@react-navigation/native';
@@ -24,7 +23,6 @@ import { createMailStyles } from '../../styles/mail.style';
 import { colors } from '../../styles/colors';
 import Loading from '../../components/Loading';
 import { api } from '../../utils/api';
-import { useMailContentKeyboardScroll } from '../../hooks/useMailContentKeyboardScroll';
 
 const SendSchoolMailScreen = ({ navigation, route }) => {
   const { width, height } = useWindowDimensions();
@@ -42,21 +40,10 @@ const SendSchoolMailScreen = ({ navigation, route }) => {
   const [subHeaderHeight, setSubHeaderHeight] = useState(0);
   const [schoolSectionHeight, setSchoolSectionHeight] = useState(0);
   const [bottomCtaHeight, setBottomCtaHeight] = useState(0);
-  const scrollRef = useRef(null);
-  const scrollContentRef = useRef(null);
-  const contentSectionRef = useRef(null);
+  const bottomCtaHeightRef = useRef(0);
 
-  const { contentFocused, handleContentFocus, handleContentBlur } =
-    useMailContentKeyboardScroll({
-      scrollRef,
-      scrollContentRef,
-      contentSectionRef,
-      normalize,
-    });
-
-  const scrollBottomInset = contentFocused
-    ? Math.max(bottomCtaHeight, normalize(16))
-    : normalize(16);
+  const scrollBottomInset =
+    bottomCtaHeight > 0 ? bottomCtaHeight : normalize(72);
 
   const handleMailContentChange = (text) => {
     if (text.length > charLimit) {
@@ -146,20 +133,21 @@ const SendSchoolMailScreen = ({ navigation, route }) => {
       sectionGap,
   );
 
+  const handleBottomCtaLayout = (e) => {
+    const next = e.nativeEvent.layout.height;
+    if (Math.abs(next - bottomCtaHeightRef.current) < 1) return;
+    bottomCtaHeightRef.current = next;
+    setBottomCtaHeight(next);
+  };
+
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
       <View onLayout={(e) => setSubHeaderHeight(e.nativeEvent.layout.height)}>
         <SubHeader title="우편 보내기" onBack={() => navigation?.goBack()} />
       </View>
 
-      <KeyboardAvoidingView
-        style={styles.keyboardView}
-        behavior="padding"
-        automaticOffset
-        enabled={contentFocused}
-      >
+      <View style={styles.keyboardView}>
         <KeyboardAwareScrollView
-          ref={scrollRef}
           style={styles.scrollView}
           contentContainerStyle={[
             styles.sendScrollContent,
@@ -171,7 +159,7 @@ const SendSchoolMailScreen = ({ navigation, route }) => {
           onScrollBeginDrag={Keyboard.dismiss}
           bottomOffset={scrollBottomInset}
         >
-          <View ref={scrollContentRef} collapsable={false}>
+          <View collapsable={false}>
             <View
               style={styles.section}
               onLayout={(e) =>
@@ -195,7 +183,6 @@ const SendSchoolMailScreen = ({ navigation, route }) => {
             </View>
 
             <View
-              ref={contentSectionRef}
               style={[
                 styles.section,
                 { flex: 1, minHeight: contentSectionMinHeight },
@@ -208,8 +195,6 @@ const SendSchoolMailScreen = ({ navigation, route }) => {
                   placeholder="보낼 내용을 입력하세요"
                   value={mailContent}
                   onChangeText={handleMailContentChange}
-                  onFocus={handleContentFocus}
-                  onBlur={handleContentBlur}
                   multiline
                   textAlignVertical="top"
                   placeholderTextColor={colors.textSecondary}
@@ -243,7 +228,7 @@ const SendSchoolMailScreen = ({ navigation, route }) => {
             styles.bottomCtaWrapper,
             { paddingBottom: Math.max(normalize(16), insets.bottom) },
           ]}
-          onLayout={(e) => setBottomCtaHeight(e.nativeEvent.layout.height)}
+          onLayout={handleBottomCtaLayout}
         >
           <TouchableOpacity
             style={[
@@ -262,7 +247,7 @@ const SendSchoolMailScreen = ({ navigation, route }) => {
             )}
           </TouchableOpacity>
         </View>
-      </KeyboardAvoidingView>
+      </View>
     </SafeAreaView>
   );
 };

@@ -1,26 +1,36 @@
 # Youth Paper — 프로덕션 배포 전 최종 검증 체크리스트
 
-작성일: 2026-05-29 (검토 반영: 2026-06-12)  
+작성일: 2026-05-29 (검토 반영: 2026-05-29)  
 범위: `back/`, `front/` 코드·문서 기준  
-앱 버전 기준: **1.3.0 (versionCode 7)**
+앱 버전 기준: **1.4.0 (versionCode 8)**
+
+### 최근 점검 스냅샷 (로컬, 2026-05-29)
+
+| 브랜치 | HEAD | 비고 |
+|--------|------|------|
+| `develop` | `f3f1b09` | `comment_count` 수정 — **origin 대비 ahead 1, push 필요** |
+| `production` | `1355252` | 1.4.0 merge — **`f3f1b09` 미포함** |
+| `wip/personal-mail-hub` | `ee2ec06` | 우편함 허브 UI — **배포 제외·팀 논의 후** |
 
 ---
 
 ## 총평 · 배포 승인 의견
 
-**이대로 배포를 진행해도 좋습니다.** 단, **§3.3 🔴 PII 로그 제거**는 v1.3.0 본진에 반드시 포함되어야 합니다.  
-보안 사고는 “나중에 고치자”고 남겨둔 디버깅 로그 한 줄에서 시작되는 경우가 많습니다.
+**1.4.0 코드 기준으로 Play·Railway 운영 체크만 남은 상태**입니다.  
+§9 담당자 작업( migrate·env·AAB·MIN 버전·스모크 )을 마친 뒤 production push 하세요.  
+`wip/personal-mail-hub`는 이번 배포 범위에서 **제외**합니다.
 
 | 구분 | 상태 |
 |------|------|
-| PII·인증번호·OCR raw 로그 | ✅ **v1.3.0 코드 반영 완료** (`auth.js`, `messages.js`) |
+| PII·인증번호·OCR raw 로그 | ✅ **코드 반영 완료** (`auth.js`, `messages.js` QUERY DEBUG 제거) |
 | personal-mail-return 실패 웹훅 | ✅ **반영 완료** (`sendBatchFailureAlert` 연동) |
-| App-Version 헤더 (방법 A) | ⏳ 배포 후 스프린트 |
+| App-Version 헤더 (방법 A) | ✅ **코드 반영 완료** — Railway env·E2E는 §2.5 |
+| `comment_count` 삭제·보정 | ✅ **develop `f3f1b09`** — production·Railway 배포 전 |
 | Sentry + Winston | ⏳ 배포 후 스프린트 |
 | school-stats Redis 락 | ⏳ 차기 스프린트 (**우선순위 🔴 높음**) |
-| 학생증 수동 검수 (OCR → Cloudinary) | ✅ **v1.3.0 반영** (마이그레이션 041) |
+| 학생증 수동 검수 (OCR → Cloudinary) | ✅ **코드 반영** (마이그레이션 041) — **DB migrate 필요** |
 | Railway DB Private Networking | 📋 §6 운영 설정 필요 |
-| Google OTP 관리자 2FA | ✅ 구현 — `OTP_ENCRYPTION_KEY`·migrate 042 필요 |
+| Google OTP 관리자 2FA | ✅ 구현 — `OTP_ENCRYPTION_KEY`·migrate **042** 필요 |
 | 관리자 CORS_ORIGIN | 📋 §8·§6 — production/develop URL 각각 등록 |
 
 ---
@@ -129,7 +139,7 @@ PERSONAL_MAIL_RETURN_DAYS=1
 | **ForceUpdateGate (B)** | 앱 켤 때 친절한 전면 차단 UX |
 | **App-Version 미들웨어 (A)** | 구버전의 API 호출 자체를 막는 보안 장벽 |
 
-**병행 권장** — v1.3.0 배포 시점에는 B만으로도 가능. **방법 A**는 `back/src/middleware/requireMinAppVersion.js`로 코드 반영 완료 (Railway env·E2E는 §2.5).
+**병행 권장** — 방법 A·B **모두 코드 반영 완료** (`7ff6bf4`). Railway `MIN_ANDROID_VERSION`·E2E는 §2.5·§5.3.
 
 ### 2.4 미들웨어 구현 시 화이트리스트 주의
 
@@ -145,12 +155,13 @@ PERSONAL_MAIL_RETURN_DAYS=1
 
 화이트리스트 누락 시 **신규 가입·로그인 전 단계에서 426** → 반드시 E2E로 검증.
 
-### 2.5 방법 A 도입 체크 (배포 후 스프린트)
+### 2.5 방법 A 도입 체크
 
 - [x] `front/utils/api.js` — `App-Version` / `App-Platform` 헤더
 - [x] `back/src/middleware/requireMinAppVersion.js` + `back/src/index.js` 마운트 + 화이트리스트
 - [x] 426 → `api.js` 공통 핸들러 (스토어 링크 Alert)
-- [ ] develop Railway `MIN_ANDROID_VERSION=1.0.0` 유지 (배포 시 확인)
+- [ ] develop Railway `MIN_ANDROID_VERSION=1.0.0` 유지 (**Variables 확인**)
+- [ ] production Railway `MIN_ANDROID_VERSION=1.4.0` (**AAB·Play 출시 후**)
 - [ ] 구버전 앱으로 로그인·게시판·가입 플로우 E2E
 
 ---
@@ -232,12 +243,14 @@ ELK·자체 로그 서버는 **당장 불필요**.
 
 ## 5. 배포 직전 실행 체크리스트
 
-### 5.1 보안 · 코드 (v1.3.0 필수)
+### 5.1 보안 · 코드 (1.4.0)
 
 - [x] §3.2 PII 로그 코드 반영
 - [x] §7 학생증 수동 검수 (OCR 비활성, Cloudinary 업로드)
-- [ ] `npm run migrate` — **041** (`signup_student_id_submissions`)
-- [ ] develop/production 각각 백엔드 재배포 후 Railway 로그에 인증번호·OCR raw **미출력** 확인
+- [x] §2 방법 A `requireMinAppVersion` + `api.js` App-Version
+- [x] `comment_count` 삭제·`schoolStats` reconcile (`f3f1b09`, develop)
+- [ ] `npm run migrate` — **041**·**042** (develop·production **각각**)
+- [ ] develop·production 백엔드 재배포 후 Railway 로그에 인증번호·OCR raw **미출력** 확인
 - [ ] §6 Railway DB Public Networking **Off** + Private URL 확인
 
 ### 5.2 Play Console / AAB
@@ -245,19 +258,21 @@ ELK·자체 로그 서버는 **당장 불필요**.
 - [ ] `production` 브랜치, `npm run android:aab:prod`
 - [ ] release keystore 서명 (`[withAndroidReleaseSigning] release 서명 적용`)
 - [ ] `app-release.aab` Play 업로드 + `mapping.txt`
-- [ ] `RELEASE_NOTES.md` 1.3.0 스토어 문구
+- [x] `RELEASE_NOTES.md` 1.4.0 스토어 문구 (**작성 완료** — Play에 붙여넣기만 필요)
 
 ### 5.3 Railway production
 
-- [ ] `cd back && npm run migrate` (037~040)
-- [ ] `MIN_ANDROID_VERSION=1.3.0` (**AAB 출시 후**)
+- [ ] `cd back && npm run migrate` (**041** 학생증 검수, **042** admin OTP)
+- [ ] `MIN_ANDROID_VERSION=1.4.0` (**AAB·Play 출시 후**)
 - [ ] `ENABLE_CRON=true`, Redis, `BATCH_ALERT_WEBHOOK_URL`
 - [ ] `ENABLE_TEST_API=false`
+- [ ] `OTP_ENCRYPTION_KEY`, `ADMIN_USER_IDS`, `CORS_ORIGIN` (§8)
 
 ### 5.4 Git
 
-- [ ] PII 수정 커밋 → develop → production 반영
-- [ ] Play·MIN 버전 후 `git push origin production`
+- [x] PII·가입·App-Version 등 → develop → production 반영 (로컬 `production` `1355252`)
+- [ ] `f3f1b09` (`comment_count`) develop **push** → 팀 합의 후 production 반영
+- [ ] Play·`MIN_ANDROID_VERSION` 후 `git push origin production`
 
 ### 5.5 스모크 테스트
 
@@ -267,10 +282,11 @@ ELK·자체 로그 서버는 **당장 불필요**.
 
 ### 5.6 배포 후 스프린트
 
-- [ ] App-Version 헤더 + 426 미들웨어
+- [x] App-Version 헤더 + 426 미들웨어 (코드)
 - [ ] school-stats Redis 락
 - [ ] 만료 토큰 cleanup cron
 - [ ] Sentry + Winston
+- [ ] `messages.js`·`socketServer.js` verbose production 가드 (§3.3)
 
 ---
 
@@ -361,7 +377,8 @@ OCR 자동 인증 대신 **촬영 → Cloudinary → 관리자 승인** (v1.3.0)
 
 ### 7.5 배포 체크
 
-- [ ] develop·production `npm run migrate` (041)
+- [ ] develop·production `npm run migrate` (**041**)
+- [ ] develop·production `npm run migrate` (**042** — OTP)
 - [ ] Cloudinary env (`CLOUDINARY_*`) production 설정
 - [ ] 관리자가 pending 목록·이미지 URL 확인 가능한지 스모크 테스트
 
@@ -405,6 +422,46 @@ ENABLE_TEST_API=false
 
 ---
 
+## 9. 담당자 작업 요약 (코드로 대체 불가)
+
+아래는 **Railway·Play Console·수동 검증**만 가능한 항목입니다. 우선순위 순.
+
+### 🔴 배포 전 필수
+
+1. **develop push** — `f3f1b09` (`comment_count`) 원격 반영  
+   `git push origin develop`
+2. **Railway migrate** (develop → 확인 후 production)  
+   `cd back && npm run migrate` — **041**, **042**
+3. **Railway Variables** (production)  
+   - `ENABLE_CRON=true`, Redis URL 정상  
+   - `BATCH_ALERT_WEBHOOK_URL` (슬랙/디스코드)  
+   - `ENABLE_TEST_API=false`  
+   - `OTP_ENCRYPTION_KEY` (develop·production **서로 다른 값**)  
+   - `ADMIN_USER_IDS`, `CORS_ORIGIN`, `CLOUDINARY_*`
+4. **DB Public Networking Off** — 백엔드는 `DB_PRIVATE_HOST` 사용 확인 (§6)
+5. **AAB 빌드·Play 업로드** — `production` 브랜치에서 `npm run android:aab:prod`  
+   `RELEASE_NOTES.md` 1.4.0 스토어 문구 붙여넣기 + `mapping.txt`
+6. **Play 출시 후** — production `MIN_ANDROID_VERSION=1.4.0`  
+   develop은 `MIN_ANDROID_VERSION=1.0.0` 유지
+7. **스모크 테스트** — 가입(전화·학생증)·로그인·게시판·우편·채팅·관리자 OTP·`/admin` pending 목록
+8. **Railway 로그 확인** — 인증번호·OCR raw **없음**, `[BatchJob] started` 있음
+
+### 🟡 배포 직후·팀 합의 후
+
+9. **`f3f1b09` production 반영** — merge/cherry-pick 후 production 재배포  
+10. **`git push origin production`** — AAB·MIN 버전 설정 **후** (WORKFLOW.md)  
+11. **구버전 앱 E2E** — `MIN_ANDROID_VERSION` 올린 뒤 ForceUpdateGate·426 동작  
+12. **`wip/personal-mail-hub`** — 팀 논의 후 merge 여부 결정 (현재 배포 제외)
+
+### 🟢 차기 스프린트
+
+- school-stats Redis 락  
+- 만료 토큰 cleanup cron  
+- Sentry + Winston  
+- `messages.js` / `socketServer.js` verbose 로그 production 가드  
+
+---
+
 ## 부록: 관련 파일
 
 | 주제 | 경로 |
@@ -414,6 +471,7 @@ ENABLE_TEST_API=false
 | 배치 알림 | `back/src/services/batchAlert.service.js` |
 | 강제 업데이트 | `back/src/routes/app.js`, `back/src/middleware/requireMinAppVersion.js`, `front/components/common/ForceUpdateGate.jsx`, `front/utils/api.js` |
 | 인증·PII 수정 | `back/src/routes/auth.js` |
+| comment_count 보정 | `back/src/services/commentCount.service.js`, `back/src/jobs/schoolStats.js` |
 | 학생증 업로드 | `back/src/services/signupStudentIdPhoto.service.js` |
 | 학생증 검수 API | `back/src/routes/adminSignupStudentIds.js` |
 | DB 연결 (private) | `back/src/config/database.js` |

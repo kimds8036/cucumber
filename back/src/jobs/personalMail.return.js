@@ -15,6 +15,17 @@ const JOB_NAME = 'personal-mail-return';
 const LOCK_KEY = 'batch:lock:personal-mail-return';
 const LOCK_TTL_SECONDS = 300;
 
+/**
+ * [테스트용] 개인우편 반송 대기 시간
+ * - true: sent_at 기준 TEST_RETURN_AFTER_MINUTES 경과 후 반송 후보
+ * - false: PERSONAL_MAIL_RETURN_DAYS(일) — 운영 기본값
+ *
+ * 배치가 1분마다 돌게 하려면 CRON_PERSONAL_MAIL_RETURN='*/1 * * * *' 도 설정.
+ * 테스트 끝나면 USE_TEST_RETURN_INTERVAL=false 로 되돌릴 것.
+ */
+const USE_TEST_RETURN_INTERVAL = true;
+const TEST_RETURN_AFTER_MINUTES = 1;
+
 export async function runPersonalMailReturnBatchJob() {
   const context = createBatchExecutionContext(JOB_NAME);
   const { acquired, owner } = await acquireBatchLock(LOCK_KEY, LOCK_TTL_SECONDS);
@@ -25,7 +36,11 @@ export async function runPersonalMailReturnBatchJob() {
   }
 
   try {
-    const result = await runPersonalMailReturnJob();
+    const result = await runPersonalMailReturnJob(
+      USE_TEST_RETURN_INTERVAL
+        ? { returnAfterMinutes: TEST_RETURN_AFTER_MINUTES }
+        : undefined,
+    );
     logBatchSuccess(context, result);
     return result;
   } catch (error) {

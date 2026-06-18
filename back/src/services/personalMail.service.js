@@ -289,9 +289,17 @@ export async function getPersonalMailRetryPayload(mailId, senderId) {
   return mail;
 }
 
-export async function runPersonalMailReturnJob() {
+export async function runPersonalMailReturnJob(options = {}) {
   await ensurePersonalMailSchema();
-  const days = getPersonalMailReturnDays();
+  const { returnAfterMinutes } = options;
+  const useMinutes =
+    returnAfterMinutes != null &&
+    Number.isFinite(returnAfterMinutes) &&
+    returnAfterMinutes > 0;
+  const intervalUnit = useMinutes ? 'MINUTE' : 'DAY';
+  const intervalValue = useMinutes
+    ? returnAfterMinutes
+    : getPersonalMailReturnDays();
 
   const [candidates] = await pool.execute(
     `SELECT pm.id, pm.sender_id, pm.recipient_id, pm.is_match_failed,
@@ -300,7 +308,7 @@ export async function runPersonalMailReturnJob() {
      WHERE pm.status = ?
        AND pm.is_deleted = FALSE
        AND pm.parent_mail_id IS NULL
-       AND pm.sent_at <= DATE_SUB(NOW(), INTERVAL ? DAY)
+       AND pm.sent_at <= DATE_SUB(NOW(), INTERVAL ? ${intervalUnit})
        AND (
          (pm.is_match_failed = TRUE AND pm.recipient_id IS NULL)
          OR (
@@ -314,7 +322,7 @@ export async function runPersonalMailReturnJob() {
            )
          )
        )`,
-    [PERSONAL_MAIL_STATUS.SENT, days],
+    [PERSONAL_MAIL_STATUS.SENT, intervalValue],
   );
 
   let returned = 0;
