@@ -345,8 +345,8 @@ export async function runPersonalMailReturnJob(options = {}) {
       userId: Number(row.sender_id),
       type: PERSONAL_MAIL_RETURN_NOTIFICATION_TYPE,
       category: 'mail',
-      title: '보내신 우편이 반송되었습니다.',
-      body: '보내신 우편이 반송되었습니다.',
+      title: '보내신 우편이 반송되었습니다',
+      body: '보내신 우편이 반송되었습니다',
       relatedType: PERSONAL_MAIL_RETURN_RELATED_TYPE,
       relatedId: Number(row.id),
     });
