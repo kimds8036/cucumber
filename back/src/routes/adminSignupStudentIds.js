@@ -27,6 +27,8 @@ router.get('/', requireAdminApi, async (req, res) => {
   const status = String(req.query.status || 'pending');
   const limit = Math.min(Number(req.query.limit) || 50, 100);
   const offset = Math.max(Number(req.query.offset) || 0, 0);
+  const limitSql = Number.isFinite(limit) ? Math.floor(limit) : 50;
+  const offsetSql = Number.isFinite(offset) ? Math.floor(offset) : 0;
 
   try {
     const where = status === 'all' ? '1=1' : 's.status = ?';
@@ -40,8 +42,8 @@ router.get('/', requireAdminApi, async (req, res) => {
        LEFT JOIN schools sch ON sch.school_id = s.school_id
        WHERE ${where}
        ORDER BY s.created_at DESC
-       LIMIT ? OFFSET ?`,
-      [...params, limit, offset],
+       LIMIT ${limitSql} OFFSET ${offsetSql}`,
+      params,
     );
 
     return res.json({ success: true, data: { submissions: rows } });

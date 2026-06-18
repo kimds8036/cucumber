@@ -282,8 +282,8 @@ git commit
 
 | 항목 | 현재 기준 (develop / production 동일 유지) |
 |------|---------------------------------------------|
-| `version` | `1.3.0` (`app.json` / `app.config.js`) |
-| Android `versionCode` | `7` |
+| `version` | `1.4.0` (`app.json` / `app.config.js`) |
+| Android `versionCode` | `8` |
 
 버전 올릴 때: develop 반영·push → AAB·Play → production 반영(체리픽 또는 merge) → push.  
 스토어 문구: `RELEASE_NOTES.md`

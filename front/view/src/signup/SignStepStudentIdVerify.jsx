@@ -176,7 +176,7 @@ const SignStepStudentIdVerify = ({
     return (
       <View style={[styles.content, localStyles.stepRoot, localStyles.centered]}>
         <Text style={[styles.inputLabel, { textAlign: 'center' }]}>
-          학생증 인증이 완료되었습니다.
+          학생증 촬영이 완료되었습니다.
         </Text>
         <Text
           style={{
@@ -185,9 +185,12 @@ const SignStepStudentIdVerify = ({
             fontFamily: 'Baloo2-Regular',
             fontSize: 13,
             textAlign: 'center',
+            lineHeight: 20,
+            paddingHorizontal: 16,
           }}
         >
-          뒤로 가도 인증 결과가 유지됩니다. 다음 단계로 진행해 주세요.
+          아래 [제출하기]를 누르면 가입이 완료되고, 관리자 승인 대기 화면으로
+          이동합니다.
         </Text>
       </View>
     );

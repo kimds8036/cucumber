@@ -56,6 +56,7 @@ import { AuthProvider, useAuth } from './context/AuthContext';
 import { LocationProvider, LocationGate } from './context/LocationContext';
 import StudentVerificationGate from './components/auth/StudentVerificationGate';
 import StudentVerificationRejected from './components/auth/StudentVerificationRejected';
+import ForceUpdateGate from './components/common/ForceUpdateGate';
 import StudentIdResubmit from './view/src/signup/StudentIdResubmit';
 import { SocketProvider } from './context/SocketContext';
 import { NotificationProvider } from './context/NotificationContext';
