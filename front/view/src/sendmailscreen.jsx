@@ -471,9 +471,6 @@ const SendMailScreen = ({ navigation, route }) => {
                 />
                 <View style={styles.replyFormMetaRow}>
                   <View style={styles.sendMetaRight}>
-                    <Text style={styles.replyFormCount}>
-                      {mailContent.length}/{charLimit}자
-                    </Text>
                     {adRewardAvailable ? (
                       <TouchableOpacity
                         style={styles.replyFormChip}
@@ -488,6 +485,9 @@ const SendMailScreen = ({ navigation, route }) => {
                         <Text style={styles.replyFormChipText}>x 2</Text>
                       </TouchableOpacity>
                     ) : null}
+                    <Text style={styles.replyFormCount}>
+                      {mailContent.length}/{charLimit}자
+                    </Text>
                   </View>
                 </View>
               </View>

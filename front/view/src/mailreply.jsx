@@ -264,9 +264,6 @@ export default function MailReplyScreen({ navigation, route }) {
                     justifyContent: 'flex-end',
                   }}
                 >
-                  <Text style={styles.replyFormCount}>
-                    {replyText.length}/{charLimit}자
-                  </Text>
                   {adRewardAvailable ? (
                     <TouchableOpacity
                       style={styles.replyFormChip}
@@ -281,6 +278,9 @@ export default function MailReplyScreen({ navigation, route }) {
                       <Text style={styles.replyFormChipText}>x 2</Text>
                     </TouchableOpacity>
                   ) : null}
+                  <Text style={styles.replyFormCount}>
+                    {replyText.length}/{charLimit}자
+                  </Text>
                 </View>
               </View>
               </View>
