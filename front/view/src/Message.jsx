@@ -169,6 +169,8 @@ async function resolveLatestMailForThread(mail, meId) {
       mail.reply_to_my_sent,
     sender_name: latestFromThread.sender_name ?? mail.sender_name,
     recipient_name: latestFromThread.recipient_name ?? mail.recipient_name,
+    recipient_snapshot_name:
+      latestFromThread.recipient_snapshot_name ?? mail.recipient_snapshot_name,
     sender_color_id: latestFromThread.sender_color_id ?? mail.sender_color_id,
     recipient_color_id:
       latestFromThread.recipient_color_id ?? mail.recipient_color_id,
@@ -176,6 +178,22 @@ async function resolveLatestMailForThread(mail, meId) {
       latestFromThread.is_root_author_for_current_user ??
       mail.is_root_author_for_current_user,
   };
+}
+
+/** 보낸 개인우편 목록 이름 — 매칭 실패 시 입력 스냅샷, 정상 발송 시 수신자 이름 */
+function getPersonalMailListRecipientName(mail) {
+  if (!mail) return '';
+  const candidates = [
+    mail.recipient_snapshot_name,
+    mail.recipientSnapshotName,
+    mail.recipient_name,
+    mail.recipientName,
+  ];
+  for (const candidate of candidates) {
+    const trimmed = candidate != null ? String(candidate).trim() : '';
+    if (trimmed) return trimmed;
+  }
+  return '';
 }
 
 /** Text 줄박스는 fontSize보다 크므로(특히 Android includeFontPadding) 실제 목록과 맞는 줄 높이로 맞춤 */
@@ -718,16 +736,9 @@ export function MessageContent({ navigation }) {
               isReceived &&
               Boolean(rawMail.reply_to_my_sent ?? rawMail.replyToMySent);
 
-            const latestRecipientName =
-              rawMail.recipient_name != null &&
-              String(rawMail.recipient_name).trim()
-                ? String(rawMail.recipient_name).trim()
-                : '';
+            const latestRecipientName = getPersonalMailListRecipientName(rawMail);
             const firstRecipientName =
-              rawFirstMail.recipient_name != null &&
-              String(rawFirstMail.recipient_name).trim()
-                ? String(rawFirstMail.recipient_name).trim()
-                : '';
+              getPersonalMailListRecipientName(rawFirstMail);
             const firstSenderId = Number(rawFirstMail.sender_id);
             const firstMailSentByMe = Number.isFinite(meId)
               ? Number.isFinite(firstSenderId) && firstSenderId === meId
