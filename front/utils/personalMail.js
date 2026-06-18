@@ -3,6 +3,12 @@ import { api } from './api';
 /** 백엔드 반송 기간(일) — UI 문구·주석용 */
 export const PERSONAL_MAIL_RETURN_DAYS = 1;
 
+/** 개인우편 작성·답장 기본 글자수 */
+export const PERSONAL_MAIL_CHAR_LIMIT_BASE = 50;
+
+/** 광고 1회 시청 후 최대 글자수 */
+export const PERSONAL_MAIL_CHAR_LIMIT_MAX = 100;
+
 /** 테스트용: true면 보낸 우편·반송 알림 UI를 즉시 확인 가능 (배포 전 false) */
 export const PERSONAL_MAIL_TEST_IMMEDIATE_RETURN = false;
 

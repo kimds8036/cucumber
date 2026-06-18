@@ -23,6 +23,7 @@ import { api } from '../../utils/api';
 import Skeleton from '../../components/common/Skeleton';
 import ProfileIcon from '../../assets/Profile.svg';
 import { getProfileInnerColor } from '../../utils/profileIconColor';
+import { usePersonalMailCharLimit } from '../../hooks/usePersonalMailCharLimit';
 
 export default function MailReplyScreen({ navigation, route }) {
   const { width, height } = useWindowDimensions();
@@ -45,7 +46,8 @@ export default function MailReplyScreen({ navigation, route }) {
   const profileIconColor = getProfileInnerColor(profileColorId);
   const onSent = route?.params?.onSent;
   const [replyText, setReplyText] = useState('');
-  const [charLimit, setCharLimit] = useState(50);
+  const { charLimit, adRewardAvailable, guardTextLength, handleAdReward } =
+    usePersonalMailCharLimit();
   const [showToast, setShowToast] = useState(false);
   const [sending, setSending] = useState(false);
   const [previewExpanded, setPreviewExpanded] = useState(false);
@@ -104,15 +106,8 @@ export default function MailReplyScreen({ navigation, route }) {
   };
 
   const handleReplyTextChange = (text) => {
-    if (text.length > charLimit) {
-      Alert.alert('알림', '광고를 보면 더 길게 작성할 수 있어요.');
-      return;
-    }
+    if (!guardTextLength(text)) return;
     setReplyText(text);
-  };
-
-  const handleAdReward = () => {
-    setCharLimit((prev) => prev * 2);
   };
 
   const handleSend = async () => {
@@ -272,18 +267,20 @@ export default function MailReplyScreen({ navigation, route }) {
                   <Text style={styles.replyFormCount}>
                     {replyText.length}/{charLimit}자
                   </Text>
-                  <TouchableOpacity
-                    style={styles.replyFormChip}
-                    onPress={handleAdReward}
-                    activeOpacity={0.8}
-                  >
-                    <MaterialCommunityIcons
-                      name="television-classic"
-                      size={15}
-                      color={colors.textPrimary}
-                    />
-                    <Text style={styles.replyFormChipText}>x 2</Text>
-                  </TouchableOpacity>
+                  {adRewardAvailable ? (
+                    <TouchableOpacity
+                      style={styles.replyFormChip}
+                      onPress={handleAdReward}
+                      activeOpacity={0.8}
+                    >
+                      <MaterialCommunityIcons
+                        name="television-classic"
+                        size={15}
+                        color={colors.textPrimary}
+                      />
+                      <Text style={styles.replyFormChipText}>x 2</Text>
+                    </TouchableOpacity>
+                  ) : null}
                 </View>
               </View>
               </View>
