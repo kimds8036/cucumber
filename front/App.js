@@ -11,6 +11,9 @@ import TimetabelChoice from './src/screens/timetable/timetabelChoice';
 import EditTimetable from './view/src/edittimetable';
 import MyPosts from './view/src/myposts';
 import NotificationSettings from './view/src/notificationsettings';
+import SetPinScreen from './view/src/setPinScreen';
+import ConfirmPinScreen from './view/src/confirmPinScreen';
+import VerifyPinScreen from './view/src/verifyPinScreen';
 import ChangePassword from './view/src/changepassword';
 import ChangeSchool from './view/src/changeschool';
 import SearchScreen from './view/src/searchscreen';
@@ -53,6 +56,7 @@ import Constants from 'expo-constants';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { KeyboardProvider } from 'react-native-keyboard-controller';
 import { AuthProvider, useAuth } from './context/AuthContext';
+import { AppLockProvider } from './context/AppLockContext';
 import { LocationProvider, LocationGate } from './context/LocationContext';
 import StudentVerificationGate from './components/auth/StudentVerificationGate';
 import StudentVerificationRejected from './components/auth/StudentVerificationRejected';
@@ -131,6 +135,9 @@ function MainStack({ initialRouteName = 'Main' }) {
         name="NotificationSettings"
         component={NotificationSettings}
       />
+      <Stack.Screen name="SetPinScreen" component={SetPinScreen} />
+      <Stack.Screen name="ConfirmPinScreen" component={ConfirmPinScreen} />
+      <Stack.Screen name="VerifyPinScreen" component={VerifyPinScreen} />
       <Stack.Screen name="ChangePassword" component={ChangePassword} />
       <Stack.Screen name="ChangeSchool" component={ChangeSchool} />
       <Stack.Screen name="Search" component={SearchScreen} />
@@ -582,24 +589,26 @@ export default function App() {
       <ForceUpdateGate>
         <KeyboardProvider>
           <AuthProvider>
-            <LocationProvider>
-              <SocketProvider>
-                <ToastProvider>
-                  <NotificationProvider>
-                    <FriendProvider>
-                      <NavigationContainer
-                        ref={navigationRef}
-                        linking={linking}
-                      >
-                        <RootNavigator />
-                        <ToastHost />
-                        <AlertHost />
-                      </NavigationContainer>
-                    </FriendProvider>
-                  </NotificationProvider>
-                </ToastProvider>
-              </SocketProvider>
-            </LocationProvider>
+            <AppLockProvider>
+              <LocationProvider>
+                <SocketProvider>
+                  <ToastProvider>
+                    <NotificationProvider>
+                      <FriendProvider>
+                        <NavigationContainer
+                          ref={navigationRef}
+                          linking={linking}
+                        >
+                          <RootNavigator />
+                          <ToastHost />
+                          <AlertHost />
+                        </NavigationContainer>
+                      </FriendProvider>
+                    </NotificationProvider>
+                  </ToastProvider>
+                </SocketProvider>
+              </LocationProvider>
+            </AppLockProvider>
           </AuthProvider>
         </KeyboardProvider>
       </ForceUpdateGate>

@@ -406,8 +406,8 @@ const MyPage = ({ navigation }) => {
             onPress={() => navigation.navigate('HiddenPostsAppeals')}
           />
           <MenuItem
-            icon="notifications-outline"
-            title="설정"
+            icon="settings-outline"
+            title="앱 설정"
             onPress={() =>
               navigation.navigate('NotificationSettings', { variant: 'prefs' })
             }

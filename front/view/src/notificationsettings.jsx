@@ -15,7 +15,21 @@ import { Ionicons } from '@expo/vector-icons';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import SubHeader from '../frame/subHeader';
 import * as Clipboard from 'expo-clipboard';
+import { useFocusEffect } from '@react-navigation/native';
 import { api } from '../../utils/api';
+import {
+  getAppLockEnabled,
+  getBiometricEnabled,
+  getDarkModeEnabled,
+  setAppLockEnabled,
+  setBiometricEnabled,
+  setDarkModeEnabled,
+} from '../../utils/appLockStorage';
+import {
+  authenticateWithBiometrics,
+  checkBiometricAvailability,
+} from '../../utils/biometrics';
+import { useAppLock } from '../../context/AppLockContext';
 import { colors } from '../../styles/colors';
 import {
   getNormalize,
@@ -37,6 +51,10 @@ const NOTIFICATION_ITEMS = [
   },
 ];
 
+const APP_LOCK_ITEMS = [
+  { key: 'changePin', label: '암호 변경' },
+];
+
 const Settings = ({ navigation, route }) => {
   const { width } = useWindowDimensions();
   const normalize = useMemo(() => getNormalize(width), [width]);
@@ -49,7 +67,7 @@ const Settings = ({ navigation, route }) => {
   const variant = route?.params?.variant;
   const showPrefs = variant !== 'profile';
   const showProfile = variant !== 'prefs';
-  const headerTitle = variant === 'profile' ? '계정 관리' : '설정';
+  const headerTitle = variant === 'profile' ? '계정 관리' : '앱 설정';
   // ── 알림 설정 ──
   const [notifications, setNotifications] = useState({
     pushEnabled: true,
@@ -62,6 +80,74 @@ const Settings = ({ navigation, route }) => {
   });
 
   const [loadingSettings, setLoadingSettings] = useState(false);
+
+  // ── 앱 기본 설정 (로컬) ──
+  const [darkModeEnabled, setDarkModeEnabledState] = useState(false);
+  const [appLockEnabled, setAppLockEnabledState] = useState(false);
+  const [biometricEnabled, setBiometricEnabledState] = useState(false);
+  const [biometricAvailability, setBiometricAvailability] = useState({
+    available: false,
+    type: 'none',
+  });
+  const { refreshFromStorage } = useAppLock();
+
+  const loadLocalPrefs = async () => {
+    const [darkMode, appLock, biometric, availability] = await Promise.all([
+      getDarkModeEnabled(),
+      getAppLockEnabled(),
+      getBiometricEnabled(),
+      checkBiometricAvailability(),
+    ]);
+    setDarkModeEnabledState(darkMode);
+    setAppLockEnabledState(appLock);
+    setBiometricAvailability(availability);
+    setBiometricEnabledState(biometric && availability.available);
+  };
+
+  useFocusEffect(
+    React.useCallback(() => {
+      loadLocalPrefs();
+    }, []),
+  );
+
+  const toggleDarkMode = async () => {
+    const next = !darkModeEnabled;
+    setDarkModeEnabledState(next);
+    await setDarkModeEnabled(next);
+  };
+
+  const handleAppLockToggle = async (value) => {
+    if (value) {
+      navigation.navigate('SetPinScreen', { mode: 'set' });
+      return;
+    }
+    setAppLockEnabledState(false);
+    setBiometricEnabledState(false);
+    await setAppLockEnabled(false);
+    await refreshFromStorage();
+  };
+
+  const handleBiometricToggle = async () => {
+    const next = !biometricEnabled;
+    if (!next) {
+      setBiometricEnabledState(false);
+      await setBiometricEnabled(false);
+      return;
+    }
+    if (!biometricAvailability.available) return;
+
+    const result = await authenticateWithBiometrics(
+      '생체 인증을 사용하려면 본인 확인이 필요합니다',
+    );
+    if (result.success) {
+      setBiometricEnabledState(true);
+      await setBiometricEnabled(true);
+    }
+  };
+
+  const handleChangePin = () => {
+    navigation.navigate('VerifyPinScreen');
+  };
 
   const syncSettingsToServer = async (next) => {
     try {
@@ -401,6 +487,33 @@ const Settings = ({ navigation, route }) => {
     </View>
   );
 
+  const AppLockItemRow = ({ title, subtitle, onPress, disabled }) => (
+    <TouchableOpacity
+      style={[styles.notifRow, disabled && styles.notifRowDisabled]}
+      onPress={onPress}
+      disabled={disabled}
+      activeOpacity={0.7}
+    >
+      <View style={styles.notifLeft}>
+        <Text
+          style={[styles.notifTitle, disabled && styles.textDisabled]}
+        >
+          {title}
+        </Text>
+        {subtitle ? (
+          <Text style={[styles.notifSubtitle, disabled && styles.textDisabled]}>
+            {subtitle}
+          </Text>
+        ) : null}
+      </View>
+      <Ionicons
+        name="chevron-forward"
+        size={normalize(20)}
+        color={disabled ? colors.textLight20 : colors.textSecondary}
+      />
+    </TouchableOpacity>
+  );
+
   const renderPwInput = ({ label, fieldKey, density }) => (
     <View
       style={
@@ -535,6 +648,68 @@ const Settings = ({ navigation, route }) => {
                   <Text style={styles.distanceHint}>100km</Text>
                 </View>
               </View>
+            </View>
+
+            {/* ────────────── 기본 설정 ────────────── */}
+            <SectionHeader
+              icon="settings-outline"
+              title="기본 설정"
+              description="앱 화면 및 보안 설정"
+            />
+            <View style={styles.card}>
+              <NotificationRow
+                title="다크모드"
+                titleBold
+                value={darkModeEnabled}
+                onToggle={toggleDarkMode}
+              />
+              <View style={styles.innerDivider} />
+              <NotificationRow
+                title="앱 잠금"
+                titleBold
+                subtitle="앱 실행 시 4자리 암호로 잠금"
+                value={appLockEnabled}
+                onToggle={() => handleAppLockToggle(!appLockEnabled)}
+              />
+              {appLockEnabled && (
+                <>
+                  <View style={styles.divider} />
+                  <NotificationRow
+                    title="생체 인증 사용"
+                    value={biometricEnabled}
+                    onToggle={handleBiometricToggle}
+                    disabled={!biometricAvailability.available}
+                  />
+                  {!biometricAvailability.available && (
+                    <Text
+                      style={[
+                        styles.notifSubtitle,
+                        {
+                          marginBottom: normalize(8),
+                          marginTop: normalize(-4),
+                        },
+                      ]}
+                    >
+                      기기에서 생체 인증을 먼저 등록해 주세요
+                    </Text>
+                  )}
+                  {APP_LOCK_ITEMS.map((item, idx, arr) => (
+                    <React.Fragment key={item.key}>
+                      <View style={styles.innerDivider} />
+                      <AppLockItemRow
+                        title={item.label}
+                        subtitle={item.subtitle}
+                        onPress={
+                          item.key === 'changePin' ? handleChangePin : undefined
+                        }
+                      />
+                      {idx < arr.length - 1 && (
+                        <View style={styles.innerDivider} />
+                      )}
+                    </React.Fragment>
+                  ))}
+                </>
+              )}
             </View>
           </>
         )}

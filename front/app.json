@@ -92,6 +92,12 @@
             ]
           }
         }
+      ],
+      [
+        "expo-local-authentication",
+        {
+          "faceIDPermission": "얼굴 인식을 사용하여 앱을 잠금 해제합니다."
+        }
       ]
     ],
     "extra": {
