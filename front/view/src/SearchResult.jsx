@@ -28,6 +28,11 @@ const TABS_FOR_HASHTAG = ['전체', '전체게시판', '학교게시판', '학�
 const RECENT_KEY = '@search_recent_keywords';
 const SECTIONS_WITH_EXTRA_GAP = ['학교게시판', '전체게시판', '학교우편'];
 
+function resolveSectionAdData(adSlots, slotIndex) {
+  if (!Array.isArray(adSlots) || adSlots.length === 0) return null;
+  return adSlots[slotIndex] ?? null;
+}
+
 function makeSnippet(content, query) {
   const text = content || '';
   const q = (query || '').trim();
@@ -164,7 +169,11 @@ export default function SearchResult({ route, navigation }) {
     return withAds.map((item, idx) => {
       if (item.type === 'searchAd') {
         return (
-          <SearchAdPlaceholder key={item.id} adData={item.adData} />
+          <SearchAdPlaceholder
+            key={item.id}
+            adData={item.adData}
+            borderStyle={s.searchAdBorder}
+          />
         );
       }
       return renderFn(item, idx, withAds);
@@ -359,6 +368,20 @@ export default function SearchResult({ route, navigation }) {
     [sections],
   );
 
+  const sectionAdSlotIndex = useMemo(() => {
+    const indices = {};
+    let slotIndex = 0;
+    if (matchedSchools.length > 0) {
+      indices.school = slotIndex;
+      slotIndex += 1;
+    }
+    sortedSections.forEach(([sectionName]) => {
+      indices[sectionName] = slotIndex;
+      slotIndex += 1;
+    });
+    return indices;
+  }, [matchedSchools.length, sortedSections]);
+
   return (
     <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
       <SafeAreaView style={s.container} edges={['top']}>
@@ -533,6 +556,13 @@ export default function SearchResult({ route, navigation }) {
                             />
                           </TouchableOpacity>
                         ))}
+                        <SearchAdPlaceholder
+                          adData={resolveSectionAdData(
+                            adSlots,
+                            sectionAdSlotIndex.school,
+                          )}
+                          borderStyle={s.searchAdBorder}
+                        />
                       </View>
                     )}
 
@@ -635,6 +665,14 @@ export default function SearchResult({ route, navigation }) {
                               />
                             </TouchableOpacity>
                           )}
+
+                          <SearchAdPlaceholder
+                            adData={resolveSectionAdData(
+                              adSlots,
+                              sectionAdSlotIndex[section],
+                            )}
+                            borderStyle={s.searchAdBorder}
+                          />
                         </View>
                       ))}
 

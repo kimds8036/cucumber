@@ -4,6 +4,8 @@ import { Ionicons } from '@expo/vector-icons';
 import { colors } from '../../../styles/colors';
 import { getNormalize } from '../../../styles/frame.style';
 import { createAdStyles } from '../../../styles/ad.style';
+import TipPlaceholder from '../../../components/ads/TipPlaceholder';
+import { AdPill } from '../../../components/ads/PillBadge';
 
 const NotificationAdPlaceholder = ({ adData }) => {
   const { width } = useWindowDimensions();
@@ -12,6 +14,13 @@ const NotificationAdPlaceholder = ({ adData }) => {
     () => createAdStyles(normalize, width),
     [normalize, width],
   );
+
+  if (adData == null) {
+    return (
+      <TipPlaceholder variant="notification" styles={styles} normalize={normalize} />
+    );
+  }
+
   const contentText =
     adData?.content ?? adData?.body ?? '여기에 광고가 표시됩니다.';
 
@@ -29,7 +38,7 @@ const NotificationAdPlaceholder = ({ adData }) => {
         <Text style={styles.notificationText} numberOfLines={2}>
           {contentText}
         </Text>
-        <Text style={styles.notificationTime}>AD</Text>
+        <AdPill />
       </View>
     </View>
   );

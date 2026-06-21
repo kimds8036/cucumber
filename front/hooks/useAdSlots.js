@@ -38,6 +38,7 @@ export function injectAdSlots(items, adSlots, options = {}) {
     idPrefix = 'ad',
     every = 5,
     skipFirstIndex = true,
+    allowEmptySlots = true,
     wrapItem = (item) => item,
   } = options;
 
@@ -45,10 +46,7 @@ export function injectAdSlots(items, adSlots, options = {}) {
     return [];
   }
 
-  if (!Array.isArray(adSlots) || adSlots.length === 0) {
-    return items.map((item, index) => wrapItem(item, index));
-  }
-
+  const slots = Array.isArray(adSlots) ? adSlots : [];
   let adIndex = 0;
   const next = [];
 
@@ -58,13 +56,21 @@ export function injectAdSlots(items, adSlots, options = {}) {
     const atInterval = (index + 1) % every === 0;
     const passesSkip = !skipFirstIndex || index !== 0;
 
-    if (atInterval && passesSkip && adSlots[adIndex] != null) {
+    if (atInterval && passesSkip) {
+      if (slots.length === 0 && !allowEmptySlots) {
+        return;
+      }
+
+      const adData =
+        slots.length > 0 && adIndex < slots.length ? slots[adIndex] : null;
       next.push({
         id: `${idPrefix}_${index}`,
         type: adType,
-        adData: adSlots[adIndex],
+        adData,
       });
-      adIndex += 1;
+      if (slots.length > 0 && adIndex < slots.length) {
+        adIndex += 1;
+      }
     }
   });
 

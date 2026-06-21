@@ -21,6 +21,7 @@ import {
 import { api } from '../../utils/api';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import BoarddetailADplaceholder from '../../src/screens/ad/boarddetailADplaceholder.jsx';
+import { useAdSlots } from '../../hooks/useAdSlots';
 
 function formatTimeAgo(createdAt) {
   if (!createdAt) return '';
@@ -67,6 +68,7 @@ const SearchScreen = ({ navigation, route }) => {
   const [recentSearches, setRecentSearches] = useState([]);
   const [recommendedTags, setRecommendedTags] = useState([]);
   const [trendingLoading, setTrendingLoading] = useState(true);
+  const { adSlots } = useAdSlots();
 
   useEffect(() => {
     const q = normalizeSearchText(route?.params?.query ?? '');
@@ -225,7 +227,10 @@ const SearchScreen = ({ navigation, route }) => {
               keyboardShouldPersistTaps="handled"
               keyboardDismissMode="on-drag"
             >
-              <BoarddetailADplaceholder />
+              <BoarddetailADplaceholder
+                adData={adSlots.length > 0 ? adSlots[0] : null}
+                badgeOnLeft
+              />
               {recentSearches.length > 0 && (
                 <View style={styles.section}>
                   <View style={styles.sectionHeader}>

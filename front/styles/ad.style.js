@@ -65,9 +65,11 @@ export const createAdStyles = (normalize, width) => {
       fontFamily: fonts.regular,
       color: colors.textPrimary,
       lineHeight: n(20),
+      marginTop: n(2),
       marginBottom: n(7),
     },
     postContentCompact: {
+      marginTop: n(2),
       marginBottom: n(5),
     },
     postFooter: {
@@ -87,18 +89,64 @@ export const createAdStyles = (normalize, width) => {
       color: colors.textSecondary,
     },
 
+    tipTopRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      marginBottom: n(5),
+    },
+    tipTopSpacer: {
+      flex: 1,
+    },
+    tipIcon: {
+      fontSize: n(18),
+      lineHeight: n(22),
+      marginRight: n(8),
+    },
+    tipIconLarge: {
+      fontSize: n(22),
+      lineHeight: n(26),
+    },
+    tipBoardDetailRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      paddingHorizontal: n(12),
+      gap: n(8),
+      width: '100%',
+    },
+    tipBoardDetailText: {
+      flex: 1,
+      fontSize: n(fontSizes.lg),
+      fontFamily: fonts.regular,
+      color: colors.textWhite,
+      lineHeight: n(18),
+    },
+
     // boarddetailADplaceholder
     adSection: {
       minHeight: n(40),
       marginHorizontal: w * 0,
-      backgroundColor: colors.backgroundGray,
+      backgroundColor: colors.background,
       justifyContent: 'center',
       alignItems: 'center',
+      borderBottomWidth: 1,
+      borderBottomColor: colors.textLight20,
+    },
+    adSectionRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      paddingHorizontal: n(18),
+      paddingVertical: n(12),
+      gap: n(12),
+      width: '100%',
+    },
+    adSectionBadge: {
+      flexShrink: 0,
     },
     adSectionText: {
+      flex: 1,
       fontSize: n(fontSizes.xl),
       fontFamily: fonts.regular,
-      color: colors.textWhite,
+      color: colors.textPrimary,
     },
 
     // ChatAdPlaceholder (message list style)
@@ -129,6 +177,15 @@ export const createAdStyles = (normalize, width) => {
       fontSize: n(fontSizes.lg),
       fontFamily: fonts.regular,
       color: colors.textSecondary,
+      marginTop: n(2),
+    },
+    listItemRight: {
+      alignSelf: 'center',
+      alignItems: 'flex-end',
+      justifyContent: 'center',
+      marginLeft: n(8),
+      minWidth: n(48),
+      flexShrink: 0,
     },
 
     // SchoolAdPlaceholder
@@ -182,6 +239,7 @@ export const createAdStyles = (normalize, width) => {
       fontFamily: fonts.regular,
       color: colors.textPrimary,
       lineHeight: n(fontSizes.title),
+      marginTop: n(2),
       marginBottom: n(10),
     },
     cardFooterRow: {
@@ -232,6 +290,7 @@ export const createAdStyles = (normalize, width) => {
       fontFamily: fonts.regular,
       color: colors.textSecondary,
       lineHeight: n(19),
+      marginTop: n(2),
       marginBottom: n(8),
     },
     metaTimeInline: {
@@ -270,6 +329,7 @@ export const createAdStyles = (normalize, width) => {
       fontFamily: fonts.regular,
       color: colors.textSecondary,
       lineHeight: n(20),
+      marginTop: n(2),
     },
     notificationTime: {
       fontSize: n(fontSizes.lg),

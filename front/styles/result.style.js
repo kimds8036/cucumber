@@ -121,12 +121,12 @@ export const createSearchResultStyles = (normalize) => {
     /** 학교 섹션 아래에 게시판 등 다른 섹션이 올 때 블록 간 간격 */
     sectionGapAfterSchool: {
       marginBottom: normalize(10),
-      borderBottomWidth: 10,
+      borderBottomWidth: 7,
       borderBottomColor: colors.textLight5,
     },
     sectionGapBetweenTargetSections: {
       marginBottom: normalize(10),
-      borderBottomWidth: 10,
+      borderBottomWidth: 7,
       borderBottomColor: colors.textLight5,
     },
     sectionRecommendTags: {
@@ -139,7 +139,7 @@ export const createSearchResultStyles = (normalize) => {
       flexDirection: 'row',
       justifyContent: 'space-between',
       alignItems: 'center',
-      paddingHorizontal: normalize(18),
+      paddingHorizontal: normalize(20),
       marginBottom: normalize(7),
     },
     sectionTitleRow: {
@@ -154,6 +154,7 @@ export const createSearchResultStyles = (normalize) => {
       fontFamily: fonts.bold,
       color: colors.textPrimary,
       letterSpacing: -0.2,
+      marginTop: normalize(4),
     },
     dimAction: {
       fontSize: normalize(fontSizes.lg),
@@ -163,11 +164,11 @@ export const createSearchResultStyles = (normalize) => {
     countBadge: {
       backgroundColor: colors.textLight5,
       paddingHorizontal: normalize(8),
-      paddingVertical: normalize(3),
+      paddingVertical: normalize(2),
       borderRadius: normalize(999),
     },
     countBadgeText: {
-      fontSize: normalize(fontSizes.lg),
+      fontSize: normalize(fontSizes.md),
       fontFamily: fonts.regular,
       color: colors.textSecondary,
     },
@@ -227,6 +228,12 @@ export const createSearchResultStyles = (normalize) => {
       borderBottomColor: colors.textLight10,
     },
     fullCardBorder: {},
+
+    searchAdBorder: {
+      borderTopWidth: 7,
+      borderTopColor: colors.textLight5,
+    },
+
     fullTitle: {
       fontSize: normalize(fontSizes.xxl),
       fontFamily: fonts.bold,

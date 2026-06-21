@@ -475,12 +475,10 @@ export default function BoardDetail({ navigation, route }) {
                       distanceStale={distanceStale}
                       distanceLoading={distanceLoading}
                     />
-                    {adSlots.length > 0 ? (
-                      <BoarddetailADplaceholder
-                        styles={styles}
-                        adData={adSlots[0]}
-                      />
-                    ) : null}
+                    <BoarddetailADplaceholder
+                      styles={styles}
+                      adData={adSlots.length > 0 ? adSlots[0] : null}
+                    />
                   </View>
                 }
                 contentContainerStyle={[

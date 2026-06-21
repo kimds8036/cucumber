@@ -1,9 +1,10 @@
 import React, { useMemo } from 'react';
 import { View, Text } from 'react-native';
-import { colors, fonts } from '../../../styles/colors';
 import { useWindowDimensions } from 'react-native';
 import { getNormalize } from '../../../styles/frame.style';
 import { createAdStyles } from '../../../styles/ad.style';
+import TipPlaceholder from '../../../components/ads/TipPlaceholder';
+import { AdPill } from '../../../components/ads/PillBadge';
 
 const AdPlaceholder = ({ styles, normalize, adData }) => {
   const { width } = useWindowDimensions();
@@ -13,6 +14,13 @@ const AdPlaceholder = ({ styles, normalize, adData }) => {
     [normalize, localNormalize, width],
   );
   const s = styles || adStyles;
+
+  if (adData == null) {
+    return (
+      <TipPlaceholder variant="board" styles={s} normalize={normalize || localNormalize} />
+    );
+  }
+
   const sponsorLabel = adData?.sponsor ?? adData?.author ?? '스폰서';
   const contentText =
     adData?.content ?? adData?.body ?? '여기에 광고가 표시됩니다.';
@@ -25,6 +33,7 @@ const AdPlaceholder = ({ styles, normalize, adData }) => {
           <Text style={s.postDot}>•</Text>
           <Text style={s.postTime}>광고</Text>
         </View>
+        <AdPill />
       </View>
 
       <View style={s.postBodyRow}>
@@ -32,18 +41,6 @@ const AdPlaceholder = ({ styles, normalize, adData }) => {
           <Text style={[s.postContent, s.postContentCompact]}>
             {contentText}
           </Text>
-          <View style={s.postFooter}>
-            <View style={s.postStats}>
-              <Text
-                style={[
-                  s.postStatText,
-                  { fontFamily: fonts.regular, color: colors.textSecondary },
-                ]}
-              >
-                AD
-              </Text>
-            </View>
-          </View>
         </View>
       </View>
     </View>
