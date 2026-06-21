@@ -1,6 +1,6 @@
 import React from 'react';
 import { View } from 'react-native';
-import CommentInput from '../../../../components/CommentInput.jsx';
+import ChatInput from '../../../../components/ChatInput.jsx';
 
 export default function MessageInput({
   value,
@@ -10,8 +10,8 @@ export default function MessageInput({
   onImagesChange,
   styles,
   normalize,
-  replyToMessage,
-  clearReplyTarget,
+  replyToMessage: _replyToMessage,
+  clearReplyTarget: _clearReplyTarget,
   bottomInset,
   mainPlaceholder,
   chatInputStyles,
@@ -28,20 +28,15 @@ export default function MessageInput({
         chatInputStyles,
       ]}
     >
-      <CommentInput
-        bottomInputRef={null}
-        bottomComment={value}
-        setBottomComment={onChange}
+      <ChatInput
+        value={value}
+        onChange={onChange}
+        onSend={onSend}
         selectedImages={images}
         onImagesChange={onImagesChange}
-        showImageAttach
-        replyToCommentId={null}
-        replyToAuthorLabel=""
-        clearReplyTarget={clearReplyTarget}
-        handleSendComment={onSend}
         styles={styles}
         normalize={normalize}
-        mainPlaceholder={mainPlaceholder}
+        placeholder={mainPlaceholder}
       />
     </View>
   );
