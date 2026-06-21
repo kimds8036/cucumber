@@ -1014,7 +1014,7 @@ export default function SchoolMailDetail({ navigation, route }) {
                   }}
                 >
                   {floatingMenuContext === 'post' &&
-                    ['신고 / 차단', '공유하기'].map((label, index) => (
+                    ['공유하기', '신고 / 차단'].map((label, index) => (
                       <React.Fragment key={label}>
                         <TouchableOpacity
                           style={{
@@ -1123,9 +1123,7 @@ export default function SchoolMailDetail({ navigation, route }) {
           reportedUserId={reportReportedUserId}
           onBlocked={(uid) => {
             if (reportTargetType === 'schoolMailComment') {
-              setComments((prev) =>
-                filterCommentTreeExcludingUser(prev, uid),
-              );
+              setComments((prev) => filterCommentTreeExcludingUser(prev, uid));
             } else if (reportTargetType === 'schoolMail') {
               navigation?.goBack?.();
             }

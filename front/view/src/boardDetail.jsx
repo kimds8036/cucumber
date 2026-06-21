@@ -478,6 +478,7 @@ export default function BoardDetail({ navigation, route }) {
                     <BoarddetailADplaceholder
                       styles={styles}
                       adData={adSlots.length > 0 ? adSlots[0] : null}
+                      badgeOnLeft
                     />
                   </View>
                 }
@@ -570,11 +571,18 @@ export default function BoardDetail({ navigation, route }) {
                   </View>
                 </View>
                 <View style={styles.adSection}>
-                  <Skeleton
-                    width={normalize(36)}
-                    height={normalize(12)}
-                    borderRadius={normalize(6)}
-                  />
+                  <View style={styles.adSectionRow}>
+                    <Skeleton
+                      width={normalize(28)}
+                      height={normalize(16)}
+                      borderRadius={normalize(8)}
+                    />
+                    <Skeleton
+                      width="72%"
+                      height={normalize(14)}
+                      borderRadius={normalize(6)}
+                    />
+                  </View>
                 </View>
                 <View
                   style={[styles.commentSection, { paddingTop: normalize(10) }]}
