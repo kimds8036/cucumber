@@ -73,7 +73,7 @@ function resolveLegacyBody(row) {
 
   if (relatedType === 'personal_mail' || type === 'mail') {
     if (rawTitle.includes('답장')) {
-      return '우편 답장이 왔습니다';
+      return '우편 답장을 보냈습니다';
     }
     return '새로운 우편이 도착했습니다';
   }

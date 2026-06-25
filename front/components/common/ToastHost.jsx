@@ -201,6 +201,7 @@ export default function ToastHost() {
       <GlobalToast
         visible={visible}
         toastId={toast?.id}
+        title={toast?.title}
         message={toast?.message}
         senderName={toast?.senderName}
         body={toast?.body}

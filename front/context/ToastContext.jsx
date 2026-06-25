@@ -17,6 +17,7 @@ export function ToastProvider({ children }) {
   const [visible, setVisible] = useState(false);
   const [toast, setToast] = useState({
     id: 0,
+    title: null,
     message: '',
     senderName: null,
     body: null,
@@ -58,6 +59,10 @@ export function ToastProvider({ children }) {
 
       clearHideTimer();
       const nextId = Date.now();
+      const title =
+        next.title != null && String(next.title).trim() !== ''
+          ? String(next.title).trim()
+          : null;
       const senderName =
         next.senderName != null && String(next.senderName).trim() !== ''
           ? String(next.senderName).trim()
@@ -68,6 +73,7 @@ export function ToastProvider({ children }) {
           : null;
       setToast({
         id: nextId,
+        title,
         message: text,
         senderName,
         body,

@@ -838,7 +838,7 @@ router.post('/personal/:mailId/reply', authenticate, async (req, res) => {
         type: 'mail',
         category: 'mail',
         title: '우편함',
-        body: `${replySenderName} 님에게 우편 답장이 왔습니다`,
+        body: `${replySenderName} 님이 우편 답장을 보냈습니다`,
         relatedType: 'personal_mail',
         relatedId: result.insertId,
       });

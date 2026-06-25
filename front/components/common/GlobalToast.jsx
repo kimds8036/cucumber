@@ -12,6 +12,7 @@ import { getNormalize } from '../../styles/timer';
 
 export default function GlobalToast({
   toastId,
+  title,
   message,
   senderName,
   body,
@@ -34,10 +35,10 @@ export default function GlobalToast({
   const [exiting, setExiting] = useState(false);
 
   const showBar = Boolean(showProgress || isChat);
-  const showStructured = Boolean(senderName || body);
-  const singleLineText = showStructured
-    ? `${senderName || '새 메시지'}: ${body || ''}`.trim()
-    : message;
+  const titleText =
+    title != null && String(title).trim() !== '' ? String(title).trim() : null;
+  const hasTitle = Boolean(titleText);
+  const singleLineText = message;
 
   useEffect(() => {
     if (!message) return;
@@ -169,17 +170,45 @@ export default function GlobalToast({
             transform: [{ translateY: contentTranslateY }],
           }}
         >
-          <Text
-            numberOfLines={1}
-            ellipsizeMode="tail"
-            style={{
-              fontSize: normalize(fontSizes.xl),
-              color: colors.textPrimary,
-              fontFamily: fonts.bold,
-            }}
-          >
-            {singleLineText}
-          </Text>
+          {hasTitle ? (
+            <>
+              <Text
+                numberOfLines={1}
+                ellipsizeMode="tail"
+                style={{
+                  fontSize: normalize(fontSizes.xl),
+                  color: colors.textPrimary,
+                  fontFamily: fonts.bold,
+                }}
+              >
+                {titleText}
+              </Text>
+              <Text
+                numberOfLines={2}
+                ellipsizeMode="tail"
+                style={{
+                  marginTop: normalize(2),
+                  fontSize: normalize(fontSizes.lg),
+                  color: colors.textPrimary,
+                  fontFamily: fonts.regular,
+                }}
+              >
+                {singleLineText}
+              </Text>
+            </>
+          ) : (
+            <Text
+              numberOfLines={2}
+              ellipsizeMode="tail"
+              style={{
+                fontSize: normalize(fontSizes.xl),
+                color: colors.textPrimary,
+                fontFamily: fonts.bold,
+              }}
+            >
+              {singleLineText}
+            </Text>
+          )}
         </Animated.View>
         {/* 로딩바 — 사용 시 위쪽 progress useEffect와 함께 복구
         {showBar ? (

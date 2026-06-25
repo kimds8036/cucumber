@@ -80,8 +80,8 @@ function resolveLegacyBody(row, mailMeta) {
     if (rawTitle.includes('답장')) {
       const senderName = String(mailMeta?.sender_name ?? '').trim();
       return senderName
-        ? `${senderName} 님에게 우편 답장이 왔습니다`
-        : '우편 답장이 왔습니다';
+        ? `${senderName} 님이 우편 답장을 보냈습니다`
+        : '우편 답장을 보냈습니다';
     }
     return '새로운 우편이 도착했습니다';
   }
