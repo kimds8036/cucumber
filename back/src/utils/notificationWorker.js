@@ -195,13 +195,19 @@ function resolveTargetScreen(relatedType) {
 function buildPushContent({ title, body, relatedType }) {
   if (relatedType === 'personal_mail') {
     return {
-      title: '새로운 익명 우편',
-      body: '새 메시지가 도착했어요',
+      title: '익명',
+      body: '새로운 우편이 도착했습니다',
     };
   }
   if (relatedType === 'message_room') {
     return {
-      title: '익명 채팅',
+      title: '익명',
+      body: body || '새 메시지가 도착했어요',
+    };
+  }
+  if (relatedType === 'dm_room') {
+    return {
+      title: title || '새 메시지',
       body: body || '새 메시지가 도착했어요',
     };
   }
