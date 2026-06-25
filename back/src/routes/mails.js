@@ -635,8 +635,8 @@ router.post('/personal', authenticate, async (req, res) => {
         userId: Number(recipientId),
         type: 'mail',
         category: 'mail',
-        title: '새로운 익명 우편이 도착했습니다',
-        body: content.trim().slice(0, 80),
+        title: '우편함',
+        body: '새로운 우편이 도착했습니다',
         relatedType: 'personal_mail',
         relatedId: result.insertId,
       });
@@ -827,12 +827,18 @@ router.post('/personal/:mailId/reply', authenticate, async (req, res) => {
 
     // 원본 발신자(=이번 답장 수신자)에게 알림 생성 (비동기 큐 + 소켓 emit)
     if (!isShadowBlocked) {
+      const [senderRows] = await pool.execute(
+        'SELECT name FROM users WHERE id = ?',
+        [userId],
+      );
+      const replySenderName =
+        String(senderRows[0]?.name ?? '').trim() || '상대방';
       await enqueueNotification({
         userId: Number(recipientId),
         type: 'mail',
         category: 'mail',
-        title: '새로운 익명 우편 답장이 도착했습니다',
-        body: content.trim().slice(0, 80),
+        title: '우편함',
+        body: `${replySenderName} 님에게 우편 답장이 왔습니다`,
         relatedType: 'personal_mail',
         relatedId: result.insertId,
       });

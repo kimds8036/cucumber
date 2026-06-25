@@ -125,16 +125,17 @@ export const createNotificationStyles = (normalize) =>
       flex: 1,
     },
     notificationTitle: {
-      fontSize: normalize(fontSizes.xl),
-      fontFamily: fonts.bold,
-      color: colors.textPrimary,
+      fontSize: normalize(fontSizes.lg),
+      fontFamily: fonts.regular,
+      color: colors.textSecondary,
       marginBottom: normalize(4),
     },
     notificationText: {
       fontSize: normalize(fontSizes.xl),
       fontFamily: fonts.regular,
-      color: colors.textSecondary,
-      lineHeight: normalize(20),
+      color: colors.textPrimary,
+      lineHeight: normalize(22),
+      marginBottom: normalize(4),
     },
     notificationTime: {
       fontSize: normalize(fontSizes.lg),

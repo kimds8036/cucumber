@@ -539,8 +539,8 @@ router.post('/requests', authenticate, validate(sendFriendRequestValidators), as
           userId: target.id,
           type: 'friend_request',
           category: 'system',
-          title: '새 친구 요청이 도착했어요',
-          body: '친구 목록에서 확인해 보세요.',
+          title: '시스템',
+          body: '새 친구 요청이 도착했어요! 친구 목록에서 확인해 보세요',
           relatedType: 'friendship',
           relatedId: requestId,
         });
@@ -552,8 +552,8 @@ router.post('/requests', authenticate, validate(sendFriendRequestValidators), as
         emitNotification(target.id, {
           type: 'friend_request',
           category: 'system',
-          title: '새 친구 요청이 도착했어요',
-          body: '친구 목록에서 확인해 보세요.',
+          title: '시스템',
+          body: '새 친구 요청이 도착했어요! 친구 목록에서 확인해 보세요',
           relatedType: 'friendship',
           relatedId: requestId,
         });

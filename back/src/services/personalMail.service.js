@@ -233,8 +233,8 @@ export async function sendPersonalMailByAddress(senderId, body) {
         userId: recipientId,
         type: 'mail',
         category: 'mail',
-        title: '새로운 익명 우편이 도착했습니다',
-        body: content.trim().slice(0, 80),
+        title: '우편함',
+        body: '새로운 우편이 도착했습니다',
         relatedType: 'personal_mail',
         relatedId: mailId,
       });
@@ -305,9 +305,11 @@ export async function runPersonalMailReturnJob(options = {}) {
     : getPersonalMailReturnDays();
 
   const [candidates] = await pool.execute(
-    `SELECT pm.id, pm.sender_id, pm.recipient_id, pm.is_match_failed,
+    `SELECT pm.id, pm.sender_id, pm.recipient_id, pm.recipient_name,
+            ru.name AS recipient_user_name, pm.is_match_failed,
             pm.root_mail_id, pm.sent_at
      FROM personal_mails pm
+     LEFT JOIN users ru ON ru.id = pm.recipient_id
      WHERE pm.status = ?
        AND pm.is_deleted = FALSE
        AND pm.parent_mail_id IS NULL
@@ -344,12 +346,16 @@ export async function runPersonalMailReturnJob(options = {}) {
     if (upd.affectedRows === 0) continue;
     returned += 1;
 
+    const recipientName =
+      String(row.recipient_name ?? '').trim() ||
+      String(row.recipient_user_name ?? '').trim() ||
+      '상대방';
     await enqueueNotification({
       userId: Number(row.sender_id),
       type: PERSONAL_MAIL_RETURN_NOTIFICATION_TYPE,
       category: 'mail',
-      title: '보낸 우편이 반송되었습니다',
-      body: '보낸 우편이 반송되었습니다',
+      title: '우편함',
+      body: `${recipientName} 님에게 보낸 우편이 반송되었습니다`,
       relatedType: PERSONAL_MAIL_RETURN_RELATED_TYPE,
       relatedId: Number(row.id),
     });

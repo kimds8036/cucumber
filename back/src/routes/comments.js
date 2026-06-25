@@ -198,8 +198,8 @@ router.post('/:postId/comments', authenticate, upload.array('images', 5), valida
         userId: post.user_id,
         type: isReplyToPost ? 'comment' : 'reply',
         category: 'post',
-        title: '내 게시글에 새로운 댓글이 달렸어요',
-        body: content.slice(0, 80),
+        title: '게시글',
+        body: '내 게시글에 새로운 댓글이 달렸어요',
         relatedType: 'post',
         relatedId: post.id,
       });
@@ -216,8 +216,8 @@ router.post('/:postId/comments', authenticate, upload.array('images', 5), valida
         userId: parentComment.user_id,
         type: 'reply',
         category: 'post',
-        title: '내 댓글에 새 답글이 달렸어요',
-        body: content.slice(0, 80),
+        title: '게시글',
+        body: '내 댓글에 새 답글이 달렸어요',
         relatedType: 'post',
         relatedId: post.id,
       });

@@ -162,8 +162,8 @@ export async function sendFriendPoke({ fromUserId, targetUserId }) {
       userId: targetUserId,
       type: 'poke',
       category: 'timer',
-      title: `${senderName} 님이 쿡 찔렀어요`,
-      body: '타이머에서 함께 공부를 시작해보세요',
+      title: '시스템',
+      body: `${senderName} 님이 쿡 찔렀어요! 타이머에서 함께 공부를 시작해보세요`,
       relatedType: 'timer_poke',
       relatedId: fromUserId,
     });
@@ -261,11 +261,11 @@ export async function broadcastTimerStatus({ userId, status }) {
 
         const watcherNames = rowsWatchers.map((u) => u.name);
         const watcherUserIds = rowsWatchers.map((u) => u.id);
-        let summaryBody = '공부를 마쳤어요';
+        let summaryBody = '공부 완료!';
         if (watcherNames.length === 1) {
-          summaryBody = `${watcherNames[0]} 님이 기다렸어요`;
+          summaryBody = `공부 완료! ${watcherNames[0]} 님이 기다렸어요`;
         } else if (watcherNames.length > 1) {
-          summaryBody = `${watcherNames[0]} 님 외 ${watcherNames.length - 1}명이 기다렸어요`;
+          summaryBody = `공부 완료! ${watcherNames[0]} 님 외 ${watcherNames.length - 1}명이 기다렸어요`;
         }
         const isSingleWatcher = watcherUserIds.length === 1;
         const summaryRelatedType = isSingleWatcher
@@ -284,7 +284,7 @@ export async function broadcastTimerStatus({ userId, status }) {
           userId,
           type: 'study_finished_summary',
           category: 'system',
-          title: '공부 완료',
+          title: '시스템',
           relatedType: summaryRelatedType,
           relatedId: summaryRelatedId,
           body: summaryBody,
