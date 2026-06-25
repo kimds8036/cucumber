@@ -76,9 +76,8 @@ export function BoardAllContent({ navigation, posts }) {
   const styles = useMemo(() => createBoardStyles(width, normalize), [width]);
   const { isGuidePreview } = useGuidePreview();
   const { adSlots } = useAdSlots();
-  const { coords, coordsIsFresh, refreshLocation, permissionGranted } =
-    useLocationContext();
-  const distanceStale = permissionGranted && (!coordsIsFresh || !coords);
+  const { coords, refreshLocation, permissionGranted } = useLocationContext();
+  const distanceStale = permissionGranted && !coords;
 
   const [sortType, setSortType] = useState('latest'); // latest, popular, nearby
   const [serverPosts, setServerPosts] = useState([]);

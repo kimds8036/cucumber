@@ -19,7 +19,7 @@ import DistanceBadge from './DistanceBadge';
  *  - layoutStableEpoch : 목록이 배치한 로드 배치 번호(부모 ref). 콜백과 짝을 맞출 때 사용
  *  - hideDistanceBadge : true면 우측 거리(km) 뱃지만 숨김
  *  - showDistanceBadge : 위치 권한 등으로 배지 영역 표시
- *  - distanceStale : 캐시·대기(주황 칩), false면 GPS 확정(초록)
+ *  - distanceStale : 좌표 없음(주황 칩), coords 있으면 캐시·GPS 모두 초록
  *  - distanceLoading : 거리 미계산 시 주황 칩 + 점 로딩
  */
 const BoardPostCard = ({

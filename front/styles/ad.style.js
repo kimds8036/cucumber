@@ -125,11 +125,9 @@ export const createAdStyles = (normalize, width) => {
     adSection: {
       minHeight: n(40),
       marginHorizontal: w * 0,
-      backgroundColor: colors.background,
+      backgroundColor: colors.primaryLight10,
       justifyContent: 'center',
       alignItems: 'center',
-      borderBottomWidth: 1,
-      borderBottomColor: colors.textLight20,
     },
     adSectionRow: {
       flexDirection: 'row',
@@ -322,6 +320,10 @@ export const createAdStyles = (normalize, width) => {
       fontSize: n(fontSizes.xl),
       fontFamily: fonts.bold,
       color: colors.textPrimary,
+      marginBottom: n(4),
+    },
+    notificationTitleSlot: {
+      alignSelf: 'flex-start',
       marginBottom: n(4),
     },
     notificationText: {

@@ -1,6 +1,6 @@
 import React, { useMemo } from 'react';
 import { View, Text, useWindowDimensions } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { colors } from '../../styles/colors';
 import TIP_MESSAGES from '../../constants/tipMessages';
 import { getNormalize } from '../../styles/frame.style';
@@ -76,18 +76,19 @@ const TipPlaceholder = ({
       return (
         <View style={s.notificationItem}>
           <View style={s.iconContainer}>
-            <Ionicons
-              name="bulb-outline"
+            <MaterialIcons
+              name="lightbulb"
               size={s.notificationIcon.size}
               color={colors.primary}
             />
           </View>
           <View style={s.notificationContent}>
-            <Text style={s.notificationTitle}>안내</Text>
+            <View style={s.notificationTitleSlot}>
+              <TipPill />
+            </View>
             <Text style={s.notificationText} numberOfLines={3}>
               {tipMessage}
             </Text>
-            <TipPill />
           </View>
         </View>
       );

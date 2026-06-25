@@ -33,7 +33,7 @@ import BoarddetailADplaceholder from '../../src/screens/ad/boarddetailADplacehol
 import { useAdSlots } from '../../hooks/useAdSlots';
 
 export default function BoardDetail({ navigation, route }) {
-  const { coords, coordsIsFresh, permissionGranted } = useLocationContext();
+  const { coords, permissionGranted } = useLocationContext();
   const { refreshHasUnread } = useNotification();
   const { adSlots } = useAdSlots();
   const { width } = useWindowDimensions();
@@ -148,7 +148,7 @@ export default function BoardDetail({ navigation, route }) {
     }
   };
 
-  const distanceStale = permissionGranted && (!coordsIsFresh || !coords);
+  const distanceStale = permissionGranted && !coords;
   const postHasKm =
     typeof post?.distanceKm === 'number' && !Number.isNaN(post.distanceKm);
   const distanceLoading = permissionGranted && !postHasKm && distanceStale;
