@@ -237,7 +237,7 @@ export const createAdStyles = (normalize, width) => {
       fontFamily: fonts.regular,
       color: colors.textPrimary,
       lineHeight: n(fontSizes.title),
-      marginTop: n(2),
+      marginTop: n(4),
       marginBottom: n(10),
     },
     cardFooterRow: {
@@ -289,7 +289,6 @@ export const createAdStyles = (normalize, width) => {
       color: colors.textSecondary,
       lineHeight: n(19),
       marginTop: n(2),
-      marginBottom: n(8),
     },
     metaTimeInline: {
       fontSize: n(fontSizes.lg),

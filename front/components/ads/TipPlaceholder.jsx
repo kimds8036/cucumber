@@ -1,7 +1,8 @@
 import React, { useMemo } from 'react';
 import { View, Text, useWindowDimensions } from 'react-native';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
-import { colors } from '../../styles/colors';
+import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
+import { colors, fonts, fontSizes } from '../../styles/colors';
 import TIP_MESSAGES from '../../constants/tipMessages';
 import { getNormalize } from '../../styles/frame.style';
 import { createAdStyles } from '../../styles/ad.style';
@@ -21,6 +22,7 @@ const TipPlaceholder = ({
     [externalNormalize, localNormalize, width],
   );
   const s = externalStyles || adStyles;
+  const n = externalNormalize || localNormalize;
 
   const tipMessage = useMemo(() => {
     const index = Math.floor(Math.random() * TIP_MESSAGES.length);
@@ -31,16 +33,52 @@ const TipPlaceholder = ({
     case 'chat':
       return (
         <View style={s.listItem}>
-          <View style={s.listItemLeft}>
-            <View style={s.listItemBody}>
-              <Text style={s.listItemName}>안내</Text>
-              <Text style={s.listItemContent} numberOfLines={2}>
+          <View
+            style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              gap: n(14),
+              flex: 1,
+            }}
+          >
+            <View
+              style={{
+                width: n(37),
+                height: n(37),
+                borderRadius: n(26),
+                justifyContent: 'center',
+                alignItems: 'center',
+                backgroundColor: colors.primary,
+              }}
+            >
+              <MaterialCommunityIcons
+                name="bullhorn"
+                size={n(22)}
+                color={colors.green}
+              />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text
+                style={{
+                  fontSize: n(fontSizes.xxl),
+                  fontFamily: fonts.bold,
+                  color: colors.textPrimary,
+                  marginBottom: n(2),
+                }}
+              >
+                tip
+              </Text>
+              <Text
+                numberOfLines={2}
+                style={{
+                  fontSize: n(fontSizes.lg),
+                  fontFamily: fonts.regular,
+                  color: colors.textSecondary,
+                }}
+              >
                 {tipMessage}
               </Text>
             </View>
-          </View>
-          <View style={s.listItemRight}>
-            <TipPill />
           </View>
         </View>
       );
@@ -49,10 +87,12 @@ const TipPlaceholder = ({
       return (
         <View style={[s.fullCard, cardStyleOverride]}>
           <View style={s.contentTimeRow}>
+            <View style={{ marginRight: n(8) }}>
+              <TipPill />
+            </View>
             <View style={s.snippetWrap}>
               <Text style={s.fullSnippet}>{tipMessage}</Text>
             </View>
-            <TipPill />
           </View>
         </View>
       );
@@ -62,11 +102,16 @@ const TipPlaceholder = ({
         <View style={s.card}>
           <View style={s.cardTopRow}>
             <View style={s.cardMetaRow}>
-              <Text style={s.cardTime}>안내</Text>
+              <TipPill />
             </View>
-            <TipPill />
           </View>
-          <Text style={s.cardPreview} numberOfLines={4}>
+          <Text
+            style={[
+              s.cardPreview,
+              { flexGrow: 0, lineHeight: n(22) },
+            ]}
+            numberOfLines={4}
+          >
             {tipMessage}
           </Text>
         </View>
@@ -120,13 +165,18 @@ const TipPlaceholder = ({
         <View style={s.postItem}>
           <View style={s.postHeader}>
             <View style={s.postAuthorRow}>
-              <Text style={s.postTime}>안내</Text>
+              <TipPill />
             </View>
-            <TipPill />
           </View>
           <View style={s.postBodyRow}>
             <View style={s.postBodyColumn}>
-              <Text style={[s.postContent, s.postContentCompact]}>
+              <Text
+                style={[
+                  s.postContent,
+                  s.postContentCompact,
+                  { marginTop: n(4) },
+                ]}
+              >
                 {tipMessage}
               </Text>
             </View>
