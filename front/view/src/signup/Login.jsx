@@ -23,7 +23,7 @@ import { createLoginStyles } from '../../../styles/login.style';
 import { colors } from '../../../styles/colors';
 import { Ionicons } from '@expo/vector-icons';
 import LogoIcon from '../../../assets/Logo.svg';
-import { api, setAuthToken } from '../../../utils/api';
+import { api, setAuthToken, setRefreshToken, getOrCreateDeviceId } from '../../../utils/api';
 import { useAuth } from '../../../context/AuthContext';
 import Skeleton from '../../../components/common/Skeleton';
 // import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -289,11 +289,14 @@ const Login = ({ navigation }) => {
                     platform: Platform.OS,
                   });
 
+                  const deviceId = await getOrCreateDeviceId();
                   const response = await api.post('/api/auth/login', {
                     ...loginPayload,
+                    deviceId,
                   });
 
-                  const { token, user, needsVerification } = response.data.data;
+                  const { token, refreshToken, user, needsVerification } =
+                    response.data.data;
                   debugLogin('로그인 성공', {
                     status: response.status,
                     success: response.data?.success,
@@ -307,6 +310,9 @@ const Login = ({ navigation }) => {
                   if (token) {
                     debugLogin('토큰 저장 시작', { persist: rememberMe });
                     await setAuthToken(token, { persist: rememberMe });
+                    if (refreshToken) {
+                      await setRefreshToken(refreshToken, { persist: rememberMe });
+                    }
                     debugLogin('토큰 저장 완료');
                   }
                   debugLogin('로그인 상태 반영 → 스택 전환');
@@ -314,6 +320,10 @@ const Login = ({ navigation }) => {
                     studentVerificationStatus:
                       response.data.data?.studentVerificationStatus || 'APPROVED',
                     rejectReason: response.data.data?.rejectReason || null,
+                    reverificationStatus:
+                      response.data.data?.reverificationStatus || 'none',
+                    reverificationDeadline:
+                      response.data.data?.reverificationDeadline || null,
                   });
                 } catch (error) {
                   const hasResponse = Boolean(error?.response);
@@ -362,6 +372,39 @@ const Login = ({ navigation }) => {
                       body: until
                         ? `해제 예정 시각: ${until}\n해제 시각 이후 다시 로그인해주세요.`
                         : '해제 시각 이후 다시 로그인해주세요.',
+                    });
+                    return;
+                  }
+                  if (serverCode === 'GRADUATED_BLOCKED') {
+                    setPolicyModal({
+                      visible: true,
+                      title: '이용 제한',
+                      highlight: '졸업생은 서비스를 이용할 수 없습니다.',
+                      body:
+                        '고등학교 졸업으로 Youth Paper 이용이 종료되었습니다.\n' +
+                        '학생 인증 기반 서비스 정책에 따라 앱 이용이 제한됩니다.',
+                    });
+                    return;
+                  }
+                  if (serverCode === 'ADULT_BLOCKED') {
+                    setPolicyModal({
+                      visible: true,
+                      title: '이용 제한',
+                      highlight: '성인은 서비스를 이용할 수 없습니다.',
+                      body:
+                        '성인 연령으로 Youth Paper 이용이 종료되었습니다.\n' +
+                        '학생 인증 기반 서비스 정책에 따라 앱 이용이 제한됩니다.',
+                    });
+                    return;
+                  }
+                  if (serverCode === 'REVERIFICATION_RESTRICTED') {
+                    setPolicyModal({
+                      visible: true,
+                      title: '재인증 필요',
+                      highlight: '학생증 재인증이 필요합니다.',
+                      body:
+                        '새 학년도 재인증 유예 기간이 지났습니다.\n' +
+                        '앱 이용을 재개하려면 고객센터로 문의해 주세요.',
                     });
                     return;
                   }

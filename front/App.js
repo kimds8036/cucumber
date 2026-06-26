@@ -50,7 +50,7 @@ import GuideOverlayScreen from './src/screens/UserGuide/GuideOverlayScreen';
 import { useFonts } from 'expo-font';
 import * as SplashScreen from 'expo-splash-screen';
 import { useEffect, useRef, useState } from 'react';
-import { Alert, AppState } from 'react-native';
+import { Alert, AppState, View } from 'react-native';
 import * as Notifications from 'expo-notifications';
 import Constants from 'expo-constants';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
@@ -60,6 +60,9 @@ import { AppLockProvider } from './context/AppLockContext';
 import { LocationProvider, LocationGate } from './context/LocationContext';
 import StudentVerificationGate from './components/auth/StudentVerificationGate';
 import StudentVerificationRejected from './components/auth/StudentVerificationRejected';
+import AccountBlockedScreen from './components/auth/AccountBlockedScreen';
+import ReverificationGate from './components/auth/ReverificationGate';
+import ReverificationReminderBanner from './components/auth/ReverificationReminderBanner';
 import ForceUpdateGate from './components/common/ForceUpdateGate';
 import StudentIdResubmit from './view/src/signup/StudentIdResubmit';
 import { SocketProvider } from './context/SocketContext';
@@ -188,8 +191,12 @@ function RootNavigator() {
     postLoginRoute,
     setPostLoginRoute,
     studentVerificationStatus,
+    reverificationStatus,
+    reverificationDeadline,
+    refreshStudentVerification,
   } = useAuth();
   const [showResubmit, setShowResubmit] = useState(false);
+  const pollRef = useRef(null);
 
   useEffect(() => {
     if (!isLoggedIn) return;
@@ -197,6 +204,17 @@ function RootNavigator() {
       setPostLoginRoute('Main');
     }
   }, [isLoggedIn, postLoginRoute, setPostLoginRoute]);
+
+  useEffect(() => {
+    if (!isLoggedIn) return undefined;
+    refreshStudentVerification();
+    pollRef.current = setInterval(() => {
+      refreshStudentVerification();
+    }, 30_000);
+    return () => {
+      if (pollRef.current) clearInterval(pollRef.current);
+    };
+  }, [isLoggedIn, refreshStudentVerification]);
 
   const getInitialTabForPush = (relatedType = '', fallbackScreen = '') => {
     if (
@@ -372,12 +390,38 @@ function RootNavigator() {
     );
   }
 
+  if (reverificationStatus === 'graduated_blocked') {
+    return <AccountBlockedScreen variant="graduated" />;
+  }
+
+  if (reverificationStatus === 'adult_blocked') {
+    return <AccountBlockedScreen variant="adult" />;
+  }
+
+  if (reverificationStatus === 'restricted') {
+    return (
+      <ReverificationGate onResubmit={() => setShowResubmit(true)} />
+    );
+  }
+
+  const showReverificationBanner =
+    reverificationStatus === 'grace' || reverificationStatus === 'required';
+
   const mainInitialRoute =
     postLoginRoute === 'GuideOverlay' ? 'GuideOverlay' : 'Main';
   return (
-    <LocationGate>
-      <MainStack initialRouteName={mainInitialRoute} />
-    </LocationGate>
+    <View style={{ flex: 1 }}>
+      {showReverificationBanner ? (
+        <ReverificationReminderBanner
+          status={reverificationStatus}
+          deadline={reverificationDeadline}
+          onResubmit={() => setShowResubmit(true)}
+        />
+      ) : null}
+      <LocationGate>
+        <MainStack initialRouteName={mainInitialRoute} />
+      </LocationGate>
+    </View>
   );
 }
 

@@ -3,8 +3,11 @@ import { Platform, Linking, Alert } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Constants from 'expo-constants';
 import { API_URLS } from '../config/apiEnv.js';
+import { notifySessionTerminated } from './sessionTerminate';
 
 const AUTH_TOKEN_KEY = '@auth_token';
+const REFRESH_TOKEN_KEY = '@refresh_token';
+const DEVICE_ID_KEY = '@device_id';
 
 /**
  * 자동로그인 OFF 상태에서 사용하는 인메모리 토큰.
@@ -151,6 +154,24 @@ api.interceptors.response.use(
         ]);
       }
     }
+    const sessionCodes = [
+      'SESSION_REVOKED',
+      'ACCOUNT_BANNED',
+      'ACCOUNT_SUSPENDED',
+      'GRADUATED_BLOCKED',
+      'ADULT_BLOCKED',
+      'REVERIFICATION_RESTRICTED',
+    ];
+    if (sessionCodes.includes(data?.code)) {
+      error.isSessionTerminated = true;
+      error.sessionTerminateCode = data.code;
+      notifySessionTerminated({
+        code: data.code,
+        message:
+          (typeof data?.message === 'string' && data.message.trim()) ||
+          undefined,
+      }).catch(() => {});
+    }
     return Promise.reject(error);
   },
 );
@@ -186,6 +207,46 @@ export async function clearAuthToken() {
  * - 영속(AsyncStorage) → 인메모리 순서로 폴백한다.
  * - SocketContext 등 axios interceptor 외부에서 토큰을 직접 써야 할 때 사용.
  */
+export async function getOrCreateDeviceId() {
+  try {
+    const existing = await AsyncStorage.getItem(DEVICE_ID_KEY);
+    if (existing) return existing;
+    const id = `device_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
+    await AsyncStorage.setItem(DEVICE_ID_KEY, id);
+    return id;
+  } catch {
+    return `device_${Date.now()}`;
+  }
+}
+
+export async function setRefreshToken(token, { persist = true } = {}) {
+  if (!persist) {
+    await AsyncStorage.removeItem(REFRESH_TOKEN_KEY);
+    return;
+  }
+  if (token) {
+    await AsyncStorage.setItem(REFRESH_TOKEN_KEY, token);
+  } else {
+    await AsyncStorage.removeItem(REFRESH_TOKEN_KEY);
+  }
+}
+
+export async function getRefreshToken() {
+  try {
+    return (await AsyncStorage.getItem(REFRESH_TOKEN_KEY)) || null;
+  } catch {
+    return null;
+  }
+}
+
+export async function getDeviceId() {
+  try {
+    return (await AsyncStorage.getItem(DEVICE_ID_KEY)) || null;
+  } catch {
+    return null;
+  }
+}
+
 export async function getAuthToken() {
   try {
     const stored = await AsyncStorage.getItem(AUTH_TOKEN_KEY);

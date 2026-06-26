@@ -11,8 +11,15 @@ import {
   api,
   clearUserSessionStorage,
   getAuthToken,
+  getDeviceId,
+  getRefreshToken,
   setAuthToken,
+  setRefreshToken,
 } from '../utils/api';
+import {
+  getSessionTerminateTitle,
+  notifySessionTerminated,
+} from '../utils/sessionTerminate';
 import { useAuth } from './AuthContext';
 import * as socketManager from '../view/src/socketManager';
 
@@ -58,6 +65,7 @@ export function SocketProvider({ children }) {
     targetSocket.off('connect');
     targetSocket.off('disconnect');
     targetSocket.off('connect_error');
+    targetSocket.off('session_revoked');
   }, []);
 
   const isAuthConnectError = useCallback((err) => {
@@ -68,14 +76,13 @@ export function SocketProvider({ children }) {
     return AUTH_ERROR_KEYWORDS.some((keyword) => msg.includes(keyword));
   }, []);
 
-  const forceLogoutBySessionExpired = useCallback(async () => {
+  const forceLogoutBySessionExpired = useCallback(async (payload = {}) => {
     if (isLoggingOutRef.current || cancelledRef.current) return;
     isLoggingOutRef.current = true;
 
     try {
       const latest = socketManager.getSocket?.();
       if (latest) {
-        // disconnect 이벤트/재시도 콜백 재진입을 막기 위해 리스너를 먼저 정리한다.
         cleanupContextListeners(latest);
         latest.removeAllListeners?.();
         socketManager.disconnectSocket?.({
@@ -89,9 +96,13 @@ export function SocketProvider({ children }) {
       setSocket(null);
       logout();
 
+      const title = getSessionTerminateTitle(payload?.code);
+      const message =
+        payload?.message || '로그인이 만료되어 다시 로그인해주세요.';
+
       if (appStateRef.current === 'active' && !alertShownRef.current) {
         alertShownRef.current = true;
-        Alert.alert('세션 만료', '로그인이 만료되어 다시 로그인해주세요.', [
+        Alert.alert(title, message, [
           {
             text: '확인',
             onPress: () => {
@@ -102,15 +113,28 @@ export function SocketProvider({ children }) {
       }
     } finally {
       isRecoveringAuthRef.current = false;
+      isLoggingOutRef.current = false;
     }
   }, [cleanupContextListeners, logout]);
 
   const tryRefreshAccessToken = useCallback(async () => {
     try {
-      const response = await api.post('/api/auth/refresh');
+      const [refreshToken, deviceId] = await Promise.all([
+        getRefreshToken(),
+        getDeviceId(),
+      ]);
+      if (!refreshToken || !deviceId) return null;
+
+      const response = await api.post('/api/auth/refresh', {
+        refreshToken,
+        deviceId,
+      });
       const nextToken = response?.data?.data?.token || response?.data?.token;
+      const nextRefresh =
+        response?.data?.data?.refreshToken || response?.data?.refreshToken;
       if (!nextToken) return null;
       await setAuthToken(nextToken);
+      if (nextRefresh) await setRefreshToken(nextRefresh);
       return nextToken;
     } catch (error) {
       if (__DEV__) {
@@ -221,6 +245,23 @@ export function SocketProvider({ children }) {
           code: err?.data?.code,
           description: err?.description,
         });
+
+        const terminateCodes = [
+          'SESSION_REVOKED',
+          'ACCOUNT_BANNED',
+          'ACCOUNT_SUSPENDED',
+          'GRADUATED_BLOCKED',
+          'ADULT_BLOCKED',
+          'REVERIFICATION_RESTRICTED',
+        ];
+        if (terminateCodes.includes(err?.data?.code)) {
+          notifySessionTerminated({
+            code: err.data.code,
+            message: err?.message,
+          });
+          return;
+        }
+
         if (!isAuthConnectError(err)) {
           scheduleReconnect('connect_error_non_auth');
           return;
@@ -232,6 +273,14 @@ export function SocketProvider({ children }) {
         }
 
         recoverSocketAuth();
+      });
+
+      s.on('session_revoked', (payload = {}) => {
+        logSocket('session_revoked', {
+          code: payload?.code,
+          message: payload?.message,
+        });
+        notifySessionTerminated(payload);
       });
 
       setSocket(s);

@@ -183,7 +183,19 @@ export default function CommuteBanner({
       if (userId != null) {
         await saveCommuteCompletedToday(userId);
       }
-      // TODO: POST /api/attendance/check-in — 등교 출석 API 연동
+      try {
+        await api.post('/api/attendance/check-in', {
+          latitude: viewerLat,
+          longitude: viewerLng,
+        });
+      } catch (err) {
+        if (err?.response?.status === 409) {
+          return;
+        }
+        completedRef.current = false;
+        setCompleted(false);
+        console.warn('[CommuteBanner] check-in failed', err?.response?.data || err.message);
+      }
     },
     [userId],
   );

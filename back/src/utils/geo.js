@@ -15,6 +15,11 @@ export function haversineKm(lat1, lon1, lat2, lon2) {
   return R * c;
 }
 
+/** 두 좌표 간 거리(m) */
+export function haversineMeters(lat1, lon1, lat2, lon2) {
+  return haversineKm(lat1, lon1, lat2, lon2) * 1000;
+}
+
 /** MySQL WHERE 절용 Haversine(km) — 플레이스홀더 순서: viewerLat, viewerLat, viewerLng */
 export function sqlHaversineKmLessOrEqual(alias = 'p') {
   return `(6371 * ACOS(LEAST(1, GREATEST(-1,

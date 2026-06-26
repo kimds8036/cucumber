@@ -18,6 +18,15 @@ export const generateToken = (payload, options = {}) => {
   });
 };
 
+/** 모바일 액세스 토큰 (token_version 포함) */
+export function createUserAccessToken({ userId, username, tokenVersion = 0 }) {
+  return generateToken({
+    userId,
+    username,
+    tv: Number(tokenVersion) || 0,
+  });
+}
+
 /** 관리자 세션 (OTP 통과 후, 기본 30분) */
 export const generateAdminSessionToken = ({ userId, username }) => {
   return generateToken(

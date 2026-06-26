@@ -4,21 +4,33 @@ import React, {
   useState,
   useCallback,
   useEffect,
+  useRef,
 } from 'react';
+import { Alert, AppState } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { api } from '../utils/api';
+import { api, clearUserSessionStorage } from '../utils/api';
 import {
   getCachedStudentVerificationStatus,
   setCachedStudentVerificationStatus,
   clearCachedStudentVerificationStatus,
 } from '../utils/studentVerificationStorage';
+import {
+  getCachedReverification,
+  setCachedReverification,
+  clearCachedReverification,
+} from '../utils/reverificationStorage';
+import {
+  registerSessionTerminateHandler,
+  getSessionTerminateTitle,
+} from '../utils/sessionTerminate';
+import * as socketManager from '../view/src/socketManager';
 
 const AUTH_TOKEN_KEY = '@auth_token';
 
 const AuthContext = createContext(null);
 
 /**
- * 로그인 상태 + 학생증 검수 상태(PENDING/APPROVED/REJECTED) 관리
+ * 로그인 상태 + 학생증 검수 + 재인증(reverification) 상태 관리
  */
 export function AuthProvider({ children }) {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
@@ -27,6 +39,9 @@ export function AuthProvider({ children }) {
   const [studentVerificationStatus, setStudentVerificationStatus] =
     useState('APPROVED');
   const [rejectReason, setRejectReason] = useState(null);
+  const [reverificationStatus, setReverificationStatus] = useState('none');
+  const [reverificationDeadline, setReverificationDeadline] = useState(null);
+  const sessionAlertShownRef = useRef(false);
 
   const applyVerification = useCallback(async (status, reason) => {
     const nextStatus = status || 'APPROVED';
@@ -35,21 +50,78 @@ export function AuthProvider({ children }) {
     await setCachedStudentVerificationStatus(nextStatus, reason || null);
   }, []);
 
+  const applyReverification = useCallback(async (status, deadline) => {
+    const nextStatus = status || 'none';
+    setReverificationStatus(nextStatus);
+    setReverificationDeadline(deadline || null);
+    await setCachedReverification(nextStatus, deadline || null);
+  }, []);
+
+  const applyUserProfile = useCallback(
+    async (data) => {
+      if (!data) return;
+      await applyVerification(data.studentVerificationStatus, data.rejectReason);
+      await applyReverification(
+        data.reverificationStatus,
+        data.reverificationDeadline,
+      );
+    },
+    [applyVerification, applyReverification],
+  );
+
   const refreshStudentVerification = useCallback(async () => {
     try {
       const res = await api.get('/api/auth/me');
       const data = res.data?.data;
       if (data) {
-        await applyVerification(
-          data.studentVerificationStatus,
-          data.rejectReason,
-        );
+        await applyUserProfile(data);
       }
       return data;
     } catch {
       return null;
     }
-  }, [applyVerification]);
+  }, [applyUserProfile]);
+
+  const logout = useCallback(async () => {
+    setPostLoginRoute('Main');
+    setStudentVerificationStatus('APPROVED');
+    setRejectReason(null);
+    setReverificationStatus('none');
+    setReverificationDeadline(null);
+    await clearCachedStudentVerificationStatus();
+    await clearCachedReverification();
+    setIsLoggedIn(false);
+  }, []);
+
+  useEffect(() => {
+    registerSessionTerminateHandler(async ({ code, message }) => {
+      try {
+        socketManager.disconnectSocket?.({
+          force: true,
+          reason: `session_terminated:${code || 'unknown'}`,
+        });
+      } catch {
+        // ignore
+      }
+      await clearUserSessionStorage();
+      await logout();
+      if (!sessionAlertShownRef.current) {
+        sessionAlertShownRef.current = true;
+        Alert.alert(
+          getSessionTerminateTitle(code),
+          message || '로그인이 만료되어 다시 로그인해주세요.',
+          [
+            {
+              text: '확인',
+              onPress: () => {
+                sessionAlertShownRef.current = false;
+              },
+            },
+          ],
+        );
+      }
+    });
+  }, [logout]);
 
   useEffect(() => {
     let mounted = true;
@@ -64,10 +136,15 @@ export function AuthProvider({ children }) {
           return;
         }
 
-        const cached = await getCachedStudentVerificationStatus();
+        const [cachedVerification, cachedReverification] = await Promise.all([
+          getCachedStudentVerificationStatus(),
+          getCachedReverification(),
+        ]);
         if (mounted) {
-          setStudentVerificationStatus(cached.status);
-          setRejectReason(cached.rejectReason);
+          setStudentVerificationStatus(cachedVerification.status);
+          setRejectReason(cachedVerification.rejectReason);
+          setReverificationStatus(cachedReverification.status);
+          setReverificationDeadline(cachedReverification.deadline);
           setIsLoggedIn(true);
           setAuthHydrated(true);
         }
@@ -86,6 +163,18 @@ export function AuthProvider({ children }) {
     };
   }, [refreshStudentVerification]);
 
+  useEffect(() => {
+    if (!isLoggedIn) return undefined;
+
+    const sub = AppState.addEventListener('change', (nextState) => {
+      if (nextState === 'active') {
+        refreshStudentVerification();
+      }
+    });
+
+    return () => sub.remove();
+  }, [isLoggedIn, refreshStudentVerification]);
+
   const login = useCallback(
     async (options = {}) => {
       const nextRoute =
@@ -99,18 +188,17 @@ export function AuthProvider({ children }) {
         );
       }
 
+      if (options?.reverificationStatus != null) {
+        await applyReverification(
+          options.reverificationStatus,
+          options.reverificationDeadline,
+        );
+      }
+
       setIsLoggedIn(true);
     },
-    [applyVerification],
+    [applyVerification, applyReverification],
   );
-
-  const logout = useCallback(async () => {
-    setPostLoginRoute('Main');
-    setStudentVerificationStatus('APPROVED');
-    setRejectReason(null);
-    await clearCachedStudentVerificationStatus();
-    setIsLoggedIn(false);
-  }, []);
 
   const value = {
     isLoggedIn,
@@ -121,7 +209,10 @@ export function AuthProvider({ children }) {
     setPostLoginRoute,
     studentVerificationStatus,
     rejectReason,
+    reverificationStatus,
+    reverificationDeadline,
     applyVerification,
+    applyReverification,
     refreshStudentVerification,
   };
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

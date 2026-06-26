@@ -1,5 +1,8 @@
 import express from 'express';
 import pool from '../config/database.js';
+import { incrementTokenVersion } from '../services/session.service.js';
+import { revokeAllRefreshTokens } from '../services/refreshToken.service.js';
+import { notifyUserSessionRevoked } from '../services/sessionRevoke.service.js';
 import { requireAdminApi, isAdminUser } from '../middleware/adminAuth.js';
 import { getNowForDB } from '../utils/dateUtils.js';
 import {
@@ -584,6 +587,8 @@ router.post('/users/:userId/suspend', requireAdminApi, async (req, res) => {
        WHERE id = ?`,
       [days, userId]
     );
+    await incrementTokenVersion(userId, connection);
+    await revokeAllRefreshTokens(userId);
     await writeAuditLog(connection, {
       adminUserId,
       actionType: 'user_suspend',
@@ -592,6 +597,10 @@ router.post('/users/:userId/suspend', requireAdminApi, async (req, res) => {
       extra: { days },
     });
     await connection.commit();
+    notifyUserSessionRevoked(userId, {
+      code: 'ACCOUNT_SUSPENDED',
+      message: `계정이 ${days}일간 정지되었습니다. 다시 로그인해주세요.`,
+    });
     res.json({ success: true, message: `사용자를 ${days}일 정지 처리했습니다.` });
   } catch (error) {
     await connection.rollback();
@@ -680,6 +689,8 @@ router.post('/users/:userId/ban', requireAdminApi, async (req, res) => {
        WHERE id = ?`,
       [userId]
     );
+    await incrementTokenVersion(userId, connection);
+    await revokeAllRefreshTokens(userId);
     await writeAuditLog(connection, {
       adminUserId,
       actionType: 'user_ban',
@@ -687,6 +698,10 @@ router.post('/users/:userId/ban', requireAdminApi, async (req, res) => {
       targetId: userId,
     });
     await connection.commit();
+    notifyUserSessionRevoked(userId, {
+      code: 'ACCOUNT_BANNED',
+      message: '영구 정지된 계정입니다. 다시 로그인해주세요.',
+    });
     res.json({ success: true, message: '영구 정지 처리했습니다.' });
   } catch (error) {
     await connection.rollback();

@@ -1,6 +1,6 @@
 /**
  * 학교 우편 발신자 표시
- * 우편함 schoolId(또는 mail.school_id)와 작성자 학교가 같으면 "재학생", 아니면 "OO 학교명"
+ * 스냅샷 author_school_id + 현재 author_current_school_id 로 재학생/졸업생 분기
  */
 export function getSchoolMailFromLabel(mail, mailboxSchoolId) {
   if (!mail) return '학생';
@@ -8,20 +8,27 @@ export function getSchoolMailFromLabel(mail, mailboxSchoolId) {
     mailboxSchoolId != null && mailboxSchoolId !== ''
       ? String(mailboxSchoolId)
       : String(mail.school_id ?? '');
-  const author =
+  const snapshot =
     mail.author_school_id != null && mail.author_school_id !== ''
       ? String(mail.author_school_id)
       : '';
-  if (box && author && author === box) return '재학생';
+  const current =
+    mail.author_current_school_id != null && mail.author_current_school_id !== ''
+      ? String(mail.author_current_school_id)
+      : snapshot;
+
+  if (box && snapshot && snapshot === box) {
+    if (current && current === box) return '재학생';
+    const name = (mail.author_school_name || '').trim();
+    return name ? `졸업생 · ${name} 졸업생` : '졸업생';
+  }
+
   const name = (mail.author_school_name || '').trim();
   return name ? name : '학생';
 }
 
 /**
  * 학교 우편 댓글 작성자 표시
- * - 원글 작성자 → "작성자"
- * - 우편함 학교와 동일 학교 → "재학생"
- * - 그 외 → 타학교명 (getSchoolMailFromLabel 과 동일)
  */
 export function getSchoolMailCommentAuthorLabel(
   comment,
@@ -49,6 +56,7 @@ export function getSchoolMailCommentAuthorLabel(
   return getSchoolMailFromLabel(
     {
       author_school_id: comment.author_school_id,
+      author_current_school_id: comment.author_current_school_id,
       author_school_name: comment.author_school_name,
       school_id: mailboxSchoolId,
     },
