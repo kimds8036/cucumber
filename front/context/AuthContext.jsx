@@ -43,11 +43,16 @@ export function AuthProvider({ children }) {
   const [rejectReason, setRejectReason] = useState(null);
   const [reverificationStatus, setReverificationStatus] = useState('none');
   const [reverificationDeadline, setReverificationDeadline] = useState(null);
+  const [reverificationSubmissionPending, setReverificationSubmissionPending] =
+    useState(false);
 
-  const applyVerification = useCallback(async (status, reason) => {
+  const applyVerification = useCallback(async (status, reason, extra = {}) => {
     const nextStatus = status || 'APPROVED';
     setStudentVerificationStatus(nextStatus);
     setRejectReason(reason || null);
+    if (extra.reverificationSubmissionPending != null) {
+      setReverificationSubmissionPending(Boolean(extra.reverificationSubmissionPending));
+    }
     await setCachedStudentVerificationStatus(nextStatus, reason || null);
   }, []);
 
@@ -61,7 +66,11 @@ export function AuthProvider({ children }) {
   const applyUserProfile = useCallback(
     async (data) => {
       if (!data) return;
-      await applyVerification(data.studentVerificationStatus, data.rejectReason);
+      await applyVerification(
+        data.studentVerificationStatus,
+        data.rejectReason,
+        { reverificationSubmissionPending: data.reverificationSubmissionPending },
+      );
       await applyReverification(
         data.reverificationStatus,
         data.reverificationDeadline,
@@ -89,6 +98,7 @@ export function AuthProvider({ children }) {
     setRejectReason(null);
     setReverificationStatus('none');
     setReverificationDeadline(null);
+    setReverificationSubmissionPending(false);
     await clearCachedStudentVerificationStatus();
     await clearCachedReverification();
     await clearAuthToken();
@@ -206,6 +216,7 @@ export function AuthProvider({ children }) {
     rejectReason,
     reverificationStatus,
     reverificationDeadline,
+    reverificationSubmissionPending,
     applyVerification,
     applyReverification,
     refreshStudentVerification,

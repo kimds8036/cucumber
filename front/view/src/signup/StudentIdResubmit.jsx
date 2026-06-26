@@ -4,43 +4,68 @@ import {
   Text,
   TouchableOpacity,
   ActivityIndicator,
-  Alert,
+  ScrollView,
   StyleSheet,
   useWindowDimensions,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { CameraView, useCameraPermissions } from 'expo-camera';
+import { useCameraPermissions } from 'expo-camera';
 import { Ionicons } from '@expo/vector-icons';
-import { colors } from '../../../styles/colors';
-import { createStudentIdCameraLayerStyles } from '../../../styles/studentIdCameraLayers';
+import { colors, fonts } from '../../../styles/colors';
 import { api } from '../../../utils/api';
+import { appAlert } from '../../../utils/appAlert';
 import {
   cropRectToNormalized,
   getStudentIdFrameSize,
   resolveStudentIdCropRect,
 } from '../../../utils/studentIdFrameCrop';
-import StudentIdCameraGuideOverlay from './StudentIdCameraGuideOverlay';
+import SchoolSearchField from './SchoolSearchField';
+import StudentIdCaptureStage, {
+  useStudentIdCapture,
+} from '../../../components/auth/StudentIdCaptureStage';
 import { useAuth } from '../../../context/AuthContext';
 
 const UPLOAD_TIMEOUT_MS = 120_000;
 
-/** 거절된 사용자 학생증 재제출 */
-const StudentIdResubmit = ({ navigation }) => {
+const makeFieldStyles = (normalize) =>
+  StyleSheet.create({
+    inputLabel: {
+      fontFamily: fonts.regular,
+      fontSize: normalize(14),
+      color: colors.textPrimary,
+      marginBottom: normalize(6),
+    },
+    inputWrapper: {
+      borderWidth: 1,
+      borderColor: colors.border,
+      borderRadius: normalize(12),
+      backgroundColor: colors.background,
+    },
+    input: {
+      fontFamily: fonts.regular,
+      fontSize: normalize(15),
+      color: colors.textPrimary,
+      paddingHorizontal: normalize(14),
+      paddingVertical: normalize(12),
+    },
+  });
+
+/**
+ * @param {{ mode?: 'rejected'|'reverification', navigation: { goBack: () => void } }} props
+ */
+const StudentIdResubmit = ({ mode = 'rejected', navigation }) => {
+  const isReverification = mode === 'reverification';
   const { refreshStudentVerification } = useAuth();
-  const { width: screenWidth, height: screenHeight } = useWindowDimensions();
-  const [stageSize, setStageSize] = useState({ width: 0, height: 0 });
-  const layerStyles = useMemo(() => createStudentIdCameraLayerStyles(), []);
-  const stageWidth = stageSize.width > 0 ? stageSize.width : screenWidth;
-  const stageHeight =
-    stageSize.height > 0 ? stageSize.height : Math.max(280, screenHeight * 0.42);
-  const { frameWidth, frameHeight } = useMemo(
-    () => getStudentIdFrameSize(stageWidth),
-    [stageWidth],
-  );
+  const { width } = useWindowDimensions();
+  const normalize = (size) => Math.round((width / 375) * size);
+  const fieldStyles = useMemo(() => makeFieldStyles(normalize), [normalize]);
+
   const [permission, requestPermission] = useCameraPermissions();
   const cameraRef = useRef(null);
-  const previewLayoutRef = useRef({ width: 0, height: 0 });
+  const { frozenUri, capture, resetCapture, previewLayoutRef, lastPhotoRef } =
+    useStudentIdCapture(cameraRef);
   const [busy, setBusy] = useState(false);
+  const [selectedSchool, setSelectedSchool] = useState(null);
   const [statusText, setStatusText] = useState(
     '학생증을 가운데 틀에 맞춘 뒤 촬영해 주세요.',
   );
@@ -49,27 +74,52 @@ const StudentIdResubmit = ({ navigation }) => {
     if (!permission?.granted) requestPermission();
   }, [permission, requestPermission]);
 
+  useEffect(() => {
+    if (!isReverification) return;
+    (async () => {
+      try {
+        const res = await api.get('/api/auth/me');
+        const school = res.data?.data?.school;
+        if (school?.id) {
+          setSelectedSchool({
+            id: school.id,
+            name: school.name || '',
+          });
+        }
+      } catch {
+        // ignore
+      }
+    })();
+  }, [isReverification]);
+
   const runResubmit = useCallback(async () => {
-    if (busy || !cameraRef.current) return;
+    if (busy) return;
+    if (isReverification && !selectedSchool?.id) {
+      appAlert.alert('알림', '올해 재학 중인 학교를 검색해 선택해 주세요.');
+      return;
+    }
+
     const preview = previewLayoutRef.current;
     if (!preview.width || !preview.height) {
-      Alert.alert('알림', '카메라가 준비되는 중입니다.');
+      appAlert.alert('알림', '카메라가 준비되는 중입니다.');
       return;
     }
 
     setBusy(true);
     setStatusText('학생증을 업로드하는 중…');
     try {
-      const photo = await cameraRef.current.takePictureAsync({
-        base64: true,
-        quality: 0.85,
-        skipProcessing: false,
-      });
+      let photo = lastPhotoRef.current;
+      if (!photo) {
+        photo = await capture();
+      }
+
       if (!photo?.base64) {
-        Alert.alert('촬영 실패', '다시 촬영해 주세요.');
+        appAlert.alert('촬영 실패', '다시 촬영해 주세요.');
+        resetCapture();
         return;
       }
 
+      const { frameWidth, frameHeight } = getStudentIdFrameSize(preview.width);
       const cropRect = resolveStudentIdCropRect({
         photoWidth: photo.width,
         photoHeight: photo.height,
@@ -83,20 +133,30 @@ const StudentIdResubmit = ({ navigation }) => {
           ? cropRectToNormalized(cropRect, photo.width, photo.height)
           : null;
 
-      await api.post(
-        '/api/auth/resubmit-student-id',
-        { imageBase64: photo.base64, cropRegion },
-        { timeout: UPLOAD_TIMEOUT_MS },
-      );
+      const payload = {
+        imageBase64: photo.base64,
+        cropRegion,
+      };
+      if (isReverification && selectedSchool?.id) {
+        payload.schoolId = selectedSchool.id;
+      }
+
+      const res = await api.post('/api/auth/resubmit-student-id', payload, {
+        timeout: UPLOAD_TIMEOUT_MS,
+      });
 
       await refreshStudentVerification();
-      Alert.alert(
+      appAlert.alert(
         '제출 완료',
-        '학생증이 재제출되었습니다. 관리자 승인을 기다려 주세요.',
+        res.data?.message ||
+          (isReverification
+            ? '재인증 학생증이 제출되었습니다. 검수가 완료될 때까지 앱을 이용할 수 있습니다.'
+            : '학생증이 재제출되었습니다. 관리자 승인을 기다려 주세요.'),
       );
       navigation.goBack();
     } catch (e) {
-      Alert.alert(
+      resetCapture();
+      appAlert.alert(
         '제출 실패',
         e?.response?.data?.message || '학생증 재제출 중 오류가 발생했습니다.',
       );
@@ -104,7 +164,18 @@ const StudentIdResubmit = ({ navigation }) => {
       setBusy(false);
       setStatusText('학생증을 가운데 틀에 맞춰 주세요.');
     }
-  }, [busy, frameWidth, frameHeight, refreshStudentVerification, navigation]);
+  }, [
+    busy,
+    capture,
+    frozenUri,
+    isReverification,
+    lastPhotoRef,
+    navigation,
+    previewLayoutRef,
+    refreshStudentVerification,
+    resetCapture,
+    selectedSchool,
+  ]);
 
   if (!permission?.granted) {
     return (
@@ -123,37 +194,52 @@ const StudentIdResubmit = ({ navigation }) => {
         <TouchableOpacity onPress={() => navigation.goBack()}>
           <Ionicons name="chevron-back" size={28} color={colors.textPrimary} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>학생증 재제출</Text>
+        <Text style={styles.headerTitle}>
+          {isReverification ? '학생증 재인증' : '학생증 재제출'}
+        </Text>
         <View style={{ width: 28 }} />
       </View>
 
-      <View
-        style={styles.cameraStage}
-        onLayout={(e) => {
-          const { width, height } = e.nativeEvent.layout;
-          if (width > 0 && height > 0) {
-            setStageSize({ width, height });
-            previewLayoutRef.current = { width, height };
-          }
-        }}
+      <ScrollView
+        style={styles.scroll}
+        contentContainerStyle={styles.scrollContent}
+        keyboardShouldPersistTaps="handled"
       >
-        <CameraView
-          ref={cameraRef}
-          style={StyleSheet.absoluteFill}
-          facing="back"
-          mode="picture"
-        />
-        <StudentIdCameraGuideOverlay
-          stageWidth={stageWidth}
-          stageHeight={stageHeight}
-          frameWidth={frameWidth}
-          frameHeight={frameHeight}
+        {isReverification ? (
+          <View style={styles.schoolBlock}>
+            <Text style={styles.schoolHint}>
+              중학교에서 고등학교로 진학한 경우, 올해 재학 중인 고등학교를 검색해
+              선택해 주세요.
+            </Text>
+            <SchoolSearchField
+              styles={fieldStyles}
+              normalize={normalize}
+              selectedSchool={selectedSchool}
+              onSelect={setSelectedSchool}
+              label="올해 재학 중인 학교"
+            />
+          </View>
+        ) : null}
+
+        <StudentIdCaptureStage
+          cameraRef={cameraRef}
+          frozenUri={frozenUri}
           statusText={statusText}
           guideTextStyle={styles.guideText}
-          overlayRootStyle={layerStyles.guideOverlay}
-          layerStyles={layerStyles}
+          stageStyle={styles.cameraStage}
+          previewLayoutRef={previewLayoutRef}
         />
-      </View>
+
+        {frozenUri ? (
+          <TouchableOpacity
+            style={styles.retakeBtn}
+            onPress={resetCapture}
+            disabled={busy}
+          >
+            <Text style={styles.retakeBtnText}>다시 촬영하기</Text>
+          </TouchableOpacity>
+        ) : null}
+      </ScrollView>
 
       <TouchableOpacity
         style={[styles.submitBtn, busy && { opacity: 0.6 }]}
@@ -163,7 +249,9 @@ const StudentIdResubmit = ({ navigation }) => {
         {busy ? (
           <ActivityIndicator color={colors.background} />
         ) : (
-          <Text style={styles.submitBtnText}>촬영 및 재제출하기</Text>
+          <Text style={styles.submitBtnText}>
+            {frozenUri ? '제출하기' : '촬영 및 제출하기'}
+          </Text>
         )}
       </TouchableOpacity>
     </SafeAreaView>
@@ -184,19 +272,36 @@ const styles = StyleSheet.create({
     fontSize: 18,
     color: colors.textPrimary,
   },
+  scroll: { flex: 1 },
+  scrollContent: { paddingHorizontal: 16, paddingBottom: 12 },
+  schoolBlock: { marginBottom: 12 },
+  schoolHint: {
+    fontFamily: 'Baloo2-Regular',
+    fontSize: 13,
+    color: colors.textSecondary,
+    lineHeight: 20,
+    marginBottom: 4,
+  },
   cameraStage: {
-    flex: 1,
-    minHeight: 280,
-    backgroundColor: '#000',
-    marginHorizontal: 16,
-    borderRadius: 12,
-    overflow: 'hidden',
+    minHeight: 300,
+    marginTop: 4,
   },
   guideText: {
     color: '#fff',
     fontFamily: 'Baloo2-Regular',
     fontSize: 13,
     textAlign: 'center',
+  },
+  retakeBtn: {
+    alignSelf: 'center',
+    marginTop: 10,
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+  },
+  retakeBtnText: {
+    fontFamily: 'Baloo2-Bold',
+    color: colors.primary,
+    fontSize: 14,
   },
   submitBtn: {
     margin: 16,

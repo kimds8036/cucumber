@@ -63,6 +63,7 @@ import StudentVerificationRejected from './components/auth/StudentVerificationRe
 import AccountBlockedScreen from './components/auth/AccountBlockedScreen';
 import ReverificationGate from './components/auth/ReverificationGate';
 import ReverificationReminderBanner from './components/auth/ReverificationReminderBanner';
+import ReverificationPendingBanner from './components/auth/ReverificationPendingBanner';
 import ForceUpdateGate from './components/common/ForceUpdateGate';
 import StudentIdResubmit from './view/src/signup/StudentIdResubmit';
 import { SocketProvider } from './context/SocketContext';
@@ -193,9 +194,11 @@ function RootNavigator() {
     studentVerificationStatus,
     reverificationStatus,
     reverificationDeadline,
+    reverificationSubmissionPending,
     refreshStudentVerification,
   } = useAuth();
   const [showResubmit, setShowResubmit] = useState(false);
+  const [resubmitMode, setResubmitMode] = useState('rejected');
   const pollRef = useRef(null);
 
   useEffect(() => {
@@ -376,17 +379,28 @@ function RootNavigator() {
 
   if (showResubmit) {
     return (
-      <StudentIdResubmit navigation={{ goBack: () => setShowResubmit(false) }} />
+      <StudentIdResubmit
+        mode={resubmitMode}
+        navigation={{ goBack: () => setShowResubmit(false) }}
+      />
     );
   }
 
-  if (studentVerificationStatus === 'PENDING') {
+  if (
+    studentVerificationStatus === 'PENDING' &&
+    !reverificationSubmissionPending
+  ) {
     return <StudentVerificationGate />;
   }
 
   if (studentVerificationStatus === 'REJECTED') {
     return (
-      <StudentVerificationRejected onResubmit={() => setShowResubmit(true)} />
+      <StudentVerificationRejected
+        onResubmit={() => {
+          setResubmitMode('rejected');
+          setShowResubmit(true);
+        }}
+      />
     );
   }
 
@@ -400,22 +414,33 @@ function RootNavigator() {
 
   if (reverificationStatus === 'restricted') {
     return (
-      <ReverificationGate onResubmit={() => setShowResubmit(true)} />
+      <ReverificationGate
+        onResubmit={() => {
+          setResubmitMode('reverification');
+          setShowResubmit(true);
+        }}
+      />
     );
   }
 
+  const showReverificationPendingBanner = reverificationSubmissionPending;
   const showReverificationBanner =
-    reverificationStatus === 'grace' || reverificationStatus === 'required';
+    !showReverificationPendingBanner &&
+    (reverificationStatus === 'grace' || reverificationStatus === 'required');
 
   const mainInitialRoute =
     postLoginRoute === 'GuideOverlay' ? 'GuideOverlay' : 'Main';
   return (
     <View style={{ flex: 1 }}>
+      {showReverificationPendingBanner ? <ReverificationPendingBanner /> : null}
       {showReverificationBanner ? (
         <ReverificationReminderBanner
           status={reverificationStatus}
           deadline={reverificationDeadline}
-          onResubmit={() => setShowResubmit(true)}
+          onResubmit={() => {
+            setResubmitMode('reverification');
+            setShowResubmit(true);
+          }}
         />
       ) : null}
       <LocationGate>

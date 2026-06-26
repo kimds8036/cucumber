@@ -9,7 +9,7 @@ import {
   useWindowDimensions,
 } from 'react-native';
 import { useIsFocused } from '@react-navigation/native';
-import { CameraView, useCameraPermissions } from 'expo-camera';
+import { useCameraPermissions } from 'expo-camera';
 import { colors } from '../../../styles/colors';
 import { createStudentIdCameraLayerStyles } from '../../../styles/studentIdCameraLayers';
 import { api } from '../../../utils/api';
@@ -18,7 +18,9 @@ import {
   getStudentIdFrameSize,
   resolveStudentIdCropRect,
 } from '../../../utils/studentIdFrameCrop';
-import StudentIdCameraGuideOverlay from './StudentIdCameraGuideOverlay';
+import StudentIdCaptureStage, {
+  useStudentIdCapture,
+} from '../../../components/auth/StudentIdCaptureStage';
 
 const UPLOAD_TIMEOUT_MS = 120_000;
 
@@ -46,7 +48,8 @@ const SignStepStudentIdVerify = ({
 
   const [permission, requestPermission] = useCameraPermissions();
   const cameraRef = useRef(null);
-  const previewLayoutRef = useRef({ width: 0, height: 0 });
+  const { frozenUri, capture, resetCapture, previewLayoutRef, lastPhotoRef } =
+    useStudentIdCapture(cameraRef);
   const [busy, setBusy] = useState(false);
   const [statusText, setStatusText] = useState(
     '학생증을 가운데 틀에 맞춘 뒤 촬영해 주세요. 관리자가 확인합니다.',
@@ -58,7 +61,7 @@ const SignStepStudentIdVerify = ({
       setStageSize({ width, height });
       previewLayoutRef.current = { width, height };
     }
-  }, []);
+  }, [previewLayoutRef]);
 
   useEffect(() => {
     if (!permission?.granted) {
@@ -92,14 +95,14 @@ const SignStepStudentIdVerify = ({
     setBusy(true);
     setStatusText('학생증을 업로드하는 중…');
     try {
-      const photo = await cameraRef.current.takePictureAsync({
-        base64: true,
-        quality: 0.85,
-        skipProcessing: false,
-      });
+      let photo = lastPhotoRef.current;
+      if (!photo) {
+        photo = await capture();
+      }
 
       if (!photo?.base64) {
         Alert.alert('촬영 실패', '다시 촬영해 주세요.');
+        resetCapture();
         return;
       }
 
@@ -166,11 +169,14 @@ const SignStepStudentIdVerify = ({
               '학생증 제출 중 오류가 발생했습니다.';
       Alert.alert('인증 오류', msg);
       setStatusText('오류가 발생했습니다. 다시 시도해 주세요.');
+      resetCapture();
     } finally {
       setBusy(false);
-      setStatusText('학생증을 가운데 틀에 맞춰 주세요.');
+      if (!lastPhotoRef.current) {
+        setStatusText('학생증을 가운데 틀에 맞춰 주세요.');
+      }
     }
-  }, [identity, schoolId, onVerified, frameWidth, frameHeight, alreadyVerified, busy]);
+  }, [identity, schoolId, onVerified, frameWidth, frameHeight, alreadyVerified, busy, capture, lastPhotoRef, resetCapture]);
 
   if (alreadyVerified) {
     return (
@@ -227,30 +233,16 @@ const SignStepStudentIdVerify = ({
         >
           {showCamera ? (
             <View style={styles.cameraStageStack} collapsable={false}>
-              <CameraView
-                ref={cameraRef}
-                style={[styles.cameraPreview, layerStyles.preview]}
-                facing="back"
-                mode="picture"
-                collapsable={false}
-                onMountError={(e) => {
-                  console.warn('[SignStepStudentIdVerify] camera mount', e);
-                  Alert.alert(
-                    '카메라 오류',
-                    e?.message ||
-                      '카메라를 시작하지 못했습니다. 앱을 다시 시작해 주세요.',
-                  );
-                }}
-              />
-              <StudentIdCameraGuideOverlay
-                stageWidth={stageWidth}
-                stageHeight={stageHeight}
-                frameWidth={frameWidth}
-                frameHeight={frameHeight}
+              <StudentIdCaptureStage
+                cameraRef={cameraRef}
+                frozenUri={frozenUri}
                 statusText={statusText}
                 guideTextStyle={styles.cameraGuideText}
-                overlayRootStyle={[styles.cameraGuideOverlay, layerStyles.guideOverlay]}
-                layerStyles={layerStyles}
+                stageStyle={[styles.cameraPreview, layerStyles.preview, { flex: 1 }]}
+                previewLayoutRef={previewLayoutRef}
+                onStageLayout={({ width, height }) => {
+                  previewLayoutRef.current = { width, height };
+                }}
               />
             </View>
           ) : (
@@ -269,9 +261,20 @@ const SignStepStudentIdVerify = ({
         {busy ? (
           <ActivityIndicator color={colors.background} />
         ) : (
-          <Text style={styles.nextButtonText}>촬영 및 제출하기</Text>
+          <Text style={styles.nextButtonText}>
+            {frozenUri ? '제출하기' : '촬영 및 제출하기'}
+          </Text>
         )}
       </TouchableOpacity>
+      {frozenUri ? (
+        <TouchableOpacity
+          style={localStyles.retakeLink}
+          onPress={resetCapture}
+          disabled={busy}
+        >
+          <Text style={localStyles.retakeLinkText}>다시 촬영하기</Text>
+        </TouchableOpacity>
+      ) : null}
     </View>
   );
 };
@@ -295,6 +298,16 @@ const localStyles = StyleSheet.create({
   captureButton: {
     marginTop: 12,
     flexShrink: 0,
+  },
+  retakeLink: {
+    alignSelf: 'center',
+    marginTop: 8,
+    paddingVertical: 6,
+  },
+  retakeLinkText: {
+    fontFamily: 'Baloo2-Bold',
+    color: colors.primary,
+    fontSize: 14,
   },
 });
 

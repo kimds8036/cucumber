@@ -194,6 +194,8 @@ router.get('/me', authenticate, async (req, res) => {
         friendCount,
         studentVerificationStatus: verification.status,
         rejectReason: verification.rejectReason,
+        submissionPurpose: verification.submissionPurpose,
+        reverificationSubmissionPending: verification.reverificationSubmissionPending,
         studentVerified: Boolean(user.student_verified),
         reverificationStatus: reverification?.reverificationStatus ?? 'none',
         reverificationDeadline: reverification?.reverificationDeadline ?? null,
@@ -974,8 +976,8 @@ router.post('/signup', validate(signupValidators), async (req, res) => {
       } else if (studentIdManualVerification) {
         await connection.execute(
           `INSERT INTO signup_student_id_submissions
-           (user_id, name, phone, birth_date, school_id, cloudinary_url, cloudinary_public_id, status, verification_jti)
-           VALUES (?, ?, ?, ?, ?, ?, ?, 'pending', ?)`,
+           (user_id, name, phone, birth_date, school_id, cloudinary_url, cloudinary_public_id, status, submission_purpose, verification_jti)
+           VALUES (?, ?, ?, ?, ?, ?, ?, 'pending', 'signup', ?)`,
           [
             userId,
             name,
@@ -1268,6 +1270,8 @@ router.post('/login', validate(loginValidators), async (req, res) => {
         needsVerification,
         studentVerificationStatus: verification.status,
         rejectReason: verification.rejectReason,
+        submissionPurpose: verification.submissionPurpose,
+        reverificationSubmissionPending: verification.reverificationSubmissionPending,
         reverificationStatus: reverification?.reverificationStatus ?? 'none',
         reverificationDeadline: reverification?.reverificationDeadline ?? null,
         gradeException: reverification?.gradeException ?? false,
@@ -1538,7 +1542,7 @@ router.post('/signup/upload-student-id', signupOcrLimiter, async (req, res) => {
 router.post('/resubmit-student-id', authenticate, signupOcrLimiter, async (req, res) => {
   try {
     const userId = req.user.userId;
-    const { imageBase64, cropRegion } = req.body || {};
+    const { imageBase64, cropRegion, schoolId: bodySchoolId } = req.body || {};
 
     if (!imageBase64) {
       return res.status(400).json({
@@ -1566,7 +1570,13 @@ router.post('/resubmit-student-id', authenticate, signupOcrLimiter, async (req, 
         message: '재제출은 거절된 경우에만 가능합니다.',
       });
     }
-    if (isReverificationResubmit && verification.status === 'PENDING') {
+    if (isReverificationResubmit && verification.reverificationSubmissionPending) {
+      return res.status(400).json({
+        success: false,
+        message: '이미 제출된 학생증이 검수 대기 중입니다.',
+      });
+    }
+    if (!isReverificationResubmit && verification.status === 'PENDING') {
       return res.status(400).json({
         success: false,
         message: '이미 제출된 학생증이 검수 대기 중입니다.',
@@ -1585,6 +1595,28 @@ router.post('/resubmit-student-id', authenticate, signupOcrLimiter, async (req, 
     }
     const user = userRows[0];
 
+    const submissionPurpose = isReverificationResubmit ? 'reverification' : 'resubmit';
+    const targetSchoolId = String(bodySchoolId || user.school_id || '').trim();
+    if (!targetSchoolId) {
+      return res.status(400).json({
+        success: false,
+        message: '재학 학교를 선택해 주세요.',
+      });
+    }
+
+    const [schoolRows] = await pool.execute(
+      'SELECT school_id FROM schools WHERE school_id = ? LIMIT 1',
+      [targetSchoolId],
+    );
+    if (!schoolRows.length) {
+      return res.status(400).json({
+        success: false,
+        message: '유효하지 않은 학교입니다.',
+      });
+    }
+
+    const previousSchoolId = user.school_id || null;
+
     let uploaded;
     try {
       uploaded = await uploadSignupStudentIdPhoto({ imageBase64, cropRegion });
@@ -1598,18 +1630,34 @@ router.post('/resubmit-student-id', authenticate, signupOcrLimiter, async (req, 
 
     await pool.execute(
       `INSERT INTO signup_student_id_submissions
-         (user_id, name, phone, birth_date, school_id, cloudinary_url, cloudinary_public_id, status)
-       VALUES (?, ?, ?, ?, ?, ?, ?, 'pending')`,
+         (user_id, name, phone, birth_date, school_id, previous_school_id,
+          cloudinary_url, cloudinary_public_id, status, submission_purpose)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'pending', ?)`,
       [
         userId,
         user.name,
         user.phone,
         user.birth_date,
-        user.school_id,
+        targetSchoolId,
+        previousSchoolId,
         uploaded.cloudinaryUrl,
         uploaded.cloudinaryPublicId,
+        submissionPurpose,
       ],
     );
+
+    if (isReverificationResubmit) {
+      return res.json({
+        success: true,
+        message: '학생증 재인증이 제출되었습니다. 검수가 완료될 때까지 앱을 이용할 수 있습니다.',
+        data: {
+          studentVerificationStatus: 'APPROVED',
+          rejectReason: null,
+          submissionPurpose: 'reverification',
+          reverificationSubmissionPending: true,
+        },
+      });
+    }
 
     return res.json({
       success: true,
@@ -1617,6 +1665,8 @@ router.post('/resubmit-student-id', authenticate, signupOcrLimiter, async (req, 
       data: {
         studentVerificationStatus: 'PENDING',
         rejectReason: null,
+        submissionPurpose: 'resubmit',
+        reverificationSubmissionPending: false,
       },
     });
   } catch (error) {
