@@ -4,7 +4,7 @@ import pool from '../config/database.js';
 import { requireAdminApi, isAdminUser } from '../middleware/adminAuth.js';
 import { validate } from '../middleware/validate.js';
 import { getNowForDB } from '../utils/dateUtils.js';
-import { applyUserSchoolTransition } from '../services/userSchoolTransition.service.js';
+import { applyUserSchoolUpdate } from '../services/userSchoolTransition.service.js';
 
 const router = express.Router();
 
@@ -117,7 +117,7 @@ router.patch('/:id', requireAdminApi, validate(reviewValidators), async (req, re
             message: '유효하지 않은 학교 ID입니다.',
           });
         }
-        await applyUserSchoolTransition(connection, {
+        await applyUserSchoolUpdate(connection, {
           userId: submission.user_id,
           newSchoolId: targetSchoolId,
           grade: req.body?.grade,
