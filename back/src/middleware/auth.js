@@ -3,6 +3,16 @@ import pool from '../config/database.js';
 import { API_ERROR_CODES } from '../constants/apiErrorCodes.js';
 import { getReverificationBlockCode } from '../services/reverification.service.js';
 
+const REVERIFICATION_RESUBMIT_PATH = '/resubmit-student-id';
+const REVERIFICATION_PROFILE_PATH = '/me';
+
+function shouldSkipReverificationBlock(req, reverificationStatus) {
+  const path = String(req.originalUrl || req.path || '');
+  if (path.includes(REVERIFICATION_PROFILE_PATH)) return true;
+  if (!path.includes(REVERIFICATION_RESUBMIT_PATH)) return false;
+  return ['grace', 'required', 'restricted'].includes(reverificationStatus);
+}
+
 function getCookieValue(req, key) {
   const raw = req.headers.cookie || '';
   if (!raw) return null;
@@ -128,7 +138,7 @@ export const authenticate = async (req, res, next) => {
     }
 
     const revBlock = checkReverificationBlock(row);
-    if (revBlock) {
+    if (revBlock && !shouldSkipReverificationBlock(req, row.reverification_status)) {
       return res.status(revBlock.status).json({
         success: false,
         message: revBlock.message,

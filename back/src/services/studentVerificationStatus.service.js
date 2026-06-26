@@ -1,5 +1,7 @@
 import pool from '../config/database.js';
 
+const REVERIFICATION_ACTIVE_STATUSES = new Set(['grace', 'required', 'restricted']);
+
 /** @typedef {'PENDING'|'APPROVED'|'REJECTED'} StudentVerificationStatus */
 
 /**
@@ -8,16 +10,15 @@ import pool from '../config/database.js';
  */
 export async function getStudentVerificationStatus(userId) {
   const [userRows] = await pool.execute(
-    `SELECT student_verified FROM users WHERE id = ? LIMIT 1`,
+    `SELECT student_verified, reverification_status FROM users WHERE id = ? LIMIT 1`,
     [userId],
   );
   if (!userRows.length) {
     return { status: 'APPROVED', rejectReason: null, submissionType: null };
   }
 
-  if (userRows[0].student_verified) {
-    return { status: 'APPROVED', rejectReason: null, submissionType: null };
-  }
+  const userRow = userRows[0];
+  const reverificationStatus = userRow.reverification_status || 'none';
 
   const [studentRows] = await pool.execute(
     `SELECT status, review_note, created_at
@@ -59,6 +60,19 @@ export async function getStudentVerificationStatus(userId) {
   } else if (latestCert) {
     submission = latestCert;
     submissionType = 'certificate';
+  }
+
+  if (
+    userRow.student_verified &&
+    REVERIFICATION_ACTIVE_STATUSES.has(reverificationStatus) &&
+    submission &&
+    String(submission.status || '').toLowerCase() === 'pending'
+  ) {
+    return { status: 'PENDING', rejectReason: null, submissionType };
+  }
+
+  if (userRow.student_verified) {
+    return { status: 'APPROVED', rejectReason: null, submissionType: null };
   }
 
   if (!submission) {

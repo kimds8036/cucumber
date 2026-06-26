@@ -4,11 +4,11 @@ import React, {
   useState,
   useCallback,
   useEffect,
-  useRef,
 } from 'react';
-import { Alert, AppState } from 'react-native';
+import { AppState } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { api, clearUserSessionStorage } from '../utils/api';
+import { api, clearAuthToken, clearUserSessionStorage } from '../utils/api';
+import { appAlert } from '../utils/appAlert';
 import {
   getCachedStudentVerificationStatus,
   setCachedStudentVerificationStatus,
@@ -22,6 +22,8 @@ import {
 import {
   registerSessionTerminateHandler,
   getSessionTerminateTitle,
+  resetSessionTerminateGuard,
+  markSessionTerminateAlertShown,
 } from '../utils/sessionTerminate';
 import * as socketManager from '../view/src/socketManager';
 
@@ -41,7 +43,6 @@ export function AuthProvider({ children }) {
   const [rejectReason, setRejectReason] = useState(null);
   const [reverificationStatus, setReverificationStatus] = useState('none');
   const [reverificationDeadline, setReverificationDeadline] = useState(null);
-  const sessionAlertShownRef = useRef(false);
 
   const applyVerification = useCallback(async (status, reason) => {
     const nextStatus = status || 'APPROVED';
@@ -90,6 +91,7 @@ export function AuthProvider({ children }) {
     setReverificationDeadline(null);
     await clearCachedStudentVerificationStatus();
     await clearCachedReverification();
+    await clearAuthToken();
     setIsLoggedIn(false);
   }, []);
 
@@ -104,20 +106,12 @@ export function AuthProvider({ children }) {
         // ignore
       }
       await clearUserSessionStorage();
+      await clearAuthToken();
       await logout();
-      if (!sessionAlertShownRef.current) {
-        sessionAlertShownRef.current = true;
-        Alert.alert(
+      if (markSessionTerminateAlertShown()) {
+        appAlert.alert(
           getSessionTerminateTitle(code),
           message || '로그인이 만료되어 다시 로그인해주세요.',
-          [
-            {
-              text: '확인',
-              onPress: () => {
-                sessionAlertShownRef.current = false;
-              },
-            },
-          ],
         );
       }
     });
@@ -195,6 +189,7 @@ export function AuthProvider({ children }) {
         );
       }
 
+      resetSessionTerminateGuard();
       setIsLoggedIn(true);
     },
     [applyVerification, applyReverification],

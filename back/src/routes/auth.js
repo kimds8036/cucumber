@@ -1548,16 +1548,28 @@ router.post('/resubmit-student-id', authenticate, signupOcrLimiter, async (req, 
     }
 
     const verification = await getStudentVerificationStatus(userId);
-    if (verification.status === 'APPROVED') {
+    const reverification = await getUserReverificationPayload(userId);
+    const revStatus = reverification?.reverificationStatus ?? 'none';
+    const isReverificationResubmit = ['grace', 'required', 'restricted'].includes(
+      revStatus,
+    );
+
+    if (verification.status === 'APPROVED' && !isReverificationResubmit) {
       return res.status(400).json({
         success: false,
         message: '이미 학생 인증이 완료된 계정입니다.',
       });
     }
-    if (verification.status !== 'REJECTED') {
+    if (!isReverificationResubmit && verification.status !== 'REJECTED') {
       return res.status(400).json({
         success: false,
         message: '재제출은 거절된 경우에만 가능합니다.',
+      });
+    }
+    if (isReverificationResubmit && verification.status === 'PENDING') {
+      return res.status(400).json({
+        success: false,
+        message: '이미 제출된 학생증이 검수 대기 중입니다.',
       });
     }
 

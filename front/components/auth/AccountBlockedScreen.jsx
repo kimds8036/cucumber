@@ -9,7 +9,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { colors } from '../../styles/colors';
 import { useAuth } from '../../context/AuthContext';
-import { clearUserSessionStorage } from '../../utils/api';
+import { clearAuthToken, clearUserSessionStorage } from '../../utils/api';
 import * as socketManager from '../../view/src/socketManager';
 
 const COPY = {
@@ -46,6 +46,7 @@ export default function AccountBlockedScreen({ variant = 'graduated' }) {
       // ignore
     }
     await clearUserSessionStorage();
+    await clearAuthToken();
     logout();
   };
 

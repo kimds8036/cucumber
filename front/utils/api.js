@@ -158,9 +158,6 @@ api.interceptors.response.use(
       'SESSION_REVOKED',
       'ACCOUNT_BANNED',
       'ACCOUNT_SUSPENDED',
-      'GRADUATED_BLOCKED',
-      'ADULT_BLOCKED',
-      'REVERIFICATION_RESTRICTED',
     ];
     if (sessionCodes.includes(data?.code)) {
       error.isSessionTerminated = true;

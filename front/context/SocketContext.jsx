@@ -6,9 +6,10 @@ import React, {
   useState,
   useCallback,
 } from 'react';
-import { Alert, AppState } from 'react-native';
+import { AppState } from 'react-native';
 import {
   api,
+  clearAuthToken,
   clearUserSessionStorage,
   getAuthToken,
   getDeviceId,
@@ -16,9 +17,13 @@ import {
   setAuthToken,
   setRefreshToken,
 } from '../utils/api';
+import { appAlert } from '../utils/appAlert';
 import {
   getSessionTerminateTitle,
   notifySessionTerminated,
+  isSocketAuthBlockedCode,
+  SESSION_FORCE_LOGOUT_CODES,
+  markSessionTerminateAlertShown,
 } from '../utils/sessionTerminate';
 import { useAuth } from './AuthContext';
 import * as socketManager from '../view/src/socketManager';
@@ -30,7 +35,7 @@ const SOCKET_HEALTHCHECK_MS = 15000;
 const SocketContext = createContext(null);
 
 export function SocketProvider({ children }) {
-  const { isLoggedIn, logout } = useAuth();
+  const { isLoggedIn, logout, reverificationStatus } = useAuth();
   const [connected, setConnected] = useState(false);
   const [socket, setSocket] = useState(null);
   const appStateRef = useRef(AppState.currentState);
@@ -40,9 +45,14 @@ export function SocketProvider({ children }) {
   const hasRetriedAfterRefreshRef = useRef(false);
   const pendingAuthFailureRef = useRef(false);
   const isLoggingOutRef = useRef(false);
-  const alertShownRef = useRef(false);
+  const socketAuthBlockedRef = useRef(false);
+  const isLoggedInRef = useRef(isLoggedIn);
   const reconnectBackoffMsRef = useRef(1000);
   const reconnectTimerRef = useRef(null);
+
+  useEffect(() => {
+    isLoggedInRef.current = isLoggedIn;
+  }, [isLoggedIn]);
 
   const logSocket = useCallback((event, payload = {}) => {
     if (!__DEV__) return;
@@ -92,6 +102,7 @@ export function SocketProvider({ children }) {
       }
 
       await clearUserSessionStorage();
+      await clearAuthToken();
       setConnected(false);
       setSocket(null);
       logout();
@@ -100,16 +111,8 @@ export function SocketProvider({ children }) {
       const message =
         payload?.message || '로그인이 만료되어 다시 로그인해주세요.';
 
-      if (appStateRef.current === 'active' && !alertShownRef.current) {
-        alertShownRef.current = true;
-        Alert.alert(title, message, [
-          {
-            text: '확인',
-            onPress: () => {
-              alertShownRef.current = false;
-            },
-          },
-        ]);
+      if (appStateRef.current === 'active' && markSessionTerminateAlertShown()) {
+        appAlert.alert(title, message);
       }
     } finally {
       isRecoveringAuthRef.current = false;
@@ -186,7 +189,14 @@ export function SocketProvider({ children }) {
 
   const scheduleReconnect = useCallback(
     (reason = 'unspecified') => {
-      if (cancelledRef.current || isLoggingOutRef.current) return;
+      if (
+        cancelledRef.current ||
+        isLoggingOutRef.current ||
+        socketAuthBlockedRef.current ||
+        !isLoggedInRef.current
+      ) {
+        return;
+      }
       clearReconnectTimer();
       const delay = reconnectBackoffMsRef.current;
       reconnectBackoffMsRef.current = Math.min(
@@ -246,19 +256,20 @@ export function SocketProvider({ children }) {
           description: err?.description,
         });
 
-        const terminateCodes = [
-          'SESSION_REVOKED',
-          'ACCOUNT_BANNED',
-          'ACCOUNT_SUSPENDED',
-          'GRADUATED_BLOCKED',
-          'ADULT_BLOCKED',
-          'REVERIFICATION_RESTRICTED',
-        ];
+        const terminateCodes = [...SESSION_FORCE_LOGOUT_CODES];
         if (terminateCodes.includes(err?.data?.code)) {
+          clearReconnectTimer();
           notifySessionTerminated({
             code: err.data.code,
             message: err?.message,
           });
+          return;
+        }
+
+        if (isSocketAuthBlockedCode(err?.data?.code)) {
+          socketAuthBlockedRef.current = true;
+          clearReconnectTimer();
+          setConnected(false);
           return;
         }
 
@@ -298,7 +309,13 @@ export function SocketProvider({ children }) {
 
   const connect = useCallback(async () => {
     try {
-      // 자동로그인 OFF(인메모리만 보관) 사용자도 소켓이 붙도록 인메모리 폴백까지 본다.
+      if (
+        ['graduated_blocked', 'adult_blocked'].includes(reverificationStatus)
+      ) {
+        socketAuthBlockedRef.current = true;
+        return;
+      }
+
       const token = await getAuthToken();
       if (!token || cancelledRef.current) return;
 
@@ -312,7 +329,7 @@ export function SocketProvider({ children }) {
         message: e?.message,
       });
     }
-  }, [attachSocketLifecycle]);
+  }, [attachSocketLifecycle, reverificationStatus]);
 
   useEffect(() => {
     cancelledRef.current = false;
@@ -340,7 +357,8 @@ export function SocketProvider({ children }) {
 
     const sub = AppState.addEventListener('change', handleAppStateChange);
     const healthcheck = setInterval(() => {
-      if (appStateRef.current !== 'active') return;
+      if (appStateRef.current !== 'active' || !isLoggedInRef.current) return;
+      if (socketAuthBlockedRef.current) return;
       const latest = socketManager.getSocket?.();
       if (!latest || latest.connected) return;
       scheduleReconnect('healthcheck');
@@ -372,6 +390,7 @@ export function SocketProvider({ children }) {
     if (cancelledRef.current) return;
 
     if (isLoggedIn) {
+      socketAuthBlockedRef.current = false;
       (async () => {
         const token = await getAuthToken();
         if (!token || cancelledRef.current) return;
@@ -394,6 +413,8 @@ export function SocketProvider({ children }) {
     }
 
     // 로그아웃 상태: 기존 소켓 정리
+    socketAuthBlockedRef.current = false;
+    clearReconnectTimer();
     try {
       socketManager.disconnectSocket?.({
         force: true,
@@ -404,7 +425,7 @@ export function SocketProvider({ children }) {
     }
     setConnected(false);
     setSocket(null);
-  }, [isLoggedIn, attachSocketLifecycle]);
+  }, [isLoggedIn, attachSocketLifecycle, clearReconnectTimer]);
 
   const value = {
     socket,

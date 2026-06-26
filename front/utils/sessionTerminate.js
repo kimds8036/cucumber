@@ -1,22 +1,54 @@
 /** @type {((payload: { code?: string, message?: string }) => Promise<void> | void) | null} */
 let handler = null;
-let handling = false;
+
+/** ban/세션 무효만 강제 로그아웃 — 졸업·재인증 차단은 UI 게이트가 처리 */
+export const SESSION_FORCE_LOGOUT_CODES = new Set([
+  'SESSION_REVOKED',
+  'ACCOUNT_BANNED',
+  'ACCOUNT_SUSPENDED',
+]);
+
+export const SOCKET_AUTH_BLOCKED_CODES = new Set([
+  'GRADUATED_BLOCKED',
+  'ADULT_BLOCKED',
+  'REVERIFICATION_RESTRICTED',
+]);
+
+let sessionTerminateLocked = false;
+let alertShown = false;
 
 export function registerSessionTerminateHandler(fn) {
   handler = fn;
 }
 
+export function resetSessionTerminateGuard() {
+  sessionTerminateLocked = false;
+  alertShown = false;
+}
+
+export function isSocketAuthBlockedCode(code) {
+  return SOCKET_AUTH_BLOCKED_CODES.has(code);
+}
+
 /**
- * API 403·Socket session_revoked 등 세션 종료 시 공통 처리
+ * API 403·Socket session_revoked 등 — ban/세션 무효 시에만 로그아웃
  */
 export async function notifySessionTerminated(payload = {}) {
-  if (!handler || handling) return;
-  handling = true;
+  const code = payload?.code;
+  if (!SESSION_FORCE_LOGOUT_CODES.has(code)) return;
+  if (!handler || sessionTerminateLocked) return;
+  sessionTerminateLocked = true;
   try {
     await handler(payload);
-  } finally {
-    handling = false;
+  } catch {
+    sessionTerminateLocked = false;
   }
+}
+
+export function markSessionTerminateAlertShown() {
+  if (alertShown) return false;
+  alertShown = true;
+  return true;
 }
 
 export function getSessionTerminateTitle(code) {
