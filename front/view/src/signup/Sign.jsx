@@ -160,7 +160,8 @@ const Sign = ({ navigation }) => {
   ]);
 
   const handleConsentNext = () => {
-    if (!SKIP_SIGNUP_VALIDATION_UNTIL_OCR_TEST && !consentData.allConsented) return;
+    // [임시-수정용] 검증 주석처리 (수정 끝나면 아래 줄 주석 해제)
+    // if (!SKIP_SIGNUP_VALIDATION_UNTIL_OCR_TEST && !consentData.allConsented) return;
     setCurrentStep(STEP.IDENTITY);
   };
 
@@ -172,23 +173,24 @@ const Sign = ({ navigation }) => {
     const phoneNumber =
       identityData.phoneNumber || OCR_TEST_MOCK_IDENTITY.phoneNumber;
 
-    if (!SKIP_SIGNUP_VALIDATION_UNTIL_OCR_TEST) {
-      if (blockIfIneligibleBirthDate(birthDate)) return;
-      if (!identityData.name?.trim()) {
-        Alert.alert('알림', '이름을 입력해 주세요.');
-        return;
-      }
-      if (!selectedSchool?.id) {
-        Alert.alert('알림', '재학 중인 학교를 선택해 주세요.');
-        return;
-      }
-      if (!identityData.isVerified) {
-        Alert.alert('알림', '전화번호 인증을 완료해 주세요.');
-        return;
-      }
-    } else if (blockIfIneligibleBirthDate(birthDate)) {
-      return;
-    }
+    // [임시-수정용] 검증 주석처리 (수정 끝나면 아래 블록 주석 해제)
+    // if (!SKIP_SIGNUP_VALIDATION_UNTIL_OCR_TEST) {
+    //   if (blockIfIneligibleBirthDate(birthDate)) return;
+    //   if (!identityData.name?.trim()) {
+    //     Alert.alert('알림', '이름을 입력해 주세요.');
+    //     return;
+    //   }
+    //   if (!selectedSchool?.id) {
+    //     Alert.alert('알림', '재학 중인 학교를 선택해 주세요.');
+    //     return;
+    //   }
+    //   if (!identityData.isVerified) {
+    //     Alert.alert('알림', '전화번호 인증을 완료해 주세요.');
+    //     return;
+    //   }
+    // } else if (blockIfIneligibleBirthDate(birthDate)) {
+    //   return;
+    // }
 
     setFormData((prev) => ({
       ...prev,
@@ -209,26 +211,27 @@ const Sign = ({ navigation }) => {
   };
 
   const handleAccountNext = () => {
-    if (
-      !stepInfoData.username ||
-      !stepInfoData.password ||
-      !stepInfoData.passwordConfirm
-    ) {
-      Alert.alert('알림', '아이디와 비밀번호를 입력해 주세요.');
-      return;
-    }
-    if (!isValidUsername(stepInfoData.username)) {
-      Alert.alert('알림', USERNAME_ERROR);
-      return;
-    }
-    if (!isValidPassword(stepInfoData.password)) {
-      Alert.alert('알림', PASSWORD_ERROR);
-      return;
-    }
-    if (stepInfoData.password !== stepInfoData.passwordConfirm) {
-      Alert.alert('알림', '비밀번호 확인이 일치하지 않습니다.');
-      return;
-    }
+    // [임시-수정용] 검증 주석처리 (수정 끝나면 아래 블록 주석 해제)
+    // if (
+    //   !stepInfoData.username ||
+    //   !stepInfoData.password ||
+    //   !stepInfoData.passwordConfirm
+    // ) {
+    //   Alert.alert('알림', '아이디와 비밀번호를 입력해 주세요.');
+    //   return;
+    // }
+    // if (!isValidUsername(stepInfoData.username)) {
+    //   Alert.alert('알림', USERNAME_ERROR);
+    //   return;
+    // }
+    // if (!isValidPassword(stepInfoData.password)) {
+    //   Alert.alert('알림', PASSWORD_ERROR);
+    //   return;
+    // }
+    // if (stepInfoData.password !== stepInfoData.passwordConfirm) {
+    //   Alert.alert('알림', '비밀번호 확인이 일치하지 않습니다.');
+    //   return;
+    // }
     setFormData((prev) => ({ ...prev, ...stepInfoData }));
     setCurrentStep(STEP.STUDENT_VERIFY);
   };
@@ -411,6 +414,9 @@ const Sign = ({ navigation }) => {
   };
 
   const isPrimaryDisabled = () => {
+    // [임시-수정용] 버튼 항상 활성화 (수정 끝나면 아래 2줄 주석 해제)
+    return submitting;
+    // eslint-disable-next-line no-unreachable
     if (
       SKIP_SIGNUP_VALIDATION_UNTIL_OCR_TEST &&
       currentStep <= STEP.IDENTITY
