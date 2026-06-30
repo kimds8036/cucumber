@@ -3,7 +3,7 @@ import { isVersionBelow } from '../utils/semver.js';
 const DEFAULT_ANDROID_STORE_URL =
   'https://play.google.com/store/apps/details?id=com.ucost.YouthPaper';
 
-/** App-Version 미들웨어 화이트리스트 (DEPLOY_PREFLIGHT_CHECKLIST §2.4) */
+/** App-Version 미들웨어 화이트리스트 (docs/워크플로.md) */
 const WHITELIST_PREFIXES = [
   '/health',
   '/api/app/version-check',

@@ -236,6 +236,7 @@ export default function SchoolMailDetail({ navigation, route }) {
   const [reportTargetType, setReportTargetType] = useState('schoolMail');
   const [reportTargetId, setReportTargetId] = useState(null);
   const [reportReportedUserId, setReportReportedUserId] = useState(null);
+  const [myUserId, setMyUserId] = useState(null);
 
   const scrollViewRef = useRef(null);
   const commentLayoutMap = useRef({});
@@ -245,6 +246,19 @@ export default function SchoolMailDetail({ navigation, route }) {
   const commentWrapperRefs = useRef({});
   const scrollToCommentIdRef = useRef(null);
   const inputTranslateY = useSharedValue(0);
+
+  useEffect(() => {
+    let cancelled = false;
+    api
+      .get('/api/auth/me')
+      .then((res) => {
+        if (!cancelled) setMyUserId(res.data?.data?.id ?? null);
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -571,26 +585,84 @@ export default function SchoolMailDetail({ navigation, route }) {
     }
   };
 
+  const handleDeleteMail = useCallback(async () => {
+    if (!mail?.id) return;
+    Alert.alert('삭제', '이 우편을 삭제할까요?', [
+      { text: '취소', style: 'cancel' },
+      {
+        text: '삭제',
+        style: 'destructive',
+        onPress: async () => {
+          try {
+            await api.delete(`/api/mails/school/${mail.id}`);
+            navigation.goBack();
+          } catch (e) {
+            Alert.alert(
+              '오류',
+              e?.response?.data?.message ?? '삭제에 실패했습니다.',
+            );
+          }
+        },
+      },
+    ]);
+  }, [mail?.id, navigation]);
+
+  const handleDeleteComment = useCallback(
+    async (commentId) => {
+      if (!commentId) return;
+      Alert.alert('삭제', '댓글을 삭제할까요?', [
+        { text: '취소', style: 'cancel' },
+        {
+          text: '삭제',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await api.delete(`/api/mails/school/comments/${commentId}`);
+              setDeletedCommentIds((prev) => [...prev, commentId]);
+            } catch (e) {
+              Alert.alert(
+                '오류',
+                e?.response?.data?.message ?? '삭제에 실패했습니다.',
+              );
+            }
+          },
+        },
+      ]);
+    },
+    [],
+  );
+
   const commentMenuItems = useMemo(() => {
     const comment =
       floatingMenuContext != null
         ? findCommentInTree(comments, floatingMenuContext)
         : null;
-    return [
-      {
-        label: '신고 / 차단',
-        iconName: 'flag-outline',
-        onPress: () => {
-          if (!comment?.userId) return;
-          openReportModal(
-            'schoolMailComment',
-            floatingMenuContext,
-            comment.userId,
-          );
-        },
+    const items = [];
+    if (
+      comment &&
+      myUserId != null &&
+      Number(comment.userId) === Number(myUserId)
+    ) {
+      items.push({
+        label: '삭제하기',
+        iconName: 'trash-outline',
+        onPress: () => handleDeleteComment(floatingMenuContext),
+      });
+    }
+    items.push({
+      label: '신고 / 차단',
+      iconName: 'flag-outline',
+      onPress: () => {
+        if (!comment?.userId) return;
+        openReportModal(
+          'schoolMailComment',
+          floatingMenuContext,
+          comment.userId,
+        );
       },
-    ];
-  }, [floatingMenuContext, comments]);
+    });
+    return items;
+  }, [floatingMenuContext, comments, myUserId, handleDeleteComment]);
 
   const showLikes = Number(mail?.like_count ?? 0);
 
@@ -1014,8 +1086,22 @@ export default function SchoolMailDetail({ navigation, route }) {
                   }}
                 >
                   {floatingMenuContext === 'post' &&
-                    ['공유하기', '신고 / 차단'].map((label, index) => (
-                      <React.Fragment key={label}>
+                    (() => {
+                      const isAuthor =
+                        myUserId != null &&
+                        mail?.user_id != null &&
+                        Number(mail.user_id) === Number(myUserId);
+                      const postItems = isAuthor
+                        ? [
+                            { label: '삭제하기', icon: 'trash-outline', onDelete: true },
+                            { label: '신고 / 차단', icon: 'flag-outline' },
+                          ]
+                        : [
+                            { label: '공유하기', icon: 'share-outline' },
+                            { label: '신고 / 차단', icon: 'flag-outline' },
+                          ];
+                      return postItems.map((item, index) => (
+                      <React.Fragment key={item.label}>
                         <TouchableOpacity
                           style={{
                             flexDirection: 'row',
@@ -1026,7 +1112,9 @@ export default function SchoolMailDetail({ navigation, route }) {
                           }}
                           activeOpacity={0.7}
                           onPress={() => {
-                            if (label === '신고 / 차단') {
+                            if (item.onDelete) {
+                              handleDeleteMail();
+                            } else if (item.label === '신고 / 차단') {
                               if (mail?.user_id) {
                                 openReportModal(
                                   'schoolMail',
@@ -1045,17 +1133,15 @@ export default function SchoolMailDetail({ navigation, route }) {
                               color: colors.textPrimary,
                             }}
                           >
-                            {label}
+                            {item.label}
                           </Text>
                           <Ionicons
-                            name={
-                              index === 0 ? 'flag-outline' : 'share-outline'
-                            }
+                            name={item.icon}
                             size={normalize(17)}
                             color={colors.textSecondary}
                           />
                         </TouchableOpacity>
-                        {index < 1 && (
+                        {index < postItems.length - 1 && (
                           <View
                             style={{
                               height: 1,
@@ -1065,7 +1151,8 @@ export default function SchoolMailDetail({ navigation, route }) {
                           />
                         )}
                       </React.Fragment>
-                    ))}
+                      ));
+                    })()}
                   {floatingMenuContext !== 'post' &&
                     floatingMenuContext != null &&
                     commentMenuItems.map((item, index) => (

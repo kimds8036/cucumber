@@ -660,8 +660,12 @@
 
     <div class="sidebar-section" style="margin-top:8px">가입·인증</div>
     <div class="nav-item" onclick="go('studentIds')">
-      <span class="nav-dot"></span>학생증 인증
+      <span class="nav-dot"></span>가입 학생증
       <span class="nav-badge" id="badge-student-ids">0</span>
+    </div>
+    <div class="nav-item" onclick="go('reverificationIds')">
+      <span class="nav-dot"></span>재인증 학생증
+      <span class="nav-badge" id="badge-reverification-ids">0</span>
     </div>
 
     <div class="sidebar-section" style="margin-top:8px">사용자</div>
@@ -936,7 +940,7 @@
         <div id="processed-inquiry-detail-host"></div>
       </div>
 
-      <!-- ────────── 학생증 인증 ────────── -->
+      <!-- ────────── 가입 학생증 ────────── -->
       <div class="panel" id="panel-studentIds">
         <div class="filter-row">
           <select id="student-id-filter" onchange="loadStudentIds()">
@@ -948,6 +952,20 @@
           <button class="btn btn-sm" onclick="loadStudentIds()">새로고침</button>
         </div>
         <div id="student-id-list"></div>
+      </div>
+
+      <!-- ────────── 재인증 학생증 ────────── -->
+      <div class="panel" id="panel-reverificationIds">
+        <div class="filter-row">
+          <select id="reverification-id-filter" onchange="loadReverificationIds()">
+            <option value="pending">승인 대기</option>
+            <option value="all">전체</option>
+            <option value="approved">승인됨</option>
+            <option value="rejected">거절됨</option>
+          </select>
+          <button class="btn btn-sm" onclick="loadReverificationIds()">새로고침</button>
+        </div>
+        <div id="reverification-id-list"></div>
       </div>
 
       <!-- ────────── 사용자 제재 현황 ────────── -->
@@ -1228,12 +1246,14 @@
     inquiries: { title: '문의 관리', sub: '미처리 문의 — 답변 작성 / 종결' },
     processedInquiries: { title: '문의 처리 이력', sub: '답변 완료 / 종결 문의 — 재오픈 가능' },
     users: { title: '사용자 제재 현황', sub: '경고 / 임시정지 / 화이트리스트' },
-    studentIds: { title: '학생증 인증', sub: '가입 학생증 수동 검수 — 승인 / 거절' },
+    studentIds: { title: '가입 학생증', sub: '회원가입 학생증 수동 검수 — 승인 / 거절' },
+    reverificationIds: { title: '재인증 학생증', sub: '학년도 재인증·학교 전환 검수 — 승인 / 거절' },
     logs: { title: '변경 이력 (Audit Log)', sub: '모든 판정 및 상태 변경 기록' },
   };
 
   const state = {
     studentIdSubmissions: [],
+    reverificationIdSubmissions: [],
     reports: [],
     processedReports: [],
     selectedReportId: null,
@@ -1400,6 +1420,25 @@
     document.getElementById('topbar-title').textContent = m.title;
     document.getElementById('topbar-sub').textContent = m.sub;
     if (page === 'studentIds') loadStudentIds();
+    if (page === 'reverificationIds') loadReverificationIds();
+  }
+
+  function purposeLabel(purpose) {
+    if (purpose === 'reverification') return '재인증';
+    if (purpose === 'resubmit') return '거절 재제출';
+    return '가입';
+  }
+
+  function renderSchoolTransition(s) {
+    const from = s.previous_school_name || '(이전 학교 미기록)';
+    const to = s.school_name || '-';
+    if (s.submission_purpose === 'reverification' && s.previous_school_id && s.previous_school_id !== s.school_id) {
+      return `<div class="user-sub" style="color:var(--accent);font-weight:600;">학교 전환: ${esc(from)} → ${esc(to)}</div>`;
+    }
+    if (s.submission_purpose === 'reverification') {
+      return `<div class="user-sub">재학 학교: ${esc(to)} (변동 없음)</div>`;
+    }
+    return '';
   }
 
   async function loadStudentIds() {
@@ -1408,7 +1447,7 @@
     if (!host) return;
     host.innerHTML = '<p class="txt-muted">불러오는 중…</p>';
     try {
-      const { data } = await api(`/signup-student-ids?status=${encodeURIComponent(status)}&limit=50`);
+      const { data } = await api(`/signup-student-ids?status=${encodeURIComponent(status)}&purpose=signup&limit=50`);
       state.studentIdSubmissions = data.submissions || [];
       renderStudentIds();
       if (status === 'pending') {
@@ -1419,23 +1458,37 @@
     }
   }
 
-  function renderStudentIds() {
-    const host = document.getElementById('student-id-list');
-    if (!state.studentIdSubmissions.length) {
-      host.innerHTML = '<p class="txt-muted">표시할 제출 건이 없습니다.</p>';
-      return;
+  async function loadReverificationIds() {
+    const status = document.getElementById('reverification-id-filter')?.value || 'pending';
+    const host = document.getElementById('reverification-id-list');
+    if (!host) return;
+    host.innerHTML = '<p class="txt-muted">불러오는 중…</p>';
+    try {
+      const { data } = await api(`/signup-student-ids?status=${encodeURIComponent(status)}&purpose=reverification&limit=50`);
+      state.reverificationIdSubmissions = data.submissions || [];
+      renderReverificationIds();
+      if (status === 'pending') {
+        document.getElementById('badge-reverification-ids').textContent = String(state.reverificationIdSubmissions.length);
+      }
+    } catch (e) {
+      host.innerHTML = `<p class="txt-danger">${esc(e.message)}</p>`;
     }
-    host.innerHTML = state.studentIdSubmissions.map((s) => {
-      const addr = [s.school_region, s.school_address].filter(Boolean).join(' · ');
-      const statusClass = statusPill(s.status);
-      const canReview = String(s.status).toLowerCase() === 'pending';
-      return `
+  }
+
+  function renderStudentIdCard(s, listKind) {
+    const addr = [s.school_region, s.school_address].filter(Boolean).join(' · ');
+    const statusClass = statusPill(s.status);
+    const canReview = String(s.status).toLowerCase() === 'pending';
+    return `
         <div class="user-card" style="margin-bottom:12px;">
           <div class="user-card-header">
             <div>
-              <div class="user-name">${esc(s.name)} <span class="txt-muted">(@${esc(s.username)})</span></div>
+              <div class="user-name">${esc(s.name)} <span class="txt-muted">(@${esc(s.username)})</span>
+                <span class="pill" style="margin-left:6px;">${esc(purposeLabel(s.submission_purpose))}</span>
+              </div>
               <div class="user-sub">${esc(s.school_name || '-')} ${addr ? `· ${esc(addr)}` : ''}</div>
-              <div class="user-sub">전화: ${esc(s.phone || '-')} · 제출: ${fmtDate(s.created_at)}</div>
+              ${renderSchoolTransition(s)}
+              <div class="user-sub">전화: ${esc(s.phone || '-')} · 제출: ${fmtDate(s.created_at)}${listKind === 'reverification' ? ` · 재인증: ${esc(s.reverification_status || '-')}` : ''}</div>
             </div>
             <span class="pill ${statusClass}">${esc(statusLabel(s.status))}</span>
           </div>
@@ -1447,33 +1500,54 @@
               ${s.review_note ? `<p class="txt-muted" style="margin-bottom:8px;">메모: ${esc(s.review_note)}</p>` : ''}
               ${canReview ? `
                 <div style="display:flex;gap:8px;margin-top:12px;">
-                  <button class="btn btn-sm btn-primary" onclick="approveStudentId(${s.id})">승인</button>
-                  <button class="btn btn-sm btn-danger" onclick="openStudentIdRejectDialog(${s.id})">거절</button>
+                  <button class="btn btn-sm btn-primary" onclick="approveStudentId(${s.id}, '${listKind}')">승인</button>
+                  <button class="btn btn-sm btn-danger" onclick="openStudentIdRejectDialog(${s.id}, '${listKind}')">거절</button>
                 </div>
               ` : ''}
             </div>
           </div>
         </div>
       `;
-    }).join('');
   }
 
-  async function approveStudentId(id) {
+  function renderStudentIds() {
+    const host = document.getElementById('student-id-list');
+    if (!state.studentIdSubmissions.length) {
+      host.innerHTML = '<p class="txt-muted">표시할 가입 학생증 제출 건이 없습니다.</p>';
+      return;
+    }
+    host.innerHTML = state.studentIdSubmissions.map((s) => renderStudentIdCard(s, 'signup')).join('');
+  }
+
+  function renderReverificationIds() {
+    const host = document.getElementById('reverification-id-list');
+    if (!state.reverificationIdSubmissions.length) {
+      host.innerHTML = '<p class="txt-muted">표시할 재인증 제출 건이 없습니다.</p>';
+      return;
+    }
+    host.innerHTML = state.reverificationIdSubmissions.map((s) => renderStudentIdCard(s, 'reverification')).join('');
+  }
+
+  let pendingStudentIdRejectListKind = 'signup';
+
+  async function approveStudentId(id, listKind = 'signup') {
     if (!confirm('이 학생증을 승인하시겠습니까?')) return;
     try {
       await api(`/signup-student-ids/${id}`, {
         method: 'PATCH',
         body: JSON.stringify({ status: 'approved' }),
       });
-      await loadStudentIds();
+      if (listKind === 'reverification') await loadReverificationIds();
+      else await loadStudentIds();
       alert('승인되었습니다.');
     } catch (e) {
       alert(e.message);
     }
   }
 
-  function openStudentIdRejectDialog(id) {
+  function openStudentIdRejectDialog(id, listKind = 'signup') {
     pendingStudentIdRejectId = id;
+    pendingStudentIdRejectListKind = listKind;
     document.getElementById('student-id-reject-reason').value = STUDENT_ID_REJECT_PRESET[0];
     document.getElementById('student-id-reject-custom').value = '';
     document.getElementById('student-id-reject-custom').style.display = 'none';
@@ -1511,7 +1585,8 @@
         body: JSON.stringify({ status: 'rejected', reviewNote: note }),
       });
       closeStudentIdRejectDialog();
-      await loadStudentIds();
+      if (pendingStudentIdRejectListKind === 'reverification') await loadReverificationIds();
+      else await loadStudentIds();
       alert('거절 처리되었습니다.');
     } catch (e) {
       alert(e.message);
@@ -2687,6 +2762,7 @@
         loadInquiries(),
         loadProcessedInquiries(),
         loadStudentIds(),
+        loadReverificationIds(),
         loadUsers(),
         loadLogs(),
       ]);

@@ -32,11 +32,18 @@ import adminWebRoutes from './routes/adminWeb.js';
 import inquiriesRoutes from './routes/inquiries.js';
 import appRoutes from './routes/app.js';
 import testRoutes from './routes/test.js';
+import attendanceRoutes from './routes/attendance.js';
 import swaggerSpec from './swagger.js';
 import { initSocketServer } from './socketServer.js';
 import { initFirebase } from './config/firebase.js';
-import './utils/notificationWorker.js';
 import { initJobs } from './jobs/index.js';
+import {
+  shouldRunApiServer,
+  shouldRunCron,
+  shouldRunNotificationWorker,
+  getServiceRole,
+} from './config/serviceRole.js';
+import { getBatchRedis, isRedisConfigured } from './services/batchRedis.service.js';
 import { ensurePersonalMailSchema } from './db/ensurePersonalMailSchema.js';
 import { isProductionEnv, sendErrorResponse } from './utils/httpError.js';
 import { requireMinAppVersion } from './middleware/requireMinAppVersion.js';
@@ -44,6 +51,17 @@ import { requireMinAppVersion } from './middleware/requireMinAppVersion.js';
 
 dotenv.config();
 initFirebase();
+
+if (shouldRunNotificationWorker()) {
+  await import('./utils/notificationWorker.js');
+}
+
+if (!shouldRunApiServer()) {
+  console.error(
+    `[bootstrap] SERVICE_ROLE=${getServiceRole()} — HTTP API 서버를 시작하지 않습니다. worker/scheduler 엔트리를 사용하세요.`,
+  );
+  process.exit(1);
+}
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -150,11 +168,33 @@ if (isProductionEnv()) {
 }
 
 // Health check
-app.get('/health', (req, res) => {
-  res.json({ status: 'ok', message: 'Server is running' });
+app.get('/health', async (req, res) => {
+  const payload = {
+    status: 'ok',
+    message: 'Server is running',
+    serviceRole: getServiceRole(),
+  };
+  if (isRedisConfigured()) {
+    try {
+      const redis = await getBatchRedis();
+      const pong = await redis.ping();
+      payload.redis = pong === 'PONG' ? 'ok' : 'degraded';
+    } catch {
+      payload.redis = 'error';
+      payload.status = 'degraded';
+    }
+  }
+  try {
+    await pool.execute('SELECT 1');
+    payload.mysql = 'ok';
+  } catch {
+    payload.mysql = 'error';
+    payload.status = 'degraded';
+  }
+  res.status(payload.status === 'ok' ? 200 : 503).json(payload);
 });
 
-// App-Version 미들웨어 (방법 A — DEPLOY_PREFLIGHT §2)
+// App-Version 미들웨어 (docs/워크플로.md)
 app.use(requireMinAppVersion);
 
 // Admin web routes (로그인/가드/페이지 제공)
@@ -177,6 +217,7 @@ if (isProductionEnv()) {
 // Routes
 app.use('/api/app', appRoutes);
 app.use('/api/auth', authRoutes);
+app.use('/api/attendance', attendanceRoutes);
 app.use('/api/posts', postRoutes);
 app.use('/api', commentRoutes);
 app.use('/api/messages', messageRoutes);
@@ -244,5 +285,8 @@ httpServer.listen(PORT, async () => {
 
   initJobs();
 
+  console.log(
+    `[bootstrap] SERVICE_ROLE=${getServiceRole()} cron=${shouldRunCron()} worker=${shouldRunNotificationWorker()}`,
+  );
   console.log('==============================');
 });

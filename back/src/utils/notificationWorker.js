@@ -10,6 +10,7 @@ import { createNotificationOnce } from './notifications.js';
 import { emitNotification } from '../socketServer.js';
 import { checkNotificationAllowed } from './notificationUtils.js';
 import { sendPush } from './pushNotification.js';
+import { buildFcmDataPayload } from '../constants/notificationPayload.js';
 
 const REDIS_CONFIG = {
   host: process.env.REDIS_HOST || '127.0.0.1',
@@ -124,13 +125,13 @@ notificationQueue.process(async (job) => {
         userId: data.userId,
         title: pushContent.title,
         body: pushContent.body,
-        data: {
+        data: buildFcmDataPayload({
           type: data.type,
-          category: data.category || '',
-          relatedType: data.relatedType || '',
-          relatedId: data.relatedId != null ? String(data.relatedId) : '',
-          targetScreen: resolveTargetScreen(data.relatedType),
-        },
+          category: data.category,
+          relatedType: data.relatedType,
+          relatedId: data.relatedId,
+          extras: data.fcmExtras,
+        }),
       });
       data = { ...data, pushSent: true };
       await job.update(data);
@@ -172,23 +173,6 @@ export async function enqueueNotification(params) {
     );
   } catch (err) {
     console.error('[NotifQueue] 잡 추가 실패 (무시):', err.message);
-  }
-}
-
-function resolveTargetScreen(relatedType) {
-  switch (relatedType) {
-    case 'post':
-      return 'PostDetail';
-    case 'dm_room':
-    case 'message_room':
-      return 'ChatRoom';
-    case 'friend_request':
-      return 'FriendRequests';
-    case 'personal_mail':
-    case 'personal_mail_returned':
-      return 'MailDetail';
-    default:
-      return 'Notifications';
   }
 }
 

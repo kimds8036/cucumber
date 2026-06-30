@@ -23,6 +23,7 @@ import { Server } from 'socket.io';
 import pool from './config/database.js';
 import { verifyToken } from './utils/auth.js';
 import { registerFriendEvents } from './socket/friendEvents.js';
+import { getReverificationBlockCode } from './services/reverification.service.js';
 
 /** @type {import('socket.io').Server | null} */
 let io = null;
@@ -42,8 +43,7 @@ export function initSocketServer(httpServer) {
   });
 
   // ── 인증 미들웨어 ──────────────────────────────
-  io.use((socket, next) => {
-    // 클라이언트는 handshake.auth.token 또는 쿼리스트링 token 으로 JWT 전달
+  io.use(async (socket, next) => {
     const fromAuth = socket.handshake.auth?.token;
     const fromQuery = socket.handshake.query?.token;
     const token = fromAuth || fromQuery;
@@ -73,9 +73,63 @@ export function initSocketServer(httpServer) {
       return next(err);
     }
 
-    socket.userId = decoded.userId;   // 이후 핸들러에서 socket.userId 로 접근
-    console.log('[Socket] auth success', { userId: socket.userId });
-    next();
+    try {
+      const [rows] = await pool.execute(
+        `SELECT token_version, is_banned, is_suspended, suspended_until, reverification_status
+         FROM users WHERE id = ? AND is_deleted = FALSE LIMIT 1`,
+        [decoded.userId],
+      );
+      if (rows.length === 0) {
+        const err = new Error('사용자를 찾을 수 없습니다.');
+        err.data = { code: 'AUTH_FAILED' };
+        return next(err);
+      }
+
+      const row = rows[0];
+      const tokenTv = Number(decoded.tv ?? 0);
+      const dbTv = Number(row.token_version ?? 0);
+      if (tokenTv !== dbTv) {
+        const err = new Error('세션이 만료되었습니다. 다시 로그인해주세요.');
+        err.data = { code: 'SESSION_REVOKED' };
+        return next(err);
+      }
+
+      if (row.is_banned) {
+        const err = new Error('영구 정지된 계정입니다.');
+        err.data = { code: 'ACCOUNT_BANNED' };
+        return next(err);
+      }
+
+      if (row.is_suspended) {
+        const until = row.suspended_until ? new Date(row.suspended_until) : null;
+        if (!until || until > new Date()) {
+          const err = new Error('임시 정지된 계정입니다.');
+          err.data = { code: 'ACCOUNT_SUSPENDED' };
+          return next(err);
+        }
+      }
+
+      const revCode = getReverificationBlockCode(row.reverification_status);
+      if (revCode) {
+        const messages = {
+          GRADUATED_BLOCKED: '졸업생은 서비스를 이용할 수 없습니다.',
+          ADULT_BLOCKED: '성인은 서비스를 이용할 수 없습니다.',
+          REVERIFICATION_RESTRICTED: '재인증이 필요합니다.',
+        };
+        const err = new Error(messages[revCode] || '서비스 이용이 제한되었습니다.');
+        err.data = { code: revCode };
+        return next(err);
+      }
+
+      socket.userId = decoded.userId;
+      console.log('[Socket] auth success', { userId: socket.userId });
+      next();
+    } catch (dbErr) {
+      console.error('[Socket] auth DB 오류:', dbErr);
+      const err = new Error('인증 확인 중 오류가 발생했습니다.');
+      err.data = { code: 'AUTH_FAILED' };
+      next(err);
+    }
   });
 
   // ── 연결 이벤트 ───────────────────────────────
@@ -259,6 +313,38 @@ export function isUserInRoom(roomId, userId) {
     if (s && String(s.userId) === targetId) return true;
   }
   return false;
+}
+
+/**
+ * 세션 무효화 실시간 알림 (ban/suspend·token_version 증가 등)
+ * @param {number|string} targetUserId
+ * @param {{ code?: string, message?: string }} payload
+ */
+export function emitSessionRevoked(targetUserId, payload = {}) {
+  if (!io) {
+    console.warn('[Socket] emitSessionRevoked 호출됐지만 io 인스턴스가 없습니다.', {
+      targetUserId,
+      code: payload?.code,
+    });
+    return;
+  }
+
+  const roomName = `user:${targetUserId}`;
+  const room = io.sockets.adapter?.rooms?.get(roomName);
+  const socketCount = room ? room.size : 0;
+
+  console.log('[Socket][emitSessionRevoked]', {
+    targetUserId,
+    roomName,
+    socketCount: socketCount > 0 ? socketCount : '(해당 유저 소켓 없음)',
+    code: payload?.code,
+  });
+
+  io.to(roomName).emit('session_revoked', {
+    type: 'session_revoked',
+    code: payload.code || 'SESSION_REVOKED',
+    message: payload.message || '세션이 만료되었습니다. 다시 로그인해주세요.',
+  });
 }
 
 /** io 인스턴스 직접 접근이 필요한 경우 */

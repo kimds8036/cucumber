@@ -50,7 +50,7 @@ import GuideOverlayScreen from './src/screens/UserGuide/GuideOverlayScreen';
 import { useFonts } from 'expo-font';
 import * as SplashScreen from 'expo-splash-screen';
 import { useEffect, useRef, useState } from 'react';
-import { Alert, AppState } from 'react-native';
+import { Alert, AppState, View } from 'react-native';
 import * as Notifications from 'expo-notifications';
 import Constants from 'expo-constants';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
@@ -60,6 +60,10 @@ import { AppLockProvider } from './context/AppLockContext';
 import { LocationProvider, LocationGate } from './context/LocationContext';
 import StudentVerificationGate from './components/auth/StudentVerificationGate';
 import StudentVerificationRejected from './components/auth/StudentVerificationRejected';
+import AccountBlockedScreen from './components/auth/AccountBlockedScreen';
+import ReverificationGate from './components/auth/ReverificationGate';
+import ReverificationReminderBanner from './components/auth/ReverificationReminderBanner';
+import ReverificationPendingBanner from './components/auth/ReverificationPendingBanner';
 import ForceUpdateGate from './components/common/ForceUpdateGate';
 import StudentIdResubmit from './view/src/signup/StudentIdResubmit';
 import { SocketProvider } from './context/SocketContext';
@@ -188,8 +192,14 @@ function RootNavigator() {
     postLoginRoute,
     setPostLoginRoute,
     studentVerificationStatus,
+    reverificationStatus,
+    reverificationDeadline,
+    reverificationSubmissionPending,
+    refreshStudentVerification,
   } = useAuth();
   const [showResubmit, setShowResubmit] = useState(false);
+  const [resubmitMode, setResubmitMode] = useState('rejected');
+  const pollRef = useRef(null);
 
   useEffect(() => {
     if (!isLoggedIn) return;
@@ -197,6 +207,17 @@ function RootNavigator() {
       setPostLoginRoute('Main');
     }
   }, [isLoggedIn, postLoginRoute, setPostLoginRoute]);
+
+  useEffect(() => {
+    if (!isLoggedIn) return undefined;
+    refreshStudentVerification();
+    pollRef.current = setInterval(() => {
+      refreshStudentVerification();
+    }, 30_000);
+    return () => {
+      if (pollRef.current) clearInterval(pollRef.current);
+    };
+  }, [isLoggedIn, refreshStudentVerification]);
 
   const getInitialTabForPush = (relatedType = '', fallbackScreen = '') => {
     if (
@@ -358,26 +379,74 @@ function RootNavigator() {
 
   if (showResubmit) {
     return (
-      <StudentIdResubmit navigation={{ goBack: () => setShowResubmit(false) }} />
+      <StudentIdResubmit
+        mode={resubmitMode}
+        navigation={{ goBack: () => setShowResubmit(false) }}
+      />
     );
   }
 
-  if (studentVerificationStatus === 'PENDING') {
+  if (
+    studentVerificationStatus === 'PENDING' &&
+    !reverificationSubmissionPending
+  ) {
     return <StudentVerificationGate />;
   }
 
   if (studentVerificationStatus === 'REJECTED') {
     return (
-      <StudentVerificationRejected onResubmit={() => setShowResubmit(true)} />
+      <StudentVerificationRejected
+        onResubmit={() => {
+          setResubmitMode('rejected');
+          setShowResubmit(true);
+        }}
+      />
     );
   }
+
+  if (reverificationStatus === 'graduated_blocked') {
+    return <AccountBlockedScreen variant="graduated" />;
+  }
+
+  if (reverificationStatus === 'adult_blocked') {
+    return <AccountBlockedScreen variant="adult" />;
+  }
+
+  if (reverificationStatus === 'restricted') {
+    return (
+      <ReverificationGate
+        onResubmit={() => {
+          setResubmitMode('reverification');
+          setShowResubmit(true);
+        }}
+      />
+    );
+  }
+
+  const showReverificationPendingBanner = reverificationSubmissionPending;
+  const showReverificationBanner =
+    !showReverificationPendingBanner &&
+    (reverificationStatus === 'grace' || reverificationStatus === 'required');
 
   const mainInitialRoute =
     postLoginRoute === 'GuideOverlay' ? 'GuideOverlay' : 'Main';
   return (
-    <LocationGate>
-      <MainStack initialRouteName={mainInitialRoute} />
-    </LocationGate>
+    <View style={{ flex: 1 }}>
+      {showReverificationPendingBanner ? <ReverificationPendingBanner /> : null}
+      {showReverificationBanner ? (
+        <ReverificationReminderBanner
+          status={reverificationStatus}
+          deadline={reverificationDeadline}
+          onResubmit={() => {
+            setResubmitMode('reverification');
+            setShowResubmit(true);
+          }}
+        />
+      ) : null}
+      <LocationGate>
+        <MainStack initialRouteName={mainInitialRoute} />
+      </LocationGate>
+    </View>
   );
 }
 

@@ -6,6 +6,8 @@
   "type": "module",
   "scripts": {
     "start": "node src/index.js",
+    "start:worker": "node src/workers/notificationWorker.entry.js",
+    "start:scheduler": "node src/workers/scheduler.entry.js",
     "dev": "nodemon --watch src src/index.js",
     "migrate": "node src/db/migrate.js",
     "db:reset": "node src/db/reset-db.js",
