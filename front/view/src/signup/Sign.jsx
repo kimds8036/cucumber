@@ -14,9 +14,6 @@ import SignStepConsent from './SignStepConsent';
 import SignStepIdentity from './SignStepIdentity';
 import SignStep2 from './SignStep2';
 import SignStepStudentIdVerify from './SignStepStudentIdVerify';
-import SignStepVerificationMethod from './SignStepVerificationMethod';
-import SignStepCertificateGuide from './SignStepCertificateGuide';
-import SignStepCertificate from './SignStepCertificate';
 import { api, setAuthToken } from '../../../utils/api';
 import {
   isValidUsername,
@@ -52,18 +49,13 @@ const OCR_TEST_MOCK_IDENTITY = {
   phoneNumber: '01000000000',
 };
 
-/** 가입: 약관 → 본인확인 → 계정 → 인증방식 선택 → 학생증 | 재학증명서 가이드 → 증명서 제출 */
+/** 가입: 약관 → ①본인확인 → ②계정 → ③학생증 → 제출(PENDING 게이트) */
 const STEP = {
   CONSENT: 0,
   IDENTITY: 1,
   ACCOUNT: 2,
-  VERIFICATION_METHOD: 3,
-  STUDENT_VERIFY: 4,
-  CERTIFICATE_GUIDE: 5,
-  CERTIFICATE_SUBMIT: 6,
+  STUDENT_VERIFY: 3,
 };
-
-const SIGNUP_PROGRESS_LAST = STEP.CERTIFICATE_SUBMIT;
 
 const Sign = ({ navigation }) => {
   const { login } = useAuth();
@@ -80,10 +72,6 @@ const Sign = ({ navigation }) => {
   const [studentVerificationToken, setStudentVerificationToken] =
     useState(null);
   const [stepInfoData, setStepInfoData] = useState({});
-  const [certificateData, setCertificateData] = useState({
-    certificateUrl: '',
-    accessNumber: '',
-  });
   const [consentData, setConsentData] = useState({
     allConsented: false,
     consents: {},
@@ -99,14 +87,10 @@ const Sign = ({ navigation }) => {
     currentStep <= STEP.CONSENT
       ? 0
       : ((currentStep - STEP.IDENTITY + 1) /
-          (SIGNUP_PROGRESS_LAST - STEP.IDENTITY + 1)) *
+          (STEP.STUDENT_VERIFY - STEP.IDENTITY + 1)) *
         100;
   const isCameraStep =
     currentStep === STEP.STUDENT_VERIFY && !studentVerified;
-  const hideFooter =
-    isCameraStep ||
-    currentStep === STEP.VERIFICATION_METHOD ||
-    currentStep === STEP.CERTIFICATE_GUIDE;
 
   const identity = useMemo(
     () => ({
@@ -142,26 +126,9 @@ const Sign = ({ navigation }) => {
   const handleBack = () => {
     if (currentStep === STEP.CONSENT) {
       navigation.goBack();
-      return;
+    } else {
+      setCurrentStep((s) => s - 1);
     }
-    if (
-      currentStep === STEP.STUDENT_VERIFY ||
-      currentStep === STEP.CERTIFICATE_GUIDE ||
-      currentStep === STEP.CERTIFICATE_SUBMIT
-    ) {
-      if (currentStep === STEP.STUDENT_VERIFY) {
-        setStudentVerified(false);
-        setStudentVerificationToken(null);
-        setRecognizedData(null);
-      }
-      if (currentStep === STEP.CERTIFICATE_SUBMIT) {
-        setCurrentStep(STEP.CERTIFICATE_GUIDE);
-        return;
-      }
-      setCurrentStep(STEP.VERIFICATION_METHOD);
-      return;
-    }
-    setCurrentStep((s) => s - 1);
   };
 
   /** 이름·전화·학교 변경 시 OCR 토큰 무효화 (재과금·변조 방지) */
@@ -266,35 +233,7 @@ const Sign = ({ navigation }) => {
     //   return;
     // }
     setFormData((prev) => ({ ...prev, ...stepInfoData }));
-    setCurrentStep(STEP.VERIFICATION_METHOD);
-  };
-
-  const handleVerificationMethodSelect = (method) => {
-    if (method === 'studentId') {
-      setCurrentStep(STEP.STUDENT_VERIFY);
-      return;
-    }
-    if (method === 'certificate') {
-      setCurrentStep(STEP.CERTIFICATE_GUIDE);
-    }
-  };
-
-  const handleCertificateProceed = () => {
-    setCurrentStep(STEP.CERTIFICATE_SUBMIT);
-  };
-
-  const handleCertificateSubmit = () => {
-    const { certificateUrl, accessNumber } = certificateData;
-    if (!certificateUrl?.trim() || !accessNumber?.trim()) {
-      Alert.alert('알림', '열람용 주소와 열람 번호를 모두 입력해 주세요.');
-      return;
-    }
-    setFormData((prev) => ({
-      ...prev,
-      certificateUrl: certificateUrl.trim(),
-      accessNumber: accessNumber.trim(),
-    }));
-    // TODO: 증명서 제출 API 연동 및 가입 완료 처리
+    setCurrentStep(STEP.STUDENT_VERIFY);
   };
 
   const handleStudentVerified = (data) => {
@@ -431,14 +370,8 @@ const Sign = ({ navigation }) => {
         return '본인 확인';
       case STEP.ACCOUNT:
         return '계정 만들기';
-      case STEP.VERIFICATION_METHOD:
-        return '학생 인증';
       case STEP.STUDENT_VERIFY:
         return studentVerified ? '가입 마무리' : '학생증 인증';
-      case STEP.CERTIFICATE_GUIDE:
-        return '재학증명서 가이드';
-      case STEP.CERTIFICATE_SUBMIT:
-        return '재학증명서 제출';
       default:
         return '회원가입';
     }
@@ -447,21 +380,15 @@ const Sign = ({ navigation }) => {
   const getStepDescription = () => {
     switch (currentStep) {
       case STEP.CONSENT:
-        return '서비스 이용을 위한 필수 동의 항목을 확인해 주세요';
+        return '서비스 이용을 위한 필수 동의 항목을 확인해 주세요.';
       case STEP.IDENTITY:
-        return '이름·생년월일·전화번호 인증과 재학 학교를 입력해 주세요';
+        return '이름·생년월일·전화번호 인증과 재학 학교를 입력해 주세요.';
       case STEP.ACCOUNT:
-        return '로그인에 사용할 아이디와 비밀번호를 설정해 주세요';
-      case STEP.VERIFICATION_METHOD:
-        return '학생증 또는 재학증명서 중 하나를 선택해 주세요';
+        return '로그인에 사용할 아이디와 비밀번호를 설정해 주세요.';
       case STEP.STUDENT_VERIFY:
         return studentVerified
           ? '학생증 제출이 완료되었습니다. 아래 [제출하기]로 가입을 마무리해 주세요.'
           : '학생증을 촬영해 제출해 주세요. 관리자 승인 후 서비스를 이용할 수 있습니다.';
-      case STEP.CERTIFICATE_GUIDE:
-        return '본 가이드는 네이버와 무관한 사용자 편의 안내입니다';
-      case STEP.CERTIFICATE_SUBMIT:
-        return '열람용 주소와 열람 번호를 입력해 주세요';
       default:
         return '';
     }
@@ -480,9 +407,6 @@ const Sign = ({ navigation }) => {
         break;
       case STEP.STUDENT_VERIFY:
         if (studentVerified) handleComplete();
-        break;
-      case STEP.CERTIFICATE_SUBMIT:
-        handleCertificateSubmit();
         break;
       default:
         break;
@@ -525,7 +449,6 @@ const Sign = ({ navigation }) => {
 
   const primaryLabel = () => {
     if (currentStep === STEP.STUDENT_VERIFY && studentVerified) return '제출하기';
-    if (currentStep === STEP.CERTIFICATE_SUBMIT) return '제출하기';
     return '다음 단계';
   };
 
@@ -606,26 +529,6 @@ const Sign = ({ navigation }) => {
             onChange={setStepInfoData}
           />
         )}
-        {currentStep === STEP.VERIFICATION_METHOD && (
-          <SignStepVerificationMethod
-            styles={styles}
-            onSelect={handleVerificationMethodSelect}
-          />
-        )}
-        {currentStep === STEP.CERTIFICATE_GUIDE && (
-          <SignStepCertificateGuide
-            styles={styles}
-            onProceed={handleCertificateProceed}
-          />
-        )}
-        {currentStep === STEP.CERTIFICATE_SUBMIT && (
-          <SignStepCertificate
-            styles={styles}
-            normalize={normalize}
-            bottomOffset={footerHeight}
-            onChange={setCertificateData}
-          />
-        )}
         {currentStep === STEP.STUDENT_VERIFY && (
           <SignStepStudentIdVerify
             styles={styles}
@@ -637,7 +540,7 @@ const Sign = ({ navigation }) => {
         )}
       </View>
 
-      {!hideFooter && (
+      {!isCameraStep && (
         <View
           style={styles.footerSection}
           onLayout={(e) => setFooterHeight(e.nativeEvent.layout.height)}

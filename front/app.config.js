@@ -80,7 +80,6 @@ export default ({ config }) => ({
       'expo-font',
       'expo-image',
       'expo-status-bar',
-      'expo-splash-screen',
       [
         'expo-camera',
         {
