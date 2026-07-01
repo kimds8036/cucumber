@@ -112,7 +112,7 @@ router.get('/rooms', authenticate, async (req, res) => {
         )
       ORDER BY mr.last_message_at DESC, mr.created_at DESC
       LIMIT ${limitNum} OFFSET ${offsetNum}`,
-      [userId, userId, userId, userId, userId, userId, userId],
+      [userId, userId, userId, userId, userId, userId, userId, userId],
     );
     const [countResult] = await pool.execute(
       `SELECT COUNT(*) AS total FROM message_rooms mr
@@ -320,7 +320,7 @@ router.get('/rooms/:roomId', authenticate, async (req, res) => {
       LEFT JOIN users u1  ON mr.user1_id = u1.id
       LEFT JOIN users u2  ON mr.user2_id = u2.id
       WHERE mr.id = ?`,
-      [userId, userId, userId, roomId],
+      [userId, userId, userId, userId, roomId],
     );
 
     const [roomMeta] = await pool.execute(
