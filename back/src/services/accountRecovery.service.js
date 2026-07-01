@@ -2,11 +2,16 @@ import jwt from 'jsonwebtoken';
 import crypto from 'crypto';
 import pool from '../config/database.js';
 import { verifyFirebaseIdToken } from '../config/firebase.js';
-import {
-  normalizeLocalKrPhone,
-  SQL_PHONE_NORM,
-} from '../utils/phone.js';
+import { normalizeLocalKrPhone } from '../utils/phone.js';
 import { validatePhone } from '../utils/validation.js';
+import {
+  hydrateUserPiiRow,
+  nameLookupBindParams,
+  nameLookupWhereClause,
+  packPhoneOnly,
+  phoneLookupBindParams,
+  phoneLookupWhereClause,
+} from '../services/userPii.service.js';
 
 if (!process.env.JWT_SECRET) {
   throw new Error('[FATAL] JWT_SECRET 환경변수가 없습니다.');
@@ -73,7 +78,7 @@ export async function assertFirebasePhoneToken(idToken, clientPhone) {
 
 async function findActiveUser(whereSql, params) {
   const [rows] = await pool.execute(
-    `SELECT id, username, name, phone, is_banned, is_deleted
+    `SELECT id, username, name, name_enc, phone, phone_enc, is_banned, is_deleted
      FROM users
      WHERE is_deleted = FALSE
        AND (is_banned IS NULL OR is_banned = FALSE)
@@ -81,7 +86,8 @@ async function findActiveUser(whereSql, params) {
      LIMIT 1`,
     params,
   );
-  return rows[0] || null;
+  const row = rows[0] || null;
+  return row ? hydrateUserPiiRow(row, ['name', 'phone']) : null;
 }
 
 export async function findRegisteredUserByPhoneAndName(phone, name) {
@@ -96,8 +102,8 @@ export async function findRegisteredUserByPhoneAndName(phone, name) {
   }
 
   const user = await findActiveUser(
-    `${SQL_PHONE_NORM} = ? AND name = ?`,
-    [normalizedPhone, trimmedName],
+    `${phoneLookupWhereClause()} AND ${nameLookupWhereClause()}`,
+    [...phoneLookupBindParams(normalizedPhone), ...nameLookupBindParams(trimmedName)],
   );
 
   if (!user) {
@@ -129,8 +135,12 @@ export async function findRegisteredUserByPhoneNameUsername(
   }
 
   const user = await findActiveUser(
-    `${SQL_PHONE_NORM} = ? AND name = ? AND username = ?`,
-    [normalizedPhone, trimmedName, trimmedUsername],
+    `${phoneLookupWhereClause()} AND ${nameLookupWhereClause()} AND username = ?`,
+    [
+      ...phoneLookupBindParams(normalizedPhone),
+      ...nameLookupBindParams(trimmedName),
+      trimmedUsername,
+    ],
   );
 
   if (!user) {
@@ -149,6 +159,7 @@ export async function issuePasswordRecoveryToken({ userId, phone, username }) {
   const normalizedPhone = normalizeLocalKrPhone(phone);
   const trimmedUsername = String(username || '').trim();
   const expiresAt = new Date(Date.now() + 15 * 60 * 1000);
+  const phonePacked = packPhoneOnly(normalizedPhone);
 
   const token = jwt.sign(
     {
@@ -164,9 +175,16 @@ export async function issuePasswordRecoveryToken({ userId, phone, username }) {
 
   await pool.execute(
     `INSERT INTO account_recovery_tokens
-       (jti, user_id, phone, username, expires_at)
-     VALUES (?, ?, ?, ?, ?)`,
-    [jti, userId, normalizedPhone, trimmedUsername, expiresAt],
+       (jti, user_id, phone, phone_enc, phone_lookup, username, expires_at)
+     VALUES (?, ?, NULL, ?, ?, ?, ?)`,
+    [
+      jti,
+      userId,
+      phonePacked.phone_enc,
+      phonePacked.phone_lookup,
+      trimmedUsername,
+      expiresAt,
+    ],
   );
 
   return token;

@@ -118,7 +118,7 @@ export async function getSuspiciousLowAttendance({
   const rowLimit = Math.min(Math.max(Number(limit) || 80, 10), 200);
 
   const [rows] = await pool.execute(
-    `SELECT u.id, u.username, u.name, u.school_id, u.created_at,
+    `SELECT u.id, u.username, u.name_enc, u.name, u.school_id, u.created_at,
             sch.name AS school_name,
             COALESCE(att.cnt, 0) AS attendance_days
      FROM users u

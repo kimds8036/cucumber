@@ -10,6 +10,7 @@ import {
   shouldGraduateBlock,
 } from '../services/reverification.service.js';
 import { getAcademicYearStart } from '../utils/signupEnrollment.js';
+import { hydrateUserPiiRow } from '../services/userPii.service.js';
 
 const LOCK_KEY = 'batch:lock:reverification-guide';
 
@@ -21,12 +22,13 @@ async function runReverificationGuide() {
   const deadline = getReverificationDeadlineForYear(academicYear);
 
   const [users] = await pool.execute(
-    `SELECT id, birth_date, graduation_year, grade, reverification_status
+    `SELECT id, birth_date, birth_date_enc, graduation_year, grade, reverification_status
      FROM users
      WHERE is_deleted = FALSE`,
   );
 
-  for (const user of users) {
+  for (const raw of users) {
+    const user = hydrateUserPiiRow({ ...raw }, ['birth_date']);
     const userId = user.id;
 
     if (isLegalAdult(user.birth_date, kst)) {

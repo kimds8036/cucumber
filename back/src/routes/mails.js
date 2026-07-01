@@ -88,7 +88,7 @@ router.get('/personal/received', authenticate, async (req, res) => {
         ) > 0 AS has_reply,
         pm.created_at,
         pm.sent_at,
-        u.name as sender_name,
+        u.name_enc as sender_name_enc, u.name as sender_name,
         u.color_id as sender_color_id,
         (pm.parent_mail_id IS NOT NULL AND par.sender_id = ?) AS reply_to_my_sent
       FROM personal_mails pm
@@ -218,7 +218,7 @@ router.get('/personal/sent', authenticate, async (req, res) => {
         ) > 0 AS has_reply,
         pm.created_at,
         pm.sent_at,
-        u.name as recipient_name,
+        u.name_enc as recipient_name_enc, u.name as recipient_name,
         u.color_id as recipient_color_id
       FROM personal_mails pm
       LEFT JOIN personal_mail_rooms pmr ON pm.room_id = pmr.id
@@ -431,9 +431,9 @@ router.get('/personal/:mailId', authenticate, async (req, res) => {
         (root_pm.sender_id = ?) AS is_root_author_for_current_user,
         pm.created_at,
         pm.sent_at,
-        u1.name as sender_name,
+        u1.name_enc as sender_name_enc, u1.name as sender_name,
         u1.color_id as sender_color_id,
-        u2.name as recipient_name,
+        u2.name_enc as recipient_name_enc, u2.name as recipient_name,
         u2.color_id as recipient_color_id,
         (pm.parent_mail_id IS NOT NULL AND par.sender_id = ?) AS reply_to_my_sent
       FROM personal_mails pm
@@ -617,7 +617,7 @@ router.post('/personal', authenticate, async (req, res) => {
         pm.room_id,
         pm.created_at,
         pm.sent_at,
-        u.name as recipient_name,
+        u.name_enc as recipient_name_enc, u.name as recipient_name,
         u.color_id as recipient_color_id
       FROM personal_mails pm
       LEFT JOIN users u ON pm.recipient_id = u.id
@@ -815,7 +815,7 @@ router.post('/personal/:mailId/reply', authenticate, async (req, res) => {
         pm.room_id,
         pm.created_at,
         pm.sent_at,
-        u.name as recipient_name,
+        u.name_enc as recipient_name_enc, u.name as recipient_name,
         u.color_id as recipient_color_id
       FROM personal_mails pm
       LEFT JOIN users u ON pm.recipient_id = u.id
@@ -1059,7 +1059,7 @@ router.get('/school', async (req, res) => {
         sm.like_count,
         sm.is_deleted,
         sm.created_at,
-        u.name as author_name,
+        u.name_enc as author_name_enc, u.name as author_name,
         COALESCE(sm.author_school_id, u.school_id) as author_school_id,
         u.school_id AS author_current_school_id,
         u.color_id as author_color_id,
@@ -1120,7 +1120,7 @@ router.get('/school/:mailId', optionalAuthenticate, async (req, res) => {
         sm.like_count,
         sm.is_deleted,
         sm.created_at,
-        u.name as author_name,
+        u.name_enc as author_name_enc, u.name as author_name,
         COALESCE(sm.author_school_id, u.school_id) as author_school_id,
         u.school_id AS author_current_school_id,
         u.color_id as author_color_id,
@@ -1402,7 +1402,7 @@ router.post('/school', authenticate, async (req, res) => {
         sm.like_count,
         sm.is_deleted,
         sm.created_at,
-        u.name as author_name,
+        u.name_enc as author_name_enc, u.name as author_name,
         COALESCE(sm.author_school_id, u.school_id) as author_school_id,
         u.school_id AS author_current_school_id,
         u.color_id as author_color_id,

@@ -10,6 +10,7 @@
 
 import bcrypt from 'bcrypt';
 import { createDbConnection, parseMigrateCliArgs } from '../config/dbEnv.js';
+import { packUserPii, userPiiInsertValues, USER_PII_INSERT_COLUMNS } from '../services/userPii.service.js';
 
 /** develop 전용 — 레포에 평문 저장 (테스트 계정) */
 export const DEV_TEST_MIDDLE1 = Object.freeze({
@@ -35,6 +36,11 @@ async function pickSchoolId(connection) {
 
 async function upsertDevTestUser(connection, schoolId) {
   const hashed = await bcrypt.hash(DEV_TEST_MIDDLE1.password, 10);
+  const pii = packUserPii({
+    name: DEV_TEST_MIDDLE1.name,
+    phone: DEV_TEST_MIDDLE1.phone,
+    birthDate: DEV_TEST_MIDDLE1.birthDate,
+  });
 
   const [existing] = await connection.execute(
     `SELECT id FROM users WHERE username = ? LIMIT 1`,
@@ -46,9 +52,14 @@ async function upsertDevTestUser(connection, schoolId) {
     await connection.execute(
       `UPDATE users SET
          password = ?,
-         name = ?,
-         phone = ?,
-         birth_date = ?,
+         name_enc = ?,
+         name_lookup = ?,
+         phone_enc = ?,
+         phone_lookup = ?,
+         birth_date_enc = ?,
+         name = NULL,
+         phone = NULL,
+         birth_date = NULL,
          school_id = ?,
          grade = ?,
          class_number = ?,
@@ -66,9 +77,7 @@ async function upsertDevTestUser(connection, schoolId) {
        WHERE id = ?`,
       [
         hashed,
-        DEV_TEST_MIDDLE1.name,
-        DEV_TEST_MIDDLE1.phone,
-        DEV_TEST_MIDDLE1.birthDate,
+        ...userPiiInsertValues(pii).slice(0, 5),
         schoolId,
         DEV_TEST_MIDDLE1.grade,
         DEV_TEST_MIDDLE1.classNumber,
@@ -81,16 +90,14 @@ async function upsertDevTestUser(connection, schoolId) {
 
   const [result] = await connection.execute(
     `INSERT INTO users
-       (username, password, name, phone, birth_date, school_id, grade, class_number,
+       (username, password, ${USER_PII_INSERT_COLUMNS}, school_id, grade, class_number,
         graduation_year, is_graduated, color_id, phone_verified, student_verified,
         reverification_status)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, FALSE, 1, TRUE, TRUE, 'none')`,
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, FALSE, 1, TRUE, TRUE, 'none')`,
     [
       DEV_TEST_MIDDLE1.username,
       hashed,
-      DEV_TEST_MIDDLE1.name,
-      DEV_TEST_MIDDLE1.phone,
-      DEV_TEST_MIDDLE1.birthDate,
+      ...userPiiInsertValues(pii),
       schoolId,
       DEV_TEST_MIDDLE1.grade,
       DEV_TEST_MIDDLE1.classNumber,

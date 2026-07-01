@@ -501,9 +501,9 @@ router.get('/users', requireAdminApi, async (req, res) => {
     const conditions = ['u.is_deleted = FALSE'];
     const params = [];
     if (q) {
-      conditions.push('(CAST(u.id AS CHAR) LIKE ? OR u.username LIKE ? OR u.name LIKE ?)');
+      conditions.push('(CAST(u.id AS CHAR) LIKE ? OR u.username LIKE ?)');
       const like = `%${String(q).trim()}%`;
-      params.push(like, like, like);
+      params.push(like, like);
     }
     if (filter === 'warned') conditions.push('(u.violation_warning_count > 0 OR u.false_report_warning_count > 0)');
     if (filter === 'suspended') conditions.push('u.is_suspended = TRUE');
@@ -529,6 +529,7 @@ router.get('/users', requireAdminApi, async (req, res) => {
       `SELECT
          u.id,
          u.username,
+         u.name_enc,
          u.name,
          u.violation_warning_count,
          u.false_report_warning_count,
@@ -781,10 +782,10 @@ router.get('/blocks', requireAdminApi, async (req, res) => {
          ub.id,
          ub.user_id,
          u1.username AS user_username,
-         u1.name AS user_name,
+         u1.name_enc AS user_name_enc, u1.name AS user_name,
          ub.blocked_user_id,
          u2.username AS blocked_username,
-         u2.name AS blocked_name,
+         u2.name_enc AS blocked_name_enc, u2.name AS blocked_name,
          ub.reason,
          ub.created_at
        FROM user_blocks ub

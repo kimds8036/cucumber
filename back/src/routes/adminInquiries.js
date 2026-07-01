@@ -118,7 +118,7 @@ router.get('/', requireAdminApi, async (req, res) => {
          i.id,
          i.user_id,
          u.username AS author_username,
-         u.name AS author_name,
+         u.name_enc AS author_name_enc, u.name AS author_name,
          u.is_suspended AS author_is_suspended,
          u.is_banned AS author_is_banned,
          i.contact_username,
@@ -182,7 +182,7 @@ router.get('/:id', requireAdminApi, async (req, res) => {
       `SELECT
          i.*,
          u.username AS author_username,
-         u.name AS author_name,
+         u.name_enc AS author_name_enc, u.name AS author_name,
          u.is_suspended AS author_is_suspended,
          u.suspended_until AS author_suspended_until,
          u.is_banned AS author_is_banned,

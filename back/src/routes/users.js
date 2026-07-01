@@ -2,6 +2,10 @@ import express from 'express';
 import pool from '../config/database.js';
 import { authenticate } from '../middleware/auth.js';
 import { upsertFcmToken } from '../utils/pushTokens.js';
+import {
+  nameLookupBindParams,
+  nameLookupWhereClause,
+} from '../services/userPii.service.js';
 
 const router = express.Router();
 
@@ -93,10 +97,11 @@ router.get('/search', authenticate, async (req, res) => {
     }
 
     // 우편 받는 사람 검색: 실명(name) 전체 일치만 (username으로 검색하지 않음)
-    const params = [schoolId, matchStr];
+    const params = [schoolId, ...nameLookupBindParams(matchStr)];
     const [rows] = await pool.execute(
       `SELECT
          u.id,
+         u.name_enc,
          u.name,
          u.username,
          u.grade,
@@ -106,8 +111,8 @@ router.get('/search', authenticate, async (req, res) => {
        LEFT JOIN schools s ON u.school_id = s.school_id
        WHERE u.is_deleted = FALSE
          AND u.school_id = ?
-         AND u.name = ?
-       ORDER BY u.name ASC
+         AND ${nameLookupWhereClause('u')}
+       ORDER BY u.name_lookup ASC
        LIMIT 10`,
       params
     );

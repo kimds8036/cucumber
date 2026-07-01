@@ -4,6 +4,10 @@ import { isBlockedBy } from '../utils/userBlock.js';
 import { enqueueNotification } from '../utils/notificationWorker.js';
 import { ensurePersonalMailSchema } from '../db/ensurePersonalMailSchema.js';
 import {
+  nameLookupBindParams,
+  nameLookupWhereClause,
+} from './userPii.service.js';
+import {
   PERSONAL_MAIL_STATUS,
   PERSONAL_MAIL_DUPLICATE_CODE,
   PERSONAL_MAIL_RETURN_RELATED_TYPE,
@@ -28,10 +32,10 @@ export async function findRecipientsForPersonalSend({
 }) {
   const baseSql = `
     SELECT id, username FROM users
-    WHERE school_id = ? AND grade = ? AND class_number = ? AND name = ?
+    WHERE school_id = ? AND grade = ? AND class_number = ? AND ${nameLookupWhereClause()}
       AND is_deleted = FALSE
   `;
-  const baseParams = [schoolId, grade, classNum, name.trim()];
+  const baseParams = [schoolId, grade, classNum, ...nameLookupBindParams(name)];
 
   if (username && String(username).trim()) {
     const [rows] = await pool.execute(
@@ -306,7 +310,7 @@ export async function runPersonalMailReturnJob(options = {}) {
 
   const [candidates] = await pool.execute(
     `SELECT pm.id, pm.sender_id, pm.recipient_id, pm.recipient_name,
-            ru.name AS recipient_user_name, pm.is_match_failed,
+            ru.name_enc AS recipient_user_name_enc, ru.name AS recipient_user_name, pm.is_match_failed,
             pm.root_mail_id, pm.sent_at
      FROM personal_mails pm
      LEFT JOIN users ru ON ru.id = pm.recipient_id

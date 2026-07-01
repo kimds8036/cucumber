@@ -156,7 +156,7 @@ async function loadPostsRowsByIdOrder(
       p.like_count,
       p.comment_count,
       p.created_at,
-      u.name as author_name,
+      u.name_enc as author_name_enc, u.name as author_name,
       u.color_id,
       s.name as school_name,
       (SELECT pi1.cloudinary_url
@@ -434,7 +434,7 @@ router.get('/', optionalAuthenticate, async (req, res) => {
         p.like_count, 
         p.comment_count, 
         p.created_at,
-        u.name as author_name,
+        u.name_enc as author_name_enc, u.name as author_name,
         u.color_id,
         s.name as school_name,
         (SELECT pi1.cloudinary_url
@@ -608,7 +608,7 @@ router.get('/my', authenticate, async (req, res) => {
          p.like_count,
          p.comment_count,
          p.created_at,
-         u.name as author_name,
+         u.name_enc as author_name_enc, u.name as author_name,
          u.color_id,
          s.name as school_name,
          (SELECT COUNT(*) FROM post_likes pl
@@ -796,7 +796,7 @@ router.get('/liked', authenticate, async (req, res) => {
          p.like_count,
          p.comment_count,
          p.created_at,
-         u.name as author_name,
+         u.name_enc as author_name_enc, u.name as author_name,
          u.color_id,
          s.name as school_name,
          (SELECT pi1.cloudinary_url
@@ -908,7 +908,7 @@ router.get('/scrapped', authenticate, async (req, res) => {
          p.like_count,
          p.comment_count,
          p.created_at,
-         u.name as author_name,
+         u.name_enc as author_name_enc, u.name as author_name,
          u.color_id,
          s.name as school_name,
          (SELECT COUNT(*) FROM post_likes pl
@@ -1063,7 +1063,7 @@ router.get('/:id', optionalAuthenticate, async (req, res) => {
         p.like_count, 
         p.comment_count, 
         p.created_at,
-        u.name as author_name,
+        u.name_enc as author_name_enc, u.name as author_name,
         u.color_id,
         s.name as school_name,
         (SELECT pi1.cloudinary_url
