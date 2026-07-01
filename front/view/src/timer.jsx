@@ -584,10 +584,14 @@ function TimerLiveScrollInner({
 
   const getSubjectTotalMs = (subjectId) => {
     if (subjectId == null) return 0;
-    const nowSec = getSecondsFromSixAM(new Date());
     return displaySessions
-      .filter((s) => s.subjectId === subjectId && s.endSeconds != null)
-      .reduce((sum, s) => sum + getSessionDurationMs(s, nowSec), 0);
+      .filter((s) => s.subjectId === subjectId)
+      .reduce((sum, s) => {
+        const isActiveOpenSession =
+          s.endedAtMs == null && isRunning && activeSubjectId === subjectId;
+        if (isActiveOpenSession) return sum;
+        return sum + getSessionDurationMs(s);
+      }, 0);
   };
 
   const getSlotSegments = (slotStartSeconds) => {
@@ -908,6 +912,7 @@ function TimerLivePlannerCapture({
   normalize,
   isViewingToday,
   isRunning,
+  activeSubjectId,
   totalElapsedMs,
   displayTotalElapsedMs,
   displaySessions,
@@ -923,10 +928,14 @@ function TimerLivePlannerCapture({
 
   const getSubjectTotalMs = (subjectId) => {
     if (subjectId == null) return 0;
-    const nowSec = getSecondsFromSixAM(new Date());
     return displaySessions
-      .filter((s) => s.subjectId === subjectId && s.endSeconds != null)
-      .reduce((sum, s) => sum + getSessionDurationMs(s, nowSec), 0);
+      .filter((s) => s.subjectId === subjectId)
+      .reduce((sum, s) => {
+        const isActiveOpenSession =
+          s.endedAtMs == null && isRunning && activeSubjectId === subjectId;
+        if (isActiveOpenSession) return sum;
+        return sum + getSessionDurationMs(s);
+      }, 0);
   };
 
   const getSlotSegments = (slotStartSeconds) => {
@@ -2327,6 +2336,7 @@ export const TimerContent = () => {
             normalize={normalize}
             isViewingToday={isViewingToday}
             isRunning={isRunning}
+            activeSubjectId={activeSubjectId}
             totalElapsedMs={totalElapsedMs}
             displayTotalElapsedMs={displayTotalElapsedMs}
             displaySessions={displaySessionsForTimetable}
