@@ -890,8 +890,8 @@ router.get('/logs', requireAdminApi, async (req, res) => {
        FROM admin_audit_logs l
        WHERE ${whereSql}
        ORDER BY l.created_at DESC
-       LIMIT ? OFFSET ?`,
-      [...params, limitNum, offsetNum],
+       LIMIT ${limitNum} OFFSET ${offsetNum}`,
+      params,
     );
     res.json({
       success: true,
