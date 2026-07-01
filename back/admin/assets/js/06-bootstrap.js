@@ -1,6 +1,6 @@
 async function bootstrap() {
     if (!ensureAdminAuth()) return;
-    initAdminEnvSelect();
+    initDeployEnvBadge();
     initSessionTimer();
     initAdminHistoryGuard();
     try {

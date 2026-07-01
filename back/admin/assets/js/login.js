@@ -5,12 +5,6 @@ function adminUrl(subpath) {
   return `${ADMIN_BASE}${p}`;
 }
 
-const HOSTS = {
-  production: 'https://cucumber-production.up.railway.app',
-  develop: 'https://cucumber-develop.up.railway.app',
-};
-
-const envSelect = document.getElementById('env');
 const form = document.getElementById('admin-login-form');
 const otpLoginBlock = document.getElementById('otp-login-block');
 const otpSetupBlock = document.getElementById('otp-setup-block');
@@ -19,38 +13,28 @@ const errorMsg = document.getElementById('error-msg');
 let setupToken = null;
 let phase = 'password';
 
-function getEnv() {
-  return envSelect.value || 'production';
-}
+const TOKEN_KEY = 'adminToken';
+const SESSION_EXPIRES_KEY = 'adminSessionExpiresAt';
 
-function getHost() {
-  return HOSTS[getEnv()] || HOSTS.production;
+function initDeployEnvBadge() {
+  const badge = document.getElementById('deploy-env-badge');
+  if (!badge) return;
+  const env = window.__ADMIN_DEPLOY_ENV__ || 'develop';
+  badge.classList.remove('env-badge-develop', 'env-badge-production');
+  badge.classList.add(env === 'production' ? 'env-badge-production' : 'env-badge-develop');
+  badge.textContent = env === 'production' ? 'PRODUCTION' : 'DEVELOP';
 }
-
-function tokenKey() {
-  return `adminToken_${getEnv()}`;
-}
-
-function sessionExpiresKey() {
-  return `adminSessionExpiresAt_${getEnv()}`;
-}
-
-const savedEnv = localStorage.getItem('adminEnv');
-if (savedEnv && HOSTS[savedEnv]) envSelect.value = savedEnv;
 
 function redirectIfLoggedIn() {
-  if (sessionStorage.getItem(tokenKey())) {
+  if (sessionStorage.getItem(TOKEN_KEY)) {
     window.location.replace(adminUrl('/'));
   }
 }
+
+initDeployEnvBadge();
 redirectIfLoggedIn();
 window.addEventListener('pageshow', (e) => {
   if (e.persisted) redirectIfLoggedIn();
-});
-
-envSelect.addEventListener('change', () => {
-  localStorage.setItem('adminEnv', getEnv());
-  resetPhase();
 });
 
 function resetPhase() {
@@ -79,7 +63,7 @@ form.addEventListener('submit', async (e) => {
 
   document.getElementById('submit-btn').disabled = true;
   try {
-    const res = await fetch(`${getHost()}${adminUrl('/login')}`, {
+    const res = await fetch(`${window.location.origin}${adminUrl('/login')}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       credentials: 'include',
@@ -88,11 +72,10 @@ form.addEventListener('submit', async (e) => {
     const data = await res.json().catch(() => ({}));
 
     if (data?.success && data?.token) {
-      sessionStorage.setItem(tokenKey(), data.token);
+      sessionStorage.setItem(TOKEN_KEY, data.token);
       if (data.expiresAt) {
-        sessionStorage.setItem(sessionExpiresKey(), String(data.expiresAt));
+        sessionStorage.setItem(SESSION_EXPIRES_KEY, String(data.expiresAt));
       }
-      localStorage.setItem('adminEnv', getEnv());
       window.location.href = adminUrl('/');
       return;
     }
@@ -118,7 +101,7 @@ form.addEventListener('submit', async (e) => {
 
     errorMsg.textContent = data?.message || '로그인에 실패했습니다.';
   } catch {
-    errorMsg.textContent = '로그인 요청 중 오류가 발생했습니다. CORS·네트워크를 확인하세요.';
+    errorMsg.textContent = '로그인 요청 중 오류가 발생했습니다.';
   } finally {
     document.getElementById('submit-btn').disabled = false;
   }

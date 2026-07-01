@@ -1,19 +1,17 @@
 <div class="topbar">
-      <div>
-        <div class="topbar-title" id="topbar-title">대시보드</div>
-        <div class="topbar-sub" id="topbar-sub">2026년 4월 27일 기준</div>
+      <div class="topbar-heading">
+        <div class="topbar-title-row">
+          <div class="topbar-title" id="topbar-title">대시보드</div>
+          <span class="env-badge" data-deploy-env-badge>DEVELOP</span>
+        </div>
+        <div class="topbar-sub" id="topbar-sub">실시간 운영 지표</div>
       </div>
-      <div style="display:flex;gap:8px;align-items:center;">
-        <div id="admin-session-wrap" style="display:flex;align-items:center;gap:8px;padding:4px 10px;border:0.5px solid var(--border-md);border-radius:var(--radius-sm);background:var(--bg-secondary);">
-          <span style="font-size:12px;color:var(--text-secondary);">세션</span>
-          <span id="session-countdown" style="font-size:13px;font-weight:600;font-variant-numeric:tabular-nums;">30:00</span>
+      <div class="topbar-actions">
+        <div id="admin-session-wrap" class="session-wrap">
+          <span class="session-label">세션</span>
+          <span id="session-countdown" class="session-countdown">30:00</span>
           <button class="btn btn-sm" type="button" onclick="extendAdminSession()">연장하기</button>
         </div>
-        <button class="btn btn-sm" onclick="alert('API: GET /api/admin/stats — 통계 데이터를 불러옵니다.')">통계 내보내기</button>
-        <select id="admin-env-select" style="height:32px;padding:0 8px;border-radius:6px;border:0.5px solid var(--border-md);background:var(--bg);">
-          <option value="production">Production</option>
-          <option value="develop">Develop</option>
-        </select>
         <button class="btn btn-sm" onclick="adminLogout()">로그아웃</button>
         <button class="btn btn-sm btn-primary" onclick="go('reports')">신규 신고 확인 →</button>
       </div>

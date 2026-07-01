@@ -1,6 +1,6 @@
 <!-- ── Sidebar ───────────────────────────────────── -->
   <div class="sidebar">
-    <div class="sidebar-logo">Focux <span>admin</span></div>
+    <div class="sidebar-logo">YouthPaper <span>admin</span></div>
 
     <div class="sidebar-section">운영</div>
     <div class="nav-item active" onclick="go('dashboard')">
@@ -8,19 +8,19 @@
     </div>
     <div class="nav-item" onclick="go('reports')">
       <span class="nav-dot"></span>신고 관리
-      <span class="nav-badge" id="badge-reports">4</span>
+      <span class="nav-badge nav-badge-hidden" id="badge-reports"></span>
     </div>
     <div class="nav-item" onclick="go('processedReports')">
       <span class="nav-dot"></span>처리 이력
     </div>
     <div class="nav-item" onclick="go('appeals')">
       <span class="nav-dot"></span>이의신청
-      <span class="nav-badge" id="badge-appeals">2</span>
+      <span class="nav-badge nav-badge-hidden" id="badge-appeals"></span>
     </div>
 
     <div class="nav-item" onclick="go('inquiries')">
       <span class="nav-dot"></span>문의 관리
-      <span class="nav-badge" id="badge-inquiries">0</span>
+      <span class="nav-badge nav-badge-hidden" id="badge-inquiries"></span>
     </div>
     <div class="nav-item" onclick="go('processedInquiries')">
       <span class="nav-dot"></span>문의 처리 이력
@@ -29,14 +29,18 @@
     <div class="sidebar-section" style="margin-top:8px">가입·인증</div>
     <div class="nav-item" onclick="go('studentIds')">
       <span class="nav-dot"></span>가입 학생증
-      <span class="nav-badge" id="badge-student-ids">0</span>
+      <span class="nav-badge nav-badge-hidden" id="badge-student-ids"></span>
     </div>
     <div class="nav-item" onclick="go('reverificationIds')">
       <span class="nav-dot"></span>재인증 학생증
-      <span class="nav-badge" id="badge-reverification-ids">0</span>
+      <span class="nav-badge nav-badge-hidden" id="badge-reverification-ids"></span>
     </div>
 
     <div class="sidebar-section" style="margin-top:8px">사용자</div>
+    <div class="nav-item" onclick="go('attendance')">
+      <span class="nav-dot"></span>등교 현황
+      <span class="nav-badge nav-badge-hidden" id="badge-attendance-suspicious"></span>
+    </div>
     <div class="nav-item" onclick="go('users')">
       <span class="nav-dot"></span>사용자 제재 현황
     </div>

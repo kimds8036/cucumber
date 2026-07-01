@@ -1,7 +1,11 @@
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { getAdminBasePath } from '../config/adminPath.js';
+import {
+  getAdminBasePath,
+  getDeployEnvironment,
+  getDeployEnvironmentLabel,
+} from '../config/adminPath.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -13,9 +17,14 @@ function readPartial(relativePath) {
 
 function injectAdminBase(html, basePath) {
   const baseJson = JSON.stringify(basePath);
+  const deployEnv = getDeployEnvironment();
+  const deployLabel = getDeployEnvironmentLabel();
   return html
     .replaceAll('{{ADMIN_BASE}}', basePath)
-    .replaceAll('{{ADMIN_BASE_JSON}}', baseJson);
+    .replaceAll('{{ADMIN_BASE_JSON}}', baseJson)
+    .replaceAll('{{DEPLOY_ENV}}', deployEnv)
+    .replaceAll('{{DEPLOY_ENV_LABEL}}', deployLabel)
+    .replaceAll('{{DEPLOY_ENV_JSON}}', JSON.stringify(deployEnv));
 }
 
 export function renderAdminIndexHtml() {

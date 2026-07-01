@@ -1,23 +1,18 @@
 const ADMIN_BASE = window.__ADMIN_BASE__ || '';
+const ADMIN_TOKEN_KEY = 'adminToken';
+const ADMIN_SESSION_EXPIRES_KEY = 'adminSessionExpiresAt';
+
 function adminUrl(subpath) {
   const p = subpath.startsWith('/') ? subpath : `/${subpath}`;
   return `${ADMIN_BASE}${p}`;
 }
-const ADMIN_HOSTS = {
-    production: 'https://cucumber-production.up.railway.app',
-    develop: 'https://cucumber-develop.up.railway.app',
-  };
 
   function getAdminEnv() {
-    return localStorage.getItem('adminEnv') || 'production';
+    return window.__ADMIN_DEPLOY_ENV__ || 'develop';
   }
 
   function getAdminHost() {
-    const host = window.location.hostname;
-    if (host === 'localhost' || host === '127.0.0.1') {
-      return window.location.origin;
-    }
-    return ADMIN_HOSTS[getAdminEnv()] || ADMIN_HOSTS.production;
+    return window.location.origin;
   }
 
   function getApiBase() {
@@ -25,7 +20,29 @@ const ADMIN_HOSTS = {
   }
 
   function getAdminToken() {
-    return sessionStorage.getItem(`adminToken_${getAdminEnv()}`) || '';
+    return sessionStorage.getItem(ADMIN_TOKEN_KEY) || '';
+  }
+
+  function setNavBadge(elementId, count) {
+    const el = document.getElementById(elementId);
+    if (!el) return;
+    const n = Number(count) || 0;
+    if (n <= 0) {
+      el.textContent = '';
+      el.classList.add('nav-badge-hidden');
+      return;
+    }
+    el.textContent = String(n);
+    el.classList.remove('nav-badge-hidden');
+  }
+
+  function initDeployEnvBadge() {
+    document.querySelectorAll('[data-deploy-env-badge]').forEach((el) => {
+      const env = getAdminEnv();
+      el.classList.remove('env-badge-develop', 'env-badge-production');
+      el.classList.add(env === 'production' ? 'env-badge-production' : 'env-badge-develop');
+      el.textContent = env === 'production' ? 'PRODUCTION' : 'DEVELOP';
+    });
   }
 
   function ensureAdminAuth() {
@@ -36,26 +53,9 @@ const ADMIN_HOSTS = {
     return true;
   }
 
-  function initAdminEnvSelect() {
-    const sel = document.getElementById('admin-env-select');
-    if (!sel) return;
-    sel.value = getAdminEnv();
-    sel.addEventListener('change', () => {
-      const next = sel.value;
-      localStorage.setItem('adminEnv', next);
-      if (!sessionStorage.getItem(`adminToken_${next}`)) {
-        alert('선택한 환경에 로그인되어 있지 않습니다. 로그인 화면으로 이동합니다.');
-        window.location.href = adminUrl('/login');
-        return;
-      }
-      window.location.reload();
-    });
-  }
-
   function adminLogout() {
-    const env = getAdminEnv();
-    sessionStorage.removeItem(`adminToken_${env}`);
-    sessionStorage.removeItem(`adminSessionExpiresAt_${env}`);
+    sessionStorage.removeItem(ADMIN_TOKEN_KEY);
+    sessionStorage.removeItem(ADMIN_SESSION_EXPIRES_KEY);
     window.location.href = adminUrl('/login');
   }
 
@@ -63,7 +63,7 @@ const ADMIN_HOSTS = {
   let sessionTimerInterval = null;
 
   function sessionExpiresKey() {
-    return `adminSessionExpiresAt_${getAdminEnv()}`;
+    return ADMIN_SESSION_EXPIRES_KEY;
   }
 
   function initSessionTimer() {
@@ -105,7 +105,7 @@ const ADMIN_HOSTS = {
         throw new Error(data?.message || '세션 연장에 실패했습니다.');
       }
       if (data.token) {
-        sessionStorage.setItem(`adminToken_${getAdminEnv()}`, data.token);
+        sessionStorage.setItem(ADMIN_TOKEN_KEY, data.token);
       }
       if (data.expiresAt) {
         sessionExpiresAt = Number(data.expiresAt);
@@ -145,6 +145,7 @@ const ADMIN_HOSTS = {
     inquiries: { title: '문의 관리', sub: '미처리 문의 — 답변 작성 / 종결' },
     processedInquiries: { title: '문의 처리 이력', sub: '답변 완료 / 종결 문의 — 재오픈 가능' },
     users: { title: '사용자 제재 현황', sub: '경고 / 임시정지 / 화이트리스트' },
+    attendance: { title: '등교 현황', sub: '출석 통계 · 미등교 의심 사용자' },
     studentIds: { title: '가입 학생증', sub: '회원가입 학생증 수동 검수 — 승인 / 거절' },
     reverificationIds: { title: '재인증 학생증', sub: '학년도 재인증·학교 전환 검수 — 승인 / 거절' },
     logs: { title: '변경 이력 (Audit Log)', sub: '모든 판정 및 상태 변경 기록' },
@@ -297,7 +298,7 @@ const ADMIN_HOSTS = {
     });
     const data = await res.json().catch(() => ({}));
     if (res.status === 401 || (res.status === 403 && data?.code === 'ADMIN_MFA_REQUIRED')) {
-      sessionStorage.removeItem(`adminToken_${getAdminEnv()}`);
+      sessionStorage.removeItem(ADMIN_TOKEN_KEY);
       window.location.href = adminUrl('/login');
       throw new Error(data?.message || '로그인이 필요합니다.');
     }
@@ -320,6 +321,7 @@ const ADMIN_HOSTS = {
     document.getElementById('topbar-sub').textContent = m.sub;
     if (page === 'studentIds') loadStudentIds();
     if (page === 'reverificationIds') loadReverificationIds();
+    if (page === 'attendance') loadAttendance();
   }
 
   function purposeLabel(purpose) {

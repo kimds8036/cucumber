@@ -39,3 +39,20 @@ export function getAdminBasePath() {
 export function getAdminLoginPath() {
   return `${getAdminBasePath()}/login`;
 }
+
+/** Railway 배포 환경 (develop | production) — 관리자 UI 표시용 */
+export function getDeployEnvironment() {
+  const raw = String(
+    process.env.RAILWAY_ENVIRONMENT ||
+      process.env.RAILWAY_TARGET ||
+      (process.env.NODE_ENV === 'production' ? 'production' : 'develop'),
+  )
+    .trim()
+    .toLowerCase();
+  if (raw.includes('prod')) return 'production';
+  return 'develop';
+}
+
+export function getDeployEnvironmentLabel() {
+  return getDeployEnvironment() === 'production' ? 'PRODUCTION' : 'DEVELOP';
+}

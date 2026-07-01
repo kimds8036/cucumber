@@ -4,15 +4,15 @@ async function loadDashboard() {
     document.getElementById('stat-pending-reports').textContent = String(data.pendingReports);
     document.getElementById('stat-pending-appeals').textContent = String(data.pendingAppeals);
     document.getElementById('stat-today-handled').textContent = String(data.todayHandledReports);
-    document.getElementById('badge-reports').textContent = String(data.pendingReports);
-    document.getElementById('badge-appeals').textContent = String(data.pendingAppeals);
+    setNavBadge('badge-reports', data.pendingReports);
+    setNavBadge('badge-appeals', data.pendingAppeals);
 
     try {
       const res = await api('/inquiries/stats');
       const d = res.data || {};
       document.getElementById('stat-pending-inquiries').textContent = String(d.pendingInquiries || 0);
       document.getElementById('stat-today-answered-inquiries').textContent = String(d.todayAnsweredInquiries || 0);
-      document.getElementById('badge-inquiries').textContent = String(d.pendingInquiries || 0);
+      setNavBadge('badge-inquiries', d.pendingInquiries || 0);
     } catch (e) {
       // 통계 실패는 비치명
     }

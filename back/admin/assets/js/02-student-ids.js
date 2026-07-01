@@ -8,7 +8,7 @@ async function loadStudentIds() {
       state.studentIdSubmissions = data.submissions || [];
       renderStudentIds();
       if (status === 'pending') {
-        document.getElementById('badge-student-ids').textContent = String(state.studentIdSubmissions.length);
+        setNavBadge('badge-student-ids', state.studentIdSubmissions.length);
       }
     } catch (e) {
       host.innerHTML = `<p class="txt-danger">${esc(e.message)}</p>`;
@@ -25,7 +25,7 @@ async function loadStudentIds() {
       state.reverificationIdSubmissions = data.submissions || [];
       renderReverificationIds();
       if (status === 'pending') {
-        document.getElementById('badge-reverification-ids').textContent = String(state.reverificationIdSubmissions.length);
+        setNavBadge('badge-reverification-ids', state.reverificationIdSubmissions.length);
       }
     } catch (e) {
       host.innerHTML = `<p class="txt-danger">${esc(e.message)}</p>`;

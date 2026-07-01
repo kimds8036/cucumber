@@ -28,6 +28,7 @@ import adminReportsRoutes from './routes/adminReports.js';
 import adminInquiriesRoutes from './routes/adminInquiries.js';
 import adminSignupCertificatesRoutes from './routes/adminSignupCertificates.js';
 import adminSignupStudentIdsRoutes from './routes/adminSignupStudentIds.js';
+import adminAttendanceRoutes from './routes/adminAttendance.js';
 import adminWebRoutes from './routes/adminWeb.js';
 import { getAdminBasePath } from './config/adminPath.js';
 import inquiriesRoutes from './routes/inquiries.js';
@@ -239,6 +240,7 @@ app.use('/api/admin', adminReportsRoutes);
 app.use('/api/admin/inquiries', adminInquiriesRoutes);
 app.use('/api/admin/signup-certificates', adminSignupCertificatesRoutes);
 app.use('/api/admin/signup-student-ids', adminSignupStudentIdsRoutes);
+app.use('/api/admin/attendance', adminAttendanceRoutes);
 app.use('/api/test', testRoutes);
 
 // ============ 글로벌 에러 핸들러 ============
