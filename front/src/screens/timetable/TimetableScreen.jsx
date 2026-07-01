@@ -8,8 +8,11 @@ import React, {
 import AntDesign from '@expo/vector-icons/AntDesign';
 import Feather from '@expo/vector-icons/Feather';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import * as MediaLibrary from 'expo-media-library';
 import ViewShot from 'react-native-view-shot';
+import {
+  saveImageUriToGallery,
+  alertGallerySaveFailure,
+} from '../../../utils/saveImageToGallery';
 import {
   Alert,
   KeyboardAvoidingView,
@@ -339,22 +342,11 @@ export default function TimetableScreen({ navigation, route }) {
   const handleSaveAsImage = useCallback(async () => {
     if (!captureTimetableRef.current) return;
     try {
-      const { status } = await MediaLibrary.requestPermissionsAsync();
-      if (status !== 'granted') {
-        Alert.alert(
-          '권한 필요',
-          '사진 저장을 위해 갤러리 접근 권한이 필요해요',
-        );
-        return;
-      }
       const uri = await captureTimetableRef.current.capture();
-      await MediaLibrary.saveToLibraryAsync(uri);
+      await saveImageUriToGallery(uri);
       setShowSaveImageModal(true);
     } catch (e) {
-      Alert.alert(
-        '저장 실패',
-        e?.message || '이미지 저장에 실패했어요. 다시 시도해 주세요',
-      );
+      alertGallerySaveFailure(e);
     }
   }, []);
 

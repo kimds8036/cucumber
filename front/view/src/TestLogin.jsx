@@ -24,7 +24,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import LogoIcon from '../../assets/Logo.svg';
 import { colors, fonts, fontSizes } from '../../styles/colors';
-import { api, setAuthToken } from '../../utils/api';
+import { api, setAuthToken, getApiUserFacingMessage } from '../../utils/api';
 import { useAuth } from '../../context/AuthContext';
 
 const TestLogin = ({ navigation }) => {
@@ -89,8 +89,8 @@ const TestLogin = ({ navigation }) => {
       }
       login();
     } catch (error) {
-      const msg = error?.response?.data?.message || '로그인에 실패했습니다.';
-      Alert.alert('로그인 실패', `${user.username}\n${msg}`);
+      const msg = getApiUserFacingMessage(error, '로그인에 실패했습니다.');
+      Alert.alert('로그인 실패', msg);
     } finally {
       setLoginInFlight(null);
     }

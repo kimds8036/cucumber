@@ -4,6 +4,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import Constants from 'expo-constants';
 import { API_URLS } from '../config/apiEnv.js';
 import { notifySessionTerminated } from './sessionTerminate';
+import { getUserFacingErrorMessage } from './userFacingError.js';
 
 const AUTH_TOKEN_KEY = '@auth_token';
 const REFRESH_TOKEN_KEY = '@refresh_token';
@@ -90,15 +91,7 @@ export function getApiUserFacingMessage(
   error,
   fallback = '요청에 실패했습니다.',
 ) {
-  const fromInterceptor =
-    typeof error?.userFacingMessage === 'string' &&
-    error.userFacingMessage.trim();
-  if (fromInterceptor) return fromInterceptor.trim();
-  const data = error?.response?.data;
-  if (typeof data?.message === 'string' && data.message.trim())
-    return data.message.trim();
-  if (typeof data === 'string' && data.trim()) return data.trim();
-  return fallback;
+  return getUserFacingErrorMessage(error, fallback);
 }
 
 // 요청 시 저장된 토큰을 Authorization 헤더에 붙임

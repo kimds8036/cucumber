@@ -23,40 +23,29 @@ import { createLoginStyles } from '../../../styles/login.style';
 import { colors } from '../../../styles/colors';
 import { Ionicons } from '@expo/vector-icons';
 import LogoIcon from '../../../assets/Logo.svg';
-import { api, setAuthToken, setRefreshToken, getOrCreateDeviceId } from '../../../utils/api';
+import { api, setAuthToken, setRefreshToken, getOrCreateDeviceId, getApiUserFacingMessage } from '../../../utils/api';
 import { useAuth } from '../../../context/AuthContext';
 import Skeleton from '../../../components/common/Skeleton';
 // import AsyncStorage from '@react-native-async-storage/async-storage';
 
-/** --no-dev 등에서도 원인 파악용(Alert 본문) */
+/** 로그인 실패 안내 — 사용자용 문구만 (기술 정보는 __DEV__ 콘솔) */
 function buildLoginFailureMessage(error) {
-  const base = api.defaults.baseURL || '(baseURL 없음)';
-  const data = error?.response?.data;
-  const serverMsg =
-    (typeof data?.message === 'string' && data.message) ||
-    (typeof data === 'string' ? data : null);
-  const axiosMsg = typeof error?.message === 'string' ? error.message : '';
-  const code = error?.code;
-  const status = error?.response?.status;
+  const userMessage = getApiUserFacingMessage(
+    error,
+    '아이디 또는 비밀번호를 확인해 주세요.',
+  );
 
-  const lines = [];
-  if (serverMsg) lines.push(serverMsg);
-  else if (axiosMsg) lines.push(axiosMsg);
-  else lines.push('로그인 요청에 실패했습니다.');
-
-  if (status != null) lines.push(`HTTP ${status}`);
-  if (code) lines.push(`에러 코드: ${code}`);
-  lines.push(`API 주소: ${base}`);
-
-  const noResponse = !error?.response && error?.request;
-  if (noResponse) {
-    lines.push(
-      '',
-      '서버 응답이 없습니다. Wi‑Fi/데이터, 방화벽, EXPO_PUBLIC_API_URL·apiBaseUrl 설정을 확인하세요.',
-    );
+  if (__DEV__) {
+    console.warn('[Login] failure', {
+      baseURL: api.defaults.baseURL,
+      status: error?.response?.status,
+      code: error?.code,
+      data: error?.response?.data,
+      message: error?.message,
+    });
   }
 
-  return lines.join('\n');
+  return userMessage;
 }
 
 function formatSuspendedUntil(raw) {
