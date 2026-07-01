@@ -29,6 +29,7 @@ import adminInquiriesRoutes from './routes/adminInquiries.js';
 import adminSignupCertificatesRoutes from './routes/adminSignupCertificates.js';
 import adminSignupStudentIdsRoutes from './routes/adminSignupStudentIds.js';
 import adminWebRoutes from './routes/adminWeb.js';
+import { getAdminBasePath } from './config/adminPath.js';
 import inquiriesRoutes from './routes/inquiries.js';
 import appRoutes from './routes/app.js';
 import testRoutes from './routes/test.js';
@@ -138,7 +139,9 @@ const generalLimiter = rateLimit({
 });
 app.use('/api', generalLimiter);
 
-// 관리자 로그인 무차별 대입 방지 (POST /admin/login 전용, /api limiter 밖)
+const adminBasePath = getAdminBasePath();
+
+// 관리자 로그인 무차별 대입 방지 (POST …/login 전용, /api limiter 밖)
 const adminLoginLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: Number(process.env.RATE_LIMIT_ADMIN_LOGIN_MAX || 10),
@@ -151,7 +154,7 @@ const adminLoginLimiter = rateLimit({
     message: '로그인 시도가 너무 많습니다. 15분 후 다시 시도해주세요.',
   },
 });
-app.use('/admin', (req, res, next) => {
+app.use(adminBasePath, (req, res, next) => {
   if (req.method === 'POST' && req.path === '/login') {
     return adminLoginLimiter(req, res, next);
   }
@@ -197,8 +200,8 @@ app.get('/health', async (req, res) => {
 // App-Version 미들웨어 (docs/워크플로.md)
 app.use(requireMinAppVersion);
 
-// Admin web routes (로그인/가드/페이지 제공)
-app.use('/admin', adminWebRoutes);
+// Admin web routes (로그인/가드/페이지 제공) — ADMIN_BASE_PATH
+app.use(adminBasePath, adminWebRoutes);
 
 // DB 연결 테스트 — 운영 환경에서는 404
 if (isProductionEnv()) {
@@ -288,5 +291,7 @@ httpServer.listen(PORT, async () => {
   console.log(
     `[bootstrap] SERVICE_ROLE=${getServiceRole()} cron=${shouldRunCron()} worker=${shouldRunNotificationWorker()}`,
   );
+  console.log('==============================');
+  console.log(`🔐 Admin UI: ${adminBasePath}/login (ADMIN_BASE_PATH)`);
   console.log('==============================');
 });

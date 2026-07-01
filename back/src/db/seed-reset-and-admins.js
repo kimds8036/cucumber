@@ -11,6 +11,7 @@ import mysql from 'mysql2/promise';
 import bcrypt from 'bcrypt';
 import { getDbConnectionOptions, getActiveTarget, parseMigrateCliArgs } from '../config/dbEnv.js';
 import { loadAdminSeedAccounts } from '../config/adminSeedEnv.js';
+import { getAdminLoginPath } from '../config/adminPath.js';
 
 const PRESERVED_TABLES = new Set(['schools']);
 
@@ -120,7 +121,7 @@ async function main() {
     console.log('\n✅ 초기화 및 관리자 시드 완료');
     console.log(`   schools 유지: ${schoolCount}건`);
     console.log(`   admin_users: ${admins.length}명`);
-    console.log('   ── 관리자 (웹 /admin/login) ──');
+    console.log(`   ── 관리자 (웹 ${getAdminLoginPath()}) ──`);
     for (const admin of admins) {
       console.log(`   #${admin.id} ${admin.name}: ${admin.username}`);
     }

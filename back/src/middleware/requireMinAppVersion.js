@@ -1,23 +1,25 @@
 import { isVersionBelow } from '../utils/semver.js';
+import { getAdminBasePath } from '../config/adminPath.js';
 
 const DEFAULT_ANDROID_STORE_URL =
   'https://play.google.com/store/apps/details?id=com.ucost.YouthPaper';
 
-/** App-Version 미들웨어 화이트리스트 (docs/워크플로.md) */
-const WHITELIST_PREFIXES = [
-  '/health',
-  '/api/app/version-check',
-  '/admin',
-  '/api-docs',
-  '/api/auth/signup',
-  '/api/auth/check-phone-available',
-  '/api/auth/verify-firebase-phone',
-  '/api/auth/recovery/',
-  '/api/auth/login',
-];
+function getWhitelistPrefixes() {
+  return [
+    '/health',
+    '/api/app/version-check',
+    getAdminBasePath(),
+    '/api-docs',
+    '/api/auth/signup',
+    '/api/auth/check-phone-available',
+    '/api/auth/verify-firebase-phone',
+    '/api/auth/recovery/',
+    '/api/auth/login',
+  ];
+}
 
 function isWhitelisted(path) {
-  return WHITELIST_PREFIXES.some(
+  return getWhitelistPrefixes().some(
     (prefix) => path === prefix || path.startsWith(`${prefix}/`) || path.startsWith(prefix),
   );
 }
