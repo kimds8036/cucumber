@@ -47,6 +47,17 @@ async function loadUserAuthState(userId) {
   return rows[0] || null;
 }
 
+async function loadAdminAuthState(adminId) {
+  const [rows] = await pool.execute(
+    `SELECT id, username, is_deleted
+     FROM admin_users
+     WHERE id = ?
+     LIMIT 1`,
+    [adminId],
+  );
+  return rows[0] || null;
+}
+
 function checkReverificationBlock(row) {
   const code = getReverificationBlockCode(row.reverification_status);
   if (!code) return null;
@@ -90,6 +101,39 @@ export const authenticate = async (req, res, next) => {
         message: '유효하지 않은 토큰입니다.',
         code: API_ERROR_CODES.INVALID_TOKEN,
       });
+    }
+
+    if (decoded.type === 'admin_session') {
+      if (decoded.adminMfa !== true) {
+        return res.status(403).json({
+          success: false,
+          message: '관리자 2차 인증(OTP)이 필요합니다.',
+          code: 'ADMIN_MFA_REQUIRED',
+        });
+      }
+      const adminId = Number(decoded.adminId ?? decoded.userId);
+      if (!Number.isFinite(adminId) || adminId <= 0) {
+        return res.status(401).json({
+          success: false,
+          message: '유효하지 않은 관리자 정보입니다.',
+        });
+      }
+      const adminRow = await loadAdminAuthState(adminId);
+      if (!adminRow || adminRow.is_deleted) {
+        return res.status(401).json({
+          success: false,
+          message: '유효하지 않은 관리자입니다.',
+        });
+      }
+      req.user = {
+        ...decoded,
+        adminId: adminRow.id,
+        userId: adminRow.id,
+        username: adminRow.username,
+        type: 'admin_session',
+        adminMfa: true,
+      };
+      return next();
     }
 
     const userId = Number(decoded.userId);

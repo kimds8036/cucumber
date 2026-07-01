@@ -3,14 +3,21 @@
 const mysql = require('mysql2/promise');
 const dotenv = require('dotenv');
 
-dotenv.config();
+dotenv.config({ path: require('path').join(__dirname, '../back/.env') });
 
+function requireEnv(name) {
+  const v = process.env[name];
+  if (!v || !String(v).trim()) throw new Error(`[FATAL] ${name} 환경변수가 필요합니다.`);
+  return String(v).trim();
+}
+
+const tunnelHost = process.env.DB_TUNNEL_HOST?.trim();
 const dbConfig = {
-  host: process.env.DB_HOST || '127.0.0.1',
-  port: Number(process.env.DB_PORT) || 3307,
-  user: process.env.DB_USER || 'cucumber',
-  password: process.env.DB_PASSWORD || 'cucumber0425',
-  database: process.env.DB_NAME || 'cucumber',
+  host: tunnelHost || process.env.DB_PRIVATE_HOST?.trim() || requireEnv('DB_HOST'),
+  port: Number(process.env.DB_TUNNEL_PORT || process.env.DB_PRIVATE_PORT || process.env.DB_PORT) || 3306,
+  user: requireEnv('DB_USER'),
+  password: requireEnv('DB_PASSWORD'),
+  database: requireEnv('DB_NAME'),
   timezone: 'Z',
 };
 

@@ -28,10 +28,12 @@ export function createUserAccessToken({ userId, username, tokenVersion = 0 }) {
 }
 
 /** 관리자 세션 (OTP 통과 후, 기본 30분) */
-export const generateAdminSessionToken = ({ userId, username }) => {
+export const generateAdminSessionToken = ({ adminId, userId, username }) => {
+  const id = Number(adminId ?? userId);
   return generateToken(
     {
-      userId,
+      adminId: id,
+      userId: id,
       username,
       type: 'admin_session',
       adminMfa: true,
@@ -52,10 +54,12 @@ export function getTokenExpiresAtMs(token) {
 }
 
 /** OTP 등록 1회용 (10분) */
-export const generateAdminOtpSetupToken = ({ userId, username }) => {
+export const generateAdminOtpSetupToken = ({ adminId, userId, username }) => {
+  const id = Number(adminId ?? userId);
   return generateToken(
     {
-      userId,
+      adminId: id,
+      userId: id,
       username,
       type: 'admin_otp_setup',
     },

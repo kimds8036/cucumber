@@ -10,7 +10,6 @@ import {
   verifyToken,
 } from '../utils/auth.js';
 import { authenticate } from '../middleware/auth.js';
-import { isAdminUser } from '../middleware/adminAuth.js';
 import {
   buildTotpQrDataUrl,
   confirmAdminTotpSecret,
@@ -61,8 +60,8 @@ function clearAdminCookie(res) {
   );
 }
 
-function issueAdminLoginSuccess(res, { userId, username }) {
-  const token = generateAdminSessionToken({ userId, username });
+function issueAdminLoginSuccess(res, { adminId, username }) {
+  const token = generateAdminSessionToken({ adminId, username });
   setAdminCookie(res, token);
   return res.json({
     success: true,
@@ -73,28 +72,25 @@ function issueAdminLoginSuccess(res, { userId, username }) {
 }
 
 async function validateAdminCredentials(username, password) {
-  const [users] = await pool.execute(
+  const [admins] = await pool.execute(
     `SELECT id, username, password, is_deleted
-     FROM users
+     FROM admin_users
      WHERE username = ?
      LIMIT 1`,
     [username],
   );
-  if (!users.length) {
+  if (!admins.length) {
     return { error: { status: 401, message: '아이디 또는 비밀번호가 올바르지 않습니다.' } };
   }
-  const user = users[0];
-  if (user.is_deleted) {
-    return { error: { status: 401, message: '탈퇴한 사용자입니다.' } };
+  const admin = admins[0];
+  if (admin.is_deleted) {
+    return { error: { status: 401, message: '비활성화된 관리자 계정입니다.' } };
   }
-  const ok = await comparePassword(password, user.password);
+  const ok = await comparePassword(password, admin.password);
   if (!ok) {
     return { error: { status: 401, message: '아이디 또는 비밀번호가 올바르지 않습니다.' } };
   }
-  if (!isAdminUser(user.id)) {
-    return { error: { status: 403, message: '관리자 권한이 없습니다.' } };
-  }
-  return { user };
+  return { admin };
 }
 
 router.get('/login', (req, res) => {
@@ -123,7 +119,7 @@ router.post('/login', async (req, res) => {
         message: cred.error.message,
       });
     }
-    const user = cred.user;
+    const admin = cred.admin;
 
     // OTP 등록 완료 단계 (setupToken + 6자리)
     if (setupToken && setupOtpCode) {
@@ -136,9 +132,10 @@ router.post('/login', async (req, res) => {
           message: 'OTP 등록 세션이 만료되었습니다. 다시 로그인해 주세요.',
         });
       }
+      const setupAdminId = Number(decoded.adminId ?? decoded.userId);
       if (
         decoded?.type !== 'admin_otp_setup' ||
-        Number(decoded.userId) !== Number(user.id)
+        setupAdminId !== Number(admin.id)
       ) {
         return res.status(401).json({
           success: false,
@@ -146,7 +143,7 @@ router.post('/login', async (req, res) => {
         });
       }
 
-      const pendingSecret = await getPendingTotpSecret(user.id);
+      const pendingSecret = await getPendingTotpSecret(admin.id);
       if (!pendingSecret || !(await verifyTotpCode(setupOtpCode, pendingSecret))) {
         return res.status(400).json({
           success: false,
@@ -154,29 +151,29 @@ router.post('/login', async (req, res) => {
         });
       }
 
-      await confirmAdminTotpSecret(user.id, pendingSecret);
+      await confirmAdminTotpSecret(admin.id, pendingSecret);
       return issueAdminLoginSuccess(res, {
-        userId: user.id,
-        username: user.username,
+        adminId: admin.id,
+        username: admin.username,
       });
     }
 
-    const totpRow = await getAdminTotpRow(user.id);
+    const totpRow = await getAdminTotpRow(admin.id);
     const hasConfirmedOtp = Boolean(totpRow?.confirmed_at);
 
     if (!hasConfirmedOtp) {
-      let pendingSecret = await getPendingTotpSecret(user.id);
+      let pendingSecret = await getPendingTotpSecret(admin.id);
       if (!pendingSecret) {
         pendingSecret = generateTotpSecret();
-        await createPendingTotpSecret(user.id, pendingSecret);
+        await createPendingTotpSecret(admin.id, pendingSecret);
       }
       const qrDataUrl = await buildTotpQrDataUrl({
         secret: pendingSecret,
-        username: user.username,
+        username: admin.username,
       });
       const newSetupToken = generateAdminOtpSetupToken({
-        userId: user.id,
-        username: user.username,
+        adminId: admin.id,
+        username: admin.username,
       });
       return res.json({
         success: false,
@@ -195,7 +192,7 @@ router.post('/login', async (req, res) => {
       });
     }
 
-    const secret = await getConfirmedTotpSecret(user.id);
+    const secret = await getConfirmedTotpSecret(admin.id);
     if (!secret || !(await verifyTotpCode(otpCode, secret))) {
       return res.status(401).json({
         success: false,
@@ -204,8 +201,8 @@ router.post('/login', async (req, res) => {
     }
 
     return issueAdminLoginSuccess(res, {
-      userId: user.id,
-      username: user.username,
+      adminId: admin.id,
+      username: admin.username,
     });
   } catch (error) {
     if (error?.code === 'OTP_ENCRYPTION_KEY_NOT_CONFIGURED') {
@@ -230,8 +227,7 @@ router.post('/logout', (req, res) => {
 
 /** 관리자 세션 연장 (30분 재발급) */
 router.post('/session/extend', authenticate, (req, res) => {
-  const userId = req.user?.userId;
-  if (!isAdminUser(userId)) {
+  if (req.user?.type !== 'admin_session') {
     return res.status(403).json({ success: false, message: '관리자 권한이 없습니다.' });
   }
   if (req.user?.adminMfa !== true) {
@@ -243,7 +239,7 @@ router.post('/session/extend', authenticate, (req, res) => {
   }
 
   const token = generateAdminSessionToken({
-    userId,
+    adminId: req.user.adminId ?? req.user.userId,
     username: req.user.username,
   });
   setAdminCookie(res, token);

@@ -839,7 +839,7 @@ router.patch('/reports/:reportId', requireAdminApi, async (req, res) => {
   if (!isAdminUser(reviewerId)) {
     return res.status(403).json({
       success: false,
-      message: '관리자 권한이 필요합니다. ADMIN_USER_IDS를 설정해주세요.',
+      message: '관리자 권한이 필요합니다.',
     });
   }
 

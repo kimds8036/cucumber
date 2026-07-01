@@ -1,21 +1,10 @@
 import mysql from 'mysql2/promise';
-import dotenv from 'dotenv';
-import path from 'path';
-import { fileURLToPath } from 'url';
-
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
-dotenv.config({ path: path.join(__dirname, '../../.env') });
+import { getDbConnectionOptions, getActiveTarget } from '../config/dbEnv.js';
 
 const START_TIME = new Date('2026-03-30T00:00:00');
 
 async function main() {
-  const connection = await mysql.createConnection({
-    host: process.env.DB_HOST || '127.0.0.1',
-    port: Number(process.env.DB_PORT) || 3307,
-    user: process.env.DB_USER || 'cucumber',
-    password: process.env.DB_PASSWORD || 'cucumber0425',
-    database: process.env.DB_NAME || 'cucumber',
-  });
+  const connection = await mysql.createConnection(getDbConnectionOptions(getActiveTarget()));
 
   try {
     console.log('🚀 DM 채팅 시드 생성 시작');
