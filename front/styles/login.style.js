@@ -217,6 +217,82 @@ export const createSignupStyles = (width, normalize) => {
       color: colors.textSecondary,
       lineHeight: normalize(20),
     },
+
+    // 재학증명서 가이드
+    certificateGuideContainer: {
+      overflow: 'hidden',
+    },
+    certificateGuideScroll: {
+      flex: 1,
+    },
+    certificateGuideScrollContent: {
+      paddingHorizontal: normalize(10),
+      paddingBottom: normalize(24),
+    },
+    certificateGuideStepBlock: {
+      marginBottom: normalize(10),
+      alignItems: 'center',
+    },
+    certificateGuideStepHeader: {
+      width: '100%',
+      flexDirection: 'row',
+      alignItems: 'baseline',
+      gap: normalize(10),
+    },
+    certificateGuideStepNumber: {
+      fontSize: normalize(fontSizes.guideStepNumber),
+      fontFamily: fonts.regular,
+      color: colors.background2,
+      lineHeight: normalize(45),
+    },
+    certificateGuideStepTitle: {
+      flex: 1,
+      fontSize: normalize(fontSizes.title),
+      fontFamily: fonts.bold,
+      color: colors.textPrimary,
+      lineHeight: normalize(28),
+    },
+    certificateGuideStepDescription: {
+      width: '100%',
+      fontSize: normalize(fontSizes.xl),
+      fontFamily: fonts.regular,
+      color: colors.textSecondary,
+      lineHeight: normalize(22),
+      marginBottom: normalize(10),
+    },
+    certificateGuideStepDescriptionBold: {
+      fontFamily: fonts.bold,
+      color: colors.primaryDark,
+    },
+    certificateGuideStepImage: {
+      width: width * 0.68,
+      height: width * 0.68 * 1.85,
+    },
+    certificateGuideButtonSection: {
+      width: '100%',
+      alignItems: 'center',
+      paddingTop: normalize(8),
+      gap: normalize(12),
+    },
+    certificateGuideScrollHint: {
+      fontSize: normalize(fontSizes.lg),
+      fontFamily: fonts.regular,
+      color: colors.textSecondary,
+      textAlign: 'center',
+    },
+    nextButtonDisabled: {
+      backgroundColor: colors.textLight20,
+    },
+
+    // 재학증명서 제출 입력
+    certificateSubmitContainer: {
+      flex: 1,
+      minHeight: 0,
+    },
+    certificateSubmitLabelSpaced: {
+      marginTop: normalize(8),
+    },
+
     // 입력 필드
     inputLabel: {
       fontSize: normalize(fontSizes.xxl),
