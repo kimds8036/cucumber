@@ -62,9 +62,10 @@ function clearAdminCookie(res) {
   );
 }
 
-function issueAdminLoginSuccess(res, { adminId, username }) {
-  const token = generateAdminSessionToken({ adminId, username });
+function issueAdminLoginSuccess(res, { adminId, username, role }) {
+  const token = generateAdminSessionToken({ adminId, username, role });
   setAdminCookie(res, token);
+  pool.execute(`UPDATE admin_users SET last_login_at = NOW() WHERE id = ?`, [adminId]).catch(() => {});
   return res.json({
     success: true,
     message: '로그인 성공',
@@ -75,7 +76,7 @@ function issueAdminLoginSuccess(res, { adminId, username }) {
 
 async function validateAdminCredentials(username, password) {
   const [admins] = await pool.execute(
-    `SELECT id, username, password, is_deleted
+    `SELECT id, username, password, name, role, is_deleted
      FROM admin_users
      WHERE username = ?
      LIMIT 1`,
@@ -158,6 +159,7 @@ router.post('/login', async (req, res) => {
       return issueAdminLoginSuccess(res, {
         adminId: admin.id,
         username: admin.username,
+        role: admin.role,
       });
     }
 
@@ -206,6 +208,7 @@ router.post('/login', async (req, res) => {
     return issueAdminLoginSuccess(res, {
       adminId: admin.id,
       username: admin.username,
+      role: admin.role,
     });
   } catch (error) {
     if (error?.code === 'OTP_ENCRYPTION_KEY_NOT_CONFIGURED') {
@@ -243,6 +246,7 @@ router.post('/session/extend', authenticate, (req, res) => {
   const token = generateAdminSessionToken({
     adminId: req.user.adminId ?? req.user.userId,
     username: req.user.username,
+    role: req.user.adminRole ?? req.user.role,
   });
   setAdminCookie(res, token);
   return res.json({

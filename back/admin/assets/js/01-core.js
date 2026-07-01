@@ -45,6 +45,53 @@ function adminUrl(subpath) {
     });
   }
 
+  function closeAdminSidebar() {
+    document.body.classList.remove('sidebar-open');
+    const toggle = document.getElementById('sidebar-toggle');
+    const overlay = document.getElementById('sidebar-overlay');
+    if (toggle) {
+      toggle.setAttribute('aria-expanded', 'false');
+      toggle.setAttribute('aria-label', '메뉴 열기');
+    }
+    if (overlay) overlay.setAttribute('aria-hidden', 'true');
+  }
+
+  function openAdminSidebar() {
+    const mq = window.matchMedia('(max-width: 768px)');
+    if (!mq.matches) return;
+    const toggle = document.getElementById('sidebar-toggle');
+    const overlay = document.getElementById('sidebar-overlay');
+    document.body.classList.add('sidebar-open');
+    if (toggle) {
+      toggle.setAttribute('aria-expanded', 'true');
+      toggle.setAttribute('aria-label', '메뉴 닫기');
+    }
+    if (overlay) overlay.setAttribute('aria-hidden', 'false');
+  }
+
+  function initSidebarDrawer() {
+    const toggle = document.getElementById('sidebar-toggle');
+    const overlay = document.getElementById('sidebar-overlay');
+    if (!toggle || !overlay) return;
+
+    const mq = window.matchMedia('(max-width: 768px)');
+
+    toggle.addEventListener('click', () => {
+      if (document.body.classList.contains('sidebar-open')) closeAdminSidebar();
+      else openAdminSidebar();
+    });
+
+    overlay.addEventListener('click', closeAdminSidebar);
+
+    mq.addEventListener('change', (e) => {
+      if (!e.matches) closeAdminSidebar();
+    });
+
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') closeAdminSidebar();
+    });
+  }
+
   function ensureAdminAuth() {
     if (!getAdminToken()) {
       window.location.href = adminUrl('/login');
@@ -146,12 +193,16 @@ function adminUrl(subpath) {
     processedInquiries: { title: '문의 처리 이력', sub: '답변 완료 / 종결 문의 — 재오픈 가능' },
     users: { title: '사용자 제재 현황', sub: '경고 / 임시정지 / 화이트리스트' },
     attendance: { title: '등교 현황', sub: '출석 통계 · 미등교 의심 사용자' },
+    emergency: { title: '비상 제어', sub: '긴급 스위치 · 유지보수 모드' },
+    adminAccounts: { title: '관리자 계정', sub: '계정·역할 관리 (최고관리자)' },
     studentIds: { title: '가입 학생증', sub: '회원가입 학생증 수동 검수 — 승인 / 거절' },
     reverificationIds: { title: '재인증 학생증', sub: '학년도 재인증·학교 전환 검수 — 승인 / 거절' },
     logs: { title: '변경 이력 (Audit Log)', sub: '모든 판정 및 상태 변경 기록' },
   };
 
   const state = {
+    adminProfile: null,
+    loadedPanels: new Set(),
     studentIdSubmissions: [],
     reverificationIdSubmissions: [],
     reports: [],
@@ -170,6 +221,10 @@ function adminUrl(subpath) {
     selectedInquiryId: null,
     selectedProcessedInquiryId: null,
     inquiryReopenId: null,
+    logs: [],
+    logsPagination: { page: 1, limit: 50, total: 0 },
+    emergencyFlags: null,
+    adminAccounts: [],
   };
 
   function threadKeyOf(report) {
@@ -239,6 +294,11 @@ function adminUrl(subpath) {
     if (a === 'inquiry_close') return '문의 종결(inquiry_close)';
     if (a === 'inquiry_reopen') return '문의 재오픈(inquiry_reopen)';
     if (a === 'inquiry_delete') return '문의 삭제(inquiry_delete)';
+    if (a === 'system_flags_update') return '시스템 플래그(system_flags_update)';
+    if (a === 'admin_account_create') return '관리자 생성(admin_account_create)';
+    if (a === 'admin_account_update') return '관리자 수정(admin_account_update)';
+    if (a === 'user_shadow_mute') return '섀도우 뮤트(user_shadow_mute)';
+    if (a === 'user_shadow_unmute') return '섀도우 해제(user_shadow_unmute)';
     return a || '-';
   }
 
@@ -308,7 +368,85 @@ function adminUrl(subpath) {
     return data;
   }
 
+  function getAdminRole() {
+    return window.__ADMIN_ROLE__ || state.adminProfile?.role || 'moderator';
+  }
+
+  function canAccessPanel(panel) {
+    const r = getAdminRole();
+    if (r === 'super') return true;
+    const map = {
+      dashboard: ['moderator', 'support', 'verifier'],
+      reports: ['moderator'],
+      processedReports: ['moderator'],
+      appeals: ['moderator'],
+      inquiries: ['moderator', 'support'],
+      processedInquiries: ['moderator', 'support'],
+      studentIds: ['moderator', 'verifier'],
+      reverificationIds: ['moderator', 'verifier'],
+      attendance: ['moderator'],
+      users: ['moderator'],
+      logs: ['moderator', 'support'],
+      emergency: ['super'],
+      adminAccounts: ['super'],
+    };
+    return (map[panel] || []).includes(r);
+  }
+
+  function applyRoleNavVisibility() {
+    document.querySelectorAll('.nav-item[data-panel]').forEach((el) => {
+      const panel = el.getAttribute('data-panel');
+      el.style.display = canAccessPanel(panel) ? '' : 'none';
+    });
+  }
+
+  async function loadAdminProfile() {
+    const { data } = await api('/accounts/me');
+    state.adminProfile = data;
+    window.__ADMIN_ROLE__ = data.role;
+    applyRoleNavVisibility();
+    const roleEl = document.getElementById('topbar-admin-role');
+    if (roleEl) {
+      const labels = { super: '최고관리자', moderator: '운영', support: '문의', verifier: '인증' };
+      roleEl.textContent = labels[data.role] || data.role;
+    }
+    return data;
+  }
+
+  async function ensurePanelLoaded(page) {
+    if (state.loadedPanels.has(page)) return;
+    const loader = window.PANEL_LOADERS?.[page];
+    if (typeof loader === 'function') {
+      await loader();
+      state.loadedPanels.add(page);
+    }
+  }
+
+  async function refreshNavBadges() {
+    try {
+      const tasks = [
+        api('/signup-student-ids?status=pending&purpose=signup&limit=50').then((r) => {
+          setNavBadge('badge-student-ids', (r.data?.submissions || []).length);
+        }),
+        api('/signup-student-ids?status=pending&purpose=reverification&limit=50').then((r) => {
+          setNavBadge('badge-reverification-ids', (r.data?.submissions || []).length);
+        }),
+        api('/attendance/suspicious?days=14&limit=1').then((r) => {
+          setNavBadge('badge-attendance-suspicious', r.data?.totalSuspicious || 0);
+        }),
+      ];
+      await Promise.allSettled(tasks);
+    } catch {
+      // non-fatal
+    }
+  }
+
   function go(page) {
+    if (!canAccessPanel(page)) {
+      alert('이 메뉴에 접근할 권한이 없습니다.');
+      return;
+    }
+    closeAdminSidebar();
     document.querySelectorAll('.nav-item').forEach((n) => n.classList.remove('active'));
     document.querySelectorAll('.panel').forEach((p) => p.classList.remove('active'));
     document.querySelectorAll('.nav-item').forEach((n) => {
@@ -319,9 +457,7 @@ function adminUrl(subpath) {
     const m = PAGE_META[page];
     document.getElementById('topbar-title').textContent = m.title;
     document.getElementById('topbar-sub').textContent = m.sub;
-    if (page === 'studentIds') loadStudentIds();
-    if (page === 'reverificationIds') loadReverificationIds();
-    if (page === 'attendance') loadAttendance();
+    ensurePanelLoaded(page).catch((e) => alert(e.message));
   }
 
   function purposeLabel(purpose) {

@@ -13,6 +13,7 @@ import {
 import { cloudinary, upload } from '../config/cloudinary.js';
 import { haversineKm, sqlHaversineKmLessOrEqual } from '../utils/geo.js';
 import { appendUserBlockFilter } from '../utils/userBlockFilter.js';
+import { blockWhenFlag } from '../middleware/systemFlags.js';
 import { isBlockedBy } from '../utils/userBlock.js';
 import { submitContentReport } from '../services/reportSubmission.service.js';
 const router = express.Router();
@@ -1206,7 +1207,7 @@ router.get('/:id', optionalAuthenticate, async (req, res) => {
 });
 
 // 게시글 작성
-router.post('/', authenticate, upload.array('images', 5), validate(postCreateValidators), async (req, res) => {
+router.post('/', authenticate, blockWhenFlag('post_write_disabled'), upload.array('images', 5), validate(postCreateValidators), async (req, res) => {
   try {
     const userId = req.user.userId;
     const { boardType, schoolId, content, tags } = req.body;
@@ -1546,7 +1547,7 @@ router.post('/:id/scrap', authenticate, async (req, res) => {
 });
 
 // 게시글 신고
-router.post('/:id/report', authenticate, validate(postReportValidators), async (req, res) => {
+router.post('/:id/report', authenticate, blockWhenFlag('report_submission_disabled'), validate(postReportValidators), async (req, res) => {
   try {
     const reporterId = req.user.userId;
     const { id } = req.params;

@@ -29,6 +29,8 @@ import adminInquiriesRoutes from './routes/adminInquiries.js';
 import adminSignupCertificatesRoutes from './routes/adminSignupCertificates.js';
 import adminSignupStudentIdsRoutes from './routes/adminSignupStudentIds.js';
 import adminAttendanceRoutes from './routes/adminAttendance.js';
+import adminSystemRoutes from './routes/adminSystem.js';
+import adminAccountsRoutes from './routes/adminAccounts.js';
 import adminWebRoutes from './routes/adminWeb.js';
 import { getAdminBasePath } from './config/adminPath.js';
 import inquiriesRoutes from './routes/inquiries.js';
@@ -49,6 +51,11 @@ import { getBatchRedis, isRedisConfigured } from './services/batchRedis.service.
 import { ensurePersonalMailSchema } from './db/ensurePersonalMailSchema.js';
 import { isProductionEnv, sendErrorResponse } from './utils/httpError.js';
 import { requireMinAppVersion } from './middleware/requireMinAppVersion.js';
+import {
+  attachSystemFlags,
+  blockGlobalReadonlyWrites,
+  blockLockedSchoolWrite,
+} from './middleware/systemFlags.js';
 
 
 dotenv.config();
@@ -138,7 +145,34 @@ const generalLimiter = rateLimit({
   ...(apiRateLimitStore ? { store: apiRateLimitStore } : {}),
   message: { success: false, message: '요청이 너무 많습니다. 잠시 후 다시 시도해주세요.' },
 });
-app.use('/api', generalLimiter);
+
+const strictApiLimiter = rateLimit({
+  windowMs: 1 * 60 * 1000,
+  max: Number(process.env.RATE_LIMIT_STRICT_API_PER_MIN || 60),
+  standardHeaders: true,
+  legacyHeaders: false,
+  ...(apiRateLimitStore ? { store: apiRateLimitStore } : {}),
+  message: { success: false, message: '비상 제한 모드입니다. 잠시 후 다시 시도해주세요.' },
+});
+
+async function apiRateLimitGate(req, res, next) {
+  try {
+    const { getSystemFlags } = await import('./services/systemFlags.service.js');
+    const flags = await getSystemFlags();
+    if (flags.rate_limit_strict_mode) {
+      return strictApiLimiter(req, res, next);
+    }
+  } catch {
+    // fall through
+  }
+  return generalLimiter(req, res, next);
+}
+app.use('/api', apiRateLimitGate);
+
+// 시스템 플래그 (비상 스위치)
+app.use('/api', attachSystemFlags);
+app.use('/api', blockGlobalReadonlyWrites);
+app.use('/api', blockLockedSchoolWrite);
 
 const adminBasePath = getAdminBasePath();
 
@@ -241,6 +275,8 @@ app.use('/api/admin/inquiries', adminInquiriesRoutes);
 app.use('/api/admin/signup-certificates', adminSignupCertificatesRoutes);
 app.use('/api/admin/signup-student-ids', adminSignupStudentIdsRoutes);
 app.use('/api/admin/attendance', adminAttendanceRoutes);
+app.use('/api/admin/system', adminSystemRoutes);
+app.use('/api/admin/accounts', adminAccountsRoutes);
 app.use('/api/test', testRoutes);
 
 // ============ 글로벌 에러 핸들러 ============

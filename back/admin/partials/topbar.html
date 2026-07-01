@@ -1,8 +1,21 @@
 <div class="topbar">
+      <button
+        type="button"
+        class="sidebar-toggle"
+        id="sidebar-toggle"
+        aria-label="메뉴 열기"
+        aria-expanded="false"
+        aria-controls="admin-sidebar"
+      >
+        <span class="sidebar-toggle-bar" aria-hidden="true"></span>
+        <span class="sidebar-toggle-bar" aria-hidden="true"></span>
+        <span class="sidebar-toggle-bar" aria-hidden="true"></span>
+      </button>
       <div class="topbar-heading">
         <div class="topbar-title-row">
           <div class="topbar-title" id="topbar-title">대시보드</div>
           <span class="env-badge" data-deploy-env-badge>DEVELOP</span>
+          <span class="pill pill-white" id="topbar-admin-role">운영</span>
         </div>
         <div class="topbar-sub" id="topbar-sub">실시간 운영 지표</div>
       </div>

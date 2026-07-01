@@ -2,6 +2,7 @@ import express from 'express';
 import pool from '../config/database.js';
 import { requireAdminApi, isAdminUser } from '../middleware/adminAuth.js';
 import { getNowForDB } from '../utils/dateUtils.js';
+import { getAdminDashboardStats, mapDashboardStatsToApi } from '../services/adminStats.service.js';
 
 const router = express.Router();
 
@@ -46,28 +47,14 @@ router.get('/stats', requireAdminApi, async (req, res) => {
     return res.status(403).json({ success: false, message: '관리자 권한이 필요합니다.' });
   }
   try {
-    const [todayNewRows] = await pool.execute(
-      `SELECT COUNT(*) AS c
-       FROM inquiries
-       WHERE is_deleted = FALSE
-         AND DATE(created_at) = DATE(UTC_TIMESTAMP())`
-    );
-    const [pendingRows] = await pool.execute(
-      `SELECT COUNT(*) AS c FROM inquiries WHERE status = 'pending' AND is_deleted = FALSE`
-    );
-    const [todayAnsweredRows] = await pool.execute(
-      `SELECT COUNT(*) AS c
-       FROM inquiries
-       WHERE answered_at IS NOT NULL
-         AND DATE(answered_at) = DATE(UTC_TIMESTAMP())`
-    );
-
+    const stats = await getAdminDashboardStats();
+    const mapped = mapDashboardStatsToApi(stats);
     return res.json({
       success: true,
       data: {
-        todayNewInquiries: Number(todayNewRows[0]?.c ?? 0),
-        pendingInquiries: Number(pendingRows[0]?.c ?? 0),
-        todayAnsweredInquiries: Number(todayAnsweredRows[0]?.c ?? 0),
+        todayNewInquiries: mapped.todayNewInquiries,
+        pendingInquiries: mapped.pendingInquiries,
+        todayAnsweredInquiries: mapped.todayAnsweredInquiries,
       },
     });
   } catch (error) {

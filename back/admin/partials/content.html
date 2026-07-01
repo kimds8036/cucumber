@@ -300,7 +300,9 @@
         </div>
 
         <div class="section-title">일별 등교 체크 (막대 = 체크 수, 회색 = 주말)</div>
-        <div class="attendance-chart" id="attendance-chart"></div>
+        <div class="chart-container">
+          <div class="attendance-chart" id="attendance-chart"></div>
+        </div>
 
         <div class="section-title" style="margin-top:24px">미등교 의심 사용자 (거짓 학생 후보)</div>
         <p class="section-hint">기간 내 평일 등교율이 낮거나 등교 0회인 인증 학생입니다. 임시/영구 정지로 대응할 수 있습니다.</p>
@@ -366,6 +368,9 @@
             <option value="inquiry_close">문의 종결(inquiry_close)</option>
             <option value="inquiry_reopen">문의 재오픈(inquiry_reopen)</option>
             <option value="inquiry_delete">문의 삭제(inquiry_delete)</option>
+            <option value="system_flags_update">시스템 플래그(system_flags_update)</option>
+            <option value="admin_account_create">관리자 생성(admin_account_create)</option>
+            <option value="user_shadow_mute">섀도우 뮤트(user_shadow_mute)</option>
           </select>
           <input type="date" id="logs-from-date">
           <input type="date" id="logs-to-date">
@@ -386,6 +391,19 @@
             <tbody id="logs-tbody"></tbody>
           </table>
         </div>
+        <div class="filter-row" id="logs-pagination" style="margin-top:12px"></div>
+      </div>
+
+      <!-- ────────── 비상 제어 ────────── -->
+      <div class="panel" id="panel-emergency">
+        <p class="section-hint">긴급 상황 시 서비스 일부를 즉시 제한합니다. 적용 시 OTP 확인과 사유 입력이 필요합니다.</p>
+        <div id="emergency-flags-host"></div>
+      </div>
+
+      <!-- ────────── 관리자 계정 ────────── -->
+      <div class="panel" id="panel-adminAccounts">
+        <p class="section-hint">관리자 계정 생성·역할 변경·비활성화. 최고관리자(super)만 접근 가능합니다.</p>
+        <div id="admin-accounts-host"></div>
       </div>
 
     </div>

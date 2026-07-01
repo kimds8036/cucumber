@@ -13,6 +13,7 @@ import {
   getDeviceInfo
 } from '../utils/auth.js';
 import { validatePhone, validateUsername, validatePassword, validateBirthDate } from '../utils/validation.js';
+import { blockWhenFlag } from '../middleware/systemFlags.js';
 import { authenticate } from '../middleware/auth.js';
 import { validate } from '../middleware/validate.js';
 // OCR 자동 인증 — 수동 검수 전환으로 당분간 미사용 (studentIdOcr.service.js 참고)
@@ -743,7 +744,7 @@ router.post('/recovery/reset-password', validate(recoveryResetValidators), async
 });
 
 // 회원가입
-router.post('/signup', validate(signupValidators), async (req, res) => {
+router.post('/signup', blockWhenFlag('signup_disabled'), validate(signupValidators), async (req, res) => {
   try {
     const { 
       username, 

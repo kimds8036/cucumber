@@ -1,3 +1,18 @@
+let lastAttendanceOverview = null;
+let attendanceResizeBound = false;
+
+function bindAttendanceChartResize() {
+  if (attendanceResizeBound) return;
+  attendanceResizeBound = true;
+  let timer;
+  window.addEventListener('resize', () => {
+    clearTimeout(timer);
+    timer = setTimeout(() => {
+      if (lastAttendanceOverview) renderAttendanceChart(lastAttendanceOverview);
+    }, 150);
+  });
+}
+
 async function loadAttendance() {
   const days = document.getElementById('attendance-days')?.value || '14';
   const maxRate = document.getElementById('attendance-max-rate')?.value || '0.25';
@@ -25,6 +40,8 @@ async function loadAttendance() {
 
   setNavBadge('badge-attendance-suspicious', suspicious.totalSuspicious || 0);
 
+  lastAttendanceOverview = overview;
+  bindAttendanceChartResize();
   renderAttendanceChart(overview);
   renderSuspiciousUsers(suspicious.users || []);
 }

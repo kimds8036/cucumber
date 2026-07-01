@@ -28,13 +28,14 @@ export function createUserAccessToken({ userId, username, tokenVersion = 0 }) {
 }
 
 /** 관리자 세션 (OTP 통과 후, 기본 30분) */
-export const generateAdminSessionToken = ({ adminId, userId, username }) => {
+export const generateAdminSessionToken = ({ adminId, userId, username, role }) => {
   const id = Number(adminId ?? userId);
   return generateToken(
     {
       adminId: id,
       userId: id,
       username,
+      role: role || 'moderator',
       type: 'admin_session',
       adminMfa: true,
     },

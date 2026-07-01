@@ -1,25 +1,36 @@
-async function bootstrap() {
-    if (!ensureAdminAuth()) return;
-    initDeployEnvBadge();
-    initSessionTimer();
-    initAdminHistoryGuard();
-    try {
-      await Promise.all([
-        loadDashboard(),
-        loadReports(),
-        loadProcessedReports(),
-        loadAppeals(),
-        loadInquiries(),
-        loadProcessedInquiries(),
-        loadStudentIds(),
-        loadReverificationIds(),
-        loadUsers(),
-        loadLogs(),
-      ]);
-      await loadDelayed();
-    } catch (error) {
-      alert(`관리자 데이터 로딩 실패: ${error.message}\n\n세션 쿠키·admin_users·백엔드 서버 상태를 확인해주세요.`);
-    }
-  }
+window.PANEL_LOADERS = {
+  dashboard: async () => {
+    await loadDashboard();
+    await loadDelayed();
+  },
+  reports: () => loadReports(),
+  processedReports: () => loadProcessedReports(),
+  appeals: () => loadAppeals(),
+  inquiries: () => loadInquiries(),
+  processedInquiries: () => loadProcessedInquiries(),
+  studentIds: () => loadStudentIds(),
+  reverificationIds: () => loadReverificationIds(),
+  attendance: () => loadAttendance(),
+  users: () => loadUsers(),
+  logs: () => loadLogs(),
+  emergency: () => loadEmergencyFlags(),
+  adminAccounts: () => loadAdminAccounts(),
+};
 
-  bootstrap();
+async function bootstrap() {
+  if (!ensureAdminAuth()) return;
+  initDeployEnvBadge();
+  initSidebarDrawer();
+  initSessionTimer();
+  initAdminHistoryGuard();
+  try {
+    await loadAdminProfile();
+    await loadDashboard();
+    state.loadedPanels.add('dashboard');
+    await refreshNavBadges();
+  } catch (error) {
+    alert(`관리자 초기화 실패: ${error.message}\n\n세션·백엔드 상태를 확인해주세요.`);
+  }
+}
+
+bootstrap();

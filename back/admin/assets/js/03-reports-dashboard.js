@@ -1,21 +1,16 @@
 async function loadDashboard() {
     const { data } = await api('/stats');
-    document.getElementById('stat-today-new').textContent = String(data.todayNewReports);
-    document.getElementById('stat-pending-reports').textContent = String(data.pendingReports);
-    document.getElementById('stat-pending-appeals').textContent = String(data.pendingAppeals);
-    document.getElementById('stat-today-handled').textContent = String(data.todayHandledReports);
-    setNavBadge('badge-reports', data.pendingReports);
-    setNavBadge('badge-appeals', data.pendingAppeals);
-
-    try {
-      const res = await api('/inquiries/stats');
-      const d = res.data || {};
-      document.getElementById('stat-pending-inquiries').textContent = String(d.pendingInquiries || 0);
-      document.getElementById('stat-today-answered-inquiries').textContent = String(d.todayAnsweredInquiries || 0);
-      setNavBadge('badge-inquiries', d.pendingInquiries || 0);
-    } catch (e) {
-      // 통계 실패는 비치명
-    }
+    document.getElementById('stat-today-new').textContent = String(data.todayNewReports || 0);
+    document.getElementById('stat-pending-reports').textContent = String(data.pendingReports || 0);
+    document.getElementById('stat-pending-appeals').textContent = String(data.pendingAppeals || 0);
+    document.getElementById('stat-today-handled').textContent = String(data.todayHandledReports || 0);
+    document.getElementById('stat-pending-inquiries').textContent = String(data.pendingInquiries || 0);
+    document.getElementById('stat-today-answered-inquiries').textContent = String(
+      data.todayAnsweredInquiries || 0,
+    );
+    setNavBadge('badge-reports', data.pendingReports || 0);
+    setNavBadge('badge-appeals', data.pendingAppeals || 0);
+    setNavBadge('badge-inquiries', data.pendingInquiries || 0);
   }
 
   function renderReports() {

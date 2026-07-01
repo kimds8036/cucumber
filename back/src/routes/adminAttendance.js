@@ -1,9 +1,9 @@
 import express from 'express';
 import { requireAdminApi } from '../middleware/adminAuth.js';
-import {
-  getAttendanceOverview,
-  getSuspiciousLowAttendance,
-} from '../services/adminAttendance.service.js';
+import { getAttendanceOverview } from '../services/adminAttendance.service.js';
+import { getSuspiciousFromFlags } from '../services/attendanceSuspicion.service.js';
+import { getSuspiciousLowAttendance } from '../services/adminAttendance.service.js';
+import { refreshAttendanceSuspicionFlags } from '../services/attendanceSuspicion.service.js';
 
 const router = express.Router();
 
@@ -22,12 +22,26 @@ router.get('/overview', requireAdminApi, async (req, res) => {
 
 router.get('/suspicious', requireAdminApi, async (req, res) => {
   try {
-    const data = await getSuspiciousLowAttendance({
-      days: req.query.days,
-      maxRate: req.query.maxRate,
-      minAccountDays: req.query.minAccountDays,
-      limit: req.query.limit,
-    });
+    const days = req.query.days;
+    const maxRate = req.query.maxRate;
+    const minAccountDays = req.query.minAccountDays;
+    const limit = req.query.limit;
+    const refresh = req.query.refresh === '1';
+
+    if (refresh) {
+      await refreshAttendanceSuspicionFlags({ days, maxRate, minAccountDays });
+    }
+
+    let data = await getSuspiciousFromFlags({ days, maxRate, limit });
+    if (!data.fromCache || refresh) {
+      const live = await getSuspiciousLowAttendance({
+        days,
+        maxRate,
+        minAccountDays,
+        limit,
+      });
+      data = { ...live, fromCache: false, computedAt: new Date().toISOString() };
+    }
     return res.json({ success: true, data });
   } catch (error) {
     console.error('관리자 등교 suspicious 오류:', error);

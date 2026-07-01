@@ -81,6 +81,7 @@ async function loadAppeals() {
               ${u.is_whitelisted ? '<span class="pill pill-white" style="margin-left:8px;font-size:10px">화이트리스트</span>' : ''}
               ${u.is_banned ? '<span class="pill pill-danger" style="margin-left:8px;font-size:10px">영구 정지</span>' : ''}
               ${u.is_suspended && !u.is_banned ? '<span class="pill pill-warn" style="margin-left:8px;font-size:10px">임시 정지</span>' : ''}
+              ${u.is_shadow_muted ? '<span class="pill pill-warn" style="margin-left:8px;font-size:10px">섀도우 뮤트</span>' : ''}
             </div>
             <div class="user-sub">${esc(u.name || '-')}</div>
           </div>
@@ -98,6 +99,9 @@ async function loadAppeals() {
             ? `<button class="btn btn-sm btn-red" onclick="unwhitelistUser(${u.id})">화이트리스트 해제</button>`
             : `<button class="btn btn-sm" onclick="whitelistUser(${u.id})">화이트리스트 추가</button>`}
           <button class="btn btn-sm btn-red" onclick="banUser(${u.id})">영구 정지</button>
+          ${u.is_shadow_muted
+            ? `<button class="btn btn-sm" onclick="shadowMuteUser(${u.id}, false)">섀도우 해제</button>`
+            : `<button class="btn btn-sm btn-amber" onclick="shadowMuteUser(${u.id}, true)">섀도우 뮤트</button>`}
           <span style="margin-left:auto;font-size:11px;color:var(--text-tertiary)">${u.suspended_until ? `정지 해제 예정: ${fmtDate(u.suspended_until)}` : ''}</span>
         </div>
       </div>
@@ -140,11 +144,25 @@ async function loadAppeals() {
   }
 
   async function banUser(uid) {
-    if (!confirm(`UID #${uid}을 영구 정지하시겠습니까?`)) return;
+    if (!confirm(`UID #${uid}을 영구 정지하시겠습니까?\n(최고관리자 권한 필요)`)) return;
     try {
       await api(`/users/${uid}/ban`, { method: 'POST' });
       await Promise.all([loadUsers(), loadLogs()]);
       alert('영구 정지 처리되었습니다.');
+    } catch (error) {
+      alert(error.message);
+    }
+  }
+
+  async function shadowMuteUser(uid, enabled) {
+    const reason = prompt(enabled ? '섀도우 뮤트 사유 (선택)' : '해제 사유 (선택)') || '';
+    try {
+      await api(`/users/${uid}/shadow-mute`, {
+        method: 'POST',
+        body: JSON.stringify({ enabled, reason }),
+      });
+      await Promise.all([loadUsers(), loadLogs()]);
+      alert(enabled ? '섀도우 뮤트를 적용했습니다.' : '섀도우 뮤트를 해제했습니다.');
     } catch (error) {
       alert(error.message);
     }
@@ -158,7 +176,7 @@ async function loadAppeals() {
     }
   }
 
-  async function loadLogs() {
+  async function loadLogs(page = 1) {
     const qInput = document.getElementById('logs-search-q')?.value?.trim() || '';
     const action = document.getElementById('logs-action')?.value || '';
     const fromDate = document.getElementById('logs-from-date')?.value || '';
@@ -168,14 +186,16 @@ async function loadAppeals() {
     if (action) qs.set('action', action);
     if (fromDate) qs.set('fromDate', fromDate);
     if (toDate) qs.set('toDate', toDate);
+    qs.set('page', String(page));
+    qs.set('limit', '50');
     const { data } = await api(`/logs?${qs.toString()}`);
     const list = data.logs || [];
+    state.logsPagination = data.pagination || { page, limit: 50, total: list.length };
     const tbody = document.getElementById('logs-tbody');
     if (!list.length) {
       tbody.innerHTML = `<tr><td colspan="5" class="txt-muted">변경 이력이 없습니다.</td></tr>`;
-      return;
-    }
-    tbody.innerHTML = list.map((l) => `
+    } else {
+      tbody.innerHTML = list.map((l) => `
       <tr>
         <td class="txt-muted">${fmtDate(l.created_at)}</td>
         <td>admin #${esc(l.admin_user_id)}</td>
@@ -184,6 +204,17 @@ async function loadAppeals() {
         <td style="color:var(--text-secondary)">${esc(l.note || '-')}</td>
       </tr>
     `).join('');
+    }
+    const pag = document.getElementById('logs-pagination');
+    if (pag) {
+      const { page: p, limit, total } = state.logsPagination;
+      const maxPage = Math.max(1, Math.ceil(total / limit));
+      pag.innerHTML = `
+        <span class="txt-muted">총 ${total}건 · ${p}/${maxPage}페이지</span>
+        <button class="btn btn-sm" ${p <= 1 ? 'disabled' : ''} onclick="loadLogs(${p - 1})">이전</button>
+        <button class="btn btn-sm" ${p >= maxPage ? 'disabled' : ''} onclick="loadLogs(${p + 1})">다음</button>
+      `;
+    }
   }
 
   async function applyLogsFilter() {
@@ -195,7 +226,16 @@ async function loadAppeals() {
   }
 
   async function loadDelayed() {
-    const delayed = state.reports.filter((r) => {
+    let source = state.reports;
+    if (!source.length) {
+      try {
+        const { data } = await api('/reports?view=pending&limit=200');
+        source = data.reports || [];
+      } catch {
+        source = [];
+      }
+    }
+    const delayed = source.filter((r) => {
       const created = new Date(r.created_at).getTime();
       if (!created) return false;
       const diffDays = (Date.now() - created) / (1000 * 60 * 60 * 24);

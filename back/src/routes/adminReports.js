@@ -4,6 +4,13 @@ import { incrementTokenVersion } from '../services/session.service.js';
 import { revokeAllRefreshTokens } from '../services/refreshToken.service.js';
 import { notifyUserSessionRevoked } from '../services/sessionRevoke.service.js';
 import { requireAdminApi, isAdminUser } from '../middleware/adminAuth.js';
+import { requireAdminRole } from '../middleware/adminRoles.js';
+import { ADMIN_ROLES } from '../constants/adminRoles.js';
+import {
+  getAdminDashboardStats,
+  mapDashboardStatsToApi,
+} from '../services/adminStats.service.js';
+import { writeUserSanction } from '../services/userSanctions.service.js';
 import { getNowForDB } from '../utils/dateUtils.js';
 import {
   softDeletePostComment,
@@ -135,30 +142,10 @@ router.get('/stats', requireAdminApi, async (req, res) => {
     return res.status(403).json({ success: false, message: '관리자 권한이 필요합니다.' });
   }
   try {
-    const [todayNewRows] = await pool.execute(
-      `SELECT COUNT(*) AS c
-       FROM reports
-       WHERE DATE(created_at) = DATE(UTC_TIMESTAMP())`
-    );
-    const [pendingRows] = await pool.execute(`SELECT COUNT(*) AS c FROM reports WHERE status = 'pending'`);
-    const [appealPendingRows] = await pool.execute(
-      `SELECT COUNT(*) AS c FROM report_appeals WHERE status = 'pending'`
-    );
-    const [todayHandledRows] = await pool.execute(
-      `SELECT COUNT(*) AS c
-       FROM reports
-       WHERE reviewed_at IS NOT NULL
-         AND DATE(reviewed_at) = DATE(UTC_TIMESTAMP())`
-    );
-
+    const stats = await getAdminDashboardStats({ refresh: req.query.refresh === '1' });
     res.json({
       success: true,
-      data: {
-        todayNewReports: Number(todayNewRows[0]?.c ?? 0),
-        pendingReports: Number(pendingRows[0]?.c ?? 0),
-        pendingAppeals: Number(appealPendingRows[0]?.c ?? 0),
-        todayHandledReports: Number(todayHandledRows[0]?.c ?? 0),
-      },
+      data: mapDashboardStatsToApi(stats),
     });
   } catch (error) {
     console.error('관리자 통계 조회 오류:', error);
@@ -215,6 +202,9 @@ router.get('/reports', requireAdminApi, async (req, res) => {
       params.push(String(status).trim());
     } else if (String(view).trim() === 'processed') {
       conditions.push(`r.status IN ('resolved', 'rejected')`);
+      if (!fromDate) {
+        conditions.push(`r.reviewed_at >= DATE_SUB(NOW(), INTERVAL 90 DAY)`);
+      }
     } else {
       conditions.push(`r.status = 'pending'`);
     }
@@ -546,6 +536,7 @@ router.get('/users', requireAdminApi, async (req, res) => {
          u.suspended_until,
          u.is_banned,
          u.is_whitelisted,
+         u.is_shadow_muted,
          (SELECT COUNT(*) FROM user_blocks ub WHERE ub.user_id = u.id) AS block_count,
          (SELECT COUNT(*) FROM user_blocks ub2 WHERE ub2.blocked_user_id = u.id) AS blocked_by_count,
          (SELECT COUNT(*) FROM posts p WHERE p.user_id = u.id AND p.is_deleted = FALSE) AS post_count,
@@ -595,6 +586,13 @@ router.post('/users/:userId/suspend', requireAdminApi, async (req, res) => {
       targetType: 'user',
       targetId: userId,
       extra: { days },
+    });
+    await writeUserSanction(connection, {
+      userId,
+      sanctionType: 'suspend',
+      reason: req.body?.reason || null,
+      adminUserId,
+      expiresAt: null,
     });
     await connection.commit();
     notifyUserSessionRevoked(userId, {
@@ -671,7 +669,7 @@ router.delete('/users/:userId/whitelist', requireAdminApi, async (req, res) => {
   }
 });
 
-router.post('/users/:userId/ban', requireAdminApi, async (req, res) => {
+router.post('/users/:userId/ban', requireAdminApi, requireAdminRole(ADMIN_ROLES.SUPER), async (req, res) => {
   const adminUserId = req.user.userId;
   if (!isAdminUser(adminUserId)) {
     return res.status(403).json({ success: false, message: '관리자 권한이 필요합니다.' });
@@ -696,6 +694,13 @@ router.post('/users/:userId/ban', requireAdminApi, async (req, res) => {
       actionType: 'user_ban',
       targetType: 'user',
       targetId: userId,
+      note: req.body?.reason || null,
+    });
+    await writeUserSanction(connection, {
+      userId,
+      sanctionType: 'ban',
+      reason: req.body?.reason || null,
+      adminUserId,
     });
     await connection.commit();
     notifyUserSessionRevoked(userId, {
@@ -709,6 +714,59 @@ router.post('/users/:userId/ban', requireAdminApi, async (req, res) => {
     res.status(500).json({ success: false, message: '영구 정지 처리 중 오류가 발생했습니다.' });
   } finally {
     connection.release();
+  }
+});
+
+router.post('/users/:userId/shadow-mute', requireAdminApi, requireAdminRole(ADMIN_ROLES.SUPER, ADMIN_ROLES.MODERATOR), async (req, res) => {
+  const adminUserId = req.user.userId;
+  const userId = Number(req.params.userId);
+  const enabled = req.body?.enabled !== false;
+  if (!Number.isFinite(userId) || userId <= 0) {
+    return res.status(400).json({ success: false, message: '유효하지 않은 사용자 ID입니다.' });
+  }
+  const connection = await pool.getConnection();
+  try {
+    await connection.beginTransaction();
+    await connection.execute(`UPDATE users SET is_shadow_muted = ? WHERE id = ?`, [enabled, userId]);
+    await writeAuditLog(connection, {
+      adminUserId,
+      actionType: enabled ? 'user_shadow_mute' : 'user_shadow_unmute',
+      targetType: 'user',
+      targetId: userId,
+      note: req.body?.reason || null,
+    });
+    await writeUserSanction(connection, {
+      userId,
+      sanctionType: enabled ? 'shadow_mute' : 'shadow_unmute',
+      reason: req.body?.reason || null,
+      adminUserId,
+    });
+    await connection.commit();
+    res.json({
+      success: true,
+      message: enabled ? '섀도우 뮤트를 적용했습니다.' : '섀도우 뮤트를 해제했습니다.',
+    });
+  } catch (error) {
+    await connection.rollback();
+    console.error('섀도우 뮤트 오류:', error);
+    res.status(500).json({ success: false, message: '섀도우 뮤트 처리 중 오류가 발생했습니다.' });
+  } finally {
+    connection.release();
+  }
+});
+
+router.get('/users/:userId/sanctions', requireAdminApi, async (req, res) => {
+  const userId = Number(req.params.userId);
+  if (!Number.isFinite(userId) || userId <= 0) {
+    return res.status(400).json({ success: false, message: '유효하지 않은 사용자 ID' });
+  }
+  try {
+    const { getUserSanctionHistory } = await import('../services/userSanctions.service.js');
+    const rows = await getUserSanctionHistory(userId, req.query.limit);
+    return res.json({ success: true, data: { sanctions: rows } });
+  } catch (error) {
+    console.error('제재 이력 조회 오류:', error);
+    return res.status(500).json({ success: false, message: '제재 이력 조회 실패' });
   }
 });
 
@@ -790,7 +848,10 @@ router.get('/logs', requireAdminApi, async (req, res) => {
     return res.status(403).json({ success: false, message: '관리자 권한이 필요합니다.' });
   }
   try {
-    const { action = '', q = '', fromDate = '', toDate = '' } = req.query;
+    const { action = '', q = '', fromDate = '', toDate = '', page = 1, limit = 50 } = req.query;
+    const limitNum = Math.max(1, Math.min(100, parseInt(limit, 10) || 50));
+    const pageNum = Math.max(1, parseInt(page, 10) || 1);
+    const offsetNum = (pageNum - 1) * limitNum;
     const conditions = ['1=1'];
     const params = [];
     if (action) {
@@ -811,6 +872,11 @@ router.get('/logs', requireAdminApi, async (req, res) => {
       params.push(String(toDate).trim());
     }
     const whereSql = conditions.join(' AND ');
+    const [countRows] = await pool.execute(
+      `SELECT COUNT(*) AS c FROM admin_audit_logs l WHERE ${whereSql}`,
+      params,
+    );
+    const total = Number(countRows[0]?.c || 0);
     const [rows] = await pool.execute(
       `SELECT
          l.id,
@@ -824,10 +890,16 @@ router.get('/logs', requireAdminApi, async (req, res) => {
        FROM admin_audit_logs l
        WHERE ${whereSql}
        ORDER BY l.created_at DESC
-       LIMIT 200`,
-      params
+       LIMIT ? OFFSET ?`,
+      [...params, limitNum, offsetNum],
     );
-    res.json({ success: true, data: { logs: rows } });
+    res.json({
+      success: true,
+      data: {
+        logs: rows,
+        pagination: { page: pageNum, limit: limitNum, total },
+      },
+    });
   } catch (error) {
     console.error('관리자 감사 로그 조회 오류:', error);
     res.status(500).json({ success: false, message: '감사 로그 조회 중 오류가 발생했습니다.' });
@@ -957,8 +1029,15 @@ async function bulkHandle(req, res) {
     return res.status(403).json({ success: false, message: '관리자 권한이 필요합니다.' });
   }
   const ids = Array.isArray(req.body?.ids) ? req.body.ids.map((v) => Number(v)).filter((v) => Number.isFinite(v) && v > 0) : [];
+  const BULK_MAX = Number(process.env.ADMIN_BULK_MAX || 50);
   if (!ids.length) {
     return res.status(400).json({ success: false, message: '처리할 신고 ID가 없습니다.' });
+  }
+  if (ids.length > BULK_MAX) {
+    return res.status(400).json({
+      success: false,
+      message: `일괄 처리는 최대 ${BULK_MAX}건까지 가능합니다.`,
+    });
   }
   const actionRaw = String(req.body?.action || '').toUpperCase();
   if (!['CONFIRM', 'REJECT'].includes(actionRaw)) {
