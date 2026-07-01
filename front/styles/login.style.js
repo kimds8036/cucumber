@@ -218,6 +218,51 @@ export const createSignupStyles = (width, normalize) => {
       lineHeight: normalize(20),
     },
 
+    // 학생 인증 방식 선택
+    verificationMethodStudentIdCard: {
+      borderRadius: normalize(24),
+      backgroundColor: colors.primaryLight50,
+      paddingHorizontal: normalize(20),
+      paddingVertical: normalize(18),
+      ...shadow.sm,
+    },
+    verificationMethodStudentIdCardTitle: {
+      fontSize: normalize(fontSizes.title),
+      fontFamily: fonts.bold,
+      color: colors.textPrimary,
+      marginBottom: normalize(6),
+    },
+    verificationMethodStudentIdCardRecommended: {
+      color: colors.alert,
+    },
+    verificationMethodStudentIdCardDescription: {
+      fontSize: normalize(fontSizes.xl),
+      fontFamily: fonts.regular,
+      color: colors.textSecondary,
+      lineHeight: normalize(20),
+    },
+    verificationMethodCertificateCard: {
+      borderWidth: 1,
+      borderColor: colors.primary,
+      borderRadius: normalize(24),
+      backgroundColor: colors.background,
+      paddingHorizontal: normalize(20),
+      paddingVertical: normalize(18),
+      ...shadow.sm,
+    },
+    verificationMethodCertificateCardTitle: {
+      fontSize: normalize(fontSizes.title),
+      fontFamily: fonts.bold,
+      color: colors.textPrimary,
+      marginBottom: normalize(6),
+    },
+    verificationMethodCertificateCardDescription: {
+      fontSize: normalize(fontSizes.xl),
+      fontFamily: fonts.regular,
+      color: colors.textSecondary,
+      lineHeight: normalize(20),
+    },
+
     // 재학증명서 가이드
     certificateGuideContainer: {
       overflow: 'hidden',
