@@ -28,12 +28,9 @@ function getTestReturnAfterMinutes() {
   return 1;
 }
 
-/**
- * USE_TEST_MAIL_RETURN=true 이면 sent_at 기준 분 단위 반송(테스트).
- * false(기본)이면 PERSONAL_MAIL_RETURN_DAYS(일) — 운영.
- *
- * 테스트 시 cron을 촘촘히: CRON_PERSONAL_MAIL_RETURN='*/1 * * * *'
- */
+// USE_TEST_MAIL_RETURN=true 이면 sent_at 기준 분 단위 반송(테스트).
+// false(기본)이면 PERSONAL_MAIL_RETURN_DAYS(일) — 운영.
+// 테스트 시 cron 1분 간격으로 돌리려면 CRON_PERSONAL_MAIL_RETURN 환경변수를 1분 주기로 설정.
 function getPersonalMailReturnOptions() {
   if (!envFlag('USE_TEST_MAIL_RETURN')) return undefined;
   return { returnAfterMinutes: getTestReturnAfterMinutes() };
