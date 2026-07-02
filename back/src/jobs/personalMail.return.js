@@ -15,17 +15,29 @@ const JOB_NAME = 'personal-mail-return';
 const LOCK_KEY = 'batch:lock:personal-mail-return';
 const LOCK_TTL_SECONDS = 300;
 
+function envFlag(name) {
+  const raw = process.env[name];
+  if (raw == null || raw === '') return false;
+  const v = String(raw).toLowerCase();
+  return v === 'true' || v === '1' || v === 'yes';
+}
+
+function getTestReturnAfterMinutes() {
+  const raw = Number(process.env.PERSONAL_MAIL_TEST_RETURN_MINUTES);
+  if (Number.isFinite(raw) && raw > 0) return Math.floor(raw);
+  return 1;
+}
+
 /**
- * [테스트용] 개인우편 반송 대기 시간
- * - true: sent_at 기준 TEST_RETURN_AFTER_MINUTES 경과 후 반송 후보
- * - false: PERSONAL_MAIL_RETURN_DAYS(일) — 운영 기본값
+ * USE_TEST_MAIL_RETURN=true 이면 sent_at 기준 분 단위 반송(테스트).
+ * false(기본)이면 PERSONAL_MAIL_RETURN_DAYS(일) — 운영.
  *
- * 배치가 1분마다 돌게 하려면 CRON_PERSONAL_MAIL_RETURN='* /1 * * * *' 도 설정
- * (실제 cron 값은 별+/1, 공백 없음 — .env.example 참고).
- * 테스트 끝나면 USE_TEST_RETURN_INTERVAL=false 로 되돌릴 것.
+ * 테스트 시 cron을 촘촘히: CRON_PERSONAL_MAIL_RETURN='*/1 * * * *'
  */
-const USE_TEST_RETURN_INTERVAL = true;
-const TEST_RETURN_AFTER_MINUTES = 1;
+function getPersonalMailReturnOptions() {
+  if (!envFlag('USE_TEST_MAIL_RETURN')) return undefined;
+  return { returnAfterMinutes: getTestReturnAfterMinutes() };
+}
 
 export async function runPersonalMailReturnBatchJob() {
   const context = createBatchExecutionContext(JOB_NAME);
@@ -37,11 +49,7 @@ export async function runPersonalMailReturnBatchJob() {
   }
 
   try {
-    const result = await runPersonalMailReturnJob(
-      USE_TEST_RETURN_INTERVAL
-        ? { returnAfterMinutes: TEST_RETURN_AFTER_MINUTES }
-        : undefined,
-    );
+    const result = await runPersonalMailReturnJob(getPersonalMailReturnOptions());
     logBatchSuccess(context, result);
     return result;
   } catch (error) {

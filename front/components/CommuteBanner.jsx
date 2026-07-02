@@ -120,11 +120,13 @@ export default function CommuteBanner({
     let mounted = true;
     (async () => {
       if (userId != null) {
-        const done = await loadCommuteCompletedToday(userId);
-        if (!mounted) return;
-        if (done) {
-          completedRef.current = true;
-          setCompleted(true);
+        if (typeof __DEV__ === 'undefined' || !__DEV__) {
+          const done = await loadCommuteCompletedToday(userId);
+          if (!mounted) return;
+          if (done) {
+            completedRef.current = true;
+            setCompleted(true);
+          }
         }
       }
     })();
@@ -151,7 +153,6 @@ export default function CommuteBanner({
             longitude: Number(lng),
           };
         }
-        // TODO: GET /api/schools/me 응답에 학교 latitude·longitude 포함 후 위 값 사용
       } catch {
         /* 학교 좌표 없으면 위치 매칭 대기 */
       }

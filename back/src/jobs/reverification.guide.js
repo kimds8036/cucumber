@@ -3,87 +3,126 @@ import {
   acquireBatchLock,
   releaseBatchLock,
 } from '../services/batchLock.service.js';
+import { sendBatchFailureAlert } from '../services/batchAlert.service.js';
+import {
+  createBatchExecutionContext,
+  logBatchFailure,
+  logBatchSkip,
+  logBatchSuccess,
+} from '../services/batchMetric.service.js';
 import {
   getKstNow,
   getReverificationDeadlineForYear,
-  isLegalAdult,
-  shouldGraduateBlock,
+  isReverificationGracePeriod,
+  isReverificationGuideSeason,
+  isReverificationRestrictionDue,
 } from '../services/reverification.service.js';
 import { getAcademicYearStart } from '../utils/signupEnrollment.js';
-import { hydrateUserPiiRow } from '../services/userPii.service.js';
 
+const JOB_NAME = 'reverification-guide';
 const LOCK_KEY = 'batch:lock:reverification-guide';
+const LOCK_TTL_SECONDS = 300;
+
+/** 졸업·성인 차단은 추후 질문 게시판 등 확장 전까지 해제 */
+const LEGACY_BLOCK_STATUSES = ['adult_blocked', 'graduated_blocked'];
+
+async function clearLegacyBlockStatuses() {
+  const [result] = await pool.execute(
+    `UPDATE users
+     SET reverification_status = 'none', reverification_deadline = NULL
+     WHERE is_deleted = FALSE
+       AND reverification_status IN (?, ?)`,
+    LEGACY_BLOCK_STATUSES,
+  );
+  return Number(result?.affectedRows ?? 0);
+}
+
+/** 3/1~3/7: 재인증 유예(grace) 부여 — 아직 grace가 아닌 활성 유저만 */
+async function assignGracePeriod(deadline) {
+  const [result] = await pool.execute(
+    `UPDATE users
+     SET reverification_status = 'grace', reverification_deadline = ?
+     WHERE is_deleted = FALSE
+       AND reverification_status NOT IN ('grace', 'restricted')`,
+    [deadline],
+  );
+  return Number(result?.affectedRows ?? 0);
+}
+
+/** 3/8 이후: 마감 지났는데 grace/required 인 유저만 restricted */
+async function restrictOverdueUsers(deadline) {
+  const [result] = await pool.execute(
+    `UPDATE users
+     SET reverification_status = 'restricted'
+     WHERE is_deleted = FALSE
+       AND reverification_status IN ('grace', 'required')
+       AND (reverification_deadline IS NULL OR reverification_deadline <= ?)`,
+    [deadline],
+  );
+  return Number(result?.affectedRows ?? 0);
+}
 
 async function runReverificationGuide() {
   const kst = getKstNow();
-  const month = kst.getMonth();
-  const day = kst.getDate();
+  if (!isReverificationGuideSeason(kst)) {
+    return { skipped: true, reason: 'outside-season' };
+  }
+
   const academicYear = getAcademicYearStart(kst);
   const deadline = getReverificationDeadlineForYear(academicYear);
+  const legacyCleared = await clearLegacyBlockStatuses();
 
-  const [users] = await pool.execute(
-    `SELECT id, birth_date, birth_date_enc, graduation_year, grade, reverification_status
-     FROM users
-     WHERE is_deleted = FALSE`,
-  );
+  let graceAssigned = 0;
+  let restricted = 0;
 
-  for (const raw of users) {
-    const user = hydrateUserPiiRow({ ...raw }, ['birth_date']);
-    const userId = user.id;
-
-    if (isLegalAdult(user.birth_date, kst)) {
-      if (user.reverification_status !== 'adult_blocked') {
-        await pool.execute(
-          `UPDATE users SET reverification_status = 'adult_blocked', reverification_deadline = NULL WHERE id = ?`,
-          [userId],
-        );
-      }
-      continue;
-    }
-
-    if (shouldGraduateBlock(user)) {
-      if (user.reverification_status !== 'graduated_blocked') {
-        await pool.execute(
-          `UPDATE users SET reverification_status = 'graduated_blocked', reverification_deadline = NULL WHERE id = ?`,
-          [userId],
-        );
-      }
-      continue;
-    }
-
-    if (month === 2 && day >= 1 && day <= 7) {
-      if (!['grace', 'graduated_blocked', 'adult_blocked'].includes(user.reverification_status)) {
-        await pool.execute(
-          `UPDATE users SET reverification_status = 'grace', reverification_deadline = ? WHERE id = ?`,
-          [deadline, userId],
-        );
-      }
-      continue;
-    }
-
-    if (month === 2 && day >= 8) {
-      if (user.reverification_status === 'grace' || user.reverification_status === 'required') {
-        await pool.execute(
-          `UPDATE users SET reverification_status = 'restricted' WHERE id = ?`,
-          [userId],
-        );
-      }
-    }
+  if (isReverificationGracePeriod(kst)) {
+    graceAssigned = await assignGracePeriod(deadline);
+  } else if (isReverificationRestrictionDue(kst)) {
+    restricted = await restrictOverdueUsers(deadline);
   }
+
+  return {
+    skipped: false,
+    academicYear,
+    deadline,
+    legacyCleared,
+    graceAssigned,
+    restricted,
+  };
 }
 
 export async function runReverificationGuideJob() {
-  const lock = await acquireBatchLock(LOCK_KEY, 300);
-  if (!lock.acquired) {
-    console.log('[reverification] skip — lock held');
-    return;
+  const context = createBatchExecutionContext(JOB_NAME);
+  const kst = getKstNow();
+
+  if (!isReverificationGuideSeason(kst)) {
+    logBatchSkip(context, 'outside-season');
+    return { skipped: true, reason: 'outside-season' };
   }
+
+  const { acquired, owner } = await acquireBatchLock(LOCK_KEY, LOCK_TTL_SECONDS);
+  if (!acquired) {
+    logBatchSkip(context, 'lock-not-acquired');
+    return { skipped: true, reason: 'lock-not-acquired' };
+  }
+
   try {
-    await runReverificationGuide();
-    console.log('[reverification] guide job 완료');
-  } catch (err) {
-    console.error('[reverification] guide job 실패:', err?.message ?? err);
+    const result = await runReverificationGuide();
+    if (result.skipped) {
+      logBatchSkip(context, result.reason || 'skipped');
+      return result;
+    }
+    logBatchSuccess(context, result);
+    return result;
+  } catch (error) {
+    logBatchFailure(context, error);
+    await sendBatchFailureAlert({
+      jobName: JOB_NAME,
+      error,
+      meta: { lockKey: LOCK_KEY },
+    });
+    throw error;
   } finally {
-    await releaseBatchLock(LOCK_KEY, lock.owner);
+    await releaseBatchLock(LOCK_KEY, owner);
   }
 }

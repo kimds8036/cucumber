@@ -34,8 +34,9 @@ export function initJobs() {
   const timerGuardSchedule = process.env.CRON_TIMER_GUARD || '*/10 * * * *';
   const personalMailReturnSchedule =
     process.env.CRON_PERSONAL_MAIL_RETURN || '0 4 * * *';
-  const reverificationSchedule =
-    process.env.CRON_REVERIFICATION_GUIDE || '0 4 * * *';
+  const reverificationSchedules = process.env.CRON_REVERIFICATION_GUIDE
+    ? [process.env.CRON_REVERIFICATION_GUIDE]
+    : ['0 4 25-29 2 *', '0 4 1-8 3 *'];
   const adminStatsSchedule = process.env.CRON_ADMIN_STATS || '*/5 * * * *';
   const attendanceSuspicionSchedule =
     process.env.CRON_ATTENDANCE_SUSPICION || '0 3 * * *';
@@ -82,13 +83,15 @@ export function initJobs() {
     { timezone: TZ }
   );
 
-  cron.schedule(
-    reverificationSchedule,
-    async () => {
-      await runReverificationGuideJob();
-    },
-    { timezone: TZ }
-  );
+  for (const reverificationSchedule of reverificationSchedules) {
+    cron.schedule(
+      reverificationSchedule,
+      async () => {
+        await runReverificationGuideJob();
+      },
+      { timezone: TZ },
+    );
+  }
 
   cron.schedule(
     adminStatsSchedule,
@@ -115,6 +118,6 @@ export function initJobs() {
   );
 
   console.log(
-    `[BatchJob] started timezone=${TZ} studyGrass="${studyGrassSchedule}" trending="${trendingSchedule}" schoolStats="${schoolStatsSchedule}" timerGuard="${timerGuardSchedule}" personalMailReturn="${personalMailReturnSchedule}" reverification="${reverificationSchedule}" adminStats="${adminStatsSchedule}" attendanceSuspicion="${attendanceSuspicionSchedule}" adminRetention="${adminRetentionSchedule}"`,
+    `[BatchJob] started timezone=${TZ} studyGrass="${studyGrassSchedule}" trending="${trendingSchedule}" schoolStats="${schoolStatsSchedule}" timerGuard="${timerGuardSchedule}" personalMailReturn="${personalMailReturnSchedule}" reverification="${reverificationSchedules.join('|')}" adminStats="${adminStatsSchedule}" attendanceSuspicion="${attendanceSuspicionSchedule}" adminRetention="${adminRetentionSchedule}"`,
   );
 }
