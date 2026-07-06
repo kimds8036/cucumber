@@ -78,6 +78,15 @@ function readPort(...names) {
   return 3306;
 }
 
+/** MySQL 풀 connectionLimit (기본 30, env: DB_CONNECTION_LIMIT) */
+export function resolveConnectionLimit() {
+  const n = Number(process.env.DB_CONNECTION_LIMIT);
+  if (Number.isFinite(n) && n > 0) {
+    return Math.min(Math.floor(n), 100);
+  }
+  return 30;
+}
+
 function resolveDbKeys(target) {
   if (isRailwayRuntime()) {
     return {
@@ -123,7 +132,7 @@ function buildConnectionOptions(keys, overrides = {}) {
     password: readRequired(keys.password),
     database: readRequired(keys.database),
     waitForConnections: true,
-    connectionLimit: 10,
+    connectionLimit: resolveConnectionLimit(),
     queueLimit: 0,
     timezone: 'Z',
     ...overrides,

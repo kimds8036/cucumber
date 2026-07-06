@@ -7,6 +7,42 @@ const DEFAULT_TTL_SEC = 90 * 24 * 60 * 60;
 /** Redis 미설정 로컬 개발용 (프로세스 메모리) */
 const devMemoryStore = new Map();
 
+/** 동시 refresh 요청 직렬화 (메모리 스토어 race 방지) */
+const refreshLocks = new Map();
+
+async function withRefreshLock(key, fn) {
+  const prev = refreshLocks.get(key) ?? Promise.resolve();
+  let release;
+  const gate = new Promise((resolve) => {
+    release = resolve;
+  });
+  const chain = prev.then(() => gate);
+  refreshLocks.set(key, chain);
+  await prev;
+  try {
+    return await fn();
+  } finally {
+    release();
+    if (refreshLocks.get(key) === chain) {
+      refreshLocks.delete(key);
+    }
+  }
+}
+
+/** GET·해시 검증·DEL을 원자적으로 수행 (Refresh Token rotation race 방지) */
+const CONSUME_REFRESH_LUA = `
+local raw = redis.call('GET', KEYS[1])
+if not raw then
+  return nil
+end
+local ok, parsed = pcall(cjson.decode, raw)
+if not ok or type(parsed) ~= 'table' or parsed.hash ~= ARGV[1] then
+  return '-1'
+end
+redis.call('DEL', KEYS[1])
+return tostring(parsed.tv or '0')
+`;
+
 function hashToken(plain) {
   return crypto.createHash('sha256').update(String(plain)).digest('hex');
 }
@@ -68,6 +104,46 @@ export async function verifyRefreshToken({ userId, deviceId, plainToken }) {
   if (parsed.hash !== hashed) return null;
 
   return { tokenVersion: Number(parsed.tv) || 0 };
+}
+
+/**
+ * Refresh 토큰을 검증한 뒤 즉시 폐기한다 (rotation 1회용).
+ * 동시 요청 시 첫 요청만 성공하고 나머지는 null을 반환한다.
+ */
+export async function consumeRefreshToken({ userId, deviceId, plainToken }) {
+  const key = redisKey(userId, deviceId);
+  const hashed = hashToken(plainToken);
+
+  if (isRedisConfigured()) {
+    const redis = await getBatchRedis();
+    try {
+      const tv = await redis.eval(CONSUME_REFRESH_LUA, 1, key, hashed);
+      if (tv == null || tv === false || tv === '-1') return null;
+      return { tokenVersion: Number(tv) || 0 };
+    } catch {
+      return null;
+    }
+  }
+
+  return withRefreshLock(key, async () => {
+    const row = devMemoryStore.get(key);
+    if (!row || row.expiresAt <= Date.now()) {
+      devMemoryStore.delete(key);
+      return null;
+    }
+
+    let parsed;
+    try {
+      parsed = JSON.parse(row.payload);
+    } catch {
+      return null;
+    }
+
+    if (parsed.hash !== hashed) return null;
+
+    devMemoryStore.delete(key);
+    return { tokenVersion: Number(parsed.tv) || 0 };
+  });
 }
 
 export async function revokeRefreshToken(userId, deviceId) {

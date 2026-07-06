@@ -27,6 +27,45 @@
           </div>
         </div>
 
+        <div class="section-title">서비스 이용 분석 (학생 활동 · 익명 집계)</div>
+        <p class="section-hint">개인 식별 정보 없이 집계된 데이터입니다. 선 그래프는 최근 흐름, 히트맵은 요일·시간대별 접속 집중도를 보여줍니다.</p>
+        <div class="analytics-kpi-grid">
+          <div class="stat-card stat-ok">
+            <div class="stat-num" id="analytics-latest-dau">0</div>
+            <div class="stat-label">어제 DAU</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-num" id="analytics-latest-mau">0</div>
+            <div class="stat-label">최근 30일 MAU</div>
+          </div>
+          <div class="stat-card stat-warn">
+            <div class="stat-num" id="analytics-avg-dau">0</div>
+            <div class="stat-label">최근 평균 DAU</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-num" id="analytics-trend">-</div>
+            <div class="stat-label">최근 추세(%)</div>
+          </div>
+        </div>
+        <div class="analytics-grid">
+          <div class="analytics-card">
+            <div class="analytics-card-title">최근 14일 활성 사용자 추이 (DAU / MAU)</div>
+            <div class="analytics-line-wrap">
+              <svg id="analytics-line-chart" class="analytics-line-chart" viewBox="0 0 640 240" preserveAspectRatio="none"></svg>
+            </div>
+            <div class="analytics-caption" id="analytics-line-caption">데이터를 불러오는 중...</div>
+          </div>
+          <div class="analytics-card">
+            <div class="analytics-card-title">시간대별 접속 히트맵 (최근 집계)</div>
+            <div class="analytics-heatmap-wrap" id="analytics-heatmap"></div>
+            <div class="analytics-legend">
+              <span>적음</span>
+              <span class="analytics-legend-bar"></span>
+              <span>많음</span>
+            </div>
+          </div>
+        </div>
+
         <div class="section-title">자동화 정책 상태</div>
         <div class="policy-grid">
           <div class="policy-card">

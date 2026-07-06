@@ -31,3 +31,11 @@ export async function saveCommuteCompletedToday(userId, date = new Date()) {
   );
   return dayKey;
 }
+
+export async function clearCommuteCompletedToday(userId) {
+  try {
+    await AsyncStorage.removeItem(storageKey(userId));
+  } catch {
+    /* ignore */
+  }
+}

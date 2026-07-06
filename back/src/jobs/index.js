@@ -8,6 +8,7 @@ import { runReverificationGuideJob } from './reverification.guide.js';
 import { runAdminStatsReconcileJob } from './adminStats.reconcile.js';
 import { runAttendanceSuspicionJob } from './adminAttendance.suspicion.js';
 import { runAdminRetentionJob } from './adminRetention.purge.js';
+import { runAnalyticsReconcileJob } from './analyticsReconcile.js';
 import { shouldRunCron } from '../config/serviceRole.js';
 
 const TZ = process.env.CRON_TIMEZONE || 'Asia/Seoul';
@@ -42,6 +43,8 @@ export function initJobs() {
     process.env.CRON_ATTENDANCE_SUSPICION || '0 3 * * *';
   const adminRetentionSchedule =
     process.env.CRON_ADMIN_RETENTION || '0 5 * * 0';
+  const analyticsReconcileSchedule =
+    process.env.CRON_ANALYTICS_RECONCILE || '0 4 * * *';
 
   cron.schedule(
     studyGrassSchedule,
@@ -117,7 +120,15 @@ export function initJobs() {
     { timezone: TZ },
   );
 
+  cron.schedule(
+    analyticsReconcileSchedule,
+    async () => {
+      await runAnalyticsReconcileJob();
+    },
+    { timezone: TZ },
+  );
+
   console.log(
-    `[BatchJob] started timezone=${TZ} studyGrass="${studyGrassSchedule}" trending="${trendingSchedule}" schoolStats="${schoolStatsSchedule}" timerGuard="${timerGuardSchedule}" personalMailReturn="${personalMailReturnSchedule}" reverification="${reverificationSchedules.join('|')}" adminStats="${adminStatsSchedule}" attendanceSuspicion="${attendanceSuspicionSchedule}" adminRetention="${adminRetentionSchedule}"`,
+    `[BatchJob] started timezone=${TZ} studyGrass="${studyGrassSchedule}" trending="${trendingSchedule}" schoolStats="${schoolStatsSchedule}" timerGuard="${timerGuardSchedule}" personalMailReturn="${personalMailReturnSchedule}" reverification="${reverificationSchedules.join('|')}" adminStats="${adminStatsSchedule}" attendanceSuspicion="${attendanceSuspicionSchedule}" adminRetention="${adminRetentionSchedule}" analyticsReconcile="${analyticsReconcileSchedule}"`,
   );
 }

@@ -17,6 +17,9 @@
     "seed:reset-admins": "node src/db/seed-reset-and-admins.js",
     "seed:admin-users": "node src/db/seed-reset-and-admins.js",
     "seed:dev-test-user": "node src/db/seed-dev-test-user.js",
+    "seed:load-test-students": "node src/db/seed-load-test-students.js",
+    "seed:load-test-chat": "node load-test/seed-chat-rooms.js",
+    "load-test:chat": "node load-test/chat-load-test.js",
     "migrate:pii-encrypt": "node src/db/migrate-pii-encrypt.js"
   },
   "keywords": [],
@@ -49,6 +52,7 @@
   },
   "devDependencies": {
     "@faker-js/faker": "^10.3.0",
-    "nodemon": "^3.1.14"
+    "nodemon": "^3.1.14",
+    "socket.io-client": "^4.8.3"
   }
 }

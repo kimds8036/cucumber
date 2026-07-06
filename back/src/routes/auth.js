@@ -61,9 +61,9 @@ import {
 } from '../services/signupVerificationToken.service.js';
 import { getStudentVerificationStatus } from '../services/studentVerificationStatus.service.js';
 import {
+  consumeRefreshToken,
   generateRefreshTokenPlain,
   storeRefreshToken,
-  verifyRefreshToken,
   revokeRefreshToken,
   revokeAllRefreshTokens,
 } from '../services/refreshToken.service.js';
@@ -1353,15 +1353,6 @@ router.post('/refresh', async (req, res) => {
       });
     }
 
-    const verified = await verifyRefreshToken({ userId, deviceId, plainToken: refreshToken });
-    if (!verified) {
-      return res.status(401).json({
-        success: false,
-        message: '유효하지 않은 refresh 토큰입니다.',
-        code: API_ERROR_CODES.INVALID_TOKEN,
-      });
-    }
-
     const [users] = await pool.execute(
       `SELECT id, username, is_deleted, is_banned, is_suspended, suspended_until,
               token_version, reverification_status, reverification_deadline
@@ -1377,8 +1368,22 @@ router.post('/refresh', async (req, res) => {
     }
 
     const user = users[0];
+    const tokenVersion = Number(user.token_version ?? 0);
 
-    if (Number(user.token_version ?? 0) !== verified.tokenVersion) {
+    const consumed = await consumeRefreshToken({
+      userId,
+      deviceId,
+      plainToken: refreshToken,
+    });
+    if (!consumed) {
+      return res.status(401).json({
+        success: false,
+        message: '유효하지 않은 refresh 토큰입니다.',
+        code: API_ERROR_CODES.INVALID_TOKEN,
+      });
+    }
+
+    if (tokenVersion !== consumed.tokenVersion) {
       return res.status(401).json({
         success: false,
         message: '세션이 만료되었습니다.',
@@ -1413,7 +1418,6 @@ router.post('/refresh', async (req, res) => {
       });
     }
 
-    const tokenVersion = Number(user.token_version ?? 0);
     const newAccess = createUserAccessToken({
       userId: user.id,
       username: user.username,

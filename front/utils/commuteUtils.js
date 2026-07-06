@@ -1,3 +1,5 @@
+import { isWithinSchoolGeofence } from './commuteGeo.js';
+
 const KST_TIMEZONE = 'Asia/Seoul';
 
 /** 방학: 1~2월, 7~8월 */
@@ -110,23 +112,12 @@ export function shouldShowCommuteBanner(date = new Date()) {
   return true;
 }
 
-export function roundCoord3(value) {
-  if (value == null || Number.isNaN(Number(value))) return null;
-  return Math.round(Number(value) * 1000) / 1000;
-}
-
+/** @deprecated isWithinSchoolGeofence 사용 */
 export function coordsMatchSchool(
   viewerLat,
   viewerLng,
   schoolLat,
   schoolLng,
 ) {
-  const vLat = roundCoord3(viewerLat);
-  const vLng = roundCoord3(viewerLng);
-  const sLat = roundCoord3(schoolLat);
-  const sLng = roundCoord3(schoolLng);
-  if (vLat == null || vLng == null || sLat == null || sLng == null) {
-    return false;
-  }
-  return vLat === sLat && vLng === sLng;
+  return isWithinSchoolGeofence(viewerLat, viewerLng, schoolLat, schoolLng);
 }

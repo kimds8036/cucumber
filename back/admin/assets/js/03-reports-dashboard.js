@@ -11,6 +11,109 @@ async function loadDashboard() {
     setNavBadge('badge-reports', data.pendingReports || 0);
     setNavBadge('badge-appeals', data.pendingAppeals || 0);
     setNavBadge('badge-inquiries', data.pendingInquiries || 0);
+    try {
+      await loadAnalyticsOverview();
+    } catch (error) {
+      console.warn('[AdminDashboard] analytics overview load failed:', error?.message || error);
+    }
+  }
+
+  async function loadAnalyticsOverview() {
+    const { data } = await api('/analytics/overview?days=14');
+    renderAnalyticsKpi(data?.summary || {});
+    renderAnalyticsLineChart(data?.series || []);
+    renderAnalyticsHeatmap(data?.heatmapWeekly || []);
+  }
+
+  function renderAnalyticsKpi(summary) {
+    const latestDau = Number(summary.latestDau || 0);
+    const latestMau = Number(summary.latestMauRolling30d || 0);
+    const avgDau = Number(summary.avgDau || 0);
+    const trend = Number(summary.dauTrendPct);
+    document.getElementById('analytics-latest-dau').textContent = latestDau.toLocaleString();
+    document.getElementById('analytics-latest-mau').textContent = latestMau.toLocaleString();
+    document.getElementById('analytics-avg-dau').textContent = avgDau.toLocaleString();
+    document.getElementById('analytics-trend').textContent = Number.isFinite(trend)
+      ? `${trend > 0 ? '+' : ''}${trend}%`
+      : '-';
+  }
+
+  function renderAnalyticsLineChart(series) {
+    const svg = document.getElementById('analytics-line-chart');
+    const caption = document.getElementById('analytics-line-caption');
+    if (!svg || !caption) return;
+    if (!Array.isArray(series) || series.length === 0) {
+      svg.innerHTML = '';
+      caption.textContent = '아직 집계 데이터가 없습니다.';
+      return;
+    }
+
+    const width = 640;
+    const height = 240;
+    const padX = 28;
+    const padTop = 16;
+    const padBottom = 28;
+    const chartW = width - padX * 2;
+    const chartH = height - padTop - padBottom;
+    const maxValue = Math.max(
+      1,
+      ...series.map((s) => Number(s.dauCount || 0)),
+      ...series.map((s) => Number(s.mauRolling30dCount || 0)),
+    );
+    const x = (i) => padX + (chartW * i) / Math.max(1, series.length - 1);
+    const y = (v) => padTop + chartH - (chartH * Number(v || 0)) / maxValue;
+
+    const dauPath = series.map((s, i) => `${i === 0 ? 'M' : 'L'} ${x(i)} ${y(s.dauCount)}`).join(' ');
+    const mauPath = series.map((s, i) => `${i === 0 ? 'M' : 'L'} ${x(i)} ${y(s.mauRolling30dCount)}`).join(' ');
+
+    const grid = [0.25, 0.5, 0.75, 1].map((ratio) => {
+      const gy = padTop + chartH - chartH * ratio;
+      return `<line x1="${padX}" y1="${gy}" x2="${padX + chartW}" y2="${gy}" stroke="#e7e5e4" stroke-width="1" />`;
+    }).join('');
+
+    svg.innerHTML = `
+      ${grid}
+      <path d="${mauPath}" fill="none" stroke="#2563eb" stroke-width="2.2" />
+      <path d="${dauPath}" fill="none" stroke="#16a34a" stroke-width="2.2" />
+      <circle cx="${x(series.length - 1)}" cy="${y(series[series.length - 1].dauCount)}" r="3.5" fill="#16a34a" />
+      <circle cx="${x(series.length - 1)}" cy="${y(series[series.length - 1].mauRolling30dCount)}" r="3.5" fill="#2563eb" />
+    `;
+
+    const first = series[0];
+    const last = series[series.length - 1];
+    caption.textContent = `녹색=DAU, 파란색=MAU(30일). ${first.date} 대비 ${last.date} 구간 추이입니다.`;
+  }
+
+  function renderAnalyticsHeatmap(heatmapWeekly) {
+    const wrap = document.getElementById('analytics-heatmap');
+    if (!wrap) return;
+    const slots = Array.isArray(heatmapWeekly) ? heatmapWeekly : [];
+    const normalized = new Array(7 * 24).fill(0).map((_, i) => Number(slots[i] || 0));
+    const max = Math.max(1, ...normalized);
+    const days = ['일', '월', '화', '수', '목', '금', '토'];
+    wrap.innerHTML = '';
+
+    for (let dow = 0; dow < 7; dow += 1) {
+      for (let hour = 0; hour < 24; hour += 1) {
+        const idx = dow * 24 + hour;
+        const value = normalized[idx];
+        const level = value / max;
+        const color = level <= 0.02
+          ? '#eceae6'
+          : level < 0.25
+            ? '#fde7bf'
+            : level < 0.5
+              ? '#f5c87d'
+              : level < 0.75
+                ? '#ef7c4b'
+                : '#d7443e';
+        const cell = document.createElement('div');
+        cell.className = 'analytics-heat-cell';
+        cell.style.background = color;
+        cell.dataset.tip = `${days[dow]}요일 ${String(hour).padStart(2, '0')}시: ${value.toLocaleString()}회`;
+        wrap.appendChild(cell);
+      }
+    }
   }
 
   function renderReports() {

@@ -1,8 +1,18 @@
 import mysql from 'mysql2/promise';
-import { getDbConnectionOptions, getActiveTarget } from './dbEnv.js';
+import {
+  getDbConnectionOptions,
+  getActiveTarget,
+  resolveConnectionLimit,
+} from './dbEnv.js';
 import { autoHydratePiiRows } from '../services/userPii.service.js';
 
 const dbConfig = getDbConnectionOptions(getActiveTarget());
+
+if (process.env.NODE_ENV !== 'test') {
+  console.log(
+    `[DB] connectionLimit=${resolveConnectionLimit()} (DB_CONNECTION_LIMIT)`,
+  );
+}
 
 const rawPool = mysql.createPool(dbConfig);
 

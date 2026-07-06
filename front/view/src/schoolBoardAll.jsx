@@ -29,7 +29,6 @@ import AdPlaceholder from '../../src/screens/ad/AdPlaceholder';
 import { useLocationContext } from '../../context/LocationContext';
 import Skeleton from '../../components/common/Skeleton';
 import { injectAdSlots, useAdSlots } from '../../hooks/useAdSlots';
-import CommuteBanner from '../../components/CommuteBanner';
 
 /** 서버 created_at(UTC)을 "n분 전" 형식으로 변환. 화면에서는 기기 로컬 시간 기준으로 계산 */
 function formatTimeAgo(createdAt) {
@@ -271,8 +270,6 @@ const SchoolBoardAll = ({ navigation }) => {
           />
         }
       />
-
-      <CommuteBanner viewerCoords={coords} />
 
       {/* 게시글 목록 — 로딩 중에는 목록을 그리되 가려 두고, 게이트 종료 후 한 번에 표시 */}
       <View style={{ flex: 1 }}>
