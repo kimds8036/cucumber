@@ -16,8 +16,8 @@ import {
   KeyboardAwareScrollView,
 } from 'react-native-keyboard-controller';
 import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
-import { CommonActions } from '@react-navigation/native';
 import SubHeader from '../frame/subHeader';
+import { StackActions } from '@react-navigation/native';
 import { getNormalize } from '../../styles/frame.style';
 import { createMailStyles } from '../../styles/mail.style';
 import { colors } from '../../styles/colors';
@@ -77,35 +77,7 @@ const SendSchoolMailScreen = ({ navigation, route }) => {
         {
           text: '확인',
           onPress: () => {
-            if (sourceScreen === 'OtherSchool') {
-              navigation?.dispatch(
-                CommonActions.reset({
-                  index: 2,
-                  routes: [
-                    { name: 'Main', params: { initialTab: 'school' } },
-                    { name: 'OtherSchool', params: { schoolId, schoolName } },
-                    {
-                      name: 'SchoolMailbox',
-                      params: {
-                        schoolId,
-                        schoolName,
-                        sourceScreen: 'OtherSchool',
-                      },
-                    },
-                  ],
-                }),
-              );
-              return;
-            }
-            navigation?.dispatch(
-              CommonActions.reset({
-                index: 1,
-                routes: [
-                  { name: 'Main', params: { initialTab: 'school' } },
-                  { name: 'SchoolMailbox', params: { schoolId, schoolName } },
-                ],
-              }),
-            );
+            navigation.dispatch(StackActions.pop(1));
           },
         },
       ]);
