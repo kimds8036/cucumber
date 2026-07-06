@@ -1,5 +1,10 @@
 import crypto from 'crypto';
 import pool from '../config/database.js';
+import {
+  ANALYTICS_SCREEN_WHITELIST,
+  getAnalyticsScreenLabel,
+  normalizeAnalyticsScreenKey,
+} from '../constants/analyticsScreens.js';
 import { getBatchRedis, isRedisConfigured } from './batchRedis.service.js';
 import { formatKstDateYmd, getKstNow } from './reverification.service.js';
 
@@ -7,7 +12,6 @@ const REDIS_KEY_TTL_SECONDS = Number(process.env.ANALYTICS_REDIS_TTL_SECONDS || 
 const MAU_ROLLING_DAYS = Number(process.env.ANALYTICS_MAU_ROLLING_DAYS || 30);
 const HEATMAP_SLOT_COUNT = 7 * 24;
 
-const VALID_EVENT_TYPES = new Set(['screen_view', 'session_ping']);
 const MAX_EVENTS_PER_REQUEST = 30;
 
 export function isAnalyticsEnabled() {
@@ -35,6 +39,14 @@ export function heatmapRedisKey(statDate, dow, hour) {
   return `analytics:heatmap:${statDate}:${dow}:${hour}`;
 }
 
+export function screenViewsRedisKey(statDate, screenKey) {
+  return `analytics:screen:${statDate}:${screenKey}`;
+}
+
+export function screenHourRedisKey(statDate, screenKey, hour) {
+  return `analytics:screen-hour:${statDate}:${screenKey}:${hour}`;
+}
+
 export function addDaysToYmd(ymd, deltaDays) {
   const [y, m, d] = ymd.split('-').map(Number);
   const ref = new Date(
@@ -60,13 +72,28 @@ export function getRollingDateRange(endYmd, windowDays) {
 export function isValidAnalyticsEventsPayload(events) {
   if (!Array.isArray(events) || events.length === 0) return false;
   if (events.length > MAX_EVENTS_PER_REQUEST) return false;
-  return events.some((event) => VALID_EVENT_TYPES.has(String(event?.type || '').trim()));
+  return events.some((event) => {
+    const type = String(event?.type || '').trim();
+    if (type === 'session_ping') return true;
+    if (type === 'screen_view') return Boolean(normalizeAnalyticsScreenKey(event?.screen));
+    return false;
+  });
+}
+
+function collectScreenKeysFromEvents(events) {
+  const keys = new Set();
+  for (const event of events) {
+    if (String(event?.type || '').trim() !== 'screen_view') continue;
+    const key = normalizeAnalyticsScreenKey(event?.screen);
+    if (key) keys.add(key);
+  }
+  return [...keys];
 }
 
 /**
  * 수집 hot path — MySQL 접근 없음, Redis pipeline만 사용.
  */
-export async function recordAnalyticsActivity(userId) {
+export async function recordAnalyticsActivity(userId, events = []) {
   if (!isAnalyticsEnabled()) {
     return { recorded: false, reason: 'disabled' };
   }
@@ -79,6 +106,7 @@ export async function recordAnalyticsActivity(userId) {
   const dow = now.getDay();
   const hour = now.getHours();
   const hashedUser = hashUserIdForAnalytics(userId);
+  const screenKeys = collectScreenKeysFromEvents(events);
 
   try {
     const redis = await getBatchRedis();
@@ -87,8 +115,16 @@ export async function recordAnalyticsActivity(userId) {
     pipe.incr(heatmapRedisKey(statDate, dow, hour));
     pipe.expire(dauRedisKey(statDate), REDIS_KEY_TTL_SECONDS);
     pipe.expire(heatmapRedisKey(statDate, dow, hour), REDIS_KEY_TTL_SECONDS);
+
+    for (const screenKey of screenKeys) {
+      pipe.incr(screenViewsRedisKey(statDate, screenKey));
+      pipe.incr(screenHourRedisKey(statDate, screenKey, hour));
+      pipe.expire(screenViewsRedisKey(statDate, screenKey), REDIS_KEY_TTL_SECONDS);
+      pipe.expire(screenHourRedisKey(statDate, screenKey, hour), REDIS_KEY_TTL_SECONDS);
+    }
+
     await pipe.exec();
-    return { recorded: true };
+    return { recorded: true, screens: screenKeys.length };
   } catch (error) {
     console.error('[Analytics] record failed:', error.message);
     return { recorded: false, reason: 'redis-error' };
@@ -128,12 +164,47 @@ async function computeRollingMau(redis, endYmd, windowDays) {
   }
 }
 
+async function readScreenStatsForDate(redis, statDate) {
+  const screens = {};
+  const pipe = redis.pipeline();
+  for (const screenKey of ANALYTICS_SCREEN_WHITELIST) {
+    pipe.get(screenViewsRedisKey(statDate, screenKey));
+    for (let hour = 0; hour < 24; hour += 1) {
+      pipe.get(screenHourRedisKey(statDate, screenKey, hour));
+    }
+  }
+  const results = await pipe.exec();
+
+  let offset = 0;
+  for (const screenKey of ANALYTICS_SCREEN_WHITELIST) {
+    const viewsRow = results[offset];
+    offset += 1;
+    const views = Number(Array.isArray(viewsRow) ? viewsRow[1] : 0) || 0;
+    const hours = [];
+    for (let hour = 0; hour < 24; hour += 1) {
+      const row = results[offset];
+      offset += 1;
+      hours.push(Number(Array.isArray(row) ? row[1] : 0) || 0);
+    }
+    if (views > 0 || hours.some((v) => v > 0)) {
+      screens[screenKey] = { views, hours };
+    }
+  }
+  return screens;
+}
+
 async function applyPostReconcileTtl(redis, statDate) {
   const pipe = redis.pipeline();
   pipe.expire(dauRedisKey(statDate), REDIS_KEY_TTL_SECONDS);
   for (let dow = 0; dow < 7; dow += 1) {
     for (let hour = 0; hour < 24; hour += 1) {
       pipe.expire(heatmapRedisKey(statDate, dow, hour), REDIS_KEY_TTL_SECONDS);
+    }
+  }
+  for (const screenKey of ANALYTICS_SCREEN_WHITELIST) {
+    pipe.expire(screenViewsRedisKey(statDate, screenKey), REDIS_KEY_TTL_SECONDS);
+    for (let hour = 0; hour < 24; hour += 1) {
+      pipe.expire(screenHourRedisKey(statDate, screenKey, hour), REDIS_KEY_TTL_SECONDS);
     }
   }
   await pipe.exec();
@@ -144,6 +215,7 @@ async function upsertDailySnapshot({
   dauCount,
   mauCount,
   heatmapSlots,
+  screenStats,
 }) {
   const heatmapJson = JSON.stringify({
     version: 1,
@@ -153,16 +225,22 @@ async function upsertDailySnapshot({
     slots: heatmapSlots,
   });
 
+  const screenStatsJson = JSON.stringify({
+    version: 1,
+    screens: screenStats,
+  });
+
   await pool.execute(
     `INSERT INTO analytics_daily_snapshots
-       (stat_date, dau_count, mau_rolling_30d_count, heatmap_json, reconciled_at)
-     VALUES (?, ?, ?, ?, NOW())
+       (stat_date, dau_count, mau_rolling_30d_count, heatmap_json, screen_stats_json, reconciled_at)
+     VALUES (?, ?, ?, ?, ?, NOW())
      ON DUPLICATE KEY UPDATE
        dau_count = VALUES(dau_count),
        mau_rolling_30d_count = VALUES(mau_rolling_30d_count),
        heatmap_json = VALUES(heatmap_json),
+       screen_stats_json = VALUES(screen_stats_json),
        reconciled_at = NOW()`,
-    [statDate, Number(dauCount) || 0, Number(mauCount) || 0, heatmapJson],
+    [statDate, Number(dauCount) || 0, Number(mauCount) || 0, heatmapJson, screenStatsJson],
   );
 }
 
@@ -178,12 +256,14 @@ export async function reconcileAnalyticsForDate(statDate) {
   const dauCount = Number(await redis.pfcount(dauRedisKey(statDate)) || 0);
   const heatmapSlots = await readHeatmapSlots(redis, statDate);
   const mauCount = await computeRollingMau(redis, statDate, MAU_ROLLING_DAYS);
+  const screenStats = await readScreenStatsForDate(redis, statDate);
 
   await upsertDailySnapshot({
     statDate,
     dauCount,
     mauCount,
     heatmapSlots,
+    screenStats,
   });
   await applyPostReconcileTtl(redis, statDate);
 
@@ -192,6 +272,7 @@ export async function reconcileAnalyticsForDate(statDate) {
     dauCount,
     mauCount,
     heatmapTotal: heatmapSlots.reduce((sum, n) => sum + n, 0),
+    screenCount: Object.keys(screenStats).length,
   };
 }
 
@@ -234,12 +315,65 @@ function addSlots(target, source) {
   }
 }
 
+function normalizeScreenStats(rawJson) {
+  try {
+    const parsed = typeof rawJson === 'string' ? JSON.parse(rawJson) : rawJson;
+    const screens = parsed?.screens && typeof parsed.screens === 'object' ? parsed.screens : {};
+    const normalized = {};
+    for (const [key, value] of Object.entries(screens)) {
+      const screenKey = normalizeAnalyticsScreenKey(key);
+      if (!screenKey) continue;
+      const hours = Array.isArray(value?.hours) ? value.hours : [];
+      normalized[screenKey] = {
+        views: toNumber(value?.views, 0),
+        hours: new Array(24).fill(0).map((_, i) => toNumber(hours[i], 0)),
+      };
+    }
+    return normalized;
+  } catch {
+    return {};
+  }
+}
+
+function mergeScreenStats(target, source) {
+  for (const [key, value] of Object.entries(source || {})) {
+    if (!target[key]) {
+      target[key] = {
+        views: toNumber(value?.views, 0),
+        hours: [...(value?.hours || new Array(24).fill(0))],
+      };
+      continue;
+    }
+    target[key].views += toNumber(value?.views, 0);
+    for (let i = 0; i < 24; i += 1) {
+      target[key].hours[i] += toNumber(value?.hours?.[i], 0);
+    }
+  }
+}
+
+function buildScreenRanking(screenStatsMerged) {
+  const entries = Object.entries(screenStatsMerged).map(([key, value]) => ({
+    key,
+    label: getAnalyticsScreenLabel(key),
+    views: toNumber(value?.views, 0),
+    hours: Array.isArray(value?.hours) ? value.hours.map((v) => toNumber(v, 0)) : new Array(24).fill(0),
+  }));
+  const totalViews = entries.reduce((sum, row) => sum + row.views, 0);
+  return entries
+    .sort((a, b) => b.views - a.views)
+    .map((row) => ({
+      ...row,
+      sharePct: totalViews > 0 ? Number(((row.views / totalViews) * 100).toFixed(1)) : 0,
+    }));
+}
+
 async function readTodayPreview() {
   const statDate = formatKstDateYmd(getKstNow());
   const preview = {
     statDate,
     dauCount: 0,
     heatmapSlots: new Array(HEATMAP_SLOT_COUNT).fill(0),
+    screenStats: {},
   };
 
   if (!isRedisConfigured()) return preview;
@@ -248,6 +382,7 @@ async function readTodayPreview() {
     const redis = await getBatchRedis();
     preview.dauCount = toNumber(await redis.pfcount(dauRedisKey(statDate)), 0);
     preview.heatmapSlots = await readHeatmapSlots(redis, statDate);
+    preview.screenStats = await readScreenStatsForDate(redis, statDate);
     return preview;
   } catch {
     return preview;
@@ -263,7 +398,7 @@ export async function getAnalyticsOverview({ days = 14 } = {}) {
   const startDate = addDaysToYmd(endDate, -(safeDays - 1));
 
   const [rows] = await pool.execute(
-    `SELECT stat_date, dau_count, mau_rolling_30d_count, heatmap_json, reconciled_at
+    `SELECT stat_date, dau_count, mau_rolling_30d_count, heatmap_json, screen_stats_json, reconciled_at
      FROM analytics_daily_snapshots
      WHERE stat_date BETWEEN ? AND ?
      ORDER BY stat_date ASC`,
@@ -278,6 +413,7 @@ export async function getAnalyticsOverview({ days = 14 } = {}) {
         dauCount: toNumber(row.dau_count),
         mauRolling30dCount: toNumber(row.mau_rolling_30d_count),
         heatmapSlots: normalizeHeatmapSlots(row.heatmap_json),
+        screenStats: normalizeScreenStats(row.screen_stats_json),
         reconciledAt: row.reconciled_at || null,
       },
     ]),
@@ -300,6 +436,13 @@ export async function getAnalyticsOverview({ days = 14 } = {}) {
 
   const todayPreview = await readTodayPreview();
   addSlots(heatmapWeekly, todayPreview.heatmapSlots);
+
+  const screenStatsMerged = {};
+  for (const row of rowByDate.values()) {
+    mergeScreenStats(screenStatsMerged, row.screenStats);
+  }
+  mergeScreenStats(screenStatsMerged, todayPreview.screenStats);
+  const screenRanking = buildScreenRanking(screenStatsMerged);
 
   const dauValues = series.map((item) => item.dauCount);
   const latest = series[series.length - 1] || { dauCount: 0, mauRolling30dCount: 0 };
@@ -325,5 +468,9 @@ export async function getAnalyticsOverview({ days = 14 } = {}) {
       dauTrendPct,
     },
     heatmapWeekly,
+    screenRanking,
+    screenHourlyByKey: Object.fromEntries(
+      screenRanking.map((row) => [row.key, row.hours]),
+    ),
   };
 }

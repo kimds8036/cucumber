@@ -20,9 +20,11 @@ async function loadDashboard() {
 
   async function loadAnalyticsOverview() {
     const { data } = await api('/analytics/overview?days=14');
+    window.__lastAnalyticsOverview = { data };
     renderAnalyticsKpi(data?.summary || {});
     renderAnalyticsLineChart(data?.series || []);
     renderAnalyticsHeatmap(data?.heatmapWeekly || []);
+    renderAnalyticsScreenRanking(data?.screenRanking || [], data?.screenHourlyByKey || {});
   }
 
   function renderAnalyticsKpi(summary) {
@@ -114,6 +116,98 @@ async function loadDashboard() {
         wrap.appendChild(cell);
       }
     }
+  }
+
+  let analyticsSelectedScreenKey = null;
+
+  function renderAnalyticsScreenRanking(screenRanking, screenHourlyByKey) {
+    const barsWrap = document.getElementById('analytics-screen-bars');
+    const caption = document.getElementById('analytics-screen-caption');
+    const toolbar = document.getElementById('analytics-screen-hour-toolbar');
+    if (!barsWrap || !caption || !toolbar) return;
+
+    const rows = Array.isArray(screenRanking) ? screenRanking : [];
+    if (!rows.length) {
+      barsWrap.innerHTML = '<div class="txt-muted" style="font-size:12px;padding:8px 0;">아직 화면별 집계 데이터가 없습니다.</div>';
+      caption.textContent = '앱에서 화면 진입 이벤트가 수집되면 표시됩니다.';
+      toolbar.innerHTML = '';
+      renderAnalyticsScreenHourChart(null, []);
+      return;
+    }
+
+    const maxViews = Math.max(1, ...rows.map((row) => Number(row.views || 0)));
+    barsWrap.innerHTML = rows.map((row) => {
+      const views = Number(row.views || 0);
+      const widthPct = Math.max(2, (views / maxViews) * 100);
+      return `
+        <div class="analytics-screen-bar-row" data-screen-key="${esc(row.key)}">
+          <div class="analytics-screen-bar-label" title="${esc(row.label || row.key)}">${esc(row.label || row.key)}</div>
+          <div class="analytics-screen-bar-track">
+            <div class="analytics-screen-bar-fill" style="width:${widthPct.toFixed(1)}%"></div>
+          </div>
+          <div class="analytics-screen-bar-value">${views.toLocaleString()}</div>
+        </div>
+      `;
+    }).join('');
+
+    const totalViews = rows.reduce((sum, row) => sum + Number(row.views || 0), 0);
+    caption.textContent = `최근 집계 구간 합계 ${totalViews.toLocaleString()}회 · 상위 ${rows.length}개 화면`;
+
+    if (!analyticsSelectedScreenKey || !screenHourlyByKey?.[analyticsSelectedScreenKey]) {
+      analyticsSelectedScreenKey = rows[0].key;
+    }
+
+    toolbar.innerHTML = rows.slice(0, 8).map((row) => `
+      <button
+        type="button"
+        class="analytics-screen-hour-btn ${row.key === analyticsSelectedScreenKey ? 'is-active' : ''}"
+        data-screen-key="${esc(row.key)}"
+        onclick="selectAnalyticsScreenHour('${esc(row.key)}')"
+      >${esc(row.label || row.key)}</button>
+    `).join('');
+
+    renderAnalyticsScreenHourChart(
+      analyticsSelectedScreenKey,
+      screenHourlyByKey?.[analyticsSelectedScreenKey] || rows.find((r) => r.key === analyticsSelectedScreenKey)?.hours || [],
+      rows.find((r) => r.key === analyticsSelectedScreenKey)?.label,
+    );
+  }
+
+  window.selectAnalyticsScreenHour = function selectAnalyticsScreenHour(screenKey) {
+    analyticsSelectedScreenKey = screenKey;
+    const toolbar = document.getElementById('analytics-screen-hour-toolbar');
+    toolbar?.querySelectorAll('.analytics-screen-hour-btn').forEach((btn) => {
+      btn.classList.toggle('is-active', btn.dataset.screenKey === screenKey);
+    });
+    const { data } = window.__lastAnalyticsOverview || {};
+    const hours = data?.screenHourlyByKey?.[screenKey] || [];
+    const label = (data?.screenRanking || []).find((row) => row.key === screenKey)?.label;
+    renderAnalyticsScreenHourChart(screenKey, hours, label);
+  };
+
+  function renderAnalyticsScreenHourChart(screenKey, hours, label) {
+    const chart = document.getElementById('analytics-screen-hour-chart');
+    const caption = document.getElementById('analytics-screen-hour-caption');
+    if (!chart || !caption) return;
+
+    const values = Array.isArray(hours) ? hours.map((v) => Number(v || 0)) : new Array(24).fill(0);
+    const max = Math.max(1, ...values);
+    chart.innerHTML = values.map((value, hour) => {
+      const heightPct = Math.max(2, (value / max) * 100);
+      return `
+        <div class="analytics-screen-hour-col" title="${String(hour).padStart(2, '0')}시: ${value.toLocaleString()}회">
+          <div class="analytics-screen-hour-bar" style="height:${heightPct.toFixed(1)}%"></div>
+          <div class="analytics-screen-hour-label">${hour % 3 === 0 ? String(hour).padStart(2, '0') : ''}</div>
+        </div>
+      `;
+    }).join('');
+
+    if (!screenKey) {
+      caption.textContent = '화면을 선택하면 시간대별 조회 분포를 보여줍니다.';
+      return;
+    }
+    const total = values.reduce((sum, v) => sum + v, 0);
+    caption.textContent = `${label || screenKey} · 24시간 합계 ${total.toLocaleString()}회`;
   }
 
   function renderReports() {

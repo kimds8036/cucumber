@@ -704,6 +704,95 @@
       border-radius: 999px;
       background: linear-gradient(90deg, #eceae6 0%, #f5c87d 45%, #ef7c4b 75%, #d7443e 100%);
     }
+    .analytics-screen-grid {
+      margin-bottom: 20px;
+    }
+    .analytics-screen-bars {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      min-height: 220px;
+    }
+    .analytics-screen-bar-row {
+      display: grid;
+      grid-template-columns: 88px 1fr 52px;
+      gap: 8px;
+      align-items: center;
+      font-size: 11px;
+    }
+    .analytics-screen-bar-label {
+      color: var(--text-secondary);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .analytics-screen-bar-track {
+      height: 10px;
+      background: var(--bg);
+      border: 0.5px solid var(--border);
+      border-radius: 999px;
+      overflow: hidden;
+    }
+    .analytics-screen-bar-fill {
+      height: 100%;
+      background: linear-gradient(90deg, #60a5fa 0%, #2563eb 100%);
+      border-radius: 999px;
+      min-width: 2px;
+    }
+    .analytics-screen-bar-value {
+      text-align: right;
+      color: var(--text-tertiary);
+      font-variant-numeric: tabular-nums;
+    }
+    .analytics-screen-hour-toolbar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-bottom: 8px;
+    }
+    .analytics-screen-hour-btn {
+      border: 0.5px solid var(--border);
+      background: var(--bg);
+      color: var(--text-secondary);
+      border-radius: 999px;
+      padding: 4px 10px;
+      font-size: 11px;
+      cursor: pointer;
+    }
+    .analytics-screen-hour-btn.is-active {
+      background: #2563eb;
+      border-color: #2563eb;
+      color: #fff;
+    }
+    .analytics-screen-hour-chart {
+      display: grid;
+      grid-template-columns: repeat(24, 1fr);
+      gap: 4px;
+      align-items: end;
+      min-height: 180px;
+      background: var(--bg);
+      border: 0.5px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 10px 8px 8px;
+    }
+    .analytics-screen-hour-col {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 4px;
+      min-width: 0;
+    }
+    .analytics-screen-hour-bar {
+      width: 100%;
+      min-height: 2px;
+      background: linear-gradient(180deg, #93c5fd 0%, #2563eb 100%);
+      border-radius: 2px 2px 0 0;
+    }
+    .analytics-screen-hour-label {
+      font-size: 8px;
+      color: var(--text-tertiary);
+      line-height: 1;
+    }
 
     /* ── Scrollbar ──────────────────────────────────── */
     ::-webkit-scrollbar { width: 5px; }

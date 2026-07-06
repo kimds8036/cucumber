@@ -39,7 +39,7 @@ router.post('/events', authenticate, analyticsLimiter, async (req, res) => {
       return res.status(202).end();
     }
 
-    await recordAnalyticsActivity(userId);
+    await recordAnalyticsActivity(userId, events);
     return res.status(202).end();
   } catch (error) {
     console.error('[Analytics] ingest route error:', error.message);

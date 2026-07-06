@@ -11,6 +11,8 @@ import { colors } from '../../styles/colors';
 import MyPage from './mypage';
 import OurSchoolScreen from './ourschoolscreen';
 import Skeleton from '../../components/common/Skeleton';
+import { trackScreenView } from '../../utils/analytics';
+import { MAIN_TAB_TO_ANALYTICS_SCREEN } from '../../constants/analyticsScreens';
 
 const MAIN_TABS = new Set(['board', 'message', 'school', 'timer', 'mypage']);
 
@@ -30,6 +32,11 @@ const MainScreen = ({ navigation, route }) => {
     const timer = setTimeout(() => setScreenReady(true), 180);
     return () => clearTimeout(timer);
   }, []);
+
+  useEffect(() => {
+    const screen = MAIN_TAB_TO_ANALYTICS_SCREEN[activeTab];
+    if (screen) trackScreenView(screen);
+  }, [activeTab]);
 
   useFocusEffect(
     React.useCallback(() => {
