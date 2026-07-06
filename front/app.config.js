@@ -57,6 +57,10 @@ export default ({ config }) => ({
         backgroundColor: '#E5F4E0',
       },
       edgeToEdgeEnabled: true,
+      navigationBar: {
+        backgroundColor: '#ffffff',
+        barStyle: 'dark-content',
+      },
       permissions: [
         'CAMERA',
         'ACCESS_FINE_LOCATION',
@@ -80,7 +84,6 @@ export default ({ config }) => ({
       'expo-font',
       'expo-image',
       'expo-status-bar',
-      'expo-splash-screen',
       [
         'expo-camera',
         {

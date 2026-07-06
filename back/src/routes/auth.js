@@ -13,6 +13,7 @@ import {
   getDeviceInfo
 } from '../utils/auth.js';
 import { validatePhone, validateUsername, validatePassword, validateBirthDate } from '../utils/validation.js';
+import { blockWhenFlag } from '../middleware/systemFlags.js';
 import { authenticate } from '../middleware/auth.js';
 import { validate } from '../middleware/validate.js';
 // OCR 자동 인증 — 수동 검수 전환으로 당분간 미사용 (studentIdOcr.service.js 참고)
@@ -30,8 +31,17 @@ import {
 import { verifyFirebaseIdToken } from '../config/firebase.js';
 import {
   normalizeLocalKrPhone,
-  SQL_PHONE_NORM,
 } from '../utils/phone.js';
+import {
+  packPhoneOnly,
+  packSubmissionPii,
+  packUserPii,
+  phoneLookupBindParams,
+  phoneLookupWhereClause,
+  hydrateUserPiiRow,
+  USER_PII_INSERT_COLUMNS,
+  userPiiInsertValues,
+} from '../services/userPii.service.js';
 import {
   signupOcrLimiter,
   signupPhoneBackendLimiter,
@@ -134,6 +144,7 @@ router.get('/me', authenticate, async (req, res) => {
          u.id,
          u.username,
          u.name,
+         u.name_enc,
          u.color_id,
          u.school_id,
          u.grade,
@@ -157,7 +168,7 @@ router.get('/me', authenticate, async (req, res) => {
       });
     }
 
-    const user = rows[0];
+    const user = hydrateUserPiiRow(rows[0], ['name']);
 
     const [friendRows] = await pool.execute(
       `SELECT COUNT(*) as cnt
@@ -377,17 +388,24 @@ router.post('/send-verification', async (req, res) => {
     const verificationCode = generateVerificationCode();
     const expiresAt = new Date(Date.now() + 5 * 60 * 1000); // 5분 후 만료
 
+    const phonePacked = packPhoneOnly(phone);
+
     // 기존 인증 코드가 있으면 삭제 (같은 전화번호로 여러 번 요청 방지)
     await pool.execute(
-      'DELETE FROM phone_verifications WHERE phone = ? AND is_verified = FALSE',
-      [phone]
+      `DELETE FROM phone_verifications WHERE ${phoneLookupWhereClause()} AND is_verified = FALSE`,
+      phoneLookupBindParams(phone),
     );
 
     // 새 인증 코드 저장
     await pool.execute(
-      `INSERT INTO phone_verifications (phone, verification_code, expires_at) 
-       VALUES (?, ?, ?)`,
-      [phone, verificationCode, expiresAt]
+      `INSERT INTO phone_verifications (phone, phone_enc, phone_lookup, verification_code, expires_at) 
+       VALUES (NULL, ?, ?, ?, ?)`,
+      [
+        phonePacked.phone_enc,
+        phonePacked.phone_lookup,
+        verificationCode,
+        expiresAt,
+      ],
     );
 
     // 실제로는 SMS 발송 서비스 연동 (예: 알리고, 카카오톡 등)
@@ -422,9 +440,9 @@ router.post('/verify-phone', async (req, res) => {
     // 인증 코드 확인
     const [codes] = await pool.execute(
       `SELECT id, expires_at FROM phone_verifications 
-       WHERE phone = ? AND verification_code = ? AND is_verified = FALSE
+       WHERE ${phoneLookupWhereClause()} AND verification_code = ? AND is_verified = FALSE
        ORDER BY created_at DESC LIMIT 1`,
-      [phone, verificationCode]
+      [...phoneLookupBindParams(phone), verificationCode],
     );
 
     if (codes.length === 0) {
@@ -483,8 +501,8 @@ router.post('/check-phone-available', signupPhoneBackendLimiter, async (req, res
     }
 
     const [existing] = await pool.execute(
-      `SELECT id FROM users WHERE ${SQL_PHONE_NORM} = ? LIMIT 1`,
-      [phone],
+      `SELECT id FROM users WHERE ${phoneLookupWhereClause()} LIMIT 1`,
+      phoneLookupBindParams(phone),
     );
 
     return res.json({
@@ -562,16 +580,17 @@ router.post('/verify-firebase-phone', signupPhoneBackendLimiter, async (req, res
 
     const phone = normalizedToken;
     const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
+    const phonePacked = packPhoneOnly(phone);
 
     await pool.execute(
-      'DELETE FROM phone_verifications WHERE phone = ? AND is_verified = FALSE',
-      [phone],
+      `DELETE FROM phone_verifications WHERE ${phoneLookupWhereClause()} AND is_verified = FALSE`,
+      phoneLookupBindParams(phone),
     );
 
     await pool.execute(
-      `INSERT INTO phone_verifications (phone, verification_code, expires_at, is_verified)
-       VALUES (?, ?, ?, TRUE)`,
-      [phone, 'FB0000', expiresAt],
+      `INSERT INTO phone_verifications (phone, phone_enc, phone_lookup, verification_code, expires_at, is_verified)
+       VALUES (NULL, ?, ?, ?, ?, TRUE)`,
+      [phonePacked.phone_enc, phonePacked.phone_lookup, 'FB0000', expiresAt],
     );
 
     return res.json({
@@ -602,11 +621,11 @@ router.post('/recovery/check-phone-registered', recoveryPhoneBackendLimiter, asy
 
     const [existing] = await pool.execute(
       `SELECT id FROM users
-       WHERE ${SQL_PHONE_NORM} = ?
+       WHERE ${phoneLookupWhereClause()}
          AND is_deleted = FALSE
          AND (is_banned IS NULL OR is_banned = FALSE)
        LIMIT 1`,
-      [phone],
+      phoneLookupBindParams(phone),
     );
 
     return res.json({
@@ -743,7 +762,7 @@ router.post('/recovery/reset-password', validate(recoveryResetValidators), async
 });
 
 // 회원가입
-router.post('/signup', validate(signupValidators), async (req, res) => {
+router.post('/signup', blockWhenFlag('signup_disabled'), validate(signupValidators), async (req, res) => {
   try {
     const { 
       username, 
@@ -893,9 +912,9 @@ router.post('/signup', validate(signupValidators), async (req, res) => {
     // 전화번호 인증 확인
     const [verifiedCodes] = await pool.execute(
       `SELECT id FROM phone_verifications 
-       WHERE phone = ? AND is_verified = TRUE 
+       WHERE ${phoneLookupWhereClause()} AND is_verified = TRUE 
        ORDER BY created_at DESC LIMIT 1`,
-      [phone]
+      phoneLookupBindParams(phone),
     );
 
     if (verifiedCodes.length === 0) {
@@ -907,8 +926,8 @@ router.post('/signup', validate(signupValidators), async (req, res) => {
 
     // 중복 확인
     const [existingUsers] = await pool.execute(
-      `SELECT id FROM users WHERE username = ? OR ${SQL_PHONE_NORM} = ?`,
-      [username, phone],
+      `SELECT id FROM users WHERE username = ? OR ${phoneLookupWhereClause()}`,
+      [username, ...phoneLookupBindParams(phone)],
     );
 
     if (existingUsers.length > 0) {
@@ -932,6 +951,7 @@ router.post('/signup', validate(signupValidators), async (req, res) => {
 
     // 비밀번호 해싱
     const hashedPassword = await hashPassword(password);
+    const userPii = packUserPii({ name, phone, birthDate });
 
     const connection = await pool.getConnection();
     try {
@@ -939,14 +959,12 @@ router.post('/signup', validate(signupValidators), async (req, res) => {
 
       const [result] = await connection.execute(
         `INSERT INTO users 
-         (username, password, name, phone, birth_date, school_id, grade, class_number, graduation_year, color_id, phone_verified, student_verified) 
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, TRUE, ?)`,
+         (username, password, ${USER_PII_INSERT_COLUMNS}, school_id, grade, class_number, graduation_year, color_id, phone_verified, student_verified) 
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, TRUE, ?)`,
         [
           username,
           hashedPassword,
-          name,
-          phone,
-          birthDate,
+          ...userPiiInsertValues(userPii),
           resolvedSchoolId,
           resolvedGrade,
           resolvedClassNumber,
@@ -957,17 +975,20 @@ router.post('/signup', validate(signupValidators), async (req, res) => {
       );
 
       const userId = result.insertId;
+      const submissionPii = packSubmissionPii({ name, phone, birthDate });
 
       if (isCertificateSignup) {
         await connection.execute(
           `INSERT INTO signup_certificate_submissions
-           (user_id, name, phone, birth_date, certificate_view_url, certificate_access_code, claimed_school_name, status)
-           VALUES (?, ?, ?, ?, ?, ?, ?, 'pending')`,
+           (user_id, name, name_enc, phone, phone_enc, phone_lookup, birth_date, birth_date_enc,
+            certificate_view_url, certificate_access_code, claimed_school_name, status)
+           VALUES (?, NULL, ?, NULL, ?, ?, NULL, ?, ?, ?, ?, 'pending')`,
           [
             userId,
-            name,
-            phone,
-            birthDate,
+            submissionPii.name_enc,
+            submissionPii.phone_enc,
+            submissionPii.phone_lookup,
+            submissionPii.birth_date_enc,
             certificateViewUrl.trim(),
             certificateAccessCode.trim(),
             claimedSchoolName?.trim() || null,
@@ -976,13 +997,15 @@ router.post('/signup', validate(signupValidators), async (req, res) => {
       } else if (studentIdManualVerification) {
         await connection.execute(
           `INSERT INTO signup_student_id_submissions
-           (user_id, name, phone, birth_date, school_id, cloudinary_url, cloudinary_public_id, status, submission_purpose, verification_jti)
-           VALUES (?, ?, ?, ?, ?, ?, ?, 'pending', 'signup', ?)`,
+           (user_id, name, name_enc, phone, phone_enc, phone_lookup, birth_date, birth_date_enc,
+            school_id, cloudinary_url, cloudinary_public_id, status, submission_purpose, verification_jti)
+           VALUES (?, NULL, ?, NULL, ?, ?, NULL, ?, ?, ?, ?, 'pending', 'signup', ?)`,
           [
             userId,
-            name,
-            phone,
-            birthDate,
+            submissionPii.name_enc,
+            submissionPii.phone_enc,
+            submissionPii.phone_lookup,
+            submissionPii.birth_date_enc,
             studentIdManualVerification.schoolId,
             studentIdManualVerification.cloudinaryUrl,
             studentIdManualVerification.cloudinaryPublicId,
@@ -1059,7 +1082,7 @@ router.post('/verify-student', authenticate, async (req, res) => {
 
     // 사용자 정보 확인
     const [users] = await pool.execute(
-      'SELECT id, name, school_id, grade, class_number FROM users WHERE id = ?',
+      'SELECT id, name, name_enc, school_id, grade, class_number FROM users WHERE id = ?',
       [userId]
     );
 
@@ -1117,7 +1140,7 @@ router.post('/login', validate(loginValidators), async (req, res) => {
 
     // 사용자 조회
     const [users] = await pool.execute(
-      `SELECT id, username, password, name, phone, is_deleted, is_banned, is_suspended, suspended_until,
+      `SELECT id, username, password, name, name_enc, phone, phone_enc, is_deleted, is_banned, is_suspended, suspended_until,
               token_version, reverification_status, reverification_deadline
        FROM users WHERE username = ?`,
       [username]
@@ -1584,7 +1607,7 @@ router.post('/resubmit-student-id', authenticate, signupOcrLimiter, async (req, 
     }
 
     const [userRows] = await pool.execute(
-      `SELECT id, name, phone, birth_date, school_id FROM users WHERE id = ? LIMIT 1`,
+      `SELECT id, name, name_enc, phone, phone_enc, birth_date, birth_date_enc, school_id FROM users WHERE id = ? LIMIT 1`,
       [userId],
     );
     if (!userRows.length) {
@@ -1593,7 +1616,7 @@ router.post('/resubmit-student-id', authenticate, signupOcrLimiter, async (req, 
         message: '사용자를 찾을 수 없습니다.',
       });
     }
-    const user = userRows[0];
+    const user = hydrateUserPiiRow(userRows[0], ['name', 'phone', 'birth_date']);
 
     const submissionPurpose = isReverificationResubmit ? 'reverification' : 'resubmit';
     const targetSchoolId = String(bodySchoolId || user.school_id || '').trim();
@@ -1628,16 +1651,23 @@ router.post('/resubmit-student-id', authenticate, signupOcrLimiter, async (req, 
       });
     }
 
+    const resubmitPii = packSubmissionPii({
+      name: user.name,
+      phone: user.phone,
+      birthDate: user.birth_date,
+    });
+
     await pool.execute(
       `INSERT INTO signup_student_id_submissions
-         (user_id, name, phone, birth_date, school_id, previous_school_id,
-          cloudinary_url, cloudinary_public_id, status, submission_purpose)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'pending', ?)`,
+         (user_id, name, name_enc, phone, phone_enc, phone_lookup, birth_date, birth_date_enc,
+          school_id, previous_school_id, cloudinary_url, cloudinary_public_id, status, submission_purpose)
+       VALUES (?, NULL, ?, NULL, ?, ?, NULL, ?, ?, ?, ?, ?, 'pending', ?)`,
       [
         userId,
-        user.name,
-        user.phone,
-        user.birth_date,
+        resubmitPii.name_enc,
+        resubmitPii.phone_enc,
+        resubmitPii.phone_lookup,
+        resubmitPii.birth_date_enc,
         targetSchoolId,
         previousSchoolId,
         uploaded.cloudinaryUrl,
@@ -1706,7 +1736,7 @@ router.post('/ocr', authenticate, async (req, res) => {
 
     // 사용자 정보 조회
     const [users] = await pool.execute(
-      'SELECT id, name, school_id, grade, class_number FROM users WHERE id = ?',
+      'SELECT id, name, name_enc, school_id, grade, class_number FROM users WHERE id = ?',
       [userId]
     );
 

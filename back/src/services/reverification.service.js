@@ -58,19 +58,31 @@ export function isReverificationGracePeriod(ref = new Date()) {
   return day >= 1 && day <= 7;
 }
 
+/** 3/8 이후 재인증 미완료 → restricted 전환 구간 */
+export function isReverificationRestrictionDue(ref = new Date()) {
+  const kst = getKstNow(ref);
+  if (kst.getMonth() !== 2) return false;
+  return kst.getDate() >= 8;
+}
+
+/** 크론 가동 시즌: 2월 25일~3월 8일 (KST, 행정 유예 포함) */
+export function isReverificationGuideSeason(ref = new Date()) {
+  const kst = getKstNow(ref);
+  const month = kst.getMonth();
+  const day = kst.getDate();
+  if (month === 1 && day >= 25) return true;
+  if (month === 2 && day <= 8) return true;
+  return false;
+}
+
 export function getReverificationDeadlineForYear(year) {
   return `${year}-03-08`;
 }
 
-export const BLOCKED_REVERIFICATION_STATUSES = new Set([
-  'restricted',
-  'graduated_blocked',
-  'adult_blocked',
-]);
+/** 현재 차단 대상 — 졸업·성인 차단은 추후 기능 확장 전까지 비활성 */
+export const BLOCKED_REVERIFICATION_STATUSES = new Set(['restricted']);
 
 export function getReverificationBlockCode(status) {
-  if (status === 'graduated_blocked') return 'GRADUATED_BLOCKED';
-  if (status === 'adult_blocked') return 'ADULT_BLOCKED';
   if (status === 'restricted') return 'REVERIFICATION_RESTRICTED';
   return null;
 }

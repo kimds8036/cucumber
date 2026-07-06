@@ -2,6 +2,9 @@ import jwt from 'jsonwebtoken';
 import crypto from 'crypto';
 import pool from '../config/database.js';
 import { normalizeLocalKrPhone } from '../utils/phone.js';
+import {
+  packSubmissionPii,
+} from '../services/userPii.service.js';
 
 if (!process.env.JWT_SECRET) {
   throw new Error('[FATAL] JWT_SECRET 환경변수가 없습니다.');
@@ -36,16 +39,23 @@ export async function issueStudentOcrVerificationToken({
     { expiresIn: OCR_TOKEN_TTL, algorithm: 'HS256' },
   );
 
+  const pii = packSubmissionPii({
+    name: String(name || '').trim(),
+    phone: normalizedPhone,
+    birthDate,
+  });
+
   await pool.execute(
     `INSERT INTO signup_verification_tokens
-       (jti, token_type, name, birth_date, school_id, phone, expires_at)
-     VALUES (?, 'ocr', ?, ?, ?, ?, ?)`,
+       (jti, token_type, name, name_enc, birth_date, birth_date_enc, school_id, phone, phone_enc, phone_lookup, expires_at)
+     VALUES (?, 'ocr', NULL, ?, NULL, ?, ?, NULL, ?, ?, ?)`,
     [
       jti,
-      String(name || '').trim(),
-      birthDate,
+      pii.name_enc,
+      pii.birth_date_enc,
       String(schoolId || '').trim(),
-      normalizedPhone,
+      pii.phone_enc,
+      pii.phone_lookup,
       expiresAt,
     ],
   );
@@ -174,16 +184,24 @@ export async function issueStudentIdManualVerificationToken({
     { expiresIn: MANUAL_TOKEN_TTL, algorithm: 'HS256' },
   );
 
+  const pii = packSubmissionPii({
+    name: String(name || '').trim(),
+    phone: normalizedPhone,
+    birthDate,
+  });
+
   await pool.execute(
     `INSERT INTO signup_verification_tokens
-       (jti, token_type, name, birth_date, school_id, phone, cloudinary_url, cloudinary_public_id, expires_at)
-     VALUES (?, 'student_id_manual', ?, ?, ?, ?, ?, ?, ?)`,
+       (jti, token_type, name, name_enc, birth_date, birth_date_enc, school_id, phone, phone_enc, phone_lookup,
+        cloudinary_url, cloudinary_public_id, expires_at)
+     VALUES (?, 'student_id_manual', NULL, ?, NULL, ?, ?, NULL, ?, ?, ?, ?, ?)`,
     [
       jti,
-      String(name || '').trim(),
-      birthDate,
+      pii.name_enc,
+      pii.birth_date_enc,
       trimmedSchoolId,
-      normalizedPhone,
+      pii.phone_enc,
+      pii.phone_lookup,
       cloudinaryUrl,
       cloudinaryPublicId || null,
       expiresAt,

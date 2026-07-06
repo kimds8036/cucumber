@@ -1,0 +1,62 @@
+<div class="dialog-backdrop" id="student-id-reject-dialog" onclick="closeStudentIdRejectByBackdrop(event)">
+  <div class="dialog">
+    <div class="dialog-title">학생증 거절 사유</div>
+    <select id="student-id-reject-reason" style="width:100%;height:36px;margin-bottom:8px;">
+      <option value="학생증 사진이 흐리거나 잘린 경우">학생증 사진이 흐리거나 잘린 경우</option>
+      <option value="이름이 일치하지 않음">이름이 일치하지 않음</option>
+      <option value="학교 정보가 일치하지 않음">학교 정보가 일치하지 않음</option>
+      <option value="학생증이 아닌 사진">학생증이 아닌 사진</option>
+      <option value="custom">기타 (직접 입력)</option>
+    </select>
+    <textarea class="note-input" id="student-id-reject-custom" placeholder="기타 사유를 입력하세요" style="display:none;"></textarea>
+    <div class="dialog-actions">
+      <button class="btn btn-sm" onclick="closeStudentIdRejectDialog()">취소</button>
+      <button class="btn btn-sm btn-danger" onclick="submitStudentIdReject()">거절</button>
+    </div>
+  </div>
+</div>
+
+<div class="dialog-backdrop" id="reopen-dialog-backdrop" onclick="closeReopenDialogByBackdrop(event)">
+  <div class="dialog">
+    <div class="dialog-title" id="reopen-dialog-title">재판정 메모 입력</div>
+    <textarea class="note-input" id="reopen-note-input" placeholder="재판정 사유를 입력하세요 (필수)"></textarea>
+    <div class="dialog-actions">
+      <button class="btn btn-sm" onclick="closeReopenDialog()">취소</button>
+      <button class="btn btn-sm btn-primary" onclick="submitReopenDialog()">확인</button>
+    </div>
+  </div>
+</div>
+
+<div class="dialog-backdrop" id="bulk-action-dialog-backdrop" onclick="closeBulkActionDialogByBackdrop(event)">
+  <div class="dialog">
+    <div class="dialog-title" id="bulk-action-dialog-title">일괄 처리 메모 입력</div>
+    <textarea class="note-input" id="bulk-action-note-input" placeholder="처리 메모를 입력하세요 (필수)"></textarea>
+    <div class="malicious-row" id="bulk-action-malicious-row" style="display:none;">
+      <input type="checkbox" id="bulk-action-malicious-check">
+      <label for="bulk-action-malicious-check">허위신고 판정(신고자 경고 +1)</label>
+    </div>
+    <div class="dialog-actions">
+      <button class="btn btn-sm" onclick="closeBulkActionDialog()">취소</button>
+      <button class="btn btn-sm btn-primary" onclick="submitBulkActionDialog()">확인</button>
+    </div>
+  </div>
+</div>
+
+<div class="dialog-backdrop" id="inquiry-reopen-dialog-backdrop" onclick="closeInquiryReopenDialogByBackdrop(event)">
+  <div class="dialog">
+    <div class="dialog-title">문의 재오픈 사유</div>
+    <textarea class="note-input" id="inquiry-reopen-note-input" placeholder="재오픈 사유를 입력하세요 (필수)"></textarea>
+    <div class="dialog-actions">
+      <button class="btn btn-sm" onclick="closeInquiryReopenDialog()">취소</button>
+      <button class="btn btn-sm btn-primary" onclick="submitInquiryReopenDialog()">확인</button>
+    </div>
+  </div>
+</div>
+
+<div class="dialog-backdrop" id="inquiry-bulk-close-dialog-backdrop" onclick="closeInquiryBulkCloseDialogByBackdrop(event)">
+  <div class="dialog">
+    <div class="dialog-title">문의 일괄 종결</div>
+    <textarea class="note-input" id="inquiry-bulk-close-note-input" placeholder="종결 메모(선택)"></textarea>
+    <div class="dialog-actions">
+      <button class="btn btn-sm" onclick="closeInquiryBulkCloseDialog()">취소</button>
+      <button class="btn btn-sm btn-primary" onclick="submitInquiryBulkCloseDialog()">확인</button>

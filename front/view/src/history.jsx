@@ -10,7 +10,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import SubHeader from '../frame/subHeader';
 import { getNormalize } from '../../styles/frame.style';
 import { createMailStyles } from '../../styles/mail.style';
-import { api } from '../../utils/api';
+import { api, getApiUserFacingMessage } from '../../utils/api';
 import { colors } from '../../styles/colors';
 import MailHistorySkeleton from './components/mail/MailHistorySkeleton';
 import {
@@ -210,7 +210,7 @@ export default function MailHistoryScreen({ navigation, route }) {
         setHistoryItems(merged);
       } catch (e) {
         setError(
-          e.response?.data?.message || '히스토리를 불러오지 못했습니다.',
+          getApiUserFacingMessage(e, '히스토리를 불러오지 못했습니다.'),
         );
       } finally {
         setLoading(false);

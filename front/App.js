@@ -1,5 +1,5 @@
 import { StatusBar } from 'expo-status-bar';
-import { CommonActions, NavigationContainer } from '@react-navigation/native';
+import { CommonActions, NavigationContainer, DefaultTheme } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import Login from './view/src/signup/Login';
 import Sign from './view/src/signup/Sign';
@@ -50,7 +50,7 @@ import GuideOverlayScreen from './src/screens/UserGuide/GuideOverlayScreen';
 import { useFonts } from 'expo-font';
 import * as SplashScreen from 'expo-splash-screen';
 import { useEffect, useRef, useState } from 'react';
-import { Alert, AppState, View } from 'react-native';
+import { Alert, AppState, Platform, View } from 'react-native';
 import * as Notifications from 'expo-notifications';
 import Constants from 'expo-constants';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
@@ -73,6 +73,11 @@ import { ToastProvider } from './context/ToastContext';
 import ToastHost from './components/common/ToastHost';
 import AlertHost from './components/common/AlertHost';
 import { navigationRef } from './navigation/navigationRef';
+import {
+  navigateFromPush,
+  resolvePushNavigation,
+} from './navigation/pushNavigation';
+import { colors } from './styles/colors';
 import { appAlert } from './utils/appAlert';
 import {
   cancelTimerRunningNotification,
@@ -88,6 +93,13 @@ import {
 } from './utils/fcmService';
 
 const Stack = createNativeStackNavigator();
+const navigationTheme = {
+  ...DefaultTheme,
+  colors: {
+    ...DefaultTheme.colors,
+    background: colors.background,
+  },
+};
 const linking = {
   prefixes: ['cucumber://'],
   config: {
@@ -219,111 +231,8 @@ function RootNavigator() {
     };
   }, [isLoggedIn, refreshStudentVerification]);
 
-  const getInitialTabForPush = (relatedType = '', fallbackScreen = '') => {
-    if (
-      relatedType === 'dm_room' ||
-      relatedType === 'message_room' ||
-      relatedType === 'personal_mail'
-    ) {
-      return 'message';
-    }
-    if (relatedType === 'post') return 'board';
-    if (relatedType === 'friend_request' || fallbackScreen === 'Friends')
-      return 'mypage';
-    return 'board';
-  };
-
   const navigateViaMainEntry = ({ name, params, relatedType }) => {
-    if (!navigationRef.isReady()) return;
-    const initialTab = getInitialTabForPush(relatedType, name);
-
-    navigationRef.dispatch(
-      CommonActions.reset({
-        index: 0,
-        routes: [{ name: 'Main', params: { initialTab } }],
-      }),
-    );
-
-    if (name && name !== 'Main') {
-      setTimeout(() => {
-        if (!navigationRef.isReady()) return;
-        navigationRef.navigate(name, params);
-      }, 80);
-    }
-  };
-
-  const resolvePushNavigation = (data = {}, remoteMessage = null) => {
-    const targetScreen = String(data?.targetScreen || '').trim();
-    const relatedType = String(data?.relatedType || '').trim();
-    const relatedId = data?.relatedId != null ? String(data.relatedId) : null;
-    const notificationTitle = String(
-      remoteMessage?.notification?.title ||
-        remoteMessage?.data?.senderName ||
-        '',
-    ).trim();
-
-    if (
-      targetScreen === 'ChatRoom' &&
-      (relatedType === 'dm_room' || relatedType === 'message_room')
-    ) {
-      return {
-        name: relatedType === 'dm_room' ? 'DMChat' : 'Chat',
-        params: {
-          roomId: relatedId,
-          ...(relatedType === 'dm_room'
-            ? {
-                friend: {
-                  name: notificationTitle || '친구',
-                },
-              }
-            : {}),
-          ...data,
-        },
-      };
-    }
-
-    if (targetScreen === 'PostDetail') {
-      return {
-        name: 'BoardDetail',
-        params: {
-          post: {
-            id: relatedId,
-          },
-          isMyPost: false,
-          ...data,
-        },
-      };
-    }
-    if (targetScreen === 'FriendRequests') {
-      return {
-        name: 'Friends',
-        params: data,
-      };
-    }
-    if (targetScreen === 'Notifications') {
-      return {
-        name: 'Notification',
-        params: data,
-      };
-    }
-    if (targetScreen === 'MailDetail' || relatedType === 'personal_mail') {
-      return {
-        name: 'MailDetail',
-        params: {
-          mail: {
-            id: relatedId,
-            isReceived: true,
-            replyToMySent: false,
-          },
-          ...data,
-        },
-      };
-    }
-
-    return {
-      name: targetScreen,
-      params: data,
-    };
+    navigateFromPush({ name, params, relatedType });
   };
 
   useEffect(() => {
@@ -487,6 +396,14 @@ export default function App() {
   };
 
   useEffect(() => {
+    if (Platform.OS !== 'android') return undefined;
+    const RNStatusBar = require('react-native').StatusBar;
+    RNStatusBar.setBackgroundColor(colors.background, true);
+    RNStatusBar.setBarStyle('dark-content', true);
+    return undefined;
+  }, []);
+
+  useEffect(() => {
     const isExpoGo = Constants.appOwnership === 'expo';
     if (isExpoGo) {
       console.log(
@@ -579,12 +496,11 @@ export default function App() {
               currentRouteName: currentRoute?.name ?? null,
             });
           }
-          navigationRef.dispatch(
-            CommonActions.reset({
-              index: 0,
-              routes: [{ name: 'Timer' }],
-            }),
-          );
+          navigateFromPush({
+            name: 'Main',
+            params: { initialTab: 'timer' },
+            relatedType: '',
+          });
           Notifications.clearLastNotificationResponseAsync?.().catch(() => {});
         }
       },
@@ -654,7 +570,8 @@ export default function App() {
   if (!fontsLoaded) return null;
 
   return (
-    <SafeAreaProvider>
+    <SafeAreaProvider style={{ flex: 1, backgroundColor: colors.background }}>
+      <StatusBar style="dark" backgroundColor={colors.background} />
       <ForceUpdateGate>
         <KeyboardProvider>
           <AuthProvider>
@@ -667,6 +584,7 @@ export default function App() {
                         <NavigationContainer
                           ref={navigationRef}
                           linking={linking}
+                          theme={navigationTheme}
                         >
                           <RootNavigator />
                           <ToastHost />

@@ -5,6 +5,9 @@ import { runSchoolStatsJob } from './schoolStats.js';
 import { runTimerSessionGuardJob } from './timerSession.guard.js';
 import { runPersonalMailReturnBatchJob } from './personalMail.return.js';
 import { runReverificationGuideJob } from './reverification.guide.js';
+import { runAdminStatsReconcileJob } from './adminStats.reconcile.js';
+import { runAttendanceSuspicionJob } from './adminAttendance.suspicion.js';
+import { runAdminRetentionJob } from './adminRetention.purge.js';
 import { shouldRunCron } from '../config/serviceRole.js';
 
 const TZ = process.env.CRON_TIMEZONE || 'Asia/Seoul';
@@ -31,8 +34,14 @@ export function initJobs() {
   const timerGuardSchedule = process.env.CRON_TIMER_GUARD || '*/10 * * * *';
   const personalMailReturnSchedule =
     process.env.CRON_PERSONAL_MAIL_RETURN || '0 4 * * *';
-  const reverificationSchedule =
-    process.env.CRON_REVERIFICATION_GUIDE || '0 4 * * *';
+  const reverificationSchedules = process.env.CRON_REVERIFICATION_GUIDE
+    ? [process.env.CRON_REVERIFICATION_GUIDE]
+    : ['0 4 25-29 2 *', '0 4 1-8 3 *'];
+  const adminStatsSchedule = process.env.CRON_ADMIN_STATS || '*/5 * * * *';
+  const attendanceSuspicionSchedule =
+    process.env.CRON_ATTENDANCE_SUSPICION || '0 3 * * *';
+  const adminRetentionSchedule =
+    process.env.CRON_ADMIN_RETENTION || '0 5 * * 0';
 
   cron.schedule(
     studyGrassSchedule,
@@ -74,15 +83,41 @@ export function initJobs() {
     { timezone: TZ }
   );
 
+  for (const reverificationSchedule of reverificationSchedules) {
+    cron.schedule(
+      reverificationSchedule,
+      async () => {
+        await runReverificationGuideJob();
+      },
+      { timezone: TZ },
+    );
+  }
+
   cron.schedule(
-    reverificationSchedule,
+    adminStatsSchedule,
     async () => {
-      await runReverificationGuideJob();
+      await runAdminStatsReconcileJob();
     },
-    { timezone: TZ }
+    { timezone: TZ },
+  );
+
+  cron.schedule(
+    attendanceSuspicionSchedule,
+    async () => {
+      await runAttendanceSuspicionJob();
+    },
+    { timezone: TZ },
+  );
+
+  cron.schedule(
+    adminRetentionSchedule,
+    async () => {
+      await runAdminRetentionJob();
+    },
+    { timezone: TZ },
   );
 
   console.log(
-    `[BatchJob] started timezone=${TZ} studyGrass="${studyGrassSchedule}" trending="${trendingSchedule}" schoolStats="${schoolStatsSchedule}" timerGuard="${timerGuardSchedule}" personalMailReturn="${personalMailReturnSchedule}" reverification="${reverificationSchedule}"`,
+    `[BatchJob] started timezone=${TZ} studyGrass="${studyGrassSchedule}" trending="${trendingSchedule}" schoolStats="${schoolStatsSchedule}" timerGuard="${timerGuardSchedule}" personalMailReturn="${personalMailReturnSchedule}" reverification="${reverificationSchedules.join('|')}" adminStats="${adminStatsSchedule}" attendanceSuspicion="${attendanceSuspicionSchedule}" adminRetention="${adminRetentionSchedule}"`,
   );
 }

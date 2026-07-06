@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>YouthPaper Admin</title>
+  <link rel="stylesheet" href="{{ADMIN_BASE}}/assets/css/admin.css" />
+  <script>window.__ADMIN_BASE__ = {{ADMIN_BASE_JSON}}; window.__ADMIN_DEPLOY_ENV__ = {{DEPLOY_ENV_JSON}};</script>
+</head>
+<body>
+
+<div class="sidebar-overlay" id="sidebar-overlay" aria-hidden="true"></div>
+
+<div class="layout">
+{{SIDEBAR}}
+  <div class="main">
+{{TOPBAR}}
+    <div class="content">
+{{CONTENT}}
+    </div>
+  </div>
+</div>
+
+{{DIALOGS}}
+
+<script src="{{ADMIN_BASE}}/assets/js/01-core.js"></script>
+<script src="{{ADMIN_BASE}}/assets/js/02-student-ids.js"></script>
+<script src="{{ADMIN_BASE}}/assets/js/03-reports-dashboard.js"></script>
+<script src="{{ADMIN_BASE}}/assets/js/04-appeals-users-logs.js"></script>
+<script src="{{ADMIN_BASE}}/assets/js/05-inquiries.js"></script>
+<script src="{{ADMIN_BASE}}/assets/js/07-attendance.js"></script>
+<script src="{{ADMIN_BASE}}/assets/js/08-emergency.js"></script>
+<script src="{{ADMIN_BASE}}/assets/js/09-admin-accounts.js"></script>
+<script src="{{ADMIN_BASE}}/assets/js/06-bootstrap.js"></script>
+</body>
+</html>

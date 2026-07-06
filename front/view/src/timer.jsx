@@ -35,8 +35,8 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import Feather from '@expo/vector-icons/Feather';
 import MessageTabIcon from '../../assets/Logo.svg';
 import ViewShot from 'react-native-view-shot';
-import * as MediaLibrary from 'expo-media-library';
-import { api } from '../../utils/api';
+import { api, getApiUserFacingMessage } from '../../utils/api';
+import { saveImageUriToGallery, alertGallerySaveFailure } from '../../utils/saveImageToGallery';
 import Skeleton from '../../components/common/Skeleton';
 import {
   getTimerDayKey,
@@ -212,6 +212,21 @@ function sessionToDerivedTimelineSeconds(session, viewingDayKey) {
     startSeconds: Math.floor((vs - a) / 1000),
     endSeconds: endFloor,
   };
+}
+
+function getOpenSession(sessions) {
+  if (!Array.isArray(sessions)) return null;
+  for (let i = sessions.length - 1; i >= 0; i -= 1) {
+    if (sessions[i]?.endedAtMs == null) return sessions[i];
+  }
+  return null;
+}
+
+/** 진행 중(endedAtMs=null) 세션 — UI·경과 시간의 단일 기준 */
+function getOpenSessionStartedAtMs(sessions) {
+  const open = getOpenSession(sessions);
+  const ms = Number(open?.startedAtMs);
+  return Number.isFinite(ms) ? ms : null;
 }
 
 function getSessionDurationMs(session, nowSecRaw = null) {
@@ -522,23 +537,35 @@ function getPersistPayloadSignature(snapshot) {
 /** 1초마다 갱신되는 누적 시간(진행 중 세션) — Provider 하위만 리렌더 */
 const LiveElapsedMsContext = createContext(0);
 
-function LiveElapsedTicker({ isRunning, startTimestamp, children }) {
+function LiveElapsedTicker({
+  isRunning,
+  sessionStartedAtMs,
+  resyncAt,
+  children,
+}) {
   const [liveExtraMs, setLiveExtraMs] = useState(0);
-  useLayoutEffect(() => {
-    if (!isRunning || startTimestamp == null) {
+
+  const syncLiveExtra = useCallback(() => {
+    if (!isRunning || sessionStartedAtMs == null) {
       setLiveExtraMs(0);
       return;
     }
-    setLiveExtraMs(Date.now() - startTimestamp);
-  }, [isRunning, startTimestamp]);
+    setLiveExtraMs(Math.max(0, Date.now() - sessionStartedAtMs));
+  }, [isRunning, sessionStartedAtMs]);
+
+  useLayoutEffect(() => {
+    syncLiveExtra();
+  }, [syncLiveExtra, resyncAt]);
+
   useEffect(() => {
-    if (!isRunning || startTimestamp == null) return undefined;
+    if (!isRunning || sessionStartedAtMs == null) return undefined;
     const t = setInterval(
-      () => setLiveExtraMs(Date.now() - startTimestamp),
+      () =>
+        setLiveExtraMs(Math.max(0, Date.now() - sessionStartedAtMs)),
       1000,
     );
     return () => clearInterval(t);
-  }, [isRunning, startTimestamp]);
+  }, [isRunning, sessionStartedAtMs, resyncAt]);
   return (
     <LiveElapsedMsContext.Provider value={liveExtraMs}>
       {children}
@@ -584,10 +611,14 @@ function TimerLiveScrollInner({
 
   const getSubjectTotalMs = (subjectId) => {
     if (subjectId == null) return 0;
-    const nowSec = getSecondsFromSixAM(new Date());
     return displaySessions
-      .filter((s) => s.subjectId === subjectId && s.endSeconds != null)
-      .reduce((sum, s) => sum + getSessionDurationMs(s, nowSec), 0);
+      .filter((s) => s.subjectId === subjectId)
+      .reduce((sum, s) => {
+        const isActiveOpenSession =
+          s.endedAtMs == null && isRunning && activeSubjectId === subjectId;
+        if (isActiveOpenSession) return sum;
+        return sum + getSessionDurationMs(s);
+      }, 0);
   };
 
   const getSlotSegments = (slotStartSeconds) => {
@@ -908,6 +939,7 @@ function TimerLivePlannerCapture({
   normalize,
   isViewingToday,
   isRunning,
+  activeSubjectId,
   totalElapsedMs,
   displayTotalElapsedMs,
   displaySessions,
@@ -923,10 +955,14 @@ function TimerLivePlannerCapture({
 
   const getSubjectTotalMs = (subjectId) => {
     if (subjectId == null) return 0;
-    const nowSec = getSecondsFromSixAM(new Date());
     return displaySessions
-      .filter((s) => s.subjectId === subjectId && s.endSeconds != null)
-      .reduce((sum, s) => sum + getSessionDurationMs(s, nowSec), 0);
+      .filter((s) => s.subjectId === subjectId)
+      .reduce((sum, s) => {
+        const isActiveOpenSession =
+          s.endedAtMs == null && isRunning && activeSubjectId === subjectId;
+        if (isActiveOpenSession) return sum;
+        return sum + getSessionDurationMs(s);
+      }, 0);
   };
 
   const getSlotSegments = (slotStartSeconds) => {
@@ -1218,33 +1254,6 @@ export const TimerContent = () => {
     };
   }, [isGuidePreview]);
 
-  // 타이머 화면 진입 시: 놓친 친구 공부 상태 REST로만 보완 + 소켓 미연결 시 재연결
-  useFocusEffect(
-    React.useCallback(() => {
-      if (isGuidePreview) return undefined;
-      setIsTimerScreenActive?.(true);
-      refreshStudyingFriends?.();
-      if (isRunning) {
-        cancelTimerRunningNotification();
-      }
-      if (isRunning) {
-        setTimerRuntimeState({
-          countdownBaseTimestamp: null,
-          countdownRemainingSec: TIMER_COUNTDOWN_TOTAL_SECONDS,
-        });
-      }
-      return () => {
-        if (isRunning) {
-          setTimerRuntimeState({
-            countdownBaseTimestamp: Date.now(),
-            countdownRemainingSec: TIMER_COUNTDOWN_TOTAL_SECONDS,
-          });
-        }
-        setIsTimerScreenActive?.(false);
-      };
-    }, [refreshStudyingFriends, setIsTimerScreenActive, isRunning, isGuidePreview]),
-  );
-
   // 친구 관련 핸들러 (모달 열기까지만 담당, 쿡 찌르기 로직은 FriendPokeController 에서 처리)
   const handleOpenAddFriend = useCallback(() => setShowAddFriend(true), []);
   const handleFriendPress = useCallback(
@@ -1263,8 +1272,17 @@ export const TimerContent = () => {
   const [sessions, setSessions] = useState([]);
   const [activeSubjectId, setActiveSubjectId] = useState(null);
   const [isRunning, setIsRunning] = useState(false);
-  const [startTimestamp, setStartTimestamp] = useState(null);
   const [totalElapsedMs, setTotalElapsedMs] = useState(0);
+  const [liveElapsedResyncAt, setLiveElapsedResyncAt] = useState(0);
+
+  const bumpLiveElapsedResync = useCallback(() => {
+    setLiveElapsedResyncAt(Date.now());
+  }, []);
+
+  const openSessionStartedAtMs = useMemo(() => {
+    if (!isRunning) return null;
+    return getOpenSessionStartedAtMs(sessions);
+  }, [isRunning, sessions]);
 
   const [showAddSubject, setShowAddSubject] = useState(false);
   const [showAddTask, setShowAddTask] = useState(false);
@@ -1302,6 +1320,38 @@ export const TimerContent = () => {
     sessionsCount: null,
     subjectsCount: null,
   });
+
+  // 타이머 화면 진입/이탈 + 실행 중 live 경과 resync
+  useFocusEffect(
+    React.useCallback(() => {
+      if (isGuidePreview) return undefined;
+      setIsTimerScreenActive?.(true);
+      refreshStudyingFriends?.();
+      if (isRunning) {
+        cancelTimerRunningNotification();
+        bumpLiveElapsedResync();
+        setTimerRuntimeState({
+          countdownBaseTimestamp: null,
+          countdownRemainingSec: TIMER_COUNTDOWN_TOTAL_SECONDS,
+        });
+      }
+      return () => {
+        if (isRunning) {
+          setTimerRuntimeState({
+            countdownBaseTimestamp: Date.now(),
+            countdownRemainingSec: TIMER_COUNTDOWN_TOTAL_SECONDS,
+          });
+        }
+        setIsTimerScreenActive?.(false);
+      };
+    }, [
+      refreshStudyingFriends,
+      setIsTimerScreenActive,
+      isRunning,
+      isGuidePreview,
+      bumpLiveElapsedResync,
+    ]),
+  );
 
   useEffect(() => {
     latestSnapshotRef.current = {
@@ -1419,7 +1469,6 @@ export const TimerContent = () => {
             endedAtMs: null,
           },
         ]);
-        setStartTimestamp(Date.now());
       } finally {
         rolloverLockRef.current = false;
       }
@@ -1476,18 +1525,15 @@ export const TimerContent = () => {
           if (isGhostOpenSession) {
             setIsRunning(false);
             setActiveSubjectId(null);
-            setStartTimestamp(null);
           } else {
             setIsRunning(true);
             setActiveSubjectId(
               openSession.subjectId != null ? openSession.subjectId : null,
             );
-            setStartTimestamp(Number.isFinite(startMs) ? startMs : Date.now());
           }
         } else {
           setIsRunning(false);
           setActiveSubjectId(null);
-          setStartTimestamp(null);
         }
       }
       setInitialLoadDone(true);
@@ -1628,7 +1674,6 @@ export const TimerContent = () => {
             }
             setActiveSubjectId(null);
             setIsRunning(false);
-            setStartTimestamp(null);
           });
         });
       }
@@ -1711,8 +1756,11 @@ export const TimerContent = () => {
   };
 
   const endCurrentSession = () => {
-    if (startTimestamp == null) return 0;
-    const duration = Date.now() - startTimestamp;
+    const startedAtMs = getOpenSessionStartedAtMs(
+      latestSnapshotRef.current?.sessions ?? [],
+    );
+    if (startedAtMs == null) return 0;
+    const duration = Math.max(0, Date.now() - startedAtMs);
     setTotalElapsedMs((prev) => prev + duration);
     return duration;
   };
@@ -1764,7 +1812,6 @@ export const TimerContent = () => {
     const startWall = Date.now();
     setActiveSubjectId(subjectId);
     setIsRunning(true);
-    setStartTimestamp(startWall);
     setSessions((prev) => [
       ...prev,
       {
@@ -1798,7 +1845,6 @@ export const TimerContent = () => {
     const startWall = Date.now();
     setActiveSubjectId(null);
     setIsRunning(true);
-    setStartTimestamp(startWall);
     setSessions((prev) => [
       ...prev,
       {
@@ -1823,7 +1869,6 @@ export const TimerContent = () => {
     endCurrentSession();
     closeOpenSession(activeSubjectId);
     setIsRunning(false);
-    setStartTimestamp(null);
     requestImmediatePersist('pause');
     emitTimerStatus('idle');
   };
@@ -1932,7 +1977,7 @@ export const TimerContent = () => {
   }, [persistTimerSnapshot]);
 
   useEffect(() => {
-    if (!isRunning || startTimestamp == null) {
+    if (!isRunning || openSessionStartedAtMs == null) {
       setTimerRuntimeState({
         isRunning: false,
         startTimestamp: null,
@@ -1950,7 +1995,7 @@ export const TimerContent = () => {
       const countdownBaseTimestamp =
         Number.isFinite(runtimeBase) && runtimeBase > 0
           ? runtimeBase
-          : startTimestamp;
+          : openSessionStartedAtMs;
       const elapsedSec = Math.floor(
         (Date.now() - countdownBaseTimestamp) / 1000,
       );
@@ -1960,7 +2005,7 @@ export const TimerContent = () => {
       );
       setTimerRuntimeState({
         isRunning: true,
-        startTimestamp,
+        startTimestamp: openSessionStartedAtMs,
         countdownBaseTimestamp,
         countdownRemainingSec: remainingSec,
         countdownTotalSec: TIMER_COUNTDOWN_TOTAL_SECONDS,
@@ -1975,7 +2020,7 @@ export const TimerContent = () => {
     return () => {
       clearInterval(countdownInterval);
     };
-  }, [isRunning, startTimestamp, pauseTimer, isFocused]);
+  }, [isRunning, openSessionStartedAtMs, pauseTimer, isFocused]);
 
   useEffect(() => {
     const unregister = registerTimerStopHandler(() => {
@@ -2020,7 +2065,6 @@ export const TimerContent = () => {
                 endCurrentSession();
                 closeOpenSession(activeSubjectId);
                 setIsRunning(false);
-                setStartTimestamp(null);
                 emitTimerStatus('idle');
               }
               if (currentDayKey && currentDayKey !== timerDayKey) {
@@ -2044,16 +2088,21 @@ export const TimerContent = () => {
           performTimerDayRollover(currentDayKey, 'background-day-rollover');
           return;
         }
-        if (isRunning && backgroundMs > 0) {
-          // 15분 미만 백그라운드 체류 시간은 경과시간 계산에서 제외한다.
-          setStartTimestamp((prevTs) => {
-            if (prevTs == null) return prevTs;
-            return prevTs + backgroundMs;
-          });
+        if (
+          getOpenSessionStartedAtMs(latestSnapshotRef.current?.sessions ?? []) !=
+          null
+        ) {
+          bumpLiveElapsedResync();
         }
       } else if (nextState === 'active') {
         // 앱 복귀 시 잔여 타이머 알림을 항상 정리해서 0개 유지
         cancelTimerRunningNotification();
+        if (
+          getOpenSessionStartedAtMs(latestSnapshotRef.current?.sessions ?? []) !=
+          null
+        ) {
+          bumpLiveElapsedResync();
+        }
       }
     });
     return () => sub.remove();
@@ -2068,6 +2117,7 @@ export const TimerContent = () => {
     tasks,
     persistTimerSnapshot,
     performTimerDayRollover,
+    bumpLiveElapsedResync,
   ]);
 
   // ── 날짜 이동 ─────────────────────────────────────────
@@ -2084,22 +2134,11 @@ export const TimerContent = () => {
   const handleSaveAsImage = async () => {
     if (!capturePlannerRef.current) return;
     try {
-      const { status } = await MediaLibrary.requestPermissionsAsync();
-      if (status !== 'granted') {
-        Alert.alert(
-          '권한 필요',
-          '사진 저장을 위해 갤러리 접근 권한이 필요해요',
-        );
-        return;
-      }
       const uri = await capturePlannerRef.current.capture();
-      await MediaLibrary.saveToLibraryAsync(uri);
+      await saveImageUriToGallery(uri);
       setShowSaveModal(true);
     } catch (e) {
-      Alert.alert(
-        '저장 실패',
-        e?.message || '이미지 저장에 실패했어요. 다시 시도해 주세요',
-      );
+      alertGallerySaveFailure(e);
     }
   };
 
@@ -2278,7 +2317,11 @@ export const TimerContent = () => {
 
   return (
     <>
-      <LiveElapsedTicker isRunning={isRunning} startTimestamp={startTimestamp}>
+      <LiveElapsedTicker
+        isRunning={isRunning}
+        sessionStartedAtMs={openSessionStartedAtMs}
+        resyncAt={liveElapsedResyncAt}
+      >
         <>
           <ScrollView
             style={[styles.scroll, tdb('#FF3B30')]}
@@ -2327,6 +2370,7 @@ export const TimerContent = () => {
             normalize={normalize}
             isViewingToday={isViewingToday}
             isRunning={isRunning}
+            activeSubjectId={activeSubjectId}
             totalElapsedMs={totalElapsedMs}
             displayTotalElapsedMs={displayTotalElapsedMs}
             displaySessions={displaySessionsForTimetable}
@@ -2407,8 +2451,10 @@ export const TimerContent = () => {
                       });
                       Alert.alert(
                         '친구 요청 실패',
-                        error.response?.data?.message ||
-                          '친구 요청 중 문제가 발생했어요. 잠시 후 다시 시도해 주세요',
+                        getApiUserFacingMessage(
+                          error,
+                          '친구 요청 중 문제가 발생했어요. 잠시 후 다시 시도해 주세요.',
+                        ),
                       );
                     }
                   },

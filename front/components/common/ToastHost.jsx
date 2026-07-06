@@ -2,7 +2,7 @@ import React from 'react';
 import { View } from 'react-native';
 import GlobalToast from './GlobalToast';
 import { useToast } from '../../context/ToastContext';
-import { navigate, reset } from '../../navigation/navigationRef';
+import { navigateFromPush } from '../../navigation/pushNavigation';
 import { api } from '../../utils/api';
 import {
   isStudySummaryNotification,
@@ -22,7 +22,10 @@ export default function ToastHost() {
           watcher,
         },
       );
-      navigate('Notification');
+      navigateFromPush({
+        name: 'Notification',
+        relatedType: '',
+      });
       return;
     }
     try {
@@ -34,7 +37,10 @@ export default function ToastHost() {
         console.log('[ToastHost] DM roomId 없음, Notification으로 이동', {
           watcherUserId: watcher.userId,
         });
-        navigate('Notification');
+        navigateFromPush({
+        name: 'Notification',
+        relatedType: '',
+      });
         return;
       }
       let friendPayload = { id: watcher.userId, name: watcher.name };
@@ -74,16 +80,23 @@ export default function ToastHost() {
         roomId,
         friendPayload,
       });
-      navigate('DMChat', {
-        roomId,
-        friend: friendPayload,
+      navigateFromPush({
+        name: 'DMChat',
+        params: {
+          roomId,
+          friend: friendPayload,
+        },
+        relatedType: 'dm_room',
       });
     } catch (error) {
       console.log('[ToastHost] DM 생성 실패, Notification으로 이동', {
         watcherUserId: watcher.userId,
         message: error?.message,
       });
-      navigate('Notification');
+      navigateFromPush({
+        name: 'Notification',
+        relatedType: '',
+      });
     }
   };
 
@@ -108,29 +121,41 @@ export default function ToastHost() {
           ? colorIndexRaw % DM_ICON_COLOR_COUNT
           : 0;
 
-      navigate('DMChat', {
-        roomId,
-        friend: {
-          ...(senderUserId ? { id: senderUserId } : {}),
-          name: senderName || '친구',
-          ...(senderSchoolName ? { schoolName: senderSchoolName } : {}),
-          colorIndex,
+      navigateFromPush({
+        name: 'DMChat',
+        params: {
+          roomId,
+          friend: {
+            ...(senderUserId ? { id: senderUserId } : {}),
+            name: senderName || '친구',
+            ...(senderSchoolName ? { schoolName: senderSchoolName } : {}),
+            colorIndex,
+          },
         },
+        relatedType: 'dm_room',
       });
       return;
     }
     if (relatedType === 'message_room' && roomId) {
-      navigate('Chat', { roomId });
+      navigateFromPush({
+        name: 'Chat',
+        params: { roomId },
+        relatedType: 'message_room',
+      });
       return;
     }
     if (relatedType === 'personal_mail' && relatedId) {
-      navigate('MailDetail', {
-        mail: {
-          id: relatedId,
-          receivedAt: '',
-          content: '',
-          is_read: false,
+      navigateFromPush({
+        name: 'MailDetail',
+        params: {
+          mail: {
+            id: relatedId,
+            receivedAt: '',
+            content: '',
+            is_read: false,
+          },
         },
+        relatedType: 'personal_mail',
       });
       return;
     }
@@ -146,21 +171,28 @@ export default function ToastHost() {
         return;
       }
       console.log('[ToastHost] study summary 다중 대기자 -> Notification 이동');
-      navigate('Notification');
+      navigateFromPush({
+        name: 'Notification',
+        relatedType: '',
+      });
       return;
     }
     if (relatedType === 'post' && relatedId) {
-      navigate('BoardDetail', {
-        post: {
-          id: relatedId,
-          author: '익명',
-          time: '',
-          location: '',
-          content: '',
-          likes: 0,
-          comments: 0,
+      navigateFromPush({
+        name: 'BoardDetail',
+        params: {
+          post: {
+            id: relatedId,
+            author: '익명',
+            time: '',
+            location: '',
+            content: '',
+            likes: 0,
+            comments: 0,
+          },
+          isMyPost: false,
         },
-        isMyPost: false,
+        relatedType: 'post',
       });
       return;
     }
@@ -169,19 +201,33 @@ export default function ToastHost() {
       type === 'poke' ||
       type === 'friend_poke'
     ) {
-      reset('Main', { initialTab: 'timer' });
+      navigateFromPush({
+        name: 'Main',
+        params: { initialTab: 'timer' },
+        relatedType: 'timer_poke',
+      });
       return;
     }
     if (relatedType === 'friendship' || type === 'friend_request') {
-      navigate('Friends');
+      navigateFromPush({
+        name: 'Friends',
+        relatedType: 'friend_request',
+      });
       return;
     }
     if (roomId) {
-      navigate('Chat', { roomId });
+      navigateFromPush({
+        name: 'Chat',
+        params: { roomId },
+        relatedType: 'message_room',
+      });
       return;
     }
     if (category === 'system' || category === 'mail' || category === 'post') {
-      navigate('Notification');
+      navigateFromPush({
+        name: 'Notification',
+        relatedType: '',
+      });
     }
   };
 

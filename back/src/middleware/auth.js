@@ -38,7 +38,7 @@ function extractToken(req) {
 async function loadUserAuthState(userId) {
   const [rows] = await pool.execute(
     `SELECT is_deleted, is_banned, is_suspended, suspended_until,
-            token_version, reverification_status, reverification_deadline
+            token_version, reverification_status, reverification_deadline, school_id
      FROM users
      WHERE id = ?
      LIMIT 1`,
@@ -49,7 +49,7 @@ async function loadUserAuthState(userId) {
 
 async function loadAdminAuthState(adminId) {
   const [rows] = await pool.execute(
-    `SELECT id, username, is_deleted
+    `SELECT id, username, is_deleted, role, last_login_at
      FROM admin_users
      WHERE id = ?
      LIMIT 1`,
@@ -130,6 +130,8 @@ export const authenticate = async (req, res, next) => {
         adminId: adminRow.id,
         userId: adminRow.id,
         username: adminRow.username,
+        adminRole: adminRow.role || decoded.role || 'moderator',
+        role: adminRow.role || decoded.role || 'moderator',
         type: 'admin_session',
         adminMfa: true,
       };
@@ -192,7 +194,11 @@ export const authenticate = async (req, res, next) => {
       });
     }
 
-    req.user = decoded;
+    req.user = {
+      ...decoded,
+      schoolId: row.school_id,
+      school_id: row.school_id,
+    };
     next();
   } catch (error) {
     return res.status(401).json({

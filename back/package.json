@@ -15,7 +15,9 @@
     "migrate:all": "node src/db/migrate.js --all",
     "seed:schools": "node src/db/seed-schools-from-csv.js",
     "seed:reset-admins": "node src/db/seed-reset-and-admins.js",
-    "seed:admin-users": "node src/db/seed-reset-and-admins.js"
+    "seed:admin-users": "node src/db/seed-reset-and-admins.js",
+    "seed:dev-test-user": "node src/db/seed-dev-test-user.js",
+    "migrate:pii-encrypt": "node src/db/migrate-pii-encrypt.js"
   },
   "keywords": [],
   "author": "",

@@ -26,5 +26,8 @@ export function localKrToE164(localPhone) {
   return `+82${normalized}`;
 }
 
-/** DB users.phone 비교용 — 하이픈·공백 제거 후 일치 */
+/** @deprecated phone_lookup = ? 사용. 레거시 plaintext phone 비교용 */
 export const SQL_PHONE_NORM = "REPLACE(REPLACE(phone, '-', ''), ' ', '')";
+
+/** users.phone_lookup HMAC 비교 (권장) */
+export const SQL_PHONE_LOOKUP = 'phone_lookup';

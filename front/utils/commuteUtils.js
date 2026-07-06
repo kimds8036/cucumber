@@ -102,6 +102,7 @@ export function isCommuteTimeWindow(date = new Date()) {
  * - 가입 달 유예 유저도 동일 규칙(유예로 배너를 숨기지 않음)
  */
 export function shouldShowCommuteBanner(date = new Date()) {
+  if (typeof __DEV__ !== 'undefined' && __DEV__) return true;
   if (!isCommuteTimeWindow(date)) return false;
   if (!isWeekdayKst(date)) return false;
   if (isSchoolVacationMonth(date)) return false;

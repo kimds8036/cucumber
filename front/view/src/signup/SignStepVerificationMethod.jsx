@@ -1,36 +1,38 @@
 import React from 'react';
 import { View, Text, TouchableOpacity } from 'react-native';
+import { colors } from '../../../styles/colors';
 
-// 학생 인증 방식 선택: 학생증 촬영 vs 재학증명서 제출
-const SignStepVerificationMethod = ({ styles, onSelect }) => {
+// 학생 인증 방식 선택 단계: 학생증 촬영 vs 증명서 제출 선택 화면
+const SignStepVerificationMethod = ({ styles, onSelect, selectedMethod }) => {
   return (
     <View style={styles.ageGateContainer}>
       <TouchableOpacity
-        style={styles.verificationMethodStudentIdCard}
+        style={[
+          styles.ageGateCard,
+          selectedMethod === 'studentId' && styles.ageGateCardSelected,
+        ]}
         activeOpacity={0.9}
-        onPress={() => onSelect?.('studentId')}
+        onPress={() => onSelect && onSelect('studentId')}
       >
-        <Text style={styles.verificationMethodStudentIdCardTitle}>
-          학생증{' '}
-          <Text style={styles.verificationMethodStudentIdCardRecommended}>
-            (권장)
-          </Text>
+        <Text style={styles.ageGateCardTitle}>
+          학생증 제출 <Text style={{ color: colors.alert }}>(권장)</Text>
         </Text>
-        <Text style={styles.verificationMethodStudentIdCardDescription}>
-          학생증을 촬영해 제출하면 관리자 확인 후 학생 인증이 완료됩니다.
+        <Text style={styles.ageGateCardDescription}>
+          학생증을 촬영해 제출하면 관리자가 확인 후 학생 인증이 완료됩니다.
         </Text>
       </TouchableOpacity>
 
       <TouchableOpacity
-        style={styles.verificationMethodCertificateCard}
+        style={[
+          styles.ageGateCard,
+          selectedMethod === 'certificate' && styles.ageGateCardSelected,
+        ]}
         activeOpacity={0.9}
-        onPress={() => onSelect?.('certificate')}
+        onPress={() => onSelect && onSelect('certificate')}
       >
-        <Text style={styles.verificationMethodCertificateCardTitle}>
-          재학증명서
-        </Text>
-        <Text style={styles.verificationMethodCertificateCardDescription}>
-          학생증이 없거나 촬영이 어려운 경우 재학증명서로 인증할 수 있습니다.
+        <Text style={styles.ageGateCardTitle}>졸업(예정)증명서 제출</Text>
+        <Text style={styles.ageGateCardDescription}>
+          학생증이 없는 학교의 경우에만 선택해주세요.
         </Text>
       </TouchableOpacity>
     </View>

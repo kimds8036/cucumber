@@ -9,6 +9,7 @@ import { cloudinary, upload } from '../config/cloudinary.js';
 import { appendUserBlockFilter } from '../utils/userBlockFilter.js';
 import { submitContentReport } from '../services/reportSubmission.service.js';
 import { softDeletePostComment } from '../services/commentCount.service.js';
+import { blockWhenFlag } from '../middleware/systemFlags.js';
 
 const router = express.Router();
 
@@ -76,7 +77,7 @@ router.delete('/comments/:commentId', authenticate, async (req, res) => {
 });
 
 // 댓글 작성 (대댓글 포함)
-router.post('/:postId/comments', authenticate, upload.array('images', 5), validate(commentCreateValidators), async (req, res) => {
+router.post('/:postId/comments', authenticate, blockWhenFlag('comment_write_disabled'), upload.array('images', 5), validate(commentCreateValidators), async (req, res) => {
   try {
     const userId = req.user.userId;
     const { postId } = req.params;
@@ -181,7 +182,7 @@ router.post('/:postId/comments', authenticate, upload.array('images', 5), valida
         c.anonymous_index,
         c.like_count,
         c.created_at,
-        u.name as author_name,
+        u.name_enc as author_name_enc, u.name as author_name,
         u.color_id
       FROM comments c
       LEFT JOIN users u ON c.user_id = u.id
@@ -268,7 +269,7 @@ router.get('/:postId/comments', optionalAuthenticate, async (req, res) => {
         c.anonymous_index,
         c.like_count,
         c.created_at,
-        u.name as author_name,
+        u.name_enc as author_name_enc, u.name as author_name,
         u.color_id,
         (SELECT JSON_ARRAYAGG(cloudinary_url)
           FROM comment_images
@@ -394,7 +395,7 @@ router.post('/:commentId/like', authenticate, async (req, res) => {
 });
 
 // 댓글 신고 (경로는 /api/comments/:commentId/report — ReportModal 과 동일)
-router.post('/comments/:commentId/report', authenticate, async (req, res) => {
+router.post('/comments/:commentId/report', authenticate, blockWhenFlag('report_submission_disabled'), async (req, res) => {
   try {
     const reporterId = req.user.userId;
     const { commentId } = req.params;

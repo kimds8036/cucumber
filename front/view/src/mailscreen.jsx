@@ -17,7 +17,7 @@ import { colors } from '../../styles/colors';
 import { getNormalize } from '../../styles/frame.style';
 import { createMailStyles } from '../../styles/mail.style';
 import { createMailInboxMenuSheetStyles } from '../../styles/mailInboxMenuSheet.style';
-import { api } from '../../utils/api';
+import { api, getApiUserFacingMessage } from '../../utils/api';
 import { useNotification } from '../../context/NotificationContext';
 import ProfileIcon from '../../assets/Profile.svg';
 import { getProfileInnerColor } from '../../utils/profileIconColor';
@@ -311,7 +311,9 @@ function MailInbox({ onOpen, onBack, navigation }) {
         setPage(nextPage);
         setHasMore(nextPage < totalPages);
       } catch (e) {
-        setError(e.response?.data?.message || '우편함을 불러오지 못했습니다.');
+        setError(
+          getApiUserFacingMessage(e, '우편함을 불러오지 못했습니다.'),
+        );
       } finally {
         setLoading(false);
         if (nextPage === 1 && !append) setIsInitialLoading(false);
@@ -751,7 +753,9 @@ function MailDetail({ mail: initialMail, onBack, navigation }) {
         setThreadRootId(computedThreadRootId);
       }
     } catch (e) {
-      setError(e.response?.data?.message || '우편 상세를 불러오지 못했습니다.');
+      setError(
+        getApiUserFacingMessage(e, '우편 상세를 불러오지 못했습니다.'),
+      );
     } finally {
       setLoading(false);
     }

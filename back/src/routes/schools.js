@@ -405,6 +405,8 @@ router.get('/me', authenticate, async (req, res) => {
          s.name AS school_name,
          s.address,
          s.region,
+         s.latitude,
+         s.longitude,
          s.total_students,
          s.total_posts,
          s.total_school_mails,
@@ -447,6 +449,10 @@ router.get('/me', authenticate, async (req, res) => {
         name: rows[0].school_name,
         address: rows[0].address,
         region: rows[0].region,
+        latitude:
+          rows[0].latitude != null ? Number(rows[0].latitude) : null,
+        longitude:
+          rows[0].longitude != null ? Number(rows[0].longitude) : null,
         studentCount,
         postCount,
         mailCount,

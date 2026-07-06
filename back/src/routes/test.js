@@ -47,6 +47,7 @@ router.get('/users', async (req, res) => {
       `SELECT
          u.id,
          u.username,
+         u.name_enc,
          u.name,
          u.school_id,
          s.name AS school_name,

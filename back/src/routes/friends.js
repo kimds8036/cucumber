@@ -38,6 +38,7 @@ router.get('/list', authenticate, async (req, res) => {
            WHEN uf.requester_id = ? THEN uf.addressee_id
            ELSE uf.requester_id
          END AS friend_user_id,
+         u.name_enc,
          u.name,
          u.username,
          u.color_id,
@@ -124,6 +125,7 @@ router.get('/requests/received', authenticate, async (req, res) => {
       `SELECT 
          uf.id,
          uf.requester_id,
+         u.name_enc,
          u.name,
          u.username,
          u.color_id,
@@ -444,7 +446,7 @@ router.post('/requests', authenticate, validate(sendFriendRequestValidators), as
 
     // 대상 사용자 찾기
     const [userRows] = await pool.execute(
-      'SELECT id, username, name FROM users WHERE username = ?',
+      'SELECT id, username, name, name_enc FROM users WHERE username = ?',
       [trimmed],
     );
 

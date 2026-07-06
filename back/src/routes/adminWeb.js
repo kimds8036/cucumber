@@ -1,7 +1,6 @@
 import express from 'express';
-import path from 'path';
-import { fileURLToPath } from 'url';
 import pool from '../config/database.js';
+import { getAdminBasePath } from '../config/adminPath.js';
 import {
   comparePassword,
   generateAdminOtpSetupToken,
@@ -20,12 +19,13 @@ import {
   getPendingTotpSecret,
   verifyTotpCode,
 } from '../services/adminTotp.service.js';
+import {
+  getAdminStaticDir,
+  renderAdminIndexHtml,
+  renderAdminLoginHtml,
+} from '../admin/renderAdminPage.js';
 
 const router = express.Router();
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-const adminHtmlPath = path.resolve(__dirname, '../../admin/Focux admin.html');
-const adminLoginHtmlPath = path.resolve(__dirname, '../../admin/login.html');
 
 function getCookieValue(req, key) {
   const raw = req.headers.cookie || '';
@@ -43,9 +43,10 @@ function getCookieValue(req, key) {
 
 function setAdminCookie(res, token) {
   const secure = process.env.NODE_ENV === 'production';
+  const cookiePath = getAdminBasePath();
   const attrs = [
     `admin_access_token=${encodeURIComponent(token)}`,
-    'Path=/',
+    `Path=${cookiePath}`,
     'HttpOnly',
     'SameSite=Lax',
     secure ? 'Secure' : null,
@@ -54,15 +55,17 @@ function setAdminCookie(res, token) {
 }
 
 function clearAdminCookie(res) {
+  const cookiePath = getAdminBasePath();
   res.setHeader(
     'Set-Cookie',
-    'admin_access_token=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0',
+    `admin_access_token=; Path=${cookiePath}; HttpOnly; SameSite=Lax; Max-Age=0`,
   );
 }
 
-function issueAdminLoginSuccess(res, { adminId, username }) {
-  const token = generateAdminSessionToken({ adminId, username });
+function issueAdminLoginSuccess(res, { adminId, username, role }) {
+  const token = generateAdminSessionToken({ adminId, username, role });
   setAdminCookie(res, token);
+  pool.execute(`UPDATE admin_users SET last_login_at = NOW() WHERE id = ?`, [adminId]).catch(() => {});
   return res.json({
     success: true,
     message: '로그인 성공',
@@ -73,7 +76,7 @@ function issueAdminLoginSuccess(res, { adminId, username }) {
 
 async function validateAdminCredentials(username, password) {
   const [admins] = await pool.execute(
-    `SELECT id, username, password, is_deleted
+    `SELECT id, username, password, name, role, is_deleted
      FROM admin_users
      WHERE username = ?
      LIMIT 1`,
@@ -93,8 +96,10 @@ async function validateAdminCredentials(username, password) {
   return { admin };
 }
 
-router.get('/login', (req, res) => {
-  res.sendFile(adminLoginHtmlPath);
+router.use('/assets', express.static(getAdminStaticDir()));
+
+router.get('/login', (_req, res) => {
+  res.type('html').send(renderAdminLoginHtml());
 });
 
 router.post('/login', async (req, res) => {
@@ -121,7 +126,6 @@ router.post('/login', async (req, res) => {
     }
     const admin = cred.admin;
 
-    // OTP 등록 완료 단계 (setupToken + 6자리)
     if (setupToken && setupOtpCode) {
       let decoded;
       try {
@@ -155,6 +159,7 @@ router.post('/login', async (req, res) => {
       return issueAdminLoginSuccess(res, {
         adminId: admin.id,
         username: admin.username,
+        role: admin.role,
       });
     }
 
@@ -203,6 +208,7 @@ router.post('/login', async (req, res) => {
     return issueAdminLoginSuccess(res, {
       adminId: admin.id,
       username: admin.username,
+      role: admin.role,
     });
   } catch (error) {
     if (error?.code === 'OTP_ENCRYPTION_KEY_NOT_CONFIGURED') {
@@ -222,10 +228,9 @@ router.post('/login', async (req, res) => {
 
 router.post('/logout', (req, res) => {
   clearAdminCookie(res);
-  res.redirect('/admin/login');
+  res.redirect(`${getAdminBasePath()}/login`);
 });
 
-/** 관리자 세션 연장 (30분 재발급) */
 router.post('/session/extend', authenticate, (req, res) => {
   if (req.user?.type !== 'admin_session') {
     return res.status(403).json({ success: false, message: '관리자 권한이 없습니다.' });
@@ -241,6 +246,7 @@ router.post('/session/extend', authenticate, (req, res) => {
   const token = generateAdminSessionToken({
     adminId: req.user.adminId ?? req.user.userId,
     username: req.user.username,
+    role: req.user.adminRole ?? req.user.role,
   });
   setAdminCookie(res, token);
   return res.json({
@@ -251,9 +257,8 @@ router.post('/session/extend', authenticate, (req, res) => {
   });
 });
 
-/** 관리자 SPA — 클라이언트에서 환경별 토큰 검사 (API는 requireAdminApi로 보호) */
-router.get('/', (req, res) => {
-  res.sendFile(adminHtmlPath);
+router.get('/', (_req, res) => {
+  res.type('html').send(renderAdminIndexHtml());
 });
 
 export default router;
