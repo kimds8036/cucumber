@@ -40,7 +40,7 @@ const SignStepAgeGate = ({ styles, normalize, onBirthDateChange }) => {
           marginBottom: normalize(16),
         }}
       >
-        만 14세 미만은 보호자 동의(PASS) 준비 후 가입할 수 있어요.
+        만 14세 미만은 보호자 동의 준비 후 가입할 수 있어요.
       </Text>
 
       <View style={{ flexDirection: 'row', gap: normalize(8) }}>

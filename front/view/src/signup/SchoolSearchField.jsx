@@ -78,7 +78,7 @@ const SchoolSearchField = ({
             setQuery(t);
             if (selectedSchool && t !== selectedSchool.name) onSelect?.(null);
           }}
-          placeholder="학교명 입력 (2자 이상)"
+          placeholder="학교 검색"
           placeholderTextColor={colors.textSecondary}
           autoCorrect={false}
           editable={!disabled}

@@ -30,6 +30,7 @@ const SignStepStudentIdVerify = ({
   schoolId,
   alreadyVerified = false,
   onVerified,
+  onCertificateGuide,
 }) => {
   const isFocused = useIsFocused();
   const { width: screenWidth, height: screenHeight } = useWindowDimensions();
@@ -51,9 +52,7 @@ const SignStepStudentIdVerify = ({
   const { frozenUri, capture, resetCapture, previewLayoutRef, lastPhotoRef } =
     useStudentIdCapture(cameraRef);
   const [busy, setBusy] = useState(false);
-  const [statusText, setStatusText] = useState(
-    '학생증을 가운데 틀에 맞춘 뒤 촬영해 주세요. 관리자가 확인합니다.',
-  );
+  const [statusText, setStatusText] = useState('');
 
   const onStageLayout = useCallback((e) => {
     const { width, height } = e.nativeEvent.layout;
@@ -173,7 +172,7 @@ const SignStepStudentIdVerify = ({
     } finally {
       setBusy(false);
       if (!lastPhotoRef.current) {
-        setStatusText('학생증을 가운데 틀에 맞춰 주세요.');
+        setStatusText('');
       }
     }
   }, [identity, schoolId, onVerified, frameWidth, frameHeight, alreadyVerified, busy, capture, lastPhotoRef, resetCapture]);
@@ -266,6 +265,25 @@ const SignStepStudentIdVerify = ({
           </Text>
         )}
       </TouchableOpacity>
+      <View style={localStyles.certificateGuideLinkRow}>
+        <Text style={localStyles.certificateGuideLinkText}>
+          학생증이 없으신가요?{' '}
+        </Text>
+        <TouchableOpacity
+          onPress={onCertificateGuide}
+          disabled={busy}
+          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+        >
+          <Text
+            style={[
+              localStyles.certificateGuideLinkAction,
+              busy && localStyles.disabledLink,
+            ]}
+          >
+            재학증명서로 인증하기
+          </Text>
+        </TouchableOpacity>
+      </View>
       {frozenUri ? (
         <TouchableOpacity
           style={localStyles.retakeLink}
@@ -298,6 +316,28 @@ const localStyles = StyleSheet.create({
   captureButton: {
     marginTop: 12,
     flexShrink: 0,
+  },
+  certificateGuideLinkRow: {
+    alignSelf: 'center',
+    flexDirection: 'row',
+    alignItems: 'center',
+    flexWrap: 'wrap',
+    justifyContent: 'center',
+    marginTop: 10,
+  },
+  certificateGuideLinkText: {
+    fontFamily: 'Baloo2-Regular',
+    color: colors.textSecondary,
+    fontSize: 14,
+  },
+  certificateGuideLinkAction: {
+    fontFamily: 'Baloo2-Bold',
+    color: colors.textSecondary,
+    fontSize: 14,
+    textDecorationLine: 'underline',
+  },
+  disabledLink: {
+    opacity: 0.5,
   },
   retakeLink: {
     alignSelf: 'center',

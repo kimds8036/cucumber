@@ -51,7 +51,7 @@ const SignStepSchoolSelect = ({ styles, normalize, selectedSchool, onSelect }) =
           style={styles.input}
           value={query}
           onChangeText={setQuery}
-          placeholder="학교명 입력"
+          placeholder="학교 검색"
           placeholderTextColor={colors.textSecondary}
           autoCorrect={false}
         />

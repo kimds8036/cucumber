@@ -363,7 +363,6 @@ export const createSignupStyles = (width, normalize) => {
       fontSize: normalize(fontSizes.xxl),
       fontFamily: fonts.regular,
       color: colors.textPrimary,
-      marginBottom: normalize(12),
       backgroundColor: colors.background,
       ...shadow.sm,
     },
