@@ -91,10 +91,18 @@ export const verifyToken = (token) => {
   }
 };
 
+/** bcrypt cost (기본 10, env: BCRYPT_SALT_ROUNDS, 허용 8~10) */
+export function getBcryptSaltRounds() {
+  const n = Number(process.env.BCRYPT_SALT_ROUNDS);
+  if (Number.isFinite(n) && n >= 8 && n <= 10) {
+    return Math.floor(n);
+  }
+  return 10;
+}
+
 // 비밀번호 해싱
 export const hashPassword = async (password) => {
-  const saltRounds = 10;
-  return await bcrypt.hash(password, saltRounds);
+  return await bcrypt.hash(password, getBcryptSaltRounds());
 };
 
 // 비밀번호 검증

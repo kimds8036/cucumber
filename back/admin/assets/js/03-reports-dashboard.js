@@ -11,6 +11,203 @@ async function loadDashboard() {
     setNavBadge('badge-reports', data.pendingReports || 0);
     setNavBadge('badge-appeals', data.pendingAppeals || 0);
     setNavBadge('badge-inquiries', data.pendingInquiries || 0);
+    try {
+      await loadAnalyticsOverview();
+    } catch (error) {
+      console.warn('[AdminDashboard] analytics overview load failed:', error?.message || error);
+    }
+  }
+
+  async function loadAnalyticsOverview() {
+    const { data } = await api('/analytics/overview?days=14');
+    window.__lastAnalyticsOverview = { data };
+    renderAnalyticsKpi(data?.summary || {});
+    renderAnalyticsLineChart(data?.series || []);
+    renderAnalyticsHeatmap(data?.heatmapWeekly || []);
+    renderAnalyticsScreenRanking(data?.screenRanking || [], data?.screenHourlyByKey || {});
+  }
+
+  function renderAnalyticsKpi(summary) {
+    const latestDau = Number(summary.latestDau || 0);
+    const latestMau = Number(summary.latestMauRolling30d || 0);
+    const avgDau = Number(summary.avgDau || 0);
+    const trend = Number(summary.dauTrendPct);
+    document.getElementById('analytics-latest-dau').textContent = latestDau.toLocaleString();
+    document.getElementById('analytics-latest-mau').textContent = latestMau.toLocaleString();
+    document.getElementById('analytics-avg-dau').textContent = avgDau.toLocaleString();
+    document.getElementById('analytics-trend').textContent = Number.isFinite(trend)
+      ? `${trend > 0 ? '+' : ''}${trend}%`
+      : '-';
+  }
+
+  function renderAnalyticsLineChart(series) {
+    const svg = document.getElementById('analytics-line-chart');
+    const caption = document.getElementById('analytics-line-caption');
+    if (!svg || !caption) return;
+    if (!Array.isArray(series) || series.length === 0) {
+      svg.innerHTML = '';
+      caption.textContent = '아직 집계 데이터가 없습니다.';
+      return;
+    }
+
+    const width = 640;
+    const height = 240;
+    const padX = 28;
+    const padTop = 16;
+    const padBottom = 28;
+    const chartW = width - padX * 2;
+    const chartH = height - padTop - padBottom;
+    const maxValue = Math.max(
+      1,
+      ...series.map((s) => Number(s.dauCount || 0)),
+      ...series.map((s) => Number(s.mauRolling30dCount || 0)),
+    );
+    const x = (i) => padX + (chartW * i) / Math.max(1, series.length - 1);
+    const y = (v) => padTop + chartH - (chartH * Number(v || 0)) / maxValue;
+
+    const dauPath = series.map((s, i) => `${i === 0 ? 'M' : 'L'} ${x(i)} ${y(s.dauCount)}`).join(' ');
+    const mauPath = series.map((s, i) => `${i === 0 ? 'M' : 'L'} ${x(i)} ${y(s.mauRolling30dCount)}`).join(' ');
+
+    const grid = [0.25, 0.5, 0.75, 1].map((ratio) => {
+      const gy = padTop + chartH - chartH * ratio;
+      return `<line x1="${padX}" y1="${gy}" x2="${padX + chartW}" y2="${gy}" stroke="#e7e5e4" stroke-width="1" />`;
+    }).join('');
+
+    svg.innerHTML = `
+      ${grid}
+      <path d="${mauPath}" fill="none" stroke="#2563eb" stroke-width="2.2" />
+      <path d="${dauPath}" fill="none" stroke="#16a34a" stroke-width="2.2" />
+      <circle cx="${x(series.length - 1)}" cy="${y(series[series.length - 1].dauCount)}" r="3.5" fill="#16a34a" />
+      <circle cx="${x(series.length - 1)}" cy="${y(series[series.length - 1].mauRolling30dCount)}" r="3.5" fill="#2563eb" />
+    `;
+
+    const first = series[0];
+    const last = series[series.length - 1];
+    caption.textContent = `녹색=DAU, 파란색=MAU(30일). ${first.date} 대비 ${last.date} 구간 추이입니다.`;
+  }
+
+  function renderAnalyticsHeatmap(heatmapWeekly) {
+    const wrap = document.getElementById('analytics-heatmap');
+    if (!wrap) return;
+    const slots = Array.isArray(heatmapWeekly) ? heatmapWeekly : [];
+    const normalized = new Array(7 * 24).fill(0).map((_, i) => Number(slots[i] || 0));
+    const max = Math.max(1, ...normalized);
+    const days = ['일', '월', '화', '수', '목', '금', '토'];
+    wrap.innerHTML = '';
+
+    for (let dow = 0; dow < 7; dow += 1) {
+      for (let hour = 0; hour < 24; hour += 1) {
+        const idx = dow * 24 + hour;
+        const value = normalized[idx];
+        const level = value / max;
+        const color = level <= 0.02
+          ? '#eceae6'
+          : level < 0.25
+            ? '#fde7bf'
+            : level < 0.5
+              ? '#f5c87d'
+              : level < 0.75
+                ? '#ef7c4b'
+                : '#d7443e';
+        const cell = document.createElement('div');
+        cell.className = 'analytics-heat-cell';
+        cell.style.background = color;
+        cell.dataset.tip = `${days[dow]}요일 ${String(hour).padStart(2, '0')}시: ${value.toLocaleString()}회`;
+        wrap.appendChild(cell);
+      }
+    }
+  }
+
+  let analyticsSelectedScreenKey = null;
+
+  function renderAnalyticsScreenRanking(screenRanking, screenHourlyByKey) {
+    const barsWrap = document.getElementById('analytics-screen-bars');
+    const caption = document.getElementById('analytics-screen-caption');
+    const toolbar = document.getElementById('analytics-screen-hour-toolbar');
+    if (!barsWrap || !caption || !toolbar) return;
+
+    const rows = Array.isArray(screenRanking) ? screenRanking : [];
+    if (!rows.length) {
+      barsWrap.innerHTML = '<div class="txt-muted" style="font-size:12px;padding:8px 0;">아직 화면별 집계 데이터가 없습니다.</div>';
+      caption.textContent = '앱에서 화면 진입 이벤트가 수집되면 표시됩니다.';
+      toolbar.innerHTML = '';
+      renderAnalyticsScreenHourChart(null, []);
+      return;
+    }
+
+    const maxViews = Math.max(1, ...rows.map((row) => Number(row.views || 0)));
+    barsWrap.innerHTML = rows.map((row) => {
+      const views = Number(row.views || 0);
+      const widthPct = Math.max(2, (views / maxViews) * 100);
+      return `
+        <div class="analytics-screen-bar-row" data-screen-key="${esc(row.key)}">
+          <div class="analytics-screen-bar-label" title="${esc(row.label || row.key)}">${esc(row.label || row.key)}</div>
+          <div class="analytics-screen-bar-track">
+            <div class="analytics-screen-bar-fill" style="width:${widthPct.toFixed(1)}%"></div>
+          </div>
+          <div class="analytics-screen-bar-value">${views.toLocaleString()}</div>
+        </div>
+      `;
+    }).join('');
+
+    const totalViews = rows.reduce((sum, row) => sum + Number(row.views || 0), 0);
+    caption.textContent = `최근 집계 구간 합계 ${totalViews.toLocaleString()}회 · 상위 ${rows.length}개 화면`;
+
+    if (!analyticsSelectedScreenKey || !screenHourlyByKey?.[analyticsSelectedScreenKey]) {
+      analyticsSelectedScreenKey = rows[0].key;
+    }
+
+    toolbar.innerHTML = rows.slice(0, 8).map((row) => `
+      <button
+        type="button"
+        class="analytics-screen-hour-btn ${row.key === analyticsSelectedScreenKey ? 'is-active' : ''}"
+        data-screen-key="${esc(row.key)}"
+        onclick="selectAnalyticsScreenHour('${esc(row.key)}')"
+      >${esc(row.label || row.key)}</button>
+    `).join('');
+
+    renderAnalyticsScreenHourChart(
+      analyticsSelectedScreenKey,
+      screenHourlyByKey?.[analyticsSelectedScreenKey] || rows.find((r) => r.key === analyticsSelectedScreenKey)?.hours || [],
+      rows.find((r) => r.key === analyticsSelectedScreenKey)?.label,
+    );
+  }
+
+  window.selectAnalyticsScreenHour = function selectAnalyticsScreenHour(screenKey) {
+    analyticsSelectedScreenKey = screenKey;
+    const toolbar = document.getElementById('analytics-screen-hour-toolbar');
+    toolbar?.querySelectorAll('.analytics-screen-hour-btn').forEach((btn) => {
+      btn.classList.toggle('is-active', btn.dataset.screenKey === screenKey);
+    });
+    const { data } = window.__lastAnalyticsOverview || {};
+    const hours = data?.screenHourlyByKey?.[screenKey] || [];
+    const label = (data?.screenRanking || []).find((row) => row.key === screenKey)?.label;
+    renderAnalyticsScreenHourChart(screenKey, hours, label);
+  };
+
+  function renderAnalyticsScreenHourChart(screenKey, hours, label) {
+    const chart = document.getElementById('analytics-screen-hour-chart');
+    const caption = document.getElementById('analytics-screen-hour-caption');
+    if (!chart || !caption) return;
+
+    const values = Array.isArray(hours) ? hours.map((v) => Number(v || 0)) : new Array(24).fill(0);
+    const max = Math.max(1, ...values);
+    chart.innerHTML = values.map((value, hour) => {
+      const heightPct = Math.max(2, (value / max) * 100);
+      return `
+        <div class="analytics-screen-hour-col" title="${String(hour).padStart(2, '0')}시: ${value.toLocaleString()}회">
+          <div class="analytics-screen-hour-bar" style="height:${heightPct.toFixed(1)}%"></div>
+          <div class="analytics-screen-hour-label">${hour % 3 === 0 ? String(hour).padStart(2, '0') : ''}</div>
+        </div>
+      `;
+    }).join('');
+
+    if (!screenKey) {
+      caption.textContent = '화면을 선택하면 시간대별 조회 분포를 보여줍니다.';
+      return;
+    }
+    const total = values.reduce((sum, v) => sum + v, 0);
+    caption.textContent = `${label || screenKey} · 24시간 합계 ${total.toLocaleString()}회`;
   }
 
   function renderReports() {

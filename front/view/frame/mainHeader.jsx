@@ -10,6 +10,7 @@ import { createHeaderStyles, getNormalize } from '../../styles/frame.style';
 import FontAwesome5 from '@expo/vector-icons/FontAwesome5';
 import { colors } from '../../styles/colors';
 import { useNotification } from '../../context/NotificationContext';
+import CommuteHeaderIndicator from '../../components/CommuteHeaderIndicator';
 import {
   getMainTabTitle,
   useMainShellOptional,
@@ -40,6 +41,7 @@ const MainHeader = ({ headerTitle: headerTitleProp, navigation: navigationProp }
 
       {/* 우측 버튼 영역 */}
       <View style={headerStyles.buttonContainer}>
+        <CommuteHeaderIndicator />
         <TouchableOpacity
           style={headerStyles.iconButton}
           onPress={() => navigation?.navigate('Search')}

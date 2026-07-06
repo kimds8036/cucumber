@@ -12,10 +12,7 @@ import {
   clearAuthToken,
   clearUserSessionStorage,
   getAuthToken,
-  getDeviceId,
-  getRefreshToken,
-  setAuthToken,
-  setRefreshToken,
+  refreshAccessToken,
 } from '../utils/api';
 import { appAlert } from '../utils/appAlert';
 import {
@@ -121,33 +118,7 @@ export function SocketProvider({ children }) {
   }, [cleanupContextListeners, logout]);
 
   const tryRefreshAccessToken = useCallback(async () => {
-    try {
-      const [refreshToken, deviceId] = await Promise.all([
-        getRefreshToken(),
-        getDeviceId(),
-      ]);
-      if (!refreshToken || !deviceId) return null;
-
-      const response = await api.post('/api/auth/refresh', {
-        refreshToken,
-        deviceId,
-      });
-      const nextToken = response?.data?.data?.token || response?.data?.token;
-      const nextRefresh =
-        response?.data?.data?.refreshToken || response?.data?.refreshToken;
-      if (!nextToken) return null;
-      await setAuthToken(nextToken);
-      if (nextRefresh) await setRefreshToken(nextRefresh);
-      return nextToken;
-    } catch (error) {
-      if (__DEV__) {
-        console.warn(
-          '[SocketContext] RT 갱신 실패:',
-          error?.response?.status ?? error?.message,
-        );
-      }
-      return null;
-    }
+    return refreshAccessToken();
   }, []);
 
   const recoverSocketAuth = useCallback(async () => {

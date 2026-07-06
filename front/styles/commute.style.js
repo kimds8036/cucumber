@@ -1,62 +1,45 @@
 import { StyleSheet } from 'react-native';
 import { colors, fonts, fontSizes } from './colors';
 
-export const COMMUTE_BANNER_BG = '#E5F4E0';
+export const COMMUTE_CHIP_BG = '#E5F4E0';
 
-export const createCommuteBannerStyles = (normalize) =>
+export const createCommuteHeaderStyles = (normalize) =>
   StyleSheet.create({
-    wrapper: {
-      marginHorizontal: normalize(16),
-      marginBottom: normalize(12),
-    },
-    banner: {
-      backgroundColor: COMMUTE_BANNER_BG,
-      borderRadius: normalize(16),
-      paddingVertical: normalize(14),
-      paddingHorizontal: normalize(16),
-      minHeight: normalize(52),
-      justifyContent: 'center',
-      alignItems: 'center',
-    },
-    inProgressRow: {
+    chip: {
       flexDirection: 'row',
       alignItems: 'center',
-      justifyContent: 'center',
-      width: '100%',
-    },
-    sideIcon: {
-      width: normalize(28),
-      alignItems: 'center',
-    },
-    middleTrack: {
-      flex: 1,
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'center',
-      marginHorizontal: normalize(8),
-      gap: normalize(6),
+      backgroundColor: COMMUTE_CHIP_BG,
+      borderRadius: normalize(20),
+      paddingHorizontal: normalize(10),
+      paddingVertical: normalize(6),
+      marginRight: normalize(4),
+      maxWidth: normalize(108),
+      gap: normalize(4),
     },
     dotsRow: {
       flexDirection: 'row',
       alignItems: 'center',
-      gap: normalize(5),
-      marginRight: normalize(8),
+      gap: normalize(3),
     },
     dot: {
-      width: normalize(7),
-      height: normalize(7),
-      borderRadius: normalize(4),
+      width: normalize(5),
+      height: normalize(5),
+      borderRadius: normalize(3),
       backgroundColor: colors.primaryDark,
     },
-    inProgressText: {
+    label: {
       fontFamily: fonts.bold,
-      fontSize: normalize(fontSizes.lg),
+      fontSize: normalize(fontSizes.sm),
       color: colors.textPrimary,
     },
-    completedText: {
+    celebrateRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: normalize(4),
+    },
+    sparkle: {
       fontFamily: fonts.bold,
-      fontSize: normalize(fontSizes.lg),
-      color: colors.textPrimary,
-      textAlign: 'center',
+      fontSize: normalize(fontSizes.sm),
+      color: colors.primaryDark,
     },
   });

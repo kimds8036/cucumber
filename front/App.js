@@ -91,6 +91,8 @@ import {
   initFCM,
   setupFCMHandlers,
 } from './utils/fcmService';
+import { trackScreenView, flushAnalyticsEvents } from './utils/analytics';
+import { ROUTE_TO_ANALYTICS_SCREEN } from './constants/analyticsScreens';
 
 const Stack = createNativeStackNavigator();
 const navigationTheme = {
@@ -108,6 +110,19 @@ const linking = {
     },
   },
 };
+
+function getActiveRouteName(state) {
+  if (!state?.routes?.length) return null;
+  const route = state.routes[state.index ?? 0];
+  if (route?.state) return getActiveRouteName(route.state);
+  return route?.name || null;
+}
+
+function trackNavigationScreen(routeName) {
+  if (!routeName || routeName === 'Main') return;
+  const screen = ROUTE_TO_ANALYTICS_SCREEN[routeName];
+  if (screen) trackScreenView(screen);
+}
 
 SplashScreen.preventAutoHideAsync();
 
@@ -404,6 +419,15 @@ export default function App() {
   }, []);
 
   useEffect(() => {
+    const sub = AppState.addEventListener('change', (nextState) => {
+      if (nextState === 'background' || nextState === 'inactive') {
+        flushAnalyticsEvents();
+      }
+    });
+    return () => sub.remove();
+  }, []);
+
+  useEffect(() => {
     const isExpoGo = Constants.appOwnership === 'expo';
     if (isExpoGo) {
       console.log(
@@ -585,6 +609,9 @@ export default function App() {
                           ref={navigationRef}
                           linking={linking}
                           theme={navigationTheme}
+                          onStateChange={(state) => {
+                            trackNavigationScreen(getActiveRouteName(state));
+                          }}
                         >
                           <RootNavigator />
                           <ToastHost />

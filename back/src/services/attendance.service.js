@@ -32,9 +32,11 @@ export function isWithinAttendanceWindow(ref = new Date()) {
   return { ok: true };
 }
 
+/** 등교 인정 반경(m) — 고정 */
+export const ATTENDANCE_GEOFENCE_METERS = 300;
+
 export function getGeofenceMeters() {
-  const n = Number(process.env.ATTENDANCE_GEOFENCE_METERS);
-  return Number.isFinite(n) && n > 0 ? n : 80;
+  return ATTENDANCE_GEOFENCE_METERS;
 }
 
 export async function checkInAttendance({ userId, latitude, longitude }) {

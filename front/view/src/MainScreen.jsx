@@ -6,6 +6,10 @@ import MainHeader from '../frame/mainHeader';
 import { MainShellProvider } from '../../context/MainShellContext';
 import { colors } from '../../styles/colors';
 import Skeleton from '../../components/common/Skeleton';
+import { trackScreenView } from '../../utils/analytics';
+import { MAIN_TAB_TO_ANALYTICS_SCREEN } from '../../constants/analyticsScreens';
+
+const MAIN_TABS = new Set(['board', 'message', 'school', 'timer', 'mypage']);
 import { MainTabNavigatorContainer } from './MainTabNavigator';
 
 const MainScreen = ({ navigation, route }) => {
@@ -17,6 +21,11 @@ const MainScreen = ({ navigation, route }) => {
     const timer = setTimeout(() => setScreenReady(true), 180);
     return () => clearTimeout(timer);
   }, []);
+
+  useEffect(() => {
+    const screen = MAIN_TAB_TO_ANALYTICS_SCREEN[activeTab];
+    if (screen) trackScreenView(screen);
+  }, [activeTab]);
 
   useFocusEffect(
     React.useCallback(() => {
