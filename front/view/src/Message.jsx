@@ -20,6 +20,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import MainHeader from '../frame/mainHeader';
 import MainFooter from '../frame/mainFooter';
+import { getMainTabTitle } from '../../context/MainShellContext';
 import { createMessageStyles, getNormalize } from '../../styles/message.style';
 import { createMessageRoomMenuSheetStyles } from '../../styles/messageRoomMenuSheet.style';
 import { colors, fonts, fontSizes } from '../../styles/colors';
@@ -1453,7 +1454,7 @@ export function MessageContent({ navigation }) {
 const Message = ({ navigation }) => {
   return (
     <SafeAreaView style={{ flex: 1 }} edges={['top', 'bottom']}>
-      <MainHeader activeTab="message" />
+      <MainHeader headerTitle={getMainTabTitle('message')} />
       <MessageContent navigation={navigation} />
       <MainFooter
         activeTab="message"

@@ -28,6 +28,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { CommonActions } from '@react-navigation/native';
 import MainHeader from '../frame/mainHeader';
 import MainFooter from '../frame/mainFooter';
+import { getMainTabTitle } from '../../context/MainShellContext';
 import { createTimerStyles, getNormalize } from '../../styles/timer';
 import { createTimetableViewStyles } from '../../src/screens/timetable/timetable.style';
 import { colors } from '../../styles/colors';
@@ -2510,7 +2511,7 @@ const Timer = ({ navigation }) => {
       edges={['top', 'bottom']}
     >
       <View style={tdb('#FF9500')}>
-        <MainHeader activeTab="timer" navigation={navigation} />
+        <MainHeader headerTitle={getMainTabTitle('timer')} navigation={navigation} />
       </View>
       <View style={[{ flex: 1 }, tdb('#34C759')]}>
         <TimerContent />

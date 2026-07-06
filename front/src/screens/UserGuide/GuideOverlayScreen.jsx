@@ -9,6 +9,7 @@ import { colors, fonts } from '../../../styles/colors';
 import { GuidePreviewProvider } from '../../../context/GuidePreviewContext';
 import MainHeader from '../../../view/frame/mainHeader';
 import MainFooter from '../../../view/frame/mainFooter';
+import { getMainTabTitle } from '../../../context/MainShellContext';
 import { BoardAllContent } from '../../../view/src/boardAll';
 import { MessageContent } from '../../../view/src/Message';
 import OurSchoolScreen from '../../../view/src/ourschoolscreen';
@@ -339,7 +340,10 @@ export default function GuideOverlayScreen({ navigation, route }) {
           edges={['top', 'bottom']}
         >
           <View key={`guide-bg-${stepIndex}`} style={{ flex: 1 }} pointerEvents="none">
-            <MainHeader activeTab={step.activeTab} navigation={GUIDE_NAVIGATION} />
+            <MainHeader
+              headerTitle={getMainTabTitle(step.activeTab)}
+              navigation={GUIDE_NAVIGATION}
+            />
             <View style={{ flex: 1, backgroundColor: colors.background }}>
               <Background {...(step.backgroundProps || {})} />
             </View>

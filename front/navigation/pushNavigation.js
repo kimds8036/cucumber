@@ -34,13 +34,17 @@ export function buildPushStackRoutes({ name, params, relatedType }) {
   }
 
   if (targetName === 'Main') {
+    const tab =
+      params?.screen ??
+      params?.initialTab ??
+      resolveMainTabForPush(targetName, relatedType);
     return [
       {
         name: 'Main',
         params: {
           ...(params ?? {}),
-          initialTab:
-            params?.initialTab ?? resolveMainTabForPush(targetName, relatedType),
+          initialTab: tab,
+          screen: tab,
         },
       },
     ];
@@ -48,7 +52,7 @@ export function buildPushStackRoutes({ name, params, relatedType }) {
 
   const initialTab = resolveMainTabForPush(targetName, relatedType);
   return [
-    { name: 'Main', params: { initialTab } },
+    { name: 'Main', params: { initialTab, screen: initialTab } },
     { name: targetName, params: params ?? {} },
   ];
 }

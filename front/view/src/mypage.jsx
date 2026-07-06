@@ -49,8 +49,7 @@ const MyPage = ({ navigation }) => {
   const [loading, setLoading] = useState(false);
   const [timetableLoading, setTimetableLoading] = useState(false);
   const [showResetTimetableModal, setShowResetTimetableModal] = useState(false);
-  const [timetableCacheKey, setTimetableCacheKey] =
-    useState(TIMETABLE_CACHE_KEY);
+  const [timetableCacheKey, setTimetableCacheKey] = useState(null);
   const isSameProfileInfo = (a, b) => {
     if (!a || !b) return false;
     return (
@@ -108,7 +107,7 @@ const MyPage = ({ navigation }) => {
 
   useEffect(() => {
     let mounted = true;
-    const fetchMeAndTimetable = async () => {
+    const fetchProfile = async () => {
       if (isGuidePreview) {
         setUserInfo(getGuideMyPageUserInfo());
         setTimetable(getGuideTimetable());
@@ -118,7 +117,6 @@ const MyPage = ({ navigation }) => {
       }
       try {
         setLoading(true);
-        let cachedTimetable = null;
         let cachedProfile = null;
         let cachedProfileTs = 0;
         try {
@@ -139,11 +137,6 @@ const MyPage = ({ navigation }) => {
         }
 
         const meRes = await api.get('/api/auth/me');
-        // TEMP TEST: /api/auth/me 응답 raw 전체 확인 (확인 후 삭제)
-        console.log(
-          '[TEMP][MyPage] /api/auth/me raw response =',
-          JSON.stringify(meRes?.data),
-        );
         if (!mounted) return;
 
         const me = meRes.data?.data;
@@ -154,30 +147,6 @@ const MyPage = ({ navigation }) => {
           : TIMETABLE_CACHE_KEY;
         if (mounted) {
           setTimetableCacheKey(scopedTimetableCacheKey);
-        }
-
-        try {
-          const raw = await AsyncStorage.getItem(scopedTimetableCacheKey);
-          if (raw) {
-            const parsed = JSON.parse(raw);
-            if (Date.now() - Number(parsed?.ts || 0) < TIMETABLE_CACHE_TTL_MS) {
-              cachedTimetable = parsed?.timetable ?? null;
-              if (mounted) {
-                const normalized =
-                  cachedTimetable && Object.keys(cachedTimetable).length > 0
-                    ? cachedTimetable
-                    : null;
-                setTimetable(normalized);
-              }
-            } else {
-              setTimetable(null);
-            }
-          } else {
-            setTimetable(null);
-          }
-        } catch (cacheErr) {
-          console.warn('시간표 캐시 읽기 실패:', cacheErr);
-          setTimetable(null);
         }
 
         if (me) {
@@ -219,43 +188,52 @@ const MyPage = ({ navigation }) => {
         } else if (!cachedProfile && mounted) {
           setUserInfo(null);
         }
-
-        setTimetableLoading(false);
       } catch (error) {
         console.error(
           '[MyPage] 데이터 로드 실패:',
           error?.response?.data || error?.message || error,
         );
+        if (mounted) {
+          setTimetableCacheKey(TIMETABLE_CACHE_KEY);
+        }
       } finally {
         if (mounted) setLoading(false);
       }
     };
 
-    fetchMeAndTimetable();
+    fetchProfile();
     return () => {
       mounted = false;
     };
   }, [isGuidePreview]);
 
-  // 다른 화면(시간표 선택 등)에서 캐시를 갱신한 뒤 돌아올 때 표시 동기화
+  // 시간표 캐시만 읽음 — 첫 진입·시간표 편집 후 복귀 시 동기화
   useFocusEffect(
     useCallback(() => {
-      if (isGuidePreview) return undefined;
+      if (isGuidePreview || !timetableCacheKey) return undefined;
       let cancelled = false;
       (async () => {
+        setTimetableLoading(true);
         try {
           const raw = await AsyncStorage.getItem(timetableCacheKey);
-          if (!raw || cancelled) return;
-          const parsed = JSON.parse(raw);
-          if (Date.now() - Number(parsed?.ts || 0) >= TIMETABLE_CACHE_TTL_MS)
+          if (!raw || cancelled) {
+            if (!cancelled) setTimetable(null);
             return;
+          }
+          const parsed = JSON.parse(raw);
+          if (Date.now() - Number(parsed?.ts || 0) >= TIMETABLE_CACHE_TTL_MS) {
+            if (!cancelled) setTimetable(null);
+            return;
+          }
           const cached = parsed?.timetable ?? null;
           const normalized =
             cached && Object.keys(cached).length > 0 ? cached : null;
-          if (cancelled) return;
-          setTimetable(normalized);
+          if (!cancelled) setTimetable(normalized);
         } catch (e) {
-          console.warn('[MyPage] 포커스 시 시간표 캐시 동기화 실패:', e);
+          console.warn('[MyPage] 시간표 캐시 읽기 실패:', e);
+          if (!cancelled) setTimetable(null);
+        } finally {
+          if (!cancelled) setTimetableLoading(false);
         }
       })();
       return () => {
