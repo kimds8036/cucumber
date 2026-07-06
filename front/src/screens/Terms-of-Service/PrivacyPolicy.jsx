@@ -12,9 +12,9 @@ import { getNormalize } from '../../../styles/mypage.style';
 import { createServiceStyles } from '../../../styles/service.style';
 import { groupMarkdownBlocks } from './markdownBlocks';
 
-const PRIVACY_MARKDOWN = require('./_privacy_md.json');
+const PRIVACY_MARKDOWN = require('../../../docs/legal/privacy-policy.md');
 const POLICY_BLOCKS = groupMarkdownBlocks(PRIVACY_MARKDOWN.split('\n'));
-const HIDDEN_TITLE_LINES = new Set(['# 버전 v1.0.0']);
+const HIDDEN_TITLE_LINES = new Set(['# 개인정보 처리방침']);
 
 const INLINE_TOKEN = /(\*\*[^*]+\*\*|\[[^\]]+\]\([^)]+\))/g;
 

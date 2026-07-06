@@ -12,9 +12,9 @@ import { getNormalize } from '../../../styles/mypage.style';
 import { createServiceStyles } from '../../../styles/service.style';
 import { groupMarkdownBlocks } from './markdownBlocks';
 
-const OPEN_SOURCE_MARKDOWN = require('./_opensource_md.json');
+const OPEN_SOURCE_MARKDOWN = require('../../../docs/legal/open-source-licenses.md');
 const LICENSE_BLOCKS = groupMarkdownBlocks(OPEN_SOURCE_MARKDOWN.split('\n'));
-const HIDDEN_TITLE_LINES = new Set(['# 버전 v1.0']);
+const HIDDEN_TITLE_LINES = new Set(['# 오픈소스 라이선스']);
 
 const INLINE_TOKEN = /(\*\*[^*]+\*\*|\[[^\]]+\]\([^)]+\))/g;
 
