@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   View,
   Text,
@@ -50,6 +50,11 @@ const MyPage = ({ navigation }) => {
   const [timetableLoading, setTimetableLoading] = useState(false);
   const [showResetTimetableModal, setShowResetTimetableModal] = useState(false);
   const [timetableCacheKey, setTimetableCacheKey] = useState(null);
+  const timetableHydratedRef = useRef(false);
+
+  useEffect(() => {
+    timetableHydratedRef.current = false;
+  }, [timetableCacheKey]);
   const isSameProfileInfo = (a, b) => {
     if (!a || !b) return false;
     return (
@@ -212,8 +217,10 @@ const MyPage = ({ navigation }) => {
     useCallback(() => {
       if (isGuidePreview || !timetableCacheKey) return undefined;
       let cancelled = false;
+      const showSkeleton = !timetableHydratedRef.current;
+
       (async () => {
-        setTimetableLoading(true);
+        if (showSkeleton) setTimetableLoading(true);
         try {
           const raw = await AsyncStorage.getItem(timetableCacheKey);
           if (!raw || cancelled) {
@@ -233,7 +240,10 @@ const MyPage = ({ navigation }) => {
           console.warn('[MyPage] 시간표 캐시 읽기 실패:', e);
           if (!cancelled) setTimetable(null);
         } finally {
-          if (!cancelled) setTimetableLoading(false);
+          if (!cancelled) {
+            timetableHydratedRef.current = true;
+            if (showSkeleton) setTimetableLoading(false);
+          }
         }
       })();
       return () => {
