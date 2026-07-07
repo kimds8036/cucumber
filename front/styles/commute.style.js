@@ -1,7 +1,7 @@
 import { StyleSheet } from 'react-native';
 import { colors, fonts, fontSizes } from './colors';
 
-export const COMMUTE_CHIP_BG = '#E5F4E0';
+export const COMMUTE_CHIP_BG = colors.primaryLight20;
 
 export const createCommuteHeaderStyles = (normalize) =>
   StyleSheet.create({
