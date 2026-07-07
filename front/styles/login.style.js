@@ -310,16 +310,14 @@ export const createSignupStyles = (width, normalize) => {
     },
     input: {
       width: '98%',
-      height: normalize(50),
-      borderWidth: 1,
-      borderColor: colors.primary,
+      height: normalize(45),
       borderRadius: normalize(24),
       paddingHorizontal: normalize(20),
       fontSize: normalize(fontSizes.xxl),
       fontFamily: fonts.regular,
       color: colors.textPrimary,
       marginBottom: normalize(12),
-      backgroundColor: colors.background,
+      backgroundColor: colors.textLight5,
       ...shadow.sm,
     },
     /** @deprecated 회원가입 잠금 필드는 lockedFieldText 사용 */
