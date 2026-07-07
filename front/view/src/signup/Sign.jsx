@@ -17,7 +17,10 @@ import { Ionicons } from '@expo/vector-icons';
 import { createSignupStyles } from '../../../styles/login.style';
 import { colors } from '../../../styles/colors';
 import SignStepConsent from './SignStepConsent';
-import SignStepIdentity from './SignStepIdentity';
+import SignStepAgeGate from './SignStepAgeGate';
+import SignStepGuardianConsentModal from './SignStepGuardianConsentModal';
+import SignStepGuardianIdentity from './SignStepGuardianIdentity';
+import SignStepInicisIdentity from './SignStepInicisIdentity';
 import SignStep2 from './SignStep2';
 import SignStepStudentIdVerify from './SignStepStudentIdVerify';
 import SignStepCertificateGuide from './SignStepCertificateGuide';
@@ -33,10 +36,14 @@ import { useAuth } from '../../../context/AuthContext';
 import { useAppNavigation } from '../../../navigation/useAppNavigation';
 import Skeleton from '../../../components/common/Skeleton';
 import {
-  showUnder14BlockAlert,
-  showIneligibleAgeAlert,
+  showTooOldForSignupAlert,
+  showTooYoungForSignupAlert,
+  showGuardianVerificationFailedAlert,
 } from './authFeatureAlerts';
-import { getSignupEligibility } from './signupAgeUtils';
+import {
+  classifyBirthDateCase,
+  isValidBirthDateString,
+} from './signupBirthDatePolicy';
 import {
   buildEnrollmentFromBirthDate,
   inferExpectedSchoolLevel,
@@ -74,35 +81,45 @@ const SIGNUP_TEST_MOCK_STUDENT_VERIFICATION = {
   },
 };
 
-/** 가입: 약관 → 본인확인 → 계정 → 학생증|재학증명서 가이드 → 학생증|재학증명서 제출 */
 const STEP = {
   CONSENT: 0,
-  IDENTITY: 1,
-  ACCOUNT: 2,
-  STUDENT_VERIFY: 3,
-  CERTIFICATE_GUIDE: 4,
-  CERTIFICATE_SUBMIT: 5,
+  BIRTH_DATE: 1,
+  GUARDIAN_IDENTITY: 2,
+  IDENTITY: 3,
+  ACCOUNT: 4,
+  STUDENT_VERIFY: 5,
+  CERTIFICATE_GUIDE: 6,
+  CERTIFICATE_SUBMIT: 7,
 };
 
-/** 헤더 진행바 — 사용자 기준 5단계 */
-const SIGNUP_PROGRESS_TOTAL = 5;
+function getSignupProgressStep(
+  currentStep,
+  { requiresGuardianVerification, studentVerified },
+) {
+  const total = requiresGuardianVerification ? 8 : 7;
 
-function getSignupProgressStep(currentStep, studentVerified) {
   switch (currentStep) {
     case STEP.CONSENT:
-      return 1;
+      return { step: 1, total };
+    case STEP.BIRTH_DATE:
+      return { step: 2, total };
+    case STEP.GUARDIAN_IDENTITY:
+      return { step: 3, total };
     case STEP.IDENTITY:
-      return 2;
+      return { step: requiresGuardianVerification ? 4 : 3, total };
     case STEP.ACCOUNT:
-      return 3;
+      return { step: requiresGuardianVerification ? 5 : 4, total };
     case STEP.STUDENT_VERIFY:
-      return studentVerified ? 5 : 4;
+      if (requiresGuardianVerification) {
+        return { step: studentVerified ? 7 : 6, total };
+      }
+      return { step: studentVerified ? 6 : 5, total };
     case STEP.CERTIFICATE_GUIDE:
-      return 4;
+      return { step: requiresGuardianVerification ? 6 : 5, total };
     case STEP.CERTIFICATE_SUBMIT:
-      return 5;
+      return { step: total, total };
     default:
-      return 1;
+      return { step: 1, total };
   }
 }
 
@@ -116,6 +133,13 @@ const Sign = ({ navigation }) => {
   const [currentStep, setCurrentStep] = useState(STEP.CONSENT);
   const [formData, setFormData] = useState({});
   const [identityData, setIdentityData] = useState({});
+  const [birthDate, setBirthDate] = useState('');
+  const [requiresGuardianVerification, setRequiresGuardianVerification] =
+    useState(false);
+  const [guardianVerified, setGuardianVerified] = useState(false);
+  const [guardianVerifiedAt, setGuardianVerifiedAt] = useState(null);
+  const [showGuardianConsentModal, setShowGuardianConsentModal] =
+    useState(false);
   const [recognizedData, setRecognizedData] = useState(null);
   const [studentVerified, setStudentVerified] = useState(false);
   const [studentVerificationToken, setStudentVerificationToken] =
@@ -136,49 +160,70 @@ const Sign = ({ navigation }) => {
 
   const styles = useMemo(() => createSignupStyles(width, normalize), [width]);
 
-  const progressWidth =
-    (getSignupProgressStep(currentStep, studentVerified) /
-      SIGNUP_PROGRESS_TOTAL) *
-    100;
+  const progress = getSignupProgressStep(currentStep, {
+    requiresGuardianVerification,
+    studentVerified,
+  });
+  const progressWidth = (progress.step / progress.total) * 100;
+
   const isCameraStep = currentStep === STEP.STUDENT_VERIFY && !studentVerified;
   const hideFooter =
     (isCameraStep && !SKIP_SIGNUP_VALIDATION_UNTIL_OCR_TEST) ||
-    currentStep === STEP.CERTIFICATE_GUIDE;
+    currentStep === STEP.CERTIFICATE_GUIDE ||
+    showGuardianConsentModal;
 
   const identity = useMemo(
     () => ({
       name: identityData.name || formData.name || '',
-      birthDate: identityData.birthDate || formData.birthDate || '',
+      birthDate: birthDate || identityData.birthDate || formData.birthDate || '',
       phoneNumber: identityData.phoneNumber || formData.phoneNumber || '',
     }),
-    [identityData, formData],
+    [identityData, formData, birthDate],
   );
 
-  const blockIfIneligibleBirthDate = useCallback(
-    (birthDate) => {
-      const eligibility = getSignupEligibility(birthDate);
-      if (eligibility === 'invalid') {
-        Alert.alert('알림', '생년월일을 올바르게 입력해 주세요.');
-        return true;
-      }
-      if (eligibility === 'under14') {
-        showUnder14BlockAlert(() => resetTo('Login'));
-        return true;
-      }
-      if (eligibility === 'ineligible') {
-        showIneligibleAgeAlert(() => resetTo('Login'));
-        return true;
-      }
-      return false;
-    },
-    [resetTo],
-  );
+  const goToLogin = useCallback(() => {
+    resetTo('Login');
+  }, [resetTo]);
+
+  const applyBirthDateToState = useCallback((nextBirthDate) => {
+    setBirthDate(nextBirthDate);
+    setFormData((prev) => ({ ...prev, birthDate: nextBirthDate }));
+    setIdentityData((prev) => ({ ...prev, birthDate: nextBirthDate }));
+  }, []);
 
   const ocrIdentityAnchorRef = useRef({ name: '', phone: '' });
+
+  /** C 케이스: 보호자 인증 없이 학생 인증 단계 우회 차단 */
+  useEffect(() => {
+    if (
+      currentStep === STEP.IDENTITY &&
+      requiresGuardianVerification &&
+      !guardianVerified
+    ) {
+      setCurrentStep(STEP.GUARDIAN_IDENTITY);
+    }
+  }, [currentStep, requiresGuardianVerification, guardianVerified]);
 
   const handleBack = () => {
     if (currentStep === STEP.CONSENT) {
       navigation.goBack();
+      return;
+    }
+    if (currentStep === STEP.BIRTH_DATE) {
+      setShowGuardianConsentModal(false);
+      setCurrentStep(STEP.CONSENT);
+      return;
+    }
+    if (currentStep === STEP.GUARDIAN_IDENTITY) {
+      setCurrentStep(STEP.BIRTH_DATE);
+      return;
+    }
+    if (currentStep === STEP.IDENTITY) {
+      if (requiresGuardianVerification) {
+        setCurrentStep(STEP.GUARDIAN_IDENTITY);
+      } else {
+        setCurrentStep(STEP.BIRTH_DATE);
+      }
       return;
     }
     if (currentStep === STEP.STUDENT_VERIFY) {
@@ -199,7 +244,6 @@ const Sign = ({ navigation }) => {
     setCurrentStep((s) => s - 1);
   };
 
-  /** 이름·전화·학교 변경 시 OCR 토큰 무효화 (재과금·변조 방지) */
   useEffect(() => {
     const name = identityData.name?.trim() || '';
     const phone = identityData.phoneNumber || '';
@@ -228,20 +272,95 @@ const Sign = ({ navigation }) => {
   ]);
 
   const handleConsentNext = () => {
-    if (!SKIP_SIGNUP_VALIDATION_UNTIL_OCR_TEST && !consentData.allConsented)
+    if (!SKIP_SIGNUP_VALIDATION_UNTIL_OCR_TEST && !consentData.allConsented) {
       return;
+    }
+    if (SKIP_SIGNUP_VALIDATION_UNTIL_OCR_TEST) {
+      applyBirthDateToState(OCR_TEST_MOCK_IDENTITY.birthDate);
+      setRequiresGuardianVerification(false);
+      setGuardianVerified(false);
+      setIdentityData((prev) => ({
+        ...OCR_TEST_MOCK_IDENTITY,
+        ...prev,
+        isVerified: true,
+      }));
+      setCurrentStep(STEP.IDENTITY);
+      return;
+    }
+    setCurrentStep(STEP.BIRTH_DATE);
+  };
+
+  const handleBirthDateNext = () => {
+    const nextBirthDate = SKIP_SIGNUP_VALIDATION_UNTIL_OCR_TEST
+      ? birthDate || OCR_TEST_MOCK_IDENTITY.birthDate
+      : birthDate;
+
+    if (!SKIP_SIGNUP_VALIDATION_UNTIL_OCR_TEST) {
+      if (!isValidBirthDateString(nextBirthDate)) {
+        Alert.alert('알림', '생년월일을 올바르게 입력해 주세요.');
+        return;
+      }
+    }
+
+    const birthCase = classifyBirthDateCase(nextBirthDate);
+    if (birthCase === 'invalid') {
+      Alert.alert('알림', '생년월일을 올바르게 입력해 주세요.');
+      return;
+    }
+    if (birthCase === 'A') {
+      showTooOldForSignupAlert(goToLogin);
+      return;
+    }
+    if (birthCase === 'D') {
+      showTooYoungForSignupAlert(goToLogin);
+      return;
+    }
+
+    applyBirthDateToState(nextBirthDate);
+
+    if (birthCase === 'C') {
+      setRequiresGuardianVerification(true);
+      setGuardianVerified(false);
+      setGuardianVerifiedAt(null);
+      setShowGuardianConsentModal(true);
+      return;
+    }
+
+    setRequiresGuardianVerification(false);
+    setGuardianVerified(false);
+    setGuardianVerifiedAt(null);
     setCurrentStep(STEP.IDENTITY);
   };
 
-  const handleIdentityNext = () => {
-    const birthDate = SKIP_SIGNUP_VALIDATION_UNTIL_OCR_TEST
-      ? identityData.birthDate || OCR_TEST_MOCK_IDENTITY.birthDate
-      : identityData.birthDate;
+  const handleGuardianConsentStart = () => {
+    setShowGuardianConsentModal(false);
+    setCurrentStep(STEP.GUARDIAN_IDENTITY);
+  };
+
+  const handleGuardianConsentLater = () => {
+    setShowGuardianConsentModal(false);
+    goToLogin();
+  };
+
+  const handleGuardianIdentityNext = () => {
+    if (!guardianVerified) {
+      showGuardianVerificationFailedAlert(goToLogin);
+      return;
+    }
+    setCurrentStep(STEP.IDENTITY);
+  };
+
+  const handleGuardianDataChange = (data) => {
+    if (data?.isVerified) {
+      setGuardianVerified(true);
+      setGuardianVerifiedAt(data.guardianVerifiedAt || new Date().toISOString());
+    }
+  };
+
+  const handleStudentIdentityNext = () => {
     const name =
       identityData.name?.trim() ||
-      (SKIP_SIGNUP_VALIDATION_UNTIL_OCR_TEST
-        ? OCR_TEST_MOCK_IDENTITY.name
-        : '');
+      (SKIP_SIGNUP_VALIDATION_UNTIL_OCR_TEST ? OCR_TEST_MOCK_IDENTITY.name : '');
     const phoneNumber =
       identityData.phoneNumber ||
       (SKIP_SIGNUP_VALIDATION_UNTIL_OCR_TEST
@@ -249,7 +368,10 @@ const Sign = ({ navigation }) => {
         : '');
 
     if (!SKIP_SIGNUP_VALIDATION_UNTIL_OCR_TEST) {
-      if (blockIfIneligibleBirthDate(birthDate)) return;
+      if (requiresGuardianVerification && !guardianVerified) {
+        setCurrentStep(STEP.GUARDIAN_IDENTITY);
+        return;
+      }
       if (!identityData.name?.trim()) {
         Alert.alert('알림', '이름을 입력해 주세요.');
         return;
@@ -259,28 +381,27 @@ const Sign = ({ navigation }) => {
         return;
       }
       if (!identityData.isVerified) {
-        Alert.alert('알림', '전화번호 인증을 완료해 주세요.');
+        Alert.alert('알림', '본인인증을 완료해 주세요.');
         return;
       }
-    } else if (blockIfIneligibleBirthDate(birthDate)) {
-      return;
     }
 
     setFormData((prev) => ({
       ...prev,
       name,
-      birthDate,
+      birthDate: birthDate || prev.birthDate,
       phoneNumber,
       schoolId: selectedSchool?.id,
       schoolName: selectedSchool?.name,
+      requiresGuardianVerification,
+      guardianVerifiedAt,
     }));
     setIdentityData((prev) => ({
       ...prev,
       name,
-      birthDate,
+      birthDate: birthDate || prev.birthDate,
       phoneNumber,
-      isVerified:
-        identityData.isVerified || SKIP_SIGNUP_VALIDATION_UNTIL_OCR_TEST,
+      isVerified: identityData.isVerified || SKIP_SIGNUP_VALIDATION_UNTIL_OCR_TEST,
     }));
     setCurrentStep(STEP.ACCOUNT);
   };
@@ -366,16 +487,15 @@ const Sign = ({ navigation }) => {
       certificateUrl: certificateUrl.trim(),
       accessNumber: accessNumber.trim(),
     }));
-    // TODO: 증명서 제출 API 연동 및 가입 완료 처리
   };
 
   const buildStudentVerificationSnapshot = (data) => {
-    const birthDate = identity.birthDate;
+    const resolvedBirthDate = identity.birthDate;
     const level =
       data?.expectedLevel ||
       data?.verification?.expectedLevel ||
-      inferExpectedSchoolLevel(birthDate);
-    const enrollment = buildEnrollmentFromBirthDate(birthDate, level);
+      inferExpectedSchoolLevel(resolvedBirthDate);
+    const enrollment = buildEnrollmentFromBirthDate(resolvedBirthDate, level);
     const grade =
       data?.verification?.suggestedGrade ??
       data?.grade ??
@@ -463,9 +583,9 @@ const Sign = ({ navigation }) => {
     verificationToken = studentVerificationToken,
     verificationData = recognizedData,
   ) => {
-    const birthDate = finalData.birthDate || identity.birthDate;
-    const level = finalData.schoolLevel || inferExpectedSchoolLevel(birthDate);
-    const enrollment = buildEnrollmentFromBirthDate(birthDate, level);
+    const resolvedBirthDate = finalData.birthDate || identity.birthDate;
+    const level = finalData.schoolLevel || inferExpectedSchoolLevel(resolvedBirthDate);
+    const enrollment = buildEnrollmentFromBirthDate(resolvedBirthDate, level);
     const grade =
       Number(finalData.grade) ||
       Number(verificationData?.grade) ||
@@ -485,7 +605,7 @@ const Sign = ({ navigation }) => {
       phone: String(
         finalData.phoneNumber || identity.phoneNumber || '',
       ).replace(/\D/g, ''),
-      birthDate,
+      birthDate: resolvedBirthDate,
       schoolId: finalData.schoolId,
       grade,
       classNumber,
@@ -552,6 +672,10 @@ const Sign = ({ navigation }) => {
     switch (currentStep) {
       case STEP.CONSENT:
         return '약관 동의';
+      case STEP.BIRTH_DATE:
+        return '생년월일 입력';
+      case STEP.GUARDIAN_IDENTITY:
+        return '보호자 본인인증';
       case STEP.IDENTITY:
         return '본인 확인';
       case STEP.ACCOUNT:
@@ -571,8 +695,12 @@ const Sign = ({ navigation }) => {
     switch (currentStep) {
       case STEP.CONSENT:
         return '서비스 이용을 위한 필수 동의 항목을 확인해 주세요';
+      case STEP.BIRTH_DATE:
+        return '가입 가능 연령 확인을 위해 생년월일을 입력해 주세요';
+      case STEP.GUARDIAN_IDENTITY:
+        return '법정대리인(보호자)의 본인인증과 동의가 필요해요';
       case STEP.IDENTITY:
-        return '본인 확인을 위한 정보와 재학 중인 학교를 입력해 주세요';
+        return '본인 확인과 재학 중인 학교를 입력해 주세요';
       case STEP.ACCOUNT:
         return '로그인에 사용할 아이디와 비밀번호를 설정해 주세요';
       case STEP.STUDENT_VERIFY:
@@ -593,8 +721,14 @@ const Sign = ({ navigation }) => {
       case STEP.CONSENT:
         handleConsentNext();
         break;
+      case STEP.BIRTH_DATE:
+        handleBirthDateNext();
+        break;
+      case STEP.GUARDIAN_IDENTITY:
+        handleGuardianIdentityNext();
+        break;
       case STEP.IDENTITY:
-        handleIdentityNext();
+        handleStudentIdentityNext();
         break;
       case STEP.ACCOUNT:
         handleAccountNext();
@@ -617,9 +751,12 @@ const Sign = ({ navigation }) => {
   const isPrimaryDisabled = () => {
     if (SKIP_SIGNUP_VALIDATION_UNTIL_OCR_TEST) return submitting;
     if (currentStep === STEP.CONSENT && !consentData.allConsented) return true;
-    if (currentStep === STEP.IDENTITY && !selectedSchool?.id) return true;
+    if (currentStep === STEP.BIRTH_DATE) {
+      if (!birthDate || !isValidBirthDateString(birthDate)) return true;
+    }
+    if (currentStep === STEP.GUARDIAN_IDENTITY && !guardianVerified) return true;
     if (currentStep === STEP.IDENTITY) {
-      if (!identityData.birthDate) return true;
+      if (!selectedSchool?.id) return true;
       if (!identityData.isVerified) return true;
     }
     if (currentStep === STEP.ACCOUNT) {
@@ -647,8 +784,7 @@ const Sign = ({ navigation }) => {
     ) {
       return '테스트 인증 완료';
     }
-    if (currentStep === STEP.STUDENT_VERIFY && studentVerified)
-      return '제출하기';
+    if (currentStep === STEP.STUDENT_VERIFY && studentVerified) return '제출하기';
     if (currentStep === STEP.CERTIFICATE_SUBMIT) return '제출하기';
     return '다음 단계';
   };
@@ -661,13 +797,13 @@ const Sign = ({ navigation }) => {
   useEffect(() => {
     if (!SKIP_SIGNUP_VALIDATION_UNTIL_OCR_TEST) return;
     setConsentData({ allConsented: true, consents: {} });
+    applyBirthDateToState(OCR_TEST_MOCK_IDENTITY.birthDate);
     setIdentityData((prev) => ({
       ...OCR_TEST_MOCK_IDENTITY,
       ...prev,
       isVerified: true,
-      isCodeSent: true,
     }));
-  }, []);
+  }, [applyBirthDateToState]);
 
   if (!screenReady) {
     return (
@@ -710,8 +846,29 @@ const Sign = ({ navigation }) => {
             onChange={setConsentData}
           />
         )}
+        {currentStep === STEP.BIRTH_DATE && (
+          <SignStepAgeGate
+            styles={styles}
+            normalize={normalize}
+            bottomOffset={footerHeight}
+            initialBirthDate={birthDate}
+            onBirthDateChange={setBirthDate}
+          />
+        )}
+        {currentStep === STEP.GUARDIAN_IDENTITY && (
+          <SignStepGuardianIdentity
+            styles={styles}
+            normalize={normalize}
+            bottomOffset={footerHeight}
+            initialVerified={guardianVerified}
+            onChange={handleGuardianDataChange}
+            onVerificationFailed={() =>
+              showGuardianVerificationFailedAlert(goToLogin)
+            }
+          />
+        )}
         {currentStep === STEP.IDENTITY && (
-          <SignStepIdentity
+          <SignStepInicisIdentity
             styles={styles}
             normalize={normalize}
             bottomOffset={footerHeight}
@@ -719,6 +876,7 @@ const Sign = ({ navigation }) => {
             selectedSchool={selectedSchool}
             onSchoolSelect={setSelectedSchool}
             onChange={setIdentityData}
+            requiresGuardianVerification={requiresGuardianVerification}
           />
         )}
         {currentStep === STEP.ACCOUNT && (
@@ -756,6 +914,13 @@ const Sign = ({ navigation }) => {
           />
         )}
       </View>
+
+      <SignStepGuardianConsentModal
+        visible={showGuardianConsentModal}
+        normalize={normalize}
+        onStart={handleGuardianConsentStart}
+        onLater={handleGuardianConsentLater}
+      />
 
       {!hideFooter && (
         <View

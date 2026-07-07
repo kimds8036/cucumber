@@ -1,4 +1,8 @@
 import { Alert } from 'react-native';
+import {
+  getTooOldAlertMessage,
+  getTooYoungAlertMessage,
+} from './signupBirthDatePolicy';
 
 export const SUPPORT_EMAIL = 'support@youthpaper.app';
 
@@ -35,6 +39,29 @@ export function showIneligibleAgeAlert(onConfirm) {
     '안내 (Youth Paper)',
     INELIGIBLE_AGE_MESSAGE + SIGNUP_MANUAL_REVIEW_SUFFIX,
     [{ text: '확인', onPress: onConfirm }],
+  );
+}
+
+/** A 케이스 — 가입 가능 최소 생년월일 미만 */
+export function showTooOldForSignupAlert(onConfirm, ref = new Date()) {
+  Alert.alert('이용 연령 안내', getTooOldAlertMessage(ref), [
+    { text: '돌아가기', onPress: onConfirm },
+  ]);
+}
+
+/** D 케이스 — 가입 가능 최대 생년월일 초과 */
+export function showTooYoungForSignupAlert(onConfirm, ref = new Date()) {
+  Alert.alert('이용 연령 안내', getTooYoungAlertMessage(ref), [
+    { text: '돌아가기', onPress: onConfirm },
+  ]);
+}
+
+/** 보호자 본인인증 실패·거부 시 가입 중단 */
+export function showGuardianVerificationFailedAlert(onConfirm) {
+  Alert.alert(
+    '보호자 인증 미완료',
+    '보호자 본인인증이 완료되지 않아 가입을 진행할 수 없어요.',
+    [{ text: '돌아가기', onPress: onConfirm }],
   );
 }
 
