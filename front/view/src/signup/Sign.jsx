@@ -43,7 +43,6 @@ import {
   pickRandomProfileColorId,
 } from './signupEnrollmentUtils';
 
-/** OCR·카메라 UI 테스트용 앞단계 검증 생략 플래그 */
 /** OCR·가입 플로우 UI 테스트 — dev 빌드 기본 ON, .env로 끌 수 있음 */
 const SKIP_SIGNUP_VALIDATION_UNTIL_OCR_TEST =
   process.env.EXPO_PUBLIC_SIGNUP_TEST_MODE === 'true' ||
@@ -75,7 +74,7 @@ const SIGNUP_TEST_MOCK_STUDENT_VERIFICATION = {
   },
 };
 
-/** 가입: 약관 → 본인확인 → 계정 → 학생증 | 재학증명서 가이드 → 증명서 제출 */
+/** 가입: 약관 → 본인확인 → 계정 → 학생증|재학증명서 가이드 → 학생증|재학증명서 제출 */
 const STEP = {
   CONSENT: 0,
   IDENTITY: 1,
@@ -85,7 +84,27 @@ const STEP = {
   CERTIFICATE_SUBMIT: 5,
 };
 
-const SIGNUP_PROGRESS_LAST = STEP.CERTIFICATE_SUBMIT;
+/** 헤더 진행바 — 사용자 기준 5단계 */
+const SIGNUP_PROGRESS_TOTAL = 5;
+
+function getSignupProgressStep(currentStep, studentVerified) {
+  switch (currentStep) {
+    case STEP.CONSENT:
+      return 1;
+    case STEP.IDENTITY:
+      return 2;
+    case STEP.ACCOUNT:
+      return 3;
+    case STEP.STUDENT_VERIFY:
+      return studentVerified ? 5 : 4;
+    case STEP.CERTIFICATE_GUIDE:
+      return 4;
+    case STEP.CERTIFICATE_SUBMIT:
+      return 5;
+    default:
+      return 1;
+  }
+}
 
 const Sign = ({ navigation }) => {
   const { login } = useAuth();
@@ -118,11 +137,9 @@ const Sign = ({ navigation }) => {
   const styles = useMemo(() => createSignupStyles(width, normalize), [width]);
 
   const progressWidth =
-    currentStep <= STEP.CONSENT
-      ? 0
-      : ((currentStep - STEP.IDENTITY + 1) /
-          (SIGNUP_PROGRESS_LAST - STEP.IDENTITY + 1)) *
-        100;
+    (getSignupProgressStep(currentStep, studentVerified) /
+      SIGNUP_PROGRESS_TOTAL) *
+    100;
   const isCameraStep = currentStep === STEP.STUDENT_VERIFY && !studentVerified;
   const hideFooter =
     (isCameraStep && !SKIP_SIGNUP_VALIDATION_UNTIL_OCR_TEST) ||
