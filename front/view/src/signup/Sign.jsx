@@ -14,6 +14,7 @@ import SignStepConsent from './SignStepConsent';
 import SignStepIdentity from './SignStepIdentity';
 import SignStep2 from './SignStep2';
 import SignStepStudentIdVerify from './SignStepStudentIdVerify';
+import SignStepVerificationMethod from './SignStepVerificationMethod';
 import SignStepCertificateGuide from './SignStepCertificateGuide';
 import SignStepCertificate from './SignStepCertificate';
 import { api, setAuthToken } from '../../../utils/api';
@@ -37,7 +38,11 @@ import {
   pickRandomProfileColorId,
 } from './signupEnrollmentUtils';
 
-/** OCR·카메라 UI 테스트용 앞단계 검증 생략 플래그 */
+/**
+ * OCR·카메라 UI 테스트 전까지 앞단계(약관~인증방식)만 검증 생략.
+ * OCR(학생증 촬영) 및 이후 단계는 실제 검증·API 유지.
+ * 테스트 끝나면 false 로 변경.
+ */
 const SKIP_SIGNUP_VALIDATION_UNTIL_OCR_TEST = false;
 
 /** OCR API 호출용 임시 본인 정보 (SKIP 모드) */
@@ -47,33 +52,15 @@ const OCR_TEST_MOCK_IDENTITY = {
   phoneNumber: '01000000000',
 };
 
-const SIGNUP_TEST_MOCK_ACCOUNT = {
-  username: 'testuser01',
-  password: 'Test1234',
-  passwordConfirm: 'Test1234',
-};
-
-const SIGNUP_TEST_MOCK_CERTIFICATE = {
-  certificateUrl: 'https://example.com/test-certificate',
-  accessNumber: '000000',
-};
-
-const SIGNUP_TEST_MOCK_STUDENT_VERIFICATION = {
-  manualReview: true,
-  studentVerificationToken: 'test-student-verification-token',
-  verification: {
-    studentVerificationToken: 'test-student-verification-token',
-  },
-};
-
-/** 가입: 약관 → 본인확인 → 계정 → 학생증 | 재학증명서 가이드 → 증명서 제출 */
+/** 가입: 약관 → 본인확인 → 계정 → 인증방식 선택 → 학생증 | 재학증명서 가이드 → 증명서 제출 */
 const STEP = {
   CONSENT: 0,
   IDENTITY: 1,
   ACCOUNT: 2,
-  STUDENT_VERIFY: 3,
-  CERTIFICATE_GUIDE: 4,
-  CERTIFICATE_SUBMIT: 5,
+  VERIFICATION_METHOD: 3,
+  STUDENT_VERIFY: 4,
+  CERTIFICATE_GUIDE: 5,
+  CERTIFICATE_SUBMIT: 6,
 };
 
 const SIGNUP_PROGRESS_LAST = STEP.CERTIFICATE_SUBMIT;
@@ -117,7 +104,8 @@ const Sign = ({ navigation }) => {
   const isCameraStep =
     currentStep === STEP.STUDENT_VERIFY && !studentVerified;
   const hideFooter =
-    (isCameraStep && !SKIP_SIGNUP_VALIDATION_UNTIL_OCR_TEST) ||
+    isCameraStep ||
+    currentStep === STEP.VERIFICATION_METHOD ||
     currentStep === STEP.CERTIFICATE_GUIDE;
 
   const identity = useMemo(
@@ -156,19 +144,21 @@ const Sign = ({ navigation }) => {
       navigation.goBack();
       return;
     }
-    if (currentStep === STEP.STUDENT_VERIFY) {
-      setStudentVerified(false);
-      setStudentVerificationToken(null);
-      setRecognizedData(null);
-      setCurrentStep(STEP.ACCOUNT);
-      return;
-    }
-    if (currentStep === STEP.CERTIFICATE_GUIDE) {
-      setCurrentStep(STEP.STUDENT_VERIFY);
-      return;
-    }
-    if (currentStep === STEP.CERTIFICATE_SUBMIT) {
-      setCurrentStep(STEP.CERTIFICATE_GUIDE);
+    if (
+      currentStep === STEP.STUDENT_VERIFY ||
+      currentStep === STEP.CERTIFICATE_GUIDE ||
+      currentStep === STEP.CERTIFICATE_SUBMIT
+    ) {
+      if (currentStep === STEP.STUDENT_VERIFY) {
+        setStudentVerified(false);
+        setStudentVerificationToken(null);
+        setRecognizedData(null);
+      }
+      if (currentStep === STEP.CERTIFICATE_SUBMIT) {
+        setCurrentStep(STEP.CERTIFICATE_GUIDE);
+        return;
+      }
+      setCurrentStep(STEP.VERIFICATION_METHOD);
       return;
     }
     setCurrentStep((s) => s - 1);
@@ -203,39 +193,37 @@ const Sign = ({ navigation }) => {
   ]);
 
   const handleConsentNext = () => {
-    if (!SKIP_SIGNUP_VALIDATION_UNTIL_OCR_TEST && !consentData.allConsented) return;
+    // [임시-수정용] 검증 주석처리 (수정 끝나면 아래 줄 주석 해제)
+    // if (!SKIP_SIGNUP_VALIDATION_UNTIL_OCR_TEST && !consentData.allConsented) return;
     setCurrentStep(STEP.IDENTITY);
   };
 
   const handleIdentityNext = () => {
-    const birthDate = SKIP_SIGNUP_VALIDATION_UNTIL_OCR_TEST
-      ? identityData.birthDate || OCR_TEST_MOCK_IDENTITY.birthDate
-      : identityData.birthDate;
+    const birthDate =
+      identityData.birthDate || OCR_TEST_MOCK_IDENTITY.birthDate;
     const name =
-      identityData.name?.trim() ||
-      (SKIP_SIGNUP_VALIDATION_UNTIL_OCR_TEST ? OCR_TEST_MOCK_IDENTITY.name : '');
-    const phoneNumber = identityData.phoneNumber ||
-      (SKIP_SIGNUP_VALIDATION_UNTIL_OCR_TEST
-        ? OCR_TEST_MOCK_IDENTITY.phoneNumber
-        : '');
+      identityData.name?.trim() || OCR_TEST_MOCK_IDENTITY.name;
+    const phoneNumber =
+      identityData.phoneNumber || OCR_TEST_MOCK_IDENTITY.phoneNumber;
 
-    if (!SKIP_SIGNUP_VALIDATION_UNTIL_OCR_TEST) {
-      if (blockIfIneligibleBirthDate(birthDate)) return;
-      if (!identityData.name?.trim()) {
-        Alert.alert('알림', '이름을 입력해 주세요.');
-        return;
-      }
-      if (!selectedSchool?.id) {
-        Alert.alert('알림', '재학 중인 학교를 선택해 주세요.');
-        return;
-      }
-      if (!identityData.isVerified) {
-        Alert.alert('알림', '전화번호 인증을 완료해 주세요.');
-        return;
-      }
-    } else if (blockIfIneligibleBirthDate(birthDate)) {
-      return;
-    }
+    // [임시-수정용] 검증 주석처리 (수정 끝나면 아래 블록 주석 해제)
+    // if (!SKIP_SIGNUP_VALIDATION_UNTIL_OCR_TEST) {
+    //   if (blockIfIneligibleBirthDate(birthDate)) return;
+    //   if (!identityData.name?.trim()) {
+    //     Alert.alert('알림', '이름을 입력해 주세요.');
+    //     return;
+    //   }
+    //   if (!selectedSchool?.id) {
+    //     Alert.alert('알림', '재학 중인 학교를 선택해 주세요.');
+    //     return;
+    //   }
+    //   if (!identityData.isVerified) {
+    //     Alert.alert('알림', '전화번호 인증을 완료해 주세요.');
+    //     return;
+    //   }
+    // } else if (blockIfIneligibleBirthDate(birthDate)) {
+    //   return;
+    // }
 
     setFormData((prev) => ({
       ...prev,
@@ -250,62 +238,45 @@ const Sign = ({ navigation }) => {
       name,
       birthDate,
       phoneNumber,
-      isVerified:
-        identityData.isVerified || SKIP_SIGNUP_VALIDATION_UNTIL_OCR_TEST,
+      isVerified: true,
     }));
     setCurrentStep(STEP.ACCOUNT);
   };
 
   const handleAccountNext = () => {
-    if (SKIP_SIGNUP_VALIDATION_UNTIL_OCR_TEST) {
-      setStepInfoData((prev) => ({
-        ...SIGNUP_TEST_MOCK_ACCOUNT,
-        ...prev,
-        username: prev.username || SIGNUP_TEST_MOCK_ACCOUNT.username,
-        password: prev.password || SIGNUP_TEST_MOCK_ACCOUNT.password,
-        passwordConfirm:
-          prev.passwordConfirm || SIGNUP_TEST_MOCK_ACCOUNT.passwordConfirm,
-      }));
-      setFormData((prev) => ({
-        ...prev,
-        ...SIGNUP_TEST_MOCK_ACCOUNT,
-        ...stepInfoData,
-        username: stepInfoData.username || SIGNUP_TEST_MOCK_ACCOUNT.username,
-        password: stepInfoData.password || SIGNUP_TEST_MOCK_ACCOUNT.password,
-        passwordConfirm:
-          stepInfoData.passwordConfirm ||
-          SIGNUP_TEST_MOCK_ACCOUNT.passwordConfirm,
-      }));
+    // [임시-수정용] 검증 주석처리 (수정 끝나면 아래 블록 주석 해제)
+    // if (
+    //   !stepInfoData.username ||
+    //   !stepInfoData.password ||
+    //   !stepInfoData.passwordConfirm
+    // ) {
+    //   Alert.alert('알림', '아이디와 비밀번호를 입력해 주세요.');
+    //   return;
+    // }
+    // if (!isValidUsername(stepInfoData.username)) {
+    //   Alert.alert('알림', USERNAME_ERROR);
+    //   return;
+    // }
+    // if (!isValidPassword(stepInfoData.password)) {
+    //   Alert.alert('알림', PASSWORD_ERROR);
+    //   return;
+    // }
+    // if (stepInfoData.password !== stepInfoData.passwordConfirm) {
+    //   Alert.alert('알림', '비밀번호 확인이 일치하지 않습니다.');
+    //   return;
+    // }
+    setFormData((prev) => ({ ...prev, ...stepInfoData }));
+    setCurrentStep(STEP.VERIFICATION_METHOD);
+  };
+
+  const handleVerificationMethodSelect = (method) => {
+    if (method === 'studentId') {
       setCurrentStep(STEP.STUDENT_VERIFY);
       return;
     }
-
-    if (
-      !stepInfoData.username ||
-      !stepInfoData.password ||
-      !stepInfoData.passwordConfirm
-    ) {
-      Alert.alert('알림', '아이디와 비밀번호를 입력해 주세요.');
-      return;
+    if (method === 'certificate') {
+      setCurrentStep(STEP.CERTIFICATE_GUIDE);
     }
-    if (!isValidUsername(stepInfoData.username)) {
-      Alert.alert('알림', USERNAME_ERROR);
-      return;
-    }
-    if (!isValidPassword(stepInfoData.password)) {
-      Alert.alert('알림', PASSWORD_ERROR);
-      return;
-    }
-    if (stepInfoData.password !== stepInfoData.passwordConfirm) {
-      Alert.alert('알림', '비밀번호 확인이 일치하지 않습니다.');
-      return;
-    }
-    setFormData((prev) => ({ ...prev, ...stepInfoData }));
-    setCurrentStep(STEP.STUDENT_VERIFY);
-  };
-
-  const handleCertificateGuideOpen = () => {
-    setCurrentStep(STEP.CERTIFICATE_GUIDE);
   };
 
   const handleCertificateProceed = () => {
@@ -313,20 +284,6 @@ const Sign = ({ navigation }) => {
   };
 
   const handleCertificateSubmit = () => {
-    if (SKIP_SIGNUP_VALIDATION_UNTIL_OCR_TEST) {
-      setFormData((prev) => ({
-        ...prev,
-        certificateUrl:
-          certificateData.certificateUrl?.trim() ||
-          SIGNUP_TEST_MOCK_CERTIFICATE.certificateUrl,
-        accessNumber:
-          certificateData.accessNumber?.trim() ||
-          SIGNUP_TEST_MOCK_CERTIFICATE.accessNumber,
-      }));
-      Alert.alert('테스트모드', '재학증명서 제출 검증을 건너뛰었습니다.');
-      return;
-    }
-
     const { certificateUrl, accessNumber } = certificateData;
     if (!certificateUrl?.trim() || !accessNumber?.trim()) {
       Alert.alert('알림', '열람용 주소와 열람 번호를 모두 입력해 주세요.');
@@ -340,7 +297,7 @@ const Sign = ({ navigation }) => {
     // TODO: 증명서 제출 API 연동 및 가입 완료 처리
   };
 
-  const buildStudentVerificationSnapshot = (data) => {
+  const handleStudentVerified = (data) => {
     const birthDate = identity.birthDate;
     const level =
       data?.expectedLevel ||
@@ -365,87 +322,43 @@ const Sign = ({ navigation }) => {
       graduationYear,
     };
 
-    const token =
+    setRecognizedData(recognized);
+    setStudentVerified(true);
+    setStudentVerificationToken(
       data?.studentVerificationToken ||
-      data?.verification?.studentVerificationToken ||
-      null;
-    const formPatch = {
+        data?.verification?.studentVerificationToken ||
+        null,
+    );
+    ocrIdentityAnchorRef.current = {
+      name: identity.name?.trim() || '',
+      phone: identity.phoneNumber || '',
+      schoolId: selectedSchool?.id || formData.schoolId || '',
+    };
+    setFormData((prev) => ({
+      ...prev,
       schoolLevel: level,
       grade: String(grade),
       classNum: String(classNum),
       graduationYear: String(graduationYear),
-      schoolId: selectedSchool?.id || formData.schoolId,
-      schoolName: selectedSchool?.name || formData.schoolName,
-    };
-
-    return { recognized, token, formPatch };
+      schoolId: selectedSchool?.id || prev.schoolId,
+      schoolName: selectedSchool?.name || prev.schoolName,
+    }));
   };
 
-  const handleStudentVerified = async (data) => {
-    const { recognized, token, formPatch } =
-      buildStudentVerificationSnapshot(data);
-
-    if (SKIP_SIGNUP_VALIDATION_UNTIL_OCR_TEST) {
-      Alert.alert(
-        '학생증 제출 완료!',
-        '관리자 승인 후 서비스를 이용할 수 있습니다',
-        [{ text: '확인', onPress: () => resetTo('Login') }],
-      );
-      return;
-    }
-
-    const finalData = {
-      ...formData,
-      ...stepInfoData,
-      ...formPatch,
-    };
-
-    if (!token) {
-      Alert.alert('알림', '학생증 인증 정보가 없습니다. 다시 제출해 주세요.');
-      return;
-    }
-    if (!finalData.username || !finalData.password) {
-      Alert.alert('알림', '계정 정보가 없습니다. 이전 단계를 확인해 주세요.');
-      return;
-    }
-
-    setSubmitting(true);
-    try {
-      const payload = buildSignupPayload(finalData, token, recognized);
-      await api.post('/api/auth/signup', payload);
-      Alert.alert(
-        '알림',
-        '학생증 제출이 완료되었습니다! 관리자 승인 후 서비스를 이용할 수 있습니다',
-        [{ text: '확인', onPress: () => resetTo('Login') }],
-      );
-    } catch (error) {
-      Alert.alert(
-        '회원가입 실패',
-        error.response?.data?.message || '회원가입 중 오류가 발생했습니다.',
-      );
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
-  const buildSignupPayload = (
-    finalData,
-    verificationToken = studentVerificationToken,
-    verificationData = recognizedData,
-  ) => {
+  const buildSignupPayload = (finalData) => {
     const birthDate = finalData.birthDate || identity.birthDate;
     const level =
       finalData.schoolLevel || inferExpectedSchoolLevel(birthDate);
     const enrollment = buildEnrollmentFromBirthDate(birthDate, level);
     const grade =
       Number(finalData.grade) ||
-      Number(verificationData?.grade) ||
+      Number(recognizedData?.grade) ||
       enrollment.grade ||
       1;
-    const classNumber = Number(finalData.classNum) || Number(verificationData?.class) || 1;
+    const classNumber = Number(finalData.classNum) || Number(recognizedData?.class) || 1;
     const graduationYear =
       Number(finalData.graduationYear) ||
-      Number(verificationData?.graduationYear) ||
+      Number(recognizedData?.graduationYear) ||
       enrollment.graduationYear;
 
     const payload = {
@@ -464,8 +377,8 @@ const Sign = ({ navigation }) => {
       verificationMethod: 'student_id',
       consents: consentData.consents || {},
     };
-    if (verificationToken) {
-      payload.studentVerificationToken = verificationToken;
+    if (studentVerificationToken) {
+      payload.studentVerificationToken = studentVerificationToken;
     }
     return payload;
   };
@@ -485,11 +398,6 @@ const Sign = ({ navigation }) => {
 
   const handleComplete = async () => {
     const finalData = { ...formData, ...stepInfoData };
-
-    if (SKIP_SIGNUP_VALIDATION_UNTIL_OCR_TEST) {
-      Alert.alert('테스트모드', '회원가입 제출 API 호출을 건너뛰었습니다.');
-      return;
-    }
 
     if (!studentVerificationToken) {
       Alert.alert('알림', '학생증 촬영·제출을 먼저 완료해 주세요.');
@@ -523,6 +431,8 @@ const Sign = ({ navigation }) => {
         return '본인 확인';
       case STEP.ACCOUNT:
         return '계정 만들기';
+      case STEP.VERIFICATION_METHOD:
+        return '학생 인증';
       case STEP.STUDENT_VERIFY:
         return studentVerified ? '가입 마무리' : '학생증 인증';
       case STEP.CERTIFICATE_GUIDE:
@@ -539,17 +449,19 @@ const Sign = ({ navigation }) => {
       case STEP.CONSENT:
         return '서비스 이용을 위한 필수 동의 항목을 확인해 주세요';
       case STEP.IDENTITY:
-        return '본인 확인을 위한 정보와 재학 중인 학교를 입력해 주세요';
+        return '이름·생년월일·전화번호 인증과 재학 학교를 입력해 주세요';
       case STEP.ACCOUNT:
         return '로그인에 사용할 아이디와 비밀번호를 설정해 주세요';
+      case STEP.VERIFICATION_METHOD:
+        return '학생증 또는 재학증명서 중 하나를 선택해 주세요';
       case STEP.STUDENT_VERIFY:
         return studentVerified
           ? '학생증 제출이 완료되었습니다. 아래 [제출하기]로 가입을 마무리해 주세요.'
-          : '학생증을 촬영해 제출하면 승인 후 이용할 수 있어요.';
+          : '학생증을 촬영해 제출해 주세요. 관리자 승인 후 서비스를 이용할 수 있습니다.';
       case STEP.CERTIFICATE_GUIDE:
         return '본 가이드는 네이버와 무관한 사용자 편의 안내입니다';
       case STEP.CERTIFICATE_SUBMIT:
-        return '발급받은 열람용 주소와 열람 번호를 입력해 주세요';
+        return '열람용 주소와 열람 번호를 입력해 주세요';
       default:
         return '';
     }
@@ -567,14 +479,7 @@ const Sign = ({ navigation }) => {
         handleAccountNext();
         break;
       case STEP.STUDENT_VERIFY:
-        if (
-          SKIP_SIGNUP_VALIDATION_UNTIL_OCR_TEST &&
-          !studentVerified
-        ) {
-          handleStudentVerified(SIGNUP_TEST_MOCK_STUDENT_VERIFICATION);
-        } else if (studentVerified) {
-          handleComplete();
-        }
+        if (studentVerified) handleComplete();
         break;
       case STEP.CERTIFICATE_SUBMIT:
         handleCertificateSubmit();
@@ -585,7 +490,16 @@ const Sign = ({ navigation }) => {
   };
 
   const isPrimaryDisabled = () => {
-    if (SKIP_SIGNUP_VALIDATION_UNTIL_OCR_TEST) return submitting;
+    // [임시-수정용] 버튼 항상 활성화 (수정 끝나면 아래 2줄 주석 해제)
+    return submitting;
+    // eslint-disable-next-line no-unreachable
+    if (
+      SKIP_SIGNUP_VALIDATION_UNTIL_OCR_TEST &&
+      currentStep <= STEP.IDENTITY
+    ) {
+      if (submitting) return true;
+      return false;
+    }
     if (currentStep === STEP.CONSENT && !consentData.allConsented) return true;
     if (currentStep === STEP.IDENTITY && !selectedSchool?.id) return true;
     if (currentStep === STEP.IDENTITY) {
@@ -610,13 +524,6 @@ const Sign = ({ navigation }) => {
   };
 
   const primaryLabel = () => {
-    if (
-      SKIP_SIGNUP_VALIDATION_UNTIL_OCR_TEST &&
-      currentStep === STEP.STUDENT_VERIFY &&
-      !studentVerified
-    ) {
-      return '테스트 인증 완료';
-    }
     if (currentStep === STEP.STUDENT_VERIFY && studentVerified) return '제출하기';
     if (currentStep === STEP.CERTIFICATE_SUBMIT) return '제출하기';
     return '다음 단계';
@@ -699,11 +606,16 @@ const Sign = ({ navigation }) => {
             onChange={setStepInfoData}
           />
         )}
+        {currentStep === STEP.VERIFICATION_METHOD && (
+          <SignStepVerificationMethod
+            styles={styles}
+            onSelect={handleVerificationMethodSelect}
+          />
+        )}
         {currentStep === STEP.CERTIFICATE_GUIDE && (
           <SignStepCertificateGuide
             styles={styles}
             onProceed={handleCertificateProceed}
-            testMode={SKIP_SIGNUP_VALIDATION_UNTIL_OCR_TEST}
           />
         )}
         {currentStep === STEP.CERTIFICATE_SUBMIT && (
@@ -721,7 +633,6 @@ const Sign = ({ navigation }) => {
             schoolId={selectedSchool?.id || formData.schoolId}
             alreadyVerified={studentVerified}
             onVerified={handleStudentVerified}
-            onCertificateGuide={handleCertificateGuideOpen}
           />
         )}
       </View>
