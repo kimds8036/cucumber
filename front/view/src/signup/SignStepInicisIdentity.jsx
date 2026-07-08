@@ -52,7 +52,7 @@ const SignStepInicisIdentity = ({
   };
 
   const handleVerify = async () => {
-    if (testMode || verifying || isVerified) return;
+    if (verifying || isVerified) return;
 
     const clientOn = isInicisClientEnabled();
     let serverOn = false;
@@ -61,7 +61,9 @@ const SignStepInicisIdentity = ({
     }
     const useReal = clientOn && serverOn;
 
+    // SKIP/testMode여도 실연동 플래그 ON이면 이니시스 창을 연다
     if (!useReal) {
+      if (testMode) return; // 가입 SKIP 모드는 버튼 무반응(기존 UX) 유지
       // 기존 mock (유효성 미해제 단계)
       if (!name.trim()) {
         Alert.alert('알림', '이름을 입력해 주세요.');
@@ -150,36 +152,32 @@ const SignStepInicisIdentity = ({
           disabled={fieldsLocked}
         />
 
-        {!testMode ? (
-          <>
-            <TouchableOpacity
-              style={[
-                styles.verifyButton,
-                { marginTop: normalize(16) },
-                (verifying || isVerified) && {
-                  opacity: isVerified ? 0.7 : 0.6,
-                },
-              ]}
-              onPress={handleVerify}
-              disabled={verifying || isVerified}
-            >
-              {verifying ? (
-                <ActivityIndicator size="small" color={colors.background} />
-              ) : (
-                <Text style={styles.verifyButtonText}>
-                  {isVerified ? '인증 완료' : '본인인증 하기'}
-                </Text>
-              )}
-            </TouchableOpacity>
+        <TouchableOpacity
+          style={[
+            styles.verifyButton,
+            { marginTop: normalize(16) },
+            (verifying || isVerified) && {
+              opacity: isVerified ? 0.7 : 0.6,
+            },
+          ]}
+          onPress={handleVerify}
+          disabled={verifying || isVerified}
+        >
+          {verifying ? (
+            <ActivityIndicator size="small" color={colors.background} />
+          ) : (
+            <Text style={styles.verifyButtonText}>
+              {isVerified ? '인증 완료' : '본인인증 하기'}
+            </Text>
+          )}
+        </TouchableOpacity>
 
-            {isVerified ? (
-              <Text
-                style={[styles.fieldHelperText, styles.fieldHelperTextSuccess]}
-              >
-                본인인증이 완료되었습니다.
-              </Text>
-            ) : null}
-          </>
+        {isVerified ? (
+          <Text
+            style={[styles.fieldHelperText, styles.fieldHelperTextSuccess]}
+          >
+            본인인증이 완료되었습니다.
+          </Text>
         ) : null}
       </SignupStepScroll>
     </View>
