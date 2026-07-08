@@ -105,9 +105,23 @@ const allowedOrigins = isProductionEnv()
   ? [...new Set([...corsFromEnv, ...defaultAdminOrigins])]
   : ['http://localhost:3000', 'http://localhost:8081', ...defaultAdminOrigins];
 
+function isInicisBrowserOrigin(origin) {
+  // 통합인증 완료 후 success/fail URL 로 form POST 될 때 Origin 이 sa.inicis.com 등
+  try {
+    const host = new URL(origin).hostname.toLowerCase();
+    return host === 'inicis.com' || host.endsWith('.inicis.com');
+  } catch {
+    return false;
+  }
+}
+
 app.use(cors({
   origin: (origin, callback) => {
-    if (!origin || allowedOrigins.includes(origin)) {
+    // 앱(네이티브)·직접 주소창·일부 WebView 는 origin 없음 또는 "null"
+    if (!origin || origin === 'null' || allowedOrigins.includes(origin)) {
+      return callback(null, true);
+    }
+    if (isInicisBrowserOrigin(origin)) {
       return callback(null, true);
     }
     return callback(new Error('CORS 정책에 의해 차단되었습니다.'));
@@ -133,7 +147,10 @@ const authLimiter = rateLimit({
   max: Number(process.env.RATE_LIMIT_AUTH_MAX || 60),
   standardHeaders: true,
   legacyHeaders: false,
-  skip: (req) => req.method === 'GET',
+  skip: (req) =>
+    req.method === 'GET' ||
+    // 이니시스 success/fail 콜백·런치 HTML (외부 Origin POST)
+    String(req.path || '').startsWith('/inicis'),
   ...(authRateLimitStore ? { store: authRateLimitStore } : {}),
   message: { success: false, message: '요청이 너무 많습니다. 15분 후 다시 시도해주세요.' },
 });
