@@ -33,18 +33,20 @@ const SignStepStudentIdVerify = ({
   onCertificateGuide,
 }) => {
   const isFocused = useIsFocused();
-  const { width: screenWidth, height: screenHeight } = useWindowDimensions();
+  const { width: screenWidth } = useWindowDimensions();
   const [stageSize, setStageSize] = useState({ width: 0, height: 0 });
 
   const layerStyles = useMemo(() => createStudentIdCameraLayerStyles(), []);
 
-  const stageWidth = stageSize.width > 0 ? stageSize.width : screenWidth;
-  const stageHeight =
-    stageSize.height > 0 ? stageSize.height : Math.max(280, screenHeight * 0.42);
+  const stageReady = stageSize.width > 0 && stageSize.height > 0;
+  const stageWidth = stageReady ? stageSize.width : screenWidth;
 
   const { frameWidth, frameHeight } = useMemo(
-    () => getStudentIdFrameSize(stageWidth),
-    [stageWidth],
+    () =>
+      stageReady
+        ? getStudentIdFrameSize(stageWidth)
+        : { frameWidth: 0, frameHeight: 0 },
+    [stageReady, stageWidth],
   );
 
   const [permission, requestPermission] = useCameraPermissions();

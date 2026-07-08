@@ -19,10 +19,11 @@ export function showComingSoonAuthFeatureAlert() {
 }
 
 export const UNDER_14_BLOCK_MESSAGE =
-  '만 14세 미만 회원의 경우, 관련 법령에 따라 법정대리인(보호자)의 동의 절차가 필요합니다. 현재 보호자 동의 인증 시스템(PASS)을 준비 중입니다. 보다 안전하고 원활한 서비스 제공을 위해 추후 업데이트를 통해 도입될 예정이오니 양해 부탁드립니다.';
+  '만 14세 미만 회원은 관련 법령에 따라 법정대리인(보호자)의 본인인증 및 동의가 필요합니다. 보호자 명의 휴대전화로 본인인증을 완료해 주세요.';
 
 const SIGNUP_MANUAL_REVIEW_SUFFIX = `\n\n다음 단계로 진행되지 않는 경우 ${SIGNUP_SUPPORT_EMAIL} 으로 연락해 주시면 신속히 검토 후 계정 생성을 도와드리겠습니다.`;
 
+/** @deprecated 가입 플로우는 Sign.jsx C→보호자 인증 경로를 사용. 잔여 호출부용. */
 export function showUnder14BlockAlert(onConfirm) {
   Alert.alert(
     '안내 (Youth Paper)',

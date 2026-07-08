@@ -12,7 +12,7 @@ import { getNormalize } from '../../../styles/mypage.style';
 import { createServiceStyles } from '../../../styles/service.style';
 import { groupMarkdownBlocks } from './markdownBlocks';
 
-const SERVICE_TERMS_MARKDOWN = require('../../../docs/legal/service-terms.md');
+const SERVICE_TERMS_MARKDOWN = require('./_terms_md.json');
 const TERMS_BLOCKS = groupMarkdownBlocks(SERVICE_TERMS_MARKDOWN.split('\n'));
 const HIDDEN_TITLE_LINES = new Set(['# 서비스 이용 약관']);
 

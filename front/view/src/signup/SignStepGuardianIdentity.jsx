@@ -8,8 +8,13 @@ import {
 } from 'react-native';
 import { colors } from '../../../styles/colors';
 import SignupStepScroll from './SignupStepScroll';
+import {
+  fetchInicisServerEnabled,
+  isInicisClientEnabled,
+  runInicisIdentityFlow,
+} from '../../../services/inicisAuth';
 
-/** 보호자 본인인증 (KG 이니시스 연동 예정 — 1차 스텁) */
+/** 보호자 본인인증 — 플래그 ON 시 이니시스, 아니면 mock */
 const SignStepGuardianIdentity = ({
   styles,
   normalize,
@@ -25,14 +30,34 @@ const SignStepGuardianIdentity = ({
     if (verifying || isVerified) return;
     setVerifying(true);
     try {
-      // TODO: KG 이니시스 보호자 본인인증 API 연동
+      const clientOn = isInicisClientEnabled();
+      const serverOn = clientOn ? await fetchInicisServerEnabled() : false;
+      const useReal = clientOn && serverOn;
+
+      if (useReal) {
+        const result = await runInicisIdentityFlow('guardian_consent');
+        const verifiedAt = new Date().toISOString();
+        setIsVerified(true);
+        onChange?.({
+          isVerified: true,
+          guardianVerifiedAt: verifiedAt,
+          inicisClientToken: result.clientToken,
+          guardianProfile: result.profile,
+        });
+        Alert.alert('알림', '보호자 본인인증이 완료되었습니다.');
+        return;
+      }
+
       await new Promise((r) => setTimeout(r, 400));
       const verifiedAt = new Date().toISOString();
       setIsVerified(true);
       onChange?.({ isVerified: true, guardianVerifiedAt: verifiedAt });
-      Alert.alert('알림', '보호자 본인인증이 완료되었습니다.');
-    } catch {
-      onVerificationFailed?.();
+      Alert.alert('알림', '보호자 본인인증이 완료되었습니다. (테스트 mock)');
+    } catch (e) {
+      if (e?.code !== 'CANCELLED') {
+        onVerificationFailed?.();
+        Alert.alert('오류', e?.message || '보호자 인증에 실패했습니다.');
+      }
     } finally {
       setVerifying(false);
     }

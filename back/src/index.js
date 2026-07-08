@@ -38,6 +38,7 @@ import appRoutes from './routes/app.js';
 import testRoutes from './routes/test.js';
 import attendanceRoutes from './routes/attendance.js';
 import analyticsRoutes from './routes/analytics.js';
+import inicisRoutes from './routes/inicis.js';
 import swaggerSpec from './swagger.js';
 import { initSocketServer } from './socketServer.js';
 import { initFirebase } from './config/firebase.js';
@@ -256,6 +257,7 @@ if (isProductionEnv()) {
 // Routes
 app.use('/api/app', appRoutes);
 app.use('/api/auth', authRoutes);
+app.use('/api/auth/inicis', inicisRoutes);
 app.use('/api/attendance', attendanceRoutes);
 app.use('/api/posts', postRoutes);
 app.use('/api', commentRoutes);

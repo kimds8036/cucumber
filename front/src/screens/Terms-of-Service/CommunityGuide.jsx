@@ -11,7 +11,7 @@ import SubHeader from '../../../view/frame/subHeader';
 import { getNormalize } from '../../../styles/mypage.style';
 import { createServiceStyles } from '../../../styles/service.style';
 
-const COMMUNITY_GUIDE_MARKDOWN = require('../../../docs/legal/community-guide.md');
+const COMMUNITY_GUIDE_MARKDOWN = require('./_community_md.json');
 
 const GUIDE_LINES = COMMUNITY_GUIDE_MARKDOWN.split('\n');
 

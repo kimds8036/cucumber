@@ -367,6 +367,8 @@ const Sign = ({ navigation }) => {
         ? OCR_TEST_MOCK_IDENTITY.phoneNumber
         : '');
 
+    let school = selectedSchool;
+
     if (!SKIP_SIGNUP_VALIDATION_UNTIL_OCR_TEST) {
       if (requiresGuardianVerification && !guardianVerified) {
         setCurrentStep(STEP.GUARDIAN_IDENTITY);
@@ -376,14 +378,17 @@ const Sign = ({ navigation }) => {
         Alert.alert('알림', '이름을 입력해 주세요.');
         return;
       }
-      if (!selectedSchool?.id) {
-        Alert.alert('알림', '재학 중인 학교를 선택해 주세요.');
+      if (!selectedSchool?.id || selectedSchool?.manual) {
+        Alert.alert('알림', '재학 중인 학교를 목록에서 선택해 주세요.');
         return;
       }
       if (!identityData.isVerified) {
         Alert.alert('알림', '본인인증을 완료해 주세요.');
         return;
       }
+    } else if (!selectedSchool?.id || selectedSchool?.manual) {
+      Alert.alert('알림', '재학 중인 학교를 목록에서 선택해 주세요.');
+      return;
     }
 
     setFormData((prev) => ({
@@ -391,8 +396,8 @@ const Sign = ({ navigation }) => {
       name,
       birthDate: birthDate || prev.birthDate,
       phoneNumber,
-      schoolId: selectedSchool?.id,
-      schoolName: selectedSchool?.name,
+      schoolId: school?.id,
+      schoolName: school?.name,
       requiresGuardianVerification,
       guardianVerifiedAt,
     }));
@@ -749,14 +754,20 @@ const Sign = ({ navigation }) => {
   };
 
   const isPrimaryDisabled = () => {
-    if (SKIP_SIGNUP_VALIDATION_UNTIL_OCR_TEST) return submitting;
+    if (submitting) return true;
+    if (SKIP_SIGNUP_VALIDATION_UNTIL_OCR_TEST) {
+      if (currentStep === STEP.IDENTITY) {
+        if (!selectedSchool?.id || selectedSchool?.manual) return true;
+      }
+      return false;
+    }
     if (currentStep === STEP.CONSENT && !consentData.allConsented) return true;
     if (currentStep === STEP.BIRTH_DATE) {
       if (!birthDate || !isValidBirthDateString(birthDate)) return true;
     }
     if (currentStep === STEP.GUARDIAN_IDENTITY && !guardianVerified) return true;
     if (currentStep === STEP.IDENTITY) {
-      if (!selectedSchool?.id) return true;
+      if (!selectedSchool?.id || selectedSchool?.manual) return true;
       if (!identityData.isVerified) return true;
     }
     if (currentStep === STEP.ACCOUNT) {
@@ -877,6 +888,7 @@ const Sign = ({ navigation }) => {
             onSchoolSelect={setSelectedSchool}
             onChange={setIdentityData}
             requiresGuardianVerification={requiresGuardianVerification}
+            testMode={SKIP_SIGNUP_VALIDATION_UNTIL_OCR_TEST}
           />
         )}
         {currentStep === STEP.ACCOUNT && (

@@ -12,7 +12,7 @@ import { getNormalize } from '../../../styles/mypage.style';
 import { createServiceStyles } from '../../../styles/service.style';
 import { groupMarkdownBlocks } from './markdownBlocks';
 
-const PRIVACY_MARKDOWN = require('../../../docs/legal/privacy-policy.md');
+const PRIVACY_MARKDOWN = require('./_privacy_md.json');
 const POLICY_BLOCKS = groupMarkdownBlocks(PRIVACY_MARKDOWN.split('\n'));
 const HIDDEN_TITLE_LINES = new Set(['# 개인정보 처리방침']);
 
