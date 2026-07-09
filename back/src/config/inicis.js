@@ -14,7 +14,7 @@ export function getInicisConfig() {
   const seedIv = String(process.env.INICIS_SEED_IV || '').trim();
   const seedKey = String(process.env.INICIS_SEED_KEY || '').trim();
   const diCode = String(process.env.INICIS_DI_CODE || '').trim();
-  const reqSvcCd = String(process.env.INICIS_REQ_SVC_CD || '03').trim() || '03';
+  const reqSvcCd = String(process.env.INICIS_REQ_SVC_CD || '01').trim() || '01';
 
   const publicBase = String(
     process.env.INICIS_PUBLIC_BASE_URL ||
@@ -31,10 +31,7 @@ export function getInicisConfig() {
     String(process.env.INICIS_FAIL_URL || '').trim() ||
     (publicBase ? `${publicBase}/api/auth/inicis/callback/fail` : '');
 
-  const authRequestUrl =
-    reqSvcCd === '03'
-      ? 'https://sa.inicis.com/id/auth'
-      : 'https://sa.inicis.com/auth';
+  const authRequestUrl = getInicisAuthRequestUrl(reqSvcCd);
 
   return {
     mid,
@@ -49,6 +46,18 @@ export function getInicisConfig() {
     authRequestUrl,
     sessionTtlMinutes: Number(process.env.INICIS_SESSION_TTL_MINUTES || 30),
   };
+}
+
+export function getInicisAuthRequestUrl(reqSvcCd) {
+  // 매뉴얼: 01·02 간편인증·전자서명 → /auth, 03 본인확인 → /id/auth
+  return String(reqSvcCd) === '03'
+    ? 'https://sa.inicis.com/id/auth'
+    : 'https://sa.inicis.com/auth';
+}
+
+/** 간편인증(01)·전자서명(02) — 본인확인(03) 전용 필드 없음 */
+export function isInicisIdentityVerification(reqSvcCd) {
+  return String(reqSvcCd) === '03';
 }
 
 export function assertInicisReadyForSession() {
@@ -93,32 +102,46 @@ export function hashLookup(value) {
 }
 
 /**
- * SEED-CBC 복호화 시도.
- * Key 미설정 시 null + skipped.
- * 알고리즘은 이니시스 샘플에 맞게 추후 조정 가능 (Node seed-cbc / openssl).
+ * SEED-CBC 복호화.
+ * 매뉴얼(통합인증 복호화 팝업): KEY = STEP2 token 을 Base64 디코딩한 16byte, IV = 가맹점 SEED IV.
+ * @param {string} cipherTextB64
+ * @param {{ seedToken?: string, seedIv?: string, seedKey?: string }} opts
  */
-export function tryDecryptInicisField(cipherTextB64, { seedKey, seedIv }) {
+export function tryDecryptInicisField(cipherTextB64, { seedToken, seedIv, seedKey }) {
   if (!cipherTextB64) return { ok: true, value: null, skipped: false };
-  if (!seedKey) {
-    return { ok: false, value: null, skipped: true, reason: 'no_seed_key' };
+
+  const tokenRaw = String(seedToken || '').trim();
+  const ivRaw = String(seedIv || '').trim();
+  const staticKeyRaw = String(seedKey || '').trim();
+
+  if (!tokenRaw && !staticKeyRaw) {
+    return { ok: false, value: null, skipped: true, reason: 'no_seed_token' };
   }
+  if (!ivRaw) {
+    return { ok: false, value: null, skipped: true, reason: 'no_seed_iv' };
+  }
+
   try {
-    // 많은 샘플이 Base64 cipher + latin1/utf8 key·iv. IV는 보통 16바이트.
-    const keyBuf = Buffer.from(seedKey, 'utf8');
-    const ivBuf = Buffer.from(seedIv || '', 'utf8');
+    let keyBuf;
+    if (tokenRaw) {
+      keyBuf = Buffer.from(tokenRaw, 'base64');
+      if (keyBuf.length < 16) {
+        return { ok: false, value: null, skipped: false, reason: 'invalid_token_key_len' };
+      }
+      keyBuf = keyBuf.subarray(0, 16);
+    } else {
+      keyBuf = Buffer.from(staticKeyRaw, 'utf8').subarray(0, 16);
+    }
+
+    const ivBuf = Buffer.from(ivRaw, 'utf8');
+    const iv = ivBuf.length >= 16 ? ivBuf.subarray(0, 16) : Buffer.alloc(16);
     const data = Buffer.from(String(cipherTextB64), 'base64');
 
-    // seed-cbc 미지원 환경 대비: AES로 잘못 열면 깨짐 → openssl seed 시도
-    // Node 기본 cipher에 seed-cbc가 없을 수 있음.
-    const candidates = ['seed-cbc', 'aes-128-cbc', 'aes-256-cbc'];
+    const candidates = ['seed-cbc', 'aes-128-cbc'];
     let lastErr = null;
     for (const algo of candidates) {
       try {
-        const key =
-          algo.startsWith('aes-256')
-            ? crypto.createHash('sha256').update(keyBuf).digest()
-            : keyBuf.subarray(0, 16);
-        const iv = ivBuf.length >= 16 ? ivBuf.subarray(0, 16) : Buffer.alloc(16);
+        const key = algo === 'aes-128-cbc' ? keyBuf : keyBuf;
         const decipher = crypto.createDecipheriv(algo, key, iv);
         decipher.setAutoPadding(true);
         const plain = Buffer.concat([

@@ -187,8 +187,8 @@ export async function handleInicisCallback(rawBody, { fail = false } = {}) {
     body.authRequestUrl || body.auth_request_url || '',
   ).trim();
   const txId = String(body.txId || body.tx_id || '').trim();
-  // 이니시스가 mTxId를 다시 주지 않을 수 있어 token/세션 매칭은 txId + 최근 pending 보강 필요
-  // STEP2에 mTxId가 있으면 사용
+  const seedToken = String(body.token || '').trim();
+  // STEP2: isUseToken=Y 이면 token(Base64)이 복호화 KEY — 매뉴얼 복호화 팝업
   const mTxId = String(body.mTxId || body.m_tx_id || '').trim();
 
   if (fail || resultCode !== '0000') {
@@ -281,11 +281,14 @@ export async function handleInicisCallback(rawBody, { fail = false } = {}) {
     userName: enc.userName,
     userPhone: enc.userPhone,
     userBirthday: enc.userBirthday,
-    userGender: enc.userGender,
-    isForeign: enc.isForeign,
     userCi: enc.userCi || enc.userCi2,
-    userDi: enc.userDi,
   };
+  // 본인확인(03) 전용 — 간편인증(01) 응답에는 없음 (매뉴얼 STEP4)
+  if (cfg.reqSvcCd === '03') {
+    fields.userGender = enc.userGender;
+    fields.isForeign = enc.isForeign;
+    fields.userDi = enc.userDi;
+  }
 
   let decryptStatus = 'ok';
   const decrypted = {};
@@ -294,13 +297,14 @@ export async function handleInicisCallback(rawBody, { fail = false } = {}) {
       decrypted[k] = null;
       continue;
     }
-    // isUseToken=Y 이면 SEED 암호문. Key 없으면 skipped.
+    // isUseToken=Y → STEP2 token + SEED IV 로 복호화 (매뉴얼)
     const r = tryDecryptInicisField(v, {
-      seedKey: cfg.seedKey,
+      seedToken,
       seedIv: cfg.seedIv,
+      seedKey: cfg.seedKey,
     });
     if (r.skipped) {
-      decryptStatus = 'skipped_no_key';
+      decryptStatus = r.reason === 'no_seed_iv' ? 'skipped_no_iv' : 'skipped_no_token';
       decrypted[k] = null;
     } else if (!r.ok) {
       // 평문일 수도 있음(토큰 미사용 환경)
@@ -363,8 +367,8 @@ export async function handleInicisCallback(rawBody, { fail = false } = {}) {
     decryptStatus,
     html: renderResultPage(
       true,
-      decryptStatus === 'skipped_no_key'
-        ? '인증은 완료되었습니다. (서버에 SEED Key가 없어 상세 복호화는 나중에 적용됩니다. 앱으로 돌아가 주세요.)'
+      decryptStatus === 'skipped_no_token' || decryptStatus === 'skipped_no_iv'
+        ? '인증은 완료되었습니다. (STEP2 token 또는 SEED IV가 없어 상세 복호화는 적용되지 않았습니다. 앱으로 돌아가 주세요.)'
         : '본인인증이 완료되었습니다. 앱으로 돌아가 주세요.',
     ),
   };
