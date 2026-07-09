@@ -107,6 +107,10 @@ const SignStepInicisIdentity = ({
       Alert.alert('알림', '본인인증이 완료되었습니다.');
     } catch (e) {
       if (e?.code === 'CANCELLED') return;
+      if (e?.code === 'IN_PROGRESS') {
+        Alert.alert('알림', '이미 본인인증이 진행 중입니다.');
+        return;
+      }
       Alert.alert('오류', e?.message || '본인인증 중 오류가 발생했습니다.');
     } finally {
       setVerifying(false);

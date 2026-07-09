@@ -6,6 +6,7 @@ import {
   createMTxId,
   getInicisConfig,
   hashLookup,
+  isAllowedAppReturnUrl,
   isAllowedAuthRequestUrl,
   isInicisEnabled,
   tryDecryptInicisField,
@@ -29,7 +30,7 @@ function birthdayToIso(yyyymmdd) {
   return `${d.slice(0, 4)}-${d.slice(4, 6)}-${d.slice(6, 8)}`;
 }
 
-export async function createInicisSession({ purpose }) {
+export async function createInicisSession({ purpose, appReturnUrl = null }) {
   if (!isInicisEnabled()) {
     const err = new Error(
       'INICIS_ENABLED=false 입니다. 실연동 전에 환경 변수와 도메인 등록을 확인하세요.',
@@ -62,14 +63,21 @@ export async function createInicisSession({ purpose }) {
     Date.now() + cfg.sessionTtlMinutes * 60 * 1000,
   );
 
+  const safeAppReturn =
+    appReturnUrl && isAllowedAppReturnUrl(appReturnUrl)
+      ? String(appReturnUrl).trim()
+      : null;
+
   await pool.execute(
     `INSERT INTO identity_verifications
-      (m_tx_id, purpose, status, expires_at)
-     VALUES (?, ?, 'pending', ?)`,
-    [mTxId, purpose, expiresAt],
+      (m_tx_id, purpose, app_return_url, status, expires_at)
+     VALUES (?, ?, ?, 'pending', ?)`,
+    [mTxId, purpose, safeAppReturn, expiresAt],
   );
 
-  const patched = withMTxIdOnCallbackUrls(cfg, mTxId);
+  const patched = withMTxIdOnCallbackUrls(cfg, mTxId, {
+    appReturnUrl: safeAppReturn,
+  });
   const form = {
     mid: cfg.mid,
     reqSvcCd: cfg.reqSvcCd,
@@ -102,7 +110,8 @@ export async function getLaunchForm(mTxId) {
   }
 
   const [rows] = await pool.execute(
-    `SELECT m_tx_id, status, expires_at FROM identity_verifications WHERE m_tx_id = ? LIMIT 1`,
+    `SELECT m_tx_id, status, expires_at, app_return_url
+     FROM identity_verifications WHERE m_tx_id = ? LIMIT 1`,
     [mTxId],
   );
   const row = rows[0];
@@ -132,12 +141,15 @@ export async function getLaunchForm(mTxId) {
     mTxId,
     apiKey: cfg.apiKey,
   });
+  const patched = withMTxIdOnCallbackUrls(cfg, mTxId, {
+    appReturnUrl: row.app_return_url,
+  });
   const fields = {
     mid: cfg.mid,
     reqSvcCd: cfg.reqSvcCd,
     mTxId,
-    successUrl: cfg.successUrl,
-    failUrl: cfg.failUrl,
+    successUrl: patched.successUrl,
+    failUrl: patched.failUrl,
     authHash,
     flgFixedUser: 'N',
     reservedMsg: 'isUseToken=Y',
@@ -179,8 +191,29 @@ function escapeHtml(s) {
     .replace(/>/g, '&gt;');
 }
 
+function resolveAppReturnFromBody(body) {
+  const raw = String(body?.appReturn || body?.app_return || '').trim();
+  if (!raw) return null;
+  const decoded = decodeMaybeUrl(raw);
+  return isAllowedAppReturnUrl(decoded) ? decoded : null;
+}
+
+function buildAppReturnTarget(appReturnUrl, { ok, mTxId, resultCode }) {
+  if (!appReturnUrl) return null;
+  try {
+    const u = new URL(appReturnUrl);
+    u.searchParams.set('result', ok ? 'success' : 'fail');
+    if (mTxId) u.searchParams.set('mTxId', mTxId);
+    if (resultCode) u.searchParams.set('resultCode', String(resultCode));
+    return u.toString();
+  } catch {
+    return null;
+  }
+}
+
 export async function handleInicisCallback(rawBody, { fail = false } = {}) {
   const body = rawBody || {};
+  const appReturnUrl = resolveAppReturnFromBody(body);
   const resultCode = String(body.resultCode || body.result_code || '').trim();
   const resultMsg = decodeMaybeUrl(body.resultMsg || body.result_msg || '');
   const authRequestUrl = String(
@@ -205,7 +238,11 @@ export async function handleInicisCallback(rawBody, { fail = false } = {}) {
       mTxId: mTxId || null,
       resultCode,
       resultMsg,
-      html: renderResultPage(false, resultMsg || '인증에 실패했습니다.'),
+      html: renderResultPage(false, resultMsg || '인증에 실패했습니다.', {
+        appReturnUrl,
+        mTxId: mTxId || null,
+        resultCode: resultCode || 'FAIL',
+      }),
     };
   }
 
@@ -221,7 +258,11 @@ export async function handleInicisCallback(rawBody, { fail = false } = {}) {
     return {
       ok: false,
       mTxId: mTxId || null,
-      html: renderResultPage(false, '인증 응답 URL이 올바르지 않습니다.'),
+      html: renderResultPage(false, '인증 응답 URL이 올바르지 않습니다.', {
+        appReturnUrl,
+        mTxId: mTxId || null,
+        resultCode: 'BAD_URL',
+      }),
     };
   }
 
@@ -242,9 +283,13 @@ export async function handleInicisCallback(rawBody, { fail = false } = {}) {
       html: renderResultPage(
         false,
         '세션을 특정할 수 없습니다. successUrl에 mTxId를 포함하도록 서버를 확인하세요.',
+        { appReturnUrl, resultCode: 'NO_SESSION' },
       ),
     };
   }
+
+  const resolvedAppReturn =
+    appReturnUrl || (await loadAppReturnUrlForSession(sessionMTxId));
 
   // successUrl에 mTxId를 포함하도록 세션 생성 시 URL에 쿼리를 붙임 — 아래 fetchResult 전에 tx 저장
   await pool.execute(
@@ -271,7 +316,11 @@ export async function handleInicisCallback(rawBody, { fail = false } = {}) {
     return {
       ok: false,
       mTxId: sessionMTxId,
-      html: renderResultPage(false, inquiry.resultMsg || '결과조회에 실패했습니다.'),
+      html: renderResultPage(false, inquiry.resultMsg || '결과조회에 실패했습니다.', {
+        appReturnUrl: resolvedAppReturn,
+        mTxId: sessionMTxId,
+        resultCode: inquiry.resultCode || 'INQUIRY_FAIL',
+      }),
     };
   }
 
@@ -368,8 +417,13 @@ export async function handleInicisCallback(rawBody, { fail = false } = {}) {
     html: renderResultPage(
       true,
       decryptStatus === 'skipped_no_token' || decryptStatus === 'skipped_no_iv'
-        ? '인증은 완료되었습니다. (STEP2 token 또는 SEED IV가 없어 상세 복호화는 적용되지 않았습니다. 앱으로 돌아가 주세요.)'
-        : '본인인증이 완료되었습니다. 앱으로 돌아가 주세요.',
+        ? '인증은 완료되었습니다. 앱으로 돌아가는 중…'
+        : '본인인증이 완료되었습니다. 앱으로 돌아가는 중…',
+      {
+        appReturnUrl: resolvedAppReturn,
+        mTxId: sessionMTxId,
+        resultCode: inquiry.resultCode || '0000',
+      },
     ),
   };
 }
@@ -402,23 +456,44 @@ async function fetchIdentityResult({ authRequestUrl, txId }) {
   }
 }
 
-function renderResultPage(ok, message) {
+function renderResultPage(ok, message, { appReturnUrl, mTxId, resultCode } = {}) {
   const color = ok ? '#6f9163' : '#c0392b';
+  const redirectTarget = buildAppReturnTarget(appReturnUrl, {
+    ok,
+    mTxId,
+    resultCode,
+  });
+  const redirectBlock = redirectTarget
+    ? `<script>setTimeout(function(){window.location.replace(${JSON.stringify(redirectTarget)});},400);</script>
+  <p style="color:#888;font-size:13px;margin-top:16px;">잠시 후 앱으로 이동합니다…</p>`
+    : `<p style="color:#888;font-size:13px;margin-top:24px;">이 창을 닫고 앱으로 돌아가 주세요.</p>`;
   return `<!DOCTYPE html>
 <html lang="ko"><head><meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/>
 <title>인증 결과</title></head>
 <body style="font-family:sans-serif;padding:32px;text-align:center;">
   <h2 style="color:${color}">${ok ? '인증 완료' : '인증 실패'}</h2>
   <p>${escapeHtml(message || '')}</p>
-  <p style="color:#888;font-size:13px;margin-top:24px;">이 창을 닫고 앱으로 돌아가 주세요.</p>
+  ${redirectBlock}
 </body></html>`;
 }
 
-/** successUrl에 mTxId 쿼리 강제 — 콜백 매칭용 */
-export function withMTxIdOnCallbackUrls(cfg, mTxId) {
+async function loadAppReturnUrlForSession(mTxId) {
+  const [rows] = await pool.execute(
+    `SELECT app_return_url FROM identity_verifications WHERE m_tx_id = ? LIMIT 1`,
+    [mTxId],
+  );
+  const url = rows[0]?.app_return_url;
+  return url && isAllowedAppReturnUrl(url) ? url : null;
+}
+
+/** successUrl에 mTxId·appReturn 쿼리 — 콜백 매칭·앱 복귀용 */
+export function withMTxIdOnCallbackUrls(cfg, mTxId, { appReturnUrl } = {}) {
   const add = (url) => {
     const u = new URL(url);
     u.searchParams.set('mTxId', mTxId);
+    if (appReturnUrl && isAllowedAppReturnUrl(appReturnUrl)) {
+      u.searchParams.set('appReturn', appReturnUrl);
+    }
     return u.toString();
   };
   return {
@@ -428,16 +503,15 @@ export function withMTxIdOnCallbackUrls(cfg, mTxId) {
   };
 }
 
-export async function createInicisSessionWithCallbackQuery({ purpose }) {
-  return createInicisSession({ purpose });
+export async function createInicisSessionWithCallbackQuery({
+  purpose,
+  appReturnUrl,
+}) {
+  return createInicisSession({ purpose, appReturnUrl });
 }
 
 export async function getLaunchFormWithCallbackQuery(mTxId) {
   const base = await getLaunchForm(mTxId);
-  const cfg = getInicisConfig();
-  const patched = withMTxIdOnCallbackUrls(cfg, mTxId);
-  base.fields.successUrl = patched.successUrl;
-  base.fields.failUrl = patched.failUrl;
   return base;
 }
 

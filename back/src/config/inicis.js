@@ -60,6 +60,24 @@ export function isInicisIdentityVerification(reqSvcCd) {
   return String(reqSvcCd) === '03';
 }
 
+/** 앱 복귀 딥링크 allowlist */
+export function isAllowedAppReturnUrl(url) {
+  try {
+    const u = new URL(String(url || '').trim());
+    const scheme = u.protocol.replace(':', '').toLowerCase();
+    const allowed = new Set([
+      'youthpaper',
+      'exp+youth-paper',
+      'com.ucost.youthpaper',
+    ]);
+    if (!allowed.has(scheme)) return false;
+    const path = u.pathname.replace(/\/$/, '') || '/';
+    return path === '/inicis/return' || path.endsWith('/inicis/return');
+  } catch {
+    return false;
+  }
+}
+
 export function assertInicisReadyForSession() {
   const cfg = getInicisConfig();
   const missing = [];

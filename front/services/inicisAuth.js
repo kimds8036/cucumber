@@ -1,9 +1,19 @@
-import { Linking } from 'react-native';
+import * as WebBrowser from 'expo-web-browser';
+import * as Linking from 'expo-linking';
 import { api } from '../utils/api';
+
+WebBrowser.maybeCompleteAuthSession();
+
+/** 동시에 하나의 인증 브라우저만 */
+let activeFlowPromise = null;
 
 /** 서버 INICIS_ENABLED 와 클라이언트 옵트인 */
 export function isInicisClientEnabled() {
   return String(process.env.EXPO_PUBLIC_INICIS_ENABLED || '').toLowerCase() === 'true';
+}
+
+export function getInicisAppReturnUrl() {
+  return Linking.createURL('inicis/return');
 }
 
 export async function fetchInicisServerEnabled() {
@@ -17,28 +27,39 @@ export async function fetchInicisServerEnabled() {
 
 /**
  * @param {'student_signup'|'guardian_consent'} purpose
- * @returns {Promise<{ mTxId: string, launchUrl: string, pollPath: string }>}
  */
-export async function startInicisSession(purpose = 'student_signup') {
-  const res = await api.post('/api/auth/inicis/session', { purpose });
+export async function startInicisSession(
+  purpose = 'student_signup',
+  { appReturnUrl } = {},
+) {
+  const res = await api.post('/api/auth/inicis/session', {
+    purpose,
+    appReturnUrl: appReturnUrl || getInicisAppReturnUrl(),
+  });
   if (!res.data?.success || !res.data?.data?.launchUrl) {
     throw new Error(res.data?.message || '이니시스 세션을 시작할 수 없습니다.');
   }
   return res.data.data;
 }
 
-export async function openInicisLaunchUrl(launchUrl) {
-  const can = await Linking.canOpenURL(launchUrl);
-  if (!can) {
-    // https 는 보통 canOpen true; 실패 시에도 시도
+/**
+ * 인앱 브라우저(Custom Tabs / SFSafariViewController) — 완료·취소 시 자동 닫힘
+ */
+export async function openInicisAuthSession(launchUrl, redirectUrl) {
+  try {
+    await WebBrowser.dismissBrowser();
+  } catch {
+    // ignore
   }
-  await Linking.openURL(launchUrl);
+  try {
+    await WebBrowser.coolDownAsync();
+  } catch {
+    // ignore
+  }
+
+  return WebBrowser.openAuthSessionAsync(launchUrl, redirectUrl);
 }
 
-/**
- * 폴링으로 success|fail 대기
- * @returns {Promise<{ clientToken: string, profile: object|null, status: string }>}
- */
 export async function waitForInicisResult(mTxId, {
   intervalMs = 2000,
   timeoutMs = 5 * 60 * 1000,
@@ -83,9 +104,53 @@ function sleep(ms) {
   return new Promise((r) => setTimeout(r, ms));
 }
 
-/** 세션 시작 → 브라우저 오픈 → 폴링 */
+/** 세션 시작 → 인앱 브라우저 → 폴링 (중복 실행 방지) */
 export async function runInicisIdentityFlow(purpose, options = {}) {
-  const session = await startInicisSession(purpose);
-  await openInicisLaunchUrl(session.launchUrl);
-  return waitForInicisResult(session.mTxId, options);
+  if (activeFlowPromise) {
+    const err = new Error('이미 본인인증이 진행 중입니다.');
+    err.code = 'IN_PROGRESS';
+    throw err;
+  }
+
+  const redirectUrl = getInicisAppReturnUrl();
+
+  activeFlowPromise = (async () => {
+    let mTxId = null;
+    try {
+      const session = await startInicisSession(purpose, {
+        appReturnUrl: redirectUrl,
+      });
+      mTxId = session.mTxId;
+
+      const browserResult = await openInicisAuthSession(
+        session.launchUrl,
+        redirectUrl,
+      );
+
+      if (
+        browserResult.type === 'cancel' ||
+        browserResult.type === 'dismiss'
+      ) {
+        const err = new Error('cancelled');
+        err.code = 'CANCELLED';
+        throw err;
+      }
+
+      return waitForInicisResult(mTxId, options);
+    } finally {
+      activeFlowPromise = null;
+      try {
+        await WebBrowser.dismissBrowser();
+      } catch {
+        // ignore
+      }
+    }
+  })();
+
+  return activeFlowPromise;
+}
+
+/** 진행 중인 인증이 있는지 */
+export function isInicisFlowInProgress() {
+  return Boolean(activeFlowPromise);
 }

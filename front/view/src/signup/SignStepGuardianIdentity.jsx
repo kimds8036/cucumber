@@ -54,10 +54,13 @@ const SignStepGuardianIdentity = ({
       onChange?.({ isVerified: true, guardianVerifiedAt: verifiedAt });
       Alert.alert('알림', '보호자 본인인증이 완료되었습니다. (테스트 mock)');
     } catch (e) {
-      if (e?.code !== 'CANCELLED') {
-        onVerificationFailed?.();
-        Alert.alert('오류', e?.message || '보호자 인증에 실패했습니다.');
+      if (e?.code === 'CANCELLED') return;
+      if (e?.code === 'IN_PROGRESS') {
+        Alert.alert('알림', '이미 본인인증이 진행 중입니다.');
+        return;
       }
+      onVerificationFailed?.();
+      Alert.alert('오류', e?.message || '보호자 인증에 실패했습니다.');
     } finally {
       setVerifying(false);
     }

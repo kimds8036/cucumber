@@ -27,7 +27,11 @@ router.post('/session', async (req, res) => {
       });
     }
     const purpose = String(req.body?.purpose || 'student_signup').trim();
-    const data = await createInicisSessionWithCallbackQuery({ purpose });
+    const appReturnUrl = String(req.body?.appReturnUrl || '').trim() || null;
+    const data = await createInicisSessionWithCallbackQuery({
+      purpose,
+      appReturnUrl,
+    });
     return res.json({
       success: true,
       data: {
