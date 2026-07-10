@@ -87,7 +87,7 @@ const SignStepInicisIdentity = ({
     if (e?.code === 'TIMEOUT') {
       Alert.alert(
         '본인인증 대기',
-        '인증이 완료되었다면 최근 앱 목록에서 Youth Paper로 돌아와 주세요.',
+        '인증이 완료되었다면 브라우저 왼쪽 상단 ✕를 눌러 앱으로 돌아와 주세요.',
       );
       return;
     }
@@ -245,8 +245,7 @@ const SignStepInicisIdentity = ({
           </Text>
         ) : verifying ? (
           <Text style={[styles.fieldHelperText, { marginTop: normalize(12) }]}>
-            인증 완료 후 최근 앱 목록에서 Youth Paper로 돌아오면 결과가
-            자동으로 확인됩니다.
+            인증이 끝나면 브라우저 왼쪽 상단 ✕를 눌러 앱으로 돌아와 주세요.
           </Text>
         ) : null}
       </SignupStepScroll>

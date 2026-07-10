@@ -141,6 +141,11 @@ export function userPiiInsertValues(pii) {
   ];
 }
 
+/** identity_verifications — birthday_enc 컬럼, users PII 암호문과 스키마가 다름 */
+function isIdentityVerificationRow(row) {
+  return row && typeof row === 'object' && 'birthday_enc' in row && !('birth_date_enc' in row);
+}
+
 /** 마이그레이션 기간: lookup 우선 + legacy plaintext 폴백 WHERE */
 export function autoHydratePiiRows(rows) {
   if (!Array.isArray(rows) || rows.length === 0) return rows;
@@ -156,6 +161,9 @@ export function autoHydratePiiRows(rows) {
   ];
   return rows.map((row) => {
     const next = { ...row };
+    if (isIdentityVerificationRow(next)) {
+      return next;
+    }
     for (const [plain, enc] of ALIASES) {
       if (enc in next || plain in next) {
         hydrateAliasedPiiField(next, plain, enc);

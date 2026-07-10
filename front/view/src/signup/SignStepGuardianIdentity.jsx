@@ -67,6 +67,13 @@ const SignStepGuardianIdentity = ({
         );
         return;
       }
+      if (e?.code === 'TIMEOUT') {
+        Alert.alert(
+          '본인인증 대기',
+          '인증이 완료되었다면 브라우저 왼쪽 상단 ✕를 눌러 앱으로 돌아와 주세요.',
+        );
+        return;
+      }
       onVerificationFailed?.();
       Alert.alert('오류', e?.message || '보호자 인증에 실패했습니다.');
     } finally {
@@ -112,6 +119,10 @@ const SignStepGuardianIdentity = ({
             style={[styles.fieldHelperText, styles.fieldHelperTextSuccess]}
           >
             보호자 본인인증이 완료되었습니다.
+          </Text>
+        ) : verifying ? (
+          <Text style={[styles.fieldHelperText, { marginTop: normalize(12) }]}>
+            인증이 끝나면 브라우저 왼쪽 상단 ✕를 눌러 앱으로 돌아와 주세요.
           </Text>
         ) : null}
       </SignupStepScroll>

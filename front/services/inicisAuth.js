@@ -142,6 +142,8 @@ export async function waitForInicisResult(mTxId, {
         cleanup();
         const err = new Error('본인인증 대기 시간이 초과되었습니다.');
         err.code = 'TIMEOUT';
+        err.userMessage =
+          '인증이 완료되었다면 브라우저 왼쪽 상단 ✕를 눌러 앱으로 돌아와 주세요.';
         reject(err);
         return;
       }

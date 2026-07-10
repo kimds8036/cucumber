@@ -11,6 +11,7 @@ import {
   isInicisEnabled,
   tryDecryptInicisField,
 } from '../config/inicis.js';
+import { decryptPii, encryptPii } from '../utils/piiCrypto.js';
 
 const PURPOSES = new Set(['student_signup', 'guardian_consent']);
 
@@ -28,6 +29,28 @@ function birthdayToIso(yyyymmdd) {
   const d = String(yyyymmdd || '').replace(/\D/g, '');
   if (d.length !== 8) return null;
   return `${d.slice(0, 4)}-${d.slice(4, 6)}-${d.slice(6, 8)}`;
+}
+
+/** identity_verifications 저장값 — AES 암호문 또는 구버전 평문 */
+function resolveIdentityStoredField(value) {
+  if (value == null || value === '') return null;
+  const raw = String(value);
+  try {
+    return decryptPii(raw);
+  } catch {
+    return raw.trim() || null;
+  }
+}
+
+function packIdentityStoredField(value) {
+  if (value == null || value === '') return null;
+  const raw = String(value).trim();
+  if (!raw) return null;
+  try {
+    return encryptPii(raw);
+  } catch {
+    return raw;
+  }
 }
 
 function digitsOnlyPhone(phone) {
@@ -403,9 +426,9 @@ export async function handleInicisCallback(rawBody, { fail = false } = {}) {
       inquiry.resultCode || '0000',
       String(inquiry.resultMsg || '성공').slice(0, 500),
       sqlBind(enc.providerDevCd),
-      sqlBind(decrypted.userName),
-      sqlBind(decrypted.userPhone),
-      sqlBind(decrypted.userBirthday),
+      sqlBind(packIdentityStoredField(decrypted.userName)),
+      sqlBind(packIdentityStoredField(decrypted.userPhone)),
+      sqlBind(packIdentityStoredField(decrypted.userBirthday)),
       sqlBind(
         decrypted.userGender
           ? String(decrypted.userGender).slice(0, 1)
@@ -433,9 +456,7 @@ export async function handleInicisCallback(rawBody, { fail = false } = {}) {
     decryptStatus,
     html: renderResultPage(
       true,
-      decryptStatus === 'skipped_no_token' || decryptStatus === 'skipped_no_iv'
-        ? '인증은 완료되었습니다. 앱으로 돌아가는 중…'
-        : '본인인증이 완료되었습니다. 앱으로 돌아가는 중…',
+      '본인인증이 완료되었습니다.',
       {
         appReturnUrl: resolvedAppReturn,
         mTxId: sessionMTxId,
@@ -481,9 +502,9 @@ function renderResultPage(ok, message, { appReturnUrl, mTxId, resultCode } = {})
     resultCode,
   });
   const redirectBlock = redirectTarget
-    ? `<p style="color:#888;font-size:13px;margin-top:16px;">인증이 완료되었습니다.</p>
-  <p style="color:#888;font-size:13px;margin-top:8px;">최근 앱 목록에서 <strong>Youth Paper</strong>로 돌아가 주세요.<br/>앱이 자동으로 결과를 확인합니다.</p>`
-    : `<p style="color:#888;font-size:13px;margin-top:24px;">이 창을 닫고 앱으로 돌아가 주세요.</p>`;
+    ? `<p style="color:#444;font-size:15px;margin-top:20px;line-height:1.6;"><strong>왼쪽 상단 ✕</strong>를 눌러<br/>앱으로 돌아가 주세요.</p>
+  <p style="color:#888;font-size:13px;margin-top:12px;">앱에서 인증 결과를 자동으로 확인합니다.</p>`
+    : `<p style="color:#444;font-size:15px;margin-top:20px;line-height:1.6;"><strong>왼쪽 상단 ✕</strong>를 눌러<br/>앱으로 돌아가 주세요.</p>`;
   return `<!DOCTYPE html>
 <html lang="ko"><head><meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/>
 <title>인증 결과</title></head>
@@ -551,9 +572,12 @@ export async function getInicisSessionStatus(mTxId) {
   const profile =
     row.status === 'success'
       ? {
-          name: row.name_enc || null,
-          phoneNumber: row.phone_enc || null,
-          birthDate: birthdayToIso(row.birthday_enc) || row.birthday_enc || null,
+          name: resolveIdentityStoredField(row.name_enc),
+          phoneNumber: resolveIdentityStoredField(row.phone_enc),
+          birthDate:
+            birthdayToIso(resolveIdentityStoredField(row.birthday_enc)) ||
+            resolveIdentityStoredField(row.birthday_enc) ||
+            null,
           gender: row.gender || null,
           isForeign: row.is_foreign || null,
           decryptStatus: row.decrypt_status,
@@ -630,11 +654,11 @@ export async function consumeIdentityVerificationClientToken(
     throw err;
   }
 
-  const profileName = String(row.name_enc || '').trim();
-  const profilePhone = digitsOnlyPhone(row.phone_enc);
+  const profileName = String(resolveIdentityStoredField(row.name_enc) || '').trim();
+  const profilePhone = digitsOnlyPhone(resolveIdentityStoredField(row.phone_enc));
   const profileBirth =
-    birthdayToIso(row.birthday_enc) ||
-    String(row.birthday_enc || '').slice(0, 10);
+    birthdayToIso(resolveIdentityStoredField(row.birthday_enc)) ||
+    String(resolveIdentityStoredField(row.birthday_enc) || '').slice(0, 10);
 
   if (expectedName && profileName && profileName !== String(expectedName).trim()) {
     const err = new Error('본인인증 이름이 가입 정보와 일치하지 않습니다.');
