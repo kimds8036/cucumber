@@ -136,7 +136,7 @@ export default function BoardFloatingMenu({
         iconName: 'flag-outline',
         onPress: () => onReportComment?.(isCommentMenu),
       },
-    ];
+    );
   } else if (isCommentMenu != null) {
     menuItems = [
       {
