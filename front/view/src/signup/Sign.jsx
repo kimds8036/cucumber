@@ -368,6 +368,24 @@ const Sign = ({ navigation }) => {
   };
 
   const handleStudentIdentityNext = () => {
+    if (!SKIP_SIGNUP_VALIDATION_UNTIL_OCR_TEST) {
+      if (requiresGuardianVerification && !guardianVerified) {
+        setCurrentStep(STEP.GUARDIAN_IDENTITY);
+        return;
+      }
+      if (!identityData.isVerified) {
+        Alert.alert('알림', '본인인증을 완료해 주세요.');
+        return;
+      }
+      if (!identityData.name?.trim()) {
+        Alert.alert(
+          '알림',
+          '본인인증 이름을 확인하지 못했습니다. 본인인증을 다시 진행해 주세요.',
+        );
+        return;
+      }
+    }
+
     const name =
       identityData.name?.trim() ||
       (SKIP_SIGNUP_VALIDATION_UNTIL_OCR_TEST ? OCR_TEST_MOCK_IDENTITY.name : '');
@@ -376,53 +394,36 @@ const Sign = ({ navigation }) => {
       (SKIP_SIGNUP_VALIDATION_UNTIL_OCR_TEST
         ? OCR_TEST_MOCK_IDENTITY.phoneNumber
         : '');
-
-    let school = selectedSchool;
-
-    if (!SKIP_SIGNUP_VALIDATION_UNTIL_OCR_TEST) {
-      if (requiresGuardianVerification && !guardianVerified) {
-        setCurrentStep(STEP.GUARDIAN_IDENTITY);
-        return;
-      }
-      if (!identityData.name?.trim()) {
-        Alert.alert('알림', '이름을 입력해 주세요.');
-        return;
-      }
-      if (!selectedSchool?.id || selectedSchool?.manual) {
-        Alert.alert('알림', '재학 중인 학교를 목록에서 선택해 주세요.');
-        return;
-      }
-      if (!identityData.isVerified) {
-        Alert.alert('알림', '본인인증을 완료해 주세요.');
-        return;
-      }
-    } else if (!selectedSchool?.id || selectedSchool?.manual) {
-      Alert.alert('알림', '재학 중인 학교를 목록에서 선택해 주세요.');
-      return;
-    }
+    const resolvedBirthDate =
+      identityData.birthDate || birthDate || formData.birthDate || '';
 
     setFormData((prev) => ({
       ...prev,
       name,
-      birthDate: birthDate || prev.birthDate,
+      birthDate: resolvedBirthDate,
       phoneNumber,
-      schoolId: school?.id,
-      schoolName: school?.name,
       requiresGuardianVerification,
       guardianVerifiedAt,
     }));
     setIdentityData((prev) => ({
       ...prev,
       name,
-      birthDate: birthDate || prev.birthDate,
+      birthDate: resolvedBirthDate,
       phoneNumber,
       isVerified: identityData.isVerified || SKIP_SIGNUP_VALIDATION_UNTIL_OCR_TEST,
     }));
+    if (resolvedBirthDate) {
+      applyBirthDateToState(resolvedBirthDate);
+    }
     setCurrentStep(STEP.ACCOUNT);
   };
 
   const handleAccountNext = () => {
     if (SKIP_SIGNUP_VALIDATION_UNTIL_OCR_TEST) {
+      if (!selectedSchool?.id || selectedSchool?.manual) {
+        Alert.alert('알림', '재학 중인 학교를 목록에서 선택해 주세요.');
+        return;
+      }
       setStepInfoData((prev) => ({
         ...SIGNUP_TEST_MOCK_ACCOUNT,
         ...prev,
@@ -440,6 +441,8 @@ const Sign = ({ navigation }) => {
         passwordConfirm:
           stepInfoData.passwordConfirm ||
           SIGNUP_TEST_MOCK_ACCOUNT.passwordConfirm,
+        schoolId: selectedSchool?.id,
+        schoolName: selectedSchool?.name,
       }));
       setCurrentStep(STEP.STUDENT_VERIFY);
       return;
@@ -465,7 +468,16 @@ const Sign = ({ navigation }) => {
       Alert.alert('알림', '비밀번호 확인이 일치하지 않습니다.');
       return;
     }
-    setFormData((prev) => ({ ...prev, ...stepInfoData }));
+    if (!selectedSchool?.id || selectedSchool?.manual) {
+      Alert.alert('알림', '재학 중인 학교를 목록에서 선택해 주세요.');
+      return;
+    }
+    setFormData((prev) => ({
+      ...prev,
+      ...stepInfoData,
+      schoolId: selectedSchool?.id,
+      schoolName: selectedSchool?.name,
+    }));
     setCurrentStep(STEP.STUDENT_VERIFY);
   };
 
@@ -628,7 +640,8 @@ const Sign = ({ navigation }) => {
     verificationData = recognizedData,
     options = {},
   ) => {
-    const resolvedBirthDate = finalData.birthDate || identity.birthDate;
+    const resolvedBirthDate =
+      identityData.birthDate || finalData.birthDate || identity.birthDate;
     const level = finalData.schoolLevel || inferExpectedSchoolLevel(resolvedBirthDate);
     const enrollment = buildEnrollmentFromBirthDate(resolvedBirthDate, level);
     const grade =
@@ -649,11 +662,17 @@ const Sign = ({ navigation }) => {
     const payload = {
       username: finalData.username,
       password: finalData.password,
-      name: (finalData.name || identity.name || '').trim(),
+      name: (identityData.name || finalData.name || identity.name || '').trim(),
       phone: String(
-        finalData.phoneNumber || identity.phoneNumber || '',
+        identityData.phoneNumber ||
+          finalData.phoneNumber ||
+          identity.phoneNumber ||
+          '',
       ).replace(/\D/g, ''),
-      birthDate: resolvedBirthDate,
+      birthDate:
+        identityData.birthDate ||
+        finalData.birthDate ||
+        identity.birthDate,
       schoolId: finalData.schoolId,
       grade,
       classNumber,
@@ -741,7 +760,7 @@ const Sign = ({ navigation }) => {
       case STEP.GUARDIAN_IDENTITY:
         return '보호자 본인인증';
       case STEP.IDENTITY:
-        return '본인 확인';
+        return '본인인증';
       case STEP.ACCOUNT:
         return '계정 만들기';
       case STEP.STUDENT_VERIFY:
@@ -764,9 +783,9 @@ const Sign = ({ navigation }) => {
       case STEP.GUARDIAN_IDENTITY:
         return '법정대리인(보호자)의 본인인증과 동의가 필요해요';
       case STEP.IDENTITY:
-        return '본인 확인과 재학 중인 학교를 입력해 주세요';
+        return 'KG 이니시스 간편인증으로 본인 확인을 진행해 주세요';
       case STEP.ACCOUNT:
-        return '로그인에 사용할 아이디와 비밀번호를 설정해 주세요';
+        return '아이디·비밀번호를 설정하고 재학 중인 학교를 선택해 주세요';
       case STEP.STUDENT_VERIFY:
         return studentVerified
           ? '학생증 제출이 완료되었습니다. 아래 [제출하기]로 가입을 마무리해 주세요.'
@@ -815,7 +834,7 @@ const Sign = ({ navigation }) => {
   const isPrimaryDisabled = () => {
     if (submitting) return true;
     if (SKIP_SIGNUP_VALIDATION_UNTIL_OCR_TEST) {
-      if (currentStep === STEP.IDENTITY) {
+      if (currentStep === STEP.ACCOUNT) {
         if (!selectedSchool?.id || selectedSchool?.manual) return true;
       }
       return false;
@@ -826,10 +845,10 @@ const Sign = ({ navigation }) => {
     }
     if (currentStep === STEP.GUARDIAN_IDENTITY && !guardianVerified) return true;
     if (currentStep === STEP.IDENTITY) {
-      if (!selectedSchool?.id || selectedSchool?.manual) return true;
       if (!identityData.isVerified) return true;
     }
     if (currentStep === STEP.ACCOUNT) {
+      if (!selectedSchool?.id || selectedSchool?.manual) return true;
       if (
         !stepInfoData.username ||
         !stepInfoData.password ||
@@ -943,11 +962,10 @@ const Sign = ({ navigation }) => {
             normalize={normalize}
             bottomOffset={footerHeight}
             initialData={identityData}
-            selectedSchool={selectedSchool}
-            onSchoolSelect={setSelectedSchool}
             onChange={setIdentityData}
             requiresGuardianVerification={requiresGuardianVerification}
             testMode={SKIP_SIGNUP_VALIDATION_UNTIL_OCR_TEST}
+            autoStart={!SKIP_SIGNUP_VALIDATION_UNTIL_OCR_TEST}
           />
         )}
         {currentStep === STEP.ACCOUNT && (
@@ -956,6 +974,9 @@ const Sign = ({ navigation }) => {
             normalize={normalize}
             bottomOffset={footerHeight}
             accountOnly
+            showSchoolField
+            selectedSchool={selectedSchool}
+            onSchoolSelect={setSelectedSchool}
             onChange={setStepInfoData}
           />
         )}

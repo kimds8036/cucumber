@@ -12,6 +12,7 @@ import {
 } from '../../../utils/signupValidation';
 import SignupLockedField from './SignupLockedField';
 import SignupStepScroll from './SignupStepScroll';
+import SchoolSearchField from './SchoolSearchField';
 
 const SignStep2 = ({
   styles,
@@ -21,6 +22,9 @@ const SignStep2 = ({
   verifiedPhone,
   bottomOffset,
   accountOnly = false,
+  showSchoolField = false,
+  selectedSchool,
+  onSchoolSelect,
   showCertificateFields = false,
   onChange,
   onCertificateChange,
@@ -229,6 +233,26 @@ const SignStep2 = ({
           validText: '비밀번호가 일치합니다.',
           invalidText: '비밀번호가 일치하지 않습니다.',
         })}
+
+        {showSchoolField ? (
+          <>
+            <SchoolSearchField
+              styles={styles}
+              normalize={normalize}
+              selectedSchool={selectedSchool}
+              onSelect={onSchoolSelect}
+            />
+            <Text
+              style={[
+                styles.fieldHelperText,
+                { marginTop: 4, lineHeight: normalize(18) },
+              ]}
+            >
+              입력하신 학교는 이후 학생증 인증 단계에서 재학 여부를 확인하는 데
+              사용됩니다.
+            </Text>
+          </>
+        ) : null}
 
         {showCertificateFields ? (
           <>

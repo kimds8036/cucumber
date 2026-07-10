@@ -1025,13 +1025,15 @@ router.post('/signup', blockWhenFlag('signup_disabled'), validate(signupValidato
 
     // 비밀번호 해싱
     const hashedPassword = await hashPassword(password);
-    const userPii = packUserPii({ name, phone, birthDate });
 
     const connection = await pool.getConnection();
     try {
       await connection.beginTransaction();
 
       const identityLinkIds = [];
+      let signupName = String(name).trim();
+      let signupPhone = phone;
+      let signupBirthDate = birthDate;
 
       if (under14 && inicisOn && guardianInicisClientToken?.trim()) {
         try {
@@ -1056,17 +1058,15 @@ router.post('/signup', blockWhenFlag('signup_disabled'), validate(signupValidato
         try {
           const studentConsumed = await consumeIdentityVerificationClientToken(
             studentInicisClientToken,
-            {
-              purpose: 'student_signup',
-              expectedName: String(name).trim(),
-              expectedPhone: phone,
-              expectedBirthDate: birthDate,
-            },
+            { purpose: 'student_signup' },
             connection,
           );
           identityLinkIds.push(studentConsumed.id);
+          if (studentConsumed.name) signupName = studentConsumed.name;
+          if (studentConsumed.phone) signupPhone = studentConsumed.phone;
+          if (studentConsumed.birthDate) signupBirthDate = studentConsumed.birthDate;
           await ensureInicisPhoneVerificationRecord(
-            studentConsumed.phone || phone,
+            studentConsumed.phone || signupPhone,
             connection,
           );
         } catch (tokenErr) {
@@ -1079,6 +1079,12 @@ router.post('/signup', blockWhenFlag('signup_disabled'), validate(signupValidato
           });
         }
       }
+
+      const userPii = packUserPii({
+        name: signupName,
+        phone: signupPhone,
+        birthDate: signupBirthDate,
+      });
 
       const [result] = await connection.execute(
         `INSERT INTO users 
@@ -1108,7 +1114,11 @@ router.post('/signup', blockWhenFlag('signup_disabled'), validate(signupValidato
         }
       }
 
-      const submissionPii = packSubmissionPii({ name, phone, birthDate });
+      const submissionPii = packSubmissionPii({
+        name: signupName,
+        phone: signupPhone,
+        birthDate: signupBirthDate,
+      });
 
       if (isCertificateSignup) {
         await connection.execute(
