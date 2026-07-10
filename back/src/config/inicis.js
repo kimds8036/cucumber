@@ -71,8 +71,12 @@ export function isAllowedAppReturnUrl(url) {
       'com.ucost.youthpaper',
     ]);
     if (!allowed.has(scheme)) return false;
+
     const path = u.pathname.replace(/\/$/, '') || '/';
-    return path === '/inicis/return' || path.endsWith('/inicis/return');
+    // Expo Linking.createURL('inicis/return') → youthpaper://inicis/return (host=inicis, path=/return)
+    if (u.hostname === 'inicis' && path === '/return') return true;
+    if (path === '/inicis/return' || path.endsWith('/inicis/return')) return true;
+    return false;
   } catch {
     return false;
   }

@@ -149,16 +149,17 @@ export async function runInicisIdentityFlow(purpose, options = {}) {
         redirectUrl,
       );
 
-      if (
-        browserResult.type === 'cancel' ||
-        browserResult.type === 'dismiss'
-      ) {
-        const err = new Error('cancelled');
-        err.code = 'CANCELLED';
-        throw err;
-      }
+      // 딥링크 리다이렉트 전에 사용자가 탭을 닫아도 서버 인증 완료 여부를 확인
+      const pollOpts =
+        browserResult.type === 'cancel' || browserResult.type === 'dismiss'
+          ? {
+              ...options,
+              timeoutMs: Math.min(options.timeoutMs ?? 5 * 60 * 1000, 20 * 1000),
+              intervalMs: options.intervalMs ?? 800,
+            }
+          : options;
 
-      return waitForInicisResult(mTxId, options);
+      return waitForInicisResult(mTxId, pollOpts);
     } finally {
       activeFlowPromise = null;
       try {
