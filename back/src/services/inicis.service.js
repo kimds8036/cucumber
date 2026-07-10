@@ -34,6 +34,11 @@ function digitsOnlyPhone(phone) {
   return String(phone || '').replace(/\D/g, '');
 }
 
+/** mysql2는 undefined 바인딩 불가 — 간편인증(01) 등 필드 미제공 시 null 로 통일 */
+function sqlBind(v) {
+  return v === undefined ? null : v;
+}
+
 export async function createInicisSession({ purpose, appReturnUrl = null }) {
   if (!isInicisEnabled()) {
     const err = new Error(
@@ -397,16 +402,24 @@ export async function handleInicisCallback(rawBody, { fail = false } = {}) {
     [
       inquiry.resultCode || '0000',
       String(inquiry.resultMsg || '성공').slice(0, 500),
-      enc.providerDevCd || null,
-      decrypted.userName,
-      decrypted.userPhone,
-      decrypted.userBirthday,
-      decrypted.userGender ? String(decrypted.userGender).slice(0, 1) : null,
-      decrypted.isForeign != null ? String(decrypted.isForeign).slice(0, 1) : null,
-      decrypted.userCi,
-      decrypted.userDi,
-      ciHash,
-      diHash,
+      sqlBind(enc.providerDevCd),
+      sqlBind(decrypted.userName),
+      sqlBind(decrypted.userPhone),
+      sqlBind(decrypted.userBirthday),
+      sqlBind(
+        decrypted.userGender
+          ? String(decrypted.userGender).slice(0, 1)
+          : null,
+      ),
+      sqlBind(
+        decrypted.isForeign != null
+          ? String(decrypted.isForeign).slice(0, 1)
+          : null,
+      ),
+      sqlBind(decrypted.userCi),
+      sqlBind(decrypted.userDi),
+      sqlBind(ciHash),
+      sqlBind(diHash),
       decryptStatus,
       clientToken,
       sessionMTxId,
