@@ -1,6 +1,7 @@
 import * as WebBrowser from 'expo-web-browser';
 import * as Linking from 'expo-linking';
 import { api } from '../utils/api';
+import { getUserFacingErrorMessage } from '../utils/userFacingError';
 
 WebBrowser.maybeCompleteAuthSession();
 
@@ -32,14 +33,24 @@ export async function startInicisSession(
   purpose = 'student_signup',
   { appReturnUrl } = {},
 ) {
-  const res = await api.post('/api/auth/inicis/session', {
-    purpose,
-    appReturnUrl: appReturnUrl || getInicisAppReturnUrl(),
-  });
-  if (!res.data?.success || !res.data?.data?.launchUrl) {
-    throw new Error(res.data?.message || '이니시스 세션을 시작할 수 없습니다.');
+  try {
+    const res = await api.post('/api/auth/inicis/session', {
+      purpose,
+      appReturnUrl: appReturnUrl || getInicisAppReturnUrl(),
+    });
+    if (!res.data?.success || !res.data?.data?.launchUrl) {
+      throw new Error(res.data?.message || '이니시스 세션을 시작할 수 없습니다.');
+    }
+    return res.data.data;
+  } catch (e) {
+    const msg = getUserFacingErrorMessage(
+      e,
+      '본인인증을 시작할 수 없습니다. 네트워크 연결을 확인한 뒤 다시 시도해 주세요.',
+    );
+    const err = new Error(msg);
+    err.code = 'SESSION_START_FAILED';
+    throw err;
   }
-  return res.data.data;
 }
 
 /**
@@ -72,25 +83,36 @@ export async function waitForInicisResult(mTxId, {
       err.code = 'CANCELLED';
       throw err;
     }
-    const res = await api.get(
-      `/api/auth/inicis/session/${encodeURIComponent(mTxId)}`,
-    );
-    const data = res.data?.data;
-    if (!data) {
-      await sleep(intervalMs);
-      continue;
-    }
-    if (data.status === 'success') {
-      return {
-        status: 'success',
-        clientToken: data.clientToken,
-        profile: data.profile,
-      };
-    }
-    if (data.status === 'fail' || data.status === 'expired') {
-      const err = new Error(data.resultMsg || '본인인증에 실패했습니다.');
-      err.code = data.status;
-      err.resultCode = data.resultCode;
+    try {
+      const res = await api.get(
+        `/api/auth/inicis/session/${encodeURIComponent(mTxId)}`,
+      );
+      const data = res.data?.data;
+      if (!data) {
+        await sleep(intervalMs);
+        continue;
+      }
+      if (data.status === 'success') {
+        return {
+          status: 'success',
+          clientToken: data.clientToken,
+          profile: data.profile,
+        };
+      }
+      if (data.status === 'fail' || data.status === 'expired') {
+        const err = new Error(data.resultMsg || '본인인증에 실패했습니다.');
+        err.code = data.status;
+        err.resultCode = data.resultCode;
+        throw err;
+      }
+    } catch (pollError) {
+      if (pollError?.code) throw pollError;
+      const msg = getUserFacingErrorMessage(
+        pollError,
+        '본인인증 결과를 확인하지 못했습니다. 잠시 후 다시 시도해 주세요.',
+      );
+      const err = new Error(msg);
+      err.code = 'POLL_FAILED';
       throw err;
     }
     await sleep(intervalMs);

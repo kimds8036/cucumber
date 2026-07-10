@@ -1,5 +1,16 @@
 /** @typedef {'A'|'B'|'C'|'D'|'invalid'} BirthDateCase */
 
+/**
+ * [임시] 성인 명의 이니시스 가입 테스트 — EXPO_PUBLIC_SIGNUP_ADULT_TEST_MODE=true
+ * 배포 전 반드시 false 로 원복 (docs/임시_테스트_및_원복_가이드.md 참고)
+ */
+export function isSignupAdultTestModeEnabled() {
+  return (
+    String(process.env.EXPO_PUBLIC_SIGNUP_ADULT_TEST_MODE || '').toLowerCase() ===
+    'true'
+  );
+}
+
 export function computeAge(birthDate, ref = new Date()) {
   const birth = new Date(birthDate);
   if (Number.isNaN(birth.getTime())) return null;
@@ -49,6 +60,14 @@ export function getBirthDateBoundaries(ref = new Date()) {
  */
 export function classifyBirthDateCase(birthDate, ref = new Date()) {
   if (!isValidBirthDateString(birthDate)) return 'invalid';
+
+  // [임시] 성인(1980~2000년대생 등) 생년월일도 본인인증 단계로 진행
+  if (isSignupAdultTestModeEnabled()) {
+    const age = computeAge(birthDate, ref);
+    if (age == null) return 'invalid';
+    if (age < 14) return 'C';
+    return 'B';
+  }
 
   const { minDate, tooYoungCutoff } = getBirthDateBoundaries(ref);
 

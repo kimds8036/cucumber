@@ -59,6 +59,14 @@ const SignStepGuardianIdentity = ({
         Alert.alert('알림', '이미 본인인증이 진행 중입니다.');
         return;
       }
+      if (e?.code === 'SESSION_START_FAILED' || e?.code === 'POLL_FAILED') {
+        onVerificationFailed?.();
+        Alert.alert(
+          '본인인증 오류',
+          e?.message || '보호자 본인인증을 진행할 수 없습니다.',
+        );
+        return;
+      }
       onVerificationFailed?.();
       Alert.alert('오류', e?.message || '보호자 인증에 실패했습니다.');
     } finally {

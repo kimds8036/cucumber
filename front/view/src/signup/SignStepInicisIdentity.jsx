@@ -111,6 +111,10 @@ const SignStepInicisIdentity = ({
         Alert.alert('알림', '이미 본인인증이 진행 중입니다.');
         return;
       }
+      if (e?.code === 'SESSION_START_FAILED' || e?.code === 'POLL_FAILED') {
+        Alert.alert('본인인증 오류', e?.message || '본인인증을 진행할 수 없습니다.');
+        return;
+      }
       Alert.alert('오류', e?.message || '본인인증 중 오류가 발생했습니다.');
     } finally {
       setVerifying(false);

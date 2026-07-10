@@ -80,7 +80,7 @@ export default function MainTabNavigator({
       <Tab.Screen name="school">
         {() => <SchoolTab navigation={stackNavigation} />}
       </Tab.Screen>
-      <Tab.Screen name="timer" component={TimerTab} />
+      <Tab.Screen name="timer" component={TimerTab} options={{ freezeOnBlur: true }} />
       <Tab.Screen name="mypage">
         {() => <MyPageTab navigation={stackNavigation} />}
       </Tab.Screen>

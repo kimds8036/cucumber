@@ -65,6 +65,7 @@ import ReverificationGate from './components/auth/ReverificationGate';
 import ReverificationReminderBanner from './components/auth/ReverificationReminderBanner';
 import ReverificationPendingBanner from './components/auth/ReverificationPendingBanner';
 import ForceUpdateGate from './components/common/ForceUpdateGate';
+import AppErrorBoundary from './components/common/AppErrorBoundary';
 import StudentIdResubmit from './view/src/signup/StudentIdResubmit';
 import { SocketProvider } from './context/SocketContext';
 import { NotificationProvider } from './context/NotificationContext';
@@ -613,7 +614,9 @@ export default function App() {
                             trackNavigationScreen(getActiveRouteName(state));
                           }}
                         >
-                          <RootNavigator />
+                          <AppErrorBoundary>
+                            <RootNavigator />
+                          </AppErrorBoundary>
                           <ToastHost />
                           <AlertHost />
                         </NavigationContainer>

@@ -80,6 +80,7 @@
   },
   "private": true,
   "devDependencies": {
+    "babel-plugin-transform-remove-console": "^6.9.4",
     "cross-env": "^7.0.3",
     "license-checker": "^25.0.1",
     "react-native-asset": "^2.2.8"
