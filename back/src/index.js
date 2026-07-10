@@ -120,7 +120,7 @@ const allowedOrigins = isProductionEnv()
     ]
   : ['http://localhost:3000', 'http://localhost:8081', ...defaultAdminOrigins];
 
-app.use(cors({
+const corsMiddleware = cors({
   origin: (origin, callback) => {
     if (!origin || allowedOrigins.includes(origin)) {
       return callback(null, true);
@@ -129,7 +129,16 @@ app.use(cors({
   },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'],
-}));
+});
+
+// 이니시스 인증 완료 후 successUrl/failUrl로 form POST — Origin이 inicis.com 등 허용 목록 밖.
+// 결제·인증 PG 콜백은 CORS 대상이 아니므로 해당 경로만 미들웨어를 건너뜁니다.
+app.use((req, res, next) => {
+  if (req.path.startsWith('/api/auth/inicis/callback')) {
+    return next();
+  }
+  return corsMiddleware(req, res, next);
+});
 
 // 4. Body 사이즈 제한 (대용량 페이로드 / DoS 완화)
 app.use(express.json({ limit: '8mb' }));
