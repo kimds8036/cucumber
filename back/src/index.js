@@ -52,6 +52,7 @@ import {
 import { getBatchRedis, isRedisConfigured } from './services/batchRedis.service.js';
 import { ensurePersonalMailSchema } from './db/ensurePersonalMailSchema.js';
 import { isProductionEnv, sendErrorResponse } from './utils/httpError.js';
+import { getActiveTarget } from './config/dbEnv.js';
 import { requireMinAppVersion } from './middleware/requireMinAppVersion.js';
 import {
   attachSystemFlags,
@@ -92,17 +93,31 @@ app.set('trust proxy', 1);
 app.use(helmet({ contentSecurityPolicy: false }));
 
 // 3. CORS
-//    - 운영(NODE_ENV=production): CORS_ORIGIN(콤마 구분) 만 허용. 모바일 앱은 origin 이 없으므로 통과
-//    - 그 외(개발): 로컬 dev 호스트만 허용
+//    - 운영(NODE_ENV=production): CORS_ORIGIN(콤마 구분) + 관리자 도메인
+//    - 모바일 네이티브 앱은 Origin 헤더가 없어 통과
+//    - Expo dev 클라이언트는 Origin: http://localhost:8081 등을 붙일 수 있음 → develop 에서만 허용
 const defaultAdminOrigins = [
   'https://cucumber-production.up.railway.app',
   'https://cucumber-develop.up.railway.app',
 ];
+const expoDevOrigins = [
+  'http://localhost:8081',
+  'http://localhost:19000',
+  'http://localhost:19006',
+  'http://localhost:3000',
+];
 const corsFromEnv = process.env.CORS_ORIGIN
   ? process.env.CORS_ORIGIN.split(',').map((s) => s.trim()).filter(Boolean)
   : [];
+const isDevelopDeploy = getActiveTarget() === 'develop';
 const allowedOrigins = isProductionEnv()
-  ? [...new Set([...corsFromEnv, ...defaultAdminOrigins])]
+  ? [
+      ...new Set([
+        ...corsFromEnv,
+        ...defaultAdminOrigins,
+        ...(isDevelopDeploy ? expoDevOrigins : []),
+      ]),
+    ]
   : ['http://localhost:3000', 'http://localhost:8081', ...defaultAdminOrigins];
 
 app.use(cors({
