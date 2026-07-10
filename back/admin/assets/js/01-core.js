@@ -196,6 +196,7 @@ function adminUrl(subpath) {
     emergency: { title: '비상 제어', sub: '긴급 스위치 · 유지보수 모드' },
     adminAccounts: { title: '관리자 계정', sub: '계정·역할 관리 (최고관리자)' },
     studentIds: { title: '가입 학생증', sub: '회원가입 학생증 수동 검수 — 승인 / 거절' },
+    certificates: { title: '재학증명서', sub: '네이버 재학증명서 URL·열람번호 검수 — 승인 / 거절' },
     reverificationIds: { title: '재인증 학생증', sub: '학년도 재인증·학교 전환 검수 — 승인 / 거절' },
     logs: { title: '변경 이력 (Audit Log)', sub: '모든 판정 및 상태 변경 기록' },
   };
@@ -204,6 +205,7 @@ function adminUrl(subpath) {
     adminProfile: null,
     loadedPanels: new Set(),
     studentIdSubmissions: [],
+    certificateSubmissions: [],
     reverificationIdSubmissions: [],
     reports: [],
     processedReports: [],
@@ -383,6 +385,7 @@ function adminUrl(subpath) {
       inquiries: ['moderator', 'support'],
       processedInquiries: ['moderator', 'support'],
       studentIds: ['moderator', 'verifier'],
+      certificates: ['moderator', 'verifier'],
       reverificationIds: ['moderator', 'verifier'],
       attendance: ['moderator'],
       users: ['moderator'],
@@ -427,6 +430,9 @@ function adminUrl(subpath) {
       const tasks = [
         api('/signup-student-ids?status=pending&purpose=signup&limit=50').then((r) => {
           setNavBadge('badge-student-ids', (r.data?.submissions || []).length);
+        }),
+        api('/signup-certificates?status=pending&limit=50').then((r) => {
+          setNavBadge('badge-certificates', (r.data?.submissions || []).length);
         }),
         api('/signup-student-ids?status=pending&purpose=reverification&limit=50').then((r) => {
           setNavBadge('badge-reverification-ids', (r.data?.submissions || []).length);

@@ -1,5 +1,11 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
-import { View, Text, ScrollView, useWindowDimensions } from 'react-native';
+import {
+  View,
+  Text,
+  ScrollView,
+  useWindowDimensions,
+  TouchableOpacity,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import SubHeader from '../frame/subHeader';
@@ -81,6 +87,7 @@ const ActivityPage = ({ navigation, route }) => {
   );
   const listKind = tabFromRoute(route);
   const [posts, setPosts] = useState([]);
+  const [schoolMails, setSchoolMails] = useState([]);
   const [loading, setLoading] = useState(false);
   const layoutEpochRef = useRef(0);
 
@@ -93,7 +100,11 @@ const ActivityPage = ({ navigation, route }) => {
         setLoading(true);
         const url =
           kind === 'written' ? '/api/posts/my' : '/api/posts/scrapped';
-        const res = await api.get(url, { params: { page: 1, limit: 50 } });
+        const requests = [api.get(url, { params: { page: 1, limit: 50 } })];
+        if (kind === 'written') {
+          requests.push(api.get('/api/mails/school/my', { params: { limit: 50 } }));
+        }
+        const [res, mailRes] = await Promise.all(requests);
 
         if (!mounted) return;
 
@@ -101,10 +112,18 @@ const ActivityPage = ({ navigation, route }) => {
           mapServerPostToCard(p, kind),
         );
         setPosts(mapped);
+        if (kind === 'written') {
+          setSchoolMails(mailRes?.data?.data?.mails || []);
+        } else {
+          setSchoolMails([]);
+        }
         layoutEpochRef.current += 1;
       } catch (error) {
         console.error('내 활동 게시글 로드 실패:', error);
-        if (mounted) setPosts([]);
+        if (mounted) {
+          setPosts([]);
+          setSchoolMails([]);
+        }
       } finally {
         if (mounted) setLoading(false);
       }
@@ -131,7 +150,7 @@ const ActivityPage = ({ navigation, route }) => {
         ]}
         showsVerticalScrollIndicator={false}
       >
-        {loading && posts.length === 0 ? (
+        {loading && posts.length === 0 && schoolMails.length === 0 ? (
           <View>
             {[0, 1, 2, 3].map((idx) => (
               <View key={`skel-${idx}`} style={boardStyles.postItem}>
@@ -188,8 +207,64 @@ const ActivityPage = ({ navigation, route }) => {
               </View>
             ))}
           </View>
-        ) : posts.length > 0 ? (
+        ) : posts.length > 0 || (listKind === 'written' && schoolMails.length > 0) ? (
           <View>
+            {listKind === 'written' && schoolMails.length > 0 ? (
+              <View style={{ marginBottom: normalize(20) }}>
+                <Text
+                  style={{
+                    fontFamily: 'Baloo2-Bold',
+                    fontSize: normalize(15),
+                    color: colors.textPrimary,
+                    marginBottom: normalize(10),
+                  }}
+                >
+                  학교 우편
+                </Text>
+                {schoolMails.map((mail) => (
+                  <TouchableOpacity
+                    key={`mail-${mail.id}`}
+                    style={[boardStyles.postItem, { marginBottom: normalize(10) }]}
+                    activeOpacity={0.85}
+                    onPress={() =>
+                      navigation.navigate('SchoolMailDetail', { mailId: mail.id })
+                    }
+                  >
+                    <Text
+                      style={{
+                        fontSize: normalize(12),
+                        color: colors.textSecondary,
+                        marginBottom: normalize(6),
+                      }}
+                    >
+                      {mail.school_name || '학교'} · {formatTimeAgo(mail.created_at)}
+                    </Text>
+                    <Text
+                      style={{
+                        fontSize: normalize(14),
+                        color: colors.textPrimary,
+                        lineHeight: normalize(20),
+                      }}
+                      numberOfLines={2}
+                    >
+                      {mail.content || ''}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            ) : null}
+            {posts.length > 0 ? (
+              <Text
+                style={{
+                  fontFamily: 'Baloo2-Bold',
+                  fontSize: normalize(15),
+                  color: colors.textPrimary,
+                  marginBottom: normalize(10),
+                }}
+              >
+                게시판
+              </Text>
+            ) : null}
             {posts.map((post) => (
               <BoardPostCard
                 key={post.id}

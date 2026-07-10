@@ -72,8 +72,55 @@ import { getReverificationBlockCode } from '../services/reverification.service.j
 import { getUserReverificationPayload } from '../services/userSchoolTransition.service.js';
 import { API_ERROR_CODES } from '../constants/apiErrorCodes.js';
 import { isProductionEnv } from '../utils/httpError.js';
+import {
+  consumeIdentityVerificationClientToken,
+  isInicisEnabled,
+} from '../services/inicis.service.js';
 
 const router = express.Router();
+
+function isUnder14YearsOld(birthDateStr) {
+  const m = String(birthDateStr || '').match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (!m) return false;
+  const birth = new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
+  const today = new Date();
+  let age = today.getFullYear() - birth.getFullYear();
+  const md = today.getMonth() - birth.getMonth();
+  if (md < 0 || (md === 0 && today.getDate() < birth.getDate())) age -= 1;
+  return age < 14;
+}
+
+async function ensureInicisPhoneVerificationRecord(phone, connection) {
+  const normalized = normalizeLocalKrPhone(phone);
+  if (!normalized || !validatePhone(normalized)) return;
+  const phonePacked = packPhoneOnly(normalized);
+  const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
+  await connection.execute(
+    `DELETE FROM phone_verifications WHERE ${phoneLookupWhereClause()} AND is_verified = FALSE`,
+    phoneLookupBindParams(normalized),
+  );
+  await connection.execute(
+    `INSERT INTO phone_verifications (phone, phone_enc, phone_lookup, verification_code, expires_at, is_verified)
+     VALUES (NULL, ?, ?, ?, ?, TRUE)`,
+    [phonePacked.phone_enc, phonePacked.phone_lookup, 'INICIS01', expiresAt],
+  );
+}
+
+function mapIdentityTokenError(code) {
+  const messages = {
+    IDENTITY_TOKEN_REQUIRED: '학생 본인인증을 먼저 완료해 주세요.',
+    INVALID_IDENTITY_TOKEN: '본인인증 정보가 유효하지 않습니다. 다시 인증해 주세요.',
+    IDENTITY_PURPOSE_MISMATCH: '본인인증 용도가 올바르지 않습니다.',
+    IDENTITY_NOT_SUCCESS: '본인인증이 완료되지 않았습니다.',
+    IDENTITY_TOKEN_USED: '이미 사용된 본인인증입니다. 다시 인증해 주세요.',
+    IDENTITY_TOKEN_EXPIRED: '본인인증이 만료되었습니다. 다시 인증해 주세요.',
+    IDENTITY_NAME_MISMATCH: '본인인증 이름이 가입 정보와 일치하지 않습니다.',
+    IDENTITY_PHONE_MISMATCH: '본인인증 전화번호가 가입 정보와 일치하지 않습니다.',
+    IDENTITY_BIRTH_MISMATCH: '본인인증 생년월일이 가입 정보와 일치하지 않습니다.',
+    GUARDIAN_TOKEN_REQUIRED: '보호자 본인인증이 필요합니다.',
+  };
+  return messages[code] || '본인인증 검증에 실패했습니다.';
+}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // express-validator 체이너 모음
@@ -113,6 +160,8 @@ const signupValidators = [
   body('certificateViewUrl').optional({ values: 'falsy' }).isString().isLength({ max: 500 }),
   body('certificateAccessCode').optional({ values: 'falsy' }).isString().isLength({ max: 100 }),
   body('studentVerificationToken').optional({ values: 'falsy' }).isString().isLength({ max: 2000 }),
+  body('studentInicisClientToken').optional({ values: 'falsy' }).isString().isLength({ max: 64 }),
+  body('guardianInicisClientToken').optional({ values: 'falsy' }).isString().isLength({ max: 64 }),
   body('consents').optional().isObject(),
   body('consents.termsOfService').optional().isBoolean(),
   body('consents.dataCollection').optional().isBoolean(),
@@ -780,11 +829,15 @@ router.post('/signup', blockWhenFlag('signup_disabled'), validate(signupValidato
       certificateAccessCode,
       claimedSchoolName,
       studentVerificationToken,
+      studentInicisClientToken,
+      guardianInicisClientToken,
       consents: rawConsents,
     } = req.body;
 
     const phone = normalizeLocalKrPhone(rawPhone);
     const isCertificateSignup = verificationMethod === 'certificate';
+    const under14 = isUnder14YearsOld(birthDate);
+    const inicisOn = isInicisEnabled();
     const resolvedSchoolId = isCertificateSignup
       ? (schoolId?.trim() || 'CERT_PENDING')
       : schoolId;
@@ -817,11 +870,14 @@ router.post('/signup', blockWhenFlag('signup_disabled'), validate(signupValidato
       consents.termsOfService === true &&
       consents.dataCollection === true &&
       consents.studentOcr === true &&
-      consents.location === true;
+      consents.location === true &&
+      (!under14 || consents.guardian === true);
     if (!requiredConsentOk) {
       return res.status(400).json({
         success: false,
-        message: '필수 약관 동의가 완료되지 않았습니다.',
+        message: under14
+          ? '필수 약관 및 법정대리인 동의가 완료되지 않았습니다.'
+          : '필수 약관 동의가 완료되지 않았습니다.',
       });
     }
 
@@ -909,19 +965,37 @@ router.post('/signup', blockWhenFlag('signup_disabled'), validate(signupValidato
       });
     }
 
-    // 전화번호 인증 확인
-    const [verifiedCodes] = await pool.execute(
-      `SELECT id FROM phone_verifications 
-       WHERE ${phoneLookupWhereClause()} AND is_verified = TRUE 
-       ORDER BY created_at DESC LIMIT 1`,
-      phoneLookupBindParams(phone),
-    );
-
-    if (verifiedCodes.length === 0) {
-      return res.status(400).json({ 
-        success: false, 
-        message: '전화번호 인증이 완료되지 않았습니다.' 
+    if (under14 && inicisOn && !guardianInicisClientToken?.trim()) {
+      return res.status(400).json({
+        success: false,
+        message: mapIdentityTokenError('GUARDIAN_TOKEN_REQUIRED'),
+        code: 'GUARDIAN_TOKEN_REQUIRED',
       });
+    }
+
+    if (inicisOn && !studentInicisClientToken?.trim()) {
+      return res.status(400).json({
+        success: false,
+        message: mapIdentityTokenError('IDENTITY_TOKEN_REQUIRED'),
+        code: 'IDENTITY_TOKEN_REQUIRED',
+      });
+    }
+
+    // 전화번호 인증 확인 (이니시스 OFF 시 레거시)
+    if (!inicisOn) {
+      const [verifiedCodes] = await pool.execute(
+        `SELECT id FROM phone_verifications 
+         WHERE ${phoneLookupWhereClause()} AND is_verified = TRUE 
+         ORDER BY created_at DESC LIMIT 1`,
+        phoneLookupBindParams(phone),
+      );
+
+      if (verifiedCodes.length === 0) {
+        return res.status(400).json({ 
+          success: false, 
+          message: '전화번호 인증이 완료되지 않았습니다.' 
+        });
+      }
     }
 
     // 중복 확인
@@ -957,6 +1031,55 @@ router.post('/signup', blockWhenFlag('signup_disabled'), validate(signupValidato
     try {
       await connection.beginTransaction();
 
+      const identityLinkIds = [];
+
+      if (under14 && inicisOn && guardianInicisClientToken?.trim()) {
+        try {
+          const guardianConsumed = await consumeIdentityVerificationClientToken(
+            guardianInicisClientToken,
+            { purpose: 'guardian_consent' },
+            connection,
+          );
+          identityLinkIds.push(guardianConsumed.id);
+        } catch (tokenErr) {
+          await connection.rollback();
+          const code = tokenErr?.code || 'INVALID_IDENTITY_TOKEN';
+          return res.status(400).json({
+            success: false,
+            message: mapIdentityTokenError(code),
+            code,
+          });
+        }
+      }
+
+      if (inicisOn && studentInicisClientToken?.trim()) {
+        try {
+          const studentConsumed = await consumeIdentityVerificationClientToken(
+            studentInicisClientToken,
+            {
+              purpose: 'student_signup',
+              expectedName: String(name).trim(),
+              expectedPhone: phone,
+              expectedBirthDate: birthDate,
+            },
+            connection,
+          );
+          identityLinkIds.push(studentConsumed.id);
+          await ensureInicisPhoneVerificationRecord(
+            studentConsumed.phone || phone,
+            connection,
+          );
+        } catch (tokenErr) {
+          await connection.rollback();
+          const code = tokenErr?.code || 'INVALID_IDENTITY_TOKEN';
+          return res.status(400).json({
+            success: false,
+            message: mapIdentityTokenError(code),
+            code,
+          });
+        }
+      }
+
       const [result] = await connection.execute(
         `INSERT INTO users 
          (username, password, ${USER_PII_INSERT_COLUMNS}, school_id, grade, class_number, graduation_year, color_id, phone_verified, student_verified) 
@@ -975,6 +1098,16 @@ router.post('/signup', blockWhenFlag('signup_disabled'), validate(signupValidato
       );
 
       const userId = result.insertId;
+
+      if (identityLinkIds.length > 0) {
+        for (const ivId of identityLinkIds) {
+          await connection.execute(
+            `UPDATE identity_verifications SET linked_user_id = ? WHERE id = ?`,
+            [userId, ivId],
+          );
+        }
+      }
+
       const submissionPii = packSubmissionPii({ name, phone, birthDate });
 
       if (isCertificateSignup) {

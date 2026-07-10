@@ -1104,6 +1104,59 @@ router.get('/school', async (req, res) => {
   }
 });
 
+// 학교 우편 — 내가 쓴 글 (상세 :mailId 보다 먼저)
+router.get('/school/my', authenticate, async (req, res) => {
+  try {
+    const userId = req.user.userId;
+    const page = Math.max(1, parseInt(req.query.page, 10) || 1);
+    const limitNum = Math.max(1, Math.min(50, parseInt(req.query.limit, 10) || 20));
+    const offsetNum = (page - 1) * limitNum;
+
+    const [mails] = await pool.execute(
+      `SELECT
+        sm.id,
+        sm.school_id,
+        sm.user_id,
+        sm.content,
+        sm.comment_count,
+        sm.like_count,
+        sm.created_at,
+        s.name AS school_name
+      FROM school_mails sm
+      LEFT JOIN schools s ON sm.school_id = s.school_id
+      WHERE sm.user_id = ? AND sm.is_deleted = FALSE
+      ORDER BY sm.created_at DESC
+      LIMIT ${limitNum} OFFSET ${offsetNum}`,
+      [userId],
+    );
+
+    const [countResult] = await pool.execute(
+      `SELECT COUNT(*) AS total FROM school_mails WHERE user_id = ? AND is_deleted = FALSE`,
+      [userId],
+    );
+    const total = Number(countResult[0]?.total ?? 0);
+
+    return res.json({
+      success: true,
+      data: {
+        mails,
+        pagination: {
+          page,
+          limit: limitNum,
+          total,
+          totalPages: Math.ceil(total / limitNum) || 1,
+        },
+      },
+    });
+  } catch (error) {
+    console.error('내 학교 우편 목록 오류:', error);
+    return res.status(500).json({
+      success: false,
+      message: '내 학교 우편 목록 조회 중 오류가 발생했습니다.',
+    });
+  }
+});
+
 // 학교 우편 상세 조회 (비로그인 가능 — is_liked 는 로그인 시만)
 router.get('/school/:mailId', optionalAuthenticate, async (req, res) => {
   try {
@@ -1486,6 +1539,83 @@ router.delete('/school/:mailId', authenticate, async (req, res) => {
   }
 });
 
+// 학교 우편 댓글 고정 (우편 작성자만) — /school/:mailId 보다 먼저
+router.patch(
+  '/school/:mailId/comments/:commentId/pin',
+  authenticate,
+  async (req, res) => {
+    try {
+      const userId = req.user.userId;
+      const mailId = Number(req.params.mailId);
+      const commentId = Number(req.params.commentId);
+      const pin = req.body?.pin !== false;
+
+      const [mails] = await pool.execute(
+        'SELECT id, user_id FROM school_mails WHERE id = ? AND is_deleted = FALSE',
+        [mailId],
+      );
+      if (!mails.length) {
+        return res.status(404).json({
+          success: false,
+          message: '학교 우편을 찾을 수 없습니다.',
+        });
+      }
+      if (Number(mails[0].user_id) !== Number(userId)) {
+        return res.status(403).json({
+          success: false,
+          message: '우편 작성자만 댓글을 고정할 수 있습니다.',
+        });
+      }
+
+      const [comments] = await pool.execute(
+        `SELECT id FROM school_mail_comments
+         WHERE id = ? AND mail_id = ? AND is_deleted = FALSE`,
+        [commentId, mailId],
+      );
+      if (!comments.length) {
+        return res.status(404).json({
+          success: false,
+          message: '댓글을 찾을 수 없습니다.',
+        });
+      }
+
+      if (pin) {
+        await pool.execute(
+          `UPDATE school_mail_comments
+           SET is_pinned = FALSE, pinned_at = NULL
+           WHERE mail_id = ? AND is_deleted = FALSE`,
+          [mailId],
+        );
+        await pool.execute(
+          `UPDATE school_mail_comments
+           SET is_pinned = TRUE, pinned_at = NOW()
+           WHERE id = ?`,
+          [commentId],
+        );
+      } else {
+        await pool.execute(
+          `UPDATE school_mail_comments
+           SET is_pinned = FALSE, pinned_at = NULL
+           WHERE id = ? AND mail_id = ?`,
+          [commentId, mailId],
+        );
+      }
+
+      return res.json({
+        success: true,
+        message: pin ? '댓글이 고정되었습니다.' : '댓글 고정이 해제되었습니다.',
+        data: { mailId, commentId, isPinned: pin },
+      });
+    } catch (error) {
+      console.error('학교 우편 댓글 고정 오류:', error);
+      return res.status(500).json({
+        success: false,
+        message: '댓글 고정 처리 중 오류가 발생했습니다.',
+      });
+    }
+  },
+);
+
 // 학교 우편 댓글 목록 조회 (게시글보다 먼저 등록: /comments 가 :mailId에 안 먹히도록)
 router.get('/school/:mailId/comments', optionalAuthenticate, async (req, res) => {
   try {
@@ -1512,6 +1642,8 @@ router.get('/school/:mailId/comments', optionalAuthenticate, async (req, res) =>
         smc.content,
         smc.like_count,
         smc.is_deleted,
+        smc.is_pinned,
+        smc.pinned_at,
         smc.created_at,
         COALESCE(smc.author_school_id, u.school_id) AS author_school_id,
         u.school_id AS author_current_school_id,
@@ -1520,7 +1652,7 @@ router.get('/school/:mailId/comments', optionalAuthenticate, async (req, res) =>
       FROM school_mail_comments smc
       LEFT JOIN users u ON smc.user_id = u.id
       WHERE smc.mail_id = ? AND smc.is_deleted = FALSE
-      ORDER BY smc.created_at ASC`,
+      ORDER BY smc.is_pinned DESC, smc.created_at ASC`,
       [uid, mailId]
     );
 

@@ -117,6 +117,7 @@ export default function BoardDetail({ navigation, route }) {
     handleCommentLike,
     handleDeletePost,
     handleDeleteComment,
+    handlePinComment,
     startNoteToUser,
     handleSharePost,
   } = useBoardDetail({
@@ -655,6 +656,7 @@ export default function BoardDetail({ navigation, route }) {
           onClose={closeFloatingMenu}
           onDeletePost={handleDeletePost}
           onDeleteComment={handleDeleteComment}
+          onPinComment={handlePinComment}
           onSharePost={handleSharePost}
           onNoteToUser={{ start: startNoteToUser, postUserId: postAuthorId }}
           onReportPost={() => {

@@ -30,6 +30,10 @@ function birthdayToIso(yyyymmdd) {
   return `${d.slice(0, 4)}-${d.slice(4, 6)}-${d.slice(6, 8)}`;
 }
 
+function digitsOnlyPhone(phone) {
+  return String(phone || '').replace(/\D/g, '');
+}
+
 export async function createInicisSession({ purpose, appReturnUrl = null }) {
   if (!isInicisEnabled()) {
     const err = new Error(
@@ -552,6 +556,109 @@ export async function getInicisSessionStatus(mTxId) {
     clientToken: row.status === 'success' ? row.client_token : null,
     profile,
     expiresAt: row.expires_at,
+  };
+}
+
+/**
+ * 가입 시 1회성 client_token 소비 (트랜잭션 connection 권장)
+ */
+export async function consumeIdentityVerificationClientToken(
+  clientToken,
+  {
+    purpose,
+    expectedName,
+    expectedPhone,
+    expectedBirthDate,
+    linkedUserId = null,
+  },
+  connection = null,
+) {
+  const db = connection || pool;
+  const token = String(clientToken || '').trim();
+  if (!token) {
+    const err = new Error('인증 토큰이 필요합니다.');
+    err.code = 'IDENTITY_TOKEN_REQUIRED';
+    throw err;
+  }
+
+  const [rows] = await db.execute(
+    `SELECT id, m_tx_id, purpose, status, name_enc, phone_enc, birthday_enc,
+            expires_at, consumed_at, client_token
+     FROM identity_verifications
+     WHERE client_token = ?
+     LIMIT 1
+     FOR UPDATE`,
+    [token],
+  );
+  const row = rows[0];
+  if (!row) {
+    const err = new Error('유효하지 않은 본인인증 토큰입니다.');
+    err.code = 'INVALID_IDENTITY_TOKEN';
+    throw err;
+  }
+  if (row.purpose !== purpose) {
+    const err = new Error('본인인증 용도가 일치하지 않습니다.');
+    err.code = 'IDENTITY_PURPOSE_MISMATCH';
+    throw err;
+  }
+  if (row.status !== 'success') {
+    const err = new Error('본인인증이 완료되지 않았습니다.');
+    err.code = 'IDENTITY_NOT_SUCCESS';
+    throw err;
+  }
+  if (row.consumed_at) {
+    const err = new Error('이미 사용된 본인인증 토큰입니다.');
+    err.code = 'IDENTITY_TOKEN_USED';
+    throw err;
+  }
+  if (new Date(row.expires_at).getTime() < Date.now()) {
+    const err = new Error('본인인증 토큰이 만료되었습니다.');
+    err.code = 'IDENTITY_TOKEN_EXPIRED';
+    throw err;
+  }
+
+  const profileName = String(row.name_enc || '').trim();
+  const profilePhone = digitsOnlyPhone(row.phone_enc);
+  const profileBirth =
+    birthdayToIso(row.birthday_enc) ||
+    String(row.birthday_enc || '').slice(0, 10);
+
+  if (expectedName && profileName && profileName !== String(expectedName).trim()) {
+    const err = new Error('본인인증 이름이 가입 정보와 일치하지 않습니다.');
+    err.code = 'IDENTITY_NAME_MISMATCH';
+    throw err;
+  }
+  if (expectedPhone && profilePhone) {
+    const exp = digitsOnlyPhone(expectedPhone);
+    if (exp && exp !== profilePhone) {
+      const err = new Error('본인인증 전화번호가 가입 정보와 일치하지 않습니다.');
+      err.code = 'IDENTITY_PHONE_MISMATCH';
+      throw err;
+    }
+  }
+  if (
+    expectedBirthDate &&
+    profileBirth &&
+    profileBirth !== String(expectedBirthDate).trim()
+  ) {
+    const err = new Error('본인인증 생년월일이 가입 정보와 일치하지 않습니다.');
+    err.code = 'IDENTITY_BIRTH_MISMATCH';
+    throw err;
+  }
+
+  await db.execute(
+    `UPDATE identity_verifications
+     SET status = 'consumed', consumed_at = NOW(), linked_user_id = COALESCE(?, linked_user_id)
+     WHERE id = ?`,
+    [linkedUserId, row.id],
+  );
+
+  return {
+    id: row.id,
+    mTxId: row.m_tx_id,
+    name: profileName,
+    phone: profilePhone,
+    birthDate: profileBirth,
   };
 }
 

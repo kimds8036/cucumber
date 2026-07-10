@@ -85,6 +85,14 @@ export default function BoardCommentTree({
               >
                 {item.authorLabel}
               </Text>
+              {item.isPinned ? (
+                <Text
+                  style={[styles.detailAuthor, { marginLeft: normalize(4) }]}
+                  numberOfLines={1}
+                >
+                  고정
+                </Text>
+              ) : null}
               <Text style={styles.detailDot}>•</Text>
               <Text style={styles.detailTime} numberOfLines={1}>
                 {item.time}

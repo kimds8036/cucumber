@@ -36,7 +36,7 @@ import { colors, fonts } from '../../styles/colors';
 import { getNormalize } from '../../styles/frame.style';
 import { createSchoolMailDetailStyles } from '../../styles/SchoolMail.style';
 import { api } from '../../utils/api';
-import { emitSchoolMailLike } from '../../utils/listSyncEvents';
+import { emitSchoolMailLike, emitSchoolMailDeleted } from '../../utils/listSyncEvents';
 import {
   getSchoolMailFromLabel,
   getSchoolMailCommentAuthorLabel,
@@ -121,9 +121,12 @@ function bumpLikeInTree(nodes, id, liked, likeCount) {
 /** API 평면 댓글 → parent_id 기준 트리 */
 function buildCommentTree(flat, mailSchoolId, mailAuthorUserId) {
   if (!flat?.length) return [];
-  const sorted = [...flat].sort(
-    (a, b) => new Date(a.created_at) - new Date(b.created_at),
-  );
+  const sorted = [...flat].sort((a, b) => {
+    const ap = a.is_pinned ? 1 : 0;
+    const bp = b.is_pinned ? 1 : 0;
+    if (ap !== bp) return bp - ap;
+    return new Date(a.created_at) - new Date(b.created_at);
+  });
   const map = new Map();
   sorted.forEach((raw) => {
     const authorLabel = getSchoolMailCommentAuthorLabel(
@@ -140,6 +143,7 @@ function buildCommentTree(flat, mailSchoolId, mailAuthorUserId) {
       likes: Number(raw.like_count ?? 0),
       is_liked: Boolean(raw.is_liked),
       isWriter: authorLabel === '작성자',
+      isPinned: Boolean(raw.is_pinned),
     });
   });
   const roots = [];
@@ -595,6 +599,7 @@ export default function SchoolMailDetail({ navigation, route }) {
         onPress: async () => {
           try {
             await api.delete(`/api/mails/school/${mail.id}`);
+            emitSchoolMailDeleted(mail.id);
             navigation.goBack();
           } catch (e) {
             Alert.alert(
@@ -632,12 +637,45 @@ export default function SchoolMailDetail({ navigation, route }) {
     [],
   );
 
+  const handlePinComment = useCallback(
+    async (commentId, pin = true) => {
+      if (!mail?.id || !commentId) return;
+      try {
+        await api.patch(
+          `/api/mails/school/${mail.id}/comments/${commentId}/pin`,
+          { pin },
+        );
+        const comRes = await api.get(`/api/mails/school/${mail.id}/comments`);
+        const flat = comRes.data?.data?.comments ?? [];
+        setComments(buildCommentTree(flat, mail.school_id, mail.user_id));
+      } catch (e) {
+        Alert.alert(
+          '오류',
+          e?.response?.data?.message ?? '댓글 고정에 실패했습니다.',
+        );
+      }
+    },
+    [mail?.id, mail?.school_id, mail?.user_id],
+  );
+
   const commentMenuItems = useMemo(() => {
     const comment =
       floatingMenuContext != null
         ? findCommentInTree(comments, floatingMenuContext)
         : null;
     const items = [];
+    const isMailAuthor =
+      mail?.user_id != null &&
+      myUserId != null &&
+      Number(mail.user_id) === Number(myUserId);
+    if (comment && isMailAuthor) {
+      items.push({
+        label: comment.isPinned ? '고정 해제' : '댓글 고정',
+        iconName: comment.isPinned ? 'pin-outline' : 'pin',
+        onPress: () =>
+          handlePinComment(floatingMenuContext, !comment.isPinned),
+      });
+    }
     if (
       comment &&
       myUserId != null &&
@@ -662,7 +700,14 @@ export default function SchoolMailDetail({ navigation, route }) {
       },
     });
     return items;
-  }, [floatingMenuContext, comments, myUserId, handleDeleteComment]);
+  }, [
+    floatingMenuContext,
+    comments,
+    myUserId,
+    mail?.user_id,
+    handleDeleteComment,
+    handlePinComment,
+  ]);
 
   const showLikes = Number(mail?.like_count ?? 0);
 
@@ -673,6 +718,12 @@ export default function SchoolMailDetail({ navigation, route }) {
     ) : (
       <Text style={styles.smDetailCommentAuthor}>{item.authorLabel}</Text>
     );
+
+    const pinnedBadge = item.isPinned ? (
+      <Text style={[styles.smDetailCommentAuthorWriter, { marginLeft: 6 }]}>
+        고정
+      </Text>
+    ) : null;
 
     const bodyHasTag = /@익명\d+/.test(item.content);
     const contentEl = bodyHasTag ? (
@@ -686,6 +737,7 @@ export default function SchoolMailDetail({ navigation, route }) {
         <View style={styles.smDetailCommentRow}>
           <View style={styles.smDetailCommentAuthorRow}>
             {AuthorLabel}
+            {pinnedBadge}
             <Text style={styles.smDetailCommentDot}>•</Text>
             <Text style={styles.smDetailCommentTime}>{item.time}</Text>
           </View>

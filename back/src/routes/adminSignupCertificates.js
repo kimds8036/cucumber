@@ -4,6 +4,7 @@ import pool from '../config/database.js';
 import { requireAdminApi, isAdminUser } from '../middleware/adminAuth.js';
 import { validate } from '../middleware/validate.js';
 import { getNowForDB } from '../utils/dateUtils.js';
+import { hydrateSubmissionRows } from '../services/userPii.service.js';
 
 const router = express.Router();
 
@@ -46,7 +47,10 @@ router.get('/', requireAdminApi, async (req, res) => {
       params,
     );
 
-    return res.json({ success: true, data: { submissions: rows } });
+    return res.json({
+      success: true,
+      data: { submissions: hydrateSubmissionRows(rows) },
+    });
   } catch (error) {
     console.error('증명서 검수 목록 오류:', error);
     return res.status(500).json({
@@ -121,9 +125,19 @@ router.patch('/:id', requireAdminApi, validate(reviewValidators), async (req, re
           targetSchoolId,
           submission.user_id,
         ]);
+      } else if (submission.claimed_school_name) {
+        const [schoolMatch] = await connection.execute(
+          'SELECT school_id FROM schools WHERE name = ? AND school_id != ? LIMIT 1',
+          [submission.claimed_school_name.trim(), 'CERT_PENDING'],
+        );
+        if (schoolMatch.length === 1) {
+          await connection.execute('UPDATE users SET school_id = ? WHERE id = ?', [
+            schoolMatch[0].school_id,
+            submission.user_id,
+          ]);
+        }
       }
 
-      // 증명서 승인 → 학생 인증 완료 (등교 로직 등에서 이후 FALSE 로 변경 가능)
       await connection.execute(
         'UPDATE users SET student_verified = TRUE WHERE id = ?',
         [submission.user_id],

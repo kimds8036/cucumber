@@ -138,6 +138,8 @@ const Sign = ({ navigation }) => {
     useState(false);
   const [guardianVerified, setGuardianVerified] = useState(false);
   const [guardianVerifiedAt, setGuardianVerifiedAt] = useState(null);
+  const [guardianInicisClientToken, setGuardianInicisClientToken] =
+    useState(null);
   const [showGuardianConsentModal, setShowGuardianConsentModal] =
     useState(false);
   const [recognizedData, setRecognizedData] = useState(null);
@@ -334,6 +336,11 @@ const Sign = ({ navigation }) => {
 
   const handleGuardianConsentStart = () => {
     setShowGuardianConsentModal(false);
+    setConsentData((prev) => ({
+      ...prev,
+      consents: { ...prev.consents, guardian: true },
+      allConsented: true,
+    }));
     setCurrentStep(STEP.GUARDIAN_IDENTITY);
   };
 
@@ -354,6 +361,9 @@ const Sign = ({ navigation }) => {
     if (data?.isVerified) {
       setGuardianVerified(true);
       setGuardianVerifiedAt(data.guardianVerifiedAt || new Date().toISOString());
+    }
+    if (data?.inicisClientToken) {
+      setGuardianInicisClientToken(data.inicisClientToken);
     }
   };
 
@@ -467,7 +477,7 @@ const Sign = ({ navigation }) => {
     setCurrentStep(STEP.CERTIFICATE_SUBMIT);
   };
 
-  const handleCertificateSubmit = () => {
+  const handleCertificateSubmit = async () => {
     if (SKIP_SIGNUP_VALIDATION_UNTIL_OCR_TEST) {
       setFormData((prev) => ({
         ...prev,
@@ -482,16 +492,45 @@ const Sign = ({ navigation }) => {
       return;
     }
 
-    const { certificateUrl, accessNumber } = certificateData;
-    if (!certificateUrl?.trim() || !accessNumber?.trim()) {
+    const certificateViewUrl = certificateData.certificateUrl?.trim();
+    const certificateAccessCode = certificateData.accessNumber?.trim();
+    if (!certificateViewUrl || !certificateAccessCode) {
       Alert.alert('알림', '열람용 주소와 열람 번호를 모두 입력해 주세요.');
       return;
     }
-    setFormData((prev) => ({
-      ...prev,
-      certificateUrl: certificateUrl.trim(),
-      accessNumber: accessNumber.trim(),
-    }));
+
+    const finalData = {
+      ...formData,
+      ...stepInfoData,
+      certificateUrl: certificateViewUrl,
+      accessNumber: certificateAccessCode,
+    };
+    if (!finalData.username || !finalData.password) {
+      Alert.alert('알림', '계정 정보가 없습니다. 이전 단계를 확인해 주세요.');
+      return;
+    }
+
+    setSubmitting(true);
+    try {
+      const payload = buildSignupPayload(finalData, null, null, {
+        verificationMethod: 'certificate',
+        certificateViewUrl,
+        certificateAccessCode,
+      });
+      await api.post('/api/auth/signup', payload);
+      Alert.alert(
+        '알림',
+        '재학증명서 제출이 완료되었습니다. 관리자 검수 후 서비스를 이용할 수 있습니다.',
+        [{ text: '확인', onPress: () => resetTo('Login') }],
+      );
+    } catch (error) {
+      Alert.alert(
+        '회원가입 실패',
+        error.response?.data?.message || '회원가입 중 오류가 발생했습니다.',
+      );
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   const buildStudentVerificationSnapshot = (data) => {
@@ -587,6 +626,7 @@ const Sign = ({ navigation }) => {
     finalData,
     verificationToken = studentVerificationToken,
     verificationData = recognizedData,
+    options = {},
   ) => {
     const resolvedBirthDate = finalData.birthDate || identity.birthDate;
     const level = finalData.schoolLevel || inferExpectedSchoolLevel(resolvedBirthDate);
@@ -603,6 +643,9 @@ const Sign = ({ navigation }) => {
       Number(verificationData?.graduationYear) ||
       enrollment.graduationYear;
 
+    const verificationMethod =
+      options.verificationMethod || 'student_id';
+
     const payload = {
       username: finalData.username,
       password: finalData.password,
@@ -616,10 +659,26 @@ const Sign = ({ navigation }) => {
       classNumber,
       graduationYear,
       colorId: pickRandomProfileColorId(),
-      verificationMethod: 'student_id',
+      verificationMethod,
       consents: consentData.consents || {},
     };
-    if (verificationToken) {
+
+    if (identityData.inicisClientToken) {
+      payload.studentInicisClientToken = identityData.inicisClientToken;
+    }
+    if (guardianInicisClientToken) {
+      payload.guardianInicisClientToken = guardianInicisClientToken;
+    }
+    if (verificationMethod === 'certificate') {
+      payload.certificateViewUrl =
+        options.certificateViewUrl ||
+        finalData.certificateUrl?.trim();
+      payload.certificateAccessCode =
+        options.certificateAccessCode ||
+        finalData.accessNumber?.trim();
+      payload.claimedSchoolName =
+        finalData.schoolName || selectedSchool?.name || null;
+    } else if (verificationToken) {
       payload.studentVerificationToken = verificationToken;
     }
     return payload;
@@ -853,7 +912,7 @@ const Sign = ({ navigation }) => {
         {currentStep === STEP.CONSENT && (
           <SignStepConsent
             normalize={normalize}
-            selectedAgeGroup="over14"
+            selectedAgeGroup={requiresGuardianVerification ? 'under14' : 'over14'}
             onChange={setConsentData}
           />
         )}

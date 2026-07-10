@@ -16,7 +16,7 @@ import { getNormalize } from '../../styles/frame.style';
 import { createSchoolMailStyles } from '../../styles/SchoolMail.style';
 import Skeleton from '../../components/common/Skeleton';
 import { api } from '../../utils/api';
-import { subscribeSchoolMailLike } from '../../utils/listSyncEvents';
+import { subscribeSchoolMailLike, subscribeSchoolMailDeleted } from '../../utils/listSyncEvents';
 import { getSchoolMailFromLabel } from './utils/schoolMailFromLabel';
 import MailboxAdPlaceholder from '../../src/screens/ad/MailboxAdPlaceholder';
 import { injectAdSlots, useAdSlots } from '../../hooks/useAdSlots';
@@ -169,7 +169,13 @@ const SchoolMailboxScreen = ({ navigation, route }) => {
         ),
       );
     });
-    return () => unsub();
+    const unsubDelete = subscribeSchoolMailDeleted(({ mailId }) => {
+      setMails((prev) => prev.filter((m) => m.id !== mailId));
+    });
+    return () => {
+      unsub();
+      unsubDelete();
+    };
   }, []);
 
   const handleLoadMore = useCallback(() => {

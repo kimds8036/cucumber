@@ -301,6 +301,20 @@
         <div id="student-id-list"></div>
       </div>
 
+      <!-- ────────── 재학증명서 가입 ────────── -->
+      <div class="panel" id="panel-certificates">
+        <div class="filter-row">
+          <select id="certificate-filter" onchange="loadCertificates()">
+            <option value="pending">승인 대기</option>
+            <option value="all">전체</option>
+            <option value="approved">승인됨</option>
+            <option value="rejected">거절됨</option>
+          </select>
+          <button class="btn btn-sm" onclick="loadCertificates()">새로고침</button>
+        </div>
+        <div id="certificate-list"></div>
+      </div>
+
       <!-- ────────── 재인증 학생증 ────────── -->
       <div class="panel" id="panel-reverificationIds">
         <div class="filter-row">

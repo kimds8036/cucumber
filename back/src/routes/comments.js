@@ -238,6 +238,75 @@ router.post('/:postId/comments', authenticate, blockWhenFlag('comment_write_disa
   }
 });
 
+// 게시글 댓글 고정 (게시글 작성자만)
+router.patch('/:postId/comments/:commentId/pin', authenticate, async (req, res) => {
+  try {
+    const userId = req.user.userId;
+    const postId = Number(req.params.postId);
+    const commentId = Number(req.params.commentId);
+    const pin = req.body?.pin !== false;
+
+    const [posts] = await pool.execute(
+      'SELECT id, user_id FROM posts WHERE id = ? AND is_deleted = FALSE',
+      [postId],
+    );
+    if (!posts.length) {
+      return res.status(404).json({
+        success: false,
+        message: '게시글을 찾을 수 없습니다.',
+      });
+    }
+    if (Number(posts[0].user_id) !== Number(userId)) {
+      return res.status(403).json({
+        success: false,
+        message: '게시글 작성자만 댓글을 고정할 수 있습니다.',
+      });
+    }
+
+    const [comments] = await pool.execute(
+      `SELECT id FROM comments
+       WHERE id = ? AND post_id = ? AND is_deleted = FALSE`,
+      [commentId, postId],
+    );
+    if (!comments.length) {
+      return res.status(404).json({
+        success: false,
+        message: '댓글을 찾을 수 없습니다.',
+      });
+    }
+
+    if (pin) {
+      await pool.execute(
+        `UPDATE comments SET is_pinned = FALSE, pinned_at = NULL
+         WHERE post_id = ? AND is_deleted = FALSE`,
+        [postId],
+      );
+      await pool.execute(
+        `UPDATE comments SET is_pinned = TRUE, pinned_at = NOW() WHERE id = ?`,
+        [commentId],
+      );
+    } else {
+      await pool.execute(
+        `UPDATE comments SET is_pinned = FALSE, pinned_at = NULL
+         WHERE id = ? AND post_id = ?`,
+        [commentId, postId],
+      );
+    }
+
+    return res.json({
+      success: true,
+      message: pin ? '댓글이 고정되었습니다.' : '댓글 고정이 해제되었습니다.',
+      data: { postId, commentId, isPinned: pin },
+    });
+  } catch (error) {
+    console.error('게시글 댓글 고정 오류:', error);
+    return res.status(500).json({
+      success: false,
+      message: '댓글 고정 처리 중 오류가 발생했습니다.',
+    });
+  }
+});
+
 // 댓글 목록 조회 (로그인 시 각 댓글 isLiked 반영 — optionalAuthenticate로 req.user 설정)
 router.get('/:postId/comments', optionalAuthenticate, async (req, res) => {
   try {
@@ -268,6 +337,8 @@ router.get('/:postId/comments', optionalAuthenticate, async (req, res) => {
         c.content,
         c.anonymous_index,
         c.like_count,
+        c.is_pinned,
+        c.pinned_at,
         c.created_at,
         u.name_enc as author_name_enc, u.name as author_name,
         u.color_id,
@@ -278,7 +349,7 @@ router.get('/:postId/comments', optionalAuthenticate, async (req, res) => {
       FROM comments c
       LEFT JOIN users u ON c.user_id = u.id
       WHERE ${commentConditions.join(' AND ')}
-      ORDER BY c.parent_comment_id IS NULL DESC, c.created_at ASC`,
+      ORDER BY c.is_pinned DESC, c.parent_comment_id IS NULL DESC, c.created_at ASC`,
       commentParams,
     );
 

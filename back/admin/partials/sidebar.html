@@ -1,58 +1,62 @@
-<!-- ── Sidebar ───────────────────────────────────── -->
-  <div class="sidebar" id="admin-sidebar">
-    <div class="sidebar-logo">YouthPaper <span>admin</span></div>
-
-    <div class="sidebar-section">운영</div>
-    <div class="nav-item active" data-panel="dashboard" onclick="go('dashboard')">
-      <span class="nav-dot"></span>대시보드
-    </div>
-    <div class="nav-item" data-panel="reports" onclick="go('reports')">
-      <span class="nav-dot"></span>신고 관리
-      <span class="nav-badge nav-badge-hidden" id="badge-reports"></span>
-    </div>
-    <div class="nav-item" data-panel="processedReports" onclick="go('processedReports')">
-      <span class="nav-dot"></span>처리 이력
-    </div>
-    <div class="nav-item" data-panel="appeals" onclick="go('appeals')">
-      <span class="nav-dot"></span>이의신청
-      <span class="nav-badge nav-badge-hidden" id="badge-appeals"></span>
-    </div>
-
-    <div class="nav-item" data-panel="inquiries" onclick="go('inquiries')">
-      <span class="nav-dot"></span>문의 관리
-      <span class="nav-badge nav-badge-hidden" id="badge-inquiries"></span>
-    </div>
-    <div class="nav-item" data-panel="processedInquiries" onclick="go('processedInquiries')">
-      <span class="nav-dot"></span>문의 처리 이력
-    </div>
-    <div class="nav-item" data-panel="emergency" onclick="go('emergency')">
-      <span class="nav-dot"></span>비상 제어
-    </div>
-
-    <div class="sidebar-section" style="margin-top:8px">가입·인증</div>
-    <div class="nav-item" data-panel="studentIds" onclick="go('studentIds')">
-      <span class="nav-dot"></span>가입 학생증
-      <span class="nav-badge nav-badge-hidden" id="badge-student-ids"></span>
-    </div>
-    <div class="nav-item" data-panel="reverificationIds" onclick="go('reverificationIds')">
-      <span class="nav-dot"></span>재인증 학생증
-      <span class="nav-badge nav-badge-hidden" id="badge-reverification-ids"></span>
-    </div>
-
-    <div class="sidebar-section" style="margin-top:8px">사용자</div>
-    <div class="nav-item" data-panel="attendance" onclick="go('attendance')">
-      <span class="nav-dot"></span>등교 현황
-      <span class="nav-badge nav-badge-hidden" id="badge-attendance-suspicious"></span>
-    </div>
-    <div class="nav-item" data-panel="users" onclick="go('users')">
-      <span class="nav-dot"></span>사용자 제재 현황
-    </div>
-
-    <div class="sidebar-section" style="margin-top:8px">기록</div>
-    <div class="nav-item" data-panel="logs" onclick="go('logs')">
-      <span class="nav-dot"></span>변경 이력 (Audit Log)
-    </div>
-    <div class="nav-item" data-panel="adminAccounts" onclick="go('adminAccounts')">
-      <span class="nav-dot"></span>관리자 계정
-    </div>
-  </div>
+<!-- ── Sidebar ───────────────────────────────────── -->
+  <div class="sidebar" id="admin-sidebar">
+    <div class="sidebar-logo">YouthPaper <span>admin</span></div>
+
+    <div class="sidebar-section">운영</div>
+    <div class="nav-item active" data-panel="dashboard" onclick="go('dashboard')">
+      <span class="nav-dot"></span>대시보드
+    </div>
+    <div class="nav-item" data-panel="reports" onclick="go('reports')">
+      <span class="nav-dot"></span>신고 관리
+      <span class="nav-badge nav-badge-hidden" id="badge-reports"></span>
+    </div>
+    <div class="nav-item" data-panel="processedReports" onclick="go('processedReports')">
+      <span class="nav-dot"></span>처리 이력
+    </div>
+    <div class="nav-item" data-panel="appeals" onclick="go('appeals')">
+      <span class="nav-dot"></span>이의신청
+      <span class="nav-badge nav-badge-hidden" id="badge-appeals"></span>
+    </div>
+
+    <div class="nav-item" data-panel="inquiries" onclick="go('inquiries')">
+      <span class="nav-dot"></span>문의 관리
+      <span class="nav-badge nav-badge-hidden" id="badge-inquiries"></span>
+    </div>
+    <div class="nav-item" data-panel="processedInquiries" onclick="go('processedInquiries')">
+      <span class="nav-dot"></span>문의 처리 이력
+    </div>
+    <div class="nav-item" data-panel="emergency" onclick="go('emergency')">
+      <span class="nav-dot"></span>비상 제어
+    </div>
+
+    <div class="sidebar-section" style="margin-top:8px">가입·인증</div>
+    <div class="nav-item" data-panel="studentIds" onclick="go('studentIds')">
+      <span class="nav-dot"></span>가입 학생증
+      <span class="nav-badge nav-badge-hidden" id="badge-student-ids"></span>
+    </div>
+    <div class="nav-item" data-panel="certificates" onclick="go('certificates')">
+      <span class="nav-dot"></span>재학증명서
+      <span class="nav-badge nav-badge-hidden" id="badge-certificates"></span>
+    </div>
+    <div class="nav-item" data-panel="reverificationIds" onclick="go('reverificationIds')">
+      <span class="nav-dot"></span>재인증 학생증
+      <span class="nav-badge nav-badge-hidden" id="badge-reverification-ids"></span>
+    </div>
+
+    <div class="sidebar-section" style="margin-top:8px">사용자</div>
+    <div class="nav-item" data-panel="attendance" onclick="go('attendance')">
+      <span class="nav-dot"></span>등교 현황
+      <span class="nav-badge nav-badge-hidden" id="badge-attendance-suspicious"></span>
+    </div>
+    <div class="nav-item" data-panel="users" onclick="go('users')">
+      <span class="nav-dot"></span>사용자 제재 현황
+    </div>
+
+    <div class="sidebar-section" style="margin-top:8px">기록</div>
+    <div class="nav-item" data-panel="logs" onclick="go('logs')">
+      <span class="nav-dot"></span>변경 이력 (Audit Log)
+    </div>
+    <div class="nav-item" data-panel="adminAccounts" onclick="go('adminAccounts')">
+      <span class="nav-dot"></span>관리자 계정
+    </div>
+  </div>

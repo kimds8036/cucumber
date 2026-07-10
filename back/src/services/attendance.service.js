@@ -2,6 +2,7 @@ import pool from '../config/database.js';
 import { haversineMeters } from '../utils/geo.js';
 import { getKstNow, formatKstDateYmd } from '../services/reverification.service.js';
 import { getNowForDB } from '../utils/dateUtils.js';
+import { getCommuteWindowBlockReason } from '../utils/commuteCalendar.js';
 
 function parseHmToMinutes(hm, fallbackMinutes) {
   const m = String(hm || '').trim().match(/^(\d{1,2}):(\d{2})$/);
@@ -10,23 +11,24 @@ function parseHmToMinutes(hm, fallbackMinutes) {
 }
 
 export function isWithinAttendanceWindow(ref = new Date()) {
-  const kst = getKstNow(ref);
-  const dow = kst.getDay();
-  if (dow === 0 || dow === 6) {
-    return { ok: false, reason: 'WEEKEND' };
+  const calendarReason = getCommuteWindowBlockReason(ref);
+  if (calendarReason) {
+    return { ok: false, reason: calendarReason };
   }
 
+  const kst = getKstNow(ref);
   const nowMin = kst.getHours() * 60 + kst.getMinutes();
   const startMin = parseHmToMinutes(
     process.env.ATTENDANCE_WINDOW_START,
     7 * 60,
   );
+  // 10:00 미포함 — end 10:00 시각부터 차단 (nowMin >= 600)
   const endMin = parseHmToMinutes(
     process.env.ATTENDANCE_WINDOW_END,
     10 * 60,
   );
 
-  if (nowMin < startMin || nowMin > endMin) {
+  if (nowMin < startMin || nowMin >= endMin) {
     return { ok: false, reason: 'OUTSIDE_WINDOW' };
   }
   return { ok: true };
@@ -48,11 +50,18 @@ export async function checkInAttendance({ userId, latitude, longitude }) {
 
   const window = isWithinAttendanceWindow();
   if (!window.ok) {
-    const msg =
-      window.reason === 'WEEKEND'
-        ? '주말에는 등교 체크를 할 수 없습니다.'
-        : '등교 가능 시간이 아닙니다.';
-    return { ok: false, status: 400, code: 'OUTSIDE_WINDOW', message: msg };
+    const messages = {
+      WEEKEND: '주말에는 등교 체크를 할 수 없습니다.',
+      VACATION: '방학 기간에는 등교 체크를 할 수 없습니다.',
+      HOLIDAY: '공휴일에는 등교 체크를 할 수 없습니다.',
+      OUTSIDE_WINDOW: '등교 가능 시간이 아닙니다.',
+    };
+    return {
+      ok: false,
+      status: 400,
+      code: 'OUTSIDE_WINDOW',
+      message: messages[window.reason] || messages.OUTSIDE_WINDOW,
+    };
   }
 
   const [users] = await pool.execute(
