@@ -26,6 +26,7 @@ import SignStepStudentIdVerify from './SignStepStudentIdVerify';
 import SignStepCertificateGuide from './SignStepCertificateGuide';
 import SignStepCertificate from './SignStepCertificate';
 import { api, setAuthToken } from '../../../utils/api';
+import { getPendingInicisSession } from '../../../services/inicisAuth';
 import {
   isValidUsername,
   isValidPassword,
@@ -205,6 +206,18 @@ const Sign = ({ navigation }) => {
       setCurrentStep(STEP.GUARDIAN_IDENTITY);
     }
   }, [currentStep, requiresGuardianVerification, guardianVerified]);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const pending = await getPendingInicisSession();
+      if (!pending || pending.purpose !== 'student_signup' || cancelled) return;
+      setCurrentStep(STEP.IDENTITY);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const handleBack = () => {
     if (currentStep === STEP.CONSENT) {

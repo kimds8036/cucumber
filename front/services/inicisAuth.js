@@ -1,20 +1,55 @@
 import * as WebBrowser from 'expo-web-browser';
 import * as Linking from 'expo-linking';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { AppState } from 'react-native';
 import { api } from '../utils/api';
 import { getUserFacingErrorMessage } from '../utils/userFacingError';
 
 WebBrowser.maybeCompleteAuthSession();
 
+const PENDING_SESSION_KEY = '@inicis_pending_session';
+const PENDING_TTL_MS = 30 * 60 * 1000;
+
 /** 동시에 하나의 인증 브라우저만 */
 let activeFlowPromise = null;
 
-/** 서버 INICIS_ENABLED 와 클라이언트 옵트인 */
+/** KG 이니시스 연동 시 앱 복귀 URL (서버 allowlist용 — 자동 딥링크 이동은 사용하지 않음) */
+export function getInicisAppReturnUrl() {
+  return Linking.createURL('inicis/return');
+}
+
 export function isInicisClientEnabled() {
   return String(process.env.EXPO_PUBLIC_INICIS_ENABLED || '').toLowerCase() === 'true';
 }
 
-export function getInicisAppReturnUrl() {
-  return Linking.createURL('inicis/return');
+async function savePendingSession({ mTxId, purpose }) {
+  await AsyncStorage.setItem(
+    PENDING_SESSION_KEY,
+    JSON.stringify({ mTxId, purpose, startedAt: Date.now() }),
+  );
+}
+
+export async function clearPendingInicisSession() {
+  await AsyncStorage.removeItem(PENDING_SESSION_KEY);
+}
+
+export async function getPendingInicisSession() {
+  try {
+    const raw = await AsyncStorage.getItem(PENDING_SESSION_KEY);
+    if (!raw) return null;
+    const data = JSON.parse(raw);
+    if (!data?.mTxId || !data?.purpose) {
+      await clearPendingInicisSession();
+      return null;
+    }
+    if (Date.now() - Number(data.startedAt || 0) > PENDING_TTL_MS) {
+      await clearPendingInicisSession();
+      return null;
+    }
+    return data;
+  } catch {
+    return null;
+  }
 }
 
 export async function fetchInicisServerEnabled() {
@@ -26,9 +61,6 @@ export async function fetchInicisServerEnabled() {
   }
 }
 
-/**
- * @param {'student_signup'|'guardian_consent'} purpose
- */
 export async function startInicisSession(
   purpose = 'student_signup',
   { appReturnUrl } = {},
@@ -53,10 +85,115 @@ export async function startInicisSession(
   }
 }
 
+function parseSessionPollResponse(data) {
+  if (!data) return { kind: 'pending' };
+  if (data.status === 'success') {
+    return {
+      kind: 'success',
+      result: {
+        status: 'success',
+        clientToken: data.clientToken,
+        profile: data.profile,
+      },
+    };
+  }
+  if (data.status === 'fail' || data.status === 'expired') {
+    const err = new Error(data.resultMsg || '본인인증에 실패했습니다.');
+    err.code = data.status;
+    err.resultCode = data.resultCode;
+    return { kind: 'error', error: err };
+  }
+  return { kind: 'pending' };
+}
+
+async function fetchInicisSessionOnce(mTxId) {
+  const res = await api.get(
+    `/api/auth/inicis/session/${encodeURIComponent(mTxId)}`,
+  );
+  return parseSessionPollResponse(res.data?.data);
+}
+
+export async function waitForInicisResult(mTxId, {
+  intervalMs = 1500,
+  timeoutMs = 5 * 60 * 1000,
+  shouldCancel,
+} = {}) {
+  const started = Date.now();
+  let timer = null;
+  let appStateSub = null;
+
+  const cleanup = () => {
+    if (timer) clearTimeout(timer);
+    appStateSub?.remove();
+    appStateSub = null;
+    timer = null;
+  };
+
+  return new Promise((resolve, reject) => {
+    const tick = async () => {
+      if (shouldCancel?.()) {
+        cleanup();
+        const err = new Error('cancelled');
+        err.code = 'CANCELLED';
+        reject(err);
+        return;
+      }
+      if (Date.now() - started >= timeoutMs) {
+        cleanup();
+        const err = new Error('본인인증 대기 시간이 초과되었습니다.');
+        err.code = 'TIMEOUT';
+        reject(err);
+        return;
+      }
+
+      try {
+        const outcome = await fetchInicisSessionOnce(mTxId);
+        if (outcome.kind === 'success') {
+          cleanup();
+          resolve(outcome.result);
+          return;
+        }
+        if (outcome.kind === 'error') {
+          cleanup();
+          reject(outcome.error);
+          return;
+        }
+      } catch (pollError) {
+        if (pollError?.code) {
+          cleanup();
+          reject(pollError);
+          return;
+        }
+        const msg = getUserFacingErrorMessage(
+          pollError,
+          '본인인증 결과를 확인하지 못했습니다. 잠시 후 다시 시도해 주세요.',
+        );
+        cleanup();
+        const err = new Error(msg);
+        err.code = 'POLL_FAILED';
+        reject(err);
+        return;
+      }
+
+      timer = setTimeout(tick, intervalMs);
+    };
+
+    appStateSub = AppState.addEventListener('change', (nextState) => {
+      if (nextState === 'active') {
+        if (timer) clearTimeout(timer);
+        tick();
+      }
+    });
+
+    tick();
+  });
+}
+
 /**
- * 인앱 브라우저(Custom Tabs / SFSafariViewController) — 완료·취소 시 자동 닫힘
+ * openAuthSessionAsync + youthpaper:// 리다이렉트는 Android에서 앱 cold start → 로그인 화면 복귀를 유발할 수 있음.
+ * Custom Tabs만 열고 앱 복귀 시 폴링으로 결과를 확인한다.
  */
-export async function openInicisAuthSession(launchUrl, redirectUrl) {
+async function openInicisBrowser(launchUrl) {
   try {
     await WebBrowser.dismissBrowser();
   } catch {
@@ -67,66 +204,12 @@ export async function openInicisAuthSession(launchUrl, redirectUrl) {
   } catch {
     // ignore
   }
-
-  return WebBrowser.openAuthSessionAsync(launchUrl, redirectUrl);
+  return WebBrowser.openBrowserAsync(launchUrl, {
+    showInRecents: true,
+    createTask: false,
+  });
 }
 
-export async function waitForInicisResult(mTxId, {
-  intervalMs = 2000,
-  timeoutMs = 5 * 60 * 1000,
-  shouldCancel,
-} = {}) {
-  const started = Date.now();
-  while (Date.now() - started < timeoutMs) {
-    if (shouldCancel?.()) {
-      const err = new Error('cancelled');
-      err.code = 'CANCELLED';
-      throw err;
-    }
-    try {
-      const res = await api.get(
-        `/api/auth/inicis/session/${encodeURIComponent(mTxId)}`,
-      );
-      const data = res.data?.data;
-      if (!data) {
-        await sleep(intervalMs);
-        continue;
-      }
-      if (data.status === 'success') {
-        return {
-          status: 'success',
-          clientToken: data.clientToken,
-          profile: data.profile,
-        };
-      }
-      if (data.status === 'fail' || data.status === 'expired') {
-        const err = new Error(data.resultMsg || '본인인증에 실패했습니다.');
-        err.code = data.status;
-        err.resultCode = data.resultCode;
-        throw err;
-      }
-    } catch (pollError) {
-      if (pollError?.code) throw pollError;
-      const msg = getUserFacingErrorMessage(
-        pollError,
-        '본인인증 결과를 확인하지 못했습니다. 잠시 후 다시 시도해 주세요.',
-      );
-      const err = new Error(msg);
-      err.code = 'POLL_FAILED';
-      throw err;
-    }
-    await sleep(intervalMs);
-  }
-  const err = new Error('본인인증 대기 시간이 초과되었습니다.');
-  err.code = 'TIMEOUT';
-  throw err;
-}
-
-function sleep(ms) {
-  return new Promise((r) => setTimeout(r, ms));
-}
-
-/** 세션 시작 → 인앱 브라우저 → 폴링 (중복 실행 방지) */
 export async function runInicisIdentityFlow(purpose, options = {}) {
   if (activeFlowPromise) {
     const err = new Error('이미 본인인증이 진행 중입니다.');
@@ -134,46 +217,71 @@ export async function runInicisIdentityFlow(purpose, options = {}) {
     throw err;
   }
 
-  const redirectUrl = getInicisAppReturnUrl();
-
   activeFlowPromise = (async () => {
     let mTxId = null;
     try {
       const session = await startInicisSession(purpose, {
-        appReturnUrl: redirectUrl,
+        appReturnUrl: getInicisAppReturnUrl(),
       });
       mTxId = session.mTxId;
+      await savePendingSession({ mTxId, purpose });
 
-      const browserResult = await openInicisAuthSession(
-        session.launchUrl,
-        redirectUrl,
-      );
+      const browserPromise = openInicisBrowser(session.launchUrl);
+      const result = await waitForInicisResult(mTxId, options);
+      await clearPendingInicisSession();
 
-      // 딥링크 리다이렉트 전에 사용자가 탭을 닫아도 서버 인증 완료 여부를 확인
-      const pollOpts =
-        browserResult.type === 'cancel' || browserResult.type === 'dismiss'
-          ? {
-              ...options,
-              timeoutMs: Math.min(options.timeoutMs ?? 5 * 60 * 1000, 20 * 1000),
-              intervalMs: options.intervalMs ?? 800,
-            }
-          : options;
-
-      return waitForInicisResult(mTxId, pollOpts);
-    } finally {
-      activeFlowPromise = null;
       try {
         await WebBrowser.dismissBrowser();
       } catch {
         // ignore
       }
+      await browserPromise.catch(() => {});
+
+      return result;
+    } catch (e) {
+      if (e?.code === 'TIMEOUT' || e?.code === 'CANCELLED') {
+        // pending 유지 — 앱 재실행·수동 복귀 시 resumePendingInicisFlow 로 이어감
+      } else {
+        await clearPendingInicisSession();
+      }
+      throw e;
+    } finally {
+      activeFlowPromise = null;
     }
   })();
 
   return activeFlowPromise;
 }
 
-/** 진행 중인 인증이 있는지 */
+/** cold start / 로그인 화면 복귀 후 미완료 세션 폴링 재개 */
+export async function resumePendingInicisFlow(expectedPurpose, options = {}) {
+  const pending = await getPendingInicisSession();
+  if (!pending) return null;
+  if (pending.purpose !== expectedPurpose) return null;
+  if (activeFlowPromise) return activeFlowPromise;
+
+  activeFlowPromise = (async () => {
+    try {
+      const result = await waitForInicisResult(pending.mTxId, {
+        timeoutMs: 60 * 1000,
+        intervalMs: 800,
+        ...options,
+      });
+      await clearPendingInicisSession();
+      try {
+        await WebBrowser.dismissBrowser();
+      } catch {
+        // ignore
+      }
+      return result;
+    } finally {
+      activeFlowPromise = null;
+    }
+  })();
+
+  return activeFlowPromise;
+}
+
 export function isInicisFlowInProgress() {
   return Boolean(activeFlowPromise);
 }

@@ -11,7 +11,9 @@ import SignupStepScroll from './SignupStepScroll';
 import {
   fetchInicisServerEnabled,
   isInicisClientEnabled,
+  resumePendingInicisFlow,
   runInicisIdentityFlow,
+  getPendingInicisSession,
 } from '../../../services/inicisAuth';
 
 const INICIS_MOCK_PHONE = '01000000000';
@@ -48,6 +50,50 @@ const SignStepInicisIdentity = ({
     [initialData?.phoneNumber, inicisToken, isVerified, onChange, testMode],
   );
 
+  const applyVerifySuccess = useCallback(
+    (result) => {
+      const profile = result.profile || {};
+      const verifiedName = String(profile.name || '').trim();
+      if (!verifiedName) {
+        Alert.alert(
+          '본인인증 오류',
+          '인증은 완료되었으나 이름 정보를 확인하지 못했습니다. 잠시 후 다시 시도해 주세요.',
+        );
+        return;
+      }
+      setInicisToken(result.clientToken);
+      setIsVerified(true);
+      notifyChange({
+        name: verifiedName,
+        phoneNumber: profile.phoneNumber || INICIS_MOCK_PHONE,
+        birthDate: profile.birthDate || initialData?.birthDate || null,
+        isVerified: true,
+        inicisClientToken: result.clientToken,
+      });
+    },
+    [initialData?.birthDate, notifyChange],
+  );
+
+  const handleVerifyError = useCallback((e) => {
+    if (e?.code === 'CANCELLED') return;
+    if (e?.code === 'IN_PROGRESS') {
+      Alert.alert('알림', '이미 본인인증이 진행 중입니다.');
+      return;
+    }
+    if (e?.code === 'SESSION_START_FAILED' || e?.code === 'POLL_FAILED') {
+      Alert.alert('본인인증 오류', e?.message || '본인인증을 진행할 수 없습니다.');
+      return;
+    }
+    if (e?.code === 'TIMEOUT') {
+      Alert.alert(
+        '본인인증 대기',
+        '인증이 완료되었다면 최근 앱 목록에서 Youth Paper로 돌아와 주세요.',
+      );
+      return;
+    }
+    Alert.alert('오류', e?.message || '본인인증 중 오류가 발생했습니다.');
+  }, []);
+
   const handleVerify = useCallback(async () => {
     if (verifying || isVerified) return;
 
@@ -79,54 +125,56 @@ const SignStepInicisIdentity = ({
     setVerifying(true);
     try {
       const result = await runInicisIdentityFlow('student_signup');
-      const profile = result.profile || {};
-      const verifiedName = String(profile.name || '').trim();
-      if (!verifiedName) {
-        Alert.alert(
-          '본인인증 오류',
-          '인증은 완료되었으나 이름 정보를 확인하지 못했습니다. 잠시 후 다시 시도해 주세요.',
-        );
-        return;
-      }
-      setInicisToken(result.clientToken);
-      setIsVerified(true);
-      notifyChange({
-        name: verifiedName,
-        phoneNumber: profile.phoneNumber || INICIS_MOCK_PHONE,
-        birthDate: profile.birthDate || initialData?.birthDate || null,
-        isVerified: true,
-        inicisClientToken: result.clientToken,
-      });
+      applyVerifySuccess(result);
     } catch (e) {
-      if (e?.code === 'CANCELLED') return;
-      if (e?.code === 'IN_PROGRESS') {
-        Alert.alert('알림', '이미 본인인증이 진행 중입니다.');
-        return;
-      }
-      if (e?.code === 'SESSION_START_FAILED' || e?.code === 'POLL_FAILED') {
-        Alert.alert('본인인증 오류', e?.message || '본인인증을 진행할 수 없습니다.');
-        return;
-      }
-      if (e?.code === 'TIMEOUT') {
-        Alert.alert(
-          '본인인증 대기',
-          '인증 결과 확인에 시간이 걸리고 있습니다. 잠시 후 [본인인증 하기]를 다시 눌러 주세요.',
-        );
-        return;
-      }
-      Alert.alert('오류', e?.message || '본인인증 중 오류가 발생했습니다.');
+      handleVerifyError(e);
     } finally {
       setVerifying(false);
     }
-  }, [initialData?.birthDate, isVerified, notifyChange, testMode, verifying]);
+  }, [
+    applyVerifySuccess,
+    handleVerifyError,
+    isVerified,
+    notifyChange,
+    testMode,
+    verifying,
+  ]);
 
   useEffect(() => {
-    if (!autoStart || testMode || isVerified || verifying || autoStartedRef.current) {
-      return;
-    }
-    autoStartedRef.current = true;
-    handleVerify();
-  }, [autoStart, handleVerify, isVerified, testMode, verifying]);
+    if (testMode || isVerified) return undefined;
+    let cancelled = false;
+    (async () => {
+      const pending = await getPendingInicisSession();
+      if (cancelled) return;
+      if (pending) {
+        setVerifying(true);
+        try {
+          const result = await resumePendingInicisFlow('student_signup');
+          if (result) applyVerifySuccess(result);
+        } catch (e) {
+          handleVerifyError(e);
+        } finally {
+          if (!cancelled) setVerifying(false);
+        }
+        autoStartedRef.current = true;
+        return;
+      }
+      if (!autoStart || verifying || autoStartedRef.current) return;
+      autoStartedRef.current = true;
+      handleVerify();
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    applyVerifySuccess,
+    autoStart,
+    handleVerify,
+    handleVerifyError,
+    isVerified,
+    testMode,
+    verifying,
+  ]);
 
   return (
     <View style={{ flex: 1 }}>
@@ -159,7 +207,11 @@ const SignStepInicisIdentity = ({
 
         {initialData?.name && isVerified ? (
           <Text
-            style={[styles.fieldHelperText, styles.fieldHelperTextSuccess, { marginBottom: normalize(12) }]}
+            style={[
+              styles.fieldHelperText,
+              styles.fieldHelperTextSuccess,
+              { marginBottom: normalize(12) },
+            ]}
           >
             인증된 이름: {initialData.name}
           </Text>
@@ -193,7 +245,8 @@ const SignStepInicisIdentity = ({
           </Text>
         ) : verifying ? (
           <Text style={[styles.fieldHelperText, { marginTop: normalize(12) }]}>
-            인증 창이 열립니다. 완료 후 앱으로 돌아오면 자동으로 확인됩니다.
+            인증 완료 후 최근 앱 목록에서 Youth Paper로 돌아오면 결과가
+            자동으로 확인됩니다.
           </Text>
         ) : null}
       </SignupStepScroll>

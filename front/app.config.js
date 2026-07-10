@@ -130,6 +130,7 @@ export default ({ config }) => ({
       ],
       './plugins/withFirebaseModularHeaders',
       './plugins/withAndroidReleaseSigning.cjs',
+      './plugins/withAndroidMainActivityLaunchMode.cjs',
       './plugins/withAndroidCameraPreviewCompatible.cjs',
     ],
 

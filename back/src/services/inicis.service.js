@@ -481,21 +481,8 @@ function renderResultPage(ok, message, { appReturnUrl, mTxId, resultCode } = {})
     resultCode,
   });
   const redirectBlock = redirectTarget
-    ? `<p style="color:#888;font-size:13px;margin-top:16px;">앱으로 이동 중…</p>
-  <p style="margin-top:12px;"><a id="inicis-app-return" href="${escapeHtml(redirectTarget)}" style="color:#6f9163;font-size:15px;text-decoration:underline;">앱으로 돌아가기</a></p>
-  <script>
-    (function () {
-      var u = ${JSON.stringify(redirectTarget)};
-      function go() {
-        try { window.location.replace(u); } catch (e) {}
-        try { window.location.href = u; } catch (e) {}
-        var a = document.getElementById('inicis-app-return');
-        if (a) try { a.click(); } catch (e) {}
-      }
-      go();
-      setTimeout(go, 300);
-    })();
-  </script>`
+    ? `<p style="color:#888;font-size:13px;margin-top:16px;">인증이 완료되었습니다.</p>
+  <p style="color:#888;font-size:13px;margin-top:8px;">최근 앱 목록에서 <strong>Youth Paper</strong>로 돌아가 주세요.<br/>앱이 자동으로 결과를 확인합니다.</p>`
     : `<p style="color:#888;font-size:13px;margin-top:24px;">이 창을 닫고 앱으로 돌아가 주세요.</p>`;
   return `<!DOCTYPE html>
 <html lang="ko"><head><meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/>

@@ -74,6 +74,7 @@ import { ToastProvider } from './context/ToastContext';
 import ToastHost from './components/common/ToastHost';
 import AlertHost from './components/common/AlertHost';
 import { navigationRef } from './navigation/navigationRef';
+import { getPendingInicisSession } from './services/inicisAuth';
 import {
   navigateFromPush,
   resolvePushNavigation,
@@ -104,10 +105,11 @@ const navigationTheme = {
   },
 };
 const linking = {
-  prefixes: ['cucumber://'],
+  prefixes: ['cucumber://', 'youthpaper://', 'exp+youth-paper://'],
   config: {
     screens: {
       BoardDetail: 'board/:postId',
+      Sign: 'inicis/return',
     },
   },
 };
@@ -228,6 +230,33 @@ function RootNavigator() {
   const [showResubmit, setShowResubmit] = useState(false);
   const [resubmitMode, setResubmitMode] = useState('rejected');
   const pollRef = useRef(null);
+
+  useEffect(() => {
+    if (!authHydrated || isLoggedIn) return undefined;
+    let cancelled = false;
+    (async () => {
+      const pending = await getPendingInicisSession();
+      if (!pending || cancelled) return;
+      const tryNavigate = () => {
+        if (!navigationRef.isReady()) return false;
+        const route = navigationRef.getCurrentRoute?.();
+        if (route?.name !== 'Sign') {
+          navigationRef.navigate('Sign');
+        }
+        return true;
+      };
+      if (!tryNavigate()) {
+        const timer = setInterval(() => {
+          if (tryNavigate()) clearInterval(timer);
+        }, 150);
+        return () => clearInterval(timer);
+      }
+      return undefined;
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [authHydrated, isLoggedIn]);
 
   useEffect(() => {
     if (!isLoggedIn) return;
