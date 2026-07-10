@@ -2,10 +2,12 @@ import React, { useCallback, useMemo, useRef, useState } from 'react';
 import {
   View,
   Image,
+  Text,
   StyleSheet,
-  useWindowDimensions,
+  ActivityIndicator,
 } from 'react-native';
 import { CameraView } from 'expo-camera';
+import { colors } from '../../styles/colors';
 import { createStudentIdCameraLayerStyles } from '../../styles/studentIdCameraLayers';
 import { getStudentIdFrameSize } from '../../utils/studentIdFrameCrop';
 import StudentIdCameraGuideOverlay from '../../view/src/signup/StudentIdCameraGuideOverlay';
@@ -46,16 +48,15 @@ export default function StudentIdCaptureStage({
   previewLayoutRef,
   onStageLayout,
 }) {
-  const { width: screenWidth, height: screenHeight } = useWindowDimensions();
   const [stageSize, setStageSize] = useState({ width: 0, height: 0 });
   const layerStyles = useMemo(() => createStudentIdCameraLayerStyles(), []);
 
-  const stageWidth = stageSize.width > 0 ? stageSize.width : screenWidth;
-  const stageHeight =
-    stageSize.height > 0 ? stageSize.height : Math.max(280, screenHeight * 0.42);
+  const stageReady = stageSize.width > 0 && stageSize.height > 0;
+  const stageWidth = stageSize.width;
+  const stageHeight = stageSize.height;
   const { frameWidth, frameHeight } = useMemo(
-    () => getStudentIdFrameSize(stageWidth),
-    [stageWidth],
+    () => (stageReady ? getStudentIdFrameSize(stageWidth) : { frameWidth: 0, frameHeight: 0 }),
+    [stageReady, stageWidth],
   );
 
   const handleLayout = useCallback(
@@ -73,7 +74,11 @@ export default function StudentIdCaptureStage({
   return (
     <View style={[styles.stage, stageStyle]} onLayout={handleLayout}>
       {frozenUri ? (
-        <Image source={{ uri: frozenUri }} style={StyleSheet.absoluteFill} resizeMode="cover" />
+        <Image
+          source={{ uri: frozenUri }}
+          style={StyleSheet.absoluteFill}
+          resizeMode="cover"
+        />
       ) : (
         <CameraView
           ref={cameraRef}
@@ -82,16 +87,25 @@ export default function StudentIdCaptureStage({
           mode="picture"
         />
       )}
-      <StudentIdCameraGuideOverlay
-        stageWidth={stageWidth}
-        stageHeight={stageHeight}
-        frameWidth={frameWidth}
-        frameHeight={frameHeight}
-        statusText={statusText}
-        guideTextStyle={guideTextStyle}
-        overlayRootStyle={layerStyles.guideOverlay}
-        layerStyles={layerStyles}
-      />
+
+      {/* 레이아웃 확정 전: 가이드가 튀지 않도록 준비 중 화면 */}
+      {!stageReady ? (
+        <View style={styles.readyMask} pointerEvents="none">
+          <ActivityIndicator color={colors.primary} size="large" />
+          <Text style={styles.readyText}>카메라 준비 중…</Text>
+        </View>
+      ) : (
+        <StudentIdCameraGuideOverlay
+          stageWidth={stageWidth}
+          stageHeight={stageHeight}
+          frameWidth={frameWidth}
+          frameHeight={frameHeight}
+          statusText={statusText}
+          guideTextStyle={guideTextStyle}
+          overlayRootStyle={layerStyles.guideOverlay}
+          layerStyles={layerStyles}
+        />
+      )}
     </View>
   );
 }
@@ -103,5 +117,18 @@ const styles = StyleSheet.create({
     backgroundColor: '#000',
     borderRadius: 12,
     overflow: 'hidden',
+  },
+  readyMask: {
+    ...StyleSheet.absoluteFillObject,
+    zIndex: 2,
+    backgroundColor: '#000',
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: 12,
+  },
+  readyText: {
+    fontFamily: 'Baloo2-Regular',
+    fontSize: 14,
+    color: colors.textSecondary,
   },
 });

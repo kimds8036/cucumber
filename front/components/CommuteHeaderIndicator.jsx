@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useRef } from 'react';
 import { Animated, View, Text, useWindowDimensions } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import FontAwesome5 from '@expo/vector-icons/FontAwesome5';
 import { getNormalize } from '../styles/frame.style';
 import { createCommuteHeaderStyles } from '../styles/commute.style';
 import { colors } from '../styles/colors';
@@ -128,9 +129,9 @@ export default function CommuteHeaderIndicator({ enabled = true }) {
         </View>
       ) : (
         <>
-          <Ionicons
-            name="walk"
-            size={normalize(14)}
+          <FontAwesome5
+            name="walking"
+            size={normalize(12)}
             color={colors.primaryDark}
           />
           <CommuteDots styles={styles} activeIndex={activeDot} />

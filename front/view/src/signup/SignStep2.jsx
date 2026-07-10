@@ -1,5 +1,5 @@
 import React, { useMemo, useState, useEffect } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { colors, fonts, fontSizes } from '../../../styles/colors';
 import {
@@ -292,10 +292,12 @@ const localStyles = StyleSheet.create({
   },
   passwordInput: {
     flex: 1,
-    height: '100%',
+    alignSelf: 'stretch',
     paddingVertical: 0,
     paddingHorizontal: 0,
     color: colors.textPrimary,
+    textAlignVertical: 'center',
+    ...(Platform.OS === 'android' ? { includeFontPadding: false } : null),
   },
 });
 

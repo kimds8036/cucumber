@@ -379,12 +379,20 @@ router.get('/search', async (req, res) => {
       schoolSearchParams(safe),
     );
 
-    const schools = rows.map((s) => ({
-      id: s.school_id,
-      name: s.name,
-      region: s.region || '',
-      address: s.address || '',
-    }));
+    const schools = rows.map((s) => {
+      const address =
+        s.road_address ||
+        s.address ||
+        '';
+      const addressDetail = s.road_address_detail || '';
+      return {
+        id: s.school_id,
+        name: s.name,
+        region: s.region || '',
+        address,
+        addressDetail,
+      };
+    });
 
     res.json({ success: true, data: { schools } });
   } catch (error) {

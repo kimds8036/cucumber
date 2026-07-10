@@ -1,24 +1,63 @@
-import React from 'react';
-import { View, Text } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { View, Text, TextInput } from 'react-native';
+import { colors } from '../../../styles/colors';
+import SignupStepScroll from './SignupStepScroll';
 
-// 학생 인증 대체 단계: 증명서 제출 안내/입력 화면
-const SignStepCertificate = ({ styles }) => {
+const SignStepCertificate = ({
+  styles,
+  normalize,
+  bottomOffset,
+  onChange,
+}) => {
+  const [certificateUrl, setCertificateUrl] = useState('');
+  const [accessNumber, setAccessNumber] = useState('');
+
+  const notifyChange = (override = {}) => {
+    onChange?.({
+      certificateUrl,
+      accessNumber,
+      ...override,
+    });
+  };
+
+  useEffect(() => {
+    notifyChange();
+  }, [certificateUrl, accessNumber]);
+
   return (
-    <View style={styles.ageGateContainer}>
-      <View style={styles.ageGateCard}>
-        <Text style={styles.ageGateCardTitle}>졸업(예정)증명서 제출 안내</Text>
-        <Text style={styles.ageGateCardDescription}>
-          학생증이 없는 학교 재학생은 네이버에서 재학 중인 학교의
-          졸업(예정)증명서를 발급받아 우리 회사 보관함으로 제출해주세요.
-        </Text>
-      </View>
+    <View style={styles.certificateSubmitContainer}>
+      <SignupStepScroll normalize={normalize} bottomOffset={bottomOffset}>
+        <Text style={styles.inputLabel}>열람용 주소</Text>
+        <View style={[styles.inputWrapper, styles.inputRow]}>
+          <TextInput
+            style={styles.input}
+            value={certificateUrl}
+            onChangeText={(text) => {
+              setCertificateUrl(text);
+              notifyChange({ certificateUrl: text });
+            }}
+            autoCapitalize="none"
+            autoCorrect={false}
+            keyboardType="url"
+          />
+        </View>
 
-      <View style={styles.ageGateCard}>
-        <Text style={styles.ageGateCardTitle}>제출 전 확인</Text>
-        <Text style={styles.ageGateCardDescription}>
-          다음 단계에서 보관함 URL과 접수 번호를 입력하면 제출이 완료됩니다.
+        <Text style={[styles.inputLabel, styles.certificateSubmitLabelSpaced]}>
+          열람 번호
         </Text>
-      </View>
+        <View style={[styles.inputWrapper, styles.inputRow]}>
+          <TextInput
+            style={styles.input}
+            value={accessNumber}
+            onChangeText={(text) => {
+              setAccessNumber(text);
+              notifyChange({ accessNumber: text });
+            }}
+            autoCapitalize="none"
+            autoCorrect={false}
+          />
+        </View>
+      </SignupStepScroll>
     </View>
   );
 };

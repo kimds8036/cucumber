@@ -92,7 +92,7 @@ function GuideStepDescription({ parts, styles }) {
   );
 }
 
-const SignStepCertificateGuide = ({ styles, onProceed, testMode = false }) => {
+const SignStepCertificateGuide = ({ styles, onProceed }) => {
   const scrollRef = useRef(null);
   const [hasReachedBottom, setHasReachedBottom] = useState(false);
   const [viewportHeight, setViewportHeight] = useState(0);
@@ -159,7 +159,7 @@ const SignStepCertificateGuide = ({ styles, onProceed, testMode = false }) => {
         ))}
 
         <View style={styles.certificateGuideButtonSection}>
-          {!testMode && !hasReachedBottom ? (
+          {!hasReachedBottom ? (
             <Text style={styles.certificateGuideScrollHint}>
               가이드를 끝까지 내려 확인해 주세요
             </Text>
@@ -167,10 +167,10 @@ const SignStepCertificateGuide = ({ styles, onProceed, testMode = false }) => {
           <TouchableOpacity
             style={[
               styles.nextButton,
-              !testMode && !hasReachedBottom && styles.nextButtonDisabled,
+              !hasReachedBottom && styles.nextButtonDisabled,
             ]}
             activeOpacity={0.9}
-            disabled={!testMode && !hasReachedBottom}
+            disabled={!hasReachedBottom}
             onPress={onProceed}
           >
             <Text style={styles.nextButtonText}>증명서 제출하러 가기</Text>

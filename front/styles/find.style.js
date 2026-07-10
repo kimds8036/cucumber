@@ -1,4 +1,4 @@
-import { StyleSheet } from 'react-native';
+import { Platform, StyleSheet } from 'react-native';
 import { colors, fonts, fontSizes } from './colors';
 import { shadow } from './tokens';
 
@@ -37,7 +37,7 @@ export const createFindStyles = (width, normalize) => {
       fontSize: normalize(fontSizes.xl),
       fontFamily: fonts.regular,
       color: colors.textSecondary,
-      lineHeight: normalize(20),
+      lineHeight: normalize(22),
       paddingHorizontal: normalize(8),
     },
     contentSection: {
@@ -58,17 +58,22 @@ export const createFindStyles = (width, normalize) => {
     },
     input: {
       width: '98%',
-      height: normalize(50),
+      minHeight: normalize(50),
       borderWidth: 1,
       borderColor: colors.primary,
       borderRadius: normalize(24),
       paddingHorizontal: normalize(20),
+      paddingVertical: normalize(12),
       fontSize: normalize(fontSizes.xxl),
       fontFamily: fonts.regular,
       color: colors.textPrimary,
       marginBottom: normalize(12),
       backgroundColor: colors.background,
-      ...shadow.sm,
+      textAlignVertical: 'center',
+      ...Platform.select({
+        android: { includeFontPadding: false, elevation: 0 },
+        ios: shadow.sm,
+      }),
     },
     inputReadonly: {
       backgroundColor: colors.textLight5,
