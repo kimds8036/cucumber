@@ -26,6 +26,7 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "@kr-yeon/kisa-seed": "^1.0.5",
     "bcrypt": "^6.0.0",
     "bcryptjs": "^2.4.3",
     "bull": "^4.16.5",

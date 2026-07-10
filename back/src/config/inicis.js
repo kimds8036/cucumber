@@ -1,4 +1,5 @@
 import crypto from 'crypto';
+import { KISA_SEED_CBC } from '@kr-yeon/kisa-seed';
 
 /**
  * KG 이니시스 통합인증 설정.
@@ -123,6 +124,60 @@ export function hashLookup(value) {
   return crypto.createHmac('sha256', pepper).update(raw, 'utf8').digest('hex');
 }
 
+/** INICIS SEED 암호문 → 복호화 시도용 바이트 후보 (ds/ 접두·url-safe 대응) */
+function listInicisCipherByteCandidates(cipherTextB64) {
+  const raw = String(cipherTextB64 || '').trim();
+  if (!raw) return [];
+
+  const strings = raw.startsWith('ds/') ? [raw.slice(3), raw] : [raw];
+  const seen = new Set();
+  const out = [];
+
+  for (const candidate of strings) {
+    const norm = candidate.replace(/-/g, '+').replace(/_/g, '/');
+    if (seen.has(norm)) continue;
+    seen.add(norm);
+    try {
+      const buf = Buffer.from(norm, 'base64');
+      if (buf.length > 0) out.push(buf);
+    } catch {
+      // skip invalid base64
+    }
+  }
+  return out;
+}
+
+function decryptSeedCbcWithKisa(keyBuf, ivBuf, cipherBuf) {
+  const result = KISA_SEED_CBC.SEED_CBC_Decrypt(
+    new Uint8Array(keyBuf),
+    new Uint8Array(ivBuf),
+    new Uint8Array(cipherBuf),
+    0,
+    cipherBuf.length,
+  );
+  if (!result?.length) return null;
+  const plain = Buffer.from(result)
+    .toString('utf8')
+    .replace(/\0/g, '')
+    .trim();
+  return plain || null;
+}
+
+function decryptSeedCbcWithOpenssl(keyBuf, ivBuf, cipherBuf) {
+  if (!crypto.getCiphers().includes('seed-cbc')) return null;
+  try {
+    const decipher = crypto.createDecipheriv('seed-cbc', keyBuf, ivBuf);
+    decipher.setAutoPadding(true);
+    const plain = Buffer.concat([decipher.update(cipherBuf), decipher.final()])
+      .toString('utf8')
+      .replace(/\0/g, '')
+      .trim();
+    return plain || null;
+  } catch {
+    return null;
+  }
+}
+
 /**
  * SEED-CBC 복호화.
  * 매뉴얼(통합인증 복호화 팝업): KEY = STEP2 token 을 Base64 디코딩한 16byte, IV = 가맹점 SEED IV.
@@ -153,36 +208,30 @@ export function tryDecryptInicisField(cipherTextB64, { seedToken, seedIv, seedKe
       keyBuf = keyBuf.subarray(0, 16);
     } else {
       keyBuf = Buffer.from(staticKeyRaw, 'utf8').subarray(0, 16);
+      if (keyBuf.length < 16) {
+        keyBuf = Buffer.concat([keyBuf, Buffer.alloc(16 - keyBuf.length)]);
+      }
     }
 
     const ivBuf = Buffer.from(ivRaw, 'utf8');
-    const iv = ivBuf.length >= 16 ? ivBuf.subarray(0, 16) : Buffer.alloc(16);
-    const data = Buffer.from(String(cipherTextB64), 'base64');
+    const iv =
+      ivBuf.length >= 16 ? ivBuf.subarray(0, 16) : Buffer.concat([ivBuf, Buffer.alloc(16 - ivBuf.length)]);
 
-    const candidates = ['seed-cbc', 'aes-128-cbc'];
-    let lastErr = null;
-    for (const algo of candidates) {
-      try {
-        const key = algo === 'aes-128-cbc' ? keyBuf : keyBuf;
-        const decipher = crypto.createDecipheriv(algo, key, iv);
-        decipher.setAutoPadding(true);
-        const plain = Buffer.concat([
-          decipher.update(data),
-          decipher.final(),
-        ]).toString('utf8');
-        if (plain && !plain.includes('\u0000')) {
-          return { ok: true, value: plain.trim(), skipped: false, algo };
-        }
-      } catch (e) {
-        lastErr = e;
+    const cipherCandidates = listInicisCipherByteCandidates(cipherTextB64);
+    if (!cipherCandidates.length) {
+      return { ok: false, value: null, skipped: false, reason: 'invalid_cipher' };
+    }
+
+    for (const cipherBuf of cipherCandidates) {
+      const plain =
+        decryptSeedCbcWithKisa(keyBuf, iv, cipherBuf) ||
+        decryptSeedCbcWithOpenssl(keyBuf, iv, cipherBuf);
+      if (plain) {
+        return { ok: true, value: plain, skipped: false, algo: 'seed-cbc' };
       }
     }
-    return {
-      ok: false,
-      value: null,
-      skipped: false,
-      reason: lastErr?.message || 'decrypt_failed',
-    };
+
+    return { ok: false, value: null, skipped: false, reason: 'decrypt_failed' };
   } catch (e) {
     return { ok: false, value: null, skipped: false, reason: e?.message };
   }
