@@ -11,6 +11,7 @@ import {
   TouchableOpacity,
   useWindowDimensions,
   Alert,
+  InteractionManager,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRoute } from '@react-navigation/native';
@@ -36,6 +37,7 @@ import {
   clearPendingInicisSession,
   cancelInicisFlow,
   openPendingInicisBrowser,
+  dismissInicisBrowserSafely,
 } from '../../../services/inicisAuth';
 import {
   isValidUsername,
@@ -181,14 +183,79 @@ const Sign = ({ navigation }) => {
   const isMountedRef = useRef(true);
   const initialResumeInicisRef = useRef(route.params?.resumeInicis === true);
   const resumeInicisFromPendingRef = useRef(async () => {});
+  const birthDateInputRef = useRef('');
 
-  const endInicisOverlay = useCallback(() => {
+  const endInicisOverlay = useCallback(async () => {
+    await dismissInicisBrowserSafely();
     inicisFlowActiveRef.current = false;
     if (isMountedRef.current) {
       setInicisOverlayVisible(false);
       setInicisManualOpening(false);
     }
   }, []);
+
+  const showInicisAlertAfterOverlay = useCallback((title, message) => {
+    InteractionManager.runAfterInteractions(() => {
+      setTimeout(() => {
+        if (isMountedRef.current) {
+          Alert.alert(title, message);
+        }
+      }, 280);
+    });
+  }, []);
+
+  const evaluateStudentVerifyResult = useCallback(
+    (result) => {
+      const profile = result?.profile || {};
+      const verifiedName = String(profile.name || '').trim();
+      if (!verifiedName) {
+        return {
+          ok: false,
+          title: '본인인증 오류',
+          message:
+            '인증은 완료되었으나 이름 정보를 확인하지 못했습니다. 잠시 후 다시 시도해 주세요.',
+        };
+      }
+
+      const enteredBirthDate =
+        birthDateInputRef.current ||
+        birthDate ||
+        identityData.birthDate ||
+        formData.birthDate ||
+        '';
+      const verifiedBirthDate = normalizeBirthDateForCompare(profile.birthDate);
+
+      if (!verifiedBirthDate) {
+        return {
+          ok: false,
+          title: '본인인증 오류',
+          message:
+            '인증 결과에서 생년월일을 확인하지 못했습니다. 잠시 후 다시 시도해 주세요.',
+        };
+      }
+
+      if (!birthDatesMatch(enteredBirthDate, verifiedBirthDate)) {
+        return {
+          ok: false,
+          title: '본인인증 실패',
+          message:
+            '입력하신 생년월일과 본인인증 정보가 일치하지 않습니다.\n생년월일을 확인한 뒤 다시 시도해 주세요.',
+        };
+      }
+
+      return {
+        ok: true,
+        nextIdentity: {
+          name: verifiedName,
+          phoneNumber: profile.phoneNumber || INICIS_MOCK_PHONE,
+          birthDate: verifiedBirthDate,
+          isVerified: true,
+          inicisClientToken: result.clientToken,
+        },
+      };
+    },
+    [birthDate, formData.birthDate, identityData.birthDate],
+  );
 
   const handleInicisOverlayOpenManually = useCallback(async () => {
     if (inicisManualOpening) return;
@@ -209,7 +276,7 @@ const Sign = ({ navigation }) => {
 
   const handleInicisOverlayCancel = useCallback(async () => {
     cancelInicisFlow();
-    endInicisOverlay();
+    await endInicisOverlay();
     await clearPendingInicisSession();
   }, [endInicisOverlay]);
 
@@ -240,6 +307,7 @@ const Sign = ({ navigation }) => {
   }, [resetTo]);
 
   const applyBirthDateToState = useCallback((nextBirthDate) => {
+    birthDateInputRef.current = nextBirthDate;
     setBirthDate(nextBirthDate);
     setFormData((prev) => ({ ...prev, birthDate: nextBirthDate }));
     setIdentityData((prev) => ({ ...prev, birthDate: nextBirthDate }));
@@ -297,53 +365,16 @@ const Sign = ({ navigation }) => {
 
   const applyStudentVerifySuccess = useCallback(
     (result) => {
-      const profile = result.profile || {};
-      const verifiedName = String(profile.name || '').trim();
-      if (!verifiedName) {
-        Alert.alert(
-          '본인인증 오류',
-          '인증은 완료되었으나 이름 정보를 확인하지 못했습니다. 잠시 후 다시 시도해 주세요.',
-        );
-        return false;
+      const evaluation = evaluateStudentVerifyResult(result);
+      if (!evaluation.ok) {
+        return evaluation;
       }
-
-      const enteredBirthDate =
-        birthDate || identityData.birthDate || formData.birthDate || '';
-      const verifiedBirthDate = normalizeBirthDateForCompare(profile.birthDate);
-
-      if (!verifiedBirthDate) {
-        Alert.alert(
-          '본인인증 오류',
-          '인증 결과에서 생년월일을 확인하지 못했습니다. 잠시 후 다시 시도해 주세요.',
-        );
-        return false;
-      }
-
-      if (!birthDatesMatch(enteredBirthDate, verifiedBirthDate)) {
-        Alert.alert(
-          '본인인증 실패',
-          '입력하신 생년월일과 본인인증 정보가 일치하지 않습니다.\n생년월일을 확인한 뒤 다시 시도해 주세요.',
-        );
-        return false;
-      }
-
-      const nextIdentity = {
-        name: verifiedName,
-        phoneNumber: profile.phoneNumber || INICIS_MOCK_PHONE,
-        birthDate: verifiedBirthDate,
-        isVerified: true,
-        inicisClientToken: result.clientToken,
-      };
+      const { nextIdentity } = evaluation;
       setIdentityData((prev) => ({ ...prev, ...nextIdentity }));
       advanceToAccountAfterIdentity(nextIdentity);
-      return true;
+      return { ok: true };
     },
-    [
-      advanceToAccountAfterIdentity,
-      birthDate,
-      formData.birthDate,
-      identityData.birthDate,
-    ],
+    [advanceToAccountAfterIdentity, evaluateStudentVerifyResult],
   );
 
   const handleStudentVerifyError = useCallback((error) => {
@@ -435,7 +466,7 @@ const Sign = ({ navigation }) => {
       };
       setIdentityData((prev) => ({ ...prev, ...mockIdentity }));
       advanceToAccountAfterIdentity(mockIdentity);
-      return;
+      return { ok: true };
     }
 
     const clientOn = isInicisClientEnabled();
@@ -454,14 +485,12 @@ const Sign = ({ navigation }) => {
       };
       setIdentityData((prev) => ({ ...prev, ...mockIdentity }));
       advanceToAccountAfterIdentity(mockIdentity);
-      Alert.alert('알림', '본인인증이 완료되었습니다. (테스트 mock)');
-      return;
+      return { ok: true, mockAlert: '본인인증이 완료되었습니다. (테스트 mock)' };
     }
 
     const result = await executeInicisFlow('student_signup');
-    if (result) {
-      applyStudentVerifySuccess(result);
-    }
+    if (!result) return null;
+    return applyStudentVerifySuccess(result);
   }, [
     advanceToAccountAfterIdentity,
     applyStudentVerifySuccess,
@@ -506,21 +535,35 @@ const Sign = ({ navigation }) => {
       setInicisOverlayTitle(INICIS_OVERLAY_TITLE.STUDENT);
       setInicisOverlayVisible(true);
 
+      let evaluation = null;
       try {
-        await runStudentIdentityVerificationCore();
+        evaluation = await runStudentIdentityVerificationCore();
       } catch (error) {
         if (error?.code !== 'CANCELLED') {
           handleStudentVerifyError(error);
         }
       } finally {
-        endInicisOverlay();
+        await endInicisOverlay();
+      }
+
+      if (evaluation?.mockAlert) {
+        showInicisAlertAfterOverlay('알림', evaluation.mockAlert);
+        return;
+      }
+      if (evaluation && !evaluation.ok) {
+        showInicisAlertAfterOverlay(evaluation.title, evaluation.message);
       }
     },
-    [endInicisOverlay, handleStudentVerifyError, runStudentIdentityVerificationCore],
+    [
+      endInicisOverlay,
+      handleStudentVerifyError,
+      runStudentIdentityVerificationCore,
+      showInicisAlertAfterOverlay,
+    ],
   );
 
-  const promptStudentIdentityAfterGuardian = useCallback(() => {
-    endInicisOverlay();
+  const promptStudentIdentityAfterGuardian = useCallback(async () => {
+    await endInicisOverlay();
     setShowStudentIdentityIntroModal(true);
   }, [endInicisOverlay]);
 
@@ -533,12 +576,12 @@ const Sign = ({ navigation }) => {
 
     try {
       await runGuardianIdentityVerificationCore();
-      promptStudentIdentityAfterGuardian();
+      await promptStudentIdentityAfterGuardian();
     } catch (error) {
       if (error?.code !== 'CANCELLED') {
         handleGuardianVerifyError(error);
       }
-      endInicisOverlay();
+      await endInicisOverlay();
     }
   }, [
     endInicisOverlay,
@@ -575,14 +618,14 @@ const Sign = ({ navigation }) => {
         const result = await resumePendingInicisFlow('guardian_consent');
         if (result) {
           applyGuardianVerifySuccess(result);
-          promptStudentIdentityAfterGuardian();
+          await promptStudentIdentityAfterGuardian();
         }
       } catch (error) {
         if (error?.code !== 'CANCELLED') {
           handleGuardianVerifyError(error);
         }
       } finally {
-        endInicisOverlay();
+        await endInicisOverlay();
       }
       return;
     }
@@ -590,17 +633,21 @@ const Sign = ({ navigation }) => {
     if (pending.purpose === 'student_signup') {
       setInicisOverlayTitle(INICIS_OVERLAY_TITLE.STUDENT);
       setInicisOverlayVisible(true);
+      let evaluation = null;
       try {
         const result = await resumePendingInicisFlow('student_signup');
         if (result) {
-          applyStudentVerifySuccess(result);
+          evaluation = applyStudentVerifySuccess(result);
         }
       } catch (error) {
         if (error?.code !== 'CANCELLED') {
           handleStudentVerifyError(error);
         }
       } finally {
-        endInicisOverlay();
+        await endInicisOverlay();
+      }
+      if (evaluation && !evaluation.ok) {
+        showInicisAlertAfterOverlay(evaluation.title, evaluation.message);
       }
     }
   }, [
@@ -610,6 +657,7 @@ const Sign = ({ navigation }) => {
     handleGuardianVerifyError,
     handleStudentVerifyError,
     promptStudentIdentityAfterGuardian,
+    showInicisAlertAfterOverlay,
   ]);
 
   useEffect(() => {
@@ -633,7 +681,7 @@ const Sign = ({ navigation }) => {
       cancelInicisFlow();
       await clearPendingInicisSession();
       if (!cancelled) {
-        endInicisOverlay();
+        await endInicisOverlay();
       }
     })();
 

@@ -17,7 +17,10 @@ const SignupIdentityVerifyingOverlay = ({
   onOpenManually,
   onCancel,
   openingManually = false,
-}) => (
+}) => {
+  if (!visible) return null;
+
+  return (
   <Modal
     visible={visible}
     transparent
@@ -109,7 +112,8 @@ const SignupIdentityVerifyingOverlay = ({
       </View>
     </View>
   </Modal>
-);
+  );
+};
 
 const styles = StyleSheet.create({
   backdrop: {

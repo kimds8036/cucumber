@@ -334,6 +334,19 @@ export async function resumePendingInicisFlow(expectedPurpose, options = {}) {
   return activeFlowPromise;
 }
 
+export async function dismissInicisBrowserSafely() {
+  try {
+    await WebBrowser.dismissBrowser();
+  } catch {
+    // ignore
+  }
+  try {
+    await WebBrowser.coolDownAsync();
+  } catch {
+    // ignore
+  }
+}
+
 export function isInicisFlowInProgress() {
   return Boolean(activeFlowPromise);
 }

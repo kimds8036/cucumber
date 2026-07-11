@@ -14,7 +14,10 @@ const SignupStudentIdentityIntroModal = ({
   normalize,
   onStart,
   onCancel,
-}) => (
+}) => {
+  if (!visible) return null;
+
+  return (
   <Modal
     visible={visible}
     transparent
@@ -107,6 +110,7 @@ const SignupStudentIdentityIntroModal = ({
       </View>
     </TouchableWithoutFeedback>
   </Modal>
-);
+  );
+};
 
 export default SignupStudentIdentityIntroModal;
