@@ -19,6 +19,7 @@ import { colors } from '../../../styles/colors';
 import SignStepConsent from './SignStepConsent';
 import SignStepAgeGate from './SignStepAgeGate';
 import SignStepGuardianConsentModal from './SignStepGuardianConsentModal';
+import SignupStudentIdentityIntroModal from './SignupStudentIdentityIntroModal';
 import SignupIdentityVerifyingOverlay from './SignupIdentityVerifyingOverlay';
 import SignStep2 from './SignStep2';
 import SignStepStudentIdVerify from './SignStepStudentIdVerify';
@@ -50,6 +51,8 @@ import {
 import {
   classifyBirthDateCase,
   isValidBirthDateString,
+  birthDatesMatch,
+  normalizeBirthDateForCompare,
 } from './signupBirthDatePolicy';
 import {
   buildEnrollmentFromBirthDate,
@@ -144,6 +147,8 @@ const Sign = ({ navigation }) => {
     useState(null);
   const [showGuardianConsentModal, setShowGuardianConsentModal] =
     useState(false);
+  const [showStudentIdentityIntroModal, setShowStudentIdentityIntroModal] =
+    useState(false);
   const [recognizedData, setRecognizedData] = useState(null);
   const [studentVerified, setStudentVerified] = useState(false);
   const [studentVerificationToken, setStudentVerificationToken] =
@@ -180,6 +185,7 @@ const Sign = ({ navigation }) => {
     (isCameraStep && !SKIP_SIGNUP_VALIDATION_UNTIL_OCR_TEST) ||
     currentStep === STEP.CERTIFICATE_GUIDE ||
     showGuardianConsentModal ||
+    showStudentIdentityIntroModal ||
     inicisOverlayVisible;
 
   const identity = useMemo(
@@ -262,10 +268,31 @@ const Sign = ({ navigation }) => {
         );
         return false;
       }
+
+      const enteredBirthDate =
+        birthDate || identityData.birthDate || formData.birthDate || '';
+      const verifiedBirthDate = normalizeBirthDateForCompare(profile.birthDate);
+
+      if (!verifiedBirthDate) {
+        Alert.alert(
+          '본인인증 오류',
+          '인증 결과에서 생년월일을 확인하지 못했습니다. 잠시 후 다시 시도해 주세요.',
+        );
+        return false;
+      }
+
+      if (!birthDatesMatch(enteredBirthDate, verifiedBirthDate)) {
+        Alert.alert(
+          '본인인증 실패',
+          '입력하신 생년월일과 본인인증 정보가 일치하지 않습니다.\n생년월일을 확인한 뒤 다시 시도해 주세요.',
+        );
+        return false;
+      }
+
       const nextIdentity = {
         name: verifiedName,
         phoneNumber: profile.phoneNumber || INICIS_MOCK_PHONE,
-        birthDate: profile.birthDate || birthDate || identityData.birthDate || null,
+        birthDate: verifiedBirthDate,
         isVerified: true,
         inicisClientToken: result.clientToken,
       };
@@ -273,7 +300,12 @@ const Sign = ({ navigation }) => {
       advanceToAccountAfterIdentity(nextIdentity);
       return true;
     },
-    [advanceToAccountAfterIdentity, birthDate, identityData.birthDate],
+    [
+      advanceToAccountAfterIdentity,
+      birthDate,
+      formData.birthDate,
+      identityData.birthDate,
+    ],
   );
 
   const handleStudentVerifyError = useCallback((error) => {
@@ -448,6 +480,12 @@ const Sign = ({ navigation }) => {
     [handleStudentVerifyError, runStudentIdentityVerificationCore],
   );
 
+  const promptStudentIdentityAfterGuardian = useCallback(() => {
+    inicisFlowActiveRef.current = false;
+    setInicisOverlayVisible(false);
+    setShowStudentIdentityIntroModal(true);
+  }, []);
+
   const runGuardianAndStudentVerification = useCallback(async () => {
     if (inicisFlowActiveRef.current) return;
     inicisResumeStepRef.current = STEP.BIRTH_DATE;
@@ -456,26 +494,27 @@ const Sign = ({ navigation }) => {
     setInicisOverlayVisible(true);
 
     try {
-      try {
-        await runGuardianIdentityVerificationCore();
-      } catch (error) {
-        handleGuardianVerifyError(error);
-        return;
-      }
-      setInicisOverlayTitle(INICIS_OVERLAY_TITLE.STUDENT);
-      await runStudentIdentityVerificationCore();
+      await runGuardianIdentityVerificationCore();
+      promptStudentIdentityAfterGuardian();
     } catch (error) {
-      handleStudentVerifyError(error);
-    } finally {
+      handleGuardianVerifyError(error);
       inicisFlowActiveRef.current = false;
       setInicisOverlayVisible(false);
     }
   }, [
     handleGuardianVerifyError,
-    handleStudentVerifyError,
+    promptStudentIdentityAfterGuardian,
     runGuardianIdentityVerificationCore,
-    runStudentIdentityVerificationCore,
   ]);
+
+  const handleStudentIdentityIntroStart = () => {
+    setShowStudentIdentityIntroModal(false);
+    void runStudentIdentityVerification(STEP.BIRTH_DATE);
+  };
+
+  const handleStudentIdentityIntroCancel = () => {
+    setShowStudentIdentityIntroModal(false);
+  };
 
   const resumeInicisFromPending = useCallback(async () => {
     if (
@@ -501,12 +540,10 @@ const Sign = ({ navigation }) => {
         const result = await resumePendingInicisFlow('guardian_consent');
         if (result) {
           applyGuardianVerifySuccess(result);
-          setInicisOverlayTitle(INICIS_OVERLAY_TITLE.STUDENT);
-          await runStudentIdentityVerificationCore();
+          promptStudentIdentityAfterGuardian();
         }
       } catch (error) {
         handleGuardianVerifyError(error);
-      } finally {
         inicisFlowActiveRef.current = false;
         setInicisOverlayVisible(false);
       }
@@ -533,6 +570,7 @@ const Sign = ({ navigation }) => {
     applyStudentVerifySuccess,
     handleGuardianVerifyError,
     handleStudentVerifyError,
+    promptStudentIdentityAfterGuardian,
     runStudentIdentityVerificationCore,
   ]);
 
@@ -548,6 +586,10 @@ const Sign = ({ navigation }) => {
   }, [resumeInicisFromPending]);
 
   const handleBack = () => {
+    if (showStudentIdentityIntroModal) {
+      setShowStudentIdentityIntroModal(false);
+      return;
+    }
     if (inicisOverlayVisible) {
       Alert.alert(
         '본인인증 중단',
@@ -677,6 +719,10 @@ const Sign = ({ navigation }) => {
 
     if (birthCase === 'C') {
       setRequiresGuardianVerification(true);
+      if (guardianVerified) {
+        setShowStudentIdentityIntroModal(true);
+        return;
+      }
       setGuardianVerified(false);
       setGuardianVerifiedAt(null);
       setShowGuardianConsentModal(true);
@@ -696,6 +742,10 @@ const Sign = ({ navigation }) => {
       consents: { ...prev.consents, guardian: true },
       allConsented: true,
     }));
+    if (guardianVerified) {
+      setShowStudentIdentityIntroModal(true);
+      return;
+    }
     void runGuardianAndStudentVerification();
   };
 
@@ -1236,6 +1286,13 @@ const Sign = ({ navigation }) => {
         normalize={normalize}
         onStart={handleGuardianConsentStart}
         onLater={handleGuardianConsentLater}
+      />
+
+      <SignupStudentIdentityIntroModal
+        visible={showStudentIdentityIntroModal}
+        normalize={normalize}
+        onStart={handleStudentIdentityIntroStart}
+        onCancel={handleStudentIdentityIntroCancel}
       />
 
       <SignupIdentityVerifyingOverlay
