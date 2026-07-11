@@ -33,6 +33,26 @@ export function isValidBirthDateString(birthDate) {
   );
 }
 
+/** YYYY-MM-DD · YYYYMMDD 등을 비교용 YYYY-MM-DD 로 통일 */
+export function normalizeBirthDateForCompare(value) {
+  if (value == null || value === '') return null;
+  const raw = String(value).trim();
+  if (/^\d{4}-\d{2}-\d{2}$/.test(raw)) {
+    return isValidBirthDateString(raw) ? raw : null;
+  }
+  const digits = raw.replace(/\D/g, '');
+  if (digits.length !== 8) return null;
+  const iso = `${digits.slice(0, 4)}-${digits.slice(4, 6)}-${digits.slice(6, 8)}`;
+  return isValidBirthDateString(iso) ? iso : null;
+}
+
+export function birthDatesMatch(entered, verified) {
+  const normalizedEntered = normalizeBirthDateForCompare(entered);
+  const normalizedVerified = normalizeBirthDateForCompare(verified);
+  if (!normalizedEntered || !normalizedVerified) return false;
+  return normalizedEntered === normalizedVerified;
+}
+
 function formatDateParts(year, month, day) {
   return `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
 }

@@ -1058,7 +1058,7 @@ router.post('/signup', blockWhenFlag('signup_disabled'), validate(signupValidato
         try {
           const studentConsumed = await consumeIdentityVerificationClientToken(
             studentInicisClientToken,
-            { purpose: 'student_signup' },
+            { purpose: 'student_signup', expectedBirthDate: birthDate },
             connection,
           );
           identityLinkIds.push(studentConsumed.id);
