@@ -103,7 +103,7 @@ export function classifyBirthDateCase(birthDate, ref = new Date()) {
 export function getTooOldAlertMessage(ref = new Date()) {
   const { minYear } = getBirthDateBoundaries(ref);
   return (
-    `유스페이퍼는 중고등학생 커뮤니티로,\n${minYear}년 01월 01일 이후 출생자부터 가입할 수 있어요.\n` +
+    `Youth Paper는 중고등학생 커뮤니티로,\n${minYear}년 01월 01일 이후 출생자부터 가입할 수 있어요.\n` +
     '현재 연령으로는 서비스를 이용하실 수 없습니다.'
   );
 }
@@ -111,7 +111,7 @@ export function getTooOldAlertMessage(ref = new Date()) {
 export function getTooYoungAlertMessage(ref = new Date()) {
   const { maxYear } = getBirthDateBoundaries(ref);
   return (
-    `Youth Paper는 중고등학생 커뮤니티로, ${maxYear}년 12월 31일 이전 출생자까지만 가입할 수 있어요.\n` +
+    `Youth Paper는 중고등학생 커뮤니티로, \n${maxYear}년 12월 31일 이전 출생자까지만 가입할 수 있어요.\n` +
     '현재 연령으로는 서비스를 이용하실 수 없습니다.'
   );
 }
