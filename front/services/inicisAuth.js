@@ -337,3 +337,15 @@ export async function resumePendingInicisFlow(expectedPurpose, options = {}) {
 export function isInicisFlowInProgress() {
   return Boolean(activeFlowPromise);
 }
+
+/** 로딩 오버레이 「직접 열기」— pending 세션 launch URL 재오픈 (폴링 유지) */
+export async function openPendingInicisBrowser() {
+  const pending = await getPendingInicisSession();
+  if (!pending?.mTxId) {
+    const err = new Error('진행 중인 본인인증 세션이 없습니다.');
+    err.code = 'NO_PENDING_SESSION';
+    throw err;
+  }
+  const launchUrl = buildInicisLaunchUrl(pending.mTxId);
+  await openInicisBrowser(launchUrl);
+}

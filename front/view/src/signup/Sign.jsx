@@ -35,6 +35,7 @@ import {
   runInicisIdentityFlow,
   clearPendingInicisSession,
   cancelInicisFlow,
+  openPendingInicisBrowser,
 } from '../../../services/inicisAuth';
 import {
   isValidUsername,
@@ -173,6 +174,7 @@ const Sign = ({ navigation }) => {
   const [inicisOverlayTitle, setInicisOverlayTitle] = useState(
     INICIS_OVERLAY_TITLE.STUDENT,
   );
+  const [inicisManualOpening, setInicisManualOpening] = useState(false);
 
   const inicisResumeStepRef = useRef(STEP.BIRTH_DATE);
   const inicisFlowActiveRef = useRef(false);
@@ -184,8 +186,32 @@ const Sign = ({ navigation }) => {
     inicisFlowActiveRef.current = false;
     if (isMountedRef.current) {
       setInicisOverlayVisible(false);
+      setInicisManualOpening(false);
     }
   }, []);
+
+  const handleInicisOverlayOpenManually = useCallback(async () => {
+    if (inicisManualOpening) return;
+    setInicisManualOpening(true);
+    try {
+      await openPendingInicisBrowser();
+    } catch (error) {
+      Alert.alert(
+        '알림',
+        error?.message || '인증 페이지를 열 수 없습니다. 잠시 후 다시 시도해 주세요.',
+      );
+    } finally {
+      if (isMountedRef.current) {
+        setInicisManualOpening(false);
+      }
+    }
+  }, [inicisManualOpening]);
+
+  const handleInicisOverlayCancel = useCallback(async () => {
+    cancelInicisFlow();
+    endInicisOverlay();
+    await clearPendingInicisSession();
+  }, [endInicisOverlay]);
 
   const styles = useMemo(() => createSignupStyles(width, normalize), [width]);
 
@@ -634,10 +660,8 @@ const Sign = ({ navigation }) => {
           {
             text: '중단',
             style: 'destructive',
-            onPress: async () => {
-              cancelInicisFlow();
-              endInicisOverlay();
-              await clearPendingInicisSession();
+            onPress: () => {
+              void handleInicisOverlayCancel();
             },
           },
         ],
@@ -1336,6 +1360,9 @@ const Sign = ({ navigation }) => {
         visible={inicisOverlayVisible}
         title={inicisOverlayTitle}
         normalize={normalize}
+        onOpenManually={handleInicisOverlayOpenManually}
+        onCancel={handleInicisOverlayCancel}
+        openingManually={inicisManualOpening}
       />
 
       {!hideFooter && (
