@@ -1,3 +1,4 @@
+import { useCallback, useMemo } from 'react';
 import {
   useNavigation,
   CommonActions,
@@ -18,19 +19,22 @@ import {
 export function useAppNavigation() {
   const navigation = useNavigation();
 
-  return {
-    /** 일반 화면 이동 (스택에 push) */
-    goTo: (name, params) => {
+  const goTo = useCallback(
+    (name, params) => {
       navigation.navigate(name, params);
     },
+    [navigation],
+  );
 
-    /** 현재 화면을 새 화면으로 대체 (뒤로가기 시 이전 화면으로 돌아가지 않음) */
-    replaceWith: (name, params) => {
+  const replaceWith = useCallback(
+    (name, params) => {
       navigation.dispatch(StackActions.replace(name, params ?? {}));
     },
+    [navigation],
+  );
 
-    /** 전체 스택을 비우고 해당 화면만 루트로 설정 (로그인/로그아웃 등) */
-    resetTo: (name, params) => {
+  const resetTo = useCallback(
+    (name, params) => {
       navigation.dispatch(
         CommonActions.reset({
           index: 0,
@@ -38,12 +42,17 @@ export function useAppNavigation() {
         }),
       );
     },
+    [navigation],
+  );
 
-    /** 이전 화면으로 돌아가기 */
-    goBack: () => {
-      if (navigation.canGoBack()) {
-        navigation.goBack();
-      }
-    },
-  };
+  const goBack = useCallback(() => {
+    if (navigation.canGoBack()) {
+      navigation.goBack();
+    }
+  }, [navigation]);
+
+  return useMemo(
+    () => ({ goTo, replaceWith, resetTo, goBack }),
+    [goTo, replaceWith, resetTo, goBack],
+  );
 }

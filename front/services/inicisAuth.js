@@ -1,7 +1,7 @@
 import * as WebBrowser from 'expo-web-browser';
 import * as Linking from 'expo-linking';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { AppState } from 'react-native';
+import { AppState, Platform } from 'react-native';
 import { api } from '../utils/api';
 import { getUserFacingErrorMessage } from '../utils/userFacingError';
 
@@ -32,6 +32,11 @@ export function cancelInicisFlow() {
 /** KG 이니시스 연동 시 앱 복귀 URL (서버 allowlist용 — 자동 딥링크 이동은 사용하지 않음) */
 export function getInicisAppReturnUrl() {
   return Linking.createURL('inicis/return');
+}
+
+function buildInicisLaunchUrl(mTxId) {
+  const base = String(api.defaults.baseURL || '').replace(/\/+$/, '');
+  return `${base}/api/auth/inicis/launch/${encodeURIComponent(mTxId)}`;
 }
 
 export function isInicisClientEnabled() {
@@ -222,10 +227,15 @@ async function openInicisBrowser(launchUrl) {
   } catch {
     // ignore
   }
-  return WebBrowser.openBrowserAsync(launchUrl, {
-    showInRecents: true,
-    createTask: false,
-  });
+  const options =
+    Platform.OS === 'ios'
+      ? {
+          presentationStyle:
+            WebBrowser.WebBrowserPresentationStyle?.FULL_SCREEN ??
+            WebBrowser.WebBrowserPresentationStyle?.PAGE_SHEET,
+        }
+      : { showInRecents: true, createTask: false };
+  return WebBrowser.openBrowserAsync(launchUrl, options);
 }
 
 export async function runInicisIdentityFlow(purpose, options = {}) {
@@ -248,7 +258,7 @@ export async function runInicisIdentityFlow(purpose, options = {}) {
       mTxId = session.mTxId;
       await savePendingSession({ mTxId, purpose });
 
-      const browserPromise = openInicisBrowser(session.launchUrl);
+      await openInicisBrowser(session.launchUrl);
       const result = await waitForInicisResult(mTxId, {
         ...options,
         shouldCancel: () => cancelled,
@@ -260,7 +270,6 @@ export async function runInicisIdentityFlow(purpose, options = {}) {
       } catch {
         // ignore
       }
-      await browserPromise.catch(() => {});
 
       return result;
     } catch (e) {
@@ -294,9 +303,11 @@ export async function resumePendingInicisFlow(expectedPurpose, options = {}) {
       cancelled = true;
     });
     try {
+      const launchUrl = buildInicisLaunchUrl(pending.mTxId);
+      await openInicisBrowser(launchUrl);
       const result = await waitForInicisResult(pending.mTxId, {
-        timeoutMs: 60 * 1000,
-        intervalMs: 800,
+        timeoutMs: 5 * 60 * 1000,
+        intervalMs: 1500,
         shouldCancel: () => cancelled,
         ...options,
       });

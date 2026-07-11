@@ -178,6 +178,7 @@ const Sign = ({ navigation }) => {
   const inicisFlowActiveRef = useRef(false);
   const isMountedRef = useRef(true);
   const initialResumeInicisRef = useRef(route.params?.resumeInicis === true);
+  const resumeInicisFromPendingRef = useRef(async () => {});
 
   const endInicisOverlay = useCallback(() => {
     inicisFlowActiveRef.current = false;
@@ -586,6 +587,10 @@ const Sign = ({ navigation }) => {
   ]);
 
   useEffect(() => {
+    resumeInicisFromPendingRef.current = resumeInicisFromPending;
+  }, [resumeInicisFromPending]);
+
+  useEffect(() => {
     isMountedRef.current = true;
     let cancelled = false;
     const shouldResume = initialResumeInicisRef.current;
@@ -594,7 +599,7 @@ const Sign = ({ navigation }) => {
       if (shouldResume) {
         navigation.setParams({ resumeInicis: undefined });
         if (!cancelled) {
-          await resumeInicisFromPending();
+          await resumeInicisFromPendingRef.current();
         }
         return;
       }
@@ -611,7 +616,9 @@ const Sign = ({ navigation }) => {
       isMountedRef.current = false;
       cancelInicisFlow();
     };
-  }, [endInicisOverlay, navigation, resumeInicisFromPending]);
+    // 마운트 1회만 — resumeInicisFromPending 의존 시 setParams 무한 루프
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const handleBack = () => {
     if (showStudentIdentityIntroModal) {
