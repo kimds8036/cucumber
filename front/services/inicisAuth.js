@@ -12,6 +12,22 @@ const PENDING_TTL_MS = 30 * 60 * 1000;
 
 /** 동시에 하나의 인증 브라우저만 */
 let activeFlowPromise = null;
+let activeFlowCancel = null;
+
+function registerFlowCancel(onCancel) {
+  activeFlowCancel = onCancel;
+}
+
+function clearFlowCancel() {
+  activeFlowCancel = null;
+}
+
+/** Sign 화면 이탈·중단 시 진행 중 폴링 취소 */
+export function cancelInicisFlow() {
+  activeFlowCancel?.();
+  clearFlowCancel();
+  activeFlowPromise = null;
+}
 
 /** KG 이니시스 연동 시 앱 복귀 URL (서버 allowlist용 — 자동 딥링크 이동은 사용하지 않음) */
 export function getInicisAppReturnUrl() {
@@ -221,6 +237,10 @@ export async function runInicisIdentityFlow(purpose, options = {}) {
 
   activeFlowPromise = (async () => {
     let mTxId = null;
+    let cancelled = false;
+    registerFlowCancel(() => {
+      cancelled = true;
+    });
     try {
       const session = await startInicisSession(purpose, {
         appReturnUrl: getInicisAppReturnUrl(),
@@ -229,7 +249,10 @@ export async function runInicisIdentityFlow(purpose, options = {}) {
       await savePendingSession({ mTxId, purpose });
 
       const browserPromise = openInicisBrowser(session.launchUrl);
-      const result = await waitForInicisResult(mTxId, options);
+      const result = await waitForInicisResult(mTxId, {
+        ...options,
+        shouldCancel: () => cancelled,
+      });
       await clearPendingInicisSession();
 
       try {
@@ -241,13 +264,16 @@ export async function runInicisIdentityFlow(purpose, options = {}) {
 
       return result;
     } catch (e) {
-      if (e?.code === 'TIMEOUT' || e?.code === 'CANCELLED') {
-        // pending 유지 — 앱 재실행·수동 복귀 시 resumePendingInicisFlow 로 이어감
+      if (e?.code === 'CANCELLED') {
+        // pending 유지 — cold start 재개용 (Sign 진입 시 정리)
+      } else if (e?.code === 'TIMEOUT') {
+        // pending 유지 — 수동 복귀 후 재시도
       } else {
         await clearPendingInicisSession();
       }
       throw e;
     } finally {
+      clearFlowCancel();
       activeFlowPromise = null;
     }
   })();
@@ -263,10 +289,15 @@ export async function resumePendingInicisFlow(expectedPurpose, options = {}) {
   if (activeFlowPromise) return activeFlowPromise;
 
   activeFlowPromise = (async () => {
+    let cancelled = false;
+    registerFlowCancel(() => {
+      cancelled = true;
+    });
     try {
       const result = await waitForInicisResult(pending.mTxId, {
         timeoutMs: 60 * 1000,
         intervalMs: 800,
+        shouldCancel: () => cancelled,
         ...options,
       });
       await clearPendingInicisSession();
@@ -276,7 +307,15 @@ export async function resumePendingInicisFlow(expectedPurpose, options = {}) {
         // ignore
       }
       return result;
+    } catch (e) {
+      if (e?.code === 'TIMEOUT') {
+        // pending 유지 — App cold start 재개용
+      } else if (e?.code !== 'CANCELLED') {
+        await clearPendingInicisSession();
+      }
+      throw e;
     } finally {
+      clearFlowCancel();
       activeFlowPromise = null;
     }
   })();

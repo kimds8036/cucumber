@@ -13,6 +13,7 @@ import {
   Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useRoute } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { createSignupStyles } from '../../../styles/login.style';
 import { colors } from '../../../styles/colors';
@@ -33,6 +34,7 @@ import {
   resumePendingInicisFlow,
   runInicisIdentityFlow,
   clearPendingInicisSession,
+  cancelInicisFlow,
 } from '../../../services/inicisAuth';
 import {
   isValidUsername,
@@ -129,6 +131,7 @@ function getSignupProgressStep(currentStep, { studentVerified }) {
 }
 
 const Sign = ({ navigation }) => {
+  const route = useRoute();
   const { login } = useAuth();
   const { resetTo } = useAppNavigation();
   const { width } = useWindowDimensions();
@@ -173,7 +176,15 @@ const Sign = ({ navigation }) => {
 
   const inicisResumeStepRef = useRef(STEP.BIRTH_DATE);
   const inicisFlowActiveRef = useRef(false);
-  const coldStartResumeAttemptedRef = useRef(false);
+  const isMountedRef = useRef(true);
+  const initialResumeInicisRef = useRef(route.params?.resumeInicis === true);
+
+  const endInicisOverlay = useCallback(() => {
+    inicisFlowActiveRef.current = false;
+    if (isMountedRef.current) {
+      setInicisOverlayVisible(false);
+    }
+  }, []);
 
   const styles = useMemo(() => createSignupStyles(width, normalize), [width]);
 
@@ -471,20 +482,20 @@ const Sign = ({ navigation }) => {
       try {
         await runStudentIdentityVerificationCore();
       } catch (error) {
-        handleStudentVerifyError(error);
+        if (error?.code !== 'CANCELLED') {
+          handleStudentVerifyError(error);
+        }
       } finally {
-        inicisFlowActiveRef.current = false;
-        setInicisOverlayVisible(false);
+        endInicisOverlay();
       }
     },
-    [handleStudentVerifyError, runStudentIdentityVerificationCore],
+    [endInicisOverlay, handleStudentVerifyError, runStudentIdentityVerificationCore],
   );
 
   const promptStudentIdentityAfterGuardian = useCallback(() => {
-    inicisFlowActiveRef.current = false;
-    setInicisOverlayVisible(false);
+    endInicisOverlay();
     setShowStudentIdentityIntroModal(true);
-  }, []);
+  }, [endInicisOverlay]);
 
   const runGuardianAndStudentVerification = useCallback(async () => {
     if (inicisFlowActiveRef.current) return;
@@ -497,11 +508,13 @@ const Sign = ({ navigation }) => {
       await runGuardianIdentityVerificationCore();
       promptStudentIdentityAfterGuardian();
     } catch (error) {
-      handleGuardianVerifyError(error);
-      inicisFlowActiveRef.current = false;
-      setInicisOverlayVisible(false);
+      if (error?.code !== 'CANCELLED') {
+        handleGuardianVerifyError(error);
+      }
+      endInicisOverlay();
     }
   }, [
+    endInicisOverlay,
     handleGuardianVerifyError,
     promptStudentIdentityAfterGuardian,
     runGuardianIdentityVerificationCore,
@@ -517,17 +530,12 @@ const Sign = ({ navigation }) => {
   };
 
   const resumeInicisFromPending = useCallback(async () => {
-    if (
-      coldStartResumeAttemptedRef.current ||
-      inicisFlowActiveRef.current ||
-      SKIP_SIGNUP_VALIDATION_UNTIL_OCR_TEST
-    ) {
+    if (inicisFlowActiveRef.current || SKIP_SIGNUP_VALIDATION_UNTIL_OCR_TEST) {
       return;
     }
     const pending = await getPendingInicisSession();
     if (!pending) return;
 
-    coldStartResumeAttemptedRef.current = true;
     inicisResumeStepRef.current = STEP.BIRTH_DATE;
     inicisFlowActiveRef.current = true;
 
@@ -543,9 +551,11 @@ const Sign = ({ navigation }) => {
           promptStudentIdentityAfterGuardian();
         }
       } catch (error) {
-        handleGuardianVerifyError(error);
-        inicisFlowActiveRef.current = false;
-        setInicisOverlayVisible(false);
+        if (error?.code !== 'CANCELLED') {
+          handleGuardianVerifyError(error);
+        }
+      } finally {
+        endInicisOverlay();
       }
       return;
     }
@@ -559,31 +569,49 @@ const Sign = ({ navigation }) => {
           applyStudentVerifySuccess(result);
         }
       } catch (error) {
-        handleStudentVerifyError(error);
+        if (error?.code !== 'CANCELLED') {
+          handleStudentVerifyError(error);
+        }
       } finally {
-        inicisFlowActiveRef.current = false;
-        setInicisOverlayVisible(false);
+        endInicisOverlay();
       }
     }
   }, [
     applyGuardianVerifySuccess,
     applyStudentVerifySuccess,
+    endInicisOverlay,
     handleGuardianVerifyError,
     handleStudentVerifyError,
     promptStudentIdentityAfterGuardian,
-    runStudentIdentityVerificationCore,
   ]);
 
   useEffect(() => {
+    isMountedRef.current = true;
     let cancelled = false;
+    const shouldResume = initialResumeInicisRef.current;
+
     (async () => {
-      if (cancelled) return;
-      await resumeInicisFromPending();
+      if (shouldResume) {
+        navigation.setParams({ resumeInicis: undefined });
+        if (!cancelled) {
+          await resumeInicisFromPending();
+        }
+        return;
+      }
+
+      cancelInicisFlow();
+      await clearPendingInicisSession();
+      if (!cancelled) {
+        endInicisOverlay();
+      }
     })();
+
     return () => {
       cancelled = true;
+      isMountedRef.current = false;
+      cancelInicisFlow();
     };
-  }, [resumeInicisFromPending]);
+  }, [endInicisOverlay, navigation, resumeInicisFromPending]);
 
   const handleBack = () => {
     if (showStudentIdentityIntroModal) {
@@ -600,8 +628,8 @@ const Sign = ({ navigation }) => {
             text: '중단',
             style: 'destructive',
             onPress: async () => {
-              inicisFlowActiveRef.current = false;
-              setInicisOverlayVisible(false);
+              cancelInicisFlow();
+              endInicisOverlay();
               await clearPendingInicisSession();
             },
           },
@@ -610,6 +638,8 @@ const Sign = ({ navigation }) => {
       return;
     }
     if (currentStep === STEP.CONSENT) {
+      cancelInicisFlow();
+      void clearPendingInicisSession();
       navigation.goBack();
       return;
     }

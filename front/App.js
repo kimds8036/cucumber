@@ -241,7 +241,7 @@ function RootNavigator() {
         if (!navigationRef.isReady()) return false;
         const route = navigationRef.getCurrentRoute?.();
         if (route?.name !== 'Sign') {
-          navigationRef.navigate('Sign');
+          navigationRef.navigate('Sign', { resumeInicis: true });
         }
         return true;
       };
