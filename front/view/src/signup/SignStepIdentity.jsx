@@ -17,6 +17,7 @@ import {
 import { e164ToLocalKr, normalizeLocalKrPhone } from '../../../utils/phoneFormat';
 import SignupStepScroll from './SignupStepScroll';
 import SchoolSearchField from './SchoolSearchField';
+import SignupHelperText from './SignupHelperText';
 
 const SMS_RESEND_COOLDOWN_SEC = 60;
 
@@ -400,11 +401,9 @@ const SignStepIdentity = ({
         ) : null}
 
         {isVerified ? (
-          <Text
-            style={[styles.fieldHelperText, styles.fieldHelperTextSuccess]}
-          >
+          <SignupHelperText normalize={normalize} variant="success">
             전화번호 인증이 완료되었습니다.
-          </Text>
+          </SignupHelperText>
         ) : null}
       </SignupStepScroll>
     </View>

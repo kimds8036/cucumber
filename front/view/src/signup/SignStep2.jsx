@@ -13,6 +13,7 @@ import {
 import SignupLockedField from './SignupLockedField';
 import SignupStepScroll from './SignupStepScroll';
 import SchoolSearchField from './SchoolSearchField';
+import SignupHelperText from './SignupHelperText';
 
 const SignStep2 = ({
   styles,
@@ -135,26 +136,41 @@ const SignStep2 = ({
   const renderFieldFeedback = (status, { validText, invalidText, hintText }) => {
     if (status === 'idle') {
       return hintText ? (
-        <Text style={styles.fieldHelperText}>{hintText}</Text>
+        <SignupHelperText normalize={normalize} tight>
+          {hintText}
+        </SignupHelperText>
       ) : null;
     }
     const isOk = status === 'valid' || status === 'match';
     return (
-      <Text
-        style={[
-          styles.fieldHelperText,
-          isOk ? styles.fieldHelperTextSuccess : styles.fieldHelperTextError,
-        ]}
+      <SignupHelperText
+        normalize={normalize}
+        variant={isOk ? 'success' : 'error'}
+        tight
       >
         {isOk ? validText : invalidText}
-      </Text>
+      </SignupHelperText>
     );
   };
 
   return (
     <View style={{ flex: 1 }}>
       <SignupStepScroll normalize={normalize} bottomOffset={bottomOffset}>
-        {!accountOnly ? (
+        {accountOnly ? (
+          verifiedName ? (
+            <>
+              <SignupLockedField
+                label="이름"
+                value={verifiedName}
+                styles={styles}
+                compactBottom
+              />
+              <SignupHelperText normalize={normalize} variant="emphasis">
+                본인인증으로 확인된 이름이며 변경할 수 없습니다.
+              </SignupHelperText>
+            </>
+          ) : null
+        ) : (
           <>
             <SignupLockedField
               label="이름"
@@ -176,9 +192,14 @@ const SignStep2 = ({
               />
             ) : null}
           </>
-        ) : null}
+        )}
 
-        <Text style={[styles.inputLabel, !accountOnly && { marginTop: 8 }]}>
+        <Text
+          style={[
+            styles.inputLabel,
+            (verifiedName || !accountOnly) && localStyles.spacedLabel,
+          ]}
+        >
           아이디
         </Text>
         <View style={styles.inputWrapper}>
@@ -242,15 +263,10 @@ const SignStep2 = ({
               selectedSchool={selectedSchool}
               onSelect={onSchoolSelect}
             />
-            <Text
-              style={[
-                styles.fieldHelperText,
-                { marginTop: 4, lineHeight: normalize(18) },
-              ]}
-            >
+            <SignupHelperText normalize={normalize}>
               입력하신 학교는 이후 학생증 인증 단계에서 재학 여부를 확인하는 데
               사용됩니다.
-            </Text>
+            </SignupHelperText>
           </>
         ) : null}
 

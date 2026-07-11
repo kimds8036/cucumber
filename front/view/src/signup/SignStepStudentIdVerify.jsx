@@ -21,11 +21,13 @@ import {
 import StudentIdCaptureStage, {
   useStudentIdCapture,
 } from '../../../components/auth/StudentIdCaptureStage';
+import SignupHelperText from './SignupHelperText';
 
 const UPLOAD_TIMEOUT_MS = 120_000;
 
 const SignStepStudentIdVerify = ({
   styles,
+  normalize = (n) => n,
   identity,
   schoolId,
   alreadyVerified = false,
@@ -185,20 +187,15 @@ const SignStepStudentIdVerify = ({
         <Text style={[styles.inputLabel, { textAlign: 'center' }]}>
           학생증 촬영이 완료되었습니다.
         </Text>
-        <Text
-          style={{
-            marginTop: 8,
-            color: colors.textSecondary,
-            fontFamily: 'Baloo2-Regular',
-            fontSize: 13,
-            textAlign: 'center',
-            lineHeight: 20,
-            paddingHorizontal: 16,
-          }}
+        <SignupHelperText
+          normalize={normalize}
+          centered
+          showIcon={false}
+          style={{ marginTop: normalize(8) }}
         >
           아래 [제출하기]를 누르면 가입이 완료되고, 관리자 승인 대기 화면으로
           이동합니다.
-        </Text>
+        </SignupHelperText>
       </View>
     );
   }

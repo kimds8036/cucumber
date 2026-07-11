@@ -10,7 +10,7 @@ import {
   getKstYesterday0000ThroughToday235959UtcForSql,
   getNowForDB,
 } from '../utils/dateUtils.js';
-import { cloudinary, upload } from '../config/cloudinary.js';
+import { cloudinary, uploadPost } from '../config/cloudinary.js';
 import { haversineKm, sqlHaversineKmLessOrEqual } from '../utils/geo.js';
 import { appendUserBlockFilter } from '../utils/userBlockFilter.js';
 import { blockWhenFlag } from '../middleware/systemFlags.js';
@@ -1207,7 +1207,7 @@ router.get('/:id', optionalAuthenticate, async (req, res) => {
 });
 
 // 게시글 작성
-router.post('/', authenticate, blockWhenFlag('post_write_disabled'), upload.array('images', 5), validate(postCreateValidators), async (req, res) => {
+router.post('/', authenticate, blockWhenFlag('post_write_disabled'), uploadPost.array('images', 5), validate(postCreateValidators), async (req, res) => {
   try {
     const userId = req.user.userId;
     const { boardType, schoolId, content, tags } = req.body;

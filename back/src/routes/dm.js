@@ -7,7 +7,7 @@ import pool from '../config/database.js';
 import { authenticate } from '../middleware/auth.js';
 import { validate } from '../middleware/validate.js';
 import { getNowForDB } from '../utils/dateUtils.js';
-import { upload } from '../config/cloudinary.js';
+import { uploadDm } from '../config/cloudinary.js';
 import { emitNewMessage, emitReadReceipt, isUserInRoom } from '../socketServer.js';
 import { enqueueNotification } from '../utils/notificationWorker.js';
 import { isBlockedBy } from '../utils/userBlock.js';
@@ -450,7 +450,7 @@ router.get('/rooms/:roomId', authenticate, async (req, res) => {
 router.post(
   '/rooms/:roomId/messages',
   authenticate,
-  upload.array('images', 5),
+  uploadDm.array('images', 5),
   validate(dmSendMessageValidators),
   async (req, res) => {
     try {

@@ -8,18 +8,45 @@ cloudinary.config({
   api_secret: process.env.CLOUDINARY_API_SECRET,
 });
 
-const storage = new CloudinaryStorage({
-  cloudinary,
-  params: {
-    folder: 'focux/posts',
-    allowed_formats: ['jpg', 'jpeg', 'png', 'webp'],
-    transformation: [{ width: 1080, crop: 'limit' }],
-  },
-});
+const BASE_FOLDER = String(process.env.CLOUDINARY_FOLDER_BASE || 'focux')
+  .trim()
+  .replace(/\/$/, '');
 
-const upload = multer({
-  storage,
-  limits: { fileSize: 5 * 1024 * 1024 }, // 5MB
-});
+/** Cloudinary Media Library 폴더 — 용도별 분리 */
+export const CLOUDINARY_FOLDERS = {
+  /** 학생증 인증 (가입·재제출, PII) */
+  studentId: `${BASE_FOLDER}/verification/student-id`,
+  /** 인앱 사용자 콘텐츠 */
+  posts: `${BASE_FOLDER}/user/posts`,
+  comments: `${BASE_FOLDER}/user/comments`,
+  messages: `${BASE_FOLDER}/user/messages`,
+  dm: `${BASE_FOLDER}/user/dm`,
+  /** 문의 첨부 */
+  inquiries: `${BASE_FOLDER}/inquiries`,
+};
 
-export { cloudinary, upload };
+function createImageUpload(folder) {
+  const storage = new CloudinaryStorage({
+    cloudinary,
+    params: {
+      folder,
+      allowed_formats: ['jpg', 'jpeg', 'png', 'webp'],
+      transformation: [{ width: 1080, crop: 'limit' }],
+    },
+  });
+  return multer({
+    storage,
+    limits: { fileSize: 5 * 1024 * 1024 },
+  });
+}
+
+export const uploadPost = createImageUpload(CLOUDINARY_FOLDERS.posts);
+export const uploadComment = createImageUpload(CLOUDINARY_FOLDERS.comments);
+export const uploadMessage = createImageUpload(CLOUDINARY_FOLDERS.messages);
+export const uploadDm = createImageUpload(CLOUDINARY_FOLDERS.dm);
+export const uploadInquiry = createImageUpload(CLOUDINARY_FOLDERS.inquiries);
+
+/** @deprecated uploadPost 사용 */
+export const upload = uploadPost;
+
+export { cloudinary };

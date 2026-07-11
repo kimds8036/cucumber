@@ -21,7 +21,7 @@ import { validate } from '../middleware/validate.js';
 import { getNowForDB } from '../utils/dateUtils.js';
 import { emitNewMessage, emitReadReceipt, isUserInRoom } from '../socketServer.js';
 import { enqueueNotification } from '../utils/notificationWorker.js';
-import { cloudinary, upload } from '../config/cloudinary.js';
+import { cloudinary, uploadMessage } from '../config/cloudinary.js';
 import { isBlockedBy } from '../utils/userBlock.js';
 
 const router = express.Router();
@@ -430,7 +430,7 @@ router.get('/rooms/:roomId', authenticate, async (req, res) => {
 router.post(
   '/rooms/:roomId/messages',
   authenticate,
-  upload.array('images', 5),
+  uploadMessage.array('images', 5),
   validate(sendMessageValidators),
   async (req, res) => {
     try {

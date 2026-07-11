@@ -1,30 +1,14 @@
 import express from 'express';
 import { body } from 'express-validator';
-import multer from 'multer';
-import { CloudinaryStorage } from 'multer-storage-cloudinary';
 import pool from '../config/database.js';
 import { authenticate, optionalAuthenticate } from '../middleware/auth.js';
 import { validate } from '../middleware/validate.js';
-import { cloudinary } from '../config/cloudinary.js';
+import { cloudinary, uploadInquiry } from '../config/cloudinary.js';
 import { getNowForDB } from '../utils/dateUtils.js';
 
 const router = express.Router();
 
-// 문의 첨부용 multer 인스턴스 (focux/inquiries 폴더로 분리)
 // 비로그인 화면(Inquiry)은 첨부 안 받고, 인앱 화면(InAppInquiry)에서만 최대 3장
-const inquiryStorage = new CloudinaryStorage({
-  cloudinary,
-  params: {
-    folder: 'focux/inquiries',
-    allowed_formats: ['jpg', 'jpeg', 'png', 'webp'],
-    transformation: [{ width: 1080, crop: 'limit' }],
-  },
-});
-const uploadInquiry = multer({
-  storage: inquiryStorage,
-  limits: { fileSize: 5 * 1024 * 1024 },
-});
-
 const CONTENT_MAX = 5000;
 const CONTACT_USERNAME_MAX = 50;
 const CONTACT_EMAIL_MAX = 255;

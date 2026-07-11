@@ -19,14 +19,20 @@ import { colors } from '../../../styles/colors';
 import SignStepConsent from './SignStepConsent';
 import SignStepAgeGate from './SignStepAgeGate';
 import SignStepGuardianConsentModal from './SignStepGuardianConsentModal';
-import SignStepGuardianIdentity from './SignStepGuardianIdentity';
-import SignStepInicisIdentity from './SignStepInicisIdentity';
+import SignupIdentityVerifyingOverlay from './SignupIdentityVerifyingOverlay';
 import SignStep2 from './SignStep2';
 import SignStepStudentIdVerify from './SignStepStudentIdVerify';
 import SignStepCertificateGuide from './SignStepCertificateGuide';
 import SignStepCertificate from './SignStepCertificate';
 import { api, setAuthToken } from '../../../utils/api';
-import { getPendingInicisSession } from '../../../services/inicisAuth';
+import {
+  fetchInicisServerEnabled,
+  getPendingInicisSession,
+  isInicisClientEnabled,
+  resumePendingInicisFlow,
+  runInicisIdentityFlow,
+  clearPendingInicisSession,
+} from '../../../services/inicisAuth';
 import {
   isValidUsername,
   isValidPassword,
@@ -82,41 +88,36 @@ const SIGNUP_TEST_MOCK_STUDENT_VERIFICATION = {
   },
 };
 
+const INICIS_MOCK_PHONE = '01000000000';
+
+const INICIS_OVERLAY_TITLE = {
+  GUARDIAN: '보호자 본인인증 진행 중',
+  STUDENT: '본인인증 진행 중',
+};
+
 const STEP = {
   CONSENT: 0,
   BIRTH_DATE: 1,
-  GUARDIAN_IDENTITY: 2,
-  IDENTITY: 3,
-  ACCOUNT: 4,
-  STUDENT_VERIFY: 5,
-  CERTIFICATE_GUIDE: 6,
-  CERTIFICATE_SUBMIT: 7,
+  ACCOUNT: 2,
+  STUDENT_VERIFY: 3,
+  CERTIFICATE_GUIDE: 4,
+  CERTIFICATE_SUBMIT: 5,
 };
 
-function getSignupProgressStep(
-  currentStep,
-  { requiresGuardianVerification, studentVerified },
-) {
-  const total = requiresGuardianVerification ? 8 : 7;
+function getSignupProgressStep(currentStep, { studentVerified }) {
+  const total = 6;
 
   switch (currentStep) {
     case STEP.CONSENT:
       return { step: 1, total };
     case STEP.BIRTH_DATE:
       return { step: 2, total };
-    case STEP.GUARDIAN_IDENTITY:
-      return { step: 3, total };
-    case STEP.IDENTITY:
-      return { step: requiresGuardianVerification ? 4 : 3, total };
     case STEP.ACCOUNT:
-      return { step: requiresGuardianVerification ? 5 : 4, total };
+      return { step: 3, total };
     case STEP.STUDENT_VERIFY:
-      if (requiresGuardianVerification) {
-        return { step: studentVerified ? 7 : 6, total };
-      }
-      return { step: studentVerified ? 6 : 5, total };
+      return { step: studentVerified ? 5 : 4, total };
     case STEP.CERTIFICATE_GUIDE:
-      return { step: requiresGuardianVerification ? 6 : 5, total };
+      return { step: 4, total };
     case STEP.CERTIFICATE_SUBMIT:
       return { step: total, total };
     default:
@@ -160,20 +161,26 @@ const Sign = ({ navigation }) => {
   const [screenReady, setScreenReady] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [footerHeight, setFooterHeight] = useState(88);
+  const [inicisOverlayVisible, setInicisOverlayVisible] = useState(false);
+  const [inicisOverlayTitle, setInicisOverlayTitle] = useState(
+    INICIS_OVERLAY_TITLE.STUDENT,
+  );
+
+  const inicisResumeStepRef = useRef(STEP.BIRTH_DATE);
+  const inicisFlowActiveRef = useRef(false);
+  const coldStartResumeAttemptedRef = useRef(false);
 
   const styles = useMemo(() => createSignupStyles(width, normalize), [width]);
 
-  const progress = getSignupProgressStep(currentStep, {
-    requiresGuardianVerification,
-    studentVerified,
-  });
+  const progress = getSignupProgressStep(currentStep, { studentVerified });
   const progressWidth = (progress.step / progress.total) * 100;
 
   const isCameraStep = currentStep === STEP.STUDENT_VERIFY && !studentVerified;
   const hideFooter =
     (isCameraStep && !SKIP_SIGNUP_VALIDATION_UNTIL_OCR_TEST) ||
     currentStep === STEP.CERTIFICATE_GUIDE ||
-    showGuardianConsentModal;
+    showGuardianConsentModal ||
+    inicisOverlayVisible;
 
   const identity = useMemo(
     () => ({
@@ -196,30 +203,370 @@ const Sign = ({ navigation }) => {
 
   const ocrIdentityAnchorRef = useRef({ name: '', phone: '' });
 
-  /** C 케이스: 보호자 인증 없이 학생 인증 단계 우회 차단 */
-  useEffect(() => {
-    if (
-      currentStep === STEP.IDENTITY &&
-      requiresGuardianVerification &&
-      !guardianVerified
-    ) {
-      setCurrentStep(STEP.GUARDIAN_IDENTITY);
+  const advanceToAccountAfterIdentity = useCallback(
+    (overrideIdentity = {}) => {
+      const mergedIdentity = { ...identityData, ...overrideIdentity };
+      const name =
+        mergedIdentity.name?.trim() ||
+        (SKIP_SIGNUP_VALIDATION_UNTIL_OCR_TEST
+          ? OCR_TEST_MOCK_IDENTITY.name
+          : '');
+      const phoneNumber =
+        mergedIdentity.phoneNumber ||
+        (SKIP_SIGNUP_VALIDATION_UNTIL_OCR_TEST
+          ? OCR_TEST_MOCK_IDENTITY.phoneNumber
+          : '');
+      const resolvedBirthDate =
+        mergedIdentity.birthDate || birthDate || formData.birthDate || '';
+
+      setFormData((prev) => ({
+        ...prev,
+        name,
+        birthDate: resolvedBirthDate,
+        phoneNumber,
+        requiresGuardianVerification,
+        guardianVerifiedAt,
+      }));
+      setIdentityData((prev) => ({
+        ...prev,
+        name,
+        birthDate: resolvedBirthDate,
+        phoneNumber,
+        isVerified:
+          mergedIdentity.isVerified || SKIP_SIGNUP_VALIDATION_UNTIL_OCR_TEST,
+        inicisClientToken: mergedIdentity.inicisClientToken ?? prev.inicisClientToken,
+      }));
+      if (resolvedBirthDate) {
+        applyBirthDateToState(resolvedBirthDate);
+      }
+      setCurrentStep(STEP.ACCOUNT);
+    },
+    [
+      applyBirthDateToState,
+      birthDate,
+      formData.birthDate,
+      guardianVerifiedAt,
+      identityData,
+      requiresGuardianVerification,
+    ],
+  );
+
+  const applyStudentVerifySuccess = useCallback(
+    (result) => {
+      const profile = result.profile || {};
+      const verifiedName = String(profile.name || '').trim();
+      if (!verifiedName) {
+        Alert.alert(
+          '본인인증 오류',
+          '인증은 완료되었으나 이름 정보를 확인하지 못했습니다. 잠시 후 다시 시도해 주세요.',
+        );
+        return false;
+      }
+      const nextIdentity = {
+        name: verifiedName,
+        phoneNumber: profile.phoneNumber || INICIS_MOCK_PHONE,
+        birthDate: profile.birthDate || birthDate || identityData.birthDate || null,
+        isVerified: true,
+        inicisClientToken: result.clientToken,
+      };
+      setIdentityData((prev) => ({ ...prev, ...nextIdentity }));
+      advanceToAccountAfterIdentity(nextIdentity);
+      return true;
+    },
+    [advanceToAccountAfterIdentity, birthDate, identityData.birthDate],
+  );
+
+  const handleStudentVerifyError = useCallback((error) => {
+    if (error?.code === 'CANCELLED') return;
+    if (error?.code === 'IN_PROGRESS') {
+      Alert.alert('알림', '이미 본인인증이 진행 중입니다.');
+      return;
     }
-  }, [currentStep, requiresGuardianVerification, guardianVerified]);
+    if (error?.code === 'SESSION_START_FAILED' || error?.code === 'POLL_FAILED') {
+      Alert.alert(
+        '본인인증 오류',
+        error?.message || '본인인증을 진행할 수 없습니다.',
+      );
+      return;
+    }
+    if (error?.code === 'TIMEOUT') {
+      Alert.alert(
+        '본인인증 대기',
+        error?.userMessage ||
+          '본인인증 완료 후 ✕ 버튼을 눌러 앱으로 돌아와 주세요.',
+      );
+      return;
+    }
+    if (error?.code === 'fail' || error?.code === 'expired') {
+      Alert.alert(
+        '본인인증 실패',
+        error?.message || '본인인증에 실패했습니다. 다시 시도해 주세요.',
+      );
+      return;
+    }
+    Alert.alert('오류', error?.message || '본인인증 중 오류가 발생했습니다.');
+  }, []);
+
+  const handleGuardianVerifyError = useCallback(
+    (error) => {
+      if (error?.code === 'CANCELLED') return;
+      if (error?.code === 'IN_PROGRESS') {
+        Alert.alert('알림', '이미 본인인증이 진행 중입니다.');
+        return;
+      }
+      if (error?.code === 'TIMEOUT') {
+        Alert.alert(
+          '본인인증 대기',
+          error?.userMessage ||
+            '본인인증 완료 후 ✕ 버튼을 눌러 앱으로 돌아와 주세요.',
+        );
+        return;
+      }
+      if (
+        error?.code === 'SESSION_START_FAILED' ||
+        error?.code === 'POLL_FAILED' ||
+        error?.code === 'fail' ||
+        error?.code === 'expired'
+      ) {
+        showGuardianVerificationFailedAlert(goToLogin);
+        Alert.alert(
+          '보호자 본인인증 오류',
+          error?.message || '보호자 본인인증을 진행할 수 없습니다.',
+        );
+        return;
+      }
+      showGuardianVerificationFailedAlert(goToLogin);
+      Alert.alert('오류', error?.message || '보호자 인증에 실패했습니다.');
+    },
+    [goToLogin],
+  );
+
+  const applyGuardianVerifySuccess = useCallback((result) => {
+    const verifiedAt = new Date().toISOString();
+    setGuardianVerified(true);
+    setGuardianVerifiedAt(verifiedAt);
+    setGuardianInicisClientToken(result.clientToken);
+    return true;
+  }, []);
+
+  const executeInicisFlow = useCallback(async (purpose) => {
+    const pending = await getPendingInicisSession();
+    if (pending?.purpose === purpose) {
+      return resumePendingInicisFlow(purpose);
+    }
+    return runInicisIdentityFlow(purpose);
+  }, []);
+
+  const runStudentIdentityVerificationCore = useCallback(async () => {
+    if (SKIP_SIGNUP_VALIDATION_UNTIL_OCR_TEST) {
+      const mockIdentity = {
+        ...OCR_TEST_MOCK_IDENTITY,
+        isVerified: true,
+      };
+      setIdentityData((prev) => ({ ...prev, ...mockIdentity }));
+      advanceToAccountAfterIdentity(mockIdentity);
+      return;
+    }
+
+    const clientOn = isInicisClientEnabled();
+    let serverOn = false;
+    if (clientOn) {
+      serverOn = await fetchInicisServerEnabled();
+    }
+    const useReal = clientOn && serverOn;
+
+    if (!useReal) {
+      await new Promise((resolve) => setTimeout(resolve, 400));
+      const mockIdentity = {
+        name: '테스트학생',
+        phoneNumber: INICIS_MOCK_PHONE,
+        isVerified: true,
+      };
+      setIdentityData((prev) => ({ ...prev, ...mockIdentity }));
+      advanceToAccountAfterIdentity(mockIdentity);
+      Alert.alert('알림', '본인인증이 완료되었습니다. (테스트 mock)');
+      return;
+    }
+
+    const result = await executeInicisFlow('student_signup');
+    if (result) {
+      applyStudentVerifySuccess(result);
+    }
+  }, [
+    advanceToAccountAfterIdentity,
+    applyStudentVerifySuccess,
+    executeInicisFlow,
+  ]);
+
+  const runGuardianIdentityVerificationCore = useCallback(async () => {
+    if (SKIP_SIGNUP_VALIDATION_UNTIL_OCR_TEST) {
+      await new Promise((resolve) => setTimeout(resolve, 400));
+      applyGuardianVerifySuccess({
+        clientToken: 'test-guardian-token',
+        profile: {},
+      });
+      return;
+    }
+
+    const clientOn = isInicisClientEnabled();
+    let serverOn = false;
+    if (clientOn) {
+      serverOn = await fetchInicisServerEnabled();
+    }
+    const useReal = clientOn && serverOn;
+
+    if (!useReal) {
+      await new Promise((resolve) => setTimeout(resolve, 400));
+      applyGuardianVerifySuccess({ clientToken: null, profile: {} });
+      Alert.alert('알림', '보호자 본인인증이 완료되었습니다. (테스트 mock)');
+      return;
+    }
+
+    const result = await executeInicisFlow('guardian_consent');
+    if (result) {
+      applyGuardianVerifySuccess(result);
+    }
+  }, [applyGuardianVerifySuccess, executeInicisFlow]);
+
+  const runStudentIdentityVerification = useCallback(
+    async (resumeStep = STEP.BIRTH_DATE) => {
+      if (inicisFlowActiveRef.current) return;
+      inicisResumeStepRef.current = resumeStep;
+      inicisFlowActiveRef.current = true;
+      setInicisOverlayTitle(INICIS_OVERLAY_TITLE.STUDENT);
+      setInicisOverlayVisible(true);
+
+      try {
+        await runStudentIdentityVerificationCore();
+      } catch (error) {
+        handleStudentVerifyError(error);
+      } finally {
+        inicisFlowActiveRef.current = false;
+        setInicisOverlayVisible(false);
+      }
+    },
+    [handleStudentVerifyError, runStudentIdentityVerificationCore],
+  );
+
+  const runGuardianAndStudentVerification = useCallback(async () => {
+    if (inicisFlowActiveRef.current) return;
+    inicisResumeStepRef.current = STEP.BIRTH_DATE;
+    inicisFlowActiveRef.current = true;
+    setInicisOverlayTitle(INICIS_OVERLAY_TITLE.GUARDIAN);
+    setInicisOverlayVisible(true);
+
+    try {
+      try {
+        await runGuardianIdentityVerificationCore();
+      } catch (error) {
+        handleGuardianVerifyError(error);
+        return;
+      }
+      setInicisOverlayTitle(INICIS_OVERLAY_TITLE.STUDENT);
+      await runStudentIdentityVerificationCore();
+    } catch (error) {
+      handleStudentVerifyError(error);
+    } finally {
+      inicisFlowActiveRef.current = false;
+      setInicisOverlayVisible(false);
+    }
+  }, [
+    handleGuardianVerifyError,
+    handleStudentVerifyError,
+    runGuardianIdentityVerificationCore,
+    runStudentIdentityVerificationCore,
+  ]);
+
+  const resumeInicisFromPending = useCallback(async () => {
+    if (
+      coldStartResumeAttemptedRef.current ||
+      inicisFlowActiveRef.current ||
+      SKIP_SIGNUP_VALIDATION_UNTIL_OCR_TEST
+    ) {
+      return;
+    }
+    const pending = await getPendingInicisSession();
+    if (!pending) return;
+
+    coldStartResumeAttemptedRef.current = true;
+    inicisResumeStepRef.current = STEP.BIRTH_DATE;
+    inicisFlowActiveRef.current = true;
+
+    if (pending.purpose === 'guardian_consent') {
+      setRequiresGuardianVerification(true);
+      setCurrentStep(STEP.BIRTH_DATE);
+      setInicisOverlayTitle(INICIS_OVERLAY_TITLE.GUARDIAN);
+      setInicisOverlayVisible(true);
+      try {
+        const result = await resumePendingInicisFlow('guardian_consent');
+        if (result) {
+          applyGuardianVerifySuccess(result);
+          setInicisOverlayTitle(INICIS_OVERLAY_TITLE.STUDENT);
+          await runStudentIdentityVerificationCore();
+        }
+      } catch (error) {
+        handleGuardianVerifyError(error);
+      } finally {
+        inicisFlowActiveRef.current = false;
+        setInicisOverlayVisible(false);
+      }
+      return;
+    }
+
+    if (pending.purpose === 'student_signup') {
+      setInicisOverlayTitle(INICIS_OVERLAY_TITLE.STUDENT);
+      setInicisOverlayVisible(true);
+      try {
+        const result = await resumePendingInicisFlow('student_signup');
+        if (result) {
+          applyStudentVerifySuccess(result);
+        }
+      } catch (error) {
+        handleStudentVerifyError(error);
+      } finally {
+        inicisFlowActiveRef.current = false;
+        setInicisOverlayVisible(false);
+      }
+    }
+  }, [
+    applyGuardianVerifySuccess,
+    applyStudentVerifySuccess,
+    handleGuardianVerifyError,
+    handleStudentVerifyError,
+    runStudentIdentityVerificationCore,
+  ]);
 
   useEffect(() => {
     let cancelled = false;
     (async () => {
-      const pending = await getPendingInicisSession();
-      if (!pending || pending.purpose !== 'student_signup' || cancelled) return;
-      setCurrentStep(STEP.IDENTITY);
+      if (cancelled) return;
+      await resumeInicisFromPending();
     })();
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [resumeInicisFromPending]);
 
   const handleBack = () => {
+    if (inicisOverlayVisible) {
+      Alert.alert(
+        '본인인증 중단',
+        '본인인증을 중단하고 이전 단계로 돌아갈까요?',
+        [
+          { text: '계속하기', style: 'cancel' },
+          {
+            text: '중단',
+            style: 'destructive',
+            onPress: async () => {
+              inicisFlowActiveRef.current = false;
+              setInicisOverlayVisible(false);
+              await clearPendingInicisSession();
+            },
+          },
+        ],
+      );
+      return;
+    }
     if (currentStep === STEP.CONSENT) {
       navigation.goBack();
       return;
@@ -229,16 +576,8 @@ const Sign = ({ navigation }) => {
       setCurrentStep(STEP.CONSENT);
       return;
     }
-    if (currentStep === STEP.GUARDIAN_IDENTITY) {
+    if (currentStep === STEP.ACCOUNT) {
       setCurrentStep(STEP.BIRTH_DATE);
-      return;
-    }
-    if (currentStep === STEP.IDENTITY) {
-      if (requiresGuardianVerification) {
-        setCurrentStep(STEP.GUARDIAN_IDENTITY);
-      } else {
-        setCurrentStep(STEP.BIRTH_DATE);
-      }
       return;
     }
     if (currentStep === STEP.STUDENT_VERIFY) {
@@ -299,7 +638,10 @@ const Sign = ({ navigation }) => {
         ...prev,
         isVerified: true,
       }));
-      setCurrentStep(STEP.IDENTITY);
+      advanceToAccountAfterIdentity({
+        ...OCR_TEST_MOCK_IDENTITY,
+        isVerified: true,
+      });
       return;
     }
     setCurrentStep(STEP.BIRTH_DATE);
@@ -344,7 +686,7 @@ const Sign = ({ navigation }) => {
     setRequiresGuardianVerification(false);
     setGuardianVerified(false);
     setGuardianVerifiedAt(null);
-    setCurrentStep(STEP.IDENTITY);
+    void runStudentIdentityVerification(STEP.BIRTH_DATE);
   };
 
   const handleGuardianConsentStart = () => {
@@ -354,81 +696,12 @@ const Sign = ({ navigation }) => {
       consents: { ...prev.consents, guardian: true },
       allConsented: true,
     }));
-    setCurrentStep(STEP.GUARDIAN_IDENTITY);
+    void runGuardianAndStudentVerification();
   };
 
   const handleGuardianConsentLater = () => {
     setShowGuardianConsentModal(false);
     goToLogin();
-  };
-
-  const handleGuardianIdentityNext = () => {
-    if (!guardianVerified) {
-      showGuardianVerificationFailedAlert(goToLogin);
-      return;
-    }
-    setCurrentStep(STEP.IDENTITY);
-  };
-
-  const handleGuardianDataChange = (data) => {
-    if (data?.isVerified) {
-      setGuardianVerified(true);
-      setGuardianVerifiedAt(data.guardianVerifiedAt || new Date().toISOString());
-    }
-    if (data?.inicisClientToken) {
-      setGuardianInicisClientToken(data.inicisClientToken);
-    }
-  };
-
-  const handleStudentIdentityNext = () => {
-    if (!SKIP_SIGNUP_VALIDATION_UNTIL_OCR_TEST) {
-      if (requiresGuardianVerification && !guardianVerified) {
-        setCurrentStep(STEP.GUARDIAN_IDENTITY);
-        return;
-      }
-      if (!identityData.isVerified) {
-        Alert.alert('알림', '본인인증을 완료해 주세요.');
-        return;
-      }
-      if (!identityData.name?.trim()) {
-        Alert.alert(
-          '알림',
-          '본인인증 이름을 확인하지 못했습니다. 본인인증을 다시 진행해 주세요.',
-        );
-        return;
-      }
-    }
-
-    const name =
-      identityData.name?.trim() ||
-      (SKIP_SIGNUP_VALIDATION_UNTIL_OCR_TEST ? OCR_TEST_MOCK_IDENTITY.name : '');
-    const phoneNumber =
-      identityData.phoneNumber ||
-      (SKIP_SIGNUP_VALIDATION_UNTIL_OCR_TEST
-        ? OCR_TEST_MOCK_IDENTITY.phoneNumber
-        : '');
-    const resolvedBirthDate =
-      identityData.birthDate || birthDate || formData.birthDate || '';
-
-    setFormData((prev) => ({
-      ...prev,
-      name,
-      birthDate: resolvedBirthDate,
-      phoneNumber,
-      requiresGuardianVerification,
-      guardianVerifiedAt,
-    }));
-    setIdentityData((prev) => ({
-      ...prev,
-      name,
-      birthDate: resolvedBirthDate,
-      phoneNumber,
-      isVerified: identityData.isVerified || SKIP_SIGNUP_VALIDATION_UNTIL_OCR_TEST,
-    }));
-    if (resolvedBirthDate) {
-      applyBirthDateToState(resolvedBirthDate);
-    }
-    setCurrentStep(STEP.ACCOUNT);
   };
 
   const handleAccountNext = () => {
@@ -770,10 +1043,6 @@ const Sign = ({ navigation }) => {
         return '약관 동의';
       case STEP.BIRTH_DATE:
         return '생년월일 입력';
-      case STEP.GUARDIAN_IDENTITY:
-        return '보호자 본인인증';
-      case STEP.IDENTITY:
-        return '본인인증';
       case STEP.ACCOUNT:
         return '계정 만들기';
       case STEP.STUDENT_VERIFY:
@@ -787,31 +1056,6 @@ const Sign = ({ navigation }) => {
     }
   };
 
-  const getStepDescription = () => {
-    switch (currentStep) {
-      case STEP.CONSENT:
-        return '서비스 이용을 위한 필수 동의 항목을 확인해 주세요';
-      case STEP.BIRTH_DATE:
-        return '가입 가능 연령 확인을 위해 생년월일을 입력해 주세요';
-      case STEP.GUARDIAN_IDENTITY:
-        return '법정대리인(보호자)의 본인인증과 동의가 필요해요';
-      case STEP.IDENTITY:
-        return 'KG 이니시스 간편인증으로 본인 확인을 진행해 주세요';
-      case STEP.ACCOUNT:
-        return '아이디·비밀번호를 설정하고 재학 중인 학교를 선택해 주세요';
-      case STEP.STUDENT_VERIFY:
-        return studentVerified
-          ? '학생증 제출이 완료되었습니다. 아래 [제출하기]로 가입을 마무리해 주세요.'
-          : '학생증을 촬영해 제출하면 승인 후 이용할 수 있어요.';
-      case STEP.CERTIFICATE_GUIDE:
-        return '본 가이드는 네이버와 무관한 사용자 편의 안내입니다';
-      case STEP.CERTIFICATE_SUBMIT:
-        return '발급받은 열람용 주소와 열람 번호를 입력해 주세요';
-      default:
-        return '';
-    }
-  };
-
   const handlePrimaryPress = () => {
     switch (currentStep) {
       case STEP.CONSENT:
@@ -819,12 +1063,6 @@ const Sign = ({ navigation }) => {
         break;
       case STEP.BIRTH_DATE:
         handleBirthDateNext();
-        break;
-      case STEP.GUARDIAN_IDENTITY:
-        handleGuardianIdentityNext();
-        break;
-      case STEP.IDENTITY:
-        handleStudentIdentityNext();
         break;
       case STEP.ACCOUNT:
         handleAccountNext();
@@ -845,7 +1083,7 @@ const Sign = ({ navigation }) => {
   };
 
   const isPrimaryDisabled = () => {
-    if (submitting) return true;
+    if (submitting || inicisOverlayVisible) return true;
     if (SKIP_SIGNUP_VALIDATION_UNTIL_OCR_TEST) {
       if (currentStep === STEP.ACCOUNT) {
         if (!selectedSchool?.id || selectedSchool?.manual) return true;
@@ -855,10 +1093,6 @@ const Sign = ({ navigation }) => {
     if (currentStep === STEP.CONSENT && !consentData.allConsented) return true;
     if (currentStep === STEP.BIRTH_DATE) {
       if (!birthDate || !isValidBirthDateString(birthDate)) return true;
-    }
-    if (currentStep === STEP.GUARDIAN_IDENTITY && !guardianVerified) return true;
-    if (currentStep === STEP.IDENTITY) {
-      if (!identityData.isVerified) return true;
     }
     if (currentStep === STEP.ACCOUNT) {
       if (!selectedSchool?.id || selectedSchool?.manual) return true;
@@ -936,7 +1170,6 @@ const Sign = ({ navigation }) => {
               style={[styles.progressBar, { width: `${progressWidth}%` }]}
             />
           </View>
-          <Text style={styles.description}>{getStepDescription()}</Text>
         </View>
       </View>
 
@@ -957,35 +1190,12 @@ const Sign = ({ navigation }) => {
             onBirthDateChange={setBirthDate}
           />
         )}
-        {currentStep === STEP.GUARDIAN_IDENTITY && (
-          <SignStepGuardianIdentity
-            styles={styles}
-            normalize={normalize}
-            bottomOffset={footerHeight}
-            initialVerified={guardianVerified}
-            onChange={handleGuardianDataChange}
-            onVerificationFailed={() =>
-              showGuardianVerificationFailedAlert(goToLogin)
-            }
-          />
-        )}
-        {currentStep === STEP.IDENTITY && (
-          <SignStepInicisIdentity
-            styles={styles}
-            normalize={normalize}
-            bottomOffset={footerHeight}
-            initialData={identityData}
-            onChange={setIdentityData}
-            requiresGuardianVerification={requiresGuardianVerification}
-            testMode={SKIP_SIGNUP_VALIDATION_UNTIL_OCR_TEST}
-            autoStart={!SKIP_SIGNUP_VALIDATION_UNTIL_OCR_TEST}
-          />
-        )}
         {currentStep === STEP.ACCOUNT && (
           <SignStep2
             styles={styles}
             normalize={normalize}
             bottomOffset={footerHeight}
+            verifiedName={identity.name || identityData.name}
             accountOnly
             showSchoolField
             selectedSchool={selectedSchool}
@@ -1011,6 +1221,7 @@ const Sign = ({ navigation }) => {
         {currentStep === STEP.STUDENT_VERIFY && (
           <SignStepStudentIdVerify
             styles={styles}
+            normalize={normalize}
             identity={identity}
             schoolId={selectedSchool?.id || formData.schoolId}
             alreadyVerified={studentVerified}
@@ -1025,6 +1236,12 @@ const Sign = ({ navigation }) => {
         normalize={normalize}
         onStart={handleGuardianConsentStart}
         onLater={handleGuardianConsentLater}
+      />
+
+      <SignupIdentityVerifyingOverlay
+        visible={inicisOverlayVisible}
+        title={inicisOverlayTitle}
+        normalize={normalize}
       />
 
       {!hideFooter && (

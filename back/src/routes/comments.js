@@ -5,7 +5,7 @@ import { authenticate, optionalAuthenticate } from '../middleware/auth.js';
 import { validate } from '../middleware/validate.js';
 import { enqueueNotification } from '../utils/notificationWorker.js';
 import { getKstTodayRangeUtcForSql, getNowForDB } from '../utils/dateUtils.js';
-import { cloudinary, upload } from '../config/cloudinary.js';
+import { cloudinary, uploadComment } from '../config/cloudinary.js';
 import { appendUserBlockFilter } from '../utils/userBlockFilter.js';
 import { submitContentReport } from '../services/reportSubmission.service.js';
 import { softDeletePostComment } from '../services/commentCount.service.js';
@@ -77,7 +77,7 @@ router.delete('/comments/:commentId', authenticate, async (req, res) => {
 });
 
 // 댓글 작성 (대댓글 포함)
-router.post('/:postId/comments', authenticate, blockWhenFlag('comment_write_disabled'), upload.array('images', 5), validate(commentCreateValidators), async (req, res) => {
+router.post('/:postId/comments', authenticate, blockWhenFlag('comment_write_disabled'), uploadComment.array('images', 5), validate(commentCreateValidators), async (req, res) => {
   try {
     const userId = req.user.userId;
     const { postId } = req.params;

@@ -1,7 +1,5 @@
-import { cloudinary } from '../config/cloudinary.js';
+import { cloudinary, CLOUDINARY_FOLDERS } from '../config/cloudinary.js';
 import { cropBase64Image } from '../utils/imageCrop.js';
-
-const SIGNUP_STUDENT_ID_FOLDER = 'focux/signup-student-id';
 
 function stripDataUriPrefix(imageBase64) {
   return String(imageBase64 || '').replace(/^data:image\/\w+;base64,/, '');
@@ -26,7 +24,7 @@ export async function uploadSignupStudentIdPhoto({ imageBase64, cropRegion = nul
   const result = await new Promise((resolve, reject) => {
     const uploadStream = cloudinary.uploader.upload_stream(
       {
-        folder: SIGNUP_STUDENT_ID_FOLDER,
+        folder: CLOUDINARY_FOLDERS.studentId,
         resource_type: 'image',
         format: 'jpg',
         transformation: [{ width: 1600, crop: 'limit' }],

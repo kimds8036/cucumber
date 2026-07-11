@@ -119,6 +119,7 @@ export const createSignupStyles = (width, normalize) => {
     },
     headerSection: {
       paddingTop: normalize(8),
+      paddingBottom: normalize(4),
       backgroundColor: colors.background,
       zIndex: 10,
       ...debugBorder,
@@ -139,7 +140,6 @@ export const createSignupStyles = (width, normalize) => {
 
     // 헤더 영역
     header: {
-      gap: normalize(12),
       backgroundColor: colors.background,
       ...debugBorder,
     },
@@ -149,6 +149,7 @@ export const createSignupStyles = (width, normalize) => {
       justifyContent: 'center',
       minHeight: normalize(30),
       position: 'relative',
+      paddingHorizontal: normalize(40),
       ...debugBorder,
     },
     backButton: {
@@ -157,9 +158,12 @@ export const createSignupStyles = (width, normalize) => {
       padding: normalize(8),
     },
     headerTitle: {
+      width: '100%',
       fontSize: normalize(fontSizes.heading),
       fontFamily: fonts.bold,
       color: colors.textPrimary,
+      textAlign: 'center',
+      lineHeight: normalize(26),
     },
 
     // 진행바
@@ -169,6 +173,7 @@ export const createSignupStyles = (width, normalize) => {
       backgroundColor: colors.textLight20,
       borderRadius: normalize(999),
       overflow: 'hidden',
+      marginTop: normalize(12),
       ...debugBorder,
     },
     progressBar: {
@@ -184,11 +189,15 @@ export const createSignupStyles = (width, normalize) => {
       ...debugBorder,
     },
     description: {
+      width: '98%',
+      alignSelf: 'center',
+      paddingHorizontal: normalize(8),
       fontSize: normalize(fontSizes.xl),
       fontFamily: fonts.regular,
-      color: colors.textSecondary,
+      color: colors.textMuted,
+      lineHeight: normalize(Math.round(fontSizes.xl * 1.45)),
       textAlign: 'center',
-      paddingHorizontal: normalize(8),
+      marginTop: normalize(6),
       ...debugBorder,
     },
     ageGateContainer: {
@@ -352,13 +361,19 @@ export const createSignupStyles = (width, normalize) => {
       color: colors.textLight40,
     },
     enrollmentNotice: {
+      width: '98%',
+      alignSelf: 'center',
       fontSize: normalize(fontSizes.md),
       fontFamily: fonts.regular,
-      color: colors.textSecondary,
+      color: colors.textLight70,
       lineHeight: normalize(20),
-      marginTop: normalize(20),
-      marginBottom: normalize(8),
-      paddingHorizontal: normalize(4),
+      marginTop: normalize(10),
+      marginBottom: normalize(10),
+      paddingHorizontal: normalize(14),
+      paddingVertical: normalize(11),
+      borderRadius: normalize(14),
+      backgroundColor: colors.surface,
+      overflow: 'hidden',
     },
     passGuideText: {
       fontSize: normalize(fontSizes.xl),
@@ -368,19 +383,28 @@ export const createSignupStyles = (width, normalize) => {
       marginLeft: normalize(20),
     },
     fieldHelperText: {
-      fontSize: normalize(fontSizes.lg),
+      width: '98%',
+      alignSelf: 'center',
+      fontSize: normalize(fontSizes.md),
       fontFamily: fonts.regular,
-      color: colors.textSecondary,
-      marginLeft: normalize(20),
-      marginTop: normalize(4),
-      marginBottom: normalize(8),
+      color: colors.textLight70,
+      marginLeft: 0,
+      marginTop: normalize(6),
+      marginBottom: normalize(10),
       lineHeight: normalize(20),
+      paddingHorizontal: normalize(14),
+      paddingVertical: normalize(11),
+      borderRadius: normalize(14),
+      backgroundColor: colors.surface,
+      overflow: 'hidden',
     },
     fieldHelperTextSuccess: {
       color: colors.primaryDark,
+      backgroundColor: colors.primaryLight10,
     },
     fieldHelperTextError: {
-      color: colors.alert,
+      color: colors.alertDark,
+      backgroundColor: colors.alertLight,
     },
     inputRow: {
       width: '98%',
