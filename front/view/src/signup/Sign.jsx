@@ -60,6 +60,7 @@ import {
   isValidBirthDateString,
   birthDatesMatch,
   normalizeBirthDateForCompare,
+  isSignupAdultTestModeEnabled,
 } from './signupBirthDatePolicy';
 import {
   buildEnrollmentFromBirthDate,
@@ -1069,24 +1070,52 @@ const Sign = ({ navigation }) => {
     }
   };
 
+  const resolveSignupEnrollment = (birthDate, overrides = {}) => {
+    const level =
+      overrides.level || inferExpectedSchoolLevel(birthDate);
+    let enrollment = buildEnrollmentFromBirthDate(birthDate, level);
+
+    if (
+      (!enrollment.graduationYear || !enrollment.schoolLevel) &&
+      isSignupAdultTestModeEnabled()
+    ) {
+      enrollment = buildEnrollmentFromBirthDate(OCR_TEST_MOCK_IDENTITY.birthDate);
+    }
+
+    const grade =
+      overrides.grade ?? enrollment.grade ?? 1;
+    const classNum = overrides.classNum ?? 1;
+    const graduationYear =
+      overrides.graduationYear ?? enrollment.graduationYear;
+
+    return {
+      schoolLevel: overrides.level || enrollment.schoolLevel,
+      grade,
+      classNum,
+      graduationYear,
+    };
+  };
+
   const buildStudentVerificationSnapshot = (data) => {
     const resolvedBirthDate = identity.birthDate;
-    const level =
-      data?.expectedLevel ||
-      data?.verification?.expectedLevel ||
-      inferExpectedSchoolLevel(resolvedBirthDate);
-    const enrollment = buildEnrollmentFromBirthDate(resolvedBirthDate, level);
-    const grade =
-      data?.verification?.suggestedGrade ??
-      data?.grade ??
-      enrollment.grade ??
-      1;
-    const classNum =
-      data?.verification?.suggestedClassNumber ?? data?.class ?? 1;
-    const graduationYear =
-      data?.verification?.suggestedGraduationYear ??
-      data?.graduationYear ??
-      enrollment.graduationYear;
+    const enrollment = resolveSignupEnrollment(resolvedBirthDate, {
+      level:
+        data?.expectedLevel ||
+        data?.verification?.expectedLevel ||
+        undefined,
+      grade:
+        data?.verification?.suggestedGrade ??
+        data?.grade ??
+        undefined,
+      classNum:
+        data?.verification?.suggestedClassNumber ?? data?.class ?? undefined,
+      graduationYear:
+        data?.verification?.suggestedGraduationYear ??
+        data?.graduationYear ??
+        undefined,
+    });
+
+    const { schoolLevel, grade, classNum, graduationYear } = enrollment;
 
     const recognized = {
       ...data,
@@ -1100,10 +1129,13 @@ const Sign = ({ navigation }) => {
       data?.verification?.studentVerificationToken ||
       null;
     const formPatch = {
-      schoolLevel: level,
+      schoolLevel,
       grade: String(grade),
       classNum: String(classNum),
-      graduationYear: String(graduationYear),
+      graduationYear:
+        graduationYear != null && graduationYear !== ''
+          ? String(graduationYear)
+          : '',
       schoolId: selectedSchool?.id || formData.schoolId,
       schoolName: selectedSchool?.name || formData.schoolName,
     };
@@ -1139,9 +1171,21 @@ const Sign = ({ navigation }) => {
       return;
     }
 
+    const payload = buildSignupPayload(finalData, token, recognized);
+    if (
+      !Number.isFinite(payload.graduationYear) ||
+      payload.graduationYear < 1900
+    ) {
+      Alert.alert(
+        '가입 정보 확인',
+        '생년월일 기준으로 학년·졸업년도를 자동 계산하지 못했습니다.\n' +
+          '중·고등학생 생년월일(만 14~19세)로 다시 시도해 주세요.',
+      );
+      return;
+    }
+
     setSubmitting(true);
     try {
-      const payload = buildSignupPayload(finalData, token, recognized);
       await api.post('/api/auth/signup', payload);
       Alert.alert(
         '알림',
@@ -1166,19 +1210,22 @@ const Sign = ({ navigation }) => {
   ) => {
     const resolvedBirthDate =
       identityData.birthDate || finalData.birthDate || identity.birthDate;
-    const level = finalData.schoolLevel || inferExpectedSchoolLevel(resolvedBirthDate);
-    const enrollment = buildEnrollmentFromBirthDate(resolvedBirthDate, level);
-    const grade =
-      Number(finalData.grade) ||
-      Number(verificationData?.grade) ||
-      enrollment.grade ||
-      1;
-    const classNumber =
-      Number(finalData.classNum) || Number(verificationData?.class) || 1;
-    const graduationYear =
-      Number(finalData.graduationYear) ||
-      Number(verificationData?.graduationYear) ||
-      enrollment.graduationYear;
+    const enrollment = resolveSignupEnrollment(resolvedBirthDate, {
+      level: finalData.schoolLevel || undefined,
+      grade:
+        Number(finalData.grade) ||
+        Number(verificationData?.grade) ||
+        undefined,
+      classNum:
+        Number(finalData.classNum) || Number(verificationData?.class) || undefined,
+      graduationYear:
+        Number(finalData.graduationYear) ||
+        Number(verificationData?.graduationYear) ||
+        undefined,
+    });
+    const grade = enrollment.grade;
+    const classNumber = enrollment.classNum;
+    const graduationYear = enrollment.graduationYear;
 
     const verificationMethod =
       options.verificationMethod || 'student_id';
