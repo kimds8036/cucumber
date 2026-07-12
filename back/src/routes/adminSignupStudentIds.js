@@ -5,7 +5,6 @@ import { requireAdminApi, isAdminUser } from '../middleware/adminAuth.js';
 import { validate } from '../middleware/validate.js';
 import { getNowForDB } from '../utils/dateUtils.js';
 import { applyUserSchoolUpdate } from '../services/userSchoolTransition.service.js';
-import { hydrateSubmissionRows } from '../services/userPii.service.js';
 
 const router = express.Router();
 const VALID_PURPOSES = new Set(['signup', 'resubmit', 'reverification']);
@@ -69,7 +68,7 @@ router.get('/', requireAdminApi, async (req, res) => {
       params,
     );
 
-    return res.json({ success: true, data: { submissions: hydrateSubmissionRows(rows) } });
+    return res.json({ success: true, data: { submissions: rows } });
   } catch (error) {
     console.error('[admin/signup-student-ids] 목록 오류:', error);
     return res.status(500).json({

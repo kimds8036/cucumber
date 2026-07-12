@@ -5,7 +5,6 @@ import { verifyFirebaseIdToken } from '../config/firebase.js';
 import { normalizeLocalKrPhone } from '../utils/phone.js';
 import { validatePhone } from '../utils/validation.js';
 import {
-  hydrateUserPiiRow,
   nameLookupBindParams,
   nameLookupWhereClause,
   packPhoneOnly,
@@ -87,7 +86,7 @@ async function findActiveUser(whereSql, params) {
     params,
   );
   const row = rows[0] || null;
-  return row ? hydrateUserPiiRow(row, ['name', 'phone']) : null;
+  return row;
 }
 
 export async function findRegisteredUserByPhoneAndName(phone, name) {

@@ -81,15 +81,15 @@ export function resolveUserBirthDate(row) {
 export function hydrateUserPiiRow(row, fields = ['name', 'phone', 'birth_date']) {
   if (!row || typeof row !== 'object') return row;
   if (fields.includes('name')) {
-    row.name = resolveUserName(row);
+    row.name = resolveUserName(row) ?? row.name ?? null;
     delete row.name_enc;
   }
   if (fields.includes('phone')) {
-    row.phone = resolveUserPhone(row);
+    row.phone = resolveUserPhone(row) ?? row.phone ?? null;
     delete row.phone_enc;
   }
   if (fields.includes('birth_date')) {
-    row.birth_date = resolveUserBirthDate(row);
+    row.birth_date = resolveUserBirthDate(row) ?? row.birth_date ?? null;
     delete row.birth_date_enc;
   }
   return row;
@@ -104,7 +104,7 @@ export function hydrateUserPiiRows(rows, fields) {
 export function hydrateAliasedPiiField(row, plainKey, encKey = null) {
   const enc = encKey || `${plainKey}_enc`;
   if (row[enc]) {
-    row[plainKey] = decryptPii(row[enc]);
+    row[plainKey] = resolvePiiField(row[enc]) ?? row[plainKey] ?? null;
     delete row[enc];
   }
   return row[plainKey] ?? null;
@@ -171,11 +171,13 @@ export function autoHydratePiiRows(rows) {
       hydrateUserPiiRow(next, ['name', 'phone', 'birth_date']);
     }
     if ('guardian_phone_enc' in next) {
-      next.guardian_phone = resolvePiiField(next.guardian_phone_enc);
+      next.guardian_phone =
+        resolvePiiField(next.guardian_phone_enc) ?? next.guardian_phone ?? null;
       delete next.guardian_phone_enc;
     }
     if ('recipient_name_enc' in next && !('name_enc' in next)) {
-      next.recipient_name = resolvePiiField(next.recipient_name_enc);
+      next.recipient_name =
+        resolvePiiField(next.recipient_name_enc) ?? next.recipient_name ?? null;
       delete next.recipient_name_enc;
     }
     return next;

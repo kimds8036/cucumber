@@ -4,7 +4,6 @@ import pool from '../config/database.js';
 import { requireAdminApi, isAdminUser } from '../middleware/adminAuth.js';
 import { validate } from '../middleware/validate.js';
 import { getNowForDB } from '../utils/dateUtils.js';
-import { hydrateSubmissionRows } from '../services/userPii.service.js';
 
 const router = express.Router();
 
@@ -49,7 +48,7 @@ router.get('/', requireAdminApi, async (req, res) => {
 
     return res.json({
       success: true,
-      data: { submissions: hydrateSubmissionRows(rows) },
+      data: { submissions: rows },
     });
   } catch (error) {
     console.error('증명서 검수 목록 오류:', error);

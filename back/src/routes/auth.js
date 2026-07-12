@@ -38,7 +38,6 @@ import {
   packUserPii,
   phoneLookupBindParams,
   phoneLookupWhereClause,
-  hydrateUserPiiRow,
   USER_PII_INSERT_COLUMNS,
   userPiiInsertValues,
   normalizeBirthDateInput,
@@ -269,7 +268,7 @@ router.get('/me', authenticate, async (req, res) => {
       });
     }
 
-    const user = hydrateUserPiiRow(rows[0], ['name']);
+    const user = rows[0];
 
     const [friendRows] = await pool.execute(
       `SELECT COUNT(*) as cnt
@@ -1851,7 +1850,7 @@ router.post('/resubmit-student-id', authenticate, signupOcrLimiter, async (req, 
         message: '사용자를 찾을 수 없습니다.',
       });
     }
-    const user = hydrateUserPiiRow(userRows[0], ['name', 'phone', 'birth_date']);
+    const user = userRows[0];
 
     const submissionPurpose = isReverificationResubmit ? 'reverification' : 'resubmit';
     const targetSchoolId = String(bodySchoolId || user.school_id || '').trim();
