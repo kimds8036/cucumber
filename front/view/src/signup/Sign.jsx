@@ -52,7 +52,6 @@ import Skeleton from '../../../components/common/Skeleton';
 import {
   showTooOldForSignupAlert,
   showTooYoungForSignupAlert,
-  showGuardianVerificationFailedAlert,
 } from './authFeatureAlerts';
 import {
   classifyBirthDateCase,
@@ -199,11 +198,11 @@ const Sign = ({ navigation }) => {
     await waitForPresentationLayerRelease();
   }, []);
 
-  const showInicisAlertAfterOverlay = useCallback((title, message) => {
+  const showInicisAlertAfterOverlay = useCallback((title, message, buttons) => {
     InteractionManager.runAfterInteractions(() => {
       setTimeout(() => {
         if (isMountedRef.current) {
-          Alert.alert(title, message);
+          Alert.alert(title, message, buttons);
         }
       }, 280);
     });
@@ -262,29 +261,6 @@ const Sign = ({ navigation }) => {
     [birthDate, formData.birthDate, identityData.birthDate],
   );
 
-  const handleInicisOverlayOpenManually = useCallback(async () => {
-    if (inicisManualOpening) return;
-    setInicisManualOpening(true);
-    try {
-      await openPendingInicisBrowser();
-    } catch (error) {
-      Alert.alert(
-        '알림',
-        error?.message || '인증 페이지를 열 수 없습니다. 잠시 후 다시 시도해 주세요.',
-      );
-    } finally {
-      if (isMountedRef.current) {
-        setInicisManualOpening(false);
-      }
-    }
-  }, [inicisManualOpening]);
-
-  const handleInicisOverlayCancel = useCallback(async () => {
-    cancelInicisFlow();
-    await endInicisOverlay();
-    await clearPendingInicisSession();
-  }, [endInicisOverlay]);
-
   const styles = useMemo(() => createSignupStyles(width, normalize), [width]);
 
   const progress = getSignupProgressStep(currentStep, { studentVerified });
@@ -310,6 +286,59 @@ const Sign = ({ navigation }) => {
   const goToLogin = useCallback(() => {
     resetTo('Login');
   }, [resetTo]);
+
+  const showGuardianIncompleteAfterOverlay = useCallback(
+    (message) => {
+      showInicisAlertAfterOverlay(
+        '보호자 인증 미완료',
+        message ||
+          '보호자 본인인증이 완료되지 않아 가입을 진행할 수 없어요.',
+        [{ text: '돌아가기', onPress: goToLogin }],
+      );
+    },
+    [goToLogin, showInicisAlertAfterOverlay],
+  );
+
+  const handleInicisOverlayOpenManually = useCallback(async () => {
+    if (inicisManualOpening) return;
+    setInicisManualOpening(true);
+    try {
+      await openPendingInicisBrowser();
+    } catch (error) {
+      showInicisAlertAfterOverlay(
+        '알림',
+        error?.message || '인증 페이지를 열 수 없습니다. 잠시 후 다시 시도해 주세요.',
+      );
+    } finally {
+      await dismissInicisBrowserSafely();
+      if (isMountedRef.current) {
+        setInicisManualOpening(false);
+      }
+    }
+  }, [inicisManualOpening, showInicisAlertAfterOverlay]);
+
+  const handleInicisOverlayCancel = useCallback(async () => {
+    const wasGuardian = inicisOverlayTitle === INICIS_OVERLAY_TITLE.GUARDIAN;
+    const wasStudent = inicisOverlayTitle === INICIS_OVERLAY_TITLE.STUDENT;
+    cancelInicisFlow();
+    await endInicisOverlay();
+    await clearPendingInicisSession();
+    if (wasGuardian) {
+      showGuardianIncompleteAfterOverlay();
+      return;
+    }
+    if (wasStudent) {
+      showInicisAlertAfterOverlay(
+        '본인인증 미완료',
+        '본인인증이 완료되지 않았습니다. 다시 시도해 주세요.',
+      );
+    }
+  }, [
+    endInicisOverlay,
+    inicisOverlayTitle,
+    showGuardianIncompleteAfterOverlay,
+    showInicisAlertAfterOverlay,
+  ]);
 
   const applyBirthDateToState = useCallback((nextBirthDate) => {
     birthDateInputRef.current = nextBirthDate;
@@ -378,69 +407,54 @@ const Sign = ({ navigation }) => {
     [advanceToAccountAfterIdentity],
   );
 
-  const handleStudentVerifyError = useCallback((error) => {
-    if (error?.code === 'CANCELLED') return;
-    if (error?.code === 'IN_PROGRESS') {
-      Alert.alert('알림', '이미 본인인증이 진행 중입니다.');
-      return;
-    }
-    if (error?.code === 'SESSION_START_FAILED' || error?.code === 'POLL_FAILED') {
-      Alert.alert(
-        '본인인증 오류',
-        error?.message || '본인인증을 진행할 수 없습니다.',
-      );
-      return;
-    }
-    if (error?.code === 'TIMEOUT') {
-      Alert.alert(
-        '본인인증 대기',
-        error?.userMessage ||
-          '본인인증 완료 후 ✕ 버튼을 눌러 앱으로 돌아와 주세요.',
-      );
-      return;
-    }
-    if (error?.code === 'fail' || error?.code === 'expired') {
-      Alert.alert(
-        '본인인증 실패',
-        error?.message || '본인인증에 실패했습니다. 다시 시도해 주세요.',
-      );
-      return;
-    }
-    Alert.alert('오류', error?.message || '본인인증 중 오류가 발생했습니다.');
-  }, []);
-
-  const handleGuardianVerifyError = useCallback(
+  const showStudentVerifyErrorAfterOverlay = useCallback(
     (error) => {
       if (error?.code === 'CANCELLED') return;
       if (error?.code === 'IN_PROGRESS') {
-        Alert.alert('알림', '이미 본인인증이 진행 중입니다.');
+        showInicisAlertAfterOverlay('알림', '이미 본인인증이 진행 중입니다.');
         return;
       }
       if (error?.code === 'TIMEOUT') {
-        Alert.alert(
-          '본인인증 대기',
-          error?.userMessage ||
-            '본인인증 완료 후 ✕ 버튼을 눌러 앱으로 돌아와 주세요.',
+        showInicisAlertAfterOverlay(
+          '본인인증 미완료',
+          '본인인증이 완료되지 않았습니다. 다시 시도해 주세요.',
         );
         return;
       }
-      if (
-        error?.code === 'SESSION_START_FAILED' ||
-        error?.code === 'POLL_FAILED' ||
-        error?.code === 'fail' ||
-        error?.code === 'expired'
-      ) {
-        showGuardianVerificationFailedAlert(goToLogin);
-        Alert.alert(
-          '보호자 본인인증 오류',
-          error?.message || '보호자 본인인증을 진행할 수 없습니다.',
+      if (error?.code === 'fail' || error?.code === 'expired') {
+        showInicisAlertAfterOverlay(
+          '본인인증 실패',
+          error?.message || '본인인증에 실패했습니다. 다시 시도해 주세요.',
         );
         return;
       }
-      showGuardianVerificationFailedAlert(goToLogin);
-      Alert.alert('오류', error?.message || '보호자 인증에 실패했습니다.');
+      showInicisAlertAfterOverlay(
+        '본인인증 오류',
+        error?.message || '본인인증을 진행할 수 없습니다.',
+      );
     },
-    [goToLogin],
+    [showInicisAlertAfterOverlay],
+  );
+
+  const showGuardianVerifyErrorAfterOverlay = useCallback(
+    (error) => {
+      if (error?.code === 'CANCELLED') return;
+      if (error?.code === 'IN_PROGRESS') {
+        showInicisAlertAfterOverlay('알림', '이미 본인인증이 진행 중입니다.');
+        return;
+      }
+      if (error?.code === 'TIMEOUT') {
+        showGuardianIncompleteAfterOverlay(
+          '보호자 본인인증이 완료되지 않았습니다. 다시 시도해 주세요.',
+        );
+        return;
+      }
+      showGuardianIncompleteAfterOverlay(
+        error?.message ||
+          '보호자 본인인증이 완료되지 않아 가입을 진행할 수 없어요.',
+      );
+    },
+    [showGuardianIncompleteAfterOverlay, showInicisAlertAfterOverlay],
   );
 
   const applyGuardianVerifySuccess = useCallback((result) => {
@@ -534,14 +548,18 @@ const Sign = ({ navigation }) => {
       setInicisOverlayVisible(true);
 
       let evaluation = null;
+      let flowError = null;
       try {
         evaluation = await runStudentIdentityVerificationCore();
       } catch (error) {
-        if (error?.code !== 'CANCELLED') {
-          handleStudentVerifyError(error);
-        }
+        flowError = error;
       } finally {
         await endInicisOverlay();
+      }
+
+      if (flowError?.code !== 'CANCELLED' && flowError) {
+        showStudentVerifyErrorAfterOverlay(flowError);
+        return;
       }
 
       if (evaluation?.mockAlert) {
@@ -558,9 +576,9 @@ const Sign = ({ navigation }) => {
     [
       commitStudentVerifySuccess,
       endInicisOverlay,
-      handleStudentVerifyError,
       runStudentIdentityVerificationCore,
       showInicisAlertAfterOverlay,
+      showStudentVerifyErrorAfterOverlay,
     ],
   );
 
@@ -580,16 +598,16 @@ const Sign = ({ navigation }) => {
       await runGuardianIdentityVerificationCore();
       await promptStudentIdentityAfterGuardian();
     } catch (error) {
-      if (error?.code !== 'CANCELLED') {
-        handleGuardianVerifyError(error);
-      }
       await endInicisOverlay();
+      if (error?.code !== 'CANCELLED') {
+        showGuardianVerifyErrorAfterOverlay(error);
+      }
     }
   }, [
     endInicisOverlay,
-    handleGuardianVerifyError,
     promptStudentIdentityAfterGuardian,
     runGuardianIdentityVerificationCore,
+    showGuardianVerifyErrorAfterOverlay,
   ]);
 
   const handleStudentIdentityIntroStart = () => {
@@ -625,11 +643,10 @@ const Sign = ({ navigation }) => {
           await promptStudentIdentityAfterGuardian();
         }
       } catch (error) {
-        if (error?.code !== 'CANCELLED') {
-          handleGuardianVerifyError(error);
-        }
-      } finally {
         await endInicisOverlay();
+        if (error?.code !== 'CANCELLED') {
+          showGuardianVerifyErrorAfterOverlay(error);
+        }
       }
       return;
     }
@@ -638,17 +655,20 @@ const Sign = ({ navigation }) => {
       setInicisOverlayTitle(INICIS_OVERLAY_TITLE.STUDENT);
       setInicisOverlayVisible(true);
       let evaluation = null;
+      let flowError = null;
       try {
         const result = await resumePendingInicisFlow('student_signup');
         if (result) {
           evaluation = evaluateStudentVerifyResult(result);
         }
       } catch (error) {
-        if (error?.code !== 'CANCELLED') {
-          handleStudentVerifyError(error);
-        }
+        flowError = error;
       } finally {
         await endInicisOverlay();
+      }
+      if (flowError?.code !== 'CANCELLED' && flowError) {
+        showStudentVerifyErrorAfterOverlay(flowError);
+        return;
       }
       if (evaluation && !evaluation.ok) {
         showInicisAlertAfterOverlay(evaluation.title, evaluation.message);
@@ -663,10 +683,10 @@ const Sign = ({ navigation }) => {
     commitStudentVerifySuccess,
     endInicisOverlay,
     evaluateStudentVerifyResult,
-    handleGuardianVerifyError,
-    handleStudentVerifyError,
     promptStudentIdentityAfterGuardian,
+    showGuardianVerifyErrorAfterOverlay,
     showInicisAlertAfterOverlay,
+    showStudentVerifyErrorAfterOverlay,
   ]);
 
   useEffect(() => {

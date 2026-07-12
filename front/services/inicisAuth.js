@@ -13,6 +13,8 @@ const PENDING_TTL_MS = 30 * 60 * 1000;
 /** 동시에 하나의 인증 브라우저만 */
 let activeFlowPromise = null;
 let activeFlowCancel = null;
+/** 직접 열기 등으로 mTxId가 바뀌면 폴링 대상도 함께 갱신 */
+let activePollMTxId = null;
 
 function registerFlowCancel(onCancel) {
   activeFlowCancel = onCancel;
@@ -127,11 +129,41 @@ function parseSessionPollResponse(data) {
   return { kind: 'pending' };
 }
 
-async function fetchInicisSessionOnce(mTxId) {
+async function fetchInicisSessionStatus(mTxId) {
   const res = await api.get(
     `/api/auth/inicis/session/${encodeURIComponent(mTxId)}`,
   );
-  return parseSessionPollResponse(res.data?.data);
+  return res.data?.data || null;
+}
+
+async function resolveFreshInicisLaunchTarget(pending) {
+  const row = await fetchInicisSessionStatus(pending.mTxId);
+
+  if (row?.status === 'success') {
+    const err = new Error('이미 본인인증이 완료되었습니다.');
+    err.code = 'ALREADY_SUCCESS';
+    throw err;
+  }
+
+  if (row?.status === 'pending') {
+    activePollMTxId = pending.mTxId;
+    return {
+      mTxId: pending.mTxId,
+      launchUrl: buildInicisLaunchUrl(pending.mTxId),
+    };
+  }
+
+  const session = await startInicisSession(pending.purpose, {
+    appReturnUrl: getInicisAppReturnUrl(),
+  });
+  await savePendingSession({ mTxId: session.mTxId, purpose: pending.purpose });
+  activePollMTxId = session.mTxId;
+  return { mTxId: session.mTxId, launchUrl: session.launchUrl };
+}
+
+async function fetchInicisSessionOnce(mTxId) {
+  const row = await fetchInicisSessionStatus(mTxId);
+  return parseSessionPollResponse(row);
 }
 
 export async function waitForInicisResult(mTxId, {
@@ -148,10 +180,14 @@ export async function waitForInicisResult(mTxId, {
     appStateSub?.remove();
     appStateSub = null;
     timer = null;
+    activePollMTxId = null;
   };
+
+  activePollMTxId = mTxId;
 
   return new Promise((resolve, reject) => {
     const tick = async () => {
+      const pollMTxId = activePollMTxId || mTxId;
       if (shouldCancel?.()) {
         cleanup();
         const err = new Error('cancelled');
@@ -170,7 +206,7 @@ export async function waitForInicisResult(mTxId, {
       }
 
       try {
-        const outcome = await fetchInicisSessionOnce(mTxId);
+        const outcome = await fetchInicisSessionOnce(pollMTxId);
         if (outcome.kind === 'success') {
           cleanup();
           resolve(outcome.result);
@@ -259,6 +295,7 @@ export async function runInicisIdentityFlow(purpose, options = {}) {
       await savePendingSession({ mTxId, purpose });
 
       await openInicisBrowser(session.launchUrl);
+      await dismissInicisBrowserSafely();
       const result = await waitForInicisResult(mTxId, {
         ...options,
         shouldCancel: () => cancelled,
@@ -305,6 +342,7 @@ export async function resumePendingInicisFlow(expectedPurpose, options = {}) {
     try {
       const launchUrl = buildInicisLaunchUrl(pending.mTxId);
       await openInicisBrowser(launchUrl);
+      await dismissInicisBrowserSafely();
       const result = await waitForInicisResult(pending.mTxId, {
         timeoutMs: 5 * 60 * 1000,
         intervalMs: 1500,
@@ -370,7 +408,7 @@ export function isInicisFlowInProgress() {
   return Boolean(activeFlowPromise);
 }
 
-/** 로딩 오버레이 「직접 열기」— pending 세션 launch URL 재오픈 (폴링 유지) */
+/** 로딩 오버레이 「직접 열기」— 이미 열린 세션(launched)은 새 mTxId로 재시작 */
 export async function openPendingInicisBrowser() {
   const pending = await getPendingInicisSession();
   if (!pending?.mTxId) {
@@ -378,6 +416,7 @@ export async function openPendingInicisBrowser() {
     err.code = 'NO_PENDING_SESSION';
     throw err;
   }
-  const launchUrl = buildInicisLaunchUrl(pending.mTxId);
+  const { launchUrl } = await resolveFreshInicisLaunchTarget(pending);
   await openInicisBrowser(launchUrl);
+  await dismissInicisBrowserSafely();
 }
