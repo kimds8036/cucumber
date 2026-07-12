@@ -48,12 +48,12 @@ import {
   recoveryPhoneBackendLimiter,
 } from '../middleware/signupRateLimit.js';
 import {
-  assertFirebasePhoneToken,
   findRegisteredUserByPhoneAndName,
   findRegisteredUserByPhoneNameUsername,
   issuePasswordRecoveryToken,
   consumePasswordRecoveryToken,
   mapRecoveryError,
+  mapInicisRecoveryError,
 } from '../services/accountRecovery.service.js';
 import {
   issueStudentIdManualVerificationToken,
@@ -74,6 +74,7 @@ import { API_ERROR_CODES } from '../constants/apiErrorCodes.js';
 import { isProductionEnv } from '../utils/httpError.js';
 import {
   consumeIdentityVerificationClientToken,
+  getIdentityVerificationByClientToken,
   isInicisEnabled,
 } from '../services/inicis.service.js';
 
@@ -656,48 +657,45 @@ router.post('/verify-firebase-phone', signupPhoneBackendLimiter, async (req, res
   }
 });
 
-// ── 아이디/비밀번호 찾기 (Firebase 전화 인증 + rate limit) ──
-
-router.post('/recovery/check-phone-registered', recoveryPhoneBackendLimiter, async (req, res) => {
-  try {
-    const phone = normalizeLocalKrPhone(req.body?.phone);
-    if (!phone || !validatePhone(phone)) {
-      return res.status(400).json({
-        success: false,
-        message: '올바른 전화번호 형식이 아닙니다.',
-      });
-    }
-
-    const [existing] = await pool.execute(
-      `SELECT id FROM users
-       WHERE ${phoneLookupWhereClause()}
-         AND is_deleted = FALSE
-         AND (is_banned IS NULL OR is_banned = FALSE)
-       LIMIT 1`,
-      phoneLookupBindParams(phone),
-    );
-
-    return res.json({
-      success: true,
-      data: {
-        phone,
-        registered: existing.length > 0,
-      },
-    });
-  } catch (error) {
-    console.error('[recovery/check-phone-registered]', error);
-    return res.status(500).json({
-      success: false,
-      message: '전화번호 확인 중 오류가 발생했습니다.',
-    });
-  }
-});
+// ── 아이디/비밀번호 찾기 (KG 이니시스 본인인증) ──
 
 router.post('/recovery/find-username', recoveryPhoneBackendLimiter, async (req, res) => {
   try {
-    const { idToken, phone, name } = req.body || {};
-    const verifiedPhone = await assertFirebasePhoneToken(idToken, phone);
-    const user = await findRegisteredUserByPhoneAndName(verifiedPhone, name);
+    if (!isInicisEnabled()) {
+      return res.status(503).json({
+        success: false,
+        message: '본인인증 서비스를 이용할 수 없습니다.',
+      });
+    }
+
+    const { inicisClientToken, name } = req.body || {};
+    const trimmedName = String(name || '').trim();
+    if (!trimmedName) {
+      return res.status(400).json({
+        success: false,
+        message: '이름을 입력해 주세요.',
+      });
+    }
+
+    const identity = await getIdentityVerificationByClientToken(
+      inicisClientToken,
+      { purpose: 'find_username' },
+    );
+    if (identity.name && identity.name !== trimmedName) {
+      return res.status(400).json({
+        success: false,
+        message: '입력하신 이름과 본인인증 정보가 일치하지 않습니다.',
+      });
+    }
+
+    const user = await findRegisteredUserByPhoneAndName(identity.phone, trimmedName);
+
+    await consumeIdentityVerificationClientToken(inicisClientToken, {
+      purpose: 'find_username',
+      expectedName: trimmedName,
+      expectedPhone: identity.phone,
+      linkedUserId: user.id,
+    });
 
     return res.json({
       success: true,
@@ -705,11 +703,11 @@ router.post('/recovery/find-username', recoveryPhoneBackendLimiter, async (req, 
       data: {
         username: user.username,
         name: user.name,
-        phone: verifiedPhone,
+        phone: identity.phone,
       },
     });
   } catch (error) {
-    const mapped = mapRecoveryError(error);
+    const mapped = mapInicisRecoveryError(error);
     if (mapped.status < 500) {
       return res.status(mapped.status).json({ success: false, message: mapped.message });
     }
@@ -723,17 +721,50 @@ router.post('/recovery/find-username', recoveryPhoneBackendLimiter, async (req, 
 
 router.post('/recovery/verify-account', recoveryPhoneBackendLimiter, async (req, res) => {
   try {
-    const { idToken, phone, name, username } = req.body || {};
-    const verifiedPhone = await assertFirebasePhoneToken(idToken, phone);
-    const user = await findRegisteredUserByPhoneNameUsername(
-      verifiedPhone,
-      name,
-      username,
+    if (!isInicisEnabled()) {
+      return res.status(503).json({
+        success: false,
+        message: '본인인증 서비스를 이용할 수 없습니다.',
+      });
+    }
+
+    const { inicisClientToken, name, username } = req.body || {};
+    const trimmedName = String(name || '').trim();
+    const trimmedUsername = String(username || '').trim();
+    if (!trimmedName || !trimmedUsername) {
+      return res.status(400).json({
+        success: false,
+        message: '이름과 아이디를 입력해 주세요.',
+      });
+    }
+
+    const identity = await getIdentityVerificationByClientToken(
+      inicisClientToken,
+      { purpose: 'password_recovery' },
     );
+    if (identity.name && identity.name !== trimmedName) {
+      return res.status(400).json({
+        success: false,
+        message: '입력하신 이름과 본인인증 정보가 일치하지 않습니다.',
+      });
+    }
+
+    const user = await findRegisteredUserByPhoneNameUsername(
+      identity.phone,
+      trimmedName,
+      trimmedUsername,
+    );
+
+    await consumeIdentityVerificationClientToken(inicisClientToken, {
+      purpose: 'password_recovery',
+      expectedName: trimmedName,
+      expectedPhone: identity.phone,
+      linkedUserId: user.id,
+    });
 
     const recoveryToken = await issuePasswordRecoveryToken({
       userId: user.id,
-      phone: verifiedPhone,
+      phone: identity.phone,
       username: user.username,
     });
 
@@ -744,11 +775,11 @@ router.post('/recovery/verify-account', recoveryPhoneBackendLimiter, async (req,
         recoveryToken,
         username: user.username,
         name: user.name,
-        phone: verifiedPhone,
+        phone: identity.phone,
       },
     });
   } catch (error) {
-    const mapped = mapRecoveryError(error);
+    const mapped = mapInicisRecoveryError(error);
     if (mapped.status < 500) {
       return res.status(mapped.status).json({ success: false, message: mapped.message });
     }

@@ -289,6 +289,30 @@ export async function consumePasswordRecoveryToken(token, { phone, username }) {
 export function mapRecoveryError(error, fallback = '요청 처리 중 오류가 발생했습니다.') {
   return {
     status: error?.status || 500,
-    message: error?.publicMessage || fallback,
+    message: error?.publicMessage || error?.message || fallback,
   };
 }
+
+function mapInicisRecoveryError(error) {
+  const code = error?.code || '';
+  const messages = {
+    IDENTITY_TOKEN_REQUIRED: '본인인증을 먼저 완료해 주세요.',
+    INVALID_IDENTITY_TOKEN: '유효하지 않거나 만료된 본인인증입니다. 다시 시도해 주세요.',
+    IDENTITY_PURPOSE_MISMATCH: '본인인증 용도가 올바르지 않습니다.',
+    IDENTITY_NOT_SUCCESS: '본인인증이 완료되지 않았습니다.',
+    IDENTITY_TOKEN_USED: '이미 사용된 본인인증입니다. 다시 시도해 주세요.',
+    IDENTITY_TOKEN_EXPIRED: '본인인증이 만료되었습니다. 다시 시도해 주세요.',
+    IDENTITY_NAME_MISMATCH:
+      '입력하신 이름과 본인인증 정보가 일치하지 않습니다.',
+    INICIS_DISABLED: '본인인증 서비스를 이용할 수 없습니다.',
+  };
+  if (messages[code]) {
+    return {
+      status: error?.status || 400,
+      message: messages[code],
+    };
+  }
+  return mapRecoveryError(error);
+}
+
+export { mapInicisRecoveryError };

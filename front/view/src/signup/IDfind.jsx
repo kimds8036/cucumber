@@ -16,7 +16,7 @@ import { colors } from '../../../styles/colors';
 import { createFindStyles } from '../../../styles/find.style';
 import Skeleton from '../../../components/common/Skeleton';
 import { api } from '../../../utils/api';
-import RecoveryPhoneFields from './RecoveryPhoneFields';
+import RecoveryInicisFields from './RecoveryInicisFields';
 import SignupStepScroll from './SignupStepScroll';
 
 const IDfind = ({ navigation }) => {
@@ -26,9 +26,9 @@ const IDfind = ({ navigation }) => {
   const styles = useMemo(() => createFindStyles(width, normalize), [width]);
 
   const [name, setName] = useState('');
-  const [phoneNumber, setPhoneNumber] = useState('');
-  const [isPhoneVerified, setIsPhoneVerified] = useState(false);
-  const [phoneIdToken, setPhoneIdToken] = useState(null);
+  const [isIdentityVerified, setIsIdentityVerified] = useState(false);
+  const [inicisClientToken, setInicisClientToken] = useState(null);
+  const [verifiedProfile, setVerifiedProfile] = useState(null);
   const [submitting, setSubmitting] = useState(false);
   const [screenReady, setScreenReady] = useState(false);
 
@@ -46,43 +46,53 @@ const IDfind = ({ navigation }) => {
     );
   };
 
-  const handlePhoneVerified = ({ isVerified, phoneNumber: phone, idToken }) => {
-    setIsPhoneVerified(isVerified);
-    setPhoneNumber(phone);
-    setPhoneIdToken(idToken);
-    if (isVerified) {
-      handleFindUsername(phone, idToken);
-    } else {
-      setPhoneIdToken(null);
+  const resetIdentity = () => {
+    setIsIdentityVerified(false);
+    setInicisClientToken(null);
+    setVerifiedProfile(null);
+  };
+
+  const handleInicisVerified = ({
+    isVerified,
+    inicisClientToken: token,
+    profile,
+  }) => {
+    setIsIdentityVerified(isVerified);
+    setInicisClientToken(token);
+    setVerifiedProfile(profile);
+    if (isVerified && token) {
+      void handleFindUsername(token);
     }
   };
 
-  const handleFindUsername = async (phoneOverride, tokenOverride) => {
-    const phone = phoneOverride || phoneNumber;
-    const idToken = tokenOverride || phoneIdToken;
+  const handleFindUsername = async (tokenOverride) => {
+    const clientToken = tokenOverride || inicisClientToken;
     if (!name.trim()) {
       Alert.alert('알림', '이름을 입력해 주세요.');
       return;
     }
-    if (!isPhoneVerified || !idToken) {
-      Alert.alert('알림', '전화번호 인증을 먼저 완료해 주세요.');
+    if (!clientToken) {
+      Alert.alert('알림', '본인인증을 먼저 완료해 주세요.');
+      return;
+    }
+    if (!tokenOverride && !isIdentityVerified) {
+      Alert.alert('알림', '본인인증을 먼저 완료해 주세요.');
       return;
     }
 
     setSubmitting(true);
     try {
       const res = await api.post('/api/auth/recovery/find-username', {
-        idToken,
-        phone,
+        inicisClientToken: clientToken,
         name: name.trim(),
       });
-      const username = res.data?.data?.username;
-      if (!username) {
+      const foundUsername = res.data?.data?.username;
+      if (!foundUsername) {
         Alert.alert('알림', '아이디를 확인하지 못했습니다.');
         return;
       }
 
-      Alert.alert('아이디 확인', `회원님의 아이디는\n\n${username}\n\n입니다.`, [
+      Alert.alert('아이디 확인', `회원님의 아이디는\n\n${foundUsername}\n\n입니다.`, [
         { text: '로그인하기', onPress: goToLogin },
       ]);
     } catch (error) {
@@ -90,6 +100,7 @@ const IDfind = ({ navigation }) => {
         error?.response?.data?.message ||
         '아이디 찾기 중 오류가 발생했습니다.';
       Alert.alert('알림', msg);
+      resetIdentity();
     } finally {
       setSubmitting(false);
     }
@@ -153,7 +164,7 @@ const IDfind = ({ navigation }) => {
           <Text style={styles.headerTitle}>아이디 찾기</Text>
         </View>
         <Text style={styles.description}>
-          가입 시 등록한 이름과 전화번호로 본인 확인 후 아이디를 안내해 드립니다.
+          가입 시 등록한 이름으로 KG 이니시스 본인인증 후 아이디를 안내해 드립니다.
         </Text>
       </View>
 
@@ -169,23 +180,21 @@ const IDfind = ({ navigation }) => {
                 value={name}
                 onChangeText={(t) => {
                   setName(t);
-                  if (isPhoneVerified) {
-                    setIsPhoneVerified(false);
-                    setPhoneIdToken(null);
-                  }
+                  if (isIdentityVerified) resetIdentity();
                 }}
                 editable={!submitting}
               />
             </View>
 
-            <RecoveryPhoneFields
+            <RecoveryInicisFields
               styles={styles}
               normalize={normalize}
+              purpose="find_username"
               name={name}
-              phoneNumber={phoneNumber}
-              onPhoneChange={setPhoneNumber}
-              isVerified={isPhoneVerified}
-              onVerified={handlePhoneVerified}
+              isVerified={isIdentityVerified}
+              verifiedProfile={verifiedProfile}
+              onVerified={handleInicisVerified}
+              disabled={submitting}
             />
           </SignupStepScroll>
         </View>
@@ -195,10 +204,10 @@ const IDfind = ({ navigation }) => {
         <TouchableOpacity
           style={[
             styles.primaryButton,
-            (!isPhoneVerified || submitting) && styles.primaryButtonDisabled,
+            (!isIdentityVerified || submitting) && styles.primaryButtonDisabled,
           ]}
           activeOpacity={0.9}
-          disabled={!isPhoneVerified || submitting}
+          disabled={!isIdentityVerified || submitting}
           onPress={() => handleFindUsername()}
         >
           <Text style={styles.primaryButtonText}>

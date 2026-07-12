@@ -13,7 +13,12 @@ import {
 } from '../config/inicis.js';
 import { decryptPii, encryptPii } from '../utils/piiCrypto.js';
 
-const PURPOSES = new Set(['student_signup', 'guardian_consent']);
+const PURPOSES = new Set([
+  'student_signup',
+  'guardian_consent',
+  'find_username',
+  'password_recovery',
+]);
 
 function decodeMaybeUrl(v) {
   if (v == null) return '';
@@ -593,6 +598,84 @@ export async function getInicisSessionStatus(mTxId) {
     clientToken: row.status === 'success' ? row.client_token : null,
     profile,
     expiresAt: row.expires_at,
+  };
+}
+
+/**
+ * client_token으로 본인인증 프로필 조회 (소비 전)
+ */
+export async function getIdentityVerificationByClientToken(
+  clientToken,
+  { purpose },
+  connection = null,
+) {
+  const db = connection || pool;
+  const token = String(clientToken || '').trim();
+  if (!token) {
+    const err = new Error('인증 토큰이 필요합니다.');
+    err.code = 'IDENTITY_TOKEN_REQUIRED';
+    err.status = 400;
+    err.publicMessage = '본인인증 토큰이 필요합니다.';
+    throw err;
+  }
+
+  const [rows] = await db.execute(
+    `SELECT id, m_tx_id, purpose, status, name_enc, phone_enc, birthday_enc,
+            expires_at, consumed_at, client_token
+     FROM identity_verifications
+     WHERE client_token = ?
+     LIMIT 1`,
+    [token],
+  );
+  const row = rows[0];
+  if (!row) {
+    const err = new Error('유효하지 않은 본인인증 토큰입니다.');
+    err.code = 'INVALID_IDENTITY_TOKEN';
+    err.status = 401;
+    err.publicMessage = '유효하지 않거나 만료된 본인인증입니다. 다시 시도해 주세요.';
+    throw err;
+  }
+  if (row.purpose !== purpose) {
+    const err = new Error('본인인증 용도가 일치하지 않습니다.');
+    err.code = 'IDENTITY_PURPOSE_MISMATCH';
+    err.status = 400;
+    err.publicMessage = '본인인증 용도가 올바르지 않습니다.';
+    throw err;
+  }
+  if (row.status !== 'success') {
+    const err = new Error('본인인증이 완료되지 않았습니다.');
+    err.code = 'IDENTITY_NOT_SUCCESS';
+    err.status = 400;
+    err.publicMessage = '본인인증이 완료되지 않았습니다.';
+    throw err;
+  }
+  if (row.consumed_at) {
+    const err = new Error('이미 사용된 본인인증 토큰입니다.');
+    err.code = 'IDENTITY_TOKEN_USED';
+    err.status = 401;
+    err.publicMessage = '이미 사용된 본인인증입니다. 다시 시도해 주세요.';
+    throw err;
+  }
+  if (new Date(row.expires_at).getTime() < Date.now()) {
+    const err = new Error('본인인증 토큰이 만료되었습니다.');
+    err.code = 'IDENTITY_TOKEN_EXPIRED';
+    err.status = 401;
+    err.publicMessage = '본인인증이 만료되었습니다. 다시 시도해 주세요.';
+    throw err;
+  }
+
+  const profileName = String(resolveIdentityStoredField(row.name_enc) || '').trim();
+  const profilePhone = digitsOnlyPhone(resolveIdentityStoredField(row.phone_enc));
+  const profileBirth =
+    birthdayToIso(resolveIdentityStoredField(row.birthday_enc)) ||
+    String(resolveIdentityStoredField(row.birthday_enc) || '').slice(0, 10);
+
+  return {
+    id: row.id,
+    mTxId: row.m_tx_id,
+    name: profileName,
+    phone: profilePhone,
+    birthDate: profileBirth,
   };
 }
 
