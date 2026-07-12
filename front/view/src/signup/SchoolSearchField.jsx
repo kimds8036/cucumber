@@ -32,6 +32,7 @@ const SchoolSearchField = ({
   onSelect,
   label = '재학 중인 학교',
   disabled = false,
+  helperBelowLabel = null,
 }) => {
   const dropdownStyles = useMemo(
     () => makeDropdownStyles(normalize),
@@ -100,6 +101,7 @@ const SchoolSearchField = ({
       <Text style={[styles.inputLabel, { marginTop: normalize(16) }]}>
         {label}
       </Text>
+      {helperBelowLabel}
       <View style={[styles.inputWrapper, { marginBottom: 0 }]}>
         <TextInput
           style={[styles.input, { marginBottom: 0 }]}

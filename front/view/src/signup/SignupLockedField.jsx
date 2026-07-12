@@ -9,9 +9,11 @@ const SignupLockedField = ({
   placeholder = '',
   styles,
   compactBottom = false,
+  helperBelowLabel = null,
 }) => (
   <>
     <Text style={styles.inputLabel}>{label}</Text>
+    {helperBelowLabel}
     <View
       style={[styles.inputWrapper, compactBottom && { marginBottom: 0 }]}
     >

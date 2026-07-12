@@ -39,6 +39,7 @@ import {
   openPendingInicisBrowser,
   dismissInicisBrowserSafely,
   waitForPresentationLayerRelease,
+  getInicisReturnToAppMessage,
 } from '../../../services/inicisAuth';
 import {
   isValidUsername,
@@ -394,8 +395,7 @@ const Sign = ({ navigation }) => {
     if (error?.code === 'TIMEOUT') {
       Alert.alert(
         '본인인증 대기',
-        error?.userMessage ||
-          '본인인증 완료 후 ✕ 버튼을 눌러 앱으로 돌아와 주세요.',
+        error?.userMessage || getInicisReturnToAppMessage(),
       );
       return;
     }
@@ -419,8 +419,7 @@ const Sign = ({ navigation }) => {
       if (error?.code === 'TIMEOUT') {
         Alert.alert(
           '본인인증 대기',
-          error?.userMessage ||
-            '본인인증 완료 후 ✕ 버튼을 눌러 앱으로 돌아와 주세요.',
+          error?.userMessage || getInicisReturnToAppMessage(),
         );
         return;
       }

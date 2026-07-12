@@ -159,24 +159,24 @@ const SignStep2 = ({
       <SignupStepScroll normalize={normalize} bottomOffset={bottomOffset}>
         {accountOnly ? (
           verifiedName ? (
-            <>
-              <View style={dbg('#3498db')}>
-                <SignupLockedField
-                  label="이름"
-                  value={verifiedName}
-                  styles={styles}
-                  compactBottom
-                />
-              </View>
-              <SignupHelperText
-                normalize={normalize}
-                variant="emphasis"
-                tight
-                style={dbg('#9b59b6')}
-              >
-                본인인증으로 확인된 이름이며 변경할 수 없습니다.
-              </SignupHelperText>
-            </>
+            <View style={dbg('#3498db')}>
+              <SignupLockedField
+                label="이름"
+                value={verifiedName}
+                styles={styles}
+                compactBottom
+                helperBelowLabel={
+                  <SignupHelperText
+                    normalize={normalize}
+                    variant="emphasis"
+                    tight
+                    style={dbg('#9b59b6')}
+                  >
+                    본인인증으로 확인된 이름이며 변경할 수 없습니다.
+                  </SignupHelperText>
+                }
+              />
+            </View>
           ) : null
         ) : (
           <>
@@ -277,20 +277,20 @@ const SignStep2 = ({
         })}
 
         {showSchoolField ? (
-          <>
-            <View style={dbg('#8e44ad')}>
-              <SchoolSearchField
-                styles={styles}
-                normalize={normalize}
-                selectedSchool={selectedSchool}
-                onSelect={onSchoolSelect}
-              />
-            </View>
-            <SignupHelperText normalize={normalize} style={dbg('#c0392b')}>
-              입력하신 학교는 이후 학생증 인증 단계에서 재학 여부를 확인하는 데
-              사용됩니다.
-            </SignupHelperText>
-          </>
+          <View style={dbg('#8e44ad')}>
+            <SchoolSearchField
+              styles={styles}
+              normalize={normalize}
+              selectedSchool={selectedSchool}
+              onSelect={onSchoolSelect}
+              helperBelowLabel={
+                <SignupHelperText normalize={normalize} >
+                  입력하신 학교는 이후 학생증 인증 단계에서 재학 여부를 확인하는 데
+                  사용됩니다.
+                </SignupHelperText>
+              }
+            />
+          </View>
         ) : null}
 
         {showCertificateFields ? (
