@@ -197,6 +197,7 @@ const Sign = ({ navigation }) => {
   const initialResumeInicisRef = useRef(route.params?.resumeInicis === true);
   const resumeInicisFromPendingRef = useRef(async () => {});
   const birthDateInputRef = useRef('');
+  const inicisClientTokenRef = useRef(null);
   const guardianModalPendingActionRef = useRef(null);
 
   const endInicisOverlay = useCallback(async () => {
@@ -288,11 +289,25 @@ const Sign = ({ navigation }) => {
         };
       }
 
+      const verifiedPhone = String(profile.phoneNumber || '').replace(/\D/g, '');
+      if (!verifiedPhone || verifiedPhone.length < 10) {
+        return {
+          ok: false,
+          title: '본인인증 오류',
+          message:
+            '인증 결과에서 전화번호를 확인하지 못했습니다. 잠시 후 다시 시도해 주세요.',
+        };
+      }
+
+      if (result?.clientToken) {
+        inicisClientTokenRef.current = result.clientToken;
+      }
+
       return {
         ok: true,
         nextIdentity: {
           name: verifiedName,
-          phoneNumber: profile.phoneNumber || INICIS_MOCK_PHONE,
+          phoneNumber: verifiedPhone,
           birthDate: verifiedBirthDate,
           isVerified: true,
           inicisClientToken: result.clientToken,
@@ -1191,7 +1206,7 @@ const Sign = ({ navigation }) => {
       Alert.alert('알림', '계정 정보가 없습니다. 이전 단계를 확인해 주세요.');
       return;
     }
-    if (!identityData.inicisClientToken) {
+    if (!identityData.inicisClientToken && !inicisClientTokenRef.current) {
       Alert.alert(
         '본인인증 필요',
         '학생 본인인증 정보가 없습니다. 이전 단계에서 본인인증을 다시 완료해 주세요.',
@@ -1199,7 +1214,11 @@ const Sign = ({ navigation }) => {
       return;
     }
 
-    const payload = buildSignupPayload(finalData, token, recognized);
+    const inicisToken =
+      inicisClientTokenRef.current || identityData.inicisClientToken;
+    const payload = buildSignupPayload(finalData, token, recognized, {
+      studentInicisClientToken: inicisToken,
+    });
     if (
       !Number.isFinite(payload.graduationYear) ||
       payload.graduationYear < 1900
@@ -1221,9 +1240,11 @@ const Sign = ({ navigation }) => {
         [{ text: '확인', onPress: () => resetTo('Login') }],
       );
     } catch (error) {
+      const data = error?.response?.data;
+      const codeHint = data?.code ? `\n\n[${data.code}]` : '';
       Alert.alert(
         '회원가입 실패',
-        error.response?.data?.message || '회원가입 중 오류가 발생했습니다.',
+        (data?.message || '회원가입 중 오류가 발생했습니다.') + codeHint,
       );
     } finally {
       setSubmitting(false);
@@ -1279,8 +1300,9 @@ const Sign = ({ navigation }) => {
       consents: consentData.consents || {},
     };
 
-    if (identityData.inicisClientToken) {
-      payload.studentInicisClientToken = identityData.inicisClientToken;
+    if (options.studentInicisClientToken || identityData.inicisClientToken) {
+      payload.studentInicisClientToken =
+        options.studentInicisClientToken || identityData.inicisClientToken;
     }
     if (guardianInicisClientToken) {
       payload.guardianInicisClientToken = guardianInicisClientToken;

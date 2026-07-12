@@ -22,6 +22,7 @@ import StudentIdCaptureStage, {
   useStudentIdCapture,
 } from '../../../components/auth/StudentIdCaptureStage';
 import SignupHelperText from './SignupHelperText';
+import { normalizeBirthDateForCompare } from './signupBirthDatePolicy';
 
 const UPLOAD_TIMEOUT_MS = 120_000;
 
@@ -123,12 +124,16 @@ const SignStepStudentIdVerify = ({
           ? cropRectToNormalized(cropRect, photo.width, photo.height)
           : null;
 
+      const normalizedBirthDate =
+        normalizeBirthDateForCompare(identity.birthDate) || identity.birthDate;
+      const normalizedPhone = String(identity.phoneNumber || '').replace(/\D/g, '');
+
       const res = await api.post(
         '/api/auth/signup/upload-student-id',
         {
           name: identity.name.trim(),
-          birthDate: identity.birthDate,
-          phone: identity.phoneNumber,
+          birthDate: normalizedBirthDate,
+          phone: normalizedPhone,
           schoolId,
           imageBase64: photo.base64,
           cropRegion,

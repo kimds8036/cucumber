@@ -126,7 +126,15 @@ function mapIdentityTokenError(code) {
 
 function identityTokenErrorResponse(tokenErr) {
   const code = tokenErr?.code || 'INVALID_IDENTITY_TOKEN';
-  const message = mapIdentityTokenError(code);
+  let message = mapIdentityTokenError(code);
+  if (message === '본인인증 검증에 실패했습니다.') {
+    console.error('[signup/inicis-token]', code, tokenErr?.message || tokenErr);
+    if (tokenErr?.message && !String(code).startsWith('ER_')) {
+      message = tokenErr.message;
+    } else if (code) {
+      message = `본인인증 검증에 실패했습니다. (${code})`;
+    }
+  }
   return {
     status: 400,
     body: {
@@ -1075,9 +1083,12 @@ router.post('/signup', blockWhenFlag('signup_disabled'), validate(signupValidato
       await connection.beginTransaction();
 
       const identityLinkIds = [];
-      let signupName = String(name).trim();
-      let signupPhone = phone;
-      let signupBirthDate = normalizedBirthDate;
+      const anchorName = String(name).trim();
+      const anchorPhone = phone;
+      const anchorBirthDate = normalizedBirthDate;
+      let signupName = anchorName;
+      let signupPhone = anchorPhone;
+      let signupBirthDate = anchorBirthDate;
 
       if (under14 && inicisOn && guardianInicisClientToken?.trim()) {
         try {
@@ -1095,30 +1106,40 @@ router.post('/signup', blockWhenFlag('signup_disabled'), validate(signupValidato
       }
 
       if (inicisOn && studentInicisClientToken?.trim()) {
+        let studentConsumed;
         try {
-          const studentConsumed = await consumeIdentityVerificationClientToken(
+          studentConsumed = await consumeIdentityVerificationClientToken(
             studentInicisClientToken,
-            {
-              purpose: 'student_signup',
-              expectedBirthDate: normalizedBirthDate,
-            },
+            { purpose: 'student_signup' },
             connection,
           );
           identityLinkIds.push(studentConsumed.id);
-          if (studentConsumed.name) signupName = studentConsumed.name;
-          if (studentConsumed.phone) signupPhone = studentConsumed.phone;
-          if (studentConsumed.birthDate) {
-            signupBirthDate = normalizeBirthDateInput(studentConsumed.birthDate)
-              || studentConsumed.birthDate;
-          }
-          await ensureInicisPhoneVerificationRecord(
-            studentConsumed.phone || signupPhone,
-            connection,
-          );
         } catch (tokenErr) {
           await connection.rollback();
           const { status, body } = identityTokenErrorResponse(tokenErr);
           return res.status(status).json(body);
+        }
+
+        try {
+          await ensureInicisPhoneVerificationRecord(
+            studentConsumed.phone || anchorPhone,
+            connection,
+          );
+        } catch (phoneErr) {
+          console.error('[signup/ensureInicisPhone]', phoneErr);
+          await connection.rollback();
+          return res.status(500).json({
+            success: false,
+            message: '전화번호 인증 기록 저장에 실패했습니다. 잠시 후 다시 시도해 주세요.',
+            code: phoneErr?.code || 'PHONE_VERIFICATION_RECORD_FAILED',
+          });
+        }
+
+        if (studentConsumed.name) signupName = studentConsumed.name;
+        if (studentConsumed.phone) signupPhone = studentConsumed.phone;
+        if (studentConsumed.birthDate) {
+          signupBirthDate = normalizeBirthDateInput(studentConsumed.birthDate)
+            || studentConsumed.birthDate;
         }
       }
 
@@ -1128,10 +1149,10 @@ router.post('/signup', blockWhenFlag('signup_disabled'), validate(signupValidato
           studentIdManualVerification = await consumeStudentIdManualVerificationToken(
             studentVerificationToken,
             {
-              name: signupName,
-              birthDate: signupBirthDate,
+              name: anchorName,
+              birthDate: anchorBirthDate,
               schoolId: String(schoolId).trim(),
-              phone: signupPhone,
+              phone: anchorPhone,
             },
             connection,
           );
