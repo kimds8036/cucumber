@@ -6,6 +6,7 @@ import {
   getDbConnectionOptions,
   parseMigrateCliArgs,
 } from '../config/dbEnv.js';
+import { backfillPersonalMailRecipientNames } from './piiBackfill.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -66,6 +67,23 @@ async function runMigrationsForTarget(target) {
       }
 
       console.log(`✅ [${target}] 완료: ${file}\n`);
+
+      if (file === '056_personal_mails_recipient_name_pii.sql') {
+        try {
+          const updated = await backfillPersonalMailRecipientNames(connection);
+          if (updated > 0) {
+            console.log(`  🔐 personal_mails recipient_name 백필: ${updated}건`);
+          }
+        } catch (backfillErr) {
+          if (String(backfillErr?.message || '').includes('PII_ENCRYPTION_KEY')) {
+            console.warn(
+              '  ⚠️  PII 키 없음 — personal_mails 백필 스킵 (npm run migrate:pii-encrypt 로 수동 실행)',
+            );
+          } else {
+            throw backfillErr;
+          }
+        }
+      }
     }
 
     console.log(`🎉 [${target}] 마이그레이션 완료`);

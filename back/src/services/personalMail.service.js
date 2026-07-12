@@ -6,6 +6,7 @@ import { ensurePersonalMailSchema } from '../db/ensurePersonalMailSchema.js';
 import {
   nameLookupBindParams,
   nameLookupWhereClause,
+  packNameOnly,
 } from './userPii.service.js';
 import {
   PERSONAL_MAIL_STATUS,
@@ -60,14 +61,15 @@ async function insertDeliveredPersonalMail(connection, {
     blockerUserId: Number(recipientId),
     targetUserId: senderId,
   });
+  const namePacked = packNameOnly(snapshot.name);
 
   const [result] = await connection.execute(
     `INSERT INTO personal_mails (
       sender_id, recipient_id, content, status, is_match_failed,
       recipient_school_id, recipient_grade, recipient_class_num,
-      recipient_name, recipient_user_id, sent_at, created_at,
+      recipient_name_enc, recipient_name_lookup, recipient_user_id, sent_at, created_at,
       is_shadow_blocked, shadow_blocked_for_user_id
-    ) VALUES (?, ?, ?, ?, FALSE, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    ) VALUES (?, ?, ?, ?, FALSE, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     [
       senderId,
       recipientId,
@@ -76,7 +78,8 @@ async function insertDeliveredPersonalMail(connection, {
       snapshot.schoolId,
       snapshot.grade,
       snapshot.classNum,
-      snapshot.name,
+      namePacked.name_enc,
+      namePacked.name_lookup,
       snapshot.username || null,
       now,
       now,
@@ -124,13 +127,14 @@ async function insertMatchFailedPersonalMail(connection, {
   snapshot,
 }) {
   const now = getNowForDB();
+  const namePacked = packNameOnly(snapshot.name);
   const [result] = await connection.execute(
     `INSERT INTO personal_mails (
       sender_id, recipient_id, content, status, is_match_failed,
       recipient_school_id, recipient_grade, recipient_class_num,
-      recipient_name, recipient_user_id, sent_at, created_at,
+      recipient_name_enc, recipient_name_lookup, recipient_user_id, sent_at, created_at,
       root_mail_id, room_id
-    ) VALUES (?, NULL, ?, ?, TRUE, ?, ?, ?, ?, ?, ?, ?, NULL, NULL)`,
+    ) VALUES (?, NULL, ?, ?, TRUE, ?, ?, ?, ?, ?, ?, ?, ?, NULL, NULL)`,
     [
       senderId,
       content.trim(),
@@ -138,7 +142,8 @@ async function insertMatchFailedPersonalMail(connection, {
       snapshot.schoolId,
       snapshot.grade,
       snapshot.classNum,
-      snapshot.name,
+      namePacked.name_enc,
+      namePacked.name_lookup,
       snapshot.username || null,
       now,
       now,
@@ -247,7 +252,7 @@ export async function sendPersonalMailByAddress(senderId, body) {
     const [rows] = await pool.execute(
       `SELECT id, sender_id, recipient_id, content, status, is_match_failed,
               recipient_school_id, recipient_grade, recipient_class_num,
-              recipient_name, recipient_user_id, sent_at, created_at, room_id
+              recipient_name_enc, recipient_user_id, sent_at, created_at, room_id
        FROM personal_mails WHERE id = ?`,
       [mailId],
     );
@@ -274,7 +279,7 @@ export async function getPersonalMailRetryPayload(mailId, senderId) {
             s.region AS school_region,
             pm.recipient_grade AS grade,
             pm.recipient_class_num AS class_num,
-            pm.recipient_name AS name,
+            pm.recipient_name_enc AS name_enc,
             pm.recipient_user_id AS user_id,
             pm.content
      FROM personal_mails pm
@@ -309,7 +314,7 @@ export async function runPersonalMailReturnJob(options = {}) {
     : getPersonalMailReturnDays();
 
   const [candidates] = await pool.execute(
-    `SELECT pm.id, pm.sender_id, pm.recipient_id, pm.recipient_name,
+    `SELECT pm.id, pm.sender_id, pm.recipient_id, pm.recipient_name_enc,
             ru.name_enc AS recipient_user_name_enc, pm.is_match_failed,
             pm.root_mail_id, pm.sent_at
      FROM personal_mails pm

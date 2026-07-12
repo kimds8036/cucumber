@@ -140,9 +140,9 @@ export async function loadPersonalMailMetaByIds(pool, ids) {
 
   const placeholders = uniqueIds.map(() => '?').join(',');
   const [rows] = await pool.execute(
-    `SELECT pm.id, pm.recipient_name, pm.recipient_id, pm.sender_id,
-            sender.name AS sender_name,
-            recipient.name AS recipient_user_name
+    `SELECT pm.id, pm.recipient_name_enc, pm.recipient_id, pm.sender_id,
+            sender.name_enc AS sender_name_enc,
+            recipient.name_enc AS recipient_user_name_enc
      FROM personal_mails pm
      LEFT JOIN users sender ON sender.id = pm.sender_id
      LEFT JOIN users recipient ON recipient.id = pm.recipient_id

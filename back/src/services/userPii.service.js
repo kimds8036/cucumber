@@ -46,6 +46,15 @@ export function packPhoneOnly(phone) {
   };
 }
 
+/** 이름 단일 필드 저장용 (personal_mails 스냅샷 등) */
+export function packNameOnly(name) {
+  const normalizedName = normalizePiiName(name);
+  return {
+    name_enc: normalizedName ? encryptPii(normalizedName) : null,
+    name_lookup: hashNameLookup(normalizedName),
+  };
+}
+
 /** 단일 필드: 암호문 복호화 */
 export function resolvePiiField(encValue) {
   if (!encValue) return null;
@@ -146,6 +155,7 @@ export function autoHydratePiiRows(rows) {
     ['recipient_user_name', 'recipient_user_name_enc'],
     ['user_name', 'user_name_enc'],
     ['blocked_name', 'blocked_name_enc'],
+    ['recipient_snapshot_name', 'recipient_snapshot_name_enc'],
   ];
   return rows.map((row) => {
     const next = { ...row };
@@ -163,6 +173,10 @@ export function autoHydratePiiRows(rows) {
     if ('guardian_phone_enc' in next) {
       next.guardian_phone = resolvePiiField(next.guardian_phone_enc);
       delete next.guardian_phone_enc;
+    }
+    if ('recipient_name_enc' in next && !('name_enc' in next)) {
+      next.recipient_name = resolvePiiField(next.recipient_name_enc);
+      delete next.recipient_name_enc;
     }
     return next;
   });

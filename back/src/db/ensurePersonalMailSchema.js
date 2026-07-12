@@ -40,7 +40,8 @@ export async function ensurePersonalMailSchema() {
             recipient_school_id VARCHAR(50) NULL,
             recipient_grade TINYINT NULL,
             recipient_class_num TINYINT NULL,
-            recipient_name VARCHAR(50) NULL,
+            recipient_name_enc TEXT NULL,
+            recipient_name_lookup VARCHAR(64) NULL,
             recipient_user_id VARCHAR(50) NULL,
             sent_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
             returned_at TIMESTAMP NULL,
@@ -68,7 +69,8 @@ export async function ensurePersonalMailSchema() {
       await addColumn('personal_mails', 'recipient_school_id', 'VARCHAR(50) NULL');
       await addColumn('personal_mails', 'recipient_grade', 'TINYINT NULL');
       await addColumn('personal_mails', 'recipient_class_num', 'TINYINT NULL');
-      await addColumn('personal_mails', 'recipient_name', 'VARCHAR(50) NULL');
+      await addColumn('personal_mails', 'recipient_name_enc', 'TEXT NULL');
+      await addColumn('personal_mails', 'recipient_name_lookup', 'VARCHAR(64) NULL');
       await addColumn('personal_mails', 'recipient_user_id', 'VARCHAR(50) NULL');
       await addColumn(
         'personal_mails',
