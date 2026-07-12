@@ -9,6 +9,7 @@
  */
 
 import bcrypt from 'bcrypt';
+import { fileURLToPath } from 'url';
 import { createDbConnection, parseMigrateCliArgs } from '../config/dbEnv.js';
 import {
   packUserPii,
@@ -110,7 +111,7 @@ async function upsertOneDevTestUser(connection, schoolId, account) {
        (username, password, ${USER_PII_INSERT_COLUMNS}, school_id, grade, class_number,
         graduation_year, is_graduated, color_id, phone_verified, student_verified,
         reverification_status)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, FALSE, 1, TRUE, TRUE, 'none')`,
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, FALSE, 1, TRUE, TRUE, 'none')`,
     [
       account.username,
       hashed,
@@ -169,7 +170,12 @@ async function main() {
   }
 }
 
-main().catch((error) => {
-  console.error('❌ seed-dev-test-user 실패:', error?.message || error);
-  process.exit(1);
-});
+const isDirectRun =
+  process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1];
+
+if (isDirectRun) {
+  main().catch((error) => {
+    console.error('❌ seed-dev-test-user 실패:', error?.message || error);
+    process.exit(1);
+  });
+}

@@ -156,4 +156,7 @@ async function main() {
   }
 }
 
-main();
+main().catch((err) => {
+  console.error('❌ seed-reset-and-admins 실패:', err?.message || err);
+  process.exit(1);
+});
