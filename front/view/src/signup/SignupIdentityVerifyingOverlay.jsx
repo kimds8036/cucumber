@@ -1,6 +1,5 @@
 import React from 'react';
 import {
-  Modal,
   View,
   Text,
   ActivityIndicator,
@@ -8,6 +7,7 @@ import {
   StyleSheet,
 } from 'react-native';
 import { colors, fonts, fontSizes } from '../../../styles/colors';
+import SignupIosSafeModal from './SignupIosSafeModal';
 
 /** 회원가입 — KG 이니시스 본인인증 진행 중 전체 화면 오버레이 */
 const SignupIdentityVerifyingOverlay = ({
@@ -17,11 +17,8 @@ const SignupIdentityVerifyingOverlay = ({
   onOpenManually,
   onCancel,
   openingManually = false,
-}) => {
-  if (!visible) return null;
-
-  return (
-  <Modal
+}) => (
+  <SignupIosSafeModal
     visible={visible}
     transparent
     animationType="fade"
@@ -111,9 +108,8 @@ const SignupIdentityVerifyingOverlay = ({
         </TouchableOpacity>
       </View>
     </View>
-  </Modal>
-  );
-};
+  </SignupIosSafeModal>
+);
 
 const styles = StyleSheet.create({
   backdrop: {

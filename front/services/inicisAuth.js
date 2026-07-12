@@ -1,7 +1,7 @@
 import * as WebBrowser from 'expo-web-browser';
 import * as Linking from 'expo-linking';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { AppState, Platform } from 'react-native';
+import { AppState, InteractionManager, Platform } from 'react-native';
 import { api } from '../utils/api';
 import { getUserFacingErrorMessage } from '../utils/userFacingError';
 
@@ -335,16 +335,35 @@ export async function resumePendingInicisFlow(expectedPurpose, options = {}) {
 }
 
 export async function dismissInicisBrowserSafely() {
-  try {
-    await WebBrowser.dismissBrowser();
-  } catch {
-    // ignore
+  const attempts = Platform.OS === 'ios' ? 3 : 1;
+  for (let i = 0; i < attempts; i += 1) {
+    try {
+      await WebBrowser.dismissBrowser();
+    } catch {
+      // ignore
+    }
+    try {
+      await WebBrowser.coolDownAsync();
+    } catch {
+      // ignore
+    }
+    if (i < attempts - 1) {
+      await new Promise((resolve) => setTimeout(resolve, 80));
+    }
   }
-  try {
-    await WebBrowser.coolDownAsync();
-  } catch {
-    // ignore
-  }
+}
+
+/** Safari·Modal 애니메이션 종료 후 UI 잠금 해제 대기 */
+export function waitForPresentationLayerRelease() {
+  return new Promise((resolve) => {
+    InteractionManager.runAfterInteractions(() => {
+      if (Platform.OS === 'ios') {
+        setTimeout(resolve, 150);
+        return;
+      }
+      resolve();
+    });
+  });
 }
 
 export function isInicisFlowInProgress() {

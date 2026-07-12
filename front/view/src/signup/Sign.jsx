@@ -38,6 +38,7 @@ import {
   cancelInicisFlow,
   openPendingInicisBrowser,
   dismissInicisBrowserSafely,
+  waitForPresentationLayerRelease,
 } from '../../../services/inicisAuth';
 import {
   isValidUsername,
@@ -191,7 +192,10 @@ const Sign = ({ navigation }) => {
     if (isMountedRef.current) {
       setInicisOverlayVisible(false);
       setInicisManualOpening(false);
+      setShowStudentIdentityIntroModal(false);
+      setShowGuardianConsentModal(false);
     }
+    await waitForPresentationLayerRelease();
   }, []);
 
   const showInicisAlertAfterOverlay = useCallback((title, message) => {
@@ -363,18 +367,14 @@ const Sign = ({ navigation }) => {
     ],
   );
 
-  const applyStudentVerifySuccess = useCallback(
-    (result) => {
-      const evaluation = evaluateStudentVerifyResult(result);
-      if (!evaluation.ok) {
-        return evaluation;
-      }
+  const commitStudentVerifySuccess = useCallback(
+    (evaluation) => {
+      if (!evaluation?.ok || !evaluation.nextIdentity) return;
       const { nextIdentity } = evaluation;
       setIdentityData((prev) => ({ ...prev, ...nextIdentity }));
       advanceToAccountAfterIdentity(nextIdentity);
-      return { ok: true };
     },
-    [advanceToAccountAfterIdentity, evaluateStudentVerifyResult],
+    [advanceToAccountAfterIdentity],
   );
 
   const handleStudentVerifyError = useCallback((error) => {
@@ -460,13 +460,13 @@ const Sign = ({ navigation }) => {
 
   const runStudentIdentityVerificationCore = useCallback(async () => {
     if (SKIP_SIGNUP_VALIDATION_UNTIL_OCR_TEST) {
-      const mockIdentity = {
-        ...OCR_TEST_MOCK_IDENTITY,
-        isVerified: true,
+      return {
+        ok: true,
+        nextIdentity: {
+          ...OCR_TEST_MOCK_IDENTITY,
+          isVerified: true,
+        },
       };
-      setIdentityData((prev) => ({ ...prev, ...mockIdentity }));
-      advanceToAccountAfterIdentity(mockIdentity);
-      return { ok: true };
     }
 
     const clientOn = isInicisClientEnabled();
@@ -478,24 +478,21 @@ const Sign = ({ navigation }) => {
 
     if (!useReal) {
       await new Promise((resolve) => setTimeout(resolve, 400));
-      const mockIdentity = {
-        name: '테스트학생',
-        phoneNumber: INICIS_MOCK_PHONE,
-        isVerified: true,
+      return {
+        ok: true,
+        mockAlert: '본인인증이 완료되었습니다. (테스트 mock)',
+        nextIdentity: {
+          name: '테스트학생',
+          phoneNumber: INICIS_MOCK_PHONE,
+          isVerified: true,
+        },
       };
-      setIdentityData((prev) => ({ ...prev, ...mockIdentity }));
-      advanceToAccountAfterIdentity(mockIdentity);
-      return { ok: true, mockAlert: '본인인증이 완료되었습니다. (테스트 mock)' };
     }
 
     const result = await executeInicisFlow('student_signup');
     if (!result) return null;
-    return applyStudentVerifySuccess(result);
-  }, [
-    advanceToAccountAfterIdentity,
-    applyStudentVerifySuccess,
-    executeInicisFlow,
-  ]);
+    return evaluateStudentVerifyResult(result);
+  }, [evaluateStudentVerifyResult, executeInicisFlow]);
 
   const runGuardianIdentityVerificationCore = useCallback(async () => {
     if (SKIP_SIGNUP_VALIDATION_UNTIL_OCR_TEST) {
@@ -548,13 +545,17 @@ const Sign = ({ navigation }) => {
 
       if (evaluation?.mockAlert) {
         showInicisAlertAfterOverlay('알림', evaluation.mockAlert);
-        return;
       }
       if (evaluation && !evaluation.ok) {
         showInicisAlertAfterOverlay(evaluation.title, evaluation.message);
+        return;
+      }
+      if (evaluation?.ok) {
+        commitStudentVerifySuccess(evaluation);
       }
     },
     [
+      commitStudentVerifySuccess,
       endInicisOverlay,
       handleStudentVerifyError,
       runStudentIdentityVerificationCore,
@@ -592,7 +593,9 @@ const Sign = ({ navigation }) => {
 
   const handleStudentIdentityIntroStart = () => {
     setShowStudentIdentityIntroModal(false);
-    void runStudentIdentityVerification(STEP.BIRTH_DATE);
+    InteractionManager.runAfterInteractions(() => {
+      void runStudentIdentityVerification(STEP.BIRTH_DATE);
+    });
   };
 
   const handleStudentIdentityIntroCancel = () => {
@@ -637,7 +640,7 @@ const Sign = ({ navigation }) => {
       try {
         const result = await resumePendingInicisFlow('student_signup');
         if (result) {
-          evaluation = applyStudentVerifySuccess(result);
+          evaluation = evaluateStudentVerifyResult(result);
         }
       } catch (error) {
         if (error?.code !== 'CANCELLED') {
@@ -648,12 +651,17 @@ const Sign = ({ navigation }) => {
       }
       if (evaluation && !evaluation.ok) {
         showInicisAlertAfterOverlay(evaluation.title, evaluation.message);
+        return;
+      }
+      if (evaluation?.ok) {
+        commitStudentVerifySuccess(evaluation);
       }
     }
   }, [
     applyGuardianVerifySuccess,
-    applyStudentVerifySuccess,
+    commitStudentVerifySuccess,
     endInicisOverlay,
+    evaluateStudentVerifyResult,
     handleGuardianVerifyError,
     handleStudentVerifyError,
     promptStudentIdentityAfterGuardian,
