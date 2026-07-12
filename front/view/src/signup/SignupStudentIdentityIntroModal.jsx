@@ -1,12 +1,12 @@
 import React from 'react';
 import {
-  Modal,
   View,
   Text,
   TouchableOpacity,
   TouchableWithoutFeedback,
 } from 'react-native';
 import { colors } from '../../../styles/colors';
+import SignupIosSafeModal from './SignupIosSafeModal';
 
 /** 보호자 인증 완료 후 — 학생 본인인증 안내 모달 */
 const SignupStudentIdentityIntroModal = ({
@@ -14,11 +14,8 @@ const SignupStudentIdentityIntroModal = ({
   normalize,
   onStart,
   onCancel,
-}) => {
-  if (!visible) return null;
-
-  return (
-  <Modal
+}) => (
+  <SignupIosSafeModal
     visible={visible}
     transparent
     animationType="fade"
@@ -109,8 +106,7 @@ const SignupStudentIdentityIntroModal = ({
         </TouchableWithoutFeedback>
       </View>
     </TouchableWithoutFeedback>
-  </Modal>
-  );
-};
+  </SignupIosSafeModal>
+);
 
 export default SignupStudentIdentityIntroModal;

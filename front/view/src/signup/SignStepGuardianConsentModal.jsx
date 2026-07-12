@@ -1,12 +1,12 @@
 import React from 'react';
 import {
-  Modal,
   View,
   Text,
   TouchableOpacity,
   TouchableWithoutFeedback,
 } from 'react-native';
 import { colors } from '../../../styles/colors';
+import SignupIosSafeModal from './SignupIosSafeModal';
 
 /** C 케이스 — 보호자 본인인증 필요 안내 모달 */
 const SignStepGuardianConsentModal = ({
@@ -15,7 +15,7 @@ const SignStepGuardianConsentModal = ({
   onStart,
   onLater,
 }) => (
-  <Modal
+  <SignupIosSafeModal
     visible={visible}
     transparent
     animationType="fade"
@@ -101,7 +101,7 @@ const SignStepGuardianConsentModal = ({
         </TouchableWithoutFeedback>
       </View>
     </TouchableWithoutFeedback>
-  </Modal>
+  </SignupIosSafeModal>
 );
 
 export default SignStepGuardianConsentModal;
