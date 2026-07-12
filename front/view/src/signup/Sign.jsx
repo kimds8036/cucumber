@@ -185,6 +185,7 @@ const Sign = ({ navigation }) => {
   const initialResumeInicisRef = useRef(route.params?.resumeInicis === true);
   const resumeInicisFromPendingRef = useRef(async () => {});
   const birthDateInputRef = useRef('');
+  const guardianModalPendingActionRef = useRef(null);
 
   const endInicisOverlay = useCallback(async () => {
     await dismissInicisBrowserSafely();
@@ -696,6 +697,7 @@ const Sign = ({ navigation }) => {
     return () => {
       cancelled = true;
       isMountedRef.current = false;
+      guardianModalPendingActionRef.current = null;
       cancelInicisFlow();
     };
     // 마운트 1회만 — resumeInicisFromPending 의존 시 setParams 무한 루프
@@ -852,21 +854,37 @@ const Sign = ({ navigation }) => {
     void runStudentIdentityVerification(STEP.BIRTH_DATE);
   };
 
+  const handleGuardianConsentModalDismissed = useCallback(() => {
+    const pending = guardianModalPendingActionRef.current;
+    guardianModalPendingActionRef.current = null;
+    if (!pending || !isMountedRef.current) return;
+
+    InteractionManager.runAfterInteractions(() => {
+      if (!isMountedRef.current) return;
+      if (pending === 'intro') {
+        setShowStudentIdentityIntroModal(true);
+        return;
+      }
+      if (pending === 'verification') {
+        void runGuardianAndStudentVerification();
+      }
+    });
+  }, [runGuardianAndStudentVerification]);
+
   const handleGuardianConsentStart = () => {
-    setShowGuardianConsentModal(false);
     setConsentData((prev) => ({
       ...prev,
       consents: { ...prev.consents, guardian: true },
       allConsented: true,
     }));
-    if (guardianVerified) {
-      setShowStudentIdentityIntroModal(true);
-      return;
-    }
-    void runGuardianAndStudentVerification();
+    guardianModalPendingActionRef.current = guardianVerified
+      ? 'intro'
+      : 'verification';
+    setShowGuardianConsentModal(false);
   };
 
   const handleGuardianConsentLater = () => {
+    guardianModalPendingActionRef.current = null;
     setShowGuardianConsentModal(false);
     goToLogin();
   };
@@ -1403,6 +1421,7 @@ const Sign = ({ navigation }) => {
         normalize={normalize}
         onStart={handleGuardianConsentStart}
         onLater={handleGuardianConsentLater}
+        onDismissed={handleGuardianConsentModalDismissed}
       />
 
       <SignupStudentIdentityIntroModal

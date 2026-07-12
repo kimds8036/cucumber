@@ -14,12 +14,14 @@ const SignStepGuardianConsentModal = ({
   normalize,
   onStart,
   onLater,
+  onDismissed,
 }) => (
   <SignupIosSafeModal
     visible={visible}
     transparent
     animationType="fade"
     onRequestClose={onLater}
+    onDismissed={onDismissed}
   >
     <TouchableWithoutFeedback onPress={onLater}>
       <View
