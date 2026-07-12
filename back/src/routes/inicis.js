@@ -15,7 +15,7 @@ function pickBody(req) {
   return { ...req.query, ...req.body };
 }
 
-/** POST /api/auth/inicis/session  { purpose: student_signup|guardian_consent } */
+/** POST /api/auth/inicis/session  { purpose: student_signup|guardian_consent|find_username|password_recovery } */
 router.post('/session', async (req, res) => {
   try {
     if (!isInicisEnabled()) {

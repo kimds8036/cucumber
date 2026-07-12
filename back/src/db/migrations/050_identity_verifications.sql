@@ -3,7 +3,7 @@ CREATE TABLE IF NOT EXISTS identity_verifications (
   id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
   m_tx_id VARCHAR(20) NOT NULL COMMENT '가맹점 트랜잭션 ID',
   tx_id VARCHAR(40) NULL COMMENT '이니시스 트랜잭션 ID',
-  purpose VARCHAR(32) NOT NULL COMMENT 'student_signup | guardian_consent',
+    purpose VARCHAR(32) NOT NULL COMMENT 'student_signup | guardian_consent | find_username | password_recovery',
   status VARCHAR(32) NOT NULL DEFAULT 'pending'
     COMMENT 'pending|launched|success|fail|expired|consumed',
   provider_dev_cd VARCHAR(16) NULL,

@@ -283,6 +283,7 @@ async function openInicisBrowser(launchUrl) {
           presentationStyle:
             WebBrowser.WebBrowserPresentationStyle?.FULL_SCREEN ??
             WebBrowser.WebBrowserPresentationStyle?.PAGE_SHEET,
+          dismissButtonStyle: 'close',
         }
       : { showInRecents: true, createTask: false };
   return WebBrowser.openBrowserAsync(launchUrl, options);
