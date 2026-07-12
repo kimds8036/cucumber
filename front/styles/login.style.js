@@ -323,7 +323,6 @@ export const createSignupStyles = (width, normalize) => {
     inputWrapper: {
       width: '100%',
       alignItems: 'center',
-      marginBottom: normalize(8),
       ...debugBorder,
     },
     input: {
@@ -335,7 +334,6 @@ export const createSignupStyles = (width, normalize) => {
       fontSize: normalize(fontSizes.xxl),
       fontFamily: fonts.regular,
       color: colors.textPrimary,
-      marginBottom: normalize(12),
       backgroundColor: colors.textLight5,
       textAlignVertical: 'center',
       ...Platform.select({

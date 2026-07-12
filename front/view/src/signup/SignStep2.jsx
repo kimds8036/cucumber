@@ -15,6 +15,11 @@ import SignupStepScroll from './SignupStepScroll';
 import SchoolSearchField from './SchoolSearchField';
 import SignupHelperText from './SignupHelperText';
 
+/** TODO(debug): SignStep2 레이아웃 확인용 — 제거 요청 시 이 상수·dbg·적용부만 삭제 */
+const DEBUG_LAYOUT = true;
+const dbg = (color) =>
+  DEBUG_LAYOUT ? { borderWidth: 1, borderColor: color } : null;
+
 const SignStep2 = ({
   styles,
   normalize,
@@ -95,8 +100,9 @@ const SignStep2 = ({
     wrapperStyle,
     inputStyle,
     placeholder = PASSWORD_HINT,
+    debugColor = '#e67e22',
   }) => (
-    <>
+    <View style={dbg(debugColor)}>
       <Text style={[styles.inputLabel, styles.inputLabelSpaced]}>{label}</Text>
       <View style={[styles.inputWrapper, wrapperStyle]}>
         <View style={[styles.input, styles.passwordInputFrame, inputStyle]}>
@@ -124,13 +130,13 @@ const SignStep2 = ({
           </TouchableOpacity>
         </View>
       </View>
-    </>
+    </View>
   );
 
-  const renderFieldFeedback = (status, { validText, invalidText, hintText }) => {
+  const renderFieldFeedback = (status, { validText, invalidText, hintText, debugColor = '#27ae60' }) => {
     if (status === 'idle') {
       return hintText ? (
-        <SignupHelperText normalize={normalize} tight>
+        <SignupHelperText normalize={normalize} tight style={dbg(debugColor)}>
           {hintText}
         </SignupHelperText>
       ) : null;
@@ -141,6 +147,7 @@ const SignStep2 = ({
         normalize={normalize}
         variant={isOk ? 'success' : 'error'}
         tight
+        style={dbg(debugColor)}
       >
         {isOk ? validText : invalidText}
       </SignupHelperText>
@@ -148,68 +155,84 @@ const SignStep2 = ({
   };
 
   return (
-    <View style={styles.stepFlex}>
+    <View style={[styles.stepFlex, dbg('#e74c3c')]}>
       <SignupStepScroll normalize={normalize} bottomOffset={bottomOffset}>
         {accountOnly ? (
           verifiedName ? (
             <>
-              <SignupLockedField
-                label="이름"
-                value={verifiedName}
-                styles={styles}
-                compactBottom
-              />
-              <SignupHelperText normalize={normalize} variant="emphasis">
+              <View style={dbg('#3498db')}>
+                <SignupLockedField
+                  label="이름"
+                  value={verifiedName}
+                  styles={styles}
+                  compactBottom
+                />
+              </View>
+              <SignupHelperText
+                normalize={normalize}
+                variant="emphasis"
+                tight
+                style={dbg('#9b59b6')}
+              >
                 본인인증으로 확인된 이름이며 변경할 수 없습니다.
               </SignupHelperText>
             </>
           ) : null
         ) : (
           <>
-            <SignupLockedField
-              label="이름"
-              value={verifiedName}
-              placeholder="본인 확인 후 자동 입력"
-              styles={styles}
-            />
-            <SignupLockedField
-              label="생년월일"
-              value={verifiedBirthDate}
-              placeholder="본인 확인 후 자동 입력"
-              styles={styles}
-            />
-            {verifiedPhone ? (
+            <View style={dbg('#3498db')}>
               <SignupLockedField
-                label="전화번호"
-                value={verifiedPhone}
+                label="이름"
+                value={verifiedName}
+                placeholder="본인 확인 후 자동 입력"
                 styles={styles}
               />
+            </View>
+            <View style={dbg('#2980b9')}>
+              <SignupLockedField
+                label="생년월일"
+                value={verifiedBirthDate}
+                placeholder="본인 확인 후 자동 입력"
+                styles={styles}
+              />
+            </View>
+            {verifiedPhone ? (
+              <View style={dbg('#1abc9c')}>
+                <SignupLockedField
+                  label="전화번호"
+                  value={verifiedPhone}
+                  styles={styles}
+                />
+              </View>
             ) : null}
           </>
         )}
 
-        <Text
-          style={[
-            styles.inputLabel,
-            (verifiedName || !accountOnly) && styles.inputLabelSpaced,
-          ]}
-        >
-          아이디
-        </Text>
-        <View style={styles.inputWrapper}>
-          <TextInput
-            style={styles.input}
-            value={username}
-            onChangeText={handleUsernameChange}
-            placeholder={USERNAME_HINT}
-            placeholderTextColor={colors.textSecondary}
-            autoCapitalize="none"
-            autoCorrect={false}
-          />
+        <View style={dbg('#f1c40f')}>
+          <Text
+            style={[
+              styles.inputLabel,
+              (verifiedName || !accountOnly) && styles.inputLabelSpaced,
+            ]}
+          >
+            아이디
+          </Text>
+          <View style={styles.inputWrapper}>
+            <TextInput
+              style={styles.input}
+              value={username}
+              onChangeText={handleUsernameChange}
+              placeholder={USERNAME_HINT}
+              placeholderTextColor={colors.textSecondary}
+              autoCapitalize="none"
+              autoCorrect={false}
+            />
+          </View>
         </View>
         {renderFieldFeedback(usernameStatus, {
           validText: '사용 가능한 아이디 형식입니다.',
           invalidText: USERNAME_ERROR,
+          debugColor: '#27ae60',
         })}
 
         {renderPasswordField({
@@ -221,10 +244,12 @@ const SignStep2 = ({
           },
           visible: showPassword,
           onToggleVisible: () => setShowPassword((v) => !v),
+          debugColor: '#e67e22',
         })}
         {renderFieldFeedback(passwordStatus, {
           validText: '사용 가능한 비밀번호 형식입니다.',
           invalidText: PASSWORD_ERROR,
+          debugColor: '#16a085',
         })}
 
         {renderPasswordField({
@@ -243,21 +268,25 @@ const SignStep2 = ({
               : passwordConfirmStatus === 'mismatch'
                 ? styles.passwordConfirmMismatch
                 : undefined,
+          debugColor: '#d35400',
         })}
         {renderFieldFeedback(passwordConfirmStatus, {
           validText: '비밀번호가 일치합니다.',
           invalidText: '비밀번호가 일치하지 않습니다.',
+          debugColor: '#2ecc71',
         })}
 
         {showSchoolField ? (
           <>
-            <SchoolSearchField
-              styles={styles}
-              normalize={normalize}
-              selectedSchool={selectedSchool}
-              onSelect={onSchoolSelect}
-            />
-            <SignupHelperText normalize={normalize}>
+            <View style={dbg('#8e44ad')}>
+              <SchoolSearchField
+                styles={styles}
+                normalize={normalize}
+                selectedSchool={selectedSchool}
+                onSelect={onSchoolSelect}
+              />
+            </View>
+            <SignupHelperText normalize={normalize} style={dbg('#c0392b')}>
               입력하신 학교는 이후 학생증 인증 단계에서 재학 여부를 확인하는 데
               사용됩니다.
             </SignupHelperText>
@@ -265,7 +294,7 @@ const SignStep2 = ({
         ) : null}
 
         {showCertificateFields ? (
-          <>
+          <View style={dbg('#7f8c8d')}>
             <Text style={[styles.inputLabel, styles.certificateSubmitLabelSpaced]}>
               재학 학교명
             </Text>
@@ -309,7 +338,7 @@ const SignStep2 = ({
                 autoCapitalize="none"
               />
             </View>
-          </>
+          </View>
         ) : null}
       </SignupStepScroll>
     </View>

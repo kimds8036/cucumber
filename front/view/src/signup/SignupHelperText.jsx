@@ -3,6 +3,12 @@ import { View, Text, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { colors, fonts, fontSizes } from '../../../styles/colors';
 
+const PRIMARY_HELPER = {
+  backgroundColor: colors.primaryLight10,
+  textColor: colors.primaryDark,
+  iconColor: colors.primaryDark,
+};
+
 const VARIANT_CONFIG = {
   default: {
     backgroundColor: colors.surface,
@@ -11,17 +17,12 @@ const VARIANT_CONFIG = {
     iconColor: colors.textLight40,
   },
   success: {
-    backgroundColor: colors.primaryLight10,
-    textColor: colors.primaryDark,
+    ...PRIMARY_HELPER,
     iconName: 'checkmark-circle-outline',
-    iconColor: colors.primaryDark,
   },
   emphasis: {
-    backgroundColor: colors.primaryLight20,
-    textColor: colors.primaryDark,
+    ...PRIMARY_HELPER,
     iconName: 'shield-checkmark-outline',
-    iconColor: colors.primaryDark,
-    borderColor: colors.primaryLight30,
   },
   error: {
     backgroundColor: colors.alertLight,
@@ -54,8 +55,8 @@ const SignupHelperText = ({
           marginTop: normalize(tight ? 2 : 6),
           marginBottom: normalize(tight ? 6 : 10),
           paddingHorizontal: normalize(14),
-          paddingVertical: normalize(tight ? 8 : 11),
-          borderRadius: normalize(14),
+          paddingVertical: normalize(tight ? 8 : 10),
+          borderRadius: normalize(20),
           ...(cfg.borderColor
             ? {
                 borderWidth: 1,
