@@ -36,6 +36,8 @@ const SignStepCertificate = ({
               setCertificateUrl(text);
               notifyChange({ certificateUrl: text });
             }}
+            placeholder="ex) https://naver.me/XXXXXXXX"
+            placeholderTextColor={colors.textSecondary}
             autoCapitalize="none"
             autoCorrect={false}
             keyboardType="url"
@@ -53,6 +55,8 @@ const SignStepCertificate = ({
               setAccessNumber(text);
               notifyChange({ accessNumber: text });
             }}
+            placeholder="ex) 000000"
+            placeholderTextColor={colors.textSecondary}
             autoCapitalize="none"
             autoCorrect={false}
           />

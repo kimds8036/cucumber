@@ -33,10 +33,13 @@ const SchoolSearchField = ({
   label = '재학 중인 학교',
   disabled = false,
   helperBelowLabel = null,
+  labelMarginTop,
+  /** true면 검색 목록이 남은 세로 공간을 채움 (학교 선택 전용 화면) */
+  expandList = false,
 }) => {
   const dropdownStyles = useMemo(
-    () => makeDropdownStyles(normalize),
-    [normalize],
+    () => makeDropdownStyles(normalize, expandList),
+    [normalize, expandList],
   );
   const [query, setQuery] = useState(selectedSchool?.name || '');
   const [schools, setSchools] = useState([]);
@@ -97,8 +100,16 @@ const SchoolSearchField = ({
   };
 
   return (
-    <View style={dropdownStyles.wrap}>
-      <Text style={[styles.inputLabel, { marginTop: normalize(16) }]}>
+    <View style={[dropdownStyles.wrap, expandList && dropdownStyles.wrapExpand]}>
+      <Text
+        style={[
+          styles.inputLabel,
+          {
+            marginTop:
+              labelMarginTop != null ? normalize(labelMarginTop) : normalize(16),
+          },
+        ]}
+      >
         {label}
       </Text>
       {helperBelowLabel}
@@ -122,84 +133,104 @@ const SchoolSearchField = ({
         />
       </View>
 
-      {showDropdown ? (
-        <View style={dropdownStyles.dropdown}>
-          {loading && schools.length === 0 ? (
-            <View style={dropdownStyles.emptyWrap}>
-              <ActivityIndicator color={colors.primary} />
-              <Text style={dropdownStyles.emptyText}>검색 중…</Text>
-            </View>
-          ) : schools.length === 0 ? (
-            <Text style={dropdownStyles.emptyText}>
-              검색 결과가 없습니다. 학교 이름을 다시 확인해 주세요.
-            </Text>
-          ) : (
-            <ScrollView
-              keyboardShouldPersistTaps="always"
-              nestedScrollEnabled
-              style={dropdownStyles.dropdownScroll}
-            >
-              {schools.map((school, index) => {
-                const addressLine = formatSchoolAddress(school);
-                const isLast = index === schools.length - 1;
-                const isActive = selectedSchool?.id === school.id;
-                return (
-                  <TouchableOpacity
-                    key={school.id}
-                    style={[
-                      dropdownStyles.row,
-                      !isLast && dropdownStyles.rowBorder,
-                      isActive && dropdownStyles.rowActive,
-                    ]}
-                    onPress={() => selectSchool(school)}
-                    activeOpacity={0.65}
-                    disabled={disabled}
-                  >
-                    <Text style={dropdownStyles.rowTitle} numberOfLines={1}>
-                      {school.name}
-                    </Text>
-                    <Text style={dropdownStyles.rowSubtitle} numberOfLines={2}>
-                      {addressLine || '주소 정보 없음'}
-                    </Text>
-                  </TouchableOpacity>
-                );
-              })}
-            </ScrollView>
-          )}
-        </View>
-      ) : null}
-
-      {selectedSchool && !showDropdown ? (
-        <View style={dropdownStyles.selectedBox}>
-          <View style={dropdownStyles.selectedTextCol}>
-            <Text style={dropdownStyles.selectedName} numberOfLines={1}>
-              {selectedSchool.name}
-            </Text>
-            {selectedAddress ? (
-              <Text style={dropdownStyles.selectedAddress} numberOfLines={2}>
-                {selectedAddress}
+      <View style={expandList ? dropdownStyles.listSlot : null}>
+        {showDropdown ? (
+          <View
+            style={[
+              dropdownStyles.dropdown,
+              expandList && dropdownStyles.dropdownExpand,
+            ]}
+          >
+            {loading && schools.length === 0 ? (
+              <View style={dropdownStyles.emptyWrap}>
+                <ActivityIndicator color={colors.primary} />
+                <Text style={dropdownStyles.emptyText}>검색 중…</Text>
+              </View>
+            ) : schools.length === 0 ? (
+              <Text style={dropdownStyles.emptyText}>
+                검색 결과가 없습니다. 학교 이름을 다시 확인해 주세요.
               </Text>
-            ) : null}
+            ) : (
+              <ScrollView
+                keyboardShouldPersistTaps="always"
+                nestedScrollEnabled
+                style={
+                  expandList
+                    ? dropdownStyles.dropdownScrollExpand
+                    : dropdownStyles.dropdownScroll
+                }
+              >
+                {schools.map((school, index) => {
+                  const addressLine = formatSchoolAddress(school);
+                  const isLast = index === schools.length - 1;
+                  const isActive = selectedSchool?.id === school.id;
+                  return (
+                    <TouchableOpacity
+                      key={school.id}
+                      style={[
+                        dropdownStyles.row,
+                        !isLast && dropdownStyles.rowBorder,
+                        isActive && dropdownStyles.rowActive,
+                      ]}
+                      onPress={() => selectSchool(school)}
+                      activeOpacity={0.65}
+                      disabled={disabled}
+                    >
+                      <Text style={dropdownStyles.rowTitle} numberOfLines={1}>
+                        {school.name}
+                      </Text>
+                      <Text style={dropdownStyles.rowSubtitle} numberOfLines={2}>
+                        {addressLine || '주소 정보 없음'}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </ScrollView>
+            )}
           </View>
-          <Ionicons
-            name="checkmark-circle"
-            size={normalize(22)}
-            color={colors.primary}
-          />
-        </View>
-      ) : null}
+        ) : null}
+
+        {selectedSchool && !showDropdown ? (
+          <View style={dropdownStyles.selectedBox}>
+            <View style={dropdownStyles.selectedTextCol}>
+              <Text style={dropdownStyles.selectedName} numberOfLines={1}>
+                {selectedSchool.name}
+              </Text>
+              {selectedAddress ? (
+                <Text style={dropdownStyles.selectedAddress} numberOfLines={2}>
+                  {selectedAddress}
+                </Text>
+              ) : null}
+            </View>
+            <Ionicons
+              name="checkmark-circle"
+              size={normalize(22)}
+              color={colors.primary}
+            />
+          </View>
+        ) : null}
+      </View>
     </View>
   );
 };
 
-const makeDropdownStyles = (normalize) =>
+const makeDropdownStyles = (normalize, expandList = false) =>
   StyleSheet.create({
     wrap: {
       zIndex: 20,
       elevation: 20,
     },
-    dropdown: {
+    wrapExpand: {
+      flex: 1,
+      minHeight: 0,
+    },
+    listSlot: {
+      flex: 1,
+      minHeight: 0,
       marginTop: normalize(6),
+    },
+    dropdown: {
+      marginTop: expandList ? 0 : normalize(6),
       width: '98%',
       alignSelf: 'center',
       borderWidth: 1,
@@ -208,8 +239,16 @@ const makeDropdownStyles = (normalize) =>
       backgroundColor: colors.background,
       overflow: 'hidden',
     },
+    dropdownExpand: {
+      flex: 1,
+      minHeight: 0,
+      width: '100%',
+    },
     dropdownScroll: {
       maxHeight: normalize(200),
+    },
+    dropdownScrollExpand: {
+      flex: 1,
     },
     emptyWrap: {
       paddingVertical: normalize(14),
@@ -249,7 +288,7 @@ const makeDropdownStyles = (normalize) =>
       color: colors.textSecondary,
     },
     selectedBox: {
-      marginTop: normalize(8),
+      marginTop: expandList ? 0 : normalize(8),
       marginHorizontal: normalize(8),
       paddingVertical: normalize(10),
       paddingHorizontal: normalize(12),
