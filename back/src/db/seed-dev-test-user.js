@@ -1,16 +1,20 @@
 /**
- * develop(또는 --target=) DB에 앱 로그인용 중1 테스트 계정 1명 upsert.
+ * develop(또는 --target=) DB에 앱 로그인용 테스트 계정 upsert.
  *
  * 사용법:
  *   cd back && npm run seed:dev-test-user
  *   cd back && npm run seed:dev-test-user -- --target=develop
  *
- * 주의: users 테이블 전용. admin_users 와 무관.
+ * seed:reset-admins 실행 후에도 동일 계정이 다시 생성됩니다.
  */
 
 import bcrypt from 'bcrypt';
 import { createDbConnection, parseMigrateCliArgs } from '../config/dbEnv.js';
-import { packUserPii, userPiiInsertValues, USER_PII_INSERT_COLUMNS } from '../services/userPii.service.js';
+import {
+  packUserPii,
+  userPiiInsertValues,
+  USER_PII_INSERT_COLUMNS,
+} from '../services/userPii.service.js';
 
 /** develop 전용 — 레포에 평문 저장 (테스트 계정) */
 export const DEV_TEST_MIDDLE1 = Object.freeze({
@@ -24,7 +28,23 @@ export const DEV_TEST_MIDDLE1 = Object.freeze({
   graduationYear: 2029,
 });
 
-async function pickSchoolId(connection) {
+export const DEV_TEST_MIDDLE2 = Object.freeze({
+  username: 'yp_dev_mid2_7n2q',
+  password: 'Kp8#Rq2!wM3pTx6@',
+  name: '테스트중2',
+  phone: '010-5829-0148',
+  birthDate: '2013-05-20',
+  grade: 2,
+  classNumber: 5,
+  graduationYear: 2028,
+});
+
+export const DEV_TEST_ACCOUNTS = Object.freeze([
+  DEV_TEST_MIDDLE1,
+  DEV_TEST_MIDDLE2,
+]);
+
+export async function pickFirstSchoolId(connection) {
   const [rows] = await connection.execute(
     `SELECT school_id FROM schools ORDER BY school_id LIMIT 1`,
   );
@@ -34,17 +54,17 @@ async function pickSchoolId(connection) {
   return rows[0].school_id;
 }
 
-async function upsertDevTestUser(connection, schoolId) {
-  const hashed = await bcrypt.hash(DEV_TEST_MIDDLE1.password, 10);
+async function upsertOneDevTestUser(connection, schoolId, account) {
+  const hashed = await bcrypt.hash(account.password, 10);
   const pii = packUserPii({
-    name: DEV_TEST_MIDDLE1.name,
-    phone: DEV_TEST_MIDDLE1.phone,
-    birthDate: DEV_TEST_MIDDLE1.birthDate,
+    name: account.name,
+    phone: account.phone,
+    birthDate: account.birthDate,
   });
 
   const [existing] = await connection.execute(
     `SELECT id FROM users WHERE username = ? LIMIT 1`,
-    [DEV_TEST_MIDDLE1.username],
+    [account.username],
   );
 
   if (existing.length > 0) {
@@ -76,13 +96,13 @@ async function upsertDevTestUser(connection, schoolId) {
         hashed,
         ...userPiiInsertValues(pii).slice(0, 5),
         schoolId,
-        DEV_TEST_MIDDLE1.grade,
-        DEV_TEST_MIDDLE1.classNumber,
-        DEV_TEST_MIDDLE1.graduationYear,
+        account.grade,
+        account.classNumber,
+        account.graduationYear,
         userId,
       ],
     );
-    return { userId, created: false };
+    return { userId, username: account.username, created: false };
   }
 
   const [result] = await connection.execute(
@@ -92,16 +112,36 @@ async function upsertDevTestUser(connection, schoolId) {
         reverification_status)
      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, FALSE, 1, TRUE, TRUE, 'none')`,
     [
-      DEV_TEST_MIDDLE1.username,
+      account.username,
       hashed,
       ...userPiiInsertValues(pii),
       schoolId,
-      DEV_TEST_MIDDLE1.grade,
-      DEV_TEST_MIDDLE1.classNumber,
-      DEV_TEST_MIDDLE1.graduationYear,
+      account.grade,
+      account.classNumber,
+      account.graduationYear,
     ],
   );
-  return { userId: result.insertId, created: true };
+  return {
+    userId: result.insertId,
+    username: account.username,
+    created: true,
+  };
+}
+
+/** @returns {Promise<Array<{ userId: number, username: string, created: boolean }>>} */
+export async function upsertDevTestUsers(connection, schoolId) {
+  const results = [];
+  for (const account of DEV_TEST_ACCOUNTS) {
+    results.push(await upsertOneDevTestUser(connection, schoolId, account));
+  }
+  return results;
+}
+
+function logAccountResult(target, account, { userId, created }) {
+  console.log(
+    `   ${created ? '생성' : '갱신'}: ${account.username} (user_id=${userId}) | 중${account.grade} ${account.classNumber}반`,
+  );
+  console.log(`            비밀번호: ${account.password}`);
 }
 
 async function main() {
@@ -111,14 +151,15 @@ async function main() {
   const connection = await createDbConnection(target);
   try {
     await connection.beginTransaction();
-    const schoolId = await pickSchoolId(connection);
-    const { userId, created } = await upsertDevTestUser(connection, schoolId);
+    const schoolId = await pickFirstSchoolId(connection);
+    const results = await upsertDevTestUsers(connection, schoolId);
     await connection.commit();
 
-    console.log(`✅ [${target}] 앱 테스트 계정 ${created ? '생성' : '갱신'} 완료 (user_id=${userId})`);
-    console.log(`   학교: ${schoolId} | 학년: 중${DEV_TEST_MIDDLE1.grade} ${DEV_TEST_MIDDLE1.classNumber}반`);
-    console.log(`   아이디: ${DEV_TEST_MIDDLE1.username}`);
-    console.log(`   비밀번호: ${DEV_TEST_MIDDLE1.password}`);
+    console.log(`✅ [${target}] 앱 테스트 계정 ${results.length}명 처리 완료`);
+    console.log(`   학교: ${schoolId}`);
+    DEV_TEST_ACCOUNTS.forEach((account, i) => {
+      logAccountResult(target, account, results[i]);
+    });
     console.log('   student_verified=TRUE (앱 바로 이용 가능)');
   } catch (error) {
     await connection.rollback();

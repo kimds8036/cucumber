@@ -1231,7 +1231,7 @@ const Sign = ({ navigation }) => {
     return { recognized, token, formPatch };
   };
 
-  const handleStudentVerified = async (data) => {
+  const handleStudentVerified = (data) => {
     const { recognized, token, formPatch } =
       buildStudentVerificationSnapshot(data);
 
@@ -1244,18 +1244,8 @@ const Sign = ({ navigation }) => {
       return;
     }
 
-    const finalData = {
-      ...formData,
-      ...stepInfoData,
-      ...formPatch,
-    };
-
     if (!token) {
       Alert.alert('알림', '학생증 인증 정보가 없습니다. 다시 제출해 주세요.');
-      return;
-    }
-    if (!finalData.username || !finalData.password) {
-      Alert.alert('알림', '계정 정보가 없습니다. 이전 단계를 확인해 주세요.');
       return;
     }
     if (!identityData.inicisClientToken && !inicisClientTokenRef.current) {
@@ -1266,41 +1256,10 @@ const Sign = ({ navigation }) => {
       return;
     }
 
-    const inicisToken =
-      inicisClientTokenRef.current || identityData.inicisClientToken;
-    const payload = buildSignupPayload(finalData, token, recognized, {
-      studentInicisClientToken: inicisToken,
-    });
-    if (
-      !Number.isFinite(payload.graduationYear) ||
-      payload.graduationYear < 1900
-    ) {
-      Alert.alert(
-        '가입 정보 확인',
-        '생년월일 기준으로 학년·졸업년도를 자동 계산하지 못했습니다.\n' +
-          '중·고등학생 생년월일(만 14~19세)로 다시 시도해 주세요.',
-      );
-      return;
-    }
-
-    setSubmitting(true);
-    try {
-      await api.post('/api/auth/signup', payload);
-      Alert.alert(
-        '알림',
-        '학생증 제출이 완료되었습니다! 관리자 승인 후 서비스를 이용할 수 있습니다',
-        [{ text: '확인', onPress: () => resetTo('Login') }],
-      );
-    } catch (error) {
-      const data = error?.response?.data;
-      const codeHint = data?.code ? `\n\n[${data.code}]` : '';
-      Alert.alert(
-        '회원가입 실패',
-        (data?.message || '회원가입 중 오류가 발생했습니다.') + codeHint,
-      );
-    } finally {
-      setSubmitting(false);
-    }
+    setRecognizedData(recognized);
+    setStudentVerificationToken(token);
+    setFormData((prev) => ({ ...prev, ...formPatch }));
+    setStudentVerified(true);
   };
 
   const buildSignupPayload = (
@@ -1409,7 +1368,25 @@ const Sign = ({ navigation }) => {
 
     setSubmitting(true);
     try {
-      const payload = buildSignupPayload(finalData);
+      const inicisToken =
+        inicisClientTokenRef.current || identityData.inicisClientToken;
+      const payload = buildSignupPayload(
+        finalData,
+        studentVerificationToken,
+        recognizedData,
+        { studentInicisClientToken: inicisToken },
+      );
+      if (
+        !Number.isFinite(payload.graduationYear) ||
+        payload.graduationYear < 1900
+      ) {
+        Alert.alert(
+          '가입 정보 확인',
+          '생년월일 기준으로 학년·졸업년도를 자동 계산하지 못했습니다.\n' +
+            '중·고등학생 생년월일(만 14~19세)로 다시 시도해 주세요.',
+        );
+        return;
+      }
       await api.post('/api/auth/signup', payload);
       await finishSignupAndEnterApp(finalData.username, finalData.password);
     } catch (error) {

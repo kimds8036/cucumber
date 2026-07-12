@@ -1,19 +1,31 @@
 /**
- * schools 테이블만 유지하고 나머지 데이터를 비운 뒤 admin_users 에 관리자만 시드.
+ * schools + admin_users 테이블만 유지하고 나머지 데이터를 비운 뒤
+ * colors + 앱 테스트 계정(users) 2명만 시드.
  *
  * 사용법:
  *   cd back && CONFIRM_DB_RESET=1 npm run seed:reset-admins
+ *   cd back && CONFIRM_DB_RESET=1 npm run seed:reset-admins -- --target=develop
  *
- * 주의: users·게시글·쪽지 등 모든 사용자 데이터가 삭제됩니다. schools 는 유지됩니다.
+ * 유지: schools, admin_users (기존 관리자·OTP 설정 그대로)
+ * 삭제: users·게시글·쪽지·가입 제출 등 위 두 테이블 외 모든 데이터
+ * 재생성: colors, 앱 테스트 계정 2명
+ *
+ * 주의: CONFIRM_DB_RESET=1 없으면 실행되지 않습니다.
  */
 
 import mysql from 'mysql2/promise';
-import bcrypt from 'bcrypt';
-import { getDbConnectionOptions, getActiveTarget, parseMigrateCliArgs } from '../config/dbEnv.js';
-import { loadAdminSeedAccounts } from '../config/adminSeedEnv.js';
+import {
+  getDbConnectionOptions,
+  parseMigrateCliArgs,
+} from '../config/dbEnv.js';
 import { getAdminLoginPath } from '../config/adminPath.js';
+import {
+  DEV_TEST_ACCOUNTS,
+  pickFirstSchoolId,
+  upsertDevTestUsers,
+} from './seed-dev-test-user.js';
 
-const PRESERVED_TABLES = new Set(['schools']);
+const PRESERVED_TABLES = new Set(['schools', 'admin_users']);
 
 const COLOR_ROWS = [
   [1, '#FFF3F3', 1],
@@ -40,7 +52,7 @@ async function listTables(connection, dbName) {
   return rows.map((row) => row.tableName);
 }
 
-async function wipeExceptSchools(connection, dbName) {
+async function wipeExceptPreserved(connection, dbName) {
   const tables = await listTables(connection, dbName);
   const targets = tables.filter((name) => !PRESERVED_TABLES.has(name));
 
@@ -49,7 +61,8 @@ async function wipeExceptSchools(connection, dbName) {
     return;
   }
 
-  console.log(`🗑  schools 제외 ${targets.length}개 테이블 TRUNCATE`);
+  const preserved = [...PRESERVED_TABLES].sort().join(', ');
+  console.log(`🗑  유지(${preserved}) 제외 ${targets.length}개 테이블 TRUNCATE`);
   await connection.query('SET FOREIGN_KEY_CHECKS = 0');
   for (const table of targets) {
     await connection.query(`TRUNCATE TABLE \`${table}\``);
@@ -68,21 +81,6 @@ async function seedColors(connection) {
   }
 }
 
-async function seedAdmins(connection, ADMIN_ACCOUNTS) {
-  for (const admin of ADMIN_ACCOUNTS) {
-    const hashed = await bcrypt.hash(admin.password, 10);
-    await connection.execute(
-      `INSERT INTO admin_users (username, password, name, is_deleted)
-       VALUES (?, ?, ?, FALSE)
-       ON DUPLICATE KEY UPDATE
-         password = VALUES(password),
-         name = VALUES(name),
-         is_deleted = FALSE`,
-      [admin.username, hashed, admin.name],
-    );
-  }
-}
-
 async function main() {
   if (process.env.CONFIRM_DB_RESET !== '1') {
     console.error('❌ 안전장치: CONFIRM_DB_RESET=1 환경변수 없이는 실행할 수 없습니다.');
@@ -93,7 +91,6 @@ async function main() {
   const { targets } = parseMigrateCliArgs();
   const target = targets[0];
   const dbName = getDbConnectionOptions(target).database;
-  const ADMIN_ACCOUNTS = loadAdminSeedAccounts();
   const connection = await mysql.createConnection(getDbConfig(target));
 
   try {
@@ -105,27 +102,49 @@ async function main() {
       console.warn('⚠️  schools 테이블이 비어 있습니다. npm run seed:schools 를 먼저 실행하세요.');
     }
 
+    const [adminsBefore] = await connection.execute(
+      `SELECT id, username, name FROM admin_users WHERE is_deleted = FALSE ORDER BY id`,
+    );
+    if (adminsBefore.length === 0) {
+      console.warn(
+        '⚠️  admin_users 가 비어 있습니다. 관리자 계정을 먼저 만들거나 ADMIN_SEED_* 로 시드하세요.',
+      );
+    }
+
     console.log('==============================');
     console.log(`📂 대상 DB: ${dbName} (${target})`);
-    console.log('⚠️  schools 만 유지하고 모든 데이터를 삭제합니다.');
+    console.log('⚠️  schools + admin_users 만 유지하고 나머지를 삭제합니다.');
     console.log('==============================');
 
-    await wipeExceptSchools(connection, dbName);
+    await wipeExceptPreserved(connection, dbName);
     await seedColors(connection);
-    await seedAdmins(connection, ADMIN_ACCOUNTS);
+
+    const schoolId = await pickFirstSchoolId(connection);
+    const testUsers = await upsertDevTestUsers(connection, schoolId);
 
     const [admins] = await connection.execute(
-      `SELECT id, username, name FROM admin_users ORDER BY id`,
+      `SELECT id, username, name FROM admin_users WHERE is_deleted = FALSE ORDER BY id`,
     );
 
-    console.log('\n✅ 초기화 및 관리자 시드 완료');
+    console.log('\n✅ 초기화 및 테스트 계정 시드 완료');
     console.log(`   schools 유지: ${schoolCount}건`);
-    console.log(`   admin_users: ${admins.length}명`);
-    console.log(`   ── 관리자 (웹 ${getAdminLoginPath()}) ──`);
+    console.log(`   admin_users 유지: ${admins.length}명`);
+    console.log(`   앱 테스트 계정 생성: ${testUsers.length}명 (student_verified=TRUE)`);
+    console.log(`   ── 관리자 유지 (${getAdminLoginPath()}) ──`);
     for (const admin of admins) {
       console.log(`   #${admin.id} ${admin.name}: ${admin.username}`);
     }
-    console.log('\n   OTP는 최초 로그인 시 다시 등록해야 합니다.');
+    console.log('   ── 앱 테스트 계정 (신규) ──');
+    DEV_TEST_ACCOUNTS.forEach((account, i) => {
+      const row = testUsers[i];
+      console.log(
+        `   #${row.userId} ${account.name}: ${account.username} / ${account.password}`,
+      );
+    });
+    console.log(`   (학교 school_id=${schoolId})`);
+    console.log(
+      '\n   참고: admin_totp_secrets 등 부가 테이블은 비워졌을 수 있어 OTP 재등록이 필요할 수 있습니다.',
+    );
   } catch (err) {
     console.error('❌ 오류:', err.message);
     if (err.code === 'ER_NO_SUCH_TABLE' && String(err.message).includes('admin_users')) {
