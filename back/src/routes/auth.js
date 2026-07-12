@@ -102,9 +102,9 @@ async function ensureInicisPhoneVerificationRecord(phone, connection) {
     phoneLookupBindParams(normalized),
   );
   await connection.execute(
-    `INSERT INTO phone_verifications (phone, phone_enc, phone_lookup, verification_code, expires_at, is_verified)
-     VALUES (?, ?, ?, ?, ?, TRUE)`,
-    [normalized, phonePacked.phone_enc, phonePacked.phone_lookup, 'INICIS', expiresAt],
+    `INSERT INTO phone_verifications (phone_enc, phone_lookup, verification_code, expires_at, is_verified)
+     VALUES (?, ?, ?, ?, TRUE)`,
+    [phonePacked.phone_enc, phonePacked.phone_lookup, 'INICIS', expiresAt],
   );
 }
 
@@ -245,7 +245,6 @@ router.get('/me', authenticate, async (req, res) => {
       `SELECT 
          u.id,
          u.username,
-         u.name,
          u.name_enc,
          u.color_id,
          u.school_id,
@@ -500,10 +499,9 @@ router.post('/send-verification', async (req, res) => {
 
     // 새 인증 코드 저장
     await pool.execute(
-      `INSERT INTO phone_verifications (phone, phone_enc, phone_lookup, verification_code, expires_at) 
-       VALUES (?, ?, ?, ?, ?)`,
+      `INSERT INTO phone_verifications (phone_enc, phone_lookup, verification_code, expires_at) 
+       VALUES (?, ?, ?, ?)`,
       [
-        phone,
         phonePacked.phone_enc,
         phonePacked.phone_lookup,
         verificationCode,
@@ -691,9 +689,9 @@ router.post('/verify-firebase-phone', signupPhoneBackendLimiter, async (req, res
     );
 
     await pool.execute(
-      `INSERT INTO phone_verifications (phone, phone_enc, phone_lookup, verification_code, expires_at, is_verified)
-       VALUES (?, ?, ?, ?, ?, TRUE)`,
-      [phone, phonePacked.phone_enc, phonePacked.phone_lookup, 'FB0000', expiresAt],
+      `INSERT INTO phone_verifications (phone_enc, phone_lookup, verification_code, expires_at, is_verified)
+       VALUES (?, ?, ?, ?, TRUE)`,
+      [phonePacked.phone_enc, phonePacked.phone_lookup, 'FB0000', expiresAt],
     );
 
     return res.json({
@@ -1178,7 +1176,7 @@ router.post('/signup', blockWhenFlag('signup_disabled'), validate(signupValidato
       const [result] = await connection.execute(
         `INSERT INTO users 
          (username, password, ${USER_PII_INSERT_COLUMNS}, school_id, grade, class_number, graduation_year, color_id, phone_verified, student_verified) 
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, TRUE, ?)`,
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, TRUE, ?)`,
         [
           username,
           hashedPassword,
@@ -1212,9 +1210,9 @@ router.post('/signup', blockWhenFlag('signup_disabled'), validate(signupValidato
       if (isCertificateSignup) {
         await connection.execute(
           `INSERT INTO signup_certificate_submissions
-           (user_id, name, name_enc, phone, phone_enc, phone_lookup, birth_date, birth_date_enc,
+           (user_id, name_enc, phone_enc, phone_lookup, birth_date_enc,
             certificate_view_url, certificate_access_code, claimed_school_name, status)
-           VALUES (?, NULL, ?, NULL, ?, ?, NULL, ?, ?, ?, ?, 'pending')`,
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'pending')`,
           [
             userId,
             submissionPii.name_enc,
@@ -1229,9 +1227,9 @@ router.post('/signup', blockWhenFlag('signup_disabled'), validate(signupValidato
       } else if (studentIdManualVerification) {
         await connection.execute(
           `INSERT INTO signup_student_id_submissions
-           (user_id, name, name_enc, phone, phone_enc, phone_lookup, birth_date, birth_date_enc,
+           (user_id, name_enc, phone_enc, phone_lookup, birth_date_enc,
             school_id, cloudinary_url, cloudinary_public_id, status, submission_purpose, verification_jti)
-           VALUES (?, NULL, ?, NULL, ?, ?, NULL, ?, ?, ?, ?, 'pending', 'signup', ?)`,
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'pending', 'signup', ?)`,
           [
             userId,
             submissionPii.name_enc,
@@ -1314,7 +1312,7 @@ router.post('/verify-student', authenticate, async (req, res) => {
 
     // 사용자 정보 확인
     const [users] = await pool.execute(
-      'SELECT id, name, name_enc, school_id, grade, class_number FROM users WHERE id = ?',
+      'SELECT id, name_enc, school_id, grade, class_number FROM users WHERE id = ?',
       [userId]
     );
 
@@ -1372,7 +1370,7 @@ router.post('/login', validate(loginValidators), async (req, res) => {
 
     // 사용자 조회
     const [users] = await pool.execute(
-      `SELECT id, username, password, name, name_enc, phone, phone_enc, is_deleted, is_banned, is_suspended, suspended_until,
+      `SELECT id, username, password, name_enc, phone_enc, is_deleted, is_banned, is_suspended, suspended_until,
               token_version, reverification_status, reverification_deadline
        FROM users WHERE username = ?`,
       [username]
@@ -1844,7 +1842,7 @@ router.post('/resubmit-student-id', authenticate, signupOcrLimiter, async (req, 
     }
 
     const [userRows] = await pool.execute(
-      `SELECT id, name, name_enc, phone, phone_enc, birth_date, birth_date_enc, school_id FROM users WHERE id = ? LIMIT 1`,
+      `SELECT id, name_enc, phone_enc, birth_date_enc, school_id FROM users WHERE id = ? LIMIT 1`,
       [userId],
     );
     if (!userRows.length) {
@@ -1896,9 +1894,9 @@ router.post('/resubmit-student-id', authenticate, signupOcrLimiter, async (req, 
 
     await pool.execute(
       `INSERT INTO signup_student_id_submissions
-         (user_id, name, name_enc, phone, phone_enc, phone_lookup, birth_date, birth_date_enc,
+         (user_id, name_enc, phone_enc, phone_lookup, birth_date_enc,
           school_id, previous_school_id, cloudinary_url, cloudinary_public_id, status, submission_purpose)
-       VALUES (?, NULL, ?, NULL, ?, ?, NULL, ?, ?, ?, ?, ?, 'pending', ?)`,
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', ?)`,
       [
         userId,
         resubmitPii.name_enc,
@@ -1973,7 +1971,7 @@ router.post('/ocr', authenticate, async (req, res) => {
 
     // 사용자 정보 조회
     const [users] = await pool.execute(
-      'SELECT id, name, name_enc, school_id, grade, class_number FROM users WHERE id = ?',
+      'SELECT id, name_enc, school_id, grade, class_number FROM users WHERE id = ?',
       [userId]
     );
 

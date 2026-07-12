@@ -35,10 +35,6 @@ export function packUserPii({ name, phone, birthDate }) {
     phone_enc: normalizedPhone ? encryptPii(normalizedPhone) : null,
     phone_lookup: hashPhoneLookup(normalizedPhone),
     birth_date_enc: normalizedBirth ? encryptPii(normalizedBirth) : null,
-    // legacy 컬럼 — 마이그레이션 후 NULL 유지
-    name: null,
-    phone: null,
-    birth_date: null,
   };
 }
 
@@ -47,33 +43,29 @@ export function packPhoneOnly(phone) {
   return {
     phone_enc: normalizedPhone ? encryptPii(normalizedPhone) : null,
     phone_lookup: hashPhoneLookup(normalizedPhone),
-    phone: null,
   };
 }
 
-/** 단일 필드: enc 우선, legacy plaintext 폴백 */
-export function resolvePiiField(encValue, legacyValue = null) {
-  if (encValue) {
-    try {
-      return decryptPii(encValue);
-    } catch {
-      // 복호화 실패 시 legacy 폴백
-    }
+/** 단일 필드: 암호문 복호화 */
+export function resolvePiiField(encValue) {
+  if (!encValue) return null;
+  try {
+    return decryptPii(encValue);
+  } catch {
+    return null;
   }
-  if (legacyValue == null || legacyValue === '') return null;
-  return String(legacyValue);
 }
 
 export function resolveUserName(row) {
-  return resolvePiiField(row?.name_enc, row?.name);
+  return resolvePiiField(row?.name_enc);
 }
 
 export function resolveUserPhone(row) {
-  return resolvePiiField(row?.phone_enc, row?.phone);
+  return resolvePiiField(row?.phone_enc);
 }
 
 export function resolveUserBirthDate(row) {
-  return resolvePiiField(row?.birth_date_enc, row?.birth_date);
+  return resolvePiiField(row?.birth_date_enc);
 }
 
 /** row에 복호화된 plain 필드 주입 + *_enc 제거 */
@@ -126,7 +118,7 @@ export function hydrateAliasedPiiRows(rows, plainKeys) {
 
 /** users INSERT/UPDATE SQL fragment helpers */
 export const USER_PII_INSERT_COLUMNS =
-  'name_enc, name_lookup, phone_enc, phone_lookup, birth_date_enc, name, phone, birth_date';
+  'name_enc, name_lookup, phone_enc, phone_lookup, birth_date_enc';
 
 export function userPiiInsertValues(pii) {
   return [
@@ -135,9 +127,6 @@ export function userPiiInsertValues(pii) {
     pii.phone_enc,
     pii.phone_lookup,
     pii.birth_date_enc,
-    pii.name,
-    pii.phone,
-    pii.birth_date,
   ];
 }
 
@@ -146,7 +135,6 @@ function isIdentityVerificationRow(row) {
   return row && typeof row === 'object' && 'birthday_enc' in row && !('birth_date_enc' in row);
 }
 
-/** 마이그레이션 기간: lookup 우선 + legacy plaintext 폴백 WHERE */
 export function autoHydratePiiRows(rows) {
   if (!Array.isArray(rows) || rows.length === 0) return rows;
   const ALIASES = [
@@ -178,22 +166,22 @@ export function autoHydratePiiRows(rows) {
 
 export function phoneLookupWhereClause(tableAlias = '') {
   const prefix = tableAlias ? `${tableAlias}.` : '';
-  return `(${prefix}phone_lookup = ? OR (${prefix}phone_lookup IS NULL AND REPLACE(REPLACE(${prefix}phone, '-', ''), ' ', '') = ?))`;
+  return `${prefix}phone_lookup = ?`;
 }
 
 export function phoneLookupBindParams(phone) {
   const normalized = normalizeLocalKrPhone(phone);
-  return [hashPhoneLookup(normalized), normalized];
+  return [hashPhoneLookup(normalized)];
 }
 
 export function nameLookupWhereClause(tableAlias = '') {
   const prefix = tableAlias ? `${tableAlias}.` : '';
-  return `(${prefix}name_lookup = ? OR (${prefix}name_lookup IS NULL AND ${prefix}name = ?))`;
+  return `${prefix}name_lookup = ?`;
 }
 
 export function nameLookupBindParams(name) {
   const normalized = normalizePiiName(name);
-  return [hashNameLookup(normalized), normalized];
+  return [hashNameLookup(normalized)];
 }
 
 export function packSubmissionPii({ name, phone, birthDate }) {

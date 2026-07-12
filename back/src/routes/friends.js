@@ -39,7 +39,6 @@ router.get('/list', authenticate, async (req, res) => {
            ELSE uf.requester_id
          END AS friend_user_id,
          u.name_enc,
-         u.name,
          u.username,
          u.color_id,
          c.hex_code AS profile_color_hex,
@@ -126,7 +125,6 @@ router.get('/requests/received', authenticate, async (req, res) => {
          uf.id,
          uf.requester_id,
          u.name_enc,
-         u.name,
          u.username,
          u.color_id,
          c.hex_code AS profile_color_hex,
@@ -446,7 +444,7 @@ router.post('/requests', authenticate, validate(sendFriendRequestValidators), as
 
     // 대상 사용자 찾기
     const [userRows] = await pool.execute(
-      'SELECT id, username, name, name_enc FROM users WHERE username = ?',
+      'SELECT id, username, name_enc FROM users WHERE username = ?',
       [trimmed],
     );
 

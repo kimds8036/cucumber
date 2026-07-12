@@ -1,8 +1,10 @@
 /**
- * 기존 plaintext PII → 암호화 컬럼 백필 (047 마이그레이션 이후 1회 실행)
+ * 기존 plaintext PII → 암호화 컬럼 백필 (047 마이그레이션 이후, 054 이전 1회 실행)
  *
  * cd back && npm run migrate:pii-encrypt
  * cd back && npm run migrate:pii-encrypt -- --target=develop
+ *
+ * 054_drop_deprecated_pii_plaintext_columns 적용 후에는 legacy 컬럼이 없어 실행할 수 없습니다.
  */
 
 import { createDbConnection, parseMigrateCliArgs } from '../config/dbEnv.js';
@@ -10,9 +12,7 @@ import { isPiiCryptoConfigured } from '../utils/piiCrypto.js';
 import {
   packPhoneOnly,
   packUserPii,
-  resolvePiiField,
 } from '../services/userPii.service.js';
-import { normalizeLocalKrPhone } from '../utils/phone.js';
 
 async function backfillUsers(connection) {
   const [rows] = await connection.execute(
@@ -31,7 +31,7 @@ async function backfillUsers(connection) {
     await connection.execute(
       `UPDATE users SET
          name_enc = ?, name_lookup = ?, phone_enc = ?, phone_lookup = ?,
-         birth_date_enc = ?, name = NULL, phone = NULL, birth_date = NULL
+         birth_date_enc = ?
        WHERE id = ?`,
       [
         pii.name_enc,
@@ -55,7 +55,7 @@ async function backfillPhoneVerifications(connection) {
   for (const row of rows) {
     const packed = packPhoneOnly(row.phone);
     await connection.execute(
-      `UPDATE phone_verifications SET phone_enc = ?, phone_lookup = ?, phone = NULL WHERE id = ?`,
+      `UPDATE phone_verifications SET phone_enc = ?, phone_lookup = ? WHERE id = ?`,
       [packed.phone_enc, packed.phone_lookup, row.id],
     );
     updated += 1;
@@ -77,8 +77,7 @@ async function backfillTable(connection, table) {
     });
     await connection.execute(
       `UPDATE ${table} SET
-         name_enc = ?, phone_enc = ?, phone_lookup = ?, birth_date_enc = ?,
-         name = NULL, phone = NULL, birth_date = NULL
+         name_enc = ?, phone_enc = ?, phone_lookup = ?, birth_date_enc = ?
        WHERE id = ?`,
       [
         pii.name_enc,
@@ -101,7 +100,7 @@ async function backfillRecoveryTokens(connection) {
   for (const row of rows) {
     const packed = packPhoneOnly(row.phone);
     await connection.execute(
-      `UPDATE account_recovery_tokens SET phone_enc = ?, phone_lookup = ?, phone = NULL WHERE id = ?`,
+      `UPDATE account_recovery_tokens SET phone_enc = ?, phone_lookup = ? WHERE id = ?`,
       [packed.phone_enc, packed.phone_lookup, row.id],
     );
     updated += 1;

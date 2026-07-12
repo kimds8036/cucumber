@@ -78,7 +78,7 @@ export async function assertFirebasePhoneToken(idToken, clientPhone) {
 
 async function findActiveUser(whereSql, params) {
   const [rows] = await pool.execute(
-    `SELECT id, username, name, name_enc, phone, phone_enc, is_banned, is_deleted
+    `SELECT id, username, name_enc, phone_enc, is_banned, is_deleted
      FROM users
      WHERE is_deleted = FALSE
        AND (is_banned IS NULL OR is_banned = FALSE)
@@ -175,8 +175,8 @@ export async function issuePasswordRecoveryToken({ userId, phone, username }) {
 
   await pool.execute(
     `INSERT INTO account_recovery_tokens
-       (jti, user_id, phone, phone_enc, phone_lookup, username, expires_at)
-     VALUES (?, ?, NULL, ?, ?, ?, ?)`,
+       (jti, user_id, phone_enc, phone_lookup, username, expires_at)
+     VALUES (?, ?, ?, ?, ?, ?)`,
     [
       jti,
       userId,

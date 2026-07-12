@@ -48,8 +48,8 @@ export async function issueStudentOcrVerificationToken({
 
   await pool.execute(
     `INSERT INTO signup_verification_tokens
-       (jti, token_type, name, name_enc, birth_date, birth_date_enc, school_id, phone, phone_enc, phone_lookup, expires_at)
-     VALUES (?, 'ocr', NULL, ?, NULL, ?, ?, NULL, ?, ?, ?)`,
+       (jti, token_type, name_enc, birth_date_enc, school_id, phone_enc, phone_lookup, expires_at)
+     VALUES (?, 'ocr', ?, ?, ?, ?, ?, ?)`,
     [
       jti,
       pii.name_enc,
@@ -193,9 +193,9 @@ export async function issueStudentIdManualVerificationToken({
 
   await pool.execute(
     `INSERT INTO signup_verification_tokens
-       (jti, token_type, name, name_enc, birth_date, birth_date_enc, school_id, phone, phone_enc, phone_lookup,
+       (jti, token_type, name_enc, birth_date_enc, school_id, phone_enc, phone_lookup,
         cloudinary_url, cloudinary_public_id, expires_at)
-     VALUES (?, 'student_id_manual', NULL, ?, NULL, ?, ?, NULL, ?, ?, ?, ?, ?)`,
+     VALUES (?, 'student_id_manual', ?, ?, ?, ?, ?, ?, ?, ?)`,
     [
       jti,
       pii.name_enc,

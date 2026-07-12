@@ -84,7 +84,6 @@ router.get('/rooms', authenticate, async (req, res) => {
           LIMIT 1) AS post_thumbnail,
         CASE WHEN mr.user1_id = ? THEN u2.id   ELSE u1.id         END AS other_user_id,
         CASE WHEN mr.user1_id = ? THEN u2.name_enc ELSE u1.name_enc END AS other_user_name_enc,
-        CASE WHEN mr.user1_id = ? THEN u2.name ELSE u1.name END AS other_user_name,
         CASE WHEN mr.user1_id = ? THEN u2.color_id ELSE u1.color_id END AS other_user_color_id,
         (
           SELECT COUNT(*)
@@ -112,7 +111,7 @@ router.get('/rooms', authenticate, async (req, res) => {
         )
       ORDER BY mr.last_message_at DESC, mr.created_at DESC
       LIMIT ${limitNum} OFFSET ${offsetNum}`,
-      [userId, userId, userId, userId, userId, userId, userId, userId],
+      [userId, userId, userId, userId, userId, userId, userId],
     );
     const [countResult] = await pool.execute(
       `SELECT COUNT(*) AS total FROM message_rooms mr
@@ -313,14 +312,13 @@ router.get('/rooms/:roomId', authenticate, async (req, res) => {
           LIMIT 1) AS post_thumbnail,
         CASE WHEN mr.user1_id = ? THEN u2.id       ELSE u1.id       END AS other_user_id,
         CASE WHEN mr.user1_id = ? THEN u2.name_enc ELSE u1.name_enc END AS other_user_name_enc,
-        CASE WHEN mr.user1_id = ? THEN u2.name     ELSE u1.name     END AS other_user_name,
         CASE WHEN mr.user1_id = ? THEN u2.color_id ELSE u1.color_id END AS other_user_color_id
       FROM message_rooms mr
       LEFT JOIN posts  p  ON mr.post_id  = p.id
       LEFT JOIN users u1  ON mr.user1_id = u1.id
       LEFT JOIN users u2  ON mr.user2_id = u2.id
       WHERE mr.id = ?`,
-      [userId, userId, userId, userId, roomId],
+      [userId, userId, userId, roomId],
     );
 
     const [roomMeta] = await pool.execute(
@@ -376,7 +374,7 @@ router.get('/rooms/:roomId', authenticate, async (req, res) => {
 
     const sql = `SELECT
         m.id, m.room_id, m.sender_id, m.content, m.is_read, m.is_deleted, m.created_at,
-        u.name_enc AS sender_name_enc, u.name AS sender_name, u.color_id AS sender_color_id,
+        u.name_enc AS sender_name_enc, u.color_id AS sender_color_id,
         (SELECT JSON_ARRAYAGG(cloudinary_url)
          FROM (
            SELECT cloudinary_url
@@ -538,8 +536,8 @@ router.post(
       const [messages] = await pool.execute(
         `SELECT
   m.id, m.room_id, m.sender_id, m.parent_message_id, m.content, m.is_read, m.is_deleted, m.created_at,
-  pm.content AS parent_content, pu.name_enc AS parent_sender_name_enc, pu.name AS parent_sender_name,
-  u.name_enc AS sender_name_enc, u.name AS sender_name, u.color_id AS sender_color_id,
+  pm.content AS parent_content, pu.name_enc AS parent_sender_name_enc,
+  u.name_enc AS sender_name_enc, u.color_id AS sender_color_id,
   (SELECT JSON_ARRAYAGG(mi.cloudinary_url)
    FROM (SELECT cloudinary_url FROM message_images
          WHERE message_id = m.id AND deleted_at IS NULL

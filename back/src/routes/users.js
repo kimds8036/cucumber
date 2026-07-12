@@ -102,7 +102,6 @@ router.get('/search', authenticate, async (req, res) => {
       `SELECT
          u.id,
          u.name_enc,
-         u.name,
          u.username,
          u.grade,
          u.class_number,

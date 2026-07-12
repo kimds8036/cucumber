@@ -310,7 +310,7 @@ export async function runPersonalMailReturnJob(options = {}) {
 
   const [candidates] = await pool.execute(
     `SELECT pm.id, pm.sender_id, pm.recipient_id, pm.recipient_name,
-            ru.name_enc AS recipient_user_name_enc, ru.name AS recipient_user_name, pm.is_match_failed,
+            ru.name_enc AS recipient_user_name_enc, pm.is_match_failed,
             pm.root_mail_id, pm.sent_at
      FROM personal_mails pm
      LEFT JOIN users ru ON ru.id = pm.recipient_id

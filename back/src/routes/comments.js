@@ -182,7 +182,7 @@ router.post('/:postId/comments', authenticate, blockWhenFlag('comment_write_disa
         c.anonymous_index,
         c.like_count,
         c.created_at,
-        u.name_enc as author_name_enc, u.name as author_name,
+        u.name_enc as author_name_enc,
         u.color_id
       FROM comments c
       LEFT JOIN users u ON c.user_id = u.id
@@ -340,7 +340,7 @@ router.get('/:postId/comments', optionalAuthenticate, async (req, res) => {
         c.is_pinned,
         c.pinned_at,
         c.created_at,
-        u.name_enc as author_name_enc, u.name as author_name,
+        u.name_enc as author_name_enc,
         u.color_id,
         (SELECT JSON_ARRAYAGG(cloudinary_url)
           FROM comment_images

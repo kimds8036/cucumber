@@ -40,7 +40,7 @@ async function seed() {
     const [adminResult] = await connection.execute(
       `INSERT INTO users
         (username, password, ${USER_PII_INSERT_COLUMNS}, school_id, grade, class_number, graduation_year, is_graduated, color_id, phone_verified, student_verified)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         'admin',
         adminPassword,
@@ -67,7 +67,7 @@ async function seed() {
       const [result] = await connection.execute(
         `INSERT INTO users
           (username, password, ${USER_PII_INSERT_COLUMNS}, school_id, grade, class_number, graduation_year, is_graduated, color_id, phone_verified, student_verified)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         [
           faker.internet.username().slice(0, 20),
           password,

@@ -240,7 +240,7 @@ export async function broadcastTimerStatus({ userId, status }) {
         const watcherIds = Array.from(watchers);
         const placeholders = watcherIds.map(() => '?').join(',');
         const [rowsWatchers] = await pool.execute(
-          `SELECT id, name, name_enc, color_id FROM users WHERE id IN (${placeholders})`,
+          `SELECT id, name_enc, color_id FROM users WHERE id IN (${placeholders})`,
           watcherIds,
         );
         const summaryPayload = {

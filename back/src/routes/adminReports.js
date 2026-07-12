@@ -549,7 +549,6 @@ router.get('/users', requireAdminApi, async (req, res) => {
          u.id,
          u.username,
          u.name_enc,
-         u.name,
          u.violation_warning_count,
          u.false_report_warning_count,
          u.is_suspended,
@@ -801,10 +800,10 @@ router.get('/blocks', requireAdminApi, async (req, res) => {
          ub.id,
          ub.user_id,
          u1.username AS user_username,
-         u1.name_enc AS user_name_enc, u1.name AS user_name,
+         u1.name_enc AS user_name_enc,
          ub.blocked_user_id,
          u2.username AS blocked_username,
-         u2.name_enc AS blocked_name_enc, u2.name AS blocked_name,
+         u2.name_enc AS blocked_name_enc,
          ub.reason,
          ub.created_at
        FROM user_blocks ub

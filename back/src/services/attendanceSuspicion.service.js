@@ -80,7 +80,7 @@ export async function getSuspiciousFromFlags({
   const { period_start: startDate, period_end: endDate, computed_at: computedAt } = latest[0];
 
   const [rows] = await pool.execute(
-    `SELECT f.user_id AS id, u.username, u.name_enc, u.name, u.school_id,
+    `SELECT f.user_id AS id, u.username, u.name_enc, u.school_id,
             sch.name AS school_name,
             f.attendance_days, f.school_days AS schoolDaysInPeriod,
             f.attendance_rate AS attendanceRate, f.reason
