@@ -17,6 +17,8 @@ const GUIDE_STEPS = [
       '을 탭하세요',
     ],
     image: require('../../../assets/guide1.png'),
+    /** guide1만 가로형 — 고정 세로 비율(1.85) 대신 원본 높이비 사용 */
+    imageHeightRatio: 638 / 1206,
   },
   {
     step: '02',
@@ -152,7 +154,16 @@ const SignStepCertificateGuide = ({ styles, onProceed }) => {
             />
             <Image
               source={item.image}
-              style={styles.certificateGuideStepImage}
+              style={[
+                styles.certificateGuideStepImage,
+                item.imageHeightRatio != null
+                  ? {
+                      height:
+                        styles.certificateGuideStepImage.width *
+                        item.imageHeightRatio,
+                    }
+                  : null,
+              ]}
               resizeMode="contain"
             />
           </View>
