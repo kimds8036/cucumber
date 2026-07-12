@@ -41,6 +41,7 @@ import {
   hydrateUserPiiRow,
   USER_PII_INSERT_COLUMNS,
   userPiiInsertValues,
+  normalizeBirthDateInput,
 } from '../services/userPii.service.js';
 import {
   signupOcrLimiter,
@@ -121,6 +122,49 @@ function mapIdentityTokenError(code) {
     GUARDIAN_TOKEN_REQUIRED: '보호자 본인인증이 필요합니다.',
   };
   return messages[code] || '본인인증 검증에 실패했습니다.';
+}
+
+function identityTokenErrorResponse(tokenErr) {
+  const code = tokenErr?.code || 'INVALID_IDENTITY_TOKEN';
+  const message = mapIdentityTokenError(code);
+  return {
+    status: 400,
+    body: {
+      success: false,
+      message,
+      code,
+    },
+  };
+}
+
+function studentVerificationTokenErrorResponse(tokenErr) {
+  const code = tokenErr?.code || 'INVALID_STUDENT_VERIFICATION_TOKEN';
+  const messages = {
+    STUDENT_VERIFICATION_TOKEN_REQUIRED:
+      '학생증 촬영을 먼저 완료해 주세요.',
+    INVALID_STUDENT_VERIFICATION_TOKEN:
+      '학생증 제출이 만료되었거나 유효하지 않습니다. 다시 촬영해 주세요.',
+    STUDENT_VERIFICATION_TOKEN_USED:
+      '이미 사용된 학생증 제출입니다. 다시 촬영해 주세요.',
+    STUDENT_VERIFICATION_TOKEN_EXPIRED:
+      '학생증 제출이 만료되었습니다. 다시 촬영해 주세요.',
+    STUDENT_VERIFICATION_MISMATCH:
+      '제출 정보가 학생증 촬영 시점과 일치하지 않습니다.',
+    STUDENT_VERIFICATION_PHONE_MISMATCH:
+      '전화번호가 학생증 촬영 시점과 일치하지 않습니다.',
+    SCHOOL_ID_REQUIRED: '재학 학교를 선택해 주세요.',
+    STUDENT_ID_IMAGE_MISSING:
+      '학생증 이미지가 없습니다. 다시 촬영해 주세요.',
+    INVALID_SCHOOL_ID: '유효하지 않은 학교 정보입니다.',
+  };
+  return {
+    status: 400,
+    body: {
+      success: false,
+      message: messages[code] || '학생증 제출 검증에 실패했습니다.',
+      code,
+    },
+  };
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -866,8 +910,9 @@ router.post('/signup', blockWhenFlag('signup_disabled'), validate(signupValidato
     } = req.body;
 
     const phone = normalizeLocalKrPhone(rawPhone);
+    const normalizedBirthDate = normalizeBirthDateInput(birthDate) || birthDate;
     const isCertificateSignup = verificationMethod === 'certificate';
-    const under14 = isUnder14YearsOld(birthDate);
+    const under14 = isUnder14YearsOld(normalizedBirthDate);
     const inicisOn = isInicisEnabled();
     const resolvedSchoolId = isCertificateSignup
       ? (schoolId?.trim() || 'CERT_PENDING')
@@ -912,57 +957,25 @@ router.post('/signup', blockWhenFlag('signup_disabled'), validate(signupValidato
       });
     }
 
-    let studentIdManualVerification = null;
-    if (!isCertificateSignup) {
-      try {
-        studentIdManualVerification = await consumeStudentIdManualVerificationToken(
-          studentVerificationToken,
-          {
-            name: String(name).trim(),
-            birthDate,
-            schoolId: String(schoolId).trim(),
-            phone,
-          },
-        );
-      } catch (tokenErr) {
-        const code = tokenErr?.code || 'INVALID_STUDENT_VERIFICATION_TOKEN';
-        const messages = {
-          STUDENT_VERIFICATION_TOKEN_REQUIRED:
-            '학생증 촬영을 먼저 완료해 주세요.',
-          INVALID_STUDENT_VERIFICATION_TOKEN:
-            '학생증 제출이 만료되었거나 유효하지 않습니다. 다시 촬영해 주세요.',
-          STUDENT_VERIFICATION_TOKEN_USED:
-            '이미 사용된 학생증 제출입니다. 다시 촬영해 주세요.',
-          STUDENT_VERIFICATION_TOKEN_EXPIRED:
-            '학생증 제출이 만료되었습니다. 다시 촬영해 주세요.',
-          STUDENT_VERIFICATION_MISMATCH:
-            '제출 정보가 학생증 촬영 시점과 일치하지 않습니다.',
-          STUDENT_VERIFICATION_PHONE_MISMATCH:
-            '전화번호가 학생증 촬영 시점과 일치하지 않습니다.',
-          SCHOOL_ID_REQUIRED: '재학 학교를 선택해 주세요.',
-          STUDENT_ID_IMAGE_MISSING:
-            '학생증 이미지가 없습니다. 다시 촬영해 주세요.',
-          INVALID_SCHOOL_ID: '유효하지 않은 학교 정보입니다.',
-        };
-        return res.status(400).json({
-          success: false,
-          message: messages[code] || '학생증 제출 검증에 실패했습니다.',
-          code,
-        });
-      }
+    if (!isCertificateSignup && !studentVerificationToken?.trim()) {
+      return res.status(400).json({
+        success: false,
+        message: '학생증 촬영을 먼저 완료해 주세요.',
+        code: 'STUDENT_VERIFICATION_TOKEN_REQUIRED',
+      });
     }
 
     const resolvedColorId = Number(rawColorId) || pickRandomProfileColorId();
 
-    const expectedLevel = inferExpectedSchoolLevel(birthDate);
+    const expectedLevel = inferExpectedSchoolLevel(normalizedBirthDate);
     let resolvedGrade = Number(grade);
     let resolvedGraduationYear = Number(graduationYear);
     if (!Number.isFinite(resolvedGrade) || resolvedGrade < 1) {
-      resolvedGrade = inferGradeFromBirthDate(birthDate, expectedLevel) || 1;
+      resolvedGrade = inferGradeFromBirthDate(normalizedBirthDate, expectedLevel) || 1;
     }
     if (!Number.isFinite(resolvedGraduationYear)) {
       resolvedGraduationYear =
-        inferGraduationYear(birthDate, expectedLevel, resolvedGrade) ||
+        inferGraduationYear(normalizedBirthDate, expectedLevel, resolvedGrade) ||
         new Date().getFullYear() + 1;
     }
     const resolvedClassNumber = Number(classNumber) || 1;
@@ -989,7 +1002,7 @@ router.post('/signup', blockWhenFlag('signup_disabled'), validate(signupValidato
       });
     }
 
-    if (!validateBirthDate(birthDate)) {
+    if (!validateBirthDate(normalizedBirthDate)) {
       return res.status(400).json({ 
         success: false, 
         message: '올바른 생년월일이 아닙니다.' 
@@ -1064,7 +1077,7 @@ router.post('/signup', blockWhenFlag('signup_disabled'), validate(signupValidato
       const identityLinkIds = [];
       let signupName = String(name).trim();
       let signupPhone = phone;
-      let signupBirthDate = birthDate;
+      let signupBirthDate = normalizedBirthDate;
 
       if (under14 && inicisOn && guardianInicisClientToken?.trim()) {
         try {
@@ -1076,12 +1089,8 @@ router.post('/signup', blockWhenFlag('signup_disabled'), validate(signupValidato
           identityLinkIds.push(guardianConsumed.id);
         } catch (tokenErr) {
           await connection.rollback();
-          const code = tokenErr?.code || 'INVALID_IDENTITY_TOKEN';
-          return res.status(400).json({
-            success: false,
-            message: mapIdentityTokenError(code),
-            code,
-          });
+          const { status, body } = identityTokenErrorResponse(tokenErr);
+          return res.status(status).json(body);
         }
       }
 
@@ -1089,25 +1098,47 @@ router.post('/signup', blockWhenFlag('signup_disabled'), validate(signupValidato
         try {
           const studentConsumed = await consumeIdentityVerificationClientToken(
             studentInicisClientToken,
-            { purpose: 'student_signup', expectedBirthDate: birthDate },
+            {
+              purpose: 'student_signup',
+              expectedBirthDate: normalizedBirthDate,
+            },
             connection,
           );
           identityLinkIds.push(studentConsumed.id);
           if (studentConsumed.name) signupName = studentConsumed.name;
           if (studentConsumed.phone) signupPhone = studentConsumed.phone;
-          if (studentConsumed.birthDate) signupBirthDate = studentConsumed.birthDate;
+          if (studentConsumed.birthDate) {
+            signupBirthDate = normalizeBirthDateInput(studentConsumed.birthDate)
+              || studentConsumed.birthDate;
+          }
           await ensureInicisPhoneVerificationRecord(
             studentConsumed.phone || signupPhone,
             connection,
           );
         } catch (tokenErr) {
           await connection.rollback();
-          const code = tokenErr?.code || 'INVALID_IDENTITY_TOKEN';
-          return res.status(400).json({
-            success: false,
-            message: mapIdentityTokenError(code),
-            code,
-          });
+          const { status, body } = identityTokenErrorResponse(tokenErr);
+          return res.status(status).json(body);
+        }
+      }
+
+      let studentIdManualVerification = null;
+      if (!isCertificateSignup) {
+        try {
+          studentIdManualVerification = await consumeStudentIdManualVerificationToken(
+            studentVerificationToken,
+            {
+              name: signupName,
+              birthDate: signupBirthDate,
+              schoolId: String(schoolId).trim(),
+              phone: signupPhone,
+            },
+            connection,
+          );
+        } catch (tokenErr) {
+          await connection.rollback();
+          const { status, body } = studentVerificationTokenErrorResponse(tokenErr);
+          return res.status(status).json(body);
         }
       }
 
@@ -1700,17 +1731,18 @@ router.post('/signup/upload-student-id', signupOcrLimiter, async (req, res) => {
     }
 
     const normalizedPhone = rawPhone ? normalizeLocalKrPhone(rawPhone) : null;
-    const expectedLevel = inferExpectedSchoolLevel(birthDate);
-    const suggestedGrade = inferGradeFromBirthDate(birthDate, expectedLevel);
+    const normalizedBirthDate = normalizeBirthDateInput(birthDate) || birthDate;
+    const expectedLevel = inferExpectedSchoolLevel(normalizedBirthDate);
+    const suggestedGrade = inferGradeFromBirthDate(normalizedBirthDate, expectedLevel);
     const suggestedGraduationYear = inferGraduationYear(
-      birthDate,
+      normalizedBirthDate,
       expectedLevel,
       suggestedGrade,
     );
 
     const studentVerificationToken = await issueStudentIdManualVerificationToken({
       name: String(name).trim(),
-      birthDate,
+      birthDate: normalizedBirthDate,
       phone: normalizedPhone,
       schoolId: trimmedSchoolId,
       cloudinaryUrl: uploaded.cloudinaryUrl,
