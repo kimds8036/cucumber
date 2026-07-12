@@ -12,6 +12,7 @@ import {
   tryDecryptInicisField,
 } from '../config/inicis.js';
 import { decryptPii, encryptPii } from '../utils/piiCrypto.js';
+import { normalizeBirthDateInput } from './userPii.service.js';
 
 const PURPOSES = new Set([
   'student_signup',
@@ -758,12 +759,15 @@ export async function consumeIdentityVerificationClientToken(
   }
   if (
     expectedBirthDate &&
-    profileBirth &&
-    profileBirth !== String(expectedBirthDate).trim()
+    profileBirth
   ) {
-    const err = new Error('본인인증 생년월일이 가입 정보와 일치하지 않습니다.');
-    err.code = 'IDENTITY_BIRTH_MISMATCH';
-    throw err;
+    const normExpected = normalizeBirthDateInput(expectedBirthDate);
+    const normProfile = normalizeBirthDateInput(profileBirth);
+    if (normExpected && normProfile && normExpected !== normProfile) {
+      const err = new Error('본인인증 생년월일이 가입 정보와 일치하지 않습니다.');
+      err.code = 'IDENTITY_BIRTH_MISMATCH';
+      throw err;
+    }
   }
 
   await db.execute(

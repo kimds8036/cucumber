@@ -276,7 +276,10 @@ const Sign = ({ navigation }) => {
         };
       }
 
-      if (!birthDatesMatch(enteredBirthDate, verifiedBirthDate)) {
+      if (
+        !isSignupAdultTestModeEnabled() &&
+        !birthDatesMatch(enteredBirthDate, verifiedBirthDate)
+      ) {
         return {
           ok: false,
           title: '본인인증 실패',
@@ -530,6 +533,14 @@ const Sign = ({ navigation }) => {
     const useReal = clientOn && serverOn;
 
     if (!useReal) {
+      if (clientOn) {
+        return {
+          ok: false,
+          title: '본인인증 오류',
+          message:
+            '본인인증 서버에 연결할 수 없습니다. 네트워크를 확인한 뒤 다시 시도해 주세요.',
+        };
+      }
       await new Promise((resolve) => setTimeout(resolve, 400));
       return {
         ok: true,
@@ -537,6 +548,7 @@ const Sign = ({ navigation }) => {
         nextIdentity: {
           name: '테스트학생',
           phoneNumber: INICIS_MOCK_PHONE,
+          birthDate: OCR_TEST_MOCK_IDENTITY.birthDate,
           isVerified: true,
         },
       };
@@ -1179,6 +1191,13 @@ const Sign = ({ navigation }) => {
       Alert.alert('알림', '계정 정보가 없습니다. 이전 단계를 확인해 주세요.');
       return;
     }
+    if (!identityData.inicisClientToken) {
+      Alert.alert(
+        '본인인증 필요',
+        '학생 본인인증 정보가 없습니다. 이전 단계에서 본인인증을 다시 완료해 주세요.',
+      );
+      return;
+    }
 
     const payload = buildSignupPayload(finalData, token, recognized);
     if (
@@ -1217,9 +1236,10 @@ const Sign = ({ navigation }) => {
     verificationData = recognizedData,
     options = {},
   ) => {
-    const resolvedBirthDate =
-      identityData.birthDate || finalData.birthDate || identity.birthDate;
-    const enrollment = resolveSignupEnrollment(resolvedBirthDate, {
+    const resolvedBirthDate = normalizeBirthDateForCompare(
+      identityData.birthDate || finalData.birthDate || identity.birthDate,
+    );
+    const enrollment = resolveSignupEnrollment(resolvedBirthDate || identity.birthDate, {
       level: finalData.schoolLevel || undefined,
       grade:
         Number(finalData.grade) ||
@@ -1249,10 +1269,7 @@ const Sign = ({ navigation }) => {
           identity.phoneNumber ||
           '',
       ).replace(/\D/g, ''),
-      birthDate:
-        identityData.birthDate ||
-        finalData.birthDate ||
-        identity.birthDate,
+      birthDate: resolvedBirthDate || identity.birthDate,
       schoolId: finalData.schoolId,
       grade,
       classNumber,

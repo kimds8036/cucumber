@@ -4,6 +4,7 @@ import pool from '../config/database.js';
 import { normalizeLocalKrPhone } from '../utils/phone.js';
 import {
   packSubmissionPii,
+  normalizeBirthDateInput,
 } from '../services/userPii.service.js';
 
 if (!process.env.JWT_SECRET) {
@@ -176,7 +177,7 @@ export async function issueStudentIdManualVerificationToken({
       type: 'signup_student_id_manual',
       jti,
       name: String(name || '').trim(),
-      birthDate,
+      birthDate: normalizeBirthDateInput(birthDate) || birthDate,
       phone: normalizedPhone,
       schoolId: trimmedSchoolId,
     },
@@ -217,7 +218,9 @@ export async function issueStudentIdManualVerificationToken({
 export async function consumeStudentIdManualVerificationToken(
   token,
   { name, birthDate, schoolId, phone },
+  connection = null,
 ) {
+  const db = connection || pool;
   if (!token || typeof token !== 'string') {
     const err = new Error('STUDENT_VERIFICATION_TOKEN_REQUIRED');
     err.code = 'STUDENT_VERIFICATION_TOKEN_REQUIRED';
@@ -242,6 +245,7 @@ export async function consumeStudentIdManualVerificationToken(
   const normalizedPhone = normalizeLocalKrPhone(phone);
   const trimmedName = String(name || '').trim();
   const trimmedSchoolId = String(schoolId || '').trim();
+  const normalizedBirthDate = normalizeBirthDateInput(birthDate);
 
   if (!trimmedSchoolId) {
     const err = new Error('SCHOOL_ID_REQUIRED');
@@ -249,7 +253,13 @@ export async function consumeStudentIdManualVerificationToken(
     throw err;
   }
 
-  if (decoded.name !== trimmedName || decoded.birthDate !== birthDate) {
+  const tokenBirthDate = normalizeBirthDateInput(decoded.birthDate);
+  if (
+    decoded.name !== trimmedName ||
+    (tokenBirthDate &&
+      normalizedBirthDate &&
+      tokenBirthDate !== normalizedBirthDate)
+  ) {
     const err = new Error('STUDENT_VERIFICATION_MISMATCH');
     err.code = 'STUDENT_VERIFICATION_MISMATCH';
     throw err;
@@ -271,7 +281,7 @@ export async function consumeStudentIdManualVerificationToken(
     throw err;
   }
 
-  const [rows] = await pool.execute(
+  const [rows] = await db.execute(
     `SELECT id, used_at, expires_at, cloudinary_url, cloudinary_public_id
      FROM signup_verification_tokens
      WHERE jti = ? AND token_type = 'student_id_manual' LIMIT 1`,
@@ -301,7 +311,7 @@ export async function consumeStudentIdManualVerificationToken(
     throw err;
   }
 
-  const [schoolRows] = await pool.execute(
+  const [schoolRows] = await db.execute(
     'SELECT school_id FROM schools WHERE school_id = ? LIMIT 1',
     [trimmedSchoolId],
   );
@@ -311,7 +321,7 @@ export async function consumeStudentIdManualVerificationToken(
     throw err;
   }
 
-  await pool.execute(
+  await db.execute(
     'UPDATE signup_verification_tokens SET used_at = NOW(), school_id = ? WHERE id = ?',
     [trimmedSchoolId, row.id],
   );
