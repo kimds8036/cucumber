@@ -31,21 +31,6 @@ export function cancelInicisFlow() {
   activeFlowPromise = null;
 }
 
-/** 브라우저 닫기 안내 — Android ✕ / iOS ✓ (Alert용 유니코드 아이콘) */
-export function getInicisReturnToAppMessage() {
-  if (Platform.OS === 'ios') {
-    return '본인인증 완료 후 ✓ 버튼을 눌러 앱으로 돌아와 주세요.';
-  }
-  return '본인인증 완료 후 ✕ 버튼을 눌러 앱으로 돌아와 주세요.';
-}
-
-export function getInicisBrowserDismissHintMessage() {
-  if (Platform.OS === 'ios') {
-    return '인증이 완료되었다면 브라우저 상단 ✓를 눌러 앱으로 돌아와 주세요.';
-  }
-  return '인증이 완료되었다면 브라우저 왼쪽 상단 ✕를 눌러 앱으로 돌아와 주세요.';
-}
-
 /** KG 이니시스 연동 시 앱 복귀 URL (서버 allowlist용 — 자동 딥링크 이동은 사용하지 않음) */
 export function getInicisAppReturnUrl() {
   return Linking.createURL('inicis/return');
@@ -214,7 +199,8 @@ export async function waitForInicisResult(mTxId, {
         cleanup();
         const err = new Error('본인인증 대기 시간이 초과되었습니다.');
         err.code = 'TIMEOUT';
-        err.userMessage = getInicisBrowserDismissHintMessage();
+        err.userMessage =
+          '인증이 완료되었다면 브라우저 왼쪽 상단 ✕를 눌러 앱으로 돌아와 주세요.';
         reject(err);
         return;
       }
