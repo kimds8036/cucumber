@@ -1110,7 +1110,12 @@ router.post('/signup', blockWhenFlag('signup_disabled'), validate(signupValidato
         try {
           studentConsumed = await consumeIdentityVerificationClientToken(
             studentInicisClientToken,
-            { purpose: 'student_signup' },
+            {
+              purpose: 'student_signup',
+              expectedName: anchorName,
+              expectedPhone: anchorPhone,
+              expectedBirthDate: anchorBirthDate,
+            },
             connection,
           );
           identityLinkIds.push(studentConsumed.id);

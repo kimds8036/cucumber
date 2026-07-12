@@ -276,10 +276,7 @@ const Sign = ({ navigation }) => {
         };
       }
 
-      if (
-        !isSignupAdultTestModeEnabled() &&
-        !birthDatesMatch(enteredBirthDate, verifiedBirthDate)
-      ) {
+      if (!birthDatesMatch(enteredBirthDate, verifiedBirthDate)) {
         return {
           ok: false,
           title: '본인인증 실패',
@@ -401,6 +398,62 @@ const Sign = ({ navigation }) => {
     setFormData((prev) => ({ ...prev, birthDate: nextBirthDate }));
     setIdentityData((prev) => ({ ...prev, birthDate: nextBirthDate }));
   }, []);
+
+  const resetInicisIdentityState = useCallback(() => {
+    inicisClientTokenRef.current = null;
+    setIdentityData({});
+    setGuardianInicisClientToken(null);
+    setGuardianVerified(false);
+    setGuardianVerifiedAt(null);
+    void clearPendingInicisSession();
+    cancelInicisFlow();
+  }, []);
+
+  const handleBirthDateChange = useCallback(
+    (nextBirthDate) => {
+      const prevBirthDate =
+        birthDateInputRef.current ||
+        birthDate ||
+        identityData.birthDate ||
+        formData.birthDate ||
+        '';
+      const birthChanged =
+        normalizeBirthDateForCompare(prevBirthDate) !==
+        normalizeBirthDateForCompare(nextBirthDate);
+
+      setBirthDate(nextBirthDate);
+      birthDateInputRef.current = nextBirthDate;
+
+      if (
+        birthChanged &&
+        (identityData.isVerified ||
+          identityData.inicisClientToken ||
+          inicisClientTokenRef.current ||
+          guardianInicisClientToken)
+      ) {
+        resetInicisIdentityState();
+        setFormData((prev) => ({
+          ...prev,
+          birthDate: nextBirthDate,
+          name: '',
+          phoneNumber: '',
+        }));
+        return;
+      }
+
+      setFormData((prev) => ({ ...prev, birthDate: nextBirthDate }));
+      setIdentityData((prev) => ({ ...prev, birthDate: nextBirthDate }));
+    },
+    [
+      birthDate,
+      formData.birthDate,
+      guardianInicisClientToken,
+      identityData.birthDate,
+      identityData.inicisClientToken,
+      identityData.isVerified,
+      resetInicisIdentityState,
+    ],
+  );
 
   const ocrIdentityAnchorRef = useRef({ name: '', phone: '' });
 
@@ -1526,7 +1579,7 @@ const Sign = ({ navigation }) => {
             normalize={normalize}
             bottomOffset={footerHeight}
             initialBirthDate={birthDate}
-            onBirthDateChange={setBirthDate}
+            onBirthDateChange={handleBirthDateChange}
           />
         )}
         {currentStep === STEP.ACCOUNT && (
