@@ -41,7 +41,6 @@ import {
   openPendingInicisBrowser,
   dismissInicisBrowserSafely,
   waitForPresentationLayerRelease,
-  getInicisReturnToAppMessage,
 } from '../../../services/inicisAuth';
 import {
   isValidUsername,

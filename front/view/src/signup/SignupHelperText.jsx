@@ -63,7 +63,7 @@ const SignupHelperText = ({
         centered && styles.wrapCentered,
         {
           backgroundColor: cfg.backgroundColor,
-          marginTop: flush ? 0 : normalize(tight ? 2 : 6),
+          marginTop: flush ? 0 : normalize(tight ? 6 : 6),
           marginBottom: flush ? normalize(8) : normalize(tight ? 6 : 10),
           marginLeft: flush ? normalize(20) : undefined,
           marginRight: flush ? 0 : undefined,
