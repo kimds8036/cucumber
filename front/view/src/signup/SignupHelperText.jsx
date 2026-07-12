@@ -24,6 +24,13 @@ const VARIANT_CONFIG = {
     ...PRIMARY_HELPER,
     iconName: 'shield-checkmark-outline',
   },
+  /** 라벨·입력 사이 안내 — 배경/아이콘/여백 없음 */
+  plain: {
+    backgroundColor: colors.transparent,
+    textColor: colors.textSecondary,
+    showIcon: false,
+    flush: true,
+  },
   error: {
     backgroundColor: colors.alertLight,
     textColor: colors.alertDark,
@@ -44,19 +51,25 @@ const SignupHelperText = ({
   centered = false,
 }) => {
   const cfg = VARIANT_CONFIG[variant] ?? VARIANT_CONFIG.default;
+  const shouldShowIcon =
+    cfg.showIcon !== false && showIcon && !centered && Boolean(cfg.iconName);
+  const flush = Boolean(cfg.flush);
 
   return (
     <View
       style={[
         styles.wrap,
+        flush && styles.wrapFlush,
         centered && styles.wrapCentered,
         {
           backgroundColor: cfg.backgroundColor,
-          marginTop: normalize(tight ? 2 : 6),
-          marginBottom: normalize(tight ? 6 : 10),
-          paddingHorizontal: normalize(14),
-          paddingVertical: normalize(tight ? 8 : 10),
-          borderRadius: normalize(20),
+          marginTop: flush ? 0 : normalize(tight ? 2 : 6),
+          marginBottom: flush ? normalize(8) : normalize(tight ? 6 : 10),
+          marginLeft: flush ? normalize(20) : undefined,
+          marginRight: flush ? 0 : undefined,
+          paddingHorizontal: flush ? 0 : normalize(14),
+          paddingVertical: flush ? 0 : normalize(tight ? 8 : 10),
+          borderRadius: flush ? 0 : normalize(20),
           ...(cfg.borderColor
             ? {
                 borderWidth: 1,
@@ -67,7 +80,7 @@ const SignupHelperText = ({
         style,
       ]}
     >
-      {showIcon && !centered ? (
+      {shouldShowIcon ? (
         <Ionicons
           name={cfg.iconName}
           size={normalize(17)}
@@ -79,7 +92,7 @@ const SignupHelperText = ({
         style={[
           styles.text,
           {
-            fontSize: normalize(fontSizes.md),
+            fontSize: normalize(fontSizes.lg),
             lineHeight: normalize(20),
             color: cfg.textColor,
             textAlign: centered ? 'center' : 'left',
@@ -100,6 +113,10 @@ const styles = StyleSheet.create({
     alignSelf: 'center',
     flexDirection: 'row',
     alignItems: 'flex-start',
+  },
+  wrapFlush: {
+    width: '100%',
+    alignSelf: 'stretch',
   },
   wrapCentered: {
     flexDirection: 'column',

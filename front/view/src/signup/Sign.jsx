@@ -25,6 +25,7 @@ import SignupStudentIdentityIntroModal from './SignupStudentIdentityIntroModal';
 import SignupIdentityVerifyingOverlay from './SignupIdentityVerifyingOverlay';
 import SignupBlockingAlertModal from './SignupBlockingAlertModal';
 import SignStep2 from './SignStep2';
+import SignStepSchoolSelect from './SignStepSchoolSelect';
 import SignStepStudentIdVerify from './SignStepStudentIdVerify';
 import SignStepCertificateGuide from './SignStepCertificateGuide';
 import SignStepCertificate from './SignStepCertificate';
@@ -110,9 +111,10 @@ const STEP = {
   CONSENT: 0,
   BIRTH_DATE: 1,
   ACCOUNT: 2,
-  STUDENT_VERIFY: 3,
-  CERTIFICATE_GUIDE: 4,
-  CERTIFICATE_SUBMIT: 5,
+  SCHOOL_SELECT: 3,
+  STUDENT_VERIFY: 4,
+  CERTIFICATE_GUIDE: 5,
+  CERTIFICATE_SUBMIT: 6,
 };
 
 function getSignupProgressStep(currentStep, { studentVerified }) {
@@ -125,12 +127,14 @@ function getSignupProgressStep(currentStep, { studentVerified }) {
       return { step: 2, total };
     case STEP.ACCOUNT:
       return { step: 3, total };
-    case STEP.STUDENT_VERIFY:
-      return { step: studentVerified ? 5 : 4, total };
-    case STEP.CERTIFICATE_GUIDE:
+    case STEP.SCHOOL_SELECT:
       return { step: 4, total };
+    case STEP.STUDENT_VERIFY:
+      return { step: studentVerified ? 6 : 5, total };
+    case STEP.CERTIFICATE_GUIDE:
+      return { step: 5, total };
     case STEP.CERTIFICATE_SUBMIT:
-      return { step: total, total };
+      return { step: 6, total };
     default:
       return { step: 1, total };
   }
@@ -795,11 +799,15 @@ const Sign = ({ navigation }) => {
       setCurrentStep(STEP.BIRTH_DATE);
       return;
     }
+    if (currentStep === STEP.SCHOOL_SELECT) {
+      setCurrentStep(STEP.ACCOUNT);
+      return;
+    }
     if (currentStep === STEP.STUDENT_VERIFY) {
       setStudentVerified(false);
       setStudentVerificationToken(null);
       setRecognizedData(null);
-      setCurrentStep(STEP.ACCOUNT);
+      setCurrentStep(STEP.SCHOOL_SELECT);
       return;
     }
     if (currentStep === STEP.CERTIFICATE_GUIDE) {
@@ -945,10 +953,6 @@ const Sign = ({ navigation }) => {
 
   const handleAccountNext = () => {
     if (SKIP_SIGNUP_VALIDATION_UNTIL_OCR_TEST) {
-      if (!selectedSchool?.id || selectedSchool?.manual) {
-        Alert.alert('알림', '재학 중인 학교를 목록에서 선택해 주세요.');
-        return;
-      }
       setStepInfoData((prev) => ({
         ...SIGNUP_TEST_MOCK_ACCOUNT,
         ...prev,
@@ -966,10 +970,8 @@ const Sign = ({ navigation }) => {
         passwordConfirm:
           stepInfoData.passwordConfirm ||
           SIGNUP_TEST_MOCK_ACCOUNT.passwordConfirm,
-        schoolId: selectedSchool?.id,
-        schoolName: selectedSchool?.name,
       }));
-      setCurrentStep(STEP.STUDENT_VERIFY);
+      setCurrentStep(STEP.SCHOOL_SELECT);
       return;
     }
 
@@ -993,15 +995,22 @@ const Sign = ({ navigation }) => {
       Alert.alert('알림', '비밀번호 확인이 일치하지 않습니다.');
       return;
     }
+    setFormData((prev) => ({
+      ...prev,
+      ...stepInfoData,
+    }));
+    setCurrentStep(STEP.SCHOOL_SELECT);
+  };
+
+  const handleSchoolSelectNext = () => {
     if (!selectedSchool?.id || selectedSchool?.manual) {
       Alert.alert('알림', '재학 중인 학교를 목록에서 선택해 주세요.');
       return;
     }
     setFormData((prev) => ({
       ...prev,
-      ...stepInfoData,
-      schoolId: selectedSchool?.id,
-      schoolName: selectedSchool?.name,
+      schoolId: selectedSchool.id,
+      schoolName: selectedSchool.name,
     }));
     setCurrentStep(STEP.STUDENT_VERIFY);
   };
@@ -1330,6 +1339,8 @@ const Sign = ({ navigation }) => {
         return '생년월일 입력';
       case STEP.ACCOUNT:
         return '계정 만들기';
+      case STEP.SCHOOL_SELECT:
+        return '학교 선택';
       case STEP.STUDENT_VERIFY:
         return studentVerified ? '가입 마무리' : '학생증 인증';
       case STEP.CERTIFICATE_GUIDE:
@@ -1352,6 +1363,9 @@ const Sign = ({ navigation }) => {
       case STEP.ACCOUNT:
         handleAccountNext();
         break;
+      case STEP.SCHOOL_SELECT:
+        handleSchoolSelectNext();
+        break;
       case STEP.STUDENT_VERIFY:
         if (SKIP_SIGNUP_VALIDATION_UNTIL_OCR_TEST && !studentVerified) {
           handleStudentVerified(SIGNUP_TEST_MOCK_STUDENT_VERIFICATION);
@@ -1370,7 +1384,7 @@ const Sign = ({ navigation }) => {
   const isPrimaryDisabled = () => {
     if (submitting || inicisOverlayVisible) return true;
     if (SKIP_SIGNUP_VALIDATION_UNTIL_OCR_TEST) {
-      if (currentStep === STEP.ACCOUNT) {
+      if (currentStep === STEP.SCHOOL_SELECT) {
         if (!selectedSchool?.id || selectedSchool?.manual) return true;
       }
       return false;
@@ -1380,7 +1394,6 @@ const Sign = ({ navigation }) => {
       if (!birthDate || !isValidBirthDateString(birthDate)) return true;
     }
     if (currentStep === STEP.ACCOUNT) {
-      if (!selectedSchool?.id || selectedSchool?.manual) return true;
       if (
         !stepInfoData.username ||
         !stepInfoData.password ||
@@ -1391,6 +1404,9 @@ const Sign = ({ navigation }) => {
       ) {
         return true;
       }
+    }
+    if (currentStep === STEP.SCHOOL_SELECT) {
+      if (!selectedSchool?.id || selectedSchool?.manual) return true;
     }
     if (currentStep === STEP.STUDENT_VERIFY && !studentVerified) return true;
     if (submitting) return true;
@@ -1482,10 +1498,15 @@ const Sign = ({ navigation }) => {
             bottomOffset={footerHeight}
             verifiedName={identity.name || identityData.name}
             accountOnly
-            showSchoolField
-            selectedSchool={selectedSchool}
-            onSchoolSelect={setSelectedSchool}
             onChange={setStepInfoData}
+          />
+        )}
+        {currentStep === STEP.SCHOOL_SELECT && (
+          <SignStepSchoolSelect
+            styles={styles}
+            normalize={normalize}
+            selectedSchool={selectedSchool}
+            onSelect={setSelectedSchool}
           />
         )}
         {currentStep === STEP.CERTIFICATE_GUIDE && (
