@@ -23,6 +23,7 @@ import SignStepAgeGate from './SignStepAgeGate';
 import SignStepGuardianConsentModal from './SignStepGuardianConsentModal';
 import SignupStudentIdentityIntroModal from './SignupStudentIdentityIntroModal';
 import SignupIdentityVerifyingOverlay from './SignupIdentityVerifyingOverlay';
+import SignupBlockingAlertModal from './SignupBlockingAlertModal';
 import SignStep2 from './SignStep2';
 import SignStepStudentIdVerify from './SignStepStudentIdVerify';
 import SignStepCertificateGuide from './SignStepCertificateGuide';
@@ -178,6 +179,12 @@ const Sign = ({ navigation }) => {
     INICIS_OVERLAY_TITLE.STUDENT,
   );
   const [inicisManualOpening, setInicisManualOpening] = useState(false);
+  const [blockingAlert, setBlockingAlert] = useState({
+    visible: false,
+    title: '',
+    message: '',
+    buttons: [{ text: '확인', onPress: () => {} }],
+  });
 
   const inicisResumeStepRef = useRef(STEP.BIRTH_DATE);
   const inicisFlowActiveRef = useRef(false);
@@ -199,15 +206,40 @@ const Sign = ({ navigation }) => {
     await waitForPresentationLayerRelease();
   }, []);
 
-  const showInicisAlertAfterOverlay = useCallback((title, message, buttons) => {
-    InteractionManager.runAfterInteractions(() => {
-      setTimeout(() => {
-        if (isMountedRef.current) {
-          Alert.alert(title, message, buttons);
-        }
-      }, 280);
-    });
+  const closeBlockingAlert = useCallback(() => {
+    setBlockingAlert((prev) => ({ ...prev, visible: false }));
   }, []);
+
+  const showInicisAlertAfterOverlay = useCallback(
+    (title, message, buttons) => {
+      InteractionManager.runAfterInteractions(() => {
+        setTimeout(() => {
+          if (!isMountedRef.current) return;
+          const resolvedButtons = buttons?.length
+            ? buttons.map((btn) => ({
+                text: btn.text,
+                onPress: () => {
+                  closeBlockingAlert();
+                  btn.onPress?.();
+                },
+              }))
+            : [
+                {
+                  text: '확인',
+                  onPress: closeBlockingAlert,
+                },
+              ];
+          setBlockingAlert({
+            visible: true,
+            title,
+            message,
+            buttons: resolvedButtons,
+          });
+        }, 280);
+      });
+    },
+    [closeBlockingAlert],
+  );
 
   const evaluateStudentVerifyResult = useCallback(
     (result) => {
@@ -1459,6 +1491,14 @@ const Sign = ({ navigation }) => {
         onOpenManually={handleInicisOverlayOpenManually}
         onCancel={handleInicisOverlayCancel}
         openingManually={inicisManualOpening}
+      />
+
+      <SignupBlockingAlertModal
+        visible={blockingAlert.visible}
+        title={blockingAlert.title}
+        message={blockingAlert.message}
+        buttons={blockingAlert.buttons}
+        normalize={normalize}
       />
 
       {!hideFooter && (
