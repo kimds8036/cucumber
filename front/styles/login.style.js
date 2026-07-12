@@ -343,6 +343,40 @@ export const createSignupStyles = (width, normalize) => {
         ios: shadow.sm,
       }),
     },
+    /** SignStep2 — 라벨 위 간격 */
+    inputLabelSpaced: {
+      marginTop: normalize(12),
+    },
+    /** SignStep2 — 비밀번호 입력 + 눈 아이콘 행 */
+    passwordInputFrame: {
+      flexDirection: 'row',
+      alignItems: 'center',
+    },
+    passwordInput: {
+      flex: 1,
+      alignSelf: 'stretch',
+      paddingVertical: 0,
+      paddingHorizontal: 0,
+      fontSize: normalize(fontSizes.xxl),
+      fontFamily: fonts.regular,
+      color: colors.textPrimary,
+      textAlignVertical: 'center',
+      ...Platform.select({
+        android: { includeFontPadding: false },
+        ios: {},
+      }),
+    },
+    passwordConfirmMatch: {
+      borderColor: colors.primaryDark,
+      borderWidth: 1.5,
+    },
+    passwordConfirmMismatch: {
+      borderColor: colors.alert,
+      borderWidth: 1.5,
+    },
+    stepFlex: {
+      flex: 1,
+    },
     /** @deprecated 회원가입 잠금 필드는 lockedFieldText 사용 */
     inputReadonly: {
       color: colors.textSecondary,
