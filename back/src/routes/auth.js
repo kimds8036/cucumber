@@ -2045,10 +2045,12 @@ router.post('/guardian/mock-verify', async (req, res) => {
       });
     }
 
+    const phonePacked = packPhoneOnly(phone);
+
     const [result] = await pool.execute(
-      `INSERT INTO guardian_verifications (guardian_phone, status, verified_at, mock)
-       VALUES (?, 'verified', NOW(), TRUE)`,
-      [phone],
+      `INSERT INTO guardian_verifications (guardian_phone_enc, guardian_phone_lookup, status, verified_at, mock)
+       VALUES (?, ?, 'verified', NOW(), TRUE)`,
+      [phonePacked.phone_enc, phonePacked.phone_lookup],
     );
 
     return res.json({

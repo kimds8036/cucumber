@@ -160,6 +160,10 @@ export function autoHydratePiiRows(rows) {
     if ('name_enc' in next || 'phone_enc' in next || 'birth_date_enc' in next) {
       hydrateUserPiiRow(next, ['name', 'phone', 'birth_date']);
     }
+    if ('guardian_phone_enc' in next) {
+      next.guardian_phone = resolvePiiField(next.guardian_phone_enc);
+      delete next.guardian_phone_enc;
+    }
     return next;
   });
 }
