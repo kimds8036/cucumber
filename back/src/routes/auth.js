@@ -103,8 +103,8 @@ async function ensureInicisPhoneVerificationRecord(phone, connection) {
   );
   await connection.execute(
     `INSERT INTO phone_verifications (phone, phone_enc, phone_lookup, verification_code, expires_at, is_verified)
-     VALUES (NULL, ?, ?, ?, ?, TRUE)`,
-    [phonePacked.phone_enc, phonePacked.phone_lookup, 'INICIS01', expiresAt],
+     VALUES (?, ?, ?, ?, ?, TRUE)`,
+    [normalized, phonePacked.phone_enc, phonePacked.phone_lookup, 'INICIS', expiresAt],
   );
 }
 
@@ -501,8 +501,9 @@ router.post('/send-verification', async (req, res) => {
     // 새 인증 코드 저장
     await pool.execute(
       `INSERT INTO phone_verifications (phone, phone_enc, phone_lookup, verification_code, expires_at) 
-       VALUES (NULL, ?, ?, ?, ?)`,
+       VALUES (?, ?, ?, ?, ?)`,
       [
+        phone,
         phonePacked.phone_enc,
         phonePacked.phone_lookup,
         verificationCode,
@@ -691,8 +692,8 @@ router.post('/verify-firebase-phone', signupPhoneBackendLimiter, async (req, res
 
     await pool.execute(
       `INSERT INTO phone_verifications (phone, phone_enc, phone_lookup, verification_code, expires_at, is_verified)
-       VALUES (NULL, ?, ?, ?, ?, TRUE)`,
-      [phonePacked.phone_enc, phonePacked.phone_lookup, 'FB0000', expiresAt],
+       VALUES (?, ?, ?, ?, ?, TRUE)`,
+      [phone, phonePacked.phone_enc, phonePacked.phone_lookup, 'FB0000', expiresAt],
     );
 
     return res.json({
