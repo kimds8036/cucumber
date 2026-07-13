@@ -301,6 +301,7 @@ export function TimerContent() {
                   selectedDayKey={timer.selectedDayKey}
                   goPrevDay={timer.goPrevDay}
                   goNextDay={timer.goNextDay}
+                  canGoNextDay={timer.canGoNextDay}
                   setShowCalendar={timer.setShowCalendar}
                   handleSaveAsImage={handleSaveAsImage}
                   toggleTimer={timer.toggleTimer}

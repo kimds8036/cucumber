@@ -888,8 +888,21 @@ export function useTimerDay({
 
   const goNextDay = () => {
     if (!selectedDayKey) return;
-    setSelectedDayKey(getNextDayKey(dateFromDayKey(selectedDayKey)));
+    const nextKey = getNextDayKey(dateFromDayKey(selectedDayKey));
+    if (nextKey > todayKey) return;
+    setSelectedDayKey(nextKey);
   };
+
+  const selectDayKey = useCallback(
+    (dayKey) => {
+      if (!dayKey || dayKey > todayKey) return;
+      setSelectedDayKey(dayKey);
+    },
+    [todayKey],
+  );
+
+  const canGoNextDay =
+    selectedDayKey != null && selectedDayKey < todayKey;
 
   const toggleSubjectCollapsed = (subjectId) =>
     setCollapsedSubjects((prev) => ({
@@ -970,7 +983,8 @@ export function useTimerDay({
     initialLoadDone,
     isDayLoading,
     selectedDayKey,
-    setSelectedDayKey,
+    setSelectedDayKey: selectDayKey,
+    canGoNextDay,
     capturePlannerRef,
     showCalendar,
     setShowCalendar,

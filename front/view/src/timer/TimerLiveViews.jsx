@@ -86,6 +86,7 @@ const TimerLiveScrollInnerComponent = function TimerLiveScrollInner({
   selectedDayKey,
   goPrevDay,
   goNextDay,
+  canGoNextDay,
   setShowCalendar,
   handleSaveAsImage,
   toggleTimer,
@@ -223,13 +224,14 @@ const TimerLiveScrollInnerComponent = function TimerLiveScrollInner({
             </TouchableOpacity>
             <TouchableOpacity
               onPress={goNextDay}
+              disabled={!canGoNextDay}
               hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
               style={styles.dateBarNavBtn}
             >
               <Ionicons
                 name="chevron-forward"
                 size={22}
-                color={colors.textPrimary}
+                color={canGoNextDay ? colors.textPrimary : colors.textLight20}
               />
             </TouchableOpacity>
           </View>
