@@ -5,7 +5,9 @@ import { ADMIN_ROLES } from '../constants/adminRoles.js';
 import { writeAuditLog } from '../services/adminAudit.service.js';
 import {
   getLegalDocumentBySlug,
+  getLegalDocumentRevision,
   listLegalDocuments,
+  listLegalDocumentRevisions,
   normalizeLegalSlug,
   isLegalDocumentSlug,
   updateLegalDocument,
@@ -26,6 +28,60 @@ router.get(
       return res.status(500).json({
         success: false,
         message: '법적 문서 목록 조회 실패',
+      });
+    }
+  },
+);
+
+router.get(
+  '/:slug/revisions',
+  requireAdminApi,
+  requireAdminRole(ADMIN_ROLES.MODERATOR, ADMIN_ROLES.SUPER),
+  async (req, res) => {
+    try {
+      const slug = normalizeLegalSlug(req.params.slug);
+      if (!isLegalDocumentSlug(slug)) {
+        return res.status(404).json({
+          success: false,
+          message: '문서를 찾을 수 없습니다.',
+        });
+      }
+
+      const revisions = await listLegalDocumentRevisions(slug, {
+        limit: req.query?.limit,
+      });
+      return res.json({ success: true, data: { revisions } });
+    } catch (error) {
+      console.error('[admin/legal] 이력 조회 오류:', error);
+      return res.status(500).json({
+        success: false,
+        message: '법적 문서 이력 조회 실패',
+      });
+    }
+  },
+);
+
+router.get(
+  '/:slug/revisions/:revisionId',
+  requireAdminApi,
+  requireAdminRole(ADMIN_ROLES.MODERATOR, ADMIN_ROLES.SUPER),
+  async (req, res) => {
+    try {
+      const slug = normalizeLegalSlug(req.params.slug);
+      const revision = await getLegalDocumentRevision(slug, req.params.revisionId);
+      if (!revision) {
+        return res.status(404).json({
+          success: false,
+          message: '이력을 찾을 수 없습니다.',
+        });
+      }
+
+      return res.json({ success: true, data: revision });
+    } catch (error) {
+      console.error('[admin/legal] 이력 상세 조회 오류:', error);
+      return res.status(500).json({
+        success: false,
+        message: '법적 문서 이력 조회 실패',
       });
     }
   },

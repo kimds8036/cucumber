@@ -6,7 +6,7 @@
  *   cd back && CONFIRM_DB_RESET=1 npm run seed:reset-admins
  *   cd back && CONFIRM_DB_RESET=1 npm run seed:reset-admins -- --target=develop
  *
- * 유지: schools, admin_users, admin_totp_secrets, legal_documents
+ * 유지: schools, admin_users, admin_totp_secrets, legal_documents, legal_document_revisions
  * 삭제: users·게시글·쪽지·가입 제출 등 위 세 테이블 외 모든 데이터
  * 재생성: colors, 앱 테스트 계정 2명
  *
@@ -30,6 +30,7 @@ const PRESERVED_TABLES = new Set([
   'admin_users',
   'admin_totp_secrets',
   'legal_documents',
+  'legal_document_revisions',
 ]);
 
 const COLOR_ROWS = [
@@ -118,7 +119,7 @@ async function main() {
 
     console.log('==============================');
     console.log(`📂 대상 DB: ${dbName} (${target})`);
-    console.log('⚠️  schools + admin_users + admin_totp_secrets + legal_documents 만 유지하고 나머지를 삭제합니다.');
+    console.log('⚠️  schools + admin_users + admin_totp_secrets + legal_documents + legal_document_revisions 만 유지하고 나머지를 삭제합니다.');
     console.log('==============================');
 
     await wipeExceptPreserved(connection, dbName);

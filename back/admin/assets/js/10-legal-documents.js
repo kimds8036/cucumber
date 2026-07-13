@@ -79,10 +79,73 @@ async function loadLegalDocumentEditor(slug) {
           <button type="button" class="btn btn-primary" onclick="saveLegalDocument('${slug}')">저장</button>
           <button type="button" class="btn" onclick="loadLegalDocumentEditor('${slug}')">새로고침</button>
         </div>
+        <div id="legal-revisions-host" style="margin-top:20px"></div>
+      </div>
+    `;
+
+    await loadLegalDocumentRevisions(slug);
+  } catch (error) {
+    host.innerHTML = `<div class="txt-muted">문서를 불러오지 못했습니다: ${esc(error.message)}</div>`;
+  }
+}
+
+async function loadLegalDocumentRevisions(slug) {
+  const host = document.getElementById('legal-revisions-host');
+  if (!host) return;
+
+  try {
+    const { data } = await api(`/legal/${slug}/revisions?limit=20`);
+    const revisions = data.revisions || [];
+    if (!revisions.length) {
+      host.innerHTML = `
+        <div class="section-title" style="margin-top:8px">변경 이력</div>
+        <p class="section-hint">아직 저장 이력이 없습니다. 내용이 바뀔 때 이전 버전이 자동 보관됩니다.</p>
+      `;
+      return;
+    }
+
+    const rows = revisions.map((rev) => `
+      <tr>
+        <td>#${rev.id}</td>
+        <td>${esc(rev.version)}</td>
+        <td class="txt-muted">${fmtDate(rev.archivedAt)}</td>
+        <td>
+          <button type="button" class="btn btn-sm" onclick="previewLegalRevision('${slug}', ${rev.id})">보기</button>
+        </td>
+      </tr>
+    `).join('');
+
+    host.innerHTML = `
+      <div class="section-title" style="margin-top:8px">변경 이력</div>
+      <p class="section-hint">저장 시 변경 전 본문이 자동 보관됩니다. 분쟁 대비용 조회 전용입니다.</p>
+      <div class="table-wrap" style="margin-top:8px">
+        <table class="data-table">
+          <thead>
+            <tr><th>ID</th><th>버전</th><th>보관 시각</th><th></th></tr>
+          </thead>
+          <tbody>${rows}</tbody>
+        </table>
       </div>
     `;
   } catch (error) {
-    host.innerHTML = `<div class="txt-muted">문서를 불러오지 못했습니다: ${esc(error.message)}</div>`;
+    host.innerHTML = `<p class="txt-muted">이력을 불러오지 못했습니다: ${esc(error.message)}</p>`;
+  }
+}
+
+async function previewLegalRevision(slug, revisionId) {
+  try {
+    const { data } = await api(`/legal/${slug}/revisions/${revisionId}`);
+    const rev = data;
+    const titleEl = document.getElementById('legal-doc-title');
+    const versionEl = document.getElementById('legal-doc-version');
+    const contentEl = document.getElementById('legal-doc-content');
+    if (!contentEl) return;
+    if (titleEl) titleEl.value = rev.title || '';
+    if (versionEl) versionEl.value = rev.version || '';
+    contentEl.value = rev.contentMd || '';
+    alert(`이력 #${revisionId} (${rev.version})을 편집창에 불러왔습니다. 그대로 두면 저장 시 새 버전으로 덮어씁니다.`);
+  } catch (error) {
+    alert(`이력 조회 실패: ${error.message}`);
   }
 }
 
@@ -117,4 +180,5 @@ async function saveLegalDocument(slug) {
 window.selectLegalDocument = selectLegalDocument;
 window.loadLegalDocumentEditor = loadLegalDocumentEditor;
 window.saveLegalDocument = saveLegalDocument;
+window.previewLegalRevision = previewLegalRevision;
 window.loadLegalDocuments = loadLegalDocumentsPanel;
