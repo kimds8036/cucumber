@@ -82,10 +82,10 @@ export function isPublicHolidayKst(date = new Date()) {
   return FIXED_HOLIDAY_MD.has(md) || VARIABLE_HOLIDAYS.has(ymd);
 }
 
-/** 07:00 ~ 09:59 (10:00 미포함) */
+/** 07:00 ~ 08:59 (09:00 미포함) */
 export function isCommuteTimeWindowKst(date = new Date()) {
   const { hour } = getKstParts(date);
-  return hour >= 7 && hour < 10;
+  return hour >= 7 && hour < 9;
 }
 
 export function getCommuteWindowBlockReason(date = new Date()) {
