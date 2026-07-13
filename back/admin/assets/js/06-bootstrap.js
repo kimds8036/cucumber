@@ -8,6 +8,7 @@ window.PANEL_LOADERS = {
   appeals: () => loadAppeals(),
   inquiries: () => loadInquiries(),
   processedInquiries: () => loadProcessedInquiries(),
+  manualSignup: () => loadManualSignup(),
   studentIds: () => loadStudentIds(),
   certificates: () => loadCertificates(),
   reverificationIds: () => loadReverificationIds(),

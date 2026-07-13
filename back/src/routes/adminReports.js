@@ -17,6 +17,7 @@ import {
   softDeletePostComment,
   softDeleteSchoolMailComment,
 } from '../services/commentCount.service.js';
+import { createManualUserAccount } from '../services/adminManualSignup.service.js';
 
 const router = express.Router();
 
@@ -502,6 +503,71 @@ router.patch('/appeals/:appealId', requireAdminApi, async (req, res) => {
     connection.release();
   }
 });
+
+router.post(
+  '/users/manual',
+  requireAdminApi,
+  requireAdminRole(ADMIN_ROLES.MODERATOR, ADMIN_ROLES.SUPER),
+  async (req, res) => {
+    const adminUserId = req.user.userId;
+    const connection = await pool.getConnection();
+    try {
+      await connection.beginTransaction();
+
+      const created = await createManualUserAccount(req.body, {
+        adminUserId,
+        connection,
+      });
+
+      await writeAuditLog(connection, {
+        adminUserId,
+        actionType: 'user_manual_create',
+        targetType: 'user',
+        targetId: created.userId,
+        note: created.adminNote,
+        extra: {
+          username: created.username,
+          schoolId: created.schoolId,
+          studentVerified: created.studentVerified,
+        },
+      });
+
+      await connection.commit();
+
+      return res.status(201).json({
+        success: true,
+        message: '학생 계정이 생성되었습니다.',
+        data: {
+          userId: created.userId,
+          username: created.username,
+          studentVerified: created.studentVerified,
+        },
+      });
+    } catch (error) {
+      await connection.rollback();
+      if (error?.code === 'MANUAL_SIGNUP_VALIDATION') {
+        return res.status(400).json({
+          success: false,
+          message: error.message,
+          details: error.details,
+        });
+      }
+      if (error?.code === 'DUPLICATE_USER') {
+        return res.status(400).json({ success: false, message: error.message });
+      }
+      if (error?.code === 'SCHOOL_NOT_FOUND' || error?.code === 'INVALID_COLOR') {
+        return res.status(400).json({ success: false, message: error.message });
+      }
+      console.error('[admin/users/manual] 생성 오류:', error);
+      return res.status(500).json({
+        success: false,
+        message: '계정 생성 중 오류가 발생했습니다.',
+      });
+    } finally {
+      connection.release();
+    }
+  },
+);
 
 router.get('/users', requireAdminApi, async (req, res) => {
   const adminUserId = req.user.userId;
