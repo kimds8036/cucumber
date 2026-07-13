@@ -65,6 +65,7 @@ import ReverificationGate from './components/auth/ReverificationGate';
 import ReverificationReminderBanner from './components/auth/ReverificationReminderBanner';
 import ReverificationPendingBanner from './components/auth/ReverificationPendingBanner';
 import ForceUpdateGate from './components/common/ForceUpdateGate';
+import OfflineGate from './components/common/OfflineGate';
 import AppErrorBoundary from './components/common/AppErrorBoundary';
 import StudentIdResubmit from './view/src/signup/StudentIdResubmit';
 import { SocketProvider } from './context/SocketContext';
@@ -627,36 +628,38 @@ export default function App() {
     <SafeAreaProvider style={{ flex: 1, backgroundColor: colors.background }}>
       <StatusBar style="dark" backgroundColor={colors.background} />
       <ForceUpdateGate>
-        <KeyboardProvider>
-          <AuthProvider>
-            <AppLockProvider>
-              <LocationProvider>
-                <SocketProvider>
-                  <ToastProvider>
-                    <NotificationProvider>
-                      <FriendProvider>
-                        <NavigationContainer
-                          ref={navigationRef}
-                          linking={linking}
-                          theme={navigationTheme}
-                          onStateChange={(state) => {
-                            trackNavigationScreen(getActiveRouteName(state));
-                          }}
-                        >
-                          <AppErrorBoundary>
-                            <RootNavigator />
-                          </AppErrorBoundary>
-                          <ToastHost />
-                          <AlertHost />
-                        </NavigationContainer>
-                      </FriendProvider>
-                    </NotificationProvider>
-                  </ToastProvider>
-                </SocketProvider>
-              </LocationProvider>
-            </AppLockProvider>
-          </AuthProvider>
-        </KeyboardProvider>
+        <OfflineGate>
+          <KeyboardProvider>
+            <AuthProvider>
+              <AppLockProvider>
+                <LocationProvider>
+                  <SocketProvider>
+                    <ToastProvider>
+                      <NotificationProvider>
+                        <FriendProvider>
+                          <NavigationContainer
+                            ref={navigationRef}
+                            linking={linking}
+                            theme={navigationTheme}
+                            onStateChange={(state) => {
+                              trackNavigationScreen(getActiveRouteName(state));
+                            }}
+                          >
+                            <AppErrorBoundary>
+                              <RootNavigator />
+                            </AppErrorBoundary>
+                            <ToastHost />
+                            <AlertHost />
+                          </NavigationContainer>
+                        </FriendProvider>
+                      </NotificationProvider>
+                    </ToastProvider>
+                  </SocketProvider>
+                </LocationProvider>
+              </AppLockProvider>
+            </AuthProvider>
+          </KeyboardProvider>
+        </OfflineGate>
       </ForceUpdateGate>
     </SafeAreaProvider>
   );
