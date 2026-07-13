@@ -58,7 +58,7 @@ async function loadLegalDocumentEditor(slug) {
     const summary = state.legalDocuments.find((item) => item.slug === slug);
 
     host.innerHTML = `
-      <div class="detail-panel">
+      <div class="detail-panel open">
         <div class="section-title">${esc(doc.title || legalDocLabel(slug))}</div>
         <p class="section-hint">마크다운 형식으로 작성합니다. 저장 즉시 앱에서 조회됩니다.</p>
         <div class="form-grid" style="margin-top:12px">
