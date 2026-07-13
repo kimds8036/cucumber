@@ -51,6 +51,19 @@ async function selectLegalDocument(slug) {
   renderLegalDocumentsPanel();
 }
 
+function legalDocSchedule(updatedAt) {
+  if (!updatedAt) return { enactedAt: '-', effectiveAt: '-' };
+  const enactedAt = new Intl.DateTimeFormat('sv-SE', { timeZone: 'Asia/Seoul' })
+    .format(new Date(updatedAt))
+    .slice(0, 10);
+  const ref = new Date(`${enactedAt}T12:00:00+09:00`);
+  ref.setTime(ref.getTime() + 7 * 24 * 60 * 60 * 1000);
+  const effectiveAt = new Intl.DateTimeFormat('sv-SE', { timeZone: 'Asia/Seoul' })
+    .format(ref)
+    .slice(0, 10);
+  return { enactedAt, effectiveAt };
+}
+
 async function loadLegalDocumentEditor(slug) {
   const host = document.getElementById('legal-document-editor-host');
   if (!host) return;
@@ -59,17 +72,24 @@ async function loadLegalDocumentEditor(slug) {
     const { data } = await api(`/legal/${slug}`);
     const doc = data;
     const summary = state.legalDocuments.find((item) => item.slug === slug);
+    const schedule = legalDocSchedule(doc.updatedAt || summary?.updatedAt);
 
     host.innerHTML = `
       <div class="detail-panel open">
         <div class="section-title">${esc(doc.title || legalDocLabel(slug))}</div>
-        <p class="section-hint">마크다운 형식으로 작성합니다. 저장 즉시 앱에서 조회됩니다.</p>
+        <p class="section-hint">제목·버전·제정일·시행일은 DB 필드에서 자동 표시됩니다. 본문에는 넣지 마세요.</p>
         <div class="form-grid" style="margin-top:12px">
           <label>버전
             <input id="legal-doc-version" class="note-input" value="${esc(doc.version || '')}" />
           </label>
-          <label>제목
+          <label>제목 (앱 서브헤더)
             <input id="legal-doc-title" class="note-input" value="${esc(doc.title || '')}" />
+          </label>
+          <label>제정일 (마지막 수정일, KST)
+            <input class="note-input" value="${esc(schedule.enactedAt)}" readonly />
+          </label>
+          <label>시행일 (제정일 +7일)
+            <input class="note-input" value="${esc(schedule.effectiveAt)}" readonly />
           </label>
         </div>
         <label style="display:block;margin-top:12px">본문 (Markdown)

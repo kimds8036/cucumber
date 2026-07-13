@@ -9,6 +9,7 @@ import {
 } from '../config/dbEnv.js';
 import { backfillPersonalMailRecipientNames } from './piiBackfill.js';
 import { seedLegalDocuments } from './seedLegalDocuments.js';
+import { stripLegalDocumentsInDb } from './stripLegalDocumentsInDb.js';
 import {
   BASELINE_INIT_FILE,
   PRE_SQUASH_MIGRATION_FILES,
@@ -50,6 +51,13 @@ async function runPostMigrationHooks(connection, file) {
       console.log(`  📄 legal_documents 초기 시드: ${inserted}건`);
     }
     if (file === BASELINE_INIT_FILE) return;
+  }
+
+  if (file === '003_strip_legal_document_preamble.sql') {
+    const updated = await stripLegalDocumentsInDb(connection);
+    if (updated > 0) {
+      console.log(`  📄 legal_documents 본문 메타 제거: ${updated}건`);
+    }
   }
 
   // 레거시: 스쿼시 전 DB에 남아 있을 수 있는 파일명 (베이스라인 전 배포 1회)

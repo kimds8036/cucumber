@@ -11,16 +11,16 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { colors, fonts, fontSizes } from '../../../styles/colors';
 import { createServiceStyles } from '../../../styles/service.style';
 import PolicyMarkdownBody from '../../../src/screens/Terms-of-Service/PolicyMarkdownBody';
+import PolicyDocumentMeta from '../../../src/screens/Terms-of-Service/PolicyDocumentMeta';
 import { useLegalDocument } from '../../../utils/useLegalDocument';
 
 const FALLBACK_MARKDOWN = require('../../../src/screens/Terms-of-Service/_privacy_md.json');
-const HIDDEN_TITLES = ['# 개인정보 처리방침'];
 
 // 약관 모달: 개인정보 처리방침 전문 보기 화면
 const SignStepPrivacyPolicy = ({ normalize, onBack }) => {
   const s = makeStyles(normalize);
   const docStyles = useMemo(() => createServiceStyles(normalize), [normalize]);
-  const { markdown } = useLegalDocument('privacy_policy', FALLBACK_MARKDOWN);
+  const { markdown, meta } = useLegalDocument('privacy_policy', FALLBACK_MARKDOWN);
 
   return (
     <Modal
@@ -35,7 +35,7 @@ const SignStepPrivacyPolicy = ({ normalize, onBack }) => {
           {Platform.OS === 'ios' && <View style={s.grabber} />}
           <View style={s.sheetHeaderRow}>
             <View style={s.leftPlaceholder} />
-            <Text style={s.sheetTitle}>개인정보 처리방침</Text>
+            <Text style={s.sheetTitle}>{meta?.title || '개인정보 처리방침'}</Text>
             <View style={s.rightPlaceholder} />
           </View>
         </View>
@@ -45,11 +45,8 @@ const SignStepPrivacyPolicy = ({ normalize, onBack }) => {
           contentContainerStyle={s.scrollContent}
           showsVerticalScrollIndicator={false}
         >
-          <PolicyMarkdownBody
-            markdown={markdown}
-            hiddenTitles={HIDDEN_TITLES}
-            styles={docStyles}
-          />
+          <PolicyDocumentMeta meta={meta} styles={docStyles} />
+          <PolicyMarkdownBody markdown={markdown} styles={docStyles} />
         </ScrollView>
       </SafeAreaView>
     </Modal>

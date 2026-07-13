@@ -1,4 +1,8 @@
 import pool from '../config/database.js';
+import {
+  buildLegalDocumentDates,
+  stripLegalDocumentPreamble,
+} from '../utils/legalDocumentContent.js';
 
 export const LEGAL_DOCUMENT_SLUGS = new Set([
   'terms_of_service',
@@ -21,12 +25,15 @@ export function isLegalDocumentSlug(slug) {
 
 function mapLegalRow(row) {
   if (!row) return null;
+  const { enactedAt, effectiveAt } = buildLegalDocumentDates(row.updated_at);
   return {
     slug: row.slug,
     title: row.title,
     version: row.version,
-    contentMd: row.content_md,
+    contentMd: stripLegalDocumentPreamble(row.content_md),
     updatedAt: row.updated_at,
+    enactedAt,
+    effectiveAt,
     updatedByAdminId: row.updated_by_admin_id,
   };
 }
@@ -142,7 +149,7 @@ export async function updateLegalDocument({
 
   const trimmedTitle = String(title || '').trim();
   const trimmedVersion = String(version || '').trim();
-  const trimmedContent = String(contentMd || '').trim();
+  const trimmedContent = stripLegalDocumentPreamble(String(contentMd || '').trim());
 
   if (!trimmedTitle || !trimmedVersion || !trimmedContent) {
     const err = new Error('LEGAL_FIELDS_REQUIRED');

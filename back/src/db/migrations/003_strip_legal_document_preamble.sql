@@ -1,0 +1,1 @@
+-- legal_documents 본문 선두 메타(제정일·시행일·버전·H1) 제거는 migrate.js 훅에서 처리합니다.
