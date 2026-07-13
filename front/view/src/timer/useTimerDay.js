@@ -81,6 +81,8 @@ export function useTimerDay({
   const pendingImmediatePersistReasonRef = useRef(null);
   const [selectedDayKey, setSelectedDayKey] = useState(null);
   const [viewState, setViewState] = useState(null);
+  const [isDayLoading, setIsDayLoading] = useState(false);
+  const dayLoadRequestRef = useRef(0);
   const capturePlannerRef = useRef(null);
   const [showCalendar, setShowCalendar] = useState(false);
   const latestSnapshotRef = useRef({
@@ -315,9 +317,19 @@ export function useTimerDay({
     if (!initialLoadDone || selectedDayKey == null) return;
     if (selectedDayKey === todayKey) {
       setViewState(null);
+      setIsDayLoading(false);
       return;
     }
-    loadDayData(selectedDayKey).then((data) => {
+
+    const requestId = ++dayLoadRequestRef.current;
+    let mounted = true;
+    const requestDayKey = selectedDayKey;
+
+    setIsDayLoading(true);
+    setViewState(null);
+
+    loadDayData(requestDayKey).then((data) => {
+      if (!mounted || requestId !== dayLoadRequestRef.current) return;
       const nextView = data
         ? {
             sessions: data.sessions ?? [],
@@ -332,7 +344,12 @@ export function useTimerDay({
             tasks: DEFAULT_TASKS,
           };
       setViewState(nextView);
+      setIsDayLoading(false);
     });
+
+    return () => {
+      mounted = false;
+    };
   }, [selectedDayKey, todayKey, initialLoadDone, isGuidePreview]);
 
   useEffect(() => {
@@ -951,6 +968,7 @@ export function useTimerDay({
     setAddTaskSubjectId,
     collapsedSubjects,
     initialLoadDone,
+    isDayLoading,
     selectedDayKey,
     setSelectedDayKey,
     capturePlannerRef,

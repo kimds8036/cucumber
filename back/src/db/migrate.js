@@ -159,7 +159,11 @@ async function runMigrationsForTarget(target) {
       const statements = sql
         .split(';')
         .map((s) => s.trim())
-        .filter((s) => s.length > 0);
+        .filter((s) => s.length > 0)
+        .filter((s) => {
+          const lines = s.split('\n').map((line) => line.trim()).filter(Boolean);
+          return lines.some((line) => !line.startsWith('--'));
+        });
 
       for (const statement of statements) {
         try {
