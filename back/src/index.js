@@ -31,9 +31,11 @@ import adminSignupStudentIdsRoutes from './routes/adminSignupStudentIds.js';
 import adminAttendanceRoutes from './routes/adminAttendance.js';
 import adminSystemRoutes from './routes/adminSystem.js';
 import adminAccountsRoutes from './routes/adminAccounts.js';
+import adminLegalRoutes from './routes/adminLegal.js';
 import adminWebRoutes from './routes/adminWeb.js';
 import { getAdminBasePath } from './config/adminPath.js';
 import inquiriesRoutes from './routes/inquiries.js';
+import legalRoutes from './routes/legal.js';
 import appRoutes from './routes/app.js';
 import testRoutes from './routes/test.js';
 import attendanceRoutes from './routes/attendance.js';
@@ -298,6 +300,7 @@ app.use('/api/analytics', analyticsRoutes);
 app.use('/api/search', searchRoutes);
 app.use('/api/dm', dmRoutes);
 app.use('/api/inquiries', inquiriesRoutes);
+app.use('/api/legal', legalRoutes);
 app.use('/api/admin', adminReportsRoutes);
 app.use('/api/admin/inquiries', adminInquiriesRoutes);
 app.use('/api/admin/signup-certificates', adminSignupCertificatesRoutes);
@@ -305,6 +308,7 @@ app.use('/api/admin/signup-student-ids', adminSignupStudentIdsRoutes);
 app.use('/api/admin/attendance', adminAttendanceRoutes);
 app.use('/api/admin/system', adminSystemRoutes);
 app.use('/api/admin/accounts', adminAccountsRoutes);
+app.use('/api/admin/legal', adminLegalRoutes);
 app.use('/api/test', testRoutes);
 
 // ============ 글로벌 에러 핸들러 ============

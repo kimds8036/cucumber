@@ -7,6 +7,7 @@ import {
   parseMigrateCliArgs,
 } from '../config/dbEnv.js';
 import { backfillPersonalMailRecipientNames } from './piiBackfill.js';
+import { seedLegalDocuments } from './seedLegalDocuments.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -82,6 +83,13 @@ async function runMigrationsForTarget(target) {
           } else {
             throw backfillErr;
           }
+        }
+      }
+
+      if (file === '058_add_legal_documents.sql') {
+        const inserted = await seedLegalDocuments(connection);
+        if (inserted > 0) {
+          console.log(`  📄 legal_documents 초기 시드: ${inserted}건`);
         }
       }
     }

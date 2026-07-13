@@ -194,6 +194,7 @@ function adminUrl(subpath) {
     users: { title: '사용자 제재 현황', sub: '경고 / 임시정지 / 화이트리스트' },
     attendance: { title: '등교 현황', sub: '출석 통계 · 미등교 의심 사용자' },
     emergency: { title: '비상 제어', sub: '긴급 스위치 · 유지보수 모드' },
+    legalDocuments: { title: '약관·방침', sub: '이용약관 · 개인정보처리방침 편집' },
     adminAccounts: { title: '관리자 계정', sub: '계정·역할 관리 (최고관리자)' },
     studentIds: { title: '가입 학생증', sub: '회원가입 학생증 수동 검수 — 승인 / 거절' },
     certificates: { title: '재학증명서', sub: '네이버 재학증명서 URL·열람번호 검수 — 승인 / 거절' },
@@ -226,6 +227,7 @@ function adminUrl(subpath) {
     logs: [],
     logsPagination: { page: 1, limit: 50, total: 0 },
     emergencyFlags: null,
+    legalDocuments: [],
     adminAccounts: [],
   };
 
@@ -391,6 +393,7 @@ function adminUrl(subpath) {
       users: ['moderator'],
       logs: ['moderator', 'support'],
       emergency: ['super'],
+      legalDocuments: ['moderator'],
       adminAccounts: ['super'],
     };
     return (map[panel] || []).includes(r);

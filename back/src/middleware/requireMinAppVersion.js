@@ -8,6 +8,7 @@ function getWhitelistPrefixes() {
   return [
     '/health',
     '/api/app/version-check',
+    '/api/legal',
     getAdminBasePath(),
     '/api-docs',
     '/api/auth/signup',
