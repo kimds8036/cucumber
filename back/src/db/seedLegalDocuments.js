@@ -5,7 +5,8 @@ import { fileURLToPath } from 'url';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const LEGAL_DIR = path.join(__dirname, 'legal');
 
-const DEFAULT_DOCUMENTS = [
+/** @type {Array<{ slug: string; title: string; file: string; version: string }>} */
+export const DEFAULT_LEGAL_DOCUMENTS = [
   {
     slug: 'terms_of_service',
     title: '서비스 이용약관',
@@ -18,12 +19,30 @@ const DEFAULT_DOCUMENTS = [
     file: 'privacy-policy.md',
     version: 'v1.4.1',
   },
+  {
+    slug: 'community_guide',
+    title: '커뮤니티 가이드',
+    file: 'community-guide.md',
+    version: 'v1.0',
+  },
+  {
+    slug: 'youth_protection_policy',
+    title: '청소년 보호정책',
+    file: 'youth-protect-policy.md',
+    version: 'v1.0',
+  },
+  {
+    slug: 'open_source_licenses',
+    title: '오픈소스 라이선스',
+    file: 'open-source-licenses.md',
+    version: 'v1.0',
+  },
 ];
 
 export async function seedLegalDocuments(connection) {
   let inserted = 0;
 
-  for (const doc of DEFAULT_DOCUMENTS) {
+  for (const doc of DEFAULT_LEGAL_DOCUMENTS) {
     const [existing] = await connection.execute(
       'SELECT slug FROM legal_documents WHERE slug = ? LIMIT 1',
       [doc.slug],

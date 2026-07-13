@@ -31,8 +31,20 @@ npm run db:squash-baseline -- --all
 
 ## 신규 마이그레이션 추가
 
-1. `002_설명.sql` 형식으로 `migrations/`에 추가 (001 다음 번호)
+1. `003_설명.sql` 형식으로 `migrations/`에 추가 (001·002 다음 번호)
 2. `npm run migrate` — 한 번만 실행되고 `schema_migrations`에 기록됨
+
+### 법적 문서 슬러그 (`legal_documents`)
+
+| slug | 앱 화면 |
+|------|---------|
+| `terms_of_service` | 서비스 이용약관 |
+| `privacy_policy` | 개인정보 처리방침 |
+| `community_guide` | 커뮤니티 가이드 |
+| `youth_protection_policy` | 청소년 보호정책 |
+| `open_source_licenses` | 오픈소스 라이선스 |
+
+시드 본문: `back/src/db/legal/*.md` (`002_extend_legal_documents.sql` 적용 시 `seedLegalDocuments` 실행)
 
 ## 스쿼시 배포 체크리스트 (기존 DB)
 

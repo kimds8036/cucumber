@@ -96,6 +96,15 @@ const PolicyMarkdownBody = ({ markdown, hiddenTitles = [], styles }) => {
     }),
     [styles.sectionTitle],
   );
+  const blockquoteLinkStyle = useMemo(
+    () => ({
+      ...styles.blockquote,
+      color: '#2563eb',
+      textDecorationLine: 'underline',
+      fontStyle: 'normal',
+    }),
+    [styles.blockquote],
+  );
 
   return blocks.map((block, idx) => {
     const { trimmed } = block;
@@ -114,6 +123,20 @@ const PolicyMarkdownBody = ({ markdown, hiddenTitles = [], styles }) => {
       return (
         <Text key={`s-${idx}`} style={styles.sectionTitle}>
           {buildInlineNodes(trimmed.replace('### ', ''), sectionLinkStyle)}
+        </Text>
+      );
+    }
+    if (trimmed.startsWith('#### ')) {
+      return (
+        <Text key={`h4-${idx}`} style={styles.sectionTitle}>
+          {buildInlineNodes(trimmed.replace('#### ', ''), sectionLinkStyle)}
+        </Text>
+      );
+    }
+    if (block.type === 'blockquote') {
+      return (
+        <Text key={`q-${idx}`} style={styles.blockquote}>
+          {buildInlineNodes(block.trimmed, blockquoteLinkStyle)}
         </Text>
       );
     }

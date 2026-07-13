@@ -20,6 +20,12 @@ import {
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
+const LEGAL_SEED_MIGRATION_FILES = new Set([
+  BASELINE_INIT_FILE,
+  '002_extend_legal_documents.sql',
+  '058_add_legal_documents.sql',
+]);
+
 async function runPostMigrationHooks(connection, file) {
   if (file === BASELINE_INIT_FILE) {
     try {
@@ -36,12 +42,14 @@ async function runPostMigrationHooks(connection, file) {
         throw backfillErr;
       }
     }
+  }
 
+  if (LEGAL_SEED_MIGRATION_FILES.has(file)) {
     const inserted = await seedLegalDocuments(connection);
     if (inserted > 0) {
       console.log(`  📄 legal_documents 초기 시드: ${inserted}건`);
     }
-    return;
+    if (file === BASELINE_INIT_FILE) return;
   }
 
   // 레거시: 스쿼시 전 DB에 남아 있을 수 있는 파일명 (베이스라인 전 배포 1회)
@@ -59,13 +67,6 @@ async function runPostMigrationHooks(connection, file) {
       } else {
         throw backfillErr;
       }
-    }
-  }
-
-  if (file === '058_add_legal_documents.sql') {
-    const inserted = await seedLegalDocuments(connection);
-    if (inserted > 0) {
-      console.log(`  📄 legal_documents 초기 시드: ${inserted}건`);
     }
   }
 }

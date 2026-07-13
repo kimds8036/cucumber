@@ -1,6 +1,9 @@
 const LEGAL_DOC_OPTIONS = [
   { slug: 'terms_of_service', label: '서비스 이용약관' },
   { slug: 'privacy_policy', label: '개인정보 처리방침' },
+  { slug: 'community_guide', label: '커뮤니티 가이드' },
+  { slug: 'youth_protection_policy', label: '청소년 보호정책' },
+  { slug: 'open_source_licenses', label: '오픈소스 라이선스' },
 ];
 
 let selectedLegalSlug = 'terms_of_service';

@@ -3,6 +3,9 @@ import pool from '../config/database.js';
 export const LEGAL_DOCUMENT_SLUGS = new Set([
   'terms_of_service',
   'privacy_policy',
+  'community_guide',
+  'youth_protection_policy',
+  'open_source_licenses',
 ]);
 
 export function normalizeLegalSlug(raw) {
