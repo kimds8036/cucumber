@@ -1,8 +1,10 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
+  Animated,
   Image,
   Linking,
   Modal,
+  PanResponder,
   Pressable,
   StyleSheet,
   Text,
@@ -18,6 +20,25 @@ import { useAdSlots } from '../../hooks/useAdSlots';
 import { useAuth } from '../../context/AuthContext';
 
 const HIDE_TODAY_KEY = '@cucumber/launch_ad_hidden_day_v1';
+const DISMISS_DISTANCE = 100;
+const DISMISS_VELOCITY = 0.9;
+
+/**
+ * 디자인 확인용 플래그.
+ * - true: API 없어도 더미 광고로 launch_modal 표시 (오늘 하루 보지 않기도 무시)
+ * - false: 운영 정책 — API 광고 있을 때만 표시
+ * 확인 끝나면 반드시 false로 되돌리세요.
+ */
+const LAUNCH_AD_PREVIEW_WITHOUT_API = false;
+
+const PREVIEW_LAUNCH_AD = {
+  id: 'preview_launch_modal',
+  title: '광고 제목을 입력하세요',
+  subtitle: '서브 문구를 입력하세요',
+  body: '서브 문구를 입력하세요',
+  imageUrl: null,
+  ctaUrl: null,
+};
 
 function getTodayKey(date = new Date()) {
   const y = date.getFullYear();
@@ -46,17 +67,21 @@ async function hideForToday() {
 /**
  * OfflineGate → ForceUpdateGate 통과 후, AuthProvider 안에서 마운트.
  * 광고 없거나 오늘 숨김이면 모달 자체를 렌더하지 않음 (Tip 금지).
+ * LAUNCH_AD_PREVIEW_WITHOUT_API=true 이면 디자인 확인용 더미로 강제 표시.
  */
 export default function LaunchAdModal({ children }) {
   const { isLoggedIn, authHydrated } = useAuth();
   const { adSlots, loading } = useAdSlots(AD_PLACEMENTS.LAUNCH_MODAL);
-  const ad = adSlots[0] ?? null;
+  const apiAd = adSlots[0] ?? null;
+  const ad =
+    apiAd ??
+    (LAUNCH_AD_PREVIEW_WITHOUT_API ? PREVIEW_LAUNCH_AD : null);
 
   const [checkedStorage, setCheckedStorage] = useState(false);
   const [hiddenToday, setHiddenToday] = useState(true);
   const [dismissed, setDismissed] = useState(false);
 
-  const { width } = useWindowDimensions();
+  const { width, height } = useWindowDimensions();
   const normalize = useMemo(() => getNormalize(width), [width]);
   const insets = useSafeAreaInsets();
   const styles = useMemo(
@@ -64,9 +89,20 @@ export default function LaunchAdModal({ children }) {
     [normalize, insets.bottom],
   );
 
+  const translateY = useRef(new Animated.Value(0)).current;
+  const closingRef = useRef(false);
+
   useEffect(() => {
     let mounted = true;
     (async () => {
+      // 프리뷰 모드에서는 숨김 스토리지를 무시해 매번 확인할 수 있게 함
+      if (LAUNCH_AD_PREVIEW_WITHOUT_API) {
+        if (mounted) {
+          setHiddenToday(false);
+          setCheckedStorage(true);
+        }
+        return;
+      }
       const hidden = await isHiddenToday();
       if (mounted) {
         setHiddenToday(hidden);
@@ -87,9 +123,68 @@ export default function LaunchAdModal({ children }) {
     !hiddenToday &&
     !dismissed;
 
+  useEffect(() => {
+    if (visible) {
+      closingRef.current = false;
+      translateY.setValue(0);
+    }
+  }, [visible, translateY]);
+
   const onClose = useCallback(() => {
     setDismissed(true);
   }, []);
+
+  const animateClose = useCallback(() => {
+    if (closingRef.current) return;
+    closingRef.current = true;
+    Animated.timing(translateY, {
+      toValue: height,
+      duration: 200,
+      useNativeDriver: true,
+    }).start(({ finished }) => {
+      if (finished) onClose();
+      else closingRef.current = false;
+    });
+  }, [height, onClose, translateY]);
+
+  const panResponder = useMemo(
+    () =>
+      PanResponder.create({
+        // dragRegion(이미지·제목·문구)에서는 터치 시작부터 시트 pan 허용
+        onStartShouldSetPanResponder: () => true,
+        onMoveShouldSetPanResponder: (_, gesture) =>
+          gesture.dy > 4 && Math.abs(gesture.dy) > Math.abs(gesture.dx),
+        onMoveShouldSetPanResponderCapture: (_, gesture) =>
+          gesture.dy > 4 && Math.abs(gesture.dy) > Math.abs(gesture.dx),
+        onPanResponderTerminationRequest: () => false,
+        onPanResponderMove: (_, gesture) => {
+          if (gesture.dy > 0) {
+            translateY.setValue(gesture.dy);
+          }
+        },
+        onPanResponderRelease: (_, gesture) => {
+          const shouldDismiss =
+            gesture.dy > DISMISS_DISTANCE || gesture.vy > DISMISS_VELOCITY;
+          if (shouldDismiss) {
+            animateClose();
+            return;
+          }
+          Animated.spring(translateY, {
+            toValue: 0,
+            useNativeDriver: true,
+            bounciness: 4,
+          }).start();
+        },
+        onPanResponderTerminate: () => {
+          Animated.spring(translateY, {
+            toValue: 0,
+            useNativeDriver: true,
+            bounciness: 4,
+          }).start();
+        },
+      }),
+    [animateClose, translateY],
+  );
 
   const onHideToday = useCallback(async () => {
     await hideForToday();
@@ -116,32 +211,52 @@ export default function LaunchAdModal({ children }) {
         <Modal
           visible
           transparent
-          animationType="slide"
-          onRequestClose={onClose}
+          animationType="fade"
+          onRequestClose={animateClose}
         >
           <View style={styles.overlay}>
-            <Pressable style={styles.backdrop} onPress={onClose} />
-            <View style={styles.sheet}>
-              <View style={styles.handle} />
-              {ad.imageUrl ? (
-                <Image
-                  source={{ uri: ad.imageUrl }}
-                  style={styles.image}
-                  resizeMode="cover"
-                />
-              ) : (
-                <View style={[styles.image, styles.imagePlaceholder]}>
-                  <Text style={styles.imagePlaceholderText}>광고</Text>
+            {/* 딤은 overlay 고정 — translateY/opacity와 분리해야 스와이프 중에도 유지됨 */}
+            <Pressable style={styles.backdrop} onPress={animateClose} />
+            <Animated.View
+              style={[styles.sheet, { transform: [{ translateY }] }]}
+            >
+              {/* Image/Text는 터치 시작을 안 해서 래퍼가 pan을 받도록 함 */}
+              <View
+                collapsable={false}
+                style={styles.dragRegion}
+                {...panResponder.panHandlers}
+              >
+                <View style={styles.handleHit}>
+                  <View style={styles.handle} />
                 </View>
-              )}
-              <Text style={styles.title} numberOfLines={2}>
-                {ad.title || '광고'}
-              </Text>
-              {ad.subtitle || ad.body ? (
-                <Text style={styles.subtitle} numberOfLines={3}>
-                  {ad.subtitle || ad.body}
+                {ad.imageUrl ? (
+                  <Image
+                    source={{ uri: ad.imageUrl }}
+                    style={styles.image}
+                    resizeMode="cover"
+                    pointerEvents="none"
+                  />
+                ) : (
+                  <View
+                    style={[styles.image, styles.imagePlaceholder]}
+                    pointerEvents="none"
+                  >
+                    <Text style={styles.imagePlaceholderText}>광고</Text>
+                  </View>
+                )}
+                <Text style={styles.title} numberOfLines={2} pointerEvents="none">
+                  {ad.title || '광고'}
                 </Text>
-              ) : null}
+                {ad.subtitle || ad.body ? (
+                  <Text
+                    style={styles.subtitle}
+                    numberOfLines={3}
+                    pointerEvents="none"
+                  >
+                    {ad.subtitle || ad.body}
+                  </Text>
+                ) : null}
+              </View>
               <Pressable
                 style={({ pressed }) => [
                   styles.cta,
@@ -154,7 +269,7 @@ export default function LaunchAdModal({ children }) {
               <Pressable onPress={onHideToday} hitSlop={8}>
                 <Text style={styles.hideToday}>오늘 하루 보지 않기</Text>
               </Pressable>
-            </View>
+            </Animated.View>
           </View>
         </Modal>
       ) : null}
@@ -177,16 +292,24 @@ function createStyles(n, bottomInset) {
       borderTopLeftRadius: n(20),
       borderTopRightRadius: n(20),
       paddingHorizontal: n(20),
-      paddingTop: n(10),
+      paddingTop: n(4),
       paddingBottom: n(16) + bottomInset,
       alignItems: 'center',
+    },
+    dragRegion: {
+      alignSelf: 'stretch',
+      alignItems: 'center',
+    },
+    handleHit: {
+      alignSelf: 'stretch',
+      alignItems: 'center',
+      paddingVertical: n(10),
     },
     handle: {
       width: n(40),
       height: n(4),
       borderRadius: n(2),
       backgroundColor: colors.textLight20,
-      marginBottom: n(16),
     },
     image: {
       width: '100%',
