@@ -1,3 +1,4 @@
+import crypto from 'crypto';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -8,9 +9,96 @@ import {
 } from '../config/dbEnv.js';
 import { backfillPersonalMailRecipientNames } from './piiBackfill.js';
 import { seedLegalDocuments } from './seedLegalDocuments.js';
+import {
+  BASELINE_INIT_FILE,
+  PRE_SQUASH_MIGRATION_FILES,
+  ensureSchemaMigrationsTable,
+  getAppliedMigrations,
+  recordMigration,
+} from './schemaMigrations.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
+
+async function runPostMigrationHooks(connection, file) {
+  if (file === BASELINE_INIT_FILE) {
+    try {
+      const updated = await backfillPersonalMailRecipientNames(connection);
+      if (updated > 0) {
+        console.log(`  🔐 personal_mails recipient_name 백필: ${updated}건`);
+      }
+    } catch (backfillErr) {
+      if (String(backfillErr?.message || '').includes('PII_ENCRYPTION_KEY')) {
+        console.warn(
+          '  ⚠️  PII 키 없음 — personal_mails 백필 스킵 (npm run migrate:pii-encrypt)',
+        );
+      } else {
+        throw backfillErr;
+      }
+    }
+
+    const inserted = await seedLegalDocuments(connection);
+    if (inserted > 0) {
+      console.log(`  📄 legal_documents 초기 시드: ${inserted}건`);
+    }
+    return;
+  }
+
+  // 레거시: 스쿼시 전 DB에 남아 있을 수 있는 파일명 (베이스라인 전 배포 1회)
+  if (file === '056_personal_mails_recipient_name_pii.sql') {
+    try {
+      const updated = await backfillPersonalMailRecipientNames(connection);
+      if (updated > 0) {
+        console.log(`  🔐 personal_mails recipient_name 백필: ${updated}건`);
+      }
+    } catch (backfillErr) {
+      if (String(backfillErr?.message || '').includes('PII_ENCRYPTION_KEY')) {
+        console.warn(
+          '  ⚠️  PII 키 없음 — personal_mails 백필 스킵 (npm run migrate:pii-encrypt)',
+        );
+      } else {
+        throw backfillErr;
+      }
+    }
+  }
+
+  if (file === '058_add_legal_documents.sql') {
+    const inserted = await seedLegalDocuments(connection);
+    if (inserted > 0) {
+      console.log(`  📄 legal_documents 초기 시드: ${inserted}건`);
+    }
+  }
+}
+
+async function autoSquashBaselineIfNeeded(connection, target) {
+  await ensureSchemaMigrationsTable(connection);
+  const applied = await getAppliedMigrations(connection);
+
+  if (applied.has(BASELINE_INIT_FILE)) {
+    return;
+  }
+
+  const [tables] = await connection.execute('SHOW TABLES LIKE ?', ['users']);
+  if (tables.length === 0) {
+    return;
+  }
+
+  console.log(
+    `📌 [${target}] 기존 DB 감지 — squash 베이스라인 자동 동기화 (DDL 없음)`,
+  );
+
+  const toRecord = [
+    ...PRE_SQUASH_MIGRATION_FILES.filter((f) => !applied.has(f)),
+    BASELINE_INIT_FILE,
+  ];
+
+  for (const filename of toRecord) {
+    const source = filename === BASELINE_INIT_FILE ? 'squash' : 'baseline';
+    await recordMigration(connection, filename, { source });
+  }
+
+  console.log(`  ✅ ${toRecord.length}건 이력 기록 완료\n`);
+}
 
 async function runMigrationsForTarget(target) {
   const opts = getDbConnectionOptions(target);
@@ -28,6 +116,10 @@ async function runMigrationsForTarget(target) {
       return;
     }
 
+    await ensureSchemaMigrationsTable(connection);
+    await autoSquashBaselineIfNeeded(connection, target);
+    const applied = await getAppliedMigrations(connection);
+
     const files = fs
       .readdirSync(migrationsDir)
       .filter((file) => file.endsWith('.sql'))
@@ -38,11 +130,20 @@ async function runMigrationsForTarget(target) {
       return;
     }
 
-    console.log(`📦 ${files.length}개의 마이그레이션 파일을 실행합니다...\n`);
+    const pending = files.filter((f) => !applied.has(f));
+    console.log(
+      `📦 마이그레이션 ${files.length}개 (미적용 ${pending.length}개)\n`,
+    );
 
-    for (const file of files) {
+    if (pending.length === 0) {
+      console.log(`✅ [${target}] 모든 마이그레이션이 이미 적용됨`);
+      return;
+    }
+
+    for (const file of pending) {
       const filePath = path.join(migrationsDir, file);
       const sql = fs.readFileSync(filePath, 'utf8');
+      const checksum = crypto.createHash('sha256').update(sql).digest('hex');
 
       console.log(`⏳ [${target}] 실행 중: ${file}`);
 
@@ -67,31 +168,10 @@ async function runMigrationsForTarget(target) {
         }
       }
 
+      await recordMigration(connection, file, { checksum, source: 'migrate' });
       console.log(`✅ [${target}] 완료: ${file}\n`);
 
-      if (file === '056_personal_mails_recipient_name_pii.sql') {
-        try {
-          const updated = await backfillPersonalMailRecipientNames(connection);
-          if (updated > 0) {
-            console.log(`  🔐 personal_mails recipient_name 백필: ${updated}건`);
-          }
-        } catch (backfillErr) {
-          if (String(backfillErr?.message || '').includes('PII_ENCRYPTION_KEY')) {
-            console.warn(
-              '  ⚠️  PII 키 없음 — personal_mails 백필 스킵 (npm run migrate:pii-encrypt 로 수동 실행)',
-            );
-          } else {
-            throw backfillErr;
-          }
-        }
-      }
-
-      if (file === '058_add_legal_documents.sql') {
-        const inserted = await seedLegalDocuments(connection);
-        if (inserted > 0) {
-          console.log(`  📄 legal_documents 초기 시드: ${inserted}건`);
-        }
-      }
+      await runPostMigrationHooks(connection, file);
     }
 
     console.log(`🎉 [${target}] 마이그레이션 완료`);
