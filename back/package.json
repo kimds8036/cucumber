@@ -20,7 +20,10 @@
     "seed:load-test-students": "node src/db/seed-load-test-students.js",
     "seed:load-test-chat": "node load-test/seed-chat-rooms.js",
     "load-test:chat": "node load-test/chat-load-test.js",
-    "migrate:pii-encrypt": "node src/db/migrate-pii-encrypt.js"
+    "migrate:pii-encrypt": "node src/db/migrate-pii-encrypt.js",
+    "db:generate-init": "node src/db/generate-001-init-from-db.js",
+    "db:build-init": "node src/db/build-001-init-from-archive.js",
+    "db:squash-baseline": "node src/db/squash-baseline.js"
   },
   "keywords": [],
   "author": "",

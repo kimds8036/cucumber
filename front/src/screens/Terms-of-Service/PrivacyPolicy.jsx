@@ -5,14 +5,16 @@ import SubHeader from '../../../view/frame/subHeader';
 import { getNormalize } from '../../../styles/mypage.style';
 import { createServiceStyles } from '../../../styles/service.style';
 import PolicyMarkdownBody from './PolicyMarkdownBody';
+import { useLegalDocument } from '../../../utils/useLegalDocument';
 
-const PRIVACY_MARKDOWN = require('./_privacy_md.json');
+const FALLBACK_MARKDOWN = require('./_privacy_md.json');
 const HIDDEN_TITLES = ['# 개인정보 처리방침'];
 
 const PrivacyPolicy = ({ navigation }) => {
   const { width } = useWindowDimensions();
   const normalize = useMemo(() => getNormalize(width), [width]);
   const styles = useMemo(() => createServiceStyles(normalize), [normalize]);
+  const { markdown } = useLegalDocument('privacy_policy', FALLBACK_MARKDOWN);
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
@@ -23,7 +25,7 @@ const PrivacyPolicy = ({ navigation }) => {
         showsVerticalScrollIndicator={false}
       >
         <PolicyMarkdownBody
-          markdown={PRIVACY_MARKDOWN}
+          markdown={markdown}
           hiddenTitles={HIDDEN_TITLES}
           styles={styles}
         />

@@ -15,6 +15,7 @@ window.PANEL_LOADERS = {
   users: () => loadUsers(),
   logs: () => loadLogs(),
   emergency: () => loadEmergencyFlags(),
+  legalDocuments: () => loadLegalDocuments(),
   adminAccounts: () => loadAdminAccounts(),
 };
 

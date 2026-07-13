@@ -11,14 +11,16 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { colors, fonts, fontSizes } from '../../../styles/colors';
 import { createServiceStyles } from '../../../styles/service.style';
 import PolicyMarkdownBody from '../../../src/screens/Terms-of-Service/PolicyMarkdownBody';
+import { useLegalDocument } from '../../../utils/useLegalDocument';
 
-const PRIVACY_MARKDOWN = require('../../../src/screens/Terms-of-Service/_privacy_md.json');
+const FALLBACK_MARKDOWN = require('../../../src/screens/Terms-of-Service/_privacy_md.json');
 const HIDDEN_TITLES = ['# 개인정보 처리방침'];
 
 // 약관 모달: 개인정보 처리방침 전문 보기 화면
 const SignStepPrivacyPolicy = ({ normalize, onBack }) => {
   const s = makeStyles(normalize);
   const docStyles = useMemo(() => createServiceStyles(normalize), [normalize]);
+  const { markdown } = useLegalDocument('privacy_policy', FALLBACK_MARKDOWN);
 
   return (
     <Modal
@@ -44,7 +46,7 @@ const SignStepPrivacyPolicy = ({ normalize, onBack }) => {
           showsVerticalScrollIndicator={false}
         >
           <PolicyMarkdownBody
-            markdown={PRIVACY_MARKDOWN}
+            markdown={markdown}
             hiddenTitles={HIDDEN_TITLES}
             styles={docStyles}
           />

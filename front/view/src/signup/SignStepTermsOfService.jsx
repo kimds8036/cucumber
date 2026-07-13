@@ -11,14 +11,16 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { colors, fonts, fontSizes } from '../../../styles/colors';
 import { createServiceStyles } from '../../../styles/service.style';
 import PolicyMarkdownBody from '../../../src/screens/Terms-of-Service/PolicyMarkdownBody';
+import { useLegalDocument } from '../../../utils/useLegalDocument';
 
-const SERVICE_TERMS_MARKDOWN = require('../../../src/screens/Terms-of-Service/_terms_md.json');
+const FALLBACK_MARKDOWN = require('../../../src/screens/Terms-of-Service/_terms_md.json');
 const HIDDEN_TITLES = ['# 서비스 이용 약관'];
 
 // 약관 모달: 서비스 이용약관 전문 보기 화면
 const SignStepTermsOfService = ({ normalize, onBack }) => {
   const s = makeStyles(normalize);
   const docStyles = useMemo(() => createServiceStyles(normalize), [normalize]);
+  const { markdown } = useLegalDocument('terms_of_service', FALLBACK_MARKDOWN);
 
   return (
     <Modal
@@ -44,7 +46,7 @@ const SignStepTermsOfService = ({ normalize, onBack }) => {
           showsVerticalScrollIndicator={false}
         >
           <PolicyMarkdownBody
-            markdown={SERVICE_TERMS_MARKDOWN}
+            markdown={markdown}
             hiddenTitles={HIDDEN_TITLES}
             styles={docStyles}
           />

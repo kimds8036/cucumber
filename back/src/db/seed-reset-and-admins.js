@@ -6,8 +6,8 @@
  *   cd back && CONFIRM_DB_RESET=1 npm run seed:reset-admins
  *   cd back && CONFIRM_DB_RESET=1 npm run seed:reset-admins -- --target=develop
  *
- * 유지: schools, admin_users (기존 관리자·OTP 설정 그대로)
- * 삭제: users·게시글·쪽지·가입 제출 등 위 두 테이블 외 모든 데이터
+ * 유지: schools, admin_users, admin_totp_secrets, legal_documents, legal_document_revisions
+ * 삭제: users·게시글·쪽지·가입 제출 등 위 세 테이블 외 모든 데이터
  * 재생성: colors, 앱 테스트 계정 2명
  *
  * 주의: CONFIRM_DB_RESET=1 없으면 실행되지 않습니다.
@@ -25,7 +25,13 @@ import {
   upsertDevTestUsers,
 } from './seed-dev-test-user.js';
 
-const PRESERVED_TABLES = new Set(['schools', 'admin_users']);
+const PRESERVED_TABLES = new Set([
+  'schools',
+  'admin_users',
+  'admin_totp_secrets',
+  'legal_documents',
+  'legal_document_revisions',
+]);
 
 const COLOR_ROWS = [
   [1, '#FFF3F3', 1],
@@ -113,7 +119,7 @@ async function main() {
 
     console.log('==============================');
     console.log(`📂 대상 DB: ${dbName} (${target})`);
-    console.log('⚠️  schools + admin_users 만 유지하고 나머지를 삭제합니다.');
+    console.log('⚠️  schools + admin_users + admin_totp_secrets + legal_documents + legal_document_revisions 만 유지하고 나머지를 삭제합니다.');
     console.log('==============================');
 
     await wipeExceptPreserved(connection, dbName);
@@ -142,9 +148,7 @@ async function main() {
       );
     });
     console.log(`   (학교 school_id=${schoolId})`);
-    console.log(
-      '\n   참고: admin_totp_secrets 등 부가 테이블은 비워졌을 수 있어 OTP 재등록이 필요할 수 있습니다.',
-    );
+    console.log('\n   참고: admin_totp_secrets(OTP)도 유지됩니다. OTP 재등록은 필요 없습니다.');
   } catch (err) {
     console.error('❌ 오류:', err.message);
     if (err.code === 'ER_NO_SUCH_TABLE' && String(err.message).includes('admin_users')) {

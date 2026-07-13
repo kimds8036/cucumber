@@ -1,6 +1,5 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
-import NetInfo from '@react-native-community/netinfo';
 import { Feather } from '@expo/vector-icons';
 import { colors, fonts } from '../../styles/colors';
 
@@ -11,28 +10,52 @@ function isOnlineFromState(state) {
   return true;
 }
 
+async function loadNetInfo() {
+  const mod = await import('@react-native-community/netinfo');
+  return mod.default;
+}
+
 export default function OfflineGate({ children }) {
   const [online, setOnline] = useState(true);
+  const netInfoRef = useRef(null);
 
   const applyState = useCallback((state) => {
     setOnline(isOnlineFromState(state));
   }, []);
 
   const refresh = useCallback(async () => {
-    const state = await NetInfo.fetch();
-    applyState(state);
+    try {
+      const NetInfo = netInfoRef.current ?? (await loadNetInfo());
+      netInfoRef.current = NetInfo;
+      const state = await NetInfo.fetch();
+      applyState(state);
+    } catch (error) {
+      console.warn('[OfflineGate] 네트워크 상태 확인 실패:', error);
+      setOnline(true);
+    }
   }, [applyState]);
 
   useEffect(() => {
     let mounted = true;
+    let unsubscribe = () => {};
 
-    NetInfo.fetch().then((state) => {
-      if (mounted) applyState(state);
-    });
+    (async () => {
+      try {
+        const NetInfo = await loadNetInfo();
+        if (!mounted) return;
+        netInfoRef.current = NetInfo;
 
-    const unsubscribe = NetInfo.addEventListener((state) => {
-      if (mounted) applyState(state);
-    });
+        const state = await NetInfo.fetch();
+        if (mounted) applyState(state);
+
+        unsubscribe = NetInfo.addEventListener((next) => {
+          if (mounted) applyState(next);
+        });
+      } catch (error) {
+        console.warn('[OfflineGate] NetInfo 초기화 실패:', error);
+        if (mounted) setOnline(true);
+      }
+    })();
 
     return () => {
       mounted = false;
