@@ -29,13 +29,14 @@ import BoardFloatingMenu from './board/BoardFloatingMenu';
 import Skeleton from '../../components/common/Skeleton';
 import ReportModal from '../../components/common/ReportModal.jsx';
 import { filterCommentTreeExcludingUser } from '../../utils/blockUser';
-import BoarddetailADplaceholder from '../../src/screens/ad/boarddetailADplaceholder.jsx';
+import TopAdBanner from '../../components/ads/TopAdBanner';
 import { useAdSlots } from '../../hooks/useAdSlots';
+import { AD_PLACEMENTS } from '../../constants/adPlacements';
 
 export default function BoardDetail({ navigation, route }) {
   const { coords, permissionGranted } = useLocationContext();
   const { refreshHasUnread } = useNotification();
-  const { adSlots } = useAdSlots();
+  const { adSlots } = useAdSlots(AD_PLACEMENTS.TOP_BANNER);
   const { width } = useWindowDimensions();
   const normalize = useMemo(() => getNormalize(width), [width]);
   const styles = useMemo(
@@ -476,10 +477,9 @@ export default function BoardDetail({ navigation, route }) {
                       distanceStale={distanceStale}
                       distanceLoading={distanceLoading}
                     />
-                    <BoarddetailADplaceholder
+                    <TopAdBanner
                       styles={styles}
-                      adData={adSlots.length > 0 ? adSlots[0] : null}
-                      badgeOnLeft
+                      adData={adSlots[0] ?? null}
                     />
                   </View>
                 }

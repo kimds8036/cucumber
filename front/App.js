@@ -67,6 +67,12 @@ import ReverificationPendingBanner from './components/auth/ReverificationPending
 import ForceUpdateGate from './components/common/ForceUpdateGate';
 import OfflineGate from './components/common/OfflineGate';
 import AppErrorBoundary from './components/common/AppErrorBoundary';
+import LaunchAdModal from './components/ads/LaunchAdModal';
+import SplashAd from './components/ads/SplashAd';
+import { fetchAdsGrouped } from './utils/adsApiAdapter';
+import { primeAdsGrouped } from './hooks/useAdSlots';
+import { AD_PLACEMENTS } from './constants/adPlacements';
+import { api } from './utils/api';
 import StudentIdResubmit from './view/src/signup/StudentIdResubmit';
 import { SocketProvider } from './context/SocketContext';
 import { NotificationProvider } from './context/NotificationContext';
@@ -410,11 +416,47 @@ export default function App() {
     'Baloo2-Regular': require('./assets/fonts/Baloo2-Regular.ttf'),
     'Baloo2-Bold': require('./assets/fonts/Baloo2-Bold.ttf'),
   });
+  /** boot: 폰트/광고 대기 | splash_ad: 전면 이미지 | ready: 앱 */
+  const [bootPhase, setBootPhase] = useState('boot');
+  const [splashAd, setSplashAd] = useState(null);
 
   useEffect(() => {
-    if (fontsLoaded) {
+    if (!fontsLoaded) return undefined;
+    let cancelled = false;
+    const SPLASH_FETCH_TIMEOUT_MS = 2000;
+
+    const finishWithoutAd = () => {
+      if (cancelled) return;
       SplashScreen.hideAsync();
-    }
+      setBootPhase('ready');
+    };
+
+    const timer = setTimeout(finishWithoutAd, SPLASH_FETCH_TIMEOUT_MS);
+
+    fetchAdsGrouped(api)
+      .then((grouped) => {
+        if (cancelled) return;
+        primeAdsGrouped(grouped);
+        const ad = grouped?.[AD_PLACEMENTS.SPLASH]?.[0];
+        if (ad?.imageUrl) {
+          clearTimeout(timer);
+          SplashScreen.hideAsync();
+          setSplashAd(ad);
+          setBootPhase('splash_ad');
+        } else {
+          clearTimeout(timer);
+          finishWithoutAd();
+        }
+      })
+      .catch(() => {
+        clearTimeout(timer);
+        finishWithoutAd();
+      });
+
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
   }, [fontsLoaded]);
 
   useEffect(() => {
@@ -622,45 +664,56 @@ export default function App() {
     };
   }, []);
 
-  if (!fontsLoaded) return null;
+  if (!fontsLoaded || bootPhase === 'boot') return null;
+
+  if (bootPhase === 'splash_ad' && splashAd) {
+    return (
+      <SplashAd
+        ad={splashAd}
+        onFinish={() => setBootPhase('ready')}
+      />
+    );
+  }
 
   return (
     <SafeAreaProvider style={{ flex: 1, backgroundColor: colors.background }}>
       <StatusBar style="dark" backgroundColor={colors.background} />
-      <ForceUpdateGate>
-        <OfflineGate>
+      <OfflineGate>
+        <ForceUpdateGate>
           <KeyboardProvider>
             <AuthProvider>
-              <AppLockProvider>
-                <LocationProvider>
-                  <SocketProvider>
-                    <ToastProvider>
-                      <NotificationProvider>
-                        <FriendProvider>
-                          <NavigationContainer
-                            ref={navigationRef}
-                            linking={linking}
-                            theme={navigationTheme}
-                            onStateChange={(state) => {
-                              trackNavigationScreen(getActiveRouteName(state));
-                            }}
-                          >
-                            <AppErrorBoundary>
-                              <RootNavigator />
-                            </AppErrorBoundary>
-                            <ToastHost />
-                            <AlertHost />
-                          </NavigationContainer>
-                        </FriendProvider>
-                      </NotificationProvider>
-                    </ToastProvider>
-                  </SocketProvider>
-                </LocationProvider>
-              </AppLockProvider>
+              <LaunchAdModal>
+                <AppLockProvider>
+                  <LocationProvider>
+                    <SocketProvider>
+                      <ToastProvider>
+                        <NotificationProvider>
+                          <FriendProvider>
+                            <NavigationContainer
+                              ref={navigationRef}
+                              linking={linking}
+                              theme={navigationTheme}
+                              onStateChange={(state) => {
+                                trackNavigationScreen(getActiveRouteName(state));
+                              }}
+                            >
+                              <AppErrorBoundary>
+                                <RootNavigator />
+                              </AppErrorBoundary>
+                              <ToastHost />
+                              <AlertHost />
+                            </NavigationContainer>
+                          </FriendProvider>
+                        </NotificationProvider>
+                      </ToastProvider>
+                    </SocketProvider>
+                  </LocationProvider>
+                </AppLockProvider>
+              </LaunchAdModal>
             </AuthProvider>
           </KeyboardProvider>
-        </OfflineGate>
-      </ForceUpdateGate>
+        </ForceUpdateGate>
+      </OfflineGate>
     </SafeAreaProvider>
   );
 }

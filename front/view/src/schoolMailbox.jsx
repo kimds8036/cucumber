@@ -20,6 +20,7 @@ import { subscribeSchoolMailLike, subscribeSchoolMailDeleted } from '../../utils
 import { getSchoolMailFromLabel } from './utils/schoolMailFromLabel';
 import MailboxAdPlaceholder from '../../src/screens/ad/MailboxAdPlaceholder';
 import { injectAdSlots, useAdSlots } from '../../hooks/useAdSlots';
+import { AD_PLACEMENTS } from '../../constants/adPlacements';
 
 function formatTimeAgo(createdAt) {
   if (!createdAt) return '';
@@ -86,7 +87,7 @@ const SchoolMailboxScreen = ({ navigation, route }) => {
   const schoolName = route?.params?.schoolName ?? 'OO고등학교';
   const schoolId = route?.params?.schoolId ?? null;
   const sourceScreen = route?.params?.sourceScreen ?? null;
-  const { adSlots } = useAdSlots();
+  const { adSlots } = useAdSlots(AD_PLACEMENTS.FEED_SCHOOL_MAIL);
 
   const [mails, setMails] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -96,6 +97,7 @@ const SchoolMailboxScreen = ({ navigation, route }) => {
   const mailsWithAds = useMemo(
     () =>
       injectAdSlots(mails, adSlots, {
+        placement: AD_PLACEMENTS.FEED_SCHOOL_MAIL,
         adType: 'mailAd',
         idPrefix: 'mail_ad',
         skipFirstIndex: false,

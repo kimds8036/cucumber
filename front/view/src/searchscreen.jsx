@@ -20,8 +20,9 @@ import {
 } from '../../styles/search.style';
 import { api } from '../../utils/api';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import BoarddetailADplaceholder from '../../src/screens/ad/boarddetailADplaceholder.jsx';
+import TopAdBanner from '../../components/ads/TopAdBanner';
 import { useAdSlots } from '../../hooks/useAdSlots';
+import { AD_PLACEMENTS } from '../../constants/adPlacements';
 
 function formatTimeAgo(createdAt) {
   if (!createdAt) return '';
@@ -68,7 +69,7 @@ const SearchScreen = ({ navigation, route }) => {
   const [recentSearches, setRecentSearches] = useState([]);
   const [recommendedTags, setRecommendedTags] = useState([]);
   const [trendingLoading, setTrendingLoading] = useState(true);
-  const { adSlots } = useAdSlots();
+  const { adSlots } = useAdSlots(AD_PLACEMENTS.TOP_BANNER);
 
   useEffect(() => {
     const q = normalizeSearchText(route?.params?.query ?? '');
@@ -227,10 +228,7 @@ const SearchScreen = ({ navigation, route }) => {
               keyboardShouldPersistTaps="handled"
               keyboardDismissMode="on-drag"
             >
-              <BoarddetailADplaceholder
-                adData={adSlots.length > 0 ? adSlots[0] : null}
-                badgeOnLeft
-              />
+              <TopAdBanner adData={adSlots[0] ?? null} />
               {recentSearches.length > 0 && (
                 <View style={styles.section}>
                   <View style={styles.sectionHeader}>

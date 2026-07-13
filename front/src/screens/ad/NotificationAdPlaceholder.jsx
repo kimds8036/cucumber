@@ -17,12 +17,12 @@ const NotificationAdPlaceholder = ({ adData }) => {
 
   if (adData == null) {
     return (
-      <TipPlaceholder variant="notification" styles={styles} normalize={normalize} />
+      <TipPlaceholder variant="alert" styles={styles} normalize={normalize} />
     );
   }
 
   const contentText =
-    adData?.content ?? adData?.body ?? '여기에 광고가 표시됩니다.';
+    adData?.body || adData?.content || '여기에 광고가 표시됩니다.';
 
   return (
     <View style={styles.notificationItem}>

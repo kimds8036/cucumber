@@ -25,6 +25,8 @@ export const createBoardStyles = (width, normalize) => {
       paddingVertical: normalize(10),
       paddingTop: normalize(8),
       gap: normalize(8),
+      borderBottomWidth: 1,
+      borderBottomColor: colors.textLight10,
     },
     sortButton: {
       paddingHorizontal: normalize(16),
@@ -52,7 +54,6 @@ export const createBoardStyles = (width, normalize) => {
     postList: {
       flex: 1,
       paddingHorizontal: width * 0.04,
-      paddingVertical: normalize(5),
     },
     postItem: {
       backgroundColor: colors.background,

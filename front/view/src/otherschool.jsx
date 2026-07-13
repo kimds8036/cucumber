@@ -18,8 +18,6 @@ import { createOtherSchoolStyles } from '../../styles/otherschool.style';
 import { api } from '../../utils/api';
 import StudyGrassMap from '../../components/studygrassmap';
 import Skeleton from '../../components/common/Skeleton';
-import SchoolAdPlaceholder from '../../src/screens/ad/SchoolAdPlaceholder';
-
 const OtherSchoolScreen = ({ route, navigation }) => {
   const { width } = useWindowDimensions();
   const normalize = useMemo(() => getNormalize(width), [width]);
@@ -486,7 +484,6 @@ const OtherSchoolScreen = ({ route, navigation }) => {
           <Text style={styles.grassCardTitle}>{grassTitle}</Text>
           <StudyGrassMap days={grassDays} />
         </View>
-        <SchoolAdPlaceholder />
 
         {/* 학교 우편함 — 이전 가로형 카드 디자인 */}
         <View style={otherSchoolStyles.mailboxWideBlock}>

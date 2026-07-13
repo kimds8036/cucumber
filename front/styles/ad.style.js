@@ -121,13 +121,14 @@ export const createAdStyles = (normalize, width) => {
       lineHeight: n(18),
     },
 
-    // boarddetailADplaceholder
+    // TopAdBanner / tip topBanner
     adSection: {
       minHeight: n(40),
       marginHorizontal: w * 0,
       backgroundColor: colors.primaryLight10,
       justifyContent: 'center',
       alignItems: 'center',
+      marginBottom: n(12),
     },
     adSectionRow: {
       flexDirection: 'row',
@@ -186,15 +187,7 @@ export const createAdStyles = (normalize, width) => {
       flexShrink: 0,
     },
 
-    // SchoolAdPlaceholder
-    container: {
-      backgroundColor: colors.background,
-      borderRadius: n(16),
-      paddingHorizontal: n(10),
-      paddingVertical: n(20),
-      marginBottom: n(10),
-      ...shadow.md,
-    },
+    // (removed SchoolAdPlaceholder — otherschool 광고 스코프 제외)
 
     // MailboxAdPlaceholder — SchoolMail.style.js createSchoolMailStyles 카드 블록과 동일
     card: {

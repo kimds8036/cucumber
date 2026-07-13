@@ -44,6 +44,7 @@ import {
 import { getProfileInnerColor } from '../../utils/profileIconColor';
 import ChatAdPlaceholder from '../../src/screens/ad/ChatAdPlaceholder';
 import { injectAdSlots, useAdSlots } from '../../hooks/useAdSlots';
+import { AD_PLACEMENTS } from '../../constants/adPlacements';
 import {
   isPersonalMailReturned,
   navigateToResendPersonalMail,
@@ -350,7 +351,7 @@ const SwipeableRow = ({ children, onDelete }) => {
 // 메인 화면(MainScreen)에서 헤더/푸터 없이 메인 영역만 렌더할 때 사용
 export function MessageContent({ navigation }) {
   const { isGuidePreview, guideMessageTab } = useGuidePreview();
-  const { adSlots } = useAdSlots();
+  const { adSlots } = useAdSlots(AD_PLACEMENTS.FEED_NOTE_MAIL);
   const { width } = useWindowDimensions();
   const normalize = useMemo(() => getNormalize(width), [width]);
   const styles = useMemo(
@@ -512,6 +513,7 @@ export function MessageContent({ navigation }) {
   const noteRoomsWithAds = useMemo(
     () =>
       injectAdSlots(noteRooms, isGuidePreview ? [] : adSlots, {
+        placement: AD_PLACEMENTS.FEED_NOTE_MAIL,
         adType: 'chatAd',
         idPrefix: 'note_ad',
         skipFirstIndex: false,
@@ -529,6 +531,7 @@ export function MessageContent({ navigation }) {
   const mailsWithAds = useMemo(
     () =>
       injectAdSlots(mails, isGuidePreview ? [] : adSlots, {
+        placement: AD_PLACEMENTS.FEED_NOTE_MAIL,
         adType: 'chatAd',
         idPrefix: 'mail_ad',
         skipFirstIndex: false,

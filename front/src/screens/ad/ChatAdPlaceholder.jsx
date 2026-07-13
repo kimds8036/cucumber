@@ -39,8 +39,10 @@ const ChatAdPlaceholder = ({
   const displayItem = {
     ...DEFAULT_CHAT_AD_ITEM,
     ...(item || {}),
-    name: adData.name ?? adData.sponsor ?? adData.author ?? '광고',
-    content: adData.content ?? adData.body ?? '스폰서 메시지 영역입니다.',
+    name:
+      adData.name ?? adData.title ?? adData.sponsor ?? adData.author ?? '광고',
+    content:
+      adData.content ?? adData.body ?? '스폰서 메시지 영역입니다.',
   };
 
   return (

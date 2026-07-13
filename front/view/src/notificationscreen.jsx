@@ -35,6 +35,7 @@ import {
 } from '../../utils/studySummaryNotification';
 import NotificationAdPlaceholder from '../../src/screens/ad/NotificationAdPlaceholder';
 import { injectAdSlots, useAdSlots } from '../../hooks/useAdSlots';
+import { AD_PLACEMENTS } from '../../constants/adPlacements';
 import {
   isMailReturnedNotification,
   mergeTestReturnedMailNotification,
@@ -142,7 +143,7 @@ const SkeletonRow = ({ skeletonStyles }) => {
 };
 
 const NotificationScreen = ({ navigation }) => {
-  const { adSlots } = useAdSlots();
+  const { adSlots } = useAdSlots(AD_PLACEMENTS.FEED_ALERT);
   const { width } = useWindowDimensions();
   const normalize = useMemo(() => getNormalize(width), [width]);
   const styles = useMemo(
@@ -552,6 +553,7 @@ const NotificationScreen = ({ navigation }) => {
   const filteredWithAds = useMemo(
     () =>
       injectAdSlots(filteredNotifications, adSlots, {
+        placement: AD_PLACEMENTS.FEED_ALERT,
         adType: 'notiAd',
         idPrefix: 'noti_ad',
         skipFirstIndex: false,

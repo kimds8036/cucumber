@@ -20,18 +20,14 @@ import { createSearchResultStyles } from '../../styles/result.style';
 import { api } from '../../utils/api';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Skeleton from '../../components/common/Skeleton';
-import SearchAdPlaceholder from '../../src/screens/ad/SearchAdPlaceholder';
-import { injectAdSlots, useAdSlots } from '../../hooks/useAdSlots';
+import TopAdBanner from '../../components/ads/TopAdBanner';
+import { useAdSlots } from '../../hooks/useAdSlots';
+import { AD_PLACEMENTS } from '../../constants/adPlacements';
 
 const TABS_FOR_TEXT = ['전체', '전체게시판', '학교게시판', '학교우편'];
 const TABS_FOR_HASHTAG = ['전체', '전체게시판', '학교게시판', '학교우편'];
 const RECENT_KEY = '@search_recent_keywords';
 const SECTIONS_WITH_EXTRA_GAP = ['학교게시판', '전체게시판', '학교우편'];
-
-function resolveSectionAdData(adSlots, slotIndex) {
-  if (!Array.isArray(adSlots) || adSlots.length === 0) return null;
-  return adSlots[slotIndex] ?? null;
-}
 
 function makeSnippet(content, query) {
   const text = content || '';
@@ -156,29 +152,7 @@ export default function SearchResult({ route, navigation }) {
   const { width } = useWindowDimensions();
   const normalize = useMemo(() => getNormalize(width), [width]);
   const s = useMemo(() => createSearchResultStyles(normalize), [normalize]);
-  const { adSlots } = useAdSlots();
-
-  const renderWithAds = (items, renderFn) => {
-    const withAds = injectAdSlots(items, adSlots, {
-      adType: 'searchAd',
-      idPrefix: 'search_ad',
-      skipFirstIndex: false,
-      wrapItem: (item) => ({ ...item, type: 'result' }),
-    });
-
-    return withAds.map((item, idx) => {
-      if (item.type === 'searchAd') {
-        return (
-          <SearchAdPlaceholder
-            key={item.id}
-            adData={item.adData}
-            borderStyle={s.searchAdBorder}
-          />
-        );
-      }
-      return renderFn(item, idx, withAds);
-    });
-  };
+  const { adSlots } = useAdSlots(AD_PLACEMENTS.TOP_BANNER);
 
   const highlightSnippet = (text, query, baseStyle) => {
     if (!query) return <Text style={baseStyle}>{text}</Text>;
@@ -368,20 +342,6 @@ export default function SearchResult({ route, navigation }) {
     [sections],
   );
 
-  const sectionAdSlotIndex = useMemo(() => {
-    const indices = {};
-    let slotIndex = 0;
-    if (matchedSchools.length > 0) {
-      indices.school = slotIndex;
-      slotIndex += 1;
-    }
-    sortedSections.forEach(([sectionName]) => {
-      indices[sectionName] = slotIndex;
-      slotIndex += 1;
-    });
-    return indices;
-  }, [matchedSchools.length, sortedSections]);
-
   return (
     <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
       <SafeAreaView style={s.container} edges={['top']}>
@@ -448,6 +408,8 @@ export default function SearchResult({ route, navigation }) {
               />
             </View>
           </View>
+
+          <TopAdBanner adData={adSlots[0] ?? null} />
 
           {mode === 'result' && (
             <>
@@ -556,13 +518,6 @@ export default function SearchResult({ route, navigation }) {
                             />
                           </TouchableOpacity>
                         ))}
-                        <SearchAdPlaceholder
-                          adData={resolveSectionAdData(
-                            adSlots,
-                            sectionAdSlotIndex.school,
-                          )}
-                          borderStyle={s.searchAdBorder}
-                        />
                       </View>
                     )}
 
@@ -665,14 +620,6 @@ export default function SearchResult({ route, navigation }) {
                               />
                             </TouchableOpacity>
                           )}
-
-                          <SearchAdPlaceholder
-                            adData={resolveSectionAdData(
-                              adSlots,
-                              sectionAdSlotIndex[section],
-                            )}
-                            borderStyle={s.searchAdBorder}
-                          />
                         </View>
                       ))}
 
@@ -681,12 +628,13 @@ export default function SearchResult({ route, navigation }) {
                       sections[activeTab] &&
                       sections[activeTab].length > 0 && (
                         <View style={s.section}>
-                          {renderWithAds(sections[activeTab], (item, idx, withAds) => (
+                          {sections[activeTab].map((item, idx) => (
                             <TouchableOpacity
                               key={item.id}
                               style={[
                                 s.fullCard,
-                                idx < withAds.length - 1 && s.fullCardBorder,
+                                idx < sections[activeTab].length - 1 &&
+                                  s.fullCardBorder,
                               ]}
                               activeOpacity={0.7}
                               onPress={() => {

@@ -7,6 +7,9 @@ import { createCommuteHeaderStyles } from '../styles/commute.style';
 import { colors } from '../styles/colors';
 import { useLocationContext } from '../context/LocationContext';
 import { useCommuteAttendance } from '../hooks/useCommuteAttendance';
+import CommuteAdBanner from './ads/CommuteAdBanner';
+import { useAdSlots } from '../hooks/useAdSlots';
+import { AD_PLACEMENTS } from '../constants/adPlacements';
 
 const DOT_COUNT = 3;
 
@@ -40,6 +43,7 @@ export default function CommuteHeaderIndicator({ enabled = true }) {
     enabled,
     viewerCoords: coords,
   });
+  const { adSlots: commuteAds } = useAdSlots(AD_PLACEMENTS.COMMUTE_BANNER);
 
   const opacity = useRef(new Animated.Value(1)).current;
   const scale = useRef(new Animated.Value(1)).current;
@@ -107,39 +111,42 @@ export default function CommuteHeaderIndicator({ enabled = true }) {
   if (phase === 'hidden') return null;
 
   return (
-    <Animated.View
-      style={[styles.chip, { opacity, transform: [{ scale }] }]}
-      pointerEvents="none"
-    >
-      {phase === 'celebrate' ? (
-        <View style={styles.celebrateRow}>
-          <Animated.View style={{ opacity: sparkle }}>
+    <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+      <CommuteAdBanner adData={commuteAds[0] ?? null} />
+      <Animated.View
+        style={[styles.chip, { opacity, transform: [{ scale }] }]}
+        pointerEvents="none"
+      >
+        {phase === 'celebrate' ? (
+          <View style={styles.celebrateRow}>
+            <Animated.View style={{ opacity: sparkle }}>
+              <Ionicons
+                name="sparkles"
+                size={normalize(14)}
+                color={colors.primaryDark}
+              />
+            </Animated.View>
+            <Text style={styles.sparkle}>등교 완료</Text>
             <Ionicons
-              name="sparkles"
+              name="checkmark-circle"
               size={normalize(14)}
               color={colors.primaryDark}
             />
-          </Animated.View>
-          <Text style={styles.sparkle}>등교 완료</Text>
-          <Ionicons
-            name="checkmark-circle"
-            size={normalize(14)}
-            color={colors.primaryDark}
-          />
-        </View>
-      ) : (
-        <>
-          <FontAwesome5
-            name="walking"
-            size={normalize(12)}
-            color={colors.primaryDark}
-          />
-          <CommuteDots styles={styles} activeIndex={activeDot} />
-          <Text style={styles.label} numberOfLines={1}>
-            등교중
-          </Text>
-        </>
-      )}
-    </Animated.View>
+          </View>
+        ) : (
+          <>
+            <FontAwesome5
+              name="walking"
+              size={normalize(12)}
+              color={colors.primaryDark}
+            />
+            <CommuteDots styles={styles} activeIndex={activeDot} />
+            <Text style={styles.label} numberOfLines={1}>
+              등교중
+            </Text>
+          </>
+        )}
+      </Animated.View>
+    </View>
   );
 }

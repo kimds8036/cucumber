@@ -30,6 +30,42 @@ const TipPlaceholder = ({
   }, []);
 
   switch (variant) {
+    case 'topBanner':
+      return (
+        <View style={s.adSection}>
+          <View style={s.adSectionRow}>
+            <View style={s.adSectionBadge}>
+              <TipPill />
+            </View>
+            <Text style={s.adSectionText} numberOfLines={2}>
+              {tipMessage}
+            </Text>
+          </View>
+        </View>
+      );
+
+    case 'alert':
+    case 'notification':
+      return (
+        <View style={s.notificationItem}>
+          <View style={s.iconContainer}>
+            <MaterialIcons
+              name="lightbulb"
+              size={s.notificationIcon.size}
+              color={colors.primary}
+            />
+          </View>
+          <View style={s.notificationContent}>
+            <View style={s.notificationTitleSlot}>
+              <TipPill />
+            </View>
+            <Text style={s.notificationText} numberOfLines={3}>
+              {tipMessage}
+            </Text>
+          </View>
+        </View>
+      );
+
     case 'chat':
       return (
         <View style={s.listItem}>
@@ -114,27 +150,6 @@ const TipPlaceholder = ({
           >
             {tipMessage}
           </Text>
-        </View>
-      );
-
-    case 'notification':
-      return (
-        <View style={s.notificationItem}>
-          <View style={s.iconContainer}>
-            <MaterialIcons
-              name="lightbulb"
-              size={s.notificationIcon.size}
-              color={colors.primary}
-            />
-          </View>
-          <View style={s.notificationContent}>
-            <View style={s.notificationTitleSlot}>
-              <TipPill />
-            </View>
-            <Text style={s.notificationText} numberOfLines={3}>
-              {tipMessage}
-            </Text>
-          </View>
         </View>
       );
 

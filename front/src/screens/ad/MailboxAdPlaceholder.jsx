@@ -8,9 +8,10 @@ const MailboxAdPlaceholder = ({ styles, adData }) => {
     return <TipPlaceholder variant="mailbox" styles={styles} />;
   }
 
-  const sponsorLabel = adData?.sponsor ?? adData?.author ?? '스폰서';
+  const sponsorLabel =
+    adData?.title || adData?.sponsor || adData?.author || '스폰서';
   const contentText =
-    adData?.content ?? adData?.body ?? '여기에 광고가 표시됩니다.';
+    adData?.body || adData?.content || '여기에 광고가 표시됩니다.';
 
   return (
     <View style={styles.card}>
