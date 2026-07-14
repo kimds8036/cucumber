@@ -11,7 +11,11 @@ import { AdPill } from './PillBadge';
  *
  * TODO: /api/ads 연동 후 useAdSlots + pickAdForPlacement로 adData 공급
  */
-export default function TopAdBanner({ styles: externalStyles, adData: adDataProp }) {
+export default function TopAdBanner({
+  styles: externalStyles,
+  adData: adDataProp,
+  tipRefreshKey = 0,
+}) {
   const { width } = useWindowDimensions();
   const normalize = useMemo(() => getNormalize(width), [width]);
   const adStyles = useMemo(
@@ -32,6 +36,7 @@ export default function TopAdBanner({ styles: externalStyles, adData: adDataProp
         styles={s}
         normalize={normalize}
         badgeOnLeft
+        refreshKey={tipRefreshKey}
       />
     );
   }
