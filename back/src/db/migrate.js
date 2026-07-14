@@ -87,8 +87,9 @@ async function autoSquashBaselineIfNeeded(connection, target) {
     return;
   }
 
-  const [tables] = await connection.execute('SHOW TABLES LIKE ?', ['users']);
-  if (tables.length === 0) {
+  // SHOW/LIKE 는 prepared statement(?) 미지원 → query + 리터럴 사용
+  const [tables] = await connection.query("SHOW TABLES LIKE 'users'");
+  if (!tables?.length) {
     return;
   }
 
