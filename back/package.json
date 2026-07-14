@@ -16,6 +16,7 @@
     "seed:schools": "node src/db/seed-schools-from-csv.js",
     "seed:reset-admins": "node src/db/seed-reset-and-admins.js",
     "seed:admin-users": "node src/db/seed-reset-and-admins.js",
+    "db:reset-keep-schools": "node src/db/reset-keep-schools.js",
     "seed:dev-test-user": "node src/db/seed-dev-test-user.js",
     "seed:load-test-students": "node src/db/seed-load-test-students.js",
     "seed:load-test-chat": "node load-test/seed-chat-rooms.js",
