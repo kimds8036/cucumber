@@ -24,6 +24,8 @@ import {
   pickFirstSchoolId,
   upsertDevTestUsers,
 } from './seed-dev-test-user.js';
+import { loadAdminSeedAccounts } from '../config/adminSeedEnv.js';
+import { upsertAdminSeedAccounts } from './seed-admin-from-env.js';
 
 const PRESERVED_TABLES = new Set([
   'schools',
@@ -111,10 +113,22 @@ async function main() {
     const [adminsBefore] = await connection.execute(
       `SELECT id, username, name FROM admin_users WHERE is_deleted = FALSE ORDER BY id`,
     );
-    if (adminsBefore.length === 0) {
-      console.warn(
-        '⚠️  admin_users 가 비어 있습니다. 관리자 계정을 먼저 만들거나 ADMIN_SEED_* 로 시드하세요.',
-      );
+
+    let seededAdmins = [];
+    try {
+      const seedAccounts = loadAdminSeedAccounts();
+      seededAdmins = await upsertAdminSeedAccounts(connection, seedAccounts);
+      console.log(`👤 ADMIN_SEED ${seededAdmins.length}명 업서트`);
+    } catch (seedErr) {
+      if (adminsBefore.length === 0) {
+        console.warn(
+          `⚠️  admin_users 비어 있음 + ADMIN_SEED 없음: ${seedErr.message}`,
+        );
+      } else {
+        console.log(
+          `ℹ️  ADMIN_SEED 미사용 — 기존 관리자 ${adminsBefore.length}명 유지`,
+        );
+      }
     }
 
     console.log('==============================');
@@ -134,9 +148,9 @@ async function main() {
 
     console.log('\n✅ 초기화 및 테스트 계정 시드 완료');
     console.log(`   schools 유지: ${schoolCount}건`);
-    console.log(`   admin_users 유지: ${admins.length}명`);
+    console.log(`   admin_users: ${admins.length}명`);
     console.log(`   앱 테스트 계정 생성: ${testUsers.length}명 (student_verified=TRUE)`);
-    console.log(`   ── 관리자 유지 (${getAdminLoginPath()}) ──`);
+    console.log(`   ── 관리자 (${getAdminLoginPath()}) ──`);
     for (const admin of admins) {
       console.log(`   #${admin.id} ${admin.name}: ${admin.username}`);
     }
