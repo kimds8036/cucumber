@@ -1,6 +1,8 @@
 import express from 'express';
+import { body, query } from 'express-validator';
 import pool from '../config/database.js';
 import { authenticate } from '../middleware/auth.js';
+import { validate } from '../middleware/validate.js';
 import { upsertFcmToken } from '../utils/pushTokens.js';
 import {
   nameLookupBindParams,
@@ -9,8 +11,26 @@ import {
 
 const router = express.Router();
 
+const fcmTokenValidators = [
+  body('token').isString().trim().isLength({ min: 1, max: 512 })
+    .withMessage('token이 필요합니다.'),
+  body('deviceId').optional({ values: 'falsy' }).isString().trim().isLength({ max: 128 }),
+  body('device_id').optional({ values: 'falsy' }).isString().trim().isLength({ max: 128 }),
+  body('deviceType').optional({ values: 'falsy' }).isString().trim().isLength({ max: 32 }),
+  body('device_type').optional({ values: 'falsy' }).isString().trim().isLength({ max: 32 }),
+  body('appVersion').optional({ values: 'falsy' }).isString().trim().isLength({ max: 32 }),
+  body('app_version').optional({ values: 'falsy' }).isString().trim().isLength({ max: 32 }),
+];
+
+const userSearchValidators = [
+  query('schoolId').isString().trim().isLength({ min: 1, max: 40 })
+    .withMessage('schoolId가 필요합니다.'),
+  query('query').optional({ values: 'falsy' }).isString().trim().isLength({ max: 100 })
+    .withMessage('검색어는 100자 이내여야 합니다.'),
+];
+
 // POST /api/users/fcm-token
-router.post('/fcm-token', authenticate, async (req, res) => {
+router.post('/fcm-token', authenticate, validate(fcmTokenValidators), async (req, res) => {
   try {
     const token = String(req.body?.token || '').trim();
     const deviceId = String(req.body?.deviceId || req.body?.device_id || '').trim();
@@ -83,7 +103,7 @@ router.get('/me/stats', authenticate, async (req, res) => {
 });
 
 // GET /api/users/search?schoolId=xxx&query=xxx
-router.get('/search', authenticate, async (req, res) => {
+router.get('/search', authenticate, validate(userSearchValidators), async (req, res) => {
   try {
     const schoolId = String(req.query?.schoolId || '').trim();
     const matchStr = String(req.query?.query || '').trim();

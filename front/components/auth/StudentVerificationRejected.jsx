@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Text,
@@ -9,17 +9,40 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { colors } from '../../styles/colors';
 import { useAuth } from '../../context/AuthContext';
+import { clearAuthToken, clearUserSessionStorage } from '../../utils/api';
+import * as socketManager from '../../view/src/socketManager';
+import InAppInquiry from '../../view/src/InAppInquiry';
 
 /**
- * 학생증 거절(REJECTED) 안내 + 재제출 진입
+ * 학생증 거절(REJECTED) 안내 + 재제출 / 문의 / 로그아웃
  */
 export default function StudentVerificationRejected({ onResubmit }) {
   const { width } = useWindowDimensions();
   const scale = width / 375;
   const normalize = (size) => Math.round(scale * size);
-  const { rejectReason } = useAuth();
+  const { rejectReason, logout } = useAuth();
+  const [showInquiry, setShowInquiry] = useState(false);
 
   const reasonText = rejectReason?.trim() || '관리자 확인 결과';
+
+  const handleLogout = async () => {
+    try {
+      socketManager.disconnectSocket?.({ force: true, reason: 'student_rejected_logout' });
+    } catch {
+      // ignore
+    }
+    await clearUserSessionStorage();
+    await clearAuthToken();
+    logout();
+  };
+
+  if (showInquiry) {
+    return (
+      <InAppInquiry
+        navigation={{ goBack: () => setShowInquiry(false) }}
+      />
+    );
+  }
 
   return (
     <SafeAreaView style={styles.root} edges={['top', 'bottom']}>
@@ -39,6 +62,25 @@ export default function StudentVerificationRejected({ onResubmit }) {
           <Text style={[styles.buttonText, { fontSize: normalize(16) }]}>
             학생증 다시 제출하기
           </Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[
+            styles.secondaryButton,
+            { height: normalize(50), borderRadius: normalize(24), marginTop: normalize(12) },
+          ]}
+          activeOpacity={0.9}
+          onPress={() => setShowInquiry(true)}
+        >
+          <Text style={[styles.secondaryButtonText, { fontSize: normalize(16) }]}>
+            문의하기
+          </Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={{ marginTop: normalize(16), paddingVertical: normalize(8) }}
+          activeOpacity={0.7}
+          onPress={handleLogout}
+        >
+          <Text style={[styles.logoutText, { fontSize: normalize(14) }]}>로그아웃</Text>
         </TouchableOpacity>
       </View>
     </SafeAreaView>
@@ -81,5 +123,22 @@ const styles = StyleSheet.create({
   buttonText: {
     fontFamily: 'Baloo2-Bold',
     color: colors.background,
+  },
+  secondaryButton: {
+    width: '100%',
+    backgroundColor: colors.background,
+    borderWidth: 1,
+    borderColor: colors.primary,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  secondaryButtonText: {
+    fontFamily: 'Baloo2-Bold',
+    color: colors.primary,
+  },
+  logoutText: {
+    fontFamily: 'Baloo2-Regular',
+    color: colors.textSecondary,
+    textDecorationLine: 'underline',
   },
 });

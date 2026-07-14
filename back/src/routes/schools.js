@@ -1,10 +1,12 @@
 import express from 'express';
+import { param, query } from 'express-validator';
 import pool from '../config/database.js';
 import {
   STUDY_GRASS_AVG_MULTIPLIER,
   STUDY_GRASS_REDIS_TTL_SECONDS,
 } from '../config/studyGrass.js';
 import { authenticate } from '../middleware/auth.js';
+import { validate } from '../middleware/validate.js';
 import { getBatchRedis } from '../services/batchRedis.service.js';
 import {
   buildSafeSchoolSearchTerm,
@@ -13,6 +15,18 @@ import {
 } from '../utils/schoolSearch.js';
 
 const router = express.Router();
+
+const schoolSearchValidators = [
+  query('query').optional({ values: 'falsy' }).isString().trim().isLength({ max: 100 })
+    .withMessage('검색어는 100자 이내여야 합니다.'),
+  query('limit').optional({ values: 'falsy' }).toInt().isInt({ min: 1, max: 30 })
+    .withMessage('limit은 1~30 입니다.'),
+];
+
+const schoolIdParamValidators = [
+  param('schoolId').isString().trim().isLength({ min: 1, max: 40 })
+    .withMessage('유효하지 않은 schoolId 입니다.'),
+];
 const NEIS_BASE_URL = 'https://open.neis.go.kr/hub/mealServiceDietInfo';
 const NEIS_API_KEY = process.env.NEIS_API_KEY || process.env.NEIS_KEY || '';
 const DEFAULT_STUDY_GRASS_DAYS = 27 * 7;
@@ -360,7 +374,7 @@ async function fetchSchoolCountsLive(schoolId) {
 }
 
 // GET /api/schools/search?query=xxx&limit=5
-router.get('/search', async (req, res) => {
+router.get('/search', validate(schoolSearchValidators), async (req, res) => {
   try {
     const query = String(req.query?.query || '').trim();
 
@@ -559,7 +573,7 @@ router.get('/me/meals/next', authenticate, async (req, res) => {
   }
 });
 
-router.get('/:schoolId/meals/next', async (req, res) => {
+router.get('/:schoolId/meals/next', validate(schoolIdParamValidators), async (req, res) => {
   try {
     const { schoolId } = req.params;
     const requested = Number(req.query?.count ?? 3);
@@ -655,7 +669,7 @@ router.get('/me/meals/calendar', authenticate, async (req, res) => {
   }
 });
 
-router.get('/:schoolId/meals/calendar', async (req, res) => {
+router.get('/:schoolId/meals/calendar', validate(schoolIdParamValidators), async (req, res) => {
   try {
     const { schoolId } = req.params;
     const fromYmd = String(req.query?.fromYmd || '').trim();
@@ -696,7 +710,7 @@ router.get('/:schoolId/meals/calendar', async (req, res) => {
   }
 });
 
-router.get('/:schoolId/study-grass', async (req, res) => {
+router.get('/:schoolId/study-grass', validate(schoolIdParamValidators), async (req, res) => {
   try {
     const { schoolId } = req.params;
     const school = await getSchoolCodesById(schoolId);
@@ -720,7 +734,7 @@ router.get('/:schoolId/study-grass', async (req, res) => {
 
 // GET /api/schools/:schoolId - 특정 학교 기본 정보 + 게시글/우편함 개수
 // school_id 가 VARCHAR(50)이므로 숫자 변환 없이 문자열 그대로 사용
-router.get('/:schoolId', async (req, res) => {
+router.get('/:schoolId', validate(schoolIdParamValidators), async (req, res) => {
   const { schoolId } = req.params;
 
   try {

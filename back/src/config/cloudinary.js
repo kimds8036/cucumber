@@ -25,7 +25,25 @@ export const CLOUDINARY_FOLDERS = {
   inquiries: `${BASE_FOLDER}/inquiries`,
 };
 
-function createImageUpload(folder) {
+const IMAGE_MIME_WHITELIST = new Set([
+  'image/jpeg',
+  'image/jpg',
+  'image/png',
+  'image/webp',
+]);
+
+function imageFileFilter(_req, file, cb) {
+  const mime = String(file?.mimetype || '').toLowerCase();
+  if (IMAGE_MIME_WHITELIST.has(mime)) {
+    cb(null, true);
+    return;
+  }
+  const err = new Error('허용되지 않는 이미지 형식입니다. (jpeg/png/webp)');
+  err.code = 'LIMIT_UNEXPECTED_FILE';
+  cb(err, false);
+}
+
+function createImageUpload(folder, { maxBytes = 5 * 1024 * 1024 } = {}) {
   const storage = new CloudinaryStorage({
     cloudinary,
     params: {
@@ -36,7 +54,8 @@ function createImageUpload(folder) {
   });
   return multer({
     storage,
-    limits: { fileSize: 5 * 1024 * 1024 },
+    limits: { fileSize: maxBytes },
+    fileFilter: imageFileFilter,
   });
 }
 

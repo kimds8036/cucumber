@@ -307,7 +307,7 @@ const Login = ({ navigation }) => {
                   debugLogin('로그인 상태 반영 → 스택 전환');
                   await login({
                     studentVerificationStatus:
-                      response.data.data?.studentVerificationStatus || 'APPROVED',
+                      response.data.data?.studentVerificationStatus || 'PENDING',
                     rejectReason: response.data.data?.rejectReason || null,
                     reverificationStatus:
                       response.data.data?.reverificationStatus || 'none',

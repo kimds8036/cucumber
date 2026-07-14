@@ -7,7 +7,7 @@ if (!process.env.JWT_SECRET) {
   throw new Error('[FATAL] JWT_SECRET 환경변수가 없습니다. 서버를 시작할 수 없습니다.');
 }
 const JWT_SECRET = process.env.JWT_SECRET;
-const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '1h';
+const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '15m';
 const ADMIN_JWT_EXPIRES_IN = process.env.ADMIN_JWT_EXPIRES_IN || '30m';
 
 // JWT 토큰 생성
