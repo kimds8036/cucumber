@@ -15,6 +15,7 @@ import {
   Alert,
   Share,
   FlatList,
+  RefreshControl,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -41,6 +42,9 @@ import { useFocusEffect } from '@react-navigation/native';
 import ReportModal from '../../components/common/ReportModal.jsx';
 import { injectAdSlots } from '../../hooks/useAdSlots';
 import { AD_PLACEMENTS } from '../../constants/adPlacements';
+
+/** 게시판 탭 복귀 시 전체 1페이지 재조회 쿨다운 */
+const BOARD_FOCUS_REFRESH_COOLDOWN_MS = 60 * 1000;
 
 /** 서버 created_at(UTC)을 "n분 전" 형식으로 변환. 화면에서는 기기 로컬 시간 기준으로 계산 */
 function formatTimeAgo(createdAt) {
@@ -87,6 +91,8 @@ export function BoardAllContent({ navigation, posts }) {
   const [serverPosts, setServerPosts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
+  const [tipRefreshKey, setTipRefreshKey] = useState(0);
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
   const [floatingMenuVisible, setFloatingMenuVisible] = useState(false);
@@ -101,6 +107,7 @@ export function BoardAllContent({ navigation, posts }) {
   const didMountSortEffectRef = useRef(false);
   const serverPostsRef = useRef(serverPosts);
   const skipNextFocusFetchRef = useRef(true);
+  const lastFullFetchAtRef = useRef(0);
   serverPostsRef.current = serverPosts;
 
   const defaultMenuItemsOthers = useMemo(
@@ -226,15 +233,25 @@ export function BoardAllContent({ navigation, posts }) {
   };
 
   const fetchPosts = useCallback(
-    async (nextPage = 1, append = false, silent = false) => {
+    async (nextPage = 1, append = false, opts = {}) => {
+      const options =
+        opts === true ? { silent: true } : opts === false || opts == null ? {} : opts;
+      const silent = Boolean(options.silent);
+      /** 목록은 교체하되 전체 스켈레톤 대신 RefreshControl만 표시 */
+      const soft = Boolean(options.soft);
+      /** soft이지만 Pull 인디케이터도 숨김(탭 focus 백그라운드 갱신) */
+      const quiet = Boolean(options.quiet);
+
       if (isGuidePreview) {
         if (nextPage === 1 && !append) {
           setServerPosts(getGuideBoardPosts());
           setPage(1);
           setHasMore(false);
+          lastFullFetchAtRef.current = Date.now();
         }
         setLoading(false);
         setLoadingMore(false);
+        setRefreshing(false);
         return;
       }
       try {
@@ -246,11 +263,17 @@ export function BoardAllContent({ navigation, posts }) {
           }
           setLoading(false);
           setLoadingMore(false);
+          setRefreshing(false);
           return;
         }
-        if (nextPage === 1 && !silent) {
-          setLoading(true);
-          setHasMore(true);
+        if (nextPage === 1 && !silent && !append) {
+          if (soft) {
+            if (!quiet) setRefreshing(true);
+            setHasMore(true);
+          } else {
+            setLoading(true);
+            setHasMore(true);
+          }
         } else if (nextPage !== 1) {
           setLoadingMore(true);
         }
@@ -323,11 +346,19 @@ export function BoardAllContent({ navigation, posts }) {
           });
         } else {
           setServerPosts(mapped);
+          lastFullFetchAtRef.current = Date.now();
+          // Pull to Refresh / Focus soft 갱신 시에만 Tip 문구 교체
+          if (soft) {
+            setTipRefreshKey((k) => k + 1);
+          }
         }
         setHasMore(apiPosts.length > 0);
         setPage(nextPage);
         if (append) setLoadingMore(false);
-        else setLoading(false);
+        else {
+          setLoading(false);
+          setRefreshing(false);
+        }
       } catch (error) {
         console.error('게시글 목록 로드 실패:', error);
         if (error.response?.data?.message) {
@@ -339,6 +370,7 @@ export function BoardAllContent({ navigation, posts }) {
         Alert.alert('오류', '게시글을 불러오는 중 오류가 발생했습니다.');
         setLoading(false);
         setLoadingMore(false);
+        setRefreshing(false);
       }
     },
     [sortType, coords, posts, isGuidePreview],
@@ -361,8 +393,8 @@ export function BoardAllContent({ navigation, posts }) {
     if (isGuidePreview) return;
     if (!permissionGranted || !coords) return;
     const silent = serverPostsRef.current.length > 0;
-    fetchPostsRef.current?.(1, false, silent);
-  }, [permissionGranted, coords]);
+    fetchPostsRef.current?.(1, false, silent ? { silent: true } : undefined);
+  }, [permissionGranted, coords, isGuidePreview]);
 
   useFocusEffect(
     useCallback(() => {
@@ -372,8 +404,10 @@ export function BoardAllContent({ navigation, posts }) {
         return;
       }
       if (posts && posts.length > 0) return;
-      const silent = serverPostsRef.current.length > 0;
-      fetchPostsRef.current?.(1, false, silent);
+      const elapsed = Date.now() - lastFullFetchAtRef.current;
+      if (elapsed < BOARD_FOCUS_REFRESH_COOLDOWN_MS) return;
+      // 쿨다운 경과 시 1페이지 교체(스피너/스켈레톤 없이)
+      fetchPostsRef.current?.(1, false, { soft: true, quiet: true });
     }, [posts, isGuidePreview]),
   );
 
@@ -385,6 +419,13 @@ export function BoardAllContent({ navigation, posts }) {
     }
     fetchPosts(1, false);
   }, [sortType, isGuidePreview]);
+
+  const handlePullToRefresh = useCallback(() => {
+    if (isGuidePreview) return;
+    if (posts && posts.length > 0) return;
+    refreshLocation();
+    fetchPostsRef.current?.(1, false, { soft: true });
+  }, [isGuidePreview, posts, refreshLocation]);
 
   const data = posts && posts.length > 0 ? posts : serverPosts;
 
@@ -599,6 +640,16 @@ export function BoardAllContent({ navigation, posts }) {
           showsVerticalScrollIndicator={false}
           onEndReached={handleLoadMore}
           onEndReachedThreshold={0.5}
+          refreshControl={
+            postsInjected || isGuidePreview ? undefined : (
+              <RefreshControl
+                refreshing={refreshing}
+                onRefresh={handlePullToRefresh}
+                tintColor={colors.primaryDark}
+                colors={[colors.primaryDark]}
+              />
+            )
+          }
           ListHeaderComponent={
             <View
               style={{
@@ -606,7 +657,7 @@ export function BoardAllContent({ navigation, posts }) {
                 width,
               }}
             >
-              <TopAdBanner />
+              <TopAdBanner tipRefreshKey={tipRefreshKey} />
             </View>
           }
           ListEmptyComponent={

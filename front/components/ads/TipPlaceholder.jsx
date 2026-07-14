@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useRef } from 'react';
 import { View, Text, useWindowDimensions } from 'react-native';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
@@ -14,6 +14,8 @@ const TipPlaceholder = ({
   normalize: externalNormalize,
   cardStyleOverride,
   badgeOnLeft = false,
+  /** 값이 바뀌면 Tip 문구를 다시 랜덤 선택 (Pull/Focus 새로고침용) */
+  refreshKey = 0,
 }) => {
   const { width } = useWindowDimensions();
   const localNormalize = useMemo(() => getNormalize(width), [width]);
@@ -23,11 +25,24 @@ const TipPlaceholder = ({
   );
   const s = externalStyles || adStyles;
   const n = externalNormalize || localNormalize;
+  const lastTipRef = useRef(null);
 
   const tipMessage = useMemo(() => {
-    const index = Math.floor(Math.random() * TIP_MESSAGES.length);
-    return TIP_MESSAGES[index];
-  }, []);
+    const pool = TIP_MESSAGES;
+    if (!pool.length) return '';
+    if (pool.length === 1) return pool[0];
+    let next = pool[Math.floor(Math.random() * pool.length)];
+    // 새로고침 시 직전과 동일하면 한 번 더 뽑아 체감 교체율 확보
+    if (refreshKey > 0 && next === lastTipRef.current) {
+      next = pool[Math.floor(Math.random() * pool.length)];
+      if (next === lastTipRef.current) {
+        const others = pool.filter((m) => m !== lastTipRef.current);
+        next = others[Math.floor(Math.random() * others.length)];
+      }
+    }
+    lastTipRef.current = next;
+    return next;
+  }, [refreshKey]);
 
   switch (variant) {
     case 'topBanner':
