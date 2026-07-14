@@ -48,6 +48,31 @@ function buildInlineNodes(line, linkStyle) {
   return nodes;
 }
 
+function tableCellStyle(styles, colCount, colIndex) {
+  if (colCount === 2) {
+    return colIndex === 0 ? styles.tableCellLabel : styles.tableCellValue;
+  }
+  if (colCount === 3) {
+    if (colIndex === 0) return styles.tableCellCol3Label;
+    if (colIndex === 1) return styles.tableCellCol3Mid;
+    return styles.tableCellCol3Last;
+  }
+  return {
+    flexGrow: 1,
+    flexShrink: 1,
+    flexBasis: 0,
+    minWidth: 0,
+    paddingVertical: styles.tableCellLabel?.paddingVertical ?? 10,
+    paddingHorizontal: styles.tableCellLabel?.paddingHorizontal ?? 10,
+    ...(colIndex < colCount - 1
+      ? {
+          borderRightWidth: 1,
+          borderRightColor: styles.table?.borderColor,
+        }
+      : null),
+  };
+}
+
 /** 고객지원·회원가입 모달에서 동일하게 쓰는 약관/방침 본문 렌더러 */
 const PolicyMarkdownBody = ({ markdown, hiddenTitles = [], styles }) => {
   const blocks = useMemo(
@@ -109,6 +134,51 @@ const PolicyMarkdownBody = ({ markdown, hiddenTitles = [], styles }) => {
   return blocks.map((block, idx) => {
     const { trimmed } = block;
     if (hidden.has(trimmed)) return null;
+    if (block.type === 'table') {
+      const rows = Array.isArray(block.rows) ? block.rows : [];
+      if (!rows.length) return null;
+      return (
+        <View key={`t-${idx}`} style={styles.table}>
+          {rows.map((row, ri) => {
+            const cols = Array.isArray(row) ? row : [];
+            const colCount = Math.max(cols.length, 1);
+            const isHeader = ri === 0;
+            const isLast = ri === rows.length - 1;
+            return (
+              <View
+                key={`tr-${ri}`}
+                style={[
+                  styles.tableRow,
+                  isHeader ? styles.tableHeaderRow : null,
+                  isLast ? styles.tableRowLast : null,
+                ]}
+              >
+                {cols.map((cell, ci) => (
+                  <View
+                    key={`td-${ci}`}
+                    style={tableCellStyle(styles, colCount, ci)}
+                  >
+                    <View style={styles.tableCellContent}>
+                      <Text
+                        style={
+                          isHeader
+                            ? styles.tableHeaderText
+                            : ci === 0
+                              ? styles.tableCellLabelText
+                              : styles.tableCellText
+                        }
+                      >
+                        {buildInlineNodes(String(cell || ''), linkStyle)}
+                      </Text>
+                    </View>
+                  </View>
+                ))}
+              </View>
+            );
+          })}
+        </View>
+      );
+    }
     if (trimmed === '---') {
       return <View key={`d-${idx}`} style={styles.divider} />;
     }

@@ -96,27 +96,6 @@ function legalCollectTableRows(lines, startIndex) {
   return { rows, nextIndex: i };
 }
 
-function legalIsTableHeaderRow(row) {
-  if (!row?.length) return false;
-  const first = row[0].replace(/\*\*/g, '').trim();
-  return ['구분', '항목', '수탁자'].includes(first);
-}
-
-function legalTableRowsToBulletLines(rows) {
-  const dataRows =
-    rows.length > 1 && legalIsTableHeaderRow(rows[0]) ? rows.slice(1) : rows;
-  return dataRows.map((row) => {
-    const cols = row.filter((cell) => cell !== undefined && cell !== '');
-    if (cols.length >= 3) {
-      return `${cols[0]}: ${cols[1]}. 보유 및 이용 기간: ${cols[2]}`;
-    }
-    if (cols.length === 2) {
-      return `${cols[0]}: ${cols[1]}`;
-    }
-    return cols.join(', ');
-  });
-}
-
 function legalGroupMarkdownBlocks(markdown) {
   const lines = String(markdown || '').split('\n');
   const blocks = [];
@@ -134,9 +113,9 @@ function legalGroupMarkdownBlocks(markdown) {
     }
     if (trimmed.startsWith('|')) {
       const { rows, nextIndex } = legalCollectTableRows(lines, i);
-      legalTableRowsToBulletLines(rows).forEach((bulletLine) => {
-        blocks.push({ type: 'bullet', trimmed: bulletLine });
-      });
+      if (rows.length > 0) {
+        blocks.push({ type: 'table', rows });
+      }
       i = nextIndex;
       continue;
     }
@@ -202,6 +181,30 @@ function legalRenderAppPreviewHtml({ title, version, enactedAt, effectiveAt, con
   const body = blocks
     .map((block) => {
       const { trimmed, type } = block;
+      if (type === 'table') {
+        const rows = Array.isArray(block.rows) ? block.rows : [];
+        if (!rows.length) return '';
+        const trs = rows
+          .map((row, ri) => {
+            const cols = Array.isArray(row) ? row : [];
+            const tag = ri === 0 ? 'th' : 'td';
+            const cells = cols
+              .map(
+                (cell, ci) =>
+                  `<${tag} class="${
+                    ri === 0
+                      ? 'legal-app-th'
+                      : ci === 0
+                        ? 'legal-app-td-label'
+                        : 'legal-app-td'
+                  }">${legalRenderInlineHtml(String(cell || ''))}</${tag}>`,
+              )
+              .join('');
+            return `<tr class="${ri === 0 ? 'legal-app-tr-head' : 'legal-app-tr'}">${cells}</tr>`;
+          })
+          .join('');
+        return `<table class="legal-app-table">${trs}</table>`;
+      }
       if (trimmed === '---') {
         return '<div class="legal-app-divider"></div>';
       }
@@ -288,7 +291,7 @@ async function loadLegalDocumentEditor(slug) {
     host.innerHTML = `
       <div class="detail-panel open">
         <div class="section-title">${esc(doc.title || legalDocLabel(slug))}</div>
-        <p class="section-hint">왼쪽에서 Markdown을 편집하면, 오른쪽 미리보기는 앱과 같은 규칙으로 렌더링됩니다. (표→글머리, ##/###, 링크·굵게)</p>
+        <p class="section-hint">왼쪽에서 Markdown을 편집하면, 오른쪽 미리보기는 앱과 같은 규칙으로 렌더링됩니다. (표, ##/###, 링크·굵게)</p>
         <div class="form-grid" style="margin-top:12px">
           <label>버전
             <input id="legal-doc-version" class="note-input" value="${esc(doc.version || '')}" />

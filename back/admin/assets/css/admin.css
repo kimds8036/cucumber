@@ -1331,3 +1331,28 @@
       color: #2563eb;
       text-decoration: underline;
     }
+    .legal-app-table {
+      width: 100%;
+      border-collapse: collapse;
+      border: 1px solid rgba(39,42,38,0.18);
+      margin: 8px 0 12px;
+      font-size: 13px;
+      line-height: 1.35;
+      color: #272A26;
+    }
+    .legal-app-tr-head {
+      background: rgba(39,42,38,0.06);
+    }
+    .legal-app-th,
+    .legal-app-td,
+    .legal-app-td-label {
+      border: 1px solid rgba(39,42,38,0.14);
+      padding: 8px 10px;
+      vertical-align: top;
+      word-break: break-word;
+      text-align: left;
+    }
+    .legal-app-th,
+    .legal-app-td-label {
+      font-weight: 700;
+    }

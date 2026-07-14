@@ -29,27 +29,9 @@ export function collectTableRows(lines, startIndex) {
   return { rows, nextIndex: i };
 }
 
-function isTableHeaderRow(row) {
-  if (!row?.length) return false;
-  const first = row[0].replace(/\*\*/g, '').trim();
-  return ['구분', '항목', '수탁자'].includes(first);
-}
-
-/** 표 행을 "레이블: 내용" 형식의 글머리 줄글로 변환 */
+/** @deprecated 표는 table 블록으로 렌더 — 호환용 유지 */
 export function tableRowsToBulletLines(rows) {
-  const dataRows =
-    rows.length > 1 && isTableHeaderRow(rows[0]) ? rows.slice(1) : rows;
-
-  return dataRows.map((row) => {
-    const cols = row.filter((cell) => cell !== undefined && cell !== '');
-    if (cols.length >= 3) {
-      return `${cols[0]}: ${cols[1]}. 보유 및 이용 기간: ${cols[2]}`;
-    }
-    if (cols.length === 2) {
-      return `${cols[0]}: ${cols[1]}`;
-    }
-    return cols.join(', ');
-  });
+  return rows.map((row) => row.filter(Boolean).join(': '));
 }
 
 export function groupMarkdownBlocks(lines) {
@@ -68,9 +50,9 @@ export function groupMarkdownBlocks(lines) {
     }
     if (trimmed.startsWith('|')) {
       const { rows, nextIndex } = collectTableRows(lines, i);
-      tableRowsToBulletLines(rows).forEach((bulletLine) => {
-        blocks.push({ type: 'bullet', trimmed: bulletLine });
-      });
+      if (rows.length > 0) {
+        blocks.push({ type: 'table', rows });
+      }
       i = nextIndex;
       continue;
     }
