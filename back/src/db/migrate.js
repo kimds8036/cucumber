@@ -13,6 +13,7 @@ import { stripLegalDocumentsInDb } from './stripLegalDocumentsInDb.js';
 import {
   BASELINE_INIT_FILE,
   PRE_SQUASH_MIGRATION_FILES,
+  SCHEMA_MIGRATIONS_TABLE,
   ensureSchemaMigrationsTable,
   getAppliedMigrations,
   recordMigration,
@@ -79,6 +80,45 @@ async function runPostMigrationHooks(connection, file) {
   }
 }
 
+async function tableExists(connection, tableName) {
+  // SHOW/LIKE 는 prepared statement(?) 미지원 → 식별자만 안전하게 허용
+  if (!/^[a-zA-Z0-9_]+$/.test(tableName)) {
+    throw new Error(`잘못된 테이블명: ${tableName}`);
+  }
+  const [rows] = await connection.query(`SHOW TABLES LIKE '${tableName}'`);
+  return Array.isArray(rows) && rows.length > 0;
+}
+
+/**
+ * users만 있고 스키마가 비어 있는데 squash 이력이 찍힌 경우
+ * (불완전 production 등) → 001~후속 이력을 지워 실제 DDL을 다시 돌린다.
+ */
+async function repairIncompleteBaselineIfNeeded(connection, target) {
+  const applied = await getAppliedMigrations(connection);
+  if (!applied.has(BASELINE_INIT_FILE)) return;
+
+  const hasCanary = await tableExists(connection, 'admin_stats_snapshots');
+  if (hasCanary) return;
+
+  console.warn(
+    `⚠️  [${target}] 001_init 이력은 있으나 admin_stats_snapshots 없음 — 불완전 squash로 판단`,
+  );
+  console.warn(
+    `   schema_migrations에서 활성 마이그레이션 이력을 지우고 001_init부터 재적용합니다.`,
+  );
+
+  await connection.execute(
+    `DELETE FROM ${SCHEMA_MIGRATIONS_TABLE}
+     WHERE filename IN (?, ?, ?)
+        OR source IN ('squash', 'baseline')`,
+    [
+      BASELINE_INIT_FILE,
+      '002_extend_legal_documents.sql',
+      '003_strip_legal_document_preamble.sql',
+    ],
+  );
+}
+
 async function autoSquashBaselineIfNeeded(connection, target) {
   await ensureSchemaMigrationsTable(connection);
   const applied = await getAppliedMigrations(connection);
@@ -87,14 +127,16 @@ async function autoSquashBaselineIfNeeded(connection, target) {
     return;
   }
 
-  // SHOW/LIKE 는 prepared statement(?) 미지원 → query + 리터럴 사용
-  const [tables] = await connection.query("SHOW TABLES LIKE 'users'");
-  if (!tables?.length) {
+  // 레거시(이미 풀 스키마) DB만 DDL 없이 이력 동기화.
+  // users만 있는 불완전/빈 DB는 squash 하지 않고 001_init 실행.
+  const hasUsers = await tableExists(connection, 'users');
+  const hasCanary = await tableExists(connection, 'admin_stats_snapshots');
+  if (!hasUsers || !hasCanary) {
     return;
   }
 
   console.log(
-    `📌 [${target}] 기존 DB 감지 — squash 베이스라인 자동 동기화 (DDL 없음)`,
+    `📌 [${target}] 기존 풀스키마 DB 감지 — squash 베이스라인 자동 동기화 (DDL 없음)`,
   );
 
   const toRecord = [
@@ -127,6 +169,7 @@ async function runMigrationsForTarget(target) {
     }
 
     await ensureSchemaMigrationsTable(connection);
+    await repairIncompleteBaselineIfNeeded(connection, target);
     await autoSquashBaselineIfNeeded(connection, target);
     const applied = await getAppliedMigrations(connection);
 
