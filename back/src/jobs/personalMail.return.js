@@ -31,7 +31,7 @@ function getTestReturnAfterMinutes() {
 
 // USE_TEST_MAIL_RETURN=true 이면 sent_at 기준 분 단위(기본 180분=3시간).
 // false(기본)이면 PERSONAL_MAIL_RETURN_HOURS(기본 3시간) — 운영.
-// 참고: jobs/index.js 에서 새벽 4시 cron 등록은 주석 처리됨(수동/다른 스케줄로만 실행).
+// cron 기본: 30분마다 (CRON_PERSONAL_MAIL_RETURN, jobs/index.js)
 function getPersonalMailReturnOptions() {
   if (!envFlag('USE_TEST_MAIL_RETURN')) return undefined;
   return { returnAfterMinutes: getTestReturnAfterMinutes() };

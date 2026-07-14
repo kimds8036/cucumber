@@ -3,7 +3,7 @@ import { runStudyGrassAggregateJob } from './studyGrass.aggregate.js';
 import { runTrendingSettleJob } from './trending.settle.js';
 import { runSchoolStatsJob } from './schoolStats.js';
 import { runTimerSessionGuardJob } from './timerSession.guard.js';
-// import { runPersonalMailReturnBatchJob } from './personalMail.return.js';
+import { runPersonalMailReturnBatchJob } from './personalMail.return.js';
 import { runReverificationGuideJob } from './reverification.guide.js';
 import { runAdminStatsReconcileJob } from './adminStats.reconcile.js';
 import { runAttendanceSuspicionJob } from './adminAttendance.suspicion.js';
@@ -33,10 +33,8 @@ export function initJobs() {
   const trendingSchedule = process.env.CRON_TRENDING_SETTLE || '*/10 * * * *';
   const schoolStatsSchedule = process.env.CRON_SCHOOL_STATS || '0 * * * *';
   const timerGuardSchedule = process.env.CRON_TIMER_GUARD || '*/10 * * * *';
-  // 개인우편 반송 cron 비활성 (새벽 4시 자동 반송 OFF)
-  // 반송 대기 규칙은 PERSONAL_MAIL_RETURN_HOURS=3(기본) — 필요 시 수동/다른 스케줄로 재활성
-  // const personalMailReturnSchedule =
-  //   process.env.CRON_PERSONAL_MAIL_RETURN || '0 4 * * *';
+  const personalMailReturnSchedule =
+    process.env.CRON_PERSONAL_MAIL_RETURN || '*/30 * * * *';
   const reverificationSchedules = process.env.CRON_REVERIFICATION_GUIDE
     ? [process.env.CRON_REVERIFICATION_GUIDE]
     : ['0 4 25-29 2 *', '0 4 1-8 3 *'];
@@ -80,13 +78,13 @@ export function initJobs() {
     { timezone: TZ }
   );
 
-  // cron.schedule(
-  //   personalMailReturnSchedule,
-  //   async () => {
-  //     await runPersonalMailReturnBatchJob();
-  //   },
-  //   { timezone: TZ }
-  // );
+  cron.schedule(
+    personalMailReturnSchedule,
+    async () => {
+      await runPersonalMailReturnBatchJob();
+    },
+    { timezone: TZ }
+  );
 
   for (const reverificationSchedule of reverificationSchedules) {
     cron.schedule(
@@ -131,6 +129,6 @@ export function initJobs() {
   );
 
   console.log(
-    `[BatchJob] started timezone=${TZ} studyGrass="${studyGrassSchedule}" trending="${trendingSchedule}" schoolStats="${schoolStatsSchedule}" timerGuard="${timerGuardSchedule}" personalMailReturn="OFF(commented)" reverification="${reverificationSchedules.join('|')}" adminStats="${adminStatsSchedule}" attendanceSuspicion="${attendanceSuspicionSchedule}" adminRetention="${adminRetentionSchedule}" analyticsReconcile="${analyticsReconcileSchedule}"`,
+    `[BatchJob] started timezone=${TZ} studyGrass="${studyGrassSchedule}" trending="${trendingSchedule}" schoolStats="${schoolStatsSchedule}" timerGuard="${timerGuardSchedule}" personalMailReturn="${personalMailReturnSchedule}" reverification="${reverificationSchedules.join('|')}" adminStats="${adminStatsSchedule}" attendanceSuspicion="${attendanceSuspicionSchedule}" adminRetention="${adminRetentionSchedule}" analyticsReconcile="${analyticsReconcileSchedule}"`,
   );
 }
