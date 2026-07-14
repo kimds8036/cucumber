@@ -6,6 +6,7 @@ import React, {
   useState,
   useEffect,
   useCallback,
+  useRef,
 } from 'react';
 import {
   View,
@@ -46,6 +47,10 @@ import {
   TimerLiveScrollInner,
   TimerLivePlannerCapture,
 } from './TimerLiveViews';
+import {
+  preloadTimerCaptureWatermark,
+  waitForTimerCapturePaint,
+} from './timerCaptureWatermark';
 
 export function TimerContent() {
   const { isGuidePreview } = useGuidePreview();
@@ -61,7 +66,22 @@ export function TimerContent() {
   const [showAddFriend, setShowAddFriend] = useState(false);
   const [pokeTarget, setPokeTarget] = useState(null);
   const [pokeVisible, setPokeVisible] = useState(false);
-  const [captureMounted, setCaptureMounted] = useState(false);
+  const captureWatermarkReadyRef = useRef(false);
+  const captureReadyWaitersRef = useRef([]);
+
+  const notifyCaptureWatermarkReady = useCallback(() => {
+    captureWatermarkReadyRef.current = true;
+    captureReadyWaitersRef.current.forEach((resolve) => resolve());
+    captureReadyWaitersRef.current = [];
+  }, []);
+
+  const waitForCaptureWatermarkReady = useCallback(async () => {
+    if (captureWatermarkReadyRef.current) return;
+    await new Promise((resolve) => {
+      captureReadyWaitersRef.current.push(resolve);
+      setTimeout(resolve, 800);
+    });
+  }, []);
 
   const { showToast, setIsTimerScreenActive } = useToast();
   const pushTimerToast = useCallback((senderName, body) => {
@@ -205,22 +225,18 @@ export function TimerContent() {
   );
 
   const handleSaveAsImage = async () => {
-    setCaptureMounted(true);
-    await new Promise((resolve) => {
-      requestAnimationFrame(() => requestAnimationFrame(resolve));
-    });
     if (!timer.capturePlannerRef.current?.capture) {
-      setCaptureMounted(false);
       return;
     }
     try {
+      await preloadTimerCaptureWatermark();
+      await waitForCaptureWatermarkReady();
+      await waitForTimerCapturePaint();
       const uri = await timer.capturePlannerRef.current.capture();
       await saveImageUriToGallery(uri);
       appAlert.alert('저장 완료', '갤러리에 저장되었어요.');
     } catch (e) {
       alertGallerySaveFailure(e);
-    } finally {
-      setCaptureMounted(false);
     }
   };
 
@@ -317,7 +333,7 @@ export function TimerContent() {
                 />
               )}
             </ScrollView>
-            {captureMounted ? (
+            {timer.initialLoadDone ? (
               <TimerLivePlannerCapture
                 capturePlannerRef={timer.capturePlannerRef}
                 styles={styles}
@@ -331,6 +347,7 @@ export function TimerContent() {
                 displaySubjects={timer.effectiveDisplaySubjects}
                 displayTasks={timer.displayTasks}
                 selectedDayKey={timer.selectedDayKey}
+                onWatermarkLoad={notifyCaptureWatermarkReady}
               />
             ) : null}
           </>

@@ -14,6 +14,7 @@ import {
   Text,
   TouchableOpacity,
   ScrollView,
+  Image,
 } from 'react-native';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import Feather from '@expo/vector-icons/Feather';
@@ -31,6 +32,10 @@ import {
   toTimerDayTimelineSeconds,
   appendSessionSegmentsForSlot,
 } from './timerHelpers';
+import {
+  TIMER_CAPTURE_WATERMARK,
+  preloadTimerCaptureWatermark,
+} from './timerCaptureWatermark';
 
 const LiveElapsedMsContext = createContext(0);
 
@@ -444,11 +449,16 @@ export function TimerLivePlannerCapture({
   displaySubjects,
   displayTasks,
   selectedDayKey,
+  onWatermarkLoad,
 }) {
   const liveExtraMs = useContext(LiveElapsedMsContext);
   const displayTotalMs = isViewingToday
     ? totalElapsedMs + (isRunning ? liveExtraMs : 0)
     : displayTotalElapsedMs;
+
+  useEffect(() => {
+    preloadTimerCaptureWatermark().catch(() => null);
+  }, []);
 
   const getSubjectTotalMs = (subjectId) => {
     if (subjectId == null) return 0;
@@ -545,13 +555,18 @@ export function TimerLivePlannerCapture({
     <View
       style={[styles.plannerCaptureOffscreen, tdb('#A0522D')]}
       pointerEvents="none"
+      collapsable={false}
     >
       <ViewShot
         ref={capturePlannerRef}
         options={{ format: 'png', quality: 1 }}
         style={[styles.viewShotBg, tdb('#8B7355')]}
+        collapsable={false}
       >
-        <View style={[styles.plannerCaptureWrap, tdb('#6B8E23')]}>
+        <View
+          style={[styles.plannerCaptureWrap, tdb('#6B8E23')]}
+          collapsable={false}
+        >
           <View style={[styles.plannerCaptureRow, tdb('#483D8B')]}>
             <View style={[styles.plannerLeftColumn, tdb('#008B8B')]}>
               <Text style={styles.plannerLabel}>Date</Text>
@@ -628,6 +643,19 @@ export function TimerLivePlannerCapture({
                 {renderTimetable()}
               </View>
             </View>
+          </View>
+          <View
+            style={styles.captureWatermarkOverlay}
+            pointerEvents="none"
+            collapsable={false}
+          >
+            <Image
+              source={TIMER_CAPTURE_WATERMARK}
+              style={styles.captureWatermarkImage}
+              resizeMode="contain"
+              fadeDuration={0}
+              onLoad={onWatermarkLoad}
+            />
           </View>
         </View>
       </ViewShot>
