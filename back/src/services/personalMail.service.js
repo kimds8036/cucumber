@@ -13,12 +13,21 @@ import {
   PERSONAL_MAIL_DUPLICATE_CODE,
   PERSONAL_MAIL_RETURN_RELATED_TYPE,
   PERSONAL_MAIL_RETURN_NOTIFICATION_TYPE,
-  DEFAULT_PERSONAL_MAIL_RETURN_DAYS,
+  DEFAULT_PERSONAL_MAIL_RETURN_HOURS,
 } from '../constants/personalMail.js';
 
+/** 운영 반송 대기(시간). PERSONAL_MAIL_RETURN_HOURS 우선, 레거시 DAYS면 ×24 */
+export function getPersonalMailReturnHours() {
+  const hours = parseInt(process.env.PERSONAL_MAIL_RETURN_HOURS || '', 10);
+  if (Number.isFinite(hours) && hours > 0) return hours;
+  const days = parseInt(process.env.PERSONAL_MAIL_RETURN_DAYS || '', 10);
+  if (Number.isFinite(days) && days > 0) return days * 24;
+  return DEFAULT_PERSONAL_MAIL_RETURN_HOURS;
+}
+
+/** @deprecated getPersonalMailReturnHours 사용 */
 export function getPersonalMailReturnDays() {
-  const n = parseInt(process.env.PERSONAL_MAIL_RETURN_DAYS || '', 10);
-  return Number.isFinite(n) && n > 0 ? n : DEFAULT_PERSONAL_MAIL_RETURN_DAYS;
+  return Math.max(1, Math.round(getPersonalMailReturnHours() / 24));
 }
 
 /**
@@ -308,10 +317,10 @@ export async function runPersonalMailReturnJob(options = {}) {
     returnAfterMinutes != null &&
     Number.isFinite(returnAfterMinutes) &&
     returnAfterMinutes > 0;
-  const intervalUnit = useMinutes ? 'MINUTE' : 'DAY';
+  const intervalUnit = useMinutes ? 'MINUTE' : 'HOUR';
   const intervalValue = useMinutes
     ? returnAfterMinutes
-    : getPersonalMailReturnDays();
+    : getPersonalMailReturnHours();
 
   const [candidates] = await pool.execute(
     `SELECT pm.id, pm.sender_id, pm.recipient_id, pm.recipient_name_enc,

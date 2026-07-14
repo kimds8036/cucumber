@@ -10,6 +10,7 @@ import {
   logBatchSkip,
   logBatchSuccess,
 } from '../services/batchMetric.service.js';
+import { DEFAULT_PERSONAL_MAIL_TEST_RETURN_MINUTES } from '../constants/personalMail.js';
 
 const JOB_NAME = 'personal-mail-return';
 const LOCK_KEY = 'batch:lock:personal-mail-return';
@@ -25,12 +26,12 @@ function envFlag(name) {
 function getTestReturnAfterMinutes() {
   const raw = Number(process.env.PERSONAL_MAIL_TEST_RETURN_MINUTES);
   if (Number.isFinite(raw) && raw > 0) return Math.floor(raw);
-  return 1;
+  return DEFAULT_PERSONAL_MAIL_TEST_RETURN_MINUTES;
 }
 
-// USE_TEST_MAIL_RETURN=true 이면 sent_at 기준 분 단위 반송(테스트).
-// false(기본)이면 PERSONAL_MAIL_RETURN_DAYS(일) — 운영.
-// 테스트 시 cron 1분 간격으로 돌리려면 CRON_PERSONAL_MAIL_RETURN 환경변수를 1분 주기로 설정.
+// USE_TEST_MAIL_RETURN=true 이면 sent_at 기준 분 단위(기본 180분=3시간).
+// false(기본)이면 PERSONAL_MAIL_RETURN_HOURS(기본 3시간) — 운영.
+// 참고: jobs/index.js 에서 새벽 4시 cron 등록은 주석 처리됨(수동/다른 스케줄로만 실행).
 function getPersonalMailReturnOptions() {
   if (!envFlag('USE_TEST_MAIL_RETURN')) return undefined;
   return { returnAfterMinutes: getTestReturnAfterMinutes() };
