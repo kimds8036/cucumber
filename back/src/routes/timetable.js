@@ -3,6 +3,7 @@ import { body } from 'express-validator';
 import pool from '../config/database.js';
 import { authenticate } from '../middleware/auth.js';
 import { validate } from '../middleware/validate.js';
+import { detectTimetableAnomalies } from '../utils/timetableAnomaly.js';
 
 const router = express.Router();
 
@@ -284,11 +285,13 @@ router.get('/', authenticate, async (req, res) => {
       await fetchBaseTimetableByUser(user);
     const override = userOverrideCache.get(userId) || {};
     const timetable = mergeTimetable(baseTimetable, override);
+    const anomalies = detectTimetableAnomalies(timetable);
     return res.json({
       success: true,
       data: {
         timetable,
         subjects: baseSubjects,
+        ...(anomalies.hasHolidayOrExam ? { anomalies } : {}),
         source: {
           neis: Object.keys(baseTimetable).length > 0 || baseSubjects.length > 0,
           override: Object.keys(override).length > 0,

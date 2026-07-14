@@ -8,6 +8,7 @@ export default function AppPopupModal({
   children,
   animationType = 'fade',
   dismissOnBackdrop = true,
+  dismissOnBackPress = dismissOnBackdrop,
   cardStyle,
   containerStyle,
   overlayColor = 'rgba(0,0,0,0.3)',
@@ -18,7 +19,7 @@ export default function AppPopupModal({
       visible={visible}
       transparent
       animationType={animationType}
-      onRequestClose={dismissOnBackdrop ? onClose : () => {}}
+      onRequestClose={dismissOnBackPress ? onClose : () => {}}
     >
       <View
         style={{

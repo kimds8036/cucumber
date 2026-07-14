@@ -261,6 +261,7 @@ const MyPage = ({ navigation }) => {
       existingTimetable:
         timetable != null && typeof timetable === 'object' ? timetable : {},
       timetableCacheKey,
+      returnToMypage: true,
     });
   }, [navigation, timetable, timetableCacheKey]);
 

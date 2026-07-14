@@ -23,6 +23,9 @@ import { getMaxPeriodFromTimetableKeys } from './periodUtils';
 import { colors, TIMETABLE_SUBJECT_COLORS } from '../../../styles/colors';
 import { api } from '../../../utils/api';
 import AppPopupModal from '../../../components/common/AppPopupModal';
+import TimetableAnomalyConfirmModal from '../../../components/timetable/TimetableAnomalyConfirmModal';
+import { fetchTimetableFromApi } from '../../../utils/timetableApi';
+import { hasTimetableAnomaly } from '../../../utils/timetableAnomaly';
 
 const TIMETABLE_CACHE_KEY = '@mypage_timetable_cache_v1';
 
@@ -41,17 +44,15 @@ const getSubjectColorIndex = (subject) => {
   return Math.abs(hash) % TIMETABLE_SUBJECT_COLORS.length;
 };
 
-async function fetchTimetableFromApi() {
-  const ttRes = await api.get('/api/timetable');
-  const data = ttRes.data?.data || {};
-  const timetable =
-    data.timetable && typeof data.timetable === 'object' && !Array.isArray(data.timetable)
-      ? data.timetable
-      : {};
-  const subjects = Array.isArray(data.subjects)
-    ? data.subjects.filter((s) => String(s || '').trim())
-    : [];
-  return { timetable, subjects };
+async function saveTimetableToCache(cacheKey, timetable) {
+  await AsyncStorage.setItem(
+    cacheKey,
+    JSON.stringify({
+      ts: Date.now(),
+      timetable,
+      clearedByUser: false,
+    }),
+  );
 }
 
 function hasSubjectList(subjects) {
@@ -205,6 +206,9 @@ function TimetablePreview({ timetable, loading }) {
 export default function TimetabelChoice({ navigation, route }) {
   const [autoLoading, setAutoLoading] = useState(false);
   const [showAutoAddedModal, setShowAutoAddedModal] = useState(false);
+  const [showAnomalyConfirmModal, setShowAnomalyConfirmModal] = useState(false);
+  const [pendingAutoTimetable, setPendingAutoTimetable] = useState(null);
+  const [pendingAutoAnomalies, setPendingAutoAnomalies] = useState(null);
   const [previewTimetable, setPreviewTimetable] = useState({});
   const [previewSubjects, setPreviewSubjects] = useState([]);
   const [previewLoading, setPreviewLoading] = useState(true);
@@ -237,10 +241,16 @@ export default function TimetabelChoice({ navigation, route }) {
     };
   }, []);
 
+  const dismissAnomalyModal = useCallback(() => {
+    setShowAnomalyConfirmModal(false);
+    setPendingAutoTimetable(null);
+    setPendingAutoAnomalies(null);
+  }, []);
+
   const fetchAndApplyAutoTimetable = useCallback(async () => {
     try {
       setAutoLoading(true);
-      const { timetable: tt } = await fetchTimetableFromApi();
+      const { timetable: tt, anomalies } = await fetchTimetableFromApi();
       if (!hasTimetableEntries(tt)) {
         Alert.alert(
           '시간표 없음',
@@ -248,14 +258,15 @@ export default function TimetabelChoice({ navigation, route }) {
         );
         return;
       }
-      await AsyncStorage.setItem(
-        scopedTimetableCacheKey,
-        JSON.stringify({
-          ts: Date.now(),
-          timetable: tt,
-          clearedByUser: false,
-        }),
-      );
+
+      if (hasTimetableAnomaly({ anomalies, timetable: tt })) {
+        setPendingAutoTimetable(tt);
+        setPendingAutoAnomalies(anomalies);
+        setShowAnomalyConfirmModal(true);
+        return;
+      }
+
+      await saveTimetableToCache(scopedTimetableCacheKey, tt);
       setShowAutoAddedModal(true);
     } catch (e) {
       console.warn(
@@ -270,7 +281,55 @@ export default function TimetabelChoice({ navigation, route }) {
     } finally {
       setAutoLoading(false);
     }
-  }, [navigation, scopedTimetableCacheKey]);
+  }, [scopedTimetableCacheKey]);
+
+  const handleAnomalyEdit = useCallback(() => {
+    const tt = pendingAutoTimetable;
+    if (!tt) {
+      dismissAnomalyModal();
+      return;
+    }
+    dismissAnomalyModal();
+    navigation.navigate('EditTimetable', {
+      existingTimetable: tt,
+      timetableCacheKey: scopedTimetableCacheKey,
+      returnToMypage: true,
+    });
+  }, [
+    pendingAutoTimetable,
+    dismissAnomalyModal,
+    navigation,
+    scopedTimetableCacheKey,
+  ]);
+
+  const handleAnomalySave = useCallback(async () => {
+    const tt = pendingAutoTimetable;
+    if (!tt) {
+      dismissAnomalyModal();
+      return;
+    }
+    try {
+      await saveTimetableToCache(scopedTimetableCacheKey, tt);
+      dismissAnomalyModal();
+      navigation.navigate('Main', { initialTab: 'mypage' });
+    } catch (e) {
+      console.warn('[TimetabelChoice] 시간표 캐시 저장 실패:', e);
+      Alert.alert('저장 실패', '시간표 저장 중 오류가 발생했습니다.');
+    }
+  }, [
+    pendingAutoTimetable,
+    dismissAnomalyModal,
+    scopedTimetableCacheKey,
+    navigation,
+  ]);
+
+  const handleBack = useCallback(() => {
+    if (showAnomalyConfirmModal) {
+      dismissAnomalyModal();
+      return;
+    }
+    navigation.goBack();
+  }, [showAnomalyConfirmModal, dismissAnomalyModal, navigation]);
 
   const handleSelect = async (mode) => {
     if (mode === 'auto') {
@@ -357,7 +416,7 @@ export default function TimetabelChoice({ navigation, route }) {
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
-      <SubHeader title="시간표 선택" onBack={() => navigation.goBack()} />
+      <SubHeader title="시간표 선택" onBack={handleBack} />
       <View style={styles.choiceContent}>
         <Text style={styles.choiceTitle}>이 시간표가 맞나요?</Text>
         <Text style={styles.choiceDescription}>
@@ -419,6 +478,13 @@ export default function TimetabelChoice({ navigation, route }) {
           </TouchableOpacity>
         </View>
       </View>
+      <TimetableAnomalyConfirmModal
+        visible={showAnomalyConfirmModal}
+        anomalies={pendingAutoAnomalies}
+        onDismiss={dismissAnomalyModal}
+        onEdit={handleAnomalyEdit}
+        onSave={handleAnomalySave}
+      />
       <AppPopupModal
         visible={showAutoAddedModal}
         onClose={() => setShowAutoAddedModal(false)}
