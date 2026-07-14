@@ -609,7 +609,7 @@ export const createTimerStyles = (width, normalize) => {
       justifyContent: 'center',
     },
     timetableHourText: {
-      fontSize: normalize(fontSizes.lg),
+      fontSize: normalize(fontSizes.md),
       fontFamily: fonts.regular,
       color: colors.textSecondary,
     },

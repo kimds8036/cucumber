@@ -638,7 +638,6 @@ export function TimerLivePlannerCapture({
               })}
             </View>
             <View style={[styles.plannerRightColumn, tdb('#B22222')]}>
-              <Text style={styles.timetableTitle}>공부 기록</Text>
               <View style={[styles.timetableScroll, tdb('#CD853F')]}>
                 {renderTimetable()}
               </View>
