@@ -10,7 +10,7 @@
       "env": {
         "APP_ENV": "development",
         "EXPO_PUBLIC_SIGNUP_TEST_MODE": "false",
-        "EXPO_PUBLIC_SIGNUP_ADULT_TEST_MODE": "true",
+        "EXPO_PUBLIC_SIGNUP_ADULT_TEST_MODE": "false",
         "EXPO_PUBLIC_INICIS_ENABLED": "true"
       }
     },
@@ -19,7 +19,7 @@
       "env": {
         "APP_ENV": "development",
         "EXPO_PUBLIC_SIGNUP_TEST_MODE": "false",
-        "EXPO_PUBLIC_SIGNUP_ADULT_TEST_MODE": "true",
+        "EXPO_PUBLIC_SIGNUP_ADULT_TEST_MODE": "false",
         "EXPO_PUBLIC_INICIS_ENABLED": "true"
       }
     },

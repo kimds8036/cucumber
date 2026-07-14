@@ -4,12 +4,14 @@ import {
   Text,
   ActivityIndicator,
   StyleSheet,
+  TouchableOpacity,
   useWindowDimensions,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { colors } from '../../styles/colors';
-import { api } from '../../utils/api';
 import { useAuth } from '../../context/AuthContext';
+import { clearAuthToken, clearUserSessionStorage } from '../../utils/api';
+import * as socketManager from '../../view/src/socketManager';
 
 const POLL_MS = 30_000;
 
@@ -20,7 +22,7 @@ export default function StudentVerificationGate() {
   const { width } = useWindowDimensions();
   const scale = width / 375;
   const normalize = (size) => Math.round(scale * size);
-  const { refreshStudentVerification } = useAuth();
+  const { refreshStudentVerification, logout } = useAuth();
   const [checking, setChecking] = useState(false);
   const pollRef = useRef(null);
 
@@ -40,6 +42,17 @@ export default function StudentVerificationGate() {
       if (pollRef.current) clearInterval(pollRef.current);
     };
   }, [runCheck]);
+
+  const handleLogout = async () => {
+    try {
+      socketManager.disconnectSocket?.({ force: true, reason: 'student_pending_logout' });
+    } catch {
+      // ignore
+    }
+    await clearUserSessionStorage();
+    await clearAuthToken();
+    logout();
+  };
 
   return (
     <SafeAreaView style={styles.root} edges={['top', 'bottom']}>
@@ -63,6 +76,13 @@ export default function StudentVerificationGate() {
             승인 상태를 확인하는 중…
           </Text>
         )}
+        <TouchableOpacity
+          style={{ marginTop: normalize(28), paddingVertical: normalize(8) }}
+          activeOpacity={0.7}
+          onPress={handleLogout}
+        >
+          <Text style={[styles.logoutText, { fontSize: normalize(14) }]}>로그아웃</Text>
+        </TouchableOpacity>
       </View>
     </SafeAreaView>
   );
@@ -93,10 +113,16 @@ const styles = StyleSheet.create({
     color: colors.textSecondary,
     textAlign: 'center',
     lineHeight: 24,
+    marginBottom: 8,
   },
   hint: {
-    marginTop: 24,
     fontFamily: 'Baloo2-Regular',
-    color: colors.textLight20,
+    color: colors.textSecondary,
+    marginTop: 24,
+  },
+  logoutText: {
+    fontFamily: 'Baloo2-Regular',
+    color: colors.textSecondary,
+    textDecorationLine: 'underline',
   },
 });

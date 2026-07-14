@@ -1,6 +1,8 @@
 import express from 'express';
+import { query } from 'express-validator';
 import pool from '../config/database.js';
 import { optionalAuthenticate } from '../middleware/auth.js';
+import { validate } from '../middleware/validate.js';
 import { getBatchRedis } from '../services/batchRedis.service.js';
 import {
   buildSafeSchoolSearchTerm,
@@ -10,9 +12,29 @@ import {
 
 const router = express.Router();
 
+const trendingValidators = [
+  query('limit').optional({ values: 'falsy' }).toInt().isInt({ min: 1, max: 20 })
+    .withMessage('limit은 1~20 입니다.'),
+];
+
+const previewValidators = [
+  query('query').optional({ values: 'falsy' }).isString().trim().isLength({ max: 100 })
+    .withMessage('검색어는 100자 이내여야 합니다.'),
+];
+
+const postsSearchValidators = [
+  query('query').optional({ values: 'falsy' }).isString().trim().isLength({ max: 200 })
+    .withMessage('검색어는 200자 이내여야 합니다.'),
+  query('page').optional({ values: 'falsy' }).toInt().isInt({ min: 1, max: 10000 })
+    .withMessage('page가 올바르지 않습니다.'),
+  query('limit').optional({ values: 'falsy' }).toInt().isInt({ min: 1, max: 50 })
+    .withMessage('limit은 1~50 입니다.'),
+  query('searchType').optional({ values: 'falsy' }).isString().trim().isLength({ max: 20 }),
+];
+
 // GET /api/search/trending?limit=10
 // - Redis trending:hashtag ZSET 상위 해시태그 반환
-router.get('/trending', async (req, res) => {
+router.get('/trending', validate(trendingValidators), async (req, res) => {
   try {
     const limitNum = Math.max(1, Math.min(20, parseInt(req.query?.limit, 10) || 10));
     const redis = await getBatchRedis();
@@ -35,7 +57,7 @@ router.get('/trending', async (req, res) => {
 
 // GET /api/search/preview?query=...
 // - 학교 이름만 미리보기 (최대 2개)
-router.get('/preview', async (req, res) => {
+router.get('/preview', validate(previewValidators), async (req, res) => {
   try {
     const { query = '' } = req.query;
     const q = String(query || '').trim();
@@ -77,7 +99,7 @@ router.get('/preview', async (req, res) => {
 // GET /api/search/posts?query=...&page=1&limit=20
 // - 게시글 전체 검색 (섹션별로 클라이언트에서 board_type 기반 그룹핑)
 // - matchedSchools: 검색어를 포함하는 학교 최대 5개 반환
-router.get('/posts', optionalAuthenticate, async (req, res) => {
+router.get('/posts', optionalAuthenticate, validate(postsSearchValidators), async (req, res) => {
   try {
     const { query = '', page = 1, limit = 20, searchType = 'text' } = req.query;
 

@@ -60,7 +60,6 @@ import {
   isValidBirthDateString,
   birthDatesMatch,
   normalizeBirthDateForCompare,
-  isSignupAdultTestModeEnabled,
 } from './signupBirthDatePolicy';
 import {
   buildEnrollmentFromBirthDate,
@@ -68,10 +67,13 @@ import {
   pickRandomProfileColorId,
 } from './signupEnrollmentUtils';
 
-/** OCR·가입 플로우 UI 테스트 — dev 빌드 기본 ON, .env로 끌 수 있음 */
+/**
+ * OCR·가입 플로우 UI 테스트 스킵
+ * - __DEV__ 에서만 허용 (production/release 빌드는 절대 SKIP 불가)
+ * - 기본 ON, EXPO_PUBLIC_SIGNUP_TEST_MODE=false 로 OFF
+ */
 const SKIP_SIGNUP_VALIDATION_UNTIL_OCR_TEST =
-  process.env.EXPO_PUBLIC_SIGNUP_TEST_MODE === 'true' ||
-  (process.env.EXPO_PUBLIC_SIGNUP_TEST_MODE !== 'false' && __DEV__);
+  __DEV__ && process.env.EXPO_PUBLIC_SIGNUP_TEST_MODE !== 'false';
 
 /** OCR API 호출용 임시 본인 정보 (SKIP 모드) */
 const OCR_TEST_MOCK_IDENTITY = {
@@ -1162,13 +1164,6 @@ const Sign = ({ navigation }) => {
     const level =
       overrides.level || inferExpectedSchoolLevel(birthDate);
     let enrollment = buildEnrollmentFromBirthDate(birthDate, level);
-
-    if (
-      (!enrollment.graduationYear || !enrollment.schoolLevel) &&
-      isSignupAdultTestModeEnabled()
-    ) {
-      enrollment = buildEnrollmentFromBirthDate(OCR_TEST_MOCK_IDENTITY.birthDate);
-    }
 
     const grade =
       overrides.grade ?? enrollment.grade ?? 1;

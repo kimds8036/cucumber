@@ -61,6 +61,7 @@ import {
   blockGlobalReadonlyWrites,
   blockLockedSchoolWrite,
 } from './middleware/systemFlags.js';
+import { multerErrorHandler } from './middleware/multerError.js';
 
 
 dotenv.config();
@@ -313,8 +314,10 @@ app.use('/api/test', testRoutes);
 
 // ============ 글로벌 에러 핸들러 ============
 // 모든 라우트 등록 이후에 위치해야 한다.
+// - multer 파일 한도 → 422
 // - CORS 차단은 403 으로 변환
 // - 운영: DB/SQL/스택 등 내부 정보는 응답에 포함하지 않음 (console.error 만 유지)
+app.use(multerErrorHandler);
 app.use((err, req, res, _next) => {
   if (err?.message?.includes('CORS')) {
     return res.status(403).json({ success: false, message: 'CORS 정책에 의해 차단되었습니다.' });

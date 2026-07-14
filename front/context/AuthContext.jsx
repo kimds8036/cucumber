@@ -39,7 +39,7 @@ export function AuthProvider({ children }) {
   const [authHydrated, setAuthHydrated] = useState(false);
   const [postLoginRoute, setPostLoginRoute] = useState('Main');
   const [studentVerificationStatus, setStudentVerificationStatus] =
-    useState('APPROVED');
+    useState('PENDING');
   const [rejectReason, setRejectReason] = useState(null);
   const [reverificationStatus, setReverificationStatus] = useState('none');
   const [reverificationDeadline, setReverificationDeadline] = useState(null);
@@ -47,7 +47,7 @@ export function AuthProvider({ children }) {
     useState(false);
 
   const applyVerification = useCallback(async (status, reason, extra = {}) => {
-    const nextStatus = status || 'APPROVED';
+    const nextStatus = status || 'PENDING';
     setStudentVerificationStatus(nextStatus);
     setRejectReason(reason || null);
     if (extra.reverificationSubmissionPending != null) {
@@ -94,7 +94,7 @@ export function AuthProvider({ children }) {
 
   const logout = useCallback(async () => {
     setPostLoginRoute('Main');
-    setStudentVerificationStatus('APPROVED');
+    setStudentVerificationStatus('PENDING');
     setRejectReason(null);
     setReverificationStatus('none');
     setReverificationDeadline(null);
