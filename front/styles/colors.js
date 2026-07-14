@@ -17,11 +17,14 @@ export const colors = {
   background: '#fff', // 기본 배경 (흰색)
   backgroundGray: '#D3D3D3', // 회색 배경
   surface: '#F7F7F7', // 카드 배경 약간 다른 톤
+  guideBackground: '#FAF8F4', // 재학증명서 가이드 배경
   border: '#E0E0E0', // 구분선/dashed border용
 
   // 검정 컬러
   textPrimary: '#272A26', // 기본 텍스트 (진한 회색)
   textSecondary: 'rgba(39, 42, 38, 0.5)', // 보조 텍스트 (중간 회색)
+  /** 페이지 설명·캡션 — WCAG 대비 확보 (#6B7280 계열) */
+  textMuted: '#6B7280',
   background2: 'rgba(39, 42, 38, 0.3)', // 비활성 텍스트 (밝은 회색)
   textWhite: '#fff', // 흰색 텍스트
   textwhite2: 'rgba(255, 255, 255, 0.3)',
@@ -107,4 +110,5 @@ export const fontSizes = {
   xxl: 16,
   title: 18,
   heading: 20,
+  guideStepNumber: 30,
 };

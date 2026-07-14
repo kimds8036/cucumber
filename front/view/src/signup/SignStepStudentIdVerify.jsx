@@ -9,7 +9,7 @@ import {
   useWindowDimensions,
 } from 'react-native';
 import { useIsFocused } from '@react-navigation/native';
-import { CameraView, useCameraPermissions } from 'expo-camera';
+import { useCameraPermissions } from 'expo-camera';
 import { colors } from '../../../styles/colors';
 import { createStudentIdCameraLayerStyles } from '../../../styles/studentIdCameraLayers';
 import { api } from '../../../utils/api';
@@ -18,39 +18,46 @@ import {
   getStudentIdFrameSize,
   resolveStudentIdCropRect,
 } from '../../../utils/studentIdFrameCrop';
-import StudentIdCameraGuideOverlay from './StudentIdCameraGuideOverlay';
+import StudentIdCaptureStage, {
+  useStudentIdCapture,
+} from '../../../components/auth/StudentIdCaptureStage';
+import SignupHelperText from './SignupHelperText';
+import { normalizeBirthDateForCompare } from './signupBirthDatePolicy';
 
 const UPLOAD_TIMEOUT_MS = 120_000;
 
 const SignStepStudentIdVerify = ({
   styles,
+  normalize = (n) => n,
   identity,
   schoolId,
   alreadyVerified = false,
   onVerified,
+  onCertificateGuide,
 }) => {
   const isFocused = useIsFocused();
-  const { width: screenWidth, height: screenHeight } = useWindowDimensions();
+  const { width: screenWidth } = useWindowDimensions();
   const [stageSize, setStageSize] = useState({ width: 0, height: 0 });
 
   const layerStyles = useMemo(() => createStudentIdCameraLayerStyles(), []);
 
-  const stageWidth = stageSize.width > 0 ? stageSize.width : screenWidth;
-  const stageHeight =
-    stageSize.height > 0 ? stageSize.height : Math.max(280, screenHeight * 0.42);
+  const stageReady = stageSize.width > 0 && stageSize.height > 0;
+  const stageWidth = stageReady ? stageSize.width : screenWidth;
 
   const { frameWidth, frameHeight } = useMemo(
-    () => getStudentIdFrameSize(stageWidth),
-    [stageWidth],
+    () =>
+      stageReady
+        ? getStudentIdFrameSize(stageWidth)
+        : { frameWidth: 0, frameHeight: 0 },
+    [stageReady, stageWidth],
   );
 
   const [permission, requestPermission] = useCameraPermissions();
   const cameraRef = useRef(null);
-  const previewLayoutRef = useRef({ width: 0, height: 0 });
+  const { frozenUri, capture, resetCapture, previewLayoutRef, lastPhotoRef } =
+    useStudentIdCapture(cameraRef);
   const [busy, setBusy] = useState(false);
-  const [statusText, setStatusText] = useState(
-    '학생증을 가운데 틀에 맞춘 뒤 촬영해 주세요. 관리자가 확인합니다.',
-  );
+  const [statusText, setStatusText] = useState('');
 
   const onStageLayout = useCallback((e) => {
     const { width, height } = e.nativeEvent.layout;
@@ -58,7 +65,7 @@ const SignStepStudentIdVerify = ({
       setStageSize({ width, height });
       previewLayoutRef.current = { width, height };
     }
-  }, []);
+  }, [previewLayoutRef]);
 
   useEffect(() => {
     if (!permission?.granted) {
@@ -92,14 +99,14 @@ const SignStepStudentIdVerify = ({
     setBusy(true);
     setStatusText('학생증을 업로드하는 중…');
     try {
-      const photo = await cameraRef.current.takePictureAsync({
-        base64: true,
-        quality: 0.85,
-        skipProcessing: false,
-      });
+      let photo = lastPhotoRef.current;
+      if (!photo) {
+        photo = await capture();
+      }
 
       if (!photo?.base64) {
         Alert.alert('촬영 실패', '다시 촬영해 주세요.');
+        resetCapture();
         return;
       }
 
@@ -117,12 +124,16 @@ const SignStepStudentIdVerify = ({
           ? cropRectToNormalized(cropRect, photo.width, photo.height)
           : null;
 
+      const normalizedBirthDate =
+        normalizeBirthDateForCompare(identity.birthDate) || identity.birthDate;
+      const normalizedPhone = String(identity.phoneNumber || '').replace(/\D/g, '');
+
       const res = await api.post(
         '/api/auth/signup/upload-student-id',
         {
           name: identity.name.trim(),
-          birthDate: identity.birthDate,
-          phone: identity.phoneNumber,
+          birthDate: normalizedBirthDate,
+          phone: normalizedPhone,
           schoolId,
           imageBase64: photo.base64,
           cropRegion,
@@ -166,11 +177,14 @@ const SignStepStudentIdVerify = ({
               '학생증 제출 중 오류가 발생했습니다.';
       Alert.alert('인증 오류', msg);
       setStatusText('오류가 발생했습니다. 다시 시도해 주세요.');
+      resetCapture();
     } finally {
       setBusy(false);
-      setStatusText('학생증을 가운데 틀에 맞춰 주세요.');
+      if (!lastPhotoRef.current) {
+        setStatusText('');
+      }
     }
-  }, [identity, schoolId, onVerified, frameWidth, frameHeight, alreadyVerified, busy]);
+  }, [identity, schoolId, onVerified, frameWidth, frameHeight, alreadyVerified, busy, capture, lastPhotoRef, resetCapture]);
 
   if (alreadyVerified) {
     return (
@@ -178,20 +192,15 @@ const SignStepStudentIdVerify = ({
         <Text style={[styles.inputLabel, { textAlign: 'center' }]}>
           학생증 촬영이 완료되었습니다.
         </Text>
-        <Text
-          style={{
-            marginTop: 8,
-            color: colors.textSecondary,
-            fontFamily: 'Baloo2-Regular',
-            fontSize: 13,
-            textAlign: 'center',
-            lineHeight: 20,
-            paddingHorizontal: 16,
-          }}
+        <SignupHelperText
+          normalize={normalize}
+          centered
+          showIcon={false}
+          style={{ marginTop: normalize(8) }}
         >
           아래 [제출하기]를 누르면 가입이 완료되고, 관리자 승인 대기 화면으로
           이동합니다.
-        </Text>
+        </SignupHelperText>
       </View>
     );
   }
@@ -227,30 +236,16 @@ const SignStepStudentIdVerify = ({
         >
           {showCamera ? (
             <View style={styles.cameraStageStack} collapsable={false}>
-              <CameraView
-                ref={cameraRef}
-                style={[styles.cameraPreview, layerStyles.preview]}
-                facing="back"
-                mode="picture"
-                collapsable={false}
-                onMountError={(e) => {
-                  console.warn('[SignStepStudentIdVerify] camera mount', e);
-                  Alert.alert(
-                    '카메라 오류',
-                    e?.message ||
-                      '카메라를 시작하지 못했습니다. 앱을 다시 시작해 주세요.',
-                  );
-                }}
-              />
-              <StudentIdCameraGuideOverlay
-                stageWidth={stageWidth}
-                stageHeight={stageHeight}
-                frameWidth={frameWidth}
-                frameHeight={frameHeight}
+              <StudentIdCaptureStage
+                cameraRef={cameraRef}
+                frozenUri={frozenUri}
                 statusText={statusText}
                 guideTextStyle={styles.cameraGuideText}
-                overlayRootStyle={[styles.cameraGuideOverlay, layerStyles.guideOverlay]}
-                layerStyles={layerStyles}
+                stageStyle={[styles.cameraPreview, layerStyles.preview, { flex: 1 }]}
+                previewLayoutRef={previewLayoutRef}
+                onStageLayout={({ width, height }) => {
+                  previewLayoutRef.current = { width, height };
+                }}
               />
             </View>
           ) : (
@@ -269,9 +264,39 @@ const SignStepStudentIdVerify = ({
         {busy ? (
           <ActivityIndicator color={colors.background} />
         ) : (
-          <Text style={styles.nextButtonText}>촬영 및 제출하기</Text>
+          <Text style={styles.nextButtonText}>
+            {frozenUri ? '제출하기' : '촬영 및 제출하기'}
+          </Text>
         )}
       </TouchableOpacity>
+      <View style={localStyles.certificateGuideLinkRow}>
+        <Text style={localStyles.certificateGuideLinkText}>
+          학생증이 없으신가요?{' '}
+        </Text>
+        <TouchableOpacity
+          onPress={onCertificateGuide}
+          disabled={busy}
+          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+        >
+          <Text
+            style={[
+              localStyles.certificateGuideLinkAction,
+              busy && localStyles.disabledLink,
+            ]}
+          >
+            재학증명서로 인증하기
+          </Text>
+        </TouchableOpacity>
+      </View>
+      {frozenUri ? (
+        <TouchableOpacity
+          style={localStyles.retakeLink}
+          onPress={resetCapture}
+          disabled={busy}
+        >
+          <Text style={localStyles.retakeLinkText}>다시 촬영하기</Text>
+        </TouchableOpacity>
+      ) : null}
     </View>
   );
 };
@@ -295,6 +320,38 @@ const localStyles = StyleSheet.create({
   captureButton: {
     marginTop: 12,
     flexShrink: 0,
+  },
+  certificateGuideLinkRow: {
+    alignSelf: 'center',
+    flexDirection: 'row',
+    alignItems: 'center',
+    flexWrap: 'wrap',
+    justifyContent: 'center',
+    marginTop: 10,
+  },
+  certificateGuideLinkText: {
+    fontFamily: 'Baloo2-Regular',
+    color: colors.textSecondary,
+    fontSize: 14,
+  },
+  certificateGuideLinkAction: {
+    fontFamily: 'Baloo2-Bold',
+    color: colors.textSecondary,
+    fontSize: 14,
+    textDecorationLine: 'underline',
+  },
+  disabledLink: {
+    opacity: 0.5,
+  },
+  retakeLink: {
+    alignSelf: 'center',
+    marginTop: 8,
+    paddingVertical: 6,
+  },
+  retakeLinkText: {
+    fontFamily: 'Baloo2-Bold',
+    color: colors.primary,
+    fontSize: 14,
   },
 });
 

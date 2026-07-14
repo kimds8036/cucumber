@@ -221,7 +221,7 @@ export const createChatStyles = (width, normalize) => {
     },
     opponentBubbleText: {
       fontSize: normalize(fontSizes.xl),
-      lineHeight: normalize(fontSizes.xl) * 1.4,
+      lineHeight: normalize(fontSizes.xl) * 1.6,
       fontFamily: fonts.regular,
       color: colors.textPrimary,
       ...Platform.select({
@@ -275,7 +275,7 @@ export const createChatStyles = (width, normalize) => {
     },
     userBubbleText: {
       fontSize: normalize(fontSizes.xl),
-      lineHeight: normalize(fontSizes.xl) * 1.4,
+      lineHeight: normalize(fontSizes.xl) * 1.6,
       fontFamily: fonts.regular,
       color: colors.textPrimary,
       ...Platform.select({

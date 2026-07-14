@@ -29,13 +29,11 @@ import BoardFloatingMenu from './board/BoardFloatingMenu';
 import Skeleton from '../../components/common/Skeleton';
 import ReportModal from '../../components/common/ReportModal.jsx';
 import { filterCommentTreeExcludingUser } from '../../utils/blockUser';
-import BoarddetailADplaceholder from '../../src/screens/ad/boarddetailADplaceholder.jsx';
-import { useAdSlots } from '../../hooks/useAdSlots';
+import TopAdBanner from '../../components/ads/TopAdBanner';
 
 export default function BoardDetail({ navigation, route }) {
-  const { coords, coordsIsFresh, permissionGranted } = useLocationContext();
+  const { coords, permissionGranted } = useLocationContext();
   const { refreshHasUnread } = useNotification();
-  const { adSlots } = useAdSlots();
   const { width } = useWindowDimensions();
   const normalize = useMemo(() => getNormalize(width), [width]);
   const styles = useMemo(
@@ -117,6 +115,7 @@ export default function BoardDetail({ navigation, route }) {
     handleCommentLike,
     handleDeletePost,
     handleDeleteComment,
+    handlePinComment,
     startNoteToUser,
     handleSharePost,
   } = useBoardDetail({
@@ -148,7 +147,7 @@ export default function BoardDetail({ navigation, route }) {
     }
   };
 
-  const distanceStale = permissionGranted && (!coordsIsFresh || !coords);
+  const distanceStale = permissionGranted && !coords;
   const postHasKm =
     typeof post?.distanceKm === 'number' && !Number.isNaN(post.distanceKm);
   const distanceLoading = permissionGranted && !postHasKm && distanceStale;
@@ -475,12 +474,7 @@ export default function BoardDetail({ navigation, route }) {
                       distanceStale={distanceStale}
                       distanceLoading={distanceLoading}
                     />
-                    {adSlots.length > 0 ? (
-                      <BoarddetailADplaceholder
-                        styles={styles}
-                        adData={adSlots[0]}
-                      />
-                    ) : null}
+                    <TopAdBanner styles={styles} />
                   </View>
                 }
                 contentContainerStyle={[
@@ -572,11 +566,18 @@ export default function BoardDetail({ navigation, route }) {
                   </View>
                 </View>
                 <View style={styles.adSection}>
-                  <Skeleton
-                    width={normalize(36)}
-                    height={normalize(12)}
-                    borderRadius={normalize(6)}
-                  />
+                  <View style={styles.adSectionRow}>
+                    <Skeleton
+                      width={normalize(28)}
+                      height={normalize(16)}
+                      borderRadius={normalize(8)}
+                    />
+                    <Skeleton
+                      width="72%"
+                      height={normalize(14)}
+                      borderRadius={normalize(6)}
+                    />
+                  </View>
                 </View>
                 <View
                   style={[styles.commentSection, { paddingTop: normalize(10) }]}
@@ -649,6 +650,7 @@ export default function BoardDetail({ navigation, route }) {
           onClose={closeFloatingMenu}
           onDeletePost={handleDeletePost}
           onDeleteComment={handleDeleteComment}
+          onPinComment={handlePinComment}
           onSharePost={handleSharePost}
           onNoteToUser={{ start: startNoteToUser, postUserId: postAuthorId }}
           onReportPost={() => {

@@ -28,7 +28,8 @@ import BoardPostCard from '../../components/Boardpostcard';
 import AdPlaceholder from '../../src/screens/ad/AdPlaceholder';
 import { useLocationContext } from '../../context/LocationContext';
 import Skeleton from '../../components/common/Skeleton';
-import { injectAdSlots, useAdSlots } from '../../hooks/useAdSlots';
+import { injectAdSlots } from '../../hooks/useAdSlots';
+import { AD_PLACEMENTS } from '../../constants/adPlacements';
 
 /** 서버 created_at(UTC)을 "n분 전" 형식으로 변환. 화면에서는 기기 로컬 시간 기준으로 계산 */
 function formatTimeAgo(createdAt) {
@@ -67,7 +68,8 @@ const SchoolBoardAll = ({ navigation }) => {
     [width],
   );
   const { coords, refreshLocation } = useLocationContext();
-  const { adSlots } = useAdSlots();
+  // TODO: /api/ads 연동 후 useAdSlots(AD_PLACEMENTS.FEED_BOARD)
+  const adSlots = [];
 
   const [schoolPosts, setSchoolPosts] = useState([]);
   const [sortType] = useState('latest');
@@ -220,6 +222,7 @@ const SchoolBoardAll = ({ navigation }) => {
   const dataWithAds = useMemo(
     () =>
       injectAdSlots(schoolPosts, adSlots, {
+        placement: AD_PLACEMENTS.FEED_BOARD,
         adType: 'ad',
         idPrefix: 'ad',
         skipFirstIndex: true,

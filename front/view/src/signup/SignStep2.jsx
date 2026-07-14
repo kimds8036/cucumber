@@ -1,7 +1,7 @@
 import React, { useMemo, useState, useEffect } from 'react';
 import { View, Text, TextInput, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { colors } from '../../../styles/colors';
+import { colors, fontSizes } from '../../../styles/colors';
 import {
   USERNAME_HINT,
   PASSWORD_HINT,
@@ -12,6 +12,7 @@ import {
 } from '../../../utils/signupValidation';
 import SignupLockedField from './SignupLockedField';
 import SignupStepScroll from './SignupStepScroll';
+import SignupHelperText from './SignupHelperText';
 
 const SignStep2 = ({
   styles,
@@ -52,6 +53,12 @@ const SignStep2 = ({
     });
   };
 
+  const handleUsernameChange = (text) => {
+    const normalized = text.replace(/\s/g, '_');
+    setUsername(normalized);
+    notifyChange({ username: normalized });
+  };
+
   useEffect(() => {
     notifyChange();
   }, [username, password, passwordConfirm]);
@@ -86,11 +93,11 @@ const SignStep2 = ({
     placeholder = PASSWORD_HINT,
   }) => (
     <>
-      <Text style={styles.inputLabel}>{label}</Text>
-      <View style={[styles.inputWrapper, styles.inputRow, wrapperStyle]}>
-        <View style={styles.inputWithButton}>
+      <Text style={[styles.inputLabel, styles.inputLabelSpaced]}>{label}</Text>
+      <View style={[styles.inputWrapper, wrapperStyle]}>
+        <View style={[styles.input, styles.passwordInputFrame, inputStyle]}>
           <TextInput
-            style={[styles.input, styles.inputFlex, inputStyle]}
+            style={styles.passwordInput}
             value={value}
             onChangeText={onChangeText}
             placeholder={placeholder}
@@ -107,7 +114,7 @@ const SignStep2 = ({
           >
             <Ionicons
               name={visible ? 'eye-off-outline' : 'eye-outline'}
-              size={22}
+              size={normalize(fontSizes.title + 4)}
               color={colors.textSecondary}
             />
           </TouchableOpacity>
@@ -119,26 +126,41 @@ const SignStep2 = ({
   const renderFieldFeedback = (status, { validText, invalidText, hintText }) => {
     if (status === 'idle') {
       return hintText ? (
-        <Text style={styles.fieldHelperText}>{hintText}</Text>
+        <SignupHelperText normalize={normalize} tight>
+          {hintText}
+        </SignupHelperText>
       ) : null;
     }
     const isOk = status === 'valid' || status === 'match';
     return (
-      <Text
-        style={[
-          styles.fieldHelperText,
-          isOk ? styles.fieldHelperTextSuccess : styles.fieldHelperTextError,
-        ]}
+      <SignupHelperText
+        normalize={normalize}
+        variant={isOk ? 'success' : 'error'}
+        tight
       >
         {isOk ? validText : invalidText}
-      </Text>
+      </SignupHelperText>
     );
   };
 
   return (
-    <View style={{ flex: 1 }}>
+    <View style={styles.stepFlex}>
       <SignupStepScroll normalize={normalize} bottomOffset={bottomOffset}>
-        {!accountOnly ? (
+        {accountOnly ? (
+          verifiedName ? (
+            <SignupLockedField
+              label="이름"
+              value={verifiedName}
+              styles={styles}
+              compactBottom
+              helperBelowLabel={
+                <SignupHelperText normalize={normalize} variant="plain" tight>
+                  본인인증으로 확인된 이름이며 변경할 수 없습니다.
+                </SignupHelperText>
+              }
+            />
+          ) : null
+        ) : (
           <>
             <SignupLockedField
               label="이름"
@@ -160,19 +182,21 @@ const SignStep2 = ({
               />
             ) : null}
           </>
-        ) : null}
+        )}
 
-        <Text style={[styles.inputLabel, { marginTop: accountOnly ? 0 : 8 }]}>
+        <Text
+          style={[
+            styles.inputLabel,
+            (verifiedName || !accountOnly) && styles.inputLabelSpaced,
+          ]}
+        >
           아이디
         </Text>
-        <View style={[styles.inputWrapper, styles.inputRow]}>
+        <View style={styles.inputWrapper}>
           <TextInput
             style={styles.input}
             value={username}
-            onChangeText={(text) => {
-              setUsername(text);
-              notifyChange({ username: text });
-            }}
+            onChangeText={handleUsernameChange}
             placeholder={USERNAME_HINT}
             placeholderTextColor={colors.textSecondary}
             autoCapitalize="none"
@@ -180,7 +204,6 @@ const SignStep2 = ({
           />
         </View>
         {renderFieldFeedback(usernameStatus, {
-          hintText: USERNAME_HINT,
           validText: '사용 가능한 아이디 형식입니다.',
           invalidText: USERNAME_ERROR,
         })}
@@ -196,7 +219,6 @@ const SignStep2 = ({
           onToggleVisible: () => setShowPassword((v) => !v),
         })}
         {renderFieldFeedback(passwordStatus, {
-          hintText: PASSWORD_HINT,
           validText: '사용 가능한 비밀번호 형식입니다.',
           invalidText: PASSWORD_ERROR,
         })}
@@ -210,12 +232,12 @@ const SignStep2 = ({
           },
           visible: showPasswordConfirm,
           onToggleVisible: () => setShowPasswordConfirm((v) => !v),
-          placeholder: '비밀번호 다시 입력',
+          placeholder: '',
           inputStyle:
             passwordConfirmStatus === 'match'
-              ? { borderColor: colors.primaryDark, borderWidth: 1.5 }
+              ? styles.passwordConfirmMatch
               : passwordConfirmStatus === 'mismatch'
-                ? { borderColor: colors.alert, borderWidth: 1.5 }
+                ? styles.passwordConfirmMismatch
                 : undefined,
         })}
         {renderFieldFeedback(passwordConfirmStatus, {
@@ -225,7 +247,7 @@ const SignStep2 = ({
 
         {showCertificateFields ? (
           <>
-            <Text style={[styles.inputLabel, { marginTop: 8 }]}>
+            <Text style={[styles.inputLabel, styles.certificateSubmitLabelSpaced]}>
               재학 학교명
             </Text>
             <View style={styles.inputWrapper}>

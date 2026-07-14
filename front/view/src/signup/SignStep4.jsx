@@ -4,6 +4,7 @@ import { colors } from '../../../styles/colors';
 import { GRADE_ENROLLMENT_NOTICE } from './authFeatureAlerts';
 import SignupLockedField from './SignupLockedField';
 import SignupStepScroll from './SignupStepScroll';
+import SignupHelperText from './SignupHelperText';
 
 const resolveSchoolLabel = (recognizedData, schoolNameFallback) => {
   if (!recognizedData) return schoolNameFallback || '';
@@ -89,7 +90,9 @@ const SignStep4 = ({
           />
         </View>
 
-        <Text style={styles.enrollmentNotice}>{GRADE_ENROLLMENT_NOTICE}</Text>
+        <SignupHelperText normalize={normalize}>
+          {GRADE_ENROLLMENT_NOTICE}
+        </SignupHelperText>
       </SignupStepScroll>
     </View>
   );

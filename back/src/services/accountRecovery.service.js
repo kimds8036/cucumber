@@ -2,11 +2,15 @@ import jwt from 'jsonwebtoken';
 import crypto from 'crypto';
 import pool from '../config/database.js';
 import { verifyFirebaseIdToken } from '../config/firebase.js';
-import {
-  normalizeLocalKrPhone,
-  SQL_PHONE_NORM,
-} from '../utils/phone.js';
+import { normalizeLocalKrPhone } from '../utils/phone.js';
 import { validatePhone } from '../utils/validation.js';
+import {
+  nameLookupBindParams,
+  nameLookupWhereClause,
+  packPhoneOnly,
+  phoneLookupBindParams,
+  phoneLookupWhereClause,
+} from '../services/userPii.service.js';
 
 if (!process.env.JWT_SECRET) {
   throw new Error('[FATAL] JWT_SECRET 환경변수가 없습니다.');
@@ -73,7 +77,7 @@ export async function assertFirebasePhoneToken(idToken, clientPhone) {
 
 async function findActiveUser(whereSql, params) {
   const [rows] = await pool.execute(
-    `SELECT id, username, name, phone, is_banned, is_deleted
+    `SELECT id, username, name_enc, phone_enc, is_banned, is_deleted
      FROM users
      WHERE is_deleted = FALSE
        AND (is_banned IS NULL OR is_banned = FALSE)
@@ -81,7 +85,8 @@ async function findActiveUser(whereSql, params) {
      LIMIT 1`,
     params,
   );
-  return rows[0] || null;
+  const row = rows[0] || null;
+  return row;
 }
 
 export async function findRegisteredUserByPhoneAndName(phone, name) {
@@ -96,8 +101,8 @@ export async function findRegisteredUserByPhoneAndName(phone, name) {
   }
 
   const user = await findActiveUser(
-    `${SQL_PHONE_NORM} = ? AND name = ?`,
-    [normalizedPhone, trimmedName],
+    `${phoneLookupWhereClause()} AND ${nameLookupWhereClause()}`,
+    [...phoneLookupBindParams(normalizedPhone), ...nameLookupBindParams(trimmedName)],
   );
 
   if (!user) {
@@ -129,8 +134,12 @@ export async function findRegisteredUserByPhoneNameUsername(
   }
 
   const user = await findActiveUser(
-    `${SQL_PHONE_NORM} = ? AND name = ? AND username = ?`,
-    [normalizedPhone, trimmedName, trimmedUsername],
+    `${phoneLookupWhereClause()} AND ${nameLookupWhereClause()} AND username = ?`,
+    [
+      ...phoneLookupBindParams(normalizedPhone),
+      ...nameLookupBindParams(trimmedName),
+      trimmedUsername,
+    ],
   );
 
   if (!user) {
@@ -149,6 +158,7 @@ export async function issuePasswordRecoveryToken({ userId, phone, username }) {
   const normalizedPhone = normalizeLocalKrPhone(phone);
   const trimmedUsername = String(username || '').trim();
   const expiresAt = new Date(Date.now() + 15 * 60 * 1000);
+  const phonePacked = packPhoneOnly(normalizedPhone);
 
   const token = jwt.sign(
     {
@@ -164,9 +174,16 @@ export async function issuePasswordRecoveryToken({ userId, phone, username }) {
 
   await pool.execute(
     `INSERT INTO account_recovery_tokens
-       (jti, user_id, phone, username, expires_at)
-     VALUES (?, ?, ?, ?, ?)`,
-    [jti, userId, normalizedPhone, trimmedUsername, expiresAt],
+       (jti, user_id, phone_enc, phone_lookup, username, expires_at)
+     VALUES (?, ?, ?, ?, ?, ?)`,
+    [
+      jti,
+      userId,
+      phonePacked.phone_enc,
+      phonePacked.phone_lookup,
+      trimmedUsername,
+      expiresAt,
+    ],
   );
 
   return token;
@@ -271,6 +288,30 @@ export async function consumePasswordRecoveryToken(token, { phone, username }) {
 export function mapRecoveryError(error, fallback = '요청 처리 중 오류가 발생했습니다.') {
   return {
     status: error?.status || 500,
-    message: error?.publicMessage || fallback,
+    message: error?.publicMessage || error?.message || fallback,
   };
 }
+
+function mapInicisRecoveryError(error) {
+  const code = error?.code || '';
+  const messages = {
+    IDENTITY_TOKEN_REQUIRED: '본인인증을 먼저 완료해 주세요.',
+    INVALID_IDENTITY_TOKEN: '유효하지 않거나 만료된 본인인증입니다. 다시 시도해 주세요.',
+    IDENTITY_PURPOSE_MISMATCH: '본인인증 용도가 올바르지 않습니다.',
+    IDENTITY_NOT_SUCCESS: '본인인증이 완료되지 않았습니다.',
+    IDENTITY_TOKEN_USED: '이미 사용된 본인인증입니다. 다시 시도해 주세요.',
+    IDENTITY_TOKEN_EXPIRED: '본인인증이 만료되었습니다. 다시 시도해 주세요.',
+    IDENTITY_NAME_MISMATCH:
+      '입력하신 이름과 본인인증 정보가 일치하지 않습니다.',
+    INICIS_DISABLED: '본인인증 서비스를 이용할 수 없습니다.',
+  };
+  if (messages[code]) {
+    return {
+      status: error?.status || 400,
+      message: messages[code],
+    };
+  }
+  return mapRecoveryError(error);
+}
+
+export { mapInicisRecoveryError };

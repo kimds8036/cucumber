@@ -1,3 +1,5 @@
+import { isWithinSchoolGeofence } from './commuteGeo.js';
+
 const KST_TIMEZONE = 'Asia/Seoul';
 
 /** 방학: 1~2월, 7~8월 */
@@ -91,10 +93,10 @@ export function isPublicHoliday(date = new Date()) {
   return FIXED_HOLIDAY_MD.has(md) || VARIABLE_HOLIDAYS.has(ymd);
 }
 
-/** 평일 오전 7시(포함) ~ 9시(미포함), 즉 07:00~08:59 */
+/** 평일 오전 7시(포함) ~ 10시(미포함), 즉 07:00~09:59 — 백엔드 ATTENDANCE_WINDOW와 맞춤 */
 export function isCommuteTimeWindow(date = new Date()) {
   const { hour } = getKstParts(date);
-  return hour >= 7 && hour < 9;
+  return hour >= 7 && hour < 10;
 }
 
 /**
@@ -102,6 +104,7 @@ export function isCommuteTimeWindow(date = new Date()) {
  * - 가입 달 유예 유저도 동일 규칙(유예로 배너를 숨기지 않음)
  */
 export function shouldShowCommuteBanner(date = new Date()) {
+  if (typeof __DEV__ !== 'undefined' && __DEV__) return true;
   if (!isCommuteTimeWindow(date)) return false;
   if (!isWeekdayKst(date)) return false;
   if (isSchoolVacationMonth(date)) return false;
@@ -109,23 +112,12 @@ export function shouldShowCommuteBanner(date = new Date()) {
   return true;
 }
 
-export function roundCoord3(value) {
-  if (value == null || Number.isNaN(Number(value))) return null;
-  return Math.round(Number(value) * 1000) / 1000;
-}
-
+/** @deprecated isWithinSchoolGeofence 사용 */
 export function coordsMatchSchool(
   viewerLat,
   viewerLng,
   schoolLat,
   schoolLng,
 ) {
-  const vLat = roundCoord3(viewerLat);
-  const vLng = roundCoord3(viewerLng);
-  const sLat = roundCoord3(schoolLat);
-  const sLng = roundCoord3(schoolLng);
-  if (vLat == null || vLng == null || sLat == null || sLng == null) {
-    return false;
-  }
-  return vLat === sLat && vLng === sLng;
+  return isWithinSchoolGeofence(viewerLat, viewerLng, schoolLat, schoolLng);
 }

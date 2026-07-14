@@ -34,12 +34,14 @@ import {
   normalizeStudySummaryWatchers,
 } from '../../utils/studySummaryNotification';
 import NotificationAdPlaceholder from '../../src/screens/ad/NotificationAdPlaceholder';
-import { injectAdSlots, useAdSlots } from '../../hooks/useAdSlots';
+import { injectAdSlots } from '../../hooks/useAdSlots';
+import { AD_PLACEMENTS } from '../../constants/adPlacements';
 import {
   isMailReturnedNotification,
   mergeTestReturnedMailNotification,
   navigateToResendPersonalMail,
 } from '../../utils/personalMail';
+import { normalizeNotificationDisplay } from '../../utils/notificationDisplay';
 
 const PAGE_SIZE = 20;
 const INITIAL_PREFETCH_PAGES = 3;
@@ -99,22 +101,15 @@ const DM_ICON_COLOR_COUNT = 4;
 
 const normalizeWatchers = (watchers) => normalizeStudySummaryWatchers(watchers);
 
-const normalizeKoreanHonorificSpacing = (text) => {
-  const raw = String(text ?? '');
-  if (!raw) return raw;
-  return raw
-    .replace(/([^\s])님이/g, '$1 님이')
-    .replace(/([^\s])님 외/g, '$1 님 외');
-};
-
 const mapRowToNotificationItem = (n) => {
   const icon = mapTypeToIcon(n.type, n.category);
+  const display = normalizeNotificationDisplay(n);
   return {
     id: n.id,
     type: n.type,
     category: n.category,
-    title: normalizeKoreanHonorificSpacing(n.title),
-    content: normalizeKoreanHonorificSpacing(n.content),
+    title: display.title,
+    content: display.content,
     time: formatTime(n.createdAt),
     createdAt: n.createdAt,
     isRead: !!n.isRead,
@@ -148,7 +143,8 @@ const SkeletonRow = ({ skeletonStyles }) => {
 };
 
 const NotificationScreen = ({ navigation }) => {
-  const { adSlots } = useAdSlots();
+  // TODO: /api/ads 연동 후 useAdSlots(AD_PLACEMENTS.FEED_ALERT)
+  const adSlots = [];
   const { width } = useWindowDimensions();
   const normalize = useMemo(() => getNormalize(width), [width]);
   const styles = useMemo(
@@ -558,6 +554,7 @@ const NotificationScreen = ({ navigation }) => {
   const filteredWithAds = useMemo(
     () =>
       injectAdSlots(filteredNotifications, adSlots, {
+        placement: AD_PLACEMENTS.FEED_ALERT,
         adType: 'notiAd',
         idPrefix: 'noti_ad',
         skipFirstIndex: false,
@@ -909,10 +906,11 @@ const NotificationScreen = ({ navigation }) => {
           refreshing={false}
           onRefresh={handleRefresh}
           renderItem={({ item: notification }) => {
-            if (notification.type === 'notiAd')
+            if (notification.type === 'notiAd') {
               return (
                 <NotificationAdPlaceholder adData={notification.adData} />
               );
+            }
             const isTapped = tappedIds[notification.id];
             const isUnreadFromServer = !notification.isRead;
             const isStudySummary = isStudySummaryNotification(notification);
@@ -921,10 +919,6 @@ const NotificationScreen = ({ navigation }) => {
             const isExpanded = Boolean(expandedSummaryById[notification.id]);
             // 서버 기준으로 아직 안 읽은 알림 + 실제로 눌러서 확인하지 않은 것만 연한 초록 배경 + 점 표시
             const showUnreadStyle = isUnreadFromServer && !isTapped;
-            const hidePreviewText =
-              notification.category === 'mail' ||
-              notification.type === 'comment' ||
-              notification.type === 'reply';
             return (
               <TouchableOpacity
                 style={[
@@ -949,19 +943,13 @@ const NotificationScreen = ({ navigation }) => {
                     getDebugBorderStyle('#5AC8FA'),
                   ]}
                 >
-                  <View
-                    style={{
-                      flexDirection: 'row',
-                      alignItems: 'center',
-                      flexWrap: 'wrap',
-                    }}
-                  >
+                  {notification.title ? (
                     <Text style={styles.notificationTitle}>
                       {notification.title}
                     </Text>
-                  </View>
-                  {!hidePreviewText ? (
-                    <Text style={styles.notificationText} numberOfLines={2}>
+                  ) : null}
+                  {notification.content ? (
+                    <Text style={styles.notificationText} numberOfLines={3}>
                       {notification.content}
                     </Text>
                   ) : null}

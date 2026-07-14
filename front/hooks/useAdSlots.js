@@ -1,54 +1,94 @@
 import { useCallback, useEffect, useState } from 'react';
 import { api } from '../utils/api';
+import { fetchAdsGrouped } from '../utils/adsApiAdapter';
+import {
+  emptyAdsGrouped,
+  getAdFallbackPolicy,
+  getAdInjectEvery,
+} from '../constants/adPlacements';
 
-/**
- * 광고 API 호출 (플레이스홀더 — 추후 실제 SDK/엔드포인트로 교체)
- * @returns {Promise<Array>}
- */
-export async function fetchAds() {
-  try {
-    const response = await api.get('/api/ads');
-    const payload = response.data?.data ?? response.data ?? {};
-    const ads = Array.isArray(payload.ads)
-      ? payload.ads
-      : Array.isArray(payload)
-        ? payload
-        : [];
-    return ads.filter((ad) => ad != null);
-  } catch (error) {
-    console.warn('[useAdSlots] fetchAds failed:', error?.message || error);
-    return [];
+let sharedGrouped = emptyAdsGrouped();
+let sharedLoading = false;
+let sharedFetched = false;
+let sharedError = null;
+let inflight = null;
+const listeners = new Set();
+
+function notifyListeners() {
+  listeners.forEach((listener) => {
+    try {
+      listener();
+    } catch {
+      /* ignore */
+    }
+  });
+}
+
+async function loadAdsGrouped(force = false) {
+  if (!force && inflight) return inflight;
+  if (!force && sharedFetched && !inflight) {
+    return sharedGrouped;
   }
+
+  sharedLoading = true;
+  sharedError = null;
+  notifyListeners();
+
+  inflight = (async () => {
+    try {
+      const grouped = await fetchAdsGrouped(api);
+      sharedGrouped = grouped ?? emptyAdsGrouped();
+      sharedError = null;
+      sharedFetched = true;
+      return sharedGrouped;
+    } catch (err) {
+      sharedError = err;
+      sharedGrouped = emptyAdsGrouped();
+      sharedFetched = true;
+      return sharedGrouped;
+    } finally {
+      sharedLoading = false;
+      inflight = null;
+      notifyListeners();
+    }
+  })();
+
+  return inflight;
+}
+
+/** 스플래시 등에서 이미 fetch한 결과를 공유 캐시에 반영 */
+export function primeAdsGrouped(grouped) {
+  sharedGrouped = grouped ?? emptyAdsGrouped();
+  sharedFetched = true;
+  sharedLoading = false;
+  sharedError = null;
+  inflight = null;
+  notifyListeners();
 }
 
 /**
  * 목록 데이터에 광고 슬롯 삽입 (adSlots를 순서대로 소진)
- * @param {Array} items
- * @param {Array} adSlots
- * @param {object} [options]
- * @param {string} [options.adType='ad']
- * @param {string} [options.idPrefix='ad']
- * @param {number} [options.every=5]
- * @param {boolean} [options.skipFirstIndex=true] — index !== 0 조건
- * @param {function} [options.wrapItem] — (item, index) => wrapped item
  */
 export function injectAdSlots(items, adSlots, options = {}) {
   const {
+    placement,
     adType = 'ad',
     idPrefix = 'ad',
-    every = 5,
     skipFirstIndex = true,
     wrapItem = (item) => item,
   } = options;
+
+  const policy = placement ? getAdFallbackPolicy(placement) : 'tip';
+  const every =
+    options.every ?? (placement ? getAdInjectEvery(placement) : 5);
+  const allowEmptySlots =
+    options.allowEmptySlots ?? policy === 'tip';
 
   if (!Array.isArray(items) || items.length === 0) {
     return [];
   }
 
-  if (!Array.isArray(adSlots) || adSlots.length === 0) {
-    return items.map((item, index) => wrapItem(item, index));
-  }
-
+  const slots = Array.isArray(adSlots) ? adSlots : [];
   let adIndex = 0;
   const next = [];
 
@@ -58,13 +98,22 @@ export function injectAdSlots(items, adSlots, options = {}) {
     const atInterval = (index + 1) % every === 0;
     const passesSkip = !skipFirstIndex || index !== 0;
 
-    if (atInterval && passesSkip && adSlots[adIndex] != null) {
+    if (atInterval && passesSkip) {
+      if (slots.length === 0 && !allowEmptySlots) {
+        return;
+      }
+
+      const adData =
+        slots.length > 0 && adIndex < slots.length ? slots[adIndex] : null;
       next.push({
         id: `${idPrefix}_${index}`,
         type: adType,
-        adData: adSlots[adIndex],
+        adData,
+        placement: placement ?? null,
       });
-      adIndex += 1;
+      if (slots.length > 0 && adIndex < slots.length) {
+        adIndex += 1;
+      }
     }
   });
 
@@ -72,31 +121,31 @@ export function injectAdSlots(items, adSlots, options = {}) {
 }
 
 /**
- * 컴포넌트 마운트 시 광고 슬롯 로드
- * @returns {{ adSlots: Array, loading: boolean, error: Error|null, refetch: function }}
+ * @param {string} [placement] — 지정 시 해당 placement 배열만 adSlots로 반환
  */
-export function useAdSlots() {
-  const [adSlots, setAdSlots] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-
-  const refetch = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const ads = await fetchAds();
-      setAdSlots(ads);
-    } catch (err) {
-      setError(err);
-      setAdSlots([]);
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+export function useAdSlots(placement) {
+  const [, setTick] = useState(0);
 
   useEffect(() => {
-    refetch();
-  }, [refetch]);
+    const listener = () => setTick((n) => n + 1);
+    listeners.add(listener);
+    loadAdsGrouped(false);
+    return () => {
+      listeners.delete(listener);
+    };
+  }, []);
 
-  return { adSlots, loading, error, refetch };
+  const refetch = useCallback(() => loadAdsGrouped(true), []);
+
+  const adSlots = placement
+    ? (sharedGrouped?.[placement] ?? [])
+    : Object.values(sharedGrouped ?? {}).flat();
+
+  return {
+    adSlots,
+    grouped: sharedGrouped,
+    loading: sharedLoading,
+    error: sharedError,
+    refetch,
+  };
 }

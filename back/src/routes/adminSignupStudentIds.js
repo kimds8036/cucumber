@@ -4,8 +4,10 @@ import pool from '../config/database.js';
 import { requireAdminApi, isAdminUser } from '../middleware/adminAuth.js';
 import { validate } from '../middleware/validate.js';
 import { getNowForDB } from '../utils/dateUtils.js';
+import { applyUserSchoolUpdate } from '../services/userSchoolTransition.service.js';
 
 const router = express.Router();
+const VALID_PURPOSES = new Set(['signup', 'resubmit', 'reverification']);
 
 async function writeAuditLog(connection, { adminUserId, actionType, targetId, note }) {
   await connection.execute(
@@ -16,7 +18,7 @@ async function writeAuditLog(connection, { adminUserId, actionType, targetId, no
 }
 
 /**
- * GET /api/admin/signup-student-ids
+ * GET /api/admin/signup-student-ids?status=pending&purpose=signup|reverification|resubmit
  */
 router.get('/', requireAdminApi, async (req, res) => {
   const adminUserId = req.user.userId;
@@ -25,21 +27,41 @@ router.get('/', requireAdminApi, async (req, res) => {
   }
 
   const status = String(req.query.status || 'pending');
+  const purpose = String(req.query.purpose || '').trim();
   const limit = Math.min(Number(req.query.limit) || 50, 100);
   const offset = Math.max(Number(req.query.offset) || 0, 0);
   const limitSql = Number.isFinite(limit) ? Math.floor(limit) : 50;
   const offsetSql = Number.isFinite(offset) ? Math.floor(offset) : 0;
 
   try {
-    const where = status === 'all' ? '1=1' : 's.status = ?';
-    const params = status === 'all' ? [] : [status];
+    const whereParts = [];
+    const params = [];
+
+    if (status !== 'all') {
+      whereParts.push('s.status = ?');
+      params.push(status);
+    }
+
+    if (purpose && VALID_PURPOSES.has(purpose)) {
+      if (purpose === 'signup') {
+        whereParts.push("s.submission_purpose IN ('signup', 'resubmit')");
+      } else {
+        whereParts.push('s.submission_purpose = ?');
+        params.push(purpose);
+      }
+    }
+
+    const where = whereParts.length ? whereParts.join(' AND ') : '1=1';
 
     const [rows] = await pool.execute(
       `SELECT s.*, u.username, u.grade AS user_grade, u.class_number AS user_class_number,
-              sch.name AS school_name, sch.region AS school_region, sch.address AS school_address
+              u.reverification_status, u.student_verified,
+              sch.name AS school_name, sch.region AS school_region, sch.address AS school_address,
+              prev.name AS previous_school_name, prev.region AS previous_school_region
        FROM signup_student_id_submissions s
        JOIN users u ON u.id = s.user_id
        LEFT JOIN schools sch ON sch.school_id = s.school_id
+       LEFT JOIN schools prev ON prev.school_id = s.previous_school_id
        WHERE ${where}
        ORDER BY s.created_at DESC
        LIMIT ${limitSql} OFFSET ${offsetSql}`,
@@ -101,6 +123,7 @@ router.patch('/:id', requireAdminApi, validate(reviewValidators), async (req, re
     }
 
     const now = getNowForDB();
+    const isReverification = submission.submission_purpose === 'reverification';
 
     if (status === 'approved') {
       const targetSchoolId = schoolId?.trim() || submission.school_id;
@@ -116,16 +139,31 @@ router.patch('/:id', requireAdminApi, validate(reviewValidators), async (req, re
             message: '유효하지 않은 학교 ID입니다.',
           });
         }
-        await connection.execute('UPDATE users SET school_id = ? WHERE id = ?', [
-          targetSchoolId,
-          submission.user_id,
-        ]);
+        if (isReverification) {
+          await applyUserSchoolUpdate(connection, {
+            userId: submission.user_id,
+            newSchoolId: targetSchoolId,
+            grade: req.body?.grade,
+            classNumber: req.body?.classNumber,
+            gradeException: req.body?.gradeException,
+          });
+        } else if (targetSchoolId !== submission.school_id) {
+          await applyUserSchoolUpdate(connection, {
+            userId: submission.user_id,
+            newSchoolId: targetSchoolId,
+            grade: req.body?.grade,
+            classNumber: req.body?.classNumber,
+            gradeException: req.body?.gradeException,
+          });
+        }
       }
 
-      await connection.execute(
-        'UPDATE users SET student_verified = TRUE WHERE id = ?',
-        [submission.user_id],
-      );
+      if (!isReverification) {
+        await connection.execute(
+          'UPDATE users SET student_verified = TRUE WHERE id = ?',
+          [submission.user_id],
+        );
+      }
     }
 
     await connection.execute(
@@ -137,7 +175,9 @@ router.patch('/:id', requireAdminApi, validate(reviewValidators), async (req, re
 
     await writeAuditLog(connection, {
       adminUserId,
-      actionType: status === 'approved' ? 'student_id_approve' : 'student_id_reject',
+      actionType: status === 'approved'
+        ? (isReverification ? 'reverification_student_id_approve' : 'student_id_approve')
+        : (isReverification ? 'reverification_student_id_reject' : 'student_id_reject'),
       targetId: submissionId,
       note: reviewNote,
     });

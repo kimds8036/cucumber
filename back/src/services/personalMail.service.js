@@ -4,16 +4,30 @@ import { isBlockedBy } from '../utils/userBlock.js';
 import { enqueueNotification } from '../utils/notificationWorker.js';
 import { ensurePersonalMailSchema } from '../db/ensurePersonalMailSchema.js';
 import {
+  nameLookupBindParams,
+  nameLookupWhereClause,
+  packNameOnly,
+} from './userPii.service.js';
+import {
   PERSONAL_MAIL_STATUS,
   PERSONAL_MAIL_DUPLICATE_CODE,
   PERSONAL_MAIL_RETURN_RELATED_TYPE,
   PERSONAL_MAIL_RETURN_NOTIFICATION_TYPE,
-  DEFAULT_PERSONAL_MAIL_RETURN_DAYS,
+  DEFAULT_PERSONAL_MAIL_RETURN_HOURS,
 } from '../constants/personalMail.js';
 
+/** 운영 반송 대기(시간). PERSONAL_MAIL_RETURN_HOURS 우선, 레거시 DAYS면 ×24 */
+export function getPersonalMailReturnHours() {
+  const hours = parseInt(process.env.PERSONAL_MAIL_RETURN_HOURS || '', 10);
+  if (Number.isFinite(hours) && hours > 0) return hours;
+  const days = parseInt(process.env.PERSONAL_MAIL_RETURN_DAYS || '', 10);
+  if (Number.isFinite(days) && days > 0) return days * 24;
+  return DEFAULT_PERSONAL_MAIL_RETURN_HOURS;
+}
+
+/** @deprecated getPersonalMailReturnHours 사용 */
 export function getPersonalMailReturnDays() {
-  const n = parseInt(process.env.PERSONAL_MAIL_RETURN_DAYS || '', 10);
-  return Number.isFinite(n) && n > 0 ? n : DEFAULT_PERSONAL_MAIL_RETURN_DAYS;
+  return Math.max(1, Math.round(getPersonalMailReturnHours() / 24));
 }
 
 /**
@@ -28,10 +42,10 @@ export async function findRecipientsForPersonalSend({
 }) {
   const baseSql = `
     SELECT id, username FROM users
-    WHERE school_id = ? AND grade = ? AND class_number = ? AND name = ?
+    WHERE school_id = ? AND grade = ? AND class_number = ? AND ${nameLookupWhereClause()}
       AND is_deleted = FALSE
   `;
-  const baseParams = [schoolId, grade, classNum, name.trim()];
+  const baseParams = [schoolId, grade, classNum, ...nameLookupBindParams(name)];
 
   if (username && String(username).trim()) {
     const [rows] = await pool.execute(
@@ -56,14 +70,15 @@ async function insertDeliveredPersonalMail(connection, {
     blockerUserId: Number(recipientId),
     targetUserId: senderId,
   });
+  const namePacked = packNameOnly(snapshot.name);
 
   const [result] = await connection.execute(
     `INSERT INTO personal_mails (
       sender_id, recipient_id, content, status, is_match_failed,
       recipient_school_id, recipient_grade, recipient_class_num,
-      recipient_name, recipient_user_id, sent_at, created_at,
+      recipient_name_enc, recipient_name_lookup, recipient_user_id, sent_at, created_at,
       is_shadow_blocked, shadow_blocked_for_user_id
-    ) VALUES (?, ?, ?, ?, FALSE, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    ) VALUES (?, ?, ?, ?, FALSE, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     [
       senderId,
       recipientId,
@@ -72,7 +87,8 @@ async function insertDeliveredPersonalMail(connection, {
       snapshot.schoolId,
       snapshot.grade,
       snapshot.classNum,
-      snapshot.name,
+      namePacked.name_enc,
+      namePacked.name_lookup,
       snapshot.username || null,
       now,
       now,
@@ -120,13 +136,14 @@ async function insertMatchFailedPersonalMail(connection, {
   snapshot,
 }) {
   const now = getNowForDB();
+  const namePacked = packNameOnly(snapshot.name);
   const [result] = await connection.execute(
     `INSERT INTO personal_mails (
       sender_id, recipient_id, content, status, is_match_failed,
       recipient_school_id, recipient_grade, recipient_class_num,
-      recipient_name, recipient_user_id, sent_at, created_at,
+      recipient_name_enc, recipient_name_lookup, recipient_user_id, sent_at, created_at,
       root_mail_id, room_id
-    ) VALUES (?, NULL, ?, ?, TRUE, ?, ?, ?, ?, ?, ?, ?, NULL, NULL)`,
+    ) VALUES (?, NULL, ?, ?, TRUE, ?, ?, ?, ?, ?, ?, ?, ?, NULL, NULL)`,
     [
       senderId,
       content.trim(),
@@ -134,7 +151,8 @@ async function insertMatchFailedPersonalMail(connection, {
       snapshot.schoolId,
       snapshot.grade,
       snapshot.classNum,
-      snapshot.name,
+      namePacked.name_enc,
+      namePacked.name_lookup,
       snapshot.username || null,
       now,
       now,
@@ -233,8 +251,8 @@ export async function sendPersonalMailByAddress(senderId, body) {
         userId: recipientId,
         type: 'mail',
         category: 'mail',
-        title: '새로운 익명 우편이 도착했습니다',
-        body: content.trim().slice(0, 80),
+        title: '우편함',
+        body: '새로운 우편이 도착했습니다',
         relatedType: 'personal_mail',
         relatedId: mailId,
       });
@@ -243,7 +261,7 @@ export async function sendPersonalMailByAddress(senderId, body) {
     const [rows] = await pool.execute(
       `SELECT id, sender_id, recipient_id, content, status, is_match_failed,
               recipient_school_id, recipient_grade, recipient_class_num,
-              recipient_name, recipient_user_id, sent_at, created_at, room_id
+              recipient_name_enc, recipient_user_id, sent_at, created_at, room_id
        FROM personal_mails WHERE id = ?`,
       [mailId],
     );
@@ -264,15 +282,18 @@ export async function sendPersonalMailByAddress(senderId, body) {
 export async function getPersonalMailRetryPayload(mailId, senderId) {
   await ensurePersonalMailSchema();
   const [rows] = await pool.execute(
-    `SELECT id, sender_id, status,
-            recipient_school_id AS school_id,
-            recipient_grade AS grade,
-            recipient_class_num AS class_num,
-            recipient_name AS name,
-            recipient_user_id AS user_id,
-            content
-     FROM personal_mails
-     WHERE id = ? AND sender_id = ? AND is_deleted = FALSE`,
+    `SELECT pm.id, pm.sender_id, pm.status,
+            pm.recipient_school_id AS school_id,
+            s.name AS school_name,
+            s.region AS school_region,
+            pm.recipient_grade AS grade,
+            pm.recipient_class_num AS class_num,
+            pm.recipient_name_enc AS name_enc,
+            pm.recipient_user_id AS user_id,
+            pm.content
+     FROM personal_mails pm
+     LEFT JOIN schools s ON s.school_id = pm.recipient_school_id
+     WHERE pm.id = ? AND pm.sender_id = ? AND pm.is_deleted = FALSE`,
     [mailId, senderId],
   );
   if (rows.length === 0) {
@@ -289,18 +310,28 @@ export async function getPersonalMailRetryPayload(mailId, senderId) {
   return mail;
 }
 
-export async function runPersonalMailReturnJob() {
+export async function runPersonalMailReturnJob(options = {}) {
   await ensurePersonalMailSchema();
-  const days = getPersonalMailReturnDays();
+  const { returnAfterMinutes } = options;
+  const useMinutes =
+    returnAfterMinutes != null &&
+    Number.isFinite(returnAfterMinutes) &&
+    returnAfterMinutes > 0;
+  const intervalUnit = useMinutes ? 'MINUTE' : 'HOUR';
+  const intervalValue = useMinutes
+    ? returnAfterMinutes
+    : getPersonalMailReturnHours();
 
   const [candidates] = await pool.execute(
-    `SELECT pm.id, pm.sender_id, pm.recipient_id, pm.is_match_failed,
+    `SELECT pm.id, pm.sender_id, pm.recipient_id, pm.recipient_name_enc,
+            ru.name_enc AS recipient_user_name_enc, pm.is_match_failed,
             pm.root_mail_id, pm.sent_at
      FROM personal_mails pm
+     LEFT JOIN users ru ON ru.id = pm.recipient_id
      WHERE pm.status = ?
        AND pm.is_deleted = FALSE
        AND pm.parent_mail_id IS NULL
-       AND pm.sent_at <= DATE_SUB(NOW(), INTERVAL ? DAY)
+       AND pm.sent_at <= DATE_SUB(NOW(), INTERVAL ? ${intervalUnit})
        AND (
          (pm.is_match_failed = TRUE AND pm.recipient_id IS NULL)
          OR (
@@ -314,7 +345,7 @@ export async function runPersonalMailReturnJob() {
            )
          )
        )`,
-    [PERSONAL_MAIL_STATUS.SENT, days],
+    [PERSONAL_MAIL_STATUS.SENT, intervalValue],
   );
 
   let returned = 0;
@@ -333,12 +364,16 @@ export async function runPersonalMailReturnJob() {
     if (upd.affectedRows === 0) continue;
     returned += 1;
 
+    const recipientName =
+      String(row.recipient_name ?? '').trim() ||
+      String(row.recipient_user_name ?? '').trim() ||
+      '상대방';
     await enqueueNotification({
       userId: Number(row.sender_id),
       type: PERSONAL_MAIL_RETURN_NOTIFICATION_TYPE,
       category: 'mail',
-      title: '보내신 우편이 반송되었습니다.',
-      body: '보내신 우편이 반송되었습니다.',
+      title: '우편함',
+      body: `${recipientName} 님에게 보낸 우편이 반송되었습니다`,
       relatedType: PERSONAL_MAIL_RETURN_RELATED_TYPE,
       relatedId: Number(row.id),
     });

@@ -16,7 +16,8 @@ import { createFindStyles } from '../../../styles/find.style';
 import { CommonActions } from '@react-navigation/native';
 import Skeleton from '../../../components/common/Skeleton';
 import { api } from '../../../utils/api';
-import RecoveryPhoneFields from './RecoveryPhoneFields';
+import { isValidPassword } from '../../../utils/signupValidation';
+import RecoveryInicisFields from './RecoveryInicisFields';
 import SignupStepScroll from './SignupStepScroll';
 
 const PWfind = ({ navigation }) => {
@@ -27,9 +28,9 @@ const PWfind = ({ navigation }) => {
 
   const [name, setName] = useState('');
   const [username, setUsername] = useState('');
-  const [phoneNumber, setPhoneNumber] = useState('');
-  const [isPhoneVerified, setIsPhoneVerified] = useState(false);
-  const [phoneIdToken, setPhoneIdToken] = useState(null);
+  const [isIdentityVerified, setIsIdentityVerified] = useState(false);
+  const [inicisClientToken, setInicisClientToken] = useState(null);
+  const [verifiedProfile, setVerifiedProfile] = useState(null);
   const [recoveryToken, setRecoveryToken] = useState(null);
   const [newPassword, setNewPassword] = useState('');
   const [newPasswordConfirm, setNewPasswordConfirm] = useState('');
@@ -54,15 +55,16 @@ const PWfind = ({ navigation }) => {
   };
 
   const resetVerification = () => {
-    setIsPhoneVerified(false);
-    setPhoneIdToken(null);
+    setIsIdentityVerified(false);
+    setInicisClientToken(null);
+    setVerifiedProfile(null);
     setRecoveryToken(null);
     setVerifiedUser(null);
   };
 
   const handleIdentityFieldChange = (setter) => (value) => {
     setter(value);
-    if (isPhoneVerified || recoveryToken) {
+    if (isIdentityVerified || recoveryToken) {
       resetVerification();
     }
   };
@@ -70,14 +72,17 @@ const PWfind = ({ navigation }) => {
   const canResetPassword =
     newPassword.length > 0 && newPasswordConfirm.length > 0;
 
-  const handlePhoneVerified = async ({ isVerified, phoneNumber: phone, idToken }) => {
-    setIsPhoneVerified(isVerified);
-    setPhoneNumber(phone);
-    setPhoneIdToken(idToken);
+  const handleInicisVerified = async ({
+    isVerified,
+    inicisClientToken: token,
+    profile,
+  }) => {
+    setIsIdentityVerified(isVerified);
+    setInicisClientToken(token);
+    setVerifiedProfile(profile);
 
-    if (!isVerified) {
-      setRecoveryToken(null);
-      setVerifiedUser(null);
+    if (!isVerified || !token) {
+      resetVerification();
       return;
     }
 
@@ -90,8 +95,7 @@ const PWfind = ({ navigation }) => {
     setCheckingUser(true);
     try {
       const res = await api.post('/api/auth/recovery/verify-account', {
-        idToken,
-        phone,
+        inicisClientToken: token,
         name: name.trim(),
         username: username.trim(),
       });
@@ -126,6 +130,10 @@ const PWfind = ({ navigation }) => {
     }
     if (newPassword !== newPasswordConfirm) {
       Alert.alert('알림', '새 비밀번호와 확인 값이 일치하지 않습니다.');
+      return;
+    }
+    if (!isValidPassword(newPassword)) {
+      Alert.alert('알림', '비밀번호는 영문과 숫자를 포함하여 최소 8자 이상이어야 합니다.');
       return;
     }
     if (!recoveryToken || !verifiedUser) {
@@ -236,7 +244,7 @@ const PWfind = ({ navigation }) => {
         </View>
         <Text style={styles.description}>
           {step === 1
-            ? '이름·아이디·전화번호로 본인 확인 후 새 비밀번호를 설정합니다.'
+            ? '이름·아이디 입력 후 KG 이니시스 본인인증을 완료하면 새 비밀번호를 설정할 수 있습니다.'
             : '확인된 계정의 새 비밀번호를 입력해 주세요.'}
         </Text>
       </View>
@@ -269,14 +277,16 @@ const PWfind = ({ navigation }) => {
                   />
                 </View>
 
-                <RecoveryPhoneFields
+                <RecoveryInicisFields
                   styles={styles}
                   normalize={normalize}
+                  purpose="password_recovery"
                   name={name}
-                  phoneNumber={phoneNumber}
-                  onPhoneChange={setPhoneNumber}
-                  isVerified={isPhoneVerified}
-                  onVerified={handlePhoneVerified}
+                  username={username}
+                  isVerified={isIdentityVerified}
+                  verifiedProfile={verifiedProfile}
+                  onVerified={handleInicisVerified}
+                  disabled={checkingUser}
                 />
               </>
             ) : (
@@ -335,9 +345,9 @@ const PWfind = ({ navigation }) => {
           <Text style={styles.helperText}>
             {checkingUser
               ? '본인 확인 중...'
-              : isPhoneVerified
+              : isIdentityVerified
                 ? '본인 확인이 완료되었습니다. 다음 단계로 이동합니다.'
-                : '전화번호 인증을 완료하면 다음 단계로 이동합니다.'}
+                : '본인인증을 완료하면 다음 단계로 이동합니다.'}
           </Text>
         ) : null}
         {step === 2 ? (

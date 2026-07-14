@@ -20,8 +20,7 @@ import { createSearchResultStyles } from '../../styles/result.style';
 import { api } from '../../utils/api';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Skeleton from '../../components/common/Skeleton';
-import SearchAdPlaceholder from '../../src/screens/ad/SearchAdPlaceholder';
-import { injectAdSlots, useAdSlots } from '../../hooks/useAdSlots';
+import TopAdBanner from '../../components/ads/TopAdBanner';
 
 const TABS_FOR_TEXT = ['전체', '전체게시판', '학교게시판', '학교우편'];
 const TABS_FOR_HASHTAG = ['전체', '전체게시판', '학교게시판', '학교우편'];
@@ -151,25 +150,6 @@ export default function SearchResult({ route, navigation }) {
   const { width } = useWindowDimensions();
   const normalize = useMemo(() => getNormalize(width), [width]);
   const s = useMemo(() => createSearchResultStyles(normalize), [normalize]);
-  const { adSlots } = useAdSlots();
-
-  const renderWithAds = (items, renderFn) => {
-    const withAds = injectAdSlots(items, adSlots, {
-      adType: 'searchAd',
-      idPrefix: 'search_ad',
-      skipFirstIndex: false,
-      wrapItem: (item) => ({ ...item, type: 'result' }),
-    });
-
-    return withAds.map((item, idx) => {
-      if (item.type === 'searchAd') {
-        return (
-          <SearchAdPlaceholder key={item.id} adData={item.adData} />
-        );
-      }
-      return renderFn(item, idx, withAds);
-    });
-  };
 
   const highlightSnippet = (text, query, baseStyle) => {
     if (!query) return <Text style={baseStyle}>{text}</Text>;
@@ -426,6 +406,8 @@ export default function SearchResult({ route, navigation }) {
             </View>
           </View>
 
+          <TopAdBanner />
+
           {mode === 'result' && (
             <>
               {/* 탭 */}
@@ -643,12 +625,13 @@ export default function SearchResult({ route, navigation }) {
                       sections[activeTab] &&
                       sections[activeTab].length > 0 && (
                         <View style={s.section}>
-                          {renderWithAds(sections[activeTab], (item, idx, withAds) => (
+                          {sections[activeTab].map((item, idx) => (
                             <TouchableOpacity
                               key={item.id}
                               style={[
                                 s.fullCard,
-                                idx < withAds.length - 1 && s.fullCardBorder,
+                                idx < sections[activeTab].length - 1 &&
+                                  s.fullCardBorder,
                               ]}
                               activeOpacity={0.7}
                               onPress={() => {

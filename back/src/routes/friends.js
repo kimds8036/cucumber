@@ -38,7 +38,7 @@ router.get('/list', authenticate, async (req, res) => {
            WHEN uf.requester_id = ? THEN uf.addressee_id
            ELSE uf.requester_id
          END AS friend_user_id,
-         u.name,
+         u.name_enc,
          u.username,
          u.color_id,
          c.hex_code AS profile_color_hex,
@@ -124,7 +124,7 @@ router.get('/requests/received', authenticate, async (req, res) => {
       `SELECT 
          uf.id,
          uf.requester_id,
-         u.name,
+         u.name_enc,
          u.username,
          u.color_id,
          c.hex_code AS profile_color_hex,
@@ -444,7 +444,7 @@ router.post('/requests', authenticate, validate(sendFriendRequestValidators), as
 
     // 대상 사용자 찾기
     const [userRows] = await pool.execute(
-      'SELECT id, username, name FROM users WHERE username = ?',
+      'SELECT id, username, name_enc FROM users WHERE username = ?',
       [trimmed],
     );
 
@@ -539,8 +539,8 @@ router.post('/requests', authenticate, validate(sendFriendRequestValidators), as
           userId: target.id,
           type: 'friend_request',
           category: 'system',
-          title: '새 친구 요청이 도착했어요',
-          body: '친구 목록에서 확인해 보세요.',
+          title: '시스템',
+          body: '새 친구 요청이 도착했어요! 친구 목록에서 확인해 보세요',
           relatedType: 'friendship',
           relatedId: requestId,
         });
@@ -552,8 +552,8 @@ router.post('/requests', authenticate, validate(sendFriendRequestValidators), as
         emitNotification(target.id, {
           type: 'friend_request',
           category: 'system',
-          title: '새 친구 요청이 도착했어요',
-          body: '친구 목록에서 확인해 보세요.',
+          title: '시스템',
+          body: '새 친구 요청이 도착했어요! 친구 목록에서 확인해 보세요',
           relatedType: 'friendship',
           relatedId: requestId,
         });

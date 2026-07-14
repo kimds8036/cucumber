@@ -40,6 +40,7 @@ function buildTree(comments, postAuthorId, currentUserId) {
       authorLabel: isPostAuthor ? '작성자' : `익명 ${c.anonymous_index}`,
       isWriter: isPostAuthor,
       isMyComment: currentUserId != null && c.user_id === currentUserId,
+      isPinned: Boolean(c.is_pinned),
       time: formatTimeAgo(c.created_at),
       content: c.content,
       likes: c.like_count,
@@ -58,6 +59,12 @@ function buildTree(comments, postAuthorId, currentUserId) {
     } else {
       roots.push(node);
     }
+  });
+  roots.sort((a, b) => {
+    const ap = a.isPinned ? 1 : 0;
+    const bp = b.isPinned ? 1 : 0;
+    if (ap !== bp) return bp - ap;
+    return 0;
   });
   return roots;
 }
@@ -366,6 +373,26 @@ export function useBoardDetail({
     [onCloseMenu],
   );
 
+  const handlePinComment = useCallback(
+    async (commentId, pin = true) => {
+      onCloseMenu?.();
+      if (!post?.id || !commentId) return;
+      try {
+        await api.patch(`/api/${post.id}/comments/${commentId}/pin`, { pin });
+        const commentRes = await api.get(`/api/${post.id}/comments`);
+        const comments = commentRes.data?.data?.comments || [];
+        setAllComments(buildTree(comments, postAuthorId, currentUserId));
+      } catch (error) {
+        console.error('댓글 고정 오류:', error);
+        Alert.alert(
+          '오류',
+          error.response?.data?.message || '댓글 고정 처리에 실패했습니다.',
+        );
+      }
+    },
+    [currentUserId, onCloseMenu, post?.id, postAuthorId],
+  );
+
   const handlePostLike = useCallback(async () => {
     try {
       const res = await api.post(`/api/posts/${post.id}/like`);
@@ -536,6 +563,7 @@ export function useBoardDetail({
     handleCommentLike,
     handleDeletePost,
     handleDeleteComment,
+    handlePinComment,
     startNoteToUser,
     handleSharePost,
   };

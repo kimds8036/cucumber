@@ -473,6 +473,19 @@ export const CalendarModal = ({
     ...Array.from({ length: daysInMonth }, (_, i) => i + 1),
   ];
 
+  const todayKey = useMemo(() => getTimerDayKey(new Date()), [visible]);
+
+  const canGoNextMonth = useMemo(() => {
+    const nextMonth =
+      yearMonth.month === 11
+        ? { year: yearMonth.year + 1, month: 0 }
+        : { year: yearMonth.year, month: yearMonth.month + 1 };
+    const firstDayKey = getTimerDayKey(
+      new Date(nextMonth.year, nextMonth.month, 1, 12, 0, 0),
+    );
+    return firstDayKey <= todayKey;
+  }, [yearMonth, todayKey]);
+
   const goPrevMonth = () =>
     yearMonth.month === 0
       ? setYearMonth({ year: yearMonth.year - 1, month: 11 })
@@ -543,12 +556,13 @@ export const CalendarModal = ({
               </Text>
               <TouchableOpacity
                 onPress={goNextMonth}
+                disabled={!canGoNextMonth}
                 hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
               >
                 <Ionicons
                   name="chevron-forward"
                   size={normalize(20)}
-                  color={colors.textPrimary}
+                  color={canGoNextMonth ? colors.textPrimary : colors.textLight20}
                 />
               </TouchableOpacity>
             </View>
@@ -565,14 +579,15 @@ export const CalendarModal = ({
               {days.map((day, idx) => {
                 const key = day ? getDayKey(day) : null;
                 const isSelected = key && key === currentDayKey;
+                const isFuture = key && key > todayKey;
                 return (
                   <TouchableOpacity
                     key={idx}
                     style={m.dayCell}
-                    disabled={!day}
+                    disabled={!day || isFuture}
                     onPress={() => {
                       const selected = getDayKey(day);
-                      if (selected) {
+                      if (selected && selected <= todayKey) {
                         onSelectDay(selected);
                         onClose();
                       }
@@ -583,7 +598,11 @@ export const CalendarModal = ({
                         style={[m.dayInner, isSelected && m.dayInnerSelected]}
                       >
                         <Text
-                          style={[m.dayText, isSelected && m.dayTextSelected]}
+                          style={[
+                            m.dayText,
+                            isSelected && m.dayTextSelected,
+                            isFuture && { color: colors.textLight20 },
+                          ]}
                         >
                           {day}
                         </Text>

@@ -16,6 +16,17 @@ export function emitSchoolMailLike(mailId, liked, likeCount) {
   DeviceEventEmitter.emit(SCHOOL_MAIL_LIKE, { mailId, liked, likeCount });
 }
 
+const SCHOOL_MAIL_DELETED = 'listSync/schoolMailDeleted';
+
+export function emitSchoolMailDeleted(mailId) {
+  DeviceEventEmitter.emit(SCHOOL_MAIL_DELETED, { mailId });
+}
+
+export function subscribeSchoolMailDeleted(handler) {
+  const sub = DeviceEventEmitter.addListener(SCHOOL_MAIL_DELETED, handler);
+  return () => sub.remove();
+}
+
 export function subscribeBoardPostLike(handler) {
   const sub = DeviceEventEmitter.addListener(BOARD_POST_LIKE, handler);
   return () => sub.remove();

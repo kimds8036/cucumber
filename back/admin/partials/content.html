@@ -1,0 +1,490 @@
+<!-- ────────── 대시보드 ────────── -->
+      <div class="panel active" id="panel-dashboard">
+        <div class="stat-grid">
+          <div class="stat-card stat-danger">
+            <div class="stat-num" id="stat-today-new">0</div>
+            <div class="stat-label">오늘 신규 신고</div>
+          </div>
+          <div class="stat-card stat-warn">
+            <div class="stat-num" id="stat-pending-reports">0</div>
+            <div class="stat-label">미처리 신고</div>
+          </div>
+          <div class="stat-card stat-warn">
+            <div class="stat-num" id="stat-pending-appeals">0</div>
+            <div class="stat-label">이의신청 대기</div>
+          </div>
+          <div class="stat-card stat-ok">
+            <div class="stat-num" id="stat-today-handled">0</div>
+            <div class="stat-label">오늘 처리 완료</div>
+          </div>
+          <div class="stat-card stat-warn">
+            <div class="stat-num" id="stat-pending-inquiries">0</div>
+            <div class="stat-label">미처리 문의</div>
+          </div>
+          <div class="stat-card stat-ok">
+            <div class="stat-num" id="stat-today-answered-inquiries">0</div>
+            <div class="stat-label">오늘 답변한 문의</div>
+          </div>
+        </div>
+
+        <div class="section-title">서비스 이용 분석 (학생 활동 · 익명 집계)</div>
+        <p class="section-hint">개인 식별 정보 없이 집계된 데이터입니다. 선 그래프는 최근 흐름, 히트맵은 요일·시간대별 접속 집중도를 보여줍니다.</p>
+        <div class="analytics-kpi-grid">
+          <div class="stat-card stat-ok">
+            <div class="stat-num" id="analytics-latest-dau">0</div>
+            <div class="stat-label">어제 DAU</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-num" id="analytics-latest-mau">0</div>
+            <div class="stat-label">최근 30일 MAU</div>
+          </div>
+          <div class="stat-card stat-warn">
+            <div class="stat-num" id="analytics-avg-dau">0</div>
+            <div class="stat-label">최근 평균 DAU</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-num" id="analytics-trend">-</div>
+            <div class="stat-label">최근 추세(%)</div>
+          </div>
+        </div>
+        <div class="analytics-grid">
+          <div class="analytics-card">
+            <div class="analytics-card-title">최근 14일 활성 사용자 추이 (DAU / MAU)</div>
+            <div class="analytics-line-wrap">
+              <svg id="analytics-line-chart" class="analytics-line-chart" viewBox="0 0 640 240" preserveAspectRatio="none"></svg>
+            </div>
+            <div class="analytics-caption" id="analytics-line-caption">데이터를 불러오는 중...</div>
+          </div>
+          <div class="analytics-card">
+            <div class="analytics-card-title">시간대별 접속 히트맵 (최근 집계)</div>
+            <div class="analytics-heatmap-wrap" id="analytics-heatmap"></div>
+            <div class="analytics-legend">
+              <span>적음</span>
+              <span class="analytics-legend-bar"></span>
+              <span>많음</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="analytics-grid analytics-screen-grid">
+          <div class="analytics-card">
+            <div class="analytics-card-title">인기 화면 (최근 집계)</div>
+            <div class="analytics-screen-bars" id="analytics-screen-bars"></div>
+            <div class="analytics-caption" id="analytics-screen-caption">데이터를 불러오는 중...</div>
+          </div>
+          <div class="analytics-card">
+            <div class="analytics-card-title">화면별 시간대 분포 (24시간)</div>
+            <div class="analytics-screen-hour-toolbar" id="analytics-screen-hour-toolbar"></div>
+            <div class="analytics-screen-hour-chart" id="analytics-screen-hour-chart"></div>
+            <div class="analytics-caption" id="analytics-screen-hour-caption">화면을 선택하면 시간대별 조회 분포를 보여줍니다.</div>
+          </div>
+        </div>
+
+        <div class="section-title">자동화 정책 상태</div>
+        <div class="policy-grid">
+          <div class="policy-card">
+            <div class="policy-label">일일 신고 한도 정책 (5회/일)</div>
+            <div class="policy-bar-track"><div class="policy-bar-fill" style="width:100%"></div></div>
+            <div class="policy-status">정상 작동 중</div>
+          </div>
+          <div class="policy-card">
+            <div class="policy-label">자동 숨김 임계치 (게시글 신고 3회)</div>
+            <div class="policy-bar-track"><div class="policy-bar-fill" style="width:100%"></div></div>
+            <div class="policy-status">정상 작동 중</div>
+          </div>
+        </div>
+
+        <div class="section-title">지연 처리 경고 (3일 이상 미처리)</div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th style="width:65px">ID</th>
+                <th style="width:75px">타입</th>
+                <th>사유</th>
+                <th style="width:110px">접수일</th>
+                <th style="width:65px">경과</th>
+                <th style="width:75px">액션</th>
+              </tr>
+            </thead>
+            <tbody id="dashboard-delayed-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- ────────── 신고 관리 ────────── -->
+      <div class="panel" id="panel-reports">
+        <div class="filter-row">
+          <input type="text" placeholder="신고자 UID 검색" id="search-reporter">
+          <select id="filter-type">
+            <option value="">전체 타입</option>
+            <option value="post">게시글(post)</option>
+            <option value="comment">댓글(comment)</option>
+            <option value="school_mail">학교메일(school_mail)</option>
+            <option value="school_mail_comment">학교메일 댓글(school_mail_comment)</option>
+          </select>
+          <select id="filter-reason">
+            <option value="">전체 사유</option>
+            <option value="spam">스팸/광고(spam)</option>
+            <option value="hate">욕설/혐오(hate)</option>
+            <option value="sexual">음란/선정적(sexual)</option>
+            <option value="privacy">개인정보(privacy)</option>
+            <option value="etc">기타(etc)</option>
+          </select>
+          <input type="date" id="filter-from-date">
+          <input type="date" id="filter-to-date">
+          <button class="btn btn-sm" onclick="applyFilter()">필터 적용</button>
+        </div>
+
+        <div class="bulk-bar" id="bulk-bar">
+          <span id="bulk-count">0건 선택됨</span>
+          <button class="btn btn-green btn-sm" onclick="bulkAction('confirm')">일괄 확정(confirm)</button>
+          <button class="btn btn-red btn-sm"   onclick="bulkAction('reject')">일괄 기각(reject)</button>
+          <button class="btn btn-sm"            onclick="clearSelection()">선택 해제</button>
+        </div>
+
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th style="width:34px">
+                  <input type="checkbox" id="chk-all" onchange="toggleAll(this)">
+                </th>
+                <th style="width:60px">ID</th>
+                <th style="width:70px">타입</th>
+                <th style="width:90px">사유</th>
+                <th>원문 미리보기</th>
+                <th style="width:55px;text-align:center">누적</th>
+                <th style="width:100px">접수일</th>
+                <th style="width:70px">상태</th>
+              </tr>
+            </thead>
+            <tbody id="report-tbody"></tbody>
+          </table>
+        </div>
+        <div id="report-detail-host"></div>
+          </div>
+
+      <!-- ────────── 처리 이력 ────────── -->
+      <div class="panel" id="panel-processedReports">
+        <div class="filter-row">
+          <input type="text" placeholder="신고자 ID(username) 검색" id="processed-search-reporter">
+          <select id="processed-filter-type">
+            <option value="">전체 타입</option>
+            <option value="post">게시글</option>
+            <option value="comment">댓글</option>
+            <option value="school_mail">학교메일</option>
+            <option value="school_mail_comment">학교메일 댓글</option>
+          </select>
+          <select id="processed-filter-status">
+            <option value="">전체 상태</option>
+            <option value="resolved">처리완료</option>
+            <option value="rejected">기각</option>
+          </select>
+          <input type="date" id="processed-filter-from-date">
+          <input type="date" id="processed-filter-to-date">
+          <button class="btn btn-sm" onclick="loadProcessedReports()">필터 적용</button>
+            </div>
+        <div class="bulk-bar" id="processed-bulk-bar">
+          <span id="processed-bulk-count">0건 선택됨</span>
+          <button class="btn btn-sm btn-primary" onclick="bulkReopenProcessed()">선택 재오픈</button>
+          <button class="btn btn-sm" onclick="clearProcessedSelection()">선택 해제</button>
+            </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th style="width:34px">
+                  <input type="checkbox" id="processed-chk-all" onchange="toggleAllProcessed(this)">
+                </th>
+                <th style="width:70px">ID</th>
+                <th style="width:90px">신고자</th>
+                <th style="width:80px">타입</th>
+                <th style="width:110px">사유</th>
+                <th>원문 미리보기</th>
+                <th style="width:110px">처리일</th>
+                <th style="width:70px">상태</th>
+                <th style="width:110px">액션</th>
+              </tr>
+            </thead>
+            <tbody id="processed-report-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- ────────── 이의신청 ────────── -->
+      <div class="panel" id="panel-appeals">
+        <div id="appeals-list"></div>
+      </div>
+
+      <!-- ────────── 문의 관리 (미처리) ────────── -->
+      <div class="panel" id="panel-inquiries">
+        <div class="filter-row">
+          <input type="text" placeholder="내용/작성자/연락처 검색" id="inquiry-search-q" style="width:220px">
+          <input type="date" id="inquiry-filter-from-date">
+          <input type="date" id="inquiry-filter-to-date">
+          <button class="btn btn-sm" onclick="loadInquiries()">필터 적용</button>
+        </div>
+
+        <div class="bulk-bar" id="inquiry-bulk-bar">
+          <span id="inquiry-bulk-count">0건 선택됨</span>
+          <button class="btn btn-sm btn-amber" onclick="bulkCloseInquiries()">선택 종결(close)</button>
+          <button class="btn btn-sm" onclick="clearInquirySelection()">선택 해제</button>
+        </div>
+
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th style="width:34px">
+                  <input type="checkbox" id="inquiry-chk-all" onchange="toggleAllInquiries(this)">
+                </th>
+                <th style="width:60px">ID</th>
+                <th style="width:90px">작성자</th>
+                <th>내용</th>
+                <th style="width:230px">연락처</th>
+                <th style="width:110px">접수일</th>
+                <th style="width:70px">상태</th>
+              </tr>
+            </thead>
+            <tbody id="inquiry-tbody"></tbody>
+          </table>
+        </div>
+        <div id="inquiry-detail-host"></div>
+      </div>
+
+      <!-- ────────── 문의 처리 이력 ────────── -->
+      <div class="panel" id="panel-processedInquiries">
+        <div class="filter-row">
+          <input type="text" placeholder="내용/작성자/연락처 검색" id="processed-inquiry-search-q" style="width:220px">
+          <select id="processed-inquiry-filter-status">
+            <option value="">전체 상태</option>
+            <option value="answered">답변완료</option>
+            <option value="closed">종결</option>
+          </select>
+          <input type="date" id="processed-inquiry-filter-from-date">
+          <input type="date" id="processed-inquiry-filter-to-date">
+          <button class="btn btn-sm" onclick="loadProcessedInquiries()">필터 적용</button>
+        </div>
+
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th style="width:60px">ID</th>
+                <th style="width:90px">작성자</th>
+                <th>내용</th>
+                <th style="width:230px">연락처</th>
+                <th style="width:100px">답변자</th>
+                <th style="width:110px">처리일</th>
+                <th style="width:80px">상태</th>
+                <th style="width:90px">액션</th>
+              </tr>
+            </thead>
+            <tbody id="processed-inquiry-tbody"></tbody>
+          </table>
+        </div>
+        <div id="processed-inquiry-detail-host"></div>
+      </div>
+
+      <!-- ────────── 수동 가입 ────────── -->
+      <div class="panel" id="panel-manualSignup">
+        <p class="section-hint">학생이 오프라인으로 가입을 요청한 경우, 앱 회원가입과 동일한 정보로 계정을 생성합니다.</p>
+        <div id="manual-signup-host"></div>
+      </div>
+
+      <!-- ────────── 가입 학생증 ────────── -->
+      <div class="panel" id="panel-studentIds">
+        <div class="filter-row">
+          <select id="student-id-filter" onchange="loadStudentIds()">
+            <option value="pending">승인 대기</option>
+            <option value="all">전체</option>
+            <option value="approved">승인됨</option>
+            <option value="rejected">거절됨</option>
+          </select>
+          <button class="btn btn-sm" onclick="loadStudentIds()">새로고침</button>
+        </div>
+        <div id="student-id-list"></div>
+      </div>
+
+      <!-- ────────── 재학증명서 가입 ────────── -->
+      <div class="panel" id="panel-certificates">
+        <div class="filter-row">
+          <select id="certificate-filter" onchange="loadCertificates()">
+            <option value="pending">승인 대기</option>
+            <option value="all">전체</option>
+            <option value="approved">승인됨</option>
+            <option value="rejected">거절됨</option>
+          </select>
+          <button class="btn btn-sm" onclick="loadCertificates()">새로고침</button>
+        </div>
+        <div id="certificate-list"></div>
+      </div>
+
+      <!-- ────────── 재인증 학생증 ────────── -->
+      <div class="panel" id="panel-reverificationIds">
+        <div class="filter-row">
+          <select id="reverification-id-filter" onchange="loadReverificationIds()">
+            <option value="pending">승인 대기</option>
+            <option value="all">전체</option>
+            <option value="approved">승인됨</option>
+            <option value="rejected">거절됨</option>
+          </select>
+          <button class="btn btn-sm" onclick="loadReverificationIds()">새로고침</button>
+        </div>
+        <div id="reverification-id-list"></div>
+      </div>
+
+      <!-- ────────── 사용자 제재 현황 ────────── -->
+      <div class="panel" id="panel-attendance">
+        <div class="filter-row">
+          <label class="filter-label">조회 기간</label>
+          <select id="attendance-days">
+            <option value="7">최근 7일</option>
+            <option value="14" selected>최근 14일</option>
+            <option value="30">최근 30일</option>
+          </select>
+          <label class="filter-label">미등교 기준율</label>
+          <select id="attendance-max-rate">
+            <option value="0.15">15% 미만</option>
+            <option value="0.25" selected>25% 미만</option>
+            <option value="0.4">40% 미만</option>
+          </select>
+          <button class="btn btn-sm" onclick="loadAttendance()">새로고침</button>
+        </div>
+
+        <div class="stat-grid attendance-stat-grid">
+          <div class="stat-card stat-ok">
+            <div class="stat-num" id="att-stat-today">0</div>
+            <div class="stat-label">오늘 등교 체크</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-num" id="att-stat-active">0</div>
+            <div class="stat-label">인증 학생 (활성)</div>
+          </div>
+          <div class="stat-card stat-warn">
+            <div class="stat-num" id="att-stat-suspicious">0</div>
+            <div class="stat-label">미등교 의심</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-num" id="att-stat-rate">0%</div>
+            <div class="stat-label">오늘 등교율 (활성 대비)</div>
+          </div>
+        </div>
+
+        <div class="section-title">일별 등교 체크 (막대 = 체크 수, 회색 = 주말)</div>
+        <div class="chart-container">
+          <div class="attendance-chart" id="attendance-chart"></div>
+        </div>
+
+        <div class="section-title" style="margin-top:24px">미등교 의심 사용자 (거짓 학생 후보)</div>
+        <p class="section-hint">기간 내 평일 등교율이 낮거나 등교 0회인 인증 학생입니다. 임시/영구 정지로 대응할 수 있습니다.</p>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>UID</th>
+                <th>아이디</th>
+                <th>이름</th>
+                <th>학교</th>
+                <th>등교일</th>
+                <th>등교율</th>
+                <th>사유</th>
+                <th>조치</th>
+              </tr>
+            </thead>
+            <tbody id="attendance-suspicious-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- ────────── 사용자 제재 현황 ────────── -->
+      <div class="panel" id="panel-users">
+        <div class="filter-row">
+          <input type="text" placeholder="로그인 ID(username)/UID 검색" style="width:200px" id="users-search-q">
+          <select id="users-filter">
+            <option value="">전체</option>
+            <option value="warned">경고 있음</option>
+            <option value="suspended">제재 중</option>
+            <option value="whitelisted">화이트리스트</option>
+          </select>
+          <input type="text" placeholder="위반경고 ≥ N" style="width:110px" id="users-min-violation">
+          <input type="text" placeholder="허위신고 ≥ N" style="width:110px" id="users-min-false-report">
+          <input type="text" placeholder="신고당한수 ≥ N" style="width:110px" id="users-min-reported">
+          <input type="text" placeholder="차단당한수 ≥ N" style="width:110px" id="users-min-blocked-by">
+          <select id="users-sanction-filter">
+            <option value="">제재상태 전체</option>
+            <option value="suspended">임시정지</option>
+            <option value="banned">영구정지</option>
+            <option value="whitelisted">화이트리스트</option>
+          </select>
+          <button class="btn btn-sm" onclick="applyUsersFilter()">적용</button>
+        </div>
+
+        <div id="users-list"></div>
+      </div>
+
+      <!-- ────────── 변경 이력 ────────── -->
+      <div class="panel" id="panel-logs">
+        <div class="filter-row">
+          <input type="text" placeholder="관리자 ID / 대상 ID 검색" style="width:220px" id="logs-search-q">
+          <select id="logs-action">
+            <option value="">전체 액션</option>
+            <option value="report_confirm">신고 확정(report_confirm)</option>
+            <option value="report_reject">신고 기각(report_reject)</option>
+            <option value="appeal_update">이의신청 처리(appeal_update)</option>
+            <option value="user_suspend">사용자 정지(user_suspend)</option>
+            <option value="user_whitelist">화이트리스트 추가(user_whitelist)</option>
+            <option value="user_unwhitelist">화이트리스트 해제(user_unwhitelist)</option>
+            <option value="user_ban">사용자 영구정지(user_ban)</option>
+            <option value="inquiry_answer">문의 답변(inquiry_answer)</option>
+            <option value="inquiry_close">문의 종결(inquiry_close)</option>
+            <option value="inquiry_reopen">문의 재오픈(inquiry_reopen)</option>
+            <option value="inquiry_delete">문의 삭제(inquiry_delete)</option>
+            <option value="system_flags_update">시스템 플래그(system_flags_update)</option>
+            <option value="admin_account_create">관리자 생성(admin_account_create)</option>
+            <option value="user_shadow_mute">섀도우 뮤트(user_shadow_mute)</option>
+          </select>
+          <input type="date" id="logs-from-date">
+          <input type="date" id="logs-to-date">
+          <button class="btn btn-sm" onclick="applyLogsFilter()">적용</button>
+        </div>
+
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th style="width:140px">일시</th>
+                <th style="width:90px">관리자</th>
+                <th style="width:75px">대상 ID</th>
+                <th style="width:110px">액션</th>
+                <th>메모</th>
+              </tr>
+            </thead>
+            <tbody id="logs-tbody"></tbody>
+          </table>
+        </div>
+        <div class="filter-row" id="logs-pagination" style="margin-top:12px"></div>
+      </div>
+
+      <!-- ────────── 비상 제어 ────────── -->
+      <div class="panel" id="panel-emergency">
+        <p class="section-hint">긴급 상황 시 서비스 일부를 즉시 제한합니다. 적용 시 OTP 확인과 사유 입력이 필요합니다.</p>
+        <div id="emergency-flags-host"></div>
+      </div>
+
+      <!-- ────────── 약관·방침 ────────── -->
+      <div class="panel" id="panel-legalDocuments">
+        <p class="section-hint">이용약관·개인정보처리방침을 마크다운으로 편집합니다. 저장 후 앱에서 즉시 반영됩니다.</p>
+        <div id="legal-documents-host"></div>
+      </div>
+
+      <!-- ────────── 관리자 계정 ────────── -->
+      <div class="panel" id="panel-adminAccounts">
+        <p class="section-hint">관리자 계정 생성·역할 변경·비활성화. 최고관리자(super)만 접근 가능합니다.</p>
+        <div id="admin-accounts-host"></div>
+      </div>
+
+    </div>
+  </div>
+</div>

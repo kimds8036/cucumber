@@ -25,6 +25,8 @@ export const createBoardStyles = (width, normalize) => {
       paddingVertical: normalize(10),
       paddingTop: normalize(8),
       gap: normalize(8),
+      borderBottomWidth: 1,
+      borderBottomColor: colors.textLight10,
     },
     sortButton: {
       paddingHorizontal: normalize(16),
@@ -52,7 +54,6 @@ export const createBoardStyles = (width, normalize) => {
     postList: {
       flex: 1,
       paddingHorizontal: width * 0.04,
-      paddingVertical: normalize(5),
     },
     postItem: {
       backgroundColor: colors.background,
@@ -784,18 +785,32 @@ export const createDetailStyles = (width, normalize) => {
     detailMenuBtn: {
       padding: normalize(4),
     },
-    // 광고 영역
+    // 광고 영역 — searchscreen BoarddetailADplaceholder(badgeOnLeft)와 동일
     adSection: {
       minHeight: normalize(40),
       marginHorizontal: width * 0,
-      backgroundColor: colors.backgroundGray,
+      backgroundColor: colors.primaryLight10,
       justifyContent: 'center',
       alignItems: 'center',
+      borderTopWidth: 1,
+      borderTopColor: colors.textLight10,
+    },
+    adSectionRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      paddingHorizontal: normalize(18),
+      paddingVertical: normalize(12),
+      gap: normalize(12),
+      width: '100%',
+    },
+    adSectionBadge: {
+      flexShrink: 0,
     },
     adSectionText: {
+      flex: 1,
       fontSize: normalize(fontSizes.xl),
       fontFamily: fonts.regular,
-      color: colors.textWhite,
+      color: colors.textPrimary,
     },
     // 댓글 섹션 (SchoolMail.style.js smDetailComment* 와 동일 톤·간격)
     commentSection: {

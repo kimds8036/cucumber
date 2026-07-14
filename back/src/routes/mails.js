@@ -88,7 +88,7 @@ router.get('/personal/received', authenticate, async (req, res) => {
         ) > 0 AS has_reply,
         pm.created_at,
         pm.sent_at,
-        u.name as sender_name,
+        u.name_enc as sender_name_enc,
         u.color_id as sender_color_id,
         (pm.parent_mail_id IS NOT NULL AND par.sender_id = ?) AS reply_to_my_sent
       FROM personal_mails pm
@@ -201,7 +201,7 @@ router.get('/personal/sent', authenticate, async (req, res) => {
         pm.recipient_school_id,
         pm.recipient_grade,
         pm.recipient_class_num,
-        pm.recipient_name AS recipient_snapshot_name,
+        pm.recipient_name_enc AS recipient_snapshot_name_enc,
         pm.recipient_user_id,
         pm.is_deleted,
         pm.parent_mail_id,
@@ -218,7 +218,7 @@ router.get('/personal/sent', authenticate, async (req, res) => {
         ) > 0 AS has_reply,
         pm.created_at,
         pm.sent_at,
-        u.name as recipient_name,
+        u.name_enc as recipient_name_enc,
         u.color_id as recipient_color_id
       FROM personal_mails pm
       LEFT JOIN personal_mail_rooms pmr ON pm.room_id = pmr.id
@@ -371,9 +371,9 @@ router.get('/personal/:mailId/thread', authenticate, async (req, res) => {
       `SELECT
         pm.id,
         pm.sender_id,
-        s.name as sender_name,
+        s.name_enc as sender_name_enc,
         pm.recipient_id,
-        r.name as recipient_name,
+        r.name_enc as recipient_name_enc,
         pm.content,
         pm.created_at,
         pm.parent_mail_id,
@@ -431,9 +431,9 @@ router.get('/personal/:mailId', authenticate, async (req, res) => {
         (root_pm.sender_id = ?) AS is_root_author_for_current_user,
         pm.created_at,
         pm.sent_at,
-        u1.name as sender_name,
+        u1.name_enc as sender_name_enc,
         u1.color_id as sender_color_id,
-        u2.name as recipient_name,
+        u2.name_enc as recipient_name_enc,
         u2.color_id as recipient_color_id,
         (pm.parent_mail_id IS NOT NULL AND par.sender_id = ?) AS reply_to_my_sent
       FROM personal_mails pm
@@ -617,7 +617,7 @@ router.post('/personal', authenticate, async (req, res) => {
         pm.room_id,
         pm.created_at,
         pm.sent_at,
-        u.name as recipient_name,
+        u.name_enc as recipient_name_enc,
         u.color_id as recipient_color_id
       FROM personal_mails pm
       LEFT JOIN users u ON pm.recipient_id = u.id
@@ -635,8 +635,8 @@ router.post('/personal', authenticate, async (req, res) => {
         userId: Number(recipientId),
         type: 'mail',
         category: 'mail',
-        title: '새로운 익명 우편이 도착했습니다',
-        body: content.trim().slice(0, 80),
+        title: '우편함',
+        body: '새로운 우편이 도착했습니다',
         relatedType: 'personal_mail',
         relatedId: result.insertId,
       });
@@ -815,7 +815,7 @@ router.post('/personal/:mailId/reply', authenticate, async (req, res) => {
         pm.room_id,
         pm.created_at,
         pm.sent_at,
-        u.name as recipient_name,
+        u.name_enc as recipient_name_enc,
         u.color_id as recipient_color_id
       FROM personal_mails pm
       LEFT JOIN users u ON pm.recipient_id = u.id
@@ -827,12 +827,18 @@ router.post('/personal/:mailId/reply', authenticate, async (req, res) => {
 
     // 원본 발신자(=이번 답장 수신자)에게 알림 생성 (비동기 큐 + 소켓 emit)
     if (!isShadowBlocked) {
+      const [senderRows] = await pool.execute(
+        'SELECT name FROM users WHERE id = ?',
+        [userId],
+      );
+      const replySenderName =
+        String(senderRows[0]?.name ?? '').trim() || '상대방';
       await enqueueNotification({
         userId: Number(recipientId),
         type: 'mail',
         category: 'mail',
-        title: '새로운 익명 우편 답장이 도착했습니다',
-        body: content.trim().slice(0, 80),
+        title: '우편함',
+        body: `${replySenderName} 님이 우편 답장을 보냈습니다`,
         relatedType: 'personal_mail',
         relatedId: result.insertId,
       });
@@ -972,6 +978,62 @@ router.get('/personal/unread-count', authenticate, async (req, res) => {
 
 // ==================== 학교 우편 API ====================
 
+// 댓글 삭제 — /school/:mailId 보다 먼저 등록 (경로 충돌 방지)
+router.delete('/school/comments/:commentId', authenticate, async (req, res) => {
+  try {
+    const userId = req.user.userId;
+    const commentId = Number(req.params.commentId);
+
+    const [rows] = await pool.execute(
+      `SELECT smc.id, smc.mail_id, smc.user_id
+       FROM school_mail_comments smc
+       INNER JOIN school_mails sm ON sm.id = smc.mail_id
+       WHERE smc.id = ? AND smc.is_deleted = FALSE AND sm.is_deleted = FALSE`,
+      [commentId],
+    );
+
+    if (!rows.length) {
+      return res.status(404).json({
+        success: false,
+        message: '댓글을 찾을 수 없습니다.',
+      });
+    }
+
+    if (Number(rows[0].user_id) !== Number(userId)) {
+      return res.status(403).json({
+        success: false,
+        message: '삭제 권한이 없습니다.',
+      });
+    }
+
+    const mailId = rows[0].mail_id;
+    await pool.execute(
+      'UPDATE school_mail_comments SET is_deleted = TRUE WHERE id = ?',
+      [commentId],
+    );
+    await pool.execute(
+      `UPDATE school_mails
+       SET comment_count = (
+         SELECT COUNT(*) FROM school_mail_comments
+         WHERE mail_id = ? AND is_deleted = FALSE
+       )
+       WHERE id = ?`,
+      [mailId, mailId],
+    );
+
+    return res.json({
+      success: true,
+      message: '댓글이 삭제되었습니다.',
+    });
+  } catch (error) {
+    console.error('학교 우편 댓글 삭제 오류:', error);
+    return res.status(500).json({
+      success: false,
+      message: '댓글 삭제 중 오류가 발생했습니다.',
+    });
+  }
+});
+
 // 학교 우편 목록 조회
 router.get('/school', async (req, res) => {
   try {
@@ -997,10 +1059,11 @@ router.get('/school', async (req, res) => {
         sm.like_count,
         sm.is_deleted,
         sm.created_at,
-        u.name as author_name,
-        u.school_id as author_school_id,
+        u.name_enc as author_name_enc,
+        COALESCE(sm.author_school_id, u.school_id) as author_school_id,
+        u.school_id AS author_current_school_id,
         u.color_id as author_color_id,
-        (SELECT s2.name FROM schools s2 WHERE s2.school_id = u.school_id) AS author_school_name,
+        (SELECT s2.name FROM schools s2 WHERE s2.school_id = COALESCE(sm.author_school_id, u.school_id)) AS author_school_name,
         s.name as school_name
       FROM school_mails sm
       LEFT JOIN users u ON sm.user_id = u.id
@@ -1041,6 +1104,59 @@ router.get('/school', async (req, res) => {
   }
 });
 
+// 학교 우편 — 내가 쓴 글 (상세 :mailId 보다 먼저)
+router.get('/school/my', authenticate, async (req, res) => {
+  try {
+    const userId = req.user.userId;
+    const page = Math.max(1, parseInt(req.query.page, 10) || 1);
+    const limitNum = Math.max(1, Math.min(50, parseInt(req.query.limit, 10) || 20));
+    const offsetNum = (page - 1) * limitNum;
+
+    const [mails] = await pool.execute(
+      `SELECT
+        sm.id,
+        sm.school_id,
+        sm.user_id,
+        sm.content,
+        sm.comment_count,
+        sm.like_count,
+        sm.created_at,
+        s.name AS school_name
+      FROM school_mails sm
+      LEFT JOIN schools s ON sm.school_id = s.school_id
+      WHERE sm.user_id = ? AND sm.is_deleted = FALSE
+      ORDER BY sm.created_at DESC
+      LIMIT ${limitNum} OFFSET ${offsetNum}`,
+      [userId],
+    );
+
+    const [countResult] = await pool.execute(
+      `SELECT COUNT(*) AS total FROM school_mails WHERE user_id = ? AND is_deleted = FALSE`,
+      [userId],
+    );
+    const total = Number(countResult[0]?.total ?? 0);
+
+    return res.json({
+      success: true,
+      data: {
+        mails,
+        pagination: {
+          page,
+          limit: limitNum,
+          total,
+          totalPages: Math.ceil(total / limitNum) || 1,
+        },
+      },
+    });
+  } catch (error) {
+    console.error('내 학교 우편 목록 오류:', error);
+    return res.status(500).json({
+      success: false,
+      message: '내 학교 우편 목록 조회 중 오류가 발생했습니다.',
+    });
+  }
+});
+
 // 학교 우편 상세 조회 (비로그인 가능 — is_liked 는 로그인 시만)
 router.get('/school/:mailId', optionalAuthenticate, async (req, res) => {
   try {
@@ -1057,10 +1173,11 @@ router.get('/school/:mailId', optionalAuthenticate, async (req, res) => {
         sm.like_count,
         sm.is_deleted,
         sm.created_at,
-        u.name as author_name,
-        u.school_id as author_school_id,
+        u.name_enc as author_name_enc,
+        COALESCE(sm.author_school_id, u.school_id) as author_school_id,
+        u.school_id AS author_current_school_id,
         u.color_id as author_color_id,
-        (SELECT s2.name FROM schools s2 WHERE s2.school_id = u.school_id) AS author_school_name,
+        (SELECT s2.name FROM schools s2 WHERE s2.school_id = COALESCE(sm.author_school_id, u.school_id)) AS author_school_name,
         s.name as school_name,
         (SELECT COUNT(*) FROM school_mail_likes sml WHERE sml.mail_id = sm.id AND sml.user_id = ?) AS is_liked
       FROM school_mails sm
@@ -1318,11 +1435,13 @@ router.post('/school', authenticate, async (req, res) => {
       });
     }
 
+    const authorSchoolId = users[0].school_id;
+
     // 학교 우편 생성
     const [result] = await pool.execute(
-      `INSERT INTO school_mails (school_id, user_id, content, created_at) 
-       VALUES (?, ?, ?, ?)`,
-      [schoolId, userId, content.trim(), getNowForDB()]
+      `INSERT INTO school_mails (school_id, user_id, author_school_id, content, created_at) 
+       VALUES (?, ?, ?, ?, ?)`,
+      [schoolId, userId, authorSchoolId, content.trim(), getNowForDB()]
     );
 
     // 생성된 우편 정보 조회
@@ -1336,10 +1455,11 @@ router.post('/school', authenticate, async (req, res) => {
         sm.like_count,
         sm.is_deleted,
         sm.created_at,
-        u.name as author_name,
-        u.school_id as author_school_id,
+        u.name_enc as author_name_enc,
+        COALESCE(sm.author_school_id, u.school_id) as author_school_id,
+        u.school_id AS author_current_school_id,
         u.color_id as author_color_id,
-        (SELECT s2.name FROM schools s2 WHERE s2.school_id = u.school_id) AS author_school_name,
+        (SELECT s2.name FROM schools s2 WHERE s2.school_id = COALESCE(sm.author_school_id, u.school_id)) AS author_school_name,
         s.name as school_name
       FROM school_mails sm
       LEFT JOIN users u ON sm.user_id = u.id
@@ -1382,11 +1502,29 @@ router.delete('/school/:mailId', authenticate, async (req, res) => {
       });
     }
 
-    // 삭제 처리 (소프트 삭제)
-    await pool.execute(
-      'UPDATE school_mails SET is_deleted = TRUE WHERE id = ?',
-      [mailId]
-    );
+    // 삭제 처리 (소프트 삭제 + 연관 댓글)
+    const connection = await pool.getConnection();
+    try {
+      await connection.beginTransaction();
+      await connection.execute(
+        'UPDATE school_mails SET is_deleted = TRUE WHERE id = ?',
+        [mailId],
+      );
+      await connection.execute(
+        'UPDATE school_mail_comments SET is_deleted = TRUE WHERE mail_id = ? AND is_deleted = FALSE',
+        [mailId],
+      );
+      await connection.execute(
+        'UPDATE school_mails SET comment_count = 0 WHERE id = ?',
+        [mailId],
+      );
+      await connection.commit();
+    } catch (txErr) {
+      await connection.rollback();
+      throw txErr;
+    } finally {
+      connection.release();
+    }
 
     res.json({
       success: true,
@@ -1400,6 +1538,83 @@ router.delete('/school/:mailId', authenticate, async (req, res) => {
     });
   }
 });
+
+// 학교 우편 댓글 고정 (우편 작성자만) — /school/:mailId 보다 먼저
+router.patch(
+  '/school/:mailId/comments/:commentId/pin',
+  authenticate,
+  async (req, res) => {
+    try {
+      const userId = req.user.userId;
+      const mailId = Number(req.params.mailId);
+      const commentId = Number(req.params.commentId);
+      const pin = req.body?.pin !== false;
+
+      const [mails] = await pool.execute(
+        'SELECT id, user_id FROM school_mails WHERE id = ? AND is_deleted = FALSE',
+        [mailId],
+      );
+      if (!mails.length) {
+        return res.status(404).json({
+          success: false,
+          message: '학교 우편을 찾을 수 없습니다.',
+        });
+      }
+      if (Number(mails[0].user_id) !== Number(userId)) {
+        return res.status(403).json({
+          success: false,
+          message: '우편 작성자만 댓글을 고정할 수 있습니다.',
+        });
+      }
+
+      const [comments] = await pool.execute(
+        `SELECT id FROM school_mail_comments
+         WHERE id = ? AND mail_id = ? AND is_deleted = FALSE`,
+        [commentId, mailId],
+      );
+      if (!comments.length) {
+        return res.status(404).json({
+          success: false,
+          message: '댓글을 찾을 수 없습니다.',
+        });
+      }
+
+      if (pin) {
+        await pool.execute(
+          `UPDATE school_mail_comments
+           SET is_pinned = FALSE, pinned_at = NULL
+           WHERE mail_id = ? AND is_deleted = FALSE`,
+          [mailId],
+        );
+        await pool.execute(
+          `UPDATE school_mail_comments
+           SET is_pinned = TRUE, pinned_at = NOW()
+           WHERE id = ?`,
+          [commentId],
+        );
+      } else {
+        await pool.execute(
+          `UPDATE school_mail_comments
+           SET is_pinned = FALSE, pinned_at = NULL
+           WHERE id = ? AND mail_id = ?`,
+          [commentId, mailId],
+        );
+      }
+
+      return res.json({
+        success: true,
+        message: pin ? '댓글이 고정되었습니다.' : '댓글 고정이 해제되었습니다.',
+        data: { mailId, commentId, isPinned: pin },
+      });
+    } catch (error) {
+      console.error('학교 우편 댓글 고정 오류:', error);
+      return res.status(500).json({
+        success: false,
+        message: '댓글 고정 처리 중 오류가 발생했습니다.',
+      });
+    }
+  },
+);
 
 // 학교 우편 댓글 목록 조회 (게시글보다 먼저 등록: /comments 가 :mailId에 안 먹히도록)
 router.get('/school/:mailId/comments', optionalAuthenticate, async (req, res) => {
@@ -1427,14 +1642,17 @@ router.get('/school/:mailId/comments', optionalAuthenticate, async (req, res) =>
         smc.content,
         smc.like_count,
         smc.is_deleted,
+        smc.is_pinned,
+        smc.pinned_at,
         smc.created_at,
-        u.school_id AS author_school_id,
-        (SELECT s.name FROM schools s WHERE s.school_id = u.school_id) AS author_school_name,
+        COALESCE(smc.author_school_id, u.school_id) AS author_school_id,
+        u.school_id AS author_current_school_id,
+        (SELECT s.name FROM schools s WHERE s.school_id = COALESCE(smc.author_school_id, u.school_id)) AS author_school_name,
         (SELECT COUNT(*) FROM school_mail_comment_likes smcl WHERE smcl.comment_id = smc.id AND smcl.user_id = ?) AS is_liked
       FROM school_mail_comments smc
       LEFT JOIN users u ON smc.user_id = u.id
       WHERE smc.mail_id = ? AND smc.is_deleted = FALSE
-      ORDER BY smc.created_at ASC`,
+      ORDER BY smc.is_pinned DESC, smc.created_at ASC`,
       [uid, mailId]
     );
 
@@ -1495,10 +1713,16 @@ router.post('/school/:mailId/comments', authenticate, async (req, res) => {
       }
     }
 
+    const [authorRows] = await pool.execute(
+      'SELECT school_id FROM users WHERE id = ? LIMIT 1',
+      [userId],
+    );
+    const authorSchoolId = authorRows[0]?.school_id || null;
+
     const [result] = await pool.execute(
-      `INSERT INTO school_mail_comments (mail_id, user_id, parent_id, content, created_at)
-       VALUES (?, ?, ?, ?, ?)`,
-      [mailId, userId, parentIdVal, String(content).trim(), getNowForDB()]
+      `INSERT INTO school_mail_comments (mail_id, user_id, parent_id, author_school_id, content, created_at)
+       VALUES (?, ?, ?, ?, ?, ?)`,
+      [mailId, userId, parentIdVal, authorSchoolId, String(content).trim(), getNowForDB()]
     );
 
     await pool.execute('UPDATE school_mails SET comment_count = comment_count + 1 WHERE id = ?', [mailId]);
@@ -1513,8 +1737,9 @@ router.post('/school/:mailId/comments', authenticate, async (req, res) => {
         smc.like_count,
         smc.is_deleted,
         smc.created_at,
-        u.school_id AS author_school_id,
-        (SELECT s.name FROM schools s WHERE s.school_id = u.school_id) AS author_school_name
+        COALESCE(smc.author_school_id, u.school_id) AS author_school_id,
+        u.school_id AS author_current_school_id,
+        (SELECT s.name FROM schools s WHERE s.school_id = COALESCE(smc.author_school_id, u.school_id)) AS author_school_name
       FROM school_mail_comments smc
       LEFT JOIN users u ON smc.user_id = u.id
       WHERE smc.id = ?`,

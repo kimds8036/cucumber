@@ -20,6 +20,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import MainHeader from '../frame/mainHeader';
 import MainFooter from '../frame/mainFooter';
+import { getMainTabTitle } from '../../context/MainShellContext';
 import { colors, fonts } from '../../styles/colors';
 import { createBoardStyles, getNormalize } from '../../styles/board.style';
 import FontAwesome5 from '@expo/vector-icons/FontAwesome5';
@@ -27,6 +28,7 @@ import { api } from '../../utils/api';
 import { normalizeTagsFromApi } from '../../utils/normalizePostTags';
 import BoardPostCard from '../../components/Boardpostcard';
 import AdPlaceholder from '../../src/screens/ad/AdPlaceholder';
+import TopAdBanner from '../../components/ads/TopAdBanner';
 import Skeleton from '../../components/common/Skeleton';
 import { useLocationContext } from '../../context/LocationContext';
 import { useGuidePreview } from '../../context/GuidePreviewContext';
@@ -37,7 +39,8 @@ import { filterPostsExcludingUser } from '../../utils/blockUser';
 import { invalidateProfileCountsCache } from '../../utils/profileCountsCache';
 import { useFocusEffect } from '@react-navigation/native';
 import ReportModal from '../../components/common/ReportModal.jsx';
-import { injectAdSlots, useAdSlots } from '../../hooks/useAdSlots';
+import { injectAdSlots } from '../../hooks/useAdSlots';
+import { AD_PLACEMENTS } from '../../constants/adPlacements';
 
 /** 서버 created_at(UTC)을 "n분 전" 형식으로 변환. 화면에서는 기기 로컬 시간 기준으로 계산 */
 function formatTimeAgo(createdAt) {
@@ -75,10 +78,10 @@ export function BoardAllContent({ navigation, posts }) {
   const normalize = useMemo(() => getNormalize(width), [width]);
   const styles = useMemo(() => createBoardStyles(width, normalize), [width]);
   const { isGuidePreview } = useGuidePreview();
-  const { adSlots } = useAdSlots();
-  const { coords, coordsIsFresh, refreshLocation, permissionGranted } =
-    useLocationContext();
-  const distanceStale = permissionGranted && (!coordsIsFresh || !coords);
+  // TODO: /api/ads 연동 후 useAdSlots(AD_PLACEMENTS.FEED_BOARD)
+  const adSlots = [];
+  const { coords, refreshLocation, permissionGranted } = useLocationContext();
+  const distanceStale = permissionGranted && !coords;
 
   const [sortType, setSortType] = useState('latest'); // latest, popular, nearby
   const [serverPosts, setServerPosts] = useState([]);
@@ -418,6 +421,7 @@ export function BoardAllContent({ navigation, posts }) {
   const dataWithAds = useMemo(
     () =>
       injectAdSlots(data, adSlots, {
+        placement: AD_PLACEMENTS.FEED_BOARD,
         adType: 'ad',
         idPrefix: 'ad',
         skipFirstIndex: true,
@@ -595,7 +599,16 @@ export function BoardAllContent({ navigation, posts }) {
           showsVerticalScrollIndicator={false}
           onEndReached={handleLoadMore}
           onEndReachedThreshold={0.5}
-          ListHeaderComponent={null}
+          ListHeaderComponent={
+            <View
+              style={{
+                marginHorizontal: -(width * 0.04),
+                width,
+              }}
+            >
+              <TopAdBanner />
+            </View>
+          }
           ListEmptyComponent={
             !loading ? (
               <View
@@ -718,7 +731,11 @@ export function BoardAllContent({ navigation, posts }) {
                           const authorId =
                             floatingMenuPost?.authorUserId ??
                             floatingMenuPost?.author_user_id;
-                          openReportModal('post', floatingMenuPost?.id, authorId);
+                          openReportModal(
+                            'post',
+                            floatingMenuPost?.id,
+                            authorId,
+                          );
                         } else if (item.onPress) {
                           item.onPress();
                         }
@@ -784,7 +801,7 @@ const BoardAll = ({ navigation }) => {
   const styles = useMemo(() => createBoardStyles(width, normalize), [width]);
   return (
     <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
-      <MainHeader activeTab="board" />
+      <MainHeader headerTitle={getMainTabTitle('board')} />
       <BoardAllContent navigation={navigation} />
       <MainFooter
         activeTab="board"

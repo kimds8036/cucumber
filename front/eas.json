@@ -8,19 +8,28 @@
       "developmentClient": true,
       "distribution": "internal",
       "env": {
-        "APP_ENV": "development"
+        "APP_ENV": "development",
+        "EXPO_PUBLIC_SIGNUP_TEST_MODE": "false",
+        "EXPO_PUBLIC_SIGNUP_ADULT_TEST_MODE": "false",
+        "EXPO_PUBLIC_INICIS_ENABLED": "true"
       }
     },
     "preview": {
       "distribution": "internal",
       "env": {
-        "APP_ENV": "development"
+        "APP_ENV": "development",
+        "EXPO_PUBLIC_SIGNUP_TEST_MODE": "false",
+        "EXPO_PUBLIC_SIGNUP_ADULT_TEST_MODE": "false",
+        "EXPO_PUBLIC_INICIS_ENABLED": "true"
       }
     },
     "production": {
       "autoIncrement": true,
       "env": {
-        "APP_ENV": "production"
+        "APP_ENV": "production",
+        "EXPO_PUBLIC_SIGNUP_TEST_MODE": "false",
+        "EXPO_PUBLIC_SIGNUP_ADULT_TEST_MODE": "false",
+        "EXPO_PUBLIC_INICIS_ENABLED": "true"
       }
     }
   },

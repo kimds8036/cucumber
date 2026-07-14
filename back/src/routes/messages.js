@@ -21,7 +21,7 @@ import { validate } from '../middleware/validate.js';
 import { getNowForDB } from '../utils/dateUtils.js';
 import { emitNewMessage, emitReadReceipt, isUserInRoom } from '../socketServer.js';
 import { enqueueNotification } from '../utils/notificationWorker.js';
-import { cloudinary, upload } from '../config/cloudinary.js';
+import { cloudinary, uploadMessage } from '../config/cloudinary.js';
 import { isBlockedBy } from '../utils/userBlock.js';
 
 const router = express.Router();
@@ -83,7 +83,7 @@ router.get('/rooms', authenticate, async (req, res) => {
           ORDER BY pi.display_order ASC, pi.id ASC
           LIMIT 1) AS post_thumbnail,
         CASE WHEN mr.user1_id = ? THEN u2.id   ELSE u1.id         END AS other_user_id,
-        CASE WHEN mr.user1_id = ? THEN u2.name ELSE u1.name       END AS other_user_name,
+        CASE WHEN mr.user1_id = ? THEN u2.name_enc ELSE u1.name_enc END AS other_user_name_enc,
         CASE WHEN mr.user1_id = ? THEN u2.color_id ELSE u1.color_id END AS other_user_color_id,
         (
           SELECT COUNT(*)
@@ -311,7 +311,7 @@ router.get('/rooms/:roomId', authenticate, async (req, res) => {
           ORDER BY pi.display_order ASC, pi.id ASC
           LIMIT 1) AS post_thumbnail,
         CASE WHEN mr.user1_id = ? THEN u2.id       ELSE u1.id       END AS other_user_id,
-        CASE WHEN mr.user1_id = ? THEN u2.name     ELSE u1.name     END AS other_user_name,
+        CASE WHEN mr.user1_id = ? THEN u2.name_enc ELSE u1.name_enc END AS other_user_name_enc,
         CASE WHEN mr.user1_id = ? THEN u2.color_id ELSE u1.color_id END AS other_user_color_id
       FROM message_rooms mr
       LEFT JOIN posts  p  ON mr.post_id  = p.id
@@ -374,7 +374,7 @@ router.get('/rooms/:roomId', authenticate, async (req, res) => {
 
     const sql = `SELECT
         m.id, m.room_id, m.sender_id, m.content, m.is_read, m.is_deleted, m.created_at,
-        u.name AS sender_name, u.color_id AS sender_color_id,
+        u.name_enc AS sender_name_enc, u.color_id AS sender_color_id,
         (SELECT JSON_ARRAYAGG(cloudinary_url)
          FROM (
            SELECT cloudinary_url
@@ -428,7 +428,7 @@ router.get('/rooms/:roomId', authenticate, async (req, res) => {
 router.post(
   '/rooms/:roomId/messages',
   authenticate,
-  upload.array('images', 5),
+  uploadMessage.array('images', 5),
   validate(sendMessageValidators),
   async (req, res) => {
     try {
@@ -536,8 +536,8 @@ router.post(
       const [messages] = await pool.execute(
         `SELECT
   m.id, m.room_id, m.sender_id, m.parent_message_id, m.content, m.is_read, m.is_deleted, m.created_at,
-  pm.content AS parent_content, pu.name AS parent_sender_name,
-  u.name AS sender_name, u.color_id AS sender_color_id,
+  pm.content AS parent_content, pu.name_enc AS parent_sender_name_enc,
+  u.name_enc AS sender_name_enc, u.color_id AS sender_color_id,
   (SELECT JSON_ARRAYAGG(mi.cloudinary_url)
    FROM (SELECT cloudinary_url FROM message_images
          WHERE message_id = m.id AND deleted_at IS NULL

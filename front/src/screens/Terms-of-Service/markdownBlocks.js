@@ -74,6 +74,20 @@ export function groupMarkdownBlocks(lines) {
       i = nextIndex;
       continue;
     }
+    if (trimmed.startsWith('>')) {
+      const quoteLines = [];
+      while (i < lines.length) {
+        const q = lines[i].trim();
+        if (!q.startsWith('>')) break;
+        const inner = q.replace(/^>\s?/, '').trim();
+        if (inner) quoteLines.push(inner);
+        i += 1;
+      }
+      if (quoteLines.length > 0) {
+        blocks.push({ type: 'blockquote', trimmed: quoteLines.join('\n') });
+      }
+      continue;
+    }
     if (/^-\s+/.test(line)) {
       const indent = line.match(/^\s*/)[0].length;
       const isNested = indent >= 4;

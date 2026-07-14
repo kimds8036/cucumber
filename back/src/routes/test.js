@@ -1,7 +1,7 @@
 /**
  * 테스트 환경 전용 라우트
  *
- * - GET /api/test/users : seed-admin-users.js 로 만든 user1~userN 계정 목록을
+ * - GET /api/test/users : users 테이블 테스트 계정 목록 (시드 시 별도 생성 필요)
  *   학교/학년/반/사용 여부(in_use) 와 함께 반환.
  *
  * 운영 배포 시에는 이 라우트를 비활성화하거나 보호 미들웨어로 감싸야 함.
@@ -47,7 +47,7 @@ router.get('/users', async (req, res) => {
       `SELECT
          u.id,
          u.username,
-         u.name,
+         u.name_enc,
          u.school_id,
          s.name AS school_name,
          u.grade,

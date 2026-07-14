@@ -13,8 +13,12 @@ import { faSchool } from '@fortawesome/free-solid-svg-icons';
 import { colors } from '../../styles/colors';
 import LogoIcon from '../../assets/Logo.svg';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
+import { useMainShellOptional } from '../../context/MainShellContext';
 
-const MainFooter = ({ activeTab = 'board', onTabPress }) => {
+const MainFooter = ({ activeTab: activeTabProp, onTabPress: onTabPressProp }) => {
+  const shell = useMainShellOptional();
+  const activeTab = activeTabProp ?? shell?.activeTab ?? 'board';
+  const onTabPress = onTabPressProp ?? shell?.setActiveTab;
   const { width, height } = useWindowDimensions();
   const footerStyles = useMemo(
     () => createFooterStyles(width, height),

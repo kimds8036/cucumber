@@ -177,22 +177,49 @@ export function NotificationProvider({ children }) {
   useEffect(() => {
     if (!socket) return;
 
-    const fallbackToastMessage = (payload) => {
+    // 비채팅 알림 토스트의 제목/본문 구성
+    const buildNotificationToast = (payload) => {
       const category = String(payload?.category ?? '').trim();
       const type = String(payload?.type ?? '').trim();
-      if (type === 'poke' || payload?.relatedType === 'timer_poke') {
-        return '친구가 쿡 찔렀어요';
+      const relatedType = String(payload?.relatedType ?? '').trim();
+      const bodyText = String(payload?.body ?? '').trim();
+
+      // 쿡 찌르기
+      if (type === 'poke' || relatedType === 'timer_poke') {
+        return {
+          title: null,
+          message:
+            bodyText ||
+            '친구가 쿡 찔렀어요! 타이머에서 함께 공부를 시작해보세요',
+        };
       }
-      if (category === 'post' || payload?.relatedType === 'post') {
-        return '게시글에 새 소식이 도착했어요';
+      // 게시글 (댓글 / 대댓글)
+      if (category === 'post' || relatedType === 'post') {
+        const message =
+          type === 'reply'
+            ? '내 댓글에 새로운 답글이 달렸어요'
+            : '새로운 댓글이 달렸어요';
+        return { title: '게시글', message };
       }
+      // 우편 (일반 / 답장)
       if (category === 'mail' || type === 'mail') {
-        return '새로운 우편이 도착했어요';
+        if (bodyText.includes('답장')) {
+          return { title: '우편함', message: bodyText };
+        }
+        return { title: '우편함', message: '새로운 우편이 도착했어요' };
       }
+      // 친구 요청
+      if (type === 'friend_request' || relatedType === 'friendship') {
+        return {
+          title: '시스템',
+          message: '새 친구 요청이 도착했어요! 친구 목록에서 확인해 보세요',
+        };
+      }
+      // 시스템 (공지 등)
       if (category === 'system') {
-        return '새로운 알림이 도착했어요';
+        return { title: '시스템', message: '새로운 알림이 도착했어요' };
       }
-      return '새로운 소식이 도착했어요';
+      return { title: '시스템', message: '새로운 소식이 도착했어요' };
     };
 
     const handler = (payload) => {
@@ -230,53 +257,77 @@ export function NotificationProvider({ children }) {
           },
         );
       }
-      const relatedType = String(payload?.relatedType ?? '').trim();
-      const isAnonymousMessageRoom = relatedType === 'message_room';
-      const ANONYMOUS_MAIL_LABEL = '익명 쪽지';
-
-      let titleText = String(payload?.title ?? '').trim();
-      if (isAnonymousMessageRoom) {
-        titleText = ANONYMOUS_MAIL_LABEL;
-      }
-
-      const bodyText = String(payload?.body ?? '').trim();
-      const composedMessage = isChatNotification
-        ? `${titleText || (isAnonymousMessageRoom ? ANONYMOUS_MAIL_LABEL : '새 메시지')}: ${bodyText || '(이미지)'}`
-        : titleText || bodyText || fallbackToastMessage(payload);
-
-      if (!composedMessage) return;
       if (!isForeground) return;
 
-      const dmSenderName =
-        payload?.senderName != null && String(payload.senderName).trim() !== ''
-          ? String(payload.senderName).trim()
-          : relatedType === 'dm_room'
-            ? titleText || null
-            : null;
+      const relatedType = String(payload?.relatedType ?? '').trim();
+      const bodyText = String(payload?.body ?? '').trim();
 
+      // 공부 완료 요약 (타이머 화면이 아닐 때 일반 토스트로 표시)
+      if (isStudySummary) {
+        const summaryBody =
+          bodyText.replace(/^공부 완료!?\s*/u, '').trim() || '누군가 기다렸어요';
+        showToast({
+          title: '공부 완료!',
+          message: summaryBody,
+          relatedType: payload?.relatedType,
+          relatedId: payload?.relatedId,
+          type: payload?.type,
+          category: payload?.category,
+          isChat: false,
+          watchers: payload?.watchers,
+        });
+        return;
+      }
+
+      // 채팅 (익명 쪽지 / DM)
+      if (isChatNotification) {
+        const isAnonymousMessageRoom = relatedType === 'message_room';
+        const dmSenderName =
+          payload?.senderName != null &&
+          String(payload.senderName).trim() !== ''
+            ? String(payload.senderName).trim()
+            : String(payload?.title ?? '').trim() || null;
+        const chatTitle = isAnonymousMessageRoom
+          ? '익명'
+          : dmSenderName || '새 메시지';
+        const chatMessage = bodyText || '새 메시지가 도착했어요';
+
+        showToast({
+          title: chatTitle,
+          message: chatMessage,
+          senderName: chatTitle,
+          body: chatMessage,
+          roomId: payload?.relatedId,
+          relatedType: payload?.relatedType,
+          relatedId: payload?.relatedId,
+          type: payload?.type,
+          category: payload?.category,
+          isChat: true,
+          senderUserId:
+            payload?.senderUserId != null ? String(payload.senderUserId) : null,
+          senderSchoolName:
+            payload?.senderSchoolName != null
+              ? String(payload.senderSchoolName)
+              : null,
+          senderColorId:
+            payload?.senderColorId != null
+              ? Number(payload.senderColorId)
+              : null,
+        });
+        return;
+      }
+
+      // 그 외 일반 알림
+      const display = buildNotificationToast(payload);
       showToast({
-        message: composedMessage,
-        senderName: isChatNotification
-          ? isAnonymousMessageRoom
-            ? ANONYMOUS_MAIL_LABEL
-            : dmSenderName || titleText || '새 메시지'
-          : null,
-        body: isChatNotification ? bodyText || '(이미지)' : null,
-        roomId: isChatNotification ? payload?.relatedId : null,
+        title: display.title,
+        message: display.message,
         relatedType: payload?.relatedType,
         relatedId: payload?.relatedId,
         type: payload?.type,
         category: payload?.category,
-        isChat: isChatNotification,
+        isChat: false,
         watchers: payload?.watchers,
-        senderUserId:
-          payload?.senderUserId != null ? String(payload.senderUserId) : null,
-        senderSchoolName:
-          payload?.senderSchoolName != null
-            ? String(payload.senderSchoolName)
-            : null,
-        senderColorId:
-          payload?.senderColorId != null ? Number(payload.senderColorId) : null,
       });
     };
 
@@ -292,8 +343,8 @@ export function NotificationProvider({ children }) {
       if (!isForeground) return;
       showToast({
         message: senderName
-          ? `${senderName} 님이 쿡 찔렀어요`
-          : '친구가 쿡 찔렀어요',
+          ? `${senderName} 님이 쿡 찔렀어요! 타이머에서 함께 공부를 시작해보세요`
+          : '친구가 쿡 찔렀어요! 타이머에서 함께 공부를 시작해보세요',
         relatedType: 'timer_poke',
         relatedId:
           payload?.fromUserId != null ? String(payload.fromUserId) : null,
@@ -325,12 +376,12 @@ export function NotificationProvider({ children }) {
       const roomId = payload?.message?.room_id;
       const relatedType = resolveNewMessageRoomType(payload);
       const isDm = relatedType === 'dm_room';
-      const ANONYMOUS_MAIL_LABEL = '익명 쪽지';
+      const ANONYMOUS_MAIL_LABEL = '익명';
       const senderNameRaw = String(payload?.message?.sender_name ?? '').trim();
       const senderName = isDm
         ? senderNameRaw || '새 메시지'
         : ANONYMOUS_MAIL_LABEL;
-      const content = payload?.message?.content || '(이미지)';
+      const content = payload?.message?.content || '사진';
       const isActiveRoom =
         roomId != null &&
         activeChatRoomId != null &&
@@ -377,7 +428,8 @@ export function NotificationProvider({ children }) {
         senderName,
       });
       showToast({
-        message: `${senderName}: ${content}`,
+        title: senderName,
+        message: content,
         senderName,
         body: content,
         roomId,

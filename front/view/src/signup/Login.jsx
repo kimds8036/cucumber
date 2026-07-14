@@ -23,40 +23,29 @@ import { createLoginStyles } from '../../../styles/login.style';
 import { colors } from '../../../styles/colors';
 import { Ionicons } from '@expo/vector-icons';
 import LogoIcon from '../../../assets/Logo.svg';
-import { api, setAuthToken } from '../../../utils/api';
+import { api, setAuthToken, setRefreshToken, getOrCreateDeviceId, getApiUserFacingMessage } from '../../../utils/api';
 import { useAuth } from '../../../context/AuthContext';
 import Skeleton from '../../../components/common/Skeleton';
 // import AsyncStorage from '@react-native-async-storage/async-storage';
 
-/** --no-dev 등에서도 원인 파악용(Alert 본문) */
+/** 로그인 실패 안내 — 사용자용 문구만 (기술 정보는 __DEV__ 콘솔) */
 function buildLoginFailureMessage(error) {
-  const base = api.defaults.baseURL || '(baseURL 없음)';
-  const data = error?.response?.data;
-  const serverMsg =
-    (typeof data?.message === 'string' && data.message) ||
-    (typeof data === 'string' ? data : null);
-  const axiosMsg = typeof error?.message === 'string' ? error.message : '';
-  const code = error?.code;
-  const status = error?.response?.status;
+  const userMessage = getApiUserFacingMessage(
+    error,
+    '아이디 또는 비밀번호를 확인해 주세요.',
+  );
 
-  const lines = [];
-  if (serverMsg) lines.push(serverMsg);
-  else if (axiosMsg) lines.push(axiosMsg);
-  else lines.push('로그인 요청에 실패했습니다.');
-
-  if (status != null) lines.push(`HTTP ${status}`);
-  if (code) lines.push(`에러 코드: ${code}`);
-  lines.push(`API 주소: ${base}`);
-
-  const noResponse = !error?.response && error?.request;
-  if (noResponse) {
-    lines.push(
-      '',
-      '서버 응답이 없습니다. Wi‑Fi/데이터, 방화벽, EXPO_PUBLIC_API_URL·apiBaseUrl 설정을 확인하세요.',
-    );
+  if (__DEV__) {
+    console.warn('[Login] failure', {
+      baseURL: api.defaults.baseURL,
+      status: error?.response?.status,
+      code: error?.code,
+      data: error?.response?.data,
+      message: error?.message,
+    });
   }
 
-  return lines.join('\n');
+  return userMessage;
 }
 
 function formatSuspendedUntil(raw) {
@@ -289,11 +278,14 @@ const Login = ({ navigation }) => {
                     platform: Platform.OS,
                   });
 
+                  const deviceId = await getOrCreateDeviceId();
                   const response = await api.post('/api/auth/login', {
                     ...loginPayload,
+                    deviceId,
                   });
 
-                  const { token, user, needsVerification } = response.data.data;
+                  const { token, refreshToken, user, needsVerification } =
+                    response.data.data;
                   debugLogin('로그인 성공', {
                     status: response.status,
                     success: response.data?.success,
@@ -307,13 +299,20 @@ const Login = ({ navigation }) => {
                   if (token) {
                     debugLogin('토큰 저장 시작', { persist: rememberMe });
                     await setAuthToken(token, { persist: rememberMe });
+                    if (refreshToken) {
+                      await setRefreshToken(refreshToken, { persist: rememberMe });
+                    }
                     debugLogin('토큰 저장 완료');
                   }
                   debugLogin('로그인 상태 반영 → 스택 전환');
                   await login({
                     studentVerificationStatus:
-                      response.data.data?.studentVerificationStatus || 'APPROVED',
+                      response.data.data?.studentVerificationStatus || 'PENDING',
                     rejectReason: response.data.data?.rejectReason || null,
+                    reverificationStatus:
+                      response.data.data?.reverificationStatus || 'none',
+                    reverificationDeadline:
+                      response.data.data?.reverificationDeadline || null,
                   });
                 } catch (error) {
                   const hasResponse = Boolean(error?.response);
@@ -362,6 +361,39 @@ const Login = ({ navigation }) => {
                       body: until
                         ? `해제 예정 시각: ${until}\n해제 시각 이후 다시 로그인해주세요.`
                         : '해제 시각 이후 다시 로그인해주세요.',
+                    });
+                    return;
+                  }
+                  if (serverCode === 'GRADUATED_BLOCKED') {
+                    setPolicyModal({
+                      visible: true,
+                      title: '이용 제한',
+                      highlight: '졸업생은 서비스를 이용할 수 없습니다.',
+                      body:
+                        '고등학교 졸업으로 Youth Paper 이용이 종료되었습니다.\n' +
+                        '학생 인증 기반 서비스 정책에 따라 앱 이용이 제한됩니다.',
+                    });
+                    return;
+                  }
+                  if (serverCode === 'ADULT_BLOCKED') {
+                    setPolicyModal({
+                      visible: true,
+                      title: '이용 제한',
+                      highlight: '성인은 서비스를 이용할 수 없습니다.',
+                      body:
+                        '성인 연령으로 Youth Paper 이용이 종료되었습니다.\n' +
+                        '학생 인증 기반 서비스 정책에 따라 앱 이용이 제한됩니다.',
+                    });
+                    return;
+                  }
+                  if (serverCode === 'REVERIFICATION_RESTRICTED') {
+                    setPolicyModal({
+                      visible: true,
+                      title: '재인증 필요',
+                      highlight: '학생증 재인증이 필요합니다.',
+                      body:
+                        '새 학년도 재인증 유예 기간이 지났습니다.\n' +
+                        '앱 이용을 재개하려면 고객센터로 문의해 주세요.',
                     });
                     return;
                   }

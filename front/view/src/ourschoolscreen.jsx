@@ -19,7 +19,6 @@ import { getNormalize } from '../../styles/frame.style';
 import { createOurSchoolStyles } from '../../styles/school.style';
 import StudyGrassMap from '../../components/studygrassmap';
 import Skeleton from '../../components/common/Skeleton';
-import SchoolAdPlaceholder from '../../src/screens/ad/SchoolAdPlaceholder';
 import { useGuidePreview } from '../../context/GuidePreviewContext';
 import { GuideFocusTarget } from '../../components/guide/GuideFocusTarget';
 import { GUIDE_FOCUS_TARGETS as T } from '../../src/screens/UserGuide/guideFocusTargets';
@@ -568,7 +567,6 @@ const OurSchoolScreen = ({ navigation }) => {
           <Text style={styles.grassCardTitle}>우리 학교 공부 잔디밭</Text>
           <StudyGrassMap days={grassDays} />
         </GuideFocusTarget>
-        {!isGuidePreview ? <SchoolAdPlaceholder /> : null}
 
         {/* 게시판 / 우편함 바로가기 */}
         <View style={styles.shortcutContainer}>

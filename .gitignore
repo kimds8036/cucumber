@@ -36,18 +36,32 @@ npm-debug.*
 yarn-debug.*
 yarn-error.*
 # Firebase Admin SDK JSON (비밀키 — 커밋 금지)
-back/cucumber-bf4b4-firebase-adminsdk-fbsvc-5ff4ab6933.json
 back/**/*firebase-adminsdk*.json
+**/*firebase-adminsdk*.json
+**/*-adminsdk-*.json
 
 # ==========================================
-# [환경변수 & 보안]
+# [환경변수 & 보안 — 공개 GitHub 필수]
 # ==========================================
 .env
-.env*.local
+.env.*
+!.env.example
+!**/.env.example
 *.pem
 credentials.json
 **/credentials.json
 !**/credentials.json.example
+front/.env.development
+front/.env.production
+front/.env.local
+back/.env
+back/.env.local
+back/.env.*.local
+
+# 로컬 DB 덤프·백업 (실수 커밋 방지)
+**/*.sql.gz
+**/db-dumps/
+**/database_backup/
 
 # ==========================================
 # [TypeScript]
@@ -62,7 +76,13 @@ credentials.json
 # ==========================================
 # [프로젝트 전용]
 # ==========================================
-# DB 마이그레이션 SQL — 로컬 전용 파일만 무시, *.sql 은 커밋
-back/src/db/migrations/*
-!back/src/db/migrations/
-!back/src/db/migrations/*.sql
+# 로컬 전용 문서 (저장소 루트 / 백엔드 docs — GitHub 미업로드)
+/docs/
+back/docs/
+
+# 앱에 번들되는 약관 원문
+!front/docs/
+!front/docs/legal/
+!front/docs/legal/**
+
+# 마이그레이션 SQL은 스키마 정의이므로 커밋 유지 (비밀값 넣지 말 것)

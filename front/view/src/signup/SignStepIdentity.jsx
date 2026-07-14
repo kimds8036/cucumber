@@ -17,6 +17,7 @@ import {
 import { e164ToLocalKr, normalizeLocalKrPhone } from '../../../utils/phoneFormat';
 import SignupStepScroll from './SignupStepScroll';
 import SchoolSearchField from './SchoolSearchField';
+import SignupHelperText from './SignupHelperText';
 
 const SMS_RESEND_COOLDOWN_SEC = 60;
 
@@ -262,7 +263,6 @@ const SignStepIdentity = ({
               setName(t);
               notifyChange({ name: t.trim(), birthDate });
             }}
-            placeholder="실명"
             placeholderTextColor={colors.textSecondary}
             editable={!isBusy}
           />
@@ -280,8 +280,6 @@ const SignStepIdentity = ({
                   setYear(v);
                   notifyChange({ birthDate: buildBirthDate(v, month, day) });
                 }}
-                placeholder="2008"
-                placeholderTextColor={colors.textSecondary}
                 keyboardType="number-pad"
                 maxLength={4}
                 editable={!isBusy}
@@ -298,8 +296,6 @@ const SignStepIdentity = ({
                   setMonth(v);
                   notifyChange({ birthDate: buildBirthDate(year, v, day) });
                 }}
-                placeholder="01"
-                placeholderTextColor={colors.textSecondary}
                 keyboardType="number-pad"
                 maxLength={2}
                 editable={!isBusy}
@@ -316,8 +312,6 @@ const SignStepIdentity = ({
                   setDay(v);
                   notifyChange({ birthDate: buildBirthDate(year, month, v) });
                 }}
-                placeholder="01"
-                placeholderTextColor={colors.textSecondary}
                 keyboardType="number-pad"
                 maxLength={2}
                 editable={!isBusy}
@@ -345,7 +339,6 @@ const SignStepIdentity = ({
                 notifyChange({ phoneNumber: t });
               }}
               keyboardType="phone-pad"
-              placeholder="01012345678"
               placeholderTextColor={colors.textSecondary}
               editable={!isVerified && !isBusy}
             />
@@ -387,8 +380,6 @@ const SignStepIdentity = ({
             }}
             keyboardType="number-pad"
             editable={isCodeSent && !isVerified && !isBusy}
-            placeholder="6자리"
-            placeholderTextColor={colors.textSecondary}
           />
         </View>
         {isCodeSent && !isVerified ? (
@@ -410,11 +401,9 @@ const SignStepIdentity = ({
         ) : null}
 
         {isVerified ? (
-          <Text
-            style={[styles.fieldHelperText, styles.fieldHelperTextSuccess]}
-          >
+          <SignupHelperText normalize={normalize} variant="success">
             전화번호 인증이 완료되었습니다.
-          </Text>
+          </SignupHelperText>
         ) : null}
       </SignupStepScroll>
     </View>

@@ -126,7 +126,7 @@ export const createNotificationStyles = (normalize) =>
     },
     notificationTitle: {
       fontSize: normalize(fontSizes.xl),
-      fontFamily: fonts.bold,
+      fontFamily: fonts.regular,
       color: colors.textPrimary,
       marginBottom: normalize(4),
     },
@@ -134,7 +134,8 @@ export const createNotificationStyles = (normalize) =>
       fontSize: normalize(fontSizes.xl),
       fontFamily: fonts.regular,
       color: colors.textSecondary,
-      lineHeight: normalize(20),
+      lineHeight: normalize(22),
+      marginBottom: normalize(4),
     },
     notificationTime: {
       fontSize: normalize(fontSizes.lg),

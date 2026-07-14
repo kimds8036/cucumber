@@ -10,8 +10,19 @@ import { createHeaderStyles, getNormalize } from '../../styles/frame.style';
 import FontAwesome5 from '@expo/vector-icons/FontAwesome5';
 import { colors } from '../../styles/colors';
 import { useNotification } from '../../context/NotificationContext';
+import CommuteHeaderIndicator from '../../components/CommuteHeaderIndicator';
+import {
+  getMainTabTitle,
+  useMainShellOptional,
+} from '../../context/MainShellContext';
 
-const MainHeader = ({ activeTab = 'board', navigation }) => {
+const MainHeader = ({ headerTitle: headerTitleProp, navigation: navigationProp }) => {
+  const shell = useMainShellOptional();
+  const headerTitle =
+    headerTitleProp ??
+    shell?.headerTitle ??
+    getMainTabTitle(shell?.activeTab ?? 'board');
+  const navigation = navigationProp ?? shell?.navigation;
   const { width, height } = useWindowDimensions();
   const headerStyles = useMemo(
     () => createHeaderStyles(width, height),
@@ -21,33 +32,16 @@ const MainHeader = ({ activeTab = 'board', navigation }) => {
 
   const { hasUnread } = useNotification();
 
-  // activeTab에 따른 헤더 텍스트
-  const getTabTitle = () => {
-    switch (activeTab) {
-      case 'board':
-        return '전체 게시판';
-      case 'message':
-        return '메시지';
-      case 'school':
-        return '우리 학교';
-      case 'mypage':
-        return '마이페이지';
-      case 'timer':
-        return '타이머';
-      default:
-        return '전체 게시판';
-    }
-  };
-
   return (
     <View style={headerStyles.container}>
       {/* 탭 제목 영역 */}
       <View style={headerStyles.tabContainer}>
-        <Text style={headerStyles.tabText}>{getTabTitle()}</Text>
+        <Text style={headerStyles.tabText}>{headerTitle}</Text>
       </View>
 
       {/* 우측 버튼 영역 */}
       <View style={headerStyles.buttonContainer}>
+        <CommuteHeaderIndicator />
         <TouchableOpacity
           style={headerStyles.iconButton}
           onPress={() => navigation?.navigate('Search')}

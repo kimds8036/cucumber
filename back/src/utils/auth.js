@@ -7,7 +7,7 @@ if (!process.env.JWT_SECRET) {
   throw new Error('[FATAL] JWT_SECRET 환경변수가 없습니다. 서버를 시작할 수 없습니다.');
 }
 const JWT_SECRET = process.env.JWT_SECRET;
-const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '1h';
+const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '15m';
 const ADMIN_JWT_EXPIRES_IN = process.env.ADMIN_JWT_EXPIRES_IN || '30m';
 
 // JWT 토큰 생성
@@ -18,12 +18,24 @@ export const generateToken = (payload, options = {}) => {
   });
 };
 
+/** 모바일 액세스 토큰 (token_version 포함) */
+export function createUserAccessToken({ userId, username, tokenVersion = 0 }) {
+  return generateToken({
+    userId,
+    username,
+    tv: Number(tokenVersion) || 0,
+  });
+}
+
 /** 관리자 세션 (OTP 통과 후, 기본 30분) */
-export const generateAdminSessionToken = ({ userId, username }) => {
+export const generateAdminSessionToken = ({ adminId, userId, username, role }) => {
+  const id = Number(adminId ?? userId);
   return generateToken(
     {
-      userId,
+      adminId: id,
+      userId: id,
       username,
+      role: role || 'moderator',
       type: 'admin_session',
       adminMfa: true,
     },
@@ -43,10 +55,12 @@ export function getTokenExpiresAtMs(token) {
 }
 
 /** OTP 등록 1회용 (10분) */
-export const generateAdminOtpSetupToken = ({ userId, username }) => {
+export const generateAdminOtpSetupToken = ({ adminId, userId, username }) => {
+  const id = Number(adminId ?? userId);
   return generateToken(
     {
-      userId,
+      adminId: id,
+      userId: id,
       username,
       type: 'admin_otp_setup',
     },
@@ -77,10 +91,18 @@ export const verifyToken = (token) => {
   }
 };
 
+/** bcrypt cost (기본 10, env: BCRYPT_SALT_ROUNDS, 허용 8~10) */
+export function getBcryptSaltRounds() {
+  const n = Number(process.env.BCRYPT_SALT_ROUNDS);
+  if (Number.isFinite(n) && n >= 8 && n <= 10) {
+    return Math.floor(n);
+  }
+  return 10;
+}
+
 // 비밀번호 해싱
 export const hashPassword = async (password) => {
-  const saltRounds = 10;
-  return await bcrypt.hash(password, saltRounds);
+  return await bcrypt.hash(password, getBcryptSaltRounds());
 };
 
 // 비밀번호 검증

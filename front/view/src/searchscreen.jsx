@@ -20,7 +20,7 @@ import {
 } from '../../styles/search.style';
 import { api } from '../../utils/api';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import BoarddetailADplaceholder from '../../src/screens/ad/boarddetailADplaceholder.jsx';
+import TopAdBanner from '../../components/ads/TopAdBanner';
 
 function formatTimeAgo(createdAt) {
   if (!createdAt) return '';
@@ -225,7 +225,7 @@ const SearchScreen = ({ navigation, route }) => {
               keyboardShouldPersistTaps="handled"
               keyboardDismissMode="on-drag"
             >
-              <BoarddetailADplaceholder />
+              <TopAdBanner />
               {recentSearches.length > 0 && (
                 <View style={styles.section}>
                   <View style={styles.sectionHeader}>

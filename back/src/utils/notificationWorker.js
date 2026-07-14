@@ -10,6 +10,7 @@ import { createNotificationOnce } from './notifications.js';
 import { emitNotification } from '../socketServer.js';
 import { checkNotificationAllowed } from './notificationUtils.js';
 import { sendPush } from './pushNotification.js';
+import { buildFcmDataPayload } from '../constants/notificationPayload.js';
 
 const REDIS_CONFIG = {
   host: process.env.REDIS_HOST || '127.0.0.1',
@@ -124,13 +125,13 @@ notificationQueue.process(async (job) => {
         userId: data.userId,
         title: pushContent.title,
         body: pushContent.body,
-        data: {
+        data: buildFcmDataPayload({
           type: data.type,
-          category: data.category || '',
-          relatedType: data.relatedType || '',
-          relatedId: data.relatedId != null ? String(data.relatedId) : '',
-          targetScreen: resolveTargetScreen(data.relatedType),
-        },
+          category: data.category,
+          relatedType: data.relatedType,
+          relatedId: data.relatedId,
+          extras: data.fcmExtras,
+        }),
       });
       data = { ...data, pushSent: true };
       await job.update(data);
@@ -175,33 +176,22 @@ export async function enqueueNotification(params) {
   }
 }
 
-function resolveTargetScreen(relatedType) {
-  switch (relatedType) {
-    case 'post':
-      return 'PostDetail';
-    case 'dm_room':
-    case 'message_room':
-      return 'ChatRoom';
-    case 'friend_request':
-      return 'FriendRequests';
-    case 'personal_mail':
-    case 'personal_mail_returned':
-      return 'MailDetail';
-    default:
-      return 'Notifications';
-  }
-}
-
 function buildPushContent({ title, body, relatedType }) {
   if (relatedType === 'personal_mail') {
     return {
-      title: '새로운 익명 우편',
-      body: '새 메시지가 도착했어요',
+      title: '익명',
+      body: '새로운 우편이 도착했습니다',
     };
   }
   if (relatedType === 'message_room') {
     return {
-      title: '익명 채팅',
+      title: '익명',
+      body: body || '새 메시지가 도착했어요',
+    };
+  }
+  if (relatedType === 'dm_room') {
+    return {
+      title: title || '새 메시지',
       body: body || '새 메시지가 도착했어요',
     };
   }

@@ -1,5 +1,6 @@
 import express from 'express';
 import { body } from 'express-validator';
+import jwt from 'jsonwebtoken';
 import pool from '../config/database.js';
 import { deactivateFcmTokenForSession } from '../utils/pushTokens.js';
 import { 
@@ -7,10 +8,12 @@ import {
   hashPassword, 
   comparePassword, 
   generateToken,
+  createUserAccessToken,
   getClientIp,
   getDeviceInfo
 } from '../utils/auth.js';
 import { validatePhone, validateUsername, validatePassword, validateBirthDate } from '../utils/validation.js';
+import { blockWhenFlag } from '../middleware/systemFlags.js';
 import { authenticate } from '../middleware/auth.js';
 import { validate } from '../middleware/validate.js';
 // OCR 자동 인증 — 수동 검수 전환으로 당분간 미사용 (studentIdOcr.service.js 참고)
@@ -28,28 +31,148 @@ import {
 import { verifyFirebaseIdToken } from '../config/firebase.js';
 import {
   normalizeLocalKrPhone,
-  SQL_PHONE_NORM,
 } from '../utils/phone.js';
+import {
+  packPhoneOnly,
+  packSubmissionPii,
+  packUserPii,
+  phoneLookupBindParams,
+  phoneLookupWhereClause,
+  USER_PII_INSERT_COLUMNS,
+  userPiiInsertValues,
+  normalizeBirthDateInput,
+} from '../services/userPii.service.js';
 import {
   signupOcrLimiter,
   signupPhoneBackendLimiter,
   recoveryPhoneBackendLimiter,
 } from '../middleware/signupRateLimit.js';
 import {
-  assertFirebasePhoneToken,
   findRegisteredUserByPhoneAndName,
   findRegisteredUserByPhoneNameUsername,
   issuePasswordRecoveryToken,
   consumePasswordRecoveryToken,
   mapRecoveryError,
+  mapInicisRecoveryError,
 } from '../services/accountRecovery.service.js';
 import {
   issueStudentIdManualVerificationToken,
   consumeStudentIdManualVerificationToken,
 } from '../services/signupVerificationToken.service.js';
 import { getStudentVerificationStatus } from '../services/studentVerificationStatus.service.js';
+import {
+  consumeRefreshToken,
+  generateRefreshTokenPlain,
+  storeRefreshToken,
+  revokeRefreshToken,
+  revokeAllRefreshTokens,
+} from '../services/refreshToken.service.js';
+import { incrementTokenVersion } from '../services/session.service.js';
+import { getReverificationBlockCode } from '../services/reverification.service.js';
+import { getUserReverificationPayload } from '../services/userSchoolTransition.service.js';
+import { API_ERROR_CODES } from '../constants/apiErrorCodes.js';
+import { isProductionEnv } from '../utils/httpError.js';
+import {
+  consumeIdentityVerificationClientToken,
+  getIdentityVerificationByClientToken,
+  isInicisEnabled,
+} from '../services/inicis.service.js';
 
 const router = express.Router();
+
+function isUnder14YearsOld(birthDateStr) {
+  const m = String(birthDateStr || '').match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (!m) return false;
+  const birth = new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
+  const today = new Date();
+  let age = today.getFullYear() - birth.getFullYear();
+  const md = today.getMonth() - birth.getMonth();
+  if (md < 0 || (md === 0 && today.getDate() < birth.getDate())) age -= 1;
+  return age < 14;
+}
+
+async function ensureInicisPhoneVerificationRecord(phone, connection) {
+  const normalized = normalizeLocalKrPhone(phone);
+  if (!normalized || !validatePhone(normalized)) return;
+  const phonePacked = packPhoneOnly(normalized);
+  const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
+  await connection.execute(
+    `DELETE FROM phone_verifications WHERE ${phoneLookupWhereClause()} AND is_verified = FALSE`,
+    phoneLookupBindParams(normalized),
+  );
+  await connection.execute(
+    `INSERT INTO phone_verifications (phone_enc, phone_lookup, verification_code, expires_at, is_verified)
+     VALUES (?, ?, ?, ?, TRUE)`,
+    [phonePacked.phone_enc, phonePacked.phone_lookup, 'INICIS', expiresAt],
+  );
+}
+
+function mapIdentityTokenError(code) {
+  const messages = {
+    IDENTITY_TOKEN_REQUIRED: '학생 본인인증을 먼저 완료해 주세요.',
+    INVALID_IDENTITY_TOKEN: '본인인증 정보가 유효하지 않습니다. 다시 인증해 주세요.',
+    IDENTITY_PURPOSE_MISMATCH: '본인인증 용도가 올바르지 않습니다.',
+    IDENTITY_NOT_SUCCESS: '본인인증이 완료되지 않았습니다.',
+    IDENTITY_TOKEN_USED: '이미 사용된 본인인증입니다. 다시 인증해 주세요.',
+    IDENTITY_TOKEN_EXPIRED: '본인인증이 만료되었습니다. 다시 인증해 주세요.',
+    IDENTITY_NAME_MISMATCH: '본인인증 이름이 가입 정보와 일치하지 않습니다.',
+    IDENTITY_PHONE_MISMATCH: '본인인증 전화번호가 가입 정보와 일치하지 않습니다.',
+    IDENTITY_BIRTH_MISMATCH: '본인인증 생년월일이 가입 정보와 일치하지 않습니다.',
+    GUARDIAN_TOKEN_REQUIRED: '보호자 본인인증이 필요합니다.',
+  };
+  return messages[code] || '본인인증 검증에 실패했습니다.';
+}
+
+function identityTokenErrorResponse(tokenErr) {
+  const code = tokenErr?.code || 'INVALID_IDENTITY_TOKEN';
+  let message = mapIdentityTokenError(code);
+  if (message === '본인인증 검증에 실패했습니다.') {
+    console.error('[signup/inicis-token]', code, tokenErr?.message || tokenErr);
+    if (tokenErr?.message && !String(code).startsWith('ER_')) {
+      message = tokenErr.message;
+    } else if (code) {
+      message = `본인인증 검증에 실패했습니다. (${code})`;
+    }
+  }
+  return {
+    status: 400,
+    body: {
+      success: false,
+      message,
+      code,
+    },
+  };
+}
+
+function studentVerificationTokenErrorResponse(tokenErr) {
+  const code = tokenErr?.code || 'INVALID_STUDENT_VERIFICATION_TOKEN';
+  const messages = {
+    STUDENT_VERIFICATION_TOKEN_REQUIRED:
+      '학생증 촬영을 먼저 완료해 주세요.',
+    INVALID_STUDENT_VERIFICATION_TOKEN:
+      '학생증 제출이 만료되었거나 유효하지 않습니다. 다시 촬영해 주세요.',
+    STUDENT_VERIFICATION_TOKEN_USED:
+      '이미 사용된 학생증 제출입니다. 다시 촬영해 주세요.',
+    STUDENT_VERIFICATION_TOKEN_EXPIRED:
+      '학생증 제출이 만료되었습니다. 다시 촬영해 주세요.',
+    STUDENT_VERIFICATION_MISMATCH:
+      '제출 정보가 학생증 촬영 시점과 일치하지 않습니다.',
+    STUDENT_VERIFICATION_PHONE_MISMATCH:
+      '전화번호가 학생증 촬영 시점과 일치하지 않습니다.',
+    SCHOOL_ID_REQUIRED: '재학 학교를 선택해 주세요.',
+    STUDENT_ID_IMAGE_MISSING:
+      '학생증 이미지가 없습니다. 다시 촬영해 주세요.',
+    INVALID_SCHOOL_ID: '유효하지 않은 학교 정보입니다.',
+  };
+  return {
+    status: 400,
+    body: {
+      success: false,
+      message: messages[code] || '학생증 제출 검증에 실패했습니다.',
+      code,
+    },
+  };
+}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // express-validator 체이너 모음
@@ -89,6 +212,8 @@ const signupValidators = [
   body('certificateViewUrl').optional({ values: 'falsy' }).isString().isLength({ max: 500 }),
   body('certificateAccessCode').optional({ values: 'falsy' }).isString().isLength({ max: 100 }),
   body('studentVerificationToken').optional({ values: 'falsy' }).isString().isLength({ max: 2000 }),
+  body('studentInicisClientToken').optional({ values: 'falsy' }).isString().isLength({ max: 64 }),
+  body('guardianInicisClientToken').optional({ values: 'falsy' }).isString().isLength({ max: 64 }),
   body('consents').optional().isObject(),
   body('consents.termsOfService').optional().isBoolean(),
   body('consents.dataCollection').optional().isBoolean(),
@@ -119,7 +244,7 @@ router.get('/me', authenticate, async (req, res) => {
       `SELECT 
          u.id,
          u.username,
-         u.name,
+         u.name_enc,
          u.color_id,
          u.school_id,
          u.grade,
@@ -156,6 +281,7 @@ router.get('/me', authenticate, async (req, res) => {
     const friendCount = Number(friendRows[0]?.cnt ?? 0);
 
     const verification = await getStudentVerificationStatus(userId);
+    const reverification = await getUserReverificationPayload(userId);
 
     res.json({
       success: true,
@@ -179,7 +305,13 @@ router.get('/me', authenticate, async (req, res) => {
         friendCount,
         studentVerificationStatus: verification.status,
         rejectReason: verification.rejectReason,
+        submissionPurpose: verification.submissionPurpose,
+        reverificationSubmissionPending: verification.reverificationSubmissionPending,
         studentVerified: Boolean(user.student_verified),
+        reverificationStatus: reverification?.reverificationStatus ?? 'none',
+        reverificationDeadline: reverification?.reverificationDeadline ?? null,
+        gradeException: reverification?.gradeException ?? false,
+        previousSchoolId: reverification?.previousSchoolId ?? null,
       },
     });
   } catch (error) {
@@ -318,6 +450,8 @@ router.patch('/me/password', authenticate, validate(updatePasswordValidators), a
       `UPDATE users SET password = ? WHERE id = ?`,
       [hashed, userId]
     );
+    await incrementTokenVersion(userId);
+    await revokeAllRefreshTokens(userId);
 
     return res.json({
       success: true,
@@ -354,17 +488,24 @@ router.post('/send-verification', async (req, res) => {
     const verificationCode = generateVerificationCode();
     const expiresAt = new Date(Date.now() + 5 * 60 * 1000); // 5분 후 만료
 
+    const phonePacked = packPhoneOnly(phone);
+
     // 기존 인증 코드가 있으면 삭제 (같은 전화번호로 여러 번 요청 방지)
     await pool.execute(
-      'DELETE FROM phone_verifications WHERE phone = ? AND is_verified = FALSE',
-      [phone]
+      `DELETE FROM phone_verifications WHERE ${phoneLookupWhereClause()} AND is_verified = FALSE`,
+      phoneLookupBindParams(phone),
     );
 
     // 새 인증 코드 저장
     await pool.execute(
-      `INSERT INTO phone_verifications (phone, verification_code, expires_at) 
-       VALUES (?, ?, ?)`,
-      [phone, verificationCode, expiresAt]
+      `INSERT INTO phone_verifications (phone_enc, phone_lookup, verification_code, expires_at) 
+       VALUES (?, ?, ?, ?)`,
+      [
+        phonePacked.phone_enc,
+        phonePacked.phone_lookup,
+        verificationCode,
+        expiresAt,
+      ],
     );
 
     // 실제로는 SMS 발송 서비스 연동 (예: 알리고, 카카오톡 등)
@@ -399,9 +540,9 @@ router.post('/verify-phone', async (req, res) => {
     // 인증 코드 확인
     const [codes] = await pool.execute(
       `SELECT id, expires_at FROM phone_verifications 
-       WHERE phone = ? AND verification_code = ? AND is_verified = FALSE
+       WHERE ${phoneLookupWhereClause()} AND verification_code = ? AND is_verified = FALSE
        ORDER BY created_at DESC LIMIT 1`,
-      [phone, verificationCode]
+      [...phoneLookupBindParams(phone), verificationCode],
     );
 
     if (codes.length === 0) {
@@ -460,8 +601,8 @@ router.post('/check-phone-available', signupPhoneBackendLimiter, async (req, res
     }
 
     const [existing] = await pool.execute(
-      `SELECT id FROM users WHERE ${SQL_PHONE_NORM} = ? LIMIT 1`,
-      [phone],
+      `SELECT id FROM users WHERE ${phoneLookupWhereClause()} LIMIT 1`,
+      phoneLookupBindParams(phone),
     );
 
     return res.json({
@@ -539,16 +680,17 @@ router.post('/verify-firebase-phone', signupPhoneBackendLimiter, async (req, res
 
     const phone = normalizedToken;
     const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
+    const phonePacked = packPhoneOnly(phone);
 
     await pool.execute(
-      'DELETE FROM phone_verifications WHERE phone = ? AND is_verified = FALSE',
-      [phone],
+      `DELETE FROM phone_verifications WHERE ${phoneLookupWhereClause()} AND is_verified = FALSE`,
+      phoneLookupBindParams(phone),
     );
 
     await pool.execute(
-      `INSERT INTO phone_verifications (phone, verification_code, expires_at, is_verified)
-       VALUES (?, ?, ?, TRUE)`,
-      [phone, 'FB0000', expiresAt],
+      `INSERT INTO phone_verifications (phone_enc, phone_lookup, verification_code, expires_at, is_verified)
+       VALUES (?, ?, ?, ?, TRUE)`,
+      [phonePacked.phone_enc, phonePacked.phone_lookup, 'FB0000', expiresAt],
     );
 
     return res.json({
@@ -565,48 +707,45 @@ router.post('/verify-firebase-phone', signupPhoneBackendLimiter, async (req, res
   }
 });
 
-// ── 아이디/비밀번호 찾기 (Firebase 전화 인증 + rate limit) ──
-
-router.post('/recovery/check-phone-registered', recoveryPhoneBackendLimiter, async (req, res) => {
-  try {
-    const phone = normalizeLocalKrPhone(req.body?.phone);
-    if (!phone || !validatePhone(phone)) {
-      return res.status(400).json({
-        success: false,
-        message: '올바른 전화번호 형식이 아닙니다.',
-      });
-    }
-
-    const [existing] = await pool.execute(
-      `SELECT id FROM users
-       WHERE ${SQL_PHONE_NORM} = ?
-         AND is_deleted = FALSE
-         AND (is_banned IS NULL OR is_banned = FALSE)
-       LIMIT 1`,
-      [phone],
-    );
-
-    return res.json({
-      success: true,
-      data: {
-        phone,
-        registered: existing.length > 0,
-      },
-    });
-  } catch (error) {
-    console.error('[recovery/check-phone-registered]', error);
-    return res.status(500).json({
-      success: false,
-      message: '전화번호 확인 중 오류가 발생했습니다.',
-    });
-  }
-});
+// ── 아이디/비밀번호 찾기 (KG 이니시스 본인인증) ──
 
 router.post('/recovery/find-username', recoveryPhoneBackendLimiter, async (req, res) => {
   try {
-    const { idToken, phone, name } = req.body || {};
-    const verifiedPhone = await assertFirebasePhoneToken(idToken, phone);
-    const user = await findRegisteredUserByPhoneAndName(verifiedPhone, name);
+    if (!isInicisEnabled()) {
+      return res.status(503).json({
+        success: false,
+        message: '본인인증 서비스를 이용할 수 없습니다.',
+      });
+    }
+
+    const { inicisClientToken, name } = req.body || {};
+    const trimmedName = String(name || '').trim();
+    if (!trimmedName) {
+      return res.status(400).json({
+        success: false,
+        message: '이름을 입력해 주세요.',
+      });
+    }
+
+    const identity = await getIdentityVerificationByClientToken(
+      inicisClientToken,
+      { purpose: 'find_username' },
+    );
+    if (identity.name && identity.name !== trimmedName) {
+      return res.status(400).json({
+        success: false,
+        message: '입력하신 이름과 본인인증 정보가 일치하지 않습니다.',
+      });
+    }
+
+    const user = await findRegisteredUserByPhoneAndName(identity.phone, trimmedName);
+
+    await consumeIdentityVerificationClientToken(inicisClientToken, {
+      purpose: 'find_username',
+      expectedName: trimmedName,
+      expectedPhone: identity.phone,
+      linkedUserId: user.id,
+    });
 
     return res.json({
       success: true,
@@ -614,11 +753,11 @@ router.post('/recovery/find-username', recoveryPhoneBackendLimiter, async (req, 
       data: {
         username: user.username,
         name: user.name,
-        phone: verifiedPhone,
+        phone: identity.phone,
       },
     });
   } catch (error) {
-    const mapped = mapRecoveryError(error);
+    const mapped = mapInicisRecoveryError(error);
     if (mapped.status < 500) {
       return res.status(mapped.status).json({ success: false, message: mapped.message });
     }
@@ -632,17 +771,50 @@ router.post('/recovery/find-username', recoveryPhoneBackendLimiter, async (req, 
 
 router.post('/recovery/verify-account', recoveryPhoneBackendLimiter, async (req, res) => {
   try {
-    const { idToken, phone, name, username } = req.body || {};
-    const verifiedPhone = await assertFirebasePhoneToken(idToken, phone);
-    const user = await findRegisteredUserByPhoneNameUsername(
-      verifiedPhone,
-      name,
-      username,
+    if (!isInicisEnabled()) {
+      return res.status(503).json({
+        success: false,
+        message: '본인인증 서비스를 이용할 수 없습니다.',
+      });
+    }
+
+    const { inicisClientToken, name, username } = req.body || {};
+    const trimmedName = String(name || '').trim();
+    const trimmedUsername = String(username || '').trim();
+    if (!trimmedName || !trimmedUsername) {
+      return res.status(400).json({
+        success: false,
+        message: '이름과 아이디를 입력해 주세요.',
+      });
+    }
+
+    const identity = await getIdentityVerificationByClientToken(
+      inicisClientToken,
+      { purpose: 'password_recovery' },
     );
+    if (identity.name && identity.name !== trimmedName) {
+      return res.status(400).json({
+        success: false,
+        message: '입력하신 이름과 본인인증 정보가 일치하지 않습니다.',
+      });
+    }
+
+    const user = await findRegisteredUserByPhoneNameUsername(
+      identity.phone,
+      trimmedName,
+      trimmedUsername,
+    );
+
+    await consumeIdentityVerificationClientToken(inicisClientToken, {
+      purpose: 'password_recovery',
+      expectedName: trimmedName,
+      expectedPhone: identity.phone,
+      linkedUserId: user.id,
+    });
 
     const recoveryToken = await issuePasswordRecoveryToken({
       userId: user.id,
-      phone: verifiedPhone,
+      phone: identity.phone,
       username: user.username,
     });
 
@@ -653,11 +825,11 @@ router.post('/recovery/verify-account', recoveryPhoneBackendLimiter, async (req,
         recoveryToken,
         username: user.username,
         name: user.name,
-        phone: verifiedPhone,
+        phone: identity.phone,
       },
     });
   } catch (error) {
-    const mapped = mapRecoveryError(error);
+    const mapped = mapInicisRecoveryError(error);
     if (mapped.status < 500) {
       return res.status(mapped.status).json({ success: false, message: mapped.message });
     }
@@ -720,7 +892,7 @@ router.post('/recovery/reset-password', validate(recoveryResetValidators), async
 });
 
 // 회원가입
-router.post('/signup', validate(signupValidators), async (req, res) => {
+router.post('/signup', blockWhenFlag('signup_disabled'), validate(signupValidators), async (req, res) => {
   try {
     const { 
       username, 
@@ -738,11 +910,16 @@ router.post('/signup', validate(signupValidators), async (req, res) => {
       certificateAccessCode,
       claimedSchoolName,
       studentVerificationToken,
+      studentInicisClientToken,
+      guardianInicisClientToken,
       consents: rawConsents,
     } = req.body;
 
     const phone = normalizeLocalKrPhone(rawPhone);
+    const normalizedBirthDate = normalizeBirthDateInput(birthDate) || birthDate;
     const isCertificateSignup = verificationMethod === 'certificate';
+    const under14 = isUnder14YearsOld(normalizedBirthDate);
+    const inicisOn = isInicisEnabled();
     const resolvedSchoolId = isCertificateSignup
       ? (schoolId?.trim() || 'CERT_PENDING')
       : schoolId;
@@ -775,65 +952,36 @@ router.post('/signup', validate(signupValidators), async (req, res) => {
       consents.termsOfService === true &&
       consents.dataCollection === true &&
       consents.studentOcr === true &&
-      consents.location === true;
+      consents.location === true &&
+      (!under14 || consents.guardian === true);
     if (!requiredConsentOk) {
       return res.status(400).json({
         success: false,
-        message: '필수 약관 동의가 완료되지 않았습니다.',
+        message: under14
+          ? '필수 약관 및 법정대리인 동의가 완료되지 않았습니다.'
+          : '필수 약관 동의가 완료되지 않았습니다.',
       });
     }
 
-    let studentIdManualVerification = null;
-    if (!isCertificateSignup) {
-      try {
-        studentIdManualVerification = await consumeStudentIdManualVerificationToken(
-          studentVerificationToken,
-          {
-            name: String(name).trim(),
-            birthDate,
-            schoolId: String(schoolId).trim(),
-            phone,
-          },
-        );
-      } catch (tokenErr) {
-        const code = tokenErr?.code || 'INVALID_STUDENT_VERIFICATION_TOKEN';
-        const messages = {
-          STUDENT_VERIFICATION_TOKEN_REQUIRED:
-            '학생증 촬영을 먼저 완료해 주세요.',
-          INVALID_STUDENT_VERIFICATION_TOKEN:
-            '학생증 제출이 만료되었거나 유효하지 않습니다. 다시 촬영해 주세요.',
-          STUDENT_VERIFICATION_TOKEN_USED:
-            '이미 사용된 학생증 제출입니다. 다시 촬영해 주세요.',
-          STUDENT_VERIFICATION_TOKEN_EXPIRED:
-            '학생증 제출이 만료되었습니다. 다시 촬영해 주세요.',
-          STUDENT_VERIFICATION_MISMATCH:
-            '제출 정보가 학생증 촬영 시점과 일치하지 않습니다.',
-          STUDENT_VERIFICATION_PHONE_MISMATCH:
-            '전화번호가 학생증 촬영 시점과 일치하지 않습니다.',
-          SCHOOL_ID_REQUIRED: '재학 학교를 선택해 주세요.',
-          STUDENT_ID_IMAGE_MISSING:
-            '학생증 이미지가 없습니다. 다시 촬영해 주세요.',
-          INVALID_SCHOOL_ID: '유효하지 않은 학교 정보입니다.',
-        };
-        return res.status(400).json({
-          success: false,
-          message: messages[code] || '학생증 제출 검증에 실패했습니다.',
-          code,
-        });
-      }
+    if (!isCertificateSignup && !studentVerificationToken?.trim()) {
+      return res.status(400).json({
+        success: false,
+        message: '학생증 촬영을 먼저 완료해 주세요.',
+        code: 'STUDENT_VERIFICATION_TOKEN_REQUIRED',
+      });
     }
 
     const resolvedColorId = Number(rawColorId) || pickRandomProfileColorId();
 
-    const expectedLevel = inferExpectedSchoolLevel(birthDate);
+    const expectedLevel = inferExpectedSchoolLevel(normalizedBirthDate);
     let resolvedGrade = Number(grade);
     let resolvedGraduationYear = Number(graduationYear);
     if (!Number.isFinite(resolvedGrade) || resolvedGrade < 1) {
-      resolvedGrade = inferGradeFromBirthDate(birthDate, expectedLevel) || 1;
+      resolvedGrade = inferGradeFromBirthDate(normalizedBirthDate, expectedLevel) || 1;
     }
     if (!Number.isFinite(resolvedGraduationYear)) {
       resolvedGraduationYear =
-        inferGraduationYear(birthDate, expectedLevel, resolvedGrade) ||
+        inferGraduationYear(normalizedBirthDate, expectedLevel, resolvedGrade) ||
         new Date().getFullYear() + 1;
     }
     const resolvedClassNumber = Number(classNumber) || 1;
@@ -860,32 +1008,50 @@ router.post('/signup', validate(signupValidators), async (req, res) => {
       });
     }
 
-    if (!validateBirthDate(birthDate)) {
+    if (!validateBirthDate(normalizedBirthDate)) {
       return res.status(400).json({ 
         success: false, 
         message: '올바른 생년월일이 아닙니다.' 
       });
     }
 
-    // 전화번호 인증 확인
-    const [verifiedCodes] = await pool.execute(
-      `SELECT id FROM phone_verifications 
-       WHERE phone = ? AND is_verified = TRUE 
-       ORDER BY created_at DESC LIMIT 1`,
-      [phone]
-    );
-
-    if (verifiedCodes.length === 0) {
-      return res.status(400).json({ 
-        success: false, 
-        message: '전화번호 인증이 완료되지 않았습니다.' 
+    if (under14 && inicisOn && !guardianInicisClientToken?.trim()) {
+      return res.status(400).json({
+        success: false,
+        message: mapIdentityTokenError('GUARDIAN_TOKEN_REQUIRED'),
+        code: 'GUARDIAN_TOKEN_REQUIRED',
       });
+    }
+
+    if (inicisOn && !studentInicisClientToken?.trim()) {
+      return res.status(400).json({
+        success: false,
+        message: mapIdentityTokenError('IDENTITY_TOKEN_REQUIRED'),
+        code: 'IDENTITY_TOKEN_REQUIRED',
+      });
+    }
+
+    // 전화번호 인증 확인 (이니시스 OFF 시 레거시)
+    if (!inicisOn) {
+      const [verifiedCodes] = await pool.execute(
+        `SELECT id FROM phone_verifications 
+         WHERE ${phoneLookupWhereClause()} AND is_verified = TRUE 
+         ORDER BY created_at DESC LIMIT 1`,
+        phoneLookupBindParams(phone),
+      );
+
+      if (verifiedCodes.length === 0) {
+        return res.status(400).json({ 
+          success: false, 
+          message: '전화번호 인증이 완료되지 않았습니다.' 
+        });
+      }
     }
 
     // 중복 확인
     const [existingUsers] = await pool.execute(
-      `SELECT id FROM users WHERE username = ? OR ${SQL_PHONE_NORM} = ?`,
-      [username, phone],
+      `SELECT id FROM users WHERE username = ? OR ${phoneLookupWhereClause()}`,
+      [username, ...phoneLookupBindParams(phone)],
     );
 
     if (existingUsers.length > 0) {
@@ -914,16 +1080,106 @@ router.post('/signup', validate(signupValidators), async (req, res) => {
     try {
       await connection.beginTransaction();
 
+      const identityLinkIds = [];
+      const anchorName = String(name).trim();
+      const anchorPhone = phone;
+      const anchorBirthDate = normalizedBirthDate;
+      let signupName = anchorName;
+      let signupPhone = anchorPhone;
+      let signupBirthDate = anchorBirthDate;
+
+      if (under14 && inicisOn && guardianInicisClientToken?.trim()) {
+        try {
+          const guardianConsumed = await consumeIdentityVerificationClientToken(
+            guardianInicisClientToken,
+            { purpose: 'guardian_consent' },
+            connection,
+          );
+          identityLinkIds.push(guardianConsumed.id);
+        } catch (tokenErr) {
+          await connection.rollback();
+          const { status, body } = identityTokenErrorResponse(tokenErr);
+          return res.status(status).json(body);
+        }
+      }
+
+      if (inicisOn && studentInicisClientToken?.trim()) {
+        let studentConsumed;
+        try {
+          studentConsumed = await consumeIdentityVerificationClientToken(
+            studentInicisClientToken,
+            {
+              purpose: 'student_signup',
+              expectedName: anchorName,
+              expectedPhone: anchorPhone,
+              expectedBirthDate: anchorBirthDate,
+            },
+            connection,
+          );
+          identityLinkIds.push(studentConsumed.id);
+        } catch (tokenErr) {
+          await connection.rollback();
+          const { status, body } = identityTokenErrorResponse(tokenErr);
+          return res.status(status).json(body);
+        }
+
+        try {
+          await ensureInicisPhoneVerificationRecord(
+            studentConsumed.phone || anchorPhone,
+            connection,
+          );
+        } catch (phoneErr) {
+          console.error('[signup/ensureInicisPhone]', phoneErr);
+          await connection.rollback();
+          return res.status(500).json({
+            success: false,
+            message: '전화번호 인증 기록 저장에 실패했습니다. 잠시 후 다시 시도해 주세요.',
+            code: phoneErr?.code || 'PHONE_VERIFICATION_RECORD_FAILED',
+          });
+        }
+
+        if (studentConsumed.name) signupName = studentConsumed.name;
+        if (studentConsumed.phone) signupPhone = studentConsumed.phone;
+        if (studentConsumed.birthDate) {
+          signupBirthDate = normalizeBirthDateInput(studentConsumed.birthDate)
+            || studentConsumed.birthDate;
+        }
+      }
+
+      let studentIdManualVerification = null;
+      if (!isCertificateSignup) {
+        try {
+          studentIdManualVerification = await consumeStudentIdManualVerificationToken(
+            studentVerificationToken,
+            {
+              name: anchorName,
+              birthDate: anchorBirthDate,
+              schoolId: String(schoolId).trim(),
+              phone: anchorPhone,
+            },
+            connection,
+          );
+        } catch (tokenErr) {
+          await connection.rollback();
+          const { status, body } = studentVerificationTokenErrorResponse(tokenErr);
+          return res.status(status).json(body);
+        }
+      }
+
+      const userPii = packUserPii({
+        name: signupName,
+        phone: signupPhone,
+        birthDate: signupBirthDate,
+      });
+
       const [result] = await connection.execute(
         `INSERT INTO users 
-         (username, password, name, phone, birth_date, school_id, grade, class_number, graduation_year, color_id, phone_verified, student_verified) 
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, TRUE, ?)`,
+         (username, password, ${USER_PII_INSERT_COLUMNS}, school_id, grade, class_number, graduation_year, color_id, phone_verified, student_verified) 
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, TRUE, ?)`,
         [
           username,
           hashedPassword,
-          name,
-          phone,
-          birthDate,
+          ...userPiiInsertValues(userPii),
           resolvedSchoolId,
           resolvedGrade,
           resolvedClassNumber,
@@ -935,16 +1191,33 @@ router.post('/signup', validate(signupValidators), async (req, res) => {
 
       const userId = result.insertId;
 
+      if (identityLinkIds.length > 0) {
+        for (const ivId of identityLinkIds) {
+          await connection.execute(
+            `UPDATE identity_verifications SET linked_user_id = ? WHERE id = ?`,
+            [userId, ivId],
+          );
+        }
+      }
+
+      const submissionPii = packSubmissionPii({
+        name: signupName,
+        phone: signupPhone,
+        birthDate: signupBirthDate,
+      });
+
       if (isCertificateSignup) {
         await connection.execute(
           `INSERT INTO signup_certificate_submissions
-           (user_id, name, phone, birth_date, certificate_view_url, certificate_access_code, claimed_school_name, status)
-           VALUES (?, ?, ?, ?, ?, ?, ?, 'pending')`,
+           (user_id, name_enc, phone_enc, phone_lookup, birth_date_enc,
+            certificate_view_url, certificate_access_code, claimed_school_name, status)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'pending')`,
           [
             userId,
-            name,
-            phone,
-            birthDate,
+            submissionPii.name_enc,
+            submissionPii.phone_enc,
+            submissionPii.phone_lookup,
+            submissionPii.birth_date_enc,
             certificateViewUrl.trim(),
             certificateAccessCode.trim(),
             claimedSchoolName?.trim() || null,
@@ -953,13 +1226,15 @@ router.post('/signup', validate(signupValidators), async (req, res) => {
       } else if (studentIdManualVerification) {
         await connection.execute(
           `INSERT INTO signup_student_id_submissions
-           (user_id, name, phone, birth_date, school_id, cloudinary_url, cloudinary_public_id, status, verification_jti)
-           VALUES (?, ?, ?, ?, ?, ?, ?, 'pending', ?)`,
+           (user_id, name_enc, phone_enc, phone_lookup, birth_date_enc,
+            school_id, cloudinary_url, cloudinary_public_id, status, submission_purpose, verification_jti)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'pending', 'signup', ?)`,
           [
             userId,
-            name,
-            phone,
-            birthDate,
+            submissionPii.name_enc,
+            submissionPii.phone_enc,
+            submissionPii.phone_lookup,
+            submissionPii.birth_date_enc,
             studentIdManualVerification.schoolId,
             studentIdManualVerification.cloudinaryUrl,
             studentIdManualVerification.cloudinaryPublicId,
@@ -1036,7 +1311,7 @@ router.post('/verify-student', authenticate, async (req, res) => {
 
     // 사용자 정보 확인
     const [users] = await pool.execute(
-      'SELECT id, name, school_id, grade, class_number FROM users WHERE id = ?',
+      'SELECT id, name_enc, school_id, grade, class_number FROM users WHERE id = ?',
       [userId]
     );
 
@@ -1094,7 +1369,8 @@ router.post('/login', validate(loginValidators), async (req, res) => {
 
     // 사용자 조회
     const [users] = await pool.execute(
-      `SELECT id, username, password, name, phone, is_deleted, is_banned, is_suspended, suspended_until
+      `SELECT id, username, password, name_enc, phone_enc, is_deleted, is_banned, is_suspended, suspended_until,
+              token_version, reverification_status, reverification_deadline
        FROM users WHERE username = ?`,
       [username]
     );
@@ -1139,6 +1415,22 @@ router.post('/login', validate(loginValidators), async (req, res) => {
       return res.status(401).json({ 
         success: false, 
         message: '사용자명 또는 비밀번호가 일치하지 않습니다.' 
+      });
+    }
+
+    const revCode = getReverificationBlockCode(user.reverification_status);
+    if (revCode) {
+      const messages = {
+        GRADUATED_BLOCKED: '졸업생은 서비스를 이용할 수 없습니다.',
+        ADULT_BLOCKED: '성인은 서비스를 이용할 수 없습니다.',
+        REVERIFICATION_RESTRICTED: '재인증이 필요합니다. 학생증을 다시 제출해주세요.',
+      };
+      return res.status(403).json({
+        success: false,
+        message: messages[revCode] || '서비스 이용이 제한되었습니다.',
+        code: revCode,
+        reverificationStatus: user.reverification_status,
+        reverificationDeadline: user.reverification_deadline || null,
       });
     }
 
@@ -1197,18 +1489,31 @@ router.post('/login', validate(loginValidators), async (req, res) => {
     }
 
     // JWT 토큰 생성
-    const token = generateToken({ 
-      userId: user.id, 
-      username: user.username 
+    const tokenVersion = Number(user.token_version ?? 0);
+    const token = createUserAccessToken({
+      userId: user.id,
+      username: user.username,
+      tokenVersion,
+    });
+
+    const refreshToken = generateRefreshTokenPlain();
+    await storeRefreshToken({
+      userId: user.id,
+      deviceId: currentDeviceId,
+      plainToken: refreshToken,
+      tokenVersion,
     });
 
     const verification = await getStudentVerificationStatus(user.id);
+    const reverification = await getUserReverificationPayload(user.id);
 
     res.json({ 
       success: true, 
       message: '로그인 성공',
       data: {
         token,
+        refreshToken,
+        deviceId: currentDeviceId,
         user: {
           id: user.id,
           username: user.username,
@@ -1217,6 +1522,11 @@ router.post('/login', validate(loginValidators), async (req, res) => {
         needsVerification,
         studentVerificationStatus: verification.status,
         rejectReason: verification.rejectReason,
+        submissionPurpose: verification.submissionPurpose,
+        reverificationSubmissionPending: verification.reverificationSubmissionPending,
+        reverificationStatus: reverification?.reverificationStatus ?? 'none',
+        reverificationDeadline: reverification?.reverificationDeadline ?? null,
+        gradeException: reverification?.gradeException ?? false,
       }
     });
   } catch (error) {
@@ -1224,6 +1534,145 @@ router.post('/login', validate(loginValidators), async (req, res) => {
     res.status(500).json({ 
       success: false, 
       message: '로그인 중 오류가 발생했습니다.' 
+    });
+  }
+});
+
+// 액세스 토큰 갱신 (Refresh Token rotation)
+router.post('/refresh', async (req, res) => {
+  try {
+    const refreshToken = String(req.body?.refreshToken ?? '').trim();
+    const deviceId = String(req.body?.deviceId ?? '').trim();
+
+    if (!refreshToken || !deviceId) {
+      return res.status(400).json({
+        success: false,
+        message: 'refreshToken과 deviceId가 필요합니다.',
+      });
+    }
+
+    let userId = null;
+    const authHeader = req.headers.authorization;
+    if (authHeader && authHeader.startsWith('Bearer ')) {
+      const payload = jwt.decode(authHeader.substring(7));
+      const decodedId = Number(payload?.userId);
+      if (Number.isFinite(decodedId) && decodedId > 0) userId = decodedId;
+    }
+
+    if (!userId) {
+      const [deviceRows] = await pool.execute(
+        'SELECT user_id FROM user_devices WHERE device_id = ? ORDER BY last_login_at DESC LIMIT 1',
+        [deviceId],
+      );
+      userId = deviceRows[0]?.user_id ? Number(deviceRows[0].user_id) : null;
+    }
+
+    if (!userId) {
+      const hintedUserId = Number(req.body?.userId);
+      if (Number.isFinite(hintedUserId) && hintedUserId > 0) {
+        userId = hintedUserId;
+      }
+    }
+
+    if (!userId) {
+      return res.status(401).json({
+        success: false,
+        message: '유효하지 않은 디바이스입니다.',
+        code: API_ERROR_CODES.INVALID_TOKEN,
+      });
+    }
+
+    const [users] = await pool.execute(
+      `SELECT id, username, is_deleted, is_banned, is_suspended, suspended_until,
+              token_version, reverification_status, reverification_deadline
+       FROM users WHERE id = ? LIMIT 1`,
+      [userId],
+    );
+
+    if (!users.length || users[0].is_deleted) {
+      return res.status(401).json({
+        success: false,
+        message: '유효하지 않은 사용자입니다.',
+      });
+    }
+
+    const user = users[0];
+    const tokenVersion = Number(user.token_version ?? 0);
+
+    const consumed = await consumeRefreshToken({
+      userId,
+      deviceId,
+      plainToken: refreshToken,
+    });
+    if (!consumed) {
+      return res.status(401).json({
+        success: false,
+        message: '유효하지 않은 refresh 토큰입니다.',
+        code: API_ERROR_CODES.INVALID_TOKEN,
+      });
+    }
+
+    if (tokenVersion !== consumed.tokenVersion) {
+      return res.status(401).json({
+        success: false,
+        message: '세션이 만료되었습니다.',
+        code: API_ERROR_CODES.SESSION_REVOKED,
+      });
+    }
+
+    if (user.is_banned) {
+      return res.status(403).json({
+        success: false,
+        message: '영구 정지된 계정입니다.',
+        code: API_ERROR_CODES.ACCOUNT_BANNED,
+      });
+    }
+    if (user.is_suspended) {
+      const until = user.suspended_until ? new Date(user.suspended_until) : null;
+      if (!until || until > new Date()) {
+        return res.status(403).json({
+          success: false,
+          message: '임시 정지된 계정입니다.',
+          code: API_ERROR_CODES.ACCOUNT_SUSPENDED,
+        });
+      }
+    }
+
+    const revCode = getReverificationBlockCode(user.reverification_status);
+    if (revCode) {
+      return res.status(403).json({
+        success: false,
+        code: revCode,
+        message: '서비스 이용이 제한되었습니다.',
+      });
+    }
+
+    const newAccess = createUserAccessToken({
+      userId: user.id,
+      username: user.username,
+      tokenVersion,
+    });
+    const newRefresh = generateRefreshTokenPlain();
+    await storeRefreshToken({
+      userId: user.id,
+      deviceId,
+      plainToken: newRefresh,
+      tokenVersion,
+    });
+
+    return res.json({
+      success: true,
+      data: {
+        token: newAccess,
+        refreshToken: newRefresh,
+        deviceId,
+      },
+    });
+  } catch (error) {
+    console.error('토큰 갱신 오류:', error);
+    return res.status(500).json({
+      success: false,
+      message: '토큰 갱신 중 오류가 발생했습니다.',
     });
   }
 });
@@ -1240,6 +1689,7 @@ router.post('/logout', authenticate, async (req, res) => {
         'DELETE FROM user_devices WHERE user_id = ? AND device_id = ?',
         [userId, deviceId],
       );
+      await revokeRefreshToken(userId, deviceId);
     }
 
     await deactivateFcmTokenForSession({
@@ -1305,17 +1755,18 @@ router.post('/signup/upload-student-id', signupOcrLimiter, async (req, res) => {
     }
 
     const normalizedPhone = rawPhone ? normalizeLocalKrPhone(rawPhone) : null;
-    const expectedLevel = inferExpectedSchoolLevel(birthDate);
-    const suggestedGrade = inferGradeFromBirthDate(birthDate, expectedLevel);
+    const normalizedBirthDate = normalizeBirthDateInput(birthDate) || birthDate;
+    const expectedLevel = inferExpectedSchoolLevel(normalizedBirthDate);
+    const suggestedGrade = inferGradeFromBirthDate(normalizedBirthDate, expectedLevel);
     const suggestedGraduationYear = inferGraduationYear(
-      birthDate,
+      normalizedBirthDate,
       expectedLevel,
       suggestedGrade,
     );
 
     const studentVerificationToken = await issueStudentIdManualVerificationToken({
       name: String(name).trim(),
-      birthDate,
+      birthDate: normalizedBirthDate,
       phone: normalizedPhone,
       schoolId: trimmedSchoolId,
       cloudinaryUrl: uploaded.cloudinaryUrl,
@@ -1348,7 +1799,7 @@ router.post('/signup/upload-student-id', signupOcrLimiter, async (req, res) => {
 router.post('/resubmit-student-id', authenticate, signupOcrLimiter, async (req, res) => {
   try {
     const userId = req.user.userId;
-    const { imageBase64, cropRegion } = req.body || {};
+    const { imageBase64, cropRegion, schoolId: bodySchoolId } = req.body || {};
 
     if (!imageBase64) {
       return res.status(400).json({
@@ -1358,21 +1809,39 @@ router.post('/resubmit-student-id', authenticate, signupOcrLimiter, async (req, 
     }
 
     const verification = await getStudentVerificationStatus(userId);
-    if (verification.status === 'APPROVED') {
+    const reverification = await getUserReverificationPayload(userId);
+    const revStatus = reverification?.reverificationStatus ?? 'none';
+    const isReverificationResubmit = ['grace', 'required', 'restricted'].includes(
+      revStatus,
+    );
+
+    if (verification.status === 'APPROVED' && !isReverificationResubmit) {
       return res.status(400).json({
         success: false,
         message: '이미 학생 인증이 완료된 계정입니다.',
       });
     }
-    if (verification.status !== 'REJECTED') {
+    if (!isReverificationResubmit && verification.status !== 'REJECTED') {
       return res.status(400).json({
         success: false,
         message: '재제출은 거절된 경우에만 가능합니다.',
       });
     }
+    if (isReverificationResubmit && verification.reverificationSubmissionPending) {
+      return res.status(400).json({
+        success: false,
+        message: '이미 제출된 학생증이 검수 대기 중입니다.',
+      });
+    }
+    if (!isReverificationResubmit && verification.status === 'PENDING') {
+      return res.status(400).json({
+        success: false,
+        message: '이미 제출된 학생증이 검수 대기 중입니다.',
+      });
+    }
 
     const [userRows] = await pool.execute(
-      `SELECT id, name, phone, birth_date, school_id FROM users WHERE id = ? LIMIT 1`,
+      `SELECT id, name_enc, phone_enc, birth_date_enc, school_id FROM users WHERE id = ? LIMIT 1`,
       [userId],
     );
     if (!userRows.length) {
@@ -1382,6 +1851,28 @@ router.post('/resubmit-student-id', authenticate, signupOcrLimiter, async (req, 
       });
     }
     const user = userRows[0];
+
+    const submissionPurpose = isReverificationResubmit ? 'reverification' : 'resubmit';
+    const targetSchoolId = String(bodySchoolId || user.school_id || '').trim();
+    if (!targetSchoolId) {
+      return res.status(400).json({
+        success: false,
+        message: '재학 학교를 선택해 주세요.',
+      });
+    }
+
+    const [schoolRows] = await pool.execute(
+      'SELECT school_id FROM schools WHERE school_id = ? LIMIT 1',
+      [targetSchoolId],
+    );
+    if (!schoolRows.length) {
+      return res.status(400).json({
+        success: false,
+        message: '유효하지 않은 학교입니다.',
+      });
+    }
+
+    const previousSchoolId = user.school_id || null;
 
     let uploaded;
     try {
@@ -1394,20 +1885,43 @@ router.post('/resubmit-student-id', authenticate, signupOcrLimiter, async (req, 
       });
     }
 
+    const resubmitPii = packSubmissionPii({
+      name: user.name,
+      phone: user.phone,
+      birthDate: user.birth_date,
+    });
+
     await pool.execute(
       `INSERT INTO signup_student_id_submissions
-         (user_id, name, phone, birth_date, school_id, cloudinary_url, cloudinary_public_id, status)
-       VALUES (?, ?, ?, ?, ?, ?, ?, 'pending')`,
+         (user_id, name_enc, phone_enc, phone_lookup, birth_date_enc,
+          school_id, previous_school_id, cloudinary_url, cloudinary_public_id, status, submission_purpose)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', ?)`,
       [
         userId,
-        user.name,
-        user.phone,
-        user.birth_date,
-        user.school_id,
+        resubmitPii.name_enc,
+        resubmitPii.phone_enc,
+        resubmitPii.phone_lookup,
+        resubmitPii.birth_date_enc,
+        targetSchoolId,
+        previousSchoolId,
         uploaded.cloudinaryUrl,
         uploaded.cloudinaryPublicId,
+        submissionPurpose,
       ],
     );
+
+    if (isReverificationResubmit) {
+      return res.json({
+        success: true,
+        message: '학생증 재인증이 제출되었습니다. 검수가 완료될 때까지 앱을 이용할 수 있습니다.',
+        data: {
+          studentVerificationStatus: 'APPROVED',
+          rejectReason: null,
+          submissionPurpose: 'reverification',
+          reverificationSubmissionPending: true,
+        },
+      });
+    }
 
     return res.json({
       success: true,
@@ -1415,6 +1929,8 @@ router.post('/resubmit-student-id', authenticate, signupOcrLimiter, async (req, 
       data: {
         studentVerificationStatus: 'PENDING',
         rejectReason: null,
+        submissionPurpose: 'resubmit',
+        reverificationSubmissionPending: false,
       },
     });
   } catch (error) {
@@ -1454,7 +1970,7 @@ router.post('/ocr', authenticate, async (req, res) => {
 
     // 사용자 정보 조회
     const [users] = await pool.execute(
-      'SELECT id, name, school_id, grade, class_number FROM users WHERE id = ?',
+      'SELECT id, name_enc, school_id, grade, class_number FROM users WHERE id = ?',
       [userId]
     );
 
@@ -1505,6 +2021,47 @@ router.post('/ocr', authenticate, async (req, res) => {
     res.status(500).json({ 
       success: false, 
       message: 'OCR 인증 중 오류가 발생했습니다.' 
+    });
+  }
+});
+
+// 보호자 인증 Mock (PASS 미연동, dev/staging)
+router.post('/guardian/mock-verify', async (req, res) => {
+  const mockEnabled =
+    !isProductionEnv() ||
+    String(process.env.GUARDIAN_MOCK_ENABLED || '').toLowerCase() === 'true';
+
+  if (!mockEnabled) {
+    return res.status(404).json({ success: false, message: 'Not found' });
+  }
+
+  try {
+    const phone = normalizeLocalKrPhone(req.body?.phone);
+    if (!phone) {
+      return res.status(400).json({
+        success: false,
+        message: '보호자 전화번호를 입력해주세요.',
+      });
+    }
+
+    const phonePacked = packPhoneOnly(phone);
+
+    const [result] = await pool.execute(
+      `INSERT INTO guardian_verifications (guardian_phone_enc, guardian_phone_lookup, status, verified_at, mock)
+       VALUES (?, ?, 'verified', NOW(), TRUE)`,
+      [phonePacked.phone_enc, phonePacked.phone_lookup],
+    );
+
+    return res.json({
+      success: true,
+      verified: true,
+      verificationId: result.insertId,
+    });
+  } catch (error) {
+    console.error('보호자 Mock 인증 오류:', error);
+    return res.status(500).json({
+      success: false,
+      message: '보호자 인증 처리 중 오류가 발생했습니다.',
     });
   }
 });

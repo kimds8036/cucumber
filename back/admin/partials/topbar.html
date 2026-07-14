@@ -1,0 +1,31 @@
+<div class="topbar">
+      <button
+        type="button"
+        class="sidebar-toggle"
+        id="sidebar-toggle"
+        aria-label="메뉴 열기"
+        aria-expanded="false"
+        aria-controls="admin-sidebar"
+      >
+        <span class="sidebar-toggle-bar" aria-hidden="true"></span>
+        <span class="sidebar-toggle-bar" aria-hidden="true"></span>
+        <span class="sidebar-toggle-bar" aria-hidden="true"></span>
+      </button>
+      <div class="topbar-heading">
+        <div class="topbar-title-row">
+          <div class="topbar-title" id="topbar-title">대시보드</div>
+          <span class="env-badge" data-deploy-env-badge>DEVELOP</span>
+          <span class="pill pill-white" id="topbar-admin-role">운영</span>
+        </div>
+        <div class="topbar-sub" id="topbar-sub">실시간 운영 지표</div>
+      </div>
+      <div class="topbar-actions">
+        <div id="admin-session-wrap" class="session-wrap">
+          <span class="session-label">세션</span>
+          <span id="session-countdown" class="session-countdown">30:00</span>
+          <button class="btn btn-sm" type="button" onclick="extendAdminSession()">연장하기</button>
+        </div>
+        <button class="btn btn-sm" onclick="adminLogout()">로그아웃</button>
+        <button class="btn btn-sm btn-primary" onclick="go('reports')">신규 신고 확인 →</button>
+      </div>
+    </div>

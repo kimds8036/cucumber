@@ -14,7 +14,6 @@ import {
 } from 'react-native-safe-area-context';
 import {
   KeyboardAwareScrollView,
-  KeyboardAvoidingView,
 } from 'react-native-keyboard-controller';
 import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
@@ -26,8 +25,11 @@ import { createMailStyles } from '../../styles/mail.style';
 import { colors, fonts } from '../../styles/colors';
 import Loading from '../../components/Loading';
 import { api, getApiUserFacingMessage } from '../../utils/api';
-import { buildSendMailPrefill } from '../../utils/personalMail';
-import { useMailContentKeyboardScroll } from '../../hooks/useMailContentKeyboardScroll';
+import {
+  buildSendMailPrefill,
+  resolveSchoolPrefill,
+} from '../../utils/personalMail';
+import { usePersonalMailCharLimit } from '../../hooks/usePersonalMailCharLimit';
 
 const SendMailScreen = ({ navigation, route }) => {
   const prefill = route?.params?.prefill;
@@ -46,28 +48,18 @@ const SendMailScreen = ({ navigation, route }) => {
   const [recipientUsername, setRecipientUsername] = useState('');
   const [showHomonymUI, setShowHomonymUI] = useState(false);
   const [mailContent, setMailContent] = useState('');
-  const [charLimit, setCharLimit] = useState(50);
+  const { charLimit, adRewardAvailable, guardTextLength, handleAdReward } =
+    usePersonalMailCharLimit();
   const [sending, setSending] = useState(false);
   const [subHeaderHeight, setSubHeaderHeight] = useState(0);
   const [schoolSectionHeight, setSchoolSectionHeight] = useState(0);
   const [recipientSectionHeight, setRecipientSectionHeight] = useState(0);
   const [bottomCtaHeight, setBottomCtaHeight] = useState(0);
-  const scrollRef = useRef(null);
-  const scrollContentRef = useRef(null);
-  const contentSectionRef = useRef(null);
+  const bottomCtaHeightRef = useRef(0);
   const prefillAppliedRef = useRef(false);
 
-  const { contentFocused, handleContentFocus, handleContentBlur } =
-    useMailContentKeyboardScroll({
-      scrollRef,
-      scrollContentRef,
-      contentSectionRef,
-      normalize,
-    });
-
-  const scrollBottomInset = contentFocused
-    ? Math.max(bottomCtaHeight, normalize(16))
-    : normalize(16);
+  const scrollBottomInset =
+    bottomCtaHeight > 0 ? bottomCtaHeight : normalize(72);
 
   const recipientFilled =
     recipientGrade.trim().length > 0 &&
@@ -83,25 +75,22 @@ const SendMailScreen = ({ navigation, route }) => {
   useEffect(() => {
     if (!prefill || prefillAppliedRef.current) return;
     prefillAppliedRef.current = true;
-    const p = buildSendMailPrefill({ prefillMeta: prefill });
-    if (p.school?.id || p.school?.name) setSelectedSchool(p.school);
-    if (p.grade) setRecipientGrade(p.grade);
-    if (p.classNumber) setRecipientClass(p.classNumber);
-    if (p.name) setRecipientName(p.name);
-    if (p.content) setMailContent(p.content);
-    if (p.recipientUsername) setRecipientUsername(p.recipientUsername);
+
+    (async () => {
+      const p = buildSendMailPrefill({ prefillMeta: prefill });
+      const school = p.school ? await resolveSchoolPrefill(p.school) : null;
+      if (school?.id || school?.name) setSelectedSchool(school);
+      if (p.grade) setRecipientGrade(p.grade);
+      if (p.classNumber) setRecipientClass(p.classNumber);
+      if (p.name) setRecipientName(p.name);
+      if (p.content) setMailContent(p.content);
+      if (p.recipientUsername) setRecipientUsername(p.recipientUsername);
+    })();
   }, [prefill]);
 
   const handleMailContentChange = (text) => {
-    if (text.length > charLimit) {
-      Alert.alert('알림', '광고를 보면 더 길게 작성할 수 있어요.');
-      return;
-    }
+    if (!guardTextLength(text)) return;
     setMailContent(text);
-  };
-
-  const handleAdReward = () => {
-    setCharLimit((prev) => prev * 2);
   };
 
   const resetRecipientFields = () => {
@@ -217,20 +206,21 @@ const SendMailScreen = ({ navigation, route }) => {
       sectionGap,
   );
 
+  const handleBottomCtaLayout = (e) => {
+    const next = e.nativeEvent.layout.height;
+    if (Math.abs(next - bottomCtaHeightRef.current) < 1) return;
+    bottomCtaHeightRef.current = next;
+    setBottomCtaHeight(next);
+  };
+
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
       <View onLayout={(e) => setSubHeaderHeight(e.nativeEvent.layout.height)}>
         <SubHeader title="우편 보내기" onBack={() => navigation?.goBack()} />
       </View>
 
-      <KeyboardAvoidingView
-        style={styles.keyboardView}
-        behavior="padding"
-        automaticOffset
-        enabled={contentFocused}
-      >
+      <View style={styles.keyboardView}>
         <KeyboardAwareScrollView
-          ref={scrollRef}
           style={styles.scrollView}
           contentContainerStyle={[
             styles.sendScrollContent,
@@ -242,7 +232,7 @@ const SendMailScreen = ({ navigation, route }) => {
           onScrollBeginDrag={Keyboard.dismiss}
           bottomOffset={scrollBottomInset}
         >
-          <View ref={scrollContentRef} collapsable={false}>
+          <View collapsable={false}>
             {/* 섹션 1: 보낼 학교 */}
             <View
               style={styles.section}
@@ -463,7 +453,6 @@ const SendMailScreen = ({ navigation, route }) => {
 
             {/* 섹션 3: 내용 */}
             <View
-              ref={contentSectionRef}
               style={[
                 styles.section,
                 { flex: 1, minHeight: contentSectionMinHeight },
@@ -476,29 +465,29 @@ const SendMailScreen = ({ navigation, route }) => {
                   placeholder="보낼 내용을 입력해주세요"
                   value={mailContent}
                   onChangeText={handleMailContentChange}
-                  onFocus={handleContentFocus}
-                  onBlur={handleContentBlur}
                   multiline
                   textAlignVertical="top"
                   placeholderTextColor={colors.textSecondary}
                 />
                 <View style={styles.replyFormMetaRow}>
                   <View style={styles.sendMetaRight}>
+                    {adRewardAvailable ? (
+                      <TouchableOpacity
+                        style={styles.replyFormChip}
+                        onPress={handleAdReward}
+                        activeOpacity={0.8}
+                      >
+                        <MaterialCommunityIcons
+                          name="television-classic"
+                          size={15}
+                          color={colors.textPrimary}
+                        />
+                        <Text style={styles.replyFormChipText}>x 2</Text>
+                      </TouchableOpacity>
+                    ) : null}
                     <Text style={styles.replyFormCount}>
                       {mailContent.length}/{charLimit}자
                     </Text>
-                    <TouchableOpacity
-                      style={styles.replyFormChip}
-                      onPress={handleAdReward}
-                      activeOpacity={0.8}
-                    >
-                      <MaterialCommunityIcons
-                        name="television-classic"
-                        size={15}
-                        color={colors.textPrimary}
-                      />
-                      <Text style={styles.replyFormChipText}>x 2</Text>
-                    </TouchableOpacity>
                   </View>
                 </View>
               </View>
@@ -512,7 +501,7 @@ const SendMailScreen = ({ navigation, route }) => {
             styles.bottomCtaWrapper,
             { paddingBottom: Math.max(normalize(16), insets.bottom) },
           ]}
-          onLayout={(e) => setBottomCtaHeight(e.nativeEvent.layout.height)}
+          onLayout={handleBottomCtaLayout}
         >
           <TouchableOpacity
             style={[
@@ -532,7 +521,7 @@ const SendMailScreen = ({ navigation, route }) => {
             )}
           </TouchableOpacity>
         </View>
-      </KeyboardAvoidingView>
+      </View>
     </SafeAreaView>
   );
 };

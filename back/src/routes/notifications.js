@@ -4,6 +4,10 @@ import { getUserFcmTokens } from '../utils/pushTokens.js';
 import { authenticate } from '../middleware/auth.js';
 import { emitNotification, getIO } from '../socketServer.js';
 import { getMessaging } from '../config/firebase.js';
+import {
+  loadPersonalMailMetaByIds,
+  normalizeNotificationForClient,
+} from '../utils/notificationDisplay.js';
 
 const router = express.Router();
 
@@ -118,6 +122,19 @@ router.get('/', authenticate, async (req, res) => {
       hasUnread: rows.some((n) => !n.is_read),
     });
 
+    const mailRelatedIds = rows
+      .filter((row) => {
+        const relatedType = String(row.related_type ?? '').trim();
+        return (
+          relatedType === 'personal_mail' ||
+          relatedType === 'personal_mail_returned'
+        );
+      })
+      .map((row) => row.related_id)
+      .filter((id) => id != null);
+
+    const mailMetaById = await loadPersonalMailMetaByIds(pool, mailRelatedIds);
+
     res.json({
       success: true,
       meta: {
@@ -126,18 +143,27 @@ router.get('/', authenticate, async (req, res) => {
         limit,
         returned: rows.length,
       },
-      data: rows.map((n) => ({
-        id: n.id,
-        type: n.type,
-        category: n.category,
-        title: n.title,
-        content: n.body,
-        isRead: !!n.is_read,
-        createdAt: n.created_at,
-        relatedType: n.related_type,
-        relatedId: n.related_id,
-        watchers: parseWatchersJson(n.watchers_json),
-      })),
+      data: rows.map((n) => {
+        const relatedType = String(n.related_type ?? '').trim();
+        const mailMeta =
+          relatedType === 'personal_mail' ||
+          relatedType === 'personal_mail_returned'
+            ? mailMetaById[Number(n.related_id)] ?? null
+            : null;
+        const display = normalizeNotificationForClient(n, mailMeta);
+        return {
+          id: n.id,
+          type: n.type,
+          category: n.category,
+          title: display.title,
+          content: display.content,
+          isRead: !!n.is_read,
+          createdAt: n.created_at,
+          relatedType: n.related_type,
+          relatedId: n.related_id,
+          watchers: parseWatchersJson(n.watchers_json),
+        };
+      }),
     });
   } catch (error) {
     console.error('알림 목록 조회 오류:', error);

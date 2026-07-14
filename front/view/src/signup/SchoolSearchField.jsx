@@ -8,10 +8,23 @@ import {
   ActivityIndicator,
   StyleSheet,
 } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { colors, fonts } from '../../../styles/colors';
 import { api } from '../../../utils/api';
 
-/** 학교 검색·선택 — 입력은 회원가입 공통 스타일, 드롭다운만 심플 */
+function formatSchoolAddress(school) {
+  if (!school) return '';
+  const address = String(
+    school.address || school.road_address || school.addressDetail || '',
+  ).trim();
+  const region = String(school.region || '').trim();
+  if (address && region && !address.startsWith(region)) {
+    return `${region} · ${address}`;
+  }
+  return address || region;
+}
+
+/** 학교 검색·선택 — 입력 아래 목록 + 주소로 동명이교 구분 (목록 선택만) */
 const SchoolSearchField = ({
   styles,
   normalize = (n) => n,
@@ -19,176 +32,286 @@ const SchoolSearchField = ({
   onSelect,
   label = '재학 중인 학교',
   disabled = false,
+  helperBelowLabel = null,
+  labelMarginTop,
+  /** true면 검색 목록이 남은 세로 공간을 채움 (학교 선택 전용 화면) */
+  expandList = false,
 }) => {
-  const dropdownStyles = useMemo(() => makeDropdownStyles(normalize), [normalize]);
+  const dropdownStyles = useMemo(
+    () => makeDropdownStyles(normalize, expandList),
+    [normalize, expandList],
+  );
   const [query, setQuery] = useState(selectedSchool?.name || '');
   const [schools, setSchools] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [searched, setSearched] = useState(false);
+  const [focused, setFocused] = useState(false);
 
   const searchSchools = useCallback(async (q) => {
     const term = String(q || '').trim();
-    if (term.length < 2) {
+    if (term.length < 1) {
       setSchools([]);
+      setSearched(false);
       return;
     }
     setLoading(true);
     try {
       const res = await api.get('/api/schools/search', {
-        params: { query: term, limit: 8 },
+        params: { query: term, limit: 15 },
       });
       setSchools(res.data?.data?.schools || []);
+      setSearched(true);
     } catch {
       setSchools([]);
+      setSearched(true);
     } finally {
       setLoading(false);
     }
   }, []);
 
   useEffect(() => {
-    const t = setTimeout(() => searchSchools(query), 300);
+    const t = setTimeout(() => searchSchools(query), 250);
     return () => clearTimeout(t);
   }, [query, searchSchools]);
 
   useEffect(() => {
     if (selectedSchool?.name) setQuery(selectedSchool.name);
-  }, [selectedSchool?.id]);
-
-  const formatSubtitle = (school) => {
-    const parts = [school.region, school.address].filter(Boolean);
-    return parts.join(' · ');
-  };
+  }, [selectedSchool?.id, selectedSchool?.name]);
 
   const trimmedQuery = query.trim();
   const pendingSelection =
-    !selectedSchool || trimmedQuery !== String(selectedSchool.name || '').trim();
+    !selectedSchool ||
+    trimmedQuery !== String(selectedSchool.name || '').trim();
+
   const showDropdown =
     !disabled &&
-    pendingSelection &&
-    trimmedQuery.length >= 2 &&
-    (loading || schools.length > 0);
+    (focused || pendingSelection) &&
+    trimmedQuery.length >= 1 &&
+    (loading || searched);
+
+  const selectedAddress = formatSchoolAddress(selectedSchool);
+
+  const selectSchool = (school) => {
+    onSelect?.(school);
+    setQuery(school.name);
+    setSchools([]);
+    setSearched(false);
+    setFocused(false);
+  };
 
   return (
-    <View>
-      <Text style={[styles.inputLabel, { marginTop: normalize(16) }]}>{label}</Text>
-      <View style={styles.inputWrapper}>
+    <View style={[dropdownStyles.wrap, expandList && dropdownStyles.wrapExpand]}>
+      <Text
+        style={[
+          styles.inputLabel,
+          {
+            marginTop:
+              labelMarginTop != null ? normalize(labelMarginTop) : normalize(16),
+          },
+        ]}
+      >
+        {label}
+      </Text>
+      {helperBelowLabel}
+      <View style={[styles.inputWrapper, { marginBottom: 0 }]}>
         <TextInput
-          style={styles.input}
+          style={[styles.input, { marginBottom: 0 }]}
           value={query}
           onChangeText={(t) => {
             setQuery(t);
             if (selectedSchool && t !== selectedSchool.name) onSelect?.(null);
           }}
-          placeholder="학교명 입력 (2자 이상)"
+          onFocus={() => setFocused(true)}
+          onBlur={() => {
+            setTimeout(() => setFocused(false), 180);
+          }}
+          placeholder="학교 이름 검색"
           placeholderTextColor={colors.textSecondary}
           autoCorrect={false}
           editable={!disabled}
+          returnKeyType="search"
         />
       </View>
 
-      {loading && !showDropdown ? (
-        <ActivityIndicator
-          style={{ marginTop: normalize(12) }}
-          color={colors.primary}
-        />
-      ) : null}
-
-      {showDropdown ? (
-        <View style={dropdownStyles.dropdown}>
-          {loading && schools.length === 0 ? (
-            <Text style={dropdownStyles.emptyText}>검색 중…</Text>
-          ) : (
-            <ScrollView
-              keyboardShouldPersistTaps="handled"
-              nestedScrollEnabled
-              style={dropdownStyles.dropdownScroll}
-            >
-              {schools.map((school, index) => {
-                const subtitle = formatSubtitle(school);
-                const isLast = index === schools.length - 1;
-                return (
-                  <TouchableOpacity
-                    key={school.id}
-                    style={[dropdownStyles.row, !isLast && dropdownStyles.rowBorder]}
-                    onPress={() => {
-                      onSelect?.(school);
-                      setQuery(school.name);
-                      setSchools([]);
-                    }}
-                    activeOpacity={0.6}
-                    disabled={disabled}
-                  >
-                    <Text style={dropdownStyles.rowTitle} numberOfLines={1}>
-                      {school.name}
-                    </Text>
-                    {subtitle ? (
-                      <Text style={dropdownStyles.rowSubtitle} numberOfLines={1}>
-                        {subtitle}
+      <View style={expandList ? dropdownStyles.listSlot : null}>
+        {showDropdown ? (
+          <View
+            style={[
+              dropdownStyles.dropdown,
+              expandList && dropdownStyles.dropdownExpand,
+            ]}
+          >
+            {loading && schools.length === 0 ? (
+              <View style={dropdownStyles.emptyWrap}>
+                <ActivityIndicator color={colors.primary} />
+                <Text style={dropdownStyles.emptyText}>검색 중…</Text>
+              </View>
+            ) : schools.length === 0 ? (
+              <Text style={dropdownStyles.emptyText}>
+                검색 결과가 없습니다. 학교 이름을 다시 확인해 주세요.
+              </Text>
+            ) : (
+              <ScrollView
+                keyboardShouldPersistTaps="always"
+                nestedScrollEnabled
+                style={
+                  expandList
+                    ? dropdownStyles.dropdownScrollExpand
+                    : dropdownStyles.dropdownScroll
+                }
+              >
+                {schools.map((school, index) => {
+                  const addressLine = formatSchoolAddress(school);
+                  const isLast = index === schools.length - 1;
+                  const isActive = selectedSchool?.id === school.id;
+                  return (
+                    <TouchableOpacity
+                      key={school.id}
+                      style={[
+                        dropdownStyles.row,
+                        !isLast && dropdownStyles.rowBorder,
+                        isActive && dropdownStyles.rowActive,
+                      ]}
+                      onPress={() => selectSchool(school)}
+                      activeOpacity={0.65}
+                      disabled={disabled}
+                    >
+                      <Text style={dropdownStyles.rowTitle} numberOfLines={1}>
+                        {school.name}
                       </Text>
-                    ) : null}
-                  </TouchableOpacity>
-                );
-              })}
-            </ScrollView>
-          )}
-        </View>
-      ) : null}
+                      <Text style={dropdownStyles.rowSubtitle} numberOfLines={2}>
+                        {addressLine || '주소 정보 없음'}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </ScrollView>
+            )}
+          </View>
+        ) : null}
 
-      {selectedSchool ? (
-        <Text
-          style={[
-            styles.fieldHelperText,
-            styles.fieldHelperTextSuccess,
-            { marginTop: normalize(6) },
-          ]}
-        >
-          선택: {selectedSchool.name}
-          {formatSubtitle(selectedSchool)
-            ? ` (${formatSubtitle(selectedSchool)})`
-            : ''}
-        </Text>
-      ) : null}
+        {selectedSchool && !showDropdown ? (
+          <View style={dropdownStyles.selectedBox}>
+            <View style={dropdownStyles.selectedTextCol}>
+              <Text style={dropdownStyles.selectedName} numberOfLines={1}>
+                {selectedSchool.name}
+              </Text>
+              {selectedAddress ? (
+                <Text style={dropdownStyles.selectedAddress} numberOfLines={2}>
+                  {selectedAddress}
+                </Text>
+              ) : null}
+            </View>
+            <Ionicons
+              name="checkmark-circle"
+              size={normalize(22)}
+              color={colors.primary}
+            />
+          </View>
+        ) : null}
+      </View>
     </View>
   );
 };
 
-const makeDropdownStyles = (normalize) =>
+const makeDropdownStyles = (normalize, expandList = false) =>
   StyleSheet.create({
-    dropdown: {
+    wrap: {
+      zIndex: 20,
+      elevation: 20,
+    },
+    wrapExpand: {
+      flex: 1,
+      minHeight: 0,
+    },
+    listSlot: {
+      flex: 1,
+      minHeight: 0,
       marginTop: normalize(6),
+    },
+    dropdown: {
+      marginTop: expandList ? 0 : normalize(6),
+      width: '98%',
+      alignSelf: 'center',
       borderWidth: 1,
-      borderColor: colors.border,
-      borderRadius: normalize(8),
+      borderColor: colors.border || colors.textLight20,
+      borderRadius: normalize(16),
       backgroundColor: colors.background,
       overflow: 'hidden',
     },
+    dropdownExpand: {
+      flex: 1,
+      minHeight: 0,
+      width: '100%',
+    },
     dropdownScroll: {
-      maxHeight: normalize(180),
+      maxHeight: normalize(200),
+    },
+    dropdownScrollExpand: {
+      flex: 1,
+    },
+    emptyWrap: {
+      paddingVertical: normalize(14),
+      alignItems: 'center',
+      gap: normalize(8),
     },
     emptyText: {
-      paddingVertical: normalize(12),
-      paddingHorizontal: normalize(12),
+      paddingVertical: normalize(14),
+      paddingHorizontal: normalize(14),
       fontFamily: fonts.regular,
       fontSize: normalize(13),
       color: colors.textSecondary,
       textAlign: 'center',
+      lineHeight: normalize(18),
     },
     row: {
-      paddingVertical: normalize(10),
-      paddingHorizontal: normalize(12),
+      paddingVertical: normalize(11),
+      paddingHorizontal: normalize(14),
+    },
+    rowActive: {
+      backgroundColor: colors.primaryLight20,
     },
     rowBorder: {
       borderBottomWidth: StyleSheet.hairlineWidth,
-      borderBottomColor: colors.border,
+      borderBottomColor: colors.border || colors.textLight20,
     },
     rowTitle: {
-      fontFamily: fonts.regular,
-      fontSize: normalize(14),
+      fontFamily: fonts.bold,
+      fontSize: normalize(15),
       color: colors.textPrimary,
     },
     rowSubtitle: {
-      marginTop: normalize(2),
+      marginTop: normalize(3),
       fontFamily: fonts.regular,
-      fontSize: normalize(12),
+      fontSize: normalize(11),
+      lineHeight: normalize(15),
+      color: colors.textSecondary,
+    },
+    selectedBox: {
+      marginTop: expandList ? 0 : normalize(8),
+      marginHorizontal: normalize(8),
+      paddingVertical: normalize(10),
+      paddingHorizontal: normalize(12),
+      borderRadius: normalize(12),
+      backgroundColor: colors.primaryLight20,
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: normalize(10),
+    },
+    selectedTextCol: {
+      flex: 1,
+      minWidth: 0,
+    },
+    selectedName: {
+      fontFamily: fonts.bold,
+      fontSize: normalize(14),
+      color: colors.primaryDark || colors.primary,
+    },
+    selectedAddress: {
+      marginTop: normalize(3),
+      fontFamily: fonts.regular,
+      fontSize: normalize(11),
+      lineHeight: normalize(15),
       color: colors.textSecondary,
     },
   });

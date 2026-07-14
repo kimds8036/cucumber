@@ -1,7 +1,6 @@
 import express from 'express';
-import path from 'path';
-import { fileURLToPath } from 'url';
 import pool from '../config/database.js';
+import { getAdminBasePath } from '../config/adminPath.js';
 import {
   comparePassword,
   generateAdminOtpSetupToken,
@@ -10,7 +9,6 @@ import {
   verifyToken,
 } from '../utils/auth.js';
 import { authenticate } from '../middleware/auth.js';
-import { isAdminUser } from '../middleware/adminAuth.js';
 import {
   buildTotpQrDataUrl,
   confirmAdminTotpSecret,
@@ -21,12 +19,13 @@ import {
   getPendingTotpSecret,
   verifyTotpCode,
 } from '../services/adminTotp.service.js';
+import {
+  getAdminStaticDir,
+  renderAdminIndexHtml,
+  renderAdminLoginHtml,
+} from '../admin/renderAdminPage.js';
 
 const router = express.Router();
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-const adminHtmlPath = path.resolve(__dirname, '../../admin/Focux admin.html');
-const adminLoginHtmlPath = path.resolve(__dirname, '../../admin/login.html');
 
 function getCookieValue(req, key) {
   const raw = req.headers.cookie || '';
@@ -44,9 +43,10 @@ function getCookieValue(req, key) {
 
 function setAdminCookie(res, token) {
   const secure = process.env.NODE_ENV === 'production';
+  const cookiePath = getAdminBasePath();
   const attrs = [
     `admin_access_token=${encodeURIComponent(token)}`,
-    'Path=/',
+    `Path=${cookiePath}`,
     'HttpOnly',
     'SameSite=Lax',
     secure ? 'Secure' : null,
@@ -55,15 +55,17 @@ function setAdminCookie(res, token) {
 }
 
 function clearAdminCookie(res) {
+  const cookiePath = getAdminBasePath();
   res.setHeader(
     'Set-Cookie',
-    'admin_access_token=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0',
+    `admin_access_token=; Path=${cookiePath}; HttpOnly; SameSite=Lax; Max-Age=0`,
   );
 }
 
-function issueAdminLoginSuccess(res, { userId, username }) {
-  const token = generateAdminSessionToken({ userId, username });
+function issueAdminLoginSuccess(res, { adminId, username, role }) {
+  const token = generateAdminSessionToken({ adminId, username, role });
   setAdminCookie(res, token);
+  pool.execute(`UPDATE admin_users SET last_login_at = NOW() WHERE id = ?`, [adminId]).catch(() => {});
   return res.json({
     success: true,
     message: '로그인 성공',
@@ -73,32 +75,31 @@ function issueAdminLoginSuccess(res, { userId, username }) {
 }
 
 async function validateAdminCredentials(username, password) {
-  const [users] = await pool.execute(
-    `SELECT id, username, password, is_deleted
-     FROM users
+  const [admins] = await pool.execute(
+    `SELECT id, username, password, name, role, is_deleted
+     FROM admin_users
      WHERE username = ?
      LIMIT 1`,
     [username],
   );
-  if (!users.length) {
+  if (!admins.length) {
     return { error: { status: 401, message: '아이디 또는 비밀번호가 올바르지 않습니다.' } };
   }
-  const user = users[0];
-  if (user.is_deleted) {
-    return { error: { status: 401, message: '탈퇴한 사용자입니다.' } };
+  const admin = admins[0];
+  if (admin.is_deleted) {
+    return { error: { status: 401, message: '비활성화된 관리자 계정입니다.' } };
   }
-  const ok = await comparePassword(password, user.password);
+  const ok = await comparePassword(password, admin.password);
   if (!ok) {
     return { error: { status: 401, message: '아이디 또는 비밀번호가 올바르지 않습니다.' } };
   }
-  if (!isAdminUser(user.id)) {
-    return { error: { status: 403, message: '관리자 권한이 없습니다.' } };
-  }
-  return { user };
+  return { admin };
 }
 
-router.get('/login', (req, res) => {
-  res.sendFile(adminLoginHtmlPath);
+router.use('/assets', express.static(getAdminStaticDir()));
+
+router.get('/login', (_req, res) => {
+  res.type('html').send(renderAdminLoginHtml());
 });
 
 router.post('/login', async (req, res) => {
@@ -123,9 +124,8 @@ router.post('/login', async (req, res) => {
         message: cred.error.message,
       });
     }
-    const user = cred.user;
+    const admin = cred.admin;
 
-    // OTP 등록 완료 단계 (setupToken + 6자리)
     if (setupToken && setupOtpCode) {
       let decoded;
       try {
@@ -136,9 +136,10 @@ router.post('/login', async (req, res) => {
           message: 'OTP 등록 세션이 만료되었습니다. 다시 로그인해 주세요.',
         });
       }
+      const setupAdminId = Number(decoded.adminId ?? decoded.userId);
       if (
         decoded?.type !== 'admin_otp_setup' ||
-        Number(decoded.userId) !== Number(user.id)
+        setupAdminId !== Number(admin.id)
       ) {
         return res.status(401).json({
           success: false,
@@ -146,7 +147,7 @@ router.post('/login', async (req, res) => {
         });
       }
 
-      const pendingSecret = await getPendingTotpSecret(user.id);
+      const pendingSecret = await getPendingTotpSecret(admin.id);
       if (!pendingSecret || !(await verifyTotpCode(setupOtpCode, pendingSecret))) {
         return res.status(400).json({
           success: false,
@@ -154,29 +155,30 @@ router.post('/login', async (req, res) => {
         });
       }
 
-      await confirmAdminTotpSecret(user.id, pendingSecret);
+      await confirmAdminTotpSecret(admin.id, pendingSecret);
       return issueAdminLoginSuccess(res, {
-        userId: user.id,
-        username: user.username,
+        adminId: admin.id,
+        username: admin.username,
+        role: admin.role,
       });
     }
 
-    const totpRow = await getAdminTotpRow(user.id);
+    const totpRow = await getAdminTotpRow(admin.id);
     const hasConfirmedOtp = Boolean(totpRow?.confirmed_at);
 
     if (!hasConfirmedOtp) {
-      let pendingSecret = await getPendingTotpSecret(user.id);
+      let pendingSecret = await getPendingTotpSecret(admin.id);
       if (!pendingSecret) {
         pendingSecret = generateTotpSecret();
-        await createPendingTotpSecret(user.id, pendingSecret);
+        await createPendingTotpSecret(admin.id, pendingSecret);
       }
       const qrDataUrl = await buildTotpQrDataUrl({
         secret: pendingSecret,
-        username: user.username,
+        username: admin.username,
       });
       const newSetupToken = generateAdminOtpSetupToken({
-        userId: user.id,
-        username: user.username,
+        adminId: admin.id,
+        username: admin.username,
       });
       return res.json({
         success: false,
@@ -195,7 +197,7 @@ router.post('/login', async (req, res) => {
       });
     }
 
-    const secret = await getConfirmedTotpSecret(user.id);
+    const secret = await getConfirmedTotpSecret(admin.id);
     if (!secret || !(await verifyTotpCode(otpCode, secret))) {
       return res.status(401).json({
         success: false,
@@ -204,8 +206,9 @@ router.post('/login', async (req, res) => {
     }
 
     return issueAdminLoginSuccess(res, {
-      userId: user.id,
-      username: user.username,
+      adminId: admin.id,
+      username: admin.username,
+      role: admin.role,
     });
   } catch (error) {
     if (error?.code === 'OTP_ENCRYPTION_KEY_NOT_CONFIGURED') {
@@ -225,13 +228,11 @@ router.post('/login', async (req, res) => {
 
 router.post('/logout', (req, res) => {
   clearAdminCookie(res);
-  res.redirect('/admin/login');
+  res.redirect(`${getAdminBasePath()}/login`);
 });
 
-/** 관리자 세션 연장 (30분 재발급) */
 router.post('/session/extend', authenticate, (req, res) => {
-  const userId = req.user?.userId;
-  if (!isAdminUser(userId)) {
+  if (req.user?.type !== 'admin_session') {
     return res.status(403).json({ success: false, message: '관리자 권한이 없습니다.' });
   }
   if (req.user?.adminMfa !== true) {
@@ -243,8 +244,9 @@ router.post('/session/extend', authenticate, (req, res) => {
   }
 
   const token = generateAdminSessionToken({
-    userId,
+    adminId: req.user.adminId ?? req.user.userId,
     username: req.user.username,
+    role: req.user.adminRole ?? req.user.role,
   });
   setAdminCookie(res, token);
   return res.json({
@@ -255,9 +257,8 @@ router.post('/session/extend', authenticate, (req, res) => {
   });
 });
 
-/** 관리자 SPA — 클라이언트에서 환경별 토큰 검사 (API는 requireAdminApi로 보호) */
-router.get('/', (req, res) => {
-  res.sendFile(adminHtmlPath);
+router.get('/', (_req, res) => {
+  res.type('html').send(renderAdminIndexHtml());
 });
 
 export default router;

@@ -67,7 +67,7 @@ function BadgeDots({ accent, normalize }) {
 }
 
 /**
- * 거리(km) 배지 — stale: 주황 칩, fresh: 초록 칩. loading 시 주황 칩 + 점 애니메이션.
+ * 거리(km) 배지 — 좌표 없음: 주황 칩, coords 있음(캐시·GPS): 초록 칩. loading 시 주황 칩 + 점 애니메이션.
  */
 export default function DistanceBadge({
   distanceKm,

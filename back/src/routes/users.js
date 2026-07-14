@@ -1,12 +1,36 @@
 import express from 'express';
+import { body, query } from 'express-validator';
 import pool from '../config/database.js';
 import { authenticate } from '../middleware/auth.js';
+import { validate } from '../middleware/validate.js';
 import { upsertFcmToken } from '../utils/pushTokens.js';
+import {
+  nameLookupBindParams,
+  nameLookupWhereClause,
+} from '../services/userPii.service.js';
 
 const router = express.Router();
 
+const fcmTokenValidators = [
+  body('token').isString().trim().isLength({ min: 1, max: 512 })
+    .withMessage('token이 필요합니다.'),
+  body('deviceId').optional({ values: 'falsy' }).isString().trim().isLength({ max: 128 }),
+  body('device_id').optional({ values: 'falsy' }).isString().trim().isLength({ max: 128 }),
+  body('deviceType').optional({ values: 'falsy' }).isString().trim().isLength({ max: 32 }),
+  body('device_type').optional({ values: 'falsy' }).isString().trim().isLength({ max: 32 }),
+  body('appVersion').optional({ values: 'falsy' }).isString().trim().isLength({ max: 32 }),
+  body('app_version').optional({ values: 'falsy' }).isString().trim().isLength({ max: 32 }),
+];
+
+const userSearchValidators = [
+  query('schoolId').isString().trim().isLength({ min: 1, max: 40 })
+    .withMessage('schoolId가 필요합니다.'),
+  query('query').optional({ values: 'falsy' }).isString().trim().isLength({ max: 100 })
+    .withMessage('검색어는 100자 이내여야 합니다.'),
+];
+
 // POST /api/users/fcm-token
-router.post('/fcm-token', authenticate, async (req, res) => {
+router.post('/fcm-token', authenticate, validate(fcmTokenValidators), async (req, res) => {
   try {
     const token = String(req.body?.token || '').trim();
     const deviceId = String(req.body?.deviceId || req.body?.device_id || '').trim();
@@ -79,7 +103,7 @@ router.get('/me/stats', authenticate, async (req, res) => {
 });
 
 // GET /api/users/search?schoolId=xxx&query=xxx
-router.get('/search', authenticate, async (req, res) => {
+router.get('/search', authenticate, validate(userSearchValidators), async (req, res) => {
   try {
     const schoolId = String(req.query?.schoolId || '').trim();
     const matchStr = String(req.query?.query || '').trim();
@@ -93,11 +117,11 @@ router.get('/search', authenticate, async (req, res) => {
     }
 
     // 우편 받는 사람 검색: 실명(name) 전체 일치만 (username으로 검색하지 않음)
-    const params = [schoolId, matchStr];
+    const params = [schoolId, ...nameLookupBindParams(matchStr)];
     const [rows] = await pool.execute(
       `SELECT
          u.id,
-         u.name,
+         u.name_enc,
          u.username,
          u.grade,
          u.class_number,
@@ -106,8 +130,8 @@ router.get('/search', authenticate, async (req, res) => {
        LEFT JOIN schools s ON u.school_id = s.school_id
        WHERE u.is_deleted = FALSE
          AND u.school_id = ?
-         AND u.name = ?
-       ORDER BY u.name ASC
+         AND ${nameLookupWhereClause('u')}
+       ORDER BY u.name_lookup ASC
        LIMIT 10`,
       params
     );

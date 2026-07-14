@@ -11,11 +11,9 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import mysql from "mysql2/promise";
-import dotenv from "dotenv";
+import { getDbConnectionOptions, getActiveTarget } from "../config/dbEnv.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-dotenv.config({ path: path.join(__dirname, "../../.env") });
-
 const defaultCsvPath = path.join(__dirname, "schools_merged.csv");
 const csvPath = process.argv[2] ?? defaultCsvPath;
 
@@ -124,11 +122,7 @@ function buildRow(rawRow) {
 
 async function main() {
   const connection = await mysql.createConnection({
-    host: process.env.DB_HOST || "127.0.0.1",
-    port: Number(process.env.DB_PORT) || 3307,
-    user: process.env.DB_USER || "cucumber",
-    password: process.env.DB_PASSWORD || "cucumber0425",
-    database: process.env.DB_NAME || "cucumber",
+    ...getDbConnectionOptions(getActiveTarget()),
     charset: "utf8mb4",
   });
 

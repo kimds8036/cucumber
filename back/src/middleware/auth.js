@@ -1,5 +1,17 @@
 import { verifyToken } from '../utils/auth.js';
 import pool from '../config/database.js';
+import { API_ERROR_CODES } from '../constants/apiErrorCodes.js';
+import { getReverificationBlockCode } from '../services/reverification.service.js';
+
+const REVERIFICATION_RESUBMIT_PATH = '/resubmit-student-id';
+const REVERIFICATION_PROFILE_PATH = '/me';
+
+function shouldSkipReverificationBlock(req, reverificationStatus) {
+  const path = String(req.originalUrl || req.path || '');
+  if (path.includes(REVERIFICATION_PROFILE_PATH)) return true;
+  if (!path.includes(REVERIFICATION_RESUBMIT_PATH)) return false;
+  return ['grace', 'required', 'restricted'].includes(reverificationStatus);
+}
 
 function getCookieValue(req, key) {
   const raw = req.headers.cookie || '';
@@ -20,8 +32,47 @@ function extractToken(req) {
   if (authHeader && authHeader.startsWith('Bearer ')) {
     return authHeader.substring(7);
   }
-  // 관리자 웹은 httpOnly 쿠키 기반 인증도 허용
   return getCookieValue(req, 'admin_access_token');
+}
+
+async function loadUserAuthState(userId) {
+  const [rows] = await pool.execute(
+    `SELECT is_deleted, is_banned, is_suspended, suspended_until,
+            token_version, reverification_status, reverification_deadline, school_id
+     FROM users
+     WHERE id = ?
+     LIMIT 1`,
+    [userId],
+  );
+  return rows[0] || null;
+}
+
+async function loadAdminAuthState(adminId) {
+  const [rows] = await pool.execute(
+    `SELECT id, username, is_deleted, role, last_login_at
+     FROM admin_users
+     WHERE id = ?
+     LIMIT 1`,
+    [adminId],
+  );
+  return rows[0] || null;
+}
+
+function checkReverificationBlock(row) {
+  const code = getReverificationBlockCode(row.reverification_status);
+  if (!code) return null;
+  const messages = {
+    GRADUATED_BLOCKED: '졸업생은 서비스를 이용할 수 없습니다.',
+    ADULT_BLOCKED: '성인은 서비스를 이용할 수 없습니다.',
+    REVERIFICATION_RESTRICTED: '재인증이 필요합니다. 학생증을 다시 제출해주세요.',
+  };
+  return {
+    status: 403,
+    code,
+    message: messages[code] || '서비스 이용이 제한되었습니다.',
+    reverificationStatus: row.reverification_status,
+    reverificationDeadline: row.reverification_deadline || null,
+  };
 }
 
 // JWT 인증 미들웨어
@@ -29,9 +80,9 @@ export const authenticate = async (req, res, next) => {
   try {
     const token = extractToken(req);
     if (!token) {
-      return res.status(401).json({ 
-        success: false, 
-        message: '인증 토큰이 필요합니다.' 
+      return res.status(401).json({
+        success: false,
+        message: '인증 토큰이 필요합니다.',
       });
     }
     let decoded;
@@ -42,14 +93,49 @@ export const authenticate = async (req, res, next) => {
         return res.status(401).json({
           success: false,
           message: '토큰이 만료되었습니다.',
-          code: 'TOKEN_EXPIRED',
+          code: API_ERROR_CODES.TOKEN_EXPIRED,
         });
       }
       return res.status(401).json({
         success: false,
         message: '유효하지 않은 토큰입니다.',
-        code: 'INVALID_TOKEN',
+        code: API_ERROR_CODES.INVALID_TOKEN,
       });
+    }
+
+    if (decoded.type === 'admin_session') {
+      if (decoded.adminMfa !== true) {
+        return res.status(403).json({
+          success: false,
+          message: '관리자 2차 인증(OTP)이 필요합니다.',
+          code: 'ADMIN_MFA_REQUIRED',
+        });
+      }
+      const adminId = Number(decoded.adminId ?? decoded.userId);
+      if (!Number.isFinite(adminId) || adminId <= 0) {
+        return res.status(401).json({
+          success: false,
+          message: '유효하지 않은 관리자 정보입니다.',
+        });
+      }
+      const adminRow = await loadAdminAuthState(adminId);
+      if (!adminRow || adminRow.is_deleted) {
+        return res.status(401).json({
+          success: false,
+          message: '유효하지 않은 관리자입니다.',
+        });
+      }
+      req.user = {
+        ...decoded,
+        adminId: adminRow.id,
+        userId: adminRow.id,
+        username: adminRow.username,
+        adminRole: adminRow.role || decoded.role || 'moderator',
+        role: adminRow.role || decoded.role || 'moderator',
+        type: 'admin_session',
+        adminMfa: true,
+      };
+      return next();
     }
 
     const userId = Number(decoded.userId);
@@ -59,48 +145,69 @@ export const authenticate = async (req, res, next) => {
         message: '유효하지 않은 사용자 정보입니다.',
       });
     }
-    const [rows] = await pool.execute(
-      `SELECT is_deleted, is_banned, is_suspended, suspended_until
-       FROM users
-       WHERE id = ?
-       LIMIT 1`,
-      [userId]
-    );
-    if (!rows.length || rows[0].is_deleted) {
+
+    const row = await loadUserAuthState(userId);
+    if (!row || row.is_deleted) {
       return res.status(401).json({
         success: false,
         message: '유효하지 않은 사용자입니다.',
       });
     }
-    if (rows[0].is_banned) {
+
+    const tokenTv = Number(decoded.tv ?? 0);
+    const dbTv = Number(row.token_version ?? 0);
+    if (tokenTv !== dbTv) {
+      return res.status(401).json({
+        success: false,
+        message: '세션이 만료되었습니다. 다시 로그인해주세요.',
+        code: API_ERROR_CODES.SESSION_REVOKED,
+      });
+    }
+
+    if (row.is_banned) {
       return res.status(403).json({
         success: false,
         message: '영구 정지된 계정입니다.',
-        code: 'ACCOUNT_BANNED',
+        code: API_ERROR_CODES.ACCOUNT_BANNED,
       });
     }
-    if (rows[0].is_suspended) {
-      const until = rows[0].suspended_until ? new Date(rows[0].suspended_until) : null;
+    if (row.is_suspended) {
+      const until = row.suspended_until ? new Date(row.suspended_until) : null;
       if (!until || until > new Date()) {
         return res.status(403).json({
           success: false,
           message: '임시 정지된 계정입니다.',
-          code: 'ACCOUNT_SUSPENDED',
-          suspendedUntil: rows[0].suspended_until || null,
+          code: API_ERROR_CODES.ACCOUNT_SUSPENDED,
+          suspendedUntil: row.suspended_until || null,
         });
       }
     }
-    req.user = decoded; // 토큰에서 추출한 사용자 정보
+
+    const revBlock = checkReverificationBlock(row);
+    if (revBlock && !shouldSkipReverificationBlock(req, row.reverification_status)) {
+      return res.status(revBlock.status).json({
+        success: false,
+        message: revBlock.message,
+        code: revBlock.code,
+        reverificationStatus: revBlock.reverificationStatus,
+        reverificationDeadline: revBlock.reverificationDeadline,
+      });
+    }
+
+    req.user = {
+      ...decoded,
+      schoolId: row.school_id,
+      school_id: row.school_id,
+    };
     next();
   } catch (error) {
-    return res.status(401).json({ 
-      success: false, 
-      message: '인증 처리 중 오류가 발생했습니다.' 
+    return res.status(401).json({
+      success: false,
+      message: '인증 처리 중 오류가 발생했습니다.',
     });
   }
 };
 
-// 선택적 인증: 토큰이 있으면 req.user 설정, 없거나 만료/위조이면 req.user = null
 export const optionalAuthenticate = (req, res, next) => {
   try {
     const token = extractToken(req);
@@ -108,7 +215,6 @@ export const optionalAuthenticate = (req, res, next) => {
       req.user = null;
       return next();
     }
-    // verifyToken 은 만료/위조 시 throw 하므로 여기서 흡수하고 익명 요청으로 통과시킨다.
     let decoded = null;
     try {
       decoded = verifyToken(token);

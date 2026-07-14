@@ -10,6 +10,7 @@ export default ({ config }) => ({
   expo: {
     name: 'Youth Paper',
     slug: 'youth-paper',
+    scheme: 'youthpaper',
     version: '1.4.0',
     orientation: 'portrait',
     icon: './assets/icon.png',
@@ -78,8 +79,10 @@ export default ({ config }) => ({
 
     plugins: [
       'expo-font',
+      'expo-web-browser',
       'expo-image',
       'expo-status-bar',
+      'expo-splash-screen',
       [
         'expo-camera',
         {
@@ -127,6 +130,7 @@ export default ({ config }) => ({
       ],
       './plugins/withFirebaseModularHeaders',
       './plugins/withAndroidReleaseSigning.cjs',
+      './plugins/withAndroidMainActivityLaunchMode.cjs',
       './plugins/withAndroidCameraPreviewCompatible.cjs',
     ],
 

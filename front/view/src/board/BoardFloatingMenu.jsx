@@ -36,9 +36,11 @@ export default function BoardFloatingMenu({
   allComments,
   isMyPostFromApi,
   currentUserId,
+  postAuthorId,
   onClose,
   onDeletePost,
   onDeleteComment,
+  onPinComment,
   onSharePost,
   onNoteToUser,
   onReportPost,
@@ -51,6 +53,10 @@ export default function BoardFloatingMenu({
   const isCommentMenu = isPostMenu ? null : normalizeCommentId(context);
   const commentForMenu =
     isCommentMenu != null ? findCommentById(allComments, isCommentMenu) : null;
+  const isPostAuthor =
+    postAuthorId != null &&
+    currentUserId != null &&
+    Number(postAuthorId) === Number(currentUserId);
   const isMyComment = commentForMenu?.isMyComment === true;
 
   // iOS fade-out 동안 context가 비는 중간 렌더를 막아 중앙 깜빡임을 방지한다.
@@ -91,8 +97,25 @@ export default function BoardFloatingMenu({
         onPress: () => onDeleteComment(isCommentMenu),
       },
     ];
+    if (isPostAuthor) {
+      menuItems.unshift({
+        label: commentForMenu?.isPinned ? '고정 해제' : '댓글 고정',
+        iconName: commentForMenu?.isPinned ? 'pin-outline' : 'pin',
+        onPress: () =>
+          onPinComment?.(isCommentMenu, !commentForMenu?.isPinned),
+      });
+    }
   } else if (commentForMenu) {
-    menuItems = [
+    menuItems = [];
+    if (isPostAuthor) {
+      menuItems.push({
+        label: commentForMenu.isPinned ? '고정 해제' : '댓글 고정',
+        iconName: commentForMenu.isPinned ? 'pin-outline' : 'pin',
+        onPress: () =>
+          onPinComment?.(isCommentMenu, !commentForMenu.isPinned),
+      });
+    }
+    menuItems.push(
       {
         label: '쪽지 보내기',
         iconName: 'chatbubble-outline',
@@ -113,7 +136,7 @@ export default function BoardFloatingMenu({
         iconName: 'flag-outline',
         onPress: () => onReportComment?.(isCommentMenu),
       },
-    ];
+    );
   } else if (isCommentMenu != null) {
     menuItems = [
       {

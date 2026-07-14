@@ -301,12 +301,13 @@ export function createMailStyles(normalize) {
       flexDirection: 'row',
       justifyContent: 'flex-end',
       alignItems: 'flex-end',
-      marginTop: normalize(6),
     },
     replyFormCount: {
       fontSize: normalize(fontSizes.lg),
       color: colors.textSecondary,
       fontFamily: fonts.regular,
+      marginTop: normalize(6),
+      marginRight: normalize(4),
     },
     replyFormChip: {
       flexDirection: 'row',

@@ -1,7 +1,15 @@
 import { api } from './api';
 
-/** 백엔드 반송 기간(일) — UI 문구·주석용 */
-export const PERSONAL_MAIL_RETURN_DAYS = 1;
+/** 백엔드 반송 기간(시간) — UI 문구·주석용 */
+export const PERSONAL_MAIL_RETURN_HOURS = 3;
+/** @deprecated PERSONAL_MAIL_RETURN_HOURS 사용 */
+export const PERSONAL_MAIL_RETURN_DAYS = PERSONAL_MAIL_RETURN_HOURS / 24;
+
+/** 개인우편 작성·답장 기본 글자수 */
+export const PERSONAL_MAIL_CHAR_LIMIT_BASE = 50;
+
+/** 광고 1회 시청 후 최대 글자수 */
+export const PERSONAL_MAIL_CHAR_LIMIT_MAX = 100;
 
 /** 테스트용: true면 보낸 우편·반송 알림 UI를 즉시 확인 가능 (배포 전 false) */
 export const PERSONAL_MAIL_TEST_IMMEDIATE_RETURN = false;
@@ -37,8 +45,8 @@ export function getTestReturnedMailNotification() {
     id: TEST_RETURNED_NOTIFICATION_ID,
     type: 'mail_returned',
     category: 'mail',
-    title: buildMailReturnedNotificationTitle(recipientName),
-    content: `${recipientName}에게 보낸 우편이 반송되었습니다.`,
+    title: '우편함',
+    content: `${recipientName} 님에게 보낸 우편이 반송되었습니다`,
     time: '방금 전',
     createdAt: new Date().toISOString(),
     isRead: false,
@@ -108,6 +116,26 @@ export function isMailReturnedNotification(n) {
   return false;
 }
 
+/** school id만 있고 이름이 없을 때 GET /api/schools/:id 로 보완 */
+export async function resolveSchoolPrefill(school) {
+  if (!school?.id) return school ?? null;
+  const name = String(school.name ?? '').trim();
+  if (name) return school;
+
+  try {
+    const res = await api.get(`/api/schools/${school.id}`);
+    const data = res.data?.data;
+    if (!data) return school;
+    return {
+      id: data.schoolId ?? school.id,
+      name: String(data.name ?? '').trim(),
+      region: String(data.location ?? school.region ?? '').trim(),
+    };
+  } catch {
+    return school;
+  }
+}
+
 /** 우편 작성 화면 prefill 객체 */
 /** GET /api/mails/personal/:id/retry 응답 → SendMail prefill */
 export function mapRetryApiToPrefill(data) {
@@ -118,6 +146,9 @@ export function mapRetryApiToPrefill(data) {
       ? {
           id: schoolId,
           name: String(data.school_name ?? data.schoolName ?? '').trim(),
+          region: String(
+            data.school_region ?? data.schoolRegion ?? data.region ?? '',
+          ).trim(),
         }
       : null,
     grade: String(data.grade ?? ''),
@@ -181,8 +212,12 @@ export async function navigateToResendPersonalMail(navigation, source) {
       const res = await api.get(`/api/mails/personal/${mailId}/retry`);
       const data = res.data?.data;
       if (data) {
+        const prefill = mapRetryApiToPrefill(data);
+        if (prefill.school) {
+          prefill.school = await resolveSchoolPrefill(prefill.school);
+        }
         navigation?.navigate?.('SendMail', {
-          prefill: mapRetryApiToPrefill(data),
+          prefill,
         });
         return;
       }

@@ -1,5 +1,5 @@
 import { StatusBar } from 'expo-status-bar';
-import { CommonActions, NavigationContainer } from '@react-navigation/native';
+import { CommonActions, NavigationContainer, DefaultTheme } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import Login from './view/src/signup/Login';
 import Sign from './view/src/signup/Sign';
@@ -11,6 +11,9 @@ import TimetabelChoice from './src/screens/timetable/timetabelChoice';
 import EditTimetable from './view/src/edittimetable';
 import MyPosts from './view/src/myposts';
 import NotificationSettings from './view/src/notificationsettings';
+import SetPinScreen from './view/src/setPinScreen';
+import ConfirmPinScreen from './view/src/confirmPinScreen';
+import VerifyPinScreen from './view/src/verifyPinScreen';
 import ChangePassword from './view/src/changepassword';
 import ChangeSchool from './view/src/changeschool';
 import SearchScreen from './view/src/searchscreen';
@@ -47,16 +50,25 @@ import GuideOverlayScreen from './src/screens/UserGuide/GuideOverlayScreen';
 import { useFonts } from 'expo-font';
 import * as SplashScreen from 'expo-splash-screen';
 import { useEffect, useRef, useState } from 'react';
-import { Alert, AppState } from 'react-native';
+import { Alert, AppState, Platform, View } from 'react-native';
 import * as Notifications from 'expo-notifications';
 import Constants from 'expo-constants';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { KeyboardProvider } from 'react-native-keyboard-controller';
 import { AuthProvider, useAuth } from './context/AuthContext';
+import { AppLockProvider } from './context/AppLockContext';
 import { LocationProvider, LocationGate } from './context/LocationContext';
 import StudentVerificationGate from './components/auth/StudentVerificationGate';
 import StudentVerificationRejected from './components/auth/StudentVerificationRejected';
+import AccountBlockedScreen from './components/auth/AccountBlockedScreen';
+import ReverificationGate from './components/auth/ReverificationGate';
+import ReverificationReminderBanner from './components/auth/ReverificationReminderBanner';
+import ReverificationPendingBanner from './components/auth/ReverificationPendingBanner';
 import ForceUpdateGate from './components/common/ForceUpdateGate';
+import OfflineGate from './components/common/OfflineGate';
+import AppErrorBoundary from './components/common/AppErrorBoundary';
+import LaunchAdModal from './components/ads/LaunchAdModal';
+import SplashAd from './components/ads/SplashAd';
 import StudentIdResubmit from './view/src/signup/StudentIdResubmit';
 import { SocketProvider } from './context/SocketContext';
 import { NotificationProvider } from './context/NotificationContext';
@@ -65,6 +77,12 @@ import { ToastProvider } from './context/ToastContext';
 import ToastHost from './components/common/ToastHost';
 import AlertHost from './components/common/AlertHost';
 import { navigationRef } from './navigation/navigationRef';
+import { getPendingInicisSession } from './services/inicisAuth';
+import {
+  navigateFromPush,
+  resolvePushNavigation,
+} from './navigation/pushNavigation';
+import { colors } from './styles/colors';
 import { appAlert } from './utils/appAlert';
 import {
   cancelTimerRunningNotification,
@@ -78,16 +96,39 @@ import {
   initFCM,
   setupFCMHandlers,
 } from './utils/fcmService';
+import { trackScreenView, flushAnalyticsEvents } from './utils/analytics';
+import { ROUTE_TO_ANALYTICS_SCREEN } from './constants/analyticsScreens';
 
 const Stack = createNativeStackNavigator();
+const navigationTheme = {
+  ...DefaultTheme,
+  colors: {
+    ...DefaultTheme.colors,
+    background: colors.background,
+  },
+};
 const linking = {
-  prefixes: ['cucumber://'],
+  prefixes: ['cucumber://', 'youthpaper://', 'exp+youth-paper://'],
   config: {
     screens: {
       BoardDetail: 'board/:postId',
+      Sign: 'inicis/return',
     },
   },
 };
+
+function getActiveRouteName(state) {
+  if (!state?.routes?.length) return null;
+  const route = state.routes[state.index ?? 0];
+  if (route?.state) return getActiveRouteName(route.state);
+  return route?.name || null;
+}
+
+function trackNavigationScreen(routeName) {
+  if (!routeName || routeName === 'Main') return;
+  const screen = ROUTE_TO_ANALYTICS_SCREEN[routeName];
+  if (screen) trackScreenView(screen);
+}
 
 SplashScreen.preventAutoHideAsync();
 
@@ -131,6 +172,9 @@ function MainStack({ initialRouteName = 'Main' }) {
         name="NotificationSettings"
         component={NotificationSettings}
       />
+      <Stack.Screen name="SetPinScreen" component={SetPinScreen} />
+      <Stack.Screen name="ConfirmPinScreen" component={ConfirmPinScreen} />
+      <Stack.Screen name="VerifyPinScreen" component={VerifyPinScreen} />
       <Stack.Screen name="ChangePassword" component={ChangePassword} />
       <Stack.Screen name="ChangeSchool" component={ChangeSchool} />
       <Stack.Screen name="Search" component={SearchScreen} />
@@ -181,8 +225,41 @@ function RootNavigator() {
     postLoginRoute,
     setPostLoginRoute,
     studentVerificationStatus,
+    reverificationStatus,
+    reverificationDeadline,
+    reverificationSubmissionPending,
+    refreshStudentVerification,
   } = useAuth();
   const [showResubmit, setShowResubmit] = useState(false);
+  const [resubmitMode, setResubmitMode] = useState('rejected');
+  const pollRef = useRef(null);
+
+  useEffect(() => {
+    if (!authHydrated || isLoggedIn) return undefined;
+    let cancelled = false;
+    (async () => {
+      const pending = await getPendingInicisSession();
+      if (!pending || cancelled) return;
+      const tryNavigate = () => {
+        if (!navigationRef.isReady()) return false;
+        const route = navigationRef.getCurrentRoute?.();
+        if (route?.name !== 'Sign') {
+          navigationRef.navigate('Sign', { resumeInicis: true });
+        }
+        return true;
+      };
+      if (!tryNavigate()) {
+        const timer = setInterval(() => {
+          if (tryNavigate()) clearInterval(timer);
+        }, 150);
+        return () => clearInterval(timer);
+      }
+      return undefined;
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [authHydrated, isLoggedIn]);
 
   useEffect(() => {
     if (!isLoggedIn) return;
@@ -191,111 +268,19 @@ function RootNavigator() {
     }
   }, [isLoggedIn, postLoginRoute, setPostLoginRoute]);
 
-  const getInitialTabForPush = (relatedType = '', fallbackScreen = '') => {
-    if (
-      relatedType === 'dm_room' ||
-      relatedType === 'message_room' ||
-      relatedType === 'personal_mail'
-    ) {
-      return 'message';
-    }
-    if (relatedType === 'post') return 'board';
-    if (relatedType === 'friend_request' || fallbackScreen === 'Friends')
-      return 'mypage';
-    return 'board';
-  };
+  useEffect(() => {
+    if (!isLoggedIn) return undefined;
+    refreshStudentVerification();
+    pollRef.current = setInterval(() => {
+      refreshStudentVerification();
+    }, 30_000);
+    return () => {
+      if (pollRef.current) clearInterval(pollRef.current);
+    };
+  }, [isLoggedIn, refreshStudentVerification]);
 
   const navigateViaMainEntry = ({ name, params, relatedType }) => {
-    if (!navigationRef.isReady()) return;
-    const initialTab = getInitialTabForPush(relatedType, name);
-
-    navigationRef.dispatch(
-      CommonActions.reset({
-        index: 0,
-        routes: [{ name: 'Main', params: { initialTab } }],
-      }),
-    );
-
-    if (name && name !== 'Main') {
-      setTimeout(() => {
-        if (!navigationRef.isReady()) return;
-        navigationRef.navigate(name, params);
-      }, 80);
-    }
-  };
-
-  const resolvePushNavigation = (data = {}, remoteMessage = null) => {
-    const targetScreen = String(data?.targetScreen || '').trim();
-    const relatedType = String(data?.relatedType || '').trim();
-    const relatedId = data?.relatedId != null ? String(data.relatedId) : null;
-    const notificationTitle = String(
-      remoteMessage?.notification?.title ||
-        remoteMessage?.data?.senderName ||
-        '',
-    ).trim();
-
-    if (
-      targetScreen === 'ChatRoom' &&
-      (relatedType === 'dm_room' || relatedType === 'message_room')
-    ) {
-      return {
-        name: relatedType === 'dm_room' ? 'DMChat' : 'Chat',
-        params: {
-          roomId: relatedId,
-          ...(relatedType === 'dm_room'
-            ? {
-                friend: {
-                  name: notificationTitle || '친구',
-                },
-              }
-            : {}),
-          ...data,
-        },
-      };
-    }
-
-    if (targetScreen === 'PostDetail') {
-      return {
-        name: 'BoardDetail',
-        params: {
-          post: {
-            id: relatedId,
-          },
-          isMyPost: false,
-          ...data,
-        },
-      };
-    }
-    if (targetScreen === 'FriendRequests') {
-      return {
-        name: 'Friends',
-        params: data,
-      };
-    }
-    if (targetScreen === 'Notifications') {
-      return {
-        name: 'Notification',
-        params: data,
-      };
-    }
-    if (targetScreen === 'MailDetail' || relatedType === 'personal_mail') {
-      return {
-        name: 'MailDetail',
-        params: {
-          mail: {
-            id: relatedId,
-            isReceived: true,
-            replyToMySent: false,
-          },
-          ...data,
-        },
-      };
-    }
-
-    return {
-      name: targetScreen,
-      params: data,
-    };
+    navigateFromPush({ name, params, relatedType });
   };
 
   useEffect(() => {
@@ -351,26 +336,74 @@ function RootNavigator() {
 
   if (showResubmit) {
     return (
-      <StudentIdResubmit navigation={{ goBack: () => setShowResubmit(false) }} />
+      <StudentIdResubmit
+        mode={resubmitMode}
+        navigation={{ goBack: () => setShowResubmit(false) }}
+      />
     );
   }
 
-  if (studentVerificationStatus === 'PENDING') {
+  if (
+    studentVerificationStatus === 'PENDING' &&
+    !reverificationSubmissionPending
+  ) {
     return <StudentVerificationGate />;
   }
 
   if (studentVerificationStatus === 'REJECTED') {
     return (
-      <StudentVerificationRejected onResubmit={() => setShowResubmit(true)} />
+      <StudentVerificationRejected
+        onResubmit={() => {
+          setResubmitMode('rejected');
+          setShowResubmit(true);
+        }}
+      />
     );
   }
+
+  if (reverificationStatus === 'graduated_blocked') {
+    return <AccountBlockedScreen variant="graduated" />;
+  }
+
+  if (reverificationStatus === 'adult_blocked') {
+    return <AccountBlockedScreen variant="adult" />;
+  }
+
+  if (reverificationStatus === 'restricted') {
+    return (
+      <ReverificationGate
+        onResubmit={() => {
+          setResubmitMode('reverification');
+          setShowResubmit(true);
+        }}
+      />
+    );
+  }
+
+  const showReverificationPendingBanner = reverificationSubmissionPending;
+  const showReverificationBanner =
+    !showReverificationPendingBanner &&
+    (reverificationStatus === 'grace' || reverificationStatus === 'required');
 
   const mainInitialRoute =
     postLoginRoute === 'GuideOverlay' ? 'GuideOverlay' : 'Main';
   return (
-    <LocationGate>
-      <MainStack initialRouteName={mainInitialRoute} />
-    </LocationGate>
+    <View style={{ flex: 1 }}>
+      {showReverificationPendingBanner ? <ReverificationPendingBanner /> : null}
+      {showReverificationBanner ? (
+        <ReverificationReminderBanner
+          status={reverificationStatus}
+          deadline={reverificationDeadline}
+          onResubmit={() => {
+            setResubmitMode('reverification');
+            setShowResubmit(true);
+          }}
+        />
+      ) : null}
+      <LocationGate>
+        <MainStack initialRouteName={mainInitialRoute} />
+      </LocationGate>
+    </View>
   );
 }
 
@@ -379,11 +412,18 @@ export default function App() {
     'Baloo2-Regular': require('./assets/fonts/Baloo2-Regular.ttf'),
     'Baloo2-Bold': require('./assets/fonts/Baloo2-Bold.ttf'),
   });
+  /** boot: 폰트 대기 | splash_ad: 전면 광고 | ready: 앱 */
+  const [bootPhase, setBootPhase] = useState('boot');
+  const [splashAd, setSplashAd] = useState(null);
 
   useEffect(() => {
-    if (fontsLoaded) {
-      SplashScreen.hideAsync();
-    }
+    if (!fontsLoaded) return undefined;
+    // TODO: /api/ads 연동 후 splash 슬롯 fetch → splash_ad
+    // const grouped = {}; // API 응답 normalize 결과
+    SplashScreen.hideAsync();
+    setSplashAd(null);
+    setBootPhase('ready');
+    return undefined;
   }, [fontsLoaded]);
 
   useEffect(() => {
@@ -409,6 +449,23 @@ export default function App() {
       ...payload,
     });
   };
+
+  useEffect(() => {
+    if (Platform.OS !== 'android') return undefined;
+    const RNStatusBar = require('react-native').StatusBar;
+    RNStatusBar.setBackgroundColor(colors.background, true);
+    RNStatusBar.setBarStyle('dark-content', true);
+    return undefined;
+  }, []);
+
+  useEffect(() => {
+    const sub = AppState.addEventListener('change', (nextState) => {
+      if (nextState === 'background' || nextState === 'inactive') {
+        flushAnalyticsEvents();
+      }
+    });
+    return () => sub.remove();
+  }, []);
 
   useEffect(() => {
     const isExpoGo = Constants.appOwnership === 'expo';
@@ -503,12 +560,11 @@ export default function App() {
               currentRouteName: currentRoute?.name ?? null,
             });
           }
-          navigationRef.dispatch(
-            CommonActions.reset({
-              index: 0,
-              routes: [{ name: 'Timer' }],
-            }),
-          );
+          navigateFromPush({
+            name: 'Main',
+            params: { initialTab: 'timer' },
+            relatedType: '',
+          });
           Notifications.clearLastNotificationResponseAsync?.().catch(() => {});
         }
       },
@@ -575,34 +631,56 @@ export default function App() {
     };
   }, []);
 
-  if (!fontsLoaded) return null;
+  if (!fontsLoaded || bootPhase === 'boot') return null;
+
+  if (bootPhase === 'splash_ad' && splashAd) {
+    return (
+      <SplashAd
+        ad={splashAd}
+        onFinish={() => setBootPhase('ready')}
+      />
+    );
+  }
 
   return (
-    <SafeAreaProvider>
-      <ForceUpdateGate>
-        <KeyboardProvider>
-          <AuthProvider>
-            <LocationProvider>
-              <SocketProvider>
-                <ToastProvider>
-                  <NotificationProvider>
-                    <FriendProvider>
-                      <NavigationContainer
-                        ref={navigationRef}
-                        linking={linking}
-                      >
-                        <RootNavigator />
-                        <ToastHost />
-                        <AlertHost />
-                      </NavigationContainer>
-                    </FriendProvider>
-                  </NotificationProvider>
-                </ToastProvider>
-              </SocketProvider>
-            </LocationProvider>
-          </AuthProvider>
-        </KeyboardProvider>
-      </ForceUpdateGate>
+    <SafeAreaProvider style={{ flex: 1, backgroundColor: colors.background }}>
+      <StatusBar style="dark" backgroundColor={colors.background} />
+      <OfflineGate>
+        <ForceUpdateGate>
+          <KeyboardProvider>
+            <AuthProvider>
+              <LaunchAdModal>
+                <AppLockProvider>
+                  <LocationProvider>
+                    <SocketProvider>
+                      <ToastProvider>
+                        <NotificationProvider>
+                          <FriendProvider>
+                            <NavigationContainer
+                              ref={navigationRef}
+                              linking={linking}
+                              theme={navigationTheme}
+                              onStateChange={(state) => {
+                                trackNavigationScreen(getActiveRouteName(state));
+                              }}
+                            >
+                              <AppErrorBoundary>
+                                <RootNavigator />
+                              </AppErrorBoundary>
+                              <ToastHost />
+                              <AlertHost />
+                            </NavigationContainer>
+                          </FriendProvider>
+                        </NotificationProvider>
+                      </ToastProvider>
+                    </SocketProvider>
+                  </LocationProvider>
+                </AppLockProvider>
+              </LaunchAdModal>
+            </AuthProvider>
+          </KeyboardProvider>
+        </ForceUpdateGate>
+      </OfflineGate>
     </SafeAreaProvider>
   );
 }

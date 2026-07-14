@@ -8,11 +8,22 @@ const SignupLockedField = ({
   value,
   placeholder = '',
   styles,
+  compactBottom = false,
+  helperBelowLabel = null,
 }) => (
   <>
     <Text style={styles.inputLabel}>{label}</Text>
-    <View style={styles.inputWrapper}>
-      <View style={[styles.input, styles.lockedFieldInner]}>
+    {helperBelowLabel}
+    <View
+      style={[styles.inputWrapper, compactBottom && { marginBottom: 0 }]}
+    >
+      <View
+        style={[
+          styles.input,
+          styles.lockedFieldInner,
+          compactBottom && { marginBottom: 0 },
+        ]}
+      >
         <Text
           style={[styles.lockedFieldText, !value && styles.lockedFieldPlaceholder]}
           numberOfLines={2}

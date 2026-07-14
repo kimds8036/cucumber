@@ -276,7 +276,7 @@ const makeStyles = (normalize) =>
   StyleSheet.create({
     scrollContent: {
       gap: normalize(10),
-      paddingBottom: normalize(8),
+      paddingBottom: normalize(96),
     },
     allAgreeBlock: {
       gap: normalize(10),
@@ -377,6 +377,7 @@ const makeStyles = (normalize) =>
       fontFamily: fonts.bold,
       color: colors.textPrimary,
       flexShrink: 1,
+      lineHeight: normalize(22),
     },
     viewFullRow: {
       flexDirection: 'row',
@@ -416,7 +417,7 @@ const makeStyles = (normalize) =>
       fontSize: normalize(fontSizes.lg),
       fontFamily: fonts.regular,
       color: colors.textPrimary,
-      lineHeight: normalize(18),
+      lineHeight: normalize(20),
     },
     checkbox: {
       width: normalize(20),
@@ -442,7 +443,7 @@ const makeStyles = (normalize) =>
       fontSize: normalize(fontSizes.md),
       fontFamily: fonts.regular,
       color: colors.textSecondary,
-      lineHeight: normalize(18),
+      lineHeight: normalize(20),
       marginTop: normalize(2),
       textAlign: 'center',
     },

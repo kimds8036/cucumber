@@ -1,3 +1,5 @@
+import { sanitizeUserFacingText } from './userFacingError';
+
 const listeners = new Set();
 let nativeAlert = null;
 const pendingAlerts = [];
@@ -25,7 +27,14 @@ export const appAlert = {
   alert(title, message, buttons, options) {
     const payload = {
       title: toText(title),
-      message: toText(message),
+      message: (() => {
+        const raw = toText(message);
+        if (!raw) return '';
+        return sanitizeUserFacingText(
+          raw,
+          '문제가 발생했어요. 잠시 후 다시 시도해 주세요.',
+        );
+      })(),
       buttons:
         Array.isArray(buttons) && buttons.length > 0
           ? buttons

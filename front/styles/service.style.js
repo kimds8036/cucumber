@@ -16,6 +16,19 @@ export const createServiceStyles = (normalize) =>
       paddingBottom: normalize(32),
       gap: normalize(8),
     },
+    legalMetaBlock: {
+      gap: normalize(4),
+      marginBottom: normalize(4),
+    },
+    legalMetaLine: {
+      fontSize: normalize(fontSizes.lg),
+      fontFamily: fonts.regular,
+      color: colors.textPrimary,
+      lineHeight: normalize(20),
+    },
+    legalMetaLabel: {
+      fontFamily: fonts.bold,
+    },
     chapterTitle: {
       fontSize: normalize(fontSizes.xxl),
       fontFamily: fonts.bold,

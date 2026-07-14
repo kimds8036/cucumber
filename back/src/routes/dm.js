@@ -7,7 +7,7 @@ import pool from '../config/database.js';
 import { authenticate } from '../middleware/auth.js';
 import { validate } from '../middleware/validate.js';
 import { getNowForDB } from '../utils/dateUtils.js';
-import { upload } from '../config/cloudinary.js';
+import { uploadDm } from '../config/cloudinary.js';
 import { emitNewMessage, emitReadReceipt, isUserInRoom } from '../socketServer.js';
 import { enqueueNotification } from '../utils/notificationWorker.js';
 import { isBlockedBy } from '../utils/userBlock.js';
@@ -119,7 +119,7 @@ router.get('/rooms', authenticate, async (req, res) => {
         dr.last_message_at,
         dr.created_at,
         (CASE WHEN dr.user1_id = ? THEN dr.user2_id ELSE dr.user1_id END) AS other_user_id,
-        u.name AS other_user_name,
+        u.name_enc AS other_user_name_enc,
         s.name AS other_user_school_name,
         u.color_id AS other_user_color_id,
         (
@@ -381,8 +381,8 @@ router.get('/rooms/:roomId', authenticate, async (req, res) => {
 
     if (safeBefore != null) {
       sql = `SELECT m.id, m.room_id, m.sender_id, m.parent_message_id, m.content, m.is_read, m.is_deleted, m.created_at,
-                    pm.content AS parent_content, pu.name AS parent_sender_name,
-                    u.name AS sender_name, u.color_id AS sender_color_id,
+                    pm.content AS parent_content, pu.name_enc AS parent_sender_name_enc,
+                    u.name_enc AS sender_name_enc, u.color_id AS sender_color_id,
                     ${imageSub}
              FROM dm_messages m
              LEFT JOIN users u ON m.sender_id = u.id
@@ -395,8 +395,8 @@ router.get('/rooms/:roomId', authenticate, async (req, res) => {
       params = [roomIdNum, Number(deletedAtMsgId) || 0, safeBefore, userId];
     } else {
       sql = `SELECT m.id, m.room_id, m.sender_id, m.parent_message_id, m.content, m.is_read, m.is_deleted, m.created_at,
-                    pm.content AS parent_content, pu.name AS parent_sender_name,
-                    u.name AS sender_name, u.color_id AS sender_color_id,
+                    pm.content AS parent_content, pu.name_enc AS parent_sender_name_enc,
+                    u.name_enc AS sender_name_enc, u.color_id AS sender_color_id,
                     ${imageSub}
              FROM dm_messages m
              LEFT JOIN users u ON m.sender_id = u.id
@@ -450,7 +450,7 @@ router.get('/rooms/:roomId', authenticate, async (req, res) => {
 router.post(
   '/rooms/:roomId/messages',
   authenticate,
-  upload.array('images', 5),
+  uploadDm.array('images', 5),
   validate(dmSendMessageValidators),
   async (req, res) => {
     try {
@@ -558,8 +558,8 @@ router.post(
 
       const [rows] = await pool.execute(
         `SELECT m.id, m.room_id, m.sender_id, m.parent_message_id, m.content, m.is_read, m.is_deleted, m.created_at,
-                pm.content AS parent_content, pu.name AS parent_sender_name,
-                u.name AS sender_name, u.color_id AS sender_color_id,
+                pm.content AS parent_content, pu.name_enc AS parent_sender_name_enc,
+                u.name_enc AS sender_name_enc, u.color_id AS sender_color_id,
                 s.name AS sender_school_name,
                 (SELECT JSON_ARRAYAGG(cloudinary_url)
                  FROM (

@@ -17,7 +17,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
-import { CommonActions, StackActions } from '@react-navigation/native';
+import { StackActions } from '@react-navigation/native';
 import SubHeader from '../frame/subHeader';
 import { createWriteStyles, getNormalize } from '../../styles/board.style';
 import { api } from '../../utils/api';
@@ -248,15 +248,7 @@ const BoardWrite = ({ navigation, route }) => {
           text: '확인',
           onPress: () => {
             if (boardContext === 'school') {
-              navigation.dispatch(
-                CommonActions.reset({
-                  index: 1,
-                  routes: [
-                    { name: 'Main', params: { initialTab: 'school' } },
-                    { name: 'SchoolBoardAll' },
-                  ],
-                }),
-              );
+              navigation.dispatch(StackActions.pop(1));
             } else {
               navigation.dispatch(StackActions.popToTop());
             }

@@ -609,7 +609,7 @@ export const createTimerStyles = (width, normalize) => {
       justifyContent: 'center',
     },
     timetableHourText: {
-      fontSize: normalize(fontSizes.lg),
+      fontSize: normalize(fontSizes.md),
       fontFamily: fonts.regular,
       color: colors.textSecondary,
     },
@@ -645,6 +645,7 @@ export const createTimerStyles = (width, normalize) => {
 
     // 저장용 플래너 캡처 (좌: 날짜/시간/투두, 우: 타임테이블, 버튼 없음)
     plannerCaptureWrap: {
+      position: 'relative',
       width: width,
       backgroundColor: colors.background,
       paddingVertical: normalize(16),
@@ -755,9 +756,26 @@ export const createTimerStyles = (width, normalize) => {
       left: -width * 2,
       top: 0,
       width,
+      pointerEvents: 'none',
     },
     viewShotBg: {
       backgroundColor: colors.background,
+    },
+    captureWatermarkOverlay: {
+      position: 'absolute',
+      top: 0,
+      left: 0,
+      right: 0,
+      bottom: 0,
+      justifyContent: 'center',
+      alignItems: 'center',
+      zIndex: 10,
+      elevation: 10,
+    },
+    captureWatermarkImage: {
+      width: normalize(180),
+      height: normalize(180),
+      opacity: 0.2,
     },
     plannerSubjectListItem: {
       marginBottom: normalize(10),

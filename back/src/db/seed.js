@@ -1,21 +1,15 @@
 import mysql from 'mysql2/promise';
 import { faker } from '@faker-js/faker/locale/ko';
 import bcrypt from 'bcrypt';
-import dotenv from 'dotenv';
-import path from 'path';
-import { fileURLToPath } from 'url';
+import { getDbConnectionOptions, getActiveTarget } from '../config/dbEnv.js';
+import {
+  packUserPii,
+  userPiiInsertValues,
+  USER_PII_INSERT_COLUMNS,
+} from '../services/userPii.service.js';
 
 async function seed() {
-  const __dirname = path.dirname(fileURLToPath(import.meta.url));
-  dotenv.config({ path: path.join(__dirname, '../../.env') });
-
-  const connection = await mysql.createConnection({
-    host: process.env.DB_HOST || '127.0.0.1',
-    port: Number(process.env.DB_PORT) || 3307,
-    user: process.env.DB_USER || 'cucumber',
-    password: process.env.DB_PASSWORD || 'cucumber0425',
-    database: process.env.DB_NAME || 'cucumber',
-  });
+  const connection = await mysql.createConnection(getDbConnectionOptions(getActiveTarget()));
 
   try {
     await connection.beginTransaction();
@@ -38,16 +32,19 @@ async function seed() {
     // 2. users (admin 계정 포함)
     // ──────────────────────────────────────────
     const adminPassword = await bcrypt.hash('admin', 10);
+    const adminPii = packUserPii({
+      name: '관리자',
+      phone: '010-0000-0000',
+      birthDate: '2000-01-01',
+    });
     const [adminResult] = await connection.execute(
       `INSERT INTO users
-        (username, name, password, phone, birth_date, school_id, grade, class_number, graduation_year, is_graduated, color_id, phone_verified, student_verified)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        (username, password, ${USER_PII_INSERT_COLUMNS}, school_id, grade, class_number, graduation_year, is_graduated, color_id, phone_verified, student_verified)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         'admin',
-        '관리자',
         adminPassword,
-        '010-0000-0000',
-        '2000-01-01',
+        ...userPiiInsertValues(adminPii),
         schoolIds[0],
         1,
         1,
@@ -62,16 +59,19 @@ async function seed() {
 
     for (let i = 0; i < 9; i++) {
       const password = await bcrypt.hash('password123', 10);
+      const pii = packUserPii({
+        name: faker.person.fullName(),
+        phone: `010-${faker.number.int({ min: 1000, max: 9999 })}-${faker.number.int({ min: 1000, max: 9999 })}`,
+        birthDate: faker.date.birthdate({ min: 15, max: 19, mode: 'age' }).toISOString().split('T')[0],
+      });
       const [result] = await connection.execute(
         `INSERT INTO users
-          (username, name, password, phone, birth_date, school_id, grade, class_number, graduation_year, is_graduated, color_id, phone_verified, student_verified)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          (username, password, ${USER_PII_INSERT_COLUMNS}, school_id, grade, class_number, graduation_year, is_graduated, color_id, phone_verified, student_verified)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         [
           faker.internet.username().slice(0, 20),
-          faker.person.fullName(),
           password,
-          `010-${faker.number.int({ min: 1000, max: 9999 })}-${faker.number.int({ min: 1000, max: 9999 })}`,
-          faker.date.birthdate({ min: 15, max: 19, mode: 'age' }).toISOString().split('T')[0],
+          ...userPiiInsertValues(pii),
           faker.helpers.arrayElement(schoolIds),
           faker.number.int({ min: 1, max: 3 }),
           faker.number.int({ min: 1, max: 10 }),

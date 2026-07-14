@@ -3,8 +3,12 @@ import { Platform, Linking, Alert } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Constants from 'expo-constants';
 import { API_URLS } from '../config/apiEnv.js';
+import { notifySessionTerminated } from './sessionTerminate';
+import { getUserFacingErrorMessage } from './userFacingError.js';
 
 const AUTH_TOKEN_KEY = '@auth_token';
+const REFRESH_TOKEN_KEY = '@refresh_token';
+const DEVICE_ID_KEY = '@device_id';
 
 /**
  * 자동로그인 OFF 상태에서 사용하는 인메모리 토큰.
@@ -12,6 +16,15 @@ const AUTH_TOKEN_KEY = '@auth_token';
  * 다음 부팅에서는 다시 로그인 화면이 나오도록 한다.
  */
 let inMemoryAuthToken = null;
+
+/** 동시 401 시 refresh 1회만 실행 */
+let refreshInFlight = null;
+
+const SESSION_TERMINATE_CODES = [
+  'SESSION_REVOKED',
+  'ACCOUNT_BANNED',
+  'ACCOUNT_SUSPENDED',
+];
 
 /** env·extra 미설정 시 develop Railway (app.config.js가 보통 extra에 박아 둠) */
 const DEFAULT_API_BASE = API_URLS.develop;
@@ -87,15 +100,7 @@ export function getApiUserFacingMessage(
   error,
   fallback = '요청에 실패했습니다.',
 ) {
-  const fromInterceptor =
-    typeof error?.userFacingMessage === 'string' &&
-    error.userFacingMessage.trim();
-  if (fromInterceptor) return fromInterceptor.trim();
-  const data = error?.response?.data;
-  if (typeof data?.message === 'string' && data.message.trim())
-    return data.message.trim();
-  if (typeof data === 'string' && data.trim()) return data.trim();
-  return fallback;
+  return getUserFacingErrorMessage(error, fallback);
 }
 
 // 요청 시 저장된 토큰을 Authorization 헤더에 붙임
@@ -121,39 +126,72 @@ api.interceptors.request.use(
   (err) => Promise.reject(err),
 );
 
-// 응답: 입력 검증 실패(400·422) 시 서버 메시지를 한곳에 심어 두어,
-// `status === 400` 만 보던 구식 분기 없이도 getApiUserFacingMessage 로 동일 UX 유지
-api.interceptors.response.use(
-  (response) => response,
-  (error) => {
-    const status = error?.response?.status;
-    const data = error?.response?.data;
-    if (API_INPUT_ERROR_HTTP_STATUSES.includes(status)) {
-      const msg =
-        (data && typeof data.message === 'string' && data.message.trim()) ||
-        (typeof data === 'string' && data.trim()) ||
-        null;
-      if (msg) {
-        error.userFacingMessage = msg;
-      }
-    }
-    if (status === 426) {
-      const msg =
-        (data && typeof data.message === 'string' && data.message.trim()) ||
-        '앱 업데이트가 필요합니다. 스토어에서 최신 버전으로 업데이트해 주세요.';
+function isAuthRoute(config) {
+  const url = String(config?.url || '');
+  return (
+    url.includes('/api/auth/login') ||
+    url.includes('/api/auth/refresh') ||
+    url.includes('/api/auth/logout')
+  );
+}
+
+function shouldAttemptTokenRefresh(error) {
+  const status = error?.response?.status;
+  if (status !== 401) return false;
+
+  const config = error?.config;
+  if (!config || config.skipAuthRefresh || config._authRetry) return false;
+  if (isAuthRoute(config)) return false;
+
+  const code = error?.response?.data?.code;
+  if (SESSION_TERMINATE_CODES.includes(code)) return false;
+  if (code === 'INVALID_TOKEN') return false;
+  if (code === 'TOKEN_EXPIRED') return true;
+
+  const hadAuth = Boolean(
+    config.headers?.Authorization || config.headers?.authorization,
+  );
+  return hadAuth && !code;
+}
+
+function enrichApiError(error) {
+  const status = error?.response?.status;
+  const data = error?.response?.data;
+  if (API_INPUT_ERROR_HTTP_STATUSES.includes(status)) {
+    const msg =
+      (data && typeof data.message === 'string' && data.message.trim()) ||
+      (typeof data === 'string' && data.trim()) ||
+      null;
+    if (msg) {
       error.userFacingMessage = msg;
-      error.isUpgradeRequired = true;
-      const storeUrl = data?.data?.storeUrl;
-      if (storeUrl && !error.config?.skipUpgradeAlert) {
-        Alert.alert('업데이트 필요', msg, [
-          { text: '스토어 열기', onPress: () => Linking.openURL(storeUrl).catch(() => {}) },
-          { text: '닫기', style: 'cancel' },
-        ]);
-      }
     }
-    return Promise.reject(error);
-  },
-);
+  }
+  if (status === 426) {
+    const msg =
+      (data && typeof data.message === 'string' && data.message.trim()) ||
+      '앱 업데이트가 필요합니다. 스토어에서 최신 버전으로 업데이트해 주세요.';
+    error.userFacingMessage = msg;
+    error.isUpgradeRequired = true;
+    const storeUrl = data?.data?.storeUrl;
+    if (storeUrl && !error.config?.skipUpgradeAlert) {
+      Alert.alert('업데이트 필요', msg, [
+        { text: '스토어 열기', onPress: () => Linking.openURL(storeUrl).catch(() => {}) },
+        { text: '닫기', style: 'cancel' },
+      ]);
+    }
+  }
+  if (SESSION_TERMINATE_CODES.includes(data?.code)) {
+    error.isSessionTerminated = true;
+    error.sessionTerminateCode = data.code;
+    notifySessionTerminated({
+      code: data.code,
+      message:
+        (typeof data?.message === 'string' && data.message.trim()) ||
+        undefined,
+    }).catch(() => {});
+  }
+  return error;
+}
 
 /**
  * 로그인 성공 시 토큰 저장.
@@ -186,6 +224,46 @@ export async function clearAuthToken() {
  * - 영속(AsyncStorage) → 인메모리 순서로 폴백한다.
  * - SocketContext 등 axios interceptor 외부에서 토큰을 직접 써야 할 때 사용.
  */
+export async function getOrCreateDeviceId() {
+  try {
+    const existing = await AsyncStorage.getItem(DEVICE_ID_KEY);
+    if (existing) return existing;
+    const id = `device_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
+    await AsyncStorage.setItem(DEVICE_ID_KEY, id);
+    return id;
+  } catch {
+    return `device_${Date.now()}`;
+  }
+}
+
+export async function setRefreshToken(token, { persist = true } = {}) {
+  if (!persist) {
+    await AsyncStorage.removeItem(REFRESH_TOKEN_KEY);
+    return;
+  }
+  if (token) {
+    await AsyncStorage.setItem(REFRESH_TOKEN_KEY, token);
+  } else {
+    await AsyncStorage.removeItem(REFRESH_TOKEN_KEY);
+  }
+}
+
+export async function getRefreshToken() {
+  try {
+    return (await AsyncStorage.getItem(REFRESH_TOKEN_KEY)) || null;
+  } catch {
+    return null;
+  }
+}
+
+export async function getDeviceId() {
+  try {
+    return (await AsyncStorage.getItem(DEVICE_ID_KEY)) || null;
+  } catch {
+    return null;
+  }
+}
+
 export async function getAuthToken() {
   try {
     const stored = await AsyncStorage.getItem(AUTH_TOKEN_KEY);
@@ -195,6 +273,82 @@ export async function getAuthToken() {
   }
   return inMemoryAuthToken;
 }
+
+async function tokensShouldPersist() {
+  try {
+    const stored = await AsyncStorage.getItem(AUTH_TOKEN_KEY);
+    return Boolean(stored);
+  } catch {
+    return Boolean(inMemoryAuthToken);
+  }
+}
+
+/**
+ * Refresh Token으로 Access Token 갱신 (single-flight).
+ * axios 401 인터셉터·Socket 재연결 등에서 공통 사용.
+ * @returns {Promise<string|null>}
+ */
+export async function refreshAccessToken() {
+  if (refreshInFlight) return refreshInFlight;
+
+  refreshInFlight = (async () => {
+    try {
+      const [refreshToken, deviceId] = await Promise.all([
+        getRefreshToken(),
+        getDeviceId(),
+      ]);
+      if (!refreshToken || !deviceId) return null;
+
+      const response = await api.post(
+        '/api/auth/refresh',
+        { refreshToken, deviceId },
+        { skipAuthRefresh: true },
+      );
+      const nextToken =
+        response?.data?.data?.token ?? response?.data?.token ?? null;
+      const nextRefresh =
+        response?.data?.data?.refreshToken ?? response?.data?.refreshToken;
+      if (!nextToken) return null;
+
+      const persist = await tokensShouldPersist();
+      await setAuthToken(nextToken, { persist });
+      if (nextRefresh) await setRefreshToken(nextRefresh, { persist });
+      return nextToken;
+    } catch (error) {
+      if (__DEV__) {
+        console.warn(
+          '[API] refresh 실패:',
+          error?.response?.status ?? error?.message,
+        );
+      }
+      return null;
+    } finally {
+      refreshInFlight = null;
+    }
+  })();
+
+  return refreshInFlight;
+}
+
+// 응답: 401 TOKEN_EXPIRED 시 refresh 후 1회 재시도, 그 외 에러 UX 보강
+api.interceptors.response.use(
+  (response) => response,
+  async (error) => {
+    const originalConfig = error?.config;
+
+    if (shouldAttemptTokenRefresh(error)) {
+      const newToken = await refreshAccessToken();
+      if (newToken && originalConfig) {
+        originalConfig._authRetry = true;
+        originalConfig.headers = originalConfig.headers || {};
+        originalConfig.headers.Authorization = `Bearer ${newToken}`;
+        return api.request(originalConfig);
+      }
+    }
+
+    return Promise.reject(enrichApiError(error));
+  },
+);
 
 /**
  * 로그아웃 시 사용자 세션/캐시 데이터 정리

@@ -10,9 +10,10 @@ import {
   getKstYesterday0000ThroughToday235959UtcForSql,
   getNowForDB,
 } from '../utils/dateUtils.js';
-import { cloudinary, upload } from '../config/cloudinary.js';
+import { cloudinary, uploadPost } from '../config/cloudinary.js';
 import { haversineKm, sqlHaversineKmLessOrEqual } from '../utils/geo.js';
 import { appendUserBlockFilter } from '../utils/userBlockFilter.js';
+import { blockWhenFlag } from '../middleware/systemFlags.js';
 import { isBlockedBy } from '../utils/userBlock.js';
 import { submitContentReport } from '../services/reportSubmission.service.js';
 const router = express.Router();
@@ -155,7 +156,7 @@ async function loadPostsRowsByIdOrder(
       p.like_count,
       p.comment_count,
       p.created_at,
-      u.name as author_name,
+      u.name_enc as author_name_enc,
       u.color_id,
       s.name as school_name,
       (SELECT pi1.cloudinary_url
@@ -433,7 +434,7 @@ router.get('/', optionalAuthenticate, async (req, res) => {
         p.like_count, 
         p.comment_count, 
         p.created_at,
-        u.name as author_name,
+        u.name_enc as author_name_enc,
         u.color_id,
         s.name as school_name,
         (SELECT pi1.cloudinary_url
@@ -607,7 +608,7 @@ router.get('/my', authenticate, async (req, res) => {
          p.like_count,
          p.comment_count,
          p.created_at,
-         u.name as author_name,
+         u.name_enc as author_name_enc,
          u.color_id,
          s.name as school_name,
          (SELECT COUNT(*) FROM post_likes pl
@@ -795,7 +796,7 @@ router.get('/liked', authenticate, async (req, res) => {
          p.like_count,
          p.comment_count,
          p.created_at,
-         u.name as author_name,
+         u.name_enc as author_name_enc,
          u.color_id,
          s.name as school_name,
          (SELECT pi1.cloudinary_url
@@ -907,7 +908,7 @@ router.get('/scrapped', authenticate, async (req, res) => {
          p.like_count,
          p.comment_count,
          p.created_at,
-         u.name as author_name,
+         u.name_enc as author_name_enc,
          u.color_id,
          s.name as school_name,
          (SELECT COUNT(*) FROM post_likes pl
@@ -1062,7 +1063,7 @@ router.get('/:id', optionalAuthenticate, async (req, res) => {
         p.like_count, 
         p.comment_count, 
         p.created_at,
-        u.name as author_name,
+        u.name_enc as author_name_enc,
         u.color_id,
         s.name as school_name,
         (SELECT pi1.cloudinary_url
@@ -1206,7 +1207,7 @@ router.get('/:id', optionalAuthenticate, async (req, res) => {
 });
 
 // 게시글 작성
-router.post('/', authenticate, upload.array('images', 5), validate(postCreateValidators), async (req, res) => {
+router.post('/', authenticate, blockWhenFlag('post_write_disabled'), uploadPost.array('images', 5), validate(postCreateValidators), async (req, res) => {
   try {
     const userId = req.user.userId;
     const { boardType, schoolId, content, tags } = req.body;
@@ -1546,7 +1547,7 @@ router.post('/:id/scrap', authenticate, async (req, res) => {
 });
 
 // 게시글 신고
-router.post('/:id/report', authenticate, validate(postReportValidators), async (req, res) => {
+router.post('/:id/report', authenticate, blockWhenFlag('report_submission_disabled'), validate(postReportValidators), async (req, res) => {
   try {
     const reporterId = req.user.userId;
     const { id } = req.params;

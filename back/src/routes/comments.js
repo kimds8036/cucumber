@@ -5,9 +5,11 @@ import { authenticate, optionalAuthenticate } from '../middleware/auth.js';
 import { validate } from '../middleware/validate.js';
 import { enqueueNotification } from '../utils/notificationWorker.js';
 import { getKstTodayRangeUtcForSql, getNowForDB } from '../utils/dateUtils.js';
-import { cloudinary, upload } from '../config/cloudinary.js';
+import { cloudinary, uploadComment } from '../config/cloudinary.js';
 import { appendUserBlockFilter } from '../utils/userBlockFilter.js';
 import { submitContentReport } from '../services/reportSubmission.service.js';
+import { softDeletePostComment } from '../services/commentCount.service.js';
+import { blockWhenFlag } from '../middleware/systemFlags.js';
 
 const router = express.Router();
 
@@ -25,11 +27,12 @@ const commentCreateValidators = [
 
 // 댓글 삭제 (본인 댓글만, 소프트 삭제)
 router.delete('/comments/:commentId', authenticate, async (req, res) => {
+  const connection = await pool.getConnection();
   try {
     const userId = req.user.userId;
     const { commentId } = req.params;
 
-    const [comments] = await pool.execute(
+    const [comments] = await connection.execute(
       'SELECT id, user_id, post_id FROM comments WHERE id = ? AND is_deleted = FALSE',
       [commentId],
     );
@@ -46,30 +49,35 @@ router.delete('/comments/:commentId', authenticate, async (req, res) => {
       });
     }
 
-    await pool.execute('UPDATE comments SET is_deleted = TRUE WHERE id = ?', [
-      commentId,
-    ]);
-    const postId = comments[0].post_id;
-    await pool.execute(
-      'UPDATE posts SET comment_count = comment_count - 1 WHERE id = ?',
-      [postId],
-    );
+    await connection.beginTransaction();
+    const { deleted } = await softDeletePostComment(connection, commentId);
+    if (!deleted) {
+      await connection.rollback();
+      return res.status(404).json({
+        success: false,
+        message: '댓글을 찾을 수 없습니다.',
+      });
+    }
+    await connection.commit();
 
     res.json({
       success: true,
       message: '댓글이 삭제되었습니다.',
     });
   } catch (error) {
+    await connection.rollback().catch(() => {});
     console.error('댓글 삭제 오류:', error);
     res.status(500).json({
       success: false,
       message: '댓글 삭제 중 오류가 발생했습니다.',
     });
+  } finally {
+    connection.release();
   }
 });
 
 // 댓글 작성 (대댓글 포함)
-router.post('/:postId/comments', authenticate, upload.array('images', 5), validate(commentCreateValidators), async (req, res) => {
+router.post('/:postId/comments', authenticate, blockWhenFlag('comment_write_disabled'), uploadComment.array('images', 5), validate(commentCreateValidators), async (req, res) => {
   try {
     const userId = req.user.userId;
     const { postId } = req.params;
@@ -174,7 +182,7 @@ router.post('/:postId/comments', authenticate, upload.array('images', 5), valida
         c.anonymous_index,
         c.like_count,
         c.created_at,
-        u.name as author_name,
+        u.name_enc as author_name_enc,
         u.color_id
       FROM comments c
       LEFT JOIN users u ON c.user_id = u.id
@@ -191,8 +199,8 @@ router.post('/:postId/comments', authenticate, upload.array('images', 5), valida
         userId: post.user_id,
         type: isReplyToPost ? 'comment' : 'reply',
         category: 'post',
-        title: '내 게시글에 새로운 댓글이 달렸어요',
-        body: content.slice(0, 80),
+        title: '게시글',
+        body: '내 게시글에 새로운 댓글이 달렸어요',
         relatedType: 'post',
         relatedId: post.id,
       });
@@ -209,8 +217,8 @@ router.post('/:postId/comments', authenticate, upload.array('images', 5), valida
         userId: parentComment.user_id,
         type: 'reply',
         category: 'post',
-        title: '내 댓글에 새 답글이 달렸어요',
-        body: content.slice(0, 80),
+        title: '게시글',
+        body: '내 댓글에 새 답글이 달렸어요',
         relatedType: 'post',
         relatedId: post.id,
       });
@@ -226,6 +234,75 @@ router.post('/:postId/comments', authenticate, upload.array('images', 5), valida
     res.status(500).json({
       success: false,
       message: '댓글 작성 중 오류가 발생했습니다.',
+    });
+  }
+});
+
+// 게시글 댓글 고정 (게시글 작성자만)
+router.patch('/:postId/comments/:commentId/pin', authenticate, async (req, res) => {
+  try {
+    const userId = req.user.userId;
+    const postId = Number(req.params.postId);
+    const commentId = Number(req.params.commentId);
+    const pin = req.body?.pin !== false;
+
+    const [posts] = await pool.execute(
+      'SELECT id, user_id FROM posts WHERE id = ? AND is_deleted = FALSE',
+      [postId],
+    );
+    if (!posts.length) {
+      return res.status(404).json({
+        success: false,
+        message: '게시글을 찾을 수 없습니다.',
+      });
+    }
+    if (Number(posts[0].user_id) !== Number(userId)) {
+      return res.status(403).json({
+        success: false,
+        message: '게시글 작성자만 댓글을 고정할 수 있습니다.',
+      });
+    }
+
+    const [comments] = await pool.execute(
+      `SELECT id FROM comments
+       WHERE id = ? AND post_id = ? AND is_deleted = FALSE`,
+      [commentId, postId],
+    );
+    if (!comments.length) {
+      return res.status(404).json({
+        success: false,
+        message: '댓글을 찾을 수 없습니다.',
+      });
+    }
+
+    if (pin) {
+      await pool.execute(
+        `UPDATE comments SET is_pinned = FALSE, pinned_at = NULL
+         WHERE post_id = ? AND is_deleted = FALSE`,
+        [postId],
+      );
+      await pool.execute(
+        `UPDATE comments SET is_pinned = TRUE, pinned_at = NOW() WHERE id = ?`,
+        [commentId],
+      );
+    } else {
+      await pool.execute(
+        `UPDATE comments SET is_pinned = FALSE, pinned_at = NULL
+         WHERE id = ? AND post_id = ?`,
+        [commentId, postId],
+      );
+    }
+
+    return res.json({
+      success: true,
+      message: pin ? '댓글이 고정되었습니다.' : '댓글 고정이 해제되었습니다.',
+      data: { postId, commentId, isPinned: pin },
+    });
+  } catch (error) {
+    console.error('게시글 댓글 고정 오류:', error);
+    return res.status(500).json({
+      success: false,
+      message: '댓글 고정 처리 중 오류가 발생했습니다.',
     });
   }
 });
@@ -260,8 +337,10 @@ router.get('/:postId/comments', optionalAuthenticate, async (req, res) => {
         c.content,
         c.anonymous_index,
         c.like_count,
+        c.is_pinned,
+        c.pinned_at,
         c.created_at,
-        u.name as author_name,
+        u.name_enc as author_name_enc,
         u.color_id,
         (SELECT JSON_ARRAYAGG(cloudinary_url)
           FROM comment_images
@@ -270,7 +349,7 @@ router.get('/:postId/comments', optionalAuthenticate, async (req, res) => {
       FROM comments c
       LEFT JOIN users u ON c.user_id = u.id
       WHERE ${commentConditions.join(' AND ')}
-      ORDER BY c.parent_comment_id IS NULL DESC, c.created_at ASC`,
+      ORDER BY c.is_pinned DESC, c.parent_comment_id IS NULL DESC, c.created_at ASC`,
       commentParams,
     );
 
@@ -387,7 +466,7 @@ router.post('/:commentId/like', authenticate, async (req, res) => {
 });
 
 // 댓글 신고 (경로는 /api/comments/:commentId/report — ReportModal 과 동일)
-router.post('/comments/:commentId/report', authenticate, async (req, res) => {
+router.post('/comments/:commentId/report', authenticate, blockWhenFlag('report_submission_disabled'), async (req, res) => {
   try {
     const reporterId = req.user.userId;
     const { commentId } = req.params;

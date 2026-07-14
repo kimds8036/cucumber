@@ -20,6 +20,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import MainHeader from '../frame/mainHeader';
 import MainFooter from '../frame/mainFooter';
+import { getMainTabTitle } from '../../context/MainShellContext';
 import { createMessageStyles, getNormalize } from '../../styles/message.style';
 import { createMessageRoomMenuSheetStyles } from '../../styles/messageRoomMenuSheet.style';
 import { colors, fonts, fontSizes } from '../../styles/colors';
@@ -42,7 +43,8 @@ import {
 } from '../../src/screens/UserGuide/guidePreviewData';
 import { getProfileInnerColor } from '../../utils/profileIconColor';
 import ChatAdPlaceholder from '../../src/screens/ad/ChatAdPlaceholder';
-import { injectAdSlots, useAdSlots } from '../../hooks/useAdSlots';
+import { injectAdSlots } from '../../hooks/useAdSlots';
+import { AD_PLACEMENTS } from '../../constants/adPlacements';
 import {
   isPersonalMailReturned,
   navigateToResendPersonalMail,
@@ -169,6 +171,8 @@ async function resolveLatestMailForThread(mail, meId) {
       mail.reply_to_my_sent,
     sender_name: latestFromThread.sender_name ?? mail.sender_name,
     recipient_name: latestFromThread.recipient_name ?? mail.recipient_name,
+    recipient_snapshot_name:
+      latestFromThread.recipient_snapshot_name ?? mail.recipient_snapshot_name,
     sender_color_id: latestFromThread.sender_color_id ?? mail.sender_color_id,
     recipient_color_id:
       latestFromThread.recipient_color_id ?? mail.recipient_color_id,
@@ -176,6 +180,22 @@ async function resolveLatestMailForThread(mail, meId) {
       latestFromThread.is_root_author_for_current_user ??
       mail.is_root_author_for_current_user,
   };
+}
+
+/** 보낸 개인우편 목록 이름 — 매칭 실패 시 입력 스냅샷, 정상 발송 시 수신자 이름 */
+function getPersonalMailListRecipientName(mail) {
+  if (!mail) return '';
+  const candidates = [
+    mail.recipient_snapshot_name,
+    mail.recipientSnapshotName,
+    mail.recipient_name,
+    mail.recipientName,
+  ];
+  for (const candidate of candidates) {
+    const trimmed = candidate != null ? String(candidate).trim() : '';
+    if (trimmed) return trimmed;
+  }
+  return '';
 }
 
 /** Text 줄박스는 fontSize보다 크므로(특히 Android includeFontPadding) 실제 목록과 맞는 줄 높이로 맞춤 */
@@ -331,7 +351,8 @@ const SwipeableRow = ({ children, onDelete }) => {
 // 메인 화면(MainScreen)에서 헤더/푸터 없이 메인 영역만 렌더할 때 사용
 export function MessageContent({ navigation }) {
   const { isGuidePreview, guideMessageTab } = useGuidePreview();
-  const { adSlots } = useAdSlots();
+  // TODO: /api/ads 연동 후 useAdSlots(AD_PLACEMENTS.FEED_NOTE_MAIL)
+  const adSlots = [];
   const { width } = useWindowDimensions();
   const normalize = useMemo(() => getNormalize(width), [width]);
   const styles = useMemo(
@@ -493,9 +514,11 @@ export function MessageContent({ navigation }) {
   const noteRoomsWithAds = useMemo(
     () =>
       injectAdSlots(noteRooms, isGuidePreview ? [] : adSlots, {
+        placement: AD_PLACEMENTS.FEED_NOTE_MAIL,
         adType: 'chatAd',
         idPrefix: 'note_ad',
         skipFirstIndex: false,
+        allowEmptySlots: !isGuidePreview,
         wrapItem: (room) => ({ ...room, type: room.type || 'note' }),
       }),
     [noteRooms, adSlots, isGuidePreview],
@@ -509,9 +532,11 @@ export function MessageContent({ navigation }) {
   const mailsWithAds = useMemo(
     () =>
       injectAdSlots(mails, isGuidePreview ? [] : adSlots, {
+        placement: AD_PLACEMENTS.FEED_NOTE_MAIL,
         adType: 'chatAd',
         idPrefix: 'mail_ad',
         skipFirstIndex: false,
+        allowEmptySlots: !isGuidePreview,
         wrapItem: (mail) => ({ ...mail, type: 'mail' }),
       }),
     [mails, adSlots, isGuidePreview],
@@ -718,16 +743,9 @@ export function MessageContent({ navigation }) {
               isReceived &&
               Boolean(rawMail.reply_to_my_sent ?? rawMail.replyToMySent);
 
-            const latestRecipientName =
-              rawMail.recipient_name != null &&
-              String(rawMail.recipient_name).trim()
-                ? String(rawMail.recipient_name).trim()
-                : '';
+            const latestRecipientName = getPersonalMailListRecipientName(rawMail);
             const firstRecipientName =
-              rawFirstMail.recipient_name != null &&
-              String(rawFirstMail.recipient_name).trim()
-                ? String(rawFirstMail.recipient_name).trim()
-                : '';
+              getPersonalMailListRecipientName(rawFirstMail);
             const firstSenderId = Number(rawFirstMail.sender_id);
             const firstMailSentByMe = Number.isFinite(meId)
               ? Number.isFinite(firstSenderId) && firstSenderId === meId
@@ -1440,7 +1458,7 @@ export function MessageContent({ navigation }) {
 const Message = ({ navigation }) => {
   return (
     <SafeAreaView style={{ flex: 1 }} edges={['top', 'bottom']}>
-      <MainHeader activeTab="message" />
+      <MainHeader headerTitle={getMainTabTitle('message')} />
       <MessageContent navigation={navigation} />
       <MainFooter
         activeTab="message"
