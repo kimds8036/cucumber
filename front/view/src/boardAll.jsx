@@ -39,7 +39,7 @@ import { filterPostsExcludingUser } from '../../utils/blockUser';
 import { invalidateProfileCountsCache } from '../../utils/profileCountsCache';
 import { useFocusEffect } from '@react-navigation/native';
 import ReportModal from '../../components/common/ReportModal.jsx';
-import { injectAdSlots, useAdSlots } from '../../hooks/useAdSlots';
+import { injectAdSlots } from '../../hooks/useAdSlots';
 import { AD_PLACEMENTS } from '../../constants/adPlacements';
 
 /** 서버 created_at(UTC)을 "n분 전" 형식으로 변환. 화면에서는 기기 로컬 시간 기준으로 계산 */
@@ -78,8 +78,8 @@ export function BoardAllContent({ navigation, posts }) {
   const normalize = useMemo(() => getNormalize(width), [width]);
   const styles = useMemo(() => createBoardStyles(width, normalize), [width]);
   const { isGuidePreview } = useGuidePreview();
-  const { adSlots } = useAdSlots(AD_PLACEMENTS.FEED_BOARD);
-  const { adSlots: topBannerAds } = useAdSlots(AD_PLACEMENTS.TOP_BANNER);
+  // TODO: /api/ads 연동 후 useAdSlots(AD_PLACEMENTS.FEED_BOARD)
+  const adSlots = [];
   const { coords, refreshLocation, permissionGranted } = useLocationContext();
   const distanceStale = permissionGranted && !coords;
 
@@ -606,7 +606,7 @@ export function BoardAllContent({ navigation, posts }) {
                 width,
               }}
             >
-              <TopAdBanner adData={topBannerAds[0] ?? null} />
+              <TopAdBanner />
             </View>
           }
           ListEmptyComponent={
@@ -731,7 +731,11 @@ export function BoardAllContent({ navigation, posts }) {
                           const authorId =
                             floatingMenuPost?.authorUserId ??
                             floatingMenuPost?.author_user_id;
-                          openReportModal('post', floatingMenuPost?.id, authorId);
+                          openReportModal(
+                            'post',
+                            floatingMenuPost?.id,
+                            authorId,
+                          );
                         } else if (item.onPress) {
                           item.onPress();
                         }

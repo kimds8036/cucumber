@@ -34,7 +34,7 @@ import {
   normalizeStudySummaryWatchers,
 } from '../../utils/studySummaryNotification';
 import NotificationAdPlaceholder from '../../src/screens/ad/NotificationAdPlaceholder';
-import { injectAdSlots, useAdSlots } from '../../hooks/useAdSlots';
+import { injectAdSlots } from '../../hooks/useAdSlots';
 import { AD_PLACEMENTS } from '../../constants/adPlacements';
 import {
   isMailReturnedNotification,
@@ -143,7 +143,8 @@ const SkeletonRow = ({ skeletonStyles }) => {
 };
 
 const NotificationScreen = ({ navigation }) => {
-  const { adSlots } = useAdSlots(AD_PLACEMENTS.FEED_ALERT);
+  // TODO: /api/ads 연동 후 useAdSlots(AD_PLACEMENTS.FEED_ALERT)
+  const adSlots = [];
   const { width } = useWindowDimensions();
   const normalize = useMemo(() => getNormalize(width), [width]);
   const styles = useMemo(
@@ -905,10 +906,11 @@ const NotificationScreen = ({ navigation }) => {
           refreshing={false}
           onRefresh={handleRefresh}
           renderItem={({ item: notification }) => {
-            if (notification.type === 'notiAd')
+            if (notification.type === 'notiAd') {
               return (
                 <NotificationAdPlaceholder adData={notification.adData} />
               );
+            }
             const isTapped = tappedIds[notification.id];
             const isUnreadFromServer = !notification.isRead;
             const isStudySummary = isStudySummaryNotification(notification);

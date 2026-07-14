@@ -69,10 +69,6 @@ import OfflineGate from './components/common/OfflineGate';
 import AppErrorBoundary from './components/common/AppErrorBoundary';
 import LaunchAdModal from './components/ads/LaunchAdModal';
 import SplashAd from './components/ads/SplashAd';
-import { fetchAdsGrouped } from './utils/adsApiAdapter';
-import { primeAdsGrouped } from './hooks/useAdSlots';
-import { AD_PLACEMENTS } from './constants/adPlacements';
-import { api } from './utils/api';
 import StudentIdResubmit from './view/src/signup/StudentIdResubmit';
 import { SocketProvider } from './context/SocketContext';
 import { NotificationProvider } from './context/NotificationContext';
@@ -416,47 +412,18 @@ export default function App() {
     'Baloo2-Regular': require('./assets/fonts/Baloo2-Regular.ttf'),
     'Baloo2-Bold': require('./assets/fonts/Baloo2-Bold.ttf'),
   });
-  /** boot: 폰트/광고 대기 | splash_ad: 전면 이미지 | ready: 앱 */
+  /** boot: 폰트 대기 | splash_ad: 전면 광고 | ready: 앱 */
   const [bootPhase, setBootPhase] = useState('boot');
   const [splashAd, setSplashAd] = useState(null);
 
   useEffect(() => {
     if (!fontsLoaded) return undefined;
-    let cancelled = false;
-    const SPLASH_FETCH_TIMEOUT_MS = 2000;
-
-    const finishWithoutAd = () => {
-      if (cancelled) return;
-      SplashScreen.hideAsync();
-      setBootPhase('ready');
-    };
-
-    const timer = setTimeout(finishWithoutAd, SPLASH_FETCH_TIMEOUT_MS);
-
-    fetchAdsGrouped(api)
-      .then((grouped) => {
-        if (cancelled) return;
-        primeAdsGrouped(grouped);
-        const ad = grouped?.[AD_PLACEMENTS.SPLASH]?.[0];
-        if (ad?.imageUrl) {
-          clearTimeout(timer);
-          SplashScreen.hideAsync();
-          setSplashAd(ad);
-          setBootPhase('splash_ad');
-        } else {
-          clearTimeout(timer);
-          finishWithoutAd();
-        }
-      })
-      .catch(() => {
-        clearTimeout(timer);
-        finishWithoutAd();
-      });
-
-    return () => {
-      cancelled = true;
-      clearTimeout(timer);
-    };
+    // TODO: /api/ads 연동 후 splash 슬롯 fetch → splash_ad
+    // const grouped = {}; // API 응답 normalize 결과
+    SplashScreen.hideAsync();
+    setSplashAd(null);
+    setBootPhase('ready');
+    return undefined;
   }, [fontsLoaded]);
 
   useEffect(() => {

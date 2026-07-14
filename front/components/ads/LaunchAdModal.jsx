@@ -15,30 +15,11 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { colors, fonts, fontSizes } from '../../styles/colors';
 import { getNormalize } from '../../styles/frame.style';
-import { AD_PLACEMENTS } from '../../constants/adPlacements';
-import { useAdSlots } from '../../hooks/useAdSlots';
 import { useAuth } from '../../context/AuthContext';
 
 const HIDE_TODAY_KEY = '@cucumber/launch_ad_hidden_day_v1';
 const DISMISS_DISTANCE = 100;
 const DISMISS_VELOCITY = 0.9;
-
-/**
- * 디자인 확인용 플래그.
- * - true: API 없어도 더미 광고로 launch_modal 표시 (오늘 하루 보지 않기도 무시)
- * - false: 운영 정책 — API 광고 있을 때만 표시
- * 확인 끝나면 반드시 false로 되돌리세요.
- */
-const LAUNCH_AD_PREVIEW_WITHOUT_API = false;
-
-const PREVIEW_LAUNCH_AD = {
-  id: 'preview_launch_modal',
-  title: '광고 제목을 입력하세요',
-  subtitle: '서브 문구를 입력하세요',
-  body: '서브 문구를 입력하세요',
-  imageUrl: null,
-  ctaUrl: null,
-};
 
 function getTodayKey(date = new Date()) {
   const y = date.getFullYear();
@@ -67,15 +48,14 @@ async function hideForToday() {
 /**
  * OfflineGate → ForceUpdateGate 통과 후, AuthProvider 안에서 마운트.
  * 광고 없거나 오늘 숨김이면 모달 자체를 렌더하지 않음 (Tip 금지).
- * LAUNCH_AD_PREVIEW_WITHOUT_API=true 이면 디자인 확인용 더미로 강제 표시.
+ *
+ * TODO: /api/ads 연동 후 launch_modal 슬롯으로 ad 공급
  */
 export default function LaunchAdModal({ children }) {
   const { isLoggedIn, authHydrated } = useAuth();
-  const { adSlots, loading } = useAdSlots(AD_PLACEMENTS.LAUNCH_MODAL);
-  const apiAd = adSlots[0] ?? null;
-  const ad =
-    apiAd ??
-    (LAUNCH_AD_PREVIEW_WITHOUT_API ? PREVIEW_LAUNCH_AD : null);
+  // API 연동 전: 빈 슬롯 → 모달 미표시
+  const ad = null;
+  const loading = false;
 
   const [checkedStorage, setCheckedStorage] = useState(false);
   const [hiddenToday, setHiddenToday] = useState(true);
@@ -95,14 +75,6 @@ export default function LaunchAdModal({ children }) {
   useEffect(() => {
     let mounted = true;
     (async () => {
-      // 프리뷰 모드에서는 숨김 스토리지를 무시해 매번 확인할 수 있게 함
-      if (LAUNCH_AD_PREVIEW_WITHOUT_API) {
-        if (mounted) {
-          setHiddenToday(false);
-          setCheckedStorage(true);
-        }
-        return;
-      }
       const hidden = await isHiddenToday();
       if (mounted) {
         setHiddenToday(hidden);
@@ -150,7 +122,6 @@ export default function LaunchAdModal({ children }) {
   const panResponder = useMemo(
     () =>
       PanResponder.create({
-        // dragRegion(이미지·제목·문구)에서는 터치 시작부터 시트 pan 허용
         onStartShouldSetPanResponder: () => true,
         onMoveShouldSetPanResponder: (_, gesture) =>
           gesture.dy > 4 && Math.abs(gesture.dy) > Math.abs(gesture.dx),
@@ -215,12 +186,10 @@ export default function LaunchAdModal({ children }) {
           onRequestClose={animateClose}
         >
           <View style={styles.overlay}>
-            {/* 딤은 overlay 고정 — translateY/opacity와 분리해야 스와이프 중에도 유지됨 */}
             <Pressable style={styles.backdrop} onPress={animateClose} />
             <Animated.View
               style={[styles.sheet, { transform: [{ translateY }] }]}
             >
-              {/* Image/Text는 터치 시작을 안 해서 래퍼가 pan을 받도록 함 */}
               <View
                 collapsable={false}
                 style={styles.dragRegion}

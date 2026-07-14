@@ -19,7 +19,7 @@ import { api } from '../../utils/api';
 import { subscribeSchoolMailLike, subscribeSchoolMailDeleted } from '../../utils/listSyncEvents';
 import { getSchoolMailFromLabel } from './utils/schoolMailFromLabel';
 import MailboxAdPlaceholder from '../../src/screens/ad/MailboxAdPlaceholder';
-import { injectAdSlots, useAdSlots } from '../../hooks/useAdSlots';
+import { injectAdSlots } from '../../hooks/useAdSlots';
 import { AD_PLACEMENTS } from '../../constants/adPlacements';
 
 function formatTimeAgo(createdAt) {
@@ -87,7 +87,8 @@ const SchoolMailboxScreen = ({ navigation, route }) => {
   const schoolName = route?.params?.schoolName ?? 'OO고등학교';
   const schoolId = route?.params?.schoolId ?? null;
   const sourceScreen = route?.params?.sourceScreen ?? null;
-  const { adSlots } = useAdSlots(AD_PLACEMENTS.FEED_SCHOOL_MAIL);
+  // TODO: /api/ads 연동 후 useAdSlots(AD_PLACEMENTS.FEED_SCHOOL_MAIL)
+  const adSlots = [];
 
   const [mails, setMails] = useState([]);
   const [loading, setLoading] = useState(true);

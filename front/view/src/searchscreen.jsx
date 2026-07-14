@@ -21,8 +21,6 @@ import {
 import { api } from '../../utils/api';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import TopAdBanner from '../../components/ads/TopAdBanner';
-import { useAdSlots } from '../../hooks/useAdSlots';
-import { AD_PLACEMENTS } from '../../constants/adPlacements';
 
 function formatTimeAgo(createdAt) {
   if (!createdAt) return '';
@@ -69,7 +67,6 @@ const SearchScreen = ({ navigation, route }) => {
   const [recentSearches, setRecentSearches] = useState([]);
   const [recommendedTags, setRecommendedTags] = useState([]);
   const [trendingLoading, setTrendingLoading] = useState(true);
-  const { adSlots } = useAdSlots(AD_PLACEMENTS.TOP_BANNER);
 
   useEffect(() => {
     const q = normalizeSearchText(route?.params?.query ?? '');
@@ -228,7 +225,7 @@ const SearchScreen = ({ navigation, route }) => {
               keyboardShouldPersistTaps="handled"
               keyboardDismissMode="on-drag"
             >
-              <TopAdBanner adData={adSlots[0] ?? null} />
+              <TopAdBanner />
               {recentSearches.length > 0 && (
                 <View style={styles.section}>
                   <View style={styles.sectionHeader}>

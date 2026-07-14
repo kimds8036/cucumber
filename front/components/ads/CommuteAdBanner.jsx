@@ -7,6 +7,7 @@ import { colors, fonts } from '../../styles/colors';
  * API 없으면 null (송출 X / Tip 금지).
  */
 export default function CommuteAdBanner({ adData }) {
+  // hide: 광고 없으면 완전 미노출 (Tip 금지)
   if (adData == null) return null;
 
   // 디자인 보류: 개발 빌드에서만 슬롯 점유 확인용 마크

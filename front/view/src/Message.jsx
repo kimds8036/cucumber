@@ -43,7 +43,7 @@ import {
 } from '../../src/screens/UserGuide/guidePreviewData';
 import { getProfileInnerColor } from '../../utils/profileIconColor';
 import ChatAdPlaceholder from '../../src/screens/ad/ChatAdPlaceholder';
-import { injectAdSlots, useAdSlots } from '../../hooks/useAdSlots';
+import { injectAdSlots } from '../../hooks/useAdSlots';
 import { AD_PLACEMENTS } from '../../constants/adPlacements';
 import {
   isPersonalMailReturned,
@@ -351,7 +351,8 @@ const SwipeableRow = ({ children, onDelete }) => {
 // 메인 화면(MainScreen)에서 헤더/푸터 없이 메인 영역만 렌더할 때 사용
 export function MessageContent({ navigation }) {
   const { isGuidePreview, guideMessageTab } = useGuidePreview();
-  const { adSlots } = useAdSlots(AD_PLACEMENTS.FEED_NOTE_MAIL);
+  // TODO: /api/ads 연동 후 useAdSlots(AD_PLACEMENTS.FEED_NOTE_MAIL)
+  const adSlots = [];
   const { width } = useWindowDimensions();
   const normalize = useMemo(() => getNormalize(width), [width]);
   const styles = useMemo(

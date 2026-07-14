@@ -147,6 +147,19 @@ export const createAdStyles = (normalize, width) => {
       fontFamily: fonts.regular,
       color: colors.textPrimary,
     },
+    adSectionTitle: {
+      fontSize: n(fontSizes.xl),
+      fontFamily: fonts.bold,
+      color: colors.textPrimary,
+      lineHeight: n(20),
+    },
+    adSectionBody: {
+      marginTop: n(2),
+      fontSize: n(fontSizes.lg),
+      fontFamily: fonts.regular,
+      color: colors.textSecondary,
+      lineHeight: n(16),
+    },
 
     // ChatAdPlaceholder (message list style)
     listItem: {

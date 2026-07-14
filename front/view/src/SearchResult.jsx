@@ -21,8 +21,6 @@ import { api } from '../../utils/api';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Skeleton from '../../components/common/Skeleton';
 import TopAdBanner from '../../components/ads/TopAdBanner';
-import { useAdSlots } from '../../hooks/useAdSlots';
-import { AD_PLACEMENTS } from '../../constants/adPlacements';
 
 const TABS_FOR_TEXT = ['전체', '전체게시판', '학교게시판', '학교우편'];
 const TABS_FOR_HASHTAG = ['전체', '전체게시판', '학교게시판', '학교우편'];
@@ -152,7 +150,6 @@ export default function SearchResult({ route, navigation }) {
   const { width } = useWindowDimensions();
   const normalize = useMemo(() => getNormalize(width), [width]);
   const s = useMemo(() => createSearchResultStyles(normalize), [normalize]);
-  const { adSlots } = useAdSlots(AD_PLACEMENTS.TOP_BANNER);
 
   const highlightSnippet = (text, query, baseStyle) => {
     if (!query) return <Text style={baseStyle}>{text}</Text>;
@@ -409,7 +406,7 @@ export default function SearchResult({ route, navigation }) {
             </View>
           </View>
 
-          <TopAdBanner adData={adSlots[0] ?? null} />
+          <TopAdBanner />
 
           {mode === 'result' && (
             <>

@@ -8,8 +8,6 @@ import { colors } from '../styles/colors';
 import { useLocationContext } from '../context/LocationContext';
 import { useCommuteAttendance } from '../hooks/useCommuteAttendance';
 import CommuteAdBanner from './ads/CommuteAdBanner';
-import { useAdSlots } from '../hooks/useAdSlots';
-import { AD_PLACEMENTS } from '../constants/adPlacements';
 
 const DOT_COUNT = 3;
 
@@ -36,14 +34,18 @@ function CommuteDots({ styles, activeIndex }) {
 export default function CommuteHeaderIndicator({ enabled = true }) {
   const { width } = useWindowDimensions();
   const normalize = useMemo(() => getNormalize(width), [width]);
-  const styles = useMemo(() => createCommuteHeaderStyles(normalize), [normalize, width]);
+  const styles = useMemo(
+    () => createCommuteHeaderStyles(normalize),
+    [normalize, width],
+  );
 
   const { coords } = useLocationContext();
   const { phase, activeDot, dismissAfterCelebrate } = useCommuteAttendance({
     enabled,
     viewerCoords: coords,
   });
-  const { adSlots: commuteAds } = useAdSlots(AD_PLACEMENTS.COMMUTE_BANNER);
+  // TODO: /api/ads 연동 후 commute_banner pick. hide 정책 — null이면 미노출
+  const commuteAd = null;
 
   const opacity = useRef(new Animated.Value(1)).current;
   const scale = useRef(new Animated.Value(1)).current;
@@ -112,7 +114,7 @@ export default function CommuteHeaderIndicator({ enabled = true }) {
 
   return (
     <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-      <CommuteAdBanner adData={commuteAds[0] ?? null} />
+      <CommuteAdBanner adData={commuteAd} />
       <Animated.View
         style={[styles.chip, { opacity, transform: [{ scale }] }]}
         pointerEvents="none"

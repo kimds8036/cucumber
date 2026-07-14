@@ -30,13 +30,10 @@ import Skeleton from '../../components/common/Skeleton';
 import ReportModal from '../../components/common/ReportModal.jsx';
 import { filterCommentTreeExcludingUser } from '../../utils/blockUser';
 import TopAdBanner from '../../components/ads/TopAdBanner';
-import { useAdSlots } from '../../hooks/useAdSlots';
-import { AD_PLACEMENTS } from '../../constants/adPlacements';
 
 export default function BoardDetail({ navigation, route }) {
   const { coords, permissionGranted } = useLocationContext();
   const { refreshHasUnread } = useNotification();
-  const { adSlots } = useAdSlots(AD_PLACEMENTS.TOP_BANNER);
   const { width } = useWindowDimensions();
   const normalize = useMemo(() => getNormalize(width), [width]);
   const styles = useMemo(
@@ -477,10 +474,7 @@ export default function BoardDetail({ navigation, route }) {
                       distanceStale={distanceStale}
                       distanceLoading={distanceLoading}
                     />
-                    <TopAdBanner
-                      styles={styles}
-                      adData={adSlots[0] ?? null}
-                    />
+                    <TopAdBanner styles={styles} />
                   </View>
                 }
                 contentContainerStyle={[
