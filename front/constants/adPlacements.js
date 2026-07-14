@@ -35,10 +35,10 @@ export const AD_FALLBACK_POLICY = {
 
 /** 피드 중간 삽입 간격 (N개마다) */
 export const AD_INJECT_EVERY = {
-  [AD_PLACEMENTS.FEED_BOARD]: 5,
-  [AD_PLACEMENTS.FEED_NOTE_MAIL]: 5,
-  [AD_PLACEMENTS.FEED_SCHOOL_MAIL]: 5,
-  [AD_PLACEMENTS.FEED_ALERT]: 5,
+  [AD_PLACEMENTS.FEED_BOARD]: 10,
+  [AD_PLACEMENTS.FEED_NOTE_MAIL]: 10,
+  [AD_PLACEMENTS.FEED_SCHOOL_MAIL]: 10,
+  [AD_PLACEMENTS.FEED_ALERT]: 10,
 };
 
 export const AD_PLACEMENT_LABELS = {
@@ -66,7 +66,7 @@ export function getAdFallbackPolicy(placement) {
  * @returns {number}
  */
 export function getAdInjectEvery(placement) {
-  return AD_INJECT_EVERY[placement] ?? 5;
+  return AD_INJECT_EVERY[placement] ?? 10;
 }
 
 export function isKnownAdPlacement(placement) {

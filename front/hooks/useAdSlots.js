@@ -80,7 +80,7 @@ export function injectAdSlots(items, adSlots, options = {}) {
 
   const policy = placement ? getAdFallbackPolicy(placement) : 'tip';
   const every =
-    options.every ?? (placement ? getAdInjectEvery(placement) : 5);
+    options.every ?? (placement ? getAdInjectEvery(placement) : 10);
   const allowEmptySlots =
     options.allowEmptySlots ?? policy === 'tip';
 
