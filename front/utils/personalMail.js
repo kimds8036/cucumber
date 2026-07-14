@@ -1,7 +1,9 @@
 import { api } from './api';
 
-/** 백엔드 반송 기간(일) — UI 문구·주석용 */
-export const PERSONAL_MAIL_RETURN_DAYS = 1;
+/** 백엔드 반송 기간(시간) — UI 문구·주석용 */
+export const PERSONAL_MAIL_RETURN_HOURS = 3;
+/** @deprecated PERSONAL_MAIL_RETURN_HOURS 사용 */
+export const PERSONAL_MAIL_RETURN_DAYS = PERSONAL_MAIL_RETURN_HOURS / 24;
 
 /** 개인우편 작성·답장 기본 글자수 */
 export const PERSONAL_MAIL_CHAR_LIMIT_BASE = 50;
