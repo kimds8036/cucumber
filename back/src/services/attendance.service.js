@@ -22,10 +22,10 @@ export function isWithinAttendanceWindow(ref = new Date()) {
     process.env.ATTENDANCE_WINDOW_START,
     7 * 60,
   );
-  // 09:00 미포함 — end 09:00 시각부터 차단 (nowMin >= 540)
+  // 10:00 미포함 — end 10:00 시각부터 차단 (nowMin >= 600)
   const endMin = parseHmToMinutes(
     process.env.ATTENDANCE_WINDOW_END,
-    9 * 60,
+    10 * 60,
   );
 
   if (nowMin < startMin || nowMin >= endMin) {

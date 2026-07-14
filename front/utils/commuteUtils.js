@@ -93,10 +93,10 @@ export function isPublicHoliday(date = new Date()) {
   return FIXED_HOLIDAY_MD.has(md) || VARIABLE_HOLIDAYS.has(ymd);
 }
 
-/** 평일 오전 7시(포함) ~ 9시(미포함), 즉 07:00~08:59 — 백엔드 ATTENDANCE_WINDOW와 맞춤 */
+/** 평일 오전 7시(포함) ~ 10시(미포함), 즉 07:00~09:59 — 백엔드 ATTENDANCE_WINDOW와 맞춤 */
 export function isCommuteTimeWindow(date = new Date()) {
   const { hour } = getKstParts(date);
-  return hour >= 7 && hour < 9;
+  return hour >= 7 && hour < 10;
 }
 
 /**
