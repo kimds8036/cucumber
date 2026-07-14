@@ -146,8 +146,9 @@ router.patch(
         adminUserId: req.user.userId,
         actionType: 'legal_document_update',
         targetType: 'legal_document',
-        targetId: slug,
-        note: `version=${doc.version}`,
+        targetId: 0,
+        note: `slug=${slug}, version=${doc.version}`,
+        extra: { slug, version: doc.version },
       });
 
       return res.json({
