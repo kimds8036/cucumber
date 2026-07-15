@@ -40,6 +40,11 @@ export default ({ config }) => ({
         ITSAppUsesNonExemptEncryption: false,
       },
       bundleIdentifier: 'com.ucost.YouthPaper',
+      splash: {
+        image: './assets/splash-icon.png',
+        resizeMode: 'contain',
+        backgroundColor: '#E5F4E0',
+      },
     },
 
     android: {
@@ -53,7 +58,8 @@ export default ({ config }) => ({
         backgroundColor: '#ffffff',
       },
       splash: {
-        image: './assets/splash-icon.png',
+        // 880×692 마스터 (Android 전용) — iOS는 splash-icon.png 유지
+        image: './assets/splash-icon-android.png',
         resizeMode: 'contain',
         backgroundColor: '#E5F4E0',
       },
@@ -85,10 +91,23 @@ export default ({ config }) => ({
       [
         'expo-splash-screen',
         {
+          backgroundColor: '#E5F4E0',
           image: './assets/splash-icon.png',
           imageWidth: 220,
           resizeMode: 'contain',
-          backgroundColor: '#E5F4E0',
+          ios: {
+            image: './assets/splash-icon.png',
+            imageWidth: 220,
+            resizeMode: 'contain',
+            backgroundColor: '#E5F4E0',
+          },
+          android: {
+            // 880×692 고해상도 마스터 (Android 전용)
+            image: './assets/splash-icon-android.png',
+            imageWidth: 220,
+            resizeMode: 'contain',
+            backgroundColor: '#E5F4E0',
+          },
         },
       ],
       [

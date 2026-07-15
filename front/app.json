@@ -9,7 +9,7 @@
     "newArchEnabled": true,
     "splash": {
       "image": "./assets/splash-icon.png",
-      "resizeMode": "cover",
+      "resizeMode": "contain",
       "backgroundColor": "#E5F4E0"
     },
     "ios": {
@@ -34,8 +34,8 @@
         "backgroundColor": "#ffffff"
       },
       "splash": {
-        "image": "./assets/splash-icon.png",
-        "resizeMode": "cover",
+        "image": "./assets/splash-icon-android.png",
+        "resizeMode": "contain",
         "backgroundColor": "#E5F4E0"
       },
       "edgeToEdgeEnabled": true,

@@ -132,29 +132,40 @@ function trackNavigationScreen(routeName) {
 
 SplashScreen.preventAutoHideAsync().catch(() => {});
 
+/** debug(device:dev)에서만 스플래시를 길게 유지해 육안 확인 */
+const DEV_SPLASH_HOLD_MS = __DEV__ ? 3000 : 0;
+
 /**
  * 네이티브 스플래시를 유지한 채 폰트·버전체크·인증 하이드레이션을 끝낸 뒤 숨김.
  * 강제업데이트/버전확인 실패 화면은 스플래시를 먼저 내린 뒤 표시.
+ * __DEV__에서는 최소 DEV_SPLASH_HOLD_MS 동안 유지.
  */
 function SplashHideWhenReady({ fontsLoaded, versionPhase }) {
   const { authHydrated } = useAuth();
   const hiddenRef = useRef(false);
+  const mountedAtRef = useRef(Date.now());
 
   useEffect(() => {
     if (hiddenRef.current) return;
     if (!fontsLoaded) return;
     if (versionPhase === 'checking') return;
 
-    if (versionPhase === 'force' || versionPhase === 'error') {
-      hiddenRef.current = true;
-      SplashScreen.hideAsync().catch(() => {});
-      return;
-    }
+    const canHide =
+      versionPhase === 'force' ||
+      versionPhase === 'error' ||
+      (versionPhase === 'ok' && authHydrated);
+    if (!canHide) return;
 
-    if (versionPhase === 'ok' && authHydrated) {
+    const elapsed = Date.now() - mountedAtRef.current;
+    const waitMs = Math.max(0, DEV_SPLASH_HOLD_MS - elapsed);
+
+    const timer = setTimeout(() => {
+      if (hiddenRef.current) return;
       hiddenRef.current = true;
       SplashScreen.hideAsync().catch(() => {});
-    }
+    }, waitMs);
+
+    return () => clearTimeout(timer);
   }, [fontsLoaded, versionPhase, authHydrated]);
 
   return null;
