@@ -67,6 +67,7 @@ import ReverificationPendingBanner from './components/auth/ReverificationPending
 import ForceUpdateGate from './components/common/ForceUpdateGate';
 import OfflineGate from './components/common/OfflineGate';
 import AppErrorBoundary from './components/common/AppErrorBoundary';
+import AnimatedBrandSplash from './components/common/AnimatedBrandSplash';
 import LaunchAdModal from './components/ads/LaunchAdModal';
 import SplashAd from './components/ads/SplashAd';
 import StudentIdResubmit from './view/src/signup/StudentIdResubmit';
@@ -132,43 +133,42 @@ function trackNavigationScreen(routeName) {
 
 SplashScreen.preventAutoHideAsync().catch(() => {});
 
-/** debug(device:dev)에서만 스플래시를 길게 유지해 육안 확인 */
-const DEV_SPLASH_HOLD_MS = __DEV__ ? 3000 : 0;
-
 /**
- * 네이티브 스플래시를 유지한 채 폰트·버전체크·인증 하이드레이션을 끝낸 뒤 숨김.
- * 강제업데이트/버전확인 실패 화면은 스플래시를 먼저 내린 뒤 표시.
- * __DEV__에서는 최소 DEV_SPLASH_HOLD_MS 동안 유지.
+ * 2단계 스플래시:
+ * 1) 네이티브 스플래시 — 폰트·버전체크·auth 준비까지 유지
+ * 2) 준비 완료 시 hideAsync + React Fade-in 브랜드 스플래시
+ * 강제업데이트/오류 시 Fade-in 생략하고 즉시 native hide.
  */
-function SplashHideWhenReady({ fontsLoaded, versionPhase }) {
+function SplashBootstrap({ fontsLoaded, versionPhase }) {
   const { authHydrated } = useAuth();
-  const hiddenRef = useRef(false);
-  const mountedAtRef = useRef(Date.now());
+  const startedRef = useRef(false);
+  const [brandSplashVisible, setBrandSplashVisible] = useState(false);
 
   useEffect(() => {
-    if (hiddenRef.current) return;
+    if (startedRef.current) return;
     if (!fontsLoaded) return;
     if (versionPhase === 'checking') return;
 
-    const canHide =
-      versionPhase === 'force' ||
-      versionPhase === 'error' ||
-      (versionPhase === 'ok' && authHydrated);
-    if (!canHide) return;
-
-    const elapsed = Date.now() - mountedAtRef.current;
-    const waitMs = Math.max(0, DEV_SPLASH_HOLD_MS - elapsed);
-
-    const timer = setTimeout(() => {
-      if (hiddenRef.current) return;
-      hiddenRef.current = true;
+    if (versionPhase === 'force' || versionPhase === 'error') {
+      startedRef.current = true;
       SplashScreen.hideAsync().catch(() => {});
-    }, waitMs);
+      return;
+    }
 
-    return () => clearTimeout(timer);
+    if (versionPhase === 'ok' && authHydrated) {
+      startedRef.current = true;
+      setBrandSplashVisible(true);
+      SplashScreen.hideAsync().catch(() => {});
+    }
   }, [fontsLoaded, versionPhase, authHydrated]);
 
-  return null;
+  const handleBrandFinished = () => {
+    setBrandSplashVisible(false);
+  };
+
+  return brandSplashVisible ? (
+    <AnimatedBrandSplash onFinished={handleBrandFinished} />
+  ) : null;
 }
 
 // ---------- Auth Flow: 로그인 상태에 따른 스택 분리 (선언적 내비게이션) ----------
@@ -690,7 +690,7 @@ export default function App() {
         <ForceUpdateGate onPhaseChange={setVersionPhase}>
           <KeyboardProvider>
             <AuthProvider>
-              <SplashHideWhenReady
+              <SplashBootstrap
                 fontsLoaded={fontsLoaded}
                 versionPhase={versionPhase}
               />
