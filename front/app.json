@@ -2,14 +2,14 @@
   "expo": {
     "name": "Youth Paper",
     "slug": "youth-paper",
-    "version": "1.5.3",
+    "version": "1.5.4",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
     "newArchEnabled": true,
     "splash": {
       "image": "./assets/splash-icon.png",
-      "resizeMode": "cover",
+      "resizeMode": "contain",
       "backgroundColor": "#E5F4E0"
     },
     "ios": {
@@ -34,8 +34,8 @@
         "backgroundColor": "#ffffff"
       },
       "splash": {
-        "image": "./assets/splash-icon.png",
-        "resizeMode": "cover",
+        "image": "./assets/splash-icon-android.png",
+        "resizeMode": "contain",
         "backgroundColor": "#E5F4E0"
       },
       "edgeToEdgeEnabled": true,
@@ -55,7 +55,7 @@
         "android.permission.READ_MEDIA_IMAGES"
       ],
       "package": "com.ucost.YouthPaper",
-      "versionCode": 12,
+      "versionCode": 13,
       "softwareKeyboardLayoutMode": "pan"
     },
     "web": {

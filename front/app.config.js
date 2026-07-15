@@ -11,7 +11,7 @@ export default ({ config }) => ({
     name: 'Youth Paper',
     slug: 'youth-paper',
     scheme: 'youthpaper',
-    version: '1.5.3',
+    version: '1.5.4',
     orientation: 'portrait',
     icon: './assets/icon.png',
     userInterfaceStyle: 'light',
@@ -40,10 +40,15 @@ export default ({ config }) => ({
         ITSAppUsesNonExemptEncryption: false,
       },
       bundleIdentifier: 'com.ucost.YouthPaper',
+      splash: {
+        image: './assets/splash-icon.png',
+        resizeMode: 'contain',
+        backgroundColor: '#E5F4E0',
+      },
     },
 
     android: {
-      versionCode: 12,
+      versionCode: 13,
       usesCleartextTraffic: !isProduction,
       // (선택) 안드로이드도 같은 방식으로 secret 적용 가능
       googleServicesFile:
@@ -53,7 +58,8 @@ export default ({ config }) => ({
         backgroundColor: '#ffffff',
       },
       splash: {
-        image: './assets/splash-icon.png',
+        // 880×692 마스터 (Android 전용) — iOS는 splash-icon.png 유지
+        image: './assets/splash-icon-android.png',
         resizeMode: 'contain',
         backgroundColor: '#E5F4E0',
       },
@@ -85,10 +91,23 @@ export default ({ config }) => ({
       [
         'expo-splash-screen',
         {
+          backgroundColor: '#E5F4E0',
           image: './assets/splash-icon.png',
           imageWidth: 220,
           resizeMode: 'contain',
-          backgroundColor: '#E5F4E0',
+          ios: {
+            image: './assets/splash-icon.png',
+            imageWidth: 220,
+            resizeMode: 'contain',
+            backgroundColor: '#E5F4E0',
+          },
+          android: {
+            // 880×692 고해상도 마스터 (Android 전용)
+            image: './assets/splash-icon-android.png',
+            imageWidth: 220,
+            resizeMode: 'contain',
+            backgroundColor: '#E5F4E0',
+          },
         },
       ],
       [
