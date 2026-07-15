@@ -64,6 +64,220 @@ function legalDocSchedule(updatedAt) {
   return { enactedAt, effectiveAt };
 }
 
+/* ── 앱 PolicyMarkdownBody 와 동일 규칙의마크다운 블록 파서 ── */
+const LEGAL_TABLE_SEPARATOR = /^\|(\s*:?-+:?\s*\|)+$/;
+
+function legalIsTableSeparator(line) {
+  return LEGAL_TABLE_SEPARATOR.test(String(line || '').trim());
+}
+
+function legalParseTableRow(line) {
+  return String(line || '')
+    .trim()
+    .replace(/^\|/, '')
+    .replace(/\|$/, '')
+    .split('|')
+    .map((cell) => cell.trim());
+}
+
+function legalCollectTableRows(lines, startIndex) {
+  const rows = [];
+  let i = startIndex;
+  while (i < lines.length) {
+    const trimmed = lines[i].trim();
+    if (!trimmed.startsWith('|')) break;
+    if (legalIsTableSeparator(trimmed)) {
+      i += 1;
+      continue;
+    }
+    rows.push(legalParseTableRow(lines[i]));
+    i += 1;
+  }
+  return { rows, nextIndex: i };
+}
+
+function legalGroupMarkdownBlocks(markdown) {
+  const lines = String(markdown || '').split('\n');
+  const blocks = [];
+  let i = 0;
+  while (i < lines.length) {
+    const line = lines[i];
+    const trimmed = line.trim();
+    if (!trimmed) {
+      i += 1;
+      continue;
+    }
+    if (legalIsTableSeparator(trimmed)) {
+      i += 1;
+      continue;
+    }
+    if (trimmed.startsWith('|')) {
+      const { rows, nextIndex } = legalCollectTableRows(lines, i);
+      if (rows.length > 0) {
+        blocks.push({ type: 'table', rows });
+      }
+      i = nextIndex;
+      continue;
+    }
+    if (trimmed.startsWith('>')) {
+      const quoteLines = [];
+      while (i < lines.length) {
+        const q = lines[i].trim();
+        if (!q.startsWith('>')) break;
+        const inner = q.replace(/^>\s?/, '').trim();
+        if (inner) quoteLines.push(inner);
+        i += 1;
+      }
+      if (quoteLines.length > 0) {
+        blocks.push({ type: 'blockquote', trimmed: quoteLines.join('\n') });
+      }
+      continue;
+    }
+    if (/^-\s+/.test(line)) {
+      const indent = (line.match(/^\s*/) || [''])[0].length;
+      blocks.push({
+        type: indent >= 4 ? 'bulletNested' : 'bullet',
+        trimmed: trimmed.replace(/^-\s+/, ''),
+      });
+      i += 1;
+      continue;
+    }
+    blocks.push({ type: 'line', trimmed });
+    i += 1;
+  }
+  return blocks;
+}
+
+function legalRenderInlineHtml(text) {
+  let s = esc(String(text || ''));
+  s = s.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+  s = s.replace(
+    /\[([^\]]+)\]\(([^)]+)\)/g,
+    '<a class="legal-app-link" href="$2" target="_blank" rel="noopener noreferrer">$1</a>',
+  );
+  return s;
+}
+
+function legalRenderAppPreviewHtml({ title, version, enactedAt, effectiveAt, contentMd }) {
+  const headerTitle = title || '약관·방침';
+  const metaParts = [];
+  if (enactedAt && enactedAt !== '-') {
+    metaParts.push(
+      `<p class="legal-app-meta-line"><span class="legal-app-meta-label">제정일</span>: [${esc(enactedAt)}]</p>`,
+    );
+  }
+  if (effectiveAt && effectiveAt !== '-') {
+    metaParts.push(
+      `<p class="legal-app-meta-line"><span class="legal-app-meta-label">시행일</span>: [${esc(effectiveAt)}]</p>`,
+    );
+  }
+  if (version) {
+    metaParts.push(
+      `<p class="legal-app-meta-line"><span class="legal-app-meta-label">버전</span>: ${esc(version)}</p>`,
+    );
+  }
+
+  const blocks = legalGroupMarkdownBlocks(contentMd);
+  const body = blocks
+    .map((block) => {
+      const { trimmed, type } = block;
+      if (type === 'table') {
+        const rows = Array.isArray(block.rows) ? block.rows : [];
+        if (!rows.length) return '';
+        const trs = rows
+          .map((row, ri) => {
+            const cols = Array.isArray(row) ? row : [];
+            const tag = ri === 0 ? 'th' : 'td';
+            const cells = cols
+              .map(
+                (cell, ci) =>
+                  `<${tag} class="${
+                    ri === 0
+                      ? 'legal-app-th'
+                      : ci === 0
+                        ? 'legal-app-td-label'
+                        : 'legal-app-td'
+                  }">${legalRenderInlineHtml(String(cell || ''))}</${tag}>`,
+              )
+              .join('');
+            return `<tr class="${ri === 0 ? 'legal-app-tr-head' : 'legal-app-tr'}">${cells}</tr>`;
+          })
+          .join('');
+        return `<table class="legal-app-table">${trs}</table>`;
+      }
+      if (trimmed === '---') {
+        return '<div class="legal-app-divider"></div>';
+      }
+      if (trimmed.startsWith('## ')) {
+        return `<div class="legal-app-chapter">${legalRenderInlineHtml(trimmed.replace(/^##\s+/, ''))}</div>`;
+      }
+      if (trimmed.startsWith('### ') || trimmed.startsWith('#### ')) {
+        return `<div class="legal-app-section">${legalRenderInlineHtml(trimmed.replace(/^#{3,4}\s+/, ''))}</div>`;
+      }
+      if (type === 'blockquote') {
+        return `<div class="legal-app-quote">${legalRenderInlineHtml(trimmed)}</div>`;
+      }
+      if (type === 'bullet') {
+        return `<div class="legal-app-bullet">• ${legalRenderInlineHtml(trimmed)}</div>`;
+      }
+      if (type === 'bulletNested') {
+        return `<div class="legal-app-bullet-nested">• ${legalRenderInlineHtml(trimmed)}</div>`;
+      }
+      return `<div class="legal-app-para">${legalRenderInlineHtml(trimmed)}</div>`;
+    })
+    .join('');
+
+  return `
+    <div class="legal-phone-frame">
+      <div class="legal-phone-notch" aria-hidden="true"></div>
+      <div class="legal-phone-screen">
+        <div class="legal-phone-subheader">${esc(headerTitle)}</div>
+        <div class="legal-phone-body">
+          ${
+            metaParts.length
+              ? `<div class="legal-app-meta">${metaParts.join('')}<div class="legal-app-divider"></div></div>`
+              : ''
+          }
+          ${body || '<p class="txt-muted">본문이 비어 있습니다.</p>'}
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function refreshLegalAppPreview(fallbackSchedule) {
+  const host = document.getElementById('legal-app-preview');
+  if (!host) return;
+  const title = document.getElementById('legal-doc-title')?.value?.trim() || '';
+  const version = document.getElementById('legal-doc-version')?.value?.trim() || '';
+  const contentMd = document.getElementById('legal-doc-content')?.value || '';
+  const enactedAt =
+    document.getElementById('legal-doc-enacted')?.value ||
+    fallbackSchedule?.enactedAt ||
+    '-';
+  const effectiveAt =
+    document.getElementById('legal-doc-effective')?.value ||
+    fallbackSchedule?.effectiveAt ||
+    '-';
+  host.innerHTML = legalRenderAppPreviewHtml({
+    title,
+    version,
+    enactedAt,
+    effectiveAt,
+    contentMd,
+  });
+}
+
+function bindLegalPreviewInputs(schedule) {
+  const ids = ['legal-doc-title', 'legal-doc-version', 'legal-doc-content'];
+  ids.forEach((id) => {
+    const el = document.getElementById(id);
+    if (!el || el.dataset.previewBound === '1') return;
+    el.dataset.previewBound = '1';
+    el.addEventListener('input', () => refreshLegalAppPreview(schedule));
+  });
+}
+
 async function loadLegalDocumentEditor(slug) {
   const host = document.getElementById('legal-document-editor-host');
   if (!host) return;
@@ -77,7 +291,7 @@ async function loadLegalDocumentEditor(slug) {
     host.innerHTML = `
       <div class="detail-panel open">
         <div class="section-title">${esc(doc.title || legalDocLabel(slug))}</div>
-        <p class="section-hint">제목·버전·제정일·시행일은 DB 필드에서 자동 표시됩니다. 본문에는 넣지 마세요.</p>
+        <p class="section-hint">왼쪽에서 Markdown을 편집하면, 오른쪽 미리보기는 앱과 같은 규칙으로 렌더링됩니다. (표, ##/###, 링크·굵게)</p>
         <div class="form-grid" style="margin-top:12px">
           <label>버전
             <input id="legal-doc-version" class="note-input" value="${esc(doc.version || '')}" />
@@ -86,15 +300,23 @@ async function loadLegalDocumentEditor(slug) {
             <input id="legal-doc-title" class="note-input" value="${esc(doc.title || '')}" />
           </label>
           <label>제정일 (마지막 수정일, KST)
-            <input class="note-input" value="${esc(schedule.enactedAt)}" readonly />
+            <input id="legal-doc-enacted" class="note-input" value="${esc(schedule.enactedAt)}" readonly />
           </label>
           <label>시행일 (제정일 +7일)
-            <input class="note-input" value="${esc(schedule.effectiveAt)}" readonly />
+            <input id="legal-doc-effective" class="note-input" value="${esc(schedule.effectiveAt)}" readonly />
           </label>
         </div>
-        <label style="display:block;margin-top:12px">본문 (Markdown)
-          <textarea id="legal-doc-content" class="note-input" style="min-height:420px;font-family:monospace">${esc(doc.contentMd || '')}</textarea>
-        </label>
+        <div class="legal-editor-layout">
+          <div class="legal-editor-pane">
+            <label>본문 (Markdown)
+              <textarea id="legal-doc-content" class="note-input" style="min-height:420px;font-family:monospace;margin-top:6px">${esc(doc.contentMd || '')}</textarea>
+            </label>
+          </div>
+          <div class="legal-preview-pane">
+            <div class="legal-preview-label">앱 화면 미리보기</div>
+            <div id="legal-app-preview"></div>
+          </div>
+        </div>
         <div class="txt-muted" style="margin-top:8px">
           마지막 수정: ${fmtDate(doc.updatedAt || summary?.updatedAt)}
         </div>
@@ -106,6 +328,8 @@ async function loadLegalDocumentEditor(slug) {
       </div>
     `;
 
+    refreshLegalAppPreview(schedule);
+    bindLegalPreviewInputs(schedule);
     await loadLegalDocumentRevisions(slug);
   } catch (error) {
     host.innerHTML = `<div class="txt-muted">문서를 불러오지 못했습니다: ${esc(error.message)}</div>`;
@@ -166,6 +390,7 @@ async function previewLegalRevision(slug, revisionId) {
     if (titleEl) titleEl.value = rev.title || '';
     if (versionEl) versionEl.value = rev.version || '';
     contentEl.value = rev.contentMd || '';
+    refreshLegalAppPreview();
     alert(`이력 #${revisionId} (${rev.version})을 편집창에 불러왔습니다. 그대로 두면 저장 시 새 버전으로 덮어씁니다.`);
   } catch (error) {
     alert(`이력 조회 실패: ${error.message}`);
@@ -205,3 +430,4 @@ window.loadLegalDocumentEditor = loadLegalDocumentEditor;
 window.saveLegalDocument = saveLegalDocument;
 window.previewLegalRevision = previewLegalRevision;
 window.loadLegalDocuments = loadLegalDocumentsPanel;
+window.refreshLegalAppPreview = refreshLegalAppPreview;
