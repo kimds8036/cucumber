@@ -3,6 +3,7 @@ import { getAdminBasePath } from '../config/adminPath.js';
 
 const DEFAULT_ANDROID_STORE_URL =
   'https://play.google.com/store/apps/details?id=com.ucost.YouthPaper';
+const DEFAULT_IOS_STORE_URL = 'https://apps.apple.com/app/id6770454607';
 
 function getWhitelistPrefixes() {
   return [
@@ -34,7 +35,7 @@ function resolveMinVersion(platform) {
 
 function resolveStoreUrl(platform) {
   if (platform === 'ios') {
-    return process.env.IOS_STORE_URL || DEFAULT_ANDROID_STORE_URL;
+    return process.env.IOS_STORE_URL || DEFAULT_IOS_STORE_URL;
   }
   return process.env.ANDROID_STORE_URL || DEFAULT_ANDROID_STORE_URL;
 }
