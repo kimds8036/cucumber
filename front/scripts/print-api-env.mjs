@@ -38,20 +38,79 @@ if (appEnv === 'development' && !apiBaseUrl.includes('cucumber-develop')) {
 
 console.log('✓ URL 일치');
 
-// EXPO_PUBLIC_* 안내 (번들에 인라인 — 스크립트·eas.json·.env 와 일치 필요)
-console.log('--- EXPO_PUBLIC 클라이언트 플래그 (참고) ---');
-const pub = (k) => process.env[k] || '(unset)';
-console.log('EXPO_PUBLIC_INICIS_ENABLED:', pub('EXPO_PUBLIC_INICIS_ENABLED'));
-console.log('EXPO_PUBLIC_SIGNUP_TEST_MODE:', pub('EXPO_PUBLIC_SIGNUP_TEST_MODE'));
+function flagLabel(raw) {
+  const v = String(raw || '')
+    .toLowerCase()
+    .trim();
+  if (v === 'true') return '켜짐(ON)';
+  if (v === 'false') return '꺼짐(OFF)';
+  return '설정 안 됨 → 코드 기본값 사용';
+}
+
+function printClientFlag({ name, raw, onMeaning, offMeaning, storeWant }) {
+  console.log('');
+  console.log(`▶ ${name}`);
+  console.log(`  현재 값: ${raw || '(없음)'}  →  ${flagLabel(raw)}`);
+  console.log(`  켜짐(true): ${onMeaning}`);
+  console.log(`  꺼짐(false)/미설정: ${offMeaning}`);
+  if (storeWant) {
+    console.log(`  스토어(AAB) 권장: ${storeWant}`);
+  }
+}
+
+// EXPO_PUBLIC_* 는 빌드할 때 앱 안에 박힘 (나중에 Railway만 바꿔도 이미 만든 AAB는 안 바뀜)
+console.log('');
+console.log('========== 앱 기능 스위치 (비전공자용 요약) ==========');
+console.log('이 값들은 「앱을 빌드하는 순간」에 들어갑니다.');
+console.log('이미 만든 AAB/설치 파일은 다시 빌드해야 바뀝니다.');
+
+const inicis = process.env.EXPO_PUBLIC_INICIS_ENABLED;
+const signupTest = process.env.EXPO_PUBLIC_SIGNUP_TEST_MODE;
+const adultTest = process.env.EXPO_PUBLIC_SIGNUP_ADULT_TEST_MODE;
+
+printClientFlag({
+  name: '본인인증(KG 이니시스) — EXPO_PUBLIC_INICIS_ENABLED',
+  raw: inicis,
+  onMeaning: '실제 이니시스 인증 화면이 열림 (정상 가입)',
+  offMeaning:
+    '「테스트 mock」으로 가짜 인증 통과 — 스토어에 올리면 치명적',
+  storeWant: '반드시 켜짐(true)',
+});
+
+printClientFlag({
+  name: '가입 단계 스킵(테스트) — EXPO_PUBLIC_SIGNUP_TEST_MODE',
+  raw: signupTest,
+  onMeaning: '생년월일·이니시스 등을 건너뛰고 테스트용으로만 진행 (개발용)',
+  offMeaning: '가입을 처음부터 끝까지 정상 진행',
+  storeWant: '반드시 꺼짐(false)',
+});
+
+printClientFlag({
+  name: '성인 생년월일 허용(팀 테스트) — EXPO_PUBLIC_SIGNUP_ADULT_TEST_MODE',
+  raw: adultTest,
+  onMeaning: '성인 생년월일로도 가입 화면 진행 가능 (개발/내부 테스트용)',
+  offMeaning: '중·고등학생 연령만 가입 (정식)',
+  storeWant: '반드시 꺼짐(false)',
+});
+
+console.log('');
+console.log('--- 서버(Railway)와의 관계 ---');
 console.log(
-  'EXPO_PUBLIC_SIGNUP_ADULT_TEST_MODE:',
-  pub('EXPO_PUBLIC_SIGNUP_ADULT_TEST_MODE'),
+  '앱 이니시스 스위치(위)와 Railway의 INICIS_ENABLED 는 별개입니다.',
 );
+console.log(
+  '· 앱 OFF → 「테스트 mock」 (서버를 안 봄)',
+);
+console.log(
+  '· 앱 ON + 서버 OFF → 「본인인증 서버에 연결할 수 없습니다」',
+);
+console.log('· 둘 다 ON → 실제 KG 이니시스');
+
 if (appEnv === 'production') {
+  console.log('');
+  console.log('※ 스토어 AAB: npm run android:aab:prod 가 위 스위치를 직접 넣습니다.');
   console.log(
-    '※ AAB는 package.json android:aab:prod 가 EXPO_PUBLIC_* 를 명시해야 함.',
-  );
-  console.log(
-    '※ Railway INICIS_ENABLED 는 서버 플래그(별개). 앱 mock 문구는 보통 클라이언트 OFF.',
+    '※ 상세: front/docs/빌드_EXPO_PUBLIC_체크리스트.md',
   );
 }
+console.log('======================================================');
