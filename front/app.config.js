@@ -19,7 +19,7 @@ export default ({ config }) => ({
 
     splash: {
       image: './assets/splash-icon.png',
-      resizeMode: 'cover',
+      resizeMode: 'contain',
       backgroundColor: '#E5F4E0',
     },
 
@@ -54,7 +54,7 @@ export default ({ config }) => ({
       },
       splash: {
         image: './assets/splash-icon.png',
-        resizeMode: 'cover',
+        resizeMode: 'contain',
         backgroundColor: '#E5F4E0',
       },
       edgeToEdgeEnabled: true,
@@ -82,7 +82,15 @@ export default ({ config }) => ({
       'expo-web-browser',
       'expo-image',
       'expo-status-bar',
-      'expo-splash-screen',
+      [
+        'expo-splash-screen',
+        {
+          image: './assets/splash-icon.png',
+          imageWidth: 280,
+          resizeMode: 'contain',
+          backgroundColor: '#E5F4E0',
+        },
+      ],
       [
         'expo-camera',
         {
