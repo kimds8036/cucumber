@@ -25,7 +25,7 @@ import { Ionicons } from '@expo/vector-icons';
 import LogoIcon from '../../../assets/Logo.svg';
 import { api, setAuthToken, setRefreshToken, getOrCreateDeviceId, getApiUserFacingMessage } from '../../../utils/api';
 import { useAuth } from '../../../context/AuthContext';
-import Skeleton from '../../../components/common/Skeleton';
+// import Skeleton from '../../../components/common/Skeleton';
 // import AsyncStorage from '@react-native-async-storage/async-storage';
 
 /** 로그인 실패 안내 — 사용자용 문구만 (기술 정보는 __DEV__ 콘솔) */
@@ -69,7 +69,8 @@ const Login = ({ navigation }) => {
   const [id, setId] = useState('');
   const [password, setPassword] = useState('');
   const [rememberMe, setRememberMe] = useState(false);
-  const [screenReady, setScreenReady] = useState(false);
+  // 부트 스플래시 구간에서 스켈레톤 대신 바로 로그인 UI 표시
+  const [screenReady] = useState(true);
   const [policyModal, setPolicyModal] = useState({
     visible: false,
     title: '',
@@ -113,6 +114,7 @@ const Login = ({ navigation }) => {
     });
   }, [keyboardOpen]);
 
+  /*
   useEffect(() => {
     const timer = setTimeout(() => setScreenReady(true), 250);
     return () => clearTimeout(timer);
@@ -168,6 +170,9 @@ const Login = ({ navigation }) => {
       </SafeAreaView>
     );
   }
+  */
+
+  if (!screenReady) return null;
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
