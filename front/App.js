@@ -67,7 +67,6 @@ import ReverificationPendingBanner from './components/auth/ReverificationPending
 import ForceUpdateGate from './components/common/ForceUpdateGate';
 import OfflineGate from './components/common/OfflineGate';
 import AppErrorBoundary from './components/common/AppErrorBoundary';
-import AnimatedBrandSplash from './components/common/AnimatedBrandSplash';
 import LaunchAdModal from './components/ads/LaunchAdModal';
 import SplashAd from './components/ads/SplashAd';
 import StudentIdResubmit from './view/src/signup/StudentIdResubmit';
@@ -134,41 +133,31 @@ function trackNavigationScreen(routeName) {
 SplashScreen.preventAutoHideAsync().catch(() => {});
 
 /**
- * 2단계 스플래시:
- * 1) 네이티브 스플래시 — 폰트·버전체크·auth 준비까지 유지
- * 2) 준비 완료 시 hideAsync + React Fade-in 브랜드 스플래시
- * 강제업데이트/오류 시 Fade-in 생략하고 즉시 native hide.
+ * 네이티브 스플래시를 유지한 채 폰트·버전체크·인증 하이드레이션을 끝낸 뒤 숨김.
+ * 강제업데이트/버전확인 실패 화면은 스플래시를 먼저 내린 뒤 표시.
  */
-function SplashBootstrap({ fontsLoaded, versionPhase }) {
+function SplashHideWhenReady({ fontsLoaded, versionPhase }) {
   const { authHydrated } = useAuth();
-  const startedRef = useRef(false);
-  const [brandSplashVisible, setBrandSplashVisible] = useState(false);
+  const hiddenRef = useRef(false);
 
   useEffect(() => {
-    if (startedRef.current) return;
+    if (hiddenRef.current) return;
     if (!fontsLoaded) return;
     if (versionPhase === 'checking') return;
 
     if (versionPhase === 'force' || versionPhase === 'error') {
-      startedRef.current = true;
+      hiddenRef.current = true;
       SplashScreen.hideAsync().catch(() => {});
       return;
     }
 
     if (versionPhase === 'ok' && authHydrated) {
-      startedRef.current = true;
-      setBrandSplashVisible(true);
+      hiddenRef.current = true;
       SplashScreen.hideAsync().catch(() => {});
     }
   }, [fontsLoaded, versionPhase, authHydrated]);
 
-  const handleBrandFinished = () => {
-    setBrandSplashVisible(false);
-  };
-
-  return brandSplashVisible ? (
-    <AnimatedBrandSplash onFinished={handleBrandFinished} />
-  ) : null;
+  return null;
 }
 
 // ---------- Auth Flow: 로그인 상태에 따른 스택 분리 (선언적 내비게이션) ----------
@@ -690,7 +679,7 @@ export default function App() {
         <ForceUpdateGate onPhaseChange={setVersionPhase}>
           <KeyboardProvider>
             <AuthProvider>
-              <SplashBootstrap
+              <SplashHideWhenReady
                 fontsLoaded={fontsLoaded}
                 versionPhase={versionPhase}
               />
