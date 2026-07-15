@@ -62,7 +62,7 @@ export default function StudentVerificationGate() {
           학생증 확인 및 승인 진행 중입니다
         </Text>
         <Text style={[styles.body, { fontSize: normalize(15) }]}>
-          오이 커뮤니티는 안전한 학생 인증 기반으로 운영됩니다. 관리자가 확인 후
+          Youth Paper는 안전한 학생 인증 기반으로 운영됩니다. 관리자가 확인 후
           승인 처리를 완료하면 자동으로 앱 접속이 가능합니다. (최대 24시간 소요)
         </Text>
         {checking ? (
