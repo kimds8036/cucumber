@@ -1,6 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import {
-  ActivityIndicator,
   Linking,
   Platform,
   Pressable,
@@ -24,10 +23,14 @@ function isProductionBackend() {
   return /production/i.test(getApiBaseUrlNoSlash());
 }
 
-export default function ForceUpdateGate({ children }) {
+export default function ForceUpdateGate({ children, onPhaseChange }) {
   const [phase, setPhase] = useState('checking');
   const [storeUrl, setStoreUrl] = useState('');
   const [minVersion, setMinVersion] = useState('');
+
+  useEffect(() => {
+    onPhaseChange?.(phase);
+  }, [phase, onPhaseChange]);
 
   const runCheck = useCallback(async () => {
     if (__DEV__) {
@@ -69,7 +72,9 @@ export default function ForceUpdateGate({ children }) {
 
   if (phase === 'ok') return children;
 
+  // 버전 확인 중 UI는 네이티브 스플래시로 대체 (로딩 문구·스피너 비표시)
   if (phase === 'checking') {
+    /*
     return (
       <View
         style={{
@@ -91,6 +96,8 @@ export default function ForceUpdateGate({ children }) {
         </Text>
       </View>
     );
+    */
+    return null;
   }
 
   if (phase === 'force') {

@@ -130,7 +130,35 @@ function trackNavigationScreen(routeName) {
   if (screen) trackScreenView(screen);
 }
 
-SplashScreen.preventAutoHideAsync();
+SplashScreen.preventAutoHideAsync().catch(() => {});
+
+/**
+ * 네이티브 스플래시를 유지한 채 폰트·버전체크·인증 하이드레이션을 끝낸 뒤 숨김.
+ * 강제업데이트/버전확인 실패 화면은 스플래시를 먼저 내린 뒤 표시.
+ */
+function SplashHideWhenReady({ fontsLoaded, versionPhase }) {
+  const { authHydrated } = useAuth();
+  const hiddenRef = useRef(false);
+
+  useEffect(() => {
+    if (hiddenRef.current) return;
+    if (!fontsLoaded) return;
+    if (versionPhase === 'checking') return;
+
+    if (versionPhase === 'force' || versionPhase === 'error') {
+      hiddenRef.current = true;
+      SplashScreen.hideAsync().catch(() => {});
+      return;
+    }
+
+    if (versionPhase === 'ok' && authHydrated) {
+      hiddenRef.current = true;
+      SplashScreen.hideAsync().catch(() => {});
+    }
+  }, [fontsLoaded, versionPhase, authHydrated]);
+
+  return null;
+}
 
 // ---------- Auth Flow: 로그인 상태에 따른 스택 분리 (선언적 내비게이션) ----------
 // 비로그인 시 Auth 스택만, 로그인 시 Main 스택만 렌더링하여
@@ -415,12 +443,14 @@ export default function App() {
   /** boot: 폰트 대기 | splash_ad: 전면 광고 | ready: 앱 */
   const [bootPhase, setBootPhase] = useState('boot');
   const [splashAd, setSplashAd] = useState(null);
+  const [versionPhase, setVersionPhase] = useState(
+    __DEV__ ? 'ok' : 'checking',
+  );
 
   useEffect(() => {
     if (!fontsLoaded) return undefined;
+    // 버전 확인·인증 준비는 네이티브 스플래시 위에서 진행. hide는 SplashHideWhenReady.
     // TODO: /api/ads 연동 후 splash 슬롯 fetch → splash_ad
-    // const grouped = {}; // API 응답 normalize 결과
-    SplashScreen.hideAsync();
     setSplashAd(null);
     setBootPhase('ready');
     return undefined;
@@ -646,9 +676,13 @@ export default function App() {
     <SafeAreaProvider style={{ flex: 1, backgroundColor: colors.background }}>
       <StatusBar style="dark" backgroundColor={colors.background} />
       <OfflineGate>
-        <ForceUpdateGate>
+        <ForceUpdateGate onPhaseChange={setVersionPhase}>
           <KeyboardProvider>
             <AuthProvider>
+              <SplashHideWhenReady
+                fontsLoaded={fontsLoaded}
+                versionPhase={versionPhase}
+              />
               <LaunchAdModal>
                 <AppLockProvider>
                   <LocationProvider>
