@@ -3,6 +3,7 @@ import { Alert, Share } from 'react-native';
 import { api } from '../../../utils/api';
 import { normalizeTagsFromApi } from '../../../utils/normalizePostTags';
 import { invalidateProfileCountsCache } from '../../../utils/profileCountsCache';
+import { buildPostShareContent } from '../../../utils/shareLinks';
 
 function formatTimeAgo(createdAt) {
   if (!createdAt) return '';
@@ -301,12 +302,12 @@ export function useBoardDetail({
 
   const handleSharePost = useCallback(async () => {
     if (!post?.id) return;
-    const url = `${api.defaults.baseURL}/posts/${post.id}`;
+    const { message, url, title } = buildPostShareContent(post.id);
     try {
       await Share.share({
-        message: `오늘의 이야기 게시글을 공유합니다.\n\n${url}`,
+        message,
         url,
-        title: '오늘의 이야기 게시글',
+        title,
       });
     } catch (error) {
       console.error('게시글 공유 실패:', error);

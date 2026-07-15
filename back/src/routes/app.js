@@ -5,6 +5,7 @@ const router = express.Router();
 
 const DEFAULT_ANDROID_STORE_URL =
   'https://play.google.com/store/apps/details?id=com.ucost.YouthPaper';
+const DEFAULT_IOS_STORE_URL = 'https://apps.apple.com/app/id6770454607';
 
 /**
  * GET /api/app/version-check?platform=android|ios&version=1.1.0
@@ -21,7 +22,7 @@ router.get('/version-check', (req, res) => {
 
   const storeUrl =
     platform === 'ios'
-      ? (process.env.IOS_STORE_URL || DEFAULT_ANDROID_STORE_URL)
+      ? (process.env.IOS_STORE_URL || DEFAULT_IOS_STORE_URL)
       : (process.env.ANDROID_STORE_URL || DEFAULT_ANDROID_STORE_URL);
 
   const forceUpdate =

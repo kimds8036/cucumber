@@ -9,6 +9,7 @@ import {
 import Constants from 'expo-constants';
 import { api, getApiBaseUrlNoSlash } from '../../utils/api';
 import { colors, fonts } from '../../styles/colors';
+import { getStoreUrlForPlatform } from '../../utils/shareLinks';
 
 function getAppVersion() {
   const v =

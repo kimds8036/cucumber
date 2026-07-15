@@ -42,6 +42,7 @@ import { useFocusEffect } from '@react-navigation/native';
 import ReportModal from '../../components/common/ReportModal.jsx';
 import { injectAdSlots } from '../../hooks/useAdSlots';
 import { AD_PLACEMENTS } from '../../constants/adPlacements';
+import { buildPostShareContent } from '../../utils/shareLinks';
 
 /** 게시판 탭 복귀 시 전체 1페이지 재조회 쿨다운 */
 const BOARD_FOCUS_REFRESH_COOLDOWN_MS = 60 * 1000;
@@ -220,12 +221,12 @@ export function BoardAllContent({ navigation, posts }) {
 
   const handleShareFromList = async (post) => {
     if (!post?.id) return;
-    const url = `${api.defaults.baseURL}/posts/${post.id}`;
+    const { message, url, title } = buildPostShareContent(post.id);
     try {
       await Share.share({
-        message: `오늘의 이야기 게시글을 공유합니다.\n\n${url}`,
+        message,
         url,
-        title: '오늘의 이야기 게시글',
+        title,
       });
     } catch (error) {
       console.error('게시글 공유 실패:', error);
