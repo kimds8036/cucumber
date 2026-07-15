@@ -69,11 +69,34 @@ import {
 
 /**
  * OCR·가입 플로우 UI 테스트 스킵
- * - __DEV__ 에서만 허용 (production/release 빌드는 절대 SKIP 불가)
- * - 기본 ON, EXPO_PUBLIC_SIGNUP_TEST_MODE=false 로 OFF
+ * - __DEV__ 에서만 허용 (release/AAB 는 절대 SKIP 불가)
+ * - 명시적으로 EXPO_PUBLIC_SIGNUP_TEST_MODE=true 일 때만 ON
  */
 const SKIP_SIGNUP_VALIDATION_UNTIL_OCR_TEST =
-  __DEV__ && process.env.EXPO_PUBLIC_SIGNUP_TEST_MODE !== 'false';
+  __DEV__ &&
+  String(process.env.EXPO_PUBLIC_SIGNUP_TEST_MODE || '')
+    .toLowerCase()
+    .trim() === 'true';
+
+/**
+ * 성인(과연령) 생년월일 차단 완화 — 팀 내부 테스트용
+ * - __DEV__ + EXPO_PUBLIC_SIGNUP_ADULT_TEST_MODE=true 일 때만
+ * - release/AAB 에서는 항상 학생 연령만 허용
+ */
+const ALLOW_ADULT_SIGNUP_IN_DEV =
+  __DEV__ &&
+  String(process.env.EXPO_PUBLIC_SIGNUP_ADULT_TEST_MODE || '')
+    .toLowerCase()
+    .trim() === 'true';
+
+function getAdultTestEnrollmentFallback() {
+  return {
+    schoolLevel: 'high',
+    grade: 3,
+    classNum: 1,
+    graduationYear: new Date().getFullYear() + 1,
+  };
+}
 
 /** OCR API 호출용 임시 본인 정보 (SKIP 모드) */
 const OCR_TEST_MOCK_IDENTITY = {
@@ -968,7 +991,7 @@ const Sign = ({ navigation }) => {
       Alert.alert('알림', '생년월일을 올바르게 입력해 주세요.');
       return;
     }
-    if (birthCase === 'A') {
+    if (birthCase === 'A' && !ALLOW_ADULT_SIGNUP_IN_DEV) {
       showTooOldForSignupAlert(goToLogin);
       return;
     }
@@ -979,6 +1002,7 @@ const Sign = ({ navigation }) => {
 
     applyBirthDateToState(nextBirthDate);
 
+    // 성인 테스트: 과연령(A)은 학생(B)과 동일하게 본인인증으로 진행
     if (birthCase === 'C') {
       setRequiresGuardianVerification(true);
       if (guardianVerified) {
@@ -1168,11 +1192,38 @@ const Sign = ({ navigation }) => {
     const grade =
       overrides.grade ?? enrollment.grade ?? 1;
     const classNum = overrides.classNum ?? 1;
-    const graduationYear =
+    let graduationYear =
       overrides.graduationYear ?? enrollment.graduationYear;
+    let schoolLevel = overrides.level || enrollment.schoolLevel;
+
+    // 성인 테스트 시 학년·졸업년도 자동 추정 실패 → 고3 대체값으로 진행
+    if (
+      ALLOW_ADULT_SIGNUP_IN_DEV &&
+      (!schoolLevel ||
+        !Number.isFinite(Number(graduationYear)) ||
+        Number(graduationYear) < 1900)
+    ) {
+      const fallback = getAdultTestEnrollmentFallback();
+      schoolLevel = schoolLevel || fallback.schoolLevel;
+      graduationYear =
+        Number.isFinite(Number(graduationYear)) && Number(graduationYear) >= 1900
+          ? Number(graduationYear)
+          : fallback.graduationYear;
+      return {
+        schoolLevel,
+        grade: Number.isFinite(Number(grade)) && Number(grade) >= 1
+          ? Number(grade)
+          : fallback.grade,
+        classNum:
+          Number.isFinite(Number(classNum)) && Number(classNum) >= 1
+            ? Number(classNum)
+            : fallback.classNum,
+        graduationYear,
+      };
+    }
 
     return {
-      schoolLevel: overrides.level || enrollment.schoolLevel,
+      schoolLevel,
       grade,
       classNum,
       graduationYear,
