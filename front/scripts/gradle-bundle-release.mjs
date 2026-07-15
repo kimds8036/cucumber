@@ -18,6 +18,50 @@ const env = {
   NODE_ENV: process.env.NODE_ENV || 'production',
 };
 
+/**
+ * EXPO_PUBLIC_* 는 JS 번들에 인라인된다.
+ * 스크립트에 빼먹으면 스토어 AAB에 mock 이니시스가 실릴 수 있음 (2026-07-16 사고).
+ */
+function assertStoreClientFlags(buildEnv) {
+  const inicis = String(buildEnv.EXPO_PUBLIC_INICIS_ENABLED || '')
+    .toLowerCase()
+    .trim();
+  const signupTest = String(buildEnv.EXPO_PUBLIC_SIGNUP_TEST_MODE || '')
+    .toLowerCase()
+    .trim();
+  const adultTest = String(buildEnv.EXPO_PUBLIC_SIGNUP_ADULT_TEST_MODE || '')
+    .toLowerCase()
+    .trim();
+
+  console.log('[aab] EXPO_PUBLIC_INICIS_ENABLED=', inicis || '(unset)');
+  console.log('[aab] EXPO_PUBLIC_SIGNUP_TEST_MODE=', signupTest || '(unset)');
+  console.log(
+    '[aab] EXPO_PUBLIC_SIGNUP_ADULT_TEST_MODE=',
+    adultTest || '(unset)',
+  );
+
+  if (inicis !== 'true') {
+    console.error(
+      '[aab] FAIL: EXPO_PUBLIC_INICIS_ENABLED must be "true".\n' +
+        '  Without it the app ships mock identity ("테스트 mock") instead of KG Inicis.\n' +
+        '  Fix: android:aab:prod / eas.json production env / .env.production',
+    );
+    process.exit(1);
+  }
+  if (signupTest === 'true') {
+    console.error(
+      '[aab] FAIL: EXPO_PUBLIC_SIGNUP_TEST_MODE must not be "true" for store AAB.',
+    );
+    process.exit(1);
+  }
+  if (adultTest === 'true') {
+    console.error(
+      '[aab] FAIL: EXPO_PUBLIC_SIGNUP_ADULT_TEST_MODE must be false/unset for store AAB.',
+    );
+    process.exit(1);
+  }
+}
+
 const androidDir = path.join(root, 'android');
 const isWin = process.platform === 'win32';
 const gradlew = path.join(androidDir, isWin ? 'gradlew.bat' : 'gradlew');
@@ -28,6 +72,7 @@ if (!fs.existsSync(gradlew)) {
 }
 
 console.log(`[aab] APP_ENV=${env.APP_ENV} NODE_ENV=${env.NODE_ENV}`);
+assertStoreClientFlags(env);
 console.log('[aab] gradlew bundleRelease …');
 
 const result = spawnSync(gradlew, ['bundleRelease'], {

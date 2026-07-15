@@ -37,3 +37,21 @@ if (appEnv === 'development' && !apiBaseUrl.includes('cucumber-develop')) {
 }
 
 console.log('✓ URL 일치');
+
+// EXPO_PUBLIC_* 안내 (번들에 인라인 — 스크립트·eas.json·.env 와 일치 필요)
+console.log('--- EXPO_PUBLIC 클라이언트 플래그 (참고) ---');
+const pub = (k) => process.env[k] || '(unset)';
+console.log('EXPO_PUBLIC_INICIS_ENABLED:', pub('EXPO_PUBLIC_INICIS_ENABLED'));
+console.log('EXPO_PUBLIC_SIGNUP_TEST_MODE:', pub('EXPO_PUBLIC_SIGNUP_TEST_MODE'));
+console.log(
+  'EXPO_PUBLIC_SIGNUP_ADULT_TEST_MODE:',
+  pub('EXPO_PUBLIC_SIGNUP_ADULT_TEST_MODE'),
+);
+if (appEnv === 'production') {
+  console.log(
+    '※ AAB는 package.json android:aab:prod 가 EXPO_PUBLIC_* 를 명시해야 함.',
+  );
+  console.log(
+    '※ Railway INICIS_ENABLED 는 서버 플래그(별개). 앱 mock 문구는 보통 클라이언트 OFF.',
+  );
+}
