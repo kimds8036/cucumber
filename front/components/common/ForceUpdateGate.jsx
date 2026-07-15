@@ -65,9 +65,7 @@ export default function ForceUpdateGate({ children, onPhaseChange }) {
   }, [runCheck]);
 
   const openStore = () => {
-    const url =
-      storeUrl ||
-      'https://play.google.com/store/apps/details?id=com.ucost.YouthPaper';
+    const url = storeUrl || getStoreUrlForPlatform();
     Linking.openURL(url).catch(() => {});
   };
 
