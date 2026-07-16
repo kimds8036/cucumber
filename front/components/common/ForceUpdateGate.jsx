@@ -7,6 +7,7 @@ import {
   View,
 } from 'react-native';
 import Constants from 'expo-constants';
+import * as SplashScreen from 'expo-splash-screen';
 import { api, getApiBaseUrlNoSlash } from '../../utils/api';
 import { colors, fonts } from '../../styles/colors';
 import { getStoreUrlForPlatform } from '../../utils/shareLinks';
@@ -32,6 +33,13 @@ export default function ForceUpdateGate({ children, onPhaseChange }) {
   useEffect(() => {
     onPhaseChange?.(phase);
   }, [phase, onPhaseChange]);
+
+  // force/error UI를 그릴 때 네이티브 스플래시가 가리지 않도록 (이중 안전장치)
+  useEffect(() => {
+    if (phase === 'force' || phase === 'error') {
+      SplashScreen.hideAsync().catch(() => {});
+    }
+  }, [phase]);
 
   const runCheck = useCallback(async () => {
     if (__DEV__) {
