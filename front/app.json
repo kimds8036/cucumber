@@ -8,7 +8,7 @@
     "userInterfaceStyle": "light",
     "newArchEnabled": true,
     "splash": {
-      "image": "./assets/splash-icon.png",
+      "image": "./assets/splash-icon-android.png",
       "resizeMode": "contain",
       "backgroundColor": "#E5F4E0"
     },
@@ -24,7 +24,12 @@
         },
         "ITSAppUsesNonExemptEncryption": false
       },
-      "bundleIdentifier": "com.ucost.YouthPaper"
+      "bundleIdentifier": "com.ucost.YouthPaper",
+      "splash": {
+        "image": "./assets/splash-icon-android.png",
+        "resizeMode": "contain",
+        "backgroundColor": "#E5F4E0"
+      }
     },
     "android": {
       "usesCleartextTraffic": false,
@@ -109,6 +114,6 @@
         "projectId": "39e0f4f8-dd46-4921-a4bf-68856fdfc85c"
       }
     },
-    "owner": "kds8036"
+    "owner": "ucost"
   }
 }

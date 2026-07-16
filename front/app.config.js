@@ -18,7 +18,7 @@ export default ({ config }) => ({
     newArchEnabled: true,
 
     splash: {
-      image: './assets/splash-icon.png',
+      image: './assets/splash-icon-android.png',
       resizeMode: 'contain',
       backgroundColor: '#E5F4E0',
     },
@@ -41,7 +41,7 @@ export default ({ config }) => ({
       },
       bundleIdentifier: 'com.ucost.YouthPaper',
       splash: {
-        image: './assets/splash-icon.png',
+        image: './assets/splash-icon-android.png',
         resizeMode: 'contain',
         backgroundColor: '#E5F4E0',
       },
@@ -58,7 +58,6 @@ export default ({ config }) => ({
         backgroundColor: '#ffffff',
       },
       splash: {
-        // 880×692 마스터 (Android 전용) — iOS는 splash-icon.png 유지
         image: './assets/splash-icon-android.png',
         resizeMode: 'contain',
         backgroundColor: '#E5F4E0',
@@ -92,17 +91,16 @@ export default ({ config }) => ({
         'expo-splash-screen',
         {
           backgroundColor: '#E5F4E0',
-          image: './assets/splash-icon.png',
+          image: './assets/splash-icon-android.png',
           imageWidth: 220,
           resizeMode: 'contain',
           ios: {
-            image: './assets/splash-icon.png',
+            image: './assets/splash-icon-android.png',
             imageWidth: 220,
             resizeMode: 'contain',
             backgroundColor: '#E5F4E0',
           },
           android: {
-            // 880×692 고해상도 마스터 (Android 전용)
             image: './assets/splash-icon-android.png',
             imageWidth: 220,
             resizeMode: 'contain',
@@ -171,6 +169,6 @@ export default ({ config }) => ({
       },
     },
 
-    owner: 'kds8036',
+    owner: 'ucost',
   },
 });

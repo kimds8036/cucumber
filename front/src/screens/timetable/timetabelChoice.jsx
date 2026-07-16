@@ -290,16 +290,18 @@ export default function TimetabelChoice({ navigation, route }) {
       return;
     }
     dismissAnomalyModal();
-    navigation.navigate('EditTimetable', {
-      existingTimetable: tt,
+    navigation.navigate('AddTimetable', {
+      selectionMode: 'manual',
       timetableCacheKey: scopedTimetableCacheKey,
-      returnToMypage: true,
+      initialTimetable: tt,
+      subjectList: previewSubjects,
     });
   }, [
     pendingAutoTimetable,
     dismissAnomalyModal,
     navigation,
     scopedTimetableCacheKey,
+    previewSubjects,
   ]);
 
   const handleAnomalySave = useCallback(async () => {

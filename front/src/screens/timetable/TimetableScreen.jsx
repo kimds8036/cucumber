@@ -32,6 +32,7 @@ import { getNormalize } from '../../../styles/mypage.style';
 import { api } from '../../../utils/api';
 import AppPopupModal from '../../../components/common/AppPopupModal';
 import { getMaxPeriodFromTimetableKeys } from './periodUtils';
+import { classifyTimetableCellValue } from '../../../utils/timetableAnomaly';
 import styles, {
   DAYS,
   createManualTimetableScreenStyles,
@@ -191,8 +192,14 @@ export default function TimetableScreen({ navigation, route }) {
   const apiSubjectList = useMemo(() => {
     if (!profileScopeOk) return [];
     const fromApi = subjectsFromApiList(routeSubjectList);
-    if (fromApi.length > 0) return fromApi;
-    return dedupeSubjectsFromTimetable(initialTimetableSnapshot);
+    const list =
+      fromApi.length > 0
+        ? fromApi
+        : dedupeSubjectsFromTimetable(initialTimetableSnapshot);
+    // 공휴일·휴업 등은 과목 팔레트에서 제외 (격자 셀에는 그대로 표시)
+    return list.filter(
+      (subject) => classifyTimetableCellValue(subject.name) !== 'holiday',
+    );
   }, [initialTimetableSnapshot, profileScopeOk, routeSubjectList]);
 
   const filteredSubjects = useMemo(() => {
