@@ -676,13 +676,14 @@ export default function App() {
     <SafeAreaProvider style={{ flex: 1, backgroundColor: colors.background }}>
       <StatusBar style="dark" backgroundColor={colors.background} />
       <OfflineGate>
-        <ForceUpdateGate onPhaseChange={setVersionPhase}>
-          <KeyboardProvider>
-            <AuthProvider>
-              <SplashHideWhenReady
-                fontsLoaded={fontsLoaded}
-                versionPhase={versionPhase}
-              />
+        {/* Auth·스플래시 hide는 Gate 밖 — force/error 시 children 미렌더로 hideAsync가 안 불리던 버그 방지 */}
+        <AuthProvider>
+          <SplashHideWhenReady
+            fontsLoaded={fontsLoaded}
+            versionPhase={versionPhase}
+          />
+          <ForceUpdateGate onPhaseChange={setVersionPhase}>
+            <KeyboardProvider>
               <LaunchAdModal>
                 <AppLockProvider>
                   <LocationProvider>
@@ -711,9 +712,9 @@ export default function App() {
                   </LocationProvider>
                 </AppLockProvider>
               </LaunchAdModal>
-            </AuthProvider>
-          </KeyboardProvider>
-        </ForceUpdateGate>
+            </KeyboardProvider>
+          </ForceUpdateGate>
+        </AuthProvider>
       </OfflineGate>
     </SafeAreaProvider>
   );
