@@ -77,6 +77,10 @@ import {
   getIdentityVerificationByClientToken,
   isInicisEnabled,
 } from '../services/inicis.service.js';
+import {
+  notifyCertificateReviewPending,
+  notifyStudentIdReviewPending,
+} from '../services/discordWebhook.service.js';
 
 const router = express.Router();
 
@@ -1206,8 +1210,9 @@ router.post('/signup', blockWhenFlag('signup_disabled'), validate(signupValidato
         birthDate: signupBirthDate,
       });
 
+      let reviewSubmissionId = null;
       if (isCertificateSignup) {
-        await connection.execute(
+        const [certInsert] = await connection.execute(
           `INSERT INTO signup_certificate_submissions
            (user_id, name_enc, phone_enc, phone_lookup, birth_date_enc,
             certificate_view_url, certificate_access_code, claimed_school_name, status)
@@ -1223,8 +1228,9 @@ router.post('/signup', blockWhenFlag('signup_disabled'), validate(signupValidato
             claimedSchoolName?.trim() || null,
           ],
         );
+        reviewSubmissionId = certInsert.insertId;
       } else if (studentIdManualVerification) {
-        await connection.execute(
+        const [sidInsert] = await connection.execute(
           `INSERT INTO signup_student_id_submissions
            (user_id, name_enc, phone_enc, phone_lookup, birth_date_enc,
             school_id, cloudinary_url, cloudinary_public_id, status, submission_purpose, verification_jti)
@@ -1241,6 +1247,7 @@ router.post('/signup', blockWhenFlag('signup_disabled'), validate(signupValidato
             studentIdManualVerification.jti,
           ],
         );
+        reviewSubmissionId = sidInsert.insertId;
       }
 
       await connection.execute(
@@ -1258,6 +1265,25 @@ router.post('/signup', blockWhenFlag('signup_disabled'), validate(signupValidato
       );
 
       await connection.commit();
+
+      if (isCertificateSignup && reviewSubmissionId) {
+        notifyCertificateReviewPending({
+          userId,
+          username,
+          claimedSchoolName: claimedSchoolName?.trim() || null,
+          submissionId: reviewSubmissionId,
+          certificateViewUrl: certificateViewUrl?.trim(),
+        });
+      } else if (studentIdManualVerification && reviewSubmissionId) {
+        notifyStudentIdReviewPending({
+          userId,
+          username,
+          schoolId: studentIdManualVerification.schoolId,
+          purpose: 'signup',
+          submissionId: reviewSubmissionId,
+          cloudinaryUrl: studentIdManualVerification.cloudinaryUrl,
+        });
+      }
 
       res.status(201).json({ 
         success: true, 
@@ -1841,7 +1867,7 @@ router.post('/resubmit-student-id', authenticate, signupOcrLimiter, async (req, 
     }
 
     const [userRows] = await pool.execute(
-      `SELECT id, name_enc, phone_enc, birth_date_enc, school_id FROM users WHERE id = ? LIMIT 1`,
+      `SELECT id, username, name_enc, phone_enc, birth_date_enc, school_id FROM users WHERE id = ? LIMIT 1`,
       [userId],
     );
     if (!userRows.length) {
@@ -1862,7 +1888,7 @@ router.post('/resubmit-student-id', authenticate, signupOcrLimiter, async (req, 
     }
 
     const [schoolRows] = await pool.execute(
-      'SELECT school_id FROM schools WHERE school_id = ? LIMIT 1',
+      'SELECT school_id, name FROM schools WHERE school_id = ? LIMIT 1',
       [targetSchoolId],
     );
     if (!schoolRows.length) {
@@ -1891,7 +1917,7 @@ router.post('/resubmit-student-id', authenticate, signupOcrLimiter, async (req, 
       birthDate: user.birth_date,
     });
 
-    await pool.execute(
+    const [sidInsert] = await pool.execute(
       `INSERT INTO signup_student_id_submissions
          (user_id, name_enc, phone_enc, phone_lookup, birth_date_enc,
           school_id, previous_school_id, cloudinary_url, cloudinary_public_id, status, submission_purpose)
@@ -1909,6 +1935,16 @@ router.post('/resubmit-student-id', authenticate, signupOcrLimiter, async (req, 
         submissionPurpose,
       ],
     );
+
+    notifyStudentIdReviewPending({
+      userId,
+      username: user.username,
+      schoolId: targetSchoolId,
+      schoolName: schoolRows[0]?.name,
+      purpose: submissionPurpose,
+      submissionId: sidInsert.insertId,
+      cloudinaryUrl: uploaded.cloudinaryUrl,
+    });
 
     if (isReverificationResubmit) {
       return res.json({

@@ -1,5 +1,9 @@
 import pool from '../config/database.js';
 import { getKstTodayRangeUtcForSql, getNowForDB } from '../utils/dateUtils.js';
+import {
+  notifyPostAutoHidden,
+  notifyReportCreated,
+} from './discordWebhook.service.js';
 
 export const REPORT_CODE = {
   ALREADY_REPORTED: 'ALREADY_REPORTED',
@@ -158,10 +162,12 @@ export async function submitContentReport({
 
   const connection = await pool.getConnection();
   let autoHidden = false;
+  let pendingCountAtHide = 0;
+  let reportId = null;
   try {
     await connection.beginTransaction();
 
-    await connection.execute(
+    const [reportInsert] = await connection.execute(
       `INSERT INTO reports (reporter_id, target_type, target_id, reported_user_id, reason, description)
        VALUES (?, ?, ?, ?, ?, ?)`,
       [
@@ -173,6 +179,7 @@ export async function submitContentReport({
         description || null,
       ],
     );
+    reportId = reportInsert.insertId;
 
     if (autoHidePost && targetType === 'post') {
       const [pendingRows] = await connection.execute(
@@ -186,6 +193,7 @@ export async function submitContentReport({
       const pendingCount = Number(pendingRows[0]?.c ?? 0);
       if (pendingCount >= AUTO_HIDE_REPORT_THRESHOLD) {
         autoHidden = true;
+        pendingCountAtHide = pendingCount;
         await connection.execute(
           `UPDATE posts
            SET is_hidden = TRUE,
@@ -211,6 +219,22 @@ export async function submitContentReport({
     throw err;
   } finally {
     connection.release();
+  }
+
+  notifyReportCreated({
+    reportId,
+    targetType,
+    targetId,
+    reason,
+    description,
+    reporterId,
+    reportedUserId,
+  });
+  if (autoHidden) {
+    notifyPostAutoHidden({
+      postId: targetId,
+      reportCount: pendingCountAtHide,
+    });
   }
 
   return {

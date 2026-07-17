@@ -5,6 +5,7 @@ import { authenticate, optionalAuthenticate } from '../middleware/auth.js';
 import { validate } from '../middleware/validate.js';
 import { cloudinary, uploadInquiry } from '../config/cloudinary.js';
 import { getNowForDB } from '../utils/dateUtils.js';
+import { notifyInquiryCreated } from '../services/discordWebhook.service.js';
 
 const router = express.Router();
 
@@ -145,6 +146,9 @@ router.post('/', optionalAuthenticate, uploadInquiry.array('images', MAX_IMAGES)
       inquiryId = result.insertId;
 
       // 첨부 이미지(InAppInquiry에서만 사용 — 비로그인은 보통 0장)
+      const imageCount = req.files?.length
+        ? Math.min(req.files.length, MAX_IMAGES)
+        : 0;
       if (req.files && req.files.length > 0) {
         const imageValues = req.files
           .slice(0, MAX_IMAGES)
@@ -156,6 +160,15 @@ router.post('/', optionalAuthenticate, uploadInquiry.array('images', MAX_IMAGES)
       }
 
       await connection.commit();
+
+      notifyInquiryCreated({
+        inquiryId,
+        contactUsername,
+        contactEmail,
+        content,
+        imageCount,
+        userId,
+      });
     } catch (error) {
       await connection.rollback();
       throw error;
