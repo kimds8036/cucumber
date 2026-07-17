@@ -16,6 +16,7 @@ import { appendUserBlockFilter } from '../utils/userBlockFilter.js';
 import { blockWhenFlag } from '../middleware/systemFlags.js';
 import { isBlockedBy } from '../utils/userBlock.js';
 import { submitContentReport } from '../services/reportSubmission.service.js';
+import { notifyAppealCreated } from '../services/discordWebhook.service.js';
 const router = express.Router();
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -1641,11 +1642,18 @@ router.post('/:id/appeal', authenticate, async (req, res) => {
       });
     }
 
-    await pool.execute(
+    const [appealInsert] = await pool.execute(
       `INSERT INTO report_appeals (post_id, appellant_id, content)
        VALUES (?, ?, ?)`,
       [id, userId, appealContent]
     );
+
+    notifyAppealCreated({
+      appealId: appealInsert.insertId,
+      postId: id,
+      appellantId: userId,
+      content: appealContent,
+    });
 
     res.status(201).json({
       success: true,
