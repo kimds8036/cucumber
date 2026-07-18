@@ -24,31 +24,43 @@ const SignupBlockingAlertModal = ({
           { borderRadius: normalize(14), padding: normalize(20) },
         ]}
       >
-        <Text style={[styles.title, { fontSize: normalize(18) }]}>{title}</Text>
-        <Text
-          style={[
-            styles.message,
-            { fontSize: normalize(14), lineHeight: normalize(22) },
-          ]}
-        >
-          {message}
-        </Text>
-        {buttons.map((btn, index) => (
-          <TouchableOpacity
-            key={`${btn.text}-${index}`}
+        {title ? (
+          <Text style={[styles.title, { fontSize: normalize(18) }]}>{title}</Text>
+        ) : null}
+        {message ? (
+          <Text
             style={[
-              styles.button,
-              index > 0 && styles.buttonSpaced,
-              { borderRadius: normalize(10), paddingVertical: normalize(12) },
+              styles.message,
+              { fontSize: normalize(14), lineHeight: normalize(22) },
             ]}
-            activeOpacity={0.9}
-            onPress={btn.onPress}
           >
-            <Text style={[styles.buttonText, { fontSize: normalize(15) }]}>
-              {btn.text}
-            </Text>
-          </TouchableOpacity>
-        ))}
+            {message}
+          </Text>
+        ) : null}
+        {buttons.map((btn, index) => {
+          const isSecondary = btn.variant === 'secondary';
+          return (
+            <TouchableOpacity
+              key={`${btn.text}-${index}`}
+              style={[
+                isSecondary ? styles.buttonSecondary : styles.button,
+                index > 0 && styles.buttonSpaced,
+                { borderRadius: normalize(10), paddingVertical: normalize(12) },
+              ]}
+              activeOpacity={0.9}
+              onPress={btn.onPress}
+            >
+              <Text
+                style={[
+                  isSecondary ? styles.buttonSecondaryText : styles.buttonText,
+                  { fontSize: normalize(15) },
+                ]}
+              >
+                {btn.text}
+              </Text>
+            </TouchableOpacity>
+          );
+        })}
       </View>
     </View>
   </SignupIosSafeModal>
@@ -79,12 +91,20 @@ const styles = StyleSheet.create({
     backgroundColor: colors.primary,
     alignItems: 'center',
   },
+  buttonSecondary: {
+    backgroundColor: 'transparent',
+    alignItems: 'center',
+  },
   buttonSpaced: {
     marginTop: 10,
   },
   buttonText: {
     color: '#fff',
     fontWeight: '700',
+  },
+  buttonSecondaryText: {
+    color: colors.textSecondary,
+    fontWeight: '600',
   },
 });
 
