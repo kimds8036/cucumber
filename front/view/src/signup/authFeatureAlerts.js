@@ -66,6 +66,11 @@ export function showGuardianVerificationFailedAlert(onConfirm) {
   );
 }
 
-/** Step 4 학년·반 자동 표기 안내 */
+/** 학교 선택 — 생년월일 기준 학년 잠금 + 학적 문의 안내 */
 export const GRADE_ENROLLMENT_NOTICE =
-  '학년·반은 생년월일 기준으로 자동 표시됩니다. 늦게 입학하거나 조기 진학 등으로 학년이 맞지 않거나 다른 학년에 재학 중이라면, 아래에서 수정한 뒤 가입을 완료해 주세요. 가입 후에도 학적이 맞지 않으면 마이페이지 「문의하기」로 연락 주시면 학적 변경을 안내해 드리겠습니다.';
+  '학년은 본인인증 생년월일 기준으로 자동 표시되며 수정할 수 없습니다. 학년이 다르다면 가입을 완료한 뒤 앱에서 「문의하기」로 학적 변동을 요청해 주세요.';
+
+export const GRADE_MISMATCH_HELP_TITLE = '학년이 다른 경우';
+
+export const GRADE_MISMATCH_HELP_MESSAGE =
+  '학년은 본인인증 생년월일 기준으로 자동 계산되어 가입 중에는 바꿀 수 없어요.\n\n가입을 마친 뒤 앱(마이페이지)의 「문의하기」로 학적 변동을 요청해 주시면, 확인 후 반영해 드릴게요.';

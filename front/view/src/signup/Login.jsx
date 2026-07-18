@@ -28,6 +28,8 @@ import { useAuth } from '../../../context/AuthContext';
 // import Skeleton from '../../../components/common/Skeleton';
 // import AsyncStorage from '@react-native-async-storage/async-storage';
 
+import SignupPrepMaterialsModal from './SignupPrepMaterialsModal';
+
 /** 로그인 실패 안내 — 사용자용 문구만 (기술 정보는 __DEV__ 콘솔) */
 function buildLoginFailureMessage(error) {
   const userMessage = getApiUserFacingMessage(
@@ -77,6 +79,8 @@ const Login = ({ navigation }) => {
     highlight: '',
     body: '',
   });
+  const [prepMaterialsModalVisible, setPrepMaterialsModalVisible] =
+    useState(false);
   const [keyboardOpen, setKeyboardOpen] = useState(false);
   const scrollRef = useRef(null);
 
@@ -431,7 +435,9 @@ const Login = ({ navigation }) => {
                 <Text style={styles.linkText}>비밀번호 찾기</Text>
               </TouchableOpacity>
               <Text style={styles.linkDivider}>|</Text>
-              <TouchableOpacity onPress={() => navigation.navigate('Sign')}>
+              <TouchableOpacity
+                onPress={() => setPrepMaterialsModalVisible(true)}
+              >
                 <Text style={styles.linkText}>회원가입</Text>
               </TouchableOpacity>
             </View>
@@ -546,6 +552,16 @@ const Login = ({ navigation }) => {
           </View>
         </TouchableWithoutFeedback>
       </Modal>
+
+      <SignupPrepMaterialsModal
+        visible={prepMaterialsModalVisible}
+        normalize={normalize}
+        onConfirm={() => {
+          setPrepMaterialsModalVisible(false);
+          navigation.navigate('Sign');
+        }}
+        onCancel={() => setPrepMaterialsModalVisible(false)}
+      />
     </SafeAreaView>
   );
 };
