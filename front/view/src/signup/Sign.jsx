@@ -1188,10 +1188,10 @@ const Sign = ({ navigation }) => {
     setBlockingAlert({
       visible: true,
       title: '학적 정보 확인',
-      message: `${selectedSchool.name} · ${Number(grade)}학년 · ${classNum}반이 맞나요?\n\n학생증 인증으로 넘어가기 전에 꼭 확인해 주세요.`,
+      message: `${selectedSchool.name} ${Number(grade)}학년 ${classNum}반이 맞나요?\n\n학생증 인증으로 넘어가기 전에 꼭 확인해 주세요.`,
       buttons: [
         {
-          text: '맞아요, 다음',
+          text: '맞아요',
           onPress: () => {
             closeBlockingAlert();
             proceedFromSchoolSelect();
