@@ -1555,7 +1555,7 @@ const Sign = ({ navigation }) => {
       case STEP.ACCOUNT:
         return '계정 만들기';
       case STEP.SCHOOL_SELECT:
-        return '학교 · 학년 · 반';
+        return '재학 정보 입력';
       case STEP.STUDENT_VERIFY:
         return studentVerified ? '가입 마무리' : '학생증 인증';
       case STEP.CERTIFICATE_GUIDE:
@@ -1740,6 +1740,7 @@ const Sign = ({ navigation }) => {
             classNum={schoolClassNum}
             onClassNumChange={setSchoolClassNum}
             onPressGradeMismatch={handleGradeMismatchHelp}
+            bottomOffset={footerHeight}
           />
         )}
         {currentStep === STEP.CERTIFICATE_GUIDE && (

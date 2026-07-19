@@ -4,6 +4,7 @@ import { colors } from '../../../styles/colors';
 import SchoolSearchField from './SchoolSearchField';
 import SignupHelperText from './SignupHelperText';
 import SignupLockedField from './SignupLockedField';
+import SignupStepScroll from './SignupStepScroll';
 
 /** 계정 만들기 ↔ 학생증 인증 사이 — 재학 학교·학년(잠금)·반 */
 const SignStepSchoolSelect = ({
@@ -15,22 +16,25 @@ const SignStepSchoolSelect = ({
   classNum,
   onClassNumChange,
   onPressGradeMismatch,
-}) => (
-  <View style={styles.stepFlex}>
+  bottomOffset,
+}) => {
+  const schoolSearch = (
     <SchoolSearchField
       styles={styles}
       normalize={normalize}
       selectedSchool={selectedSchool}
       onSelect={onSelect}
       labelMarginTop={0}
-      expandList
+      expandList={!selectedSchool}
       helperBelowLabel={
         <SignupHelperText normalize={normalize} variant="plain">
           학교는 학생증 정보 일치 여부 확인을 위해 사용됩니다.
         </SignupHelperText>
       }
     />
+  );
 
+  const gradeClassFields = selectedSchool ? (
     <View style={{ marginTop: normalize(8), paddingBottom: normalize(4) }}>
       <SignupLockedField
         label="학년"
@@ -64,6 +68,9 @@ const SignStepSchoolSelect = ({
       </TouchableOpacity>
 
       <Text style={styles.inputLabel}>반</Text>
+      <SignupHelperText normalize={normalize} variant="plain" tight>
+        학생증에 적힌 반을 숫자만 정확히 입력해 주세요
+      </SignupHelperText>
       <View style={styles.inputWrapper}>
         <TextInput
           style={styles.input}
@@ -78,11 +85,21 @@ const SignStepSchoolSelect = ({
           returnKeyType="done"
         />
       </View>
-      <SignupHelperText normalize={normalize} variant="plain" tight>
-        반은 직접 입력해 주세요. 다음 단계에서 학교·학년·반을 한 번 더 확인합니다.
-      </SignupHelperText>
     </View>
-  </View>
-);
+  ) : null;
+
+  return (
+    <View style={styles.stepFlex}>
+      {selectedSchool ? (
+        <SignupStepScroll normalize={normalize} bottomOffset={bottomOffset}>
+          {schoolSearch}
+          {gradeClassFields}
+        </SignupStepScroll>
+      ) : (
+        schoolSearch
+      )}
+    </View>
+  );
+};
 
 export default SignStepSchoolSelect;
