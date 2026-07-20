@@ -14,6 +14,7 @@ import { Ionicons } from '@expo/vector-icons';
 import FontAwesome6 from '@expo/vector-icons/FontAwesome6';
 import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
 import { api } from '../../utils/api';
+import { formatStudentCount } from '../../utils/formatStudentCount';
 import { colors, fontSizes } from '../../styles/colors';
 import { getNormalize } from '../../styles/frame.style';
 import { createOurSchoolStyles } from '../../styles/school.style';
@@ -401,7 +402,7 @@ const OurSchoolScreen = ({ navigation }) => {
                         color={colors.primary}
                       />
                       <Text style={styles.statValue}>
-                        {schoolInfo.studentCount}명
+                        {formatStudentCount(schoolInfo.studentCount)}명
                       </Text>
                     </View>
                   </View>

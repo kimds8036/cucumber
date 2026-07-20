@@ -1,6 +1,7 @@
 import React, { useMemo } from 'react';
 import { View, Text, TouchableOpacity } from 'react-native';
 import Ionicons from '@expo/vector-icons/Ionicons';
+import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
 import Entypo from '@expo/vector-icons/Entypo';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { colors } from '../../../styles/colors';
@@ -85,18 +86,18 @@ export default function BoardCommentTree({
               >
                 {item.authorLabel}
               </Text>
-              {item.isPinned ? (
-                <Text
-                  style={[styles.detailAuthor, { marginLeft: normalize(4) }]}
-                  numberOfLines={1}
-                >
-                  고정
-                </Text>
-              ) : null}
               <Text style={styles.detailDot}>•</Text>
               <Text style={styles.detailTime} numberOfLines={1}>
                 {item.time}
               </Text>
+              {item.isPinned ? (
+                <MaterialCommunityIcons
+                  name="pin"
+                  size={normalize(12)}
+                  color={colors.textSecondary}
+                  style={{ marginLeft: normalize(4)}}
+                />
+              ) : null}
             </View>
             {parentAuthorLabel ? (
               <View

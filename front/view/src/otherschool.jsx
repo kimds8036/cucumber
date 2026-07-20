@@ -16,6 +16,7 @@ import { getNormalize } from '../../styles/frame.style';
 import { createOurSchoolStyles } from '../../styles/school.style';
 import { createOtherSchoolStyles } from '../../styles/otherschool.style';
 import { api } from '../../utils/api';
+import { formatStudentCount } from '../../utils/formatStudentCount';
 import StudyGrassMap from '../../components/studygrassmap';
 import Skeleton from '../../components/common/Skeleton';
 const OtherSchoolScreen = ({ route, navigation }) => {
@@ -299,7 +300,7 @@ const OtherSchoolScreen = ({ route, navigation }) => {
                         color={colors.primary}
                       />
                       <Text style={styles.statValue}>
-                        {schoolInfo.studentCount}명
+                        {formatStudentCount(schoolInfo.studentCount)}명
                       </Text>
                     </View>
                   </View>

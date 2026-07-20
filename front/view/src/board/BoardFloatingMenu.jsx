@@ -8,6 +8,7 @@ import {
   Alert,
 } from 'react-native';
 import Ionicons from '@expo/vector-icons/Ionicons';
+import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
 import { colors, fonts } from '../../../styles/colors';
 
 function normalizeCommentId(id) {
@@ -100,7 +101,8 @@ export default function BoardFloatingMenu({
     if (isPostAuthor) {
       menuItems.unshift({
         label: commentForMenu?.isPinned ? '고정 해제' : '댓글 고정',
-        iconName: commentForMenu?.isPinned ? 'pin-outline' : 'pin',
+        iconName: commentForMenu?.isPinned ? 'pin-off' : 'pin',
+        iconSet: 'material-community',
         onPress: () =>
           onPinComment?.(isCommentMenu, !commentForMenu?.isPinned),
       });
@@ -110,7 +112,8 @@ export default function BoardFloatingMenu({
     if (isPostAuthor) {
       menuItems.push({
         label: commentForMenu.isPinned ? '고정 해제' : '댓글 고정',
-        iconName: commentForMenu.isPinned ? 'pin-outline' : 'pin',
+        iconName: commentForMenu.isPinned ? 'pin-off' : 'pin',
+        iconSet: 'material-community',
         onPress: () =>
           onPinComment?.(isCommentMenu, !commentForMenu.isPinned),
       });
@@ -219,11 +222,19 @@ export default function BoardFloatingMenu({
                     >
                       {item.label}
                     </Text>
-                    <Ionicons
-                      name={item.iconName}
-                      size={normalize(17)}
-                      color={colors.textSecondary}
-                    />
+                    {item.iconSet === 'material-community' ? (
+                      <MaterialCommunityIcons
+                        name={item.iconName}
+                        size={normalize(17)}
+                        color={colors.textSecondary}
+                      />
+                    ) : (
+                      <Ionicons
+                        name={item.iconName}
+                        size={normalize(17)}
+                        color={colors.textSecondary}
+                      />
+                    )}
                   </TouchableOpacity>
                   {index < menuItems.length - 1 && (
                     <View
