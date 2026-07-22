@@ -37,6 +37,7 @@ import { getAdminBasePath } from './config/adminPath.js';
 import inquiriesRoutes from './routes/inquiries.js';
 import legalRoutes from './routes/legal.js';
 import appRoutes from './routes/app.js';
+import installLandingRoutes from './routes/installLanding.js';
 import testRoutes from './routes/test.js';
 import attendanceRoutes from './routes/attendance.js';
 import analyticsRoutes from './routes/analytics.js';
@@ -260,6 +261,9 @@ app.get('/health', async (req, res) => {
   }
   res.status(payload.status === 'ok' ? 200 : 503).json(payload);
 });
+
+// 인스타/광고 스토어 분기 랜딩 — /get · /install (인증 없음)
+app.use(installLandingRoutes);
 
 // App-Version 미들웨어 (docs/워크플로.md)
 app.use(requireMinAppVersion);

@@ -1,13 +1,12 @@
 import { isVersionBelow } from '../utils/semver.js';
 import { getAdminBasePath } from '../config/adminPath.js';
-
-const DEFAULT_ANDROID_STORE_URL =
-  'https://play.google.com/store/apps/details?id=com.ucost.YouthPaper';
-const DEFAULT_IOS_STORE_URL = 'https://apps.apple.com/app/id6770454607';
+import { resolveStoreUrl } from '../utils/storeUrls.js';
 
 function getWhitelistPrefixes() {
   return [
     '/health',
+    '/get',
+    '/install',
     '/api/app/version-check',
     '/api/legal',
     getAdminBasePath(),
@@ -31,13 +30,6 @@ function resolveMinVersion(platform) {
     return process.env.MIN_IOS_VERSION || process.env.MIN_APP_VERSION || '1.0.0';
   }
   return process.env.MIN_ANDROID_VERSION || process.env.MIN_APP_VERSION || '1.0.0';
-}
-
-function resolveStoreUrl(platform) {
-  if (platform === 'ios') {
-    return process.env.IOS_STORE_URL || DEFAULT_IOS_STORE_URL;
-  }
-  return process.env.ANDROID_STORE_URL || DEFAULT_ANDROID_STORE_URL;
 }
 
 /**

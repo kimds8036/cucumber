@@ -1,11 +1,8 @@
 import express from 'express';
 import { isVersionBelow } from '../utils/semver.js';
+import { resolveStoreUrl } from '../utils/storeUrls.js';
 
 const router = express.Router();
-
-const DEFAULT_ANDROID_STORE_URL =
-  'https://play.google.com/store/apps/details?id=com.ucost.YouthPaper';
-const DEFAULT_IOS_STORE_URL = 'https://apps.apple.com/app/id6770454607';
 
 /**
  * GET /api/app/version-check?platform=android|ios&version=1.1.0
@@ -20,10 +17,7 @@ router.get('/version-check', (req, res) => {
       ? (process.env.MIN_IOS_VERSION || process.env.MIN_APP_VERSION || '1.0.0')
       : (process.env.MIN_ANDROID_VERSION || process.env.MIN_APP_VERSION || '1.0.0');
 
-  const storeUrl =
-    platform === 'ios'
-      ? (process.env.IOS_STORE_URL || DEFAULT_IOS_STORE_URL)
-      : (process.env.ANDROID_STORE_URL || DEFAULT_ANDROID_STORE_URL);
+  const storeUrl = resolveStoreUrl(platform);
 
   const forceUpdate =
     clientVersion.length > 0 && isVersionBelow(clientVersion, minVersion);
