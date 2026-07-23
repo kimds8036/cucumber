@@ -30,6 +30,17 @@ function detectMobilePlatform(ua) {
   return 'other';
 }
 
+function resolveGoogleAdsTagId() {
+  const raw = String(
+    process.env.GOOGLE_ADS_TAG_ID ||
+      process.env.GTAG_AW_ID ||
+      'AW-18343935989',
+  ).trim();
+  // AW-숫자만 허용
+  if (!/^AW-\d+$/i.test(raw)) return '';
+  return raw.toUpperCase();
+}
+
 function buildLandingHtml({
   androidUrl,
   iosUrl,
@@ -44,12 +55,54 @@ function buildLandingHtml({
       '학교 인증 학생 커뮤니티 — 시간표·급식·게시판·공부 타이머',
   ).trim();
   const ogImage = String(process.env.INSTALL_LANDING_OG_IMAGE || '').trim();
+  const googleAdsTagId = resolveGoogleAdsTagId();
 
+  const gtagBlock = googleAdsTagId
+    ? `<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=${escapeHtml(googleAdsTagId)}"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+  gtag('config', ${JSON.stringify(googleAdsTagId)});
+</script>`
+    : '';
+
+  // 모바일 자동 리다이렉트: gtag page_view 전송 후(또는 타임아웃) 스토어로 이동
   const redirectBlock = autoRedirectUrl
     ? `<script>
 (function () {
   var url = ${JSON.stringify(autoRedirectUrl)};
-  if (url) window.location.replace(url);
+  if (!url) return;
+  var gone = false;
+  function go() {
+    if (gone) return;
+    gone = true;
+    window.location.replace(url);
+  }
+  var fallbackMs = ${googleAdsTagId ? 1800 : 0};
+  if (fallbackMs <= 0) {
+    go();
+    return;
+  }
+  setTimeout(go, fallbackMs);
+  function trySendThenGo() {
+    if (typeof gtag !== 'function') return;
+    try {
+      gtag('event', 'page_view', {
+        send_to: ${JSON.stringify(googleAdsTagId)},
+        event_callback: go,
+        event_timeout: 1500
+      });
+    } catch (e) {
+      go();
+    }
+  }
+  if (document.readyState === 'complete') {
+    trySendThenGo();
+  } else {
+    window.addEventListener('load', trySendThenGo);
+  }
 })();
 </script>
 <noscript><meta http-equiv="refresh" content="0;url=${escapeHtml(autoRedirectUrl)}" /></noscript>`
@@ -73,6 +126,7 @@ function buildLandingHtml({
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
+  ${gtagBlock}
   <title>${escapeHtml(title)}</title>
   <meta name="description" content="${escapeHtml(description)}" />
   <meta property="og:type" content="website" />
@@ -171,6 +225,7 @@ function buildLandingHtml({
  *
  * 스토어 URL: ANDROID_STORE_URL / IOS_STORE_URL (미설정 시 기본값)
  * (선택) INSTALL_LANDING_TITLE, INSTALL_LANDING_DESCRIPTION, INSTALL_LANDING_OG_IMAGE
+ * (선택) GOOGLE_ADS_TAG_ID=AW-… — /get 페이지 gtag (기본 AW-18343935989)
  */
 function handleInstallLanding(req, res) {
   const ua = String(req.headers['user-agent'] || '');
