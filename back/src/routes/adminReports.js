@@ -11,6 +11,7 @@ import {
   mapDashboardStatsToApi,
 } from '../services/adminStats.service.js';
 import { getAnalyticsOverview } from '../services/analytics.service.js';
+import { getInstallLandingStatsOverview } from '../services/installLandingStats.service.js';
 import { writeUserSanction } from '../services/userSanctions.service.js';
 import { getNowForDB } from '../utils/dateUtils.js';
 import {
@@ -170,6 +171,27 @@ router.get('/analytics/overview', requireAdminApi, async (req, res) => {
   } catch (error) {
     console.error('관리자 분석 대시보드 조회 오류:', error);
     return res.status(500).json({ success: false, message: '분석 대시보드 조회 중 오류가 발생했습니다.' });
+  }
+});
+
+router.get('/analytics/install-landing', requireAdminApi, async (req, res) => {
+  const adminUserId = req.user.userId;
+  if (!isAdminUser(adminUserId)) {
+    return res.status(403).json({ success: false, message: '관리자 권한이 필요합니다.' });
+  }
+  try {
+    const days = Number(req.query.days || 14);
+    const overview = await getInstallLandingStatsOverview({ days });
+    return res.json({
+      success: true,
+      data: overview,
+    });
+  } catch (error) {
+    console.error('설치 랜딩 통계 조회 오류:', error);
+    return res.status(500).json({
+      success: false,
+      message: '설치 랜딩 통계 조회 중 오류가 발생했습니다.',
+    });
   }
 });
 

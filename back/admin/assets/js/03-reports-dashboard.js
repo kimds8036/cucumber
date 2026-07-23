@@ -16,6 +16,11 @@ async function loadDashboard() {
     } catch (error) {
       console.warn('[AdminDashboard] analytics overview load failed:', error?.message || error);
     }
+    try {
+      await loadInstallLandingStats();
+    } catch (error) {
+      console.warn('[AdminDashboard] install landing stats load failed:', error?.message || error);
+    }
   }
 
   async function loadAnalyticsOverview() {
@@ -25,6 +30,13 @@ async function loadDashboard() {
     renderAnalyticsLineChart(data?.series || []);
     renderAnalyticsHeatmap(data?.heatmapWeekly || []);
     renderAnalyticsScreenRanking(data?.screenRanking || [], data?.screenHourlyByKey || {});
+  }
+
+  async function loadInstallLandingStats() {
+    const { data } = await api('/analytics/install-landing?days=14');
+    window.__lastInstallLandingStats = { data };
+    renderInstallLandingKpi(data?.summary || {});
+    renderInstallLandingChart(data?.series || [], data?.summary || {});
   }
 
   function renderAnalyticsKpi(summary) {
@@ -40,12 +52,42 @@ async function loadDashboard() {
       : '-';
   }
 
+  function bindLineChartHover(svg, tooltipEl, points, buildHtml) {
+    if (!svg || !tooltipEl) return;
+    const wrap = svg.closest('.analytics-line-wrap');
+    const hide = () => {
+      tooltipEl.hidden = true;
+    };
+    svg.querySelectorAll('.analytics-line-hit').forEach((el) => {
+      el.addEventListener('mouseenter', () => {
+        const idx = Number(el.dataset.index);
+        const point = points[idx];
+        if (!point) return;
+        tooltipEl.innerHTML = buildHtml(point, idx);
+        tooltipEl.hidden = false;
+        const cx = Number(el.getAttribute('cx'));
+        const cy = Number(el.getAttribute('cy'));
+        const vb = svg.viewBox.baseVal;
+        const rect = svg.getBoundingClientRect();
+        const wrapRect = wrap.getBoundingClientRect();
+        const px = rect.left - wrapRect.left + (cx / vb.width) * rect.width;
+        const py = rect.top - wrapRect.top + (cy / vb.height) * rect.height;
+        tooltipEl.style.left = `${px}px`;
+        tooltipEl.style.top = `${py}px`;
+      });
+      el.addEventListener('mouseleave', hide);
+    });
+    svg.addEventListener('mouseleave', hide);
+  }
+
   function renderAnalyticsLineChart(series) {
     const svg = document.getElementById('analytics-line-chart');
     const caption = document.getElementById('analytics-line-caption');
+    const tooltip = document.getElementById('analytics-line-tooltip');
     if (!svg || !caption) return;
     if (!Array.isArray(series) || series.length === 0) {
       svg.innerHTML = '';
+      if (tooltip) tooltip.hidden = true;
       caption.textContent = '아직 집계 데이터가 없습니다.';
       return;
     }
@@ -73,17 +115,111 @@ async function loadDashboard() {
       return `<line x1="${padX}" y1="${gy}" x2="${padX + chartW}" y2="${gy}" stroke="#e7e5e4" stroke-width="1" />`;
     }).join('');
 
+    const hitCircles = series.map((s, i) => {
+      const cx = x(i);
+      const cyDau = y(s.dauCount);
+      const cyMau = y(s.mauRolling30dCount);
+      const cyHit = (cyDau + cyMau) / 2;
+      return `
+        <circle class="analytics-line-dot" cx="${cx}" cy="${cyDau}" r="3" fill="#16a34a" />
+        <circle class="analytics-line-dot" cx="${cx}" cy="${cyMau}" r="3" fill="#2563eb" />
+        <circle class="analytics-line-hit" data-index="${i}" cx="${cx}" cy="${cyHit}" r="14" fill="transparent" />
+      `;
+    }).join('');
+
     svg.innerHTML = `
       ${grid}
       <path d="${mauPath}" fill="none" stroke="#2563eb" stroke-width="2.2" />
       <path d="${dauPath}" fill="none" stroke="#16a34a" stroke-width="2.2" />
-      <circle cx="${x(series.length - 1)}" cy="${y(series[series.length - 1].dauCount)}" r="3.5" fill="#16a34a" />
-      <circle cx="${x(series.length - 1)}" cy="${y(series[series.length - 1].mauRolling30dCount)}" r="3.5" fill="#2563eb" />
+      ${hitCircles}
     `;
+
+    bindLineChartHover(svg, tooltip, series, (point) => `
+      <div><strong>${esc(point.date)}</strong></div>
+      <div>DAU: ${Number(point.dauCount || 0).toLocaleString()}</div>
+      <div>MAU: ${Number(point.mauRolling30dCount || 0).toLocaleString()}</div>
+    `);
 
     const first = series[0];
     const last = series[series.length - 1];
-    caption.textContent = `녹색=DAU, 파란색=MAU(30일). ${first.date} 대비 ${last.date} 구간 추이입니다.`;
+    caption.textContent = `${first.date} ~ ${last.date} · 포인트에 마우스를 올리면 수치를 볼 수 있습니다.`;
+  }
+
+  function renderInstallLandingKpi(summary) {
+    const elHits = document.getElementById('install-today-hits');
+    if (!elHits) return;
+    document.getElementById('install-today-hits').textContent = Number(summary.todayHits || 0).toLocaleString();
+    document.getElementById('install-today-unique').textContent = summary.uniqueAvailable
+      ? Number(summary.todayUnique || 0).toLocaleString()
+      : '-';
+    document.getElementById('install-range-hits').textContent = Number(summary.rangeHits || 0).toLocaleString();
+    document.getElementById('install-today-platform').textContent =
+      `${Number(summary.todayIos || 0)} / ${Number(summary.todayAndroid || 0)} / ${Number(summary.todayOther || 0)}`;
+  }
+
+  function renderInstallLandingChart(series, summary) {
+    const svg = document.getElementById('install-landing-chart');
+    const caption = document.getElementById('install-landing-caption');
+    const tooltip = document.getElementById('install-landing-tooltip');
+    if (!svg || !caption) return;
+    if (!Array.isArray(series) || series.length === 0) {
+      svg.innerHTML = '';
+      if (tooltip) tooltip.hidden = true;
+      caption.textContent = '아직 /get 방문 데이터가 없습니다. 링크가 눌리면 여기에 쌓입니다.';
+      return;
+    }
+
+    const width = 640;
+    const height = 240;
+    const padX = 28;
+    const padTop = 16;
+    const padBottom = 28;
+    const chartW = width - padX * 2;
+    const chartH = height - padTop - padBottom;
+    const maxValue = Math.max(
+      1,
+      ...series.map((s) => Number(s.hits || 0)),
+      ...series.map((s) => Number(s.uniqueVisitors || 0)),
+    );
+    const x = (i) => padX + (chartW * i) / Math.max(1, series.length - 1);
+    const y = (v) => padTop + chartH - (chartH * Number(v || 0)) / maxValue;
+
+    const hitsPath = series.map((s, i) => `${i === 0 ? 'M' : 'L'} ${x(i)} ${y(s.hits)}`).join(' ');
+    const uvPath = series.map((s, i) => `${i === 0 ? 'M' : 'L'} ${x(i)} ${y(s.uniqueVisitors)}`).join(' ');
+    const grid = [0.25, 0.5, 0.75, 1].map((ratio) => {
+      const gy = padTop + chartH - chartH * ratio;
+      return `<line x1="${padX}" y1="${gy}" x2="${padX + chartW}" y2="${gy}" stroke="#e7e5e4" stroke-width="1" />`;
+    }).join('');
+    const hitCircles = series.map((s, i) => {
+      const cx = x(i);
+      const cy = y(s.hits);
+      return `
+        <circle cx="${cx}" cy="${cy}" r="3" fill="#7c3aed" />
+        <circle cx="${cx}" cy="${y(s.uniqueVisitors)}" r="3" fill="#ea580c" />
+        <circle class="analytics-line-hit" data-index="${i}" cx="${cx}" cy="${cy}" r="14" fill="transparent" />
+      `;
+    }).join('');
+
+    svg.innerHTML = `
+      ${grid}
+      <path d="${hitsPath}" fill="none" stroke="#7c3aed" stroke-width="2.2" />
+      <path d="${uvPath}" fill="none" stroke="#ea580c" stroke-width="2.2" />
+      ${hitCircles}
+    `;
+
+    bindLineChartHover(svg, tooltip, series, (point) => `
+      <div><strong>${esc(point.date)}</strong></div>
+      <div>방문: ${Number(point.hits || 0).toLocaleString()}회</div>
+      <div>UV: ${Number(point.uniqueVisitors || 0).toLocaleString()}</div>
+      <div>iOS ${Number(point.ios || 0)} · Android ${Number(point.android || 0)} · 기타 ${Number(point.other || 0)}</div>
+    `);
+
+    const first = series[0];
+    const last = series[series.length - 1];
+    const uvNote = summary.uniqueAvailable
+      ? 'UV는 Redis HyperLogLog 근사치입니다.'
+      : 'UV는 Redis 미설정으로 표시되지 않습니다.';
+    caption.textContent = `${first.date} ~ ${last.date} · ${uvNote}`;
   }
 
   function renderAnalyticsHeatmap(heatmapWeekly) {

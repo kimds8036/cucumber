@@ -1,4 +1,5 @@
 import express from 'express';
+import { recordInstallLandingVisit } from '../services/installLandingStats.service.js';
 import { resolveStoreUrl } from '../utils/storeUrls.js';
 
 const router = express.Router();
@@ -185,6 +186,16 @@ function handleInstallLanding(req, res) {
       : !isCrawler && platform === 'android'
         ? androidUrl
         : '';
+
+  if (!isCrawler) {
+    // 응답 지연 없이 집계 (실패해도 랜딩은 정상 제공)
+    void recordInstallLandingVisit(req, platform).catch((error) => {
+      console.warn(
+        '[InstallLanding] 방문 집계 실패:',
+        error?.message || error,
+      );
+    });
+  }
 
   res.set('Content-Type', 'text/html; charset=utf-8');
   res.set(
