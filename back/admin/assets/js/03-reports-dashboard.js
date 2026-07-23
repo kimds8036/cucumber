@@ -37,19 +37,15 @@ async function loadDashboard() {
     window.__lastInstallLandingStats = { data };
     renderInstallLandingKpi(data?.summary || {});
     renderInstallLandingChart(data?.series || [], data?.summary || {});
+    renderInstallHourChart(data?.byHour || []);
+    renderInstallDowChart(data?.byDow || []);
   }
 
   function renderAnalyticsKpi(summary) {
     const latestDau = Number(summary.latestDau || 0);
     const latestMau = Number(summary.latestMauRolling30d || 0);
-    const avgDau = Number(summary.avgDau || 0);
-    const trend = Number(summary.dauTrendPct);
     document.getElementById('analytics-latest-dau').textContent = latestDau.toLocaleString();
     document.getElementById('analytics-latest-mau').textContent = latestMau.toLocaleString();
-    document.getElementById('analytics-avg-dau').textContent = avgDau.toLocaleString();
-    document.getElementById('analytics-trend').textContent = Number.isFinite(trend)
-      ? `${trend > 0 ? '+' : ''}${trend}%`
-      : '-';
   }
 
   function bindLineChartHover(svg, tooltipEl, points, buildHtml) {
@@ -70,14 +66,78 @@ async function loadDashboard() {
         const vb = svg.viewBox.baseVal;
         const rect = svg.getBoundingClientRect();
         const wrapRect = wrap.getBoundingClientRect();
-        const px = rect.left - wrapRect.left + (cx / vb.width) * rect.width;
-        const py = rect.top - wrapRect.top + (cy / vb.height) * rect.height;
+        const scale = Math.min(rect.width / vb.width, rect.height / vb.height);
+        const offsetX = (rect.width - vb.width * scale) / 2;
+        const offsetY = (rect.height - vb.height * scale) / 2;
+        const px = rect.left - wrapRect.left + offsetX + cx * scale;
+        const py = rect.top - wrapRect.top + offsetY + cy * scale;
         tooltipEl.style.left = `${px}px`;
         tooltipEl.style.top = `${py}px`;
       });
       el.addEventListener('mouseleave', hide);
     });
     svg.addEventListener('mouseleave', hide);
+  }
+
+  function buildLineChartSvg({
+    series,
+    seriesA,
+    seriesB,
+    colorA,
+    colorB,
+    formatTick,
+  }) {
+    const width = 640;
+    const height = 260;
+    const padL = 44;
+    const padR = 16;
+    const padTop = 16;
+    const padBottom = 36;
+    const chartW = width - padL - padR;
+    const chartH = height - padTop - padBottom;
+    const valuesA = series.map(seriesA);
+    const valuesB = series.map(seriesB);
+    const maxValue = Math.max(1, ...valuesA, ...valuesB);
+    const x = (i) => padL + (chartW * i) / Math.max(1, series.length - 1);
+    const y = (v) => padTop + chartH - (chartH * Number(v || 0)) / maxValue;
+
+    const pathA = valuesA.map((v, i) => `${i === 0 ? 'M' : 'L'} ${x(i).toFixed(1)} ${y(v).toFixed(1)}`).join(' ');
+    const pathB = valuesB.map((v, i) => `${i === 0 ? 'M' : 'L'} ${x(i).toFixed(1)} ${y(v).toFixed(1)}`).join(' ');
+
+    const grid = [0, 0.5, 1].map((ratio) => {
+      const gy = padTop + chartH - chartH * ratio;
+      const label = Math.round(maxValue * ratio).toLocaleString();
+      return `
+        <line x1="${padL}" y1="${gy}" x2="${padL + chartW}" y2="${gy}" stroke="#e7e5e4" stroke-width="1" />
+        <text x="${padL - 6}" y="${gy + 3}" text-anchor="end" fill="#a8a29e" font-size="10">${label}</text>
+      `;
+    }).join('');
+
+    const tickStep = series.length > 10 ? 2 : 1;
+    const xTicks = series.map((s, i) => {
+      if (i % tickStep !== 0 && i !== series.length - 1) return '';
+      const label = formatTick ? formatTick(s, i) : String(s.date || '').slice(5);
+      return `<text x="${x(i)}" y="${height - 10}" text-anchor="middle" fill="#a8a29e" font-size="10">${esc(label)}</text>`;
+    }).join('');
+
+    const hits = series.map((_, i) => {
+      const cx = x(i);
+      const cyA = y(valuesA[i]);
+      const cyB = y(valuesB[i]);
+      return `
+        <circle cx="${cx}" cy="${cyA}" r="3.2" fill="${colorA}" />
+        <circle cx="${cx}" cy="${cyB}" r="3.2" fill="${colorB}" />
+        <circle class="analytics-line-hit" data-index="${i}" cx="${cx}" cy="${(cyA + cyB) / 2}" r="12" fill="transparent" />
+      `;
+    }).join('');
+
+    return `
+      ${grid}
+      <path d="${pathB}" fill="none" stroke="${colorB}" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round" />
+      <path d="${pathA}" fill="none" stroke="${colorA}" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round" />
+      ${hits}
+      ${xTicks}
+    `;
   }
 
   function renderAnalyticsLineChart(series) {
@@ -92,47 +152,16 @@ async function loadDashboard() {
       return;
     }
 
-    const width = 640;
-    const height = 240;
-    const padX = 28;
-    const padTop = 16;
-    const padBottom = 28;
-    const chartW = width - padX * 2;
-    const chartH = height - padTop - padBottom;
-    const maxValue = Math.max(
-      1,
-      ...series.map((s) => Number(s.dauCount || 0)),
-      ...series.map((s) => Number(s.mauRolling30dCount || 0)),
-    );
-    const x = (i) => padX + (chartW * i) / Math.max(1, series.length - 1);
-    const y = (v) => padTop + chartH - (chartH * Number(v || 0)) / maxValue;
-
-    const dauPath = series.map((s, i) => `${i === 0 ? 'M' : 'L'} ${x(i)} ${y(s.dauCount)}`).join(' ');
-    const mauPath = series.map((s, i) => `${i === 0 ? 'M' : 'L'} ${x(i)} ${y(s.mauRolling30dCount)}`).join(' ');
-
-    const grid = [0.25, 0.5, 0.75, 1].map((ratio) => {
-      const gy = padTop + chartH - chartH * ratio;
-      return `<line x1="${padX}" y1="${gy}" x2="${padX + chartW}" y2="${gy}" stroke="#e7e5e4" stroke-width="1" />`;
-    }).join('');
-
-    const hitCircles = series.map((s, i) => {
-      const cx = x(i);
-      const cyDau = y(s.dauCount);
-      const cyMau = y(s.mauRolling30dCount);
-      const cyHit = (cyDau + cyMau) / 2;
-      return `
-        <circle class="analytics-line-dot" cx="${cx}" cy="${cyDau}" r="3" fill="#16a34a" />
-        <circle class="analytics-line-dot" cx="${cx}" cy="${cyMau}" r="3" fill="#2563eb" />
-        <circle class="analytics-line-hit" data-index="${i}" cx="${cx}" cy="${cyHit}" r="14" fill="transparent" />
-      `;
-    }).join('');
-
-    svg.innerHTML = `
-      ${grid}
-      <path d="${mauPath}" fill="none" stroke="#2563eb" stroke-width="2.2" />
-      <path d="${dauPath}" fill="none" stroke="#16a34a" stroke-width="2.2" />
-      ${hitCircles}
-    `;
+    svg.setAttribute('viewBox', '0 0 640 260');
+    svg.setAttribute('preserveAspectRatio', 'xMidYMid meet');
+    svg.innerHTML = buildLineChartSvg({
+      series,
+      seriesA: (s) => Number(s.dauCount || 0),
+      seriesB: (s) => Number(s.mauRolling30dCount || 0),
+      colorA: '#16a34a',
+      colorB: '#2563eb',
+      formatTick: (s) => String(s.date || '').slice(5),
+    });
 
     bindLineChartHover(svg, tooltip, series, (point) => `
       <div><strong>${esc(point.date)}</strong></div>
@@ -142,7 +171,7 @@ async function loadDashboard() {
 
     const first = series[0];
     const last = series[series.length - 1];
-    caption.textContent = `${first.date} ~ ${last.date} · 포인트에 마우스를 올리면 수치를 볼 수 있습니다.`;
+    caption.textContent = `${first.date} ~ ${last.date} · 포인트에 마우스를 올리면 수치가 표시됩니다.`;
   }
 
   function renderInstallLandingKpi(summary) {
@@ -165,61 +194,89 @@ async function loadDashboard() {
     if (!Array.isArray(series) || series.length === 0) {
       svg.innerHTML = '';
       if (tooltip) tooltip.hidden = true;
-      caption.textContent = '아직 /get 방문 데이터가 없습니다. 링크가 눌리면 여기에 쌓입니다.';
+      caption.textContent = '아직 /get 방문 데이터가 없습니다.';
       return;
     }
 
-    const width = 640;
-    const height = 240;
-    const padX = 28;
-    const padTop = 16;
-    const padBottom = 28;
-    const chartW = width - padX * 2;
-    const chartH = height - padTop - padBottom;
-    const maxValue = Math.max(
-      1,
-      ...series.map((s) => Number(s.hits || 0)),
-      ...series.map((s) => Number(s.uniqueVisitors || 0)),
-    );
-    const x = (i) => padX + (chartW * i) / Math.max(1, series.length - 1);
-    const y = (v) => padTop + chartH - (chartH * Number(v || 0)) / maxValue;
-
-    const hitsPath = series.map((s, i) => `${i === 0 ? 'M' : 'L'} ${x(i)} ${y(s.hits)}`).join(' ');
-    const uvPath = series.map((s, i) => `${i === 0 ? 'M' : 'L'} ${x(i)} ${y(s.uniqueVisitors)}`).join(' ');
-    const grid = [0.25, 0.5, 0.75, 1].map((ratio) => {
-      const gy = padTop + chartH - chartH * ratio;
-      return `<line x1="${padX}" y1="${gy}" x2="${padX + chartW}" y2="${gy}" stroke="#e7e5e4" stroke-width="1" />`;
-    }).join('');
-    const hitCircles = series.map((s, i) => {
-      const cx = x(i);
-      const cy = y(s.hits);
-      return `
-        <circle cx="${cx}" cy="${cy}" r="3" fill="#7c3aed" />
-        <circle cx="${cx}" cy="${y(s.uniqueVisitors)}" r="3" fill="#ea580c" />
-        <circle class="analytics-line-hit" data-index="${i}" cx="${cx}" cy="${cy}" r="14" fill="transparent" />
-      `;
-    }).join('');
-
-    svg.innerHTML = `
-      ${grid}
-      <path d="${hitsPath}" fill="none" stroke="#7c3aed" stroke-width="2.2" />
-      <path d="${uvPath}" fill="none" stroke="#ea580c" stroke-width="2.2" />
-      ${hitCircles}
-    `;
+    svg.setAttribute('viewBox', '0 0 640 260');
+    svg.setAttribute('preserveAspectRatio', 'xMidYMid meet');
+    svg.innerHTML = buildLineChartSvg({
+      series,
+      seriesA: (s) => Number(s.hits || 0),
+      seriesB: (s) => Number(s.uniqueVisitors || 0),
+      colorA: '#0f766e',
+      colorB: '#c2410c',
+      formatTick: (s) => String(s.date || '').slice(5),
+    });
 
     bindLineChartHover(svg, tooltip, series, (point) => `
       <div><strong>${esc(point.date)}</strong></div>
       <div>방문: ${Number(point.hits || 0).toLocaleString()}회</div>
       <div>UV: ${Number(point.uniqueVisitors || 0).toLocaleString()}</div>
-      <div>iOS ${Number(point.ios || 0)} · Android ${Number(point.android || 0)} · 기타 ${Number(point.other || 0)}</div>
+      <div>iOS ${Number(point.ios || 0)} · AOS ${Number(point.android || 0)} · 기타 ${Number(point.other || 0)}</div>
     `);
 
     const first = series[0];
     const last = series[series.length - 1];
-    const uvNote = summary.uniqueAvailable
-      ? 'UV는 Redis HyperLogLog 근사치입니다.'
-      : 'UV는 Redis 미설정으로 표시되지 않습니다.';
+    const uvNote = summary.uniqueAvailable ? 'UV는 Redis 근사치' : 'UV는 Redis 미설정';
     caption.textContent = `${first.date} ~ ${last.date} · ${uvNote}`;
+  }
+
+  function renderDashBarChart(containerId, values, labels, { color = '#0f766e', emptyText = '데이터 없음' } = {}) {
+    const wrap = document.getElementById(containerId);
+    if (!wrap) return;
+    const nums = Array.isArray(values) ? values.map((v) => Number(v || 0)) : [];
+    if (!nums.length) {
+      wrap.innerHTML = `<div class="txt-muted" style="font-size:12px;padding:24px 8px;">${esc(emptyText)}</div>`;
+      return;
+    }
+    const max = Math.max(1, ...nums);
+    wrap.innerHTML = nums.map((value, i) => {
+      const pct = Math.max(value > 0 ? 4 : 2, (value / max) * 100);
+      const label = labels?.[i] ?? String(i);
+      return `
+        <div class="dash-bar-col" title="${esc(label)}: ${value.toLocaleString()}회">
+          <div class="dash-bar-fill" style="height:${pct.toFixed(1)}%;background:${color}"></div>
+          <div class="dash-bar-label">${esc(label)}</div>
+        </div>
+      `;
+    }).join('');
+  }
+
+  function renderInstallHourChart(byHour) {
+    const caption = document.getElementById('install-hour-caption');
+    const values = Array.isArray(byHour) && byHour.length === 24
+      ? byHour
+      : new Array(24).fill(0);
+    const labels = values.map((_, hour) => (hour % 3 === 0 ? String(hour).padStart(2, '0') : ''));
+    renderDashBarChart('install-hour-chart', values, labels, {
+      color: '#0f766e',
+      emptyText: '시간대 집계가 아직 없습니다.',
+    });
+    if (caption) {
+      const total = values.reduce((s, v) => s + Number(v || 0), 0);
+      const peak = values.reduce((best, v, i) => (v > (values[best] || 0) ? i : best), 0);
+      caption.textContent = total > 0
+        ? `합계 ${total.toLocaleString()}회 · 피크 ${String(peak).padStart(2, '0')}시`
+        : '배포·마이그레이션 이후 방문부터 시간대가 쌓입니다.';
+    }
+  }
+
+  function renderInstallDowChart(byDow) {
+    const caption = document.getElementById('install-dow-caption');
+    const days = ['일', '월', '화', '수', '목', '금', '토'];
+    const values = Array.isArray(byDow) && byDow.length === 7 ? byDow : new Array(7).fill(0);
+    renderDashBarChart('install-dow-chart', values, days, {
+      color: '#1d4ed8',
+      emptyText: '요일 집계가 아직 없습니다.',
+    });
+    if (caption) {
+      const total = values.reduce((s, v) => s + Number(v || 0), 0);
+      const peak = values.reduce((best, v, i) => (v > (values[best] || 0) ? i : best), 0);
+      caption.textContent = total > 0
+        ? `합계 ${total.toLocaleString()}회 · ${days[peak]}요일이 가장 많음`
+        : '일별 방문이 쌓이면 요일 분포가 표시됩니다.';
+    }
   }
 
   function renderAnalyticsHeatmap(heatmapWeekly) {

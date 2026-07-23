@@ -27,41 +27,51 @@
           </div>
         </div>
 
-        <div class="section-title">서비스 이용 분석 (학생 활동 · 익명 집계)</div>
-        <p class="section-hint">개인 식별 정보 없이 집계된 데이터입니다. 선 그래프는 최근 흐름, 히트맵은 요일·시간대별 접속 집중도를 보여줍니다.</p>
-        <div class="analytics-kpi-grid">
+        <div class="section-title">서비스 이용 · 설치 링크</div>
+        <p class="section-hint">학생 앱 활성(DAU/MAU)과 광고·인스타 <code>/get</code> 방문 집계입니다. 크롤러 미리보기는 제외됩니다.</p>
+
+        <div class="analytics-kpi-grid dash-kpi-compact">
           <div class="stat-card stat-ok">
             <div class="stat-num" id="analytics-latest-dau">0</div>
             <div class="stat-label">어제 DAU</div>
           </div>
           <div class="stat-card">
             <div class="stat-num" id="analytics-latest-mau">0</div>
-            <div class="stat-label">최근 30일 MAU</div>
+            <div class="stat-label">30일 MAU</div>
           </div>
-          <div class="stat-card stat-warn">
-            <div class="stat-num" id="analytics-avg-dau">0</div>
-            <div class="stat-label">최근 평균 DAU</div>
+          <div class="stat-card stat-ok">
+            <div class="stat-num" id="install-today-hits">0</div>
+            <div class="stat-label">오늘 /get 방문</div>
           </div>
           <div class="stat-card">
-            <div class="stat-num" id="analytics-trend">-</div>
-            <div class="stat-label">최근 추세(%)</div>
+            <div class="stat-num" id="install-today-unique">0</div>
+            <div class="stat-label">오늘 /get UV</div>
+          </div>
+          <div class="stat-card stat-warn">
+            <div class="stat-num" id="install-range-hits">0</div>
+            <div class="stat-label">14일 /get 합계</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-num" id="install-today-platform">-</div>
+            <div class="stat-label">오늘 iOS / AOS / 기타</div>
           </div>
         </div>
+
         <div class="analytics-grid">
           <div class="analytics-card">
-            <div class="analytics-card-title">최근 14일 활성 사용자 추이 (DAU / MAU)</div>
-            <div class="analytics-line-legend" id="analytics-line-legend" aria-hidden="false">
+            <div class="analytics-card-title">활성 사용자 추이 (DAU / MAU · 14일)</div>
+            <div class="analytics-line-legend">
               <span class="analytics-line-legend-item"><i class="analytics-line-swatch analytics-line-swatch-dau"></i>DAU</span>
-              <span class="analytics-line-legend-item"><i class="analytics-line-swatch analytics-line-swatch-mau"></i>MAU (30일)</span>
+              <span class="analytics-line-legend-item"><i class="analytics-line-swatch analytics-line-swatch-mau"></i>MAU</span>
             </div>
             <div class="analytics-line-wrap">
-              <svg id="analytics-line-chart" class="analytics-line-chart" viewBox="0 0 640 240" preserveAspectRatio="none"></svg>
+              <svg id="analytics-line-chart" class="analytics-line-chart" viewBox="0 0 640 260" preserveAspectRatio="xMidYMid meet"></svg>
               <div class="analytics-line-tooltip" id="analytics-line-tooltip" hidden></div>
             </div>
             <div class="analytics-caption" id="analytics-line-caption">데이터를 불러오는 중...</div>
           </div>
           <div class="analytics-card">
-            <div class="analytics-card-title">시간대별 접속 히트맵 (최근 집계)</div>
+            <div class="analytics-card-title">앱 접속 집중도 (요일 × 시간)</div>
             <div class="analytics-heatmap-wrap" id="analytics-heatmap"></div>
             <div class="analytics-legend">
               <span>적음</span>
@@ -71,64 +81,39 @@
           </div>
         </div>
 
-        <div class="analytics-grid analytics-screen-grid">
+        <div class="analytics-grid">
           <div class="analytics-card">
-            <div class="analytics-card-title">인기 화면 (최근 집계)</div>
+            <div class="analytics-card-title">/get 방문 추이 (14일)</div>
+            <div class="analytics-line-legend">
+              <span class="analytics-line-legend-item"><i class="analytics-line-swatch" style="background:#0f766e"></i>방문</span>
+              <span class="analytics-line-legend-item"><i class="analytics-line-swatch" style="background:#c2410c"></i>UV</span>
+            </div>
+            <div class="analytics-line-wrap">
+              <svg id="install-landing-chart" class="analytics-line-chart" viewBox="0 0 640 260" preserveAspectRatio="xMidYMid meet"></svg>
+              <div class="analytics-line-tooltip" id="install-landing-tooltip" hidden></div>
+            </div>
+            <div class="analytics-caption" id="install-landing-caption">데이터를 불러오는 중...</div>
+          </div>
+          <div class="analytics-card">
+            <div class="analytics-card-title">인기 화면</div>
             <div class="analytics-screen-bars" id="analytics-screen-bars"></div>
             <div class="analytics-caption" id="analytics-screen-caption">데이터를 불러오는 중...</div>
+            <div class="analytics-screen-hour-toolbar" id="analytics-screen-hour-toolbar" style="margin-top:10px;"></div>
+            <div class="analytics-screen-hour-chart" id="analytics-screen-hour-chart"></div>
+            <div class="analytics-caption" id="analytics-screen-hour-caption">화면을 고르면 시간대 분포가 표시됩니다.</div>
+          </div>
+        </div>
+
+        <div class="analytics-grid">
+          <div class="analytics-card">
+            <div class="analytics-card-title">/get 시간대별 방문 (KST · 최근 14일 합)</div>
+            <div class="dash-bar-chart" id="install-hour-chart"></div>
+            <div class="analytics-caption" id="install-hour-caption">시간대 데이터 대기 중...</div>
           </div>
           <div class="analytics-card">
-            <div class="analytics-card-title">화면별 시간대 분포 (24시간)</div>
-            <div class="analytics-screen-hour-toolbar" id="analytics-screen-hour-toolbar"></div>
-            <div class="analytics-screen-hour-chart" id="analytics-screen-hour-chart"></div>
-            <div class="analytics-caption" id="analytics-screen-hour-caption">화면을 선택하면 시간대별 조회 분포를 보여줍니다.</div>
-          </div>
-        </div>
-
-        <div class="section-title">설치 분기 링크 (/get) 방문</div>
-        <p class="section-hint">인스타·광고 등에서 <code>/get</code> 링크를 눌러 들어온 횟수입니다. 미리보기 봇(크롤러)은 제외합니다. UV는 IP+UA 해시 기준 근사치입니다.</p>
-        <div class="analytics-kpi-grid">
-          <div class="stat-card stat-ok">
-            <div class="stat-num" id="install-today-hits">0</div>
-            <div class="stat-label">오늘 방문 횟수</div>
-          </div>
-          <div class="stat-card">
-            <div class="stat-num" id="install-today-unique">0</div>
-            <div class="stat-label">오늘 추정 방문자(UV)</div>
-          </div>
-          <div class="stat-card stat-warn">
-            <div class="stat-num" id="install-range-hits">0</div>
-            <div class="stat-label">최근 14일 방문 합계</div>
-          </div>
-          <div class="stat-card">
-            <div class="stat-num" id="install-today-platform">-</div>
-            <div class="stat-label">오늘 iOS / Android / 기타</div>
-          </div>
-        </div>
-        <div class="analytics-card" style="margin-bottom:20px;">
-          <div class="analytics-card-title">최근 14일 /get 방문 추이</div>
-          <div class="analytics-line-legend">
-            <span class="analytics-line-legend-item"><i class="analytics-line-swatch" style="background:#7c3aed"></i>방문 횟수</span>
-            <span class="analytics-line-legend-item"><i class="analytics-line-swatch" style="background:#ea580c"></i>추정 UV</span>
-          </div>
-          <div class="analytics-line-wrap">
-            <svg id="install-landing-chart" class="analytics-line-chart" viewBox="0 0 640 240" preserveAspectRatio="none"></svg>
-            <div class="analytics-line-tooltip" id="install-landing-tooltip" hidden></div>
-          </div>
-          <div class="analytics-caption" id="install-landing-caption">데이터를 불러오는 중...</div>
-        </div>
-
-        <div class="section-title">자동화 정책 상태</div>
-        <div class="policy-grid">
-          <div class="policy-card">
-            <div class="policy-label">일일 신고 한도 정책 (5회/일)</div>
-            <div class="policy-bar-track"><div class="policy-bar-fill" style="width:100%"></div></div>
-            <div class="policy-status">정상 작동 중</div>
-          </div>
-          <div class="policy-card">
-            <div class="policy-label">자동 숨김 임계치 (게시글 신고 3회)</div>
-            <div class="policy-bar-track"><div class="policy-bar-fill" style="width:100%"></div></div>
-            <div class="policy-status">정상 작동 중</div>
+            <div class="analytics-card-title">/get 요일별 방문 (최근 14일 합)</div>
+            <div class="dash-bar-chart dash-bar-chart--dow" id="install-dow-chart"></div>
+            <div class="analytics-caption" id="install-dow-caption">요일 데이터 대기 중...</div>
           </div>
         </div>
 

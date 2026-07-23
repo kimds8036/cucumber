@@ -49,12 +49,20 @@ function uvRedisKey(statDate, platform = null) {
   return `install:get:uv:${statDate}`;
 }
 
+/** KST 요일 0=일 … 6=토 */
+function kstDowFromYmd(ymd) {
+  const d = new Date(`${ymd}T12:00:00+09:00`);
+  return d.getDay();
+}
+
 /**
  * /get · /install 방문 1건 기록 (크롤러 제외, fire-and-forget 가능).
  */
 export async function recordInstallLandingVisit(req, platform) {
   const safePlatform = normalizePlatform(platform);
-  const statDate = formatKstDateYmd(getKstNow());
+  const kst = getKstNow();
+  const statDate = formatKstDateYmd(kst);
+  const hourKst = Math.max(0, Math.min(23, kst.getHours()));
   const visitorKey = hashVisitorKey(req);
 
   await pool.execute(
@@ -64,8 +72,30 @@ export async function recordInstallLandingVisit(req, platform) {
     [statDate, safePlatform],
   );
 
+  try {
+    await pool.execute(
+      `INSERT INTO install_landing_hourly_stats (stat_date, hour_kst, hit_count)
+       VALUES (?, ?, 1)
+       ON DUPLICATE KEY UPDATE hit_count = hit_count + 1`,
+      [statDate, hourKst],
+    );
+  } catch (error) {
+    if (error?.code !== 'ER_NO_SUCH_TABLE') {
+      console.warn(
+        '[InstallLandingStats] 시간대 집계 실패:',
+        error?.message || error,
+      );
+    }
+  }
+
   if (!isRedisConfigured()) {
-    return { recorded: true, uniqueTracked: false, statDate, platform: safePlatform };
+    return {
+      recorded: true,
+      uniqueTracked: false,
+      statDate,
+      platform: safePlatform,
+      hourKst,
+    };
   }
 
   try {
@@ -76,36 +106,41 @@ export async function recordInstallLandingVisit(req, platform) {
     pipe.pfadd(uvRedisKey(statDate, safePlatform), visitorKey);
     pipe.expire(uvRedisKey(statDate, safePlatform), UV_TTL_SECONDS);
     await pipe.exec();
-    return { recorded: true, uniqueTracked: true, statDate, platform: safePlatform };
+    return {
+      recorded: true,
+      uniqueTracked: true,
+      statDate,
+      platform: safePlatform,
+      hourKst,
+    };
   } catch (error) {
     console.warn(
       '[InstallLandingStats] UV Redis 기록 실패:',
       error?.message || error,
     );
-    return { recorded: true, uniqueTracked: false, statDate, platform: safePlatform };
+    return {
+      recorded: true,
+      uniqueTracked: false,
+      statDate,
+      platform: safePlatform,
+      hourKst,
+    };
   }
 }
 
 async function readUniqueCounts(statDates) {
   const empty = {
     byDate: Object.fromEntries(statDates.map((d) => [d, 0])),
-    byDatePlatform: {},
   };
   if (!isRedisConfigured() || !statDates.length) return empty;
 
   try {
     const redis = await getBatchRedis();
     const byDate = {};
-    const byDatePlatform = {};
     for (const date of statDates) {
       byDate[date] = toNumber(await redis.pfcount(uvRedisKey(date)), 0);
-      byDatePlatform[date] = {
-        ios: toNumber(await redis.pfcount(uvRedisKey(date, 'ios')), 0),
-        android: toNumber(await redis.pfcount(uvRedisKey(date, 'android')), 0),
-        other: toNumber(await redis.pfcount(uvRedisKey(date, 'other')), 0),
-      };
     }
-    return { byDate, byDatePlatform };
+    return { byDate };
   } catch {
     return empty;
   }
@@ -167,7 +202,32 @@ export async function getInstallLandingStatsOverview({ days = 14 } = {}) {
     android: hitByDatePlatform[date]?.android || 0,
     other: hitByDatePlatform[date]?.other || 0,
     uniqueVisitors: unique.byDate?.[date] || 0,
+    dow: kstDowFromYmd(date),
   }));
+
+  const byHour = new Array(24).fill(0);
+  try {
+    const [hourRows] = await pool.execute(
+      `SELECT hour_kst, SUM(hit_count) AS hits
+       FROM install_landing_hourly_stats
+       WHERE stat_date BETWEEN ? AND ?
+       GROUP BY hour_kst`,
+      [startDate, today],
+    );
+    for (const row of hourRows) {
+      const hour = Number(row.hour_kst);
+      if (hour >= 0 && hour <= 23) {
+        byHour[hour] = toNumber(row.hits);
+      }
+    }
+  } catch (error) {
+    if (error?.code !== 'ER_NO_SUCH_TABLE') throw error;
+  }
+
+  const byDow = new Array(7).fill(0);
+  for (const row of series) {
+    byDow[row.dow] += toNumber(row.hits);
+  }
 
   const sumHits = (picker) =>
     series.reduce((sum, row) => sum + toNumber(picker(row)), 0);
@@ -196,5 +256,7 @@ export async function getInstallLandingStatsOverview({ days = 14 } = {}) {
       uniqueAvailable: isRedisConfigured(),
     },
     series,
+    byHour,
+    byDow,
   };
 }
