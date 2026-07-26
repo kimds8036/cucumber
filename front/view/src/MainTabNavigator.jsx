@@ -1,6 +1,7 @@
 import React, { useEffect, useRef } from 'react';
 import { View } from 'react-native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
+import { useIsFocused } from '@react-navigation/native';
 import MainFooter from '../frame/mainFooter';
 import BoardTab from './tabs/BoardTab';
 import MessageTab from './tabs/MessageTab';
@@ -47,13 +48,43 @@ export default function MainTabNavigator({
   onActiveTabChange,
 }) {
   const tabNavigationRef = useRef(null);
+  /**
+   * 푸시/토스트가 Main 위에 Friends·BoardDetail 등을 올린 뒤,
+   * 언포커스된 Main 안에서 탭 navigate 하면 RN이 Main을 다시 포커스해
+   * 상세 화면이 바로 가려지는 문제가 있다. → 포커스될 때만 탭 전환.
+   */
+  const pendingTabRef = useRef(null);
+  const isFocused = useIsFocused();
 
   useEffect(() => {
     const requestedTab = route?.params?.screen ?? route?.params?.initialTab;
     if (!MAIN_TAB_KEYS.has(requestedTab)) return;
-    tabNavigationRef.current?.navigate(requestedTab);
+
+    pendingTabRef.current = requestedTab;
     stackNavigation.setParams({ initialTab: undefined, screen: undefined });
-  }, [route?.params?.screen, route?.params?.initialTab, stackNavigation]);
+
+    if (!isFocused) return;
+
+    const tab = pendingTabRef.current;
+    pendingTabRef.current = null;
+    // 탭 navigator ref 가 같은 틱에 준비되도록 한 프레임 양보
+    requestAnimationFrame(() => {
+      tabNavigationRef.current?.navigate(tab);
+    });
+  }, [
+    route?.params?.screen,
+    route?.params?.initialTab,
+    stackNavigation,
+    isFocused,
+  ]);
+
+  useEffect(() => {
+    if (!isFocused) return;
+    const tab = pendingTabRef.current;
+    if (!tab || !MAIN_TAB_KEYS.has(tab)) return;
+    pendingTabRef.current = null;
+    tabNavigationRef.current?.navigate(tab);
+  }, [isFocused]);
 
   return (
     <Tab.Navigator

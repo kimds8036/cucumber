@@ -27,6 +27,10 @@ export function resolveMainTabForPush(name = '', relatedType = '') {
 /**
  * 알림/딥링크 진입 시 Main(목록 탭) 아래에 상세 화면이 깔리도록 스택 구성.
  * reset + setTimeout navigate 대신 단일 reset으로 race를 제거한다.
+ *
+ * 주의: Main 에 initialTab 을 실어 reset 한 뒤, Main 이 언포커스인 상태에서
+ * 탭 navigate 를 즉시 호출하면 RN 이 Main 을 다시 포커스해 상세가 가려진다.
+ * → MainTabNavigator 에서 pending tab 으로 포커스 시에만 탭 전환.
  */
 export function buildPushStackRoutes({ name, params, relatedType }) {
   const targetName = String(name || '').trim();
