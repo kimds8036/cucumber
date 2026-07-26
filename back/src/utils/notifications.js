@@ -3,7 +3,8 @@ import pool from '../config/database.js';
 const DEDUPE_WINDOW_MINUTES = 5;
 
 /**
- * 큐 재시도 등으로 동일 알림이 중복 INSERT 되지 않도록 최근 건 조회
+ * 큐 재시도 등으로 동일 알림이 중복 INSERT 되지 않도록 최근 건 조회.
+ * sourceId 가 있는 이벤트(댓글·채팅 메시지 등)는 호출부에서 스킵한다.
  */
 async function findRecentDuplicateNotification({
   userId,
@@ -39,6 +40,8 @@ async function findRecentDuplicateNotification({
 }
 
 /**
+ * @param {object} params
+ * @param {string} [params.sourceId] 이벤트 고유키. 있으면 5분 윈도우 dedupe 생략
  * @returns {{ id: number|null, created: boolean }}
  */
 export async function createNotificationOnce({
@@ -50,20 +53,26 @@ export async function createNotificationOnce({
   relatedType = null,
   relatedId = null,
   watchers = null,
+  sourceId = null,
 }) {
   try {
     if (!userId) return { id: null, created: false };
 
-    const existingId = await findRecentDuplicateNotification({
-      userId,
-      type,
-      category,
-      title,
-      relatedType,
-      relatedId,
-    });
-    if (existingId) {
-      return { id: Number(existingId), created: false };
+    const hasSourceId =
+      sourceId != null && String(sourceId).trim() !== '';
+
+    if (!hasSourceId) {
+      const existingId = await findRecentDuplicateNotification({
+        userId,
+        type,
+        category,
+        title,
+        relatedType,
+        relatedId,
+      });
+      if (existingId) {
+        return { id: Number(existingId), created: false };
+      }
     }
 
     const watchersPayload =

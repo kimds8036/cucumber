@@ -639,6 +639,7 @@ router.post('/personal', authenticate, async (req, res) => {
         body: '새로운 우편이 도착했습니다',
         relatedType: 'personal_mail',
         relatedId: result.insertId,
+        sourceId: `personal_mail:${result.insertId}`,
       });
     }
 
@@ -841,6 +842,7 @@ router.post('/personal/:mailId/reply', authenticate, async (req, res) => {
         body: `${replySenderName} 님이 우편 답장을 보냈습니다`,
         relatedType: 'personal_mail',
         relatedId: result.insertId,
+        sourceId: `personal_mail:${result.insertId}`,
       });
     }
 

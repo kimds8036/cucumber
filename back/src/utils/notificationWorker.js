@@ -31,6 +31,12 @@ export const notificationQueue = new Bull('notifications', {
   },
 });
 
+/**
+ * Bull jobId.
+ * - sourceId 가 있으면(댓글·채팅 메시지 등) 이벤트마다 고유 → 연속 알림 가능
+ * - 없으면 기존처럼 relatedId 기준 (쿡찌르기·요약 등 의도적 묶음)
+ * 재시도 멱등은 job data 의 notificationRecorded/socketEmitted 플래그가 담당.
+ */
 function buildNotificationJobId(params) {
   const parts = [
     params.userId,
@@ -39,6 +45,9 @@ function buildNotificationJobId(params) {
     params.relatedType || '',
     params.relatedId != null ? String(params.relatedId) : '',
   ];
+  if (params.sourceId != null && String(params.sourceId).trim() !== '') {
+    parts.push(String(params.sourceId).trim());
+  }
   return parts.join(':');
 }
 
@@ -52,6 +61,7 @@ notificationQueue.process(async (job) => {
     type: data.type,
     relatedType: data.relatedType,
     relatedId: data.relatedId,
+    sourceId: data.sourceId ?? null,
   });
 
   if (!data.notificationRecorded) {
@@ -64,6 +74,7 @@ notificationQueue.process(async (job) => {
       relatedType: data.relatedType,
       relatedId: data.relatedId,
       watchers: data.watchers,
+      sourceId: data.sourceId,
     });
     if (!id) {
       throw new Error('알림 DB 저장 실패 — 재시도');
@@ -75,6 +86,17 @@ notificationQueue.process(async (job) => {
       notificationCreated: created,
     };
     await job.update(data);
+
+    // 5분 윈도우 중복(쿡찌르기 등): 새 row 없으면 소켓/푸시도 보내지 않음
+    if (!created) {
+      data = { ...data, socketEmitted: true, pushSent: true };
+      await job.update(data);
+      console.log('[NotifQueue] dedupe hit — socket/push skip', {
+        jobId: job.id,
+        notificationId: id,
+      });
+      return;
+    }
   }
 
   if (!data.socketEmitted) {
