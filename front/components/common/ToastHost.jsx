@@ -8,8 +8,41 @@ import {
   isStudySummaryNotification,
   normalizeStudySummaryWatchers,
 } from '../../utils/studySummaryNotification';
+import {
+  isMailReturnedNotification,
+  navigateToResendPersonalMail,
+} from '../../utils/personalMail';
 
 const DM_ICON_COLOR_COUNT = 4;
+
+function buildBoardDetailParams(relatedId) {
+  return {
+    postId: relatedId,
+    post: {
+      id: relatedId,
+      author: '익명',
+      time: '',
+      location: '',
+      content: '',
+      likes: 0,
+      comments: 0,
+    },
+    isMyPost: false,
+  };
+}
+
+function buildMailDetailParams(relatedId, { isReturned = false } = {}) {
+  return {
+    mail: {
+      id: relatedId,
+      receivedAt: '',
+      content: '',
+      is_read: false,
+      isReceived: true,
+      is_returned: isReturned,
+    },
+  };
+}
 
 export default function ToastHost() {
   const { visible, toast, hideToast } = useToast();
@@ -38,9 +71,9 @@ export default function ToastHost() {
           watcherUserId: watcher.userId,
         });
         navigateFromPush({
-        name: 'Notification',
-        relatedType: '',
-      });
+          name: 'Notification',
+          relatedType: '',
+        });
         return;
       }
       let friendPayload = { id: watcher.userId, name: watcher.name };
@@ -102,13 +135,17 @@ export default function ToastHost() {
 
   const handleToastPress = async () => {
     const roomId = toast?.roomId != null ? String(toast.roomId) : null;
-    const relatedId = toast?.relatedId != null ? String(toast.relatedId) : null;
+    const relatedId =
+      toast?.relatedId != null && String(toast.relatedId).trim() !== ''
+        ? String(toast.relatedId)
+        : null;
     const relatedType = String(toast?.relatedType ?? '').trim();
     const type = String(toast?.type ?? '').trim();
     const category = String(toast?.category ?? '').trim();
 
     hideToast();
 
+    // 1) DM
     if (relatedType === 'dm_room' && roomId) {
       const senderName = String(toast?.senderName ?? '').trim();
       const senderUserId =
@@ -136,6 +173,8 @@ export default function ToastHost() {
       });
       return;
     }
+
+    // 2) 익명 쪽지
     if (relatedType === 'message_room' && roomId) {
       navigateFromPush({
         name: 'Chat',
@@ -144,21 +183,49 @@ export default function ToastHost() {
       });
       return;
     }
-    if (relatedType === 'personal_mail' && relatedId) {
+
+    // 3) 개인 우편 반송 → 재발송
+    if (
+      isMailReturnedNotification({
+        type,
+        relatedType,
+        category,
+        relatedId,
+      }) &&
+      relatedId
+    ) {
+      await navigateToResendPersonalMail(
+        {
+          navigate: (name, params) =>
+            navigateFromPush({
+              name,
+              params,
+              relatedType: 'personal_mail_returned',
+            }),
+        },
+        { relatedId, type, relatedType, category },
+      );
+      return;
+    }
+
+    // 4) 개인 우편
+    if (
+      (relatedType === 'personal_mail' ||
+        (category === 'mail' &&
+          relatedType !== 'message_room' &&
+          relatedType !== 'dm_room' &&
+          relatedType !== 'school_mail')) &&
+      relatedId
+    ) {
       navigateFromPush({
         name: 'MailDetail',
-        params: {
-          mail: {
-            id: relatedId,
-            receivedAt: '',
-            content: '',
-            is_read: false,
-          },
-        },
+        params: buildMailDetailParams(relatedId),
         relatedType: 'personal_mail',
       });
       return;
     }
+
+    // 5) 공부 완료 요약
     if (isStudySummaryNotification({ relatedType, type })) {
       const watchers = normalizeStudySummaryWatchers(toast?.watchers);
       console.log('[ToastHost] study summary toast pressed', {
@@ -166,6 +233,15 @@ export default function ToastHost() {
         relatedType,
         type,
       });
+      if (
+        watchers.length === 0 &&
+        (relatedType === 'friend_study_finished_summary_single' ||
+          relatedType === 'study_summary_single') &&
+        relatedId
+      ) {
+        await openDmRoom({ userId: relatedId, name: '친구' });
+        return;
+      }
       if (watchers.length === 1) {
         await openDmRoom(watchers[0]);
         return;
@@ -177,25 +253,18 @@ export default function ToastHost() {
       });
       return;
     }
-    if (relatedType === 'post' && relatedId) {
+
+    // 6) 게시글 (알림 목록과 동일: category || relatedType)
+    if ((category === 'post' || relatedType === 'post') && relatedId) {
       navigateFromPush({
         name: 'BoardDetail',
-        params: {
-          post: {
-            id: relatedId,
-            author: '익명',
-            time: '',
-            location: '',
-            content: '',
-            likes: 0,
-            comments: 0,
-          },
-          isMyPost: false,
-        },
+        params: buildBoardDetailParams(relatedId),
         relatedType: 'post',
       });
       return;
     }
+
+    // 7) 쿡 찌르기
     if (
       relatedType === 'timer_poke' ||
       type === 'poke' ||
@@ -208,6 +277,8 @@ export default function ToastHost() {
       });
       return;
     }
+
+    // 8) 친구 요청
     if (relatedType === 'friendship' || type === 'friend_request') {
       navigateFromPush({
         name: 'Friends',
@@ -215,7 +286,28 @@ export default function ToastHost() {
       });
       return;
     }
+
+    // 9) roomId만 있는 채팅 폴백 (DM 메타가 있으면 DMChat)
     if (roomId) {
+      const senderUserId =
+        toast?.senderUserId != null ? String(toast.senderUserId) : null;
+      if (senderUserId || toast?.isChat === true) {
+        const senderName = String(toast?.senderName ?? '').trim();
+        navigateFromPush({
+          name: senderUserId ? 'DMChat' : 'Chat',
+          params: senderUserId
+            ? {
+                roomId,
+                friend: {
+                  id: senderUserId,
+                  name: senderName || '친구',
+                },
+              }
+            : { roomId },
+          relatedType: senderUserId ? 'dm_room' : 'message_room',
+        });
+        return;
+      }
       navigateFromPush({
         name: 'Chat',
         params: { roomId },
@@ -223,6 +315,8 @@ export default function ToastHost() {
       });
       return;
     }
+
+    // 10) 상세 이동 불가 → 알림 목록
     if (category === 'system' || category === 'mail' || category === 'post') {
       navigateFromPush({
         name: 'Notification',

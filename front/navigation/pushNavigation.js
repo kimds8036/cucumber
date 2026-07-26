@@ -18,8 +18,9 @@ export function resolveMainTabForPush(name = '', relatedType = '') {
   if (screen === 'Friends' || type === 'friend_request' || type === 'friendship') {
     return 'mypage';
   }
-  if (screen === 'Timer') return 'timer';
+  if (screen === 'Timer' || type === 'timer_poke') return 'timer';
   if (screen === 'Notification' || screen === 'Notifications') return 'board';
+  if (screen === 'SchoolMailDetail' || type === 'school_mail') return 'school';
   return 'board';
 }
 
@@ -69,11 +70,28 @@ export function navigateFromPush({ name, params, relatedType }) {
   return true;
 }
 
+function buildBoardDetailNavParams(relatedId, data = {}) {
+  return {
+    postId: relatedId,
+    post: {
+      id: relatedId,
+    },
+    isMyPost: false,
+    ...data,
+  };
+}
+
 /** FCM data → 화면 이름·파라미터 (백엔드 targetScreen 명칭 불일치 보정) */
 export function resolvePushNavigation(data = {}, remoteMessage = null) {
   const targetScreen = String(data?.targetScreen || '').trim();
   const relatedType = String(data?.relatedType || '').trim();
-  const relatedId = data?.relatedId != null ? String(data.relatedId) : null;
+  const category = String(data?.category || '').trim();
+  const type = String(data?.type || '').trim();
+  const relatedIdRaw = data?.relatedId;
+  const relatedId =
+    relatedIdRaw != null && String(relatedIdRaw).trim() !== ''
+      ? String(relatedIdRaw)
+      : null;
   const notificationTitle = String(
     remoteMessage?.notification?.title ||
       data?.senderName ||
@@ -112,23 +130,40 @@ export function resolvePushNavigation(data = {}, remoteMessage = null) {
     };
   }
 
-  if (targetScreen === 'PostDetail' || targetScreen === 'BoardDetail') {
+  // 게시글: targetScreen 또는 relatedType/category
+  if (
+    targetScreen === 'PostDetail' ||
+    targetScreen === 'BoardDetail' ||
+    relatedType === 'post' ||
+    (category === 'post' && relatedId)
+  ) {
     return {
       name: 'BoardDetail',
-      params: {
-        post: {
-          id: relatedId,
-        },
-        isMyPost: false,
-        ...data,
-      },
+      params: buildBoardDetailNavParams(relatedId, data),
     };
   }
 
-  if (targetScreen === 'FriendRequests') {
+  if (
+    targetScreen === 'FriendRequests' ||
+    relatedType === 'friendship' ||
+    relatedType === 'friend_request' ||
+    type === 'friend_request'
+  ) {
     return {
       name: 'Friends',
       params: data,
+    };
+  }
+
+  if (
+    relatedType === 'timer_poke' ||
+    type === 'poke' ||
+    type === 'friend_poke' ||
+    targetScreen === 'Timer'
+  ) {
+    return {
+      name: 'Main',
+      params: { initialTab: 'timer' },
     };
   }
 
@@ -152,16 +187,20 @@ export function resolvePushNavigation(data = {}, remoteMessage = null) {
           id: relatedId,
           isReceived: true,
           replyToMySent: false,
+          is_returned: relatedType === 'personal_mail_returned',
         },
         ...data,
       },
     };
   }
 
-  if (targetScreen === 'Timer') {
+  if (relatedType === 'school_mail' && relatedId) {
     return {
-      name: 'Main',
-      params: { initialTab: 'timer' },
+      name: 'SchoolMailDetail',
+      params: {
+        mailId: relatedId,
+        ...data,
+      },
     };
   }
 

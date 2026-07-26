@@ -772,6 +772,7 @@ const NotificationScreen = ({ navigation }) => {
       if (n.relatedId) {
         preserveListOnNextFocusRef.current = true;
         navigation?.navigate('BoardDetail', {
+          postId: n.relatedId,
           post: {
             id: n.relatedId,
             author: '익명',
@@ -822,6 +823,7 @@ const NotificationScreen = ({ navigation }) => {
       if (n.relatedType === 'post' && n.relatedId) {
         preserveListOnNextFocusRef.current = true;
         navigation?.navigate('BoardDetail', {
+          postId: n.relatedId,
           post: {
             id: n.relatedId,
             author: '익명',

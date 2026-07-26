@@ -15,14 +15,19 @@ export function resolveFcmTargetScreen(relatedType) {
     case 'post':
       return 'BoardDetail';
     case 'dm_room':
-    case 'message_room':
       return 'DMChat';
+    case 'message_room':
+      return 'Chat';
     case 'personal_mail':
     case 'personal_mail_returned':
+      return 'MailDetail';
     case 'school_mail':
-      return 'MailThread';
+      return 'SchoolMailDetail';
     case 'friend_request':
+    case 'friendship':
       return 'FriendRequests';
+    case 'timer_poke':
+      return 'Timer';
     default:
       return 'Notifications';
   }
