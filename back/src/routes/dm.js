@@ -611,6 +611,7 @@ router.post(
           body: (trimmed ?? '사진').slice(0, 80),
           relatedType: 'dm_room',
           relatedId: roomId,
+          sourceId: `dm_message:${messageId}`,
           senderUserId: userId,
           senderName,
           senderSchoolName: savedMessage?.sender_school_name || null,

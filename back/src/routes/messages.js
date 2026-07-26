@@ -583,6 +583,7 @@ WHERE m.id = ?`,
           body: (trimmedContent ?? '사진').slice(0, 80),
           relatedType: 'message_room',
           relatedId: roomId,
+          sourceId: `message:${messageId}`,
         });
       }
 

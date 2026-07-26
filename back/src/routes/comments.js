@@ -203,6 +203,7 @@ router.post('/:postId/comments', authenticate, blockWhenFlag('comment_write_disa
         body: '내 게시글에 새로운 댓글이 달렸어요',
         relatedType: 'post',
         relatedId: post.id,
+        sourceId: `comment:${commentId}`,
       });
     }
 
@@ -221,6 +222,7 @@ router.post('/:postId/comments', authenticate, blockWhenFlag('comment_write_disa
         body: '내 댓글에 새 답글이 달렸어요',
         relatedType: 'post',
         relatedId: post.id,
+        sourceId: `comment:${commentId}:parent`,
       });
     }
 

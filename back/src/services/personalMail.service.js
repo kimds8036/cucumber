@@ -255,6 +255,7 @@ export async function sendPersonalMailByAddress(senderId, body) {
         body: '새로운 우편이 도착했습니다',
         relatedType: 'personal_mail',
         relatedId: mailId,
+        sourceId: `personal_mail:${mailId}`,
       });
     }
 
@@ -376,6 +377,7 @@ export async function runPersonalMailReturnJob(options = {}) {
       body: `${recipientName} 님에게 보낸 우편이 반송되었습니다`,
       relatedType: PERSONAL_MAIL_RETURN_RELATED_TYPE,
       relatedId: Number(row.id),
+      sourceId: `personal_mail_returned:${row.id}`,
     });
   }
 
