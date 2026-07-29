@@ -125,9 +125,9 @@ router.get('/', requireAdminApi, validate(inquiryListValidators), async (req, re
     if (q) {
       const like = `%${String(q).trim()}%`;
       conditions.push(
-        '(CAST(i.id AS CHAR) LIKE ? OR CAST(i.user_id AS CHAR) LIKE ? OR i.contact_username LIKE ? OR i.contact_email LIKE ? OR i.content LIKE ?)'
+        '(CAST(i.id AS CHAR) LIKE ? OR CAST(i.user_id AS CHAR) LIKE ? OR i.contact_username LIKE ? OR i.contact_email LIKE ? OR i.content LIKE ? OR IFNULL(i.answer_content,\'\') LIKE ?)'
       );
-      params.push(like, like, like, like, like);
+      params.push(like, like, like, like, like, like);
     }
     if (fromDate) {
       conditions.push('DATE(i.created_at) >= ?');
@@ -150,6 +150,8 @@ router.get('/', requireAdminApi, validate(inquiryListValidators), async (req, re
          i.contact_username,
          i.contact_email,
          i.content,
+         i.answer_content,
+         i.answer_note,
          i.status,
          i.answered_by,
          a.username AS answered_by_username,

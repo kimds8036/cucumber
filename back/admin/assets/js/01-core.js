@@ -224,6 +224,7 @@ function adminUrl(subpath) {
     inquirySelected: new Set(),
     selectedInquiryId: null,
     selectedProcessedInquiryId: null,
+    expandedProcessedInquiryIds: new Set(),
     inquiryReopenId: null,
     logs: [],
     logsPagination: { page: 1, limit: 50, total: 0 },
@@ -299,6 +300,12 @@ function adminUrl(subpath) {
     if (a === 'inquiry_close') return '문의 종결(inquiry_close)';
     if (a === 'inquiry_reopen') return '문의 재오픈(inquiry_reopen)';
     if (a === 'inquiry_delete') return '문의 삭제(inquiry_delete)';
+    if (a === 'student_id_approve') return '학생증 승인(student_id_approve)';
+    if (a === 'student_id_reject') return '학생증 거절(student_id_reject)';
+    if (a === 'student_id_reapprove') return '학생증 재승인(student_id_reapprove)';
+    if (a === 'reverification_student_id_approve') return '재인증 승인(reverification_student_id_approve)';
+    if (a === 'reverification_student_id_reject') return '재인증 거절(reverification_student_id_reject)';
+    if (a === 'reverification_student_id_reapprove') return '재인증 재승인(reverification_student_id_reapprove)';
     if (a === 'system_flags_update') return '시스템 플래그(system_flags_update)';
     if (a === 'admin_account_create') return '관리자 생성(admin_account_create)';
     if (a === 'admin_account_update') return '관리자 수정(admin_account_update)';
