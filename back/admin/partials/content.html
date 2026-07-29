@@ -278,8 +278,9 @@
 
       <!-- ────────── 문의 처리 이력 ────────── -->
       <div class="panel" id="panel-processedInquiries">
+        <p class="section-hint">행의 ▾ 또는 「답변 보기」로 등록한 답변·내부 메모를 바로 확인할 수 있습니다. 상세 수정은 행을 클릭하세요.</p>
         <div class="filter-row">
-          <input type="text" placeholder="내용/작성자/연락처 검색" id="processed-inquiry-search-q" style="width:220px">
+          <input type="text" placeholder="내용/답변/작성자/연락처 검색" id="processed-inquiry-search-q" style="width:240px">
           <select id="processed-inquiry-filter-status">
             <option value="">전체 상태</option>
             <option value="answered">답변완료</option>
@@ -294,6 +295,7 @@
           <table>
             <thead>
               <tr>
+                <th style="width:36px"></th>
                 <th style="width:60px">ID</th>
                 <th style="width:90px">작성자</th>
                 <th>내용</th>
@@ -318,6 +320,7 @@
 
       <!-- ────────── 가입 학생증 ────────── -->
       <div class="panel" id="panel-studentIds">
+        <p class="section-hint">거절 후 문의·이메일로 학적이 확인되면 「거절됨」 필터에서 해당 사용자를 찾아 <strong>거절 후 승인(재승인)</strong>할 수 있습니다.</p>
         <div class="filter-row">
           <select id="student-id-filter" onchange="loadStudentIds()">
             <option value="pending">승인 대기</option>
@@ -325,7 +328,8 @@
             <option value="approved">승인됨</option>
             <option value="rejected">거절됨</option>
           </select>
-          <button class="btn btn-sm" onclick="loadStudentIds()">새로고침</button>
+          <input type="text" id="student-id-search-q" placeholder="아이디·UID·학교·메모 검색" style="width:220px" onkeydown="if(event.key==='Enter')loadStudentIds()">
+          <button class="btn btn-sm" onclick="loadStudentIds()">검색/새로고침</button>
         </div>
         <div id="student-id-list"></div>
       </div>
@@ -353,7 +357,8 @@
             <option value="approved">승인됨</option>
             <option value="rejected">거절됨</option>
           </select>
-          <button class="btn btn-sm" onclick="loadReverificationIds()">새로고침</button>
+          <input type="text" id="reverification-id-search-q" placeholder="아이디·UID·학교·메모 검색" style="width:220px" onkeydown="if(event.key==='Enter')loadReverificationIds()">
+          <button class="btn btn-sm" onclick="loadReverificationIds()">검색/새로고침</button>
         </div>
         <div id="reverification-id-list"></div>
       </div>
@@ -464,6 +469,9 @@
             <option value="inquiry_close">문의 종결(inquiry_close)</option>
             <option value="inquiry_reopen">문의 재오픈(inquiry_reopen)</option>
             <option value="inquiry_delete">문의 삭제(inquiry_delete)</option>
+            <option value="student_id_approve">학생증 승인(student_id_approve)</option>
+            <option value="student_id_reject">학생증 거절(student_id_reject)</option>
+            <option value="student_id_reapprove">학생증 재승인(student_id_reapprove)</option>
             <option value="system_flags_update">시스템 플래그(system_flags_update)</option>
             <option value="admin_account_create">관리자 생성(admin_account_create)</option>
             <option value="user_shadow_mute">섀도우 뮤트(user_shadow_mute)</option>
