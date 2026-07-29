@@ -48,9 +48,67 @@ async function loadDashboard() {
     document.getElementById('analytics-latest-mau').textContent = latestMau.toLocaleString();
   }
 
+  function svgPointToWrapCoords(svg, wrap, svgX, svgY) {
+    const wrapRect = wrap.getBoundingClientRect();
+    const ctm = svg.getScreenCTM?.();
+    if (ctm && typeof svg.createSVGPoint === 'function') {
+      const pt = svg.createSVGPoint();
+      pt.x = svgX;
+      pt.y = svgY;
+      const screen = pt.matrixTransform(ctm);
+      return {
+        x: screen.x - wrapRect.left,
+        y: screen.y - wrapRect.top,
+      };
+    }
+    // fallback: viewBox meet 스케일
+    const vb = svg.viewBox?.baseVal;
+    const rect = svg.getBoundingClientRect();
+    if (!vb || !vb.width || !vb.height) {
+      return { x: 0, y: 0 };
+    }
+    const scale = Math.min(rect.width / vb.width, rect.height / vb.height);
+    const offsetX = (rect.width - vb.width * scale) / 2;
+    const offsetY = (rect.height - vb.height * scale) / 2;
+    return {
+      x: rect.left - wrapRect.left + offsetX + svgX * scale,
+      y: rect.top - wrapRect.top + offsetY + svgY * scale,
+    };
+  }
+
+  function placeLineChartTooltip(tooltipEl, wrap, anchorX, anchorY) {
+    if (!tooltipEl || !wrap) return;
+    const pad = 6;
+    const wrapW = wrap.clientWidth;
+    const wrapH = wrap.clientHeight;
+    const tw = tooltipEl.offsetWidth || 0;
+    const th = tooltipEl.offsetHeight || 0;
+    const half = tw / 2;
+
+    let left = anchorX;
+    left = Math.max(pad + half, Math.min(wrapW - pad - half, left));
+
+    // 기본: 점 위. 위쪽이 잘리면 점 아래로.
+    const gap = 10;
+    const spaceAbove = anchorY - pad;
+    const placeAbove = spaceAbove >= th + gap;
+    const transformY = placeAbove ? -(th + gap) : gap;
+
+    // 아래로 둘 때도 카드 밖으로 너무 안 나가게
+    let top = anchorY;
+    if (!placeAbove && top + transformY + th > wrapH - pad) {
+      top = Math.max(pad + th, wrapH - pad - th - gap);
+    }
+
+    tooltipEl.style.left = `${left}px`;
+    tooltipEl.style.top = `${top}px`;
+    tooltipEl.style.transform = `translate(-50%, ${transformY}px)`;
+  }
+
   function bindLineChartHover(svg, tooltipEl, points, buildHtml) {
     if (!svg || !tooltipEl) return;
     const wrap = svg.closest('.analytics-line-wrap');
+    if (!wrap) return;
     const hide = () => {
       tooltipEl.hidden = true;
     };
@@ -62,17 +120,12 @@ async function loadDashboard() {
         tooltipEl.innerHTML = buildHtml(point, idx);
         tooltipEl.hidden = false;
         const cx = Number(el.getAttribute('cx'));
-        const cy = Number(el.getAttribute('cy'));
-        const vb = svg.viewBox.baseVal;
-        const rect = svg.getBoundingClientRect();
-        const wrapRect = wrap.getBoundingClientRect();
-        const scale = Math.min(rect.width / vb.width, rect.height / vb.height);
-        const offsetX = (rect.width - vb.width * scale) / 2;
-        const offsetY = (rect.height - vb.height * scale) / 2;
-        const px = rect.left - wrapRect.left + offsetX + cx * scale;
-        const py = rect.top - wrapRect.top + offsetY + cy * scale;
-        tooltipEl.style.left = `${px}px`;
-        tooltipEl.style.top = `${py}px`;
+        const cy = Number(el.dataset.anchorY || el.getAttribute('cy'));
+        const { x, y } = svgPointToWrapCoords(svg, wrap, cx, cy);
+        // 레이아웃 반영 후 크기 측정
+        requestAnimationFrame(() => {
+          placeLineChartTooltip(tooltipEl, wrap, x, y);
+        });
       });
       el.addEventListener('mouseleave', hide);
     });
@@ -124,10 +177,12 @@ async function loadDashboard() {
       const cx = x(i);
       const cyA = y(valuesA[i]);
       const cyB = y(valuesB[i]);
+      // 툴팁은 더 위쪽(값 큰) 점에 맞춰 가려짐·싱크 개선
+      const anchorY = Math.min(cyA, cyB);
       return `
         <circle cx="${cx}" cy="${cyA}" r="3.2" fill="${colorA}" />
         <circle cx="${cx}" cy="${cyB}" r="3.2" fill="${colorB}" />
-        <circle class="analytics-line-hit" data-index="${i}" cx="${cx}" cy="${(cyA + cyB) / 2}" r="12" fill="transparent" />
+        <circle class="analytics-line-hit" data-index="${i}" data-anchor-y="${anchorY.toFixed(1)}" cx="${cx}" cy="${anchorY.toFixed(1)}" r="14" fill="transparent" />
       `;
     }).join('');
 
