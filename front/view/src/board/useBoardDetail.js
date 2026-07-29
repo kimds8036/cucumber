@@ -42,6 +42,7 @@ function buildTree(comments, postAuthorId, currentUserId) {
       isWriter: isPostAuthor,
       isMyComment: currentUserId != null && c.user_id === currentUserId,
       isPinned: Boolean(c.is_pinned),
+      parentCommentId: c.parent_comment_id ?? null,
       time: formatTimeAgo(c.created_at),
       content: c.content,
       likes: c.like_count,

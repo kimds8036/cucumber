@@ -266,7 +266,7 @@ router.patch('/:postId/comments/:commentId/pin', authenticate, async (req, res) 
     }
 
     const [comments] = await pool.execute(
-      `SELECT id FROM comments
+      `SELECT id, parent_comment_id FROM comments
        WHERE id = ? AND post_id = ? AND is_deleted = FALSE`,
       [commentId, postId],
     );
@@ -277,10 +277,17 @@ router.patch('/:postId/comments/:commentId/pin', authenticate, async (req, res) 
       });
     }
 
+    if (pin && comments[0].parent_comment_id != null) {
+      return res.status(400).json({
+        success: false,
+        message: '대댓글은 고정할 수 없습니다. 원댓글만 고정할 수 있어요.',
+      });
+    }
+
     if (pin) {
       await pool.execute(
         `UPDATE comments SET is_pinned = FALSE, pinned_at = NULL
-         WHERE post_id = ? AND is_deleted = FALSE`,
+         WHERE post_id = ? AND is_deleted = FALSE AND parent_comment_id IS NULL`,
         [postId],
       );
       await pool.execute(

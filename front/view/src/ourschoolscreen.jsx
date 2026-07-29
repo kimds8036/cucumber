@@ -402,7 +402,7 @@ const OurSchoolScreen = ({ navigation }) => {
                         color={colors.primary}
                       />
                       <Text style={styles.statValue}>
-                        {formatStudentCount(schoolInfo.studentCount)}명
+                        {formatStudentCount(schoolInfo.studentCount)}
                       </Text>
                     </View>
                   </View>
