@@ -668,6 +668,13 @@
       border-radius: var(--radius-md);
       padding: 12px;
       min-width: 0;
+      overflow: visible;
+      position: relative;
+      z-index: 0;
+    }
+    .analytics-card:hover,
+    .analytics-card:focus-within {
+      z-index: 3;
     }
     .analytics-card-title {
       font-size: 12px;
@@ -683,7 +690,8 @@
       border-radius: var(--radius-sm);
       padding: 6px 4px 2px;
       position: relative;
-      overflow: hidden;
+      overflow: visible;
+      z-index: 1;
     }
     .analytics-line-chart {
       width: 100%;
@@ -718,7 +726,7 @@
     }
     .analytics-line-tooltip {
       position: absolute;
-      z-index: 5;
+      z-index: 20;
       pointer-events: none;
       background: #1f2937;
       color: #fff;
@@ -728,7 +736,9 @@
       line-height: 1.4;
       white-space: nowrap;
       box-shadow: 0 4px 12px rgba(0, 0, 0, 0.18);
+      /* left/top + transform 은 JS에서 점 위치·화면 가장자리에 맞게 설정 */
       transform: translate(-50%, calc(-100% - 10px));
+      max-width: min(240px, 90vw);
     }
     .analytics-line-hit {
       cursor: crosshair;
