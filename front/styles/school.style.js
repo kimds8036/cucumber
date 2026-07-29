@@ -63,23 +63,29 @@ export const createOurSchoolStyles = (normalize) => {
     },
     statsContainer: {
       flexDirection: 'row',
-      justifyContent: 'space-around',
-      alignItems: 'center',
-      gap: normalize(10),
-    },
-    statItem: {
-      flexDirection: 'row',
-      alignItems: 'center',
-    },
-    statValueContainer: {
-      flexDirection: 'row',
-      alignItems: 'center',
+      alignItems: 'stretch',
+      justifyContent: 'space-between',
       gap: normalize(6),
     },
+    statItem: {
+      flex: 1,
+      minWidth: 0,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    statValueContainer: {
+      flexDirection: 'column',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: normalize(5),
+      maxWidth: '100%',
+    },
     statValue: {
-      fontSize: normalize(fontSizes.xl),
+      fontSize: normalize(fontSizes.lg),
       fontFamily: fonts.bold,
       color: colors.textPrimary,
+      textAlign: 'center',
+      lineHeight: normalize(fontSizes.lg + 4),
     },
     mealCardBlock: {
       marginBottom: normalize(12),

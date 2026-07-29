@@ -87,7 +87,7 @@ export default function StudentIdCameraGuideOverlay({
       />
 
       <View style={[styles.hintWrap, layerStyles?.guideHint]}>
-        <Text style={guideTextStyle}>{statusText}</Text>
+        {statusText ? <Text style={guideTextStyle}>{statusText}</Text> : null}
       </View>
     </View>
   );

@@ -228,6 +228,14 @@ const SignStepStudentIdVerify = ({
 
   return (
     <View style={[styles.content, localStyles.stepRoot]}>
+      <SignupHelperText
+        normalize={normalize}
+        variant="emphasis"
+        style={{ marginBottom: normalize(10) }}
+      >
+        학교명과 이름이 선명하게 보이도록 촬영해 주세요. 흐리거나 잘리면 승인되지
+        않을 수 있어요.
+      </SignupHelperText>
       <View style={styles.cameraContainer}>
         <View
           style={styles.cameraStage}
