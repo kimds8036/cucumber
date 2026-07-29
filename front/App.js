@@ -262,6 +262,13 @@ function RootNavigator() {
   const [resubmitMode, setResubmitMode] = useState('rejected');
   const pollRef = useRef(null);
 
+  /**
+   * __DEV__ 전용: 로그인 후 학생증 재제출 화면만 바로 미리보기
+   * true 로 바꾸면 REJECT/거절 상태와 무관하게 StudentIdResubmit 을 연다.
+   * 확인 끝나면 반드시 false 로 되돌릴 것.
+   */
+  const DEV_PREVIEW_STUDENT_ID_RESUBMIT = false;
+
   useEffect(() => {
     if (!authHydrated || isLoggedIn) return undefined;
     let cancelled = false;
@@ -361,6 +368,15 @@ function RootNavigator() {
   if (!authHydrated) return null;
 
   if (!isLoggedIn) return <AuthStack />;
+
+  if (__DEV__ && DEV_PREVIEW_STUDENT_ID_RESUBMIT) {
+    return (
+      <StudentIdResubmit
+        mode="rejected"
+        navigation={{ goBack: () => {} }}
+      />
+    );
+  }
 
   if (showResubmit) {
     return (
