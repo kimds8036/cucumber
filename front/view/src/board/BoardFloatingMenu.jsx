@@ -59,6 +59,10 @@ export default function BoardFloatingMenu({
     currentUserId != null &&
     Number(postAuthorId) === Number(currentUserId);
   const isMyComment = commentForMenu?.isMyComment === true;
+  const canPinComment =
+    Boolean(isPostAuthor) &&
+    Boolean(commentForMenu) &&
+    !commentForMenu?.parentCommentId;
 
   // iOS fade-out 동안 context가 비는 중간 렌더를 막아 중앙 깜빡임을 방지한다.
   if (!visible || context == null) return null;
@@ -98,7 +102,7 @@ export default function BoardFloatingMenu({
         onPress: () => onDeleteComment(isCommentMenu),
       },
     ];
-    if (isPostAuthor) {
+    if (canPinComment) {
       menuItems.unshift({
         label: commentForMenu?.isPinned ? '고정 해제' : '댓글 고정',
         iconName: commentForMenu?.isPinned ? 'pin-off' : 'pin',
@@ -109,7 +113,7 @@ export default function BoardFloatingMenu({
     }
   } else if (commentForMenu) {
     menuItems = [];
-    if (isPostAuthor) {
+    if (canPinComment) {
       menuItems.push({
         label: commentForMenu.isPinned ? '고정 해제' : '댓글 고정',
         iconName: commentForMenu.isPinned ? 'pin-off' : 'pin',
