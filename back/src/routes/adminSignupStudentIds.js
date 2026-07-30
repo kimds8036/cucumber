@@ -18,7 +18,7 @@ async function writeAuditLog(connection, { adminUserId, actionType, targetId, no
 }
 
 /**
- * GET /api/admin/signup-student-ids?status=pending&purpose=signup|reverification|resubmit
+ * GET /api/admin/signup-student-ids?status=pending&purpose=signup|reverification|resubmit&q=
  */
 router.get('/', requireAdminApi, async (req, res) => {
   const adminUserId = req.user.userId;
@@ -28,6 +28,7 @@ router.get('/', requireAdminApi, async (req, res) => {
 
   const status = String(req.query.status || 'pending');
   const purpose = String(req.query.purpose || '').trim();
+  const q = String(req.query.q || '').trim();
   const limit = Math.min(Number(req.query.limit) || 50, 100);
   const offset = Math.max(Number(req.query.offset) || 0, 0);
   const limitSql = Number.isFinite(limit) ? Math.floor(limit) : 50;
@@ -49,6 +50,14 @@ router.get('/', requireAdminApi, async (req, res) => {
         whereParts.push('s.submission_purpose = ?');
         params.push(purpose);
       }
+    }
+
+    if (q) {
+      const like = `%${q}%`;
+      whereParts.push(
+        `(u.username LIKE ? OR CAST(u.id AS CHAR) LIKE ? OR CAST(s.id AS CHAR) LIKE ? OR sch.name LIKE ? OR IFNULL(s.review_note,'') LIKE ?)`,
+      );
+      params.push(like, like, like, like, like);
     }
 
     const where = whereParts.length ? whereParts.join(' AND ') : '1=1';
@@ -114,12 +123,43 @@ router.patch('/:id', requireAdminApi, validate(reviewValidators), async (req, re
     }
 
     const submission = rows[0];
-    if (submission.status !== 'pending') {
+    const prevStatus = String(submission.status || '').toLowerCase();
+    const isReapprove = prevStatus === 'rejected' && status === 'approved';
+
+    if (prevStatus === 'approved') {
+      await connection.rollback();
+      return res.status(400).json({
+        success: false,
+        message: '이미 승인된 건입니다.',
+      });
+    }
+
+    if (prevStatus !== 'pending' && !(isReapprove)) {
       await connection.rollback();
       return res.status(400).json({
         success: false,
         message: '이미 검수가 완료된 건입니다.',
       });
+    }
+
+    // 거절 후 재승인: 해당 유저의 최신 제출만 허용 (이후 재제출 pending이 있으면 그쪽을 검수)
+    if (isReapprove) {
+      const [latestRows] = await connection.execute(
+        `SELECT id, status FROM signup_student_id_submissions
+         WHERE user_id = ?
+         ORDER BY created_at DESC, id DESC
+         LIMIT 1`,
+        [submission.user_id],
+      );
+      const latest = latestRows[0];
+      if (!latest || Number(latest.id) !== submissionId) {
+        await connection.rollback();
+        return res.status(400).json({
+          success: false,
+          message:
+            '이 유저의 최신 학생증 제출이 아닙니다. 최신 제출 건을 검수하거나, 목록에서 최신 거절 건을 선택해 주세요.',
+        });
+      }
     }
 
     const now = getNowForDB();
@@ -166,27 +206,57 @@ router.patch('/:id', requireAdminApi, validate(reviewValidators), async (req, re
       }
     }
 
+    const nextNote = (() => {
+      const incoming = reviewNote?.trim() || '';
+      if (isReapprove) {
+        const reapproveNote = incoming || '문의·이메일 학적 확인 후 거절 건 재승인';
+        const prev = String(submission.review_note || '').trim();
+        if (prev) return `${reapproveNote}\n---\n[이전 거절] ${prev}`;
+        return reapproveNote;
+      }
+      return incoming || null;
+    })();
+
     await connection.execute(
       `UPDATE signup_student_id_submissions
        SET status = ?, review_note = ?, reviewed_by = ?, reviewed_at = ?
        WHERE id = ?`,
-      [status, reviewNote?.trim() || null, adminUserId, now, submissionId],
+      [status, nextNote, adminUserId, now, submissionId],
     );
+
+    let actionType;
+    if (status === 'approved') {
+      if (isReapprove) {
+        actionType = isReverification
+          ? 'reverification_student_id_reapprove'
+          : 'student_id_reapprove';
+      } else {
+        actionType = isReverification
+          ? 'reverification_student_id_approve'
+          : 'student_id_approve';
+      }
+    } else {
+      actionType = isReverification
+        ? 'reverification_student_id_reject'
+        : 'student_id_reject';
+    }
 
     await writeAuditLog(connection, {
       adminUserId,
-      actionType: status === 'approved'
-        ? (isReverification ? 'reverification_student_id_approve' : 'student_id_approve')
-        : (isReverification ? 'reverification_student_id_reject' : 'student_id_reject'),
+      actionType,
       targetId: submissionId,
-      note: reviewNote,
+      note: nextNote,
     });
 
     await connection.commit();
 
     return res.json({
       success: true,
-      message: status === 'approved' ? '학생증이 승인되었습니다.' : '학생증이 반려되었습니다.',
+      message: isReapprove
+        ? '거절되었던 학생증을 재승인했습니다. 사용자가 앱을 이용할 수 있습니다.'
+        : status === 'approved'
+          ? '학생증이 승인되었습니다.'
+          : '학생증이 반려되었습니다.',
     });
   } catch (error) {
     await connection.rollback();

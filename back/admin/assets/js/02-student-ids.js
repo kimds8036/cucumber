@@ -1,10 +1,16 @@
 async function loadStudentIds() {
     const status = document.getElementById('student-id-filter')?.value || 'pending';
+    const q = document.getElementById('student-id-search-q')?.value?.trim() || '';
     const host = document.getElementById('student-id-list');
     if (!host) return;
     host.innerHTML = '<p class="txt-muted">불러오는 중…</p>';
     try {
-      const { data } = await api(`/signup-student-ids?status=${encodeURIComponent(status)}&purpose=signup&limit=50`);
+      const qs = new URLSearchParams();
+      qs.set('status', status);
+      qs.set('purpose', 'signup');
+      qs.set('limit', '50');
+      if (q) qs.set('q', q);
+      const { data } = await api(`/signup-student-ids?${qs.toString()}`);
       state.studentIdSubmissions = data.submissions || [];
       renderStudentIds();
       if (status === 'pending') {
@@ -17,11 +23,17 @@ async function loadStudentIds() {
 
   async function loadReverificationIds() {
     const status = document.getElementById('reverification-id-filter')?.value || 'pending';
+    const q = document.getElementById('reverification-id-search-q')?.value?.trim() || '';
     const host = document.getElementById('reverification-id-list');
     if (!host) return;
     host.innerHTML = '<p class="txt-muted">불러오는 중…</p>';
     try {
-      const { data } = await api(`/signup-student-ids?status=${encodeURIComponent(status)}&purpose=reverification&limit=50`);
+      const qs = new URLSearchParams();
+      qs.set('status', status);
+      qs.set('purpose', 'reverification');
+      qs.set('limit', '50');
+      if (q) qs.set('q', q);
+      const { data } = await api(`/signup-student-ids?${qs.toString()}`);
       state.reverificationIdSubmissions = data.submissions || [];
       renderReverificationIds();
       if (status === 'pending') {
@@ -35,17 +47,23 @@ async function loadStudentIds() {
   function renderStudentIdCard(s, listKind) {
     const addr = [s.school_region, s.school_address].filter(Boolean).join(' · ');
     const statusClass = statusPill(s.status);
-    const canReview = String(s.status).toLowerCase() === 'pending';
+    const statusLower = String(s.status).toLowerCase();
+    const canReview = statusLower === 'pending';
+    const canReapprove = statusLower === 'rejected' && !s.student_verified;
+    const verifiedBadge = s.student_verified
+      ? '<span class="pill pill-resolved" style="margin-left:6px;">학생인증 완료</span>'
+      : '<span class="pill pill-pending" style="margin-left:6px;">학생인증 미완료</span>';
     return `
         <div class="user-card" style="margin-bottom:12px;">
           <div class="user-card-header">
             <div>
-              <div class="user-name">${esc(s.name)} <span class="txt-muted">(@${esc(s.username)})</span>
+              <div class="user-name">${esc(s.name || '-')} <span class="txt-muted">(@${esc(s.username)} · UID #${esc(s.user_id)})</span>
                 <span class="pill" style="margin-left:6px;">${esc(purposeLabel(s.submission_purpose))}</span>
+                ${verifiedBadge}
               </div>
               <div class="user-sub">${esc(s.school_name || '-')} ${addr ? `· ${esc(addr)}` : ''}</div>
               ${renderSchoolTransition(s)}
-              <div class="user-sub">전화: ${esc(s.phone || '-')} · 제출: ${fmtDate(s.created_at)}${listKind === 'reverification' ? ` · 재인증: ${esc(s.reverification_status || '-')}` : ''}</div>
+              <div class="user-sub">전화: ${esc(s.phone || '-')} · 제출: ${fmtDate(s.created_at)}${s.reviewed_at ? ` · 검수: ${fmtDate(s.reviewed_at)}` : ''}${listKind === 'reverification' ? ` · 재인증: ${esc(s.reverification_status || '-')}` : ''}</div>
             </div>
             <span class="pill ${statusClass}">${esc(statusLabel(s.status))}</span>
           </div>
@@ -54,11 +72,19 @@ async function loadStudentIds() {
               <img src="${esc(s.cloudinary_url)}" alt="학생증" style="width:100%;max-width:220px;border-radius:8px;border:0.5px solid var(--border);" />
             </a>
             <div>
-              ${s.review_note ? `<p class="txt-muted" style="margin-bottom:8px;">메모: ${esc(s.review_note)}</p>` : ''}
+              ${s.review_note ? `<p class="txt-muted" style="margin-bottom:8px;white-space:pre-wrap;">메모: ${esc(s.review_note)}</p>` : ''}
               ${canReview ? `
-                <div style="display:flex;gap:8px;margin-top:12px;">
+                <div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap;">
                   <button class="btn btn-sm btn-primary" onclick="approveStudentId(${s.id}, '${listKind}')">승인</button>
                   <button class="btn btn-sm btn-danger" onclick="openStudentIdRejectDialog(${s.id}, '${listKind}')">거절</button>
+                </div>
+              ` : ''}
+              ${canReapprove ? `
+                <div style="margin-top:12px;padding:10px 12px;border:0.5px solid var(--border);border-radius:8px;background:var(--surface-2, #f7f6f3);">
+                  <p class="txt-muted" style="margin:0 0 8px;font-size:12px;line-height:1.45;">
+                    문의·이메일 등으로 학적이 확인된 경우, 거절 이력을 유지한 채 앱 이용을 열어줄 수 있습니다.
+                  </p>
+                  <button class="btn btn-sm btn-primary" onclick="reapproveStudentId(${s.id}, '${listKind}')">거절 후 승인(재승인)</button>
                 </div>
               ` : ''}
             </div>
@@ -97,6 +123,30 @@ async function loadStudentIds() {
       if (listKind === 'reverification') await loadReverificationIds();
       else await loadStudentIds();
       alert('승인되었습니다.');
+    } catch (e) {
+      alert(e.message);
+    }
+  }
+
+  async function reapproveStudentId(id, listKind = 'signup') {
+    const note = prompt(
+      '재승인 사유를 입력하세요 (문의·이메일 학적 확인 등).\n비워 두면 기본 문구가 저장됩니다.',
+      '문의하기 학적 확인 후 거절 건 재승인',
+    );
+    if (note === null) return;
+    if (!confirm('거절되었던 학생증을 재승인할까요?\n사용자 student_verified가 켜지고 앱을 이용할 수 있게 됩니다.')) {
+      return;
+    }
+    try {
+      const body = { status: 'approved' };
+      if (String(note).trim()) body.reviewNote = String(note).trim();
+      await api(`/signup-student-ids/${id}`, {
+        method: 'PATCH',
+        body: JSON.stringify(body),
+      });
+      if (listKind === 'reverification') await loadReverificationIds();
+      else await loadStudentIds();
+      alert('재승인되었습니다. 사용자가 앱을 이용할 수 있습니다.');
     } catch (e) {
       alert(e.message);
     }

@@ -4,14 +4,15 @@ import {
   Text,
   TouchableOpacity,
   ActivityIndicator,
-  ScrollView,
   StyleSheet,
   useWindowDimensions,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useCameraPermissions } from 'expo-camera';
 import { Ionicons } from '@expo/vector-icons';
-import { colors, fonts } from '../../../styles/colors';
+import { colors, fonts, fontSizes } from '../../../styles/colors';
+import { getNormalize } from '../../../styles/frame.style';
+import { createLoginStyles } from '../../../styles/login.style';
 import { api } from '../../../utils/api';
 import { appAlert } from '../../../utils/appAlert';
 import {
@@ -20,6 +21,7 @@ import {
   resolveStudentIdCropRect,
 } from '../../../utils/studentIdFrameCrop';
 import SchoolSearchField from './SchoolSearchField';
+import SignupHelperText from './SignupHelperText';
 import StudentIdCaptureStage, {
   useStudentIdCapture,
 } from '../../../components/auth/StudentIdCaptureStage';
@@ -57,8 +59,13 @@ const StudentIdResubmit = ({ mode = 'rejected', navigation }) => {
   const isReverification = mode === 'reverification';
   const { refreshStudentVerification } = useAuth();
   const { width } = useWindowDimensions();
-  const normalize = (size) => Math.round((width / 375) * size);
+  const normalize = useMemo(() => getNormalize(width), [width]);
+  const loginStyles = useMemo(
+    () => createLoginStyles(width, normalize),
+    [width, normalize],
+  );
   const fieldStyles = useMemo(() => makeFieldStyles(normalize), [normalize]);
+  const padX = width * 0.04;
 
   const [permission, requestPermission] = useCameraPermissions();
   const cameraRef = useRef(null);
@@ -66,8 +73,16 @@ const StudentIdResubmit = ({ mode = 'rejected', navigation }) => {
     useStudentIdCapture(cameraRef);
   const [busy, setBusy] = useState(false);
   const [selectedSchool, setSelectedSchool] = useState(null);
-  const [statusText, setStatusText] = useState(
-    '학생증을 가운데 틀에 맞춘 뒤 촬영해 주세요.',
+  const [statusText, setStatusText] = useState('');
+
+  const onStageLayout = useCallback(
+    (e) => {
+      const { width: w, height: h } = e.nativeEvent.layout;
+      if (w > 0 && h > 0) {
+        previewLayoutRef.current = { width: w, height: h };
+      }
+    },
+    [previewLayoutRef],
   );
 
   useEffect(() => {
@@ -101,7 +116,10 @@ const StudentIdResubmit = ({ mode = 'rejected', navigation }) => {
 
     const preview = previewLayoutRef.current;
     if (!preview.width || !preview.height) {
-      appAlert.alert('알림', '카메라가 준비되는 중입니다.');
+      appAlert.alert(
+        '알림',
+        '카메라가 준비되는 중입니다. 잠시 후 다시 시도해 주세요.',
+      );
       return;
     }
 
@@ -162,12 +180,13 @@ const StudentIdResubmit = ({ mode = 'rejected', navigation }) => {
       );
     } finally {
       setBusy(false);
-      setStatusText('학생증을 가운데 틀에 맞춰 주세요.');
+      if (!lastPhotoRef.current) {
+        setStatusText('');
+      }
     }
   }, [
     busy,
     capture,
-    frozenUri,
     isReverification,
     lastPhotoRef,
     navigation,
@@ -177,37 +196,56 @@ const StudentIdResubmit = ({ mode = 'rejected', navigation }) => {
     selectedSchool,
   ]);
 
-  if (!permission?.granted) {
+  if (!permission) {
     return (
-      <SafeAreaView style={styles.root}>
-        <Text style={styles.label}>카메라 권한이 필요합니다.</Text>
-        <TouchableOpacity style={styles.btn} onPress={requestPermission}>
-          <Text style={styles.btnText}>권한 허용하기</Text>
+      <SafeAreaView style={[localStyles.root, { paddingHorizontal: padX }]}>
+        <View style={localStyles.centered}>
+          <ActivityIndicator color={colors.primary} size="large" />
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  if (!permission.granted) {
+    return (
+      <SafeAreaView style={[localStyles.root, { paddingHorizontal: padX }]}>
+        <Text style={localStyles.permLabel}>카메라 권한이 필요합니다.</Text>
+        <TouchableOpacity
+          style={loginStyles.manualButton}
+          onPress={requestPermission}
+        >
+          <Text style={loginStyles.manualButtonText}>권한 허용하기</Text>
         </TouchableOpacity>
       </SafeAreaView>
     );
   }
 
   return (
-    <SafeAreaView style={styles.root} edges={['top', 'bottom']}>
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()}>
-          <Ionicons name="chevron-back" size={28} color={colors.textPrimary} />
+    <SafeAreaView
+      style={[localStyles.root, { paddingHorizontal: padX }]}
+      edges={['top', 'bottom']}
+    >
+      <View style={localStyles.header}>
+        <TouchableOpacity
+          onPress={() => navigation.goBack()}
+          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+        >
+          <Ionicons
+            name="chevron-back"
+            size={normalize(24)}
+            color={colors.textPrimary}
+          />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>
+        <Text style={[localStyles.headerTitle, { fontSize: normalize(18) }]}>
           {isReverification ? '학생증 재인증' : '학생증 재제출'}
         </Text>
-        <View style={{ width: 28 }} />
+        <View style={{ width: normalize(24) }} />
       </View>
 
-      <ScrollView
-        style={styles.scroll}
-        contentContainerStyle={styles.scrollContent}
-        keyboardShouldPersistTaps="handled"
-      >
+      <View style={localStyles.body}>
         {isReverification ? (
-          <View style={styles.schoolBlock}>
-            <Text style={styles.schoolHint}>
+          <View style={localStyles.schoolBlock}>
+            <Text style={localStyles.schoolHint}>
               중학교에서 고등학교로 진학한 경우, 올해 재학 중인 고등학교를 검색해
               선택해 주세요.
             </Text>
@@ -221,117 +259,163 @@ const StudentIdResubmit = ({ mode = 'rejected', navigation }) => {
           </View>
         ) : null}
 
-        <StudentIdCaptureStage
-          cameraRef={cameraRef}
-          frozenUri={frozenUri}
-          statusText={statusText}
-          guideTextStyle={styles.guideText}
-          stageStyle={styles.cameraStage}
-          previewLayoutRef={previewLayoutRef}
-        />
+        <SignupHelperText
+          normalize={normalize}
+          variant="emphasis"
+          style={localStyles.helper}
+        >
+          학교명과 이름이 선명하게 보이도록 촬영해 주세요. 흐리거나 잘리면 승인되지
+          않을 수 있어요.
+        </SignupHelperText>
+
+        <View style={localStyles.cameraWrap} onLayout={onStageLayout}>
+          <StudentIdCaptureStage
+            cameraRef={cameraRef}
+            frozenUri={frozenUri}
+            statusText={statusText}
+            guideTextStyle={loginStyles.cameraGuideText}
+            stageStyle={localStyles.cameraStage}
+            previewLayoutRef={previewLayoutRef}
+            onStageLayout={({ width: w, height: h }) => {
+              previewLayoutRef.current = { width: w, height: h };
+            }}
+          />
+        </View>
 
         {frozenUri ? (
           <TouchableOpacity
-            style={styles.retakeBtn}
+            style={localStyles.retakeLink}
             onPress={resetCapture}
             disabled={busy}
           >
-            <Text style={styles.retakeBtnText}>다시 촬영하기</Text>
+            <Text style={localStyles.retakeLinkText}>다시 촬영하기</Text>
           </TouchableOpacity>
         ) : null}
-      </ScrollView>
+      </View>
 
-      <TouchableOpacity
-        style={[styles.submitBtn, busy && { opacity: 0.6 }]}
-        disabled={busy}
-        onPress={runResubmit}
-      >
-        {busy ? (
-          <ActivityIndicator color={colors.background} />
-        ) : (
-          <Text style={styles.submitBtnText}>
-            {frozenUri ? '제출하기' : '촬영 및 제출하기'}
-          </Text>
-        )}
-      </TouchableOpacity>
+      <View style={localStyles.footer}>
+        <TouchableOpacity
+          style={[
+            localStyles.submitBtn,
+            { borderRadius: normalize(24), paddingVertical: normalize(14) },
+            busy && { opacity: 0.6 },
+          ]}
+          activeOpacity={0.9}
+          disabled={busy}
+          onPress={runResubmit}
+        >
+          {busy ? (
+            <ActivityIndicator color={colors.background} />
+          ) : (
+            <Text
+              style={[
+                localStyles.submitBtnText,
+                { fontSize: normalize(fontSizes.xxl) },
+              ]}
+            >
+              {frozenUri ? '제출하기' : '촬영 및 제출하기'}
+            </Text>
+          )}
+        </TouchableOpacity>
+      </View>
     </SafeAreaView>
   );
 };
 
-const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: colors.background },
+const localStyles = StyleSheet.create({
+  root: {
+    flex: 1,
+    width: '100%',
+    backgroundColor: colors.background,
+  },
   header: {
+    width: '100%',
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
+    paddingTop: 8,
+    paddingBottom: 8,
   },
   headerTitle: {
-    fontFamily: 'Baloo2-Bold',
-    fontSize: 18,
+    flex: 1,
+    fontFamily: fonts.bold,
     color: colors.textPrimary,
+    textAlign: 'center',
   },
-  scroll: { flex: 1 },
-  scrollContent: { paddingHorizontal: 16, paddingBottom: 12 },
-  schoolBlock: { marginBottom: 12 },
+  body: {
+    flex: 1,
+    width: '100%',
+    minHeight: 0,
+  },
+  schoolBlock: {
+    width: '100%',
+    marginBottom: 12,
+    flexShrink: 0,
+  },
   schoolHint: {
-    fontFamily: 'Baloo2-Regular',
+    fontFamily: fonts.regular,
     fontSize: 13,
     color: colors.textSecondary,
     lineHeight: 20,
     marginBottom: 4,
   },
+  helper: {
+    width: '100%',
+    alignSelf: 'stretch',
+    flexShrink: 0,
+    marginBottom: 10,
+  },
+  cameraWrap: {
+    flex: 1,
+    width: '100%',
+    minHeight: 280,
+    borderRadius: 24,
+    overflow: 'hidden',
+    backgroundColor: '#000',
+  },
   cameraStage: {
-    minHeight: 300,
-    marginTop: 4,
+    flex: 1,
+    width: '100%',
+    minHeight: 280,
+    backgroundColor: '#000',
   },
-  guideText: {
-    color: '#fff',
-    fontFamily: 'Baloo2-Regular',
-    fontSize: 13,
-    textAlign: 'center',
-  },
-  retakeBtn: {
+  retakeLink: {
     alignSelf: 'center',
-    marginTop: 10,
-    paddingVertical: 8,
-    paddingHorizontal: 16,
+    marginTop: 8,
+    paddingVertical: 6,
+    flexShrink: 0,
   },
-  retakeBtnText: {
-    fontFamily: 'Baloo2-Bold',
+  retakeLinkText: {
+    fontFamily: fonts.bold,
     color: colors.primary,
     fontSize: 14,
   },
+  footer: {
+    width: '100%',
+    paddingTop: 8,
+    paddingBottom: 12,
+    flexShrink: 0,
+  },
   submitBtn: {
-    margin: 16,
-    height: 50,
+    width: '100%',
     backgroundColor: colors.primary,
-    borderRadius: 24,
     justifyContent: 'center',
     alignItems: 'center',
   },
   submitBtnText: {
-    fontFamily: 'Baloo2-Bold',
-    color: colors.background,
-    fontSize: 16,
+    fontFamily: fonts.bold,
+    color: colors.textWhite,
   },
-  label: {
-    fontFamily: 'Baloo2-Regular',
-    fontSize: 15,
-    color: colors.textPrimary,
-    margin: 24,
-  },
-  btn: {
-    marginHorizontal: 24,
-    padding: 14,
-    backgroundColor: colors.primary,
-    borderRadius: 20,
+  centered: {
+    flex: 1,
+    justifyContent: 'center',
     alignItems: 'center',
   },
-  btnText: {
-    fontFamily: 'Baloo2-Bold',
-    color: colors.background,
+  permLabel: {
+    fontFamily: fonts.regular,
+    fontSize: 15,
+    color: colors.textPrimary,
+    marginBottom: 12,
   },
 });
 

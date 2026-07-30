@@ -367,14 +367,24 @@ const OurSchoolScreen = ({ navigation }) => {
                 <View style={styles.statsContainer}>
                   {[0, 1, 2].map((idx) => (
                     <View key={idx} style={styles.statItem}>
-                      <View
-                        style={{
-                          height: normalize(16),
-                          width: normalize(58),
-                          backgroundColor: colors.surface,
-                          borderRadius: 6,
-                        }}
-                      />
+                      <View style={styles.statValueContainer}>
+                        <View
+                          style={{
+                            height: normalize(18),
+                            width: normalize(18),
+                            backgroundColor: colors.surface,
+                            borderRadius: 6,
+                          }}
+                        />
+                        <View
+                          style={{
+                            height: normalize(14),
+                            width: normalize(52),
+                            backgroundColor: colors.surface,
+                            borderRadius: 6,
+                          }}
+                        />
+                      </View>
                     </View>
                   ))}
                 </View>
@@ -402,7 +412,7 @@ const OurSchoolScreen = ({ navigation }) => {
                         color={colors.primary}
                       />
                       <Text style={styles.statValue}>
-                        {formatStudentCount(schoolInfo.studentCount)}명
+                        {formatStudentCount(schoolInfo.studentCount)}
                       </Text>
                     </View>
                   </View>

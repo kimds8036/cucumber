@@ -77,17 +77,27 @@ async function loadInquiries() {
   function renderProcessedInquiries() {
     const tbody = document.getElementById('processed-inquiry-tbody');
     if (!state.processedInquiries.length) {
-      tbody.innerHTML = `<tr><td colspan="8" class="txt-muted">처리된 문의가 없습니다.</td></tr>`;
+      tbody.innerHTML = `<tr><td colspan="9" class="txt-muted">처리된 문의가 없습니다.</td></tr>`;
       document.getElementById('processed-inquiry-detail-host').innerHTML = '';
       return;
     }
     tbody.innerHTML = state.processedInquiries.map((i) => {
       const isSelected = state.selectedProcessedInquiryId === i.id;
+      const isExpanded = state.expandedProcessedInquiryIds.has(String(i.id));
       const author = i.user_id
         ? `${esc(i.author_username || `UID #${i.user_id}`)}`
         : `<span class="txt-muted">비로그인</span>`;
+      const answerPreview = i.answer_content
+        ? esc(i.answer_content)
+        : '<span class="txt-muted">(답변 본문 없음 — 종결만 처리되었을 수 있음)</span>';
+      const notePreview = i.answer_note
+        ? `<div class="inquiry-answer-meta">내부 메모</div><p class="inquiry-answer-preview">${esc(i.answer_note)}</p>`
+        : '';
       return `
         <tr class="clickable ${isSelected ? 'selected-row' : ''}" onclick="toggleProcessedInquiryDetail(${i.id}, event)">
+          <td onclick="event.stopPropagation()">
+            <button type="button" class="inquiry-expand-btn" title="답변 보기" onclick="toggleProcessedInquiryAnswer(${i.id}, event)">${isExpanded ? '▴' : '▾'}</button>
+          </td>
           <td>#Q-${i.id}</td>
           <td>${author}</td>
           <td class="txt-ellipsis">${esc(i.content || '-')}</td>
@@ -99,9 +109,35 @@ async function loadInquiries() {
             <button class="btn btn-sm" onclick="openInquiryReopenDialog(${i.id})">재오픈</button>
           </td>
         </tr>
+        ${isExpanded ? `
+          <tr class="inquiry-expand-row">
+            <td colspan="9">
+              <div class="inquiry-answer-meta">관리자 답변 · ${fmtDate(i.answered_at || i.updated_at)} · ${esc(i.answered_by_username || (i.answered_by ? `admin #${i.answered_by}` : '-'))}</div>
+              <p class="inquiry-answer-preview">${answerPreview}</p>
+              ${notePreview}
+              <div style="margin-top:8px;">
+                <button type="button" class="btn btn-sm" onclick="toggleProcessedInquiryDetail(${i.id})">상세·수정 열기</button>
+              </div>
+            </td>
+          </tr>
+        ` : ''}
       `;
     }).join('');
     renderProcessedInquiryDetail();
+  }
+
+  function toggleProcessedInquiryAnswer(id, event) {
+    if (event) {
+      event.preventDefault();
+      event.stopPropagation();
+    }
+    const key = String(id);
+    if (state.expandedProcessedInquiryIds.has(key)) {
+      state.expandedProcessedInquiryIds.delete(key);
+    } else {
+      state.expandedProcessedInquiryIds.add(key);
+    }
+    renderProcessedInquiries();
   }
 
   // ───────── 클립보드 복사 (관리자 페이지 공용) ─────────
