@@ -109,7 +109,7 @@ const Settings = ({ navigation, route }) => {
   );
 
   const showDarkModeComingSoon = () => {
-    showToast('준비 중인 기능입니다.');
+    showToast('개발 중인 기능입니다.');
   };
 
   const handleAppLockToggle = async (value) => {
