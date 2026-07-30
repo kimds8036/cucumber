@@ -83,7 +83,7 @@ const SignupPrepMaterialsModal = ({
               { fontSize: normalize(15), marginBottom: normalize(4) },
             ]}
           >
-            2. 재학증명서 (네이버 등)
+            2. 나이스+ 또는 재학증명서
           </Text>
           <Text
             style={[
@@ -91,8 +91,8 @@ const SignupPrepMaterialsModal = ({
               { fontSize: normalize(13), lineHeight: normalize(19) },
             ]}
           >
-            네이버 등에서 발급한 재학증명서의 열람 주소(URL)와 열람번호를
-            준비해 주세요.
+            나이스+(교육부) 앱의 학적 화면 캡처, 또는 네이버 등 재학증명서 열람
+            주소·열람번호를 준비해 주세요.
           </Text>
         </View>
 

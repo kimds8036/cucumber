@@ -53,13 +53,17 @@ import { useEffect, useRef, useState } from 'react';
 import { Alert, AppState, Platform, View } from 'react-native';
 import * as Notifications from 'expo-notifications';
 import Constants from 'expo-constants';
-import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { SafeAreaProvider, SafeAreaView, initialWindowMetrics } from 'react-native-safe-area-context';
 import { KeyboardProvider } from 'react-native-keyboard-controller';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { AppLockProvider } from './context/AppLockContext';
 import { LocationProvider, LocationGate } from './context/LocationContext';
 import StudentVerificationGate from './components/auth/StudentVerificationGate';
 import StudentVerificationRejected from './components/auth/StudentVerificationRejected';
+import CertificateResubmit from './view/src/signup/CertificateResubmit';
+import CertificateGuideResubmit from './view/src/signup/CertificateGuideResubmit';
+import AltVerifyChoiceResubmit from './view/src/signup/AltVerifyChoiceResubmit';
+import NeisPlusResubmit from './view/src/signup/NeisPlusResubmit';
 import AccountBlockedScreen from './components/auth/AccountBlockedScreen';
 import ReverificationGate from './components/auth/ReverificationGate';
 import ReverificationReminderBanner from './components/auth/ReverificationReminderBanner';
@@ -259,6 +263,11 @@ function RootNavigator() {
     refreshStudentVerification,
   } = useAuth();
   const [showResubmit, setShowResubmit] = useState(false);
+  const [showCertificateResubmit, setShowCertificateResubmit] = useState(false);
+  const [showCertificateGuide, setShowCertificateGuide] = useState(false);
+  const [showAltVerifyChoice, setShowAltVerifyChoice] = useState(false);
+  const [showNeisPlusResubmit, setShowNeisPlusResubmit] = useState(false);
+  const [showRejectedInquiry, setShowRejectedInquiry] = useState(false);
   const [resubmitMode, setResubmitMode] = useState('rejected');
   const pollRef = useRef(null);
 
@@ -387,22 +396,110 @@ function RootNavigator() {
     );
   }
 
+  // 거절 플로우: SafeAreaView 는 여기 1곳만 (화면 전환 시 remount 점프 방지)
+  const inRejectedAltFlow =
+    showRejectedInquiry ||
+    showAltVerifyChoice ||
+    showNeisPlusResubmit ||
+    showCertificateGuide ||
+    showCertificateResubmit ||
+    studentVerificationStatus === 'REJECTED';
+
+  if (inRejectedAltFlow) {
+    let rejectedBody = (
+      <StudentVerificationRejected
+        onResubmitStudentId={() => {
+          setResubmitMode('rejected');
+          setShowResubmit(true);
+        }}
+        onResubmitCertificate={() => setShowAltVerifyChoice(true)}
+        onInquiry={() => setShowRejectedInquiry(true)}
+      />
+    );
+    if (showRejectedInquiry) {
+      rejectedBody = (
+        <InAppInquiry
+          navigation={{ goBack: () => setShowRejectedInquiry(false) }}
+          fullScreenOverlay
+        />
+      );
+    } else if (showNeisPlusResubmit) {
+      rejectedBody = (
+        <NeisPlusResubmit
+          navigation={{
+            goBack: () => {
+              setShowNeisPlusResubmit(false);
+              setShowAltVerifyChoice(true);
+            },
+            closeFlow: () => {
+              setShowNeisPlusResubmit(false);
+              setShowAltVerifyChoice(false);
+            },
+          }}
+        />
+      );
+    } else if (showCertificateResubmit) {
+      rejectedBody = (
+        <CertificateResubmit
+          navigation={{
+            goBack: () => {
+              setShowCertificateResubmit(false);
+              setShowCertificateGuide(true);
+            },
+            closeFlow: () => {
+              setShowCertificateResubmit(false);
+              setShowCertificateGuide(false);
+              setShowAltVerifyChoice(false);
+            },
+          }}
+        />
+      );
+    } else if (showCertificateGuide) {
+      rejectedBody = (
+        <CertificateGuideResubmit
+          navigation={{
+            goBack: () => {
+              setShowCertificateGuide(false);
+              setShowAltVerifyChoice(true);
+            },
+          }}
+          onProceed={() => {
+            setShowCertificateGuide(false);
+            setShowCertificateResubmit(true);
+          }}
+        />
+      );
+    } else if (showAltVerifyChoice) {
+      rejectedBody = (
+        <AltVerifyChoiceResubmit
+          navigation={{ goBack: () => setShowAltVerifyChoice(false) }}
+          onSelectNeisPlus={() => {
+            setShowAltVerifyChoice(false);
+            setShowNeisPlusResubmit(true);
+          }}
+          onSelectCertificate={() => {
+            setShowAltVerifyChoice(false);
+            setShowCertificateGuide(true);
+          }}
+        />
+      );
+    }
+
+    return (
+      <SafeAreaView
+        style={{ flex: 1, backgroundColor: colors.background }}
+        edges={['top', 'bottom']}
+      >
+        {rejectedBody}
+      </SafeAreaView>
+    );
+  }
+
   if (
     studentVerificationStatus === 'PENDING' &&
     !reverificationSubmissionPending
   ) {
     return <StudentVerificationGate />;
-  }
-
-  if (studentVerificationStatus === 'REJECTED') {
-    return (
-      <StudentVerificationRejected
-        onResubmit={() => {
-          setResubmitMode('rejected');
-          setShowResubmit(true);
-        }}
-      />
-    );
   }
 
   if (reverificationStatus === 'graduated_blocked') {
@@ -689,7 +786,10 @@ export default function App() {
   }
 
   return (
-    <SafeAreaProvider style={{ flex: 1, backgroundColor: colors.background }}>
+    <SafeAreaProvider
+      initialMetrics={initialWindowMetrics}
+      style={{ flex: 1, backgroundColor: colors.background }}
+    >
       <StatusBar style="dark" backgroundColor={colors.background} />
       <OfflineGate>
         {/* Auth·스플래시 hide는 Gate 밖 — force/error 시 children 미렌더로 hideAsync가 안 불리던 버그 방지 */}

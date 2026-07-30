@@ -26,6 +26,7 @@ import StudentIdCaptureStage, {
   useStudentIdCapture,
 } from '../../../components/auth/StudentIdCaptureStage';
 import { useAuth } from '../../../context/AuthContext';
+import SubmittingLockModal from '../../../components/common/SubmittingLockModal';
 
 const UPLOAD_TIMEOUT_MS = 120_000;
 
@@ -227,17 +228,21 @@ const StudentIdResubmit = ({ mode = 'rejected', navigation }) => {
     >
       <View style={localStyles.header}>
         <TouchableOpacity
-          onPress={() => navigation.goBack()}
+          onPress={() => {
+            if (busy) return;
+            navigation.goBack();
+          }}
+          disabled={busy}
           hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
         >
           <Ionicons
             name="chevron-back"
             size={normalize(24)}
-            color={colors.textPrimary}
+            color={busy ? colors.textSecondary : colors.textPrimary}
           />
         </TouchableOpacity>
         <Text style={[localStyles.headerTitle, { fontSize: normalize(18) }]}>
-          {isReverification ? '학생증 재인증' : '학생증 재제출'}
+          {isReverification ? '학생증 재인증' : '학생증 제출하기'}
         </Text>
         <View style={{ width: normalize(24) }} />
       </View>
@@ -318,6 +323,7 @@ const StudentIdResubmit = ({ mode = 'rejected', navigation }) => {
           )}
         </TouchableOpacity>
       </View>
+      <SubmittingLockModal visible={busy} message="학생증 제출 중…" />
     </SafeAreaView>
   );
 };

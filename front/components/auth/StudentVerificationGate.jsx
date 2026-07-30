@@ -44,7 +44,7 @@ export default function StudentVerificationGate() {
     <SafeAreaView style={styles.root} edges={['top', 'bottom']}>
       <View style={styles.inner}>
         <Text style={[styles.title, { fontSize: normalize(20) }]}>
-          학생증 확인 및 승인 진행 중입니다
+          학생 인증 확인 및 승인 진행 중입니다
         </Text>
         <Text style={[styles.body, { fontSize: normalize(15) }]}>
           Youth Paper는 안전한 학생 인증 기반으로 운영됩니다. 관리자가 확인 후

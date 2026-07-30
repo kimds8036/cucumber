@@ -10,6 +10,7 @@ import {
   View,
   useWindowDimensions,
   Modal,
+  ScrollView,
 } from 'react-native';
 import {
   SafeAreaView,
@@ -39,7 +40,7 @@ function FieldLabel({ text, required, styles }) {
   );
 }
 
-const InAppInquiry = ({ navigation }) => {
+const InAppInquiry = ({ navigation, fullScreenOverlay = false }) => {
   const { width } = useWindowDimensions();
   const insets = useSafeAreaInsets();
   const scale = width / 375;
@@ -54,9 +55,12 @@ const InAppInquiry = ({ navigation }) => {
     visible: false,
     message: '',
   });
-  const [footerHeight, setFooterHeight] = useState(0);
+  // footer onLayout 전후 padding 점프 방지 — 학생증 재제출과 같은 풀스크린일 땐 하단 inset을 SafeAreaView가 담당
+  const estimatedFooter =
+    normalize(12) + normalize(50) + normalize(12) + (fullScreenOverlay ? 0 : insets.bottom);
+  const [footerHeight, setFooterHeight] = useState(estimatedFooter);
 
-  const bottomOffset = Math.max(footerHeight, normalize(16));
+  const bottomOffset = Math.max(footerHeight, estimatedFooter);
 
   const appVersion =
     (Constants.expoConfig?.version || Constants.manifest?.version || '') + '';
@@ -164,13 +168,96 @@ const InAppInquiry = ({ navigation }) => {
 
   const closeResultAndExit = () => {
     setResultModal({ visible: false, message: '' });
-    if (navigation.canGoBack()) navigation.goBack();
+    if (typeof navigation?.goBack === 'function') {
+      navigation.goBack();
+    }
   };
 
   const styles = useMemo(() => createStyles(width, normalize), [width]);
+  // 거절 플로우(fullScreenOverlay): SafeArea 는 App 셸만 담당 → 여기선 View
+  const Root = fullScreenOverlay ? View : SafeAreaView;
+
+  const formFields = (
+    <>
+      <FieldLabel text="내용" required styles={styles} />
+      <TextInput
+        style={[styles.input, styles.textarea]}
+        value={content}
+        onChangeText={setContent}
+        placeholder="문의 내용을 자세히 입력해주세요"
+        placeholderTextColor={colors.textLight40}
+        multiline
+        textAlignVertical="top"
+        maxLength={5000}
+      />
+
+      <FieldLabel text="아이디" styles={styles} />
+      <View style={styles.lockedFieldWrap}>
+        <Text
+          style={[
+            styles.lockedFieldText,
+            !contactUsername && styles.lockedFieldPlaceholder,
+          ]}
+          numberOfLines={1}
+        >
+          {contactUsername ? `@${contactUsername}` : '아이디 불러오는 중...'}
+        </Text>
+      </View>
+
+      <FieldLabel text="답변 받을 이메일" required styles={styles} />
+      <TextInput
+        style={styles.input}
+        value={contactEmail}
+        onChangeText={setContactEmail}
+        placeholder="example@email.com"
+        placeholderTextColor={colors.textLight40}
+        keyboardType="email-address"
+        autoCapitalize="none"
+        autoCorrect={false}
+        maxLength={255}
+      />
+
+      <View style={styles.imageHeaderRow}>
+        <Text style={styles.sectionLabelText}>이미지 첨부</Text>
+        <Text style={styles.imageCountText}>
+          {images.length}/{MAX_IMAGES}
+        </Text>
+      </View>
+      <View style={styles.imageRow}>
+        {images.map((uri, idx) => (
+          <View key={`${uri}-${idx}`} style={styles.imageThumbWrap}>
+            <Image source={{ uri }} style={styles.imageThumb} />
+            <TouchableOpacity
+              style={styles.imageRemoveBtn}
+              onPress={() => handleRemoveImage(idx)}
+            >
+              <Ionicons name="close" size={normalize(14)} color="#fff" />
+            </TouchableOpacity>
+          </View>
+        ))}
+        {images.length < MAX_IMAGES ? (
+          <TouchableOpacity
+            style={styles.imageAddBtn}
+            onPress={handlePickImages}
+          >
+            <Ionicons
+              name="camera-outline"
+              size={normalize(24)}
+              color={colors.textSecondary}
+            />
+          </TouchableOpacity>
+        ) : null}
+      </View>
+    </>
+  );
 
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
+    <Root
+      style={styles.container}
+      {...(fullScreenOverlay
+        ? {}
+        : { edges: ['top'] })}
+    >
       <View style={styles.headerSection}>
         <View style={styles.headerTop}>
           <TouchableOpacity
@@ -188,97 +275,53 @@ const InAppInquiry = ({ navigation }) => {
       </View>
 
       <View style={styles.body}>
-        <KeyboardAwareScrollView
-          style={{ flex: 1 }}
-          contentContainerStyle={[
-            styles.scrollContent,
-            { paddingBottom: bottomOffset },
-          ]}
-          showsVerticalScrollIndicator={false}
-          keyboardShouldPersistTaps="handled"
-          keyboardDismissMode="on-drag"
-          onScrollBeginDrag={Keyboard.dismiss}
-          bottomOffset={bottomOffset}
-        >
-          <FieldLabel text="내용" required styles={styles} />
-          <TextInput
-            style={[styles.input, styles.textarea]}
-            value={content}
-            onChangeText={setContent}
-            placeholder="문의 내용을 자세히 입력해주세요"
-            placeholderTextColor={colors.textLight40}
-            multiline
-            textAlignVertical="top"
-            maxLength={5000}
-          />
-
-          <FieldLabel text="아이디" styles={styles} />
-          <View style={styles.lockedFieldWrap}>
-            <Text
-              style={[
-                styles.lockedFieldText,
-                !contactUsername && styles.lockedFieldPlaceholder,
-              ]}
-              numberOfLines={1}
-            >
-              {contactUsername
-                ? `@${contactUsername}`
-                : '아이디 불러오는 중...'}
-            </Text>
-          </View>
-
-          <FieldLabel text="답변 받을 이메일" required styles={styles} />
-          <TextInput
-            style={styles.input}
-            value={contactEmail}
-            onChangeText={setContactEmail}
-            placeholder="example@email.com"
-            placeholderTextColor={colors.textLight40}
-            keyboardType="email-address"
-            autoCapitalize="none"
-            autoCorrect={false}
-            maxLength={255}
-          />
-
-          <View style={styles.imageHeaderRow}>
-            <Text style={styles.sectionLabelText}>이미지 첨부</Text>
-            <Text style={styles.imageCountText}>
-              {images.length}/{MAX_IMAGES}
-            </Text>
-          </View>
-          <View style={styles.imageRow}>
-            {images.map((uri, idx) => (
-              <View key={`${uri}-${idx}`} style={styles.imageThumbWrap}>
-                <Image source={{ uri }} style={styles.imageThumb} />
-                <TouchableOpacity
-                  style={styles.imageRemoveBtn}
-                  onPress={() => handleRemoveImage(idx)}
-                >
-                  <Ionicons name="close" size={normalize(14)} color="#fff" />
-                </TouchableOpacity>
-              </View>
-            ))}
-            {images.length < MAX_IMAGES ? (
-              <TouchableOpacity
-                style={styles.imageAddBtn}
-                onPress={handlePickImages}
-              >
-                <Ionicons
-                  name="camera-outline"
-                  size={normalize(24)}
-                  color={colors.textSecondary}
-                />
-              </TouchableOpacity>
-            ) : null}
-          </View>
-        </KeyboardAwareScrollView>
+        {fullScreenOverlay ? (
+          <ScrollView
+            style={{ flex: 1 }}
+            contentContainerStyle={[
+              styles.scrollContent,
+              { paddingBottom: normalize(16) },
+            ]}
+            showsVerticalScrollIndicator={false}
+            keyboardShouldPersistTaps="handled"
+            keyboardDismissMode="on-drag"
+            onScrollBeginDrag={Keyboard.dismiss}
+            bounces={false}
+            overScrollMode="never"
+          >
+            {formFields}
+          </ScrollView>
+        ) : (
+          <KeyboardAwareScrollView
+            style={{ flex: 1 }}
+            contentContainerStyle={[
+              styles.scrollContent,
+              { paddingBottom: bottomOffset },
+            ]}
+            showsVerticalScrollIndicator={false}
+            keyboardShouldPersistTaps="handled"
+            keyboardDismissMode="on-drag"
+            onScrollBeginDrag={Keyboard.dismiss}
+            bottomOffset={bottomOffset}
+          >
+            {formFields}
+          </KeyboardAwareScrollView>
+        )}
 
         <View
           style={[
             styles.footerSection,
-            { paddingBottom: Math.max(normalize(12), insets.bottom) },
+            {
+              paddingBottom: fullScreenOverlay
+                ? normalize(12)
+                : Math.max(normalize(12), insets.bottom),
+            },
           ]}
-          onLayout={(e) => setFooterHeight(e.nativeEvent.layout.height)}
+          onLayout={(e) => {
+            if (!fullScreenOverlay) {
+              setFooterHeight(e.nativeEvent.layout.height);
+            }
+          }}
         >
           <TouchableOpacity
             style={[
@@ -315,7 +358,7 @@ const InAppInquiry = ({ navigation }) => {
           </View>
         </View>
       </Modal>
-    </SafeAreaView>
+    </Root>
   );
 };
 

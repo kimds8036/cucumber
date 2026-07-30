@@ -24,9 +24,12 @@ import SignStepGuardianConsentModal from './SignStepGuardianConsentModal';
 import SignupStudentIdentityIntroModal from './SignupStudentIdentityIntroModal';
 import SignupIdentityVerifyingOverlay from './SignupIdentityVerifyingOverlay';
 import SignupBlockingAlertModal from './SignupBlockingAlertModal';
+import SubmittingLockModal from '../../../components/common/SubmittingLockModal';
 import SignStep2 from './SignStep2';
 import SignStepSchoolSelect from './SignStepSchoolSelect';
 import SignStepStudentIdVerify from './SignStepStudentIdVerify';
+import SignStepAltVerifyChoice from './SignStepAltVerifyChoice';
+import SignStepNeisPlusSubmit from './SignStepNeisPlusSubmit';
 import SignStepCertificateGuide from './SignStepCertificateGuide';
 import SignStepCertificate from './SignStepCertificate';
 import { api, setAuthToken } from '../../../utils/api';
@@ -139,8 +142,10 @@ const STEP = {
   ACCOUNT: 2,
   SCHOOL_SELECT: 3,
   STUDENT_VERIFY: 4,
-  CERTIFICATE_GUIDE: 5,
-  CERTIFICATE_SUBMIT: 6,
+  ALT_VERIFY_CHOICE: 5,
+  CERTIFICATE_GUIDE: 6,
+  CERTIFICATE_SUBMIT: 7,
+  NEIS_PLUS_SUBMIT: 8,
 };
 
 function getSignupProgressStep(currentStep, { studentVerified }) {
@@ -157,7 +162,9 @@ function getSignupProgressStep(currentStep, { studentVerified }) {
       return { step: 4, total };
     case STEP.STUDENT_VERIFY:
       return { step: studentVerified ? 6 : 5, total };
+    case STEP.ALT_VERIFY_CHOICE:
     case STEP.CERTIFICATE_GUIDE:
+    case STEP.NEIS_PLUS_SUBMIT:
       return { step: 5, total };
     case STEP.CERTIFICATE_SUBMIT:
       return { step: 6, total };
@@ -347,9 +354,11 @@ const Sign = ({ navigation }) => {
   const progressWidth = (progress.step / progress.total) * 100;
 
   const isCameraStep = currentStep === STEP.STUDENT_VERIFY && !studentVerified;
-    const hideFooter =
+  const hideFooter =
     (isCameraStep && !SKIP_SIGNUP_VALIDATION_UNTIL_OCR_TEST) ||
+    currentStep === STEP.ALT_VERIFY_CHOICE ||
     currentStep === STEP.CERTIFICATE_GUIDE ||
+    currentStep === STEP.NEIS_PLUS_SUBMIT ||
     showGuardianConsentModal ||
     showStudentIdentityIntroModal ||
     inicisOverlayVisible ||
@@ -899,6 +908,7 @@ const Sign = ({ navigation }) => {
   }, []);
 
   const handleBack = () => {
+    if (submitting) return;
     if (showStudentIdentityIntroModal) {
       setShowStudentIdentityIntroModal(false);
       return;
@@ -946,12 +956,20 @@ const Sign = ({ navigation }) => {
       setCurrentStep(STEP.SCHOOL_SELECT);
       return;
     }
-    if (currentStep === STEP.CERTIFICATE_GUIDE) {
+    if (currentStep === STEP.ALT_VERIFY_CHOICE) {
       setCurrentStep(STEP.STUDENT_VERIFY);
+      return;
+    }
+    if (currentStep === STEP.CERTIFICATE_GUIDE) {
+      setCurrentStep(STEP.ALT_VERIFY_CHOICE);
       return;
     }
     if (currentStep === STEP.CERTIFICATE_SUBMIT) {
       setCurrentStep(STEP.CERTIFICATE_GUIDE);
+      return;
+    }
+    if (currentStep === STEP.NEIS_PLUS_SUBMIT) {
+      setCurrentStep(STEP.ALT_VERIFY_CHOICE);
       return;
     }
     setCurrentStep((s) => s - 1);
@@ -1215,8 +1233,16 @@ const Sign = ({ navigation }) => {
     });
   };
 
+  const handleAltVerifyChoiceOpen = () => {
+    setCurrentStep(STEP.ALT_VERIFY_CHOICE);
+  };
+
   const handleCertificateGuideOpen = () => {
     setCurrentStep(STEP.CERTIFICATE_GUIDE);
+  };
+
+  const handleNeisPlusOpen = () => {
+    setCurrentStep(STEP.NEIS_PLUS_SUBMIT);
   };
 
   const handleCertificateProceed = () => {
@@ -1258,17 +1284,16 @@ const Sign = ({ navigation }) => {
 
     setSubmitting(true);
     try {
+      const inicisToken =
+        inicisClientTokenRef.current || identityData.inicisClientToken;
       const payload = buildSignupPayload(finalData, null, null, {
         verificationMethod: 'certificate',
         certificateViewUrl,
         certificateAccessCode,
+        studentInicisClientToken: inicisToken,
       });
       await api.post('/api/auth/signup', payload);
-      Alert.alert(
-        '알림',
-        '재학증명서 제출이 완료되었습니다. 관리자 검수 후 서비스를 이용할 수 있습니다.',
-        [{ text: '확인', onPress: () => resetTo('Login') }],
-      );
+      await finishSignupAndEnterApp(finalData.username, finalData.password);
     } catch (error) {
       Alert.alert(
         '회원가입 실패',
@@ -1558,10 +1583,14 @@ const Sign = ({ navigation }) => {
         return '재학 정보 입력';
       case STEP.STUDENT_VERIFY:
         return studentVerified ? '가입 마무리' : '학생증 인증';
+      case STEP.ALT_VERIFY_CHOICE:
+        return '인증 방법 선택';
       case STEP.CERTIFICATE_GUIDE:
         return '재학증명서 가이드';
       case STEP.CERTIFICATE_SUBMIT:
         return '재학증명서 제출';
+      case STEP.NEIS_PLUS_SUBMIT:
+        return '나이스+ 제출';
       default:
         return '회원가입';
     }
@@ -1686,7 +1715,11 @@ const Sign = ({ navigation }) => {
       <View style={styles.headerSection}>
         <View style={styles.header}>
           <View style={styles.headerTop}>
-            <TouchableOpacity style={styles.backButton} onPress={handleBack}>
+            <TouchableOpacity
+              style={styles.backButton}
+              onPress={handleBack}
+              disabled={submitting}
+            >
               <Ionicons
                 name="chevron-back"
                 size={normalize(24)}
@@ -1743,6 +1776,13 @@ const Sign = ({ navigation }) => {
             bottomOffset={footerHeight}
           />
         )}
+        {currentStep === STEP.ALT_VERIFY_CHOICE && (
+          <SignStepAltVerifyChoice
+            normalize={normalize}
+            onSelectNeisPlus={handleNeisPlusOpen}
+            onSelectCertificate={handleCertificateGuideOpen}
+          />
+        )}
         {currentStep === STEP.CERTIFICATE_GUIDE && (
           <SignStepCertificateGuide
             styles={styles}
@@ -1758,6 +1798,20 @@ const Sign = ({ navigation }) => {
             onChange={setCertificateData}
           />
         )}
+        {currentStep === STEP.NEIS_PLUS_SUBMIT && (
+          <SignStepNeisPlusSubmit
+            styles={styles}
+            normalize={normalize}
+            mode="signup"
+            layout="stable"
+            identity={identity}
+            schoolId={selectedSchool?.id || formData.schoolId}
+            onVerified={(data) => {
+              handleStudentVerified(data);
+              setCurrentStep(STEP.STUDENT_VERIFY);
+            }}
+          />
+        )}
         {currentStep === STEP.STUDENT_VERIFY && (
           <SignStepStudentIdVerify
             styles={styles}
@@ -1766,7 +1820,7 @@ const Sign = ({ navigation }) => {
             schoolId={selectedSchool?.id || formData.schoolId}
             alreadyVerified={studentVerified}
             onVerified={handleStudentVerified}
-            onCertificateGuide={handleCertificateGuideOpen}
+            onCertificateGuide={handleAltVerifyChoiceOpen}
           />
         )}
       </View>
@@ -1801,6 +1855,15 @@ const Sign = ({ navigation }) => {
         message={blockingAlert.message}
         buttons={blockingAlert.buttons}
         normalize={normalize}
+      />
+
+      <SubmittingLockModal
+        visible={submitting}
+        message={
+          currentStep === STEP.CERTIFICATE_SUBMIT
+            ? '재학증명서 제출 중…'
+            : '가입 제출 중…'
+        }
       />
 
       {!hideFooter && (

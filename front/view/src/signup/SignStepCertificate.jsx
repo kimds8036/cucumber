@@ -27,6 +27,9 @@ const SignStepCertificate = ({
   return (
     <View style={styles.certificateSubmitContainer}>
       <SignupStepScroll normalize={normalize} bottomOffset={bottomOffset}>
+        <Text style={[styles.inputLabel, { marginBottom: normalize(8) }]}>
+          재학증명서 열람용 주소와 열람 번호를 입력해 주세요.
+        </Text>
         <Text style={styles.inputLabel}>열람용 주소</Text>
         <View style={[styles.inputWrapper, styles.inputRow]}>
           <TextInput
