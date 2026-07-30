@@ -18,8 +18,10 @@ import * as Clipboard from 'expo-clipboard';
 import { useFocusEffect } from '@react-navigation/native';
 import { api } from '../../utils/api';
 import {
+  getDarkModeEnabled,
   getAppLockEnabled,
   getBiometricEnabled,
+  setDarkModeEnabled,
   setAppLockEnabled,
   setBiometricEnabled,
 } from '../../utils/appLockStorage';
@@ -81,7 +83,7 @@ const Settings = ({ navigation, route }) => {
   const [loadingSettings, setLoadingSettings] = useState(false);
 
   // ── 앱 기본 설정 (로컬) ──
-  const darkModeEnabled = false;
+  const [darkModeEnabled, setDarkModeEnabledState] = useState(false);
   const [appLockEnabled, setAppLockEnabledState] = useState(false);
   const [biometricEnabled, setBiometricEnabledState] = useState(false);
   const [biometricAvailability, setBiometricAvailability] = useState({
@@ -92,11 +94,13 @@ const Settings = ({ navigation, route }) => {
   const { showToast } = useToast();
 
   const loadLocalPrefs = async () => {
-    const [appLock, biometric, availability] = await Promise.all([
+    const [darkMode, appLock, biometric, availability] = await Promise.all([
+      getDarkModeEnabled(),
       getAppLockEnabled(),
       getBiometricEnabled(),
       checkBiometricAvailability(),
     ]);
+    setDarkModeEnabledState(darkMode);
     setAppLockEnabledState(appLock);
     setBiometricAvailability(availability);
     setBiometricEnabledState(biometric && availability.available);
@@ -108,8 +112,14 @@ const Settings = ({ navigation, route }) => {
     }, []),
   );
 
-  const showDarkModeComingSoon = () => {
-    showToast('준비 중인 기능입니다.');
+  const handleDarkModeToggle = async (value) => {
+    setDarkModeEnabledState(value);
+    try {
+      await setDarkModeEnabled(value);
+    } catch {
+      setDarkModeEnabledState(!value);
+      showToast('다크모드 설정을 저장하지 못했습니다.');
+    }
   };
 
   const handleAppLockToggle = async (value) => {
@@ -665,9 +675,7 @@ const Settings = ({ navigation, route }) => {
                 title="다크모드"
                 titleBold
                 value={darkModeEnabled}
-                onToggle={showDarkModeComingSoon}
-                disabled
-                onDisabledPress={showDarkModeComingSoon}
+                onToggle={handleDarkModeToggle}
               />
               <View style={styles.innerDivider} />
               <NotificationRow
