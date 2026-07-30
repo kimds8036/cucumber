@@ -1978,6 +1978,114 @@ router.post('/resubmit-student-id', authenticate, signupOcrLimiter, async (req, 
   }
 });
 
+/** 거절된 사용자 — 나이스+/재학증명서 재제출 (로그인 후) */
+router.post('/resubmit-certificate', authenticate, async (req, res) => {
+  try {
+    const userId = req.user.userId;
+    const {
+      certificateViewUrl,
+      certificateAccessCode,
+      claimedSchoolName,
+    } = req.body || {};
+
+    if (!certificateViewUrl?.trim() || !certificateAccessCode?.trim()) {
+      return res.status(400).json({
+        success: false,
+        message: '증명서 열람 주소와 열람 번호를 입력해주세요.',
+      });
+    }
+
+    const verification = await getStudentVerificationStatus(userId);
+    if (verification.status === 'APPROVED') {
+      return res.status(400).json({
+        success: false,
+        message: '이미 학생 인증이 완료된 계정입니다.',
+      });
+    }
+    if (verification.status === 'PENDING') {
+      return res.status(400).json({
+        success: false,
+        message: '이미 제출된 자료가 검수 대기 중입니다.',
+      });
+    }
+    if (verification.status !== 'REJECTED') {
+      return res.status(400).json({
+        success: false,
+        message: '재제출은 거절된 경우에만 가능합니다.',
+      });
+    }
+
+    const [userRows] = await pool.execute(
+      `SELECT id, username, name_enc, phone_enc, birth_date_enc, school_id FROM users WHERE id = ? LIMIT 1`,
+      [userId],
+    );
+    if (!userRows.length) {
+      return res.status(404).json({
+        success: false,
+        message: '사용자를 찾을 수 없습니다.',
+      });
+    }
+    const user = userRows[0];
+
+    let schoolName = claimedSchoolName?.trim() || null;
+    if (!schoolName && user.school_id) {
+      const [schoolRows] = await pool.execute(
+        'SELECT name FROM schools WHERE school_id = ? LIMIT 1',
+        [user.school_id],
+      );
+      schoolName = schoolRows[0]?.name || null;
+    }
+
+    const resubmitPii = packSubmissionPii({
+      name: user.name,
+      phone: user.phone,
+      birthDate: user.birth_date,
+    });
+
+    const [certInsert] = await pool.execute(
+      `INSERT INTO signup_certificate_submissions
+         (user_id, name_enc, phone_enc, phone_lookup, birth_date_enc,
+          certificate_view_url, certificate_access_code, claimed_school_name, status)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'pending')`,
+      [
+        userId,
+        resubmitPii.name_enc,
+        resubmitPii.phone_enc,
+        resubmitPii.phone_lookup,
+        resubmitPii.birth_date_enc,
+        certificateViewUrl.trim(),
+        certificateAccessCode.trim(),
+        schoolName,
+      ],
+    );
+
+    notifyCertificateReviewPending({
+      userId,
+      username: user.username,
+      claimedSchoolName: schoolName,
+      submissionId: certInsert.insertId,
+      certificateViewUrl: certificateViewUrl.trim(),
+    });
+
+    return res.json({
+      success: true,
+      message: '나이스+ / 증명서가 제출되었습니다. 관리자 승인을 기다려 주세요.',
+      data: {
+        studentVerificationStatus: 'PENDING',
+        rejectReason: null,
+        submissionType: 'certificate',
+        reverificationSubmissionPending: false,
+      },
+    });
+  } catch (error) {
+    console.error('[resubmit-certificate] 오류:', error);
+    return res.status(500).json({
+      success: false,
+      message: '증명서 재제출 중 오류가 발생했습니다.',
+    });
+  }
+});
+
 /*
  * ── [보관] CLOVA OCR 자동 검증 — 수동 검수 전환으로 비활성화 ──
  * 재활성화 시 studentIdOcr.service.js import 및 아래 로직 복구

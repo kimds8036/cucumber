@@ -23,6 +23,7 @@ import StudentIdCaptureStage, {
 } from '../../../components/auth/StudentIdCaptureStage';
 import SignupHelperText from './SignupHelperText';
 import { normalizeBirthDateForCompare } from './signupBirthDatePolicy';
+import SubmittingLockModal from '../../../components/common/SubmittingLockModal';
 
 const UPLOAD_TIMEOUT_MS = 120_000;
 
@@ -292,7 +293,7 @@ const SignStepStudentIdVerify = ({
               busy && localStyles.disabledLink,
             ]}
           >
-            재학증명서로 인증하기
+            나이스+ / 증명서로 인증하기
           </Text>
         </TouchableOpacity>
       </View>
@@ -305,6 +306,7 @@ const SignStepStudentIdVerify = ({
           <Text style={localStyles.retakeLinkText}>다시 촬영하기</Text>
         </TouchableOpacity>
       ) : null}
+      <SubmittingLockModal visible={busy} message="학생증 제출 중…" />
     </View>
   );
 };

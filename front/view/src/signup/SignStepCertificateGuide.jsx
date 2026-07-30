@@ -184,7 +184,7 @@ const SignStepCertificateGuide = ({ styles, onProceed }) => {
             disabled={!hasReachedBottom}
             onPress={onProceed}
           >
-            <Text style={styles.nextButtonText}>증명서 제출하러 가기</Text>
+            <Text style={styles.nextButtonText}>제출하러 가기</Text>
           </TouchableOpacity>
         </View>
       </ScrollView>
