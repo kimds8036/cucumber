@@ -28,6 +28,21 @@ import {
   getGuideTimetable,
 } from '../../src/screens/UserGuide/guidePreviewData';
 
+const isSameProfileInfo = (a, b) => {
+  if (!a || !b) return false;
+  return (
+    a.name === b.name &&
+    a.username === b.username &&
+    a.colorId === b.colorId &&
+    a.school === b.school &&
+    a.gradeClass === b.gradeClass &&
+    a.profileColorHex === b.profileColorHex &&
+    a.profileColorId === b.profileColorId &&
+    a.profileColorNumber === b.profileColorNumber &&
+    a.friendCount === b.friendCount
+  );
+};
+
 const MyPage = ({ navigation }) => {
   const { isGuidePreview } = useGuidePreview();
   const { width } = useWindowDimensions();
@@ -55,21 +70,6 @@ const MyPage = ({ navigation }) => {
   useEffect(() => {
     timetableHydratedRef.current = false;
   }, [timetableCacheKey]);
-  const isSameProfileInfo = (a, b) => {
-    if (!a || !b) return false;
-    return (
-      a.name === b.name &&
-      a.username === b.username &&
-      a.colorId === b.colorId &&
-      a.school === b.school &&
-      a.gradeClass === b.gradeClass &&
-      a.profileColorHex === b.profileColorHex &&
-      a.profileColorId === b.profileColorId &&
-      a.profileColorNumber === b.profileColorNumber &&
-      a.friendCount === b.friendCount
-    );
-  };
-
   const handleLogout = async () => {
     try {
       const deviceId = await getDeviceId();
@@ -110,107 +110,108 @@ const MyPage = ({ navigation }) => {
     );
   };
 
-  useEffect(() => {
-    let mounted = true;
-    const fetchProfile = async () => {
-      if (isGuidePreview) {
-        setUserInfo(getGuideMyPageUserInfo());
-        setTimetable(getGuideTimetable());
-        setLoading(false);
-        setTimetableLoading(false);
-        return;
-      }
+  const fetchProfile = useCallback(async (opts = {}) => {
+    const { silent = false } = opts;
+    if (isGuidePreview) {
+      setUserInfo(getGuideMyPageUserInfo());
+      setTimetable(getGuideTimetable());
+      setLoading(false);
+      setTimetableLoading(false);
+      return;
+    }
+    try {
+      if (!silent) setLoading(true);
+      let cachedProfile = null;
+      let cachedProfileTs = 0;
       try {
-        setLoading(true);
-        let cachedProfile = null;
-        let cachedProfileTs = 0;
-        try {
-          const rawProfile = await AsyncStorage.getItem(PROFILE_CACHE_KEY);
-          if (rawProfile) {
-            const parsed = JSON.parse(rawProfile);
-            const profileTs = Number(parsed?.ts || 0);
-            cachedProfileTs = profileTs;
-            if (Date.now() - profileTs < PROFILE_CACHE_TTL_MS) {
-              cachedProfile = parsed?.userInfo || null;
-              if (mounted && cachedProfile) {
-                setUserInfo(cachedProfile);
-              }
+        const rawProfile = await AsyncStorage.getItem(PROFILE_CACHE_KEY);
+        if (rawProfile) {
+          const parsed = JSON.parse(rawProfile);
+          const profileTs = Number(parsed?.ts || 0);
+          cachedProfileTs = profileTs;
+          if (Date.now() - profileTs < PROFILE_CACHE_TTL_MS) {
+            cachedProfile = parsed?.userInfo || null;
+            if (cachedProfile) {
+              setUserInfo(cachedProfile);
             }
           }
-        } catch (profileCacheErr) {
-          console.warn('프로필 캐시 읽기 실패:', profileCacheErr);
         }
-
-        const meRes = await api.get('/api/auth/me');
-        if (!mounted) return;
-
-        const me = meRes.data?.data;
-        const userScope =
-          me?.id != null ? String(me.id) : me?.username || me?.email || null;
-        const scopedTimetableCacheKey = userScope
-          ? `${TIMETABLE_CACHE_KEY_PREFIX}${userScope}`
-          : TIMETABLE_CACHE_KEY;
-        if (mounted) {
-          setTimetableCacheKey(scopedTimetableCacheKey);
-        }
-
-        if (me) {
-          const nextUserInfo = {
-            name: me.name,
-            username: me.username ? `@${me.username}` : '',
-            colorId: me.colorId ?? null,
-            school: me.school?.name || '',
-            gradeClass:
-              me.grade && me.classNumber
-                ? `${me.grade}학년 ${me.classNumber}반`
-                : '',
-            profileColorHex: me.profileColor?.hexCode || null,
-            profileColorId: me.profileColor?.id ?? me.colorId ?? null,
-            profileColorNumber: me.profileColor?.colorNumber ?? null,
-            friendCount: me.friendCount ?? 0,
-          };
-          setUserInfo(nextUserInfo);
-          try {
-            const cacheExpired =
-              !cachedProfileTs ||
-              Date.now() - cachedProfileTs >= PROFILE_CACHE_TTL_MS;
-            const profileChanged = !isSameProfileInfo(
-              cachedProfile,
-              nextUserInfo,
-            );
-            if (cacheExpired || profileChanged || !cachedProfile) {
-              await AsyncStorage.setItem(
-                PROFILE_CACHE_KEY,
-                JSON.stringify({
-                  ts: Date.now(),
-                  userInfo: nextUserInfo,
-                }),
-              );
-            }
-          } catch (profileSaveErr) {
-            console.warn('프로필 캐시 저장 실패:', profileSaveErr);
-          }
-        } else if (!cachedProfile && mounted) {
-          setUserInfo(null);
-        }
-      } catch (error) {
-        console.error(
-          '[MyPage] 데이터 로드 실패:',
-          error?.response?.data || error?.message || error,
-        );
-        if (mounted) {
-          setTimetableCacheKey(TIMETABLE_CACHE_KEY);
-        }
-      } finally {
-        if (mounted) setLoading(false);
+      } catch (profileCacheErr) {
+        console.warn('프로필 캐시 읽기 실패:', profileCacheErr);
       }
-    };
 
-    fetchProfile();
-    return () => {
-      mounted = false;
-    };
+      const meRes = await api.get('/api/auth/me');
+      const me = meRes.data?.data;
+      const userScope =
+        me?.id != null ? String(me.id) : me?.username || me?.email || null;
+      const scopedTimetableCacheKey = userScope
+        ? `${TIMETABLE_CACHE_KEY_PREFIX}${userScope}`
+        : TIMETABLE_CACHE_KEY;
+      setTimetableCacheKey(scopedTimetableCacheKey);
+
+      if (me) {
+        const nextUserInfo = {
+          name: me.name,
+          username: me.username ? `@${me.username}` : '',
+          colorId: me.colorId ?? null,
+          school: me.school?.name || '',
+          gradeClass:
+            me.grade && me.classNumber
+              ? `${me.grade}학년 ${me.classNumber}반`
+              : '',
+          profileColorHex: me.profileColor?.hexCode || null,
+          profileColorId: me.profileColor?.id ?? me.colorId ?? null,
+          profileColorNumber: me.profileColor?.colorNumber ?? null,
+          friendCount: me.friendCount ?? 0,
+        };
+        setUserInfo(nextUserInfo);
+        try {
+          const cacheExpired =
+            !cachedProfileTs ||
+            Date.now() - cachedProfileTs >= PROFILE_CACHE_TTL_MS;
+          const profileChanged = !isSameProfileInfo(
+            cachedProfile,
+            nextUserInfo,
+          );
+          if (cacheExpired || profileChanged || !cachedProfile) {
+            await AsyncStorage.setItem(
+              PROFILE_CACHE_KEY,
+              JSON.stringify({
+                ts: Date.now(),
+                userInfo: nextUserInfo,
+              }),
+            );
+          }
+        } catch (profileSaveErr) {
+          console.warn('프로필 캐시 저장 실패:', profileSaveErr);
+        }
+      } else if (!cachedProfile) {
+        setUserInfo(null);
+      }
+    } catch (error) {
+      console.error(
+        '[MyPage] 데이터 로드 실패:',
+        error?.response?.data || error?.message || error,
+      );
+      setTimetableCacheKey(TIMETABLE_CACHE_KEY);
+    } finally {
+      if (!silent) setLoading(false);
+    }
   }, [isGuidePreview]);
+
+  // 탭 복귀마다 프로필 재조회 (하단 탭은 unmount 되지 않음)
+  useFocusEffect(
+    useCallback(() => {
+      let cancelled = false;
+      (async () => {
+        if (cancelled) return;
+        await fetchProfile({ silent: true });
+      })();
+      return () => {
+        cancelled = true;
+      };
+    }, [fetchProfile]),
+  );
 
   // 시간표 캐시만 읽음 — 첫 진입·시간표 편집 후 복귀 시 동기화
   useFocusEffect(
