@@ -19,6 +19,7 @@ import {
   softDeleteSchoolMailComment,
 } from '../services/commentCount.service.js';
 import { createManualUserAccount } from '../services/adminManualSignup.service.js';
+import { applyUserSchoolUpdate } from '../services/userSchoolTransition.service.js';
 
 const router = express.Router();
 
@@ -637,6 +638,14 @@ router.get('/users', requireAdminApi, async (req, res) => {
          u.id,
          u.username,
          u.name_enc,
+         u.school_id,
+         sch.name AS school_name,
+         u.grade,
+         u.class_number,
+         u.graduation_year,
+         u.grade_exception,
+         u.student_verified,
+         u.reverification_status,
          u.violation_warning_count,
          u.false_report_warning_count,
          u.is_suspended,
@@ -652,6 +661,7 @@ router.get('/users', requireAdminApi, async (req, res) => {
              OR (r2.target_type = 'comment' AND r2.target_id IN (SELECT c2.id FROM comments c2 WHERE c2.user_id = u.id))
          ) AS reported_count
        FROM users u
+       LEFT JOIN schools sch ON sch.school_id = u.school_id
        WHERE ${whereSql}
        ${havingSql}
        ORDER BY u.id DESC
@@ -664,6 +674,143 @@ router.get('/users', requireAdminApi, async (req, res) => {
     res.status(500).json({ success: false, message: '관리자 사용자 목록 조회 중 오류가 발생했습니다.' });
   }
 });
+
+/**
+ * 관리자 학적 변경 (학교·학년·반·졸업년도)
+ * POST /api/admin/users/:userId/academic
+ */
+router.post(
+  '/users/:userId/academic',
+  requireAdminApi,
+  requireAdminRole(ADMIN_ROLES.MODERATOR, ADMIN_ROLES.SUPER),
+  async (req, res) => {
+    const adminUserId = req.user.userId;
+    const userId = Number(req.params.userId);
+    if (!Number.isFinite(userId) || userId <= 0) {
+      return res.status(400).json({ success: false, message: '유효하지 않은 사용자 ID입니다.' });
+    }
+
+    const schoolId = String(req.body?.schoolId || '').trim();
+    const grade = Number(req.body?.grade);
+    const classNumber = Number(req.body?.classNumber);
+    const graduationYearRaw = req.body?.graduationYear;
+    const graduationYear =
+      graduationYearRaw === '' || graduationYearRaw == null
+        ? null
+        : Number(graduationYearRaw);
+    const gradeException = Boolean(req.body?.gradeException);
+    const note = String(req.body?.note || '').trim() || null;
+
+    if (!schoolId) {
+      return res.status(400).json({ success: false, message: '학교를 선택해 주세요.' });
+    }
+    if (!Number.isFinite(grade) || grade < 1 || grade > 6) {
+      return res.status(400).json({ success: false, message: '학년은 1~6 사이여야 합니다.' });
+    }
+    if (!Number.isFinite(classNumber) || classNumber < 1 || classNumber > 50) {
+      return res.status(400).json({ success: false, message: '반은 1~50 사이여야 합니다.' });
+    }
+    if (
+      graduationYear != null &&
+      (!Number.isFinite(graduationYear) || graduationYear < 2000 || graduationYear > 2100)
+    ) {
+      return res.status(400).json({
+        success: false,
+        message: '졸업년도가 올바르지 않습니다.',
+      });
+    }
+
+    const connection = await pool.getConnection();
+    try {
+      await connection.beginTransaction();
+
+      const [beforeRows] = await connection.execute(
+        `SELECT u.id, u.username, u.school_id, sch.name AS school_name,
+                u.grade, u.class_number, u.graduation_year, u.grade_exception,
+                u.reverification_status
+         FROM users u
+         LEFT JOIN schools sch ON sch.school_id = u.school_id
+         WHERE u.id = ? AND u.is_deleted = FALSE
+         LIMIT 1`,
+        [userId],
+      );
+      if (!beforeRows.length) {
+        await connection.rollback();
+        return res.status(404).json({ success: false, message: '사용자를 찾을 수 없습니다.' });
+      }
+
+      const [schoolRows] = await connection.execute(
+        'SELECT school_id, name FROM schools WHERE school_id = ? LIMIT 1',
+        [schoolId],
+      );
+      if (!schoolRows.length) {
+        await connection.rollback();
+        return res.status(400).json({ success: false, message: '존재하지 않는 학교입니다.' });
+      }
+
+      const before = beforeRows[0];
+      await applyUserSchoolUpdate(connection, {
+        userId,
+        newSchoolId: schoolId,
+        grade,
+        classNumber,
+        gradeException,
+        graduationYear,
+      });
+
+      const after = {
+        schoolId,
+        schoolName: schoolRows[0].name,
+        grade,
+        classNumber,
+        graduationYear:
+          graduationYear != null ? graduationYear : before.graduation_year,
+        gradeException,
+      };
+
+      await writeAuditLog(connection, {
+        adminUserId,
+        actionType: 'user_academic_update',
+        targetType: 'user',
+        targetId: userId,
+        note,
+        extra: {
+          username: before.username,
+          before: {
+            schoolId: before.school_id,
+            schoolName: before.school_name,
+            grade: before.grade,
+            classNumber: before.class_number,
+            graduationYear: before.graduation_year,
+            gradeException: Boolean(before.grade_exception),
+            reverificationStatus: before.reverification_status,
+          },
+          after,
+        },
+      });
+
+      await connection.commit();
+      return res.json({
+        success: true,
+        message: '학적을 변경했습니다.',
+        data: {
+          userId,
+          username: before.username,
+          ...after,
+        },
+      });
+    } catch (error) {
+      await connection.rollback();
+      console.error('[admin/users/:id/academic] 오류:', error);
+      return res.status(500).json({
+        success: false,
+        message: '학적 변경 중 오류가 발생했습니다.',
+      });
+    } finally {
+      connection.release();
+    }
+  },
+);
 
 router.post('/users/:userId/suspend', requireAdminApi, async (req, res) => {
   const adminUserId = req.user.userId;

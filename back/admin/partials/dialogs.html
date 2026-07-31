@@ -71,3 +71,53 @@
     <div class="dialog-actions">
       <button class="btn btn-sm" onclick="closeInquiryBulkCloseDialog()">취소</button>
       <button class="btn btn-sm btn-primary" onclick="submitInquiryBulkCloseDialog()">확인</button>
+    </div>
+  </div>
+</div>
+
+<div class="dialog-backdrop" id="user-academic-dialog" onclick="closeUserAcademicByBackdrop(event)">
+  <div class="dialog" style="max-width:480px;width:92vw" onclick="event.stopPropagation()">
+    <div class="dialog-title">학적 변경 <span id="user-academic-uid" class="txt-muted" style="font-weight:400;font-size:12px"></span></div>
+    <p class="section-hint" style="margin-top:0">학교·학년·반·졸업년도를 수정합니다. 학교 변경 시 previous_school·재인증 상태가 함께 정리됩니다.</p>
+    <div id="user-academic-current" class="txt-muted" style="font-size:12px;margin-bottom:10px"></div>
+    <div class="form-grid" style="gap:8px">
+      <label>학년
+        <select id="user-academic-grade" class="note-input">
+          <option value="1">1학년</option>
+          <option value="2">2학년</option>
+          <option value="3">3학년</option>
+          <option value="4">4학년</option>
+          <option value="5">5학년</option>
+          <option value="6">6학년</option>
+        </select>
+      </label>
+      <label>반
+        <input id="user-academic-class" type="number" min="1" max="50" class="note-input" />
+      </label>
+      <label>졸업년도
+        <input id="user-academic-grad-year" type="number" class="note-input" placeholder="예: 2028" />
+      </label>
+    </div>
+    <label style="display:flex;align-items:center;gap:8px;margin-top:10px;font-size:13px">
+      <input type="checkbox" id="user-academic-grade-exception" />
+      학년 예외 허용 (grade_exception)
+    </label>
+    <div style="margin-top:12px">
+      <div class="section-title" style="font-size:13px">학교</div>
+      <div id="user-academic-school-pick" class="txt-muted" style="margin-bottom:6px">학교를 검색해 선택하세요.</div>
+      <div class="filter-row" style="margin:0">
+        <input type="text" id="user-academic-school-q" placeholder="학교명 검색" style="flex:1;min-width:140px" />
+        <button type="button" class="btn btn-sm" onclick="searchUserAcademicSchools()">검색</button>
+      </div>
+      <div id="user-academic-school-results" style="margin-top:6px"></div>
+    </div>
+    <label style="display:block;margin-top:12px">변경 메모 (감사 로그)
+      <textarea class="note-input" id="user-academic-note" placeholder="문의 확인·전학 등 사유 (선택)"></textarea>
+    </label>
+    <div class="dialog-actions">
+      <button class="btn btn-sm" onclick="closeUserAcademicDialog()">취소</button>
+      <button class="btn btn-sm btn-primary" onclick="submitUserAcademic()">저장</button>
+    </div>
+  </div>
+</div>
+

@@ -66,6 +66,7 @@ async function loadAppeals() {
     if (Number.isFinite(minBlockedByNum) && minBlockedByNum > 0) {
       list = list.filter((u) => Number(u.blocked_by_count || 0) >= minBlockedByNum);
     }
+    state.usersById = new Map(list.map((u) => [Number(u.id), u]));
     const container = document.getElementById('users-list');
     if (!list.length) {
       container.innerHTML = `<div class="txt-muted">사용자 데이터가 없습니다.</div>`;
@@ -84,6 +85,13 @@ async function loadAppeals() {
               ${u.is_shadow_muted ? '<span class="pill pill-warn" style="margin-left:8px;font-size:10px">섀도우 뮤트</span>' : ''}
             </div>
             <div class="user-sub">${esc(u.name || '-')}</div>
+            <div class="user-sub" style="margin-top:2px">
+              ${esc(u.school_name || u.school_id || '학교 미설정')}
+              · ${u.grade != null ? `${u.grade}학년` : '-'}
+              ${u.class_number != null ? `${u.class_number}반` : ''}
+              ${u.graduation_year ? ` · 졸업 ${u.graduation_year}` : ''}
+              ${u.student_verified ? '' : ' · <span class="txt-danger">미인증</span>'}
+            </div>
           </div>
         </div>
         <div class="user-stats-grid">
@@ -94,6 +102,7 @@ async function loadAppeals() {
           <div class="user-stat"><div class="user-stat-num">${u.blocked_by_count || 0}</div><div class="user-stat-label">차단당한 수</div></div>
         </div>
         <div class="user-actions-row">
+          <button class="btn btn-sm" onclick="openUserAcademicDialog(${u.id})">학적 변경</button>
           <button class="btn btn-sm btn-amber" onclick="suspendUser(${u.id})">임시 정지</button>
           ${u.is_whitelisted
             ? `<button class="btn btn-sm btn-red" onclick="unwhitelistUser(${u.id})">화이트리스트 해제</button>`
@@ -163,6 +172,157 @@ async function loadAppeals() {
       });
       await Promise.all([loadUsers(), loadLogs()]);
       alert(enabled ? '섀도우 뮤트를 적용했습니다.' : '섀도우 뮤트를 해제했습니다.');
+    } catch (error) {
+      alert(error.message);
+    }
+  }
+
+  let academicEditUserId = null;
+  let academicEditSchool = null;
+  let academicSchoolSearchResults = [];
+
+  function openUserAcademicDialog(uid) {
+    const u = state.usersById?.get(Number(uid));
+    if (!u) {
+      alert('사용자 정보를 찾을 수 없습니다. 목록을 다시 불러와 주세요.');
+      return;
+    }
+    academicEditUserId = Number(u.id);
+    academicEditSchool = u.school_id
+      ? { id: u.school_id, name: u.school_name || u.school_id }
+      : null;
+    academicSchoolSearchResults = [];
+
+    const uidEl = document.getElementById('user-academic-uid');
+    if (uidEl) uidEl.textContent = `· ${u.username || '-'} (UID #${u.id})`;
+
+    const currentEl = document.getElementById('user-academic-current');
+    if (currentEl) {
+      currentEl.textContent = `현재: ${u.school_name || u.school_id || '-'} / ${u.grade ?? '-'}학년 ${u.class_number ?? '-'}반 / 졸업 ${u.graduation_year ?? '-'}`;
+    }
+
+    const gradeEl = document.getElementById('user-academic-grade');
+    if (gradeEl) gradeEl.value = String(u.grade || 1);
+    const classEl = document.getElementById('user-academic-class');
+    if (classEl) classEl.value = String(u.class_number || 1);
+    const gradEl = document.getElementById('user-academic-grad-year');
+    if (gradEl) gradEl.value = u.graduation_year != null ? String(u.graduation_year) : '';
+    const exEl = document.getElementById('user-academic-grade-exception');
+    if (exEl) exEl.checked = Boolean(u.grade_exception);
+    const noteEl = document.getElementById('user-academic-note');
+    if (noteEl) noteEl.value = '';
+    const resultsEl = document.getElementById('user-academic-school-results');
+    if (resultsEl) resultsEl.innerHTML = '';
+    const qEl = document.getElementById('user-academic-school-q');
+    if (qEl) qEl.value = '';
+
+    renderUserAcademicSchoolPick();
+    document.getElementById('user-academic-dialog')?.classList.add('show');
+  }
+
+  function renderUserAcademicSchoolPick() {
+    const host = document.getElementById('user-academic-school-pick');
+    if (!host) return;
+    if (!academicEditSchool?.id) {
+      host.innerHTML = '<span class="txt-muted">학교를 검색해 선택하세요.</span>';
+      return;
+    }
+    host.innerHTML = `<strong>${esc(academicEditSchool.name)}</strong>
+      <span class="txt-muted"> — ${esc(academicEditSchool.id)}</span>
+      <button type="button" class="btn btn-sm" style="margin-left:8px" onclick="clearUserAcademicSchool()">변경</button>`;
+  }
+
+  function clearUserAcademicSchool() {
+    academicEditSchool = null;
+    renderUserAcademicSchoolPick();
+  }
+
+  async function searchUserAcademicSchools() {
+    const q = document.getElementById('user-academic-school-q')?.value?.trim() || '';
+    const host = document.getElementById('user-academic-school-results');
+    if (!host) return;
+    if (q.length < 2) {
+      host.innerHTML = '<p class="txt-muted">2글자 이상 입력하세요.</p>';
+      return;
+    }
+    host.innerHTML = '<p class="txt-muted">검색 중…</p>';
+    try {
+      const res = await fetch(
+        `${getAdminHost()}/api/schools/search?query=${encodeURIComponent(q)}&limit=8`,
+      );
+      const data = await res.json();
+      const schools = data?.data?.schools || [];
+      if (!schools.length) {
+        host.innerHTML = '<p class="txt-muted">검색 결과가 없습니다.</p>';
+        return;
+      }
+      academicSchoolSearchResults = schools;
+      host.innerHTML = schools
+        .map(
+          (s, idx) => `
+        <button type="button" class="btn btn-sm" style="margin:4px 4px 0 0"
+          onclick="pickUserAcademicSchoolByIndex(${idx})">
+          ${esc(s.name)} (${esc(s.region || s.id)})
+        </button>`,
+        )
+        .join('');
+    } catch (error) {
+      host.innerHTML = `<p class="txt-muted">검색 실패: ${esc(error.message)}</p>`;
+    }
+  }
+
+  function pickUserAcademicSchoolByIndex(idx) {
+    const school = academicSchoolSearchResults[idx];
+    if (!school) return;
+    academicEditSchool = school;
+    renderUserAcademicSchoolPick();
+    const host = document.getElementById('user-academic-school-results');
+    if (host) host.innerHTML = '';
+  }
+
+  function closeUserAcademicDialog() {
+    document.getElementById('user-academic-dialog')?.classList.remove('show');
+    academicEditUserId = null;
+    academicEditSchool = null;
+    academicSchoolSearchResults = [];
+  }
+
+  function closeUserAcademicByBackdrop(event) {
+    if (event.target?.id === 'user-academic-dialog') closeUserAcademicDialog();
+  }
+
+  async function submitUserAcademic() {
+    if (!academicEditUserId) return;
+    if (!academicEditSchool?.id) {
+      alert('학교를 검색해 선택해 주세요.');
+      return;
+    }
+    const grade = Number(document.getElementById('user-academic-grade')?.value);
+    const classNumber = Number(document.getElementById('user-academic-class')?.value);
+    const graduationYearRaw = document.getElementById('user-academic-grad-year')?.value?.trim();
+    const graduationYear = graduationYearRaw === '' ? null : Number(graduationYearRaw);
+    const gradeException = Boolean(document.getElementById('user-academic-grade-exception')?.checked);
+    const note = document.getElementById('user-academic-note')?.value?.trim() || null;
+
+    if (!confirm(`UID #${academicEditUserId} 학적을 변경할까요?\n${academicEditSchool.name} / ${grade}학년 ${classNumber}반`)) {
+      return;
+    }
+
+    try {
+      await api(`/users/${academicEditUserId}/academic`, {
+        method: 'POST',
+        body: JSON.stringify({
+          schoolId: academicEditSchool.id,
+          grade,
+          classNumber,
+          graduationYear,
+          gradeException,
+          note,
+        }),
+      });
+      closeUserAcademicDialog();
+      await Promise.all([loadUsers(), loadLogs()]);
+      alert('학적을 변경했습니다.');
     } catch (error) {
       alert(error.message);
     }
