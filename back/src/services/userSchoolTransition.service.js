@@ -6,7 +6,7 @@ import { shouldSetPreviousSchool } from './reverification.service.js';
  */
 export async function applyUserSchoolUpdate(
   connection,
-  { userId, newSchoolId, grade, classNumber, gradeException },
+  { userId, newSchoolId, grade, classNumber, gradeException, graduationYear },
 ) {
   const [rows] = await connection.execute(
     'SELECT school_id, grade_exception FROM users WHERE id = ? LIMIT 1',
@@ -38,6 +38,10 @@ export async function applyUserSchoolUpdate(
   if (gradeException != null) {
     sets.push('grade_exception = ?');
     params.push(gradeException ? 1 : 0);
+  }
+  if (graduationYear != null) {
+    sets.push('graduation_year = ?');
+    params.push(Number(graduationYear));
   }
 
   sets.push("reverification_status = 'none'");

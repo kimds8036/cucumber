@@ -310,6 +310,7 @@ function adminUrl(subpath) {
     if (a === 'admin_account_create') return '관리자 생성(admin_account_create)';
     if (a === 'admin_account_update') return '관리자 수정(admin_account_update)';
     if (a === 'user_manual_create') return '수동 가입(user_manual_create)';
+    if (a === 'user_academic_update') return '학적 변경(user_academic_update)';
     if (a === 'user_shadow_mute') return '섀도우 뮤트(user_shadow_mute)';
     if (a === 'user_shadow_unmute') return '섀도우 해제(user_shadow_unmute)';
     return a || '-';
