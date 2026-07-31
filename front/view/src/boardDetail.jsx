@@ -304,9 +304,9 @@ export default function BoardDetail({ navigation, route }) {
 
   const focusReplyInput = (commentId) => {
     if (commentId != null) {
+      // 대상만 바꾸고 입력 초안은 유지 (다른 답글 버튼으로 옮겨도 내용 유지)
       setReplyToCommentId(null);
       setReplyToAuthorLabel('');
-      setBottomComment('');
       scrollToCommentIdRef.current = null;
 
       setTimeout(() => {
