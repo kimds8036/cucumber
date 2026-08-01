@@ -11,7 +11,7 @@ export default ({ config }) => ({
     name: 'Youth Paper',
     slug: 'youth-paper',
     scheme: 'youthpaper',
-    version: '1.5.13',
+    version: '1.5.14',
     orientation: 'portrait',
     icon: './assets/icon.png',
     userInterfaceStyle: 'light',
@@ -48,7 +48,7 @@ export default ({ config }) => ({
     },
 
     android: {
-      versionCode: 22,
+      versionCode: 23,
       usesCleartextTraffic: !isProduction,
       // (선택) 안드로이드도 같은 방식으로 secret 적용 가능
       googleServicesFile:
