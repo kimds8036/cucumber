@@ -98,13 +98,45 @@ const MyPage = ({ navigation }) => {
   const handleDeleteAccount = () => {
     Alert.alert(
       '계정 탈퇴',
-      '정말 탈퇴하시겠습니까?\n모든 데이터가 삭제되며 복구할 수 없습니다.',
+      '정말 탈퇴하시겠습니까?\n\n개인정보는 삭제·익명 처리되며, 작성하신 게시글·댓글은 익명으로 남을 수 있습니다.\n탈퇴 후에는 같은 아이디로 로그인할 수 없습니다.',
       [
         { text: '취소', style: 'cancel' },
         {
           text: '탈퇴',
           style: 'destructive',
-          onPress: () => Alert.alert('계정 탈퇴', '계정이 삭제되었습니다.'),
+          onPress: () => {
+            Alert.alert(
+              '계정 탈퇴 확인',
+              '탈퇴를 진행하면 되돌릴 수 없습니다. 계속할까요?',
+              [
+                { text: '취소', style: 'cancel' },
+                {
+                  text: '탈퇴하기',
+                  style: 'destructive',
+                  onPress: () => {
+                    void (async () => {
+                      try {
+                        await api.post('/api/auth/withdraw');
+                        await clearUserSessionStorage();
+                        Alert.alert(
+                          '계정 탈퇴',
+                          '탈퇴가 완료되었습니다.',
+                          [{ text: '확인', onPress: () => logout() }],
+                        );
+                      } catch (error) {
+                        console.error('회원 탈퇴 실패:', error);
+                        Alert.alert(
+                          '계정 탈퇴',
+                          error?.response?.data?.message ||
+                            '탈퇴 처리 중 오류가 발생했습니다. 잠시 후 다시 시도해 주세요.',
+                        );
+                      }
+                    })();
+                  },
+                },
+              ],
+            );
+          },
         },
       ],
     );

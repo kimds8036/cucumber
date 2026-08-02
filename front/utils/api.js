@@ -24,6 +24,7 @@ const SESSION_TERMINATE_CODES = [
   'SESSION_REVOKED',
   'ACCOUNT_BANNED',
   'ACCOUNT_SUSPENDED',
+  'ACCOUNT_DELETED',
 ];
 
 /** env·extra 미설정 시 develop Railway (app.config.js가 보통 extra에 박아 둠) */

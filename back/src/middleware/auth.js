@@ -147,10 +147,17 @@ export const authenticate = async (req, res, next) => {
     }
 
     const row = await loadUserAuthState(userId);
-    if (!row || row.is_deleted) {
+    if (!row) {
       return res.status(401).json({
         success: false,
         message: '유효하지 않은 사용자입니다.',
+      });
+    }
+    if (row.is_deleted) {
+      return res.status(401).json({
+        success: false,
+        message: '탈퇴한 사용자입니다.',
+        code: API_ERROR_CODES.ACCOUNT_DELETED,
       });
     }
 

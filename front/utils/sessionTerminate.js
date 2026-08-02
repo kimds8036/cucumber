@@ -6,6 +6,7 @@ export const SESSION_FORCE_LOGOUT_CODES = new Set([
   'SESSION_REVOKED',
   'ACCOUNT_BANNED',
   'ACCOUNT_SUSPENDED',
+  'ACCOUNT_DELETED',
 ]);
 
 export const SOCKET_AUTH_BLOCKED_CODES = new Set([
@@ -52,6 +53,9 @@ export function markSessionTerminateAlertShown() {
 }
 
 export function getSessionTerminateTitle(code) {
+  if (code === 'ACCOUNT_DELETED') {
+    return '계정 탈퇴';
+  }
   if (code === 'ACCOUNT_BANNED' || code === 'ACCOUNT_SUSPENDED') {
     return '로그인 제한';
   }
