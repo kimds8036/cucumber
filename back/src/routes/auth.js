@@ -70,6 +70,7 @@ import {
 import { incrementTokenVersion } from '../services/session.service.js';
 import { getReverificationBlockCode } from '../services/reverification.service.js';
 import { getUserReverificationPayload } from '../services/userSchoolTransition.service.js';
+import { withdrawUserAccount } from '../services/accountWithdrawal.service.js';
 import { API_ERROR_CODES } from '../constants/apiErrorCodes.js';
 import { isProductionEnv } from '../utils/httpError.js';
 import {
@@ -605,7 +606,9 @@ router.post('/check-phone-available', signupPhoneBackendLimiter, async (req, res
     }
 
     const [existing] = await pool.execute(
-      `SELECT id FROM users WHERE ${phoneLookupWhereClause()} LIMIT 1`,
+      `SELECT id FROM users
+       WHERE ${phoneLookupWhereClause()} AND is_deleted = FALSE
+       LIMIT 1`,
       phoneLookupBindParams(phone),
     );
 
@@ -1052,16 +1055,27 @@ router.post('/signup', blockWhenFlag('signup_disabled'), validate(signupValidato
       }
     }
 
-    // 중복 확인
-    const [existingUsers] = await pool.execute(
-      `SELECT id FROM users WHERE username = ? OR ${phoneLookupWhereClause()}`,
-      [username, ...phoneLookupBindParams(phone)],
+    // 아이디: 탈퇴 계정 포함 UNIQUE 유지(재로그인 안내). 전화: 활성 계정만 중복.
+    const [existingByUsername] = await pool.execute(
+      `SELECT id FROM users WHERE username = ? LIMIT 1`,
+      [username],
     );
-
-    if (existingUsers.length > 0) {
-      return res.status(400).json({ 
-        success: false, 
-        message: '이미 사용 중인 사용자명 또는 전화번호입니다.' 
+    if (existingByUsername.length > 0) {
+      return res.status(400).json({
+        success: false,
+        message: '이미 사용 중인 사용자명 또는 전화번호입니다.',
+      });
+    }
+    const [existingByPhone] = await pool.execute(
+      `SELECT id FROM users
+       WHERE ${phoneLookupWhereClause()} AND is_deleted = FALSE
+       LIMIT 1`,
+      phoneLookupBindParams(phone),
+    );
+    if (existingByPhone.length > 0) {
+      return res.status(400).json({
+        success: false,
+        message: '이미 사용 중인 사용자명 또는 전화번호입니다.',
       });
     }
 
@@ -1411,16 +1425,17 @@ router.post('/login', validate(loginValidators), async (req, res) => {
     const user = users[0];
 
     if (user.is_deleted) {
-      return res.status(401).json({ 
-        success: false, 
-        message: '탈퇴한 사용자입니다.' 
+      return res.status(403).json({
+        success: false,
+        message: '탈퇴한 사용자입니다.',
+        code: API_ERROR_CODES.ACCOUNT_DELETED,
       });
     }
     if (user.is_banned) {
       return res.status(403).json({
         success: false,
         message: '영구 정지된 계정입니다.',
-        code: 'ACCOUNT_BANNED',
+        code: API_ERROR_CODES.ACCOUNT_BANNED,
       });
     }
     if (user.is_suspended) {
@@ -1429,7 +1444,7 @@ router.post('/login', validate(loginValidators), async (req, res) => {
         return res.status(403).json({
           success: false,
           message: '임시 정지된 계정입니다.',
-          code: 'ACCOUNT_SUSPENDED',
+          code: API_ERROR_CODES.ACCOUNT_SUSPENDED,
           suspendedUntil: user.suspended_until || null,
         });
       }
@@ -1615,10 +1630,17 @@ router.post('/refresh', async (req, res) => {
       [userId],
     );
 
-    if (!users.length || users[0].is_deleted) {
+    if (!users.length) {
       return res.status(401).json({
         success: false,
         message: '유효하지 않은 사용자입니다.',
+      });
+    }
+    if (users[0].is_deleted) {
+      return res.status(401).json({
+        success: false,
+        message: '탈퇴한 사용자입니다.',
+        code: API_ERROR_CODES.ACCOUNT_DELETED,
       });
     }
 
@@ -1733,6 +1755,38 @@ router.post('/logout', authenticate, async (req, res) => {
     res.status(500).json({ 
       success: false, 
       message: '로그아웃 중 오류가 발생했습니다.' 
+    });
+  }
+});
+
+// 회원 탈퇴 (soft delete · PII 삭제 · 게시물 유지)
+router.post('/withdraw', authenticate, async (req, res) => {
+  try {
+    const userId = req.user.userId;
+    await withdrawUserAccount(userId);
+    return res.json({
+      success: true,
+      message: '회원 탈퇴가 완료되었습니다.',
+      code: API_ERROR_CODES.ACCOUNT_DELETED,
+    });
+  } catch (error) {
+    if (error?.code === 'ALREADY_WITHDRAWN') {
+      return res.status(400).json({
+        success: false,
+        message: '이미 탈퇴한 계정입니다.',
+        code: API_ERROR_CODES.ACCOUNT_DELETED,
+      });
+    }
+    if (error?.code === 'USER_NOT_FOUND' || error?.code === 'INVALID_USER') {
+      return res.status(404).json({
+        success: false,
+        message: '사용자를 찾을 수 없습니다.',
+      });
+    }
+    console.error('회원 탈퇴 오류:', error);
+    return res.status(500).json({
+      success: false,
+      message: '회원 탈퇴 처리 중 오류가 발생했습니다.',
     });
   }
 });

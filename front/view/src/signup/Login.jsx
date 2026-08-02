@@ -361,6 +361,15 @@ const Login = ({ navigation }) => {
                     });
                     return;
                   }
+                  if (serverCode === 'ACCOUNT_DELETED') {
+                    setPolicyModal({
+                      visible: true,
+                      title: '로그인 안내',
+                      highlight: '탈퇴한 사용자입니다.',
+                      body: '이미 탈퇴 처리된 계정입니다.\n다시 이용하려면 새로운 아이디로 회원가입해 주세요.',
+                    });
+                    return;
+                  }
                   if (serverCode === 'ACCOUNT_SUSPENDED') {
                     const until = formatSuspendedUntil(suspendedUntil);
                     setPolicyModal({
