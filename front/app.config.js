@@ -157,6 +157,7 @@ export default ({ config }) => ({
       './plugins/withAndroidReleaseSigning.cjs',
       './plugins/withAndroidMainActivityLaunchMode.cjs',
       './plugins/withAndroidCameraPreviewCompatible.cjs',
+      'youth-paper-widget',
     ],
 
     extra: {

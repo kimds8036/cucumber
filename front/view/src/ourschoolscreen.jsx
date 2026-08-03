@@ -28,6 +28,7 @@ import {
   getGuideSchoolMeals,
   getGuideStudyGrassDays,
 } from '../../src/screens/UserGuide/guidePreviewData';
+import { syncMealWidgetFromNext, writeSchoolId } from '../../utils/widget';
 
 const OurSchoolScreen = ({ navigation }) => {
   const { isGuidePreview, guideSchoolScrollTo } = useGuidePreview();
@@ -131,6 +132,9 @@ const OurSchoolScreen = ({ navigation }) => {
               data.adminStandardCode || data.admin_standard_code || '',
           };
           setSchoolInfo(nextSchoolInfo);
+          if (nextSchoolInfo.id != null) {
+            writeSchoolId(nextSchoolInfo.id).catch(() => {});
+          }
 
           try {
             const postsRes = await api.get('/api/posts', {
@@ -206,6 +210,7 @@ const OurSchoolScreen = ({ navigation }) => {
             setNextMeals(cached.meals);
             usedCache = true;
             if (mounted) setMealLoading(false);
+            syncMealWidgetFromNext(cached.meals, schoolInfo.id).catch(() => {});
           }
         }
         const res = await api.get('/api/schools/me/meals/next', {
@@ -219,6 +224,7 @@ const OurSchoolScreen = ({ navigation }) => {
           mealCacheKey,
           JSON.stringify({ ts: Date.now(), meals }),
         );
+        syncMealWidgetFromNext(meals, schoolInfo.id).catch(() => {});
       } catch (e) {
         if (mounted) setNextMeals([]);
       } finally {

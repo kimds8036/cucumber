@@ -201,6 +201,40 @@ function enrichApiError(error) {
  *   - persist=true (기본): AsyncStorage 영속 저장 → 다음 부팅 자동로그인
  *   - persist=false: 인메모리만 저장 + 영속 토큰 삭제 → 이번 세션만 유지
  */
+async function syncWidgetAuthMirror({ persist, accessToken, refreshToken }) {
+  try {
+    const {
+      writeAuthMirror,
+      clearAuthMirror,
+    } = require('./widget/widgetBridge');
+    if (!persist) {
+      await clearAuthMirror();
+      return;
+    }
+    const deviceId = await getDeviceId();
+    const refresh =
+      refreshToken !== undefined
+        ? refreshToken
+        : await AsyncStorage.getItem(REFRESH_TOKEN_KEY);
+    if (!refresh || !deviceId) {
+      await clearAuthMirror();
+      return;
+    }
+    const access =
+      accessToken !== undefined
+        ? accessToken
+        : inMemoryAuthToken || (await AsyncStorage.getItem(AUTH_TOKEN_KEY));
+    await writeAuthMirror({
+      accessToken: access || null,
+      refreshToken: refresh,
+      deviceId,
+      updatedAt: Date.now(),
+    });
+  } catch {
+    // 위젯 네이티브 미연결 시 무시
+  }
+}
+
 export async function setAuthToken(token, { persist = true } = {}) {
   inMemoryAuthToken = token || null;
   if (persist) {
@@ -212,12 +246,19 @@ export async function setAuthToken(token, { persist = true } = {}) {
   } else {
     await AsyncStorage.removeItem(AUTH_TOKEN_KEY);
   }
+  await syncWidgetAuthMirror({ persist, accessToken: token || null });
 }
 
 /** 로그아웃 시 토큰 제거 */
 export async function clearAuthToken() {
   inMemoryAuthToken = null;
   await AsyncStorage.removeItem(AUTH_TOKEN_KEY);
+  try {
+    const { clearAuthMirror } = require('./widget/widgetBridge');
+    await clearAuthMirror();
+  } catch {
+    // ignore
+  }
 }
 
 /**
@@ -240,6 +281,7 @@ export async function getOrCreateDeviceId() {
 export async function setRefreshToken(token, { persist = true } = {}) {
   if (!persist) {
     await AsyncStorage.removeItem(REFRESH_TOKEN_KEY);
+    await syncWidgetAuthMirror({ persist: false });
     return;
   }
   if (token) {
@@ -247,6 +289,7 @@ export async function setRefreshToken(token, { persist = true } = {}) {
   } else {
     await AsyncStorage.removeItem(REFRESH_TOKEN_KEY);
   }
+  await syncWidgetAuthMirror({ persist: true, refreshToken: token || null });
 }
 
 export async function getRefreshToken() {

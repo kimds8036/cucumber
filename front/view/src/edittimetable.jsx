@@ -42,6 +42,7 @@ import {
   getEditTimetableKeyboardVerticalOffset,
 } from '../../src/screens/timetable/timetable.style';
 import { getMaxPeriodFromTimetableKeys } from '../../src/screens/timetable/periodUtils';
+import { syncTimetableWidgetFromFlat } from '../../utils/widget';
 
 /** 빈 시간표일 때 격자에 보이는 최소 행 수 (1교시~여기까지) */
 const EDIT_TS_GRID_INITIAL_MIN = 10;
@@ -281,14 +282,18 @@ const EditTimetable = ({ navigation, route }) => {
         onSave(timetableToSave);
       }
       if (timetableCacheKey) {
+        const ts = Date.now();
         await AsyncStorage.setItem(
           timetableCacheKey,
           JSON.stringify({
-            ts: Date.now(),
+            ts,
             timetable: timetableToSave,
             clearedByUser: false,
           }),
         );
+        syncTimetableWidgetFromFlat(timetableToSave, {
+          generatedAt: new Date(ts).toISOString(),
+        }).catch(() => {});
       }
       setTimetable(timetableToSave);
     } catch (error) {

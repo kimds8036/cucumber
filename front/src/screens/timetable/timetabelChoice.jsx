@@ -23,6 +23,7 @@ import { getMaxPeriodFromTimetableKeys } from './periodUtils';
 import { colors, TIMETABLE_SUBJECT_COLORS } from '../../../styles/colors';
 import { api } from '../../../utils/api';
 import AppPopupModal from '../../../components/common/AppPopupModal';
+import { syncTimetableWidgetFromFlat } from '../../../utils/widget';
 import TimetableAnomalyConfirmModal from '../../../components/timetable/TimetableAnomalyConfirmModal';
 import { fetchTimetableFromApi } from '../../../utils/timetableApi';
 import { hasTimetableAnomaly } from '../../../utils/timetableAnomaly';
@@ -45,14 +46,18 @@ const getSubjectColorIndex = (subject) => {
 };
 
 async function saveTimetableToCache(cacheKey, timetable) {
+  const ts = Date.now();
   await AsyncStorage.setItem(
     cacheKey,
     JSON.stringify({
-      ts: Date.now(),
+      ts,
       timetable,
       clearedByUser: false,
     }),
   );
+  syncTimetableWidgetFromFlat(timetable, {
+    generatedAt: new Date(ts).toISOString(),
+  }).catch(() => {});
 }
 
 function hasSubjectList(subjects) {

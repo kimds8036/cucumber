@@ -27,6 +27,7 @@ import {
   getGuideMyPageUserInfo,
   getGuideTimetable,
 } from '../../src/screens/UserGuide/guidePreviewData';
+import { syncTimetableWidgetFromFlat } from '../../utils/widget';
 
 const isSameProfileInfo = (a, b) => {
   if (!a || !b) return false;
@@ -257,7 +258,10 @@ const MyPage = ({ navigation }) => {
         try {
           const raw = await AsyncStorage.getItem(timetableCacheKey);
           if (!raw || cancelled) {
-            if (!cancelled) setTimetable(null);
+            if (!cancelled) {
+              setTimetable(null);
+              syncTimetableWidgetFromFlat(null).catch(() => {});
+            }
             return;
           }
           const parsed = JSON.parse(raw);
@@ -269,9 +273,20 @@ const MyPage = ({ navigation }) => {
           const normalized =
             cached && Object.keys(cached).length > 0 ? cached : null;
           if (!cancelled) setTimetable(normalized);
+          if (!cancelled) {
+            const generatedAt = parsed?.ts
+              ? new Date(Number(parsed.ts)).toISOString()
+              : undefined;
+            syncTimetableWidgetFromFlat(normalized, { generatedAt }).catch(
+              () => {},
+            );
+          }
         } catch (e) {
           console.warn('[MyPage] 시간표 캐시 읽기 실패:', e);
           if (!cancelled) setTimetable(null);
+          if (!cancelled) {
+            syncTimetableWidgetFromFlat(null).catch(() => {});
+          }
         } finally {
           if (!cancelled) {
             timetableHydratedRef.current = true;
@@ -315,6 +330,7 @@ const MyPage = ({ navigation }) => {
           clearedByUser: true,
         }),
       );
+      syncTimetableWidgetFromFlat(null).catch(() => {});
     } catch (error) {
       console.error('시간표 삭제 저장 실패:', error);
     }

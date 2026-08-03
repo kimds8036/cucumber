@@ -50,7 +50,7 @@ import GuideOverlayScreen from './src/screens/UserGuide/GuideOverlayScreen';
 import { useFonts } from 'expo-font';
 import * as SplashScreen from 'expo-splash-screen';
 import { useEffect, useRef, useState } from 'react';
-import { Alert, AppState, Platform, View } from 'react-native';
+import { Alert, AppState, Linking, Platform, View } from 'react-native';
 import * as Notifications from 'expo-notifications';
 import Constants from 'expo-constants';
 import { SafeAreaProvider, SafeAreaView, initialWindowMetrics } from 'react-native-safe-area-context';
@@ -101,6 +101,9 @@ import {
   setupFCMHandlers,
 } from './utils/fcmService';
 import { trackScreenView, flushAnalyticsEvents } from './utils/analytics';
+import WidgetDeepLinkHandler, {
+  stashWidgetDeepLinkFromUrl,
+} from './components/navigation/WidgetDeepLinkHandler';
 import { ROUTE_TO_ANALYTICS_SCREEN } from './constants/analyticsScreens';
 
 const Stack = createNativeStackNavigator();
@@ -115,6 +118,15 @@ const linking = {
   prefixes: ['cucumber://', 'youthpaper://', 'exp+youth-paper://'],
   config: {
     screens: {
+      Main: {
+        screens: {
+          board: 'board-tab',
+          message: 'message',
+          school: 'school',
+          timer: 'timer',
+          mypage: 'mypage',
+        },
+      },
       BoardDetail: 'board/:postId',
       Sign: 'inicis/return',
     },
@@ -542,6 +554,7 @@ function RootNavigator() {
         />
       ) : null}
       <LocationGate>
+        <WidgetDeepLinkHandler />
         <MainStack initialRouteName={mainInitialRoute} />
       </LocationGate>
     </View>
@@ -608,6 +621,26 @@ export default function App() {
       }
     });
     return () => sub.remove();
+  }, []);
+
+  // 로그인·게이트 전에 위젯 URL이 오면 pending에 보관 (Main 진입 후 Handler가 소비)
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const initial = await Linking.getInitialURL();
+        if (!cancelled && initial) stashWidgetDeepLinkFromUrl(initial);
+      } catch {
+        // ignore
+      }
+    })();
+    const sub = Linking.addEventListener('url', ({ url }) => {
+      stashWidgetDeepLinkFromUrl(url);
+    });
+    return () => {
+      cancelled = true;
+      sub.remove();
+    };
   }, []);
 
   useEffect(() => {

@@ -151,6 +151,14 @@ export function AuthProvider({ children }) {
           setReverificationDeadline(cachedReverification.deadline);
           setIsLoggedIn(true);
           setAuthHydrated(true);
+          try {
+            const {
+              syncAuthFromWidgetMirrorIfNewer,
+            } = require('../utils/widget/syncAuthFromWidget');
+            syncAuthFromWidgetMirrorIfNewer().catch(() => {});
+          } catch {
+            // ignore
+          }
         }
 
         if (mounted) {
@@ -173,6 +181,14 @@ export function AuthProvider({ children }) {
     const sub = AppState.addEventListener('change', (nextState) => {
       if (nextState === 'active') {
         refreshStudentVerification();
+        try {
+          const {
+            syncAuthFromWidgetMirrorIfNewer,
+          } = require('../utils/widget/syncAuthFromWidget');
+          syncAuthFromWidgetMirrorIfNewer().catch(() => {});
+        } catch {
+          // ignore
+        }
       }
     });
 

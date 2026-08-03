@@ -33,6 +33,7 @@ import { api } from '../../../utils/api';
 import AppPopupModal from '../../../components/common/AppPopupModal';
 import { getMaxPeriodFromTimetableKeys } from './periodUtils';
 import { classifyTimetableCellValue } from '../../../utils/timetableAnomaly';
+import { syncTimetableWidgetFromFlat } from '../../../utils/widget';
 import styles, {
   DAYS,
   createManualTimetableScreenStyles,
@@ -290,14 +291,18 @@ export default function TimetableScreen({ navigation, route }) {
 
     try {
       const keyToUse = await resolveTimetableCacheKey();
+      const ts = Date.now();
       await AsyncStorage.setItem(
         keyToUse,
         JSON.stringify({
-          ts: Date.now(),
+          ts,
           timetable: nextTimetable,
           clearedByUser: false,
         }),
       );
+      syncTimetableWidgetFromFlat(nextTimetable, {
+        generatedAt: new Date(ts).toISOString(),
+      }).catch(() => {});
       setShowDoneAddedModal(true);
     } catch (error) {
       console.warn(

@@ -1,0 +1,9 @@
+{
+  "platforms": ["ios", "android"],
+  "ios": {
+    "modules": ["YouthPaperWidgetModule"]
+  },
+  "android": {
+    "modules": ["expo.modules.youthpaperwidget.YouthPaperWidgetModule"]
+  }
+}
