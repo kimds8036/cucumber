@@ -2,7 +2,7 @@
   "expo": {
     "name": "Youth Paper",
     "slug": "youth-paper",
-    "version": "1.5.14",
+    "version": "1.5.15",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
@@ -60,7 +60,7 @@
         "android.permission.READ_MEDIA_IMAGES"
       ],
       "package": "com.ucost.YouthPaper",
-      "versionCode": 23,
+      "versionCode": 24,
       "softwareKeyboardLayoutMode": "pan"
     },
     "web": {
