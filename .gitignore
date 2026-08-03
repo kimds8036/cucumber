@@ -27,6 +27,8 @@
 **/*.mobileprovision
 **/*.orig.*
 **/*.plist
+# Firebase client config (앱에 포함되어야 함; Admin SDK JSON은 위에서 계속 차단)
+!front/GoogleService-Info.plist
 
 # ==========================================
 # [Backend]
