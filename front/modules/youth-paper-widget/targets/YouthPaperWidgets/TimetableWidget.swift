@@ -72,11 +72,24 @@ private func darkenedSubjectColor(hex: String, factor: Double = 0.62) -> Color {
 enum TimetableWidgetStatus: Equatable {
   case needsPeriodSettings
   case needsTimetableData
-  case holiday
+  /// 주말·공휴일·과목 없는 평일 등 — 당일 과목이 전혀 없음
+  case noClass
   case beforeSchool
   case inClass(period: Int)
   case breakTime(lastPeriod: Int)
   case afterSchool
+}
+
+/// Large 주간 격자용 셀 (과목 없으면 nil)
+struct WeekdayPeriodCell: Hashable {
+  let subjectName: String
+  let subjectColorHex: String?
+}
+
+struct WeekdayPeriods: Hashable {
+  let weekday: String
+  /// 인덱스 = 교시 번호 - 1
+  let periods: [WeekdayPeriodCell?]
 }
 
 struct TimetableEntry: TimelineEntry {
@@ -90,6 +103,19 @@ struct TimetableEntry: TimelineEntry {
   let activePeriodNumber: Int?
   let status: TimetableWidgetStatus
   let isActiveAppearance: Bool
+  /// Large(주간)용 — Medium 타임라인과 동일 엔트리에 함께 실음
+  let weeklyPeriods: [WeekdayPeriods]
+}
+
+private let weekdayLabels = ["월", "화", "수", "목", "금"]
+
+/// RN `TimetableScreen` termTitle과 동일
+private func termTitle(from date: Date) -> String {
+  let calendar = WidgetPayloadReader.kstCalendar
+  let year = calendar.component(.year, from: date)
+  let month = calendar.component(.month, from: date)
+  let semester = (month >= 2 && month <= 7) ? "1학기" : "2학기"
+  return "\(year)년 \(semester)"
 }
 
 // MARK: - Merge / Timeline helpers
@@ -151,10 +177,52 @@ enum TimetableTimelineBuilder {
     return (merged, true, hasTimetablePayload, dayHasSubjects)
   }
 
+  /// App Group 주간 시간표 + 교시 설정 개수로 Large용 격자 데이터 구성
+  static func buildWeeklyPeriods() -> [WeekdayPeriods] {
+    let settings = WidgetPayloadReader.periodTimeSettings()
+    let configs = (settings?.periods ?? []).sorted { $0.periodNumber < $1.periodNumber }
+    let payload = WidgetPayloadReader.timetable()
+    let week = payload?.week ?? []
+    let colorMap = buildSubjectColorMap(week: week)
+
+    let fromSettings = configs.map(\.periodNumber).max() ?? 0
+    let fromWeek = week.flatMap { $0.periods.map(\.period) }.max() ?? 0
+    // 행 수: 교시 시간 설정 우선, 없으면 시간표 최대 교시
+    let maxN = fromSettings > 0 ? fromSettings : fromWeek
+    guard maxN >= 1 else {
+      return weekdayLabels.map { WeekdayPeriods(weekday: $0, periods: []) }
+    }
+
+    return weekdayLabels.map { day in
+      let dayData = week.first(where: { $0.dayLabel == day })
+      let byPeriod = Dictionary(
+        uniqueKeysWithValues: (dayData?.periods ?? []).map { ($0.period, $0.subject) },
+      )
+      var cells: [WeekdayPeriodCell?] = []
+      cells.reserveCapacity(maxN)
+      for n in 1...maxN {
+        let raw = byPeriod[n] ?? ""
+        let subject = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+        if subject.isEmpty {
+          cells.append(nil)
+        } else {
+          cells.append(
+            WeekdayPeriodCell(
+              subjectName: subject,
+              subjectColorHex: colorHexForSubject(subject, map: colorMap),
+            ),
+          )
+        }
+      }
+      return WeekdayPeriods(weekday: day, periods: cells)
+    }
+  }
+
   static func makeEntry(at date: Date, day: Date, periods: [MergedPeriod], status: TimetableWidgetStatus)
     -> TimetableEntry
   {
     let dayLabel = WidgetPayloadReader.formatDayLabel(day)
+    let weekly = buildWeeklyPeriods()
     switch status {
     case .needsPeriodSettings:
       return TimetableEntry(
@@ -168,6 +236,7 @@ enum TimetableTimelineBuilder {
         activePeriodNumber: nil,
         status: status,
         isActiveAppearance: false,
+        weeklyPeriods: weekly,
       )
     case .needsTimetableData:
       return TimetableEntry(
@@ -181,32 +250,45 @@ enum TimetableTimelineBuilder {
         activePeriodNumber: nil,
         status: status,
         isActiveAppearance: false,
+        weeklyPeriods: weekly,
       )
-    case .holiday:
+    case .noClass:
       return TimetableEntry(
         date: date,
         dayLabel: dayLabel,
-        statusText: "휴일",
+        statusText: "수업 없음",
         statusTimeRange: nil,
-        currentSubject: "편안한 주말 보내세요",
+        currentSubject: "오늘은 수업이 없습니다",
         currentColorHex: nil,
-        allPeriods: periods,
+        allPeriods: [],
         activePeriodNumber: nil,
         status: status,
         isActiveAppearance: false,
+        weeklyPeriods: weekly,
       )
     case .beforeSchool:
+      let first = periods.first(where: { !$0.subjectName.isEmpty }) ?? periods.first
+      let subject: String = {
+        if let first, !first.subjectName.isEmpty { return first.subjectName }
+        if let n = first?.number { return "\(n)교시" }
+        return "1교시"
+      }()
+      let range: String? = {
+        guard let start = first?.startTime, let end = first?.endTime else { return nil }
+        return WidgetPayloadReader.formatTimeRange(start, end)
+      }()
       return TimetableEntry(
         date: date,
         dayLabel: dayLabel,
         statusText: "등교 전",
-        statusTimeRange: nil,
-        currentSubject: "즐거운 하루 되세요",
-        currentColorHex: nil,
+        statusTimeRange: range,
+        currentSubject: subject,
+        currentColorHex: first?.subjectColorHex,
         allPeriods: periods,
         activePeriodNumber: nil,
         status: status,
         isActiveAppearance: false,
+        weeklyPeriods: weekly,
       )
     case .afterSchool:
       return TimetableEntry(
@@ -214,12 +296,13 @@ enum TimetableTimelineBuilder {
         dayLabel: dayLabel,
         statusText: "하교",
         statusTimeRange: nil,
-        currentSubject: "오늘 하루도 수고했어요",
+        currentSubject: "오늘 수업이 끝났습니다",
         currentColorHex: nil,
-        allPeriods: periods,
+        allPeriods: [],
         activePeriodNumber: nil,
         status: status,
         isActiveAppearance: false,
+        weeklyPeriods: weekly,
       )
     case .inClass(let n):
       let p = periods.first(where: { $0.number == n })
@@ -239,6 +322,7 @@ enum TimetableTimelineBuilder {
         activePeriodNumber: n,
         status: status,
         isActiveAppearance: true,
+        weeklyPeriods: weekly,
       )
     case .breakTime(let n):
       let p = periods.first(where: { $0.number == n })
@@ -258,25 +342,32 @@ enum TimetableTimelineBuilder {
         activePeriodNumber: nil,
         status: status,
         isActiveAppearance: false,
+        weeklyPeriods: weekly,
       )
     }
   }
 
-  static func status(at date: Date, periods: [MergedPeriod], dayHasSubjects: Bool, hasTimetable: Bool)
-    -> TimetableWidgetStatus
-  {
-    if periods.isEmpty { return .needsPeriodSettings }
-    if WidgetPayloadReader.isWeekend(date: date) || !dayHasSubjects {
-      return .holiday
-    }
+  static func status(
+    at date: Date,
+    periods: [MergedPeriod],
+    dayHasSubjects: Bool,
+    hasTimetable: Bool,
+    hasPeriodSettings: Bool,
+  ) -> TimetableWidgetStatus {
+    if !hasPeriodSettings { return .needsPeriodSettings }
     if !hasTimetable { return .needsTimetableData }
+    // 주말·과목 없는 평일 모두 — 당일 00:00~23:59 동일
+    if !dayHasSubjects { return .noClass }
+
     let scheduled = periods.filter(\.hasSchedule)
     guard let first = scheduled.first,
           let last = scheduled.last,
           let firstStart = first.startTime,
           let lastEnd = last.endTime
     else { return .beforeSchool }
+    // 00:00 ~ 첫 교시 시작 전
     if date < firstStart { return .beforeSchool }
+    // 마지막 교시 종료 후 ~ 23:59 (다음날 00:00 전)
     if date >= lastEnd { return .afterSchool }
     for (idx, p) in scheduled.enumerated() {
       guard let start = p.startTime, let end = p.endTime else { continue }
@@ -296,6 +387,7 @@ enum TimetableTimelineBuilder {
   static func buildTimeline() -> Timeline<TimetableEntry> {
     let cal = WidgetPayloadReader.kstCalendar
     let now = Date()
+    // KST 자정 기준 날짜 경계
     let today = WidgetPayloadReader.startOfDay(now)
     let tomorrow = cal.date(byAdding: .day, value: 1, to: today) ?? today.addingTimeInterval(86400)
 
@@ -305,26 +397,22 @@ enum TimetableTimelineBuilder {
 
     // 현재 시각 기준 엔트리 보장
     let todayMerge = mergePeriods(for: today)
-    if todayMerge.hasPeriodSettings {
-      let st = status(
-        at: now,
-        periods: todayMerge.periods,
-        dayHasSubjects: todayMerge.dayHasSubjects,
-        hasTimetable: todayMerge.hasTimetablePayload,
-      )
-      entries.append(
-        makeEntry(at: now, day: today, periods: todayMerge.periods, status: st),
-      )
-    } else {
-      entries.append(
-        makeEntry(at: now, day: today, periods: [], status: .needsPeriodSettings),
-      )
-    }
+    let st = status(
+      at: now,
+      periods: todayMerge.periods,
+      dayHasSubjects: todayMerge.dayHasSubjects,
+      hasTimetable: todayMerge.hasTimetablePayload,
+      hasPeriodSettings: todayMerge.hasPeriodSettings,
+    )
+    entries.append(
+      makeEntry(at: now, day: today, periods: todayMerge.periods, status: st),
+    )
 
     let unique = Dictionary(grouping: entries, by: { $0.date.timeIntervalSince1970 })
       .compactMap { _, group in group.last }
       .sorted { $0.date < $1.date }
 
+    // 모레 00:00에 리로드 — 자정 전환으로 다음날 시간표 반영
     let reloadAfter = cal.date(byAdding: .day, value: 1, to: tomorrow) ?? tomorrow.addingTimeInterval(86400)
     return Timeline(entries: unique, policy: .after(reloadAfter))
   }
@@ -340,13 +428,6 @@ enum TimetableTimelineBuilder {
       return out
     }
 
-    if WidgetPayloadReader.isWeekend(date: day) || !merged.dayHasSubjects {
-      if includeStartOfDay {
-        out.append(makeEntry(at: day, day: day, periods: merged.periods, status: .holiday))
-      }
-      return out
-    }
-
     if !merged.hasTimetablePayload {
       if includeStartOfDay {
         out.append(
@@ -356,8 +437,17 @@ enum TimetableTimelineBuilder {
       return out
     }
 
+    // 과목 없는 날(주말 포함): 자정 한 번만 — 다음날 00:00 엔트리가 이어받음
+    if !merged.dayHasSubjects {
+      if includeStartOfDay {
+        out.append(makeEntry(at: day, day: day, periods: merged.periods, status: .noClass))
+      }
+      return out
+    }
+
     let periods = merged.periods
     let scheduled = periods.filter(\.hasSchedule)
+    // 당일 00:00 = 등교 전 시작
     if includeStartOfDay {
       out.append(makeEntry(at: day, day: day, periods: periods, status: .beforeSchool))
     }
@@ -369,6 +459,7 @@ enum TimetableTimelineBuilder {
           makeEntry(at: end, day: day, periods: periods, status: .breakTime(lastPeriod: p.number)),
         )
       } else {
+        // 마지막 교시 종료 ~ 당일 끝(다음날 00:00 전)
         out.append(makeEntry(at: end, day: day, periods: periods, status: .afterSchool))
       }
     }
@@ -405,6 +496,7 @@ struct TimetableProvider: TimelineProvider {
       periods: merged.periods,
       dayHasSubjects: merged.dayHasSubjects,
       hasTimetable: merged.hasTimetablePayload,
+      hasPeriodSettings: merged.hasPeriodSettings,
     )
     completion(
       TimetableTimelineBuilder.makeEntry(at: now, day: today, periods: merged.periods, status: st),
@@ -464,7 +556,46 @@ struct TimetableWidgetView: View {
     return inactiveBase.opacity(0.3)
   }
 
+  private var isMessageOnlyMedium: Bool {
+    entry.status == .noClass || entry.status == .afterSchool
+  }
+
   private var mediumView: some View {
+    Group {
+      if isMessageOnlyMedium {
+        mediumMessageOnlyView
+      } else {
+        mediumStandardView
+      }
+    }
+    .padding(widgetPad)
+  }
+
+  /// 과목 없는 날·하교: 배지·하단 리스트 없이 날짜 + 본문 중앙
+  private var mediumMessageOnlyView: some View {
+    VStack(spacing: 0) {
+      HStack {
+        Spacer(minLength: 0)
+        Text(entry.dayLabel)
+          .font(.system(size: 12, weight: .medium))
+          .foregroundColor(textPrimary)
+          .lineLimit(1)
+          .minimumScaleFactor(0.8)
+      }
+
+      Spacer(minLength: 0)
+      Text(entry.currentSubject)
+        .font(.system(size: 12, weight: .regular))
+        .foregroundColor(Color(hex: "272A26", opacity: 0.5))
+        .multilineTextAlignment(.center)
+        .lineLimit(2)
+        .minimumScaleFactor(0.8)
+        .frame(maxWidth: .infinity)
+      Spacer(minLength: 0)
+    }
+  }
+
+  private var mediumStandardView: some View {
     VStack(alignment: .leading, spacing: 0) {
       HStack(alignment: .center, spacing: 8) {
         statusBadge
@@ -500,7 +631,6 @@ struct TimetableWidgetView: View {
         }
       }
     }
-    .padding(widgetPad)
   }
 
   private var statusBadge: some View {
@@ -570,87 +700,148 @@ struct TimetableWidgetView: View {
     )
   }
 
-  /// Large: 기존 주간 격자 유지 (타임라인 entry의 allPeriods / week payload 병행)
+  /// Large: 주간(월~금) 정적 격자 — Medium의 진행/쉬는시간 상태와 무관
   private var largeView: some View {
-    let payload = WidgetPayloadReader.timetable()
-    let week = payload?.week ?? []
-    let colorMap = buildSubjectColorMap(week: week)
-    let days = ["월", "화", "수", "목", "금"]
-    let maxPeriod = week.flatMap { $0.periods.map(\.period) }.max() ?? 0
-    let periods = Array(1...8)
-    let hasMore = maxPeriod > 8
-    let gridLine = Color(hex: "E6E6E6")
+    let weekly = entry.weeklyPeriods
+    let rowCount = weekly.map(\.periods.count).max() ?? 0
+    let displayRows = min(rowCount, 8)
+    let hasMore = rowCount >= 9
+    let hasAnySubject = weekly.contains { day in
+      day.periods.contains { $0 != nil }
+    }
 
-    return VStack(alignment: .leading, spacing: 6) {
-      if entry.status == .needsPeriodSettings {
-        Text("교시 시간 설정이 필요해요")
-          .font(.system(size: 15, weight: .semibold))
-          .foregroundColor(textPrimary)
-        Text("탭하여 마이페이지에서 설정")
-          .font(.system(size: 12))
-          .foregroundColor(textPrimary.opacity(0.5))
+    return VStack(alignment: .leading, spacing: 8) {
+      largeHeader
+
+      if !hasAnySubject || rowCount < 1 {
         Spacer(minLength: 0)
-      } else if week.isEmpty || payload?.empty == true {
-        Text("시간표를 설정해주세요")
-          .font(.system(size: 15, weight: .semibold))
-          .foregroundColor(textPrimary)
+        Text(
+          entry.status == .needsPeriodSettings
+            ? "교시 시간 설정이 필요해요"
+            : "시간표를 설정해주세요",
+        )
+        .font(.system(size: 15, weight: .semibold))
+        .foregroundColor(textPrimary)
+        if entry.status == .needsPeriodSettings {
+          Text("탭하여 마이페이지에서 설정")
+            .font(.system(size: 12))
+            .foregroundColor(textPrimary.opacity(0.5))
+        }
         Spacer(minLength: 0)
       } else {
-        VStack(spacing: 0) {
-          HStack(spacing: 0) {
-            Text("").frame(width: 16).frame(maxHeight: .infinity)
-              .overlay(Rectangle().stroke(gridLine, lineWidth: 0.5))
-            ForEach(days, id: \.self) { d in
-              Text(d)
-                .font(.system(size: 10, weight: .semibold))
-                .foregroundColor(Color(hex: "6F9163"))
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-                .overlay(Rectangle().stroke(gridLine, lineWidth: 0.5))
-            }
-          }
-          .frame(height: 18)
-
-          ForEach(periods, id: \.self) { period in
-            HStack(spacing: 0) {
-              Text("\(period)")
-                .font(.system(size: 9, weight: .bold))
-                .foregroundColor(Color(hex: "6F9163"))
-                .frame(width: 16)
-                .frame(maxHeight: .infinity)
-                .overlay(Rectangle().stroke(gridLine, lineWidth: 0.5))
-              ForEach(days, id: \.self) { d in
-                let subject = week.first(where: { $0.dayLabel == d })?
-                  .periods.first(where: { $0.period == period })?
-                  .subject ?? ""
-                let hex = colorHexForSubject(subject, map: colorMap)
-                Text(subject)
-                  .font(.system(size: 9, weight: .medium))
-                  .lineLimit(1)
-                  .minimumScaleFactor(0.65)
-                  .foregroundColor(textPrimary)
-                  .frame(maxWidth: .infinity, maxHeight: .infinity)
-                  .background(hex.map { Color(hex: $0, opacity: 0.5) } ?? Color.white)
-                  .overlay(Rectangle().stroke(gridLine, lineWidth: 0.5))
-              }
-            }
-            .frame(minHeight: 16)
-          }
-        }
-        .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
-        .overlay(
-          RoundedRectangle(cornerRadius: 10, style: .continuous)
-            .stroke(gridLine, lineWidth: 1),
-        )
+        largeWeekGrid(weekly: weekly, rowCount: displayRows)
         if hasMore {
           Text("더보기")
-            .font(.system(size: 11, weight: .medium))
-            .foregroundColor(textPrimary.opacity(0.55))
+            .font(.system(size: 11, weight: .regular))
+            .foregroundColor(Color(hex: "272A26", opacity: 0.3))
             .frame(maxWidth: .infinity, alignment: .center)
         }
-        Spacer(minLength: 0)
       }
     }
-    .padding(widgetPad)
+    .padding(0)
+  }
+
+  private var largeHeader: some View {
+    HStack(alignment: .center, spacing: 6) {
+      HStack(spacing: 4) {
+        Image("YouthPaperLogo")
+          .renderingMode(.template)
+          .resizable()
+          .scaledToFit()
+          .frame(width: 18, height: 18)
+          .foregroundColor(Color(hex: "A6DA95"))
+        Text("시간표")
+          .font(.system(size: 17, weight: .bold))
+          .foregroundColor(Color(hex: "A6DA95"))
+      }
+      Spacer(minLength: 4)
+      Text(termTitle(from: entry.date))
+        .font(.system(size: 12, weight: .medium))
+        .foregroundColor(textPrimary.opacity(0.55))
+        .lineLimit(1)
+        .minimumScaleFactor(0.8)
+    }
+  }
+
+  private func largeWeekGrid(weekly: [WeekdayPeriods], rowCount: Int) -> some View {
+    let periodColWidth: CGFloat = 14
+    let cellRadius: CGFloat = 9
+    let gap: CGFloat = 3
+    let byDay = Dictionary(uniqueKeysWithValues: weekly.map { ($0.weekday, $0) })
+
+    return VStack(spacing: gap) {
+      HStack(spacing: gap) {
+        Color.clear.frame(width: periodColWidth)
+        ForEach(weekdayLabels, id: \.self) { day in
+          Text(day)
+            .font(.system(size: 13, weight: .medium))
+            .foregroundColor(textPrimary)
+            .frame(maxWidth: .infinity)
+            .multilineTextAlignment(.center)
+        }
+      }
+
+      ForEach(1...rowCount, id: \.self) { period in
+        HStack(spacing: gap) {
+          Text("\(period)")
+            .font(.system(size: 10, weight: .medium))
+            .foregroundColor(Color(hex: "888780"))
+            .frame(width: periodColWidth, alignment: .leading)
+
+          ForEach(weekdayLabels, id: \.self) { day in
+            largeSubjectCell(
+              cellAt(byDay: byDay, day: day, period: period),
+              cornerRadius: cellRadius,
+            )
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+          }
+        }
+        .frame(maxHeight: .infinity)
+      }
+    }
+  }
+
+  private func cellAt(
+    byDay: [String: WeekdayPeriods],
+    day: String,
+    period: Int,
+  ) -> WeekdayPeriodCell? {
+    guard let periods = byDay[day]?.periods else { return nil }
+    let idx = period - 1
+    guard idx >= 0, idx < periods.count else { return nil }
+    return periods[idx]
+  }
+
+  @ViewBuilder
+  private func largeSubjectCell(
+    _ cell: WeekdayPeriodCell?,
+    cornerRadius: CGFloat,
+  ) -> some View {
+    if let cell {
+      filledLargeSubjectCell(cell, cornerRadius: cornerRadius)
+    } else {
+      Color.clear
+    }
+  }
+
+  private func filledLargeSubjectCell(
+    _ cell: WeekdayPeriodCell,
+    cornerRadius: CGFloat,
+  ) -> some View {
+    let name = cell.subjectName
+    let count = name.count
+    let bg = cell.subjectColorHex.map { Color(hex: $0, opacity: 0.5) } ?? Color.clear
+    return Text(name)
+      .font(.system(size: count >= 4 ? 9 : 11, weight: .medium))
+      .foregroundColor(textPrimary)
+      .lineLimit(1)
+      .truncationMode(.tail)
+      .minimumScaleFactor(count >= 5 ? 0.9 : 1.0)
+      .frame(maxWidth: .infinity, maxHeight: .infinity)
+      .padding(.horizontal, 2)
+      .background(
+        RoundedRectangle(cornerRadius: cornerRadius, style: .continuous).fill(bg),
+      )
   }
 }
 
@@ -667,7 +858,7 @@ struct TimetableWidget: Widget {
       }
     }
     .configurationDisplayName("시간표")
-    .description("오늘 교시·과목을 보여줍니다.")
+    .description("오늘·주간 시간표를 보여줍니다.")
     .supportedFamilies([.systemMedium, .systemLarge])
   }
 }
