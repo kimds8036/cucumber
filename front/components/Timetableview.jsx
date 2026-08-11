@@ -12,7 +12,6 @@ import {
   alertGallerySaveFailure,
 } from '../utils/saveImageToGallery';
 import AppPopupModal from '../components/common/AppPopupModal';
-import AntDesign from '@expo/vector-icons/AntDesign';
 import Feather from '@expo/vector-icons/Feather';
 import { colors } from '../styles/colors';
 import { TIMETABLE_SUBJECT_COLORS } from '../styles/colors';
@@ -40,7 +39,7 @@ const TimetableView = ({
   timetable,
   timetableCacheKey,
   onNavigateToEdit,
-  onResetPress,
+  onPeriodSettingsPress,
   colorSeed = 0,
 }) => {
   const { width } = useWindowDimensions();
@@ -183,11 +182,11 @@ const TimetableView = ({
               <View style={styles.mergedFooterActionRow}>
                 <TouchableOpacity
                   style={styles.refreshButton}
-                  onPress={onResetPress}
+                  onPress={onPeriodSettingsPress}
                   activeOpacity={0.7}
                 >
-                  <AntDesign
-                    name="reload"
+                  <Feather
+                    name="settings"
                     size={16}
                     color={styles.footerResetLabel.color}
                   />

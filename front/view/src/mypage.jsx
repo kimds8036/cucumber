@@ -13,8 +13,6 @@ import { colors } from '../../styles/colors';
 import { createMyPageStyles, getNormalize } from '../../styles/mypage.style';
 import ProfileCard from '../../components/Profilecard';
 import TimetableView from '../../components/Timetableview';
-import AppPopupModal from '../../components/common/AppPopupModal';
-import { createTimetableViewStyles } from '../../src/screens/timetable/timetable.style';
 import { api, clearUserSessionStorage } from '../../utils/api';
 import { useAuth } from '../../context/AuthContext';
 import { getDeviceId } from '../../utils/deviceId';
@@ -49,10 +47,6 @@ const MyPage = ({ navigation }) => {
   const { width } = useWindowDimensions();
   const normalize = useMemo(() => getNormalize(width), [width]);
   const styles = useMemo(() => createMyPageStyles(normalize), [normalize]);
-  const timetableModalStyles = useMemo(
-    () => createTimetableViewStyles(normalize),
-    [normalize],
-  );
   const { logout } = useAuth();
   const TIMETABLE_CACHE_KEY = '@mypage_timetable_cache_v1';
   const TIMETABLE_CACHE_KEY_PREFIX = '@mypage_timetable_cache_v1:';
@@ -64,7 +58,6 @@ const MyPage = ({ navigation }) => {
   const [colorSeed, setColorSeed] = useState(0);
   const [loading, setLoading] = useState(false);
   const [timetableLoading, setTimetableLoading] = useState(false);
-  const [showResetTimetableModal, setShowResetTimetableModal] = useState(false);
   const [timetableCacheKey, setTimetableCacheKey] = useState(null);
   const timetableHydratedRef = useRef(false);
 
@@ -313,29 +306,6 @@ const MyPage = ({ navigation }) => {
     });
   }, [navigation, timetable, timetableCacheKey]);
 
-  const handleResetTimetable = () => {
-    setShowResetTimetableModal(true);
-  };
-
-  const performResetTimetable = async () => {
-    setTimetable(null);
-    setColorSeed((prev) => prev + 1);
-    setShowResetTimetableModal(false);
-    try {
-      await AsyncStorage.setItem(
-        timetableCacheKey,
-        JSON.stringify({
-          ts: Date.now(),
-          timetable: null,
-          clearedByUser: true,
-        }),
-      );
-      syncTimetableWidgetFromFlat(null).catch(() => {});
-    } catch (error) {
-      console.error('시간표 삭제 저장 실패:', error);
-    }
-  };
-
   const MenuItem = ({
     icon,
     title,
@@ -410,7 +380,9 @@ const MyPage = ({ navigation }) => {
                     timetable={timetable}
                     timetableCacheKey={timetableCacheKey}
                     onNavigateToEdit={handleNavigateToTimetableCellEdit}
-                    onResetPress={handleResetTimetable}
+                    onPeriodSettingsPress={() =>
+                      navigation.navigate('PeriodTimeSettings')
+                    }
                     colorSeed={colorSeed}
                   />
                 </GuideFocusTarget>
@@ -451,12 +423,6 @@ const MyPage = ({ navigation }) => {
             }
           />
           <MenuItem
-            icon="time-outline"
-            title="교시 시간 설정"
-            subtitle="위젯에 표시할 교시 시작·종료 시각"
-            onPress={() => navigation.navigate('PeriodTimeSettings')}
-          />
-          <MenuItem
             icon="person-circle-outline"
             title="계정 관리"
             onPress={() =>
@@ -486,87 +452,6 @@ const MyPage = ({ navigation }) => {
 
         <View style={styles.bottomPadding} />
       </ScrollView>
-
-      <AppPopupModal
-        visible={showResetTimetableModal}
-        onClose={() => setShowResetTimetableModal(false)}
-        dismissOnBackdrop={false}
-      >
-        <Text
-          style={{
-            fontSize: 18,
-            color: colors.textPrimary,
-            fontWeight: '700',
-            textAlign: 'center',
-            marginBottom: 10,
-          }}
-        >
-          시간표 삭제
-        </Text>
-        <Text
-          style={{
-            fontSize: 14,
-            color: colors.textSecondary,
-            textAlign: 'center',
-            lineHeight: 22,
-            marginBottom: 16,
-          }}
-        >
-          시간표를 모두 지우고 초기화할까요?
-        </Text>
-        <View style={timetableModalStyles.timetableResetModalActions}>
-          <TouchableOpacity
-            style={[
-              timetableModalStyles.timetableResetModalCancel,
-              {
-                height: 42,
-                borderRadius: 10,
-                backgroundColor: colors.textLight5,
-                alignItems: 'center',
-                justifyContent: 'center',
-              },
-            ]}
-            onPress={() => setShowResetTimetableModal(false)}
-            activeOpacity={0.85}
-          >
-            <Text
-              style={[
-                timetableModalStyles.timetableResetModalCancelText,
-                {
-                  fontSize: 14,
-                  fontWeight: '700',
-                  color: colors.textSecondary,
-                },
-              ]}
-            >
-              취소
-            </Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[
-              timetableModalStyles.timetableResetModalDelete,
-              {
-                height: 42,
-                borderRadius: 10,
-                backgroundColor: colors.primary,
-                alignItems: 'center',
-                justifyContent: 'center',
-              },
-            ]}
-            onPress={performResetTimetable}
-            activeOpacity={0.85}
-          >
-            <Text
-              style={[
-                timetableModalStyles.timetableResetModalDeleteText,
-                { fontSize: 14, fontWeight: '700', color: colors.textWhite },
-              ]}
-            >
-              삭제
-            </Text>
-          </TouchableOpacity>
-        </View>
-      </AppPopupModal>
     </View>
   );
 };

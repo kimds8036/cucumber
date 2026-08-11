@@ -12,6 +12,7 @@ import EditTimetable from './view/src/edittimetable';
 import MyPosts from './view/src/myposts';
 import NotificationSettings from './view/src/notificationsettings';
 import PeriodTimeSettings from './view/src/PeriodTimeSettings';
+import PeriodTimeSetup from './view/src/PeriodTimeSetup';
 import SetPinScreen from './view/src/setPinScreen';
 import ConfirmPinScreen from './view/src/confirmPinScreen';
 import VerifyPinScreen from './view/src/verifyPinScreen';
@@ -218,6 +219,7 @@ function MainStack({ initialRouteName = 'Main' }) {
         component={NotificationSettings}
       />
       <Stack.Screen name="PeriodTimeSettings" component={PeriodTimeSettings} />
+      <Stack.Screen name="PeriodTimeSetup" component={PeriodTimeSetup} />
       <Stack.Screen name="SetPinScreen" component={SetPinScreen} />
       <Stack.Screen name="ConfirmPinScreen" component={ConfirmPinScreen} />
       <Stack.Screen name="VerifyPinScreen" component={VerifyPinScreen} />

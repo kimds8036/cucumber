@@ -10,12 +10,11 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Picker } from '@react-native-picker/picker';
-import AntDesign from '@expo/vector-icons/AntDesign';
 import Feather from '@expo/vector-icons/Feather';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { CommonActions } from '@react-navigation/native';
 import SubHeader from '../frame/subHeader';
-import AppPopupModal from '../../components/common/AppPopupModal';
 import { colors } from '../../styles/colors';
 import { getNormalize } from '../../styles/frame.style';
 import { createNotificationSettingsStyles } from '../../styles/mypage.style';
@@ -29,9 +28,7 @@ import {
   minutesToHhmm,
   hhmmToMinutes,
 } from '../../utils/widget/periodTimeSettings.js';
-
-const TIMETABLE_CACHE_KEY = '@mypage_timetable_cache_v1';
-const TIMETABLE_CACHE_KEY_PREFIX = '@mypage_timetable_cache_v1:';
+import { getMaxPeriodFromTimetableKeys } from '../../src/screens/timetable/periodUtils';
 
 const HOURS = Array.from({ length: 24 }, (_, i) => i);
 const MINUTES = Array.from({ length: 12 }, (_, i) => i * 5);
@@ -41,7 +38,39 @@ function parseHhmm(hhmm) {
   return { hour: Math.floor(mins / 60), minute: mins % 60 };
 }
 
-function TimeField({ label, value, onPress, normalize, styles }) {
+/** 기존 설정이 있어도 시간표 최대 교시 수에 맞춰 늘리거나 자름 */
+function alignPeriodsToCount(existingPeriods, count) {
+  const n = Math.max(1, Number(count) || 7);
+  const sorted = Array.isArray(existingPeriods)
+    ? [...existingPeriods]
+        .filter((p) => p && Number(p.periodNumber) > 0)
+        .sort((a, b) => a.periodNumber - b.periodNumber)
+    : [];
+
+  if (sorted.length === 0) {
+    return defaultPeriodTimes(n);
+  }
+
+  const out = sorted.slice(0, n).map((p, i) => ({
+    periodNumber: i + 1,
+    startTime: p.startTime,
+    endTime: p.endTime,
+  }));
+
+  while (out.length < n) {
+    const lastEnd = hhmmToMinutes(out[out.length - 1]?.endTime) ?? 9 * 60;
+    const start = lastEnd + 10;
+    const end = start + 50;
+    out.push({
+      periodNumber: out.length + 1,
+      startTime: minutesToHhmm(start),
+      endTime: minutesToHhmm(Math.min(end, 23 * 60 + 55)),
+    });
+  }
+  return out;
+}
+
+function TimeField({ label, value, onPress, styles }) {
   return (
     <TouchableOpacity style={styles.timeField} onPress={onPress} activeOpacity={0.7}>
       <Text style={styles.timeFieldLabel}>{label}</Text>
@@ -50,7 +79,17 @@ function TimeField({ label, value, onPress, normalize, styles }) {
   );
 }
 
-const PeriodTimeSettings = ({ navigation }) => {
+/**
+ * 시간표 최초 등록 직후 교시 시각을 설정하는 온보딩 화면.
+ * PeriodTimeSettings(마이페이지 설정)와 별도 페이지.
+ *
+ * route.params:
+ * - pendingTimetable?: object  — 있으면 완료 시 캐시에 함께 저장
+ * - sourceTimetable?: object   — 교시 수 계산용 (이미 저장된 자동선택 등)
+ * - timetableCacheKey?: string
+ * - suggestedPeriodCount?: number
+ */
+const PeriodTimeSetup = ({ navigation, route }) => {
   const { width } = useWindowDimensions();
   const normalize = useMemo(() => getNormalize(width), [width]);
   const styles = useMemo(() => createStyles(normalize), [normalize]);
@@ -58,6 +97,20 @@ const PeriodTimeSettings = ({ navigation }) => {
     () => createNotificationSettingsStyles(normalize),
     [normalize],
   );
+
+  const pendingTimetable = route?.params?.pendingTimetable;
+  const sourceTimetable =
+    route?.params?.sourceTimetable || pendingTimetable || null;
+  const timetableCacheKey = route?.params?.timetableCacheKey;
+
+  const suggestedPeriodCount = useMemo(() => {
+    if (sourceTimetable && typeof sourceTimetable === 'object') {
+      return getMaxPeriodFromTimetableKeys(sourceTimetable, 7);
+    }
+    const fromParam = Number(route?.params?.suggestedPeriodCount);
+    if (Number.isFinite(fromParam) && fromParam > 0) return fromParam;
+    return 7;
+  }, [route?.params?.suggestedPeriodCount, sourceTimetable]);
 
   const SectionHeader = ({ icon, title, description, Icon = Ionicons }) => (
     <View style={ns.sectionHeader}>
@@ -72,14 +125,14 @@ const PeriodTimeSettings = ({ navigation }) => {
   );
 
   const [userScope, setUserScope] = useState(null);
-  const [periods, setPeriods] = useState(() => defaultPeriodTimes(7));
+  const [periods, setPeriods] = useState(() =>
+    defaultPeriodTimes(suggestedPeriodCount),
+  );
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
-  const [pickerTarget, setPickerTarget] = useState(null); // { index, field: 'start'|'end' }
+  const [pickerTarget, setPickerTarget] = useState(null);
   const [draftHour, setDraftHour] = useState(9);
   const [draftMinute, setDraftMinute] = useState(0);
-  const [showResetModal, setShowResetModal] = useState(false);
-  const [resetting, setResetting] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -102,21 +155,42 @@ const PeriodTimeSettings = ({ navigation }) => {
       }
       if (cancelled) return;
       setUserScope(scope);
+
+      let periodCount = suggestedPeriodCount;
+      // 캐시에만 시간표가 있는 경우(자동 선택)에도 최대 교시 재계산
+      if (
+        (!sourceTimetable || typeof sourceTimetable !== 'object') &&
+        timetableCacheKey
+      ) {
+        try {
+          const raw = await AsyncStorage.getItem(timetableCacheKey);
+          if (raw) {
+            const parsed = JSON.parse(raw);
+            const tt = parsed?.timetable;
+            if (tt && typeof tt === 'object') {
+              periodCount = getMaxPeriodFromTimetableKeys(tt, periodCount);
+            }
+          }
+        } catch {
+          // ignore
+        }
+      }
+
       const loaded = await loadPeriodTimeSettings(scope);
       if (cancelled) return;
-      if (loaded?.periods?.length) {
-        setPeriods(loaded.periods);
-      }
+      setPeriods(alignPeriodsToCount(loaded?.periods, periodCount));
     })();
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [suggestedPeriodCount, sourceTimetable, timetableCacheKey]);
 
   const openPicker = useCallback(
     (index, field) => {
       const p = periods[index];
-      const { hour, minute } = parseHhmm(field === 'start' ? p.startTime : p.endTime);
+      const { hour, minute } = parseHhmm(
+        field === 'start' ? p.startTime : p.endTime,
+      );
       setDraftHour(hour);
       setDraftMinute(Math.round(minute / 5) * 5);
       setPickerTarget({ index, field });
@@ -169,6 +243,15 @@ const PeriodTimeSettings = ({ navigation }) => {
     setError('');
   }, []);
 
+  const finishToMypage = useCallback(() => {
+    navigation.dispatch(
+      CommonActions.reset({
+        index: 0,
+        routes: [{ name: 'Main', params: { initialTab: 'mypage' } }],
+      }),
+    );
+  }, [navigation]);
+
   const handleSave = useCallback(async () => {
     const validation = validatePeriodTimeSettings(periods);
     if (!validation.ok) {
@@ -183,50 +266,46 @@ const PeriodTimeSettings = ({ navigation }) => {
         setError(result.message || '저장에 실패했어요.');
         return;
       }
-      navigation.goBack();
+
+      if (
+        pendingTimetable &&
+        typeof pendingTimetable === 'object' &&
+        timetableCacheKey
+      ) {
+        const ts = Date.now();
+        await AsyncStorage.setItem(
+          timetableCacheKey,
+          JSON.stringify({
+            ts,
+            timetable: pendingTimetable,
+            clearedByUser: false,
+          }),
+        );
+        syncTimetableWidgetFromFlat(pendingTimetable, {
+          generatedAt: new Date(ts).toISOString(),
+        }).catch(() => {});
+      }
+
+      finishToMypage();
     } catch (e) {
       setError(e?.message || '저장에 실패했어요.');
     } finally {
       setSaving(false);
     }
-  }, [periods, userScope, navigation]);
-
-  const timetableCacheKey = useMemo(
-    () =>
-      userScope
-        ? `${TIMETABLE_CACHE_KEY_PREFIX}${userScope}`
-        : TIMETABLE_CACHE_KEY,
-    [userScope],
-  );
-
-  const performResetTimetable = useCallback(async () => {
-    setResetting(true);
-    try {
-      await AsyncStorage.setItem(
-        timetableCacheKey,
-        JSON.stringify({
-          ts: Date.now(),
-          timetable: null,
-          clearedByUser: true,
-        }),
-      );
-      await syncTimetableWidgetFromFlat(null);
-      setShowResetModal(false);
-      navigation.goBack();
-    } catch (e) {
-      setError(e?.message || '시간표 초기화에 실패했어요.');
-      setShowResetModal(false);
-    } finally {
-      setResetting(false);
-    }
-  }, [timetableCacheKey, navigation]);
+  }, [
+    periods,
+    userScope,
+    pendingTimetable,
+    timetableCacheKey,
+    finishToMypage,
+  ]);
 
   return (
     <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
       <SubHeader
-        title="시간표 설정"
+        title="교시 시간 설정"
         onBack={() => navigation.goBack()}
-        rightButtonText={saving ? '저장 중' : '저장'}
+        rightButtonText={saving ? '저장 중' : '완료'}
         onRightPress={handleSave}
         rightDisabled={saving}
       />
@@ -237,8 +316,8 @@ const PeriodTimeSettings = ({ navigation }) => {
       >
         <SectionHeader
           icon="time-outline"
-          title="교시 시간 설정"
-          description="각 교시의 시작·종료 시각을 설정하세요"
+          title="교시 시작·종료 시각"
+          description="위젯에 표시할 각 교시 시간을 설정해 주세요"
         />
         <View style={[ns.card, styles.periodCard]}>
           {periods.map((p, index) => (
@@ -260,7 +339,6 @@ const PeriodTimeSettings = ({ navigation }) => {
                     label="시작"
                     value={p.startTime}
                     onPress={() => openPicker(index, 'start')}
-                    normalize={normalize}
                     styles={styles}
                   />
                   <Text style={styles.tilde}>~</Text>
@@ -268,14 +346,13 @@ const PeriodTimeSettings = ({ navigation }) => {
                     label="종료"
                     value={p.endTime}
                     onPress={() => openPicker(index, 'end')}
-                    normalize={normalize}
                     styles={styles}
                   />
                 </View>
               </View>
             </View>
           ))}
-          
+
           <TouchableOpacity
             style={styles.addBtn}
             onPress={addPeriod}
@@ -291,62 +368,8 @@ const PeriodTimeSettings = ({ navigation }) => {
         </View>
 
         {!!error && <Text style={styles.error}>{error}</Text>}
-
-        <SectionHeader
-          icon="refresh-outline"
-          title="시간표 초기화"
-          description="저장된 시간표를 모두 지우고 처음부터 다시 설정할 수 있어요"
-        />
-        <TouchableOpacity
-          style={styles.resetCard}
-          onPress={() => setShowResetModal(true)}
-          activeOpacity={0.85}
-        >
-          <View style={styles.resetTitleRow}>
-            <View style={styles.resetIconWrap}>
-              <AntDesign
-                name="reload"
-                size={normalize(18)}
-                color={colors.alertDark}
-              />
-            </View>
-            <Text style={styles.resetTitle}>시간표 초기화</Text>
-          </View>
-        </TouchableOpacity>
-
         <View style={ns.scrollBottomSpacer} />
       </ScrollView>
-
-      <AppPopupModal
-        visible={showResetModal}
-        onClose={() => !resetting && setShowResetModal(false)}
-        dismissOnBackdrop={!resetting}
-      >
-        <Text style={styles.resetModalTitle}>시간표 삭제</Text>
-        <Text style={styles.resetModalBody}>
-          시간표를 모두 지우고 초기화할까요?
-        </Text>
-        <View style={styles.resetModalActions}>
-          <TouchableOpacity
-            style={styles.resetModalCancel}
-            onPress={() => setShowResetModal(false)}
-            activeOpacity={0.85}
-            disabled={resetting}
-          >
-            <Text style={styles.resetModalCancelText}>취소</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={styles.resetModalDelete}
-            onPress={performResetTimetable}
-            activeOpacity={0.85}
-            disabled={resetting}
-          >
-            <Text style={styles.resetModalDeleteText}>
-              {resetting ? '삭제 중' : '삭제'}
-            </Text>
-          </TouchableOpacity>
-        </View>
-      </AppPopupModal>
 
       <Modal visible={!!pickerTarget} transparent animationType="fade">
         <View style={styles.modalBackdrop}>
@@ -417,11 +440,6 @@ function createStyles(normalize) {
     periodCard: {
       paddingVertical: normalize(4),
     },
-    cardDivider: {
-      height: 1,
-      backgroundColor: colors.border,
-      marginHorizontal: normalize(2),
-    },
     row: {
       paddingVertical: normalize(12),
     },
@@ -491,94 +509,12 @@ function createStyles(normalize) {
       fontWeight: '600',
       color: colors.primaryDark,
     },
-    resetCard: {
-      marginHorizontal: normalize(16),
-      alignItems: 'center',
-      justifyContent: 'center',
-      gap: normalize(6),
-      paddingVertical: normalize(6),
-      paddingHorizontal: normalize(16),
-      borderRadius: normalize(160),
-      backgroundColor: colors.alertLight,
-      borderWidth: 1,
-      borderColor: colors.alert,
-    },
-    resetTitleRow: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'center',
-      gap: normalize(8),
-    },
-    resetIconWrap: {
-      width: normalize(20),
-      height: normalize(32),
-      borderRadius: normalize(16),
-      alignItems: 'center',
-      justifyContent: 'center',
-    },
-    resetTitle: {
-      fontSize: normalize(15),
-      fontWeight: '700',
-      color: colors.alertDark,
-      textAlign: 'center',
-    },
-    resetSubtitle: {
-      fontSize: normalize(12),
-      lineHeight: normalize(17),
-      color: colors.alertDark,
-      opacity: 0.72,
-      textAlign: 'center',
-    },
     error: {
       marginTop: normalize(10),
       marginHorizontal: normalize(20),
       fontSize: normalize(13),
       color: colors.alertDark,
       lineHeight: normalize(18),
-    },
-    resetModalTitle: {
-      fontSize: normalize(18),
-      color: colors.textPrimary,
-      fontWeight: '700',
-      textAlign: 'center',
-      marginBottom: normalize(10),
-    },
-    resetModalBody: {
-      fontSize: normalize(14),
-      color: colors.textSecondary,
-      textAlign: 'center',
-      lineHeight: normalize(22),
-      marginBottom: normalize(16),
-    },
-    resetModalActions: {
-      flexDirection: 'row',
-      gap: normalize(8),
-    },
-    resetModalCancel: {
-      flex: 1,
-      height: normalize(42),
-      borderRadius: normalize(10),
-      backgroundColor: colors.textLight5,
-      alignItems: 'center',
-      justifyContent: 'center',
-    },
-    resetModalCancelText: {
-      fontSize: normalize(14),
-      fontWeight: '700',
-      color: colors.textSecondary,
-    },
-    resetModalDelete: {
-      flex: 1,
-      height: normalize(42),
-      borderRadius: normalize(10),
-      backgroundColor: colors.primary,
-      alignItems: 'center',
-      justifyContent: 'center',
-    },
-    resetModalDeleteText: {
-      fontSize: normalize(14),
-      fontWeight: '700',
-      color: colors.textWhite,
     },
     modalBackdrop: {
       flex: 1,
@@ -628,10 +564,10 @@ function createStyles(normalize) {
     },
     modalBtnOk: {
       fontSize: normalize(16),
-      color: colors.primaryDark,
+      color: colors.primary,
       fontWeight: '700',
     },
   };
 }
 
-export default PeriodTimeSettings;
+export default PeriodTimeSetup;
