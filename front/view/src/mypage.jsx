@@ -451,6 +451,12 @@ const MyPage = ({ navigation }) => {
             }
           />
           <MenuItem
+            icon="time-outline"
+            title="교시 시간 설정"
+            subtitle="위젯에 표시할 교시 시작·종료 시각"
+            onPress={() => navigation.navigate('PeriodTimeSettings')}
+          />
+          <MenuItem
             icon="person-circle-outline"
             title="계정 관리"
             onPress={() =>

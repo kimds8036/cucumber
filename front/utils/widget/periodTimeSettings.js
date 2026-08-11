@@ -1,0 +1,134 @@
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { reloadWidgets, writePeriodTimeSettings } from './widgetBridge.js';
+
+export const PERIOD_TIME_SETTINGS_KEY_PREFIX = '@period_time_settings:';
+export const PERIOD_TIME_SETTINGS_KEY = '@period_time_settings';
+
+/**
+ * @typedef {{ periodNumber: number, startTime: string, endTime: string }} PeriodTimeConfig
+ * @typedef {{ periods: PeriodTimeConfig[], updatedAt: string }} UserPeriodSettings
+ */
+
+/** @param {string|number|null|undefined} userScope */
+export function periodTimeSettingsStorageKey(userScope) {
+  if (userScope == null || userScope === '') return PERIOD_TIME_SETTINGS_KEY;
+  return `${PERIOD_TIME_SETTINGS_KEY_PREFIX}${userScope}`;
+}
+
+/** "HH:mm" → minutes from midnight */
+export function hhmmToMinutes(hhmm) {
+  if (typeof hhmm !== 'string' || !/^\d{1,2}:\d{2}$/.test(hhmm)) return null;
+  const [h, m] = hhmm.split(':').map((n) => Number(n));
+  if (!Number.isFinite(h) || !Number.isFinite(m)) return null;
+  if (h < 0 || h > 23 || m < 0 || m > 59) return null;
+  return h * 60 + m;
+}
+
+export function minutesToHhmm(total) {
+  const h = Math.floor(total / 60) % 24;
+  const m = total % 60;
+  return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+}
+
+/**
+ * @param {PeriodTimeConfig[]} periods
+ * @returns {{ ok: true } | { ok: false, message: string }}
+ */
+export function validatePeriodTimeSettings(periods) {
+  if (!Array.isArray(periods) || periods.length === 0) {
+    return { ok: false, message: '교시를 하나 이상 추가해 주세요.' };
+  }
+  const sorted = [...periods].sort((a, b) => a.periodNumber - b.periodNumber);
+  for (let i = 0; i < sorted.length; i += 1) {
+    const p = sorted[i];
+    const start = hhmmToMinutes(p.startTime);
+    const end = hhmmToMinutes(p.endTime);
+    if (start == null || end == null) {
+      return { ok: false, message: `${p.periodNumber}교시 시각 형식이 올바르지 않아요.` };
+    }
+    if (end <= start) {
+      return {
+        ok: false,
+        message: `${p.periodNumber}교시 종료 시각은 시작 시각보다 늦어야 해요.`,
+      };
+    }
+    if (i > 0) {
+      const prevEnd = hhmmToMinutes(sorted[i - 1].endTime);
+      if (prevEnd != null && start < prevEnd) {
+        return {
+          ok: false,
+          message: `${p.periodNumber}교시 시작이 ${sorted[i - 1].periodNumber}교시 종료와 겹쳐요.`,
+        };
+      }
+    }
+  }
+  return { ok: true };
+}
+
+/** @returns {PeriodTimeConfig[]} */
+export function defaultPeriodTimes(count = 7) {
+  const out = [];
+  let cursor = 9 * 60; // 09:00
+  const lesson = 50;
+  const gap = 10;
+  for (let i = 1; i <= count; i += 1) {
+    const start = cursor;
+    const end = start + lesson;
+    out.push({
+      periodNumber: i,
+      startTime: minutesToHhmm(start),
+      endTime: minutesToHhmm(end),
+    });
+    cursor = end + gap;
+  }
+  return out;
+}
+
+/**
+ * @param {string|number|null|undefined} userScope
+ * @returns {Promise<UserPeriodSettings|null>}
+ */
+export async function loadPeriodTimeSettings(userScope) {
+  const key = periodTimeSettingsStorageKey(userScope);
+  try {
+    const raw = await AsyncStorage.getItem(key);
+    if (!raw) {
+      if (key !== PERIOD_TIME_SETTINGS_KEY) {
+        const legacy = await AsyncStorage.getItem(PERIOD_TIME_SETTINGS_KEY);
+        if (legacy) return JSON.parse(legacy);
+      }
+      return null;
+    }
+    return JSON.parse(raw);
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * AsyncStorage + App Group 저장 후 위젯 리로드
+ * @param {PeriodTimeConfig[]} periods
+ * @param {string|number|null|undefined} userScope
+ */
+export async function savePeriodTimeSettings(periods, userScope) {
+  const validation = validatePeriodTimeSettings(periods);
+  if (!validation.ok) return validation;
+
+  /** @type {UserPeriodSettings} */
+  const payload = {
+    periods: periods
+      .map((p) => ({
+        periodNumber: Number(p.periodNumber),
+        startTime: p.startTime,
+        endTime: p.endTime,
+      }))
+      .sort((a, b) => a.periodNumber - b.periodNumber),
+    updatedAt: new Date().toISOString(),
+  };
+
+  const key = periodTimeSettingsStorageKey(userScope);
+  await AsyncStorage.setItem(key, JSON.stringify(payload));
+  await writePeriodTimeSettings(payload);
+  await reloadWidgets();
+  return { ok: true, payload };
+}
