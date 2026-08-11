@@ -3,29 +3,36 @@
  * 서버 끼니 경계를 재구현하지 않는다.
  *
  * @param {unknown[]} meals
- * @param {{ generatedAt?: string }} [opts]
+ * @param {{ syncedAt?: string, generatedAt?: string }} [opts]
  */
 export function buildMealWidgetPayload(meals, opts = {}) {
+  const syncedAt = opts.syncedAt || opts.generatedAt || new Date().toISOString();
   const list = Array.isArray(meals) ? meals : [];
   const raw = list[0] ?? null;
-  let first = null;
-  if (raw && typeof raw === 'object') {
-    first = {
-      ymd: String(raw.ymd || ''),
-      mealCode: String(raw.mealCode || ''),
-      mealType: raw.mealType ?? null,
-      menus: Array.isArray(raw.menus)
-        ? raw.menus.map((m) => String(m || '').trim()).filter(Boolean)
-        : [],
-      calories:
-        raw.calories == null || raw.calories === ''
-          ? null
-          : String(raw.calories),
-    };
-    if (!first.ymd && !first.menus.length) first = null;
+
+  if (!raw || typeof raw !== 'object') {
+    return { ymd: '', mealType: null, menus: [], syncedAt };
   }
+
+  const ymd = String(raw.ymd || '');
+  const menus = Array.isArray(raw.menus)
+    ? raw.menus.map((m) => String(m || '').trim()).filter(Boolean)
+    : [];
+  const mealTypeRaw = raw.mealType == null ? null : String(raw.mealType).trim();
+
+  // 서버 빈 슬롯 패딩(`급식`) → 통째로 빈 값
+  if (
+    mealTypeRaw == null ||
+    mealTypeRaw === '' ||
+    mealTypeRaw === '급식'
+  ) {
+    return { ymd, mealType: null, menus: [], syncedAt };
+  }
+
   return {
-    generatedAt: opts.generatedAt || new Date().toISOString(),
-    first,
+    ymd,
+    mealType: mealTypeRaw,
+    menus,
+    syncedAt,
   };
 }

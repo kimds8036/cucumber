@@ -29,6 +29,31 @@ import {
   getGuideStudyGrassDays,
 } from '../../src/screens/UserGuide/guidePreviewData';
 import { syncMealWidgetFromNext, writeSchoolId } from '../../utils/widget';
+import { getKstParts } from '../../utils/commuteUtils';
+
+const TODAY_MEAL_SLOTS = [
+  { key: 'breakfast', label: '조식', untilHour: 10 },
+  { key: 'lunch', label: '중식', untilHour: 14 },
+  { key: 'dinner', label: '석식', untilHour: 20 },
+];
+
+function getKstYmd(date = new Date()) {
+  const { year, month, day } = getKstParts(date);
+  return `${year}${String(month).padStart(2, '0')}${String(day).padStart(2, '0')}`;
+}
+
+/** 오늘 조/중/석 — 끼니별 마감 시각 지나면 메뉴 비움(정보 없음) */
+function buildTodayMealSlots(mealsByType = {}, date = new Date()) {
+  const { hour } = getKstParts(date);
+  const ymd = getKstYmd(date);
+  return TODAY_MEAL_SLOTS.map(({ key, label, untilHour }) => {
+    const active = hour < untilHour;
+    const raw = mealsByType?.[key];
+    const menus =
+      active && Array.isArray(raw) ? raw.map((m) => String(m || '').trim()).filter(Boolean) : [];
+    return { ymd, mealType: label, menus };
+  });
+}
 
 const OurSchoolScreen = ({ navigation }) => {
   const { isGuidePreview, guideSchoolScrollTo } = useGuidePreview();
@@ -52,7 +77,7 @@ const OurSchoolScreen = ({ navigation }) => {
   const [popularPosts, setPopularPosts] = useState([]);
   const [loading, setLoading] = useState(false);
   const [mealLoading, setMealLoading] = useState(false);
-  const [nextMeals, setNextMeals] = useState([]);
+  const [todayMealsByType, setTodayMealsByType] = useState({});
   const [selectedMealSlot, setSelectedMealSlot] = useState(null);
   const [grassDays, setGrassDays] = useState([]);
   const getCurrentSemesterDays = () => {
@@ -90,7 +115,7 @@ const OurSchoolScreen = ({ navigation }) => {
 
   useEffect(() => {
     applyGuideScroll();
-  }, [applyGuideScroll, schoolInfo.name, grassDays.length, nextMeals.length]);
+  }, [applyGuideScroll, schoolInfo.name, grassDays.length, todayMealsByType]);
 
   useEffect(() => {
     let mounted = true;
@@ -187,15 +212,21 @@ const OurSchoolScreen = ({ navigation }) => {
     let mounted = true;
     const fetchMeals = async () => {
       if (isGuidePreview) {
-        setNextMeals(getGuideSchoolMeals());
+        const guide = getGuideSchoolMeals();
+        setTodayMealsByType({
+          breakfast: guide[0]?.menus || [],
+          lunch: guide[1]?.menus || [],
+          dinner: guide[2]?.menus || [],
+        });
         setMealLoading(false);
         return;
       }
       if (!schoolInfo.id) {
-        setNextMeals([]);
+        setTodayMealsByType({});
         return;
       }
       const mealCacheKey = `${MEAL_CACHE_KEY_PREFIX}${schoolInfo.id}`;
+      const todayYmd = getKstYmd();
       let usedCache = false;
       try {
         setMealLoading(true);
@@ -205,28 +236,44 @@ const OurSchoolScreen = ({ navigation }) => {
           if (
             cached?.ts &&
             isFreshCache(cached.ts) &&
-            Array.isArray(cached.meals)
+            cached?.ymd === todayYmd &&
+            cached?.mealsByType &&
+            typeof cached.mealsByType === 'object'
           ) {
-            setNextMeals(cached.meals);
+            setTodayMealsByType(cached.mealsByType);
             usedCache = true;
             if (mounted) setMealLoading(false);
-            syncMealWidgetFromNext(cached.meals, schoolInfo.id).catch(() => {});
           }
         }
-        const res = await api.get('/api/schools/me/meals/next', {
-          params: { count: 3 },
-        });
+
+        const [calRes, nextRes] = await Promise.all([
+          api.get('/api/schools/me/meals/calendar', {
+            params: { fromYmd: todayYmd, toYmd: todayYmd },
+          }),
+          api.get('/api/schools/me/meals/next', { params: { count: 3 } }),
+        ]);
         if (!mounted) return;
-        const rows = res.data?.data?.meals || [];
-        const meals = Array.isArray(rows) ? rows : [];
-        setNextMeals(meals);
+
+        const day = calRes.data?.data?.mealsByDate?.[todayYmd];
+        const mealsByType =
+          day?.meals && typeof day.meals === 'object' ? day.meals : {};
+        setTodayMealsByType(mealsByType);
         await AsyncStorage.setItem(
           mealCacheKey,
-          JSON.stringify({ ts: Date.now(), meals }),
+          JSON.stringify({
+            ts: Date.now(),
+            ymd: todayYmd,
+            mealsByType,
+          }),
         );
-        syncMealWidgetFromNext(meals, schoolInfo.id).catch(() => {});
+
+        const nextMeals = nextRes.data?.data?.meals || [];
+        syncMealWidgetFromNext(
+          Array.isArray(nextMeals) ? nextMeals : [],
+          schoolInfo.id,
+        ).catch(() => {});
       } catch (e) {
-        if (mounted) setNextMeals([]);
+        if (mounted) setTodayMealsByType({});
       } finally {
         if (mounted && !usedCache) setMealLoading(false);
       }
@@ -267,24 +314,10 @@ const OurSchoolScreen = ({ navigation }) => {
     };
   }, [isGuidePreview]);
 
-  const mealTypeLabel = {
-    breakfast: '조식',
-    lunch: '중식',
-    dinner: '석식',
-  };
-
-  const mealSlotsRaw = nextMeals.map((m) => {
-    const ymd = String(m.ymd || '');
-    return {
-      ymd,
-      mealType: mealTypeLabel[m.mealType] || '급식',
-      menus: Array.isArray(m.menus) ? m.menus : [],
-    };
-  });
-  const mealSlots = [...mealSlotsRaw];
-  while (mealSlots.length < 3) {
-    mealSlots.push({ ymd: '', mealType: '급식', menus: [] });
-  }
+  const mealSlots = useMemo(
+    () => buildTodayMealSlots(todayMealsByType),
+    [todayMealsByType],
+  );
 
   const weekdayLabels = ['일', '월', '화', '수', '목', '금', '토'];
   const getDayBadge = (ymd) => {
@@ -301,7 +334,7 @@ const OurSchoolScreen = ({ navigation }) => {
     loading &&
     !schoolInfo.name &&
     popularPosts.length === 0 &&
-    nextMeals.length === 0 &&
+    Object.keys(todayMealsByType).length === 0 &&
     grassDays.length === 0;
 
   if (showInitialSkeleton) {

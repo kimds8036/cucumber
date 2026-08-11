@@ -1,11 +1,14 @@
 import WidgetKit
 import SwiftUI
 
-private let widgetPad: CGFloat = 4
-/// 기존 급식 위젯 배경색 → 뱃지 배경으로 재사용
-private let mealBadgeBg = Color(red: 0.898, green: 0.957, blue: 0.878) // ≈ #E5F4E0
-private let primaryGreen = Color(red: 111 / 255, green: 145 / 255, blue: 99 / 255) // #6F9163
-private let textPrimary = Color(red: 39 / 255, green: 42 / 255, blue: 38 / 255) // #272A26
+private let textPrimary = Color(hex: "272A26")
+private let textSecondary = Color(hex: "272A26", opacity: 0.5)
+private let mutedGray = Color(hex: "888780")
+private let dividerColor = Color(hex: "E6E6E6")
+private let primary = Color(hex: "A6DA95")
+private let moreColor = Color(hex: "272A26", opacity: 0.3)
+/// systemSmall 한 열 기준 물리적으로 보이는 최대 줄 수
+private let maxMenusVisible = 6
 
 struct MealEntry: TimelineEntry {
   let date: Date
@@ -23,7 +26,8 @@ struct MealProvider: TimelineProvider {
 
   func getTimeline(in context: Context, completion: @escaping (Timeline<MealEntry>) -> Void) {
     let entry = MealEntry(date: Date(), payload: WidgetPayloadReader.meal())
-    let next = Calendar.current.date(byAdding: .minute, value: 30, to: Date()) ?? Date().addingTimeInterval(1800)
+    // 끼니 경계 재계산 없음 — 약 30분 주기 새로고침
+    let next = Date().addingTimeInterval(30 * 60)
     completion(Timeline(entries: [entry], policy: .after(next)))
   }
 }
@@ -31,51 +35,127 @@ struct MealProvider: TimelineProvider {
 struct MealWidgetView: View {
   var entry: MealEntry
 
+  private var isEmpty: Bool {
+    WidgetPayloadReader.shouldShowMealEmpty(entry.payload)
+  }
+
   var body: some View {
-    let first = entry.payload?.first
-    let menus = first?.menus ?? []
     Link(destination: URL(string: "youthpaper://school")!) {
       ZStack {
         Color.white
-        VStack(alignment: .leading, spacing: 4) {
-          HStack(alignment: .center) {
-            Text(WidgetPayloadReader.formatYmd(first?.ymd))
-              .font(.system(size: 11, weight: .medium))
-              .foregroundColor(textPrimary.opacity(0.5))
-            Spacer(minLength: 0)
-            mealTypeBadge(WidgetPayloadReader.mealTypeLabel(first?.mealType))
+        if isEmpty {
+          emptyView
+        } else {
+          contentView
+        }
+      }
+      .padding(0)
+    }
+  }
+
+  private var emptyView: some View {
+    VStack(spacing: 8) {
+      ZStack {
+        Circle()
+          .fill(mutedGray.opacity(0.15))
+          .frame(width: 28, height: 28)
+        Text("−")
+          .font(.system(size: 16, weight: .medium))
+          .foregroundColor(mutedGray)
+      }
+      Text("급식 정보 없음")
+        .font(.system(size: 12, weight: .medium))
+        .foregroundColor(mutedGray)
+    }
+    .frame(maxWidth: .infinity, maxHeight: .infinity)
+  }
+
+  private var contentView: some View {
+    let payload = entry.payload
+    let menus = payload?.resolvedMenus ?? []
+    let mealType = payload?.resolvedMealType
+    let visible = Array(menus.prefix(maxMenusVisible))
+    // TEST: 더보기 UI 확인용 — 테스트 후 `menus.count > maxMenusVisible` 로 복구
+    let showMore = true
+    // let showMore = menus.count > maxMenusVisible
+
+    return HStack(alignment: .top, spacing: 0) {
+      VStack(alignment: .center, spacing: 6) {
+        Image("MealRice")
+          .renderingMode(.template)
+          .resizable()
+          .scaledToFit()
+          .frame(width: 16, height: 16)
+          .foregroundColor(textSecondary)
+
+        Text(WidgetPayloadReader.formatYmd(payload?.resolvedYmd))
+          .font(.system(size: 9, weight: .medium))
+          .foregroundColor(textSecondary)
+          .lineLimit(1)
+          .multilineTextAlignment(.center)
+
+        if let mealType, WidgetPayloadReader.isValidMealType(mealType) {
+          mealTypeBadge(WidgetPayloadReader.mealTypeLabel(mealType))
+        }
+
+        Spacer(minLength: 0)
+      }
+
+      Rectangle()
+        .fill(dividerColor)
+        .frame(width: 1)
+        .padding(.horizontal, 6)
+
+      VStack(alignment: .leading, spacing: 0) {
+        if menus.isEmpty {
+          Text("정보 없음")
+            .font(.system(size: 11, weight: .medium))
+            .foregroundColor(textPrimary)
+          Spacer(minLength: 0)
+        } else {
+          VStack(alignment: .leading, spacing: 2) {
+            ForEach(Array(visible.enumerated()), id: \.offset) { _, menu in
+              menuText(menu)
+            }
           }
 
-          if first == nil || menus.isEmpty {
-            Spacer(minLength: 0)
-            Text("급식 정보 없음")
-              .font(.system(size: 14, weight: .medium))
-              .foregroundColor(textPrimary.opacity(0.55))
-            Spacer(minLength: 0)
-          } else {
-            ForEach(Array(menus.prefix(5).enumerated()), id: \.offset) { _, menu in
-              Text(menu)
-                .font(.system(size: 13, weight: .medium))
-                .foregroundColor(textPrimary)
-                .lineLimit(1)
-            }
-            Spacer(minLength: 0)
+          Spacer(minLength: 0)
+
+          if showMore {
+            Text("더보기")
+              .font(.system(size: 10, weight: .regular))
+              .foregroundColor(moreColor)
+              .frame(maxWidth: .infinity, alignment: .trailing)
           }
         }
-        .padding(widgetPad)
       }
+      .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
     }
+    .padding(0)
+  }
+
+  private func menuText(_ menu: String) -> some View {
+    Text(menu)
+      .font(.system(size: 11, weight: .medium))
+      .foregroundColor(textPrimary)
+      .lineLimit(1)
+      .truncationMode(.tail)
+      .frame(maxWidth: .infinity, alignment: .leading)
   }
 
   private func mealTypeBadge(_ label: String) -> some View {
     Text(label)
       .font(.system(size: 11, weight: .semibold))
-      .foregroundColor(primaryGreen)
-      .padding(.horizontal, 8)
+      .foregroundColor(Color(hex: "6F9163"))
+      .padding(.horizontal, 6)
       .padding(.vertical, 3)
       .background(
         Capsule(style: .continuous)
-          .fill(mealBadgeBg),
+          .fill(Color(hex: "A6DA95", opacity: 0.1)),
+      )
+      .overlay(
+        Capsule(style: .continuous)
+          .stroke(Color(hex: "A6DA95", opacity: 0.3), lineWidth: 1),
       )
   }
 }

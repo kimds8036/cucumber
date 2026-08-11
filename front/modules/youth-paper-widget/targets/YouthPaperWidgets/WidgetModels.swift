@@ -9,9 +9,20 @@ struct MealNextItem: Codable {
   let calories: String?
 }
 
+/// App Group `meal_widget_payload` — 플랫 스키마 (+ legacy `first`/`generatedAt` 호환)
 struct MealWidgetPayload: Codable {
+  let ymd: String?
+  let mealType: String?
+  let menus: [String]?
+  let syncedAt: String?
+  /// legacy
   let generatedAt: String?
   let first: MealNextItem?
+
+  var resolvedYmd: String? { ymd ?? first?.ymd }
+  var resolvedMealType: String? { mealType ?? first?.mealType }
+  var resolvedMenus: [String] { menus ?? first?.menus ?? [] }
+  var resolvedSyncedAt: String? { syncedAt ?? generatedAt }
 }
 
 struct TimetablePeriodLite: Codable {
@@ -122,6 +133,15 @@ enum WidgetPayloadReader {
     }
   }
 
+  /// breakfast/lunch/dinner 만 유효. null·패딩(`급식`)은 빈 값.
+  static func isValidMealType(_ type: String?) -> Bool {
+    guard let type else { return false }
+    switch type {
+    case "breakfast", "lunch", "dinner": return true
+    default: return false
+    }
+  }
+
   static func formatYmd(_ ymd: String?) -> String {
     guard let ymd, ymd.count == 8 else { return "" }
     let m = Int(ymd.prefix(6).suffix(2)) ?? 0
@@ -143,17 +163,32 @@ enum WidgetPayloadReader {
     return "\(f.string(from: start))~\(f.string(from: end))"
   }
 
-  static func isTimetableStale(_ payload: TimetableWidgetPayload?) -> Bool {
-    guard let iso = payload?.generatedAt else { return false }
+  private static func parseIso8601(_ iso: String) -> Date? {
     let formatter = ISO8601DateFormatter()
     formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
-    var date = formatter.date(from: iso)
-    if date == nil {
-      formatter.formatOptions = [.withInternetDateTime]
-      date = formatter.date(from: iso)
-    }
-    guard let generated = date else { return false }
+    if let d = formatter.date(from: iso) { return d }
+    formatter.formatOptions = [.withInternetDateTime]
+    return formatter.date(from: iso)
+  }
+
+  static func isTimetableStale(_ payload: TimetableWidgetPayload?) -> Bool {
+    guard let iso = payload?.generatedAt else { return false }
+    guard let generated = parseIso8601(iso) else { return false }
     return Date().timeIntervalSince(generated) * 1000 > staleMs
+  }
+
+  static func isMealStale(_ payload: MealWidgetPayload?) -> Bool {
+    guard let iso = payload?.resolvedSyncedAt else { return false }
+    guard let synced = parseIso8601(iso) else { return false }
+    return Date().timeIntervalSince(synced) * 1000 > staleMs
+  }
+
+  /// 전체 빈 값 화면 여부
+  static func shouldShowMealEmpty(_ payload: MealWidgetPayload?) -> Bool {
+    guard let payload else { return true }
+    if isMealStale(payload) { return true }
+    if !isValidMealType(payload.resolvedMealType) { return true }
+    return false
   }
 }
 
