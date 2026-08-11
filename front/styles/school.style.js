@@ -161,12 +161,11 @@ export const createOurSchoolStyles = (normalize) => {
     },
     mealSlotBadge: {
       paddingHorizontal: normalize(5),
-      paddingVertical: normalize(2),
-      borderRadius: normalize(10),
+      borderRadius: normalize(100),
       backgroundColor: colors.primaryLight30,
     },
     mealSlotBadgeText: {
-      fontSize: normalize(fontSizes.lg),
+      fontSize: normalize(fontSizes.md-1),
       fontFamily: fonts.regular,
       color: colors.primaryDark,
     },

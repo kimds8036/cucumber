@@ -54,20 +54,10 @@ struct MealWidgetView: View {
   }
 
   private var emptyView: some View {
-    VStack(spacing: 8) {
-      ZStack {
-        Circle()
-          .fill(mutedGray.opacity(0.15))
-          .frame(width: 28, height: 28)
-        Text("−")
-          .font(.system(size: 16, weight: .medium))
-          .foregroundColor(mutedGray)
-      }
-      Text("급식 정보 없음")
-        .font(.system(size: 12, weight: .medium))
-        .foregroundColor(mutedGray)
-    }
-    .frame(maxWidth: .infinity, maxHeight: .infinity)
+    Text("급식 정보 없음")
+      .font(.system(size: 12, weight: .medium))
+      .foregroundColor(mutedGray)
+      .frame(maxWidth: .infinity, maxHeight: .infinity)
   }
 
   private var contentView: some View {
@@ -75,9 +65,7 @@ struct MealWidgetView: View {
     let menus = payload?.resolvedMenus ?? []
     let mealType = payload?.resolvedMealType
     let visible = Array(menus.prefix(maxMenusVisible))
-    // TEST: 더보기 UI 확인용 — 테스트 후 `menus.count > maxMenusVisible` 로 복구
-    let showMore = true
-    // let showMore = menus.count > maxMenusVisible
+    let showMore = menus.count > maxMenusVisible
 
     return HStack(alignment: .top, spacing: 0) {
       VStack(alignment: .center, spacing: 6) {
