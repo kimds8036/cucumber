@@ -1,28 +1,39 @@
 import pool from '../config/database.js';
 import { formatKstDateYmd, getKstNow } from './reverification.service.js';
+import { isPublicHolidayKst } from '../utils/commuteCalendar.js';
+import {
+  addDaysYmd,
+  countSchoolDaysInRange,
+  evaluateSchoolDay,
+  isWeekendYmd,
+} from '../utils/schoolDay.js';
+import { loadTermContextsBySchoolIds } from './schoolTerms.service.js';
 
-function parseYmdKst(ymd) {
-  return new Date(`${ymd}T12:00:00+09:00`);
+function holidayOnYmd(ymd) {
+  return isPublicHolidayKst(new Date(`${ymd}T12:00:00+09:00`));
 }
 
-function addDaysYmd(ymd, deltaDays) {
-  const d = parseYmdKst(ymd);
-  d.setDate(d.getDate() + deltaDays);
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, '0');
-  const day = String(d.getDate()).padStart(2, '0');
-  return `${y}-${m}-${day}`;
-}
-
+/** 폴백: 주말만 제외 (학기 데이터 없을 때) */
 export function countSchoolDaysBetween(startYmd, endYmd) {
   let count = 0;
-  const start = parseYmdKst(startYmd);
-  const end = parseYmdKst(endYmd);
-  for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
-    const dow = d.getDay();
-    if (dow !== 0 && dow !== 6) count += 1;
+  for (let d = startYmd; d <= endYmd; d = addDaysYmd(d, 1)) {
+    if (!isWeekendYmd(d) && !holidayOnYmd(d)) count += 1;
   }
   return count;
+}
+
+function schoolDaysForContext(ctx, startDate, endDate) {
+  if (!ctx || !ctx.terms.length) {
+    return 0;
+  }
+  return countSchoolDaysInRange({
+    startYmd: startDate,
+    endYmd: endDate,
+    terms: ctx.terms,
+    closureSet: ctx.closureSet,
+    anniversaryMd: ctx.anniversaryMd,
+    isPublicHolidayFn: holidayOnYmd,
+  });
 }
 
 function clampDays(days) {
@@ -34,7 +45,6 @@ export async function getAttendanceOverview(days = 14) {
   const periodDays = clampDays(days);
   const endDate = formatKstDateYmd(getKstNow());
   const startDate = addDaysYmd(endDate, -(periodDays - 1));
-  const schoolDays = countSchoolDaysBetween(startDate, endDate);
 
   const [dailyRows] = await pool.execute(
     `SELECT attendance_date AS date,
@@ -68,17 +78,45 @@ export async function getAttendanceOverview(days = 14) {
   const todayCheckIns = Number(todayRows[0]?.checkIns || 0);
   const todayUnique = Number(todayRows[0]?.uniqueUsers || 0);
 
+  const [schoolIdRows] = await pool.execute(
+    `SELECT DISTINCT school_id FROM users
+     WHERE is_deleted = FALSE AND school_id IS NOT NULL`,
+  );
+  const schoolIds = schoolIdRows.map((r) => r.school_id);
+  const ctxMap = await loadTermContextsBySchoolIds(schoolIds);
+  const anyTerms = [...ctxMap.values()].some((c) => c.terms.length > 0);
+
   const dailyMap = new Map(
     dailyRows.map((r) => [String(r.date).slice(0, 10), r]),
   );
   const dailyChart = [];
+  let schoolDays = 0;
   for (let i = 0; i < periodDays; i += 1) {
     const date = addDaysYmd(startDate, i);
     const row = dailyMap.get(date);
-    const dow = parseYmdKst(date).getDay();
+    let dateIsSchoolDay = false;
+    if (anyTerms) {
+      for (const id of schoolIds) {
+        const ctx = ctxMap.get(id) || { terms: [], closureSet: new Set(), anniversaryMd: null };
+        const ev = evaluateSchoolDay({
+          ymd: date,
+          terms: ctx.terms,
+          closureSet: ctx.closureSet,
+          anniversaryMd: ctx.anniversaryMd,
+          isPublicHoliday: holidayOnYmd(date),
+        });
+        if (ev.schoolDay) {
+          dateIsSchoolDay = true;
+          break;
+        }
+      }
+    } else {
+      dateIsSchoolDay = !isWeekendYmd(date) && !holidayOnYmd(date);
+    }
+    if (dateIsSchoolDay) schoolDays += 1;
     dailyChart.push({
       date,
-      weekday: dow !== 0 && dow !== 6,
+      weekday: dateIsSchoolDay,
       checkIns: Number(row?.checkIns || 0),
       uniqueUsers: Number(row?.uniqueUsers || 0),
     });
@@ -112,7 +150,6 @@ export async function getSuspiciousLowAttendance({
   const periodDays = clampDays(days);
   const endDate = formatKstDateYmd(getKstNow());
   const startDate = addDaysYmd(endDate, -(periodDays - 1));
-  const schoolDays = countSchoolDaysBetween(startDate, endDate);
   const rateLimit = Math.min(Math.max(Number(maxRate) || 0.25, 0.05), 0.9);
   const minDays = Math.min(Math.max(Number(minAccountDays) || 7, 1), 30);
   const rowLimit = Math.min(Math.max(Number(limit) || 80, 10), 200);
@@ -139,9 +176,20 @@ export async function getSuspiciousLowAttendance({
     [startDate, endDate, minDays],
   );
 
+  const ctxMap = await loadTermContextsBySchoolIds(rows.map((r) => r.school_id));
+  const schoolDaysCache = new Map();
+  const schoolDaysFor = (schoolId) => {
+    if (!schoolId) return 0;
+    if (schoolDaysCache.has(schoolId)) return schoolDaysCache.get(schoolId);
+    const n = schoolDaysForContext(ctxMap.get(schoolId), startDate, endDate);
+    schoolDaysCache.set(schoolId, n);
+    return n;
+  };
+
   const users = rows
     .map((r) => {
       const attendanceDays = Number(r.attendance_days || 0);
+      const schoolDays = schoolDaysFor(r.school_id);
       const rate =
         schoolDays > 0
           ? Math.round((attendanceDays / schoolDays) * 1000) / 10
@@ -175,7 +223,7 @@ export async function getSuspiciousLowAttendance({
     periodDays,
     startDate,
     endDate,
-    schoolDays,
+    schoolDays: countSchoolDaysBetween(startDate, endDate),
     maxRate: rateLimit,
     minAccountDays: minDays,
     totalSuspicious: users.length,

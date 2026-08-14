@@ -2,8 +2,10 @@ import { isWithinSchoolGeofence } from './commuteGeo.js';
 
 const KST_TIMEZONE = 'Asia/Seoul';
 
-/** 방학: 1~2월, 7~8월 */
-const VACATION_MONTHS = new Set([1, 2, 7, 8]);
+/** @deprecated 학교별 학기는 서버 status API가 판정 */
+export function isSchoolVacationMonth() {
+  return false;
+}
 
 /** 고정 공휴일 (매년 MM-DD) */
 const FIXED_HOLIDAY_MD = new Set([
@@ -81,11 +83,6 @@ export function isWeekdayKst(date = new Date()) {
   return weekday !== 'Sat' && weekday !== 'Sun';
 }
 
-export function isSchoolVacationMonth(date = new Date()) {
-  const { month } = getKstParts(date);
-  return VACATION_MONTHS.has(month);
-}
-
 export function isPublicHoliday(date = new Date()) {
   const { year, month, day } = getKstParts(date);
   const ymd = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
@@ -107,7 +104,6 @@ export function shouldShowCommuteBanner(date = new Date()) {
   if (typeof __DEV__ !== 'undefined' && __DEV__) return true;
   if (!isCommuteTimeWindow(date)) return false;
   if (!isWeekdayKst(date)) return false;
-  if (isSchoolVacationMonth(date)) return false;
   if (isPublicHoliday(date)) return false;
   return true;
 }

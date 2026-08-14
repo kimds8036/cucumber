@@ -2,8 +2,7 @@
 
 const KST_TIMEZONE = 'Asia/Seoul';
 
-/** 방학: 1~2월, 7~8월 */
-const VACATION_MONTHS = new Set([1, 2, 7, 8]);
+/** @deprecated 학교별 school_terms 사용. 월 단위 전역 방학은 쓰지 않음 */
 
 const FIXED_HOLIDAY_MD = new Set([
   '01-01',
@@ -70,9 +69,8 @@ export function isWeekdayKst(date = new Date()) {
   return weekday !== 'Sat' && weekday !== 'Sun';
 }
 
-export function isSchoolVacationMonth(date = new Date()) {
-  const { month } = getKstParts(date);
-  return VACATION_MONTHS.has(month);
+export function isSchoolVacationMonth() {
+  return false;
 }
 
 export function isPublicHolidayKst(date = new Date()) {
@@ -91,7 +89,6 @@ export function isCommuteTimeWindowKst(date = new Date()) {
 export function getCommuteWindowBlockReason(date = new Date()) {
   if (!isCommuteTimeWindowKst(date)) return 'OUTSIDE_WINDOW';
   if (!isWeekdayKst(date)) return 'WEEKEND';
-  if (isSchoolVacationMonth(date)) return 'VACATION';
   if (isPublicHolidayKst(date)) return 'HOLIDAY';
   return null;
 }

@@ -70,6 +70,7 @@ import {
 import { incrementTokenVersion } from '../services/session.service.js';
 import { getReverificationBlockCode } from '../services/reverification.service.js';
 import { getUserReverificationPayload } from '../services/userSchoolTransition.service.js';
+import { scheduleSchoolTermSync } from '../services/schoolTerms.service.js';
 import { withdrawUserAccount } from '../services/accountWithdrawal.service.js';
 import { API_ERROR_CODES } from '../constants/apiErrorCodes.js';
 import { isProductionEnv } from '../utils/httpError.js';
@@ -1279,6 +1280,8 @@ router.post('/signup', blockWhenFlag('signup_disabled'), validate(signupValidato
       );
 
       await connection.commit();
+
+      scheduleSchoolTermSync(resolvedSchoolId);
 
       if (isCertificateSignup && reviewSubmissionId) {
         notifyCertificateReviewPending({
