@@ -24,6 +24,7 @@ import {
 import { colors, fonts } from '../../styles/colors';
 import { api } from '../../utils/api';
 import { normalizeTagsFromApi } from '../../utils/normalizePostTags';
+import { equippedBadgeFromApiRow } from '../../constants/badges';
 import BoardPostCard from '../../components/Boardpostcard';
 import AdPlaceholder from '../../src/screens/ad/AdPlaceholder';
 import { useLocationContext } from '../../context/LocationContext';
@@ -139,6 +140,7 @@ const SchoolBoardAll = ({ navigation }) => {
           return {
             id: p.id,
             author: '익명',
+            equippedBadge: equippedBadgeFromApiRow(p),
             time: formatTimeAgo(p.created_at),
             location: '',
             content: p.content,

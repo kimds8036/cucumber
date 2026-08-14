@@ -5,6 +5,7 @@ import {
   getMyAttendances,
   getAttendanceStatus,
 } from '../services/attendance.service.js';
+import { evaluateAndUnlockBadges } from '../services/badge.service.js';
 
 const router = express.Router();
 
@@ -24,6 +25,10 @@ router.post('/check-in', authenticate, async (req, res) => {
         code: result.code || undefined,
       });
     }
+
+    evaluateAndUnlockBadges(req.user.userId).catch((e) => {
+      console.warn('[attendance] badge eval', e?.message || e);
+    });
 
     return res.json({
       success: true,

@@ -24,6 +24,15 @@ export function buildPostDeepLink(postId) {
   return `youthpaper://board/${id}`;
 }
 
+export function buildInviteShareContent(landingUrl) {
+  const url = String(landingUrl || '').trim();
+  return {
+    title: 'Youth Paper 친구 초대',
+    message: `Youth Paper에서 같이 학교 생활을 해보지 않을래?\n시간표·급식·게시판을 한곳에서 볼 수 있어.\n\n앱 설치: ${url}`,
+    url,
+  };
+}
+
 export function buildPostShareContent(postId) {
   const deepLink = buildPostDeepLink(postId);
   const installLines = `앱이 없다면 설치해 주세요.\n· Android: ${ANDROID_STORE_URL}\n· iOS: ${IOS_STORE_URL}`;

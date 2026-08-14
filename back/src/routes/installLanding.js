@@ -1,6 +1,7 @@
 import express from 'express';
 import { recordInstallLandingVisit } from '../services/installLandingStats.service.js';
 import { resolveStoreUrl } from '../utils/storeUrls.js';
+import { sanitizeInviteCode } from '../constants/badges.js';
 
 const router = express.Router();
 
@@ -41,11 +42,25 @@ function resolveGoogleAdsTagId() {
   return raw.toUpperCase();
 }
 
+function withAndroidInviteReferrer(androidUrl, inviteCode) {
+  if (!inviteCode) return androidUrl;
+  try {
+    const u = new URL(androidUrl);
+    const extra = `utm_source=invite&utm_medium=share&utm_content=${encodeURIComponent(inviteCode)}`;
+    const existing = u.searchParams.get('referrer');
+    u.searchParams.set('referrer', existing ? `${existing}&${extra}` : extra);
+    return u.toString();
+  } catch {
+    return androidUrl;
+  }
+}
+
 function buildLandingHtml({
   androidUrl,
   iosUrl,
   autoRedirectUrl,
   platform,
+  inviteDeepLink,
 }) {
   const title = String(
     process.env.INSTALL_LANDING_TITLE || 'Youth Paper',
@@ -68,34 +83,43 @@ function buildLandingHtml({
 </script>`
     : '';
 
-  // 모바일 자동 리다이렉트: gtag page_view 전송 후(또는 타임아웃) 스토어로 이동
+  // 모바일 자동 리다이렉트: 초대 딥링크 우선, 없으면 스토어
   const redirectBlock = autoRedirectUrl
     ? `<script>
 (function () {
-  var url = ${JSON.stringify(autoRedirectUrl)};
-  if (!url) return;
+  var storeUrl = ${JSON.stringify(autoRedirectUrl)};
+  var appUrl = ${JSON.stringify(inviteDeepLink || '')};
+  if (!storeUrl && !appUrl) return;
   var gone = false;
-  function go() {
+  function goStore() {
     if (gone) return;
     gone = true;
-    window.location.replace(url);
+    if (storeUrl) window.location.replace(storeUrl);
+  }
+  function goAppThenStore() {
+    if (appUrl) {
+      window.location.href = appUrl;
+      setTimeout(goStore, 1400);
+      return;
+    }
+    goStore();
   }
   var fallbackMs = ${googleAdsTagId ? 1800 : 0};
   if (fallbackMs <= 0) {
-    go();
+    goAppThenStore();
     return;
   }
-  setTimeout(go, fallbackMs);
+  setTimeout(goAppThenStore, fallbackMs);
   function trySendThenGo() {
     if (typeof gtag !== 'function') return;
     try {
       gtag('event', 'page_view', {
         send_to: ${JSON.stringify(googleAdsTagId)},
-        event_callback: go,
+        event_callback: goAppThenStore,
         event_timeout: 1500
       });
     } catch (e) {
-      go();
+      goAppThenStore();
     }
   }
   if (document.readyState === 'complete') {
@@ -229,18 +253,22 @@ function buildLandingHtml({
  */
 function handleInstallLanding(req, res) {
   const ua = String(req.headers['user-agent'] || '');
-  const androidUrl = resolveStoreUrl('android');
+  const inviteCode = sanitizeInviteCode(req.query?.ref);
+  const androidUrl = withAndroidInviteReferrer(
+    resolveStoreUrl('android'),
+    inviteCode,
+  );
   const iosUrl = resolveStoreUrl('ios');
   const platform = detectMobilePlatform(ua);
   const isCrawler = isLinkPreviewCrawler(ua);
+  const inviteDeepLink = inviteCode
+    ? `youthpaper://invite?ref=${encodeURIComponent(inviteCode)}`
+    : '';
 
   // 미리보기 크롤러에는 리다이렉트하지 않고 OG용 HTML만
-  const autoRedirectUrl =
-    !isCrawler && platform === 'ios'
-      ? iosUrl
-      : !isCrawler && platform === 'android'
-        ? androidUrl
-        : '';
+  const storeUrl =
+    platform === 'ios' ? iosUrl : platform === 'android' ? androidUrl : '';
+  const autoRedirectUrl = !isCrawler && storeUrl ? storeUrl : '';
 
   if (!isCrawler) {
     // 응답 지연 없이 집계 (실패해도 랜딩은 정상 제공)
@@ -263,6 +291,7 @@ function handleInstallLanding(req, res) {
       iosUrl,
       autoRedirectUrl,
       platform: isCrawler ? 'other' : platform,
+      inviteDeepLink: isCrawler ? '' : inviteDeepLink,
     }),
   );
 }

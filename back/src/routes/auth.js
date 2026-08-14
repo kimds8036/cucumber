@@ -15,6 +15,8 @@ import {
 import { validatePhone, validateUsername, validatePassword, validateBirthDate } from '../utils/validation.js';
 import { blockWhenFlag } from '../middleware/systemFlags.js';
 import { authenticate } from '../middleware/auth.js';
+import { applySignupInvite } from '../services/invite.service.js';
+import { publicBadgePayload } from '../services/badge.service.js';
 import { validate } from '../middleware/validate.js';
 // OCR 자동 인증 — 수동 검수 전환으로 당분간 미사용 (studentIdOcr.service.js 참고)
 // import {
@@ -252,6 +254,7 @@ router.get('/me', authenticate, async (req, res) => {
          u.username,
          u.name_enc,
          u.color_id,
+         u.equipped_badge_key,
          u.school_id,
          u.grade,
          u.class_number,
@@ -309,6 +312,7 @@ router.get('/me', authenticate, async (req, res) => {
           colorNumber: user.profile_color_number,
         },
         friendCount,
+        equippedBadge: publicBadgePayload(user.equipped_badge_key),
         studentVerificationStatus: verification.status,
         rejectReason: verification.rejectReason,
         submissionPurpose: verification.submissionPurpose,
@@ -921,6 +925,7 @@ router.post('/signup', blockWhenFlag('signup_disabled'), validate(signupValidato
       studentInicisClientToken,
       guardianInicisClientToken,
       consents: rawConsents,
+      inviteCode: rawInviteCode,
     } = req.body;
 
     const phone = normalizeLocalKrPhone(rawPhone);
@@ -1280,6 +1285,12 @@ router.post('/signup', blockWhenFlag('signup_disabled'), validate(signupValidato
       );
 
       await connection.commit();
+
+      applySignupInvite({ inviteeId: userId, rawCode: rawInviteCode }).catch(
+        (e) => {
+          console.warn('[signup] invite apply', e?.message || e);
+        },
+      );
 
       scheduleSchoolTermSync(resolvedSchoolId);
 

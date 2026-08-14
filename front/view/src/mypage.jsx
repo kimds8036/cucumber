@@ -5,6 +5,8 @@ import {
   ScrollView,
   TouchableOpacity,
   Alert,
+  Share,
+  Platform,
   useWindowDimensions,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -26,6 +28,7 @@ import {
   getGuideTimetable,
 } from '../../src/screens/UserGuide/guidePreviewData';
 import { syncTimetableWidgetFromFlat } from '../../utils/widget';
+import { buildInviteShareContent } from '../../utils/shareLinks';
 
 const isSameProfileInfo = (a, b) => {
   if (!a || !b) return false;
@@ -38,7 +41,8 @@ const isSameProfileInfo = (a, b) => {
     a.profileColorHex === b.profileColorHex &&
     a.profileColorId === b.profileColorId &&
     a.profileColorNumber === b.profileColorNumber &&
-    a.friendCount === b.friendCount
+    a.friendCount === b.friendCount &&
+    a.equippedBadge?.key === b.equippedBadge?.key
   );
 };
 
@@ -87,6 +91,28 @@ const MyPage = ({ navigation }) => {
       { text: '취소', style: 'cancel' },
       { text: '로그아웃', style: 'destructive', onPress: () => handleLogout() },
     ]);
+  };
+
+  const handleInviteFriends = async () => {
+    try {
+      const res = await api.get('/api/invite/me');
+      const landingUrl = res.data?.data?.landingUrl;
+      if (!landingUrl) {
+        Alert.alert('친구 초대', '초대 링크를 만들지 못했습니다.');
+        return;
+      }
+      const share = buildInviteShareContent(landingUrl);
+      await Share.share(
+        Platform.OS === 'ios'
+          ? { message: share.message, url: share.url }
+          : { message: share.message, title: share.title },
+      );
+    } catch (e) {
+      Alert.alert(
+        '친구 초대',
+        e.response?.data?.message || '초대 링크를 공유하지 못했습니다.',
+      );
+    }
   };
 
   const handleDeleteAccount = () => {
@@ -189,6 +215,7 @@ const MyPage = ({ navigation }) => {
           profileColorId: me.profileColor?.id ?? me.colorId ?? null,
           profileColorNumber: me.profileColor?.colorNumber ?? null,
           friendCount: me.friendCount ?? 0,
+          equippedBadge: me.equippedBadge ?? null,
         };
         setUserInfo(nextUserInfo);
         try {
@@ -421,6 +448,12 @@ const MyPage = ({ navigation }) => {
             onPress={() =>
               navigation.navigate('NotificationSettings', { variant: 'prefs' })
             }
+          />
+          <MenuItem
+            icon="person-add-outline"
+            title="친구 초대하기"
+            subtitle="링크로 친구를 초대하면 배지가 열려요"
+            onPress={handleInviteFriends}
           />
           <MenuItem
             icon="person-circle-outline"
