@@ -230,7 +230,7 @@ const OurSchoolScreen = ({ navigation }) => {
       }
       const mealCacheKey = `${MEAL_CACHE_KEY_PREFIX}${schoolInfo.id}`;
       const todayYmd = getKstYmd();
-      const toYmd = addDaysToYmd(todayYmd, 14);
+      const toYmd = addDaysToYmd(todayYmd, 21);
       let usedCache = false;
       try {
         setMealLoading(true);

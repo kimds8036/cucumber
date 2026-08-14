@@ -254,6 +254,15 @@ const cleanMenuText = (raw) =>
     .replace(/\s+/g, ' ')
     .trim();
 
+const pruneEmptyMealDays = (mealsByDate = {}) => {
+  Object.keys(mealsByDate).forEach((ymd) => {
+    const meals = mealsByDate[ymd]?.meals || {};
+    const hasMenus = Object.values(meals).some((list) => Array.isArray(list) && list.length > 0);
+    if (!hasMenus) delete mealsByDate[ymd];
+  });
+  return mealsByDate;
+};
+
 const parseNeisRows = (rows = []) => {
   const map = new Map();
   const availableCodes = new Set();
@@ -662,6 +671,7 @@ router.get('/me/meals/calendar', authenticate, async (req, res) => {
         .filter(Boolean);
       mealsByDate[ymd].calories[type] = String(row?.CAL_INFO || '').trim() || null;
     });
+    pruneEmptyMealDays(mealsByDate);
     return res.json({ success: true, data: { schoolId: school.school_id, mealsByDate } });
   } catch (error) {
     console.error('내 학교 급식 달력 조회 오류:', error);
@@ -703,6 +713,7 @@ router.get('/:schoolId/meals/calendar', validate(schoolIdParamValidators), async
         .filter(Boolean);
       mealsByDate[ymd].calories[type] = String(row?.CAL_INFO || '').trim() || null;
     });
+    pruneEmptyMealDays(mealsByDate);
     return res.json({ success: true, data: { schoolId, mealsByDate } });
   } catch (error) {
     console.error('학교 급식 달력 조회 오류:', error);

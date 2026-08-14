@@ -149,7 +149,7 @@ export default ({ config }) => ({
             enableMinifyInReleaseBuilds: true,
             enableShrinkResourcesInReleaseBuilds: true,
             extraProguardRules:
-              '-keep class com.facebook.react.** { *; }\n-keep class com.facebook.hermes.** { *; }\n-keep class com.facebook.jni.** { *; }\n-dontwarn com.facebook.react.**\n',
+              '-keep class com.facebook.react.** { *; }\n-keep class com.facebook.hermes.** { *; }\n-keep class com.facebook.jni.** { *; }\n-dontwarn com.facebook.react.**\n-keep class expo.modules.youthpaperwidget.** { *; }\n-keep class com.ucost.YouthPaper.widget.** { *; }\n',
           },
         },
       ],

@@ -320,7 +320,7 @@ const PeriodTimeSettings = ({ navigation }) => {
       <AppPopupModal
         visible={showResetModal}
         onClose={() => !resetting && setShowResetModal(false)}
-        dismissOnBackdrop={!resetting}
+        dismissOnBackdrop={false}
       >
         <Text style={styles.resetModalTitle}>시간표 삭제</Text>
         <Text style={styles.resetModalBody}>

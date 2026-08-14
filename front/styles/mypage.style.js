@@ -212,6 +212,12 @@ export const createMyPageStyles = (normalize) => {
       borderRadius: normalize(12),
       backgroundColor: colors.textLight10,
     },
+    menuSkeletonItem: {
+      height: normalize(52),
+      borderRadius: normalize(999),
+      backgroundColor: colors.textLight10,
+      marginBottom: normalize(10),
+    },
   });
 };
 
@@ -248,11 +254,13 @@ export const createProfileCardStyles = (normalize) =>
       fontSize: normalize(fontSizes.title),
       fontFamily: fonts.bold,
       color: colors.textPrimary,
+      flexShrink: 0,
     },
     profileUsername: {
       fontSize: normalize(fontSizes.xl),
       fontFamily: fonts.regular,
       color: colors.textSecondary,
+      flexShrink: 1,
     },
     profileSchool: {
       fontSize: normalize(fontSizes.lg),

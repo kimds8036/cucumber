@@ -14,7 +14,7 @@ import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
 import { colors } from '../../styles/colors';
 import { getNormalize } from '../../styles/frame.style';
 import { createCalendarStyles } from '../../styles/calender.style';
-import { api } from '../../utils/api';
+import { dateHasMealMenus } from '../../utils/mealRollingSlots';
 
 const WEEKDAYS = ['일', '월', '화', '수', '목', '금', '토'];
 const MEAL_LABEL = {
@@ -185,7 +185,7 @@ const MealCalender = ({ route }) => {
       month === now.getMonth() &&
       year === now.getFullYear();
     const isSelected = selectedDate === key;
-    const hasMeals = !!mealInfo;
+    const hasMeals = dateHasMealMenus(mealInfo);
 
     const numberTextBase = [styles.dayNumber];
     if (colIndex === 0) numberTextBase.push(styles.sundayText);

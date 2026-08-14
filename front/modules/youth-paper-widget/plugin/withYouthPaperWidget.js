@@ -5,6 +5,7 @@ const {
   withInfoPlist,
   withXcodeProject,
   withDangerousMod,
+  withAndroidManifest,
   IOSConfig,
   createRunOncePlugin,
 } = require('@expo/config-plugins');
@@ -181,16 +182,99 @@ function withAppDelegateBgRegister(config) {
   ]);
 }
 
+function withAndroidAppWidget(config) {
+  config = withDangerousMod(config, [
+    'android',
+    async (cfg) => {
+      const javaDir = path.join(
+        cfg.modRequest.platformProjectRoot,
+        'app/src/main/java/com/ucost/YouthPaper/widget',
+      );
+      ensureDirSync(javaDir);
+      fs.writeFileSync(
+        path.join(javaDir, 'MealWidgetReceiver.java'),
+        [
+          'package com.ucost.YouthPaper.widget;',
+          '',
+          'public class MealWidgetReceiver extends expo.modules.youthpaperwidget.MealWidgetReceiver {}',
+          '',
+        ].join('\n'),
+      );
+      fs.writeFileSync(
+        path.join(javaDir, 'TimetableWidgetReceiver.java'),
+        [
+          'package com.ucost.YouthPaper.widget;',
+          '',
+          'public class TimetableWidgetReceiver extends expo.modules.youthpaperwidget.TimetableWidgetReceiver {}',
+          '',
+        ].join('\n'),
+      );
+      return cfg;
+    },
+  ]);
+
+  config = withAndroidManifest(config, (cfg) => {
+    const app = cfg.modResults.manifest.application?.[0];
+    if (!app) return cfg;
+    app.receiver = app.receiver || [];
+    const receivers = [
+      {
+        name: 'com.ucost.YouthPaper.widget.MealWidgetReceiver',
+        label: '급식',
+        xml: '@xml/youth_paper_meal_widget_info',
+      },
+      {
+        name: 'com.ucost.YouthPaper.widget.TimetableWidgetReceiver',
+        label: '시간표',
+        xml: '@xml/youth_paper_timetable_widget_info',
+      },
+    ];
+    for (const spec of receivers) {
+      const exists = app.receiver.some(
+        (r) => r.$?.['android:name'] === spec.name,
+      );
+      if (exists) continue;
+      app.receiver.push({
+        $: {
+          'android:name': spec.name,
+          'android:exported': 'true',
+          'android:enabled': 'true',
+          'android:label': spec.label,
+        },
+        'intent-filter': [
+          {
+            action: [
+              { $: { 'android:name': 'android.appwidget.action.APPWIDGET_UPDATE' } },
+            ],
+          },
+        ],
+        'meta-data': [
+          {
+            $: {
+              'android:name': 'android.appwidget.provider',
+              'android:resource': spec.xml,
+            },
+          },
+        ],
+      });
+    }
+    return cfg;
+  });
+
+  return config;
+}
+
 function withYouthPaperWidget(config) {
   config = withAppGroupEntitlement(config);
   config = withBgTaskIds(config);
   config = withWidgetExtensionSources(config);
   config = withAppDelegateBgRegister(config);
+  config = withAndroidAppWidget(config);
   return config;
 }
 
 module.exports = createRunOncePlugin(
   withYouthPaperWidget,
   'withYouthPaperWidget',
-  '1.0.0',
+  '1.2.1',
 );

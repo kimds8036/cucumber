@@ -29,6 +29,11 @@ function dayHasAnyMeal(meals = {}) {
   return MEAL_ORDER.some(({ key }) => normalizeMenus(meals[key]).length > 0);
 }
 
+/** 달력 셀: 실제 메뉴가 있는 날만 true */
+export function dateHasMealMenus(mealInfo) {
+  return dayHasAnyMeal(mealInfo?.meals || {});
+}
+
 /** 해당 날짜·끼니가 마감됐는지 (KST). 과거 날짜는 전부 마감. */
 export function isMealExpired(ymd, untilHour, date = new Date()) {
   const todayYmd = getKstYmd(date);
@@ -39,14 +44,14 @@ export function isMealExpired(ymd, untilHour, date = new Date()) {
 }
 
 /**
- * 롤링 급식 슬롯: 마감 안 지난 끼니 + 빈 날짜 placeholder.
+ * 롤링 급식 슬롯: 마감 안 지난 실제 끼니만. 급식 없는 날은 건너뛴다.
  * @param {Record<string, { meals?: Record<string, string[]> }>} mealsByDate
  * @param {{ now?: Date, slotCount?: number, maxDays?: number }} [opts]
  */
 export function buildRollingMealSlots(mealsByDate = {}, opts = {}) {
   const now = opts.now || new Date();
   const slotCount = opts.slotCount ?? 3;
-  const maxDays = opts.maxDays ?? 14;
+  const maxDays = opts.maxDays ?? 21;
   const todayYmd = getKstYmd(now);
   const candidates = [];
 
@@ -55,13 +60,6 @@ export function buildRollingMealSlots(mealsByDate = {}, opts = {}) {
     const dayMeals = mealsByDate?.[ymd]?.meals || {};
 
     if (!dayHasAnyMeal(dayMeals)) {
-      candidates.push({
-        ymd,
-        mealType: '정보 없음',
-        mealTypeKey: null,
-        menus: [],
-        isPlaceholder: true,
-      });
       continue;
     }
 

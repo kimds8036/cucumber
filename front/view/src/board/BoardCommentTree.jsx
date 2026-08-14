@@ -87,13 +87,11 @@ export default function BoardCommentTree({
               >
                 {item.authorLabel}
               </Text>
-              {item.isWriter ? (
-                <EquippedBadge
+              <EquippedBadge
                   badge={item.equippedBadge}
                   size={normalize(13)}
-                  style={{ marginLeft: normalize(3) }}
+                  style={{ marginLeft: normalize(3), flexShrink: 0 }}
                 />
-              ) : null}
               <Text style={styles.detailDot}>•</Text>
               <Text style={styles.detailTime} numberOfLines={1}>
                 {item.time}

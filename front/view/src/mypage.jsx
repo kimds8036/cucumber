@@ -42,7 +42,9 @@ const isSameProfileInfo = (a, b) => {
     a.profileColorId === b.profileColorId &&
     a.profileColorNumber === b.profileColorNumber &&
     a.friendCount === b.friendCount &&
-    a.equippedBadge?.key === b.equippedBadge?.key
+    a.equippedBadge?.key === b.equippedBadge?.key &&
+    a.postCount === b.postCount &&
+    a.scrapCount === b.scrapCount
   );
 };
 
@@ -60,9 +62,12 @@ const MyPage = ({ navigation }) => {
   const [userInfo, setUserInfo] = useState(null);
   const [timetable, setTimetable] = useState(null);
   const [colorSeed, setColorSeed] = useState(0);
-  const [loading, setLoading] = useState(false);
-  const [timetableLoading, setTimetableLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [timetableLoading, setTimetableLoading] = useState(true);
   const [timetableCacheKey, setTimetableCacheKey] = useState(null);
+  const [hasFirstPaint, setHasFirstPaint] = useState(false);
+  const [profileReady, setProfileReady] = useState(false);
+  const [ttReady, setTtReady] = useState(false);
   const timetableHydratedRef = useRef(false);
 
   useEffect(() => {
@@ -169,6 +174,9 @@ const MyPage = ({ navigation }) => {
       setTimetable(getGuideTimetable());
       setLoading(false);
       setTimetableLoading(false);
+      setProfileReady(true);
+      setTtReady(true);
+      setHasFirstPaint(true);
       return;
     }
     try {
@@ -183,17 +191,22 @@ const MyPage = ({ navigation }) => {
           cachedProfileTs = profileTs;
           if (Date.now() - profileTs < PROFILE_CACHE_TTL_MS) {
             cachedProfile = parsed?.userInfo || null;
-            if (cachedProfile) {
-              setUserInfo(cachedProfile);
-            }
           }
         }
       } catch (profileCacheErr) {
         console.warn('프로필 캐시 읽기 실패:', profileCacheErr);
       }
 
-      const meRes = await api.get('/api/auth/me');
-      const me = meRes.data?.data;
+      const [meRes, statsRes] = await Promise.allSettled([
+        api.get('/api/auth/me'),
+        api.get('/api/users/me/stats'),
+      ]);
+      if (meRes.status !== 'fulfilled') {
+        throw meRes.reason;
+      }
+      const me = meRes.value.data?.data;
+      const stats =
+        statsRes.status === 'fulfilled' ? statsRes.value.data?.data : null;
       const userScope =
         me?.id != null ? String(me.id) : me?.username || me?.email || null;
       const scopedTimetableCacheKey = userScope
@@ -214,8 +227,10 @@ const MyPage = ({ navigation }) => {
           profileColorHex: me.profileColor?.hexCode || null,
           profileColorId: me.profileColor?.id ?? me.colorId ?? null,
           profileColorNumber: me.profileColor?.colorNumber ?? null,
-          friendCount: me.friendCount ?? 0,
+          friendCount: me.friendCount ?? stats?.friendCount ?? 0,
           equippedBadge: me.equippedBadge ?? null,
+          postCount: Number(stats?.postCount ?? 0),
+          scrapCount: Number(stats?.scrapCount ?? 0),
         };
         setUserInfo(nextUserInfo);
         try {
@@ -249,6 +264,7 @@ const MyPage = ({ navigation }) => {
       setTimetableCacheKey(TIMETABLE_CACHE_KEY);
     } finally {
       if (!silent) setLoading(false);
+      setProfileReady(true);
     }
   }, [isGuidePreview]);
 
@@ -258,12 +274,12 @@ const MyPage = ({ navigation }) => {
       let cancelled = false;
       (async () => {
         if (cancelled) return;
-        await fetchProfile({ silent: true });
+        await fetchProfile({ silent: hasFirstPaint });
       })();
       return () => {
         cancelled = true;
       };
-    }, [fetchProfile]),
+    }, [fetchProfile, hasFirstPaint]),
   );
 
   // 시간표 캐시만 읽음 — 첫 진입·시간표 편집 후 복귀 시 동기화
@@ -310,6 +326,7 @@ const MyPage = ({ navigation }) => {
         } finally {
           if (!cancelled) {
             timetableHydratedRef.current = true;
+            setTtReady(true);
             if (showSkeleton) setTimetableLoading(false);
           }
         }
@@ -332,6 +349,13 @@ const MyPage = ({ navigation }) => {
       returnToMypage: true,
     });
   }, [navigation, timetable, timetableCacheKey]);
+
+  useEffect(() => {
+    if (hasFirstPaint || isGuidePreview) return;
+    if (profileReady && ttReady) {
+      setHasFirstPaint(true);
+    }
+  }, [hasFirstPaint, isGuidePreview, profileReady, ttReady]);
 
   const MenuItem = ({
     icon,
@@ -371,12 +395,55 @@ const MyPage = ({ navigation }) => {
     );
   };
 
+  const showPageSkeleton = !isGuidePreview && !hasFirstPaint;
+
   return (
     <View style={styles.container}>
       <ScrollView
         style={styles.scrollView}
         showsVerticalScrollIndicator={false}
       >
+        {showPageSkeleton ? (
+          <>
+            <View style={styles.profileSkeletonCard}>
+              <View style={styles.profileSkeletonHeader}>
+                <View style={styles.profileSkeletonAvatar} />
+                <View style={styles.profileSkeletonInfo}>
+                  <View style={styles.profileSkeletonName} />
+                  <View style={styles.profileSkeletonUsername} />
+                  <View style={styles.profileSkeletonSchool} />
+                </View>
+              </View>
+              <View style={styles.profileSkeletonQuickRow}>
+                <View style={styles.profileSkeletonQuickCell} />
+                <View style={styles.profileSkeletonQuickCell} />
+                <View style={styles.profileSkeletonQuickCell} />
+              </View>
+            </View>
+            <View style={[styles.ttSkeletonCard, { marginHorizontal: normalize(16) }]}>
+              <View style={styles.ttSkeletonHeader} />
+              {[...Array(7)].map((_, idx) => (
+                <View style={styles.ttSkeletonRow} key={`page-tt-sk-${idx}`}>
+                  <View style={styles.ttSkeletonCellSmall} />
+                  <View style={styles.ttSkeletonCell} />
+                  <View style={styles.ttSkeletonCell} />
+                  <View style={styles.ttSkeletonCell} />
+                  <View style={styles.ttSkeletonCell} />
+                  <View style={styles.ttSkeletonCell} />
+                </View>
+              ))}
+            </View>
+            <View style={styles.menuSection}>
+              {[...Array(8)].map((_, idx) => (
+                <View
+                  key={`menu-sk-${idx}`}
+                  style={styles.menuSkeletonItem}
+                />
+              ))}
+            </View>
+          </>
+        ) : (
+          <>
         {/* ── 학생 정보 카드 ── */}
         {userInfo ? (
           <ProfileCard
@@ -443,17 +510,21 @@ const MyPage = ({ navigation }) => {
             onPress={() => navigation.navigate('HiddenPostsAppeals')}
           />
           <MenuItem
+            icon="person-add-outline"
+            title="친구 초대하기"
+            onPress={handleInviteFriends}
+          />
+          <MenuItem
+            icon="ribbon-outline"
+            title="배지 관리"
+            onPress={() => navigation.navigate('BadgeManage')}
+          />
+          <MenuItem
             icon="settings-outline"
             title="앱 설정"
             onPress={() =>
               navigation.navigate('NotificationSettings', { variant: 'prefs' })
             }
-          />
-          <MenuItem
-            icon="person-add-outline"
-            title="친구 초대하기"
-            subtitle="링크로 친구를 초대하면 배지가 열려요"
-            onPress={handleInviteFriends}
           />
           <MenuItem
             icon="person-circle-outline"
@@ -484,6 +555,8 @@ const MyPage = ({ navigation }) => {
         </View>
 
         <View style={styles.bottomPadding} />
+          </>
+        )}
       </ScrollView>
     </View>
   );

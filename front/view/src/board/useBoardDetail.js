@@ -39,7 +39,7 @@ function buildTree(comments, postAuthorId, currentUserId) {
       id: c.id,
       userId: c.user_id,
       authorLabel: isPostAuthor ? '작성자' : `익명 ${c.anonymous_index}`,
-      equippedBadge: isPostAuthor ? equippedBadgeFromApiRow(c) : null,
+      equippedBadge: equippedBadgeFromApiRow(c),
       isWriter: isPostAuthor,
       isMyComment: currentUserId != null && c.user_id === currentUserId,
       isPinned: Boolean(c.is_pinned),
