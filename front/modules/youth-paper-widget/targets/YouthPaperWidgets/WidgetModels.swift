@@ -15,6 +15,9 @@ struct MealWidgetPayload: Codable {
   let mealType: String?
   let menus: [String]?
   let syncedAt: String?
+  /// 방학/배너 상태. 없으면 기존 급식 payload.
+  let isVacation: Bool?
+  let bannerText: String?
   /// legacy
   let generatedAt: String?
   let first: MealNextItem?
@@ -23,6 +26,9 @@ struct MealWidgetPayload: Codable {
   var resolvedMealType: String? { mealType ?? first?.mealType }
   var resolvedMenus: [String] { menus ?? first?.menus ?? [] }
   var resolvedSyncedAt: String? { syncedAt ?? generatedAt }
+  var resolvedIsVacation: Bool {
+    isVacation == true || resolvedMealType == "vacation"
+  }
 }
 
 struct TimetablePeriodLite: Codable {

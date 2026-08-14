@@ -11,7 +11,7 @@ export function buildMealWidgetPayload(meals, opts = {}) {
   const raw = list[0] ?? null;
 
   if (!raw || typeof raw !== 'object') {
-    return { ymd: '', mealType: null, menus: [], syncedAt };
+    return { ymd: '', mealType: null, menus: [], syncedAt, isVacation: false };
   }
 
   const ymd = String(raw.ymd || '');
@@ -20,13 +20,25 @@ export function buildMealWidgetPayload(meals, opts = {}) {
     : [];
   const mealTypeRaw = raw.mealType == null ? null : String(raw.mealType).trim();
 
+  if (raw.isVacation === true || mealTypeRaw === 'vacation') {
+    return {
+      ymd: '',
+      mealType: 'vacation',
+      menus: [],
+      syncedAt,
+      isVacation: true,
+      bannerText:
+        raw.bannerText || raw.text || '당분간 급식 정보가 없어요',
+    };
+  }
+
   // 서버 빈 슬롯 패딩(`급식`) → 통째로 빈 값
   if (
     mealTypeRaw == null ||
     mealTypeRaw === '' ||
     mealTypeRaw === '급식'
   ) {
-    return { ymd, mealType: null, menus: [], syncedAt };
+    return { ymd, mealType: null, menus: [], syncedAt, isVacation: false };
   }
 
   return {
@@ -34,5 +46,6 @@ export function buildMealWidgetPayload(meals, opts = {}) {
     mealType: mealTypeRaw,
     menus,
     syncedAt,
+    isVacation: false,
   };
 }

@@ -39,11 +39,17 @@ struct MealWidgetView: View {
     WidgetPayloadReader.shouldShowMealEmpty(entry.payload)
   }
 
+  private var isVacation: Bool {
+    entry.payload?.resolvedIsVacation == true
+  }
+
   var body: some View {
     Link(destination: URL(string: "youthpaper://school")!) {
       ZStack {
         Color.white
-        if isEmpty {
+        if isVacation {
+          vacationView
+        } else if isEmpty {
           emptyView
         } else {
           contentView
@@ -57,6 +63,15 @@ struct MealWidgetView: View {
     Text("급식 정보 없음")
       .font(.system(size: 12, weight: .medium))
       .foregroundColor(mutedGray)
+      .frame(maxWidth: .infinity, maxHeight: .infinity)
+  }
+
+  private var vacationView: some View {
+    Text(entry.payload?.bannerText ?? "당분간 급식 정보가 없어요")
+      .font(.system(size: 12, weight: .medium))
+      .foregroundColor(mutedGray)
+      .multilineTextAlignment(.center)
+      .padding(.horizontal, 8)
       .frame(maxWidth: .infinity, maxHeight: .infinity)
   }
 

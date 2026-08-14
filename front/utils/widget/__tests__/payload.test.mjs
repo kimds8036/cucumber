@@ -65,5 +65,13 @@ const padded = buildMealWidgetPayload([
 ]);
 assert.equal(padded.mealType, null);
 assert.deepEqual(padded.menus, []);
+assert.equal(padded.isVacation, false);
+
+const vacation = buildMealWidgetPayload([
+  { ymd: '', mealType: 'vacation', menus: [], isVacation: true, bannerText: '당분간 급식 정보가 없어요' },
+]);
+assert.equal(vacation.isVacation, true);
+assert.equal(vacation.mealType, 'vacation');
+assert.equal(vacation.bannerText, '당분간 급식 정보가 없어요');
 
 console.log('widget payload tests: ok');

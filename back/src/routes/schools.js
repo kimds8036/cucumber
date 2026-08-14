@@ -13,6 +13,15 @@ import {
   buildSchoolSearchSql,
   schoolSearchParams,
 } from '../utils/schoolSearch.js';
+import {
+  addDaysYmd,
+  evaluateSchoolDay,
+  toYmd as toDashYmd,
+} from '../utils/schoolDay.js';
+import {
+  getSchoolTermContext,
+  holidayOnYmd,
+} from '../services/schoolTerms.service.js';
 
 const router = express.Router();
 
@@ -348,6 +357,48 @@ const getMySchoolCodes = async (userId) => {
   return row || null;
 };
 
+function compactYmd(dashYmd) {
+  return String(dashYmd || '').replace(/-/g, '');
+}
+
+/** NEIS 급식 맵에 from~to 모든 날짜의 등교일 판정을 붙인다. 학교당 학기 조회 1회. */
+async function attachSchoolDayMeta(mealsByDate, schoolId, fromYmd, toYmd) {
+  const start = toDashYmd(fromYmd);
+  const end = toDashYmd(toYmd);
+  const out = { ...(mealsByDate || {}) };
+  if (!schoolId || !start || !end || start > end) {
+    return out;
+  }
+
+  const ctx = await getSchoolTermContext(schoolId);
+  let dash = start;
+  for (let guard = 0; dash <= end && guard < 400; guard += 1) {
+    const compact = compactYmd(dash);
+    const existing = out[compact] || {};
+    const ev = evaluateSchoolDay({
+      ymd: dash,
+      terms: ctx.terms,
+      closureSet: ctx.closureSet,
+      anniversaryMd: ctx.anniversaryMd,
+      isPublicHoliday: holidayOnYmd(dash),
+    });
+    out[compact] = {
+      meals:
+        existing.meals && typeof existing.meals === 'object' ? existing.meals : {},
+      calories:
+        existing.calories && typeof existing.calories === 'object'
+          ? existing.calories
+          : {},
+      schoolDay: Boolean(ev.schoolDay),
+      schoolDayReason: ev.reason ?? null,
+    };
+    const next = addDaysYmd(dash, 1);
+    if (!next || next <= dash) break;
+    dash = next;
+  }
+  return out;
+}
+
 /** schools.stats_updated_at 이 NULL일 때만 사용 (배치 미실행 등) */
 async function fetchSchoolCountsLive(schoolId) {
   const [[userRow]] = await pool.execute(
@@ -640,29 +691,37 @@ router.get('/me/meals/calendar', authenticate, async (req, res) => {
     if (!school?.school_id) {
       return res.status(404).json({ success: false, message: '사용자의 학교 정보를 찾을 수 없습니다.' });
     }
-    if (!school.edu_office_code || !school.admin_standard_code) {
-      return res.json({ success: true, data: { schoolId: school.school_id, mealsByDate: {} } });
-    }
-    const rows = await fetchNeisRows({
-      eduOfficeCode: school.edu_office_code,
-      schoolCode: school.admin_standard_code,
-      fromYmd,
-      toYmd: toYmdValue,
-    });
     const mealsByDate = {};
-    rows.forEach((row) => {
-      const ymd = String(row?.MLSV_YMD || '').trim();
-      const code = String(row?.MMEAL_SC_CODE || '').trim();
-      if (!ymd || !MEAL_CODES.includes(code)) return;
-      const type = MEAL_CODE_TO_TYPE[code];
-      if (!mealsByDate[ymd]) mealsByDate[ymd] = { meals: {}, calories: {} };
-      mealsByDate[ymd].meals[type] = String(row?.DDISH_NM || '')
-        .split(/<br\s*\/?>/i)
-        .map(cleanMenuText)
-        .filter(Boolean);
-      mealsByDate[ymd].calories[type] = String(row?.CAL_INFO || '').trim() || null;
+    if (school.edu_office_code && school.admin_standard_code) {
+      const rows = await fetchNeisRows({
+        eduOfficeCode: school.edu_office_code,
+        schoolCode: school.admin_standard_code,
+        fromYmd,
+        toYmd: toYmdValue,
+      });
+      rows.forEach((row) => {
+        const ymd = String(row?.MLSV_YMD || '').trim();
+        const code = String(row?.MMEAL_SC_CODE || '').trim();
+        if (!ymd || !MEAL_CODES.includes(code)) return;
+        const type = MEAL_CODE_TO_TYPE[code];
+        if (!mealsByDate[ymd]) mealsByDate[ymd] = { meals: {}, calories: {} };
+        mealsByDate[ymd].meals[type] = String(row?.DDISH_NM || '')
+          .split(/<br\s*\/?>/i)
+          .map(cleanMenuText)
+          .filter(Boolean);
+        mealsByDate[ymd].calories[type] = String(row?.CAL_INFO || '').trim() || null;
+      });
+    }
+    const withSchoolDay = await attachSchoolDayMeta(
+      mealsByDate,
+      school.school_id,
+      fromYmd,
+      toYmdValue,
+    );
+    return res.json({
+      success: true,
+      data: { schoolId: school.school_id, mealsByDate: withSchoolDay },
     });
-    return res.json({ success: true, data: { schoolId: school.school_id, mealsByDate } });
   } catch (error) {
     console.error('내 학교 급식 달력 조회 오류:', error);
     return res.status(500).json({ success: false, message: '급식 달력 조회 중 오류가 발생했습니다.' });
@@ -681,29 +740,37 @@ router.get('/:schoolId/meals/calendar', validate(schoolIdParamValidators), async
     if (!school) {
       return res.status(404).json({ success: false, message: '학교를 찾을 수 없습니다.' });
     }
-    if (!school.edu_office_code || !school.admin_standard_code) {
-      return res.json({ success: true, data: { schoolId, mealsByDate: {} } });
-    }
-    const rows = await fetchNeisRows({
-      eduOfficeCode: school.edu_office_code,
-      schoolCode: school.admin_standard_code,
-      fromYmd,
-      toYmd: toYmdValue,
-    });
     const mealsByDate = {};
-    rows.forEach((row) => {
-      const ymd = String(row?.MLSV_YMD || '').trim();
-      const code = String(row?.MMEAL_SC_CODE || '').trim();
-      if (!ymd || !MEAL_CODES.includes(code)) return;
-      const type = MEAL_CODE_TO_TYPE[code];
-      if (!mealsByDate[ymd]) mealsByDate[ymd] = { meals: {}, calories: {} };
-      mealsByDate[ymd].meals[type] = String(row?.DDISH_NM || '')
-        .split(/<br\s*\/?>/i)
-        .map(cleanMenuText)
-        .filter(Boolean);
-      mealsByDate[ymd].calories[type] = String(row?.CAL_INFO || '').trim() || null;
+    if (school.edu_office_code && school.admin_standard_code) {
+      const rows = await fetchNeisRows({
+        eduOfficeCode: school.edu_office_code,
+        schoolCode: school.admin_standard_code,
+        fromYmd,
+        toYmd: toYmdValue,
+      });
+      rows.forEach((row) => {
+        const ymd = String(row?.MLSV_YMD || '').trim();
+        const code = String(row?.MMEAL_SC_CODE || '').trim();
+        if (!ymd || !MEAL_CODES.includes(code)) return;
+        const type = MEAL_CODE_TO_TYPE[code];
+        if (!mealsByDate[ymd]) mealsByDate[ymd] = { meals: {}, calories: {} };
+        mealsByDate[ymd].meals[type] = String(row?.DDISH_NM || '')
+          .split(/<br\s*\/?>/i)
+          .map(cleanMenuText)
+          .filter(Boolean);
+        mealsByDate[ymd].calories[type] = String(row?.CAL_INFO || '').trim() || null;
+      });
+    }
+    const withSchoolDay = await attachSchoolDayMeta(
+      mealsByDate,
+      schoolId,
+      fromYmd,
+      toYmdValue,
+    );
+    return res.json({
+      success: true,
+      data: { schoolId, mealsByDate: withSchoolDay },
     });
-    return res.json({ success: true, data: { schoolId, mealsByDate } });
   } catch (error) {
     console.error('학교 급식 달력 조회 오류:', error);
     return res.status(500).json({ success: false, message: '급식 달력 조회 중 오류가 발생했습니다.' });

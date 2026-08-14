@@ -41,8 +41,8 @@ const OurSchoolScreen = ({ navigation }) => {
   const { isGuidePreview, guideSchoolScrollTo } = useGuidePreview();
   const scrollRef = useRef(null);
   const SCHOOL_CACHE_KEY = '@our_school_screen_cache_v1';
-  // v2: 롤링 슬롯용 달력 구간(mealsByDate) 캐시
-  const MEAL_CACHE_KEY_PREFIX = '@our_school_meal_cache_v2_';
+  // v3: 달력에 schoolDay/schoolDayReason 포함. 구버전(v2) 캐시는 무시.
+  const MEAL_CACHE_KEY_PREFIX = '@our_school_meal_cache_v3_';
   const CACHE_TTL_MS = 24 * 60 * 60 * 1000;
   const { width } = useWindowDimensions();
   const normalize = useMemo(() => getNormalize(width), [width]);
@@ -272,9 +272,13 @@ const OurSchoolScreen = ({ navigation }) => {
         );
 
         // API 갱신 완료 시에만 위젯 sync (캐시 선표시 시점에는 sync하지 않음)
-        const slots = buildRollingMealSlots(nextMealsByDate);
+        const result = buildRollingMealSlots(nextMealsByDate);
+        const widgetSource =
+          result.mode === 'slots'
+            ? result.slots[0]
+            : { type: 'vacation-banner', text: result.bannerText };
         syncMealWidgetFromNext(
-          [slotToWidgetMealItem(slots[0])],
+          [slotToWidgetMealItem(widgetSource)],
           schoolInfo.id,
         ).catch(() => {});
       } catch (e) {
@@ -319,7 +323,7 @@ const OurSchoolScreen = ({ navigation }) => {
     };
   }, [isGuidePreview]);
 
-  const mealSlots = useMemo(
+  const mealSlotsResult = useMemo(
     () => buildRollingMealSlots(mealsByDate, { now: new Date(mealClockMs) }),
     [mealsByDate, mealClockMs],
   );
@@ -331,6 +335,7 @@ const OurSchoolScreen = ({ navigation }) => {
 
   const getMealSlotLabel = (slot) => {
     if (!slot || slot.isPlaceholder) return '급식';
+    if (slot.type === 'vacation') return '방학';
     return slot.mealType || '급식';
   };
 
@@ -507,14 +512,69 @@ const OurSchoolScreen = ({ navigation }) => {
               </TouchableOpacity>
             </View>
 
-            <View style={styles.mealSlotsRow}>
-              {mealLoading
-                ? [0, 1, 2].map((idx) => (
+            {mealLoading ? (
+              <View style={styles.mealSlotsRow}>
+                {[0, 1, 2].map((idx) => (
+                  <View
+                    key={`meal-skeleton-${idx}`}
+                    style={[
+                      styles.mealSlot,
+                      idx === 2 && styles.mealSlotLast,
+                    ]}
+                  >
                     <View
-                      key={`meal-skeleton-${idx}`}
+                      style={[styles.mealCard, { minHeight: normalize(96) }]}
+                    >
+                      <View style={styles.mealSlotHeader}>
+                        <View style={styles.mealSlotTitleRow}>
+                          <View
+                            style={{
+                              height: normalize(fontSizes.xl),
+                              width: '58%',
+                              backgroundColor: colors.disabled,
+                              borderRadius: 6,
+                            }}
+                          />
+                        </View>
+                        <View style={styles.mealSlotBadge}>
+                          <View
+                            style={{
+                              height: normalize(fontSizes.lg),
+                              width: normalize(32),
+                              backgroundColor: colors.border,
+                              borderRadius: 6,
+                            }}
+                          />
+                        </View>
+                      </View>
+                      <View style={styles.mealSlotMenus}>
+                        {[0, 1, 2, 3].map((line) => (
+                          <View
+                            key={`meal-skel-line-${idx}-${line}`}
+                            style={{
+                              height: normalize(fontSizes.lg),
+                              marginBottom: normalize(2),
+                              width: line === 3 ? '62%' : '100%',
+                              backgroundColor: colors.surface,
+                              borderRadius: 4,
+                            }}
+                          />
+                        ))}
+                      </View>
+                    </View>
+                  </View>
+                ))}
+              </View>
+            ) : mealSlotsResult.mode === 'slots' ? (
+              <View style={styles.mealSlotsRow}>
+                {mealSlotsResult.slots.map((slot, index) =>
+                  slot.type === 'vacation' ? (
+                    <View
+                      key={`vacation-${index}`}
                       style={[
                         styles.mealSlot,
-                        idx === 2 && styles.mealSlotLast,
+                        index === mealSlotsResult.slots.length - 1 &&
+                          styles.mealSlotLast,
                       ]}
                     >
                       <View
@@ -522,49 +582,18 @@ const OurSchoolScreen = ({ navigation }) => {
                       >
                         <View style={styles.mealSlotHeader}>
                           <View style={styles.mealSlotTitleRow}>
-                            <View
-                              style={{
-                                height: normalize(fontSizes.xl),
-                                width: '58%',
-                                backgroundColor: colors.disabled,
-                                borderRadius: 6,
-                              }}
-                            />
+                            <Text style={styles.mealSlotTitle}>방학</Text>
                           </View>
-                          <View style={styles.mealSlotBadge}>
-                            <View
-                              style={{
-                                height: normalize(fontSizes.lg),
-                                width: normalize(32),
-                                backgroundColor: colors.border,
-                                borderRadius: 6,
-                              }}
-                            />
-                          </View>
-                        </View>
-                        <View style={styles.mealSlotMenus}>
-                          {[0, 1, 2, 3].map((line) => (
-                            <View
-                              key={`meal-skel-line-${idx}-${line}`}
-                              style={{
-                                height: normalize(fontSizes.lg),
-                                marginBottom: normalize(2),
-                                width: line === 3 ? '62%' : '100%',
-                                backgroundColor: colors.surface,
-                                borderRadius: 4,
-                              }}
-                            />
-                          ))}
                         </View>
                       </View>
                     </View>
-                  ))
-                : mealSlots.map((slot, index) => (
+                  ) : (
                     <View
                       key={`${slot.ymd}-${slot.mealType}-${index}`}
                       style={[
                         styles.mealSlot,
-                        index === mealSlots.length - 1 && styles.mealSlotLast,
+                        index === mealSlotsResult.slots.length - 1 &&
+                          styles.mealSlotLast,
                       ]}
                     >
                       <TouchableOpacity
@@ -613,8 +642,18 @@ const OurSchoolScreen = ({ navigation }) => {
                         </View>
                       </TouchableOpacity>
                     </View>
-                  ))}
-            </View>
+                  ),
+                )}
+              </View>
+            ) : (
+              <View style={styles.mealSlotsRow}>
+                <View style={styles.mealBannerBox}>
+                  <Text style={styles.mealBannerText}>
+                    {mealSlotsResult.bannerText}
+                  </Text>
+                </View>
+              </View>
+            )}
           </View>
         </View>
 
