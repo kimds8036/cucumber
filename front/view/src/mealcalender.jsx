@@ -294,7 +294,11 @@ const MealCalender = ({ route }) => {
 
         {selectedDate && (
           <View style={styles.mealDetail}>
-            {mealsByDate[selectedDate] ? (
+            {['breakfast', 'lunch', 'dinner'].some(
+              (t) =>
+                Array.isArray(mealsByDate[selectedDate]?.meals?.[t]) &&
+                mealsByDate[selectedDate].meals[t].length > 0,
+            ) ? (
               <View style={styles.mealDetailRow}>
                 {['breakfast', 'lunch', 'dinner'].map((mealType) => {
                   const label = MEAL_LABEL[mealType] || mealType;
