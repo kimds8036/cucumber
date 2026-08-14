@@ -13,6 +13,7 @@ import { api } from '../utils/api';
 import { PROFILE_COUNTS_CACHE_KEY } from '../utils/profileCountsCache';
 import { getProfileHexByColorId } from '../utils/profileColor';
 import { useGuidePreview } from '../context/GuidePreviewContext';
+import EquippedBadge from './EquippedBadge';
 import { getGuideMyPageStats } from '../src/screens/UserGuide/guidePreviewData';
 
 const PROFILE_COUNTS_CACHE_TTL_MS = 10 * 60 * 1000;
@@ -124,16 +125,19 @@ const ProfileCard = ({
         </View>
 
         <View style={styles.profileInfo}>
-          <View
+          <TouchableOpacity
             style={{
               flexDirection: 'row',
               alignItems: 'center',
               gap: normalize(6),
             }}
+            onPress={() => navigation.navigate('BadgeManage')}
+            activeOpacity={0.7}
           >
             <Text style={styles.profileName}>{userInfo.name}</Text>
+            <EquippedBadge badge={userInfo.equippedBadge} size={normalize(18)} />
             <Text style={styles.profileUsername}>{userInfo.username}</Text>
-          </View>
+          </TouchableOpacity>
           <Text style={styles.profileSchool}>
             {userInfo.school} {userInfo.gradeClass}
           </Text>

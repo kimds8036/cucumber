@@ -183,7 +183,8 @@ router.post('/:postId/comments', authenticate, blockWhenFlag('comment_write_disa
         c.like_count,
         c.created_at,
         u.name_enc as author_name_enc,
-        u.color_id
+        u.color_id,
+        u.equipped_badge_key
       FROM comments c
       LEFT JOIN users u ON c.user_id = u.id
       WHERE c.id = ?`,
@@ -351,6 +352,7 @@ router.get('/:postId/comments', optionalAuthenticate, async (req, res) => {
         c.created_at,
         u.name_enc as author_name_enc,
         u.color_id,
+        u.equipped_badge_key,
         (SELECT JSON_ARRAYAGG(cloudinary_url)
           FROM comment_images
           WHERE comment_id = c.id AND deleted_at IS NULL

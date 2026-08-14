@@ -11,10 +11,13 @@ import TimetabelChoice from './src/screens/timetable/timetabelChoice';
 import EditTimetable from './view/src/edittimetable';
 import MyPosts from './view/src/myposts';
 import NotificationSettings from './view/src/notificationsettings';
+import PeriodTimeSettings from './view/src/PeriodTimeSettings';
+import PeriodTimeSetup from './view/src/PeriodTimeSetup';
 import SetPinScreen from './view/src/setPinScreen';
 import ConfirmPinScreen from './view/src/confirmPinScreen';
 import VerifyPinScreen from './view/src/verifyPinScreen';
 import ChangePassword from './view/src/changepassword';
+import BadgeManage from './view/src/badgeManage';
 import ChangeSchool from './view/src/changeschool';
 import SearchScreen from './view/src/searchscreen';
 import NotificationScreen from './view/src/notificationscreen';
@@ -104,6 +107,7 @@ import { trackScreenView, flushAnalyticsEvents } from './utils/analytics';
 import WidgetDeepLinkHandler, {
   stashWidgetDeepLinkFromUrl,
 } from './components/navigation/WidgetDeepLinkHandler';
+import InviteDeepLinkListener from './components/InviteDeepLinkListener';
 import { ROUTE_TO_ANALYTICS_SCREEN } from './constants/analyticsScreens';
 
 const Stack = createNativeStackNavigator();
@@ -216,6 +220,8 @@ function MainStack({ initialRouteName = 'Main' }) {
         name="NotificationSettings"
         component={NotificationSettings}
       />
+      <Stack.Screen name="PeriodTimeSettings" component={PeriodTimeSettings} />
+      <Stack.Screen name="PeriodTimeSetup" component={PeriodTimeSetup} />
       <Stack.Screen name="SetPinScreen" component={SetPinScreen} />
       <Stack.Screen name="ConfirmPinScreen" component={ConfirmPinScreen} />
       <Stack.Screen name="VerifyPinScreen" component={VerifyPinScreen} />
@@ -233,6 +239,7 @@ function MainStack({ initialRouteName = 'Main' }) {
       <Stack.Screen name="SendSchoolMail" component={SendSchoolMailScreen} />
       <Stack.Screen name="Timer" component={Timer} />
       <Stack.Screen name="Friends" component={FriendsScreen} />
+      <Stack.Screen name="BadgeManage" component={BadgeManage} />
       <Stack.Screen name="HiddenPostsAppeals" component={HiddenPostsAppeals} />
       <Stack.Screen name="Inquiry" component={Inquiry} />
       <Stack.Screen name="InAppInquiry" component={InAppInquiry} />
@@ -848,6 +855,7 @@ export default function App() {
                                 trackNavigationScreen(getActiveRouteName(state));
                               }}
                             >
+                              <InviteDeepLinkListener />
                               <AppErrorBoundary>
                                 <RootNavigator />
                               </AppErrorBoundary>

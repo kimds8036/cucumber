@@ -277,6 +277,21 @@ const EditTimetable = ({ navigation, route }) => {
       maxPeriodCount,
       timetable,
     );
+
+    // 최초 등록(returnToMypage)이고 과목이 하나라도 있으면 저장 전 교시 시간 설정으로
+    const hasAnySubject = Object.values(timetableToSave || {}).some(
+      (v) => String(v ?? '').trim().length > 0,
+    );
+    if (returnToMypage && timetableCacheKey && hasAnySubject) {
+      navigation.navigate('PeriodTimeSetup', {
+        pendingTimetable: timetableToSave,
+        sourceTimetable: timetableToSave,
+        timetableCacheKey,
+        suggestedPeriodCount: getMaxPeriodFromTimetableKeys(timetableToSave, 7),
+      });
+      return;
+    }
+
     try {
       if (onSave) {
         onSave(timetableToSave);

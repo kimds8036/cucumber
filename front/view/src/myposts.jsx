@@ -14,6 +14,7 @@ import { colors } from '../../styles/colors';
 import { getNormalize, createBoardStyles } from '../../styles/board.style';
 import { createMyPostsStyles } from '../../styles/mypage.style';
 import { normalizeTagsFromApi } from '../../utils/normalizePostTags';
+import { equippedBadgeFromApiRow } from '../../constants/badges';
 import BoardPostCard from '../../components/Boardpostcard';
 import Skeleton from '../../components/common/Skeleton';
 
@@ -58,6 +59,7 @@ function mapServerPostToCard(p, listKind) {
   return {
     id: p.id,
     author: '익명',
+    equippedBadge: equippedBadgeFromApiRow(p),
     time: formatTimeAgo(p.created_at),
     location: school,
     content: p.content ?? '',

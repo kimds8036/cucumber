@@ -8,6 +8,7 @@ export { buildMealWidgetPayload } from './mealPayload.js';
 export {
   writeMealPayload,
   writeTimetablePayload,
+  writePeriodTimeSettings,
   writeSchoolId,
   writeAuthMirror,
   clearAuthMirror,
@@ -18,6 +19,17 @@ export {
   scheduleWidgetBackgroundRefresh,
   isWidgetBridgeAvailable,
 } from './widgetBridge.js';
+export {
+  PERIOD_TIME_SETTINGS_KEY,
+  PERIOD_TIME_SETTINGS_KEY_PREFIX,
+  periodTimeSettingsStorageKey,
+  validatePeriodTimeSettings,
+  defaultPeriodTimes,
+  loadPeriodTimeSettings,
+  savePeriodTimeSettings,
+  hhmmToMinutes,
+  minutesToHhmm,
+} from './periodTimeSettings.js';
 export {
   mirrorAuthTokensToWidget,
   syncAuthFromWidgetMirrorIfNewer,

@@ -1,5 +1,6 @@
 import pool from '../config/database.js';
 import { shouldSetPreviousSchool } from './reverification.service.js';
+import { scheduleSchoolTermSync } from './schoolTerms.service.js';
 
 /**
  * 학교 변경 시 previous_school_id·재인증 상태 갱신
@@ -54,6 +55,10 @@ export async function applyUserSchoolUpdate(
     `UPDATE users SET ${sets.join(', ')} WHERE id = ?`,
     params,
   );
+
+  if (newSchoolId && String(newSchoolId) !== String(oldSchoolId || '')) {
+    scheduleSchoolTermSync(newSchoolId);
+  }
 }
 
 export async function getUserReverificationPayload(userId) {

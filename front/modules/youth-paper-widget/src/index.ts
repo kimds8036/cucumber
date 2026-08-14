@@ -3,6 +3,7 @@ import { requireNativeModule } from 'expo-modules-core';
 type YouthPaperWidgetNative = {
   writeMealPayload(json: string): Promise<void>;
   writeTimetablePayload(json: string): Promise<void>;
+  writePeriodTimeSettings(json: string): Promise<void>;
   writeSchoolId(schoolId: string): Promise<void>;
   writeApiBaseUrl(url: string): Promise<void>;
   writeAuthMirror(json: string): Promise<void>;
@@ -34,6 +35,10 @@ const YouthPaperWidget = {
     native
       ? native.writeTimetablePayload(json)
       : unavailable('writeTimetablePayload'),
+  writePeriodTimeSettings: (json: string) =>
+    native
+      ? native.writePeriodTimeSettings(json)
+      : unavailable('writePeriodTimeSettings'),
   writeSchoolId: (schoolId: string) =>
     native ? native.writeSchoolId(schoolId) : unavailable('writeSchoolId'),
   writeApiBaseUrl: (url: string) =>

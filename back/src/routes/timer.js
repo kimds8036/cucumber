@@ -14,6 +14,7 @@ import {
   utcMsToKstMysqlDatetime3,
 } from '../utils/timerSessionTimes.js';
 import { upsertStudyDayTotalForUserKey } from '../utils/studyDayTotal.js';
+import { evaluateAndUnlockBadges } from '../services/badge.service.js';
 
 const router = express.Router();
 
@@ -496,6 +497,10 @@ router.post('/day', authenticate, validate(dayBodyValidators), async (req, res) 
     }
 
     await connection.commit();
+
+    evaluateAndUnlockBadges(userId).catch((e) => {
+      console.warn('[timer] badge eval', e?.message || e);
+    });
 
     res.status(201).json({
       success: true,

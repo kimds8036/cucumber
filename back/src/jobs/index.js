@@ -9,6 +9,7 @@ import { runAdminStatsReconcileJob } from './adminStats.reconcile.js';
 import { runAttendanceSuspicionJob } from './adminAttendance.suspicion.js';
 import { runAdminRetentionJob } from './adminRetention.purge.js';
 import { runAnalyticsReconcileJob } from './analyticsReconcile.js';
+import { runSchoolTermsSyncJob, maybeBootSchoolTermsSync } from './schoolTerms.sync.js';
 import { shouldRunCron } from '../config/serviceRole.js';
 
 const TZ = process.env.CRON_TIMEZONE || 'Asia/Seoul';
@@ -45,6 +46,8 @@ export function initJobs() {
     process.env.CRON_ADMIN_RETENTION || '0 5 * * 0';
   const analyticsReconcileSchedule =
     process.env.CRON_ANALYTICS_RECONCILE || '0 4 * * *';
+  const schoolTermsSchedule =
+    process.env.CRON_SCHOOL_TERMS || '0 4 * * 1';
 
   cron.schedule(
     studyGrassSchedule,
@@ -128,7 +131,21 @@ export function initJobs() {
     { timezone: TZ },
   );
 
+  cron.schedule(
+    schoolTermsSchedule,
+    async () => {
+      await runSchoolTermsSyncJob();
+    },
+    { timezone: TZ },
+  );
+
+  setImmediate(() => {
+    maybeBootSchoolTermsSync().catch((err) => {
+      console.warn('[schoolTerms] boot sync', err?.message || err);
+    });
+  });
+
   console.log(
-    `[BatchJob] started timezone=${TZ} studyGrass="${studyGrassSchedule}" trending="${trendingSchedule}" schoolStats="${schoolStatsSchedule}" timerGuard="${timerGuardSchedule}" personalMailReturn="${personalMailReturnSchedule}" reverification="${reverificationSchedules.join('|')}" adminStats="${adminStatsSchedule}" attendanceSuspicion="${attendanceSuspicionSchedule}" adminRetention="${adminRetentionSchedule}" analyticsReconcile="${analyticsReconcileSchedule}"`,
+    `[BatchJob] started timezone=${TZ} studyGrass="${studyGrassSchedule}" trending="${trendingSchedule}" schoolStats="${schoolStatsSchedule}" timerGuard="${timerGuardSchedule}" personalMailReturn="${personalMailReturnSchedule}" reverification="${reverificationSchedules.join('|')}" adminStats="${adminStatsSchedule}" attendanceSuspicion="${attendanceSuspicionSchedule}" adminRetention="${adminRetentionSchedule}" analyticsReconcile="${analyticsReconcileSchedule}" schoolTerms="${schoolTermsSchedule}"`,
   );
 }

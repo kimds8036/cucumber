@@ -8,6 +8,7 @@ import {
   TouchableWithoutFeedback,
   useWindowDimensions,
   Modal,
+  AppState,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Ionicons } from '@expo/vector-icons';
@@ -29,12 +30,19 @@ import {
   getGuideStudyGrassDays,
 } from '../../src/screens/UserGuide/guidePreviewData';
 import { syncMealWidgetFromNext, writeSchoolId } from '../../utils/widget';
+import {
+  addDaysToYmd,
+  buildRollingMealSlots,
+  getKstYmd,
+  slotToWidgetMealItem,
+} from '../../utils/mealRollingSlots';
 
 const OurSchoolScreen = ({ navigation }) => {
   const { isGuidePreview, guideSchoolScrollTo } = useGuidePreview();
   const scrollRef = useRef(null);
   const SCHOOL_CACHE_KEY = '@our_school_screen_cache_v1';
-  const MEAL_CACHE_KEY_PREFIX = '@our_school_meal_cache_v1_';
+  // v2: 롤링 슬롯용 달력 구간(mealsByDate) 캐시
+  const MEAL_CACHE_KEY_PREFIX = '@our_school_meal_cache_v2_';
   const CACHE_TTL_MS = 24 * 60 * 60 * 1000;
   const { width } = useWindowDimensions();
   const normalize = useMemo(() => getNormalize(width), [width]);
@@ -52,7 +60,9 @@ const OurSchoolScreen = ({ navigation }) => {
   const [popularPosts, setPopularPosts] = useState([]);
   const [loading, setLoading] = useState(false);
   const [mealLoading, setMealLoading] = useState(false);
-  const [nextMeals, setNextMeals] = useState([]);
+  const [mealsByDate, setMealsByDate] = useState({});
+  /** 끼니 마감(10/14/20) 경과 시 롤링 슬롯 재계산용 */
+  const [mealClockMs, setMealClockMs] = useState(() => Date.now());
   const [selectedMealSlot, setSelectedMealSlot] = useState(null);
   const [grassDays, setGrassDays] = useState([]);
   const getCurrentSemesterDays = () => {
@@ -90,7 +100,20 @@ const OurSchoolScreen = ({ navigation }) => {
 
   useEffect(() => {
     applyGuideScroll();
-  }, [applyGuideScroll, schoolInfo.name, grassDays.length, nextMeals.length]);
+  }, [applyGuideScroll, schoolInfo.name, grassDays.length, mealsByDate]);
+
+  // 마감 시각·자정이 지나도 화면에 머무르면 롤링 3칸이 갱신되도록 시계를 돌린다.
+  useEffect(() => {
+    const bump = () => setMealClockMs(Date.now());
+    const sub = AppState.addEventListener('change', (state) => {
+      if (state === 'active') bump();
+    });
+    const id = setInterval(bump, 60 * 1000);
+    return () => {
+      sub.remove();
+      clearInterval(id);
+    };
+  }, []);
 
   useEffect(() => {
     let mounted = true;
@@ -187,15 +210,27 @@ const OurSchoolScreen = ({ navigation }) => {
     let mounted = true;
     const fetchMeals = async () => {
       if (isGuidePreview) {
-        setNextMeals(getGuideSchoolMeals());
+        const guide = getGuideSchoolMeals();
+        const ymd = getKstYmd();
+        setMealsByDate({
+          [ymd]: {
+            meals: {
+              breakfast: guide[0]?.menus || [],
+              lunch: guide[1]?.menus || [],
+              dinner: guide[2]?.menus || [],
+            },
+          },
+        });
         setMealLoading(false);
         return;
       }
       if (!schoolInfo.id) {
-        setNextMeals([]);
+        setMealsByDate({});
         return;
       }
       const mealCacheKey = `${MEAL_CACHE_KEY_PREFIX}${schoolInfo.id}`;
+      const todayYmd = getKstYmd();
+      const toYmd = addDaysToYmd(todayYmd, 14);
       let usedCache = false;
       try {
         setMealLoading(true);
@@ -205,28 +240,45 @@ const OurSchoolScreen = ({ navigation }) => {
           if (
             cached?.ts &&
             isFreshCache(cached.ts) &&
-            Array.isArray(cached.meals)
+            cached?.ymd === todayYmd &&
+            cached?.mealsByDate &&
+            typeof cached.mealsByDate === 'object'
           ) {
-            setNextMeals(cached.meals);
+            setMealsByDate(cached.mealsByDate);
             usedCache = true;
             if (mounted) setMealLoading(false);
-            syncMealWidgetFromNext(cached.meals, schoolInfo.id).catch(() => {});
           }
         }
-        const res = await api.get('/api/schools/me/meals/next', {
-          params: { count: 3 },
+
+        // 달력 구간 1회 조회로 롤링 3칸 + 위젯 sync (별도 next 호출 없음)
+        const calRes = await api.get('/api/schools/me/meals/calendar', {
+          params: { fromYmd: todayYmd, toYmd },
         });
         if (!mounted) return;
-        const rows = res.data?.data?.meals || [];
-        const meals = Array.isArray(rows) ? rows : [];
-        setNextMeals(meals);
+
+        const nextMealsByDate =
+          calRes.data?.data?.mealsByDate &&
+          typeof calRes.data.data.mealsByDate === 'object'
+            ? calRes.data.data.mealsByDate
+            : {};
+        setMealsByDate(nextMealsByDate);
         await AsyncStorage.setItem(
           mealCacheKey,
-          JSON.stringify({ ts: Date.now(), meals }),
+          JSON.stringify({
+            ts: Date.now(),
+            ymd: todayYmd,
+            mealsByDate: nextMealsByDate,
+          }),
         );
-        syncMealWidgetFromNext(meals, schoolInfo.id).catch(() => {});
+
+        // API 갱신 완료 시에만 위젯 sync (캐시 선표시 시점에는 sync하지 않음)
+        const slots = buildRollingMealSlots(nextMealsByDate);
+        syncMealWidgetFromNext(
+          [slotToWidgetMealItem(slots[0])],
+          schoolInfo.id,
+        ).catch(() => {});
       } catch (e) {
-        if (mounted) setNextMeals([]);
+        if (mounted) setMealsByDate({});
       } finally {
         if (mounted && !usedCache) setMealLoading(false);
       }
@@ -267,41 +319,26 @@ const OurSchoolScreen = ({ navigation }) => {
     };
   }, [isGuidePreview]);
 
-  const mealTypeLabel = {
-    breakfast: '조식',
-    lunch: '중식',
-    dinner: '석식',
-  };
+  const mealSlots = useMemo(
+    () => buildRollingMealSlots(mealsByDate, { now: new Date(mealClockMs) }),
+    [mealsByDate, mealClockMs],
+  );
 
-  const mealSlotsRaw = nextMeals.map((m) => {
-    const ymd = String(m.ymd || '');
-    return {
-      ymd,
-      mealType: mealTypeLabel[m.mealType] || '급식',
-      menus: Array.isArray(m.menus) ? m.menus : [],
-    };
-  });
-  const mealSlots = [...mealSlotsRaw];
-  while (mealSlots.length < 3) {
-    mealSlots.push({ ymd: '', mealType: '급식', menus: [] });
-  }
-
-  const weekdayLabels = ['일', '월', '화', '수', '목', '금', '토'];
   const getDayBadge = (ymd) => {
     if (!/^\d{8}$/.test(String(ymd || ''))) return '-';
-    const date = new Date(
-      Number(ymd.slice(0, 4)),
-      Number(ymd.slice(4, 6)) - 1,
-      Number(ymd.slice(6, 8)),
-    );
-    return `${weekdayLabels[date.getDay()]}`;
+    return `${Number(String(ymd).slice(6, 8))}일`;
+  };
+
+  const getMealSlotLabel = (slot) => {
+    if (!slot || slot.isPlaceholder) return '급식';
+    return slot.mealType || '급식';
   };
 
   const showInitialSkeleton =
     loading &&
     !schoolInfo.name &&
     popularPosts.length === 0 &&
-    nextMeals.length === 0 &&
+    Object.keys(mealsByDate).length === 0 &&
     grassDays.length === 0;
 
   if (showInitialSkeleton) {
@@ -544,14 +581,16 @@ const OurSchoolScreen = ({ navigation }) => {
                           <View style={styles.mealSlotHeader}>
                             <View style={styles.mealSlotTitleRow}>
                               <Text style={styles.mealSlotTitle}>
-                                {slot.mealType}
+                                {getMealSlotLabel(slot)}
                               </Text>
                             </View>
-                            <View style={styles.mealSlotBadge}>
-                              <Text style={styles.mealSlotBadgeText}>
-                                {getDayBadge(slot.ymd)}
-                              </Text>
-                            </View>
+                            {/^\d{8}$/.test(String(slot.ymd || '')) ? (
+                              <View style={styles.mealSlotBadge}>
+                                <Text style={styles.mealSlotBadgeText}>
+                                  {getDayBadge(slot.ymd)}
+                                </Text>
+                              </View>
+                            ) : null}
                           </View>
 
                           <View style={styles.mealSlotMenus}>
@@ -728,7 +767,7 @@ const OurSchoolScreen = ({ navigation }) => {
                 <View style={styles.mealModalHeader}>
                   <View style={styles.mealModalTitleRow}>
                     <Text style={styles.mealModalTitle}>
-                      {selectedMealSlot?.mealType || '급식'}
+                      {getMealSlotLabel(selectedMealSlot)}
                     </Text>
                   </View>
                   <View style={styles.mealModalBadge}>

@@ -54,8 +54,16 @@ const meal = buildMealWidgetPayload([
   },
   { ymd: '20260804', mealCode: '3', mealType: 'dinner', menus: ['면'] },
 ]);
-assert.equal(meal.first.ymd, '20260804');
-assert.deepEqual(meal.first.menus, ['밥', '국']);
-assert.equal(buildMealWidgetPayload([]).first, null);
+assert.equal(meal.ymd, '20260804');
+assert.equal(meal.mealType, 'lunch');
+assert.deepEqual(meal.menus, ['밥', '국']);
+assert.ok(meal.syncedAt);
+assert.equal(buildMealWidgetPayload([]).mealType, null);
+
+const padded = buildMealWidgetPayload([
+  { ymd: '20260804', mealType: '급식', menus: [] },
+]);
+assert.equal(padded.mealType, null);
+assert.deepEqual(padded.menus, []);
 
 console.log('widget payload tests: ok');

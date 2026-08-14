@@ -61,6 +61,10 @@ export async function writeTimetablePayload(payload) {
   return callNative('writeTimetablePayload', JSON.stringify(payload));
 }
 
+export async function writePeriodTimeSettings(payload) {
+  return callNative('writePeriodTimeSettings', JSON.stringify(payload));
+}
+
 export async function writeSchoolId(schoolId) {
   const id = schoolId == null ? '' : String(schoolId);
   const apiBaseUrl = resolveApiBaseUrl();

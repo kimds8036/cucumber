@@ -33,6 +33,7 @@ import SignStepNeisPlusSubmit from './SignStepNeisPlusSubmit';
 import SignStepCertificateGuide from './SignStepCertificateGuide';
 import SignStepCertificate from './SignStepCertificate';
 import { api, setAuthToken } from '../../../utils/api';
+import { peekPendingInviteCode, consumePendingInviteCode } from '../../../utils/inviteReferral';
 import {
   fetchInicisServerEnabled,
   getPendingInicisSession,
@@ -1291,8 +1292,10 @@ const Sign = ({ navigation }) => {
         certificateViewUrl,
         certificateAccessCode,
         studentInicisClientToken: inicisToken,
+        inviteCode: await peekPendingInviteCode(),
       });
       await api.post('/api/auth/signup', payload);
+      await consumePendingInviteCode();
       await finishSignupAndEnterApp(finalData.username, finalData.password);
     } catch (error) {
       Alert.alert(
@@ -1483,6 +1486,9 @@ const Sign = ({ navigation }) => {
       consents: consentData.consents || {},
     };
 
+    const inviteCode = options.inviteCode;
+    if (inviteCode) payload.inviteCode = inviteCode;
+
     if (options.studentInicisClientToken || identityData.inicisClientToken) {
       payload.studentInicisClientToken =
         options.studentInicisClientToken || identityData.inicisClientToken;
@@ -1546,7 +1552,10 @@ const Sign = ({ navigation }) => {
         finalData,
         studentVerificationToken,
         recognizedData,
-        { studentInicisClientToken: inicisToken },
+        {
+          studentInicisClientToken: inicisToken,
+          inviteCode: await peekPendingInviteCode(),
+        },
       );
       if (
         !Number.isFinite(payload.graduationYear) ||
@@ -1560,6 +1569,7 @@ const Sign = ({ navigation }) => {
         return;
       }
       await api.post('/api/auth/signup', payload);
+      await consumePendingInviteCode();
       await finishSignupAndEnterApp(finalData.username, finalData.password);
     } catch (error) {
       Alert.alert(

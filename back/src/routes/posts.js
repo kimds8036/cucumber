@@ -17,6 +17,7 @@ import { blockWhenFlag } from '../middleware/systemFlags.js';
 import { isBlockedBy } from '../utils/userBlock.js';
 import { submitContentReport } from '../services/reportSubmission.service.js';
 import { notifyAppealCreated } from '../services/discordWebhook.service.js';
+import { evaluateAndUnlockBadges } from '../services/badge.service.js';
 const router = express.Router();
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -157,8 +158,9 @@ async function loadPostsRowsByIdOrder(
       p.like_count,
       p.comment_count,
       p.created_at,
-      u.name_enc as author_name_enc,
+        u.name_enc as author_name_enc,
       u.color_id,
+      u.equipped_badge_key,
       s.name as school_name,
       (SELECT pi1.cloudinary_url
          FROM post_images pi1
@@ -437,6 +439,7 @@ router.get('/', optionalAuthenticate, async (req, res) => {
         p.created_at,
         u.name_enc as author_name_enc,
         u.color_id,
+        u.equipped_badge_key,
         s.name as school_name,
         (SELECT pi1.cloudinary_url
            FROM post_images pi1
@@ -611,6 +614,7 @@ router.get('/my', authenticate, async (req, res) => {
          p.created_at,
          u.name_enc as author_name_enc,
          u.color_id,
+        u.equipped_badge_key,
          s.name as school_name,
          (SELECT COUNT(*) FROM post_likes pl
            WHERE pl.post_id = p.id AND pl.user_id = ?) AS is_liked,
@@ -799,6 +803,7 @@ router.get('/liked', authenticate, async (req, res) => {
          p.created_at,
          u.name_enc as author_name_enc,
          u.color_id,
+        u.equipped_badge_key,
          s.name as school_name,
          (SELECT pi1.cloudinary_url
             FROM post_images pi1
@@ -911,6 +916,7 @@ router.get('/scrapped', authenticate, async (req, res) => {
          p.created_at,
          u.name_enc as author_name_enc,
          u.color_id,
+        u.equipped_badge_key,
          s.name as school_name,
          (SELECT COUNT(*) FROM post_likes pl
            WHERE pl.post_id = p.id AND pl.user_id = ?) AS is_liked,
@@ -1066,6 +1072,7 @@ router.get('/:id', optionalAuthenticate, async (req, res) => {
         p.created_at,
         u.name_enc as author_name_enc,
         u.color_id,
+        u.equipped_badge_key,
         s.name as school_name,
         (SELECT pi1.cloudinary_url
            FROM post_images pi1
@@ -1347,6 +1354,10 @@ router.post('/', authenticate, blockWhenFlag('post_write_disabled'), uploadPost.
       }
 
       await connection.commit();
+
+      evaluateAndUnlockBadges(userId).catch((e) => {
+        console.warn('[posts] badge eval', e?.message || e);
+      });
 
       res.status(201).json({
         success: true,

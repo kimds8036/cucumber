@@ -57,6 +57,19 @@ export function useCommuteAttendance({ enabled = true, viewerCoords = null } = {
   const completedRef = useRef(false);
   const schoolCoordsRef = useRef(null);
   const celebratingRef = useRef(false);
+  const schoolDayRef = useRef(false);
+
+  const refreshAttendanceStatus = useCallback(async () => {
+    try {
+      const res = await api.get('/api/attendance/status');
+      const schoolDay = Boolean(res.data?.data?.schoolDay);
+      schoolDayRef.current = schoolDay;
+      return schoolDay;
+    } catch {
+      schoolDayRef.current = false;
+      return false;
+    }
+  }, []);
 
   const applyVisibility = useCallback(async () => {
     if (!enabled) {
@@ -64,6 +77,11 @@ export function useCommuteAttendance({ enabled = true, viewerCoords = null } = {
       return;
     }
     if (!shouldShowCommuteBanner()) {
+      setPhase('hidden');
+      return;
+    }
+    const schoolDay = await refreshAttendanceStatus();
+    if (!schoolDay) {
       setPhase('hidden');
       return;
     }
@@ -84,7 +102,7 @@ export function useCommuteAttendance({ enabled = true, viewerCoords = null } = {
     }
 
     setPhase('tracking');
-  }, [enabled, userId]);
+  }, [enabled, userId, refreshAttendanceStatus]);
 
   useEffect(() => {
     if (!enabled) {
@@ -113,6 +131,13 @@ export function useCommuteAttendance({ enabled = true, viewerCoords = null } = {
           return;
         }
 
+        const schoolDay = await refreshAttendanceStatus();
+        if (!mounted) return;
+        if (!schoolDay) {
+          setPhase('hidden');
+          return;
+        }
+
         const done = await isCommuteCompletedToday(id);
         if (!mounted) return;
 
@@ -132,7 +157,7 @@ export function useCommuteAttendance({ enabled = true, viewerCoords = null } = {
     return () => {
       mounted = false;
     };
-  }, [enabled]);
+  }, [enabled, refreshAttendanceStatus]);
 
   useEffect(() => {
     if (!enabled || !bootstrapDone) return undefined;
