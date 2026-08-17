@@ -528,34 +528,6 @@ struct TimetableWidgetView: View {
     }
   }
 
-  private var badgeBg: Color {
-    if entry.isActiveAppearance, let hex = entry.currentColorHex {
-      return Color(hex: hex, opacity: 0.2)
-    }
-    return inactiveBase.opacity(0.1)
-  }
-
-  private var badgeStroke: Color {
-    if entry.isActiveAppearance, let hex = entry.currentColorHex {
-      return Color(hex: hex, opacity: 0.4)
-    }
-    return inactiveBase.opacity(0.3)
-  }
-
-  private var badgeForeground: Color {
-    if entry.isActiveAppearance, let hex = entry.currentColorHex {
-      return darkenedSubjectColor(hex: hex)
-    }
-    return inactiveBase.opacity(0.3)
-  }
-
-  private var badgeLogoColor: Color {
-    if entry.isActiveAppearance, let hex = entry.currentColorHex {
-      return Color(hex: hex)
-    }
-    return inactiveBase.opacity(0.3)
-  }
-
   private var isMessageOnlyMedium: Bool {
     entry.status == .noClass || entry.status == .afterSchool
   }
@@ -612,8 +584,9 @@ struct TimetableWidgetView: View {
       Text(entry.currentSubject)
         .font(.system(size: 24, weight: .bold))
         .foregroundColor(textPrimary)
-        .lineLimit(2)
-        .minimumScaleFactor(0.7)
+        .lineLimit(1)
+        .truncationMode(.tail)
+        .padding(.leading, 10)
 
       Spacer(minLength: 6)
 
@@ -624,7 +597,7 @@ struct TimetableWidgetView: View {
           .padding(.bottom, 6)
 
         HStack(spacing: 0) {
-          ForEach(entry.allPeriods) { period in
+          ForEach(displayTodayPeriods) { period in
             periodColumn(period)
               .frame(maxWidth: .infinity)
           }
@@ -633,28 +606,44 @@ struct TimetableWidgetView: View {
     }
   }
 
+  private var displayTodayPeriods: [MergedPeriod] {
+    let capped = Array(entry.allPeriods.prefix(8))
+    guard !capped.isEmpty else { return [] }
+    if capped.count >= 6 { return capped }
+    var out = capped
+    for n in (capped.count + 1)...6 {
+      out.append(
+        MergedPeriod(
+          number: n,
+          startTime: nil,
+          endTime: nil,
+          subjectName: "-",
+          subjectColorHex: nil,
+        ),
+      )
+    }
+    return out
+  }
+
   private var statusBadge: some View {
-    HStack(spacing: 4) {
-      Image("YouthPaperLogo")
-        .renderingMode(.template)
-        .resizable()
-        .scaledToFit()
-        .frame(width: 14, height: 14)
-        .foregroundColor(badgeLogoColor)
+    HStack(spacing: 5) {
+      if let hex = entry.currentColorHex {
+        Circle()
+          .fill(Color(hex: hex))
+          .frame(width: 8, height: 8)
+      }
       Text(badgeLabel)
-        .font(.system(size: 11, weight: .semibold))
-        .foregroundColor(badgeForeground)
+        .font(.system(size: 11, weight: .medium))
+        .foregroundColor(textPrimary)
         .lineLimit(1)
         .minimumScaleFactor(0.75)
     }
-    .padding(.horizontal, 8)
-    .padding(.vertical, 4)
+    .padding(.horizontal, 9)
+    .padding(.vertical, 5)
     .background(
-      Capsule(style: .continuous).fill(badgeBg),
+      Capsule(style: .continuous).fill(Color.white),
     )
-    .overlay(
-      Capsule(style: .continuous).stroke(badgeStroke, lineWidth: 1),
-    )
+    .shadow(color: Color.black.opacity(0.06), radius: 2, x: 0.3, y: 0.3)
   }
 
   private var badgeLabel: String {
@@ -685,11 +674,14 @@ struct TimetableWidgetView: View {
       Text("\(period.number)")
         .font(.system(size: 9, weight: .semibold))
         .foregroundColor(isActive ? fg : inactiveBase.opacity(0.35))
+      Circle()
+        .fill(hex.map { Color(hex: $0) } ?? inactiveBase.opacity(0.2))
+        .frame(width: 6, height: 6)
       Text(label)
         .font(.system(size: 9, weight: .medium))
         .foregroundColor(fg)
         .lineLimit(1)
-        .minimumScaleFactor(0.7)
+        .truncationMode(.tail)
     }
     .padding(.horizontal, 3)
     .padding(.vertical, 8)
@@ -704,8 +696,11 @@ struct TimetableWidgetView: View {
   private var largeView: some View {
     let weekly = entry.weeklyPeriods
     let rowCount = weekly.map(\.periods.count).max() ?? 0
-    let displayRows = min(rowCount, 8)
-    let hasMore = rowCount >= 9
+    let displayRows: Int = {
+      if rowCount < 1 { return 0 }
+      return min(max(rowCount, 6), 8)
+    }()
+    let hasMore = rowCount > 8
     let hasAnySubject = weekly.contains { day in
       day.periods.contains { $0 != nil }
     }
@@ -765,7 +760,7 @@ struct TimetableWidgetView: View {
 
   private func largeWeekGrid(weekly: [WeekdayPeriods], rowCount: Int) -> some View {
     let periodColWidth: CGFloat = 14
-    let cellRadius: CGFloat = 9
+    let cellRadius: CGFloat = 5
     let gap: CGFloat = 3
     let byDay = Dictionary(uniqueKeysWithValues: weekly.map { ($0.weekday, $0) })
 
@@ -781,7 +776,7 @@ struct TimetableWidgetView: View {
         }
       }
 
-      ForEach(1...rowCount, id: \.self) { period in
+      ForEach(1...min(4, rowCount), id: \.self) { period in
         HStack(spacing: gap) {
           Text("\(period)")
             .font(.system(size: 10, weight: .medium))
@@ -797,6 +792,34 @@ struct TimetableWidgetView: View {
           }
         }
         .frame(maxHeight: .infinity)
+      }
+
+      if rowCount >= 5 {
+        Text("점심시간")
+          .font(.system(size: 8, weight: .medium))
+          .foregroundColor(Color(hex: "888780", opacity: 0.7))
+          .frame(maxWidth: .infinity)
+          .padding(.vertical, 1)
+      }
+
+      if rowCount >= 5 {
+        ForEach(5...rowCount, id: \.self) { period in
+          HStack(spacing: gap) {
+            Text("\(period)")
+              .font(.system(size: 10, weight: .medium))
+              .foregroundColor(Color(hex: "888780"))
+              .frame(width: periodColWidth, alignment: .leading)
+
+            ForEach(weekdayLabels, id: \.self) { day in
+              largeSubjectCell(
+                cellAt(byDay: byDay, day: day, period: period),
+                cornerRadius: cellRadius,
+              )
+              .frame(maxWidth: .infinity, maxHeight: .infinity)
+            }
+          }
+          .frame(maxHeight: .infinity)
+        }
       }
     }
   }
@@ -832,11 +855,10 @@ struct TimetableWidgetView: View {
     let count = name.count
     let bg = cell.subjectColorHex.map { Color(hex: $0, opacity: 0.5) } ?? Color.clear
     return Text(name)
-      .font(.system(size: count >= 4 ? 9 : 11, weight: .medium))
+      .font(.system(size: count >= 4 ? 10 : 12, weight: .medium))
       .foregroundColor(textPrimary)
       .lineLimit(1)
       .truncationMode(.tail)
-      .minimumScaleFactor(count >= 5 ? 0.9 : 1.0)
       .frame(maxWidth: .infinity, maxHeight: .infinity)
       .padding(.horizontal, 2)
       .background(
@@ -857,8 +879,26 @@ struct TimetableWidget: Widget {
         TimetableWidgetView(entry: entry)
       }
     }
-    .configurationDisplayName("시간표")
-    .description("오늘·주간 시간표를 보여줍니다.")
-    .supportedFamilies([.systemMedium, .systemLarge])
+    .configurationDisplayName("시간표 (오늘)")
+    .description("오늘 수업을 보여줍니다.")
+    .supportedFamilies([.systemMedium])
+  }
+}
+
+struct TimetableWeekWidget: Widget {
+  let kind = "TimetableWeekWidget"
+
+  var body: some WidgetConfiguration {
+    StaticConfiguration(kind: kind, provider: TimetableProvider()) { entry in
+      if #available(iOS 17.0, *) {
+        TimetableWidgetView(entry: entry)
+          .containerBackground(.white, for: .widget)
+      } else {
+        TimetableWidgetView(entry: entry)
+      }
+    }
+    .configurationDisplayName("시간표 (주간)")
+    .description("월~금 시간표를 보여줍니다.")
+    .supportedFamilies([.systemLarge])
   }
 }

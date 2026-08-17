@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+  <string name="widget_meal_name">급식</string>
+  <string name="widget_meal_description">다음 급식 메뉴를 보여줍니다.</string>
+  <string name="widget_timetable_name">시간표 (오늘)</string>
+  <string name="widget_timetable_description">오늘 수업을 보여줍니다.</string>
+  <string name="widget_timetable_today_description">오늘 수업을 보여줍니다. 크기는 4×2로 고정입니다.</string>
+  <string name="widget_timetable_week_name">시간표 (주간)</string>
+  <string name="widget_timetable_week_description">월~금 시간표를 보여줍니다. 크기는 4×4로 고정입니다.</string>
+  <string name="widget_meal_empty">급식 정보 없음</string>
+  <string name="widget_meal_no_info">정보 없음</string>
+  <string name="widget_more">더보기</string>
+  <string name="widget_timetable_title">시간표</string>
+  <string name="widget_large_empty_hint">탭하여 마이페이지에서 설정</string>
+</resources>

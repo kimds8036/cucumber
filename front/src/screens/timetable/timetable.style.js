@@ -439,6 +439,19 @@ export function createTimetableViewStyles(normalize, options = {}) {
       borderTopWidth: 1,
       borderTopColor: dividerColor,
     },
+    lunchRow: {
+      borderTopWidth: 1,
+      borderTopColor: dividerColor,
+      backgroundColor: COLORS.textLight5,
+      paddingVertical: normalize(2),
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    lunchText: {
+      fontFamily: fonts.regular,
+      fontSize: fontSizes.sm,
+      color: COLORS.textSecondary,
+    },
     periodCell: {
       width: normalize(20),
       height: normalize(40),

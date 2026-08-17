@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo, useRef, useState } from 'react';
+import React, { Fragment, useCallback, useMemo, useRef, useState } from 'react';
 import {
   View,
   Text,
@@ -147,33 +147,40 @@ const TimetableView = ({
             </View>
 
             {periods.map((period) => (
-              <View key={period} style={styles.row}>
-                <View style={styles.periodCell}>
-                  <Text style={styles.periodText}>{period}</Text>
+              <Fragment key={period}>
+                {period === 5 ? (
+                  <View style={styles.lunchRow}>
+                    <Text style={styles.lunchText}>점심시간</Text>
+                  </View>
+                ) : null}
+                <View style={styles.row}>
+                  <View style={styles.periodCell}>
+                    <Text style={styles.periodText}>{period}</Text>
+                  </View>
+                  {DAYS.map((day) => {
+                    const content = getCellContent(day, period);
+                    const cellStyle = [
+                      styles.classCell,
+                      content ? styles.classCellFilled : null,
+                      content ? { backgroundColor: getCellColor(content) } : null,
+                    ];
+                    return (
+                      <View key={`${day}-${period}`} style={cellStyle}>
+                        <Text
+                          style={[
+                            styles.classCellText,
+                            content ? styles.classCellTextFilled : null,
+                          ]}
+                          lineBreakMode="wordWrapping"
+                          lineBreakStrategyIOS="hangul-word"
+                        >
+                          {content}
+                        </Text>
+                      </View>
+                    );
+                  })}
                 </View>
-                {DAYS.map((day) => {
-                  const content = getCellContent(day, period);
-                  const cellStyle = [
-                    styles.classCell,
-                    content ? styles.classCellFilled : null,
-                    content ? { backgroundColor: getCellColor(content) } : null,
-                  ];
-                  return (
-                    <View key={`${day}-${period}`} style={cellStyle}>
-                      <Text
-                        style={[
-                          styles.classCellText,
-                          content ? styles.classCellTextFilled : null,
-                        ]}
-                        lineBreakMode="wordWrapping"
-                        lineBreakStrategyIOS="hangul-word"
-                      >
-                        {content}
-                      </Text>
-                    </View>
-                  );
-                })}
-              </View>
+              </Fragment>
             ))}
           </ViewShot>
 

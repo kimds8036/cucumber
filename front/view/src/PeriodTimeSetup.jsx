@@ -9,7 +9,8 @@ import {
   Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Picker } from '@react-native-picker/picker';
+import HourMinuteWheel from '../../components/common/HourMinuteWheel';
+import PeriodTimesSkeleton from '../../components/common/PeriodTimesSkeleton';
 import Feather from '@expo/vector-icons/Feather';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -25,6 +26,7 @@ import {
   loadPeriodTimeSettings,
   savePeriodTimeSettings,
   validatePeriodTimeSettings,
+  tryUpdatePeriodTime,
   minutesToHhmm,
   hhmmToMinutes,
 } from '../../utils/widget/periodTimeSettings.js';
@@ -125,17 +127,33 @@ const PeriodTimeSetup = ({ navigation, route }) => {
   );
 
   const [userScope, setUserScope] = useState(null);
-  const [periods, setPeriods] = useState(() =>
-    defaultPeriodTimes(suggestedPeriodCount),
-  );
+  const [periods, setPeriods] = useState([]);
+  const [loadingPeriods, setLoadingPeriods] = useState(true);
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
   const [pickerTarget, setPickerTarget] = useState(null);
+  const [pickerError, setPickerError] = useState('');
   const [draftHour, setDraftHour] = useState(9);
   const [draftMinute, setDraftMinute] = useState(0);
 
   useEffect(() => {
+    if (!pickerTarget) {
+      setPickerError('');
+      return;
+    }
+    const hhmm = minutesToHhmm(draftHour * 60 + draftMinute);
+    const result = tryUpdatePeriodTime(
+      periods,
+      pickerTarget.index,
+      pickerTarget.field,
+      hhmm,
+    );
+    setPickerError(result.ok ? '' : result.message);
+  }, [pickerTarget, draftHour, draftMinute, periods]);
+
+  useEffect(() => {
     let cancelled = false;
+    setLoadingPeriods(true);
     (async () => {
       let scope = null;
       try {
@@ -179,6 +197,7 @@ const PeriodTimeSetup = ({ navigation, route }) => {
       const loaded = await loadPeriodTimeSettings(scope);
       if (cancelled) return;
       setPeriods(alignPeriodsToCount(loaded?.periods, periodCount));
+      if (!cancelled) setLoadingPeriods(false);
     })();
     return () => {
       cancelled = true;
@@ -193,6 +212,7 @@ const PeriodTimeSetup = ({ navigation, route }) => {
       );
       setDraftHour(hour);
       setDraftMinute(Math.round(minute / 5) * 5);
+      setPickerError('');
       setPickerTarget({ index, field });
     },
     [periods],
@@ -201,19 +221,21 @@ const PeriodTimeSetup = ({ navigation, route }) => {
   const applyPicker = useCallback(() => {
     if (!pickerTarget) return;
     const hhmm = minutesToHhmm(draftHour * 60 + draftMinute);
-    setPeriods((prev) =>
-      prev.map((p, i) =>
-        i === pickerTarget.index
-          ? {
-              ...p,
-              [pickerTarget.field === 'start' ? 'startTime' : 'endTime']: hhmm,
-            }
-          : p,
-      ),
+    const result = tryUpdatePeriodTime(
+      periods,
+      pickerTarget.index,
+      pickerTarget.field,
+      hhmm,
     );
+    if (!result.ok) {
+      setPickerError(result.message);
+      return;
+    }
+    setPeriods(result.periods);
     setPickerTarget(null);
+    setPickerError('');
     setError('');
-  }, [pickerTarget, draftHour, draftMinute]);
+  }, [pickerTarget, draftHour, draftMinute, periods]);
 
   const addPeriod = useCallback(() => {
     setPeriods((prev) => {
@@ -253,6 +275,7 @@ const PeriodTimeSetup = ({ navigation, route }) => {
   }, [navigation]);
 
   const handleSave = useCallback(async () => {
+    if (loadingPeriods) return;
     const validation = validatePeriodTimeSettings(periods);
     if (!validation.ok) {
       setError(validation.message);
@@ -298,6 +321,7 @@ const PeriodTimeSetup = ({ navigation, route }) => {
     pendingTimetable,
     timetableCacheKey,
     finishToMypage,
+    loadingPeriods,
   ]);
 
   return (
@@ -307,7 +331,7 @@ const PeriodTimeSetup = ({ navigation, route }) => {
         onBack={() => navigation.goBack()}
         rightButtonText={saving ? '저장 중' : '완료'}
         onRightPress={handleSave}
-        rightDisabled={saving}
+        rightDisabled={saving || loadingPeriods}
       />
       <ScrollView
         style={styles.scroll}
@@ -320,6 +344,10 @@ const PeriodTimeSetup = ({ navigation, route }) => {
           description="위젯에 표시할 각 교시 시간을 설정해 주세요"
         />
         <View style={[ns.card, styles.periodCard]}>
+          {loadingPeriods ? (
+            <PeriodTimesSkeleton normalize={normalize} rows={6} />
+          ) : (
+            <>
           {periods.map((p, index) => (
             <View key={`period-${p.periodNumber}-${index}`}>
               <View style={styles.row}>
@@ -365,6 +393,8 @@ const PeriodTimeSetup = ({ navigation, route }) => {
             />
             <Text style={styles.addBtnText}>교시 추가</Text>
           </TouchableOpacity>
+            </>
+          )}
         </View>
 
         {!!error && <Text style={styles.error}>{error}</Text>}
@@ -382,44 +412,50 @@ const PeriodTimeSetup = ({ navigation, route }) => {
                 : ''}
             </Text>
             <View style={styles.pickerRow}>
-              <Picker
-                selectedValue={draftHour}
-                onValueChange={setDraftHour}
-                style={styles.picker}
-                itemStyle={styles.pickerItem}
-              >
-                {HOURS.map((h) => (
-                  <Picker.Item
-                    key={`h-${h}`}
-                    label={`${String(h).padStart(2, '0')}시`}
-                    value={h}
-                  />
-                ))}
-              </Picker>
-              <Picker
-                selectedValue={draftMinute}
-                onValueChange={setDraftMinute}
-                style={styles.picker}
-                itemStyle={styles.pickerItem}
-              >
-                {MINUTES.map((m) => (
-                  <Picker.Item
-                    key={`m-${m}`}
-                    label={`${String(m).padStart(2, '0')}분`}
-                    value={m}
-                  />
-                ))}
-              </Picker>
+              <HourMinuteWheel
+                key={
+                  pickerTarget
+                    ? `${pickerTarget.index}-${pickerTarget.field}`
+                    : 'closed'
+                }
+                hour={draftHour}
+                minute={draftMinute}
+                onHourChange={setDraftHour}
+                onMinuteChange={setDraftMinute}
+                hours={HOURS}
+                minutes={MINUTES}
+                itemHeight={normalize(40)}
+                pickerStyle={styles.picker}
+                pickerItemStyle={styles.pickerItem}
+              />
             </View>
+            {pickerError ? (
+              <Text style={styles.pickerError}>{pickerError}</Text>
+            ) : null}
             <View style={styles.modalActions}>
               <TouchableOpacity
                 style={styles.modalBtn}
-                onPress={() => setPickerTarget(null)}
+                onPress={() => {
+                  setPickerTarget(null);
+                  setPickerError('');
+                }}
               >
                 <Text style={styles.modalBtnCancel}>취소</Text>
               </TouchableOpacity>
-              <TouchableOpacity style={styles.modalBtn} onPress={applyPicker}>
-                <Text style={styles.modalBtnOk}>확인</Text>
+              <TouchableOpacity
+                style={styles.modalBtn}
+                onPress={applyPicker}
+                disabled={!!pickerError}
+                activeOpacity={0.85}
+              >
+                <Text
+                  style={[
+                    styles.modalBtnOk,
+                    pickerError ? styles.modalBtnOkDisabled : null,
+                  ]}
+                >
+                  확인
+                </Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -538,6 +574,9 @@ function createStyles(normalize) {
     pickerRow: {
       flexDirection: 'row',
       justifyContent: 'center',
+      alignItems: 'center',
+      minHeight: Platform.OS === 'ios' ? normalize(220) : undefined,
+      height: Platform.OS === 'ios' ? normalize(220) : undefined,
     },
     picker: {
       flex: 1,
@@ -564,8 +603,19 @@ function createStyles(normalize) {
     },
     modalBtnOk: {
       fontSize: normalize(16),
-      color: colors.primary,
+      color: colors.primaryDark,
       fontWeight: '700',
+    },
+    modalBtnOkDisabled: {
+      color: colors.textLight40,
+    },
+    pickerError: {
+      marginHorizontal: normalize(20),
+      marginBottom: normalize(10),
+      fontSize: normalize(13),
+      lineHeight: normalize(18),
+      color: colors.alertDark,
+      textAlign: 'center',
     },
   };
 }

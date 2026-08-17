@@ -1,0 +1,144 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+  android:id="@+id/timetable_root"
+  android:layout_width="match_parent"
+  android:layout_height="match_parent"
+  android:background="#FFFFFF"
+  android:orientation="vertical"
+  android:padding="10dp">
+
+  <LinearLayout
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:gravity="center_vertical"
+    android:orientation="horizontal">
+
+    <ImageView
+      android:layout_width="18dp"
+      android:layout_height="18dp"
+      android:layout_marginEnd="4dp"
+      android:contentDescription="@null"
+      android:src="@drawable/ic_youth_paper_app" />
+
+    <TextView
+      android:layout_width="wrap_content"
+      android:layout_height="wrap_content"
+      android:text="시간표"
+      android:textColor="#FFA6DA95"
+      android:textSize="17sp" />
+
+    <TextView
+      android:id="@+id/large_term"
+      android:layout_width="0dp"
+      android:layout_height="wrap_content"
+      android:layout_marginStart="4dp"
+      android:layout_weight="1"
+      android:gravity="end"
+      android:maxLines="1"
+      android:textColor="#8C272A26"
+      android:textSize="12sp" />
+  </LinearLayout>
+
+  <LinearLayout
+    android:id="@+id/large_empty"
+    android:layout_width="match_parent"
+    android:layout_height="0dp"
+    android:layout_weight="1"
+    android:gravity="center"
+    android:orientation="vertical"
+    android:visibility="gone">
+
+    <TextView
+      android:id="@+id/large_empty_title"
+      android:layout_width="wrap_content"
+      android:layout_height="wrap_content"
+      android:textColor="#FF272A26"
+      android:textSize="15sp" />
+
+    <TextView
+      android:id="@+id/large_empty_hint"
+      android:layout_width="wrap_content"
+      android:layout_height="wrap_content"
+      android:layout_marginTop="4dp"
+      android:text="탭하여 마이페이지에서 설정"
+      android:textColor="#80272A26"
+      android:textSize="12sp"
+      android:visibility="gone" />
+  </LinearLayout>
+
+  <LinearLayout
+    android:id="@+id/large_weekdays"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:layout_marginTop="8dp"
+    android:orientation="horizontal"
+    android:paddingBottom="3dp">
+
+    <TextView
+      android:layout_width="14dp"
+      android:layout_height="1dp"
+      android:text="" />
+
+    <TextView
+      android:layout_width="0dp"
+      android:layout_height="wrap_content"
+      android:layout_weight="1"
+      android:gravity="center"
+      android:text="월"
+      android:textColor="#FF272A26"
+      android:textSize="13sp" />
+
+    <TextView
+      android:layout_width="0dp"
+      android:layout_height="wrap_content"
+      android:layout_weight="1"
+      android:gravity="center"
+      android:text="화"
+      android:textColor="#FF272A26"
+      android:textSize="13sp" />
+
+    <TextView
+      android:layout_width="0dp"
+      android:layout_height="wrap_content"
+      android:layout_weight="1"
+      android:gravity="center"
+      android:text="수"
+      android:textColor="#FF272A26"
+      android:textSize="13sp" />
+
+    <TextView
+      android:layout_width="0dp"
+      android:layout_height="wrap_content"
+      android:layout_weight="1"
+      android:gravity="center"
+      android:text="목"
+      android:textColor="#FF272A26"
+      android:textSize="13sp" />
+
+    <TextView
+      android:layout_width="0dp"
+      android:layout_height="wrap_content"
+      android:layout_weight="1"
+      android:gravity="center"
+      android:text="금"
+      android:textColor="#FF272A26"
+      android:textSize="13sp" />
+  </LinearLayout>
+
+  <LinearLayout
+    android:id="@+id/large_grid"
+    android:layout_width="match_parent"
+    android:layout_height="0dp"
+    android:layout_weight="1"
+    android:orientation="vertical" />
+
+  <TextView
+    android:id="@+id/large_more"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:gravity="center"
+    android:text="더보기"
+    android:textColor="#4D272A26"
+    android:textSize="11sp"
+    android:visibility="gone" />
+</LinearLayout>

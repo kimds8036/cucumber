@@ -1,6 +1,5 @@
 /**
- * next?count=3 응답의 0번째만 MealWidgetPayload로 만든다.
- * 서버 끼니 경계를 재구현하지 않는다.
+ * 우리학교 급식 3칸 중 맨 앞 카드(롤링 슬롯[0])만 MealWidgetPayload로 만든다.
  *
  * @param {unknown[]} meals
  * @param {{ syncedAt?: string, generatedAt?: string }} [opts]
