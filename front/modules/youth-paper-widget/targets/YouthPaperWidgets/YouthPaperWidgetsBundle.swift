@@ -6,5 +6,6 @@ struct YouthPaperWidgetsBundle: WidgetBundle {
   var body: some Widget {
     MealWidget()
     TimetableWidget()
+    TimetableWeekWidget()
   }
 }

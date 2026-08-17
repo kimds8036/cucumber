@@ -209,6 +209,15 @@ function withAndroidAppWidget(config) {
           '',
         ].join('\n'),
       );
+      fs.writeFileSync(
+        path.join(javaDir, 'TimetableWeekWidgetReceiver.java'),
+        [
+          'package com.ucost.YouthPaper.widget;',
+          '',
+          'public class TimetableWeekWidgetReceiver extends expo.modules.youthpaperwidget.TimetableWeekWidgetReceiver {}',
+          '',
+        ].join('\n'),
+      );
       return cfg;
     },
   ]);
@@ -225,16 +234,17 @@ function withAndroidAppWidget(config) {
       },
       {
         name: 'com.ucost.YouthPaper.widget.TimetableWidgetReceiver',
-        label: '시간표',
+        label: '시간표 (오늘)',
         xml: '@xml/youth_paper_timetable_widget_info',
+      },
+      {
+        name: 'com.ucost.YouthPaper.widget.TimetableWeekWidgetReceiver',
+        label: '시간표 (주간)',
+        xml: '@xml/youth_paper_timetable_week_widget_info',
       },
     ];
     for (const spec of receivers) {
-      const exists = app.receiver.some(
-        (r) => r.$?.['android:name'] === spec.name,
-      );
-      if (exists) continue;
-      app.receiver.push({
+      const node = {
         $: {
           'android:name': spec.name,
           'android:exported': 'true',
@@ -256,7 +266,12 @@ function withAndroidAppWidget(config) {
             },
           },
         ],
-      });
+      };
+      const idx = app.receiver.findIndex(
+        (r) => r.$?.['android:name'] === spec.name,
+      );
+      if (idx >= 0) app.receiver[idx] = node;
+      else app.receiver.push(node);
     }
     return cfg;
   });
@@ -276,5 +291,5 @@ function withYouthPaperWidget(config) {
 module.exports = createRunOncePlugin(
   withYouthPaperWidget,
   'withYouthPaperWidget',
-  '1.2.1',
+  '1.3.0',
 );

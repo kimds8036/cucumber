@@ -1,0 +1,136 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+  android:layout_width="match_parent"
+  android:layout_height="match_parent"
+  android:background="#FFFFFF"
+  android:orientation="vertical"
+  android:padding="10dp">
+
+  <LinearLayout
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:gravity="center_vertical"
+    android:orientation="horizontal">
+
+    <ImageView
+      android:layout_width="18dp"
+      android:layout_height="18dp"
+      android:layout_marginEnd="4dp"
+      android:contentDescription="@null"
+      android:src="@drawable/ic_youth_paper_app" />
+
+    <TextView
+      android:layout_width="wrap_content"
+      android:layout_height="wrap_content"
+      android:text="시간표"
+      android:textColor="#FFA6DA95"
+      android:textSize="16sp"
+      android:textStyle="bold" />
+
+    <TextView
+      android:layout_width="0dp"
+      android:layout_height="wrap_content"
+      android:layout_marginStart="8dp"
+      android:layout_weight="1"
+      android:gravity="end"
+      android:maxLines="1"
+      android:text="2026년 2학기"
+      android:textColor="#8C272A26"
+      android:textSize="12sp" />
+  </LinearLayout>
+
+  <LinearLayout
+    android:layout_width="match_parent"
+    android:layout_height="0dp"
+    android:layout_marginTop="6dp"
+    android:layout_weight="1"
+    android:orientation="vertical">
+
+    <LinearLayout
+      android:layout_width="match_parent"
+      android:layout_height="wrap_content"
+      android:orientation="horizontal"
+      android:paddingBottom="2dp">
+      <TextView android:layout_width="12dp" android:layout_height="wrap_content" android:text="" />
+      <TextView android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:gravity="center" android:text="월" android:textColor="#FF272A26" android:textSize="12sp" />
+      <TextView android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:gravity="center" android:text="화" android:textColor="#FF272A26" android:textSize="12sp" />
+      <TextView android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:gravity="center" android:text="수" android:textColor="#FF272A26" android:textSize="12sp" />
+      <TextView android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:gravity="center" android:text="목" android:textColor="#FF272A26" android:textSize="12sp" />
+      <TextView android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:gravity="center" android:text="금" android:textColor="#FF272A26" android:textSize="12sp" />
+    </LinearLayout>
+
+    <LinearLayout android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1" android:orientation="horizontal">
+      <TextView android:layout_width="12dp" android:layout_height="match_parent" android:gravity="center" android:text="1" android:textColor="#FF888780" android:textSize="10sp" />
+      <TextView android:layout_width="0dp" android:layout_height="match_parent" android:layout_margin="1.5dp" android:layout_weight="1" android:background="@drawable/widget_cell_p5" android:ellipsize="end" android:gravity="center" android:maxLines="1" android:text="국어" android:textColor="#FF272A26" android:textSize="10sp" />
+      <TextView android:layout_width="0dp" android:layout_height="match_parent" android:layout_margin="1.5dp" android:layout_weight="1" android:background="@drawable/widget_cell_p7" android:ellipsize="end" android:gravity="center" android:maxLines="1" android:text="영어" android:textColor="#FF272A26" android:textSize="10sp" />
+      <TextView android:layout_width="0dp" android:layout_height="match_parent" android:layout_margin="1.5dp" android:layout_weight="1" android:background="@drawable/widget_cell_p8" android:ellipsize="end" android:gravity="center" android:maxLines="1" android:text="한국.." android:textColor="#FF272A26" android:textSize="10sp" />
+      <TextView android:layout_width="0dp" android:layout_height="match_parent" android:layout_margin="1.5dp" android:layout_weight="1" android:background="@drawable/widget_cell_p5" android:ellipsize="end" android:gravity="center" android:maxLines="1" android:text="국어" android:textColor="#FF272A26" android:textSize="10sp" />
+      <TextView android:layout_width="0dp" android:layout_height="match_parent" android:layout_margin="1.5dp" android:layout_weight="1" android:background="@drawable/widget_cell_p9" android:ellipsize="end" android:gravity="center" android:maxLines="1" android:text="체육" android:textColor="#FF272A26" android:textSize="10sp" />
+    </LinearLayout>
+    <LinearLayout android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1" android:orientation="horizontal">
+      <TextView android:layout_width="12dp" android:layout_height="match_parent" android:gravity="center" android:text="2" android:textColor="#FF888780" android:textSize="10sp" />
+      <TextView android:layout_width="0dp" android:layout_height="match_parent" android:layout_margin="1.5dp" android:layout_weight="1" android:background="@drawable/widget_cell_p8" android:ellipsize="end" android:gravity="center" android:maxLines="1" android:text="수학" android:textColor="#FF272A26" android:textSize="10sp" />
+      <TextView android:layout_width="0dp" android:layout_height="match_parent" android:layout_margin="1.5dp" android:layout_weight="1" android:background="@drawable/widget_cell_p6" android:ellipsize="end" android:gravity="center" android:maxLines="1" android:text="과학" android:textColor="#FF272A26" android:textSize="10sp" />
+      <TextView android:layout_width="0dp" android:layout_height="match_parent" android:layout_margin="1.5dp" android:layout_weight="1" android:background="@drawable/widget_cell_p7" android:ellipsize="end" android:gravity="center" android:maxLines="1" android:text="영어" android:textColor="#FF272A26" android:textSize="10sp" />
+      <TextView android:layout_width="0dp" android:layout_height="match_parent" android:layout_margin="1.5dp" android:layout_weight="1" android:background="@drawable/widget_cell_p1" android:ellipsize="end" android:gravity="center" android:maxLines="1" android:text="음악" android:textColor="#FF272A26" android:textSize="10sp" />
+      <TextView android:layout_width="0dp" android:layout_height="match_parent" android:layout_margin="1.5dp" android:layout_weight="1" android:background="@drawable/widget_cell_p5" android:ellipsize="end" android:gravity="center" android:maxLines="1" android:text="국어" android:textColor="#FF272A26" android:textSize="10sp" />
+    </LinearLayout>
+    <LinearLayout android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1" android:orientation="horizontal">
+      <TextView android:layout_width="12dp" android:layout_height="match_parent" android:gravity="center" android:text="3" android:textColor="#FF888780" android:textSize="10sp" />
+      <TextView android:layout_width="0dp" android:layout_height="match_parent" android:layout_margin="1.5dp" android:layout_weight="1" android:background="@drawable/widget_cell_p7" android:ellipsize="end" android:gravity="center" android:maxLines="1" android:text="영어" android:textColor="#FF272A26" android:textSize="10sp" />
+      <TextView android:layout_width="0dp" android:layout_height="match_parent" android:layout_margin="1.5dp" android:layout_weight="1" android:background="@drawable/widget_cell_p8" android:ellipsize="end" android:gravity="center" android:maxLines="1" android:text="수학" android:textColor="#FF272A26" android:textSize="10sp" />
+      <TextView android:layout_width="0dp" android:layout_height="match_parent" android:layout_margin="1.5dp" android:layout_weight="1" android:background="@drawable/widget_cell_p9" android:ellipsize="end" android:gravity="center" android:maxLines="1" android:text="체육" android:textColor="#FF272A26" android:textSize="10sp" />
+      <TextView android:layout_width="0dp" android:layout_height="match_parent" android:layout_margin="1.5dp" android:layout_weight="1" android:background="@drawable/widget_cell_p6" android:ellipsize="end" android:gravity="center" android:maxLines="1" android:text="과학" android:textColor="#FF272A26" android:textSize="10sp" />
+      <TextView android:layout_width="0dp" android:layout_height="match_parent" android:layout_margin="1.5dp" android:layout_weight="1" android:background="@drawable/widget_cell_p3" android:ellipsize="end" android:gravity="center" android:maxLines="1" android:text="생윤.." android:textColor="#FF272A26" android:textSize="10sp" />
+    </LinearLayout>
+    <LinearLayout android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1" android:orientation="horizontal">
+      <TextView android:layout_width="12dp" android:layout_height="match_parent" android:gravity="center" android:text="4" android:textColor="#FF888780" android:textSize="10sp" />
+      <TextView android:layout_width="0dp" android:layout_height="match_parent" android:layout_margin="1.5dp" android:layout_weight="1" android:background="@drawable/widget_cell_p6" android:ellipsize="end" android:gravity="center" android:maxLines="1" android:text="과학" android:textColor="#FF272A26" android:textSize="10sp" />
+      <TextView android:layout_width="0dp" android:layout_height="match_parent" android:layout_margin="1.5dp" android:layout_weight="1" android:background="@drawable/widget_cell_p5" android:ellipsize="end" android:gravity="center" android:maxLines="1" android:text="국어" android:textColor="#FF272A26" android:textSize="10sp" />
+      <TextView android:layout_width="0dp" android:layout_height="match_parent" android:layout_margin="1.5dp" android:layout_weight="1" android:background="@drawable/widget_cell_p8" android:ellipsize="end" android:gravity="center" android:maxLines="1" android:text="수학" android:textColor="#FF272A26" android:textSize="10sp" />
+      <TextView android:layout_width="0dp" android:layout_height="match_parent" android:layout_margin="1.5dp" android:layout_weight="1" android:background="@drawable/widget_cell_p7" android:ellipsize="end" android:gravity="center" android:maxLines="1" android:text="영어" android:textColor="#FF272A26" android:textSize="10sp" />
+      <TextView android:layout_width="0dp" android:layout_height="match_parent" android:layout_margin="1.5dp" android:layout_weight="1" android:background="@drawable/widget_cell_p1" android:ellipsize="end" android:gravity="center" android:maxLines="1" android:text="음악" android:textColor="#FF272A26" android:textSize="10sp" />
+    </LinearLayout>
+    <LinearLayout
+      android:layout_width="match_parent"
+      android:layout_height="wrap_content"
+      android:gravity="center"
+      android:orientation="horizontal"
+      android:paddingTop="1dp"
+      android:paddingBottom="1dp">
+      <TextView android:layout_width="12dp" android:layout_height="wrap_content" android:text="" android:textSize="1sp" />
+      <TextView
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_weight="1"
+        android:gravity="center"
+        android:text="점심시간"
+        android:textColor="#99888780"
+        android:textSize="8sp" />
+    </LinearLayout>
+    <LinearLayout android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1" android:orientation="horizontal">
+      <TextView android:layout_width="12dp" android:layout_height="match_parent" android:gravity="center" android:text="5" android:textColor="#FF888780" android:textSize="10sp" />
+      <TextView android:layout_width="0dp" android:layout_height="match_parent" android:layout_margin="1.5dp" android:layout_weight="1" android:background="@drawable/widget_cell_p9" android:ellipsize="end" android:gravity="center" android:maxLines="1" android:text="체육" android:textColor="#FF272A26" android:textSize="10sp" />
+      <TextView android:layout_width="0dp" android:layout_height="match_parent" android:layout_margin="1.5dp" android:layout_weight="1" android:background="@drawable/widget_cell_p3" android:ellipsize="end" android:gravity="center" android:maxLines="1" android:text="생윤.." android:textColor="#FF272A26" android:textSize="10sp" />
+      <TextView android:layout_width="0dp" android:layout_height="match_parent" android:layout_margin="1.5dp" android:layout_weight="1" android:background="@drawable/widget_cell_p5" android:ellipsize="end" android:gravity="center" android:maxLines="1" android:text="국어" android:textColor="#FF272A26" android:textSize="10sp" />
+      <TextView android:layout_width="0dp" android:layout_height="match_parent" android:layout_margin="1.5dp" android:layout_weight="1" android:background="@drawable/widget_cell_p8" android:ellipsize="end" android:gravity="center" android:maxLines="1" android:text="수학" android:textColor="#FF272A26" android:textSize="10sp" />
+      <TextView android:layout_width="0dp" android:layout_height="match_parent" android:layout_margin="1.5dp" android:layout_weight="1" android:background="@drawable/widget_cell_p7" android:ellipsize="end" android:gravity="center" android:maxLines="1" android:text="영어" android:textColor="#FF272A26" android:textSize="10sp" />
+    </LinearLayout>
+    <LinearLayout android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1" android:orientation="horizontal">
+      <TextView android:layout_width="12dp" android:layout_height="match_parent" android:gravity="center" android:text="6" android:textColor="#FF888780" android:textSize="10sp" />
+      <TextView android:layout_width="0dp" android:layout_height="match_parent" android:layout_margin="1.5dp" android:layout_weight="1" android:background="@drawable/widget_cell_p1" android:ellipsize="end" android:gravity="center" android:maxLines="1" android:text="음악" android:textColor="#FF272A26" android:textSize="10sp" />
+      <TextView android:layout_width="0dp" android:layout_height="match_parent" android:layout_margin="1.5dp" android:layout_weight="1" android:background="@drawable/widget_cell_p9" android:ellipsize="end" android:gravity="center" android:maxLines="1" android:text="체육" android:textColor="#FF272A26" android:textSize="10sp" />
+      <TextView android:layout_width="0dp" android:layout_height="match_parent" android:layout_margin="1.5dp" android:layout_weight="1" android:background="@drawable/widget_cell_p6" android:ellipsize="end" android:gravity="center" android:maxLines="1" android:text="과학" android:textColor="#FF272A26" android:textSize="10sp" />
+      <TextView android:layout_width="0dp" android:layout_height="match_parent" android:layout_margin="1.5dp" android:layout_weight="1" android:background="@drawable/widget_cell_p0" android:ellipsize="end" android:gravity="center" android:maxLines="1" android:text="진로.." android:textColor="#FF272A26" android:textSize="10sp" />
+      <TextView android:layout_width="0dp" android:layout_height="match_parent" android:layout_margin="1.5dp" android:layout_weight="1" android:background="@drawable/widget_cell_p8" android:ellipsize="end" android:gravity="center" android:maxLines="1" android:text="수학" android:textColor="#FF272A26" android:textSize="10sp" />
+    </LinearLayout>
+    <LinearLayout android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1" android:orientation="horizontal">
+      <TextView android:layout_width="12dp" android:layout_height="match_parent" android:gravity="center" android:text="7" android:textColor="#FF888780" android:textSize="10sp" />
+      <TextView android:layout_width="0dp" android:layout_height="match_parent" android:layout_margin="1.5dp" android:layout_weight="1" android:background="@drawable/widget_cell_p0" android:ellipsize="end" android:gravity="center" android:maxLines="1" android:text="진로.." android:textColor="#FF272A26" android:textSize="10sp" />
+      <TextView android:layout_width="0dp" android:layout_height="match_parent" android:layout_margin="1.5dp" android:layout_weight="1" android:background="@drawable/widget_cell_p1" android:ellipsize="end" android:gravity="center" android:maxLines="1" android:text="음악" android:textColor="#FF272A26" android:textSize="10sp" />
+      <TextView android:layout_width="0dp" android:layout_height="match_parent" android:layout_margin="1.5dp" android:layout_weight="1" android:background="@drawable/widget_cell_p3" android:ellipsize="end" android:gravity="center" android:maxLines="1" android:text="생윤.." android:textColor="#FF272A26" android:textSize="10sp" />
+      <TextView android:layout_width="0dp" android:layout_height="match_parent" android:layout_margin="1.5dp" android:layout_weight="1" android:background="@drawable/widget_cell_p9" android:ellipsize="end" android:gravity="center" android:maxLines="1" android:text="체육" android:textColor="#FF272A26" android:textSize="10sp" />
+      <TextView android:layout_width="0dp" android:layout_height="match_parent" android:layout_margin="1.5dp" android:layout_weight="1" android:background="@drawable/widget_cell_p6" android:ellipsize="end" android:gravity="center" android:maxLines="1" android:text="과학" android:textColor="#FF272A26" android:textSize="10sp" />
+    </LinearLayout>
+  </LinearLayout>
+</LinearLayout>

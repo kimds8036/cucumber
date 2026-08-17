@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+  android:layout_width="0dp"
+  android:layout_height="match_parent"
+  android:layout_marginEnd="3dp"
+  android:layout_weight="1"
+  android:gravity="center"
+  android:orientation="vertical"
+  android:paddingLeft="2dp"
+  android:paddingRight="2dp">
+
+  <TextView
+    android:id="@+id/large_cell_text"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:gravity="center"
+    android:maxLines="1"
+    android:textColor="#FF272A26"
+    android:textSize="11sp" />
+</LinearLayout>

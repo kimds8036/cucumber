@@ -113,7 +113,7 @@ export async function scheduleWidgetBackgroundRefresh() {
   return callNative('scheduleBackgroundRefresh');
 }
 
-/** 급식 next 결과 → 위젯 동기화 */
+/** 우리학교 급식 맨 앞 카드(롤링 슬롯) → 위젯 동기화 */
 export async function syncMealWidgetFromNext(meals, schoolId) {
   const payload = buildMealWidgetPayload(meals);
   const wrote = await writeMealPayload(payload);

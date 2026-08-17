@@ -45,13 +45,13 @@ const Timer = ({ navigation }) => {
       </View>
       <View>
         <MainFooter
-          activeTab="timer"
-          onTabPress={(tab) => {
-            if (tab === 'board') goMainTab('board');
-            if (tab === 'message') goMainTab('message');
-            if (tab === 'school') goMainTab('school');
-            if (tab === 'mypage') goMainTab('mypage');
-          }}
+        activeTab="timer"
+        onTabPress={(tab) => {
+          if (tab === 'board') goMainTab('board');
+          if (tab === 'message') goMainTab('message');
+          if (tab === 'school') goMainTab('school');
+          if (tab === 'mypage') goMainTab('mypage');
+        }}
         />
       </View>
     </SafeAreaView>

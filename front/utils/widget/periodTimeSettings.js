@@ -49,20 +49,52 @@ export function validatePeriodTimeSettings(periods) {
     if (end <= start) {
       return {
         ok: false,
-        message: `${p.periodNumber}교시 종료 시각은 시작 시각보다 늦어야 해요.`,
+        message: `${p.periodNumber}교시 종료는 시작(${p.startTime})보다 늦어야 해요.`,
       };
     }
     if (i > 0) {
-      const prevEnd = hhmmToMinutes(sorted[i - 1].endTime);
+      const prev = sorted[i - 1];
+      const prevStart = hhmmToMinutes(prev.startTime);
+      const prevEnd = hhmmToMinutes(prev.endTime);
       if (prevEnd != null && start < prevEnd) {
         return {
           ok: false,
-          message: `${p.periodNumber}교시 시작이 ${sorted[i - 1].periodNumber}교시 종료와 겹쳐요.`,
+          message: `${p.periodNumber}교시는 ${prev.periodNumber}교시가 끝난 뒤(${prev.endTime})부터 시작할 수 있어요.`,
+        };
+      }
+      if (prevStart != null && start < prevStart) {
+        return {
+          ok: false,
+          message: `${p.periodNumber}교시 시작은 ${prev.periodNumber}교시 시작(${prev.startTime})보다 빠를 수 없어요.`,
         };
       }
     }
   }
   return { ok: true };
+}
+
+/**
+ * 한 교시의 시작/종료만 바꾼 뒤 전체 순서가 맞는지 검사한다.
+ * @returns {{ ok: true, periods: PeriodTimeConfig[] } | { ok: false, message: string }}
+ */
+export function tryUpdatePeriodTime(periods, index, field, hhmm) {
+  if (!Array.isArray(periods) || index < 0 || index >= periods.length) {
+    return { ok: false, message: '교시 정보를 확인할 수 없어요.' };
+  }
+  if (field !== 'start' && field !== 'end') {
+    return { ok: false, message: '시각을 확인할 수 없어요.' };
+  }
+  const next = periods.map((p, i) =>
+    i === index
+      ? {
+          ...p,
+          [field === 'start' ? 'startTime' : 'endTime']: hhmm,
+        }
+      : p,
+  );
+  const validation = validatePeriodTimeSettings(next);
+  if (!validation.ok) return validation;
+  return { ok: true, periods: next };
 }
 
 /** @returns {PeriodTimeConfig[]} */

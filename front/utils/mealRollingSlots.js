@@ -6,7 +6,13 @@ const MEAL_ORDER = [
   { key: 'dinner', label: '석식', untilHour: 20 },
 ];
 
-const SKIP_REASONS = new Set(['WEEKEND', 'HOLIDAY', 'CLOSURE', 'NO_TERM']);
+const SKIP_REASONS = new Set([
+  'WEEKEND',
+  'HOLIDAY',
+  'CLOSURE',
+  'NO_TERM',
+  'VACATION',
+]);
 const VACATION_BANNER_TEXT = '당분간 급식 정보가 없어요';
 
 export function getKstYmd(date = new Date()) {
@@ -75,17 +81,6 @@ function makePlaceholder(ymd) {
   };
 }
 
-function makeVacationSlot() {
-  return {
-    type: 'vacation',
-    ymd: '',
-    mealType: '방학',
-    mealTypeKey: null,
-    menus: [],
-    isPlaceholder: false,
-  };
-}
-
 function padEmptySlots(slots, slotCount) {
   const next = [...slots];
   while (next.length < slotCount) {
@@ -102,28 +97,9 @@ function finishSlots(candidates, slotCount) {
   };
 }
 
-function finishVacation(candidates, slotCount) {
-  const actual = candidates.filter((s) => s.type === 'meal');
-  if (actual.length === 0) {
-    return {
-      mode: 'banner',
-      slots: [],
-      bannerText: VACATION_BANNER_TEXT,
-    };
-  }
-  const slots = [...actual];
-  while (slots.length < slotCount) {
-    slots.push(makeVacationSlot());
-  }
-  return {
-    mode: 'slots',
-    slots: slots.slice(0, slotCount),
-    bannerText: null,
-  };
-}
-
 /**
- * 롤링 급식 슬롯: 주말·휴업은 건너뛰고, 급식 없는 날도 건너뛴다. 방학이면 배너 또는 vacation 칸.
+ * 롤링 급식 슬롯: 메뉴가 있으면 방학·주말이어도 넣는다.
+ * 메뉴 없는 주말·휴업·방학·등교일은 건너뛴다. 끼니가 하나도 없으면 배너.
  * @param {Record<string, { meals?: Record<string, string[]>, schoolDayReason?: string|null }>} mealsByDate
  * @param {{ now?: Date, slotCount?: number, maxDays?: number }} [opts]
  * @returns {{ mode: 'slots'|'banner', slots: object[], bannerText: string|null }}
@@ -138,28 +114,42 @@ export function buildRollingMealSlots(mealsByDate = {}, opts = {}) {
   for (let d = 0; d < maxDays && candidates.length < slotCount; d += 1) {
     const ymd = addDaysToYmd(todayYmd, d);
     const day = mealsByDate?.[ymd];
-    const reason = getSchoolDayReason(day);
-
-    if (SKIP_REASONS.has(reason)) continue;
-    if (reason === 'VACATION') {
-      return finishVacation(candidates, slotCount);
-    }
-
     const dayMeals = day?.meals || {};
-    if (!dayHasAnyMeal(dayMeals)) {
+
+    if (dayHasAnyMeal(dayMeals)) {
+      for (const { key, label, untilHour } of MEAL_ORDER) {
+        const menus = normalizeMenus(dayMeals[key]);
+        if (!menus.length) continue;
+        if (isMealExpired(ymd, untilHour, now)) continue;
+        candidates.push(makeMealSlot(ymd, label, key, menus));
+        if (candidates.length >= slotCount) break;
+      }
       continue;
     }
 
-    for (const { key, label, untilHour } of MEAL_ORDER) {
-      const menus = normalizeMenus(dayMeals[key]);
-      if (!menus.length) continue;
-      if (isMealExpired(ymd, untilHour, now)) continue;
-      candidates.push(makeMealSlot(ymd, label, key, menus));
-      if (candidates.length >= slotCount) break;
-    }
+    if (SKIP_REASONS.has(getSchoolDayReason(day))) continue;
+  }
+
+  if (candidates.length === 0) {
+    return {
+      mode: 'banner',
+      slots: [],
+      bannerText: VACATION_BANNER_TEXT,
+    };
   }
 
   return finishSlots(candidates, slotCount);
+}
+
+/** 우리학교 급식 3칸 중 맨 앞 카드 → 위젯 meals[0] */
+export function firstRollingSlotForWidget(result) {
+  if (!result || result.mode === 'banner') {
+    return slotToWidgetMealItem({
+      type: 'vacation-banner',
+      text: result?.bannerText || VACATION_BANNER_TEXT,
+    });
+  }
+  return slotToWidgetMealItem(result.slots?.[0]);
 }
 
 /** 화면 슬롯 → 위젯 sync용 meals[0] 형태 */

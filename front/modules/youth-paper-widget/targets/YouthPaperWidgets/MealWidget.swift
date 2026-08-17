@@ -107,7 +107,8 @@ struct MealWidgetView: View {
       Rectangle()
         .fill(dividerColor)
         .frame(width: 1)
-        .padding(.horizontal, 6)
+        .padding(.leading, 2)
+        .padding(.trailing, 6)
 
       VStack(alignment: .leading, spacing: 0) {
         if menus.isEmpty {
@@ -118,7 +119,7 @@ struct MealWidgetView: View {
         } else {
           VStack(alignment: .leading, spacing: 2) {
             ForEach(Array(visible.enumerated()), id: \.offset) { _, menu in
-              menuText(menu)
+              menuText(clippedMenu(menu))
             }
           }
 
@@ -135,6 +136,12 @@ struct MealWidgetView: View {
       .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
     }
     .padding(0)
+  }
+
+  private func clippedMenu(_ menu: String) -> String {
+    let t = menu.trimmingCharacters(in: .whitespacesAndNewlines)
+    if t.count <= 7 { return t }
+    return String(t.prefix(7)) + ".."
   }
 
   private func menuText(_ menu: String) -> some View {

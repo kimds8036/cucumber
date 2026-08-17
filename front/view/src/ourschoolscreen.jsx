@@ -34,7 +34,7 @@ import {
   addDaysToYmd,
   buildRollingMealSlots,
   getKstYmd,
-  slotToWidgetMealItem,
+  firstRollingSlotForWidget,
 } from '../../utils/mealRollingSlots';
 
 const OurSchoolScreen = ({ navigation }) => {
@@ -271,16 +271,6 @@ const OurSchoolScreen = ({ navigation }) => {
           }),
         );
 
-        // API 갱신 완료 시에만 위젯 sync (캐시 선표시 시점에는 sync하지 않음)
-        const result = buildRollingMealSlots(nextMealsByDate);
-        const widgetSource =
-          result.mode === 'slots'
-            ? result.slots[0]
-            : { type: 'vacation-banner', text: result.bannerText };
-        syncMealWidgetFromNext(
-          [slotToWidgetMealItem(widgetSource)],
-          schoolInfo.id,
-        ).catch(() => {});
       } catch (e) {
         if (mounted) setMealsByDate({});
       } finally {
@@ -327,6 +317,23 @@ const OurSchoolScreen = ({ navigation }) => {
     () => buildRollingMealSlots(mealsByDate, { now: new Date(mealClockMs) }),
     [mealsByDate, mealClockMs],
   );
+
+  const lastMealWidgetKeyRef = useRef('');
+  useEffect(() => {
+    if (isGuidePreview) return;
+    if (mealLoading && Object.keys(mealsByDate).length === 0) return;
+    const item = firstRollingSlotForWidget(mealSlotsResult);
+    const key = JSON.stringify(item);
+    if (key === lastMealWidgetKeyRef.current) return;
+    lastMealWidgetKeyRef.current = key;
+    syncMealWidgetFromNext([item], schoolInfo.id).catch(() => {});
+  }, [
+    isGuidePreview,
+    mealLoading,
+    mealsByDate,
+    mealSlotsResult,
+    schoolInfo.id,
+  ]);
 
   const getDayBadge = (ymd) => {
     if (!/^\d{8}$/.test(String(ymd || ''))) return '-';

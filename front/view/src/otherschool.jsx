@@ -170,7 +170,7 @@ const OtherSchoolScreen = ({ route, navigation }) => {
     };
   }, [routeSchoolId]);
 
-  const mealSlots = useMemo(
+  const mealSlotsResult = useMemo(
     () => buildRollingMealSlots(mealsByDate),
     [mealsByDate],
   );
@@ -375,9 +375,9 @@ const OtherSchoolScreen = ({ route, navigation }) => {
               </TouchableOpacity>
             </View>
 
-            <View style={styles.mealSlotsRow}>
-              {mealLoading
-                ? [0, 1, 2].map((idx) => (
+            {mealLoading ? (
+              <View style={styles.mealSlotsRow}>
+                {[0, 1, 2].map((idx) => (
                     <View
                       key={`meal-skeleton-${idx}`}
                       style={[
@@ -426,13 +426,37 @@ const OtherSchoolScreen = ({ route, navigation }) => {
                         </View>
                       </View>
                     </View>
-                  ))
-                : mealSlots.map((slot, index) => (
+                  ))}
+              </View>
+            ) : mealSlotsResult.mode === 'slots' ? (
+              <View style={styles.mealSlotsRow}>
+                {mealSlotsResult.slots.map((slot, index) =>
+                  slot.type === 'vacation' ? (
+                    <View
+                      key={`vacation-${index}`}
+                      style={[
+                        styles.mealSlot,
+                        index === mealSlotsResult.slots.length - 1 &&
+                          styles.mealSlotLast,
+                      ]}
+                    >
+                      <View
+                        style={[styles.mealCard, { minHeight: normalize(96) }]}
+                      >
+                        <View style={styles.mealSlotHeader}>
+                          <View style={styles.mealSlotTitleRow}>
+                            <Text style={styles.mealSlotTitle}>방학</Text>
+                          </View>
+                        </View>
+                      </View>
+                    </View>
+                  ) : (
                     <View
                       key={`${slot.ymd}-${slot.mealType}-${index}`}
                       style={[
                         styles.mealSlot,
-                        index === mealSlots.length - 1 && styles.mealSlotLast,
+                        index === mealSlotsResult.slots.length - 1 &&
+                          styles.mealSlotLast,
                       ]}
                     >
                       <TouchableOpacity
@@ -481,8 +505,18 @@ const OtherSchoolScreen = ({ route, navigation }) => {
                         </View>
                       </TouchableOpacity>
                     </View>
-                  ))}
-            </View>
+                  ),
+                )}
+              </View>
+            ) : (
+              <View style={styles.mealSlotsRow}>
+                <View style={styles.mealBannerBox}>
+                  <Text style={styles.mealBannerText}>
+                    {mealSlotsResult.bannerText}
+                  </Text>
+                </View>
+              </View>
+            )}
           </View>
         </View>
 

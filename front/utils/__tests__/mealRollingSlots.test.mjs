@@ -57,7 +57,7 @@ assert.deepEqual(
   [
     ['20260811', '중식', false, 'meal'],
     ['20260811', '석식', false, 'meal'],
-    ['20260812', '정보 없음', true, 'placeholder'],
+    ['20260813', '조식', false, 'meal'],
   ],
 );
 
@@ -66,8 +66,8 @@ assert.deepEqual(
   s1400.slots.map((s) => [s.ymd, s.mealType, s.isPlaceholder]),
   [
     ['20260811', '석식', false],
-    ['20260812', '정보 없음', true],
     ['20260813', '조식', false],
+    ['20260814', '중식', false],
   ],
 );
 
@@ -75,17 +75,17 @@ const s2000 = buildRollingMealSlots(mealsByDate, { now: aug11_20 });
 assert.deepEqual(
   s2000.slots.map((s) => [s.ymd, s.mealType, s.isPlaceholder]),
   [
-    ['20260812', '정보 없음', true],
     ['20260813', '조식', false],
     ['20260814', '중식', false],
+    ['20260814', '석식', false],
   ],
 );
 
 assert.equal(slotToWidgetMealItem(s0800.slots[0]).mealType, 'lunch');
 assert.equal(slotToWidgetMealItem(s0800.slots[0]).isVacation, false);
-assert.equal(slotToWidgetMealItem(s0800.slots[2]).mealType, null);
+assert.equal(slotToWidgetMealItem(s0800.slots[2]).mealType, 'breakfast');
 
-// 11일만 공휴일, 10/12일 급식 있음, 13일부터 방학
+// 11일 공휴일 스킵, 방학도 스킵하고 이후 급식을 채운다
 const holidayThenVacation = {
   '20260810': schoolDay({ lunch: ['10일중식'] }),
   '20260811': day('HOLIDAY'),
@@ -99,11 +99,11 @@ assert.deepEqual(
   [
     ['meal', '20260810', '중식'],
     ['meal', '20260812', '중식'],
-    ['vacation', '', '방학'],
+    ['placeholder', '', '정보 없음'],
   ],
 );
 
-// 12일 석식만 남고 13일부터 방학
+// 12일 석식만 남고 13일부터 방학(급식 없음) → 석식 + 빈 칸
 const dinnerThenVacation = {
   '20260812': schoolDay({
     lunch: ['중식'],
@@ -113,14 +113,11 @@ const dinnerThenVacation = {
 };
 const dinnerVac = buildRollingMealSlots(dinnerThenVacation, { now: aug12_14 });
 assert.equal(dinnerVac.mode, 'slots');
-assert.deepEqual(
-  dinnerVac.slots.map((s) => s.type),
-  ['meal', 'vacation', 'vacation'],
-);
 assert.equal(dinnerVac.slots[0].ymd, '20260812');
 assert.equal(dinnerVac.slots[0].mealType, '석식');
+assert.equal(dinnerVac.slots[1].isPlaceholder, true);
 
-// 오늘부터 바로 방학
+// 오늘부터 바로 방학이고 이후 급식 없음
 const fromTodayVacation = {
   '20260811': day('VACATION'),
 };
@@ -135,7 +132,7 @@ assert.equal(
 );
 assert.equal(slotToWidgetMealItem({ type: 'vacation' }).mealType, 'vacation');
 
-// 오늘 모든 끼니 마감 + 내일부터 방학
+// 오늘 모든 끼니 마감 + 내일부터 방학(급식 없음)
 const expiredThenVacation = {
   '20260812': schoolDay({
     breakfast: ['조식'],
@@ -148,7 +145,28 @@ const expiredVac = buildRollingMealSlots(expiredThenVacation, { now: aug12_20 })
 assert.equal(expiredVac.mode, 'banner');
 assert.equal(expiredVac.bannerText, '당분간 급식 정보가 없어요');
 
-// 토·일 + 월요일부터 방학
+// 토·일 스킵, 월~수는 학기 판정이 방학이어도 급식이 있으면 보여 준다
+const weekendThenNextWeek = {
+  '20260815': day('WEEKEND'),
+  '20260816': day('WEEKEND'),
+  '20260817': day('VACATION'),
+  '20260818': day('VACATION', { lunch: ['개학중식'], dinner: ['개학석식'] }),
+  '20260819': day('VACATION', { lunch: ['수중식'] }),
+};
+const weekendNext = buildRollingMealSlots(weekendThenNextWeek, {
+  now: aug15_sat_08,
+});
+assert.equal(weekendNext.mode, 'slots');
+assert.deepEqual(
+  weekendNext.slots.map((s) => [s.ymd, s.mealType]),
+  [
+    ['20260818', '중식'],
+    ['20260818', '석식'],
+    ['20260819', '중식'],
+  ],
+);
+
+// 토·일 + 월요일부터 방학이고 급식도 없음 → 배너
 const weekendThenVacation = {
   '20260815': day('WEEKEND'),
   '20260816': day('WEEKEND'),

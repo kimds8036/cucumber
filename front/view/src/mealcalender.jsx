@@ -14,6 +14,7 @@ import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
 import { colors } from '../../styles/colors';
 import { getNormalize } from '../../styles/frame.style';
 import { createCalendarStyles } from '../../styles/calender.style';
+import { api } from '../../utils/api';
 import { dateHasMealMenus } from '../../utils/mealRollingSlots';
 
 const WEEKDAYS = ['일', '월', '화', '수', '목', '금', '토'];
