@@ -3,6 +3,7 @@ import SwiftUI
 
 private let widgetPad: CGFloat = 0
 private let textPrimary = Color(hex: "272A26")
+private let textSecondary = Color(hex: "272A26", opacity: 0.5)
 private let inactiveBase = Color(hex: "272A26")
 
 /// `TIMETABLE_SUBJECT_COLORS` (styles/colors.js)
@@ -607,30 +608,16 @@ struct TimetableWidgetView: View {
   }
 
   private var displayTodayPeriods: [MergedPeriod] {
-    let capped = Array(entry.allPeriods.prefix(8))
-    guard !capped.isEmpty else { return [] }
-    if capped.count >= 6 { return capped }
-    var out = capped
-    for n in (capped.count + 1)...6 {
-      out.append(
-        MergedPeriod(
-          number: n,
-          startTime: nil,
-          endTime: nil,
-          subjectName: "-",
-          subjectColorHex: nil,
-        ),
-      )
-    }
-    return out
+    // 당일 마지막 교시까지 전부 표시 (패딩·상한 자르기 없음)
+    entry.allPeriods
   }
 
   private var statusBadge: some View {
-    HStack(spacing: 5) {
+    HStack(alignment: .center, spacing: 5) {
       if let hex = entry.currentColorHex {
         Circle()
           .fill(Color(hex: hex))
-          .frame(width: 8, height: 8)
+          .frame(width: 9, height: 9)
       }
       Text(badgeLabel)
         .font(.system(size: 11, weight: .medium))
@@ -638,12 +625,6 @@ struct TimetableWidgetView: View {
         .lineLimit(1)
         .minimumScaleFactor(0.75)
     }
-    .padding(.horizontal, 9)
-    .padding(.vertical, 5)
-    .background(
-      Capsule(style: .continuous).fill(Color.white),
-    )
-    .shadow(color: Color.black.opacity(0.06), radius: 2, x: 0.3, y: 0.3)
   }
 
   private var badgeLabel: String {
@@ -669,13 +650,17 @@ struct TimetableWidgetView: View {
       return Color.clear
     }()
     let label = period.subjectName.isEmpty ? "-" : period.subjectName
+    let dotColor = hex.map { Color(hex: $0) } ?? inactiveBase.opacity(0.15)
+    let highlightRadius: CGFloat = 10
 
     return VStack(spacing: 3) {
       Text("\(period.number)")
         .font(.system(size: 9, weight: .semibold))
         .foregroundColor(isActive ? fg : inactiveBase.opacity(0.35))
+        .lineLimit(1)
+        .minimumScaleFactor(0.7)
       Circle()
-        .fill(hex.map { Color(hex: $0) } ?? inactiveBase.opacity(0.2))
+        .fill(dotColor)
         .frame(width: 6, height: 6)
       Text(label)
         .font(.system(size: 9, weight: .medium))
@@ -686,9 +671,12 @@ struct TimetableWidgetView: View {
     .padding(.horizontal, 3)
     .padding(.vertical, 8)
     .frame(maxWidth: .infinity)
-    .background(RoundedRectangle(cornerRadius: 4, style: .continuous).fill(bg))
+    .background(
+      RoundedRectangle(cornerRadius: highlightRadius, style: .continuous).fill(bg),
+    )
     .overlay(
-      RoundedRectangle(cornerRadius: 4, style: .continuous).stroke(stroke, lineWidth: 0.8),
+      RoundedRectangle(cornerRadius: highlightRadius, style: .continuous)
+        .stroke(stroke, lineWidth: 0.8),
     )
   }
 
@@ -879,26 +867,8 @@ struct TimetableWidget: Widget {
         TimetableWidgetView(entry: entry)
       }
     }
-    .configurationDisplayName("시간표 (오늘)")
-    .description("오늘 수업을 보여줍니다.")
-    .supportedFamilies([.systemMedium])
-  }
-}
-
-struct TimetableWeekWidget: Widget {
-  let kind = "TimetableWeekWidget"
-
-  var body: some WidgetConfiguration {
-    StaticConfiguration(kind: kind, provider: TimetableProvider()) { entry in
-      if #available(iOS 17.0, *) {
-        TimetableWidgetView(entry: entry)
-          .containerBackground(.white, for: .widget)
-      } else {
-        TimetableWidgetView(entry: entry)
-      }
-    }
-    .configurationDisplayName("시간표 (주간)")
-    .description("월~금 시간표를 보여줍니다.")
-    .supportedFamilies([.systemLarge])
+    .configurationDisplayName("시간표")
+    .description("오늘·주간 시간표를 보여줍니다.")
+    .supportedFamilies([.systemMedium, .systemLarge])
   }
 }

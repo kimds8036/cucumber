@@ -107,8 +107,8 @@ struct MealWidgetView: View {
       Rectangle()
         .fill(dividerColor)
         .frame(width: 1)
-        .padding(.leading, 2)
-        .padding(.trailing, 6)
+        .padding(.leading, 20)
+        .padding(.trailing, 20)
 
       VStack(alignment: .leading, spacing: 0) {
         if menus.isEmpty {
