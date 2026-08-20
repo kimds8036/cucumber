@@ -653,7 +653,11 @@ struct TimetableWidgetView: View {
         .font(.system(size: 9, weight: .regular))
         .foregroundColor(isActive ? Color(hex: "6F9163") : Color(hex: "888780"))
       Circle()
-        .fill(isActive ? (hex.map { Color(hex: $0) } ?? Color(hex: "C5C5C0")) : Color(hex: "C5C5C0"))
+        .fill(
+          isActive
+            ? (hex.map { Color(hex: $0) } ?? Color(hex: "C5C5C0"))
+            : Color(hex: "272A26", opacity: 0.3),
+        )
         .frame(width: 7, height: 7)
         .padding(.top, 5)
         .padding(.bottom, 5)
