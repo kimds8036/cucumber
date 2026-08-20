@@ -89,6 +89,78 @@ async function tableExists(connection, tableName) {
   return Array.isArray(rows) && rows.length > 0;
 }
 
+async function columnExists(connection, tableName, columnName) {
+  if (!/^[a-zA-Z0-9_]+$/.test(tableName) || !/^[a-zA-Z0-9_]+$/.test(columnName)) {
+    throw new Error(`잘못된 식별자: ${tableName}.${columnName}`);
+  }
+  const [rows] = await connection.query(
+    `SHOW COLUMNS FROM \`${tableName}\` LIKE '${columnName}'`,
+  );
+  return Array.isArray(rows) && rows.length > 0;
+}
+
+function parseSqlStatements(sql) {
+  return sql
+    .split(';')
+    .map((s) => s.trim())
+    .filter((s) => s.length > 0)
+    .filter((s) => {
+      const lines = s.split('\n').map((line) => line.trim()).filter(Boolean);
+      return lines.some((line) => !line.startsWith('--'));
+    });
+}
+
+async function executeStatements(connection, statements) {
+  for (const statement of statements) {
+    try {
+      await connection.execute(statement);
+    } catch (err) {
+      if (err.errno === 1050) console.warn('  ⏭️  테이블 이미 존재, 스킵');
+      else if (err.errno === 1060) console.warn('  ⏭️  컬럼 이미 존재, 스킵');
+      else if (err.errno === 1061) console.warn('  ⏭️  인덱스 이미 존재, 스킵');
+      else if (err.errno === 1062) console.warn('  ⏭️  중복 데이터/키, 스킵');
+      else if (err.errno === 1091) console.warn('  ⏭️  대상(인덱스/컬럼) 없음, 스킵');
+      else if (err.errno === 1826) console.warn('  ⏭️  Foreign Key 이름 이미 존재, 스킵');
+      else if (err.errno === 1146) console.warn('  ⏭️  테이블 없음, 스킵');
+      else if (err.errno === 1054) console.warn('  ⏭️  필드 없음, 스킵');
+      else throw err;
+    }
+  }
+}
+
+/**
+ * 2026-08 스쿼시: 기존 DB는 001_init 이력이 있어 CREATE TABLE IF NOT EXISTS가
+ * users ALTER를 안 탄다. 빠진 테이블·컬럼만 보정.
+ */
+async function repairPostSquashDeltaIfNeeded(connection, migrationsDir) {
+  const applied = await getAppliedMigrations(connection);
+  if (!applied.has(BASELINE_INIT_FILE)) return;
+  if (!(await tableExists(connection, 'users'))) return;
+
+  const hasDeltaTable = await tableExists(connection, 'user_timetable_overrides');
+  const hasDeletedAt = await columnExists(connection, 'users', 'deleted_at');
+  const hasInvite = await columnExists(connection, 'users', 'invite_code');
+  if (hasDeltaTable && hasDeletedAt && hasInvite) return;
+
+  console.log('📌 스쿼시 이후 스키마 보정 (004~010 합본)');
+
+  const initPath = path.join(migrationsDir, BASELINE_INIT_FILE);
+  if (!hasDeltaTable && fs.existsSync(initPath)) {
+    const sql = fs.readFileSync(initPath, 'utf8');
+    await executeStatements(connection, parseSqlStatements(sql));
+  }
+
+  const alters = [
+    `ALTER TABLE users ADD COLUMN deleted_at TIMESTAMP NULL DEFAULT NULL COMMENT '탈퇴 처리 시각' AFTER is_deleted`,
+    `CREATE INDEX idx_users_is_deleted_deleted_at ON users (is_deleted, deleted_at)`,
+    `ALTER TABLE users ADD COLUMN invite_code VARCHAR(12) NULL COMMENT '친구 초대 코드' AFTER color_id`,
+    `ALTER TABLE users ADD COLUMN equipped_badge_key VARCHAR(32) NULL COMMENT '장착 중인 배지 키' AFTER invite_code`,
+    `CREATE UNIQUE INDEX uq_users_invite_code ON users (invite_code)`,
+  ];
+  await executeStatements(connection, alters);
+  console.log('  ✅ 스쿼시 델타 보정 완료\n');
+}
+
 /**
  * users만 있고 스키마가 비어 있는데 squash 이력이 찍힌 경우
  * (불완전 production 등) → 001~후속 이력을 지워 실제 DDL을 다시 돌린다.
@@ -171,6 +243,7 @@ async function runMigrationsForTarget(target) {
     await ensureSchemaMigrationsTable(connection);
     await repairIncompleteBaselineIfNeeded(connection, target);
     await autoSquashBaselineIfNeeded(connection, target);
+    await repairPostSquashDeltaIfNeeded(connection, migrationsDir);
     const applied = await getAppliedMigrations(connection);
 
     const files = fs
@@ -200,30 +273,8 @@ async function runMigrationsForTarget(target) {
 
       console.log(`⏳ [${target}] 실행 중: ${file}`);
 
-      const statements = sql
-        .split(';')
-        .map((s) => s.trim())
-        .filter((s) => s.length > 0)
-        .filter((s) => {
-          const lines = s.split('\n').map((line) => line.trim()).filter(Boolean);
-          return lines.some((line) => !line.startsWith('--'));
-        });
-
-      for (const statement of statements) {
-        try {
-          await connection.execute(statement);
-        } catch (err) {
-          if (err.errno === 1050) console.warn('  ⏭️  테이블 이미 존재, 스킵');
-          else if (err.errno === 1060) console.warn('  ⏭️  컬럼 이미 존재, 스킵');
-          else if (err.errno === 1061) console.warn('  ⏭️  인덱스 이미 존재, 스킵');
-          else if (err.errno === 1062) console.warn('  ⏭️  중복 데이터/키, 스킵');
-          else if (err.errno === 1091) console.warn('  ⏭️  대상(인덱스/컬럼) 없음, 스킵');
-          else if (err.errno === 1826) console.warn('  ⏭️  Foreign Key 이름 이미 존재, 스킵');
-          else if (err.errno === 1146) console.warn('  ⏭️  테이블 없음, 스킵');
-          else if (err.errno === 1054) console.warn('  ⏭️  필드 없음, 스킵');
-          else throw err;
-        }
-      }
+      const statements = parseSqlStatements(sql);
+      await executeStatements(connection, statements);
 
       await recordMigration(connection, file, { checksum, source: 'migrate' });
       console.log(`✅ [${target}] 완료: ${file}\n`);

@@ -54,6 +54,15 @@ object WidgetColors {
     return Color.rgb((r * 255).toInt(), (g * 255).toInt(), (b * 255).toInt())
   }
 
+  /** 파스텔 과목색을 점용으로 채도↑·명도↓ */
+  fun subjectDot(hex: String): Int {
+    val hsv = FloatArray(3)
+    Color.colorToHSV(parseHex(hex), hsv)
+    hsv[1] = (hsv[1] * 1.55f + 0.22f).coerceAtMost(0.82f)
+    hsv[2] = (hsv[2] * 0.62f).coerceIn(0.48f, 0.78f)
+    return Color.HSVToColor(hsv)
+  }
+
   private fun normalizeSubject(value: String) = value.trim().lowercase()
 
   private fun subjectColorIndex(subject: String): Int {

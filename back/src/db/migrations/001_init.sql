@@ -1,7 +1,7 @@
 -- Cucumber DB 초기 스키마 (마이그레이션 스쿼시)
--- Generated: 2026-07-13T14:16:44.790Z
+-- Generated: 2026-08-20 (004~010 합침)
 -- 신규 DB: migrate.js가 이 파일만 실행합니다.
--- 기존 DB: squash-baseline.js로 이력만 동기화 (DDL 미실행).
+-- 기존 DB: 001_init 이력이 있으면 DDL을 다시 돌리지 않음. 빠진 테이블·컬럼은 migrate.js가 보정.
 
 -- ── schools ──
 CREATE TABLE IF NOT EXISTS `schools` (
@@ -82,7 +82,10 @@ CREATE TABLE IF NOT EXISTS `users` (
   `graduation_year` int NOT NULL COMMENT '졸업년도',
   `is_graduated` tinyint(1) DEFAULT '0' COMMENT '졸업 여부',
   `is_deleted` tinyint(1) DEFAULT '0' COMMENT '탈퇴 여부',
+  `deleted_at` timestamp NULL DEFAULT NULL COMMENT '탈퇴 처리 시각',
   `color_id` int NOT NULL COMMENT '프로필 컬러 ID',
+  `invite_code` varchar(12) COLLATE utf8mb4_unicode_ci DEFAULT NULL COMMENT '친구 초대 코드',
+  `equipped_badge_key` varchar(32) COLLATE utf8mb4_unicode_ci DEFAULT NULL COMMENT '장착 중인 배지 키',
   `phone_verified` tinyint(1) DEFAULT '0' COMMENT '전화번호 인증 여부',
   `student_verified` tinyint(1) DEFAULT '0' COMMENT '학생 인증 여부',
   `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP COMMENT '가입 일시',
@@ -101,11 +104,13 @@ CREATE TABLE IF NOT EXISTS `users` (
   PRIMARY KEY (`id`),
   UNIQUE KEY `username` (`username`),
   UNIQUE KEY `idx_users_phone_lookup` (`phone_lookup`),
+  UNIQUE KEY `uq_users_invite_code` (`invite_code`),
   KEY `idx_school_id` (`school_id`),
   KEY `idx_color_id` (`color_id`),
   KEY `idx_username` (`username`),
   KEY `fk_users_previous_school` (`previous_school_id`),
   KEY `idx_users_name_lookup` (`name_lookup`),
+  KEY `idx_users_is_deleted_deleted_at` (`is_deleted`,`deleted_at`),
   CONSTRAINT `fk_users_previous_school` FOREIGN KEY (`previous_school_id`) REFERENCES `schools` (`school_id`) ON DELETE SET NULL,
   CONSTRAINT `users_ibfk_1` FOREIGN KEY (`school_id`) REFERENCES `schools` (`school_id`) ON DELETE RESTRICT,
   CONSTRAINT `users_ibfk_2` FOREIGN KEY (`color_id`) REFERENCES `colors` (`id`) ON DELETE RESTRICT
@@ -1296,6 +1301,93 @@ CREATE TABLE IF NOT EXISTS `legal_document_revisions` (
   CONSTRAINT `fk_legal_rev_admin` FOREIGN KEY (`archived_by_admin_id`) REFERENCES `admin_users` (`id`) ON DELETE SET NULL,
   CONSTRAINT `fk_legal_rev_document` FOREIGN KEY (`document_slug`) REFERENCES `legal_documents` (`slug`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='legal_documents 변경 전 본문 이력';
+
+-- ── install_landing_daily_stats ──
+CREATE TABLE IF NOT EXISTS `install_landing_daily_stats` (
+  `stat_date` date NOT NULL COMMENT 'KST 기준 일자',
+  `platform` enum('ios','android','other') COLLATE utf8mb4_unicode_ci NOT NULL COMMENT 'UA 기반 플랫폼',
+  `hit_count` int unsigned NOT NULL DEFAULT '0' COMMENT '페이지 조회 수 (크롤러 제외)',
+  `updated_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`stat_date`,`platform`),
+  KEY `idx_install_landing_stat_date` (`stat_date`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='설치 랜딩(/get) 일별 방문 집계';
+
+-- ── install_landing_hourly_stats ──
+CREATE TABLE IF NOT EXISTS `install_landing_hourly_stats` (
+  `stat_date` date NOT NULL COMMENT 'KST 기준 일자',
+  `hour_kst` tinyint unsigned NOT NULL COMMENT '0–23 (KST)',
+  `hit_count` int unsigned NOT NULL DEFAULT '0',
+  `updated_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`stat_date`,`hour_kst`),
+  KEY `idx_install_landing_hourly_date` (`stat_date`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='설치 랜딩(/get) 시간대별 방문 집계';
+
+-- ── school_terms ──
+CREATE TABLE IF NOT EXISTS `school_terms` (
+  `id` int NOT NULL AUTO_INCREMENT,
+  `school_id` varchar(50) COLLATE utf8mb4_unicode_ci NOT NULL COMMENT 'schools.school_id',
+  `academic_year` smallint NOT NULL COMMENT '학년도(3월 시작 연도)',
+  `semester` tinyint NOT NULL COMMENT '1 또는 2',
+  `open_ymd` date NOT NULL COMMENT '개학일(포함)',
+  `close_ymd` date DEFAULT NULL COMMENT '방학식·종업식(포함, 마지막 등교일)',
+  `source` varchar(32) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'neis_schedule',
+  `confidence` varchar(16) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'high' COMMENT 'high|medium|low',
+  `fetched_at` datetime NOT NULL,
+  `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uq_school_terms_school_year_sem` (`school_id`,`academic_year`,`semester`),
+  KEY `idx_school_terms_school_open` (`school_id`,`open_ymd`,`close_ymd`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='학교 학기 개학·방학 경계';
+
+-- ── school_closures ──
+CREATE TABLE IF NOT EXISTS `school_closures` (
+  `school_id` varchar(50) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `ymd` date NOT NULL COMMENT '휴업·휴교일',
+  `reason` varchar(120) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `source` varchar(32) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'neis_schedule',
+  `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`school_id`,`ymd`),
+  KEY `idx_school_closures_ymd` (`ymd`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='학교별 휴업일(재량휴업 등)';
+
+-- ── user_badges ──
+CREATE TABLE IF NOT EXISTS `user_badges` (
+  `user_id` int NOT NULL,
+  `badge_key` varchar(32) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `unlocked_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`user_id`,`badge_key`),
+  KEY `idx_user_badges_key` (`badge_key`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='유저 보유 배지';
+
+-- ── user_invites ──
+CREATE TABLE IF NOT EXISTS `user_invites` (
+  `id` int NOT NULL AUTO_INCREMENT,
+  `inviter_id` int NOT NULL COMMENT '초대한 유저',
+  `invitee_id` int NOT NULL COMMENT '가입한 유저',
+  `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uq_user_invites_invitee` (`invitee_id`),
+  KEY `idx_user_invites_inviter` (`inviter_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='친구 초대 성사';
+
+-- ── user_timetable_overrides ──
+CREATE TABLE IF NOT EXISTS `user_timetable_overrides` (
+  `user_id` int NOT NULL COMMENT '사용자 ID',
+  `timetable_json` json NOT NULL COMMENT '편집된 시간표 {월-1: 과목, ...}',
+  `updated_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '마지막 저장 시각',
+  PRIMARY KEY (`user_id`),
+  CONSTRAINT `user_timetable_overrides_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='사용자 시간표 편집본';
+
+-- ── user_period_time_settings ──
+CREATE TABLE IF NOT EXISTS `user_period_time_settings` (
+  `user_id` int NOT NULL COMMENT '사용자 ID',
+  `periods_json` json NOT NULL COMMENT '교시별 시작·종료 [{periodNumber,startTime,endTime},...]',
+  `updated_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '마지막 저장 시각',
+  PRIMARY KEY (`user_id`),
+  CONSTRAINT `user_period_time_settings_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='사용자 교시 시간 설정';
 
 -- ── 초기 시드 (신규 DB 전용) ─────────────────────────────────────────────
 

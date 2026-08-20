@@ -68,6 +68,38 @@ private func darkenedSubjectColor(hex: String, factor: Double = 0.62) -> Color {
   return Color(.sRGB, red: min(r, 1), green: min(g, 1), blue: min(b, 1), opacity: 1)
 }
 
+/// 파스텔 과목색을 점용으로 채도↑·명도↓
+private func subjectDotColor(hex: String) -> Color {
+  var cleaned = hex.trimmingCharacters(in: .whitespacesAndNewlines).uppercased()
+  if cleaned.hasPrefix("#") { cleaned.removeFirst() }
+  var value: UInt64 = 0
+  Scanner(string: cleaned).scanHexInt64(&value)
+  guard cleaned.count == 6 else { return Color(hex: "C5C5C0") }
+  let r = Double((value & 0xFF0000) >> 16) / 255
+  let g = Double((value & 0x00FF00) >> 8) / 255
+  let b = Double(value & 0x0000FF) / 255
+  let maxC = max(r, max(g, b))
+  let minC = min(r, min(g, b))
+  var h = 0.0
+  var s = 0.0
+  let v = maxC
+  let d = maxC - minC
+  if d > 0.0001 {
+    s = d / maxC
+    if maxC == r {
+      h = (g - b) / d + (g < b ? 6 : 0)
+    } else if maxC == g {
+      h = (b - r) / d + 2
+    } else {
+      h = (r - g) / d + 4
+    }
+    h /= 6
+  }
+  s = min(0.82, s * 1.55 + 0.22)
+  let newV = min(0.78, max(0.48, v * 0.62))
+  return Color(hue: h, saturation: s, brightness: newV)
+}
+
 // MARK: - Entry
 
 enum TimetableWidgetStatus: Equatable {
@@ -620,7 +652,7 @@ struct TimetableWidgetView: View {
       Circle()
         .fill(
           entry.isActiveAppearance && entry.currentColorHex != nil
-            ? Color(hex: entry.currentColorHex!)
+            ? subjectDotColor(hex: entry.currentColorHex!)
             : Color(hex: "C5C5C0"),
         )
         .frame(width: 8, height: 8)
@@ -653,11 +685,7 @@ struct TimetableWidgetView: View {
         .font(.system(size: 9, weight: .regular))
         .foregroundColor(isActive ? Color(hex: "6F9163") : Color(hex: "888780"))
       Circle()
-        .fill(
-          isActive
-            ? (hex.map { Color(hex: $0) } ?? Color(hex: "C5C5C0"))
-            : Color(hex: "272A26", opacity: 0.3),
-        )
+        .fill(isActive ? (hex.map { subjectDotColor(hex: $0) } ?? Color(hex: "C5C5C0")) : Color(hex: "C5C5C0"))
         .frame(width: 7, height: 7)
         .padding(.top, 5)
         .padding(.bottom, 5)

@@ -83,8 +83,8 @@ object WidgetBgScheduler {
 class MealRefreshWorker(appContext: Context, params: WorkerParameters) :
   CoroutineWorker(appContext, params) {
   override suspend fun doWork(): Result {
-    val schoolId = WidgetStorage.read(applicationContext, WidgetStorage.SCHOOL_ID_KEY).orEmpty()
-    val base = WidgetStorage.read(applicationContext, WidgetStorage.API_BASE_URL_KEY).orEmpty()
+    val schoolId = WidgetStore.read(applicationContext, WidgetStore.SCHOOL_ID_KEY).orEmpty()
+    val base = WidgetStore.read(applicationContext, WidgetStore.API_BASE_URL_KEY).orEmpty()
       .trimEnd('/')
     if (schoolId.isEmpty() || base.isEmpty()) return Result.success()
 
@@ -106,8 +106,8 @@ class MealRefreshWorker(appContext: Context, params: WorkerParameters) :
       val payload = JSONObject()
         .put("generatedAt", ZonedDateTime.now().toString())
         .put("first", first ?: JSONObject.NULL)
-      WidgetStorage.write(applicationContext, WidgetStorage.MEAL_KEY, payload.toString())
-      WidgetUpdater.updateAll(applicationContext)
+      WidgetStore.write(applicationContext, WidgetStore.MEAL_KEY, payload.toString())
+      WidgetUpdater.reloadAll(applicationContext)
       Result.success()
     } catch (_: Exception) {
       WidgetBgScheduler.enqueueMealRetry(applicationContext)
@@ -119,7 +119,7 @@ class MealRefreshWorker(appContext: Context, params: WorkerParameters) :
 class TimetableRefreshWorker(appContext: Context, params: WorkerParameters) :
   CoroutineWorker(appContext, params) {
   override suspend fun doWork(): Result {
-    val mirrorRaw = WidgetStorage.readAuthMirror(applicationContext) ?: return Result.success()
+    val mirrorRaw = WidgetStore.read(applicationContext, WidgetStore.AUTH_MIRROR_KEY) ?: return Result.success()
     val mirror = try {
       JSONObject(mirrorRaw)
     } catch (_: Exception) {
@@ -127,7 +127,7 @@ class TimetableRefreshWorker(appContext: Context, params: WorkerParameters) :
     }
     val refreshToken = mirror.optString("refreshToken")
     val deviceId = mirror.optString("deviceId")
-    val base = WidgetStorage.read(applicationContext, WidgetStorage.API_BASE_URL_KEY).orEmpty()
+    val base = WidgetStore.read(applicationContext, WidgetStore.API_BASE_URL_KEY).orEmpty()
       .trimEnd('/')
     if (refreshToken.isEmpty() || deviceId.isEmpty() || base.isEmpty()) return Result.success()
 
@@ -156,7 +156,7 @@ class TimetableRefreshWorker(appContext: Context, params: WorkerParameters) :
         .put("refreshToken", nextRefresh)
         .put("deviceId", deviceId)
         .put("updatedAt", System.currentTimeMillis())
-      WidgetStorage.writeAuthMirror(applicationContext, updated.toString())
+      WidgetStore.write(applicationContext, WidgetStore.AUTH_MIRROR_KEY, updated.toString())
 
       val ttConn = (URL("$base/api/timetable").openConnection() as HttpURLConnection).apply {
         connectTimeout = 20000
@@ -169,8 +169,8 @@ class TimetableRefreshWorker(appContext: Context, params: WorkerParameters) :
       val flat = JSONObject(ttResp).optJSONObject("data")?.optJSONObject("timetable")
         ?: JSONObject()
       val payload = buildTimetablePayload(flat)
-      WidgetStorage.write(applicationContext, WidgetStorage.TIMETABLE_KEY, payload.toString())
-      WidgetUpdater.updateAll(applicationContext)
+      WidgetStore.write(applicationContext, WidgetStore.TIMETABLE_KEY, payload.toString())
+      WidgetUpdater.reloadAll(applicationContext)
       Result.success()
     } catch (_: Exception) {
       Result.success()
@@ -200,7 +200,7 @@ class TimetableRefreshWorker(appContext: Context, params: WorkerParameters) :
       }
       week.put(JSONObject().put("dayLabel", day).put("periods", periods))
     }
-    val today = kstDayLabel()
+    val today = WidgetPayload.kstDayLabel()
     return JSONObject()
       .put("generatedAt", ZonedDateTime.now().toString())
       .put("todayDayLabel", if (today in days) today else JSONObject.NULL)

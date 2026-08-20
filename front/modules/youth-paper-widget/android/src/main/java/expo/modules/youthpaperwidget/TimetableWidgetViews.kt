@@ -55,7 +55,8 @@ object TimetableWidgetViews {
     WidgetRes.visible(views, context, "medium_message", false)
     WidgetRes.visible(views, context, "medium_standard", true)
     WidgetRes.text(views, context, "medium_date", entry.dayLabel)
-    WidgetRes.text(views, context, "medium_subject", WidgetRes.ellipsisKeep(entry.currentSubject, 8))
+    WidgetRes.color(views, context, "medium_date", WidgetColors.TEXT_PRIMARY)
+    WidgetRes.text(views, context, "medium_subject", entry.currentSubject)
     val badge = if (entry.statusTimeRange != null) {
       "${entry.statusText} (${entry.statusTimeRange})"
     } else {
@@ -66,13 +67,13 @@ object TimetableWidgetViews {
     WidgetRes.visible(views, context, "medium_badge_dot", true)
     val hex = entry.currentColorHex
     if (entry.isActiveAppearance && hex != null) {
-      WidgetRes.imageTint(views, context, "medium_badge_dot", WidgetColors.parseHex(hex))
+      WidgetRes.imageTint(views, context, "medium_badge_dot", WidgetColors.subjectDot(hex))
     } else {
       WidgetRes.imageTint(views, context, "medium_badge_dot", WidgetColors.DOT_GRAY)
     }
 
     val hasPeriods = entry.allPeriods.isNotEmpty()
-    val displayCount = displayPeriodCount(entry.allPeriods.size)
+    val displayCount = entry.allPeriods.size.coerceAtMost(MAX_PERIODS)
     WidgetRes.visible(views, context, "medium_divider", hasPeriods)
     for (i in 1..MAX_PERIODS) {
       if (!hasPeriods || i > displayCount) {
@@ -99,7 +100,7 @@ object TimetableWidgetViews {
       )
       WidgetRes.color(views, context, "period_subject_$i", WidgetColors.TEXT_PRIMARY)
       if (isActive && pHex != null) {
-        WidgetRes.imageTint(views, context, "period_dot_$i", WidgetColors.parseHex(pHex))
+        WidgetRes.imageTint(views, context, "period_dot_$i", WidgetColors.subjectDot(pHex))
         WidgetRes.drawableBg(views, context, "period_root_$i", WidgetColors.chipDrawable(pHex))
       } else {
         WidgetRes.imageTint(views, context, "period_dot_$i", WidgetColors.DOT_GRAY)
