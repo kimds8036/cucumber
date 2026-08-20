@@ -1,5 +1,9 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { reloadWidgets, writePeriodTimeSettings } from './widgetBridge.js';
+import {
+  fetchPeriodTimesFromServer,
+  pushPeriodTimesToServer,
+} from '../timetableSync.js';
 
 export const PERIOD_TIME_SETTINGS_KEY_PREFIX = '@period_time_settings:';
 export const PERIOD_TIME_SETTINGS_KEY = '@period_time_settings';
@@ -162,5 +166,62 @@ export async function savePeriodTimeSettings(periods, userScope) {
   await AsyncStorage.setItem(key, JSON.stringify(payload));
   await writePeriodTimeSettings(payload);
   await reloadWidgets();
+  pushPeriodTimesToServer(payload.periods).catch((e) => {
+    console.warn('[periodTimeSettings] 서버 저장 실패:', e?.message || e);
+  });
   return { ok: true, payload };
+}
+
+/**
+ * 서버 교시 시간이 더 최신이면 로컬·위젯 갱신. 로컬만 있으면 서버 업로드.
+ * @param {string|number|null|undefined} userScope
+ * @returns {Promise<UserPeriodSettings|null>}
+ */
+export async function hydratePeriodTimesFromServer(userScope) {
+  const key = periodTimeSettingsStorageKey(userScope);
+  try {
+    const server = await fetchPeriodTimesFromServer();
+    let local = null;
+    try {
+      const raw = await AsyncStorage.getItem(key);
+      if (raw) local = JSON.parse(raw);
+    } catch {
+      local = null;
+    }
+
+    const serverHasData =
+      Array.isArray(server?.periods) && server.periods.length > 0;
+    const localHasData =
+      Array.isArray(local?.periods) && local.periods.length > 0;
+
+    if (serverHasData) {
+      const serverTs = server.updatedAt
+        ? new Date(server.updatedAt).getTime()
+        : 0;
+      const localTs = local?.updatedAt
+        ? new Date(local.updatedAt).getTime()
+        : 0;
+      if (!localHasData || serverTs >= localTs) {
+        /** @type {UserPeriodSettings} */
+        const payload = {
+          periods: server.periods,
+          updatedAt: server.updatedAt || new Date().toISOString(),
+        };
+        await AsyncStorage.setItem(key, JSON.stringify(payload));
+        await writePeriodTimeSettings(payload);
+        await reloadWidgets();
+        return payload;
+      }
+    }
+
+    if (localHasData) {
+      pushPeriodTimesToServer(local.periods).catch(() => {});
+      return local;
+    }
+
+    return null;
+  } catch (e) {
+    console.warn('[periodTimeSettings] 서버 동기화 실패:', e?.message || e);
+    return null;
+  }
 }

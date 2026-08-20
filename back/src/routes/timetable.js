@@ -12,6 +12,8 @@ const router = express.Router();
 //   - 키 개수와 값 길이 한도만 1차 게이트로 강제. 키 형식 검사는 별도 PR.
 const TIMETABLE_MAX_KEYS = 200;
 const TIMETABLE_VALUE_MAX = 50;
+const PERIOD_MAX_COUNT = 12;
+const HHMM_RE = /^\d{1,2}:\d{2}$/;
 const updateTimetableValidators = [
   body('timetable').exists({ checkNull: true }).withMessage('유효한 시간표 데이터가 필요합니다.')
     .bail()
@@ -43,8 +45,115 @@ const BASE_TTL_MS = 24 * 60 * 60 * 1000;
 /** 반 매칭 로직 변경 시 bump — 잘못된 NEIS 캐시 무효화 */
 const TIMETABLE_CACHE_VERSION = 'v2';
 const baseCache = new Map();
-const userOverrideCache = new Map();
 const DAYS = ['월', '화', '수', '목', '금'];
+
+function parseJsonColumn(raw) {
+  if (raw == null) return null;
+  if (typeof raw === 'object') return raw;
+  try {
+    return JSON.parse(raw);
+  } catch {
+    return null;
+  }
+}
+
+async function loadUserOverride(userId) {
+  const [rows] = await pool.execute(
+    'SELECT timetable_json, updated_at FROM user_timetable_overrides WHERE user_id = ? LIMIT 1',
+    [userId],
+  );
+  if (!rows.length) return { timetable: {}, updatedAt: null };
+  const timetable = parseJsonColumn(rows[0].timetable_json);
+  return {
+    timetable:
+      timetable && typeof timetable === 'object' && !Array.isArray(timetable)
+        ? timetable
+        : {},
+    updatedAt: rows[0].updated_at,
+  };
+}
+
+async function saveUserOverride(userId, timetable) {
+  await pool.execute(
+    `INSERT INTO user_timetable_overrides (user_id, timetable_json)
+     VALUES (?, ?)
+     ON DUPLICATE KEY UPDATE
+       timetable_json = VALUES(timetable_json),
+       updated_at = CURRENT_TIMESTAMP`,
+    [userId, JSON.stringify(timetable)],
+  );
+}
+
+async function loadUserPeriodTimes(userId) {
+  const [rows] = await pool.execute(
+    'SELECT periods_json, updated_at FROM user_period_time_settings WHERE user_id = ? LIMIT 1',
+    [userId],
+  );
+  if (!rows.length) return { periods: null, updatedAt: null };
+  const periods = parseJsonColumn(rows[0].periods_json);
+  return {
+    periods: Array.isArray(periods) ? periods : null,
+    updatedAt: rows[0].updated_at,
+  };
+}
+
+async function saveUserPeriodTimes(userId, periods) {
+  await pool.execute(
+    `INSERT INTO user_period_time_settings (user_id, periods_json)
+     VALUES (?, ?)
+     ON DUPLICATE KEY UPDATE
+       periods_json = VALUES(periods_json),
+       updated_at = CURRENT_TIMESTAMP`,
+    [userId, JSON.stringify(periods)],
+  );
+}
+
+function validatePeriodTimesPayload(periods) {
+  if (!Array.isArray(periods) || periods.length === 0) {
+    return '교시를 하나 이상 추가해 주세요.';
+  }
+  if (periods.length > PERIOD_MAX_COUNT) {
+    return `교시는 ${PERIOD_MAX_COUNT}개 이하여야 합니다.`;
+  }
+  const sorted = [...periods].sort(
+    (a, b) => Number(a.periodNumber) - Number(b.periodNumber),
+  );
+  for (let i = 0; i < sorted.length; i += 1) {
+    const p = sorted[i];
+    const num = Number(p.periodNumber);
+    if (!Number.isFinite(num) || num < 1) {
+      return '교시 번호가 올바르지 않습니다.';
+    }
+    if (!HHMM_RE.test(String(p.startTime || '')) || !HHMM_RE.test(String(p.endTime || ''))) {
+      return `${num}교시 시각 형식이 올바르지 않습니다.`;
+    }
+    const [sh, sm] = String(p.startTime).split(':').map(Number);
+    const [eh, em] = String(p.endTime).split(':').map(Number);
+    const startMin = sh * 60 + sm;
+    const endMin = eh * 60 + em;
+    if (endMin <= startMin) {
+      return `${num}교시 종료는 시작보다 늦어야 합니다.`;
+    }
+    if (i > 0) {
+      const prev = sorted[i - 1];
+      const [ph, pm] = String(prev.endTime).split(':').map(Number);
+      const prevEnd = ph * 60 + pm;
+      if (startMin < prevEnd) {
+        return `${num}교시는 ${prev.periodNumber}교시 종료(${prev.endTime}) 이후부터 시작할 수 있습니다.`;
+      }
+    }
+  }
+  return null;
+}
+
+const updatePeriodTimesValidators = [
+  body('periods')
+    .exists({ checkNull: true })
+    .withMessage('교시 시간 데이터가 필요합니다.')
+    .bail()
+    .isArray({ min: 1, max: PERIOD_MAX_COUNT })
+    .withMessage(`periods는 1~${PERIOD_MAX_COUNT}개 배열이어야 합니다.`),
+];
 
 function toYmd(date) {
   const y = date.getFullYear();
@@ -283,7 +392,7 @@ router.get('/', authenticate, async (req, res) => {
     const user = rows[0];
     const { timetable: baseTimetable, subjects: baseSubjects } =
       await fetchBaseTimetableByUser(user);
-    const override = userOverrideCache.get(userId) || {};
+    const { timetable: override } = await loadUserOverride(userId);
     const timetable = mergeTimetable(baseTimetable, override);
     const anomalies = detectTimetableAnomalies(timetable);
     return res.json({
@@ -308,6 +417,89 @@ router.get('/', authenticate, async (req, res) => {
   }
 });
 
+router.get('/me', authenticate, async (req, res) => {
+  try {
+    const userId = req.user.userId;
+    const saved = await loadUserOverride(userId);
+    return res.json({
+      success: true,
+      data: {
+        timetable: saved.timetable,
+        updatedAt: saved.updatedAt
+          ? new Date(saved.updatedAt).toISOString()
+          : null,
+      },
+    });
+  } catch (error) {
+    console.error('저장 시간표 조회 오류:', error);
+    return res.status(500).json({
+      success: false,
+      message: '저장된 시간표 조회 중 오류가 발생했습니다.',
+    });
+  }
+});
+
+router.get('/period-times', authenticate, async (req, res) => {
+  try {
+    const userId = req.user.userId;
+    const saved = await loadUserPeriodTimes(userId);
+    return res.json({
+      success: true,
+      data: {
+        periods: saved.periods,
+        updatedAt: saved.updatedAt
+          ? new Date(saved.updatedAt).toISOString()
+          : null,
+      },
+    });
+  } catch (error) {
+    console.error('교시 시간 조회 오류:', error);
+    return res.status(500).json({
+      success: false,
+      message: '교시 시간 조회 중 오류가 발생했습니다.',
+    });
+  }
+});
+
+router.put('/period-times', authenticate, validate(updatePeriodTimesValidators), async (req, res) => {
+  try {
+    const userId = req.user.userId;
+    const { periods } = req.body;
+    const validationError = validatePeriodTimesPayload(periods);
+    if (validationError) {
+      return res.status(400).json({
+        success: false,
+        message: validationError,
+      });
+    }
+    const normalized = [...periods]
+      .map((p) => ({
+        periodNumber: Number(p.periodNumber),
+        startTime: String(p.startTime),
+        endTime: String(p.endTime),
+      }))
+      .sort((a, b) => a.periodNumber - b.periodNumber);
+    await saveUserPeriodTimes(userId, normalized);
+    const saved = await loadUserPeriodTimes(userId);
+    return res.json({
+      success: true,
+      message: '교시 시간이 저장되었습니다.',
+      data: {
+        periods: saved.periods,
+        updatedAt: saved.updatedAt
+          ? new Date(saved.updatedAt).toISOString()
+          : null,
+      },
+    });
+  } catch (error) {
+    console.error('교시 시간 저장 오류:', error);
+    return res.status(500).json({
+      success: false,
+      message: '교시 시간 저장 중 오류가 발생했습니다.',
+    });
+  }
+});
+
 router.put('/', authenticate, validate(updateTimetableValidators), async (req, res) => {
   try {
     const userId = req.user.userId;
@@ -319,12 +511,18 @@ router.put('/', authenticate, validate(updateTimetableValidators), async (req, r
         message: '유효한 시간표 데이터가 필요합니다.',
       });
     }
-    userOverrideCache.set(userId, timetable);
+    await saveUserOverride(userId, timetable);
+    const saved = await loadUserOverride(userId);
 
     return res.json({
       success: true,
       message: '시간표 수정사항이 저장되었습니다.',
-      data: { timetable },
+      data: {
+        timetable,
+        updatedAt: saved.updatedAt
+          ? new Date(saved.updatedAt).toISOString()
+          : null,
+      },
     });
   } catch (error) {
     console.error('시간표 저장 오류:', error);

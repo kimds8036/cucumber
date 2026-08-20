@@ -223,9 +223,43 @@ function withAndroidAppWidget(config) {
   ]);
 
   config = withAndroidManifest(config, (cfg) => {
-    const app = cfg.modResults.manifest.application?.[0];
+    const manifest = cfg.modResults.manifest;
+    manifest['uses-permission'] = manifest['uses-permission'] || [];
+    const permName = 'android.permission.SCHEDULE_EXACT_ALARM';
+    const hasPerm = manifest['uses-permission'].some(
+      (p) => p.$?.['android:name'] === permName,
+    );
+    if (!hasPerm) {
+      manifest['uses-permission'].push({ $: { 'android:name': permName } });
+    }
+
+    const app = manifest.application?.[0];
     if (!app) return cfg;
     app.receiver = app.receiver || [];
+    const refreshName = 'expo.modules.youthpaperwidget.WidgetRefreshReceiver';
+    const refreshNode = {
+      $: {
+        'android:name': refreshName,
+        'android:exported': 'false',
+        'android:enabled': 'true',
+      },
+      'intent-filter': [
+        {
+          action: [
+            {
+              $: {
+                'android:name': 'expo.modules.youthpaperwidget.ACTION_REFRESH',
+              },
+            },
+          ],
+        },
+      ],
+    };
+    const refreshIdx = app.receiver.findIndex(
+      (r) => r.$?.['android:name'] === refreshName,
+    );
+    if (refreshIdx >= 0) app.receiver[refreshIdx] = refreshNode;
+    else app.receiver.push(refreshNode);
     const receivers = [
       {
         name: 'com.ucost.YouthPaper.widget.MealWidgetReceiver',
@@ -291,5 +325,5 @@ function withYouthPaperWidget(config) {
 module.exports = createRunOncePlugin(
   withYouthPaperWidget,
   'withYouthPaperWidget',
-  '1.3.0',
+  '1.3.1',
 );

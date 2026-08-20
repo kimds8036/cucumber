@@ -28,6 +28,8 @@ import {
   getGuideTimetable,
 } from '../../src/screens/UserGuide/guidePreviewData';
 import { syncTimetableWidgetFromFlat } from '../../utils/widget';
+import { hydrateTimetableFromServer } from '../../utils/timetableSync';
+import { hydratePeriodTimesFromServer } from '../../utils/widget/periodTimeSettings';
 import { buildInviteShareContent } from '../../utils/shareLinks';
 
 const isSameProfileInfo = (a, b) => {
@@ -292,6 +294,14 @@ const MyPage = ({ navigation }) => {
       (async () => {
         if (showSkeleton) setTimetableLoading(true);
         try {
+          const scopeFromKey = timetableCacheKey.startsWith(
+            TIMETABLE_CACHE_KEY_PREFIX,
+          )
+            ? timetableCacheKey.slice(TIMETABLE_CACHE_KEY_PREFIX.length)
+            : null;
+          await hydratePeriodTimesFromServer(scopeFromKey).catch(() => {});
+          await hydrateTimetableFromServer(timetableCacheKey).catch(() => {});
+
           const raw = await AsyncStorage.getItem(timetableCacheKey);
           if (!raw || cancelled) {
             if (!cancelled) {

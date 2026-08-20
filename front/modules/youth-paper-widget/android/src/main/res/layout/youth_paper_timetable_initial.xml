@@ -71,7 +71,7 @@
             android:layout_marginEnd="5dp"
             android:contentDescription="@null"
             android:src="@drawable/widget_dot_circle"
-            android:visibility="gone" />
+            android:tint="#FFC5C5C0" />
 
           <TextView
             android:id="@+id/medium_badge_text"
@@ -94,28 +94,36 @@
           android:textSize="12sp" />
       </LinearLayout>
 
+      <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:gravity="center"
+        android:orientation="vertical">
+
       <TextView
         android:id="@+id/medium_subject"
         android:layout_width="match_parent"
-        android:layout_height="0dp"
-        android:layout_marginTop="4dp"
+        android:layout_height="wrap_content"
         android:paddingStart="14dp"
         android:paddingEnd="4dp"
-        android:layout_weight="1"
         android:gravity="center_vertical"
-        android:ellipsize="end"
-        android:singleLine="true"
         android:maxLines="1"
         android:textColor="#FF272A26"
         android:textSize="28sp"
         android:textStyle="bold" />
+      </LinearLayout>
+
+      <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical">
 
       <TextView
         android:id="@+id/medium_divider"
         android:layout_width="match_parent"
         android:layout_height="1dp"
-        android:layout_marginTop="4dp"
-        android:layout_marginBottom="6dp"
+        android:layout_marginBottom="10dp"
         android:background="#14272A26"
         android:text="" />
 
@@ -125,45 +133,46 @@
         android:orientation="horizontal">
 
         <LinearLayout android:id="@+id/period_root_1" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:gravity="center" android:orientation="vertical" android:padding="3dp" android:visibility="gone">
-          <TextView android:id="@+id/period_num_1" android:layout_width="wrap_content" android:layout_height="wrap_content" android:textSize="9sp" />
-          <ImageView android:id="@+id/period_dot_1" android:layout_width="7dp" android:layout_height="7dp" android:layout_marginTop="3dp" android:layout_marginBottom="3dp" android:contentDescription="@null" android:src="@drawable/widget_dot_circle" />
-          <TextView android:id="@+id/period_subject_1" android:layout_width="match_parent" android:layout_height="wrap_content" android:ellipsize="end" android:gravity="center" android:maxLines="1" android:singleLine="true" android:textSize="10sp" />
+          <TextView android:id="@+id/period_num_1" android:layout_width="wrap_content" android:layout_height="wrap_content" android:textColor="#FF888780" android:textSize="9sp" />
+          <ImageView android:id="@+id/period_dot_1" android:layout_width="7dp" android:layout_height="7dp" android:layout_marginTop="5dp" android:layout_marginBottom="5dp" android:contentDescription="@null" android:src="@drawable/widget_dot_circle" />
+          <TextView android:id="@+id/period_subject_1" android:layout_width="match_parent" android:layout_height="wrap_content" android:ellipsize="end" android:gravity="center" android:maxLines="2" android:textColor="#FF272A26" android:textSize="10sp" />
         </LinearLayout>
         <LinearLayout android:id="@+id/period_root_2" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:gravity="center" android:orientation="vertical" android:padding="3dp" android:visibility="gone">
-          <TextView android:id="@+id/period_num_2" android:layout_width="wrap_content" android:layout_height="wrap_content" android:textSize="9sp" />
-          <ImageView android:id="@+id/period_dot_2" android:layout_width="7dp" android:layout_height="7dp" android:layout_marginTop="3dp" android:layout_marginBottom="3dp" android:contentDescription="@null" android:src="@drawable/widget_dot_circle" />
-          <TextView android:id="@+id/period_subject_2" android:layout_width="match_parent" android:layout_height="wrap_content" android:ellipsize="end" android:gravity="center" android:maxLines="1" android:singleLine="true" android:textSize="10sp" />
+          <TextView android:id="@+id/period_num_2" android:layout_width="wrap_content" android:layout_height="wrap_content" android:textColor="#FF888780" android:textSize="9sp" />
+          <ImageView android:id="@+id/period_dot_2" android:layout_width="7dp" android:layout_height="7dp" android:layout_marginTop="5dp" android:layout_marginBottom="5dp" android:contentDescription="@null" android:src="@drawable/widget_dot_circle" />
+          <TextView android:id="@+id/period_subject_2" android:layout_width="match_parent" android:layout_height="wrap_content" android:ellipsize="end" android:gravity="center" android:maxLines="2" android:textColor="#FF272A26" android:textSize="10sp" />
         </LinearLayout>
         <LinearLayout android:id="@+id/period_root_3" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:gravity="center" android:orientation="vertical" android:padding="3dp" android:visibility="gone">
-          <TextView android:id="@+id/period_num_3" android:layout_width="wrap_content" android:layout_height="wrap_content" android:textSize="9sp" />
-          <ImageView android:id="@+id/period_dot_3" android:layout_width="7dp" android:layout_height="7dp" android:layout_marginTop="3dp" android:layout_marginBottom="3dp" android:contentDescription="@null" android:src="@drawable/widget_dot_circle" />
-          <TextView android:id="@+id/period_subject_3" android:layout_width="match_parent" android:layout_height="wrap_content" android:ellipsize="end" android:gravity="center" android:maxLines="1" android:singleLine="true" android:textSize="10sp" />
+          <TextView android:id="@+id/period_num_3" android:layout_width="wrap_content" android:layout_height="wrap_content" android:textColor="#FF888780" android:textSize="9sp" />
+          <ImageView android:id="@+id/period_dot_3" android:layout_width="7dp" android:layout_height="7dp" android:layout_marginTop="5dp" android:layout_marginBottom="5dp" android:contentDescription="@null" android:src="@drawable/widget_dot_circle" />
+          <TextView android:id="@+id/period_subject_3" android:layout_width="match_parent" android:layout_height="wrap_content" android:ellipsize="end" android:gravity="center" android:maxLines="2" android:textColor="#FF272A26" android:textSize="10sp" />
         </LinearLayout>
         <LinearLayout android:id="@+id/period_root_4" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:gravity="center" android:orientation="vertical" android:padding="3dp" android:visibility="gone">
-          <TextView android:id="@+id/period_num_4" android:layout_width="wrap_content" android:layout_height="wrap_content" android:textSize="9sp" />
-          <ImageView android:id="@+id/period_dot_4" android:layout_width="7dp" android:layout_height="7dp" android:layout_marginTop="3dp" android:layout_marginBottom="3dp" android:contentDescription="@null" android:src="@drawable/widget_dot_circle" />
-          <TextView android:id="@+id/period_subject_4" android:layout_width="match_parent" android:layout_height="wrap_content" android:ellipsize="end" android:gravity="center" android:maxLines="1" android:singleLine="true" android:textSize="10sp" />
+          <TextView android:id="@+id/period_num_4" android:layout_width="wrap_content" android:layout_height="wrap_content" android:textColor="#FF888780" android:textSize="9sp" />
+          <ImageView android:id="@+id/period_dot_4" android:layout_width="7dp" android:layout_height="7dp" android:layout_marginTop="5dp" android:layout_marginBottom="5dp" android:contentDescription="@null" android:src="@drawable/widget_dot_circle" />
+          <TextView android:id="@+id/period_subject_4" android:layout_width="match_parent" android:layout_height="wrap_content" android:ellipsize="end" android:gravity="center" android:maxLines="2" android:textColor="#FF272A26" android:textSize="10sp" />
         </LinearLayout>
         <LinearLayout android:id="@+id/period_root_5" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:gravity="center" android:orientation="vertical" android:padding="3dp" android:visibility="gone">
-          <TextView android:id="@+id/period_num_5" android:layout_width="wrap_content" android:layout_height="wrap_content" android:textSize="9sp" />
-          <ImageView android:id="@+id/period_dot_5" android:layout_width="7dp" android:layout_height="7dp" android:layout_marginTop="3dp" android:layout_marginBottom="3dp" android:contentDescription="@null" android:src="@drawable/widget_dot_circle" />
-          <TextView android:id="@+id/period_subject_5" android:layout_width="match_parent" android:layout_height="wrap_content" android:ellipsize="end" android:gravity="center" android:maxLines="1" android:singleLine="true" android:textSize="10sp" />
+          <TextView android:id="@+id/period_num_5" android:layout_width="wrap_content" android:layout_height="wrap_content" android:textColor="#FF888780" android:textSize="9sp" />
+          <ImageView android:id="@+id/period_dot_5" android:layout_width="7dp" android:layout_height="7dp" android:layout_marginTop="5dp" android:layout_marginBottom="5dp" android:contentDescription="@null" android:src="@drawable/widget_dot_circle" />
+          <TextView android:id="@+id/period_subject_5" android:layout_width="match_parent" android:layout_height="wrap_content" android:ellipsize="end" android:gravity="center" android:maxLines="2" android:textColor="#FF272A26" android:textSize="10sp" />
         </LinearLayout>
         <LinearLayout android:id="@+id/period_root_6" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:gravity="center" android:orientation="vertical" android:padding="3dp" android:visibility="gone">
-          <TextView android:id="@+id/period_num_6" android:layout_width="wrap_content" android:layout_height="wrap_content" android:textSize="9sp" />
-          <ImageView android:id="@+id/period_dot_6" android:layout_width="7dp" android:layout_height="7dp" android:layout_marginTop="3dp" android:layout_marginBottom="3dp" android:contentDescription="@null" android:src="@drawable/widget_dot_circle" />
-          <TextView android:id="@+id/period_subject_6" android:layout_width="match_parent" android:layout_height="wrap_content" android:ellipsize="end" android:gravity="center" android:maxLines="1" android:singleLine="true" android:textSize="10sp" />
+          <TextView android:id="@+id/period_num_6" android:layout_width="wrap_content" android:layout_height="wrap_content" android:textColor="#FF888780" android:textSize="9sp" />
+          <ImageView android:id="@+id/period_dot_6" android:layout_width="7dp" android:layout_height="7dp" android:layout_marginTop="5dp" android:layout_marginBottom="5dp" android:contentDescription="@null" android:src="@drawable/widget_dot_circle" />
+          <TextView android:id="@+id/period_subject_6" android:layout_width="match_parent" android:layout_height="wrap_content" android:ellipsize="end" android:gravity="center" android:maxLines="2" android:textColor="#FF272A26" android:textSize="10sp" />
         </LinearLayout>
         <LinearLayout android:id="@+id/period_root_7" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:gravity="center" android:orientation="vertical" android:padding="3dp" android:visibility="gone">
-          <TextView android:id="@+id/period_num_7" android:layout_width="wrap_content" android:layout_height="wrap_content" android:textSize="9sp" />
-          <ImageView android:id="@+id/period_dot_7" android:layout_width="7dp" android:layout_height="7dp" android:layout_marginTop="3dp" android:layout_marginBottom="3dp" android:contentDescription="@null" android:src="@drawable/widget_dot_circle" />
-          <TextView android:id="@+id/period_subject_7" android:layout_width="match_parent" android:layout_height="wrap_content" android:ellipsize="end" android:gravity="center" android:maxLines="1" android:singleLine="true" android:textSize="10sp" />
+          <TextView android:id="@+id/period_num_7" android:layout_width="wrap_content" android:layout_height="wrap_content" android:textColor="#FF888780" android:textSize="9sp" />
+          <ImageView android:id="@+id/period_dot_7" android:layout_width="7dp" android:layout_height="7dp" android:layout_marginTop="5dp" android:layout_marginBottom="5dp" android:contentDescription="@null" android:src="@drawable/widget_dot_circle" />
+          <TextView android:id="@+id/period_subject_7" android:layout_width="match_parent" android:layout_height="wrap_content" android:ellipsize="end" android:gravity="center" android:maxLines="2" android:textColor="#FF272A26" android:textSize="10sp" />
         </LinearLayout>
         <LinearLayout android:id="@+id/period_root_8" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:gravity="center" android:orientation="vertical" android:padding="3dp" android:visibility="gone">
-          <TextView android:id="@+id/period_num_8" android:layout_width="wrap_content" android:layout_height="wrap_content" android:textSize="9sp" />
-          <ImageView android:id="@+id/period_dot_8" android:layout_width="7dp" android:layout_height="7dp" android:layout_marginTop="3dp" android:layout_marginBottom="3dp" android:contentDescription="@null" android:src="@drawable/widget_dot_circle" />
-          <TextView android:id="@+id/period_subject_8" android:layout_width="match_parent" android:layout_height="wrap_content" android:ellipsize="end" android:gravity="center" android:maxLines="1" android:singleLine="true" android:textSize="10sp" />
+          <TextView android:id="@+id/period_num_8" android:layout_width="wrap_content" android:layout_height="wrap_content" android:textColor="#FF888780" android:textSize="9sp" />
+          <ImageView android:id="@+id/period_dot_8" android:layout_width="7dp" android:layout_height="7dp" android:layout_marginTop="5dp" android:layout_marginBottom="5dp" android:contentDescription="@null" android:src="@drawable/widget_dot_circle" />
+          <TextView android:id="@+id/period_subject_8" android:layout_width="match_parent" android:layout_height="wrap_content" android:ellipsize="end" android:gravity="center" android:maxLines="2" android:textColor="#FF272A26" android:textSize="10sp" />
         </LinearLayout>
+      </LinearLayout>
       </LinearLayout>
     </LinearLayout>
   </LinearLayout>

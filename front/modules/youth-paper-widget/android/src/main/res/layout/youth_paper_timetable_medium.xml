@@ -56,7 +56,7 @@
         android:paddingTop="4dp"
         android:paddingRight="8dp"
         android:paddingBottom="4dp"
-        android:text="등교 전"
+        android:text="수업시작 전"
         android:textColor="#FF6F9163"
         android:textSize="11sp" />
 

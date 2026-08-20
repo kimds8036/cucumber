@@ -14,6 +14,7 @@ object WidgetColors {
   const val WHITE = 0xFFFFFFFF.toInt()
   const val INACTIVE = 0x4D272A26.toInt()
   const val INACTIVE_35 = 0x59272A26.toInt()
+  const val DOT_GRAY = 0xFFC5C5C0.toInt()
   const val INACTIVE_BG = 0x1A272A26.toInt()
   const val INACTIVE_STROKE = 0x4D272A26.toInt()
   const val DIVIDER_SOFT = 0x14272A26.toInt()

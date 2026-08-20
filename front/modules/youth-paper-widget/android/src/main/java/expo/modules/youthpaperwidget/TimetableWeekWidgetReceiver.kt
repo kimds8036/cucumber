@@ -24,6 +24,10 @@ open class TimetableWeekWidgetReceiver : AppWidgetProvider() {
         )
       }
     }
+    try {
+      WidgetRefreshScheduler.schedule(context)
+    } catch (_: Exception) {
+    }
   }
 
   override fun onAppWidgetOptionsChanged(

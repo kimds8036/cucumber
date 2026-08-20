@@ -63,12 +63,12 @@ object TimetableWidgetViews {
     }
     WidgetRes.text(views, context, "medium_badge_text", badge)
     WidgetRes.color(views, context, "medium_badge_text", WidgetColors.TEXT_PRIMARY)
+    WidgetRes.visible(views, context, "medium_badge_dot", true)
     val hex = entry.currentColorHex
-    if (hex != null) {
-      WidgetRes.visible(views, context, "medium_badge_dot", true)
+    if (entry.isActiveAppearance && hex != null) {
       WidgetRes.imageTint(views, context, "medium_badge_dot", WidgetColors.parseHex(hex))
     } else {
-      WidgetRes.visible(views, context, "medium_badge_dot", false)
+      WidgetRes.imageTint(views, context, "medium_badge_dot", WidgetColors.DOT_GRAY)
     }
 
     val hasPeriods = entry.allPeriods.isNotEmpty()
@@ -82,7 +82,7 @@ object TimetableWidgetViews {
       val period = entry.allPeriods.getOrNull(i - 1)
       WidgetRes.visible(views, context, "period_root_$i", true)
       WidgetRes.text(views, context, "period_num_$i", "${period?.number ?: i}교시")
-      WidgetRes.textEllipsis(
+      WidgetRes.textEllipsisKeep(
         views,
         context,
         "period_subject_$i",
@@ -91,21 +91,18 @@ object TimetableWidgetViews {
       )
       val isActive = period != null && entry.activePeriodNumber == period.number
       val pHex = period?.subjectColorHex
-      val fg = if (isActive && pHex != null) {
-        WidgetColors.darkenedSubject(pHex)
-      } else {
-        WidgetColors.TEXT_PRIMARY
-      }
-      WidgetRes.color(views, context, "period_num_$i", if (isActive) fg else WidgetColors.MUTED)
-      WidgetRes.color(views, context, "period_subject_$i", fg)
-      if (pHex != null) {
-        WidgetRes.imageTint(views, context, "period_dot_$i", WidgetColors.parseHex(pHex))
-      } else {
-        WidgetRes.imageTint(views, context, "period_dot_$i", WidgetColors.INACTIVE_BG)
-      }
+      WidgetRes.color(
+        views,
+        context,
+        "period_num_$i",
+        if (isActive) WidgetColors.PRIMARY_DARK else WidgetColors.MUTED,
+      )
+      WidgetRes.color(views, context, "period_subject_$i", WidgetColors.TEXT_PRIMARY)
       if (isActive && pHex != null) {
+        WidgetRes.imageTint(views, context, "period_dot_$i", WidgetColors.parseHex(pHex))
         WidgetRes.drawableBg(views, context, "period_root_$i", WidgetColors.chipDrawable(pHex))
       } else {
+        WidgetRes.imageTint(views, context, "period_dot_$i", WidgetColors.DOT_GRAY)
         WidgetRes.drawableBg(views, context, "period_root_$i", "widget_chip_clear")
       }
     }

@@ -52,6 +52,16 @@ internal object WidgetRes {
     text(views, context, name, ellipsis(value.toString(), maxChars))
   }
 
+  fun textEllipsisKeep(
+    views: RemoteViews,
+    context: Context,
+    name: String,
+    value: CharSequence,
+    maxChars: Int,
+  ) {
+    text(views, context, name, ellipsisKeep(value.toString(), maxChars))
+  }
+
   fun ellipsis(value: String, maxChars: Int): String {
     val t = value.trim()
     if (maxChars <= 2) return if (t.length <= maxChars) t else ".."

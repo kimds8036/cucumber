@@ -281,7 +281,7 @@ enum TimetableTimelineBuilder {
       return TimetableEntry(
         date: date,
         dayLabel: dayLabel,
-        statusText: "등교 전",
+        statusText: "수업시작 전",
         statusTimeRange: range,
         currentSubject: subject,
         currentColorHex: first?.subjectColorHex,
@@ -338,7 +338,7 @@ enum TimetableTimelineBuilder {
         statusText: "\(n)교시",
         statusTimeRange: range,
         currentSubject: subject,
-        currentColorHex: p?.subjectColorHex,
+        currentColorHex: nil,
         allPeriods: periods,
         activePeriodNumber: nil,
         status: status,
@@ -580,27 +580,30 @@ struct TimetableWidgetView: View {
           .minimumScaleFactor(0.8)
       }
 
-      Spacer(minLength: 6)
+      Spacer(minLength: 0)
 
       Text(entry.currentSubject)
-        .font(.system(size: 24, weight: .bold))
+        .font(.system(size: 28, weight: .bold))
         .foregroundColor(textPrimary)
         .lineLimit(1)
         .truncationMode(.tail)
-        .padding(.leading, 10)
+        .padding(.leading, 14)
+        .padding(.trailing, 4)
+        .frame(maxWidth: .infinity, alignment: .leading)
 
-      Spacer(minLength: 6)
+      Spacer(minLength: 0)
 
       if !entry.allPeriods.isEmpty {
-        Rectangle()
-          .fill(inactiveBase.opacity(0.08))
-          .frame(height: 1)
-          .padding(.bottom, 6)
-
-        HStack(spacing: 0) {
-          ForEach(displayTodayPeriods) { period in
-            periodColumn(period)
-              .frame(maxWidth: .infinity)
+        VStack(spacing: 0) {
+          Rectangle()
+            .fill(inactiveBase.opacity(0.08))
+            .frame(height: 1)
+            .padding(.bottom, 10)
+          HStack(spacing: 0) {
+            ForEach(displayTodayPeriods) { period in
+              periodColumn(period)
+                .frame(maxWidth: .infinity)
+            }
           }
         }
       }
@@ -613,12 +616,14 @@ struct TimetableWidgetView: View {
   }
 
   private var statusBadge: some View {
-    HStack(alignment: .center, spacing: 5) {
-      if let hex = entry.currentColorHex {
-        Circle()
-          .fill(Color(hex: hex))
-          .frame(width: 9, height: 9)
-      }
+    HStack(spacing: 5) {
+      Circle()
+        .fill(
+          entry.isActiveAppearance && entry.currentColorHex != nil
+            ? Color(hex: entry.currentColorHex!)
+            : Color(hex: "C5C5C0"),
+        )
+        .frame(width: 8, height: 8)
       Text(badgeLabel)
         .font(.system(size: 11, weight: .medium))
         .foregroundColor(textPrimary)
@@ -637,47 +642,38 @@ struct TimetableWidgetView: View {
   private func periodColumn(_ period: MergedPeriod) -> some View {
     let isActive = entry.activePeriodNumber == period.number
     let hex = period.subjectColorHex
-    let fg: Color = {
-      if isActive, let hex { return darkenedSubjectColor(hex: hex) }
-      return inactiveBase.opacity(0.3)
-    }()
     let bg: Color = {
       if isActive, let hex { return Color(hex: hex, opacity: 0.2) }
       return Color.clear
     }()
-    let stroke: Color = {
-      if isActive, let hex { return Color(hex: hex, opacity: 0.4) }
-      return Color.clear
-    }()
-    let label = period.subjectName.isEmpty ? "-" : period.subjectName
-    let dotColor = hex.map { Color(hex: $0) } ?? inactiveBase.opacity(0.15)
-    let highlightRadius: CGFloat = 10
+    let label = period.subjectName.isEmpty ? "-" : ellipsisKeep(period.subjectName, max: 5)
 
-    return VStack(spacing: 3) {
-      Text("\(period.number)")
-        .font(.system(size: 9, weight: .semibold))
-        .foregroundColor(isActive ? fg : inactiveBase.opacity(0.35))
-        .lineLimit(1)
-        .minimumScaleFactor(0.7)
+    return VStack(alignment: .center, spacing: 0) {
+      Text("\(period.number)교시")
+        .font(.system(size: 9, weight: .regular))
+        .foregroundColor(isActive ? Color(hex: "6F9163") : Color(hex: "888780"))
       Circle()
-        .fill(dotColor)
-        .frame(width: 6, height: 6)
+        .fill(isActive ? (hex.map { Color(hex: $0) } ?? Color(hex: "C5C5C0")) : Color(hex: "C5C5C0"))
+        .frame(width: 7, height: 7)
+        .padding(.top, 5)
+        .padding(.bottom, 5)
       Text(label)
-        .font(.system(size: 9, weight: .medium))
-        .foregroundColor(fg)
-        .lineLimit(1)
-        .truncationMode(.tail)
+        .font(.system(size: 10, weight: .regular))
+        .foregroundColor(textPrimary)
+        .lineLimit(2)
+        .multilineTextAlignment(.center)
+        .minimumScaleFactor(0.85)
     }
     .padding(.horizontal, 3)
-    .padding(.vertical, 8)
-    .frame(maxWidth: .infinity)
-    .background(
-      RoundedRectangle(cornerRadius: highlightRadius, style: .continuous).fill(bg),
-    )
-    .overlay(
-      RoundedRectangle(cornerRadius: highlightRadius, style: .continuous)
-        .stroke(stroke, lineWidth: 0.8),
-    )
+    .padding(.vertical, 3)
+    .frame(maxWidth: .infinity, maxHeight: .infinity)
+    .background(RoundedRectangle(cornerRadius: 8, style: .continuous).fill(bg))
+  }
+
+  private func ellipsisKeep(_ value: String, max: Int) -> String {
+    let t = value.trimmingCharacters(in: .whitespacesAndNewlines)
+    if t.count <= max { return t }
+    return String(t.prefix(max)) + ".."
   }
 
   /// Large: 주간(월~금) 정적 격자 — Medium의 진행/쉬는시간 상태와 무관

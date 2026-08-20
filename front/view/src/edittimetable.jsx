@@ -5,8 +5,6 @@ import React, {
   useMemo,
   useRef,
 } from 'react';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import {
   View,
   Text,
   TouchableOpacity,
@@ -42,7 +40,7 @@ import {
   getEditTimetableKeyboardVerticalOffset,
 } from '../../src/screens/timetable/timetable.style';
 import { getMaxPeriodFromTimetableKeys } from '../../src/screens/timetable/periodUtils';
-import { syncTimetableWidgetFromFlat } from '../../utils/widget';
+import { saveTimetableLocalAndSync } from '../../utils/timetableSync';
 
 /** 빈 시간표일 때 격자에 보이는 최소 행 수 (1교시~여기까지) */
 const EDIT_TS_GRID_INITIAL_MIN = 10;
@@ -297,18 +295,7 @@ const EditTimetable = ({ navigation, route }) => {
         onSave(timetableToSave);
       }
       if (timetableCacheKey) {
-        const ts = Date.now();
-        await AsyncStorage.setItem(
-          timetableCacheKey,
-          JSON.stringify({
-            ts,
-            timetable: timetableToSave,
-            clearedByUser: false,
-          }),
-        );
-        syncTimetableWidgetFromFlat(timetableToSave, {
-          generatedAt: new Date(ts).toISOString(),
-        }).catch(() => {});
+        await saveTimetableLocalAndSync(timetableCacheKey, timetableToSave);
       }
       setTimetable(timetableToSave);
     } catch (error) {

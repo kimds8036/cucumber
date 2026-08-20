@@ -14,6 +14,7 @@ open class MealWidgetReceiver : AppWidgetProvider() {
     try {
       val views = MealWidgetViews.build(context)
       appWidgetIds.forEach { appWidgetManager.updateAppWidget(it, views) }
+      WidgetRefreshScheduler.schedule(context)
     } catch (e: Exception) {
       Log.e("YouthPaperWidget", "Meal onUpdate failed", e)
       val views = WidgetRes.views(context, "youth_paper_meal_initial", "급식")

@@ -8,8 +8,6 @@ import {
   useWindowDimensions,
   View,
 } from 'react-native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import AntDesign from '@expo/vector-icons/AntDesign';
 import Entypo from '@expo/vector-icons/Entypo';
 import Feather from '@expo/vector-icons/Feather';
 import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
@@ -23,7 +21,7 @@ import { getMaxPeriodFromTimetableKeys } from './periodUtils';
 import { colors, TIMETABLE_SUBJECT_COLORS } from '../../../styles/colors';
 import { api } from '../../../utils/api';
 import AppPopupModal from '../../../components/common/AppPopupModal';
-import { syncTimetableWidgetFromFlat } from '../../../utils/widget';
+import { saveTimetableLocalAndSync } from '../../../utils/timetableSync';
 import TimetableAnomalyConfirmModal from '../../../components/timetable/TimetableAnomalyConfirmModal';
 import { fetchTimetableFromApi } from '../../../utils/timetableApi';
 import { hasTimetableAnomaly } from '../../../utils/timetableAnomaly';
@@ -63,18 +61,7 @@ const getSubjectColorIndex = (subject) => {
 };
 
 async function saveTimetableToCache(cacheKey, timetable) {
-  const ts = Date.now();
-  await AsyncStorage.setItem(
-    cacheKey,
-    JSON.stringify({
-      ts,
-      timetable,
-      clearedByUser: false,
-    }),
-  );
-  syncTimetableWidgetFromFlat(timetable, {
-    generatedAt: new Date(ts).toISOString(),
-  }).catch(() => {});
+  await saveTimetableLocalAndSync(cacheKey, timetable);
 }
 
 function hasSubjectList(subjects) {

@@ -190,7 +190,7 @@ object TimetableLogic {
           WidgetPayload.formatTimeRange(first.startTime, first.endTime)
         } else null
         TimetableEntry(
-          date, dayLabel, "등교 전", range, subject,
+          date, dayLabel, "수업시작 전", range, subject,
           first?.subjectColorHex, periods, null, status, false, weekly,
         )
       }
@@ -219,7 +219,7 @@ object TimetableLogic {
         } else null
         TimetableEntry(
           date, dayLabel, "${n}교시", range, subject,
-          p?.subjectColorHex, periods, null, status, false, weekly,
+          null, periods, null, status, false, weekly,
         )
       }
     }

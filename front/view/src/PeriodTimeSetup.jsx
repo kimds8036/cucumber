@@ -20,7 +20,7 @@ import { colors } from '../../styles/colors';
 import { getNormalize } from '../../styles/frame.style';
 import { createNotificationSettingsStyles } from '../../styles/mypage.style';
 import { api } from '../../utils/api';
-import { syncTimetableWidgetFromFlat } from '../../utils/widget';
+import { saveTimetableLocalAndSync } from '../../utils/timetableSync';
 import {
   defaultPeriodTimes,
   loadPeriodTimeSettings,
@@ -295,18 +295,7 @@ const PeriodTimeSetup = ({ navigation, route }) => {
         typeof pendingTimetable === 'object' &&
         timetableCacheKey
       ) {
-        const ts = Date.now();
-        await AsyncStorage.setItem(
-          timetableCacheKey,
-          JSON.stringify({
-            ts,
-            timetable: pendingTimetable,
-            clearedByUser: false,
-          }),
-        );
-        syncTimetableWidgetFromFlat(pendingTimetable, {
-          generatedAt: new Date(ts).toISOString(),
-        }).catch(() => {});
+        await saveTimetableLocalAndSync(timetableCacheKey, pendingTimetable);
       }
 
       finishToMypage();
