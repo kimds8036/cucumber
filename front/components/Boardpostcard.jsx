@@ -5,6 +5,7 @@ import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { colors, fonts, fontSizes } from '../styles/colors';
 import { normalizeTagsFromApi } from '../utils/normalizePostTags';
 import DistanceBadge from './DistanceBadge';
+import EquippedBadge from './EquippedBadge';
 
 /**
  * BoardPostCard
@@ -185,6 +186,11 @@ const BoardPostCard = ({
           <Text style={styles.postAuthor} numberOfLines={1}>
             {post.author}
           </Text>
+          <EquippedBadge
+            badge={post.equippedBadge}
+            size={normalize(13)}
+            style={{ marginLeft: normalize(3) }}
+          />
           <Text style={styles.postDot}>•</Text>
           <Text style={styles.postTime} numberOfLines={1}>
             {post.time}

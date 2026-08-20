@@ -11,7 +11,7 @@ export default ({ config }) => ({
     name: 'Youth Paper',
     slug: 'youth-paper',
     scheme: 'youthpaper',
-    version: '1.5.15',
+    version: '1.5.16',
     orientation: 'portrait',
     icon: './assets/icon.png',
     userInterfaceStyle: 'light',
@@ -48,7 +48,7 @@ export default ({ config }) => ({
     },
 
     android: {
-      versionCode: 24,
+      versionCode: 25,
       usesCleartextTraffic: !isProduction,
       // (선택) 안드로이드도 같은 방식으로 secret 적용 가능
       googleServicesFile:
@@ -149,7 +149,7 @@ export default ({ config }) => ({
             enableMinifyInReleaseBuilds: true,
             enableShrinkResourcesInReleaseBuilds: true,
             extraProguardRules:
-              '-keep class com.facebook.react.** { *; }\n-keep class com.facebook.hermes.** { *; }\n-keep class com.facebook.jni.** { *; }\n-dontwarn com.facebook.react.**\n',
+              '-keep class com.facebook.react.** { *; }\n-keep class com.facebook.hermes.** { *; }\n-keep class com.facebook.jni.** { *; }\n-dontwarn com.facebook.react.**\n-keep class expo.modules.youthpaperwidget.** { *; }\n-keep class com.ucost.YouthPaper.widget.** { *; }\n',
           },
         },
       ],
@@ -157,6 +157,7 @@ export default ({ config }) => ({
       './plugins/withAndroidReleaseSigning.cjs',
       './plugins/withAndroidMainActivityLaunchMode.cjs',
       './plugins/withAndroidCameraPreviewCompatible.cjs',
+      'youth-paper-widget',
     ],
 
     extra: {

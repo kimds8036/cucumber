@@ -1,0 +1,15 @@
+{
+  "name": "youth-paper-widget",
+  "version": "1.0.0",
+  "description": "Youth Paper home screen widgets (meal + timetable)",
+  "main": "src/index.ts",
+  "types": "src/index.ts",
+  "scripts": {},
+  "keywords": ["expo", "widget"],
+  "license": "UNLICENSED",
+  "peerDependencies": {
+    "expo": "*",
+    "react": "*",
+    "react-native": "*"
+  }
+}

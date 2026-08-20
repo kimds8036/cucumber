@@ -103,6 +103,14 @@ const TABLE_ORDER = [
   'identity_verifications',
   'legal_documents',
   'legal_document_revisions',
+  'install_landing_daily_stats',
+  'install_landing_hourly_stats',
+  'school_terms',
+  'school_closures',
+  'user_badges',
+  'user_invites',
+  'user_timetable_overrides',
+  'user_period_time_settings',
 ];
 
 const SKIP_TABLES = new Set(['schema_migrations']);
@@ -129,7 +137,7 @@ async function dumpSchema(connection) {
     '-- Cucumber DB 초기 스키마 (마이그레이션 스쿼시)',
     `-- Generated: ${new Date().toISOString()}`,
     '-- 신규 DB: migrate.js가 이 파일만 실행합니다.',
-    '-- 기존 DB: squash-baseline.js로 이력만 동기화 (DDL 미실행).',
+    '-- 기존 DB: 001_init 이력이 있으면 DDL을 다시 돌리지 않음. 빠진 테이블·컬럼은 migrate.js가 보정.',
     '',
   ];
 

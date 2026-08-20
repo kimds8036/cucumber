@@ -19,6 +19,11 @@
 # ==========================================
 **/ios/
 **/android/
+# Expo 위젯 모듈 네이티브 소스는 추적 (앱 prebuild android/ 와 구분)
+!front/modules/youth-paper-widget/android/
+!front/modules/youth-paper-widget/android/**
+front/modules/youth-paper-widget/android/build/
+front/modules/youth-paper-widget/android/build/**
 **/.kotlin/
 **/*.jks
 **/*.p8

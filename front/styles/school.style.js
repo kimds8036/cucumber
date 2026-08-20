@@ -161,12 +161,11 @@ export const createOurSchoolStyles = (normalize) => {
     },
     mealSlotBadge: {
       paddingHorizontal: normalize(5),
-      paddingVertical: normalize(2),
-      borderRadius: normalize(10),
+      borderRadius: normalize(100),
       backgroundColor: colors.primaryLight30,
     },
     mealSlotBadgeText: {
-      fontSize: normalize(fontSizes.lg),
+      fontSize: normalize(fontSizes.md-1),
       fontFamily: fonts.regular,
       color: colors.primaryDark,
     },
@@ -184,6 +183,22 @@ export const createOurSchoolStyles = (normalize) => {
       fontSize: normalize(fontSizes.lg),
       fontFamily: fonts.regular,
       color: colors.textSecondary,
+    },
+    mealBannerBox: {
+      flex: 1,
+      alignSelf: 'stretch',
+      minHeight: normalize(96),
+      backgroundColor: colors.primaryLight20,
+      borderRadius: normalize(16),
+      padding: normalize(12),
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    mealBannerText: {
+      fontSize: normalize(fontSizes.lg),
+      fontFamily: fonts.regular,
+      color: colors.textSecondary,
+      textAlign: 'center',
     },
     mealModalBackdrop: {
       flex: 1,

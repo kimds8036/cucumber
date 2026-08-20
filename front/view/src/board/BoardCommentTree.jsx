@@ -5,6 +5,7 @@ import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
 import Entypo from '@expo/vector-icons/Entypo';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { colors } from '../../../styles/colors';
+import EquippedBadge from '../../../components/EquippedBadge';
 
 function CommentBody({ content, styles }) {
   const parts = [];
@@ -86,6 +87,11 @@ export default function BoardCommentTree({
               >
                 {item.authorLabel}
               </Text>
+              <EquippedBadge
+                  badge={item.equippedBadge}
+                  size={normalize(13)}
+                  style={{ marginLeft: normalize(3), flexShrink: 0 }}
+                />
               <Text style={styles.detailDot}>•</Text>
               <Text style={styles.detailTime} numberOfLines={1}>
                 {item.time}

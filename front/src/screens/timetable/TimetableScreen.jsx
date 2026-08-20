@@ -7,7 +7,6 @@ import React, {
 } from 'react';
 import AntDesign from '@expo/vector-icons/AntDesign';
 import Feather from '@expo/vector-icons/Feather';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import ViewShot from 'react-native-view-shot';
 import {
   saveImageUriToGallery,
@@ -124,7 +123,6 @@ export default function TimetableScreen({ navigation, route }) {
   });
   const [paintSubjectId, setPaintSubjectId] = useState(null);
   const [schoolGradeText, setSchoolGradeText] = useState('-');
-  const [showDoneAddedModal, setShowDoneAddedModal] = useState(false);
   const [showSaveImageModal, setShowSaveImageModal] = useState(false);
   const [profileScopeOk, setProfileScopeOk] = useState(
     () => route?.params?.timetableScope == null,
@@ -285,32 +283,27 @@ export default function TimetableScreen({ navigation, route }) {
 
   const handleDone = async () => {
     const nextTimetable = timetable || {};
-    const hasEntries = Object.keys(nextTimetable).length > 0;
-    if (!hasEntries) return;
+    const hasAnySubject = Object.values(nextTimetable).some(
+      (v) => String(v ?? '').trim().length > 0,
+    );
+    if (!hasAnySubject) return;
 
     try {
       const keyToUse = await resolveTimetableCacheKey();
-      await AsyncStorage.setItem(
-        keyToUse,
-        JSON.stringify({
-          ts: Date.now(),
-          timetable: nextTimetable,
-          clearedByUser: false,
-        }),
-      );
-      setShowDoneAddedModal(true);
+      // 과목이 하나라도 있으면 저장 전 교시 시간 설정(온보딩)으로 이동
+      navigation.navigate('PeriodTimeSetup', {
+        pendingTimetable: nextTimetable,
+        sourceTimetable: nextTimetable,
+        timetableCacheKey: keyToUse,
+        suggestedPeriodCount: getMaxPeriodFromTimetableKeys(nextTimetable, 7),
+      });
     } catch (error) {
       console.warn(
-        '[TimetableScreen] MyPage 시간표 캐시 저장 실패:',
+        '[TimetableScreen] 교시 시간 설정 이동 실패:',
         error?.message || error,
       );
     }
   };
-
-  const handleConfirmDoneAddedModal = useCallback(() => {
-    setShowDoneAddedModal(false);
-    navigation.navigate('Main', { initialTab: 'mypage' });
-  }, [navigation]);
 
   const timetableCacheKey = route?.params?.timetableCacheKey;
 
@@ -640,36 +633,6 @@ export default function TimetableScreen({ navigation, route }) {
           >
             확인
           </Text>
-        </TouchableOpacity>
-      </AppPopupModal>
-
-      <AppPopupModal
-        visible={showDoneAddedModal}
-        onClose={() => setShowDoneAddedModal(false)}
-        dismissOnBackdrop={false}
-      >
-        <Text style={mt.manualTsDoneModalTitle}>시간표가 추가되었습니다.</Text>
-        <View style={mt.manualTsDoneModalHintWrap}>
-          <Text style={mt.manualTsDoneModalHintLine}>
-            추후 시간표가 달라질 경우
-          </Text>
-          <View style={mt.manualTsDoneModalHintRow}>
-            <Feather
-              name="edit"
-              size={normalize(16)}
-              color={COLORS.textSecondary}
-            />
-            <Text style={mt.manualTsDoneModalHintAfterIcon}>
-              버튼으로 편집할 수 있습니다.
-            </Text>
-          </View>
-        </View>
-        <TouchableOpacity
-          style={mt.manualTsDoneModalConfirmBtn}
-          onPress={handleConfirmDoneAddedModal}
-          activeOpacity={0.85}
-        >
-          <Text style={mt.manualTsDoneModalConfirmText}>확인</Text>
         </TouchableOpacity>
       </AppPopupModal>
     </SafeAreaView>

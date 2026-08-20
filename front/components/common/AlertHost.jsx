@@ -3,7 +3,6 @@ import { Text, TouchableOpacity, View } from 'react-native';
 import { colors } from '../../styles/colors';
 import AppPopupModal from './AppPopupModal';
 import { appAlert } from '../../utils/appAlert';
-import { isPostActionConfirmAlert } from '../../utils/postActionAlert';
 
 export default function AlertHost() {
   const [currentAlert, setCurrentAlert] = useState(null);
@@ -43,7 +42,7 @@ export default function AlertHost() {
   };
 
   const titleText = String(currentAlert?.title ?? '').trim();
-  const dismissOnBackdrop = !isPostActionConfirmAlert(currentAlert);
+  const dismissOnBackdrop = false;
 
   return (
     <AppPopupModal

@@ -11,10 +11,13 @@ import TimetabelChoice from './src/screens/timetable/timetabelChoice';
 import EditTimetable from './view/src/edittimetable';
 import MyPosts from './view/src/myposts';
 import NotificationSettings from './view/src/notificationsettings';
+import PeriodTimeSettings from './view/src/PeriodTimeSettings';
+import PeriodTimeSetup from './view/src/PeriodTimeSetup';
 import SetPinScreen from './view/src/setPinScreen';
 import ConfirmPinScreen from './view/src/confirmPinScreen';
 import VerifyPinScreen from './view/src/verifyPinScreen';
 import ChangePassword from './view/src/changepassword';
+import BadgeManage from './view/src/badgeManage';
 import ChangeSchool from './view/src/changeschool';
 import SearchScreen from './view/src/searchscreen';
 import NotificationScreen from './view/src/notificationscreen';
@@ -50,7 +53,7 @@ import GuideOverlayScreen from './src/screens/UserGuide/GuideOverlayScreen';
 import { useFonts } from 'expo-font';
 import * as SplashScreen from 'expo-splash-screen';
 import { useEffect, useRef, useState } from 'react';
-import { Alert, AppState, Platform, View } from 'react-native';
+import { Alert, AppState, Linking, Platform, View } from 'react-native';
 import * as Notifications from 'expo-notifications';
 import Constants from 'expo-constants';
 import { SafeAreaProvider, SafeAreaView, initialWindowMetrics } from 'react-native-safe-area-context';
@@ -101,6 +104,10 @@ import {
   setupFCMHandlers,
 } from './utils/fcmService';
 import { trackScreenView, flushAnalyticsEvents } from './utils/analytics';
+import WidgetDeepLinkHandler, {
+  stashWidgetDeepLinkFromUrl,
+} from './components/navigation/WidgetDeepLinkHandler';
+import InviteDeepLinkListener from './components/InviteDeepLinkListener';
 import { ROUTE_TO_ANALYTICS_SCREEN } from './constants/analyticsScreens';
 
 const Stack = createNativeStackNavigator();
@@ -115,6 +122,15 @@ const linking = {
   prefixes: ['cucumber://', 'youthpaper://', 'exp+youth-paper://'],
   config: {
     screens: {
+      Main: {
+        screens: {
+          board: 'board-tab',
+          message: 'message',
+          school: 'school',
+          timer: 'timer',
+          mypage: 'mypage',
+        },
+      },
       BoardDetail: 'board/:postId',
       Sign: 'inicis/return',
     },
@@ -204,6 +220,8 @@ function MainStack({ initialRouteName = 'Main' }) {
         name="NotificationSettings"
         component={NotificationSettings}
       />
+      <Stack.Screen name="PeriodTimeSettings" component={PeriodTimeSettings} />
+      <Stack.Screen name="PeriodTimeSetup" component={PeriodTimeSetup} />
       <Stack.Screen name="SetPinScreen" component={SetPinScreen} />
       <Stack.Screen name="ConfirmPinScreen" component={ConfirmPinScreen} />
       <Stack.Screen name="VerifyPinScreen" component={VerifyPinScreen} />
@@ -221,6 +239,7 @@ function MainStack({ initialRouteName = 'Main' }) {
       <Stack.Screen name="SendSchoolMail" component={SendSchoolMailScreen} />
       <Stack.Screen name="Timer" component={Timer} />
       <Stack.Screen name="Friends" component={FriendsScreen} />
+      <Stack.Screen name="BadgeManage" component={BadgeManage} />
       <Stack.Screen name="HiddenPostsAppeals" component={HiddenPostsAppeals} />
       <Stack.Screen name="Inquiry" component={Inquiry} />
       <Stack.Screen name="InAppInquiry" component={InAppInquiry} />
@@ -542,6 +561,7 @@ function RootNavigator() {
         />
       ) : null}
       <LocationGate>
+        <WidgetDeepLinkHandler />
         <MainStack initialRouteName={mainInitialRoute} />
       </LocationGate>
     </View>
@@ -608,6 +628,26 @@ export default function App() {
       }
     });
     return () => sub.remove();
+  }, []);
+
+  // 로그인·게이트 전에 위젯 URL이 오면 pending에 보관 (Main 진입 후 Handler가 소비)
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const initial = await Linking.getInitialURL();
+        if (!cancelled && initial) stashWidgetDeepLinkFromUrl(initial);
+      } catch {
+        // ignore
+      }
+    })();
+    const sub = Linking.addEventListener('url', ({ url }) => {
+      stashWidgetDeepLinkFromUrl(url);
+    });
+    return () => {
+      cancelled = true;
+      sub.remove();
+    };
   }, []);
 
   useEffect(() => {
@@ -815,6 +855,7 @@ export default function App() {
                                 trackNavigationScreen(getActiveRouteName(state));
                               }}
                             >
+                              <InviteDeepLinkListener />
                               <AppErrorBoundary>
                                 <RootNavigator />
                               </AppErrorBoundary>

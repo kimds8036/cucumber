@@ -13,6 +13,7 @@ import { api } from '../utils/api';
 import { PROFILE_COUNTS_CACHE_KEY } from '../utils/profileCountsCache';
 import { getProfileHexByColorId } from '../utils/profileColor';
 import { useGuidePreview } from '../context/GuidePreviewContext';
+import EquippedBadge from './EquippedBadge';
 import { getGuideMyPageStats } from '../src/screens/UserGuide/guidePreviewData';
 
 const PROFILE_COUNTS_CACHE_TTL_MS = 10 * 60 * 1000;
@@ -26,12 +27,14 @@ const ProfileCard = ({
   const { width } = useWindowDimensions();
   const normalize = useMemo(() => getNormalize(width), [width]);
   const styles = useMemo(() => createProfileCardStyles(normalize), [normalize]);
+  const seededCounts =
+    userInfo?.postCount != null && userInfo?.scrapCount != null;
   const [counts, setCounts] = useState({
     friendCount: Number(userInfo?.friendCount ?? 0),
-    postCount: 0,
-    scrapCount: 0,
+    postCount: Number(userInfo?.postCount ?? 0),
+    scrapCount: Number(userInfo?.scrapCount ?? 0),
   });
-  const [countsLoading, setCountsLoading] = useState(true);
+  const [countsLoading, setCountsLoading] = useState(!seededCounts);
   const { isGuidePreview } = useGuidePreview();
   const profileEyeColor = getProfileHexByColorId(userInfo?.colorId);
 
@@ -103,14 +106,28 @@ const ProfileCard = ({
   }, [navigation, loadCounts]);
 
   useEffect(() => {
-    const fallbackFriendCount = Number(userInfo?.friendCount ?? 0);
+    if (
+      userInfo?.postCount == null &&
+      userInfo?.scrapCount == null &&
+      userInfo?.friendCount == null
+    ) {
+      return;
+    }
     setCounts((prev) => ({
-      ...prev,
-      friendCount: Number.isFinite(fallbackFriendCount)
-        ? fallbackFriendCount
-        : prev.friendCount,
+      friendCount: Number(userInfo?.friendCount ?? prev.friendCount ?? 0),
+      postCount:
+        userInfo?.postCount != null
+          ? Number(userInfo.postCount)
+          : prev.postCount,
+      scrapCount:
+        userInfo?.scrapCount != null
+          ? Number(userInfo.scrapCount)
+          : prev.scrapCount,
     }));
-  }, [userInfo?.friendCount]);
+    if (userInfo?.postCount != null && userInfo?.scrapCount != null) {
+      setCountsLoading(false);
+    }
+  }, [userInfo?.friendCount, userInfo?.postCount, userInfo?.scrapCount]);
 
   return (
     <View style={styles.profileCard}>
@@ -128,11 +145,25 @@ const ProfileCard = ({
             style={{
               flexDirection: 'row',
               alignItems: 'center',
+              flexWrap: 'wrap',
               gap: normalize(6),
+              minWidth: 0,
+              flex: 1,
             }}
           >
             <Text style={styles.profileName}>{userInfo.name}</Text>
-            <Text style={styles.profileUsername}>{userInfo.username}</Text>
+            <EquippedBadge
+              badge={userInfo.equippedBadge}
+              size={normalize(18)}
+              style={{ flexShrink: 0 }}
+            />
+            <Text
+              style={[styles.profileUsername, { flex: 1, minWidth: 0 }]}
+              numberOfLines={1}
+              ellipsizeMode="tail"
+            >
+              {userInfo.username}
+            </Text>
           </View>
           <Text style={styles.profileSchool}>
             {userInfo.school} {userInfo.gradeClass}

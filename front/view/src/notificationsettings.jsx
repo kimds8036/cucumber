@@ -14,7 +14,7 @@ import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
 import { Ionicons } from '@expo/vector-icons';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import SubHeader from '../frame/subHeader';
-import * as Clipboard from 'expo-clipboard';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFocusEffect } from '@react-navigation/native';
 import { api } from '../../utils/api';
 import {
@@ -36,8 +36,6 @@ import {
   themedTextInputProps,
 } from '../../styles/mypage.style';
 
-const SCHOOL_CHANGE_EMAIL = 'team.ucost@gmail.com';
-
 const NOTIFICATION_ITEMS = [
   { key: 'newComment', label: '게시글 댓글' },
   { key: 'friendRequest', label: '친구 요청' },
@@ -53,6 +51,36 @@ const NOTIFICATION_ITEMS = [
 const APP_LOCK_ITEMS = [
   { key: 'changePin', label: '암호 변경' },
 ];
+
+const SETTINGS_PREFS_CACHE_KEY = '@settings_prefs_cache_v1';
+
+function clampBoardDistanceKm(value, fallback = 10) {
+  const n = Number(value);
+  if (!Number.isFinite(n)) return fallback;
+  return Math.max(1, Math.min(100, Math.round(n)));
+}
+
+async function readSettingsPrefsCache() {
+  try {
+    const raw = await AsyncStorage.getItem(SETTINGS_PREFS_CACHE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    return parsed && typeof parsed === 'object' ? parsed : null;
+  } catch {
+    return null;
+  }
+}
+
+async function writeSettingsPrefsCache(payload) {
+  try {
+    await AsyncStorage.setItem(
+      SETTINGS_PREFS_CACHE_KEY,
+      JSON.stringify(payload),
+    );
+  } catch {
+    // ignore
+  }
+}
 
 const Settings = ({ navigation, route }) => {
   const { width } = useWindowDimensions();
@@ -78,7 +106,8 @@ const Settings = ({ navigation, route }) => {
     mailOutgoing: true,
   });
 
-  const [loadingSettings, setLoadingSettings] = useState(false);
+  const [loadingSettings, setLoadingSettings] = useState(true);
+  const [settingsHydrated, setSettingsHydrated] = useState(false);
 
   // ── 앱 기본 설정 (로컬) ──
   const darkModeEnabled = false;
@@ -145,7 +174,23 @@ const Settings = ({ navigation, route }) => {
     navigation.navigate('VerifyPinScreen');
   };
 
+  const persistPrefsCache = (distance, notif) => {
+    writeSettingsPrefsCache({
+      distanceKm: clampBoardDistanceKm(distance),
+      notifications: notif,
+    });
+  };
+
   const syncSettingsToServer = async (next) => {
+    persistPrefsCache(next.distanceKm, {
+      pushEnabled: next.pushEnabled,
+      newPost: next.newPost,
+      newComment: next.newComment,
+      newLike: next.newLike,
+      announcement: next.announcement,
+      friendRequest: next.friendRequest,
+      mailOutgoing: next.mailOutgoing,
+    });
     try {
       await api.put('/api/settings', {
         pushEnabled: next.pushEnabled,
@@ -168,6 +213,18 @@ const Settings = ({ navigation, route }) => {
     const fetchSettings = async () => {
       try {
         setLoadingSettings(true);
+        const cached = await readSettingsPrefsCache();
+        if (!mounted) return;
+        if (cached) {
+          if (cached.notifications && typeof cached.notifications === 'object') {
+            setNotifications((prev) => ({ ...prev, ...cached.notifications }));
+          }
+          if (cached.distanceKm != null) {
+            setDistanceKm(clampBoardDistanceKm(cached.distanceKm));
+          }
+          setSettingsHydrated(true);
+        }
+
         const results = await Promise.allSettled([
           api.get('/api/settings'),
           api.get('/api/auth/me'),
@@ -194,7 +251,16 @@ const Settings = ({ navigation, route }) => {
               friendRequest: data.friendRequest !== false,
               mailOutgoing: data.mailOutgoing !== false,
             });
-            setDistanceKm(data.boardDistanceKm ?? 10);
+            setDistanceKm(clampBoardDistanceKm(data.boardDistanceKm, 10));
+            persistPrefsCache(data.boardDistanceKm, {
+              pushEnabled: !!data.pushEnabled,
+              newPost: !!data.newPost,
+              newComment: !!data.newComment,
+              newLike: !!data.newLike,
+              announcement: !!data.announcement,
+              friendRequest: data.friendRequest !== false,
+              mailOutgoing: data.mailOutgoing !== false,
+            });
             if (data.lastUsernameChangeAt) {
               setLastIdChangeAt(data.lastUsernameChangeAt);
             }
@@ -208,7 +274,11 @@ const Settings = ({ navigation, route }) => {
       } catch (error) {
         console.error('설정 화면 로드 실패:', error);
       } finally {
-        if (mounted) setLoadingSettings(false);
+        if (mounted) {
+          setDistanceKm((prev) => (prev == null ? 10 : prev));
+          setSettingsHydrated(true);
+          setLoadingSettings(false);
+        }
       }
     };
     fetchSettings();
@@ -222,7 +292,7 @@ const Settings = ({ navigation, route }) => {
       const next = { ...prev, [key]: !prev[key] };
       syncSettingsToServer({
         ...next,
-        distanceKm,
+        distanceKm: clampBoardDistanceKm(distanceKm),
         lastIdChangeAt,
       });
       return next;
@@ -241,7 +311,7 @@ const Settings = ({ navigation, route }) => {
       };
       syncSettingsToServer({
         ...next,
-        distanceKm,
+        distanceKm: clampBoardDistanceKm(distanceKm),
         lastIdChangeAt,
       });
       return next;
@@ -249,11 +319,12 @@ const Settings = ({ navigation, route }) => {
   };
 
   // ── 게시판 거리 설정 (1~100km) ──
-  const [distanceKm, setDistanceKm] = useState(10);
+  const [distanceKm, setDistanceKm] = useState(null);
   const trackWidthRef = useRef(0);
   const trackXRef = useRef(0);
 
-  const distancePercent = ((distanceKm - 1) / 99) * 100; // 1→0%, 100→100%
+  const displayDistanceKm = clampBoardDistanceKm(distanceKm, 10);
+  const distancePercent = ((displayDistanceKm - 1) / 99) * 100;
 
   const updateDistanceFromPageX = (pageX) => {
     if (trackWidthRef.current <= 0) return;
@@ -406,32 +477,6 @@ const Settings = ({ navigation, route }) => {
         error.response?.data?.message || '아이디 변경에 실패했습니다.',
       );
     }
-  };
-
-  // ── 학교 변경 ──
-  const handleSchoolChange = () => {
-    Alert.alert(
-      '학교 변경 문의',
-      `학교 변경을 원하시면 아래 메일로 증명서를 보내주세요.\n\n${SCHOOL_CHANGE_EMAIL}`,
-      [
-        {
-          text: '메일 주소 복사',
-          onPress: async () => {
-            try {
-              await Clipboard.setStringAsync(SCHOOL_CHANGE_EMAIL);
-              Alert.alert('알림', '메일 주소를 클립보드에 복사했습니다.');
-            } catch (e) {
-              console.warn('클립보드 복사 실패:', e);
-              Alert.alert(
-                '오류',
-                '복사에 실패했습니다. 메일 주소를 직접 입력해 주세요.',
-              );
-            }
-          },
-        },
-        { text: '확인', style: 'cancel' },
-      ],
-    );
   };
 
   // ── 공통 컴포넌트 ──
@@ -624,6 +669,8 @@ const Settings = ({ navigation, route }) => {
               description="근처 게시글의 반경을 설정해요 (1 ~ 100km)"
             />
             <View style={styles.card}>
+              {settingsHydrated && distanceKm != null ? (
+                <>
               {/* 슬라이더 트랙 */}
               <View
                 style={styles.sliderWrapper}
@@ -647,11 +694,17 @@ const Settings = ({ navigation, route }) => {
               </View>
 
               <View style={styles.distanceValueRow}>
-                <Text style={styles.distanceValueText}>{distanceKm} km</Text>
+                <Text style={styles.distanceValueText}>
+                  {displayDistanceKm} km
+                </Text>
                 <View style={styles.distanceHintRow}>
                   <Text style={styles.distanceHint}>100km</Text>
                 </View>
               </View>
+                </>
+              ) : (
+                <View style={{ height: normalize(56), marginVertical: normalize(12) }} />
+              )}
             </View>
 
             {/* ────────────── 기본 설정 ────────────── */}
@@ -824,36 +877,6 @@ const Settings = ({ navigation, route }) => {
                   {passwordGuideText}
                 </Text>
               )}
-            </View>
-
-            {/* ────────────── 학교 변경 ────────────── */}
-            <SectionHeader icon="school-outline" title="학교 변경" />
-            <View style={styles.card}>
-              <View style={styles.schoolRow}>
-                <View style={styles.schoolInfo}>
-                  <Ionicons
-                    name="information-circle-outline"
-                    size={normalize(16)}
-                    color={colors.primary}
-                  />
-                  <Text style={styles.schoolDesc}>
-                    학교 변경은 관리자 검토 후 처리됩니다.{'\n'}초중고
-                    졸업(예정) 증명서를 메일로 보내주세요.
-                  </Text>
-                </View>
-              </View>
-              <TouchableOpacity
-                style={[styles.actionButton, styles.schoolButton]}
-                onPress={handleSchoolChange}
-              >
-                <Ionicons
-                  name="mail-outline"
-                  size={normalize(16)}
-                  color={colors.textWhite}
-                  style={styles.schoolButtonIcon}
-                />
-                <Text style={styles.actionButtonText}>메일로 문의하기</Text>
-              </TouchableOpacity>
             </View>
           </>
         )}

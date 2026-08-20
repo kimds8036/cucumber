@@ -5,6 +5,8 @@ import {
   ScrollView,
   TouchableOpacity,
   Alert,
+  Share,
+  Platform,
   useWindowDimensions,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -13,8 +15,6 @@ import { colors } from '../../styles/colors';
 import { createMyPageStyles, getNormalize } from '../../styles/mypage.style';
 import ProfileCard from '../../components/Profilecard';
 import TimetableView from '../../components/Timetableview';
-import AppPopupModal from '../../components/common/AppPopupModal';
-import { createTimetableViewStyles } from '../../src/screens/timetable/timetable.style';
 import { api, clearUserSessionStorage } from '../../utils/api';
 import { useAuth } from '../../context/AuthContext';
 import { getDeviceId } from '../../utils/deviceId';
@@ -27,6 +27,10 @@ import {
   getGuideMyPageUserInfo,
   getGuideTimetable,
 } from '../../src/screens/UserGuide/guidePreviewData';
+import { syncTimetableWidgetFromFlat } from '../../utils/widget';
+import { hydrateTimetableFromServer } from '../../utils/timetableSync';
+import { hydratePeriodTimesFromServer } from '../../utils/widget/periodTimeSettings';
+import { buildInviteShareContent } from '../../utils/shareLinks';
 
 const isSameProfileInfo = (a, b) => {
   if (!a || !b) return false;
@@ -39,7 +43,10 @@ const isSameProfileInfo = (a, b) => {
     a.profileColorHex === b.profileColorHex &&
     a.profileColorId === b.profileColorId &&
     a.profileColorNumber === b.profileColorNumber &&
-    a.friendCount === b.friendCount
+    a.friendCount === b.friendCount &&
+    a.equippedBadge?.key === b.equippedBadge?.key &&
+    a.postCount === b.postCount &&
+    a.scrapCount === b.scrapCount
   );
 };
 
@@ -48,10 +55,6 @@ const MyPage = ({ navigation }) => {
   const { width } = useWindowDimensions();
   const normalize = useMemo(() => getNormalize(width), [width]);
   const styles = useMemo(() => createMyPageStyles(normalize), [normalize]);
-  const timetableModalStyles = useMemo(
-    () => createTimetableViewStyles(normalize),
-    [normalize],
-  );
   const { logout } = useAuth();
   const TIMETABLE_CACHE_KEY = '@mypage_timetable_cache_v1';
   const TIMETABLE_CACHE_KEY_PREFIX = '@mypage_timetable_cache_v1:';
@@ -61,10 +64,12 @@ const MyPage = ({ navigation }) => {
   const [userInfo, setUserInfo] = useState(null);
   const [timetable, setTimetable] = useState(null);
   const [colorSeed, setColorSeed] = useState(0);
-  const [loading, setLoading] = useState(false);
-  const [timetableLoading, setTimetableLoading] = useState(false);
-  const [showResetTimetableModal, setShowResetTimetableModal] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [timetableLoading, setTimetableLoading] = useState(true);
   const [timetableCacheKey, setTimetableCacheKey] = useState(null);
+  const [hasFirstPaint, setHasFirstPaint] = useState(false);
+  const [profileReady, setProfileReady] = useState(false);
+  const [ttReady, setTtReady] = useState(false);
   const timetableHydratedRef = useRef(false);
 
   useEffect(() => {
@@ -93,6 +98,28 @@ const MyPage = ({ navigation }) => {
       { text: '취소', style: 'cancel' },
       { text: '로그아웃', style: 'destructive', onPress: () => handleLogout() },
     ]);
+  };
+
+  const handleInviteFriends = async () => {
+    try {
+      const res = await api.get('/api/invite/me');
+      const landingUrl = res.data?.data?.landingUrl;
+      if (!landingUrl) {
+        Alert.alert('친구 초대', '초대 링크를 만들지 못했습니다.');
+        return;
+      }
+      const share = buildInviteShareContent(landingUrl);
+      await Share.share(
+        Platform.OS === 'ios'
+          ? { message: share.message, url: share.url }
+          : { message: share.message, title: share.title },
+      );
+    } catch (e) {
+      Alert.alert(
+        '친구 초대',
+        e.response?.data?.message || '초대 링크를 공유하지 못했습니다.',
+      );
+    }
   };
 
   const handleDeleteAccount = () => {
@@ -149,6 +176,9 @@ const MyPage = ({ navigation }) => {
       setTimetable(getGuideTimetable());
       setLoading(false);
       setTimetableLoading(false);
+      setProfileReady(true);
+      setTtReady(true);
+      setHasFirstPaint(true);
       return;
     }
     try {
@@ -163,17 +193,22 @@ const MyPage = ({ navigation }) => {
           cachedProfileTs = profileTs;
           if (Date.now() - profileTs < PROFILE_CACHE_TTL_MS) {
             cachedProfile = parsed?.userInfo || null;
-            if (cachedProfile) {
-              setUserInfo(cachedProfile);
-            }
           }
         }
       } catch (profileCacheErr) {
         console.warn('프로필 캐시 읽기 실패:', profileCacheErr);
       }
 
-      const meRes = await api.get('/api/auth/me');
-      const me = meRes.data?.data;
+      const [meRes, statsRes] = await Promise.allSettled([
+        api.get('/api/auth/me'),
+        api.get('/api/users/me/stats'),
+      ]);
+      if (meRes.status !== 'fulfilled') {
+        throw meRes.reason;
+      }
+      const me = meRes.value.data?.data;
+      const stats =
+        statsRes.status === 'fulfilled' ? statsRes.value.data?.data : null;
       const userScope =
         me?.id != null ? String(me.id) : me?.username || me?.email || null;
       const scopedTimetableCacheKey = userScope
@@ -194,7 +229,10 @@ const MyPage = ({ navigation }) => {
           profileColorHex: me.profileColor?.hexCode || null,
           profileColorId: me.profileColor?.id ?? me.colorId ?? null,
           profileColorNumber: me.profileColor?.colorNumber ?? null,
-          friendCount: me.friendCount ?? 0,
+          friendCount: me.friendCount ?? stats?.friendCount ?? 0,
+          equippedBadge: me.equippedBadge ?? null,
+          postCount: Number(stats?.postCount ?? 0),
+          scrapCount: Number(stats?.scrapCount ?? 0),
         };
         setUserInfo(nextUserInfo);
         try {
@@ -228,6 +266,7 @@ const MyPage = ({ navigation }) => {
       setTimetableCacheKey(TIMETABLE_CACHE_KEY);
     } finally {
       if (!silent) setLoading(false);
+      setProfileReady(true);
     }
   }, [isGuidePreview]);
 
@@ -237,12 +276,12 @@ const MyPage = ({ navigation }) => {
       let cancelled = false;
       (async () => {
         if (cancelled) return;
-        await fetchProfile({ silent: true });
+        await fetchProfile({ silent: hasFirstPaint });
       })();
       return () => {
         cancelled = true;
       };
-    }, [fetchProfile]),
+    }, [fetchProfile, hasFirstPaint]),
   );
 
   // 시간표 캐시만 읽음 — 첫 진입·시간표 편집 후 복귀 시 동기화
@@ -255,9 +294,20 @@ const MyPage = ({ navigation }) => {
       (async () => {
         if (showSkeleton) setTimetableLoading(true);
         try {
+          const scopeFromKey = timetableCacheKey.startsWith(
+            TIMETABLE_CACHE_KEY_PREFIX,
+          )
+            ? timetableCacheKey.slice(TIMETABLE_CACHE_KEY_PREFIX.length)
+            : null;
+          await hydratePeriodTimesFromServer(scopeFromKey).catch(() => {});
+          await hydrateTimetableFromServer(timetableCacheKey).catch(() => {});
+
           const raw = await AsyncStorage.getItem(timetableCacheKey);
           if (!raw || cancelled) {
-            if (!cancelled) setTimetable(null);
+            if (!cancelled) {
+              setTimetable(null);
+              syncTimetableWidgetFromFlat(null).catch(() => {});
+            }
             return;
           }
           const parsed = JSON.parse(raw);
@@ -269,12 +319,24 @@ const MyPage = ({ navigation }) => {
           const normalized =
             cached && Object.keys(cached).length > 0 ? cached : null;
           if (!cancelled) setTimetable(normalized);
+          if (!cancelled) {
+            const generatedAt = parsed?.ts
+              ? new Date(Number(parsed.ts)).toISOString()
+              : undefined;
+            syncTimetableWidgetFromFlat(normalized, { generatedAt }).catch(
+              () => {},
+            );
+          }
         } catch (e) {
           console.warn('[MyPage] 시간표 캐시 읽기 실패:', e);
           if (!cancelled) setTimetable(null);
+          if (!cancelled) {
+            syncTimetableWidgetFromFlat(null).catch(() => {});
+          }
         } finally {
           if (!cancelled) {
             timetableHydratedRef.current = true;
+            setTtReady(true);
             if (showSkeleton) setTimetableLoading(false);
           }
         }
@@ -298,27 +360,12 @@ const MyPage = ({ navigation }) => {
     });
   }, [navigation, timetable, timetableCacheKey]);
 
-  const handleResetTimetable = () => {
-    setShowResetTimetableModal(true);
-  };
-
-  const performResetTimetable = async () => {
-    setTimetable(null);
-    setColorSeed((prev) => prev + 1);
-    setShowResetTimetableModal(false);
-    try {
-      await AsyncStorage.setItem(
-        timetableCacheKey,
-        JSON.stringify({
-          ts: Date.now(),
-          timetable: null,
-          clearedByUser: true,
-        }),
-      );
-    } catch (error) {
-      console.error('시간표 삭제 저장 실패:', error);
+  useEffect(() => {
+    if (hasFirstPaint || isGuidePreview) return;
+    if (profileReady && ttReady) {
+      setHasFirstPaint(true);
     }
-  };
+  }, [hasFirstPaint, isGuidePreview, profileReady, ttReady]);
 
   const MenuItem = ({
     icon,
@@ -358,12 +405,55 @@ const MyPage = ({ navigation }) => {
     );
   };
 
+  const showPageSkeleton = !isGuidePreview && !hasFirstPaint;
+
   return (
     <View style={styles.container}>
       <ScrollView
         style={styles.scrollView}
         showsVerticalScrollIndicator={false}
       >
+        {showPageSkeleton ? (
+          <>
+            <View style={styles.profileSkeletonCard}>
+              <View style={styles.profileSkeletonHeader}>
+                <View style={styles.profileSkeletonAvatar} />
+                <View style={styles.profileSkeletonInfo}>
+                  <View style={styles.profileSkeletonName} />
+                  <View style={styles.profileSkeletonUsername} />
+                  <View style={styles.profileSkeletonSchool} />
+                </View>
+              </View>
+              <View style={styles.profileSkeletonQuickRow}>
+                <View style={styles.profileSkeletonQuickCell} />
+                <View style={styles.profileSkeletonQuickCell} />
+                <View style={styles.profileSkeletonQuickCell} />
+              </View>
+            </View>
+            <View style={[styles.ttSkeletonCard, { marginHorizontal: normalize(16) }]}>
+              <View style={styles.ttSkeletonHeader} />
+              {[...Array(7)].map((_, idx) => (
+                <View style={styles.ttSkeletonRow} key={`page-tt-sk-${idx}`}>
+                  <View style={styles.ttSkeletonCellSmall} />
+                  <View style={styles.ttSkeletonCell} />
+                  <View style={styles.ttSkeletonCell} />
+                  <View style={styles.ttSkeletonCell} />
+                  <View style={styles.ttSkeletonCell} />
+                  <View style={styles.ttSkeletonCell} />
+                </View>
+              ))}
+            </View>
+            <View style={styles.menuSection}>
+              {[...Array(8)].map((_, idx) => (
+                <View
+                  key={`menu-sk-${idx}`}
+                  style={styles.menuSkeletonItem}
+                />
+              ))}
+            </View>
+          </>
+        ) : (
+          <>
         {/* ── 학생 정보 카드 ── */}
         {userInfo ? (
           <ProfileCard
@@ -394,7 +484,9 @@ const MyPage = ({ navigation }) => {
                     timetable={timetable}
                     timetableCacheKey={timetableCacheKey}
                     onNavigateToEdit={handleNavigateToTimetableCellEdit}
-                    onResetPress={handleResetTimetable}
+                    onPeriodSettingsPress={() =>
+                      navigation.navigate('PeriodTimeSettings')
+                    }
                     colorSeed={colorSeed}
                   />
                 </GuideFocusTarget>
@@ -426,6 +518,16 @@ const MyPage = ({ navigation }) => {
             title="클린 센터"
             subtitle="내 신고 처리 현황과 제한 내역을 확인해요"
             onPress={() => navigation.navigate('HiddenPostsAppeals')}
+          />
+          <MenuItem
+            icon="person-add-outline"
+            title="친구 초대하기"
+            onPress={handleInviteFriends}
+          />
+          <MenuItem
+            icon="ribbon-outline"
+            title="배지 관리"
+            onPress={() => navigation.navigate('BadgeManage')}
           />
           <MenuItem
             icon="settings-outline"
@@ -463,88 +565,9 @@ const MyPage = ({ navigation }) => {
         </View>
 
         <View style={styles.bottomPadding} />
+          </>
+        )}
       </ScrollView>
-
-      <AppPopupModal
-        visible={showResetTimetableModal}
-        onClose={() => setShowResetTimetableModal(false)}
-        dismissOnBackdrop={false}
-      >
-        <Text
-          style={{
-            fontSize: 18,
-            color: colors.textPrimary,
-            fontWeight: '700',
-            textAlign: 'center',
-            marginBottom: 10,
-          }}
-        >
-          시간표 삭제
-        </Text>
-        <Text
-          style={{
-            fontSize: 14,
-            color: colors.textSecondary,
-            textAlign: 'center',
-            lineHeight: 22,
-            marginBottom: 16,
-          }}
-        >
-          시간표를 모두 지우고 초기화할까요?
-        </Text>
-        <View style={timetableModalStyles.timetableResetModalActions}>
-          <TouchableOpacity
-            style={[
-              timetableModalStyles.timetableResetModalCancel,
-              {
-                height: 42,
-                borderRadius: 10,
-                backgroundColor: colors.textLight5,
-                alignItems: 'center',
-                justifyContent: 'center',
-              },
-            ]}
-            onPress={() => setShowResetTimetableModal(false)}
-            activeOpacity={0.85}
-          >
-            <Text
-              style={[
-                timetableModalStyles.timetableResetModalCancelText,
-                {
-                  fontSize: 14,
-                  fontWeight: '700',
-                  color: colors.textSecondary,
-                },
-              ]}
-            >
-              취소
-            </Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[
-              timetableModalStyles.timetableResetModalDelete,
-              {
-                height: 42,
-                borderRadius: 10,
-                backgroundColor: colors.primary,
-                alignItems: 'center',
-                justifyContent: 'center',
-              },
-            ]}
-            onPress={performResetTimetable}
-            activeOpacity={0.85}
-          >
-            <Text
-              style={[
-                timetableModalStyles.timetableResetModalDeleteText,
-                { fontSize: 14, fontWeight: '700', color: colors.textWhite },
-              ]}
-            >
-              삭제
-            </Text>
-          </TouchableOpacity>
-        </View>
-      </AppPopupModal>
     </View>
   );
 };

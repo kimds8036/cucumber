@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo, useRef, useState } from 'react';
+import React, { Fragment, useCallback, useMemo, useRef, useState } from 'react';
 import {
   View,
   Text,
@@ -12,7 +12,6 @@ import {
   alertGallerySaveFailure,
 } from '../utils/saveImageToGallery';
 import AppPopupModal from '../components/common/AppPopupModal';
-import AntDesign from '@expo/vector-icons/AntDesign';
 import Feather from '@expo/vector-icons/Feather';
 import { colors } from '../styles/colors';
 import { TIMETABLE_SUBJECT_COLORS } from '../styles/colors';
@@ -40,7 +39,7 @@ const TimetableView = ({
   timetable,
   timetableCacheKey,
   onNavigateToEdit,
-  onResetPress,
+  onPeriodSettingsPress,
   colorSeed = 0,
 }) => {
   const { width } = useWindowDimensions();
@@ -148,33 +147,40 @@ const TimetableView = ({
             </View>
 
             {periods.map((period) => (
-              <View key={period} style={styles.row}>
-                <View style={styles.periodCell}>
-                  <Text style={styles.periodText}>{period}</Text>
+              <Fragment key={period}>
+                {period === 5 ? (
+                  <View style={styles.lunchRow}>
+                    <Text style={styles.lunchText}>점심시간</Text>
+                  </View>
+                ) : null}
+                <View style={styles.row}>
+                  <View style={styles.periodCell}>
+                    <Text style={styles.periodText}>{period}</Text>
+                  </View>
+                  {DAYS.map((day) => {
+                    const content = getCellContent(day, period);
+                    const cellStyle = [
+                      styles.classCell,
+                      content ? styles.classCellFilled : null,
+                      content ? { backgroundColor: getCellColor(content) } : null,
+                    ];
+                    return (
+                      <View key={`${day}-${period}`} style={cellStyle}>
+                        <Text
+                          style={[
+                            styles.classCellText,
+                            content ? styles.classCellTextFilled : null,
+                          ]}
+                          lineBreakMode="wordWrapping"
+                          lineBreakStrategyIOS="hangul-word"
+                        >
+                          {content}
+                        </Text>
+                      </View>
+                    );
+                  })}
                 </View>
-                {DAYS.map((day) => {
-                  const content = getCellContent(day, period);
-                  const cellStyle = [
-                    styles.classCell,
-                    content ? styles.classCellFilled : null,
-                    content ? { backgroundColor: getCellColor(content) } : null,
-                  ];
-                  return (
-                    <View key={`${day}-${period}`} style={cellStyle}>
-                      <Text
-                        style={[
-                          styles.classCellText,
-                          content ? styles.classCellTextFilled : null,
-                        ]}
-                        lineBreakMode="wordWrapping"
-                        lineBreakStrategyIOS="hangul-word"
-                      >
-                        {content}
-                      </Text>
-                    </View>
-                  );
-                })}
-              </View>
+              </Fragment>
             ))}
           </ViewShot>
 
@@ -183,11 +189,11 @@ const TimetableView = ({
               <View style={styles.mergedFooterActionRow}>
                 <TouchableOpacity
                   style={styles.refreshButton}
-                  onPress={onResetPress}
+                  onPress={onPeriodSettingsPress}
                   activeOpacity={0.7}
                 >
-                  <AntDesign
-                    name="reload"
+                  <Feather
+                    name="settings"
                     size={16}
                     color={styles.footerResetLabel.color}
                   />

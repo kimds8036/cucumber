@@ -5,6 +5,7 @@ import Entypo from '@expo/vector-icons/Entypo';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { colors, fonts } from '../../../styles/colors';
 import DistanceBadge from '../../../components/DistanceBadge';
+import EquippedBadge from '../../../components/EquippedBadge';
 
 export default function BoardPostContent({
   post,
@@ -33,6 +34,11 @@ export default function BoardPostContent({
           <Text style={styles.detailAuthorAnonymous} numberOfLines={1}>
             {post.author}
           </Text>
+          <EquippedBadge
+            badge={post.equippedBadge}
+            size={normalize(13)}
+            style={{ marginLeft: normalize(3) }}
+          />
           <Text style={styles.detailDot}>•</Text>
           <Text style={styles.detailTime} numberOfLines={1}>
             {post.time}

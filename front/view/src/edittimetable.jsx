@@ -5,7 +5,6 @@ import React, {
   useMemo,
   useRef,
 } from 'react';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
   View,
   Text,
@@ -42,6 +41,7 @@ import {
   getEditTimetableKeyboardVerticalOffset,
 } from '../../src/screens/timetable/timetable.style';
 import { getMaxPeriodFromTimetableKeys } from '../../src/screens/timetable/periodUtils';
+import { saveTimetableLocalAndSync } from '../../utils/timetableSync';
 
 /** 빈 시간표일 때 격자에 보이는 최소 행 수 (1교시~여기까지) */
 const EDIT_TS_GRID_INITIAL_MIN = 10;
@@ -276,19 +276,27 @@ const EditTimetable = ({ navigation, route }) => {
       maxPeriodCount,
       timetable,
     );
+
+    // 최초 등록(returnToMypage)이고 과목이 하나라도 있으면 저장 전 교시 시간 설정으로
+    const hasAnySubject = Object.values(timetableToSave || {}).some(
+      (v) => String(v ?? '').trim().length > 0,
+    );
+    if (returnToMypage && timetableCacheKey && hasAnySubject) {
+      navigation.navigate('PeriodTimeSetup', {
+        pendingTimetable: timetableToSave,
+        sourceTimetable: timetableToSave,
+        timetableCacheKey,
+        suggestedPeriodCount: getMaxPeriodFromTimetableKeys(timetableToSave, 7),
+      });
+      return;
+    }
+
     try {
       if (onSave) {
         onSave(timetableToSave);
       }
       if (timetableCacheKey) {
-        await AsyncStorage.setItem(
-          timetableCacheKey,
-          JSON.stringify({
-            ts: Date.now(),
-            timetable: timetableToSave,
-            clearedByUser: false,
-          }),
-        );
+        await saveTimetableLocalAndSync(timetableCacheKey, timetableToSave);
       }
       setTimetable(timetableToSave);
     } catch (error) {

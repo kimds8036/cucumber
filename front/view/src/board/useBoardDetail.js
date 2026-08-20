@@ -3,7 +3,7 @@ import { Alert, Share } from 'react-native';
 import { api } from '../../../utils/api';
 import { normalizeTagsFromApi } from '../../../utils/normalizePostTags';
 import { invalidateProfileCountsCache } from '../../../utils/profileCountsCache';
-import { buildPostShareContent } from '../../../utils/shareLinks';
+import { equippedBadgeFromApiRow } from '../../../constants/badges';
 
 function formatTimeAgo(createdAt) {
   if (!createdAt) return '';
@@ -39,6 +39,7 @@ function buildTree(comments, postAuthorId, currentUserId) {
       id: c.id,
       userId: c.user_id,
       authorLabel: isPostAuthor ? '작성자' : `익명 ${c.anonymous_index}`,
+      equippedBadge: equippedBadgeFromApiRow(c),
       isWriter: isPostAuthor,
       isMyComment: currentUserId != null && c.user_id === currentUserId,
       isPinned: Boolean(c.is_pinned),
@@ -166,6 +167,7 @@ export function useBoardDetail({
         setPost({
           id: data.id,
           author: '익명',
+          equippedBadge: equippedBadgeFromApiRow(data),
           time: formatTimeAgo(data.created_at),
           location: data.location ?? '',
           content: data.content,

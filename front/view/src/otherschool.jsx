@@ -17,6 +17,11 @@ import { createOurSchoolStyles } from '../../styles/school.style';
 import { createOtherSchoolStyles } from '../../styles/otherschool.style';
 import { api } from '../../utils/api';
 import { formatStudentCount } from '../../utils/formatStudentCount';
+import {
+  addDaysToYmd,
+  buildRollingMealSlots,
+  getKstYmd,
+} from '../../utils/mealRollingSlots';
 import StudyGrassMap from '../../components/studygrassmap';
 import Skeleton from '../../components/common/Skeleton';
 const OtherSchoolScreen = ({ route, navigation }) => {
@@ -43,7 +48,7 @@ const OtherSchoolScreen = ({ route, navigation }) => {
   });
   const [loading, setLoading] = useState(false);
   const [mealLoading, setMealLoading] = useState(false);
-  const [nextMeals, setNextMeals] = useState([]);
+  const [mealsByDate, setMealsByDate] = useState({});
   const [error, setError] = useState(null);
   const [selectedMealSlot, setSelectedMealSlot] = useState(null);
   const [grassDays, setGrassDays] = useState([]);
@@ -107,19 +112,24 @@ const OtherSchoolScreen = ({ route, navigation }) => {
     let mounted = true;
     const fetchMeals = async () => {
       if (!routeSchoolId) {
-        setNextMeals([]);
+        setMealsByDate({});
         return;
       }
       try {
         setMealLoading(true);
-        const res = await api.get(`/api/schools/${routeSchoolId}/meals/next`, {
-          params: { count: 3 },
+        const todayYmd = getKstYmd();
+        const toYmd = addDaysToYmd(todayYmd, 21);
+        const res = await api.get(`/api/schools/${routeSchoolId}/meals/calendar`, {
+          params: { fromYmd: todayYmd, toYmd },
         });
         if (!mounted) return;
-        const rows = res.data?.data?.meals || [];
-        setNextMeals(Array.isArray(rows) ? rows : []);
+        const next =
+          res.data?.data?.mealsByDate && typeof res.data.data.mealsByDate === 'object'
+            ? res.data.data.mealsByDate
+            : {};
+        setMealsByDate(next);
       } catch (e) {
-        if (mounted) setNextMeals([]);
+        if (mounted) setMealsByDate({});
       } finally {
         if (mounted) setMealLoading(false);
       }
@@ -160,40 +170,24 @@ const OtherSchoolScreen = ({ route, navigation }) => {
     };
   }, [routeSchoolId]);
 
-  const mealTypeLabel = {
-    breakfast: '조식',
-    lunch: '중식',
-    dinner: '석식',
-  };
-
-  const mealSlotsRaw = nextMeals.map((m) => {
-    const ymd = String(m.ymd || '');
-    return {
-      ymd,
-      mealType: mealTypeLabel[m.mealType] || '급식',
-      menus: Array.isArray(m.menus) ? m.menus : [],
-    };
-  });
-  const mealSlots = [...mealSlotsRaw];
-  while (mealSlots.length < 3) {
-    mealSlots.push({ ymd: '', mealType: '급식', menus: [] });
-  }
-  const weekdayLabels = ['일', '월', '화', '수', '목', '금', '토'];
+  const mealSlotsResult = useMemo(
+    () => buildRollingMealSlots(mealsByDate),
+    [mealsByDate],
+  );
   const getDayBadge = (ymd) => {
     if (!/^\d{8}$/.test(String(ymd || ''))) return '-';
-    const date = new Date(
-      Number(ymd.slice(0, 4)),
-      Number(ymd.slice(4, 6)) - 1,
-      Number(ymd.slice(6, 8)),
-    );
-    return `${weekdayLabels[date.getDay()]}`;
+    return `${Number(String(ymd).slice(6, 8))}일`;
+  };
+  const getMealSlotLabel = (slot) => {
+    if (!slot || slot.isPlaceholder) return '급식';
+    return slot.mealType || '급식';
   };
 
   const grassTitle = `${schoolInfo.name || routeName || '학교'} 공부 잔디밭`;
   const showInitialSkeleton =
     loading &&
     !schoolInfo.location &&
-    nextMeals.length === 0 &&
+    Object.keys(mealsByDate).length === 0 &&
     grassDays.length === 0;
 
   if (showInitialSkeleton) {
@@ -381,9 +375,9 @@ const OtherSchoolScreen = ({ route, navigation }) => {
               </TouchableOpacity>
             </View>
 
-            <View style={styles.mealSlotsRow}>
-              {mealLoading
-                ? [0, 1, 2].map((idx) => (
+            {mealLoading ? (
+              <View style={styles.mealSlotsRow}>
+                {[0, 1, 2].map((idx) => (
                     <View
                       key={`meal-skeleton-${idx}`}
                       style={[
@@ -432,13 +426,37 @@ const OtherSchoolScreen = ({ route, navigation }) => {
                         </View>
                       </View>
                     </View>
-                  ))
-                : mealSlots.map((slot, index) => (
+                  ))}
+              </View>
+            ) : mealSlotsResult.mode === 'slots' ? (
+              <View style={styles.mealSlotsRow}>
+                {mealSlotsResult.slots.map((slot, index) =>
+                  slot.type === 'vacation' ? (
+                    <View
+                      key={`vacation-${index}`}
+                      style={[
+                        styles.mealSlot,
+                        index === mealSlotsResult.slots.length - 1 &&
+                          styles.mealSlotLast,
+                      ]}
+                    >
+                      <View
+                        style={[styles.mealCard, { minHeight: normalize(96) }]}
+                      >
+                        <View style={styles.mealSlotHeader}>
+                          <View style={styles.mealSlotTitleRow}>
+                            <Text style={styles.mealSlotTitle}>방학</Text>
+                          </View>
+                        </View>
+                      </View>
+                    </View>
+                  ) : (
                     <View
                       key={`${slot.ymd}-${slot.mealType}-${index}`}
                       style={[
                         styles.mealSlot,
-                        index === mealSlots.length - 1 && styles.mealSlotLast,
+                        index === mealSlotsResult.slots.length - 1 &&
+                          styles.mealSlotLast,
                       ]}
                     >
                       <TouchableOpacity
@@ -455,14 +473,16 @@ const OtherSchoolScreen = ({ route, navigation }) => {
                           <View style={styles.mealSlotHeader}>
                             <View style={styles.mealSlotTitleRow}>
                               <Text style={styles.mealSlotTitle}>
-                                {slot.mealType}
+                                {getMealSlotLabel(slot)}
                               </Text>
                             </View>
-                            <View style={styles.mealSlotBadge}>
-                              <Text style={styles.mealSlotBadgeText}>
-                                {getDayBadge(slot.ymd)}
-                              </Text>
-                            </View>
+                            {/^\d{8}$/.test(String(slot.ymd || '')) ? (
+                              <View style={styles.mealSlotBadge}>
+                                <Text style={styles.mealSlotBadgeText}>
+                                  {getDayBadge(slot.ymd)}
+                                </Text>
+                              </View>
+                            ) : null}
                           </View>
 
                           <View style={styles.mealSlotMenus}>
@@ -485,8 +505,18 @@ const OtherSchoolScreen = ({ route, navigation }) => {
                         </View>
                       </TouchableOpacity>
                     </View>
-                  ))}
-            </View>
+                  ),
+                )}
+              </View>
+            ) : (
+              <View style={styles.mealSlotsRow}>
+                <View style={styles.mealBannerBox}>
+                  <Text style={styles.mealBannerText}>
+                    {mealSlotsResult.bannerText}
+                  </Text>
+                </View>
+              </View>
+            )}
           </View>
         </View>
 

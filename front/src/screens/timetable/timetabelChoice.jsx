@@ -8,8 +8,6 @@ import {
   useWindowDimensions,
   View,
 } from 'react-native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import AntDesign from '@expo/vector-icons/AntDesign';
 import Entypo from '@expo/vector-icons/Entypo';
 import Feather from '@expo/vector-icons/Feather';
 import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
@@ -23,9 +21,27 @@ import { getMaxPeriodFromTimetableKeys } from './periodUtils';
 import { colors, TIMETABLE_SUBJECT_COLORS } from '../../../styles/colors';
 import { api } from '../../../utils/api';
 import AppPopupModal from '../../../components/common/AppPopupModal';
+import { saveTimetableLocalAndSync } from '../../../utils/timetableSync';
 import TimetableAnomalyConfirmModal from '../../../components/timetable/TimetableAnomalyConfirmModal';
 import { fetchTimetableFromApi } from '../../../utils/timetableApi';
 import { hasTimetableAnomaly } from '../../../utils/timetableAnomaly';
+
+function navigateToPeriodTimeSetup(navigation, {
+  timetable,
+  timetableCacheKey,
+  timetableAlreadySaved = true,
+}) {
+  const maxPeriod = getMaxPeriodFromTimetableKeys(timetable, 7);
+  navigation.navigate('PeriodTimeSetup', {
+    suggestedPeriodCount: maxPeriod,
+    sourceTimetable: timetable,
+    timetableCacheKey,
+    timetableAlreadySaved,
+    ...(timetableAlreadySaved
+      ? {}
+      : { pendingTimetable: timetable }),
+  });
+}
 
 const TIMETABLE_CACHE_KEY = '@mypage_timetable_cache_v1';
 
@@ -45,14 +61,7 @@ const getSubjectColorIndex = (subject) => {
 };
 
 async function saveTimetableToCache(cacheKey, timetable) {
-  await AsyncStorage.setItem(
-    cacheKey,
-    JSON.stringify({
-      ts: Date.now(),
-      timetable,
-      clearedByUser: false,
-    }),
-  );
+  await saveTimetableLocalAndSync(cacheKey, timetable);
 }
 
 function hasSubjectList(subjects) {
@@ -212,6 +221,7 @@ export default function TimetabelChoice({ navigation, route }) {
   const [previewTimetable, setPreviewTimetable] = useState({});
   const [previewSubjects, setPreviewSubjects] = useState([]);
   const [previewLoading, setPreviewLoading] = useState(true);
+  const [lastAutoSavedTimetable, setLastAutoSavedTimetable] = useState(null);
   const scopedTimetableCacheKey = useMemo(
     () => route?.params?.timetableCacheKey || TIMETABLE_CACHE_KEY,
     [route?.params?.timetableCacheKey],
@@ -267,6 +277,7 @@ export default function TimetabelChoice({ navigation, route }) {
       }
 
       await saveTimetableToCache(scopedTimetableCacheKey, tt);
+      setLastAutoSavedTimetable(tt);
       setShowAutoAddedModal(true);
     } catch (e) {
       console.warn(
@@ -313,7 +324,11 @@ export default function TimetabelChoice({ navigation, route }) {
     try {
       await saveTimetableToCache(scopedTimetableCacheKey, tt);
       dismissAnomalyModal();
-      navigation.navigate('Main', { initialTab: 'mypage' });
+      navigateToPeriodTimeSetup(navigation, {
+        timetable: tt,
+        timetableCacheKey: scopedTimetableCacheKey,
+        timetableAlreadySaved: true,
+      });
     } catch (e) {
       console.warn('[TimetabelChoice] 시간표 캐시 저장 실패:', e);
       Alert.alert('저장 실패', '시간표 저장 중 오류가 발생했습니다.');
@@ -413,8 +428,18 @@ export default function TimetabelChoice({ navigation, route }) {
 
   const handleConfirmAutoAdded = useCallback(() => {
     setShowAutoAddedModal(false);
-    navigation.navigate('Main', { initialTab: 'mypage' });
-  }, [navigation]);
+    const tt = lastAutoSavedTimetable || previewTimetable;
+    navigateToPeriodTimeSetup(navigation, {
+      timetable: tt,
+      timetableCacheKey: scopedTimetableCacheKey,
+      timetableAlreadySaved: true,
+    });
+  }, [
+    navigation,
+    lastAutoSavedTimetable,
+    previewTimetable,
+    scopedTimetableCacheKey,
+  ]);
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>

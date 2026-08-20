@@ -3,6 +3,7 @@ import { haversineMeters } from '../utils/geo.js';
 import { getKstNow, formatKstDateYmd } from '../services/reverification.service.js';
 import { getNowForDB } from '../utils/dateUtils.js';
 import { getCommuteWindowBlockReason } from '../utils/commuteCalendar.js';
+import { evaluateSchoolDayForSchool } from './schoolTerms.service.js';
 
 function parseHmToMinutes(hm, fallbackMinutes) {
   const m = String(hm || '').trim().match(/^(\d{1,2}):(\d{2})$/);
@@ -54,6 +55,8 @@ export async function checkInAttendance({ userId, latitude, longitude }) {
       WEEKEND: '주말에는 등교 체크를 할 수 없습니다.',
       VACATION: '방학 기간에는 등교 체크를 할 수 없습니다.',
       HOLIDAY: '공휴일에는 등교 체크를 할 수 없습니다.',
+      CLOSURE: '휴업일에는 등교 체크를 할 수 없습니다.',
+      NO_TERM: '학사일정이 확인되지 않아 등교 체크를 할 수 없습니다.',
       OUTSIDE_WINDOW: '등교 가능 시간이 아닙니다.',
     };
     return {
@@ -80,6 +83,25 @@ export async function checkInAttendance({ userId, latitude, longitude }) {
   const user = users[0];
   const schoolLat = user.latitude != null ? Number(user.latitude) : null;
   const schoolLng = user.longitude != null ? Number(user.longitude) : null;
+
+  const todayYmd = formatKstDateYmd();
+  const schoolDay = await evaluateSchoolDayForSchool(user.school_id, todayYmd);
+  if (!schoolDay.schoolDay) {
+    const messages = {
+      WEEKEND: '주말에는 등교 체크를 할 수 없습니다.',
+      VACATION: '방학 기간에는 등교 체크를 할 수 없습니다.',
+      HOLIDAY: '공휴일에는 등교 체크를 할 수 없습니다.',
+      CLOSURE: '휴업일에는 등교 체크를 할 수 없습니다.',
+      NO_TERM: '학사일정이 확인되지 않아 등교 체크를 할 수 없습니다.',
+      OUTSIDE_WINDOW: '등교 가능 시간이 아닙니다.',
+    };
+    return {
+      ok: false,
+      status: 400,
+      code: 'OUTSIDE_WINDOW',
+      message: messages[schoolDay.reason] || messages.VACATION,
+    };
+  }
 
   if (schoolLat == null || schoolLng == null || !Number.isFinite(schoolLat) || !Number.isFinite(schoolLng)) {
     return {
@@ -149,4 +171,53 @@ export async function getMyAttendances(userId, month) {
   );
 
   return { ok: true, data: { month: m, attendances: rows } };
+}
+
+export async function getAttendanceStatus(userId) {
+  const window = isWithinAttendanceWindow();
+  const todayYmd = formatKstDateYmd();
+
+  const [users] = await pool.execute(
+    `SELECT u.school_id
+     FROM users u
+     WHERE u.id = ? AND u.is_deleted = FALSE
+     LIMIT 1`,
+    [userId],
+  );
+  if (!users.length) {
+    return { ok: false, status: 404, message: '사용자를 찾을 수 없습니다.' };
+  }
+
+  const schoolId = users[0].school_id;
+  const schoolEval = schoolId
+    ? await evaluateSchoolDayForSchool(schoolId, todayYmd)
+    : { schoolDay: false, reason: 'NO_TERM' };
+
+  const [rows] = await pool.execute(
+    `SELECT attendance_date FROM attendances
+     WHERE user_id = ? AND attendance_date = ? LIMIT 1`,
+    [userId, todayYmd],
+  );
+  const alreadyCheckedIn = rows.length > 0;
+  const windowOk = window.ok;
+  const schoolDay = Boolean(schoolEval.schoolDay);
+  const canShowBanner = schoolDay && windowOk && !alreadyCheckedIn;
+
+  return {
+    ok: true,
+    data: {
+      schoolDay,
+      windowOk,
+      alreadyCheckedIn,
+      canShowBanner,
+      reason: !schoolDay
+        ? schoolEval.reason
+        : !windowOk
+          ? window.reason
+          : alreadyCheckedIn
+            ? 'ALREADY_CHECKED_IN'
+            : null,
+      attendanceDate: todayYmd,
+    },
+  };
 }

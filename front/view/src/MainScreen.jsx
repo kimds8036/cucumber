@@ -8,19 +8,33 @@ import { colors } from '../../styles/colors';
 import Skeleton from '../../components/common/Skeleton';
 import { trackScreenView } from '../../utils/analytics';
 import { MAIN_TAB_TO_ANALYTICS_SCREEN } from '../../constants/analyticsScreens';
-
-const MAIN_TABS = new Set(['board', 'message', 'school', 'timer', 'mypage']);
 import { MainTabNavigatorContainer } from './MainTabNavigator';
 
+const MAIN_TABS = new Set(['board', 'message', 'school', 'timer', 'mypage']);
+
+function hasDeepLinkTab(route) {
+  const tab = route?.params?.screen ?? route?.params?.initialTab;
+  return MAIN_TABS.has(tab);
+}
+
 const MainScreen = ({ navigation, route }) => {
-  const [activeTab, setActiveTab] = useState('board');
-  const [screenReady, setScreenReady] = useState(false);
+  const deepLinkReady = hasDeepLinkTab(route);
+  const [activeTab, setActiveTab] = useState(
+    deepLinkReady ? route.params.screen || route.params.initialTab : 'board',
+  );
+  // 위젯 딥링크가 있으면 탭을 즉시 마운트해 linking state가 board로 덮이지 않게 함
+  const [screenReady, setScreenReady] = useState(deepLinkReady);
   const [lastBackPressedAt, setLastBackPressedAt] = useState(0);
 
   useEffect(() => {
+    if (hasDeepLinkTab(route)) {
+      setScreenReady(true);
+      return undefined;
+    }
+    if (screenReady) return undefined;
     const timer = setTimeout(() => setScreenReady(true), 180);
     return () => clearTimeout(timer);
-  }, []);
+  }, [route?.params?.screen, route?.params?.initialTab, screenReady, route]);
 
   useEffect(() => {
     const screen = MAIN_TAB_TO_ANALYTICS_SCREEN[activeTab];

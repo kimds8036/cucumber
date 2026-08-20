@@ -27,6 +27,7 @@ import { createBoardStyles, getNormalize } from '../../styles/board.style';
 import FontAwesome5 from '@expo/vector-icons/FontAwesome5';
 import { api } from '../../utils/api';
 import { normalizeTagsFromApi } from '../../utils/normalizePostTags';
+import { equippedBadgeFromApiRow } from '../../constants/badges';
 import BoardPostCard from '../../components/Boardpostcard';
 import AdPlaceholder from '../../src/screens/ad/AdPlaceholder';
 import TopAdBanner from '../../components/ads/TopAdBanner';
@@ -305,6 +306,7 @@ export function BoardAllContent({ navigation, posts }) {
           return {
             id: p.id,
             author: '익명',
+            equippedBadge: equippedBadgeFromApiRow(p),
             time: formatTimeAgo(p.created_at),
             location: '',
             content: p.content,
@@ -728,7 +730,7 @@ export function BoardAllContent({ navigation, posts }) {
         animationType="fade"
         onRequestClose={closeFloatingMenu}
       >
-        <TouchableWithoutFeedback onPress={closeFloatingMenu}>
+        <TouchableWithoutFeedback>
           <View
             style={{
               flex: 1,
