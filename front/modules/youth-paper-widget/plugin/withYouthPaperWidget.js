@@ -21,7 +21,7 @@ function ensureDirSync(dirPath) {
 
 function copyFileSync(src, dest) {
   ensureDirSync(path.dirname(dest));
-  fs.copyFileSync(src, dest);
+  fs.cpSync(src, dest, { recursive: true });
 }
 
 function withAppGroupEntitlement(config) {
@@ -165,18 +165,32 @@ function withAppDelegateBgRegister(config) {
       if (!target || !target.endsWith('.swift')) return cfg;
 
       let src = fs.readFileSync(target, 'utf8');
-      if (src.includes('WidgetBackgroundScheduler.register')) return cfg;
+      let ensureImport = (s) => {
+        if (s.includes('import YouthPaperWidget')) return s;
+        // Expo AppDelegate 상단 import 블록 뒤에 모듈 import 추가
+        if (/^import\s+/m.test(s)) {
+          return s.replace(/^(?:import\s+.+\n)+/, (block) => `${block}import YouthPaperWidget\n`);
+        }
+        return `import YouthPaperWidget\n${s}`;
+      };
+
+      if (src.includes('WidgetBackgroundScheduler.register')) {
+        const next = ensureImport(src);
+        if (next !== src) fs.writeFileSync(target, next);
+        return cfg;
+      }
 
       if (!src.includes('application(') || !src.includes('didFinishLaunchingWithOptions')) {
         return cfg;
       }
 
       // didFinishLaunching 본문 시작 직후에 register 삽입
-      src = src.replace(
+      let next = src.replace(
         /(didFinishLaunchingWithOptions[^{]*\{\s*)/,
         `$1\n    WidgetBackgroundScheduler.register()\n    WidgetBackgroundScheduler.scheduleAll()\n`,
       );
-      fs.writeFileSync(target, src);
+      next = ensureImport(next);
+      fs.writeFileSync(target, next);
       return cfg;
     },
   ]);
