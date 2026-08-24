@@ -24,6 +24,8 @@
 !front/modules/youth-paper-widget/android/**
 front/modules/youth-paper-widget/android/build/
 front/modules/youth-paper-widget/android/build/**
+front/modules/youth-paper-widget/android/.gradle/
+front/modules/youth-paper-widget/android/.gradle/**
 **/.kotlin/
 **/*.jks
 **/*.p8
