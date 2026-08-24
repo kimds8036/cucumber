@@ -57,9 +57,14 @@ object TimetableLogic {
     val hasPeriodSettings = configs.isNotEmpty()
     val payload = WidgetPayload.parseTimetable(WidgetStore.read(context, WidgetStore.TIMETABLE_KEY))
     val hasTimetablePayload = payload != null && payload.empty != true
-    val dayLabel = WidgetPayload.kstDayLabel(day)
-    val dayData = payload?.week?.firstOrNull { it.dayLabel == dayLabel }
-      ?: payload?.week?.firstOrNull { it.dayLabel == payload.todayDayLabel }
+    val isWeekend = WidgetPayload.isWeekend(day)
+    val dayData = if (isWeekend) {
+      null
+    } else {
+      val dayLabel = WidgetPayload.kstDayLabel(day)
+      payload?.week?.firstOrNull { it.dayLabel == dayLabel }
+        ?: payload?.week?.firstOrNull { it.dayLabel == payload.todayDayLabel }
+    }
     val subjectsByPeriod = (dayData?.periods ?: emptyList()).associate { it.period to it.subject }
     val colorMap = WidgetColors.buildSubjectColorMap(payload?.week ?: emptyList())
     val dayHasSubjects = subjectsByPeriod.values.any { it.trim().isNotEmpty() }
@@ -175,10 +180,16 @@ object TimetableLogic {
         date, dayLabel, "확인 필요", null, "시간표를 확인해 주세요",
         null, periods, null, status, false, weekly,
       )
-      TimetableStatus.NoClass -> TimetableEntry(
-        date, dayLabel, "수업 없음", null, "오늘은 수업이 없습니다",
-        null, emptyList(), null, status, false, weekly,
-      )
+      TimetableStatus.NoClass -> {
+        val weekend = WidgetPayload.isWeekend(day)
+        TimetableEntry(
+          date, dayLabel,
+          if (weekend) "주말이에요" else "수업 없음",
+          null,
+          if (weekend) "주말이에요" else "오늘은 수업이 없습니다",
+          null, emptyList(), null, status, false, weekly,
+        )
+      }
       TimetableStatus.BeforeSchool -> {
         val first = periods.firstOrNull { it.subjectName.isNotEmpty() } ?: periods.firstOrNull()
         val subject = when {
