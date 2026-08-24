@@ -21,7 +21,6 @@ import { colors } from '../../styles/colors';
 import { getNormalize } from '../../styles/frame.style';
 import { createNotificationSettingsStyles } from '../../styles/mypage.style';
 import { api } from '../../utils/api';
-import { syncTimetableWidgetFromFlat } from '../../utils/widget';
 import {
   defaultPeriodTimes,
   loadPeriodTimeSettings,
@@ -31,6 +30,7 @@ import {
   minutesToHhmm,
   hhmmToMinutes,
 } from '../../utils/widget/periodTimeSettings.js';
+import { clearTimetableLocalAndSync } from '../../utils/timetableSync';
 
 const TIMETABLE_CACHE_KEY = '@mypage_timetable_cache_v1';
 const TIMETABLE_CACHE_KEY_PREFIX = '@mypage_timetable_cache_v1:';
@@ -231,15 +231,7 @@ const PeriodTimeSettings = ({ navigation }) => {
   const performResetTimetable = useCallback(async () => {
     setResetting(true);
     try {
-      await AsyncStorage.setItem(
-        timetableCacheKey,
-        JSON.stringify({
-          ts: Date.now(),
-          timetable: null,
-          clearedByUser: true,
-        }),
-      );
-      await syncTimetableWidgetFromFlat(null);
+      await clearTimetableLocalAndSync(timetableCacheKey);
       setShowResetModal(false);
       navigation.goBack();
     } catch (e) {
