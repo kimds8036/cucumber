@@ -42,6 +42,25 @@ export async function saveTimetableLocalAndSync(cacheKey, timetable) {
 }
 
 /**
+ * 시간표 초기화 — 로컬·위젯·서버 override 모두 비움.
+ * @param {string} cacheKey
+ */
+export async function clearTimetableLocalAndSync(cacheKey) {
+  const ts = Date.now();
+  await AsyncStorage.setItem(
+    cacheKey,
+    JSON.stringify({
+      ts,
+      timetable: null,
+      clearedByUser: true,
+    }),
+  );
+  await syncTimetableWidgetFromFlat(null).catch(() => {});
+  await pushTimetableToServer({});
+  return ts;
+}
+
+/**
  * 서버 편집본이 더 최신이면 로컬·위젯 갱신. 로컬만 있으면 서버로 업로드.
  * @param {string} cacheKey
  * @returns {Promise<Record<string, string>|null>}
@@ -61,12 +80,20 @@ export async function hydrateTimetableFromServer(cacheKey) {
       server?.timetable && Object.keys(server.timetable).length > 0;
     const localHasData =
       local?.timetable && Object.keys(local.timetable).length > 0;
+    const serverTs = server?.updatedAt
+      ? new Date(server.updatedAt).getTime()
+      : 0;
+    const localTs = Number(local?.ts || 0);
+
+    // 사용자가 초기화한 로컬이 서버보다 최신이면 복구하지 않음
+    if (local?.clearedByUser && localTs > 0 && localTs >= serverTs) {
+      if (serverHasData) {
+        pushTimetableToServer({}).catch(() => {});
+      }
+      return null;
+    }
 
     if (serverHasData) {
-      const serverTs = server.updatedAt
-        ? new Date(server.updatedAt).getTime()
-        : 0;
-      const localTs = Number(local?.ts || 0);
       if (!localHasData || serverTs >= localTs) {
         const ts = serverTs || Date.now();
         await AsyncStorage.setItem(
