@@ -153,6 +153,11 @@ object WidgetPayload {
     return "$m/$d"
   }
 
+  fun isWeekend(date: Date = Date()): Boolean {
+    val label = kstDayLabel(date)
+    return label == "토" || label == "일"
+  }
+
   fun kstDayLabel(date: Date = Date()): String {
     val cal = kstCalendar()
     cal.time = date

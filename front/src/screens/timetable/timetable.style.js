@@ -627,11 +627,18 @@ export function createTimetableChoicePreviewStyles(normalize) {
       borderBottomColor: COLORS.timetableBorder,
     },
     choicePreviewNoticeText: {
+      fontFamily: fonts.bold,
+      fontSize: fontSizes.lg,
+      color: COLORS.textPrimary,
+      textAlign: 'center',
+      lineHeight: normalize(20),
+    },
+    choicePreviewNoticeSubText: {
       fontFamily: fonts.regular,
       fontSize: fontSizes.md,
       color: COLORS.textSecondary,
       textAlign: 'center',
-      lineHeight: normalize(20),
+      lineHeight: normalize(18),
     },
     choicePreviewGrid: {
       backgroundColor: COLORS.background,
