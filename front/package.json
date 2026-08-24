@@ -21,6 +21,8 @@
     "credentials:android": "eas credentials -p android",
     "ios": "cross-env APP_ENV=development EXPO_PUBLIC_SIGNUP_TEST_MODE=false EXPO_PUBLIC_SIGNUP_ADULT_TEST_MODE=true EXPO_PUBLIC_INICIS_ENABLED=true expo run:ios",
     "ios:prod": "cross-env APP_ENV=production EXPO_PUBLIC_SIGNUP_TEST_MODE=false EXPO_PUBLIC_SIGNUP_ADULT_TEST_MODE=true EXPO_PUBLIC_INICIS_ENABLED=true expo run:ios",
+    "ios:ipa:prod": "npm run env:print:prod && cross-env APP_ENV=production NODE_ENV=production EXPO_PUBLIC_SIGNUP_TEST_MODE=false EXPO_PUBLIC_SIGNUP_ADULT_TEST_MODE=false EXPO_PUBLIC_INICIS_ENABLED=true node scripts/ios-archive-ipa.mjs",
+    "ios:ipa:upload": "npm run env:print:prod && cross-env APP_ENV=production NODE_ENV=production EXPO_PUBLIC_SIGNUP_TEST_MODE=false EXPO_PUBLIC_SIGNUP_ADULT_TEST_MODE=false EXPO_PUBLIC_INICIS_ENABLED=true node scripts/ios-archive-ipa.mjs --upload",
     "web": "expo start --web"
   },
   "dependencies": {

@@ -7,6 +7,12 @@ public class YouthPaperWidgetModule: Module {
   public func definition() -> ModuleDefinition {
     Name("YouthPaperWidget")
 
+    // AppDelegate 주입 대신 모듈 로드 시 등록 (Archive/EAS 컴파일 안전)
+    OnCreate {
+      WidgetBackgroundScheduler.register()
+      WidgetBackgroundScheduler.scheduleAll()
+    }
+
     AsyncFunction("writeMealPayload") { (json: String) in
       WidgetSharedStore.write(key: WidgetSharedStore.mealKey, value: json)
     }

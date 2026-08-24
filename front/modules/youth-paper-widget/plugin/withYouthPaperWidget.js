@@ -125,7 +125,10 @@ function withWidgetExtensionSources(config) {
   return config;
 }
 
-/** 메인 앱에서 BG 스케줄러 register 호출을 AppDelegate에 주입 */
+/**
+ * AppDelegate에 주입됐던 WidgetBackgroundScheduler 호출을 제거한다.
+ * 등록은 YouthPaperWidgetModule OnCreate 에서 수행 (컴파일/모듈 가시성 이슈 회피).
+ */
 function withAppDelegateBgRegister(config) {
   return withDangerousMod(config, [
     'ios',
@@ -134,7 +137,6 @@ function withAppDelegateBgRegister(config) {
       const appDelegate =
         IOSConfig.Paths.getAppDelegateFilePath(cfg.modRequest.projectRoot) ||
         path.join(iosRoot, 'YouthPaper', 'AppDelegate.swift');
-      // Expo prebuild 후 실제 경로 탐색
       const candidates = [
         appDelegate,
         path.join(iosRoot, 'YouthPaper', 'AppDelegate.swift'),
@@ -143,7 +145,6 @@ function withAppDelegateBgRegister(config) {
 
       let target = candidates.find((p) => fs.existsSync(p));
       if (!target) {
-        // glob-ish
         const walk = (dir) => {
           if (!fs.existsSync(dir)) return null;
           for (const ent of fs.readdirSync(dir, { withFileTypes: true })) {
@@ -165,32 +166,24 @@ function withAppDelegateBgRegister(config) {
       if (!target || !target.endsWith('.swift')) return cfg;
 
       let src = fs.readFileSync(target, 'utf8');
-      let ensureImport = (s) => {
-        if (s.includes('import YouthPaperWidget')) return s;
-        // Expo AppDelegate 상단 import 블록 뒤에 모듈 import 추가
-        if (/^import\s+/m.test(s)) {
-          return s.replace(/^(?:import\s+.+\n)+/, (block) => `${block}import YouthPaperWidget\n`);
-        }
-        return `import YouthPaperWidget\n${s}`;
-      };
-
-      if (src.includes('WidgetBackgroundScheduler.register')) {
-        const next = ensureImport(src);
-        if (next !== src) fs.writeFileSync(target, next);
+      if (
+        !src.includes('WidgetBackgroundScheduler') &&
+        !src.includes('import YouthPaperWidget')
+      ) {
         return cfg;
       }
 
-      if (!src.includes('application(') || !src.includes('didFinishLaunchingWithOptions')) {
-        return cfg;
-      }
-
-      // didFinishLaunching 본문 시작 직후에 register 삽입
-      let next = src.replace(
-        /(didFinishLaunchingWithOptions[^{]*\{\s*)/,
-        `$1\n    WidgetBackgroundScheduler.register()\n    WidgetBackgroundScheduler.scheduleAll()\n`,
-      );
-      next = ensureImport(next);
-      fs.writeFileSync(target, next);
+      let next = src
+        .replace(/^[ \t]*import YouthPaperWidget\n/gm, '')
+        .replace(
+          /^[ \t]*WidgetBackgroundScheduler\.register\(\)\n/gm,
+          '',
+        )
+        .replace(
+          /^[ \t]*WidgetBackgroundScheduler\.scheduleAll\(\)\n/gm,
+          '',
+        );
+      if (next !== src) fs.writeFileSync(target, next);
       return cfg;
     },
   ]);
@@ -339,5 +332,5 @@ function withYouthPaperWidget(config) {
 module.exports = createRunOncePlugin(
   withYouthPaperWidget,
   'withYouthPaperWidget',
-  '1.3.1',
+  '1.3.2',
 );
