@@ -159,6 +159,9 @@ function TimetablePreview({ timetable, loading }) {
                 <Text style={pv.choicePreviewNoticeText}>
                   나이스에서 제공한 시간표가 없어요.
                 </Text>
+                <Text style={pv.choicePreviewNoticeSubText}>
+                  (개학 · 방학 전후에는 학교 사정에 따라 나이스에서 시간표가 제공되지 않을 수 있어요.)
+                </Text>
               </View>
             ) : null}
             <View style={pv.choicePreviewGrid} collapsable={false}>

@@ -166,10 +166,17 @@ enum TimetableTimelineBuilder {
 
     let payload = WidgetPayloadReader.timetable()
     let hasTimetablePayload = payload != nil && payload?.empty != true
-    let dayLabel = WidgetPayloadReader.kstDayLabel(date: day)
-    let dayData =
-      payload?.week?.first(where: { $0.dayLabel == dayLabel })
-      ?? payload?.week?.first(where: { $0.dayLabel == payload?.todayDayLabel })
+    let isWeekend = WidgetPayloadReader.isWeekend(date: day)
+    let dayData: TimetableDayLite?
+    if isWeekend {
+      // 주말: 마지막 동기화 평일(todayDayLabel) fallback 금지
+      dayData = nil
+    } else {
+      let dayLabel = WidgetPayloadReader.kstDayLabel(date: day)
+      dayData =
+        payload?.week?.first(where: { $0.dayLabel == dayLabel })
+        ?? payload?.week?.first(where: { $0.dayLabel == payload?.todayDayLabel })
+    }
     let subjectsByPeriod = Dictionary(
       uniqueKeysWithValues: (dayData?.periods ?? []).map { ($0.period, $0.subject) },
     )
@@ -286,12 +293,13 @@ enum TimetableTimelineBuilder {
         weeklyPeriods: weekly,
       )
     case .noClass:
+      let weekend = WidgetPayloadReader.isWeekend(date: day)
       return TimetableEntry(
         date: date,
         dayLabel: dayLabel,
-        statusText: "수업 없음",
+        statusText: weekend ? "주말이에요" : "수업 없음",
         statusTimeRange: nil,
-        currentSubject: "오늘은 수업이 없습니다",
+        currentSubject: weekend ? "주말이에요" : "오늘은 수업이 없습니다",
         currentColorHex: nil,
         allPeriods: [],
         activePeriodNumber: nil,
