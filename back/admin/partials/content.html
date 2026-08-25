@@ -68,7 +68,7 @@
             <button type="button" class="ops-hub-card" data-ops-view="jobs">
               <span class="ops-hub-kicker">배치</span>
               <span class="ops-hub-title">크론</span>
-              <span class="ops-hub-desc">작업 이력 · 증분 커서</span>
+              <span class="ops-hub-desc">무슨 일이 도는지 · 최근 실행</span>
             </button>
             <button type="button" class="ops-hub-card" data-ops-view="terms">
               <span class="ops-hub-kicker">학사</span>
@@ -147,7 +147,10 @@
         <div class="ops-view" id="ops-view-jobs" hidden>
         <button type="button" class="btn btn-sm ops-back-btn" data-ops-back>← 모니터링 목록</button>
         <div class="section-title">크론 작업</div>
-        <p class="section-hint">최근 실행 요약입니다. school-stats 댓글 수는 평시 새 id만 보정하고, 기본 168시간마다 전체를 다시 맞춥니다.</p>
+        <p class="section-hint" id="ops-cron-catalog-hint">서버가 한국 시간으로 알아서 돌리는 일들입니다. 카드를 보면 무엇을 하는지 알 수 있어요.</p>
+        <div class="ops-cron-grid" id="ops-cron-catalog"></div>
+        <div class="section-title" style="margin-top:22px">최근 실행 기록</div>
+        <p class="section-hint">방금 돌고 끝난 것들입니다. 실패가 보이면 로그를 확인하세요.</p>
         <div class="table-wrap">
           <table>
             <thead>
@@ -162,7 +165,8 @@
             <tbody id="ops-batch-runs-tbody"></tbody>
           </table>
         </div>
-        <div class="section-title" style="margin-top:20px">증분 커서 (근무표)</div>
+        <div class="section-title" style="margin-top:20px">처리 위치 (커서)</div>
+        <p class="section-hint">어디까지 숫자를 맞춰 뒀는지입니다. 학교 통계가 한 번 돌면 생겨요.</p>
         <div class="table-wrap">
           <table>
             <thead>
