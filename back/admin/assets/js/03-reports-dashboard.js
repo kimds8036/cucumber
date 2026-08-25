@@ -69,7 +69,10 @@ async function loadDashboard() {
       if (sub) sub.textContent = t[1];
     }
     try {
-      if (view === 'jobs') await loadBatchJobsOverview();
+      if (view === 'jobs') {
+        renderCronCatalog(OPS_CRON_FALLBACK);
+        await loadBatchJobsOverview();
+      }
       if (view === 'timer') await loadTimerOps();
       if (view === 'activity') await loadActivityOps();
       if (view === 'terms') await loadOpsSchoolTerms();
@@ -308,19 +311,29 @@ async function loadDashboard() {
   }
 
   async function loadBatchJobsOverview() {
-    const { data } = await api('/batch-jobs?limit=30');
+    renderCronCatalog(OPS_CRON_FALLBACK);
+    let data = {};
+    try {
+      const res = await api('/batch-jobs?limit=30');
+      data = res?.data || {};
+    } catch (error) {
+      console.warn('[Ops] batch-jobs', error?.message || error);
+    }
     const catalog = data?.catalog || {};
     const hint = document.getElementById('ops-cron-catalog-hint');
     if (hint) {
-      hint.textContent = `${catalog.enabledHint || '서버가 알아서 도는 일들입니다.'} (시간대 ${catalog.timezone || 'Asia/Seoul'})`;
+      hint.textContent = catalog.enabledHint
+        ? `${catalog.enabledHint} (시간대 ${catalog.timezone || 'Asia/Seoul'})`
+        : '서버가 한국 시간으로 알아서 돌리는 일들입니다.';
     }
-    renderCronCatalog(catalog.jobs || []);
+    renderCronCatalog(catalog.jobs?.length ? catalog.jobs : OPS_CRON_FALLBACK);
+    const jobsMeta = catalog.jobs?.length ? catalog.jobs : OPS_CRON_FALLBACK;
     const runsBody = document.getElementById('ops-batch-runs-tbody');
     const cursorsBody = document.getElementById('ops-batch-cursors-tbody');
     const runs = data?.runs || [];
     const cursors = data?.cursors || [];
     const titleOf = (name) => {
-      const hit = (catalog.jobs || []).find((j) => j.key === name);
+      const hit = jobsMeta.find((j) => j.key === name);
       return hit ? `${hit.emoji} ${hit.title}` : name;
     };
     if (runsBody) {
@@ -360,6 +373,20 @@ async function loadDashboard() {
     if (status === 'skipped') return '건너뜀';
     return status || '-';
   }
+
+  const OPS_CRON_FALLBACK = [
+    { key: 'study-grass-aggregate', emoji: '🌱', title: '공부 잔디', when: '매시 5분', blurb: '오늘 학교에서 누가 얼마나 공부했는지 모아서 잔디·순위에 넣어요.' },
+    { key: 'trending-settle', emoji: '🔥', title: '인기글 정리', when: '10분마다', blurb: '요즘 뜨는 글·해시태그 순서를 다시 매겨요.' },
+    { key: 'school-stats', emoji: '🏫', title: '학교 통계', when: '매시 정각', blurb: '글 댓글 수를 맞춰요. 평소엔 새로 생긴 것만, 가끔 전체를 다시 세어요.' },
+    { key: 'timer-session-guard', emoji: '⏱️', title: '타이머 지킴이', when: '10분마다', blurb: '너무 오래 켜진 공부 타이머를 정리해서 시간이 이상하게 안 쌓이게 해요.' },
+    { key: 'personal-mail-return', emoji: '✉️', title: '개인 우편 반송', when: '30분마다', blurb: '받을 수 없는 개인 우편을 돌려보내요.' },
+    { key: 'reverification-guide', emoji: '🪪', title: '재인증 안내', when: '2말~3초 새벽 4시', blurb: '학년도가 바뀔 때 학생증 다시 올리라고 알려 줘요. 그 시기만 돌아요.' },
+    { key: 'admin-stats-reconcile', emoji: '📊', title: '관리자 숫자 맞춤', when: '5분마다', blurb: '대시보드에 찍히는 신고·문의 건수가 실제랑 안 어긋나게 맞춰요.' },
+    { key: 'attendance-suspicion', emoji: '🎒', title: '미등교 의심', when: '매일 새벽 3시', blurb: '등교 체크가 거의 없는 학생을 골라 관리자 등교 현황에 올려요.' },
+    { key: 'admin-retention', emoji: '🧹', title: '오래된 기록 정리', when: '일요일 새벽 5시', blurb: '너무 오래된 운영 로그를 지워서 DB가 불어나지 않게 해요.' },
+    { key: 'analytics-reconcile', emoji: '📈', title: '이용 지표 맞춤', when: '매일 새벽 4시', blurb: 'DAU/MAU 같은 이용 숫자가 Redis·DB에서 빠지지 않게 다시 맞춰요.' },
+    { key: 'school-terms-sync', emoji: '📅', title: '학기·개학 동기화', when: '월요일 새벽 4시', blurb: 'NEIS에서 개학·방학을 가져와 등교 가능 날을 판단할 수 있게 해요.' },
+  ];
 
   function renderCronCatalog(jobs) {
     const host = document.getElementById('ops-cron-catalog');

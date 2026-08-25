@@ -250,14 +250,21 @@ router.get('/batch-jobs', requireAdminApi, async (req, res) => {
       '../services/batchJobRun.service.js'
     );
     const { getCronJobCatalogForOps } = await import('../constants/cronJobsCatalog.js');
-    const limit = Number(req.query.limit || 40);
-    const [runs, cursors, latestRows] = await Promise.all([
-      listRecentBatchRuns({ limit }),
-      listBatchCursors(),
-      listLatestBatchRunByJobName(),
-    ]);
-    const latestByJob = Object.fromEntries((latestRows || []).map((r) => [r.job_name, r]));
     const catalog = getCronJobCatalogForOps();
+    const limit = Number(req.query.limit || 40);
+    let runs = [];
+    let cursors = [];
+    let latestRows = [];
+    try {
+      [runs, cursors, latestRows] = await Promise.all([
+        listRecentBatchRuns({ limit }),
+        listBatchCursors(),
+        listLatestBatchRunByJobName(),
+      ]);
+    } catch (inner) {
+      console.warn('크론 이력 부분 조회 실패:', inner?.message || inner);
+    }
+    const latestByJob = Object.fromEntries((latestRows || []).map((r) => [r.job_name, r]));
     catalog.jobs = catalog.jobs.map((j) => ({
       ...j,
       lastRun: latestByJob[j.key] || null,

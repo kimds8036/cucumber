@@ -75,7 +75,7 @@ export async function listBatchCursors() {
 
 export async function listLatestBatchRunByJobName() {
   try {
-    const [rows] = await pool.execute(
+    const [rows] = await pool.query(
       `SELECT r.id, r.job_name, r.status, r.started_at, r.finished_at, r.elapsed_ms, r.summary_json, r.error_message
        FROM batch_job_runs r
        INNER JOIN (
@@ -87,6 +87,7 @@ export async function listLatestBatchRunByJobName() {
     return rows;
   } catch (err) {
     if (err?.code === 'ER_NO_SUCH_TABLE') return [];
-    throw err;
+    console.warn('[BatchJob] latest runs query failed', err?.message || err);
+    return [];
   }
 }
