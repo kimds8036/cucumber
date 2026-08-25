@@ -58,6 +58,7 @@ async function loadDashboard() {
       timer: ['타이머', '공부 시간 · 세션'],
       activity: ['앱 활동', '글 · 댓글 · 쪽지 · 우편'],
       jobs: ['크론', '작업 이력 · 커서'],
+      terms: ['등교 · 학기', '개학일 · 오늘 등교 여부'],
       reach: ['이용 · 설치', 'DAU/MAU · /get'],
     };
     const t = titles[view];
@@ -71,6 +72,7 @@ async function loadDashboard() {
       if (view === 'jobs') await loadBatchJobsOverview();
       if (view === 'timer') await loadTimerOps();
       if (view === 'activity') await loadActivityOps();
+      if (view === 'terms') await loadOpsSchoolTerms();
       if (view === 'reach') {
         await loadAnalyticsOverview();
         await loadInstallLandingStats();
@@ -81,6 +83,72 @@ async function loadDashboard() {
   }
 
   window.showOpsHub = showOpsHub;
+
+  async function loadOpsSchoolTerms() {
+    const { data } = await api('/analytics/school-terms');
+    const w = data?.window || {};
+    const s = data?.summary || {};
+    const kpis = document.getElementById('ops-terms-kpis');
+    if (kpis) {
+      kpis.innerHTML = `
+        <div class="stat-card"><div class="stat-num">${esc(data?.todayYmd || '-')}</div><div class="stat-label">오늘 (KST)</div></div>
+        <div class="stat-card ${w.ok ? 'stat-ok' : 'stat-warn'}"><div class="stat-num" style="font-size:16px">${esc(w.ok ? '시간대 안' : (w.reasonLabel || '-'))}</div><div class="stat-label">${esc(w.start || '07:00')}~${esc(w.end || '10:00')}</div></div>
+        <div class="stat-card"><div class="stat-num">${Number(s.schools || 0)}</div><div class="stat-label">가입 학교</div></div>
+        <div class="stat-card stat-ok"><div class="stat-num">${Number(s.inSessionToday || 0)}</div><div class="stat-label">오늘 학기 중</div></div>
+        <div class="stat-card"><div class="stat-num">${Number(s.schoolDayToday || 0)}</div><div class="stat-label">오늘 등교일</div></div>
+        <div class="stat-card stat-warn"><div class="stat-num">${Number(s.missingTerms || 0)}</div><div class="stat-label">학기 미적재</div></div>
+      `;
+    }
+    const hint = document.getElementById('ops-terms-window-hint');
+    if (hint) {
+      hint.textContent = w.ok
+        ? '지금은 등교 시간대입니다. 학교별 등교일이면 체크인이 가능합니다.'
+        : `지금은 체크인 시간이 아닙니다. (${w.reasonLabel || '-'}) 학기·등교일 판정은 아래 표를 보세요.`;
+    }
+    const tbody = document.getElementById('ops-terms-tbody');
+    if (!tbody) return;
+    const schools = data?.schools || [];
+    if (!schools.length) {
+      tbody.innerHTML = '<tr><td colspan="10" class="empty-row">가입자가 있는 학교가 없습니다.</td></tr>';
+      return;
+    }
+    const rows = [];
+    for (const sch of schools) {
+      const today = sch.today || {};
+      const terms = sch.terms || [];
+      if (!terms.length) {
+        rows.push(`
+          <tr>
+            <td>${esc(sch.schoolName)}</td>
+            <td>${Number(sch.userCount || 0)}</td>
+            <td colspan="4" class="txt-muted">학기 행 없음</td>
+            <td>-</td>
+            <td>${today.schoolDay ? '가능' : '불가'}</td>
+            <td>${today.checkInPossibleNow ? '가능' : '불가'}</td>
+            <td>${esc(today.reasonLabel || '-')}</td>
+          </tr>
+        `);
+        continue;
+      }
+      terms.forEach((t, i) => {
+        rows.push(`
+          <tr>
+            <td>${i === 0 ? esc(sch.schoolName) : ''}</td>
+            <td>${i === 0 ? Number(sch.userCount || 0) : ''}</td>
+            <td>${esc(t.academicYear ?? '-')}</td>
+            <td>${esc(t.semester ?? '-')}</td>
+            <td>${esc(t.openYmd || '-')}</td>
+            <td>${esc(t.closeYmd || '-')}</td>
+            <td>${t.inSessionToday ? '학기 중' : '-'}</td>
+            <td>${i === 0 ? (today.schoolDay ? '등교일' : '아님') : ''}</td>
+            <td>${i === 0 ? (today.checkInPossibleNow ? '가능' : '불가') : ''}</td>
+            <td>${i === 0 ? esc(today.reasonLabel || '-') : ''}</td>
+          </tr>
+        `);
+      });
+    }
+    tbody.innerHTML = rows.join('');
+  }
 
   function bindOpsUserInspect() {
     const btn = document.getElementById('ops-user-search-btn');
@@ -138,6 +206,8 @@ async function loadDashboard() {
         <div class="stat-card stat-warn"><div class="stat-num">${Number(badges.lockedCount || 0)}</div><div class="stat-label">미오픈 배지</div></div>
         <div class="stat-card"><div class="stat-num">${Number(s.postCount || 0).toLocaleString()}</div><div class="stat-label">글</div></div>
         <div class="stat-card"><div class="stat-num">${Number(s.commentCount || 0).toLocaleString()}</div><div class="stat-label">댓글</div></div>
+        <div class="stat-card ${s.todayCheckedIn ? 'stat-ok' : ''}"><div class="stat-num">${s.todayCheckedIn ? '완료' : '미체크'}</div><div class="stat-label">오늘 등교</div></div>
+        <div class="stat-card"><div class="stat-num">${Number(s.attendancePresentCount || 0)}</div><div class="stat-label">최근 2달 등교</div></div>
       `;
     }
     const tbody = document.getElementById('ops-user-badges-tbody');
@@ -182,6 +252,44 @@ async function loadDashboard() {
         </table>`;
       }
     }
+    renderOpsUserAttendance(data?.attendance);
+  }
+
+  function renderOpsUserAttendance(att) {
+    const host = document.getElementById('ops-user-att-cals');
+    const hint = document.getElementById('ops-user-att-hint');
+    if (!host) return;
+    const months = att?.months || [];
+    if (hint) {
+      hint.textContent = att?.todayCheckedIn
+        ? `오늘(${att.todayYmd}) 등교 완료 · 초록=체크인, 테두리=등교일 미체크, 흐림=주말·방학·휴업`
+        : `오늘(${att?.todayYmd || '-'}) 미체크 · 초록=체크인, 테두리=등교일 미체크, 흐림=주말·방학·휴업`;
+    }
+    if (!months.length) {
+      host.innerHTML = '<p class="txt-muted" style="font-size:13px">등교 기록이 없습니다.</p>';
+      return;
+    }
+    const dow = ['일', '월', '화', '수', '목', '금', '토'];
+    host.innerHTML = `<div class="ops-att-months">${months.map((m) => `
+      <div class="ops-att-cal">
+        <div class="ops-att-cal-title">${esc(m.label)}</div>
+        <div class="ops-att-grid">
+          ${dow.map((d) => `<div class="ops-att-dow">${d}</div>`).join('')}
+          ${(m.weeks || []).flat().map((c) => {
+            if (!c.inMonth) return '<div class="ops-att-cell is-empty"></div>';
+            const cls = [
+              'ops-att-cell',
+              c.present ? 'is-present' : '',
+              !c.present && c.schoolDay ? 'is-missed' : '',
+              !c.schoolDay ? 'is-off' : '',
+              c.isToday ? 'is-today' : '',
+            ].filter(Boolean).join(' ');
+            const title = `${c.ymd}${c.present ? ' 등교' : (c.schoolDay ? ' 미체크' : ` ${c.reason || '휴일'}`)}`;
+            return `<div class="${cls}" title="${esc(title)}">${c.day}</div>`;
+          }).join('')}
+        </div>
+      </div>
+    `).join('')}</div>`;
   }
 
   function formatBatchSummary(row) {

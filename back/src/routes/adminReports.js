@@ -291,6 +291,24 @@ router.get('/analytics/user-inspect', requireAdminApi, async (req, res) => {
   }
 });
 
+router.get('/analytics/school-terms', requireAdminApi, async (req, res) => {
+  const adminUserId = req.user.userId;
+  if (!isAdminUser(adminUserId)) {
+    return res.status(403).json({ success: false, message: '관리자 권한이 필요합니다.' });
+  }
+  try {
+    const { getOpsSchoolTermsOverview } = await import('../services/opsSchoolTerms.service.js');
+    const data = await getOpsSchoolTermsOverview();
+    return res.json({ success: true, data });
+  } catch (error) {
+    console.error('학기 모니터링 조회 오류:', error);
+    return res.status(500).json({
+      success: false,
+      message: '학기·등교 현황을 불러오지 못했습니다.',
+    });
+  }
+});
+
 router.get('/reports', requireAdminApi, async (req, res) => {
   const adminUserId = req.user.userId;
   if (!isAdminUser(adminUserId)) {

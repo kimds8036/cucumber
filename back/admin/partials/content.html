@@ -70,12 +70,44 @@
               <span class="ops-hub-title">크론</span>
               <span class="ops-hub-desc">작업 이력 · 증분 커서</span>
             </button>
+            <button type="button" class="ops-hub-card" data-ops-view="terms">
+              <span class="ops-hub-kicker">학사</span>
+              <span class="ops-hub-title">등교 · 학기</span>
+              <span class="ops-hub-desc">개학일 · 오늘 등교 가능 여부</span>
+            </button>
             <button type="button" class="ops-hub-card" data-ops-view="reach">
               <span class="ops-hub-kicker">성장</span>
               <span class="ops-hub-title">이용 · 설치</span>
               <span class="ops-hub-desc">DAU/MAU · /get · 인기 화면</span>
             </button>
           </div>
+        </div>
+
+        <div class="ops-view" id="ops-view-terms" hidden>
+        <button type="button" class="btn btn-sm ops-back-btn" data-ops-back>← 모니터링 목록</button>
+        <div class="section-title">등교 · 학기</div>
+        <p class="section-hint">가입자가 있는 학교의 <code>school_terms</code> 개학·종강과, 오늘(KST) 등교일·지금 체크인 가능 여부입니다. 체크인은 등교일 + 07:00~10:00(기본)입니다.</p>
+        <div class="analytics-kpi-grid dash-kpi-compact" id="ops-terms-kpis"></div>
+        <p class="section-hint" id="ops-terms-window-hint"></p>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>학교</th>
+                <th style="width:70px">학생</th>
+                <th style="width:90px">학년도</th>
+                <th style="width:50px">학기</th>
+                <th style="width:100px">개학</th>
+                <th style="width:100px">종강</th>
+                <th style="width:80px">학기 중</th>
+                <th style="width:90px">오늘 등교일</th>
+                <th style="width:100px">지금 체크인</th>
+                <th>사유</th>
+              </tr>
+            </thead>
+            <tbody id="ops-terms-tbody"></tbody>
+          </table>
+        </div>
         </div>
 
         <div class="ops-view" id="ops-view-user" hidden>
@@ -103,6 +135,9 @@
               <tbody id="ops-user-badges-tbody"></tbody>
             </table>
           </div>
+          <div class="section-title" style="margin-top:16px">등교</div>
+          <p class="section-hint" id="ops-user-att-hint">초록: 등교 완료 · 테두리: 등교일인데 미체크 · 흐림: 주말·방학·휴업</p>
+          <div id="ops-user-att-cals"></div>
           <div class="section-title" style="margin-top:16px">시간표</div>
           <p class="section-hint" id="ops-user-tt-hint"></p>
           <div class="table-wrap" id="ops-user-tt-wrap"></div>
