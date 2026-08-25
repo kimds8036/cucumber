@@ -206,6 +206,8 @@ async function loadDashboard() {
         <div class="stat-card stat-warn"><div class="stat-num">${Number(badges.lockedCount || 0)}</div><div class="stat-label">미오픈 배지</div></div>
         <div class="stat-card"><div class="stat-num">${Number(s.postCount || 0).toLocaleString()}</div><div class="stat-label">글</div></div>
         <div class="stat-card"><div class="stat-num">${Number(s.commentCount || 0).toLocaleString()}</div><div class="stat-label">댓글</div></div>
+        <div class="stat-card ${s.todayCheckedIn ? 'stat-ok' : ''}"><div class="stat-num">${s.todayCheckedIn ? '완료' : '미체크'}</div><div class="stat-label">오늘 등교</div></div>
+        <div class="stat-card"><div class="stat-num">${Number(s.attendancePresentCount || 0)}</div><div class="stat-label">최근 2달 등교</div></div>
       `;
     }
     const tbody = document.getElementById('ops-user-badges-tbody');
@@ -250,6 +252,44 @@ async function loadDashboard() {
         </table>`;
       }
     }
+    renderOpsUserAttendance(data?.attendance);
+  }
+
+  function renderOpsUserAttendance(att) {
+    const host = document.getElementById('ops-user-att-cals');
+    const hint = document.getElementById('ops-user-att-hint');
+    if (!host) return;
+    const months = att?.months || [];
+    if (hint) {
+      hint.textContent = att?.todayCheckedIn
+        ? `오늘(${att.todayYmd}) 등교 완료 · 초록=체크인, 테두리=등교일 미체크, 흐림=주말·방학·휴업`
+        : `오늘(${att?.todayYmd || '-'}) 미체크 · 초록=체크인, 테두리=등교일 미체크, 흐림=주말·방학·휴업`;
+    }
+    if (!months.length) {
+      host.innerHTML = '<p class="txt-muted" style="font-size:13px">등교 기록이 없습니다.</p>';
+      return;
+    }
+    const dow = ['일', '월', '화', '수', '목', '금', '토'];
+    host.innerHTML = `<div class="ops-att-months">${months.map((m) => `
+      <div class="ops-att-cal">
+        <div class="ops-att-cal-title">${esc(m.label)}</div>
+        <div class="ops-att-grid">
+          ${dow.map((d) => `<div class="ops-att-dow">${d}</div>`).join('')}
+          ${(m.weeks || []).flat().map((c) => {
+            if (!c.inMonth) return '<div class="ops-att-cell is-empty"></div>';
+            const cls = [
+              'ops-att-cell',
+              c.present ? 'is-present' : '',
+              !c.present && c.schoolDay ? 'is-missed' : '',
+              !c.schoolDay ? 'is-off' : '',
+              c.isToday ? 'is-today' : '',
+            ].filter(Boolean).join(' ');
+            const title = `${c.ymd}${c.present ? ' 등교' : (c.schoolDay ? ' 미체크' : ` ${c.reason || '휴일'}`)}`;
+            return `<div class="${cls}" title="${esc(title)}">${c.day}</div>`;
+          }).join('')}
+        </div>
+      </div>
+    `).join('')}</div>`;
   }
 
   function formatBatchSummary(row) {
