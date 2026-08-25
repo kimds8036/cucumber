@@ -11,16 +11,257 @@ async function loadDashboard() {
     setNavBadge('badge-reports', data.pendingReports || 0);
     setNavBadge('badge-appeals', data.pendingAppeals || 0);
     setNavBadge('badge-inquiries', data.pendingInquiries || 0);
+  }
+
+  async function loadOpsPanel() {
     try {
       await loadAnalyticsOverview();
     } catch (error) {
-      console.warn('[AdminDashboard] analytics overview load failed:', error?.message || error);
+      console.warn('[Ops] analytics overview load failed:', error?.message || error);
     }
     try {
       await loadInstallLandingStats();
     } catch (error) {
-      console.warn('[AdminDashboard] install landing stats load failed:', error?.message || error);
+      console.warn('[Ops] install landing stats load failed:', error?.message || error);
     }
+    try {
+      await loadBatchJobsOverview();
+    } catch (error) {
+      console.warn('[Ops] batch jobs load failed:', error?.message || error);
+    }
+    try {
+      await loadTimerOps();
+    } catch (error) {
+      console.warn('[Ops] timer ops load failed:', error?.message || error);
+    }
+    try {
+      await loadActivityOps();
+    } catch (error) {
+      console.warn('[Ops] activity ops load failed:', error?.message || error);
+    }
+  }
+
+  function formatBatchSummary(row) {
+    const raw = row.summary_json;
+    let obj = raw;
+    if (typeof raw === 'string') {
+      try { obj = JSON.parse(raw); } catch { obj = null; }
+    }
+    if (obj && typeof obj === 'object') {
+      return Object.entries(obj)
+        .filter(([, v]) => v != null && v !== '')
+        .map(([k, v]) => `${k}=${v}`)
+        .join(' · ') || '-';
+    }
+    return row.error_message || '-';
+  }
+
+  async function loadBatchJobsOverview() {
+    const { data } = await api('/batch-jobs?limit=30');
+    const runsBody = document.getElementById('ops-batch-runs-tbody');
+    const cursorsBody = document.getElementById('ops-batch-cursors-tbody');
+    const runs = data?.runs || [];
+    const cursors = data?.cursors || [];
+    if (runsBody) {
+      if (!runs.length) {
+        runsBody.innerHTML = '<tr><td colspan="5" class="empty-row">아직 기록된 크론 실행이 없습니다. migrate 후 스케줄러가 돌면 쌓입니다.</td></tr>';
+      } else {
+        runsBody.innerHTML = runs.map((r) => `
+          <tr>
+            <td>${esc(r.job_name)}</td>
+            <td>${esc(r.status)}</td>
+            <td>${Number(r.elapsed_ms || 0)}</td>
+            <td>${esc(formatBatchSummary(r))}</td>
+            <td>${esc(r.finished_at || '')}</td>
+          </tr>
+        `).join('');
+      }
+    }
+    if (cursorsBody) {
+      if (!cursors.length) {
+        cursorsBody.innerHTML = '<tr><td colspan="4" class="empty-row">커서가 없습니다. school-stats가 한 번 돌면 생깁니다.</td></tr>';
+      } else {
+        cursorsBody.innerHTML = cursors.map((c) => `
+          <tr>
+            <td>${esc(c.job_name)}</td>
+            <td>${esc(c.cursor_key)}</td>
+            <td>${esc(c.mode || '-')}</td>
+            <td>id=${c.last_id ?? '-'} · at=${esc(c.last_at || '-')} · ${esc(c.note || '')}</td>
+          </tr>
+        `).join('');
+      }
+    }
+  }
+
+  async function loadTimerOps() {
+    const { data } = await api('/analytics/timer?days=14');
+    renderTimerKpi(data?.summary || {});
+    renderTimerLineChart(data?.series || []);
+    renderTimerSchoolBars(data?.topSchools || []);
+    renderTimerSessions(data?.recentSessions || []);
+  }
+
+  function renderTimerKpi(summary) {
+    const set = (id, value) => {
+      const el = document.getElementById(id);
+      if (el) el.textContent = value;
+    };
+    set('timer-today-users', Number(summary.todayActiveUsers || 0).toLocaleString());
+    set('timer-today-hours', Number(summary.todayTotalHours || 0).toLocaleString());
+    set('timer-today-avg', Number(summary.todayAvgHoursPerUser || 0).toLocaleString());
+    set('timer-open-users', Number(summary.openUsers || 0).toLocaleString());
+    set('timer-range-users', Number(summary.rangeActiveUsers || 0).toLocaleString());
+    set('timer-range-hours', Number(summary.rangeTotalHours || 0).toLocaleString());
+  }
+
+  function renderTimerLineChart(series) {
+    const svg = document.getElementById('timer-line-chart');
+    const caption = document.getElementById('timer-line-caption');
+    const tooltip = document.getElementById('timer-line-tooltip');
+    if (!svg || !caption) return;
+    if (!Array.isArray(series) || series.length === 0) {
+      svg.innerHTML = '';
+      if (tooltip) tooltip.hidden = true;
+      caption.textContent = '아직 타이머 집계가 없습니다.';
+      return;
+    }
+    svg.setAttribute('viewBox', '0 0 640 260');
+    svg.setAttribute('preserveAspectRatio', 'xMidYMid meet');
+    svg.innerHTML = buildLineChartSvg({
+      series,
+      seriesA: (s) => Number(s.activeUsers || 0),
+      seriesB: (s) => Number(s.totalHours || 0),
+      colorA: '#7c3aed',
+      colorB: '#0f766e',
+      formatTick: (s) => String(s.date || '').slice(5),
+    });
+    bindLineChartHover(svg, tooltip, series, (point) => `
+      <div><strong>${esc(point.date)}</strong></div>
+      <div>이용 학생: ${Number(point.activeUsers || 0).toLocaleString()}명</div>
+      <div>총 시간: ${Number(point.totalHours || 0).toLocaleString()}h</div>
+      <div>1인 평균: ${Number(point.avgHoursPerUser || 0).toLocaleString()}h</div>
+    `);
+    const first = series[0];
+    const last = series[series.length - 1];
+    caption.textContent = `${first.date} ~ ${last.date} · 학생 수와 총 공부 시간(시간)`;
+  }
+
+  function renderTimerSchoolBars(rows) {
+    const barsWrap = document.getElementById('timer-school-bars');
+    const caption = document.getElementById('timer-school-caption');
+    if (!barsWrap || !caption) return;
+    if (!Array.isArray(rows) || !rows.length) {
+      barsWrap.innerHTML = '<div class="txt-muted" style="font-size:12px;padding:8px 0;">학교별 집계가 없습니다.</div>';
+      caption.textContent = '타이머를 쓴 학교가 생기면 표시됩니다.';
+      return;
+    }
+    const maxHours = Math.max(1, ...rows.map((row) => Number(row.totalHours || 0)));
+    barsWrap.innerHTML = rows.map((row) => {
+      const hours = Number(row.totalHours || 0);
+      const widthPct = Math.max(2, (hours / maxHours) * 100);
+      const users = Number(row.activeUsers || 0);
+      return `
+        <div class="analytics-screen-bar-row">
+          <div class="analytics-screen-bar-label" title="${esc(row.schoolName)}">${esc(row.schoolName)}</div>
+          <div class="analytics-screen-bar-track">
+            <div class="analytics-screen-bar-fill" style="width:${widthPct.toFixed(1)}%"></div>
+          </div>
+          <div class="analytics-screen-bar-value">${hours.toLocaleString()}h · ${users.toLocaleString()}명</div>
+        </div>
+      `;
+    }).join('');
+    caption.textContent = `기간 합계 상위 ${rows.length}개 학교 · 시간은 합계, 인원은 해당 학교 이용 학생 수`;
+  }
+
+  function formatOpsStudent(row) {
+    const name = row.displayName ? `${row.displayName} ` : '';
+    const grade =
+      row.grade != null ? ` ${row.grade}학년${row.classNumber != null ? ` ${row.classNumber}반` : ''}` : '';
+    return `${name}@${row.username || '-'} (#${row.userId || '-'})${grade}`;
+  }
+
+  function renderTimerSessions(rows) {
+    const body = document.getElementById('ops-timer-sessions-tbody');
+    if (!body) return;
+    if (!Array.isArray(rows) || !rows.length) {
+      body.innerHTML = '<tr><td colspan="6" class="empty-row">최근 타이머 세션이 없습니다.</td></tr>';
+      return;
+    }
+    body.innerHTML = rows.map((r) => `
+      <tr>
+        <td>${r.open ? '<span class="pill pill-ok">진행</span>' : '-'}</td>
+        <td>${esc(r.schoolName || '-')}</td>
+        <td>${esc(formatOpsStudent(r))}</td>
+        <td>${esc(r.subjectName || '전체')}</td>
+        <td>${Number(r.hours || 0).toLocaleString()}</td>
+        <td>${esc(fmtDate(r.startedAt))}</td>
+      </tr>
+    `).join('');
+  }
+
+  async function loadActivityOps() {
+    const { data } = await api('/analytics/activity?days=14');
+    const s = data?.summary || {};
+    const set = (id, value) => {
+      const el = document.getElementById(id);
+      if (el) el.textContent = value;
+    };
+    set('activity-today-posts', Number(s.todayPosts || 0).toLocaleString());
+    set('activity-today-comments', Number(s.todayComments || 0).toLocaleString());
+    set('activity-today-chat', Number(s.todayChat || 0).toLocaleString());
+    set('activity-today-pmail', Number(s.todayPersonalMail || 0).toLocaleString());
+    set('activity-today-smail', Number(s.todaySchoolMail || 0).toLocaleString());
+    renderActivityLineChart(data?.series || []);
+    renderActivityFeed(data?.feed || []);
+  }
+
+  function renderActivityLineChart(series) {
+    const svg = document.getElementById('activity-line-chart');
+    const caption = document.getElementById('activity-line-caption');
+    const tooltip = document.getElementById('activity-line-tooltip');
+    if (!svg || !caption) return;
+    if (!Array.isArray(series) || series.length === 0) {
+      svg.innerHTML = '';
+      if (tooltip) tooltip.hidden = true;
+      caption.textContent = '아직 활동 데이터가 없습니다.';
+      return;
+    }
+    svg.setAttribute('viewBox', '0 0 640 260');
+    svg.setAttribute('preserveAspectRatio', 'xMidYMid meet');
+    svg.innerHTML = buildLineChartSvg({
+      series,
+      seriesA: (p) => Number(p.posts || 0),
+      seriesB: (p) => Number(p.comments || 0),
+      colorA: '#2563eb',
+      colorB: '#ea580c',
+      formatTick: (p) => String(p.date || '').slice(5),
+    });
+    bindLineChartHover(svg, tooltip, series, (point) => `
+      <div><strong>${esc(point.date)}</strong></div>
+      <div>글: ${Number(point.posts || 0).toLocaleString()}</div>
+      <div>댓글: ${Number(point.comments || 0).toLocaleString()}</div>
+      <div>쪽지: ${Number(point.chat || 0).toLocaleString()}</div>
+      <div>우편: ${Number(point.mail || 0).toLocaleString()}</div>
+    `);
+    caption.textContent = '선은 글·댓글, 툴팁에 쪽지·우편 건수도 표시됩니다.';
+  }
+
+  function renderActivityFeed(rows) {
+    const body = document.getElementById('ops-activity-feed-tbody');
+    if (!body) return;
+    if (!Array.isArray(rows) || !rows.length) {
+      body.innerHTML = '<tr><td colspan="5" class="empty-row">최근 활동이 없습니다.</td></tr>';
+      return;
+    }
+    body.innerHTML = rows.map((r) => `
+      <tr>
+        <td>${esc(r.typeLabel || r.type)}</td>
+        <td>${esc(r.schoolName || '-')}</td>
+        <td>${esc(formatOpsStudent(r))}</td>
+        <td>${esc(r.preview || '')}</td>
+        <td>${esc(fmtDate(r.at))}</td>
+      </tr>
+    `).join('');
   }
 
   async function loadAnalyticsOverview() {
