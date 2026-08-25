@@ -533,4 +533,39 @@ router.put('/', authenticate, validate(updateTimetableValidators), async (req, r
   }
 });
 
+/** 관리자 모니터링용 — 학생 앱 GET /timetable 과 동일 병합 결과 */
+export async function getMergedTimetableForUserId(userId) {
+  const [rows] = await pool.execute(
+    `SELECT
+       u.school_id,
+       u.grade,
+       u.class_number,
+       s.name AS school_name,
+       s.school_level,
+       s.school_type,
+       s.edu_office_code,
+       s.admin_standard_code
+     FROM users u
+     LEFT JOIN schools s ON u.school_id = s.school_id
+     WHERE u.id = ?
+     LIMIT 1`,
+    [userId],
+  );
+  if (!rows.length) return null;
+  const user = rows[0];
+  const { timetable: baseTimetable, subjects: baseSubjects } =
+    await fetchBaseTimetableByUser(user);
+  const { timetable: override, updatedAt } = await loadUserOverride(userId);
+  const timetable = mergeTimetable(baseTimetable, override);
+  return {
+    cells: timetable,
+    subjects: baseSubjects,
+    source: {
+      neis: Object.keys(baseTimetable).length > 0 || baseSubjects.length > 0,
+      override: Object.keys(override).length > 0,
+    },
+    overrideUpdatedAt: updatedAt ? new Date(updatedAt).toISOString() : null,
+  };
+}
+
 export default router;

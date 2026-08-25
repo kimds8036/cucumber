@@ -186,7 +186,7 @@ function adminUrl(subpath) {
 
   const PAGE_META = {
     dashboard: { title: '대시보드', sub: '신고·문의 운영 대기' },
-    ops: { title: '모니터링', sub: 'DAU · 설치 링크 · 크론 이력' },
+    ops: { title: '모니터링', sub: '사용자 조회 · DAU · 크론 이력' },
     reports: { title: '신고 관리', sub: '미처리 신고 전용' },
     processedReports: { title: '처리 이력', sub: '처리 완료/기각 신고 이력 및 재오픈' },
     appeals: { title: '이의신청 관리', sub: '소명 검토 및 상태 변경' },

@@ -39,6 +39,109 @@ async function loadDashboard() {
     } catch (error) {
       console.warn('[Ops] activity ops load failed:', error?.message || error);
     }
+    bindOpsUserInspect();
+  }
+
+  function bindOpsUserInspect() {
+    const btn = document.getElementById('ops-user-search-btn');
+    const input = document.getElementById('ops-user-q');
+    if (!btn || btn.dataset.bound === '1') return;
+    btn.dataset.bound = '1';
+    const run = () => loadOpsUserInspect();
+    btn.addEventListener('click', run);
+    if (input) {
+      input.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          run();
+        }
+      });
+    }
+  }
+
+  async function loadOpsUserInspect() {
+    const input = document.getElementById('ops-user-q');
+    const empty = document.getElementById('ops-user-inspect-empty');
+    const wrap = document.getElementById('ops-user-inspect-wrap');
+    const q = String(input?.value || '').trim();
+    if (!q) {
+      if (empty) empty.textContent = '아이디 또는 사용자 번호를 입력하세요.';
+      if (wrap) wrap.hidden = true;
+      return;
+    }
+    try {
+      const { data } = await api(`/analytics/user-inspect?q=${encodeURIComponent(q)}`);
+      if (empty) empty.hidden = true;
+      if (wrap) wrap.hidden = false;
+      renderOpsUserInspect(data);
+    } catch (error) {
+      if (empty) {
+        empty.hidden = false;
+        empty.textContent = error?.message || '조회에 실패했습니다.';
+      }
+      if (wrap) wrap.hidden = true;
+    }
+  }
+
+  function renderOpsUserInspect(data) {
+    const u = data?.user || {};
+    const s = data?.stats || {};
+    const badges = data?.badges || {};
+    const kpis = document.getElementById('ops-user-kpis');
+    if (kpis) {
+      const who = `${u.displayName ? `${u.displayName} ` : ''}@${u.username || '-'} (#${u.id || '-'})`;
+      const school = `${u.schoolName || '-'}${u.grade != null ? ` ${u.grade}학년` : ''}${u.classNumber != null ? ` ${u.classNumber}반` : ''}`;
+      kpis.innerHTML = `
+        <div class="stat-card"><div class="stat-num" style="font-size:14px;line-height:1.3">${esc(who)}</div><div class="stat-label">${esc(school)}</div></div>
+        <div class="stat-card"><div class="stat-num">${Number(s.friendCount || 0).toLocaleString()}</div><div class="stat-label">친구 수</div></div>
+        <div class="stat-card stat-ok"><div class="stat-num">${Number(badges.ownedCount || 0)}</div><div class="stat-label">획득 배지</div></div>
+        <div class="stat-card stat-warn"><div class="stat-num">${Number(badges.lockedCount || 0)}</div><div class="stat-label">미오픈 배지</div></div>
+        <div class="stat-card"><div class="stat-num">${Number(s.postCount || 0).toLocaleString()}</div><div class="stat-label">글</div></div>
+        <div class="stat-card"><div class="stat-num">${Number(s.commentCount || 0).toLocaleString()}</div><div class="stat-label">댓글</div></div>
+      `;
+    }
+    const tbody = document.getElementById('ops-user-badges-tbody');
+    if (tbody) {
+      const items = badges.items || [];
+      tbody.innerHTML = items.map((b) => {
+        const p = b.progress || {};
+        const current = Number(p.current || 0);
+        const target = Number(p.target || 0);
+        const ratio = target > 0 ? `${current}/${target}` : '-';
+        const pct = target > 0 ? Math.min(100, Math.round((current / target) * 100)) : 0;
+        const st = b.owned ? (b.equipped ? '장착' : '획득') : '미오픈';
+        return `
+          <tr>
+            <td>${esc(st)}</td>
+            <td>${esc(b.title || b.key)}</td>
+            <td>${esc(ratio)} (${pct}%)</td>
+            <td>${esc(b.description || '')}</td>
+          </tr>
+        `;
+      }).join('');
+    }
+    const hint = document.getElementById('ops-user-tt-hint');
+    const ttWrap = document.getElementById('ops-user-tt-wrap');
+    const tt = data?.timetable || {};
+    const src = tt.source || {};
+    if (hint) {
+      hint.textContent = src.neis || src.override
+        ? `NEIS ${src.neis ? '있음' : '없음'} · 수정본 ${src.override ? '있음' : '없음'}${tt.overrideUpdatedAt ? ` · 수정 ${tt.overrideUpdatedAt}` : ''}`
+        : '등록된 시간표가 없습니다.';
+    }
+    if (ttWrap) {
+      if (!tt.rows || !tt.rows.length) {
+        ttWrap.innerHTML = '<p class="txt-muted" style="font-size:13px">표시할 교시가 없습니다.</p>';
+      } else {
+        const days = tt.days || [];
+        ttWrap.innerHTML = `<table>
+          <thead><tr><th style="width:56px">교시</th>${days.map((d) => `<th>${esc(d)}</th>`).join('')}</tr></thead>
+          <tbody>
+            ${tt.rows.map((r) => `<tr><td>${r.period}</td>${(r.cells || []).map((c) => `<td>${esc(c || '')}</td>`).join('')}</tr>`).join('')}
+          </tbody>
+        </table>`;
+      }
+    }
   }
 
   function formatBatchSummary(row) {
