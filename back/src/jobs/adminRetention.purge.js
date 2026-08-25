@@ -3,6 +3,12 @@ import {
   acquireBatchLock,
   releaseBatchLock,
 } from '../services/batchLock.service.js';
+import {
+  createBatchExecutionContext,
+  logBatchFailure,
+  logBatchSkip,
+  logBatchSuccess,
+} from '../services/batchMetric.service.js';
 
 const LOCK_KEY = 'batch:lock:admin-retention';
 const LOCK_TTL = 600;
@@ -74,12 +80,20 @@ async function archiveOldReports() {
 }
 
 export async function runAdminRetentionJob() {
+  const context = createBatchExecutionContext('admin-retention');
   const { acquired, owner } = await acquireBatchLock(LOCK_KEY, LOCK_TTL);
-  if (!acquired) return { skipped: true };
+  if (!acquired) {
+    logBatchSkip(context, 'lock-not-acquired');
+    return { skipped: true };
+  }
   try {
     const purgedLogs = await purgeAuditLogs();
     const archivedReports = await archiveOldReports();
+    logBatchSuccess(context, { purgedLogs, archivedReports });
     return { skipped: false, purgedLogs, archivedReports };
+  } catch (error) {
+    logBatchFailure(context, error);
+    throw error;
   } finally {
     await releaseBatchLock(LOCK_KEY, owner);
   }

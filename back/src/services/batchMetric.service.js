@@ -1,3 +1,5 @@
+import { persistBatchRun } from './batchJobRun.service.js';
+
 export function createBatchExecutionContext(jobName) {
   return {
     jobName,
@@ -10,11 +12,13 @@ export function logBatchSuccess(context, extra = {}) {
   console.log(
     `[BatchJob] success job=${context.jobName} elapsedMs=${elapsedMs} meta=${JSON.stringify(extra)}`
   );
+  persistBatchRun(context, 'success', extra).catch(() => {});
 }
 
 export function logBatchSkip(context, reason) {
   const elapsedMs = Date.now() - context.startedAt;
   console.log(`[BatchJob] skipped job=${context.jobName} elapsedMs=${elapsedMs} reason=${reason}`);
+  persistBatchRun(context, 'skipped', { reason }).catch(() => {});
 }
 
 export function logBatchFailure(context, error) {
@@ -22,6 +26,7 @@ export function logBatchFailure(context, error) {
   console.error(
     `[BatchJob] failed job=${context.jobName} elapsedMs=${elapsedMs} error=${error.message}`
   );
+  persistBatchRun(context, 'failed', {}, error).catch(() => {});
 }
 
 export async function executeWithRetry(taskFn, options = {}) {
