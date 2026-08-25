@@ -1560,3 +1560,48 @@
       width: 100%;
       font-size: 12px;
     }
+    .ops-att-months {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+      gap: 12px;
+      margin-bottom: 8px;
+    }
+    .ops-att-cal {
+      background: var(--bg-secondary);
+      border: 0.5px solid var(--border);
+      border-radius: var(--radius-md);
+      padding: 10px;
+    }
+    .ops-att-cal-title {
+      font-size: 13px;
+      font-weight: 600;
+      margin-bottom: 8px;
+    }
+    .ops-att-grid {
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      gap: 4px;
+    }
+    .ops-att-dow {
+      font-size: 10px;
+      color: var(--text-tertiary);
+      text-align: center;
+    }
+    .ops-att-cell {
+      aspect-ratio: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 11px;
+      border-radius: 6px;
+      background: var(--bg);
+    }
+    .ops-att-cell.is-empty { background: transparent; }
+    .ops-att-cell.is-off { color: var(--text-tertiary); opacity: 0.55; }
+    .ops-att-cell.is-missed { box-shadow: inset 0 0 0 1px var(--border); }
+    .ops-att-cell.is-present {
+      background: var(--green-bg, #dcfce7);
+      color: var(--green-dark, #166534);
+      font-weight: 600;
+    }
+    .ops-att-cell.is-today { outline: 1px solid var(--text-secondary); }
