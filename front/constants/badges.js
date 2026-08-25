@@ -7,6 +7,7 @@ export const BADGE_CATALOG = [
     description: '게시글을 하나 작성하면 열려요',
     icon: 'leaf',
     iconOutline: 'leaf-outline',
+    image: require('../assets/badges/first_post.png'),
     color: '#2E7D32',
   },
   {
@@ -57,6 +58,7 @@ export function resolveEquippedBadge(raw) {
     return {
       key: def.key,
       icon: raw.icon || def.icon,
+      image: def.image || null,
       color: raw.color || def.color,
       title: raw.title || def.title,
     };
@@ -66,6 +68,7 @@ export function resolveEquippedBadge(raw) {
   return {
     key: def.key,
     icon: def.icon,
+    image: def.image || null,
     color: def.color,
     title: def.title,
   };

@@ -2,6 +2,7 @@ import React, { useCallback, useMemo, useRef, useState } from 'react';
 import {
   View,
   Text,
+  Image,
   TouchableOpacity,
   useWindowDimensions,
   ActivityIndicator,
@@ -83,11 +84,23 @@ function BadgeTile({ item, cardWidth, gap, normalize, saving, onPressOwned }) {
           />
         </View>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: normalize(8) }}>
-          <Ionicons
-            name={locked ? catalog.iconOutline || 'lock-closed-outline' : catalog.icon}
-            size={normalize(26)}
-            color={locked ? colors.textSecondary : catalog.color}
-          />
+          {catalog.image ? (
+            <Image
+              source={catalog.image}
+              style={{
+                width: normalize(26),
+                height: normalize(26),
+                opacity: locked ? 0.55 : 1,
+              }}
+              resizeMode="contain"
+            />
+          ) : (
+            <Ionicons
+              name={locked ? catalog.iconOutline || 'lock-closed-outline' : catalog.icon}
+              size={normalize(26)}
+              color={locked ? colors.textSecondary : catalog.color}
+            />
+          )}
           {locked ? (
             <Ionicons
               name="lock-closed"
