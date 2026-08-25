@@ -14,33 +14,73 @@ async function loadDashboard() {
   }
 
   async function loadOpsPanel() {
-    try {
-      await loadAnalyticsOverview();
-    } catch (error) {
-      console.warn('[Ops] analytics overview load failed:', error?.message || error);
-    }
-    try {
-      await loadInstallLandingStats();
-    } catch (error) {
-      console.warn('[Ops] install landing stats load failed:', error?.message || error);
-    }
-    try {
-      await loadBatchJobsOverview();
-    } catch (error) {
-      console.warn('[Ops] batch jobs load failed:', error?.message || error);
-    }
-    try {
-      await loadTimerOps();
-    } catch (error) {
-      console.warn('[Ops] timer ops load failed:', error?.message || error);
-    }
-    try {
-      await loadActivityOps();
-    } catch (error) {
-      console.warn('[Ops] activity ops load failed:', error?.message || error);
-    }
+    bindOpsHub();
+    showOpsHub();
+  }
+
+  function showOpsHub() {
+    const hub = document.getElementById('ops-hub');
+    if (hub) hub.hidden = false;
+    document.querySelectorAll('.ops-view').forEach((el) => {
+      el.hidden = true;
+    });
+    const meta = PAGE_META.ops;
+    const title = document.getElementById('topbar-title');
+    const sub = document.getElementById('topbar-sub');
+    if (title) title.textContent = meta.title;
+    if (sub) sub.textContent = meta.sub;
+  }
+
+  function bindOpsHub() {
+    const hub = document.getElementById('ops-hub');
+    if (!hub || hub.dataset.bound === '1') return;
+    hub.dataset.bound = '1';
+    hub.addEventListener('click', (e) => {
+      const card = e.target.closest('[data-ops-view]');
+      if (!card) return;
+      openOpsView(card.getAttribute('data-ops-view'));
+    });
+    document.getElementById('panel-ops')?.addEventListener('click', (e) => {
+      if (!e.target.closest('[data-ops-back]')) return;
+      showOpsHub();
+    });
     bindOpsUserInspect();
   }
+
+  async function openOpsView(view) {
+    const hub = document.getElementById('ops-hub');
+    if (hub) hub.hidden = true;
+    document.querySelectorAll('.ops-view').forEach((el) => {
+      el.hidden = el.id !== `ops-view-${view}`;
+    });
+    const titles = {
+      user: ['사용자', '배지 · 시간표 · 친구'],
+      timer: ['타이머', '공부 시간 · 세션'],
+      activity: ['앱 활동', '글 · 댓글 · 쪽지 · 우편'],
+      jobs: ['크론', '작업 이력 · 커서'],
+      reach: ['이용 · 설치', 'DAU/MAU · /get'],
+    };
+    const t = titles[view];
+    if (t) {
+      const title = document.getElementById('topbar-title');
+      const sub = document.getElementById('topbar-sub');
+      if (title) title.textContent = t[0];
+      if (sub) sub.textContent = t[1];
+    }
+    try {
+      if (view === 'jobs') await loadBatchJobsOverview();
+      if (view === 'timer') await loadTimerOps();
+      if (view === 'activity') await loadActivityOps();
+      if (view === 'reach') {
+        await loadAnalyticsOverview();
+        await loadInstallLandingStats();
+      }
+    } catch (error) {
+      alert(error?.message || '모니터링 데이터를 불러오지 못했습니다.');
+    }
+  }
+
+  window.showOpsHub = showOpsHub;
 
   function bindOpsUserInspect() {
     const btn = document.getElementById('ops-user-search-btn');
@@ -283,23 +323,87 @@ async function loadDashboard() {
     return `${name}@${row.username || '-'} (#${row.userId || '-'})${grade}`;
   }
 
+  function sessionDayKey(startedAt) {
+    if (!startedAt) return 'unknown';
+    const d = new Date(startedAt);
+    if (Number.isNaN(d.getTime())) return String(startedAt).slice(0, 10) || 'unknown';
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${y}-${m}-${day}`;
+  }
+
+  function groupTimerSessions(rows) {
+    const byDay = new Map();
+    for (const r of rows) {
+      const day = sessionDayKey(r.startedAt);
+      if (!byDay.has(day)) byDay.set(day, new Map());
+      const users = byDay.get(day);
+      const uid = Number(r.userId) || 0;
+      if (!users.has(uid)) {
+        users.set(uid, {
+          userId: uid,
+          label: formatOpsStudent(r),
+          schoolName: r.schoolName || '-',
+          sessions: [],
+          hours: 0,
+          open: false,
+        });
+      }
+      const g = users.get(uid);
+      g.sessions.push(r);
+      g.hours += Number(r.hours || 0);
+      if (r.open) g.open = true;
+    }
+    return [...byDay.entries()]
+      .sort((a, b) => (a[0] < b[0] ? 1 : -1))
+      .map(([date, users]) => ({
+        date,
+        users: [...users.values()].sort((a, b) => {
+          if (a.open !== b.open) return a.open ? -1 : 1;
+          return b.hours - a.hours;
+        }),
+      }));
+  }
+
   function renderTimerSessions(rows) {
-    const body = document.getElementById('ops-timer-sessions-tbody');
-    if (!body) return;
+    const host = document.getElementById('ops-timer-sessions-list');
+    if (!host) return;
     if (!Array.isArray(rows) || !rows.length) {
-      body.innerHTML = '<tr><td colspan="6" class="empty-row">최근 타이머 세션이 없습니다.</td></tr>';
+      host.innerHTML = '<p class="txt-muted" style="font-size:13px">최근 타이머 세션이 없습니다.</p>';
       return;
     }
-    body.innerHTML = rows.map((r) => `
-      <tr>
-        <td>${r.open ? '<span class="pill pill-ok">진행</span>' : '-'}</td>
-        <td>${esc(r.schoolName || '-')}</td>
-        <td>${esc(formatOpsStudent(r))}</td>
-        <td>${esc(r.subjectName || '전체')}</td>
-        <td>${Number(r.hours || 0).toLocaleString()}</td>
-        <td>${esc(fmtDate(r.startedAt))}</td>
-      </tr>
-    `).join('');
+    const days = groupTimerSessions(rows);
+    host.innerHTML = days.map((day, di) => {
+      const userCount = day.users.length;
+      const sessCount = day.users.reduce((n, u) => n + u.sessions.length, 0);
+      const hourSum = day.users.reduce((n, u) => n + u.hours, 0);
+      return `
+        <details class="ops-session-day" ${di === 0 ? 'open' : ''}>
+          <summary>${esc(day.date)} · ${userCount}명 · ${sessCount}세션 · ${hourSum.toFixed(1)}h</summary>
+          ${day.users.map((u) => `
+            <details class="ops-session-user">
+              <summary>${u.open ? '진행 · ' : ''}${esc(u.label)} · ${esc(u.schoolName)} · ${u.sessions.length}건 · ${Number(u.hours).toFixed(1)}h</summary>
+              <div class="table-wrap">
+                <table>
+                  <thead><tr><th style="width:70px">상태</th><th>과목</th><th style="width:70px">시간(h)</th><th style="width:150px">시작</th></tr></thead>
+                  <tbody>
+                    ${u.sessions.map((r) => `
+                      <tr>
+                        <td>${r.open ? '<span class="pill pill-ok">진행</span>' : '-'}</td>
+                        <td>${esc(r.subjectName || '전체')}</td>
+                        <td>${Number(r.hours || 0).toLocaleString()}</td>
+                        <td>${esc(fmtDate(r.startedAt))}</td>
+                      </tr>
+                    `).join('')}
+                  </tbody>
+                </table>
+              </div>
+            </details>
+          `).join('')}
+        </details>
+      `;
+    }).join('');
   }
 
   async function loadActivityOps() {

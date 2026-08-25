@@ -47,6 +47,39 @@
 
       <!-- ────────── 모니터링 (Ops) ────────── -->
       <div class="panel" id="panel-ops">
+        <div id="ops-hub">
+          <p class="section-hint">보고 싶은 영역을 고르세요. 한 화면에 전부를 펼치지 않습니다.</p>
+          <div class="ops-hub-grid">
+            <button type="button" class="ops-hub-card" data-ops-view="user">
+              <span class="ops-hub-kicker">조회</span>
+              <span class="ops-hub-title">사용자</span>
+              <span class="ops-hub-desc">배지 진행도 · 시간표 · 친구 수</span>
+            </button>
+            <button type="button" class="ops-hub-card" data-ops-view="timer">
+              <span class="ops-hub-kicker">실시간</span>
+              <span class="ops-hub-title">타이머</span>
+              <span class="ops-hub-desc">공부 시간 · 세션(날짜·사용자)</span>
+            </button>
+            <button type="button" class="ops-hub-card" data-ops-view="activity">
+              <span class="ops-hub-kicker">피드</span>
+              <span class="ops-hub-title">앱 활동</span>
+              <span class="ops-hub-desc">글 · 댓글 · 쪽지 · 우편</span>
+            </button>
+            <button type="button" class="ops-hub-card" data-ops-view="jobs">
+              <span class="ops-hub-kicker">배치</span>
+              <span class="ops-hub-title">크론</span>
+              <span class="ops-hub-desc">작업 이력 · 증분 커서</span>
+            </button>
+            <button type="button" class="ops-hub-card" data-ops-view="reach">
+              <span class="ops-hub-kicker">성장</span>
+              <span class="ops-hub-title">이용 · 설치</span>
+              <span class="ops-hub-desc">DAU/MAU · /get · 인기 화면</span>
+            </button>
+          </div>
+        </div>
+
+        <div class="ops-view" id="ops-view-user" hidden>
+        <button type="button" class="btn btn-sm ops-back-btn" data-ops-back>← 모니터링 목록</button>
         <div class="section-title">사용자 조회</div>
         <p class="section-hint">아이디 또는 사용자 번호로 배지 진행도, 친구 수, 병합 시간표를 봅니다. 조회만 하며 배지를 자동 지급하지는 않습니다.</p>
         <div class="toolbar" style="margin-bottom:12px;display:flex;gap:8px;flex-wrap:wrap;align-items:center">
@@ -74,7 +107,10 @@
           <p class="section-hint" id="ops-user-tt-hint"></p>
           <div class="table-wrap" id="ops-user-tt-wrap"></div>
         </div>
+        </div>
 
+        <div class="ops-view" id="ops-view-jobs" hidden>
+        <button type="button" class="btn btn-sm ops-back-btn" data-ops-back>← 모니터링 목록</button>
         <div class="section-title">크론 작업</div>
         <p class="section-hint">최근 실행 요약입니다. school-stats 댓글 수는 평시 새 id만 보정하고, 기본 168시간마다 전체를 다시 맞춥니다.</p>
         <div class="table-wrap">
@@ -105,8 +141,11 @@
             <tbody id="ops-batch-cursors-tbody"></tbody>
           </table>
         </div>
+        </div>
 
-        <div class="section-title" style="margin-top:24px">타이머</div>
+        <div class="ops-view" id="ops-view-timer" hidden>
+        <button type="button" class="btn btn-sm ops-back-btn" data-ops-back>← 모니터링 목록</button>
+        <div class="section-title" style="margin-top:8px">타이머</div>
         <p class="section-hint">오늘·기간 합계, 학교별 공부량, 누가 타이머를 돌렸는지 최근 세션입니다.</p>
         <div class="analytics-kpi-grid dash-kpi-compact">
           <div class="stat-card stat-ok">
@@ -153,25 +192,14 @@
             <div class="analytics-caption" id="timer-school-caption">데이터를 불러오는 중...</div>
           </div>
         </div>
-        <div class="section-title" style="margin-top:16px">타이머 세션 (학교 · 누구)</div>
-        <p class="section-hint">진행 중을 위에 두고, 최근 세션 50건입니다.</p>
-        <div class="table-wrap">
-          <table>
-            <thead>
-              <tr>
-                <th style="width:70px">상태</th>
-                <th style="width:160px">학교</th>
-                <th>학생</th>
-                <th style="width:90px">과목</th>
-                <th style="width:70px">시간(h)</th>
-                <th style="width:150px">시작</th>
-              </tr>
-            </thead>
-            <tbody id="ops-timer-sessions-tbody"></tbody>
-          </table>
+        <div class="section-title" style="margin-top:16px">타이머 세션</div>
+        <p class="section-hint">같은 날·같은 사용자를 접어서 봅니다. 최근 세션 50건입니다.</p>
+        <div id="ops-timer-sessions-list"></div>
         </div>
 
-        <div class="section-title" style="margin-top:24px">앱 활동</div>
+        <div class="ops-view" id="ops-view-activity" hidden>
+        <button type="button" class="btn btn-sm ops-back-btn" data-ops-back>← 모니터링 목록</button>
+        <div class="section-title" style="margin-top:8px">앱 활동</div>
         <p class="section-hint">오늘 건수와 최근 글·댓글·쪽지·채팅·우편입니다. 미리보기는 80자까지입니다.</p>
         <div class="analytics-kpi-grid dash-kpi-compact">
           <div class="stat-card">
@@ -223,8 +251,11 @@
             <tbody id="ops-activity-feed-tbody"></tbody>
           </table>
         </div>
+        </div>
 
-        <div class="section-title" style="margin-top:24px">서비스 이용 · 설치 링크</div>
+        <div class="ops-view" id="ops-view-reach" hidden>
+        <button type="button" class="btn btn-sm ops-back-btn" data-ops-back>← 모니터링 목록</button>
+        <div class="section-title" style="margin-top:8px">서비스 이용 · 설치 링크</div>
         <p class="section-hint">학생 앱 활성(DAU/MAU)과 광고·인스타 <code>/get</code> 방문 집계입니다. 크롤러 미리보기는 제외됩니다.</p>
 
         <div class="analytics-kpi-grid dash-kpi-compact">
@@ -312,6 +343,7 @@
             <div class="dash-bar-chart dash-bar-chart--dow" id="install-dow-chart"></div>
             <div class="analytics-caption" id="install-dow-caption">요일 데이터 대기 중...</div>
           </div>
+        </div>
         </div>
       </div>
 
