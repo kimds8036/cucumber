@@ -1,6 +1,11 @@
 import pool from '../config/database.js';
 import { broadcastTimerStatus } from '../socket/socketService.js';
 import { rebuildStudyDayTotalsForSessionPairs } from '../utils/studyDayTotal.js';
+import {
+  createBatchExecutionContext,
+  logBatchFailure,
+  logBatchSuccess,
+} from '../services/batchMetric.service.js';
 
 const DEFAULT_STALE_MINUTES = 60;
 
@@ -27,6 +32,7 @@ function isCronEnabled(flagName) {
 }
 
 export async function runTimerSessionGuardJob() {
+  const context = createBatchExecutionContext('timer-session-guard');
   const staleMinutes = getStaleMinutes();
   const maxOpenHours = getMaxOpenHours();
   const maxOpenSeconds = maxOpenHours * 3600;
@@ -106,7 +112,13 @@ export async function runTimerSessionGuardJob() {
     for (const userId of notifyUserIds) {
       await broadcastTimerStatus({ userId, status: 'idle' });
     }
+    logBatchSuccess(context, {
+      notifyUsers: notifyUserIds.size,
+      staleMinutes,
+      maxOpenHours,
+    });
   } catch (error) {
+    logBatchFailure(context, error);
     console.error('[TimerSessionGuard] failed:', error?.message ?? error);
   }
 }

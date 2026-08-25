@@ -96,8 +96,7 @@ export async function evaluateAndUnlockBadges(userId) {
   return unlocked;
 }
 
-export async function listBadgesForUser(userId) {
-  await evaluateAndUnlockBadges(userId);
+export async function inspectBadgesForUser(userId) {
   const [[user]] = await pool.execute(
     `SELECT equipped_badge_key FROM users WHERE id = ? LIMIT 1`,
     [userId],
@@ -120,6 +119,11 @@ export async function listBadgesForUser(userId) {
       }),
     ),
   };
+}
+
+export async function listBadgesForUser(userId) {
+  await evaluateAndUnlockBadges(userId);
+  return inspectBadgesForUser(userId);
 }
 
 export async function equipBadge(userId, badgeKey) {

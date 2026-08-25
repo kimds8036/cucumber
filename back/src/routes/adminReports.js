@@ -196,6 +196,101 @@ router.get('/analytics/install-landing', requireAdminApi, async (req, res) => {
   }
 });
 
+router.get('/analytics/timer', requireAdminApi, async (req, res) => {
+  const adminUserId = req.user.userId;
+  if (!isAdminUser(adminUserId)) {
+    return res.status(403).json({ success: false, message: '관리자 권한이 필요합니다.' });
+  }
+  try {
+    const { getTimerOpsOverview } = await import('../services/timerOps.service.js');
+    const days = Number(req.query.days || 14);
+    const overview = await getTimerOpsOverview({ days });
+    return res.json({
+      success: true,
+      data: overview,
+    });
+  } catch (error) {
+    console.error('타이머 모니터링 조회 오류:', error);
+    return res.status(500).json({
+      success: false,
+      message: '타이머 요약을 불러오지 못했습니다.',
+    });
+  }
+});
+
+router.get('/analytics/activity', requireAdminApi, async (req, res) => {
+  const adminUserId = req.user.userId;
+  if (!isAdminUser(adminUserId)) {
+    return res.status(403).json({ success: false, message: '관리자 권한이 필요합니다.' });
+  }
+  try {
+    const { getActivityOpsOverview } = await import('../services/opsActivity.service.js');
+    const days = Number(req.query.days || 14);
+    const overview = await getActivityOpsOverview({ days });
+    return res.json({
+      success: true,
+      data: overview,
+    });
+  } catch (error) {
+    console.error('활동 모니터링 조회 오류:', error);
+    return res.status(500).json({
+      success: false,
+      message: '활동 요약을 불러오지 못했습니다.',
+    });
+  }
+});
+
+router.get('/batch-jobs', requireAdminApi, async (req, res) => {
+  const adminUserId = req.user.userId;
+  if (!isAdminUser(adminUserId)) {
+    return res.status(403).json({ success: false, message: '관리자 권한이 필요합니다.' });
+  }
+  try {
+    const { listRecentBatchRuns, listBatchCursors } = await import(
+      '../services/batchJobRun.service.js'
+    );
+    const limit = Number(req.query.limit || 40);
+    const [runs, cursors] = await Promise.all([
+      listRecentBatchRuns({ limit }),
+      listBatchCursors(),
+    ]);
+    return res.json({
+      success: true,
+      data: { runs, cursors },
+    });
+  } catch (error) {
+    console.error('크론 이력 조회 오류:', error);
+    return res.status(500).json({
+      success: false,
+      message: '크론 이력을 불러오지 못했습니다.',
+    });
+  }
+});
+
+router.get('/analytics/user-inspect', requireAdminApi, async (req, res) => {
+  const adminUserId = req.user.userId;
+  if (!isAdminUser(adminUserId)) {
+    return res.status(403).json({ success: false, message: '관리자 권한이 필요합니다.' });
+  }
+  try {
+    const { inspectOpsUser } = await import('../services/opsUserInspect.service.js');
+    const result = await inspectOpsUser(req.query.q);
+    if (result?.error) {
+      return res.status(result.status || 400).json({
+        success: false,
+        message: result.message || '조회에 실패했습니다.',
+      });
+    }
+    return res.json({ success: true, data: result });
+  } catch (error) {
+    console.error('사용자 모니터링 조회 오류:', error);
+    return res.status(500).json({
+      success: false,
+      message: '사용자 정보를 불러오지 못했습니다.',
+    });
+  }
+});
+
 router.get('/reports', requireAdminApi, async (req, res) => {
   const adminUserId = req.user.userId;
   if (!isAdminUser(adminUserId)) {

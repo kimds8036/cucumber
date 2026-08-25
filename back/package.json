@@ -25,7 +25,8 @@
     "migrate:pii-encrypt": "node src/db/migrate-pii-encrypt.js",
     "db:generate-init": "node src/db/generate-001-init-from-db.js",
     "db:build-init": "node src/db/build-001-init-from-archive.js",
-    "db:squash-baseline": "node src/db/squash-baseline.js"
+    "db:squash-baseline": "node src/db/squash-baseline.js",
+    "badges:backfill-first-post": "node scripts/backfill-first-post-badges.mjs"
   },
   "keywords": [],
   "author": "",

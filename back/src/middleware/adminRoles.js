@@ -20,6 +20,7 @@ export function canAccessPanel(role, panel) {
   if (r === ADMIN_ROLES.SUPER) return true;
   const map = {
     dashboard: [ADMIN_ROLES.SUPER, ADMIN_ROLES.MODERATOR, ADMIN_ROLES.SUPPORT, ADMIN_ROLES.VERIFIER],
+    ops: [ADMIN_ROLES.SUPER, ADMIN_ROLES.MODERATOR],
     reports: [ADMIN_ROLES.SUPER, ADMIN_ROLES.MODERATOR],
     processedReports: [ADMIN_ROLES.SUPER, ADMIN_ROLES.MODERATOR],
     appeals: [ADMIN_ROLES.SUPER, ADMIN_ROLES.MODERATOR],

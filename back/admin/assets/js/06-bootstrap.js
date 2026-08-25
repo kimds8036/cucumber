@@ -3,6 +3,9 @@ window.PANEL_LOADERS = {
     await loadDashboard();
     await loadDelayed();
   },
+  ops: async () => {
+    await loadOpsPanel();
+  },
   reports: () => loadReports(),
   processedReports: () => loadProcessedReports(),
   appeals: () => loadAppeals(),

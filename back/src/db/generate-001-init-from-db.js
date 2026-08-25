@@ -111,6 +111,8 @@ const TABLE_ORDER = [
   'user_invites',
   'user_timetable_overrides',
   'user_period_time_settings',
+  'batch_job_runs',
+  'batch_job_cursors',
 ];
 
 const SKIP_TABLES = new Set(['schema_migrations']);

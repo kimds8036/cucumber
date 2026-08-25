@@ -11,16 +11,464 @@ async function loadDashboard() {
     setNavBadge('badge-reports', data.pendingReports || 0);
     setNavBadge('badge-appeals', data.pendingAppeals || 0);
     setNavBadge('badge-inquiries', data.pendingInquiries || 0);
-    try {
-      await loadAnalyticsOverview();
-    } catch (error) {
-      console.warn('[AdminDashboard] analytics overview load failed:', error?.message || error);
+  }
+
+  async function loadOpsPanel() {
+    bindOpsHub();
+    showOpsHub();
+  }
+
+  function showOpsHub() {
+    const hub = document.getElementById('ops-hub');
+    if (hub) hub.hidden = false;
+    document.querySelectorAll('.ops-view').forEach((el) => {
+      el.hidden = true;
+    });
+    const meta = PAGE_META.ops;
+    const title = document.getElementById('topbar-title');
+    const sub = document.getElementById('topbar-sub');
+    if (title) title.textContent = meta.title;
+    if (sub) sub.textContent = meta.sub;
+  }
+
+  function bindOpsHub() {
+    const hub = document.getElementById('ops-hub');
+    if (!hub || hub.dataset.bound === '1') return;
+    hub.dataset.bound = '1';
+    hub.addEventListener('click', (e) => {
+      const card = e.target.closest('[data-ops-view]');
+      if (!card) return;
+      openOpsView(card.getAttribute('data-ops-view'));
+    });
+    document.getElementById('panel-ops')?.addEventListener('click', (e) => {
+      if (!e.target.closest('[data-ops-back]')) return;
+      showOpsHub();
+    });
+    bindOpsUserInspect();
+  }
+
+  async function openOpsView(view) {
+    const hub = document.getElementById('ops-hub');
+    if (hub) hub.hidden = true;
+    document.querySelectorAll('.ops-view').forEach((el) => {
+      el.hidden = el.id !== `ops-view-${view}`;
+    });
+    const titles = {
+      user: ['사용자', '배지 · 시간표 · 친구'],
+      timer: ['타이머', '공부 시간 · 세션'],
+      activity: ['앱 활동', '글 · 댓글 · 쪽지 · 우편'],
+      jobs: ['크론', '작업 이력 · 커서'],
+      reach: ['이용 · 설치', 'DAU/MAU · /get'],
+    };
+    const t = titles[view];
+    if (t) {
+      const title = document.getElementById('topbar-title');
+      const sub = document.getElementById('topbar-sub');
+      if (title) title.textContent = t[0];
+      if (sub) sub.textContent = t[1];
     }
     try {
-      await loadInstallLandingStats();
+      if (view === 'jobs') await loadBatchJobsOverview();
+      if (view === 'timer') await loadTimerOps();
+      if (view === 'activity') await loadActivityOps();
+      if (view === 'reach') {
+        await loadAnalyticsOverview();
+        await loadInstallLandingStats();
+      }
     } catch (error) {
-      console.warn('[AdminDashboard] install landing stats load failed:', error?.message || error);
+      alert(error?.message || '모니터링 데이터를 불러오지 못했습니다.');
     }
+  }
+
+  window.showOpsHub = showOpsHub;
+
+  function bindOpsUserInspect() {
+    const btn = document.getElementById('ops-user-search-btn');
+    const input = document.getElementById('ops-user-q');
+    if (!btn || btn.dataset.bound === '1') return;
+    btn.dataset.bound = '1';
+    const run = () => loadOpsUserInspect();
+    btn.addEventListener('click', run);
+    if (input) {
+      input.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          run();
+        }
+      });
+    }
+  }
+
+  async function loadOpsUserInspect() {
+    const input = document.getElementById('ops-user-q');
+    const empty = document.getElementById('ops-user-inspect-empty');
+    const wrap = document.getElementById('ops-user-inspect-wrap');
+    const q = String(input?.value || '').trim();
+    if (!q) {
+      if (empty) empty.textContent = '아이디 또는 사용자 번호를 입력하세요.';
+      if (wrap) wrap.hidden = true;
+      return;
+    }
+    try {
+      const { data } = await api(`/analytics/user-inspect?q=${encodeURIComponent(q)}`);
+      if (empty) empty.hidden = true;
+      if (wrap) wrap.hidden = false;
+      renderOpsUserInspect(data);
+    } catch (error) {
+      if (empty) {
+        empty.hidden = false;
+        empty.textContent = error?.message || '조회에 실패했습니다.';
+      }
+      if (wrap) wrap.hidden = true;
+    }
+  }
+
+  function renderOpsUserInspect(data) {
+    const u = data?.user || {};
+    const s = data?.stats || {};
+    const badges = data?.badges || {};
+    const kpis = document.getElementById('ops-user-kpis');
+    if (kpis) {
+      const who = `${u.displayName ? `${u.displayName} ` : ''}@${u.username || '-'} (#${u.id || '-'})`;
+      const school = `${u.schoolName || '-'}${u.grade != null ? ` ${u.grade}학년` : ''}${u.classNumber != null ? ` ${u.classNumber}반` : ''}`;
+      kpis.innerHTML = `
+        <div class="stat-card"><div class="stat-num" style="font-size:14px;line-height:1.3">${esc(who)}</div><div class="stat-label">${esc(school)}</div></div>
+        <div class="stat-card"><div class="stat-num">${Number(s.friendCount || 0).toLocaleString()}</div><div class="stat-label">친구 수</div></div>
+        <div class="stat-card stat-ok"><div class="stat-num">${Number(badges.ownedCount || 0)}</div><div class="stat-label">획득 배지</div></div>
+        <div class="stat-card stat-warn"><div class="stat-num">${Number(badges.lockedCount || 0)}</div><div class="stat-label">미오픈 배지</div></div>
+        <div class="stat-card"><div class="stat-num">${Number(s.postCount || 0).toLocaleString()}</div><div class="stat-label">글</div></div>
+        <div class="stat-card"><div class="stat-num">${Number(s.commentCount || 0).toLocaleString()}</div><div class="stat-label">댓글</div></div>
+      `;
+    }
+    const tbody = document.getElementById('ops-user-badges-tbody');
+    if (tbody) {
+      const items = badges.items || [];
+      tbody.innerHTML = items.map((b) => {
+        const p = b.progress || {};
+        const current = Number(p.current || 0);
+        const target = Number(p.target || 0);
+        const ratio = target > 0 ? `${current}/${target}` : '-';
+        const pct = target > 0 ? Math.min(100, Math.round((current / target) * 100)) : 0;
+        const st = b.owned ? (b.equipped ? '장착' : '획득') : '미오픈';
+        return `
+          <tr>
+            <td>${esc(st)}</td>
+            <td>${esc(b.title || b.key)}</td>
+            <td>${esc(ratio)} (${pct}%)</td>
+            <td>${esc(b.description || '')}</td>
+          </tr>
+        `;
+      }).join('');
+    }
+    const hint = document.getElementById('ops-user-tt-hint');
+    const ttWrap = document.getElementById('ops-user-tt-wrap');
+    const tt = data?.timetable || {};
+    const src = tt.source || {};
+    if (hint) {
+      hint.textContent = src.neis || src.override
+        ? `NEIS ${src.neis ? '있음' : '없음'} · 수정본 ${src.override ? '있음' : '없음'}${tt.overrideUpdatedAt ? ` · 수정 ${tt.overrideUpdatedAt}` : ''}`
+        : '등록된 시간표가 없습니다.';
+    }
+    if (ttWrap) {
+      if (!tt.rows || !tt.rows.length) {
+        ttWrap.innerHTML = '<p class="txt-muted" style="font-size:13px">표시할 교시가 없습니다.</p>';
+      } else {
+        const days = tt.days || [];
+        ttWrap.innerHTML = `<table>
+          <thead><tr><th style="width:56px">교시</th>${days.map((d) => `<th>${esc(d)}</th>`).join('')}</tr></thead>
+          <tbody>
+            ${tt.rows.map((r) => `<tr><td>${r.period}</td>${(r.cells || []).map((c) => `<td>${esc(c || '')}</td>`).join('')}</tr>`).join('')}
+          </tbody>
+        </table>`;
+      }
+    }
+  }
+
+  function formatBatchSummary(row) {
+    const raw = row.summary_json;
+    let obj = raw;
+    if (typeof raw === 'string') {
+      try { obj = JSON.parse(raw); } catch { obj = null; }
+    }
+    if (obj && typeof obj === 'object') {
+      return Object.entries(obj)
+        .filter(([, v]) => v != null && v !== '')
+        .map(([k, v]) => `${k}=${v}`)
+        .join(' · ') || '-';
+    }
+    return row.error_message || '-';
+  }
+
+  async function loadBatchJobsOverview() {
+    const { data } = await api('/batch-jobs?limit=30');
+    const runsBody = document.getElementById('ops-batch-runs-tbody');
+    const cursorsBody = document.getElementById('ops-batch-cursors-tbody');
+    const runs = data?.runs || [];
+    const cursors = data?.cursors || [];
+    if (runsBody) {
+      if (!runs.length) {
+        runsBody.innerHTML = '<tr><td colspan="5" class="empty-row">아직 기록된 크론 실행이 없습니다. migrate 후 스케줄러가 돌면 쌓입니다.</td></tr>';
+      } else {
+        runsBody.innerHTML = runs.map((r) => `
+          <tr>
+            <td>${esc(r.job_name)}</td>
+            <td>${esc(r.status)}</td>
+            <td>${Number(r.elapsed_ms || 0)}</td>
+            <td>${esc(formatBatchSummary(r))}</td>
+            <td>${esc(r.finished_at || '')}</td>
+          </tr>
+        `).join('');
+      }
+    }
+    if (cursorsBody) {
+      if (!cursors.length) {
+        cursorsBody.innerHTML = '<tr><td colspan="4" class="empty-row">커서가 없습니다. school-stats가 한 번 돌면 생깁니다.</td></tr>';
+      } else {
+        cursorsBody.innerHTML = cursors.map((c) => `
+          <tr>
+            <td>${esc(c.job_name)}</td>
+            <td>${esc(c.cursor_key)}</td>
+            <td>${esc(c.mode || '-')}</td>
+            <td>id=${c.last_id ?? '-'} · at=${esc(c.last_at || '-')} · ${esc(c.note || '')}</td>
+          </tr>
+        `).join('');
+      }
+    }
+  }
+
+  async function loadTimerOps() {
+    const { data } = await api('/analytics/timer?days=14');
+    renderTimerKpi(data?.summary || {});
+    renderTimerLineChart(data?.series || []);
+    renderTimerSchoolBars(data?.topSchools || []);
+    renderTimerSessions(data?.recentSessions || []);
+  }
+
+  function renderTimerKpi(summary) {
+    const set = (id, value) => {
+      const el = document.getElementById(id);
+      if (el) el.textContent = value;
+    };
+    set('timer-today-users', Number(summary.todayActiveUsers || 0).toLocaleString());
+    set('timer-today-hours', Number(summary.todayTotalHours || 0).toLocaleString());
+    set('timer-today-avg', Number(summary.todayAvgHoursPerUser || 0).toLocaleString());
+    set('timer-open-users', Number(summary.openUsers || 0).toLocaleString());
+    set('timer-range-users', Number(summary.rangeActiveUsers || 0).toLocaleString());
+    set('timer-range-hours', Number(summary.rangeTotalHours || 0).toLocaleString());
+  }
+
+  function renderTimerLineChart(series) {
+    const svg = document.getElementById('timer-line-chart');
+    const caption = document.getElementById('timer-line-caption');
+    const tooltip = document.getElementById('timer-line-tooltip');
+    if (!svg || !caption) return;
+    if (!Array.isArray(series) || series.length === 0) {
+      svg.innerHTML = '';
+      if (tooltip) tooltip.hidden = true;
+      caption.textContent = '아직 타이머 집계가 없습니다.';
+      return;
+    }
+    svg.setAttribute('viewBox', '0 0 640 260');
+    svg.setAttribute('preserveAspectRatio', 'xMidYMid meet');
+    svg.innerHTML = buildLineChartSvg({
+      series,
+      seriesA: (s) => Number(s.activeUsers || 0),
+      seriesB: (s) => Number(s.totalHours || 0),
+      colorA: '#7c3aed',
+      colorB: '#0f766e',
+      formatTick: (s) => String(s.date || '').slice(5),
+    });
+    bindLineChartHover(svg, tooltip, series, (point) => `
+      <div><strong>${esc(point.date)}</strong></div>
+      <div>이용 학생: ${Number(point.activeUsers || 0).toLocaleString()}명</div>
+      <div>총 시간: ${Number(point.totalHours || 0).toLocaleString()}h</div>
+      <div>1인 평균: ${Number(point.avgHoursPerUser || 0).toLocaleString()}h</div>
+    `);
+    const first = series[0];
+    const last = series[series.length - 1];
+    caption.textContent = `${first.date} ~ ${last.date} · 학생 수와 총 공부 시간(시간)`;
+  }
+
+  function renderTimerSchoolBars(rows) {
+    const barsWrap = document.getElementById('timer-school-bars');
+    const caption = document.getElementById('timer-school-caption');
+    if (!barsWrap || !caption) return;
+    if (!Array.isArray(rows) || !rows.length) {
+      barsWrap.innerHTML = '<div class="txt-muted" style="font-size:12px;padding:8px 0;">학교별 집계가 없습니다.</div>';
+      caption.textContent = '타이머를 쓴 학교가 생기면 표시됩니다.';
+      return;
+    }
+    const maxHours = Math.max(1, ...rows.map((row) => Number(row.totalHours || 0)));
+    barsWrap.innerHTML = rows.map((row) => {
+      const hours = Number(row.totalHours || 0);
+      const widthPct = Math.max(2, (hours / maxHours) * 100);
+      const users = Number(row.activeUsers || 0);
+      return `
+        <div class="analytics-screen-bar-row">
+          <div class="analytics-screen-bar-label" title="${esc(row.schoolName)}">${esc(row.schoolName)}</div>
+          <div class="analytics-screen-bar-track">
+            <div class="analytics-screen-bar-fill" style="width:${widthPct.toFixed(1)}%"></div>
+          </div>
+          <div class="analytics-screen-bar-value">${hours.toLocaleString()}h · ${users.toLocaleString()}명</div>
+        </div>
+      `;
+    }).join('');
+    caption.textContent = `기간 합계 상위 ${rows.length}개 학교 · 시간은 합계, 인원은 해당 학교 이용 학생 수`;
+  }
+
+  function formatOpsStudent(row) {
+    const name = row.displayName ? `${row.displayName} ` : '';
+    const grade =
+      row.grade != null ? ` ${row.grade}학년${row.classNumber != null ? ` ${row.classNumber}반` : ''}` : '';
+    return `${name}@${row.username || '-'} (#${row.userId || '-'})${grade}`;
+  }
+
+  function sessionDayKey(startedAt) {
+    if (!startedAt) return 'unknown';
+    const d = new Date(startedAt);
+    if (Number.isNaN(d.getTime())) return String(startedAt).slice(0, 10) || 'unknown';
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${y}-${m}-${day}`;
+  }
+
+  function groupTimerSessions(rows) {
+    const byDay = new Map();
+    for (const r of rows) {
+      const day = sessionDayKey(r.startedAt);
+      if (!byDay.has(day)) byDay.set(day, new Map());
+      const users = byDay.get(day);
+      const uid = Number(r.userId) || 0;
+      if (!users.has(uid)) {
+        users.set(uid, {
+          userId: uid,
+          label: formatOpsStudent(r),
+          schoolName: r.schoolName || '-',
+          sessions: [],
+          hours: 0,
+          open: false,
+        });
+      }
+      const g = users.get(uid);
+      g.sessions.push(r);
+      g.hours += Number(r.hours || 0);
+      if (r.open) g.open = true;
+    }
+    return [...byDay.entries()]
+      .sort((a, b) => (a[0] < b[0] ? 1 : -1))
+      .map(([date, users]) => ({
+        date,
+        users: [...users.values()].sort((a, b) => {
+          if (a.open !== b.open) return a.open ? -1 : 1;
+          return b.hours - a.hours;
+        }),
+      }));
+  }
+
+  function renderTimerSessions(rows) {
+    const host = document.getElementById('ops-timer-sessions-list');
+    if (!host) return;
+    if (!Array.isArray(rows) || !rows.length) {
+      host.innerHTML = '<p class="txt-muted" style="font-size:13px">최근 타이머 세션이 없습니다.</p>';
+      return;
+    }
+    const days = groupTimerSessions(rows);
+    host.innerHTML = days.map((day, di) => {
+      const userCount = day.users.length;
+      const sessCount = day.users.reduce((n, u) => n + u.sessions.length, 0);
+      const hourSum = day.users.reduce((n, u) => n + u.hours, 0);
+      return `
+        <details class="ops-session-day" ${di === 0 ? 'open' : ''}>
+          <summary>${esc(day.date)} · ${userCount}명 · ${sessCount}세션 · ${hourSum.toFixed(1)}h</summary>
+          ${day.users.map((u) => `
+            <details class="ops-session-user">
+              <summary>${u.open ? '진행 · ' : ''}${esc(u.label)} · ${esc(u.schoolName)} · ${u.sessions.length}건 · ${Number(u.hours).toFixed(1)}h</summary>
+              <div class="table-wrap">
+                <table>
+                  <thead><tr><th style="width:70px">상태</th><th>과목</th><th style="width:70px">시간(h)</th><th style="width:150px">시작</th></tr></thead>
+                  <tbody>
+                    ${u.sessions.map((r) => `
+                      <tr>
+                        <td>${r.open ? '<span class="pill pill-ok">진행</span>' : '-'}</td>
+                        <td>${esc(r.subjectName || '전체')}</td>
+                        <td>${Number(r.hours || 0).toLocaleString()}</td>
+                        <td>${esc(fmtDate(r.startedAt))}</td>
+                      </tr>
+                    `).join('')}
+                  </tbody>
+                </table>
+              </div>
+            </details>
+          `).join('')}
+        </details>
+      `;
+    }).join('');
+  }
+
+  async function loadActivityOps() {
+    const { data } = await api('/analytics/activity?days=14');
+    const s = data?.summary || {};
+    const set = (id, value) => {
+      const el = document.getElementById(id);
+      if (el) el.textContent = value;
+    };
+    set('activity-today-posts', Number(s.todayPosts || 0).toLocaleString());
+    set('activity-today-comments', Number(s.todayComments || 0).toLocaleString());
+    set('activity-today-chat', Number(s.todayChat || 0).toLocaleString());
+    set('activity-today-pmail', Number(s.todayPersonalMail || 0).toLocaleString());
+    set('activity-today-smail', Number(s.todaySchoolMail || 0).toLocaleString());
+    renderActivityLineChart(data?.series || []);
+    renderActivityFeed(data?.feed || []);
+  }
+
+  function renderActivityLineChart(series) {
+    const svg = document.getElementById('activity-line-chart');
+    const caption = document.getElementById('activity-line-caption');
+    const tooltip = document.getElementById('activity-line-tooltip');
+    if (!svg || !caption) return;
+    if (!Array.isArray(series) || series.length === 0) {
+      svg.innerHTML = '';
+      if (tooltip) tooltip.hidden = true;
+      caption.textContent = '아직 활동 데이터가 없습니다.';
+      return;
+    }
+    svg.setAttribute('viewBox', '0 0 640 260');
+    svg.setAttribute('preserveAspectRatio', 'xMidYMid meet');
+    svg.innerHTML = buildLineChartSvg({
+      series,
+      seriesA: (p) => Number(p.posts || 0),
+      seriesB: (p) => Number(p.comments || 0),
+      colorA: '#2563eb',
+      colorB: '#ea580c',
+      formatTick: (p) => String(p.date || '').slice(5),
+    });
+    bindLineChartHover(svg, tooltip, series, (point) => `
+      <div><strong>${esc(point.date)}</strong></div>
+      <div>글: ${Number(point.posts || 0).toLocaleString()}</div>
+      <div>댓글: ${Number(point.comments || 0).toLocaleString()}</div>
+      <div>쪽지: ${Number(point.chat || 0).toLocaleString()}</div>
+      <div>우편: ${Number(point.mail || 0).toLocaleString()}</div>
+    `);
+    caption.textContent = '선은 글·댓글, 툴팁에 쪽지·우편 건수도 표시됩니다.';
+  }
+
+  function renderActivityFeed(rows) {
+    const body = document.getElementById('ops-activity-feed-tbody');
+    if (!body) return;
+    if (!Array.isArray(rows) || !rows.length) {
+      body.innerHTML = '<tr><td colspan="5" class="empty-row">최근 활동이 없습니다.</td></tr>';
+      return;
+    }
+    body.innerHTML = rows.map((r) => `
+      <tr>
+        <td>${esc(r.typeLabel || r.type)}</td>
+        <td>${esc(r.schoolName || '-')}</td>
+        <td>${esc(formatOpsStudent(r))}</td>
+        <td>${esc(r.preview || '')}</td>
+        <td>${esc(fmtDate(r.at))}</td>
+      </tr>
+    `).join('');
   }
 
   async function loadAnalyticsOverview() {
