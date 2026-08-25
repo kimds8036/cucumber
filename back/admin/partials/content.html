@@ -47,6 +47,34 @@
 
       <!-- ────────── 모니터링 (Ops) ────────── -->
       <div class="panel" id="panel-ops">
+        <div class="section-title">사용자 조회</div>
+        <p class="section-hint">아이디 또는 사용자 번호로 배지 진행도, 친구 수, 병합 시간표를 봅니다. 조회만 하며 배지를 자동 지급하지는 않습니다.</p>
+        <div class="toolbar" style="margin-bottom:12px;display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+          <input id="ops-user-q" type="text" placeholder="아이디 또는 #번호" style="min-width:220px" />
+          <button type="button" class="btn btn-primary" id="ops-user-search-btn">조회</button>
+        </div>
+        <div id="ops-user-inspect-empty" class="txt-muted" style="font-size:13px;margin-bottom:16px">위에서 사용자를 조회하세요.</div>
+        <div id="ops-user-inspect-wrap" hidden>
+          <div class="analytics-kpi-grid dash-kpi-compact" id="ops-user-kpis"></div>
+          <div class="section-title" style="margin-top:12px">배지</div>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th style="width:90px">상태</th>
+                  <th style="width:140px">배지</th>
+                  <th>진행</th>
+                  <th>설명</th>
+                </tr>
+              </thead>
+              <tbody id="ops-user-badges-tbody"></tbody>
+            </table>
+          </div>
+          <div class="section-title" style="margin-top:16px">시간표</div>
+          <p class="section-hint" id="ops-user-tt-hint"></p>
+          <div class="table-wrap" id="ops-user-tt-wrap"></div>
+        </div>
+
         <div class="section-title">크론 작업</div>
         <p class="section-hint">최근 실행 요약입니다. school-stats 댓글 수는 평시 새 id만 보정하고, 기본 168시간마다 전체를 다시 맞춥니다.</p>
         <div class="table-wrap">
