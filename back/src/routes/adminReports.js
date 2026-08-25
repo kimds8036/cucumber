@@ -246,17 +246,25 @@ router.get('/batch-jobs', requireAdminApi, async (req, res) => {
     return res.status(403).json({ success: false, message: '관리자 권한이 필요합니다.' });
   }
   try {
-    const { listRecentBatchRuns, listBatchCursors } = await import(
+    const { listRecentBatchRuns, listBatchCursors, listLatestBatchRunByJobName } = await import(
       '../services/batchJobRun.service.js'
     );
+    const { getCronJobCatalogForOps } = await import('../constants/cronJobsCatalog.js');
     const limit = Number(req.query.limit || 40);
-    const [runs, cursors] = await Promise.all([
+    const [runs, cursors, latestRows] = await Promise.all([
       listRecentBatchRuns({ limit }),
       listBatchCursors(),
+      listLatestBatchRunByJobName(),
     ]);
+    const latestByJob = Object.fromEntries((latestRows || []).map((r) => [r.job_name, r]));
+    const catalog = getCronJobCatalogForOps();
+    catalog.jobs = catalog.jobs.map((j) => ({
+      ...j,
+      lastRun: latestByJob[j.key] || null,
+    }));
     return res.json({
       success: true,
-      data: { runs, cursors },
+      data: { runs, cursors, catalog },
     });
   } catch (error) {
     console.error('크론 이력 조회 오류:', error);

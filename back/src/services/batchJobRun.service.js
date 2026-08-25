@@ -72,3 +72,21 @@ export async function listBatchCursors() {
     throw err;
   }
 }
+
+export async function listLatestBatchRunByJobName() {
+  try {
+    const [rows] = await pool.execute(
+      `SELECT r.id, r.job_name, r.status, r.started_at, r.finished_at, r.elapsed_ms, r.summary_json, r.error_message
+       FROM batch_job_runs r
+       INNER JOIN (
+         SELECT job_name, MAX(id) AS max_id
+         FROM batch_job_runs
+         GROUP BY job_name
+       ) latest ON latest.max_id = r.id`,
+    );
+    return rows;
+  } catch (err) {
+    if (err?.code === 'ER_NO_SUCH_TABLE') return [];
+    throw err;
+  }
+}

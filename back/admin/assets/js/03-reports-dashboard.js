@@ -57,7 +57,7 @@ async function loadDashboard() {
       user: ['사용자', '배지 · 시간표 · 친구'],
       timer: ['타이머', '공부 시간 · 세션'],
       activity: ['앱 활동', '글 · 댓글 · 쪽지 · 우편'],
-      jobs: ['크론', '작업 이력 · 커서'],
+      jobs: ['크론', '무슨 일이 도는지 · 최근 실행'],
       terms: ['등교 · 학기', '개학일 · 오늘 등교 여부'],
       reach: ['이용 · 설치', 'DAU/MAU · /get'],
     };
@@ -309,32 +309,42 @@ async function loadDashboard() {
 
   async function loadBatchJobsOverview() {
     const { data } = await api('/batch-jobs?limit=30');
+    const catalog = data?.catalog || {};
+    const hint = document.getElementById('ops-cron-catalog-hint');
+    if (hint) {
+      hint.textContent = `${catalog.enabledHint || '서버가 알아서 도는 일들입니다.'} (시간대 ${catalog.timezone || 'Asia/Seoul'})`;
+    }
+    renderCronCatalog(catalog.jobs || []);
     const runsBody = document.getElementById('ops-batch-runs-tbody');
     const cursorsBody = document.getElementById('ops-batch-cursors-tbody');
     const runs = data?.runs || [];
     const cursors = data?.cursors || [];
+    const titleOf = (name) => {
+      const hit = (catalog.jobs || []).find((j) => j.key === name);
+      return hit ? `${hit.emoji} ${hit.title}` : name;
+    };
     if (runsBody) {
       if (!runs.length) {
-        runsBody.innerHTML = '<tr><td colspan="5" class="empty-row">아직 기록된 크론 실행이 없습니다. migrate 후 스케줄러가 돌면 쌓입니다.</td></tr>';
+        runsBody.innerHTML = '<tr><td colspan="5" class="empty-row">아직 실행 기록이 없어요. 스케줄러가 한 번 돌면 쌓입니다.</td></tr>';
       } else {
         runsBody.innerHTML = runs.map((r) => `
           <tr>
-            <td>${esc(r.job_name)}</td>
-            <td>${esc(r.status)}</td>
+            <td>${esc(titleOf(r.job_name))}</td>
+            <td>${esc(cronStatusKo(r.status))}</td>
             <td>${Number(r.elapsed_ms || 0)}</td>
             <td>${esc(formatBatchSummary(r))}</td>
-            <td>${esc(r.finished_at || '')}</td>
+            <td>${esc(fmtDate(r.finished_at))}</td>
           </tr>
         `).join('');
       }
     }
     if (cursorsBody) {
       if (!cursors.length) {
-        cursorsBody.innerHTML = '<tr><td colspan="4" class="empty-row">커서가 없습니다. school-stats가 한 번 돌면 생깁니다.</td></tr>';
+        cursorsBody.innerHTML = '<tr><td colspan="4" class="empty-row">아직 없어요. 학교 통계가 한 번 돌면 생겨요.</td></tr>';
       } else {
         cursorsBody.innerHTML = cursors.map((c) => `
           <tr>
-            <td>${esc(c.job_name)}</td>
+            <td>${esc(titleOf(c.job_name))}</td>
             <td>${esc(c.cursor_key)}</td>
             <td>${esc(c.mode || '-')}</td>
             <td>id=${c.last_id ?? '-'} · at=${esc(c.last_at || '-')} · ${esc(c.note || '')}</td>
@@ -342,6 +352,52 @@ async function loadDashboard() {
         `).join('');
       }
     }
+  }
+
+  function cronStatusKo(status) {
+    if (status === 'success') return '잘됨';
+    if (status === 'failed') return '실패';
+    if (status === 'skipped') return '건너뜀';
+    return status || '-';
+  }
+
+  function renderCronCatalog(jobs) {
+    const host = document.getElementById('ops-cron-catalog');
+    if (!host) return;
+    if (!jobs.length) {
+      host.innerHTML = '<p class="txt-muted">목록을 불러오지 못했어요.</p>';
+      return;
+    }
+    host.innerHTML = jobs.map((j) => {
+      const last = j.lastRun;
+      let badge = '아직 기록 없음';
+      let tone = 'idle';
+      if (last?.status === 'success') {
+        badge = '최근에 잘됨';
+        tone = 'ok';
+      } else if (last?.status === 'failed') {
+        badge = '최근에 실패';
+        tone = 'bad';
+      } else if (last?.status === 'skipped') {
+        badge = '최근에 건너뜀';
+        tone = 'skip';
+      }
+      const whenLast = last?.finished_at ? fmtDate(last.finished_at) : '-';
+      return `
+        <article class="ops-cron-card tone-${tone}">
+          <div class="ops-cron-emoji" aria-hidden="true">${esc(j.emoji || '✨')}</div>
+          <div class="ops-cron-body">
+            <div class="ops-cron-top">
+              <h3 class="ops-cron-title">${esc(j.title)}</h3>
+              <span class="ops-cron-badge">${esc(badge)}</span>
+            </div>
+            <p class="ops-cron-when">⏰ ${esc(j.when)}</p>
+            <p class="ops-cron-blurb">${esc(j.blurb)}</p>
+            <p class="ops-cron-last">마지막: ${esc(whenLast)}${last?.elapsed_ms != null ? ` · ${Number(last.elapsed_ms)}ms` : ''}</p>
+          </div>
+        </article>
+      `;
+    }).join('');
   }
 
   async function loadTimerOps() {
