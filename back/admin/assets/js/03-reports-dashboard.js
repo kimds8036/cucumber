@@ -29,6 +29,31 @@ async function loadDashboard() {
     const sub = document.getElementById('topbar-sub');
     if (title) title.textContent = meta.title;
     if (sub) sub.textContent = meta.sub;
+    loadOpsUserEcosystem();
+  }
+
+  async function loadOpsUserEcosystem() {
+    const host = document.getElementById('ops-eco-items');
+    if (!host) return;
+    try {
+      const { data } = await api('/analytics/user-ecosystem');
+      const n = (v) => Number(v || 0).toLocaleString();
+      const chips = [
+        ['학생', n(data?.users)],
+        ['학교', n(data?.schools)],
+        ['iPhone', n(data?.iosUsers)],
+        ['Android', n(data?.androidUsers)],
+        ['오늘 등교', n(data?.todayCheckedIn)],
+      ];
+      if (Number(data?.mixedOsUsers || 0) > 0) {
+        chips.splice(4, 0, ['혼용', n(data.mixedOsUsers)]);
+      }
+      host.innerHTML = chips
+        .map(([label, val]) => `<span class="ops-eco-chip">${esc(label)} <strong>${esc(val)}</strong></span>`)
+        .join('');
+    } catch (error) {
+      host.textContent = error?.message || '요약을 불러오지 못했습니다.';
+    }
   }
 
   function bindOpsHub() {

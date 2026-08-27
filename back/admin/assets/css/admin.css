@@ -1492,6 +1492,47 @@
       font-weight: 700;
     }
 
+    .ops-eco-summary {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: baseline;
+      gap: 6px 10px;
+      margin-top: 10px;
+      margin-bottom: 2px;
+      padding: 8px 12px;
+      border: 0.5px solid var(--border);
+      border-radius: var(--radius-md);
+      background: var(--bg-secondary);
+      font-size: 12px;
+      line-height: 1.45;
+      color: var(--text-secondary);
+    }
+    .ops-eco-label {
+      font-size: 10px;
+      font-weight: 600;
+      letter-spacing: .35px;
+      text-transform: uppercase;
+      color: var(--text-tertiary);
+      flex-shrink: 0;
+    }
+    .ops-eco-items {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 4px 0;
+      min-width: 0;
+    }
+    .ops-eco-items .ops-eco-chip {
+      display: inline-flex;
+      align-items: baseline;
+      gap: 4px;
+      margin-right: 10px;
+      white-space: nowrap;
+    }
+    .ops-eco-items .ops-eco-chip strong {
+      font-weight: 600;
+      color: var(--text-primary);
+      font-variant-numeric: tabular-nums;
+    }
     .ops-hub-grid {
       display: grid;
       grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));

@@ -282,6 +282,24 @@ router.get('/batch-jobs', requireAdminApi, async (req, res) => {
   }
 });
 
+router.get('/analytics/user-ecosystem', requireAdminApi, async (req, res) => {
+  const adminUserId = req.user.userId;
+  if (!isAdminUser(adminUserId)) {
+    return res.status(403).json({ success: false, message: '관리자 권한이 필요합니다.' });
+  }
+  try {
+    const { getOpsUserEcosystemSummary } = await import('../services/opsUserEcosystem.service.js');
+    const data = await getOpsUserEcosystemSummary();
+    return res.json({ success: true, data });
+  } catch (error) {
+    console.error('사용자 생태계 요약 조회 오류:', error);
+    return res.status(500).json({
+      success: false,
+      message: '사용자 생태계 요약을 불러오지 못했습니다.',
+    });
+  }
+});
+
 router.get('/analytics/user-inspect', requireAdminApi, async (req, res) => {
   const adminUserId = req.user.userId;
   if (!isAdminUser(adminUserId)) {

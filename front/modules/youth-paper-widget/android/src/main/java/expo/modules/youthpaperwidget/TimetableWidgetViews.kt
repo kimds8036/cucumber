@@ -143,7 +143,7 @@ object TimetableWidgetViews {
           WidgetRes.text(views, context, cellId, "")
           WidgetRes.drawableBg(views, context, cellId, "widget_cell_clear")
         } else {
-          WidgetRes.textEllipsis(views, context, cellId, cell.subjectName, 4)
+          WidgetRes.textEllipsisKeep(views, context, cellId, cell.subjectName, 4)
           WidgetRes.drawableBg(views, context, cellId, WidgetColors.cellDrawable(cell.subjectColorHex))
         }
       }
