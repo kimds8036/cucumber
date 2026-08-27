@@ -1293,6 +1293,12 @@ router.post('/signup', blockWhenFlag('signup_disabled'), validate(signupValidato
       );
 
       scheduleSchoolTermSync(resolvedSchoolId);
+      try {
+        const { scheduleSchoolStats } = await import('../services/cronSchedule.hooks.js');
+        scheduleSchoolStats(resolvedSchoolId);
+      } catch (e) {
+        console.warn('[signup] school-stats reserve', e?.message || e);
+      }
 
       if (isCertificateSignup && reviewSubmissionId) {
         notifyCertificateReviewPending({

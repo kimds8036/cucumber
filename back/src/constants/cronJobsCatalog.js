@@ -2,6 +2,15 @@
 
 export const CRON_JOB_CATALOG = [
   {
+    key: 'cron-manager',
+    emoji: '🎛️',
+    title: '크론 매니저',
+    whenDefault: '1분마다',
+    envKey: 'CRON_MANAGER',
+    defaultCron: '* * * * *',
+    blurb: '할 일이 예약된 작업만 골라 워커에게 배정해요. 예약이 없으면 거의 그냥 끝나요.',
+  },
+  {
     key: 'study-grass-aggregate',
     emoji: '🌱',
     title: '공부 잔디',
@@ -23,28 +32,28 @@ export const CRON_JOB_CATALOG = [
     key: 'school-stats',
     emoji: '🏫',
     title: '학교 통계',
-    whenDefault: '매시 정각',
+    whenDefault: '예약·안전망',
     envKey: 'CRON_SCHOOL_STATS',
-    defaultCron: '0 * * * *',
-    blurb: '글 댓글 수를 맞춰요. 평소엔 새로 생긴 것만, 가끔 전체를 다시 세어요.',
+    defaultCron: 'via-manager',
+    blurb: '가입·학교 글이 생기면 예약돼요. 매니저가 해당 학교만 맞추고, 새벽에 한 번 전체 안전망을 돌려요.',
   },
   {
     key: 'timer-session-guard',
     emoji: '⏱️',
     title: '타이머 지킴이',
-    whenDefault: '10분마다',
+    whenDefault: '예약·매시 안전망',
     envKey: 'CRON_TIMER_GUARD',
-    defaultCron: '*/10 * * * *',
-    blurb: '너무 오래 켜진 공부 타이머를 정리해서 시간이 이상하게 안 쌓이게 해요.',
+    defaultCron: 'via-manager',
+    blurb: '타이머가 켜지면 예약돼요. 너무 오래 켜진 세션을 정리해요.',
   },
   {
     key: 'personal-mail-return',
     emoji: '✉️',
     title: '개인 우편 반송',
-    whenDefault: '30분마다',
+    whenDefault: '기한 예약',
     envKey: 'CRON_PERSONAL_MAIL_RETURN',
-    defaultCron: '*/30 * * * *',
-    blurb: '받을 수 없는 개인 우편을 돌려보내요.',
+    defaultCron: 'via-manager',
+    blurb: '우편을 보낼 때 반송 시각으로 예약돼요. 받을 수 없으면 돌려보내요.',
   },
   {
     key: 'reverification-guide',
@@ -114,16 +123,18 @@ export const CRON_JOB_CATALOG = [
 function cronToKorean(expr) {
   const raw = String(expr || '').trim();
   const map = {
+    '* * * * *': '1분마다',
+    'via-manager': '예약·매니저',
     '5 * * * *': '매시 5분',
     '*/10 * * * *': '10분마다',
     '0 * * * *': '매시 정각',
     '*/30 * * * *': '30분마다',
     '*/5 * * * *': '5분마다',
     '0 3 * * *': '매일 새벽 3시',
+    '0 5 * * *': '매일 새벽 5시',
     '0 5 * * 0': '일요일 새벽 5시',
     '0 4 * * *': '매일 새벽 4시',
     '0 4 * * 1': '월요일 새벽 4시',
-    '0 5 * * *': '매일 새벽 5시',
     '0 4 25-29 2 *': '2월 25~29일 새벽 4시',
     '0 4 1-8 3 *': '3월 1~8일 새벽 4시',
   };
@@ -141,13 +152,16 @@ export function getCronJobCatalogForOps() {
   const tz = process.env.CRON_TIMEZONE || 'Asia/Seoul';
   return {
     timezone: tz,
-    enabledHint: '서버가 켜져 있으면 아래 시각(한국)에 알아서 돌아요.',
+    enabledHint:
+      '할 일이 생기면 예약되고, 크론 매니저가 배정해요. 예약이 없으면 매니저만 짧게 확인합니다.',
     jobs: CRON_JOB_CATALOG.map((j) => {
       let cronExpr = j.defaultCron;
       if (j.key === 'reverification-guide') {
         cronExpr = process.env[j.envKey]
           ? process.env[j.envKey]
           : j.defaultCron;
+      } else if (j.defaultCron === 'via-manager') {
+        cronExpr = 'via-manager';
       } else if (process.env[j.envKey]) {
         cronExpr = process.env[j.envKey];
       }

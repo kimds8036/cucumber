@@ -1355,6 +1355,15 @@ router.post('/', authenticate, blockWhenFlag('post_write_disabled'), uploadPost.
 
       await connection.commit();
 
+      if (boardType === 'school' && schoolId) {
+        try {
+          const { scheduleSchoolStats } = await import('../services/cronSchedule.hooks.js');
+          scheduleSchoolStats(schoolId);
+        } catch (e) {
+          console.warn('[posts] school-stats reserve', e?.message || e);
+        }
+      }
+
       evaluateAndUnlockBadges(userId).catch((e) => {
         console.warn('[posts] badge eval', e?.message || e);
       });

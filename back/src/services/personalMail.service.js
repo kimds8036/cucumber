@@ -218,6 +218,12 @@ export async function sendPersonalMailByAddress(senderId, body) {
         snapshot,
       });
       await connection.commit();
+      try {
+        const { schedulePersonalMailReturn } = await import('./cronSchedule.hooks.js');
+        schedulePersonalMailReturn(mailId);
+      } catch {
+        // ignore
+      }
       return {
         success: true,
         message: '우편이 전송되었습니다.',
@@ -245,6 +251,13 @@ export async function sendPersonalMailByAddress(senderId, body) {
     });
 
     await connection.commit();
+
+    try {
+      const { schedulePersonalMailReturn } = await import('./cronSchedule.hooks.js');
+      schedulePersonalMailReturn(mailId);
+    } catch {
+      // ignore
+    }
 
     if (!isShadowBlocked) {
       await enqueueNotification({
