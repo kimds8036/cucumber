@@ -66,7 +66,7 @@ object TimetableLogic {
         ?: payload?.week?.firstOrNull { it.dayLabel == payload.todayDayLabel }
     }
     val subjectsByPeriod = (dayData?.periods ?: emptyList()).associate { it.period to it.subject }
-    val colorMap = WidgetColors.buildSubjectColorMap(payload?.week ?: emptyList())
+    val colorMap = WidgetColors.buildSubjectColorMap(payload?.week ?: emptyList(), excludeWhite = true)
     val dayHasSubjects = subjectsByPeriod.values.any { it.trim().isNotEmpty() }
 
     if (!hasPeriodSettings) {
@@ -90,7 +90,7 @@ object TimetableLogic {
           startTime = valid?.first,
           endTime = valid?.second,
           subjectName = subject,
-          subjectColorHex = WidgetColors.colorHexForSubject(subject, colorMap),
+          subjectColorHex = WidgetColors.colorHexForSubject(subject, colorMap, excludeWhite = true),
         ),
       )
     }
@@ -101,7 +101,7 @@ object TimetableLogic {
     val configs = WidgetPayload.parsePeriodSettings(WidgetStore.read(context, WidgetStore.PERIOD_KEY))
     val payload = WidgetPayload.parseTimetable(WidgetStore.read(context, WidgetStore.TIMETABLE_KEY))
     val week = payload?.week ?: emptyList()
-    val colorMap = WidgetColors.buildSubjectColorMap(week)
+    val colorMap = WidgetColors.buildSubjectColorMap(week, excludeWhite = false)
     val fromSettings = configs.maxOfOrNull { it.periodNumber } ?: 0
     val fromWeek = week.flatMap { it.periods.map { p -> p.period } }.maxOrNull() ?: 0
     val maxN = if (fromSettings > 0) fromSettings else fromWeek
