@@ -100,6 +100,15 @@ export const CRON_JOB_CATALOG = [
     defaultCron: '0 4 * * 1',
     blurb: 'NEIS에서 개학·방학을 가져와 등교 가능 날을 판단할 수 있게 해요.',
   },
+  {
+    key: 'school-semester-infer',
+    emoji: '🧭',
+    title: '개학·방학 유추',
+    whenDefault: '매일 새벽 5시(시즌)',
+    envKey: 'CRON_SEMESTER_INFER',
+    defaultCron: '0 5 * * *',
+    blurb: '급식·시간표로 2학기 개학 등을 유추해요. 7~9월·12~3월만 돌고, 확정된 학교는 다음번에 건너뛰어요.',
+  },
 ];
 
 function cronToKorean(expr) {
@@ -114,6 +123,7 @@ function cronToKorean(expr) {
     '0 5 * * 0': '일요일 새벽 5시',
     '0 4 * * *': '매일 새벽 4시',
     '0 4 * * 1': '월요일 새벽 4시',
+    '0 5 * * *': '매일 새벽 5시',
     '0 4 25-29 2 *': '2월 25~29일 새벽 4시',
     '0 4 1-8 3 *': '3월 1~8일 새벽 4시',
   };

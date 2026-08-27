@@ -77,7 +77,7 @@ async function loadDashboard() {
       if (view === 'activity') await loadActivityOps();
       if (view === 'terms') await loadOpsSchoolTerms();
       if (view === 'reach') {
-        await loadAnalyticsOverview();
+      await loadAnalyticsOverview();
         await loadInstallLandingStats();
       }
     } catch (error) {
@@ -386,6 +386,7 @@ async function loadDashboard() {
     { key: 'admin-retention', emoji: '🧹', title: '오래된 기록 정리', when: '일요일 새벽 5시', blurb: '너무 오래된 운영 로그를 지워서 DB가 불어나지 않게 해요.' },
     { key: 'analytics-reconcile', emoji: '📈', title: '이용 지표 맞춤', when: '매일 새벽 4시', blurb: 'DAU/MAU 같은 이용 숫자가 Redis·DB에서 빠지지 않게 다시 맞춰요.' },
     { key: 'school-terms-sync', emoji: '📅', title: '학기·개학 동기화', when: '월요일 새벽 4시', blurb: 'NEIS에서 개학·방학을 가져와 등교 가능 날을 판단할 수 있게 해요.' },
+    { key: 'school-semester-infer', emoji: '🧭', title: '개학·방학 유추', when: '매일 새벽 5시(시즌)', blurb: '급식·시간표로 2학기 개학 등을 유추해요. 7~9월·12~3월만 돌고, 확정된 학교는 다음번에 건너뛰어요.' },
   ];
 
   function renderCronCatalog(jobs) {
