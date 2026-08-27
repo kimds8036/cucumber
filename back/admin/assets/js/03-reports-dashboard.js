@@ -237,13 +237,21 @@ async function loadDashboard() {
     const ttWrap = document.getElementById('ops-user-tt-wrap');
     const tt = data?.timetable || {};
     const src = tt.source || {};
+    // override = 앱에서 자동선택·직접선택·수정 후 서버에 저장한 경우 (단순 NEIS 조회만으로는 false)
+    const usesTimetable = Boolean(src.override);
     if (hint) {
-      hint.textContent = src.neis || src.override
-        ? `NEIS ${src.neis ? '있음' : '없음'} · 수정본 ${src.override ? '있음' : '없음'}${tt.overrideUpdatedAt ? ` · 수정 ${tt.overrideUpdatedAt}` : ''}`
-        : '등록된 시간표가 없습니다.';
+      if (usesTimetable) {
+        hint.textContent = `앱에서 사용 중 · NEIS ${src.neis ? '있음' : '없음'}${tt.overrideUpdatedAt ? ` · 저장 ${tt.overrideUpdatedAt}` : ''}`;
+      } else if (src.neis) {
+        hint.textContent = 'NEIS 있음 · 앱에서 시간표 미사용';
+      } else {
+        hint.textContent = '등록된 시간표가 없습니다.';
+      }
     }
     if (ttWrap) {
-      if (!tt.rows || !tt.rows.length) {
+      if (!usesTimetable) {
+        ttWrap.innerHTML = '';
+      } else if (!tt.rows || !tt.rows.length) {
         ttWrap.innerHTML = '<p class="txt-muted" style="font-size:13px">표시할 교시가 없습니다.</p>';
       } else {
         const days = tt.days || [];
