@@ -408,6 +408,23 @@ async function loadDashboard() {
     }
     renderCronCatalog(catalog.jobs?.length ? catalog.jobs : OPS_CRON_FALLBACK);
     const jobsMeta = catalog.jobs?.length ? catalog.jobs : OPS_CRON_FALLBACK;
+    const resHost = document.getElementById('ops-cron-reservations-items');
+    if (resHost) {
+      const byStatus = data?.reservations?.byStatus || [];
+      const pending = data?.reservations?.pending || [];
+      if (!byStatus.length && !pending.length) {
+        resHost.textContent = '대기 예약 없음 · 할 일 생기면 여기에 쌓입니다';
+      } else {
+        const chips = byStatus.map((r) => {
+          const label = r.status === 'pending' ? '대기' : (r.status === 'leased' ? '실행중' : r.status);
+          return `<span class="ops-eco-chip">${esc(r.jobKey)} ${esc(label)} <strong>${Number(r.count || 0)}</strong></span>`;
+        });
+        if (pending.length) {
+          chips.push(`<span class="ops-eco-chip">다음 <strong>${esc(pending[0].job_key)}/${esc(pending[0].scope_key)}</strong></span>`);
+        }
+        resHost.innerHTML = chips.join('');
+      }
+    }
     const runsBody = document.getElementById('ops-batch-runs-tbody');
     const cursorsBody = document.getElementById('ops-batch-cursors-tbody');
     const runs = data?.runs || [];
@@ -455,11 +472,12 @@ async function loadDashboard() {
   }
 
   const OPS_CRON_FALLBACK = [
+    { key: 'cron-manager', emoji: '🎛️', title: '크론 매니저', when: '1분마다', blurb: '예약된 작업만 골라 워커에게 배정해요.' },
     { key: 'study-grass-aggregate', emoji: '🌱', title: '공부 잔디', when: '매시 5분', blurb: '오늘 학교에서 누가 얼마나 공부했는지 모아서 잔디·순위에 넣어요.' },
     { key: 'trending-settle', emoji: '🔥', title: '인기글 정리', when: '10분마다', blurb: '요즘 뜨는 글·해시태그 순서를 다시 매겨요.' },
-    { key: 'school-stats', emoji: '🏫', title: '학교 통계', when: '매시 정각', blurb: '글 댓글 수를 맞춰요. 평소엔 새로 생긴 것만, 가끔 전체를 다시 세어요.' },
-    { key: 'timer-session-guard', emoji: '⏱️', title: '타이머 지킴이', when: '10분마다', blurb: '너무 오래 켜진 공부 타이머를 정리해서 시간이 이상하게 안 쌓이게 해요.' },
-    { key: 'personal-mail-return', emoji: '✉️', title: '개인 우편 반송', when: '30분마다', blurb: '받을 수 없는 개인 우편을 돌려보내요.' },
+    { key: 'school-stats', emoji: '🏫', title: '학교 통계', when: '예약·매니저', blurb: '가입·학교 글이 생기면 예약돼요.' },
+    { key: 'timer-session-guard', emoji: '⏱️', title: '타이머 지킴이', when: '예약·매니저', blurb: '타이머가 켜지면 예약돼요.' },
+    { key: 'personal-mail-return', emoji: '✉️', title: '개인 우편 반송', when: '기한 예약', blurb: '우편 보낼 때 반송 시각으로 예약돼요.' },
     { key: 'reverification-guide', emoji: '🪪', title: '재인증 안내', when: '2말~3초 새벽 4시', blurb: '학년도가 바뀔 때 학생증 다시 올리라고 알려 줘요. 그 시기만 돌아요.' },
     { key: 'admin-stats-reconcile', emoji: '📊', title: '관리자 숫자 맞춤', when: '5분마다', blurb: '대시보드에 찍히는 신고·문의 건수가 실제랑 안 어긋나게 맞춰요.' },
     { key: 'attendance-suspicion', emoji: '🎒', title: '미등교 의심', when: '매일 새벽 3시', blurb: '등교 체크가 거의 없는 학생을 골라 관리자 등교 현황에 올려요.' },

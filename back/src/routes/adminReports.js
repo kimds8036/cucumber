@@ -255,6 +255,7 @@ router.get('/batch-jobs', requireAdminApi, async (req, res) => {
     let runs = [];
     let cursors = [];
     let latestRows = [];
+    let reservations = { byStatus: [], pending: [] };
     try {
       [runs, cursors, latestRows] = await Promise.all([
         listRecentBatchRuns({ limit }),
@@ -264,6 +265,19 @@ router.get('/batch-jobs', requireAdminApi, async (req, res) => {
     } catch (inner) {
       console.warn('크론 이력 부분 조회 실패:', inner?.message || inner);
     }
+    try {
+      const {
+        countReservationsByStatus,
+        listPendingReservations,
+      } = await import('../services/batchReservation.service.js');
+      const [byStatus, pending] = await Promise.all([
+        countReservationsByStatus(),
+        listPendingReservations({ limit: 30 }),
+      ]);
+      reservations = { byStatus, pending };
+    } catch (inner) {
+      console.warn('크론 예약 조회 실패:', inner?.message || inner);
+    }
     const latestByJob = Object.fromEntries((latestRows || []).map((r) => [r.job_name, r]));
     catalog.jobs = catalog.jobs.map((j) => ({
       ...j,
@@ -271,7 +285,7 @@ router.get('/batch-jobs', requireAdminApi, async (req, res) => {
     }));
     return res.json({
       success: true,
-      data: { runs, cursors, catalog },
+      data: { runs, cursors, catalog, reservations },
     });
   } catch (error) {
     console.error('크론 이력 조회 오류:', error);

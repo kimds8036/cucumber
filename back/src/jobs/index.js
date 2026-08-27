@@ -14,6 +14,7 @@ import {
   runSchoolSemesterInferJob,
   maybeBootSchoolSemesterInfer,
 } from './schoolSemester.infer.js';
+import { runCronManagerJob } from './cronManager.js';
 import { shouldRunCron } from '../config/serviceRole.js';
 
 const TZ = process.env.CRON_TIMEZONE || 'Asia/Seoul';
@@ -21,6 +22,14 @@ const TZ = process.env.CRON_TIMEZONE || 'Asia/Seoul';
 function isCronEnabled() {
   const value = (process.env.ENABLE_CRON || 'true').toLowerCase();
   return value === 'true' || value === '1' || value === 'yes';
+}
+
+/** true면 직접 스케줄, false면 cron-manager 예약만 (기본) */
+function runDirect(envKey, defaultDirect = false) {
+  const raw = process.env[envKey];
+  if (raw == null || raw === '') return defaultDirect;
+  const v = String(raw).toLowerCase();
+  return v === 'true' || v === '1' || v === 'yes';
 }
 
 export function initJobs() {
@@ -40,6 +49,7 @@ export function initJobs() {
   const timerGuardSchedule = process.env.CRON_TIMER_GUARD || '*/10 * * * *';
   const personalMailReturnSchedule =
     process.env.CRON_PERSONAL_MAIL_RETURN || '*/30 * * * *';
+  const cronManagerSchedule = process.env.CRON_MANAGER || '* * * * *';
   const reverificationSchedules = process.env.CRON_REVERIFICATION_GUIDE
     ? [process.env.CRON_REVERIFICATION_GUIDE]
     : ['0 4 25-29 2 *', '0 4 1-8 3 *'];
@@ -55,12 +65,17 @@ export function initJobs() {
   const schoolSemesterInferSchedule =
     process.env.CRON_SEMESTER_INFER || '0 5 * * *';
 
+  const directSchoolStats = runDirect('CRON_SCHOOL_STATS_DIRECT', false);
+  const directTimerGuard = runDirect('CRON_TIMER_GUARD_DIRECT', false);
+  const directMailReturn = runDirect('CRON_PERSONAL_MAIL_RETURN_DIRECT', false);
+  const managerEnabled = !runDirect('CRON_MANAGER_DISABLED', false);
+
   cron.schedule(
     studyGrassSchedule,
     async () => {
       await runStudyGrassAggregateJob();
     },
-    { timezone: TZ }
+    { timezone: TZ },
   );
 
   cron.schedule(
@@ -68,32 +83,48 @@ export function initJobs() {
     async () => {
       await runTrendingSettleJob();
     },
-    { timezone: TZ }
+    { timezone: TZ },
   );
 
-  cron.schedule(
-    schoolStatsSchedule,
-    async () => {
-      await runSchoolStatsJob();
-    },
-    { timezone: TZ }
-  );
+  if (directSchoolStats) {
+    cron.schedule(
+      schoolStatsSchedule,
+      async () => {
+        await runSchoolStatsJob();
+      },
+      { timezone: TZ },
+    );
+  }
 
-  cron.schedule(
-    timerGuardSchedule,
-    async () => {
-      await runTimerSessionGuardJob();
-    },
-    { timezone: TZ }
-  );
+  if (directTimerGuard) {
+    cron.schedule(
+      timerGuardSchedule,
+      async () => {
+        await runTimerSessionGuardJob();
+      },
+      { timezone: TZ },
+    );
+  }
 
-  cron.schedule(
-    personalMailReturnSchedule,
-    async () => {
-      await runPersonalMailReturnBatchJob();
-    },
-    { timezone: TZ }
-  );
+  if (directMailReturn) {
+    cron.schedule(
+      personalMailReturnSchedule,
+      async () => {
+        await runPersonalMailReturnBatchJob();
+      },
+      { timezone: TZ },
+    );
+  }
+
+  if (managerEnabled) {
+    cron.schedule(
+      cronManagerSchedule,
+      async () => {
+        await runCronManagerJob();
+      },
+      { timezone: TZ },
+    );
+  }
 
   for (const reverificationSchedule of reverificationSchedules) {
     cron.schedule(
@@ -163,6 +194,6 @@ export function initJobs() {
   });
 
   console.log(
-    `[BatchJob] started timezone=${TZ} studyGrass="${studyGrassSchedule}" trending="${trendingSchedule}" schoolStats="${schoolStatsSchedule}" timerGuard="${timerGuardSchedule}" personalMailReturn="${personalMailReturnSchedule}" reverification="${reverificationSchedules.join('|')}" adminStats="${adminStatsSchedule}" attendanceSuspicion="${attendanceSuspicionSchedule}" adminRetention="${adminRetentionSchedule}" analyticsReconcile="${analyticsReconcileSchedule}" schoolTerms="${schoolTermsSchedule}" semesterInfer="${schoolSemesterInferSchedule}"`,
+    `[BatchJob] started timezone=${TZ} manager="${managerEnabled ? cronManagerSchedule : 'off'}" schoolStats=${directSchoolStats ? `"${schoolStatsSchedule}"` : 'via-manager'} timerGuard=${directTimerGuard ? `"${timerGuardSchedule}"` : 'via-manager'} personalMailReturn=${directMailReturn ? `"${personalMailReturnSchedule}"` : 'via-manager'} studyGrass="${studyGrassSchedule}" trending="${trendingSchedule}" reverification="${reverificationSchedules.join('|')}" adminStats="${adminStatsSchedule}" attendanceSuspicion="${attendanceSuspicionSchedule}" adminRetention="${adminRetentionSchedule}" analyticsReconcile="${analyticsReconcileSchedule}" schoolTerms="${schoolTermsSchedule}" semesterInfer="${schoolSemesterInferSchedule}"`,
   );
 }

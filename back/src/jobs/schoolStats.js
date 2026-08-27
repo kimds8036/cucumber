@@ -42,22 +42,18 @@ function shouldRunFullCommentReconcile(fullCursor) {
   return Date.now() - last >= fullReconcileIntervalMs();
 }
 
-/**
- * schools.total_students / total_posts / total_school_mails 를
- * 실데이터 기준으로 일괄 갱신한다. (CSV 시드와 무관)
- * comment_count 는 평시 증분(새 댓글 id), 주기적으로 전체 reconcile.
- */
-export async function runSchoolStatsJob() {
-  const context = createBatchExecutionContext(JOB_NAME);
-  const { acquired, owner } = await acquireBatchLock(LOCK_KEY, LOCK_TTL_SECONDS);
+async function updateSchoolTotals(schoolIds = null) {
+  const ids = Array.isArray(schoolIds)
+    ? [...new Set(schoolIds.map((s) => String(s || '').trim()).filter(Boolean))]
+    : null;
+  const scoped = ids && ids.length > 0;
+  const whereSql = scoped
+    ? `WHERE s.school_id IN (${ids.map(() => '?').join(',')})`
+    : '';
+  const params = scoped ? ids : [];
 
-  if (!acquired) {
-    logBatchSkip(context, 'lock-not-acquired');
-    return;
-  }
-
-  try {
-    await pool.execute(`
+  await pool.execute(
+    `
       UPDATE schools s
       LEFT JOIN (
         SELECT school_id, COUNT(*) AS c
@@ -82,67 +78,98 @@ export async function runSchoolStatsJob() {
         s.total_posts = COALESCE(pm.c, 0),
         s.total_school_mails = COALESCE(mm.c, 0),
         s.stats_updated_at = NOW()
-    `);
+      ${whereSql}
+    `,
+    params,
+  );
+  return scoped ? ids.length : null;
+}
 
-    const fullCursor = await getBatchCursor(JOB_NAME, FULL_CURSOR_KEY);
-    const runFull = shouldRunFullCommentReconcile(fullCursor);
-    let reconcile;
+async function reconcileComments({ forceFull = false } = {}) {
+  const fullCursor = await getBatchCursor(JOB_NAME, FULL_CURSOR_KEY);
+  const runFull = forceFull || shouldRunFullCommentReconcile(fullCursor);
 
-    if (runFull) {
-      reconcile = {
-        ...(await reconcileAllCommentCounts(pool)),
-        mode: 'full',
-      };
-      const [postMax, mailMax] = await Promise.all([
-        maxPostCommentId(pool),
-        maxSchoolMailCommentId(pool),
-      ]);
-      await saveBatchCursor(JOB_NAME, FULL_CURSOR_KEY, {
-        lastAt: new Date(),
-        mode: 'full',
-        note: '전체 comment_count 재계산',
-      });
-      await saveBatchCursor(JOB_NAME, POST_CURSOR_KEY, {
-        lastId: postMax,
-        mode: 'full',
-      });
-      await saveBatchCursor(JOB_NAME, MAIL_CURSOR_KEY, {
-        lastId: mailMax,
-        mode: 'full',
-      });
-    } else {
-      const postCursor = await getBatchCursor(JOB_NAME, POST_CURSOR_KEY);
-      const mailCursor = await getBatchCursor(JOB_NAME, MAIL_CURSOR_KEY);
-      const postPart = await reconcilePostCommentCountsSince(
-        pool,
-        postCursor?.last_id ?? 0,
-      );
-      const mailPart = await reconcileSchoolMailCommentCountsSince(
-        pool,
-        mailCursor?.last_id ?? 0,
-      );
-      reconcile = {
-        postsUpdated: postPart.postsUpdated,
-        mailsUpdated: mailPart.mailsUpdated,
-        mode: 'incremental',
-        postsFromId: postPart.fromId,
-        postsToId: postPart.toId,
-        mailsFromId: mailPart.fromId,
-        mailsToId: mailPart.toId,
-      };
-      await saveBatchCursor(JOB_NAME, POST_CURSOR_KEY, {
-        lastId: postPart.toId,
-        mode: 'incremental',
-        note: `comments.id ${postPart.fromId}→${postPart.toId}`,
-      });
-      await saveBatchCursor(JOB_NAME, MAIL_CURSOR_KEY, {
-        lastId: mailPart.toId,
-        mode: 'incremental',
-        note: `school_mail_comments.id ${mailPart.fromId}→${mailPart.toId}`,
-      });
-    }
+  if (runFull) {
+    const reconcile = {
+      ...(await reconcileAllCommentCounts(pool)),
+      mode: 'full',
+    };
+    const [postMax, mailMax] = await Promise.all([
+      maxPostCommentId(pool),
+      maxSchoolMailCommentId(pool),
+    ]);
+    await saveBatchCursor(JOB_NAME, FULL_CURSOR_KEY, {
+      lastAt: new Date(),
+      mode: 'full',
+      note: '전체 comment_count 재계산',
+    });
+    await saveBatchCursor(JOB_NAME, POST_CURSOR_KEY, {
+      lastId: postMax,
+      mode: 'full',
+    });
+    await saveBatchCursor(JOB_NAME, MAIL_CURSOR_KEY, {
+      lastId: mailMax,
+      mode: 'full',
+    });
+    return reconcile;
+  }
 
-    logBatchSuccess(context, {
+  const postCursor = await getBatchCursor(JOB_NAME, POST_CURSOR_KEY);
+  const mailCursor = await getBatchCursor(JOB_NAME, MAIL_CURSOR_KEY);
+  const postPart = await reconcilePostCommentCountsSince(
+    pool,
+    postCursor?.last_id ?? 0,
+  );
+  const mailPart = await reconcileSchoolMailCommentCountsSince(
+    pool,
+    mailCursor?.last_id ?? 0,
+  );
+  const reconcile = {
+    postsUpdated: postPart.postsUpdated,
+    mailsUpdated: mailPart.mailsUpdated,
+    mode: 'incremental',
+    postsFromId: postPart.fromId,
+    postsToId: postPart.toId,
+    mailsFromId: mailPart.fromId,
+    mailsToId: mailPart.toId,
+  };
+  await saveBatchCursor(JOB_NAME, POST_CURSOR_KEY, {
+    lastId: postPart.toId,
+    mode: 'incremental',
+    note: `comments.id ${postPart.fromId}→${postPart.toId}`,
+  });
+  await saveBatchCursor(JOB_NAME, MAIL_CURSOR_KEY, {
+    lastId: mailPart.toId,
+    mode: 'incremental',
+    note: `school_mail_comments.id ${mailPart.fromId}→${mailPart.toId}`,
+  });
+  return reconcile;
+}
+
+/**
+ * @param {{ schoolIds?: string[], full?: boolean }} [options]
+ * - schoolIds: 해당 학교 totals만 (+ 댓글 증분)
+ * - full: 전 학교 totals + 댓글 full
+ * - 옵션 없음: 전 학교 totals + 댓글(주기 full/증분) — 안전망/레거시
+ */
+export async function runSchoolStatsJob(options = {}) {
+  const context = createBatchExecutionContext(JOB_NAME);
+  const { acquired, owner } = await acquireBatchLock(LOCK_KEY, LOCK_TTL_SECONDS);
+
+  if (!acquired) {
+    logBatchSkip(context, 'lock-not-acquired');
+    return { skipped: true, reason: 'lock-not-acquired' };
+  }
+
+  try {
+    const wantFull = Boolean(options.full);
+    const schoolIds = Array.isArray(options.schoolIds) ? options.schoolIds : null;
+    const scoped = !wantFull && schoolIds && schoolIds.length > 0;
+
+    const schoolsTouched = await updateSchoolTotals(scoped ? schoolIds : null);
+    const reconcile = await reconcileComments({ forceFull: wantFull });
+
+    const meta = {
       postsUpdated: reconcile.postsUpdated,
       mailsUpdated: reconcile.mailsUpdated,
       mode: reconcile.mode,
@@ -150,11 +177,15 @@ export async function runSchoolStatsJob() {
       postsToId: reconcile.postsToId,
       mailsFromId: reconcile.mailsFromId,
       mailsToId: reconcile.mailsToId,
-    });
+      schoolsTouched: schoolsTouched == null ? 'all' : schoolsTouched,
+      scoped: Boolean(scoped),
+      full: wantFull,
+    };
+    logBatchSuccess(context, meta);
     if (reconcile.postsUpdated > 0 || reconcile.mailsUpdated > 0) {
       console.log('[schoolStats] comment_count reconcile', reconcile);
     }
-    return reconcile;
+    return meta;
   } catch (error) {
     logBatchFailure(context, error);
     await sendBatchFailureAlert({

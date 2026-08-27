@@ -498,6 +498,16 @@ router.post('/day', authenticate, validate(dayBodyValidators), async (req, res) 
 
     await connection.commit();
 
+    try {
+      const { scheduleTimerSessionGuard } = await import('../services/cronSchedule.hooks.js');
+      const hasOpen = (Array.isArray(sessions) ? sessions : []).some(
+        (s) => s && (s.endedAt == null && s.ended_at == null && s.endedAtMs == null),
+      );
+      scheduleTimerSessionGuard(userId, { hasOpenSession: hasOpen });
+    } catch (e) {
+      console.warn('[timer] guard reserve', e?.message || e);
+    }
+
     evaluateAndUnlockBadges(userId).catch((e) => {
       console.warn('[timer] badge eval', e?.message || e);
     });
