@@ -7,7 +7,7 @@ import { formatKstDateYmd } from './reverification.service.js';
 export async function getOpsUserEcosystemSummary() {
   const todayYmd = formatKstDateYmd();
 
-  const [[totals], platformRows, [[mixed]], [[attendance]]] = await Promise.all([
+  const [totalsRows, platformRows, mixedRows, attendanceRows] = await Promise.all([
     pool.execute(
       `SELECT
          COUNT(*) AS users,
@@ -16,12 +16,12 @@ export async function getOpsUserEcosystemSummary() {
        WHERE is_deleted = FALSE`,
     ).then(([rows]) => rows),
     pool.execute(
-      `SELECT device_type, COUNT(DISTINCT user_id) AS c
-       FROM fcm_tokens
-       WHERE is_active = 1
-         AND device_type IN ('ios', 'android')
-         AND user_id IN (SELECT id FROM users WHERE is_deleted = FALSE)
-       GROUP BY device_type`,
+      `SELECT ft.device_type, COUNT(DISTINCT ft.user_id) AS c
+       FROM fcm_tokens ft
+       INNER JOIN users u ON u.id = ft.user_id AND u.is_deleted = FALSE
+       WHERE ft.is_active = 1
+         AND ft.device_type IN ('ios', 'android')
+       GROUP BY ft.device_type`,
     ).then(([rows]) => rows),
     pool.execute(
       `SELECT COUNT(*) AS c
@@ -45,6 +45,10 @@ export async function getOpsUserEcosystemSummary() {
     ).then(([rows]) => rows),
   ]);
 
+  const totals = totalsRows[0] || {};
+  const mixed = mixedRows[0] || {};
+  const attendance = attendanceRows[0] || {};
+
   let iosUsers = 0;
   let androidUsers = 0;
   for (const row of platformRows || []) {
@@ -55,11 +59,11 @@ export async function getOpsUserEcosystemSummary() {
 
   return {
     todayYmd,
-    users: Number(totals?.users || 0),
-    schools: Number(totals?.schools || 0),
+    users: Number(totals.users || 0),
+    schools: Number(totals.schools || 0),
     iosUsers,
     androidUsers,
-    mixedOsUsers: Number(mixed?.c || 0),
-    todayCheckedIn: Number(attendance?.c || 0),
+    mixedOsUsers: Number(mixed.c || 0),
+    todayCheckedIn: Number(attendance.c || 0),
   };
 }
