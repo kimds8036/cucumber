@@ -545,7 +545,7 @@ router.put('/', authenticate, validate(updateTimetableValidators), async (req, r
   }
 });
 
-/** 관리자 모니터링용 — 학생 앱 GET /timetable 과 동일 병합 결과 */
+/** 관리자 모니터링용 — 앱에 저장한 시간표(override)만 격자용으로 반환. NEIS는 유무 힌트용. */
 export async function getMergedTimetableForUserId(userId) {
   const [rows] = await pool.execute(
     `SELECT
@@ -565,16 +565,26 @@ export async function getMergedTimetableForUserId(userId) {
   );
   if (!rows.length) return null;
   const user = rows[0];
-  const { timetable: baseTimetable, subjects: baseSubjects } =
-    await fetchBaseTimetableByUser(user);
   const { timetable: override, updatedAt } = await loadUserOverride(userId);
-  const timetable = mergeTimetable(baseTimetable, override);
+  const hasOverride = Object.keys(override).length > 0;
+
+  // NEIS는 힌트용으로만 조회 (격자에는 넣지 않음 — 저장본과 섞이면 수정한 표가 가려짐)
+  let neisPresent = false;
+  try {
+    const { timetable: baseTimetable, subjects: baseSubjects } =
+      await fetchBaseTimetableByUser(user);
+    neisPresent =
+      Object.keys(baseTimetable).length > 0 || baseSubjects.length > 0;
+  } catch (err) {
+    console.warn('[ops timetable] NEIS hint fetch', err?.message || err);
+  }
+
   return {
-    cells: timetable,
-    subjects: baseSubjects,
+    cells: hasOverride ? override : {},
+    subjects: [],
     source: {
-      neis: Object.keys(baseTimetable).length > 0 || baseSubjects.length > 0,
-      override: Object.keys(override).length > 0,
+      neis: neisPresent,
+      override: hasOverride,
     },
     overrideUpdatedAt: updatedAt ? new Date(updatedAt).toISOString() : null,
   };
