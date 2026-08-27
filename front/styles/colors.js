@@ -71,19 +71,33 @@ export const colors = {
 };
 
 export const TIMETABLE_SUBJECT_COLORS = [
-  // 연한 톤
-  '#FFE8E8',
-  '#FFF8DB',
-  '#E8F6E3',
-  '#E8F2FF',
-  '#F6EAFF',
-  // 동일 계열, 한 단계 진한 톤
-  '#FFD6D6',
-  '#FFEAC1',
-  '#CBEBC5',
-  '#CCE2FC',
-  '#EAD4FC',
+  '#FFBCBC', // 레드
+  '#FFEEA8', // 옐로우
+  '#AEEEB9', // 그린
+  '#A1ECE2', // 틸
+  '#B5BEFB', // 바이올렛
+  '#E3C8FE', // 퍼플
+  '#D5B88F', // 브라운
+  '#B9C0CB', // 슬레이트
+  '#F2EDE4', // 아이보리 (공란 흰색과 구분)
+  '#FFCB91', // 오렌지
+  '#F28FC9', // 핑크
+  '#7EC8F0', // 하늘
+  '#7C8EF2', // 인디고
 ];
+
+/** 공란(#FFFFFF)과 헷갈리는 연한 과목색 — 4x2 위젯에서 제외 */
+export const TIMETABLE_SUBJECT_PALE_HEX = '#F2EDE4';
+
+/** 4x2(미디엄) 위젯 등 — 흰 배경에서 잘 안 보이는 연한색 제외 */
+export const TIMETABLE_SUBJECT_COLORS_NO_WHITE = TIMETABLE_SUBJECT_COLORS.filter(
+  (c) => String(c).trim().toUpperCase() !== TIMETABLE_SUBJECT_PALE_HEX,
+);
+
+export const isTimetableWhiteColor = (hex) => {
+  const h = String(hex || '').trim().toUpperCase().replace(/^#/, '');
+  return h === 'F2EDE4' || h === 'FFFFFF';
+};
 
 export const PROFILE_COLORS = {
   1: '#a6da95',

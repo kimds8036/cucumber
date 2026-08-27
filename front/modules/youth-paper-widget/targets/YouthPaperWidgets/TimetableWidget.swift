@@ -8,25 +8,53 @@ private let inactiveBase = Color(hex: "272A26")
 
 /// `TIMETABLE_SUBJECT_COLORS` (styles/colors.js)
 private let subjectPaletteHex: [String] = [
-  "FFE8E8", "FFF8DB", "E8F6E3", "E8F2FF", "F6EAFF",
-  "FFD6D6", "FFEAC1", "CBEBC5", "CCE2FC", "EAD4FC",
+  "FFBCBC", // 레드
+  "FFEEA8", // 옐로우
+  "AEEEB9", // 그린
+  "A1ECE2", // 틸
+  "B5BEFB", // 바이올렛
+  "E3C8FE", // 퍼플
+  "D5B88F", // 브라운
+  "B9C0CB", // 슬레이트
+  "F2EDE4", // 아이보리 (공란 흰색과 구분)
+  "FFCB91", // 오렌지
+  "F28FC9", // 핑크
+  "7EC8F0", // 하늘
+  "7C8EF2", // 인디고
 ]
+
+/// 공란과 헷갈리는 연한 과목색
+private let subjectPaleHex = "F2EDE4"
+
+/// 4x2 — 흰 배경에서 잘 안 보이는 연한색 제외
+private var subjectPaletteNoWhite: [String] {
+  subjectPaletteHex.filter { $0 != subjectPaleHex }
+}
+
+private func isSubjectPaleHex(_ hex: String?) -> Bool {
+  guard var cleaned = hex?.trimmingCharacters(in: .whitespacesAndNewlines).uppercased() else {
+    return false
+  }
+  if cleaned.hasPrefix("#") { cleaned.removeFirst() }
+  return cleaned == subjectPaleHex || cleaned == "FFFFFF"
+}
 
 private func normalizeSubject(_ value: String) -> String {
   value.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
 }
 
-private func subjectColorIndex(_ subject: String) -> Int {
+private func subjectColorIndex(_ subject: String, paletteSize: Int) -> Int {
   let key = normalizeSubject(subject)
-  guard !key.isEmpty else { return 0 }
+  guard !key.isEmpty, paletteSize > 0 else { return 0 }
   var hash = 0
   for scalar in key.unicodeScalars {
     hash = (hash * 31 + Int(scalar.value)) % 2_147_483_647
   }
-  return abs(hash) % subjectPaletteHex.count
+  return abs(hash) % paletteSize
 }
 
-private func buildSubjectColorMap(week: [TimetableDayLite]) -> [String: String] {
+private func buildSubjectColorMap(week: [TimetableDayLite], excludeWhite: Bool = false) -> [String: String] {
+  let palette = excludeWhite ? subjectPaletteNoWhite : subjectPaletteHex
   var map: [String: String] = [:]
   var used = Set<Int>()
   let subjects = Array(
@@ -37,22 +65,25 @@ private func buildSubjectColorMap(week: [TimetableDayLite]) -> [String: String] 
   ).sorted()
 
   for subject in subjects {
-    let base = subjectColorIndex(subject)
+    let base = subjectColorIndex(subject, paletteSize: palette.count)
     var idx = base
-    for step in 0..<subjectPaletteHex.count {
-      idx = (base + step) % subjectPaletteHex.count
+    for step in 0..<palette.count {
+      idx = (base + step) % palette.count
       if !used.contains(idx) { break }
     }
     used.insert(idx)
-    map[subject] = subjectPaletteHex[idx]
+    map[subject] = palette[idx]
   }
   return map
 }
 
-private func colorHexForSubject(_ subject: String, map: [String: String]) -> String? {
+private func colorHexForSubject(_ subject: String, map: [String: String], excludeWhite: Bool = false) -> String? {
   let key = normalizeSubject(subject)
   guard !key.isEmpty else { return nil }
-  return map[key] ?? subjectPaletteHex[subjectColorIndex(key)]
+  if let hit = map[key] { return hit }
+  let palette = excludeWhite ? subjectPaletteNoWhite : subjectPaletteHex
+  guard !palette.isEmpty else { return nil }
+  return palette[subjectColorIndex(key, paletteSize: palette.count)]
 }
 
 /// 파스텔 과목색을 텍스트용으로 어둡게 (factor↑ = 더 밝음)
@@ -180,7 +211,7 @@ enum TimetableTimelineBuilder {
     let subjectsByPeriod = Dictionary(
       uniqueKeysWithValues: (dayData?.periods ?? []).map { ($0.period, $0.subject) },
     )
-    let colorMap = buildSubjectColorMap(week: payload?.week ?? [])
+    let colorMap = buildSubjectColorMap(week: payload?.week ?? [], excludeWhite: true)
     let dayHasSubjects = subjectsByPeriod.values.contains { !$0.trimmingCharacters(in: .whitespaces).isEmpty }
 
     guard hasPeriodSettings else {
@@ -210,7 +241,7 @@ enum TimetableTimelineBuilder {
           startTime: validTimes?.0,
           endTime: validTimes?.1,
           subjectName: subject,
-          subjectColorHex: colorHexForSubject(subject, map: colorMap),
+          subjectColorHex: colorHexForSubject(subject, map: colorMap, excludeWhite: true),
         ),
       )
     }
@@ -223,7 +254,7 @@ enum TimetableTimelineBuilder {
     let configs = (settings?.periods ?? []).sorted { $0.periodNumber < $1.periodNumber }
     let payload = WidgetPayloadReader.timetable()
     let week = payload?.week ?? []
-    let colorMap = buildSubjectColorMap(week: week)
+    let colorMap = buildSubjectColorMap(week: week, excludeWhite: false)
 
     let fromSettings = configs.map(\.periodNumber).max() ?? 0
     let fromWeek = week.flatMap { $0.periods.map(\.period) }.max() ?? 0
@@ -877,7 +908,13 @@ struct TimetableWidgetView: View {
   ) -> some View {
     let name = cell.subjectName
     let count = name.count
-    let bg = cell.subjectColorHex.map { Color(hex: $0, opacity: 0.5) } ?? Color.clear
+    let bg: Color = {
+      guard let hex = cell.subjectColorHex else { return Color.clear }
+      if isSubjectPaleHex(hex) {
+        return Color(hex: subjectPaleHex)
+      }
+      return Color(hex: hex, opacity: 0.5)
+    }()
     return Text(name)
       .font(.system(size: count >= 4 ? 10 : 12, weight: .medium))
       .foregroundColor(textPrimary)
@@ -886,7 +923,17 @@ struct TimetableWidgetView: View {
       .frame(maxWidth: .infinity, maxHeight: .infinity)
       .padding(.horizontal, 2)
       .background(
-        RoundedRectangle(cornerRadius: cornerRadius, style: .continuous).fill(bg),
+        RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+          .fill(bg)
+          .overlay(
+            RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+              .stroke(
+                isSubjectPaleHex(cell.subjectColorHex)
+                  ? Color(hex: "272A26", opacity: 0.12)
+                  : Color.clear,
+                lineWidth: 1,
+              ),
+          ),
       )
   }
 }

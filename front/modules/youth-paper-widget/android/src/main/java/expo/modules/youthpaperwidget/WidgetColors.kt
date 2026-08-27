@@ -22,10 +22,28 @@ object WidgetColors {
   const val MEAL_BADGE_BG = 0x1AA6DA95.toInt()
   const val MEAL_BADGE_STROKE = 0x4DA6DA95.toInt()
 
+  /** 인앱 `TIMETABLE_SUBJECT_COLORS` 와 동일 */
   val SUBJECT_PALETTE = listOf(
-    "FFE8E8", "FFF8DB", "E8F6E3", "E8F2FF", "F6EAFF",
-    "FFD6D6", "FFEAC1", "CBEBC5", "CCE2FC", "EAD4FC",
+    "FFBCBC", // 레드
+    "FFEEA8", // 옐로우
+    "AEEEB9", // 그린
+    "A1ECE2", // 틸
+    "B5BEFB", // 바이올렛
+    "E3C8FE", // 퍼플
+    "D5B88F", // 브라운
+    "B9C0CB", // 슬레이트
+    "F2EDE4", // 아이보리 (공란 흰색과 구분)
+    "FFCB91", // 오렌지
+    "F28FC9", // 핑크
+    "7EC8F0", // 하늘
+    "7C8EF2", // 인디고
   )
+
+  /** 공란과 헷갈리는 연한 과목색 */
+  const val SUBJECT_PALE = "F2EDE4"
+
+  /** 4x2(미디엄) — 흰 배경에서 잘 안 보이는 연한색 제외 */
+  val SUBJECT_PALETTE_NO_WHITE = SUBJECT_PALETTE.filter { it != SUBJECT_PALE }
 
   fun parseHex(hex: String, alpha: Int = 255): Int {
     var cleaned = hex.trim().uppercase()
@@ -56,6 +74,8 @@ object WidgetColors {
 
   /** 파스텔 과목색을 점용으로 채도↑·명도↓ */
   fun subjectDot(hex: String): Int {
+    val cleaned = hex.trim().uppercase().removePrefix("#")
+    if (cleaned == SUBJECT_PALE || cleaned == "FFFFFF") return DOT_GRAY
     val hsv = FloatArray(3)
     Color.colorToHSV(parseHex(hex), hsv)
     hsv[1] = (hsv[1] * 1.55f + 0.22f).coerceAtMost(0.82f)
@@ -65,17 +85,21 @@ object WidgetColors {
 
   private fun normalizeSubject(value: String) = value.trim().lowercase()
 
-  private fun subjectColorIndex(subject: String): Int {
+  private fun subjectColorIndex(subject: String, paletteSize: Int): Int {
     val key = normalizeSubject(subject)
-    if (key.isEmpty()) return 0
+    if (key.isEmpty() || paletteSize <= 0) return 0
     var hash = 0
     for (ch in key) {
       hash = (hash * 31 + ch.code) % 2_147_483_647
     }
-    return abs(hash) % SUBJECT_PALETTE.size
+    return abs(hash) % paletteSize
   }
 
-  fun buildSubjectColorMap(week: List<TimetableDayLite>): Map<String, String> {
+  fun buildSubjectColorMap(
+    week: List<TimetableDayLite>,
+    excludeWhite: Boolean = false,
+  ): Map<String, String> {
+    val palette = if (excludeWhite) SUBJECT_PALETTE_NO_WHITE else SUBJECT_PALETTE
     val map = mutableMapOf<String, String>()
     val used = mutableSetOf<Int>()
     val subjects = week
@@ -84,14 +108,14 @@ object WidgetColors {
       .toSet()
       .sorted()
     for (subject in subjects) {
-      val base = subjectColorIndex(subject)
+      val base = subjectColorIndex(subject, palette.size)
       var idx = base
-      for (step in 0 until SUBJECT_PALETTE.size) {
-        idx = (base + step) % SUBJECT_PALETTE.size
+      for (step in 0 until palette.size) {
+        idx = (base + step) % palette.size
         if (!used.contains(idx)) break
       }
       used.add(idx)
-      map[subject] = SUBJECT_PALETTE[idx]
+      map[subject] = palette[idx]
     }
     return map
   }
@@ -116,9 +140,16 @@ object WidgetColors {
     return if (idx >= 0) "widget_badge_p$idx" else "widget_badge_default"
   }
 
-  fun colorHexForSubject(subject: String, map: Map<String, String>): String? {
+  fun colorHexForSubject(
+    subject: String,
+    map: Map<String, String>,
+    excludeWhite: Boolean = false,
+  ): String? {
     val key = normalizeSubject(subject)
     if (key.isEmpty()) return null
-    return map[key] ?: SUBJECT_PALETTE[subjectColorIndex(key)]
+    map[key]?.let { return it }
+    val palette = if (excludeWhite) SUBJECT_PALETTE_NO_WHITE else SUBJECT_PALETTE
+    if (palette.isEmpty()) return null
+    return palette[subjectColorIndex(key, palette.size)]
   }
 }
