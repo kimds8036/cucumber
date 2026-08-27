@@ -194,16 +194,29 @@ async function loadDashboard() {
     }
   }
 
+  function opsOsLabel(os) {
+    if (os === 'ios') return 'iPhone';
+    if (os === 'android') return 'Android';
+    if (os === 'mixed') return '혼용';
+    if (os === 'other') return '기타';
+    return '미확인';
+  }
+
   function renderOpsUserInspect(data) {
     const u = data?.user || {};
     const s = data?.stats || {};
     const badges = data?.badges || {};
+    const devices = data?.devices || [];
+    const platforms = data?.devicePlatforms || {};
     const kpis = document.getElementById('ops-user-kpis');
     if (kpis) {
       const who = `${u.displayName ? `${u.displayName} ` : ''}@${u.username || '-'} (#${u.id || '-'})`;
       const school = `${u.schoolName || '-'}${u.grade != null ? ` ${u.grade}학년` : ''}${u.classNumber != null ? ` ${u.classNumber}반` : ''}`;
+      const osLabel = opsOsLabel(s.primaryOs);
+      const osCls = s.primaryOs === 'ios' || s.primaryOs === 'android' ? 'stat-ok' : '';
       kpis.innerHTML = `
         <div class="stat-card"><div class="stat-num" style="font-size:14px;line-height:1.3">${esc(who)}</div><div class="stat-label">${esc(school)}</div></div>
+        <div class="stat-card ${osCls}"><div class="stat-num" style="font-size:16px">${esc(osLabel)}</div><div class="stat-label">사용 OS</div></div>
         <div class="stat-card"><div class="stat-num">${Number(s.friendCount || 0).toLocaleString()}</div><div class="stat-label">친구 수</div></div>
         <div class="stat-card stat-ok"><div class="stat-num">${Number(badges.ownedCount || 0)}</div><div class="stat-label">획득 배지</div></div>
         <div class="stat-card stat-warn"><div class="stat-num">${Number(badges.lockedCount || 0)}</div><div class="stat-label">미오픈 배지</div></div>
@@ -212,6 +225,40 @@ async function loadDashboard() {
         <div class="stat-card ${s.todayCheckedIn ? 'stat-ok' : ''}"><div class="stat-num">${s.todayCheckedIn ? '완료' : '미체크'}</div><div class="stat-label">오늘 등교</div></div>
         <div class="stat-card"><div class="stat-num">${Number(s.attendancePresentCount || 0)}</div><div class="stat-label">최근 2달 등교</div></div>
       `;
+    }
+    const devicesHint = document.getElementById('ops-user-devices-hint');
+    if (devicesHint) {
+      const parts = [];
+      if (Number(platforms.ios || 0)) parts.push(`iPhone ${platforms.ios}`);
+      if (Number(platforms.android || 0)) parts.push(`Android ${platforms.android}`);
+      if (Number(platforms.other || 0)) parts.push(`기타 ${platforms.other}`);
+      if (Number(platforms.unknown || 0)) parts.push(`미확인 ${platforms.unknown}`);
+      devicesHint.textContent = parts.length
+        ? `기기 ${devices.length}대 · ${parts.join(' · ')}`
+        : '등록된 기기 기록이 없습니다. 로그인·푸시 등록 후 표시됩니다.';
+    }
+    const devicesBody = document.getElementById('ops-user-devices-tbody');
+    if (devicesBody) {
+      if (!devices.length) {
+        devicesBody.innerHTML = '<tr><td colspan="5" class="empty-row">기기 기록 없음</td></tr>';
+      } else {
+        devicesBody.innerHTML = devices.map((d) => {
+          const seen = d.lastSeenAt || d.lastLoginAt;
+          const push = d.pushActive == null ? '-' : (d.pushActive ? '활성' : '비활성');
+          const idShort = d.deviceId
+            ? (d.deviceId.length > 36 ? `${d.deviceId.slice(0, 34)}…` : d.deviceId)
+            : '-';
+          return `
+            <tr>
+              <td>${esc(opsOsLabel(d.os))}</td>
+              <td>${esc(d.appVersion || '-')}</td>
+              <td>${esc(push)}</td>
+              <td>${esc(fmtDate(seen))}</td>
+              <td title="${esc(d.deviceId || '')}">${esc(idShort)}</td>
+            </tr>
+          `;
+        }).join('');
+      }
     }
     const tbody = document.getElementById('ops-user-badges-tbody');
     if (tbody) {

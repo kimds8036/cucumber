@@ -8,6 +8,147 @@ import { evaluateSchoolDay, toYmd } from '../utils/schoolDay.js';
 
 const WEEKDAYS = ['월', '화', '수', '목', '금'];
 
+/** @returns {'ios'|'android'|'other'|null} */
+function inferOsFromUa(ua) {
+  const s = String(ua || '');
+  if (!s) return null;
+  if (/iPhone|iPad|iPod|CFNetwork|Darwin/i.test(s)) return 'ios';
+  if (/Android|okhttp/i.test(s)) return 'android';
+  return 'other';
+}
+
+/** @returns {'ios'|'android'|'other'|null} */
+function inferOsFromDeviceId(deviceId) {
+  const s = String(deviceId || '').toLowerCase();
+  if (s.startsWith('ios-') || s.startsWith('ios_')) return 'ios';
+  if (s.startsWith('android-') || s.startsWith('android_')) return 'android';
+  return null;
+}
+
+function normalizeOs(raw) {
+  const s = String(raw || '').toLowerCase().trim();
+  if (s === 'ios' || s === 'iphone' || s === 'ipad') return 'ios';
+  if (s === 'android') return 'android';
+  if (!s) return null;
+  return 'other';
+}
+
+async function loadUserDevices(userId) {
+  const [fcmRows, deviceRows] = await Promise.all([
+    pool.execute(
+      `SELECT id, device_id, device_type, app_version, is_active, last_used_at, updated_at
+       FROM fcm_tokens
+       WHERE user_id = ?
+       ORDER BY COALESCE(last_used_at, updated_at) DESC, id DESC`,
+      [userId],
+    ).then(([rows]) => rows),
+    pool.execute(
+      `SELECT id, device_id, device_info, ip_address, last_login_at, created_at
+       FROM user_devices
+       WHERE user_id = ?
+       ORDER BY COALESCE(last_login_at, created_at) DESC, id DESC`,
+      [userId],
+    ).then(([rows]) => rows),
+  ]);
+
+  const byKey = new Map();
+
+  const upsert = (key, patch) => {
+    const k = String(key || '').trim() || `anon-${byKey.size}`;
+    const prev = byKey.get(k) || {
+      deviceId: k.startsWith('anon-') || k.startsWith('fcm-') || k.startsWith('login-') ? null : k,
+      os: null,
+      osSource: null,
+      appVersion: null,
+      lastSeenAt: null,
+      lastLoginAt: null,
+      pushActive: null,
+      ipAddress: null,
+      userAgent: null,
+    };
+    const next = { ...prev };
+
+    if (patch.deviceId != null) next.deviceId = patch.deviceId;
+    if (patch.appVersion != null) next.appVersion = patch.appVersion;
+    if (patch.lastLoginAt != null) next.lastLoginAt = patch.lastLoginAt;
+    if (patch.pushActive != null) next.pushActive = patch.pushActive;
+    if (patch.ipAddress != null) next.ipAddress = patch.ipAddress;
+    if (patch.userAgent != null) next.userAgent = patch.userAgent;
+    if (patch.lastSeenAt != null) {
+      const prevTs = prev.lastSeenAt ? new Date(prev.lastSeenAt).getTime() : 0;
+      const nextTs = new Date(patch.lastSeenAt).getTime();
+      if (!prev.lastSeenAt || nextTs >= prevTs) next.lastSeenAt = patch.lastSeenAt;
+    }
+
+    // fcm device_type > device_id prefix > user-agent
+    const rank = { fcm: 3, device_id: 2, user_agent: 1 };
+    const prevRank = rank[prev.osSource] || 0;
+    const patchRank = rank[patch.osSource] || 0;
+    if (patch.os && patchRank >= prevRank) {
+      next.os = patch.os;
+      next.osSource = patch.osSource;
+    }
+
+    byKey.set(k, next);
+  };
+
+  for (const r of fcmRows) {
+    const deviceId = r.device_id ? String(r.device_id) : null;
+    const os =
+      normalizeOs(r.device_type)
+      || inferOsFromDeviceId(deviceId);
+    const lastSeenAt = r.last_used_at || r.updated_at || null;
+    upsert(deviceId || `fcm-${r.id}`, {
+      deviceId,
+      os,
+      osSource: r.device_type ? 'fcm' : (os ? 'device_id' : null),
+      appVersion: r.app_version || null,
+      lastSeenAt,
+      pushActive: Number(r.is_active) === 1,
+    });
+  }
+
+  for (const r of deviceRows) {
+    const deviceId = r.device_id ? String(r.device_id) : null;
+    const ua = r.device_info || null;
+    const fromId = inferOsFromDeviceId(deviceId);
+    const fromUa = inferOsFromUa(ua);
+    const os = fromId || fromUa;
+    const lastLoginAt = r.last_login_at || r.created_at || null;
+    upsert(deviceId || `login-${r.id}`, {
+      deviceId,
+      os,
+      osSource: os ? (fromId ? 'device_id' : 'user_agent') : null,
+      lastLoginAt,
+      lastSeenAt: lastLoginAt,
+      ipAddress: r.ip_address || null,
+      userAgent: ua,
+    });
+  }
+
+  const devices = [...byKey.values()].sort((a, b) => {
+    const ta = new Date(a.lastSeenAt || a.lastLoginAt || 0).getTime();
+    const tb = new Date(b.lastSeenAt || b.lastLoginAt || 0).getTime();
+    return tb - ta;
+  });
+
+  const platforms = { ios: 0, android: 0, other: 0, unknown: 0 };
+  for (const d of devices) {
+    if (d.os === 'ios') platforms.ios += 1;
+    else if (d.os === 'android') platforms.android += 1;
+    else if (d.os === 'other') platforms.other += 1;
+    else platforms.unknown += 1;
+  }
+
+  const primaryOs =
+    platforms.ios && !platforms.android ? 'ios'
+      : platforms.android && !platforms.ios ? 'android'
+        : platforms.ios && platforms.android ? 'mixed'
+          : null;
+
+  return { devices, platforms, primaryOs };
+}
+
 function timetableToGrid(cells) {
   const map = cells && typeof cells === 'object' ? cells : {};
   let maxPeriod = 0;
@@ -158,7 +299,7 @@ export async function inspectOpsUser(queryRaw) {
   }
 
   const userId = row.id;
-  const [badgePack, friendRow, counts, timetablePack, attendance] = await Promise.all([
+  const [badgePack, friendRow, counts, timetablePack, attendance, devicePack] = await Promise.all([
     inspectBadgesForUser(userId),
     pool.execute(
       `SELECT COUNT(*) AS c
@@ -175,6 +316,7 @@ export async function inspectOpsUser(queryRaw) {
     ).then(([rows]) => rows[0]),
     getMergedTimetableForUserId(userId),
     loadAttendanceCalendar(userId, row.school_id),
+    loadUserDevices(userId),
   ]);
 
   const grid = timetableToGrid(timetablePack?.cells);
@@ -196,7 +338,11 @@ export async function inspectOpsUser(queryRaw) {
       commentCount: Number(counts?.comments || 0),
       todayCheckedIn: Boolean(attendance.todayCheckedIn),
       attendancePresentCount: Number(attendance.presentCount || 0),
+      primaryOs: devicePack.primaryOs,
+      deviceCount: devicePack.devices.length,
     },
+    devices: devicePack.devices,
+    devicePlatforms: devicePack.platforms,
     attendance,
     badges: {
       ownedCount,
