@@ -42,8 +42,8 @@ const NEIS_MIDDLE_URL = 'https://open.neis.go.kr/hub/misTimetable';
 const NEIS_HIGH_URL = 'https://open.neis.go.kr/hub/hisTimetable';
 const NEIS_API_KEY = process.env.NEIS_API_KEY || process.env.NEIS_KEY || '';
 const BASE_TTL_MS = 24 * 60 * 60 * 1000;
-/** 반 매칭 로직 변경 시 bump — 잘못된 NEIS 캐시 무효화 */
-const TIMETABLE_CACHE_VERSION = 'v2';
+/** 반 매칭·SEM 로직 변경 시 bump — 잘못된 NEIS 캐시 무효화 */
+const TIMETABLE_CACHE_VERSION = 'v3';
 const baseCache = new Map();
 const DAYS = ['월', '화', '수', '목', '금'];
 
@@ -172,11 +172,6 @@ function getWeekRange(now = new Date()) {
   return { fromYmd: toYmd(monday), toYmd: toYmd(friday), weekKey: toYmd(monday) };
 }
 
-function getSemester(date = new Date()) {
-  const month = date.getMonth() + 1;
-  return month >= 3 && month <= 8 ? 1 : 2;
-}
-
 /**
  * NEIS 시간표 허브: 중학 misTimetable / 고등 hisTimetable
  */
@@ -293,7 +288,7 @@ function normalizeNeisRowArray(rowField) {
   return Array.isArray(rowField) ? rowField : [rowField];
 }
 
-async function fetchNeisRowsForUser(user, schoolLevel, fromYmd, toYmd) {
+async function fetchNeisRowsForUser(user, schoolLevel, fromYmd, toYmd, semester) {
   const endpoint = schoolLevel === 'middle' ? NEIS_MIDDLE_URL : NEIS_HIGH_URL;
   const rootKey = schoolLevel === 'middle' ? 'misTimetable' : 'hisTimetable';
   const pageSize = 1000;
@@ -310,7 +305,7 @@ async function fetchNeisRowsForUser(user, schoolLevel, fromYmd, toYmd) {
       GRADE: String(user.grade),
       TI_FROM_YMD: fromYmd,
       TI_TO_YMD: toYmd,
-      SEM: String(getSemester()),
+      SEM: String(semester),
     });
 
     const res = await fetch(`${endpoint}?${qs.toString()}`);
@@ -333,7 +328,9 @@ async function fetchBaseTimetableByUser(user) {
     user.school_name,
   );
   const { fromYmd, toYmd, weekKey } = getWeekRange();
-  const key = getCacheKey(user, schoolLevel, weekKey);
+  const { resolveNeisSemester } = await import('../services/schoolSemester.service.js');
+  const preferredSem = await resolveNeisSemester(user.school_id);
+  const key = `${getCacheKey(user, schoolLevel, weekKey)}:sem${preferredSem}`;
   const cached = baseCache.get(key);
   if (cached && Date.now() - cached.ts < BASE_TTL_MS) {
     return { timetable: cached.timetable, subjects: cached.subjects || [] };
@@ -353,17 +350,32 @@ async function fetchBaseTimetableByUser(user) {
       school_type: user.school_type,
       school_name: user.school_name,
       grade: user.grade,
+      SEM: preferredSem,
       TI_FROM_YMD: fromYmd,
       TI_TO_YMD: toYmd,
       scope: 'school+grade (no CLASS_NM)',
     });
   }
 
-  const rows = await fetchNeisRowsForUser(user, schoolLevel, fromYmd, toYmd);
+  let rows = await fetchNeisRowsForUser(
+    user,
+    schoolLevel,
+    fromYmd,
+    toYmd,
+    preferredSem,
+  );
+  // 선호 SEM이 비면 반대 학기 한 번 더 (개학 직전 SEM 어긋남 대비)
+  if (!rows.length) {
+    const otherSem = preferredSem === 1 ? 2 : 1;
+    rows = await fetchNeisRowsForUser(user, schoolLevel, fromYmd, toYmd, otherSem);
+  }
   const subjects = extractSubjectsFromRows(rows);
   const gridRows = filterRowsForUserTimetable(rows, user.class_number);
   const timetable = parseNeisRows(gridRows);
-  baseCache.set(key, { ts: Date.now(), timetable, subjects });
+  const empty = Object.keys(timetable).length === 0 && subjects.length === 0;
+  // 빈 결과는 ~15분만 캐시 (NEIS가 늦게 올라오는 경우 대비)
+  const ts = empty ? Date.now() - (BASE_TTL_MS - 15 * 60 * 1000) : Date.now();
+  baseCache.set(key, { ts, timetable, subjects });
   return { timetable, subjects };
 }
 

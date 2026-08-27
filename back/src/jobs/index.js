@@ -10,6 +10,10 @@ import { runAttendanceSuspicionJob } from './adminAttendance.suspicion.js';
 import { runAdminRetentionJob } from './adminRetention.purge.js';
 import { runAnalyticsReconcileJob } from './analyticsReconcile.js';
 import { runSchoolTermsSyncJob, maybeBootSchoolTermsSync } from './schoolTerms.sync.js';
+import {
+  runSchoolSemesterInferJob,
+  maybeBootSchoolSemesterInfer,
+} from './schoolSemester.infer.js';
 import { shouldRunCron } from '../config/serviceRole.js';
 
 const TZ = process.env.CRON_TIMEZONE || 'Asia/Seoul';
@@ -48,6 +52,8 @@ export function initJobs() {
     process.env.CRON_ANALYTICS_RECONCILE || '0 4 * * *';
   const schoolTermsSchedule =
     process.env.CRON_SCHOOL_TERMS || '0 4 * * 1';
+  const schoolSemesterInferSchedule =
+    process.env.CRON_SEMESTER_INFER || '0 5 * * *';
 
   cron.schedule(
     studyGrassSchedule,
@@ -139,13 +145,24 @@ export function initJobs() {
     { timezone: TZ },
   );
 
+  cron.schedule(
+    schoolSemesterInferSchedule,
+    async () => {
+      await runSchoolSemesterInferJob();
+    },
+    { timezone: TZ },
+  );
+
   setImmediate(() => {
     maybeBootSchoolTermsSync().catch((err) => {
       console.warn('[schoolTerms] boot sync', err?.message || err);
     });
+    maybeBootSchoolSemesterInfer().catch((err) => {
+      console.warn('[semester-infer] boot', err?.message || err);
+    });
   });
 
   console.log(
-    `[BatchJob] started timezone=${TZ} studyGrass="${studyGrassSchedule}" trending="${trendingSchedule}" schoolStats="${schoolStatsSchedule}" timerGuard="${timerGuardSchedule}" personalMailReturn="${personalMailReturnSchedule}" reverification="${reverificationSchedules.join('|')}" adminStats="${adminStatsSchedule}" attendanceSuspicion="${attendanceSuspicionSchedule}" adminRetention="${adminRetentionSchedule}" analyticsReconcile="${analyticsReconcileSchedule}" schoolTerms="${schoolTermsSchedule}"`,
+    `[BatchJob] started timezone=${TZ} studyGrass="${studyGrassSchedule}" trending="${trendingSchedule}" schoolStats="${schoolStatsSchedule}" timerGuard="${timerGuardSchedule}" personalMailReturn="${personalMailReturnSchedule}" reverification="${reverificationSchedules.join('|')}" adminStats="${adminStatsSchedule}" attendanceSuspicion="${attendanceSuspicionSchedule}" adminRetention="${adminRetentionSchedule}" analyticsReconcile="${analyticsReconcileSchedule}" schoolTerms="${schoolTermsSchedule}" semesterInfer="${schoolSemesterInferSchedule}"`,
   );
 }
