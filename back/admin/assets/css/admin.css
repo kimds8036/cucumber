@@ -1649,9 +1649,152 @@
 
     .ops-cron-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+      grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
       gap: 12px;
       margin: 8px 0 6px;
+    }
+    .ops-cron-flow {
+      margin: 10px 0 4px;
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      background:
+        radial-gradient(circle at 12% 18%, rgba(15, 118, 110, 0.06), transparent 42%),
+        radial-gradient(circle at 88% 70%, rgba(124, 58, 237, 0.05), transparent 40%),
+        var(--bg-secondary);
+      overflow: hidden;
+    }
+    .ops-cron-flow-board {
+      position: relative;
+      display: grid;
+      grid-template-columns: minmax(120px, 0.9fr) minmax(140px, 1fr) minmax(150px, 1.05fr) minmax(180px, 1.25fr);
+      gap: 10px;
+      padding: 16px 14px 18px;
+      min-height: 320px;
+      align-items: stretch;
+    }
+    .ops-cron-flow-svg {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      z-index: 0;
+      overflow: visible;
+    }
+    .ops-cron-flow-col {
+      position: relative;
+      z-index: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      min-width: 0;
+    }
+    .ops-cron-lane-label {
+      font-size: 10px;
+      letter-spacing: .4px;
+      text-transform: uppercase;
+      color: var(--text-tertiary);
+      font-weight: 700;
+      padding: 0 2px;
+    }
+    .ops-cron-node {
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      background: #fff;
+      padding: 10px 11px;
+      box-shadow: 0 1px 0 rgba(255,255,255,.7) inset;
+    }
+    .ops-cron-node.is-hub {
+      background: linear-gradient(160deg, #ecfdf5 0%, #fff 55%);
+      border-color: rgba(15, 118, 110, 0.35);
+      box-shadow: 0 0 0 1px rgba(15, 118, 110, 0.08), 0 8px 24px rgba(15, 118, 110, 0.08);
+    }
+    .ops-cron-node.is-queue {
+      background: linear-gradient(160deg, #f5f3ff 0%, #fff 60%);
+      border-color: rgba(124, 58, 237, 0.28);
+    }
+    .ops-cron-node.is-active {
+      border-color: rgba(15, 118, 110, 0.55);
+      box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.15);
+    }
+    .ops-cron-node.is-leased {
+      border-color: rgba(217, 119, 6, 0.55);
+      box-shadow: 0 0 0 2px rgba(245, 158, 11, 0.18);
+    }
+    .ops-cron-node-kicker {
+      display: block;
+      font-size: 10px;
+      color: var(--text-tertiary);
+      margin-bottom: 4px;
+    }
+    .ops-cron-node-title {
+      margin: 0;
+      font-size: 13px;
+      font-weight: 700;
+      line-height: 1.3;
+    }
+    .ops-cron-node-meta {
+      margin: 6px 0 0;
+      font-size: 11px;
+      color: var(--text-secondary);
+      line-height: 1.4;
+    }
+    .ops-cron-node-count {
+      display: inline-flex;
+      align-items: baseline;
+      gap: 4px;
+      margin-top: 8px;
+      padding: 3px 8px;
+      border-radius: 999px;
+      background: #f8fafc;
+      border: 1px solid var(--border);
+      font-size: 11px;
+      color: var(--text-secondary);
+    }
+    .ops-cron-node-count strong {
+      font-variant-numeric: tabular-nums;
+      color: var(--text-primary);
+      font-size: 13px;
+    }
+    .ops-cron-queue-list {
+      margin: 8px 0 0;
+      padding: 0;
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      max-height: 160px;
+      overflow: auto;
+    }
+    .ops-cron-queue-list li {
+      font-size: 11px;
+      color: var(--text-secondary);
+      padding: 5px 7px;
+      border-radius: 8px;
+      background: rgba(124, 58, 237, 0.06);
+      border: 1px dashed rgba(124, 58, 237, 0.2);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .ops-cron-src-node {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 10px;
+      border-radius: 12px;
+      border: 1px dashed var(--border);
+      background: rgba(255,255,255,.7);
+      font-size: 12px;
+      color: var(--text-secondary);
+    }
+    .ops-cron-src-node span {
+      font-size: 16px;
+    }
+    .ops-cron-edge-label {
+      font-size: 10px;
+      fill: #64748b;
+      font-family: inherit;
     }
     .ops-cron-card {
       display: flex;
@@ -1719,4 +1862,17 @@
       margin: 6px 0 0;
       font-size: 11px;
       color: var(--text-tertiary);
+    }
+    @media (max-width: 980px) {
+      .ops-cron-flow-board {
+        grid-template-columns: 1fr 1fr;
+        min-height: 0;
+      }
+      .ops-cron-flow-svg { display: none; }
+      .ops-cron-col-src { grid-column: 1 / -1; flex-direction: row; flex-wrap: wrap; }
+    }
+    @media (max-width: 640px) {
+      .ops-cron-flow-board {
+        grid-template-columns: 1fr;
+      }
     }

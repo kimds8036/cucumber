@@ -391,7 +391,8 @@ async function loadDashboard() {
   }
 
   async function loadBatchJobsOverview() {
-    renderCronCatalog(OPS_CRON_FALLBACK);
+    renderCronFlow(OPS_CRON_FALLBACK, { byStatus: [], pending: [] });
+    renderCronSolo(OPS_CRON_FALLBACK.filter((j) => !CRON_MANAGED_KEYS.has(j.key) && j.key !== 'cron-manager'));
     let data = {};
     try {
       const res = await api('/batch-jobs?limit=30');
@@ -404,27 +405,13 @@ async function loadDashboard() {
     if (hint) {
       hint.textContent = catalog.enabledHint
         ? `${catalog.enabledHint} (시간대 ${catalog.timezone || 'Asia/Seoul'})`
-        : '서버가 한국 시간으로 알아서 돌리는 일들입니다.';
+        : '이벤트가 예약을 만들고, 매니저가 워커에게 배정합니다.';
     }
-    renderCronCatalog(catalog.jobs?.length ? catalog.jobs : OPS_CRON_FALLBACK);
     const jobsMeta = catalog.jobs?.length ? catalog.jobs : OPS_CRON_FALLBACK;
-    const resHost = document.getElementById('ops-cron-reservations-items');
-    if (resHost) {
-      const byStatus = data?.reservations?.byStatus || [];
-      const pending = data?.reservations?.pending || [];
-      if (!byStatus.length && !pending.length) {
-        resHost.textContent = '대기 예약 없음 · 할 일 생기면 여기에 쌓입니다';
-      } else {
-        const chips = byStatus.map((r) => {
-          const label = r.status === 'pending' ? '대기' : (r.status === 'leased' ? '실행중' : r.status);
-          return `<span class="ops-eco-chip">${esc(r.jobKey)} ${esc(label)} <strong>${Number(r.count || 0)}</strong></span>`;
-        });
-        if (pending.length) {
-          chips.push(`<span class="ops-eco-chip">다음 <strong>${esc(pending[0].job_key)}/${esc(pending[0].scope_key)}</strong></span>`);
-        }
-        resHost.innerHTML = chips.join('');
-      }
-    }
+    const reservations = data?.reservations || { byStatus: [], pending: [] };
+    renderCronFlow(jobsMeta, reservations);
+    renderCronSolo(jobsMeta.filter((j) => !CRON_MANAGED_KEYS.has(j.key) && j.key !== 'cron-manager'));
+
     const runsBody = document.getElementById('ops-batch-runs-tbody');
     const cursorsBody = document.getElementById('ops-batch-cursors-tbody');
     const runs = data?.runs || [];
@@ -471,6 +458,18 @@ async function loadDashboard() {
     return status || '-';
   }
 
+  const CRON_MANAGED_KEYS = new Set([
+    'school-stats',
+    'personal-mail-return',
+    'timer-session-guard',
+  ]);
+
+  const CRON_FLOW_SOURCES = [
+    { id: 'src-signup', emoji: '🧑‍🎓', label: '가입·학교 글', feeds: 'school-stats' },
+    { id: 'src-mail', emoji: '✉️', label: '개인 우편 발송', feeds: 'personal-mail-return' },
+    { id: 'src-timer', emoji: '⏱️', label: '타이머 세션', feeds: 'timer-session-guard' },
+  ];
+
   const OPS_CRON_FALLBACK = [
     { key: 'cron-manager', emoji: '🎛️', title: '크론 매니저', when: '1분마다', blurb: '예약된 작업만 골라 워커에게 배정해요.' },
     { key: 'study-grass-aggregate', emoji: '🌱', title: '공부 잔디', when: '매시 5분', blurb: '오늘 학교에서 누가 얼마나 공부했는지 모아서 잔디·순위에 넣어요.' },
@@ -487,27 +486,233 @@ async function loadDashboard() {
     { key: 'school-semester-infer', emoji: '🧭', title: '개학·방학 유추', when: '매일 새벽 5시(시즌)', blurb: '급식·시간표로 2학기 개학 등을 유추해요. 7~9월·12~3월만 돌고, 확정된 학교는 다음번에 건너뛰어요.' },
   ];
 
-  function renderCronCatalog(jobs) {
-    const host = document.getElementById('ops-cron-catalog');
+  function cronJobTone(last) {
+    if (last?.status === 'success') return 'ok';
+    if (last?.status === 'failed') return 'bad';
+    if (last?.status === 'skipped') return 'skip';
+    return 'idle';
+  }
+
+  function cronJobBadge(last) {
+    if (last?.status === 'success') return '최근에 잘됨';
+    if (last?.status === 'failed') return '최근에 실패';
+    if (last?.status === 'skipped') return '최근에 건너뜀';
+    return '아직 기록 없음';
+  }
+
+  function reservationCountsFor(jobKey, byStatus) {
+    let pending = 0;
+    let leased = 0;
+    for (const row of byStatus || []) {
+      if (row.jobKey !== jobKey) continue;
+      if (row.status === 'pending') pending += Number(row.count || 0);
+      if (row.status === 'leased') leased += Number(row.count || 0);
+    }
+    return { pending, leased, total: pending + leased };
+  }
+
+  function renderCronFlow(jobs, reservations) {
+    const srcCol = document.getElementById('ops-cron-col-src');
+    const queueCol = document.getElementById('ops-cron-col-queue');
+    const mgrCol = document.getElementById('ops-cron-col-mgr');
+    const workersCol = document.getElementById('ops-cron-col-workers');
+    if (!srcCol || !queueCol || !mgrCol || !workersCol) return;
+
+    const byKey = Object.fromEntries((jobs || []).map((j) => [j.key, j]));
+    const byStatus = reservations?.byStatus || [];
+    const pendingList = reservations?.pending || [];
+    const totalPending = byStatus
+      .filter((r) => r.status === 'pending')
+      .reduce((s, r) => s + Number(r.count || 0), 0);
+    const totalLeased = byStatus
+      .filter((r) => r.status === 'leased')
+      .reduce((s, r) => s + Number(r.count || 0), 0);
+    const mgr = byKey['cron-manager'] || OPS_CRON_FALLBACK.find((j) => j.key === 'cron-manager');
+
+    srcCol.innerHTML = `
+      <div class="ops-cron-lane-label">이벤트</div>
+      ${CRON_FLOW_SOURCES.map((s) => `
+        <div class="ops-cron-src-node" id="cron-node-${esc(s.id)}" data-cron-anchor="${esc(s.id)}">
+          <span aria-hidden="true">${esc(s.emoji)}</span>
+          <div>
+            <strong style="display:block;color:var(--text-primary);font-size:12px">${esc(s.label)}</strong>
+            <span style="font-size:10px">→ ${esc(s.feeds)}</span>
+          </div>
+        </div>
+      `).join('')}
+    `;
+
+    const queueItems = pendingList.slice(0, 6).map((p) => {
+      const when = p.not_before ? fmtDate(p.not_before) : '-';
+      const st = p.status === 'leased' ? '실행중' : '대기';
+      return `<li title="${esc(p.job_key)} / ${esc(p.scope_key)}">${esc(st)} · ${esc(p.job_key)} · ${esc(p.scope_key)} · ${esc(when)}</li>`;
+    }).join('');
+
+    queueCol.innerHTML = `
+      <div class="ops-cron-lane-label">예약 큐</div>
+      <div class="ops-cron-node is-queue ${totalPending || totalLeased ? 'is-active' : ''}" id="cron-node-queue" data-cron-anchor="queue">
+        <span class="ops-cron-node-kicker">cron_reservations</span>
+        <h3 class="ops-cron-node-title">대기열</h3>
+        <p class="ops-cron-node-meta">할 일이 쌓이면 여기에 들어와요.</p>
+        <div class="ops-cron-node-count">대기 <strong>${totalPending}</strong> · 실행중 <strong>${totalLeased}</strong></div>
+        <ul class="ops-cron-queue-list">
+          ${queueItems || '<li>비어 있음 — 새 예약 없음</li>'}
+        </ul>
+      </div>
+    `;
+
+    const mgrLast = mgr?.lastRun;
+    mgrCol.innerHTML = `
+      <div class="ops-cron-lane-label">매니저</div>
+      <div class="ops-cron-node is-hub ${totalPending || totalLeased ? 'is-active' : ''}" id="cron-node-manager" data-cron-anchor="manager">
+        <span class="ops-cron-node-kicker">${esc(mgr?.emoji || '🎛️')} cron-manager</span>
+        <h3 class="ops-cron-node-title">${esc(mgr?.title || '크론 매니저')}</h3>
+        <p class="ops-cron-node-meta">${esc(mgr?.blurb || '예약을 claim 해서 워커에 배정')}</p>
+        <p class="ops-cron-node-meta">⏰ ${esc(mgr?.when || '1분마다')}</p>
+        <div class="ops-cron-node-count">${esc(cronJobBadge(mgrLast))}${mgrLast?.finished_at ? ` · ${esc(fmtDate(mgrLast.finished_at))}` : ''}</div>
+      </div>
+    `;
+
+    const managed = [...CRON_MANAGED_KEYS].map((key) => byKey[key] || OPS_CRON_FALLBACK.find((j) => j.key === key)).filter(Boolean);
+    workersCol.innerHTML = `
+      <div class="ops-cron-lane-label">워커 (배정 대상)</div>
+      ${managed.map((j) => {
+        const counts = reservationCountsFor(j.key, byStatus);
+        const tone = counts.leased ? 'is-leased' : (counts.pending ? 'is-active' : '');
+        const last = j.lastRun;
+        return `
+          <div class="ops-cron-node ${tone}" id="cron-node-worker-${esc(j.key)}" data-cron-anchor="worker-${esc(j.key)}" data-job-key="${esc(j.key)}">
+            <span class="ops-cron-node-kicker">${esc(j.emoji || '')} ${esc(j.key)}</span>
+            <h3 class="ops-cron-node-title">${esc(j.title)}</h3>
+            <p class="ops-cron-node-meta">${esc(j.blurb || '')}</p>
+            <div class="ops-cron-node-count">예약 <strong>${counts.total}</strong>${counts.leased ? ` · 실행중 ${counts.leased}` : ''}</div>
+            <p class="ops-cron-node-meta" style="margin-top:6px">${esc(cronJobBadge(last))}${last?.finished_at ? ` · ${esc(fmtDate(last.finished_at))}` : ''}</p>
+          </div>
+        `;
+      }).join('')}
+    `;
+
+    requestAnimationFrame(() => drawCronFlowEdges(byStatus));
+    if (!window.__opsCronFlowResizeBound) {
+      window.__opsCronFlowResizeBound = true;
+      let t = null;
+      window.addEventListener('resize', () => {
+        clearTimeout(t);
+        t = setTimeout(() => {
+          const board = document.getElementById('ops-cron-flow');
+          if (!board || board.closest('.ops-view')?.hidden) return;
+          drawCronFlowEdges(window.__opsCronLastByStatus || []);
+        }, 120);
+      });
+    }
+    window.__opsCronLastByStatus = byStatus;
+  }
+
+  function drawCronFlowEdges(byStatus) {
+    const board = document.querySelector('.ops-cron-flow-board');
+    const svg = document.getElementById('ops-cron-flow-svg');
+    if (!board || !svg) return;
+    if (window.matchMedia && window.matchMedia('(max-width: 980px)').matches) {
+      svg.innerHTML = '';
+      return;
+    }
+
+    const br = board.getBoundingClientRect();
+    const w = br.width;
+    const h = br.height;
+    svg.setAttribute('viewBox', `0 0 ${w} ${h}`);
+    svg.setAttribute('width', String(w));
+    svg.setAttribute('height', String(h));
+
+    const anchor = (id) => {
+      const el = document.querySelector(`[data-cron-anchor="${id}"]`);
+      if (!el) return null;
+      const r = el.getBoundingClientRect();
+      return {
+        left: r.left - br.left,
+        right: r.right - br.left,
+        top: r.top - br.top,
+        midY: r.top - br.top + r.height / 2,
+        midX: r.left - br.left + r.width / 2,
+      };
+    };
+
+    const queue = anchor('queue');
+    const manager = anchor('manager');
+    if (!queue || !manager) {
+      svg.innerHTML = '';
+      return;
+    }
+
+    const paths = [];
+    const defs = `
+      <defs>
+        <marker id="cron-arrow" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+          <path d="M0,0 L6,3 L0,6 Z" fill="#94a3b8" />
+        </marker>
+        <marker id="cron-arrow-active" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+          <path d="M0,0 L6,3 L0,6 Z" fill="#0f766e" />
+        </marker>
+      </defs>
+    `;
+
+    const curve = (x1, y1, x2, y2, active, label) => {
+      const mx = (x1 + x2) / 2;
+      const stroke = active ? '#0f766e' : '#cbd5e1';
+      const width = active ? 2.2 : 1.4;
+      const dash = active ? '' : 'stroke-dasharray="5 4"';
+      const marker = active ? 'url(#cron-arrow-active)' : 'url(#cron-arrow)';
+      let html = `<path d="M ${x1} ${y1} C ${mx} ${y1}, ${mx} ${y2}, ${x2} ${y2}" fill="none" stroke="${stroke}" stroke-width="${width}" ${dash} marker-end="${marker}" />`;
+      if (label) {
+        html += `<text class="ops-cron-edge-label" x="${mx}" y="${(y1 + y2) / 2 - 6}" text-anchor="middle">${esc(label)}</text>`;
+      }
+      return html;
+    };
+
+    CRON_FLOW_SOURCES.forEach((s) => {
+      const a = anchor(s.id);
+      if (!a) return;
+      const counts = reservationCountsFor(s.feeds, byStatus);
+      paths.push(curve(a.right, a.midY, queue.left, queue.midY, counts.total > 0, counts.total ? `예약 ${counts.total}` : 'enqueue'));
+    });
+
+    paths.push(curve(
+      queue.right,
+      queue.midY,
+      manager.left,
+      manager.midY,
+      (byStatus || []).some((r) => Number(r.count || 0) > 0),
+      'claim',
+    ));
+
+    [...CRON_MANAGED_KEYS].forEach((key) => {
+      const a = anchor(`worker-${key}`);
+      if (!a) return;
+      const counts = reservationCountsFor(key, byStatus);
+      paths.push(curve(
+        manager.right,
+        manager.midY,
+        a.left,
+        a.midY,
+        counts.total > 0,
+        counts.leased ? '실행중' : (counts.pending ? `배정 ${counts.pending}` : 'dispatch'),
+      ));
+    });
+
+    svg.innerHTML = defs + paths.join('');
+  }
+
+  function renderCronSolo(jobs) {
+    const host = document.getElementById('ops-cron-solo');
     if (!host) return;
     if (!jobs.length) {
-      host.innerHTML = '<p class="txt-muted">목록을 불러오지 못했어요.</p>';
+      host.innerHTML = '<p class="txt-muted">스케줄 직행 작업이 없어요.</p>';
       return;
     }
     host.innerHTML = jobs.map((j) => {
       const last = j.lastRun;
-      let badge = '아직 기록 없음';
-      let tone = 'idle';
-      if (last?.status === 'success') {
-        badge = '최근에 잘됨';
-        tone = 'ok';
-      } else if (last?.status === 'failed') {
-        badge = '최근에 실패';
-        tone = 'bad';
-      } else if (last?.status === 'skipped') {
-        badge = '최근에 건너뜀';
-        tone = 'skip';
-      }
+      const tone = cronJobTone(last);
+      const badge = cronJobBadge(last);
       const whenLast = last?.finished_at ? fmtDate(last.finished_at) : '-';
       return `
         <article class="ops-cron-card tone-${tone}">
@@ -524,6 +729,12 @@ async function loadDashboard() {
         </article>
       `;
     }).join('');
+  }
+
+  function renderCronCatalog(jobs) {
+    // 하위 호환: 예전 호출부는 플로우+솔로로 분리 렌더
+    renderCronFlow(jobs, { byStatus: [], pending: [] });
+    renderCronSolo((jobs || []).filter((j) => !CRON_MANAGED_KEYS.has(j.key) && j.key !== 'cron-manager'));
   }
 
   async function loadTimerOps() {
