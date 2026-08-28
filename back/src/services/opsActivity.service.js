@@ -2,6 +2,7 @@ import pool from '../config/database.js';
 import { addDaysToYmd } from './analytics.service.js';
 import { formatKstDateYmd } from './reverification.service.js';
 import { resolveUserName } from './userPii.service.js';
+import { clampSqlLimit } from '../utils/sqlLimit.js';
 
 function clipPreview(raw) {
   const text = String(raw || '')
@@ -98,7 +99,7 @@ function mergeSeries(keys, maps, windowDays, fromYmd) {
  */
 export async function getActivityOpsOverview({ days = 14, feedLimit = 40 } = {}) {
   const windowDays = Math.min(Math.max(Number(days) || 14, 1), 31);
-  const limit = Math.min(Math.max(Number(feedLimit) || 40, 10), 80);
+  const limit = clampSqlLimit(feedLimit, { def: 40, min: 10, max: 80 });
   const today = formatKstDateYmd();
   const fromYmd = addDaysToYmd(today, -(windowDays - 1));
 
@@ -126,7 +127,7 @@ export async function getActivityOpsOverview({ days = 14, feedLimit = 40 } = {})
     seriesCounts('personal_mails', 'is_deleted = FALSE', fromYmd, today, windowDays),
   ]);
 
-  const [postRows] = await pool.execute(
+  const [postRows] = await pool.query(
     `SELECT p.id, p.user_id, p.content, p.created_at, p.board_type,
             u.username, u.name_enc, u.grade, u.class_number,
             sch.name AS school_name
@@ -135,11 +136,10 @@ export async function getActivityOpsOverview({ days = 14, feedLimit = 40 } = {})
      LEFT JOIN schools sch ON sch.school_id = u.school_id
      WHERE p.is_deleted = FALSE
      ORDER BY p.id DESC
-     LIMIT ?`,
-    [limit],
+     LIMIT ${limit}`,
   );
 
-  const [commentRows] = await pool.execute(
+  const [commentRows] = await pool.query(
     `SELECT c.id, c.user_id, c.content, c.created_at, c.post_id,
             u.username, u.name_enc, u.grade, u.class_number,
             sch.name AS school_name
@@ -148,11 +148,10 @@ export async function getActivityOpsOverview({ days = 14, feedLimit = 40 } = {})
      LEFT JOIN schools sch ON sch.school_id = u.school_id
      WHERE c.is_deleted = FALSE
      ORDER BY c.id DESC
-     LIMIT ?`,
-    [limit],
+     LIMIT ${limit}`,
   );
 
-  const [chatRows] = await pool.execute(
+  const [chatRows] = await pool.query(
     `SELECT m.id, m.sender_id AS user_id, m.content, m.created_at,
             u.username, u.name_enc, u.grade, u.class_number,
             sch.name AS school_name
@@ -161,11 +160,10 @@ export async function getActivityOpsOverview({ days = 14, feedLimit = 40 } = {})
      LEFT JOIN schools sch ON sch.school_id = u.school_id
      WHERE (m.is_deleted = FALSE OR m.is_deleted IS NULL)
      ORDER BY m.id DESC
-     LIMIT ?`,
-    [limit],
+     LIMIT ${limit}`,
   );
 
-  const [dmRows] = await pool.execute(
+  const [dmRows] = await pool.query(
     `SELECT m.id, m.sender_id AS user_id, m.content, m.created_at,
             u.username, u.name_enc, u.grade, u.class_number,
             sch.name AS school_name
@@ -174,11 +172,10 @@ export async function getActivityOpsOverview({ days = 14, feedLimit = 40 } = {})
      LEFT JOIN schools sch ON sch.school_id = u.school_id
      WHERE (m.is_deleted = FALSE OR m.is_deleted IS NULL)
      ORDER BY m.id DESC
-     LIMIT ?`,
-    [limit],
+     LIMIT ${limit}`,
   );
 
-  const [mailRows] = await pool.execute(
+  const [mailRows] = await pool.query(
     `SELECT pm.id, pm.sender_id AS user_id, pm.content, pm.created_at,
             u.username, u.name_enc, u.grade, u.class_number,
             sch.name AS school_name
@@ -187,11 +184,10 @@ export async function getActivityOpsOverview({ days = 14, feedLimit = 40 } = {})
      LEFT JOIN schools sch ON sch.school_id = u.school_id
      WHERE pm.is_deleted = FALSE
      ORDER BY pm.id DESC
-     LIMIT ?`,
-    [limit],
+     LIMIT ${limit}`,
   );
 
-  const [schoolMailRows] = await pool.execute(
+  const [schoolMailRows] = await pool.query(
     `SELECT sm.id, sm.user_id, sm.content, sm.created_at,
             u.username, u.name_enc, u.grade, u.class_number,
             sch.name AS school_name
@@ -200,8 +196,7 @@ export async function getActivityOpsOverview({ days = 14, feedLimit = 40 } = {})
      LEFT JOIN schools sch ON sch.school_id = COALESCE(sm.school_id, u.school_id)
      WHERE sm.is_deleted = FALSE
      ORDER BY sm.id DESC
-     LIMIT ?`,
-    [limit],
+     LIMIT ${limit}`,
   );
 
   const feed = [

@@ -32,7 +32,13 @@ router.get('/suspicious', requireAdminApi, async (req, res) => {
       await refreshAttendanceSuspicionFlags({ days, maxRate, minAccountDays });
     }
 
-    let data = await getSuspiciousFromFlags({ days, maxRate, limit });
+    let data;
+    try {
+      data = await getSuspiciousFromFlags({ days, maxRate, limit });
+    } catch (cacheErr) {
+      console.warn('[attendance] suspicious cache read failed', cacheErr?.message || cacheErr);
+      data = { fromCache: false, users: [], totalSuspicious: 0 };
+    }
     if (!data.fromCache || refresh) {
       const live = await getSuspiciousLowAttendance({
         days,

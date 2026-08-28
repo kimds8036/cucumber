@@ -1,6 +1,7 @@
 import pool from '../config/database.js';
 import { formatKstDateYmd, getKstNow } from './reverification.service.js';
 import { isPublicHolidayKst } from '../utils/commuteCalendar.js';
+import { resolveUserName } from './userPii.service.js';
 import {
   addDaysYmd,
   countSchoolDaysInRange,
@@ -200,7 +201,7 @@ export async function getSuspiciousLowAttendance({
       return {
         id: r.id,
         username: r.username,
-        name: r.name,
+        name: resolveUserName(r) || null,
         schoolId: r.school_id,
         schoolName: r.school_name,
         createdAt: r.created_at,

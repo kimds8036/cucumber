@@ -908,19 +908,28 @@ async function loadDashboard() {
   }
 
   async function loadActivityOps() {
-    const { data } = await api('/analytics/activity?days=14');
-    const s = data?.summary || {};
-    const set = (id, value) => {
-      const el = document.getElementById(id);
-      if (el) el.textContent = value;
-    };
-    set('activity-today-posts', Number(s.todayPosts || 0).toLocaleString());
-    set('activity-today-comments', Number(s.todayComments || 0).toLocaleString());
-    set('activity-today-chat', Number(s.todayChat || 0).toLocaleString());
-    set('activity-today-pmail', Number(s.todayPersonalMail || 0).toLocaleString());
-    set('activity-today-smail', Number(s.todaySchoolMail || 0).toLocaleString());
-    renderActivityLineChart(data?.series || []);
-    renderActivityFeed(data?.feed || []);
+    try {
+      const { data } = await api('/analytics/activity?days=14');
+      const s = data?.summary || {};
+      const set = (id, value) => {
+        const el = document.getElementById(id);
+        if (el) el.textContent = value;
+      };
+      set('activity-today-posts', Number(s.todayPosts || 0).toLocaleString());
+      set('activity-today-comments', Number(s.todayComments || 0).toLocaleString());
+      set('activity-today-chat', Number(s.todayChat || 0).toLocaleString());
+      set('activity-today-pmail', Number(s.todayPersonalMail || 0).toLocaleString());
+      set('activity-today-smail', Number(s.todaySchoolMail || 0).toLocaleString());
+      renderActivityLineChart(data?.series || []);
+      renderActivityFeed(data?.feed || []);
+    } catch (error) {
+      const caption = document.getElementById('activity-line-caption');
+      const body = document.getElementById('ops-activity-feed-tbody');
+      if (caption) caption.textContent = error?.message || '활동 데이터를 불러오지 못했습니다.';
+      if (body) {
+        body.innerHTML = `<tr><td colspan="5" class="txt-muted">${esc(error?.message || '활동 피드를 불러오지 못했습니다.')}</td></tr>`;
+      }
+    }
   }
 
   function renderActivityLineChart(series) {
