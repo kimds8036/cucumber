@@ -1,7 +1,9 @@
 let lastAttendanceOverview = null;
 let attendanceResizeBound = false;
 let attendanceTodayPage = 1;
+let attendanceSuspiciousPage = 1;
 const ATTENDANCE_TODAY_LIMIT = 50;
+const ATTENDANCE_SUSPICIOUS_LIMIT = 50;
 
 function bindAttendanceChartResize() {
   if (attendanceResizeBound) return;
@@ -13,6 +15,12 @@ function bindAttendanceChartResize() {
       if (lastAttendanceOverview) renderAttendanceChart(lastAttendanceOverview);
     }, 150);
   });
+}
+
+function getAttendanceFilterQs() {
+  const days = document.getElementById('attendance-days')?.value || '14';
+  const maxRate = document.getElementById('attendance-max-rate')?.value || '0.25';
+  return { days, maxRate };
 }
 
 async function loadTodayAttendance(page = 1) {
@@ -39,21 +47,51 @@ async function loadTodayAttendance(page = 1) {
   }
 }
 
-async function loadAttendance() {
-  const days = document.getElementById('attendance-days')?.value || '14';
-  const maxRate = document.getElementById('attendance-max-rate')?.value || '0.25';
-  const overviewHint = document.getElementById('attendance-overview-hint');
+async function loadSuspiciousUsers(page = 1) {
+  attendanceSuspiciousPage = page;
+  const { days, maxRate } = getAttendanceFilterQs();
+  const hint = document.getElementById('attendance-suspicious-hint');
+  try {
+    const qs = new URLSearchParams();
+    qs.set('days', days);
+    qs.set('maxRate', maxRate);
+    qs.set('minAccountDays', '7');
+    qs.set('page', String(page));
+    qs.set('limit', String(ATTENDANCE_SUSPICIOUS_LIMIT));
+    const { data } = await api(`/attendance/suspicious?${qs.toString()}`);
+    const total = Number(data?.totalSuspicious ?? data?.pagination?.total ?? 0);
+    document.getElementById('att-stat-suspicious').textContent = String(total);
+    setNavBadge('badge-attendance-suspicious', total);
+    if (hint) {
+      const src = data?.fromCache ? '크론 캐시' : '실시간 계산';
+      const period = data?.startDate && data?.endDate
+        ? `${data.startDate}~${data.endDate}`
+        : `최근 ${days}일`;
+      hint.textContent = `${period} · 기준 ${Math.round(Number(maxRate) * 100)}% 미만 · ${src} · 총 ${total.toLocaleString()}명`;
+    }
+    renderSuspiciousUsers(data?.users || [], data?.pagination || { total });
+    renderSuspiciousPagination(data?.pagination || { page, limit: ATTENDANCE_SUSPICIOUS_LIMIT, total });
+  } catch (error) {
+    if (hint) hint.textContent = error?.message || '미등교 의심 목록을 불러오지 못했습니다.';
+    renderSuspiciousUsers([], {});
+    renderSuspiciousPagination({});
+    throw error;
+  }
+}
 
-  const [overviewRes, suspiciousRes, todayRes] = await Promise.allSettled([
+async function loadAttendance() {
+  const { days } = getAttendanceFilterQs();
+  const overviewHint = document.getElementById('attendance-overview-hint');
+  attendanceTodayPage = 1;
+  attendanceSuspiciousPage = 1;
+
+  const [overviewRes, todayRes, suspiciousRes] = await Promise.allSettled([
     api(`/attendance/overview?days=${encodeURIComponent(days)}`),
-    api(
-      `/attendance/suspicious?days=${encodeURIComponent(days)}&maxRate=${encodeURIComponent(maxRate)}&minAccountDays=7`,
-    ),
-    loadTodayAttendance(attendanceTodayPage),
+    loadTodayAttendance(1),
+    loadSuspiciousUsers(1),
   ]);
 
   const overview = overviewRes.status === 'fulfilled' ? (overviewRes.value.data || {}) : {};
-  const suspicious = suspiciousRes.status === 'fulfilled' ? (suspiciousRes.value.data || {}) : { users: [], totalSuspicious: 0 };
 
   if (overviewRes.status === 'rejected') {
     console.warn('등교 overview 조회 실패:', overviewRes.reason);
@@ -66,27 +104,21 @@ async function loadAttendance() {
     overviewHint.classList.remove('txt-danger');
   }
 
-  if (suspiciousRes.status === 'rejected') {
-    console.warn('등교 suspicious 조회 실패:', suspiciousRes.reason);
-  }
   if (todayRes.status === 'rejected') {
     console.warn('오늘 등교 목록 조회 실패:', todayRes.reason);
+  }
+  if (suspiciousRes.status === 'rejected') {
+    console.warn('등교 suspicious 조회 실패:', suspiciousRes.reason);
   }
 
   document.getElementById('att-stat-active').textContent = String(
     overview.activeStudents || 0,
   );
-  document.getElementById('att-stat-suspicious').textContent = String(
-    suspicious.totalSuspicious || 0,
-  );
   document.getElementById('att-stat-rate').textContent = `${overview.attendanceRate || 0}%`;
-
-  setNavBadge('badge-attendance-suspicious', suspicious.totalSuspicious || 0);
 
   lastAttendanceOverview = overview;
   bindAttendanceChartResize();
   renderAttendanceChart(overview);
-  renderSuspiciousUsers(suspicious.users || []);
 }
 
 function renderTodayPagination(pagination) {
@@ -106,6 +138,26 @@ function renderTodayPagination(pagination) {
     <span class="txt-muted">총 ${total}명 · ${page}/${maxPage}페이지</span>
     <button class="btn btn-sm" ${page <= 1 ? 'disabled' : ''} onclick="loadTodayAttendance(${page - 1})">이전</button>
     <button class="btn btn-sm" ${page >= maxPage ? 'disabled' : ''} onclick="loadTodayAttendance(${page + 1})">다음</button>
+  `;
+}
+
+function renderSuspiciousPagination(pagination) {
+  const pag = document.getElementById('attendance-suspicious-pagination');
+  if (!pag) return;
+  const total = Number(pagination.total || 0);
+  const limit = Number(pagination.limit || ATTENDANCE_SUSPICIOUS_LIMIT) || ATTENDANCE_SUSPICIOUS_LIMIT;
+  const page = Number(pagination.page || 1) || 1;
+  const maxPage = Math.max(1, Math.ceil(total / limit));
+  if (total <= limit) {
+    pag.innerHTML = total
+      ? `<span class="txt-muted">총 ${total.toLocaleString()}명</span>`
+      : '';
+    return;
+  }
+  pag.innerHTML = `
+    <span class="txt-muted">총 ${total.toLocaleString()}명 · ${page}/${maxPage}페이지</span>
+    <button class="btn btn-sm" ${page <= 1 ? 'disabled' : ''} onclick="loadSuspiciousUsers(${page - 1})">이전</button>
+    <button class="btn btn-sm" ${page >= maxPage ? 'disabled' : ''} onclick="loadSuspiciousUsers(${page + 1})">다음</button>
   `;
 }
 
@@ -166,13 +218,15 @@ function renderAttendanceChart(overview) {
     .join('');
 }
 
-function renderSuspiciousUsers(users) {
+function renderSuspiciousUsers(users, pagination) {
   const tbody = document.getElementById('attendance-suspicious-tbody');
   if (!tbody) return;
 
+  const total = Number(pagination?.total || 0);
   if (!users.length) {
-    tbody.innerHTML =
-      '<tr><td colspan="8" class="txt-muted">미등교 의심 사용자가 없습니다.</td></tr>';
+    tbody.innerHTML = total
+      ? '<tr><td colspan="8" class="txt-muted">이 페이지에 표시할 사용자가 없습니다.</td></tr>'
+      : '<tr><td colspan="8" class="txt-muted">미등교 의심 사용자가 없습니다.</td></tr>';
     return;
   }
 
@@ -196,3 +250,6 @@ function renderSuspiciousUsers(users) {
     )
     .join('');
 }
+
+window.loadTodayAttendance = loadTodayAttendance;
+window.loadSuspiciousUsers = loadSuspiciousUsers;

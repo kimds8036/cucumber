@@ -12,7 +12,8 @@ export async function refreshAttendanceSuspicionFlags({
     days,
     maxRate,
     minAccountDays,
-    limit: 500,
+    page: 1,
+    limit: 5000,
   });
 
   const connection = await pool.getConnection();
@@ -53,17 +54,20 @@ export async function refreshAttendanceSuspicionFlags({
     periodDays: result.periodDays,
     startDate: result.startDate,
     endDate: result.endDate,
-    totalSuspicious: result.users.length,
+    totalSuspicious: result.totalSuspicious,
   };
 }
 
 export async function getSuspiciousFromFlags({
   days = 14,
   maxRate = 0.25,
-  limit = 80,
+  page = 1,
+  limit = 50,
 } = {}) {
   const periodDays = Math.min(Math.max(Number(days) || 14, 7), 60);
-  const rowLimit = clampSqlLimit(limit, { def: 80, min: 10, max: 200 });
+  const pageNum = Math.max(1, Math.trunc(Number(page) || 1));
+  const rowLimit = clampSqlLimit(limit, { def: 50, min: 10, max: 100 });
+  const offset = (pageNum - 1) * rowLimit;
 
   const [latest] = await pool.execute(
     `SELECT period_start, period_end, period_days, MAX(computed_at) AS computed_at
@@ -76,7 +80,13 @@ export async function getSuspiciousFromFlags({
   );
 
   if (!latest.length) {
-    return { users: [], totalSuspicious: 0, fromCache: false, computedAt: null };
+    return {
+      users: [],
+      totalSuspicious: 0,
+      pagination: { page: pageNum, limit: rowLimit, total: 0 },
+      fromCache: false,
+      computedAt: null,
+    };
   }
 
   const { period_start: startDate, period_end: endDate, computed_at: computedAt } = latest[0];
@@ -92,7 +102,7 @@ export async function getSuspiciousFromFlags({
      WHERE f.period_start = ? AND f.period_end = ? AND f.period_days = ?
        AND u.is_deleted = FALSE AND u.is_banned = FALSE
      ORDER BY f.attendance_rate ASC, f.attendance_days ASC
-     LIMIT ${rowLimit}`,
+     LIMIT ${rowLimit} OFFSET ${offset}`,
     [startDate, endDate, periodDays],
   );
 
@@ -118,6 +128,11 @@ export async function getSuspiciousFromFlags({
       reason: r.reason,
     })),
     totalSuspicious,
+    pagination: {
+      page: pageNum,
+      limit: rowLimit,
+      total: totalSuspicious,
+    },
     fromCache: true,
     computedAt,
     periodDays,

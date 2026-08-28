@@ -40,6 +40,7 @@ router.get('/suspicious', requireAdminApi, async (req, res) => {
     const days = req.query.days;
     const maxRate = req.query.maxRate;
     const minAccountDays = req.query.minAccountDays;
+    const page = req.query.page;
     const limit = req.query.limit;
     const refresh = req.query.refresh === '1';
 
@@ -49,16 +50,17 @@ router.get('/suspicious', requireAdminApi, async (req, res) => {
 
     let data;
     try {
-      data = await getSuspiciousFromFlags({ days, maxRate, limit });
+      data = await getSuspiciousFromFlags({ days, maxRate, page, limit });
     } catch (cacheErr) {
       console.warn('[attendance] suspicious cache read failed', cacheErr?.message || cacheErr);
-      data = { fromCache: false, users: [], totalSuspicious: 0 };
+      data = { fromCache: false, users: [], totalSuspicious: 0, pagination: { page: 1, limit: 50, total: 0 } };
     }
     if (!data.fromCache || refresh) {
       const live = await getSuspiciousLowAttendance({
         days,
         maxRate,
         minAccountDays,
+        page,
         limit,
       });
       data = { ...live, fromCache: false, computedAt: new Date().toISOString() };
