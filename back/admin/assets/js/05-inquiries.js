@@ -37,11 +37,167 @@ async function loadInquiries() {
     return `<span class="pill pill-warn inquiry-dup-badge" title="같은 아이디·이메일 ${mins}분 내 ${n}건">중복 ${n}건</span>`;
   }
 
-  function renderDuplicateDetailBanner(i) {
+  function renderDuplicateClusterBadge(group) {
+    if (!group?.isDuplicateCluster || group.duplicateClusterSize <= 1) return '';
+    const mins = group.duplicateWindowMinutes || 5;
+    return `<span class="pill pill-warn inquiry-dup-badge" title="같은 아이디·이메일 ${mins}분 내 ${group.duplicateClusterSize}건">중복 ${group.duplicateClusterSize}건</span>`;
+  }
+
+  function buildInquiryDisplayGroups(rows) {
+    const map = new Map();
+    const order = [];
+    (rows || []).forEach((item) => {
+      const key = item.duplicateClusterKey || `solo:${item.id}`;
+      if (!map.has(key)) {
+        map.set(key, []);
+        order.push(key);
+      }
+      map.get(key).push(item);
+    });
+    return order.map((clusterKey) => {
+      const items = map.get(clusterKey).slice().sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+      const head = items.find((x) => x.isDuplicateClusterHead) || items[0];
+      const isDuplicateCluster = items.length > 1 || Boolean(items[0]?.duplicateWarning);
+      return {
+        clusterKey,
+        items,
+        head,
+        isDuplicateCluster,
+        duplicateClusterSize: items[0]?.duplicateClusterSize || items.length,
+        duplicateWindowMinutes: items[0]?.duplicateWindowMinutes || 5,
+      };
+    });
+  }
+
+  function renderDuplicateDetailBanner(i, siblings, processed) {
     if (!i?.duplicateWarning) return '';
     const n = i.duplicateClusterSize || 2;
     const mins = i.duplicateWindowMinutes || 5;
-    return `<div class="inquiry-dup-banner">⚠ 같은 아이디·이메일로 ${mins}분 이내 접수된 문의가 ${n}건 있습니다. 중복 제출·연타 가능성을 확인해주세요.</div>`;
+    const processedArg = processed ? 'true' : 'false';
+    const clusterItems = [{ id: i.id }, ...(siblings || [])]
+      .sort((a, b) => Number(b.id) - Number(a.id));
+    const siblingLinks = clusterItems.length > 1
+      ? `<div class="inquiry-dup-related">같은 묶음: ${clusterItems.map((s) => `<button type="button" class="btn btn-sm inquiry-dup-link" onclick="openInquiryFromDuplicate(${s.id}, ${processedArg})">#Q-${s.id}</button>`).join(' ')}</div>`
+      : '';
+    return `<div class="inquiry-dup-banner">⚠ 같은 아이디·이메일로 ${mins}분 이내 접수된 문의가 ${n}건 있습니다. 중복 제출·연타 가능성을 확인해주세요.${siblingLinks}</div>`;
+  }
+
+  function toggleInquiryCluster(clusterKey, event) {
+    if (event) {
+      event.preventDefault();
+      event.stopPropagation();
+    }
+    const key = String(clusterKey);
+    if (state.expandedInquiryClusterKeys.has(key)) state.expandedInquiryClusterKeys.delete(key);
+    else state.expandedInquiryClusterKeys.add(key);
+    renderInquiries();
+  }
+
+  function toggleProcessedInquiryCluster(clusterKey, event) {
+    if (event) {
+      event.preventDefault();
+      event.stopPropagation();
+    }
+    const key = String(clusterKey);
+    if (state.expandedProcessedInquiryClusterKeys.has(key)) {
+      state.expandedProcessedInquiryClusterKeys.delete(key);
+    } else {
+      state.expandedProcessedInquiryClusterKeys.add(key);
+    }
+    renderProcessedInquiries();
+  }
+
+  function openInquiryFromDuplicate(id, processed) {
+    if (processed === true || processed === 'true') {
+      state.selectedProcessedInquiryId = id;
+      renderProcessedInquiries();
+      loadInquiryDetail(id, 'processed-inquiry-detail-host', true);
+      return;
+    }
+    state.selectedInquiryId = id;
+    renderInquiries();
+    loadInquiryDetail(id, 'inquiry-detail-host', false);
+  }
+
+  function renderPendingInquiryRow(i, opts = {}) {
+    const { nested = false, group = null, expanded = false, isClusterHead = false } = opts;
+    const checked = state.inquirySelected.has(String(i.id)) ? 'checked' : '';
+    const isSelected = state.selectedInquiryId === i.id;
+    const author = i.user_id
+      ? `${esc(i.author_username || `UID #${i.user_id}`)}`
+      : `<span class="txt-muted">비로그인</span>`;
+    const expandBtn = isClusterHead && group?.isDuplicateCluster
+      ? `<button type="button" class="inquiry-expand-btn inquiry-cluster-toggle" title="중복 문의 펼치기" onclick='toggleInquiryCluster(${JSON.stringify(group.clusterKey)}, event)'>${expanded ? '▴' : '▾'}</button>`
+      : (nested ? '<span class="inquiry-nested-spacer"></span>' : '');
+    const collapsedHint = isClusterHead && group?.isDuplicateCluster && !expanded && group.duplicateClusterSize > 1
+      ? `<span class="txt-muted inquiry-dup-collapsed-hint"> 외 ${group.duplicateClusterSize - 1}건</span>`
+      : '';
+    const idCell = isClusterHead && group?.isDuplicateCluster
+      ? `#Q-${i.id} ${renderDuplicateClusterBadge(group)}${collapsedHint}`
+      : `#Q-${i.id}`;
+    return `
+      <tr class="clickable ${isSelected ? 'selected-row' : ''} ${nested ? 'inquiry-dup-nested-row' : ''} ${isClusterHead && group?.isDuplicateCluster ? 'inquiry-dup-cluster-head' : ''}" onclick="toggleInquiryDetail(${i.id}, event)">
+        <td class="inquiry-check-cell" onclick="event.stopPropagation()">${expandBtn}<input type="checkbox" class="inquiry-row-chk" data-id="${i.id}" ${checked} onchange="toggleInquirySelection(${i.id}, this.checked)"></td>
+        <td>${idCell}</td>
+        <td>${author}</td>
+        <td class="txt-ellipsis">${esc(i.content || '-')}</td>
+        <td>${renderContactCell(i)}</td>
+        <td class="txt-muted">${fmtDate(i.created_at)}</td>
+        <td><span class="pill ${inquiryStatusPill(i.status)}">${esc(inquiryStatusLabel(i.status))}</span></td>
+      </tr>
+    `;
+  }
+
+  function renderProcessedInquiryRow(i, opts = {}) {
+    const { nested = false, group = null, expanded = false, isClusterHead = false } = opts;
+    const isSelected = state.selectedProcessedInquiryId === i.id;
+    const isAnswerExpanded = state.expandedProcessedInquiryIds.has(String(i.id));
+    const author = i.user_id
+      ? `${esc(i.author_username || `UID #${i.user_id}`)}`
+      : `<span class="txt-muted">비로그인</span>`;
+    const answerPreview = i.answer_content
+      ? esc(i.answer_content)
+      : '<span class="txt-muted">(답변 본문 없음 — 종결만 처리되었을 수 있음)</span>';
+    const notePreview = i.answer_note
+      ? `<div class="inquiry-answer-meta">내부 메모</div><p class="inquiry-answer-preview">${esc(i.answer_note)}</p>`
+      : '';
+    const expandBtn = isClusterHead && group?.isDuplicateCluster
+      ? `<button type="button" class="inquiry-expand-btn inquiry-cluster-toggle" title="중복 문의 펼치기" onclick='toggleProcessedInquiryCluster(${JSON.stringify(group.clusterKey)}, event)'>${expanded ? '▴' : '▾'}</button>`
+      : (nested ? '<span class="inquiry-nested-spacer"></span>' : '');
+    const answerToggleBtn = `<button type="button" class="inquiry-expand-btn" title="답변 보기" onclick="toggleProcessedInquiryAnswer(${i.id}, event)">${isAnswerExpanded ? '▴' : '▾'}</button>`;
+    const collapsedHint = isClusterHead && group?.isDuplicateCluster && !expanded && group.duplicateClusterSize > 1
+      ? `<span class="txt-muted inquiry-dup-collapsed-hint"> 외 ${group.duplicateClusterSize - 1}건</span>`
+      : '';
+    const idCell = isClusterHead && group?.isDuplicateCluster
+      ? `#Q-${i.id} ${renderDuplicateClusterBadge(group)}${collapsedHint}`
+      : `#Q-${i.id}`;
+    return `
+      <tr class="clickable ${isSelected ? 'selected-row' : ''} ${nested ? 'inquiry-dup-nested-row' : ''} ${isClusterHead && group?.isDuplicateCluster ? 'inquiry-dup-cluster-head' : ''}" onclick="toggleProcessedInquiryDetail(${i.id}, event)">
+        <td class="inquiry-check-cell" onclick="event.stopPropagation()">${expandBtn}${answerToggleBtn}</td>
+        <td>${idCell}</td>
+        <td>${author}</td>
+        <td class="txt-ellipsis">${esc(i.content || '-')}</td>
+        <td>${renderContactCell(i)}</td>
+        <td>${esc(i.answered_by_username || (i.answered_by ? `admin #${i.answered_by}` : '-'))}</td>
+        <td class="txt-muted">${fmtDate(i.answered_at || i.updated_at)}</td>
+        <td><span class="pill ${inquiryStatusPill(i.status)}">${esc(inquiryStatusLabel(i.status))}</span></td>
+        <td onclick="event.stopPropagation()">
+          <button class="btn btn-sm" onclick="openInquiryReopenDialog(${i.id})">재오픈</button>
+        </td>
+      </tr>
+      ${isAnswerExpanded ? `
+        <tr class="inquiry-expand-row ${nested ? 'inquiry-dup-nested-row' : ''}">
+          <td colspan="9">
+            <div class="inquiry-answer-meta">관리자 답변 · ${fmtDate(i.answered_at || i.updated_at)} · ${esc(i.answered_by_username || (i.answered_by ? `admin #${i.answered_by}` : '-'))}</div>
+            <p class="inquiry-answer-preview">${answerPreview}</p>
+            ${notePreview}
+            <div style="margin-top:8px;">
+              <button type="button" class="btn btn-sm" onclick="toggleProcessedInquiryDetail(${i.id})">상세·수정 열기</button>
+            </div>
+          </td>
+        </tr>
+      ` : ''}
+    `;
   }
 
   function renderContactCell(i) {
@@ -64,25 +220,23 @@ async function loadInquiries() {
       updateInquiryBulk();
       return;
     }
-    tbody.innerHTML = state.inquiries.map((i) => {
-      const checked = state.inquirySelected.has(String(i.id)) ? 'checked' : '';
-      const isSelected = state.selectedInquiryId === i.id;
-      const author = i.user_id
-        ? `${esc(i.author_username || `UID #${i.user_id}`)}`
-        : `<span class="txt-muted">비로그인</span>`;
-      return `
-        <tr class="clickable ${isSelected ? 'selected-row' : ''}" onclick="toggleInquiryDetail(${i.id}, event)">
-          <td onclick="event.stopPropagation()">
-            <input type="checkbox" class="inquiry-row-chk" data-id="${i.id}" ${checked} onchange="toggleInquirySelection(${i.id}, this.checked)">
-          </td>
-          <td>#Q-${i.id} ${renderDuplicateBadge(i)}</td>
-          <td>${author}</td>
-          <td class="txt-ellipsis">${esc(i.content || '-')}</td>
-          <td>${renderContactCell(i)}</td>
-          <td class="txt-muted">${fmtDate(i.created_at)}</td>
-          <td><span class="pill ${inquiryStatusPill(i.status)}">${esc(inquiryStatusLabel(i.status))}</span></td>
-        </tr>
-      `;
+    tbody.innerHTML = buildInquiryDisplayGroups(state.inquiries).map((group) => {
+      if (!group.isDuplicateCluster || group.items.length <= 1) {
+        return renderPendingInquiryRow(group.items[0], { group, isClusterHead: true });
+      }
+      const expanded = state.expandedInquiryClusterKeys.has(group.clusterKey);
+      let html = renderPendingInquiryRow(group.head, {
+        group,
+        expanded,
+        isClusterHead: true,
+      });
+      if (expanded) {
+        html += group.items
+          .filter((item) => item.id !== group.head.id)
+          .map((item) => renderPendingInquiryRow(item, { group, nested: true }))
+          .join('');
+      }
+      return html;
     }).join('');
     updateInquiryBulk();
     renderInquiryDetail();
@@ -95,47 +249,23 @@ async function loadInquiries() {
       document.getElementById('processed-inquiry-detail-host').innerHTML = '';
       return;
     }
-    tbody.innerHTML = state.processedInquiries.map((i) => {
-      const isSelected = state.selectedProcessedInquiryId === i.id;
-      const isExpanded = state.expandedProcessedInquiryIds.has(String(i.id));
-      const author = i.user_id
-        ? `${esc(i.author_username || `UID #${i.user_id}`)}`
-        : `<span class="txt-muted">비로그인</span>`;
-      const answerPreview = i.answer_content
-        ? esc(i.answer_content)
-        : '<span class="txt-muted">(답변 본문 없음 — 종결만 처리되었을 수 있음)</span>';
-      const notePreview = i.answer_note
-        ? `<div class="inquiry-answer-meta">내부 메모</div><p class="inquiry-answer-preview">${esc(i.answer_note)}</p>`
-        : '';
-      return `
-        <tr class="clickable ${isSelected ? 'selected-row' : ''}" onclick="toggleProcessedInquiryDetail(${i.id}, event)">
-          <td onclick="event.stopPropagation()">
-            <button type="button" class="inquiry-expand-btn" title="답변 보기" onclick="toggleProcessedInquiryAnswer(${i.id}, event)">${isExpanded ? '▴' : '▾'}</button>
-          </td>
-          <td>#Q-${i.id} ${renderDuplicateBadge(i)}</td>
-          <td>${author}</td>
-          <td class="txt-ellipsis">${esc(i.content || '-')}</td>
-          <td>${renderContactCell(i)}</td>
-          <td>${esc(i.answered_by_username || (i.answered_by ? `admin #${i.answered_by}` : '-'))}</td>
-          <td class="txt-muted">${fmtDate(i.answered_at || i.updated_at)}</td>
-          <td><span class="pill ${inquiryStatusPill(i.status)}">${esc(inquiryStatusLabel(i.status))}</span></td>
-          <td onclick="event.stopPropagation()">
-            <button class="btn btn-sm" onclick="openInquiryReopenDialog(${i.id})">재오픈</button>
-          </td>
-        </tr>
-        ${isExpanded ? `
-          <tr class="inquiry-expand-row">
-            <td colspan="9">
-              <div class="inquiry-answer-meta">관리자 답변 · ${fmtDate(i.answered_at || i.updated_at)} · ${esc(i.answered_by_username || (i.answered_by ? `admin #${i.answered_by}` : '-'))}</div>
-              <p class="inquiry-answer-preview">${answerPreview}</p>
-              ${notePreview}
-              <div style="margin-top:8px;">
-                <button type="button" class="btn btn-sm" onclick="toggleProcessedInquiryDetail(${i.id})">상세·수정 열기</button>
-              </div>
-            </td>
-          </tr>
-        ` : ''}
-      `;
+    tbody.innerHTML = buildInquiryDisplayGroups(state.processedInquiries).map((group) => {
+      if (!group.isDuplicateCluster || group.items.length <= 1) {
+        return renderProcessedInquiryRow(group.items[0], { group, isClusterHead: true });
+      }
+      const expanded = state.expandedProcessedInquiryClusterKeys.has(group.clusterKey);
+      let html = renderProcessedInquiryRow(group.head, {
+        group,
+        expanded,
+        isClusterHead: true,
+      });
+      if (expanded) {
+        html += group.items
+          .filter((item) => item.id !== group.head.id)
+          .map((item) => renderProcessedInquiryRow(item, { group, nested: true }))
+          .join('');
+      }
+      return html;
     }).join('');
     renderProcessedInquiryDetail();
   }
@@ -289,6 +419,7 @@ async function loadInquiries() {
       const { data } = await api(`/inquiries/${id}`);
       const i = data.inquiry;
       const images = Array.isArray(data.images) ? data.images : [];
+      const duplicateSiblings = Array.isArray(data.duplicateSiblings) ? data.duplicateSiblings : [];
       const author = i.user_id
         ? `${esc(i.author_username || '-')} (UID #${esc(i.user_id)})${i.author_is_banned ? ' <span class="pill pill-danger" style="font-size:10px">영구정지</span>' : i.author_is_suspended ? ' <span class="pill pill-warn" style="font-size:10px">임시정지</span>' : ''}`
         : `비로그인 사용자`;
@@ -317,7 +448,7 @@ async function loadInquiries() {
             <span class="detail-panel-title">#Q-${i.id} — 문의 상세 ${renderDuplicateBadge(i)}</span>
             <button class="btn btn-sm" onclick="closeInquiryDetail(${processed ? 'true' : 'false'})">닫기</button>
           </div>
-          ${renderDuplicateDetailBanner(i)}
+          ${renderDuplicateDetailBanner(i, duplicateSiblings, processed)}
           <div class="detail-grid">
             <div class="detail-block"><div class="detail-block-label">상태</div><div class="detail-block-value">${esc(inquiryStatusLabel(i.status))}</div></div>
             <div class="detail-block"><div class="detail-block-label">작성자</div><div class="detail-block-value">${author}</div></div>

@@ -226,6 +226,8 @@ function adminUrl(subpath) {
     selectedInquiryId: null,
     selectedProcessedInquiryId: null,
     expandedProcessedInquiryIds: new Set(),
+    expandedInquiryClusterKeys: new Set(),
+    expandedProcessedInquiryClusterKeys: new Set(),
     inquiryReopenId: null,
     logs: [],
     logsPagination: { page: 1, limit: 50, total: 0 },
