@@ -7,6 +7,7 @@ import {
   countSchoolDaysInRange,
   evaluateSchoolDay,
   isWeekendYmd,
+  toYmd,
 } from '../utils/schoolDay.js';
 import { loadTermContextsBySchoolIds } from './schoolTerms.service.js';
 
@@ -58,12 +59,24 @@ export async function getAttendanceOverview(days = 14) {
     [startDate, endDate],
   );
 
-  const [todayRows] = await pool.execute(
-    `SELECT COUNT(*) AS checkIns, COUNT(DISTINCT user_id) AS uniqueUsers
-     FROM attendances
-     WHERE attendance_date = ? AND status = 'present'`,
-    [endDate],
-  );
+  const [todayRows, todayUserRows] = await Promise.all([
+    pool.execute(
+      `SELECT COUNT(*) AS checkIns, COUNT(DISTINCT user_id) AS uniqueUsers
+       FROM attendances
+       WHERE attendance_date = ? AND status = 'present'`,
+      [endDate],
+    ).then(([rows]) => rows),
+    pool.execute(
+      `SELECT u.id, u.username, u.name_enc, sch.name AS school_name, a.checked_at
+       FROM attendances a
+       INNER JOIN users u ON u.id = a.user_id AND u.is_deleted = FALSE
+       LEFT JOIN schools sch ON sch.school_id = u.school_id
+       WHERE a.attendance_date = ? AND a.status = 'present'
+       ORDER BY a.checked_at DESC
+       LIMIT 100`,
+      [endDate],
+    ).then(([rows]) => rows),
+  ]);
 
   const [activeRows] = await pool.execute(
     `SELECT COUNT(*) AS cnt
@@ -88,7 +101,7 @@ export async function getAttendanceOverview(days = 14) {
   const anyTerms = [...ctxMap.values()].some((c) => c.terms.length > 0);
 
   const dailyMap = new Map(
-    dailyRows.map((r) => [String(r.date).slice(0, 10), r]),
+    dailyRows.map((r) => [toYmd(r.date), r]),
   );
   const dailyChart = [];
   let schoolDays = 0;
@@ -133,6 +146,13 @@ export async function getAttendanceOverview(days = 14) {
     activeStudents,
     todayCheckIns,
     todayUnique,
+    todayCheckInUsers: (todayUserRows || []).map((r) => ({
+      id: r.id,
+      username: r.username,
+      name: resolveUserName(r) || null,
+      schoolName: r.school_name || null,
+      checkedAt: r.checked_at,
+    })),
     dailyChart,
     maxCheckIns,
     attendanceRate:

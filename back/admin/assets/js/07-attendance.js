@@ -50,7 +50,33 @@ async function loadAttendance() {
   lastAttendanceOverview = overview;
   bindAttendanceChartResize();
   renderAttendanceChart(overview);
+  renderTodayCheckInUsers(overview.todayCheckInUsers || []);
   renderSuspiciousUsers(suspicious.users || []);
+}
+
+function renderTodayCheckInUsers(users) {
+  const tbody = document.getElementById('attendance-today-tbody');
+  if (!tbody) return;
+
+  if (!users.length) {
+    tbody.innerHTML =
+      '<tr><td colspan="5" class="txt-muted">오늘 등교 체크한 사용자가 없습니다.</td></tr>';
+    return;
+  }
+
+  tbody.innerHTML = users
+    .map(
+      (u) => `
+    <tr>
+      <td>#${esc(u.id)}</td>
+      <td>${esc(u.username)}</td>
+      <td>${esc(u.name || '-')}</td>
+      <td class="txt-ellipsis">${esc(u.schoolName || '-')}</td>
+      <td class="txt-muted">${esc(fmtDate(u.checkedAt))}</td>
+    </tr>
+  `,
+    )
+    .join('');
 }
 
 function renderAttendanceChart(overview) {
