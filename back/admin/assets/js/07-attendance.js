@@ -17,15 +17,22 @@ async function loadAttendance() {
   const days = document.getElementById('attendance-days')?.value || '14';
   const maxRate = document.getElementById('attendance-max-rate')?.value || '0.25';
 
-  const [overviewRes, suspiciousRes] = await Promise.all([
+  const [overviewRes, suspiciousRes] = await Promise.allSettled([
     api(`/attendance/overview?days=${encodeURIComponent(days)}`),
     api(
       `/attendance/suspicious?days=${encodeURIComponent(days)}&maxRate=${encodeURIComponent(maxRate)}&minAccountDays=7`,
     ),
   ]);
 
-  const overview = overviewRes.data || {};
-  const suspicious = suspiciousRes.data || {};
+  const overview = overviewRes.status === 'fulfilled' ? (overviewRes.value.data || {}) : {};
+  const suspicious = suspiciousRes.status === 'fulfilled' ? (suspiciousRes.value.data || {}) : { users: [], totalSuspicious: 0 };
+
+  if (overviewRes.status === 'rejected') {
+    console.warn('등교 overview 조회 실패:', overviewRes.reason);
+  }
+  if (suspiciousRes.status === 'rejected') {
+    console.warn('등교 suspicious 조회 실패:', suspiciousRes.reason);
+  }
 
   document.getElementById('att-stat-today').textContent = String(
     overview.todayCheckIns || 0,

@@ -1,5 +1,7 @@
 import pool from '../config/database.js';
 import { getSuspiciousLowAttendance } from './adminAttendance.service.js';
+import { resolveUserName } from './userPii.service.js';
+import { clampSqlLimit } from '../utils/sqlLimit.js';
 
 export async function refreshAttendanceSuspicionFlags({
   days = 14,
@@ -61,7 +63,7 @@ export async function getSuspiciousFromFlags({
   limit = 80,
 } = {}) {
   const periodDays = Math.min(Math.max(Number(days) || 14, 7), 60);
-  const rowLimit = Math.min(Math.max(Number(limit) || 80, 10), 200);
+  const rowLimit = clampSqlLimit(limit, { def: 80, min: 10, max: 200 });
 
   const [latest] = await pool.execute(
     `SELECT period_start, period_end, period_days, MAX(computed_at) AS computed_at
@@ -79,7 +81,7 @@ export async function getSuspiciousFromFlags({
 
   const { period_start: startDate, period_end: endDate, computed_at: computedAt } = latest[0];
 
-  const [rows] = await pool.execute(
+  const [rows] = await pool.query(
     `SELECT f.user_id AS id, u.username, u.name_enc, u.school_id,
             sch.name AS school_name,
             f.attendance_days, f.school_days AS schoolDaysInPeriod,
@@ -90,8 +92,8 @@ export async function getSuspiciousFromFlags({
      WHERE f.period_start = ? AND f.period_end = ? AND f.period_days = ?
        AND u.is_deleted = FALSE AND u.is_banned = FALSE
      ORDER BY f.attendance_rate ASC, f.attendance_days ASC
-     LIMIT ?`,
-    [startDate, endDate, periodDays, rowLimit],
+     LIMIT ${rowLimit}`,
+    [startDate, endDate, periodDays],
   );
 
   const [countRows] = await pool.execute(
@@ -107,7 +109,7 @@ export async function getSuspiciousFromFlags({
     users: rows.map((r) => ({
       id: r.id,
       username: r.username,
-      name: r.name,
+      name: resolveUserName(r) || null,
       schoolId: r.school_id,
       schoolName: r.school_name,
       attendanceDays: r.attendance_days,

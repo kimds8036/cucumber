@@ -1,4 +1,5 @@
 import pool from '../config/database.js';
+import { clampSqlLimit } from '../utils/sqlLimit.js';
 import {
   acquireBatchLock,
   releaseBatchLock,
@@ -15,14 +16,18 @@ const LOCK_TTL = 600;
 
 const AUDIT_RETENTION_DAYS = Number(process.env.ADMIN_AUDIT_RETENTION_DAYS || 365);
 const REPORT_ARCHIVE_DAYS = Number(process.env.ADMIN_REPORT_ARCHIVE_DAYS || 90);
-const BATCH_LIMIT = 2000;
+const BATCH_LIMIT = clampSqlLimit(process.env.ADMIN_RETENTION_BATCH_LIMIT || 2000, {
+  def: 2000,
+  min: 100,
+  max: 5000,
+});
 
 async function purgeAuditLogs() {
-  const [result] = await pool.execute(
+  const [result] = await pool.query(
     `DELETE FROM admin_audit_logs
      WHERE created_at < DATE_SUB(NOW(), INTERVAL ? DAY)
-     LIMIT ?`,
-    [AUDIT_RETENTION_DAYS, BATCH_LIMIT],
+     LIMIT ${BATCH_LIMIT}`,
+    [AUDIT_RETENTION_DAYS],
   );
   return result.affectedRows || 0;
 }
@@ -32,7 +37,7 @@ async function archiveOldReports() {
   let archived = 0;
   try {
     await connection.beginTransaction();
-    const [rows] = await connection.execute(
+    const [rows] = await connection.query(
       `SELECT id, reporter_id, target_type, target_id, reason, description, status,
               reviewed_by, reviewed_at, review_note, is_malicious, penalty_applied, created_at
        FROM reports
@@ -40,8 +45,8 @@ async function archiveOldReports() {
          AND reviewed_at IS NOT NULL
          AND reviewed_at < DATE_SUB(NOW(), INTERVAL ? DAY)
        ORDER BY reviewed_at ASC
-       LIMIT ?`,
-      [REPORT_ARCHIVE_DAYS, BATCH_LIMIT],
+       LIMIT ${BATCH_LIMIT}`,
+      [REPORT_ARCHIVE_DAYS],
     );
 
     for (const r of rows) {
