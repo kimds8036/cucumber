@@ -3,6 +3,10 @@
  */
 import { useMemo, useState, useEffect, useRef, useCallback } from 'react';
 import { Alert, AppState } from 'react-native';
+import {
+  activateKeepAwakeAsync,
+  deactivateKeepAwake,
+} from 'expo-keep-awake';
 import { api } from '../../../utils/api';
 import {
   getTimerDayKey,
@@ -728,6 +732,18 @@ export function useTimerDay({
       clearInterval(heartbeatInterval);
     };
   }, [isRunning, isFocused, emitTimerStatus]);
+
+  useEffect(() => {
+    const tag = 'youth-paper-timer';
+    if (!isFocused || !isRunning) {
+      deactivateKeepAwake(tag);
+      return undefined;
+    }
+    activateKeepAwakeAsync(tag).catch(() => {});
+    return () => {
+      deactivateKeepAwake(tag);
+    };
+  }, [isRunning, isFocused]);
 
   useEffect(() => {
     prevIsRunningRef.current = isRunning;
