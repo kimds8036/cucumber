@@ -274,7 +274,7 @@
         <div class="ops-view" id="ops-view-activity" hidden>
         <button type="button" class="btn btn-sm ops-back-btn" data-ops-back>← 모니터링 목록</button>
         <div class="section-title" style="margin-top:8px">앱 활동</div>
-        <p class="section-hint">오늘 건수와 최근 글·댓글·쪽지·채팅·우편입니다. 미리보기는 80자까지입니다.</p>
+        <p class="section-hint">오늘 건수·차트와 최근 활동 피드입니다. 미리보기는 80자까지입니다.</p>
         <div class="analytics-kpi-grid dash-kpi-compact">
           <div class="stat-card">
             <div class="stat-num" id="activity-today-posts">0</div>
@@ -311,6 +311,21 @@
           </div>
           <div class="analytics-caption" id="activity-line-caption">데이터를 불러오는 중...</div>
         </div>
+        <div class="filter-row" style="margin-top:16px;margin-bottom:8px">
+          <label class="filter-label">유형</label>
+          <select id="activity-feed-type">
+            <option value="all">전체</option>
+            <option value="post">글</option>
+            <option value="comment">댓글</option>
+            <option value="chat">쪽지</option>
+            <option value="dm">채팅</option>
+            <option value="personal_mail">개인 우편</option>
+            <option value="school_mail">학교 우편</option>
+          </select>
+          <input id="activity-feed-q" type="text" placeholder="아이디·학교·내용 검색" style="min-width:220px" />
+          <button type="button" class="btn btn-sm btn-primary" id="activity-feed-search-btn">검색</button>
+        </div>
+        <p class="section-hint" id="activity-feed-hint">최근 활동을 시간순으로 봅니다.</p>
         <div class="table-wrap">
           <table>
             <thead>
@@ -325,6 +340,7 @@
             <tbody id="ops-activity-feed-tbody"></tbody>
           </table>
         </div>
+        <div class="filter-row" id="activity-feed-pagination" style="margin-top:12px"></div>
         </div>
 
         <div class="ops-view" id="ops-view-reach" hidden>

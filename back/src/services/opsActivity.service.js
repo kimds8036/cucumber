@@ -95,11 +95,10 @@ function mergeSeries(keys, maps, windowDays, fromYmd) {
 }
 
 /**
- * 앱 활동 모니터링 — 학교·아이디·미리보기. 본문 전문은 신고 화면에서.
+ * 앱 활동 모니터링 — KPI·차트 (피드는 getActivityOpsFeed).
  */
-export async function getActivityOpsOverview({ days = 14, feedLimit = 40 } = {}) {
+export async function getActivityOpsOverview({ days = 14 } = {}) {
   const windowDays = Math.min(Math.max(Number(days) || 14, 1), 31);
-  const limit = clampSqlLimit(feedLimit, { def: 40, min: 10, max: 80 });
   const today = formatKstDateYmd();
   const fromYmd = addDaysToYmd(today, -(windowDays - 1));
 
@@ -127,131 +126,6 @@ export async function getActivityOpsOverview({ days = 14, feedLimit = 40 } = {})
     seriesCounts('personal_mails', 'is_deleted = FALSE', fromYmd, today, windowDays),
   ]);
 
-  const [postRows] = await pool.query(
-    `SELECT p.id, p.user_id, p.content, p.created_at, p.board_type,
-            u.username, u.name_enc, u.grade, u.class_number,
-            sch.name AS school_name
-     FROM posts p
-     INNER JOIN users u ON u.id = p.user_id
-     LEFT JOIN schools sch ON sch.school_id = u.school_id
-     WHERE p.is_deleted = FALSE
-     ORDER BY p.id DESC
-     LIMIT ${limit}`,
-  );
-
-  const [commentRows] = await pool.query(
-    `SELECT c.id, c.user_id, c.content, c.created_at, c.post_id,
-            u.username, u.name_enc, u.grade, u.class_number,
-            sch.name AS school_name
-     FROM comments c
-     INNER JOIN users u ON u.id = c.user_id
-     LEFT JOIN schools sch ON sch.school_id = u.school_id
-     WHERE c.is_deleted = FALSE
-     ORDER BY c.id DESC
-     LIMIT ${limit}`,
-  );
-
-  const [chatRows] = await pool.query(
-    `SELECT m.id, m.sender_id AS user_id, m.content, m.created_at,
-            u.username, u.name_enc, u.grade, u.class_number,
-            sch.name AS school_name
-     FROM messages m
-     INNER JOIN users u ON u.id = m.sender_id
-     LEFT JOIN schools sch ON sch.school_id = u.school_id
-     WHERE (m.is_deleted = FALSE OR m.is_deleted IS NULL)
-     ORDER BY m.id DESC
-     LIMIT ${limit}`,
-  );
-
-  const [dmRows] = await pool.query(
-    `SELECT m.id, m.sender_id AS user_id, m.content, m.created_at,
-            u.username, u.name_enc, u.grade, u.class_number,
-            sch.name AS school_name
-     FROM dm_messages m
-     INNER JOIN users u ON u.id = m.sender_id
-     LEFT JOIN schools sch ON sch.school_id = u.school_id
-     WHERE (m.is_deleted = FALSE OR m.is_deleted IS NULL)
-     ORDER BY m.id DESC
-     LIMIT ${limit}`,
-  );
-
-  const [mailRows] = await pool.query(
-    `SELECT pm.id, pm.sender_id AS user_id, pm.content, pm.created_at,
-            u.username, u.name_enc, u.grade, u.class_number,
-            sch.name AS school_name
-     FROM personal_mails pm
-     INNER JOIN users u ON u.id = pm.sender_id
-     LEFT JOIN schools sch ON sch.school_id = u.school_id
-     WHERE pm.is_deleted = FALSE
-     ORDER BY pm.id DESC
-     LIMIT ${limit}`,
-  );
-
-  const [schoolMailRows] = await pool.query(
-    `SELECT sm.id, sm.user_id, sm.content, sm.created_at,
-            u.username, u.name_enc, u.grade, u.class_number,
-            sch.name AS school_name
-     FROM school_mails sm
-     INNER JOIN users u ON u.id = sm.user_id
-     LEFT JOIN schools sch ON sch.school_id = COALESCE(sm.school_id, u.school_id)
-     WHERE sm.is_deleted = FALSE
-     ORDER BY sm.id DESC
-     LIMIT ${limit}`,
-  );
-
-  const feed = [
-    ...postRows.map((r) => ({
-      type: 'post',
-      typeLabel: r.board_type === 'school' ? '학교 글' : '전국 글',
-      id: r.id,
-      at: atLabel(r.created_at),
-      preview: clipPreview(r.content),
-      ...actorFromUser(r),
-    })),
-    ...commentRows.map((r) => ({
-      type: 'comment',
-      typeLabel: '댓글',
-      id: r.id,
-      at: atLabel(r.created_at),
-      preview: clipPreview(r.content),
-      ...actorFromUser(r),
-    })),
-    ...chatRows.map((r) => ({
-      type: 'chat',
-      typeLabel: '쪽지',
-      id: r.id,
-      at: atLabel(r.created_at),
-      preview: clipPreview(r.content),
-      ...actorFromUser(r),
-    })),
-    ...dmRows.map((r) => ({
-      type: 'dm',
-      typeLabel: '채팅',
-      id: r.id,
-      at: atLabel(r.created_at),
-      preview: clipPreview(r.content),
-      ...actorFromUser(r),
-    })),
-    ...mailRows.map((r) => ({
-      type: 'personal_mail',
-      typeLabel: '개인 우편',
-      id: r.id,
-      at: atLabel(r.created_at),
-      preview: clipPreview(r.content),
-      ...actorFromUser(r),
-    })),
-    ...schoolMailRows.map((r) => ({
-      type: 'school_mail',
-      typeLabel: '학교 우편',
-      id: r.id,
-      at: atLabel(r.created_at),
-      preview: clipPreview(r.content),
-      ...actorFromUser(r),
-    })),
-  ]
-    .sort((a, b) => String(b.at).localeCompare(String(a.at)))
-    .slice(0, 80);
-
   return {
     summary: {
       todayPosts,
@@ -273,6 +147,170 @@ export async function getActivityOpsOverview({ days = 14, feedLimit = 40 } = {})
       windowDays,
       fromYmd,
     ),
-    feed,
+  };
+}
+
+const FEED_TYPE_KEYS = {
+  all: ['post', 'comment', 'chat', 'dm', 'personal_mail', 'school_mail'],
+  post: ['post'],
+  comment: ['comment'],
+  chat: ['chat'],
+  dm: ['dm'],
+  personal_mail: ['personal_mail'],
+  school_mail: ['school_mail'],
+};
+
+function resolveFeedTypeKeys(type) {
+  const key = String(type || 'all').trim().toLowerCase();
+  return FEED_TYPE_KEYS[key] || FEED_TYPE_KEYS.all;
+}
+
+function buildFeedSearch(q) {
+  const term = String(q || '').trim();
+  if (!term || term.length > 100) {
+    return { clause: '1=1', params: [] };
+  }
+  const like = `%${term}%`;
+  return {
+    clause: `(u.username LIKE ? OR content LIKE ? OR IFNULL(sch.name, '') LIKE ?)`,
+    params: [like, like, like],
+  };
+}
+
+function feedBranchSql(kind) {
+  switch (kind) {
+    case 'post':
+      return {
+        sql: `SELECT 'post' AS feed_type,
+                     CASE WHEN p.board_type = 'school' THEN '학교 글' ELSE '전국 글' END AS type_label,
+                     p.id, p.user_id, p.content, p.created_at, p.board_type,
+                     u.username, u.name_enc, u.grade, u.class_number,
+                     sch.name AS school_name
+              FROM posts p
+              INNER JOIN users u ON u.id = p.user_id
+              LEFT JOIN schools sch ON sch.school_id = u.school_id
+              WHERE p.is_deleted = FALSE`,
+      };
+    case 'comment':
+      return {
+        sql: `SELECT 'comment' AS feed_type, '댓글' AS type_label,
+                     c.id, c.user_id, c.content, c.created_at, NULL AS board_type,
+                     u.username, u.name_enc, u.grade, u.class_number,
+                     sch.name AS school_name
+              FROM comments c
+              INNER JOIN users u ON u.id = c.user_id
+              LEFT JOIN schools sch ON sch.school_id = u.school_id
+              WHERE c.is_deleted = FALSE`,
+      };
+    case 'chat':
+      return {
+        sql: `SELECT 'chat' AS feed_type, '쪽지' AS type_label,
+                     m.id, m.sender_id AS user_id, m.content, m.created_at, NULL AS board_type,
+                     u.username, u.name_enc, u.grade, u.class_number,
+                     sch.name AS school_name
+              FROM messages m
+              INNER JOIN users u ON u.id = m.sender_id
+              LEFT JOIN schools sch ON sch.school_id = u.school_id
+              WHERE (m.is_deleted = FALSE OR m.is_deleted IS NULL)`,
+      };
+    case 'dm':
+      return {
+        sql: `SELECT 'dm' AS feed_type, '채팅' AS type_label,
+                     m.id, m.sender_id AS user_id, m.content, m.created_at, NULL AS board_type,
+                     u.username, u.name_enc, u.grade, u.class_number,
+                     sch.name AS school_name
+              FROM dm_messages m
+              INNER JOIN users u ON u.id = m.sender_id
+              LEFT JOIN schools sch ON sch.school_id = u.school_id
+              WHERE (m.is_deleted = FALSE OR m.is_deleted IS NULL)`,
+      };
+    case 'personal_mail':
+      return {
+        sql: `SELECT 'personal_mail' AS feed_type, '개인 우편' AS type_label,
+                     pm.id, pm.sender_id AS user_id, pm.content, pm.created_at, NULL AS board_type,
+                     u.username, u.name_enc, u.grade, u.class_number,
+                     sch.name AS school_name
+              FROM personal_mails pm
+              INNER JOIN users u ON u.id = pm.sender_id
+              LEFT JOIN schools sch ON sch.school_id = u.school_id
+              WHERE pm.is_deleted = FALSE`,
+      };
+    case 'school_mail':
+      return {
+        sql: `SELECT 'school_mail' AS feed_type, '학교 우편' AS type_label,
+                     sm.id, sm.user_id, sm.content, sm.created_at, NULL AS board_type,
+                     u.username, u.name_enc, u.grade, u.class_number,
+                     sch.name AS school_name
+              FROM school_mails sm
+              INNER JOIN users u ON u.id = sm.user_id
+              LEFT JOIN schools sch ON sch.school_id = COALESCE(sm.school_id, u.school_id)
+              WHERE sm.is_deleted = FALSE`,
+      };
+    default:
+      throw new Error(`unsupported feed kind: ${kind}`);
+  }
+}
+
+function mapFeedRow(r) {
+  const actor = actorFromUser(r);
+  return {
+    type: r.feed_type,
+    typeLabel: r.type_label,
+    id: r.id,
+    at: atLabel(r.created_at),
+    preview: clipPreview(r.content),
+    schoolName: actor.schoolName,
+    ...actor,
+  };
+}
+
+/** 앱 활동 피드 — 페이지·유형·검색 */
+export async function getActivityOpsFeed({
+  page = 1,
+  limit = 30,
+  type = 'all',
+  q = '',
+} = {}) {
+  const pageNum = Math.max(1, Math.trunc(Number(page) || 1));
+  const rowLimit = clampSqlLimit(limit, { def: 30, min: 10, max: 50 });
+  const offset = (pageNum - 1) * rowLimit;
+  const kinds = resolveFeedTypeKeys(type);
+  const search = buildFeedSearch(q);
+
+  const branches = kinds.map((kind) => {
+    const branch = feedBranchSql(kind);
+    return {
+      sql: `${branch.sql} AND ${search.clause}`,
+      params: [...search.params],
+    };
+  });
+
+  const unionSql = branches.map((b) => `(${b.sql})`).join(' UNION ALL ');
+  const params = branches.flatMap((b) => b.params);
+
+  const [[countRow]] = await pool.query(
+    `SELECT COUNT(*) AS total FROM (${unionSql}) AS merged`,
+    params,
+  );
+  const total = Number(countRow?.total || 0);
+
+  const [rows] = await pool.query(
+    `SELECT * FROM (${unionSql}) AS merged
+     ORDER BY created_at DESC
+     LIMIT ${rowLimit} OFFSET ${offset}`,
+    params,
+  );
+
+  return {
+    feed: (rows || []).map(mapFeedRow),
+    pagination: {
+      page: pageNum,
+      limit: rowLimit,
+      total,
+    },
+    filters: {
+      type: kinds.length === FEED_TYPE_KEYS.all.length ? 'all' : kinds[0],
+      q: String(q || '').trim(),
+    },
   };
 }

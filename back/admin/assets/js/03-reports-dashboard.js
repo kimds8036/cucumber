@@ -907,7 +907,82 @@ async function loadDashboard() {
     }).join('');
   }
 
+  let activityFeedPage = 1;
+  const ACTIVITY_FEED_LIMIT = 30;
+
+  function bindActivityFeedFilters() {
+    const btn = document.getElementById('activity-feed-search-btn');
+    const input = document.getElementById('activity-feed-q');
+    const typeSel = document.getElementById('activity-feed-type');
+    if (!btn || btn.dataset.bound === '1') return;
+    btn.dataset.bound = '1';
+    const run = () => {
+      activityFeedPage = 1;
+      loadActivityFeed(1);
+    };
+    btn.addEventListener('click', run);
+    if (typeSel) typeSel.addEventListener('change', run);
+    if (input) {
+      input.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          run();
+        }
+      });
+    }
+  }
+
+  async function loadActivityFeed(page = 1) {
+    activityFeedPage = page;
+    bindActivityFeedFilters();
+    const type = document.getElementById('activity-feed-type')?.value || 'all';
+    const q = document.getElementById('activity-feed-q')?.value?.trim() || '';
+    const hint = document.getElementById('activity-feed-hint');
+    const qs = new URLSearchParams();
+    qs.set('page', String(page));
+    qs.set('limit', String(ACTIVITY_FEED_LIMIT));
+    if (type && type !== 'all') qs.set('type', type);
+    if (q) qs.set('q', q);
+    try {
+      const { data } = await api(`/analytics/activity/feed?${qs.toString()}`);
+      renderActivityFeed(data?.feed || [], data?.pagination || {});
+      renderActivityFeedPagination(data?.pagination || {});
+      if (hint) {
+        const total = Number(data?.pagination?.total || 0);
+        const typeLabel = document.getElementById('activity-feed-type')?.selectedOptions?.[0]?.text || '전체';
+        hint.textContent = q
+          ? `「${typeLabel}」 · 검색 "${q}" · ${total.toLocaleString()}건`
+          : `「${typeLabel}」 · 총 ${total.toLocaleString()}건`;
+      }
+    } catch (error) {
+      if (hint) hint.textContent = error?.message || '활동 피드를 불러오지 못했습니다.';
+      renderActivityFeed([], {});
+      renderActivityFeedPagination({});
+      throw error;
+    }
+  }
+
+  function renderActivityFeedPagination(pagination) {
+    const pag = document.getElementById('activity-feed-pagination');
+    if (!pag) return;
+    const total = Number(pagination.total || 0);
+    const limit = Number(pagination.limit || ACTIVITY_FEED_LIMIT) || ACTIVITY_FEED_LIMIT;
+    const page = Number(pagination.page || 1) || 1;
+    const maxPage = Math.max(1, Math.ceil(total / limit));
+    if (total <= limit) {
+      pag.innerHTML = total ? `<span class="txt-muted">총 ${total.toLocaleString()}건</span>` : '';
+      return;
+    }
+    pag.innerHTML = `
+      <span class="txt-muted">총 ${total.toLocaleString()}건 · ${page}/${maxPage}페이지</span>
+      <button class="btn btn-sm" ${page <= 1 ? 'disabled' : ''} onclick="loadActivityFeed(${page - 1})">이전</button>
+      <button class="btn btn-sm" ${page >= maxPage ? 'disabled' : ''} onclick="loadActivityFeed(${page + 1})">다음</button>
+    `;
+  }
+
   async function loadActivityOps() {
+    bindActivityFeedFilters();
+    activityFeedPage = 1;
     try {
       const { data } = await api('/analytics/activity?days=14');
       const s = data?.summary || {};
@@ -921,7 +996,7 @@ async function loadDashboard() {
       set('activity-today-pmail', Number(s.todayPersonalMail || 0).toLocaleString());
       set('activity-today-smail', Number(s.todaySchoolMail || 0).toLocaleString());
       renderActivityLineChart(data?.series || []);
-      renderActivityFeed(data?.feed || []);
+      await loadActivityFeed(1);
     } catch (error) {
       const caption = document.getElementById('activity-line-caption');
       const body = document.getElementById('ops-activity-feed-tbody');
@@ -931,6 +1006,8 @@ async function loadDashboard() {
       }
     }
   }
+
+  window.loadActivityFeed = loadActivityFeed;
 
   function renderActivityLineChart(series) {
     const svg = document.getElementById('activity-line-chart');
@@ -963,11 +1040,14 @@ async function loadDashboard() {
     caption.textContent = '선은 글·댓글, 툴팁에 쪽지·우편 건수도 표시됩니다.';
   }
 
-  function renderActivityFeed(rows) {
+  function renderActivityFeed(rows, pagination) {
     const body = document.getElementById('ops-activity-feed-tbody');
     if (!body) return;
+    const total = Number(pagination?.total || 0);
     if (!Array.isArray(rows) || !rows.length) {
-      body.innerHTML = '<tr><td colspan="5" class="empty-row">최근 활동이 없습니다.</td></tr>';
+      body.innerHTML = total
+        ? '<tr><td colspan="5" class="empty-row">이 페이지에 표시할 활동이 없습니다.</td></tr>'
+        : '<tr><td colspan="5" class="empty-row">조건에 맞는 활동이 없습니다.</td></tr>';
       return;
     }
     body.innerHTML = rows.map((r) => `
