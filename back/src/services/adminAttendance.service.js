@@ -172,14 +172,17 @@ export async function getSuspiciousLowAttendance({
   days = 14,
   maxRate = 0.25,
   minAccountDays = 7,
-  limit = 80,
+  page = 1,
+  limit = 50,
 } = {}) {
   const periodDays = clampDays(days);
   const endDate = formatKstDateYmd(getKstNow());
   const startDate = addDaysYmd(endDate, -(periodDays - 1));
   const rateLimit = Math.min(Math.max(Number(maxRate) || 0.25, 0.05), 0.9);
   const minDays = Math.min(Math.max(Number(minAccountDays) || 7, 1), 30);
-  const rowLimit = Math.min(Math.max(Number(limit) || 80, 10), 200);
+  const pageNum = Math.max(1, Math.trunc(Number(page) || 1));
+  const rowLimit = clampSqlLimit(limit, { def: 50, min: 10, max: 100 });
+  const offset = (pageNum - 1) * rowLimit;
 
   const [rows] = await pool.execute(
     `SELECT u.id, u.username, u.name_enc, u.school_id, u.created_at,
@@ -198,8 +201,7 @@ export async function getSuspiciousLowAttendance({
        AND u.school_id IS NOT NULL
        AND u.is_banned = FALSE
        AND u.created_at < DATE_SUB(CURDATE(), INTERVAL ? DAY)
-     ORDER BY attendance_days ASC, u.created_at ASC
-     LIMIT 500`,
+     ORDER BY attendance_days ASC, u.created_at ASC`,
     [startDate, endDate, minDays],
   );
 
@@ -213,38 +215,41 @@ export async function getSuspiciousLowAttendance({
     return n;
   };
 
-  const users = rows
-    .map((r) => {
-      const attendanceDays = Number(r.attendance_days || 0);
-      const schoolDays = schoolDaysFor(r.school_id);
-      const rate =
-        schoolDays > 0
-          ? Math.round((attendanceDays / schoolDays) * 1000) / 10
-          : 0;
-      const zeroOnSchoolDays = schoolDays >= 5 && attendanceDays === 0;
-      const lowRate = schoolDays > 0 && attendanceDays / schoolDays < rateLimit;
-      const suspicious = zeroOnSchoolDays || lowRate;
-      return {
-        id: r.id,
-        username: r.username,
-        name: resolveUserName(r) || null,
-        schoolId: r.school_id,
-        schoolName: r.school_name,
-        createdAt: r.created_at,
-        attendanceDays,
-        schoolDaysInPeriod: schoolDays,
-        attendanceRate: rate,
-        suspicious,
-        reason:
-          zeroOnSchoolDays
-            ? '기간 내 등교 0회'
-            : lowRate
-              ? `등교율 ${rate}% (기준 ${Math.round(rateLimit * 100)}% 미만)`
-              : null,
-      };
-    })
-    .filter((u) => u.suspicious)
-    .slice(0, rowLimit);
+  const users = rows.map((r) => {
+    const attendanceDays = Number(r.attendance_days || 0);
+    const schoolDays = schoolDaysFor(r.school_id);
+    const rate =
+      schoolDays > 0
+        ? Math.round((attendanceDays / schoolDays) * 1000) / 10
+        : 0;
+    const zeroOnSchoolDays = schoolDays >= 5 && attendanceDays === 0;
+    const lowRate = schoolDays > 0 && attendanceDays / schoolDays < rateLimit;
+    const suspicious = zeroOnSchoolDays || lowRate;
+    return {
+      id: r.id,
+      username: r.username,
+      name: resolveUserName(r) || null,
+      schoolId: r.school_id,
+      schoolName: r.school_name,
+      createdAt: r.created_at,
+      attendanceDays,
+      schoolDaysInPeriod: schoolDays,
+      attendanceRate: rate,
+      suspicious,
+      reason:
+        zeroOnSchoolDays
+          ? '기간 내 등교 0회'
+          : lowRate
+            ? `등교율 ${rate}% (기준 ${Math.round(rateLimit * 100)}% 미만)`
+            : null,
+    };
+  });
+
+  const allSuspicious = users.filter((u) => u.suspicious);
+  const totalSuspicious = allSuspicious.length;
+  const pageUsers = rowLimit >= 5000
+    ? allSuspicious
+    : allSuspicious.slice(offset, offset + rowLimit);
 
   return {
     periodDays,
@@ -253,7 +258,12 @@ export async function getSuspiciousLowAttendance({
     schoolDays: countSchoolDaysBetween(startDate, endDate),
     maxRate: rateLimit,
     minAccountDays: minDays,
-    totalSuspicious: users.length,
-    users,
+    totalSuspicious,
+    users: pageUsers,
+    pagination: {
+      page: pageNum,
+      limit: rowLimit >= 5000 ? totalSuspicious || rowLimit : rowLimit,
+      total: totalSuspicious,
+    },
   };
 }
