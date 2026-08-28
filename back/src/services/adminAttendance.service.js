@@ -5,11 +5,11 @@ import { resolveUserName } from './userPii.service.js';
 import {
   addDaysYmd,
   countSchoolDaysInRange,
-  evaluateSchoolDay,
   isWeekendYmd,
   toYmd,
 } from '../utils/schoolDay.js';
 import { loadTermContextsBySchoolIds } from './schoolTerms.service.js';
+import { clampSqlLimit } from '../utils/sqlLimit.js';
 
 function holidayOnYmd(ymd) {
   return isPublicHolidayKst(new Date(`${ymd}T12:00:00+09:00`));
@@ -43,6 +43,57 @@ function clampDays(days) {
   return Math.min(Math.max(n, 7), 60);
 }
 
+function mapTodayAttendanceUserRow(r) {
+  return {
+    id: r.id,
+    username: r.username,
+    name: resolveUserName(r) || null,
+    schoolName: r.school_name || null,
+    checkedAt: r.checked_at,
+  };
+}
+
+/** 오늘(KST) 등교 체크 사용자 — 모니터링 생태계와 동일한 DISTINCT 집계 */
+export async function getTodayAttendanceUsers({ page = 1, limit = 50, dateYmd } = {}) {
+  const todayYmd = dateYmd || formatKstDateYmd(getKstNow());
+  const pageNum = Math.max(1, Math.trunc(Number(page) || 1));
+  const rowLimit = clampSqlLimit(limit, { def: 50, min: 10, max: 100 });
+  const offset = (pageNum - 1) * rowLimit;
+
+  const [[countRow]] = await pool.execute(
+    `SELECT COUNT(DISTINCT a.user_id) AS total
+     FROM attendances a
+     INNER JOIN users u ON u.id = a.user_id AND u.is_deleted = FALSE
+     WHERE a.attendance_date = ?
+       AND a.status = 'present'`,
+    [todayYmd],
+  );
+  const total = Number(countRow?.total || 0);
+
+  const [rows] = await pool.query(
+    `SELECT u.id, u.username, u.name_enc, sch.name AS school_name, a.checked_at
+     FROM attendances a
+     INNER JOIN users u ON u.id = a.user_id AND u.is_deleted = FALSE
+     LEFT JOIN schools sch ON sch.school_id = u.school_id
+     WHERE a.attendance_date = ?
+       AND a.status = 'present'
+     ORDER BY a.checked_at DESC
+     LIMIT ${rowLimit} OFFSET ${offset}`,
+    [todayYmd],
+  );
+
+  return {
+    todayYmd,
+    total,
+    users: (rows || []).map(mapTodayAttendanceUserRow),
+    pagination: {
+      page: pageNum,
+      limit: rowLimit,
+      total,
+    },
+  };
+}
+
 export async function getAttendanceOverview(days = 14) {
   const periodDays = clampDays(days);
   const endDate = formatKstDateYmd(getKstNow());
@@ -59,24 +110,14 @@ export async function getAttendanceOverview(days = 14) {
     [startDate, endDate],
   );
 
-  const [todayRows, todayUserRows] = await Promise.all([
-    pool.execute(
-      `SELECT COUNT(*) AS checkIns, COUNT(DISTINCT user_id) AS uniqueUsers
-       FROM attendances
-       WHERE attendance_date = ? AND status = 'present'`,
-      [endDate],
-    ).then(([rows]) => rows),
-    pool.execute(
-      `SELECT u.id, u.username, u.name_enc, sch.name AS school_name, a.checked_at
-       FROM attendances a
-       INNER JOIN users u ON u.id = a.user_id AND u.is_deleted = FALSE
-       LEFT JOIN schools sch ON sch.school_id = u.school_id
-       WHERE a.attendance_date = ? AND a.status = 'present'
-       ORDER BY a.checked_at DESC
-       LIMIT 100`,
-      [endDate],
-    ).then(([rows]) => rows),
-  ]);
+  const [todayRows] = await pool.execute(
+    `SELECT COUNT(DISTINCT a.user_id) AS uniqueUsers
+     FROM attendances a
+     INNER JOIN users u ON u.id = a.user_id AND u.is_deleted = FALSE
+     WHERE a.attendance_date = ?
+       AND a.status = 'present'`,
+    [endDate],
+  );
 
   const [activeRows] = await pool.execute(
     `SELECT COUNT(*) AS cnt
@@ -89,16 +130,7 @@ export async function getAttendanceOverview(days = 14) {
   );
 
   const activeStudents = Number(activeRows[0]?.cnt || 0);
-  const todayCheckIns = Number(todayRows[0]?.checkIns || 0);
   const todayUnique = Number(todayRows[0]?.uniqueUsers || 0);
-
-  const [schoolIdRows] = await pool.execute(
-    `SELECT DISTINCT school_id FROM users
-     WHERE is_deleted = FALSE AND school_id IS NOT NULL`,
-  );
-  const schoolIds = schoolIdRows.map((r) => r.school_id);
-  const ctxMap = await loadTermContextsBySchoolIds(schoolIds);
-  const anyTerms = [...ctxMap.values()].some((c) => c.terms.length > 0);
 
   const dailyMap = new Map(
     dailyRows.map((r) => [toYmd(r.date), r]),
@@ -108,30 +140,12 @@ export async function getAttendanceOverview(days = 14) {
   for (let i = 0; i < periodDays; i += 1) {
     const date = addDaysYmd(startDate, i);
     const row = dailyMap.get(date);
-    let dateIsSchoolDay = false;
-    if (anyTerms) {
-      for (const id of schoolIds) {
-        const ctx = ctxMap.get(id) || { terms: [], closureSet: new Set(), anniversaryMd: null };
-        const ev = evaluateSchoolDay({
-          ymd: date,
-          terms: ctx.terms,
-          closureSet: ctx.closureSet,
-          anniversaryMd: ctx.anniversaryMd,
-          isPublicHoliday: holidayOnYmd(date),
-        });
-        if (ev.schoolDay) {
-          dateIsSchoolDay = true;
-          break;
-        }
-      }
-    } else {
-      dateIsSchoolDay = !isWeekendYmd(date) && !holidayOnYmd(date);
-    }
+    const dateIsSchoolDay = !isWeekendYmd(date) && !holidayOnYmd(date);
     if (dateIsSchoolDay) schoolDays += 1;
     dailyChart.push({
       date,
       weekday: dateIsSchoolDay,
-      checkIns: Number(row?.checkIns || 0),
+      checkIns: Number(row?.uniqueUsers || 0),
       uniqueUsers: Number(row?.uniqueUsers || 0),
     });
   }
@@ -144,15 +158,7 @@ export async function getAttendanceOverview(days = 14) {
     endDate,
     schoolDays,
     activeStudents,
-    todayCheckIns,
     todayUnique,
-    todayCheckInUsers: (todayUserRows || []).map((r) => ({
-      id: r.id,
-      username: r.username,
-      name: resolveUserName(r) || null,
-      schoolName: r.school_name || null,
-      checkedAt: r.checked_at,
-    })),
     dailyChart,
     maxCheckIns,
     attendanceRate:

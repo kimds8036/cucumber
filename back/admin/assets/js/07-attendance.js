@@ -1,5 +1,7 @@
 let lastAttendanceOverview = null;
 let attendanceResizeBound = false;
+let attendanceTodayPage = 1;
+const ATTENDANCE_TODAY_LIMIT = 50;
 
 function bindAttendanceChartResize() {
   if (attendanceResizeBound) return;
@@ -13,15 +15,41 @@ function bindAttendanceChartResize() {
   });
 }
 
+async function loadTodayAttendance(page = 1) {
+  attendanceTodayPage = page;
+  const hint = document.getElementById('attendance-today-hint');
+  try {
+    const { data } = await api(
+      `/attendance/today?page=${encodeURIComponent(page)}&limit=${ATTENDANCE_TODAY_LIMIT}`,
+    );
+    const total = Number(data?.total || 0);
+    document.getElementById('att-stat-today').textContent = String(total);
+    if (hint) {
+      hint.textContent = total
+        ? `${data.todayYmd || '오늘'} 등교 ${total}명 · 모니터링 「오늘 등교」와 동일 집계(활성 사용자, DISTINCT)`
+        : `${data?.todayYmd || '오늘'} 등교 체크한 사용자가 없습니다.`;
+    }
+    renderTodayCheckInUsers(data?.users || [], data?.pagination || {});
+    renderTodayPagination(data?.pagination || {});
+  } catch (error) {
+    if (hint) hint.textContent = error?.message || '오늘 등교 목록을 불러오지 못했습니다.';
+    renderTodayCheckInUsers([], {});
+    renderTodayPagination({});
+    throw error;
+  }
+}
+
 async function loadAttendance() {
   const days = document.getElementById('attendance-days')?.value || '14';
   const maxRate = document.getElementById('attendance-max-rate')?.value || '0.25';
+  const overviewHint = document.getElementById('attendance-overview-hint');
 
-  const [overviewRes, suspiciousRes] = await Promise.allSettled([
+  const [overviewRes, suspiciousRes, todayRes] = await Promise.allSettled([
     api(`/attendance/overview?days=${encodeURIComponent(days)}`),
     api(
       `/attendance/suspicious?days=${encodeURIComponent(days)}&maxRate=${encodeURIComponent(maxRate)}&minAccountDays=7`,
     ),
+    loadTodayAttendance(attendanceTodayPage),
   ]);
 
   const overview = overviewRes.status === 'fulfilled' ? (overviewRes.value.data || {}) : {};
@@ -29,14 +57,22 @@ async function loadAttendance() {
 
   if (overviewRes.status === 'rejected') {
     console.warn('등교 overview 조회 실패:', overviewRes.reason);
+    if (overviewHint) {
+      overviewHint.textContent = `일별 차트를 불러오지 못했습니다: ${overviewRes.reason?.message || '오류'}`;
+      overviewHint.classList.add('txt-danger');
+    }
+  } else if (overviewHint) {
+    overviewHint.textContent = '막대 = 일별 등교 인원(중복 제외) · 회색 = 주말·공휴일';
+    overviewHint.classList.remove('txt-danger');
   }
+
   if (suspiciousRes.status === 'rejected') {
     console.warn('등교 suspicious 조회 실패:', suspiciousRes.reason);
   }
+  if (todayRes.status === 'rejected') {
+    console.warn('오늘 등교 목록 조회 실패:', todayRes.reason);
+  }
 
-  document.getElementById('att-stat-today').textContent = String(
-    overview.todayCheckIns || 0,
-  );
   document.getElementById('att-stat-active').textContent = String(
     overview.activeStudents || 0,
   );
@@ -50,17 +86,38 @@ async function loadAttendance() {
   lastAttendanceOverview = overview;
   bindAttendanceChartResize();
   renderAttendanceChart(overview);
-  renderTodayCheckInUsers(overview.todayCheckInUsers || []);
   renderSuspiciousUsers(suspicious.users || []);
 }
 
-function renderTodayCheckInUsers(users) {
+function renderTodayPagination(pagination) {
+  const pag = document.getElementById('attendance-today-pagination');
+  if (!pag) return;
+  const total = Number(pagination.total || 0);
+  const limit = Number(pagination.limit || ATTENDANCE_TODAY_LIMIT) || ATTENDANCE_TODAY_LIMIT;
+  const page = Number(pagination.page || 1) || 1;
+  const maxPage = Math.max(1, Math.ceil(total / limit));
+  if (total <= limit) {
+    pag.innerHTML = total
+      ? `<span class="txt-muted">총 ${total}명</span>`
+      : '';
+    return;
+  }
+  pag.innerHTML = `
+    <span class="txt-muted">총 ${total}명 · ${page}/${maxPage}페이지</span>
+    <button class="btn btn-sm" ${page <= 1 ? 'disabled' : ''} onclick="loadTodayAttendance(${page - 1})">이전</button>
+    <button class="btn btn-sm" ${page >= maxPage ? 'disabled' : ''} onclick="loadTodayAttendance(${page + 1})">다음</button>
+  `;
+}
+
+function renderTodayCheckInUsers(users, pagination) {
   const tbody = document.getElementById('attendance-today-tbody');
   if (!tbody) return;
 
+  const total = Number(pagination?.total || 0);
   if (!users.length) {
-    tbody.innerHTML =
-      '<tr><td colspan="5" class="txt-muted">오늘 등교 체크한 사용자가 없습니다.</td></tr>';
+    tbody.innerHTML = total
+      ? '<tr><td colspan="5" class="txt-muted">이 페이지에 표시할 사용자가 없습니다.</td></tr>'
+      : '<tr><td colspan="5" class="txt-muted">오늘 등교 체크한 사용자가 없습니다.</td></tr>';
     return;
   }
 
@@ -92,12 +149,13 @@ function renderAttendanceChart(overview) {
 
   host.innerHTML = chart
     .map((d) => {
-      const height = Math.max(4, Math.round((d.checkIns / max) * 100));
+      const count = Number(d.uniqueUsers ?? d.checkIns ?? 0);
+      const height = Math.max(4, Math.round((count / max) * 100));
       const label = String(d.date).slice(5);
       const weekendClass = d.weekday ? '' : ' is-weekend';
       return `
-        <div class="attendance-bar-col${weekendClass}" title="${esc(d.date)}: ${d.checkIns}건">
-          <div class="attendance-bar-value">${d.checkIns || ''}</div>
+        <div class="attendance-bar-col${weekendClass}" title="${esc(d.date)}: ${count}명">
+          <div class="attendance-bar-value">${count || ''}</div>
           <div class="attendance-bar-track">
             <div class="attendance-bar-fill" style="height:${height}%"></div>
           </div>
