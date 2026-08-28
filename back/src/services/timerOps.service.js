@@ -2,6 +2,9 @@ import pool from '../config/database.js';
 import { addDaysToYmd } from './analytics.service.js';
 import { formatKstDateYmd } from './reverification.service.js';
 import { resolveUserName } from './userPii.service.js';
+import { getTimerDayKey } from '../utils/timerDayKey.js';
+
+const KST_NOW_SQL = `CONVERT_TZ(UTC_TIMESTAMP(3), '+00:00', '+09:00')`;
 
 function toHours(ms) {
   const n = Number(ms) || 0;
@@ -14,23 +17,48 @@ function ymdOf(value) {
   return String(value).slice(0, 10);
 }
 
+/** 타이머 day_key 기준 오늘 이용·시간 (종료 세션 + 진행 중 세션) */
+async function getTimerDayStats(dayKey) {
+  const [[row]] = await pool.execute(
+    `SELECT
+       COUNT(DISTINCT u.user_id) AS active_users,
+       COALESCE(SUM(
+         COALESCE(sd.total_elapsed_ms, 0) + COALESCE(open.open_ms, 0)
+       ), 0) AS total_ms
+     FROM (
+       SELECT user_id FROM study_days
+       WHERE day_key = ? AND total_elapsed_ms > 0
+       UNION
+       SELECT user_id FROM study_sessions
+       WHERE day_key = ? AND ended_at IS NULL
+     ) u
+     LEFT JOIN study_days sd ON sd.user_id = u.user_id AND sd.day_key = ?
+     LEFT JOIN (
+       SELECT user_id,
+         SUM(GREATEST(0, TIMESTAMPDIFF(MICROSECOND, started_at, ${KST_NOW_SQL}) DIV 1000)) AS open_ms
+       FROM study_sessions
+       WHERE day_key = ? AND ended_at IS NULL
+       GROUP BY user_id
+     ) open ON open.user_id = u.user_id`,
+    [dayKey, dayKey, dayKey, dayKey],
+  );
+  return {
+    activeUsers: Number(row?.active_users || 0),
+    totalMs: Number(row?.total_ms || 0),
+  };
+}
+
 /**
  * 타이머 운영 요약 + 최근 세션(학교·아이디).
+ * day_key = 앱과 동일( KST 06:00 기준 ), 크론 집계 아님 · study_days/study_sessions 실시간 조회.
  */
 export async function getTimerOpsOverview({ days = 14 } = {}) {
   const windowDays = Math.min(Math.max(Number(days) || 14, 1), 31);
-  const today = formatKstDateYmd();
-  const fromYmd = addDaysToYmd(today, -(windowDays - 1));
+  const timerToday = getTimerDayKey();
+  const calendarToday = formatKstDateYmd();
+  const fromYmd = addDaysToYmd(timerToday, -(windowDays - 1));
 
-  const [[todayRow]] = await pool.execute(
-    `SELECT
-       COUNT(DISTINCT user_id) AS active_users,
-       COALESCE(SUM(total_elapsed_ms), 0) AS total_ms
-     FROM study_days
-     WHERE day_key = ?
-       AND total_elapsed_ms > 0`,
-    [today],
-  );
+  const todayStats = await getTimerDayStats(timerToday);
 
   const [[openRow]] = await pool.execute(
     `SELECT
@@ -47,7 +75,7 @@ export async function getTimerOpsOverview({ days = 14 } = {}) {
      FROM study_days
      WHERE day_key BETWEEN ? AND ?
        AND total_elapsed_ms > 0`,
-    [fromYmd, today],
+    [fromYmd, timerToday],
   );
 
   const [dayRows] = await pool.execute(
@@ -60,16 +88,23 @@ export async function getTimerOpsOverview({ days = 14 } = {}) {
        AND total_elapsed_ms > 0
      GROUP BY day_key
      ORDER BY day_key ASC`,
-    [fromYmd, today],
+    [fromYmd, timerToday],
   );
 
   const byDay = new Map(dayRows.map((r) => [ymdOf(r.day_key), r]));
   const series = [];
   for (let i = 0; i < windowDays; i += 1) {
     const date = addDaysToYmd(fromYmd, i);
-    const row = byDay.get(date);
-    const totalMs = Number(row?.total_ms || 0);
-    const activeUsers = Number(row?.active_users || 0);
+    let activeUsers;
+    let totalMs;
+    if (date === timerToday) {
+      activeUsers = todayStats.activeUsers;
+      totalMs = todayStats.totalMs;
+    } else {
+      const row = byDay.get(date);
+      activeUsers = Number(row?.active_users || 0);
+      totalMs = Number(row?.total_ms || 0);
+    }
     series.push({
       date,
       activeUsers,
@@ -91,10 +126,9 @@ export async function getTimerOpsOverview({ days = 14 } = {}) {
      GROUP BY sd.school_id, s.name
      ORDER BY total_ms DESC
      LIMIT 8`,
-    [fromYmd, today],
+    [fromYmd, timerToday],
   );
 
-  const kstNowSql = `CONVERT_TZ(UTC_TIMESTAMP(3), '+00:00', '+09:00')`;
   const [sessionRows] = await pool.execute(
     `SELECT
        ss.id,
@@ -110,7 +144,7 @@ export async function getTimerOpsOverview({ days = 14 } = {}) {
        TIMESTAMPDIFF(
          SECOND,
          ss.started_at,
-         COALESCE(ss.ended_at, ${kstNowSql})
+         COALESCE(ss.ended_at, ${KST_NOW_SQL})
        ) AS elapsed_sec
      FROM study_sessions ss
      INNER JOIN users u ON u.id = ss.user_id
@@ -119,11 +153,13 @@ export async function getTimerOpsOverview({ days = 14 } = {}) {
      LIMIT 50`,
   );
 
-  const todayUsers = Number(todayRow?.active_users || 0);
-  const todayMs = Number(todayRow?.total_ms || 0);
+  const todayUsers = todayStats.activeUsers;
+  const todayMs = todayStats.totalMs;
 
   return {
     summary: {
+      timerDayKey: timerToday,
+      calendarToday,
       todayActiveUsers: todayUsers,
       todayTotalHours: toHours(todayMs),
       todayAvgHoursPerUser: todayUsers > 0 ? toHours(todayMs / todayUsers) : 0,
@@ -132,7 +168,7 @@ export async function getTimerOpsOverview({ days = 14 } = {}) {
       rangeActiveUsers: Number(rangeRow?.active_users || 0),
       rangeTotalHours: toHours(rangeRow?.total_ms || 0),
       fromYmd,
-      toYmd: today,
+      toYmd: timerToday,
     },
     series,
     topSchools: schoolRows.map((r) => ({
@@ -159,4 +195,4 @@ export async function getTimerOpsOverview({ days = 14 } = {}) {
       };
     }),
   };
-}
+};

@@ -740,6 +740,15 @@ async function loadDashboard() {
   async function loadTimerOps() {
     const { data } = await api('/analytics/timer?days=14');
     renderTimerKpi(data?.summary || {});
+    const hint = document.getElementById('timer-ops-hint');
+    const s = data?.summary || {};
+    if (hint) {
+      const timerDay = s.timerDayKey || '-';
+      const cal = s.calendarToday || '-';
+      hint.textContent = timerDay === cal
+        ? `타이머 day ${timerDay} (KST 06:00~) · 종료+진행 중 세션 합산 · 지금 진행 ${Number(s.openUsers || 0)}명`
+        : `타이머 day ${timerDay} (캘린더 ${cal}와 다를 수 있음, 06:00 기준) · 종료+진행 중 합산 · 지금 진행 ${Number(s.openUsers || 0)}명`;
+    }
     renderTimerLineChart(data?.series || []);
     renderTimerSchoolBars(data?.topSchools || []);
     renderTimerSessions(data?.recentSessions || []);
