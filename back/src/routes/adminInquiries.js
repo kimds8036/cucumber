@@ -5,6 +5,10 @@ import { requireAdminApi, isAdminUser } from '../middleware/adminAuth.js';
 import { validate } from '../middleware/validate.js';
 import { getNowForDB } from '../utils/dateUtils.js';
 import { getAdminDashboardStats, mapDashboardStatsToApi } from '../services/adminStats.service.js';
+import {
+  annotateDuplicateWarnings,
+  getInquiryDuplicateMeta,
+} from '../services/inquiryDedup.service.js';
 
 const router = express.Router();
 
@@ -174,11 +178,12 @@ router.get('/', requireAdminApi, validate(inquiryListValidators), async (req, re
     );
 
     const rowsWithImages = await attachInquiryImages(rows);
+    const rowsWithDup = annotateDuplicateWarnings(rowsWithImages);
 
     return res.json({
       success: true,
       data: {
-        inquiries: rowsWithImages,
+        inquiries: rowsWithDup,
         pagination: {
           page: parseInt(page, 10) || 1,
           limit: limitNum,
@@ -235,10 +240,12 @@ router.get('/:id', requireAdminApi, async (req, res) => {
       [inquiryId]
     );
 
+    const dupMeta = await getInquiryDuplicateMeta(rows[0]);
+
     return res.json({
       success: true,
       data: {
-        inquiry: rows[0],
+        inquiry: { ...rows[0], ...dupMeta },
         images: imageRows,
       },
     });

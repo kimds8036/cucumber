@@ -157,8 +157,19 @@ const InAppInquiry = ({ navigation, fullScreenOverlay = false }) => {
           '문의가 접수되었습니다.\n답변은 입력하신 이메일로 안내드립니다.',
       });
     } catch (error) {
+      const resp = error?.response;
+      const data = resp?.data;
+      if (resp?.status === 409 && data?.code === 'INQUIRY_DUPLICATE') {
+        setResultModal({
+          visible: true,
+          message:
+            data?.message ||
+            '방금 접수한 문의가 있습니다.\n잠시 후 다시 시도하거나 기존 문의를 확인해주세요.',
+        });
+        return;
+      }
       const msg =
-        error?.response?.data?.message ||
+        data?.message ||
         '문의 전송에 실패했습니다. 잠시 후 다시 시도해주세요.';
       Alert.alert('오류', msg);
     } finally {
