@@ -6,8 +6,9 @@ import { validate } from '../middleware/validate.js';
 import { getNowForDB } from '../utils/dateUtils.js';
 import { getAdminDashboardStats, mapDashboardStatsToApi } from '../services/adminStats.service.js';
 import {
-  annotateDuplicateWarnings,
+  annotateDuplicateClusters,
   getInquiryDuplicateMeta,
+  getInquiryDuplicateSiblings,
 } from '../services/inquiryDedup.service.js';
 
 const router = express.Router();
@@ -178,7 +179,7 @@ router.get('/', requireAdminApi, validate(inquiryListValidators), async (req, re
     );
 
     const rowsWithImages = await attachInquiryImages(rows);
-    const rowsWithDup = annotateDuplicateWarnings(rowsWithImages);
+    const rowsWithDup = annotateDuplicateClusters(rowsWithImages);
 
     return res.json({
       success: true,
@@ -241,12 +242,16 @@ router.get('/:id', requireAdminApi, async (req, res) => {
     );
 
     const dupMeta = await getInquiryDuplicateMeta(rows[0]);
+    const duplicateSiblings = dupMeta.duplicateWarning
+      ? await getInquiryDuplicateSiblings(rows[0])
+      : [];
 
     return res.json({
       success: true,
       data: {
         inquiry: { ...rows[0], ...dupMeta },
         images: imageRows,
+        duplicateSiblings,
       },
     });
   } catch (error) {

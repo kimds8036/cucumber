@@ -194,6 +194,26 @@
       font-size: 13px;
       line-height: 1.45;
     }
+    .inquiry-dup-related {
+      margin-top: 8px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      align-items: center;
+    }
+    .inquiry-dup-link {
+      padding: 2px 8px;
+      min-height: 0;
+      font-size: 11px;
+    }
+    .inquiry-dup-collapsed-hint { font-size: 11px; margin-left: 4px; }
+    .inquiry-dup-cluster-head td { border-top: 2px solid var(--amber-bg); }
+    .inquiry-dup-nested-row td:first-child,
+    .inquiry-dup-nested-row .inquiry-check-cell { padding-left: 18px; }
+    .inquiry-dup-nested-row td { background: #fffaf2; }
+    .inquiry-check-cell { white-space: nowrap; }
+    .inquiry-nested-spacer { display: inline-block; width: 22px; }
+    .inquiry-cluster-toggle { margin-right: 4px; }
 
     /* ── Stat cards ─────────────────────────────────── */
     .stat-grid {
