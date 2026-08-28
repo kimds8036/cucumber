@@ -300,30 +300,41 @@ const MyPage = ({ navigation }) => {
             ? timetableCacheKey.slice(TIMETABLE_CACHE_KEY_PREFIX.length)
             : null;
           await hydratePeriodTimesFromServer(scopeFromKey).catch(() => {});
-          await hydrateTimetableFromServer(timetableCacheKey).catch(() => {});
+          const hydrated = await hydrateTimetableFromServer(
+            timetableCacheKey,
+          ).catch(() => null);
 
           const raw = await AsyncStorage.getItem(timetableCacheKey);
           if (!raw || cancelled) {
+            const fromServer =
+              hydrated && Object.keys(hydrated).length > 0 ? hydrated : null;
             if (!cancelled) {
-              setTimetable(null);
-              syncTimetableWidgetFromFlat(null).catch(() => {});
+              setTimetable(fromServer);
+              syncTimetableWidgetFromFlat(fromServer).catch(() => {});
             }
             return;
           }
           const parsed = JSON.parse(raw);
-          if (Date.now() - Number(parsed?.ts || 0) >= TIMETABLE_CACHE_TTL_MS) {
-            if (!cancelled) setTimetable(null);
-            return;
-          }
           const cached = parsed?.timetable ?? null;
           const normalized =
             cached && Object.keys(cached).length > 0 ? cached : null;
-          if (!cancelled) setTimetable(normalized);
+          const cacheExpired =
+            Date.now() - Number(parsed?.ts || 0) >= TIMETABLE_CACHE_TTL_MS;
+          const toShow =
+            normalized ||
+            (hydrated && Object.keys(hydrated).length > 0 ? hydrated : null);
+          if (cacheExpired && !toShow) {
+            if (!cancelled) setTimetable(null);
+            return;
+          }
+          if (!cancelled) setTimetable(toShow);
           if (!cancelled) {
-            const generatedAt = parsed?.ts
-              ? new Date(Number(parsed.ts)).toISOString()
-              : undefined;
-            syncTimetableWidgetFromFlat(normalized, { generatedAt }).catch(
+            const generatedAt =
+              parsed?.serverUpdatedAt ||
+              (parsed?.ts
+                ? new Date(Number(parsed.ts)).toISOString()
+                : undefined);
+            syncTimetableWidgetFromFlat(toShow, { generatedAt }).catch(
               () => {},
             );
           }

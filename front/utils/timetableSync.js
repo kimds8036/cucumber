@@ -95,11 +95,12 @@ export async function hydrateTimetableFromServer(cacheKey) {
 
     if (serverHasData) {
       if (!localHasData || serverTs >= localTs) {
-        const ts = serverTs || Date.now();
+        const ts = Date.now();
         await AsyncStorage.setItem(
           cacheKey,
           JSON.stringify({
             ts,
+            serverUpdatedAt: server.updatedAt || null,
             timetable: server.timetable,
             clearedByUser: false,
           }),
