@@ -6,6 +6,7 @@ import { validate } from '../middleware/validate.js';
 import { cloudinary, uploadInquiry } from '../config/cloudinary.js';
 import { getNowForDB } from '../utils/dateUtils.js';
 import { notifyInquiryCreated } from '../services/discordWebhook.service.js';
+import { findRecentDuplicateInquiry, duplicateWindowMinutes } from '../services/inquiryDedup.service.js';
 
 const router = express.Router();
 
@@ -118,6 +119,23 @@ router.post('/', optionalAuthenticate, uploadInquiry.array('images', MAX_IMAGES)
       return res.status(400).json({
         success: false,
         message: '본인 확인을 위해 아이디를 입력해주세요.',
+      });
+    }
+
+    const recentDup = await findRecentDuplicateInquiry({
+      contactUsername,
+      contactEmail,
+    });
+    if (recentDup) {
+      const mins = duplicateWindowMinutes();
+      return res.status(409).json({
+        success: false,
+        code: 'INQUIRY_DUPLICATE',
+        message: `방금 접수한 문의가 있습니다. ${mins}분 후 다시 시도하거나 기존 문의를 확인해주세요.`,
+        data: {
+          inquiryId: recentDup.id,
+          duplicateWindowMinutes: mins,
+        },
       });
     }
 

@@ -184,6 +184,16 @@
     .pill-warn     { background: var(--amber-bg); color: var(--amber-text); }
     .pill-danger   { background: var(--red-bg); color: var(--red-text); }
     .pill-white    { background: var(--blue-bg); color: var(--blue-text); }
+    .inquiry-dup-badge { margin-left: 6px; font-size: 10px; vertical-align: middle; }
+    .inquiry-dup-banner {
+      margin: 0 0 12px;
+      padding: 10px 12px;
+      border-radius: 8px;
+      background: var(--amber-bg);
+      color: var(--amber-text);
+      font-size: 13px;
+      line-height: 1.45;
+    }
 
     /* ── Stat cards ─────────────────────────────────── */
     .stat-grid {

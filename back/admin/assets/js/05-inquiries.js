@@ -30,6 +30,20 @@ async function loadInquiries() {
     renderProcessedInquiries();
   }
 
+  function renderDuplicateBadge(i) {
+    if (!i?.duplicateWarning) return '';
+    const n = i.duplicateClusterSize || 2;
+    const mins = i.duplicateWindowMinutes || 5;
+    return `<span class="pill pill-warn inquiry-dup-badge" title="같은 아이디·이메일 ${mins}분 내 ${n}건">중복 ${n}건</span>`;
+  }
+
+  function renderDuplicateDetailBanner(i) {
+    if (!i?.duplicateWarning) return '';
+    const n = i.duplicateClusterSize || 2;
+    const mins = i.duplicateWindowMinutes || 5;
+    return `<div class="inquiry-dup-banner">⚠ 같은 아이디·이메일로 ${mins}분 이내 접수된 문의가 ${n}건 있습니다. 중복 제출·연타 가능성을 확인해주세요.</div>`;
+  }
+
   function renderContactCell(i) {
     const email = i.contact_email || '';
     const username = i.contact_username || '';
@@ -61,7 +75,7 @@ async function loadInquiries() {
           <td onclick="event.stopPropagation()">
             <input type="checkbox" class="inquiry-row-chk" data-id="${i.id}" ${checked} onchange="toggleInquirySelection(${i.id}, this.checked)">
           </td>
-          <td>#Q-${i.id}</td>
+          <td>#Q-${i.id} ${renderDuplicateBadge(i)}</td>
           <td>${author}</td>
           <td class="txt-ellipsis">${esc(i.content || '-')}</td>
           <td>${renderContactCell(i)}</td>
@@ -98,7 +112,7 @@ async function loadInquiries() {
           <td onclick="event.stopPropagation()">
             <button type="button" class="inquiry-expand-btn" title="답변 보기" onclick="toggleProcessedInquiryAnswer(${i.id}, event)">${isExpanded ? '▴' : '▾'}</button>
           </td>
-          <td>#Q-${i.id}</td>
+          <td>#Q-${i.id} ${renderDuplicateBadge(i)}</td>
           <td>${author}</td>
           <td class="txt-ellipsis">${esc(i.content || '-')}</td>
           <td>${renderContactCell(i)}</td>
@@ -300,9 +314,10 @@ async function loadInquiries() {
       host.innerHTML = `
         <div class="detail-panel open">
           <div class="detail-panel-header">
-            <span class="detail-panel-title">#Q-${i.id} — 문의 상세</span>
+            <span class="detail-panel-title">#Q-${i.id} — 문의 상세 ${renderDuplicateBadge(i)}</span>
             <button class="btn btn-sm" onclick="closeInquiryDetail(${processed ? 'true' : 'false'})">닫기</button>
           </div>
+          ${renderDuplicateDetailBanner(i)}
           <div class="detail-grid">
             <div class="detail-block"><div class="detail-block-label">상태</div><div class="detail-block-value">${esc(inquiryStatusLabel(i.status))}</div></div>
             <div class="detail-block"><div class="detail-block-label">작성자</div><div class="detail-block-value">${author}</div></div>
