@@ -1,9 +1,7 @@
 import express from 'express';
 import { requireAdminApi } from '../middleware/adminAuth.js';
-import { getAttendanceOverview } from '../services/adminAttendance.service.js';
-import { getSuspiciousFromFlags } from '../services/attendanceSuspicion.service.js';
-import { getSuspiciousLowAttendance } from '../services/adminAttendance.service.js';
-import { refreshAttendanceSuspicionFlags } from '../services/attendanceSuspicion.service.js';
+import { getAttendanceOverview, getTodayAttendanceUsers, getSuspiciousLowAttendance } from '../services/adminAttendance.service.js';
+import { getSuspiciousFromFlags, refreshAttendanceSuspicionFlags } from '../services/attendanceSuspicion.service.js';
 
 const router = express.Router();
 
@@ -16,6 +14,23 @@ router.get('/overview', requireAdminApi, async (req, res) => {
     return res.status(500).json({
       success: false,
       message: '등교 현황을 불러오지 못했습니다.',
+    });
+  }
+});
+
+router.get('/today', requireAdminApi, async (req, res) => {
+  try {
+    const data = await getTodayAttendanceUsers({
+      page: req.query.page,
+      limit: req.query.limit,
+      dateYmd: req.query.date,
+    });
+    return res.json({ success: true, data });
+  } catch (error) {
+    console.error('관리자 오늘 등교 목록 오류:', error);
+    return res.status(500).json({
+      success: false,
+      message: '오늘 등교 사용자 목록을 불러오지 못했습니다.',
     });
   }
 });
