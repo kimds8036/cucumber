@@ -88,7 +88,7 @@ object TimetableWidgetViews {
         context,
         "period_subject_$i",
         if (period == null || period.subjectName.isEmpty()) "-" else period.subjectName,
-        5,
+        3,
       )
       val isActive = period != null && entry.activePeriodNumber == period.number
       val pHex = period?.subjectColorHex

@@ -26,7 +26,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import SubHeader from '../../../view/frame/subHeader';
-import { colors, TIMETABLE_SUBJECT_COLORS } from '../../../styles/colors';
+import { colors, TIMETABLE_SUBJECT_COLORS, timetableSubjectCellStyle } from '../../../styles/colors';
 import { getNormalize } from '../../../styles/mypage.style';
 import { api } from '../../../utils/api';
 import AppPopupModal from '../../../components/common/AppPopupModal';
@@ -459,7 +459,7 @@ export default function TimetableScreen({ navigation, route }) {
                             content ? mt.manualTsClassCellFilled : null,
                             paintReady ? mt.manualTsClassCellPaintReady : null,
                             content
-                              ? { backgroundColor: getCellColor(content) }
+                              ? timetableSubjectCellStyle(getCellColor(content))
                               : null,
                             subjectLocHighlight
                               ? mt.manualTsClassCellSubjectHighlight

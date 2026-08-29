@@ -207,7 +207,7 @@ object WidgetPayload {
   fun formatTimeRange(start: Date, end: Date): String {
     val f = SimpleDateFormat("HH:mm", Locale.KOREA)
     f.timeZone = kst
-    return "${f.format(start)}~${f.format(end)}"
+    return "${f.format(start)}-${f.format(end)}"
   }
 
   fun termTitle(date: Date): String {

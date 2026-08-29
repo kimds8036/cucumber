@@ -6,7 +6,7 @@ import android.widget.RemoteViews
 
 object MealWidgetViews {
   private const val MAX_MENUS = 6
-  private const val MENU_CHARS = 7
+  private const val MENU_CHARS = 8
 
   private fun clipMealMenu(raw: String): String {
     val t = raw.trim()
@@ -34,7 +34,7 @@ object MealWidgetViews {
       WidgetRes.visible(views, context, "meal_badge", true)
       WidgetRes.text(views, context, "meal_badge", WidgetPayload.mealTypeLabel(mealType))
       WidgetRes.color(views, context, "meal_badge", WidgetColors.PRIMARY_DARK)
-      WidgetRes.bg(views, context, "meal_badge", WidgetColors.MEAL_BADGE_BG)
+      WidgetRes.drawableBg(views, context, "meal_badge", "meal_type_badge")
     } else {
       WidgetRes.visible(views, context, "meal_badge", false)
     }

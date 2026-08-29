@@ -30,6 +30,7 @@ import {
   fonts,
   fontSizes,
   TIMETABLE_SUBJECT_COLORS,
+  timetableSubjectCellStyle,
 } from '../../styles/colors';
 import { getNormalize } from '../../styles/mypage.style';
 import {
@@ -369,7 +370,7 @@ const EditTimetable = ({ navigation, route }) => {
                       et.editTsClassCell,
                       filled ? et.editTsClassCellFilled : null,
                       filled
-                        ? { backgroundColor: getCellColor(content) }
+                        ? timetableSubjectCellStyle(getCellColor(content))
                         : null,
                       isSelected ? et.editTsClassCellSelected : null,
                     ];

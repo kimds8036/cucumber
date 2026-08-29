@@ -99,6 +99,35 @@ export const isTimetableWhiteColor = (hex) => {
   return h === 'F2EDE4' || h === 'FFFFFF';
 };
 
+/** #RRGGBB → rgba (위젯 4x4 cell `#80` ≈ 0.5 과 동일) */
+export function hexToRgba(hex, opacity = 1) {
+  const h = String(hex || '')
+    .trim()
+    .replace(/^#/, '');
+  if (h.length !== 6) return hex;
+  const r = parseInt(h.slice(0, 2), 16);
+  const g = parseInt(h.slice(2, 4), 16);
+  const b = parseInt(h.slice(4, 6), 16);
+  if ([r, g, b].some((n) => Number.isNaN(n))) return hex;
+  return `rgba(${r},${g},${b},${opacity})`;
+}
+
+/**
+ * 인앱 시간표 격자 셀 배경 — Android/iOS Large(4x4) 위젯과 동일.
+ * 일반: 과목색 50% / 아이보리: 불투명 + 얇은 테두리
+ */
+export function timetableSubjectCellStyle(hex) {
+  if (!hex) return null;
+  if (isTimetableWhiteColor(hex)) {
+    return {
+      backgroundColor: TIMETABLE_SUBJECT_PALE_HEX,
+      borderWidth: 1,
+      borderColor: 'rgba(39, 42, 38, 0.1)',
+    };
+  }
+  return { backgroundColor: hexToRgba(hex, 0.5) };
+}
+
 export const PROFILE_COLORS = {
   1: '#a6da95',
   2: '#89b4fa',

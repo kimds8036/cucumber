@@ -94,37 +94,37 @@
     <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:gravity="center" android:orientation="vertical" android:padding="3dp">
       <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="1교시" android:textColor="#FF888780" android:textSize="9sp" />
       <ImageView android:layout_width="7dp" android:layout_height="7dp" android:layout_marginTop="5dp" android:layout_marginBottom="5dp" android:contentDescription="@null" android:src="@drawable/widget_dot_circle" android:tint="#FFC5C5C0" />
-      <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:ellipsize="end" android:gravity="center" android:maxLines="2" android:text="국어" android:textColor="#FF272A26" android:textSize="10sp" />
+      <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:ellipsize="end" android:gravity="center" android:maxLines="1" android:singleLine="true" android:text="국어" android:textColor="#FF272A26" android:textSize="10sp" />
     </LinearLayout>
     <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:gravity="center" android:orientation="vertical" android:padding="3dp">
       <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="2교시" android:textColor="#FF888780" android:textSize="9sp" />
       <ImageView android:layout_width="7dp" android:layout_height="7dp" android:layout_marginTop="5dp" android:layout_marginBottom="5dp" android:contentDescription="@null" android:src="@drawable/widget_dot_circle" android:tint="#FFC5C5C0" />
-      <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:ellipsize="end" android:gravity="center" android:maxLines="2" android:text="영어" android:textColor="#FF272A26" android:textSize="10sp" />
+      <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:ellipsize="end" android:gravity="center" android:maxLines="1" android:singleLine="true" android:text="영어" android:textColor="#FF272A26" android:textSize="10sp" />
     </LinearLayout>
     <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:gravity="center" android:orientation="vertical" android:padding="3dp">
       <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="3교시" android:textColor="#FF888780" android:textSize="9sp" />
       <ImageView android:layout_width="7dp" android:layout_height="7dp" android:layout_marginTop="5dp" android:layout_marginBottom="5dp" android:contentDescription="@null" android:src="@drawable/widget_dot_circle" android:tint="#FFC5C5C0" />
-      <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:ellipsize="end" android:gravity="center" android:maxLines="2" android:text="한국사" android:textColor="#FF272A26" android:textSize="10sp" />
+      <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:ellipsize="end" android:gravity="center" android:maxLines="1" android:singleLine="true" android:text="한국사" android:textColor="#FF272A26" android:textSize="10sp" />
     </LinearLayout>
     <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:gravity="center" android:orientation="vertical" android:padding="3dp">
       <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="4교시" android:textColor="#FF888780" android:textSize="9sp" />
       <ImageView android:layout_width="7dp" android:layout_height="7dp" android:layout_marginTop="5dp" android:layout_marginBottom="5dp" android:contentDescription="@null" android:src="@drawable/widget_dot_circle" android:tint="#FFC5C5C0" />
-      <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:ellipsize="end" android:gravity="center" android:maxLines="2" android:text="과학" android:textColor="#FF272A26" android:textSize="10sp" />
+      <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:ellipsize="end" android:gravity="center" android:maxLines="1" android:singleLine="true" android:text="과학" android:textColor="#FF272A26" android:textSize="10sp" />
     </LinearLayout>
     <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:gravity="center" android:orientation="vertical" android:padding="3dp">
       <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="5교시" android:textColor="#FF888780" android:textSize="9sp" />
       <ImageView android:layout_width="7dp" android:layout_height="7dp" android:layout_marginTop="5dp" android:layout_marginBottom="5dp" android:contentDescription="@null" android:src="@drawable/widget_dot_circle" android:tint="#FFC5C5C0" />
-      <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:ellipsize="end" android:gravity="center" android:maxLines="2" android:text="체육" android:textColor="#FF272A26" android:textSize="10sp" />
+      <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:ellipsize="end" android:gravity="center" android:maxLines="1" android:singleLine="true" android:text="체육" android:textColor="#FF272A26" android:textSize="10sp" />
     </LinearLayout>
     <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:background="@drawable/widget_chip_p8" android:gravity="center" android:orientation="vertical" android:padding="3dp">
       <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="6교시" android:textColor="#FF6F9163" android:textSize="9sp" />
       <ImageView android:layout_width="7dp" android:layout_height="7dp" android:layout_marginTop="5dp" android:layout_marginBottom="5dp" android:contentDescription="@null" android:src="@drawable/widget_dot_circle" android:tint="#FF4B719C" />
-      <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:ellipsize="end" android:gravity="center" android:maxLines="2" android:text="음악감.." android:textColor="#FF272A26" android:textSize="10sp" />
+      <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:ellipsize="end" android:gravity="center" android:maxLines="1" android:singleLine="true" android:text="음악.." android:textColor="#FF272A26" android:textSize="10sp" />
     </LinearLayout>
     <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:gravity="center" android:orientation="vertical" android:padding="3dp">
       <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="7교시" android:textColor="#FF888780" android:textSize="9sp" />
       <ImageView android:layout_width="7dp" android:layout_height="7dp" android:layout_marginTop="5dp" android:layout_marginBottom="5dp" android:contentDescription="@null" android:src="@drawable/widget_dot_circle" android:tint="#FFC5C5C0" />
-      <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:ellipsize="end" android:gravity="center" android:maxLines="2" android:text="생활.." android:textColor="#FF272A26" android:textSize="10sp" />
+      <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:ellipsize="end" android:gravity="center" android:maxLines="1" android:singleLine="true" android:text="생활.." android:textColor="#FF272A26" android:textSize="10sp" />
     </LinearLayout>
   </LinearLayout>
       </LinearLayout>
