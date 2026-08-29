@@ -14,7 +14,7 @@ import {
 import AppPopupModal from '../components/common/AppPopupModal';
 import Feather from '@expo/vector-icons/Feather';
 import { colors } from '../styles/colors';
-import { TIMETABLE_SUBJECT_COLORS } from '../styles/colors';
+import { TIMETABLE_SUBJECT_COLORS, timetableSubjectCellStyle } from '../styles/colors';
 import { getNormalize } from '../styles/mypage.style';
 import { createTimetableViewStyles } from '../src/screens/timetable/timetable.style';
 import { getMaxPeriodFromTimetableKeys } from '../src/screens/timetable/periodUtils';
@@ -162,7 +162,7 @@ const TimetableView = ({
                     const cellStyle = [
                       styles.classCell,
                       content ? styles.classCellFilled : null,
-                      content ? { backgroundColor: getCellColor(content) } : null,
+                      content ? timetableSubjectCellStyle(getCellColor(content)) : null,
                     ];
                     return (
                       <View key={`${day}-${period}`} style={cellStyle}>

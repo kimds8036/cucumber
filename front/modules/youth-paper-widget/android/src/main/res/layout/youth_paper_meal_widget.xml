@@ -1,11 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- preview(youth_paper_preview_meal)와 동일 규격 — initial은 meal_initial 사용 -->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
   android:id="@+id/meal_root"
   android:layout_width="match_parent"
   android:layout_height="match_parent"
   android:background="#FFFFFF"
   android:orientation="vertical"
-  android:padding="10dp">
+  android:padding="8dp">
 
   <TextView
     android:id="@+id/meal_empty"
@@ -14,7 +15,7 @@
     android:gravity="center"
     android:text="급식 정보 없음"
     android:textColor="#FF888780"
-    android:textSize="12sp"
+    android:textSize="13sp"
     android:visibility="gone" />
 
   <LinearLayout
@@ -27,14 +28,15 @@
       android:layout_width="wrap_content"
       android:layout_height="match_parent"
       android:gravity="center_horizontal"
-      android:orientation="vertical">
+      android:minWidth="28dp"
+      android:orientation="vertical"
+      android:paddingRight="0dp">
 
-      <TextView
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="밥"
-        android:textColor="#80272A26"
-        android:textSize="11sp" />
+      <ImageView
+        android:layout_width="16dp"
+        android:layout_height="16dp"
+        android:contentDescription="@null"
+        android:src="@drawable/ic_meal_rice" />
 
       <TextView
         android:id="@+id/meal_date"
@@ -44,7 +46,7 @@
         android:gravity="center"
         android:maxLines="1"
         android:textColor="#80272A26"
-        android:textSize="9sp" />
+        android:textSize="10sp" />
 
       <TextView
         android:id="@+id/meal_badge"
@@ -57,14 +59,14 @@
         android:paddingRight="6dp"
         android:paddingBottom="3dp"
         android:textColor="#FF6F9163"
-        android:textSize="11sp" />
+        android:textSize="12sp" />
     </LinearLayout>
 
     <TextView
       android:layout_width="1dp"
       android:layout_height="match_parent"
       android:layout_marginLeft="6dp"
-      android:layout_marginRight="6dp"
+      android:layout_marginRight="8dp"
       android:background="#FFE6E6E6"
       android:text="" />
 
@@ -72,6 +74,7 @@
       android:layout_width="0dp"
       android:layout_height="match_parent"
       android:layout_weight="1"
+      android:gravity="top"
       android:orientation="vertical">
 
       <TextView
@@ -80,33 +83,15 @@
         android:layout_height="wrap_content"
         android:text="정보 없음"
         android:textColor="#FF272A26"
-        android:textSize="11sp"
+        android:textSize="12sp"
         android:visibility="gone" />
 
-      <LinearLayout
-        android:id="@+id/meal_menus"
-        android:layout_width="match_parent"
-        android:layout_height="0dp"
-        android:layout_weight="1"
-        android:orientation="vertical">
-
-        <TextView android:id="@+id/meal_menu_1" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginBottom="2dp" android:ellipsize="end" android:maxLines="1" android:textColor="#FF272A26" android:textSize="11sp" />
-        <TextView android:id="@+id/meal_menu_2" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginBottom="2dp" android:ellipsize="end" android:maxLines="1" android:textColor="#FF272A26" android:textSize="11sp" />
-        <TextView android:id="@+id/meal_menu_3" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginBottom="2dp" android:ellipsize="end" android:maxLines="1" android:textColor="#FF272A26" android:textSize="11sp" />
-        <TextView android:id="@+id/meal_menu_4" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginBottom="2dp" android:ellipsize="end" android:maxLines="1" android:textColor="#FF272A26" android:textSize="11sp" />
-        <TextView android:id="@+id/meal_menu_5" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginBottom="2dp" android:ellipsize="end" android:maxLines="1" android:textColor="#FF272A26" android:textSize="11sp" />
-        <TextView android:id="@+id/meal_menu_6" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginBottom="2dp" android:ellipsize="end" android:maxLines="1" android:textColor="#FF272A26" android:textSize="11sp" />
-      </LinearLayout>
-
-      <TextView
-        android:id="@+id/meal_more"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:gravity="end"
-        android:text="더보기"
-        android:textColor="#4D272A26"
-        android:textSize="10sp"
-        android:visibility="gone" />
+      <TextView android:id="@+id/meal_menu_1" android:layout_width="match_parent" android:layout_height="wrap_content" android:paddingTop="1dp" android:paddingBottom="1dp" android:ellipsize="end" android:maxLines="1" android:textColor="#FF272A26" android:textSize="12sp" />
+      <TextView android:id="@+id/meal_menu_2" android:layout_width="match_parent" android:layout_height="wrap_content" android:paddingTop="1dp" android:paddingBottom="1dp" android:ellipsize="end" android:maxLines="1" android:textColor="#FF272A26" android:textSize="12sp" />
+      <TextView android:id="@+id/meal_menu_3" android:layout_width="match_parent" android:layout_height="wrap_content" android:paddingTop="1dp" android:paddingBottom="1dp" android:ellipsize="end" android:maxLines="1" android:textColor="#FF272A26" android:textSize="12sp" />
+      <TextView android:id="@+id/meal_menu_4" android:layout_width="match_parent" android:layout_height="wrap_content" android:paddingTop="1dp" android:paddingBottom="1dp" android:ellipsize="end" android:maxLines="1" android:textColor="#FF272A26" android:textSize="12sp" />
+      <TextView android:id="@+id/meal_menu_5" android:layout_width="match_parent" android:layout_height="wrap_content" android:paddingTop="1dp" android:paddingBottom="1dp" android:ellipsize="end" android:maxLines="1" android:textColor="#FF272A26" android:textSize="12sp" />
+      <TextView android:id="@+id/meal_menu_6" android:layout_width="match_parent" android:layout_height="wrap_content" android:paddingTop="1dp" android:paddingBottom="1dp" android:ellipsize="end" android:maxLines="1" android:textColor="#FF272A26" android:textSize="12sp" />
     </LinearLayout>
   </LinearLayout>
 </LinearLayout>

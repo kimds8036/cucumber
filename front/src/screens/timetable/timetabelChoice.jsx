@@ -18,7 +18,7 @@ import styles, {
 } from './timetable.style';
 import { getNormalize } from '../../../styles/mypage.style';
 import { getMaxPeriodFromTimetableKeys } from './periodUtils';
-import { colors, TIMETABLE_SUBJECT_COLORS } from '../../../styles/colors';
+import { colors, TIMETABLE_SUBJECT_COLORS, timetableSubjectCellStyle } from '../../../styles/colors';
 import { api } from '../../../utils/api';
 import AppPopupModal from '../../../components/common/AppPopupModal';
 import { saveTimetableLocalAndSync } from '../../../utils/timetableSync';
@@ -185,7 +185,7 @@ function TimetablePreview({ timetable, loading }) {
                       pv.choicePreviewClassCell,
                       content ? pv.choicePreviewClassCellFilled : null,
                       content
-                        ? { backgroundColor: getCellColor(content) }
+                        ? timetableSubjectCellStyle(getCellColor(content))
                         : null,
                     ];
                     return (
