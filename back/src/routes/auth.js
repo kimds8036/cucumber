@@ -69,7 +69,7 @@ import {
   revokeRefreshToken,
   revokeAllRefreshTokens,
 } from '../services/refreshToken.service.js';
-import { incrementTokenVersion } from '../services/session.service.js';
+import { incrementTokenVersion, getUserTokenVersion } from '../services/session.service.js';
 import { getReverificationBlockCode } from '../services/reverification.service.js';
 import { getUserReverificationPayload } from '../services/userSchoolTransition.service.js';
 import { scheduleSchoolTermSync } from '../services/schoolTerms.service.js';
@@ -420,6 +420,7 @@ router.patch('/me/password', authenticate, validate(updatePasswordValidators), a
     const userId = req.user.userId;
     const currentPassword = String(req.body?.currentPassword ?? '');
     const newPassword = String(req.body?.newPassword ?? '');
+    const deviceId = String(req.body?.deviceId ?? '').trim();
 
     if (!currentPassword || !newPassword) {
       return res.status(400).json({
@@ -433,9 +434,15 @@ router.patch('/me/password', authenticate, validate(updatePasswordValidators), a
         message: '비밀번호는 영문과 숫자를 포함하여 최소 8자 이상이어야 합니다.',
       });
     }
+    if (!deviceId) {
+      return res.status(400).json({
+        success: false,
+        message: 'deviceId가 필요합니다.',
+      });
+    }
 
     const [rows] = await pool.execute(
-      `SELECT password
+      `SELECT password, username
        FROM users
        WHERE id = ? AND is_deleted = FALSE`,
       [userId]
@@ -460,12 +467,32 @@ router.patch('/me/password', authenticate, validate(updatePasswordValidators), a
       `UPDATE users SET password = ? WHERE id = ?`,
       [hashed, userId]
     );
+    // 다른 기기 세션은 끊고, 현재 기기만 새 토큰으로 자동로그인 유지
     await incrementTokenVersion(userId);
     await revokeAllRefreshTokens(userId);
+
+    const tokenVersion = await getUserTokenVersion(userId);
+    const token = createUserAccessToken({
+      userId,
+      username: rows[0].username,
+      tokenVersion,
+    });
+    const refreshToken = generateRefreshTokenPlain();
+    await storeRefreshToken({
+      userId,
+      deviceId,
+      plainToken: refreshToken,
+      tokenVersion,
+    });
 
     return res.json({
       success: true,
       message: '비밀번호가 변경되었습니다.',
+      data: {
+        token,
+        refreshToken,
+        deviceId,
+      },
     });
   } catch (error) {
     console.error('비밀번호 변경 오류:', error);

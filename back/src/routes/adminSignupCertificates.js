@@ -4,6 +4,7 @@ import pool from '../config/database.js';
 import { requireAdminApi, isAdminUser } from '../middleware/adminAuth.js';
 import { validate } from '../middleware/validate.js';
 import { getNowForDB } from '../utils/dateUtils.js';
+import { enqueueNotification } from '../utils/notificationWorker.js';
 
 const router = express.Router();
 
@@ -158,6 +159,33 @@ router.patch('/:id', requireAdminApi, validate(reviewValidators), async (req, re
     });
 
     await connection.commit();
+
+    const targetUserId = Number(submission.user_id);
+    if (Number.isFinite(targetUserId) && targetUserId > 0) {
+      if (status === 'approved') {
+        await enqueueNotification({
+          userId: targetUserId,
+          type: 'system',
+          category: 'system',
+          title: '학생 인증이 완료되었습니다',
+          body: 'Youth Paper를 이용할 수 있어요.',
+          relatedType: 'student_verification_approved',
+          relatedId: submissionId,
+          sourceId: `certificate_approved_${submissionId}`,
+        });
+      } else {
+        await enqueueNotification({
+          userId: targetUserId,
+          type: 'system',
+          category: 'system',
+          title: '재학증명서가 거절되었습니다',
+          body: '사유를 확인하고 다시 제출해 주세요.',
+          relatedType: 'student_verification_rejected',
+          relatedId: submissionId,
+          sourceId: `certificate_rejected_${submissionId}`,
+        });
+      }
+    }
 
     return res.json({
       success: true,

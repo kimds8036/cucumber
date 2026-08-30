@@ -70,7 +70,6 @@ const Login = ({ navigation }) => {
 
   const [id, setId] = useState('');
   const [password, setPassword] = useState('');
-  const [rememberMe, setRememberMe] = useState(false);
   // 부트 스플래시 구간에서 스켈레톤 대신 바로 로그인 UI 표시
   const [screenReady] = useState(true);
   const [policyModal, setPolicyModal] = useState({
@@ -237,27 +236,7 @@ const Login = ({ navigation }) => {
               />
             </View>
 
-            {/* 자동 로그인 체크박스 — 체크 시에만 다음 부팅에서 자동로그인 */}
-            <TouchableOpacity
-              style={styles.checkboxContainer}
-              onPress={() => setRememberMe(!rememberMe)}
-              activeOpacity={0.7}
-            >
-              <View
-                style={[styles.checkbox, rememberMe && styles.checkboxChecked]}
-              >
-                {rememberMe && (
-                  <Ionicons
-                    name="checkmark"
-                    size={normalize(14)}
-                    color={colors.background}
-                  />
-                )}
-              </View>
-              <Text style={styles.checkboxText}>자동 로그인</Text>
-            </TouchableOpacity>
-
-            {/* 로그인 버튼 */}
+            {/* 로그인 버튼 — 토큰은 항상 영속 저장(자동 로그인) */}
             <TouchableOpacity
               style={{
                 width: '95%',
@@ -306,10 +285,10 @@ const Login = ({ navigation }) => {
                   });
 
                   if (token) {
-                    debugLogin('토큰 저장 시작', { persist: rememberMe });
-                    await setAuthToken(token, { persist: rememberMe });
+                    debugLogin('토큰 저장 시작', { persist: true });
+                    await setAuthToken(token, { persist: true });
                     if (refreshToken) {
-                      await setRefreshToken(refreshToken, { persist: rememberMe });
+                      await setRefreshToken(refreshToken, { persist: true });
                     }
                     debugLogin('토큰 저장 완료');
                   }

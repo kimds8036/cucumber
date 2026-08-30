@@ -31,7 +31,7 @@ const Info = ({ navigation }) => {
       subtitle: `v${appVersion}`,
       isStatic: true,
     },
-    { key: 'contact', title: '문의하기' },
+    { key: 'contact', title: '문의하기', subtitle: '내 문의 · 답변 확인' },
     { key: 'notice', title: '공지사항' },
     //{ key: 'user-guide', title: 'Youth Paper 사용 가이드' },
     { key: 'community-guide', title: '커뮤니티 가이드' },
@@ -44,7 +44,7 @@ const Info = ({ navigation }) => {
   const handleMenuPress = (menu) => {
     if (menu.isStatic) return;
     if (menu.key === 'contact') {
-      navigation.navigate('InAppInquiry');
+      navigation.navigate('MyInquiries');
       return;
     }
     if (menu.key === 'notice') {

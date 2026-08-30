@@ -28,6 +28,12 @@ export function resolveFcmTargetScreen(relatedType) {
       return 'FriendRequests';
     case 'timer_poke':
       return 'Timer';
+    case 'inquiry':
+      return 'InquiryDetail';
+    case 'student_verification_approved':
+      return 'Main';
+    case 'student_verification_rejected':
+      return 'Notifications';
     default:
       return 'Notifications';
   }

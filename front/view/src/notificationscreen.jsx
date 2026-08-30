@@ -820,6 +820,22 @@ const NotificationScreen = ({ navigation }) => {
 
     // 4) 시스템 알림 (예: 인기 게시글 등록 등)
     if (n.category === 'system') {
+      if (n.relatedType === 'inquiry' && n.relatedId) {
+        preserveListOnNextFocusRef.current = true;
+        navigation?.navigate('InquiryDetail', { inquiryId: n.relatedId });
+        return;
+      }
+      if (n.relatedType === 'student_verification_approved') {
+        preserveListOnNextFocusRef.current = false;
+        popToMainRoot(navigation);
+        return;
+      }
+      if (n.relatedType === 'student_verification_rejected') {
+        // 거절 게이트는 Auth 상태가 담당 — 알림함에서 나가면 거절 화면으로 복귀
+        preserveListOnNextFocusRef.current = false;
+        popToMainRoot(navigation);
+        return;
+      }
       if (n.relatedType === 'post' && n.relatedId) {
         preserveListOnNextFocusRef.current = true;
         navigation?.navigate('BoardDetail', {

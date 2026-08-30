@@ -41,6 +41,8 @@ import FriendsScreen from './view/src/friendsscreen';
 import HiddenPostsAppeals from './view/src/hiddenPostsAppeals';
 import Inquiry from './view/src/Inquiry';
 import InAppInquiry from './view/src/InAppInquiry';
+import MyInquiries from './view/src/MyInquiries';
+import InquiryDetail from './view/src/InquiryDetail';
 import Info from './view/src/info';
 // import TestLogin from './view/src/TestLogin'; // 테스트 로그인 화면 — 운영 진입에서는 미사용
 import Announcement from './view/src/announcement';
@@ -243,6 +245,8 @@ function MainStack({ initialRouteName = 'Main' }) {
       <Stack.Screen name="HiddenPostsAppeals" component={HiddenPostsAppeals} />
       <Stack.Screen name="Inquiry" component={Inquiry} />
       <Stack.Screen name="InAppInquiry" component={InAppInquiry} />
+      <Stack.Screen name="MyInquiries" component={MyInquiries} />
+      <Stack.Screen name="InquiryDetail" component={InquiryDetail} />
       <Stack.Screen name="Info" component={Info} />
       <Stack.Screen name="Announcement" component={Announcement} />
       <Stack.Screen
@@ -352,15 +356,34 @@ function RootNavigator() {
     if (isExpoGo) return undefined;
 
     let cleanup;
+    const handleVerificationPush = (remoteMessage) => {
+      const relatedType = String(remoteMessage?.data?.relatedType || '').trim();
+      if (
+        relatedType === 'student_verification_approved' ||
+        relatedType === 'student_verification_rejected'
+      ) {
+        refreshStudentVerification();
+      }
+    };
+
     const handleNotificationOpened = (remoteMessage) => {
+      handleVerificationPush(remoteMessage);
       const data = remoteMessage?.data || {};
+      const relatedType = String(data?.relatedType || '').trim();
+      // 검수 게이트 중에는 MainStack 이 없어 navigate 생략 — 상태 갱신만으로 진입/거절 화면 전환
+      if (
+        relatedType === 'student_verification_approved' ||
+        relatedType === 'student_verification_rejected'
+      ) {
+        return;
+      }
       if (!navigationRef.isReady()) return;
       const { name, params } = resolvePushNavigation(data, remoteMessage);
       if (!name) return;
       navigateViaMainEntry({
         name,
         params,
-        relatedType: String(data?.relatedType || '').trim(),
+        relatedType,
       });
     };
 
@@ -379,6 +402,7 @@ function RootNavigator() {
       await initFCM();
       cleanup = setupFCMHandlers({
         onNotificationOpened: handleNotificationOpened,
+        onForegroundMessage: handleVerificationPush,
       });
 
       const initialMessage = await getInitialFCMNotification();
@@ -391,7 +415,7 @@ function RootNavigator() {
     return () => {
       if (typeof cleanup === 'function') cleanup();
     };
-  }, [isLoggedIn]);
+  }, [isLoggedIn, refreshStudentVerification]);
 
   if (!authHydrated) return null;
 

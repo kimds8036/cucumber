@@ -22,6 +22,8 @@ import * as ImagePicker from 'expo-image-picker';
 import Constants from 'expo-constants';
 import { colors, fonts, fontSizes } from '../../styles/colors';
 import { api } from '../../utils/api';
+import MyInquiries from './MyInquiries';
+import InquiryDetail from './InquiryDetail';
 
 const MAX_IMAGES = 3;
 
@@ -59,6 +61,9 @@ const InAppInquiry = ({ navigation, fullScreenOverlay = false }) => {
   const estimatedFooter =
     normalize(12) + normalize(50) + normalize(12) + (fullScreenOverlay ? 0 : insets.bottom);
   const [footerHeight, setFooterHeight] = useState(estimatedFooter);
+  /** fullScreenOverlay 전용: compose | list | detail */
+  const [overlayView, setOverlayView] = useState('compose');
+  const [overlayDetailId, setOverlayDetailId] = useState(null);
 
   const bottomOffset = Math.max(footerHeight, estimatedFooter);
 
@@ -154,7 +159,7 @@ const InAppInquiry = ({ navigation, fullScreenOverlay = false }) => {
       setResultModal({
         visible: true,
         message:
-          '문의가 접수되었습니다.\n답변은 입력하신 이메일로 안내드립니다.',
+          '문의가 접수되었습니다.\n답변은 앱 알림과 「내 문의」에서 확인하실 수 있습니다.',
       });
     } catch (error) {
       const resp = error?.response;
@@ -215,7 +220,7 @@ const InAppInquiry = ({ navigation, fullScreenOverlay = false }) => {
         </Text>
       </View>
 
-      <FieldLabel text="답변 받을 이메일" required styles={styles} />
+      <FieldLabel text="연락용 이메일" required styles={styles} />
       <TextInput
         style={styles.input}
         value={contactEmail}
@@ -227,6 +232,9 @@ const InAppInquiry = ({ navigation, fullScreenOverlay = false }) => {
         autoCorrect={false}
         maxLength={255}
       />
+      <Text style={styles.emailHint}>
+        답변은 앱 알림과 「내 문의」에서 확인하실 수 있습니다.
+      </Text>
 
       <View style={styles.imageHeaderRow}>
         <Text style={styles.sectionLabelText}>이미지 첨부</Text>
@@ -262,6 +270,42 @@ const InAppInquiry = ({ navigation, fullScreenOverlay = false }) => {
     </>
   );
 
+  const openMyInquiries = () => {
+    if (fullScreenOverlay) {
+      setOverlayView('list');
+      return;
+    }
+    navigation?.navigate?.('MyInquiries');
+  };
+
+  if (fullScreenOverlay && overlayView === 'list') {
+    return (
+      <MyInquiries
+        fullScreenOverlay
+        navigation={{
+          goBack: () => setOverlayView('compose'),
+        }}
+        onOpenCompose={() => setOverlayView('compose')}
+        onOpenDetail={(id) => {
+          setOverlayDetailId(id);
+          setOverlayView('detail');
+        }}
+      />
+    );
+  }
+
+  if (fullScreenOverlay && overlayView === 'detail') {
+    return (
+      <InquiryDetail
+        fullScreenOverlay
+        inquiryId={overlayDetailId}
+        navigation={{
+          goBack: () => setOverlayView('list'),
+        }}
+      />
+    );
+  }
+
   return (
     <Root
       style={styles.container}
@@ -282,6 +326,13 @@ const InAppInquiry = ({ navigation, fullScreenOverlay = false }) => {
             />
           </TouchableOpacity>
           <Text style={styles.headerTitle}>문의하기</Text>
+          <TouchableOpacity
+            style={styles.headerRightBtn}
+            onPress={openMyInquiries}
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          >
+            <Text style={styles.headerRightText}>내 문의</Text>
+          </TouchableOpacity>
         </View>
       </View>
 
@@ -399,6 +450,25 @@ const createStyles = (width, normalize) => ({
     fontSize: normalize(fontSizes.heading),
     fontFamily: fonts.bold,
     color: colors.textPrimary,
+  },
+  headerRightBtn: {
+    position: 'absolute',
+    right: 0,
+    paddingVertical: normalize(8),
+    paddingHorizontal: normalize(4),
+  },
+  headerRightText: {
+    fontSize: normalize(fontSizes.md),
+    fontFamily: fonts.bold,
+    color: colors.primary,
+  },
+  emailHint: {
+    marginTop: normalize(6),
+    marginLeft: normalize(4),
+    fontSize: normalize(fontSizes.sm),
+    fontFamily: fonts.regular,
+    color: colors.textSecondary,
+    lineHeight: normalize(18),
   },
   body: {
     flex: 1,
