@@ -86,12 +86,25 @@
         android:textSize="12sp"
         android:visibility="gone" />
 
-      <TextView android:id="@+id/meal_menu_1" android:layout_width="match_parent" android:layout_height="wrap_content" android:paddingTop="1dp" android:paddingBottom="1dp" android:ellipsize="end" android:maxLines="1" android:textColor="#FF272A26" android:textSize="12sp" />
-      <TextView android:id="@+id/meal_menu_2" android:layout_width="match_parent" android:layout_height="wrap_content" android:paddingTop="1dp" android:paddingBottom="1dp" android:ellipsize="end" android:maxLines="1" android:textColor="#FF272A26" android:textSize="12sp" />
-      <TextView android:id="@+id/meal_menu_3" android:layout_width="match_parent" android:layout_height="wrap_content" android:paddingTop="1dp" android:paddingBottom="1dp" android:ellipsize="end" android:maxLines="1" android:textColor="#FF272A26" android:textSize="12sp" />
-      <TextView android:id="@+id/meal_menu_4" android:layout_width="match_parent" android:layout_height="wrap_content" android:paddingTop="1dp" android:paddingBottom="1dp" android:ellipsize="end" android:maxLines="1" android:textColor="#FF272A26" android:textSize="12sp" />
-      <TextView android:id="@+id/meal_menu_5" android:layout_width="match_parent" android:layout_height="wrap_content" android:paddingTop="1dp" android:paddingBottom="1dp" android:ellipsize="end" android:maxLines="1" android:textColor="#FF272A26" android:textSize="12sp" />
-      <TextView android:id="@+id/meal_menu_6" android:layout_width="match_parent" android:layout_height="wrap_content" android:paddingTop="1dp" android:paddingBottom="1dp" android:ellipsize="end" android:maxLines="1" android:textColor="#FF272A26" android:textSize="12sp" />
+      <TextView android:id="@+id/meal_menu_1" android:layout_width="match_parent" android:layout_height="wrap_content" android:ellipsize="end" android:includeFontPadding="false" android:maxLines="1" android:textColor="#FF272A26" android:textSize="11sp" />
+      <TextView android:id="@+id/meal_menu_2" android:layout_width="match_parent" android:layout_height="wrap_content" android:ellipsize="end" android:includeFontPadding="false" android:maxLines="1" android:textColor="#FF272A26" android:textSize="11sp" />
+      <TextView android:id="@+id/meal_menu_3" android:layout_width="match_parent" android:layout_height="wrap_content" android:ellipsize="end" android:includeFontPadding="false" android:maxLines="1" android:textColor="#FF272A26" android:textSize="11sp" />
+      <TextView android:id="@+id/meal_menu_4" android:layout_width="match_parent" android:layout_height="wrap_content" android:ellipsize="end" android:includeFontPadding="false" android:maxLines="1" android:textColor="#FF272A26" android:textSize="11sp" />
+      <TextView android:id="@+id/meal_menu_5" android:layout_width="match_parent" android:layout_height="wrap_content" android:ellipsize="end" android:includeFontPadding="false" android:maxLines="1" android:textColor="#FF272A26" android:textSize="11sp" />
+      <TextView android:id="@+id/meal_menu_6" android:layout_width="match_parent" android:layout_height="wrap_content" android:ellipsize="end" android:includeFontPadding="false" android:maxLines="1" android:textColor="#FF272A26" android:textSize="11sp" />
+      <TextView android:id="@+id/meal_menu_7" android:layout_width="match_parent" android:layout_height="wrap_content" android:ellipsize="end" android:includeFontPadding="false" android:maxLines="1" android:textColor="#FF272A26" android:textSize="11sp" />
+      <TextView android:id="@+id/meal_menu_8" android:layout_width="match_parent" android:layout_height="wrap_content" android:ellipsize="end" android:includeFontPadding="false" android:maxLines="1" android:textColor="#FF272A26" android:textSize="11sp" />
+      <TextView android:id="@+id/meal_menu_9" android:layout_width="match_parent" android:layout_height="wrap_content" android:ellipsize="end" android:includeFontPadding="false" android:maxLines="1" android:textColor="#FF272A26" android:textSize="11sp" />
+      <TextView
+        android:id="@+id/meal_more"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:includeFontPadding="false"
+        android:maxLines="1"
+        android:text=".."
+        android:textColor="#4D272A26"
+        android:textSize="10sp"
+        android:visibility="gone" />
     </LinearLayout>
   </LinearLayout>
 </LinearLayout>

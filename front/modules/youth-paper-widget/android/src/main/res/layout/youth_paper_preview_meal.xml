@@ -58,11 +58,15 @@
     android:gravity="top"
     android:orientation="vertical">
 
-    <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:paddingTop="1dp" android:paddingBottom="1dp" android:maxLines="1" android:text="현미밥" android:textColor="#FF272A26" android:textSize="12sp" />
-    <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:paddingTop="1dp" android:paddingBottom="1dp" android:maxLines="1" android:text="미역국" android:textColor="#FF272A26" android:textSize="12sp" />
-    <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:paddingTop="1dp" android:paddingBottom="1dp" android:maxLines="1" android:text="돼지불고기" android:textColor="#FF272A26" android:textSize="12sp" />
-    <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:paddingTop="1dp" android:paddingBottom="1dp" android:maxLines="1" android:text="배추김치" android:textColor="#FF272A26" android:textSize="12sp" />
-    <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:paddingTop="1dp" android:paddingBottom="1dp" android:maxLines="1" android:text="오징어튀김" android:textColor="#FF272A26" android:textSize="12sp" />
-    <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:paddingTop="1dp" android:paddingBottom="1dp" android:maxLines="1" android:text="바베큐양념치킨찜.." android:textColor="#FF272A26" android:textSize="12sp" />
+    <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:includeFontPadding="false" android:maxLines="1" android:text="현미밥" android:textColor="#FF272A26" android:textSize="11sp" />
+    <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:includeFontPadding="false" android:maxLines="1" android:text="미역국" android:textColor="#FF272A26" android:textSize="11sp" />
+    <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:includeFontPadding="false" android:maxLines="1" android:text="돼지불고기" android:textColor="#FF272A26" android:textSize="11sp" />
+    <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:includeFontPadding="false" android:maxLines="1" android:text="배추김치" android:textColor="#FF272A26" android:textSize="11sp" />
+    <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:includeFontPadding="false" android:maxLines="1" android:text="오징어튀김" android:textColor="#FF272A26" android:textSize="11sp" />
+    <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:includeFontPadding="false" android:maxLines="1" android:text="바베큐양념치킨찜.." android:textColor="#FF272A26" android:textSize="11sp" />
+    <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:includeFontPadding="false" android:maxLines="1" android:text="요구르트" android:textColor="#FF272A26" android:textSize="11sp" />
+    <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:includeFontPadding="false" android:maxLines="1" android:text="샐러드" android:textColor="#FF272A26" android:textSize="11sp" />
+    <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:includeFontPadding="false" android:maxLines="1" android:text="과일" android:textColor="#FF272A26" android:textSize="11sp" />
+    <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:includeFontPadding="false" android:maxLines="1" android:text=".." android:textColor="#4D272A26" android:textSize="10sp" />
   </LinearLayout>
 </LinearLayout>
