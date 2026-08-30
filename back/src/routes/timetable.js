@@ -41,10 +41,6 @@ const updateTimetableValidators = [
 const NEIS_MIDDLE_URL = 'https://open.neis.go.kr/hub/misTimetable';
 const NEIS_HIGH_URL = 'https://open.neis.go.kr/hub/hisTimetable';
 const NEIS_API_KEY = process.env.NEIS_API_KEY || process.env.NEIS_KEY || '';
-const BASE_TTL_MS = 24 * 60 * 60 * 1000;
-/** 반 매칭·SEM 로직 변경 시 bump — 잘못된 NEIS 캐시 무효화 */
-const TIMETABLE_CACHE_VERSION = 'v3';
-const baseCache = new Map();
 const DAYS = ['월', '화', '수', '목', '금'];
 
 function parseJsonColumn(raw) {
@@ -279,10 +275,6 @@ function mergeTimetable(base = {}, override = {}) {
   return merged;
 }
 
-function getCacheKey(user, schoolLevel, weekKey) {
-  return `${user.school_id}:${user.grade}:${schoolLevel}:${weekKey}:${TIMETABLE_CACHE_VERSION}`;
-}
-
 function normalizeNeisRowArray(rowField) {
   if (!rowField) return [];
   return Array.isArray(rowField) ? rowField : [rowField];
@@ -327,14 +319,9 @@ async function fetchBaseTimetableByUser(user) {
     user.school_type,
     user.school_name,
   );
-  const { fromYmd, toYmd, weekKey } = getWeekRange();
+  const { fromYmd, toYmd } = getWeekRange();
   const { resolveNeisSemester } = await import('../services/schoolSemester.service.js');
   const preferredSem = await resolveNeisSemester(user.school_id);
-  const key = `${getCacheKey(user, schoolLevel, weekKey)}:sem${preferredSem}`;
-  const cached = baseCache.get(key);
-  if (cached && Date.now() - cached.ts < BASE_TTL_MS) {
-    return { timetable: cached.timetable, subjects: cached.subjects || [] };
-  }
 
   if (!NEIS_API_KEY || !user.edu_office_code || !user.admin_standard_code || !user.grade) {
     return { timetable: {}, subjects: [] };
@@ -372,10 +359,6 @@ async function fetchBaseTimetableByUser(user) {
   const subjects = extractSubjectsFromRows(rows);
   const gridRows = filterRowsForUserTimetable(rows, user.class_number);
   const timetable = parseNeisRows(gridRows);
-  const empty = Object.keys(timetable).length === 0 && subjects.length === 0;
-  // 빈 결과는 ~15분만 캐시 (NEIS가 늦게 올라오는 경우 대비)
-  const ts = empty ? Date.now() - (BASE_TTL_MS - 15 * 60 * 1000) : Date.now();
-  baseCache.set(key, { ts, timetable, subjects });
   return { timetable, subjects };
 }
 
