@@ -608,7 +608,12 @@ struct TimetableWidgetView: View {
   }
 
   private var isMessageOnlyMedium: Bool {
-    entry.status == .noClass || entry.status == .afterSchool
+    switch entry.status {
+    case .noClass, .afterSchool, .needsPeriodSettings, .needsTimetableData:
+      true
+    default:
+      false
+    }
   }
 
   private var mediumView: some View {
@@ -622,7 +627,7 @@ struct TimetableWidgetView: View {
     .padding(widgetPad)
   }
 
-  /// 과목 없는 날·하교: 배지·하단 리스트 없이 날짜 + 본문 중앙
+  /// 설정/데이터 없음·과목 없는 날·하교: 배지·하단 리스트 없이 날짜 + 본문 중앙
   private var mediumMessageOnlyView: some View {
     VStack(spacing: 0) {
       HStack {
