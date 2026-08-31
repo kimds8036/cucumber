@@ -162,7 +162,7 @@ const Inquiry = ({ navigation, route }) => {
           </Text>
         </View>
 
-        {/* <FieldLabel text="답변 받을 이메일" styles={styles} />
+        <FieldLabel text="답변 받을 이메일" styles={styles} />
         <TextInput
           style={styles.input}
           value={contactEmail}
@@ -173,7 +173,7 @@ const Inquiry = ({ navigation, route }) => {
           autoCapitalize="none"
           autoCorrect={false}
           maxLength={255}
-        /> */}
+        />
 
         <Text style={[styles.helperText, { marginTop: normalize(16) }]}>
           앱 버전: {appVersion || '-'} · {deviceInfo}
