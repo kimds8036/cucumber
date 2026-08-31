@@ -5,7 +5,6 @@ private let widgetPad: CGFloat = 0
 private let textPrimary = Color(hex: "272A26")
 private let textSecondary = Color(hex: "272A26", opacity: 0.5)
 private let inactiveBase = Color(hex: "272A26")
-
 /// `TIMETABLE_SUBJECT_COLORS` (styles/colors.js)
 private let subjectPaletteHex: [String] = [
   "FFBCBC", // 레드
@@ -659,7 +658,7 @@ struct TimetableWidgetView: View {
         .lineLimit(1)
         .truncationMode(.tail)
         .padding(.leading, 14)
-        .padding(.trailing, 4)
+        .padding(.vertical, 10)
         .frame(maxWidth: .infinity, alignment: .leading)
 
       Spacer(minLength: 0)
@@ -669,7 +668,7 @@ struct TimetableWidgetView: View {
           Rectangle()
             .fill(inactiveBase.opacity(0.08))
             .frame(height: 1)
-            .padding(.bottom, 10)
+            .padding(.bottom, 4)
           HStack(spacing: 0) {
             ForEach(displayTodayPeriods) { period in
               periodColumn(period)
@@ -732,12 +731,11 @@ struct TimetableWidgetView: View {
       Text(display)
         .font(.system(size: 10, weight: .regular))
         .foregroundColor(textPrimary)
-        .lineLimit(2)
+        .lineLimit(1)
         .truncationMode(.tail)
         .multilineTextAlignment(.center)
     }
     .padding(.horizontal, 3)
-    .padding(.vertical, 3)
     .frame(maxWidth: .infinity, maxHeight: .infinity)
     .background(RoundedRectangle(cornerRadius: 8, style: .continuous).fill(bg))
   }
