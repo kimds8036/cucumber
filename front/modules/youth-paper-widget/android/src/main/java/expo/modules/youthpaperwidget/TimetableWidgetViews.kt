@@ -44,7 +44,10 @@ object TimetableWidgetViews {
 
   private fun fillMedium(context: Context, views: RemoteViews, entry: TimetableEntry) {
     val messageOnly =
-      entry.status is TimetableStatus.NoClass || entry.status is TimetableStatus.AfterSchool
+      entry.status is TimetableStatus.NoClass ||
+        entry.status is TimetableStatus.AfterSchool ||
+        entry.status is TimetableStatus.NeedsPeriodSettings ||
+        entry.status is TimetableStatus.NeedsTimetableData
     if (messageOnly) {
       WidgetRes.visible(views, context, "medium_message", true)
       WidgetRes.visible(views, context, "medium_standard", false)
