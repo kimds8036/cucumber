@@ -60,6 +60,7 @@ export const colors = {
   primaryLight30: 'rgba(166,218,149, 0.3)', // 30%
   primaryLight20: 'rgba(166,218,149, 0.2)', // 20%
   primaryLight10: 'rgba(166,218,149, 0.1)', // 10%
+  primaryLight5: 'rgba(166,218,149, 0.05)', // 5%
 
   shadowLight: 'rgba(0, 0, 0, 0.1)', // 밝은 그림자
   shadowMedium: 'rgba(0, 0, 0, 0.2)', // 중간 그림자

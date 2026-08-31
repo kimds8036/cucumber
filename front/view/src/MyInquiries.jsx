@@ -11,18 +11,32 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
 import Ionicons from '@expo/vector-icons/Ionicons';
+import FontAwesome5 from '@expo/vector-icons/FontAwesome5';
 import SubHeader from '../frame/subHeader';
 import { colors, fonts, fontSizes } from '../../styles/colors';
+import { shadow } from '../../styles/tokens';
 import { api } from '../../utils/api';
 
 function statusMeta(status) {
   if (status === 'answered') {
-    return { label: '답변완료', color: colors.primary };
+    return {
+      label: '답변 완료',
+      color: colors.primary,
+      backgroundColor: colors.primaryLight10,
+    };
   }
   if (status === 'closed') {
-    return { label: '종료', color: colors.textSecondary };
+    return {
+      label: '종료',
+      color: colors.textSecondary,
+      backgroundColor: 'rgba(39, 42, 38, 0.05)',
+    };
   }
-  return { label: '대기중', color: colors.alert };
+  return {
+    label: '확인 중',
+    color: colors.alert,
+    backgroundColor: 'rgba(255, 159, 159, 0.1)',
+  };
 }
 
 function formatDate(raw) {
@@ -118,6 +132,16 @@ const MyInquiries = ({
         gap: normalize(12),
       },
       rowBody: { flex: 1 },
+      rowIcon: {
+        alignSelf: 'center',
+      },
+      rowIconBox: {
+        width: normalize(40),
+        height: normalize(40),
+        justifyContent: 'center',
+        alignItems: 'center',
+        borderRadius: normalize(20),
+      },
       rowTop: {
         flexDirection: 'row',
         alignItems: 'center',
@@ -128,11 +152,10 @@ const MyInquiries = ({
         paddingHorizontal: normalize(8),
         paddingVertical: normalize(2),
         borderRadius: normalize(999),
-        backgroundColor: colors.textLight5,
       },
       badgeText: {
         fontFamily: fonts.bold,
-        fontSize: normalize(11),
+        fontSize: normalize(10),
       },
       dateText: {
         fontFamily: fonts.regular,
@@ -141,14 +164,29 @@ const MyInquiries = ({
       },
       preview: {
         fontFamily: fonts.regular,
-        fontSize: normalize(fontSizes.md),
+        fontSize: normalize(fontSizes.lg),
         color: colors.textPrimary,
+        marginLeft: normalize(2),
       },
       unreadDot: {
         width: normalize(8),
         height: normalize(8),
         borderRadius: normalize(4),
         backgroundColor: colors.primary,
+      },
+      floatingButton: {
+        position: 'absolute',
+        right: normalize(20),
+        bottom: normalize(20),
+        width: normalize(50),
+        height: normalize(50),
+        borderRadius: normalize(28),
+        backgroundColor: colors.primary,
+        justifyContent: 'center',
+        alignItems: 'center',
+        ...shadow.lg,
+        marginBottom: normalize(30),
+        marginRight: normalize(10),
       },
     }),
     [normalize],
@@ -170,9 +208,17 @@ const MyInquiries = ({
         activeOpacity={0.7}
         onPress={() => openDetail(item.id)}
       >
+        <View style={[styles.rowIconBox, { backgroundColor: meta.backgroundColor }]}>
+          <Ionicons
+            name="chatbox-ellipses-outline"
+            size={normalize(22)}
+            color={meta.color}
+            style={styles.rowIcon}
+          />
+        </View>
         <View style={styles.rowBody}>
           <View style={styles.rowTop}>
-            <View style={styles.badge}>
+            <View style={[styles.badge, { backgroundColor: meta.backgroundColor }]}>
               <Text style={[styles.badgeText, { color: meta.color }]}>
                 {meta.label}
               </Text>
@@ -199,10 +245,8 @@ const MyInquiries = ({
       {...(fullScreenOverlay ? {} : { edges: ['top'] })}
     >
       <SubHeader
-        title="내 문의"
+        title="문의사항"
         onBack={() => navigation?.goBack?.()}
-        rightButtonText="새 문의"
-        onRightPress={openCompose}
       />
       {loading ? (
         <View style={styles.emptyWrap}>
@@ -226,16 +270,29 @@ const MyInquiries = ({
           ListEmptyComponent={
             <View style={styles.emptyWrap}>
               <Text style={styles.emptyText}>
-                아직 문의 내역이 없습니다.{'\n'}오른쪽 위 「새 문의」로
+                아직 문의 내역이 없습니다.{'\n'}오른쪽 아래 ＋ 버튼으로
                 남겨 주세요.
               </Text>
             </View>
           }
           contentContainerStyle={
-            items.length === 0 ? { flexGrow: 1 } : undefined
+            items.length === 0
+              ? { flexGrow: 1, paddingBottom: normalize(80) }
+              : { paddingBottom: normalize(80) }
           }
         />
       )}
+      <TouchableOpacity
+        style={styles.floatingButton}
+        activeOpacity={0.8}
+        onPress={openCompose}
+      >
+        <FontAwesome5
+          name="plus"
+          size={normalize(24)}
+          color={colors.background}
+        />
+      </TouchableOpacity>
     </Root>
   );
 };

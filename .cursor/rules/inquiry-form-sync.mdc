@@ -1,0 +1,29 @@
+---
+description: InAppInquiry.jsx 수정 시 Inquiry.jsx에도 동일 반영
+globs: front/view/src/InAppInquiry.jsx
+alwaysApply: false
+---
+
+# 문의 폼 동기화 (InAppInquiry → Inquiry)
+
+`front/view/src/InAppInquiry.jsx`를 수정할 때, **로그인 앱 내 문의**와 **비로그인/회원가입 문의** 화면이 같은 UX를 유지하도록 `front/view/src/Inquiry.jsx`에도 동일 변경을 반영한다.
+
+## 동기화 대상 (해당 시 Inquiry.jsx에도 적용)
+
+- `FieldLabel`, 필수 표시(`*`), 라벨 문구·스타일
+- 입력 필드(`TextInput`), placeholder, `maxLength`, 검증 메시지
+- `createStyles` 내 공통 폼 스타일 (`labelRow`, `input`, `textarea`, `helperText`, 버튼 등)
+- 접수 완료/오류 모달 문구·스타일
+
+## Inquiry.jsx만 있는 차이 (무리하게 맞추지 않음)
+
+- `InAppInquiry`: 이미지 첨부, `내 문의` 헤더, `fullScreenOverlay`, 로그인 사용자 이메일 자동 채움
+- `Inquiry`: `route.params.contactUsername` 고정 아이디, 이미지 없음, `답변 받을 이메일` 라벨
+
+공통 UI/카피는 맞추되, 플랫폼·네비·인증 차이로 Inquiry에 없는 기능은 Inquiry에 추가하지 않는다.
+
+## 작업 순서
+
+1. `InAppInquiry.jsx` 변경
+2. 동일·유사 섹션을 `Inquiry.jsx`에서 찾아 반영
+3. 두 파일 모두 린트 확인

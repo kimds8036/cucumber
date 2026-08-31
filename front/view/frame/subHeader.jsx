@@ -11,6 +11,8 @@ import { colors } from '../../styles/colors';
 
 const SubHeader = ({
   title,
+  subtitle,
+  subtitleStyle,
   onBack,
   rightButtonText,
   rightIcon,
@@ -42,7 +44,14 @@ const SubHeader = ({
           {titleElement ? (
             titleElement
           ) : (
-            <Text style={styles.headerTitle}>{getTitle()}</Text>
+            <View style={styles.titleBlock}>
+              <Text style={styles.headerTitle}>{getTitle()}</Text>
+              {subtitle ? (
+                <Text style={[styles.headerSubtitle, subtitleStyle]}>
+                  {subtitle}
+                </Text>
+              ) : null}
+            </View>
           )}
           {hasRight && (
             <TouchableOpacity

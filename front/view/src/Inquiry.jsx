@@ -11,8 +11,8 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
-import { Ionicons } from '@expo/vector-icons';
 import Constants from 'expo-constants';
+import SubHeader from '../frame/subHeader';
 import { colors, fonts, fontSizes } from '../../styles/colors';
 import { api } from '../../utils/api';
 
@@ -22,11 +22,10 @@ function isValidEmail(s) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(t);
 }
 
-function FieldLabel({ text, required, styles }) {
+function FieldLabel({ text, styles }) {
   return (
     <View style={styles.labelRow}>
       <Text style={styles.sectionLabelText}>{text}</Text>
-      {required ? <View style={styles.requiredDot} /> : null}
     </View>
   );
 }
@@ -47,6 +46,7 @@ const Inquiry = ({ navigation, route }) => {
   const [resultModal, setResultModal] = useState({
     visible: false,
     message: '',
+    variant: '',
   });
   const [footerHeight, setFooterHeight] = useState(0);
 
@@ -64,16 +64,20 @@ const Inquiry = ({ navigation, route }) => {
       Alert.alert('알림', '아이디 정보가 없어 문의를 보낼 수 없습니다.');
       return;
     }
-    if (!isValidEmail(contactEmail)) {
-      Alert.alert('알림', '답변 수신용 이메일 주소를 올바르게 입력해주세요.');
-      return;
-    }
+    // if (!isValidEmail(contactEmail)) {
+    //   Alert.alert('알림', '답변 수신용 이메일 주소를 올바르게 입력해주세요.');
+    //   return;
+    // }
     setSubmitting(true);
     try {
       const formData = new FormData();
       formData.append('content', content.trim());
       formData.append('contact_username', contactUsername.trim());
-      formData.append('contact_email', contactEmail.trim());
+      // formData.append('contact_email', contactEmail.trim());
+      formData.append(
+        'contact_email',
+        contactEmail.trim() || `${contactUsername.trim()}@in-app.youthpaper`,
+      );
       if (appVersion) formData.append('app_version', appVersion);
       if (deviceInfo) formData.append('device_info', deviceInfo);
 
@@ -86,6 +90,7 @@ const Inquiry = ({ navigation, route }) => {
         visible: true,
         message:
           '문의가 접수되었습니다.\n답변은 입력하신 이메일로 안내드립니다.',
+        variant: 'success',
       });
     } catch (error) {
       const resp = error?.response;
@@ -96,6 +101,7 @@ const Inquiry = ({ navigation, route }) => {
           message:
             data?.message ||
             '방금 접수한 문의가 있습니다.\n잠시 후 다시 시도하거나 기존 문의를 확인해주세요.',
+          variant: 'duplicate',
         });
         return;
       }
@@ -109,7 +115,7 @@ const Inquiry = ({ navigation, route }) => {
   };
 
   const closeResultAndExit = () => {
-    setResultModal({ visible: false, message: '' });
+    setResultModal({ visible: false, message: '', variant: '' });
     if (navigation.canGoBack()) navigation.goBack();
   };
 
@@ -117,31 +123,21 @@ const Inquiry = ({ navigation, route }) => {
 
   return (
     <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
-      <View style={styles.headerSection}>
-        <View style={styles.headerTop}>
-          <TouchableOpacity
-            style={styles.backButton}
-            onPress={() => navigation.goBack()}
-          >
-            <Ionicons
-              name="chevron-back"
-              size={normalize(24)}
-              color={colors.textPrimary}
-            />
-          </TouchableOpacity>
-          <Text style={styles.headerTitle}>문의하기</Text>
-        </View>
-      </View>
+      <SubHeader
+        title="문의하기"
+        onBack={() => navigation.goBack()}
+      />
 
-      <KeyboardAwareScrollView
-        style={{ flex: 1 }}
-        contentContainerStyle={styles.scrollContent}
-        showsVerticalScrollIndicator={false}
-        keyboardShouldPersistTaps="handled"
-        keyboardDismissMode="on-drag"
-        bottomOffset={Math.max(footerHeight, normalize(16))}
-      >
-        <FieldLabel text="내용" required styles={styles} />
+      <View style={styles.content}>
+        <KeyboardAwareScrollView
+          style={{ flex: 1 }}
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+          keyboardDismissMode="on-drag"
+          bottomOffset={Math.max(footerHeight, normalize(16))}
+        >
+        <FieldLabel text="내용" styles={styles} />
         <TextInput
           style={[styles.input, styles.textarea]}
           value={content}
@@ -166,7 +162,7 @@ const Inquiry = ({ navigation, route }) => {
           </Text>
         </View>
 
-        <FieldLabel text="답변 받을 이메일" required styles={styles} />
+        {/* <FieldLabel text="답변 받을 이메일" styles={styles} />
         <TextInput
           style={styles.input}
           value={contactEmail}
@@ -177,30 +173,31 @@ const Inquiry = ({ navigation, route }) => {
           autoCapitalize="none"
           autoCorrect={false}
           maxLength={255}
-        />
+        /> */}
 
         <Text style={[styles.helperText, { marginTop: normalize(16) }]}>
           앱 버전: {appVersion || '-'} · {deviceInfo}
         </Text>
-      </KeyboardAwareScrollView>
+        </KeyboardAwareScrollView>
 
-      <View
-        style={styles.footerSection}
-        onLayout={(e) => setFooterHeight(e.nativeEvent.layout.height)}
-      >
-        <TouchableOpacity
-          style={[
-            styles.primaryButton,
-            submitting && styles.primaryButtonDisabled,
-          ]}
-          activeOpacity={0.9}
-          onPress={handleSubmit}
-          disabled={submitting}
+        <View
+          style={styles.footerSection}
+          onLayout={(e) => setFooterHeight(e.nativeEvent.layout.height)}
         >
-          <Text style={styles.primaryButtonText}>
-            {submitting ? '전송 중...' : '문의 보내기'}
-          </Text>
-        </TouchableOpacity>
+          <TouchableOpacity
+            style={[
+              styles.primaryButton,
+              submitting && styles.primaryButtonDisabled,
+            ]}
+            activeOpacity={0.9}
+            onPress={handleSubmit}
+            disabled={submitting}
+          >
+            <Text style={styles.primaryButtonText}>
+              {submitting ? '전송 중...' : '문의 보내기'}
+            </Text>
+          </TouchableOpacity>
+        </View>
       </View>
 
       <Modal
@@ -211,7 +208,9 @@ const Inquiry = ({ navigation, route }) => {
       >
         <View style={styles.resultBackdrop}>
           <View style={styles.resultCard}>
-            <Text style={styles.resultTitle}>접수 완료</Text>
+            <Text style={styles.resultTitle}>
+              {resultModal.variant === 'duplicate' ? '접수 실패' : '접수 완료'}
+            </Text>
             <Text style={styles.resultBody}>{resultModal.message}</Text>
             <TouchableOpacity
               style={styles.resultBtn}
@@ -230,28 +229,10 @@ const createStyles = (width, normalize) => ({
   container: {
     flex: 1,
     backgroundColor: colors.background,
-    paddingHorizontal: width * 0.04,
   },
-  headerSection: {
-    paddingTop: normalize(8),
-    backgroundColor: colors.background,
-  },
-  headerTop: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    minHeight: normalize(36),
-    position: 'relative',
-  },
-  backButton: {
-    position: 'absolute',
-    left: -normalize(4),
-    padding: normalize(8),
-  },
-  headerTitle: {
-    fontSize: normalize(fontSizes.heading),
-    fontFamily: fonts.bold,
-    color: colors.textPrimary,
+  content: {
+    flex: 1,
+    paddingHorizontal: width * 0.07,
   },
   scrollContent: {
     paddingBottom: normalize(24),
@@ -260,7 +241,6 @@ const createStyles = (width, normalize) => ({
   labelRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginTop: normalize(16),
     marginBottom: normalize(8),
     marginLeft: normalize(4),
   },
@@ -268,13 +248,6 @@ const createStyles = (width, normalize) => ({
     fontSize: normalize(fontSizes.lg),
     fontFamily: fonts.bold,
     color: colors.textPrimary,
-  },
-  requiredDot: {
-    width: normalize(6),
-    height: normalize(6),
-    borderRadius: normalize(3),
-    backgroundColor: '#D32F2F',
-    marginLeft: normalize(6),
   },
   lockedFieldWrap: {
     width: '100%',
@@ -366,16 +339,17 @@ const createStyles = (width, normalize) => ({
   },
   resultBtn: {
     marginTop: normalize(18),
-    alignSelf: 'flex-end',
+    alignSelf: 'stretch',
     backgroundColor: colors.primary,
     borderRadius: normalize(10),
-    paddingVertical: normalize(10),
-    paddingHorizontal: normalize(20),
+    paddingVertical: normalize(12),
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   resultBtnText: {
     color: '#fff',
     fontFamily: fonts.bold,
-    fontSize: normalize(fontSizes.lg),
+    fontSize: normalize(fontSizes.xl),
   },
 });
 

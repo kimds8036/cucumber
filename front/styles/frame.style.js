@@ -144,10 +144,13 @@ export const createSubHeaderStyles = (width, height) => {
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'center',
-      height: normalize(20),
       minHeight: normalize(20),
       marginBottom: normalize(10),
       position: 'relative',
+    },
+    titleBlock: {
+      alignItems: 'center',
+      justifyContent: 'center',
     },
     backButton: {
       position: 'absolute',
@@ -157,6 +160,11 @@ export const createSubHeaderStyles = (width, height) => {
       fontSize: normalize(fontSizes.xxl),
       fontFamily: fonts.bold,
       color: colors.textPrimary,
+    },
+    headerSubtitle: {
+      fontSize: normalize(fontSizes.md),
+      fontFamily: fonts.bold,
+      color: colors.primary,
     },
     rightButton: {
       position: 'absolute',

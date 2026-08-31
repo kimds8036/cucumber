@@ -131,7 +131,7 @@ router.post('/', optionalAuthenticate, uploadInquiry.array('images', MAX_IMAGES)
       return res.status(409).json({
         success: false,
         code: 'INQUIRY_DUPLICATE',
-        message: `방금 접수한 문의가 있습니다. ${mins}분 후 다시 시도하거나 기존 문의를 확인해주세요.`,
+        message: `방금 접수한 문의가 있습니다.\n${mins}분 후 다시 시도하거나 기존 문의를 확인해주세요.`,
         data: {
           inquiryId: recentDup.id,
           duplicateWindowMinutes: mins,
