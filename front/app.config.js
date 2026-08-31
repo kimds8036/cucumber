@@ -11,7 +11,7 @@ export default ({ config }) => ({
     name: 'Youth Paper',
     slug: 'youth-paper',
     scheme: 'youthpaper',
-    version: '1.6.3',
+    version: '1.7.0',
     orientation: 'portrait',
     icon: './assets/icon.png',
     userInterfaceStyle: 'light',
@@ -25,6 +25,7 @@ export default ({ config }) => ({
 
     ios: {
       supportsTablet: true,
+      buildNumber: '30',
       // 핵심: EAS에서는 secret 파일 경로, 로컬은 기존 파일 경로
       googleServicesFile:
         process.env.GOOGLE_SERVICE_INFO_PLIST || './GoogleService-Info.plist',
@@ -48,7 +49,7 @@ export default ({ config }) => ({
     },
 
     android: {
-      versionCode: 29,
+      versionCode: 30,
       usesCleartextTraffic: !isProduction,
       // (선택) 안드로이드도 같은 방식으로 secret 적용 가능
       googleServicesFile:
