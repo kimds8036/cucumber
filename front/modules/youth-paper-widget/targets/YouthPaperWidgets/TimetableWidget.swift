@@ -717,7 +717,8 @@ struct TimetableWidgetView: View {
       if isActive, let hex { return Color(hex: hex, opacity: 0.2) }
       return Color.clear
     }()
-    let label = period.subjectName.isEmpty ? "-" : ellipsisKeep(period.subjectName, max: 5)
+    let label = period.subjectName.trimmingCharacters(in: .whitespacesAndNewlines)
+    let display = label.isEmpty ? "-" : label
 
     return VStack(alignment: .center, spacing: 0) {
       Text("\(period.number)교시")
@@ -728,23 +729,17 @@ struct TimetableWidgetView: View {
         .frame(width: 7, height: 7)
         .padding(.top, 5)
         .padding(.bottom, 5)
-      Text(label)
+      Text(display)
         .font(.system(size: 10, weight: .regular))
         .foregroundColor(textPrimary)
         .lineLimit(2)
+        .truncationMode(.tail)
         .multilineTextAlignment(.center)
-        .minimumScaleFactor(0.85)
     }
     .padding(.horizontal, 3)
     .padding(.vertical, 3)
     .frame(maxWidth: .infinity, maxHeight: .infinity)
     .background(RoundedRectangle(cornerRadius: 8, style: .continuous).fill(bg))
-  }
-
-  private func ellipsisKeep(_ value: String, max: Int) -> String {
-    let t = value.trimmingCharacters(in: .whitespacesAndNewlines)
-    if t.count <= max { return t }
-    return String(t.prefix(max)) + ".."
   }
 
   /// Large: 주간(월~금) 정적 격자 — Medium의 진행/쉬는시간 상태와 무관
