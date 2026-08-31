@@ -44,7 +44,10 @@ object TimetableWidgetViews {
 
   private fun fillMedium(context: Context, views: RemoteViews, entry: TimetableEntry) {
     val messageOnly =
-      entry.status is TimetableStatus.NoClass || entry.status is TimetableStatus.AfterSchool
+      entry.status is TimetableStatus.NoClass ||
+        entry.status is TimetableStatus.AfterSchool ||
+        entry.status is TimetableStatus.NeedsPeriodSettings ||
+        entry.status is TimetableStatus.NeedsTimetableData
     if (messageOnly) {
       WidgetRes.visible(views, context, "medium_message", true)
       WidgetRes.visible(views, context, "medium_standard", false)
@@ -83,12 +86,11 @@ object TimetableWidgetViews {
       val period = entry.allPeriods.getOrNull(i - 1)
       WidgetRes.visible(views, context, "period_root_$i", true)
       WidgetRes.text(views, context, "period_num_$i", "${period?.number ?: i}교시")
-      WidgetRes.textEllipsisKeep(
+      WidgetRes.text(
         views,
         context,
         "period_subject_$i",
         if (period == null || period.subjectName.isEmpty()) "-" else period.subjectName,
-        3,
       )
       val isActive = period != null && entry.activePeriodNumber == period.number
       val pHex = period?.subjectColorHex

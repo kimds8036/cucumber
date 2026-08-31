@@ -69,7 +69,7 @@ import {
   revokeRefreshToken,
   revokeAllRefreshTokens,
 } from '../services/refreshToken.service.js';
-import { incrementTokenVersion } from '../services/session.service.js';
+import { incrementTokenVersion, getUserTokenVersion } from '../services/session.service.js';
 import { getReverificationBlockCode } from '../services/reverification.service.js';
 import { getUserReverificationPayload } from '../services/userSchoolTransition.service.js';
 import { scheduleSchoolTermSync } from '../services/schoolTerms.service.js';
@@ -420,6 +420,7 @@ router.patch('/me/password', authenticate, validate(updatePasswordValidators), a
     const userId = req.user.userId;
     const currentPassword = String(req.body?.currentPassword ?? '');
     const newPassword = String(req.body?.newPassword ?? '');
+    const deviceId = String(req.body?.deviceId ?? '').trim();
 
     if (!currentPassword || !newPassword) {
       return res.status(400).json({
@@ -433,9 +434,15 @@ router.patch('/me/password', authenticate, validate(updatePasswordValidators), a
         message: '비밀번호는 영문과 숫자를 포함하여 최소 8자 이상이어야 합니다.',
       });
     }
+    if (!deviceId) {
+      return res.status(400).json({
+        success: false,
+        message: 'deviceId가 필요합니다.',
+      });
+    }
 
     const [rows] = await pool.execute(
-      `SELECT password
+      `SELECT password, username
        FROM users
        WHERE id = ? AND is_deleted = FALSE`,
       [userId]
@@ -460,12 +467,32 @@ router.patch('/me/password', authenticate, validate(updatePasswordValidators), a
       `UPDATE users SET password = ? WHERE id = ?`,
       [hashed, userId]
     );
+    // 다른 기기 세션은 끊고, 현재 기기만 새 토큰으로 자동로그인 유지
     await incrementTokenVersion(userId);
     await revokeAllRefreshTokens(userId);
+
+    const tokenVersion = await getUserTokenVersion(userId);
+    const token = createUserAccessToken({
+      userId,
+      username: rows[0].username,
+      tokenVersion,
+    });
+    const refreshToken = generateRefreshTokenPlain();
+    await storeRefreshToken({
+      userId,
+      deviceId,
+      plainToken: refreshToken,
+      tokenVersion,
+    });
 
     return res.json({
       success: true,
       message: '비밀번호가 변경되었습니다.',
+      data: {
+        token,
+        refreshToken,
+        deviceId,
+      },
     });
   } catch (error) {
     console.error('비밀번호 변경 오류:', error);
@@ -1536,8 +1563,12 @@ router.post('/login', validate(loginValidators), async (req, res) => {
     // 디바이스 정보 저장/업데이트
     if (isNewDevice) {
       await pool.execute(
-        `INSERT INTO user_devices (user_id, device_id, device_info, ip_address, last_login_at) 
-         VALUES (?, ?, ?, ?, NOW())`,
+        `INSERT INTO user_devices (user_id, device_id, device_info, ip_address, last_login_at)
+         VALUES (?, ?, ?, ?, NOW())
+         ON DUPLICATE KEY UPDATE
+           device_info = VALUES(device_info),
+           ip_address = VALUES(ip_address),
+           last_login_at = NOW()`,
         [user.id, currentDeviceId, deviceInfo, ipAddress]
       );
     } else {
@@ -2169,78 +2200,13 @@ router.post('/signup/verify-student-id', signupOcrLimiter, async (req, res) => {
 });
  */
 
-// OCR 학생증 인증
-router.post('/ocr', authenticate, async (req, res) => {
-  try {
-    const userId = req.user.userId;
-    const { imageUrl, ocrData } = req.body;
-
-    if (!imageUrl && !ocrData) {
-      return res.status(400).json({ 
-        success: false, 
-        message: '이미지 URL 또는 OCR 데이터를 제공해주세요.' 
-      });
-    }
-
-    // 실제로는 OCR 서비스(구글, 네이버)를 호출하여 학생증 정보 추출
-    // 여기서는 클라이언트에서 이미 OCR을 수행한 데이터를 받는다고 가정
-    // OCR 데이터 구조: { name, school, grade, classNumber, studentId 등 }
-
-    // 사용자 정보 조회
-    const [users] = await pool.execute(
-      'SELECT id, name_enc, school_id, grade, class_number FROM users WHERE id = ?',
-      [userId]
-    );
-
-    if (users.length === 0) {
-      return res.status(404).json({ 
-        success: false, 
-        message: '사용자를 찾을 수 없습니다.' 
-      });
-    }
-
-    const user = users[0];
-
-    // OCR 데이터와 사용자 정보 일치 확인
-    // 실제로는 OCR 추출 데이터를 파싱하여 검증
-    let isVerified = false;
-    if (ocrData) {
-      // OCR에서 추출한 정보와 사용자 정보 비교 (실제 구현은 OCR 데이터 구조에 맞게)
-      // 예: ocrData.name === user.name && ocrData.school === user.school_id 등
-      // 여기서는 간단하게 처리
-      isVerified = true; // 실제로는 더 엄격한 검증 필요
-    }
-
-    // OCR 인증 기록 저장
-    const [result] = await pool.execute(
-      `INSERT INTO ocr_verifications (user_id, image_url, extracted_data, is_verified) 
-       VALUES (?, ?, ?, ?)`,
-      [userId, imageUrl || null, JSON.stringify(ocrData || {}), isVerified]
-    );
-
-    if (isVerified) {
-      // 학생 인증 완료 처리
-      await pool.execute(
-        'UPDATE users SET student_verified = TRUE WHERE id = ?',
-        [userId]
-      );
-    }
-
-    res.json({ 
-      success: true, 
-      message: isVerified ? 'OCR 인증이 완료되었습니다.' : 'OCR 인증이 완료되었으나 검증 대기 중입니다.',
-      data: {
-        ocrVerificationId: result.insertId,
-        isVerified
-      }
-    });
-  } catch (error) {
-    console.error('OCR 인증 오류:', error);
-    res.status(500).json({ 
-      success: false, 
-      message: 'OCR 인증 중 오류가 발생했습니다.' 
-    });
-  }
+// OCR 학생증 인증 — signup_student_id_submissions 수동 검수로 대체됨 (ocr_verifications 테이블 제거)
+router.post('/ocr', authenticate, (_req, res) => {
+  return res.status(410).json({
+    success: false,
+    message: 'OCR 자동 인증은 더 이상 지원하지 않습니다. 학생증 수동 제출을 이용해 주세요.',
+    code: 'OCR_DEPRECATED',
+  });
 });
 
 // 보호자 인증 Mock (PASS 미연동, dev/staging)

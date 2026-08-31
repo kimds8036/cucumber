@@ -102,11 +102,19 @@ object WidgetColors {
     val palette = if (excludeWhite) SUBJECT_PALETTE_NO_WHITE else SUBJECT_PALETTE
     val map = mutableMapOf<String, String>()
     val used = mutableSetOf<Int>()
-    val subjects = week
-      .flatMap { it.periods.map { p -> normalizeSubject(p.subject) } }
-      .filter { it.isNotEmpty() }
-      .toSet()
-      .sorted()
+    // 인앱 TimetableScreen: Object.values 첫 등장 순 (정렬하지 않음). 월→금·교시 오름차순.
+    val dayOrder = listOf("월", "화", "수", "목", "금")
+    val byDay = week.associateBy { it.dayLabel }
+    val subjects = mutableListOf<String>()
+    val seen = mutableSetOf<String>()
+    for (day in dayOrder) {
+      val periods = (byDay[day]?.periods ?: emptyList()).sortedBy { it.period }
+      for (p in periods) {
+        val key = normalizeSubject(p.subject)
+        if (key.isEmpty() || !seen.add(key)) continue
+        subjects.add(key)
+      }
+    }
     for (subject in subjects) {
       val base = subjectColorIndex(subject, palette.size)
       var idx = base

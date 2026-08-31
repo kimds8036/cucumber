@@ -13,6 +13,7 @@
 import { createDbConnection, parseMigrateCliArgs } from '../config/dbEnv.js';
 import {
   BASELINE_INIT_FILE,
+  INCREMENTAL_PRE_SQUASH_V2_FILES,
   PRE_SQUASH_MIGRATION_FILES,
   ensureSchemaMigrationsTable,
   getAppliedMigrations,
@@ -29,6 +30,7 @@ async function baselineTarget(target) {
 
     const toRecord = [
       ...PRE_SQUASH_MIGRATION_FILES.filter((f) => !applied.has(f)),
+      ...INCREMENTAL_PRE_SQUASH_V2_FILES.filter((f) => !applied.has(f)),
       ...(applied.has(BASELINE_INIT_FILE) ? [] : [BASELINE_INIT_FILE]),
     ];
 

@@ -5,7 +5,6 @@ private let widgetPad: CGFloat = 0
 private let textPrimary = Color(hex: "272A26")
 private let textSecondary = Color(hex: "272A26", opacity: 0.5)
 private let inactiveBase = Color(hex: "272A26")
-
 /// `TIMETABLE_SUBJECT_COLORS` (styles/colors.js)
 private let subjectPaletteHex: [String] = [
   "FFBCBC", // 레드
@@ -57,12 +56,20 @@ private func buildSubjectColorMap(week: [TimetableDayLite], excludeWhite: Bool =
   let palette = excludeWhite ? subjectPaletteNoWhite : subjectPaletteHex
   var map: [String: String] = [:]
   var used = Set<Int>()
-  let subjects = Array(
-    Set(
-      week.flatMap { $0.periods.map { normalizeSubject($0.subject) } }
-        .filter { !$0.isEmpty },
-    ),
-  ).sorted()
+  // 인앱 TimetableScreen: Object.values 첫 등장 순 (정렬하지 않음). 월→금·교시 오름차순으로 맞춤.
+  let dayOrder = ["월", "화", "수", "목", "금"]
+  let byDay = Dictionary(uniqueKeysWithValues: week.map { ($0.dayLabel, $0) })
+  var subjects: [String] = []
+  var seen = Set<String>()
+  for day in dayOrder {
+    let periods = (byDay[day]?.periods ?? []).sorted { $0.period < $1.period }
+    for p in periods {
+      let key = normalizeSubject(p.subject)
+      guard !key.isEmpty, !seen.contains(key) else { continue }
+      seen.insert(key)
+      subjects.append(key)
+    }
+  }
 
   for subject in subjects {
     let base = subjectColorIndex(subject, paletteSize: palette.count)
@@ -601,7 +608,12 @@ struct TimetableWidgetView: View {
   }
 
   private var isMessageOnlyMedium: Bool {
-    entry.status == .noClass || entry.status == .afterSchool
+    switch entry.status {
+    case .noClass, .afterSchool, .needsPeriodSettings, .needsTimetableData:
+      true
+    default:
+      false
+    }
   }
 
   private var mediumView: some View {
@@ -615,7 +627,7 @@ struct TimetableWidgetView: View {
     .padding(widgetPad)
   }
 
-  /// 과목 없는 날·하교: 배지·하단 리스트 없이 날짜 + 본문 중앙
+  /// 설정/데이터 없음·과목 없는 날·하교: 배지·하단 리스트 없이 날짜 + 본문 중앙
   private var mediumMessageOnlyView: some View {
     VStack(spacing: 0) {
       HStack {
@@ -659,7 +671,7 @@ struct TimetableWidgetView: View {
         .lineLimit(1)
         .truncationMode(.tail)
         .padding(.leading, 14)
-        .padding(.trailing, 4)
+        .padding(.vertical, 10)
         .frame(maxWidth: .infinity, alignment: .leading)
 
       Spacer(minLength: 0)
@@ -669,7 +681,7 @@ struct TimetableWidgetView: View {
           Rectangle()
             .fill(inactiveBase.opacity(0.08))
             .frame(height: 1)
-            .padding(.bottom, 10)
+            .padding(.bottom, 4)
           HStack(spacing: 0) {
             ForEach(displayTodayPeriods) { period in
               periodColumn(period)
@@ -717,7 +729,8 @@ struct TimetableWidgetView: View {
       if isActive, let hex { return Color(hex: hex, opacity: 0.2) }
       return Color.clear
     }()
-    let label = period.subjectName.isEmpty ? "-" : ellipsisKeep(period.subjectName, max: 5)
+    let label = period.subjectName.trimmingCharacters(in: .whitespacesAndNewlines)
+    let display = label.isEmpty ? "-" : label
 
     return VStack(alignment: .center, spacing: 0) {
       Text("\(period.number)교시")
@@ -728,23 +741,16 @@ struct TimetableWidgetView: View {
         .frame(width: 7, height: 7)
         .padding(.top, 5)
         .padding(.bottom, 5)
-      Text(label)
+      Text(display)
         .font(.system(size: 10, weight: .regular))
         .foregroundColor(textPrimary)
-        .lineLimit(2)
+        .lineLimit(1)
+        .truncationMode(.tail)
         .multilineTextAlignment(.center)
-        .minimumScaleFactor(0.85)
     }
     .padding(.horizontal, 3)
-    .padding(.vertical, 3)
     .frame(maxWidth: .infinity, maxHeight: .infinity)
     .background(RoundedRectangle(cornerRadius: 8, style: .continuous).fill(bg))
-  }
-
-  private func ellipsisKeep(_ value: String, max: Int) -> String {
-    let t = value.trimmingCharacters(in: .whitespacesAndNewlines)
-    if t.count <= max { return t }
-    return String(t.prefix(max)) + ".."
   }
 
   /// Large: 주간(월~금) 정적 격자 — Medium의 진행/쉬는시간 상태와 무관
@@ -925,15 +931,6 @@ struct TimetableWidgetView: View {
       .background(
         RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
           .fill(bg)
-          .overlay(
-            RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
-              .stroke(
-                isSubjectPaleHex(cell.subjectColorHex)
-                  ? Color(hex: "272A26", opacity: 0.12)
-                  : Color.clear,
-                lineWidth: 1,
-              ),
-          ),
       )
   }
 }

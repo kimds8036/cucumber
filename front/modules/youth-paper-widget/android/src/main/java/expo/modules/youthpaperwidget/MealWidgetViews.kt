@@ -5,7 +5,7 @@ import android.content.Context
 import android.widget.RemoteViews
 
 object MealWidgetViews {
-  private const val MAX_MENUS = 6
+  private const val MAX_MENUS = 9
   private const val MENU_CHARS = 8
 
   private fun clipMealMenu(raw: String): String {
@@ -40,9 +40,14 @@ object MealWidgetViews {
     }
 
     val menus = payload?.menus.orEmpty()
-    val menuNames = listOf("meal_menu_1", "meal_menu_2", "meal_menu_3", "meal_menu_4", "meal_menu_5", "meal_menu_6")
+    val menuNames = listOf(
+      "meal_menu_1", "meal_menu_2", "meal_menu_3",
+      "meal_menu_4", "meal_menu_5", "meal_menu_6",
+      "meal_menu_7", "meal_menu_8", "meal_menu_9",
+    )
     if (menus.isEmpty()) {
       menuNames.forEach { WidgetRes.visible(views, context, it, false) }
+      WidgetRes.visible(views, context, "meal_more", false)
       WidgetRes.visible(views, context, "meal_no_info", true)
     } else {
       WidgetRes.visible(views, context, "meal_no_info", false)
@@ -54,6 +59,14 @@ object MealWidgetViews {
         } else {
           WidgetRes.visible(views, context, name, false)
         }
+      }
+      // 9개 초과 시 아래에 .. (위젯 높이 넘치지 않게 짧은 표기)
+      if (menus.size > MAX_MENUS) {
+        WidgetRes.visible(views, context, "meal_more", true)
+        WidgetRes.text(views, context, "meal_more", "..")
+        WidgetRes.color(views, context, "meal_more", WidgetColors.MORE)
+      } else {
+        WidgetRes.visible(views, context, "meal_more", false)
       }
     }
     return views

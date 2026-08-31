@@ -18,10 +18,14 @@ import {
 } from 'react-native-safe-area-context';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
 import { Ionicons } from '@expo/vector-icons';
+import FontAwesome5 from '@expo/vector-icons/FontAwesome5';
 import * as ImagePicker from 'expo-image-picker';
 import Constants from 'expo-constants';
+import SubHeader from '../frame/subHeader';
 import { colors, fonts, fontSizes } from '../../styles/colors';
 import { api } from '../../utils/api';
+import MyInquiries from './MyInquiries';
+import InquiryDetail from './InquiryDetail';
 
 const MAX_IMAGES = 3;
 
@@ -31,12 +35,28 @@ function isValidEmail(s) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(t);
 }
 
-function FieldLabel({ text, required, styles }) {
+function FieldLabel({ text, styles }) {
   return (
     <View style={styles.labelRow}>
       <Text style={styles.sectionLabelText}>{text}</Text>
-      {required ? <View style={styles.requiredDot} /> : null}
     </View>
+  );
+}
+
+function InquiryReplyHint({ style, boldStyle }) {
+  if (boldStyle) {
+    return (
+      <Text style={style}>
+        답변은{' '}
+        <Text style={boldStyle}>[고객지원 {'>'} 문의사항]</Text>
+        에서 확인할 수 있어요.
+      </Text>
+    );
+  }
+  return (
+    <Text style={style}>
+      답변은 [고객지원 {'>'} 문의사항]에서 확인해 주세요.
+    </Text>
   );
 }
 
@@ -54,11 +74,15 @@ const InAppInquiry = ({ navigation, fullScreenOverlay = false }) => {
   const [resultModal, setResultModal] = useState({
     visible: false,
     message: '',
+    variant: '',
   });
   // footer onLayout 전후 padding 점프 방지 — 학생증 재제출과 같은 풀스크린일 땐 하단 inset을 SafeAreaView가 담당
   const estimatedFooter =
     normalize(12) + normalize(50) + normalize(12) + (fullScreenOverlay ? 0 : insets.bottom);
   const [footerHeight, setFooterHeight] = useState(estimatedFooter);
+  /** fullScreenOverlay 전용: compose | list | detail */
+  const [overlayView, setOverlayView] = useState('compose');
+  const [overlayDetailId, setOverlayDetailId] = useState(null);
 
   const bottomOffset = Math.max(footerHeight, estimatedFooter);
 
@@ -126,16 +150,20 @@ const InAppInquiry = ({ navigation, fullScreenOverlay = false }) => {
       );
       return;
     }
-    if (!isValidEmail(contactEmail)) {
-      Alert.alert('알림', '답변 수신용 이메일 주소를 올바르게 입력해주세요.');
-      return;
-    }
+    // if (!isValidEmail(contactEmail)) {
+    //   Alert.alert('알림', '답변 수신용 이메일 주소를 올바르게 입력해주세요.');
+    //   return;
+    // }
     setSubmitting(true);
     try {
       const formData = new FormData();
       formData.append('content', content.trim());
       formData.append('contact_username', contactUsername.trim());
-      formData.append('contact_email', contactEmail.trim());
+      // formData.append('contact_email', contactEmail.trim());
+      formData.append(
+        'contact_email',
+        contactEmail.trim() || `${contactUsername.trim()}@in-app.youthpaper`,
+      );
       if (appVersion) formData.append('app_version', appVersion);
       if (deviceInfo) formData.append('device_info', deviceInfo);
       images.forEach((uri, index) => {
@@ -153,8 +181,8 @@ const InAppInquiry = ({ navigation, fullScreenOverlay = false }) => {
 
       setResultModal({
         visible: true,
-        message:
-          '문의가 접수되었습니다.\n답변은 입력하신 이메일로 안내드립니다.',
+        message: '',
+        variant: 'success',
       });
     } catch (error) {
       const resp = error?.response;
@@ -165,6 +193,7 @@ const InAppInquiry = ({ navigation, fullScreenOverlay = false }) => {
           message:
             data?.message ||
             '방금 접수한 문의가 있습니다.\n잠시 후 다시 시도하거나 기존 문의를 확인해주세요.',
+          variant: 'duplicate',
         });
         return;
       }
@@ -178,7 +207,7 @@ const InAppInquiry = ({ navigation, fullScreenOverlay = false }) => {
   };
 
   const closeResultAndExit = () => {
-    setResultModal({ visible: false, message: '' });
+    setResultModal({ visible: false, message: '', variant: '' });
     if (typeof navigation?.goBack === 'function') {
       navigation.goBack();
     }
@@ -190,7 +219,7 @@ const InAppInquiry = ({ navigation, fullScreenOverlay = false }) => {
 
   const formFields = (
     <>
-      <FieldLabel text="내용" required styles={styles} />
+      <FieldLabel text="내용" styles={styles} />
       <TextInput
         style={[styles.input, styles.textarea]}
         value={content}
@@ -215,7 +244,7 @@ const InAppInquiry = ({ navigation, fullScreenOverlay = false }) => {
         </Text>
       </View>
 
-      <FieldLabel text="답변 받을 이메일" required styles={styles} />
+      {/* <FieldLabel text="연락용 이메일" styles={styles} />
       <TextInput
         style={styles.input}
         value={contactEmail}
@@ -227,6 +256,11 @@ const InAppInquiry = ({ navigation, fullScreenOverlay = false }) => {
         autoCorrect={false}
         maxLength={255}
       />
+      <Text style={styles.emailHint}>
+        답변은 앱 알림과 「내 문의」에서 확인하실 수 있습니다.
+      </Text> */}
+
+      
 
       <View style={styles.imageHeaderRow}>
         <Text style={styles.sectionLabelText}>이미지 첨부</Text>
@@ -262,6 +296,42 @@ const InAppInquiry = ({ navigation, fullScreenOverlay = false }) => {
     </>
   );
 
+  const openMyInquiries = () => {
+    if (fullScreenOverlay) {
+      setOverlayView('list');
+      return;
+    }
+    navigation?.navigate?.('MyInquiries');
+  };
+
+  if (fullScreenOverlay && overlayView === 'list') {
+    return (
+      <MyInquiries
+        fullScreenOverlay
+        navigation={{
+          goBack: () => setOverlayView('compose'),
+        }}
+        onOpenCompose={() => setOverlayView('compose')}
+        onOpenDetail={(id) => {
+          setOverlayDetailId(id);
+          setOverlayView('detail');
+        }}
+      />
+    );
+  }
+
+  if (fullScreenOverlay && overlayView === 'detail') {
+    return (
+      <InquiryDetail
+        fullScreenOverlay
+        inquiryId={overlayDetailId}
+        navigation={{
+          goBack: () => setOverlayView('list'),
+        }}
+      />
+    );
+  }
+
   return (
     <Root
       style={styles.container}
@@ -269,21 +339,18 @@ const InAppInquiry = ({ navigation, fullScreenOverlay = false }) => {
         ? {}
         : { edges: ['top'] })}
     >
-      <View style={styles.headerSection}>
-        <View style={styles.headerTop}>
-          <TouchableOpacity
-            style={styles.backButton}
-            onPress={() => navigation.goBack()}
-          >
-            <Ionicons
-              name="chevron-back"
-              size={normalize(24)}
-              color={colors.textPrimary}
-            />
-          </TouchableOpacity>
-          <Text style={styles.headerTitle}>문의하기</Text>
-        </View>
-      </View>
+      <SubHeader
+        title="문의하기"
+        onBack={() => navigation.goBack()}
+        rightElement={
+          <FontAwesome5
+            name="list-ul"
+            size={normalize(18)}
+            color={colors.textPrimary}
+          />
+        }
+        onRightPress={openMyInquiries}
+      />
 
       <View style={styles.body}>
         {fullScreenOverlay ? (
@@ -318,6 +385,10 @@ const InAppInquiry = ({ navigation, fullScreenOverlay = false }) => {
             {formFields}
           </KeyboardAwareScrollView>
         )}
+        <InquiryReplyHint
+          style={styles.emailHint}
+          boldStyle={styles.emailHintBold}
+        />
 
         <View
           style={[
@@ -358,8 +429,17 @@ const InAppInquiry = ({ navigation, fullScreenOverlay = false }) => {
       >
         <View style={styles.resultBackdrop}>
           <View style={styles.resultCard}>
-            <Text style={styles.resultTitle}>접수 완료</Text>
-            <Text style={styles.resultBody}>{resultModal.message}</Text>
+            <Text style={styles.resultTitle}>
+              {resultModal.variant === 'duplicate' ? '접수 실패' : '접수 완료'}
+            </Text>
+            {resultModal.variant === 'success' ? (
+              <Text style={styles.resultBody}>
+                문의가 접수되었습니다.{'\n'}
+                <InquiryReplyHint />
+              </Text>
+            ) : (
+              <Text style={styles.resultBody}>{resultModal.message}</Text>
+            )}
             <TouchableOpacity
               style={styles.resultBtn}
               onPress={closeResultAndExit}
@@ -377,31 +457,22 @@ const createStyles = (width, normalize) => ({
   container: {
     flex: 1,
     backgroundColor: colors.background,
-    paddingHorizontal: width * 0.04,
   },
-  headerSection: {
-    paddingTop: normalize(8),
-    backgroundColor: colors.background,
+  emailHint: {
+    marginTop: normalize(6),
+    marginLeft: normalize(4),
+    fontSize: normalize(fontSizes.md+1),
+    fontFamily: fonts.regular,
+    color: colors.textSecondary,
+    lineHeight: normalize(18),
+    textAlign: 'center',
   },
-  headerTop: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    minHeight: normalize(36),
-    position: 'relative',
-  },
-  backButton: {
-    position: 'absolute',
-    left: -normalize(4),
-    padding: normalize(8),
-  },
-  headerTitle: {
-    fontSize: normalize(fontSizes.heading),
+  emailHintBold: {
     fontFamily: fonts.bold,
-    color: colors.textPrimary,
   },
   body: {
     flex: 1,
+    paddingHorizontal: width * 0.07,
   },
   scrollContent: {
     paddingBottom: normalize(24),
@@ -410,21 +481,13 @@ const createStyles = (width, normalize) => ({
   labelRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginTop: normalize(16),
     marginBottom: normalize(8),
     marginLeft: normalize(4),
   },
   sectionLabelText: {
-    fontSize: normalize(fontSizes.lg),
+    fontSize: normalize(fontSizes.xl),
     fontFamily: fonts.bold,
     color: colors.textPrimary,
-  },
-  requiredDot: {
-    width: normalize(6),
-    height: normalize(6),
-    borderRadius: normalize(3),
-    backgroundColor: '#D32F2F',
-    marginLeft: normalize(6),
   },
   lockedFieldWrap: {
     width: '100%',
@@ -554,6 +617,7 @@ const createStyles = (width, normalize) => ({
     backgroundColor: '#fff',
     borderRadius: normalize(14),
     padding: normalize(20),
+    alignItems: 'center',
   },
   resultTitle: {
     fontSize: normalize(fontSizes.xxl),
@@ -566,19 +630,21 @@ const createStyles = (width, normalize) => ({
     fontFamily: fonts.regular,
     color: colors.textSecondary,
     lineHeight: normalize(22),
+    textAlign: 'center',
   },
   resultBtn: {
     marginTop: normalize(18),
-    alignSelf: 'flex-end',
+    alignSelf: 'stretch',
     backgroundColor: colors.primary,
     borderRadius: normalize(10),
-    paddingVertical: normalize(10),
-    paddingHorizontal: normalize(20),
+    paddingVertical: normalize(12),
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   resultBtnText: {
     color: '#fff',
     fontFamily: fonts.bold,
-    fontSize: normalize(fontSizes.lg),
+    fontSize: normalize(fontSizes.xl),
   },
 });
 

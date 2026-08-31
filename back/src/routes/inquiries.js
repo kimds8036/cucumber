@@ -71,7 +71,7 @@ function maskInquiryRow(row, { includeAdminFields = false } = {}) {
     device_info: row.device_info,
     status: row.status,
     answer_content: row.answer_content,
-    answered_by: row.answered_by,
+    answered_by: row.answered_by_admin_id ?? row.answered_by,
     answered_at: row.answered_at,
     is_read_by_user: !!row.is_read_by_user,
     read_at: row.read_at,
@@ -131,7 +131,7 @@ router.post('/', optionalAuthenticate, uploadInquiry.array('images', MAX_IMAGES)
       return res.status(409).json({
         success: false,
         code: 'INQUIRY_DUPLICATE',
-        message: `방금 접수한 문의가 있습니다. ${mins}분 후 다시 시도하거나 기존 문의를 확인해주세요.`,
+        message: `방금 접수한 문의가 있습니다.\n${mins}분 후 다시 시도하거나 기존 문의를 확인해주세요.`,
         data: {
           inquiryId: recentDup.id,
           duplicateWindowMinutes: mins,

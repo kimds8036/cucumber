@@ -39,7 +39,7 @@ async function archiveOldReports() {
     await connection.beginTransaction();
     const [rows] = await connection.query(
       `SELECT id, reporter_id, target_type, target_id, reason, description, status,
-              reviewed_by, reviewed_at, review_note, is_malicious, penalty_applied, created_at
+              reviewed_by_admin_id, reviewed_at, review_note, is_malicious, penalty_applied, created_at
        FROM reports
        WHERE status IN ('resolved', 'rejected')
          AND reviewed_at IS NOT NULL
@@ -53,7 +53,7 @@ async function archiveOldReports() {
       await connection.execute(
         `INSERT IGNORE INTO reports_archive
            (id, reporter_id, target_type, target_id, reason, description, status,
-            reviewed_by, reviewed_at, review_note, is_malicious, penalty_applied, created_at)
+            reviewed_by_admin_id, reviewed_at, review_note, is_malicious, penalty_applied, created_at)
          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         [
           r.id,
@@ -63,7 +63,7 @@ async function archiveOldReports() {
           r.reason,
           r.description,
           r.status,
-          r.reviewed_by,
+          r.reviewed_by_admin_id,
           r.reviewed_at,
           r.review_note,
           r.is_malicious,

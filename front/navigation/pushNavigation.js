@@ -21,6 +21,8 @@ export function resolveMainTabForPush(name = '', relatedType = '') {
   if (screen === 'Timer' || type === 'timer_poke') return 'timer';
   if (screen === 'Notification' || screen === 'Notifications') return 'board';
   if (screen === 'SchoolMailDetail' || type === 'school_mail') return 'school';
+  if (screen === 'InquiryDetail' || type === 'inquiry') return 'mypage';
+  if (type === 'student_verification_approved') return 'board';
   return 'board';
 }
 
@@ -205,6 +207,30 @@ export function resolvePushNavigation(data = {}, remoteMessage = null) {
         mailId: relatedId,
         ...data,
       },
+    };
+  }
+
+  if (relatedType === 'inquiry' || targetScreen === 'InquiryDetail') {
+    return {
+      name: 'InquiryDetail',
+      params: {
+        inquiryId: relatedId,
+        ...data,
+      },
+    };
+  }
+
+  if (relatedType === 'student_verification_approved') {
+    return {
+      name: 'Main',
+      params: { initialTab: 'board' },
+    };
+  }
+
+  if (relatedType === 'student_verification_rejected') {
+    return {
+      name: 'Notification',
+      params: data,
     };
   }
 

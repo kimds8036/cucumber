@@ -16,7 +16,7 @@ import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import SubHeader from '../frame/subHeader';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFocusEffect } from '@react-navigation/native';
-import { api } from '../../utils/api';
+import { api, setAuthToken, setRefreshToken, getOrCreateDeviceId } from '../../utils/api';
 import {
   getAppLockEnabled,
   getBiometricEnabled,
@@ -381,10 +381,20 @@ const Settings = ({ navigation, route }) => {
       return;
     }
     try {
-      await api.patch('/api/auth/me/password', {
+      const deviceId = await getOrCreateDeviceId();
+      const res = await api.patch('/api/auth/me/password', {
         currentPassword: pwForm.current,
         newPassword: pwForm.next,
+        deviceId,
       });
+      const nextToken = res.data?.data?.token;
+      const nextRefresh = res.data?.data?.refreshToken;
+      if (nextToken) {
+        await setAuthToken(nextToken, { persist: true });
+      }
+      if (nextRefresh) {
+        await setRefreshToken(nextRefresh, { persist: true });
+      }
       Alert.alert('완료', '비밀번호가 변경되었습니다.', [
         {
           text: '확인',

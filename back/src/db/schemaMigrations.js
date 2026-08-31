@@ -2,6 +2,14 @@ export const SCHEMA_MIGRATIONS_TABLE = 'schema_migrations';
 
 export const BASELINE_INIT_FILE = '001_init.sql';
 
+export const INCREMENTAL_PRE_SQUASH_V2_FILES = [
+  '002_extend_legal_documents.sql',
+  '003_strip_legal_document_preamble.sql',
+  '004_batch_job_runs_cursors.sql',
+  '005_cron_reservations.sql',
+  '006_schema_normalization.sql',
+];
+
 /** 스쿼시 이전 마이그레이션 파일명 (이력 동기화·감사용) */
 export const PRE_SQUASH_MIGRATION_FILES = [
   '001_initial_schema.sql',

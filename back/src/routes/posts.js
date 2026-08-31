@@ -1703,7 +1703,7 @@ router.get('/appeals/my', authenticate, async (req, res) => {
          ra.content,
          ra.status,
          ra.review_note,
-         ra.reviewed_by,
+         ra.reviewed_by_admin_id,
          ra.reviewed_at,
          ra.created_at,
          p.content AS post_content,

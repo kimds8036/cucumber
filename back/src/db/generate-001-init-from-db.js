@@ -68,7 +68,6 @@ const TABLE_ORDER = [
   'comment_likes',
   'post_tags',
   'reports',
-  'ocr_verifications',
   'user_friendships',
   'user_blocks',
   'notifications',

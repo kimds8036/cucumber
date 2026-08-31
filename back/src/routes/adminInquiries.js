@@ -10,6 +10,7 @@ import {
   getInquiryDuplicateMeta,
   getInquiryDuplicateSiblings,
 } from '../services/inquiryDedup.service.js';
+import { enqueueNotification } from '../utils/notificationWorker.js';
 
 const router = express.Router();
 
@@ -158,7 +159,7 @@ router.get('/', requireAdminApi, validate(inquiryListValidators), async (req, re
          i.answer_content,
          i.answer_note,
          i.status,
-         i.answered_by,
+         i.answered_by_admin_id AS answered_by,
          a.username AS answered_by_username,
          i.answered_at,
          i.is_read_by_user,
@@ -166,7 +167,7 @@ router.get('/', requireAdminApi, validate(inquiryListValidators), async (req, re
          i.updated_at
        FROM inquiries i
        LEFT JOIN users u ON u.id = i.user_id
-       LEFT JOIN users a ON a.id = i.answered_by
+       LEFT JOIN admin_users a ON a.id = i.answered_by_admin_id
        WHERE ${whereSql}
        ORDER BY i.created_at DESC
        LIMIT ${limitNum} OFFSET ${offsetNum}`,
@@ -224,7 +225,7 @@ router.get('/:id', requireAdminApi, async (req, res) => {
          a.username AS answered_by_username
        FROM inquiries i
        LEFT JOIN users u ON u.id = i.user_id
-       LEFT JOIN users a ON a.id = i.answered_by
+       LEFT JOIN admin_users a ON a.id = i.answered_by_admin_id
        WHERE i.id = ?
        LIMIT 1`,
       [inquiryId]
@@ -287,7 +288,7 @@ router.post('/:id/answer', requireAdminApi, validate(inquiryAnswerValidators), a
   try {
     await connection.beginTransaction();
     const [rows] = await connection.execute(
-      `SELECT id, status FROM inquiries WHERE id = ? AND is_deleted = FALSE FOR UPDATE`,
+      `SELECT id, status, user_id FROM inquiries WHERE id = ? AND is_deleted = FALSE FOR UPDATE`,
       [inquiryId]
     );
     if (!rows.length) {
@@ -302,7 +303,7 @@ router.post('/:id/answer', requireAdminApi, validate(inquiryAnswerValidators), a
       `UPDATE inquiries
        SET answer_content = ?,
            answer_note = ?,
-           answered_by = ?,
+           answered_by_admin_id = ?,
            answered_at = ?,
            status = ?,
            is_read_by_user = FALSE,
@@ -321,6 +322,21 @@ router.post('/:id/answer', requireAdminApi, validate(inquiryAnswerValidators), a
     });
 
     await connection.commit();
+
+    const targetUserId = rows[0].user_id ? Number(rows[0].user_id) : null;
+    if (targetUserId && Number.isFinite(targetUserId) && targetUserId > 0) {
+      await enqueueNotification({
+        userId: targetUserId,
+        type: 'system',
+        category: 'system',
+        title: '문의 답변이 도착했습니다',
+        body: '문의하신 내용에 답변이 등록되었습니다. 앱에서 확인해 주세요.',
+        relatedType: 'inquiry',
+        relatedId: inquiryId,
+        sourceId: `inquiry_answer_${inquiryId}`,
+      });
+    }
+
     return res.json({ success: true, message: '답변이 등록되었습니다.' });
   } catch (error) {
     await connection.rollback();
@@ -374,7 +390,7 @@ router.patch('/:id/answer', requireAdminApi, validate(inquiryAnswerValidators), 
       `UPDATE inquiries
        SET answer_content = ?,
            answer_note = ?,
-           answered_by = ?,
+           answered_by_admin_id = ?,
            answered_at = ?,
            is_read_by_user = FALSE,
            read_at = NULL

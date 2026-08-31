@@ -1,5 +1,5 @@
 -- Cucumber DB 초기 스키마 (마이그레이션 스쿼시)
--- Generated: 2026-08-20 (004~010 합침)
+-- Generated: 2026-08-31 (002~006 합침 · admin FK · mail FK · user_devices · ocr 제거)
 -- 신규 DB: migrate.js가 이 파일만 실행합니다.
 -- 기존 DB: 001_init 이력이 있으면 DDL을 다시 돌리지 않음. 빠진 테이블·컬럼은 migrate.js가 보정.
 
@@ -255,7 +255,10 @@ CREATE TABLE IF NOT EXISTS `personal_mail_rooms` (
   UNIQUE KEY `uniq_mail_room_root` (`root_mail_id`),
   KEY `idx_mail_rooms_user1` (`user1_id`),
   KEY `idx_mail_rooms_user2` (`user2_id`),
-  KEY `idx_mail_rooms_root_author` (`root_author_id`)
+  KEY `idx_mail_rooms_root_author` (`root_author_id`),
+  CONSTRAINT `fk_pmr_root_author` FOREIGN KEY (`root_author_id`) REFERENCES `users` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `fk_pmr_user1` FOREIGN KEY (`user1_id`) REFERENCES `users` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `fk_pmr_user2` FOREIGN KEY (`user2_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='개인 우편 룸 테이블';
 
 -- ── personal_mails ──
@@ -291,186 +294,10 @@ CREATE TABLE IF NOT EXISTS `personal_mails` (
   KEY `idx_personal_mails_shadow_blocked_for_user` (`shadow_blocked_for_user_id`),
   KEY `idx_personal_mails_recipient_name_lookup` (`recipient_name_lookup`),
   CONSTRAINT `fk_personal_mails_room_id` FOREIGN KEY (`room_id`) REFERENCES `personal_mail_rooms` (`id`) ON DELETE SET NULL,
-  CONSTRAINT `personal_mails_ibfk_1` FOREIGN KEY (`sender_id`) REFERENCES `users` (`id`) ON DELETE CASCADE,
-  CONSTRAINT `personal_mails_ibfk_10` FOREIGN KEY (`root_mail_id`) REFERENCES `personal_mails` (`id`) ON DELETE SET NULL,
-  CONSTRAINT `personal_mails_ibfk_100` FOREIGN KEY (`root_mail_id`) REFERENCES `personal_mails` (`id`) ON DELETE SET NULL,
-  CONSTRAINT `personal_mails_ibfk_101` FOREIGN KEY (`parent_mail_id`) REFERENCES `personal_mails` (`id`) ON DELETE SET NULL,
-  CONSTRAINT `personal_mails_ibfk_102` FOREIGN KEY (`root_mail_id`) REFERENCES `personal_mails` (`id`) ON DELETE SET NULL,
-  CONSTRAINT `personal_mails_ibfk_103` FOREIGN KEY (`parent_mail_id`) REFERENCES `personal_mails` (`id`) ON DELETE SET NULL,
-  CONSTRAINT `personal_mails_ibfk_104` FOREIGN KEY (`root_mail_id`) REFERENCES `personal_mails` (`id`) ON DELETE SET NULL,
-  CONSTRAINT `personal_mails_ibfk_105` FOREIGN KEY (`parent_mail_id`) REFERENCES `personal_mails` (`id`) ON DELETE SET NULL,
-  CONSTRAINT `personal_mails_ibfk_106` FOREIGN KEY (`root_mail_id`) REFERENCES `personal_mails` (`id`) ON DELETE SET NULL,
-  CONSTRAINT `personal_mails_ibfk_107` FOREIGN KEY (`parent_mail_id`) REFERENCES `personal_mails` (`id`) ON DELETE SET NULL,
-  CONSTRAINT `personal_mails_ibfk_108` FOREIGN KEY (`root_mail_id`) REFERENCES `personal_mails` (`id`) ON DELETE SET NULL,
-  CONSTRAINT `personal_mails_ibfk_109` FOREIGN KEY (`parent_mail_id`) REFERENCES `personal_mails` (`id`) ON DELETE SET NULL,
-  CONSTRAINT `personal_mails_ibfk_11` FOREIGN KEY (`parent_mail_id`) REFERENCES `personal_mails` (`id`) ON DELETE SET NULL,
-  CONSTRAINT `personal_mails_ibfk_110` FOREIGN KEY (`root_mail_id`) REFERENCES `personal_mails` (`id`) ON DELETE SET NULL,
-  CONSTRAINT `personal_mails_ibfk_111` FOREIGN KEY (`parent_mail_id`) REFERENCES `personal_mails` (`id`) ON DELETE SET NULL,
-  CONSTRAINT `personal_mails_ibfk_112` FOREIGN KEY (`root_mail_id`) REFERENCES `personal_mails` (`id`) ON DELETE SET NULL,
-  CONSTRAINT `personal_mails_ibfk_113` FOREIGN KEY (`parent_mail_id`) REFERENCES `personal_mails` (`id`) ON DELETE SET NULL,
-  CONSTRAINT `personal_mails_ibfk_114` FOREIGN KEY (`root_mail_id`) REFERENCES `personal_mails` (`id`) ON DELETE SET NULL,
-  CONSTRAINT `personal_mails_ibfk_115` FOREIGN KEY (`parent_mail_id`) REFERENCES `personal_mails` (`id`) ON DELETE SET NULL,
-  CONSTRAINT `personal_mails_ibfk_116` FOREIGN KEY (`root_mail_id`) REFERENCES `personal_mails` (`id`) ON DELETE SET NULL,
-  CONSTRAINT `personal_mails_ibfk_117` FOREIGN KEY (`parent_mail_id`) REFERENCES `personal_mails` (`id`) ON DELETE SET NULL,
-  CONSTRAINT `personal_mails_ibfk_118` FOREIGN KEY (`root_mail_id`) REFERENCES `personal_mails` (`id`) ON DELETE SET NULL,
-  CONSTRAINT `personal_mails_ibfk_119` FOREIGN KEY (`parent_mail_id`) REFERENCES `personal_mails` (`id`) ON DELETE SET NULL,
-  CONSTRAINT `personal_mails_ibfk_12` FOREIGN KEY (`root_mail_id`) REFERENCES `personal_mails` (`id`) ON DELETE SET NULL,
-  CONSTRAINT `personal_mails_ibfk_120` FOREIGN KEY (`root_mail_id`) REFERENCES `personal_mails` (`id`) ON DELETE SET NULL,
-  CONSTRAINT `personal_mails_ibfk_121` FOREIGN KEY (`parent_mail_id`) REFERENCES `personal_mails` (`id`) ON DELETE SET NULL,
-  CONSTRAINT `personal_mails_ibfk_122` FOREIGN KEY (`root_mail_id`) REFERENCES `personal_mails` (`id`) ON DELETE SET NULL,
-  CONSTRAINT `personal_mails_ibfk_123` FOREIGN KEY (`parent_mail_id`) REFERENCES `personal_mails` (`id`) ON DELETE SET NULL,
-  CONSTRAINT `personal_mails_ibfk_124` FOREIGN KEY (`root_mail_id`) REFERENCES `personal_mails` (`id`) ON DELETE SET NULL,
-  CONSTRAINT `personal_mails_ibfk_125` FOREIGN KEY (`parent_mail_id`) REFERENCES `personal_mails` (`id`) ON DELETE SET NULL,
-  CONSTRAINT `personal_mails_ibfk_126` FOREIGN KEY (`root_mail_id`) REFERENCES `personal_mails` (`id`) ON DELETE SET NULL,
-  CONSTRAINT `personal_mails_ibfk_127` FOREIGN KEY (`parent_mail_id`) REFERENCES `personal_mails` (`id`) ON DELETE SET NULL,
-  CONSTRAINT `personal_mails_ibfk_128` FOREIGN KEY (`root_mail_id`) REFERENCES `personal_mails` (`id`) ON DELETE SET NULL,
-  CONSTRAINT `personal_mails_ibfk_129` FOREIGN KEY (`parent_mail_id`) REFERENCES `personal_mails` (`id`) ON DELETE SET NULL,
-  CONSTRAINT `personal_mails_ibfk_13` FOREIGN KEY (`parent_mail_id`) REFERENCES `personal_mails` (`id`) ON DELETE SET NULL,
-  CONSTRAINT `personal_mails_ibfk_130` FOREIGN KEY (`root_mail_id`) REFERENCES `personal_mails` (`id`) ON DELETE SET NULL,
-  CONSTRAINT `personal_mails_ibfk_131` FOREIGN KEY (`parent_mail_id`) REFERENCES `personal_mails` (`id`) ON DELETE SET NULL,
-  CONSTRAINT `personal_mails_ibfk_132` FOREIGN KEY (`root_mail_id`) REFERENCES `personal_mails` (`id`) ON DELETE SET NULL,
-  CONSTRAINT `personal_mails_ibfk_133` FOREIGN KEY (`parent_mail_id`) REFERENCES `personal_mails` (`id`) ON DELETE SET NULL,
-  CONSTRAINT `personal_mails_ibfk_134` FOREIGN KEY (`root_mail_id`) REFERENCES `personal_mails` (`id`) ON DELETE SET NULL,
-  CONSTRAINT `personal_mails_ibfk_135` FOREIGN KEY (`parent_mail_id`) REFERENCES `personal_mails` (`id`) ON DELETE SET NULL,
-  CONSTRAINT `personal_mails_ibfk_136` FOREIGN KEY (`root_mail_id`) REFERENCES `personal_mails` (`id`) ON DELETE SET NULL,
-  CONSTRAINT `personal_mails_ibfk_137` FOREIGN KEY (`parent_mail_id`) REFERENCES `personal_mails` (`id`) ON DELETE SET NULL,
-  CONSTRAINT `personal_mails_ibfk_138` FOREIGN KEY (`root_mail_id`) REFERENCES `personal_mails` (`id`) ON DELETE SET NULL,
-  CONSTRAINT `personal_mails_ibfk_139` FOREIGN KEY (`parent_mail_id`) REFERENCES `personal_mails` (`id`) ON DELETE SET NULL,
-  CONSTRAINT `personal_mails_ibfk_14` FOREIGN KEY (`root_mail_id`) REFERENCES `personal_mails` (`id`) ON DELETE SET NULL,
-  CONSTRAINT `personal_mails_ibfk_140` FOREIGN KEY (`root_mail_id`) REFERENCES `personal_mails` (`id`) ON DELETE SET NULL,
-  CONSTRAINT `personal_mails_ibfk_141` FOREIGN KEY (`parent_mail_id`) REFERENCES `personal_mails` (`id`) ON DELETE SET NULL,
-  CONSTRAINT `personal_mails_ibfk_142` FOREIGN KEY (`root_mail_id`) REFERENCES `personal_mails` (`id`) ON DELETE SET NULL,
-  CONSTRAINT `personal_mails_ibfk_143` FOREIGN KEY (`parent_mail_id`) REFERENCES `personal_mails` (`id`) ON DELETE SET NULL,
-  CONSTRAINT `personal_mails_ibfk_144` FOREIGN KEY (`root_mail_id`) REFERENCES `personal_mails` (`id`) ON DELETE SET NULL,
-  CONSTRAINT `personal_mails_ibfk_145` FOREIGN KEY (`parent_mail_id`) REFERENCES `personal_mails` (`id`) ON DELETE SET NULL,
-  CONSTRAINT `personal_mails_ibfk_146` FOREIGN KEY (`root_mail_id`) REFERENCES `personal_mails` (`id`) ON DELETE SET NULL,
-  CONSTRAINT `personal_mails_ibfk_147` FOREIGN KEY (`parent_mail_id`) REFERENCES `personal_mails` (`id`) ON DELETE SET NULL,
-  CONSTRAINT `personal_mails_ibfk_148` FOREIGN KEY (`root_mail_id`) REFERENCES `personal_mails` (`id`) ON DELETE SET NULL,
-  CONSTRAINT `personal_mails_ibfk_149` FOREIGN KEY (`parent_mail_id`) REFERENCES `personal_mails` (`id`) ON DELETE SET NULL,
-  CONSTRAINT `personal_mails_ibfk_15` FOREIGN KEY (`parent_mail_id`) REFERENCES `personal_mails` (`id`) ON DELETE SET NULL,
-  CONSTRAINT `personal_mails_ibfk_150` FOREIGN KEY (`root_mail_id`) REFERENCES `personal_mails` (`id`) ON DELETE SET NULL,
-  CONSTRAINT `personal_mails_ibfk_151` FOREIGN KEY (`parent_mail_id`) REFERENCES `personal_mails` (`id`) ON DELETE SET NULL,
-  CONSTRAINT `personal_mails_ibfk_152` FOREIGN KEY (`root_mail_id`) REFERENCES `personal_mails` (`id`) ON DELETE SET NULL,
-  CONSTRAINT `personal_mails_ibfk_153` FOREIGN KEY (`parent_mail_id`) REFERENCES `personal_mails` (`id`) ON DELETE SET NULL,
-  CONSTRAINT `personal_mails_ibfk_154` FOREIGN KEY (`root_mail_id`) REFERENCES `personal_mails` (`id`) ON DELETE SET NULL,
-  CONSTRAINT `personal_mails_ibfk_155` FOREIGN KEY (`parent_mail_id`) REFERENCES `personal_mails` (`id`) ON DELETE SET NULL,
-  CONSTRAINT `personal_mails_ibfk_156` FOREIGN KEY (`root_mail_id`) REFERENCES `personal_mails` (`id`) ON DELETE SET NULL,
-  CONSTRAINT `personal_mails_ibfk_157` FOREIGN KEY (`parent_mail_id`) REFERENCES `personal_mails` (`id`) ON DELETE SET NULL,
-  CONSTRAINT `personal_mails_ibfk_158` FOREIGN KEY (`root_mail_id`) REFERENCES `personal_mails` (`id`) ON DELETE SET NULL,
-  CONSTRAINT `personal_mails_ibfk_159` FOREIGN KEY (`parent_mail_id`) REFERENCES `personal_mails` (`id`) ON DELETE SET NULL,
-  CONSTRAINT `personal_mails_ibfk_16` FOREIGN KEY (`root_mail_id`) REFERENCES `personal_mails` (`id`) ON DELETE SET NULL,
-  CONSTRAINT `personal_mails_ibfk_160` FOREIGN KEY (`root_mail_id`) REFERENCES `personal_mails` (`id`) ON DELETE SET NULL,
-  CONSTRAINT `personal_mails_ibfk_161` FOREIGN KEY (`parent_mail_id`) REFERENCES `personal_mails` (`id`) ON DELETE SET NULL,
-  CONSTRAINT `personal_mails_ibfk_162` FOREIGN KEY (`root_mail_id`) REFERENCES `personal_mails` (`id`) ON DELETE SET NULL,
-  CONSTRAINT `personal_mails_ibfk_163` FOREIGN KEY (`parent_mail_id`) REFERENCES `personal_mails` (`id`) ON DELETE SET NULL,
-  CONSTRAINT `personal_mails_ibfk_164` FOREIGN KEY (`root_mail_id`) REFERENCES `personal_mails` (`id`) ON DELETE SET NULL,
-  CONSTRAINT `personal_mails_ibfk_165` FOREIGN KEY (`parent_mail_id`) REFERENCES `personal_mails` (`id`) ON DELETE SET NULL,
-  CONSTRAINT `personal_mails_ibfk_166` FOREIGN KEY (`root_mail_id`) REFERENCES `personal_mails` (`id`) ON DELETE SET NULL,
-  CONSTRAINT `personal_mails_ibfk_167` FOREIGN KEY (`parent_mail_id`) REFERENCES `personal_mails` (`id`) ON DELETE SET NULL,
-  CONSTRAINT `personal_mails_ibfk_168` FOREIGN KEY (`root_mail_id`) REFERENCES `personal_mails` (`id`) ON DELETE SET NULL,
-  CONSTRAINT `personal_mails_ibfk_169` FOREIGN KEY (`parent_mail_id`) REFERENCES `personal_mails` (`id`) ON DELETE SET NULL,
-  CONSTRAINT `personal_mails_ibfk_17` FOREIGN KEY (`parent_mail_id`) REFERENCES `personal_mails` (`id`) ON DELETE SET NULL,
-  CONSTRAINT `personal_mails_ibfk_170` FOREIGN KEY (`root_mail_id`) REFERENCES `personal_mails` (`id`) ON DELETE SET NULL,
-  CONSTRAINT `personal_mails_ibfk_171` FOREIGN KEY (`parent_mail_id`) REFERENCES `personal_mails` (`id`) ON DELETE SET NULL,
-  CONSTRAINT `personal_mails_ibfk_172` FOREIGN KEY (`root_mail_id`) REFERENCES `personal_mails` (`id`) ON DELETE SET NULL,
-  CONSTRAINT `personal_mails_ibfk_173` FOREIGN KEY (`parent_mail_id`) REFERENCES `personal_mails` (`id`) ON DELETE SET NULL,
-  CONSTRAINT `personal_mails_ibfk_174` FOREIGN KEY (`root_mail_id`) REFERENCES `personal_mails` (`id`) ON DELETE SET NULL,
-  CONSTRAINT `personal_mails_ibfk_175` FOREIGN KEY (`parent_mail_id`) REFERENCES `personal_mails` (`id`) ON DELETE SET NULL,
-  CONSTRAINT `personal_mails_ibfk_176` FOREIGN KEY (`root_mail_id`) REFERENCES `personal_mails` (`id`) ON DELETE SET NULL,
-  CONSTRAINT `personal_mails_ibfk_177` FOREIGN KEY (`parent_mail_id`) REFERENCES `personal_mails` (`id`) ON DELETE SET NULL,
-  CONSTRAINT `personal_mails_ibfk_178` FOREIGN KEY (`root_mail_id`) REFERENCES `personal_mails` (`id`) ON DELETE SET NULL,
-  CONSTRAINT `personal_mails_ibfk_179` FOREIGN KEY (`parent_mail_id`) REFERENCES `personal_mails` (`id`) ON DELETE SET NULL,
-  CONSTRAINT `personal_mails_ibfk_18` FOREIGN KEY (`root_mail_id`) REFERENCES `personal_mails` (`id`) ON DELETE SET NULL,
-  CONSTRAINT `personal_mails_ibfk_180` FOREIGN KEY (`root_mail_id`) REFERENCES `personal_mails` (`id`) ON DELETE SET NULL,
-  CONSTRAINT `personal_mails_ibfk_19` FOREIGN KEY (`parent_mail_id`) REFERENCES `personal_mails` (`id`) ON DELETE SET NULL,
-  CONSTRAINT `personal_mails_ibfk_2` FOREIGN KEY (`recipient_id`) REFERENCES `users` (`id`) ON DELETE CASCADE,
-  CONSTRAINT `personal_mails_ibfk_20` FOREIGN KEY (`root_mail_id`) REFERENCES `personal_mails` (`id`) ON DELETE SET NULL,
-  CONSTRAINT `personal_mails_ibfk_21` FOREIGN KEY (`parent_mail_id`) REFERENCES `personal_mails` (`id`) ON DELETE SET NULL,
-  CONSTRAINT `personal_mails_ibfk_22` FOREIGN KEY (`root_mail_id`) REFERENCES `personal_mails` (`id`) ON DELETE SET NULL,
-  CONSTRAINT `personal_mails_ibfk_23` FOREIGN KEY (`parent_mail_id`) REFERENCES `personal_mails` (`id`) ON DELETE SET NULL,
-  CONSTRAINT `personal_mails_ibfk_24` FOREIGN KEY (`root_mail_id`) REFERENCES `personal_mails` (`id`) ON DELETE SET NULL,
-  CONSTRAINT `personal_mails_ibfk_25` FOREIGN KEY (`parent_mail_id`) REFERENCES `personal_mails` (`id`) ON DELETE SET NULL,
-  CONSTRAINT `personal_mails_ibfk_26` FOREIGN KEY (`root_mail_id`) REFERENCES `personal_mails` (`id`) ON DELETE SET NULL,
-  CONSTRAINT `personal_mails_ibfk_27` FOREIGN KEY (`parent_mail_id`) REFERENCES `personal_mails` (`id`) ON DELETE SET NULL,
-  CONSTRAINT `personal_mails_ibfk_28` FOREIGN KEY (`root_mail_id`) REFERENCES `personal_mails` (`id`) ON DELETE SET NULL,
-  CONSTRAINT `personal_mails_ibfk_29` FOREIGN KEY (`parent_mail_id`) REFERENCES `personal_mails` (`id`) ON DELETE SET NULL,
-  CONSTRAINT `personal_mails_ibfk_3` FOREIGN KEY (`parent_mail_id`) REFERENCES `personal_mails` (`id`) ON DELETE SET NULL,
-  CONSTRAINT `personal_mails_ibfk_30` FOREIGN KEY (`root_mail_id`) REFERENCES `personal_mails` (`id`) ON DELETE SET NULL,
-  CONSTRAINT `personal_mails_ibfk_31` FOREIGN KEY (`parent_mail_id`) REFERENCES `personal_mails` (`id`) ON DELETE SET NULL,
-  CONSTRAINT `personal_mails_ibfk_32` FOREIGN KEY (`root_mail_id`) REFERENCES `personal_mails` (`id`) ON DELETE SET NULL,
-  CONSTRAINT `personal_mails_ibfk_33` FOREIGN KEY (`parent_mail_id`) REFERENCES `personal_mails` (`id`) ON DELETE SET NULL,
-  CONSTRAINT `personal_mails_ibfk_34` FOREIGN KEY (`root_mail_id`) REFERENCES `personal_mails` (`id`) ON DELETE SET NULL,
-  CONSTRAINT `personal_mails_ibfk_35` FOREIGN KEY (`parent_mail_id`) REFERENCES `personal_mails` (`id`) ON DELETE SET NULL,
-  CONSTRAINT `personal_mails_ibfk_36` FOREIGN KEY (`root_mail_id`) REFERENCES `personal_mails` (`id`) ON DELETE SET NULL,
-  CONSTRAINT `personal_mails_ibfk_37` FOREIGN KEY (`parent_mail_id`) REFERENCES `personal_mails` (`id`) ON DELETE SET NULL,
-  CONSTRAINT `personal_mails_ibfk_38` FOREIGN KEY (`root_mail_id`) REFERENCES `personal_mails` (`id`) ON DELETE SET NULL,
-  CONSTRAINT `personal_mails_ibfk_39` FOREIGN KEY (`parent_mail_id`) REFERENCES `personal_mails` (`id`) ON DELETE SET NULL,
-  CONSTRAINT `personal_mails_ibfk_4` FOREIGN KEY (`root_mail_id`) REFERENCES `personal_mails` (`id`) ON DELETE SET NULL,
-  CONSTRAINT `personal_mails_ibfk_40` FOREIGN KEY (`root_mail_id`) REFERENCES `personal_mails` (`id`) ON DELETE SET NULL,
-  CONSTRAINT `personal_mails_ibfk_41` FOREIGN KEY (`parent_mail_id`) REFERENCES `personal_mails` (`id`) ON DELETE SET NULL,
-  CONSTRAINT `personal_mails_ibfk_42` FOREIGN KEY (`root_mail_id`) REFERENCES `personal_mails` (`id`) ON DELETE SET NULL,
-  CONSTRAINT `personal_mails_ibfk_43` FOREIGN KEY (`parent_mail_id`) REFERENCES `personal_mails` (`id`) ON DELETE SET NULL,
-  CONSTRAINT `personal_mails_ibfk_44` FOREIGN KEY (`root_mail_id`) REFERENCES `personal_mails` (`id`) ON DELETE SET NULL,
-  CONSTRAINT `personal_mails_ibfk_45` FOREIGN KEY (`parent_mail_id`) REFERENCES `personal_mails` (`id`) ON DELETE SET NULL,
-  CONSTRAINT `personal_mails_ibfk_46` FOREIGN KEY (`root_mail_id`) REFERENCES `personal_mails` (`id`) ON DELETE SET NULL,
-  CONSTRAINT `personal_mails_ibfk_47` FOREIGN KEY (`parent_mail_id`) REFERENCES `personal_mails` (`id`) ON DELETE SET NULL,
-  CONSTRAINT `personal_mails_ibfk_48` FOREIGN KEY (`root_mail_id`) REFERENCES `personal_mails` (`id`) ON DELETE SET NULL,
-  CONSTRAINT `personal_mails_ibfk_49` FOREIGN KEY (`parent_mail_id`) REFERENCES `personal_mails` (`id`) ON DELETE SET NULL,
-  CONSTRAINT `personal_mails_ibfk_5` FOREIGN KEY (`parent_mail_id`) REFERENCES `personal_mails` (`id`) ON DELETE SET NULL,
-  CONSTRAINT `personal_mails_ibfk_50` FOREIGN KEY (`root_mail_id`) REFERENCES `personal_mails` (`id`) ON DELETE SET NULL,
-  CONSTRAINT `personal_mails_ibfk_51` FOREIGN KEY (`parent_mail_id`) REFERENCES `personal_mails` (`id`) ON DELETE SET NULL,
-  CONSTRAINT `personal_mails_ibfk_52` FOREIGN KEY (`root_mail_id`) REFERENCES `personal_mails` (`id`) ON DELETE SET NULL,
-  CONSTRAINT `personal_mails_ibfk_53` FOREIGN KEY (`parent_mail_id`) REFERENCES `personal_mails` (`id`) ON DELETE SET NULL,
-  CONSTRAINT `personal_mails_ibfk_54` FOREIGN KEY (`root_mail_id`) REFERENCES `personal_mails` (`id`) ON DELETE SET NULL,
-  CONSTRAINT `personal_mails_ibfk_55` FOREIGN KEY (`parent_mail_id`) REFERENCES `personal_mails` (`id`) ON DELETE SET NULL,
-  CONSTRAINT `personal_mails_ibfk_56` FOREIGN KEY (`root_mail_id`) REFERENCES `personal_mails` (`id`) ON DELETE SET NULL,
-  CONSTRAINT `personal_mails_ibfk_57` FOREIGN KEY (`parent_mail_id`) REFERENCES `personal_mails` (`id`) ON DELETE SET NULL,
-  CONSTRAINT `personal_mails_ibfk_58` FOREIGN KEY (`root_mail_id`) REFERENCES `personal_mails` (`id`) ON DELETE SET NULL,
-  CONSTRAINT `personal_mails_ibfk_59` FOREIGN KEY (`parent_mail_id`) REFERENCES `personal_mails` (`id`) ON DELETE SET NULL,
-  CONSTRAINT `personal_mails_ibfk_6` FOREIGN KEY (`root_mail_id`) REFERENCES `personal_mails` (`id`) ON DELETE SET NULL,
-  CONSTRAINT `personal_mails_ibfk_60` FOREIGN KEY (`root_mail_id`) REFERENCES `personal_mails` (`id`) ON DELETE SET NULL,
-  CONSTRAINT `personal_mails_ibfk_61` FOREIGN KEY (`parent_mail_id`) REFERENCES `personal_mails` (`id`) ON DELETE SET NULL,
-  CONSTRAINT `personal_mails_ibfk_62` FOREIGN KEY (`root_mail_id`) REFERENCES `personal_mails` (`id`) ON DELETE SET NULL,
-  CONSTRAINT `personal_mails_ibfk_63` FOREIGN KEY (`parent_mail_id`) REFERENCES `personal_mails` (`id`) ON DELETE SET NULL,
-  CONSTRAINT `personal_mails_ibfk_64` FOREIGN KEY (`root_mail_id`) REFERENCES `personal_mails` (`id`) ON DELETE SET NULL,
-  CONSTRAINT `personal_mails_ibfk_65` FOREIGN KEY (`parent_mail_id`) REFERENCES `personal_mails` (`id`) ON DELETE SET NULL,
-  CONSTRAINT `personal_mails_ibfk_66` FOREIGN KEY (`root_mail_id`) REFERENCES `personal_mails` (`id`) ON DELETE SET NULL,
-  CONSTRAINT `personal_mails_ibfk_67` FOREIGN KEY (`parent_mail_id`) REFERENCES `personal_mails` (`id`) ON DELETE SET NULL,
-  CONSTRAINT `personal_mails_ibfk_68` FOREIGN KEY (`root_mail_id`) REFERENCES `personal_mails` (`id`) ON DELETE SET NULL,
-  CONSTRAINT `personal_mails_ibfk_69` FOREIGN KEY (`parent_mail_id`) REFERENCES `personal_mails` (`id`) ON DELETE SET NULL,
-  CONSTRAINT `personal_mails_ibfk_7` FOREIGN KEY (`parent_mail_id`) REFERENCES `personal_mails` (`id`) ON DELETE SET NULL,
-  CONSTRAINT `personal_mails_ibfk_70` FOREIGN KEY (`root_mail_id`) REFERENCES `personal_mails` (`id`) ON DELETE SET NULL,
-  CONSTRAINT `personal_mails_ibfk_71` FOREIGN KEY (`parent_mail_id`) REFERENCES `personal_mails` (`id`) ON DELETE SET NULL,
-  CONSTRAINT `personal_mails_ibfk_72` FOREIGN KEY (`root_mail_id`) REFERENCES `personal_mails` (`id`) ON DELETE SET NULL,
-  CONSTRAINT `personal_mails_ibfk_73` FOREIGN KEY (`parent_mail_id`) REFERENCES `personal_mails` (`id`) ON DELETE SET NULL,
-  CONSTRAINT `personal_mails_ibfk_74` FOREIGN KEY (`root_mail_id`) REFERENCES `personal_mails` (`id`) ON DELETE SET NULL,
-  CONSTRAINT `personal_mails_ibfk_75` FOREIGN KEY (`parent_mail_id`) REFERENCES `personal_mails` (`id`) ON DELETE SET NULL,
-  CONSTRAINT `personal_mails_ibfk_76` FOREIGN KEY (`root_mail_id`) REFERENCES `personal_mails` (`id`) ON DELETE SET NULL,
-  CONSTRAINT `personal_mails_ibfk_77` FOREIGN KEY (`parent_mail_id`) REFERENCES `personal_mails` (`id`) ON DELETE SET NULL,
-  CONSTRAINT `personal_mails_ibfk_78` FOREIGN KEY (`root_mail_id`) REFERENCES `personal_mails` (`id`) ON DELETE SET NULL,
-  CONSTRAINT `personal_mails_ibfk_79` FOREIGN KEY (`parent_mail_id`) REFERENCES `personal_mails` (`id`) ON DELETE SET NULL,
-  CONSTRAINT `personal_mails_ibfk_8` FOREIGN KEY (`root_mail_id`) REFERENCES `personal_mails` (`id`) ON DELETE SET NULL,
-  CONSTRAINT `personal_mails_ibfk_80` FOREIGN KEY (`root_mail_id`) REFERENCES `personal_mails` (`id`) ON DELETE SET NULL,
-  CONSTRAINT `personal_mails_ibfk_81` FOREIGN KEY (`parent_mail_id`) REFERENCES `personal_mails` (`id`) ON DELETE SET NULL,
-  CONSTRAINT `personal_mails_ibfk_82` FOREIGN KEY (`root_mail_id`) REFERENCES `personal_mails` (`id`) ON DELETE SET NULL,
-  CONSTRAINT `personal_mails_ibfk_83` FOREIGN KEY (`parent_mail_id`) REFERENCES `personal_mails` (`id`) ON DELETE SET NULL,
-  CONSTRAINT `personal_mails_ibfk_84` FOREIGN KEY (`root_mail_id`) REFERENCES `personal_mails` (`id`) ON DELETE SET NULL,
-  CONSTRAINT `personal_mails_ibfk_85` FOREIGN KEY (`parent_mail_id`) REFERENCES `personal_mails` (`id`) ON DELETE SET NULL,
-  CONSTRAINT `personal_mails_ibfk_86` FOREIGN KEY (`root_mail_id`) REFERENCES `personal_mails` (`id`) ON DELETE SET NULL,
-  CONSTRAINT `personal_mails_ibfk_87` FOREIGN KEY (`parent_mail_id`) REFERENCES `personal_mails` (`id`) ON DELETE SET NULL,
-  CONSTRAINT `personal_mails_ibfk_88` FOREIGN KEY (`root_mail_id`) REFERENCES `personal_mails` (`id`) ON DELETE SET NULL,
-  CONSTRAINT `personal_mails_ibfk_89` FOREIGN KEY (`parent_mail_id`) REFERENCES `personal_mails` (`id`) ON DELETE SET NULL,
-  CONSTRAINT `personal_mails_ibfk_9` FOREIGN KEY (`parent_mail_id`) REFERENCES `personal_mails` (`id`) ON DELETE SET NULL,
-  CONSTRAINT `personal_mails_ibfk_90` FOREIGN KEY (`root_mail_id`) REFERENCES `personal_mails` (`id`) ON DELETE SET NULL,
-  CONSTRAINT `personal_mails_ibfk_91` FOREIGN KEY (`parent_mail_id`) REFERENCES `personal_mails` (`id`) ON DELETE SET NULL,
-  CONSTRAINT `personal_mails_ibfk_92` FOREIGN KEY (`root_mail_id`) REFERENCES `personal_mails` (`id`) ON DELETE SET NULL,
-  CONSTRAINT `personal_mails_ibfk_93` FOREIGN KEY (`parent_mail_id`) REFERENCES `personal_mails` (`id`) ON DELETE SET NULL,
-  CONSTRAINT `personal_mails_ibfk_94` FOREIGN KEY (`root_mail_id`) REFERENCES `personal_mails` (`id`) ON DELETE SET NULL,
-  CONSTRAINT `personal_mails_ibfk_95` FOREIGN KEY (`parent_mail_id`) REFERENCES `personal_mails` (`id`) ON DELETE SET NULL,
-  CONSTRAINT `personal_mails_ibfk_96` FOREIGN KEY (`root_mail_id`) REFERENCES `personal_mails` (`id`) ON DELETE SET NULL,
-  CONSTRAINT `personal_mails_ibfk_97` FOREIGN KEY (`parent_mail_id`) REFERENCES `personal_mails` (`id`) ON DELETE SET NULL,
-  CONSTRAINT `personal_mails_ibfk_98` FOREIGN KEY (`root_mail_id`) REFERENCES `personal_mails` (`id`) ON DELETE SET NULL,
-  CONSTRAINT `personal_mails_ibfk_99` FOREIGN KEY (`parent_mail_id`) REFERENCES `personal_mails` (`id`) ON DELETE SET NULL
+  CONSTRAINT `fk_personal_mails_sender` FOREIGN KEY (`sender_id`) REFERENCES `users` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `fk_personal_mails_recipient` FOREIGN KEY (`recipient_id`) REFERENCES `users` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `fk_personal_mails_root_mail` FOREIGN KEY (`root_mail_id`) REFERENCES `personal_mails` (`id`) ON DELETE SET NULL,
+  CONSTRAINT `fk_personal_mails_parent_mail` FOREIGN KEY (`parent_mail_id`) REFERENCES `personal_mails` (`id`) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='개인 우편 테이블';
 
 -- ── school_mails ──
@@ -602,6 +429,7 @@ CREATE TABLE IF NOT EXISTS `user_devices` (
   PRIMARY KEY (`id`),
   KEY `idx_user_id` (`user_id`),
   KEY `idx_device_id` (`device_id`),
+  UNIQUE KEY `uq_user_devices_user_device` (`user_id`,`device_id`),
   KEY `idx_user_device` (`user_id`,`device_id`),
   CONSTRAINT `user_devices_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB AUTO_INCREMENT=5 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='사용자 디바이스 정보 테이블';
@@ -659,7 +487,7 @@ CREATE TABLE IF NOT EXISTS `reports` (
   `description` text COLLATE utf8mb4_unicode_ci COMMENT '신고 상세 내용',
   `status` varchar(20) COLLATE utf8mb4_unicode_ci DEFAULT 'pending' COMMENT '신고 상태 (pending/processing/resolved/rejected)',
   `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP COMMENT '신고 일시',
-  `reviewed_by` int DEFAULT NULL COMMENT '검토 관리자 사용자 ID',
+  `reviewed_by_admin_id` int DEFAULT NULL COMMENT '검토 관리자 admin_users.id',
   `reviewed_at` timestamp NULL DEFAULT NULL COMMENT '검토 완료 시각',
   `review_note` text COLLATE utf8mb4_unicode_ci COMMENT '검토 메모',
   `is_malicious` tinyint(1) NOT NULL DEFAULT '0' COMMENT '허위/악의 신고 여부',
@@ -671,28 +499,13 @@ CREATE TABLE IF NOT EXISTS `reports` (
   KEY `idx_status` (`status`),
   KEY `idx_reports_target_status_created_at` (`target_type`,`target_id`,`status`,`created_at`),
   KEY `idx_reports_status_created_at` (`status`,`created_at`),
-  KEY `idx_reports_reviewed_by` (`reviewed_by`),
+  KEY `idx_reports_reviewed_by_admin` (`reviewed_by_admin_id`),
   KEY `fk_reports_reported_user` (`reported_user_id`),
   KEY `idx_reports_reporter_reported_user` (`reporter_id`,`reported_user_id`),
   CONSTRAINT `fk_reports_reported_user` FOREIGN KEY (`reported_user_id`) REFERENCES `users` (`id`) ON DELETE SET NULL,
-  CONSTRAINT `fk_reports_reviewed_by_users` FOREIGN KEY (`reviewed_by`) REFERENCES `users` (`id`) ON DELETE SET NULL,
+  CONSTRAINT `fk_reports_reviewed_by_admin` FOREIGN KEY (`reviewed_by_admin_id`) REFERENCES `admin_users` (`id`) ON DELETE SET NULL,
   CONSTRAINT `reports_ibfk_1` FOREIGN KEY (`reporter_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='신고 테이블';
-
--- ── ocr_verifications ──
-CREATE TABLE IF NOT EXISTS `ocr_verifications` (
-  `id` int NOT NULL AUTO_INCREMENT COMMENT 'OCR 인증 ID',
-  `user_id` int NOT NULL COMMENT '사용자 ID',
-  `image_url` text COLLATE utf8mb4_unicode_ci COMMENT '학생증 이미지 URL',
-  `extracted_data` json DEFAULT NULL COMMENT 'OCR 추출 데이터',
-  `is_verified` tinyint(1) DEFAULT '0' COMMENT '인증 완료 여부',
-  `verified_by` int DEFAULT NULL COMMENT '인증 처리자 ID',
-  `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP COMMENT '생성 일시',
-  PRIMARY KEY (`id`),
-  KEY `idx_user_id` (`user_id`),
-  KEY `idx_is_verified` (`is_verified`),
-  CONSTRAINT `ocr_verifications_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='OCR 학생증 인증 테이블';
 
 -- ── user_friendships ──
 CREATE TABLE IF NOT EXISTS `user_friendships` (
@@ -903,17 +716,17 @@ CREATE TABLE IF NOT EXISTS `report_appeals` (
   `content` text COLLATE utf8mb4_unicode_ci NOT NULL COMMENT '소명 내용',
   `status` varchar(20) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'pending' COMMENT '처리 상태 (pending/accepted/rejected)',
   `review_note` text COLLATE utf8mb4_unicode_ci COMMENT '검토 메모',
-  `reviewed_by` int DEFAULT NULL COMMENT '검토 관리자 사용자 ID',
+  `reviewed_by_admin_id` int DEFAULT NULL COMMENT '검토 관리자 admin_users.id',
   `reviewed_at` timestamp NULL DEFAULT NULL COMMENT '검토 완료 시각',
   `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP COMMENT '생성 시각',
   PRIMARY KEY (`id`),
-  KEY `reviewed_by` (`reviewed_by`),
+  KEY `idx_report_appeals_reviewed_by_admin` (`reviewed_by_admin_id`),
   KEY `idx_report_appeals_post_id` (`post_id`),
   KEY `idx_report_appeals_appellant_status` (`appellant_id`,`status`),
   KEY `idx_report_appeals_status_created_at` (`status`,`created_at`),
   CONSTRAINT `report_appeals_ibfk_1` FOREIGN KEY (`post_id`) REFERENCES `posts` (`id`) ON DELETE CASCADE,
   CONSTRAINT `report_appeals_ibfk_2` FOREIGN KEY (`appellant_id`) REFERENCES `users` (`id`) ON DELETE CASCADE,
-  CONSTRAINT `report_appeals_ibfk_3` FOREIGN KEY (`reviewed_by`) REFERENCES `users` (`id`) ON DELETE SET NULL
+  CONSTRAINT `fk_report_appeals_reviewed_by_admin` FOREIGN KEY (`reviewed_by_admin_id`) REFERENCES `admin_users` (`id`) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='숨김 게시글 이의신청 테이블';
 
 -- ── admin_audit_logs ──
@@ -964,7 +777,7 @@ CREATE TABLE IF NOT EXISTS `inquiries` (
   `device_info` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL COMMENT 'OS/디바이스 정보',
   `status` varchar(20) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'pending' COMMENT '처리 상태 (pending/answered/closed)',
   `answer_content` text COLLATE utf8mb4_unicode_ci COMMENT '관리자 답변 본문 (1문의 1답변)',
-  `answered_by` int DEFAULT NULL COMMENT '답변 관리자 사용자 ID',
+  `answered_by_admin_id` int DEFAULT NULL COMMENT '답변 관리자 admin_users.id',
   `answered_at` timestamp NULL DEFAULT NULL COMMENT '답변 시각',
   `answer_note` text COLLATE utf8mb4_unicode_ci COMMENT '운영 내부 메모 (사용자 비공개)',
   `is_read_by_user` tinyint(1) NOT NULL DEFAULT '0' COMMENT '작성자가 답변을 확인했는지 여부',
@@ -976,10 +789,10 @@ CREATE TABLE IF NOT EXISTS `inquiries` (
   PRIMARY KEY (`id`),
   KEY `idx_inquiries_user_status_created` (`user_id`,`status`,`created_at`),
   KEY `idx_inquiries_status_created` (`status`,`created_at`),
-  KEY `idx_inquiries_answered_by` (`answered_by`),
+  KEY `idx_inquiries_answered_by_admin` (`answered_by_admin_id`),
   KEY `idx_inquiries_contact_username` (`contact_username`),
   CONSTRAINT `inquiries_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE SET NULL,
-  CONSTRAINT `inquiries_ibfk_2` FOREIGN KEY (`answered_by`) REFERENCES `users` (`id`) ON DELETE SET NULL
+  CONSTRAINT `fk_inquiries_answered_by_admin` FOREIGN KEY (`answered_by_admin_id`) REFERENCES `admin_users` (`id`) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='고객 문의(1문의 1답변) 테이블';
 
 -- ── inquiry_images ──
@@ -1009,16 +822,16 @@ CREATE TABLE IF NOT EXISTS `signup_certificate_submissions` (
   `claimed_school_name` varchar(100) COLLATE utf8mb4_unicode_ci DEFAULT NULL COMMENT '사용자가 기재한 재학 학교명(검수 참고)',
   `status` varchar(20) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'pending' COMMENT 'pending/approved/rejected',
   `review_note` text COLLATE utf8mb4_unicode_ci COMMENT '관리자 검수 메모',
-  `reviewed_by` int DEFAULT NULL COMMENT '검수 관리자 users.id',
+  `reviewed_by_admin_id` int DEFAULT NULL COMMENT '검수 관리자 admin_users.id',
   `reviewed_at` timestamp NULL DEFAULT NULL COMMENT '검수 시각',
   `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP COMMENT '제출 시각',
   `updated_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '갱신 시각',
   PRIMARY KEY (`id`),
-  KEY `reviewed_by` (`reviewed_by`),
+  KEY `idx_signup_cert_reviewed_by_admin` (`reviewed_by_admin_id`),
   KEY `idx_signup_cert_status_created` (`status`,`created_at`),
   KEY `idx_signup_cert_user_id` (`user_id`),
   CONSTRAINT `signup_certificate_submissions_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE,
-  CONSTRAINT `signup_certificate_submissions_ibfk_2` FOREIGN KEY (`reviewed_by`) REFERENCES `users` (`id`) ON DELETE SET NULL
+  CONSTRAINT `fk_signup_cert_reviewed_by_admin` FOREIGN KEY (`reviewed_by_admin_id`) REFERENCES `admin_users` (`id`) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='회원가입 증명서 검수';
 
 -- ── signup_verification_tokens ──
@@ -1088,13 +901,13 @@ CREATE TABLE IF NOT EXISTS `signup_student_id_submissions` (
   `status` varchar(20) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'pending' COMMENT 'pending/approved/rejected',
   `submission_purpose` enum('signup','resubmit','reverification') COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'signup' COMMENT 'signup=가입, resubmit=거절 재제출, reverification=학년도 재인증',
   `review_note` text COLLATE utf8mb4_unicode_ci COMMENT '관리자 검수 메모',
-  `reviewed_by` int DEFAULT NULL COMMENT '검수 관리자 users.id',
+  `reviewed_by_admin_id` int DEFAULT NULL COMMENT '검수 관리자 admin_users.id',
   `reviewed_at` timestamp NULL DEFAULT NULL COMMENT '검수 시각',
   `verification_jti` varchar(36) COLLATE utf8mb4_unicode_ci DEFAULT NULL COMMENT 'signup_verification_tokens.jti',
   `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP COMMENT '제출 시각',
   `updated_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '갱신 시각',
   PRIMARY KEY (`id`),
-  KEY `reviewed_by` (`reviewed_by`),
+  KEY `idx_signup_sid_reviewed_by_admin` (`reviewed_by_admin_id`),
   KEY `idx_signup_sid_status_created` (`status`,`created_at`),
   KEY `idx_signup_sid_user_id` (`user_id`),
   KEY `idx_signup_sid_jti` (`verification_jti`),
@@ -1102,7 +915,7 @@ CREATE TABLE IF NOT EXISTS `signup_student_id_submissions` (
   KEY `idx_signup_sid_purpose_status` (`submission_purpose`,`status`,`created_at`),
   CONSTRAINT `fk_signup_sid_previous_school` FOREIGN KEY (`previous_school_id`) REFERENCES `schools` (`school_id`) ON DELETE SET NULL,
   CONSTRAINT `signup_student_id_submissions_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE,
-  CONSTRAINT `signup_student_id_submissions_ibfk_2` FOREIGN KEY (`reviewed_by`) REFERENCES `users` (`id`) ON DELETE SET NULL
+  CONSTRAINT `fk_signup_sid_reviewed_by_admin` FOREIGN KEY (`reviewed_by_admin_id`) REFERENCES `admin_users` (`id`) ON DELETE SET NULL
 ) ENGINE=InnoDB AUTO_INCREMENT=2 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='회원가입 학생증 수동 검수';
 
 -- ── admin_totp_secrets ──
@@ -1213,7 +1026,7 @@ CREATE TABLE IF NOT EXISTS `reports_archive` (
   `reason` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `description` text COLLATE utf8mb4_unicode_ci,
   `status` varchar(20) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `reviewed_by` int DEFAULT NULL,
+  `reviewed_by_admin_id` int DEFAULT NULL COMMENT '검토 관리자 admin_users.id',
   `reviewed_at` timestamp NULL DEFAULT NULL,
   `review_note` text COLLATE utf8mb4_unicode_ci,
   `is_malicious` tinyint(1) NOT NULL DEFAULT '0',
@@ -1274,7 +1087,7 @@ CREATE TABLE IF NOT EXISTS `identity_verifications` (
 
 -- ── legal_documents ──
 CREATE TABLE IF NOT EXISTS `legal_documents` (
-  `slug` varchar(40) COLLATE utf8mb4_unicode_ci NOT NULL COMMENT 'terms_of_service|privacy_policy',
+  `slug` varchar(40) COLLATE utf8mb4_unicode_ci NOT NULL COMMENT 'terms_of_service|privacy_policy|community_guide|youth_protection_policy|open_source_licenses',
   `title` varchar(120) COLLATE utf8mb4_unicode_ci NOT NULL,
   `version` varchar(24) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'v1.0.0',
   `content_md` mediumtext COLLATE utf8mb4_unicode_ci NOT NULL,
@@ -1388,6 +1201,61 @@ CREATE TABLE IF NOT EXISTS `user_period_time_settings` (
   PRIMARY KEY (`user_id`),
   CONSTRAINT `user_period_time_settings_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='사용자 교시 시간 설정';
+
+-- ── batch_job_runs ──
+CREATE TABLE IF NOT EXISTS `batch_job_runs` (
+  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
+  `job_name` varchar(64) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `status` varchar(16) COLLATE utf8mb4_unicode_ci NOT NULL COMMENT 'success|skipped|failed',
+  `started_at` datetime(3) NOT NULL,
+  `finished_at` datetime(3) NOT NULL,
+  `elapsed_ms` int unsigned NOT NULL DEFAULT '0',
+  `summary_json` json DEFAULT NULL COMMENT '처리 구간·건수 요약',
+  `error_message` varchar(500) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  KEY `idx_batch_job_runs_job_finished` (`job_name`,`finished_at`),
+  KEY `idx_batch_job_runs_finished` (`finished_at`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='크론 실행 이력';
+
+-- ── batch_job_cursors ──
+CREATE TABLE IF NOT EXISTS `batch_job_cursors` (
+  `job_name` varchar(64) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `cursor_key` varchar(64) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `last_id` bigint DEFAULT NULL COMMENT '마지막으로 처리한 id (증분)',
+  `last_at` datetime(3) DEFAULT NULL COMMENT '마지막 전체/구간 시각',
+  `mode` varchar(20) COLLATE utf8mb4_unicode_ci DEFAULT NULL COMMENT 'incremental|full',
+  `note` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `updated_at` datetime(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3),
+  PRIMARY KEY (`job_name`,`cursor_key`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='크론 증분 커서';
+
+-- ── cron_reservations ──
+CREATE TABLE IF NOT EXISTS `cron_reservations` (
+  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
+  `job_key` varchar(64) COLLATE utf8mb4_unicode_ci NOT NULL COMMENT '워커 job_name (school-stats 등)',
+  `scope_key` varchar(128) COLLATE utf8mb4_unicode_ci NOT NULL COMMENT 'school:ID | user:ID | mail:ID | global | sweep | global:full',
+  `not_before` datetime(3) NOT NULL COMMENT '이 시각 이후 실행 가능',
+  `priority` smallint NOT NULL DEFAULT 0 COMMENT '높을수록 우선',
+  `status` varchar(16) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'pending' COMMENT 'pending|leased|done|cancelled|failed',
+  `payload_json` json DEFAULT NULL COMMENT '선택적 부가 정보',
+  `attempts` int unsigned NOT NULL DEFAULT '0',
+  `lease_owner` varchar(64) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `leased_at` datetime(3) DEFAULT NULL,
+  `last_error` varchar(500) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `created_at` datetime(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+  `updated_at` datetime(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3),
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uq_cron_reservations_job_scope` (`job_key`,`scope_key`),
+  KEY `idx_cron_reservations_claim` (`status`,`not_before`,`priority`),
+  KEY `idx_cron_reservations_job_status` (`job_key`,`status`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='크론 작업 예약 큐';
+
+
+-- ── deferred FK (personal_mail_rooms ↔ personal_mails 순환 참조) ──
+ALTER TABLE personal_mail_rooms
+  ADD CONSTRAINT fk_pmr_root_mail FOREIGN KEY (root_mail_id) REFERENCES personal_mails(id) ON DELETE CASCADE;
+ALTER TABLE personal_mail_rooms
+  ADD CONSTRAINT fk_pmr_last_mail FOREIGN KEY (last_mail_id) REFERENCES personal_mails(id) ON DELETE SET NULL;
 
 -- ── 초기 시드 (신규 DB 전용) ─────────────────────────────────────────────
 

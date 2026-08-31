@@ -24,7 +24,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import LogoIcon from '../../assets/Logo.svg';
 import { colors, fonts, fontSizes } from '../../styles/colors';
-import { api, setAuthToken, getApiUserFacingMessage } from '../../utils/api';
+import { api, setAuthToken, setRefreshToken, getApiUserFacingMessage } from '../../utils/api';
 import { useAuth } from '../../context/AuthContext';
 
 const TestLogin = ({ navigation }) => {
@@ -38,7 +38,6 @@ const TestLogin = ({ navigation }) => {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [loginInFlight, setLoginInFlight] = useState(null);
-  const [autoLogin, setAutoLogin] = useState(false);
 
   const fetchUsers = useCallback(async () => {
     try {
@@ -83,9 +82,12 @@ const TestLogin = ({ navigation }) => {
         username: user.username,
         password,
       });
-      const { token } = response?.data?.data || {};
+      const { token, refreshToken } = response?.data?.data || {};
       if (token) {
-        await setAuthToken(token, { persist: autoLogin });
+        await setAuthToken(token, { persist: true });
+        if (refreshToken) {
+          await setRefreshToken(refreshToken, { persist: true });
+        }
       }
       login();
     } catch (error) {
@@ -168,26 +170,6 @@ const TestLogin = ({ navigation }) => {
 
       <View style={styles.sectionTitleRow}>
         <Text style={styles.sectionTitle}>테스트 로그인 세션</Text>
-
-        {/* 자동 로그인 체크박스 — 체크해야 다음 부팅에서 자동로그인 */}
-        <TouchableOpacity
-          style={styles.autoLoginRow}
-          onPress={() => setAutoLogin((prev) => !prev)}
-          activeOpacity={0.7}
-          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-        >
-          <View
-            style={[
-              styles.autoLoginBox,
-              autoLogin && styles.autoLoginBoxChecked,
-            ]}
-          >
-            {autoLogin && (
-              <Ionicons name="checkmark" size={normalize(12)} color="#fff" />
-            )}
-          </View>
-          <Text style={styles.autoLoginText}>자동 로그인</Text>
-        </TouchableOpacity>
       </View>
 
       {loading ? (
