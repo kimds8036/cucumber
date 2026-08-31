@@ -533,7 +533,7 @@ router.patch('/reports/:reportId/reopen', requireAdminApi, async (req, res) => {
     await connection.execute(
       `UPDATE reports
        SET status = 'pending',
-           reviewed_by = NULL,
+           reviewed_by_admin_id = NULL,
            reviewed_at = NULL,
            review_note = NULL,
            is_malicious = FALSE
@@ -591,7 +591,7 @@ router.patch('/reports/bulk-reopen', requireAdminApi, async (req, res) => {
       await connection.execute(
         `UPDATE reports
          SET status = 'pending',
-             reviewed_by = NULL,
+             reviewed_by_admin_id = NULL,
              reviewed_at = NULL,
              review_note = NULL,
              is_malicious = FALSE
@@ -633,7 +633,7 @@ router.get('/appeals', requireAdminApi, async (req, res) => {
          ra.content,
          ra.status,
          ra.review_note,
-         ra.reviewed_by,
+         ra.reviewed_by_admin_id,
          ra.reviewed_at,
          ra.created_at,
          p.content AS post_content
@@ -676,7 +676,7 @@ router.patch('/appeals/:appealId', requireAdminApi, async (req, res) => {
     }
     await connection.execute(
       `UPDATE report_appeals
-       SET status = ?, reviewed_by = ?, reviewed_at = ?, review_note = ?
+       SET status = ?, reviewed_by_admin_id = ?, reviewed_at = ?, review_note = ?
        WHERE id = ?`,
       [status, adminUserId, getNowForDB(), reviewNote, appealId]
     );
@@ -1389,7 +1389,7 @@ router.patch('/reports/:reportId', requireAdminApi, async (req, res) => {
     await connection.execute(
       `UPDATE reports
        SET status = ?,
-           reviewed_by = ?,
+           reviewed_by_admin_id = ?,
            reviewed_at = ?,
            review_note = ?,
            is_malicious = ?,
@@ -1501,7 +1501,7 @@ async function bulkHandle(req, res) {
       const nextStatus = actionRaw === 'CONFIRM' ? 'resolved' : 'rejected';
       await connection.execute(
         `UPDATE reports
-         SET status = ?, reviewed_by = ?, reviewed_at = ?, review_note = ?, is_malicious = ?, penalty_applied = IF(? = TRUE, TRUE, penalty_applied)
+         SET status = ?, reviewed_by_admin_id = ?, reviewed_at = ?, review_note = ?, is_malicious = ?, penalty_applied = IF(? = TRUE, TRUE, penalty_applied)
          WHERE id = ?`,
         [nextStatus, adminUserId, getNowForDB(), note, malicious, malicious, reportId]
       );

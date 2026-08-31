@@ -71,7 +71,7 @@ function maskInquiryRow(row, { includeAdminFields = false } = {}) {
     device_info: row.device_info,
     status: row.status,
     answer_content: row.answer_content,
-    answered_by: row.answered_by,
+    answered_by: row.answered_by_admin_id ?? row.answered_by,
     answered_at: row.answered_at,
     is_read_by_user: !!row.is_read_by_user,
     read_at: row.read_at,

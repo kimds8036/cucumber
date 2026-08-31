@@ -146,7 +146,7 @@ router.patch('/:id', requireAdminApi, validate(reviewValidators), async (req, re
 
     await connection.execute(
       `UPDATE signup_certificate_submissions
-       SET status = ?, review_note = ?, reviewed_by = ?, reviewed_at = ?
+       SET status = ?, review_note = ?, reviewed_by_admin_id = ?, reviewed_at = ?
        WHERE id = ?`,
       [status, reviewNote?.trim() || null, adminUserId, now, submissionId],
     );

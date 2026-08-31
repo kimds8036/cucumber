@@ -10,8 +10,10 @@ import {
 import { backfillPersonalMailRecipientNames } from './piiBackfill.js';
 import { seedLegalDocuments } from './seedLegalDocuments.js';
 import { stripLegalDocumentsInDb } from './stripLegalDocumentsInDb.js';
+import { applySchemaNormalization006 } from './normalizeSchema006.js';
 import {
   BASELINE_INIT_FILE,
+  INCREMENTAL_PRE_SQUASH_V2_FILES,
   PRE_SQUASH_MIGRATION_FILES,
   SCHEMA_MIGRATIONS_TABLE,
   ensureSchemaMigrationsTable,
@@ -58,6 +60,13 @@ async function runPostMigrationHooks(connection, file) {
     const updated = await stripLegalDocumentsInDb(connection);
     if (updated > 0) {
       console.log(`  📄 legal_documents 본문 메타 제거: ${updated}건`);
+    }
+  }
+
+  if (file === '006_schema_normalization.sql') {
+    const summary = await applySchemaNormalization006(connection);
+    if (summary.length > 0) {
+      console.log(`  🔧 스키마 정규화: ${summary.join(', ')}`);
     }
   }
 
@@ -128,8 +137,16 @@ async function executeStatements(connection, statements) {
   }
 }
 
+async function repairSchemaNormalizationIfNeeded(connection) {
+  if (!(await tableExists(connection, 'inquiries'))) return [];
+  const hasLegacy = await columnExists(connection, 'inquiries', 'answered_by');
+  const hasNew = await columnExists(connection, 'inquiries', 'answered_by_admin_id');
+  if (!hasLegacy && hasNew) return [];
+  if (!hasLegacy && !hasNew) return [];
+  return applySchemaNormalization006(connection);
+}
+
 /**
- * 2026-08 스쿼시: 기존 DB는 001_init 이력이 있어 CREATE TABLE IF NOT EXISTS가
  * users ALTER를 안 탄다. 빠진 테이블·컬럼만 보정.
  */
 async function repairPostSquashDeltaIfNeeded(connection, migrationsDir) {
@@ -181,12 +198,15 @@ async function repairIncompleteBaselineIfNeeded(connection, target) {
 
   await connection.execute(
     `DELETE FROM ${SCHEMA_MIGRATIONS_TABLE}
-     WHERE filename IN (?, ?, ?)
+     WHERE filename IN (?, ?, ?, ?, ?, ?, ?)
         OR source IN ('squash', 'baseline')`,
     [
       BASELINE_INIT_FILE,
       '002_extend_legal_documents.sql',
       '003_strip_legal_document_preamble.sql',
+      '004_batch_job_runs_cursors.sql',
+      '005_cron_reservations.sql',
+      '006_schema_normalization.sql',
     ],
   );
 }
@@ -213,6 +233,7 @@ async function autoSquashBaselineIfNeeded(connection, target) {
 
   const toRecord = [
     ...PRE_SQUASH_MIGRATION_FILES.filter((f) => !applied.has(f)),
+    ...INCREMENTAL_PRE_SQUASH_V2_FILES.filter((f) => !applied.has(f)),
     BASELINE_INIT_FILE,
   ];
 
@@ -244,6 +265,10 @@ async function runMigrationsForTarget(target) {
     await repairIncompleteBaselineIfNeeded(connection, target);
     await autoSquashBaselineIfNeeded(connection, target);
     await repairPostSquashDeltaIfNeeded(connection, migrationsDir);
+    const normSummary = await repairSchemaNormalizationIfNeeded(connection);
+    if (normSummary.length > 0) {
+      console.log(`📌 스키마 정규화 보정: ${normSummary.join(', ')}\n`);
+    }
     const applied = await getAppliedMigrations(connection);
 
     const files = fs

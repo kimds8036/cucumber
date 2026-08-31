@@ -159,7 +159,7 @@ router.get('/', requireAdminApi, validate(inquiryListValidators), async (req, re
          i.answer_content,
          i.answer_note,
          i.status,
-         i.answered_by,
+         i.answered_by_admin_id AS answered_by,
          a.username AS answered_by_username,
          i.answered_at,
          i.is_read_by_user,
@@ -167,7 +167,7 @@ router.get('/', requireAdminApi, validate(inquiryListValidators), async (req, re
          i.updated_at
        FROM inquiries i
        LEFT JOIN users u ON u.id = i.user_id
-       LEFT JOIN users a ON a.id = i.answered_by
+       LEFT JOIN admin_users a ON a.id = i.answered_by_admin_id
        WHERE ${whereSql}
        ORDER BY i.created_at DESC
        LIMIT ${limitNum} OFFSET ${offsetNum}`,
@@ -225,7 +225,7 @@ router.get('/:id', requireAdminApi, async (req, res) => {
          a.username AS answered_by_username
        FROM inquiries i
        LEFT JOIN users u ON u.id = i.user_id
-       LEFT JOIN users a ON a.id = i.answered_by
+       LEFT JOIN admin_users a ON a.id = i.answered_by_admin_id
        WHERE i.id = ?
        LIMIT 1`,
       [inquiryId]
@@ -303,7 +303,7 @@ router.post('/:id/answer', requireAdminApi, validate(inquiryAnswerValidators), a
       `UPDATE inquiries
        SET answer_content = ?,
            answer_note = ?,
-           answered_by = ?,
+           answered_by_admin_id = ?,
            answered_at = ?,
            status = ?,
            is_read_by_user = FALSE,
@@ -390,7 +390,7 @@ router.patch('/:id/answer', requireAdminApi, validate(inquiryAnswerValidators), 
       `UPDATE inquiries
        SET answer_content = ?,
            answer_note = ?,
-           answered_by = ?,
+           answered_by_admin_id = ?,
            answered_at = ?,
            is_read_by_user = FALSE,
            read_at = NULL
