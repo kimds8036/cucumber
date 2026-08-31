@@ -115,16 +115,12 @@ export function hexToRgba(hex, opacity = 1) {
 
 /**
  * 인앱 시간표 격자 셀 배경 — Android/iOS Large(4x4) 위젯과 동일.
- * 일반: 과목색 50% / 아이보리: 불투명 + 얇은 테두리
+ * 일반: 과목색 50% / 아이보리: 불투명(테두리 없음)
  */
 export function timetableSubjectCellStyle(hex) {
   if (!hex) return null;
   if (isTimetableWhiteColor(hex)) {
-    return {
-      backgroundColor: TIMETABLE_SUBJECT_PALE_HEX,
-      borderWidth: 1,
-      borderColor: 'rgba(39, 42, 38, 0.1)',
-    };
+    return { backgroundColor: TIMETABLE_SUBJECT_PALE_HEX };
   }
   return { backgroundColor: hexToRgba(hex, 0.5) };
 }

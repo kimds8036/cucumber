@@ -56,12 +56,20 @@ private func buildSubjectColorMap(week: [TimetableDayLite], excludeWhite: Bool =
   let palette = excludeWhite ? subjectPaletteNoWhite : subjectPaletteHex
   var map: [String: String] = [:]
   var used = Set<Int>()
-  let subjects = Array(
-    Set(
-      week.flatMap { $0.periods.map { normalizeSubject($0.subject) } }
-        .filter { !$0.isEmpty },
-    ),
-  ).sorted()
+  // 인앱 TimetableScreen: Object.values 첫 등장 순 (정렬하지 않음). 월→금·교시 오름차순으로 맞춤.
+  let dayOrder = ["월", "화", "수", "목", "금"]
+  let byDay = Dictionary(uniqueKeysWithValues: week.map { ($0.dayLabel, $0) })
+  var subjects: [String] = []
+  var seen = Set<String>()
+  for day in dayOrder {
+    let periods = (byDay[day]?.periods ?? []).sorted { $0.period < $1.period }
+    for p in periods {
+      let key = normalizeSubject(p.subject)
+      guard !key.isEmpty, !seen.contains(key) else { continue }
+      seen.insert(key)
+      subjects.append(key)
+    }
+  }
 
   for subject in subjects {
     let base = subjectColorIndex(subject, paletteSize: palette.count)
@@ -918,15 +926,6 @@ struct TimetableWidgetView: View {
       .background(
         RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
           .fill(bg)
-          .overlay(
-            RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
-              .stroke(
-                isSubjectPaleHex(cell.subjectColorHex)
-                  ? Color(hex: "272A26", opacity: 0.12)
-                  : Color.clear,
-                lineWidth: 1,
-              ),
-          ),
       )
   }
 }

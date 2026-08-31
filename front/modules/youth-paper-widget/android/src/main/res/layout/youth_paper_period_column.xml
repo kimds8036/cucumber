@@ -23,6 +23,8 @@
     android:layout_height="wrap_content"
     android:ellipsize="end"
     android:gravity="center"
+    android:includeFontPadding="false"
     android:maxLines="1"
+    android:singleLine="true"
     android:textSize="9sp" />
 </LinearLayout>
