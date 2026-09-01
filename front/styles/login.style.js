@@ -23,6 +23,7 @@ export const createLoginStyles = (width, normalize) => {
     titleContainer: {
       flexDirection: 'row',
       alignItems: 'baseline',
+      marginBottom: normalize(20),
     },
     titleLarge: {
       fontSize: normalize(fontSizes.heading + 4),
@@ -194,7 +195,7 @@ export const createSignupStyles = (width, normalize) => {
       paddingHorizontal: normalize(8),
       fontSize: normalize(fontSizes.xl),
       fontFamily: fonts.regular,
-      color: colors.textMuted,
+      color: colors.textSecondary,
       lineHeight: normalize(Math.round(fontSizes.xl * 1.45)),
       textAlign: 'center',
       marginTop: normalize(6),

@@ -330,7 +330,7 @@ function createStyles(n, bottomInset) {
     hideToday: {
       fontFamily: fonts.regular,
       fontSize: n(fontSizes.lg),
-      color: colors.textMuted ?? colors.textSecondary,
+      color: colors.textSecondary,
       paddingVertical: n(8),
     },
   });

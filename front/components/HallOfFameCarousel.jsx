@@ -6,8 +6,8 @@ import {
   TouchableOpacity,
   useWindowDimensions,
 } from 'react-native';
-import { colors, fonts, fontSizes } from '../../styles/colors';
-import { getNormalize } from '../../styles/mypage.style';
+import { colors, fonts, fontSizes } from '../styles/colors';
+import { getNormalize } from '../styles/mypage.style';
 
 const AUTO_MS = 4500;
 const CARD_WIDTH_RATIO = 0.78;
@@ -135,7 +135,7 @@ const HallOfFameCarousel = ({ items = [], loading = false }) => {
         marginTop: normalize(4),
         fontFamily: fonts.regular,
         fontSize: normalize(fontSizes.md),
-        color: colors.textMuted,
+        color: colors.textSecondary,
       },
       cardSummary: {
         marginTop: normalize(10),
@@ -178,7 +178,7 @@ const HallOfFameCarousel = ({ items = [], loading = false }) => {
         marginTop: normalize(2),
         fontFamily: fonts.regular,
         fontSize: normalize(fontSizes.sm),
-        color: colors.textMuted,
+        color: colors.textSecondary,
       },
       dots: {
         flexDirection: 'row',

@@ -226,7 +226,7 @@ function createStyles(normalize) {
       textAlign: 'center',
       fontFamily: fonts.regular,
       fontSize: fontSizes.sm,
-      color: colors.textMuted,
+      color: colors.textSecondary,
     },
     sundayText: {
       color: colors.subcolor,
@@ -267,7 +267,7 @@ function createStyles(normalize) {
       color: colors.textPrimary,
     },
     dayTextDisabled: {
-      color: colors.textMuted,
+      color: colors.textSecondary,
     },
     summary: {
       marginTop: normalize(24),

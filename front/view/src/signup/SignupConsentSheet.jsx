@@ -100,7 +100,7 @@ const SignupConsentSheet = ({ visible, provider, onClose, onConfirm }) => {
                 <Ionicons
                   name={allBulkChecked ? 'checkbox' : 'square-outline'}
                   size={normalize(22)}
-                  color={allBulkChecked ? colors.primary : colors.textMuted}
+                  color={allBulkChecked ? colors.primary : colors.textSecondary}
                 />
                 <View style={styles.bulkTextWrap}>
                   <Text style={styles.bulkTitle}>항목 전체 동의</Text>
@@ -121,7 +121,7 @@ const SignupConsentSheet = ({ visible, provider, onClose, onConfirm }) => {
                       name={consents[item.key] ? 'checkbox' : 'square-outline'}
                       size={normalize(20)}
                       color={
-                        consents[item.key] ? colors.primary : colors.textMuted
+                        consents[item.key] ? colors.primary : colors.textSecondary
                       }
                     />
                     <Text style={styles.itemLabel}>
@@ -223,7 +223,7 @@ function createStyles(normalize) {
       marginTop: normalize(4),
       fontFamily: fonts.regular,
       fontSize: fontSizes.sm,
-      color: colors.textMuted,
+      color: colors.textSecondary,
       lineHeight: normalize(18),
     },
     itemRow: {
@@ -255,7 +255,7 @@ function createStyles(normalize) {
       marginTop: normalize(12),
       fontFamily: fonts.regular,
       fontSize: fontSizes.xs,
-      color: colors.textMuted,
+      color: colors.textSecondary,
       lineHeight: normalize(18),
     },
     primaryButton: {

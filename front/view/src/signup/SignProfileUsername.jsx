@@ -49,7 +49,7 @@ const SignProfileUsername = () => {
           value={username}
           onChangeText={(text) => setUsername(text.replace(/\s/g, '_'))}
           placeholder={USERNAME_HINT}
-          placeholderTextColor={colors.textMuted}
+          placeholderTextColor={colors.textSecondary}
           autoCapitalize="none"
           autoCorrect={false}
           maxLength={20}
@@ -96,7 +96,7 @@ function createStyles(normalize) {
       marginTop: normalize(12),
       fontFamily: fonts.regular,
       fontSize: fontSizes.sm,
-      color: colors.textMuted,
+      color: colors.textSecondary,
       lineHeight: normalize(22),
     },
     input: {

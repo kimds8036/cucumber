@@ -71,7 +71,7 @@ export function createSignupEntryStyles(normalize) {
     footerText: {
       fontFamily: fonts.regular,
       fontSize: normalize(14),
-      color: colors.textMuted,
+      color: colors.textSecondary,
     },
     footerLink: {
       fontFamily: fonts.bold,

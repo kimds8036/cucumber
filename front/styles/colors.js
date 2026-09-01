@@ -23,11 +23,8 @@ export const colors = {
   // 검정 컬러
   textPrimary: '#272A26', // 기본 텍스트 (진한 회색)
   textSecondary: 'rgba(39, 42, 38, 0.5)', // 보조 텍스트 (중간 회색)
-  /** 페이지 설명·캡션 — WCAG 대비 확보 (#6B7280 계열) */
-  textMuted: '#6B7280',
   background2: 'rgba(39, 42, 38, 0.3)', // 비활성 텍스트 (밝은 회색)
   textWhite: '#fff', // 흰색 텍스트
-  textwhite2: 'rgba(255, 255, 255, 0.3)',
 
   // 로고 컬러
   lightgreen: '#E8FFDD', // 초록

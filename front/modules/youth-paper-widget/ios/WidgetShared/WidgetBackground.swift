@@ -2,13 +2,20 @@ import Foundation
 import BackgroundTasks
 import WidgetKit
 
-/// 메인 앱 AppDelegate에서 register/scheduleAll 호출.
-/// Expo 모듈(`YouthPaperWidget`)에 포함되며 AppDelegate는 `import YouthPaperWidget` 필요.
+/// `YouthPaperWidgetModule` OnCreate에서 register/scheduleAll 호출.
+/// BGTaskScheduler는 프로세스당 task ID당 register 1회만 허용 — dev client 재로드 시 중복 방지.
 public enum WidgetBackgroundScheduler {
   public static let mealTaskId = "com.ucost.YouthPaper.widget.meal.refresh"
   public static let timetableTaskId = "com.ucost.YouthPaper.widget.timetable.refresh"
 
+  private static var didRegister = false
+  private static let registerLock = NSLock()
+
   public static func register() {
+    registerLock.lock()
+    defer { registerLock.unlock() }
+    guard !didRegister else { return }
+
     if #available(iOS 13.0, *) {
       BGTaskScheduler.shared.register(forTaskWithIdentifier: mealTaskId, using: nil) { task in
         guard let refresh = task as? BGAppRefreshTask else {
@@ -24,6 +31,7 @@ public enum WidgetBackgroundScheduler {
         }
         TimetableWidgetRefresh.run(task: refresh)
       }
+      didRegister = true
     }
   }
 

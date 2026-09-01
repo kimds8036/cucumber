@@ -1255,7 +1255,7 @@ const SignApple = ({ navigation }) => {
         {currentStep === STEP.APPLE_AUTH && (
           <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
             <ActivityIndicator size="large" color={colors.primary} />
-            <Text style={{ marginTop: normalize(16), color: colors.textMuted }}>
+            <Text style={{ marginTop: normalize(16), color: colors.textSecondary }}>
               Apple 계정 정보를 불러오는 중…
             </Text>
           </View>

@@ -678,7 +678,7 @@ const SignKakao = ({ navigation }) => {
         {currentStep === STEP.KAKAO_AUTH && (
           <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
             <ActivityIndicator size="large" color={colors.primary} />
-            <Text style={{ marginTop: normalize(16), color: colors.textMuted }}>
+            <Text style={{ marginTop: normalize(16), color: colors.textSecondary }}>
               카카오 계정 정보를 불러오는 중…
             </Text>
             {__DEV__ ? (

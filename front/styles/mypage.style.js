@@ -282,7 +282,7 @@ export const createProfileCardStyles = (normalize) =>
     profileSchoolLine: {
       fontSize: normalize(fontSizes.lg),
       fontFamily: fonts.regular,
-      color: colors.textMuted,
+      color: colors.textSecondary,
       lineHeight: normalize(20),
     },
     profileEnrollmentBlock: {
@@ -329,7 +329,7 @@ export const createProfileCardStyles = (normalize) =>
     profileInfoTooltipText: {
       fontSize: normalize(fontSizes.md),
       fontFamily: fonts.regular,
-      color: colors.textMuted,
+      color: colors.textSecondary,
       lineHeight: normalize(18),
     },
     profileDivider: {

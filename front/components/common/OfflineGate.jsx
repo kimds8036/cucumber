@@ -257,7 +257,7 @@ const styles = StyleSheet.create({
     fontFamily: fonts.regular,
     fontSize: 14,
     lineHeight: 22,
-    color: colors.textMuted,
+    color: colors.textSecondary,
     textAlign: 'center',
     marginBottom: 28,
   },
