@@ -80,8 +80,8 @@ export async function listOpsUsersPreview({ page = 1, limit = 20, q = '' } = {})
        (SELECT MAX(COALESCE(ud.last_login_at, ud.created_at)) FROM user_devices ud WHERE ud.user_id = u.id),
        u.created_at
      ) DESC, u.id DESC
-     LIMIT ? OFFSET ?`,
-    [...params, todayYmd, limitNum, offset],
+     LIMIT ${limitNum} OFFSET ${offset}`,
+    [...params, todayYmd],
   );
 
   const items = rows.map((row) => {
