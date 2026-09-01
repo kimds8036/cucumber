@@ -39,6 +39,7 @@ import MealCalender from './view/src/mealcalender';
 import Timer from './view/src/timer';
 import FriendsScreen from './view/src/friendsscreen';
 import HiddenPostsAppeals from './view/src/hiddenPostsAppeals';
+import DeveloperWhack from './view/src/DeveloperWhack';
 import Inquiry from './view/src/Inquiry';
 import InAppInquiry from './view/src/InAppInquiry';
 import MyInquiries from './view/src/MyInquiries';
@@ -243,6 +244,7 @@ function MainStack({ initialRouteName = 'Main' }) {
       <Stack.Screen name="Friends" component={FriendsScreen} />
       <Stack.Screen name="BadgeManage" component={BadgeManage} />
       <Stack.Screen name="HiddenPostsAppeals" component={HiddenPostsAppeals} />
+      <Stack.Screen name="DeveloperWhack" component={DeveloperWhack} />
       <Stack.Screen name="Inquiry" component={Inquiry} />
       <Stack.Screen name="InAppInquiry" component={InAppInquiry} />
       <Stack.Screen name="MyInquiries" component={MyInquiries} />

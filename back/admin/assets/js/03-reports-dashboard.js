@@ -70,6 +70,110 @@ async function loadDashboard() {
       showOpsHub();
     });
     bindOpsUserInspect();
+    bindOpsUsersPreview();
+  }
+
+  let opsUsersPreviewPage = 1;
+
+  function bindOpsUsersPreview() {
+    const grid = document.getElementById('ops-users-preview-grid');
+    if (!grid || grid.dataset.bound === '1') return;
+    grid.dataset.bound = '1';
+    grid.addEventListener('click', (e) => {
+      const card = e.target.closest('[data-ops-user-id]');
+      if (!card) return;
+      const uid = card.getAttribute('data-ops-user-id');
+      const input = document.getElementById('ops-user-q');
+      if (input) input.value = `#${uid}`;
+      void loadOpsUserInspect();
+    });
+  }
+
+  async function loadOpsUsersPreview(page = 1) {
+    const status = document.getElementById('ops-users-preview-status');
+    const grid = document.getElementById('ops-users-preview-grid');
+    const pager = document.getElementById('ops-users-preview-pager');
+    const input = document.getElementById('ops-user-q');
+    const q = String(input?.value || '').trim();
+    opsUsersPreviewPage = Math.max(1, Number(page) || 1);
+    if (status) status.textContent = '불러오는 중…';
+    if (grid) grid.innerHTML = '';
+    if (pager) pager.hidden = true;
+    try {
+      const qs = new URLSearchParams({
+        page: String(opsUsersPreviewPage),
+        limit: '20',
+      });
+      if (q) qs.set('q', q);
+      const { data } = await api(`/analytics/users-preview?${qs.toString()}`);
+      renderOpsUsersPreview(data);
+    } catch (error) {
+      if (status) status.textContent = error?.message || '목록을 불러오지 못했습니다.';
+    }
+  }
+
+  function renderOpsUsersPreview(data) {
+    const status = document.getElementById('ops-users-preview-status');
+    const grid = document.getElementById('ops-users-preview-grid');
+    const pager = document.getElementById('ops-users-preview-pager');
+    const items = data?.items || [];
+    const total = Number(data?.total || 0);
+    const page = Number(data?.page || 1);
+    const totalPages = Number(data?.totalPages || 1);
+
+    if (status) {
+      status.textContent = total
+        ? `총 ${total.toLocaleString()}명 · ${page}/${totalPages}페이지`
+        : '표시할 사용자가 없습니다.';
+    }
+
+    if (!grid) return;
+
+    if (!items.length) {
+      grid.innerHTML = '<div class="txt-muted" style="font-size:13px">조건에 맞는 사용자가 없습니다.</div>';
+      if (pager) pager.hidden = true;
+      return;
+    }
+
+    grid.innerHTML = items.map((u) => {
+      const osLabel = opsOsLabel(u.os);
+      const attCls = u.checkedInToday ? 'ops-upc-ok' : 'ops-upc-warn';
+      const attText = u.checkedInToday ? '오늘 등교 완료' : '오늘 미등교';
+      const lastAct = u.lastActivityAt ? fmtDate(u.lastActivityAt) : '-';
+      const gradeClass =
+        u.grade != null && u.classNumber != null
+          ? ` · ${u.grade}학년 ${u.classNumber}반`
+          : '';
+      return `
+        <button type="button" class="ops-user-preview-card" data-ops-user-id="${u.id}">
+          <div class="ops-upc-title">@${esc(u.username || '-')} <span style="font-weight:400;color:var(--text-tertiary)">#${u.id}</span></div>
+          <div class="ops-upc-meta">${esc(osLabel)} · v${esc(u.appVersion || '-')}</div>
+          <div class="ops-upc-school">${esc(u.schoolName || '-')}${esc(gradeClass)}</div>
+          <div class="ops-upc-row">
+            <span class="${attCls}">${esc(attText)}</span>
+            <span class="ops-upc-warn">최근 ${esc(lastAct)}</span>
+          </div>
+        </button>
+      `;
+    }).join('');
+
+    if (!pager) return;
+    if (totalPages <= 1) {
+      pager.hidden = true;
+      return;
+    }
+    pager.hidden = false;
+    pager.innerHTML = `
+      <button type="button" class="btn btn-sm" id="ops-users-prev" ${page <= 1 ? 'disabled' : ''}>이전</button>
+      <span style="font-size:13px;color:var(--text-secondary)">${page} / ${totalPages}</span>
+      <button type="button" class="btn btn-sm" id="ops-users-next" ${page >= totalPages ? 'disabled' : ''}>다음</button>
+    `;
+    document.getElementById('ops-users-prev')?.addEventListener('click', () => {
+      if (page > 1) void loadOpsUsersPreview(page - 1);
+    });
+    document.getElementById('ops-users-next')?.addEventListener('click', () => {
+      if (page < totalPages) void loadOpsUsersPreview(page + 1);
+    });
   }
 
   async function openOpsView(view) {
@@ -105,6 +209,7 @@ async function loadDashboard() {
       await loadAnalyticsOverview();
         await loadInstallLandingStats();
       }
+      if (view === 'user') await loadOpsUsersPreview(1);
     } catch (error) {
       alert(error?.message || '모니터링 데이터를 불러오지 못했습니다.');
     }
@@ -183,7 +288,11 @@ async function loadDashboard() {
     const input = document.getElementById('ops-user-q');
     if (!btn || btn.dataset.bound === '1') return;
     btn.dataset.bound = '1';
-    const run = () => loadOpsUserInspect();
+    const run = () => {
+      opsUsersPreviewPage = 1;
+      void loadOpsUsersPreview(1);
+      void loadOpsUserInspect();
+    };
     btn.addEventListener('click', run);
     if (input) {
       input.addEventListener('keydown', (e) => {

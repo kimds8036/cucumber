@@ -618,6 +618,50 @@
     .user-stat { text-align: center; }
     .user-stat-num { font-size: 20px; font-weight: 500; }
     .user-stat-label { font-size: 11px; color: var(--text-tertiary); margin-top: 3px; }
+    .ops-users-preview-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+      gap: 10px;
+      margin-bottom: 8px;
+    }
+    .ops-user-preview-card {
+      border: 0.5px solid var(--border);
+      border-radius: 8px;
+      padding: 12px 14px;
+      background: var(--bg-secondary);
+      cursor: pointer;
+      text-align: left;
+      transition: border-color 0.15s, box-shadow 0.15s;
+    }
+    .ops-user-preview-card:hover {
+      border-color: var(--blue);
+      box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
+    }
+    .ops-user-preview-card .ops-upc-title {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text-primary);
+    }
+    .ops-user-preview-card .ops-upc-meta {
+      font-size: 11px;
+      color: var(--text-tertiary);
+      margin-top: 4px;
+      line-height: 1.45;
+    }
+    .ops-user-preview-card .ops-upc-school {
+      font-size: 12px;
+      color: var(--text-secondary);
+      margin-top: 6px;
+    }
+    .ops-user-preview-card .ops-upc-row {
+      display: flex;
+      justify-content: space-between;
+      gap: 8px;
+      margin-top: 8px;
+      font-size: 11px;
+    }
+    .ops-user-preview-card .ops-upc-ok { color: var(--green-text); font-weight: 500; }
+    .ops-user-preview-card .ops-upc-warn { color: var(--text-tertiary); }
     .user-actions-row {
       display: flex;
       gap: 8px;
