@@ -4,6 +4,125 @@ import { shadow } from './tokens';
 
 export const createLoginStyles = (width, normalize) => {
   return StyleSheet.create({
+    // —— 로그인 화면 개편 ——
+    loginScreen: {
+      flexGrow: 1,
+      paddingHorizontal: normalize(24),
+      paddingTop: normalize(8),
+      paddingBottom: normalize(32),
+    },
+    loginHeader: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      minHeight: normalize(44),
+      marginBottom: normalize(8),
+    },
+    backButton: {
+      marginLeft: normalize(-8),
+      padding: normalize(8),
+    },
+    screenTitle: {
+      fontSize: normalize(fontSizes.heading),
+      fontFamily: fonts.bold,
+      color: colors.textPrimary,
+      marginBottom: normalize(32),
+    },
+    underlineInputContainer: {
+      width: '100%',
+      marginBottom: normalize(8),
+    },
+    underlineInput: {
+      width: '100%',
+      minHeight: normalize(48),
+      paddingHorizontal: 0,
+      paddingVertical: normalize(12),
+      fontSize: normalize(fontSizes.xl),
+      fontFamily: fonts.regular,
+      color: colors.textPrimary,
+      borderBottomWidth: 1,
+      borderBottomColor: colors.border,
+      backgroundColor: colors.background,
+      textAlignVertical: 'center',
+      ...Platform.select({
+        android: { includeFontPadding: false },
+        ios: {},
+      }),
+    },
+    underlineInputSpaced: {
+      marginTop: normalize(8),
+    },
+    loginButton: {
+      width: '100%',
+      height: normalize(52),
+      backgroundColor: colors.primary,
+      borderRadius: normalize(12),
+      justifyContent: 'center',
+      alignItems: 'center',
+      marginTop: normalize(24),
+    },
+    loginButtonText: {
+      fontSize: normalize(fontSizes.xxl),
+      fontFamily: fonts.bold,
+      color: colors.textWhite,
+    },
+    findLinkContainer: {
+      flexDirection: 'row',
+      justifyContent: 'center',
+      alignItems: 'center',
+      marginTop: normalize(20),
+    },
+    socialDividerRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      marginTop: normalize(36),
+      marginBottom: normalize(24),
+    },
+    socialDividerLine: {
+      flex: 1,
+      height: 1,
+      backgroundColor: colors.border,
+    },
+    socialDividerText: {
+      marginHorizontal: normalize(12),
+      fontSize: normalize(fontSizes.lg),
+      fontFamily: fonts.regular,
+      color: colors.textSecondary,
+    },
+    socialRow: {
+      flexDirection: 'row',
+      justifyContent: 'center',
+      alignItems: 'center',
+      gap: normalize(24),
+    },
+    socialCircleButton: {
+      width: normalize(56),
+      height: normalize(56),
+      borderRadius: normalize(28),
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    kakaoCircleButton: {
+      backgroundColor: '#FEE500',
+    },
+    appleCircleButton: {
+      backgroundColor: colors.textPrimary,
+    },
+    signupFooter: {
+      marginTop: 'auto',
+      paddingTop: normalize(32),
+      alignItems: 'center',
+    },
+    signupFooterText: {
+      fontSize: normalize(fontSizes.lg),
+      fontFamily: fonts.regular,
+      color: colors.textSecondary,
+    },
+    signupFooterLink: {
+      fontFamily: fonts.bold,
+      color: colors.textPrimary,
+      textDecorationLine: 'underline',
+    },
+
     container: {
       flex: 1,
       backgroundColor: colors.background,

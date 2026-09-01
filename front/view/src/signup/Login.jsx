@@ -22,11 +22,14 @@ import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
 import { createLoginStyles } from '../../../styles/login.style';
 import { colors } from '../../../styles/colors';
 import { Ionicons } from '@expo/vector-icons';
-import LogoIcon from '../../../assets/Logo.svg';
-import { api, setAuthToken, setRefreshToken, getOrCreateDeviceId, getApiUserFacingMessage } from '../../../utils/api';
+import {
+  api,
+  setAuthToken,
+  setRefreshToken,
+  getOrCreateDeviceId,
+  getApiUserFacingMessage,
+} from '../../../utils/api';
 import { useAuth } from '../../../context/AuthContext';
-// import Skeleton from '../../../components/common/Skeleton';
-// import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import SignupPrepMaterialsModal from './SignupPrepMaterialsModal';
 
@@ -70,7 +73,6 @@ const Login = ({ navigation }) => {
 
   const [id, setId] = useState('');
   const [password, setPassword] = useState('');
-  // 부트 스플래시 구간에서 스켈레톤 대신 바로 로그인 UI 표시
   const [screenReady] = useState(true);
   const [policyModal, setPolicyModal] = useState({
     visible: false,
@@ -86,11 +88,18 @@ const Login = ({ navigation }) => {
   const styles = useMemo(() => createLoginStyles(width, normalize), [width]);
   const debugLogin = (...args) => console.log('[LoginDebug]', ...args);
 
-  /** 시간표 편집 `scrollAccordionAboveKeyboard`와 같이 포커스 시 입력란이 키보드에 가리지 않도록 */
   const scrollLoginInputsAboveKeyboard = useCallback(() => {
     requestAnimationFrame(() => {
       scrollRef.current?.assureFocusedInputVisible?.();
     });
+  }, []);
+
+  const handleKakaoLogin = useCallback(() => {
+    Alert.alert('준비 중', '카카오 간편 로그인은 곧 제공될 예정입니다.');
+  }, []);
+
+  const handleAppleLogin = useCallback(() => {
+    Alert.alert('준비 중', 'Apple 간편 로그인은 곧 제공될 예정입니다.');
   }, []);
 
   useEffect(() => {
@@ -117,104 +126,46 @@ const Login = ({ navigation }) => {
     });
   }, [keyboardOpen]);
 
-  /*
-  useEffect(() => {
-    const timer = setTimeout(() => setScreenReady(true), 250);
-    return () => clearTimeout(timer);
-  }, []);
-
-  if (!screenReady) {
-    return (
-      <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
-        <View
-          style={{
-            flex: 1,
-            justifyContent: 'center',
-            paddingHorizontal: normalize(24),
-          }}
-        >
-          <View style={{ alignItems: 'center', marginBottom: normalize(28) }}>
-            <Skeleton
-              width={normalize(120)}
-              height={normalize(120)}
-              borderRadius={normalize(60)}
-            />
-            <Skeleton
-              width={normalize(130)}
-              height={normalize(22)}
-              borderRadius={normalize(8)}
-              style={{ marginTop: normalize(14) }}
-            />
-          </View>
-          <Skeleton
-            width="100%"
-            height={normalize(50)}
-            borderRadius={normalize(20)}
-            style={{ marginBottom: normalize(12) }}
-          />
-          <Skeleton
-            width="100%"
-            height={normalize(50)}
-            borderRadius={normalize(20)}
-            style={{ marginBottom: normalize(12) }}
-          />
-          <Skeleton
-            width={normalize(92)}
-            height={normalize(16)}
-            borderRadius={normalize(8)}
-            style={{ marginBottom: normalize(24) }}
-          />
-          <Skeleton
-            width="95%"
-            height={normalize(50)}
-            borderRadius={normalize(20)}
-          />
-        </View>
-      </SafeAreaView>
-    );
-  }
-  */
-
   if (!screenReady) return null;
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
+    <SafeAreaView
+      style={{ flex: 1, backgroundColor: colors.background }}
+      edges={['top', 'bottom']}
+    >
       <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
         <View style={{ flex: 1 }}>
           <KeyboardAwareScrollView
             ref={scrollRef}
             mode="layout"
-            contentContainerStyle={{
-              flexGrow: 1,
-              justifyContent: 'center',
-              alignItems: 'center',
-              paddingHorizontal: normalize(24),
-              paddingVertical: normalize(40),
-            }}
+            contentContainerStyle={styles.loginScreen}
             keyboardShouldPersistTaps="handled"
             keyboardDismissMode="on-drag"
             showsVerticalScrollIndicator={false}
             bottomOffset={16}
             scrollEnabled={keyboardOpen}
           >
-            {/* 로고 */}
-            <View style={styles.logoContainer}>
-              <View style={styles.logo}>
-                <LogoIcon
-                  width={normalize(100)}
-                  height={normalize(100)}
-                  color={colors.primary}
+            <View style={styles.loginHeader}>
+              <TouchableOpacity
+                style={styles.backButton}
+                onPress={() => navigation.goBack()}
+                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                accessibilityRole="button"
+                accessibilityLabel="뒤로 가기"
+              >
+                <Ionicons
+                  name="chevron-back"
+                  size={normalize(24)}
+                  color={colors.textPrimary}
                 />
-              </View>
-              <View style={styles.titleContainer}>
-                <Text style={styles.titleLarge}>YOUTH PAPER</Text>
-              </View>
+              </TouchableOpacity>
             </View>
 
-            {/* 아이디 입력 */}
-            <View style={styles.inputContainer}>
+            <Text style={styles.screenTitle}>로그인</Text>
+
+            <View style={styles.underlineInputContainer}>
               <TextInput
-                style={styles.input}
+                style={styles.underlineInput}
                 placeholder="아이디"
                 placeholderTextColor={colors.textSecondary}
                 value={id}
@@ -223,9 +174,8 @@ const Login = ({ navigation }) => {
                 autoCapitalize="none"
               />
 
-              {/* 비밀번호 입력 */}
               <TextInput
-                style={styles.input}
+                style={[styles.underlineInput, styles.underlineInputSpaced]}
                 placeholder="비밀번호"
                 placeholderTextColor={colors.textSecondary}
                 value={password}
@@ -236,16 +186,8 @@ const Login = ({ navigation }) => {
               />
             </View>
 
-            {/* 로그인 버튼 — 토큰은 항상 영속 저장(자동 로그인) */}
             <TouchableOpacity
-              style={{
-                width: '95%',
-                height: normalize(50),
-                backgroundColor: colors.primary,
-                borderRadius: normalize(20),
-                justifyContent: 'center',
-                alignItems: 'center',
-              }}
+              style={styles.loginButton}
               onPress={async () => {
                 if (!id || !password) {
                   Alert.alert('알림', '아이디와 비밀번호를 입력해주세요.');
@@ -398,40 +340,72 @@ const Login = ({ navigation }) => {
                   Alert.alert('로그인 실패', buildLoginFailureMessage(error));
                 }
               }}
+              activeOpacity={0.85}
             >
-              <Text
-                style={{
-                  fontSize: normalize(17),
-                  fontFamily: 'Baloo2-Bold',
-                  color: colors.background,
-                }}
-              >
-                로그인
-              </Text>
+              <Text style={styles.loginButtonText}>로그인</Text>
             </TouchableOpacity>
 
-            <View style={styles.linkContainer}>
-              <TouchableOpacity
-                onPress={() => navigation.navigate('IDfind')}
-              >
+            <View style={styles.findLinkContainer}>
+              <TouchableOpacity onPress={() => navigation.navigate('IDfind')}>
                 <Text style={styles.linkText}>아이디 찾기</Text>
               </TouchableOpacity>
               <Text style={styles.linkDivider}>|</Text>
-              <TouchableOpacity
-                onPress={() => navigation.navigate('PWfind')}
-              >
+              <TouchableOpacity onPress={() => navigation.navigate('PWfind')}>
                 <Text style={styles.linkText}>비밀번호 찾기</Text>
               </TouchableOpacity>
-              <Text style={styles.linkDivider}>|</Text>
+            </View>
+
+            <View style={styles.socialDividerRow}>
+              <View style={styles.socialDividerLine} />
+              <Text style={styles.socialDividerText}>간편 로그인</Text>
+              <View style={styles.socialDividerLine} />
+            </View>
+
+            <View style={styles.socialRow}>
               <TouchableOpacity
-                onPress={() => setPrepMaterialsModalVisible(true)}
+                style={[styles.socialCircleButton, styles.kakaoCircleButton]}
+                onPress={handleKakaoLogin}
+                activeOpacity={0.85}
+                accessibilityRole="button"
+                accessibilityLabel="카카오로 로그인"
               >
-                <Text style={styles.linkText}>회원가입</Text>
+                <Ionicons
+                  name="chatbubble"
+                  size={normalize(24)}
+                  color={colors.textPrimary}
+                />
               </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[styles.socialCircleButton, styles.appleCircleButton]}
+                onPress={handleAppleLogin}
+                activeOpacity={0.85}
+                accessibilityRole="button"
+                accessibilityLabel="Apple로 로그인"
+              >
+                <Ionicons
+                  name="logo-apple"
+                  size={normalize(26)}
+                  color={colors.textWhite}
+                />
+              </TouchableOpacity>
+            </View>
+
+            <View style={styles.signupFooter}>
+              <Text style={styles.signupFooterText}>
+                아직 회원이 아니신가요?{' '}
+                <Text
+                  style={styles.signupFooterLink}
+                  onPress={() => setPrepMaterialsModalVisible(true)}
+                >
+                  회원가입
+                </Text>
+              </Text>
             </View>
           </KeyboardAwareScrollView>
         </View>
       </TouchableWithoutFeedback>
+
       <Modal
         visible={policyModal.visible}
         transparent
