@@ -162,60 +162,62 @@ const ProfileCard = ({
         </View>
 
         <View style={styles.profileInfo}>
-          <View
-            style={{
-              flexDirection: 'row',
-              alignItems: 'center',
-              flexWrap: 'wrap',
-              gap: normalize(6),
-              minWidth: 0,
-              flex: 1,
-            }}
-          >
-            <Text style={styles.profileName}>{userInfo.name}</Text>
+          <View style={styles.profileNameRow}>
+            <Text style={styles.profileName} numberOfLines={1} ellipsizeMode="tail">
+              {userInfo.name}
+            </Text>
             <EquippedBadge
               badge={userInfo.equippedBadge}
               size={normalize(18)}
               style={{ flexShrink: 0 }}
             />
+            <Text
+              style={styles.profileUsername}
+              numberOfLines={1}
+              ellipsizeMode="tail"
+            >
+              {userInfo.username}
+            </Text>
           </View>
-          <Text
-            style={[styles.profileUsername, { marginTop: normalize(2) }]}
-            numberOfLines={1}
-            ellipsizeMode="tail"
-          >
-            {userInfo.username}
-          </Text>
           {userInfo.school ? (
             <Text style={styles.profileSchoolLine} numberOfLines={2}>
               {userInfo.school}
             </Text>
           ) : null}
           {gradeClassLabel ? (
-            <View style={styles.profileEnrollmentRow}>
-              <Text style={styles.profileEnrollmentLine}>{gradeClassLabel}</Text>
-              <Pressable
-                onPress={showEnrollmentTip}
-                hitSlop={8}
-                accessibilityRole="button"
-                accessibilityLabel="학년·반 변경 안내"
-              >
-                <Ionicons
-                  name="information-circle-outline"
-                  size={normalize(14)}
-                  color={colors.textLight40}
-                />
-              </Pressable>
+            <View style={styles.profileEnrollmentBlock}>
+              <View style={styles.profileEnrollmentRow}>
+                <Text
+                  style={styles.profileEnrollmentLine}
+                  numberOfLines={1}
+                  ellipsizeMode="tail"
+                >
+                  {gradeClassLabel}
+                </Text>
+                <Pressable
+                  onPress={showEnrollmentTip}
+                  hitSlop={8}
+                  style={styles.profileEnrollmentInfoBtn}
+                  accessibilityRole="button"
+                  accessibilityLabel="학년·반 변경 안내"
+                >
+                  <Ionicons
+                    name="information-circle-outline"
+                    size={normalize(15)}
+                    color={colors.textLight40}
+                  />
+                </Pressable>
+              </View>
+              {enrollmentTipVisible ? (
+                <View style={styles.profileInfoTooltip}>
+                  <Text style={styles.profileInfoTooltipText}>
+                    계정 관리에서 학년·반을 변경할 수 있어요.
+                  </Text>
+                </View>
+              ) : null}
             </View>
           ) : null}
-          {enrollmentTipVisible ? (
-            <View style={styles.profileInfoTooltip}>
-              <Text style={styles.profileInfoTooltipText}>
-                계정 관리에서 학년·반을 변경할 수 있어요.
-              </Text>
-            </View>
-          ) : null}
-          <View style={[styles.quickLinksRow, { marginTop: normalize(10) }]}>
+          <View style={styles.quickLinksRow}>
             <TouchableOpacity
               style={styles.quickLinkCard}
               onPress={() => navigation.navigate('Friends')}

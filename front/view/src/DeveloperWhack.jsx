@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   View,
   Text,
@@ -12,6 +12,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
 import Constants from 'expo-constants';
 import SubHeader from '../frame/subHeader';
+import HallOfFameCarousel from '../../components/HallOfFameCarousel';
 import { colors, fonts, fontSizes } from '../../styles/colors';
 import { api } from '../../utils/api';
 import { getNormalize } from '../../styles/mypage.style';
@@ -30,10 +31,31 @@ const DeveloperWhack = ({ navigation }) => {
   const [content, setContent] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [thanksVisible, setThanksVisible] = useState(false);
+  const [fameItems, setFameItems] = useState([]);
+  const [fameLoading, setFameLoading] = useState(true);
 
   const appVersion =
     Constants.expoConfig?.version || Constants.manifest?.version || '';
   const deviceInfo = `${Platform.OS} ${Platform.Version || ''}`.trim();
+
+  useEffect(() => {
+    let mounted = true;
+    (async () => {
+      try {
+        const res = await api.get('/api/hall-of-fame');
+        if (!mounted) return;
+        setFameItems(res.data?.data?.items || []);
+      } catch (e) {
+        console.warn('[DeveloperWhack] hall-of-fame load failed', e);
+        if (mounted) setFameItems([]);
+      } finally {
+        if (mounted) setFameLoading(false);
+      }
+    })();
+    return () => {
+      mounted = false;
+    };
+  }, []);
 
   const handleSubmit = async () => {
     if (submitting) return;
@@ -75,31 +97,12 @@ const DeveloperWhack = ({ navigation }) => {
             marginTop: normalize(12),
             padding: normalize(16),
             borderRadius: normalize(12),
-            backgroundColor: colors.cardBackground,
+            backgroundColor: colors.surface,
             borderWidth: 1,
             borderColor: colors.border,
           }}
         >
-          <Text
-            style={{
-              fontFamily: fonts.bold,
-              fontSize: normalize(fontSizes.lg),
-              color: colors.textPrimary,
-            }}
-          >
-            도움 주신 분들 (명예의 전당)
-          </Text>
-          <Text
-            style={{
-              marginTop: normalize(8),
-              fontFamily: fonts.regular,
-              fontSize: normalize(fontSizes.md),
-              color: colors.textSecondary,
-              lineHeight: normalize(20),
-            }}
-          >
-            반영된 의견과 감사 인사는 준비 중이에요. 곧 이곳에서 볼 수 있어요.
-          </Text>
+          <HallOfFameCarousel items={fameItems} loading={fameLoading} />
         </View>
 
         <Text
@@ -127,7 +130,7 @@ const DeveloperWhack = ({ navigation }) => {
                   borderRadius: normalize(20),
                   borderWidth: 1,
                   borderColor: active ? colors.primary : colors.border,
-                  backgroundColor: active ? colors.primaryLight10 : colors.cardBackground,
+                  backgroundColor: active ? colors.primaryLight10 : colors.surface,
                 }}
               >
                 <Text
@@ -152,7 +155,7 @@ const DeveloperWhack = ({ navigation }) => {
             borderRadius: normalize(10),
             borderWidth: 1,
             borderColor: colors.border,
-            backgroundColor: colors.cardBackground,
+            backgroundColor: colors.surface,
             fontFamily: fonts.regular,
             fontSize: normalize(fontSizes.md),
             color: colors.textPrimary,
@@ -202,7 +205,7 @@ const DeveloperWhack = ({ navigation }) => {
         >
           <View
             style={{
-              backgroundColor: colors.cardBackground,
+              backgroundColor: colors.surface,
               borderRadius: normalize(12),
               padding: normalize(20),
             }}
