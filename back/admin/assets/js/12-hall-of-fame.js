@@ -8,6 +8,7 @@ let hofForm = {
 };
 let hofFeedbackItems = [];
 let hofSelectedFeedback = new Set();
+let hofFeedbackQuery = '';
 
 function resetHofForm() {
   hofEditingId = null;
@@ -61,80 +62,120 @@ function renderHallOfFamePanel() {
 
   const honoreeRows = (hofForm.honorees || []).map((h, idx) => `
     <tr>
-      <td><input type="text" value="${esc(h.displayName)}" onchange="hofUpdateHonoree(${idx}, 'displayName', this.value)" style="width:100%" /></td>
-      <td><input type="text" value="${esc(h.schoolName)}" onchange="hofUpdateHonoree(${idx}, 'schoolName', this.value)" style="width:100%" /></td>
-      <td>${h.userId ? `#${h.userId}` : '-'}</td>
-      <td><button type="button" class="btn btn-sm btn-red" onclick="hofRemoveHonoree(${idx})">삭제</button></td>
+      <td><input type="text" class="note-input" value="${esc(h.displayName)}" onchange="hofUpdateHonoree(${idx}, 'displayName', this.value)" /></td>
+      <td><input type="text" class="note-input" value="${esc(h.schoolName)}" onchange="hofUpdateHonoree(${idx}, 'schoolName', this.value)" /></td>
+      <td class="txt-muted txt-center">${h.userId ? `#${h.userId}` : '—'}</td>
+      <td class="txt-center"><button type="button" class="btn btn-sm btn-red" onclick="hofRemoveHonoree(${idx})">삭제</button></td>
     </tr>
   `).join('');
 
   const feedbackRows = hofFeedbackItems.map((fb) => {
     const checked = hofSelectedFeedback.has(String(fb.id)) ? 'checked' : '';
     const linked = (fb.linkedEntryIds || []).length
-      ? `<span class="txt-muted" style="font-size:11px">연결 #${fb.linkedEntryIds.join(', #')}</span>`
+      ? `<span class="pill pill-white" style="font-size:10px">연결 #${fb.linkedEntryIds.join(', #')}</span>`
       : '';
     const who = fb.username
       ? `@${esc(fb.username)} · ${esc(fb.maskedName)} · ${esc(fb.schoolName)}`
       : '비로그인';
+    const categoryPill = fb.category === 'bug'
+      ? '<span class="pill pill-danger" style="font-size:10px">버그</span>'
+      : fb.category === 'feature'
+        ? '<span class="pill pill-ok" style="font-size:10px">기능</span>'
+        : '<span class="pill" style="font-size:10px">기타</span>';
     return `
       <label class="hof-feedback-row">
         <input type="checkbox" ${checked} onchange="hofToggleFeedback(${fb.id}, this.checked)" />
         <div>
-          <div><strong>#${fb.id}</strong> ${esc(fb.category)} · ${who} ${linked}</div>
-          <div class="txt-muted" style="font-size:12px;margin-top:4px">${esc(fb.content.slice(0, 120))}${fb.content.length > 120 ? '…' : ''}</div>
+          <div style="display:flex;flex-wrap:wrap;align-items:center;gap:6px">
+            <strong>#${fb.id}</strong>
+            ${categoryPill}
+            <span>${who}</span>
+            ${linked}
+          </div>
+          <div class="hof-feedback-meta">${esc(fb.content.slice(0, 160))}${fb.content.length > 160 ? '…' : ''}</div>
         </div>
       </label>
     `;
   }).join('');
 
+  const editorTitle = hofEditingId ? `등재 수정 #${hofEditingId}` : '새 등재 작성';
+  const publishPill = hofForm.isPublished
+    ? '<span class="pill pill-ok">공개</span>'
+    : '<span class="pill">비공개</span>';
+
   host.innerHTML = `
     <div class="hof-layout">
-      <div class="hof-list-col">
-        <div class="toolbar" style="margin-bottom:8px">
-          <button type="button" class="btn btn-sm btn-primary" onclick="hofNewEntry()">+ 새 등재</button>
+      <aside class="hof-list-col">
+        <div class="hof-panel-card">
+          <div class="hof-panel-card-head">
+            <div class="hof-panel-card-title">등재 목록</div>
+            <button type="button" class="btn btn-sm btn-primary" onclick="hofNewEntry()">+ 새 등재</button>
+          </div>
+          <div class="hof-list">${listHtml || '<div class="txt-muted" style="font-size:13px;padding:12px">등록된 항목이 없습니다.</div>'}</div>
         </div>
-        <div class="hof-list">${listHtml || '<div class="txt-muted" style="font-size:13px">등록된 항목이 없습니다.</div>'}</div>
-      </div>
+      </aside>
       <div class="hof-editor-col">
-        <div class="section-title">${hofEditingId ? `등재 수정 #${hofEditingId}` : '새 등재 작성'}</div>
-        <div class="form-grid" style="margin-bottom:12px">
-          <label>반영 내용 요약</label>
-          <textarea id="hof-summary" rows="3" placeholder="예: 급식 화면 로딩 속도 개선">${esc(hofForm.summary)}</textarea>
-          <label>정렬 (큰 값이 앞)</label>
-          <input id="hof-sort" type="number" value="${Number(hofForm.sortOrder) || 0}" />
-          <label><input id="hof-published" type="checkbox" ${hofForm.isPublished ? 'checked' : ''} /> 앱에 공개</label>
-        </div>
+        <div class="hof-panel-card">
+          <div class="hof-panel-card-head">
+            <div class="hof-panel-card-title">${editorTitle}</div>
+            ${hofEditingId ? publishPill : ''}
+          </div>
 
-        <div class="section-title" style="margin-top:8px">등재자</div>
-        <div class="toolbar" style="margin-bottom:8px;gap:8px;flex-wrap:wrap">
-          <button type="button" class="btn btn-sm" onclick="hofAddHonoreeRow()">등재자 행 추가</button>
-          <button type="button" class="btn btn-sm btn-primary" onclick="hofAddHonoreesFromFeedback()">선택한 제보로 등재자 추가</button>
-        </div>
-        <div class="table-wrap">
-          <table>
-            <thead>
-              <tr>
-                <th>이름(마스킹)</th>
-                <th>학교</th>
-                <th style="width:70px">UID</th>
-                <th style="width:70px"></th>
-              </tr>
-            </thead>
-            <tbody>${honoreeRows || '<tr><td colspan="4" class="empty-row">등재자를 추가하세요.</td></tr>'}</tbody>
-          </table>
-        </div>
+          <div class="hof-section">
+            <div class="section-title">기본 정보</div>
+            <div class="form-grid form-grid-single">
+              <label class="form-field">
+                <span class="form-field-label">반영 내용 요약</span>
+                <textarea id="hof-summary" class="note-input" rows="3" style="min-height:84px" placeholder="예: 급식 화면 로딩 속도 개선">${esc(hofForm.summary)}</textarea>
+              </label>
+              <div class="form-grid form-grid-inline">
+                <label class="form-field">
+                  <span class="form-field-label">정렬 (큰 값이 앞)</span>
+                  <input id="hof-sort" class="note-input input-compact" type="number" value="${Number(hofForm.sortOrder) || 0}" />
+                </label>
+                <label class="form-field-check">
+                  <input id="hof-published" type="checkbox" ${hofForm.isPublished ? 'checked' : ''} />
+                  <span>앱에 공개</span>
+                </label>
+              </div>
+            </div>
+          </div>
 
-        <div class="section-title" style="margin-top:16px">회초리 제보 연결</div>
-        <p class="section-hint">체크한 제보와 이 등재 건을 연결합니다. 「선택한 제보로 등재자 추가」로 이름·학교를 자동 채울 수 있어요.</p>
-        <div class="toolbar" style="margin-bottom:8px">
-          <input id="hof-feedback-q" type="text" placeholder="제보 #번호 · @아이디 · 내용" style="min-width:220px" />
-          <button type="button" class="btn btn-sm" onclick="hofSearchFeedback()">검색</button>
-        </div>
-        <div class="hof-feedback-list">${feedbackRows || '<div class="txt-muted">제보가 없습니다.</div>'}</div>
+          <div class="hof-section">
+            <div class="section-title">등재자</div>
+            <div class="toolbar" style="margin-bottom:10px">
+              <button type="button" class="btn btn-sm" onclick="hofAddHonoreeRow()">등재자 행 추가</button>
+              <button type="button" class="btn btn-sm btn-primary" onclick="hofAddHonoreesFromFeedback()">선택한 제보로 등재자 추가</button>
+            </div>
+            <div class="table-wrap hof-table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>이름(마스킹)</th>
+                    <th>학교</th>
+                    <th style="width:72px">UID</th>
+                    <th style="width:72px"></th>
+                  </tr>
+                </thead>
+                <tbody>${honoreeRows || '<tr><td colspan="4" class="empty-row">등재자를 추가하세요.</td></tr>'}</tbody>
+              </table>
+            </div>
+          </div>
 
-        <div class="toolbar" style="margin-top:16px;gap:8px">
-          <button type="button" class="btn btn-primary" onclick="hofSaveEntry()">저장</button>
-          ${hofEditingId ? `<button type="button" class="btn btn-red" onclick="hofDeleteEntry(${hofEditingId})">삭제</button>` : ''}
+          <div class="hof-section">
+            <div class="section-title">회초리 제보 연결</div>
+            <p class="section-hint">체크한 제보와 이 등재 건을 연결합니다. 「선택한 제보로 등재자 추가」로 이름·학교를 자동 채울 수 있어요.</p>
+            <div class="toolbar filter-row" style="margin:0 0 10px">
+              <input id="hof-feedback-q" class="note-input input-compact" type="text" placeholder="제보 #번호 · @아이디 · 내용" style="flex:1;min-width:180px" value="${esc(hofFeedbackQuery)}" />
+              <button type="button" class="btn btn-sm" onclick="hofSearchFeedback()">검색</button>
+            </div>
+            <div class="hof-feedback-list">${feedbackRows || '<div class="txt-muted" style="padding:12px;font-size:12px">제보가 없습니다.</div>'}</div>
+          </div>
+
+          <div class="hof-actions toolbar">
+            <button type="button" class="btn btn-primary" onclick="hofSaveEntry()">저장</button>
+            ${hofEditingId ? `<button type="button" class="btn btn-red" onclick="hofDeleteEntry(${hofEditingId})">삭제</button>` : ''}
+          </div>
         </div>
       </div>
     </div>
@@ -226,9 +267,9 @@ async function hofAddHonoreesFromFeedback() {
 }
 
 async function hofSearchFeedback() {
-  const q = document.getElementById('hof-feedback-q')?.value?.trim() || '';
+  hofFeedbackQuery = document.getElementById('hof-feedback-q')?.value?.trim() || '';
   try {
-    const { data } = await api(`/hall-of-fame/developer-feedback?limit=80&q=${encodeURIComponent(q)}`);
+    const { data } = await api(`/hall-of-fame/developer-feedback?limit=80&q=${encodeURIComponent(hofFeedbackQuery)}`);
     hofFeedbackItems = data.items || [];
     renderHallOfFamePanel();
   } catch (error) {
