@@ -546,7 +546,7 @@ const Login = ({ navigation }) => {
         normalize={normalize}
         onConfirm={() => {
           setPrepMaterialsModalVisible(false);
-          navigation.navigate('Sign');
+          navigation.navigate('SignupEntry');
         }}
         onCancel={() => setPrepMaterialsModalVisible(false)}
       />

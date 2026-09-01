@@ -72,6 +72,7 @@ import {
   inferExpectedSchoolLevel,
   pickRandomProfileColorId,
 } from './signupEnrollmentUtils';
+import { SIGNUP_REDESIGN_SKIP_VALIDATION } from './signupRedesignFlags';
 
 /**
  * OCR·가입 플로우 UI 테스트 스킵
@@ -129,6 +130,11 @@ const SIGNUP_TEST_MOCK_STUDENT_VERIFICATION = {
     studentVerificationToken: 'test-student-verification-token',
   },
 };
+
+/** [SIGNUP_REDESIGN_SKIP] 개편 완료 후 signupRedesignFlags.js 참고 */
+function shouldSkipSignupValidation() {
+  return SIGNUP_REDESIGN_SKIP_VALIDATION || SKIP_SIGNUP_VALIDATION_UNTIL_OCR_TEST;
+}
 
 const INICIS_MOCK_PHONE = '01000000000';
 
@@ -356,7 +362,7 @@ const Sign = ({ navigation }) => {
 
   const isCameraStep = currentStep === STEP.STUDENT_VERIFY && !studentVerified;
   const hideFooter =
-    (isCameraStep && !SKIP_SIGNUP_VALIDATION_UNTIL_OCR_TEST) ||
+    (isCameraStep && !shouldSkipSignupValidation()) ||
     currentStep === STEP.ALT_VERIFY_CHOICE ||
     currentStep === STEP.CERTIFICATE_GUIDE ||
     currentStep === STEP.NEIS_PLUS_SUBMIT ||
@@ -529,12 +535,12 @@ const Sign = ({ navigation }) => {
       const mergedIdentity = { ...identityData, ...overrideIdentity };
       const name =
         mergedIdentity.name?.trim() ||
-        (SKIP_SIGNUP_VALIDATION_UNTIL_OCR_TEST
+        (shouldSkipSignupValidation()
           ? OCR_TEST_MOCK_IDENTITY.name
           : '');
       const phoneNumber =
         mergedIdentity.phoneNumber ||
-        (SKIP_SIGNUP_VALIDATION_UNTIL_OCR_TEST
+        (shouldSkipSignupValidation()
           ? OCR_TEST_MOCK_IDENTITY.phoneNumber
           : '');
       const resolvedBirthDate =
@@ -554,7 +560,7 @@ const Sign = ({ navigation }) => {
         birthDate: resolvedBirthDate,
         phoneNumber,
         isVerified:
-          mergedIdentity.isVerified || SKIP_SIGNUP_VALIDATION_UNTIL_OCR_TEST,
+          mergedIdentity.isVerified || shouldSkipSignupValidation(),
         inicisClientToken: mergedIdentity.inicisClientToken ?? prev.inicisClientToken,
       }));
       if (resolvedBirthDate) {
@@ -649,7 +655,7 @@ const Sign = ({ navigation }) => {
   }, []);
 
   const runStudentIdentityVerificationCore = useCallback(async () => {
-    if (SKIP_SIGNUP_VALIDATION_UNTIL_OCR_TEST) {
+    if (shouldSkipSignupValidation()) {
       return {
         ok: true,
         nextIdentity: {
@@ -694,7 +700,7 @@ const Sign = ({ navigation }) => {
   }, [evaluateStudentVerifyResult, executeInicisFlow]);
 
   const runGuardianIdentityVerificationCore = useCallback(async () => {
-    if (SKIP_SIGNUP_VALIDATION_UNTIL_OCR_TEST) {
+    if (shouldSkipSignupValidation()) {
       await new Promise((resolve) => setTimeout(resolve, 400));
       applyGuardianVerifySuccess({
         clientToken: 'test-guardian-token',
@@ -806,7 +812,7 @@ const Sign = ({ navigation }) => {
   };
 
   const resumeInicisFromPending = useCallback(async () => {
-    if (inicisFlowActiveRef.current || SKIP_SIGNUP_VALIDATION_UNTIL_OCR_TEST) {
+    if (inicisFlowActiveRef.current || shouldSkipSignupValidation()) {
       return;
     }
     const pending = await getPendingInicisSession();
@@ -1004,10 +1010,10 @@ const Sign = ({ navigation }) => {
   ]);
 
   const handleConsentNext = () => {
-    if (!SKIP_SIGNUP_VALIDATION_UNTIL_OCR_TEST && !consentData.allConsented) {
+    if (!shouldSkipSignupValidation() && !consentData.allConsented) {
       return;
     }
-    if (SKIP_SIGNUP_VALIDATION_UNTIL_OCR_TEST) {
+    if (shouldSkipSignupValidation()) {
       applyBirthDateToState(OCR_TEST_MOCK_IDENTITY.birthDate);
       setRequiresGuardianVerification(false);
       setGuardianVerified(false);
@@ -1026,15 +1032,27 @@ const Sign = ({ navigation }) => {
   };
 
   const handleBirthDateNext = () => {
-    const nextBirthDate = SKIP_SIGNUP_VALIDATION_UNTIL_OCR_TEST
+    const nextBirthDate = shouldSkipSignupValidation()
       ? birthDate || OCR_TEST_MOCK_IDENTITY.birthDate
       : birthDate;
 
-    if (!SKIP_SIGNUP_VALIDATION_UNTIL_OCR_TEST) {
+    if (!shouldSkipSignupValidation()) {
       if (!isValidBirthDateString(nextBirthDate)) {
         Alert.alert('알림', '생년월일을 올바르게 입력해 주세요.');
         return;
       }
+    } else {
+      // [SIGNUP_REDESIGN_SKIP] 연령·보호자·이니시스 우회
+      applyBirthDateToState(nextBirthDate);
+      setRequiresGuardianVerification(false);
+      setGuardianVerified(false);
+      setGuardianVerifiedAt(null);
+      advanceToAccountAfterIdentity({
+        ...OCR_TEST_MOCK_IDENTITY,
+        birthDate: nextBirthDate,
+        isVerified: true,
+      });
+      return;
     }
 
     const birthCase = classifyBirthDateCase(nextBirthDate);
@@ -1108,7 +1126,7 @@ const Sign = ({ navigation }) => {
   };
 
   const handleAccountNext = () => {
-    if (SKIP_SIGNUP_VALIDATION_UNTIL_OCR_TEST) {
+    if (shouldSkipSignupValidation()) {
       setStepInfoData((prev) => ({
         ...SIGNUP_TEST_MOCK_ACCOUNT,
         ...prev,
@@ -1186,6 +1204,32 @@ const Sign = ({ navigation }) => {
   ]);
 
   const handleSchoolSelectNext = () => {
+    // [SIGNUP_REDESIGN_SKIP] 학교·반·학년·확인 모달 우회
+    if (shouldSkipSignupValidation()) {
+      const grade = schoolEnrollmentPreview.grade || 2;
+      const classNum = Number(schoolClassNum) || 1;
+      if (selectedSchool?.id && !selectedSchool?.manual) {
+        proceedFromSchoolSelect();
+      } else {
+        setFormData((prev) => ({
+          ...prev,
+          schoolId: selectedSchool?.id || prev.schoolId || 'REDESIGN_SKIP',
+          schoolName: selectedSchool?.name || prev.schoolName || '개편테스트학교',
+          grade: String(grade),
+          classNum: String(classNum),
+          graduationYear: String(
+            schoolEnrollmentPreview.graduationYear ||
+              prev.graduationYear ||
+              new Date().getFullYear() + 2,
+          ),
+          schoolLevel:
+            schoolEnrollmentPreview.schoolLevel || prev.schoolLevel || 'high',
+        }));
+        setCurrentStep(STEP.STUDENT_VERIFY);
+      }
+      return;
+    }
+
     if (!selectedSchool?.id || selectedSchool?.manual) {
       Alert.alert('알림', '재학 중인 학교를 목록에서 선택해 주세요.');
       return;
@@ -1251,25 +1295,32 @@ const Sign = ({ navigation }) => {
   };
 
   const handleCertificateSubmit = async () => {
-    if (SKIP_SIGNUP_VALIDATION_UNTIL_OCR_TEST) {
+    const certificateViewUrl =
+      certificateData.certificateUrl?.trim() ||
+      SIGNUP_TEST_MOCK_CERTIFICATE.certificateUrl;
+    const certificateAccessCode =
+      certificateData.accessNumber?.trim() ||
+      SIGNUP_TEST_MOCK_CERTIFICATE.accessNumber;
+
+    if (
+      shouldSkipSignupValidation() &&
+      SKIP_SIGNUP_VALIDATION_UNTIL_OCR_TEST &&
+      !SIGNUP_REDESIGN_SKIP_VALIDATION
+    ) {
       setFormData((prev) => ({
         ...prev,
-        certificateUrl:
-          certificateData.certificateUrl?.trim() ||
-          SIGNUP_TEST_MOCK_CERTIFICATE.certificateUrl,
-        accessNumber:
-          certificateData.accessNumber?.trim() ||
-          SIGNUP_TEST_MOCK_CERTIFICATE.accessNumber,
+        certificateUrl: certificateViewUrl,
+        accessNumber: certificateAccessCode,
       }));
       Alert.alert('테스트모드', '재학증명서 제출 검증을 건너뛰었습니다.');
       return;
     }
 
-    const certificateViewUrl = certificateData.certificateUrl?.trim();
-    const certificateAccessCode = certificateData.accessNumber?.trim();
-    if (!certificateViewUrl || !certificateAccessCode) {
-      Alert.alert('알림', '열람용 주소와 열람 번호를 모두 입력해 주세요.');
-      return;
+    if (!shouldSkipSignupValidation()) {
+      if (!certificateViewUrl || !certificateAccessCode) {
+        Alert.alert('알림', '열람용 주소와 열람 번호를 모두 입력해 주세요.');
+        return;
+      }
     }
 
     const finalData = {
@@ -1277,8 +1328,16 @@ const Sign = ({ navigation }) => {
       ...stepInfoData,
       certificateUrl: certificateViewUrl,
       accessNumber: certificateAccessCode,
+      username:
+        stepInfoData.username ||
+        formData.username ||
+        SIGNUP_TEST_MOCK_ACCOUNT.username,
+      password:
+        stepInfoData.password ||
+        formData.password ||
+        SIGNUP_TEST_MOCK_ACCOUNT.password,
     };
-    if (!finalData.username || !finalData.password) {
+    if (!shouldSkipSignupValidation() && (!finalData.username || !finalData.password)) {
       Alert.alert('알림', '계정 정보가 없습니다. 이전 단계를 확인해 주세요.');
       return;
     }
@@ -1296,7 +1355,7 @@ const Sign = ({ navigation }) => {
       });
       await api.post('/api/auth/signup', payload);
       await consumePendingInviteCode();
-      await finishSignupAndEnterApp(finalData.username, finalData.password);
+      await finishSignupAndEnterApp(payload.username, payload.password);
     } catch (error) {
       Alert.alert(
         '회원가입 실패',
@@ -1410,12 +1469,21 @@ const Sign = ({ navigation }) => {
     const { recognized, token, formPatch } =
       buildStudentVerificationSnapshot(data);
 
-    if (SKIP_SIGNUP_VALIDATION_UNTIL_OCR_TEST) {
-      Alert.alert(
-        '학생증 제출 완료!',
-        '관리자 승인 후 서비스를 이용할 수 있습니다',
-        [{ text: '확인', onPress: () => resetTo('Login') }],
+    if (shouldSkipSignupValidation()) {
+      if (SKIP_SIGNUP_VALIDATION_UNTIL_OCR_TEST && !SIGNUP_REDESIGN_SKIP_VALIDATION) {
+        Alert.alert(
+          '학생증 제출 완료!',
+          '관리자 승인 후 서비스를 이용할 수 있습니다',
+          [{ text: '확인', onPress: () => resetTo('Login') }],
+        );
+        return;
+      }
+      setRecognizedData(recognized);
+      setStudentVerificationToken(
+        token || SIGNUP_TEST_MOCK_STUDENT_VERIFICATION.studentVerificationToken,
       );
+      setFormData((prev) => ({ ...prev, ...formPatch }));
+      setStudentVerified(true);
       return;
     }
 
@@ -1530,16 +1598,27 @@ const Sign = ({ navigation }) => {
   const handleComplete = async () => {
     const finalData = { ...formData, ...stepInfoData };
 
-    if (SKIP_SIGNUP_VALIDATION_UNTIL_OCR_TEST) {
+    if (
+      shouldSkipSignupValidation() &&
+      SKIP_SIGNUP_VALIDATION_UNTIL_OCR_TEST &&
+      !SIGNUP_REDESIGN_SKIP_VALIDATION
+    ) {
       Alert.alert('테스트모드', '회원가입 제출 API 호출을 건너뛰었습니다.');
       return;
     }
 
-    if (!studentVerificationToken) {
+    const verificationToken =
+      studentVerificationToken ||
+      SIGNUP_TEST_MOCK_STUDENT_VERIFICATION.studentVerificationToken;
+
+    if (!shouldSkipSignupValidation() && !verificationToken) {
       Alert.alert('알림', '학생증 촬영·제출을 먼저 완료해 주세요.');
       return;
     }
-    if (!finalData.username || !finalData.password) {
+    if (
+      !shouldSkipSignupValidation() &&
+      (!finalData.username || !finalData.password)
+    ) {
       Alert.alert('알림', '계정 정보가 없습니다. 이전 단계를 확인해 주세요.');
       return;
     }
@@ -1549,8 +1628,12 @@ const Sign = ({ navigation }) => {
       const inicisToken =
         inicisClientTokenRef.current || identityData.inicisClientToken;
       const payload = buildSignupPayload(
-        finalData,
-        studentVerificationToken,
+        {
+          ...finalData,
+          username: finalData.username || SIGNUP_TEST_MOCK_ACCOUNT.username,
+          password: finalData.password || SIGNUP_TEST_MOCK_ACCOUNT.password,
+        },
+        verificationToken,
         recognizedData,
         {
           studentInicisClientToken: inicisToken,
@@ -1558,8 +1641,9 @@ const Sign = ({ navigation }) => {
         },
       );
       if (
-        !Number.isFinite(payload.graduationYear) ||
-        payload.graduationYear < 1900
+        !shouldSkipSignupValidation() &&
+        (!Number.isFinite(payload.graduationYear) ||
+          payload.graduationYear < 1900)
       ) {
         Alert.alert(
           '가입 정보 확인',
@@ -1570,7 +1654,7 @@ const Sign = ({ navigation }) => {
       }
       await api.post('/api/auth/signup', payload);
       await consumePendingInviteCode();
-      await finishSignupAndEnterApp(finalData.username, finalData.password);
+      await finishSignupAndEnterApp(payload.username, payload.password);
     } catch (error) {
       Alert.alert(
         '회원가입 실패',
@@ -1621,7 +1705,7 @@ const Sign = ({ navigation }) => {
         handleSchoolSelectNext();
         break;
       case STEP.STUDENT_VERIFY:
-        if (SKIP_SIGNUP_VALIDATION_UNTIL_OCR_TEST && !studentVerified) {
+        if (shouldSkipSignupValidation() && !studentVerified) {
           handleStudentVerified(SIGNUP_TEST_MOCK_STUDENT_VERIFICATION);
         } else if (studentVerified) {
           handleComplete();
@@ -1637,17 +1721,8 @@ const Sign = ({ navigation }) => {
 
   const isPrimaryDisabled = () => {
     if (submitting || inicisOverlayVisible) return true;
-    if (SKIP_SIGNUP_VALIDATION_UNTIL_OCR_TEST) {
-      if (currentStep === STEP.SCHOOL_SELECT) {
-        if (!selectedSchool?.id || selectedSchool?.manual) return true;
-        if (!Number(schoolClassNum) || Number(schoolClassNum) < 1) return true;
-        if (
-          schoolEnrollmentPreview.grade == null ||
-          !Number.isFinite(Number(schoolEnrollmentPreview.grade))
-        ) {
-          return true;
-        }
-      }
+    // [SIGNUP_REDESIGN_SKIP] 단계별 필수 입력 비활성 우회
+    if (shouldSkipSignupValidation()) {
       return false;
     }
     if (currentStep === STEP.CONSENT && !consentData.allConsented) return true;
@@ -1683,7 +1758,7 @@ const Sign = ({ navigation }) => {
 
   const primaryLabel = () => {
     if (
-      SKIP_SIGNUP_VALIDATION_UNTIL_OCR_TEST &&
+      shouldSkipSignupValidation() &&
       currentStep === STEP.STUDENT_VERIFY &&
       !studentVerified
     ) {
@@ -1700,7 +1775,7 @@ const Sign = ({ navigation }) => {
   }, []);
 
   useEffect(() => {
-    if (!SKIP_SIGNUP_VALIDATION_UNTIL_OCR_TEST) return;
+    if (!shouldSkipSignupValidation()) return;
     setConsentData({ allConsented: true, consents: {} });
     applyBirthDateToState(OCR_TEST_MOCK_IDENTITY.birthDate);
     setIdentityData((prev) => ({
@@ -1797,7 +1872,7 @@ const Sign = ({ navigation }) => {
           <SignStepCertificateGuide
             styles={styles}
             onProceed={handleCertificateProceed}
-            testMode={SKIP_SIGNUP_VALIDATION_UNTIL_OCR_TEST}
+            testMode={shouldSkipSignupValidation()}
           />
         )}
         {currentStep === STEP.CERTIFICATE_SUBMIT && (

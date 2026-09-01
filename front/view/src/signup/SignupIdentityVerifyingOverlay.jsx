@@ -9,10 +9,10 @@ import {
 import { colors, fonts, fontSizes } from '../../../styles/colors';
 import SignupIosSafeModal from './SignupIosSafeModal';
 
-/** 회원가입 — KG 이니시스 본인인증 진행 중 전체 화면 오버레이 */
+/** 본인가입 본인인증 진행 중 취소하면 버튼이 비활성화됩니다. */
 const SignupIdentityVerifyingOverlay = ({
   visible,
-  title = '본인인증 진행 중',
+  title = '본인인증 진행',
   normalize = (n) => n,
   onOpenManually,
   onCancel,
@@ -55,7 +55,7 @@ const SignupIdentityVerifyingOverlay = ({
             },
           ]}
         >
-          인증 화면이 열리지 않으면{'\n'}아래 「직접 열기」를 눌러 주세요.
+          본인인증을 진행하면 이메일 인증 및 학생증 인증을 진행할 수 있습니다.
         </Text>
 
         <TouchableOpacity
@@ -81,7 +81,7 @@ const SignupIdentityVerifyingOverlay = ({
                 { fontSize: normalize(fontSizes.lg) },
               ]}
             >
-              직접 열기
+              직접 인증하기
             </Text>
           )}
         </TouchableOpacity>
@@ -137,7 +137,7 @@ const styles = StyleSheet.create({
   },
   subtitle: {
     fontFamily: fonts.regular,
-    color: colors.textMuted,
+    color: colors.textSecondary,
     textAlign: 'center',
   },
   primaryButton: {

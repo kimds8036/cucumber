@@ -24,6 +24,7 @@ import StudentIdCaptureStage, {
 import SignupHelperText from './SignupHelperText';
 import { normalizeBirthDateForCompare } from './signupBirthDatePolicy';
 import SubmittingLockModal from '../../../components/common/SubmittingLockModal';
+import { SIGNUP_REDESIGN_SKIP_VALIDATION } from './signupRedesignFlags';
 
 const UPLOAD_TIMEOUT_MS = 120_000;
 
@@ -80,6 +81,24 @@ const SignStepStudentIdVerify = ({
       return;
     }
     if (busy) return;
+
+    // [SIGNUP_REDESIGN_SKIP] 촬영·업로드·필수 필드 검증 우회
+    if (SIGNUP_REDESIGN_SKIP_VALIDATION) {
+      onVerified?.({
+        name: identity?.name || '개편테스트',
+        manualReview: true,
+        cloudinaryUrl: '',
+        grade: '',
+        class: '',
+        graduationYear: '',
+        studentVerificationToken: 'redesign-skip-student-token',
+        verification: {
+          studentVerificationToken: 'redesign-skip-student-token',
+        },
+      });
+      return;
+    }
+
     if (!identity?.name?.trim() || !identity?.birthDate) {
       Alert.alert('알림', '이름·생년월일·전화번호 인증을 먼저 완료해 주세요.');
       return;
