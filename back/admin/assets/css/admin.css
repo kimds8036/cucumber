@@ -786,19 +786,13 @@
       padding: 10px;
     }
     .hof-list-item {
-      display: block;
-      width: 100%;
-      text-align: left;
+      display: flex;
+      align-items: stretch;
+      gap: 8px;
       border: 0.5px solid var(--border);
       border-radius: var(--radius-md);
-      padding: 10px 12px;
+      padding: 8px;
       background: var(--bg-secondary);
-      cursor: pointer;
-      font-family: inherit;
-      font-size: inherit;
-      color: inherit;
-      appearance: none;
-      -webkit-appearance: none;
       transition: border-color 0.15s, background 0.15s;
     }
     .hof-list-item:hover { border-color: var(--green-border); background: var(--bg); }
@@ -806,6 +800,33 @@
       border-color: var(--green-border);
       background: var(--green-bg);
       box-shadow: inset 0 0 0 1px var(--green-border);
+    }
+    .hof-list-item-main {
+      flex: 1;
+      min-width: 0;
+      text-align: left;
+      border: none;
+      background: transparent;
+      padding: 2px 4px;
+      cursor: pointer;
+      font-family: inherit;
+      font-size: inherit;
+      color: inherit;
+      appearance: none;
+      -webkit-appearance: none;
+    }
+    .hof-list-item-actions {
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      gap: 4px;
+      flex-shrink: 0;
+    }
+    .hof-list-item-actions .btn {
+      min-width: 44px;
+      justify-content: center;
+      padding-left: 8px;
+      padding-right: 8px;
     }
     .hof-list-title {
       font-size: 13px;

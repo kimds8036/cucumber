@@ -33,9 +33,13 @@ async function loadHallOfFamePanel() {
     ]);
     state.hallOfFameEntries = listData.items || [];
     hofFeedbackItems = feedbackData.items || [];
-    if (!hofEditingId && state.hallOfFameEntries.length) {
+    const keepId = hofEditingId;
+    if (keepId && (state.hallOfFameEntries || []).some((e) => e.id === keepId)) {
+      await selectHallOfFameEntry(keepId);
+    } else if (!hofEditingId && state.hallOfFameEntries.length) {
       await selectHallOfFameEntry(state.hallOfFameEntries[0].id);
     } else {
+      if (keepId) resetHofForm();
       renderHallOfFamePanel();
     }
   } catch (error) {
@@ -50,13 +54,19 @@ function renderHallOfFamePanel() {
   const listHtml = (state.hallOfFameEntries || []).map((item) => {
     const active = hofEditingId === item.id ? 'hof-list-item active' : 'hof-list-item';
     const pub = item.isPublished
-      ? '<span class="pill pill-ok" style="font-size:10px;margin-left:6px">공개</span>'
-      : '<span class="pill" style="font-size:10px;margin-left:6px">비공개</span>';
+      ? '<span class="pill pill-ok" style="font-size:10px">공개</span>'
+      : '<span class="pill" style="font-size:10px">비공개</span>';
     return `
-      <button type="button" class="${active}" onclick="selectHallOfFameEntry(${item.id})">
-        <div class="hof-list-title">#${item.id} ${esc(item.summary.slice(0, 36))}${item.summary.length > 36 ? '…' : ''}</div>
-        <div class="hof-list-meta">등재 ${item.honorees?.length || 0}명 · 제보 ${item.feedbackIds?.length || 0}건 ${pub}</div>
-      </button>
+      <div class="${active}">
+        <button type="button" class="hof-list-item-main" onclick="selectHallOfFameEntry(${item.id})">
+          <div class="hof-list-title">#${item.id} ${esc(item.summary.slice(0, 36))}${item.summary.length > 36 ? '…' : ''}</div>
+          <div class="hof-list-meta">등재 ${item.honorees?.length || 0}명 · 제보 ${item.feedbackIds?.length || 0}건 ${pub}</div>
+        </button>
+        <div class="hof-list-item-actions">
+          <button type="button" class="btn btn-sm" onclick="selectHallOfFameEntry(${item.id})">수정</button>
+          <button type="button" class="btn btn-sm btn-red" onclick="hofDeleteEntry(${item.id}, event)">삭제</button>
+        </div>
+      </div>
     `;
   }).join('');
 
@@ -173,8 +183,9 @@ function renderHallOfFamePanel() {
           </div>
 
           <div class="hof-actions toolbar">
-            <button type="button" class="btn btn-primary" onclick="hofSaveEntry()">저장</button>
-            ${hofEditingId ? `<button type="button" class="btn btn-red" onclick="hofDeleteEntry(${hofEditingId})">삭제</button>` : ''}
+            <button type="button" class="btn btn-primary" onclick="hofSaveEntry()">${hofEditingId ? '수정 저장' : '등록'}</button>
+            ${hofEditingId ? `<button type="button" class="btn" onclick="hofNewEntry()">새로 작성</button>` : ''}
+            ${hofEditingId ? `<button type="button" class="btn btn-red" onclick="hofDeleteEntry(${hofEditingId})">영구 삭제</button>` : ''}
           </div>
         </div>
       </div>
@@ -279,6 +290,14 @@ async function hofSearchFeedback() {
 
 async function hofSaveEntry() {
   hofReadFormFromDom();
+  if (!hofForm.summary || hofForm.summary.length < 2) {
+    alert('반영 내용 요약을 2자 이상 입력해 주세요.');
+    return;
+  }
+  if (!hofForm.honorees.length) {
+    alert('등재자를 1명 이상 추가해 주세요.');
+    return;
+  }
   const payload = {
     summary: hofForm.summary,
     sortOrder: hofForm.sortOrder,
@@ -286,6 +305,7 @@ async function hofSaveEntry() {
     honorees: hofForm.honorees,
     feedbackIds: hofForm.feedbackIds,
   };
+  const wasEditing = Boolean(hofEditingId);
   try {
     if (hofEditingId) {
       await api(`/hall-of-fame/${hofEditingId}`, {
@@ -300,17 +320,28 @@ async function hofSaveEntry() {
       hofEditingId = data.id;
     }
     await loadHallOfFamePanel();
-    alert('저장되었습니다.');
+    alert(wasEditing ? '수정되었습니다.' : '등록되었습니다.');
   } catch (error) {
     alert(error.message);
   }
 }
 
-async function hofDeleteEntry(id) {
-  if (!confirm('이 등재 항목을 삭제할까요?')) return;
+async function hofDeleteEntry(id, ev) {
+  if (ev) {
+    ev.preventDefault();
+    ev.stopPropagation();
+  }
+  const entryId = Number(id);
+  if (!Number.isFinite(entryId) || entryId < 1) return;
+  const item = (state.hallOfFameEntries || []).find((e) => e.id === entryId);
+  const label = item?.summary ? item.summary.slice(0, 40) : `#${entryId}`;
+  const ok = confirm(
+    `등재 #${entryId} 「${label}」을(를) 영구 삭제할까요?\n\n등재자·제보 연결도 함께 삭제되며 복구할 수 없습니다.`,
+  );
+  if (!ok) return;
   try {
-    await api(`/hall-of-fame/${id}`, { method: 'DELETE' });
-    resetHofForm();
+    await api(`/hall-of-fame/${entryId}`, { method: 'DELETE' });
+    if (hofEditingId === entryId) resetHofForm();
     await loadHallOfFamePanel();
     alert('삭제되었습니다.');
   } catch (error) {

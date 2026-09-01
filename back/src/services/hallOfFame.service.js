@@ -276,11 +276,27 @@ export async function updateHallOfFameEntry(entryId, payload) {
 
 export async function deleteHallOfFameEntry(entryId) {
   const id = Number(entryId);
-  const [result] = await pool.execute(
-    'DELETE FROM hall_of_fame_entries WHERE id = ?',
-    [id],
-  );
-  return result.affectedRows > 0;
+  if (!Number.isFinite(id) || id < 1) return false;
+
+  const connection = await pool.getConnection();
+  try {
+    await connection.beginTransaction();
+    const [result] = await connection.execute(
+      'DELETE FROM hall_of_fame_entries WHERE id = ?',
+      [id],
+    );
+    if (!result.affectedRows) {
+      await connection.rollback();
+      return false;
+    }
+    await connection.commit();
+    return true;
+  } catch (error) {
+    await connection.rollback();
+    throw error;
+  } finally {
+    connection.release();
+  }
 }
 
 export async function listDeveloperFeedbackForAdmin({ limit = 50, q = '' } = {}) {
