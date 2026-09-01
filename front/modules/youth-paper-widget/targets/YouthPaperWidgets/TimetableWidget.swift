@@ -147,7 +147,7 @@ enum TimetableWidgetStatus: Equatable {
   case noClass
   case beforeSchool
   case inClass(period: Int)
-  case breakTime(lastPeriod: Int)
+  case breakTime(nextPeriod: Int)
   case afterSchool
 }
 
@@ -416,7 +416,7 @@ enum TimetableTimelineBuilder {
         statusText: "\(n)교시",
         statusTimeRange: range,
         currentSubject: subject,
-        currentColorHex: nil,
+        currentColorHex: p?.subjectColorHex,
         allPeriods: periods,
         activePeriodNumber: nil,
         status: status,
@@ -456,7 +456,7 @@ enum TimetableTimelineBuilder {
       if idx < scheduled.count - 1 {
         let next = scheduled[idx + 1]
         if let nextStart = next.startTime, date >= end && date < nextStart {
-          return .breakTime(lastPeriod: p.number)
+          return .breakTime(nextPeriod: next.number)
         }
       }
     }
@@ -534,8 +534,9 @@ enum TimetableTimelineBuilder {
       guard let start = p.startTime, let end = p.endTime else { continue }
       out.append(makeEntry(at: start, day: day, periods: periods, status: .inClass(period: p.number)))
       if idx < scheduled.count - 1 {
+        let next = scheduled[idx + 1]
         out.append(
-          makeEntry(at: end, day: day, periods: periods, status: .breakTime(lastPeriod: p.number)),
+          makeEntry(at: end, day: day, periods: periods, status: .breakTime(nextPeriod: next.number)),
         )
       } else {
         // 마지막 교시 종료 ~ 당일 끝(다음날 00:00 전)

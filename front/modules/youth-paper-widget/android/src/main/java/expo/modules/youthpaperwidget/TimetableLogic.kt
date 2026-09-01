@@ -10,7 +10,7 @@ sealed class TimetableStatus {
   data object NoClass : TimetableStatus()
   data object BeforeSchool : TimetableStatus()
   data class InClass(val period: Int) : TimetableStatus()
-  data class BreakTime(val lastPeriod: Int) : TimetableStatus()
+  data class BreakTime(val nextPeriod: Int) : TimetableStatus()
   data object AfterSchool : TimetableStatus()
 }
 
@@ -153,9 +153,10 @@ object TimetableLogic {
         return TimetableStatus.InClass(p.number)
       }
       if (idx < scheduled.size - 1) {
-        val nextStart = scheduled[idx + 1].startTime
+        val next = scheduled[idx + 1]
+        val nextStart = next.startTime
         if (nextStart != null && !at.before(end) && at.before(nextStart)) {
-          return TimetableStatus.BreakTime(p.number)
+          return TimetableStatus.BreakTime(next.number)
         }
       }
     }
@@ -222,7 +223,7 @@ object TimetableLogic {
         )
       }
       is TimetableStatus.BreakTime -> {
-        val n = status.lastPeriod
+        val n = status.nextPeriod
         val p = periods.firstOrNull { it.number == n }
         val subject = if (p != null && p.subjectName.isNotEmpty()) p.subjectName else "${n}교시"
         val range = if (p?.startTime != null && p.endTime != null) {
@@ -230,7 +231,7 @@ object TimetableLogic {
         } else null
         TimetableEntry(
           date, dayLabel, "${n}교시", range, subject,
-          null, periods, null, status, false, weekly,
+          p?.subjectColorHex, periods, null, status, false, weekly,
         )
       }
     }
