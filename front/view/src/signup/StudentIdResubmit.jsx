@@ -111,21 +111,21 @@ const StudentIdResubmit = ({ mode = 'rejected', navigation }) => {
   const runResubmit = useCallback(async () => {
     if (busy) return;
     if (isReverification && !selectedSchool?.id) {
-      appAlert.alert('?�림', '?�해 ?�학 중인 ?�교�?검?�해 ?�택??주세??');
+      appAlert.alert('알림', '재학 중인 학교를 검색해 선택해 주세요.');
       return;
     }
 
     const preview = previewLayoutRef.current;
     if (!preview.width || !preview.height) {
       appAlert.alert(
-        '?�림',
-        '카메?��? 준비되??중입?�다. ?�시 ???�시 ?�도??주세??',
+        '알림',
+        '카메라가 준비되는 중입니다. 잠시 후 다시 시도해 주세요.',
       );
       return;
     }
 
     setBusy(true);
-    setStatusText('?�생증을 ?�로?�하??중�?);
+    setStatusText('학생증을 업로드하는 중…');
     try {
       let photo = lastPhotoRef.current;
       if (!photo) {
@@ -133,7 +133,7 @@ const StudentIdResubmit = ({ mode = 'rejected', navigation }) => {
       }
 
       if (!photo?.base64) {
-        appAlert.alert('촬영 ?�패', '?�시 촬영??주세??');
+        appAlert.alert('촬영 실패', '다시 촬영해 주세요.');
         resetCapture();
         return;
       }
@@ -166,18 +166,18 @@ const StudentIdResubmit = ({ mode = 'rejected', navigation }) => {
 
       await refreshStudentVerification();
       appAlert.alert(
-        '?�출 ?�료',
+        '제출 완료',
         res.data?.message ||
           (isReverification
-            ? '?�인�??�생증이 ?�출?�었?�니?? 검?��? ?�료???�까지 ?�을 ?�용?????�습?�다.'
-            : '?�생증이 ?�제출되?�습?�다. 관리자 ?�인??기다??주세??'),
+            ? '확인용 학생증이 제출되었습니다. 검토가 완료될 때까지 일부 기능을 사용할 수 없습니다.'
+            : '학생증이 재제출되었습니다. 관리자 승인을 기다려 주세요.'),
       );
       navigation.goBack();
     } catch (e) {
       resetCapture();
       appAlert.alert(
-        '?�출 ?�패',
-        e?.response?.data?.message || '?�생�??�제�?�??�류가 발생?�습?�다.',
+        '제출 실패',
+        e?.response?.data?.message || '학생증 재제출 중 오류가 발생했습니다.',
       );
     } finally {
       setBusy(false);
@@ -210,12 +210,12 @@ const StudentIdResubmit = ({ mode = 'rejected', navigation }) => {
   if (!permission.granted) {
     return (
       <SafeAreaView style={[localStyles.root, { paddingHorizontal: padX }]}>
-        <Text style={localStyles.permLabel}>카메??권한???�요?�니??</Text>
+        <Text style={localStyles.permLabel}>카메라 권한이 필요합니다.</Text>
         <TouchableOpacity
           style={loginStyles.manualButton}
           onPress={requestPermission}
         >
-          <Text style={loginStyles.manualButtonText}>권한 ?�용?�기</Text>
+          <Text style={loginStyles.manualButtonText}>권한 허용하기</Text>
         </TouchableOpacity>
       </SafeAreaView>
     );
@@ -242,7 +242,7 @@ const StudentIdResubmit = ({ mode = 'rejected', navigation }) => {
           />
         </TouchableOpacity>
         <Text style={[localStyles.headerTitle, { fontSize: normalize(18) }]}>
-          {isReverification ? '?�생�??�인�? : '?�생�??�출?�기'}
+          {isReverification ? '학생증 재인증' : '학생증 재출하기'}
         </Text>
         <View style={{ width: normalize(24) }} />
       </View>
@@ -251,15 +251,15 @@ const StudentIdResubmit = ({ mode = 'rejected', navigation }) => {
         {isReverification ? (
           <View style={localStyles.schoolBlock}>
             <Text style={localStyles.schoolHint}>
-              중학교에??고등?�교�?진학??경우, ?�해 ?�학 중인 고등?�교�?검?�해
-              ?�택??주세??
+              중학교에서 고등학교로 진학한 경우, 재학 중인 고등학교를 검색해
+              선택해 주세요.
             </Text>
             <SchoolSearchField
               styles={fieldStyles}
               normalize={normalize}
               selectedSchool={selectedSchool}
               onSelect={setSelectedSchool}
-              label="?�해 ?�학 중인 ?�교"
+              label="재학 중인 학교"
             />
           </View>
         ) : null}
@@ -269,8 +269,8 @@ const StudentIdResubmit = ({ mode = 'rejected', navigation }) => {
           variant="emphasis"
           style={localStyles.helper}
         >
-          ?�교명과 ?�름???�명?�게 보이?�록 촬영??주세?? ?�리거나 ?�리�??�인?��?
-          ?�을 ???�어??
+          학교명과 이름이 선명하게 보이도록 촬영해 주세요. 흐리거나 잘리면 승인되지
+          않을 수 있어요.
         </SignupHelperText>
 
         <View style={localStyles.cameraWrap} onLayout={onStageLayout}>
@@ -293,7 +293,7 @@ const StudentIdResubmit = ({ mode = 'rejected', navigation }) => {
             onPress={resetCapture}
             disabled={busy}
           >
-            <Text style={localStyles.retakeLinkText}>?�시 촬영?�기</Text>
+            <Text style={localStyles.retakeLinkText}>다시 촬영하기</Text>
           </TouchableOpacity>
         ) : null}
       </View>
@@ -318,12 +318,12 @@ const StudentIdResubmit = ({ mode = 'rejected', navigation }) => {
                 { fontSize: normalize(fontSizes.xxl) },
               ]}
             >
-              {frozenUri ? '?�출?�기' : '촬영 �??�출?�기'}
+              {frozenUri ? '제출하기' : '촬영 및 제출하기'}
             </Text>
           )}
         </TouchableOpacity>
       </View>
-      <SubmittingLockModal visible={busy} message="?�생�??�출 중�? />
+      <SubmittingLockModal visible={busy} message="학생증 제출 중…" />
     </SafeAreaView>
   );
 };
