@@ -23,6 +23,7 @@ import { api } from '../../../utils/api';
 import AppPopupModal from '../../../components/common/AppPopupModal';
 import { saveTimetableLocalAndSync } from '../../../utils/timetableSync';
 import TimetableAnomalyConfirmModal from '../../../components/timetable/TimetableAnomalyConfirmModal';
+import TimetableSubjectCellText from '../../../components/TimetableSubjectCellText';
 import { fetchTimetableFromApi } from '../../../utils/timetableApi';
 import { hasTimetableAnomaly } from '../../../utils/timetableAnomaly';
 
@@ -190,18 +191,11 @@ function TimetablePreview({ timetable, loading }) {
                     ];
                     return (
                       <View key={`${day}-${period}`} style={cellStyle}>
-                        <Text
-                          style={[
-                            pv.choicePreviewClassCellText,
-                            content
-                              ? pv.choicePreviewClassCellTextFilled
-                              : null,
-                          ]}
-                          lineBreakMode="wordWrapping"
-                          lineBreakStrategyIOS="hangul-word"
-                        >
-                          {content}
-                        </Text>
+                        <TimetableSubjectCellText
+                          content={content}
+                          style={pv.choicePreviewClassCellText}
+                          filledStyle={pv.choicePreviewClassCellTextFilled}
+                        />
                       </View>
                     );
                   })}
