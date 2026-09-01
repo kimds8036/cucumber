@@ -35,6 +35,15 @@ import {
   createNotificationSettingsStyles,
   themedTextInputProps,
 } from '../../styles/mypage.style';
+import {
+  patchMypageProfileCache,
+  readAccountProfileCache,
+  writeAccountProfileCache,
+  meToAccountCache,
+} from '../../utils/mypageProfileCache';
+
+const PROFILE_CHANGE_DONE_TITLE = '변경완료';
+const PROFILE_CHANGE_DONE_MESSAGE = '변경완료 되었습니다.';
 
 const NOTIFICATION_ITEMS = [
   { key: 'newComment', label: '게시글 댓글' },
@@ -95,6 +104,25 @@ const Settings = ({ navigation, route }) => {
   const showPrefs = variant !== 'profile';
   const showProfile = variant !== 'prefs';
   const headerTitle = variant === 'profile' ? '계정 관리' : '앱 설정';
+
+  const navigateToMypage = () => {
+    navigation.reset({
+      index: 0,
+      routes: [{ name: 'Main', params: { initialTab: 'mypage' } }],
+    });
+  };
+
+  const showProfileChangeDone = (afterCache) => {
+    Alert.alert(PROFILE_CHANGE_DONE_TITLE, PROFILE_CHANGE_DONE_MESSAGE, [
+      {
+        text: '확인',
+        onPress: async () => {
+          if (afterCache) await afterCache();
+          navigateToMypage();
+        },
+      },
+    ]);
+  };
   // ── 알림 설정 ──
   const [notifications, setNotifications] = useState({
     pushEnabled: true,
@@ -135,6 +163,53 @@ const Settings = ({ navigation, route }) => {
     React.useCallback(() => {
       loadLocalPrefs();
     }, []),
+  );
+
+  const hydrateAccountProfile = React.useCallback(async (me) => {
+    if (!me) return;
+    const school = me.school?.name || '';
+    setSchoolName(school);
+    if (me.grade != null) setGradeInput(String(me.grade));
+    if (me.classNumber != null) setClassInput(String(me.classNumber));
+    if (me.username) {
+      setCurrentUsername(`@${String(me.username).replace(/^@+/, '')}`);
+    }
+    await writeAccountProfileCache(meToAccountCache(me));
+    setProfileHydrated(true);
+  }, []);
+
+  useFocusEffect(
+    React.useCallback(() => {
+      if (!showProfile) return undefined;
+      let mounted = true;
+      (async () => {
+        const cached = await readAccountProfileCache();
+        if (!mounted) return;
+        if (cached) {
+          setSchoolName(cached.school || '');
+          if (cached.grade != null) setGradeInput(String(cached.grade));
+          if (cached.classNumber != null) {
+            setClassInput(String(cached.classNumber));
+          }
+          if (cached.username) {
+            setCurrentUsername(
+              `@${String(cached.username).replace(/^@+/, '')}`,
+            );
+          }
+          setProfileHydrated(true);
+        }
+        try {
+          const res = await api.get('/api/auth/me');
+          if (!mounted) return;
+          await hydrateAccountProfile(res.data?.data);
+        } catch (err) {
+          console.warn('계정 프로필 불러오기 실패:', err);
+        }
+      })();
+      return () => {
+        mounted = false;
+      };
+    }, [showProfile, hydrateAccountProfile]),
   );
 
   const showDarkModeComingSoon = () => {
@@ -236,6 +311,9 @@ const Settings = ({ navigation, route }) => {
           const me = results[1].value.data?.data;
           if (me) {
             setCurrentUsername(me.username ? `@${me.username}` : '');
+            if (showProfile) {
+              void hydrateAccountProfile(me);
+            }
           }
         }
 
@@ -395,12 +473,10 @@ const Settings = ({ navigation, route }) => {
       if (nextRefresh) {
         await setRefreshToken(nextRefresh, { persist: true });
       }
-      Alert.alert('완료', '비밀번호가 변경되었습니다.', [
-        {
-          text: '확인',
-          onPress: () => setPwForm({ current: '', next: '', confirm: '' }),
-        },
-      ]);
+      setPwForm({ current: '', next: '', confirm: '' });
+      showProfileChangeDone(async () => {
+        await patchMypageProfileCache({});
+      });
     } catch (error) {
       Alert.alert(
         '오류',
@@ -430,6 +506,10 @@ const Settings = ({ navigation, route }) => {
   const [currentUsername, setCurrentUsername] = useState('');
   const [newUsername, setNewUsername] = useState('');
   const [lastIdChangeAt, setLastIdChangeAt] = useState(null);
+  const [schoolName, setSchoolName] = useState('');
+  const [gradeInput, setGradeInput] = useState('');
+  const [classInput, setClassInput] = useState('');
+  const [profileHydrated, setProfileHydrated] = useState(false);
 
   const getNextChangeDate = () => {
     if (!lastIdChangeAt) return null;
@@ -480,11 +560,58 @@ const Settings = ({ navigation, route }) => {
       }
       setNewUsername('');
       setLastIdChangeAt(changedAt);
-      Alert.alert('완료', '아이디가 변경되었습니다.');
+      const normalizedUsername = changedUsername || body;
+      showProfileChangeDone(async () => {
+        await patchMypageProfileCache({ username: normalizedUsername });
+      });
     } catch (error) {
       Alert.alert(
         '오류',
         error.response?.data?.message || '아이디 변경에 실패했습니다.',
+      );
+    }
+  };
+
+  const canSubmitAcademicChange = (() => {
+    const grade = Number(gradeInput);
+    const classNumber = Number(classInput);
+    return (
+      profileHydrated &&
+      Number.isFinite(grade) &&
+      grade >= 1 &&
+      grade <= 6 &&
+      Number.isFinite(classNumber) &&
+      classNumber >= 1 &&
+      classNumber <= 50
+    );
+  })();
+
+  const handleAcademicChange = async () => {
+    const grade = Number(gradeInput);
+    const classNumber = Number(classInput);
+    if (!canSubmitAcademicChange) {
+      Alert.alert('입력 오류', '학년(1~6)과 반(1~50)을 올바르게 입력해 주세요.');
+      return;
+    }
+    try {
+      await api.patch('/api/auth/me/academic', { grade, classNumber });
+      await writeAccountProfileCache({
+        school: schoolName,
+        grade,
+        classNumber,
+        username: currentUsername.replace(/^@+/, ''),
+      });
+      showProfileChangeDone(async () => {
+        await patchMypageProfileCache({
+          school: schoolName,
+          grade,
+          classNumber,
+        });
+      });
+    } catch (error) {
+      Alert.alert(
+        '오류',
+        error.response?.data?.message || '학년·반 변경에 실패했습니다.',
       );
     }
   };
@@ -846,6 +973,66 @@ const Settings = ({ navigation, route }) => {
                 disabled={!canChangeId || newUsername.trim().length < 3}
               >
                 <Text style={styles.actionButtonText}>아이디 변경하기</Text>
+              </TouchableOpacity>
+            </View>
+
+            {/* ────────────── 학년·반 변경 ────────────── */}
+            <SectionHeader
+              icon="school-outline"
+              title="학년·반 변경"
+              description="학교는 변경할 수 없습니다. 학적 변동 시 학년·반만 수정해 주세요."
+            />
+            <View style={styles.card}>
+              <View style={styles.idFieldFirst}>
+                <Text style={styles.pwLabel}>재학 학교</Text>
+                <View style={styles.pwInputWrap}>
+                  <Text
+                    style={[styles.pwInput, { color: colors.textSecondary }]}
+                    numberOfLines={2}
+                  >
+                    {profileHydrated ? schoolName || '—' : '불러오는 중…'}
+                  </Text>
+                </View>
+              </View>
+              <View style={styles.idFieldSecond}>
+                <Text style={styles.pwLabel}>학년</Text>
+                <View style={styles.pwInputWrap}>
+                  <TextInput
+                    style={styles.pwInput}
+                    value={gradeInput}
+                    onChangeText={(v) =>
+                      setGradeInput(String(v).replace(/\D/g, '').slice(0, 1))
+                    }
+                    placeholder="1~6"
+                    keyboardType="number-pad"
+                    {...themedTextInputProps}
+                  />
+                </View>
+              </View>
+              <View style={styles.pwFieldMiddle}>
+                <Text style={styles.pwLabel}>반</Text>
+                <View style={styles.pwInputWrap}>
+                  <TextInput
+                    style={styles.pwInput}
+                    value={classInput}
+                    onChangeText={(v) =>
+                      setClassInput(String(v).replace(/\D/g, '').slice(0, 2))
+                    }
+                    placeholder="1~50"
+                    keyboardType="number-pad"
+                    {...themedTextInputProps}
+                  />
+                </View>
+              </View>
+              <TouchableOpacity
+                style={[
+                  styles.actionButton,
+                  !canSubmitAcademicChange && styles.actionButtonDisabled,
+                ]}
+                onPress={handleAcademicChange}
+                disabled={!canSubmitAcademicChange}
+              >
+                <Text style={styles.actionButtonText}>학년·반 변경하기</Text>
               </TouchableOpacity>
             </View>
 

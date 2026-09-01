@@ -20,6 +20,7 @@ window.PANEL_LOADERS = {
   logs: () => loadLogs(),
   emergency: () => loadEmergencyFlags(),
   legalDocuments: () => loadLegalDocuments(),
+  hallOfFame: () => loadHallOfFame(),
   adminAccounts: () => loadAdminAccounts(),
 };
 

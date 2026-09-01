@@ -44,6 +44,9 @@ import badgeRoutes from './routes/badges.js';
 import inviteRoutes from './routes/invite.js';
 import analyticsRoutes from './routes/analytics.js';
 import inicisRoutes from './routes/inicis.js';
+import developerFeedbackRoutes from './routes/developerFeedback.js';
+import hallOfFameRoutes from './routes/hallOfFame.js';
+import adminHallOfFameRoutes from './routes/adminHallOfFame.js';
 import swaggerSpec from './swagger.js';
 import { initSocketServer } from './socketServer.js';
 import { initFirebase } from './config/firebase.js';
@@ -309,6 +312,8 @@ app.use('/api/analytics', analyticsRoutes);
 app.use('/api/search', searchRoutes);
 app.use('/api/dm', dmRoutes);
 app.use('/api/inquiries', inquiriesRoutes);
+app.use('/api/developer-feedback', developerFeedbackRoutes);
+app.use('/api/hall-of-fame', hallOfFameRoutes);
 app.use('/api/legal', legalRoutes);
 app.use('/api/admin', adminReportsRoutes);
 app.use('/api/admin/inquiries', adminInquiriesRoutes);
@@ -318,6 +323,7 @@ app.use('/api/admin/attendance', adminAttendanceRoutes);
 app.use('/api/admin/system', adminSystemRoutes);
 app.use('/api/admin/accounts', adminAccountsRoutes);
 app.use('/api/admin/legal', adminLegalRoutes);
+app.use('/api/admin/hall-of-fame', adminHallOfFameRoutes);
 app.use('/api/test', testRoutes);
 
 // ============ 글로벌 에러 핸들러 ============

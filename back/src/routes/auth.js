@@ -244,6 +244,13 @@ const updatePasswordValidators = [
     .withMessage('새 비밀번호는 8자 이상이어야 합니다.'),
 ];
 
+const updateAcademicValidators = [
+  body('grade').exists({ checkNull: true }).withMessage('학년을 입력해주세요.')
+    .bail().toInt().isInt({ min: 1, max: 6 }).withMessage('학년이 올바르지 않습니다.'),
+  body('classNumber').exists({ checkNull: true }).withMessage('반을 입력해주세요.')
+    .bail().toInt().isInt({ min: 1, max: 50 }).withMessage('반이 올바르지 않습니다.'),
+];
+
 // 내 프로필 조회
 router.get('/me', authenticate, async (req, res) => {
   try {
@@ -411,6 +418,51 @@ router.patch('/me/username', authenticate, validate(updateUsernameValidators), a
     return res.status(500).json({
       success: false,
       message: '아이디 변경 중 오류가 발생했습니다.',
+    });
+  }
+});
+
+// 내 학년·반 변경 (학교 변경 불가)
+router.patch('/me/academic', authenticate, validate(updateAcademicValidators), async (req, res) => {
+  try {
+    const userId = req.user.userId;
+    const grade = Number(req.body?.grade);
+    const classNumber = Number(req.body?.classNumber);
+
+    const [rows] = await pool.execute(
+      `SELECT grade, class_number FROM users WHERE id = ? AND is_deleted = FALSE LIMIT 1`,
+      [userId],
+    );
+    if (!rows.length) {
+      return res.status(404).json({
+        success: false,
+        message: '사용자를 찾을 수 없습니다.',
+      });
+    }
+
+    const before = rows[0];
+    if (before.grade === grade && before.class_number === classNumber) {
+      return res.status(400).json({
+        success: false,
+        message: '기존과 동일한 학년·반입니다.',
+      });
+    }
+
+    await pool.execute(
+      `UPDATE users SET grade = ?, class_number = ? WHERE id = ? AND is_deleted = FALSE`,
+      [grade, classNumber, userId],
+    );
+
+    return res.json({
+      success: true,
+      message: '학년·반이 변경되었습니다.',
+      data: { grade, classNumber },
+    });
+  } catch (error) {
+    console.error('학년·반 변경 오류:', error);
+    return res.status(500).json({
+      success: false,
+      message: '학년·반 변경 중 오류가 발생했습니다.',
     });
   }
 });

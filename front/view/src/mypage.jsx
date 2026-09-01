@@ -39,6 +39,8 @@ const isSameProfileInfo = (a, b) => {
     a.username === b.username &&
     a.colorId === b.colorId &&
     a.school === b.school &&
+    a.grade === b.grade &&
+    a.classNumber === b.classNumber &&
     a.gradeClass === b.gradeClass &&
     a.profileColorHex === b.profileColorHex &&
     a.profileColorId === b.profileColorId &&
@@ -199,6 +201,11 @@ const MyPage = ({ navigation }) => {
         console.warn('프로필 캐시 읽기 실패:', profileCacheErr);
       }
 
+      if (cachedProfile) {
+        setUserInfo(cachedProfile);
+        setProfileReady(true);
+      }
+
       const [meRes, statsRes] = await Promise.allSettled([
         api.get('/api/auth/me'),
         api.get('/api/users/me/stats'),
@@ -222,6 +229,8 @@ const MyPage = ({ navigation }) => {
           username: me.username ? `@${me.username}` : '',
           colorId: me.colorId ?? null,
           school: me.school?.name || '',
+          grade: me.grade ?? null,
+          classNumber: me.classNumber ?? null,
           gradeClass:
             me.grade && me.classNumber
               ? `${me.grade}학년 ${me.classNumber}반`
@@ -529,6 +538,12 @@ const MyPage = ({ navigation }) => {
             title="클린 센터"
             subtitle="내 신고 처리 현황과 제한 내역을 확인해요"
             onPress={() => navigation.navigate('HiddenPostsAppeals')}
+          />
+          <MenuItem
+            icon="hammer-outline"
+            title="회초리"
+            subtitle="버그·기능 제안·불편 사항을 개발팀에 전달해요"
+            onPress={() => navigation.navigate('DeveloperWhack')}
           />
           <MenuItem
             icon="person-add-outline"

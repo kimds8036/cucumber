@@ -337,6 +337,28 @@ router.get('/analytics/user-ecosystem', requireAdminApi, async (req, res) => {
   }
 });
 
+router.get('/analytics/users-preview', requireAdminApi, async (req, res) => {
+  const adminUserId = req.user.userId;
+  if (!isAdminUser(adminUserId)) {
+    return res.status(403).json({ success: false, message: '관리자 권한이 필요합니다.' });
+  }
+  try {
+    const { listOpsUsersPreview } = await import('../services/opsUsersPreview.service.js');
+    const data = await listOpsUsersPreview({
+      page: req.query.page,
+      limit: req.query.limit,
+      q: req.query.q,
+    });
+    return res.json({ success: true, data });
+  } catch (error) {
+    console.error('사용자 미리보기 목록 조회 오류:', error);
+    return res.status(500).json({
+      success: false,
+      message: '사용자 목록을 불러오지 못했습니다.',
+    });
+  }
+});
+
 router.get('/analytics/user-inspect', requireAdminApi, async (req, res) => {
   const adminUserId = req.user.userId;
   if (!isAdminUser(adminUserId)) {

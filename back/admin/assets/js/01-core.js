@@ -196,6 +196,7 @@ function adminUrl(subpath) {
     attendance: { title: '등교 현황', sub: '출석 통계 · 미등교 의심 사용자' },
     emergency: { title: '비상 제어', sub: '긴급 스위치 · 유지보수 모드' },
     legalDocuments: { title: '약관·방침', sub: '이용약관 · 개인정보처리방침 편집' },
+    hallOfFame: { title: '명예의 전당', sub: '회초리 반영 · 등재자 관리' },
     adminAccounts: { title: '관리자 계정', sub: '계정·역할 관리 (최고관리자)' },
     studentIds: { title: '가입 학생증', sub: '회원가입 학생증 수동 검수 — 승인 / 거절' },
     manualSignup: { title: '수동 가입', sub: '학생 요청 시 관리자가 계정 직접 생성' },
@@ -233,6 +234,7 @@ function adminUrl(subpath) {
     logsPagination: { page: 1, limit: 50, total: 0 },
     emergencyFlags: null,
     legalDocuments: [],
+    hallOfFameEntries: [],
     adminAccounts: [],
   };
 
@@ -409,6 +411,7 @@ function adminUrl(subpath) {
       logs: ['moderator', 'support'],
       emergency: ['super'],
       legalDocuments: ['moderator'],
+      hallOfFame: ['moderator'],
       adminAccounts: ['super'],
     };
     return (map[panel] || []).includes(r);
