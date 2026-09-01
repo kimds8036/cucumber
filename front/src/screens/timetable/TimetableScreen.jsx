@@ -30,6 +30,7 @@ import { colors, TIMETABLE_SUBJECT_COLORS, timetableSubjectCellStyle } from '../
 import { getNormalize } from '../../../styles/mypage.style';
 import { api } from '../../../utils/api';
 import AppPopupModal from '../../../components/common/AppPopupModal';
+import TimetableSubjectCellText from '../../../components/TimetableSubjectCellText';
 import { getMaxPeriodFromTimetableKeys } from './periodUtils';
 import { classifyTimetableCellValue } from '../../../utils/timetableAnomaly';
 import styles, {
@@ -476,18 +477,11 @@ export default function TimetableScreen({ navigation, route }) {
                               }
                               delayLongPress={380}
                             >
-                              <Text
-                                style={[
-                                  mt.manualTsClassCellText,
-                                  content
-                                    ? mt.manualTsClassCellTextFilled
-                                    : null,
-                                ]}
-                                lineBreakMode="wordWrapping"
-                                lineBreakStrategyIOS="hangul-word"
-                              >
-                                {content}
-                              </Text>
+                              <TimetableSubjectCellText
+                                content={content}
+                                style={mt.manualTsClassCellText}
+                                filledStyle={mt.manualTsClassCellTextFilled}
+                              />
                             </TouchableOpacity>
                           );
                         })}

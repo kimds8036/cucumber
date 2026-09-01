@@ -504,7 +504,7 @@ export function createTimetableViewStyles(normalize, options = {}) {
       textAlign: 'center',
     },
     classCellTextFilled: {
-      fontFamily: fonts.bold,
+      fontFamily: fonts.regular,
       fontSize: fontSizes.md,
       color: COLORS.textPrimary,
     },
@@ -722,7 +722,7 @@ export function createTimetableChoicePreviewStyles(normalize) {
       textAlign: 'center',
     },
     choicePreviewClassCellTextFilled: {
-      fontFamily: fonts.bold,
+      fontFamily: fonts.regular,
       fontSize: fontSizes.md,
       color: COLORS.textPrimary,
     },
@@ -887,7 +887,7 @@ export function createManualTimetableScreenStyles(normalize) {
       textAlign: 'center',
     },
     manualTsClassCellTextFilled: {
-      fontFamily: fonts.bold,
+      fontFamily: fonts.regular,
       fontSize: fontSizes.md,
       color: COLORS.textPrimary,
     },
@@ -1090,7 +1090,7 @@ export function createEditTimetableScreenStyles(normalize) {
       textAlign: 'center',
     },
     editTsClassCellTextFilled: {
-      fontFamily: fonts.bold,
+      fontFamily: fonts.regular,
       fontSize: fontSizes.md,
       color: COLORS.textPrimary,
     },

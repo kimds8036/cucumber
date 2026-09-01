@@ -1,5 +1,6 @@
 import pool from '../config/database.js';
 import { maskKoreanName } from '../utils/maskKoreanName.js';
+import { resolveUserName } from './userPii.service.js';
 
 async function loadHonoreesByEntryIds(entryIds) {
   if (!entryIds.length) return new Map();
@@ -119,7 +120,7 @@ export async function resolveHonoreeFromUser(userId) {
   const id = Number(userId);
   if (!Number.isFinite(id) || id < 1) return null;
   const [[row]] = await pool.execute(
-    `SELECT u.name, s.name AS school_name
+    `SELECT u.name_enc, s.name AS school_name
      FROM users u
      LEFT JOIN schools s ON s.school_id = u.school_id
      WHERE u.id = ? AND u.is_deleted = FALSE
@@ -127,9 +128,10 @@ export async function resolveHonoreeFromUser(userId) {
     [id],
   );
   if (!row) return null;
+  const plainName = resolveUserName(row) || '';
   return {
     userId: id,
-    displayName: maskKoreanName(row.name),
+    displayName: maskKoreanName(plainName),
     schoolName: row.school_name || '—',
   };
 }
@@ -308,7 +310,7 @@ export async function listDeveloperFeedbackForAdmin({ limit = 50, q = '' } = {})
        df.created_at,
        df.user_id,
        u.username,
-       u.name AS user_name,
+       u.name_enc AS user_name_enc,
        s.name AS school_name,
        (SELECT GROUP_CONCAT(hef.entry_id)
         FROM hall_of_fame_entry_feedback hef
@@ -322,19 +324,22 @@ export async function listDeveloperFeedbackForAdmin({ limit = 50, q = '' } = {})
     params,
   );
 
-  return rows.map((row) => ({
-    id: row.id,
-    category: row.category,
-    content: row.content,
-    createdAt: row.created_at,
-    userId: row.user_id,
-    username: row.username,
-    userName: row.user_name,
-    maskedName: maskKoreanName(row.user_name),
-    schoolName: row.school_name || '—',
-    linkedEntryIds: String(row.linked_entry_ids || '')
-      .split(',')
-      .filter(Boolean)
-      .map((v) => Number(v)),
-  }));
+  return rows.map((row) => {
+    const plainName = resolveUserName(row) || '';
+    return {
+      id: row.id,
+      category: row.category,
+      content: row.content,
+      createdAt: row.created_at,
+      userId: row.user_id,
+      username: row.username,
+      userName: plainName,
+      maskedName: maskKoreanName(plainName),
+      schoolName: row.school_name || '—',
+      linkedEntryIds: String(row.linked_entry_ids || '')
+        .split(',')
+        .filter(Boolean)
+        .map((v) => Number(v)),
+    };
+  });
 }

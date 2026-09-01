@@ -18,6 +18,7 @@ import { TIMETABLE_SUBJECT_COLORS, timetableSubjectCellStyle } from '../styles/c
 import { getNormalize } from '../styles/mypage.style';
 import { createTimetableViewStyles } from '../src/screens/timetable/timetable.style';
 import { getMaxPeriodFromTimetableKeys } from '../src/screens/timetable/periodUtils';
+import TimetableSubjectCellText from './TimetableSubjectCellText';
 
 const DAYS = ['월', '화', '수', '목', '금'];
 const normalizeSubject = (value) =>
@@ -166,16 +167,11 @@ const TimetableView = ({
                     ];
                     return (
                       <View key={`${day}-${period}`} style={cellStyle}>
-                        <Text
-                          style={[
-                            styles.classCellText,
-                            content ? styles.classCellTextFilled : null,
-                          ]}
-                          lineBreakMode="wordWrapping"
-                          lineBreakStrategyIOS="hangul-word"
-                        >
-                          {content}
-                        </Text>
+                        <TimetableSubjectCellText
+                          content={content}
+                          style={styles.classCellText}
+                          filledStyle={styles.classCellTextFilled}
+                        />
                       </View>
                     );
                   })}

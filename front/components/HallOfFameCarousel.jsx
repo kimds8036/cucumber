@@ -6,8 +6,8 @@ import {
   TouchableOpacity,
   useWindowDimensions,
 } from 'react-native';
-import { colors, fonts, fontSizes } from '../../styles/colors';
-import { getNormalize } from '../../styles/mypage.style';
+import { colors, fonts, fontSizes } from '../styles/colors';
+import { getNormalize } from '../styles/mypage.style';
 
 const AUTO_MS = 4500;
 const CARD_WIDTH_RATIO = 0.78;

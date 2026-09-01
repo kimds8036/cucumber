@@ -25,6 +25,7 @@ import {
 } from 'react-native-safe-area-context';
 import Feather from '@expo/vector-icons/Feather';
 import SubHeader from '../frame/subHeader';
+import TimetableSubjectCellText from '../../components/TimetableSubjectCellText';
 import {
   colors,
   fonts,
@@ -382,18 +383,12 @@ const EditTimetable = ({ navigation, route }) => {
                         style={cellStyle}
                         onPress={() => handleCellPress(day, period)}
                       >
-                        <Text
-                          style={[
-                            et.editTsClassCellText,
-                            filled ? et.editTsClassCellTextFilled : null,
-                          ]}
+                        <TimetableSubjectCellText
+                          content={content}
+                          style={et.editTsClassCellText}
+                          filledStyle={et.editTsClassCellTextFilled}
                           pointerEvents="none"
-                          lineBreakMode="wordWrapping"
-                          lineBreakStrategyIOS="hangul-word"
-                          numberOfLines={2}
-                        >
-                          {content}
-                        </Text>
+                        />
                       </TouchableOpacity>
                     );
                   })}
