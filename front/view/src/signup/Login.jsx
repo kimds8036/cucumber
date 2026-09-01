@@ -31,8 +31,6 @@ import {
 } from '../../../utils/api';
 import { useAuth } from '../../../context/AuthContext';
 
-import SignupPrepMaterialsModal from './SignupPrepMaterialsModal';
-
 /** 로그인 실패 안내 — 사용자용 문구만 (기술 정보는 __DEV__ 콘솔) */
 function buildLoginFailureMessage(error) {
   const userMessage = getApiUserFacingMessage(
@@ -80,8 +78,6 @@ const Login = ({ navigation }) => {
     highlight: '',
     body: '',
   });
-  const [prepMaterialsModalVisible, setPrepMaterialsModalVisible] =
-    useState(false);
   const [keyboardOpen, setKeyboardOpen] = useState(false);
   const scrollRef = useRef(null);
 
@@ -396,7 +392,7 @@ const Login = ({ navigation }) => {
                 아직 회원이 아니신가요?{' '}
                 <Text
                   style={styles.signupFooterLink}
-                  onPress={() => setPrepMaterialsModalVisible(true)}
+                  onPress={() => navigation.navigate('SignupEntry')}
                 >
                   회원가입
                 </Text>
@@ -514,16 +510,6 @@ const Login = ({ navigation }) => {
           </View>
         </TouchableWithoutFeedback>
       </Modal>
-
-      <SignupPrepMaterialsModal
-        visible={prepMaterialsModalVisible}
-        normalize={normalize}
-        onConfirm={() => {
-          setPrepMaterialsModalVisible(false);
-          navigation.navigate('SignupEntry');
-        }}
-        onCancel={() => setPrepMaterialsModalVisible(false)}
-      />
     </SafeAreaView>
   );
 };

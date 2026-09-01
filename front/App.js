@@ -93,7 +93,10 @@ import ToastHost from './components/common/ToastHost';
 import AlertHost from './components/common/AlertHost';
 import { navigationRef } from './navigation/navigationRef';
 import { getPendingInicisSession } from './services/inicisAuth';
-import { getSignupPendingSession } from './view/src/signup/signupSessionStorage';
+import {
+  clearSignupPendingSession,
+  getSignupPendingSession,
+} from './view/src/signup/signupSessionStorage';
 import {
   navigateFromPush,
   resolvePushNavigation,
@@ -318,31 +321,35 @@ function RootNavigator() {
     if (!authHydrated || isLoggedIn) return undefined;
     let cancelled = false;
     (async () => {
-      const signupPending = await getSignupPendingSession();
-      if (signupPending && !cancelled) {
-        const targetScreen =
-          signupPending.provider === 'kakao'
-            ? 'SignKakao'
-            : signupPending.provider === 'apple'
-              ? 'SignApple'
-              : signupPending.provider === 'phone'
-                ? 'SignPhone'
-                : 'Sign';
-        const tryNavigateSignup = () => {
-          if (!navigationRef.isReady()) return false;
-          const route = navigationRef.getCurrentRoute?.();
-          if (route?.name !== targetScreen) {
-            navigationRef.navigate(targetScreen, { resumeSession: true });
+      if (__DEV__) {
+        await clearSignupPendingSession();
+      } else {
+        const signupPending = await getSignupPendingSession();
+        if (signupPending && !cancelled) {
+          const targetScreen =
+            signupPending.provider === 'kakao'
+              ? 'SignKakao'
+              : signupPending.provider === 'apple'
+                ? 'SignApple'
+                : signupPending.provider === 'phone'
+                  ? 'SignPhone'
+                  : 'Sign';
+          const tryNavigateSignup = () => {
+            if (!navigationRef.isReady()) return false;
+            const route = navigationRef.getCurrentRoute?.();
+            if (route?.name !== targetScreen) {
+              navigationRef.navigate(targetScreen, { resumeSession: true });
+            }
+            return true;
+          };
+          if (!tryNavigateSignup()) {
+            const timer = setInterval(() => {
+              if (tryNavigateSignup()) clearInterval(timer);
+            }, 150);
+            return () => clearInterval(timer);
           }
-          return true;
-        };
-        if (!tryNavigateSignup()) {
-          const timer = setInterval(() => {
-            if (tryNavigateSignup()) clearInterval(timer);
-          }, 150);
-          return () => clearInterval(timer);
+          return undefined;
         }
-        return undefined;
       }
 
       const pending = await getPendingInicisSession();

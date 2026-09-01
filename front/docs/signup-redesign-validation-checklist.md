@@ -4,9 +4,10 @@
 **스토어 배포 전 반드시 전부 복구하세요.**
 
 > **현재 상태:** 우회 적용됨 (`SIGNUP_REDESIGN_SKIP_VALIDATION = true`)  
-> 백엔드 로컬 테스트 시 `.env`에 `SIGNUP_REDESIGN_SKIP_VALIDATION=true` 추가 필요
+> 백엔드 로컬 테스트 시 `.env`에 `SIGNUP_REDESIGN_SKIP_VALIDATION=true` 추가 필요  
+> **pending 세션:** 개발(`__DEV__`) 중 앱 시작 시 `@signup_pending_session` 자동 삭제 (리로드 시 가입 마무리로 점프 방지)
 
----@
+---
 
 ## 마스터 스위치 (개편 완료 시 먼저 확인)
 
@@ -14,6 +15,66 @@
 |------|------|-----------|
 | `front/view/src/signup/signupRedesignFlags.js` | `SIGNUP_REDESIGN_SKIP_VALIDATION = true` | `false`로 변경 후 파일 삭제 검토 |
 | 백엔드 `.env` | `SIGNUP_REDESIGN_SKIP_VALIDATION=true` (로컬) | 변수 제거 또는 `false` |
+| `front/App.js` → `RootNavigator` | `__DEV__` 시 `clearSignupPendingSession()` 호출 | 아래 **§ pending 세션 이어하기** 참고 |
+
+---
+
+## pending 세션 이어하기 (`signup_pending_session`)
+
+개편 플로우(카카오·애플·전화번호)는 가입 중단 시 AsyncStorage에 진행 상태를 저장합니다.  
+앱 cold start 시 `App.js`가 읽어 `SignKakao` / `SignApple` / `SignPhone`으로 `resumeSession: true` 네비게이션합니다.
+
+| 항목 | 내용 |
+|------|------|
+| 저장 키 | `@signup_pending_session` (`signupSessionStorage.js`) |
+| TTL | 30분 (`PENDING_TTL_MS`) |
+| 저장 시점 | `SignKakao` / `SignApple` / `SignPhone` — `persistSession()` (state 변경마다) |
+| 복원 시점 | `RootNavigator` `useEffect` — `authHydrated && !isLoggedIn` |
+| 스냅샷 | `currentStep`, `consentData`, `identityData`, `formData`, `studentVerified` 등 |
+
+### 개발 중 임시 비활성 (현재 적용됨)
+
+`App.js` `RootNavigator`에서 **`__DEV__`일 때 앱 시작마다 세션을 지웁니다.**
+
+```javascript
+if (__DEV__) {
+  await clearSignupPendingSession();
+} else {
+  const signupPending = await getSignupPendingSession();
+  // ... resumeSession 네비게이션
+}
+```
+
+**이유:** `SIGNUP_REDESIGN_SKIP_VALIDATION`으로 빠르게 가입 마무리까지 간 뒤 Metro 리로드하면, pending 복원 때문에 `SignupEntry` 대신 가입 마무리 화면으로 바로 이동하는 현상 방지.
+
+### 개편 완료 후 다시 살리는 방법
+
+1. **`front/App.js`** `RootNavigator`의 pending 복원 `useEffect`에서 `__DEV__` 분기 제거  
+   - `clearSignupPendingSession()` 호출 블록 삭제  
+   - `getSignupPendingSession()` → `resumeSession` 네비게이션을 **dev·prod 공통**으로 실행
+2. (선택) import 정리 — `clearSignupPendingSession`만 쓰이던 경우 import 제거
+3. 아래 **수동 테스트** 항목 실행
+
+**복구 후 기대 동작**
+
+- 가입 중 앱 강제 종료·리로드 → 마지막 단계(예: 재학정보, 학생증, 가입 마무리)로 복귀
+- 30분 초과 또는 가입 완료(`clearSignupPendingSession`) 후 → `SignupEntry`부터 시작
+- 로그인된 상태에서는 pending 복원 **미실행** (`isLoggedIn`이면 effect 조기 return)
+
+### 수동 테스트 (복구 후)
+
+- [ ] 카카오: 약관 → 중간 단계에서 앱 리로드 → 이어하기
+- [ ] 애플: 동일
+- [ ] 전화번호: 동일
+- [ ] provider별 `clearSignupPendingSession('kakao'|'apple'|'phone')` — 가입 완료 시에만 삭제되는지
+- [ ] TTL 30분 경과 후 복원 안 됨
+- [ ] `__DEV__`에서도 리로드 시 마지막 가입 단계로 **의도적으로** 이어지는지 (복구 검증용)
+
+관련 파일:
+
+- `front/view/src/signup/signupSessionStorage.js`
+- `front/App.js` (`RootNavigator`)
+- `front/view/src/signup/SignKakao.jsx` / `SignApple.jsx` / `SignPhone.jsx` (`persistSession`, `route.params.resumeSession`)
 
 ---
 
@@ -75,16 +136,18 @@
 
 1. `signupRedesignFlags.js` (프론트) → `false`
 2. 백엔드 `.env`에서 `SIGNUP_REDESIGN_SKIP_VALIDATION` 제거
-3. 위 체크리스트 항목별로 `// [SIGNUP_REDESIGN_SKIP]` 주석 블록 제거 또는 조건 분기 삭제
-4. 가입 E2E 수동 테스트
+3. **`App.js`** — `__DEV__` pending 세션 삭제 분기 제거 → 이어하기 복원 (§ pending 세션 이어하기)
+4. 위 체크리스트 항목별로 `// [SIGNUP_REDESIGN_SKIP]` 주석 블록 제거 또는 조건 분기 삭제
+5. 가입 E2E 수동 테스트
    - [ ] 만 14세 이상 정상 가입
    - [ ] 만 14세 미만 보호자 인증
    - [ ] 연령 외 가입 차단
    - [ ] 학생증 촬영 → 승인 대기
    - [ ] 나이스+ / 재학증명서 대안 경로
    - [ ] 약관 미동의 시 진행 불가
-5. `signupRedesignFlags.js` 파일 삭제 (선택)
-6. 이 체크리스트 파일 아카이브 또는 삭제
+   - [ ] pending 세션 이어하기 (카카오·애플·전화번호, § pending 세션 이어하기)
+6. `signupRedesignFlags.js` 파일 삭제 (선택)
+7. 이 체크리스트 파일 아카이브 또는 삭제
 
 ---
 
@@ -94,3 +157,4 @@
 - **Production Railway에 `SIGNUP_REDESIGN_SKIP_VALIDATION=true` 금지**
 - 기존 `EXPO_PUBLIC_SIGNUP_TEST_MODE` (OCR 테스트)는 `__DEV__` 전용 — 개편 플래그와 별개
 - 우회 모드에서 가입된 계정은 학생증 검수 레코드 없이 생성될 수 있음 (프로토타입용)
+- 개발 중 `App.js`의 pending 세션 삭제는 **임시** — 스토어 배포 전 § pending 세션 이어하기대로 복구 필수
