@@ -302,18 +302,16 @@ const DeveloperWhack = ({ navigation }) => {
           <View
             style={{
               marginTop: normalize(10),
-              padding: normalize(12),
-              borderRadius: normalize(10),
-              backgroundColor: colors.guideBackground,
-              borderWidth: 1,
-              borderColor: colors.scrap,
+              paddingTop: normalize(12),
+              borderTopWidth: 1,
+              borderTopColor: colors.border,
             }}
           >
             <Text
               style={{
-                fontFamily: fonts.bold,
-                fontSize: normalize(fontSizes.sm),
-                color: colors.textPrimary,
+                fontFamily: fonts.regular,
+                fontSize: normalize(11),
+                color: colors.textMuted,
                 marginBottom: normalize(6),
               }}
             >
@@ -324,9 +322,9 @@ const DeveloperWhack = ({ navigation }) => {
                 {status ? (
                   <Text
                     style={{
-                      fontFamily: fonts.bold,
+                      fontFamily: fonts.regular,
                       fontSize: normalize(fontSizes.sm),
-                      color: status.color,
+                      color: colors.textSecondary,
                       marginBottom: normalize(4),
                     }}
                   >
@@ -337,7 +335,7 @@ const DeveloperWhack = ({ navigation }) => {
                   style={{
                     fontFamily: fonts.regular,
                     fontSize: normalize(fontSizes.sm),
-                    color: colors.textSecondary,
+                    color: colors.textPrimary,
                     lineHeight: normalize(20),
                   }}
                 >

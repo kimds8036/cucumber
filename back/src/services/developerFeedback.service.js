@@ -1,5 +1,6 @@
 import pool from '../config/database.js';
 import { maskKoreanName } from '../utils/maskKoreanName.js';
+import { resolveUserName } from './userPii.service.js';
 
 const PUBLIC_STATUSES = ['none', 'fixed', 'planned', 'declined'];
 
@@ -202,6 +203,106 @@ export async function mergeDeveloperFeedbackByIds(feedbackIds) {
   } finally {
     connection.release();
   }
+}
+
+export async function listDeveloperFeedbackGroupsForAdmin({ limit = 80, q = '' } = {}) {
+  const limitNum = Math.max(1, Math.min(200, Number(limit) || 80));
+  const trimmedQ = String(q || '').trim();
+  let havingSql = '';
+  const params = [];
+
+  if (trimmedQ) {
+    if (/^g#?\d+$/i.test(trimmedQ)) {
+      havingSql = 'HAVING g.id = ?';
+      params.push(Number(trimmedQ.replace(/^g#?/i, '')));
+    } else {
+      havingSql = 'HAVING g.content LIKE ? OR primary_honoree_name LIKE ?';
+      const like = `%${trimmedQ}%`;
+      params.push(like, like);
+    }
+  }
+
+  const [rows] = await pool.execute(
+    `SELECT
+       g.id,
+       g.category,
+       g.content,
+       g.admin_response,
+       g.admin_response_status,
+       g.admin_responded_at,
+       g.created_at,
+       COUNT(df.id) AS reporter_count,
+       (
+         SELECT df2.honoree_name
+         FROM developer_feedback df2
+         WHERE df2.group_id = g.id
+         ORDER BY df2.created_at ASC, df2.id ASC
+         LIMIT 1
+       ) AS primary_honoree_name
+     FROM developer_feedback_groups g
+     INNER JOIN developer_feedback df ON df.group_id = g.id
+     GROUP BY g.id
+     ${havingSql}
+     ORDER BY g.created_at DESC
+     LIMIT ${limitNum}`,
+    params,
+  );
+
+  return rows.map((row) => {
+    const reporterCount = Number(row.reporter_count) || 1;
+    return {
+      id: row.id,
+      category: row.category,
+      content: row.content,
+      honoreeDisplay: formatHonoreeDisplay(row.primary_honoree_name, reporterCount),
+      reporterCount,
+      adminResponse: row.admin_response || '',
+      adminResponseStatus: row.admin_response_status || 'none',
+      adminRespondedAt: row.admin_responded_at,
+      createdAt: row.created_at,
+    };
+  });
+}
+
+export async function getDeveloperFeedbackGroupDetailForAdmin(groupId) {
+  const group = await getDeveloperFeedbackGroupForAdmin(groupId);
+  if (!group) return null;
+
+  const [memberRows] = await pool.execute(
+    `SELECT
+       df.id,
+       df.content,
+       df.honoree_name,
+       df.school_public,
+       df.created_at,
+       df.user_id,
+       u.username,
+       u.name_enc AS user_name_enc
+     FROM developer_feedback df
+     LEFT JOIN users u ON u.id = df.user_id
+     WHERE df.group_id = ?
+     ORDER BY df.created_at ASC, df.id ASC`,
+    [groupId],
+  );
+
+  const members = memberRows.map((row, index) => ({
+    id: row.id,
+    content: row.content,
+    honoreeName: row.honoree_name || '',
+    schoolPublic: Boolean(row.school_public),
+    createdAt: row.created_at,
+    userId: row.user_id,
+    username: row.username,
+    maskedName: maskKoreanName(resolveUserName(row) || ''),
+    isPrimary: index === 0,
+  }));
+
+  const primary = members[0];
+  return {
+    ...group,
+    honoreeDisplay: formatHonoreeDisplay(primary?.honoreeName, group.reporterCount),
+    members,
+  };
 }
 
 export async function getDeveloperFeedbackGroupForAdmin(groupId) {

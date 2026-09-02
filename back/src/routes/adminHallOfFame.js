@@ -12,11 +12,10 @@ import {
   resolveHonoreeFromUser,
 } from '../services/hallOfFame.service.js';
 import {
-  listPublicDeveloperFeedback,
-  createDeveloperFeedbackSubmission,
+  listDeveloperFeedbackGroupsForAdmin,
+  getDeveloperFeedbackGroupDetailForAdmin,
   updateDeveloperFeedbackGroupResponse,
   mergeDeveloperFeedbackByIds,
-  getDeveloperFeedbackGroupForAdmin,
 } from '../services/developerFeedback.service.js';
 
 const router = express.Router();
@@ -59,6 +58,38 @@ router.get('/developer-feedback', requireAdminApi, async (req, res) => {
   } catch (error) {
     console.error('[admin/hall-of-fame/feedback]', error);
     return res.status(500).json({ success: false, message: '제보 목록을 불러오지 못했습니다.' });
+  }
+});
+
+router.get('/developer-feedback/groups', requireAdminApi, async (req, res) => {
+  if (!isAdminUser(req.user.userId)) {
+    return res.status(403).json({ success: false, message: '관리자 권한이 필요합니다.' });
+  }
+  try {
+    const items = await listDeveloperFeedbackGroupsForAdmin({
+      limit: req.query.limit,
+      q: req.query.q,
+    });
+    return res.json({ success: true, data: { items } });
+  } catch (error) {
+    console.error('[admin/whack/groups]', error);
+    return res.status(500).json({ success: false, message: '묶음 목록을 불러오지 못했습니다.' });
+  }
+});
+
+router.get('/developer-feedback/groups/:groupId', requireAdminApi, async (req, res) => {
+  if (!isAdminUser(req.user.userId)) {
+    return res.status(403).json({ success: false, message: '관리자 권한이 필요합니다.' });
+  }
+  try {
+    const group = await getDeveloperFeedbackGroupDetailForAdmin(req.params.groupId);
+    if (!group) {
+      return res.status(404).json({ success: false, message: '제보 묶음을 찾을 수 없습니다.' });
+    }
+    return res.json({ success: true, data: group });
+  } catch (error) {
+    console.error('[admin/whack/group-get]', error);
+    return res.status(500).json({ success: false, message: '제보 묶음을 불러오지 못했습니다.' });
   }
 });
 
@@ -112,22 +143,6 @@ router.patch(
     }
   },
 );
-
-router.get('/developer-feedback/groups/:groupId', requireAdminApi, async (req, res) => {
-  if (!isAdminUser(req.user.userId)) {
-    return res.status(403).json({ success: false, message: '관리자 권한이 필요합니다.' });
-  }
-  try {
-    const group = await getDeveloperFeedbackGroupForAdmin(req.params.groupId);
-    if (!group) {
-      return res.status(404).json({ success: false, message: '제보 묶음을 찾을 수 없습니다.' });
-    }
-    return res.json({ success: true, data: group });
-  } catch (error) {
-    console.error('[admin/hall-of-fame/group-get]', error);
-    return res.status(500).json({ success: false, message: '제보 묶음을 불러오지 못했습니다.' });
-  }
-});
 
 router.get('/resolve-user/:userId', requireAdminApi, async (req, res) => {
   if (!isAdminUser(req.user.userId)) {

@@ -893,6 +893,117 @@
       color: var(--text-tertiary);
       margin-top: 4px;
     }
+
+    /* ── 회초리(whack) 관리 ── */
+    .whack-layout {
+      display: grid;
+      grid-template-columns: minmax(260px, 320px) 1fr;
+      gap: 16px;
+      align-items: start;
+    }
+    @media (max-width: 960px) {
+      .whack-layout { grid-template-columns: 1fr; }
+    }
+    .whack-panel-card,
+    .whack-detail-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 14px;
+    }
+    .whack-panel-head,
+    .whack-detail-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      margin-bottom: 10px;
+    }
+    .whack-panel-title,
+    .whack-detail-title {
+      font-size: 14px;
+      font-weight: 700;
+      color: var(--text-primary);
+    }
+    .whack-detail-sub {
+      font-size: 12px;
+      color: var(--text-tertiary);
+      margin-top: 2px;
+    }
+    .whack-group-list {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      max-height: 520px;
+      overflow: auto;
+    }
+    .whack-list-item {
+      display: block;
+      width: 100%;
+      text-align: left;
+      padding: 10px 12px;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      background: var(--bg);
+      cursor: pointer;
+    }
+    .whack-list-item:hover { border-color: var(--green-border); }
+    .whack-list-item.active {
+      border-color: var(--green-border);
+      background: var(--green-bg);
+    }
+    .whack-list-top {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 6px;
+      margin-bottom: 6px;
+    }
+    .whack-list-content {
+      font-size: 13px;
+      color: var(--text-primary);
+      line-height: 1.45;
+      word-break: break-word;
+    }
+    .whack-list-meta {
+      margin-top: 6px;
+      font-size: 11px;
+      color: var(--text-tertiary);
+    }
+    .whack-detail-content {
+      font-size: 14px;
+      line-height: 1.5;
+      color: var(--text-primary);
+      padding: 10px 12px;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      background: var(--bg);
+      margin-bottom: 14px;
+      word-break: break-word;
+    }
+    .whack-section { margin-top: 14px; }
+    .whack-section .section-title { margin-bottom: 8px; }
+    .whack-table-wrap table { font-size: 12px; }
+    .whack-merge-list {
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      max-height: 280px;
+      overflow: auto;
+    }
+    .whack-merge-row {
+      display: grid;
+      grid-template-columns: auto 1fr 1.2fr;
+      gap: 10px;
+      align-items: center;
+      padding: 8px 12px;
+      border-bottom: 1px solid var(--border);
+      font-size: 12px;
+      cursor: pointer;
+    }
+    .whack-merge-row:last-child { border-bottom: none; }
+    .whack-merge-row-in-group { background: var(--bg-secondary); }
+    .whack-merge-row input[type="checkbox"] { margin: 0; }
+
     .user-actions-row {
       display: flex;
       gap: 8px;
