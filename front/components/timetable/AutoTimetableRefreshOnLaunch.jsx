@@ -1,10 +1,10 @@
 import { useEffect, useRef } from 'react';
 import { AppState } from 'react-native';
-import { useAuth } from '../context/AuthContext';
+import { useAuth } from '../../context/AuthContext';
 import {
   maybeRefreshAutoTimetableOnAppOpen,
   resolveTimetableCacheKeyForCurrentUser,
-} from '../utils/timetableSync';
+} from '../../utils/timetableSync';
 
 /**
  * 로그인 후 앱 실행·포그라운드 복귀 시 auto 시간표 주간 NEIS 갱신(캐시·위젯 포함).

@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   View,
   Text,
@@ -7,6 +7,7 @@ import {
   StyleSheet,
   Pressable,
   useWindowDimensions,
+  Animated,
 } from 'react-native';
 import Feather from '@expo/vector-icons/Feather';
 import { colors, fonts, fontSizes } from '../../../styles/colors';
@@ -18,6 +19,8 @@ import {
   createEmptyConsents,
   getConsentItemsForProvider,
 } from './signupConsentItems';
+
+const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
 /**
  * @param {object} props
@@ -39,6 +42,9 @@ const SignupConsentSheet = ({ visible, provider, onClose, onConfirm }) => {
   const [consents, setConsents] = useState(createEmptyConsents);
   const [showPrivacyPolicy, setShowPrivacyPolicy] = useState(false);
   const [showTermsOfService, setShowTermsOfService] = useState(false);
+  const sheetTranslateY = useRef(new Animated.Value(600)).current;
+  const overlayOpacity = useRef(new Animated.Value(0)).current;
+  const dismissingRef = useRef(false);
 
   const detailModalVisible = showTermsOfService || showPrivacyPolicy;
   const activeDetail = showTermsOfService
@@ -52,8 +58,55 @@ const SignupConsentSheet = ({ visible, provider, onClose, onConfirm }) => {
       setConsents(createEmptyConsents());
       setShowTermsOfService(false);
       setShowPrivacyPolicy(false);
+      sheetTranslateY.setValue(600);
+      overlayOpacity.setValue(0);
+      dismissingRef.current = false;
     }
-  }, [visible]);
+  }, [visible, overlayOpacity, sheetTranslateY]);
+
+  const dismissSheet = useCallback(() => {
+    if (dismissingRef.current || detailModalVisible) return;
+
+    dismissingRef.current = true;
+    sheetTranslateY.stopAnimation();
+    overlayOpacity.stopAnimation();
+    Animated.parallel([
+      Animated.timing(sheetTranslateY, {
+        toValue: 600,
+        duration: 280,
+        useNativeDriver: true,
+      }),
+      Animated.timing(overlayOpacity, {
+        toValue: 0,
+        duration: 280,
+        useNativeDriver: true,
+      }),
+    ]).start(({ finished }) => {
+      dismissingRef.current = false;
+      if (finished) onClose?.();
+    });
+  }, [detailModalVisible, onClose, overlayOpacity, sheetTranslateY]);
+
+  useEffect(() => {
+    if (!visible || detailModalVisible) {
+      if (!visible) {
+        sheetTranslateY.setValue(600);
+        overlayOpacity.setValue(0);
+      } else {
+        sheetTranslateY.setValue(0);
+      }
+      return;
+    }
+
+    overlayOpacity.setValue(1);
+    sheetTranslateY.setValue(600);
+    Animated.spring(sheetTranslateY, {
+      toValue: 0,
+      useNativeDriver: true,
+      damping: 22,
+      stiffness: 220,
+    }).start();
+  }, [visible, detailModalVisible, overlayOpacity, sheetTranslateY]);
 
   const allBulkChecked = ALL_CONSENT_KEYS.every((key) => consents[key]);
   const canProceed = areRequiredConsentsChecked(consents);
@@ -126,10 +179,10 @@ const SignupConsentSheet = ({ visible, provider, onClose, onConfirm }) => {
       <SignupIosSafeModal
         visible={visible}
         transparent={!detailModalVisible}
-        animationType="slide"
+        animationType="none"
         onRequestClose={() => {
           if (detailModalVisible) closeDetail();
-          else onClose();
+          else dismissSheet();
         }}
       >
         {detailModalVisible && activeDetail ? (
@@ -141,8 +194,17 @@ const SignupConsentSheet = ({ visible, provider, onClose, onConfirm }) => {
             onClose={closeDetail}
           />
         ) : (
-          <Pressable style={styles.backdrop} onPress={onClose}>
-            <Pressable style={styles.sheet} onPress={(e) => e.stopPropagation()}>
+          <>
+            <AnimatedPressable
+              style={[styles.modalOverlay, { opacity: overlayOpacity }]}
+              onPress={dismissSheet}
+            />
+            <Animated.View
+              style={[
+                styles.sheet,
+                { transform: [{ translateY: sheetTranslateY }] },
+              ]}
+            >
               <View style={styles.handle} />
               <ScrollView
                 showsVerticalScrollIndicator={false}
@@ -234,8 +296,8 @@ const SignupConsentSheet = ({ visible, provider, onClose, onConfirm }) => {
                 다음 단계
               </Text>
             </TouchableOpacity>
-          </Pressable>
-        </Pressable>
+            </Animated.View>
+          </>
         )}
       </SignupIosSafeModal>
     </>
@@ -244,12 +306,15 @@ const SignupConsentSheet = ({ visible, provider, onClose, onConfirm }) => {
 
 function createStyles(normalize) {
   return StyleSheet.create({
-    backdrop: {
+    modalOverlay: {
       flex: 1,
-      justifyContent: 'flex-end',
       backgroundColor: colors.overlayLight,
     },
     sheet: {
+      position: 'absolute',
+      left: 0,
+      right: 0,
+      bottom: 0,
       backgroundColor: colors.background,
       borderTopLeftRadius: normalize(24),
       borderTopRightRadius: normalize(24),
@@ -261,7 +326,6 @@ function createStyles(normalize) {
       width: normalize(40),
       height: normalize(4),
       borderRadius: normalize(2),
-      backgroundColor: colors.border,
       marginTop: normalize(10),
       marginBottom: normalize(12),
     },
