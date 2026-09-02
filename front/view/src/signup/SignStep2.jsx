@@ -1,7 +1,17 @@
 import React, { useMemo, useState, useEffect } from 'react';
-import { View, Text, TextInput, TouchableOpacity } from 'react-native';
+import {
+  View,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  Pressable,
+  Keyboard,
+  StyleSheet,
+  Platform,
+  useWindowDimensions,
+} from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { colors, fontSizes } from '../../../styles/colors';
+import { colors, fonts, fontSizes } from '../../../styles/colors';
 import {
   USERNAME_HINT,
   PASSWORD_HINT,
@@ -13,6 +23,17 @@ import {
 import SignupLockedField from './SignupLockedField';
 import SignupStepScroll from './SignupStepScroll';
 import SignupHelperText from './SignupHelperText';
+
+const USERNAME_VALID_MESSAGE = '사용 가능한 아이디입니다';
+const PASSWORD_INVALID_MESSAGE = '잘못된 비밀번호입니다';
+const PASSWORD_CONFIRM_MISMATCH_MESSAGE = '비밀번호가 일치하지 않습니다';
+const PLACEHOLDER_TEXT_COLOR = colors.textSecondary;
+
+function resolveUnderlineStatus(status) {
+  if (status === 'valid' || status === 'match') return 'success';
+  if (status === 'invalid' || status === 'mismatch') return 'error';
+  return 'idle';
+}
 
 const SignStep2 = ({
   styles,
@@ -26,6 +47,7 @@ const SignStep2 = ({
   onChange,
   onCertificateChange,
 }) => {
+  const { width } = useWindowDimensions();
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [passwordConfirm, setPasswordConfirm] = useState('');
@@ -34,6 +56,11 @@ const SignStep2 = ({
   const [claimedSchoolName, setClaimedSchoolName] = useState('');
   const [certificateUrl, setCertificateUrl] = useState('');
   const [submissionNumber, setSubmissionNumber] = useState('');
+
+  const accountStyles = useMemo(
+    () => createAccountStyles(normalize, width),
+    [normalize, width],
+  );
 
   const notifyChange = (override = {}) => {
     onChange?.({
@@ -81,6 +108,102 @@ const SignStep2 = ({
     if (!passwordConfirm) return 'idle';
     return password === passwordConfirm ? 'match' : 'mismatch';
   }, [password, passwordConfirm]);
+
+  const renderAccountFieldFeedback = (status, { successText, errorText }) => {
+    const isOk = status === 'valid' || status === 'match';
+    const isError = status === 'invalid' || status === 'mismatch';
+    const showMessage =
+      status !== 'idle' && (isError || (isOk && Boolean(successText)));
+
+    return (
+      <View style={accountStyles.fieldFeedbackSlot}>
+        {showMessage ? (
+          <Text
+            style={[
+              accountStyles.fieldFeedback,
+              isOk ? accountStyles.fieldFeedbackSuccess : accountStyles.fieldFeedbackError,
+            ]}
+          >
+            {isOk ? successText : errorText}
+          </Text>
+        ) : null}
+      </View>
+    );
+  };
+
+  const renderAccountUnderlineField = ({
+    label,
+    labelExtra,
+    value,
+    onChangeText,
+    placeholder,
+    placeholderTextColor = PLACEHOLDER_TEXT_COLOR,
+    secureTextEntry = false,
+    visible,
+    onToggleVisible,
+    underlineStatus = 'idle',
+    feedback = null,
+    autoCapitalize = 'none',
+  }) => {
+    const resolvedStatus = resolveUnderlineStatus(underlineStatus);
+
+    return (
+      <View style={accountStyles.fieldBlock}>
+        {labelExtra ? (
+          <Text style={accountStyles.fieldLabel}>
+            {label}{' '}
+            <Text style={accountStyles.fieldLabelExtra}>{labelExtra}</Text>
+          </Text>
+        ) : (
+          <Text style={accountStyles.fieldLabel}>{label}</Text>
+        )}
+        <View
+          style={[
+            accountStyles.underlineField,
+            resolvedStatus === 'success' && accountStyles.underlineFieldSuccess,
+            resolvedStatus === 'error' && accountStyles.underlineFieldError,
+          ]}
+        >
+          {onChangeText ? (
+            <View style={accountStyles.inputRow}>
+              <TextInput
+                style={accountStyles.fieldInput}
+                value={value}
+                onChangeText={onChangeText}
+                placeholder={placeholder}
+                placeholderTextColor={placeholderTextColor}
+                secureTextEntry={secureTextEntry}
+                autoCapitalize={autoCapitalize}
+                autoCorrect={false}
+                multiline={false}
+                scrollEnabled={false}
+              />
+              {onToggleVisible ? (
+                <TouchableOpacity
+                  style={accountStyles.inputIconButton}
+                  onPress={onToggleVisible}
+                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                  accessibilityRole="button"
+                  accessibilityLabel={visible ? '비밀번호 숨기기' : '비밀번호 보기'}
+                >
+                  <Ionicons
+                    name={visible ? 'eye-outline' : 'eye-off-outline'}
+                    size={normalize(18)}
+                    color={colors.textSecondary}
+                  />
+                </TouchableOpacity>
+              ) : (
+                <View style={accountStyles.inputIconSlot} />
+              )}
+            </View>
+          ) : (
+            <Text style={accountStyles.lockedValue}>{value}</Text>
+          )}
+        </View>
+        {feedback}
+      </View>
+    );
+  };
 
   const renderPasswordField = ({
     label,
@@ -143,55 +266,94 @@ const SignStep2 = ({
     );
   };
 
+  if (accountOnly) {
+    return (
+      <Pressable
+        style={[styles.stepFlex, accountStyles.body]}
+        onPress={Keyboard.dismiss}
+      >
+        {renderAccountUnderlineField({
+          label: '이름',
+          labelExtra: '(본인인증으로 확인된 이름으로 변경할 수 없습니다)',
+          value: verifiedName || '',
+        })}
+        {renderAccountUnderlineField({
+          label: '아이디',
+          value: username,
+          onChangeText: handleUsernameChange,
+          placeholder: USERNAME_HINT,
+          placeholderTextColor: PLACEHOLDER_TEXT_COLOR,
+          underlineStatus: usernameStatus,
+          feedback: renderAccountFieldFeedback(usernameStatus, {
+            successText: USERNAME_VALID_MESSAGE,
+            errorText: USERNAME_ERROR,
+          }),
+        })}
+        {renderAccountUnderlineField({
+          label: '비밀번호',
+          value: password,
+          onChangeText: (text) => {
+            setPassword(text);
+            notifyChange({ password: text });
+          },
+          placeholder: PASSWORD_HINT,
+          placeholderTextColor: PLACEHOLDER_TEXT_COLOR,
+          secureTextEntry: !showPassword,
+          visible: showPassword,
+          onToggleVisible: () => setShowPassword((v) => !v),
+          underlineStatus: passwordStatus,
+          feedback: renderAccountFieldFeedback(passwordStatus, {
+            successText: '',
+            errorText: PASSWORD_INVALID_MESSAGE,
+          }),
+        })}
+        {renderAccountUnderlineField({
+          label: '비밀번호 확인',
+          value: passwordConfirm,
+          onChangeText: (text) => {
+            setPasswordConfirm(text);
+            notifyChange({ passwordConfirm: text });
+          },
+          placeholder: '',
+          secureTextEntry: !showPasswordConfirm,
+          visible: showPasswordConfirm,
+          onToggleVisible: () => setShowPasswordConfirm((v) => !v),
+          underlineStatus: passwordConfirmStatus,
+          feedback: renderAccountFieldFeedback(passwordConfirmStatus, {
+            successText: '',
+            errorText: PASSWORD_CONFIRM_MISMATCH_MESSAGE,
+          }),
+        })}
+      </Pressable>
+    );
+  }
+
   return (
     <View style={styles.stepFlex}>
       <SignupStepScroll normalize={normalize} bottomOffset={bottomOffset}>
-        {accountOnly ? (
-          verifiedName ? (
+        <>
+          <SignupLockedField
+            label="이름"
+            value={verifiedName}
+            placeholder="본인 확인 후 자동 입력"
+            styles={styles}
+          />
+          <SignupLockedField
+            label="생년월일"
+            value={verifiedBirthDate}
+            placeholder="본인 확인 후 자동 입력"
+            styles={styles}
+          />
+          {verifiedPhone ? (
             <SignupLockedField
-              label="이름"
-              value={verifiedName}
-              styles={styles}
-              compactBottom
-              helperBelowLabel={
-                <SignupHelperText normalize={normalize} variant="plain" tight>
-                  본인인증으로 확인된 이름이며 변경할 수 없습니다.
-                </SignupHelperText>
-              }
-            />
-          ) : null
-        ) : (
-          <>
-            <SignupLockedField
-              label="이름"
-              value={verifiedName}
-              placeholder="본인 확인 후 자동 입력"
+              label="전화번호"
+              value={verifiedPhone}
               styles={styles}
             />
-            <SignupLockedField
-              label="생년월일"
-              value={verifiedBirthDate}
-              placeholder="본인 확인 후 자동 입력"
-              styles={styles}
-            />
-            {verifiedPhone ? (
-              <SignupLockedField
-                label="전화번호"
-                value={verifiedPhone}
-                styles={styles}
-              />
-            ) : null}
-          </>
-        )}
+          ) : null}
+        </>
 
-        <Text
-          style={[
-            styles.inputLabel,
-            (verifiedName || !accountOnly) && styles.inputLabelSpaced,
-          ]}
-        >
-          아이디
-        </Text>
+        <Text style={[styles.inputLabel, styles.inputLabelSpaced]}>아이디</Text>
         <View style={styles.inputWrapper}>
           <TextInput
             style={styles.input}
@@ -296,5 +458,105 @@ const SignStep2 = ({
     </View>
   );
 };
+
+function createAccountStyles(normalize, width) {
+  const inputMinHeight = normalize(Math.round(fontSizes.xxl));
+  const inputIconSize = normalize(18);
+
+  return StyleSheet.create({
+    body: {
+      flex: 1,
+      marginHorizontal: -width * 0.04,
+      paddingHorizontal: width * 0.07,
+      paddingTop: normalize(4),
+    },
+    fieldBlock: {
+      marginBottom: normalize(24),
+    },
+    fieldLabel: {
+      marginBottom: normalize(10),
+      fontFamily: fonts.regular,
+      fontSize: normalize(fontSizes.lg),
+      color: colors.textSecondary,
+      lineHeight: normalize(Math.round(fontSizes.lg * 1.45)),
+    },
+    fieldLabelExtra: {
+      fontFamily: fonts.regular,
+      fontSize: normalize(fontSizes.lg),
+      color: colors.textSecondary,
+    },
+    underlineField: {
+      paddingBottom: normalize(8),
+      borderBottomWidth: normalize(1),
+      borderBottomColor: colors.textLight20,
+    },
+    underlineFieldSuccess: {
+      borderBottomColor: colors.primary,
+    },
+    underlineFieldError: {
+      borderBottomColor: colors.alert,
+    },
+    inputRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: normalize(8),
+      minWidth: 0,
+      height: inputIconSize,
+      minHeight: inputIconSize,
+    },
+    fieldInput: {
+      flex: 1,
+      minWidth: 0,
+      paddingVertical: 0,
+      paddingHorizontal: 0,
+      fontFamily: fonts.regular,
+      fontSize: normalize(fontSizes.xxl),
+      minHeight: inputMinHeight,
+      height: inputIconSize,
+      maxHeight: inputIconSize,
+      color: colors.textPrimary,
+      ...Platform.select({
+        android: { includeFontPadding: false, textAlignVertical: 'center' },
+        ios: {},
+      }),
+    },
+    inputIconButton: {
+      width: inputIconSize,
+      height: inputIconSize,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    inputIconSlot: {
+      width: inputIconSize,
+      height: inputIconSize,
+    },
+    lockedValue: {
+      fontFamily: fonts.regular,
+      fontSize: normalize(fontSizes.xxl),
+      minHeight: inputMinHeight,
+      color: colors.textPrimary,
+      ...Platform.select({
+        android: { includeFontPadding: false, textAlignVertical: 'center' },
+        ios: {},
+      }),
+    },
+    fieldFeedbackSlot: {
+      marginTop: normalize(8),
+      minHeight: normalize(Math.round(fontSizes.lg * 1.4)),
+      justifyContent: 'flex-start',
+    },
+    fieldFeedback: {
+      fontFamily: fonts.regular,
+      fontSize: normalize(fontSizes.lg),
+      lineHeight: normalize(Math.round(fontSizes.lg * 1.4)),
+    },
+    fieldFeedbackSuccess: {
+      color: colors.primary,
+    },
+    fieldFeedbackError: {
+      color: colors.alert,
+    },
+  });
+}
 
 export default SignStep2;

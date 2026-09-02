@@ -158,6 +158,7 @@ const SignPhone = ({ navigation }) => {
 
   const isMountedRef = useRef(true);
   const sessionHydratedRef = useRef(false);
+  const initialHydrationDoneRef = useRef(false);
   const birthDateInputRef = useRef('');
   const inicisClientTokenRef = useRef(null);
   const inicisFlowActiveRef = useRef(false);
@@ -794,16 +795,13 @@ const SignPhone = ({ navigation }) => {
         return;
       }
     } else {
+      const birthCase = classifyBirthDateCase(nextBirthDate);
+      if (birthCase === 'A' || birthCase === 'D' || birthCase === 'invalid') return;
       applyBirthDateToState(nextBirthDate);
       setRequiresGuardianVerification(false);
       setGuardianVerified(false);
       setGuardianVerifiedAt(null);
-      advanceToAccountAfterIdentity({
-        ...OCR_TEST_MOCK_IDENTITY,
-        name: identityData.name || OCR_TEST_MOCK_IDENTITY.name,
-        birthDate: nextBirthDate,
-        isVerified: true,
-      });
+      void runStudentIdentityVerification(STEP.BIRTH_DATE);
       return;
     }
 
@@ -1186,14 +1184,16 @@ const SignPhone = ({ navigation }) => {
 
   const isPrimaryDisabled = () => {
     if (submitting) return true;
+    if (currentStep === STEP.BIRTH_DATE) {
+      if (!isValidBirthDateString(birthDate)) return true;
+      const birthCase = classifyBirthDateCase(birthDate);
+      if (birthCase === 'A' || birthCase === 'D') return true;
+      return false;
+    }
     if (SIGNUP_REDESIGN_SKIP_VALIDATION) {
-      if (currentStep === STEP.BIRTH_DATE) return false;
       if (currentStep === STEP.ACCOUNT) return false;
       if (currentStep === STEP.STUDENT_VERIFY) return false;
       return false;
-    }
-    if (currentStep === STEP.BIRTH_DATE) {
-      return !isValidBirthDateString(birthDate);
     }
     if (currentStep === STEP.ACCOUNT) {
       if (
@@ -1255,6 +1255,9 @@ const SignPhone = ({ navigation }) => {
   }, []);
 
   useEffect(() => {
+    if (initialHydrationDoneRef.current) return;
+    initialHydrationDoneRef.current = true;
+
     let cancelled = false;
 
     (async () => {
