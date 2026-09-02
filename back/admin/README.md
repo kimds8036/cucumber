@@ -59,6 +59,7 @@ API 베이스: `01-core.js`의 `api()` → **`/api/admin` + path** (예: `api('/
 |------|------|
 | API 호출 | `api('/…')` — `/api/admin` 접두사 **붙이지 않음** |
 | 패널 등록 | `content.html` 패널 div · `sidebar.html` nav · `01-core.js` `panels`/`canAccessPanel` · `06-bootstrap.js` lazy loader · `index.html` script 태그 |
+| 공지사항 | `13-announcements.js` · API `/api/admin/announcements` · 앱 `/api/announcements` |
 | 오류 표시 | `loadXxxPanel`에서 `Promise.all` 실패 시 한 API만 깨져도 전체가 «불러오지 못했습니다» — 원인 메시지·서버 로그 확인 |
 
 ### 배포 후 확인

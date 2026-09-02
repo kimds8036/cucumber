@@ -16,6 +16,9 @@ const LOCK_TTL = 600;
 
 const AUDIT_RETENTION_DAYS = Number(process.env.ADMIN_AUDIT_RETENTION_DAYS || 365);
 const REPORT_ARCHIVE_DAYS = Number(process.env.ADMIN_REPORT_ARCHIVE_DAYS || 90);
+const FCM_INACTIVE_RETENTION_DAYS = Number(
+  process.env.FCM_INACTIVE_RETENTION_DAYS || 90,
+);
 const BATCH_LIMIT = clampSqlLimit(process.env.ADMIN_RETENTION_BATCH_LIMIT || 2000, {
   def: 2000,
   min: 100,
@@ -28,6 +31,21 @@ async function purgeAuditLogs() {
      WHERE created_at < DATE_SUB(NOW(), INTERVAL ? DAY)
      LIMIT ${BATCH_LIMIT}`,
     [AUDIT_RETENTION_DAYS],
+  );
+  return result.affectedRows || 0;
+}
+
+/** 비활성 FCM 토큰: updated_at 기준 N일 경과 행 hard delete */
+async function purgeInactiveFcmTokens() {
+  const days = Number.isFinite(FCM_INACTIVE_RETENTION_DAYS)
+    ? Math.max(7, Math.floor(FCM_INACTIVE_RETENTION_DAYS))
+    : 90;
+  const [result] = await pool.query(
+    `DELETE FROM fcm_tokens
+     WHERE is_active = FALSE
+       AND COALESCE(updated_at, created_at) < DATE_SUB(NOW(), INTERVAL ? DAY)
+     LIMIT ${BATCH_LIMIT}`,
+    [days],
   );
   return result.affectedRows || 0;
 }
@@ -94,8 +112,9 @@ export async function runAdminRetentionJob() {
   try {
     const purgedLogs = await purgeAuditLogs();
     const archivedReports = await archiveOldReports();
-    logBatchSuccess(context, { purgedLogs, archivedReports });
-    return { skipped: false, purgedLogs, archivedReports };
+    const purgedFcmTokens = await purgeInactiveFcmTokens();
+    logBatchSuccess(context, { purgedLogs, archivedReports, purgedFcmTokens });
+    return { skipped: false, purgedLogs, archivedReports, purgedFcmTokens };
   } catch (error) {
     logBatchFailure(context, error);
     throw error;

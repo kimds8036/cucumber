@@ -52,6 +52,7 @@ import InquiryDetail from './view/src/InquiryDetail';
 import Info from './view/src/info';
 // import TestLogin from './view/src/TestLogin'; // 테스트 로그인 화면 — 운영 진입에서는 미사용
 import Announcement from './view/src/announcement';
+import AnnouncementDetail from './view/src/AnnouncementDetail';
 import ServiceTermsOfService from './src/screens/Terms-of-Service/ServiceTermsOfService';
 import PrivacyPolicy from './src/screens/Terms-of-Service/PrivacyPolicy';
 import YouthProtectionPolicy from './src/screens/Terms-of-Service/YouthProtectionPolicy';
@@ -266,6 +267,10 @@ function MainStack({ initialRouteName = 'Main' }) {
       <Stack.Screen name="InquiryDetail" component={InquiryDetail} />
       <Stack.Screen name="Info" component={Info} />
       <Stack.Screen name="Announcement" component={Announcement} />
+      <Stack.Screen
+        name="AnnouncementDetail"
+        component={AnnouncementDetail}
+      />
       <Stack.Screen
         name="ServiceTermsOfService"
         component={ServiceTermsOfService}

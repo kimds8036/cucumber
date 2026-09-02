@@ -10,6 +10,7 @@ window.PANEL_LOADERS = {
   processedReports: () => loadProcessedReports(),
   appeals: () => loadAppeals(),
   inquiries: () => loadInquiries(),
+  announcements: () => loadAnnouncements(),
   processedInquiries: () => loadProcessedInquiries(),
   manualSignup: () => loadManualSignup(),
   studentIds: () => loadStudentIds(),
