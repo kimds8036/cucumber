@@ -42,7 +42,7 @@ import {
   getEditTimetableKeyboardVerticalOffset,
 } from '../../src/screens/timetable/timetable.style';
 import { getMaxPeriodFromTimetableKeys } from '../../src/screens/timetable/periodUtils';
-import { saveTimetableLocalAndSync } from '../../utils/timetableSync';
+import { saveTimetableLocalAndSync, TIMETABLE_SOURCE_MANUAL } from '../../utils/timetableSync';
 
 /** 빈 시간표일 때 격자에 보이는 최소 행 수 (1교시~여기까지) */
 const EDIT_TS_GRID_INITIAL_MIN = 10;
@@ -297,7 +297,9 @@ const EditTimetable = ({ navigation, route }) => {
         onSave(timetableToSave);
       }
       if (timetableCacheKey) {
-        await saveTimetableLocalAndSync(timetableCacheKey, timetableToSave);
+        await saveTimetableLocalAndSync(timetableCacheKey, timetableToSave, {
+          source: TIMETABLE_SOURCE_MANUAL,
+        });
       }
       setTimetable(timetableToSave);
     } catch (error) {

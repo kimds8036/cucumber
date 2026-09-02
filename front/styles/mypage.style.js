@@ -318,8 +318,6 @@ export const createProfileCardStyles = (normalize) =>
       paddingVertical: normalize(10),
       borderRadius: normalize(10),
       backgroundColor: colors.surface,
-      borderWidth: 1,
-      borderColor: colors.primaryLight20,
       shadowColor: '#272A26',
       shadowOffset: { width: 0, height: 2 },
       shadowOpacity: 0.06,

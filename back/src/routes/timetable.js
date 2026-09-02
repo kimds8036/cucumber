@@ -387,6 +387,24 @@ router.get('/', authenticate, async (req, res) => {
     const user = rows[0];
     const { timetable: baseTimetable, subjects: baseSubjects } =
       await fetchBaseTimetableByUser(user);
+    const neisOnly =
+      req.query.neisOnly === '1' || req.query.neisOnly === 'true';
+    if (neisOnly) {
+      const anomalies = detectTimetableAnomalies(baseTimetable);
+      return res.json({
+        success: true,
+        data: {
+          timetable: baseTimetable,
+          subjects: baseSubjects,
+          ...(anomalies.hasHolidayOrExam ? { anomalies } : {}),
+          source: {
+            neis: Object.keys(baseTimetable).length > 0 || baseSubjects.length > 0,
+            override: false,
+            scope: 'school_grade',
+          },
+        },
+      });
+    }
     const { timetable: override } = await loadUserOverride(userId);
     const timetable = mergeTimetable(baseTimetable, override);
     const anomalies = detectTimetableAnomalies(timetable);

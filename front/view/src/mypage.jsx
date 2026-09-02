@@ -28,7 +28,10 @@ import {
   getGuideTimetable,
 } from '../../src/screens/UserGuide/guidePreviewData';
 import { syncTimetableWidgetFromFlat } from '../../utils/widget';
-import { hydrateTimetableFromServer } from '../../utils/timetableSync';
+import {
+  hydrateTimetableFromServer,
+  maybeRefreshAutoTimetableOnAppOpen,
+} from '../../utils/timetableSync';
 import { hydratePeriodTimesFromServer } from '../../utils/widget/periodTimeSettings';
 import { buildInviteShareContent } from '../../utils/shareLinks';
 
@@ -309,6 +312,9 @@ const MyPage = ({ navigation }) => {
             ? timetableCacheKey.slice(TIMETABLE_CACHE_KEY_PREFIX.length)
             : null;
           await hydratePeriodTimesFromServer(scopeFromKey).catch(() => {});
+          await maybeRefreshAutoTimetableOnAppOpen(timetableCacheKey).catch(
+            () => {},
+          );
           const hydrated = await hydrateTimetableFromServer(
             timetableCacheKey,
           ).catch(() => null);

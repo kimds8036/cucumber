@@ -116,14 +116,18 @@ function categoryMeta(category) {
 }
 
 function adminStatusMeta(status) {
+  const muted = {
+    color: colors.textSecondary,
+    backgroundColor: 'rgba(39, 42, 38, 0.06)',
+  };
   if (status === 'fixed') {
-    return { label: '반영 완료', color: colors.primary, backgroundColor: colors.primaryLight10 };
+    return { label: '반영 완료', ...muted };
   }
   if (status === 'planned') {
-    return { label: '도입 예정', color: colors.textSecondary, backgroundColor: 'rgba(39, 42, 38, 0.06)' };
+    return { label: '도입 예정', ...muted };
   }
   if (status === 'declined') {
-    return { label: '도입 불가', color: colors.textSecondary, backgroundColor: 'rgba(39, 42, 38, 0.06)' };
+    return { label: '도입 불가', ...muted };
   }
   return null;
 }
@@ -279,23 +283,6 @@ const DeveloperWhack = ({ navigation }) => {
       >
         <View style={{ flexDirection: 'row', alignItems: 'stretch' }}>
           <View style={{ flex: 1, minWidth: 0, paddingRight: normalize(8) }}>
-            {item.reporterCount > 1 ? (
-              <View style={{ marginBottom: normalize(6) }}>
-                <View
-                  style={{
-                    alignSelf: 'flex-start',
-                    paddingHorizontal: normalize(7),
-                    paddingVertical: normalize(2),
-                    borderRadius: normalize(999),
-                    backgroundColor: 'rgba(39, 42, 38, 0.06)',
-                  }}
-                >
-                  <Text style={{ fontFamily: fonts.bold, fontSize: normalize(wFont.badge), color: colors.textSecondary }}>
-                    {item.reporterCount}명 제보
-                  </Text>
-                </View>
-              </View>
-            ) : null}
             <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: normalize(8) }}>
               <View style={{ flexShrink: 0, alignItems: 'flex-start' }}>
                 {status ? (
@@ -316,6 +303,7 @@ const DeveloperWhack = ({ navigation }) => {
                 <Text
                   style={{
                     marginTop: normalize(6),
+                    marginLeft: normalize(4),
                     fontFamily: fonts.regular,
                     fontSize: normalize(wFont.name),
                     color: colors.textSecondary,
@@ -455,7 +443,7 @@ const DeveloperWhack = ({ navigation }) => {
         })}
       </View>
 
-      <Text style={fieldLabelStyle}>이름</Text>
+      <Text style={fieldLabelStyle}>제보 이름</Text>
       <TextInput
         style={inputStyle}
         placeholder="예: 김○○ (최대 10자)"
