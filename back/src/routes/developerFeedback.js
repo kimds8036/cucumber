@@ -22,8 +22,8 @@ const submitValidators = [
     .bail()
     .trim()
     .isLength({ min: 1, max: HONOREE_NAME_MAX })
-    .withMessage(`등재 희망 이름은 1~${HONOREE_NAME_MAX}자로 입력해 주세요.`),
-  body('schoolPublic').isBoolean().withMessage('학교 공개 여부가 올바르지 않습니다.'),
+    .withMessage(`이름은 1~${HONOREE_NAME_MAX}자로 입력해 주세요.`),
+  body('schoolPublic').optional().isBoolean(),
   body('content')
     .isString()
     .bail()
@@ -56,7 +56,7 @@ router.post('/', authenticate, validate(submitValidators), async (req, res) => {
       userId: req.user.userId,
       category: req.body?.category,
       honoreeName: req.body?.honoreeName,
-      schoolPublic: req.body?.schoolPublic,
+      schoolPublic: Boolean(req.body?.schoolPublic),
       content: req.body?.content,
       appVersion: req.body?.appVersion,
       deviceInfo: req.body?.deviceInfo,

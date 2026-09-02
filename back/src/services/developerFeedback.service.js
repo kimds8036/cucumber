@@ -55,8 +55,9 @@ export async function listPublicDeveloperFeedback({ page = 1, limit = 50 } = {})
        ) AS primary_honoree_name
      FROM developer_feedback_groups g
      INNER JOIN developer_feedback df ON df.group_id = g.id
+     WHERE g.admin_response_status IN ('fixed', 'planned', 'declined')
      GROUP BY g.id
-     ORDER BY g.created_at DESC
+     ORDER BY g.admin_responded_at DESC, g.created_at DESC
      LIMIT ${limitNum} OFFSET ${offset}`,
   );
 
