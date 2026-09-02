@@ -1,7 +1,7 @@
 import { Platform, StyleSheet } from 'react-native';
 import { colors, fonts, fontSizes } from './colors';
 import { shadow } from './tokens';
-check
+
 export const createLoginStyles = (width, normalize) => {
   return StyleSheet.create({
     // —— 로그인 화면 ——

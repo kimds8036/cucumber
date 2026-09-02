@@ -33,7 +33,10 @@ import SignStepCertificateGuide from './SignStepCertificateGuide';
 import SignStepCertificate from './SignStepCertificate';
 import Skeleton from '../../../components/common/Skeleton';
 import { api, setAuthToken } from '../../../utils/api';
-import { peekPendingInviteCode, consumePendingInviteCode } from '../../../utils/inviteReferral';
+import {
+  peekPendingInviteCode,
+  consumePendingInviteCode,
+} from '../../../utils/inviteReferral';
 import {
   clearPendingInicisSession,
   cancelInicisFlow,
@@ -51,8 +54,6 @@ import { useAppNavigation } from '../../../navigation/useAppNavigation';
 import {
   showTooOldForSignupAlert,
   showTooYoungForSignupAlert,
-  GRADE_MISMATCH_HELP_TITLE,
-  GRADE_MISMATCH_HELP_MESSAGE,
 } from './authFeatureAlerts';
 import {
   classifyBirthDateCase,
@@ -120,8 +121,10 @@ const SignApple = ({ navigation }) => {
   const [birthDate, setBirthDate] = useState('');
   const [selectedSchool, setSelectedSchool] = useState(null);
   const [schoolClassNum, setSchoolClassNum] = useState('');
+  const [schoolGradeNum, setSchoolGradeNum] = useState('');
   const [studentVerified, setStudentVerified] = useState(false);
-  const [studentVerificationToken, setStudentVerificationToken] = useState(null);
+  const [studentVerificationToken, setStudentVerificationToken] =
+    useState(null);
   const [recognizedData, setRecognizedData] = useState(null);
   const [certificateData, setCertificateData] = useState({
     certificateUrl: '',
@@ -129,10 +132,12 @@ const SignApple = ({ navigation }) => {
   });
   const [guardianVerified, setGuardianVerified] = useState(false);
   const [guardianVerifiedAt, setGuardianVerifiedAt] = useState(null);
-  const [guardianInicisClientToken, setGuardianInicisClientToken] = useState(null);
+  const [guardianInicisClientToken, setGuardianInicisClientToken] =
+    useState(null);
   const [requiresGuardianVerification, setRequiresGuardianVerification] =
     useState(false);
-  const [showGuardianConsentModal, setShowGuardianConsentModal] = useState(false);
+  const [showGuardianConsentModal, setShowGuardianConsentModal] =
+    useState(false);
   const [showStudentIdentityIntroModal, setShowStudentIdentityIntroModal] =
     useState(false);
   const [inicisOverlayVisible, setInicisOverlayVisible] = useState(false);
@@ -181,10 +186,10 @@ const SignApple = ({ navigation }) => {
     return buildEnrollmentFromBirthDate(bd);
   }, [identity.birthDate]);
 
-  const schoolGradeLabel = useMemo(() => {
+  useEffect(() => {
     const g = schoolEnrollmentPreview.grade;
-    if (g == null || !Number.isFinite(Number(g))) return '';
-    return `${Number(g)}학년`;
+    if (g == null || !Number.isFinite(Number(g))) return;
+    setSchoolGradeNum((prev) => prev || String(Number(g)));
   }, [schoolEnrollmentPreview.grade]);
 
   const progressWidth = useMemo(() => {
@@ -210,6 +215,7 @@ const SignApple = ({ navigation }) => {
       birthDate,
       selectedSchool,
       schoolClassNum,
+      schoolGradeNum,
       studentVerified,
       studentVerificationToken,
       recognizedData,
@@ -232,6 +238,7 @@ const SignApple = ({ navigation }) => {
       recognizedData,
       requiresGuardianVerification,
       schoolClassNum,
+      schoolGradeNum,
       selectedSchool,
       studentVerificationToken,
       studentVerified,
@@ -253,14 +260,20 @@ const SignApple = ({ navigation }) => {
       birthDateInputRef.current = snapshot.birthDate;
     }
     if (snapshot.selectedSchool) setSelectedSchool(snapshot.selectedSchool);
-    if (snapshot.schoolClassNum != null) setSchoolClassNum(snapshot.schoolClassNum);
-    if (snapshot.studentVerified != null) setStudentVerified(snapshot.studentVerified);
+    if (snapshot.schoolClassNum != null)
+      setSchoolClassNum(snapshot.schoolClassNum);
+    if (snapshot.schoolGradeNum != null)
+      setSchoolGradeNum(snapshot.schoolGradeNum);
+    if (snapshot.studentVerified != null)
+      setStudentVerified(snapshot.studentVerified);
     if (snapshot.studentVerificationToken) {
       setStudentVerificationToken(snapshot.studentVerificationToken);
     }
     if (snapshot.recognizedData) setRecognizedData(snapshot.recognizedData);
-    if (snapshot.guardianVerified != null) setGuardianVerified(snapshot.guardianVerified);
-    if (snapshot.guardianVerifiedAt) setGuardianVerifiedAt(snapshot.guardianVerifiedAt);
+    if (snapshot.guardianVerified != null)
+      setGuardianVerified(snapshot.guardianVerified);
+    if (snapshot.guardianVerifiedAt)
+      setGuardianVerifiedAt(snapshot.guardianVerifiedAt);
     if (snapshot.guardianInicisClientToken) {
       setGuardianInicisClientToken(snapshot.guardianInicisClientToken);
     }
@@ -378,8 +391,7 @@ const SignApple = ({ navigation }) => {
     (message) => {
       showInicisAlertAfterOverlay(
         '보호자 인증 미완료',
-        message ||
-          '보호자 본인인증이 완료되지 않아 가입을 진행할 수 없어요.',
+        message || '보호자 본인인증이 완료되지 않아 가입을 진행할 수 없어요.',
       );
     },
     [showInicisAlertAfterOverlay],
@@ -450,7 +462,10 @@ const SignApple = ({ navigation }) => {
         };
       }
 
-      const verifiedPhone = String(profile.phoneNumber || '').replace(/\D/g, '');
+      const verifiedPhone = String(profile.phoneNumber || '').replace(
+        /\D/g,
+        '',
+      );
       if (!verifiedPhone || verifiedPhone.length < 10) {
         return {
           ok: false,
@@ -545,7 +560,12 @@ const SignApple = ({ navigation }) => {
     const result = await executeInicisFlow('student_signup');
     if (!result) return null;
     return evaluateStudentVerifyResult(result);
-  }, [birthDate, evaluateStudentVerifyResult, executeInicisFlow, identityData.name]);
+  }, [
+    birthDate,
+    evaluateStudentVerifyResult,
+    executeInicisFlow,
+    identityData.name,
+  ]);
 
   const runGuardianIdentityVerificationCore = useCallback(async () => {
     if (SIGNUP_REDESIGN_SKIP_VALIDATION) {
@@ -729,7 +749,8 @@ const SignApple = ({ navigation }) => {
     } catch (error) {
       showInicisAlertAfterOverlay(
         '알림',
-        error?.message || '인증 페이지를 열 수 없습니다. 잠시 후 다시 시도해 주세요.',
+        error?.message ||
+          '인증 페이지를 열 수 없습니다. 잠시 후 다시 시도해 주세요.',
       );
     } finally {
       await dismissInicisBrowserSafely();
@@ -772,15 +793,12 @@ const SignApple = ({ navigation }) => {
     setCurrentStep(STEP.BIRTH_DATE);
   }, []);
 
-  const handleBirthDateChange = useCallback(
-    (nextBirthDate) => {
-      setBirthDate(nextBirthDate);
-      birthDateInputRef.current = nextBirthDate;
-      setFormData((prev) => ({ ...prev, birthDate: nextBirthDate }));
-      setIdentityData((prev) => ({ ...prev, birthDate: nextBirthDate }));
-    },
-    [],
-  );
+  const handleBirthDateChange = useCallback((nextBirthDate) => {
+    setBirthDate(nextBirthDate);
+    birthDateInputRef.current = nextBirthDate;
+    setFormData((prev) => ({ ...prev, birthDate: nextBirthDate }));
+    setIdentityData((prev) => ({ ...prev, birthDate: nextBirthDate }));
+  }, []);
 
   const handleBirthDateNext = () => {
     const nextBirthDate = SIGNUP_REDESIGN_SKIP_VALIDATION
@@ -888,7 +906,7 @@ const SignApple = ({ navigation }) => {
   };
 
   const proceedFromSchoolSelect = useCallback(() => {
-    const grade = schoolEnrollmentPreview.grade;
+    const grade = Number(schoolGradeNum);
     const classNum = Number(schoolClassNum);
     setFormData((prev) => ({
       ...prev,
@@ -900,11 +918,16 @@ const SignApple = ({ navigation }) => {
       schoolLevel: schoolEnrollmentPreview.schoolLevel || prev.schoolLevel,
     }));
     setCurrentStep(STEP.STUDENT_VERIFY);
-  }, [schoolClassNum, schoolEnrollmentPreview, selectedSchool]);
+  }, [
+    schoolClassNum,
+    schoolEnrollmentPreview,
+    schoolGradeNum,
+    selectedSchool,
+  ]);
 
   const handleSchoolSelectNext = () => {
     if (SIGNUP_REDESIGN_SKIP_VALIDATION) {
-      const grade = schoolEnrollmentPreview.grade || 2;
+      const grade = Number(schoolGradeNum) || 2;
       const classNum = Number(schoolClassNum) || 1;
       setFormData((prev) => ({
         ...prev,
@@ -926,9 +949,9 @@ const SignApple = ({ navigation }) => {
       Alert.alert('알림', '재학 중인 학교를 목록에서 선택해 주세요.');
       return;
     }
-    const grade = schoolEnrollmentPreview.grade;
-    if (grade == null || !Number.isFinite(Number(grade)) || Number(grade) < 1) {
-      Alert.alert('알림', '생년월일 기준으로 학년을 계산하지 못했습니다.');
+    const grade = Number(schoolGradeNum);
+    if (!Number.isFinite(grade) || grade < 1) {
+      Alert.alert('알림', '학년을 입력해 주세요.');
       return;
     }
     const classNum = Number(schoolClassNum);
@@ -940,7 +963,7 @@ const SignApple = ({ navigation }) => {
     setBlockingAlert({
       visible: true,
       title: '학적 정보 확인',
-      message: `${selectedSchool.name} ${Number(grade)}학년 ${classNum}반이 맞나요?`,
+      message: `${selectedSchool.name} ${grade}학년 ${classNum}반이 맞나요?`,
       buttons: [
         {
           text: '맞아요',
@@ -967,7 +990,7 @@ const SignApple = ({ navigation }) => {
       ...prev,
       schoolId: selectedSchool?.id || prev.schoolId,
       schoolName: selectedSchool?.name || prev.schoolName,
-      grade: String(schoolEnrollmentPreview.grade || prev.grade || 2),
+      grade: String(schoolGradeNum || prev.grade || 2),
       classNum: String(schoolClassNum || prev.classNum || 1),
       graduationYear: String(
         schoolEnrollmentPreview.graduationYear || prev.graduationYear || '',
@@ -1003,8 +1026,11 @@ const SignApple = ({ navigation }) => {
 
   const finishSignupAndEnterApp = async (username, password) => {
     const loginRes = await api.post('/api/auth/login', { username, password });
-    const { token, studentVerificationStatus: status, rejectReason } =
-      loginRes.data?.data || {};
+    const {
+      token,
+      studentVerificationStatus: status,
+      rejectReason,
+    } = loginRes.data?.data || {};
     if (token) {
       await setAuthToken(token, { persist: true });
     }
@@ -1126,6 +1152,7 @@ const SignApple = ({ navigation }) => {
     }
     if (currentStep === STEP.SCHOOL_SELECT) {
       if (!selectedSchool?.id || selectedSchool?.manual) return true;
+      if (!Number(schoolGradeNum) || Number(schoolGradeNum) < 1) return true;
       if (!Number(schoolClassNum) || Number(schoolClassNum) < 1) return true;
     }
     if (currentStep === STEP.STUDENT_VERIFY && !studentVerified) return true;
@@ -1140,7 +1167,8 @@ const SignApple = ({ navigation }) => {
     ) {
       return '테스트 인증 완료';
     }
-    if (currentStep === STEP.STUDENT_VERIFY && studentVerified) return '제출하기';
+    if (currentStep === STEP.STUDENT_VERIFY && studentVerified)
+      return '제출하기';
     return '다음 단계';
   };
 
@@ -1253,9 +1281,13 @@ const SignApple = ({ navigation }) => {
 
       <View style={styles.contentSection}>
         {currentStep === STEP.APPLE_AUTH && (
-          <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
+          <View
+            style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}
+          >
             <ActivityIndicator size="large" color={colors.primary} />
-            <Text style={{ marginTop: normalize(16), color: colors.textSecondary }}>
+            <Text
+              style={{ marginTop: normalize(16), color: colors.textSecondary }}
+            >
               Apple 계정 정보를 불러오는 중…
             </Text>
           </View>
@@ -1276,17 +1308,10 @@ const SignApple = ({ navigation }) => {
             normalize={normalize}
             selectedSchool={selectedSchool}
             onSelect={setSelectedSchool}
-            gradeLabel={schoolGradeLabel}
+            gradeNum={schoolGradeNum}
+            onGradeNumChange={setSchoolGradeNum}
             classNum={schoolClassNum}
             onClassNumChange={setSchoolClassNum}
-            onPressGradeMismatch={() => {
-              setBlockingAlert({
-                visible: true,
-                title: GRADE_MISMATCH_HELP_TITLE,
-                message: GRADE_MISMATCH_HELP_MESSAGE,
-                buttons: [{ text: '확인', onPress: closeBlockingAlert }],
-              });
-            }}
             bottomOffset={footerHeight}
           />
         )}

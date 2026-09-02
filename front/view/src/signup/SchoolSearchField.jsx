@@ -155,8 +155,10 @@ const SchoolSearchField = ({
   };
 
   const renderUnderlineRow = () => {
-    const RowMain = readOnly ? TouchableOpacity : View;
-    const rowMainProps = readOnly
+    const isLockedSelection = hasConfirmedSelection && showClearButton;
+    const isSearchTrigger = readOnly && !isLockedSelection;
+    const RowMain = isSearchTrigger ? TouchableOpacity : View;
+    const rowMainProps = isSearchTrigger
       ? { onPress: onActivate, activeOpacity: 0.75 }
       : {};
 
@@ -164,45 +166,52 @@ const SchoolSearchField = ({
       <View
         style={[
           searchRowStyles.row,
-          hasConfirmedSelection && showClearButton && searchRowStyles.rowSelected,
+          isLockedSelection && searchRowStyles.rowSelected,
         ]}
       >
         <RowMain style={searchRowStyles.rowMainTap} {...rowMainProps}>
-          {!hasConfirmedSelection ? (
+          {!isLockedSelection ? (
             <Feather
               name="search"
               size={normalize(18)}
               color={colors.textSecondary}
             />
           ) : null}
-          <TextInput
-            ref={inputRef}
-            style={[
-              searchRowStyles.input,
-              readOnly &&
-                !hasConfirmedSelection &&
-                searchRowStyles.inputPlaceholder,
-              { marginBottom: 0 },
-            ]}
-            value={query}
-            onChangeText={(t) => {
-              setQuery(t);
-              if (selectedSchool && t !== selectedSchool.name) onSelect?.(null);
-            }}
-            onFocus={() => setFocused(true)}
-            onBlur={() => {
-              setTimeout(() => setFocused(false), 180);
-            }}
-            placeholder={placeholder}
-            placeholderTextColor={colors.textSecondary}
-            autoCorrect={false}
-            editable={!readOnly && !disabled}
-            showSoftInputOnFocus={!readOnly}
-            pointerEvents={readOnly ? 'none' : 'auto'}
-            returnKeyType="search"
-          />
+          {isLockedSelection ? (
+            <Text
+              style={[searchRowStyles.input, searchRowStyles.fieldTextFilled]}
+              numberOfLines={1}
+            >
+              {query}
+            </Text>
+          ) : (
+            <TextInput
+              ref={inputRef}
+              style={[
+                searchRowStyles.input,
+                readOnly && searchRowStyles.inputPlaceholder,
+                { marginBottom: 0 },
+              ]}
+              value={query}
+              onChangeText={(t) => {
+                setQuery(t);
+                if (selectedSchool && t !== selectedSchool.name) onSelect?.(null);
+              }}
+              onFocus={() => setFocused(true)}
+              onBlur={() => {
+                setTimeout(() => setFocused(false), 180);
+              }}
+              placeholder={placeholder}
+              placeholderTextColor={colors.textSecondary}
+              autoCorrect={false}
+              editable={!readOnly && !disabled}
+              showSoftInputOnFocus={!readOnly}
+              pointerEvents={readOnly ? 'none' : 'auto'}
+              returnKeyType="search"
+            />
+          )}
         </RowMain>
-        {showClearButton && hasConfirmedSelection ? (
+        {isLockedSelection ? (
           <TouchableOpacity
             onPress={handleClear}
             activeOpacity={0.7}

@@ -3,27 +3,26 @@ import {
   View,
   Text,
   TextInput,
-  TouchableOpacity,
   StyleSheet,
   Keyboard,
   Pressable,
+  Platform,
   useWindowDimensions,
 } from 'react-native';
 import { colors, fonts, fontSizes } from '../../../styles/colors';
 import SchoolSearchField from './SchoolSearchField';
-import SignupLockedField from './SignupLockedField';
 import SignupStepScroll from './SignupStepScroll';
 
-/** 계정 만들기 ↔ 학생증 인증 사이 — 재학 학교·학년(잠금)·반 */
+/** 계정 만들기 ↔ 학생증 인증 사이 — 재학 학교·학년·반 */
 const SignStepSchoolSelect = ({
   styles,
   normalize,
   selectedSchool,
   onSelect,
-  gradeLabel,
+  gradeNum,
+  onGradeNumChange,
   classNum,
   onClassNumChange,
-  onPressGradeMismatch,
   bottomOffset,
 }) => {
   const { width } = useWindowDimensions();
@@ -51,56 +50,60 @@ const SignStepSchoolSelect = ({
     [onSelect],
   );
 
+  const handleSchoolClear = useCallback(() => {
+    setSearchActive(false);
+  }, []);
+
   const activateSearch = useCallback(() => {
     setSearchActive(true);
   }, []);
 
   const gradeClassFields = selectedSchool ? (
-    <View style={{ marginTop: normalize(8), paddingBottom: normalize(4) }}>
-      <SignupLockedField
-        label="학년"
-        value={gradeLabel}
-        placeholder="생년월일 기준으로 자동 표시"
-        styles={stepStyles}
-        compactBottom
-      />
-      <TouchableOpacity
-        onPress={onPressGradeMismatch}
-        activeOpacity={0.7}
-        style={{
-          alignSelf: 'flex-start',
-          marginTop: normalize(6),
-          marginBottom: normalize(10),
-          paddingVertical: normalize(2),
-        }}
-        hitSlop={{ top: 8, bottom: 8, left: 4, right: 4 }}
-      >
-        <Text
-          style={{
-            fontSize: normalize(13),
-            color: colors.primary,
-            fontWeight: '600',
-            textDecorationLine: 'underline',
-          }}
+    <View style={localStyles.gradeClassRow}>
+      <View style={localStyles.gradeClassCol}>
+        <Text style={localStyles.fieldLabel}>학년</Text>
+        <View
+          style={[
+            localStyles.underlineField,
+            gradeNum ? localStyles.underlineFieldActive : null,
+          ]}
         >
-          이 학년이 아니신가요?
-        </Text>
-      </TouchableOpacity>
+          <TextInput
+            style={localStyles.fieldInput}
+            placeholder=""
+            placeholderTextColor={colors.textSecondary}
+            value={gradeNum}
+            onChangeText={(text) => {
+              onGradeNumChange?.(text.replace(/\D/g, '').slice(0, 1));
+            }}
+            keyboardType="number-pad"
+            maxLength={1}
+            returnKeyType="next"
+          />
+        </View>
+      </View>
 
-      <Text style={stepStyles.inputLabel}>반</Text>
-      <View style={[stepStyles.inputWrapper, localStyles.classInputWrapper]}>
-        <TextInput
-          style={[stepStyles.input, localStyles.classInput]}
-          placeholder="반 (예: 1)"
-          placeholderTextColor={colors.textSecondary}
-          value={classNum}
-          onChangeText={(text) => {
-            onClassNumChange?.(text.replace(/\D/g, '').slice(0, 2));
-          }}
-          keyboardType="number-pad"
-          maxLength={2}
-          returnKeyType="done"
-        />
+      <View style={localStyles.gradeClassCol}>
+        <Text style={localStyles.fieldLabel}>반</Text>
+        <View
+          style={[
+            localStyles.underlineField,
+            classNum ? localStyles.underlineFieldActive : null,
+          ]}
+        >
+          <TextInput
+            style={localStyles.fieldInput}
+            placeholder=""
+            placeholderTextColor={colors.textSecondary}
+            value={classNum}
+            onChangeText={(text) => {
+              onClassNumChange?.(text.replace(/\D/g, '').slice(0, 2));
+            }}
+            keyboardType="number-pad"
+            maxLength={2}
+            returnKeyType="done"
+          />
+        </View>
       </View>
     </View>
   ) : null;
@@ -123,6 +126,7 @@ const SignStepSchoolSelect = ({
         showListOnlyWithResults
         rowMarginHorizontal={0}
         showClearButton={Boolean(selectedSchool)}
+        onClear={handleSchoolClear}
       />
       {selectedSchool && !searchActive ? (
         <SignupStepScroll normalize={normalize} bottomOffset={bottomOffset}>
@@ -159,11 +163,34 @@ function createLocalStyles(normalize, width) {
       fontSize: normalize(fontSizes.lg),
       color: colors.textSecondary,
     },
-    classInputWrapper: {
-      marginTop: normalize(4),
+    gradeClassRow: {
+      flexDirection: 'row',
+      gap: normalize(24),
+      marginTop: normalize(24),
     },
-    classInput: {
-      marginBottom: 0,
+    gradeClassCol: {
+      flex: 1,
+      minWidth: 0,
+    },
+    underlineField: {
+      paddingBottom: normalize(8),
+      borderBottomWidth: normalize(1),
+      borderBottomColor: colors.textLight20,
+    },
+    underlineFieldActive: {
+      borderBottomColor: colors.textPrimary,
+    },
+    fieldInput: {
+      paddingVertical: 0,
+      paddingHorizontal: 0,
+      fontFamily: fonts.regular,
+      fontSize: normalize(fontSizes.xxl),
+      minHeight: normalize(fontSizes.xxl),
+      color: colors.textPrimary,
+      ...Platform.select({
+        android: { includeFontPadding: false, textAlignVertical: 'center' },
+        ios: {},
+      }),
     },
   });
 }

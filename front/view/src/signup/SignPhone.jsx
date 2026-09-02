@@ -51,8 +51,6 @@ import { useAppNavigation } from '../../../navigation/useAppNavigation';
 import {
   showTooOldForSignupAlert,
   showTooYoungForSignupAlert,
-  GRADE_MISMATCH_HELP_TITLE,
-  GRADE_MISMATCH_HELP_MESSAGE,
 } from './authFeatureAlerts';
 import {
   classifyBirthDateCase,
@@ -127,6 +125,7 @@ const SignPhone = ({ navigation }) => {
   const [birthDate, setBirthDate] = useState('');
   const [selectedSchool, setSelectedSchool] = useState(null);
   const [schoolClassNum, setSchoolClassNum] = useState('');
+  const [schoolGradeNum, setSchoolGradeNum] = useState('');
   const [studentVerified, setStudentVerified] = useState(false);
   const [studentVerificationToken, setStudentVerificationToken] = useState(null);
   const [recognizedData, setRecognizedData] = useState(null);
@@ -187,10 +186,10 @@ const SignPhone = ({ navigation }) => {
     return buildEnrollmentFromBirthDate(bd);
   }, [identity.birthDate]);
 
-  const schoolGradeLabel = useMemo(() => {
+  useEffect(() => {
     const g = schoolEnrollmentPreview.grade;
-    if (g == null || !Number.isFinite(Number(g))) return '';
-    return `${Number(g)}학년`;
+    if (g == null || !Number.isFinite(Number(g))) return;
+    setSchoolGradeNum((prev) => prev || String(Number(g)));
   }, [schoolEnrollmentPreview.grade]);
 
   const progressWidth = useMemo(() => {
@@ -217,6 +216,7 @@ const SignPhone = ({ navigation }) => {
       stepInfoData,
       selectedSchool,
       schoolClassNum,
+      schoolGradeNum,
       studentVerified,
       studentVerificationToken,
       recognizedData,
@@ -239,6 +239,7 @@ const SignPhone = ({ navigation }) => {
       recognizedData,
       requiresGuardianVerification,
       schoolClassNum,
+      schoolGradeNum,
       stepInfoData,
       selectedSchool,
       studentVerificationToken,
@@ -262,6 +263,7 @@ const SignPhone = ({ navigation }) => {
     }
     if (snapshot.selectedSchool) setSelectedSchool(snapshot.selectedSchool);
     if (snapshot.schoolClassNum != null) setSchoolClassNum(snapshot.schoolClassNum);
+    if (snapshot.schoolGradeNum != null) setSchoolGradeNum(snapshot.schoolGradeNum);
     if (snapshot.studentVerified != null) setStudentVerified(snapshot.studentVerified);
     if (snapshot.studentVerificationToken) {
       setStudentVerificationToken(snapshot.studentVerificationToken);
@@ -938,7 +940,7 @@ const SignPhone = ({ navigation }) => {
   };
 
   const proceedFromSchoolSelect = useCallback(() => {
-    const grade = schoolEnrollmentPreview.grade;
+    const grade = Number(schoolGradeNum);
     const classNum = Number(schoolClassNum);
     setFormData((prev) => ({
       ...prev,
@@ -950,11 +952,16 @@ const SignPhone = ({ navigation }) => {
       schoolLevel: schoolEnrollmentPreview.schoolLevel || prev.schoolLevel,
     }));
     setCurrentStep(STEP.STUDENT_VERIFY);
-  }, [schoolClassNum, schoolEnrollmentPreview, selectedSchool]);
+  }, [
+    schoolClassNum,
+    schoolEnrollmentPreview,
+    schoolGradeNum,
+    selectedSchool,
+  ]);
 
   const handleSchoolSelectNext = () => {
     if (SIGNUP_REDESIGN_SKIP_VALIDATION) {
-      const grade = schoolEnrollmentPreview.grade || 2;
+      const grade = Number(schoolGradeNum) || 2;
       const classNum = Number(schoolClassNum) || 1;
       setFormData((prev) => ({
         ...prev,
@@ -976,9 +983,9 @@ const SignPhone = ({ navigation }) => {
       Alert.alert('알림', '재학 중인 학교를 목록에서 선택해 주세요.');
       return;
     }
-    const grade = schoolEnrollmentPreview.grade;
-    if (grade == null || !Number.isFinite(Number(grade)) || Number(grade) < 1) {
-      Alert.alert('알림', '생년월일 기준으로 학년을 계산하지 못했습니다.');
+    const grade = Number(schoolGradeNum);
+    if (!Number.isFinite(grade) || grade < 1) {
+      Alert.alert('알림', '학년을 입력해 주세요.');
       return;
     }
     const classNum = Number(schoolClassNum);
@@ -990,7 +997,7 @@ const SignPhone = ({ navigation }) => {
     setBlockingAlert({
       visible: true,
       title: '학적 정보 확인',
-      message: `${selectedSchool.name} ${Number(grade)}학년 ${classNum}반이 맞나요?`,
+      message: `${selectedSchool.name} ${grade}학년 ${classNum}반이 맞나요?`,
       buttons: [
         {
           text: '맞아요',
@@ -1017,7 +1024,7 @@ const SignPhone = ({ navigation }) => {
       ...prev,
       schoolId: selectedSchool?.id || prev.schoolId,
       schoolName: selectedSchool?.name || prev.schoolName,
-      grade: String(schoolEnrollmentPreview.grade || prev.grade || 2),
+      grade: String(schoolGradeNum || prev.grade || 2),
       classNum: String(schoolClassNum || prev.classNum || 1),
       graduationYear: String(
         schoolEnrollmentPreview.graduationYear || prev.graduationYear || '',
@@ -1197,6 +1204,7 @@ const SignPhone = ({ navigation }) => {
     }
     if (currentStep === STEP.SCHOOL_SELECT) {
       if (!selectedSchool?.id || selectedSchool?.manual) return true;
+      if (!Number(schoolGradeNum) || Number(schoolGradeNum) < 1) return true;
       if (!Number(schoolClassNum) || Number(schoolClassNum) < 1) return true;
     }
     if (currentStep === STEP.STUDENT_VERIFY && !studentVerified) return true;
@@ -1339,17 +1347,10 @@ const SignPhone = ({ navigation }) => {
             normalize={normalize}
             selectedSchool={selectedSchool}
             onSelect={setSelectedSchool}
-            gradeLabel={schoolGradeLabel}
+            gradeNum={schoolGradeNum}
+            onGradeNumChange={setSchoolGradeNum}
             classNum={schoolClassNum}
             onClassNumChange={setSchoolClassNum}
-            onPressGradeMismatch={() => {
-              setBlockingAlert({
-                visible: true,
-                title: GRADE_MISMATCH_HELP_TITLE,
-                message: GRADE_MISMATCH_HELP_MESSAGE,
-                buttons: [{ text: '확인', onPress: closeBlockingAlert }],
-              });
-            }}
             bottomOffset={footerHeight}
           />
         )}
