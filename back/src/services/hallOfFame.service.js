@@ -321,17 +321,26 @@ export async function listDeveloperFeedbackForAdmin({ limit = 50, q = '' } = {})
   const [rows] = await pool.execute(
     `SELECT
        df.id,
+       df.group_id,
        df.category,
        df.content,
+       df.honoree_name,
+       df.school_public,
        df.created_at,
        df.user_id,
+       g.admin_response,
+       g.admin_response_status,
+       g.admin_responded_at,
+       g.content AS group_content,
        u.username,
        u.name_enc AS user_name_enc,
        s.name AS school_name,
+       (SELECT COUNT(*) FROM developer_feedback df2 WHERE df2.group_id = df.group_id) AS group_member_count,
        (SELECT GROUP_CONCAT(hef.entry_id)
         FROM hall_of_fame_entry_feedback hef
         WHERE hef.feedback_id = df.id) AS linked_entry_ids
      FROM developer_feedback df
+     INNER JOIN developer_feedback_groups g ON g.id = df.group_id
      LEFT JOIN users u ON u.id = df.user_id
      LEFT JOIN schools s ON s.school_id = u.school_id
      WHERE ${whereSql}
@@ -342,10 +351,19 @@ export async function listDeveloperFeedbackForAdmin({ limit = 50, q = '' } = {})
 
   return rows.map((row) => {
     const plainName = resolveUserName(row) || '';
+    const groupMemberCount = Number(row.group_member_count) || 1;
     return {
       id: row.id,
+      groupId: row.group_id,
       category: row.category,
       content: row.content,
+      groupContent: row.group_content || row.content,
+      honoreeName: row.honoree_name || '',
+      schoolPublic: Boolean(row.school_public),
+      adminResponse: row.admin_response || '',
+      adminResponseStatus: row.admin_response_status || 'none',
+      adminRespondedAt: row.admin_responded_at,
+      groupMemberCount,
       createdAt: row.created_at,
       userId: row.user_id,
       username: row.username,

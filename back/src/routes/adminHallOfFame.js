@@ -11,6 +11,13 @@ import {
   listDeveloperFeedbackForAdmin,
   resolveHonoreeFromUser,
 } from '../services/hallOfFame.service.js';
+import {
+  listPublicDeveloperFeedback,
+  createDeveloperFeedbackSubmission,
+  updateDeveloperFeedbackGroupResponse,
+  mergeDeveloperFeedbackByIds,
+  getDeveloperFeedbackGroupForAdmin,
+} from '../services/developerFeedback.service.js';
 
 const router = express.Router();
 
@@ -52,6 +59,73 @@ router.get('/developer-feedback', requireAdminApi, async (req, res) => {
   } catch (error) {
     console.error('[admin/hall-of-fame/feedback]', error);
     return res.status(500).json({ success: false, message: '제보 목록을 불러오지 못했습니다.' });
+  }
+});
+
+router.post(
+  '/developer-feedback/groups/merge',
+  requireAdminApi,
+  validate([
+    body('feedbackIds').isArray({ min: 2 }),
+    body('feedbackIds.*').isInt({ min: 1 }),
+  ]),
+  async (req, res) => {
+    if (!isAdminUser(req.user.userId)) {
+      return res.status(403).json({ success: false, message: '관리자 권한이 필요합니다.' });
+    }
+    try {
+      const result = await mergeDeveloperFeedbackByIds(req.body.feedbackIds);
+      if (result.error) {
+        return res.status(400).json({ success: false, message: result.error });
+      }
+      return res.json({ success: true, data: result });
+    } catch (error) {
+      console.error('[admin/hall-of-fame/feedback-merge]', error);
+      return res.status(500).json({ success: false, message: '제보 묶기에 실패했습니다.' });
+    }
+  },
+);
+
+router.patch(
+  '/developer-feedback/groups/:groupId',
+  requireAdminApi,
+  validate([
+    param('groupId').isInt({ min: 1 }),
+    body('adminResponse').optional({ values: 'falsy' }).isString().isLength({ max: 500 }),
+    body('adminResponseStatus')
+      .optional()
+      .isIn(['none', 'fixed', 'planned', 'declined']),
+  ]),
+  async (req, res) => {
+    if (!isAdminUser(req.user.userId)) {
+      return res.status(403).json({ success: false, message: '관리자 권한이 필요합니다.' });
+    }
+    try {
+      const result = await updateDeveloperFeedbackGroupResponse(req.params.groupId, req.body);
+      if (result.error) {
+        return res.status(400).json({ success: false, message: result.error });
+      }
+      return res.json({ success: true, data: result });
+    } catch (error) {
+      console.error('[admin/hall-of-fame/group-response]', error);
+      return res.status(500).json({ success: false, message: '답변 저장에 실패했습니다.' });
+    }
+  },
+);
+
+router.get('/developer-feedback/groups/:groupId', requireAdminApi, async (req, res) => {
+  if (!isAdminUser(req.user.userId)) {
+    return res.status(403).json({ success: false, message: '관리자 권한이 필요합니다.' });
+  }
+  try {
+    const group = await getDeveloperFeedbackGroupForAdmin(req.params.groupId);
+    if (!group) {
+      return res.status(404).json({ success: false, message: '제보 묶음을 찾을 수 없습니다.' });
+    }
+    return res.json({ success: true, data: group });
+  } catch (error) {
+    console.error('[admin/hall-of-fame/group-get]', error);
+    return res.status(500).json({ success: false, message: '제보 묶음을 불러오지 못했습니다.' });
   }
 });
 

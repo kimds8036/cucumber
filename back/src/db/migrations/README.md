@@ -7,7 +7,8 @@
 | `001_init.sql` | **현재 전체 스키마** (002~006 · admin FK · mail FK · cron · ocr 제거 포함) |
 | `archive/pre-squash/` | 2026-08 1차 스쿼시 이전 001~059 SQL (참고용, 실행 안 함) |
 | `archive/incremental-pre-squash-v2/` | 2차 스쿼시 이전 증분 002~006 (참고용, 실행 안 함) |
-| `archive/2026-08-squash/` | 1차 스쿼시 시 004~010 증분 (참고용) |
+| `007_developer_feedback_hall_of_fame.sql` | 회초리·명예의 전당·제보 묶음 (008~011 통합) |
+| `archive/2026-09-squash/` | 2026-09 스쿼시 이전 008~011 SQL (참고용) |
 
 `migrate.js`는 `schema_migrations` 테이블로 **이미 적용된 파일만 스킵**합니다.
 
