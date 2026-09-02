@@ -20,7 +20,7 @@
 - react-native-reanimated: Software Mansion
 - react-native-keyboard-controller: Kiryl Ziusko
 - react-native-svg: React Native Community
-- react-native-vector-icons: Joel Arvidsson
+- @expo/vector-icons: 650 Industries, Inc.
 - react-native-web: Nicolas Gallagher
 - react-native-keyboard-aware-scroll-view: APSL
 - react-native-view-shot: Gaëtan Renaudeau
@@ -28,6 +28,17 @@
 - @react-native-async-storage/async-storage: Krzysztof Borowy
 - @react-native-firebase/app: Invertase
 - @react-native-firebase/messaging: Invertase
+- react-native-worklets: Software Mansion
+- react-native-gesture-handler: Software Mansion
+- expo-media-library: 650 Industries, Inc.
+- expo-local-authentication: 650 Industries, Inc.
+- expo-linking: 650 Industries, Inc.
+- expo-haptics: 650 Industries, Inc.
+- expo-dev-client: 650 Industries, Inc.
+- expo-clipboard: 650 Industries, Inc.
+- @react-native-menu/menu: React Native Community
+- @react-native-community/netinfo: React Native Community
+- @react-native-firebase/auth: Invertase
 - @react-native-picker/picker: React Native Community
 - @fortawesome/react-native-fontawesome: The Font Awesome Team
 - @fortawesome/fontawesome-svg-core: The Font Awesome Team

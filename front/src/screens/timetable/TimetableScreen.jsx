@@ -296,6 +296,7 @@ export default function TimetableScreen({ navigation, route }) {
         pendingTimetable: nextTimetable,
         sourceTimetable: nextTimetable,
         timetableCacheKey: keyToUse,
+        timetableSource: 'manual',
         suggestedPeriodCount: getMaxPeriodFromTimetableKeys(nextTimetable, 7),
       });
     } catch (error) {

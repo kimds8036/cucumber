@@ -20,7 +20,11 @@ import { colors } from '../../styles/colors';
 import { getNormalize } from '../../styles/frame.style';
 import { createNotificationSettingsStyles } from '../../styles/mypage.style';
 import { api } from '../../utils/api';
-import { saveTimetableLocalAndSync } from '../../utils/timetableSync';
+import {
+  saveTimetableLocalAndSync,
+  TIMETABLE_SOURCE_AUTO,
+  TIMETABLE_SOURCE_MANUAL,
+} from '../../utils/timetableSync';
 import {
   defaultPeriodTimes,
   loadPeriodTimeSettings,
@@ -104,6 +108,10 @@ const PeriodTimeSetup = ({ navigation, route }) => {
   const sourceTimetable =
     route?.params?.sourceTimetable || pendingTimetable || null;
   const timetableCacheKey = route?.params?.timetableCacheKey;
+  const timetableSource =
+    route?.params?.timetableSource === TIMETABLE_SOURCE_AUTO
+      ? TIMETABLE_SOURCE_AUTO
+      : TIMETABLE_SOURCE_MANUAL;
 
   const suggestedPeriodCount = useMemo(() => {
     if (sourceTimetable && typeof sourceTimetable === 'object') {
@@ -295,7 +303,9 @@ const PeriodTimeSetup = ({ navigation, route }) => {
         typeof pendingTimetable === 'object' &&
         timetableCacheKey
       ) {
-        await saveTimetableLocalAndSync(timetableCacheKey, pendingTimetable);
+        await saveTimetableLocalAndSync(timetableCacheKey, pendingTimetable, {
+          source: timetableSource,
+        });
       }
 
       finishToMypage();
@@ -309,6 +319,7 @@ const PeriodTimeSetup = ({ navigation, route }) => {
     userScope,
     pendingTimetable,
     timetableCacheKey,
+    timetableSource,
     finishToMypage,
     loadingPeriods,
   ]);

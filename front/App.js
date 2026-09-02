@@ -116,6 +116,7 @@ import {
   setupFCMHandlers,
 } from './utils/fcmService';
 import { trackScreenView, flushAnalyticsEvents } from './utils/analytics';
+import AutoTimetableRefreshOnLaunch from './components/timetable/AutoTimetableRefreshOnLaunch';
 import WidgetDeepLinkHandler, {
   stashWidgetDeepLinkFromUrl,
 } from './components/navigation/WidgetDeepLinkHandler';
@@ -918,6 +919,7 @@ export default function App() {
                       <ToastProvider>
                         <NotificationProvider>
                           <FriendProvider>
+                            <AutoTimetableRefreshOnLaunch />
                             <NavigationContainer
                               ref={navigationRef}
                               linking={linking}

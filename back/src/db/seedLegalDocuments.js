@@ -11,31 +11,31 @@ export const DEFAULT_LEGAL_DOCUMENTS = [
     slug: 'terms_of_service',
     title: '서비스 이용약관',
     file: 'service-terms.md',
-    version: 'v1.2.1',
+    version: 'v1.3.1',
   },
   {
     slug: 'privacy_policy',
     title: '개인정보 처리방침',
     file: 'privacy-policy.md',
-    version: 'v1.4.1',
+    version: 'v1.5.1',
   },
   {
     slug: 'community_guide',
     title: '커뮤니티 가이드',
     file: 'community-guide.md',
-    version: 'v1.0',
+    version: 'v1.1.1',
   },
   {
     slug: 'youth_protection_policy',
     title: '청소년 보호정책',
     file: 'youth-protect-policy.md',
-    version: 'v1.0',
+    version: 'v1.1.1',
   },
   {
     slug: 'open_source_licenses',
     title: '오픈소스 라이선스',
     file: 'open-source-licenses.md',
-    version: 'v1.0',
+    version: 'v1.1.1',
   },
 ];
 
