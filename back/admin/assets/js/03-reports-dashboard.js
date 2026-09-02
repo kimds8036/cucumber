@@ -188,6 +188,7 @@ async function loadDashboard() {
       activity: ['앱 활동', '글 · 댓글 · 쪽지 · 우편'],
       jobs: ['크론', '무슨 일이 도는지 · 최근 실행'],
       terms: ['등교 · 학기', '개학일 · 오늘 등교 여부'],
+      map: ['전국 분포', '학교 위치 · 지역별 인원'],
       reach: ['이용 · 설치', 'DAU/MAU · /get'],
     };
     const t = titles[view];
@@ -205,6 +206,13 @@ async function loadDashboard() {
       if (view === 'timer') await loadTimerOps();
       if (view === 'activity') await loadActivityOps();
       if (view === 'terms') await loadOpsSchoolTerms();
+      if (view === 'map') {
+        if (typeof loadOpsSchoolGeo === 'function') {
+          await loadOpsSchoolGeo();
+        } else {
+          throw new Error('지도 스크립트가 로드되지 않았습니다.');
+        }
+      }
       if (view === 'reach') {
       await loadAnalyticsOverview();
         await loadInstallLandingStats();

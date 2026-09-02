@@ -401,6 +401,24 @@ router.get('/analytics/school-terms', requireAdminApi, async (req, res) => {
   }
 });
 
+router.get('/analytics/school-geo', requireAdminApi, async (req, res) => {
+  const adminUserId = req.user.userId;
+  if (!isAdminUser(adminUserId)) {
+    return res.status(403).json({ success: false, message: '관리자 권한이 필요합니다.' });
+  }
+  try {
+    const { getOpsSchoolGeoOverview } = await import('../services/opsSchoolGeo.service.js');
+    const data = await getOpsSchoolGeoOverview();
+    return res.json({ success: true, data });
+  } catch (error) {
+    console.error('학교 지도 모니터링 조회 오류:', error);
+    return res.status(500).json({
+      success: false,
+      message: '학교 위치·인원 현황을 불러오지 못했습니다.',
+    });
+  }
+});
+
 router.get('/reports', requireAdminApi, async (req, res) => {
   const adminUserId = req.user.userId;
   if (!isAdminUser(adminUserId)) {

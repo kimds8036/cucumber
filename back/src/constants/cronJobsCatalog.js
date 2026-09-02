@@ -89,7 +89,7 @@ export const CRON_JOB_CATALOG = [
     whenDefault: '일요일 새벽 5시',
     envKey: 'CRON_ADMIN_RETENTION',
     defaultCron: '0 5 * * 0',
-    blurb: '너무 오래된 운영 로그를 지워서 DB가 불어나지 않게 해요.',
+    blurb: '오래된 운영 로그·아카이브 신고와, 90일 넘은 비활성 FCM 토큰을 지워요.',
   },
   {
     key: 'analytics-reconcile',
