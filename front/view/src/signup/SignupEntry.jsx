@@ -17,7 +17,10 @@ const SignupEntry = ({ navigation }) => {
   const { width } = useWindowDimensions();
   const normalize = (size) => Math.round((width / 375) * size);
   const loginStyles = useMemo(() => createLoginStyles(width, normalize), [width]);
-  const styles = createSignupEntryStyles(normalize);
+  const styles = useMemo(
+    () => createSignupEntryStyles(width, normalize),
+    [width],
+  );
 
   const [consentVisible, setConsentVisible] = useState(false);
   const [pendingProvider, setPendingProvider] = useState(null);

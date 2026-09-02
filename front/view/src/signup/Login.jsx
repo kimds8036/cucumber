@@ -30,6 +30,7 @@ import {
   getApiUserFacingMessage,
 } from '../../../utils/api';
 import { useAuth } from '../../../context/AuthContext';
+import SubHeader from '../../frame/subHeader';
 
 /** 로그인 실패 안내 — 사용자용 문구만 (기술 정보는 __DEV__ 콘솔) */
 function buildLoginFailureMessage(error) {
@@ -71,6 +72,8 @@ const Login = ({ navigation }) => {
 
   const [id, setId] = useState('');
   const [password, setPassword] = useState('');
+  const [idFocused, setIdFocused] = useState(false);
+  const [passwordFocused, setPasswordFocused] = useState(false);
   const [screenReady] = useState(true);
   const [policyModal, setPolicyModal] = useState({
     visible: false,
@@ -97,6 +100,159 @@ const Login = ({ navigation }) => {
   const handleAppleLogin = useCallback(() => {
     Alert.alert('준비 중', 'Apple 간편 로그인은 곧 제공될 예정입니다.');
   }, []);
+
+  const handleLogin = useCallback(async () => {
+    if (!id || !password) {
+      Alert.alert('알림', '아이디와 비밀번호를 입력해주세요.');
+      return;
+    }
+
+    try {
+      const loginPayload = {
+        username: id,
+        password,
+      };
+
+      debugLogin('로그인 시도', {
+        baseURL: api.defaults.baseURL,
+        endpoint: '/api/auth/login',
+        username: id,
+        passwordLength: password.length,
+        platform: Platform.OS,
+      });
+
+      const deviceId = await getOrCreateDeviceId();
+      const response = await api.post('/api/auth/login', {
+        ...loginPayload,
+        deviceId,
+      });
+
+      const { token, refreshToken, user, needsVerification } =
+        response.data.data;
+      debugLogin('로그인 성공', {
+        status: response.status,
+        success: response.data?.success,
+        message: response.data?.message,
+        hasToken: Boolean(token),
+        tokenPreview: token ? `${token.slice(0, 10)}...` : null,
+        user,
+        needsVerification,
+      });
+
+      if (token) {
+        debugLogin('토큰 저장 시작', { persist: true });
+        await setAuthToken(token, { persist: true });
+        if (refreshToken) {
+          await setRefreshToken(refreshToken, { persist: true });
+        }
+        debugLogin('토큰 저장 완료');
+      }
+      debugLogin('로그인 상태 반영 → 스택 전환');
+      await login({
+        studentVerificationStatus:
+          response.data.data?.studentVerificationStatus || 'PENDING',
+        rejectReason: response.data.data?.rejectReason || null,
+        reverificationStatus:
+          response.data.data?.reverificationStatus || 'none',
+        reverificationDeadline:
+          response.data.data?.reverificationDeadline || null,
+      });
+    } catch (error) {
+      const hasResponse = Boolean(error?.response);
+      const hasRequest = Boolean(error?.request);
+
+      console.error('[LoginDebug] 로그인 실패', {
+        baseURL: api.defaults.baseURL,
+        endpoint: '/api/auth/login',
+        errorMessage: error?.message,
+        errorCode: error?.code,
+        isAxiosError: error?.isAxiosError,
+        status: error?.response?.status,
+        statusText: error?.response?.statusText,
+        responseData: error?.response?.data,
+        requestInfo: hasRequest
+          ? {
+              timeout: error?.config?.timeout,
+              method: error?.config?.method,
+              url: error?.config?.url,
+            }
+          : null,
+        errorType: hasResponse
+          ? 'SERVER_ERROR'
+          : hasRequest
+            ? 'NETWORK_OR_TIMEOUT'
+            : 'CLIENT_SETUP_ERROR',
+      });
+
+      const serverCode = error?.response?.data?.code;
+      const suspendedUntil = error?.response?.data?.suspendedUntil;
+      if (serverCode === 'ACCOUNT_BANNED') {
+        setPolicyModal({
+          visible: true,
+          title: '로그인 제한',
+          highlight: '영구 정지된 계정입니다.',
+          body: '운영정책 위반으로 서비스 이용이 제한되었습니다.\n문의가 필요하면 고객센터로 연락해주세요.',
+        });
+        return;
+      }
+      if (serverCode === 'ACCOUNT_DELETED') {
+        setPolicyModal({
+          visible: true,
+          title: '로그인 안내',
+          highlight: '탈퇴한 사용자입니다.',
+          body: '이미 탈퇴 처리된 계정입니다.\n다시 이용하려면 새로운 아이디로 회원가입해 주세요.',
+        });
+        return;
+      }
+      if (serverCode === 'ACCOUNT_SUSPENDED') {
+        const until = formatSuspendedUntil(suspendedUntil);
+        setPolicyModal({
+          visible: true,
+          title: '로그인 제한',
+          highlight: '임시 정지된 계정입니다.',
+          body: until
+            ? `해제 예정 시각: ${until}\n해제 시각 이후 다시 로그인해주세요.`
+            : '해제 시각 이후 다시 로그인해주세요.',
+        });
+        return;
+      }
+      if (serverCode === 'GRADUATED_BLOCKED') {
+        setPolicyModal({
+          visible: true,
+          title: '이용 제한',
+          highlight: '졸업생은 서비스를 이용할 수 없습니다.',
+          body:
+            '고등학교 졸업으로 Youth Paper 이용이 종료되었습니다.\n' +
+            '학생 인증 기반 서비스 정책에 따라 앱 이용이 제한됩니다.',
+        });
+        return;
+      }
+      if (serverCode === 'ADULT_BLOCKED') {
+        setPolicyModal({
+          visible: true,
+          title: '이용 제한',
+          highlight: '성인은 서비스를 이용할 수 없습니다.',
+          body:
+            '성인 연령으로 Youth Paper 이용이 종료되었습니다.\n' +
+            '학생 인증 기반 서비스 정책에 따라 앱 이용이 제한됩니다.',
+        });
+        return;
+      }
+      if (serverCode === 'REVERIFICATION_RESTRICTED') {
+        setPolicyModal({
+          visible: true,
+          title: '재인증 필요',
+          highlight: '학생증 재인증이 필요합니다.',
+          body:
+            '새 학년도 재인증 유예 기간이 지났습니다.\n' +
+            '앱 이용을 재개하려면 고객센터로 문의해 주세요.',
+        });
+        return;
+      }
+
+      Alert.alert('로그인 실패', buildLoginFailureMessage(error));
+    }
+  }, [id, password, login]);
 
   useEffect(() => {
     const showEvent =
@@ -125,58 +281,57 @@ const Login = ({ navigation }) => {
   if (!screenReady) return null;
 
   return (
-    <SafeAreaView
-      style={{ flex: 1, backgroundColor: colors.background }}
-      edges={['top', 'bottom']}
-    >
+    <SafeAreaView style={styles.screen} edges={['top', 'bottom']}>
+      <SubHeader title="" onBack={() => navigation.goBack()} />
+
       <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
-        <View style={{ flex: 1 }}>
+        <View style={styles.body}>
           <KeyboardAwareScrollView
             ref={scrollRef}
             mode="layout"
-            contentContainerStyle={styles.loginScreen}
+            style={{ flex: 1 }}
+            contentContainerStyle={styles.bodyScroll}
             keyboardShouldPersistTaps="handled"
             keyboardDismissMode="on-drag"
             showsVerticalScrollIndicator={false}
             bottomOffset={16}
             scrollEnabled={keyboardOpen}
           >
-            <View style={styles.loginHeader}>
-              <TouchableOpacity
-                style={styles.backButton}
-                onPress={() => navigation.goBack()}
-                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                accessibilityRole="button"
-                accessibilityLabel="뒤로 가기"
-              >
-                <Ionicons
-                  name="chevron-back"
-                  size={normalize(24)}
-                  color={colors.textPrimary}
-                />
-              </TouchableOpacity>
-            </View>
-
             <Text style={styles.screenTitle}>로그인</Text>
 
             <View style={styles.underlineInputContainer}>
               <TextInput
-                style={styles.underlineInput}
+                style={[
+                  styles.underlineInput,
+                  idFocused && styles.underlineInputFocused,
+                ]}
                 placeholder="아이디"
                 placeholderTextColor={colors.textSecondary}
                 value={id}
                 onChangeText={setId}
-                onFocus={scrollLoginInputsAboveKeyboard}
+                onFocus={() => {
+                  setIdFocused(true);
+                  scrollLoginInputsAboveKeyboard();
+                }}
+                onBlur={() => setIdFocused(false)}
                 autoCapitalize="none"
               />
 
               <TextInput
-                style={[styles.underlineInput, styles.underlineInputSpaced]}
+                style={[
+                  styles.underlineInput,
+                  styles.underlineInputSpaced,
+                  passwordFocused && styles.underlineInputFocused,
+                ]}
                 placeholder="비밀번호"
                 placeholderTextColor={colors.textSecondary}
                 value={password}
                 onChangeText={setPassword}
-                onFocus={scrollLoginInputsAboveKeyboard}
+                onFocus={() => {
+                  setPasswordFocused(true);
+                  scrollLoginInputsAboveKeyboard();
+                }}
+                onBlur={() => setPasswordFocused(false)}
                 secureTextEntry
                 autoCapitalize="none"
               />
@@ -184,158 +339,7 @@ const Login = ({ navigation }) => {
 
             <TouchableOpacity
               style={styles.loginButton}
-              onPress={async () => {
-                if (!id || !password) {
-                  Alert.alert('알림', '아이디와 비밀번호를 입력해주세요.');
-                  return;
-                }
-
-                try {
-                  const loginPayload = {
-                    username: id,
-                    password,
-                  };
-
-                  debugLogin('로그인 시도', {
-                    baseURL: api.defaults.baseURL,
-                    endpoint: '/api/auth/login',
-                    username: id,
-                    passwordLength: password.length,
-                    platform: Platform.OS,
-                  });
-
-                  const deviceId = await getOrCreateDeviceId();
-                  const response = await api.post('/api/auth/login', {
-                    ...loginPayload,
-                    deviceId,
-                  });
-
-                  const { token, refreshToken, user, needsVerification } =
-                    response.data.data;
-                  debugLogin('로그인 성공', {
-                    status: response.status,
-                    success: response.data?.success,
-                    message: response.data?.message,
-                    hasToken: Boolean(token),
-                    tokenPreview: token ? `${token.slice(0, 10)}...` : null,
-                    user,
-                    needsVerification,
-                  });
-
-                  if (token) {
-                    debugLogin('토큰 저장 시작', { persist: true });
-                    await setAuthToken(token, { persist: true });
-                    if (refreshToken) {
-                      await setRefreshToken(refreshToken, { persist: true });
-                    }
-                    debugLogin('토큰 저장 완료');
-                  }
-                  debugLogin('로그인 상태 반영 → 스택 전환');
-                  await login({
-                    studentVerificationStatus:
-                      response.data.data?.studentVerificationStatus || 'PENDING',
-                    rejectReason: response.data.data?.rejectReason || null,
-                    reverificationStatus:
-                      response.data.data?.reverificationStatus || 'none',
-                    reverificationDeadline:
-                      response.data.data?.reverificationDeadline || null,
-                  });
-                } catch (error) {
-                  const hasResponse = Boolean(error?.response);
-                  const hasRequest = Boolean(error?.request);
-
-                  console.error('[LoginDebug] 로그인 실패', {
-                    baseURL: api.defaults.baseURL,
-                    endpoint: '/api/auth/login',
-                    errorMessage: error?.message,
-                    errorCode: error?.code,
-                    isAxiosError: error?.isAxiosError,
-                    status: error?.response?.status,
-                    statusText: error?.response?.statusText,
-                    responseData: error?.response?.data,
-                    requestInfo: hasRequest
-                      ? {
-                          timeout: error?.config?.timeout,
-                          method: error?.config?.method,
-                          url: error?.config?.url,
-                        }
-                      : null,
-                    errorType: hasResponse
-                      ? 'SERVER_ERROR'
-                      : hasRequest
-                        ? 'NETWORK_OR_TIMEOUT'
-                        : 'CLIENT_SETUP_ERROR',
-                  });
-
-                  const serverCode = error?.response?.data?.code;
-                  const suspendedUntil = error?.response?.data?.suspendedUntil;
-                  if (serverCode === 'ACCOUNT_BANNED') {
-                    setPolicyModal({
-                      visible: true,
-                      title: '로그인 제한',
-                      highlight: '영구 정지된 계정입니다.',
-                      body: '운영정책 위반으로 서비스 이용이 제한되었습니다.\n문의가 필요하면 고객센터로 연락해주세요.',
-                    });
-                    return;
-                  }
-                  if (serverCode === 'ACCOUNT_DELETED') {
-                    setPolicyModal({
-                      visible: true,
-                      title: '로그인 안내',
-                      highlight: '탈퇴한 사용자입니다.',
-                      body: '이미 탈퇴 처리된 계정입니다.\n다시 이용하려면 새로운 아이디로 회원가입해 주세요.',
-                    });
-                    return;
-                  }
-                  if (serverCode === 'ACCOUNT_SUSPENDED') {
-                    const until = formatSuspendedUntil(suspendedUntil);
-                    setPolicyModal({
-                      visible: true,
-                      title: '로그인 제한',
-                      highlight: '임시 정지된 계정입니다.',
-                      body: until
-                        ? `해제 예정 시각: ${until}\n해제 시각 이후 다시 로그인해주세요.`
-                        : '해제 시각 이후 다시 로그인해주세요.',
-                    });
-                    return;
-                  }
-                  if (serverCode === 'GRADUATED_BLOCKED') {
-                    setPolicyModal({
-                      visible: true,
-                      title: '이용 제한',
-                      highlight: '졸업생은 서비스를 이용할 수 없습니다.',
-                      body:
-                        '고등학교 졸업으로 Youth Paper 이용이 종료되었습니다.\n' +
-                        '학생 인증 기반 서비스 정책에 따라 앱 이용이 제한됩니다.',
-                    });
-                    return;
-                  }
-                  if (serverCode === 'ADULT_BLOCKED') {
-                    setPolicyModal({
-                      visible: true,
-                      title: '이용 제한',
-                      highlight: '성인은 서비스를 이용할 수 없습니다.',
-                      body:
-                        '성인 연령으로 Youth Paper 이용이 종료되었습니다.\n' +
-                        '학생 인증 기반 서비스 정책에 따라 앱 이용이 제한됩니다.',
-                    });
-                    return;
-                  }
-                  if (serverCode === 'REVERIFICATION_RESTRICTED') {
-                    setPolicyModal({
-                      visible: true,
-                      title: '재인증 필요',
-                      highlight: '학생증 재인증이 필요합니다.',
-                      body:
-                        '새 학년도 재인증 유예 기간이 지났습니다.\n' +
-                        '앱 이용을 재개하려면 고객센터로 문의해 주세요.',
-                    });
-                    return;
-                  }
-
-                  Alert.alert('로그인 실패', buildLoginFailureMessage(error));
-                }
-              }}
+              onPress={handleLogin}
               activeOpacity={0.85}
             >
               <Text style={styles.loginButtonText}>로그인</Text>
@@ -367,7 +371,7 @@ const Login = ({ navigation }) => {
               >
                 <Ionicons
                   name="chatbubble"
-                  size={normalize(24)}
+                  size={normalize(22)}
                   color={colors.textPrimary}
                 />
               </TouchableOpacity>
@@ -381,7 +385,7 @@ const Login = ({ navigation }) => {
               >
                 <Ionicons
                   name="logo-apple"
-                  size={normalize(26)}
+                  size={normalize(24)}
                   color={colors.textWhite}
                 />
               </TouchableOpacity>
@@ -392,7 +396,7 @@ const Login = ({ navigation }) => {
                 아직 회원이 아니신가요?{' '}
                 <Text
                   style={styles.signupFooterLink}
-                  onPress={() => navigation.navigate('SignupEntry')}
+                  onPress={() => navigation.popToTop()}
                 >
                   회원가입
                 </Text>

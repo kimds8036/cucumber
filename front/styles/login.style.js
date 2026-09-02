@@ -4,32 +4,31 @@ import { shadow } from './tokens';
 
 export const createLoginStyles = (width, normalize) => {
   return StyleSheet.create({
-    // —— 로그인 화면 개편 ——
-    loginScreen: {
+    // —— 로그인 화면 ——
+    screen: {
+      flex: 1,
+      backgroundColor: colors.background,
+    },
+    body: {
+      flex: 1,
+      minHeight: 0,
+    },
+    bodyScroll: {
       flexGrow: 1,
-      paddingHorizontal: normalize(24),
-      paddingTop: normalize(8),
-      paddingBottom: normalize(32),
-    },
-    loginHeader: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      minHeight: normalize(44),
-      marginBottom: normalize(8),
-    },
-    backButton: {
-      marginLeft: normalize(-8),
-      padding: normalize(8),
+      paddingHorizontal: width * 0.07,
+      paddingHorizontal: normalize(28),
+      paddingTop: normalize(80),
+      paddingBottom: normalize(28),
     },
     screenTitle: {
       fontSize: normalize(fontSizes.heading),
       fontFamily: fonts.bold,
       color: colors.textPrimary,
-      marginBottom: normalize(32),
+      marginBottom: normalize(28),
     },
     underlineInputContainer: {
       width: '100%',
-      marginBottom: normalize(8),
+      marginBottom: normalize(4),
     },
     underlineInput: {
       width: '100%',
@@ -39,8 +38,8 @@ export const createLoginStyles = (width, normalize) => {
       fontSize: normalize(fontSizes.xl),
       fontFamily: fonts.regular,
       color: colors.textPrimary,
-      borderBottomWidth: 1,
-      borderBottomColor: colors.border,
+      borderBottomWidth: normalize(1),
+      borderBottomColor: colors.textLight20,
       backgroundColor: colors.background,
       textAlignVertical: 'center',
       ...Platform.select({
@@ -48,17 +47,20 @@ export const createLoginStyles = (width, normalize) => {
         ios: {},
       }),
     },
+    underlineInputFocused: {
+      borderBottomColor: colors.textPrimary,
+    },
     underlineInputSpaced: {
-      marginTop: normalize(8),
+      marginTop: normalize(10),
     },
     loginButton: {
       width: '100%',
       height: normalize(52),
       backgroundColor: colors.primary,
-      borderRadius: normalize(12),
+      borderRadius: normalize(26),
       justifyContent: 'center',
       alignItems: 'center',
-      marginTop: normalize(24),
+      marginTop: normalize(28),
     },
     loginButtonText: {
       fontSize: normalize(fontSizes.xxl),
@@ -69,18 +71,18 @@ export const createLoginStyles = (width, normalize) => {
       flexDirection: 'row',
       justifyContent: 'center',
       alignItems: 'center',
-      marginTop: normalize(20),
+      marginTop: normalize(18),
     },
     socialDividerRow: {
       flexDirection: 'row',
       alignItems: 'center',
-      marginTop: normalize(36),
-      marginBottom: normalize(24),
+      marginTop: normalize(40),
+      marginBottom: normalize(22),
     },
     socialDividerLine: {
       flex: 1,
-      height: 1,
-      backgroundColor: colors.border,
+      height: StyleSheet.hairlineWidth,
+      backgroundColor: colors.textLight20,
     },
     socialDividerText: {
       marginHorizontal: normalize(12),
@@ -92,12 +94,12 @@ export const createLoginStyles = (width, normalize) => {
       flexDirection: 'row',
       justifyContent: 'center',
       alignItems: 'center',
-      gap: normalize(24),
+      gap: normalize(20),
     },
     socialCircleButton: {
-      width: normalize(56),
-      height: normalize(56),
-      borderRadius: normalize(28),
+      width: normalize(52),
+      height: normalize(52),
+      borderRadius: normalize(26),
       alignItems: 'center',
       justifyContent: 'center',
     },
@@ -109,7 +111,7 @@ export const createLoginStyles = (width, normalize) => {
     },
     signupFooter: {
       marginTop: 'auto',
-      paddingTop: normalize(32),
+      paddingTop: normalize(40),
       alignItems: 'center',
     },
     signupFooterText: {
@@ -120,7 +122,6 @@ export const createLoginStyles = (width, normalize) => {
     signupFooterLink: {
       fontFamily: fonts.bold,
       color: colors.textPrimary,
-      textDecorationLine: 'underline',
     },
 
     container: {

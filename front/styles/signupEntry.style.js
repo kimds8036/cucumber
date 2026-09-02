@@ -1,12 +1,12 @@
 import { StyleSheet } from 'react-native';
-import { colors, fonts } from './colors';
+import { colors, fonts, fontSizes } from './colors';
 
-export function createSignupEntryStyles(normalize) {
+export function createSignupEntryStyles(width, normalize) {
   return StyleSheet.create({
     container: {
       flex: 1,
       backgroundColor: colors.background,
-      paddingHorizontal: normalize(24),
+      paddingHorizontal: width * 0.07,
     },
     center: {
       flex: 1,
@@ -53,7 +53,7 @@ export function createSignupEntryStyles(normalize) {
     socialButtonText: {
       marginLeft: normalize(8),
       fontFamily: fonts.regular,
-      fontSize: normalize(16),
+      fontSize: normalize(fontSizes.xl),
     },
     kakaoButtonText: {
       color: colors.textPrimary,
@@ -70,13 +70,12 @@ export function createSignupEntryStyles(normalize) {
     },
     footerText: {
       fontFamily: fonts.regular,
-      fontSize: normalize(14),
+      fontSize: normalize(fontSizes.lg),
       color: colors.textSecondary,
     },
     footerLink: {
       fontFamily: fonts.bold,
       color: colors.textPrimary,
-      textDecorationLine: 'underline',
     },
   });
 }
