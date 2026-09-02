@@ -11,7 +11,6 @@ import {
 } from 'react-native';
 import { colors, fonts, fontSizes } from '../../../styles/colors';
 import SchoolSearchField from './SchoolSearchField';
-import SignupStepScroll from './SignupStepScroll';
 
 /** 계정 만들기 ↔ 학생증 인증 사이 — 재학 학교·학년·반 */
 const SignStepSchoolSelect = ({
@@ -128,11 +127,7 @@ const SignStepSchoolSelect = ({
         showClearButton={Boolean(selectedSchool)}
         onClear={handleSchoolClear}
       />
-      {selectedSchool && !searchActive ? (
-        <SignupStepScroll normalize={normalize} bottomOffset={bottomOffset}>
-          {gradeClassFields}
-        </SignupStepScroll>
-      ) : null}
+      {selectedSchool && !searchActive ? gradeClassFields : null}
     </>
   );
 

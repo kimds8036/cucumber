@@ -1077,6 +1077,12 @@ const SignPhone = ({ navigation }) => {
 
     setSubmitting(true);
     try {
+      if (SIGNUP_REDESIGN_SKIP_VALIDATION) {
+        await clearFlowSession();
+        await login({ studentVerificationStatus: 'PENDING' });
+        return;
+      }
+
       const payload = buildSignupPayload(finalData, verificationToken);
       payload.inviteCode = await peekPendingInviteCode();
       await api.post('/api/auth/signup', payload);
@@ -1227,7 +1233,6 @@ const SignPhone = ({ navigation }) => {
     STEP.BIRTH_DATE,
     STEP.ACCOUNT,
     STEP.SCHOOL_SELECT,
-    STEP.STUDENT_VERIFY,
   ].includes(currentStep);
 
   const hideFooterForOverlay =
@@ -1235,6 +1240,9 @@ const SignPhone = ({ navigation }) => {
     showStudentIdentityIntroModal ||
     inicisOverlayVisible ||
     blockingAlert.visible;
+
+  const isSignupCompleteScreen =
+    currentStep === STEP.STUDENT_VERIFY && studentVerified;
 
   useEffect(() => {
     isMountedRef.current = true;
@@ -1294,29 +1302,31 @@ const SignPhone = ({ navigation }) => {
 
   return (
     <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
-      <View style={styles.headerSection}>
-        <View style={styles.header}>
-          <View style={styles.headerTop}>
-            <TouchableOpacity
-              style={styles.backButton}
-              onPress={() => void handleBack()}
-              disabled={submitting}
-            >
-              <Ionicons
-                name="chevron-back"
-                size={normalize(24)}
-                color={colors.textPrimary}
+      {!isSignupCompleteScreen ? (
+        <View style={styles.headerSection}>
+          <View style={styles.header}>
+            <View style={styles.headerTop}>
+              <TouchableOpacity
+                style={styles.backButton}
+                onPress={() => void handleBack()}
+                disabled={submitting}
+              >
+                <Ionicons
+                  name="chevron-back"
+                  size={normalize(24)}
+                  color={colors.textPrimary}
+                />
+              </TouchableOpacity>
+              <Text style={styles.headerTitle}>{getStepTitle()}</Text>
+            </View>
+            <View style={styles.progressBarContainer}>
+              <View
+                style={[styles.progressBar, { width: `${progressWidth}%` }]}
               />
-            </TouchableOpacity>
-            <Text style={styles.headerTitle}>{getStepTitle()}</Text>
-          </View>
-          <View style={styles.progressBarContainer}>
-            <View
-              style={[styles.progressBar, { width: `${progressWidth}%` }]}
-            />
+            </View>
           </View>
         </View>
-      </View>
+      ) : null}
 
       <View style={styles.contentSection}>
         {currentStep === STEP.BIRTH_DATE && (
@@ -1364,6 +1374,8 @@ const SignPhone = ({ navigation }) => {
             alreadyVerified={studentVerified}
             onVerified={handleStudentVerified}
             onCertificateGuide={() => setCurrentStep(STEP.ALT_VERIFY_CHOICE)}
+            onConfirm={() => void handleComplete()}
+            submitting={submitting}
           />
         )}
 

@@ -147,6 +147,7 @@ const SignApple = ({ navigation }) => {
   const [inicisManualOpening, setInicisManualOpening] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [screenReady, setScreenReady] = useState(false);
+  const [sessionHydrated, setSessionHydrated] = useState(false);
   const [footerHeight, setFooterHeight] = useState(88);
   const [blockingAlert, setBlockingAlert] = useState({
     visible: false,
@@ -157,6 +158,8 @@ const SignApple = ({ navigation }) => {
 
   const isMountedRef = useRef(true);
   const sessionHydratedRef = useRef(false);
+  const initialHydrationDoneRef = useRef(false);
+  const testAppleSkipStartedRef = useRef(false);
   const appleAuthRanRef = useRef(false);
   const birthDateInputRef = useRef('');
   const inicisClientTokenRef = useRef(null);
@@ -511,6 +514,7 @@ const SignApple = ({ navigation }) => {
 
   const runStudentIdentityVerificationCore = useCallback(async () => {
     if (SIGNUP_REDESIGN_SKIP_VALIDATION) {
+      await new Promise((resolve) => setTimeout(resolve, 400));
       return {
         ok: true,
         nextIdentity: {
@@ -811,16 +815,13 @@ const SignApple = ({ navigation }) => {
         return;
       }
     } else {
+      const birthCase = classifyBirthDateCase(nextBirthDate);
+      if (birthCase === 'A' || birthCase === 'D' || birthCase === 'invalid') return;
       applyBirthDateToState(nextBirthDate);
       setRequiresGuardianVerification(false);
       setGuardianVerified(false);
       setGuardianVerifiedAt(null);
-      advanceToSchoolAfterIdentity({
-        ...OCR_TEST_MOCK_IDENTITY,
-        name: identityData.name || OCR_TEST_MOCK_IDENTITY.name,
-        birthDate: nextBirthDate,
-        isVerified: true,
-      });
+      void runStudentIdentityVerification(STEP.BIRTH_DATE);
       return;
     }
 
@@ -1046,6 +1047,12 @@ const SignApple = ({ navigation }) => {
 
     setSubmitting(true);
     try {
+      if (SIGNUP_REDESIGN_SKIP_VALIDATION) {
+        await clearFlowSession();
+        await login({ studentVerificationStatus: 'PENDING' });
+        return;
+      }
+
       const payload = buildSignupPayload(finalData, verificationToken);
       payload.inviteCode = await peekPendingInviteCode();
       await api.post('/api/auth/signup', payload);
@@ -1142,13 +1149,15 @@ const SignApple = ({ navigation }) => {
 
   const isPrimaryDisabled = () => {
     if (submitting) return true;
-    if (SIGNUP_REDESIGN_SKIP_VALIDATION) {
-      if (currentStep === STEP.BIRTH_DATE) return false;
-      if (currentStep === STEP.STUDENT_VERIFY) return false;
+    if (currentStep === STEP.BIRTH_DATE) {
+      if (!isValidBirthDateString(birthDate)) return true;
+      const birthCase = classifyBirthDateCase(birthDate);
+      if (birthCase === 'A' || birthCase === 'D') return true;
       return false;
     }
-    if (currentStep === STEP.BIRTH_DATE) {
-      return !isValidBirthDateString(birthDate);
+    if (SIGNUP_REDESIGN_SKIP_VALIDATION) {
+      if (currentStep === STEP.STUDENT_VERIFY) return false;
+      return false;
     }
     if (currentStep === STEP.SCHOOL_SELECT) {
       if (!selectedSchool?.id || selectedSchool?.manual) return true;
@@ -1172,17 +1181,18 @@ const SignApple = ({ navigation }) => {
     return '다음 단계';
   };
 
-  const showPrimaryFooter = [
-    STEP.BIRTH_DATE,
-    STEP.SCHOOL_SELECT,
-    STEP.STUDENT_VERIFY,
-  ].includes(currentStep);
+  const showPrimaryFooter = [STEP.BIRTH_DATE, STEP.SCHOOL_SELECT].includes(
+    currentStep,
+  );
 
   const hideFooterForOverlay =
     showGuardianConsentModal ||
     showStudentIdentityIntroModal ||
     inicisOverlayVisible ||
     blockingAlert.visible;
+
+  const isSignupCompleteScreen =
+    currentStep === STEP.STUDENT_VERIFY && studentVerified;
 
   useEffect(() => {
     isMountedRef.current = true;
@@ -1195,6 +1205,9 @@ const SignApple = ({ navigation }) => {
   }, []);
 
   useEffect(() => {
+    if (initialHydrationDoneRef.current) return;
+    initialHydrationDoneRef.current = true;
+
     let cancelled = false;
 
     (async () => {
@@ -1202,7 +1215,13 @@ const SignApple = ({ navigation }) => {
         const pending = await getSignupPendingSession();
         if (!cancelled && pending?.provider === 'apple') {
           applySessionSnapshot(pending.snapshot);
-          if (pending.snapshot?.identityData?.name) {
+          const restoredStep = pending.snapshot?.currentStep || STEP.APPLE_AUTH;
+          if (
+            pending.snapshot?.identityData?.name &&
+            (!SIGNUP_REDESIGN_SKIP_VALIDATION ||
+              (restoredStep !== STEP.APPLE_AUTH &&
+                restoredStep !== STEP.BIRTH_DATE))
+          ) {
             appleAuthRanRef.current = true;
           }
           if (!cancelled) {
@@ -1211,11 +1230,14 @@ const SignApple = ({ navigation }) => {
         }
       } else if (route.params?.consents) {
         setConsentData(route.params.consents);
-        setCurrentStep(STEP.APPLE_AUTH);
+        if (!SIGNUP_REDESIGN_SKIP_VALIDATION) {
+          setCurrentStep(STEP.APPLE_AUTH);
+        }
       }
 
       if (!cancelled) {
         sessionHydratedRef.current = true;
+        setSessionHydrated(true);
       }
     })();
 
@@ -1230,14 +1252,23 @@ const SignApple = ({ navigation }) => {
   ]);
 
   useEffect(() => {
-    if (currentStep !== STEP.APPLE_AUTH || !sessionHydratedRef.current) return;
+    if (!SIGNUP_REDESIGN_SKIP_VALIDATION || !sessionHydrated) return;
+    if (currentStep !== STEP.APPLE_AUTH) return;
+    if (testAppleSkipStartedRef.current) return;
+    testAppleSkipStartedRef.current = true;
+    void runAppleMockAuth();
+  }, [currentStep, runAppleMockAuth, sessionHydrated]);
+
+  useEffect(() => {
+    if (currentStep !== STEP.APPLE_AUTH || !sessionHydrated) return;
     if (appleAuthRanRef.current) return;
+    if (SIGNUP_REDESIGN_SKIP_VALIDATION) return;
     appleAuthRanRef.current = true;
     const timer = setTimeout(() => {
       void runAppleMockAuth();
     }, 600);
     return () => clearTimeout(timer);
-  }, [currentStep, runAppleMockAuth]);
+  }, [currentStep, runAppleMockAuth, sessionHydrated]);
 
   useEffect(() => {
     void persistSession();
@@ -1255,32 +1286,34 @@ const SignApple = ({ navigation }) => {
 
   return (
     <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
-      <View style={styles.headerSection}>
-        <View style={styles.header}>
-          <View style={styles.headerTop}>
-            <TouchableOpacity
-              style={styles.backButton}
-              onPress={() => void handleBack()}
-              disabled={submitting}
-            >
-              <Ionicons
-                name="chevron-back"
-                size={normalize(24)}
-                color={colors.textPrimary}
+      {!isSignupCompleteScreen ? (
+        <View style={styles.headerSection}>
+          <View style={styles.header}>
+            <View style={styles.headerTop}>
+              <TouchableOpacity
+                style={styles.backButton}
+                onPress={() => void handleBack()}
+                disabled={submitting}
+              >
+                <Ionicons
+                  name="chevron-back"
+                  size={normalize(24)}
+                  color={colors.textPrimary}
+                />
+              </TouchableOpacity>
+              <Text style={styles.headerTitle}>{getStepTitle()}</Text>
+            </View>
+            <View style={styles.progressBarContainer}>
+              <View
+                style={[styles.progressBar, { width: `${progressWidth}%` }]}
               />
-            </TouchableOpacity>
-            <Text style={styles.headerTitle}>{getStepTitle()}</Text>
-          </View>
-          <View style={styles.progressBarContainer}>
-            <View
-              style={[styles.progressBar, { width: `${progressWidth}%` }]}
-            />
+            </View>
           </View>
         </View>
-      </View>
+      ) : null}
 
       <View style={styles.contentSection}>
-        {currentStep === STEP.APPLE_AUTH && (
+        {currentStep === STEP.APPLE_AUTH && !SIGNUP_REDESIGN_SKIP_VALIDATION && (
           <View
             style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}
           >
@@ -1325,6 +1358,8 @@ const SignApple = ({ navigation }) => {
             alreadyVerified={studentVerified}
             onVerified={handleStudentVerified}
             onCertificateGuide={() => setCurrentStep(STEP.ALT_VERIFY_CHOICE)}
+            onConfirm={() => void handleComplete()}
+            submitting={submitting}
           />
         )}
 

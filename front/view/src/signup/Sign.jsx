@@ -361,9 +361,8 @@ const Sign = ({ navigation }) => {
   const progress = getSignupProgressStep(currentStep, { studentVerified });
   const progressWidth = (progress.step / progress.total) * 100;
 
-  const isCameraStep = currentStep === STEP.STUDENT_VERIFY && !studentVerified;
   const hideFooter =
-    (isCameraStep && !shouldSkipSignupValidation()) ||
+    currentStep === STEP.STUDENT_VERIFY ||
     currentStep === STEP.ALT_VERIFY_CHOICE ||
     currentStep === STEP.CERTIFICATE_GUIDE ||
     currentStep === STEP.NEIS_PLUS_SUBMIT ||
@@ -371,6 +370,9 @@ const Sign = ({ navigation }) => {
     showStudentIdentityIntroModal ||
     inicisOverlayVisible ||
     blockingAlert.visible;
+
+  const isSignupCompleteScreen =
+    currentStep === STEP.STUDENT_VERIFY && studentVerified;
 
   const identity = useMemo(
     () => ({
@@ -1623,6 +1625,11 @@ const Sign = ({ navigation }) => {
 
     setSubmitting(true);
     try {
+      if (SIGNUP_REDESIGN_SKIP_VALIDATION) {
+        await login({ studentVerificationStatus: 'PENDING' });
+        return;
+      }
+
       const inicisToken =
         inicisClientTokenRef.current || identityData.inicisClientToken;
       const payload = buildSignupPayload(
@@ -1796,29 +1803,31 @@ const Sign = ({ navigation }) => {
 
   return (
     <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
-      <View style={styles.headerSection}>
-        <View style={styles.header}>
-          <View style={styles.headerTop}>
-            <TouchableOpacity
-              style={styles.backButton}
-              onPress={handleBack}
-              disabled={submitting}
-            >
-              <Ionicons
-                name="chevron-back"
-                size={normalize(24)}
-                color={colors.textPrimary}
+      {!isSignupCompleteScreen ? (
+        <View style={styles.headerSection}>
+          <View style={styles.header}>
+            <View style={styles.headerTop}>
+              <TouchableOpacity
+                style={styles.backButton}
+                onPress={handleBack}
+                disabled={submitting}
+              >
+                <Ionicons
+                  name="chevron-back"
+                  size={normalize(24)}
+                  color={colors.textPrimary}
+                />
+              </TouchableOpacity>
+              <Text style={styles.headerTitle}>{getStepTitle()}</Text>
+            </View>
+            <View style={styles.progressBarContainer}>
+              <View
+                style={[styles.progressBar, { width: `${progressWidth}%` }]}
               />
-            </TouchableOpacity>
-            <Text style={styles.headerTitle}>{getStepTitle()}</Text>
-          </View>
-          <View style={styles.progressBarContainer}>
-            <View
-              style={[styles.progressBar, { width: `${progressWidth}%` }]}
-            />
+            </View>
           </View>
         </View>
-      </View>
+      ) : null}
 
       <View style={styles.contentSection}>
         {currentStep === STEP.CONSENT && (
@@ -1905,6 +1914,8 @@ const Sign = ({ navigation }) => {
             alreadyVerified={studentVerified}
             onVerified={handleStudentVerified}
             onCertificateGuide={handleAltVerifyChoiceOpen}
+            onConfirm={handleComplete}
+            submitting={submitting}
           />
         )}
       </View>

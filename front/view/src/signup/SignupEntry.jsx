@@ -74,6 +74,7 @@ const SignupEntry = ({ navigation }) => {
               name="chatbubble"
               size={normalize(20)}
               color="#272A26"
+              
             />
             <Text style={[styles.socialButtonText, styles.kakaoButtonText]}>
               카카오로 시작하기

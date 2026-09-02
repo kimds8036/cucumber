@@ -3,7 +3,6 @@ import {
   View,
   Text,
   TouchableOpacity,
-  ScrollView,
   StyleSheet,
   Pressable,
   useWindowDimensions,
@@ -100,11 +99,10 @@ const SignupConsentSheet = ({ visible, provider, onClose, onConfirm }) => {
 
     overlayOpacity.setValue(1);
     sheetTranslateY.setValue(600);
-    Animated.spring(sheetTranslateY, {
+    Animated.timing(sheetTranslateY, {
       toValue: 0,
+      duration: 280,
       useNativeDriver: true,
-      damping: 22,
-      stiffness: 220,
     }).start();
   }, [visible, detailModalVisible, overlayOpacity, sheetTranslateY]);
 
@@ -206,10 +204,7 @@ const SignupConsentSheet = ({ visible, provider, onClose, onConfirm }) => {
               ]}
             >
               <View style={styles.handle} />
-              <ScrollView
-                showsVerticalScrollIndicator={false}
-                contentContainerStyle={styles.scrollContent}
-              >
+              <View style={styles.scrollContent}>
               <View style={styles.bulkCard}>
                 <View style={styles.bulkRow}>
                   <TouchableOpacity
@@ -276,7 +271,7 @@ const SignupConsentSheet = ({ visible, provider, onClose, onConfirm }) => {
               <Text style={styles.footnote}>
                 * 필수 항목 동의 거부 시 회원가입 및 서비스 이용이 제한됩니다.
               </Text>
-            </ScrollView>
+            </View>
 
             <TouchableOpacity
               style={[
