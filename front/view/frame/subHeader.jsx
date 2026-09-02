@@ -6,6 +6,7 @@ import {
   useWindowDimensions,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import Feather from '@expo/vector-icons/Feather';
 import { createSubHeaderStyles, getNormalize } from '../../styles/frame.style';
 import { colors } from '../../styles/colors';
 
@@ -14,6 +15,9 @@ const SubHeader = ({
   subtitle,
   subtitleStyle,
   onBack,
+  /** @type {'ionicons'|'feather'} */
+  backIconSet = 'ionicons',
+  backIconName,
   rightButtonText,
   rightIcon,
   rightElement,
@@ -25,6 +29,8 @@ const SubHeader = ({
   const styles = useMemo(() => createSubHeaderStyles(width, 0), [width]);
   const normalize = useMemo(() => getNormalize(width), [width]);
   const hasRight = rightButtonText || rightIcon || rightElement;
+  const resolvedBackIconName =
+    backIconName || (backIconSet === 'feather' ? 'x' : 'chevron-back');
 
   const getTitle = () => {
     return title;
@@ -35,11 +41,19 @@ const SubHeader = ({
       <View style={styles.header}>
         <View style={styles.headerTop}>
           <TouchableOpacity style={styles.backButton} onPress={onBack}>
-            <Ionicons
-              name="chevron-back"
-              size={normalize(20)}
-              color={colors.textPrimary}
-            />
+            {backIconSet === 'feather' ? (
+              <Feather
+                name={resolvedBackIconName}
+                size={normalize(20)}
+                color={colors.textPrimary}
+              />
+            ) : (
+              <Ionicons
+                name={resolvedBackIconName}
+                size={normalize(20)}
+                color={colors.textPrimary}
+              />
+            )}
           </TouchableOpacity>
           {titleElement ? (
             titleElement

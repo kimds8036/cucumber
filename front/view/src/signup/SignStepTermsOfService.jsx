@@ -1,108 +1,13 @@
-import React, { useMemo } from 'react';
-import {
-  View,
-  Text,
-  ScrollView,
-  Modal,
-  StyleSheet,
-  Platform,
-} from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { colors, fonts, fontSizes } from '../../../styles/colors';
-import { createServiceStyles } from '../../../styles/service.style';
-import PolicyMarkdownBody from '../../../src/screens/Terms-of-Service/PolicyMarkdownBody';
-import PolicyDocumentMeta from '../../../src/screens/Terms-of-Service/PolicyDocumentMeta';
-import { useLegalDocument } from '../../../utils/useLegalDocument';
+import React from 'react';
+import SignupLegalDocumentModal from './SignupLegalDocumentModal';
 
-const FALLBACK_MARKDOWN = require('../../../src/screens/Terms-of-Service/_terms_md.json');
-
-// 약관 모달: 서비스 이용약관 전문 보기 화면
-const SignStepTermsOfService = ({ normalize, onBack }) => {
-  const s = makeStyles(normalize);
-  const docStyles = useMemo(() => createServiceStyles(normalize), [normalize]);
-  const { markdown, meta } = useLegalDocument('terms_of_service', FALLBACK_MARKDOWN);
-
-  return (
-    <Modal
-      visible
-      animationType="slide"
-      presentationStyle={Platform.OS === 'ios' ? 'pageSheet' : 'fullScreen'}
-      statusBarTranslucent
-      onRequestClose={onBack}
-    >
-      <SafeAreaView style={s.container} edges={['top', 'bottom']}>
-        <View style={s.sheetHeader}>
-          {Platform.OS === 'ios' && <View style={s.grabber} />}
-          <View style={s.sheetHeaderRow}>
-            <View style={s.leftPlaceholder} />
-            <Text style={s.sheetTitle}>{meta?.title || '서비스 이용약관'}</Text>
-            <View style={s.rightPlaceholder} />
-          </View>
-        </View>
-        <View style={s.headerDivider} />
-        <ScrollView
-          style={s.scroll}
-          contentContainerStyle={s.scrollContent}
-          showsVerticalScrollIndicator={false}
-        >
-          <PolicyDocumentMeta meta={meta} styles={docStyles} />
-          <PolicyMarkdownBody markdown={markdown} styles={docStyles} />
-        </ScrollView>
-      </SafeAreaView>
-    </Modal>
-  );
-};
-
-const makeStyles = (normalize) =>
-  StyleSheet.create({
-    container: {
-      flex: 1,
-      backgroundColor: colors.background,
-    },
-    sheetHeader: {
-      backgroundColor: colors.background,
-      paddingVertical: normalize(10),
-      paddingHorizontal: normalize(12),
-    },
-    grabber: {
-      alignSelf: 'center',
-      width: normalize(36),
-      height: normalize(5),
-      borderRadius: normalize(999),
-      backgroundColor: colors.textLight20,
-      marginTop: normalize(2),
-      marginBottom: normalize(8),
-    },
-    sheetHeaderRow: {
-      height: normalize(34),
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'space-between',
-    },
-    leftPlaceholder: {
-      minWidth: normalize(44),
-    },
-    sheetTitle: {
-      fontSize: normalize(fontSizes.xxl),
-      fontFamily: fonts.bold,
-      color: colors.textPrimary,
-    },
-    rightPlaceholder: {
-      minWidth: normalize(44),
-    },
-    headerDivider: {
-      height: 1,
-      backgroundColor: colors.textLight20,
-    },
-    scroll: {
-      flex: 1,
-    },
-    scrollContent: {
-      paddingHorizontal: normalize(20),
-      paddingTop: normalize(16),
-      paddingBottom: normalize(32),
-      gap: normalize(8),
-    },
-  });
+const SignStepTermsOfService = ({ normalize, onBack }) => (
+  <SignupLegalDocumentModal
+    visible
+    slug="terms_of_service"
+    normalize={normalize}
+    onClose={onBack}
+  />
+);
 
 export default SignStepTermsOfService;
