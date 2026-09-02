@@ -2292,3 +2292,87 @@
         grid-template-columns: 1fr;
       }
     }
+
+    /* ── Ops 전국 지도 ── */
+    .ops-map-layout {
+      display: grid;
+      grid-template-columns: minmax(200px, 260px) 1fr;
+      gap: 14px;
+      align-items: stretch;
+      margin-top: 8px;
+    }
+    .ops-map-regions {
+      background: var(--bg-secondary);
+      border: 0.5px solid var(--border);
+      border-radius: var(--radius-md);
+      padding: 12px;
+      max-height: 560px;
+      overflow: auto;
+    }
+    .ops-map-regions-title {
+      font-size: 13px;
+      font-weight: 600;
+      margin-bottom: 10px;
+    }
+    .ops-map-region-row {
+      display: block;
+      width: 100%;
+      text-align: left;
+      background: transparent;
+      border: 0;
+      padding: 8px 4px;
+      cursor: pointer;
+      color: inherit;
+      font: inherit;
+      border-bottom: 0.5px solid var(--border);
+    }
+    .ops-map-region-row:last-child { border-bottom: 0; }
+    .ops-map-region-row:hover { background: rgba(0,0,0,.03); }
+    .ops-map-region-top {
+      display: flex;
+      justify-content: space-between;
+      gap: 8px;
+      font-size: 13px;
+    }
+    .ops-map-region-top strong {
+      font-variant-numeric: tabular-nums;
+    }
+    .ops-map-region-bar {
+      height: 4px;
+      background: rgba(0,0,0,.06);
+      border-radius: 99px;
+      margin: 6px 0 4px;
+      overflow: hidden;
+    }
+    .ops-map-region-bar > span {
+      display: block;
+      height: 100%;
+      background: #4c8dff;
+      border-radius: 99px;
+    }
+    .ops-map-region-meta {
+      font-size: 11px;
+      color: var(--text-tertiary);
+    }
+    .ops-map-canvas-wrap {
+      min-width: 0;
+    }
+    .ops-school-map {
+      height: 560px;
+      width: 100%;
+      border-radius: var(--radius-md);
+      border: 0.5px solid var(--border);
+      background: #e8eef5;
+      z-index: 0;
+    }
+    @media (max-width: 900px) {
+      .ops-map-layout {
+        grid-template-columns: 1fr;
+      }
+      .ops-map-regions {
+        max-height: 220px;
+      }
+      .ops-school-map {
+        height: 420px;
+      }
+    }

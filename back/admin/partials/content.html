@@ -79,11 +79,30 @@
               <span class="ops-hub-title">등교 · 학기</span>
               <span class="ops-hub-desc">개학일 · 오늘 등교 가능 여부</span>
             </button>
+            <button type="button" class="ops-hub-card" data-ops-view="map">
+              <span class="ops-hub-kicker">지도</span>
+              <span class="ops-hub-title">전국 분포</span>
+              <span class="ops-hub-desc">학교 위치 · 지역별 인원</span>
+            </button>
             <button type="button" class="ops-hub-card" data-ops-view="reach">
               <span class="ops-hub-kicker">성장</span>
               <span class="ops-hub-title">이용 · 설치</span>
               <span class="ops-hub-desc">DAU/MAU · /get · 인기 화면</span>
             </button>
+          </div>
+        </div>
+
+        <div class="ops-view" id="ops-view-map" hidden>
+          <button type="button" class="btn btn-sm ops-back-btn" data-ops-back>← 모니터링 목록</button>
+          <div class="section-title">전국 분포</div>
+          <p class="section-hint">탈퇴하지 않은 사용자가 있는 학교만 표시합니다. 점 크기 = 해당 학교 인원. 왼쪽은 시·도별 합계입니다.</p>
+          <div class="analytics-kpi-grid dash-kpi-compact" id="ops-map-kpis"></div>
+          <div class="ops-map-layout">
+            <div class="ops-map-regions" id="ops-map-regions"></div>
+            <div class="ops-map-canvas-wrap">
+              <div id="ops-school-map" class="ops-school-map" role="img" aria-label="전국 학교 사용자 분포 지도"></div>
+              <div class="txt-muted" id="ops-map-status" style="font-size:13px;margin-top:8px"></div>
+            </div>
           </div>
         </div>
 
