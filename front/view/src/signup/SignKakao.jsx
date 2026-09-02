@@ -778,7 +778,14 @@ const SignKakao = ({ navigation }) => {
             disabled={isPrimaryDisabled()}
             activeOpacity={0.85}
           >
-            <Text style={styles.primaryButtonText}>{primaryLabel()}</Text>
+            <Text
+              style={[
+                styles.primaryButtonText,
+                isPrimaryDisabled() && styles.primaryButtonTextDisabled,
+              ]}
+            >
+              {primaryLabel()}
+            </Text>
           </TouchableOpacity>
         </View>
       ) : null}

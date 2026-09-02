@@ -1,7 +1,7 @@
 import { Platform, StyleSheet } from 'react-native';
 import { colors, fonts, fontSizes } from './colors';
 import { shadow } from './tokens';
-
+check
 export const createLoginStyles = (width, normalize) => {
   return StyleSheet.create({
     // —— 로그인 화면 ——
@@ -253,10 +253,30 @@ export const createSignupStyles = (width, normalize) => {
     },
     footerSection: {
       paddingTop: normalize(8),
-      paddingBottom: normalize(16),
+      paddingBottom: normalize(8),
+      paddingHorizontal: normalize(20),
       backgroundColor: colors.background,
       zIndex: 10,
       ...debugBorder,
+    },
+    primaryButton: {
+      width: '100%',
+      height: normalize(52),
+      borderRadius: normalize(26),
+      backgroundColor: colors.primary,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    primaryButtonDisabled: {
+      backgroundColor: colors.disabled,
+    },
+    primaryButtonText: {
+      fontFamily: fonts.bold,
+      fontSize: normalize(fontSizes.xxl),
+      color: colors.textWhite,
+    },
+    primaryButtonTextDisabled: {
+      color: colors.textSecondary,
     },
 
     // 헤더 영역
