@@ -62,7 +62,7 @@ import {
   consumeStudentIdManualVerificationToken,
 } from '../services/signupVerificationToken.service.js';
 import { getStudentVerificationStatus } from '../services/studentVerificationStatus.service.js';
-import { isSignupRedesignSkipValidation } from '../utils/signupRedesignFlags.js';
+const isSignupRedesignSkipValidation = () => false;
 import {
   consumeRefreshToken,
   generateRefreshTokenPlain,
