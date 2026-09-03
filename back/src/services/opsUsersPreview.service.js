@@ -75,11 +75,7 @@ export async function listOpsUsersPreview({ page = 1, limit = 20, q = '' } = {})
      FROM users u
      LEFT JOIN schools s ON s.school_id = u.school_id
      WHERE ${whereSql}
-     ORDER BY COALESCE(
-       (SELECT MAX(COALESCE(ft.last_used_at, ft.updated_at)) FROM fcm_tokens ft WHERE ft.user_id = u.id),
-       (SELECT MAX(COALESCE(ud.last_login_at, ud.created_at)) FROM user_devices ud WHERE ud.user_id = u.id),
-       u.created_at
-     ) DESC, u.id DESC
+     ORDER BY u.id DESC
      LIMIT ${limitNum} OFFSET ${offset}`,
     [...params, todayYmd],
   );
