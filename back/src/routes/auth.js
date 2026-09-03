@@ -1208,9 +1208,10 @@ router.post(
       const anchorName = String(signupName).trim();
       const anchorPhone = phone;
       const anchorBirthDate = normalizedBirthDate;
-      let signupName = anchorName;
-      let signupPhone = anchorPhone;
-      let signupBirthDate = anchorBirthDate;
+      // 이니시스 소비 후 덮어쓸 최종 PII (바깥 signupName const 와 이름 충돌 금지 — TDZ ReferenceError)
+      let resolvedSignupName = anchorName;
+      let resolvedSignupPhone = anchorPhone;
+      let resolvedSignupBirthDate = anchorBirthDate;
 
       if (under14 && inicisOn && guardianInicisClientToken?.trim()) {
         try {
@@ -1262,11 +1263,12 @@ router.post(
           });
         }
 
-        if (studentConsumed.name) signupName = studentConsumed.name;
-        if (studentConsumed.phone) signupPhone = studentConsumed.phone;
+        if (studentConsumed.name) resolvedSignupName = studentConsumed.name;
+        if (studentConsumed.phone) resolvedSignupPhone = studentConsumed.phone;
         if (studentConsumed.birthDate) {
-          signupBirthDate = normalizeBirthDateInput(studentConsumed.birthDate)
-            || studentConsumed.birthDate;
+          resolvedSignupBirthDate =
+            normalizeBirthDateInput(studentConsumed.birthDate) ||
+            studentConsumed.birthDate;
         }
       }
 
@@ -1291,9 +1293,9 @@ router.post(
       }
 
       const userPii = packUserPii({
-        name: signupName,
-        phone: signupPhone,
-        birthDate: signupBirthDate,
+        name: resolvedSignupName,
+        phone: resolvedSignupPhone,
+        birthDate: resolvedSignupBirthDate,
       });
 
       const [result] = await connection.execute(
@@ -1324,9 +1326,9 @@ router.post(
       }
 
       const submissionPii = packSubmissionPii({
-        name: signupName,
-        phone: signupPhone,
-        birthDate: signupBirthDate,
+        name: resolvedSignupName,
+        phone: resolvedSignupPhone,
+        birthDate: resolvedSignupBirthDate,
       });
 
       let reviewSubmissionId = null;

@@ -34,8 +34,10 @@ const SignStepSchoolSelect = ({
   );
 
   const gradeClassFields = selectedSchool ? (
-    <View style={{ marginTop: normalize(8), paddingBottom: normalize(4) }}>
-      <Text style={styles.inputLabel}>학년</Text>
+    <View style={{ marginTop: normalize(16), paddingBottom: normalize(4) }}>
+      <Text style={[styles.inputLabel, styles.inputLabelSpaced, { marginTop: 0 }]}>
+        학년
+      </Text>
       <SignupHelperText normalize={normalize} variant="plain" tight>
         생년월일 기준으로 자동 입력되며, 다르면 수정할 수 있어요
       </SignupHelperText>
@@ -57,7 +59,7 @@ const SignStepSchoolSelect = ({
         />
       </View>
 
-      <Text style={styles.inputLabel}>반</Text>
+      <Text style={[styles.inputLabel, styles.inputLabelSpaced]}>반</Text>
       <SignupHelperText normalize={normalize} variant="plain" tight>
         학생증에 적힌 반을 숫자만 정확히 입력해 주세요
       </SignupHelperText>
