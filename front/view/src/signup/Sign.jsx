@@ -83,27 +83,15 @@ const SKIP_SIGNUP_VALIDATION_UNTIL_OCR_TEST =
     .trim() === 'true';
 
 /**
- * [TEMP · develop 성인 가입 테스트]
- * true면 APP_ENV=development 또는 __DEV__ 빌드에서 과연령(성인) 생년월일도 가입 진행 가능.
- * 테스트 끝나면 **반드시 false** 로 되돌릴 것. (production/AAB 는 APP_ENV=production 이라 영향 없음)
- */
-const TEMP_ALLOW_ADULT_SIGNUP_FOR_DEVELOP_TEST = true;
-
-/**
  * 성인(과연령) 생년월일 차단 완화 — 팀 내부 테스트용
- * - TEMP 플래그 ON: develop/__DEV__ 빌드에서 허용
- * - TEMP OFF: 기존처럼 __DEV__ + EXPO_PUBLIC_SIGNUP_ADULT_TEST_MODE=true 일 때만
- * - release/AAB(production) 에서는 항상 학생 연령만 허용
+ * - __DEV__ + EXPO_PUBLIC_SIGNUP_ADULT_TEST_MODE=true 일 때만
+ * - release/AAB 에서는 항상 학생 연령만 허용
  */
-const isDevelopClientBuild =
-  String(process.env.APP_ENV || '').toLowerCase().trim() === 'development';
-
-const ALLOW_ADULT_SIGNUP_IN_DEV = TEMP_ALLOW_ADULT_SIGNUP_FOR_DEVELOP_TEST
-  ? isDevelopClientBuild || __DEV__
-  : __DEV__ &&
-    String(process.env.EXPO_PUBLIC_SIGNUP_ADULT_TEST_MODE || '')
-      .toLowerCase()
-      .trim() === 'true';
+const ALLOW_ADULT_SIGNUP_IN_DEV =
+  __DEV__ &&
+  String(process.env.EXPO_PUBLIC_SIGNUP_ADULT_TEST_MODE || '')
+    .toLowerCase()
+    .trim() === 'true';
 
 function getAdultTestEnrollmentFallback() {
   return {
@@ -402,15 +390,6 @@ const Sign = ({ navigation }) => {
     }
     return enrollment;
   }, [identity.birthDate]);
-
-  useEffect(() => {
-    if (!TEMP_ALLOW_ADULT_SIGNUP_FOR_DEVELOP_TEST || !ALLOW_ADULT_SIGNUP_IN_DEV) {
-      return;
-    }
-    console.log(
-      '[Sign] TEMP develop 성인 가입 허용 ON — 테스트 후 TEMP_ALLOW_ADULT_SIGNUP_FOR_DEVELOP_TEST=false',
-    );
-  }, []);
 
   useEffect(() => {
     const inferred = schoolEnrollmentPreview.grade;
