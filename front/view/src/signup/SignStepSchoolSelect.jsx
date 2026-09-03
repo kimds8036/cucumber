@@ -1,193 +1,105 @@
-import React, { useCallback, useMemo, useState } from 'react';
-import {
-  View,
-  Text,
-  TextInput,
-  StyleSheet,
-  Keyboard,
-  Pressable,
-  Platform,
-  useWindowDimensions,
-} from 'react-native';
-import { colors, fonts, fontSizes } from '../../../styles/colors';
+import React from 'react';
+import { View, Text, TextInput, TouchableOpacity } from 'react-native';
+import { colors } from '../../../styles/colors';
 import SchoolSearchField from './SchoolSearchField';
+import SignupHelperText from './SignupHelperText';
+import SignupLockedField from './SignupLockedField';
+import SignupStepScroll from './SignupStepScroll';
 
-/** 계정 만들기 ↔ 학생증 인증 사이 — 재학 학교·학년·반 */
+/** 계정 만들기 ↔ 학생증 인증 사이 — 재학 학교·학년(잠금)·반 */
 const SignStepSchoolSelect = ({
   styles,
   normalize,
   selectedSchool,
   onSelect,
-  gradeNum,
-  onGradeNumChange,
+  gradeLabel,
   classNum,
   onClassNumChange,
+  onPressGradeMismatch,
   bottomOffset,
 }) => {
-  const { width } = useWindowDimensions();
-  const [searchActive, setSearchActive] = useState(false);
-  const localStyles = useMemo(
-    () => createLocalStyles(normalize, width),
-    [normalize, width],
+  const schoolSearch = (
+    <SchoolSearchField
+      styles={styles}
+      normalize={normalize}
+      selectedSchool={selectedSchool}
+      onSelect={onSelect}
+      labelMarginTop={0}
+      expandList={!selectedSchool}
+      helperBelowLabel={
+        <SignupHelperText normalize={normalize} variant="plain">
+          학교는 학생증 정보 일치 여부 확인을 위해 사용됩니다.
+        </SignupHelperText>
+      }
+    />
   );
-  const stepStyles = useMemo(
-    () => ({
-      ...styles,
-      inputLabel: {
-        ...styles.inputLabel,
-        marginLeft: 0,
-      },
-    }),
-    [styles],
-  );
-
-  const handleSelect = useCallback(
-    (school) => {
-      onSelect?.(school);
-      if (school) setSearchActive(false);
-    },
-    [onSelect],
-  );
-
-  const handleSchoolClear = useCallback(() => {
-    setSearchActive(false);
-  }, []);
-
-  const activateSearch = useCallback(() => {
-    setSearchActive(true);
-  }, []);
 
   const gradeClassFields = selectedSchool ? (
-    <View style={localStyles.gradeClassRow}>
-      <View style={localStyles.gradeClassCol}>
-        <Text style={localStyles.fieldLabel}>학년</Text>
-        <View
-          style={[
-            localStyles.underlineField,
-            gradeNum ? localStyles.underlineFieldActive : null,
-          ]}
+    <View style={{ marginTop: normalize(8), paddingBottom: normalize(4) }}>
+      <SignupLockedField
+        label="학년"
+        value={gradeLabel}
+        placeholder="생년월일 기준으로 자동 표시"
+        styles={styles}
+        compactBottom
+      />
+      <TouchableOpacity
+        onPress={onPressGradeMismatch}
+        activeOpacity={0.7}
+        style={{
+          alignSelf: 'flex-start',
+          marginLeft: normalize(20),
+          marginTop: normalize(6),
+          marginBottom: normalize(10),
+          paddingVertical: normalize(2),
+        }}
+        hitSlop={{ top: 8, bottom: 8, left: 4, right: 4 }}
+      >
+        <Text
+          style={{
+            fontSize: normalize(13),
+            color: colors.primary,
+            fontWeight: '600',
+            textDecorationLine: 'underline',
+          }}
         >
-          <TextInput
-            style={localStyles.fieldInput}
-            placeholder=""
-            placeholderTextColor={colors.textSecondary}
-            value={gradeNum}
-            onChangeText={(text) => {
-              onGradeNumChange?.(text.replace(/\D/g, '').slice(0, 1));
-            }}
-            keyboardType="number-pad"
-            maxLength={1}
-            returnKeyType="next"
-          />
-        </View>
-      </View>
+          이 학년이 아니신가요?
+        </Text>
+      </TouchableOpacity>
 
-      <View style={localStyles.gradeClassCol}>
-        <Text style={localStyles.fieldLabel}>반</Text>
-        <View
-          style={[
-            localStyles.underlineField,
-            classNum ? localStyles.underlineFieldActive : null,
-          ]}
-        >
-          <TextInput
-            style={localStyles.fieldInput}
-            placeholder=""
-            placeholderTextColor={colors.textSecondary}
-            value={classNum}
-            onChangeText={(text) => {
-              onClassNumChange?.(text.replace(/\D/g, '').slice(0, 2));
-            }}
-            keyboardType="number-pad"
-            maxLength={2}
-            returnKeyType="done"
-          />
-        </View>
+      <Text style={styles.inputLabel}>반</Text>
+      <SignupHelperText normalize={normalize} variant="plain" tight>
+        학생증에 적힌 반을 숫자만 정확히 입력해 주세요
+      </SignupHelperText>
+      <View style={styles.inputWrapper}>
+        <TextInput
+          style={styles.input}
+          placeholder="반 (예: 1)"
+          placeholderTextColor={colors.textSecondary}
+          value={classNum}
+          onChangeText={(text) => {
+            onClassNumChange?.(text.replace(/\D/g, '').slice(0, 2));
+          }}
+          keyboardType="number-pad"
+          maxLength={2}
+          returnKeyType="done"
+        />
       </View>
     </View>
   ) : null;
 
-  const content = (
-    <>
-      <Text style={localStyles.fieldLabel}>재학 중인 학교</Text>
-      <SchoolSearchField
-        styles={stepStyles}
-        normalize={normalize}
-        selectedSchool={selectedSchool}
-        onSelect={handleSelect}
-        hideLabel
-        readOnly={!searchActive}
-        onActivate={activateSearch}
-        autoFocus={searchActive}
-        inputVariant="underline"
-        placeholder="검색하기"
-        expandList={false}
-        showListOnlyWithResults
-        rowMarginHorizontal={0}
-        showClearButton={Boolean(selectedSchool)}
-        onClear={handleSchoolClear}
-      />
-      {selectedSchool && !searchActive ? gradeClassFields : null}
-    </>
+  return (
+    <View style={styles.stepFlex}>
+      {selectedSchool ? (
+        <SignupStepScroll normalize={normalize} bottomOffset={bottomOffset}>
+          {schoolSearch}
+          {gradeClassFields}
+        </SignupStepScroll>
+      ) : (
+        schoolSearch
+      )}
+    </View>
   );
-
-  if (searchActive) {
-    return (
-      <Pressable
-        style={[styles.stepFlex, localStyles.body]}
-        onPress={Keyboard.dismiss}
-      >
-        {content}
-      </Pressable>
-    );
-  }
-
-  return <View style={[styles.stepFlex, localStyles.body]}>{content}</View>;
 };
-
-function createLocalStyles(normalize, width) {
-  return StyleSheet.create({
-    body: {
-      flex: 1,
-      marginHorizontal: -width * 0.04,
-      paddingHorizontal: width * 0.07,
-    },
-    fieldLabel: {
-      marginBottom: normalize(10),
-      fontFamily: fonts.regular,
-      fontSize: normalize(fontSizes.lg),
-      color: colors.textSecondary,
-    },
-    gradeClassRow: {
-      flexDirection: 'row',
-      gap: normalize(24),
-      marginTop: normalize(24),
-    },
-    gradeClassCol: {
-      flex: 1,
-      minWidth: 0,
-    },
-    underlineField: {
-      paddingBottom: normalize(8),
-      borderBottomWidth: normalize(1),
-      borderBottomColor: colors.textLight20,
-    },
-    underlineFieldActive: {
-      borderBottomColor: colors.textPrimary,
-    },
-    fieldInput: {
-      paddingVertical: 0,
-      paddingHorizontal: 0,
-      fontFamily: fonts.regular,
-      fontSize: normalize(fontSizes.xxl),
-      minHeight: normalize(fontSizes.xxl),
-      color: colors.textPrimary,
-      ...Platform.select({
-        android: { includeFontPadding: false, textAlignVertical: 'center' },
-        ios: {},
-      }),
-    },
-  });
-}
 
 export default SignStepSchoolSelect;

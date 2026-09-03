@@ -3,11 +3,6 @@ import { CommonActions, NavigationContainer, DefaultTheme } from '@react-navigat
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import Login from './view/src/signup/Login';
 import Sign from './view/src/signup/Sign';
-import SignupEntry from './view/src/signup/SignupEntry';
-import SignKakao from './view/src/signup/SignKakao';
-import SignApple from './view/src/signup/SignApple';
-import SignPhone from './view/src/signup/SignPhone';
-import SignProfileUsername from './view/src/signup/SignProfileUsername';
 import IDfind from './view/src/signup/IDfind';
 import PWfind from './view/src/signup/PWfind';
 import MainScreen from './view/src/MainScreen';
@@ -44,7 +39,6 @@ import MealCalender from './view/src/mealcalender';
 import Timer from './view/src/timer';
 import FriendsScreen from './view/src/friendsscreen';
 import HiddenPostsAppeals from './view/src/hiddenPostsAppeals';
-import DeveloperWhack from './view/src/DeveloperWhack';
 import Inquiry from './view/src/Inquiry';
 import InAppInquiry from './view/src/InAppInquiry';
 import MyInquiries from './view/src/MyInquiries';
@@ -52,7 +46,6 @@ import InquiryDetail from './view/src/InquiryDetail';
 import Info from './view/src/info';
 // import TestLogin from './view/src/TestLogin'; // 테스트 로그인 화면 — 운영 진입에서는 미사용
 import Announcement from './view/src/announcement';
-import AnnouncementDetail from './view/src/AnnouncementDetail';
 import ServiceTermsOfService from './src/screens/Terms-of-Service/ServiceTermsOfService';
 import PrivacyPolicy from './src/screens/Terms-of-Service/PrivacyPolicy';
 import YouthProtectionPolicy from './src/screens/Terms-of-Service/YouthProtectionPolicy';
@@ -95,10 +88,6 @@ import AlertHost from './components/common/AlertHost';
 import { navigationRef } from './navigation/navigationRef';
 import { getPendingInicisSession } from './services/inicisAuth';
 import {
-  clearSignupPendingSession,
-  getSignupPendingSession,
-} from './view/src/signup/signupSessionStorage';
-import {
   navigateFromPush,
   resolvePushNavigation,
 } from './navigation/pushNavigation';
@@ -117,7 +106,6 @@ import {
   setupFCMHandlers,
 } from './utils/fcmService';
 import { trackScreenView, flushAnalyticsEvents } from './utils/analytics';
-import AutoTimetableRefreshOnLaunch from './components/timetable/AutoTimetableRefreshOnLaunch';
 import WidgetDeepLinkHandler, {
   stashWidgetDeepLinkFromUrl,
 } from './components/navigation/WidgetDeepLinkHandler';
@@ -202,15 +190,11 @@ function SplashHideWhenReady({ fontsLoaded, versionPhase }) {
 function AuthStack() {
   return (
     <Stack.Navigator
-      initialRouteName="SignupEntry"
+      initialRouteName="Login"
       screenOptions={{ headerShown: false }}
     >
       {/* <Stack.Screen name="TestLogin" component={TestLogin} /> */}
       <Stack.Screen name="Login" component={Login} />
-      <Stack.Screen name="SignupEntry" component={SignupEntry} />
-      <Stack.Screen name="SignKakao" component={SignKakao} />
-      <Stack.Screen name="SignApple" component={SignApple} />
-      <Stack.Screen name="SignPhone" component={SignPhone} />
       <Stack.Screen name="Sign" component={Sign} />
       <Stack.Screen name="IDfind" component={IDfind} />
       <Stack.Screen name="PWfind" component={PWfind} />
@@ -226,7 +210,6 @@ function MainStack({ initialRouteName = 'Main' }) {
       screenOptions={{ headerShown: false }}
     >
       <Stack.Screen name="Main" component={MainScreen} />
-      <Stack.Screen name="SignProfileUsername" component={SignProfileUsername} />
       <Stack.Screen name="BoardWrite" component={BoardWrite} />
       <Stack.Screen name="BoardDetail" component={BoardDetail} />
       <Stack.Screen name="Chat" component={ChatRoomScreen} />
@@ -260,17 +243,12 @@ function MainStack({ initialRouteName = 'Main' }) {
       <Stack.Screen name="Friends" component={FriendsScreen} />
       <Stack.Screen name="BadgeManage" component={BadgeManage} />
       <Stack.Screen name="HiddenPostsAppeals" component={HiddenPostsAppeals} />
-      <Stack.Screen name="DeveloperWhack" component={DeveloperWhack} />
       <Stack.Screen name="Inquiry" component={Inquiry} />
       <Stack.Screen name="InAppInquiry" component={InAppInquiry} />
       <Stack.Screen name="MyInquiries" component={MyInquiries} />
       <Stack.Screen name="InquiryDetail" component={InquiryDetail} />
       <Stack.Screen name="Info" component={Info} />
       <Stack.Screen name="Announcement" component={Announcement} />
-      <Stack.Screen
-        name="AnnouncementDetail"
-        component={AnnouncementDetail}
-      />
       <Stack.Screen
         name="ServiceTermsOfService"
         component={ServiceTermsOfService}
@@ -327,37 +305,6 @@ function RootNavigator() {
     if (!authHydrated || isLoggedIn) return undefined;
     let cancelled = false;
     (async () => {
-      if (__DEV__) {
-        await clearSignupPendingSession();
-      } else {
-        const signupPending = await getSignupPendingSession();
-        if (signupPending && !cancelled) {
-          const targetScreen =
-            signupPending.provider === 'kakao'
-              ? 'SignKakao'
-              : signupPending.provider === 'apple'
-                ? 'SignApple'
-                : signupPending.provider === 'phone'
-                  ? 'SignPhone'
-                  : 'Sign';
-          const tryNavigateSignup = () => {
-            if (!navigationRef.isReady()) return false;
-            const route = navigationRef.getCurrentRoute?.();
-            if (route?.name !== targetScreen) {
-              navigationRef.navigate(targetScreen, { resumeSession: true });
-            }
-            return true;
-          };
-          if (!tryNavigateSignup()) {
-            const timer = setInterval(() => {
-              if (tryNavigateSignup()) clearInterval(timer);
-            }, 150);
-            return () => clearInterval(timer);
-          }
-          return undefined;
-        }
-      }
-
       const pending = await getPendingInicisSession();
       if (!pending || cancelled) return;
       const tryNavigate = () => {
@@ -924,7 +871,6 @@ export default function App() {
                       <ToastProvider>
                         <NotificationProvider>
                           <FriendProvider>
-                            <AutoTimetableRefreshOnLaunch />
                             <NavigationContainer
                               ref={navigationRef}
                               linking={linking}

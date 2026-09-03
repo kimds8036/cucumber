@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   View,
   Text,
@@ -7,14 +7,9 @@ import {
   ScrollView,
   ActivityIndicator,
   StyleSheet,
-  Platform,
-  Keyboard,
-  Pressable,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import Feather from '@expo/vector-icons/Feather';
-import MaterialIcons from '@expo/vector-icons/MaterialIcons';
-import { colors, fonts, fontSizes } from '../../../styles/colors';
+import { colors, fonts } from '../../../styles/colors';
 import { api } from '../../../utils/api';
 
 function formatSchoolAddress(school) {
@@ -39,49 +34,18 @@ const SchoolSearchField = ({
   disabled = false,
   helperBelowLabel = null,
   labelMarginTop,
-  hideLabel = false,
-  autoFocus = false,
-  /** @type {'boxed'|'underline'} */
-  inputVariant = 'boxed',
-  placeholder = '학교 이름 검색',
   /** true면 검색 목록이 남은 세로 공간을 채움 (학교 선택 전용 화면) */
   expandList = false,
-  /** true면 검색 결과가 1건 이상일 때만 목록 영역 표시 */
-  showListOnlyWithResults = false,
-  rowMarginHorizontal,
-  /** 트리거 모드 — 탭 시 onActivate, 입력·목록 비활성 */
-  readOnly = false,
-  onActivate,
-  /** 선택 확정 시 행 우측 취소 버튼 */
-  showClearButton = false,
-  onClear,
 }) => {
   const dropdownStyles = useMemo(
     () => makeDropdownStyles(normalize, expandList),
     [normalize, expandList],
-  );
-  const searchRowStyles = useMemo(
-    () =>
-      createSchoolSearchRowStyles(normalize, {
-        marginHorizontal:
-          rowMarginHorizontal != null
-            ? rowMarginHorizontal
-            : normalize(20),
-      }),
-    [normalize, rowMarginHorizontal],
   );
   const [query, setQuery] = useState(selectedSchool?.name || '');
   const [schools, setSchools] = useState([]);
   const [loading, setLoading] = useState(false);
   const [searched, setSearched] = useState(false);
   const [focused, setFocused] = useState(false);
-  const inputRef = useRef(null);
-
-  useEffect(() => {
-    if (!autoFocus) return undefined;
-    const timer = setTimeout(() => inputRef.current?.focus(), 120);
-    return () => clearTimeout(timer);
-  }, [autoFocus]);
 
   const searchSchools = useCallback(async (q) => {
     const term = String(q || '').trim();
@@ -106,10 +70,9 @@ const SchoolSearchField = ({
   }, []);
 
   useEffect(() => {
-    if (readOnly) return undefined;
     const t = setTimeout(() => searchSchools(query), 250);
     return () => clearTimeout(t);
-  }, [query, readOnly, searchSchools]);
+  }, [query, searchSchools]);
 
   useEffect(() => {
     if (selectedSchool?.name) setQuery(selectedSchool.name);
@@ -121,13 +84,10 @@ const SchoolSearchField = ({
     trimmedQuery !== String(selectedSchool.name || '').trim();
 
   const showDropdown =
-    !readOnly &&
     !disabled &&
     (focused || pendingSelection) &&
     trimmedQuery.length >= 1 &&
-    (showListOnlyWithResults
-      ? schools.length > 0
-      : loading || searched);
+    (loading || searched);
 
   const selectedAddress = formatSchoolAddress(selectedSchool);
 
@@ -139,140 +99,41 @@ const SchoolSearchField = ({
     setFocused(false);
   };
 
-  const isUnderline = inputVariant === 'underline';
-  const ListSlot = expandList ? Pressable : View;
-  const hasConfirmedSelection =
-    Boolean(selectedSchool) &&
-    trimmedQuery === String(selectedSchool?.name || '').trim();
-
-  const handleClear = () => {
-    onSelect?.(null);
-    setQuery('');
-    setSchools([]);
-    setSearched(false);
-    setFocused(false);
-    onClear?.();
-  };
-
-  const renderUnderlineRow = () => {
-    const isLockedSelection = hasConfirmedSelection && showClearButton;
-    const isSearchTrigger = readOnly && !isLockedSelection;
-    const RowMain = isSearchTrigger ? TouchableOpacity : View;
-    const rowMainProps = isSearchTrigger
-      ? { onPress: onActivate, activeOpacity: 0.75 }
-      : {};
-
-    return (
-      <View
-        style={[
-          searchRowStyles.row,
-          isLockedSelection && searchRowStyles.rowSelected,
-        ]}
-      >
-        <RowMain style={searchRowStyles.rowMainTap} {...rowMainProps}>
-          {!isLockedSelection ? (
-            <Feather
-              name="search"
-              size={normalize(18)}
-              color={colors.textSecondary}
-            />
-          ) : null}
-          {isLockedSelection ? (
-            <Text
-              style={[searchRowStyles.input, searchRowStyles.fieldTextFilled]}
-              numberOfLines={1}
-            >
-              {query}
-            </Text>
-          ) : (
-            <TextInput
-              ref={inputRef}
-              style={[
-                searchRowStyles.input,
-                readOnly && searchRowStyles.inputPlaceholder,
-                { marginBottom: 0 },
-              ]}
-              value={query}
-              onChangeText={(t) => {
-                setQuery(t);
-                if (selectedSchool && t !== selectedSchool.name) onSelect?.(null);
-              }}
-              onFocus={() => setFocused(true)}
-              onBlur={() => {
-                setTimeout(() => setFocused(false), 180);
-              }}
-              placeholder={placeholder}
-              placeholderTextColor={colors.textSecondary}
-              autoCorrect={false}
-              editable={!readOnly && !disabled}
-              showSoftInputOnFocus={!readOnly}
-              pointerEvents={readOnly ? 'none' : 'auto'}
-              returnKeyType="search"
-            />
-          )}
-        </RowMain>
-        {isLockedSelection ? (
-          <TouchableOpacity
-            onPress={handleClear}
-            activeOpacity={0.7}
-            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-          >
-            <MaterialIcons
-              name="cancel"
-              size={normalize(20)}
-              color={colors.textSecondary}
-            />
-          </TouchableOpacity>
-        ) : null}
-      </View>
-    );
-  };
-
   return (
     <View style={[dropdownStyles.wrap, expandList && dropdownStyles.wrapExpand]}>
-      {!hideLabel ? (
-        <Text
-          style={[
-            styles.inputLabel,
-            {
-              marginTop:
-                labelMarginTop != null ? normalize(labelMarginTop) : normalize(16),
-            },
-          ]}
-        >
-          {label}
-        </Text>
-      ) : null}
-      {helperBelowLabel}
-      {isUnderline ? (
-        renderUnderlineRow()
-      ) : (
-        <View style={[styles.inputWrapper, { marginBottom: 0 }]}>
-          <TextInput
-            ref={inputRef}
-            style={[styles.input, { marginBottom: 0 }]}
-            value={query}
-            onChangeText={(t) => {
-              setQuery(t);
-              if (selectedSchool && t !== selectedSchool.name) onSelect?.(null);
-            }}
-            onFocus={() => setFocused(true)}
-            onBlur={() => {
-              setTimeout(() => setFocused(false), 180);
-            }}
-            placeholder={placeholder}
-            placeholderTextColor={colors.textSecondary}
-            autoCorrect={false}
-            editable={!disabled}
-            returnKeyType="search"
-          />
-        </View>
-      )}
-
-      <ListSlot
-        style={expandList ? dropdownStyles.listSlot : null}
-        {...(expandList ? { onPress: Keyboard.dismiss } : {})}
+      <Text
+        style={[
+          styles.inputLabel,
+          {
+            marginTop:
+              labelMarginTop != null ? normalize(labelMarginTop) : normalize(16),
+          },
+        ]}
       >
+        {label}
+      </Text>
+      {helperBelowLabel}
+      <View style={[styles.inputWrapper, { marginBottom: 0 }]}>
+        <TextInput
+          style={[styles.input, { marginBottom: 0 }]}
+          value={query}
+          onChangeText={(t) => {
+            setQuery(t);
+            if (selectedSchool && t !== selectedSchool.name) onSelect?.(null);
+          }}
+          onFocus={() => setFocused(true)}
+          onBlur={() => {
+            setTimeout(() => setFocused(false), 180);
+          }}
+          placeholder="학교 이름 검색"
+          placeholderTextColor={colors.textSecondary}
+          autoCorrect={false}
+          editable={!disabled}
+          returnKeyType="search"
+        />
+      </View>
+
+      <View style={expandList ? dropdownStyles.listSlot : null}>
         {showDropdown ? (
           <View
             style={[
@@ -329,7 +190,7 @@ const SchoolSearchField = ({
           </View>
         ) : null}
 
-        {selectedSchool && !showDropdown && !(isUnderline && showClearButton) ? (
+        {selectedSchool && !showDropdown ? (
           <View style={dropdownStyles.selectedBox}>
             <View style={dropdownStyles.selectedTextCol}>
               <Text style={dropdownStyles.selectedName} numberOfLines={1}>
@@ -348,63 +209,10 @@ const SchoolSearchField = ({
             />
           </View>
         ) : null}
-      </ListSlot>
+      </View>
     </View>
   );
 };
-
-/** 재학 학교 검색 트리거·밑줄 입력 공통 스타일 */
-export function createSchoolSearchRowStyles(
-  normalize,
-  { marginHorizontal = null } = {},
-) {
-  return StyleSheet.create({
-    row: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      marginHorizontal: marginHorizontal ?? normalize(20),
-      paddingBottom: normalize(8),
-      borderBottomWidth: normalize(1),
-      borderBottomColor: colors.textLight20,
-      gap: normalize(8),
-    },
-    input: {
-      flex: 1,
-      paddingVertical: 0,
-      paddingHorizontal: 0,
-      fontFamily: fonts.regular,
-      fontSize: normalize(fontSizes.xxl),
-      minHeight: normalize(Math.round(fontSizes.xxl)),
-      color: colors.textPrimary,
-      ...Platform.select({
-        android: { includeFontPadding: false, textAlignVertical: 'center' },
-        ios: {},
-      }),
-    },
-    inputPlaceholder: {
-      color: colors.textSecondary,
-    },
-    fieldText: {
-      flex: 1,
-      fontFamily: fonts.regular,
-      fontSize: normalize(fontSizes.xxl),
-      color: colors.textSecondary,
-    },
-    fieldTextFilled: {
-      color: colors.textPrimary,
-    },
-    rowSelected: {
-      borderBottomColor: colors.textPrimary,
-    },
-    rowMainTap: {
-      flex: 1,
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: normalize(8),
-      minWidth: 0,
-    },
-  });
-}
 
 const makeDropdownStyles = (normalize, expandList = false) =>
   StyleSheet.create({
@@ -423,7 +231,7 @@ const makeDropdownStyles = (normalize, expandList = false) =>
     },
     dropdown: {
       marginTop: expandList ? 0 : normalize(6),
-      width: '100%',
+      width: '98%',
       alignSelf: 'center',
       borderWidth: 1,
       borderColor: colors.border || colors.textLight20,
