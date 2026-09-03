@@ -1,10 +1,11 @@
-import React, { useCallback, useRef, useState } from 'react';
+import React, { useCallback, useMemo, useRef, useState } from 'react';
 import {
   View,
   Text,
   Image,
   ScrollView,
   TouchableOpacity,
+  useWindowDimensions,
 } from 'react-native';
 
 const GUIDE_STEPS = [
@@ -94,10 +95,26 @@ function GuideStepDescription({ parts, styles }) {
   );
 }
 
-const SignStepCertificateGuide = ({ styles, onProceed }) => {
+const SignStepCertificateGuide = ({
+  styles,
+  onProceed,
+  insetBody = true,
+}) => {
+  const { width } = useWindowDimensions();
   const scrollRef = useRef(null);
   const [hasReachedBottom, setHasReachedBottom] = useState(false);
   const [viewportHeight, setViewportHeight] = useState(0);
+  const bodyStyle = useMemo(
+    () => ({
+      ...(insetBody
+        ? {
+            marginHorizontal: -width * 0.04,
+            paddingHorizontal: width * 0.07,
+          }
+        : {}),
+    }),
+    [width, insetBody],
+  );
 
   const markReachedBottom = useCallback(() => {
     setHasReachedBottom(true);
@@ -127,7 +144,13 @@ const SignStepCertificateGuide = ({ styles, onProceed }) => {
   );
 
   return (
-    <View style={[styles.ageGateContainer, styles.certificateGuideContainer]}>
+    <View
+      style={[
+        styles.ageGateContainer,
+        styles.certificateGuideContainer,
+        bodyStyle,
+      ]}
+    >
       <ScrollView
         ref={scrollRef}
         style={styles.certificateGuideScroll}
@@ -168,26 +191,32 @@ const SignStepCertificateGuide = ({ styles, onProceed }) => {
             />
           </View>
         ))}
-
-        <View style={styles.certificateGuideButtonSection}>
-          {!hasReachedBottom ? (
-            <Text style={styles.certificateGuideScrollHint}>
-              가이드를 끝까지 내려 확인해 주세요
-            </Text>
-          ) : null}
-          <TouchableOpacity
-            style={[
-              styles.nextButton,
-              !hasReachedBottom && styles.nextButtonDisabled,
-            ]}
-            activeOpacity={0.9}
-            disabled={!hasReachedBottom}
-            onPress={onProceed}
-          >
-            <Text style={styles.nextButtonText}>제출하러 가기</Text>
-          </TouchableOpacity>
-        </View>
       </ScrollView>
+      <View style={[styles.footerSection, { paddingHorizontal: 0 }]}>
+        {!hasReachedBottom ? (
+          <Text style={[styles.certificateGuideScrollHint, { marginBottom: 8 }]}>
+            가이드를 끝까지 내려 확인해 주세요
+          </Text>
+        ) : null}
+        <TouchableOpacity
+          style={[
+            styles.primaryButton,
+            !hasReachedBottom && styles.primaryButtonDisabled,
+          ]}
+          activeOpacity={0.85}
+          disabled={!hasReachedBottom}
+          onPress={onProceed}
+        >
+          <Text
+            style={[
+              styles.primaryButtonText,
+              !hasReachedBottom && styles.primaryButtonTextDisabled,
+            ]}
+          >
+            제출하러 가기
+          </Text>
+        </TouchableOpacity>
+      </View>
     </View>
   );
 };

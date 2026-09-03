@@ -533,13 +533,13 @@ const SignKakao = ({ navigation }) => {
       case STEP.STUDENT_VERIFY:
         return studentVerified ? '가입 마무리' : '학생증 인증';
       case STEP.ALT_VERIFY_CHOICE:
-        return '인증 방법 선택';
+        return '다른 방법으로 인증';
       case STEP.CERTIFICATE_GUIDE:
         return '재학증명서 가이드';
       case STEP.CERTIFICATE_SUBMIT:
         return '재학증명서 제출';
       case STEP.NEIS_PLUS_SUBMIT:
-        return '나이스+ 제출';
+        return 'NEIS+ 제출';
       default:
         return '회원가입';
     }
@@ -803,9 +803,12 @@ const SignKakao = ({ navigation }) => {
 
         {currentStep === STEP.NEIS_PLUS_SUBMIT && (
           <SignStepNeisPlusSubmit
+            styles={styles}
+            normalize={normalize}
             mode="signup"
+            layout="stable"
             identity={identity}
-            selectedSchool={selectedSchool}
+            schoolId={selectedSchool?.id || formData.schoolId}
             onVerified={handleStudentVerified}
             onBack={() => setCurrentStep(STEP.ALT_VERIFY_CHOICE)}
           />

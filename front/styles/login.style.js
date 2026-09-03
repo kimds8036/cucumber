@@ -430,7 +430,6 @@ export const createSignupStyles = (width, normalize) => {
     certificateGuideButtonSection: {
       width: '100%',
       alignItems: 'center',
-      paddingTop: normalize(8),
       gap: normalize(12),
     },
     certificateGuideScrollHint: {

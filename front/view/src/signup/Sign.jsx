@@ -1689,7 +1689,7 @@ const Sign = ({ navigation }) => {
       case STEP.CERTIFICATE_SUBMIT:
         return '재학증명서 제출';
       case STEP.NEIS_PLUS_SUBMIT:
-        return '나이스+ 제출';
+        return 'NEIS+ 제출';
       default:
         return '회원가입';
     }

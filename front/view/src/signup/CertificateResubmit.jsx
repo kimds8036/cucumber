@@ -10,13 +10,13 @@ import {
   ScrollView,
   Alert,
 } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
 import { colors, fonts } from '../../../styles/colors';
 import { getNormalize } from '../../../styles/frame.style';
 import { api } from '../../../utils/api';
 import SignupHelperText from './SignupHelperText';
 import { useAuth } from '../../../context/AuthContext';
 import SubmittingLockModal from '../../../components/common/SubmittingLockModal';
+import SubHeader from '../../frame/subHeader';
 
 /**
  * 거절 후 재학증명서 재제출 — SafeArea 는 App 거절 플로우 셸에서만 처리
@@ -25,7 +25,6 @@ const CertificateResubmit = ({ navigation }) => {
   const { refreshStudentVerification } = useAuth();
   const { width } = useWindowDimensions();
   const normalize = useMemo(() => getNormalize(width), [width]);
-  const padX = width * 0.04;
 
   const [certificateUrl, setCertificateUrl] = useState('');
   const [accessNumber, setAccessNumber] = useState('');
@@ -72,29 +71,16 @@ const CertificateResubmit = ({ navigation }) => {
   };
 
   return (
-    <View style={[styles.root, { paddingHorizontal: padX }]}>
-      <View style={styles.header}>
-        <TouchableOpacity
-          onPress={() => {
-            if (busy) return;
-            navigation.goBack();
-          }}
-          disabled={busy}
-          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-        >
-          <Ionicons
-            name="chevron-back"
-            size={normalize(24)}
-            color={busy ? colors.textSecondary : colors.textPrimary}
-          />
-        </TouchableOpacity>
-        <Text style={[styles.headerTitle, { fontSize: normalize(18) }]}>
-          재학증명서 제출
-        </Text>
-        <View style={{ width: normalize(24) }} />
-      </View>
+    <View style={styles.root}>
+      <SubHeader
+        title="재학증명서 제출"
+        onBack={() => {
+          if (busy) return;
+          navigation.goBack();
+        }}
+      />
 
-      <View style={styles.body}>
+      <View style={[styles.body, { paddingHorizontal: width * 0.07 }]}>
         <ScrollView
           style={{ flex: 1 }}
           contentContainerStyle={{ paddingBottom: normalize(16) }}
@@ -145,13 +131,14 @@ const CertificateResubmit = ({ navigation }) => {
               placeholderTextColor={colors.textSecondary}
               autoCapitalize="none"
               autoCorrect={false}
+              keyboardType="number-pad"
               editable={!busy}
             />
           </View>
         </ScrollView>
       </View>
 
-      <View style={styles.footer}>
+      <View style={[styles.footer, { paddingHorizontal: width * 0.07 }]}>
         <TouchableOpacity
           style={[
             styles.submit,
@@ -183,17 +170,6 @@ const styles = StyleSheet.create({
   root: {
     flex: 1,
     backgroundColor: colors.background,
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingVertical: 12,
-    flexShrink: 0,
-  },
-  headerTitle: {
-    fontFamily: fonts.bold,
-    color: colors.textPrimary,
   },
   body: {
     flex: 1,
