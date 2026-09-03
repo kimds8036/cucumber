@@ -17,7 +17,7 @@ export const DEFAULT_LEGAL_DOCUMENTS = [
     slug: 'privacy_policy',
     title: '개인정보 처리방침',
     file: 'privacy-policy.md',
-    version: 'v1.5.1',
+    version: 'v1.5.2',
   },
   {
     slug: 'community_guide',

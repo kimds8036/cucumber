@@ -217,6 +217,7 @@ const Sign = ({ navigation }) => {
   });
   const [selectedSchool, setSelectedSchool] = useState(null);
   const [schoolClassNum, setSchoolClassNum] = useState('');
+  const [schoolGradeNum, setSchoolGradeNum] = useState('');
   const [screenReady, setScreenReady] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [footerHeight, setFooterHeight] = useState(88);
@@ -360,9 +361,8 @@ const Sign = ({ navigation }) => {
   const progress = getSignupProgressStep(currentStep, { studentVerified });
   const progressWidth = (progress.step / progress.total) * 100;
 
-  const isCameraStep = currentStep === STEP.STUDENT_VERIFY && !studentVerified;
   const hideFooter =
-    (isCameraStep && !shouldSkipSignupValidation()) ||
+    currentStep === STEP.STUDENT_VERIFY ||
     currentStep === STEP.ALT_VERIFY_CHOICE ||
     currentStep === STEP.CERTIFICATE_GUIDE ||
     currentStep === STEP.NEIS_PLUS_SUBMIT ||
@@ -370,6 +370,9 @@ const Sign = ({ navigation }) => {
     showStudentIdentityIntroModal ||
     inicisOverlayVisible ||
     blockingAlert.visible;
+
+  const isSignupCompleteScreen =
+    currentStep === STEP.STUDENT_VERIFY && studentVerified;
 
   const identity = useMemo(
     () => ({
@@ -402,10 +405,10 @@ const Sign = ({ navigation }) => {
     return enrollment;
   }, [identity.birthDate]);
 
-  const schoolGradeLabel = useMemo(() => {
+  useEffect(() => {
     const g = schoolEnrollmentPreview.grade;
-    if (g == null || !Number.isFinite(Number(g))) return '';
-    return `${Number(g)}학년`;
+    if (g == null || !Number.isFinite(Number(g))) return;
+    setSchoolGradeNum((prev) => prev || String(Number(g)));
   }, [schoolEnrollmentPreview.grade]);
 
   const goToLogin = useCallback(() => {
@@ -1177,7 +1180,7 @@ const Sign = ({ navigation }) => {
   };
 
   const proceedFromSchoolSelect = useCallback(() => {
-    const grade = schoolEnrollmentPreview.grade;
+    const grade = Number(schoolGradeNum);
     const graduationYear = schoolEnrollmentPreview.graduationYear;
     const schoolLevel = schoolEnrollmentPreview.schoolLevel;
     const classNum = Number(schoolClassNum);
@@ -1196,17 +1199,17 @@ const Sign = ({ navigation }) => {
     }));
     setCurrentStep(STEP.STUDENT_VERIFY);
   }, [
-    schoolEnrollmentPreview.grade,
     schoolEnrollmentPreview.graduationYear,
     schoolEnrollmentPreview.schoolLevel,
     schoolClassNum,
+    schoolGradeNum,
     selectedSchool,
   ]);
 
   const handleSchoolSelectNext = () => {
     // [SIGNUP_REDESIGN_SKIP] 학교·반·학년·확인 모달 우회
     if (shouldSkipSignupValidation()) {
-      const grade = schoolEnrollmentPreview.grade || 2;
+      const grade = Number(schoolGradeNum) || 2;
       const classNum = Number(schoolClassNum) || 1;
       if (selectedSchool?.id && !selectedSchool?.manual) {
         proceedFromSchoolSelect();
@@ -1234,12 +1237,9 @@ const Sign = ({ navigation }) => {
       Alert.alert('알림', '재학 중인 학교를 목록에서 선택해 주세요.');
       return;
     }
-    const grade = schoolEnrollmentPreview.grade;
-    if (grade == null || !Number.isFinite(Number(grade)) || Number(grade) < 1) {
-      Alert.alert(
-        '알림',
-        '생년월일 기준으로 학년을 계산하지 못했습니다. 이전 단계의 본인인증을 다시 확인해 주세요.',
-      );
+    const grade = Number(schoolGradeNum);
+    if (!Number.isFinite(grade) || grade < 1) {
+      Alert.alert('알림', '학년을 입력해 주세요.');
       return;
     }
     const classNum = Number(schoolClassNum);
@@ -1251,7 +1251,7 @@ const Sign = ({ navigation }) => {
     setBlockingAlert({
       visible: true,
       title: '학적 정보 확인',
-      message: `${selectedSchool.name} ${Number(grade)}학년 ${classNum}반이 맞나요?\n\n학생증 인증으로 넘어가기 전에 꼭 확인해 주세요.`,
+      message: `${selectedSchool.name} ${grade}학년 ${classNum}반이 맞나요?\n\n학생증 인증으로 넘어가기 전에 꼭 확인해 주세요.`,
       buttons: [
         {
           text: '맞아요',
@@ -1625,6 +1625,11 @@ const Sign = ({ navigation }) => {
 
     setSubmitting(true);
     try {
+      if (SIGNUP_REDESIGN_SKIP_VALIDATION) {
+        await login({ studentVerificationStatus: 'PENDING' });
+        return;
+      }
+
       const inicisToken =
         inicisClientTokenRef.current || identityData.inicisClientToken;
       const payload = buildSignupPayload(
@@ -1743,6 +1748,7 @@ const Sign = ({ navigation }) => {
     }
     if (currentStep === STEP.SCHOOL_SELECT) {
       if (!selectedSchool?.id || selectedSchool?.manual) return true;
+      if (!Number(schoolGradeNum) || Number(schoolGradeNum) < 1) return true;
       if (!Number(schoolClassNum) || Number(schoolClassNum) < 1) return true;
       if (
         schoolEnrollmentPreview.grade == null ||
@@ -1797,29 +1803,31 @@ const Sign = ({ navigation }) => {
 
   return (
     <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
-      <View style={styles.headerSection}>
-        <View style={styles.header}>
-          <View style={styles.headerTop}>
-            <TouchableOpacity
-              style={styles.backButton}
-              onPress={handleBack}
-              disabled={submitting}
-            >
-              <Ionicons
-                name="chevron-back"
-                size={normalize(24)}
-                color={colors.textPrimary}
+      {!isSignupCompleteScreen ? (
+        <View style={styles.headerSection}>
+          <View style={styles.header}>
+            <View style={styles.headerTop}>
+              <TouchableOpacity
+                style={styles.backButton}
+                onPress={handleBack}
+                disabled={submitting}
+              >
+                <Ionicons
+                  name="chevron-back"
+                  size={normalize(24)}
+                  color={colors.textPrimary}
+                />
+              </TouchableOpacity>
+              <Text style={styles.headerTitle}>{getStepTitle()}</Text>
+            </View>
+            <View style={styles.progressBarContainer}>
+              <View
+                style={[styles.progressBar, { width: `${progressWidth}%` }]}
               />
-            </TouchableOpacity>
-            <Text style={styles.headerTitle}>{getStepTitle()}</Text>
-          </View>
-          <View style={styles.progressBarContainer}>
-            <View
-              style={[styles.progressBar, { width: `${progressWidth}%` }]}
-            />
+            </View>
           </View>
         </View>
-      </View>
+      ) : null}
 
       <View style={styles.contentSection}>
         {currentStep === STEP.CONSENT && (
@@ -1854,10 +1862,10 @@ const Sign = ({ navigation }) => {
             normalize={normalize}
             selectedSchool={selectedSchool}
             onSelect={setSelectedSchool}
-            gradeLabel={schoolGradeLabel}
+            gradeNum={schoolGradeNum}
+            onGradeNumChange={setSchoolGradeNum}
             classNum={schoolClassNum}
             onClassNumChange={setSchoolClassNum}
-            onPressGradeMismatch={handleGradeMismatchHelp}
             bottomOffset={footerHeight}
           />
         )}
@@ -1906,6 +1914,8 @@ const Sign = ({ navigation }) => {
             alreadyVerified={studentVerified}
             onVerified={handleStudentVerified}
             onCertificateGuide={handleAltVerifyChoiceOpen}
+            onConfirm={handleComplete}
+            submitting={submitting}
           />
         )}
       </View>

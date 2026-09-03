@@ -35,7 +35,7 @@ const DOCS = [
   {
     slug: 'privacy_policy',
     title: '개인정보 처리방침',
-    version: 'v1.5.1',
+    version: 'v1.5.2',
     file: 'privacy-policy.md',
     fallback: '_privacy_md.json',
   },

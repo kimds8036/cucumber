@@ -215,7 +215,7 @@ async function loadDashboard() {
       }
       if (view === 'reach') {
       await loadAnalyticsOverview();
-        await loadInstallLandingStats();
+      await loadInstallLandingStats();
       }
       if (view === 'user') await loadOpsUsersPreview(1);
     } catch (error) {
