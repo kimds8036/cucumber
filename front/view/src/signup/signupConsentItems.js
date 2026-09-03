@@ -18,25 +18,25 @@ export const DEFAULT_CONSENT_ITEMS = [
   {
     key: 'dataCollection',
     required: true,
-    label: '회원가입 및 서비스 제공을 위한 개인정보 수집·이용',
+    label: '서비스 이용을 위한 개인정보 수집·이용 동의',
     detail: 'privacy',
   },
   {
     key: 'studentOcr',
     required: true,
-    label: '학생증 인증용 개인정보 수집·이용',
+    label: '학생증 인증용 개인정보 수집·이용 동의',
     detail: 'privacy',
   },
   {
     key: 'location',
     required: true,
-    label: '위치 정보 수집·이용',
+    label: '위치 정보 수집·이용 동의',
     detail: null,
   },
   {
     key: 'marketingOptIn',
     required: false,
-    label: '마케팅·이벤트 정보 수신',
+    label: '마케팅·이벤트 정보 수신 동의',
     detail: null,
   },
 ];

@@ -235,7 +235,7 @@ const SignupConsentSheet = ({ visible, provider, onClose, onConfirm }) => {
                         <Text style={styles.bulkLink}>개인정보처리방침</Text>
                       </TouchableOpacity>
                       <Text style={styles.bulkSubtitlePlain}>
-                        을 읽었으며 이에 모두 동의합니다
+                        을 읽었으며 이에 동의합니다
                       </Text>
                     </View>
                   </View>

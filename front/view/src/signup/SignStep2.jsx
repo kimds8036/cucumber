@@ -92,7 +92,12 @@ const SignStep2 = ({
 
   useEffect(() => {
     if (showCertificateFields) notifyCertificate();
-  }, [claimedSchoolName, certificateUrl, submissionNumber, showCertificateFields]);
+  }, [
+    claimedSchoolName,
+    certificateUrl,
+    submissionNumber,
+    showCertificateFields,
+  ]);
 
   const usernameStatus = useMemo(() => {
     if (!username) return 'idle';
@@ -121,7 +126,9 @@ const SignStep2 = ({
           <Text
             style={[
               accountStyles.fieldFeedback,
-              isOk ? accountStyles.fieldFeedbackSuccess : accountStyles.fieldFeedbackError,
+              isOk
+                ? accountStyles.fieldFeedbackSuccess
+                : accountStyles.fieldFeedbackError,
             ]}
           >
             {isOk ? successText : errorText}
@@ -191,11 +198,13 @@ const SignStep2 = ({
                   onPress={onToggleVisible}
                   hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                   accessibilityRole="button"
-                  accessibilityLabel={visible ? '비밀번호 숨기기' : '비밀번호 보기'}
+                  accessibilityLabel={
+                    visible ? '비밀번호 숨기기' : '비밀번호 보기'
+                  }
                 >
                   <Ionicons
                     name={visible ? 'eye-outline' : 'eye-off-outline'}
-                    size={normalize(18)}
+                    size={normalize(Platform.OS === 'ios' ? 18 : 24)}
                     color={colors.textSecondary}
                   />
                 </TouchableOpacity>
@@ -260,7 +269,10 @@ const SignStep2 = ({
     </>
   );
 
-  const renderFieldFeedback = (status, { validText, invalidText, hintText }) => {
+  const renderFieldFeedback = (
+    status,
+    { validText, invalidText, hintText },
+  ) => {
     if (status === 'idle') {
       return hintText ? (
         <SignupHelperText normalize={normalize} tight>
@@ -430,7 +442,9 @@ const SignStep2 = ({
 
         {showCertificateFields ? (
           <>
-            <Text style={[styles.inputLabel, styles.certificateSubmitLabelSpaced]}>
+            <Text
+              style={[styles.inputLabel, styles.certificateSubmitLabelSpaced]}
+            >
               재학 학교명
             </Text>
             <View style={styles.inputWrapper}>
@@ -487,7 +501,7 @@ const SignStep2 = ({
 
 function createAccountStyles(normalize, width) {
   const inputMinHeight = normalize(Math.round(fontSizes.xxl));
-  const inputIconSize = normalize(18);
+  const inputIconSize = normalize(Platform.OS === 'ios' ? 18 : 24);
 
   return StyleSheet.create({
     body: {
