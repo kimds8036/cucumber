@@ -175,6 +175,13 @@ const SignStep2 = ({
                 secureTextEntry={secureTextEntry}
                 autoCapitalize={autoCapitalize}
                 autoCorrect={false}
+                spellCheck={false}
+                keyboardType={Platform.select({
+                  ios: 'ascii-capable',
+                  android: 'email-address',
+                })}
+                textContentType={secureTextEntry ? 'newPassword' : 'username'}
+                autoComplete={secureTextEntry ? 'password-new' : 'username'}
                 multiline={false}
                 scrollEnabled={false}
               />
@@ -228,6 +235,13 @@ const SignStep2 = ({
             secureTextEntry={!visible}
             autoCapitalize="none"
             autoCorrect={false}
+            spellCheck={false}
+            keyboardType={Platform.select({
+              ios: 'ascii-capable',
+              android: 'email-address',
+            })}
+            textContentType="newPassword"
+            autoComplete="password-new"
           />
           <TouchableOpacity
             onPress={onToggleVisible}
@@ -363,6 +377,13 @@ const SignStep2 = ({
             placeholderTextColor={colors.textSecondary}
             autoCapitalize="none"
             autoCorrect={false}
+            spellCheck={false}
+            keyboardType={Platform.select({
+              ios: 'ascii-capable',
+              android: 'email-address',
+            })}
+            textContentType="username"
+            autoComplete="username"
           />
         </View>
         {renderFieldFeedback(usernameStatus, {
@@ -436,6 +457,11 @@ const SignStep2 = ({
                   notifyCertificate({ certificateUrl: text });
                 }}
                 autoCapitalize="none"
+                autoCorrect={false}
+                spellCheck={false}
+                keyboardType="url"
+                textContentType="URL"
+                autoComplete="url"
               />
             </View>
             <Text style={styles.inputLabel}>열람 번호</Text>

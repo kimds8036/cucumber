@@ -72,7 +72,10 @@ const SignStepCertificate = ({
             placeholderTextColor={colors.textSecondary}
             autoCapitalize="none"
             autoCorrect={false}
+            spellCheck={false}
             keyboardType="url"
+            textContentType="URL"
+            autoComplete="url"
           />
         </View>
 
