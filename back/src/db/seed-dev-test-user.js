@@ -26,7 +26,6 @@ export const DEV_TEST_MIDDLE1 = Object.freeze({
   birthDate: '2014-03-15',
   grade: 1,
   classNumber: 3,
-  graduationYear: 2029,
 });
 
 export const DEV_TEST_MIDDLE2 = Object.freeze({
@@ -37,7 +36,6 @@ export const DEV_TEST_MIDDLE2 = Object.freeze({
   birthDate: '2013-05-20',
   grade: 2,
   classNumber: 5,
-  graduationYear: 2028,
 });
 
 export const DEV_TEST_ACCOUNTS = Object.freeze([
@@ -81,7 +79,6 @@ async function upsertOneDevTestUser(connection, schoolId, account) {
          school_id = ?,
          grade = ?,
          class_number = ?,
-         graduation_year = ?,
          is_graduated = FALSE,
          is_deleted = FALSE,
          is_banned = FALSE,
@@ -99,7 +96,6 @@ async function upsertOneDevTestUser(connection, schoolId, account) {
         schoolId,
         account.grade,
         account.classNumber,
-        account.graduationYear,
         userId,
       ],
     );
@@ -109,9 +105,9 @@ async function upsertOneDevTestUser(connection, schoolId, account) {
   const [result] = await connection.execute(
     `INSERT INTO users
        (username, password, ${USER_PII_INSERT_COLUMNS}, school_id, grade, class_number,
-        graduation_year, is_graduated, color_id, phone_verified, student_verified,
+        is_graduated, color_id, phone_verified, student_verified,
         reverification_status)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, FALSE, 1, TRUE, TRUE, 'none')`,
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, FALSE, 1, TRUE, TRUE, 'none')`,
     [
       account.username,
       hashed,
@@ -119,7 +115,6 @@ async function upsertOneDevTestUser(connection, schoolId, account) {
       schoolId,
       account.grade,
       account.classNumber,
-      account.graduationYear,
     ],
   );
   return {

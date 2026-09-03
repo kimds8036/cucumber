@@ -158,7 +158,6 @@ const SignStepStudentIdVerify = ({
         cloudinaryUrl: data.cloudinaryUrl,
         grade: data.suggestedGrade ?? '',
         class: data.suggestedClassNumber ?? '',
-        graduationYear: data.suggestedGraduationYear ?? '',
         expectedLevel: data.expectedLevel,
         studentVerificationToken: data.studentVerificationToken,
         verification: data,

@@ -68,7 +68,6 @@ import {
 import {
   buildEnrollmentFromBirthDate,
   inferExpectedSchoolLevel,
-  inferGraduationYear,
   pickRandomProfileColorId,
 } from './signupEnrollmentUtils';
 
@@ -99,7 +98,6 @@ function getAdultTestEnrollmentFallback() {
     schoolLevel: 'high',
     grade: 3,
     classNum: 1,
-    graduationYear: new Date().getFullYear() + 1,
   };
 }
 
@@ -377,20 +375,17 @@ const Sign = ({ navigation }) => {
   const schoolEnrollmentPreview = useMemo(() => {
     const bd = normalizeBirthDateForCompare(identity.birthDate) || identity.birthDate;
     if (!bd || !isValidBirthDateString(bd)) {
-      return { grade: null, graduationYear: null, schoolLevel: null };
+      return { grade: null, schoolLevel: null };
     }
     const enrollment = buildEnrollmentFromBirthDate(bd);
     if (
       ALLOW_ADULT_SIGNUP_IN_DEV &&
-      (enrollment.grade == null ||
-        !enrollment.schoolLevel ||
-        enrollment.graduationYear == null)
+      (enrollment.grade == null || !enrollment.schoolLevel)
     ) {
       const fallback = getAdultTestEnrollmentFallback();
       return {
         schoolLevel: enrollment.schoolLevel || fallback.schoolLevel,
         grade: enrollment.grade ?? fallback.grade,
-        graduationYear: enrollment.graduationYear ?? fallback.graduationYear,
       };
     }
     return enrollment;
@@ -1164,11 +1159,6 @@ const Sign = ({ navigation }) => {
   const proceedFromSchoolSelect = useCallback(() => {
     const grade = Number(schoolGrade);
     const schoolLevel = schoolEnrollmentPreview.schoolLevel;
-    const bd =
-      normalizeBirthDateForCompare(identity.birthDate) || identity.birthDate;
-    const graduationYear =
-      inferGraduationYear(bd, schoolLevel, grade) ||
-      schoolEnrollmentPreview.graduationYear;
     const classNum = Number(schoolClassNum);
 
     setFormData((prev) => ({
@@ -1177,16 +1167,10 @@ const Sign = ({ navigation }) => {
       schoolName: selectedSchool.name,
       grade: String(grade),
       classNum: String(classNum),
-      graduationYear:
-        graduationYear != null && graduationYear !== ''
-          ? String(graduationYear)
-          : prev.graduationYear || '',
       schoolLevel: schoolLevel || prev.schoolLevel,
     }));
     setCurrentStep(STEP.STUDENT_VERIFY);
   }, [
-    identity.birthDate,
-    schoolEnrollmentPreview.graduationYear,
     schoolEnrollmentPreview.schoolLevel,
     schoolClassNum,
     schoolGrade,
@@ -1311,23 +1295,12 @@ const Sign = ({ navigation }) => {
     const grade =
       overrides.grade ?? enrollment.grade ?? 1;
     const classNum = overrides.classNum ?? 1;
-    let graduationYear =
-      overrides.graduationYear ?? enrollment.graduationYear;
     let schoolLevel = overrides.level || enrollment.schoolLevel;
 
-    // 성인 테스트 시 학년·졸업년도 자동 추정 실패 → 고3 대체값으로 진행
-    if (
-      ALLOW_ADULT_SIGNUP_IN_DEV &&
-      (!schoolLevel ||
-        !Number.isFinite(Number(graduationYear)) ||
-        Number(graduationYear) < 1900)
-    ) {
+    // 성인 테스트 시 학교급 자동 추정 실패 → 고3 대체값으로 진행
+    if (ALLOW_ADULT_SIGNUP_IN_DEV && !schoolLevel) {
       const fallback = getAdultTestEnrollmentFallback();
-      schoolLevel = schoolLevel || fallback.schoolLevel;
-      graduationYear =
-        Number.isFinite(Number(graduationYear)) && Number(graduationYear) >= 1900
-          ? Number(graduationYear)
-          : fallback.graduationYear;
+      schoolLevel = fallback.schoolLevel;
       return {
         schoolLevel,
         grade: Number.isFinite(Number(grade)) && Number(grade) >= 1
@@ -1337,7 +1310,6 @@ const Sign = ({ navigation }) => {
           Number.isFinite(Number(classNum)) && Number(classNum) >= 1
             ? Number(classNum)
             : fallback.classNum,
-        graduationYear,
       };
     }
 
@@ -1345,7 +1317,6 @@ const Sign = ({ navigation }) => {
       schoolLevel,
       grade,
       classNum,
-      graduationYear,
     };
   };
 
@@ -1366,21 +1337,14 @@ const Sign = ({ navigation }) => {
         Number(formData.classNum) ||
         Number(schoolClassNum) ||
         undefined,
-      graduationYear:
-        Number(formData.graduationYear) ||
-        schoolEnrollmentPreview.graduationYear ||
-        data?.verification?.suggestedGraduationYear ||
-        data?.graduationYear ||
-        undefined,
     });
 
-    const { schoolLevel, grade, classNum, graduationYear } = enrollment;
+    const { schoolLevel, grade, classNum } = enrollment;
 
     const recognized = {
       ...data,
       grade,
       class: classNum,
-      graduationYear,
     };
 
     const token =
@@ -1391,10 +1355,6 @@ const Sign = ({ navigation }) => {
       schoolLevel,
       grade: String(grade),
       classNum: String(classNum),
-      graduationYear:
-        graduationYear != null && graduationYear !== ''
-          ? String(graduationYear)
-          : '',
       schoolId: selectedSchool?.id || formData.schoolId,
       schoolName: selectedSchool?.name || formData.schoolName,
     };
@@ -1450,14 +1410,9 @@ const Sign = ({ navigation }) => {
         undefined,
       classNum:
         Number(finalData.classNum) || Number(verificationData?.class) || undefined,
-      graduationYear:
-        Number(finalData.graduationYear) ||
-        Number(verificationData?.graduationYear) ||
-        undefined,
     });
     const grade = enrollment.grade;
     const classNumber = enrollment.classNum;
-    const graduationYear = enrollment.graduationYear;
 
     const verificationMethod =
       options.verificationMethod || 'student_id';
@@ -1476,7 +1431,6 @@ const Sign = ({ navigation }) => {
       schoolId: finalData.schoolId,
       grade,
       classNumber,
-      graduationYear,
       colorId: pickRandomProfileColorId(),
       verificationMethod,
       consents: consentData.consents || {},
@@ -1553,17 +1507,6 @@ const Sign = ({ navigation }) => {
           inviteCode: await peekPendingInviteCode(),
         },
       );
-      if (
-        !Number.isFinite(payload.graduationYear) ||
-        payload.graduationYear < 1900
-      ) {
-        Alert.alert(
-          '가입 정보 확인',
-          '생년월일 기준으로 학년·졸업년도를 자동 계산하지 못했습니다.\n' +
-            '중·고등학생 생년월일(만 14~19세)로 다시 시도해 주세요.',
-        );
-        return;
-      }
       await api.post('/api/auth/signup', payload);
       await consumePendingInviteCode();
       await finishSignupAndEnterApp(finalData.username, finalData.password);

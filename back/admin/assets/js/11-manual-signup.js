@@ -13,7 +13,6 @@ function resetManualSignupForm() {
     'manual-signup-school-q',
     'manual-signup-grade',
     'manual-signup-class',
-    'manual-signup-grad-year',
     'manual-signup-note',
   ];
   ids.forEach((id) => {
@@ -95,7 +94,6 @@ async function submitManualSignup() {
   const birthDate = document.getElementById('manual-signup-birth')?.value?.trim();
   const grade = document.getElementById('manual-signup-grade')?.value;
   const classNumber = document.getElementById('manual-signup-class')?.value;
-  const graduationYear = document.getElementById('manual-signup-grad-year')?.value;
   const colorId = document.getElementById('manual-signup-color')?.value;
   const studentVerified = document.getElementById('manual-signup-student-verified')?.checked;
   const adminNote = document.getElementById('manual-signup-note')?.value?.trim();
@@ -122,7 +120,6 @@ async function submitManualSignup() {
         schoolId: manualSignupSchool.id,
         grade: Number(grade),
         classNumber: Number(classNumber),
-        graduationYear: Number(graduationYear),
         colorId: Number(colorId),
         studentVerified,
         adminNote,
@@ -180,9 +177,6 @@ function renderManualSignupPanel() {
         </label>
         <label>반
           <input id="manual-signup-class" type="number" min="1" max="50" class="note-input" value="1" />
-        </label>
-        <label>졸업년도
-          <input id="manual-signup-grad-year" type="number" class="note-input" placeholder="예: 2028" />
         </label>
         <label>프로필 색
           <select id="manual-signup-color" class="note-input">

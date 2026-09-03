@@ -865,7 +865,6 @@ router.get('/users', requireAdminApi, async (req, res) => {
          sch.name AS school_name,
          u.grade,
          u.class_number,
-         u.graduation_year,
          u.grade_exception,
          u.student_verified,
          u.reverification_status,
@@ -899,7 +898,7 @@ router.get('/users', requireAdminApi, async (req, res) => {
 });
 
 /**
- * 관리자 학적 변경 (학교·학년·반·졸업년도)
+ * 관리자 학적 변경 (학교·학년·반)
  * POST /api/admin/users/:userId/academic
  */
 router.post(
@@ -916,11 +915,6 @@ router.post(
     const schoolId = String(req.body?.schoolId || '').trim();
     const grade = Number(req.body?.grade);
     const classNumber = Number(req.body?.classNumber);
-    const graduationYearRaw = req.body?.graduationYear;
-    const graduationYear =
-      graduationYearRaw === '' || graduationYearRaw == null
-        ? null
-        : Number(graduationYearRaw);
     const gradeException = Boolean(req.body?.gradeException);
     const note = String(req.body?.note || '').trim() || null;
 
@@ -933,15 +927,6 @@ router.post(
     if (!Number.isFinite(classNumber) || classNumber < 1 || classNumber > 50) {
       return res.status(400).json({ success: false, message: '반은 1~50 사이여야 합니다.' });
     }
-    if (
-      graduationYear != null &&
-      (!Number.isFinite(graduationYear) || graduationYear < 2000 || graduationYear > 2100)
-    ) {
-      return res.status(400).json({
-        success: false,
-        message: '졸업년도가 올바르지 않습니다.',
-      });
-    }
 
     const connection = await pool.getConnection();
     try {
@@ -949,7 +934,7 @@ router.post(
 
       const [beforeRows] = await connection.execute(
         `SELECT u.id, u.username, u.school_id, sch.name AS school_name,
-                u.grade, u.class_number, u.graduation_year, u.grade_exception,
+                u.grade, u.class_number, u.grade_exception,
                 u.reverification_status
          FROM users u
          LEFT JOIN schools sch ON sch.school_id = u.school_id
@@ -978,7 +963,6 @@ router.post(
         grade,
         classNumber,
         gradeException,
-        graduationYear,
       });
 
       const after = {
@@ -986,8 +970,6 @@ router.post(
         schoolName: schoolRows[0].name,
         grade,
         classNumber,
-        graduationYear:
-          graduationYear != null ? graduationYear : before.graduation_year,
         gradeException,
       };
 
@@ -1004,7 +986,6 @@ router.post(
             schoolName: before.school_name,
             grade: before.grade,
             classNumber: before.class_number,
-            graduationYear: before.graduation_year,
             gradeException: Boolean(before.grade_exception),
             reverificationStatus: before.reverification_status,
           },

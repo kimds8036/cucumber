@@ -27,7 +27,6 @@ import { uploadSignupStudentIdPhoto } from '../services/signupStudentIdPhoto.ser
 import {
   inferExpectedSchoolLevel,
   inferGradeFromBirthDate,
-  inferGraduationYear,
   pickRandomProfileColorId,
 } from '../utils/signupEnrollment.js';
 import { verifyFirebaseIdToken } from '../config/firebase.js';
@@ -214,8 +213,6 @@ const signupValidators = [
     .bail().toInt().isInt({ min: 1, max: 6 }).withMessage('학년이 올바르지 않습니다.'),
   body('classNumber').exists({ checkNull: true }).withMessage('반을 선택해주세요.')
     .bail().toInt().isInt({ min: 1, max: 50 }).withMessage('반이 올바르지 않습니다.'),
-  body('graduationYear').exists({ checkNull: true }).withMessage('졸업년도를 선택해주세요.')
-    .bail().toInt().isInt({ min: 1900, max: 2100 }).withMessage('졸업년도가 올바르지 않습니다.'),
   body('colorId').optional({ values: 'falsy' }).toInt().isInt({ min: 1, max: 4 }),
   body('verificationMethod').optional({ values: 'falsy' }).isString().isIn(['student_id', 'certificate']),
   body('certificateViewUrl').optional({ values: 'falsy' }).isString().isLength({ max: 500 }),
@@ -1000,7 +997,6 @@ router.post(
       schoolId, 
       grade, 
       classNumber, 
-      graduationYear, 
       colorId: rawColorId,
       verificationMethod = 'student_id',
       certificateViewUrl,
@@ -1027,7 +1023,7 @@ router.post(
     // [SIGNUP_REDESIGN_SKIP] 필수 필드·약관·토큰 검증
     if (!skipValidation) {
       if (!username || !password || !name || !phone || !birthDate ||
-          !resolvedSchoolId || !grade || !classNumber || !graduationYear) {
+          !resolvedSchoolId || !grade || !classNumber) {
         return res.status(400).json({
           success: false,
           message: '모든 필드를 입력해주세요.',
@@ -1080,9 +1076,6 @@ router.post(
     if (!Number.isFinite(resolvedGrade) || resolvedGrade < 1 || resolvedGrade > 3) {
       resolvedGrade = inferredGrade || 1;
     }
-    const resolvedGraduationYear =
-      inferGraduationYear(normalizedBirthDate, expectedLevel, resolvedGrade) ||
-      new Date().getFullYear() + 1;
     const resolvedClassNumber = Number(classNumber) || 1;
 
     let effectiveSchoolId = resolvedSchoolId;
@@ -1305,8 +1298,8 @@ router.post(
 
       const [result] = await connection.execute(
         `INSERT INTO users 
-         (username, password, ${USER_PII_INSERT_COLUMNS}, school_id, grade, class_number, graduation_year, color_id, phone_verified, student_verified) 
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, TRUE, ?)`,
+         (username, password, ${USER_PII_INSERT_COLUMNS}, school_id, grade, class_number, color_id, phone_verified, student_verified) 
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, TRUE, ?)`,
         [
           signupUsername,
           hashedPassword,
@@ -1314,7 +1307,6 @@ router.post(
           effectiveSchoolId,
           resolvedGrade,
           resolvedClassNumber,
-          resolvedGraduationYear,
           resolvedColorId,
           studentVerifiedOnInsert,
         ],
@@ -1935,9 +1927,6 @@ router.post('/signup/upload-student-id', signupOcrLimiter, async (req, res) => {
         normalizeBirthDateInput(birthDate) || birthDate || '2010-05-15';
       const expectedLevel = inferExpectedSchoolLevel(normalizedBirthDate);
       const suggestedGrade = inferGradeFromBirthDate(normalizedBirthDate, expectedLevel) || 1;
-      const suggestedGraduationYear =
-        inferGraduationYear(normalizedBirthDate, expectedLevel, suggestedGrade) ||
-        new Date().getFullYear() + 1;
 
       return res.json({
         success: true,
@@ -1947,7 +1936,6 @@ router.post('/signup/upload-student-id', signupOcrLimiter, async (req, res) => {
           cloudinaryUrl: null,
           studentVerificationToken: 'redesign-skip-upload-token',
           suggestedGrade,
-          suggestedGraduationYear,
           suggestedClassNumber: 1,
           expectedLevel,
         },
@@ -1995,11 +1983,6 @@ router.post('/signup/upload-student-id', signupOcrLimiter, async (req, res) => {
     const normalizedBirthDate = normalizeBirthDateInput(birthDate) || birthDate;
     const expectedLevel = inferExpectedSchoolLevel(normalizedBirthDate);
     const suggestedGrade = inferGradeFromBirthDate(normalizedBirthDate, expectedLevel);
-    const suggestedGraduationYear = inferGraduationYear(
-      normalizedBirthDate,
-      expectedLevel,
-      suggestedGrade,
-    );
 
     const studentVerificationToken = await issueStudentIdManualVerificationToken({
       name: String(name).trim(),
@@ -2018,7 +2001,6 @@ router.post('/signup/upload-student-id', signupOcrLimiter, async (req, res) => {
         cloudinaryUrl: uploaded.cloudinaryUrl,
         studentVerificationToken,
         suggestedGrade,
-        suggestedGraduationYear,
         suggestedClassNumber: 1,
         expectedLevel,
       },

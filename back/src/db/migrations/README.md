@@ -8,6 +8,8 @@
 | `archive/pre-squash/` | 2026-08 1차 스쿼시 이전 001~059 SQL (참고용, 실행 안 함) |
 | `archive/incremental-pre-squash-v2/` | 2차 스쿼시 이전 증분 002~006 (참고용, 실행 안 함) |
 | `007_developer_feedback_hall_of_fame.sql` | 회초리·명예의 전당·제보 묶음 (008~011 통합) |
+| `008_announcements.sql` | 고객지원 공지사항 |
+| `009_drop_users_graduation_year.sql` | `users.graduation_year` 컬럼 제거 |
 | `archive/2026-09-squash/` | 2026-09 스쿼시 이전 008~011 SQL (참고용) |
 
 `migrate.js`는 `schema_migrations` 테이블로 **이미 적용된 파일만 스킵**합니다.

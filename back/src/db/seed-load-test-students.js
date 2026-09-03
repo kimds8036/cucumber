@@ -72,7 +72,6 @@ async function upsertLoadTestStudent(connection, { index, schoolId, hashedPasswo
   });
   const grade = (index % 3) + 1;
   const classNumber = (index % 10) + 1;
-  const graduationYear = 2028 + (index % 3);
 
   const [existing] = await connection.execute(
     `SELECT id FROM users WHERE username = ? LIMIT 1`,
@@ -92,7 +91,6 @@ async function upsertLoadTestStudent(connection, { index, schoolId, hashedPasswo
          school_id = ?,
          grade = ?,
          class_number = ?,
-         graduation_year = ?,
          is_graduated = FALSE,
          is_deleted = FALSE,
          is_banned = FALSE,
@@ -110,7 +108,6 @@ async function upsertLoadTestStudent(connection, { index, schoolId, hashedPasswo
         schoolId,
         grade,
         classNumber,
-        graduationYear,
         userId,
       ],
     );
@@ -120,9 +117,9 @@ async function upsertLoadTestStudent(connection, { index, schoolId, hashedPasswo
   const [result] = await connection.execute(
     `INSERT INTO users
        (username, password, ${USER_PII_INSERT_COLUMNS}, school_id, grade, class_number,
-        graduation_year, is_graduated, color_id, phone_verified, student_verified,
+        is_graduated, color_id, phone_verified, student_verified,
         reverification_status)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, FALSE, 1, TRUE, TRUE, 'none')`,
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, FALSE, 1, TRUE, TRUE, 'none')`,
     [
       username,
       hashedPassword,
@@ -130,7 +127,6 @@ async function upsertLoadTestStudent(connection, { index, schoolId, hashedPasswo
       schoolId,
       grade,
       classNumber,
-      graduationYear,
     ],
   );
   return { userId: result.insertId, created: true };

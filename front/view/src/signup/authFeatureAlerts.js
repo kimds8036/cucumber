@@ -66,9 +66,9 @@ export function showGuardianVerificationFailedAlert(onConfirm) {
   );
 }
 
-/** 학교 선택 — 생년월일 기준 학년 잠금 + 학적 문의 안내 */
+/** 학교 선택 — 생년월일 기준 학년 안내 */
 export const GRADE_ENROLLMENT_NOTICE =
-  '학년은 본인인증 생년월일 기준으로 자동 표시되며 수정할 수 없습니다. 학년이 다르다면 가입을 완료한 뒤 앱에서 「문의하기」로 학적 변동을 요청해 주세요.';
+  '학년은 본인인증 생년월일 기준으로 자동 입력되며, 다르면 수정할 수 있어요.';
 
 export const GRADE_MISMATCH_HELP_TITLE = '학년이 다른 경우';
 

@@ -46,15 +46,6 @@ export function getAcademicYearStart(ref = new Date()) {
   return ref.getMonth() >= 2 ? ref.getFullYear() : ref.getFullYear() - 1;
 }
 
-/** DB 필수 graduation_year — 해당 학교급 졸업 예정 연도(단순 추정) */
-export function inferGraduationYear(birthDate, schoolLevel, grade, ref = new Date()) {
-  const g = Number(grade);
-  if (!schoolLevel || !Number.isFinite(g) || g < 1 || g > 3) return null;
-  const academicStart = getAcademicYearStart(ref);
-  const yearsLeft = 3 - g + 1;
-  return academicStart + yearsLeft;
-}
-
 export function pickRandomProfileColorId() {
   return Math.floor(Math.random() * 4) + 1;
 }

@@ -24,7 +24,6 @@ const SignStep3 = ({ styles, normalize, onNext, onManualInput }) => {
         school: '오이고등학교',
         grade: '3',
         class: '2',
-        graduationYear: '2026',
       };
       setIsRecognizing(false);
       onNext(recognizedData);

@@ -3,7 +3,6 @@ import { hashPassword } from '../utils/auth.js';
 import {
   inferExpectedSchoolLevel,
   inferGradeFromBirthDate,
-  inferGraduationYear,
   pickRandomProfileColorId,
   computeAge,
 } from '../utils/signupEnrollment.js';
@@ -38,7 +37,6 @@ export function normalizeManualSignupInput(raw) {
   const schoolId = String(raw?.schoolId || '').trim();
   const grade = Number(raw?.grade);
   const classNumber = Number(raw?.classNumber);
-  let graduationYear = Number(raw?.graduationYear);
   const colorId = Number(raw?.colorId) || pickRandomProfileColorId();
   const studentVerified = raw?.studentVerified !== false;
   const adminNote = String(raw?.adminNote || '').trim();
@@ -47,11 +45,6 @@ export function normalizeManualSignupInput(raw) {
   let resolvedGrade = grade;
   if (!Number.isFinite(resolvedGrade) || resolvedGrade < 1) {
     resolvedGrade = inferGradeFromBirthDate(birthDate, expectedLevel) || 1;
-  }
-  if (!Number.isFinite(graduationYear)) {
-    graduationYear =
-      inferGraduationYear(birthDate, expectedLevel, resolvedGrade) ||
-      new Date().getFullYear() + 1;
   }
   const resolvedClassNumber = Number.isFinite(classNumber) && classNumber >= 1
     ? classNumber
@@ -66,7 +59,6 @@ export function normalizeManualSignupInput(raw) {
     schoolId,
     grade: resolvedGrade,
     classNumber: resolvedClassNumber,
-    graduationYear,
     colorId,
     studentVerified,
     adminNote,
@@ -99,9 +91,6 @@ export function validateManualSignupInput(input) {
   }
   if (!Number.isFinite(input.classNumber) || input.classNumber < 1 || input.classNumber > 50) {
     errors.push('반 번호를 입력해 주세요.');
-  }
-  if (!Number.isFinite(input.graduationYear) || input.graduationYear < 1900 || input.graduationYear > 2100) {
-    errors.push('졸업년도를 입력해 주세요.');
   }
   if (!Number.isFinite(input.colorId) || input.colorId < 1 || input.colorId > 4) {
     errors.push('프로필 색상을 선택해 주세요.');
@@ -172,9 +161,9 @@ export async function createManualUserAccount(rawInput, { adminUserId, connectio
     const [result] = await connection.execute(
       `INSERT INTO users
          (username, password, ${USER_PII_INSERT_COLUMNS}, school_id, grade, class_number,
-          graduation_year, is_graduated, color_id, phone_verified, student_verified,
+          is_graduated, color_id, phone_verified, student_verified,
           reverification_status)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, FALSE, ?, TRUE, ?, 'none')`,
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, FALSE, ?, TRUE, ?, 'none')`,
       [
         input.username,
         hashedPassword,
@@ -182,7 +171,6 @@ export async function createManualUserAccount(rawInput, { adminUserId, connectio
         input.schoolId,
         input.grade,
         input.classNumber,
-        input.graduationYear,
         input.colorId,
         input.studentVerified,
       ],
@@ -207,7 +195,6 @@ export async function createManualUserAccount(rawInput, { adminUserId, connectio
       schoolId: input.schoolId,
       grade: input.grade,
       classNumber: input.classNumber,
-      graduationYear: input.graduationYear,
       colorId: input.colorId,
       phoneVerified: true,
       studentVerified: input.studentVerified,

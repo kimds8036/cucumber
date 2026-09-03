@@ -141,7 +141,7 @@ export default {
             'application/json': {
               schema: {
                 type: 'object',
-                required: ['username', 'password', 'name', 'phone', 'birthDate', 'schoolId', 'grade', 'classNumber', 'graduationYear', 'colorId'],
+                required: ['username', 'password', 'name', 'phone', 'birthDate', 'schoolId', 'grade', 'classNumber', 'colorId'],
                 properties: {
                   username: { type: 'string', description: '사용자명(아이디)', example: 'user1' },
                   password: { type: 'string', format: 'password', description: '비밀번호 (영문+숫자 8자 이상)' },
@@ -151,7 +151,6 @@ export default {
                   schoolId: { type: 'integer', example: 1, description: '학교 ID' },
                   grade: { type: 'integer', example: 3, description: '학년' },
                   classNumber: { type: 'integer', example: 2, description: '반' },
-                  graduationYear: { type: 'integer', example: 2026, description: '졸업 예정 연도' },
                   colorId: { type: 'integer', example: 1, description: '컬러 ID (colors 테이블)' },
                 },
               },
