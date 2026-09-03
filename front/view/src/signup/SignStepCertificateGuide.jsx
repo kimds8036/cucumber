@@ -4,9 +4,9 @@ import {
   Text,
   Image,
   ScrollView,
-  TouchableOpacity,
   useWindowDimensions,
 } from 'react-native';
+import SignupPrimaryFooter from './SignupPrimaryFooter';
 
 const GUIDE_STEPS = [
   {
@@ -192,31 +192,17 @@ const SignStepCertificateGuide = ({
           </View>
         ))}
       </ScrollView>
-      <View style={[styles.footerSection, { paddingHorizontal: 0 }]}>
-        {!hasReachedBottom ? (
-          <Text style={[styles.certificateGuideScrollHint, { marginBottom: 8 }]}>
-            가이드를 끝까지 내려 확인해 주세요
-          </Text>
-        ) : null}
-        <TouchableOpacity
-          style={[
-            styles.primaryButton,
-            !hasReachedBottom && styles.primaryButtonDisabled,
-          ]}
-          activeOpacity={0.85}
-          disabled={!hasReachedBottom}
-          onPress={onProceed}
-        >
-          <Text
-            style={[
-              styles.primaryButtonText,
-              !hasReachedBottom && styles.primaryButtonTextDisabled,
-            ]}
-          >
-            제출하러 가기
-          </Text>
-        </TouchableOpacity>
-      </View>
+      <SignupPrimaryFooter
+        label="제출하러 가기"
+        onPress={onProceed}
+        disabled={!hasReachedBottom}
+        hint={
+          !hasReachedBottom
+            ? '가이드를 끝까지 내려 확인해 주세요'
+            : null
+        }
+        embedded
+      />
     </View>
   );
 };

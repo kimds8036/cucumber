@@ -22,6 +22,7 @@ import StudentIdCaptureStage, {
 } from '../../../components/auth/StudentIdCaptureStage';
 import { normalizeBirthDateForCompare } from './signupBirthDatePolicy';
 import SubmittingLockModal from '../../../components/common/SubmittingLockModal';
+import SignupPrimaryFooter from './SignupPrimaryFooter';
 import { SIGNUP_REDESIGN_SKIP_VALIDATION } from './signupRedesignFlags';
 
 const UPLOAD_TIMEOUT_MS = 120_000;
@@ -264,21 +265,13 @@ const SignStepStudentIdVerify = ({
           </Text>
         </View>
 
-        <TouchableOpacity
-          style={[
-            styles.primaryButton,
-            submitting && styles.primaryButtonDisabled,
-          ]}
-          disabled={submitting}
+        <SignupPrimaryFooter
+          label="확인"
           onPress={() => onConfirm?.()}
-          activeOpacity={0.85}
-        >
-          {submitting ? (
-            <ActivityIndicator color={colors.textWhite} />
-          ) : (
-            <Text style={styles.primaryButtonText}>확인</Text>
-          )}
-        </TouchableOpacity>
+          disabled={submitting}
+          loading={submitting}
+          embedded
+        />
       </View>
     );
   }
@@ -369,22 +362,13 @@ const SignStepStudentIdVerify = ({
           </TouchableOpacity>
         </View>
 
-        <TouchableOpacity
-          style={[
-            styles.primaryButton,
-            (busy || !showCamera || (!frozenUri && !cameraReady)) &&
-              styles.primaryButtonDisabled,
-          ]}
-          disabled={busy || !showCamera || (!frozenUri && !cameraReady)}
+        <SignupPrimaryFooter
+          label={primaryLabel}
           onPress={handlePrimaryPress}
-          activeOpacity={0.85}
-        >
-          {busy ? (
-            <ActivityIndicator color={colors.textWhite} />
-          ) : (
-            <Text style={styles.primaryButtonText}>{primaryLabel}</Text>
-          )}
-        </TouchableOpacity>
+          disabled={busy || !showCamera || (!frozenUri && !cameraReady)}
+          loading={busy}
+          embedded
+        />
       </View>
 
       <SubmittingLockModal visible={uploading} message="학생증 제출 중…" />
@@ -454,14 +438,13 @@ function createLocalStyles(normalize, width) {
     },
     bottomBlock: {
       flexShrink: 0,
-      paddingBottom: normalize(4),
     },
     altAuthRow: {
       flexDirection: 'row',
       flexWrap: 'wrap',
       justifyContent: 'center',
       alignItems: 'center',
-      marginBottom: normalize(14),
+      marginBottom: normalize(8),
       paddingHorizontal: normalize(4),
     },
     altAuthPrefix: {

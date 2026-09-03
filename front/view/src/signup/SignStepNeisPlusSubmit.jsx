@@ -5,17 +5,17 @@ import {
   Image,
   ScrollView,
   TouchableOpacity,
-  ActivityIndicator,
   StyleSheet,
   Alert,
   useWindowDimensions,
 } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { Ionicons } from '@expo/vector-icons';
-import { colors, fonts, fontSizes } from '../../../styles/colors';
+import { colors, fonts } from '../../../styles/colors';
 import { api } from '../../../utils/api';
 import { normalizeBirthDateForCompare } from './signupBirthDatePolicy';
 import SubmittingLockModal from '../../../components/common/SubmittingLockModal';
+import SignupPrimaryFooter from './SignupPrimaryFooter';
 import { SIGNUP_REDESIGN_SKIP_VALIDATION } from './signupRedesignFlags';
 
 const UPLOAD_TIMEOUT_MS = 120_000;
@@ -313,25 +313,14 @@ const SignStepNeisPlusSubmit = ({
     </>
   );
 
-  const submitButton = (
-    <TouchableOpacity
-      style={[
-        guideStyles.nextButton || localStyles.submitFallback,
-        (!pickedBase64 || busy) &&
-          (guideStyles.nextButtonDisabled || { opacity: 0.5 }),
-      ]}
-      activeOpacity={0.9}
-      disabled={!pickedBase64 || busy}
+  const submitFooter = (
+    <SignupPrimaryFooter
+      label="제출하기"
       onPress={handleSubmit}
-    >
-      {busy ? (
-        <ActivityIndicator color={colors.background} />
-      ) : (
-        <Text style={guideStyles.nextButtonText || localStyles.submitTextFallback}>
-          제출하기
-        </Text>
-      )}
-    </TouchableOpacity>
+      disabled={!pickedBase64 || busy}
+      loading={busy}
+      embedded
+    />
   );
 
   if (stable) {
@@ -350,17 +339,7 @@ const SignStepNeisPlusSubmit = ({
         >
           {steps}
         </ScrollView>
-        <View
-          style={[
-            localStyles.footer,
-            {
-              paddingHorizontal:
-                scrollContentPad.paddingHorizontal ?? normalize(10),
-            },
-          ]}
-        >
-          {submitButton}
-        </View>
+        {submitFooter}
         <SubmittingLockModal visible={busy} message="NEIS+ 제출 중…" />
       </View>
     );
@@ -386,10 +365,8 @@ const SignStepNeisPlusSubmit = ({
         scrollEnabled={!busy}
       >
         {steps}
-        <View style={guideStyles.certificateGuideButtonSection}>
-          {submitButton}
-        </View>
       </ScrollView>
+      {submitFooter}
       <SubmittingLockModal visible={busy} message="NEIS+ 제출 중…" />
     </View>
   );
@@ -397,12 +374,6 @@ const SignStepNeisPlusSubmit = ({
 
 const localStyles = StyleSheet.create({
   root: { flex: 1, minHeight: 0 },
-  footer: {
-    width: '100%',
-    paddingTop: 8,
-    paddingBottom: 12,
-    flexShrink: 0,
-  },
   stepBlock: {
     marginBottom: 10,
     alignItems: 'center',
@@ -462,19 +433,6 @@ const localStyles = StyleSheet.create({
     color: colors.textSecondary,
     textDecorationLine: 'underline',
     textAlign: 'center',
-  },
-  submitFallback: {
-    width: '100%',
-    backgroundColor: colors.primary,
-    borderRadius: 24,
-    height: 50,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  submitTextFallback: {
-    fontFamily: fonts.bold,
-    color: colors.background,
-    fontSize: fontSizes?.lg || 16,
   },
 });
 

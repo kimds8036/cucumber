@@ -32,6 +32,7 @@ import SignStepAltVerifyChoice from './SignStepAltVerifyChoice';
 import SignStepNeisPlusSubmit from './SignStepNeisPlusSubmit';
 import SignStepCertificateGuide from './SignStepCertificateGuide';
 import SignStepCertificate from './SignStepCertificate';
+import SignupPrimaryFooter from './SignupPrimaryFooter';
 import { api, setAuthToken } from '../../../utils/api';
 import { peekPendingInviteCode, consumePendingInviteCode } from '../../../utils/inviteReferral';
 import {
@@ -1962,30 +1963,14 @@ const Sign = ({ navigation }) => {
       />
 
       {!hideFooter && (
-        <View
-          style={styles.footerSection}
+        <SignupPrimaryFooter
+          label={submitting ? '처리 중…' : primaryLabel()}
+          onPress={handlePrimaryPress}
+          disabled={isPrimaryDisabled()}
+          loading={submitting}
+          cancelParentPadding
           onLayout={(e) => setFooterHeight(e.nativeEvent.layout.height)}
-        >
-          <View style={styles.bottomButtonContainer}>
-            <View style={styles.nextButtonWrapper}>
-              <TouchableOpacity
-                style={[
-                  styles.nextButton,
-                  isPrimaryDisabled() && {
-                    backgroundColor: colors.textLight20,
-                  },
-                ]}
-                activeOpacity={0.9}
-                disabled={isPrimaryDisabled()}
-                onPress={handlePrimaryPress}
-              >
-                <Text style={styles.nextButtonText}>
-                  {submitting ? '처리 중…' : primaryLabel()}
-                </Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </View>
+        />
       )}
     </SafeAreaView>
   );

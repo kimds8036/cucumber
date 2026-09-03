@@ -28,6 +28,7 @@ import SignStepAltVerifyChoice from './SignStepAltVerifyChoice';
 import SignStepNeisPlusSubmit from './SignStepNeisPlusSubmit';
 import SignStepCertificateGuide from './SignStepCertificateGuide';
 import SignStepCertificate from './SignStepCertificate';
+import SignupPrimaryFooter from './SignupPrimaryFooter';
 import Skeleton from '../../../components/common/Skeleton';
 import { api, setAuthToken } from '../../../utils/api';
 import {
@@ -816,29 +817,14 @@ const SignKakao = ({ navigation }) => {
       </View>
 
       {showPrimaryFooter ? (
-        <View
-          style={styles.footerSection}
+        <SignupPrimaryFooter
+          label={primaryLabel()}
+          onPress={handlePrimaryPress}
+          disabled={isPrimaryDisabled()}
+          loading={submitting}
+          cancelParentPadding
           onLayout={(e) => setFooterHeight(e.nativeEvent.layout.height)}
-        >
-          <TouchableOpacity
-            style={[
-              styles.primaryButton,
-              isPrimaryDisabled() && styles.primaryButtonDisabled,
-            ]}
-            onPress={handlePrimaryPress}
-            disabled={isPrimaryDisabled()}
-            activeOpacity={0.85}
-          >
-            <Text
-              style={[
-                styles.primaryButtonText,
-                isPrimaryDisabled() && styles.primaryButtonTextDisabled,
-              ]}
-            >
-              {primaryLabel()}
-            </Text>
-          </TouchableOpacity>
-        </View>
+        />
       ) : null}
 
       <SignStepGuardianConsentModal

@@ -3,8 +3,6 @@ import {
   View,
   Text,
   TextInput,
-  TouchableOpacity,
-  ActivityIndicator,
   StyleSheet,
   useWindowDimensions,
   ScrollView,
@@ -17,6 +15,7 @@ import SignupHelperText from './SignupHelperText';
 import { useAuth } from '../../../context/AuthContext';
 import SubmittingLockModal from '../../../components/common/SubmittingLockModal';
 import SubHeader from '../../frame/subHeader';
+import SignupPrimaryFooter from './SignupPrimaryFooter';
 
 /**
  * 거절 후 재학증명서 재제출 — SafeArea 는 App 거절 플로우 셸에서만 처리
@@ -141,29 +140,12 @@ const CertificateResubmit = ({ navigation }) => {
         </ScrollView>
       </View>
 
-      <View style={[styles.footer, { paddingHorizontal: width * 0.07 }]}>
-        <TouchableOpacity
-          style={[
-            styles.submit,
-            {
-              height: normalize(50),
-              borderRadius: normalize(24),
-              opacity: busy ? 0.6 : 1,
-            },
-          ]}
-          activeOpacity={0.9}
-          disabled={busy}
-          onPress={handleSubmit}
-        >
-          {busy ? (
-            <ActivityIndicator color={colors.background} />
-          ) : (
-            <Text style={[styles.submitText, { fontSize: normalize(16) }]}>
-              제출하기
-            </Text>
-          )}
-        </TouchableOpacity>
-      </View>
+      <SignupPrimaryFooter
+        label="제출하기"
+        onPress={handleSubmit}
+        disabled={busy}
+        loading={busy}
+      />
       <SubmittingLockModal visible={busy} message="재학증명서 제출 중…" />
     </View>
   );
@@ -177,12 +159,6 @@ const styles = StyleSheet.create({
   body: {
     flex: 1,
     minHeight: 0,
-  },
-  footer: {
-    width: '100%',
-    paddingTop: 8,
-    paddingBottom: 12,
-    flexShrink: 0,
   },
   label: {
     fontFamily: fonts.regular,
@@ -200,16 +176,6 @@ const styles = StyleSheet.create({
     color: colors.textPrimary,
     paddingHorizontal: 14,
     paddingVertical: 12,
-  },
-  submit: {
-    width: '100%',
-    backgroundColor: colors.primary,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  submitText: {
-    fontFamily: fonts.bold,
-    color: colors.background,
   },
 });
 
