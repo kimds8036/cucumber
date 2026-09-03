@@ -20,14 +20,16 @@ object WidgetRefreshScheduler {
   private const val TAG = "YouthPaperWidget"
   private const val ACTION = "expo.modules.youthpaperwidget.ACTION_REFRESH"
   private const val REQ = 77
-  private const val MIN_DELAY_MS = 5_000L
   private const val MAX_DELAY_MS = 30 * 60 * 1000L
 
   fun schedule(context: Context) {
     val am = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
     val pi = pending(context)
-    val delay = (TimetableLogic.nextRefreshAt(context) - System.currentTimeMillis())
-      .coerceIn(MIN_DELAY_MS, MAX_DELAY_MS)
+    val rawDelay = TimetableLogic.nextRefreshAt(context) - System.currentTimeMillis()
+    if (rawDelay <= 0) {
+      WidgetUpdater.reloadAll(context)
+    }
+    val delay = rawDelay.coerceIn(0L, MAX_DELAY_MS)
     val triggerElapsed = SystemClock.elapsedRealtime() + delay
     try {
       if (canExact(am)) {

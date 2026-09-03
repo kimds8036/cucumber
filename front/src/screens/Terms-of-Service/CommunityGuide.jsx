@@ -6,6 +6,7 @@ import { getNormalize } from '../../../styles/mypage.style';
 import { createServiceStyles } from '../../../styles/service.style';
 import PolicyMarkdownBody from './PolicyMarkdownBody';
 import PolicyDocumentMeta from './PolicyDocumentMeta';
+import PolicyDocumentSkeleton from './PolicyDocumentSkeleton';
 import { useLegalDocument } from '../../../utils/useLegalDocument';
 
 const FALLBACK_MARKDOWN = require('./_community_md.json');
@@ -14,7 +15,7 @@ const CommunityGuide = ({ navigation }) => {
   const { width } = useWindowDimensions();
   const normalize = useMemo(() => getNormalize(width), [width]);
   const styles = useMemo(() => createServiceStyles(normalize), [normalize]);
-  const { markdown, meta } = useLegalDocument('community_guide', FALLBACK_MARKDOWN);
+  const { markdown, meta, loading } = useLegalDocument('community_guide', FALLBACK_MARKDOWN);
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
@@ -24,8 +25,14 @@ const CommunityGuide = ({ navigation }) => {
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
-        <PolicyDocumentMeta meta={meta} styles={styles} />
-        <PolicyMarkdownBody markdown={markdown} styles={styles} />
+        {loading ? (
+          <PolicyDocumentSkeleton styles={styles} normalize={normalize} />
+        ) : (
+          <>
+            <PolicyDocumentMeta meta={meta} styles={styles} />
+            <PolicyMarkdownBody markdown={markdown} styles={styles} />
+          </>
+        )}
       </ScrollView>
     </SafeAreaView>
   );

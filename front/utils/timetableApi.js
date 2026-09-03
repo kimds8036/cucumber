@@ -1,8 +1,9 @@
 import { api } from './api';
 import { resolveAnomaliesFromApiData } from './timetableAnomaly';
 
-export async function fetchTimetableFromApi() {
-  const ttRes = await api.get('/api/timetable');
+export async function fetchTimetableFromApi(opts = {}) {
+  const qs = opts.neisOnly ? '?neisOnly=1' : '';
+  const ttRes = await api.get(`/api/timetable${qs}`);
   const data = ttRes.data?.data || {};
   const timetable =
     data.timetable &&

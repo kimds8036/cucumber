@@ -31,12 +31,27 @@ export function useStudentIdCapture(cameraRef) {
     return photo;
   }, [cameraRef]);
 
+  const freezePreview = useCallback((photo) => {
+    if (!photo?.base64) return null;
+    const uri = photo.uri || `data:image/jpeg;base64,${photo.base64}`;
+    lastPhotoRef.current = photo;
+    setFrozenUri(uri);
+    return photo;
+  }, []);
+
   const resetCapture = useCallback(() => {
     setFrozenUri(null);
     lastPhotoRef.current = null;
   }, []);
 
-  return { frozenUri, capture, resetCapture, previewLayoutRef, lastPhotoRef };
+  return {
+    frozenUri,
+    capture,
+    freezePreview,
+    resetCapture,
+    previewLayoutRef,
+    lastPhotoRef,
+  };
 }
 
 export default function StudentIdCaptureStage({
@@ -47,6 +62,9 @@ export default function StudentIdCaptureStage({
   stageStyle,
   previewLayoutRef,
   onStageLayout,
+  onCameraReady,
+  /** true면 딤·틀 가이드 없이 카메라만 전체 표시 */
+  hideFrameGuide = false,
 }) {
   const [stageSize, setStageSize] = useState({ width: 0, height: 0 });
   const layerStyles = useMemo(() => createStudentIdCameraLayerStyles(), []);
@@ -85,6 +103,7 @@ export default function StudentIdCaptureStage({
           style={StyleSheet.absoluteFill}
           facing="back"
           mode="picture"
+          onCameraReady={onCameraReady}
         />
       )}
 
@@ -94,6 +113,12 @@ export default function StudentIdCaptureStage({
           <ActivityIndicator color={colors.primary} size="large" />
           <Text style={styles.readyText}>카메라 준비 중…</Text>
         </View>
+      ) : hideFrameGuide ? (
+        statusText ? (
+          <View style={styles.statusBottom} pointerEvents="none">
+            <Text style={guideTextStyle}>{statusText}</Text>
+          </View>
+        ) : null
       ) : (
         <StudentIdCameraGuideOverlay
           stageWidth={stageWidth}
@@ -121,14 +146,21 @@ const styles = StyleSheet.create({
   readyMask: {
     ...StyleSheet.absoluteFillObject,
     zIndex: 2,
-    backgroundColor: '#000',
-    justifyContent: 'center',
     alignItems: 'center',
-    gap: 12,
+    justifyContent: 'center',
+    backgroundColor: '#000',
   },
   readyText: {
-    fontFamily: 'Baloo2-Regular',
+    marginTop: 10,
+    color: colors.textWhite,
     fontSize: 14,
-    color: colors.textSecondary,
+  },
+  statusBottom: {
+    position: 'absolute',
+    left: 12,
+    right: 12,
+    bottom: 14,
+    alignItems: 'center',
+    zIndex: 2,
   },
 });

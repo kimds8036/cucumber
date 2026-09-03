@@ -368,6 +368,69 @@
     }
     .copy-btn:active { transform: scale(.96); }
 
+    /* ── Toolbar · Form grid (공통 패널) ───────────── */
+    .toolbar {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+    .form-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+    }
+    .form-grid-single {
+      grid-template-columns: 1fr;
+    }
+    .form-grid-inline {
+      grid-template-columns: minmax(140px, 200px) auto;
+      align-items: end;
+    }
+    .form-field {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      min-width: 0;
+    }
+    .form-field-label {
+      font-size: 12px;
+      color: var(--text-secondary);
+    }
+    .form-field-check {
+      flex-direction: row;
+      align-items: center;
+      gap: 8px;
+      padding-bottom: 8px;
+      font-size: 13px;
+      color: var(--text-primary);
+      cursor: pointer;
+      user-select: none;
+    }
+    .form-field-check input[type="checkbox"] {
+      margin: 0;
+    }
+    .input-compact {
+      min-height: 0 !important;
+      height: 36px;
+      resize: none;
+    }
+    .empty-row {
+      text-align: center;
+      color: var(--text-tertiary) !important;
+      font-size: 12px;
+      padding: 16px 12px !important;
+    }
+    @media (max-width: 720px) {
+      .form-grid,
+      .form-grid-inline {
+        grid-template-columns: 1fr;
+      }
+      .form-field-check {
+        padding-bottom: 0;
+      }
+    }
+
     /* ── Filter row ─────────────────────────────────── */
     .filter-row {
       display: flex;
@@ -618,6 +681,329 @@
     .user-stat { text-align: center; }
     .user-stat-num { font-size: 20px; font-weight: 500; }
     .user-stat-label { font-size: 11px; color: var(--text-tertiary); margin-top: 3px; }
+    .ops-users-preview-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+      gap: 10px;
+      margin-bottom: 8px;
+    }
+    .ops-user-preview-card {
+      border: 0.5px solid var(--border);
+      border-radius: 8px;
+      padding: 12px 14px;
+      background: var(--bg-secondary);
+      cursor: pointer;
+      text-align: left;
+      transition: border-color 0.15s, box-shadow 0.15s;
+    }
+    .ops-user-preview-card:hover {
+      border-color: var(--blue);
+      box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
+    }
+    .ops-user-preview-card .ops-upc-title {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text-primary);
+    }
+    .ops-user-preview-card .ops-upc-meta {
+      font-size: 11px;
+      color: var(--text-tertiary);
+      margin-top: 4px;
+      line-height: 1.45;
+    }
+    .ops-user-preview-card .ops-upc-school {
+      font-size: 12px;
+      color: var(--text-secondary);
+      margin-top: 6px;
+    }
+    .ops-user-preview-card .ops-upc-row {
+      display: flex;
+      justify-content: space-between;
+      gap: 8px;
+      margin-top: 8px;
+      font-size: 11px;
+    }
+    .ops-user-preview-card .ops-upc-ok { color: var(--green-text); font-weight: 500; }
+    .ops-user-preview-card .ops-upc-warn { color: var(--text-tertiary); }
+    .hof-layout {
+      display: grid;
+      grid-template-columns: minmax(240px, 300px) minmax(0, 1fr);
+      gap: 16px;
+      align-items: start;
+    }
+    @media (max-width: 960px) {
+      .hof-layout { grid-template-columns: 1fr; }
+    }
+    .hof-list-col,
+    .hof-editor-col {
+      min-width: 0;
+    }
+    .hof-panel-card {
+      border: 0.5px solid var(--border);
+      border-radius: var(--radius-lg);
+      background: var(--bg);
+      overflow: hidden;
+    }
+    .hof-panel-card-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      padding: 12px 14px;
+      border-bottom: 0.5px solid var(--border);
+      background: var(--bg-secondary);
+    }
+    .hof-panel-card-title {
+      font-size: 14px;
+      font-weight: 500;
+      color: var(--text-primary);
+      line-height: 1.3;
+    }
+    .hof-section {
+      padding: 14px 16px;
+      border-bottom: 0.5px solid var(--border);
+    }
+    .hof-section:last-of-type {
+      border-bottom: none;
+    }
+    .hof-section .section-title {
+      margin-bottom: 8px;
+    }
+    .hof-section .section-hint {
+      margin: 0 0 10px;
+    }
+    .hof-actions {
+      padding: 14px 16px;
+      border-top: 0.5px solid var(--border);
+      background: var(--bg-secondary);
+    }
+    .hof-list {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      max-height: min(70vh, 720px);
+      overflow: auto;
+      padding: 10px;
+    }
+    .hof-list-item {
+      display: flex;
+      align-items: stretch;
+      gap: 8px;
+      border: 0.5px solid var(--border);
+      border-radius: var(--radius-md);
+      padding: 8px;
+      background: var(--bg-secondary);
+      transition: border-color 0.15s, background 0.15s;
+    }
+    .hof-list-item:hover { border-color: var(--green-border); background: var(--bg); }
+    .hof-list-item.active {
+      border-color: var(--green-border);
+      background: var(--green-bg);
+      box-shadow: inset 0 0 0 1px var(--green-border);
+    }
+    .hof-list-item-main {
+      flex: 1;
+      min-width: 0;
+      text-align: left;
+      border: none;
+      background: transparent;
+      padding: 2px 4px;
+      cursor: pointer;
+      font-family: inherit;
+      font-size: inherit;
+      color: inherit;
+      appearance: none;
+      -webkit-appearance: none;
+    }
+    .hof-list-item-actions {
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      gap: 4px;
+      flex-shrink: 0;
+    }
+    .hof-list-item-actions .btn {
+      min-width: 44px;
+      justify-content: center;
+      padding-left: 8px;
+      padding-right: 8px;
+    }
+    .hof-list-title {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text-primary);
+      line-height: 1.4;
+      word-break: break-word;
+    }
+    .hof-list-meta {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 4px 6px;
+      font-size: 11px;
+      color: var(--text-tertiary);
+      margin-top: 6px;
+      line-height: 1.4;
+    }
+    .hof-table-wrap {
+      margin-bottom: 0;
+    }
+    .hof-table-wrap table {
+      min-width: 520px;
+    }
+    .hof-table-wrap .note-input,
+    .hof-table-wrap input[type="text"] {
+      min-height: 0;
+      height: 34px;
+      padding: 6px 8px;
+      font-size: 12px;
+    }
+    .hof-feedback-list {
+      max-height: min(320px, 40vh);
+      overflow: auto;
+      border: 0.5px solid var(--border);
+      border-radius: var(--radius-md);
+      padding: 4px 8px;
+      background: var(--bg-secondary);
+    }
+    .hof-feedback-row {
+      display: flex;
+      gap: 10px;
+      align-items: flex-start;
+      padding: 10px 6px;
+      border-bottom: 0.5px solid var(--border);
+      cursor: pointer;
+      font-size: 12px;
+      line-height: 1.45;
+    }
+    .hof-feedback-row:hover {
+      background: var(--bg);
+    }
+    .hof-feedback-row:last-child { border-bottom: none; }
+    .hof-feedback-row input[type="checkbox"] {
+      margin-top: 3px;
+    }
+    .hof-feedback-row > div {
+      flex: 1;
+      min-width: 0;
+      word-break: break-word;
+    }
+    .hof-feedback-meta {
+      font-size: 11px;
+      color: var(--text-tertiary);
+      margin-top: 4px;
+    }
+
+    /* ── 회초리(whack) 관리 ── */
+    .whack-layout {
+      display: grid;
+      grid-template-columns: minmax(260px, 320px) 1fr;
+      gap: 16px;
+      align-items: start;
+    }
+    @media (max-width: 960px) {
+      .whack-layout { grid-template-columns: 1fr; }
+    }
+    .whack-panel-card,
+    .whack-detail-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 14px;
+    }
+    .whack-panel-head,
+    .whack-detail-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      margin-bottom: 10px;
+    }
+    .whack-panel-title,
+    .whack-detail-title {
+      font-size: 14px;
+      font-weight: 700;
+      color: var(--text-primary);
+    }
+    .whack-detail-sub {
+      font-size: 12px;
+      color: var(--text-tertiary);
+      margin-top: 2px;
+    }
+    .whack-group-list {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      max-height: 520px;
+      overflow: auto;
+    }
+    .whack-list-item {
+      display: block;
+      width: 100%;
+      text-align: left;
+      padding: 10px 12px;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      background: var(--bg);
+      cursor: pointer;
+    }
+    .whack-list-item:hover { border-color: var(--green-border); }
+    .whack-list-item.active {
+      border-color: var(--green-border);
+      background: var(--green-bg);
+    }
+    .whack-list-top {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 6px;
+      margin-bottom: 6px;
+    }
+    .whack-list-content {
+      font-size: 13px;
+      color: var(--text-primary);
+      line-height: 1.45;
+      word-break: break-word;
+    }
+    .whack-list-meta {
+      margin-top: 6px;
+      font-size: 11px;
+      color: var(--text-tertiary);
+    }
+    .whack-detail-content {
+      font-size: 14px;
+      line-height: 1.5;
+      color: var(--text-primary);
+      padding: 10px 12px;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      background: var(--bg);
+      margin-bottom: 14px;
+      word-break: break-word;
+    }
+    .whack-section { margin-top: 14px; }
+    .whack-section .section-title { margin-bottom: 8px; }
+    .whack-table-wrap table { font-size: 12px; }
+    .whack-merge-list {
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      max-height: 280px;
+      overflow: auto;
+    }
+    .whack-merge-row {
+      display: grid;
+      grid-template-columns: auto 1fr 1.2fr;
+      gap: 10px;
+      align-items: center;
+      padding: 8px 12px;
+      border-bottom: 1px solid var(--border);
+      font-size: 12px;
+      cursor: pointer;
+    }
+    .whack-merge-row:last-child { border-bottom: none; }
+    .whack-merge-row-in-group { background: var(--bg-secondary); }
+    .whack-merge-row input[type="checkbox"] { margin: 0; }
+
     .user-actions-row {
       display: flex;
       gap: 8px;
@@ -1904,5 +2290,89 @@
     @media (max-width: 640px) {
       .ops-cron-flow-board {
         grid-template-columns: 1fr;
+      }
+    }
+
+    /* ── Ops 전국 지도 ── */
+    .ops-map-layout {
+      display: grid;
+      grid-template-columns: minmax(200px, 260px) 1fr;
+      gap: 14px;
+      align-items: stretch;
+      margin-top: 8px;
+    }
+    .ops-map-regions {
+      background: var(--bg-secondary);
+      border: 0.5px solid var(--border);
+      border-radius: var(--radius-md);
+      padding: 12px;
+      max-height: 560px;
+      overflow: auto;
+    }
+    .ops-map-regions-title {
+      font-size: 13px;
+      font-weight: 600;
+      margin-bottom: 10px;
+    }
+    .ops-map-region-row {
+      display: block;
+      width: 100%;
+      text-align: left;
+      background: transparent;
+      border: 0;
+      padding: 8px 4px;
+      cursor: pointer;
+      color: inherit;
+      font: inherit;
+      border-bottom: 0.5px solid var(--border);
+    }
+    .ops-map-region-row:last-child { border-bottom: 0; }
+    .ops-map-region-row:hover { background: rgba(0,0,0,.03); }
+    .ops-map-region-top {
+      display: flex;
+      justify-content: space-between;
+      gap: 8px;
+      font-size: 13px;
+    }
+    .ops-map-region-top strong {
+      font-variant-numeric: tabular-nums;
+    }
+    .ops-map-region-bar {
+      height: 4px;
+      background: rgba(0,0,0,.06);
+      border-radius: 99px;
+      margin: 6px 0 4px;
+      overflow: hidden;
+    }
+    .ops-map-region-bar > span {
+      display: block;
+      height: 100%;
+      background: #4c8dff;
+      border-radius: 99px;
+    }
+    .ops-map-region-meta {
+      font-size: 11px;
+      color: var(--text-tertiary);
+    }
+    .ops-map-canvas-wrap {
+      min-width: 0;
+    }
+    .ops-school-map {
+      height: 560px;
+      width: 100%;
+      border-radius: var(--radius-md);
+      border: 0.5px solid var(--border);
+      background: #e8eef5;
+      z-index: 0;
+    }
+    @media (max-width: 900px) {
+      .ops-map-layout {
+        grid-template-columns: 1fr;
+      }
+      .ops-map-regions {
+        max-height: 220px;
+      }
+      .ops-school-map {
+        height: 420px;
       }
     }

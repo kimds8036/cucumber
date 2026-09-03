@@ -39,6 +39,7 @@ import MealCalender from './view/src/mealcalender';
 import Timer from './view/src/timer';
 import FriendsScreen from './view/src/friendsscreen';
 import HiddenPostsAppeals from './view/src/hiddenPostsAppeals';
+import DeveloperWhack from './view/src/DeveloperWhack';
 import Inquiry from './view/src/Inquiry';
 import InAppInquiry from './view/src/InAppInquiry';
 import MyInquiries from './view/src/MyInquiries';
@@ -46,6 +47,7 @@ import InquiryDetail from './view/src/InquiryDetail';
 import Info from './view/src/info';
 // import TestLogin from './view/src/TestLogin'; // 테스트 로그인 화면 — 운영 진입에서는 미사용
 import Announcement from './view/src/announcement';
+import AnnouncementDetail from './view/src/AnnouncementDetail';
 import ServiceTermsOfService from './src/screens/Terms-of-Service/ServiceTermsOfService';
 import PrivacyPolicy from './src/screens/Terms-of-Service/PrivacyPolicy';
 import YouthProtectionPolicy from './src/screens/Terms-of-Service/YouthProtectionPolicy';
@@ -106,6 +108,7 @@ import {
   setupFCMHandlers,
 } from './utils/fcmService';
 import { trackScreenView, flushAnalyticsEvents } from './utils/analytics';
+import AutoTimetableRefreshOnLaunch from './components/timetable/AutoTimetableRefreshOnLaunch';
 import WidgetDeepLinkHandler, {
   stashWidgetDeepLinkFromUrl,
 } from './components/navigation/WidgetDeepLinkHandler';
@@ -243,12 +246,14 @@ function MainStack({ initialRouteName = 'Main' }) {
       <Stack.Screen name="Friends" component={FriendsScreen} />
       <Stack.Screen name="BadgeManage" component={BadgeManage} />
       <Stack.Screen name="HiddenPostsAppeals" component={HiddenPostsAppeals} />
+      <Stack.Screen name="DeveloperWhack" component={DeveloperWhack} />
       <Stack.Screen name="Inquiry" component={Inquiry} />
       <Stack.Screen name="InAppInquiry" component={InAppInquiry} />
       <Stack.Screen name="MyInquiries" component={MyInquiries} />
       <Stack.Screen name="InquiryDetail" component={InquiryDetail} />
       <Stack.Screen name="Info" component={Info} />
       <Stack.Screen name="Announcement" component={Announcement} />
+      <Stack.Screen name="AnnouncementDetail" component={AnnouncementDetail} />
       <Stack.Screen
         name="ServiceTermsOfService"
         component={ServiceTermsOfService}
@@ -871,6 +876,7 @@ export default function App() {
                       <ToastProvider>
                         <NotificationProvider>
                           <FriendProvider>
+                            <AutoTimetableRefreshOnLaunch />
                             <NavigationContainer
                               ref={navigationRef}
                               linking={linking}

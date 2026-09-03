@@ -39,7 +39,6 @@ const SignStep4 = ({
       school: displaySchool,
       grade: g,
       classNum: c,
-      graduationYear: recognizedData.graduationYear,
     });
   }, [recognizedData]);
 
@@ -49,7 +48,6 @@ const SignStep4 = ({
       school: displaySchool,
       grade,
       classNum,
-      graduationYear: recognizedData?.graduationYear,
       ...override,
     });
   };

@@ -70,6 +70,173 @@ async function loadDashboard() {
       showOpsHub();
     });
     bindOpsUserInspect();
+    bindOpsUsersPreview();
+  }
+
+  let opsUsersPreviewPage = 1;
+  let opsUserDevicesCache = [];
+  let opsUserDevicesPage = 1;
+  const OPS_USER_DEVICES_PAGE_SIZE = 5;
+
+  function bindOpsUsersPreview() {
+    const grid = document.getElementById('ops-users-preview-grid');
+    if (!grid || grid.dataset.bound === '1') return;
+    grid.dataset.bound = '1';
+    grid.addEventListener('click', (e) => {
+      const card = e.target.closest('[data-ops-user-id]');
+      if (!card) return;
+      const uid = card.getAttribute('data-ops-user-id');
+      const input = document.getElementById('ops-user-q');
+      if (input) input.value = `#${uid}`;
+      void loadOpsUserInspect();
+    });
+  }
+
+  async function loadOpsUsersPreview(page = 1) {
+    const status = document.getElementById('ops-users-preview-status');
+    const grid = document.getElementById('ops-users-preview-grid');
+    const pager = document.getElementById('ops-users-preview-pager');
+    const input = document.getElementById('ops-user-q');
+    const q = String(input?.value || '').trim();
+    opsUsersPreviewPage = Math.max(1, Number(page) || 1);
+    if (status) status.textContent = '불러오는 중…';
+    if (grid) grid.innerHTML = '';
+    if (pager) pager.hidden = true;
+    try {
+      const qs = new URLSearchParams({
+        page: String(opsUsersPreviewPage),
+        limit: '20',
+      });
+      if (q) qs.set('q', q);
+      const { data } = await api(`/analytics/users-preview?${qs.toString()}`);
+      renderOpsUsersPreview(data);
+    } catch (error) {
+      if (status) status.textContent = error?.message || '목록을 불러오지 못했습니다.';
+    }
+  }
+
+  function renderOpsUsersPreview(data) {
+    const status = document.getElementById('ops-users-preview-status');
+    const grid = document.getElementById('ops-users-preview-grid');
+    const pager = document.getElementById('ops-users-preview-pager');
+    const items = data?.items || [];
+    const total = Number(data?.total || 0);
+    const page = Number(data?.page || 1);
+    const totalPages = Number(data?.totalPages || 1);
+
+    if (status) {
+      status.textContent = total
+        ? `총 ${total.toLocaleString()}명 · ${page}/${totalPages}페이지`
+        : '표시할 사용자가 없습니다.';
+    }
+
+    if (!grid) return;
+
+    if (!items.length) {
+      grid.innerHTML = '<div class="txt-muted" style="font-size:13px">조건에 맞는 사용자가 없습니다.</div>';
+      if (pager) pager.hidden = true;
+      return;
+    }
+
+    grid.innerHTML = items.map((u) => {
+      const osLabel = opsOsLabel(u.os);
+      const attCls = u.checkedInToday ? 'ops-upc-ok' : 'ops-upc-warn';
+      const attText = u.checkedInToday ? '오늘 등교 완료' : '오늘 미등교';
+      const lastAct = u.lastActivityAt ? fmtDate(u.lastActivityAt) : '-';
+      const gradeClass =
+        u.grade != null && u.classNumber != null
+          ? ` · ${u.grade}학년 ${u.classNumber}반`
+          : '';
+      return `
+        <button type="button" class="ops-user-preview-card" data-ops-user-id="${u.id}">
+          <div class="ops-upc-title">@${esc(u.username || '-')} <span style="font-weight:400;color:var(--text-tertiary)">#${u.id}</span></div>
+          <div class="ops-upc-meta">${esc(osLabel)} · v${esc(u.appVersion || '-')}</div>
+          <div class="ops-upc-school">${esc(u.schoolName || '-')}${esc(gradeClass)}</div>
+          <div class="ops-upc-row">
+            <span class="${attCls}">${esc(attText)}</span>
+            <span class="ops-upc-warn">최근 ${esc(lastAct)}</span>
+          </div>
+        </button>
+      `;
+    }).join('');
+
+    if (!pager) return;
+    if (totalPages <= 1) {
+      pager.hidden = true;
+      return;
+    }
+    pager.hidden = false;
+    pager.innerHTML = `
+      <button type="button" class="btn btn-sm" id="ops-users-prev" ${page <= 1 ? 'disabled' : ''}>이전</button>
+      <span style="font-size:13px;color:var(--text-secondary)">${page} / ${totalPages}</span>
+      <button type="button" class="btn btn-sm" id="ops-users-next" ${page >= totalPages ? 'disabled' : ''}>다음</button>
+    `;
+    document.getElementById('ops-users-prev')?.addEventListener('click', () => {
+      if (page > 1) void loadOpsUsersPreview(page - 1);
+    });
+    document.getElementById('ops-users-next')?.addEventListener('click', () => {
+      if (page < totalPages) void loadOpsUsersPreview(page + 1);
+    });
+  }
+
+  function renderOpsUserDevicesPage() {
+    const devicesBody = document.getElementById('ops-user-devices-tbody');
+    const pager = document.getElementById('ops-user-devices-pager');
+    const devices = Array.isArray(opsUserDevicesCache) ? opsUserDevicesCache : [];
+    const total = devices.length;
+    const pageSize = OPS_USER_DEVICES_PAGE_SIZE;
+    const totalPages = Math.max(1, Math.ceil(total / pageSize));
+    opsUserDevicesPage = Math.min(Math.max(1, opsUserDevicesPage), totalPages);
+    const start = (opsUserDevicesPage - 1) * pageSize;
+    const slice = devices.slice(start, start + pageSize);
+
+    if (devicesBody) {
+      if (!total) {
+        devicesBody.innerHTML = '<tr><td colspan="5" class="empty-row">기기 기록 없음</td></tr>';
+      } else {
+        devicesBody.innerHTML = slice.map((d) => {
+          const seen = d.lastSeenAt || d.lastLoginAt;
+          const push = d.pushActive == null ? '-' : (d.pushActive ? '활성' : '비활성');
+          const idShort = d.deviceId
+            ? (d.deviceId.length > 36 ? `${d.deviceId.slice(0, 34)}…` : d.deviceId)
+            : '-';
+          return `
+            <tr>
+              <td>${esc(opsOsLabel(d.os))}</td>
+              <td>${esc(d.appVersion || '-')}</td>
+              <td>${esc(push)}</td>
+              <td>${esc(fmtDate(seen))}</td>
+              <td title="${esc(d.deviceId || '')}">${esc(idShort)}</td>
+            </tr>
+          `;
+        }).join('');
+      }
+    }
+
+    if (!pager) return;
+    if (total <= pageSize) {
+      pager.hidden = true;
+      pager.innerHTML = '';
+      return;
+    }
+    pager.hidden = false;
+    pager.innerHTML = `
+      <button type="button" class="btn btn-sm" id="ops-user-devices-prev" ${opsUserDevicesPage <= 1 ? 'disabled' : ''}>이전</button>
+      <span style="font-size:13px;color:var(--text-secondary)">${opsUserDevicesPage} / ${totalPages} · ${start + 1}–${start + slice.length} / ${total}</span>
+      <button type="button" class="btn btn-sm" id="ops-user-devices-next" ${opsUserDevicesPage >= totalPages ? 'disabled' : ''}>다음</button>
+    `;
+    document.getElementById('ops-user-devices-prev')?.addEventListener('click', () => {
+      if (opsUserDevicesPage > 1) {
+        opsUserDevicesPage -= 1;
+        renderOpsUserDevicesPage();
+      }
+    });
+    document.getElementById('ops-user-devices-next')?.addEventListener('click', () => {
+      if (opsUserDevicesPage < totalPages) {
+        opsUserDevicesPage += 1;
+        renderOpsUserDevicesPage();
+      }
+    });
   }
 
   async function openOpsView(view) {
@@ -84,6 +251,7 @@ async function loadDashboard() {
       activity: ['앱 활동', '글 · 댓글 · 쪽지 · 우편'],
       jobs: ['크론', '무슨 일이 도는지 · 최근 실행'],
       terms: ['등교 · 학기', '개학일 · 오늘 등교 여부'],
+      map: ['전국 분포', '학교 위치 · 지역별 인원'],
       reach: ['이용 · 설치', 'DAU/MAU · /get'],
     };
     const t = titles[view];
@@ -101,10 +269,18 @@ async function loadDashboard() {
       if (view === 'timer') await loadTimerOps();
       if (view === 'activity') await loadActivityOps();
       if (view === 'terms') await loadOpsSchoolTerms();
+      if (view === 'map') {
+        if (typeof loadOpsSchoolGeo === 'function') {
+          await loadOpsSchoolGeo();
+        } else {
+          throw new Error('지도 스크립트가 로드되지 않았습니다.');
+        }
+      }
       if (view === 'reach') {
       await loadAnalyticsOverview();
-        await loadInstallLandingStats();
+      await loadInstallLandingStats();
       }
+      if (view === 'user') await loadOpsUsersPreview(1);
     } catch (error) {
       alert(error?.message || '모니터링 데이터를 불러오지 못했습니다.');
     }
@@ -183,7 +359,11 @@ async function loadDashboard() {
     const input = document.getElementById('ops-user-q');
     if (!btn || btn.dataset.bound === '1') return;
     btn.dataset.bound = '1';
-    const run = () => loadOpsUserInspect();
+    const run = () => {
+      opsUsersPreviewPage = 1;
+      void loadOpsUsersPreview(1);
+      void loadOpsUserInspect();
+    };
     btn.addEventListener('click', run);
     if (input) {
       input.addEventListener('keydown', (e) => {
@@ -262,29 +442,9 @@ async function loadDashboard() {
         ? `기기 ${devices.length}대 · ${parts.join(' · ')}`
         : '등록된 기기 기록이 없습니다. 로그인·푸시 등록 후 표시됩니다.';
     }
-    const devicesBody = document.getElementById('ops-user-devices-tbody');
-    if (devicesBody) {
-      if (!devices.length) {
-        devicesBody.innerHTML = '<tr><td colspan="5" class="empty-row">기기 기록 없음</td></tr>';
-      } else {
-        devicesBody.innerHTML = devices.map((d) => {
-          const seen = d.lastSeenAt || d.lastLoginAt;
-          const push = d.pushActive == null ? '-' : (d.pushActive ? '활성' : '비활성');
-          const idShort = d.deviceId
-            ? (d.deviceId.length > 36 ? `${d.deviceId.slice(0, 34)}…` : d.deviceId)
-            : '-';
-          return `
-            <tr>
-              <td>${esc(opsOsLabel(d.os))}</td>
-              <td>${esc(d.appVersion || '-')}</td>
-              <td>${esc(push)}</td>
-              <td>${esc(fmtDate(seen))}</td>
-              <td title="${esc(d.deviceId || '')}">${esc(idShort)}</td>
-            </tr>
-          `;
-        }).join('');
-      }
-    }
+    opsUserDevicesCache = devices;
+    opsUserDevicesPage = 1;
+    renderOpsUserDevicesPage();
     const tbody = document.getElementById('ops-user-badges-tbody');
     if (tbody) {
       const items = badges.items || [];

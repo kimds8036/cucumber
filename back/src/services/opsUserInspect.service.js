@@ -261,7 +261,7 @@ async function loadAttendanceCalendar(userId, schoolId) {
 }
 
 export async function inspectOpsUser(queryRaw) {
-  const q = String(queryRaw || '').trim().replace(/^@/, '');
+  const q = String(queryRaw || '').trim().replace(/^[@#]+/, '');
   if (!q) {
     return { error: 'QUERY_REQUIRED', status: 400, message: '아이디 또는 사용자 번호를 입력하세요.' };
   }

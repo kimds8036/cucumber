@@ -78,7 +78,7 @@
 <div class="dialog-backdrop" id="user-academic-dialog" onclick="closeUserAcademicByBackdrop(event)">
   <div class="dialog" style="max-width:480px;width:92vw" onclick="event.stopPropagation()">
     <div class="dialog-title">학적 변경 <span id="user-academic-uid" class="txt-muted" style="font-weight:400;font-size:12px"></span></div>
-    <p class="section-hint" style="margin-top:0">학교·학년·반·졸업년도를 수정합니다. 학교 변경 시 previous_school·재인증 상태가 함께 정리됩니다.</p>
+    <p class="section-hint" style="margin-top:0">학교·학년·반을 수정합니다. 학교 변경 시 previous_school·재인증 상태가 함께 정리됩니다.</p>
     <div id="user-academic-current" class="txt-muted" style="font-size:12px;margin-bottom:10px"></div>
     <div class="form-grid" style="gap:8px">
       <label>학년
@@ -93,9 +93,6 @@
       </label>
       <label>반
         <input id="user-academic-class" type="number" min="1" max="50" class="note-input" />
-      </label>
-      <label>졸업년도
-        <input id="user-academic-grad-year" type="number" class="note-input" placeholder="예: 2028" />
       </label>
     </div>
     <label style="display:flex;align-items:center;gap:8px;margin-top:10px;font-size:13px">

@@ -79,11 +79,30 @@
               <span class="ops-hub-title">등교 · 학기</span>
               <span class="ops-hub-desc">개학일 · 오늘 등교 가능 여부</span>
             </button>
+            <button type="button" class="ops-hub-card" data-ops-view="map">
+              <span class="ops-hub-kicker">지도</span>
+              <span class="ops-hub-title">전국 분포</span>
+              <span class="ops-hub-desc">학교 위치 · 지역별 인원</span>
+            </button>
             <button type="button" class="ops-hub-card" data-ops-view="reach">
               <span class="ops-hub-kicker">성장</span>
               <span class="ops-hub-title">이용 · 설치</span>
               <span class="ops-hub-desc">DAU/MAU · /get · 인기 화면</span>
             </button>
+          </div>
+        </div>
+
+        <div class="ops-view" id="ops-view-map" hidden>
+          <button type="button" class="btn btn-sm ops-back-btn" data-ops-back>← 모니터링 목록</button>
+          <div class="section-title">전국 분포</div>
+          <p class="section-hint">탈퇴하지 않은 사용자가 있는 학교만 표시합니다. 점 크기 = 해당 학교 인원. 왼쪽은 시·도별 합계입니다.</p>
+          <div class="analytics-kpi-grid dash-kpi-compact" id="ops-map-kpis"></div>
+          <div class="ops-map-layout">
+            <div class="ops-map-regions" id="ops-map-regions"></div>
+            <div class="ops-map-canvas-wrap">
+              <div id="ops-school-map" class="ops-school-map" role="img" aria-label="전국 학교 사용자 분포 지도"></div>
+              <div class="txt-muted" id="ops-map-status" style="font-size:13px;margin-top:8px"></div>
+            </div>
           </div>
         </div>
 
@@ -122,7 +141,12 @@
           <input id="ops-user-q" type="text" placeholder="아이디 또는 #번호" style="min-width:220px" />
           <button type="button" class="btn btn-primary" id="ops-user-search-btn">조회</button>
         </div>
-        <div id="ops-user-inspect-empty" class="txt-muted" style="font-size:13px;margin-bottom:16px">위에서 사용자를 조회하세요.</div>
+        <div class="section-title" style="margin-top:4px">사용자 목록</div>
+        <p class="section-hint">탈퇴하지 않은 사용자 · 최근 활동 순 · 페이지당 20명. 카드를 누르면 아래 상세가 열립니다.</p>
+        <div id="ops-users-preview-status" class="txt-muted" style="font-size:13px;margin-bottom:8px">불러오는 중…</div>
+        <div id="ops-users-preview-grid" class="ops-users-preview-grid"></div>
+        <div id="ops-users-preview-pager" class="toolbar" style="margin-top:12px;margin-bottom:16px;display:flex;gap:8px;align-items:center;flex-wrap:wrap" hidden></div>
+        <div id="ops-user-inspect-empty" class="txt-muted" style="font-size:13px;margin-bottom:16px">위에서 사용자를 조회하거나 목록 카드를 선택하세요.</div>
         <div id="ops-user-inspect-wrap" hidden>
           <div class="analytics-kpi-grid dash-kpi-compact" id="ops-user-kpis"></div>
           <div class="section-title" style="margin-top:12px">기기 / OS</div>
@@ -141,6 +165,7 @@
               <tbody id="ops-user-devices-tbody"></tbody>
             </table>
           </div>
+          <div id="ops-user-devices-pager" class="toolbar" style="margin-top:8px;margin-bottom:4px;display:flex;gap:8px;align-items:center;flex-wrap:wrap" hidden></div>
           <div class="section-title" style="margin-top:12px">배지</div>
           <div class="table-wrap">
             <table>
@@ -578,6 +603,12 @@
         <div id="inquiry-detail-host"></div>
       </div>
 
+      <!-- ────────── 공지사항 ────────── -->
+      <div class="panel" id="panel-announcements">
+        <p class="section-hint">앱 고객지원 &gt; 공지사항에 노출됩니다. 제목·내용·게시 상태만 관리하면 됩니다.</p>
+        <div id="announcements-host"></div>
+      </div>
+
       <!-- ────────── 문의 처리 이력 ────────── -->
       <div class="panel" id="panel-processedInquiries">
         <p class="section-hint">행의 ▾ 또는 「답변 보기」로 등록한 답변·내부 메모를 바로 확인할 수 있습니다. 상세 수정은 행을 클릭하세요.</p>
@@ -826,6 +857,12 @@
       <div class="panel" id="panel-emergency">
         <p class="section-hint">긴급 상황 시 서비스 일부를 즉시 제한합니다. 적용 시 OTP 확인과 사유 입력이 필요합니다.</p>
         <div id="emergency-flags-host"></div>
+      </div>
+
+      <!-- ────────── 회초리 ────────── -->
+      <div class="panel" id="panel-hallOfFame">
+        <p class="section-hint">앱 회초리 제보를 묶음 단위로 검토·답변합니다. 같은 의견은 묶어서 한 번에 답변할 수 있어요.</p>
+        <div id="hall-of-fame-host"></div>
       </div>
 
       <!-- ────────── 약관·방침 ────────── -->

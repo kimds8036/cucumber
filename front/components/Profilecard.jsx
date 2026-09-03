@@ -4,9 +4,11 @@ import {
   Text,
   TouchableOpacity,
   useWindowDimensions,
+  Pressable,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Feather from '@expo/vector-icons/Feather';
+import { Ionicons } from '@expo/vector-icons';
 import ProfileIcon from '../assets/Profile.svg';
 import { getNormalize, createProfileCardStyles } from '../styles/mypage.style';
 import { api } from '../utils/api';
@@ -15,8 +17,10 @@ import { getProfileHexByColorId } from '../utils/profileColor';
 import { useGuidePreview } from '../context/GuidePreviewContext';
 import EquippedBadge from './EquippedBadge';
 import { getGuideMyPageStats } from '../src/screens/UserGuide/guidePreviewData';
+import { colors } from '../styles/colors';
 
 const PROFILE_COUNTS_CACHE_TTL_MS = 10 * 60 * 1000;
+const ENROLLMENT_TOOLTIP_MS = 3000;
 
 const ProfileCard = ({
   userInfo,
@@ -35,8 +39,25 @@ const ProfileCard = ({
     scrapCount: Number(userInfo?.scrapCount ?? 0),
   });
   const [countsLoading, setCountsLoading] = useState(!seededCounts);
+  const [enrollmentTipVisible, setEnrollmentTipVisible] = useState(false);
   const { isGuidePreview } = useGuidePreview();
   const profileEyeColor = getProfileHexByColorId(userInfo?.colorId);
+
+  const gradeClassLabel =
+    userInfo?.gradeClass ||
+    (userInfo?.grade && userInfo?.classNumber
+      ? `${userInfo.grade}학년 ${userInfo.classNumber}반`
+      : '');
+
+  const showEnrollmentTip = useCallback(() => {
+    setEnrollmentTipVisible(true);
+  }, []);
+
+  useEffect(() => {
+    if (!enrollmentTipVisible) return undefined;
+    const timer = setTimeout(() => setEnrollmentTipVisible(false), ENROLLMENT_TOOLTIP_MS);
+    return () => clearTimeout(timer);
+  }, [enrollmentTipVisible]);
 
   const loadCounts = useCallback(
     async ({ force = false } = {}) => {
@@ -141,33 +162,61 @@ const ProfileCard = ({
         </View>
 
         <View style={styles.profileInfo}>
-          <View
-            style={{
-              flexDirection: 'row',
-              alignItems: 'center',
-              flexWrap: 'wrap',
-              gap: normalize(6),
-              minWidth: 0,
-              flex: 1,
-            }}
-          >
-            <Text style={styles.profileName}>{userInfo.name}</Text>
+          <View style={styles.profileNameRow}>
+            <Text style={styles.profileName} numberOfLines={1} ellipsizeMode="tail">
+              {userInfo.name}
+            </Text>
             <EquippedBadge
               badge={userInfo.equippedBadge}
               size={normalize(18)}
               style={{ flexShrink: 0 }}
             />
             <Text
-              style={[styles.profileUsername, { flex: 1, minWidth: 0 }]}
+              style={styles.profileUsername}
               numberOfLines={1}
               ellipsizeMode="tail"
             >
               {userInfo.username}
             </Text>
           </View>
-          <Text style={styles.profileSchool}>
-            {userInfo.school} {userInfo.gradeClass}
-          </Text>
+          {userInfo.school ? (
+            <Text style={styles.profileSchoolLine} numberOfLines={2}>
+              {userInfo.school}
+            </Text>
+          ) : null}
+          {gradeClassLabel ? (
+            <View style={styles.profileEnrollmentBlock}>
+              <View style={styles.profileEnrollmentRow}>
+                <Text
+                  style={styles.profileEnrollmentLine}
+                  numberOfLines={1}
+                  ellipsizeMode="tail"
+                >
+                  {gradeClassLabel}
+                </Text>
+                <Pressable
+                  onPress={showEnrollmentTip}
+                  hitSlop={8}
+                  style={styles.profileEnrollmentInfoBtn}
+                  accessibilityRole="button"
+                  accessibilityLabel="학년·반 변경 안내"
+                >
+                  <Ionicons
+                    name="information-circle-outline"
+                    size={normalize(15)}
+                    color={colors.textLight40}
+                  />
+                </Pressable>
+              </View>
+              {enrollmentTipVisible ? (
+                <View style={styles.profileInfoTooltip}>
+                  <Text style={styles.profileInfoTooltipText}>
+                    계정 관리에서 학년·반을 변경할 수 있어요.
+                  </Text>
+                </View>
+              ) : null}
+            </View>
+          ) : null}
           <View style={styles.quickLinksRow}>
             <TouchableOpacity
               style={styles.quickLinkCard}

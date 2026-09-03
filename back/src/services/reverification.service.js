@@ -1,6 +1,5 @@
 import {
   computeAge,
-  getAcademicYearStart,
   inferExpectedSchoolLevel,
   inferGradeFromBirthDate,
 } from '../utils/signupEnrollment.js';
@@ -38,17 +37,15 @@ export function getExpectedSchoolLevel(birthDate, ref = new Date()) {
   return inferExpectedSchoolLevel(birthDate, ref);
 }
 
-/** 고3 졸업 예정 — graduation_year가 올해 이하이고 3/1 이후 */
-export function shouldGraduateBlock({ graduationYear, grade, ref = new Date() }) {
+/** 고3 졸업 예정 — 3학년이고 3/1 이후 */
+export function shouldGraduateBlock({ grade, ref = new Date() }) {
   const kst = getKstNow(ref);
   const month = kst.getMonth();
   const day = kst.getDate();
   const inMarchOrLater = month > 2 || (month === 2 && day >= 1);
   if (!inMarchOrLater) return false;
-  const academicYear = getAcademicYearStart(kst);
-  const gy = Number(graduationYear);
   const g = Number(grade);
-  return Number.isFinite(gy) && gy <= academicYear && g >= 3;
+  return Number.isFinite(g) && g >= 3;
 }
 
 export function isReverificationGracePeriod(ref = new Date()) {

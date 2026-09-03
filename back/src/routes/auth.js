@@ -27,7 +27,6 @@ import { uploadSignupStudentIdPhoto } from '../services/signupStudentIdPhoto.ser
 import {
   inferExpectedSchoolLevel,
   inferGradeFromBirthDate,
-  inferGraduationYear,
   pickRandomProfileColorId,
 } from '../utils/signupEnrollment.js';
 import { verifyFirebaseIdToken } from '../config/firebase.js';
@@ -62,6 +61,7 @@ import {
   consumeStudentIdManualVerificationToken,
 } from '../services/signupVerificationToken.service.js';
 import { getStudentVerificationStatus } from '../services/studentVerificationStatus.service.js';
+const isSignupRedesignSkipValidation = () => false;
 import {
   consumeRefreshToken,
   generateRefreshTokenPlain,
@@ -213,8 +213,6 @@ const signupValidators = [
     .bail().toInt().isInt({ min: 1, max: 6 }).withMessage('학년이 올바르지 않습니다.'),
   body('classNumber').exists({ checkNull: true }).withMessage('반을 선택해주세요.')
     .bail().toInt().isInt({ min: 1, max: 50 }).withMessage('반이 올바르지 않습니다.'),
-  body('graduationYear').exists({ checkNull: true }).withMessage('졸업년도를 선택해주세요.')
-    .bail().toInt().isInt({ min: 1900, max: 2100 }).withMessage('졸업년도가 올바르지 않습니다.'),
   body('colorId').optional({ values: 'falsy' }).toInt().isInt({ min: 1, max: 4 }),
   body('verificationMethod').optional({ values: 'falsy' }).isString().isIn(['student_id', 'certificate']),
   body('certificateViewUrl').optional({ values: 'falsy' }).isString().isLength({ max: 500 }),
@@ -241,6 +239,13 @@ const updatePasswordValidators = [
     .withMessage('현재 비밀번호를 입력해주세요.'),
   body('newPassword').isString().bail().isLength({ min: 8, max: 200 })
     .withMessage('새 비밀번호는 8자 이상이어야 합니다.'),
+];
+
+const updateAcademicValidators = [
+  body('grade').exists({ checkNull: true }).withMessage('학년을 입력해주세요.')
+    .bail().toInt().isInt({ min: 1, max: 6 }).withMessage('학년이 올바르지 않습니다.'),
+  body('classNumber').exists({ checkNull: true }).withMessage('반을 입력해주세요.')
+    .bail().toInt().isInt({ min: 1, max: 50 }).withMessage('반이 올바르지 않습니다.'),
 ];
 
 // 내 프로필 조회
@@ -410,6 +415,51 @@ router.patch('/me/username', authenticate, validate(updateUsernameValidators), a
     return res.status(500).json({
       success: false,
       message: '아이디 변경 중 오류가 발생했습니다.',
+    });
+  }
+});
+
+// 내 학년·반 변경 (학교 변경 불가)
+router.patch('/me/academic', authenticate, validate(updateAcademicValidators), async (req, res) => {
+  try {
+    const userId = req.user.userId;
+    const grade = Number(req.body?.grade);
+    const classNumber = Number(req.body?.classNumber);
+
+    const [rows] = await pool.execute(
+      `SELECT grade, class_number FROM users WHERE id = ? AND is_deleted = FALSE LIMIT 1`,
+      [userId],
+    );
+    if (!rows.length) {
+      return res.status(404).json({
+        success: false,
+        message: '사용자를 찾을 수 없습니다.',
+      });
+    }
+
+    const before = rows[0];
+    if (before.grade === grade && before.class_number === classNumber) {
+      return res.status(400).json({
+        success: false,
+        message: '기존과 동일한 학년·반입니다.',
+      });
+    }
+
+    await pool.execute(
+      `UPDATE users SET grade = ?, class_number = ? WHERE id = ? AND is_deleted = FALSE`,
+      [grade, classNumber, userId],
+    );
+
+    return res.json({
+      success: true,
+      message: '학년·반이 변경되었습니다.',
+      data: { grade, classNumber },
+    });
+  } catch (error) {
+    console.error('학년·반 변경 오류:', error);
+    return res.status(500).json({
+      success: false,
+      message: '학년·반 변경 중 오류가 발생했습니다.',
     });
   }
 });
@@ -931,8 +981,13 @@ router.post('/recovery/reset-password', validate(recoveryResetValidators), async
 });
 
 // 회원가입
-router.post('/signup', blockWhenFlag('signup_disabled'), validate(signupValidators), async (req, res) => {
+router.post(
+  '/signup',
+  blockWhenFlag('signup_disabled'),
+  ...(isSignupRedesignSkipValidation() ? [] : [validate(signupValidators)]),
+  async (req, res) => {
   try {
+    const skipValidation = isSignupRedesignSkipValidation();
     const { 
       username, 
       password, 
@@ -942,7 +997,6 @@ router.post('/signup', blockWhenFlag('signup_disabled'), validate(signupValidato
       schoolId, 
       grade, 
       classNumber, 
-      graduationYear, 
       colorId: rawColorId,
       verificationMethod = 'student_id',
       certificateViewUrl,
@@ -955,8 +1009,8 @@ router.post('/signup', blockWhenFlag('signup_disabled'), validate(signupValidato
       inviteCode: rawInviteCode,
     } = req.body;
 
-    const phone = normalizeLocalKrPhone(rawPhone);
-    const normalizedBirthDate = normalizeBirthDateInput(birthDate) || birthDate;
+    const phone = normalizeLocalKrPhone(rawPhone) || (skipValidation ? '01000000000' : '');
+    const normalizedBirthDate = normalizeBirthDateInput(birthDate) || birthDate || (skipValidation ? '2010-05-15' : '');
     const isCertificateSignup = verificationMethod === 'certificate';
     const under14 = isUnder14YearsOld(normalizedBirthDate);
     const inicisOn = isInicisEnabled();
@@ -964,134 +1018,151 @@ router.post('/signup', blockWhenFlag('signup_disabled'), validate(signupValidato
       ? (schoolId?.trim() || 'CERT_PENDING')
       : schoolId;
 
-    // 필수 필드 검증
-    if (!username || !password || !name || !phone || !birthDate || 
-        !resolvedSchoolId || !grade || !classNumber || !graduationYear) {
-      return res.status(400).json({ 
-        success: false, 
-        message: '모든 필드를 입력해주세요.' 
-      });
-    }
+    const consents = rawConsents && typeof rawConsents === 'object' ? rawConsents : {};
 
-    if (isCertificateSignup) {
-      if (!certificateViewUrl?.trim() || !certificateAccessCode?.trim()) {
+    // [SIGNUP_REDESIGN_SKIP] 필수 필드·약관·토큰 검증
+    if (!skipValidation) {
+      if (!username || !password || !name || !phone || !birthDate ||
+          !resolvedSchoolId || !grade || !classNumber) {
         return res.status(400).json({
           success: false,
-          message: '증명서 열람 주소와 열람 번호를 입력해주세요.',
+          message: '모든 필드를 입력해주세요.',
         });
       }
-    } else if (!schoolId?.trim()) {
-      return res.status(400).json({
-        success: false,
-        message: '재학 중인 학교를 선택해 주세요.',
-      });
-    }
 
-    const consents = rawConsents && typeof rawConsents === 'object' ? rawConsents : {};
-    const requiredConsentOk =
-      consents.termsOfService === true &&
-      consents.dataCollection === true &&
-      consents.studentOcr === true &&
-      consents.location === true &&
-      (!under14 || consents.guardian === true);
-    if (!requiredConsentOk) {
-      return res.status(400).json({
-        success: false,
-        message: under14
-          ? '필수 약관 및 법정대리인 동의가 완료되지 않았습니다.'
-          : '필수 약관 동의가 완료되지 않았습니다.',
-      });
-    }
+      if (isCertificateSignup) {
+        if (!certificateViewUrl?.trim() || !certificateAccessCode?.trim()) {
+          return res.status(400).json({
+            success: false,
+            message: '증명서 열람 주소와 열람 번호를 입력해주세요.',
+          });
+        }
+      } else if (!schoolId?.trim()) {
+        return res.status(400).json({
+          success: false,
+          message: '재학 중인 학교를 선택해 주세요.',
+        });
+      }
 
-    if (!isCertificateSignup && !studentVerificationToken?.trim()) {
-      return res.status(400).json({
-        success: false,
-        message: '학생증 촬영을 먼저 완료해 주세요.',
-        code: 'STUDENT_VERIFICATION_TOKEN_REQUIRED',
-      });
+      const requiredConsentOk =
+        consents.termsOfService === true &&
+        consents.dataCollection === true &&
+        consents.studentOcr === true &&
+        consents.location === true &&
+        (!under14 || consents.guardian === true);
+      if (!requiredConsentOk) {
+        return res.status(400).json({
+          success: false,
+          message: under14
+            ? '필수 약관 및 법정대리인 동의가 완료되지 않았습니다.'
+            : '필수 약관 동의가 완료되지 않았습니다.',
+        });
+      }
+
+      if (!isCertificateSignup && !studentVerificationToken?.trim()) {
+        return res.status(400).json({
+          success: false,
+          message: '학생증 촬영을 먼저 완료해 주세요.',
+          code: 'STUDENT_VERIFICATION_TOKEN_REQUIRED',
+        });
+      }
     }
 
     const resolvedColorId = Number(rawColorId) || pickRandomProfileColorId();
 
     const expectedLevel = inferExpectedSchoolLevel(normalizedBirthDate);
+    const inferredGrade = inferGradeFromBirthDate(normalizedBirthDate, expectedLevel);
     let resolvedGrade = Number(grade);
-    let resolvedGraduationYear = Number(graduationYear);
-    if (!Number.isFinite(resolvedGrade) || resolvedGrade < 1) {
-      resolvedGrade = inferGradeFromBirthDate(normalizedBirthDate, expectedLevel) || 1;
-    }
-    if (!Number.isFinite(resolvedGraduationYear)) {
-      resolvedGraduationYear =
-        inferGraduationYear(normalizedBirthDate, expectedLevel, resolvedGrade) ||
-        new Date().getFullYear() + 1;
+    if (!Number.isFinite(resolvedGrade) || resolvedGrade < 1 || resolvedGrade > 3) {
+      resolvedGrade = inferredGrade || 1;
     }
     const resolvedClassNumber = Number(classNumber) || 1;
 
-    // 입력값 검증
-    if (!validateUsername(username)) {
-      return res.status(400).json({ 
-        success: false, 
-        message: '사용자명은 영문, 숫자, 언더스코어만 사용 가능하며 3-20자여야 합니다.' 
-      });
+    let effectiveSchoolId = resolvedSchoolId;
+    if (skipValidation) {
+      const trimmedSchool = String(effectiveSchoolId || '').trim();
+      if (!trimmedSchool || trimmedSchool === 'REDESIGN_SKIP' || trimmedSchool === 'CERT_PENDING') {
+        const [fallbackSchools] = await pool.execute('SELECT school_id FROM schools LIMIT 1');
+        if (fallbackSchools.length > 0) {
+          effectiveSchoolId = fallbackSchools[0].school_id;
+        }
+      }
     }
 
-    if (!validatePassword(password)) {
-      return res.status(400).json({ 
-        success: false, 
-        message: '비밀번호는 영문과 숫자를 포함하여 최소 8자 이상이어야 합니다.' 
-      });
-    }
+    const signupUsername = skipValidation
+      ? (username?.trim() || `redesign_${Date.now()}`)
+      : username;
+    const signupPassword = skipValidation ? (password || 'Test1234') : password;
+    const signupName = skipValidation ? (name?.trim() || '개편테스트') : name;
 
-    if (!validatePhone(phone)) {
-      return res.status(400).json({ 
-        success: false, 
-        message: '올바른 전화번호 형식이 아닙니다.' 
-      });
-    }
-
-    if (!validateBirthDate(normalizedBirthDate)) {
-      return res.status(400).json({ 
-        success: false, 
-        message: '올바른 생년월일이 아닙니다.' 
-      });
-    }
-
-    if (under14 && inicisOn && !guardianInicisClientToken?.trim()) {
-      return res.status(400).json({
-        success: false,
-        message: mapIdentityTokenError('GUARDIAN_TOKEN_REQUIRED'),
-        code: 'GUARDIAN_TOKEN_REQUIRED',
-      });
-    }
-
-    if (inicisOn && !studentInicisClientToken?.trim()) {
-      return res.status(400).json({
-        success: false,
-        message: mapIdentityTokenError('IDENTITY_TOKEN_REQUIRED'),
-        code: 'IDENTITY_TOKEN_REQUIRED',
-      });
-    }
-
-    // 전화번호 인증 확인 (이니시스 OFF 시 레거시)
-    if (!inicisOn) {
-      const [verifiedCodes] = await pool.execute(
-        `SELECT id FROM phone_verifications 
-         WHERE ${phoneLookupWhereClause()} AND is_verified = TRUE 
-         ORDER BY created_at DESC LIMIT 1`,
-        phoneLookupBindParams(phone),
-      );
-
-      if (verifiedCodes.length === 0) {
-        return res.status(400).json({ 
-          success: false, 
-          message: '전화번호 인증이 완료되지 않았습니다.' 
+    // [SIGNUP_REDESIGN_SKIP] 형식·이니시스·전화 인증 검증
+    if (!skipValidation) {
+      if (!validateUsername(signupUsername)) {
+        return res.status(400).json({
+          success: false,
+          message: '사용자명은 영문, 숫자, 언더스코어만 사용 가능하며 3-20자여야 합니다.',
         });
+      }
+
+      if (!validatePassword(signupPassword)) {
+        return res.status(400).json({
+          success: false,
+          message: '비밀번호는 영문과 숫자를 포함하여 최소 8자 이상이어야 합니다.',
+        });
+      }
+
+      if (!validatePhone(phone)) {
+        return res.status(400).json({
+          success: false,
+          message: '올바른 전화번호 형식이 아닙니다.',
+        });
+      }
+
+      if (!validateBirthDate(normalizedBirthDate)) {
+        return res.status(400).json({
+          success: false,
+          message: '올바른 생년월일이 아닙니다.',
+        });
+      }
+
+      if (under14 && inicisOn && !guardianInicisClientToken?.trim()) {
+        return res.status(400).json({
+          success: false,
+          message: mapIdentityTokenError('GUARDIAN_TOKEN_REQUIRED'),
+          code: 'GUARDIAN_TOKEN_REQUIRED',
+        });
+      }
+
+      if (inicisOn && !studentInicisClientToken?.trim()) {
+        return res.status(400).json({
+          success: false,
+          message: mapIdentityTokenError('IDENTITY_TOKEN_REQUIRED'),
+          code: 'IDENTITY_TOKEN_REQUIRED',
+        });
+      }
+
+      // 전화번호 인증 확인 (이니시스 OFF 시 레거시)
+      if (!inicisOn) {
+        const [verifiedCodes] = await pool.execute(
+          `SELECT id FROM phone_verifications 
+           WHERE ${phoneLookupWhereClause()} AND is_verified = TRUE 
+           ORDER BY created_at DESC LIMIT 1`,
+          phoneLookupBindParams(phone),
+        );
+
+        if (verifiedCodes.length === 0) {
+          return res.status(400).json({
+            success: false,
+            message: '전화번호 인증이 완료되지 않았습니다.',
+          });
+        }
       }
     }
 
     // 아이디: 탈퇴 계정 포함 UNIQUE 유지(재로그인 안내). 전화: 활성 계정만 중복.
     const [existingByUsername] = await pool.execute(
       `SELECT id FROM users WHERE username = ? LIMIT 1`,
-      [username],
+      [signupUsername],
     );
     if (existingByUsername.length > 0) {
       return res.status(400).json({
@@ -1113,26 +1184,28 @@ router.post('/signup', blockWhenFlag('signup_disabled'), validate(signupValidato
     }
 
     // 컬러 ID 유효성 확인 (1~4 랜덤 배정 가능)
-    const [colors] = await pool.execute('SELECT id FROM colors WHERE id = ?', [resolvedColorId]);
-    if (colors.length === 0) {
-      return res.status(400).json({ 
-        success: false, 
-        message: '유효하지 않은 컬러 ID입니다.' 
-      });
+    if (!skipValidation) {
+      const [colors] = await pool.execute('SELECT id FROM colors WHERE id = ?', [resolvedColorId]);
+      if (colors.length === 0) {
+        return res.status(400).json({
+          success: false,
+          message: '유효하지 않은 컬러 ID입니다.',
+        });
+      }
     }
 
     // student_verified: 학생증·증명서 가입 모두 관리자 검수 승인 전까지 FALSE.
     const studentVerifiedOnInsert = false;
 
     // 비밀번호 해싱
-    const hashedPassword = await hashPassword(password);
+    const hashedPassword = await hashPassword(signupPassword);
 
     const connection = await pool.getConnection();
     try {
       await connection.beginTransaction();
 
       const identityLinkIds = [];
-      const anchorName = String(name).trim();
+      const anchorName = String(signupName).trim();
       const anchorPhone = phone;
       const anchorBirthDate = normalizedBirthDate;
       let signupName = anchorName;
@@ -1198,14 +1271,14 @@ router.post('/signup', blockWhenFlag('signup_disabled'), validate(signupValidato
       }
 
       let studentIdManualVerification = null;
-      if (!isCertificateSignup) {
+      if (!isCertificateSignup && !skipValidation) {
         try {
           studentIdManualVerification = await consumeStudentIdManualVerificationToken(
             studentVerificationToken,
             {
               name: anchorName,
               birthDate: anchorBirthDate,
-              schoolId: String(schoolId).trim(),
+              schoolId: String(schoolId || effectiveSchoolId).trim(),
               phone: anchorPhone,
             },
             connection,
@@ -1225,16 +1298,15 @@ router.post('/signup', blockWhenFlag('signup_disabled'), validate(signupValidato
 
       const [result] = await connection.execute(
         `INSERT INTO users 
-         (username, password, ${USER_PII_INSERT_COLUMNS}, school_id, grade, class_number, graduation_year, color_id, phone_verified, student_verified) 
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, TRUE, ?)`,
+         (username, password, ${USER_PII_INSERT_COLUMNS}, school_id, grade, class_number, color_id, phone_verified, student_verified) 
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, TRUE, ?)`,
         [
-          username,
+          signupUsername,
           hashedPassword,
           ...userPiiInsertValues(userPii),
-          resolvedSchoolId,
+          effectiveSchoolId,
           resolvedGrade,
           resolvedClassNumber,
-          resolvedGraduationYear,
           resolvedColorId,
           studentVerifiedOnInsert,
         ],
@@ -1319,10 +1391,10 @@ router.post('/signup', blockWhenFlag('signup_disabled'), validate(signupValidato
         },
       );
 
-      scheduleSchoolTermSync(resolvedSchoolId);
+      scheduleSchoolTermSync(effectiveSchoolId);
       try {
         const { scheduleSchoolStats } = await import('../services/cronSchedule.hooks.js');
-        scheduleSchoolStats(resolvedSchoolId);
+        scheduleSchoolStats(effectiveSchoolId);
       } catch (e) {
         console.warn('[signup] school-stats reserve', e?.message || e);
       }
@@ -1330,7 +1402,7 @@ router.post('/signup', blockWhenFlag('signup_disabled'), validate(signupValidato
       if (isCertificateSignup && reviewSubmissionId) {
         notifyCertificateReviewPending({
           userId,
-          username,
+          username: signupUsername,
           claimedSchoolName: claimedSchoolName?.trim() || null,
           submissionId: reviewSubmissionId,
           certificateViewUrl: certificateViewUrl?.trim(),
@@ -1338,7 +1410,7 @@ router.post('/signup', blockWhenFlag('signup_disabled'), validate(signupValidato
       } else if (studentIdManualVerification && reviewSubmissionId) {
         notifyStudentIdReviewPending({
           userId,
-          username,
+          username: signupUsername,
           schoolId: studentIdManualVerification.schoolId,
           purpose: 'signup',
           submissionId: reviewSubmissionId,
@@ -1845,8 +1917,30 @@ router.post('/withdraw', authenticate, async (req, res) => {
 // 회원가입 중 학생증 촬영 → Cloudinary 업로드 (관리자 수동 검수, OCR 미사용)
 router.post('/signup/upload-student-id', signupOcrLimiter, async (req, res) => {
   try {
+    const skipValidation = isSignupRedesignSkipValidation();
     const { name, birthDate, imageBase64, cropRegion, phone: rawPhone, schoolId } =
       req.body || {};
+
+    // [SIGNUP_REDESIGN_SKIP] 이미지·학교 필수 검증 우회
+    if (skipValidation) {
+      const normalizedBirthDate =
+        normalizeBirthDateInput(birthDate) || birthDate || '2010-05-15';
+      const expectedLevel = inferExpectedSchoolLevel(normalizedBirthDate);
+      const suggestedGrade = inferGradeFromBirthDate(normalizedBirthDate, expectedLevel) || 1;
+
+      return res.json({
+        success: true,
+        data: {
+          passed: true,
+          manualReview: true,
+          cloudinaryUrl: null,
+          studentVerificationToken: 'redesign-skip-upload-token',
+          suggestedGrade,
+          suggestedClassNumber: 1,
+          expectedLevel,
+        },
+      });
+    }
 
     if (!name || !birthDate || !imageBase64) {
       return res.status(400).json({
@@ -1889,11 +1983,6 @@ router.post('/signup/upload-student-id', signupOcrLimiter, async (req, res) => {
     const normalizedBirthDate = normalizeBirthDateInput(birthDate) || birthDate;
     const expectedLevel = inferExpectedSchoolLevel(normalizedBirthDate);
     const suggestedGrade = inferGradeFromBirthDate(normalizedBirthDate, expectedLevel);
-    const suggestedGraduationYear = inferGraduationYear(
-      normalizedBirthDate,
-      expectedLevel,
-      suggestedGrade,
-    );
 
     const studentVerificationToken = await issueStudentIdManualVerificationToken({
       name: String(name).trim(),
@@ -1912,7 +2001,6 @@ router.post('/signup/upload-student-id', signupOcrLimiter, async (req, res) => {
         cloudinaryUrl: uploaded.cloudinaryUrl,
         studentVerificationToken,
         suggestedGrade,
-        suggestedGraduationYear,
         suggestedClassNumber: 1,
         expectedLevel,
       },

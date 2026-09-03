@@ -79,7 +79,6 @@ CREATE TABLE IF NOT EXISTS `users` (
   `school_id` varchar(50) COLLATE utf8mb4_unicode_ci NOT NULL COMMENT '학교 ID',
   `grade` tinyint NOT NULL COMMENT '학년 (1-3)',
   `class_number` tinyint NOT NULL COMMENT '반 번호',
-  `graduation_year` int NOT NULL COMMENT '졸업년도',
   `is_graduated` tinyint(1) DEFAULT '0' COMMENT '졸업 여부',
   `is_deleted` tinyint(1) DEFAULT '0' COMMENT '탈퇴 여부',
   `deleted_at` timestamp NULL DEFAULT NULL COMMENT '탈퇴 처리 시각',

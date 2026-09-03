@@ -89,7 +89,6 @@ async function loadAppeals() {
               ${esc(u.school_name || u.school_id || '학교 미설정')}
               · ${u.grade != null ? `${u.grade}학년` : '-'}
               ${u.class_number != null ? `${u.class_number}반` : ''}
-              ${u.graduation_year ? ` · 졸업 ${u.graduation_year}` : ''}
               ${u.student_verified ? '' : ' · <span class="txt-danger">미인증</span>'}
             </div>
           </div>
@@ -198,15 +197,13 @@ async function loadAppeals() {
 
     const currentEl = document.getElementById('user-academic-current');
     if (currentEl) {
-      currentEl.textContent = `현재: ${u.school_name || u.school_id || '-'} / ${u.grade ?? '-'}학년 ${u.class_number ?? '-'}반 / 졸업 ${u.graduation_year ?? '-'}`;
+      currentEl.textContent = `현재: ${u.school_name || u.school_id || '-'} / ${u.grade ?? '-'}학년 ${u.class_number ?? '-'}반`;
     }
 
     const gradeEl = document.getElementById('user-academic-grade');
     if (gradeEl) gradeEl.value = String(u.grade || 1);
     const classEl = document.getElementById('user-academic-class');
     if (classEl) classEl.value = String(u.class_number || 1);
-    const gradEl = document.getElementById('user-academic-grad-year');
-    if (gradEl) gradEl.value = u.graduation_year != null ? String(u.graduation_year) : '';
     const exEl = document.getElementById('user-academic-grade-exception');
     if (exEl) exEl.checked = Boolean(u.grade_exception);
     const noteEl = document.getElementById('user-academic-note');
@@ -299,8 +296,6 @@ async function loadAppeals() {
     }
     const grade = Number(document.getElementById('user-academic-grade')?.value);
     const classNumber = Number(document.getElementById('user-academic-class')?.value);
-    const graduationYearRaw = document.getElementById('user-academic-grad-year')?.value?.trim();
-    const graduationYear = graduationYearRaw === '' ? null : Number(graduationYearRaw);
     const gradeException = Boolean(document.getElementById('user-academic-grade-exception')?.checked);
     const note = document.getElementById('user-academic-note')?.value?.trim() || null;
 
@@ -315,7 +310,6 @@ async function loadAppeals() {
           schoolId: academicEditSchool.id,
           grade,
           classNumber,
-          graduationYear,
           gradeException,
           note,
         }),

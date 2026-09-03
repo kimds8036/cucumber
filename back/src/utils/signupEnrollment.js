@@ -18,7 +18,6 @@ export function computeAge(birthDate, ref = new Date()) {
 export function inferExpectedSchoolLevel(birthDate, ref = new Date()) {
   const age = computeAge(birthDate, ref);
   if (age == null) return null;
-  if (age < 14) return null;
   if (age >= 12 && age <= 15) return 'middle';
   if (age >= 16 && age <= 19) return 'high';
   return null;
@@ -45,15 +44,6 @@ export function inferGradeFromBirthDate(birthDate, schoolLevel, ref = new Date()
 /** 한국식 학년도 시작 연도 (3월 기준) */
 export function getAcademicYearStart(ref = new Date()) {
   return ref.getMonth() >= 2 ? ref.getFullYear() : ref.getFullYear() - 1;
-}
-
-/** DB 필수 graduation_year — 해당 학교급 졸업 예정 연도(단순 추정) */
-export function inferGraduationYear(birthDate, schoolLevel, grade, ref = new Date()) {
-  const g = Number(grade);
-  if (!schoolLevel || !Number.isFinite(g) || g < 1 || g > 3) return null;
-  const academicStart = getAcademicYearStart(ref);
-  const yearsLeft = 3 - g + 1;
-  return academicStart + yearsLeft;
 }
 
 export function pickRandomProfileColorId() {

@@ -10,7 +10,7 @@ sealed class TimetableStatus {
   data object NoClass : TimetableStatus()
   data object BeforeSchool : TimetableStatus()
   data class InClass(val period: Int) : TimetableStatus()
-  data class BreakTime(val lastPeriod: Int) : TimetableStatus()
+  data class BreakTime(val nextPeriod: Int) : TimetableStatus()
   data object AfterSchool : TimetableStatus()
 }
 
@@ -126,6 +126,22 @@ object TimetableLogic {
     }
   }
 
+  private fun currentPeriodAt(at: Date, scheduled: List<MergedPeriod>): MergedPeriod? {
+    return scheduled.firstOrNull { p ->
+      val start = p.startTime ?: return@firstOrNull false
+      val end = p.endTime ?: return@firstOrNull false
+      !at.before(start) && at.before(end)
+    }
+  }
+
+  /** 아직 시작하지 않은 가장 가까운 교시 */
+  private fun nextPeriodAfter(at: Date, scheduled: List<MergedPeriod>): MergedPeriod? {
+    return scheduled.firstOrNull { p ->
+      val start = p.startTime ?: return@firstOrNull false
+      at.before(start)
+    }
+  }
+
   fun status(
     at: Date,
     periods: List<MergedPeriod>,
@@ -146,19 +162,14 @@ object TimetableLogic {
     }
     if (at.before(firstStart)) return TimetableStatus.BeforeSchool
     if (!at.before(lastEnd)) return TimetableStatus.AfterSchool
-    scheduled.forEachIndexed { idx, p ->
-      val start = p.startTime ?: return@forEachIndexed
-      val end = p.endTime ?: return@forEachIndexed
-      if (!at.before(start) && at.before(end)) {
-        return TimetableStatus.InClass(p.number)
-      }
-      if (idx < scheduled.size - 1) {
-        val nextStart = scheduled[idx + 1].startTime
-        if (nextStart != null && !at.before(end) && at.before(nextStart)) {
-          return TimetableStatus.BreakTime(p.number)
-        }
-      }
+
+    currentPeriodAt(at, scheduled)?.let { return TimetableStatus.InClass(it.number) }
+
+    // 수업 종료 후 ~ 다음 교시 시작 전: 다음 과목·교시 표시, 점등은 하지 않음
+    nextPeriodAfter(at, scheduled)?.let { next ->
+      return TimetableStatus.BreakTime(next.number)
     }
+
     return TimetableStatus.AfterSchool
   }
 
@@ -222,7 +233,7 @@ object TimetableLogic {
         )
       }
       is TimetableStatus.BreakTime -> {
-        val n = status.lastPeriod
+        val n = status.nextPeriod
         val p = periods.firstOrNull { it.number == n }
         val subject = if (p != null && p.subjectName.isNotEmpty()) p.subjectName else "${n}교시"
         val range = if (p?.startTime != null && p.endTime != null) {
@@ -230,7 +241,7 @@ object TimetableLogic {
         } else null
         TimetableEntry(
           date, dayLabel, "${n}교시", range, subject,
-          null, periods, null, status, false, weekly,
+          p?.subjectColorHex, periods, null, status, false, weekly,
         )
       }
     }

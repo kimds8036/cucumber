@@ -21,8 +21,9 @@ import { getMaxPeriodFromTimetableKeys } from './periodUtils';
 import { colors, TIMETABLE_SUBJECT_COLORS, timetableSubjectCellStyle } from '../../../styles/colors';
 import { api } from '../../../utils/api';
 import AppPopupModal from '../../../components/common/AppPopupModal';
-import { saveTimetableLocalAndSync } from '../../../utils/timetableSync';
+import { saveTimetableLocalAndSync, TIMETABLE_SOURCE_AUTO } from '../../../utils/timetableSync';
 import TimetableAnomalyConfirmModal from '../../../components/timetable/TimetableAnomalyConfirmModal';
+import TimetableSubjectCellText from '../../../components/TimetableSubjectCellText';
 import { fetchTimetableFromApi } from '../../../utils/timetableApi';
 import { hasTimetableAnomaly } from '../../../utils/timetableAnomaly';
 
@@ -30,6 +31,7 @@ function navigateToPeriodTimeSetup(navigation, {
   timetable,
   timetableCacheKey,
   timetableAlreadySaved = true,
+  timetableSource = TIMETABLE_SOURCE_AUTO,
 }) {
   const maxPeriod = getMaxPeriodFromTimetableKeys(timetable, 7);
   navigation.navigate('PeriodTimeSetup', {
@@ -37,6 +39,7 @@ function navigateToPeriodTimeSetup(navigation, {
     sourceTimetable: timetable,
     timetableCacheKey,
     timetableAlreadySaved,
+    timetableSource,
     ...(timetableAlreadySaved
       ? {}
       : { pendingTimetable: timetable }),
@@ -61,7 +64,9 @@ const getSubjectColorIndex = (subject) => {
 };
 
 async function saveTimetableToCache(cacheKey, timetable) {
-  await saveTimetableLocalAndSync(cacheKey, timetable);
+  await saveTimetableLocalAndSync(cacheKey, timetable, {
+    source: TIMETABLE_SOURCE_AUTO,
+  });
 }
 
 function hasSubjectList(subjects) {
@@ -190,18 +195,11 @@ function TimetablePreview({ timetable, loading }) {
                     ];
                     return (
                       <View key={`${day}-${period}`} style={cellStyle}>
-                        <Text
-                          style={[
-                            pv.choicePreviewClassCellText,
-                            content
-                              ? pv.choicePreviewClassCellTextFilled
-                              : null,
-                          ]}
-                          lineBreakMode="wordWrapping"
-                          lineBreakStrategyIOS="hangul-word"
-                        >
-                          {content}
-                        </Text>
+                        <TimetableSubjectCellText
+                          content={content}
+                          style={pv.choicePreviewClassCellText}
+                          filledStyle={pv.choicePreviewClassCellTextFilled}
+                        />
                       </View>
                     );
                   })}

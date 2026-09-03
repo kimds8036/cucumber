@@ -58,8 +58,6 @@ import Skeleton from '../../../components/common/Skeleton';
 import {
   showTooOldForSignupAlert,
   showTooYoungForSignupAlert,
-  GRADE_MISMATCH_HELP_TITLE,
-  GRADE_MISMATCH_HELP_MESSAGE,
 } from './authFeatureAlerts';
 import {
   classifyBirthDateCase,
@@ -100,7 +98,6 @@ function getAdultTestEnrollmentFallback() {
     schoolLevel: 'high',
     grade: 3,
     classNum: 1,
-    graduationYear: new Date().getFullYear() + 1,
   };
 }
 
@@ -210,6 +207,7 @@ const Sign = ({ navigation }) => {
     consents: {},
   });
   const [selectedSchool, setSelectedSchool] = useState(null);
+  const [schoolGrade, setSchoolGrade] = useState('');
   const [schoolClassNum, setSchoolClassNum] = useState('');
   const [screenReady, setScreenReady] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -377,29 +375,29 @@ const Sign = ({ navigation }) => {
   const schoolEnrollmentPreview = useMemo(() => {
     const bd = normalizeBirthDateForCompare(identity.birthDate) || identity.birthDate;
     if (!bd || !isValidBirthDateString(bd)) {
-      return { grade: null, graduationYear: null, schoolLevel: null };
+      return { grade: null, schoolLevel: null };
     }
     const enrollment = buildEnrollmentFromBirthDate(bd);
     if (
       ALLOW_ADULT_SIGNUP_IN_DEV &&
-      (enrollment.grade == null ||
-        !enrollment.schoolLevel ||
-        enrollment.graduationYear == null)
+      (enrollment.grade == null || !enrollment.schoolLevel)
     ) {
       const fallback = getAdultTestEnrollmentFallback();
       return {
         schoolLevel: enrollment.schoolLevel || fallback.schoolLevel,
         grade: enrollment.grade ?? fallback.grade,
-        graduationYear: enrollment.graduationYear ?? fallback.graduationYear,
       };
     }
     return enrollment;
   }, [identity.birthDate]);
 
-  const schoolGradeLabel = useMemo(() => {
-    const g = schoolEnrollmentPreview.grade;
-    if (g == null || !Number.isFinite(Number(g))) return '';
-    return `${Number(g)}학년`;
+  useEffect(() => {
+    const inferred = schoolEnrollmentPreview.grade;
+    if (inferred == null || !Number.isFinite(Number(inferred))) return;
+    setSchoolGrade((prev) => {
+      if (prev) return prev;
+      return String(inferred);
+    });
   }, [schoolEnrollmentPreview.grade]);
 
   const goToLogin = useCallback(() => {
@@ -1159,8 +1157,7 @@ const Sign = ({ navigation }) => {
   };
 
   const proceedFromSchoolSelect = useCallback(() => {
-    const grade = schoolEnrollmentPreview.grade;
-    const graduationYear = schoolEnrollmentPreview.graduationYear;
+    const grade = Number(schoolGrade);
     const schoolLevel = schoolEnrollmentPreview.schoolLevel;
     const classNum = Number(schoolClassNum);
 
@@ -1170,18 +1167,13 @@ const Sign = ({ navigation }) => {
       schoolName: selectedSchool.name,
       grade: String(grade),
       classNum: String(classNum),
-      graduationYear:
-        graduationYear != null && graduationYear !== ''
-          ? String(graduationYear)
-          : prev.graduationYear || '',
       schoolLevel: schoolLevel || prev.schoolLevel,
     }));
     setCurrentStep(STEP.STUDENT_VERIFY);
   }, [
-    schoolEnrollmentPreview.grade,
-    schoolEnrollmentPreview.graduationYear,
     schoolEnrollmentPreview.schoolLevel,
     schoolClassNum,
+    schoolGrade,
     selectedSchool,
   ]);
 
@@ -1190,12 +1182,9 @@ const Sign = ({ navigation }) => {
       Alert.alert('알림', '재학 중인 학교를 목록에서 선택해 주세요.');
       return;
     }
-    const grade = schoolEnrollmentPreview.grade;
-    if (grade == null || !Number.isFinite(Number(grade)) || Number(grade) < 1) {
-      Alert.alert(
-        '알림',
-        '생년월일 기준으로 학년을 계산하지 못했습니다. 이전 단계의 본인인증을 다시 확인해 주세요.',
-      );
+    const grade = Number(schoolGrade);
+    if (!Number.isFinite(grade) || grade < 1 || grade > 3) {
+      Alert.alert('알림', '학년은 1~3 사이 숫자로 입력해 주세요.');
       return;
     }
     const classNum = Number(schoolClassNum);
@@ -1222,15 +1211,6 @@ const Sign = ({ navigation }) => {
           onPress: closeBlockingAlert,
         },
       ],
-    });
-  };
-
-  const handleGradeMismatchHelp = () => {
-    setBlockingAlert({
-      visible: true,
-      title: GRADE_MISMATCH_HELP_TITLE,
-      message: GRADE_MISMATCH_HELP_MESSAGE,
-      buttons: [{ text: '확인', onPress: closeBlockingAlert }],
     });
   };
 
@@ -1315,23 +1295,12 @@ const Sign = ({ navigation }) => {
     const grade =
       overrides.grade ?? enrollment.grade ?? 1;
     const classNum = overrides.classNum ?? 1;
-    let graduationYear =
-      overrides.graduationYear ?? enrollment.graduationYear;
     let schoolLevel = overrides.level || enrollment.schoolLevel;
 
-    // 성인 테스트 시 학년·졸업년도 자동 추정 실패 → 고3 대체값으로 진행
-    if (
-      ALLOW_ADULT_SIGNUP_IN_DEV &&
-      (!schoolLevel ||
-        !Number.isFinite(Number(graduationYear)) ||
-        Number(graduationYear) < 1900)
-    ) {
+    // 성인 테스트 시 학교급 자동 추정 실패 → 고3 대체값으로 진행
+    if (ALLOW_ADULT_SIGNUP_IN_DEV && !schoolLevel) {
       const fallback = getAdultTestEnrollmentFallback();
-      schoolLevel = schoolLevel || fallback.schoolLevel;
-      graduationYear =
-        Number.isFinite(Number(graduationYear)) && Number(graduationYear) >= 1900
-          ? Number(graduationYear)
-          : fallback.graduationYear;
+      schoolLevel = fallback.schoolLevel;
       return {
         schoolLevel,
         grade: Number.isFinite(Number(grade)) && Number(grade) >= 1
@@ -1341,7 +1310,6 @@ const Sign = ({ navigation }) => {
           Number.isFinite(Number(classNum)) && Number(classNum) >= 1
             ? Number(classNum)
             : fallback.classNum,
-        graduationYear,
       };
     }
 
@@ -1349,7 +1317,6 @@ const Sign = ({ navigation }) => {
       schoolLevel,
       grade,
       classNum,
-      graduationYear,
     };
   };
 
@@ -1370,21 +1337,14 @@ const Sign = ({ navigation }) => {
         Number(formData.classNum) ||
         Number(schoolClassNum) ||
         undefined,
-      graduationYear:
-        Number(formData.graduationYear) ||
-        schoolEnrollmentPreview.graduationYear ||
-        data?.verification?.suggestedGraduationYear ||
-        data?.graduationYear ||
-        undefined,
     });
 
-    const { schoolLevel, grade, classNum, graduationYear } = enrollment;
+    const { schoolLevel, grade, classNum } = enrollment;
 
     const recognized = {
       ...data,
       grade,
       class: classNum,
-      graduationYear,
     };
 
     const token =
@@ -1395,10 +1355,6 @@ const Sign = ({ navigation }) => {
       schoolLevel,
       grade: String(grade),
       classNum: String(classNum),
-      graduationYear:
-        graduationYear != null && graduationYear !== ''
-          ? String(graduationYear)
-          : '',
       schoolId: selectedSchool?.id || formData.schoolId,
       schoolName: selectedSchool?.name || formData.schoolName,
     };
@@ -1454,14 +1410,9 @@ const Sign = ({ navigation }) => {
         undefined,
       classNum:
         Number(finalData.classNum) || Number(verificationData?.class) || undefined,
-      graduationYear:
-        Number(finalData.graduationYear) ||
-        Number(verificationData?.graduationYear) ||
-        undefined,
     });
     const grade = enrollment.grade;
     const classNumber = enrollment.classNum;
-    const graduationYear = enrollment.graduationYear;
 
     const verificationMethod =
       options.verificationMethod || 'student_id';
@@ -1480,7 +1431,6 @@ const Sign = ({ navigation }) => {
       schoolId: finalData.schoolId,
       grade,
       classNumber,
-      graduationYear,
       colorId: pickRandomProfileColorId(),
       verificationMethod,
       consents: consentData.consents || {},
@@ -1557,17 +1507,6 @@ const Sign = ({ navigation }) => {
           inviteCode: await peekPendingInviteCode(),
         },
       );
-      if (
-        !Number.isFinite(payload.graduationYear) ||
-        payload.graduationYear < 1900
-      ) {
-        Alert.alert(
-          '가입 정보 확인',
-          '생년월일 기준으로 학년·졸업년도를 자동 계산하지 못했습니다.\n' +
-            '중·고등학생 생년월일(만 14~19세)로 다시 시도해 주세요.',
-        );
-        return;
-      }
       await api.post('/api/auth/signup', payload);
       await consumePendingInviteCode();
       await finishSignupAndEnterApp(finalData.username, finalData.password);
@@ -1642,8 +1581,9 @@ const Sign = ({ navigation }) => {
         if (!selectedSchool?.id || selectedSchool?.manual) return true;
         if (!Number(schoolClassNum) || Number(schoolClassNum) < 1) return true;
         if (
-          schoolEnrollmentPreview.grade == null ||
-          !Number.isFinite(Number(schoolEnrollmentPreview.grade))
+          !Number(schoolGrade) ||
+          Number(schoolGrade) < 1 ||
+          Number(schoolGrade) > 3
         ) {
           return true;
         }
@@ -1670,8 +1610,9 @@ const Sign = ({ navigation }) => {
       if (!selectedSchool?.id || selectedSchool?.manual) return true;
       if (!Number(schoolClassNum) || Number(schoolClassNum) < 1) return true;
       if (
-        schoolEnrollmentPreview.grade == null ||
-        !Number.isFinite(Number(schoolEnrollmentPreview.grade))
+        !Number(schoolGrade) ||
+        Number(schoolGrade) < 1 ||
+        Number(schoolGrade) > 3
       ) {
         return true;
       }
@@ -1779,10 +1720,10 @@ const Sign = ({ navigation }) => {
             normalize={normalize}
             selectedSchool={selectedSchool}
             onSelect={setSelectedSchool}
-            gradeLabel={schoolGradeLabel}
+            grade={schoolGrade}
+            onGradeChange={setSchoolGrade}
             classNum={schoolClassNum}
             onClassNumChange={setSchoolClassNum}
-            onPressGradeMismatch={handleGradeMismatchHelp}
             bottomOffset={footerHeight}
           />
         )}
