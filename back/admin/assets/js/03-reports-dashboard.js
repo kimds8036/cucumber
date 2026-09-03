@@ -74,6 +74,9 @@ async function loadDashboard() {
   }
 
   let opsUsersPreviewPage = 1;
+  let opsUserDevicesCache = [];
+  let opsUserDevicesPage = 1;
+  const OPS_USER_DEVICES_PAGE_SIZE = 5;
 
   function bindOpsUsersPreview() {
     const grid = document.getElementById('ops-users-preview-grid');
@@ -173,6 +176,66 @@ async function loadDashboard() {
     });
     document.getElementById('ops-users-next')?.addEventListener('click', () => {
       if (page < totalPages) void loadOpsUsersPreview(page + 1);
+    });
+  }
+
+  function renderOpsUserDevicesPage() {
+    const devicesBody = document.getElementById('ops-user-devices-tbody');
+    const pager = document.getElementById('ops-user-devices-pager');
+    const devices = Array.isArray(opsUserDevicesCache) ? opsUserDevicesCache : [];
+    const total = devices.length;
+    const pageSize = OPS_USER_DEVICES_PAGE_SIZE;
+    const totalPages = Math.max(1, Math.ceil(total / pageSize));
+    opsUserDevicesPage = Math.min(Math.max(1, opsUserDevicesPage), totalPages);
+    const start = (opsUserDevicesPage - 1) * pageSize;
+    const slice = devices.slice(start, start + pageSize);
+
+    if (devicesBody) {
+      if (!total) {
+        devicesBody.innerHTML = '<tr><td colspan="5" class="empty-row">기기 기록 없음</td></tr>';
+      } else {
+        devicesBody.innerHTML = slice.map((d) => {
+          const seen = d.lastSeenAt || d.lastLoginAt;
+          const push = d.pushActive == null ? '-' : (d.pushActive ? '활성' : '비활성');
+          const idShort = d.deviceId
+            ? (d.deviceId.length > 36 ? `${d.deviceId.slice(0, 34)}…` : d.deviceId)
+            : '-';
+          return `
+            <tr>
+              <td>${esc(opsOsLabel(d.os))}</td>
+              <td>${esc(d.appVersion || '-')}</td>
+              <td>${esc(push)}</td>
+              <td>${esc(fmtDate(seen))}</td>
+              <td title="${esc(d.deviceId || '')}">${esc(idShort)}</td>
+            </tr>
+          `;
+        }).join('');
+      }
+    }
+
+    if (!pager) return;
+    if (total <= pageSize) {
+      pager.hidden = true;
+      pager.innerHTML = '';
+      return;
+    }
+    pager.hidden = false;
+    pager.innerHTML = `
+      <button type="button" class="btn btn-sm" id="ops-user-devices-prev" ${opsUserDevicesPage <= 1 ? 'disabled' : ''}>이전</button>
+      <span style="font-size:13px;color:var(--text-secondary)">${opsUserDevicesPage} / ${totalPages} · ${start + 1}–${start + slice.length} / ${total}</span>
+      <button type="button" class="btn btn-sm" id="ops-user-devices-next" ${opsUserDevicesPage >= totalPages ? 'disabled' : ''}>다음</button>
+    `;
+    document.getElementById('ops-user-devices-prev')?.addEventListener('click', () => {
+      if (opsUserDevicesPage > 1) {
+        opsUserDevicesPage -= 1;
+        renderOpsUserDevicesPage();
+      }
+    });
+    document.getElementById('ops-user-devices-next')?.addEventListener('click', () => {
+      if (opsUserDevicesPage < totalPages) {
+        opsUserDevicesPage += 1;
+        renderOpsUserDevicesPage();
+      }
     });
   }
 
@@ -379,29 +442,9 @@ async function loadDashboard() {
         ? `기기 ${devices.length}대 · ${parts.join(' · ')}`
         : '등록된 기기 기록이 없습니다. 로그인·푸시 등록 후 표시됩니다.';
     }
-    const devicesBody = document.getElementById('ops-user-devices-tbody');
-    if (devicesBody) {
-      if (!devices.length) {
-        devicesBody.innerHTML = '<tr><td colspan="5" class="empty-row">기기 기록 없음</td></tr>';
-      } else {
-        devicesBody.innerHTML = devices.map((d) => {
-          const seen = d.lastSeenAt || d.lastLoginAt;
-          const push = d.pushActive == null ? '-' : (d.pushActive ? '활성' : '비활성');
-          const idShort = d.deviceId
-            ? (d.deviceId.length > 36 ? `${d.deviceId.slice(0, 34)}…` : d.deviceId)
-            : '-';
-          return `
-            <tr>
-              <td>${esc(opsOsLabel(d.os))}</td>
-              <td>${esc(d.appVersion || '-')}</td>
-              <td>${esc(push)}</td>
-              <td>${esc(fmtDate(seen))}</td>
-              <td title="${esc(d.deviceId || '')}">${esc(idShort)}</td>
-            </tr>
-          `;
-        }).join('');
-      }
-    }
+    opsUserDevicesCache = devices;
+    opsUserDevicesPage = 1;
+    renderOpsUserDevicesPage();
     const tbody = document.getElementById('ops-user-badges-tbody');
     if (tbody) {
       const items = badges.items || [];
