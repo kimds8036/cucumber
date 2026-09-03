@@ -1,21 +1,20 @@
 import React from 'react';
-import { View, Text, TextInput, TouchableOpacity } from 'react-native';
+import { View, Text, TextInput } from 'react-native';
 import { colors } from '../../../styles/colors';
 import SchoolSearchField from './SchoolSearchField';
 import SignupHelperText from './SignupHelperText';
-import SignupLockedField from './SignupLockedField';
 import SignupStepScroll from './SignupStepScroll';
 
-/** 계정 만들기 ↔ 학생증 인증 사이 — 재학 학교·학년(잠금)·반 */
+/** 계정 만들기 ↔ 학생증 인증 사이 — 재학 학교·학년·반 */
 const SignStepSchoolSelect = ({
   styles,
   normalize,
   selectedSchool,
   onSelect,
-  gradeLabel,
+  grade,
+  onGradeChange,
   classNum,
   onClassNumChange,
-  onPressGradeMismatch,
   bottomOffset,
 }) => {
   const schoolSearch = (
@@ -36,36 +35,27 @@ const SignStepSchoolSelect = ({
 
   const gradeClassFields = selectedSchool ? (
     <View style={{ marginTop: normalize(8), paddingBottom: normalize(4) }}>
-      <SignupLockedField
-        label="학년"
-        value={gradeLabel}
-        placeholder="생년월일 기준으로 자동 표시"
-        styles={styles}
-        compactBottom
-      />
-      <TouchableOpacity
-        onPress={onPressGradeMismatch}
-        activeOpacity={0.7}
-        style={{
-          alignSelf: 'flex-start',
-          marginLeft: normalize(20),
-          marginTop: normalize(6),
-          marginBottom: normalize(10),
-          paddingVertical: normalize(2),
-        }}
-        hitSlop={{ top: 8, bottom: 8, left: 4, right: 4 }}
-      >
-        <Text
-          style={{
-            fontSize: normalize(13),
-            color: colors.primary,
-            fontWeight: '600',
-            textDecorationLine: 'underline',
+      <Text style={styles.inputLabel}>학년</Text>
+      <SignupHelperText normalize={normalize} variant="plain" tight>
+        생년월일 기준으로 자동 입력되며, 다르면 수정할 수 있어요
+      </SignupHelperText>
+      <View style={styles.inputWrapper}>
+        <TextInput
+          style={styles.input}
+          placeholder="학년 (1~3)"
+          placeholderTextColor={colors.textSecondary}
+          value={grade}
+          onChangeText={(text) => {
+            const next = text.replace(/\D/g, '').slice(0, 1);
+            if (next === '' || (Number(next) >= 1 && Number(next) <= 3)) {
+              onGradeChange?.(next);
+            }
           }}
-        >
-          이 학년이 아니신가요?
-        </Text>
-      </TouchableOpacity>
+          keyboardType="number-pad"
+          maxLength={1}
+          returnKeyType="done"
+        />
+      </View>
 
       <Text style={styles.inputLabel}>반</Text>
       <SignupHelperText normalize={normalize} variant="plain" tight>

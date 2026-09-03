@@ -16,7 +16,6 @@ export function computeAge(birthDate, ref = new Date()) {
 export function inferExpectedSchoolLevel(birthDate, ref = new Date()) {
   const age = computeAge(birthDate, ref);
   if (age == null) return null;
-  if (age < 14) return null;
   if (age >= 12 && age <= 15) return 'middle';
   if (age >= 16 && age <= 19) return 'high';
   return null;

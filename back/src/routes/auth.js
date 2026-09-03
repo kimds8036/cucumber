@@ -1075,16 +1075,14 @@ router.post(
     const resolvedColorId = Number(rawColorId) || pickRandomProfileColorId();
 
     const expectedLevel = inferExpectedSchoolLevel(normalizedBirthDate);
+    const inferredGrade = inferGradeFromBirthDate(normalizedBirthDate, expectedLevel);
     let resolvedGrade = Number(grade);
-    let resolvedGraduationYear = Number(graduationYear);
-    if (!Number.isFinite(resolvedGrade) || resolvedGrade < 1) {
-      resolvedGrade = inferGradeFromBirthDate(normalizedBirthDate, expectedLevel) || 1;
+    if (!Number.isFinite(resolvedGrade) || resolvedGrade < 1 || resolvedGrade > 3) {
+      resolvedGrade = inferredGrade || 1;
     }
-    if (!Number.isFinite(resolvedGraduationYear)) {
-      resolvedGraduationYear =
-        inferGraduationYear(normalizedBirthDate, expectedLevel, resolvedGrade) ||
-        new Date().getFullYear() + 1;
-    }
+    const resolvedGraduationYear =
+      inferGraduationYear(normalizedBirthDate, expectedLevel, resolvedGrade) ||
+      new Date().getFullYear() + 1;
     const resolvedClassNumber = Number(classNumber) || 1;
 
     let effectiveSchoolId = resolvedSchoolId;

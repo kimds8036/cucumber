@@ -4,7 +4,6 @@ import { computeAge } from './signupBirthDatePolicy';
 export function inferExpectedSchoolLevel(birthDate) {
   const age = computeAge(birthDate);
   if (age == null) return null;
-  if (age < 14) return null;
   if (age >= 12 && age <= 15) return 'middle';
   if (age >= 16 && age <= 19) return 'high';
   return null;
