@@ -10,7 +10,6 @@ import { Ionicons } from '@expo/vector-icons';
 import { colors, fonts, fontSizes } from '../../../styles/colors';
 import SignStepPrivacyPolicy from './SignStepPrivacyPolicy';
 import SignStepTermsOfService from './SignStepTermsOfService';
-import { SIGNUP_REDESIGN_SKIP_VALIDATION } from './signupRedesignFlags';
 
 // 회원가입 0단계: 필수 동의 항목(개인정보/인증/위치) 확인 화면
 const SignStepConsent = ({ normalize, selectedAgeGroup, onChange }) => {
@@ -64,7 +63,6 @@ const SignStepConsent = ({ normalize, selectedAgeGroup, onChange }) => {
   );
 
   const canProceedToNext =
-    SIGNUP_REDESIGN_SKIP_VALIDATION ||
     allBulkChecked ||
     fourKeyProgress ||
     fiveWithoutBulkProgress ||

@@ -15,7 +15,6 @@ import { colors, fonts, fontSizes } from '../../../styles/colors';
 import { api } from '../../../utils/api';
 import { normalizeBirthDateForCompare } from './signupBirthDatePolicy';
 import SubmittingLockModal from '../../../components/common/SubmittingLockModal';
-import { SIGNUP_REDESIGN_SKIP_VALIDATION } from './signupRedesignFlags';
 
 const UPLOAD_TIMEOUT_MS = 120_000;
 const EXAMPLE_IMAGE = require('../../../assets/neis_plus_guide1.png');
@@ -65,24 +64,6 @@ const SignStepNeisPlusSubmit = ({
 
   const handleSubmit = async () => {
     if (busy) return;
-
-    // [SIGNUP_REDESIGN_SKIP] 이미지·본인·학교 필수 검증 우회
-    if (SIGNUP_REDESIGN_SKIP_VALIDATION && mode === 'signup') {
-      onVerified?.({
-        name: identity?.name || '개편테스트',
-        manualReview: true,
-        cloudinaryUrl: '',
-        grade: '',
-        class: '',
-        graduationYear: '',
-        studentVerificationToken: 'redesign-skip-neis-token',
-        verification: {
-          studentVerificationToken: 'redesign-skip-neis-token',
-        },
-      });
-      return;
-    }
-
     if (!pickedBase64) {
       Alert.alert('알림', '나이스+ 학적 화면 사진을 첨부해 주세요.');
       return;
