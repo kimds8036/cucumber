@@ -159,16 +159,19 @@ const SignKakao = ({ navigation }) => {
   }, [schoolEnrollmentPreview.grade]);
 
   const progressWidth = useMemo(() => {
+    const total = 3;
     const map = {
-      [STEP.KAKAO_AUTH]: 15,
-      [STEP.SCHOOL_SELECT]: 40,
-      [STEP.STUDENT_VERIFY]: studentVerified ? 90 : 65,
-      [STEP.ALT_VERIFY_CHOICE]: 70,
-      [STEP.CERTIFICATE_GUIDE]: 75,
-      [STEP.NEIS_PLUS_SUBMIT]: 80,
-      [STEP.CERTIFICATE_SUBMIT]: 85,
+      [STEP.KAKAO_AUTH]: 0,
+      [STEP.SCHOOL_SELECT]: (1 / total) * 100,
+      [STEP.STUDENT_VERIFY]: studentVerified
+        ? (3 / total) * 100
+        : (2 / total) * 100,
+      [STEP.ALT_VERIFY_CHOICE]: (2 / total) * 100,
+      [STEP.CERTIFICATE_GUIDE]: (3 / total) * 100,
+      [STEP.CERTIFICATE_SUBMIT]: (3 / total) * 100,
+      [STEP.NEIS_PLUS_SUBMIT]: (3 / total) * 100,
     };
-    return map[currentStep] || 20;
+    return map[currentStep] ?? 0;
   }, [currentStep, studentVerified]);
 
   const buildSessionSnapshot = useCallback(
@@ -560,6 +563,11 @@ const SignKakao = ({ navigation }) => {
       } else if (studentVerified) {
         void handleComplete();
       }
+      return;
+    }
+    if (currentStep === STEP.CERTIFICATE_SUBMIT) {
+      void handleComplete();
+      return;
     }
   };
 
@@ -568,6 +576,7 @@ const SignKakao = ({ navigation }) => {
     if (SIGNUP_REDESIGN_SKIP_VALIDATION) {
       if (currentStep === STEP.KAKAO_AUTH) return false;
       if (currentStep === STEP.STUDENT_VERIFY) return false;
+      if (currentStep === STEP.CERTIFICATE_SUBMIT) return false;
       return false;
     }
     if (currentStep === STEP.SCHOOL_SELECT) {
@@ -576,6 +585,9 @@ const SignKakao = ({ navigation }) => {
       if (!Number(schoolClassNum) || Number(schoolClassNum) < 1) return true;
     }
     if (currentStep === STEP.STUDENT_VERIFY && !studentVerified) return true;
+    if (currentStep === STEP.CERTIFICATE_SUBMIT) {
+      if (!certificateData.certificateUrl?.trim() || !certificateData.accessNumber?.trim()) return true;
+    }
     return false;
   };
 
@@ -590,10 +602,13 @@ const SignKakao = ({ navigation }) => {
     }
     if (currentStep === STEP.STUDENT_VERIFY && studentVerified)
       return '제출하기';
+    if (currentStep === STEP.CERTIFICATE_SUBMIT) return '제출하기';
     return '다음 단계';
   };
 
-  const showPrimaryFooter = currentStep === STEP.SCHOOL_SELECT;
+  const showPrimaryFooter =
+    currentStep === STEP.SCHOOL_SELECT ||
+    currentStep === STEP.CERTIFICATE_SUBMIT;
 
   const isSignupCompleteScreen =
     currentStep === STEP.STUDENT_VERIFY && studentVerified;

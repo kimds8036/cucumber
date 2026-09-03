@@ -194,17 +194,20 @@ const SignPhone = ({ navigation }) => {
   }, [schoolEnrollmentPreview.grade]);
 
   const progressWidth = useMemo(() => {
+    const total = 5;
     const map = {
-      [STEP.BIRTH_DATE]: 15,
-      [STEP.ACCOUNT]: 30,
-      [STEP.SCHOOL_SELECT]: 55,
-      [STEP.STUDENT_VERIFY]: studentVerified ? 92 : 75,
-      [STEP.ALT_VERIFY_CHOICE]: 78,
-      [STEP.CERTIFICATE_GUIDE]: 80,
-      [STEP.NEIS_PLUS_SUBMIT]: 84,
-      [STEP.CERTIFICATE_SUBMIT]: 88,
+      [STEP.BIRTH_DATE]: (1 / total) * 100,
+      [STEP.ACCOUNT]: (2 / total) * 100,
+      [STEP.SCHOOL_SELECT]: (3 / total) * 100,
+      [STEP.STUDENT_VERIFY]: studentVerified
+        ? (5 / total) * 100
+        : (4 / total) * 100,
+      [STEP.ALT_VERIFY_CHOICE]: (4 / total) * 100,
+      [STEP.CERTIFICATE_GUIDE]: (5 / total) * 100,
+      [STEP.CERTIFICATE_SUBMIT]: (5 / total) * 100,
+      [STEP.NEIS_PLUS_SUBMIT]: (5 / total) * 100,
     };
-    return map[currentStep] || 15;
+    return map[currentStep] ?? (1 / total) * 100;
   }, [currentStep, studentVerified]);
 
   const buildSessionSnapshot = useCallback(
@@ -1179,6 +1182,11 @@ const SignPhone = ({ navigation }) => {
       } else if (studentVerified) {
         void handleComplete();
       }
+      return;
+    }
+    if (currentStep === STEP.CERTIFICATE_SUBMIT) {
+      void handleComplete();
+      return;
     }
   };
 
@@ -1193,6 +1201,7 @@ const SignPhone = ({ navigation }) => {
     if (SIGNUP_REDESIGN_SKIP_VALIDATION) {
       if (currentStep === STEP.ACCOUNT) return false;
       if (currentStep === STEP.STUDENT_VERIFY) return false;
+      if (currentStep === STEP.CERTIFICATE_SUBMIT) return false;
       return false;
     }
     if (currentStep === STEP.ACCOUNT) {
@@ -1214,6 +1223,9 @@ const SignPhone = ({ navigation }) => {
       if (!Number(schoolClassNum) || Number(schoolClassNum) < 1) return true;
     }
     if (currentStep === STEP.STUDENT_VERIFY && !studentVerified) return true;
+    if (currentStep === STEP.CERTIFICATE_SUBMIT) {
+      if (!certificateData.certificateUrl?.trim() || !certificateData.accessNumber?.trim()) return true;
+    }
     return false;
   };
 
@@ -1226,6 +1238,7 @@ const SignPhone = ({ navigation }) => {
       return '테스트 인증 완료';
     }
     if (currentStep === STEP.STUDENT_VERIFY && studentVerified) return '제출하기';
+    if (currentStep === STEP.CERTIFICATE_SUBMIT) return '제출하기';
     return '다음 단계';
   };
 
@@ -1233,6 +1246,7 @@ const SignPhone = ({ navigation }) => {
     STEP.BIRTH_DATE,
     STEP.ACCOUNT,
     STEP.SCHOOL_SELECT,
+    STEP.CERTIFICATE_SUBMIT,
   ].includes(currentStep);
 
   const hideFooterForOverlay =

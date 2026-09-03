@@ -196,17 +196,20 @@ const SignApple = ({ navigation }) => {
   }, [schoolEnrollmentPreview.grade]);
 
   const progressWidth = useMemo(() => {
+    const total = 4;
     const map = {
-      [STEP.APPLE_AUTH]: 10,
-      [STEP.BIRTH_DATE]: 25,
-      [STEP.SCHOOL_SELECT]: 50,
-      [STEP.STUDENT_VERIFY]: studentVerified ? 90 : 70,
-      [STEP.ALT_VERIFY_CHOICE]: 75,
-      [STEP.CERTIFICATE_GUIDE]: 78,
-      [STEP.NEIS_PLUS_SUBMIT]: 82,
-      [STEP.CERTIFICATE_SUBMIT]: 85,
+      [STEP.APPLE_AUTH]: 0,
+      [STEP.BIRTH_DATE]: (1 / total) * 100,
+      [STEP.SCHOOL_SELECT]: (2 / total) * 100,
+      [STEP.STUDENT_VERIFY]: studentVerified
+        ? (4 / total) * 100
+        : (3 / total) * 100,
+      [STEP.ALT_VERIFY_CHOICE]: (3 / total) * 100,
+      [STEP.CERTIFICATE_GUIDE]: (4 / total) * 100,
+      [STEP.CERTIFICATE_SUBMIT]: (4 / total) * 100,
+      [STEP.NEIS_PLUS_SUBMIT]: (4 / total) * 100,
     };
-    return map[currentStep] || 15;
+    return map[currentStep] ?? 0;
   }, [currentStep, studentVerified]);
 
   const buildSessionSnapshot = useCallback(
@@ -1144,6 +1147,11 @@ const SignApple = ({ navigation }) => {
       } else if (studentVerified) {
         void handleComplete();
       }
+      return;
+    }
+    if (currentStep === STEP.CERTIFICATE_SUBMIT) {
+      void handleComplete();
+      return;
     }
   };
 
@@ -1157,6 +1165,7 @@ const SignApple = ({ navigation }) => {
     }
     if (SIGNUP_REDESIGN_SKIP_VALIDATION) {
       if (currentStep === STEP.STUDENT_VERIFY) return false;
+      if (currentStep === STEP.CERTIFICATE_SUBMIT) return false;
       return false;
     }
     if (currentStep === STEP.SCHOOL_SELECT) {
@@ -1165,6 +1174,9 @@ const SignApple = ({ navigation }) => {
       if (!Number(schoolClassNum) || Number(schoolClassNum) < 1) return true;
     }
     if (currentStep === STEP.STUDENT_VERIFY && !studentVerified) return true;
+    if (currentStep === STEP.CERTIFICATE_SUBMIT) {
+      if (!certificateData.certificateUrl?.trim() || !certificateData.accessNumber?.trim()) return true;
+    }
     return false;
   };
 
@@ -1178,12 +1190,15 @@ const SignApple = ({ navigation }) => {
     }
     if (currentStep === STEP.STUDENT_VERIFY && studentVerified)
       return '제출하기';
+    if (currentStep === STEP.CERTIFICATE_SUBMIT) return '제출하기';
     return '다음 단계';
   };
 
-  const showPrimaryFooter = [STEP.BIRTH_DATE, STEP.SCHOOL_SELECT].includes(
-    currentStep,
-  );
+  const showPrimaryFooter = [
+    STEP.BIRTH_DATE,
+    STEP.SCHOOL_SELECT,
+    STEP.CERTIFICATE_SUBMIT,
+  ].includes(currentStep);
 
   const hideFooterForOverlay =
     showGuardianConsentModal ||
