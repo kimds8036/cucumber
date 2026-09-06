@@ -38,6 +38,7 @@ import OtherSchoolScreen from './view/src/otherschool';
 import MealCalender from './view/src/mealcalender';
 import Timer from './view/src/timer';
 import FriendsScreen from './view/src/friendsscreen';
+import CommuteBreakoutGame from './view/src/CommuteBreakoutGame';
 import HiddenPostsAppeals from './view/src/hiddenPostsAppeals';
 import DeveloperWhack from './view/src/DeveloperWhack';
 import Inquiry from './view/src/Inquiry';
@@ -244,6 +245,11 @@ function MainStack({ initialRouteName = 'Main' }) {
       <Stack.Screen name="SendSchoolMail" component={SendSchoolMailScreen} />
       <Stack.Screen name="Timer" component={Timer} />
       <Stack.Screen name="Friends" component={FriendsScreen} />
+      <Stack.Screen
+        name="CommuteBreakout"
+        component={CommuteBreakoutGame}
+        options={{ headerShown: false, animation: 'slide_from_right' }}
+      />
       <Stack.Screen name="BadgeManage" component={BadgeManage} />
       <Stack.Screen name="HiddenPostsAppeals" component={HiddenPostsAppeals} />
       <Stack.Screen name="DeveloperWhack" component={DeveloperWhack} />
