@@ -71,10 +71,23 @@ export default function AlertHost() {
             color: colors.textSecondary,
             textAlign: 'center',
             lineHeight: 20,
-            marginBottom: 16,
+            marginBottom: currentAlert?.options?.note ? 8 : 16,
           }}
         >
           {currentAlert.message}
+        </Text>
+      )}
+      {!!currentAlert?.options?.note && (
+        <Text
+          style={{
+            fontSize: 12,
+            color: colors.textLight40,
+            textAlign: 'center',
+            lineHeight: 16,
+            marginBottom: 16,
+          }}
+        >
+          {String(currentAlert.options.note)}
         </Text>
       )}
 

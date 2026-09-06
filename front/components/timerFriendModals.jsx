@@ -420,12 +420,26 @@ export const FriendStoryBar = memo(function FriendStoryBar({
   onAddFriendPress,
 }) {
   const orderedFriends = useMemo(() => {
-    const activeFriends = friends.filter((f) => studyingFriends[f.id] === true);
-    const inactiveFriends = friends.filter(
+    const suggestions = friends.filter((f) => f.isSuggestion);
+    const realFriends = friends.filter((f) => !f.isSuggestion);
+    const activeFriends = realFriends.filter(
+      (f) => studyingFriends[f.id] === true,
+    );
+    const inactiveFriends = realFriends.filter(
       (f) => studyingFriends[f.id] !== true,
     );
-    // 비활성 친구 순서는 고정(원본 배열 순서 유지), 공부 중 친구만 앞쪽 배치
-    return [...activeFriends, ...inactiveFriends];
+    const base = [...activeFriends, ...inactiveFriends];
+    if (!suggestions.length) return base;
+
+    // 친구 사이사이에 추천 끼우기 (최대 2명)
+    const result = [...base];
+    if (suggestions[0]) {
+      result.splice(Math.min(1, result.length), 0, suggestions[0]);
+    }
+    if (suggestions[1]) {
+      result.splice(Math.min(result.length, Math.max(2, result.length)), 0, suggestions[1]);
+    }
+    return result;
   }, [friends, studyingFriends]);
 
   return (
@@ -468,9 +482,11 @@ export const FriendStoryBar = memo(function FriendStoryBar({
           </Text>
         </TouchableOpacity>
 
-        {/* 친구 목록 */}
+        {/* 친구 · 추천 목록 */}
         {orderedFriends.map((friend) => {
-          const isActive = studyingFriends[friend.id] === true; // 정렬 기준과 동일
+          const isSuggestion = Boolean(friend.isSuggestion);
+          const isActive =
+            !isSuggestion && studyingFriends[friend.id] === true;
           const iconColor = getProfileInnerColor(
             friend.colorId ??
               friend.profileColorId ??
@@ -479,7 +495,11 @@ export const FriendStoryBar = memo(function FriendStoryBar({
           );
           return (
             <TouchableOpacity
-              key={friend.id}
+              key={
+                isSuggestion
+                  ? `suggest-${friend.id}`
+                  : `friend-${friend.id}`
+              }
               style={[
                 styles.friendStoryCircleWrap,
                 debugFriendStoryBorder('#0A84FF'),
@@ -498,15 +518,31 @@ export const FriendStoryBar = memo(function FriendStoryBar({
                   height={normalize(56)}
                   color={iconColor}
                 />
-                <View
-                  style={[
-                    styles.friendStatusDotOnCircle,
-                    isActive
-                      ? styles.friendStatusDotActive
-                      : styles.friendStatusDotInactive,
-                    debugFriendStoryBorder('#BF5AF2'),
-                  ]}
-                />
+                {isSuggestion ? (
+                  <View
+                    style={[
+                      styles.friendStatusDotOnCircle,
+                      styles.friendSuggestBadge,
+                      debugFriendStoryBorder('#BF5AF2'),
+                    ]}
+                  >
+                    <Ionicons
+                      name="person-add"
+                      size={normalize(9)}
+                      color={colors.textWhite}
+                    />
+                  </View>
+                ) : (
+                  <View
+                    style={[
+                      styles.friendStatusDotOnCircle,
+                      isActive
+                        ? styles.friendStatusDotActive
+                        : styles.friendStatusDotInactive,
+                      debugFriendStoryBorder('#BF5AF2'),
+                    ]}
+                  />
+                )}
               </View>
               <Text
                 style={[

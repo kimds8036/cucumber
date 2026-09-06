@@ -513,6 +513,12 @@ export const createTimerStyles = (width, normalize) => {
     friendStatusDotInactive: {
       backgroundColor: '#E9E9E9',
     },
+    friendSuggestBadge: {
+      backgroundColor: colors.primary,
+      alignItems: 'center',
+      justifyContent: 'center',
+      overflow: 'hidden',
+    },
     friendName: {
       marginTop: normalize(4),
       fontSize: normalize(fontSizes.lg),

@@ -63,6 +63,7 @@ export function TimerContent() {
   const isFocused = useIsFocused();
 
   const [friends, setFriends] = useState(INITIAL_FRIENDS);
+  const [suggestions, setSuggestions] = useState([]);
   const [showAddFriend, setShowAddFriend] = useState(false);
   const [pokeTarget, setPokeTarget] = useState(null);
   const [pokeVisible, setPokeVisible] = useState(false);
@@ -140,8 +141,15 @@ export function TimerContent() {
     let mounted = true;
     const loadFriends = async () => {
       try {
-        const res = await api.get('/api/friends/list');
-        const list = res.data?.data ?? [];
+        const [friendsRes, suggestRes] = await Promise.all([
+          api.get('/api/friends/list'),
+          api.get('/api/friends/timer-suggestions').catch((err) => {
+            console.warn('[Timer] 친구 추천 조회 실패', err?.message || err);
+            return { data: { data: [] } };
+          }),
+        ]);
+        const list = friendsRes.data?.data ?? [];
+        const suggestList = suggestRes.data?.data ?? [];
         if (!mounted) return;
         setFriends(
           list.map((f, index) => ({
@@ -154,6 +162,20 @@ export function TimerContent() {
               f.profile_color_id ??
               f.profileColor?.id,
             colorIndex: index % FRIEND_ICON_COLORS.length,
+            isSuggestion: false,
+          })),
+        );
+        setSuggestions(
+          (Array.isArray(suggestList) ? suggestList : []).map((s, index) => ({
+            id: s.userId,
+            name: s.name || s.username || '학생',
+            username: s.username,
+            colorId:
+              s.colorId ??
+              s.profileColorId ??
+              s.profileColor?.id,
+            colorIndex: index % FRIEND_ICON_COLORS.length,
+            isSuggestion: true,
           })),
         );
       } catch (error) {
@@ -170,16 +192,83 @@ export function TimerContent() {
   useEffect(() => {
     if (!isGuidePreview) return;
     setFriends(getGuideTimerFriends());
+    setSuggestions([]);
   }, [isGuidePreview]);
 
+  const storyFriends = useMemo(
+    () => [...friends, ...suggestions],
+    [friends, suggestions],
+  );
+
   const handleOpenAddFriend = useCallback(() => setShowAddFriend(true), []);
+
+  const sendFriendRequestByUsername = useCallback(
+    async (rawUsername, displayName) => {
+      const username = String(rawUsername || '')
+        .trim()
+        .replace(/^@/, '');
+      if (!username) return false;
+      try {
+        const res = await api.post('/api/friends/requests', { username });
+        const data = res.data?.data || {};
+        const targetName =
+          data.targetName || data.targetUsername || displayName || `@${username}`;
+        pushTimerToast(targetName, '친구 요청을 보냈어요');
+        return true;
+      } catch (error) {
+        console.error('[Timer][FriendRequest] API 실패', {
+          username,
+          status: error.response?.status,
+          message: error.response?.data?.message,
+        });
+        Alert.alert(
+          '친구 요청 실패',
+          getApiUserFacingMessage(
+            error,
+            '친구 요청 중 문제가 발생했어요. 잠시 후 다시 시도해 주세요.',
+          ),
+        );
+        return false;
+      }
+    },
+    [pushTimerToast],
+  );
+
   const handleFriendPress = useCallback(
     (friend) => {
+      if (friend?.isSuggestion) {
+        const label = friend.name || friend.username || '이 사용자';
+        Alert.alert(
+          '친구 추가',
+          `${label} 님을 친구 추가하시겠습니까?`,
+          [
+            { text: '취소', style: 'cancel' },
+            {
+              text: '추가',
+              onPress: async () => {
+                const ok = await sendFriendRequestByUsername(
+                  friend.username,
+                  friend.name,
+                );
+                if (ok) {
+                  setSuggestions((prev) =>
+                    prev.filter((s) => String(s.id) !== String(friend.id)),
+                  );
+                }
+              },
+            },
+          ],
+          {
+            note: '상대가 수락하면 친구 목록에 표시됩니다.',
+          },
+        );
+        return;
+      }
       const isActive = studyingFriends?.[friend.id] === true;
       setPokeTarget({ ...friend, isActive });
       setPokeVisible(true);
     },
-    [studyingFriends],
+    [sendFriendRequestByUsername, studyingFriends],
   );
 
   const timer = useTimerDay({
@@ -293,7 +382,7 @@ export function TimerContent() {
               showsVerticalScrollIndicator={false}
             >
               <FriendStoryBar
-                friends={friends}
+                friends={storyFriends}
                 studyingFriends={studyingFriends}
                 normalize={normalize}
                 styles={styles}
@@ -401,30 +490,7 @@ export function TimerContent() {
                 {
                   text: '보내기',
                   onPress: async () => {
-                    try {
-                      const res = await api.post('/api/friends/requests', {
-                        username,
-                      });
-                      const data = res.data?.data || {};
-                      const targetName =
-                        data.targetName ||
-                        data.targetUsername ||
-                        `@${username}`;
-                      pushTimerToast(targetName, '친구 요청을 보냈어요');
-                    } catch (error) {
-                      console.error('[Timer][FriendRequest] API 실패', {
-                        username,
-                        status: error.response?.status,
-                        message: error.response?.data?.message,
-                      });
-                      Alert.alert(
-                        '친구 요청 실패',
-                        getApiUserFacingMessage(
-                          error,
-                          '친구 요청 중 문제가 발생했어요. 잠시 후 다시 시도해 주세요.',
-                        ),
-                      );
-                    }
+                    await sendFriendRequestByUsername(username);
                   },
                 },
               ],
