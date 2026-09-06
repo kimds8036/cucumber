@@ -64,6 +64,7 @@ export function TimerContent() {
 
   const [friends, setFriends] = useState(INITIAL_FRIENDS);
   const [suggestions, setSuggestions] = useState([]);
+  const [friendsBarLoading, setFriendsBarLoading] = useState(!isGuidePreview);
   const [showAddFriend, setShowAddFriend] = useState(false);
   const [pokeTarget, setPokeTarget] = useState(null);
   const [pokeVisible, setPokeVisible] = useState(false);
@@ -139,6 +140,7 @@ export function TimerContent() {
   useEffect(() => {
     if (!isFocused || isGuidePreview) return undefined;
     let mounted = true;
+    setFriendsBarLoading(true);
     const loadFriends = async () => {
       try {
         const [friendsRes, suggestRes] = await Promise.all([
@@ -166,20 +168,31 @@ export function TimerContent() {
           })),
         );
         setSuggestions(
-          (Array.isArray(suggestList) ? suggestList : []).map((s, index) => ({
-            id: s.userId,
-            name: s.name || s.username || '학생',
-            username: s.username,
-            colorId:
-              s.colorId ??
-              s.profileColorId ??
-              s.profileColor?.id,
-            colorIndex: index % FRIEND_ICON_COLORS.length,
-            isSuggestion: true,
-          })),
+          (Array.isArray(suggestList) ? suggestList : []).map((s, index) => {
+            const username = s.username || '';
+            const displayId = username.startsWith('@')
+              ? username
+              : username
+                ? `@${username}`
+                : '학생';
+            return {
+              id: s.userId,
+              // 추천은 아이디만 표시 (실명 비노출)
+              name: displayId,
+              username: displayId === '학생' ? '' : displayId,
+              colorId:
+                s.colorId ??
+                s.profileColorId ??
+                s.profileColor?.id,
+              colorIndex: index % FRIEND_ICON_COLORS.length,
+              isSuggestion: true,
+            };
+          }),
         );
       } catch (error) {
         console.error('타이머 친구 목록 조회 실패:', error);
+      } finally {
+        if (mounted) setFriendsBarLoading(false);
       }
     };
     const cancel = runAfterTabTransition(loadFriends);
@@ -193,6 +206,7 @@ export function TimerContent() {
     if (!isGuidePreview) return;
     setFriends(getGuideTimerFriends());
     setSuggestions([]);
+    setFriendsBarLoading(false);
   }, [isGuidePreview]);
 
   const storyFriends = useMemo(
@@ -203,17 +217,15 @@ export function TimerContent() {
   const handleOpenAddFriend = useCallback(() => setShowAddFriend(true), []);
 
   const sendFriendRequestByUsername = useCallback(
-    async (rawUsername, displayName) => {
+    async (rawUsername) => {
       const username = String(rawUsername || '')
         .trim()
         .replace(/^@/, '');
       if (!username) return false;
       try {
-        const res = await api.post('/api/friends/requests', { username });
-        const data = res.data?.data || {};
-        const targetName =
-          data.targetName || data.targetUsername || displayName || `@${username}`;
-        pushTimerToast(targetName, '친구 요청을 보냈어요');
+        await api.post('/api/friends/requests', { username });
+        // 추천·요청 단계에서는 실명 미노출 — 문구만 표시
+        pushTimerToast('', '친구 요청을 보냈어요');
         return true;
       } catch (error) {
         console.error('[Timer][FriendRequest] API 실패', {
@@ -237,7 +249,7 @@ export function TimerContent() {
   const handleFriendPress = useCallback(
     (friend) => {
       if (friend?.isSuggestion) {
-        const label = friend.name || friend.username || '이 사용자';
+        const label = friend.username || friend.name || '이 사용자';
         Alert.alert(
           '친구 추가',
           `${label} 님을 친구 추가하시겠습니까?`,
@@ -246,10 +258,7 @@ export function TimerContent() {
             {
               text: '추가',
               onPress: async () => {
-                const ok = await sendFriendRequestByUsername(
-                  friend.username,
-                  friend.name,
-                );
+                const ok = await sendFriendRequestByUsername(friend.username);
                 if (ok) {
                   setSuggestions((prev) =>
                     prev.filter((s) => String(s.id) !== String(friend.id)),
@@ -386,6 +395,7 @@ export function TimerContent() {
                 studyingFriends={studyingFriends}
                 normalize={normalize}
                 styles={styles}
+                loading={friendsBarLoading}
                 onFriendPress={handleFriendPress}
                 onAddFriendPress={handleOpenAddFriend}
               />

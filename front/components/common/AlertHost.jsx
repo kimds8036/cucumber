@@ -4,23 +4,48 @@ import { colors } from '../../styles/colors';
 import AppPopupModal from './AppPopupModal';
 import { appAlert } from '../../utils/appAlert';
 
+/**
+ * Alert.alert / appAlert → 시간표 「저장 완료」와 동일 AppPopupModal 셸.
+ * visible만 토글하고, 페이드 동안 카드 내용은 유지한다.
+ */
 export default function AlertHost() {
   const [currentAlert, setCurrentAlert] = useState(null);
+  const [visible, setVisible] = useState(false);
   const queueRef = useRef([]);
+  const visibleRef = useRef(false);
+  const closingRef = useRef(false);
 
-  const dequeueNext = () => {
-    if (queueRef.current.length === 0) {
-      setCurrentAlert(null);
+  const present = (payload) => {
+    setCurrentAlert(payload);
+    visibleRef.current = true;
+    closingRef.current = false;
+    setVisible(true);
+  };
+
+  const presentNextOrClear = () => {
+    closingRef.current = false;
+    if (queueRef.current.length > 0) {
+      present(queueRef.current.shift());
       return;
     }
-    const next = queueRef.current.shift();
-    setCurrentAlert(next);
+    visibleRef.current = false;
+    setVisible(false);
+    setCurrentAlert(null);
+  };
+
+  const requestClose = () => {
+    if (closingRef.current || !visibleRef.current) return;
+    closingRef.current = true;
+    visibleRef.current = false;
+    setVisible(false);
   };
 
   useEffect(() => {
     return appAlert.subscribe((payload) => {
       queueRef.current.push(payload);
-      setCurrentAlert((prev) => prev ?? queueRef.current.shift() ?? null);
+      if (!visibleRef.current && !closingRef.current) {
+        present(queueRef.current.shift());
+      }
     });
   }, []);
 
@@ -32,24 +57,24 @@ export default function AlertHost() {
     [currentAlert],
   );
 
-  const close = () => dequeueNext();
-
   const handlePress = (button) => {
-    close();
+    requestClose();
     if (typeof button?.onPress === 'function') {
       requestAnimationFrame(() => button.onPress());
     }
   };
 
   const titleText = String(currentAlert?.title ?? '').trim();
-  const dismissOnBackdrop = false;
+  const noteText = currentAlert?.options?.note
+    ? String(currentAlert.options.note)
+    : '';
 
   return (
     <AppPopupModal
-      visible={Boolean(currentAlert)}
-      onClose={close}
-      animationType="none"
-      dismissOnBackdrop={dismissOnBackdrop}
+      visible={visible}
+      onClose={requestClose}
+      dismissOnBackdrop={false}
+      onDismissed={presentNextOrClear}
     >
       {titleText !== '' ? (
         <Text
@@ -70,14 +95,14 @@ export default function AlertHost() {
             fontSize: 14,
             color: colors.textSecondary,
             textAlign: 'center',
-            lineHeight: 20,
-            marginBottom: currentAlert?.options?.note ? 8 : 16,
+            lineHeight: 22,
+            marginBottom: noteText ? 8 : 16,
           }}
         >
           {currentAlert.message}
         </Text>
       )}
-      {!!currentAlert?.options?.note && (
+      {!!noteText && (
         <Text
           style={{
             fontSize: 12,
@@ -87,12 +112,15 @@ export default function AlertHost() {
             marginBottom: 16,
           }}
         >
-          {String(currentAlert.options.note)}
+          {noteText}
         </Text>
       )}
 
       <View
-        style={{ flexDirection: buttons.length > 2 ? 'column' : 'row', gap: 8 }}
+        style={{
+          flexDirection: buttons.length > 2 ? 'column' : 'row',
+          gap: 8,
+        }}
       >
         {buttons.map((button, idx) => {
           const text = button?.text || '확인';
@@ -114,6 +142,7 @@ export default function AlertHost() {
                 justifyContent: 'center',
               }}
               onPress={() => handlePress(button)}
+              activeOpacity={0.85}
             >
               <Text
                 style={{

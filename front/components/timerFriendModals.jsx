@@ -28,6 +28,7 @@ import { GUIDE_FOCUS_TARGETS as T } from '../src/screens/UserGuide/guideFocusTar
 import ProfileIcon from '../assets/Profile.svg';
 import { colors } from '../styles/colors';
 import { createTimerFriendModalStyles, getNormalize } from '../styles/timer';
+import Skeleton from './common/Skeleton';
 import { useFriendSocketEvents } from '../hooks/useFriendSocketEvents';
 import { useNavigation } from '@react-navigation/native';
 import { api } from '../utils/api';
@@ -418,6 +419,7 @@ export const FriendStoryBar = memo(function FriendStoryBar({
   styles,
   onFriendPress,
   onAddFriendPress,
+  loading = false,
 }) {
   const orderedFriends = useMemo(() => {
     const suggestions = friends.filter((f) => f.isSuggestion);
@@ -431,7 +433,6 @@ export const FriendStoryBar = memo(function FriendStoryBar({
     const base = [...activeFriends, ...inactiveFriends];
     if (!suggestions.length) return base;
 
-    // 친구 사이사이에 추천 끼우기 (최대 2명)
     const result = [...base];
     if (suggestions[0]) {
       result.splice(Math.min(1, result.length), 0, suggestions[0]);
@@ -455,7 +456,6 @@ export const FriendStoryBar = memo(function FriendStoryBar({
           debugFriendStoryBorder('#FF9500'),
         ]}
       >
-        {/* 친구 추가 버튼 */}
         <TouchableOpacity
           style={[
             styles.friendStoryAddCircleWrap,
@@ -463,6 +463,7 @@ export const FriendStoryBar = memo(function FriendStoryBar({
           ]}
           onPress={onAddFriendPress}
           activeOpacity={0.8}
+          disabled={loading}
         >
           <View
             style={[
@@ -482,8 +483,26 @@ export const FriendStoryBar = memo(function FriendStoryBar({
           </Text>
         </TouchableOpacity>
 
-        {/* 친구 · 추천 목록 */}
-        {orderedFriends.map((friend) => {
+        {loading
+          ? [0, 1, 2].map((i) => (
+              <View
+                key={`friend-skel-${i}`}
+                style={styles.friendStoryCircleWrap}
+              >
+                <Skeleton
+                  width={normalize(56)}
+                  height={normalize(56)}
+                  borderRadius={normalize(28)}
+                />
+                <Skeleton
+                  width={normalize(40)}
+                  height={normalize(10)}
+                  borderRadius={normalize(4)}
+                  style={{ marginTop: normalize(6), alignSelf: 'center' }}
+                />
+              </View>
+            ))
+          : orderedFriends.map((friend) => {
           const isSuggestion = Boolean(friend.isSuggestion);
           const isActive =
             !isSuggestion && studyingFriends[friend.id] === true;
@@ -551,7 +570,9 @@ export const FriendStoryBar = memo(function FriendStoryBar({
                 ]}
                 numberOfLines={1}
               >
-                {friend.name}
+                {isSuggestion
+                  ? friend.username || friend.name || ''
+                  : friend.name}
               </Text>
             </TouchableOpacity>
           );

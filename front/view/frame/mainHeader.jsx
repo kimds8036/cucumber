@@ -29,17 +29,14 @@ const MainHeader = ({ headerTitle: headerTitleProp, navigation: navigationProp }
     [width, height],
   );
   const normalize = useMemo(() => getNormalize(width), [width]);
-
   const { hasUnread } = useNotification();
 
   return (
     <View style={headerStyles.container}>
-      {/* 탭 제목 영역 */}
       <View style={headerStyles.tabContainer}>
         <Text style={headerStyles.tabText}>{headerTitle}</Text>
       </View>
 
-      {/* 우측 버튼 영역 */}
       <View style={headerStyles.buttonContainer}>
         <CommuteHeaderIndicator />
         <TouchableOpacity
@@ -57,7 +54,6 @@ const MainHeader = ({ headerTitle: headerTitleProp, navigation: navigationProp }
             size={normalize(22)}
             color={colors.primary}
           />
-          {/* 알림센터 목록 기준 미읽음만 벨 점으로 표시 */}
           {hasUnread && <View style={headerStyles.badge} />}
         </TouchableOpacity>
       </View>

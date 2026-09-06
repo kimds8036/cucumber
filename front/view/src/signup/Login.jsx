@@ -15,7 +15,6 @@ import {
   Keyboard,
   TouchableWithoutFeedback,
   Alert,
-  Modal,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
@@ -25,6 +24,7 @@ import { Ionicons } from '@expo/vector-icons';
 import LogoIcon from '../../../assets/Logo.svg';
 import { api, setAuthToken, setRefreshToken, getOrCreateDeviceId, getApiUserFacingMessage } from '../../../utils/api';
 import { useAuth } from '../../../context/AuthContext';
+import AppPopupModal from '../../../components/common/AppPopupModal';
 // import Skeleton from '../../../components/common/Skeleton';
 // import AsyncStorage from '@react-native-async-storage/async-storage';
 
@@ -432,114 +432,103 @@ const Login = ({ navigation }) => {
           </KeyboardAwareScrollView>
         </View>
       </TouchableWithoutFeedback>
-      <Modal
+      <AppPopupModal
         visible={policyModal.visible}
-        transparent
-        animationType="fade"
-        onRequestClose={() =>
+        onClose={() =>
           setPolicyModal((prev) => ({ ...prev, visible: false }))
         }
+        dismissOnBackdrop
       >
-        <TouchableWithoutFeedback
-          onPress={() =>
-            setPolicyModal((prev) => ({ ...prev, visible: false }))
-          }
+        <Text
+          style={{
+            fontSize: 18,
+            color: colors.textPrimary,
+            fontWeight: '700',
+            textAlign: 'center',
+            marginBottom: 10,
+          }}
         >
-          <View
+          {policyModal.title}
+        </Text>
+        {!!policyModal.highlight && (
+          <Text
             style={{
-              flex: 1,
-              backgroundColor: 'rgba(0,0,0,0.38)',
-              justifyContent: 'center',
-              paddingHorizontal: normalize(24),
+              fontSize: 14,
+              fontWeight: '700',
+              color: '#D32F2F',
+              textAlign: 'center',
+              marginBottom: 8,
             }}
           >
-            <TouchableWithoutFeedback>
-              <View
-                style={{
-                  backgroundColor: '#fff',
-                  borderRadius: normalize(14),
-                  padding: normalize(18),
-                }}
-              >
-                <Text
-                  style={{
-                    fontSize: normalize(17),
-                    fontWeight: '700',
-                    color: colors.textPrimary,
-                    marginBottom: normalize(10),
-                  }}
-                >
-                  {policyModal.title}
-                </Text>
-                <Text
-                  style={{
-                    fontSize: normalize(15),
-                    fontWeight: '700',
-                    color: '#D32F2F',
-                    marginBottom: normalize(10),
-                  }}
-                >
-                  {policyModal.highlight}
-                </Text>
-                <Text
-                  style={{
-                    fontSize: normalize(14),
-                    lineHeight: normalize(20),
-                    color: colors.textSecondary,
-                  }}
-                >
-                  {policyModal.body}
-                </Text>
-                <View
-                  style={{
-                    marginTop: normalize(16),
-                    flexDirection: 'row',
-                    justifyContent: 'flex-end',
-                    alignItems: 'center',
-                    gap: normalize(8),
-                  }}
-                >
-                  <TouchableOpacity
-                    style={{
-                      borderWidth: 1,
-                      borderColor: colors.primary,
-                      borderRadius: normalize(10),
-                      paddingVertical: normalize(8),
-                      paddingHorizontal: normalize(14),
-                      marginRight: normalize(8),
-                    }}
-                    onPress={() => {
-                      setPolicyModal((prev) => ({ ...prev, visible: false }));
-                      navigation.navigate('Inquiry', {
-                        contactUsername: id?.trim() || '',
-                      });
-                    }}
-                  >
-                    <Text style={{ color: colors.primary, fontWeight: '700' }}>
-                      문의하기
-                    </Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    style={{
-                      backgroundColor: colors.primary,
-                      borderRadius: normalize(10),
-                      paddingVertical: normalize(8),
-                      paddingHorizontal: normalize(14),
-                    }}
-                    onPress={() =>
-                      setPolicyModal((prev) => ({ ...prev, visible: false }))
-                    }
-                  >
-                    <Text style={{ color: '#fff', fontWeight: '700' }}>
-                      확인
-                    </Text>
-                  </TouchableOpacity>
-                </View>
-              </View>
-            </TouchableWithoutFeedback>
-          </View>
-        </TouchableWithoutFeedback>
-      </Modal>
+            {policyModal.highlight}
+          </Text>
+        )}
+        <Text
+          style={{
+            fontSize: 14,
+            color: colors.textSecondary,
+            textAlign: 'center',
+            lineHeight: 22,
+            marginBottom: 16,
+          }}
+        >
+          {policyModal.body}
+        </Text>
+        <View style={{ flexDirection: 'row', gap: 8 }}>
+          <TouchableOpacity
+            style={{
+              flex: 1,
+              height: 42,
+              borderRadius: 10,
+              borderWidth: 1,
+              borderColor: colors.primary,
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
+            activeOpacity={0.85}
+            onPress={() => {
+              setPolicyModal((prev) => ({ ...prev, visible: false }));
+              navigation.navigate('Inquiry', {
+                contactUsername: id?.trim() || '',
+              });
+            }}
+          >
+            <Text
+              style={{
+                fontSize: 14,
+                fontWeight: '700',
+                color: colors.primary,
+              }}
+            >
+              문의하기
+            </Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={{
+              flex: 1,
+              height: 42,
+              borderRadius: 10,
+              backgroundColor: colors.primary,
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
+            activeOpacity={0.85}
+            onPress={() =>
+              setPolicyModal((prev) => ({ ...prev, visible: false }))
+            }
+          >
+            <Text
+              style={{
+                fontSize: 14,
+                fontWeight: '700',
+                color: colors.textWhite,
+              }}
+            >
+              확인
+            </Text>
+          </TouchableOpacity>
+        </View>
+      </AppPopupModal>
 
       <SignupPrepMaterialsModal
         visible={prepMaterialsModalVisible}

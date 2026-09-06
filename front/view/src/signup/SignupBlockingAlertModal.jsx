@@ -1,9 +1,9 @@
 import React from 'react';
-import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import { Text, TouchableOpacity, View } from 'react-native';
 import { colors } from '../../../styles/colors';
-import SignupIosSafeModal from './SignupIosSafeModal';
+import AppPopupModal from '../../../components/common/AppPopupModal';
 
-/** 배경 탭으로 닫히지 않는 안내 모달 — 버튼으로만 닫기 */
+/** 배경 탭으로 닫히지 않는 안내 모달 — 시간표 저장 팝업과 동일 셸 */
 const SignupBlockingAlertModal = ({
   visible,
   title,
@@ -11,101 +11,67 @@ const SignupBlockingAlertModal = ({
   buttons = [{ text: '확인' }],
   normalize = (n) => n,
 }) => (
-  <SignupIosSafeModal
+  <AppPopupModal
     visible={visible}
-    transparent
-    animationType="fade"
-    onRequestClose={() => {}}
+    onClose={() => {}}
+    dismissOnBackdrop={false}
+    dismissOnBackPress={false}
   >
-    <View style={styles.backdrop}>
-      <View
-        style={[
-          styles.card,
-          { borderRadius: normalize(14), padding: normalize(20) },
-        ]}
+    {title ? (
+      <Text
+        style={{
+          fontSize: normalize(18),
+          fontWeight: '700',
+          color: colors.textPrimary,
+          textAlign: 'center',
+          marginBottom: 10,
+        }}
       >
-        {title ? (
-          <Text style={[styles.title, { fontSize: normalize(18) }]}>{title}</Text>
-        ) : null}
-        {message ? (
+        {title}
+      </Text>
+    ) : null}
+    {message ? (
+      <Text
+        style={{
+          fontSize: normalize(14),
+          color: colors.textSecondary,
+          textAlign: 'center',
+          lineHeight: normalize(22),
+          marginBottom: 16,
+        }}
+      >
+        {message}
+      </Text>
+    ) : null}
+    {buttons.map((btn, index) => {
+      const isSecondary = btn.variant === 'secondary';
+      return (
+        <TouchableOpacity
+          key={`${btn.text}-${index}`}
+          style={{
+            height: 42,
+            borderRadius: 10,
+            backgroundColor: isSecondary ? colors.textLight5 : colors.primary,
+            alignItems: 'center',
+            justifyContent: 'center',
+            marginTop: index > 0 ? 8 : 0,
+          }}
+          activeOpacity={0.85}
+          onPress={btn.onPress}
+        >
           <Text
-            style={[
-              styles.message,
-              { fontSize: normalize(14), lineHeight: normalize(22) },
-            ]}
+            style={{
+              fontSize: normalize(14),
+              fontWeight: '700',
+              color: isSecondary ? colors.textSecondary : colors.textWhite,
+            }}
           >
-            {message}
+            {btn.text}
           </Text>
-        ) : null}
-        {buttons.map((btn, index) => {
-          const isSecondary = btn.variant === 'secondary';
-          return (
-            <TouchableOpacity
-              key={`${btn.text}-${index}`}
-              style={[
-                isSecondary ? styles.buttonSecondary : styles.button,
-                index > 0 && styles.buttonSpaced,
-                { borderRadius: normalize(10), paddingVertical: normalize(12) },
-              ]}
-              activeOpacity={0.9}
-              onPress={btn.onPress}
-            >
-              <Text
-                style={[
-                  isSecondary ? styles.buttonSecondaryText : styles.buttonText,
-                  { fontSize: normalize(15) },
-                ]}
-              >
-                {btn.text}
-              </Text>
-            </TouchableOpacity>
-          );
-        })}
-      </View>
-    </View>
-  </SignupIosSafeModal>
+        </TouchableOpacity>
+      );
+    })}
+  </AppPopupModal>
 );
-
-const styles = StyleSheet.create({
-  backdrop: {
-    flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.38)',
-    justifyContent: 'center',
-    paddingHorizontal: 24,
-  },
-  card: {
-    backgroundColor: colors.background,
-  },
-  title: {
-    fontWeight: '700',
-    color: colors.textPrimary,
-    textAlign: 'center',
-    marginBottom: 12,
-  },
-  message: {
-    color: colors.textSecondary,
-    textAlign: 'center',
-    marginBottom: 20,
-  },
-  button: {
-    backgroundColor: colors.primary,
-    alignItems: 'center',
-  },
-  buttonSecondary: {
-    backgroundColor: 'transparent',
-    alignItems: 'center',
-  },
-  buttonSpaced: {
-    marginTop: 10,
-  },
-  buttonText: {
-    color: '#fff',
-    fontWeight: '700',
-  },
-  buttonSecondaryText: {
-    color: colors.textSecondary,
-    fontWeight: '600',
-  },
-});
 
 export default SignupBlockingAlertModal;

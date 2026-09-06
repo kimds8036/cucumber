@@ -7,7 +7,26 @@ const MAX_SUGGESTIONS = 2;
 const REDIS_TTL_SEC = 60 * 60 * 30; // 타이머 day 경계보다 넉넉히
 
 function redisKey(userId, dayKey) {
-  return `timer:friend_suggest:v1:${userId}:${dayKey}`;
+  // v2: 같은학년 → 같은 학교급 우선 알고리즘
+  return `timer:friend_suggest:v2:${userId}:${dayKey}`;
+}
+
+/** 중학교 / 고등학교 밴드 */
+function schoolBandFromRow(row) {
+  const bundle = `${row?.school_level || ''} ${row?.school_type || ''}`;
+  if (/고등/.test(bundle)) return 'high';
+  if (/중학/.test(bundle)) return 'middle';
+  return null;
+}
+
+function bandSqlClause(band, alias = 's') {
+  if (band === 'high') {
+    return `(${alias}.school_level LIKE '%고등%' OR ${alias}.school_type LIKE '%고등%')`;
+  }
+  if (band === 'middle') {
+    return `(${alias}.school_level LIKE '%중학%' OR ${alias}.school_type LIKE '%중학%')`;
+  }
+  return null;
 }
 
 async function loadStoredIds(userId, dayKey) {
@@ -40,20 +59,30 @@ async function saveStoredIds(userId, dayKey, ids) {
   }
 }
 
-async function getMySchoolId(userId) {
+async function getMySuggestProfile(userId) {
   const [[row]] = await pool.execute(
-    `SELECT school_id FROM users WHERE id = ? AND is_deleted = FALSE LIMIT 1`,
+    `SELECT u.school_id, u.grade, s.school_level, s.school_type
+     FROM users u
+     LEFT JOIN schools s ON s.school_id = u.school_id
+     WHERE u.id = ? AND u.is_deleted = FALSE
+     LIMIT 1`,
     [userId],
   );
-  return row?.school_id || null;
+  if (!row) return null;
+  return {
+    schoolId: row.school_id || null,
+    grade: row.grade != null ? Number(row.grade) : null,
+    schoolBand: schoolBandFromRow(row),
+  };
 }
 
 /**
- * 친구·요청·차단 이력이 없는 사용자 중 후보 선정 (같은 학교 우선)
+ * 친구·요청·차단 이력이 없는 사용자 중 후보 선정
+ * filters: { schoolId, grade, schoolBand, excludeIds }
  */
-async function pickCandidateIds(userId, limit, { schoolId = null, excludeIds = [] } = {}) {
-  const take = clampSqlLimit(limit, { def: 2, min: 1, max: MAX_SUGGESTIONS });
-  const exclude = excludeIds
+async function pickCandidateIds(userId, limit, filters = {}) {
+  const take = clampSqlLimit(limit, { def: 1, min: 1, max: MAX_SUGGESTIONS });
+  const exclude = (filters.excludeIds || [])
     .map((id) => Number(id))
     .filter((id) => Number.isFinite(id) && id > 0);
   const excludeSql =
@@ -62,19 +91,38 @@ async function pickCandidateIds(userId, limit, { schoolId = null, excludeIds = [
       : '';
 
   const params = [userId];
-  if (schoolId) params.push(schoolId);
+  const extraClauses = [];
+
+  if (filters.schoolId) {
+    extraClauses.push('AND u.school_id = ?');
+    params.push(filters.schoolId);
+  }
+  if (filters.grade != null && Number.isFinite(Number(filters.grade))) {
+    extraClauses.push('AND u.grade = ?');
+    params.push(Number(filters.grade));
+  }
+
+  const needSchoolJoin = Boolean(filters.schoolBand);
+  const bandClause = bandSqlClause(filters.schoolBand);
+  if (bandClause) {
+    extraClauses.push(`AND ${bandClause}`);
+  }
+
   params.push(userId, userId, userId, userId);
   params.push(...exclude);
 
-  const schoolClause = schoolId ? 'AND u.school_id = ?' : '';
+  const joinSql = needSchoolJoin
+    ? 'LEFT JOIN schools s ON s.school_id = u.school_id'
+    : '';
 
   const [rows] = await pool.execute(
     `SELECT u.id
      FROM users u
+     ${joinSql}
      WHERE u.is_deleted = FALSE
        AND u.student_verified = TRUE
        AND u.id <> ?
-       ${schoolClause}
+       ${extraClauses.join('\n       ')}
        AND NOT EXISTS (
          SELECT 1 FROM user_friendships uf
          WHERE (uf.requester_id = ? AND uf.addressee_id = u.id)
@@ -93,6 +141,28 @@ async function pickCandidateIds(userId, limit, { schoolId = null, excludeIds = [
   return rows.map((r) => Number(r.id)).filter((id) => Number.isFinite(id));
 }
 
+/** 1명: 같은 학년 → 같은 중/고 학교급. 없으면 [] */
+async function pickPriorityId(userId, profile) {
+  if (!profile) return [];
+
+  if (profile.schoolId && profile.grade != null && Number.isFinite(profile.grade)) {
+    const sameGrade = await pickCandidateIds(userId, 1, {
+      schoolId: profile.schoolId,
+      grade: profile.grade,
+    });
+    if (sameGrade.length) return sameGrade;
+  }
+
+  if (profile.schoolBand) {
+    const sameBand = await pickCandidateIds(userId, 1, {
+      schoolBand: profile.schoolBand,
+    });
+    if (sameBand.length) return sameBand;
+  }
+
+  return [];
+}
+
 async function ensureDailyIds(userId) {
   const dayKey = getTimerDayKey();
   let ids = await loadStoredIds(userId, dayKey);
@@ -100,11 +170,14 @@ async function ensureDailyIds(userId) {
     return { dayKey, ids };
   }
 
-  const schoolId = await getMySchoolId(userId);
-  ids = await pickCandidateIds(userId, MAX_SUGGESTIONS, { schoolId });
-  if (ids.length < MAX_SUGGESTIONS) {
-    const more = await pickCandidateIds(userId, MAX_SUGGESTIONS - ids.length, {
-      schoolId: null,
+  const profile = await getMySuggestProfile(userId);
+  const priority = await pickPriorityId(userId, profile);
+  ids = [...priority];
+
+  const remaining = MAX_SUGGESTIONS - ids.length;
+  if (remaining > 0) {
+    // 나머지(또는 우선순위 실패 시 둘 다) 랜덤
+    const more = await pickCandidateIds(userId, remaining, {
       excludeIds: ids,
     });
     ids = [...ids, ...more].slice(0, MAX_SUGGESTIONS);
@@ -123,7 +196,6 @@ async function hydrateEligibleSuggestions(userId, ids) {
     `SELECT
        u.id,
        u.username,
-       u.name_enc,
        u.color_id,
        c.hex_code AS profile_color_hex,
        c.color_number AS profile_color_number
@@ -146,13 +218,11 @@ async function hydrateEligibleSuggestions(userId, ids) {
   );
 
   const byId = new Map(rows.map((r) => [Number(r.id), r]));
-  // 저장된 일일 순서 유지 + 더 이상 추천 불가(친구/요청/차단)면 제외
   return ids
     .map((id) => byId.get(Number(id)))
     .filter(Boolean)
     .map((r) => ({
       userId: Number(r.id),
-      name: r.name || r.username || '학생',
       username: r.username ? `@${r.username}` : '',
       colorId: r.color_id,
       profileColor: {
