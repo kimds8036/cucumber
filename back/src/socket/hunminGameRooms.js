@@ -619,27 +619,51 @@ async function validateWordServer(word) {
 
   const cleaned = String(word || '').trim();
   try {
-    // 국립국어원 온용어 Open API
-    // https://kli.korean.go.kr/term/api/search.do
+    // 국립국어원 우리말샘 Open API
+    // https://opendict.korean.go.kr/api/search
     const params = new URLSearchParams({
       key,
-      apiSearchWord: cleaned,
+      q: cleaned,
+      req_type: 'json',
       start: '1',
       num: '10',
-      sort: 'wt',
+      advanced: 'y',
+      target: '1', // 표제어
+      method: 'exact',
+      type1: 'word',
+      type3: 'general',
     });
-    const url = `https://kli.korean.go.kr/term/api/search.do?${params.toString()}`;
+    const url = `https://opendict.korean.go.kr/api/search?${params.toString()}`;
     const res = await fetch(url, {
       headers: { Accept: 'application/json' },
       signal: AbortSignal.timeout(5000),
     });
     const text = await res.text();
 
+    // XML 에러 응답
+    if (
+      text.includes('<error>') ||
+      text.includes('error_code') ||
+      text.includes('Unregistered key')
+    ) {
+      const codeMatch = text.match(/<error_code>\s*([^<]+)\s*<\/error_code>/i);
+      const code = codeMatch?.[1]?.trim() || '';
+      console.warn('[hunmin][opendict] API error', code || text.slice(0, 160));
+      return {
+        ok: false,
+        message:
+          code === '020' || code === '021'
+            ? '사전 인증에 실패했어요. 관리자에게 문의해 주세요.'
+            : '사전 서버 오류',
+        source: 'api_error',
+      };
+    }
+
     let data;
     try {
       data = JSON.parse(text);
     } catch {
-      console.warn('[hunmin][ontheme] non-json response', text.slice(0, 120));
+      console.warn('[hunmin][opendict] non-json response', text.slice(0, 120));
       return {
         ok: false,
         message: '사전 응답을 읽지 못했어요.',
@@ -647,39 +671,26 @@ async function validateWordServer(word) {
       };
     }
 
-    const channel = data?.channel || {};
-    const returnCode = String(channel.returnCode ?? '');
-    const returnObject = channel.return_object;
-
-    // 키/시스템 오류
-    if (
-      returnCode === '020' ||
-      returnCode === '021' ||
-      returnCode === '022' ||
-      returnCode === '000' ||
-      returnCode === '100'
-    ) {
-      const msg =
-        typeof returnObject === 'string'
-          ? returnObject
-          : '사전 인증에 실패했어요.';
-      console.warn('[hunmin][ontheme] api error', returnCode, msg);
+    // JSON 에러 형태 방어
+    if (data?.error || data?.error_code) {
+      console.warn('[hunmin][opendict] json error', data);
       return {
         ok: false,
-        message:
-          returnCode === '020' || returnCode === '021'
-            ? '사전 인증에 실패했어요. 관리자에게 문의해 주세요.'
-            : msg || '사전 서버 오류',
+        message: '사전 인증에 실패했어요. 관리자에게 문의해 주세요.',
         source: 'api_error',
       };
     }
 
-    // 결과 없음
-    if (
-      typeof returnObject === 'string' &&
-      (returnObject.includes('검색 결과가 없습니다') ||
-        returnObject.includes('입력된 검색어가 없습니다'))
-    ) {
+    const channel = data?.channel || {};
+    const total = Number(channel.total ?? 0);
+    const rawItems = channel.item;
+    const items = Array.isArray(rawItems)
+      ? rawItems
+      : rawItems
+        ? [rawItems]
+        : [];
+
+    if (total <= 0 || items.length === 0) {
       return {
         ok: false,
         message: '사전에 없는 단어예요.',
@@ -687,25 +698,16 @@ async function validateWordServer(word) {
       };
     }
 
+    // 표제어 정규화: 위첨자·하이픈·공백 제거 (예: 나무¹, 가끔-가다가)
     const normalizeHeadword = (w) =>
       String(w || '')
+        .normalize('NFKC')
+        .replace(/[\u00B9\u00B2\u00B3\u2070-\u207F]/g, '')
         .replace(/[-^ㆍ·\s]/g, '')
         .replace(/\([^)]*\)/g, '')
         .replace(/<[^>]+>/g, '');
 
     const target = normalizeHeadword(cleaned);
-    const blocks = Array.isArray(returnObject)
-      ? returnObject
-      : returnObject
-        ? [returnObject]
-        : [];
-    const items = blocks.flatMap((b) => {
-      const list = b?.resultlist;
-      if (Array.isArray(list)) return list;
-      if (list) return [list];
-      return [];
-    });
-
     const exactHit = items.some(
       (it) => normalizeHeadword(it.word || '') === target,
     );
@@ -714,23 +716,13 @@ async function validateWordServer(word) {
       return { ok: true, source: 'api' };
     }
 
-    // total만 있고 표제어 불일치(부분검색)면 거절
-    const total = Number(channel.total ?? 0);
-    if (total > 0 && !exactHit) {
-      return {
-        ok: false,
-        message: '사전에 없는 단어예요.',
-        source: 'api',
-      };
-    }
-
     return {
       ok: false,
       message: '사전에 없는 단어예요.',
       source: 'api',
     };
   } catch (err) {
-    console.warn('[hunmin][ontheme] fetch failed', err?.message || err);
+    console.warn('[hunmin][opendict] fetch failed', err?.message || err);
     return {
       ok: false,
       message: '사전 서버에 연결하지 못했어요.',

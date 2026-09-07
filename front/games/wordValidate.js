@@ -1,6 +1,6 @@
 /**
- * 국립국어원 온용어 검증 — 클라이언트는 형식만 검사.
- * 실제 조회는 백엔드 `URIMALSAEM_API_KEY` + kli.korean.go.kr/term/api/search.do
+ * 우리말샘(opendict) 검증 — 클라이언트는 형식만 검사.
+ * 실제 조회는 백엔드 `URIMALSAEM_API_KEY` + opendict.korean.go.kr/api/search
  */
 export async function validateKoreanWord(word) {
   const cleaned = String(word || '').trim();
