@@ -47,14 +47,14 @@ export function createSignupEntryStyles(width, normalize) {
       height: normalize(18),
     },
     appleIcon: {
-      width: normalize(18),
-      height: normalize(18),
+      width: normalize(30),
+      height: normalize(30),
     },
     kakaoButton: {
       backgroundColor: '#FEE500',
     },
     appleButton: {
-      backgroundColor: colors.textPrimary,
+      backgroundColor: '#000000',
     },
     phoneButton: {
       backgroundColor: colors.background,
