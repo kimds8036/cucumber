@@ -70,7 +70,7 @@ export default function CommuteBreakoutGame() {
   }, [commuteDone]);
 
   return (
-    <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
+    <SafeAreaView style={styles.safe} edges={['top']}>
       <SubHeader
         title={gameDef.title}
         onBack={() => navigation.goBack()}

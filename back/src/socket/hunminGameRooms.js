@@ -2,8 +2,9 @@
  * 훈민정음 멀티플레이 방 (인메모리)
  * - 방당 최대 6명
  * - 라운드 10초 / 초성 2~3개
- * - 정답자 중 가장 늦은 사람 + 미제출 → 패배, 승자 +1점
+ * - 제한시간 안 가장 먼저 정답한 사람만 +1점 (오답은 재시도 가능)
  * - 20점 선취 시 매치 종료 → 같은 멤버로 재시작(또는 재매칭)
+ * - 1명만 남으면 점수·라운드 리셋(로비)
  * - 라운드 중 입장 요청은 waiting → 라운드 종료 후 합류
  */
 
@@ -101,19 +102,49 @@ function getRoomForUser(userId) {
   return rooms.get(id) || null;
 }
 
-function leaveInternal(userId) {
+function clearRoomTimers(room) {
+  if (room.roundTimer) {
+    clearTimeout(room.roundTimer);
+    room.roundTimer = null;
+  }
+  if (room.lobbyTimer) {
+    clearTimeout(room.lobbyTimer);
+    room.lobbyTimer = null;
+  }
+  if (room.matchEndTimer) {
+    clearTimeout(room.matchEndTimer);
+    room.matchEndTimer = null;
+  }
+}
+
+/** 방에 활성 인원이 1명뿐이면 점수·라운드 초기화 후 로비 */
+function resetIfSolo(room, io) {
+  if (!room) return;
+  const total = room.players.length + room.waiting.length;
+  if (total !== 1) return;
+
+  clearRoomTimers(room);
+  room.status = 'lobby';
+  room.round = null;
+  room.lastResult = null;
+  room.matchWinners = null;
+  for (const p of room.players) p.score = 0;
+  for (const p of room.waiting) p.score = 0;
+  emitRoom(room, io);
+}
+
+function leaveInternal(userId, io) {
   const room = getRoomForUser(userId);
   if (!room) return null;
   room.players = room.players.filter((p) => p.userId !== userId);
   room.waiting = room.waiting.filter((p) => p.userId !== userId);
   userRoom.delete(userId);
   if (room.players.length === 0 && room.waiting.length === 0) {
-    if (room.roundTimer) clearTimeout(room.roundTimer);
-    if (room.lobbyTimer) clearTimeout(room.lobbyTimer);
-    if (room.matchEndTimer) clearTimeout(room.matchEndTimer);
+    clearRoomTimers(room);
     rooms.delete(room.id);
     return { room: null, emptied: true };
   }
+  resetIfSolo(room, io);
   return { room, emptied: false };
 }
 
@@ -265,29 +296,31 @@ function finishRound(room, io) {
       });
     }
   }
+  // 선착순: 가장 먼저 맞춘 1명만 승점
   correct.sort((a, b) => a.at - b.at);
+  const first = correct[0] || null;
 
-  const loserIds = new Set();
-  for (const p of room.players) {
-    const a = answers.get(p.userId);
-    if (!a?.ok) loserIds.add(p.userId);
-  }
-  if (correct.length >= 2) {
-    loserIds.add(correct[correct.length - 1].userId);
+  if (first) {
+    const winner = room.players.find((p) => p.userId === first.userId);
+    if (winner) winner.score = (Number(winner.score) || 0) + 1;
   }
 
-  const winners = room.players
-    .filter((p) => !loserIds.has(p.userId))
-    .map((p) => ({ userId: p.userId, username: p.username, score: p.score }));
+  const winners = first
+    ? room.players
+        .filter((p) => p.userId === first.userId)
+        .map((p) => ({
+          userId: p.userId,
+          username: p.username,
+          score: p.score,
+        }))
+    : [];
   const losers = room.players
-    .filter((p) => loserIds.has(p.userId))
-    .map((p) => ({ userId: p.userId, username: p.username, score: p.score }));
-
-  for (const p of room.players) {
-    if (!loserIds.has(p.userId)) {
-      p.score = (Number(p.score) || 0) + 1;
-    }
-  }
+    .filter((p) => !first || p.userId !== first.userId)
+    .map((p) => ({
+      userId: p.userId,
+      username: p.username,
+      score: p.score,
+    }));
 
   const matchWinners = room.players
     .filter((p) => (Number(p.score) || 0) >= HUNMIN_WIN_SCORE)
@@ -302,22 +335,8 @@ function finishRound(room, io) {
     roundId,
     choseong,
     correct,
-    winners: winners.map((w) => {
-      const live = room.players.find((p) => p.userId === w.userId);
-      return {
-        userId: w.userId,
-        username: w.username,
-        score: live?.score ?? w.score,
-      };
-    }),
-    losers: losers.map((w) => {
-      const live = room.players.find((p) => p.userId === w.userId);
-      return {
-        userId: w.userId,
-        username: w.username,
-        score: live?.score ?? w.score,
-      };
-    }),
+    winners,
+    losers,
   };
   room.round = null;
   if (room.roundTimer) {
@@ -349,13 +368,17 @@ function finishRound(room, io) {
     return;
   }
 
+  // 대기실(lobby) 노출 없이 바로 다음 라운드
   setTimeout(() => {
     if (!rooms.has(room.id)) return;
     if (room.status === 'match_end') return;
-    room.status = 'lobby';
-    emitRoom(room, io);
-    scheduleLobbyStart(room, io);
-  }, 2200);
+    if (room.players.length < HUNMIN_MIN_PLAYERS_TO_START) {
+      room.status = 'lobby';
+      emitRoom(room, io);
+      return;
+    }
+    startRound(room, io);
+  }, 1600);
 }
 
 function emitRoom(room, io) {
@@ -444,10 +467,20 @@ export function registerHunminGameEvents(socket, io) {
       });
       return;
     }
-    if (room.round.answers.has(userId)) {
+    const prev = room.round.answers.get(userId);
+    if (prev?.ok) {
       socket.emit('hunmin:answer_result', {
         ok: false,
-        message: '이미 제출했어요.',
+        message: '이미 정답을 맞췄어요.',
+      });
+      return;
+    }
+    // 이미 선착 승자가 있으면 종료 처리 중
+    const alreadyWon = [...room.round.answers.values()].some((a) => a.ok);
+    if (alreadyWon) {
+      socket.emit('hunmin:answer_result', {
+        ok: false,
+        message: '다른 사람이 먼저 맞췄어요.',
       });
       return;
     }
@@ -474,12 +507,34 @@ export function registerHunminGameEvents(socket, io) {
         message = dict.message || '사전에 없는 단어예요.';
       } else {
         ok = true;
-        message = dict.source === 'stub' ? '제출 완료 (사전 스텁)' : '제출 완료';
+        message = '선착 정답!';
       }
     }
 
+    // await 이후 레이스: 방/라운드 상태·선착 여부 재확인
+    if (!room.round || room.status !== 'playing') {
+      socket.emit('hunmin:answer_result', {
+        ok: false,
+        message: '라운드가 끝났어요.',
+      });
+      return;
+    }
+    if (ok && [...room.round.answers.values()].some((a) => a.ok)) {
+      socket.emit('hunmin:answer_result', {
+        ok: false,
+        message: '다른 사람이 먼저 맞췄어요.',
+        word,
+      });
+      return;
+    }
+
     const player = room.players.find((p) => p.userId === userId);
-    room.round.answers.set(userId, { word, at: now, ok });
+    // 오답은 재시도 가능 — 말풍선용으로만 공개
+    if (ok) {
+      room.round.answers.set(userId, { word, at: now, ok: true });
+    } else {
+      room.round.answers.set(userId, { word, at: now, ok: false });
+    }
     socket.emit('hunmin:answer_result', { ok, message, word });
     io.to(`hunmin:${room.id}`).emit('hunmin:answer_progress', {
       roomId: room.id,
@@ -493,14 +548,15 @@ export function registerHunminGameEvents(socket, io) {
       playerCount: room.players.length,
     });
 
-    if (room.round.answers.size >= room.players.length) {
+    // 선착 정답 시 즉시 라운드 종료
+    if (ok) {
       if (room.roundTimer) clearTimeout(room.roundTimer);
       finishRound(room, io);
     }
   });
 
   socket.on('hunmin:leave', () => {
-    const prev = leaveInternal(userId);
+    const prev = leaveInternal(userId, io);
     socket.rooms.forEach((r) => {
       if (String(r).startsWith('hunmin:')) socket.leave(r);
     });
@@ -512,7 +568,7 @@ export function registerHunminGameEvents(socket, io) {
   });
 
   socket.on('disconnect', () => {
-    const prev = leaveInternal(userId);
+    const prev = leaveInternal(userId, io);
     if (prev?.room) {
       emitRoom(prev.room, io);
       if (prev.room.status === 'lobby') scheduleLobbyStart(prev.room, io);
