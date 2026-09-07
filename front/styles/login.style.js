@@ -106,7 +106,7 @@ export const createLoginStyles = (width, normalize) => {
       backgroundColor: '#FEE500',
     },
     appleCircleButton: {
-      backgroundColor: colors.textPrimary,
+      backgroundColor: '#000000',
     },
     signupFooter: {
       marginTop: 'auto',

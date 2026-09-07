@@ -17,13 +17,15 @@ import {
   Alert,
   Modal,
   BackHandler,
+  Image,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
 import { createLoginStyles } from '../../../styles/login.style';
 import { colors } from '../../../styles/colors';
-import { Ionicons } from '@expo/vector-icons';
+import kakaoLoginIcon from '../../../assets/kakao_login_icon.png';
+import appleLogo from '../../../assets/apple_logo.png';
 import {
   api,
   setAuthToken,
@@ -599,10 +601,13 @@ const Login = ({ navigation }) => {
                 accessibilityRole="button"
                 accessibilityLabel="카카오로 로그인"
               >
-                <Ionicons
-                  name="chatbubble"
-                  size={normalize(22)}
-                  color={colors.textPrimary}
+                <Image
+                  source={kakaoLoginIcon}
+                  style={{
+                    width: normalize(25),
+                    height: normalize(25),
+                  }}
+                  resizeMode="contain"
                 />
               </TouchableOpacity>
 
@@ -613,10 +618,13 @@ const Login = ({ navigation }) => {
                 accessibilityRole="button"
                 accessibilityLabel="Apple로 로그인"
               >
-                <Ionicons
-                  name="logo-apple"
-                  size={normalize(24)}
-                  color={colors.textWhite}
+                <Image
+                  source={appleLogo}
+                  style={{
+                    width: normalize(25),
+                    height: normalize(35),
+                  }}
+                  resizeMode="contain"
                 />
               </TouchableOpacity>
             </View>
