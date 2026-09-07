@@ -132,11 +132,22 @@ function writeExportOptions() {
 
 function setPlistValue(plistPath, key, value) {
   if (!fs.existsSync(plistPath)) return false;
-  run('/usr/libexec/PlistBuddy', [
-    '-c',
-    `Set :${key} ${value}`,
-    plistPath,
-  ]);
+  // Xcode Widget Extension(GENERATE_INFOPLIST_FILE)은 Info.plist에
+  // CFBundleShortVersionString 등이 없을 수 있음 → Set 실패 시 Add
+  const existing = getPlistValue(plistPath, key);
+  if (existing) {
+    run('/usr/libexec/PlistBuddy', [
+      '-c',
+      `Set :${key} ${value}`,
+      plistPath,
+    ]);
+  } else {
+    run('/usr/libexec/PlistBuddy', [
+      '-c',
+      `Add :${key} string ${value}`,
+      plistPath,
+    ]);
+  }
   return true;
 }
 
