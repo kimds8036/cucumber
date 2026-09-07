@@ -1,23 +1,20 @@
 /**
  * 등교 미니게임 호스트
- * - 상단: 등교 진행 + 세션(오전 10시) 안내
- * - 본문: games/registry 에서 선택한 독립 게임 모듈
+ * - SubHeader 우측: 등교중 칩
+ * - 본문: games/registry 미니게임 (안내·플레이는 게임 모듈)
  */
 import React, { useEffect, useMemo, useState } from 'react';
 import {
   View,
-  Text,
   StyleSheet,
   useWindowDimensions,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
-import { Ionicons } from '@expo/vector-icons';
-import FontAwesome5 from '@expo/vector-icons/FontAwesome5';
 import SubHeader from '../frame/subHeader';
-import { colors, fonts, fontSizes } from '../../styles/colors';
+import CommuteHeaderChip from '../../components/CommuteHeaderChip';
+import { colors } from '../../styles/colors';
 import { getNormalize } from '../../styles/frame.style';
-import { getCommuteGameSessionHint } from '../../utils/commuteUtils';
 import { loadCommuteCompletedToday } from '../../utils/commuteStorage';
 import { api } from '../../utils/api';
 import {
@@ -77,49 +74,13 @@ export default function CommuteBreakoutGame() {
       <SubHeader
         title={gameDef.title}
         onBack={() => navigation.goBack()}
+        rightElement={
+          <CommuteHeaderChip
+            phase={commuteDone ? 'done' : 'tracking'}
+            activeDot={activeDot}
+          />
+        }
       />
-
-      <View style={styles.statusCard}>
-        <View style={styles.progressRow}>
-          {commuteDone ? (
-            <>
-              <Ionicons
-                name="checkmark-circle"
-                size={normalize(16)}
-                color={colors.primaryDark}
-              />
-              <Text style={styles.progressLabel}>등교 완료</Text>
-            </>
-          ) : (
-            <>
-              <FontAwesome5
-                name="walking"
-                size={normalize(13)}
-                color={colors.primaryDark}
-              />
-              <View style={styles.dotsRow}>
-                {[0, 1, 2].map((i) => (
-                  <View
-                    key={i}
-                    style={[
-                      styles.dot,
-                      {
-                        opacity: i === activeDot ? 1 : 0.28,
-                        transform: [{ scale: i === activeDot ? 1.15 : 1 }],
-                      },
-                    ]}
-                  />
-                ))}
-              </View>
-              <Text style={styles.progressLabel}>등교중</Text>
-            </>
-          )}
-        </View>
-        <Text style={styles.sessionHint}>{getCommuteGameSessionHint()}</Text>
-        <Text style={styles.footerNote}>
-          등교가 끝나도 이 화면의 게임은 이어집니다
-        </Text>
-      </View>
 
       <View style={styles.gameSlot}>
         <GameComponent />
@@ -133,48 +94,6 @@ function createStyles(normalize) {
     safe: {
       flex: 1,
       backgroundColor: colors.background,
-    },
-    statusCard: {
-      marginHorizontal: normalize(16),
-      marginBottom: normalize(10),
-      paddingHorizontal: normalize(14),
-      paddingVertical: normalize(12),
-      borderRadius: normalize(14),
-      backgroundColor: colors.primaryLight20,
-    },
-    progressRow: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: normalize(6),
-      marginBottom: normalize(6),
-    },
-    dotsRow: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: normalize(3),
-    },
-    dot: {
-      width: normalize(5),
-      height: normalize(5),
-      borderRadius: normalize(3),
-      backgroundColor: colors.primaryDark,
-    },
-    progressLabel: {
-      fontFamily: fonts.bold,
-      fontSize: normalize(fontSizes.md),
-      color: colors.textPrimary,
-    },
-    sessionHint: {
-      fontFamily: fonts.regular,
-      fontSize: normalize(fontSizes.sm),
-      color: colors.textSecondary,
-      lineHeight: normalize(16),
-      marginBottom: normalize(4),
-    },
-    footerNote: {
-      fontFamily: fonts.regular,
-      fontSize: normalize(fontSizes.sm),
-      color: colors.primaryDark,
     },
     gameSlot: {
       flex: 1,
