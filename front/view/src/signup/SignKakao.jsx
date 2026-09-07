@@ -30,7 +30,7 @@ import SignStepCertificateGuide from './SignStepCertificateGuide';
 import SignStepCertificate from './SignStepCertificate';
 import SignupPrimaryFooter from './SignupPrimaryFooter';
 import Skeleton from '../../../components/common/Skeleton';
-import { api, setAuthToken } from '../../../utils/api';
+import { api, setAuthToken, setRefreshToken, getOrCreateDeviceId } from '../../../utils/api';
 import {
   peekPendingInviteCode,
   consumePendingInviteCode,
@@ -82,11 +82,6 @@ const STEP = {
   CERTIFICATE_GUIDE: 'certificate_guide',
   CERTIFICATE_SUBMIT: 'certificate_submit',
   NEIS_PLUS_SUBMIT: 'neis_plus_submit',
-};
-
-const MOCK_ACCOUNT = {
-  username: 'kakao_testuser',
-  password: 'Test1234',
 };
 
 const MOCK_STUDENT_TOKEN = 'redesign-skip-student-token';
@@ -242,7 +237,13 @@ const SignKakao = ({ navigation }) => {
     if (snapshot.certificateData) setCertificateData(snapshot.certificateData);
     if (snapshot.useUnder14Mock != null)
       setUseUnder14Mock(snapshot.useUnder14Mock);
-    if (snapshot.currentStep) setCurrentStep(snapshot.currentStep);
+    if (snapshot.currentStep) {
+      const step =
+        snapshot.currentStep === 'account'
+          ? STEP.SCHOOL_SELECT
+          : snapshot.currentStep;
+      setCurrentStep(step);
+    }
   }, []);
 
   const clearFlowSession = useCallback(async () => {
@@ -502,8 +503,7 @@ const SignKakao = ({ navigation }) => {
     const enrollment = buildEnrollmentFromBirthDate(resolvedBirthDate);
 
     return {
-      username: finalData.username || MOCK_ACCOUNT.username,
-      password: finalData.password || MOCK_ACCOUNT.password,
+      // username/password 생략 — 서버가 카카오 토큰으로 임시 계정 발급
       name: (identity.name || '').trim(),
       phone: String(identity.phoneNumber || '').replace(/\D/g, ''),
       birthDate: resolvedBirthDate,
@@ -523,15 +523,27 @@ const SignKakao = ({ navigation }) => {
     };
   };
 
-  const finishSignupAndEnterApp = async (username, password) => {
-    const loginRes = await api.post('/api/auth/login', { username, password });
+  const finishSignupAndEnterApp = async () => {
+    const accessToken = identityData.kakaoAccessToken;
+    if (!accessToken) {
+      throw new Error('카카오 토큰이 없습니다. 다시 로그인해 주세요.');
+    }
+    const deviceId = await getOrCreateDeviceId();
+    const loginRes = await api.post('/api/auth/oauth/kakao', {
+      accessToken,
+      deviceId,
+    });
     const {
       token,
+      refreshToken,
       studentVerificationStatus: status,
       rejectReason,
     } = loginRes.data?.data || {};
     if (token) {
       await setAuthToken(token, { persist: true });
+    }
+    if (refreshToken) {
+      await setRefreshToken(refreshToken, { persist: true });
     }
     await login({
       studentVerificationStatus: status || 'PENDING',
@@ -540,8 +552,19 @@ const SignKakao = ({ navigation }) => {
   };
 
   const handleComplete = async () => {
-    const finalData = { ...formData, ...MOCK_ACCOUNT };
-    const verificationToken = studentVerificationToken || MOCK_STUDENT_TOKEN;
+    const finalData = { ...formData };
+    const verificationToken =
+      studentVerificationToken ||
+      (SIGNUP_REDESIGN_SKIP_VALIDATION ? MOCK_STUDENT_TOKEN : null);
+    if (!verificationToken) {
+      Alert.alert('알림', '학생증 인증을 먼저 완료해 주세요.');
+      return;
+    }
+    if (!identityData.kakaoAccessToken && !SIGNUP_REDESIGN_SKIP_VALIDATION) {
+      Alert.alert('알림', '카카오 인증이 필요합니다. 다시 시도해 주세요.');
+      setCurrentStep(STEP.KAKAO_AUTH);
+      return;
+    }
 
     setSubmitting(true);
     try {
@@ -556,7 +579,7 @@ const SignKakao = ({ navigation }) => {
       await api.post('/api/auth/signup', payload);
       await consumePendingInviteCode();
       await clearFlowSession();
-      await finishSignupAndEnterApp(payload.username, payload.password);
+      await finishSignupAndEnterApp();
     } catch (error) {
       Alert.alert(
         '회원가입 실패',

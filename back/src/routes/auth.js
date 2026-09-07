@@ -1,6 +1,7 @@
 import express from 'express';
 import { body } from 'express-validator';
 import jwt from 'jsonwebtoken';
+import crypto from 'crypto';
 import pool from '../config/database.js';
 import { deactivateFcmTokenForSession } from '../utils/pushTokens.js';
 import { 
@@ -338,9 +339,10 @@ const loginValidators = [
 ];
 
 const signupValidators = [
-  body('username').isString().bail().trim().isLength({ min: 3, max: 20 })
+  // 카카오: 서버가 임시 username/password 발급 — 클라 생략 가능
+  body('username').optional({ values: 'falsy' }).isString().bail().trim().isLength({ min: 3, max: 20 })
     .withMessage('사용자명은 3-20자여야 합니다.'),
-  body('password').isString().bail().isLength({ min: 8, max: 200 })
+  body('password').optional({ values: 'falsy' }).isString().bail().isLength({ min: 8, max: 200 })
     .withMessage('비밀번호는 8자 이상이어야 합니다.'),
   body('name').isString().bail().trim().isLength({ min: 1, max: 50 })
     .withMessage('이름을 입력해주세요.'),
@@ -370,6 +372,19 @@ const signupValidators = [
   body('consents.location').optional().isBoolean(),
   body('consents.marketingOptIn').optional().isBoolean(),
 ];
+
+function buildKakaoPlaceholderUsername(providerUserId) {
+  const id = String(providerUserId || '').replace(/\D/g, '');
+  let base = `k${id}`.slice(0, 20);
+  if (base.length < 3) {
+    base = `k${Date.now().toString(36)}`.slice(0, 20);
+  }
+  return base;
+}
+
+function buildInternalSocialPassword() {
+  return `Ka${crypto.randomBytes(16).toString('hex')}1a`;
+}
 
 const updateUsernameValidators = [
   body('username').isString().bail().trim()
@@ -1172,10 +1187,56 @@ router.post(
 
     const consents = rawConsents && typeof rawConsents === 'object' ? rawConsents : {};
 
+    const kakaoAccessToken = String(rawKakaoAccessToken || '').trim();
+    let kakaoProviderUserId = null;
+    if (isKakaoSignup && !skipValidation) {
+      if (!kakaoAccessToken) {
+        return res.status(400).json({
+          success: false,
+          message: '카카오 인증이 필요합니다. 다시 로그인해 주세요.',
+          code: 'KAKAO_TOKEN_REQUIRED',
+        });
+      }
+      try {
+        const verified = await verifyKakaoAccessToken(kakaoAccessToken);
+        kakaoProviderUserId = verified.providerUserId;
+        const existingLink = await findUserIdByOauthProvider(
+          pool,
+          'kakao',
+          kakaoProviderUserId,
+        );
+        if (existingLink) {
+          return res.status(409).json({
+            success: false,
+            message: '이미 가입된 카카오 계정입니다. 로그인해주세요.',
+            code: 'KAKAO_ALREADY_LINKED',
+          });
+        }
+      } catch (oauthErr) {
+        console.error('[signup/kakaoVerify]', oauthErr);
+        return res.status(oauthErr.status || 401).json({
+          success: false,
+          message:
+            oauthErr.message ||
+            '카카오 토큰 검증에 실패했습니다. 다시 로그인해 주세요.',
+          code: oauthErr.code || 'KAKAO_TOKEN_INVALID',
+        });
+      }
+    }
+
     // [SIGNUP_REDESIGN_SKIP] 필수 필드·약관·토큰 검증
     if (!skipValidation) {
-      if (!username || !password || !name || !phone || !birthDate ||
-          !resolvedSchoolId || !grade || !classNumber) {
+      // 카카오: 공개 아이디·비번은 승인 후 SignProfileUsername — 가입 시 생략
+      const accountRequired = !isKakaoSignup;
+      if (
+        (accountRequired && (!username || !password)) ||
+        !name ||
+        !phone ||
+        !birthDate ||
+        !resolvedSchoolId ||
+        !grade ||
+        !classNumber
+      ) {
         return res.status(400).json({
           success: false,
           message: '모든 필드를 입력해주세요.',
@@ -1241,11 +1302,30 @@ router.post(
       }
     }
 
-    const signupUsername = skipValidation
+    let signupUsername = skipValidation
       ? (username?.trim() || `redesign_${Date.now()}`)
-      : username;
-    const signupPassword = skipValidation ? (password || 'Test1234') : password;
+      : String(username || '').trim();
+    let signupPassword = skipValidation ? (password || 'Test1234') : password;
     const signupName = skipValidation ? (name?.trim() || '개편테스트') : name;
+
+    if (isKakaoSignup) {
+      if (!signupUsername) {
+        signupUsername = buildKakaoPlaceholderUsername(kakaoProviderUserId);
+        for (let i = 0; i < 6; i += 1) {
+          const [taken] = await pool.execute(
+            `SELECT id FROM users WHERE username = ? LIMIT 1`,
+            [signupUsername],
+          );
+          if (taken.length === 0) break;
+          signupUsername = `k${String(kakaoProviderUserId || '').slice(-10)}${crypto
+            .randomBytes(2)
+            .toString('hex')}`.slice(0, 20);
+        }
+      }
+      if (!signupPassword) {
+        signupPassword = buildInternalSocialPassword();
+      }
+    }
 
     // [SIGNUP_REDESIGN_SKIP] 형식·이니시스·전화 인증 검증
     if (!skipValidation) {
@@ -1557,23 +1637,30 @@ router.post(
         ],
       );
 
-      const kakaoAccessToken = String(rawKakaoAccessToken || '').trim();
-      if (isKakaoSignup && kakaoAccessToken) {
+      const kakaoAccessTokenForLink = kakaoAccessToken;
+      if (isKakaoSignup && kakaoProviderUserId) {
         try {
-          const { providerUserId } = await verifyKakaoAccessToken(kakaoAccessToken);
-          const existingLink = await findUserIdByOauthProvider(
-            connection,
-            'kakao',
-            providerUserId,
+          await linkOauthProvider(connection, {
+            userId,
+            provider: 'kakao',
+            providerUserId: kakaoProviderUserId,
+          });
+        } catch (oauthErr) {
+          await connection.rollback();
+          console.error('[signup/kakaoOauth]', oauthErr);
+          return res.status(oauthErr.status || 500).json({
+            success: false,
+            message:
+              oauthErr.message ||
+              '카카오 계정 연동에 실패했습니다. 다시 로그인해 주세요.',
+            code: oauthErr.code || 'KAKAO_LINK_FAILED',
+          });
+        }
+      } else if (isKakaoSignup && kakaoAccessTokenForLink) {
+        try {
+          const { providerUserId } = await verifyKakaoAccessToken(
+            kakaoAccessTokenForLink,
           );
-          if (existingLink && existingLink !== userId) {
-            await connection.rollback();
-            return res.status(409).json({
-              success: false,
-              message: '이미 다른 계정에 연동된 카카오 계정입니다.',
-              code: 'KAKAO_ALREADY_LINKED',
-            });
-          }
           await linkOauthProvider(connection, {
             userId,
             provider: 'kakao',
@@ -1638,6 +1725,7 @@ router.post(
           studentVerified: studentVerifiedOnInsert,
           certificateReviewPending: isCertificateSignup,
           studentIdReviewPending: !isCertificateSignup,
+          needsProfileUsername: isKakaoSignup,
         },
       });
     } catch (txErr) {
