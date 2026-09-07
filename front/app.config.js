@@ -174,6 +174,7 @@ export default ({ config }) => ({
         : []),
       './plugins/withFirebaseModularHeaders',
       './plugins/withAndroidReleaseSigning.cjs',
+      './plugins/withAndroidAabLintMemory.cjs',
       './plugins/withAndroidMainActivityLaunchMode.cjs',
       './plugins/withAndroidCameraPreviewCompatible.cjs',
       'youth-paper-widget',
