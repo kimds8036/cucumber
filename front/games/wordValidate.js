@@ -1,8 +1,6 @@
 /**
- * 우리말샘(국립국어원) 검증 — 클라이언트 스텁.
- * 실제 키는 백엔드 Railway(develop) `URIMALSAEM_API_KEY` 에 두고
- * 서버 `hunminGameRooms.js` 의 validateWordServer 에서 검증합니다.
- * (프론트 EXPO_PUBLIC 에 올리지 마세요 — 키 노출됨)
+ * 국립국어원 온용어 검증 — 클라이언트는 형식만 검사.
+ * 실제 조회는 백엔드 `URIMALSAEM_API_KEY` + kli.korean.go.kr/term/api/search.do
  */
 export async function validateKoreanWord(word) {
   const cleaned = String(word || '').trim();

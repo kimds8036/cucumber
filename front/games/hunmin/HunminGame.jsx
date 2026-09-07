@@ -24,7 +24,6 @@ import { themedTextInputProps } from '../../styles/mypage.style';
 import { useSocket } from '../../context/SocketContext';
 import { api } from '../../utils/api';
 import AppPopupModal from '../../components/common/AppPopupModal';
-import { wordToChoseong } from './choUtils';
 
 const ROUND_MS = 10000;
 const WIN_SCORE = 20;
@@ -92,9 +91,9 @@ function PlayerSeat({
         style={[
           styles.seatCard,
           { backgroundColor: player ? palette.soft : EMPTY_PALETTE.soft },
-          isRoundWinner && {
-            borderWidth: 2.5,
-            borderColor: palette.accent,
+          {
+            // 배지처럼 테두리 폭 고정 — 색만 바꿔 레이아웃 튀김 방지
+            borderColor: isRoundWinner ? palette.accent : 'transparent',
           },
           !player && styles.seatEmptyCard,
         ]}
@@ -257,8 +256,20 @@ export default function HunminGame() {
         return;
       }
       // 라운드 사이 lobby 브로드캐스트는 대기실로 바꾸지 않음
+      // 단, 인원 부족·퇴장 후 대기면 대기실로
       if (payload.status === 'lobby') {
-        if (inMatchRef.current || phaseRef.current === 'reveal' || phaseRef.current === 'playing') {
+        const n = payload.players?.length || 0;
+        if (n < 2) {
+          inMatchRef.current = false;
+          setPhase('lobby');
+          setRound(null);
+          return;
+        }
+        if (
+          inMatchRef.current ||
+          phaseRef.current === 'reveal' ||
+          phaseRef.current === 'playing'
+        ) {
           return;
         }
         setPhase('lobby');
@@ -272,7 +283,7 @@ export default function HunminGame() {
       setRound(payload.round);
       setResult(null);
       setSubmitted(false);
-      setInput('');
+      // 입력창은 채팅처럼 유지(라운드 전환 시 강제 비우지 않음)
       setBubbles({});
       setMatchEnd(null);
       setRematchSearching(false);
@@ -287,7 +298,6 @@ export default function HunminGame() {
           (payload.round?.endsAt || Date.now() + ROUND_MS) - Date.now(),
         ),
       );
-      // 키보드 유지: 포커스만 재확보 (dismiss 금지)
       requestAnimationFrame(() => {
         inputRef.current?.focus?.();
       });
@@ -298,7 +308,6 @@ export default function HunminGame() {
       setPhase('reveal');
       setRound(null);
       setSubmitted(false);
-      // 키보드 유지 — dismiss 하지 않음
       requestAnimationFrame(() => {
         inputRef.current?.focus?.();
       });
@@ -306,16 +315,13 @@ export default function HunminGame() {
     const onAnswerResult = (payload) => {
       setFeedback({
         type: payload.ok ? 'ok' : 'err',
-        text: payload.message || (payload.ok ? '선착 정답!' : '실패'),
+        text: payload.message || (payload.ok ? '선착 정답!' : '다시 입력해 보세요'),
       });
-      if (payload.ok) {
-        setSubmitted(true);
-      } else {
-        setSubmitted(false);
-        requestAnimationFrame(() => {
-          inputRef.current?.focus?.();
-        });
-      }
+      // 오답·오타: 잠그지 않음. 선착 정답만 이번 라운드 제출 완료
+      setSubmitted(Boolean(payload.ok));
+      requestAnimationFrame(() => {
+        inputRef.current?.focus?.();
+      });
     };
     const onAnswerProgress = (payload) => {
       if (payload?.userId == null) return;
@@ -374,24 +380,29 @@ export default function HunminGame() {
     return () => clearInterval(tick);
   }, [phase, round?.endsAt]);
 
-  const canSubmit = phase === 'playing' && !submitted;
-
   const onSubmit = () => {
-    if (!socket || !canSubmit) return;
     const word = input.trim();
-    if (!word) {
-      setFeedback({ type: 'err', text: '단어를 입력해 주세요.' });
-      return;
-    }
-    const need = round?.choseong?.length || 2;
-    const got = wordToChoseong(word);
-    if (!got || got.length < need) {
+    if (!word) return;
+
+    // 채팅처럼 전송 즉시 비우고 포커스 유지 → 오타/오답 바로 재입력
+    setInput('');
+    requestAnimationFrame(() => {
+      inputRef.current?.focus?.();
+    });
+
+    if (!socket) return;
+    if (phase !== 'playing') {
       setFeedback({
-        type: 'err',
-        text: `${need}글자 이상 한글 단어를 입력해 주세요.`,
+        type: 'info',
+        text: '라운드가 시작되면 제출돼요. 계속 입력해 두세요!',
       });
       return;
     }
+    if (submitted) {
+      setFeedback({ type: 'info', text: '이번 라운드 정답을 이미 맞췄어요.' });
+      return;
+    }
+
     socket.emit('hunmin:answer', { word });
   };
 
@@ -528,7 +539,6 @@ export default function HunminGame() {
                           styles.scoreCell,
                           isYou && {
                             borderColor: palette.accent,
-                            borderWidth: 2,
                             backgroundColor: palette.soft,
                           },
                         ]}
@@ -587,39 +597,21 @@ export default function HunminGame() {
             value={input}
             onChangeText={setInput}
             editable
-            placeholder="단어 입력"
+            placeholder="채팅처럼 입력 후 전송"
             placeholderTextColor={colors.textLight20}
             autoCapitalize="none"
             autoCorrect={false}
-            maxLength={12}
-            returnKeyType="done"
+            maxLength={20}
+            returnKeyType="send"
             blurOnSubmit={false}
             onSubmitEditing={onSubmit}
             showSoftInputOnFocus
             {...themedTextInputProps}
           />
-          <Pressable
-            style={[styles.submitBtn, !canSubmit && styles.submitDisabled]}
-            onPress={onSubmit}
-            disabled={!canSubmit}
-          >
-            <Text style={styles.submitText}>
-              {submitted ? '정답!' : '확인'}
-            </Text>
+          <Pressable style={styles.submitBtn} onPress={onSubmit}>
+            <Text style={styles.submitText}>전송</Text>
           </Pressable>
         </Animated.View>
-      ) : null}
-
-      {feedback ? (
-        <Text
-          style={[
-            styles.feedback,
-            feedback.type === 'ok' && styles.feedbackOk,
-            feedback.type === 'err' && styles.feedbackErr,
-          ]}
-        >
-          {feedback.text}
-        </Text>
       ) : null}
 
       <AppPopupModal
@@ -697,7 +689,8 @@ function createStyles(normalize) {
       paddingHorizontal: normalize(3),
       borderRadius: normalize(10),
       alignItems: 'center',
-      borderWidth: 0,
+      borderWidth: 2.5,
+      borderColor: 'transparent',
     },
     seatEmptyCard: {
       backgroundColor: '#F3F1EE',
@@ -832,9 +825,9 @@ function createStyles(normalize) {
       marginBottom: normalize(10),
     },
     choTile: {
-      width: normalize(52),
-      height: normalize(52),
-      borderRadius: normalize(12),
+      width: normalize(44),
+      height: normalize(44),
+      borderRadius: normalize(10),
       backgroundColor: '#FFF4E8',
       borderWidth: 1.5,
       borderColor: '#E8A06A',
@@ -843,7 +836,7 @@ function createStyles(normalize) {
     },
     choChar: {
       fontFamily: fonts.bold,
-      fontSize: normalize(24),
+      fontSize: normalize(20),
       color: '#C45C26',
       textAlign: 'center',
     },
@@ -875,7 +868,7 @@ function createStyles(normalize) {
       gap: normalize(6),
       paddingVertical: normalize(5),
       borderRadius: normalize(8),
-      borderWidth: 1,
+      borderWidth: 2,
       borderColor: 'transparent',
     },
     scoreDot: {
