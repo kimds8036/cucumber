@@ -6,26 +6,10 @@ import {
   buildSchoolSearchSql,
   schoolSearchParams,
 } from '../utils/schoolSearch.js';
+import { inferExpectedSchoolLevel } from '../utils/signupEnrollment.js';
 
-function computeAge(birthDate, ref = new Date()) {
-  const birth = new Date(birthDate);
-  if (Number.isNaN(birth.getTime())) return null;
-  let age = ref.getFullYear() - birth.getFullYear();
-  const beforeBirthday =
-    ref.getMonth() < birth.getMonth() ||
-    (ref.getMonth() === birth.getMonth() && ref.getDate() < birth.getDate());
-  if (beforeBirthday) age -= 1;
-  return age;
-}
-
-/** 생년월일 기준 기대 학교급 (중/고). 그 외 연령은 null */
-export function inferExpectedSchoolLevel(birthDate) {
-  const age = computeAge(birthDate);
-  if (age == null) return null;
-  if (age >= 12 && age <= 15) return 'middle';
-  if (age >= 16 && age <= 19) return 'high';
-  return null;
-}
+/** 생년월일 기준 기대 학교급 — signupEnrollment 와 동일 (만 21까지 high) */
+export { inferExpectedSchoolLevel };
 
 export function detectSchoolLevelInText(text) {
   const t = String(text || '');

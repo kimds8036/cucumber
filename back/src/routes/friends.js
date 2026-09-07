@@ -8,6 +8,7 @@ import { emitNotification } from '../socketServer.js';
 import { checkNotificationAllowed } from '../utils/notificationUtils.js';
 import { getStudyingFriends } from '../socket/socketService.js';
 import { submitContentReport } from '../services/reportSubmission.service.js';
+import { listTimerFriendSuggestions } from '../services/timerFriendSuggest.service.js';
 
 const router = express.Router();
 
@@ -111,6 +112,20 @@ router.get('/studying-status', authenticate, async (req, res) => {
     res.status(500).json({
       success: false,
       message: '공부 중 친구 상태 조회 중 오류가 발생했습니다.',
+    });
+  }
+});
+
+/** 타이머 친구 바 — 하루 최대 2명의 비친구 추천 */
+router.get('/timer-suggestions', authenticate, async (req, res) => {
+  try {
+    const data = await listTimerFriendSuggestions(req.user.userId);
+    res.json({ success: true, data });
+  } catch (error) {
+    console.error('타이머 친구 추천 조회 오류:', error);
+    res.status(500).json({
+      success: false,
+      message: '친구 추천을 불러오지 못했습니다.',
     });
   }
 });

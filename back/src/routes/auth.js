@@ -1,6 +1,7 @@
 import express from 'express';
 import { body } from 'express-validator';
 import jwt from 'jsonwebtoken';
+import crypto from 'crypto';
 import pool from '../config/database.js';
 import { deactivateFcmTokenForSession } from '../utils/pushTokens.js';
 import { 
@@ -85,8 +86,176 @@ import {
   notifyCertificateReviewPending,
   notifyStudentIdReviewPending,
 } from '../services/discordWebhook.service.js';
+import {
+  verifyKakaoAccessToken,
+  findUserIdByOauthProvider,
+  linkOauthProvider,
+} from '../services/kakao.oauth.service.js';
+import {
+  verifyAppleIdentityToken,
+  listOauthProvidersForUser,
+  formatSocialProvidersLabel,
+} from '../services/apple.oauth.service.js';
 
 const router = express.Router();
+
+async function getNeedsProfileUsername(userId) {
+  const [rows] = await pool.execute(
+    `SELECT profile_username_set
+     FROM user_settings
+     WHERE user_id = ?
+     LIMIT 1`,
+    [userId],
+  );
+  if (rows.length > 0) {
+    return Number(rows[0].profile_username_set) === 0;
+  }
+  const [oauth] = await pool.execute(
+    `SELECT 1 FROM user_oauth_providers
+     WHERE user_id = ? AND provider IN ('kakao', 'apple')
+     LIMIT 1`,
+    [userId],
+  );
+  return oauth.length > 0;
+}
+
+/** 비밀번호/소셜 공통 — 디바이스 기록 + JWT·refresh 발급 */
+async function issueLoginSuccessResponse(req, res, user, { needsVerificationHint } = {}) {
+  const ipAddress = getClientIp(req);
+  const deviceInfo = getDeviceInfo(req);
+  const currentDeviceId =
+    String(req.body?.deviceId || '').trim() || `device_${user.id}_${Date.now()}`;
+
+  const [existingDevices] = await pool.execute(
+    `SELECT id, device_id, ip_address, device_info, last_login_at
+     FROM user_devices
+     WHERE user_id = ? AND device_id = ?`,
+    [user.id, currentDeviceId],
+  );
+
+  let isNewDevice = existingDevices.length === 0;
+  let needsVerification =
+    typeof needsVerificationHint === 'boolean' ? needsVerificationHint : false;
+
+  if (isNewDevice && needsVerificationHint == null) {
+    const [otherDevices] = await pool.execute(
+      'SELECT id FROM user_devices WHERE user_id = ?',
+      [user.id],
+    );
+    if (otherDevices.length > 0) {
+      const [lastDevice] = await pool.execute(
+        `SELECT ip_address FROM user_devices
+         WHERE user_id = ?
+         ORDER BY last_login_at DESC LIMIT 1`,
+        [user.id],
+      );
+      if (lastDevice.length > 0 && lastDevice[0].ip_address !== ipAddress) {
+        needsVerification = true;
+      }
+    }
+  }
+
+  if (isNewDevice) {
+    await pool.execute(
+      `INSERT INTO user_devices (user_id, device_id, device_info, ip_address, last_login_at)
+       VALUES (?, ?, ?, ?, NOW())
+       ON DUPLICATE KEY UPDATE
+         device_info = VALUES(device_info),
+         ip_address = VALUES(ip_address),
+         last_login_at = NOW()`,
+      [user.id, currentDeviceId, deviceInfo, ipAddress],
+    );
+  } else {
+    await pool.execute(
+      `UPDATE user_devices
+       SET device_info = ?, ip_address = ?, last_login_at = NOW()
+       WHERE user_id = ? AND device_id = ?`,
+      [deviceInfo, ipAddress, user.id, currentDeviceId],
+    );
+  }
+
+  const tokenVersion = Number(user.token_version ?? 0);
+  const token = createUserAccessToken({
+    userId: user.id,
+    username: user.username,
+    tokenVersion,
+  });
+
+  const refreshToken = generateRefreshTokenPlain();
+  await storeRefreshToken({
+    userId: user.id,
+    deviceId: currentDeviceId,
+    plainToken: refreshToken,
+    tokenVersion,
+  });
+
+  const verification = await getStudentVerificationStatus(user.id);
+  const reverification = await getUserReverificationPayload(user.id);
+  const needsProfileUsername = await getNeedsProfileUsername(user.id);
+
+  return res.json({
+    success: true,
+    message: '로그인 성공',
+    data: {
+      token,
+      refreshToken,
+      deviceId: currentDeviceId,
+      user: {
+        id: user.id,
+        username: user.username,
+        name: user.name,
+      },
+      needsVerification,
+      studentVerificationStatus: verification.status,
+      rejectReason: verification.rejectReason,
+      submissionPurpose: verification.submissionPurpose,
+      reverificationSubmissionPending: verification.reverificationSubmissionPending,
+      reverificationStatus: reverification?.reverificationStatus ?? 'none',
+      reverificationDeadline: reverification?.reverificationDeadline ?? null,
+      gradeException: reverification?.gradeException ?? false,
+      needsProfileUsername,
+    },
+  });
+}
+
+async function assertUserAllowedToLogin(user) {
+  if (user.is_deleted) {
+    const err = new Error('탈퇴한 사용자입니다.');
+    err.status = 403;
+    err.code = API_ERROR_CODES.ACCOUNT_DELETED;
+    throw err;
+  }
+  if (user.is_banned) {
+    const err = new Error('영구 정지된 계정입니다.');
+    err.status = 403;
+    err.code = API_ERROR_CODES.ACCOUNT_BANNED;
+    throw err;
+  }
+  if (user.is_suspended) {
+    const until = user.suspended_until ? new Date(user.suspended_until) : null;
+    if (!until || until > new Date()) {
+      const err = new Error('임시 정지된 계정입니다.');
+      err.status = 403;
+      err.code = API_ERROR_CODES.ACCOUNT_SUSPENDED;
+      err.suspendedUntil = user.suspended_until || null;
+      throw err;
+    }
+  }
+  const revCode = getReverificationBlockCode(user.reverification_status);
+  if (revCode) {
+    const messages = {
+      GRADUATED_BLOCKED: '졸업생은 서비스를 이용할 수 없습니다.',
+      ADULT_BLOCKED: '성인은 서비스를 이용할 수 없습니다.',
+      REVERIFICATION_RESTRICTED: '재인증이 필요합니다. 학생증을 다시 제출해주세요.',
+    };
+    const err = new Error(messages[revCode] || '서비스 이용이 제한되었습니다.');
+    err.status = 403;
+    err.code = revCode;
+    err.reverificationStatus = user.reverification_status;
+    err.reverificationDeadline = user.reverification_deadline || null;
+    throw err;
+  }
+}
 
 function isUnder14YearsOld(birthDateStr) {
   const m = String(birthDateStr || '').match(/^(\d{4})-(\d{2})-(\d{2})$/);
@@ -197,9 +366,10 @@ const loginValidators = [
 ];
 
 const signupValidators = [
-  body('username').isString().bail().trim().isLength({ min: 3, max: 20 })
+  // 카카오: 서버가 임시 username/password 발급 — 클라 생략 가능
+  body('username').optional({ values: 'falsy' }).isString().bail().trim().isLength({ min: 3, max: 20 })
     .withMessage('사용자명은 3-20자여야 합니다.'),
-  body('password').isString().bail().isLength({ min: 8, max: 200 })
+  body('password').optional({ values: 'falsy' }).isString().bail().isLength({ min: 8, max: 200 })
     .withMessage('비밀번호는 8자 이상이어야 합니다.'),
   body('name').isString().bail().trim().isLength({ min: 1, max: 50 })
     .withMessage('이름을 입력해주세요.'),
@@ -220,6 +390,9 @@ const signupValidators = [
   body('studentVerificationToken').optional({ values: 'falsy' }).isString().isLength({ max: 2000 }),
   body('studentInicisClientToken').optional({ values: 'falsy' }).isString().isLength({ max: 64 }),
   body('guardianInicisClientToken').optional({ values: 'falsy' }).isString().isLength({ max: 64 }),
+  body('signupMethod').optional({ values: 'falsy' }).isString().isIn(['phone', 'kakao', 'apple']),
+  body('kakaoAccessToken').optional({ values: 'falsy' }).isString().isLength({ max: 2048 }),
+  body('appleIdentityToken').optional({ values: 'falsy' }).isString().isLength({ max: 8192 }),
   body('consents').optional().isObject(),
   body('consents.termsOfService').optional().isBoolean(),
   body('consents.dataCollection').optional().isBoolean(),
@@ -227,6 +400,28 @@ const signupValidators = [
   body('consents.location').optional().isBoolean(),
   body('consents.marketingOptIn').optional().isBoolean(),
 ];
+
+function buildKakaoPlaceholderUsername(providerUserId) {
+  const id = String(providerUserId || '').replace(/\D/g, '');
+  let base = `k${id}`.slice(0, 20);
+  if (base.length < 3) {
+    base = `k${Date.now().toString(36)}`.slice(0, 20);
+  }
+  return base;
+}
+
+function buildApplePlaceholderUsername(providerUserId) {
+  const id = String(providerUserId || '').replace(/[^a-zA-Z0-9]/g, '');
+  let base = `a${id}`.slice(0, 20);
+  if (base.length < 3) {
+    base = `a${Date.now().toString(36)}`.slice(0, 20);
+  }
+  return base;
+}
+
+function buildInternalSocialPassword() {
+  return `Ka${crypto.randomBytes(16).toString('hex')}1a`;
+}
 
 const updateUsernameValidators = [
   body('username').isString().bail().trim()
@@ -296,6 +491,7 @@ router.get('/me', authenticate, async (req, res) => {
 
     const verification = await getStudentVerificationStatus(userId);
     const reverification = await getUserReverificationPayload(userId);
+    const needsProfileUsername = await getNeedsProfileUsername(userId);
 
     res.json({
       success: true,
@@ -327,6 +523,7 @@ router.get('/me', authenticate, async (req, res) => {
         reverificationDeadline: reverification?.reverificationDeadline ?? null,
         gradeException: reverification?.gradeException ?? false,
         previousSchoolId: reverification?.previousSchoolId ?? null,
+        needsProfileUsername,
       },
     });
   } catch (error) {
@@ -334,6 +531,50 @@ router.get('/me', authenticate, async (req, res) => {
     res.status(500).json({
       success: false,
       message: '내 프로필 조회 중 오류가 발생했습니다.',
+    });
+  }
+});
+
+// 아이디 중복 확인 (로그인 사용자 — 본인 제외)
+router.post('/check-username-available', authenticate, async (req, res) => {
+  try {
+    const userId = req.user.userId;
+    const input = String(req.body?.username ?? '').trim();
+    const normalized = input.startsWith('@') ? input.slice(1) : input;
+
+    if (!normalized) {
+      return res.status(400).json({
+        success: false,
+        message: '아이디를 입력해주세요.',
+      });
+    }
+    if (!validateUsername(normalized)) {
+      return res.status(400).json({
+        success: false,
+        message: '아이디는 영문, 숫자, 언더스코어만 사용 가능하며 3-20자여야 합니다.',
+        data: { available: false, reason: 'invalid' },
+      });
+    }
+
+    const [existing] = await pool.execute(
+      `SELECT id FROM users
+       WHERE username = ? AND id != ? AND is_deleted = FALSE
+       LIMIT 1`,
+      [normalized, userId],
+    );
+
+    return res.json({
+      success: true,
+      data: {
+        username: normalized,
+        available: existing.length === 0,
+      },
+    });
+  } catch (error) {
+    console.error('아이디 중복 확인 오류:', error);
+    return res.status(500).json({
+      success: false,
+      message: '아이디 확인 중 오류가 발생했습니다.',
     });
   }
 });
@@ -364,21 +605,24 @@ router.patch('/me/username', authenticate, validate(updateUsernameValidators), a
     );
 
     const [settingsRows] = await pool.execute(
-      `SELECT last_username_change_at
+      `SELECT last_username_change_at, profile_username_set
        FROM user_settings
        WHERE user_id = ?`,
       [userId]
     );
+    const profileUsernameUnset =
+      settingsRows[0] && Number(settingsRows[0].profile_username_set) === 0;
     const lastChangedAt = settingsRows[0]?.last_username_change_at
       ? new Date(settingsRows[0].last_username_change_at)
       : null;
-    if (lastChangedAt) {
+    // 소셜 최초 프로필 아이디 설정은 6개월 쿨다운 면제
+    if (!profileUsernameUnset && lastChangedAt) {
       const nextAllowedAt = new Date(lastChangedAt);
       nextAllowedAt.setMonth(nextAllowedAt.getMonth() + 6);
       if (new Date() < nextAllowedAt) {
         return res.status(400).json({
           success: false,
-          message: `아이디는 6개월에 1번만 변경할 수 있습니다. 다음 변경 가능일: ${nextAllowedAt.toISOString().slice(0, 10)}`,
+          message: `아이디는 6개월에 1번만 변경할 수 있습니다. \n다음 변경 가능일: ${nextAllowedAt.toISOString().slice(0, 10)}`,
         });
       }
     }
@@ -400,7 +644,8 @@ router.patch('/me/username', authenticate, validate(updateUsernameValidators), a
     );
     await pool.execute(
       `UPDATE user_settings
-       SET last_username_change_at = NOW()
+       SET last_username_change_at = NOW(),
+           profile_username_set = 1
        WHERE user_id = ?`,
       [userId]
     );
@@ -829,6 +1074,28 @@ router.post('/recovery/find-username', recoveryPhoneBackendLimiter, async (req, 
 
     const user = await findRegisteredUserByPhoneAndName(identity.phone, trimmedName);
 
+    const providers = await listOauthProvidersForUser(pool, user.id);
+    if (providers.length > 0) {
+      const label = formatSocialProvidersLabel(providers);
+      await consumeIdentityVerificationClientToken(inicisClientToken, {
+        purpose: 'find_username',
+        expectedName: trimmedName,
+        expectedPhone: identity.phone,
+        linkedUserId: user.id,
+      });
+      return res.json({
+        success: true,
+        message: `${label}로 가입한 계정입니다. 아이디 찾기를 사용할 수 없으니 ${label} 로그인으로 이용해 주세요.`,
+        data: {
+          socialOnly: true,
+          providers,
+          providerLabel: label,
+          name: user.name,
+          phone: identity.phone,
+        },
+      });
+    }
+
     await consumeIdentityVerificationClientToken(inicisClientToken, {
       purpose: 'find_username',
       expectedName: trimmedName,
@@ -893,6 +1160,27 @@ router.post('/recovery/verify-account', recoveryPhoneBackendLimiter, async (req,
       trimmedName,
       trimmedUsername,
     );
+
+    const providers = await listOauthProvidersForUser(pool, user.id);
+    if (providers.length > 0) {
+      const label = formatSocialProvidersLabel(providers);
+      await consumeIdentityVerificationClientToken(inicisClientToken, {
+        purpose: 'password_recovery',
+        expectedName: trimmedName,
+        expectedPhone: identity.phone,
+        linkedUserId: user.id,
+      });
+      return res.status(400).json({
+        success: false,
+        message: `${label}로 가입한 계정입니다. 비밀번호 찾기를 사용할 수 없으니 ${label} 로그인으로 이용해 주세요.`,
+        code: 'SOCIAL_ACCOUNT',
+        data: {
+          socialOnly: true,
+          providers,
+          providerLabel: label,
+        },
+      });
+    }
 
     await consumeIdentityVerificationClientToken(inicisClientToken, {
       purpose: 'password_recovery',
@@ -1005,6 +1293,9 @@ router.post(
       studentVerificationToken,
       studentInicisClientToken,
       guardianInicisClientToken,
+      signupMethod: rawSignupMethod,
+      kakaoAccessToken: rawKakaoAccessToken,
+      appleIdentityToken: rawAppleIdentityToken,
       consents: rawConsents,
       inviteCode: rawInviteCode,
     } = req.body;
@@ -1014,16 +1305,109 @@ router.post(
     const isCertificateSignup = verificationMethod === 'certificate';
     const under14 = isUnder14YearsOld(normalizedBirthDate);
     const inicisOn = isInicisEnabled();
+    const signupMethod = String(rawSignupMethod || 'phone')
+      .trim()
+      .toLowerCase();
+    const isKakaoSignup = signupMethod === 'kakao';
+    const isAppleSignup = signupMethod === 'apple';
+    const isSocialSignup = isKakaoSignup || isAppleSignup;
+    // 카카오: 만 14세 미만만 보호자 이니시스. 학생 이니시스는 생략.
+    // 애플: 생년월일·전화 미제공 → 학생 이니시스 필수.
+    const requireStudentInicis = inicisOn && !isKakaoSignup;
+    const requireGuardianInicis = inicisOn && under14;
     const resolvedSchoolId = isCertificateSignup
       ? (schoolId?.trim() || 'CERT_PENDING')
       : schoolId;
 
     const consents = rawConsents && typeof rawConsents === 'object' ? rawConsents : {};
 
+    const kakaoAccessToken = String(rawKakaoAccessToken || '').trim();
+    const appleIdentityToken = String(rawAppleIdentityToken || '').trim();
+    let kakaoProviderUserId = null;
+    let appleProviderUserId = null;
+    if (isKakaoSignup && !skipValidation) {
+      if (!kakaoAccessToken) {
+        return res.status(400).json({
+          success: false,
+          message: '카카오 인증이 필요합니다. 다시 로그인해 주세요.',
+          code: 'KAKAO_TOKEN_REQUIRED',
+        });
+      }
+      try {
+        const verified = await verifyKakaoAccessToken(kakaoAccessToken);
+        kakaoProviderUserId = verified.providerUserId;
+        const existingLink = await findUserIdByOauthProvider(
+          pool,
+          'kakao',
+          kakaoProviderUserId,
+        );
+        if (existingLink) {
+          return res.status(409).json({
+            success: false,
+            message: '이미 가입된 카카오 계정입니다. 로그인해주세요.',
+            code: 'KAKAO_ALREADY_LINKED',
+          });
+        }
+      } catch (oauthErr) {
+        console.error('[signup/kakaoVerify]', oauthErr);
+        return res.status(oauthErr.status || 401).json({
+          success: false,
+          message:
+            oauthErr.message ||
+            '카카오 토큰 검증에 실패했습니다. 다시 로그인해 주세요.',
+          code: oauthErr.code || 'KAKAO_TOKEN_INVALID',
+        });
+      }
+    }
+
+    if (isAppleSignup && !skipValidation) {
+      if (!appleIdentityToken) {
+        return res.status(400).json({
+          success: false,
+          message: 'Apple 인증이 필요합니다. 다시 로그인해 주세요.',
+          code: 'APPLE_TOKEN_REQUIRED',
+        });
+      }
+      try {
+        const verified = await verifyAppleIdentityToken(appleIdentityToken);
+        appleProviderUserId = verified.providerUserId;
+        const existingLink = await findUserIdByOauthProvider(
+          pool,
+          'apple',
+          appleProviderUserId,
+        );
+        if (existingLink) {
+          return res.status(409).json({
+            success: false,
+            message: '이미 가입된 Apple 계정입니다. 로그인해주세요.',
+            code: 'APPLE_ALREADY_LINKED',
+          });
+        }
+      } catch (oauthErr) {
+        console.error('[signup/appleVerify]', oauthErr);
+        return res.status(oauthErr.status || 401).json({
+          success: false,
+          message:
+            oauthErr.message ||
+            'Apple 토큰 검증에 실패했습니다. 다시 로그인해 주세요.',
+          code: oauthErr.code || 'APPLE_TOKEN_INVALID',
+        });
+      }
+    }
+
     // [SIGNUP_REDESIGN_SKIP] 필수 필드·약관·토큰 검증
     if (!skipValidation) {
-      if (!username || !password || !name || !phone || !birthDate ||
-          !resolvedSchoolId || !grade || !classNumber) {
+      // 소셜: 공개 아이디·비번은 승인 후 SignProfileUsername — 가입 시 생략
+      const accountRequired = !isSocialSignup;
+      if (
+        (accountRequired && (!username || !password)) ||
+        !name ||
+        !phone ||
+        !birthDate ||
+        !resolvedSchoolId ||
+        !grade ||
+        !classNumber
+      ) {
         return res.status(400).json({
           success: false,
           message: '모든 필드를 입력해주세요.',
@@ -1089,11 +1473,49 @@ router.post(
       }
     }
 
-    const signupUsername = skipValidation
+    let signupUsername = skipValidation
       ? (username?.trim() || `redesign_${Date.now()}`)
-      : username;
-    const signupPassword = skipValidation ? (password || 'Test1234') : password;
+      : String(username || '').trim();
+    let signupPassword = skipValidation ? (password || 'Test1234') : password;
     const signupName = skipValidation ? (name?.trim() || '개편테스트') : name;
+
+    if (isKakaoSignup) {
+      if (!signupUsername) {
+        signupUsername = buildKakaoPlaceholderUsername(kakaoProviderUserId);
+        for (let i = 0; i < 6; i += 1) {
+          const [taken] = await pool.execute(
+            `SELECT id FROM users WHERE username = ? LIMIT 1`,
+            [signupUsername],
+          );
+          if (taken.length === 0) break;
+          signupUsername = `k${String(kakaoProviderUserId || '').slice(-10)}${crypto
+            .randomBytes(2)
+            .toString('hex')}`.slice(0, 20);
+        }
+      }
+      if (!signupPassword) {
+        signupPassword = buildInternalSocialPassword();
+      }
+    }
+
+    if (isAppleSignup) {
+      if (!signupUsername) {
+        signupUsername = buildApplePlaceholderUsername(appleProviderUserId);
+        for (let i = 0; i < 6; i += 1) {
+          const [taken] = await pool.execute(
+            `SELECT id FROM users WHERE username = ? LIMIT 1`,
+            [signupUsername],
+          );
+          if (taken.length === 0) break;
+          signupUsername = `a${String(appleProviderUserId || '')
+            .replace(/[^a-zA-Z0-9]/g, '')
+            .slice(-10)}${crypto.randomBytes(2).toString('hex')}`.slice(0, 20);
+        }
+      }
+      if (!signupPassword) {
+        signupPassword = buildInternalSocialPassword();
+      }
+    }
 
     // [SIGNUP_REDESIGN_SKIP] 형식·이니시스·전화 인증 검증
     if (!skipValidation) {
@@ -1118,14 +1540,21 @@ router.post(
         });
       }
 
-      if (!validateBirthDate(normalizedBirthDate)) {
+      if (
+        !validateBirthDate(normalizedBirthDate, {
+          allowOverMaxAge:
+            String(process.env.SIGNUP_ADULT_TEST_MODE || '')
+              .toLowerCase()
+              .trim() === 'true',
+        })
+      ) {
         return res.status(400).json({
           success: false,
           message: '올바른 생년월일이 아닙니다.',
         });
       }
 
-      if (under14 && inicisOn && !guardianInicisClientToken?.trim()) {
+      if (requireGuardianInicis && !guardianInicisClientToken?.trim()) {
         return res.status(400).json({
           success: false,
           message: mapIdentityTokenError('GUARDIAN_TOKEN_REQUIRED'),
@@ -1133,7 +1562,7 @@ router.post(
         });
       }
 
-      if (inicisOn && !studentInicisClientToken?.trim()) {
+      if (requireStudentInicis && !studentInicisClientToken?.trim()) {
         return res.status(400).json({
           success: false,
           message: mapIdentityTokenError('IDENTITY_TOKEN_REQUIRED'),
@@ -1141,8 +1570,8 @@ router.post(
         });
       }
 
-      // 전화번호 인증 확인 (이니시스 OFF 시 레거시)
-      if (!inicisOn) {
+      // 전화번호 인증 확인 (이니시스 OFF 시 레거시; 카카오는 프로필 전화 신뢰)
+      if (!inicisOn && !isKakaoSignup && !isAppleSignup) {
         const [verifiedCodes] = await pool.execute(
           `SELECT id FROM phone_verifications 
            WHERE ${phoneLookupWhereClause()} AND is_verified = TRUE 
@@ -1165,9 +1594,10 @@ router.post(
       [signupUsername],
     );
     if (existingByUsername.length > 0) {
-      return res.status(400).json({
+      return res.status(409).json({
         success: false,
-        message: '이미 사용 중인 사용자명 또는 전화번호입니다.',
+        message: '이미 사용 중인 아이디입니다. 로그인해주세요.',
+        code: 'USERNAME_ALREADY_REGISTERED',
       });
     }
     const [existingByPhone] = await pool.execute(
@@ -1177,9 +1607,19 @@ router.post(
       phoneLookupBindParams(phone),
     );
     if (existingByPhone.length > 0) {
-      return res.status(400).json({
+      const existingUserId = Number(existingByPhone[0].id);
+      const providers = await listOauthProvidersForUser(pool, existingUserId);
+      const label = formatSocialProvidersLabel(providers);
+      return res.status(409).json({
         success: false,
-        message: '이미 사용 중인 사용자명 또는 전화번호입니다.',
+        message: label
+          ? `이미 ${label}로 가입된 전화번호입니다. 로그인해주세요.`
+          : '이미 가입된 전화번호입니다. 로그인해주세요.',
+        code: 'PHONE_ALREADY_REGISTERED',
+        data: {
+          providers,
+          providerLabel: label || null,
+        },
       });
     }
 
@@ -1213,7 +1653,7 @@ router.post(
       let resolvedSignupPhone = anchorPhone;
       let resolvedSignupBirthDate = anchorBirthDate;
 
-      if (under14 && inicisOn && guardianInicisClientToken?.trim()) {
+      if (requireGuardianInicis && guardianInicisClientToken?.trim()) {
         try {
           const guardianConsumed = await consumeIdentityVerificationClientToken(
             guardianInicisClientToken,
@@ -1228,7 +1668,7 @@ router.post(
         }
       }
 
-      if (inicisOn && studentInicisClientToken?.trim()) {
+      if (requireStudentInicis && studentInicisClientToken?.trim()) {
         let studentConsumed;
         try {
           studentConsumed = await consumeIdentityVerificationClientToken(
@@ -1269,6 +1709,19 @@ router.post(
           resolvedSignupBirthDate =
             normalizeBirthDateInput(studentConsumed.birthDate) ||
             studentConsumed.birthDate;
+        }
+      } else if (isKakaoSignup && !skipValidation) {
+        // 카카오 14+: 이니시스 없이 카카오 제공 전화로 인증 기록만 남김
+        try {
+          await ensureInicisPhoneVerificationRecord(anchorPhone, connection);
+        } catch (phoneErr) {
+          console.error('[signup/kakaoPhone]', phoneErr);
+          await connection.rollback();
+          return res.status(500).json({
+            success: false,
+            message: '전화번호 인증 기록 저장에 실패했습니다. 잠시 후 다시 시도해 주세요.',
+            code: phoneErr?.code || 'PHONE_VERIFICATION_RECORD_FAILED',
+          });
         }
       }
 
@@ -1385,6 +1838,113 @@ router.post(
         ],
       );
 
+      const kakaoAccessTokenForLink = kakaoAccessToken;
+      if (isKakaoSignup && kakaoProviderUserId) {
+        try {
+          await linkOauthProvider(connection, {
+            userId,
+            provider: 'kakao',
+            providerUserId: kakaoProviderUserId,
+          });
+          await connection.execute(
+            `INSERT INTO user_settings (user_id, profile_username_set)
+             VALUES (?, 0)
+             ON DUPLICATE KEY UPDATE profile_username_set = 0`,
+            [userId],
+          );
+        } catch (oauthErr) {
+          await connection.rollback();
+          console.error('[signup/kakaoOauth]', oauthErr);
+          return res.status(oauthErr.status || 500).json({
+            success: false,
+            message:
+              oauthErr.message ||
+              '카카오 계정 연동에 실패했습니다. 다시 로그인해 주세요.',
+            code: oauthErr.code || 'KAKAO_LINK_FAILED',
+          });
+        }
+      } else if (isKakaoSignup && kakaoAccessTokenForLink) {
+        try {
+          const { providerUserId } = await verifyKakaoAccessToken(
+            kakaoAccessTokenForLink,
+          );
+          await linkOauthProvider(connection, {
+            userId,
+            provider: 'kakao',
+            providerUserId,
+          });
+          await connection.execute(
+            `INSERT INTO user_settings (user_id, profile_username_set)
+             VALUES (?, 0)
+             ON DUPLICATE KEY UPDATE profile_username_set = 0`,
+            [userId],
+          );
+        } catch (oauthErr) {
+          await connection.rollback();
+          console.error('[signup/kakaoOauth]', oauthErr);
+          return res.status(oauthErr.status || 401).json({
+            success: false,
+            message:
+              oauthErr.message ||
+              '카카오 계정 연동에 실패했습니다. 다시 로그인해 주세요.',
+            code: oauthErr.code || 'KAKAO_LINK_FAILED',
+          });
+        }
+      }
+
+      if (isAppleSignup && appleProviderUserId) {
+        try {
+          await linkOauthProvider(connection, {
+            userId,
+            provider: 'apple',
+            providerUserId: appleProviderUserId,
+          });
+          await connection.execute(
+            `INSERT INTO user_settings (user_id, profile_username_set)
+             VALUES (?, 0)
+             ON DUPLICATE KEY UPDATE profile_username_set = 0`,
+            [userId],
+          );
+        } catch (oauthErr) {
+          await connection.rollback();
+          console.error('[signup/appleOauth]', oauthErr);
+          return res.status(oauthErr.status || 500).json({
+            success: false,
+            message:
+              oauthErr.message ||
+              'Apple 계정 연동에 실패했습니다. 다시 로그인해 주세요.',
+            code: oauthErr.code || 'APPLE_LINK_FAILED',
+          });
+        }
+      } else if (isAppleSignup && appleIdentityToken) {
+        try {
+          const { providerUserId } = await verifyAppleIdentityToken(
+            appleIdentityToken,
+          );
+          await linkOauthProvider(connection, {
+            userId,
+            provider: 'apple',
+            providerUserId,
+          });
+          await connection.execute(
+            `INSERT INTO user_settings (user_id, profile_username_set)
+             VALUES (?, 0)
+             ON DUPLICATE KEY UPDATE profile_username_set = 0`,
+            [userId],
+          );
+        } catch (oauthErr) {
+          await connection.rollback();
+          console.error('[signup/appleOauth]', oauthErr);
+          return res.status(oauthErr.status || 401).json({
+            success: false,
+            message:
+              oauthErr.message ||
+              'Apple 계정 연동에 실패했습니다. 다시 로그인해 주세요.',
+            code: oauthErr.code || 'APPLE_LINK_FAILED',
+          });
+        }
+      }
+
       await connection.commit();
 
       applySignupInvite({ inviteeId: userId, rawCode: rawInviteCode }).catch(
@@ -1431,6 +1991,7 @@ router.post(
           studentVerified: studentVerifiedOnInsert,
           certificateReviewPending: isCertificateSignup,
           studentIdReviewPending: !isCertificateSignup,
+          needsProfileUsername: isSocialSignup,
         },
       });
     } catch (txErr) {
@@ -1517,6 +2078,160 @@ router.post('/verify-student', authenticate, async (req, res) => {
 });
 
 // 로그인
+router.post('/oauth/kakao', async (req, res) => {
+  try {
+    const accessToken = String(req.body?.accessToken || '').trim();
+    if (!accessToken) {
+      return res.status(400).json({
+        success: false,
+        message: '카카오 accessToken이 필요합니다.',
+        code: 'KAKAO_TOKEN_REQUIRED',
+      });
+    }
+
+    let providerUserId;
+    try {
+      ({ providerUserId } = await verifyKakaoAccessToken(accessToken));
+    } catch (oauthErr) {
+      return res.status(oauthErr.status || 401).json({
+        success: false,
+        message: oauthErr.message || '카카오 토큰 검증에 실패했습니다.',
+        code: oauthErr.code || 'KAKAO_TOKEN_INVALID',
+      });
+    }
+
+    const linkedUserId = await findUserIdByOauthProvider(
+      pool,
+      'kakao',
+      providerUserId,
+    );
+
+    if (!linkedUserId) {
+      return res.status(404).json({
+        success: false,
+        message: '연동된 계정이 없습니다. 카카오로 회원가입을 진행해 주세요.',
+        code: 'NEEDS_SIGNUP',
+        data: { status: 'needs_signup', provider: 'kakao' },
+      });
+    }
+
+    const [users] = await pool.execute(
+      `SELECT id, username, name_enc, is_deleted, is_banned, is_suspended, suspended_until,
+              token_version, reverification_status, reverification_deadline
+       FROM users WHERE id = ? LIMIT 1`,
+      [linkedUserId],
+    );
+
+    if (users.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: '연동된 계정이 없습니다. 카카오로 회원가입을 진행해 주세요.',
+        code: 'NEEDS_SIGNUP',
+        data: { status: 'needs_signup', provider: 'kakao' },
+      });
+    }
+
+    const user = users[0];
+    try {
+      await assertUserAllowedToLogin(user);
+    } catch (policyErr) {
+      return res.status(policyErr.status || 403).json({
+        success: false,
+        message: policyErr.message,
+        code: policyErr.code,
+        suspendedUntil: policyErr.suspendedUntil,
+        reverificationStatus: policyErr.reverificationStatus,
+        reverificationDeadline: policyErr.reverificationDeadline,
+      });
+    }
+
+    return issueLoginSuccessResponse(req, res, user);
+  } catch (error) {
+    console.error('[oauth/kakao]', error);
+    return res.status(500).json({
+      success: false,
+      message: '카카오 로그인 중 오류가 발생했습니다.',
+    });
+  }
+});
+
+router.post('/oauth/apple', async (req, res) => {
+  try {
+    const identityToken = String(req.body?.identityToken || '').trim();
+    if (!identityToken) {
+      return res.status(400).json({
+        success: false,
+        message: 'Apple identityToken이 필요합니다.',
+        code: 'APPLE_TOKEN_REQUIRED',
+      });
+    }
+
+    let providerUserId;
+    try {
+      ({ providerUserId } = await verifyAppleIdentityToken(identityToken));
+    } catch (oauthErr) {
+      return res.status(oauthErr.status || 401).json({
+        success: false,
+        message: oauthErr.message || 'Apple 토큰 검증에 실패했습니다.',
+        code: oauthErr.code || 'APPLE_TOKEN_INVALID',
+      });
+    }
+
+    const linkedUserId = await findUserIdByOauthProvider(
+      pool,
+      'apple',
+      providerUserId,
+    );
+
+    if (!linkedUserId) {
+      return res.status(404).json({
+        success: false,
+        message: '연동된 계정이 없습니다. Apple로 회원가입을 진행해 주세요.',
+        code: 'NEEDS_SIGNUP',
+        data: { status: 'needs_signup', provider: 'apple' },
+      });
+    }
+
+    const [users] = await pool.execute(
+      `SELECT id, username, name_enc, is_deleted, is_banned, is_suspended, suspended_until,
+              token_version, reverification_status, reverification_deadline
+       FROM users WHERE id = ? LIMIT 1`,
+      [linkedUserId],
+    );
+
+    if (users.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: '연동된 계정이 없습니다. Apple로 회원가입을 진행해 주세요.',
+        code: 'NEEDS_SIGNUP',
+        data: { status: 'needs_signup', provider: 'apple' },
+      });
+    }
+
+    const user = users[0];
+    try {
+      await assertUserAllowedToLogin(user);
+    } catch (policyErr) {
+      return res.status(policyErr.status || 403).json({
+        success: false,
+        message: policyErr.message,
+        code: policyErr.code,
+        suspendedUntil: policyErr.suspendedUntil,
+        reverificationStatus: policyErr.reverificationStatus,
+        reverificationDeadline: policyErr.reverificationDeadline,
+      });
+    }
+
+    return issueLoginSuccessResponse(req, res, user);
+  } catch (error) {
+    console.error('[oauth/apple]', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Apple 로그인 중 오류가 발생했습니다.',
+    });
+  }
+});
+
 router.post('/login', validate(loginValidators), async (req, res) => {
   try {
     const { username, password, deviceId } = req.body;
@@ -1545,30 +2260,17 @@ router.post('/login', validate(loginValidators), async (req, res) => {
 
     const user = users[0];
 
-    if (user.is_deleted) {
-      return res.status(403).json({
+    try {
+      await assertUserAllowedToLogin(user);
+    } catch (policyErr) {
+      return res.status(policyErr.status || 403).json({
         success: false,
-        message: '탈퇴한 사용자입니다.',
-        code: API_ERROR_CODES.ACCOUNT_DELETED,
+        message: policyErr.message,
+        code: policyErr.code,
+        suspendedUntil: policyErr.suspendedUntil,
+        reverificationStatus: policyErr.reverificationStatus,
+        reverificationDeadline: policyErr.reverificationDeadline,
       });
-    }
-    if (user.is_banned) {
-      return res.status(403).json({
-        success: false,
-        message: '영구 정지된 계정입니다.',
-        code: API_ERROR_CODES.ACCOUNT_BANNED,
-      });
-    }
-    if (user.is_suspended) {
-      const until = user.suspended_until ? new Date(user.suspended_until) : null;
-      if (!until || until > new Date()) {
-        return res.status(403).json({
-          success: false,
-          message: '임시 정지된 계정입니다.',
-          code: API_ERROR_CODES.ACCOUNT_SUSPENDED,
-          suspendedUntil: user.suspended_until || null,
-        });
-      }
     }
 
     // 비밀번호 확인
@@ -1580,121 +2282,9 @@ router.post('/login', validate(loginValidators), async (req, res) => {
       });
     }
 
-    const revCode = getReverificationBlockCode(user.reverification_status);
-    if (revCode) {
-      const messages = {
-        GRADUATED_BLOCKED: '졸업생은 서비스를 이용할 수 없습니다.',
-        ADULT_BLOCKED: '성인은 서비스를 이용할 수 없습니다.',
-        REVERIFICATION_RESTRICTED: '재인증이 필요합니다. 학생증을 다시 제출해주세요.',
-      };
-      return res.status(403).json({
-        success: false,
-        message: messages[revCode] || '서비스 이용이 제한되었습니다.',
-        code: revCode,
-        reverificationStatus: user.reverification_status,
-        reverificationDeadline: user.reverification_deadline || null,
-      });
-    }
-
-    // 디바이스 정보
-    const ipAddress = getClientIp(req);
-    const deviceInfo = getDeviceInfo(req);
-    const currentDeviceId = deviceId || `device_${user.id}_${Date.now()}`;
-
-    // 기존 디바이스 확인
-    const [existingDevices] = await pool.execute(
-      `SELECT id, device_id, ip_address, device_info, last_login_at 
-       FROM user_devices 
-       WHERE user_id = ? AND device_id = ?`,
-      [user.id, currentDeviceId]
-    );
-
-    let isNewDevice = existingDevices.length === 0;
-    let needsVerification = false;
-
-    if (isNewDevice) {
-      // 다른 디바이스가 있는지 확인
-      const [otherDevices] = await pool.execute(
-        'SELECT id FROM user_devices WHERE user_id = ?',
-        [user.id]
-      );
-
-      if (otherDevices.length > 0) {
-        // 기존 디바이스와 IP 비교
-        const [lastDevice] = await pool.execute(
-          `SELECT ip_address FROM user_devices 
-           WHERE user_id = ? 
-           ORDER BY last_login_at DESC LIMIT 1`,
-          [user.id]
-        );
-
-        if (lastDevice.length > 0 && lastDevice[0].ip_address !== ipAddress) {
-          needsVerification = true; // IP 변경 감지
-        }
-      }
-    }
-
-    // 디바이스 정보 저장/업데이트
-    if (isNewDevice) {
-      await pool.execute(
-        `INSERT INTO user_devices (user_id, device_id, device_info, ip_address, last_login_at)
-         VALUES (?, ?, ?, ?, NOW())
-         ON DUPLICATE KEY UPDATE
-           device_info = VALUES(device_info),
-           ip_address = VALUES(ip_address),
-           last_login_at = NOW()`,
-        [user.id, currentDeviceId, deviceInfo, ipAddress]
-      );
-    } else {
-      await pool.execute(
-        `UPDATE user_devices 
-         SET device_info = ?, ip_address = ?, last_login_at = NOW() 
-         WHERE user_id = ? AND device_id = ?`,
-        [deviceInfo, ipAddress, user.id, currentDeviceId]
-      );
-    }
-
-    // JWT 토큰 생성
-    const tokenVersion = Number(user.token_version ?? 0);
-    const token = createUserAccessToken({
-      userId: user.id,
-      username: user.username,
-      tokenVersion,
-    });
-
-    const refreshToken = generateRefreshTokenPlain();
-    await storeRefreshToken({
-      userId: user.id,
-      deviceId: currentDeviceId,
-      plainToken: refreshToken,
-      tokenVersion,
-    });
-
-    const verification = await getStudentVerificationStatus(user.id);
-    const reverification = await getUserReverificationPayload(user.id);
-
-    res.json({ 
-      success: true, 
-      message: '로그인 성공',
-      data: {
-        token,
-        refreshToken,
-        deviceId: currentDeviceId,
-        user: {
-          id: user.id,
-          username: user.username,
-          name: user.name
-        },
-        needsVerification,
-        studentVerificationStatus: verification.status,
-        rejectReason: verification.rejectReason,
-        submissionPurpose: verification.submissionPurpose,
-        reverificationSubmissionPending: verification.reverificationSubmissionPending,
-        reverificationStatus: reverification?.reverificationStatus ?? 'none',
-        reverificationDeadline: reverification?.reverificationDeadline ?? null,
-        gradeException: reverification?.gradeException ?? false,
-      }
-    });
+    // deviceId는 issueLoginSuccessResponse 에서 req.body.deviceId 사용
+    void deviceId;
+    return issueLoginSuccessResponse(req, res, user);
   } catch (error) {
     console.error('로그인 오류:', error);
     res.status(500).json({ 

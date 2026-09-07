@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   View,
   Text,
@@ -7,10 +7,62 @@ import {
   ScrollView,
   ActivityIndicator,
   StyleSheet,
+  Platform,
+  Keyboard,
+  Pressable,
+  Animated,
+  Easing,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { colors, fonts } from '../../../styles/colors';
+import Feather from '@expo/vector-icons/Feather';
+import MaterialIcons from '@expo/vector-icons/MaterialIcons';
+import { colors, fonts, fontSizes } from '../../../styles/colors';
 import { api } from '../../../utils/api';
+
+/** 밑줄이 좌→우로 스르륵 채워지는 효과 */
+export function GrowingUnderline({
+  active,
+  normalize = (n) => n,
+  trackColor = colors.border || colors.textLight10,
+  fillColor = colors.textLight40,
+  height,
+}) {
+  const lineHeight = height ?? Math.max(1.5, normalize(1.5));
+  const progress = useRef(new Animated.Value(active ? 1 : 0)).current;
+
+  useEffect(() => {
+    Animated.timing(progress, {
+      toValue: active ? 1 : 0,
+      duration: active ? 420 : 240,
+      easing: active ? Easing.out(Easing.cubic) : Easing.in(Easing.quad),
+      useNativeDriver: false,
+    }).start();
+  }, [active, progress]);
+
+  return (
+    <View
+      style={{
+        height: lineHeight,
+        borderRadius: lineHeight,
+        backgroundColor: trackColor,
+        overflow: 'hidden',
+        width: '100%',
+      }}
+    >
+      <Animated.View
+        style={{
+          height: '100%',
+          borderRadius: lineHeight,
+          backgroundColor: fillColor,
+          width: progress.interpolate({
+            inputRange: [0, 1],
+            outputRange: ['0%', '100%'],
+          }),
+        }}
+      />
+    </View>
+  );
+}
 
 function formatSchoolAddress(school) {
   if (!school) return '';
@@ -34,18 +86,49 @@ const SchoolSearchField = ({
   disabled = false,
   helperBelowLabel = null,
   labelMarginTop,
+  hideLabel = false,
+  autoFocus = false,
+  /** @type {'boxed'|'underline'} */
+  inputVariant = 'boxed',
+  placeholder = '학교 이름 검색',
   /** true면 검색 목록이 남은 세로 공간을 채움 (학교 선택 전용 화면) */
   expandList = false,
+  /** true면 검색 결과가 1건 이상일 때만 목록 영역 표시 */
+  showListOnlyWithResults = false,
+  rowMarginHorizontal,
+  /** 트리거 모드 — 탭 시 onActivate, 입력·목록 비활성 */
+  readOnly = false,
+  onActivate,
+  /** 선택 확정 시 행 우측 취소 버튼 */
+  showClearButton = false,
+  onClear,
 }) => {
   const dropdownStyles = useMemo(
     () => makeDropdownStyles(normalize, expandList),
     [normalize, expandList],
+  );
+  const searchRowStyles = useMemo(
+    () =>
+      createSchoolSearchRowStyles(normalize, {
+        marginHorizontal:
+          rowMarginHorizontal != null
+            ? rowMarginHorizontal
+            : normalize(20),
+      }),
+    [normalize, rowMarginHorizontal],
   );
   const [query, setQuery] = useState(selectedSchool?.name || '');
   const [schools, setSchools] = useState([]);
   const [loading, setLoading] = useState(false);
   const [searched, setSearched] = useState(false);
   const [focused, setFocused] = useState(false);
+  const inputRef = useRef(null);
+
+  useEffect(() => {
+    if (!autoFocus) return undefined;
+    const timer = setTimeout(() => inputRef.current?.focus(), 120);
+    return () => clearTimeout(timer);
+  }, [autoFocus]);
 
   const searchSchools = useCallback(async (q) => {
     const term = String(q || '').trim();
@@ -70,9 +153,10 @@ const SchoolSearchField = ({
   }, []);
 
   useEffect(() => {
+    if (readOnly) return undefined;
     const t = setTimeout(() => searchSchools(query), 250);
     return () => clearTimeout(t);
-  }, [query, searchSchools]);
+  }, [query, readOnly, searchSchools]);
 
   useEffect(() => {
     if (selectedSchool?.name) setQuery(selectedSchool.name);
@@ -84,10 +168,13 @@ const SchoolSearchField = ({
     trimmedQuery !== String(selectedSchool.name || '').trim();
 
   const showDropdown =
+    !readOnly &&
     !disabled &&
     (focused || pendingSelection) &&
     trimmedQuery.length >= 1 &&
-    (loading || searched);
+    (showListOnlyWithResults
+      ? schools.length > 0
+      : loading || searched);
 
   const selectedAddress = formatSchoolAddress(selectedSchool);
 
@@ -99,41 +186,174 @@ const SchoolSearchField = ({
     setFocused(false);
   };
 
-  return (
-    <View style={[dropdownStyles.wrap, expandList && dropdownStyles.wrapExpand]}>
-      <Text
+  const isUnderline = inputVariant === 'underline';
+  const ListSlot = expandList ? Pressable : View;
+  const hasConfirmedSelection =
+    Boolean(selectedSchool) &&
+    trimmedQuery === String(selectedSchool?.name || '').trim();
+
+  const handleClear = () => {
+    onSelect?.(null);
+    setQuery('');
+    setSchools([]);
+    setSearched(false);
+    setFocused(false);
+    onClear?.();
+  };
+
+  const renderUnderlineRow = () => {
+    const isLockedSelection = hasConfirmedSelection && showClearButton;
+    const isSearchTrigger = readOnly && !isLockedSelection;
+    const RowMain = isSearchTrigger ? TouchableOpacity : View;
+    const rowMainProps = isSearchTrigger
+      ? { onPress: onActivate, activeOpacity: 0.75 }
+      : {};
+    const lockedAddress = isLockedSelection
+      ? formatSchoolAddress(selectedSchool)
+      : '';
+
+    return (
+      <View
         style={[
-          styles.inputLabel,
-          {
-            marginTop:
-              labelMarginTop != null ? normalize(labelMarginTop) : normalize(16),
-          },
+          searchRowStyles.rowWrap,
+          isLockedSelection && searchRowStyles.rowWrapSelected,
         ]}
       >
-        {label}
-      </Text>
-      {helperBelowLabel}
-      <View style={[styles.inputWrapper, { marginBottom: 0 }]}>
-        <TextInput
-          style={[styles.input, { marginBottom: 0 }]}
-          value={query}
-          onChangeText={(t) => {
-            setQuery(t);
-            if (selectedSchool && t !== selectedSchool.name) onSelect?.(null);
-          }}
-          onFocus={() => setFocused(true)}
-          onBlur={() => {
-            setTimeout(() => setFocused(false), 180);
-          }}
-          placeholder="학교 이름 검색"
-          placeholderTextColor={colors.textSecondary}
-          autoCorrect={false}
-          editable={!disabled}
-          returnKeyType="search"
+        <View style={searchRowStyles.row}>
+          <RowMain style={searchRowStyles.rowMainTap} {...rowMainProps}>
+            {!isLockedSelection ? (
+              <Feather
+                name="search"
+                size={normalize(18)}
+                color={focused ? colors.textLight70 : colors.textLight40}
+              />
+            ) : (
+              <Ionicons
+                name="school-outline"
+                size={normalize(18)}
+                color={colors.textLight70}
+              />
+            )}
+            {isLockedSelection ? (
+              <View style={searchRowStyles.selectedTextCol}>
+                <Text
+                  style={[
+                    searchRowStyles.input,
+                    searchRowStyles.fieldTextFilled,
+                  ]}
+                  numberOfLines={1}
+                >
+                  {query}
+                </Text>
+                {lockedAddress ? (
+                  <Text
+                    style={searchRowStyles.selectedAddress}
+                    numberOfLines={2}
+                  >
+                    {lockedAddress}
+                  </Text>
+                ) : null}
+              </View>
+            ) : (
+              <TextInput
+                ref={inputRef}
+                style={[
+                  searchRowStyles.input,
+                  readOnly && searchRowStyles.inputPlaceholder,
+                  { marginBottom: 0 },
+                ]}
+                value={query}
+                onChangeText={(t) => {
+                  setQuery(t);
+                  if (selectedSchool && t !== selectedSchool.name) {
+                    onSelect?.(null);
+                  }
+                }}
+                onFocus={() => setFocused(true)}
+                onBlur={() => {
+                  setTimeout(() => setFocused(false), 180);
+                }}
+                placeholder={placeholder}
+                placeholderTextColor={colors.textLight40}
+                autoCorrect={false}
+                editable={!readOnly && !disabled}
+                showSoftInputOnFocus={!readOnly}
+                pointerEvents={readOnly ? 'none' : 'auto'}
+                returnKeyType="search"
+              />
+            )}
+          </RowMain>
+          {isLockedSelection ? (
+            <TouchableOpacity
+              onPress={handleClear}
+              activeOpacity={0.7}
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              style={searchRowStyles.clearBtn}
+            >
+              <MaterialIcons
+                name="cancel"
+                size={normalize(20)}
+                color={colors.textLight40}
+              />
+            </TouchableOpacity>
+          ) : null}
+        </View>
+        <GrowingUnderline
+          active={isLockedSelection || focused}
+          normalize={normalize}
+          fillColor={
+            isLockedSelection ? colors.textLight40 : colors.textLight20
+          }
         />
       </View>
+    );
+  };
 
-      <View style={expandList ? dropdownStyles.listSlot : null}>
+  return (
+    <View style={[dropdownStyles.wrap, expandList && dropdownStyles.wrapExpand]}>
+      {!hideLabel ? (
+        <Text
+          style={[
+            styles.inputLabel,
+            {
+              marginTop:
+                labelMarginTop != null ? normalize(labelMarginTop) : normalize(16),
+            },
+          ]}
+        >
+          {label}
+        </Text>
+      ) : null}
+      {helperBelowLabel}
+      {isUnderline ? (
+        renderUnderlineRow()
+      ) : (
+        <View style={[styles.inputWrapper, { marginBottom: 0 }]}>
+          <TextInput
+            ref={inputRef}
+            style={[styles.input, { marginBottom: 0 }]}
+            value={query}
+            onChangeText={(t) => {
+              setQuery(t);
+              if (selectedSchool && t !== selectedSchool.name) onSelect?.(null);
+            }}
+            onFocus={() => setFocused(true)}
+            onBlur={() => {
+              setTimeout(() => setFocused(false), 180);
+            }}
+            placeholder={placeholder}
+            placeholderTextColor={colors.textSecondary}
+            autoCorrect={false}
+            editable={!disabled}
+            returnKeyType="search"
+          />
+        </View>
+      )}
+
+      <ListSlot
+        style={expandList ? dropdownStyles.listSlot : null}
+        {...(expandList ? { onPress: Keyboard.dismiss } : {})}
+      >
         {showDropdown ? (
           <View
             style={[
@@ -190,7 +410,7 @@ const SchoolSearchField = ({
           </View>
         ) : null}
 
-        {selectedSchool && !showDropdown ? (
+        {selectedSchool && !showDropdown && !(isUnderline && showClearButton) ? (
           <View style={dropdownStyles.selectedBox}>
             <View style={dropdownStyles.selectedTextCol}>
               <Text style={dropdownStyles.selectedName} numberOfLines={1}>
@@ -209,10 +429,83 @@ const SchoolSearchField = ({
             />
           </View>
         ) : null}
-      </View>
+      </ListSlot>
     </View>
   );
 };
+
+/** 재학 학교 검색 트리거·밑줄 입력 공통 스타일 */
+export function createSchoolSearchRowStyles(
+  normalize,
+  { marginHorizontal = null } = {},
+) {
+  const side = marginHorizontal ?? normalize(20);
+  return StyleSheet.create({
+    rowWrap: {
+      marginHorizontal: side,
+    },
+    rowWrapSelected: {},
+    row: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      paddingVertical: normalize(10),
+      paddingHorizontal: normalize(2),
+      gap: normalize(8),
+    },
+    input: {
+      flex: 1,
+      paddingVertical: 0,
+      paddingHorizontal: 0,
+      fontFamily: fonts.regular,
+      fontSize: normalize(fontSizes.xxl),
+      minHeight: normalize(Math.round(fontSizes.xxl)),
+      color: colors.textPrimary,
+      ...Platform.select({
+        android: { includeFontPadding: false, textAlignVertical: 'center' },
+        ios: {},
+      }),
+    },
+    inputPlaceholder: {
+      color: colors.textLight40,
+    },
+    fieldText: {
+      flex: 1,
+      fontFamily: fonts.regular,
+      fontSize: normalize(fontSizes.xxl),
+      color: colors.textSecondary,
+    },
+    fieldTextFilled: {
+      flex: 0,
+      fontFamily: fonts.bold,
+      fontSize: normalize(fontSizes.xl),
+      color: colors.textPrimary,
+      minHeight: undefined,
+    },
+    selectedTextCol: {
+      flex: 1,
+      minWidth: 0,
+      gap: normalize(2),
+    },
+    selectedAddress: {
+      fontFamily: fonts.regular,
+      fontSize: normalize(12),
+      lineHeight: normalize(16),
+      color: colors.textLight70,
+    },
+    clearBtn: {
+      justifyContent: 'center',
+      alignItems: 'center',
+      alignSelf: 'center',
+    },
+    rowMainTap: {
+      flex: 1,
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: normalize(8),
+      minWidth: 0,
+    },
+  });
+}
 
 const makeDropdownStyles = (normalize, expandList = false) =>
   StyleSheet.create({
@@ -231,7 +524,7 @@ const makeDropdownStyles = (normalize, expandList = false) =>
     },
     dropdown: {
       marginTop: expandList ? 0 : normalize(6),
-      width: '98%',
+      width: '100%',
       alignSelf: 'center',
       borderWidth: 1,
       borderColor: colors.border || colors.textLight20,

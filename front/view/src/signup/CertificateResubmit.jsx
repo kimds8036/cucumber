@@ -3,20 +3,19 @@ import {
   View,
   Text,
   TextInput,
-  TouchableOpacity,
-  ActivityIndicator,
   StyleSheet,
   useWindowDimensions,
   ScrollView,
   Alert,
 } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
 import { colors, fonts } from '../../../styles/colors';
 import { getNormalize } from '../../../styles/frame.style';
 import { api } from '../../../utils/api';
 import SignupHelperText from './SignupHelperText';
 import { useAuth } from '../../../context/AuthContext';
 import SubmittingLockModal from '../../../components/common/SubmittingLockModal';
+import SubHeader from '../../frame/subHeader';
+import SignupPrimaryFooter from './SignupPrimaryFooter';
 
 /**
  * 거절 후 재학증명서 재제출 — SafeArea 는 App 거절 플로우 셸에서만 처리
@@ -25,7 +24,6 @@ const CertificateResubmit = ({ navigation }) => {
   const { refreshStudentVerification } = useAuth();
   const { width } = useWindowDimensions();
   const normalize = useMemo(() => getNormalize(width), [width]);
-  const padX = width * 0.04;
 
   const [certificateUrl, setCertificateUrl] = useState('');
   const [accessNumber, setAccessNumber] = useState('');
@@ -72,29 +70,16 @@ const CertificateResubmit = ({ navigation }) => {
   };
 
   return (
-    <View style={[styles.root, { paddingHorizontal: padX }]}>
-      <View style={styles.header}>
-        <TouchableOpacity
-          onPress={() => {
-            if (busy) return;
-            navigation.goBack();
-          }}
-          disabled={busy}
-          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-        >
-          <Ionicons
-            name="chevron-back"
-            size={normalize(24)}
-            color={busy ? colors.textSecondary : colors.textPrimary}
-          />
-        </TouchableOpacity>
-        <Text style={[styles.headerTitle, { fontSize: normalize(18) }]}>
-          재학증명서 제출
-        </Text>
-        <View style={{ width: normalize(24) }} />
-      </View>
+    <View style={styles.root}>
+      <SubHeader
+        title="재학증명서 제출"
+        onBack={() => {
+          if (busy) return;
+          navigation.goBack();
+        }}
+      />
 
-      <View style={styles.body}>
+      <View style={[styles.body, { paddingHorizontal: width * 0.07 }]}>
         <ScrollView
           style={{ flex: 1 }}
           contentContainerStyle={{ paddingBottom: normalize(16) }}
@@ -123,7 +108,10 @@ const CertificateResubmit = ({ navigation }) => {
               placeholderTextColor={colors.textSecondary}
               autoCapitalize="none"
               autoCorrect={false}
+              spellCheck={false}
               keyboardType="url"
+              textContentType="URL"
+              autoComplete="url"
               editable={!busy}
             />
           </View>
@@ -145,35 +133,19 @@ const CertificateResubmit = ({ navigation }) => {
               placeholderTextColor={colors.textSecondary}
               autoCapitalize="none"
               autoCorrect={false}
+              keyboardType="number-pad"
               editable={!busy}
             />
           </View>
         </ScrollView>
       </View>
 
-      <View style={styles.footer}>
-        <TouchableOpacity
-          style={[
-            styles.submit,
-            {
-              height: normalize(50),
-              borderRadius: normalize(24),
-              opacity: busy ? 0.6 : 1,
-            },
-          ]}
-          activeOpacity={0.9}
-          disabled={busy}
-          onPress={handleSubmit}
-        >
-          {busy ? (
-            <ActivityIndicator color={colors.background} />
-          ) : (
-            <Text style={[styles.submitText, { fontSize: normalize(16) }]}>
-              제출하기
-            </Text>
-          )}
-        </TouchableOpacity>
-      </View>
+      <SignupPrimaryFooter
+        label="제출하기"
+        onPress={handleSubmit}
+        disabled={busy}
+        loading={busy}
+      />
       <SubmittingLockModal visible={busy} message="재학증명서 제출 중…" />
     </View>
   );
@@ -184,26 +156,9 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: colors.background,
   },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingVertical: 12,
-    flexShrink: 0,
-  },
-  headerTitle: {
-    fontFamily: fonts.bold,
-    color: colors.textPrimary,
-  },
   body: {
     flex: 1,
     minHeight: 0,
-  },
-  footer: {
-    width: '100%',
-    paddingTop: 8,
-    paddingBottom: 12,
-    flexShrink: 0,
   },
   label: {
     fontFamily: fonts.regular,
@@ -221,16 +176,6 @@ const styles = StyleSheet.create({
     color: colors.textPrimary,
     paddingHorizontal: 14,
     paddingVertical: 12,
-  },
-  submit: {
-    width: '100%',
-    backgroundColor: colors.primary,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  submitText: {
-    fontFamily: fonts.bold,
-    color: colors.background,
   },
 });
 

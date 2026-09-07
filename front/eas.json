@@ -11,7 +11,8 @@
         "APP_ENV": "development",
         "EXPO_PUBLIC_SIGNUP_TEST_MODE": "false",
         "EXPO_PUBLIC_SIGNUP_ADULT_TEST_MODE": "false",
-        "EXPO_PUBLIC_INICIS_ENABLED": "true"
+        "EXPO_PUBLIC_INICIS_ENABLED": "true",
+        "EXPO_PUBLIC_KAKAO_NATIVE_APP_KEY": "bbac22b4011cc49a3aa7cc6071417b6c"
       }
     },
     "preview": {

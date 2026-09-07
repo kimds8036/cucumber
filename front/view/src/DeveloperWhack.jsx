@@ -17,6 +17,7 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import Constants from 'expo-constants';
 import SubHeader from '../frame/subHeader';
 import Skeleton from '../../components/common/Skeleton';
+import AppPopupModal from '../../components/common/AppPopupModal';
 import { colors, fonts, fontSizes } from '../../styles/colors';
 import { api } from '../../utils/api';
 import { getNormalize } from '../../styles/mypage.style';
@@ -565,66 +566,56 @@ const DeveloperWhack = ({ navigation }) => {
         </SafeAreaView>
       </Modal>
 
-      <Modal visible={thanksVisible} transparent animationType="fade">
-        <View
+      <AppPopupModal
+        visible={thanksVisible}
+        onClose={() => setThanksVisible(false)}
+        dismissOnBackdrop={false}
+      >
+        <Text
           style={{
-            flex: 1,
-            backgroundColor: 'rgba(0,0,0,0.45)',
-            justifyContent: 'center',
-            paddingHorizontal: normalize(24),
+            fontSize: 18,
+            color: colors.textPrimary,
+            fontWeight: '700',
+            textAlign: 'center',
+            marginBottom: 10,
           }}
         >
-          <View
+          감사합니다
+        </Text>
+        <Text
+          style={{
+            fontSize: 14,
+            color: colors.textSecondary,
+            textAlign: 'center',
+            lineHeight: 22,
+            marginBottom: 16,
+          }}
+        >
+          소중한 피드백 감사합니다.{'\n'}
+          검토 후 이 목록에 반영될 수 있어요.
+        </Text>
+        <TouchableOpacity
+          onPress={() => setThanksVisible(false)}
+          style={{
+            height: 42,
+            borderRadius: 10,
+            backgroundColor: colors.primary,
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}
+          activeOpacity={0.85}
+        >
+          <Text
             style={{
-              backgroundColor: colors.surface,
-              borderRadius: normalize(12),
-              padding: normalize(20),
+              fontSize: 14,
+              fontWeight: '700',
+              color: colors.textWhite,
             }}
           >
-            <Text
-              style={{
-                fontFamily: fonts.bold,
-                fontSize: normalize(wFont.thanksTitle),
-                color: colors.textPrimary,
-                marginBottom: normalize(8),
-              }}
-            >
-              감사합니다
-            </Text>
-            <Text
-              style={{
-                fontFamily: fonts.regular,
-                fontSize: normalize(wFont.thanksBody),
-                color: colors.textSecondary,
-                lineHeight: normalize(24),
-              }}
-            >
-              소중한 피드백 감사합니다.{'\n'}
-              검토 후 이 목록에 반영될 수 있어요.
-            </Text>
-            <TouchableOpacity
-              onPress={() => setThanksVisible(false)}
-              style={{
-                marginTop: normalize(16),
-                paddingVertical: normalize(12),
-                borderRadius: normalize(8),
-                backgroundColor: colors.primary,
-                alignItems: 'center',
-              }}
-            >
-              <Text
-                style={{
-                  fontFamily: fonts.bold,
-                  color: colors.textWhite,
-                  fontSize: normalize(wFont.button),
-                }}
-              >
-                확인
-              </Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      </Modal>
+            확인
+          </Text>
+        </TouchableOpacity>
+      </AppPopupModal>
     </SafeAreaView>
   );
 };

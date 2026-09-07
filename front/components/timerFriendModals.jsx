@@ -28,6 +28,7 @@ import { GUIDE_FOCUS_TARGETS as T } from '../src/screens/UserGuide/guideFocusTar
 import ProfileIcon from '../assets/Profile.svg';
 import { colors } from '../styles/colors';
 import { createTimerFriendModalStyles, getNormalize } from '../styles/timer';
+import Skeleton from './common/Skeleton';
 import { useFriendSocketEvents } from '../hooks/useFriendSocketEvents';
 import { useNavigation } from '@react-navigation/native';
 import { api } from '../utils/api';
@@ -418,14 +419,28 @@ export const FriendStoryBar = memo(function FriendStoryBar({
   styles,
   onFriendPress,
   onAddFriendPress,
+  loading = false,
 }) {
   const orderedFriends = useMemo(() => {
-    const activeFriends = friends.filter((f) => studyingFriends[f.id] === true);
-    const inactiveFriends = friends.filter(
+    const suggestions = friends.filter((f) => f.isSuggestion);
+    const realFriends = friends.filter((f) => !f.isSuggestion);
+    const activeFriends = realFriends.filter(
+      (f) => studyingFriends[f.id] === true,
+    );
+    const inactiveFriends = realFriends.filter(
       (f) => studyingFriends[f.id] !== true,
     );
-    // 비활성 친구 순서는 고정(원본 배열 순서 유지), 공부 중 친구만 앞쪽 배치
-    return [...activeFriends, ...inactiveFriends];
+    const base = [...activeFriends, ...inactiveFriends];
+    if (!suggestions.length) return base;
+
+    const result = [...base];
+    if (suggestions[0]) {
+      result.splice(Math.min(1, result.length), 0, suggestions[0]);
+    }
+    if (suggestions[1]) {
+      result.splice(Math.min(result.length, Math.max(2, result.length)), 0, suggestions[1]);
+    }
+    return result;
   }, [friends, studyingFriends]);
 
   return (
@@ -441,7 +456,6 @@ export const FriendStoryBar = memo(function FriendStoryBar({
           debugFriendStoryBorder('#FF9500'),
         ]}
       >
-        {/* 친구 추가 버튼 */}
         <TouchableOpacity
           style={[
             styles.friendStoryAddCircleWrap,
@@ -449,6 +463,7 @@ export const FriendStoryBar = memo(function FriendStoryBar({
           ]}
           onPress={onAddFriendPress}
           activeOpacity={0.8}
+          disabled={loading}
         >
           <View
             style={[
@@ -468,9 +483,29 @@ export const FriendStoryBar = memo(function FriendStoryBar({
           </Text>
         </TouchableOpacity>
 
-        {/* 친구 목록 */}
-        {orderedFriends.map((friend) => {
-          const isActive = studyingFriends[friend.id] === true; // 정렬 기준과 동일
+        {loading
+          ? [0, 1, 2].map((i) => (
+              <View
+                key={`friend-skel-${i}`}
+                style={styles.friendStoryCircleWrap}
+              >
+                <Skeleton
+                  width={normalize(56)}
+                  height={normalize(56)}
+                  borderRadius={normalize(28)}
+                />
+                <Skeleton
+                  width={normalize(40)}
+                  height={normalize(10)}
+                  borderRadius={normalize(4)}
+                  style={{ marginTop: normalize(6), alignSelf: 'center' }}
+                />
+              </View>
+            ))
+          : orderedFriends.map((friend) => {
+          const isSuggestion = Boolean(friend.isSuggestion);
+          const isActive =
+            !isSuggestion && studyingFriends[friend.id] === true;
           const iconColor = getProfileInnerColor(
             friend.colorId ??
               friend.profileColorId ??
@@ -479,7 +514,11 @@ export const FriendStoryBar = memo(function FriendStoryBar({
           );
           return (
             <TouchableOpacity
-              key={friend.id}
+              key={
+                isSuggestion
+                  ? `suggest-${friend.id}`
+                  : `friend-${friend.id}`
+              }
               style={[
                 styles.friendStoryCircleWrap,
                 debugFriendStoryBorder('#0A84FF'),
@@ -498,15 +537,31 @@ export const FriendStoryBar = memo(function FriendStoryBar({
                   height={normalize(56)}
                   color={iconColor}
                 />
-                <View
-                  style={[
-                    styles.friendStatusDotOnCircle,
-                    isActive
-                      ? styles.friendStatusDotActive
-                      : styles.friendStatusDotInactive,
-                    debugFriendStoryBorder('#BF5AF2'),
-                  ]}
-                />
+                {isSuggestion ? (
+                  <View
+                    style={[
+                      styles.friendStatusDotOnCircle,
+                      styles.friendSuggestBadge,
+                      debugFriendStoryBorder('#BF5AF2'),
+                    ]}
+                  >
+                    <Ionicons
+                      name="person-add"
+                      size={normalize(9)}
+                      color={colors.textWhite}
+                    />
+                  </View>
+                ) : (
+                  <View
+                    style={[
+                      styles.friendStatusDotOnCircle,
+                      isActive
+                        ? styles.friendStatusDotActive
+                        : styles.friendStatusDotInactive,
+                      debugFriendStoryBorder('#BF5AF2'),
+                    ]}
+                  />
+                )}
               </View>
               <Text
                 style={[
@@ -515,7 +570,9 @@ export const FriendStoryBar = memo(function FriendStoryBar({
                 ]}
                 numberOfLines={1}
               >
-                {friend.name}
+                {isSuggestion
+                  ? friend.username || friend.name || ''
+                  : friend.name}
               </Text>
             </TouchableOpacity>
           );

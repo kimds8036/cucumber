@@ -16,7 +16,12 @@ import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import SubHeader from '../frame/subHeader';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFocusEffect } from '@react-navigation/native';
-import { api, setAuthToken, setRefreshToken, getOrCreateDeviceId } from '../../utils/api';
+import {
+  api,
+  setAuthToken,
+  setRefreshToken,
+  getOrCreateDeviceId,
+} from '../../utils/api';
 import {
   getAppLockEnabled,
   getBiometricEnabled,
@@ -57,9 +62,7 @@ const NOTIFICATION_ITEMS = [
   },
 ];
 
-const APP_LOCK_ITEMS = [
-  { key: 'changePin', label: '암호 변경' },
-];
+const APP_LOCK_ITEMS = [{ key: 'changePin', label: '암호 변경' }];
 
 const SETTINGS_PREFS_CACHE_KEY = '@settings_prefs_cache_v1';
 
@@ -291,7 +294,10 @@ const Settings = ({ navigation, route }) => {
         const cached = await readSettingsPrefsCache();
         if (!mounted) return;
         if (cached) {
-          if (cached.notifications && typeof cached.notifications === 'object') {
+          if (
+            cached.notifications &&
+            typeof cached.notifications === 'object'
+          ) {
             setNotifications((prev) => ({ ...prev, ...cached.notifications }));
           }
           if (cached.distanceKm != null) {
@@ -542,7 +548,7 @@ const Settings = ({ navigation, route }) => {
     if (!canChangeId) {
       Alert.alert(
         '변경 제한',
-        `아이디는 6개월에 1번만 변경할 수 있습니다.\n다음 변경 가능일: ${nextChangeDate.toLocaleDateString('ko-KR')}`,
+        `아이디는 6개월에 1번만 변경할 수 있습니다. \n다음 변경 가능일: ${nextChangeDate.toLocaleDateString('ko-KR')}`,
       );
       return;
     }
@@ -590,7 +596,10 @@ const Settings = ({ navigation, route }) => {
     const grade = Number(gradeInput);
     const classNumber = Number(classInput);
     if (!canSubmitAcademicChange) {
-      Alert.alert('입력 오류', '학년(1~6)과 반(1~50)을 올바르게 입력해 주세요.');
+      Alert.alert(
+        '입력 오류',
+        '학년(1~6)과 반(1~50)을 올바르게 입력해 주세요.',
+      );
       return;
     }
     try {
@@ -681,9 +690,7 @@ const Settings = ({ navigation, route }) => {
       activeOpacity={0.7}
     >
       <View style={styles.notifLeft}>
-        <Text
-          style={[styles.notifTitle, disabled && styles.textDisabled]}
-        >
+        <Text style={[styles.notifTitle, disabled && styles.textDisabled]}>
           {title}
         </Text>
         {subtitle ? (
@@ -808,39 +815,47 @@ const Settings = ({ navigation, route }) => {
             <View style={styles.card}>
               {settingsHydrated && distanceKm != null ? (
                 <>
-              {/* 슬라이더 트랙 */}
-              <View
-                style={styles.sliderWrapper}
-                onLayout={handleDistanceTrackLayout}
-                {...distancePanResponder.panHandlers}
-              >
-                {/* 배경 트랙 */}
-                <View style={styles.sliderTrack}>
-                  {/* 채워진 부분 */}
+                  {/* 슬라이더 트랙 */}
                   <View
-                    style={[
-                      styles.sliderFill,
-                      { width: `${thumbLeftPercent}%` },
-                    ]}
-                  />
-                </View>
-                {/* thumb — 퍼센트 위치에 absolute 배치 */}
-                <View
-                  style={[styles.sliderThumb, { left: `${thumbLeftPercent}%` }]}
-                />
-              </View>
+                    style={styles.sliderWrapper}
+                    onLayout={handleDistanceTrackLayout}
+                    {...distancePanResponder.panHandlers}
+                  >
+                    {/* 배경 트랙 */}
+                    <View style={styles.sliderTrack}>
+                      {/* 채워진 부분 */}
+                      <View
+                        style={[
+                          styles.sliderFill,
+                          { width: `${thumbLeftPercent}%` },
+                        ]}
+                      />
+                    </View>
+                    {/* thumb — 퍼센트 위치에 absolute 배치 */}
+                    <View
+                      style={[
+                        styles.sliderThumb,
+                        { left: `${thumbLeftPercent}%` },
+                      ]}
+                    />
+                  </View>
 
-              <View style={styles.distanceValueRow}>
-                <Text style={styles.distanceValueText}>
-                  {displayDistanceKm} km
-                </Text>
-                <View style={styles.distanceHintRow}>
-                  <Text style={styles.distanceHint}>100km</Text>
-                </View>
-              </View>
+                  <View style={styles.distanceValueRow}>
+                    <Text style={styles.distanceValueText}>
+                      {displayDistanceKm} km
+                    </Text>
+                    <View style={styles.distanceHintRow}>
+                      <Text style={styles.distanceHint}>100km</Text>
+                    </View>
+                  </View>
                 </>
               ) : (
-                <View style={{ height: normalize(56), marginVertical: normalize(12) }} />
+                <View
+                  style={{
+                    height: normalize(56),
+                    marginVertical: normalize(12),
+                  }}
+                />
               )}
             </View>
 

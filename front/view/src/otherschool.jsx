@@ -52,6 +52,16 @@ const OtherSchoolScreen = ({ route, navigation }) => {
   const [error, setError] = useState(null);
   const [selectedMealSlot, setSelectedMealSlot] = useState(null);
   const [grassDays, setGrassDays] = useState([]);
+  const [grassTipVisible, setGrassTipVisible] = useState(false);
+  const GRASS_TIP_MS = 3000;
+  const GRASS_TIP_TEXT =
+    '같은 학교에 가입한 학생들의 공부량을 학년 구분 없이 모아 보여 주는 잔디예요.';
+
+  useEffect(() => {
+    if (!grassTipVisible) return undefined;
+    const timer = setTimeout(() => setGrassTipVisible(false), GRASS_TIP_MS);
+    return () => clearTimeout(timer);
+  }, [grassTipVisible]);
   const getCurrentSemesterDays = () => {
     const now = new Date();
     const year = now.getFullYear();
@@ -522,7 +532,27 @@ const OtherSchoolScreen = ({ route, navigation }) => {
 
         {/* 공부 잔디 카드 — 우리 학교 화면과 동일 */}
         <View style={styles.grassCard}>
-          <Text style={styles.grassCardTitle}>{grassTitle}</Text>
+          <View style={styles.grassCardTitleRow}>
+            <Text style={styles.grassCardTitle}>{grassTitle}</Text>
+            <TouchableOpacity
+              onPress={() => setGrassTipVisible(true)}
+              hitSlop={8}
+              style={styles.grassCardInfoBtn}
+              accessibilityRole="button"
+              accessibilityLabel="공부 잔디밭 안내"
+            >
+              <Ionicons
+                name="information-circle-outline"
+                size={normalize(16)}
+                color={colors.textLight40}
+              />
+            </TouchableOpacity>
+            {grassTipVisible ? (
+              <View style={styles.grassCardTooltip}>
+                <Text style={styles.grassCardTooltipText}>{GRASS_TIP_TEXT}</Text>
+              </View>
+            ) : null}
+          </View>
           <StudyGrassMap days={grassDays} />
         </View>
 

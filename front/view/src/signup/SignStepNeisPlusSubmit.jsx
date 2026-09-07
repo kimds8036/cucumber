@@ -1,26 +1,28 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import {
   View,
   Text,
   Image,
   ScrollView,
   TouchableOpacity,
-  ActivityIndicator,
   StyleSheet,
   Alert,
+  useWindowDimensions,
 } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { Ionicons } from '@expo/vector-icons';
-import { colors, fonts, fontSizes } from '../../../styles/colors';
+import { colors, fonts } from '../../../styles/colors';
 import { api } from '../../../utils/api';
 import { normalizeBirthDateForCompare } from './signupBirthDatePolicy';
 import SubmittingLockModal from '../../../components/common/SubmittingLockModal';
+import SignupPrimaryFooter from './SignupPrimaryFooter';
+import { SIGNUP_REDESIGN_SKIP_VALIDATION } from './signupRedesignFlags';
 
 const UPLOAD_TIMEOUT_MS = 120_000;
 const EXAMPLE_IMAGE = require('../../../assets/neis_plus_guide1.png');
 
 /**
- * 나이스+ 학적 화면 제출 — signup_student_id 와 동일 API
+ * NEIS+ 학적 화면 제출 — signup_student_id 와 동일 API
  * @param {'signup'|'resubmit'} mode
  * @param {'default'|'stable'} layout stable = 학생증 재제출처럼 footer를 ScrollView 밖 고정
  */
@@ -33,11 +35,27 @@ const SignStepNeisPlusSubmit = ({
   schoolId,
   onVerified,
   onSubmitted,
+  insetBody = true,
 }) => {
+  const { width } = useWindowDimensions();
   const [pickedUri, setPickedUri] = useState(null);
   const [pickedBase64, setPickedBase64] = useState(null);
+  const [pickedAspect, setPickedAspect] = useState(1 / 1.4);
   const [busy, setBusy] = useState(false);
   const stable = layout === 'stable' || mode === 'resubmit';
+  const bodyStyle = useMemo(
+    () => ({
+      flex: 1,
+      minHeight: 0,
+      ...(insetBody
+        ? {
+            marginHorizontal: -width * 0.04,
+            paddingHorizontal: width * 0.07,
+          }
+        : {}),
+    }),
+    [width, insetBody],
+  );
 
   const pickImage = async () => {
     if (busy) return;
@@ -60,12 +78,33 @@ const SignStepNeisPlusSubmit = ({
     }
     setPickedUri(asset.uri);
     setPickedBase64(asset.base64);
+    if (asset.width && asset.height) {
+      setPickedAspect(asset.width / asset.height);
+    }
   };
 
   const handleSubmit = async () => {
     if (busy) return;
+
+    // [SIGNUP_REDESIGN_SKIP] 이미지·본인·학교 필수 검증 우회
+    if (SIGNUP_REDESIGN_SKIP_VALIDATION && mode === 'signup') {
+      onVerified?.({
+        name: identity?.name || '개편테스트',
+        manualReview: true,
+        cloudinaryUrl: '',
+        grade: '',
+        class: '',
+        graduationYear: '',
+        studentVerificationToken: 'redesign-skip-neis-token',
+        verification: {
+          studentVerificationToken: 'redesign-skip-neis-token',
+        },
+      });
+      return;
+    }
+
     if (!pickedBase64) {
-      Alert.alert('알림', '나이스+ 학적 화면 사진을 첨부해 주세요.');
+      Alert.alert('알림', 'NEIS+ 학적 화면 사진을 첨부해 주세요.');
       return;
     }
 
@@ -109,7 +148,7 @@ const SignStepNeisPlusSubmit = ({
       if (!res.data?.success || !data?.passed) {
         Alert.alert(
           '제출 실패',
-          res.data?.message || '나이스+ 사진을 다시 첨부해 주세요.',
+          res.data?.message || 'NEIS+ 사진을 다시 첨부해 주세요.',
         );
         return;
       }
@@ -120,6 +159,7 @@ const SignStepNeisPlusSubmit = ({
         cloudinaryUrl: data.cloudinaryUrl,
         grade: data.suggestedGrade ?? '',
         class: data.suggestedClassNumber ?? '',
+        graduationYear: data.suggestedGraduationYear ?? '',
         expectedLevel: data.expectedLevel,
         studentVerificationToken: data.studentVerificationToken,
         verification: data,
@@ -137,7 +177,7 @@ const SignStepNeisPlusSubmit = ({
             ? '업로드에 시간이 걸리거나 연결이 끊겼습니다. 네트워크를 확인한 뒤 다시 시도해 주세요.'
             : e?.response?.data?.message ||
               e?.message ||
-              '나이스+ 제출 중 오류가 발생했습니다.',
+              'NEIS+ 제출 중 오류가 발생했습니다.',
       );
     } finally {
       setBusy(false);
@@ -145,11 +185,10 @@ const SignStepNeisPlusSubmit = ({
   };
 
   const guideStyles = signupStyles || localGuideFallback;
-  const exampleImageStyle =
-    guideStyles.certificateGuideStepImage || {
-      width: normalize(240),
-      height: normalize(240) * 1.85,
-    };
+  const exampleImageStyle = {
+    width: width * 0.68,
+    height: width * 0.68,
+  };
   const scrollContentPad =
     guideStyles.certificateGuideScrollContent || {
       paddingHorizontal: normalize(10),
@@ -164,7 +203,7 @@ const SignStepNeisPlusSubmit = ({
             01
           </Text>
           <Text style={guideStyles.certificateGuideStepTitle || localStyles.stepTitle}>
-            나이스+ 학적 화면 예시
+            NEIS+ 학적 화면 예시
           </Text>
         </View>
         <Text
@@ -172,7 +211,7 @@ const SignStepNeisPlusSubmit = ({
             guideStyles.certificateGuideStepDescription || localStyles.stepDesc
           }
         >
-          나이스+ 앱에서{' '}
+          NEIS+ 앱에서{' '}
           <Text
             style={
               guideStyles.certificateGuideStepDescriptionBold ||
@@ -181,7 +220,7 @@ const SignStepNeisPlusSubmit = ({
           >
             이름과 학교
           </Text>
-          가 선명하게 보이도록 학적 화면을 캡처해 주세요.
+          가 선명하게 보이도록 학적 화면을 캡처해 주세요
         </Text>
         <Image
           source={EXAMPLE_IMAGE}
@@ -209,7 +248,7 @@ const SignStepNeisPlusSubmit = ({
             guideStyles.certificateGuideStepDescription || localStyles.stepDesc
           }
         >
-          예시처럼 이름·학교가 잘 보이는 캡처본을 첨부한 뒤 제출해 주세요.
+          캡처본을 첨부한 뒤 제출해 주세요
         </Text>
 
         {pickedUri ? (
@@ -217,22 +256,21 @@ const SignStepNeisPlusSubmit = ({
             style={[
               localStyles.previewWrap,
               {
-                width: normalize(220),
-                height: normalize(220) * 1.4,
+                width: '100%',
+                borderRadius: normalize(12),
+                borderWidth: 2,
+                borderColor: colors.primary,
+                overflow: 'hidden',
               },
             ]}
           >
             <Image
               source={{ uri: pickedUri }}
-              style={[
-                localStyles.preview,
-                {
-                  width: '100%',
-                  height: '100%',
-                  borderRadius: normalize(12),
-                },
-              ]}
-              resizeMode="cover"
+              style={{
+                width: '100%',
+                aspectRatio: pickedAspect,
+              }}
+              resizeMode="contain"
             />
           </View>
         ) : (
@@ -275,30 +313,19 @@ const SignStepNeisPlusSubmit = ({
     </>
   );
 
-  const submitButton = (
-    <TouchableOpacity
-      style={[
-        guideStyles.nextButton || localStyles.submitFallback,
-        (!pickedBase64 || busy) &&
-          (guideStyles.nextButtonDisabled || { opacity: 0.5 }),
-      ]}
-      activeOpacity={0.9}
-      disabled={!pickedBase64 || busy}
+  const submitFooter = (
+    <SignupPrimaryFooter
+      label="제출하기"
       onPress={handleSubmit}
-    >
-      {busy ? (
-        <ActivityIndicator color={colors.background} />
-      ) : (
-        <Text style={guideStyles.nextButtonText || localStyles.submitTextFallback}>
-          제출하기
-        </Text>
-      )}
-    </TouchableOpacity>
+      disabled={!pickedBase64 || busy}
+      loading={busy}
+      embedded
+    />
   );
 
   if (stable) {
     return (
-      <View style={localStyles.root}>
+      <View style={bodyStyle}>
         <ScrollView
           style={{ flex: 1 }}
           contentContainerStyle={[
@@ -312,18 +339,8 @@ const SignStepNeisPlusSubmit = ({
         >
           {steps}
         </ScrollView>
-        <View
-          style={[
-            localStyles.footer,
-            {
-              paddingHorizontal:
-                scrollContentPad.paddingHorizontal ?? normalize(10),
-            },
-          ]}
-        >
-          {submitButton}
-        </View>
-        <SubmittingLockModal visible={busy} message="나이스+ 제출 중…" />
+        {submitFooter}
+        <SubmittingLockModal visible={busy} message="NEIS+ 제출 중…" />
       </View>
     );
   }
@@ -333,6 +350,7 @@ const SignStepNeisPlusSubmit = ({
       style={[
         guideStyles.ageGateContainer || localStyles.root,
         guideStyles.certificateGuideContainer,
+        bodyStyle,
       ]}
     >
       <ScrollView
@@ -347,23 +365,15 @@ const SignStepNeisPlusSubmit = ({
         scrollEnabled={!busy}
       >
         {steps}
-        <View style={guideStyles.certificateGuideButtonSection}>
-          {submitButton}
-        </View>
       </ScrollView>
-      <SubmittingLockModal visible={busy} message="나이스+ 제출 중…" />
+      {submitFooter}
+      <SubmittingLockModal visible={busy} message="NEIS+ 제출 중…" />
     </View>
   );
 };
 
 const localStyles = StyleSheet.create({
   root: { flex: 1, minHeight: 0 },
-  footer: {
-    width: '100%',
-    paddingTop: 8,
-    paddingBottom: 12,
-    flexShrink: 0,
-  },
   stepBlock: {
     marginBottom: 10,
     alignItems: 'center',
@@ -409,8 +419,7 @@ const localStyles = StyleSheet.create({
   attachBox: {
     borderWidth: 1.5,
     borderStyle: 'dashed',
-    borderColor: colors.primaryDark,
-    backgroundColor: colors.lightgreen,
+    borderColor: colors.primary,
     alignItems: 'center',
     justifyContent: 'center',
     gap: 8,
@@ -424,19 +433,6 @@ const localStyles = StyleSheet.create({
     color: colors.textSecondary,
     textDecorationLine: 'underline',
     textAlign: 'center',
-  },
-  submitFallback: {
-    width: '100%',
-    backgroundColor: colors.primary,
-    borderRadius: 24,
-    height: 50,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  submitTextFallback: {
-    fontFamily: fonts.bold,
-    color: colors.background,
-    fontSize: fontSizes?.lg || 16,
   },
 });
 

@@ -1,8 +1,13 @@
 import { StatusBar } from 'expo-status-bar';
-import { CommonActions, NavigationContainer, DefaultTheme } from '@react-navigation/native';
+import { CommonActions, NavigationContainer, DefaultTheme, StackActions } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import Login from './view/src/signup/Login';
 import Sign from './view/src/signup/Sign';
+import SignupEntry from './view/src/signup/SignupEntry';
+import SignKakao from './view/src/signup/SignKakao';
+import SignApple from './view/src/signup/SignApple';
+import SignPhone from './view/src/signup/SignPhone';
+import SignProfileUsername from './view/src/signup/SignProfileUsername';
 import IDfind from './view/src/signup/IDfind';
 import PWfind from './view/src/signup/PWfind';
 import MainScreen from './view/src/MainScreen';
@@ -38,6 +43,7 @@ import OtherSchoolScreen from './view/src/otherschool';
 import MealCalender from './view/src/mealcalender';
 import Timer from './view/src/timer';
 import FriendsScreen from './view/src/friendsscreen';
+import CommuteBreakoutGame from './view/src/CommuteBreakoutGame';
 import HiddenPostsAppeals from './view/src/hiddenPostsAppeals';
 import DeveloperWhack from './view/src/DeveloperWhack';
 import Inquiry from './view/src/Inquiry';
@@ -89,6 +95,10 @@ import ToastHost from './components/common/ToastHost';
 import AlertHost from './components/common/AlertHost';
 import { navigationRef } from './navigation/navigationRef';
 import { getPendingInicisSession } from './services/inicisAuth';
+import {
+  clearSignupPendingSession,
+  getSignupPendingSession,
+} from './view/src/signup/signupSessionStorage';
 import {
   navigateFromPush,
   resolvePushNavigation,
@@ -193,11 +203,31 @@ function SplashHideWhenReady({ fontsLoaded, versionPhase }) {
 function AuthStack() {
   return (
     <Stack.Navigator
-      initialRouteName="Login"
+      initialRouteName="SignupEntry"
       screenOptions={{ headerShown: false }}
     >
       {/* <Stack.Screen name="TestLogin" component={TestLogin} /> */}
-      <Stack.Screen name="Login" component={Login} />
+      <Stack.Screen
+        name="Login"
+        component={Login}
+        options={{ gestureEnabled: false }}
+      />
+      <Stack.Screen name="SignupEntry" component={SignupEntry} />
+      <Stack.Screen
+        name="SignKakao"
+        component={SignKakao}
+        options={{ gestureEnabled: false, fullScreenGestureEnabled: false }}
+      />
+      <Stack.Screen
+        name="SignApple"
+        component={SignApple}
+        options={{ gestureEnabled: false, fullScreenGestureEnabled: false }}
+      />
+      <Stack.Screen
+        name="SignPhone"
+        component={SignPhone}
+        options={{ gestureEnabled: false, fullScreenGestureEnabled: false }}
+      />
       <Stack.Screen name="Sign" component={Sign} />
       <Stack.Screen name="IDfind" component={IDfind} />
       <Stack.Screen name="PWfind" component={PWfind} />
@@ -244,6 +274,11 @@ function MainStack({ initialRouteName = 'Main' }) {
       <Stack.Screen name="SendSchoolMail" component={SendSchoolMailScreen} />
       <Stack.Screen name="Timer" component={Timer} />
       <Stack.Screen name="Friends" component={FriendsScreen} />
+      <Stack.Screen
+        name="CommuteBreakout"
+        component={CommuteBreakoutGame}
+        options={{ headerShown: false, animation: 'slide_from_right' }}
+      />
       <Stack.Screen name="BadgeManage" component={BadgeManage} />
       <Stack.Screen name="HiddenPostsAppeals" component={HiddenPostsAppeals} />
       <Stack.Screen name="DeveloperWhack" component={DeveloperWhack} />
@@ -288,6 +323,7 @@ function RootNavigator() {
     reverificationStatus,
     reverificationDeadline,
     reverificationSubmissionPending,
+    needsProfileUsername,
     refreshStudentVerification,
   } = useAuth();
   const [showResubmit, setShowResubmit] = useState(false);
@@ -306,10 +342,50 @@ function RootNavigator() {
    */
   const DEV_PREVIEW_STUDENT_ID_RESUBMIT = false;
 
+  /**
+   * __DEV__ 전용: 프로필 아이디 설정 화면만 바로 미리보기
+   * true 로 바꾸면 로그인 여부와 무관하게 SignProfileUsername 을 연다.
+   * 확인 끝나면 반드시 false 로 되돌릴 것.
+   */
+  const DEV_PREVIEW_PROFILE_USERNAME = false;
+
   useEffect(() => {
     if (!authHydrated || isLoggedIn) return undefined;
     let cancelled = false;
     (async () => {
+      if (__DEV__) {
+        await clearSignupPendingSession();
+      } else {
+        const signupPending = await getSignupPendingSession();
+        if (signupPending && !cancelled) {
+          const targetScreen =
+            signupPending.provider === 'kakao'
+              ? 'SignKakao'
+              : signupPending.provider === 'apple'
+                ? 'SignApple'
+                : signupPending.provider === 'phone'
+                  ? 'SignPhone'
+                  : 'Sign';
+          const tryNavigateSignup = () => {
+            if (!navigationRef.isReady()) return false;
+            const route = navigationRef.getCurrentRoute?.();
+            if (route?.name !== targetScreen) {
+              navigationRef.dispatch(
+                StackActions.replace(targetScreen, { resumeSession: true }),
+              );
+            }
+            return true;
+          };
+          if (!tryNavigateSignup()) {
+            const timer = setInterval(() => {
+              if (tryNavigateSignup()) clearInterval(timer);
+            }, 150);
+            return () => clearInterval(timer);
+          }
+          return undefined;
+        }
+      }
+
       const pending = await getPendingInicisSession();
       if (!pending || cancelled) return;
       const tryNavigate = () => {
@@ -423,6 +499,10 @@ function RootNavigator() {
   }, [isLoggedIn, refreshStudentVerification]);
 
   if (!authHydrated) return null;
+
+  if (__DEV__ && DEV_PREVIEW_PROFILE_USERNAME) {
+    return <SignProfileUsername />;
+  }
 
   if (!isLoggedIn) return <AuthStack />;
 
@@ -576,6 +656,14 @@ function RootNavigator() {
 
   const mainInitialRoute =
     postLoginRoute === 'GuideOverlay' ? 'GuideOverlay' : 'Main';
+
+  if (
+    studentVerificationStatus === 'APPROVED' &&
+    needsProfileUsername
+  ) {
+    return <SignProfileUsername />;
+  }
+
   return (
     <View style={{ flex: 1 }}>
       {showReverificationPendingBanner ? <ReverificationPendingBanner /> : null}

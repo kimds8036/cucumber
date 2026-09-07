@@ -30,13 +30,6 @@ export const createHeaderStyles = (width, height) => {
       flexDirection: 'row',
       alignItems: 'center',
     },
-    tabButton: {
-      paddingVertical: normalize(8),
-      borderRadius: normalize(20),
-    },
-    activeTab: {
-      backgroundColor: colors.primary,
-    },
     tabText: {
       fontSize: normalize(fontSizes.heading + 6),
       fontFamily: fonts.bold,

@@ -131,6 +131,7 @@ function isAuthRoute(config) {
   const url = String(config?.url || '');
   return (
     url.includes('/api/auth/login') ||
+    url.includes('/api/auth/oauth/') ||
     url.includes('/api/auth/refresh') ||
     url.includes('/api/auth/logout')
   );

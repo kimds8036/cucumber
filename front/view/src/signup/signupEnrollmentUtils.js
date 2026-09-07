@@ -1,6 +1,8 @@
 /**
  * 백엔드 signupEnrollment.js 와 동일 규칙 유지
+ * 가입 상한(만 21)과 OCR 학교급 추론을 맞춘다.
  */
+import { SIGNUP_MAX_AGE } from './signupBirthDatePolicy';
 
 export function computeAge(birthDate, ref = new Date()) {
   const birth = new Date(birthDate);
@@ -17,7 +19,8 @@ export function inferExpectedSchoolLevel(birthDate, ref = new Date()) {
   const age = computeAge(birthDate, ref);
   if (age == null) return null;
   if (age >= 12 && age <= 15) return 'middle';
-  if (age >= 16 && age <= 19) return 'high';
+  // 고등·가입 상한(만 21)까지 high 로 취급 (19~21은 3학년으로 클램프)
+  if (age >= 16 && age <= SIGNUP_MAX_AGE) return 'high';
   return null;
 }
 

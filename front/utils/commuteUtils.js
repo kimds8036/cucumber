@@ -91,9 +91,17 @@ export function isPublicHoliday(date = new Date()) {
 }
 
 /** 평일 오전 7시(포함) ~ 10시(미포함), 즉 07:00~09:59 — 백엔드 ATTENDANCE_WINDOW와 맞춤 */
+export const COMMUTE_WINDOW_START_HOUR = 7;
+export const COMMUTE_WINDOW_END_HOUR = 10;
+
 export function isCommuteTimeWindow(date = new Date()) {
   const { hour } = getKstParts(date);
-  return hour >= 7 && hour < 10;
+  return hour >= COMMUTE_WINDOW_START_HOUR && hour < COMMUTE_WINDOW_END_HOUR;
+}
+
+/** 등교 미니게임 세션 안내 (창 종료 = 오전 10시) */
+export function getCommuteGameSessionHint() {
+  return `미니게임은 오전 ${COMMUTE_WINDOW_END_HOUR}시까지 이용할 수 있어요`;
 }
 
 /**
