@@ -128,6 +128,7 @@ function resetIfSolo(room, io) {
   room.round = null;
   room.lastResult = null;
   room.matchWinners = null;
+  room.deferLobbyAfterRound = false;
   for (const p of room.players) p.score = 0;
   for (const p of room.waiting) p.score = 0;
   emitRoom(room, io);
@@ -136,6 +137,7 @@ function resetIfSolo(room, io) {
 function leaveInternal(userId, io) {
   const room = getRoomForUser(userId);
   if (!room) return null;
+  const wasInMatch = room.status === 'playing' || room.status === 'reveal';
   room.players = room.players.filter((p) => p.userId !== userId);
   room.waiting = room.waiting.filter((p) => p.userId !== userId);
   userRoom.delete(userId);
@@ -143,6 +145,10 @@ function leaveInternal(userId, io) {
     clearRoomTimers(room);
     rooms.delete(room.id);
     return { room: null, emptied: true };
+  }
+  // 게임 중 퇴장 → 이번 라운드 끝나면 대기(로비)로
+  if (wasInMatch) {
+    room.deferLobbyAfterRound = true;
   }
   resetIfSolo(room, io);
   return { room, emptied: false };
@@ -161,6 +167,7 @@ function createRoom() {
     matchEndTimer: null,
     lastResult: null,
     matchWinners: null,
+    deferLobbyAfterRound: false,
   };
   rooms.set(id, room);
   return room;
@@ -208,6 +215,7 @@ function startRound(room, io) {
   const endsAt = startedAt + HUNMIN_ROUND_MS;
   room.status = 'playing';
   room.matchWinners = null;
+  room.deferLobbyAfterRound = false;
   room.round = {
     id: randomUUID().slice(0, 8),
     choseong: randomChoseong(),
@@ -368,13 +376,18 @@ function finishRound(room, io) {
     return;
   }
 
-  // 대기실(lobby) 노출 없이 바로 다음 라운드
+  // 라운드 중 누가 나갔으면 대기실로 · 아니면 바로 다음 라운드
   setTimeout(() => {
     if (!rooms.has(room.id)) return;
     if (room.status === 'match_end') return;
-    if (room.players.length < HUNMIN_MIN_PLAYERS_TO_START) {
+    if (
+      room.deferLobbyAfterRound ||
+      room.players.length < HUNMIN_MIN_PLAYERS_TO_START
+    ) {
+      room.deferLobbyAfterRound = false;
       room.status = 'lobby';
       emitRoom(room, io);
+      scheduleLobbyStart(room, io);
       return;
     }
     startRound(room, io);
@@ -579,11 +592,128 @@ export function registerHunminGameEvents(socket, io) {
 async function validateWordServer(word) {
   const key = process.env.URIMALSAEM_API_KEY || process.env.OURMAL_API_KEY;
   if (!key) {
+    // 키 없으면 개발 스텁(전부 허용) — 운영에서는 키 필수
     return { ok: true, source: 'stub' };
   }
+
+  const cleaned = String(word || '').trim();
   try {
-    return { ok: true, source: 'api' };
-  } catch {
-    return { ok: false, message: '사전 서버 오류' };
+    // 국립국어원 온용어 Open API
+    // https://kli.korean.go.kr/term/api/search.do
+    const params = new URLSearchParams({
+      key,
+      apiSearchWord: cleaned,
+      start: '1',
+      num: '10',
+      sort: 'wt',
+    });
+    const url = `https://kli.korean.go.kr/term/api/search.do?${params.toString()}`;
+    const res = await fetch(url, {
+      headers: { Accept: 'application/json' },
+      signal: AbortSignal.timeout(5000),
+    });
+    const text = await res.text();
+
+    let data;
+    try {
+      data = JSON.parse(text);
+    } catch {
+      console.warn('[hunmin][ontheme] non-json response', text.slice(0, 120));
+      return {
+        ok: false,
+        message: '사전 응답을 읽지 못했어요.',
+        source: 'api_error',
+      };
+    }
+
+    const channel = data?.channel || {};
+    const returnCode = String(channel.returnCode ?? '');
+    const returnObject = channel.return_object;
+
+    // 키/시스템 오류
+    if (
+      returnCode === '020' ||
+      returnCode === '021' ||
+      returnCode === '022' ||
+      returnCode === '000' ||
+      returnCode === '100'
+    ) {
+      const msg =
+        typeof returnObject === 'string'
+          ? returnObject
+          : '사전 인증에 실패했어요.';
+      console.warn('[hunmin][ontheme] api error', returnCode, msg);
+      return {
+        ok: false,
+        message:
+          returnCode === '020' || returnCode === '021'
+            ? '사전 인증에 실패했어요. 관리자에게 문의해 주세요.'
+            : msg || '사전 서버 오류',
+        source: 'api_error',
+      };
+    }
+
+    // 결과 없음
+    if (
+      typeof returnObject === 'string' &&
+      (returnObject.includes('검색 결과가 없습니다') ||
+        returnObject.includes('입력된 검색어가 없습니다'))
+    ) {
+      return {
+        ok: false,
+        message: '사전에 없는 단어예요.',
+        source: 'api',
+      };
+    }
+
+    const normalizeHeadword = (w) =>
+      String(w || '')
+        .replace(/[-^ㆍ·\s]/g, '')
+        .replace(/\([^)]*\)/g, '')
+        .replace(/<[^>]+>/g, '');
+
+    const target = normalizeHeadword(cleaned);
+    const blocks = Array.isArray(returnObject)
+      ? returnObject
+      : returnObject
+        ? [returnObject]
+        : [];
+    const items = blocks.flatMap((b) => {
+      const list = b?.resultlist;
+      if (Array.isArray(list)) return list;
+      if (list) return [list];
+      return [];
+    });
+
+    const exactHit = items.some(
+      (it) => normalizeHeadword(it.word || '') === target,
+    );
+
+    if (exactHit) {
+      return { ok: true, source: 'api' };
+    }
+
+    // total만 있고 표제어 불일치(부분검색)면 거절
+    const total = Number(channel.total ?? 0);
+    if (total > 0 && !exactHit) {
+      return {
+        ok: false,
+        message: '사전에 없는 단어예요.',
+        source: 'api',
+      };
+    }
+
+    return {
+      ok: false,
+      message: '사전에 없는 단어예요.',
+      source: 'api',
+    };
+  } catch (err) {
+    console.warn('[hunmin][ontheme] fetch failed', err?.message || err);
+    return {
+      ok: false,
+      message: '사전 서버에 연결하지 못했어요.',
+      source: 'api_error',
+    };
   }
 }
