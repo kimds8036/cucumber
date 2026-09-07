@@ -73,14 +73,19 @@ if (!fs.existsSync(gradlew)) {
 
 console.log(`[aab] APP_ENV=${env.APP_ENV} NODE_ENV=${env.NODE_ENV}`);
 assertStoreClientFlags(env);
-console.log('[aab] gradlew bundleRelease …');
+// lintVital은 Expo SDK 업 후 Metaspace OOM이 잦음 → AAB 산출과 무관해 스킵
+console.log('[aab] gradlew bundleRelease (lintVital skip) …');
 
-const result = spawnSync(gradlew, ['bundleRelease'], {
-  cwd: androidDir,
-  env,
-  stdio: 'inherit',
-  shell: isWin,
-});
+const result = spawnSync(
+  gradlew,
+  ['bundleRelease', '-x', 'lintVitalAnalyzeRelease', '-x', 'lintVitalReportRelease'],
+  {
+    cwd: androidDir,
+    env,
+    stdio: 'inherit',
+    shell: isWin,
+  },
+);
 
 if (result.status === 0) {
   const aab = path.join(
