@@ -5,6 +5,9 @@ import { resolveApiBaseUrl, resolveAppEnv } from './config/apiEnv.js';
 const apiBaseUrl = resolveApiBaseUrl();
 const appEnv = resolveAppEnv();
 const isProduction = appEnv === 'production';
+const kakaoNativeAppKey = String(
+  process.env.EXPO_PUBLIC_KAKAO_NATIVE_APP_KEY || '',
+).trim();
 
 export default ({ config }) => ({
   expo: {
@@ -150,11 +153,24 @@ export default ({ config }) => ({
           android: {
             enableMinifyInReleaseBuilds: true,
             enableShrinkResourcesInReleaseBuilds: true,
+            extraMavenRepos: [
+              'https://devrepo.kakao.com/nexus/content/groups/public/',
+            ],
             extraProguardRules:
               '-keep class com.facebook.react.** { *; }\n-keep class com.facebook.hermes.** { *; }\n-keep class com.facebook.jni.** { *; }\n-dontwarn com.facebook.react.**\n-keep class expo.modules.youthpaperwidget.** { *; }\n-keep class com.ucost.YouthPaper.widget.** { *; }\n',
           },
         },
       ],
+      ...(kakaoNativeAppKey
+        ? [
+            [
+              '@react-native-seoul/kakao-login',
+              {
+                kakaoAppKey: kakaoNativeAppKey,
+              },
+            ],
+          ]
+        : []),
       './plugins/withFirebaseModularHeaders',
       './plugins/withAndroidReleaseSigning.cjs',
       './plugins/withAndroidMainActivityLaunchMode.cjs',
@@ -166,6 +182,7 @@ export default ({ config }) => ({
       ...(config?.expo?.extra ?? {}),
       apiBaseUrl,
       appEnv,
+      kakaoNativeAppKey,
       eas: {
         projectId: '39e0f4f8-dd46-4921-a4bf-68856fdfc85c',
         ...(config?.expo?.extra?.eas ?? {}),

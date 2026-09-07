@@ -9,7 +9,6 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useCameraPermissions } from 'expo-camera';
-import { Ionicons } from '@expo/vector-icons';
 import { colors, fonts, fontSizes } from '../../../styles/colors';
 import { getNormalize } from '../../../styles/frame.style';
 import { createLoginStyles } from '../../../styles/login.style';
@@ -22,6 +21,7 @@ import {
 } from '../../../utils/studentIdFrameCrop';
 import SchoolSearchField from './SchoolSearchField';
 import SignupHelperText from './SignupHelperText';
+import SubHeader from '../../frame/subHeader';
 import StudentIdCaptureStage, {
   useStudentIdCapture,
 } from '../../../components/auth/StudentIdCaptureStage';
@@ -66,7 +66,7 @@ const StudentIdResubmit = ({ mode = 'rejected', navigation }) => {
     [width, normalize],
   );
   const fieldStyles = useMemo(() => makeFieldStyles(normalize), [normalize]);
-  const padX = width * 0.04;
+  const headerTitle = isReverification ? '학생증 재인증' : '학생증 재출하기';
 
   const [permission, requestPermission] = useCameraPermissions();
   const cameraRef = useRef(null);
@@ -75,6 +75,11 @@ const StudentIdResubmit = ({ mode = 'rejected', navigation }) => {
   const [busy, setBusy] = useState(false);
   const [selectedSchool, setSelectedSchool] = useState(null);
   const [statusText, setStatusText] = useState('');
+
+  const handleBack = () => {
+    if (busy) return;
+    navigation.goBack();
+  };
 
   const onStageLayout = useCallback(
     (e) => {
@@ -111,7 +116,7 @@ const StudentIdResubmit = ({ mode = 'rejected', navigation }) => {
   const runResubmit = useCallback(async () => {
     if (busy) return;
     if (isReverification && !selectedSchool?.id) {
-      appAlert.alert('알림', '올해 재학 중인 학교를 검색해 선택해 주세요.');
+      appAlert.alert('알림', '재학 중인 학교를 검색해 선택해 주세요.');
       return;
     }
 
@@ -169,7 +174,7 @@ const StudentIdResubmit = ({ mode = 'rejected', navigation }) => {
         '제출 완료',
         res.data?.message ||
           (isReverification
-            ? '재인증 학생증이 제출되었습니다. 검수가 완료될 때까지 앱을 이용할 수 있습니다.'
+            ? '확인용 학생증이 제출되었습니다. 검토가 완료될 때까지 일부 기능을 사용할 수 없습니다.'
             : '학생증이 재제출되었습니다. 관리자 승인을 기다려 주세요.'),
       );
       navigation.goBack();
@@ -199,8 +204,15 @@ const StudentIdResubmit = ({ mode = 'rejected', navigation }) => {
 
   if (!permission) {
     return (
-      <SafeAreaView style={[localStyles.root, { paddingHorizontal: padX }]}>
-        <View style={localStyles.centered}>
+      <SafeAreaView style={localStyles.root} edges={['top', 'bottom']}>
+        <SubHeader title={headerTitle} onBack={handleBack} />
+        <View
+          style={[
+            localStyles.body,
+            localStyles.centered,
+            { paddingHorizontal: width * 0.07 },
+          ]}
+        >
           <ActivityIndicator color={colors.primary} size="large" />
         </View>
       </SafeAreaView>
@@ -209,49 +221,30 @@ const StudentIdResubmit = ({ mode = 'rejected', navigation }) => {
 
   if (!permission.granted) {
     return (
-      <SafeAreaView style={[localStyles.root, { paddingHorizontal: padX }]}>
-        <Text style={localStyles.permLabel}>카메라 권한이 필요합니다.</Text>
-        <TouchableOpacity
-          style={loginStyles.manualButton}
-          onPress={requestPermission}
-        >
-          <Text style={loginStyles.manualButtonText}>권한 허용하기</Text>
-        </TouchableOpacity>
+      <SafeAreaView style={localStyles.root} edges={['top', 'bottom']}>
+        <SubHeader title={headerTitle} onBack={handleBack} />
+        <View style={[localStyles.body, { paddingHorizontal: width * 0.07 }]}>
+          <Text style={localStyles.permLabel}>카메라 권한이 필요합니다.</Text>
+          <TouchableOpacity
+            style={loginStyles.manualButton}
+            onPress={requestPermission}
+          >
+            <Text style={loginStyles.manualButtonText}>권한 허용하기</Text>
+          </TouchableOpacity>
+        </View>
       </SafeAreaView>
     );
   }
 
   return (
-    <SafeAreaView
-      style={[localStyles.root, { paddingHorizontal: padX }]}
-      edges={['top', 'bottom']}
-    >
-      <View style={localStyles.header}>
-        <TouchableOpacity
-          onPress={() => {
-            if (busy) return;
-            navigation.goBack();
-          }}
-          disabled={busy}
-          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-        >
-          <Ionicons
-            name="chevron-back"
-            size={normalize(24)}
-            color={busy ? colors.textSecondary : colors.textPrimary}
-          />
-        </TouchableOpacity>
-        <Text style={[localStyles.headerTitle, { fontSize: normalize(18) }]}>
-          {isReverification ? '학생증 재인증' : '학생증 제출하기'}
-        </Text>
-        <View style={{ width: normalize(24) }} />
-      </View>
+    <SafeAreaView style={localStyles.root} edges={['top', 'bottom']}>
+      <SubHeader title={headerTitle} onBack={handleBack} />
 
-      <View style={localStyles.body}>
+      <View style={[localStyles.body, { paddingHorizontal: width * 0.07 }]}>
         {isReverification ? (
           <View style={localStyles.schoolBlock}>
             <Text style={localStyles.schoolHint}>
-              중학교에서 고등학교로 진학한 경우, 올해 재학 중인 고등학교를 검색해
+              중학교에서 고등학교로 진학한 경우, 재학 중인 고등학교를 검색해
               선택해 주세요.
             </Text>
             <SchoolSearchField
@@ -259,7 +252,7 @@ const StudentIdResubmit = ({ mode = 'rejected', navigation }) => {
               normalize={normalize}
               selectedSchool={selectedSchool}
               onSelect={setSelectedSchool}
-              label="올해 재학 중인 학교"
+              label="재학 중인 학교"
             />
           </View>
         ) : null}
@@ -298,7 +291,7 @@ const StudentIdResubmit = ({ mode = 'rejected', navigation }) => {
         ) : null}
       </View>
 
-      <View style={localStyles.footer}>
+      <View style={[localStyles.footer, { paddingHorizontal: width * 0.07 }]}>
         <TouchableOpacity
           style={[
             localStyles.submitBtn,
@@ -333,20 +326,6 @@ const localStyles = StyleSheet.create({
     flex: 1,
     width: '100%',
     backgroundColor: colors.background,
-  },
-  header: {
-    width: '100%',
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingTop: 8,
-    paddingBottom: 8,
-  },
-  headerTitle: {
-    flex: 1,
-    fontFamily: fonts.bold,
-    color: colors.textPrimary,
-    textAlign: 'center',
   },
   body: {
     flex: 1,
@@ -410,7 +389,7 @@ const localStyles = StyleSheet.create({
   },
   submitBtnText: {
     fontFamily: fonts.bold,
-    color: colors.textWhite,
+    color: colors.background,
   },
   centered: {
     flex: 1,
