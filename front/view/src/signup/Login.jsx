@@ -16,8 +16,10 @@ import {
   TouchableWithoutFeedback,
   Alert,
   Modal,
+  BackHandler,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useFocusEffect } from '@react-navigation/native';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
 import { createLoginStyles } from '../../../styles/login.style';
 import { colors } from '../../../styles/colors';
@@ -30,7 +32,6 @@ import {
   getApiUserFacingMessage,
 } from '../../../utils/api';
 import { useAuth } from '../../../context/AuthContext';
-import SubHeader from '../../frame/subHeader';
 import { GrowingUnderline } from './SchoolSearchField';
 import { loginWithKakao } from '../../../services/kakaoAuth';
 import { loginWithApple } from '../../../services/appleAuth';
@@ -89,6 +90,26 @@ const Login = ({ navigation }) => {
 
   const styles = useMemo(() => createLoginStyles(width, normalize), [width]);
   const debugLogin = (...args) => console.log('[LoginDebug]', ...args);
+
+  // 로그인 화면: 하드웨어/제스처 뒤로가기 차단
+  useFocusEffect(
+    useCallback(() => {
+      const onHardwareBack = () => true;
+      const sub = BackHandler.addEventListener(
+        'hardwareBackPress',
+        onHardwareBack,
+      );
+      const unsubBeforeRemove = navigation.addListener('beforeRemove', (e) => {
+        if (e.data.action.type === 'GO_BACK' || e.data.action.type === 'POP') {
+          e.preventDefault();
+        }
+      });
+      return () => {
+        sub.remove();
+        unsubBeforeRemove();
+      };
+    }, [navigation]),
+  );
 
   const scrollLoginInputsAboveKeyboard = useCallback(() => {
     requestAnimationFrame(() => {
@@ -479,8 +500,6 @@ const Login = ({ navigation }) => {
 
   return (
     <SafeAreaView style={styles.screen} edges={['top', 'bottom']}>
-      <SubHeader title="" onBack={() => navigation.goBack()} />
-
       <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
         <View style={styles.body}>
           <KeyboardAwareScrollView

@@ -207,7 +207,11 @@ function AuthStack() {
       screenOptions={{ headerShown: false }}
     >
       {/* <Stack.Screen name="TestLogin" component={TestLogin} /> */}
-      <Stack.Screen name="Login" component={Login} />
+      <Stack.Screen
+        name="Login"
+        component={Login}
+        options={{ gestureEnabled: false }}
+      />
       <Stack.Screen name="SignupEntry" component={SignupEntry} />
       <Stack.Screen name="SignKakao" component={SignKakao} />
       <Stack.Screen name="SignApple" component={SignApple} />
