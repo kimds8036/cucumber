@@ -833,11 +833,11 @@ const SignPhone = ({ navigation }) => {
   }, [inicisManualOpening, showInicisAlertAfterOverlay]);
 
   const handleInicisOverlayCancel = useCallback(async () => {
+    // Entry 이동은 run* 의 CANCELLED 분기에서만 — 여기서 abort 하면 이중 reset
     cancelInicisFlow();
     await endInicisOverlay();
     await clearPendingInicisSession();
-    await abortSignupImmediate();
-  }, [abortSignupImmediate, endInicisOverlay]);
+  }, [endInicisOverlay]);
 
   const handleBirthDateChange = useCallback(
     (nextBirthDate) => {
@@ -1510,6 +1510,7 @@ const SignPhone = ({ navigation }) => {
         title={blockingAlert.title}
         message={blockingAlert.message}
         buttons={blockingAlert.buttons}
+        buttonsLayout={blockingAlert.buttonsLayout}
         onRequestClose={closeBlockingAlert}
       />
 

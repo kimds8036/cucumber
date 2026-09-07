@@ -21,6 +21,9 @@ export async function waitForSignupModalsToClear() {
   });
 }
 
+/** 오버레이 취소 + CANCELLED 등이 동시에 들어와도 reset 한 번만 */
+let leaveSignupToEntryInFlight = false;
+
 /**
  * 가입 플로우를 종료하고 SignupEntry 로 돌아간다 (확인 팝업 없음).
  * Modal/Alert 가 닫히는 중 이동하지 않도록 prepareLeave → 대기 → reset 순서.
@@ -36,32 +39,39 @@ export async function leaveSignupToEntry({
   clearFlowSession,
   prepareLeave,
 } = {}) {
-  try {
-    if (typeof prepareLeave === 'function') {
-      await prepareLeave();
-    }
-  } catch {
-    // 무시 — 이동은 계속
-  }
+  if (leaveSignupToEntryInFlight) return;
+  leaveSignupToEntryInFlight = true;
 
   try {
-    if (typeof clearFlowSession === 'function') {
-      await clearFlowSession();
+    try {
+      if (typeof prepareLeave === 'function') {
+        await prepareLeave();
+      }
+    } catch {
+      // 무시 — 이동은 계속
     }
-  } catch {
-    // 세션 정리 실패해도 Entry 복귀는 진행
+
+    try {
+      if (typeof clearFlowSession === 'function') {
+        await clearFlowSession();
+      }
+    } catch {
+      // 세션 정리 실패해도 Entry 복귀는 진행
+    }
+
+    await waitForSignupModalsToClear();
+
+    if (!navigation) return;
+
+    navigation.dispatch?.(
+      CommonActions.reset({
+        index: 0,
+        routes: [{ name: 'SignupEntry' }],
+      }),
+    );
+  } finally {
+    leaveSignupToEntryInFlight = false;
   }
-
-  await waitForSignupModalsToClear();
-
-  if (!navigation) return;
-
-  navigation.dispatch?.(
-    CommonActions.reset({
-      index: 0,
-      routes: [{ name: 'SignupEntry' }],
-    }),
-  );
 }
 
 /**
@@ -71,17 +81,18 @@ export function buildAbortSignupConfirmAlert({ onConfirm, onKeepGoing }) {
   return {
     visible: true,
     title: '가입을 중단할까요?',
-    message: '',
+    message: '가입을 중단하면 작성한 정보가 모두 사라집니다',
+    buttonsLayout: 'row',
     buttons: [
       {
-        text: '중단',
+        text: '중단하기',
+        variant: 'secondary',
         onPress: () => {
           void onConfirm?.();
         },
       },
       {
         text: '계속하기',
-        variant: 'secondary',
         onPress: () => onKeepGoing?.(),
       },
     ],

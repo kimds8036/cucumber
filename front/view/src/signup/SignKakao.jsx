@@ -1043,6 +1043,7 @@ const SignKakao = ({ navigation }) => {
         title={blockingAlert.title}
         message={blockingAlert.message}
         buttons={blockingAlert.buttons}
+        buttonsLayout={blockingAlert.buttonsLayout}
         onRequestClose={closeBlockingAlert}
       />
 

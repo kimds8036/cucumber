@@ -9,69 +9,86 @@ const SignupBlockingAlertModal = ({
   title,
   message,
   buttons = [{ text: '확인' }],
+  buttonsLayout = 'column',
   normalize = (n) => n,
-}) => (
-  <AppPopupModal
-    visible={visible}
-    onClose={() => {}}
-    dismissOnBackdrop={false}
-    dismissOnBackPress={false}
-  >
-    {title ? (
-      <Text
-        style={{
-          fontSize: normalize(18),
-          fontWeight: '700',
-          color: colors.textPrimary,
-          textAlign: 'center',
-          marginBottom: 10,
-        }}
-      >
-        {title}
-      </Text>
-    ) : null}
-    {message ? (
-      <Text
-        style={{
-          fontSize: normalize(14),
-          color: colors.textSecondary,
-          textAlign: 'center',
-          lineHeight: normalize(22),
-          marginBottom: 16,
-        }}
-      >
-        {message}
-      </Text>
-    ) : null}
-    {buttons.map((btn, index) => {
-      const isSecondary = btn.variant === 'secondary';
-      return (
-        <TouchableOpacity
-          key={`${btn.text}-${index}`}
+}) => {
+  const isRow = buttonsLayout === 'row';
+
+  return (
+    <AppPopupModal
+      visible={visible}
+      onClose={() => {}}
+      dismissOnBackdrop={false}
+      dismissOnBackPress={false}
+    >
+      {title ? (
+        <Text
           style={{
-            height: 42,
-            borderRadius: 10,
-            backgroundColor: isSecondary ? colors.textLight5 : colors.primary,
-            alignItems: 'center',
-            justifyContent: 'center',
-            marginTop: index > 0 ? 8 : 0,
+            fontSize: normalize(18),
+            fontWeight: '700',
+            color: colors.textPrimary,
+            textAlign: 'center',
+            marginBottom: 10,
           }}
-          activeOpacity={0.85}
-          onPress={btn.onPress}
         >
-          <Text
-            style={{
-              fontSize: normalize(14),
-              fontWeight: '700',
-              color: isSecondary ? colors.textSecondary : colors.textWhite,
-            }}
-          >
-            {btn.text}
-          </Text>
-        </TouchableOpacity>
-      );
-    })}
-  </AppPopupModal>
-);
+          {title}
+        </Text>
+      ) : null}
+      {message ? (
+        <Text
+          style={{
+            fontSize: normalize(14),
+            color: colors.textSecondary,
+            textAlign: 'center',
+            lineHeight: normalize(22),
+            marginBottom: 16,
+          }}
+        >
+          {message}
+        </Text>
+      ) : null}
+      <View
+        style={
+          isRow
+            ? { flexDirection: 'row', gap: 8 }
+            : { flexDirection: 'column' }
+        }
+      >
+        {buttons.map((btn, index) => {
+          const isSecondary = btn.variant === 'secondary';
+          return (
+            <TouchableOpacity
+              key={`${btn.text}-${index}`}
+              style={{
+                height: 42,
+                borderRadius: 10,
+                backgroundColor: isSecondary
+                  ? colors.textLight5
+                  : colors.primary,
+                alignItems: 'center',
+                justifyContent: 'center',
+                ...(isRow
+                  ? { flex: 1 }
+                  : { marginTop: index > 0 ? 8 : 0 }),
+              }}
+              activeOpacity={0.85}
+              onPress={btn.onPress}
+            >
+              <Text
+                style={{
+                  fontSize: normalize(14),
+                  fontWeight: '700',
+                  color: isSecondary ? colors.textSecondary : colors.textWhite,
+                }}
+              >
+                {btn.text}
+              </Text>
+            </TouchableOpacity>
+          );
+        })}
+      </View>
+    </AppPopupModal>
+  );
+};
 
 export default SignupBlockingAlertModal;
