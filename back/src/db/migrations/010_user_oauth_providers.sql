@@ -1,7 +1,8 @@
 -- 소셜 로그인 연동 (카카오/애플 등)
+-- users.id 가 INT 이므로 FK 컬럼도 INT 로 맞춤 (BIGINT UNSIGNED 는 비호환)
 CREATE TABLE IF NOT EXISTS user_oauth_providers (
-  id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
-  user_id BIGINT UNSIGNED NOT NULL,
+  id INT NOT NULL AUTO_INCREMENT,
+  user_id INT NOT NULL,
   provider VARCHAR(32) NOT NULL COMMENT 'kakao|apple',
   provider_user_id VARCHAR(128) NOT NULL,
   linked_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
