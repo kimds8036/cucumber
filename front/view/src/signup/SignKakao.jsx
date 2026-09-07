@@ -62,12 +62,6 @@ import {
   pickRandomProfileColorId,
 } from './signupEnrollmentUtils';
 import { SIGNUP_REDESIGN_SKIP_VALIDATION } from './signupRedesignFlags';
-import {
-  KAKAO_MOCK_PROFILE,
-  KAKAO_MOCK_PROFILE_ADULT,
-  KAKAO_MOCK_PROFILE_UNDER14,
-  toKakaoIdentityData,
-} from './kakaoSignupMocks';
 import { ALLOW_ADULT_SIGNUP_IN_DEV } from './signupAdultTestMode';
 import {
   alertSignupDuplicateAndOfferLogin,
@@ -131,7 +125,6 @@ const SignKakao = ({ navigation }) => {
   const [submitting, setSubmitting] = useState(false);
   const [screenReady, setScreenReady] = useState(false);
   const [footerHeight, setFooterHeight] = useState(88);
-  const [useUnder14Mock, setUseUnder14Mock] = useState(false);
   const [kakaoBusy, setKakaoBusy] = useState(false);
   const [kakaoAuthError, setKakaoAuthError] = useState('');
   const [blockingAlert, setBlockingAlert] = useState({
@@ -203,7 +196,6 @@ const SignKakao = ({ navigation }) => {
       recognizedData,
       guardianInicisClientToken,
       certificateData,
-      useUnder14Mock,
     }),
     [
       certificateData,
@@ -218,7 +210,6 @@ const SignKakao = ({ navigation }) => {
       selectedSchool,
       studentVerificationToken,
       studentVerified,
-      useUnder14Mock,
     ],
   );
 
@@ -247,8 +238,6 @@ const SignKakao = ({ navigation }) => {
       setGuardianInicisClientToken(snapshot.guardianInicisClientToken);
     }
     if (snapshot.certificateData) setCertificateData(snapshot.certificateData);
-    if (snapshot.useUnder14Mock != null)
-      setUseUnder14Mock(snapshot.useUnder14Mock);
     if (snapshot.currentStep) {
       const step =
         snapshot.currentStep === 'account'
@@ -373,13 +362,6 @@ const SignKakao = ({ navigation }) => {
       proceedToSchool();
     },
     [abortSignupImmediate, goToLogin, navigationRef, proceedToSchool],
-  );
-
-  const runKakaoMockAuth = useCallback(
-    (profile) => {
-      applyKakaoIdentity(toKakaoIdentityData(profile));
-    },
-    [applyKakaoIdentity],
   );
 
   const runKakaoSdkAuth = useCallback(async () => {
@@ -902,52 +884,6 @@ const SignKakao = ({ navigation }) => {
                 </Text>
               </>
             )}
-            {__DEV__ ? (
-              <TouchableOpacity
-                style={{ marginTop: normalize(28) }}
-                disabled={kakaoBusy}
-                onLongPress={() => {
-                  Alert.alert(
-                    '[DEV] mock 가입',
-                    '카카오 SDK 없이 mock 프로필로 다음 단계로 갈까요?',
-                    [
-                      { text: '취소', style: 'cancel' },
-                      {
-                        text: 'mock으로 계속',
-                        onPress: () => {
-                          const profile = useUnder14Mock
-                            ? KAKAO_MOCK_PROFILE_UNDER14
-                            : ALLOW_ADULT_SIGNUP_IN_DEV
-                              ? KAKAO_MOCK_PROFILE_ADULT
-                              : KAKAO_MOCK_PROFILE;
-                          kakaoAuthRanRef.current = true;
-                          runKakaoMockAuth(profile);
-                        },
-                      },
-                      {
-                        text: '연령 mock 전환',
-                        onPress: () => setUseUnder14Mock((v) => !v),
-                      },
-                    ],
-                  );
-                }}
-              >
-                <Text
-                  style={{
-                    color: colors.textSecondary,
-                    fontSize: normalize(12),
-                    textAlign: 'center',
-                  }}
-                >
-                  [DEV] 실패 시에만 길게 눌러 mock
-                  {useUnder14Mock
-                    ? ' (만14미만)'
-                    : ALLOW_ADULT_SIGNUP_IN_DEV
-                      ? ' (성인)'
-                      : ' (만14이상)'}
-                </Text>
-              </TouchableOpacity>
-            ) : null}
           </View>
         )}
 

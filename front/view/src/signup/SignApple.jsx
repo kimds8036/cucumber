@@ -78,7 +78,7 @@ import {
   alertSignupDuplicateAndOfferLogin,
   assertPhoneAvailableForSignup,
 } from './signupDuplicateGuard';
-import { APPLE_MOCK_PROFILE, toAppleIdentityData } from './appleSignupMocks';
+import { toAppleIdentityData } from './appleSignupMocks';
 import {
   clearSignupPendingSession,
   getSignupPendingSession,
@@ -899,8 +899,8 @@ const SignApple = ({ navigation }) => {
 
       const nextIdentity = {
         ...toAppleIdentityData({
-          name: profile?.name || APPLE_MOCK_PROFILE.name,
-          appleUserId: profile?.appleUserId || APPLE_MOCK_PROFILE.appleUserId,
+          name: profile?.name || '',
+          appleUserId: profile?.appleUserId || '',
           identityToken,
         }),
         identityToken,
