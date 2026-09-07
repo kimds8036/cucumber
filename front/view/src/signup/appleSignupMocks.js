@@ -1,4 +1,7 @@
-/** Apple 회원가입 mock 프로필 (SDK 연동 전) */
+/**
+ * Apple 회원가입 프로필 헬퍼.
+ * mock 토큰은 EXPO_PUBLIC_APPLE_AUTH_MOCK=true + __DEV__ 일 때만 appleAuth.js에서 사용.
+ */
 
 export const APPLE_MOCK_PROFILE = {
   name: '애플테스트',
