@@ -568,6 +568,27 @@ export function registerHunminGameEvents(socket, io) {
     }
   });
 
+  /** 대기실·라운드 중 언제든 말풍선 채팅 */
+  socket.on('hunmin:chat', (payload = {}) => {
+    const room = getRoomForUser(userId);
+    if (!room) return;
+    const text = String(payload.text || payload.word || '')
+      .trim()
+      .slice(0, 40);
+    if (!text) return;
+
+    const player =
+      room.players.find((p) => p.userId === userId) ||
+      room.waiting.find((p) => p.userId === userId);
+    io.to(`hunmin:${room.id}`).emit('hunmin:chat', {
+      roomId: room.id,
+      userId,
+      username: player?.username || `유저${userId}`,
+      text,
+      at: Date.now(),
+    });
+  });
+
   socket.on('hunmin:leave', () => {
     const prev = leaveInternal(userId, io);
     socket.rooms.forEach((r) => {
