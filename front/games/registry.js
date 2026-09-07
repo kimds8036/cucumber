@@ -1,5 +1,6 @@
 /**
  * 등교 미니게임 레지스트리 — 새 게임은 여기에만 등록하면 호스트에서 불러 씀
+ * 훈민정음: 최대 6인 · 라운드 10초 · 20점 선취
  */
 import BreakoutGame from './breakout/BreakoutGame';
 import HunminGame from './hunmin/HunminGame';

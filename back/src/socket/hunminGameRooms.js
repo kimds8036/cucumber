@@ -1,17 +1,18 @@
 /**
  * 훈민정음 멀티플레이 방 (인메모리)
- * - 방당 최대 4명
- * - 라운드 5초 / 초성 2~3개
- * - 정답자 중 가장 늦은 사람 + 미제출 → 패배
+ * - 방당 최대 6명
+ * - 라운드 10초 / 초성 2~3개
+ * - 정답자 중 가장 늦은 사람 + 미제출 → 패배, 승자 +1점
+ * - 20점 선취 시 매치 종료 → 같은 멤버로 재시작(또는 재매칭)
  * - 라운드 중 입장 요청은 waiting → 라운드 종료 후 합류
- * - 가득 찬 방은 스킵하고 다른 방(또는 새 방)
  */
 
 import { randomUUID } from 'crypto';
 
-export const HUNMIN_MAX_PLAYERS = 4;
-export const HUNMIN_ROUND_MS = 5000;
+export const HUNMIN_MAX_PLAYERS = 6;
+export const HUNMIN_ROUND_MS = 10000;
 export const HUNMIN_MIN_PLAYERS_TO_START = 2;
+export const HUNMIN_WIN_SCORE = 20;
 
 const CHO = [
   'ㄱ', 'ㄴ', 'ㄷ', 'ㄹ', 'ㅁ', 'ㅂ', 'ㅅ', 'ㅇ', 'ㅈ', 'ㅊ', 'ㅋ', 'ㅌ', 'ㅍ', 'ㅎ',
@@ -55,21 +56,32 @@ function randomChoseong() {
   return arr;
 }
 
+function makePlayer(userId, username) {
+  return {
+    userId,
+    username,
+    ready: true,
+    score: 0,
+  };
+}
+
 function publicPlayer(p) {
   return {
     userId: p.userId,
     username: p.username,
     ready: Boolean(p.ready),
+    score: Number(p.score) || 0,
   };
 }
 
 function publicRoom(room) {
   return {
     roomId: room.id,
-    status: room.status, // lobby | playing | reveal
+    status: room.status, // lobby | playing | reveal | match_end
     players: room.players.map(publicPlayer),
     waiting: room.waiting.map(publicPlayer),
     maxPlayers: HUNMIN_MAX_PLAYERS,
+    winScore: HUNMIN_WIN_SCORE,
     round: room.round
       ? {
           id: room.round.id,
@@ -79,6 +91,7 @@ function publicRoom(room) {
         }
       : null,
     lastResult: room.lastResult || null,
+    matchWinners: room.matchWinners || null,
   };
 }
 
@@ -97,6 +110,7 @@ function leaveInternal(userId) {
   if (room.players.length === 0 && room.waiting.length === 0) {
     if (room.roundTimer) clearTimeout(room.roundTimer);
     if (room.lobbyTimer) clearTimeout(room.lobbyTimer);
+    if (room.matchEndTimer) clearTimeout(room.matchEndTimer);
     rooms.delete(room.id);
     return { room: null, emptied: true };
   }
@@ -113,7 +127,9 @@ function createRoom() {
     round: null,
     roundTimer: null,
     lobbyTimer: null,
+    matchEndTimer: null,
     lastResult: null,
+    matchWinners: null,
   };
   rooms.set(id, room);
   return room;
@@ -141,7 +157,6 @@ function findPlayingWithWaitSpace() {
 function scheduleLobbyStart(room, io) {
   if (room.lobbyTimer) clearTimeout(room.lobbyTimer);
   if (room.players.length < HUNMIN_MIN_PLAYERS_TO_START) return;
-  // 인원 찼으면 바로, 아니면 짧게 대기 후 시작
   const delay = room.players.length >= HUNMIN_MAX_PLAYERS ? 400 : 1800;
   room.lobbyTimer = setTimeout(() => {
     startRound(room, io);
@@ -161,12 +176,13 @@ function startRound(room, io) {
   const startedAt = Date.now();
   const endsAt = startedAt + HUNMIN_ROUND_MS;
   room.status = 'playing';
+  room.matchWinners = null;
   room.round = {
     id: randomUUID().slice(0, 8),
     choseong: randomChoseong(),
     startedAt,
     endsAt,
-    answers: new Map(), // userId → { word, at, ok }
+    answers: new Map(),
   };
   room.lastResult = null;
   emitRoom(room, io);
@@ -185,41 +201,123 @@ function startRound(room, io) {
   room.roundTimer = setTimeout(() => finishRound(room, io), HUNMIN_ROUND_MS + 50);
 }
 
+function beginMatchEnd(room, io, matchWinners) {
+  room.status = 'match_end';
+  room.matchWinners = matchWinners;
+  room.round = null;
+  if (room.roundTimer) {
+    clearTimeout(room.roundTimer);
+    room.roundTimer = null;
+  }
+  if (room.lobbyTimer) {
+    clearTimeout(room.lobbyTimer);
+    room.lobbyTimer = null;
+  }
+
+  io.to(`hunmin:${room.id}`).emit('hunmin:match_end', {
+    roomId: room.id,
+    winners: matchWinners,
+    winScore: HUNMIN_WIN_SCORE,
+    room: publicRoom(room),
+  });
+  emitRoom(room, io);
+
+  // 팝업 후 같은 멤버로 점수 리셋·로비 재시작 (새 방 없으면 멤버 유지)
+  if (room.matchEndTimer) clearTimeout(room.matchEndTimer);
+  room.matchEndTimer = setTimeout(() => {
+    if (!rooms.has(room.id)) return;
+    while (
+      room.waiting.length > 0 &&
+      room.players.length < HUNMIN_MAX_PLAYERS
+    ) {
+      const next = room.waiting.shift();
+      next.score = 0;
+      room.players.push(next);
+    }
+    for (const p of room.players) {
+      p.score = 0;
+    }
+    room.matchWinners = null;
+    room.lastResult = null;
+    room.status = 'lobby';
+    io.to(`hunmin:${room.id}`).emit('hunmin:rematch_search', {
+      roomId: room.id,
+      message: '방을 새로 찾는 중…',
+      room: publicRoom(room),
+    });
+    emitRoom(room, io);
+    scheduleLobbyStart(room, io);
+  }, 2800);
+}
+
 function finishRound(room, io) {
   if (!room.round || room.status !== 'playing') return;
   const { answers, choseong, id: roundId } = room.round;
   const correct = [];
   for (const p of room.players) {
     const a = answers.get(p.userId);
-    if (a?.ok) correct.push({ userId: p.userId, username: p.username, word: a.word, at: a.at });
+    if (a?.ok) {
+      correct.push({
+        userId: p.userId,
+        username: p.username,
+        word: a.word,
+        at: a.at,
+      });
+    }
   }
   correct.sort((a, b) => a.at - b.at);
 
   const loserIds = new Set();
-  // 미제출·오답 전원 패배
   for (const p of room.players) {
     const a = answers.get(p.userId);
     if (!a?.ok) loserIds.add(p.userId);
   }
-  // 정답자 중 가장 늦은 사람 패배 (2명 이상 정답일 때)
   if (correct.length >= 2) {
     loserIds.add(correct[correct.length - 1].userId);
   }
 
   const winners = room.players
     .filter((p) => !loserIds.has(p.userId))
-    .map((p) => ({ userId: p.userId, username: p.username }));
+    .map((p) => ({ userId: p.userId, username: p.username, score: p.score }));
   const losers = room.players
     .filter((p) => loserIds.has(p.userId))
-    .map((p) => ({ userId: p.userId, username: p.username }));
+    .map((p) => ({ userId: p.userId, username: p.username, score: p.score }));
+
+  for (const p of room.players) {
+    if (!loserIds.has(p.userId)) {
+      p.score = (Number(p.score) || 0) + 1;
+    }
+  }
+
+  const matchWinners = room.players
+    .filter((p) => (Number(p.score) || 0) >= HUNMIN_WIN_SCORE)
+    .map((p) => ({
+      userId: p.userId,
+      username: p.username,
+      score: p.score,
+    }));
 
   room.status = 'reveal';
   room.lastResult = {
     roundId,
     choseong,
     correct,
-    winners,
-    losers,
+    winners: winners.map((w) => {
+      const live = room.players.find((p) => p.userId === w.userId);
+      return {
+        userId: w.userId,
+        username: w.username,
+        score: live?.score ?? w.score,
+      };
+    }),
+    losers: losers.map((w) => {
+      const live = room.players.find((p) => p.userId === w.userId);
+      return {
+        userId: w.userId,
+        username: w.username,
+        score: live?.score ?? w.score,
+      };
+    }),
   };
   room.round = null;
   if (room.roundTimer) {
@@ -227,12 +325,12 @@ function finishRound(room, io) {
     room.roundTimer = null;
   }
 
-  // waiting → players (정원까지)
   while (
     room.waiting.length > 0 &&
     room.players.length < HUNMIN_MAX_PLAYERS
   ) {
     const next = room.waiting.shift();
+    if (next.score == null) next.score = 0;
     room.players.push(next);
   }
 
@@ -243,11 +341,18 @@ function finishRound(room, io) {
   });
   emitRoom(room, io);
 
-  // 잠깐 결과 보여주고 다음 로비/라운드
+  if (matchWinners.length > 0) {
+    setTimeout(() => {
+      if (!rooms.has(room.id)) return;
+      beginMatchEnd(room, io, matchWinners);
+    }, 1600);
+    return;
+  }
+
   setTimeout(() => {
     if (!rooms.has(room.id)) return;
+    if (room.status === 'match_end') return;
     room.status = 'lobby';
-    room.lastResult = room.lastResult; // keep for UI briefly
     emitRoom(room, io);
     scheduleLobbyStart(room, io);
   }, 2200);
@@ -268,22 +373,22 @@ export function registerHunminGameEvents(socket, io) {
   socket.on('hunmin:match', async (payload = {}) => {
     const username = String(payload.username || `유저${userId}`).slice(0, 24);
 
-    // 이미 다른 방이면 유지
     let room = getRoomForUser(userId);
     if (room) {
       socket.join(`hunmin:${room.id}`);
       socket.emit('hunmin:joined', {
         room: publicRoom(room),
         you: { userId, username },
-        mode: room.players.some((p) => p.userId === userId) ? 'player' : 'waiting',
+        mode: room.players.some((p) => p.userId === userId)
+          ? 'player'
+          : 'waiting',
       });
       return;
     }
 
-    // 1) 로비에 자리 있으면 즉시 참가
     room = findJoinableLobby();
     if (room) {
-      room.players.push({ userId, username, ready: true });
+      room.players.push(makePlayer(userId, username));
       userRoom.set(userId, room.id);
       socket.join(`hunmin:${room.id}`);
       socket.emit('hunmin:joined', {
@@ -296,10 +401,9 @@ export function registerHunminGameEvents(socket, io) {
       return;
     }
 
-    // 2) 진행 중 방에 대기석
     room = findPlayingWithWaitSpace();
     if (room) {
-      room.waiting.push({ userId, username, ready: true });
+      room.waiting.push(makePlayer(userId, username));
       userRoom.set(userId, room.id);
       socket.join(`hunmin:${room.id}`);
       socket.emit('hunmin:joined', {
@@ -312,9 +416,8 @@ export function registerHunminGameEvents(socket, io) {
       return;
     }
 
-    // 3) 새 방
     room = createRoom();
-    room.players.push({ userId, username, ready: true });
+    room.players.push(makePlayer(userId, username));
     userRoom.set(userId, room.id);
     socket.join(`hunmin:${room.id}`);
     socket.emit('hunmin:joined', {
@@ -366,7 +469,6 @@ export function registerHunminGameEvents(socket, io) {
     } else if (!matchesChoseong(word, room.round.choseong)) {
       message = `초성 ${room.round.choseong.join('')} 에 맞는 단어가 아니에요.`;
     } else {
-      // 사전 검증 (서버) — 키 없으면 형태만 통과
       const dict = await validateWordServer(word);
       if (!dict.ok) {
         message = dict.message || '사전에 없는 단어예요.';
@@ -376,15 +478,21 @@ export function registerHunminGameEvents(socket, io) {
       }
     }
 
+    const player = room.players.find((p) => p.userId === userId);
     room.round.answers.set(userId, { word, at: now, ok });
     socket.emit('hunmin:answer_result', { ok, message, word });
     io.to(`hunmin:${room.id}`).emit('hunmin:answer_progress', {
       roomId: room.id,
-      answeredCount: [...room.round.answers.values()].filter((a) => a.ok).length,
+      userId,
+      username: player?.username || `유저${userId}`,
+      word,
+      ok,
+      submittedAt: now,
+      answeredCount: [...room.round.answers.values()].filter((a) => a.ok)
+        .length,
       playerCount: room.players.length,
     });
 
-    // 전원 제출되면 조기 종료
     if (room.round.answers.size >= room.players.length) {
       if (room.roundTimer) clearTimeout(room.roundTimer);
       finishRound(room, io);
@@ -417,7 +525,6 @@ async function validateWordServer(word) {
   if (!key) {
     return { ok: true, source: 'stub' };
   }
-  // 키 발급 후 우리말샘 endpoint 연결
   try {
     return { ok: true, source: 'api' };
   } catch {
