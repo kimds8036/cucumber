@@ -131,6 +131,9 @@ const Login = ({ navigation }) => {
           response.data.data?.reverificationStatus || 'none',
         reverificationDeadline:
           response.data.data?.reverificationDeadline || null,
+        needsProfileUsername: Boolean(
+          response.data.data?.needsProfileUsername,
+        ),
       });
     } catch (error) {
       if (error?.code === 'CANCELLED') {
@@ -283,6 +286,9 @@ const Login = ({ navigation }) => {
           response.data.data?.reverificationStatus || 'none',
         reverificationDeadline:
           response.data.data?.reverificationDeadline || null,
+        needsProfileUsername: Boolean(
+          response.data.data?.needsProfileUsername,
+        ),
       });
     } catch (error) {
       const hasResponse = Boolean(error?.response);

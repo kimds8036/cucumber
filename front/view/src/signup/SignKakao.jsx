@@ -349,6 +349,46 @@ const SignKakao = ({ navigation }) => {
           hasPhone: Boolean(profile?.phoneNumber),
         });
       }
+
+      // 이미 연동된 계정이면 가입 대신 바로 로그인
+      if (accessToken) {
+        try {
+          const deviceId = await getOrCreateDeviceId();
+          const response = await api.post('/api/auth/oauth/kakao', {
+            accessToken,
+            deviceId,
+          });
+          const data = response.data?.data || {};
+          if (data.token) {
+            await setAuthToken(data.token, { persist: true });
+            if (data.refreshToken) {
+              await setRefreshToken(data.refreshToken, { persist: true });
+            }
+            await clearFlowSession();
+            await login({
+              studentVerificationStatus:
+                data.studentVerificationStatus || 'PENDING',
+              rejectReason: data.rejectReason || null,
+              reverificationStatus: data.reverificationStatus || 'none',
+              reverificationDeadline: data.reverificationDeadline || null,
+              needsProfileUsername: Boolean(data.needsProfileUsername),
+            });
+            return;
+          }
+        } catch (oauthErr) {
+          const code = oauthErr?.response?.data?.code;
+          if (code && code !== 'NEEDS_SIGNUP') {
+            const message =
+              oauthErr?.response?.data?.message ||
+              '카카오 로그인에 실패했습니다.';
+            setKakaoAuthError(message);
+            kakaoAuthRanRef.current = false;
+            return;
+          }
+          // NEEDS_SIGNUP → 아래 가입 플로우 계속
+        }
+      }
+
       const nextIdentity = {
         ...mapKakaoProfileToIdentity(profile),
         kakaoAccessToken: accessToken || '',
@@ -384,7 +424,7 @@ const SignKakao = ({ navigation }) => {
     } finally {
       setKakaoBusy(false);
     }
-  }, [applyKakaoIdentity]);
+  }, [applyKakaoIdentity, clearFlowSession, login]);
 
   const handleGuardianConsentStart = () => {
     setShowGuardianConsentModal(false);
@@ -548,6 +588,9 @@ const SignKakao = ({ navigation }) => {
     await login({
       studentVerificationStatus: status || 'PENDING',
       rejectReason: rejectReason || null,
+      needsProfileUsername: Boolean(
+        loginRes.data?.data?.needsProfileUsername,
+      ),
     });
   };
 

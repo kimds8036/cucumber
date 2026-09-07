@@ -94,6 +94,26 @@ import {
 
 const router = express.Router();
 
+async function getNeedsProfileUsername(userId) {
+  const [rows] = await pool.execute(
+    `SELECT profile_username_set
+     FROM user_settings
+     WHERE user_id = ?
+     LIMIT 1`,
+    [userId],
+  );
+  if (rows.length > 0) {
+    return Number(rows[0].profile_username_set) === 0;
+  }
+  const [oauth] = await pool.execute(
+    `SELECT 1 FROM user_oauth_providers
+     WHERE user_id = ? AND provider IN ('kakao', 'apple')
+     LIMIT 1`,
+    [userId],
+  );
+  return oauth.length > 0;
+}
+
 /** 비밀번호/소셜 공통 — 디바이스 기록 + JWT·refresh 발급 */
 async function issueLoginSuccessResponse(req, res, user, { needsVerificationHint } = {}) {
   const ipAddress = getClientIp(req);
@@ -166,6 +186,7 @@ async function issueLoginSuccessResponse(req, res, user, { needsVerificationHint
 
   const verification = await getStudentVerificationStatus(user.id);
   const reverification = await getUserReverificationPayload(user.id);
+  const needsProfileUsername = await getNeedsProfileUsername(user.id);
 
   return res.json({
     success: true,
@@ -187,6 +208,7 @@ async function issueLoginSuccessResponse(req, res, user, { needsVerificationHint
       reverificationStatus: reverification?.reverificationStatus ?? 'none',
       reverificationDeadline: reverification?.reverificationDeadline ?? null,
       gradeException: reverification?.gradeException ?? false,
+      needsProfileUsername,
     },
   });
 }
@@ -454,6 +476,7 @@ router.get('/me', authenticate, async (req, res) => {
 
     const verification = await getStudentVerificationStatus(userId);
     const reverification = await getUserReverificationPayload(userId);
+    const needsProfileUsername = await getNeedsProfileUsername(userId);
 
     res.json({
       success: true,
@@ -485,6 +508,7 @@ router.get('/me', authenticate, async (req, res) => {
         reverificationDeadline: reverification?.reverificationDeadline ?? null,
         gradeException: reverification?.gradeException ?? false,
         previousSchoolId: reverification?.previousSchoolId ?? null,
+        needsProfileUsername,
       },
     });
   } catch (error) {
@@ -522,15 +546,18 @@ router.patch('/me/username', authenticate, validate(updateUsernameValidators), a
     );
 
     const [settingsRows] = await pool.execute(
-      `SELECT last_username_change_at
+      `SELECT last_username_change_at, profile_username_set
        FROM user_settings
        WHERE user_id = ?`,
       [userId]
     );
+    const profileUsernameUnset =
+      settingsRows[0] && Number(settingsRows[0].profile_username_set) === 0;
     const lastChangedAt = settingsRows[0]?.last_username_change_at
       ? new Date(settingsRows[0].last_username_change_at)
       : null;
-    if (lastChangedAt) {
+    // 소셜 최초 프로필 아이디 설정은 6개월 쿨다운 면제
+    if (!profileUsernameUnset && lastChangedAt) {
       const nextAllowedAt = new Date(lastChangedAt);
       nextAllowedAt.setMonth(nextAllowedAt.getMonth() + 6);
       if (new Date() < nextAllowedAt) {
@@ -558,7 +585,8 @@ router.patch('/me/username', authenticate, validate(updateUsernameValidators), a
     );
     await pool.execute(
       `UPDATE user_settings
-       SET last_username_change_at = NOW()
+       SET last_username_change_at = NOW(),
+           profile_username_set = 1
        WHERE user_id = ?`,
       [userId]
     );
@@ -1645,6 +1673,12 @@ router.post(
             provider: 'kakao',
             providerUserId: kakaoProviderUserId,
           });
+          await connection.execute(
+            `INSERT INTO user_settings (user_id, profile_username_set)
+             VALUES (?, 0)
+             ON DUPLICATE KEY UPDATE profile_username_set = 0`,
+            [userId],
+          );
         } catch (oauthErr) {
           await connection.rollback();
           console.error('[signup/kakaoOauth]', oauthErr);
@@ -1666,6 +1700,12 @@ router.post(
             provider: 'kakao',
             providerUserId,
           });
+          await connection.execute(
+            `INSERT INTO user_settings (user_id, profile_username_set)
+             VALUES (?, 0)
+             ON DUPLICATE KEY UPDATE profile_username_set = 0`,
+            [userId],
+          );
         } catch (oauthErr) {
           await connection.rollback();
           console.error('[signup/kakaoOauth]', oauthErr);

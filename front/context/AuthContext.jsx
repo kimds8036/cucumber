@@ -45,6 +45,7 @@ export function AuthProvider({ children }) {
   const [reverificationDeadline, setReverificationDeadline] = useState(null);
   const [reverificationSubmissionPending, setReverificationSubmissionPending] =
     useState(false);
+  const [needsProfileUsername, setNeedsProfileUsername] = useState(false);
 
   const applyVerification = useCallback(async (status, reason, extra = {}) => {
     const nextStatus = status || 'PENDING';
@@ -75,6 +76,9 @@ export function AuthProvider({ children }) {
         data.reverificationStatus,
         data.reverificationDeadline,
       );
+      if (data.needsProfileUsername != null) {
+        setNeedsProfileUsername(Boolean(data.needsProfileUsername));
+      }
     },
     [applyVerification, applyReverification],
   );
@@ -99,6 +103,7 @@ export function AuthProvider({ children }) {
     setReverificationStatus('none');
     setReverificationDeadline(null);
     setReverificationSubmissionPending(false);
+    setNeedsProfileUsername(false);
     await clearCachedStudentVerificationStatus();
     await clearCachedReverification();
     await clearAuthToken();
@@ -215,11 +220,19 @@ export function AuthProvider({ children }) {
         );
       }
 
+      if (options?.needsProfileUsername != null) {
+        setNeedsProfileUsername(Boolean(options.needsProfileUsername));
+      }
+
       resetSessionTerminateGuard();
       setIsLoggedIn(true);
     },
     [applyVerification, applyReverification],
   );
+
+  const markProfileUsernameSet = useCallback(() => {
+    setNeedsProfileUsername(false);
+  }, []);
 
   const value = {
     isLoggedIn,
@@ -233,6 +246,8 @@ export function AuthProvider({ children }) {
     reverificationStatus,
     reverificationDeadline,
     reverificationSubmissionPending,
+    needsProfileUsername,
+    markProfileUsernameSet,
     applyVerification,
     applyReverification,
     refreshStudentVerification,

@@ -6,6 +6,8 @@ import {
   TouchableOpacity,
   useWindowDimensions,
   StyleSheet,
+  Alert,
+  ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { colors, fonts, fontSizes } from '../../../styles/colors';
@@ -14,24 +16,42 @@ import {
   USERNAME_ERROR,
   USERNAME_HINT,
 } from '../../../utils/signupValidation';
-import { useAppNavigation } from '../../../navigation/useAppNavigation';
+import { api, getApiUserFacingMessage } from '../../../utils/api';
+import { useAuth } from '../../../context/AuthContext';
 import SignupHelperText from './SignupHelperText';
 
 const SignProfileUsername = () => {
-  const { resetTo } = useAppNavigation();
+  const { markProfileUsernameSet, refreshStudentVerification } = useAuth();
   const { width } = useWindowDimensions();
   const normalize = (size) => Math.round((width / 375) * size);
   const styles = useMemo(() => createStyles(normalize), [normalize]);
 
   const [username, setUsername] = useState('');
+  const [submitting, setSubmitting] = useState(false);
   const trimmed = username.trim();
   const status =
     !trimmed ? 'idle' : isValidUsername(trimmed) ? 'valid' : 'invalid';
-  const canSubmit = isValidUsername(trimmed);
+  const canSubmit = isValidUsername(trimmed) && !submitting;
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (!canSubmit) return;
-    resetTo('Main');
+    setSubmitting(true);
+    try {
+      await api.patch('/api/auth/me/username', { username: trimmed });
+      markProfileUsernameSet();
+      await refreshStudentVerification();
+    } catch (error) {
+      Alert.alert(
+        '아이디 설정 실패',
+        getApiUserFacingMessage(
+          error,
+          error?.response?.data?.message ||
+            '아이디를 저장하지 못했습니다. 다시 시도해 주세요.',
+        ),
+      );
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
@@ -53,6 +73,7 @@ const SignProfileUsername = () => {
           autoCapitalize="none"
           autoCorrect={false}
           maxLength={20}
+          editable={!submitting}
         />
         <SignupHelperText
           status={status}
@@ -64,11 +85,15 @@ const SignProfileUsername = () => {
 
       <TouchableOpacity
         style={[styles.primaryButton, !canSubmit && styles.primaryButtonDisabled]}
-        onPress={handleSubmit}
+        onPress={() => void handleSubmit()}
         disabled={!canSubmit}
         activeOpacity={0.85}
       >
-        <Text style={styles.primaryButtonText}>시작하기</Text>
+        {submitting ? (
+          <ActivityIndicator color={colors.textPrimary} />
+        ) : (
+          <Text style={styles.primaryButtonText}>시작하기</Text>
+        )}
       </TouchableOpacity>
     </SafeAreaView>
   );
@@ -121,7 +146,7 @@ function createStyles(normalize) {
       backgroundColor: colors.disabled,
     },
     primaryButtonText: {
-      fontFamily: fonts.semibold,
+      fontFamily: fonts.bold,
       fontSize: fontSizes.md,
       color: colors.textPrimary,
     },

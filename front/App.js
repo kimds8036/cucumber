@@ -308,6 +308,7 @@ function RootNavigator() {
     reverificationStatus,
     reverificationDeadline,
     reverificationSubmissionPending,
+    needsProfileUsername,
     refreshStudentVerification,
   } = useAuth();
   const [showResubmit, setShowResubmit] = useState(false);
@@ -618,6 +619,14 @@ function RootNavigator() {
         }}
       />
     );
+  }
+
+  // 카카오 등 소셜: 학생증 승인 후 최초 1회 프로필 아이디
+  if (
+    studentVerificationStatus === 'APPROVED' &&
+    needsProfileUsername
+  ) {
+    return <SignProfileUsername />;
   }
 
   const showReverificationPendingBanner = reverificationSubmissionPending;
