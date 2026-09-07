@@ -283,8 +283,7 @@ export default function HunminGame() {
       setRound(payload.round);
       setResult(null);
       setSubmitted(false);
-      // 입력창은 채팅처럼 유지(라운드 전환 시 강제 비우지 않음)
-      setBubbles({});
+      // 입력창·말풍선은 채팅처럼 유지
       setMatchEnd(null);
       setRematchSearching(false);
       setFeedback({
@@ -330,6 +329,13 @@ export default function HunminGame() {
         [payload.userId]: String(payload.word || ''),
       }));
     };
+    const onChat = (payload) => {
+      if (payload?.userId == null) return;
+      setBubbles((prev) => ({
+        ...prev,
+        [payload.userId]: String(payload.text || payload.word || ''),
+      }));
+    };
     const onMatchEnd = (payload) => {
       inMatchRef.current = false;
       setMatchEnd(payload);
@@ -357,6 +363,7 @@ export default function HunminGame() {
     socket.on('hunmin:round_end', onRoundEnd);
     socket.on('hunmin:answer_result', onAnswerResult);
     socket.on('hunmin:answer_progress', onAnswerProgress);
+    socket.on('hunmin:chat', onChat);
     socket.on('hunmin:match_end', onMatchEnd);
     socket.on('hunmin:rematch_search', onRematchSearch);
 
@@ -367,6 +374,7 @@ export default function HunminGame() {
       socket.off('hunmin:round_end', onRoundEnd);
       socket.off('hunmin:answer_result', onAnswerResult);
       socket.off('hunmin:answer_progress', onAnswerProgress);
+      socket.off('hunmin:chat', onChat);
       socket.off('hunmin:match_end', onMatchEnd);
       socket.off('hunmin:rematch_search', onRematchSearch);
     };
@@ -384,26 +392,24 @@ export default function HunminGame() {
     const word = input.trim();
     if (!word) return;
 
-    // 채팅처럼 전송 즉시 비우고 포커스 유지 → 오타/오답 바로 재입력
+    // 채팅처럼 전송 즉시 비우고 포커스 유지
     setInput('');
     requestAnimationFrame(() => {
       inputRef.current?.focus?.();
     });
 
     if (!socket) return;
-    if (phase !== 'playing') {
-      setFeedback({
-        type: 'info',
-        text: '라운드가 시작되면 제출돼요. 계속 입력해 두세요!',
-      });
-      return;
-    }
-    if (submitted) {
-      setFeedback({ type: 'info', text: '이번 라운드 정답을 이미 맞췄어요.' });
-      return;
-    }
 
-    socket.emit('hunmin:answer', { word });
+    // 언제든 말풍선 채팅
+    if (you?.userId != null) {
+      setBubbles((prev) => ({ ...prev, [you.userId]: word }));
+    }
+    socket.emit('hunmin:chat', { text: word });
+
+    // 라운드 중이면 같은 내용으로 선착 정답도 시도
+    if (phase === 'playing' && !submitted) {
+      socket.emit('hunmin:answer', { word });
+    }
   };
 
   const choseong = round?.choseong || result?.choseong || [];
