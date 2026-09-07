@@ -15,8 +15,8 @@ import {
   InteractionManager,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useRoute } from '@react-navigation/native';
-import { Ionicons } from '@expo/vector-icons';
+import { useRoute, useNavigation } from '@react-navigation/native';
+import Feather from '@expo/vector-icons/Feather';
 import { createSignupStyles } from '../../../styles/login.style';
 import { colors } from '../../../styles/colors';
 import SignStepGuardianConsentModal from './SignStepGuardianConsentModal';
@@ -33,6 +33,11 @@ import SignStepCertificateGuide from './SignStepCertificateGuide';
 import SignStepCertificate from './SignStepCertificate';
 import SignupPrimaryFooter from './SignupPrimaryFooter';
 import Skeleton from '../../../components/common/Skeleton';
+import usePreventSignupStackExit from './usePreventSignupStackExit';
+import {
+  buildAbortSignupConfirmAlert,
+  leaveSignupToEntry,
+} from './signupAbort';
 import { api, setAuthToken, setRefreshToken, getOrCreateDeviceId } from '../../../utils/api';
 import {
   peekPendingInviteCode,
@@ -107,6 +112,9 @@ const INICIS_OVERLAY_TITLE = {
 
 const SignApple = ({ navigation }) => {
   const route = useRoute();
+  const nav = useNavigation();
+  const navigationRef = navigation || nav;
+  usePreventSignupStackExit(navigationRef);
   const { login } = useAuth();
   const { resetTo } = useAppNavigation();
   const { width } = useWindowDimensions();
@@ -298,6 +306,13 @@ const SignApple = ({ navigation }) => {
     cancelInicisFlow();
   }, []);
 
+  const abortSignupImmediate = useCallback(async () => {
+    await leaveSignupToEntry({
+      navigation: navigationRef,
+      clearFlowSession,
+    });
+  }, [clearFlowSession, navigationRef]);
+
   const goToLogin = useCallback(() => {
     resetTo('Login');
   }, [resetTo]);
@@ -305,6 +320,19 @@ const SignApple = ({ navigation }) => {
   const closeBlockingAlert = useCallback(() => {
     setBlockingAlert((prev) => ({ ...prev, visible: false }));
   }, []);
+
+  const requestAbortSignup = useCallback(() => {
+    if (submitting) return;
+    setBlockingAlert(
+      buildAbortSignupConfirmAlert({
+        onKeepGoing: closeBlockingAlert,
+        onConfirm: async () => {
+          closeBlockingAlert();
+          await abortSignupImmediate();
+        },
+      }),
+    );
+  }, [abortSignupImmediate, closeBlockingAlert, submitting]);
 
   const proceedToSchool = useCallback(() => {
     setCurrentStep(STEP.SCHOOL_SELECT);
@@ -327,11 +355,10 @@ const SignApple = ({ navigation }) => {
 
       const phoneOk = await assertPhoneAvailableForSignup(
         phoneNumber,
-        navigation,
+        navigationRef,
       );
       if (!phoneOk) {
-        await clearFlowSession();
-        navigation.navigate('SignupEntry');
+        await abortSignupImmediate();
         return;
       }
 
@@ -357,13 +384,13 @@ const SignApple = ({ navigation }) => {
       proceedToSchool();
     },
     [
+      abortSignupImmediate,
       applyBirthDateToState,
       birthDate,
-      clearFlowSession,
       formData.birthDate,
       guardianVerifiedAt,
       identityData,
-      navigation,
+      navigationRef,
       proceedToSchool,
       requiresGuardianVerification,
     ],
@@ -419,28 +446,37 @@ const SignApple = ({ navigation }) => {
 
   const showStudentVerifyErrorAfterOverlay = useCallback(
     (error) => {
-      if (error?.code === 'CANCELLED') return;
+      if (error?.code === 'CANCELLED') {
+        void abortSignupImmediate();
+        return;
+      }
       showInicisAlertAfterOverlay(
         '본인인증 오류',
         error?.message || '본인인증 중 오류가 발생했습니다.',
+        [{ text: '확인', onPress: () => void abortSignupImmediate() }],
       );
     },
-    [showInicisAlertAfterOverlay],
+    [abortSignupImmediate, showInicisAlertAfterOverlay],
   );
 
   const showGuardianVerifyErrorAfterOverlay = useCallback(
     (error) => {
-      if (error?.code === 'CANCELLED') return;
+      if (error?.code === 'CANCELLED') {
+        void abortSignupImmediate();
+        return;
+      }
       if (error?.code === 'IN_PROGRESS') {
         showInicisAlertAfterOverlay('알림', '이미 본인인증이 진행 중입니다.');
         return;
       }
-      showGuardianIncompleteAfterOverlay(
+      showInicisAlertAfterOverlay(
+        '보호자 인증 미완료',
         error?.message ||
           '보호자 본인인증이 완료되지 않아 가입을 진행할 수 없어요.',
+        [{ text: '확인', onPress: () => void abortSignupImmediate() }],
       );
     },
-    [showGuardianIncompleteAfterOverlay, showInicisAlertAfterOverlay],
+    [abortSignupImmediate, showInicisAlertAfterOverlay],
   );
 
   const evaluateStudentVerifyResult = useCallback(
@@ -644,7 +680,11 @@ const SignApple = ({ navigation }) => {
         await endInicisOverlay();
       }
 
-      if (flowError?.code !== 'CANCELLED' && flowError) {
+      if (flowError?.code === 'CANCELLED') {
+        await abortSignupImmediate();
+        return;
+      }
+      if (flowError) {
         showStudentVerifyErrorAfterOverlay(flowError);
         return;
       }
@@ -660,6 +700,7 @@ const SignApple = ({ navigation }) => {
       }
     },
     [
+      abortSignupImmediate,
       commitStudentVerifySuccess,
       endInicisOverlay,
       runStudentIdentityVerificationCore,
@@ -685,11 +726,14 @@ const SignApple = ({ navigation }) => {
       await promptStudentIdentityAfterGuardian();
     } catch (error) {
       await endInicisOverlay();
-      if (error?.code !== 'CANCELLED') {
-        showGuardianVerifyErrorAfterOverlay(error);
+      if (error?.code === 'CANCELLED') {
+        await abortSignupImmediate();
+        return;
       }
+      showGuardianVerifyErrorAfterOverlay(error);
     }
   }, [
+    abortSignupImmediate,
     endInicisOverlay,
     promptStudentIdentityAfterGuardian,
     runGuardianIdentityVerificationCore,
@@ -717,9 +761,11 @@ const SignApple = ({ navigation }) => {
         }
       } catch (error) {
         await endInicisOverlay();
-        if (error?.code !== 'CANCELLED') {
-          showGuardianVerifyErrorAfterOverlay(error);
+        if (error?.code === 'CANCELLED') {
+          await abortSignupImmediate();
+          return;
         }
+        showGuardianVerifyErrorAfterOverlay(error);
       }
       return;
     }
@@ -739,7 +785,11 @@ const SignApple = ({ navigation }) => {
       } finally {
         await endInicisOverlay();
       }
-      if (flowError?.code !== 'CANCELLED' && flowError) {
+      if (flowError?.code === 'CANCELLED') {
+        await abortSignupImmediate();
+        return;
+      }
+      if (flowError) {
         showStudentVerifyErrorAfterOverlay(flowError);
         return;
       }
@@ -782,33 +832,18 @@ const SignApple = ({ navigation }) => {
   }, [inicisManualOpening, showInicisAlertAfterOverlay]);
 
   const handleInicisOverlayCancel = useCallback(async () => {
-    const wasGuardian = inicisOverlayTitle === INICIS_OVERLAY_TITLE.GUARDIAN;
-    const wasStudent = inicisOverlayTitle === INICIS_OVERLAY_TITLE.STUDENT;
     cancelInicisFlow();
     await endInicisOverlay();
     await clearPendingInicisSession();
-    if (wasGuardian) {
-      showGuardianIncompleteAfterOverlay();
-      return;
-    }
-    if (wasStudent) {
-      showInicisAlertAfterOverlay(
-        '본인인증 미완료',
-        '본인인증이 완료되지 않았습니다. 다시 시도해 주세요.',
-      );
-    }
-  }, [
-    endInicisOverlay,
-    inicisOverlayTitle,
-    showGuardianIncompleteAfterOverlay,
-    showInicisAlertAfterOverlay,
-  ]);
+    await abortSignupImmediate();
+  }, [abortSignupImmediate, endInicisOverlay]);
 
   const runAppleSdkAuth = useCallback(async () => {
     try {
       const { identityToken, profile, isMock } = await loginWithApple();
       if (!identityToken) {
         Alert.alert('알림', 'Apple 인증에 실패했습니다. 다시 시도해 주세요.');
+        await abortSignupImmediate();
         return;
       }
 
@@ -845,6 +880,7 @@ const SignApple = ({ navigation }) => {
               oauthErr?.response?.data?.message ||
                 'Apple 로그인에 실패했습니다.',
             );
+            await abortSignupImmediate();
             return;
           }
           // NEEDS_SIGNUP → 가입 플로우 계속
@@ -866,26 +902,31 @@ const SignApple = ({ navigation }) => {
       }));
       setCurrentStep(STEP.BIRTH_DATE);
     } catch (error) {
-      if (error?.code === 'CANCELLED') {
-        navigation.navigate('SignupEntry');
-        return;
-      }
       if (error?.code === 'APPLE_UNAVAILABLE') {
         Alert.alert(
           'Apple 로그인',
           error.message ||
             'Apple 로그인은 iOS에서만 사용할 수 있습니다.',
-          [{ text: '확인', onPress: () => navigation.navigate('SignupEntry') }],
+          [
+            {
+              text: '확인',
+              onPress: () => {
+                void abortSignupImmediate();
+              },
+            },
+          ],
         );
         return;
       }
-      Alert.alert(
-        '알림',
-        error?.message || 'Apple 인증에 실패했습니다. 다시 시도해 주세요.',
-      );
-      navigation.navigate('SignupEntry');
+      if (error?.code !== 'CANCELLED') {
+        Alert.alert(
+          '알림',
+          error?.message || 'Apple 인증에 실패했습니다. 다시 시도해 주세요.',
+        );
+      }
+      await abortSignupImmediate();
     }
-  }, [clearFlowSession, login, navigation]);
+  }, [abortSignupImmediate, clearFlowSession, login]);
 
   const handleBirthDateChange = useCallback((nextBirthDate) => {
     setBirthDate(nextBirthDate);
@@ -1190,43 +1231,6 @@ const SignApple = ({ navigation }) => {
     }
   };
 
-  const handleBack = async () => {
-    if (submitting) return;
-
-    if (currentStep === STEP.APPLE_AUTH || currentStep === STEP.BIRTH_DATE) {
-      await clearFlowSession();
-      navigation.navigate('SignupEntry');
-      return;
-    }
-    if (currentStep === STEP.SCHOOL_SELECT) {
-      await clearFlowSession();
-      navigation.navigate('SignupEntry');
-      return;
-    }
-    if (currentStep === STEP.STUDENT_VERIFY) {
-      setStudentVerified(false);
-      setStudentVerificationToken(null);
-      setCurrentStep(STEP.SCHOOL_SELECT);
-      return;
-    }
-    if (currentStep === STEP.ALT_VERIFY_CHOICE) {
-      setCurrentStep(STEP.STUDENT_VERIFY);
-      return;
-    }
-    if (currentStep === STEP.CERTIFICATE_GUIDE) {
-      setCurrentStep(STEP.ALT_VERIFY_CHOICE);
-      return;
-    }
-    if (currentStep === STEP.CERTIFICATE_SUBMIT) {
-      setCurrentStep(STEP.CERTIFICATE_GUIDE);
-      return;
-    }
-    if (currentStep === STEP.NEIS_PLUS_SUBMIT) {
-      setCurrentStep(STEP.ALT_VERIFY_CHOICE);
-      return;
-    }
-  };
-
   const getStepTitle = () => {
     switch (currentStep) {
       case STEP.APPLE_AUTH:
@@ -1426,12 +1430,14 @@ const SignApple = ({ navigation }) => {
             <View style={styles.headerTop}>
               <TouchableOpacity
                 style={styles.backButton}
-                onPress={() => void handleBack()}
+                onPress={requestAbortSignup}
                 disabled={submitting}
+                accessibilityRole="button"
+                accessibilityLabel="가입 중단"
               >
-                <Ionicons
-                  name="chevron-back"
-                  size={normalize(24)}
+                <Feather
+                  name="x"
+                  size={normalize(20)}
                   color={colors.textPrimary}
                 />
               </TouchableOpacity>

@@ -57,15 +57,15 @@ const SignupEntry = ({ navigation }) => {
     setPendingProvider(null);
 
     if (provider === 'kakao') {
-      navigation.navigate('SignKakao', { consents: consentPayload });
+      navigation.replace('SignKakao', { consents: consentPayload });
       return;
     }
     if (provider === 'apple') {
-      navigation.navigate('SignApple', { consents: consentPayload });
+      navigation.replace('SignApple', { consents: consentPayload });
       return;
     }
     if (provider === 'phone') {
-      navigation.navigate('SignPhone', { consents: consentPayload });
+      navigation.replace('SignPhone', { consents: consentPayload });
     }
   };
 

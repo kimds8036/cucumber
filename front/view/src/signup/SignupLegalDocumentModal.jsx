@@ -34,7 +34,7 @@ export function SignupLegalDocumentContent({ slug, normalize, onClose }) {
   const title = meta?.title || config.defaultTitle;
 
   return (
-    <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
+    <SafeAreaView style={styles.container} edges={['top']}>
       <SubHeader
         title={title}
         onBack={onClose}

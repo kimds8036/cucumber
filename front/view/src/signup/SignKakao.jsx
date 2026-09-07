@@ -15,14 +15,19 @@ import {
   InteractionManager,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useRoute } from '@react-navigation/native';
-import { Ionicons } from '@expo/vector-icons';
+import { useRoute, useNavigation } from '@react-navigation/native';
+import Feather from '@expo/vector-icons/Feather';
 import { createSignupStyles } from '../../../styles/login.style';
 import { colors } from '../../../styles/colors';
 import SignStepGuardianConsentModal from './SignStepGuardianConsentModal';
 import SignupBlockingAlertModal from './SignupBlockingAlertModal';
 import SubmittingLockModal from '../../../components/common/SubmittingLockModal';
 import SignStepSchoolSelect from './SignStepSchoolSelect';
+import usePreventSignupStackExit from './usePreventSignupStackExit';
+import {
+  buildAbortSignupConfirmAlert,
+  leaveSignupToEntry,
+} from './signupAbort';
 import SignStepStudentIdVerify from './SignStepStudentIdVerify';
 import SignStepAltVerifyChoice from './SignStepAltVerifyChoice';
 import SignStepNeisPlusSubmit from './SignStepNeisPlusSubmit';
@@ -92,6 +97,9 @@ const MOCK_STUDENT_TOKEN = 'redesign-skip-student-token';
 
 const SignKakao = ({ navigation }) => {
   const route = useRoute();
+  const nav = useNavigation();
+  const navigationRef = navigation || nav;
+  usePreventSignupStackExit(navigationRef);
   const { login } = useAuth();
   const { resetTo } = useAppNavigation();
   const { width } = useWindowDimensions();
@@ -256,6 +264,13 @@ const SignKakao = ({ navigation }) => {
     cancelInicisFlow();
   }, []);
 
+  const abortSignupImmediate = useCallback(async () => {
+    await leaveSignupToEntry({
+      navigation: navigationRef,
+      clearFlowSession,
+    });
+  }, [clearFlowSession, navigationRef]);
+
   const goToLogin = useCallback(() => {
     resetTo('Login');
   }, [resetTo]);
@@ -263,6 +278,19 @@ const SignKakao = ({ navigation }) => {
   const closeBlockingAlert = useCallback(() => {
     setBlockingAlert((prev) => ({ ...prev, visible: false }));
   }, []);
+
+  const requestAbortSignup = useCallback(() => {
+    if (submitting) return;
+    setBlockingAlert(
+      buildAbortSignupConfirmAlert({
+        onKeepGoing: closeBlockingAlert,
+        onConfirm: async () => {
+          closeBlockingAlert();
+          await abortSignupImmediate();
+        },
+      }),
+    );
+  }, [abortSignupImmediate, closeBlockingAlert, submitting]);
 
   const proceedToSchool = useCallback(() => {
     setCurrentStep(STEP.SCHOOL_SELECT);
@@ -284,8 +312,9 @@ const SignKakao = ({ navigation }) => {
       if (error?.code !== 'CANCELLED') {
         Alert.alert('알림', '보호자 본인인증을 완료하지 못했습니다.');
       }
+      await abortSignupImmediate();
     }
-  }, [proceedToSchool]);
+  }, [abortSignupImmediate, proceedToSchool]);
 
   const applyKakaoIdentity = useCallback(
     async (nextIdentity) => {
@@ -315,11 +344,11 @@ const SignKakao = ({ navigation }) => {
 
       const phoneOk = await assertPhoneAvailableForSignup(
         nextIdentity.phoneNumber,
-        navigation,
+        navigationRef,
       );
       if (!phoneOk) {
         kakaoAuthRanRef.current = false;
-        await clearFlowSession();
+        await abortSignupImmediate();
         return;
       }
 
@@ -338,7 +367,7 @@ const SignKakao = ({ navigation }) => {
       }
       proceedToSchool();
     },
-    [clearFlowSession, goToLogin, navigation, proceedToSchool],
+    [abortSignupImmediate, goToLogin, navigationRef, proceedToSchool],
   );
 
   const runKakaoMockAuth = useCallback(
@@ -409,37 +438,31 @@ const SignKakao = ({ navigation }) => {
         kakaoAccessToken: accessToken || '',
       };
       if (!nextIdentity.birthDate) {
-        setKakaoAuthError(
+        Alert.alert(
+          '알림',
           '생년월일을 받지 못했습니다. 카카오 동의항목(출생연도·생일)을 확인하세요.',
         );
-        kakaoAuthRanRef.current = false;
+        await abortSignupImmediate();
         return;
       }
       if (!nextIdentity.name) {
-        setKakaoAuthError(
+        Alert.alert(
+          '알림',
           '이름을 받지 못했습니다. 카카오 동의항목(이름)을 확인하세요.',
         );
-        kakaoAuthRanRef.current = false;
+        await abortSignupImmediate();
         return;
       }
       applyKakaoIdentity(nextIdentity);
     } catch (error) {
-      if (error?.code === 'CANCELLED') {
-        setKakaoAuthError('카카오 로그인이 취소되었습니다. 다시 시도해 주세요.');
-        kakaoAuthRanRef.current = false;
-        return;
-      }
-      const message =
-        error?.message || String(error || '카카오 로그인에 실패했습니다.');
-      setKakaoAuthError(message);
-      kakaoAuthRanRef.current = false;
       if (__DEV__) {
         console.warn('[SignKakao] kakao login failed', error);
       }
+      await abortSignupImmediate();
     } finally {
       setKakaoBusy(false);
     }
-  }, [applyKakaoIdentity, clearFlowSession, login]);
+  }, [abortSignupImmediate, applyKakaoIdentity, clearFlowSession, login]);
 
   const handleGuardianConsentStart = () => {
     setShowGuardianConsentModal(false);
@@ -651,43 +674,6 @@ const SignKakao = ({ navigation }) => {
     }
   };
 
-  const handleBack = async () => {
-    if (submitting) return;
-
-    if (currentStep === STEP.KAKAO_AUTH) {
-      await clearFlowSession();
-      navigation.navigate('SignupEntry');
-      return;
-    }
-    if (currentStep === STEP.SCHOOL_SELECT) {
-      await clearFlowSession();
-      navigation.navigate('SignupEntry');
-      return;
-    }
-    if (currentStep === STEP.STUDENT_VERIFY) {
-      setStudentVerified(false);
-      setStudentVerificationToken(null);
-      setCurrentStep(STEP.SCHOOL_SELECT);
-      return;
-    }
-    if (currentStep === STEP.ALT_VERIFY_CHOICE) {
-      setCurrentStep(STEP.STUDENT_VERIFY);
-      return;
-    }
-    if (currentStep === STEP.CERTIFICATE_GUIDE) {
-      setCurrentStep(STEP.ALT_VERIFY_CHOICE);
-      return;
-    }
-    if (currentStep === STEP.CERTIFICATE_SUBMIT) {
-      setCurrentStep(STEP.CERTIFICATE_GUIDE);
-      return;
-    }
-    if (currentStep === STEP.NEIS_PLUS_SUBMIT) {
-      setCurrentStep(STEP.ALT_VERIFY_CHOICE);
-      return;
-    }
-  };
-
   const getStepTitle = () => {
     switch (currentStep) {
       case STEP.KAKAO_AUTH:
@@ -851,12 +837,14 @@ const SignKakao = ({ navigation }) => {
             <View style={styles.headerTop}>
               <TouchableOpacity
                 style={styles.backButton}
-                onPress={() => void handleBack()}
+                onPress={requestAbortSignup}
                 disabled={submitting}
+                accessibilityRole="button"
+                accessibilityLabel="가입 중단"
               >
-                <Ionicons
-                  name="chevron-back"
-                  size={normalize(24)}
+                <Feather
+                  name="x"
+                  size={normalize(20)}
                   color={colors.textPrimary}
                 />
               </TouchableOpacity>

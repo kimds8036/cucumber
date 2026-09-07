@@ -1,5 +1,5 @@
 import { StatusBar } from 'expo-status-bar';
-import { CommonActions, NavigationContainer, DefaultTheme } from '@react-navigation/native';
+import { CommonActions, NavigationContainer, DefaultTheme, StackActions } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import Login from './view/src/signup/Login';
 import Sign from './view/src/signup/Sign';
@@ -213,9 +213,21 @@ function AuthStack() {
         options={{ gestureEnabled: false }}
       />
       <Stack.Screen name="SignupEntry" component={SignupEntry} />
-      <Stack.Screen name="SignKakao" component={SignKakao} />
-      <Stack.Screen name="SignApple" component={SignApple} />
-      <Stack.Screen name="SignPhone" component={SignPhone} />
+      <Stack.Screen
+        name="SignKakao"
+        component={SignKakao}
+        options={{ gestureEnabled: false, fullScreenGestureEnabled: false }}
+      />
+      <Stack.Screen
+        name="SignApple"
+        component={SignApple}
+        options={{ gestureEnabled: false, fullScreenGestureEnabled: false }}
+      />
+      <Stack.Screen
+        name="SignPhone"
+        component={SignPhone}
+        options={{ gestureEnabled: false, fullScreenGestureEnabled: false }}
+      />
       <Stack.Screen name="Sign" component={Sign} />
       <Stack.Screen name="IDfind" component={IDfind} />
       <Stack.Screen name="PWfind" component={PWfind} />
@@ -351,7 +363,9 @@ function RootNavigator() {
             if (!navigationRef.isReady()) return false;
             const route = navigationRef.getCurrentRoute?.();
             if (route?.name !== targetScreen) {
-              navigationRef.navigate(targetScreen, { resumeSession: true });
+              navigationRef.dispatch(
+                StackActions.replace(targetScreen, { resumeSession: true }),
+              );
             }
             return true;
           };
