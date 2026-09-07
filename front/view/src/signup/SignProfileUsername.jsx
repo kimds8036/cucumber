@@ -65,8 +65,15 @@ const SignProfileUsername = ({ visible = true }) => {
           if (seq !== checkSeqRef.current) return;
           const available = Boolean(res.data?.data?.available);
           setCheckStatus(available ? 'available' : 'taken');
-        } catch {
+        } catch (err) {
           if (seq !== checkSeqRef.current) return;
+          if (__DEV__) {
+            console.warn(
+              '[SignProfileUsername] check-username-available failed',
+              err?.response?.status,
+              err?.response?.data || err?.message,
+            );
+          }
           setCheckStatus('error');
         }
       })();
