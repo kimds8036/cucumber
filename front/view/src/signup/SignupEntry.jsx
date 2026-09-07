@@ -4,6 +4,8 @@ import {
   Text,
   TouchableOpacity,
   useWindowDimensions,
+  Alert,
+  Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -12,6 +14,7 @@ import { colors } from '../../../styles/colors';
 import { createLoginStyles } from '../../../styles/login.style';
 import { createSignupEntryStyles } from '../../../styles/signupEntry.style';
 import SignupConsentSheet from './SignupConsentSheet';
+import { isAppleAuthAvailable } from '../../../services/appleAuth';
 
 const SignupEntry = ({ navigation }) => {
   const { width } = useWindowDimensions();
@@ -25,7 +28,23 @@ const SignupEntry = ({ navigation }) => {
   const [consentVisible, setConsentVisible] = useState(false);
   const [pendingProvider, setPendingProvider] = useState(null);
 
-  const openConsent = (provider) => {
+  const openConsent = async (provider) => {
+    if (provider === 'apple') {
+      const mockOn =
+        String(process.env.EXPO_PUBLIC_APPLE_AUTH_MOCK || '')
+          .trim()
+          .toLowerCase() === 'true';
+      const available = await isAppleAuthAvailable();
+      if (!available && !(__DEV__ && mockOn)) {
+        Alert.alert(
+          'Apple 로그인',
+          Platform.OS === 'ios'
+            ? '이 기기에서는 Apple 로그인을 사용할 수 없습니다.'
+            : 'Apple 로그인은 iOS에서만 사용할 수 있습니다.\nAndroid에서는 카카오 또는 전화번호로 가입해 주세요.',
+        );
+        return;
+      }
+    }
     setPendingProvider(provider);
     setConsentVisible(true);
   };
@@ -67,7 +86,7 @@ const SignupEntry = ({ navigation }) => {
         <View style={styles.buttonStack}>
           <TouchableOpacity
             style={[styles.socialButton, styles.kakaoButton]}
-            onPress={() => openConsent('kakao')}
+            onPress={() => void openConsent('kakao')}
             activeOpacity={0.85}
           >
             <Ionicons
@@ -83,7 +102,7 @@ const SignupEntry = ({ navigation }) => {
 
           <TouchableOpacity
             style={[styles.socialButton, styles.appleButton]}
-            onPress={() => openConsent('apple')}
+            onPress={() => void openConsent('apple')}
             activeOpacity={0.85}
           >
             <Ionicons name="logo-apple" size={normalize(22)} color="#fff" />
@@ -94,7 +113,7 @@ const SignupEntry = ({ navigation }) => {
 
           <TouchableOpacity
             style={[styles.socialButton, styles.phoneButton]}
-            onPress={() => openConsent('phone')}
+            onPress={() => void openConsent('phone')}
             activeOpacity={0.85}
           >
             <Text style={[styles.socialButtonText, styles.phoneButtonText]}>

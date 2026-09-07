@@ -113,10 +113,22 @@ const PWfind = ({ navigation }) => {
       });
       setStep(2);
     } catch (error) {
+      const code = error?.response?.data?.code;
       const msg =
         error?.response?.data?.message ||
         '입력한 정보와 일치하는 사용자를 찾지 못했습니다.';
-      Alert.alert('확인 실패', msg);
+      if (code === 'SOCIAL_ACCOUNT') {
+        const label =
+          error?.response?.data?.data?.providerLabel || '소셜';
+        Alert.alert(
+          '소셜 로그인 가입 계정',
+          msg ||
+            `${label}로 가입한 계정입니다.\n비밀번호 찾기를 사용할 수 없습니다.\n${label} 로그인으로 이용해 주세요.`,
+          [{ text: '로그인하기', onPress: () => navigation.navigate('Login') }],
+        );
+      } else {
+        Alert.alert('확인 실패', msg);
+      }
       resetVerification();
     } finally {
       setCheckingUser(false);
