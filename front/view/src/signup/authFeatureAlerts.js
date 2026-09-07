@@ -1,8 +1,5 @@
 import { Alert } from 'react-native';
-import {
-  getTooOldAlertMessage,
-  getTooYoungAlertMessage,
-} from './signupBirthDatePolicy';
+import { AGE_INELIGIBLE_MESSAGE } from './signupBirthDatePolicy';
 
 export const SUPPORT_EMAIL = 'support@youthpaper.app';
 
@@ -32,27 +29,24 @@ export function showUnder14BlockAlert(onConfirm) {
   );
 }
 
-export const INELIGIBLE_AGE_MESSAGE =
-  'Youth Paper는 중·고등학생을 위한 서비스입니다. 입력하신 생년월일 기준으로 가입할 수 없습니다.';
+export const INELIGIBLE_AGE_MESSAGE = AGE_INELIGIBLE_MESSAGE;
 
 export function showIneligibleAgeAlert(onConfirm) {
-  Alert.alert(
-    '안내 (Youth Paper)',
-    INELIGIBLE_AGE_MESSAGE + SIGNUP_MANUAL_REVIEW_SUFFIX,
-    [{ text: '확인', onPress: onConfirm }],
-  );
+  Alert.alert('안내', INELIGIBLE_AGE_MESSAGE, [
+    { text: '확인', onPress: onConfirm },
+  ]);
 }
 
-/** A 케이스 — 가입 가능 최소 생년월일 미만 */
-export function showTooOldForSignupAlert(onConfirm, ref = new Date()) {
-  Alert.alert('이용 연령 안내', getTooOldAlertMessage(ref), [
+/** A 케이스 — 가입 상한 초과 */
+export function showTooOldForSignupAlert(onConfirm, _ref = new Date()) {
+  Alert.alert('안내', AGE_INELIGIBLE_MESSAGE, [
     { text: '돌아가기', onPress: onConfirm },
   ]);
 }
 
-/** D 케이스 — 가입 가능 최대 생년월일 초과 */
-export function showTooYoungForSignupAlert(onConfirm, ref = new Date()) {
-  Alert.alert('이용 연령 안내', getTooYoungAlertMessage(ref), [
+/** D 케이스 — 가입 하한 미만 */
+export function showTooYoungForSignupAlert(onConfirm, _ref = new Date()) {
+  Alert.alert('안내', AGE_INELIGIBLE_MESSAGE, [
     { text: '돌아가기', onPress: onConfirm },
   ]);
 }

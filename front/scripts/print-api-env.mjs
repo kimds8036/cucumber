@@ -38,6 +38,27 @@ if (appEnv === 'development' && !apiBaseUrl.includes('cucumber-develop')) {
 
 console.log('✓ URL 일치');
 
+const kakaoKey = String(process.env.EXPO_PUBLIC_KAKAO_NATIVE_APP_KEY || '').trim();
+console.log('');
+console.log('--- 카카오 네이티브 앱 키 (prebuild 시 Android에 박힘) ---');
+console.log(
+  'EXPO_PUBLIC_KAKAO_NATIVE_APP_KEY:',
+  kakaoKey ? `${kakaoKey.slice(0, 8)}… (${kakaoKey.length}자)` : '(없음)',
+);
+if (appEnv === 'production') {
+  if (!kakaoKey) {
+    console.warn(
+      '⚠️  production인데 카카오 네이티브 키가 없습니다. front/.env.production 확인.',
+    );
+  } else if (kakaoKey.startsWith('bbac22')) {
+    console.warn(
+      '⚠️  production인데 develop(테스트) 카카오 키처럼 보입니다. .env.production / NODE_ENV=production 확인.',
+    );
+  } else {
+    console.log('✓ production용 카카오 키 로드됨');
+  }
+}
+
 function flagLabel(raw) {
   const v = String(raw || '')
     .toLowerCase()
