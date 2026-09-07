@@ -287,7 +287,6 @@ export const createProfileCardStyles = (normalize) =>
     },
     profileEnrollmentBlock: {
       position: 'relative',
-      marginTop: normalize(2),
       width: '100%',
       zIndex: 2,
     },

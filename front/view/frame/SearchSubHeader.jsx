@@ -1,7 +1,12 @@
-import React, { useMemo, useRef, useEffect } from 'react';
+import React, {
+  forwardRef,
+  useEffect,
+  useImperativeHandle,
+  useMemo,
+  useRef,
+} from 'react';
 import {
   View,
-  Text,
   TextInput,
   TouchableOpacity,
   useWindowDimensions,
@@ -9,147 +14,163 @@ import {
   Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { colors } from '../../styles/colors';
-import { getNormalize } from '../../styles/frame.style';
+import {
+  createSubHeaderStyles,
+  getNormalize,
+} from '../../styles/frame.style';
+import { colors, fonts, fontSizes } from '../../styles/colors';
 
 /**
- * SearchSubHeader
- *
- * Props:
- *  - onBack: () => void              뒤로가기 버튼 핸들러
- *  - value: string                   검색어 상태값
- *  - onChangeText: (text) => void    검색어 변경 핸들러
- *  - onSubmit: () => void            검색 실행 핸들러 (엔터/완료)
- *  - placeholder?: string            placeholder 텍스트 (기본: "게시글, 우편함 검색")
- *  - autoFocus?: boolean             진입 시 자동 포커스 여부 (기본: true)
- *  - rightElement?: ReactNode        우측에 추가 버튼이 필요한 경우
+ * 검색 공통 헤더 — SubHeader(chevron-back + 제목 자리)와 동일 구조·간격
  */
-const SearchSubHeader = ({
-  onBack,
-  value,
-  onChangeText,
-  onSubmit,
-  placeholder = '게시글, 우편함 검색',
-  autoFocus = true,
-  rightElement,
-}) => {
-  const { width, height } = useWindowDimensions();
+const SearchSubHeader = forwardRef(function SearchSubHeader(
+  {
+    onBack,
+    value,
+    onChangeText,
+    onSubmit,
+    onFocus,
+    placeholder = '검색어를 입력하세요',
+    autoFocus = false,
+    showClear = true,
+    rightElement,
+  },
+  ref,
+) {
+  const { width } = useWindowDimensions();
   const normalize = useMemo(() => getNormalize(width), [width]);
-  const styles = useMemo(() => createStyles(normalize), [normalize]);
+  const subStyles = useMemo(() => createSubHeaderStyles(width, 0), [width]);
+  const styles = useMemo(() => createSearchStyles(normalize), [normalize]);
   const inputRef = useRef(null);
 
+  useImperativeHandle(ref, () => ({
+    focus: () => inputRef.current?.focus(),
+    blur: () => inputRef.current?.blur(),
+  }));
+
   useEffect(() => {
-    if (autoFocus) {
-      // 마운트 직후 약간의 딜레이 후 포커스 (네비게이션 애니메이션 완료 대기)
-      const t = setTimeout(() => inputRef.current?.focus(), 150);
-      return () => clearTimeout(t);
-    }
+    if (!autoFocus) return undefined;
+    const t = setTimeout(() => inputRef.current?.focus(), 150);
+    return () => clearTimeout(t);
   }, [autoFocus]);
 
+  const hasValue = String(value ?? '').length > 0;
+  const reserveClearSlot = showClear && rightElement == null;
+  const hasRight = Boolean(rightElement) || reserveClearSlot;
+
   return (
-    <>
-      <View style={styles.header}>
-        {/* 뒤로가기 */}
+    <View style={subStyles.header}>
+      <View style={[subStyles.headerTop, styles.headerTopFixed]}>
         <TouchableOpacity
-          style={styles.backButton}
+          style={subStyles.backButton}
           onPress={onBack}
           hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          accessibilityRole="button"
+          accessibilityLabel="뒤로가기"
         >
           <Ionicons
             name="chevron-back"
-            size={normalize(24)}
+            size={normalize(20)}
             color={colors.textPrimary}
           />
         </TouchableOpacity>
 
-        {/* 검색 인풋 */}
-        <View style={styles.searchWrapper}>
-          <Ionicons
-            name="search"
-            size={normalize(17)}
-            color="#999"
-            style={styles.searchIcon}
-          />
+        <View
+          style={[
+            styles.titleSlot,
+            hasRight ? styles.titleSlotWithRight : null,
+          ]}
+        >
           <TextInput
             ref={inputRef}
             style={styles.searchInput}
             value={value}
             onChangeText={onChangeText}
             onSubmitEditing={onSubmit}
+            onFocus={onFocus}
             placeholder={placeholder}
-            placeholderTextColor="#BBBBBB"
+            placeholderTextColor={colors.textSecondary}
             returnKeyType="search"
-            clearButtonMode="never" // iOS 기본 X 버튼 비활성화 (커스텀 사용)
+            clearButtonMode="never"
             autoCapitalize="none"
             autoCorrect={false}
+            multiline={false}
+            numberOfLines={1}
+            textAlignVertical="center"
           />
-          {value.length > 0 && (
-            <TouchableOpacity
-              onPress={() => {
-                onChangeText('');
-                inputRef.current?.focus();
-              }}
-              hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
-            >
-              <Ionicons
-                name="close-circle"
-                size={normalize(18)}
-                color="#BBBBBB"
-              />
-            </TouchableOpacity>
-          )}
         </View>
 
-        {/* 우측 추가 요소 (선택) */}
-        {rightElement && <View style={styles.rightSlot}>{rightElement}</View>}
+        {hasRight ? (
+          <View style={[subStyles.rightButton, styles.clearSlot]}>
+            {rightElement != null ? (
+              rightElement
+            ) : hasValue ? (
+              <TouchableOpacity
+                onPress={() => {
+                  onChangeText('');
+                  inputRef.current?.focus();
+                }}
+                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                accessibilityRole="button"
+                accessibilityLabel="검색어 지우기"
+              >
+                <Ionicons
+                  name="close-circle"
+                  size={normalize(18)}
+                  color={colors.textLight20}
+                />
+              </TouchableOpacity>
+            ) : null}
+          </View>
+        ) : null}
       </View>
-    </>
+    </View>
   );
-};
+});
 
-const createStyles = (normalize) =>
-  StyleSheet.create({
-    header: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      paddingHorizontal: normalize(8),
-      paddingVertical: normalize(9),
-      backgroundColor: colors.background,
-      minHeight: normalize(52),
+function createSearchStyles(normalize) {
+  const fontSize = normalize(fontSizes.xxl);
+  const clearSize = normalize(18);
+  /** 입력·X 슬롯 공통 높이 — X(18)보다 작지 않게 고정 */
+  const rowHeight = Math.max(clearSize, normalize(24));
+
+  return StyleSheet.create({
+    headerTopFixed: {
+      minHeight: rowHeight,
     },
-    backButton: {
-      width: normalize(36),
-      height: normalize(36),
+    titleSlot: {
+      flex: 1,
+      marginLeft: normalize(28),
+      justifyContent: 'center',
+      minHeight: rowHeight,
+    },
+    titleSlotWithRight: {
+      marginRight: normalize(28),
+    },
+    clearSlot: {
+      width: clearSize,
+      height: rowHeight,
       alignItems: 'center',
       justifyContent: 'center',
-      marginRight: normalize(4),
-    },
-    searchWrapper: {
-      flex: 1,
-      flexDirection: 'row',
-      alignItems: 'center',
-      backgroundColor: colors.textLight5,
-      borderRadius: normalize(10),
-      paddingHorizontal: normalize(10),
-      paddingVertical: Platform.OS === 'ios' ? normalize(8) : normalize(4),
-    },
-    searchIcon: {
-      marginRight: normalize(6),
     },
     searchInput: {
-      flex: 1,
-      fontSize: normalize(14),
+      width: '100%',
+      height: rowHeight,
+      paddingVertical: 0,
+      paddingHorizontal: 0,
+      fontSize,
+      fontFamily: fonts.regular,
       color: colors.textPrimary,
-      padding: 0, // Android 기본 패딩 제거
-      includeFontPadding: false,
-    },
-    rightSlot: {
-      marginLeft: normalize(8),
-    },
-    divider: {
-      height: 1,
-      backgroundColor: colors.textLight10,
+      textAlign: 'left',
+      ...Platform.select({
+        android: {
+          includeFontPadding: false,
+          textAlignVertical: 'center',
+        },
+        ios: {},
+      }),
     },
   });
+}
 
 export default SearchSubHeader;

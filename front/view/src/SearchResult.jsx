@@ -5,7 +5,6 @@ import {
   TouchableOpacity,
   ScrollView,
   useWindowDimensions,
-  TextInput,
   KeyboardAvoidingView,
   Platform,
   Keyboard,
@@ -21,6 +20,7 @@ import { api } from '../../utils/api';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Skeleton from '../../components/common/Skeleton';
 import TopAdBanner from '../../components/ads/TopAdBanner';
+import SearchSubHeader from '../frame/SearchSubHeader';
 
 const TABS_FOR_TEXT = ['전체', '전체게시판', '학교게시판', '학교우편'];
 const TABS_FOR_HASHTAG = ['전체', '전체게시판', '학교게시판', '학교우편'];
@@ -346,65 +346,45 @@ export default function SearchResult({ route, navigation }) {
           style={s.flexOne}
           behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         >
-          <View style={s.searchBarWrapper}>
-            <TouchableOpacity
-              onPress={() => {
-                if (mode === 'input') {
-                  setSearchText(normalizeSearchText(committedQuery));
-                  setMode('result');
-                } else {
-                  navigation.reset({
-                    index: 0,
-                    routes: [{ name: 'Main' }],
-                  });
-                }
-              }}
-              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-              style={s.searchBackButton}
-            >
-              <Ionicons
-                name="chevron-back"
-                size={normalize(24)}
-                color={colors.textPrimary}
-              />
-            </TouchableOpacity>
-            <View style={s.searchInputRow}>
-              <Ionicons
-                name="search-outline"
-                size={normalize(18)}
-                color={colors.textSecondary}
-              />
-              <TextInput
-                style={s.searchInput}
-                placeholder="검색어를 입력하세요"
-                value={searchText}
-                onChangeText={(t) => setSearchText(t)}
-                onFocus={() => {
-                  const q = normalizeSearchText(searchText || committedQuery);
-                  navigation.navigate('SearchScreen', {
-                    query: q,
-                    focusInput: true,
-                  });
-                }}
-                onSubmitEditing={() => {
-                  const q = normalizeSearchText(searchText);
-                  if (!q) return;
-                  if (forceHashtagMode && !q.startsWith('#')) return;
-                  setCommittedQuery(q);
-                  setSearchText(q);
-                  setMode('result');
-                  setRecentSearches((prev) => {
-                    const filtered = prev.filter((item) => item !== q);
-                    const next = [q, ...filtered].slice(0, 10);
-                    saveRecent(next);
-                    return next;
-                  });
-                }}
-                placeholderTextColor={colors.textSecondary}
-                returnKeyType="search"
-              />
-            </View>
-          </View>
+          <SearchSubHeader
+            onBack={() => {
+              if (mode === 'input') {
+                setSearchText(normalizeSearchText(committedQuery));
+                setMode('result');
+              } else {
+                navigation.reset({
+                  index: 0,
+                  routes: [{ name: 'Main' }],
+                });
+              }
+            }}
+            value={searchText}
+            onChangeText={(t) => setSearchText(t)}
+            onFocus={() => {
+              const q = normalizeSearchText(searchText || committedQuery);
+              navigation.navigate('SearchScreen', {
+                query: q,
+                focusInput: true,
+              });
+            }}
+            onSubmit={() => {
+              const q = normalizeSearchText(searchText);
+              if (!q) return;
+              if (forceHashtagMode && !q.startsWith('#')) return;
+              setCommittedQuery(q);
+              setSearchText(q);
+              setMode('result');
+              setRecentSearches((prev) => {
+                const filtered = prev.filter((item) => item !== q);
+                const next = [q, ...filtered].slice(0, 10);
+                saveRecent(next);
+                return next;
+              });
+            }}
+            autoFocus={false}
+            showClear={false}
+            placeholder="검색어를 입력하세요"
+          />
 
           <TopAdBanner />
 

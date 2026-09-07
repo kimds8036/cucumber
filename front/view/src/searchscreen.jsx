@@ -4,7 +4,6 @@ import {
   Text,
   ScrollView,
   TouchableOpacity,
-  TextInput,
   KeyboardAvoidingView,
   Platform,
   Keyboard,
@@ -21,6 +20,7 @@ import {
 import { api } from '../../utils/api';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import TopAdBanner from '../../components/ads/TopAdBanner';
+import SearchSubHeader from '../frame/SearchSubHeader';
 
 function formatTimeAgo(createdAt) {
   if (!createdAt) return '';
@@ -165,59 +165,20 @@ const SearchScreen = ({ navigation, route }) => {
             behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
             keyboardVerticalOffset={0}
           >
-            <View style={styles.searchBarWrapper}>
-              <TouchableOpacity
-                onPress={() =>
-                  navigation.reset({
-                    index: 0,
-                    routes: [{ name: 'Main' }],
-                  })
-                }
-                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                style={styles.searchBackButton}
-              >
-                <Ionicons
-                  name="chevron-back"
-                  size={normalize(24)}
-                  color={colors.textPrimary}
-                />
-              </TouchableOpacity>
-              <View style={styles.searchInputRow}>
-                <Ionicons
-                  name="search-outline"
-                  size={normalize(18)}
-                  color={colors.textSecondary}
-                />
-                <TextInput
-                  ref={searchInputRef}
-                  style={styles.searchInput}
-                  placeholder="검색어를 입력하세요"
-                  value={searchText}
-                  onChangeText={handleChangeText}
-                  onSubmitEditing={() => runSearch()}
-                  placeholderTextColor={colors.textSecondary}
-                  returnKeyType="search"
-                  multiline={false}
-                  numberOfLines={1}
-                />
-                <View style={styles.searchClearSlot}>
-                  {searchText.length > 0 ? (
-                    <TouchableOpacity
-                      onPress={() => {
-                        setSearchText('');
-                      }}
-                      hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                    >
-                      <Ionicons
-                        name="close-circle"
-                        size={normalize(17)}
-                        color={colors.textLight20}
-                      />
-                    </TouchableOpacity>
-                  ) : null}
-                </View>
-              </View>
-            </View>
+            <SearchSubHeader
+              ref={searchInputRef}
+              onBack={() =>
+                navigation.reset({
+                  index: 0,
+                  routes: [{ name: 'Main' }],
+                })
+              }
+              value={searchText}
+              onChangeText={handleChangeText}
+              onSubmit={() => runSearch()}
+              autoFocus={Boolean(route?.params?.focusInput)}
+              placeholder="검색어를 입력하세요"
+            />
 
             <ScrollView
               style={styles.scrollView}
