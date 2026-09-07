@@ -73,12 +73,13 @@ if (!fs.existsSync(gradlew)) {
 
 console.log(`[aab] APP_ENV=${env.APP_ENV} NODE_ENV=${env.NODE_ENV}`);
 assertStoreClientFlags(env);
-// lintVital은 Expo SDK 업 후 Metaspace OOM이 잦음 → AAB 산출과 무관해 스킵
-console.log('[aab] gradlew bundleRelease (lintVital skip) …');
+// lintVitalAnalyzeRelease: Expo SDK 업 후 Metaspace OOM이 잦음 → AAB 산출과 무관해 스킵
+// (존재하지 않는 task를 -x 하면 Gradle 9가 바로 실패함 — Report 태스크는 넣지 않음)
+console.log('[aab] gradlew bundleRelease (lintVitalAnalyze skip) …');
 
 const result = spawnSync(
   gradlew,
-  ['bundleRelease', '-x', 'lintVitalAnalyzeRelease', '-x', 'lintVitalReportRelease'],
+  ['bundleRelease', '-x', 'lintVitalAnalyzeRelease'],
   {
     cwd: androidDir,
     env,
