@@ -520,6 +520,50 @@ router.get('/me', authenticate, async (req, res) => {
   }
 });
 
+// 아이디 중복 확인 (로그인 사용자 — 본인 제외)
+router.post('/check-username-available', authenticate, async (req, res) => {
+  try {
+    const userId = req.user.userId;
+    const input = String(req.body?.username ?? '').trim();
+    const normalized = input.startsWith('@') ? input.slice(1) : input;
+
+    if (!normalized) {
+      return res.status(400).json({
+        success: false,
+        message: '아이디를 입력해주세요.',
+      });
+    }
+    if (!validateUsername(normalized)) {
+      return res.status(400).json({
+        success: false,
+        message: '아이디는 영문, 숫자, 언더스코어만 사용 가능하며 3-20자여야 합니다.',
+        data: { available: false, reason: 'invalid' },
+      });
+    }
+
+    const [existing] = await pool.execute(
+      `SELECT id FROM users
+       WHERE username = ? AND id != ? AND is_deleted = FALSE
+       LIMIT 1`,
+      [normalized, userId],
+    );
+
+    return res.json({
+      success: true,
+      data: {
+        username: normalized,
+        available: existing.length === 0,
+      },
+    });
+  } catch (error) {
+    console.error('아이디 중복 확인 오류:', error);
+    return res.status(500).json({
+      success: false,
+      message: '아이디 확인 중 오류가 발생했습니다.',
+    });
+  }
+});
+
 // 내 아이디(username) 변경
 router.patch('/me/username', authenticate, validate(updateUsernameValidators), async (req, res) => {
   try {

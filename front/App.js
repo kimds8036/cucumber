@@ -227,7 +227,6 @@ function MainStack({ initialRouteName = 'Main' }) {
       screenOptions={{ headerShown: false }}
     >
       <Stack.Screen name="Main" component={MainScreen} />
-      <Stack.Screen name="SignProfileUsername" component={SignProfileUsername} />
       <Stack.Screen name="BoardWrite" component={BoardWrite} />
       <Stack.Screen name="BoardDetail" component={BoardDetail} />
       <Stack.Screen name="Chat" component={ChatRoomScreen} />
@@ -621,14 +620,6 @@ function RootNavigator() {
     );
   }
 
-  // 카카오 등 소셜: 학생증 승인 후 최초 1회 프로필 아이디
-  if (
-    studentVerificationStatus === 'APPROVED' &&
-    needsProfileUsername
-  ) {
-    return <SignProfileUsername />;
-  }
-
   const showReverificationPendingBanner = reverificationSubmissionPending;
   const showReverificationBanner =
     !showReverificationPendingBanner &&
@@ -636,6 +627,10 @@ function RootNavigator() {
 
   const mainInitialRoute =
     postLoginRoute === 'GuideOverlay' ? 'GuideOverlay' : 'Main';
+  // 카카오 등 소셜: 메인 위 강제 팝업 (배경·뒤로가기 닫기 불가)
+  const showProfileUsernamePopup =
+    studentVerificationStatus === 'APPROVED' && needsProfileUsername;
+
   return (
     <View style={{ flex: 1 }}>
       {showReverificationPendingBanner ? <ReverificationPendingBanner /> : null}
@@ -653,6 +648,7 @@ function RootNavigator() {
         <WidgetDeepLinkHandler />
         <MainStack initialRouteName={mainInitialRoute} />
       </LocationGate>
+      <SignProfileUsername visible={showProfileUsernamePopup} />
     </View>
   );
 }
