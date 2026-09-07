@@ -30,6 +30,8 @@ export default ({ config }) => ({
       supportsTablet: true,
       buildNumber: '32',
       usesAppleSignIn: true,
+      // iOS 전용 아이콘 (안드로이드·공통 icon.png 와 분리)
+      icon: './assets/icon-ios.png',
       // 핵심: EAS에서는 secret 파일 경로, 로컬은 기존 파일 경로
       googleServicesFile:
         process.env.GOOGLE_SERVICE_INFO_PLIST || './GoogleService-Info.plist',

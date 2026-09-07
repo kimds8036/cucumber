@@ -15,6 +15,7 @@
     "ios": {
       "supportsTablet": true,
       "buildNumber": "32",
+      "icon": "./assets/icon-ios.png",
       "googleServicesFile": "./GoogleService-Info.plist",
       "infoPlist": {
         "UIViewControllerBasedStatusBarAppearance": false,
