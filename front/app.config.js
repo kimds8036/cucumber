@@ -29,6 +29,7 @@ export default ({ config }) => ({
     ios: {
       supportsTablet: true,
       buildNumber: '32',
+      usesAppleSignIn: true,
       // 핵심: EAS에서는 secret 파일 경로, 로컬은 기존 파일 경로
       googleServicesFile:
         process.env.GOOGLE_SERVICE_INFO_PLIST || './GoogleService-Info.plist',
