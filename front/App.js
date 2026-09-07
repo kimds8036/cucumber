@@ -342,6 +342,13 @@ function RootNavigator() {
    */
   const DEV_PREVIEW_STUDENT_ID_RESUBMIT = false;
 
+  /**
+   * __DEV__ 전용: 프로필 아이디 설정 화면만 바로 미리보기
+   * true 로 바꾸면 로그인 여부와 무관하게 SignProfileUsername 을 연다.
+   * 확인 끝나면 반드시 false 로 되돌릴 것.
+   */
+  const DEV_PREVIEW_PROFILE_USERNAME = false;
+
   useEffect(() => {
     if (!authHydrated || isLoggedIn) return undefined;
     let cancelled = false;
@@ -492,6 +499,10 @@ function RootNavigator() {
   }, [isLoggedIn, refreshStudentVerification]);
 
   if (!authHydrated) return null;
+
+  if (__DEV__ && DEV_PREVIEW_PROFILE_USERNAME) {
+    return <SignProfileUsername />;
+  }
 
   if (!isLoggedIn) return <AuthStack />;
 
@@ -645,9 +656,13 @@ function RootNavigator() {
 
   const mainInitialRoute =
     postLoginRoute === 'GuideOverlay' ? 'GuideOverlay' : 'Main';
-  // 카카오 등 소셜: 메인 위 강제 팝업 (배경·뒤로가기 닫기 불가)
-  const showProfileUsernamePopup =
-    studentVerificationStatus === 'APPROVED' && needsProfileUsername;
+
+  if (
+    studentVerificationStatus === 'APPROVED' &&
+    needsProfileUsername
+  ) {
+    return <SignProfileUsername />;
+  }
 
   return (
     <View style={{ flex: 1 }}>
@@ -666,7 +681,6 @@ function RootNavigator() {
         <WidgetDeepLinkHandler />
         <MainStack initialRouteName={mainInitialRoute} />
       </LocationGate>
-      <SignProfileUsername visible={showProfileUsernamePopup} />
     </View>
   );
 }

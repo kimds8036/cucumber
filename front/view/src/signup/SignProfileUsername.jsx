@@ -3,15 +3,17 @@ import {
   View,
   Text,
   TextInput,
-  TouchableOpacity,
   useWindowDimensions,
   StyleSheet,
   Alert,
-  ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
+  Pressable,
+  Keyboard,
+  BackHandler,
 } from 'react-native';
-import { colors, fonts } from '../../../styles/colors';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { colors, fonts, fontSizes } from '../../../styles/colors';
 import {
   isValidUsername,
   USERNAME_ERROR,
@@ -19,23 +21,24 @@ import {
 } from '../../../utils/signupValidation';
 import { api, getApiUserFacingMessage } from '../../../utils/api';
 import { useAuth } from '../../../context/AuthContext';
-import AppPopupModal from '../../../components/common/AppPopupModal';
+import { GrowingUnderline } from './SchoolSearchField';
+import SignupPrimaryFooter from './SignupPrimaryFooter';
 
 const CHECK_DEBOUNCE_MS = 400;
 const USERNAME_TAKEN_MESSAGE = '이미 사용 중인 아이디입니다.';
 const USERNAME_AVAILABLE_MESSAGE = '사용 가능한 아이디입니다.';
 
 /**
- * 메인 위 강제 팝업 — 배경/뒤로가기로 닫히지 않음.
- * visible: Auth needsProfileUsername
+ * 가입 완료 후 프로필 아이디 설정 — 전체 화면 게이트 (뒤로가기·제스처로 닫히지 않음)
  */
-const SignProfileUsername = ({ visible = true }) => {
+const SignProfileUsername = () => {
   const { markProfileUsernameSet, refreshStudentVerification } = useAuth();
   const { width } = useWindowDimensions();
   const normalize = (size) => Math.round((width / 375) * size);
-  const styles = useMemo(() => createStyles(normalize), [normalize]);
+  const styles = useMemo(() => createStyles(normalize, width), [normalize, width]);
 
   const [username, setUsername] = useState('');
+  const [focused, setFocused] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   /** idle | invalid | checking | available | taken | error */
   const [checkStatus, setCheckStatus] = useState('idle');
@@ -44,7 +47,11 @@ const SignProfileUsername = ({ visible = true }) => {
   const trimmed = username.trim();
 
   useEffect(() => {
-    if (!visible) return undefined;
+    const sub = BackHandler.addEventListener('hardwareBackPress', () => true);
+    return () => sub.remove();
+  }, []);
+
+  useEffect(() => {
     if (!trimmed) {
       setCheckStatus('idle');
       return undefined;
@@ -82,10 +89,19 @@ const SignProfileUsername = ({ visible = true }) => {
     return () => {
       clearTimeout(timer);
     };
-  }, [trimmed, visible]);
+  }, [trimmed]);
 
   const canSubmit =
     checkStatus === 'available' && !submitting && isValidUsername(trimmed);
+
+  const underlineFill =
+    checkStatus === 'available'
+      ? colors.primary
+      : checkStatus === 'invalid' ||
+          checkStatus === 'taken' ||
+          checkStatus === 'error'
+        ? colors.alert
+        : colors.textLight40;
 
   const helperMessage =
     checkStatus === 'invalid'
@@ -100,15 +116,15 @@ const SignProfileUsername = ({ visible = true }) => {
               ? '아이디 확인 중…'
               : null;
 
-  const helperColor =
-    checkStatus === 'available'
-      ? colors.primaryDark
-      : checkStatus === 'checking'
-        ? colors.textSecondary
-        : colors.alertDark;
+  const isHelperOk = checkStatus === 'available';
+  const isHelperError =
+    checkStatus === 'invalid' ||
+    checkStatus === 'taken' ||
+    checkStatus === 'error';
 
   const handleSubmit = async () => {
     if (!canSubmit) return;
+    Keyboard.dismiss();
     setSubmitting(true);
     try {
       await api.patch('/api/auth/me/username', { username: trimmed });
@@ -130,118 +146,139 @@ const SignProfileUsername = ({ visible = true }) => {
   };
 
   return (
-    <AppPopupModal
-      visible={visible}
-      onClose={() => {}}
-      dismissOnBackdrop={false}
-      dismissOnBackPress={false}
-    >
+    <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
       <KeyboardAvoidingView
+        style={styles.flex}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       >
-        <Text style={styles.title}>
-          앱 내에서 사용할{'\n'}프로필 아이디를 입력해 주세요
-        </Text>
-        <Text style={styles.subtitle}>
-          아이디는 로그인 및 친구 검색 시 사용되며 마이페이지에서 변경
-          가능합니다
-        </Text>
+        <Pressable style={styles.flex} onPress={Keyboard.dismiss}>
+          <View style={styles.body}>
+            <Text style={styles.title}>
+              앱 내에서 사용할{'\n'}프로필 아이디를 입력해 주세요
+            </Text>
+            <Text style={styles.subtitle}>
+              아이디는 로그인 및 친구 검색 시 사용되며{'\n'}
+              마이페이지에서 변경 가능합니다
+            </Text>
 
-        <TextInput
-          style={styles.input}
-          value={username}
-          onChangeText={(text) => setUsername(text.replace(/\s/g, '_'))}
-          placeholder={USERNAME_HINT}
-          placeholderTextColor={colors.textSecondary}
-          autoCapitalize="none"
-          autoCorrect={false}
-          maxLength={20}
-          editable={!submitting}
-        />
-        {helperMessage ? (
-          <Text style={[styles.helperText, { color: helperColor }]}>
-            {helperMessage}
-          </Text>
-        ) : (
-          <View style={styles.helperSpacer} />
-        )}
+            <View style={styles.inputBlock}>
+              <TextInput
+                style={styles.input}
+                value={username}
+                onChangeText={(text) => setUsername(text.replace(/\s/g, '_'))}
+                placeholder={USERNAME_HINT}
+                placeholderTextColor={colors.textSecondary}
+                autoCapitalize="none"
+                autoCorrect={false}
+                maxLength={20}
+                editable={!submitting}
+                onFocus={() => setFocused(true)}
+                onBlur={() => setFocused(false)}
+                returnKeyType="done"
+                onSubmitEditing={() => {
+                  if (canSubmit) void handleSubmit();
+                }}
+              />
+              <GrowingUnderline
+                active={focused || checkStatus !== 'idle'}
+                normalize={normalize}
+                fillColor={underlineFill}
+              />
+              <View style={styles.fieldFeedbackSlot}>
+                {helperMessage ? (
+                  <Text
+                    style={[
+                      styles.fieldFeedback,
+                      isHelperOk
+                        ? styles.fieldFeedbackSuccess
+                        : isHelperError
+                          ? styles.fieldFeedbackError
+                          : styles.fieldFeedbackMuted,
+                    ]}
+                  >
+                    {helperMessage}
+                  </Text>
+                ) : null}
+              </View>
+            </View>
+          </View>
+        </Pressable>
 
-        <TouchableOpacity
-          style={[
-            styles.primaryButton,
-            !canSubmit && styles.primaryButtonDisabled,
-          ]}
+        <SignupPrimaryFooter
+          label="시작하기"
           onPress={() => void handleSubmit()}
           disabled={!canSubmit}
-          activeOpacity={0.85}
-        >
-          {submitting ? (
-            <ActivityIndicator color={colors.textWhite} />
-          ) : (
-            <Text style={styles.primaryButtonText}>시작하기</Text>
-          )}
-        </TouchableOpacity>
+          loading={submitting}
+        />
       </KeyboardAvoidingView>
-    </AppPopupModal>
+    </SafeAreaView>
   );
 };
 
-function createStyles(normalize) {
+function createStyles(normalize, width) {
+  const gutter = width * 0.07;
   return StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: colors.background,
+    },
+    flex: {
+      flex: 1,
+    },
+    body: {
+      flex: 1,
+      paddingHorizontal: gutter,
+      paddingTop: normalize(100),
+    },
     title: {
       fontFamily: fonts.bold,
-      fontSize: normalize(18),
+      fontSize: normalize(fontSizes.heading+2),
       color: colors.textPrimary,
-      textAlign: 'center',
-      lineHeight: normalize(26),
-      marginBottom: normalize(10),
+      textAlign: 'left',
+      lineHeight: normalize(32),
     },
     subtitle: {
       fontFamily: fonts.regular,
-      fontSize: normalize(14),
+      fontSize: normalize(fontSizes.lg),
       color: colors.textSecondary,
-      textAlign: 'center',
+      textAlign: 'left',
       lineHeight: normalize(22),
-      marginBottom: normalize(16),
+      marginBottom: normalize(40),
+    },
+    inputBlock: {
+      width: '100%',
     },
     input: {
-      height: normalize(48),
-      borderWidth: 1,
-      borderColor: colors.border,
-      borderRadius: normalize(10),
-      paddingHorizontal: normalize(14),
+      width: '100%',
+      minHeight: normalize(48),
+      paddingHorizontal: 0,
+      paddingVertical: normalize(12),
       fontFamily: fonts.regular,
-      fontSize: normalize(14),
+      fontSize: normalize(fontSizes.xl),
       color: colors.textPrimary,
-      marginBottom: normalize(4),
+      ...Platform.select({
+        android: { includeFontPadding: false },
+        ios: {},
+      }),
     },
-    helperText: {
-      alignSelf: 'stretch',
-      textAlign: 'left',
-      paddingHorizontal: normalize(14),
+    fieldFeedbackSlot: {
       marginTop: normalize(8),
+      minHeight: normalize(Math.round(fontSizes.lg * 1.4)),
+      justifyContent: 'flex-start',
+    },
+    fieldFeedback: {
       fontFamily: fonts.regular,
-      fontSize: normalize(12),
-      lineHeight: normalize(17),
+      fontSize: normalize(fontSizes.lg),
+      lineHeight: normalize(Math.round(fontSizes.lg * 1.4)),
     },
-    helperSpacer: {
-      height: normalize(25),
+    fieldFeedbackSuccess: {
+      color: colors.primary,
     },
-    primaryButton: {
-      marginTop: normalize(16),
-      height: normalize(48),
-      borderRadius: normalize(10),
-      backgroundColor: colors.primary,
-      alignItems: 'center',
-      justifyContent: 'center',
+    fieldFeedbackError: {
+      color: colors.alert,
     },
-    primaryButtonDisabled: {
-      backgroundColor: colors.disabled,
-    },
-    primaryButtonText: {
-      fontFamily: fonts.bold,
-      fontSize: normalize(14),
-      color: colors.textWhite,
+    fieldFeedbackMuted: {
+      color: colors.textSecondary,
     },
   });
 }

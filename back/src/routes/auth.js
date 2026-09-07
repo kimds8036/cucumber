@@ -622,7 +622,7 @@ router.patch('/me/username', authenticate, validate(updateUsernameValidators), a
       if (new Date() < nextAllowedAt) {
         return res.status(400).json({
           success: false,
-          message: `아이디는 6개월에 1번만 변경할 수 있습니다. 다음 변경 가능일: ${nextAllowedAt.toISOString().slice(0, 10)}`,
+          message: `아이디는 6개월에 1번만 변경할 수 있습니다. \n다음 변경 가능일: ${nextAllowedAt.toISOString().slice(0, 10)}`,
         });
       }
     }
