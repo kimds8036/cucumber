@@ -81,7 +81,7 @@ const SignupEntry = ({ navigation }) => {
             />
           </View>
           <View style={loginStyles.titleContainer}>
-            <Text style={loginStyles.titleLarge}>YOUTH PAPER</Text>
+            <Text style={loginStyles.titleLarge}>Youth Paper</Text>
           </View>
         </View>
 
