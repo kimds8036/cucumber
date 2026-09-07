@@ -310,6 +310,16 @@ const SignPhone = ({ navigation }) => {
     await leaveSignupToEntry({
       navigation: navigationRef,
       clearFlowSession,
+      prepareLeave: async () => {
+        setBlockingAlert((prev) => ({ ...prev, visible: false }));
+        setSubmitting(false);
+        inicisFlowActiveRef.current = false;
+        setInicisOverlayVisible(false);
+        setInicisManualOpening(false);
+        setShowStudentIdentityIntroModal(false);
+        setShowGuardianConsentModal(false);
+        await dismissInicisBrowserSafely();
+      },
     });
   }, [clearFlowSession, navigationRef]);
 

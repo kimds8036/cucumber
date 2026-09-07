@@ -268,6 +268,11 @@ const SignKakao = ({ navigation }) => {
     await leaveSignupToEntry({
       navigation: navigationRef,
       clearFlowSession,
+      prepareLeave: async () => {
+        setBlockingAlert((prev) => ({ ...prev, visible: false }));
+        setSubmitting(false);
+        setShowGuardianConsentModal(false);
+      },
     });
   }, [clearFlowSession, navigationRef]);
 
