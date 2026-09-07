@@ -9,9 +9,9 @@ import {
   Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Ionicons } from '@expo/vector-icons';
 import LogoIcon from '../../../assets/Logo.svg';
 import kakaoLoginIcon from '../../../assets/kakao_login_icon.png';
+import appleLogo from '../../../assets/apple_logo.png';
 import { colors } from '../../../styles/colors';
 import { createLoginStyles } from '../../../styles/login.style';
 import { createSignupEntryStyles } from '../../../styles/signupEntry.style';
@@ -108,10 +108,16 @@ const SignupEntry = ({ navigation }) => {
             onPress={() => void openConsent('apple')}
             activeOpacity={0.85}
           >
-            <Ionicons name="logo-apple" size={normalize(22)} color="#fff" />
-            <Text style={[styles.socialButtonText, styles.appleButtonText]}>
-              Apple로 시작하기
-            </Text>
+            <View style={styles.socialButtonContent}>
+              <Image
+                source={appleLogo}
+                style={styles.appleIcon}
+                resizeMode="contain"
+              />
+              <Text style={[styles.socialButtonText, styles.appleButtonText]}>
+                Apple로 시작하기
+              </Text>
+            </View>
           </TouchableOpacity>
 
           <TouchableOpacity

@@ -33,7 +33,7 @@ export function createSignupEntryStyles(width, normalize) {
       alignItems: 'center',
       justifyContent: 'center',
       height: normalize(52),
-      borderRadius: normalize(12),
+      borderRadius: normalize(26),
       paddingHorizontal: normalize(16),
     },
     socialButtonContent: {
@@ -43,6 +43,10 @@ export function createSignupEntryStyles(width, normalize) {
       gap: normalize(8),
     },
     kakaoIcon: {
+      width: normalize(18),
+      height: normalize(18),
+    },
+    appleIcon: {
       width: normalize(18),
       height: normalize(18),
     },
@@ -67,13 +71,14 @@ export function createSignupEntryStyles(width, normalize) {
     },
     kakaoButtonText: {
       marginLeft: 0,
-      color: colors.textPrimary,
+      color: '#000000',
     },
     appleButtonText: {
+      marginLeft: 0,
       color: colors.textWhite,
     },
     phoneButtonText: {
-      color: colors.textPrimary,
+      color: "#000000",
     },
     footer: {
       paddingVertical: normalize(24),
