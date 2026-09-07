@@ -16,6 +16,7 @@ function getWhitelistPrefixes() {
     '/api/auth/verify-firebase-phone',
     '/api/auth/recovery/',
     '/api/auth/login',
+    '/api/auth/oauth',
   ];
 }
 

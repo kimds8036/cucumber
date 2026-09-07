@@ -298,6 +298,7 @@ const SignKakao = ({ navigation }) => {
         kakaoAuthRanRef.current = false;
         return;
       }
+      // 학교 선택 전에 즉시 연령 차단 (성인 테스트 모드일 때만 A 통과)
       if (birthCase === 'A' && !ALLOW_ADULT_SIGNUP_IN_DEV) {
         showTooOldForSignupAlert(goToLogin);
         return;
@@ -308,6 +309,15 @@ const SignKakao = ({ navigation }) => {
       }
       if (birthCase === 'C') {
         setShowGuardianConsentModal(true);
+        return;
+      }
+      // B 또는 (A+성인테스트): 학적 추론 불가하면 동일하게 조기 차단
+      const enrollment = buildEnrollmentFromBirthDate(nextIdentity.birthDate);
+      if (
+        !ALLOW_ADULT_SIGNUP_IN_DEV &&
+        (enrollment.schoolLevel == null || enrollment.grade == null)
+      ) {
+        showTooOldForSignupAlert(goToLogin);
         return;
       }
       proceedToSchool();
@@ -326,7 +336,18 @@ const SignKakao = ({ navigation }) => {
     setKakaoBusy(true);
     setKakaoAuthError('');
     try {
+      if (__DEV__) {
+        console.log('[SignKakao] opening Kakao account login…');
+      }
       const { accessToken, profile } = await loginWithKakao();
+      if (__DEV__) {
+        console.log('[SignKakao] kakao profile received', {
+          id: profile?.id,
+          hasName: Boolean(profile?.name || profile?.nickname),
+          hasBirth: Boolean(profile?.birthyear && profile?.birthday),
+          hasPhone: Boolean(profile?.phoneNumber),
+        });
+      }
       const nextIdentity = {
         ...mapKakaoProfileToIdentity(profile),
         kakaoAccessToken: accessToken || '',
@@ -348,6 +369,7 @@ const SignKakao = ({ navigation }) => {
       applyKakaoIdentity(nextIdentity);
     } catch (error) {
       if (error?.code === 'CANCELLED') {
+        setKakaoAuthError('카카오 로그인이 취소되었습니다. 다시 시도해 주세요.');
         kakaoAuthRanRef.current = false;
         return;
       }
@@ -493,6 +515,7 @@ const SignKakao = ({ navigation }) => {
       colorId: pickRandomProfileColorId(),
       verificationMethod: 'student_id',
       signupMethod: 'kakao',
+      kakaoAccessToken: identityData.kakaoAccessToken || '',
       consents: consentData.consents || {},
       studentVerificationToken: verificationToken,
       studentInicisClientToken: null,
@@ -648,7 +671,7 @@ const SignKakao = ({ navigation }) => {
   };
 
   const primaryLabel = () => {
-    if (currentStep === STEP.KAKAO_AUTH) return '카카오로 계속하기';
+    if (currentStep === STEP.KAKAO_AUTH) return '다시 시도';
     if (
       SIGNUP_REDESIGN_SKIP_VALIDATION &&
       currentStep === STEP.STUDENT_VERIFY &&
@@ -663,7 +686,7 @@ const SignKakao = ({ navigation }) => {
   };
 
   const showPrimaryFooter =
-    currentStep === STEP.KAKAO_AUTH ||
+    (currentStep === STEP.KAKAO_AUTH && Boolean(kakaoAuthError) && !kakaoBusy) ||
     currentStep === STEP.SCHOOL_SELECT ||
     currentStep === STEP.CERTIFICATE_SUBMIT;
 
@@ -769,7 +792,7 @@ const SignKakao = ({ navigation }) => {
           <View
             style={{ flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: normalize(24) }}
           >
-            {kakaoBusy ? (
+            {kakaoBusy || !kakaoAuthError ? (
               <>
                 <ActivityIndicator size="large" color={colors.primary} />
                 <Text
@@ -788,47 +811,63 @@ const SignKakao = ({ navigation }) => {
                     marginBottom: normalize(8),
                   }}
                 >
-                  카카오 계정으로 본인 정보를 확인합니다
+                  카카오 로그인을 열지 못했습니다
                 </Text>
-                {kakaoAuthError ? (
-                  <Text
-                    style={{
-                      marginTop: normalize(8),
-                      color: '#C62828',
-                      fontSize: normalize(13),
-                      textAlign: 'center',
-                    }}
-                  >
-                    {kakaoAuthError}
-                  </Text>
-                ) : null}
+                <Text
+                  style={{
+                    marginTop: normalize(8),
+                    color: '#C62828',
+                    fontSize: normalize(13),
+                    textAlign: 'center',
+                  }}
+                >
+                  {kakaoAuthError}
+                </Text>
               </>
             )}
             {__DEV__ ? (
               <TouchableOpacity
                 style={{ marginTop: normalize(28) }}
                 disabled={kakaoBusy}
-                onPress={() => {
-                  const profile = useUnder14Mock
-                    ? KAKAO_MOCK_PROFILE_UNDER14
-                    : ALLOW_ADULT_SIGNUP_IN_DEV
-                      ? KAKAO_MOCK_PROFILE_ADULT
-                      : KAKAO_MOCK_PROFILE;
-                  kakaoAuthRanRef.current = true;
-                  runKakaoMockAuth(profile);
+                onLongPress={() => {
+                  Alert.alert(
+                    '[DEV] mock 가입',
+                    '카카오 SDK 없이 mock 프로필로 다음 단계로 갈까요?',
+                    [
+                      { text: '취소', style: 'cancel' },
+                      {
+                        text: 'mock으로 계속',
+                        onPress: () => {
+                          const profile = useUnder14Mock
+                            ? KAKAO_MOCK_PROFILE_UNDER14
+                            : ALLOW_ADULT_SIGNUP_IN_DEV
+                              ? KAKAO_MOCK_PROFILE_ADULT
+                              : KAKAO_MOCK_PROFILE;
+                          kakaoAuthRanRef.current = true;
+                          runKakaoMockAuth(profile);
+                        },
+                      },
+                      {
+                        text: '연령 mock 전환',
+                        onPress: () => setUseUnder14Mock((v) => !v),
+                      },
+                    ],
+                  );
                 }}
-                onLongPress={() => setUseUnder14Mock((v) => !v)}
               >
                 <Text
-                  style={{ color: colors.primaryDark, fontSize: normalize(13), textAlign: 'center' }}
+                  style={{
+                    color: colors.textSecondary,
+                    fontSize: normalize(12),
+                    textAlign: 'center',
+                  }}
                 >
-                  [DEV] mock으로 계속
+                  [DEV] 실패 시에만 길게 눌러 mock
                   {useUnder14Mock
                     ? ' (만14미만)'
                     : ALLOW_ADULT_SIGNUP_IN_DEV
                       ? ' (성인)'
                       : ' (만14이상)'}
-                  {'\n'}길게 눌러 연령 mock 전환
                 </Text>
               </TouchableOpacity>
             ) : null}

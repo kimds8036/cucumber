@@ -85,8 +85,149 @@ import {
   notifyCertificateReviewPending,
   notifyStudentIdReviewPending,
 } from '../services/discordWebhook.service.js';
+import {
+  verifyKakaoAccessToken,
+  findUserIdByOauthProvider,
+  linkOauthProvider,
+} from '../services/kakao.oauth.service.js';
 
 const router = express.Router();
+
+/** 비밀번호/소셜 공통 — 디바이스 기록 + JWT·refresh 발급 */
+async function issueLoginSuccessResponse(req, res, user, { needsVerificationHint } = {}) {
+  const ipAddress = getClientIp(req);
+  const deviceInfo = getDeviceInfo(req);
+  const currentDeviceId =
+    String(req.body?.deviceId || '').trim() || `device_${user.id}_${Date.now()}`;
+
+  const [existingDevices] = await pool.execute(
+    `SELECT id, device_id, ip_address, device_info, last_login_at
+     FROM user_devices
+     WHERE user_id = ? AND device_id = ?`,
+    [user.id, currentDeviceId],
+  );
+
+  let isNewDevice = existingDevices.length === 0;
+  let needsVerification =
+    typeof needsVerificationHint === 'boolean' ? needsVerificationHint : false;
+
+  if (isNewDevice && needsVerificationHint == null) {
+    const [otherDevices] = await pool.execute(
+      'SELECT id FROM user_devices WHERE user_id = ?',
+      [user.id],
+    );
+    if (otherDevices.length > 0) {
+      const [lastDevice] = await pool.execute(
+        `SELECT ip_address FROM user_devices
+         WHERE user_id = ?
+         ORDER BY last_login_at DESC LIMIT 1`,
+        [user.id],
+      );
+      if (lastDevice.length > 0 && lastDevice[0].ip_address !== ipAddress) {
+        needsVerification = true;
+      }
+    }
+  }
+
+  if (isNewDevice) {
+    await pool.execute(
+      `INSERT INTO user_devices (user_id, device_id, device_info, ip_address, last_login_at)
+       VALUES (?, ?, ?, ?, NOW())
+       ON DUPLICATE KEY UPDATE
+         device_info = VALUES(device_info),
+         ip_address = VALUES(ip_address),
+         last_login_at = NOW()`,
+      [user.id, currentDeviceId, deviceInfo, ipAddress],
+    );
+  } else {
+    await pool.execute(
+      `UPDATE user_devices
+       SET device_info = ?, ip_address = ?, last_login_at = NOW()
+       WHERE user_id = ? AND device_id = ?`,
+      [deviceInfo, ipAddress, user.id, currentDeviceId],
+    );
+  }
+
+  const tokenVersion = Number(user.token_version ?? 0);
+  const token = createUserAccessToken({
+    userId: user.id,
+    username: user.username,
+    tokenVersion,
+  });
+
+  const refreshToken = generateRefreshTokenPlain();
+  await storeRefreshToken({
+    userId: user.id,
+    deviceId: currentDeviceId,
+    plainToken: refreshToken,
+    tokenVersion,
+  });
+
+  const verification = await getStudentVerificationStatus(user.id);
+  const reverification = await getUserReverificationPayload(user.id);
+
+  return res.json({
+    success: true,
+    message: '로그인 성공',
+    data: {
+      token,
+      refreshToken,
+      deviceId: currentDeviceId,
+      user: {
+        id: user.id,
+        username: user.username,
+        name: user.name,
+      },
+      needsVerification,
+      studentVerificationStatus: verification.status,
+      rejectReason: verification.rejectReason,
+      submissionPurpose: verification.submissionPurpose,
+      reverificationSubmissionPending: verification.reverificationSubmissionPending,
+      reverificationStatus: reverification?.reverificationStatus ?? 'none',
+      reverificationDeadline: reverification?.reverificationDeadline ?? null,
+      gradeException: reverification?.gradeException ?? false,
+    },
+  });
+}
+
+async function assertUserAllowedToLogin(user) {
+  if (user.is_deleted) {
+    const err = new Error('탈퇴한 사용자입니다.');
+    err.status = 403;
+    err.code = API_ERROR_CODES.ACCOUNT_DELETED;
+    throw err;
+  }
+  if (user.is_banned) {
+    const err = new Error('영구 정지된 계정입니다.');
+    err.status = 403;
+    err.code = API_ERROR_CODES.ACCOUNT_BANNED;
+    throw err;
+  }
+  if (user.is_suspended) {
+    const until = user.suspended_until ? new Date(user.suspended_until) : null;
+    if (!until || until > new Date()) {
+      const err = new Error('임시 정지된 계정입니다.');
+      err.status = 403;
+      err.code = API_ERROR_CODES.ACCOUNT_SUSPENDED;
+      err.suspendedUntil = user.suspended_until || null;
+      throw err;
+    }
+  }
+  const revCode = getReverificationBlockCode(user.reverification_status);
+  if (revCode) {
+    const messages = {
+      GRADUATED_BLOCKED: '졸업생은 서비스를 이용할 수 없습니다.',
+      ADULT_BLOCKED: '성인은 서비스를 이용할 수 없습니다.',
+      REVERIFICATION_RESTRICTED: '재인증이 필요합니다. 학생증을 다시 제출해주세요.',
+    };
+    const err = new Error(messages[revCode] || '서비스 이용이 제한되었습니다.');
+    err.status = 403;
+    err.code = revCode;
+    err.reverificationStatus = user.reverification_status;
+    err.reverificationDeadline = user.reverification_deadline || null;
+    throw err;
+  }
+}
 
 function isUnder14YearsOld(birthDateStr) {
   const m = String(birthDateStr || '').match(/^(\d{4})-(\d{2})-(\d{2})$/);
@@ -221,6 +362,7 @@ const signupValidators = [
   body('studentInicisClientToken').optional({ values: 'falsy' }).isString().isLength({ max: 64 }),
   body('guardianInicisClientToken').optional({ values: 'falsy' }).isString().isLength({ max: 64 }),
   body('signupMethod').optional({ values: 'falsy' }).isString().isIn(['phone', 'kakao', 'apple']),
+  body('kakaoAccessToken').optional({ values: 'falsy' }).isString().isLength({ max: 2048 }),
   body('consents').optional().isObject(),
   body('consents.termsOfService').optional().isBoolean(),
   body('consents.dataCollection').optional().isBoolean(),
@@ -1007,6 +1149,7 @@ router.post(
       studentInicisClientToken,
       guardianInicisClientToken,
       signupMethod: rawSignupMethod,
+      kakaoAccessToken: rawKakaoAccessToken,
       consents: rawConsents,
       inviteCode: rawInviteCode,
     } = req.body;
@@ -1414,6 +1557,41 @@ router.post(
         ],
       );
 
+      const kakaoAccessToken = String(rawKakaoAccessToken || '').trim();
+      if (isKakaoSignup && kakaoAccessToken) {
+        try {
+          const { providerUserId } = await verifyKakaoAccessToken(kakaoAccessToken);
+          const existingLink = await findUserIdByOauthProvider(
+            connection,
+            'kakao',
+            providerUserId,
+          );
+          if (existingLink && existingLink !== userId) {
+            await connection.rollback();
+            return res.status(409).json({
+              success: false,
+              message: '이미 다른 계정에 연동된 카카오 계정입니다.',
+              code: 'KAKAO_ALREADY_LINKED',
+            });
+          }
+          await linkOauthProvider(connection, {
+            userId,
+            provider: 'kakao',
+            providerUserId,
+          });
+        } catch (oauthErr) {
+          await connection.rollback();
+          console.error('[signup/kakaoOauth]', oauthErr);
+          return res.status(oauthErr.status || 401).json({
+            success: false,
+            message:
+              oauthErr.message ||
+              '카카오 계정 연동에 실패했습니다. 다시 로그인해 주세요.',
+            code: oauthErr.code || 'KAKAO_LINK_FAILED',
+          });
+        }
+      }
+
       await connection.commit();
 
       applySignupInvite({ inviteeId: userId, rawCode: rawInviteCode }).catch(
@@ -1546,6 +1724,83 @@ router.post('/verify-student', authenticate, async (req, res) => {
 });
 
 // 로그인
+router.post('/oauth/kakao', async (req, res) => {
+  try {
+    const accessToken = String(req.body?.accessToken || '').trim();
+    if (!accessToken) {
+      return res.status(400).json({
+        success: false,
+        message: '카카오 accessToken이 필요합니다.',
+        code: 'KAKAO_TOKEN_REQUIRED',
+      });
+    }
+
+    let providerUserId;
+    try {
+      ({ providerUserId } = await verifyKakaoAccessToken(accessToken));
+    } catch (oauthErr) {
+      return res.status(oauthErr.status || 401).json({
+        success: false,
+        message: oauthErr.message || '카카오 토큰 검증에 실패했습니다.',
+        code: oauthErr.code || 'KAKAO_TOKEN_INVALID',
+      });
+    }
+
+    const linkedUserId = await findUserIdByOauthProvider(
+      pool,
+      'kakao',
+      providerUserId,
+    );
+
+    if (!linkedUserId) {
+      return res.status(404).json({
+        success: false,
+        message: '연동된 계정이 없습니다. 카카오로 회원가입을 진행해 주세요.',
+        code: 'NEEDS_SIGNUP',
+        data: { status: 'needs_signup', provider: 'kakao' },
+      });
+    }
+
+    const [users] = await pool.execute(
+      `SELECT id, username, name_enc, is_deleted, is_banned, is_suspended, suspended_until,
+              token_version, reverification_status, reverification_deadline
+       FROM users WHERE id = ? LIMIT 1`,
+      [linkedUserId],
+    );
+
+    if (users.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: '연동된 계정이 없습니다. 카카오로 회원가입을 진행해 주세요.',
+        code: 'NEEDS_SIGNUP',
+        data: { status: 'needs_signup', provider: 'kakao' },
+      });
+    }
+
+    const user = users[0];
+    try {
+      await assertUserAllowedToLogin(user);
+    } catch (policyErr) {
+      return res.status(policyErr.status || 403).json({
+        success: false,
+        message: policyErr.message,
+        code: policyErr.code,
+        suspendedUntil: policyErr.suspendedUntil,
+        reverificationStatus: policyErr.reverificationStatus,
+        reverificationDeadline: policyErr.reverificationDeadline,
+      });
+    }
+
+    return issueLoginSuccessResponse(req, res, user);
+  } catch (error) {
+    console.error('[oauth/kakao]', error);
+    return res.status(500).json({
+      success: false,
+      message: '카카오 로그인 중 오류가 발생했습니다.',
+    });
+  }
+});
+
 router.post('/login', validate(loginValidators), async (req, res) => {
   try {
     const { username, password, deviceId } = req.body;
@@ -1574,30 +1829,17 @@ router.post('/login', validate(loginValidators), async (req, res) => {
 
     const user = users[0];
 
-    if (user.is_deleted) {
-      return res.status(403).json({
+    try {
+      await assertUserAllowedToLogin(user);
+    } catch (policyErr) {
+      return res.status(policyErr.status || 403).json({
         success: false,
-        message: '탈퇴한 사용자입니다.',
-        code: API_ERROR_CODES.ACCOUNT_DELETED,
+        message: policyErr.message,
+        code: policyErr.code,
+        suspendedUntil: policyErr.suspendedUntil,
+        reverificationStatus: policyErr.reverificationStatus,
+        reverificationDeadline: policyErr.reverificationDeadline,
       });
-    }
-    if (user.is_banned) {
-      return res.status(403).json({
-        success: false,
-        message: '영구 정지된 계정입니다.',
-        code: API_ERROR_CODES.ACCOUNT_BANNED,
-      });
-    }
-    if (user.is_suspended) {
-      const until = user.suspended_until ? new Date(user.suspended_until) : null;
-      if (!until || until > new Date()) {
-        return res.status(403).json({
-          success: false,
-          message: '임시 정지된 계정입니다.',
-          code: API_ERROR_CODES.ACCOUNT_SUSPENDED,
-          suspendedUntil: user.suspended_until || null,
-        });
-      }
     }
 
     // 비밀번호 확인
@@ -1609,121 +1851,9 @@ router.post('/login', validate(loginValidators), async (req, res) => {
       });
     }
 
-    const revCode = getReverificationBlockCode(user.reverification_status);
-    if (revCode) {
-      const messages = {
-        GRADUATED_BLOCKED: '졸업생은 서비스를 이용할 수 없습니다.',
-        ADULT_BLOCKED: '성인은 서비스를 이용할 수 없습니다.',
-        REVERIFICATION_RESTRICTED: '재인증이 필요합니다. 학생증을 다시 제출해주세요.',
-      };
-      return res.status(403).json({
-        success: false,
-        message: messages[revCode] || '서비스 이용이 제한되었습니다.',
-        code: revCode,
-        reverificationStatus: user.reverification_status,
-        reverificationDeadline: user.reverification_deadline || null,
-      });
-    }
-
-    // 디바이스 정보
-    const ipAddress = getClientIp(req);
-    const deviceInfo = getDeviceInfo(req);
-    const currentDeviceId = deviceId || `device_${user.id}_${Date.now()}`;
-
-    // 기존 디바이스 확인
-    const [existingDevices] = await pool.execute(
-      `SELECT id, device_id, ip_address, device_info, last_login_at 
-       FROM user_devices 
-       WHERE user_id = ? AND device_id = ?`,
-      [user.id, currentDeviceId]
-    );
-
-    let isNewDevice = existingDevices.length === 0;
-    let needsVerification = false;
-
-    if (isNewDevice) {
-      // 다른 디바이스가 있는지 확인
-      const [otherDevices] = await pool.execute(
-        'SELECT id FROM user_devices WHERE user_id = ?',
-        [user.id]
-      );
-
-      if (otherDevices.length > 0) {
-        // 기존 디바이스와 IP 비교
-        const [lastDevice] = await pool.execute(
-          `SELECT ip_address FROM user_devices 
-           WHERE user_id = ? 
-           ORDER BY last_login_at DESC LIMIT 1`,
-          [user.id]
-        );
-
-        if (lastDevice.length > 0 && lastDevice[0].ip_address !== ipAddress) {
-          needsVerification = true; // IP 변경 감지
-        }
-      }
-    }
-
-    // 디바이스 정보 저장/업데이트
-    if (isNewDevice) {
-      await pool.execute(
-        `INSERT INTO user_devices (user_id, device_id, device_info, ip_address, last_login_at)
-         VALUES (?, ?, ?, ?, NOW())
-         ON DUPLICATE KEY UPDATE
-           device_info = VALUES(device_info),
-           ip_address = VALUES(ip_address),
-           last_login_at = NOW()`,
-        [user.id, currentDeviceId, deviceInfo, ipAddress]
-      );
-    } else {
-      await pool.execute(
-        `UPDATE user_devices 
-         SET device_info = ?, ip_address = ?, last_login_at = NOW() 
-         WHERE user_id = ? AND device_id = ?`,
-        [deviceInfo, ipAddress, user.id, currentDeviceId]
-      );
-    }
-
-    // JWT 토큰 생성
-    const tokenVersion = Number(user.token_version ?? 0);
-    const token = createUserAccessToken({
-      userId: user.id,
-      username: user.username,
-      tokenVersion,
-    });
-
-    const refreshToken = generateRefreshTokenPlain();
-    await storeRefreshToken({
-      userId: user.id,
-      deviceId: currentDeviceId,
-      plainToken: refreshToken,
-      tokenVersion,
-    });
-
-    const verification = await getStudentVerificationStatus(user.id);
-    const reverification = await getUserReverificationPayload(user.id);
-
-    res.json({ 
-      success: true, 
-      message: '로그인 성공',
-      data: {
-        token,
-        refreshToken,
-        deviceId: currentDeviceId,
-        user: {
-          id: user.id,
-          username: user.username,
-          name: user.name
-        },
-        needsVerification,
-        studentVerificationStatus: verification.status,
-        rejectReason: verification.rejectReason,
-        submissionPurpose: verification.submissionPurpose,
-        reverificationSubmissionPending: verification.reverificationSubmissionPending,
-        reverificationStatus: reverification?.reverificationStatus ?? 'none',
-        reverificationDeadline: reverification?.reverificationDeadline ?? null,
-        gradeException: reverification?.gradeException ?? false,
-      }
-    });
+    // deviceId는 issueLoginSuccessResponse 에서 req.body.deviceId 사용
+    void deviceId;
+    return issueLoginSuccessResponse(req, res, user);
   } catch (error) {
     console.error('로그인 오류:', error);
     res.status(500).json({ 

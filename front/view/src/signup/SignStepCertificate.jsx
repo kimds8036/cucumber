@@ -9,6 +9,7 @@ import {
 } from 'react-native';
 import { colors, fonts, fontSizes } from '../../../styles/colors';
 import SignupStepScroll from './SignupStepScroll';
+import { GrowingUnderline } from './SchoolSearchField';
 
 const SignStepCertificate = ({
   styles,
@@ -20,6 +21,8 @@ const SignStepCertificate = ({
   const { width } = useWindowDimensions();
   const [certificateUrl, setCertificateUrl] = useState('');
   const [accessNumber, setAccessNumber] = useState('');
+  const [urlFocused, setUrlFocused] = useState(false);
+  const [accessFocused, setAccessFocused] = useState(false);
   const localStyles = useMemo(
     () => createLocalStyles(normalize),
     [normalize],
@@ -55,12 +58,7 @@ const SignStepCertificate = ({
     <View style={[styles.certificateSubmitContainer, bodyStyle]}>
       <SignupStepScroll normalize={normalize} bottomOffset={bottomOffset}>
         <Text style={localStyles.fieldLabel}>열람용 주소</Text>
-        <View
-          style={[
-            localStyles.underlineField,
-            certificateUrl ? localStyles.underlineFieldActive : null,
-          ]}
-        >
+        <View style={localStyles.underlineField}>
           <TextInput
             style={localStyles.fieldInput}
             value={certificateUrl}
@@ -76,22 +74,20 @@ const SignStepCertificate = ({
             keyboardType="url"
             textContentType="URL"
             autoComplete="url"
+            onFocus={() => setUrlFocused(true)}
+            onBlur={() => setUrlFocused(false)}
           />
         </View>
+        <GrowingUnderline
+          active={urlFocused || Boolean(certificateUrl)}
+          normalize={normalize}
+          fillColor={colors.textLight40}
+        />
 
         <Text style={[localStyles.fieldLabel, localStyles.fieldLabelSpaced]}>
           열람 번호
         </Text>
-        <View
-          style={[
-            localStyles.underlineField,
-            accessNumberError
-              ? localStyles.underlineFieldError
-              : accessNumber
-                ? localStyles.underlineFieldActive
-                : null,
-          ]}
-        >
+        <View style={localStyles.underlineField}>
           <TextInput
             style={localStyles.fieldInput}
             value={accessNumber}
@@ -106,8 +102,15 @@ const SignStepCertificate = ({
             autoCorrect={false}
             keyboardType="number-pad"
             maxLength={6}
+            onFocus={() => setAccessFocused(true)}
+            onBlur={() => setAccessFocused(false)}
           />
         </View>
+        <GrowingUnderline
+          active={accessFocused || Boolean(accessNumber)}
+          normalize={normalize}
+          fillColor={accessNumberError ? colors.alert : colors.textLight40}
+        />
         <View style={localStyles.fieldFeedbackSlot}>
           {accessNumberError ? (
             <Text style={localStyles.fieldFeedbackError}>
@@ -134,14 +137,6 @@ function createLocalStyles(normalize) {
     },
     underlineField: {
       paddingBottom: normalize(8),
-      borderBottomWidth: normalize(1),
-      borderBottomColor: colors.textLight20,
-    },
-    underlineFieldActive: {
-      borderBottomColor: colors.textPrimary,
-    },
-    underlineFieldError: {
-      borderBottomColor: colors.alert,
     },
     fieldInput: {
       paddingVertical: 0,

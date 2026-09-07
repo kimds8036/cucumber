@@ -23,6 +23,7 @@ import {
 import SignupLockedField from './SignupLockedField';
 import SignupStepScroll from './SignupStepScroll';
 import SignupHelperText from './SignupHelperText';
+import { GrowingUnderline } from './SchoolSearchField';
 
 const USERNAME_VALID_MESSAGE = '사용 가능한 아이디입니다';
 const PASSWORD_INVALID_MESSAGE = '잘못된 비밀번호입니다';
@@ -33,6 +34,93 @@ function resolveUnderlineStatus(status) {
   if (status === 'valid' || status === 'match') return 'success';
   if (status === 'invalid' || status === 'mismatch') return 'error';
   return 'idle';
+}
+
+function AccountGrowUnderlineField({
+  accountStyles,
+  normalize,
+  label,
+  labelExtra,
+  value,
+  onChangeText,
+  placeholder,
+  placeholderTextColor,
+  secureTextEntry,
+  visible,
+  onToggleVisible,
+  fillColor,
+  growActive,
+  feedback,
+  autoCapitalize,
+}) {
+  const [focused, setFocused] = useState(false);
+
+  return (
+    <View style={accountStyles.fieldBlock}>
+      {labelExtra ? (
+        <Text style={accountStyles.fieldLabel}>
+          {label}{' '}
+          <Text style={accountStyles.fieldLabelExtra}>{labelExtra}</Text>
+        </Text>
+      ) : (
+        <Text style={accountStyles.fieldLabel}>{label}</Text>
+      )}
+      <View style={accountStyles.underlineField}>
+        {onChangeText ? (
+          <View style={accountStyles.inputRow}>
+            <TextInput
+              style={accountStyles.fieldInput}
+              value={value}
+              onChangeText={onChangeText}
+              placeholder={placeholder}
+              placeholderTextColor={placeholderTextColor}
+              secureTextEntry={secureTextEntry}
+              autoCapitalize={autoCapitalize}
+              autoCorrect={false}
+              spellCheck={false}
+              keyboardType={Platform.select({
+                ios: 'ascii-capable',
+                android: 'email-address',
+              })}
+              textContentType={secureTextEntry ? 'newPassword' : 'username'}
+              autoComplete={secureTextEntry ? 'password-new' : 'username'}
+              multiline={false}
+              scrollEnabled={false}
+              onFocus={() => setFocused(true)}
+              onBlur={() => setFocused(false)}
+            />
+            {onToggleVisible ? (
+              <TouchableOpacity
+                style={accountStyles.inputIconButton}
+                onPress={onToggleVisible}
+                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                accessibilityRole="button"
+                accessibilityLabel={
+                  visible ? '비밀번호 숨기기' : '비밀번호 보기'
+                }
+              >
+                <Ionicons
+                  name={visible ? 'eye-outline' : 'eye-off-outline'}
+                  size={normalize(Platform.OS === 'ios' ? 18 : 24)}
+                  color={colors.textSecondary}
+                />
+              </TouchableOpacity>
+            ) : (
+              <View style={accountStyles.inputIconSlot} />
+            )}
+          </View>
+        ) : (
+          <Text style={accountStyles.lockedValue}>{value}</Text>
+        )}
+      </View>
+      <GrowingUnderline
+        active={focused || growActive}
+        normalize={normalize}
+        fillColor={fillColor}
+      />
+      {feedback}
+    </View>
+  );
 }
 
 const SignStep2 = ({
@@ -153,71 +241,31 @@ const SignStep2 = ({
     autoCapitalize = 'none',
   }) => {
     const resolvedStatus = resolveUnderlineStatus(underlineStatus);
+    const fillColor =
+      resolvedStatus === 'success'
+        ? colors.primary
+        : resolvedStatus === 'error'
+          ? colors.alert
+          : colors.textLight40;
 
     return (
-      <View style={accountStyles.fieldBlock}>
-        {labelExtra ? (
-          <Text style={accountStyles.fieldLabel}>
-            {label}{' '}
-            <Text style={accountStyles.fieldLabelExtra}>{labelExtra}</Text>
-          </Text>
-        ) : (
-          <Text style={accountStyles.fieldLabel}>{label}</Text>
-        )}
-        <View
-          style={[
-            accountStyles.underlineField,
-            resolvedStatus === 'success' && accountStyles.underlineFieldSuccess,
-            resolvedStatus === 'error' && accountStyles.underlineFieldError,
-          ]}
-        >
-          {onChangeText ? (
-            <View style={accountStyles.inputRow}>
-              <TextInput
-                style={accountStyles.fieldInput}
-                value={value}
-                onChangeText={onChangeText}
-                placeholder={placeholder}
-                placeholderTextColor={placeholderTextColor}
-                secureTextEntry={secureTextEntry}
-                autoCapitalize={autoCapitalize}
-                autoCorrect={false}
-                spellCheck={false}
-                keyboardType={Platform.select({
-                  ios: 'ascii-capable',
-                  android: 'email-address',
-                })}
-                textContentType={secureTextEntry ? 'newPassword' : 'username'}
-                autoComplete={secureTextEntry ? 'password-new' : 'username'}
-                multiline={false}
-                scrollEnabled={false}
-              />
-              {onToggleVisible ? (
-                <TouchableOpacity
-                  style={accountStyles.inputIconButton}
-                  onPress={onToggleVisible}
-                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                  accessibilityRole="button"
-                  accessibilityLabel={
-                    visible ? '비밀번호 숨기기' : '비밀번호 보기'
-                  }
-                >
-                  <Ionicons
-                    name={visible ? 'eye-outline' : 'eye-off-outline'}
-                    size={normalize(Platform.OS === 'ios' ? 18 : 24)}
-                    color={colors.textSecondary}
-                  />
-                </TouchableOpacity>
-              ) : (
-                <View style={accountStyles.inputIconSlot} />
-              )}
-            </View>
-          ) : (
-            <Text style={accountStyles.lockedValue}>{value}</Text>
-          )}
-        </View>
-        {feedback}
-      </View>
+      <AccountGrowUnderlineField
+        accountStyles={accountStyles}
+        normalize={normalize}
+        label={label}
+        labelExtra={labelExtra}
+        value={value}
+        onChangeText={onChangeText}
+        placeholder={placeholder}
+        placeholderTextColor={placeholderTextColor}
+        secureTextEntry={secureTextEntry}
+        visible={visible}
+        onToggleVisible={onToggleVisible}
+        fillColor={fillColor}
+        growActive={Boolean(value) || resolvedStatus !== 'idle'}
+        feedback={feedback}
+        autoCapitalize={autoCapitalize}
+      />
     );
   };
 
@@ -527,15 +575,9 @@ function createAccountStyles(normalize, width) {
     },
     underlineField: {
       paddingBottom: normalize(8),
-      borderBottomWidth: normalize(1),
-      borderBottomColor: colors.textLight20,
     },
-    underlineFieldSuccess: {
-      borderBottomColor: colors.primary,
-    },
-    underlineFieldError: {
-      borderBottomColor: colors.alert,
-    },
+    underlineFieldSuccess: {},
+    underlineFieldError: {},
     inputRow: {
       flexDirection: 'row',
       alignItems: 'center',

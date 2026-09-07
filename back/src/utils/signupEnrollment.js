@@ -1,7 +1,10 @@
 /**
  * 생년월일·학교급 기반 재학 정보 유추 (한국 중·고, 3월 학년도 기준 단순 모델).
  * 늦·조기 진학 등 예외는 앱 안내 문구 + 마이페이지 문의로 처리.
+ * 가입 상한(만 21)과 OCR 학교급 추론을 맞춘다.
  */
+
+export const SIGNUP_MAX_AGE = 21;
 
 export function computeAge(birthDate, ref = new Date()) {
   const birth = new Date(birthDate);
@@ -19,13 +22,13 @@ export function inferExpectedSchoolLevel(birthDate, ref = new Date()) {
   const age = computeAge(birthDate, ref);
   if (age == null) return null;
   if (age >= 12 && age <= 15) return 'middle';
-  if (age >= 16 && age <= 19) return 'high';
+  if (age >= 16 && age <= SIGNUP_MAX_AGE) return 'high';
   return null;
 }
 
 /**
  * 생년월일·학교급으로 학년(1~3) 유추.
- * middle: age 12→1 … 15→3 / high: age 16→1 … 19→3
+ * middle: age 12→1 … 15→3 / high: age 16→1 … 21→3(클램프)
  */
 export function inferGradeFromBirthDate(birthDate, schoolLevel, ref = new Date()) {
   const age = computeAge(birthDate, ref);

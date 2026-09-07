@@ -31,6 +31,8 @@ import {
 } from '../../../utils/api';
 import { useAuth } from '../../../context/AuthContext';
 import SubHeader from '../../frame/subHeader';
+import { GrowingUnderline } from './SchoolSearchField';
+import { loginWithKakao } from '../../../services/kakaoAuth';
 
 /** 로그인 실패 안내 — 사용자용 문구만 (기술 정보는 __DEV__ 콘솔) */
 function buildLoginFailureMessage(error) {
@@ -93,9 +95,134 @@ const Login = ({ navigation }) => {
     });
   }, []);
 
-  const handleKakaoLogin = useCallback(() => {
-    Alert.alert('준비 중', '카카오 간편 로그인은 곧 제공될 예정입니다.');
-  }, []);
+  const handleKakaoLogin = useCallback(async () => {
+    try {
+      const { accessToken } = await loginWithKakao();
+      if (!accessToken) {
+        Alert.alert('로그인 실패', '카카오 토큰을 받지 못했습니다.');
+        return;
+      }
+
+      const deviceId = await getOrCreateDeviceId();
+      const response = await api.post('/api/auth/oauth/kakao', {
+        accessToken,
+        deviceId,
+      });
+
+      const { token, refreshToken, user, needsVerification } =
+        response.data.data || {};
+      debugLogin('카카오 로그인 성공', {
+        hasToken: Boolean(token),
+        user,
+        needsVerification,
+      });
+
+      if (token) {
+        await setAuthToken(token, { persist: true });
+        if (refreshToken) {
+          await setRefreshToken(refreshToken, { persist: true });
+        }
+      }
+      await login({
+        studentVerificationStatus:
+          response.data.data?.studentVerificationStatus || 'PENDING',
+        rejectReason: response.data.data?.rejectReason || null,
+        reverificationStatus:
+          response.data.data?.reverificationStatus || 'none',
+        reverificationDeadline:
+          response.data.data?.reverificationDeadline || null,
+      });
+    } catch (error) {
+      if (error?.code === 'CANCELLED') {
+        return;
+      }
+      const serverCode = error?.response?.data?.code;
+      if (serverCode === 'NEEDS_SIGNUP') {
+        Alert.alert(
+          '가입 필요',
+          '연동된 계정이 없습니다. 카카오로 회원가입을 진행해 주세요.',
+          [
+            { text: '취소', style: 'cancel' },
+            {
+              text: '회원가입',
+              onPress: () => navigation.navigate('SignupEntry'),
+            },
+          ],
+        );
+        return;
+      }
+      if (serverCode === 'ACCOUNT_BANNED') {
+        setPolicyModal({
+          visible: true,
+          title: '로그인 제한',
+          highlight: '영구 정지된 계정입니다.',
+          body: '운영정책 위반으로 서비스 이용이 제한되었습니다.\n문의가 필요하면 고객센터로 연락해주세요.',
+        });
+        return;
+      }
+      if (serverCode === 'ACCOUNT_DELETED') {
+        setPolicyModal({
+          visible: true,
+          title: '로그인 안내',
+          highlight: '탈퇴한 사용자입니다.',
+          body: '이미 탈퇴 처리된 계정입니다.\n다시 이용하려면 새로운 아이디로 회원가입해 주세요.',
+        });
+        return;
+      }
+      if (serverCode === 'ACCOUNT_SUSPENDED') {
+        const until = formatSuspendedUntil(
+          error?.response?.data?.suspendedUntil,
+        );
+        setPolicyModal({
+          visible: true,
+          title: '로그인 제한',
+          highlight: '임시 정지된 계정입니다.',
+          body: until
+            ? `해제 예정 시각: ${until}\n해제 시각 이후 다시 로그인해주세요.`
+            : '해제 시각 이후 다시 로그인해주세요.',
+        });
+        return;
+      }
+      if (
+        serverCode === 'GRADUATED_BLOCKED' ||
+        serverCode === 'ADULT_BLOCKED' ||
+        serverCode === 'REVERIFICATION_RESTRICTED'
+      ) {
+        const titles = {
+          GRADUATED_BLOCKED: {
+            title: '이용 제한',
+            highlight: '졸업생은 서비스를 이용할 수 없습니다.',
+            body:
+              '고등학교 졸업으로 Youth Paper 이용이 종료되었습니다.\n' +
+              '학생 인증 기반 서비스 정책에 따라 앱 이용이 제한됩니다.',
+          },
+          ADULT_BLOCKED: {
+            title: '이용 제한',
+            highlight: '성인은 서비스를 이용할 수 없습니다.',
+            body:
+              '성인 연령으로 Youth Paper 이용이 종료되었습니다.\n' +
+              '학생 인증 기반 서비스 정책에 따라 앱 이용이 제한됩니다.',
+          },
+          REVERIFICATION_RESTRICTED: {
+            title: '재인증 필요',
+            highlight: '학생증 재인증이 필요합니다.',
+            body:
+              '새 학년도 재인증 유예 기간이 지났습니다.\n' +
+              '앱 이용을 재개하려면 고객센터로 문의해 주세요.',
+          },
+        };
+        const copy = titles[serverCode];
+        setPolicyModal({
+          visible: true,
+          title: copy.title,
+          highlight: copy.highlight,
+          body: copy.body,
+        });
+        return;
+      }
+      Alert.alert('로그인 실패', buildLoginFailureMessage(error));
+    }
+  }, [login, navigation]);
 
   const handleAppleLogin = useCallback(() => {
     Alert.alert('준비 중', 'Apple 간편 로그인은 곧 제공될 예정입니다.');
@@ -316,6 +443,13 @@ const Login = ({ navigation }) => {
                 onBlur={() => setIdFocused(false)}
                 autoCapitalize="none"
               />
+              <View style={styles.underlineGrowSlot}>
+                <GrowingUnderline
+                  active={idFocused || Boolean(id)}
+                  normalize={normalize}
+                  fillColor={colors.textLight40}
+                />
+              </View>
 
               <TextInput
                 style={[
@@ -335,6 +469,13 @@ const Login = ({ navigation }) => {
                 secureTextEntry
                 autoCapitalize="none"
               />
+              <View style={styles.underlineGrowSlot}>
+                <GrowingUnderline
+                  active={passwordFocused || Boolean(password)}
+                  normalize={normalize}
+                  fillColor={colors.textLight40}
+                />
+              </View>
             </View>
 
             <TouchableOpacity
@@ -396,7 +537,7 @@ const Login = ({ navigation }) => {
                 아직 회원이 아니신가요?{' '}
                 <Text
                   style={styles.signupFooterLink}
-                  onPress={() => navigation.popToTop()}
+                  onPress={() => navigation.navigate('SignupEntry')}
                 >
                   회원가입
                 </Text>

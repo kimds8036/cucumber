@@ -4,6 +4,125 @@ import { shadow } from './tokens';
 
 export const createLoginStyles = (width, normalize) => {
   return StyleSheet.create({
+    // Login screen
+    screen: {
+      flex: 1,
+      backgroundColor: colors.background,
+    },
+    body: {
+      flex: 1,
+      minHeight: 0,
+    },
+    bodyScroll: {
+      flexGrow: 1,
+      paddingHorizontal: normalize(28),
+      paddingTop: normalize(80),
+      paddingBottom: normalize(28),
+    },
+    screenTitle: {
+      fontSize: normalize(fontSizes.heading),
+      fontFamily: fonts.bold,
+      color: colors.textPrimary,
+      marginBottom: normalize(28),
+    },
+    underlineInputContainer: {
+      width: '100%',
+      marginBottom: normalize(4),
+    },
+    underlineInput: {
+      width: '100%',
+      minHeight: normalize(48),
+      paddingHorizontal: 0,
+      paddingVertical: normalize(12),
+      fontSize: normalize(fontSizes.xl),
+      fontFamily: fonts.regular,
+      color: colors.textPrimary,
+      backgroundColor: colors.background,
+      textAlignVertical: 'center',
+      ...Platform.select({
+        android: { includeFontPadding: false },
+        ios: {},
+      }),
+    },
+    underlineInputFocused: {},
+    underlineGrowSlot: {
+      marginTop: normalize(2),
+      marginBottom: normalize(4),
+    },
+    underlineInputSpaced: {
+      marginTop: normalize(10),
+    },
+    loginButton: {
+      width: '100%',
+      height: normalize(52),
+      backgroundColor: colors.primary,
+      borderRadius: normalize(26),
+      justifyContent: 'center',
+      alignItems: 'center',
+      marginTop: normalize(28),
+    },
+    loginButtonText: {
+      fontSize: normalize(fontSizes.xxl),
+      fontFamily: fonts.bold,
+      color: colors.textWhite,
+    },
+    findLinkContainer: {
+      flexDirection: 'row',
+      justifyContent: 'center',
+      alignItems: 'center',
+      marginTop: normalize(18),
+    },
+    socialDividerRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      marginTop: normalize(40),
+      marginBottom: normalize(22),
+    },
+    socialDividerLine: {
+      flex: 1,
+      height: StyleSheet.hairlineWidth,
+      backgroundColor: colors.textLight20,
+    },
+    socialDividerText: {
+      marginHorizontal: normalize(12),
+      fontSize: normalize(fontSizes.lg),
+      fontFamily: fonts.regular,
+      color: colors.textSecondary,
+    },
+    socialRow: {
+      flexDirection: 'row',
+      justifyContent: 'center',
+      alignItems: 'center',
+      gap: normalize(20),
+    },
+    socialCircleButton: {
+      width: normalize(52),
+      height: normalize(52),
+      borderRadius: normalize(26),
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    kakaoCircleButton: {
+      backgroundColor: '#FEE500',
+    },
+    appleCircleButton: {
+      backgroundColor: colors.textPrimary,
+    },
+    signupFooter: {
+      marginTop: 'auto',
+      paddingTop: normalize(40),
+      alignItems: 'center',
+    },
+    signupFooterText: {
+      fontSize: normalize(fontSizes.lg),
+      fontFamily: fonts.regular,
+      color: colors.textSecondary,
+    },
+    signupFooterLink: {
+      fontFamily: fonts.bold,
+      color: colors.textPrimary,
+    },
+
     container: {
       flex: 1,
       backgroundColor: colors.background,
@@ -23,6 +142,7 @@ export const createLoginStyles = (width, normalize) => {
     titleContainer: {
       flexDirection: 'row',
       alignItems: 'baseline',
+      marginBottom: normalize(20),
     },
     titleLarge: {
       fontSize: normalize(fontSizes.heading + 4),
@@ -194,7 +314,7 @@ export const createSignupStyles = (width, normalize) => {
       paddingHorizontal: normalize(8),
       fontSize: normalize(fontSizes.xl),
       fontFamily: fonts.regular,
-      color: colors.textMuted,
+      color: colors.textSecondary,
       lineHeight: normalize(Math.round(fontSizes.xl * 1.45)),
       textAlign: 'center',
       marginTop: normalize(6),
@@ -289,6 +409,7 @@ export const createSignupStyles = (width, normalize) => {
     certificateGuideButtonSection: {
       width: '100%',
       alignItems: 'center',
+      paddingTop: normalize(8),
       gap: normalize(12),
     },
     certificateGuideScrollHint: {

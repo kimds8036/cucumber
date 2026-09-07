@@ -1,35 +1,32 @@
 import {
-  login as kakaoLogin,
   loginWithKakaoAccount,
   getProfile,
+  logout as kakaoLogout,
 } from '@react-native-seoul/kakao-login';
 
 /**
- * 카카오 네이티브 SDK 로그인 → 프로필
- * @returns {{ accessToken: string, refreshToken?: string, profile: object }}
+ * 카카오 계정 로그인 UI를 연 뒤 프로필 조회.
+ * 가입 플로우에서는 카카오톡 묵시 재로그인(창 안 뜸)을 피하기 위해
+ * 로그아웃 후 loginWithKakaoAccount 만 사용한다.
  */
 export async function loginWithKakao() {
+  try {
+    await kakaoLogout();
+  } catch {
+    // 미로그인 상태면 무시
+  }
+
   let token;
   try {
-    token = await kakaoLogin();
-  } catch (firstError) {
-    const msg = String(firstError?.message || firstError || '');
+    token = await loginWithKakaoAccount();
+  } catch (error) {
+    const msg = String(error?.message || error || '');
     if (/cancel|취소|user.?cancel|E_CANCELLED/i.test(msg)) {
       const err = new Error('CANCELLED');
       err.code = 'CANCELLED';
       throw err;
     }
-    try {
-      token = await loginWithKakaoAccount();
-    } catch (secondError) {
-      const msg2 = String(secondError?.message || secondError || '');
-      if (/cancel|취소|user.?cancel|E_CANCELLED/i.test(msg2)) {
-        const err = new Error('CANCELLED');
-        err.code = 'CANCELLED';
-        throw err;
-      }
-      throw secondError;
-    }
+    throw error;
   }
 
   const profile = await getProfile();
