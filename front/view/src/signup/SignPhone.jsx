@@ -66,6 +66,10 @@ import {
 import { SIGNUP_REDESIGN_SKIP_VALIDATION } from './signupRedesignFlags';
 import { ALLOW_ADULT_SIGNUP_IN_DEV } from './signupAdultTestMode';
 import {
+  alertSignupDuplicateAndOfferLogin,
+  assertPhoneAvailableForSignup,
+} from './signupDuplicateGuard';
+import {
   isValidUsername,
   isValidPassword,
   USERNAME_ERROR,
@@ -314,12 +318,22 @@ const SignPhone = ({ navigation }) => {
   }, []);
 
   const advanceToAccountAfterIdentity = useCallback(
-    (overrideIdentity = {}) => {
+    async (overrideIdentity = {}) => {
       const merged = { ...identityData, ...overrideIdentity };
       const name = merged.name?.trim() || identityData.name || '';
       const phoneNumber = merged.phoneNumber || identityData.phoneNumber || '';
       const resolvedBirthDate =
         merged.birthDate || birthDate || formData.birthDate || '';
+
+      const phoneOk = await assertPhoneAvailableForSignup(
+        phoneNumber,
+        navigation,
+      );
+      if (!phoneOk) {
+        await clearFlowSession();
+        navigation.navigate('SignupEntry');
+        return;
+      }
 
       setFormData((prev) => ({
         ...prev,
@@ -345,9 +359,11 @@ const SignPhone = ({ navigation }) => {
     [
       applyBirthDateToState,
       birthDate,
+      clearFlowSession,
       formData.birthDate,
       guardianVerifiedAt,
       identityData,
+      navigation,
       proceedToAccount,
       requiresGuardianVerification,
     ],
@@ -1099,6 +1115,9 @@ const SignPhone = ({ navigation }) => {
       await clearFlowSession();
       await finishSignupAndEnterApp(payload.username, payload.password);
     } catch (error) {
+      if (alertSignupDuplicateAndOfferLogin(error, navigation)) {
+        return;
+      }
       Alert.alert(
         '회원가입 실패',
         error.response?.data?.message || '회원가입 중 오류가 발생했습니다.',

@@ -65,6 +65,10 @@ import {
 } from './kakaoSignupMocks';
 import { ALLOW_ADULT_SIGNUP_IN_DEV } from './signupAdultTestMode';
 import {
+  alertSignupDuplicateAndOfferLogin,
+  assertPhoneAvailableForSignup,
+} from './signupDuplicateGuard';
+import {
   loginWithKakao,
   mapKakaoProfileToIdentity,
 } from '../../../services/kakaoAuth';
@@ -284,7 +288,7 @@ const SignKakao = ({ navigation }) => {
   }, [proceedToSchool]);
 
   const applyKakaoIdentity = useCallback(
-    (nextIdentity) => {
+    async (nextIdentity) => {
       setIdentityData(nextIdentity);
       setFormData((prev) => ({
         ...prev,
@@ -308,6 +312,17 @@ const SignKakao = ({ navigation }) => {
         showTooYoungForSignupAlert(goToLogin);
         return;
       }
+
+      const phoneOk = await assertPhoneAvailableForSignup(
+        nextIdentity.phoneNumber,
+        navigation,
+      );
+      if (!phoneOk) {
+        kakaoAuthRanRef.current = false;
+        await clearFlowSession();
+        return;
+      }
+
       if (birthCase === 'C') {
         setShowGuardianConsentModal(true);
         return;
@@ -323,7 +338,7 @@ const SignKakao = ({ navigation }) => {
       }
       proceedToSchool();
     },
-    [goToLogin, proceedToSchool],
+    [clearFlowSession, goToLogin, navigation, proceedToSchool],
   );
 
   const runKakaoMockAuth = useCallback(
@@ -624,6 +639,9 @@ const SignKakao = ({ navigation }) => {
       await clearFlowSession();
       await finishSignupAndEnterApp();
     } catch (error) {
+      if (alertSignupDuplicateAndOfferLogin(error, navigation)) {
+        return;
+      }
       Alert.alert(
         '회원가입 실패',
         error.response?.data?.message || '회원가입 중 오류가 발생했습니다.',

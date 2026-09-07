@@ -87,6 +87,7 @@ const SKIP_SIGNUP_VALIDATION_UNTIL_OCR_TEST =
     .trim() === 'true';
 
 import { ALLOW_ADULT_SIGNUP_IN_DEV } from './signupAdultTestMode';
+import { alertSignupDuplicateAndOfferLogin } from './signupDuplicateGuard';
 
 function getAdultTestEnrollmentFallback() {
   return {
@@ -1349,6 +1350,9 @@ const Sign = ({ navigation }) => {
       await consumePendingInviteCode();
       await finishSignupAndEnterApp(payload.username, payload.password);
     } catch (error) {
+      if (alertSignupDuplicateAndOfferLogin(error, navigation)) {
+        return;
+      }
       Alert.alert(
         '회원가입 실패',
         error.response?.data?.message || '회원가입 중 오류가 발생했습니다.',
@@ -1653,6 +1657,9 @@ const Sign = ({ navigation }) => {
       await consumePendingInviteCode();
       await finishSignupAndEnterApp(payload.username, payload.password);
     } catch (error) {
+      if (alertSignupDuplicateAndOfferLogin(error, navigation)) {
+        return;
+      }
       Alert.alert(
         '회원가입 실패',
         error.response?.data?.message || '회원가입 중 오류가 발생했습니다.',

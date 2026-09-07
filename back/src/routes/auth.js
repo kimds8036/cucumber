@@ -1594,9 +1594,10 @@ router.post(
       [signupUsername],
     );
     if (existingByUsername.length > 0) {
-      return res.status(400).json({
+      return res.status(409).json({
         success: false,
-        message: '이미 사용 중인 사용자명 또는 전화번호입니다.',
+        message: '이미 사용 중인 아이디입니다. 로그인해주세요.',
+        code: 'USERNAME_ALREADY_REGISTERED',
       });
     }
     const [existingByPhone] = await pool.execute(
@@ -1606,9 +1607,19 @@ router.post(
       phoneLookupBindParams(phone),
     );
     if (existingByPhone.length > 0) {
-      return res.status(400).json({
+      const existingUserId = Number(existingByPhone[0].id);
+      const providers = await listOauthProvidersForUser(pool, existingUserId);
+      const label = formatSocialProvidersLabel(providers);
+      return res.status(409).json({
         success: false,
-        message: '이미 사용 중인 사용자명 또는 전화번호입니다.',
+        message: label
+          ? `이미 ${label}로 가입된 전화번호입니다. 로그인해주세요.`
+          : '이미 가입된 전화번호입니다. 로그인해주세요.',
+        code: 'PHONE_ALREADY_REGISTERED',
+        data: {
+          providers,
+          providerLabel: label || null,
+        },
       });
     }
 
