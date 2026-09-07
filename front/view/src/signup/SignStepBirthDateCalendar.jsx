@@ -12,7 +12,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { colors, fonts, fontSizes } from '../../../styles/colors';
-import { classifyBirthDateCase, getIneligibleAgeDetailMessage } from './signupBirthDatePolicy';
+import { classifyBirthDateCase, AGE_INELIGIBLE_MESSAGE } from './signupBirthDatePolicy';
 import { ALLOW_ADULT_SIGNUP_IN_DEV } from './signupAdultTestMode';
 import { buildBirthDate } from './SignStepAgeGate';
 import SignupIosSafeModal from './SignupIosSafeModal';
@@ -25,8 +25,6 @@ const CALENDAR_CELL_COUNT = CALENDAR_ROW_COUNT * 7;
 const CALENDAR_SUNDAY = '#FF8585';
 const CALENDAR_SATURDAY = '#6BAEFF';
 const PICKER_MIN_DATE = new Date(1900, 0, 1);
-const INELIGIBLE_AGE_MESSAGE = '현재 연령으로는 서비스를 이용하실 수 없습니다';
-const INELIGIBLE_TOOLTIP_BG = colors.surface;
 
 function getTodayIso() {
   const now = new Date();
@@ -84,7 +82,6 @@ const SignStepBirthDateCalendar = ({
   const [selectedBirthDate, setSelectedBirthDate] = useState(initialResolved);
   const [view, setView] = useState(() => parseInitialView(initialBirthDate));
   const [pickerVisible, setPickerVisible] = useState(false);
-  const [ineligibleDetailVisible, setIneligibleDetailVisible] = useState(false);
   const [pickerDraft, setPickerDraft] = useState(() => dateFromView(parseInitialView(initialBirthDate)));
   const didNotifyInitialRef = useRef(false);
   const sheetTranslateY = useRef(new Animated.Value(600)).current;
@@ -120,15 +117,6 @@ const SignStepBirthDateCalendar = ({
 
   const isIneligibleAge =
     birthCase === 'D' || (birthCase === 'A' && !ALLOW_ADULT_SIGNUP_IN_DEV);
-
-  const ineligibleDetailMessage = useMemo(() => {
-    if (!isIneligibleAge) return '';
-    return getIneligibleAgeDetailMessage(birthCase);
-  }, [birthCase, isIneligibleAge]);
-
-  useEffect(() => {
-    setIneligibleDetailVisible(false);
-  }, [birthCase, selectedBirthDate]);
 
   const calendarDays = useMemo(() => {
     const firstDay = new Date(view.year, view.month, 1);
@@ -379,31 +367,7 @@ const SignStepBirthDateCalendar = ({
           />
           {isIneligibleAge ? (
             <View style={styles.ineligibleBlock}>
-              <View style={styles.ineligibleRow}>
-                <Text style={styles.ineligibleText}>{INELIGIBLE_AGE_MESSAGE}</Text>
-                <TouchableOpacity
-                  onPress={() => setIneligibleDetailVisible((prev) => !prev)}
-                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                  accessibilityLabel="가입 가능 연령 안내"
-                  accessibilityState={{ expanded: ineligibleDetailVisible }}
-                >
-                  <Ionicons
-                    name="information-circle-outline"
-                    size={normalize(18)}
-                    color={colors.alert}
-                  />
-                </TouchableOpacity>
-              </View>
-              {ineligibleDetailVisible ? (
-                <View style={styles.ineligibleTooltipWrap}>
-                  <View style={styles.ineligibleTooltipPointer} />
-                  <View style={styles.ineligibleTooltipBubble}>
-                    <Text style={styles.ineligibleDetailText}>
-                      {ineligibleDetailMessage}
-                    </Text>
-                  </View>
-                </View>
-              ) : null}
+              <Text style={styles.ineligibleText}>{AGE_INELIGIBLE_MESSAGE}</Text>
             </View>
           ) : null}
         </View>
@@ -570,37 +534,11 @@ function createStyles(normalize, width, calendarMetrics) {
     ineligibleBlock: {
       marginTop: normalize(10),
     },
-    ineligibleRow: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: normalize(8),
-    },
     ineligibleText: {
-      flex: 1,
       fontFamily: fonts.bold,
       fontSize: normalize(fontSizes.lg),
       color: colors.alert,
       lineHeight: normalize(Math.round(fontSizes.lg * 1.45)),
-    },
-    ineligibleTooltipWrap: {
-      marginTop: normalize(6),
-      width: '100%',
-      alignItems: 'flex-end',
-    },
-    ineligibleTooltipBubble: {
-      width: '100%',
-      backgroundColor: INELIGIBLE_TOOLTIP_BG,
-      borderRadius: normalize(16),
-      borderTopRightRadius: normalize(0),
-      paddingHorizontal: normalize(16),
-      paddingVertical: normalize(14),
-    },
-    ineligibleDetailText: {
-      fontFamily: fonts.regular,
-      fontSize: normalize(fontSizes.lg),
-      color: colors.textPrimary,
-      textAlign: 'center',
-      lineHeight: normalize(Math.round(fontSizes.lg * 1.5)),
     },
     pickerModalOverlay: {
       flex: 1,

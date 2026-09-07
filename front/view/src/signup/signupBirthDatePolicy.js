@@ -85,37 +85,26 @@ export function classifyBirthDateCase(birthDate, ref = new Date()) {
   return 'B';
 }
 
-export function getTooOldEligibilityMessage(ref = new Date()) {
-  const { minYear, maxAge } = getBirthDateBoundaries(ref);
-  return (
-    `Youth Paper는 만 ${maxAge}세까지 가입할 수 있어요.\n` +
-    `${minYear}년 01월 01일 이후 출생자부터 가입할 수 있어요.`
-  );
+export const AGE_INELIGIBLE_MESSAGE =
+  '해당 연령으로는 Youth Paper를 이용할 수 없습니다.';
+
+export function getTooOldEligibilityMessage(_ref = new Date()) {
+  return AGE_INELIGIBLE_MESSAGE;
 }
 
-export function getTooYoungEligibilityMessage(ref = new Date()) {
-  const { maxYear } = getBirthDateBoundaries(ref);
-  return (
-    `Youth Paper는 중고등학생 커뮤니티로, \n${maxYear}년 12월 31일 이전 출생자까지만 가입할 수 있어요.`
-  );
+export function getTooYoungEligibilityMessage(_ref = new Date()) {
+  return AGE_INELIGIBLE_MESSAGE;
 }
 
 export function getIneligibleAgeDetailMessage(birthCase, ref = new Date()) {
-  if (birthCase === 'A') return getTooOldEligibilityMessage(ref);
-  if (birthCase === 'D') return getTooYoungEligibilityMessage(ref);
+  if (birthCase === 'A' || birthCase === 'D') return AGE_INELIGIBLE_MESSAGE;
   return '';
 }
 
 export function getTooOldAlertMessage(ref = new Date()) {
-  return (
-    `${getTooOldEligibilityMessage(ref)}\n` +
-    '현재 연령으로는 서비스를 이용하실 수 없습니다.'
-  );
+  return AGE_INELIGIBLE_MESSAGE;
 }
 
 export function getTooYoungAlertMessage(ref = new Date()) {
-  return (
-    `${getTooYoungEligibilityMessage(ref)}\n` +
-    '현재 연령으로는 서비스를 이용하실 수 없습니다.'
-  );
+  return AGE_INELIGIBLE_MESSAGE;
 }
