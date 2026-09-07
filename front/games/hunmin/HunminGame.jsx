@@ -28,7 +28,7 @@ import AppPopupModal from '../../components/common/AppPopupModal';
 const ROUND_MS = 10000;
 const WIN_SCORE = 20;
 const SEAT_COUNT = 6;
-const SEAT_COL_W = 88;
+const SEAT_COL_W = 52;
 /** 말풍선 표시 후 자동 숨김 */
 const BUBBLE_TTL_MS = 3000;
 
@@ -52,27 +52,38 @@ function paletteForSeat(seatIndex) {
   return PLAYER_PALETTE[seatIndex % PLAYER_PALETTE.length] || EMPTY_PALETTE;
 }
 
+const BUBBLE_BORDER = '#D0CBC4';
+const BUBBLE_FILL = '#FFFFFF';
+
 function SpeechBubble({ text, side, styles }) {
   if (!text) return null;
+  const isLeft = side === 'left';
   return (
     <View
       pointerEvents="none"
       style={[
         styles.bubbleWrap,
-        side === 'left' ? styles.bubbleWrapLeft : styles.bubbleWrapRight,
+        isLeft ? styles.bubbleWrapLeft : styles.bubbleWrapRight,
       ]}
     >
+      {/* 테두리용 큰 꼬리 + 안쪽 흰 꼬리 */}
+      <View
+        style={[
+          styles.bubbleTailBorder,
+          isLeft ? styles.bubbleTailBorderLeft : styles.bubbleTailBorderRight,
+        ]}
+      />
+      <View
+        style={[
+          styles.bubbleTailFill,
+          isLeft ? styles.bubbleTailFillLeft : styles.bubbleTailFillRight,
+        ]}
+      />
       <View style={styles.bubbleBody}>
         <Text style={styles.bubbleText} numberOfLines={2}>
           {text}
         </Text>
       </View>
-      <View
-        style={[
-          styles.bubbleTail,
-          side === 'left' ? styles.bubbleTailLeft : styles.bubbleTailRight,
-        ]}
-      />
     </View>
   );
 }
@@ -88,29 +99,22 @@ function PlayerSeat({
 }) {
   const palette = player ? paletteForSeat(seatIndex) : EMPTY_PALETTE;
   return (
-    <View style={styles.seatSlot}>
-      <View
-        style={[
-          styles.seatCard,
-          { backgroundColor: player ? palette.soft : EMPTY_PALETTE.soft },
-          {
-            // 배지처럼 테두리 폭 고정 — 색만 바꿔 레이아웃 튀김 방지
-            borderColor: isRoundWinner ? palette.accent : 'transparent',
-          },
-          !player && styles.seatEmptyCard,
-        ]}
-      >
+    <View style={[styles.seatSlot, bubble ? styles.seatSlotRaised : null]}>
+      {side === 'right' ? (
+        <SpeechBubble text={bubble} side={side} styles={styles} />
+      ) : null}
+      <View style={styles.seatStack}>
         <View
           style={[
             styles.avatar,
-            { backgroundColor: palette.accent },
+            { backgroundColor: player ? palette.accent : EMPTY_PALETTE.accent },
+            isRoundWinner && {
+              borderColor: palette.accent,
+              borderWidth: 2.5,
+            },
             !player && styles.avatarEmpty,
           ]}
-        >
-          <Text style={[styles.avatarText, !player && styles.avatarTextEmpty]}>
-            {player ? (isYou ? '나' : (player.username || '?').slice(0, 1)) : '·'}
-          </Text>
-        </View>
+        />
         <Text
           style={[styles.seatName, player && { color: palette.ink }]}
           numberOfLines={1}
@@ -118,10 +122,12 @@ function PlayerSeat({
           {player ? (isYou ? '나' : player.username || '플레이어') : '빈자리'}
         </Text>
         <Text style={[styles.seatScore, player && { color: palette.accent }]}>
-          {player ? `${Number(player.score) || 0}점` : '—'}
+          {player ? `${Number(player.score) || 0}` : '—'}
         </Text>
       </View>
-      <SpeechBubble text={bubble} side={side} styles={styles} />
+      {side === 'left' ? (
+        <SpeechBubble text={bubble} side={side} styles={styles} />
+      ) : null}
     </View>
   );
 }
@@ -538,13 +544,17 @@ export default function HunminGame() {
           )}
           {showGameCenter && (
             <View style={styles.centerPlay}>
-              {phase === 'playing' ? (
-                <Text style={styles.timer}>{sec}</Text>
-              ) : (
-                <Text style={styles.centerTitle}>
-                  {result?.winners?.length ? '선착 정답!' : '다음 라운드'}
-                </Text>
-              )}
+              <View style={styles.timerSlot}>
+                {phase === 'playing' ? (
+                  <Text style={styles.timer}>{sec}</Text>
+                ) : (
+                  <Text style={styles.revealStatus} numberOfLines={2}>
+                    {result?.winners?.length
+                      ? (result.winners || []).map((w) => w.username).join(', ')
+                      : '정답 없음'}
+                  </Text>
+                )}
+              </View>
               <View style={styles.choRow}>
                 {choseong.length > 0
                   ? choseong.map((c, idx) => (
@@ -597,13 +607,6 @@ export default function HunminGame() {
                   })}
                 </View>
               </View>
-              {phase === 'reveal' && result ? (
-                <Text style={styles.resultHint}>
-                  {result.winners?.length
-                    ? `${(result.winners || []).map((w) => w.username).join(', ')}`
-                    : '정답 없음'}
-                </Text>
-              ) : null}
             </View>
           )}
           {phase === 'match_end' && (
@@ -625,19 +628,19 @@ export default function HunminGame() {
             value={input}
             onChangeText={setInput}
             editable
-            placeholder="채팅처럼 입력 후 전송"
+            placeholder="단어 입력"
             placeholderTextColor={colors.textLight20}
             autoCapitalize="none"
             autoCorrect={false}
             maxLength={20}
-            returnKeyType="send"
+            returnKeyType="done"
             blurOnSubmit={false}
             onSubmitEditing={onSubmit}
             showSoftInputOnFocus
             {...themedTextInputProps}
           />
           <Pressable style={styles.submitBtn} onPress={onSubmit}>
-            <Text style={styles.submitText}>전송</Text>
+            <Text style={styles.submitText}>확인</Text>
           </Pressable>
         </Animated.View>
       ) : null}
@@ -667,6 +670,7 @@ function createStyles(normalize) {
     guideBox: {
       marginBottom: normalize(4),
       paddingHorizontal: normalize(4),
+      zIndex: 1,
     },
     guideLine: {
       fontFamily: fonts.regular,
@@ -680,6 +684,7 @@ function createStyles(normalize) {
       justifyContent: 'space-between',
       alignItems: 'center',
       marginBottom: normalize(4),
+      zIndex: 1,
     },
     roomMetaText: {
       fontFamily: fonts.regular,
@@ -697,122 +702,141 @@ function createStyles(normalize) {
       alignItems: 'flex-start',
       justifyContent: 'center',
       minHeight: normalize(240),
-      paddingTop: normalize(2),
+      paddingTop: 0,
+      overflow: 'visible',
+      zIndex: 1,
     },
     seatCol: {
       width: colW,
       alignItems: 'center',
-      gap: normalize(4),
+      justifyContent: 'flex-start',
+      gap: normalize(20),
+      overflow: 'visible',
       zIndex: 2,
+      paddingTop: 0,
     },
     seatSlot: {
-      width: normalize(68),
+      width: normalize(40),
       position: 'relative',
       alignItems: 'center',
       overflow: 'visible',
+      zIndex: 1,
     },
-    seatCard: {
-      width: normalize(68),
-      paddingVertical: normalize(5),
-      paddingHorizontal: normalize(3),
-      borderRadius: normalize(10),
+    seatSlotRaised: {
+      zIndex: 8,
+    },
+    seatStack: {
+      width: normalize(40),
       alignItems: 'center',
+    },
+    avatar: {
+      width: normalize(18),
+      height: normalize(18),
+      borderRadius: normalize(9),
+      marginBottom: normalize(2),
       borderWidth: 2.5,
       borderColor: 'transparent',
     },
-    seatEmptyCard: {
-      backgroundColor: '#F3F1EE',
-    },
-    avatar: {
-      width: normalize(28),
-      height: normalize(28),
-      borderRadius: normalize(14),
-      alignItems: 'center',
-      justifyContent: 'center',
-      marginBottom: normalize(2),
-    },
-    avatarText: {
-      fontFamily: fonts.bold,
-      fontSize: normalize(fontSizes.sm),
-      color: '#FFFFFF',
-    },
     avatarEmpty: {
       backgroundColor: '#DDD8D0',
-    },
-    avatarTextEmpty: {
-      color: colors.textSecondary,
+      opacity: 0.7,
     },
     seatName: {
       fontFamily: fonts.bold,
-      fontSize: normalize(10),
+      fontSize: normalize(11),
       color: colors.textSecondary,
-      maxWidth: normalize(64),
+      maxWidth: normalize(52),
+      textAlign: 'center',
     },
     seatScore: {
       fontFamily: fonts.regular,
       fontSize: normalize(10),
       color: colors.textSecondary,
+      textAlign: 'center',
     },
     bubbleWrap: {
       position: 'absolute',
-      top: normalize(4),
-      maxWidth: normalize(54),
-      zIndex: 5,
-      alignItems: 'center',
+      top: normalize(0),
+      // 부모 폭 제한으로 조기 줄바꿈되지 않게 여유
+      width: normalize(110),
+      zIndex: 9,
+      alignItems: 'flex-start',
     },
     bubbleWrapLeft: {
-      left: normalize(66),
+      left: normalize(34),
       alignItems: 'flex-start',
     },
     bubbleWrapRight: {
-      right: normalize(66),
+      right: normalize(34),
       alignItems: 'flex-end',
     },
     bubbleBody: {
-      backgroundColor: '#FFFFFF',
-      borderWidth: StyleSheet.hairlineWidth,
-      borderColor: '#D0CBC4',
+      backgroundColor: BUBBLE_FILL,
+      borderWidth: StyleSheet.hairlineWidth * 2,
+      borderColor: BUBBLE_BORDER,
       borderRadius: normalize(10),
-      paddingHorizontal: normalize(6),
+      paddingHorizontal: normalize(7),
       paddingVertical: normalize(4),
-      shadowColor: '#000',
-      shadowOpacity: 0.06,
-      shadowRadius: 2,
-      shadowOffset: { width: 0, height: 1 },
-      elevation: 1,
+      // 짧은 글은 내용만큼, 길면 한글 약 6자에서 줄바꿈
+      maxWidth: normalize(92),
+      zIndex: 2,
     },
-    bubbleTail: {
+    bubbleTailBorder: {
       position: 'absolute',
-      top: normalize(10),
+      top: normalize(8),
       width: 0,
       height: 0,
+      zIndex: 1,
+      borderTopWidth: normalize(6),
+      borderBottomWidth: normalize(6),
+      borderTopColor: 'transparent',
+      borderBottomColor: 'transparent',
+    },
+    bubbleTailBorderLeft: {
+      left: normalize(-6),
+      borderRightWidth: normalize(7),
+      borderRightColor: BUBBLE_BORDER,
+    },
+    bubbleTailBorderRight: {
+      right: normalize(-6),
+      borderLeftWidth: normalize(7),
+      borderLeftColor: BUBBLE_BORDER,
+    },
+    bubbleTailFill: {
+      position: 'absolute',
+      top: normalize(9),
+      width: 0,
+      height: 0,
+      zIndex: 3,
       borderTopWidth: normalize(5),
       borderBottomWidth: normalize(5),
       borderTopColor: 'transparent',
       borderBottomColor: 'transparent',
     },
-    bubbleTailLeft: {
-      left: normalize(-5),
+    bubbleTailFillLeft: {
+      left: normalize(-4),
       borderRightWidth: normalize(6),
-      borderRightColor: '#FFFFFF',
+      borderRightColor: BUBBLE_FILL,
     },
-    bubbleTailRight: {
-      right: normalize(-5),
+    bubbleTailFillRight: {
+      right: normalize(-4),
       borderLeftWidth: normalize(6),
-      borderLeftColor: '#FFFFFF',
+      borderLeftColor: BUBBLE_FILL,
     },
     bubbleText: {
       fontFamily: fonts.regular,
-      fontSize: normalize(10),
-      lineHeight: normalize(13),
+      fontSize: normalize(11),
+      lineHeight: normalize(15),
       color: colors.textPrimary,
     },
     centerCol: {
       flex: 1,
-      maxWidth: normalize(200),
+      maxWidth: normalize(220),
       alignItems: 'center',
       justifyContent: 'center',
-      paddingHorizontal: normalize(6),
+      paddingHorizontal: normalize(2),
+      zIndex: 0,
+      overflow: 'visible',
     },
     centerPlay: {
       width: '100%',
@@ -835,14 +859,26 @@ function createStyles(normalize) {
       textAlign: 'center',
       lineHeight: normalize(18),
     },
-    timer: {
-      fontFamily: fonts.bold,
-      fontSize: normalize(28),
-      color: '#C45C26',
-      textAlign: 'center',
+    timerSlot: {
+      minHeight: normalize(34),
       marginBottom: normalize(6),
       alignSelf: 'center',
       width: '100%',
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    timer: {
+      fontFamily: fonts.bold,
+      fontSize: normalize(28),
+      color: '#8B7355',
+      textAlign: 'center',
+    },
+    revealStatus: {
+      fontFamily: fonts.bold,
+      fontSize: normalize(18),
+      color: '#8B7355',
+      textAlign: 'center',
+      paddingHorizontal: normalize(4),
     },
     choRow: {
       flexDirection: 'row',
@@ -855,17 +891,16 @@ function createStyles(normalize) {
     choTile: {
       width: normalize(44),
       height: normalize(44),
-      borderRadius: normalize(10),
-      backgroundColor: '#FFF4E8',
-      borderWidth: 1.5,
-      borderColor: '#E8A06A',
+      borderRadius: normalize(12),
+      backgroundColor: '#EDE6DC',
+      borderWidth: 0,
       alignItems: 'center',
       justifyContent: 'center',
     },
     choChar: {
       fontFamily: fonts.bold,
       fontSize: normalize(20),
-      color: '#C45C26',
+      color: '#5C5346',
       textAlign: 'center',
     },
     scoreBoard: {
@@ -911,18 +946,12 @@ function createStyles(normalize) {
       minWidth: normalize(16),
       textAlign: 'center',
     },
-    resultHint: {
-      marginTop: normalize(8),
-      fontFamily: fonts.regular,
-      fontSize: normalize(fontSizes.sm),
-      color: '#C45C26',
-      textAlign: 'center',
-    },
     inputRow: {
       flexDirection: 'row',
       gap: normalize(8),
       marginTop: normalize(10),
       marginBottom: normalize(4),
+      zIndex: 50,
     },
     input: {
       flex: 1,
