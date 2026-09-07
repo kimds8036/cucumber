@@ -33,6 +33,7 @@ import { useAuth } from '../../../context/AuthContext';
 import SubHeader from '../../frame/subHeader';
 import { GrowingUnderline } from './SchoolSearchField';
 import { loginWithKakao } from '../../../services/kakaoAuth';
+import { loginWithApple } from '../../../services/appleAuth';
 
 /** 로그인 실패 안내 — 사용자용 문구만 (기술 정보는 __DEV__ 콘솔) */
 function buildLoginFailureMessage(error) {
@@ -227,9 +228,72 @@ const Login = ({ navigation }) => {
     }
   }, [login, navigation]);
 
-  const handleAppleLogin = useCallback(() => {
-    Alert.alert('준비 중', 'Apple 간편 로그인은 곧 제공될 예정입니다.');
-  }, []);
+  const handleAppleLogin = useCallback(async () => {
+    try {
+      const { identityToken, isMock } = await loginWithApple();
+      if (!identityToken) {
+        Alert.alert('로그인 실패', 'Apple 토큰을 받지 못했습니다.');
+        return;
+      }
+      if (isMock && !__DEV__) {
+        Alert.alert('알림', 'Apple 로그인은 iOS에서만 사용할 수 있습니다.');
+        return;
+      }
+
+      const deviceId = await getOrCreateDeviceId();
+      const response = await api.post('/api/auth/oauth/apple', {
+        identityToken,
+        deviceId,
+      });
+
+      const { token, refreshToken } = response.data.data || {};
+      if (token) {
+        await setAuthToken(token, { persist: true });
+        if (refreshToken) {
+          await setRefreshToken(refreshToken, { persist: true });
+        }
+      }
+      await login({
+        studentVerificationStatus:
+          response.data.data?.studentVerificationStatus || 'PENDING',
+        rejectReason: response.data.data?.rejectReason || null,
+        reverificationStatus:
+          response.data.data?.reverificationStatus || 'none',
+        reverificationDeadline:
+          response.data.data?.reverificationDeadline || null,
+        needsProfileUsername: Boolean(
+          response.data.data?.needsProfileUsername,
+        ),
+      });
+    } catch (error) {
+      if (error?.code === 'CANCELLED') {
+        return;
+      }
+      if (error?.code === 'APPLE_UNAVAILABLE') {
+        Alert.alert('알림', error.message || 'Apple 로그인을 사용할 수 없습니다.');
+        return;
+      }
+      const serverCode = error?.response?.data?.code;
+      if (serverCode === 'NEEDS_SIGNUP') {
+        Alert.alert(
+          '가입 필요',
+          '연동된 계정이 없습니다. Apple로 회원가입을 진행해 주세요.',
+          [
+            { text: '취소', style: 'cancel' },
+            {
+              text: '회원가입',
+              onPress: () => navigation.navigate('SignupEntry'),
+            },
+          ],
+        );
+        return;
+      }
+      Alert.alert(
+        '로그인 실패',
+        buildLoginFailureMessage(error),
+      );
+    }
+  }, [login, navigation]);
 
   const handleLogin = useCallback(async () => {
     if (!id || !password) {

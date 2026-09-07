@@ -33,7 +33,7 @@ import SignStepCertificateGuide from './SignStepCertificateGuide';
 import SignStepCertificate from './SignStepCertificate';
 import SignupPrimaryFooter from './SignupPrimaryFooter';
 import Skeleton from '../../../components/common/Skeleton';
-import { api, setAuthToken } from '../../../utils/api';
+import { api, setAuthToken, setRefreshToken, getOrCreateDeviceId } from '../../../utils/api';
 import {
   peekPendingInviteCode,
   consumePendingInviteCode,
@@ -50,6 +50,7 @@ import {
   dismissInicisBrowserSafely,
   waitForPresentationLayerRelease,
 } from '../../../services/inicisAuth';
+import { loginWithApple } from '../../../services/appleAuth';
 import { useAuth } from '../../../context/AuthContext';
 import { useAppNavigation } from '../../../navigation/useAppNavigation';
 import {
@@ -84,11 +85,6 @@ const STEP = {
   CERTIFICATE_GUIDE: 'certificate_guide',
   CERTIFICATE_SUBMIT: 'certificate_submit',
   NEIS_PLUS_SUBMIT: 'neis_plus_submit',
-};
-
-const MOCK_ACCOUNT = {
-  username: 'apple_testuser',
-  password: 'Test1234',
 };
 
 const MOCK_STUDENT_TOKEN = 'redesign-skip-student-token';
@@ -792,15 +788,88 @@ const SignApple = ({ navigation }) => {
     showInicisAlertAfterOverlay,
   ]);
 
-  const runAppleMockAuth = useCallback(async () => {
-    const nextIdentity = toAppleIdentityData(APPLE_MOCK_PROFILE);
-    setIdentityData(nextIdentity);
-    setFormData((prev) => ({
-      ...prev,
-      name: nextIdentity.name,
-    }));
-    setCurrentStep(STEP.BIRTH_DATE);
-  }, []);
+  const runAppleSdkAuth = useCallback(async () => {
+    try {
+      const { identityToken, profile, isMock } = await loginWithApple();
+      if (!identityToken) {
+        Alert.alert('알림', 'Apple 인증에 실패했습니다. 다시 시도해 주세요.');
+        return;
+      }
+
+      // 이미 연동된 계정이면 가입 대신 바로 로그인
+      if (!isMock || __DEV__) {
+        try {
+          const deviceId = await getOrCreateDeviceId();
+          const response = await api.post('/api/auth/oauth/apple', {
+            identityToken,
+            deviceId,
+          });
+          const data = response.data?.data || {};
+          if (data.token) {
+            await setAuthToken(data.token, { persist: true });
+            if (data.refreshToken) {
+              await setRefreshToken(data.refreshToken, { persist: true });
+            }
+            await clearFlowSession();
+            await login({
+              studentVerificationStatus:
+                data.studentVerificationStatus || 'PENDING',
+              rejectReason: data.rejectReason || null,
+              reverificationStatus: data.reverificationStatus || 'none',
+              reverificationDeadline: data.reverificationDeadline || null,
+              needsProfileUsername: Boolean(data.needsProfileUsername),
+            });
+            return;
+          }
+        } catch (oauthErr) {
+          const code = oauthErr?.response?.data?.code;
+          if (code && code !== 'NEEDS_SIGNUP') {
+            Alert.alert(
+              '알림',
+              oauthErr?.response?.data?.message ||
+                'Apple 로그인에 실패했습니다.',
+            );
+            return;
+          }
+          // NEEDS_SIGNUP → 가입 플로우 계속
+        }
+      }
+
+      const nextIdentity = {
+        ...toAppleIdentityData({
+          name: profile?.name || APPLE_MOCK_PROFILE.name,
+          appleUserId: profile?.appleUserId || APPLE_MOCK_PROFILE.appleUserId,
+          identityToken,
+        }),
+        identityToken,
+      };
+      setIdentityData(nextIdentity);
+      setFormData((prev) => ({
+        ...prev,
+        name: nextIdentity.name || prev.name,
+      }));
+      setCurrentStep(STEP.BIRTH_DATE);
+    } catch (error) {
+      if (error?.code === 'CANCELLED') {
+        navigation.navigate('SignupEntry');
+        return;
+      }
+      if (error?.code === 'APPLE_UNAVAILABLE') {
+        Alert.alert(
+          'Apple 로그인',
+          error.message ||
+            'Apple 로그인은 iOS에서만 사용할 수 있습니다.',
+          [{ text: '확인', onPress: () => navigation.navigate('SignupEntry') }],
+        );
+        return;
+      }
+      Alert.alert(
+        '알림',
+        error?.message || 'Apple 인증에 실패했습니다. 다시 시도해 주세요.',
+      );
+      navigation.navigate('SignupEntry');
+    }
+  }, [clearFlowSession, login, navigation]);
 
   const handleBirthDateChange = useCallback((nextBirthDate) => {
     setBirthDate(nextBirthDate);
@@ -1016,8 +1085,7 @@ const SignApple = ({ navigation }) => {
     const enrollment = buildEnrollmentFromBirthDate(resolvedBirthDate);
 
     return {
-      username: finalData.username || MOCK_ACCOUNT.username,
-      password: finalData.password || MOCK_ACCOUNT.password,
+      // username/password 생략 — 서버가 Apple 토큰으로 임시 계정 발급
       name: (identity.name || '').trim(),
       phone: String(identity.phoneNumber || '').replace(/\D/g, ''),
       birthDate: resolvedBirthDate,
@@ -1028,6 +1096,8 @@ const SignApple = ({ navigation }) => {
         Number(finalData.graduationYear) || enrollment.graduationYear,
       colorId: pickRandomProfileColorId(),
       verificationMethod: 'student_id',
+      signupMethod: 'apple',
+      appleIdentityToken: identityData.identityToken || '',
       consents: consentData.consents || {},
       studentVerificationToken: verificationToken,
       studentInicisClientToken:
@@ -1036,24 +1106,39 @@ const SignApple = ({ navigation }) => {
     };
   };
 
-  const finishSignupAndEnterApp = async (username, password) => {
-    const loginRes = await api.post('/api/auth/login', { username, password });
+  const finishSignupAndEnterApp = async () => {
+    const identityToken = identityData.identityToken;
+    if (!identityToken) {
+      throw new Error('Apple 토큰이 없습니다. 다시 로그인해 주세요.');
+    }
+    const deviceId = await getOrCreateDeviceId();
+    const loginRes = await api.post('/api/auth/oauth/apple', {
+      identityToken,
+      deviceId,
+    });
     const {
       token,
+      refreshToken,
       studentVerificationStatus: status,
       rejectReason,
     } = loginRes.data?.data || {};
     if (token) {
       await setAuthToken(token, { persist: true });
     }
+    if (refreshToken) {
+      await setRefreshToken(refreshToken, { persist: true });
+    }
     await login({
       studentVerificationStatus: status || 'PENDING',
       rejectReason: rejectReason || null,
+      needsProfileUsername: Boolean(
+        loginRes.data?.data?.needsProfileUsername,
+      ),
     });
   };
 
   const handleComplete = async () => {
-    const finalData = { ...formData, ...MOCK_ACCOUNT };
+    const finalData = { ...formData };
     const verificationToken = studentVerificationToken || MOCK_STUDENT_TOKEN;
 
     setSubmitting(true);
@@ -1064,12 +1149,18 @@ const SignApple = ({ navigation }) => {
         return;
       }
 
+      if (!identityData.identityToken) {
+        Alert.alert('알림', 'Apple 인증이 필요합니다. 다시 시도해 주세요.');
+        setCurrentStep(STEP.APPLE_AUTH);
+        return;
+      }
+
       const payload = buildSignupPayload(finalData, verificationToken);
       payload.inviteCode = await peekPendingInviteCode();
       await api.post('/api/auth/signup', payload);
       await consumePendingInviteCode();
       await clearFlowSession();
-      await finishSignupAndEnterApp(payload.username, payload.password);
+      await finishSignupAndEnterApp();
     } catch (error) {
       Alert.alert(
         '회원가입 실패',
@@ -1280,8 +1371,8 @@ const SignApple = ({ navigation }) => {
     if (currentStep !== STEP.APPLE_AUTH) return;
     if (testAppleSkipStartedRef.current) return;
     testAppleSkipStartedRef.current = true;
-    void runAppleMockAuth();
-  }, [currentStep, runAppleMockAuth, sessionHydrated]);
+    void runAppleSdkAuth();
+  }, [currentStep, runAppleSdkAuth, sessionHydrated]);
 
   useEffect(() => {
     if (currentStep !== STEP.APPLE_AUTH || !sessionHydrated) return;
@@ -1289,10 +1380,10 @@ const SignApple = ({ navigation }) => {
     if (SIGNUP_REDESIGN_SKIP_VALIDATION) return;
     appleAuthRanRef.current = true;
     const timer = setTimeout(() => {
-      void runAppleMockAuth();
+      void runAppleSdkAuth();
     }, 600);
     return () => clearTimeout(timer);
-  }, [currentStep, runAppleMockAuth, sessionHydrated]);
+  }, [currentStep, runAppleSdkAuth, sessionHydrated]);
 
   useEffect(() => {
     void persistSession();

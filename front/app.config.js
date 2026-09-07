@@ -88,6 +88,7 @@ export default ({ config }) => ({
 
     plugins: [
       'expo-font',
+      'expo-apple-authentication',
       '@react-native-community/datetimepicker',
       'expo-web-browser',
       'expo-image',

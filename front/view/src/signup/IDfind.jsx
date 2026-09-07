@@ -86,7 +86,17 @@ const IDfind = ({ navigation }) => {
         inicisClientToken: clientToken,
         name: name.trim(),
       });
-      const foundUsername = res.data?.data?.username;
+      const data = res.data?.data;
+      if (data?.socialOnly) {
+        const label = data.providerLabel || '소셜';
+        Alert.alert(
+          '소셜 로그인 가입 계정',
+          `${label}로 가입한 계정입니다.\n아이디·비밀번호 찾기를 사용할 수 없습니다.\n${label} 로그인으로 이용해 주세요.`,
+          [{ text: '로그인하기', onPress: goToLogin }],
+        );
+        return;
+      }
+      const foundUsername = data?.username;
       if (!foundUsername) {
         Alert.alert('알림', '아이디를 확인하지 못했습니다.');
         return;
