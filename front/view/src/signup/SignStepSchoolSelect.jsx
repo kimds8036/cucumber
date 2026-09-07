@@ -10,7 +10,7 @@ import {
   useWindowDimensions,
 } from 'react-native';
 import { colors, fonts, fontSizes } from '../../../styles/colors';
-import SchoolSearchField from './SchoolSearchField';
+import SchoolSearchField, { GrowingUnderline } from './SchoolSearchField';
 
 /** 계정 만들기 ↔ 학생증 인증 사이 — 재학 학교·학년·반 */
 const SignStepSchoolSelect = ({
@@ -61,12 +61,7 @@ const SignStepSchoolSelect = ({
     <View style={localStyles.gradeClassRow}>
       <View style={localStyles.gradeClassCol}>
         <Text style={localStyles.fieldLabel}>학년</Text>
-        <View
-          style={[
-            localStyles.underlineField,
-            gradeNum ? localStyles.underlineFieldActive : null,
-          ]}
-        >
+        <View style={localStyles.underlineField}>
           <TextInput
             style={localStyles.fieldInput}
             placeholder=""
@@ -80,16 +75,16 @@ const SignStepSchoolSelect = ({
             returnKeyType="next"
           />
         </View>
+        <GrowingUnderline
+          active={Boolean(gradeNum)}
+          normalize={normalize}
+          fillColor={colors.textLight40}
+        />
       </View>
 
       <View style={localStyles.gradeClassCol}>
         <Text style={localStyles.fieldLabel}>반</Text>
-        <View
-          style={[
-            localStyles.underlineField,
-            classNum ? localStyles.underlineFieldActive : null,
-          ]}
-        >
+        <View style={localStyles.underlineField}>
           <TextInput
             style={localStyles.fieldInput}
             placeholder=""
@@ -103,6 +98,11 @@ const SignStepSchoolSelect = ({
             returnKeyType="done"
           />
         </View>
+        <GrowingUnderline
+          active={Boolean(classNum)}
+          normalize={normalize}
+          fillColor={colors.textLight40}
+        />
       </View>
     </View>
   ) : null;
@@ -156,24 +156,20 @@ function createLocalStyles(normalize, width) {
       marginBottom: normalize(10),
       fontFamily: fonts.regular,
       fontSize: normalize(fontSizes.lg),
-      color: colors.textSecondary,
+      color: colors.textLight70,
     },
     gradeClassRow: {
       flexDirection: 'row',
-      gap: normalize(24),
-      marginTop: normalize(24),
+      gap: normalize(20),
+      marginTop: normalize(28),
     },
     gradeClassCol: {
       flex: 1,
       minWidth: 0,
     },
     underlineField: {
-      paddingBottom: normalize(8),
-      borderBottomWidth: normalize(1),
-      borderBottomColor: colors.textLight20,
-    },
-    underlineFieldActive: {
-      borderBottomColor: colors.textPrimary,
+      paddingVertical: normalize(10),
+      paddingHorizontal: normalize(2),
     },
     fieldInput: {
       paddingVertical: 0,

@@ -251,6 +251,12 @@ const SignStepStudentIdVerify = ({
 
   const handlePrimaryPress = frozenUri ? handleSubmit : handleCapture;
 
+  const handleRetake = useCallback(() => {
+    if (busy) return;
+    setStatusText('');
+    resetCapture();
+  }, [busy, resetCapture]);
+
   if (alreadyVerified) {
     return (
       <View style={bodyStyle}>
@@ -296,7 +302,6 @@ const SignStepStudentIdVerify = ({
   }
 
   const showCamera = isFocused;
-  const primaryLabel = frozenUri ? '제출하기' : '촬영하기';
 
   return (
     <View style={bodyStyle}>
@@ -362,13 +367,46 @@ const SignStepStudentIdVerify = ({
           </TouchableOpacity>
         </View>
 
-        <SignupPrimaryFooter
-          label={primaryLabel}
-          onPress={handlePrimaryPress}
-          disabled={busy || !showCamera || (!frozenUri && !cameraReady)}
-          loading={busy}
-          embedded
-        />
+        {frozenUri ? (
+          <View style={localStyles.dualFooter}>
+            <TouchableOpacity
+              style={[
+                localStyles.dualBtn,
+                localStyles.retakeBtn,
+                busy && localStyles.dualBtnDisabled,
+              ]}
+              onPress={handleRetake}
+              disabled={busy}
+              activeOpacity={0.85}
+            >
+              <Text style={localStyles.retakeBtnText}>다시 촬영하기</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[
+                localStyles.dualBtn,
+                localStyles.submitBtn,
+                busy && localStyles.dualBtnDisabled,
+              ]}
+              onPress={handleSubmit}
+              disabled={busy}
+              activeOpacity={0.85}
+            >
+              {busy ? (
+                <ActivityIndicator color={colors.textWhite} />
+              ) : (
+                <Text style={localStyles.submitBtnText}>제출하기</Text>
+              )}
+            </TouchableOpacity>
+          </View>
+        ) : (
+          <SignupPrimaryFooter
+            label="촬영하기"
+            onPress={handlePrimaryPress}
+            disabled={busy || !showCamera || !cameraReady}
+            loading={busy}
+            embedded
+          />
+        )}
       </View>
 
       <SubmittingLockModal visible={uploading} message="학생증 제출 중…" />
@@ -438,6 +476,41 @@ function createLocalStyles(normalize, width) {
     },
     bottomBlock: {
       flexShrink: 0,
+    },
+    dualFooter: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: normalize(10),
+      paddingTop: normalize(8),
+      paddingBottom: normalize(8),
+    },
+    dualBtn: {
+      flex: 1,
+      height: normalize(52),
+      borderRadius: normalize(26),
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    retakeBtn: {
+      backgroundColor: colors.background,
+      borderWidth: StyleSheet.hairlineWidth * 2,
+      borderColor: colors.border || colors.textLight20,
+    },
+    submitBtn: {
+      backgroundColor: colors.primary,
+    },
+    dualBtnDisabled: {
+      opacity: 0.55,
+    },
+    retakeBtnText: {
+      fontFamily: fonts.bold,
+      fontSize: normalize(fontSizes.xxl),
+      color: colors.textPrimary,
+    },
+    submitBtnText: {
+      fontFamily: fonts.bold,
+      fontSize: normalize(fontSizes.xxl),
+      color: colors.textWhite,
     },
     altAuthRow: {
       flexDirection: 'row',

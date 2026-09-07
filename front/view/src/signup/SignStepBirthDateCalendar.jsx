@@ -13,6 +13,7 @@ import { Ionicons } from '@expo/vector-icons';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { colors, fonts, fontSizes } from '../../../styles/colors';
 import { classifyBirthDateCase, getIneligibleAgeDetailMessage } from './signupBirthDatePolicy';
+import { ALLOW_ADULT_SIGNUP_IN_DEV } from './signupAdultTestMode';
 import { buildBirthDate } from './SignStepAgeGate';
 import SignupIosSafeModal from './SignupIosSafeModal';
 
@@ -117,7 +118,8 @@ const SignStepBirthDateCalendar = ({
     return classifyBirthDateCase(selectedBirthDate);
   }, [selectedBirthDate]);
 
-  const isIneligibleAge = birthCase === 'A' || birthCase === 'D';
+  const isIneligibleAge =
+    birthCase === 'D' || (birthCase === 'A' && !ALLOW_ADULT_SIGNUP_IN_DEV);
 
   const ineligibleDetailMessage = useMemo(() => {
     if (!isIneligibleAge) return '';

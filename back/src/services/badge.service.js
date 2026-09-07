@@ -1,8 +1,10 @@
 import pool from '../config/database.js';
 import {
+  ATTEND_BADGE_THRESHOLD,
   BADGE_BY_KEY,
   BADGE_CATALOG,
   INVITE_BADGE_THRESHOLD,
+  TIMER_DAYS_BADGE_TARGET,
   serializeBadge,
 } from '../constants/badges.js';
 
@@ -31,47 +33,29 @@ async function countAttendanceDays(userId) {
   return Number(row?.c || 0);
 }
 
-/** 타이머 세션이 있는 KST day_key 기준 최장 연속일 (오늘까지 이어진 스트릭) */
-async function timerStreakDays(userId) {
-  const [rows] = await pool.execute(
-    `SELECT DISTINCT day_key AS d
+/** 타이머 세션이 있는 day_key 일수 (연속 여부 무관, DATE→문자열은 DATE_FORMAT) */
+async function timerActiveDays(userId) {
+  const [[row]] = await pool.execute(
+    `SELECT COUNT(DISTINCT DATE_FORMAT(day_key, '%Y-%m-%d')) AS c
      FROM study_sessions
-     WHERE user_id = ? AND started_at IS NOT NULL
-     ORDER BY day_key DESC
-     LIMIT 60`,
+     WHERE user_id = ? AND started_at IS NOT NULL`,
     [userId],
   );
-  const days = rows.map((r) => String(r.d).slice(0, 10)).filter(Boolean);
-  if (!days.length) return 0;
-
-  const set = new Set(days);
-  const start = days[0];
-  let streak = 0;
-  let cursor = new Date(`${start}T12:00:00+09:00`);
-  for (let i = 0; i < 60; i += 1) {
-    const y = cursor.getFullYear();
-    const m = String(cursor.getMonth() + 1).padStart(2, '0');
-    const d = String(cursor.getDate()).padStart(2, '0');
-    const key = `${y}-${m}-${d}`;
-    if (!set.has(key)) break;
-    streak += 1;
-    cursor.setDate(cursor.getDate() - 1);
-  }
-  return streak;
+  return Number(row?.c || 0);
 }
 
 export async function getProgress(userId) {
-  const [posts, invites, streak, attend] = await Promise.all([
+  const [posts, invites, timerDays, attend] = await Promise.all([
     countUserPosts(userId),
     countSuccessfulInvites(userId),
-    timerStreakDays(userId),
+    timerActiveDays(userId),
     countAttendanceDays(userId),
   ]);
   return {
     first_post: { current: posts, target: 1 },
     friends_invite_5: { current: invites, target: INVITE_BADGE_THRESHOLD },
-    timer_streak_7: { current: streak, target: 7 },
-    attend_100: { current: attend, target: 100 },
+    timer_streak_7: { current: timerDays, target: TIMER_DAYS_BADGE_TARGET },
+    attend_100: { current: attend, target: ATTEND_BADGE_THRESHOLD },
   };
 }
 

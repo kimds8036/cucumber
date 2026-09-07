@@ -10,12 +10,59 @@ import {
   Platform,
   Keyboard,
   Pressable,
+  Animated,
+  Easing,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import Feather from '@expo/vector-icons/Feather';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { colors, fonts, fontSizes } from '../../../styles/colors';
 import { api } from '../../../utils/api';
+
+/** 밑줄이 좌→우로 스르륵 채워지는 효과 */
+export function GrowingUnderline({
+  active,
+  normalize = (n) => n,
+  trackColor = colors.border || colors.textLight10,
+  fillColor = colors.textLight40,
+  height,
+}) {
+  const lineHeight = height ?? Math.max(1.5, normalize(1.5));
+  const progress = useRef(new Animated.Value(active ? 1 : 0)).current;
+
+  useEffect(() => {
+    Animated.timing(progress, {
+      toValue: active ? 1 : 0,
+      duration: active ? 420 : 240,
+      easing: active ? Easing.out(Easing.cubic) : Easing.in(Easing.quad),
+      useNativeDriver: false,
+    }).start();
+  }, [active, progress]);
+
+  return (
+    <View
+      style={{
+        height: lineHeight,
+        borderRadius: lineHeight,
+        backgroundColor: trackColor,
+        overflow: 'hidden',
+        width: '100%',
+      }}
+    >
+      <Animated.View
+        style={{
+          height: '100%',
+          borderRadius: lineHeight,
+          backgroundColor: fillColor,
+          width: progress.interpolate({
+            inputRange: [0, 1],
+            outputRange: ['0%', '100%'],
+          }),
+        }}
+      />
+    </View>
+  );
+}
 
 function formatSchoolAddress(school) {
   if (!school) return '';
@@ -161,69 +208,103 @@ const SchoolSearchField = ({
     const rowMainProps = isSearchTrigger
       ? { onPress: onActivate, activeOpacity: 0.75 }
       : {};
+    const lockedAddress = isLockedSelection
+      ? formatSchoolAddress(selectedSchool)
+      : '';
 
     return (
       <View
         style={[
-          searchRowStyles.row,
-          isLockedSelection && searchRowStyles.rowSelected,
+          searchRowStyles.rowWrap,
+          isLockedSelection && searchRowStyles.rowWrapSelected,
         ]}
       >
-        <RowMain style={searchRowStyles.rowMainTap} {...rowMainProps}>
-          {!isLockedSelection ? (
-            <Feather
-              name="search"
-              size={normalize(18)}
-              color={colors.textSecondary}
-            />
-          ) : null}
+        <View style={searchRowStyles.row}>
+          <RowMain style={searchRowStyles.rowMainTap} {...rowMainProps}>
+            {!isLockedSelection ? (
+              <Feather
+                name="search"
+                size={normalize(18)}
+                color={focused ? colors.textLight70 : colors.textLight40}
+              />
+            ) : (
+              <Ionicons
+                name="school-outline"
+                size={normalize(18)}
+                color={colors.textLight70}
+              />
+            )}
+            {isLockedSelection ? (
+              <View style={searchRowStyles.selectedTextCol}>
+                <Text
+                  style={[
+                    searchRowStyles.input,
+                    searchRowStyles.fieldTextFilled,
+                  ]}
+                  numberOfLines={1}
+                >
+                  {query}
+                </Text>
+                {lockedAddress ? (
+                  <Text
+                    style={searchRowStyles.selectedAddress}
+                    numberOfLines={2}
+                  >
+                    {lockedAddress}
+                  </Text>
+                ) : null}
+              </View>
+            ) : (
+              <TextInput
+                ref={inputRef}
+                style={[
+                  searchRowStyles.input,
+                  readOnly && searchRowStyles.inputPlaceholder,
+                  { marginBottom: 0 },
+                ]}
+                value={query}
+                onChangeText={(t) => {
+                  setQuery(t);
+                  if (selectedSchool && t !== selectedSchool.name) {
+                    onSelect?.(null);
+                  }
+                }}
+                onFocus={() => setFocused(true)}
+                onBlur={() => {
+                  setTimeout(() => setFocused(false), 180);
+                }}
+                placeholder={placeholder}
+                placeholderTextColor={colors.textLight40}
+                autoCorrect={false}
+                editable={!readOnly && !disabled}
+                showSoftInputOnFocus={!readOnly}
+                pointerEvents={readOnly ? 'none' : 'auto'}
+                returnKeyType="search"
+              />
+            )}
+          </RowMain>
           {isLockedSelection ? (
-            <Text
-              style={[searchRowStyles.input, searchRowStyles.fieldTextFilled]}
-              numberOfLines={1}
+            <TouchableOpacity
+              onPress={handleClear}
+              activeOpacity={0.7}
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              style={searchRowStyles.clearBtn}
             >
-              {query}
-            </Text>
-          ) : (
-            <TextInput
-              ref={inputRef}
-              style={[
-                searchRowStyles.input,
-                readOnly && searchRowStyles.inputPlaceholder,
-                { marginBottom: 0 },
-              ]}
-              value={query}
-              onChangeText={(t) => {
-                setQuery(t);
-                if (selectedSchool && t !== selectedSchool.name) onSelect?.(null);
-              }}
-              onFocus={() => setFocused(true)}
-              onBlur={() => {
-                setTimeout(() => setFocused(false), 180);
-              }}
-              placeholder={placeholder}
-              placeholderTextColor={colors.textSecondary}
-              autoCorrect={false}
-              editable={!readOnly && !disabled}
-              showSoftInputOnFocus={!readOnly}
-              pointerEvents={readOnly ? 'none' : 'auto'}
-              returnKeyType="search"
-            />
-          )}
-        </RowMain>
-        {isLockedSelection ? (
-          <TouchableOpacity
-            onPress={handleClear}
-            activeOpacity={0.7}
-            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-          >
-            <MaterialIcons
-              name="cancel"
-              size={normalize(20)}
-              color={colors.textSecondary}
-            />
-          </TouchableOpacity>
-        ) : null}
+              <MaterialIcons
+                name="cancel"
+                size={normalize(20)}
+                color={colors.textLight40}
+              />
+            </TouchableOpacity>
+          ) : null}
+        </View>
+        <GrowingUnderline
+          active={isLockedSelection || focused}
+          normalize={normalize}
+          fillColor={
+            isLockedSelection ? colors.textLight40 : colors.textLight20
+          }
+        />
       </View>
     );
   };
@@ -358,14 +439,17 @@ export function createSchoolSearchRowStyles(
   normalize,
   { marginHorizontal = null } = {},
 ) {
+  const side = marginHorizontal ?? normalize(20);
   return StyleSheet.create({
+    rowWrap: {
+      marginHorizontal: side,
+    },
+    rowWrapSelected: {},
     row: {
       flexDirection: 'row',
       alignItems: 'center',
-      marginHorizontal: marginHorizontal ?? normalize(20),
-      paddingBottom: normalize(8),
-      borderBottomWidth: normalize(1),
-      borderBottomColor: colors.textLight20,
+      paddingVertical: normalize(10),
+      paddingHorizontal: normalize(2),
       gap: normalize(8),
     },
     input: {
@@ -382,7 +466,7 @@ export function createSchoolSearchRowStyles(
       }),
     },
     inputPlaceholder: {
-      color: colors.textSecondary,
+      color: colors.textLight40,
     },
     fieldText: {
       flex: 1,
@@ -391,10 +475,27 @@ export function createSchoolSearchRowStyles(
       color: colors.textSecondary,
     },
     fieldTextFilled: {
+      flex: 0,
+      fontFamily: fonts.bold,
+      fontSize: normalize(fontSizes.xl),
       color: colors.textPrimary,
+      minHeight: undefined,
     },
-    rowSelected: {
-      borderBottomColor: colors.textPrimary,
+    selectedTextCol: {
+      flex: 1,
+      minWidth: 0,
+      gap: normalize(2),
+    },
+    selectedAddress: {
+      fontFamily: fonts.regular,
+      fontSize: normalize(12),
+      lineHeight: normalize(16),
+      color: colors.textLight70,
+    },
+    clearBtn: {
+      justifyContent: 'center',
+      alignItems: 'center',
+      alignSelf: 'center',
     },
     rowMainTap: {
       flex: 1,

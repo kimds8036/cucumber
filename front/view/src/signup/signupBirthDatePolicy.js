@@ -46,10 +46,13 @@ function formatDateParts(year, month, day) {
   return `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
 }
 
-/** 가입 가능 생년월일 경계 (매년 롤링) */
+/** 가입 가능 생년월일 경계 (매년 롤링, 상한 만 21세) */
+export const SIGNUP_MAX_AGE = 21;
+
 export function getBirthDateBoundaries(ref = new Date()) {
   const Y = ref.getFullYear();
-  const minDate = formatDateParts(Y - 18, 1, 1);
+  // 올해 기준 (Y - 21)년 1월 1일 이후 출생 → 만 21세까지 허용
+  const minDate = formatDateParts(Y - SIGNUP_MAX_AGE, 1, 1);
   const maxDate = formatDateParts(Y - 13, 12, 31);
   const tooYoungCutoff = formatDateParts(Y - 12, 1, 1);
   return {
@@ -57,8 +60,9 @@ export function getBirthDateBoundaries(ref = new Date()) {
     minDate,
     maxDate,
     tooYoungCutoff,
-    minYear: Y - 18,
+    minYear: Y - SIGNUP_MAX_AGE,
     maxYear: Y - 13,
+    maxAge: SIGNUP_MAX_AGE,
   };
 }
 
@@ -82,9 +86,10 @@ export function classifyBirthDateCase(birthDate, ref = new Date()) {
 }
 
 export function getTooOldEligibilityMessage(ref = new Date()) {
-  const { minYear } = getBirthDateBoundaries(ref);
+  const { minYear, maxAge } = getBirthDateBoundaries(ref);
   return (
-    `Youth Paper는 중고등학생 커뮤니티로,\n${minYear}년 01월 01일 이후 출생자부터 가입할 수 있어요.`
+    `Youth Paper는 만 ${maxAge}세까지 가입할 수 있어요.\n` +
+    `${minYear}년 01월 01일 이후 출생자부터 가입할 수 있어요.`
   );
 }
 

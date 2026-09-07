@@ -223,6 +223,7 @@ const signupValidators = [
   body('studentVerificationToken').optional({ values: 'falsy' }).isString().isLength({ max: 2000 }),
   body('studentInicisClientToken').optional({ values: 'falsy' }).isString().isLength({ max: 64 }),
   body('guardianInicisClientToken').optional({ values: 'falsy' }).isString().isLength({ max: 64 }),
+  body('signupMethod').optional({ values: 'falsy' }).isString().isIn(['phone', 'kakao', 'apple']),
   body('consents').optional().isObject(),
   body('consents.termsOfService').optional().isBoolean(),
   body('consents.dataCollection').optional().isBoolean(),
@@ -1009,6 +1010,7 @@ router.post(
       studentVerificationToken,
       studentInicisClientToken,
       guardianInicisClientToken,
+      signupMethod: rawSignupMethod,
       consents: rawConsents,
       inviteCode: rawInviteCode,
     } = req.body;
@@ -1018,6 +1020,13 @@ router.post(
     const isCertificateSignup = verificationMethod === 'certificate';
     const under14 = isUnder14YearsOld(normalizedBirthDate);
     const inicisOn = isInicisEnabled();
+    const signupMethod = String(rawSignupMethod || 'phone')
+      .trim()
+      .toLowerCase();
+    const isKakaoSignup = signupMethod === 'kakao';
+    // 카카오: 만 14세 미만만 보호자 이니시스. 학생 이니시스는 생략.
+    const requireStudentInicis = inicisOn && !isKakaoSignup;
+    const requireGuardianInicis = inicisOn && under14;
     const resolvedSchoolId = isCertificateSignup
       ? (schoolId?.trim() || 'CERT_PENDING')
       : schoolId;
@@ -1127,14 +1136,21 @@ router.post(
         });
       }
 
-      if (!validateBirthDate(normalizedBirthDate)) {
+      if (
+        !validateBirthDate(normalizedBirthDate, {
+          allowOverMaxAge:
+            String(process.env.SIGNUP_ADULT_TEST_MODE || '')
+              .toLowerCase()
+              .trim() === 'true',
+        })
+      ) {
         return res.status(400).json({
           success: false,
           message: '올바른 생년월일이 아닙니다.',
         });
       }
 
-      if (under14 && inicisOn && !guardianInicisClientToken?.trim()) {
+      if (requireGuardianInicis && !guardianInicisClientToken?.trim()) {
         return res.status(400).json({
           success: false,
           message: mapIdentityTokenError('GUARDIAN_TOKEN_REQUIRED'),
@@ -1142,7 +1158,7 @@ router.post(
         });
       }
 
-      if (inicisOn && !studentInicisClientToken?.trim()) {
+      if (requireStudentInicis && !studentInicisClientToken?.trim()) {
         return res.status(400).json({
           success: false,
           message: mapIdentityTokenError('IDENTITY_TOKEN_REQUIRED'),
@@ -1150,8 +1166,8 @@ router.post(
         });
       }
 
-      // 전화번호 인증 확인 (이니시스 OFF 시 레거시)
-      if (!inicisOn) {
+      // 전화번호 인증 확인 (이니시스 OFF 시 레거시; 카카오는 프로필 전화 신뢰)
+      if (!inicisOn && !isKakaoSignup) {
         const [verifiedCodes] = await pool.execute(
           `SELECT id FROM phone_verifications 
            WHERE ${phoneLookupWhereClause()} AND is_verified = TRUE 
@@ -1221,7 +1237,7 @@ router.post(
       let signupPhone = anchorPhone;
       let signupBirthDate = anchorBirthDate;
 
-      if (under14 && inicisOn && guardianInicisClientToken?.trim()) {
+      if (requireGuardianInicis && guardianInicisClientToken?.trim()) {
         try {
           const guardianConsumed = await consumeIdentityVerificationClientToken(
             guardianInicisClientToken,
@@ -1236,7 +1252,7 @@ router.post(
         }
       }
 
-      if (inicisOn && studentInicisClientToken?.trim()) {
+      if (requireStudentInicis && studentInicisClientToken?.trim()) {
         let studentConsumed;
         try {
           studentConsumed = await consumeIdentityVerificationClientToken(
@@ -1276,6 +1292,19 @@ router.post(
         if (studentConsumed.birthDate) {
           signupBirthDate = normalizeBirthDateInput(studentConsumed.birthDate)
             || studentConsumed.birthDate;
+        }
+      } else if (isKakaoSignup && !skipValidation) {
+        // 카카오 14+: 이니시스 없이 카카오 제공 전화로 인증 기록만 남김
+        try {
+          await ensureInicisPhoneVerificationRecord(anchorPhone, connection);
+        } catch (phoneErr) {
+          console.error('[signup/kakaoPhone]', phoneErr);
+          await connection.rollback();
+          return res.status(500).json({
+            success: false,
+            message: '전화번호 인증 기록 저장에 실패했습니다. 잠시 후 다시 시도해 주세요.',
+            code: phoneErr?.code || 'PHONE_VERIFICATION_RECORD_FAILED',
+          });
         }
       }
 

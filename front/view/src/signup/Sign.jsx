@@ -86,16 +86,7 @@ const SKIP_SIGNUP_VALIDATION_UNTIL_OCR_TEST =
     .toLowerCase()
     .trim() === 'true';
 
-/**
- * 성인(과연령) 생년월일 차단 완화 — 팀 내부 테스트용
- * - __DEV__ + EXPO_PUBLIC_SIGNUP_ADULT_TEST_MODE=true 일 때만
- * - release/AAB 에서는 항상 학생 연령만 허용
- */
-const ALLOW_ADULT_SIGNUP_IN_DEV =
-  __DEV__ &&
-  String(process.env.EXPO_PUBLIC_SIGNUP_ADULT_TEST_MODE || '')
-    .toLowerCase()
-    .trim() === 'true';
+import { ALLOW_ADULT_SIGNUP_IN_DEV } from './signupAdultTestMode';
 
 function getAdultTestEnrollmentFallback() {
   return {

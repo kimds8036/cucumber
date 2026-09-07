@@ -7,6 +7,8 @@ import {
   Pressable,
   useWindowDimensions,
   Animated,
+  Easing,
+  InteractionManager,
 } from 'react-native';
 import Feather from '@expo/vector-icons/Feather';
 import { colors, fonts, fontSizes } from '../../../styles/colors';
@@ -21,6 +23,11 @@ import {
 
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
+const SHEET_OPEN_MS = 340;
+const SHEET_CLOSE_MS = 260;
+const OVERLAY_OPEN_MS = 280;
+const OVERLAY_CLOSE_MS = 220;
+
 /**
  * @param {object} props
  * @param {boolean} props.visible
@@ -29,9 +36,10 @@ const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
  * @param {(payload: { allConsented: boolean, consents: object }) => void} props.onConfirm
  */
 const SignupConsentSheet = ({ visible, provider, onClose, onConfirm }) => {
-  const { width } = useWindowDimensions();
+  const { width, height } = useWindowDimensions();
   const normalize = (size) => Math.round((width / 375) * size);
   const styles = useMemo(() => createStyles(normalize), [normalize]);
+  const offscreenY = Math.max(height, 640);
 
   const items = useMemo(
     () => getConsentItemsForProvider(provider),
@@ -41,9 +49,10 @@ const SignupConsentSheet = ({ visible, provider, onClose, onConfirm }) => {
   const [consents, setConsents] = useState(createEmptyConsents);
   const [showPrivacyPolicy, setShowPrivacyPolicy] = useState(false);
   const [showTermsOfService, setShowTermsOfService] = useState(false);
-  const sheetTranslateY = useRef(new Animated.Value(600)).current;
+  const sheetTranslateY = useRef(new Animated.Value(offscreenY)).current;
   const overlayOpacity = useRef(new Animated.Value(0)).current;
   const dismissingRef = useRef(false);
+  const openTokenRef = useRef(0);
 
   const detailModalVisible = showTermsOfService || showPrivacyPolicy;
   const activeDetail = showTermsOfService
@@ -57,54 +66,86 @@ const SignupConsentSheet = ({ visible, provider, onClose, onConfirm }) => {
       setConsents(createEmptyConsents());
       setShowTermsOfService(false);
       setShowPrivacyPolicy(false);
-      sheetTranslateY.setValue(600);
+      sheetTranslateY.setValue(offscreenY);
       overlayOpacity.setValue(0);
       dismissingRef.current = false;
     }
-  }, [visible, overlayOpacity, sheetTranslateY]);
+  }, [visible, offscreenY, overlayOpacity, sheetTranslateY]);
 
   const dismissSheet = useCallback(() => {
     if (dismissingRef.current || detailModalVisible) return;
 
     dismissingRef.current = true;
+    openTokenRef.current += 1;
     sheetTranslateY.stopAnimation();
     overlayOpacity.stopAnimation();
     Animated.parallel([
       Animated.timing(sheetTranslateY, {
-        toValue: 600,
-        duration: 280,
+        toValue: offscreenY,
+        duration: SHEET_CLOSE_MS,
+        easing: Easing.in(Easing.cubic),
         useNativeDriver: true,
       }),
       Animated.timing(overlayOpacity, {
         toValue: 0,
-        duration: 280,
+        duration: OVERLAY_CLOSE_MS,
+        easing: Easing.out(Easing.quad),
         useNativeDriver: true,
       }),
     ]).start(({ finished }) => {
       dismissingRef.current = false;
       if (finished) onClose?.();
     });
-  }, [detailModalVisible, onClose, overlayOpacity, sheetTranslateY]);
+  }, [
+    detailModalVisible,
+    offscreenY,
+    onClose,
+    overlayOpacity,
+    sheetTranslateY,
+  ]);
 
   useEffect(() => {
     if (!visible || detailModalVisible) {
       if (!visible) {
-        sheetTranslateY.setValue(600);
+        sheetTranslateY.setValue(offscreenY);
         overlayOpacity.setValue(0);
       } else {
         sheetTranslateY.setValue(0);
+        overlayOpacity.setValue(1);
       }
-      return;
+      return undefined;
     }
 
-    overlayOpacity.setValue(1);
-    sheetTranslateY.setValue(600);
-    Animated.timing(sheetTranslateY, {
-      toValue: 0,
-      duration: 280,
-      useNativeDriver: true,
-    }).start();
-  }, [visible, detailModalVisible, overlayOpacity, sheetTranslateY]);
+    const token = ++openTokenRef.current;
+    sheetTranslateY.stopAnimation();
+    overlayOpacity.stopAnimation();
+    sheetTranslateY.setValue(offscreenY);
+    overlayOpacity.setValue(0);
+
+    const task = InteractionManager.runAfterInteractions(() => {
+      requestAnimationFrame(() => {
+        if (token !== openTokenRef.current) return;
+        Animated.parallel([
+          Animated.timing(overlayOpacity, {
+            toValue: 1,
+            duration: OVERLAY_OPEN_MS,
+            easing: Easing.out(Easing.quad),
+            useNativeDriver: true,
+          }),
+          Animated.timing(sheetTranslateY, {
+            toValue: 0,
+            duration: SHEET_OPEN_MS,
+            easing: Easing.out(Easing.cubic),
+            useNativeDriver: true,
+          }),
+        ]).start();
+      });
+    });
+
+    return () => {
+      task.cancel?.();
+    };
+  }, [visible, detailModalVisible, offscreenY, overlayOpacity, sheetTranslateY]);
 
   const allBulkChecked = ALL_CONSENT_KEYS.every((key) => consents[key]);
   const canProceed = areRequiredConsentsChecked(consents);
@@ -134,10 +175,31 @@ const SignupConsentSheet = ({ visible, provider, onClose, onConfirm }) => {
   };
 
   const handleConfirm = () => {
-    if (!canProceed) return;
-    onConfirm?.({
+    if (!canProceed || dismissingRef.current) return;
+    dismissingRef.current = true;
+    openTokenRef.current += 1;
+    sheetTranslateY.stopAnimation();
+    overlayOpacity.stopAnimation();
+    const payload = {
       allConsented: canProceed,
       consents: { ...consents },
+    };
+    Animated.parallel([
+      Animated.timing(sheetTranslateY, {
+        toValue: offscreenY,
+        duration: SHEET_CLOSE_MS,
+        easing: Easing.in(Easing.cubic),
+        useNativeDriver: true,
+      }),
+      Animated.timing(overlayOpacity, {
+        toValue: 0,
+        duration: OVERLAY_CLOSE_MS,
+        easing: Easing.out(Easing.quad),
+        useNativeDriver: true,
+      }),
+    ]).start(({ finished }) => {
+      dismissingRef.current = false;
+      if (finished) onConfirm?.(payload);
     });
   };
 

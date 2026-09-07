@@ -59,9 +59,15 @@ import {
 import { SIGNUP_REDESIGN_SKIP_VALIDATION } from './signupRedesignFlags';
 import {
   KAKAO_MOCK_PROFILE,
+  KAKAO_MOCK_PROFILE_ADULT,
   KAKAO_MOCK_PROFILE_UNDER14,
   toKakaoIdentityData,
 } from './kakaoSignupMocks';
+import { ALLOW_ADULT_SIGNUP_IN_DEV } from './signupAdultTestMode';
+import {
+  loginWithKakao,
+  mapKakaoProfileToIdentity,
+} from '../../../services/kakaoAuth';
 import {
   clearSignupPendingSession,
   getSignupPendingSession,
@@ -119,6 +125,8 @@ const SignKakao = ({ navigation }) => {
   const [screenReady, setScreenReady] = useState(false);
   const [footerHeight, setFooterHeight] = useState(88);
   const [useUnder14Mock, setUseUnder14Mock] = useState(false);
+  const [kakaoBusy, setKakaoBusy] = useState(false);
+  const [kakaoAuthError, setKakaoAuthError] = useState('');
   const [blockingAlert, setBlockingAlert] = useState({
     visible: false,
     title: '',
@@ -129,7 +137,6 @@ const SignKakao = ({ navigation }) => {
   const isMountedRef = useRef(true);
   const sessionHydratedRef = useRef(false);
   const kakaoAuthRanRef = useRef(false);
-  const prevUnder14MockRef = useRef(useUnder14Mock);
   const guardianModalPendingActionRef = useRef(null);
 
   const identity = useMemo(
@@ -275,9 +282,8 @@ const SignKakao = ({ navigation }) => {
     }
   }, [proceedToSchool]);
 
-  const runKakaoMockAuth = useCallback(
-    async (profile) => {
-      const nextIdentity = toKakaoIdentityData(profile);
+  const applyKakaoIdentity = useCallback(
+    (nextIdentity) => {
       setIdentityData(nextIdentity);
       setFormData((prev) => ({
         ...prev,
@@ -289,9 +295,10 @@ const SignKakao = ({ navigation }) => {
       const birthCase = classifyBirthDateCase(nextIdentity.birthDate);
       if (birthCase === 'invalid') {
         Alert.alert('알림', '카카오에서 받은 생년월일이 올바르지 않습니다.');
+        kakaoAuthRanRef.current = false;
         return;
       }
-      if (birthCase === 'A') {
+      if (birthCase === 'A' && !ALLOW_ADULT_SIGNUP_IN_DEV) {
         showTooOldForSignupAlert(goToLogin);
         return;
       }
@@ -307,6 +314,54 @@ const SignKakao = ({ navigation }) => {
     },
     [goToLogin, proceedToSchool],
   );
+
+  const runKakaoMockAuth = useCallback(
+    (profile) => {
+      applyKakaoIdentity(toKakaoIdentityData(profile));
+    },
+    [applyKakaoIdentity],
+  );
+
+  const runKakaoSdkAuth = useCallback(async () => {
+    setKakaoBusy(true);
+    setKakaoAuthError('');
+    try {
+      const { accessToken, profile } = await loginWithKakao();
+      const nextIdentity = {
+        ...mapKakaoProfileToIdentity(profile),
+        kakaoAccessToken: accessToken || '',
+      };
+      if (!nextIdentity.birthDate) {
+        setKakaoAuthError(
+          '생년월일을 받지 못했습니다. 카카오 동의항목(출생연도·생일)을 확인하세요.',
+        );
+        kakaoAuthRanRef.current = false;
+        return;
+      }
+      if (!nextIdentity.name) {
+        setKakaoAuthError(
+          '이름을 받지 못했습니다. 카카오 동의항목(이름)을 확인하세요.',
+        );
+        kakaoAuthRanRef.current = false;
+        return;
+      }
+      applyKakaoIdentity(nextIdentity);
+    } catch (error) {
+      if (error?.code === 'CANCELLED') {
+        kakaoAuthRanRef.current = false;
+        return;
+      }
+      const message =
+        error?.message || String(error || '카카오 로그인에 실패했습니다.');
+      setKakaoAuthError(message);
+      kakaoAuthRanRef.current = false;
+      if (__DEV__) {
+        console.warn('[SignKakao] kakao login failed', error);
+      }
+    } finally {
+      setKakaoBusy(false);
+    }
+  }, [applyKakaoIdentity]);
 
   const handleGuardianConsentStart = () => {
     setShowGuardianConsentModal(false);
@@ -437,9 +492,10 @@ const SignKakao = ({ navigation }) => {
         Number(finalData.graduationYear) || enrollment.graduationYear,
       colorId: pickRandomProfileColorId(),
       verificationMethod: 'student_id',
+      signupMethod: 'kakao',
       consents: consentData.consents || {},
       studentVerificationToken: verificationToken,
-      studentInicisClientToken: identityData.inicisClientToken || null,
+      studentInicisClientToken: null,
       guardianInicisClientToken: guardianInicisClientToken || null,
     };
   };
@@ -548,10 +604,8 @@ const SignKakao = ({ navigation }) => {
 
   const handlePrimaryPress = () => {
     if (currentStep === STEP.KAKAO_AUTH) {
-      const profile = useUnder14Mock
-        ? KAKAO_MOCK_PROFILE_UNDER14
-        : KAKAO_MOCK_PROFILE;
-      void runKakaoMockAuth(profile);
+      kakaoAuthRanRef.current = true;
+      void runKakaoSdkAuth();
       return;
     }
     if (currentStep === STEP.SCHOOL_SELECT) {
@@ -573,13 +627,14 @@ const SignKakao = ({ navigation }) => {
   };
 
   const isPrimaryDisabled = () => {
-    if (submitting) return true;
+    if (submitting || kakaoBusy) return true;
     if (SIGNUP_REDESIGN_SKIP_VALIDATION) {
       if (currentStep === STEP.KAKAO_AUTH) return false;
       if (currentStep === STEP.STUDENT_VERIFY) return false;
       if (currentStep === STEP.CERTIFICATE_SUBMIT) return false;
       return false;
     }
+    if (currentStep === STEP.KAKAO_AUTH) return false;
     if (currentStep === STEP.SCHOOL_SELECT) {
       if (!selectedSchool?.id || selectedSchool?.manual) return true;
       if (!Number(schoolGradeNum) || Number(schoolGradeNum) < 1) return true;
@@ -593,7 +648,7 @@ const SignKakao = ({ navigation }) => {
   };
 
   const primaryLabel = () => {
-    if (currentStep === STEP.KAKAO_AUTH) return '카카오 인증 계속';
+    if (currentStep === STEP.KAKAO_AUTH) return '카카오로 계속하기';
     if (
       SIGNUP_REDESIGN_SKIP_VALIDATION &&
       currentStep === STEP.STUDENT_VERIFY &&
@@ -608,6 +663,7 @@ const SignKakao = ({ navigation }) => {
   };
 
   const showPrimaryFooter =
+    currentStep === STEP.KAKAO_AUTH ||
     currentStep === STEP.SCHOOL_SELECT ||
     currentStep === STEP.CERTIFICATE_SUBMIT;
 
@@ -663,21 +719,8 @@ const SignKakao = ({ navigation }) => {
     if (currentStep !== STEP.KAKAO_AUTH || !sessionHydratedRef.current) return;
     if (kakaoAuthRanRef.current) return;
     kakaoAuthRanRef.current = true;
-    const profile = useUnder14Mock
-      ? KAKAO_MOCK_PROFILE_UNDER14
-      : KAKAO_MOCK_PROFILE;
-    const timer = setTimeout(() => {
-      void runKakaoMockAuth(profile);
-    }, 600);
-    return () => clearTimeout(timer);
-  }, [currentStep, runKakaoMockAuth, useUnder14Mock]);
-
-  useEffect(() => {
-    if (!__DEV__) return;
-    if (prevUnder14MockRef.current === useUnder14Mock) return;
-    prevUnder14MockRef.current = useUnder14Mock;
-    kakaoAuthRanRef.current = false;
-  }, [useUnder14Mock]);
+    void runKakaoSdkAuth();
+  }, [currentStep, runKakaoSdkAuth]);
 
   useEffect(() => {
     void persistSession();
@@ -724,24 +767,68 @@ const SignKakao = ({ navigation }) => {
       <View style={styles.contentSection}>
         {currentStep === STEP.KAKAO_AUTH && (
           <View
-            style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}
+            style={{ flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: normalize(24) }}
           >
-            <ActivityIndicator size="large" color={colors.primary} />
-            <Text
-              style={{ marginTop: normalize(16), color: colors.textSecondary }}
-            >
-              카카오 계정 정보를 불러오는 중…
-            </Text>
+            {kakaoBusy ? (
+              <>
+                <ActivityIndicator size="large" color={colors.primary} />
+                <Text
+                  style={{ marginTop: normalize(16), color: colors.textSecondary, textAlign: 'center' }}
+                >
+                  카카오 로그인을 여는 중…
+                </Text>
+              </>
+            ) : (
+              <>
+                <Text
+                  style={{
+                    color: colors.textPrimary,
+                    fontSize: normalize(16),
+                    textAlign: 'center',
+                    marginBottom: normalize(8),
+                  }}
+                >
+                  카카오 계정으로 본인 정보를 확인합니다
+                </Text>
+                {kakaoAuthError ? (
+                  <Text
+                    style={{
+                      marginTop: normalize(8),
+                      color: '#C62828',
+                      fontSize: normalize(13),
+                      textAlign: 'center',
+                    }}
+                  >
+                    {kakaoAuthError}
+                  </Text>
+                ) : null}
+              </>
+            )}
             {__DEV__ ? (
               <TouchableOpacity
-                style={{ marginTop: normalize(24) }}
-                onPress={() => setUseUnder14Mock((v) => !v)}
+                style={{ marginTop: normalize(28) }}
+                disabled={kakaoBusy}
+                onPress={() => {
+                  const profile = useUnder14Mock
+                    ? KAKAO_MOCK_PROFILE_UNDER14
+                    : ALLOW_ADULT_SIGNUP_IN_DEV
+                      ? KAKAO_MOCK_PROFILE_ADULT
+                      : KAKAO_MOCK_PROFILE;
+                  kakaoAuthRanRef.current = true;
+                  runKakaoMockAuth(profile);
+                }}
+                onLongPress={() => setUseUnder14Mock((v) => !v)}
               >
                 <Text
-                  style={{ color: colors.primaryDark, fontSize: normalize(13) }}
+                  style={{ color: colors.primaryDark, fontSize: normalize(13), textAlign: 'center' }}
                 >
-                  [DEV] {useUnder14Mock ? '만14미만 mock' : '만14이상 mock'} —
-                  탭하여 전환
+                  [DEV] mock으로 계속
+                  {useUnder14Mock
+                    ? ' (만14미만)'
+                    : ALLOW_ADULT_SIGNUP_IN_DEV
+                      ? ' (성인)'
+                      : ' (만14이상)'}
+                  {'\n'}길게 눌러 연령 mock 전환
                 </Text>
               </TouchableOpacity>
             ) : null}

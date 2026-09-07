@@ -64,6 +64,7 @@ import {
   pickRandomProfileColorId,
 } from './signupEnrollmentUtils';
 import { SIGNUP_REDESIGN_SKIP_VALIDATION } from './signupRedesignFlags';
+import { ALLOW_ADULT_SIGNUP_IN_DEV } from './signupAdultTestMode';
 import {
   isValidUsername,
   isValidPassword,
@@ -800,7 +801,13 @@ const SignPhone = ({ navigation }) => {
       }
     } else {
       const birthCase = classifyBirthDateCase(nextBirthDate);
-      if (birthCase === 'A' || birthCase === 'D' || birthCase === 'invalid') return;
+      if (
+        birthCase === 'D' ||
+        birthCase === 'invalid' ||
+        (birthCase === 'A' && !ALLOW_ADULT_SIGNUP_IN_DEV)
+      ) {
+        return;
+      }
       applyBirthDateToState(nextBirthDate);
       setRequiresGuardianVerification(false);
       setGuardianVerified(false);
@@ -814,7 +821,7 @@ const SignPhone = ({ navigation }) => {
       Alert.alert('알림', '생년월일을 올바르게 입력해 주세요.');
       return;
     }
-    if (birthCase === 'A') {
+    if (birthCase === 'A' && !ALLOW_ADULT_SIGNUP_IN_DEV) {
       showTooOldForSignupAlert(goToLogin);
       return;
     }
@@ -1196,7 +1203,8 @@ const SignPhone = ({ navigation }) => {
     if (currentStep === STEP.BIRTH_DATE) {
       if (!isValidBirthDateString(birthDate)) return true;
       const birthCase = classifyBirthDateCase(birthDate);
-      if (birthCase === 'A' || birthCase === 'D') return true;
+      if (birthCase === 'D') return true;
+      if (birthCase === 'A' && !ALLOW_ADULT_SIGNUP_IN_DEV) return true;
       return false;
     }
     if (SIGNUP_REDESIGN_SKIP_VALIDATION) {

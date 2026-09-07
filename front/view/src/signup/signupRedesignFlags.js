@@ -7,4 +7,4 @@
  *
  * 백엔드 로컬 테스트 시: SIGNUP_REDESIGN_SKIP_VALIDATION=true 환경변수 설정
  */
-export const SIGNUP_REDESIGN_SKIP_VALIDATION = true;
+export const SIGNUP_REDESIGN_SKIP_VALIDATION = false;
