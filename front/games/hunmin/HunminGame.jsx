@@ -29,6 +29,8 @@ const ROUND_MS = 10000;
 const WIN_SCORE = 20;
 const SEAT_COUNT = 6;
 const SEAT_COL_W = 88;
+/** 말풍선 표시 후 자동 숨김 */
+const BUBBLE_TTL_MS = 3000;
 
 /** 슬롯별 구분색 — 앱 초록 제외 */
 const PLAYER_PALETTE = [
@@ -148,7 +150,33 @@ export default function HunminGame() {
   const matchedRef = useRef(false);
   const phaseRef = useRef(phase);
   const inMatchRef = useRef(false); // 한 번이라도 라운드 시작 후엔 대기실 UI 숨김
+  const bubbleTimersRef = useRef({});
   phaseRef.current = phase;
+
+  const showBubble = useCallback((userId, text) => {
+    if (userId == null) return;
+    const msg = String(text || '').trim();
+    if (!msg) return;
+    setBubbles((prev) => ({ ...prev, [userId]: msg }));
+    const prevTimer = bubbleTimersRef.current[userId];
+    if (prevTimer) clearTimeout(prevTimer);
+    bubbleTimersRef.current[userId] = setTimeout(() => {
+      setBubbles((prev) => {
+        if (prev[userId] !== msg) return prev;
+        const next = { ...prev };
+        delete next[userId];
+        return next;
+      });
+      delete bubbleTimersRef.current[userId];
+    }, BUBBLE_TTL_MS);
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      Object.values(bubbleTimersRef.current).forEach((t) => clearTimeout(t));
+      bubbleTimersRef.current = {};
+    };
+  }, []);
 
   const inputTranslateY = useSharedValue(0);
   useKeyboardHandler(
@@ -324,17 +352,11 @@ export default function HunminGame() {
     };
     const onAnswerProgress = (payload) => {
       if (payload?.userId == null) return;
-      setBubbles((prev) => ({
-        ...prev,
-        [payload.userId]: String(payload.word || ''),
-      }));
+      showBubble(payload.userId, payload.word);
     };
     const onChat = (payload) => {
       if (payload?.userId == null) return;
-      setBubbles((prev) => ({
-        ...prev,
-        [payload.userId]: String(payload.text || payload.word || ''),
-      }));
+      showBubble(payload.userId, payload.text || payload.word);
     };
     const onMatchEnd = (payload) => {
       inMatchRef.current = false;
@@ -378,7 +400,7 @@ export default function HunminGame() {
       socket.off('hunmin:match_end', onMatchEnd);
       socket.off('hunmin:rematch_search', onRematchSearch);
     };
-  }, [socket, you?.userId]);
+  }, [socket, you?.userId, showBubble]);
 
   useEffect(() => {
     if (phase !== 'playing' || !round?.endsAt) return undefined;
@@ -402,7 +424,7 @@ export default function HunminGame() {
 
     // 언제든 말풍선 채팅
     if (you?.userId != null) {
-      setBubbles((prev) => ({ ...prev, [you.userId]: word }));
+      showBubble(you.userId, word);
     }
     socket.emit('hunmin:chat', { text: word });
 
