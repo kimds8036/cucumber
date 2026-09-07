@@ -2,6 +2,7 @@ import React, { useMemo, useState } from 'react';
 import {
   View,
   Text,
+  Image,
   TouchableOpacity,
   useWindowDimensions,
   Alert,
@@ -10,6 +11,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import LogoIcon from '../../../assets/Logo.svg';
+import kakaoLoginIcon from '../../../assets/kakao_login_icon.png';
 import { colors } from '../../../styles/colors';
 import { createLoginStyles } from '../../../styles/login.style';
 import { createSignupEntryStyles } from '../../../styles/signupEntry.style';
@@ -89,15 +91,16 @@ const SignupEntry = ({ navigation }) => {
             onPress={() => void openConsent('kakao')}
             activeOpacity={0.85}
           >
-            <Ionicons
-              name="chatbubble"
-              size={normalize(20)}
-              color="#272A26"
-              
-            />
-            <Text style={[styles.socialButtonText, styles.kakaoButtonText]}>
-              카카오로 시작하기
-            </Text>
+            <View style={styles.socialButtonContent}>
+              <Image
+                source={kakaoLoginIcon}
+                style={styles.kakaoIcon}
+                resizeMode="contain"
+              />
+              <Text style={[styles.socialButtonText, styles.kakaoButtonText]}>
+                카카오로 시작하기
+              </Text>
+            </View>
           </TouchableOpacity>
 
           <TouchableOpacity
