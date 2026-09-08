@@ -293,18 +293,29 @@ export default function HunminGame() {
         setYou(setYouFromJoined);
       }
       const status = payload.status || payload.phase;
+      const playerTotal =
+        (payload.players?.length || 0) + (payload.waiting?.length || 0);
       if (!matchedRef.current) {
         matchedRef.current = true;
         setPhase((prev) => (prev === 'connecting' ? 'lobby' : prev));
       }
+
+      // 서버가 로비로 돌렸거나 1명만 남으면 매치 UI 즉시 해제
+      if (status === 'lobby' || playerTotal < 2) {
+        if (inMatchRef.current || playerTotal < 2) {
+          inMatchRef.current = false;
+          setRound(null);
+          setResult(null);
+          setSubmitted(false);
+          setMatchEnd(null);
+          if (playerTotal < 2) setRematchSearching(false);
+        }
+        setPhase('lobby');
+        return;
+      }
+
       if (status === 'playing' && !inMatchRef.current) {
         setPhase('waiting');
-      } else if (status === 'lobby' && !inMatchRef.current) {
-        setPhase((prev) =>
-          prev === 'connecting' || prev === 'waiting' || prev === 'match_end'
-            ? 'lobby'
-            : prev,
-        );
       } else if (status === 'reveal' && inMatchRef.current) {
         setPhase((prev) => (prev === 'playing' ? 'reveal' : prev));
       }
