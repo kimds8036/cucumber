@@ -32,7 +32,6 @@ import AppPopupModal from '../../components/common/AppPopupModal';
 const ROUND_MS = 10000;
 const WIN_SCORE = 20;
 const SEAT_COUNT = 6;
-const TIMER_DOTS = 7;
 /** 말풍선 표시 후 자동 숨김 */
 const BUBBLE_TTL_MS = 3000;
 
@@ -41,17 +40,47 @@ const CARNIVAL = {
   bgBottom: '#FFEFDD',
   card: '#FFFFFF',
   border: '#FFD9B0',
-  borderSpeak: '#FF8FA3',
   avatar: '#FFE1B8',
   point: '#FF8FA3',
   ink: '#5A4632',
   muted: '#C99A6C',
-  dotOff: '#FFD9B0',
 };
+
+/** 좌석별 포인트 색 — 테두리·말풍선·점수 동기화 */
+const SEAT_ACCENTS = [
+  '#FF8FA3',
+  '#5DAF8A',
+  '#E3925A',
+  '#5B9BD5',
+  '#C9847A',
+  '#8A9E6E',
+];
 
 const SEAT_EMOJIS = ['🙋', '😎', '🐣', '🐯', '🐼', '🦊'];
 
-function SpeechBubble({ text, side, styles }) {
+/** 입장 순서 → 좌석 인덱스 (좌·우 교차: 상단L → 상단R → 중L → 중R → …) */
+const SEAT_FILL_ORDER = [0, 3, 1, 4, 2, 5];
+
+const SEAT_NAME_MAX = 6;
+
+function truncateSeatName(name) {
+  const raw = String(name || '').trim();
+  if (!raw) return '플레이어';
+  const chars = Array.from(raw);
+  if (chars.length <= SEAT_NAME_MAX) return raw;
+  return `${chars.slice(0, SEAT_NAME_MAX).join('')}...`;
+}
+
+function playersToSeats(players) {
+  const seats = Array.from({ length: SEAT_COUNT }, () => null);
+  (players || []).forEach((p, i) => {
+    if (i >= SEAT_FILL_ORDER.length) return;
+    seats[SEAT_FILL_ORDER[i]] = p;
+  });
+  return seats;
+}
+
+function SpeechBubble({ text, side, color, styles }) {
   if (!text) return null;
   const isLeft = side === 'left';
   return (
@@ -59,6 +88,7 @@ function SpeechBubble({ text, side, styles }) {
       entering={ZoomIn.duration(150)}
       exiting={FadeOut.duration(120)}
       pointerEvents="none"
+      collapsable={false}
       style={[
         styles.bubbleWrap,
         isLeft ? styles.bubbleWrapLeft : styles.bubbleWrapRight,
@@ -68,6 +98,7 @@ function SpeechBubble({ text, side, styles }) {
         style={[
           styles.bubbleBody,
           isLeft ? styles.bubbleBodyLeft : styles.bubbleBodyRight,
+          { backgroundColor: color },
         ]}
       >
         <Text style={styles.bubbleText} numberOfLines={2}>
@@ -88,9 +119,14 @@ function PlayerSeat({
   styles,
   gameFont,
 }) {
-  const speaking = Boolean(bubble) || isRoundWinner;
+  const accent = SEAT_ACCENTS[seatIndex % SEAT_ACCENTS.length];
+  const isCorrect = Boolean(bubble?.correct) || isRoundWinner;
+  const hasBubble = Boolean(bubble?.text);
   const emoji = SEAT_EMOJIS[seatIndex % SEAT_EMOJIS.length];
   const isRight = side === 'right';
+  // 정답일 때만 테두리 표시 — 폭은 유지해 레이아웃 튐 방지
+  const borderColor = isCorrect ? accent : 'transparent';
+  const scoreColor = player ? accent : CARNIVAL.muted;
   const avatar = (
     <View style={[styles.avatar, !player && styles.avatarEmpty]}>
       {player ? <Text style={styles.avatarEmoji}>{emoji}</Text> : null}
@@ -107,66 +143,116 @@ function PlayerSeat({
         ]}
         numberOfLines={1}
       >
-        {player ? (isYou ? '나' : player.username || '플레이어') : '빈자리'}
+        {player
+          ? isYou
+            ? '나'
+            : truncateSeatName(player.username)
+          : '빈자리'}
       </Text>
-      <Text style={[styles.seatScore, gameFont, isRight && styles.seatScoreRight]}>
+      <Text
+        style={[
+          styles.seatScore,
+          gameFont,
+          isRight && styles.seatScoreRight,
+          { color: scoreColor },
+        ]}
+      >
         {player ? `${Number(player.score) || 0}점` : '—'}
       </Text>
     </View>
   );
   return (
-    <View style={[styles.seatSlot, bubble ? styles.seatSlotRaised : null]}>
-      {isRight ? <SpeechBubble text={bubble} side={side} styles={styles} /> : null}
-      <View
-        style={[
-          styles.playerCard,
-          speaking && styles.playerCardSpeak,
-          !player && styles.playerCardEmpty,
-        ]}
-      >
-        {isRight ? (
-          <>
-            {meta}
-            {avatar}
-          </>
-        ) : (
-          <>
-            {avatar}
-            {meta}
-          </>
-        )}
+    <View
+      collapsable={false}
+      style={[
+        styles.seatSlot,
+        seatIndex % 3 !== 0 && styles.seatSlotBelow,
+        hasBubble || isCorrect ? styles.seatSlotRaised : null,
+        { zIndex: hasBubble || isCorrect ? 30 + seatIndex : 2 + seatIndex },
+      ]}
+    >
+      <View style={styles.playerCardRow}>
+        <View
+          style={[
+            styles.playerCard,
+            { borderColor },
+            !player && styles.playerCardEmpty,
+          ]}
+        >
+          {isRight ? (
+            <>
+              {meta}
+              {avatar}
+            </>
+          ) : (
+            <>
+              {avatar}
+              {meta}
+            </>
+          )}
+        </View>
+        <SpeechBubble
+          text={bubble?.text}
+          side={side}
+          color={accent}
+          styles={styles}
+        />
       </View>
-      {!isRight ? <SpeechBubble text={bubble} side={side} styles={styles} /> : null}
     </View>
   );
 }
 
-function TimerDots({ remainMs, styles, gameFont }) {
-  const onCount = Math.max(
-    0,
-    Math.min(TIMER_DOTS, Math.ceil((remainMs / ROUND_MS) * TIMER_DOTS)),
-  );
-  const sec = Math.max(0, Math.ceil(remainMs / 1000));
+const ChatInputBar = React.memo(function ChatInputBar({
+  inputRef,
+  styles,
+  gameFont,
+  value,
+  onChangeText,
+  onSubmit,
+  bottom,
+  animStyle,
+  visible,
+}) {
   return (
-    <View style={styles.timerRow}>
-      <View style={styles.dotsRow}>
-        {Array.from({ length: TIMER_DOTS }, (_, i) => (
-          <View
-            key={`dot-${i}`}
-            style={[
-              styles.timerDot,
-              {
-                backgroundColor:
-                  i < onCount ? CARNIVAL.point : CARNIVAL.dotOff,
-              },
-            ]}
-          />
-        ))}
+    <Animated.View
+      style={[
+        styles.chatDock,
+        { bottom },
+        !visible && styles.chatDockHidden,
+        animStyle,
+      ]}
+      pointerEvents={visible ? 'auto' : 'none'}
+    >
+      <View style={styles.chatBar}>
+        <TextInput
+          ref={inputRef}
+          style={[styles.input, gameFont]}
+          value={value}
+          onChangeText={onChangeText}
+          editable={visible}
+          placeholder="채팅 입력"
+          placeholderTextColor={CARNIVAL.muted}
+          autoCapitalize="none"
+          autoCorrect={false}
+          maxLength={20}
+          returnKeyType="send"
+          blurOnSubmit={false}
+          onSubmitEditing={onSubmit}
+          showSoftInputOnFocus
+          selectionColor={CARNIVAL.point}
+          cursorColor={CARNIVAL.point}
+        />
+        <Pressable
+          style={[styles.submitBtn, !value.trim() && styles.submitBtnIdle]}
+          onPress={onSubmit}
+          hitSlop={6}
+        >
+          <Text style={[styles.submitText, gameFont]}>보내기</Text>
+        </Pressable>
       </View>
-      <Text style={[styles.timerLabel, gameFont]}>{sec}초 남음</Text>
-    </View>
+    </Animated.View>
   );
-}
+});
 
 export default function HunminGame() {
   const { width } = useWindowDimensions();
@@ -174,9 +260,13 @@ export default function HunminGame() {
   const normalize = useMemo(() => getNormalize(width), [width]);
   const styles = useMemo(() => createStyles(normalize), [normalize]);
   const [fontsLoaded] = useFonts({ Jua_400Regular });
-  const gameFont = fontsLoaded
-    ? { fontFamily: 'Jua_400Regular' }
-    : { fontFamily: fonts.regular };
+  const gameFont = useMemo(
+    () =>
+      fontsLoaded
+        ? { fontFamily: 'Jua_400Regular' }
+        : { fontFamily: fonts.regular },
+    [fontsLoaded],
+  );
   const { socket } = useSocket();
   const inputRef = useRef(null);
 
@@ -195,19 +285,22 @@ export default function HunminGame() {
   const matchedRef = useRef(false);
   const phaseRef = useRef(phase);
   const inMatchRef = useRef(false);
+  const submittedRef = useRef(false);
   const bubbleTimersRef = useRef({});
   phaseRef.current = phase;
+  submittedRef.current = submitted;
 
-  const showBubble = useCallback((userId, text) => {
+  const showBubble = useCallback((userId, text, { correct = false } = {}) => {
     if (userId == null) return;
     const msg = String(text || '').trim();
     if (!msg) return;
-    setBubbles((prev) => ({ ...prev, [userId]: msg }));
+    const entry = { text: msg, correct: Boolean(correct) };
+    setBubbles((prev) => ({ ...prev, [userId]: entry }));
     const prevTimer = bubbleTimersRef.current[userId];
     if (prevTimer) clearTimeout(prevTimer);
     bubbleTimersRef.current[userId] = setTimeout(() => {
       setBubbles((prev) => {
-        if (prev[userId] !== msg) return prev;
+        if (prev[userId]?.text !== msg) return prev;
         const next = { ...prev };
         delete next[userId];
         return next;
@@ -293,18 +386,29 @@ export default function HunminGame() {
         setYou(setYouFromJoined);
       }
       const status = payload.status || payload.phase;
+      const playerTotal =
+        (payload.players?.length || 0) + (payload.waiting?.length || 0);
       if (!matchedRef.current) {
         matchedRef.current = true;
         setPhase((prev) => (prev === 'connecting' ? 'lobby' : prev));
       }
+
+      // 서버가 로비로 돌렸거나 1명만 남으면 매치 UI 즉시 해제
+      if (status === 'lobby' || playerTotal < 2) {
+        if (inMatchRef.current || playerTotal < 2) {
+          inMatchRef.current = false;
+          setRound(null);
+          setResult(null);
+          setSubmitted(false);
+          setMatchEnd(null);
+          if (playerTotal < 2) setRematchSearching(false);
+        }
+        setPhase('lobby');
+        return;
+      }
+
       if (status === 'playing' && !inMatchRef.current) {
         setPhase('waiting');
-      } else if (status === 'lobby' && !inMatchRef.current) {
-        setPhase((prev) =>
-          prev === 'connecting' || prev === 'waiting' || prev === 'match_end'
-            ? 'lobby'
-            : prev,
-        );
       } else if (status === 'reveal' && inMatchRef.current) {
         setPhase((prev) => (prev === 'playing' ? 'reveal' : prev));
       }
@@ -353,9 +457,6 @@ export default function HunminGame() {
             }
           : prev,
       );
-      requestAnimationFrame(() => {
-        inputRef.current?.focus?.();
-      });
     };
 
     const onRoundEnd = (payload) => {
@@ -374,17 +475,18 @@ export default function HunminGame() {
       const correct = nextResult?.correct || [];
       if (correct.length) {
         correct.forEach((w) => {
-          if (w?.userId != null && w?.word) showBubble(w.userId, w.word);
+          if (w?.userId != null && w?.word) {
+            showBubble(w.userId, w.word, { correct: true });
+          }
         });
       } else {
         const winners = nextResult?.winners || [];
         winners.forEach((w) => {
-          if (w?.userId != null && w?.word) showBubble(w.userId, w.word);
+          if (w?.userId != null && w?.word) {
+            showBubble(w.userId, w.word, { correct: true });
+          }
         });
       }
-      requestAnimationFrame(() => {
-        inputRef.current?.focus?.();
-      });
     };
 
     const onAnswerResult = (payload) => {
@@ -394,13 +496,12 @@ export default function HunminGame() {
     };
 
     const onAnswerProgress = (payload) => {
-      if (payload?.ok && payload?.userId != null && payload?.word) {
-        showBubble(payload.userId, payload.word);
-      } else if (
-        payload?.userId != null &&
-        payload?.word &&
-        payload.userId !== youIdRef.current
-      ) {
+      if (payload?.userId == null || !payload?.word) return;
+      if (payload?.ok) {
+        showBubble(payload.userId, payload.word, { correct: true });
+        return;
+      }
+      if (payload.userId !== youIdRef.current) {
         showBubble(payload.userId, payload.word);
       }
     };
@@ -476,15 +577,7 @@ export default function HunminGame() {
     return () => clearInterval(tick);
   }, [phase, round?.endsAt]);
 
-  useEffect(() => {
-    if (phase === 'connecting' || phase === 'match_end') return undefined;
-    const t = setTimeout(() => {
-      inputRef.current?.focus?.();
-    }, 280);
-    return () => clearTimeout(t);
-  }, [phase]);
-
-  const onSubmit = () => {
+  const onSubmit = useCallback(() => {
     const word = input.trim();
     if (!word) return;
 
@@ -495,24 +588,59 @@ export default function HunminGame() {
 
     if (!socket) return;
 
-    if (you?.userId != null) {
-      showBubble(you.userId, word);
+    if (youIdRef.current != null) {
+      showBubble(youIdRef.current, word);
     }
     socket.emit('hunmin:chat', { text: word });
 
-    if (phase === 'playing' && !submitted) {
+    if (phaseRef.current === 'playing' && !submittedRef.current) {
       socket.emit('hunmin:answer', { word });
     }
-  };
+  }, [input, socket, showBubble]);
 
   const choseong = round?.choseong || result?.choseong || [];
   const players = room?.players || [];
   const waiting = room?.waiting || [];
-  const seats = Array.from({ length: SEAT_COUNT }, (_, i) => players[i] || null);
+  const seats = useMemo(() => playersToSeats(players), [players]);
   const leftSeats = seats.slice(0, 3);
   const rightSeats = seats.slice(3, 6);
   const winScore = room?.winScore || WIN_SCORE;
   const winnerIds = new Set((result?.winners || []).map((w) => w.userId));
+  const seatIndexByUserId = useMemo(() => {
+    const map = new Map();
+    seats.forEach((p, seatIndex) => {
+      if (p?.userId != null) map.set(p.userId, seatIndex);
+    });
+    return map;
+  }, [seats]);
+
+  const revealWinnerNodes = (() => {
+    const winners = result?.winners || [];
+    if (!winners.length) {
+      return (
+        <Text style={[styles.revealStatus, gameFont]} numberOfLines={2}>
+          정답자 없음
+        </Text>
+      );
+    }
+    return (
+      <Text style={[styles.revealStatus, gameFont]} numberOfLines={2}>
+        {winners.map((w, i) => {
+          const seatIdx = seatIndexByUserId.get(w.userId);
+          const color =
+            seatIdx != null
+              ? SEAT_ACCENTS[seatIdx % SEAT_ACCENTS.length]
+              : CARNIVAL.point;
+          return (
+            <Text key={`${w.userId}-${i}`} style={{ color }}>
+              {i > 0 ? ', ' : ''}
+              {w.username || '플레이어'}
+            </Text>
+          );
+        })}
+      </Text>
+    );
+  })();
 
   const matchWinnerNames = (matchEnd?.winners || [])
     .map((w) => w.username)
@@ -629,28 +757,24 @@ export default function HunminGame() {
               <View style={styles.centerPlay}>
                 <View style={styles.choBox}>
                   <Text
-                    style={[styles.choText, gameFont]}
+                    style={[
+                      styles.choText,
+                      gameFont,
+                      choseong.length >= 3 && styles.choTextTriple,
+                    ]}
                     numberOfLines={1}
                     adjustsFontSizeToFit
+                    minimumFontScale={0.55}
                   >
                     {choseong.length > 0 ? choseong.join(' ') : '···'}
                   </Text>
                 </View>
                 {phase === 'playing' ? (
-                  <TimerDots
-                    remainMs={remainMs}
-                    styles={styles}
-                    gameFont={gameFont}
-                  />
-                ) : (
-                  <Text
-                    style={[styles.revealStatus, gameFont]}
-                    numberOfLines={2}
-                  >
-                    {result?.winners?.length
-                      ? (result.winners || []).map((w) => w.username).join(', ')
-                      : '정답 없음'}
+                  <Text style={[styles.timerLabel, gameFont]}>
+                    {Math.max(0, Math.ceil(remainMs / 1000))}초 남음
                   </Text>
+                ) : (
+                  revealWinnerNodes
                 )}
               </View>
             )}
@@ -667,47 +791,17 @@ export default function HunminGame() {
           {renderSeatCol(rightSeats, 'right', 3)}
         </View>
 
-        {phase !== 'connecting' && phase !== 'match_end' ? (
-          <Animated.View
-            style={[
-              styles.chatDock,
-              {
-                bottom: Math.max(insets.bottom, normalize(4)),
-              },
-              inputAnimStyle,
-            ]}
-          >
-            <View style={styles.chatBar}>
-              <TextInput
-                ref={inputRef}
-                style={[styles.input, gameFont]}
-                value={input}
-                onChangeText={setInput}
-                editable
-                placeholder={
-                  phase === 'playing' ? '정답 · 채팅 입력' : '채팅 입력'
-                }
-                placeholderTextColor={CARNIVAL.muted}
-                autoCapitalize="none"
-                autoCorrect={false}
-                maxLength={20}
-                returnKeyType="send"
-                blurOnSubmit={false}
-                onSubmitEditing={onSubmit}
-                showSoftInputOnFocus
-                selectionColor={CARNIVAL.point}
-                cursorColor={CARNIVAL.point}
-              />
-              <Pressable
-                style={[styles.submitBtn, !input.trim() && styles.submitBtnIdle]}
-                onPress={onSubmit}
-                hitSlop={6}
-              >
-                <Text style={[styles.submitText, gameFont]}>보내기</Text>
-              </Pressable>
-            </View>
-          </Animated.View>
-        ) : null}
+        <ChatInputBar
+          inputRef={inputRef}
+          styles={styles}
+          gameFont={gameFont}
+          value={input}
+          onChangeText={setInput}
+          onSubmit={onSubmit}
+          bottom={Math.max(insets.bottom, normalize(4))}
+          animStyle={inputAnimStyle}
+          visible={phase !== 'connecting' && phase !== 'match_end'}
+        />
       </View>
 
       <AppPopupModal
@@ -739,7 +833,7 @@ function createStyles(normalize) {
       overflow: 'visible',
     },
     guideBox: {
-      marginBottom: normalize(6),
+      marginBottom: normalize(4),
       paddingHorizontal: normalize(4),
       zIndex: 1,
     },
@@ -753,7 +847,7 @@ function createStyles(normalize) {
       flexDirection: 'row',
       justifyContent: 'space-between',
       alignItems: 'center',
-      marginBottom: normalize(8),
+      marginBottom: normalize(4),
       zIndex: 1,
     },
     roomMetaText: {
@@ -774,40 +868,47 @@ function createStyles(normalize) {
       overflow: 'visible',
       zIndex: 1,
       gap: normalize(4),
-      paddingTop: normalize(4),
+      // 최상단 좌·우 카드 말풍선 여유 + 카드 자체는 더 위로
+      paddingTop: normalize(14),
       paddingBottom: normalize(56),
     },
     seatCol: {
       width: colW,
       alignItems: 'center',
       justifyContent: 'flex-start',
-      gap: normalize(10),
+      gap: 0,
       overflow: 'visible',
-      zIndex: 2,
+      zIndex: 4,
+      elevation: 4,
     },
     seatSlot: {
       width: colW,
       position: 'relative',
       alignItems: 'stretch',
       overflow: 'visible',
-      zIndex: 1,
+    },
+    seatSlotBelow: {
+      marginTop: normalize(12),
     },
     seatSlotRaised: {
-      zIndex: 8,
+      zIndex: 40,
+      elevation: 12,
+    },
+    playerCardRow: {
+      position: 'relative',
+      width: '100%',
+      overflow: 'visible',
     },
     playerCard: {
       flexDirection: 'row',
       alignItems: 'center',
       backgroundColor: CARNIVAL.card,
       borderWidth: 2,
-      borderColor: CARNIVAL.border,
+      borderColor: 'transparent',
       borderRadius: normalize(16),
       paddingVertical: normalize(8),
       paddingHorizontal: normalize(8),
       gap: normalize(6),
-    },
-    playerCardSpeak: {
-      borderColor: CARNIVAL.borderSpeak,
     },
     playerCardEmpty: {
       opacity: 0.72,
@@ -821,7 +922,7 @@ function createStyles(normalize) {
       justifyContent: 'center',
     },
     avatarEmpty: {
-      backgroundColor: CARNIVAL.dotOff,
+      backgroundColor: CARNIVAL.border,
     },
     avatarEmoji: {
       fontSize: normalize(16),
@@ -846,25 +947,25 @@ function createStyles(normalize) {
     seatScore: {
       marginTop: normalize(2),
       fontSize: normalize(11),
-      color: CARNIVAL.point,
+      color: CARNIVAL.muted,
     },
     seatScoreRight: {
       textAlign: 'right',
     },
     bubbleWrap: {
       position: 'absolute',
-      top: normalize(-14),
-      zIndex: 9,
-      maxWidth: normalize(96),
+      top: normalize(-18),
+      zIndex: 50,
+      elevation: 16,
+      maxWidth: normalize(100),
     },
     bubbleWrapLeft: {
-      left: normalize(40),
+      left: normalize(34),
     },
     bubbleWrapRight: {
-      right: normalize(40),
+      right: normalize(34),
     },
     bubbleBody: {
-      backgroundColor: CARNIVAL.point,
       paddingHorizontal: normalize(12),
       paddingVertical: normalize(6),
     },
@@ -894,6 +995,7 @@ function createStyles(normalize) {
       paddingHorizontal: normalize(4),
       paddingTop: normalize(2),
       zIndex: 0,
+      elevation: 0,
       overflow: 'visible',
       gap: normalize(10),
     },
@@ -932,27 +1034,13 @@ function createStyles(normalize) {
       color: CARNIVAL.point,
       textAlign: 'center',
     },
-    timerRow: {
-      alignItems: 'center',
-      gap: normalize(6),
-    },
-    dotsRow: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: normalize(4),
-    },
-    timerDot: {
-      width: normalize(8),
-      height: normalize(8),
-      borderRadius: normalize(4),
-    },
     timerLabel: {
       fontSize: normalize(13),
       color: CARNIVAL.muted,
     },
     revealStatus: {
       fontSize: normalize(14),
-      color: CARNIVAL.point,
+      color: CARNIVAL.muted,
       textAlign: 'center',
       minHeight: normalize(28),
       paddingHorizontal: normalize(4),
@@ -962,17 +1050,22 @@ function createStyles(normalize) {
       borderWidth: 3,
       borderColor: CARNIVAL.border,
       borderRadius: normalize(20),
-      paddingVertical: normalize(6),
-      paddingHorizontal: normalize(22),
-      minWidth: normalize(120),
+      width: normalize(128),
+      height: normalize(54),
+      paddingHorizontal: normalize(10),
       alignItems: 'center',
       justifyContent: 'center',
     },
     choText: {
+      width: '100%',
       fontSize: normalize(36),
       letterSpacing: normalize(4),
       color: CARNIVAL.ink,
       textAlign: 'center',
+    },
+    choTextTriple: {
+      fontSize: normalize(28),
+      letterSpacing: normalize(1),
     },
     chatDock: {
       position: 'absolute',
@@ -980,6 +1073,9 @@ function createStyles(normalize) {
       right: 0,
       flexShrink: 0,
       zIndex: 50,
+    },
+    chatDockHidden: {
+      opacity: 0,
     },
     chatBar: {
       flexDirection: 'row',
@@ -1010,7 +1106,7 @@ function createStyles(normalize) {
       justifyContent: 'center',
     },
     submitBtnIdle: {
-      backgroundColor: CARNIVAL.dotOff,
+      backgroundColor: CARNIVAL.border,
     },
     submitText: {
       fontSize: normalize(fontSizes.md),
