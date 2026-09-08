@@ -406,7 +406,7 @@ function emitRoom(room, io) {
 export function registerHunminGameEvents(socket, io) {
   const userId = socket.userId;
 
-  socket.on('hunmin:match', async (payload = {}) => {
+  const handleMatch = async (payload = {}) => {
     const username = String(payload.username || `유저${userId}`).slice(0, 24);
 
     let room = getRoomForUser(userId);
@@ -462,7 +462,10 @@ export function registerHunminGameEvents(socket, io) {
       mode: 'player',
     });
     emitRoom(room, io);
-  });
+  };
+
+  socket.on('hunmin:match', handleMatch);
+  socket.on('hunmin:join', handleMatch);
 
   socket.on('hunmin:answer', async (payload = {}) => {
     const room = getRoomForUser(userId);
