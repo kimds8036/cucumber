@@ -1,6 +1,7 @@
 /**
  * 훈민정음 멀티플레이 — 최대 6인 / 라운드 10초 / 선착 정답 +1 · 20점 선취
- * 좌·우 3명 · 중앙 초성·점수판 · 제출 답변 말풍선
+ * 비주얼: 말풍선 카니발 (파스텔 · Jua · 플랫 보더)
+ * 키보드: 입력창만 상승, 상단 아레나 고정
  */
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
@@ -13,14 +14,17 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import Animated, {
+  FadeOut,
+  ZoomIn,
   useAnimatedStyle,
   useSharedValue,
 } from 'react-native-reanimated';
 import { useKeyboardHandler } from 'react-native-keyboard-controller';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { colors, fonts, fontSizes } from '../../styles/colors';
+import { LinearGradient } from 'expo-linear-gradient';
+import { useFonts, Jua_400Regular } from '@expo-google-fonts/jua';
+import { fonts, fontSizes } from '../../styles/colors';
 import { getNormalize } from '../../styles/frame.style';
-import { themedTextInputProps } from '../../styles/mypage.style';
 import { useSocket } from '../../context/SocketContext';
 import { api } from '../../utils/api';
 import AppPopupModal from '../../components/common/AppPopupModal';
@@ -28,63 +32,49 @@ import AppPopupModal from '../../components/common/AppPopupModal';
 const ROUND_MS = 10000;
 const WIN_SCORE = 20;
 const SEAT_COUNT = 6;
-const SEAT_COL_W = 52;
+const TIMER_DOTS = 7;
 /** 말풍선 표시 후 자동 숨김 */
 const BUBBLE_TTL_MS = 3000;
 
-/** 슬롯별 구분색 — 앱 초록 제외 */
-const PLAYER_PALETTE = [
-  { accent: '#C45C26', soft: '#FFF1E8', ink: '#8B3A12' },
-  { accent: '#4F7CAC', soft: '#EAF1F8', ink: '#2A4A6E' },
-  { accent: '#A67C52', soft: '#F6EFE7', ink: '#5C4028' },
-  { accent: '#8B6FA8', soft: '#F2ECF7', ink: '#4A3560' },
-  { accent: '#C4893A', soft: '#FBF3E6', ink: '#6E4A18' },
-  { accent: '#B06B76', soft: '#F7EBED', ink: '#6A353C' },
-];
-
-const EMPTY_PALETTE = {
-  accent: '#C8C2BA',
-  soft: '#F3F1EE',
-  ink: colors.textSecondary,
+const CARNIVAL = {
+  bgTop: '#FFF6EE',
+  bgBottom: '#FFEFDD',
+  card: '#FFFFFF',
+  border: '#FFD9B0',
+  borderSpeak: '#FF8FA3',
+  avatar: '#FFE1B8',
+  point: '#FF8FA3',
+  ink: '#5A4632',
+  muted: '#C99A6C',
+  dotOff: '#FFD9B0',
 };
 
-function paletteForSeat(seatIndex) {
-  return PLAYER_PALETTE[seatIndex % PLAYER_PALETTE.length] || EMPTY_PALETTE;
-}
-
-const BUBBLE_BORDER = '#D0CBC4';
-const BUBBLE_FILL = '#FFFFFF';
+const SEAT_EMOJIS = ['🙋', '😎', '🐣', '🐯', '🐼', '🦊'];
 
 function SpeechBubble({ text, side, styles }) {
   if (!text) return null;
   const isLeft = side === 'left';
   return (
-    <View
+    <Animated.View
+      entering={ZoomIn.duration(150)}
+      exiting={FadeOut.duration(120)}
       pointerEvents="none"
       style={[
         styles.bubbleWrap,
         isLeft ? styles.bubbleWrapLeft : styles.bubbleWrapRight,
       ]}
     >
-      {/* 테두리용 큰 꼬리 + 안쪽 흰 꼬리 */}
       <View
         style={[
-          styles.bubbleTailBorder,
-          isLeft ? styles.bubbleTailBorderLeft : styles.bubbleTailBorderRight,
+          styles.bubbleBody,
+          isLeft ? styles.bubbleBodyLeft : styles.bubbleBodyRight,
         ]}
-      />
-      <View
-        style={[
-          styles.bubbleTailFill,
-          isLeft ? styles.bubbleTailFillLeft : styles.bubbleTailFillRight,
-        ]}
-      />
-      <View style={styles.bubbleBody}>
+      >
         <Text style={styles.bubbleText} numberOfLines={2}>
           {text}
         </Text>
       </View>
-    </View>
+    </Animated.View>
   );
 }
 
@@ -96,38 +86,84 @@ function PlayerSeat({
   seatIndex,
   isRoundWinner,
   styles,
+  gameFont,
 }) {
-  const palette = player ? paletteForSeat(seatIndex) : EMPTY_PALETTE;
+  const speaking = Boolean(bubble) || isRoundWinner;
+  const emoji = SEAT_EMOJIS[seatIndex % SEAT_EMOJIS.length];
+  const isRight = side === 'right';
+  const avatar = (
+    <View style={[styles.avatar, !player && styles.avatarEmpty]}>
+      {player ? <Text style={styles.avatarEmoji}>{emoji}</Text> : null}
+    </View>
+  );
+  const meta = (
+    <View style={[styles.playerMeta, isRight && styles.playerMetaRight]}>
+      <Text
+        style={[
+          styles.seatName,
+          gameFont,
+          !player && styles.seatNameEmpty,
+          isRight && styles.seatNameRight,
+        ]}
+        numberOfLines={1}
+      >
+        {player ? (isYou ? '나' : player.username || '플레이어') : '빈자리'}
+      </Text>
+      <Text style={[styles.seatScore, gameFont, isRight && styles.seatScoreRight]}>
+        {player ? `${Number(player.score) || 0}점` : '—'}
+      </Text>
+    </View>
+  );
   return (
     <View style={[styles.seatSlot, bubble ? styles.seatSlotRaised : null]}>
-      {side === 'right' ? (
-        <SpeechBubble text={bubble} side={side} styles={styles} />
-      ) : null}
-      <View style={styles.seatStack}>
-        <View
-          style={[
-            styles.avatar,
-            { backgroundColor: player ? palette.accent : EMPTY_PALETTE.accent },
-            isRoundWinner && {
-              borderColor: palette.accent,
-              borderWidth: 2.5,
-            },
-            !player && styles.avatarEmpty,
-          ]}
-        />
-        <Text
-          style={[styles.seatName, player && { color: palette.ink }]}
-          numberOfLines={1}
-        >
-          {player ? (isYou ? '나' : player.username || '플레이어') : '빈자리'}
-        </Text>
-        <Text style={[styles.seatScore, player && { color: palette.accent }]}>
-          {player ? `${Number(player.score) || 0}` : '—'}
-        </Text>
+      {isRight ? <SpeechBubble text={bubble} side={side} styles={styles} /> : null}
+      <View
+        style={[
+          styles.playerCard,
+          speaking && styles.playerCardSpeak,
+          !player && styles.playerCardEmpty,
+        ]}
+      >
+        {isRight ? (
+          <>
+            {meta}
+            {avatar}
+          </>
+        ) : (
+          <>
+            {avatar}
+            {meta}
+          </>
+        )}
       </View>
-      {side === 'left' ? (
-        <SpeechBubble text={bubble} side={side} styles={styles} />
-      ) : null}
+      {!isRight ? <SpeechBubble text={bubble} side={side} styles={styles} /> : null}
+    </View>
+  );
+}
+
+function TimerDots({ remainMs, styles, gameFont }) {
+  const onCount = Math.max(
+    0,
+    Math.min(TIMER_DOTS, Math.ceil((remainMs / ROUND_MS) * TIMER_DOTS)),
+  );
+  const sec = Math.max(0, Math.ceil(remainMs / 1000));
+  return (
+    <View style={styles.timerRow}>
+      <View style={styles.dotsRow}>
+        {Array.from({ length: TIMER_DOTS }, (_, i) => (
+          <View
+            key={`dot-${i}`}
+            style={[
+              styles.timerDot,
+              {
+                backgroundColor:
+                  i < onCount ? CARNIVAL.point : CARNIVAL.dotOff,
+              },
+            ]}
+          />
+        ))}
+      </View>
+      <Text style={[styles.timerLabel, gameFont]}>{sec}초 남음</Text>
     </View>
   );
 }
@@ -137,6 +173,10 @@ export default function HunminGame() {
   const insets = useSafeAreaInsets();
   const normalize = useMemo(() => getNormalize(width), [width]);
   const styles = useMemo(() => createStyles(normalize), [normalize]);
+  const [fontsLoaded] = useFonts({ Jua_400Regular });
+  const gameFont = fontsLoaded
+    ? { fontFamily: 'Jua_400Regular' }
+    : { fontFamily: fonts.regular };
   const { socket } = useSocket();
   const inputRef = useRef(null);
 
@@ -146,7 +186,6 @@ export default function HunminGame() {
   const [round, setRound] = useState(null);
   const [result, setResult] = useState(null);
   const [input, setInput] = useState('');
-  const [feedback, setFeedback] = useState(null);
   const [submitted, setSubmitted] = useState(false);
   const [remainMs, setRemainMs] = useState(ROUND_MS);
   const [username, setUsername] = useState('');
@@ -155,7 +194,7 @@ export default function HunminGame() {
   const [rematchSearching, setRematchSearching] = useState(false);
   const matchedRef = useRef(false);
   const phaseRef = useRef(phase);
-  const inMatchRef = useRef(false); // 한 번이라도 라운드 시작 후엔 대기실 UI 숨김
+  const inMatchRef = useRef(false);
   const bubbleTimersRef = useRef({});
   phaseRef.current = phase;
 
@@ -201,190 +240,210 @@ export default function HunminGame() {
   const inputAnimStyle = useAnimatedStyle(() => ({
     transform: [{ translateY: inputTranslateY.value }],
   }));
-  const arenaAnimStyle = useAnimatedStyle(() => ({
-    paddingBottom: Math.max(-inputTranslateY.value, 0),
-  }));
 
-  useEffect(() => {
-    let mounted = true;
-    (async () => {
-      try {
-        const res = await api.get('/api/auth/me');
-        const u = res.data?.data;
-        if (!mounted) return;
-        setUsername(u?.username || u?.name || `유저${u?.id || ''}`);
-      } catch {
-        if (mounted) setUsername('나');
-      }
-    })();
-    return () => {
-      mounted = false;
-    };
-  }, []);
+  const youIdRef = useRef(null);
+  youIdRef.current = you?.userId ?? null;
 
   const rematch = useCallback(() => {
     if (!socket) return;
-    socket.emit('hunmin:leave');
     matchedRef.current = false;
     inMatchRef.current = false;
-    setTimeout(() => {
-      matchedRef.current = true;
-      setPhase('connecting');
-      setResult(null);
-      setRound(null);
-      setSubmitted(false);
-      setInput('');
-      setBubbles({});
-      setMatchEnd(null);
-      setRematchSearching(true);
-      socket.emit('hunmin:match', { username });
-    }, 120);
+    setRematchSearching(false);
+    setMatchEnd(null);
+    setPhase('connecting');
+    setRoom(null);
+    setYou(null);
+    setRound(null);
+    setResult(null);
+    setBubbles({});
+    setSubmitted(false);
+    const name =
+      username ||
+      `학생${String(socket.id || '').slice(-4) || Math.floor(Math.random() * 1000)}`;
+    socket.emit('hunmin:leave');
+    socket.emit('hunmin:match', { username: name });
   }, [socket, username]);
 
   useEffect(() => {
-    if (!socket?.connected || !username) return undefined;
-    matchedRef.current = true;
-    setPhase('connecting');
-    socket.emit('hunmin:match', { username });
-    return () => {
-      if (matchedRef.current) {
-        socket.emit('hunmin:leave');
-        matchedRef.current = false;
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await api.get('/api/auth/me');
+        const u = res.data?.data?.username || res.data?.username || '';
+        if (!cancelled) setUsername(String(u || '').trim());
+      } catch {
+        /* ignore */
       }
+    })();
+    return () => {
+      cancelled = true;
     };
-  }, [socket, socket?.connected, username]);
+  }, []);
 
   useEffect(() => {
     if (!socket) return undefined;
+    const name =
+      username ||
+      `학생${String(socket.id || '').slice(-4) || Math.floor(Math.random() * 1000)}`;
+
+    const applyRoom = (payload, { setYouFromJoined } = {}) => {
+      if (!payload) return;
+      setRoom(payload);
+      if (setYouFromJoined?.userId != null) {
+        setYou(setYouFromJoined);
+      }
+      const status = payload.status || payload.phase;
+      if (!matchedRef.current) {
+        matchedRef.current = true;
+        setPhase((prev) => (prev === 'connecting' ? 'lobby' : prev));
+      }
+      if (status === 'playing' && !inMatchRef.current) {
+        setPhase('waiting');
+      } else if (status === 'lobby' && !inMatchRef.current) {
+        setPhase((prev) =>
+          prev === 'connecting' || prev === 'waiting' || prev === 'match_end'
+            ? 'lobby'
+            : prev,
+        );
+      } else if (status === 'reveal' && inMatchRef.current) {
+        setPhase((prev) => (prev === 'playing' ? 'reveal' : prev));
+      }
+    };
 
     const onJoined = (payload) => {
-      setRoom(payload.room);
-      setYou(payload.you);
-      setRematchSearching(false);
-      const st = payload.room?.status;
-      if (payload.mode === 'waiting') {
+      const joinedYou = payload?.you || null;
+      if (joinedYou) setYou(joinedYou);
+      applyRoom(payload?.room, { setYouFromJoined: joinedYou });
+      if (payload?.mode === 'waiting') {
         setPhase('waiting');
-      } else if (st === 'playing' || st === 'reveal') {
-        inMatchRef.current = true;
-        setPhase(st);
-      } else {
+      } else if (!inMatchRef.current) {
         setPhase('lobby');
       }
-      if (payload.message) {
-        setFeedback({ type: 'info', text: payload.message });
-      }
+      matchedRef.current = true;
+      requestAnimationFrame(() => {
+        inputRef.current?.focus?.();
+      });
     };
+
     const onRoom = (payload) => {
-      setRoom(payload);
-      const uid = you?.userId;
-      const inWaiting = payload.waiting?.some((p) => p.userId === uid);
-      if (payload.status === 'match_end') {
-        setPhase('match_end');
-        return;
-      }
-      if (inWaiting) {
-        setPhase('waiting');
-        return;
-      }
-      if (payload.status === 'playing' && phaseRef.current === 'playing') {
-        return;
-      }
-      // 라운드 사이 lobby 브로드캐스트는 대기실로 바꾸지 않음
-      // 단, 인원 부족·퇴장 후 대기면 대기실로
-      if (payload.status === 'lobby') {
-        const n = payload.players?.length || 0;
-        if (n < 2) {
-          inMatchRef.current = false;
-          setPhase('lobby');
-          setRound(null);
-          return;
-        }
-        if (
-          inMatchRef.current ||
-          phaseRef.current === 'reveal' ||
-          phaseRef.current === 'playing'
-        ) {
-          return;
-        }
-        setPhase('lobby');
-        return;
-      }
-      if (payload.status === 'playing') setPhase('playing');
-      if (payload.status === 'reveal') setPhase('reveal');
+      applyRoom(payload);
     };
+
     const onRoundStart = (payload) => {
       inMatchRef.current = true;
-      setRound(payload.round);
+      setRematchSearching(false);
+      setMatchEnd(null);
+      const nextRound = payload?.round || payload;
+      setRound(nextRound);
       setResult(null);
       setSubmitted(false);
-      // 입력창·말풍선은 채팅처럼 유지
-      setMatchEnd(null);
-      setRematchSearching(false);
-      setFeedback({
-        type: 'info',
-        text: '가장 먼저 맞춘 사람이 점수를 가져가요!',
-      });
-      setPhase('playing');
       setRemainMs(
         Math.max(
           0,
-          (payload.round?.endsAt || Date.now() + ROUND_MS) - Date.now(),
+          (nextRound?.endsAt || Date.now() + ROUND_MS) - Date.now(),
         ),
+      );
+      setPhase('playing');
+      setRoom((prev) =>
+        prev
+          ? {
+              ...prev,
+              status: 'playing',
+              players: payload?.players || prev.players,
+            }
+          : prev,
       );
       requestAnimationFrame(() => {
         inputRef.current?.focus?.();
       });
     };
+
     const onRoundEnd = (payload) => {
-      setResult(payload.result);
-      setRoom(payload.room);
+      const nextResult = payload?.result || payload;
+      setResult(nextResult);
       setPhase('reveal');
-      setRound(null);
-      setSubmitted(false);
+      if (payload?.room) {
+        applyRoom(payload.room);
+      } else if (payload?.players) {
+        setRoom((prev) =>
+          prev
+            ? { ...prev, players: payload.players, status: 'reveal' }
+            : prev,
+        );
+      }
+      const correct = nextResult?.correct || [];
+      if (correct.length) {
+        correct.forEach((w) => {
+          if (w?.userId != null && w?.word) showBubble(w.userId, w.word);
+        });
+      } else {
+        const winners = nextResult?.winners || [];
+        winners.forEach((w) => {
+          if (w?.userId != null && w?.word) showBubble(w.userId, w.word);
+        });
+      }
       requestAnimationFrame(() => {
         inputRef.current?.focus?.();
-      });
-    };
-    const onAnswerResult = (payload) => {
-      setFeedback({
-        type: payload.ok ? 'ok' : 'err',
-        text: payload.message || (payload.ok ? '선착 정답!' : '다시 입력해 보세요'),
-      });
-      // 오답·오타: 잠그지 않음. 선착 정답만 이번 라운드 제출 완료
-      setSubmitted(Boolean(payload.ok));
-      requestAnimationFrame(() => {
-        inputRef.current?.focus?.();
-      });
-    };
-    const onAnswerProgress = (payload) => {
-      if (payload?.userId == null) return;
-      showBubble(payload.userId, payload.word);
-    };
-    const onChat = (payload) => {
-      if (payload?.userId == null) return;
-      showBubble(payload.userId, payload.text || payload.word);
-    };
-    const onMatchEnd = (payload) => {
-      inMatchRef.current = false;
-      setMatchEnd(payload);
-      setRoom(payload.room);
-      setPhase('match_end');
-      setRematchSearching(true);
-      setRound(null);
-    };
-    const onRematchSearch = (payload) => {
-      setRematchSearching(true);
-      if (payload?.room) setRoom(payload.room);
-      setMatchEnd(null);
-      setPhase('lobby');
-      setBubbles({});
-      setResult(null);
-      setFeedback({
-        type: 'info',
-        text: payload?.message || '방을 새로 찾는 중…',
       });
     };
 
+    const onAnswerResult = (payload) => {
+      if (payload?.ok) {
+        setSubmitted(true);
+      }
+    };
+
+    const onAnswerProgress = (payload) => {
+      if (payload?.ok && payload?.userId != null && payload?.word) {
+        showBubble(payload.userId, payload.word);
+      } else if (
+        payload?.userId != null &&
+        payload?.word &&
+        payload.userId !== youIdRef.current
+      ) {
+        showBubble(payload.userId, payload.word);
+      }
+    };
+
+    const onChat = (payload) => {
+      if (payload?.userId == null) return;
+      if (
+        youIdRef.current != null &&
+        payload.userId === youIdRef.current
+      ) {
+        return;
+      }
+      showBubble(payload.userId, payload.text);
+    };
+
+    const onMatchEnd = (payload) => {
+      setMatchEnd(payload);
+      setRematchSearching(true);
+      setPhase('match_end');
+      setRound(null);
+      setResult(null);
+      if (payload?.room) {
+        applyRoom(payload.room);
+      } else if (payload?.players) {
+        setRoom((prev) =>
+          prev
+            ? { ...prev, players: payload.players, status: 'lobby' }
+            : prev,
+        );
+      }
+    };
+
+    const onRematchSearch = (payload) => {
+      setRematchSearching(true);
+      setMatchEnd(null);
+      inMatchRef.current = false;
+      setPhase('lobby');
+      setRound(null);
+      setResult(null);
+      if (payload?.room) applyRoom(payload.room);
+    };
+
+    socket.emit('hunmin:match', { username: name });
     socket.on('hunmin:joined', onJoined);
     socket.on('hunmin:room', onRoom);
     socket.on('hunmin:round_start', onRoundStart);
@@ -396,6 +455,7 @@ export default function HunminGame() {
     socket.on('hunmin:rematch_search', onRematchSearch);
 
     return () => {
+      socket.emit('hunmin:leave');
       socket.off('hunmin:joined', onJoined);
       socket.off('hunmin:room', onRoom);
       socket.off('hunmin:round_start', onRoundStart);
@@ -406,7 +466,7 @@ export default function HunminGame() {
       socket.off('hunmin:match_end', onMatchEnd);
       socket.off('hunmin:rematch_search', onRematchSearch);
     };
-  }, [socket, you?.userId, showBubble]);
+  }, [socket, username, showBubble]);
 
   useEffect(() => {
     if (phase !== 'playing' || !round?.endsAt) return undefined;
@@ -416,11 +476,18 @@ export default function HunminGame() {
     return () => clearInterval(tick);
   }, [phase, round?.endsAt]);
 
+  useEffect(() => {
+    if (phase === 'connecting' || phase === 'match_end') return undefined;
+    const t = setTimeout(() => {
+      inputRef.current?.focus?.();
+    }, 280);
+    return () => clearTimeout(t);
+  }, [phase]);
+
   const onSubmit = () => {
     const word = input.trim();
     if (!word) return;
 
-    // 채팅처럼 전송 즉시 비우고 포커스 유지
     setInput('');
     requestAnimationFrame(() => {
       inputRef.current?.focus?.();
@@ -428,13 +495,11 @@ export default function HunminGame() {
 
     if (!socket) return;
 
-    // 언제든 말풍선 채팅
     if (you?.userId != null) {
       showBubble(you.userId, word);
     }
     socket.emit('hunmin:chat', { text: word });
 
-    // 라운드 중이면 같은 내용으로 선착 정답도 시도
     if (phase === 'playing' && !submitted) {
       socket.emit('hunmin:answer', { word });
     }
@@ -446,7 +511,6 @@ export default function HunminGame() {
   const seats = Array.from({ length: SEAT_COUNT }, (_, i) => players[i] || null);
   const leftSeats = seats.slice(0, 3);
   const rightSeats = seats.slice(3, 6);
-  const sec = Math.max(0, Math.ceil(remainMs / 1000));
   const winScore = room?.winScore || WIN_SCORE;
   const winnerIds = new Set((result?.winners || []).map((w) => w.userId));
 
@@ -461,6 +525,17 @@ export default function HunminGame() {
 
   const showLobbyOnly =
     phase === 'lobby' && !inMatchRef.current && !rematchSearching;
+
+  const roundLabel =
+    phase === 'playing'
+      ? '진행 중'
+      : phase === 'reveal'
+        ? '정답 공개'
+        : phase === 'lobby'
+          ? '대기 중'
+          : phase === 'waiting'
+            ? '입장 대기'
+            : '매칭';
 
   const renderSeatCol = (list, side, indexOffset) => (
     <View style={styles.seatCol}>
@@ -480,170 +555,160 @@ export default function HunminGame() {
             seatIndex={seatIndex}
             isRoundWinner={Boolean(isRoundWinner)}
             styles={styles}
+            gameFont={gameFont}
           />
         );
       })}
     </View>
   );
 
-  const scoreSlots = Array.from({ length: SEAT_COUNT }, (_, idx) => ({
-    p: players[idx] || null,
-    idx,
-  }));
-
   return (
-    <View style={[styles.root, { paddingBottom: Math.max(insets.bottom, normalize(4)) }]}>
-      <View style={styles.guideBox}>
-        <Text style={styles.guideLine}>
-          초성에 맞는 단어를 가장 먼저 맞추면 +1점
-        </Text>
-        <Text style={styles.guideLine}>
-          {winScore}점을 먼저 얻는 사람이 승리합니다
-        </Text>
-      </View>
+    <LinearGradient
+      colors={[CARNIVAL.bgTop, CARNIVAL.bgBottom]}
+      style={styles.root}
+    >
+      <View style={styles.frame}>
+        <View style={styles.guideBox}>
+          <Text style={[styles.guideLine, gameFont]}>
+            초성에 맞는 단어를 가장 먼저 맞추면 +1점
+          </Text>
+          <Text style={[styles.guideLine, gameFont]}>
+            {winScore}점을 먼저 얻는 사람이 승리합니다
+          </Text>
+        </View>
 
-      <View style={styles.roomMeta}>
-        <Text style={styles.roomMetaText}>
-          방 {room?.roomId || '—'} · {players.length}/{SEAT_COUNT}
-          {waiting.length > 0 ? ` · 대기 ${waiting.length}` : ''}
-        </Text>
-        <Pressable onPress={rematch} hitSlop={8}>
-          <Text style={styles.rematch}>다시 매칭</Text>
-        </Pressable>
-      </View>
+        <View style={styles.roomMeta}>
+          <Text style={[styles.roomMetaText, gameFont]}>
+            방 {room?.roomId || '—'} · {players.length}/{SEAT_COUNT}
+            {waiting.length > 0 ? ` · 대기 ${waiting.length}` : ''}
+          </Text>
+          <Pressable onPress={rematch} hitSlop={8}>
+            <Text style={[styles.rematch, gameFont]}>다시 매칭</Text>
+          </Pressable>
+        </View>
 
-      <Animated.View style={[styles.arena, arenaAnimStyle]}>
-        {renderSeatCol(leftSeats, 'left', 0)}
+        <View style={styles.arena}>
+          {renderSeatCol(leftSeats, 'left', 0)}
 
-        <View style={styles.centerCol}>
-          {phase === 'connecting' && (
-            <View style={styles.centerBox}>
-              <ActivityIndicator color={colors.primaryDark} />
-              <Text style={styles.centerText}>방 찾는 중…</Text>
+          <View style={styles.centerCol}>
+            <View style={styles.roundPill}>
+              <Text style={[styles.roundPillText, gameFont]}>{roundLabel}</Text>
             </View>
-          )}
-          {phase === 'waiting' && (
-            <View style={styles.centerBox}>
-              <Text style={styles.centerTitle}>라운드 진행 중</Text>
-              <Text style={styles.centerText}>끝나면 자동 입장</Text>
-            </View>
-          )}
-          {showLobbyOnly && (
-            <View style={styles.centerBox}>
-              <Text style={styles.centerTitle}>대기실</Text>
-              <Text style={styles.centerText}>
-                {`2명 이상이면 시작 · 정원 ${SEAT_COUNT}명`}
-              </Text>
-            </View>
-          )}
-          {rematchSearching && phase === 'lobby' && (
-            <View style={styles.centerBox}>
-              <Text style={styles.centerTitle}>재매칭</Text>
-              <Text style={styles.centerText}>방을 새로 찾는 중…</Text>
-            </View>
-          )}
-          {showGameCenter && (
-            <View style={styles.centerPlay}>
-              <View style={styles.timerSlot}>
+
+            {phase === 'connecting' && (
+              <View style={styles.centerBox}>
+                <ActivityIndicator color={CARNIVAL.point} />
+                <Text style={[styles.centerText, gameFont]}>방 찾는 중…</Text>
+              </View>
+            )}
+            {phase === 'waiting' && (
+              <View style={styles.centerBox}>
+                <Text style={[styles.centerTitle, gameFont]}>라운드 진행 중</Text>
+                <Text style={[styles.centerText, gameFont]}>끝나면 자동 입장</Text>
+              </View>
+            )}
+            {showLobbyOnly && (
+              <View style={styles.centerBox}>
+                <Text style={[styles.centerText, gameFont]}>
+                  2명 이상이면 시작해요
+                </Text>
+                <Text style={[styles.centerHint, gameFont]}>
+                  채팅으로 인사해 보세요
+                </Text>
+              </View>
+            )}
+            {rematchSearching && phase === 'lobby' && (
+              <View style={styles.centerBox}>
+                <Text style={[styles.centerTitle, gameFont]}>재매칭</Text>
+                <Text style={[styles.centerText, gameFont]}>
+                  방을 새로 찾는 중…
+                </Text>
+              </View>
+            )}
+            {showGameCenter && (
+              <View style={styles.centerPlay}>
+                <View style={styles.choBox}>
+                  <Text
+                    style={[styles.choText, gameFont]}
+                    numberOfLines={1}
+                    adjustsFontSizeToFit
+                  >
+                    {choseong.length > 0 ? choseong.join(' ') : '···'}
+                  </Text>
+                </View>
                 {phase === 'playing' ? (
-                  <Text style={styles.timer}>{sec}</Text>
+                  <TimerDots
+                    remainMs={remainMs}
+                    styles={styles}
+                    gameFont={gameFont}
+                  />
                 ) : (
-                  <Text style={styles.revealStatus} numberOfLines={2}>
+                  <Text
+                    style={[styles.revealStatus, gameFont]}
+                    numberOfLines={2}
+                  >
                     {result?.winners?.length
                       ? (result.winners || []).map((w) => w.username).join(', ')
                       : '정답 없음'}
                   </Text>
                 )}
               </View>
-              <View style={styles.choRow}>
-                {choseong.length > 0
-                  ? choseong.map((c, idx) => (
-                      <View key={`${c}-${idx}`} style={styles.choTile}>
-                        <Text style={styles.choChar}>{c}</Text>
-                      </View>
-                    ))
-                  : null}
+            )}
+            {phase === 'match_end' && (
+              <View style={styles.centerBox}>
+                <Text style={[styles.centerTitle, gameFont]}>경기 종료</Text>
+                <Text style={[styles.centerText, gameFont]}>
+                  방을 새로 찾는 중…
+                </Text>
               </View>
-              <View style={styles.scoreBoard}>
-                <Text style={styles.scoreBoardTitle}>점수 · {winScore}점</Text>
-                <View style={styles.scoreGrid}>
-                  {scoreSlots.map(({ p, idx }) => {
-                    const palette = paletteForSeat(idx);
-                    const isYou = p && you && p.userId === you.userId;
-                    return (
-                      <View
-                        key={`sc-${idx}`}
-                        style={[
-                          styles.scoreCell,
-                          isYou && {
-                            borderColor: palette.accent,
-                            backgroundColor: palette.soft,
-                          },
-                        ]}
-                      >
-                        <View
-                          style={[
-                            styles.scoreDot,
-                            {
-                              backgroundColor: p
-                                ? palette.accent
-                                : EMPTY_PALETTE.accent,
-                            },
-                          ]}
-                        />
-                        <Text
-                          style={[
-                            styles.scoreNum,
-                            isYou && {
-                              color: palette.ink,
-                              fontFamily: fonts.bold,
-                            },
-                          ]}
-                        >
-                          {p ? Number(p.score) || 0 : '—'}
-                        </Text>
-                      </View>
-                    );
-                  })}
-                </View>
-              </View>
-            </View>
-          )}
-          {phase === 'match_end' && (
-            <View style={styles.centerBox}>
-              <Text style={styles.centerTitle}>경기 종료</Text>
-              <Text style={styles.centerText}>방을 새로 찾는 중…</Text>
-            </View>
-          )}
+            )}
+          </View>
+
+          {renderSeatCol(rightSeats, 'right', 3)}
         </View>
 
-        {renderSeatCol(rightSeats, 'right', 3)}
-      </Animated.View>
-
-      {phase !== 'connecting' && phase !== 'match_end' ? (
-        <Animated.View style={[styles.inputRow, inputAnimStyle]}>
-          <TextInput
-            ref={inputRef}
-            style={styles.input}
-            value={input}
-            onChangeText={setInput}
-            editable
-            placeholder="단어 입력"
-            placeholderTextColor={colors.textLight20}
-            autoCapitalize="none"
-            autoCorrect={false}
-            maxLength={20}
-            returnKeyType="done"
-            blurOnSubmit={false}
-            onSubmitEditing={onSubmit}
-            showSoftInputOnFocus
-            {...themedTextInputProps}
-          />
-          <Pressable style={styles.submitBtn} onPress={onSubmit}>
-            <Text style={styles.submitText}>확인</Text>
-          </Pressable>
-        </Animated.View>
-      ) : null}
+        {phase !== 'connecting' && phase !== 'match_end' ? (
+          <Animated.View
+            style={[
+              styles.chatDock,
+              {
+                bottom: Math.max(insets.bottom, normalize(4)),
+              },
+              inputAnimStyle,
+            ]}
+          >
+            <View style={styles.chatBar}>
+              <TextInput
+                ref={inputRef}
+                style={[styles.input, gameFont]}
+                value={input}
+                onChangeText={setInput}
+                editable
+                placeholder={
+                  phase === 'playing' ? '정답 · 채팅 입력' : '채팅 입력'
+                }
+                placeholderTextColor={CARNIVAL.muted}
+                autoCapitalize="none"
+                autoCorrect={false}
+                maxLength={20}
+                returnKeyType="send"
+                blurOnSubmit={false}
+                onSubmitEditing={onSubmit}
+                showSoftInputOnFocus
+                selectionColor={CARNIVAL.point}
+                cursorColor={CARNIVAL.point}
+              />
+              <Pressable
+                style={[styles.submitBtn, !input.trim() && styles.submitBtnIdle]}
+                onPress={onSubmit}
+                hitSlop={6}
+              >
+                <Text style={[styles.submitText, gameFont]}>보내기</Text>
+              </Pressable>
+            </View>
+          </Animated.View>
+        ) : null}
+      </View>
 
       <AppPopupModal
         visible={Boolean(matchEnd) && rematchSearching}
@@ -651,31 +716,36 @@ export default function HunminGame() {
         dismissOnBackdrop={false}
         dismissOnBackPress={false}
       >
-        <Text style={styles.popupTitle}>경기 종료</Text>
-        <Text style={styles.popupBody}>
+        <Text style={[styles.popupTitle, gameFont]}>경기 종료</Text>
+        <Text style={[styles.popupBody, gameFont]}>
           {matchWinnerNames
             ? `${matchWinnerNames} 님이 ${winScore}점으로 승리했습니다!`
             : `${winScore}점 선취 경기가 끝났습니다.`}
         </Text>
-        <Text style={styles.popupSearching}>방을 새로 찾는 중…</Text>
+        <Text style={[styles.popupSearching, gameFont]}>방을 새로 찾는 중…</Text>
       </AppPopupModal>
-    </View>
+    </LinearGradient>
   );
 }
 
 function createStyles(normalize) {
-  const colW = normalize(SEAT_COL_W);
+  const colW = normalize(102);
   return StyleSheet.create({
     root: { flex: 1 },
+    frame: {
+      flex: 1,
+      borderRadius: normalize(22),
+      padding: normalize(12),
+      overflow: 'visible',
+    },
     guideBox: {
-      marginBottom: normalize(4),
+      marginBottom: normalize(6),
       paddingHorizontal: normalize(4),
       zIndex: 1,
     },
     guideLine: {
-      fontFamily: fonts.regular,
-      fontSize: normalize(fontSizes.md),
-      color: colors.textSecondary,
+      fontSize: normalize(12),
+      color: CARNIVAL.muted,
       textAlign: 'center',
       lineHeight: normalize(16),
     },
@@ -683,330 +753,285 @@ function createStyles(normalize) {
       flexDirection: 'row',
       justifyContent: 'space-between',
       alignItems: 'center',
-      marginBottom: normalize(4),
+      marginBottom: normalize(8),
       zIndex: 1,
     },
     roomMetaText: {
-      fontFamily: fonts.regular,
       fontSize: normalize(fontSizes.sm),
-      color: colors.textSecondary,
+      color: CARNIVAL.muted,
     },
     rematch: {
-      fontFamily: fonts.bold,
       fontSize: normalize(fontSizes.sm),
-      color: colors.primaryDark,
+      color: CARNIVAL.point,
     },
     arena: {
       flex: 1,
+      flexShrink: 1,
       flexDirection: 'row',
       alignItems: 'flex-start',
       justifyContent: 'center',
-      minHeight: normalize(240),
-      paddingTop: 0,
+      minHeight: normalize(160),
       overflow: 'visible',
       zIndex: 1,
+      gap: normalize(4),
+      paddingTop: normalize(4),
+      paddingBottom: normalize(56),
     },
     seatCol: {
       width: colW,
       alignItems: 'center',
       justifyContent: 'flex-start',
-      gap: normalize(20),
+      gap: normalize(10),
       overflow: 'visible',
       zIndex: 2,
-      paddingTop: 0,
     },
     seatSlot: {
-      width: normalize(40),
+      width: colW,
       position: 'relative',
-      alignItems: 'center',
+      alignItems: 'stretch',
       overflow: 'visible',
       zIndex: 1,
     },
     seatSlotRaised: {
       zIndex: 8,
     },
-    seatStack: {
-      width: normalize(40),
+    playerCard: {
+      flexDirection: 'row',
       alignItems: 'center',
+      backgroundColor: CARNIVAL.card,
+      borderWidth: 2,
+      borderColor: CARNIVAL.border,
+      borderRadius: normalize(16),
+      paddingVertical: normalize(8),
+      paddingHorizontal: normalize(8),
+      gap: normalize(6),
+    },
+    playerCardSpeak: {
+      borderColor: CARNIVAL.borderSpeak,
+    },
+    playerCardEmpty: {
+      opacity: 0.72,
     },
     avatar: {
-      width: normalize(18),
-      height: normalize(18),
-      borderRadius: normalize(9),
-      marginBottom: normalize(2),
-      borderWidth: 2.5,
-      borderColor: 'transparent',
+      width: normalize(32),
+      height: normalize(32),
+      borderRadius: normalize(16),
+      backgroundColor: CARNIVAL.avatar,
+      alignItems: 'center',
+      justifyContent: 'center',
     },
     avatarEmpty: {
-      backgroundColor: '#DDD8D0',
-      opacity: 0.7,
+      backgroundColor: CARNIVAL.dotOff,
+    },
+    avatarEmoji: {
+      fontSize: normalize(16),
+    },
+    playerMeta: {
+      flex: 1,
+      minWidth: 0,
+    },
+    playerMetaRight: {
+      alignItems: 'flex-end',
     },
     seatName: {
-      fontFamily: fonts.bold,
-      fontSize: normalize(11),
-      color: colors.textSecondary,
-      maxWidth: normalize(52),
-      textAlign: 'center',
+      fontSize: normalize(12),
+      color: CARNIVAL.ink,
+    },
+    seatNameEmpty: {
+      color: CARNIVAL.muted,
+    },
+    seatNameRight: {
+      textAlign: 'right',
     },
     seatScore: {
-      fontFamily: fonts.regular,
-      fontSize: normalize(10),
-      color: colors.textSecondary,
-      textAlign: 'center',
+      marginTop: normalize(2),
+      fontSize: normalize(11),
+      color: CARNIVAL.point,
+    },
+    seatScoreRight: {
+      textAlign: 'right',
     },
     bubbleWrap: {
       position: 'absolute',
-      top: normalize(0),
-      // 부모 폭 제한으로 조기 줄바꿈되지 않게 여유
-      width: normalize(110),
+      top: normalize(-14),
       zIndex: 9,
-      alignItems: 'flex-start',
+      maxWidth: normalize(96),
     },
     bubbleWrapLeft: {
-      left: normalize(34),
-      alignItems: 'flex-start',
+      left: normalize(40),
     },
     bubbleWrapRight: {
-      right: normalize(34),
-      alignItems: 'flex-end',
+      right: normalize(40),
     },
     bubbleBody: {
-      backgroundColor: BUBBLE_FILL,
-      borderWidth: StyleSheet.hairlineWidth * 2,
-      borderColor: BUBBLE_BORDER,
-      borderRadius: normalize(10),
-      paddingHorizontal: normalize(7),
-      paddingVertical: normalize(4),
-      // 짧은 글은 내용만큼, 길면 한글 약 6자에서 줄바꿈
-      maxWidth: normalize(92),
-      zIndex: 2,
+      backgroundColor: CARNIVAL.point,
+      paddingHorizontal: normalize(12),
+      paddingVertical: normalize(6),
     },
-    bubbleTailBorder: {
-      position: 'absolute',
-      top: normalize(8),
-      width: 0,
-      height: 0,
-      zIndex: 1,
-      borderTopWidth: normalize(6),
-      borderBottomWidth: normalize(6),
-      borderTopColor: 'transparent',
-      borderBottomColor: 'transparent',
+    bubbleBodyLeft: {
+      borderTopLeftRadius: normalize(14),
+      borderTopRightRadius: normalize(14),
+      borderBottomRightRadius: normalize(14),
+      borderBottomLeftRadius: normalize(3),
     },
-    bubbleTailBorderLeft: {
-      left: normalize(-6),
-      borderRightWidth: normalize(7),
-      borderRightColor: BUBBLE_BORDER,
-    },
-    bubbleTailBorderRight: {
-      right: normalize(-6),
-      borderLeftWidth: normalize(7),
-      borderLeftColor: BUBBLE_BORDER,
-    },
-    bubbleTailFill: {
-      position: 'absolute',
-      top: normalize(9),
-      width: 0,
-      height: 0,
-      zIndex: 3,
-      borderTopWidth: normalize(5),
-      borderBottomWidth: normalize(5),
-      borderTopColor: 'transparent',
-      borderBottomColor: 'transparent',
-    },
-    bubbleTailFillLeft: {
-      left: normalize(-4),
-      borderRightWidth: normalize(6),
-      borderRightColor: BUBBLE_FILL,
-    },
-    bubbleTailFillRight: {
-      right: normalize(-4),
-      borderLeftWidth: normalize(6),
-      borderLeftColor: BUBBLE_FILL,
+    bubbleBodyRight: {
+      borderTopLeftRadius: normalize(14),
+      borderTopRightRadius: normalize(14),
+      borderBottomLeftRadius: normalize(14),
+      borderBottomRightRadius: normalize(3),
     },
     bubbleText: {
       fontFamily: fonts.regular,
-      fontSize: normalize(11),
+      fontSize: normalize(11.5),
       lineHeight: normalize(15),
-      color: colors.textPrimary,
+      color: '#FFFFFF',
     },
     centerCol: {
       flex: 1,
-      maxWidth: normalize(220),
+      maxWidth: normalize(210),
       alignItems: 'center',
-      justifyContent: 'center',
-      paddingHorizontal: normalize(2),
+      justifyContent: 'flex-start',
+      paddingHorizontal: normalize(4),
+      paddingTop: normalize(2),
       zIndex: 0,
       overflow: 'visible',
+      gap: normalize(10),
+    },
+    roundPill: {
+      backgroundColor: CARNIVAL.avatar,
+      borderRadius: normalize(12),
+      paddingVertical: normalize(3),
+      paddingHorizontal: normalize(12),
+    },
+    roundPillText: {
+      fontSize: normalize(12),
+      color: CARNIVAL.muted,
     },
     centerPlay: {
       width: '100%',
       alignItems: 'center',
+      gap: normalize(12),
     },
     centerBox: {
       alignItems: 'center',
       gap: normalize(8),
     },
     centerTitle: {
-      fontFamily: fonts.bold,
       fontSize: normalize(fontSizes.xxl),
-      color: colors.textPrimary,
+      color: CARNIVAL.ink,
       textAlign: 'center',
     },
     centerText: {
-      fontFamily: fonts.regular,
       fontSize: normalize(fontSizes.md),
-      color: colors.textSecondary,
+      color: CARNIVAL.muted,
       textAlign: 'center',
       lineHeight: normalize(18),
     },
-    timerSlot: {
-      minHeight: normalize(34),
-      marginBottom: normalize(6),
-      alignSelf: 'center',
-      width: '100%',
-      justifyContent: 'center',
-      alignItems: 'center',
-    },
-    timer: {
-      fontFamily: fonts.bold,
-      fontSize: normalize(28),
-      color: '#8B7355',
+    centerHint: {
+      fontSize: normalize(fontSizes.sm),
+      color: CARNIVAL.point,
       textAlign: 'center',
+    },
+    timerRow: {
+      alignItems: 'center',
+      gap: normalize(6),
+    },
+    dotsRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: normalize(4),
+    },
+    timerDot: {
+      width: normalize(8),
+      height: normalize(8),
+      borderRadius: normalize(4),
+    },
+    timerLabel: {
+      fontSize: normalize(13),
+      color: CARNIVAL.muted,
     },
     revealStatus: {
-      fontFamily: fonts.bold,
-      fontSize: normalize(18),
-      color: '#8B7355',
+      fontSize: normalize(14),
+      color: CARNIVAL.point,
       textAlign: 'center',
+      minHeight: normalize(28),
       paddingHorizontal: normalize(4),
     },
-    choRow: {
-      flexDirection: 'row',
-      justifyContent: 'center',
-      alignItems: 'center',
-      alignSelf: 'center',
-      gap: normalize(8),
-      marginBottom: normalize(10),
-    },
-    choTile: {
-      width: normalize(44),
-      height: normalize(44),
-      borderRadius: normalize(12),
-      backgroundColor: '#EDE6DC',
-      borderWidth: 0,
+    choBox: {
+      backgroundColor: CARNIVAL.card,
+      borderWidth: 3,
+      borderColor: CARNIVAL.border,
+      borderRadius: normalize(20),
+      paddingVertical: normalize(6),
+      paddingHorizontal: normalize(22),
+      minWidth: normalize(120),
       alignItems: 'center',
       justifyContent: 'center',
     },
-    choChar: {
-      fontFamily: fonts.bold,
-      fontSize: normalize(20),
-      color: '#5C5346',
+    choText: {
+      fontSize: normalize(36),
+      letterSpacing: normalize(4),
+      color: CARNIVAL.ink,
       textAlign: 'center',
     },
-    scoreBoard: {
-      alignSelf: 'center',
-      width: '100%',
-      maxWidth: normalize(168),
-      paddingHorizontal: normalize(4),
-      paddingVertical: normalize(4),
-    },
-    scoreBoardTitle: {
-      fontFamily: fonts.bold,
-      fontSize: normalize(fontSizes.sm),
-      color: colors.textPrimary,
-      textAlign: 'center',
-      marginBottom: normalize(6),
-    },
-    scoreGrid: {
-      flexDirection: 'row',
-      flexWrap: 'wrap',
-      justifyContent: 'space-between',
-      rowGap: normalize(6),
-    },
-    scoreCell: {
-      width: '48%',
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'center',
-      gap: normalize(6),
-      paddingVertical: normalize(5),
-      borderRadius: normalize(8),
-      borderWidth: 2,
-      borderColor: 'transparent',
-    },
-    scoreDot: {
-      width: normalize(10),
-      height: normalize(10),
-      borderRadius: normalize(5),
-    },
-    scoreNum: {
-      fontFamily: fonts.regular,
-      fontSize: normalize(fontSizes.md),
-      color: colors.textSecondary,
-      minWidth: normalize(16),
-      textAlign: 'center',
-    },
-    inputRow: {
-      flexDirection: 'row',
-      gap: normalize(8),
-      marginTop: normalize(10),
-      marginBottom: normalize(4),
+    chatDock: {
+      position: 'absolute',
+      left: 0,
+      right: 0,
+      flexShrink: 0,
       zIndex: 50,
+    },
+    chatBar: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: normalize(8),
+      backgroundColor: CARNIVAL.card,
+      borderWidth: 2,
+      borderColor: CARNIVAL.border,
+      borderRadius: normalize(22),
+      paddingVertical: normalize(6),
+      paddingLeft: normalize(14),
+      paddingRight: normalize(6),
     },
     input: {
       flex: 1,
-      height: normalize(46),
-      borderRadius: normalize(12),
-      borderWidth: 1,
-      borderColor: colors.textLight10,
-      backgroundColor: colors.background,
-      paddingHorizontal: normalize(14),
-      fontFamily: fonts.regular,
-      fontSize: normalize(fontSizes.xl),
-      color: colors.textPrimary,
+      minHeight: normalize(40),
+      paddingVertical: normalize(8),
+      paddingHorizontal: 0,
+      fontSize: normalize(fontSizes.lg),
+      color: CARNIVAL.ink,
     },
     submitBtn: {
-      height: normalize(46),
-      paddingHorizontal: normalize(16),
-      borderRadius: normalize(12),
-      backgroundColor: colors.primary,
+      height: normalize(40),
+      paddingHorizontal: normalize(14),
+      borderRadius: normalize(16),
+      backgroundColor: CARNIVAL.point,
       alignItems: 'center',
       justifyContent: 'center',
     },
-    submitDisabled: { opacity: 0.55 },
+    submitBtnIdle: {
+      backgroundColor: CARNIVAL.dotOff,
+    },
     submitText: {
-      fontFamily: fonts.bold,
       fontSize: normalize(fontSizes.md),
-      color: colors.textWhite,
+      color: '#FFFFFF',
     },
-    feedback: {
-      fontFamily: fonts.regular,
-      fontSize: normalize(fontSizes.md),
-      color: colors.textSecondary,
-      textAlign: 'center',
-      marginTop: normalize(6),
-    },
-    feedbackOk: { color: '#4F7CAC' },
-    feedbackErr: { color: '#C45C26' },
     popupTitle: {
-      fontFamily: fonts.bold,
       fontSize: normalize(18),
-      color: colors.textPrimary,
+      color: CARNIVAL.ink,
       textAlign: 'center',
       marginBottom: normalize(10),
     },
     popupBody: {
-      fontFamily: fonts.regular,
       fontSize: normalize(14),
-      color: colors.textSecondary,
+      color: CARNIVAL.muted,
       textAlign: 'center',
       lineHeight: normalize(22),
       marginBottom: normalize(12),
     },
     popupSearching: {
-      fontFamily: fonts.bold,
       fontSize: normalize(14),
-      color: colors.primaryDark,
+      color: CARNIVAL.point,
       textAlign: 'center',
     },
   });

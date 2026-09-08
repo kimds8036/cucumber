@@ -93,12 +93,13 @@ function createStyles(normalize) {
   return StyleSheet.create({
     safe: {
       flex: 1,
-      backgroundColor: colors.background,
+      backgroundColor: '#FFF6EE',
     },
     gameSlot: {
       flex: 1,
-      marginHorizontal: normalize(16),
+      marginHorizontal: normalize(10),
       marginBottom: normalize(8),
+      overflow: 'visible',
     },
   });
 }
