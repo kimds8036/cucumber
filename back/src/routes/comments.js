@@ -360,7 +360,7 @@ router.get('/:postId/comments', optionalAuthenticate, async (req, res) => {
       FROM comments c
       LEFT JOIN users u ON c.user_id = u.id
       WHERE ${commentConditions.join(' AND ')}
-      ORDER BY c.is_pinned DESC, c.parent_comment_id IS NULL DESC, c.created_at ASC`,
+      ORDER BY c.is_pinned DESC, c.created_at ASC, c.id ASC`,
       commentParams,
     );
 
