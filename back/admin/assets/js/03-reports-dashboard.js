@@ -146,7 +146,19 @@ async function loadDashboard() {
       const attText = u.checkedInToday ? '오늘 등교 완료' : '오늘 미등교';
       const verCls = u.isLatestAppVersion ? 'ops-upc-ver-latest' : 'ops-upc-ver';
       const lastAct = u.lastActivityAt ? fmtDate(u.lastActivityAt) : '-';
-      const lastLabel = '마지막 접속';
+      const lastToday = (() => {
+        if (!u.lastActivityAt) return false;
+        const d = new Date(u.lastActivityAt);
+        if (Number.isNaN(d.getTime())) return false;
+        const now = new Date();
+        return (
+          d.getFullYear() === now.getFullYear() &&
+          d.getMonth() === now.getMonth() &&
+          d.getDate() === now.getDate()
+        );
+      })();
+      const lastCls = lastToday ? 'ops-upc-seen-today' : 'ops-upc-muted';
+      const lastLabel = lastToday ? '오늘 접속' : '마지막 접속';
       const gradeClass =
         u.grade != null && u.classNumber != null
           ? ` · ${u.grade}학년 ${u.classNumber}반`
@@ -158,7 +170,7 @@ async function loadDashboard() {
           <div class="ops-upc-school">${esc(u.schoolName || '-')}${esc(gradeClass)}</div>
           <div class="ops-upc-row">
             <span class="${attCls}">${esc(attText)}</span>
-            <span class="ops-upc-muted">${esc(lastLabel)} ${esc(lastAct)}</span>
+            <span class="${lastCls}">${esc(lastLabel)} ${esc(lastAct)}</span>
           </div>
         </button>
       `;
