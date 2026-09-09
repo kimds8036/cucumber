@@ -37,6 +37,7 @@ import { useAuth } from '../../../context/AuthContext';
 import { GrowingUnderline } from './SchoolSearchField';
 import { loginWithKakao } from '../../../services/kakaoAuth';
 import { loginWithApple } from '../../../services/appleAuth';
+import { reportInstallOpen } from '../../../utils/appPresence';
 
 /** 로그인 실패 안내 — 사용자용 문구만 (기술 정보는 __DEV__ 콘솔) */
 function buildLoginFailureMessage(error) {
@@ -92,6 +93,10 @@ const Login = ({ navigation }) => {
 
   const styles = useMemo(() => createLoginStyles(width, normalize), [width]);
   const debugLogin = (...args) => console.log('[LoginDebug]', ...args);
+
+  useEffect(() => {
+    void reportInstallOpen();
+  }, []);
 
   // 로그인 화면: 하드웨어/제스처 뒤로가기 차단
   useFocusEffect(

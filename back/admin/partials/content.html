@@ -89,6 +89,11 @@
               <span class="ops-hub-title">이용 · 설치</span>
               <span class="ops-hub-desc">DAU/MAU · /get · 인기 화면</span>
             </button>
+            <button type="button" class="ops-hub-card" data-ops-view="funnel">
+              <span class="ops-hub-kicker">이탈</span>
+              <span class="ops-hub-title">설치 후 미가입</span>
+              <span class="ops-hub-desc">첫실행 · 전환 · 미전환 추이</span>
+            </button>
           </div>
         </div>
 
@@ -136,13 +141,13 @@
         <div class="ops-view" id="ops-view-user" hidden>
         <button type="button" class="btn btn-sm ops-back-btn" data-ops-back>← 모니터링 목록</button>
         <div class="section-title">사용자 조회</div>
-        <p class="section-hint">아이디 또는 사용자 번호로 배지·친구·등교·시간표·사용 OS(iPhone/Android)를 봅니다. 조회만 하며 배지를 자동 지급하지는 않습니다.</p>
+        <p class="section-hint">아이디·학교명 또는 사용자 번호로 배지·친구·등교·시간표·사용 OS(iPhone/Android)를 봅니다. 조회만 하며 배지를 자동 지급하지는 않습니다.</p>
         <div class="toolbar" style="margin-bottom:12px;display:flex;gap:8px;flex-wrap:wrap;align-items:center">
-          <input id="ops-user-q" type="text" placeholder="아이디 또는 #번호" style="min-width:220px" />
+          <input id="ops-user-q" type="text" placeholder="아이디 · 학교명 · #번호" style="min-width:260px" />
           <button type="button" class="btn btn-primary" id="ops-user-search-btn">조회</button>
         </div>
         <div class="section-title" style="margin-top:4px">사용자 목록</div>
-        <p class="section-hint">탈퇴하지 않은 사용자 · 최근 활동 순 · 페이지당 20명. 카드를 누르면 아래 상세가 열립니다.</p>
+        <p class="section-hint">탈퇴하지 않은 사용자 · 페이지당 20명. 카드를 누르면 아래 상세만 열리고 검색창은 바뀌지 않습니다. 카드 <strong>우측 하단</strong>은 마지막 접속 시각입니다(메인 게시판 진입 기준 · 없으면 푸시/로그인 근사치).</p>
         <div id="ops-users-preview-status" class="txt-muted" style="font-size:13px;margin-bottom:8px">불러오는 중…</div>
         <div id="ops-users-preview-grid" class="ops-users-preview-grid"></div>
         <div id="ops-users-preview-pager" class="toolbar" style="margin-top:12px;margin-bottom:16px;display:flex;gap:8px;align-items:center;flex-wrap:wrap" hidden></div>
@@ -368,10 +373,99 @@
         <div class="filter-row" id="activity-feed-pagination" style="margin-top:12px"></div>
         </div>
 
+        <div class="ops-view" id="ops-view-funnel" hidden>
+          <button type="button" class="btn btn-sm ops-back-btn" data-ops-back>← 모니터링 목록</button>
+          <div class="section-title">설치 후 미가입 (이탈)</div>
+          <p class="section-hint">
+            앱을 <strong>설치·실행</strong>했지만 아직 <strong>회원가입/로그인하지 않은</strong> 기기 단위 집계입니다.
+            로그인·가입이 되면 「전환」되어 미전환(이탈) 숫자에서 빠집니다.
+            스토어에만 설치하고 앱을 한 번도 안 연 사람은 포함되지 않습니다.
+          </p>
+
+          <div class="funnel-explain" style="margin:12px 0 16px;padding:12px 14px;border:0.5px solid var(--border);border-radius:8px;background:var(--bg-secondary);font-size:13px;line-height:1.55;color:var(--text-secondary)">
+            <div style="font-weight:600;color:var(--text-primary);margin-bottom:6px">수치 설명</div>
+            <ul style="margin:0;padding-left:18px">
+              <li><strong>미전환 설치(누적)</strong> — 지금까지 기록된 설치 중, 아직 가입/로그인하지 않은 수</li>
+              <li><strong>오늘/7일 첫실행·미전환</strong> — 그 기간에 처음 앱을 켠 뒤 아직도 미가입인 수</li>
+              <li><strong>오늘/7일 전환</strong> — 그 기간에 가입·로그인으로 「전환」된 수 (이탈에서 제외됨)</li>
+              <li><strong>전환율</strong> — 전체 설치 기록 대비 전환된 비율</li>
+              <li><strong>1일+/3일+/7일+ 미전환</strong> — 첫실행 후 그만큼 지났는데도 미가입인 「묵은」 이탈</li>
+            </ul>
+          </div>
+
+          <div class="analytics-kpi-grid dash-kpi-compact" id="funnel-kpi-grid" style="margin-bottom:16px">
+            <div class="stat-card stat-warn">
+              <div class="stat-num" id="funnel-open-unconverted">0</div>
+              <div class="stat-label">미전환 설치(누적)</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-num" id="funnel-first-open-today">0</div>
+              <div class="stat-label">오늘 첫실행·미전환</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-num" id="funnel-first-open-7d">0</div>
+              <div class="stat-label">7일 첫실행·미전환</div>
+            </div>
+            <div class="stat-card stat-ok">
+              <div class="stat-num" id="funnel-converted-today">0</div>
+              <div class="stat-label">오늘 전환</div>
+            </div>
+            <div class="stat-card stat-ok">
+              <div class="stat-num" id="funnel-converted-7d">0</div>
+              <div class="stat-label">7일 전환</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-num" id="funnel-convert-rate">0%</div>
+              <div class="stat-label">전환율(누적)</div>
+            </div>
+          </div>
+
+          <div class="analytics-kpi-grid dash-kpi-compact" style="margin-bottom:16px">
+            <div class="stat-card">
+              <div class="stat-num" id="funnel-older-1d">0</div>
+              <div class="stat-label">1일+ 미전환</div>
+            </div>
+            <div class="stat-card stat-warn">
+              <div class="stat-num" id="funnel-older-3d">0</div>
+              <div class="stat-label">3일+ 미전환</div>
+            </div>
+            <div class="stat-card" style="border-color:var(--red-border,#f1aeb5)">
+              <div class="stat-num" id="funnel-older-7d">0</div>
+              <div class="stat-label">7일+ 미전환</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-num" id="funnel-platform-mix" style="font-size:14px">-</div>
+              <div class="stat-label">미전환 OS (iOS / AOS / 기타)</div>
+            </div>
+          </div>
+
+          <div class="analytics-grid">
+            <div class="analytics-card">
+              <div class="analytics-card-title">일별 첫실행 vs 전환 (14일)</div>
+              <p class="section-hint" style="margin-top:0">파랑 = 그날 처음 앱을 켠 수 · 초록 = 그날 가입/로그인으로 전환된 수</p>
+              <div class="analytics-line-legend">
+                <span class="analytics-line-legend-item"><i class="analytics-line-swatch" style="background:#2563eb"></i>첫실행</span>
+                <span class="analytics-line-legend-item"><i class="analytics-line-swatch" style="background:#16a34a"></i>전환</span>
+              </div>
+              <div class="analytics-line-wrap">
+                <svg id="funnel-line-chart" class="analytics-line-chart" viewBox="0 0 640 260" preserveAspectRatio="xMidYMid meet"></svg>
+                <div class="analytics-line-tooltip" id="funnel-line-tooltip" hidden></div>
+              </div>
+              <div class="analytics-caption" id="funnel-line-caption">데이터를 불러오는 중...</div>
+            </div>
+            <div class="analytics-card">
+              <div class="analytics-card-title">그날 첫실행 중 아직 미전환</div>
+              <p class="section-hint" style="margin-top:0">그날 처음 켠 사람 가운데, 지금까지도 가입/로그인 안 한 수 (잔존 이탈)</p>
+              <div class="dash-bar-chart" id="funnel-still-open-chart"></div>
+              <div class="analytics-caption" id="funnel-still-open-caption">데이터 대기 중...</div>
+            </div>
+          </div>
+        </div>
+
         <div class="ops-view" id="ops-view-reach" hidden>
         <button type="button" class="btn btn-sm ops-back-btn" data-ops-back>← 모니터링 목록</button>
         <div class="section-title" style="margin-top:8px">서비스 이용 · 설치 링크</div>
-        <p class="section-hint">학생 앱 활성(DAU/MAU)과 광고·인스타 <code>/get</code> 방문 집계입니다. 크롤러 미리보기는 제외됩니다.</p>
+        <p class="section-hint">학생 앱 활성(DAU/MAU)과 광고·인스타 <code>/get</code> 방문 집계입니다. 설치 후 미가입 이탈은 「설치 후 미가입」 카드에서 봅니다.</p>
 
         <div class="analytics-kpi-grid dash-kpi-compact">
           <div class="stat-card stat-ok">

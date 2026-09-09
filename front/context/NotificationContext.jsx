@@ -183,6 +183,7 @@ export function NotificationProvider({ children }) {
       const type = String(payload?.type ?? '').trim();
       const relatedType = String(payload?.relatedType ?? '').trim();
       const bodyText = String(payload?.body ?? '').trim();
+      const rawTitle = String(payload?.title ?? '').trim();
 
       // 쿡 찌르기
       if (type === 'poke' || relatedType === 'timer_poke') {
@@ -201,25 +202,60 @@ export function NotificationProvider({ children }) {
             : '새로운 댓글이 달렸어요';
         return { title: '게시글', message };
       }
+      // 우편 반송
+      if (
+        type === 'mail_returned' ||
+        relatedType === 'personal_mail_returned' ||
+        bodyText.includes('반송')
+      ) {
+        return {
+          title: '우편함',
+          message: bodyText || '보낸 우편이 반송되었습니다',
+        };
+      }
       // 우편 (일반 / 답장)
       if (category === 'mail' || type === 'mail') {
         if (bodyText.includes('답장')) {
           return { title: '우편함', message: bodyText };
         }
-        return { title: '우편함', message: '새로운 우편이 도착했어요' };
+        return {
+          title: '우편함',
+          message: bodyText || '새로운 우편이 도착했어요',
+        };
       }
       // 친구 요청
       if (type === 'friend_request' || relatedType === 'friendship') {
         return {
           title: '시스템',
-          message: '새 친구 요청이 도착했어요! 친구 목록에서 확인해 보세요',
+          message:
+            bodyText ||
+            '새 친구 요청이 도착했어요! 친구 목록에서 확인해 보세요',
         };
       }
-      // 시스템 (공지 등)
-      if (category === 'system') {
-        return { title: '시스템', message: '새로운 알림이 도착했어요' };
+      // 친구 수락
+      if (type === 'friend_accepted' || relatedType === 'friend_accepted') {
+        return {
+          title: '시스템',
+          message: bodyText || '친구 요청이 수락되었어요',
+        };
       }
-      return { title: '시스템', message: '새로운 소식이 도착했어요' };
+      // 시스템 (인증·문의 등) — 서버 문구 그대로 사용
+      if (category === 'system') {
+        if (rawTitle && rawTitle !== '시스템' && bodyText) {
+          return { title: rawTitle, message: bodyText };
+        }
+        if (rawTitle && rawTitle !== '시스템') {
+          return { title: '시스템', message: rawTitle };
+        }
+        return {
+          title: '시스템',
+          message: bodyText || '새로운 알림이 도착했어요',
+        };
+      }
+      return {
+        title: '시스템',
+        message: bodyText || rawTitle || '새로운 소식이 도착했어요',
+      };
     };
 
     const handler = (payload) => {
@@ -228,6 +264,11 @@ export function NotificationProvider({ children }) {
         payload?.relatedType === 'message_room' ||
         payload?.relatedType === 'dm_room';
       const isStudySummary = isStudySummaryNotification(payload);
+      const relatedTypeEarly = String(payload?.relatedType ?? '').trim();
+      const typeEarly = String(payload?.type ?? '').trim();
+      const isPoke =
+        typeEarly === 'poke' || relatedTypeEarly === 'timer_poke';
+
       if (!isChatNotification) {
         // 벨 점은 DB 알림 목록 기준으로만 갱신한다.
         // (실시간 신호만으로 점을 켜면 알림 목록과 불일치 가능)
@@ -259,7 +300,12 @@ export function NotificationProvider({ children }) {
       }
       if (!isForeground) return;
 
-      const relatedType = String(payload?.relatedType ?? '').trim();
+      // 쿡 찌르기: 타이머 화면에선 TimerContent 짧은 토스트만 사용
+      if (isPoke && isTimerScreenActive) {
+        return;
+      }
+
+      const relatedType = relatedTypeEarly;
       const bodyText = String(payload?.body ?? '').trim();
 
       // 공부 완료 요약 (타이머 화면이 아닐 때 일반 토스트로 표시)
@@ -336,11 +382,12 @@ export function NotificationProvider({ children }) {
       const senderName = String(
         payload?.fromName ?? payload?.fromNickname ?? payload?.senderName ?? '',
       ).trim();
-      // friend_poke는 즉시 토스트는 띄우되, 벨 점은 DB 목록 기준으로만 갱신.
-      // 온라인 즉시 전달 poke는 알림 목록에 없을 수 있다.
+      // friend_poke는 벨 점만 갱신. 토스트는 화면 상황에 맞게 분기.
       setBellSuppressed(false);
       refreshHasUnread();
       if (!isForeground) return;
+      // 타이머 화면: TimerContent 짧은 토스트만 (중복 방지)
+      if (isTimerScreenActive) return;
       showToast({
         message: senderName
           ? `${senderName} 님이 쿡 찔렀어요! 타이머에서 함께 공부를 시작해보세요`

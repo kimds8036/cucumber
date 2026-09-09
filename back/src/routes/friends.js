@@ -3,8 +3,7 @@ import { body, param } from 'express-validator';
 import pool from '../config/database.js';
 import { authenticate } from '../middleware/auth.js';
 import { validate } from '../middleware/validate.js';
-import { createNotification } from '../utils/notifications.js';
-import { emitNotification } from '../socketServer.js';
+import { enqueueNotification } from '../utils/notificationWorker.js';
 import { checkNotificationAllowed } from '../utils/notificationUtils.js';
 import { getStudyingFriends } from '../socket/socketService.js';
 import { submitContentReport } from '../services/reportSubmission.service.js';
@@ -233,6 +232,28 @@ router.post('/requests/:id/accept', authenticate, validate(friendshipIdParamVali
        WHERE id = ?`,
       [id]
     );
+
+    try {
+      const [meRows] = await pool.execute(
+        'SELECT username FROM users WHERE id = ? LIMIT 1',
+        [userId],
+      );
+      const acceptorName = meRows[0]?.username
+        ? `@${meRows[0].username}`
+        : '친구';
+      await enqueueNotification({
+        userId: reqRow.requester_id,
+        type: 'friend_accepted',
+        category: 'system',
+        title: '시스템',
+        body: `${acceptorName} 님이 친구 요청을 수락했어요`,
+        relatedType: 'friend_accepted',
+        relatedId: Number(id),
+        sourceId: `friend_accepted:${id}`,
+      });
+    } catch (notifyError) {
+      console.error('[Friends][Accept] 알림 enqueue 오류:', notifyError);
+    }
 
     res.json({
       success: true,
@@ -543,14 +564,14 @@ router.post('/requests', authenticate, validate(sendFriendRequestValidators), as
       addresseeId: target.id,
     });
 
-    // 알림 생성 (선택적)
+    // 알림 생성 + FCM (앱 종료 시에도 푸시)
     try {
       const allowed = await checkNotificationAllowed(
         target.id,
         'friend_request'
       );
       if (allowed) {
-        await createNotification({
+        await enqueueNotification({
           userId: target.id,
           type: 'friend_request',
           category: 'system',
@@ -558,25 +579,16 @@ router.post('/requests', authenticate, validate(sendFriendRequestValidators), as
           body: '새 친구 요청이 도착했어요! 친구 목록에서 확인해 보세요',
           relatedType: 'friendship',
           relatedId: requestId,
+          sourceId: `friend_request:${requestId}`,
         });
-        console.log('[Friends][FriendRequest] DB 알림 생성 완료 → 소켓 emit 예정', {
+        console.log('[Friends][FriendRequest] 알림 enqueue 완료', {
           targetUserId: target.id,
           requestId,
         });
-        // 수신자에게 소켓으로 즉시 push (빨간점/친구 뱃지 반영)
-        emitNotification(target.id, {
-          type: 'friend_request',
-          category: 'system',
-          title: '시스템',
-          body: '새 친구 요청이 도착했어요! 친구 목록에서 확인해 보세요',
-          relatedType: 'friendship',
-          relatedId: requestId,
-        });
-        console.log('[Friends][FriendRequest] emitNotification 호출 완료 (수신자 userId=%s)', target.id);
       }
     } catch (notifyError) {
       // 알림 실패는 전체 요청을 막지 않음
-      console.error('[Friends][FriendRequest] 알림 생성/소켓 오류:', notifyError);
+      console.error('[Friends][FriendRequest] 알림 enqueue 오류:', notifyError);
     }
 
     res.status(201).json({

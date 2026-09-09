@@ -86,9 +86,8 @@ async function loadDashboard() {
       const card = e.target.closest('[data-ops-user-id]');
       if (!card) return;
       const uid = card.getAttribute('data-ops-user-id');
-      const input = document.getElementById('ops-user-q');
-      if (input) input.value = `#${uid}`;
-      void loadOpsUserInspect();
+      // 검색창은 건드리지 않고 상세만 연다 (목록 필터 유지)
+      void loadOpsUserInspect(`#${uid}`);
     });
   }
 
@@ -125,8 +124,11 @@ async function loadDashboard() {
     const totalPages = Number(data?.totalPages || 1);
 
     if (status) {
+      const latestHint = data?.latestAppVersion
+        ? ` · 최신 v${data.latestAppVersion}`
+        : '';
       status.textContent = total
-        ? `총 ${total.toLocaleString()}명 · ${page}/${totalPages}페이지`
+        ? `총 ${total.toLocaleString()}명 · ${page}/${totalPages}페이지${latestHint}`
         : '표시할 사용자가 없습니다.';
     }
 
@@ -140,9 +142,23 @@ async function loadDashboard() {
 
     grid.innerHTML = items.map((u) => {
       const osLabel = opsOsLabel(u.os);
-      const attCls = u.checkedInToday ? 'ops-upc-ok' : 'ops-upc-warn';
+      const attCls = u.checkedInToday ? 'ops-upc-att-ok' : 'ops-upc-att-off';
       const attText = u.checkedInToday ? '오늘 등교 완료' : '오늘 미등교';
+      const verCls = u.isLatestAppVersion ? 'ops-upc-ver-latest' : 'ops-upc-ver';
       const lastAct = u.lastActivityAt ? fmtDate(u.lastActivityAt) : '-';
+      const lastToday = (() => {
+        if (!u.lastActivityAt) return false;
+        const d = new Date(u.lastActivityAt);
+        if (Number.isNaN(d.getTime())) return false;
+        const now = new Date();
+        return (
+          d.getFullYear() === now.getFullYear() &&
+          d.getMonth() === now.getMonth() &&
+          d.getDate() === now.getDate()
+        );
+      })();
+      const lastCls = lastToday ? 'ops-upc-seen-today' : 'ops-upc-muted';
+      const lastLabel = lastToday ? '오늘 접속' : '마지막 접속';
       const gradeClass =
         u.grade != null && u.classNumber != null
           ? ` · ${u.grade}학년 ${u.classNumber}반`
@@ -150,11 +166,11 @@ async function loadDashboard() {
       return `
         <button type="button" class="ops-user-preview-card" data-ops-user-id="${u.id}">
           <div class="ops-upc-title">@${esc(u.username || '-')} <span style="font-weight:400;color:var(--text-tertiary)">#${u.id}</span></div>
-          <div class="ops-upc-meta">${esc(osLabel)} · v${esc(u.appVersion || '-')}</div>
+          <div class="ops-upc-meta">${esc(osLabel)} · <span class="${verCls}">v${esc(u.appVersion || '-')}</span></div>
           <div class="ops-upc-school">${esc(u.schoolName || '-')}${esc(gradeClass)}</div>
           <div class="ops-upc-row">
             <span class="${attCls}">${esc(attText)}</span>
-            <span class="ops-upc-warn">최근 ${esc(lastAct)}</span>
+            <span class="${lastCls}">${esc(lastLabel)} ${esc(lastAct)}</span>
           </div>
         </button>
       `;
@@ -253,6 +269,7 @@ async function loadDashboard() {
       terms: ['등교 · 학기', '개학일 · 오늘 등교 여부'],
       map: ['전국 분포', '학교 위치 · 지역별 인원'],
       reach: ['이용 · 설치', 'DAU/MAU · /get'],
+      funnel: ['설치 후 미가입', '첫실행 · 전환 · 미전환 추이'],
     };
     const t = titles[view];
     if (t) {
@@ -277,9 +294,10 @@ async function loadDashboard() {
         }
       }
       if (view === 'reach') {
-      await loadAnalyticsOverview();
-      await loadInstallLandingStats();
+        await loadAnalyticsOverview();
+        await loadInstallLandingStats();
       }
+      if (view === 'funnel') await loadAppInstallFunnelStats();
       if (view === 'user') await loadOpsUsersPreview(1);
     } catch (error) {
       alert(error?.message || '모니터링 데이터를 불러오지 못했습니다.');
@@ -362,7 +380,21 @@ async function loadDashboard() {
     const run = () => {
       opsUsersPreviewPage = 1;
       void loadOpsUsersPreview(1);
-      void loadOpsUserInspect();
+      const q = String(input?.value || '').trim();
+      // #번호·정확 아이디만 상세 자동조회. 학교명 검색은 목록만.
+      if (/^#?\d+$/.test(q) || /^@?[A-Za-z0-9._-]{2,}$/.test(q)) {
+        void loadOpsUserInspect();
+        return;
+      }
+      const empty = document.getElementById('ops-user-inspect-empty');
+      const wrap = document.getElementById('ops-user-inspect-wrap');
+      if (wrap) wrap.hidden = true;
+      if (empty) {
+        empty.hidden = false;
+        empty.textContent = q
+          ? '목록에서 카드를 눌러 상세를 확인하세요.'
+          : '아이디·학교명 또는 사용자 번호를 입력하세요.';
+      }
     };
     btn.addEventListener('click', run);
     if (input) {
@@ -375,13 +407,15 @@ async function loadDashboard() {
     }
   }
 
-  async function loadOpsUserInspect() {
+  async function loadOpsUserInspect(qOverride) {
     const input = document.getElementById('ops-user-q');
     const empty = document.getElementById('ops-user-inspect-empty');
     const wrap = document.getElementById('ops-user-inspect-wrap');
-    const q = String(input?.value || '').trim();
+    const q = String(
+      qOverride != null ? qOverride : input?.value || '',
+    ).trim();
     if (!q) {
-      if (empty) empty.textContent = '아이디 또는 사용자 번호를 입력하세요.';
+      if (empty) empty.textContent = '아이디·학교명 또는 사용자 번호를 입력하세요.';
       if (wrap) wrap.hidden = true;
       return;
     }
@@ -429,6 +463,7 @@ async function loadDashboard() {
         <div class="stat-card"><div class="stat-num">${Number(s.commentCount || 0).toLocaleString()}</div><div class="stat-label">댓글</div></div>
         <div class="stat-card ${s.todayCheckedIn ? 'stat-ok' : ''}"><div class="stat-num">${s.todayCheckedIn ? '완료' : '미체크'}</div><div class="stat-label">오늘 등교</div></div>
         <div class="stat-card"><div class="stat-num">${Number(s.attendancePresentCount || 0)}</div><div class="stat-label">최근 2달 등교</div></div>
+        <div class="stat-card"><div class="stat-num" style="font-size:13px;line-height:1.35">${esc(s.lastSeenAt ? fmtDate(s.lastSeenAt) : '-')}</div><div class="stat-label">인앱 마지막 접속</div></div>
       `;
     }
     const devicesHint = document.getElementById('ops-user-devices-hint');
@@ -1246,6 +1281,90 @@ async function loadDashboard() {
     renderInstallLandingChart(data?.series || [], data?.summary || {});
     renderInstallHourChart(data?.byHour || []);
     renderInstallDowChart(data?.byDow || []);
+  }
+
+  async function loadAppInstallFunnelStats() {
+    try {
+      const { data } = await api('/analytics/app-install-funnel?days=14');
+      const set = (id, v) => {
+        const el = document.getElementById(id);
+        if (el) el.textContent = typeof v === 'string' ? v : Number(v || 0).toLocaleString();
+      };
+      set('funnel-open-unconverted', data?.openUnconverted);
+      set('funnel-first-open-today', data?.firstOpenTodayUnconverted);
+      set('funnel-first-open-7d', data?.firstOpen7dUnconverted);
+      set('funnel-converted-today', data?.convertedToday);
+      set('funnel-converted-7d', data?.converted7d);
+      set('funnel-convert-rate', `${Number(data?.convertRatePct || 0)}%`);
+      set('funnel-older-1d', data?.unconvertedOlder1d);
+      set('funnel-older-3d', data?.unconvertedOlder3d);
+      set('funnel-older-7d', data?.unconvertedOlder7d);
+      const p = data?.platformUnconverted || {};
+      set(
+        'funnel-platform-mix',
+        `${Number(p.ios || 0)} / ${Number(p.android || 0)} / ${Number(p.other || 0) + Number(p.unknown || 0)}`,
+      );
+      renderFunnelLineChart(data?.series || []);
+      renderFunnelStillOpenChart(data?.series || []);
+    } catch (error) {
+      console.warn('앱 설치 퍼널 조회 실패:', error);
+      const caption = document.getElementById('funnel-line-caption');
+      if (caption) caption.textContent = error?.message || '퍼널 데이터를 불러오지 못했습니다.';
+    }
+  }
+
+  function renderFunnelLineChart(series) {
+    const svg = document.getElementById('funnel-line-chart');
+    const caption = document.getElementById('funnel-line-caption');
+    const tooltip = document.getElementById('funnel-line-tooltip');
+    if (!svg || !caption) return;
+    if (!Array.isArray(series) || series.length === 0) {
+      svg.innerHTML = '';
+      if (tooltip) tooltip.hidden = true;
+      caption.textContent = '아직 설치·실행 기록이 없습니다. 새 앱에서 로그인 전 화면을 열면 쌓입니다.';
+      return;
+    }
+    svg.setAttribute('viewBox', '0 0 640 260');
+    svg.setAttribute('preserveAspectRatio', 'xMidYMid meet');
+    svg.innerHTML = buildLineChartSvg({
+      series,
+      seriesA: (s) => Number(s.firstOpens || 0),
+      seriesB: (s) => Number(s.converted || 0),
+      colorA: '#2563eb',
+      colorB: '#16a34a',
+      formatTick: (s) => String(s.ymd || '').slice(5),
+    });
+    bindLineChartHover(svg, tooltip, series, (point) => `
+      <div><strong>${esc(point.ymd)}</strong></div>
+      <div>첫실행: ${Number(point.firstOpens || 0).toLocaleString()}건</div>
+      <div>전환: ${Number(point.converted || 0).toLocaleString()}건</div>
+      <div>그날 첫실행 중 아직 미전환: ${Number(point.stillOpenFromDay || 0).toLocaleString()}건</div>
+    `);
+    const first = series[0];
+    const last = series[series.length - 1];
+    caption.textContent = `${esc(first?.ymd || '')} ~ ${esc(last?.ymd || '')} · 점 위에 올리면 상세`;
+  }
+
+  function renderFunnelStillOpenChart(series) {
+    const caption = document.getElementById('funnel-still-open-caption');
+    if (!Array.isArray(series) || !series.length) {
+      if (caption) caption.textContent = '데이터 없음';
+      renderDashBarChart('funnel-still-open-chart', [], [], {
+        color: '#c2410c',
+        emptyText: '아직 미전환 잔존 데이터가 없습니다.',
+      });
+      return;
+    }
+    const values = series.map((s) => Number(s.stillOpenFromDay || 0));
+    const labels = series.map((s) => String(s.ymd || '').slice(5));
+    renderDashBarChart('funnel-still-open-chart', values, labels, {
+      color: '#c2410c',
+      emptyText: '미전환 잔존 없음',
+    });
+    if (caption) {
+      const sum = values.reduce((a, b) => a + b, 0);
+      caption.textContent = `기간 합 ${sum.toLocaleString()}건 (그날 첫실행 중 아직 미가입인 건수 합)`;
+    }
   }
 
   function renderAnalyticsKpi(summary) {

@@ -5,7 +5,9 @@ const TYPE_TO_COLUMN = {
   reply: 'new_comment',
   like: 'new_like',
   mail: 'mail_outgoing',
+  mail_returned: 'mail_outgoing',
   friend_request: 'friend_request',
+  friend_accepted: 'friend_request',
   announcement: 'announcement',
   poke: 'push_enabled',
 };

@@ -31,44 +31,96 @@ function formatTimeAgo(createdAt) {
   return date.toLocaleDateString('ko-KR', { month: 'long', day: 'numeric' });
 }
 
+function commentCreatedAtMs(createdAt) {
+  if (!createdAt) return 0;
+  if (createdAt instanceof Date) {
+    const t = createdAt.getTime();
+    return Number.isNaN(t) ? 0 : t;
+  }
+  let dateStr =
+    typeof createdAt === 'string' ? createdAt.trim() : String(createdAt);
+  if (
+    /^\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}:\d{2}(\.\d+)?$/.test(dateStr) &&
+    !/[Z+-]/.test(dateStr)
+  ) {
+    dateStr = dateStr.replace(' ', 'T') + 'Z';
+  }
+  const t = new Date(dateStr).getTime();
+  return Number.isNaN(t) ? 0 : t;
+}
+
+function compareCommentsChronological(a, b) {
+  const ap = a.isPinned ? 1 : 0;
+  const bp = b.isPinned ? 1 : 0;
+  if (ap !== bp) return bp - ap;
+  const ta = a._createdAtMs ?? 0;
+  const tb = b._createdAtMs ?? 0;
+  if (ta !== tb) return ta - tb;
+  return Number(a.id) - Number(b.id);
+}
+
+/** API 평면 댓글 → parent 기준 트리 (고정 → 작성 시간순, 학교 우편과 동일) */
 function buildTree(comments, postAuthorId, currentUserId) {
+  if (!comments?.length) return [];
+
+  const sorted = [...comments].sort((a, b) => {
+    const ap = a.is_pinned ? 1 : 0;
+    const bp = b.is_pinned ? 1 : 0;
+    if (ap !== bp) return bp - ap;
+    const ta = commentCreatedAtMs(a.created_at);
+    const tb = commentCreatedAtMs(b.created_at);
+    if (ta !== tb) return ta - tb;
+    return Number(a.id) - Number(b.id);
+  });
+
   const nodes = new Map();
-  comments.forEach((c) => {
-    const isPostAuthor = postAuthorId != null && c.user_id === postAuthorId;
-    nodes.set(c.id, {
-      id: c.id,
+  sorted.forEach((c) => {
+    const id = Number(c.id);
+    const isPostAuthor =
+      postAuthorId != null && Number(c.user_id) === Number(postAuthorId);
+    nodes.set(id, {
+      id,
       userId: c.user_id,
       authorLabel: isPostAuthor ? '작성자' : `익명 ${c.anonymous_index}`,
       equippedBadge: equippedBadgeFromApiRow(c),
       isWriter: isPostAuthor,
-      isMyComment: currentUserId != null && c.user_id === currentUserId,
+      isMyComment:
+        currentUserId != null && Number(c.user_id) === Number(currentUserId),
       isPinned: Boolean(c.is_pinned),
-      parentCommentId: c.parent_comment_id ?? null,
+      parentCommentId:
+        c.parent_comment_id != null ? Number(c.parent_comment_id) : null,
       time: formatTimeAgo(c.created_at),
       content: c.content,
       likes: c.like_count,
       liked: Boolean(c.isLiked),
       replies: [],
+      _createdAtMs: commentCreatedAtMs(c.created_at),
     });
   });
 
   const roots = [];
-  comments.forEach((c) => {
-    const node = nodes.get(c.id);
-    if (c.parent_comment_id) {
-      const parent = nodes.get(c.parent_comment_id);
+  sorted.forEach((c) => {
+    const id = Number(c.id);
+    const node = nodes.get(id);
+    const parentId =
+      c.parent_comment_id != null ? Number(c.parent_comment_id) : null;
+    if (parentId != null && !Number.isNaN(parentId)) {
+      const parent = nodes.get(parentId);
       if (parent) parent.replies.push(node);
       else roots.push(node);
     } else {
       roots.push(node);
     }
   });
-  roots.sort((a, b) => {
-    const ap = a.isPinned ? 1 : 0;
-    const bp = b.isPinned ? 1 : 0;
-    if (ap !== bp) return bp - ap;
-    return 0;
-  });
+
+  const stripSortKey = (list) => {
+    list.sort(compareCommentsChronological);
+    for (const n of list) {
+      if (n.replies?.length) stripSortKey(n.replies);
+      delete n._createdAtMs;
+    }
+  };
+  stripSortKey(roots);
   return roots;
 }
 
