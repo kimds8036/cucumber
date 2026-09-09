@@ -1,5 +1,16 @@
 const CATEGORY_TITLES = new Set(['게시글', '우편함', '시스템']);
 
+function isFriendNotification(row) {
+  const type = String(row?.type ?? '').trim();
+  const relatedType = String(row?.related_type ?? row?.relatedType ?? '').trim();
+  return (
+    type === 'friend_request' ||
+    type === 'friend_accepted' ||
+    relatedType === 'friendship' ||
+    relatedType === 'friend_accepted'
+  );
+}
+
 const KNOWN_NOTIFICATION_PHRASES = [
   '댓글이 달렸',
   '답글이 달렸',
@@ -26,11 +37,11 @@ function resolveCategoryLabel(row) {
   const type = String(row?.type ?? '').trim();
   if (category === 'post') return '게시글';
   if (category === 'mail') return '우편함';
+  if (isFriendNotification(row)) return '시스템';
   if (
     category === 'system' ||
     category === 'timer' ||
     type === 'poke' ||
-    type === 'friend_request' ||
     type === 'study_finished_summary'
   ) {
     return '시스템';
@@ -120,6 +131,15 @@ function resolveLegacyBody(row, mailMeta) {
  */
 export function normalizeNotificationForClient(row, mailMeta = null) {
   const rawTitle = String(row?.title ?? '').trim();
+
+  if (isFriendNotification(row)) {
+    const content =
+      String(row?.body ?? '').trim() || resolveLegacyBody(row, mailMeta);
+    return {
+      title: '시스템',
+      content: normalizeHonorificSpacing(content),
+    };
+  }
 
   if (CATEGORY_TITLES.has(rawTitle)) {
     return {
