@@ -203,7 +203,9 @@ router.get('/analytics/app-install-funnel', requireAdminApi, async (req, res) =>
   }
   try {
     const { getAppInstallFunnelSummary } = await import('../services/appPresence.service.js');
-    const data = await getAppInstallFunnelSummary();
+    const data = await getAppInstallFunnelSummary({
+      days: Number(req.query.days || 14),
+    });
     return res.json({ success: true, data });
   } catch (error) {
     console.error('앱 설치 퍼널 조회 오류:', error);

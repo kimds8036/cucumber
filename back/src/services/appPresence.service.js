@@ -9,6 +9,12 @@ function normalizePlatform(raw) {
   return 'other';
 }
 
+function addDaysYmd(ymd, delta) {
+  const d = new Date(`${ymd}T12:00:00+09:00`);
+  d.setDate(d.getDate() + delta);
+  return formatKstDateYmd(d);
+}
+
 /**
  * 로그인 유저 인앱 마지막 접속 시각 갱신
  * @param {number} userId
@@ -98,17 +104,23 @@ export async function convertAppInstall({
 }
 
 /**
- * 관리자: 설치 퍼널 요약
+ * 관리자: 설치 퍼널 요약 + 14일 추이
+ * @param {{ days?: number }} opts
  */
-export async function getAppInstallFunnelSummary() {
+export async function getAppInstallFunnelSummary({ days = 14 } = {}) {
+  const windowDays = Math.min(Math.max(Number(days) || 14, 7), 31);
   const todayYmd = formatKstDateYmd(new Date());
   const dayStart = new Date(`${todayYmd}T00:00:00+09:00`);
   const dayEnd = new Date(`${todayYmd}T24:00:00+09:00`);
   const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+  const rangeStartYmd = addDaysYmd(todayYmd, -(windowDays - 1));
+  const rangeStart = new Date(`${rangeStartYmd}T00:00:00+09:00`);
 
   const [[row]] = await pool.execute(
     `SELECT
+       COUNT(*) AS total_installs,
        SUM(converted_user_id IS NULL) AS open_unconverted,
+       SUM(converted_user_id IS NOT NULL) AS converted_total,
        SUM(
          converted_user_id IS NULL
          AND first_open_at >= ? AND first_open_at < ?
@@ -124,16 +136,113 @@ export async function getAppInstallFunnelSummary() {
        SUM(
          converted_user_id IS NULL
          AND first_open_at >= ?
-       ) AS first_open_7d_unconverted
+       ) AS first_open_7d_unconverted,
+       SUM(
+         converted_user_id IS NULL
+         AND first_open_at < ?
+       ) AS unconverted_older_1d,
+       SUM(
+         converted_user_id IS NULL
+         AND first_open_at < ?
+       ) AS unconverted_older_3d,
+       SUM(
+         converted_user_id IS NULL
+         AND first_open_at < ?
+       ) AS unconverted_older_7d
      FROM app_installs`,
-    [dayStart, dayEnd, dayStart, dayEnd, weekAgo, weekAgo],
+    [
+      dayStart,
+      dayEnd,
+      dayStart,
+      dayEnd,
+      weekAgo,
+      weekAgo,
+      new Date(Date.now() - 1 * 24 * 60 * 60 * 1000),
+      new Date(Date.now() - 3 * 24 * 60 * 60 * 1000),
+      new Date(Date.now() - 7 * 24 * 60 * 60 * 1000),
+    ],
   );
+
+  const [platRows] = await pool.execute(
+    `SELECT COALESCE(platform, 'unknown') AS platform, COUNT(*) AS cnt
+     FROM app_installs
+     WHERE converted_user_id IS NULL
+     GROUP BY COALESCE(platform, 'unknown')`,
+  );
+  const platformUnconverted = { ios: 0, android: 0, other: 0, unknown: 0 };
+  for (const r of platRows) {
+    const key = String(r.platform || 'unknown');
+    if (key === 'ios' || key === 'android' || key === 'other') {
+      platformUnconverted[key] = Number(r.cnt || 0);
+    } else {
+      platformUnconverted.unknown += Number(r.cnt || 0);
+    }
+  }
+
+  const [openRows] = await pool.execute(
+    `SELECT first_open_at, converted_user_id
+     FROM app_installs
+     WHERE first_open_at >= ?`,
+    [rangeStart],
+  );
+  const [convRows] = await pool.execute(
+    `SELECT converted_at
+     FROM app_installs
+     WHERE converted_at IS NOT NULL AND converted_at >= ?`,
+    [rangeStart],
+  );
+
+  const openByDay = new Map();
+  for (const r of openRows) {
+    const ymd = formatKstDateYmd(r.first_open_at);
+    if (!ymd) continue;
+    const cur = openByDay.get(ymd) || { firstOpens: 0, stillOpen: 0 };
+    cur.firstOpens += 1;
+    if (r.converted_user_id == null) cur.stillOpen += 1;
+    openByDay.set(ymd, cur);
+  }
+  const convByDay = new Map();
+  for (const r of convRows) {
+    const ymd = formatKstDateYmd(r.converted_at);
+    if (!ymd) continue;
+    convByDay.set(ymd, (convByDay.get(ymd) || 0) + 1);
+  }
+
+  const series = [];
+  for (let i = 0; i < windowDays; i += 1) {
+    const ymd = addDaysYmd(rangeStartYmd, i);
+    const open = openByDay.get(ymd) || { firstOpens: 0, stillOpen: 0 };
+    series.push({
+      ymd,
+      firstOpens: open.firstOpens,
+      stillOpenFromDay: open.stillOpen,
+      converted: convByDay.get(ymd) || 0,
+    });
+  }
+
+  const totalInstalls = Number(row?.total_installs || 0);
+  const convertedTotal = Number(row?.converted_total || 0);
+  const openUnconverted = Number(row?.open_unconverted || 0);
+  const convertRate =
+    totalInstalls > 0
+      ? Math.round((convertedTotal / totalInstalls) * 1000) / 10
+      : 0;
+
   return {
-    openUnconverted: Number(row?.open_unconverted || 0),
+    openUnconverted,
     firstOpenTodayUnconverted: Number(row?.first_open_today_unconverted || 0),
     convertedToday: Number(row?.converted_today || 0),
     converted7d: Number(row?.converted_7d || 0),
     firstOpen7dUnconverted: Number(row?.first_open_7d_unconverted || 0),
+    unconvertedOlder1d: Number(row?.unconverted_older_1d || 0),
+    unconvertedOlder3d: Number(row?.unconverted_older_3d || 0),
+    unconvertedOlder7d: Number(row?.unconverted_older_7d || 0),
+    totalInstalls,
+    convertedTotal,
+    convertRatePct: convertRate,
+    platformUnconverted,
+    series,
+    days: windowDays,
     todayYmd,
   };
 }
