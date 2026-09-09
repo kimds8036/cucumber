@@ -132,8 +132,6 @@ export const createSubHeaderStyles = (width, height) => {
       backgroundColor: colors.background,
       paddingHorizontal: width * 0.07,
       flexShrink: 0,
-      borderBottomWidth: 1,
-      borderBottomColor: colors.textLight20,
     },
     headerTop: {
       flexDirection: 'row',
