@@ -176,6 +176,7 @@ export default ({ config }) => ({
           ]
         : []),
       './plugins/withFirebaseModularHeaders',
+      './plugins/withNativeModulesAppleHeaders',
       './plugins/withAndroidReleaseSigning.cjs',
       './plugins/withAndroidAabLintMemory.cjs',
       './plugins/withAndroidMainActivityLaunchMode.cjs',
