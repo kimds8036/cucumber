@@ -272,6 +272,7 @@ export async function inspectOpsUser(queryRaw) {
     const [[byId]] = await pool.execute(
       `SELECT
          u.id, u.username, u.name_enc, u.school_id, u.grade, u.class_number,
+         u.last_seen_at,
          sch.name AS school_name
        FROM users u
        LEFT JOIN schools sch ON sch.school_id = u.school_id
@@ -285,6 +286,7 @@ export async function inspectOpsUser(queryRaw) {
     const [[byName]] = await pool.execute(
       `SELECT
          u.id, u.username, u.name_enc, u.school_id, u.grade, u.class_number,
+         u.last_seen_at,
          sch.name AS school_name
        FROM users u
        LEFT JOIN schools sch ON sch.school_id = u.school_id
@@ -331,6 +333,9 @@ export async function inspectOpsUser(queryRaw) {
       schoolName: row.school_name || null,
       grade: row.grade,
       classNumber: row.class_number,
+      lastSeenAt: row.last_seen_at
+        ? new Date(row.last_seen_at).toISOString()
+        : null,
     },
     stats: {
       friendCount: Number(friendRow?.c || 0),
@@ -340,6 +345,9 @@ export async function inspectOpsUser(queryRaw) {
       attendancePresentCount: Number(attendance.presentCount || 0),
       primaryOs: devicePack.primaryOs,
       deviceCount: devicePack.devices.length,
+      lastSeenAt: row.last_seen_at
+        ? new Date(row.last_seen_at).toISOString()
+        : null,
     },
     devices: devicePack.devices,
     devicePlatforms: devicePack.platforms,

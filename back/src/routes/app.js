@@ -34,4 +34,34 @@ router.get('/version-check', (req, res) => {
   });
 });
 
+/**
+ * POST /api/app/install-open
+ * 인증 없음 — 로그인 전 첫 실행·재실행 (미가입 퍼널)
+ */
+router.post('/install-open', async (req, res) => {
+  try {
+    const { recordAppInstallOpen } = await import('../services/appPresence.service.js');
+    const data = await recordAppInstallOpen({
+      installId: req.body?.installId ?? req.body?.install_id,
+      deviceId: req.body?.deviceId ?? req.body?.device_id,
+      platform: req.body?.platform,
+      appVersion: req.body?.appVersion ?? req.body?.app_version,
+    });
+    return res.json({ success: true, data });
+  } catch (error) {
+    const status = Number(error?.status) || 500;
+    if (status >= 400 && status < 500) {
+      return res.status(status).json({
+        success: false,
+        message: error.message || '요청이 올바르지 않습니다.',
+      });
+    }
+    console.error('install-open 오류:', error);
+    return res.status(500).json({
+      success: false,
+      message: '설치 기록 중 오류가 발생했습니다.',
+    });
+  }
+});
+
 export default router;

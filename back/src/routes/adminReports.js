@@ -196,6 +196,24 @@ router.get('/analytics/install-landing', requireAdminApi, async (req, res) => {
   }
 });
 
+router.get('/analytics/app-install-funnel', requireAdminApi, async (req, res) => {
+  const adminUserId = req.user.userId;
+  if (!isAdminUser(adminUserId)) {
+    return res.status(403).json({ success: false, message: '관리자 권한이 필요합니다.' });
+  }
+  try {
+    const { getAppInstallFunnelSummary } = await import('../services/appPresence.service.js');
+    const data = await getAppInstallFunnelSummary();
+    return res.json({ success: true, data });
+  } catch (error) {
+    console.error('앱 설치 퍼널 조회 오류:', error);
+    return res.status(500).json({
+      success: false,
+      message: '앱 설치 퍼널을 불러오지 못했습니다.',
+    });
+  }
+});
+
 router.get('/analytics/timer', requireAdminApi, async (req, res) => {
   const adminUserId = req.user.userId;
   if (!isAdminUser(adminUserId)) {

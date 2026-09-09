@@ -153,4 +153,47 @@ router.get('/search', authenticate, validate(userSearchValidators), async (req, 
   }
 });
 
+// POST /api/users/me/last-seen — 인앱(메인 게시판) 접속 갱신
+router.post('/me/last-seen', authenticate, async (req, res) => {
+  try {
+    const { touchUserLastSeen } = await import('../services/appPresence.service.js');
+    await touchUserLastSeen(req.user.userId);
+    return res.json({ success: true });
+  } catch (error) {
+    console.error('last-seen 갱신 오류:', error);
+    return res.status(500).json({
+      success: false,
+      message: '접속 시각 갱신 중 오류가 발생했습니다.',
+    });
+  }
+});
+
+// POST /api/users/me/install-convert — 가입·로그인 후 설치 퍼널 전환
+router.post('/me/install-convert', authenticate, async (req, res) => {
+  try {
+    const { convertAppInstall } = await import('../services/appPresence.service.js');
+    const installId = req.body?.installId ?? req.body?.install_id ?? null;
+    const deviceId = req.body?.deviceId ?? req.body?.device_id ?? null;
+    const result = await convertAppInstall({
+      installId,
+      deviceId,
+      userId: req.user.userId,
+    });
+    return res.json({ success: true, data: result });
+  } catch (error) {
+    const status = Number(error?.status) || 500;
+    if (status >= 400 && status < 500) {
+      return res.status(status).json({
+        success: false,
+        message: error.message || '전환에 실패했습니다.',
+      });
+    }
+    console.error('install-convert 오류:', error);
+    return res.status(500).json({
+      success: false,
+      message: '설치 전환 처리 중 오류가 발생했습니다.',
+    });
+  }
+});
+
 export default router;

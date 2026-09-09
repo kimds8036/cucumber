@@ -157,6 +157,12 @@ export function AuthProvider({ children }) {
           setIsLoggedIn(true);
           setAuthHydrated(true);
           try {
+            const { reportInstallConvert } = require('../utils/appPresence');
+            reportInstallConvert().catch(() => {});
+          } catch {
+            // ignore
+          }
+          try {
             const {
               syncAuthFromWidgetMirrorIfNewer,
             } = require('../utils/widget/syncAuthFromWidget');
@@ -226,6 +232,12 @@ export function AuthProvider({ children }) {
 
       resetSessionTerminateGuard();
       setIsLoggedIn(true);
+      try {
+        const { reportInstallConvert } = require('../utils/appPresence');
+        reportInstallConvert().catch(() => {});
+      } catch {
+        // ignore
+      }
     },
     [applyVerification, applyReverification],
   );

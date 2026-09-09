@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   View,
   Text,
@@ -17,6 +17,7 @@ import { createLoginStyles } from '../../../styles/login.style';
 import { createSignupEntryStyles } from '../../../styles/signupEntry.style';
 import SignupConsentSheet from './SignupConsentSheet';
 import { isAppleAuthAvailable } from '../../../services/appleAuth';
+import { reportInstallOpen } from '../../../utils/appPresence';
 
 const SignupEntry = ({ navigation }) => {
   const { width } = useWindowDimensions();
@@ -26,6 +27,10 @@ const SignupEntry = ({ navigation }) => {
     () => createSignupEntryStyles(width, normalize),
     [width],
   );
+
+  useEffect(() => {
+    void reportInstallOpen();
+  }, []);
 
   const [consentVisible, setConsentVisible] = useState(false);
   const [pendingProvider, setPendingProvider] = useState(null);
