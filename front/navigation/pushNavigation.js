@@ -15,7 +15,7 @@ export function resolveMainTabForPush(name = '', relatedType = '') {
     return 'message';
   }
   if (type === 'post' || screen === 'BoardDetail') return 'board';
-  if (screen === 'Friends' || type === 'friend_request' || type === 'friendship') {
+  if (screen === 'Friends' || screen === 'FriendRequests' || type === 'friend_request' || type === 'friendship' || type === 'friend_accepted') {
     return 'mypage';
   }
   if (screen === 'Timer' || type === 'timer_poke') return 'timer';
@@ -151,9 +151,12 @@ export function resolvePushNavigation(data = {}, remoteMessage = null) {
 
   if (
     targetScreen === 'FriendRequests' ||
+    targetScreen === 'Friends' ||
     relatedType === 'friendship' ||
     relatedType === 'friend_request' ||
-    type === 'friend_request'
+    relatedType === 'friend_accepted' ||
+    type === 'friend_request' ||
+    type === 'friend_accepted'
   ) {
     return {
       name: 'Friends',
