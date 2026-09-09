@@ -8,6 +8,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { createHeaderStyles, getNormalize } from '../../styles/frame.style';
 import FontAwesome5 from '@expo/vector-icons/FontAwesome5';
+import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
 import { colors } from '../../styles/colors';
 import { useNotification } from '../../context/NotificationContext';
 import CommuteHeaderIndicator from '../../components/CommuteHeaderIndicator';
@@ -38,6 +39,17 @@ const MainHeader = ({ headerTitle: headerTitleProp, navigation: navigationProp }
       </View>
 
       <View style={headerStyles.buttonContainer}>
+        <TouchableOpacity
+          style={headerStyles.iconButton}
+          onPress={() => navigation?.navigate('TimerAniLab')}
+          accessibilityLabel="타이머 애니메이션"
+        >
+          <MaterialCommunityIcons
+            name="walk"
+            size={normalize(22)}
+            color={colors.primaryDark}
+          />
+        </TouchableOpacity>
         <CommuteHeaderIndicator />
         <TouchableOpacity
           style={headerStyles.iconButton}
