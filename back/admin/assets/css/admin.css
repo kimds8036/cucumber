@@ -755,6 +755,15 @@
       font-weight: 700;
     }
     .ops-user-preview-card .ops-upc-muted { color: var(--text-tertiary); }
+    .ops-user-preview-card .ops-upc-seen-today {
+      display: inline-block;
+      padding: 2px 7px;
+      border-radius: 999px;
+      background: var(--blue-bg);
+      border: 0.5px solid #b5d4f4;
+      color: var(--blue-text);
+      font-weight: 700;
+    }
     .ops-user-preview-card .ops-upc-ok { color: var(--green-dark); font-weight: 500; }
     .ops-user-preview-card .ops-upc-warn { color: var(--text-tertiary); }
     .hof-layout {
