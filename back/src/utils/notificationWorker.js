@@ -217,6 +217,19 @@ function buildPushContent({ title, body, relatedType }) {
       body: body || '새 메시지가 도착했어요',
     };
   }
+  // 친구 요청·수락: FCM 노출만 브랜드명, DB/인앱 제목은 시스템 유지
+  if (
+    relatedType === 'friendship' ||
+    relatedType === 'friend_request' ||
+    relatedType === 'friend_accepted'
+  ) {
+    return {
+      title: '유스페이퍼',
+      body:
+        body ||
+        '새 친구 요청이 도착했어요! 친구 목록에서 확인해 보세요',
+    };
+  }
   return {
     title,
     body,
