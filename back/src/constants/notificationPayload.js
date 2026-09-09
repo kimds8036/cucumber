@@ -25,7 +25,8 @@ export function resolveFcmTargetScreen(relatedType) {
       return 'SchoolMailDetail';
     case 'friend_request':
     case 'friendship':
-      return 'FriendRequests';
+    case 'friend_accepted':
+      return 'Friends';
     case 'timer_poke':
       return 'Timer';
     case 'inquiry':

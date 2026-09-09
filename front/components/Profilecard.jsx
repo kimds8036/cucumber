@@ -18,6 +18,7 @@ import { useGuidePreview } from '../context/GuidePreviewContext';
 import EquippedBadge from './EquippedBadge';
 import { getGuideMyPageStats } from '../src/screens/UserGuide/guidePreviewData';
 import { colors } from '../styles/colors';
+import { useFriend } from '../context/FriendContext';
 
 const PROFILE_COUNTS_CACHE_TTL_MS = 10 * 60 * 1000;
 const ENROLLMENT_TOOLTIP_MS = 3000;
@@ -41,6 +42,7 @@ const ProfileCard = ({
   const [countsLoading, setCountsLoading] = useState(!seededCounts);
   const [enrollmentTipVisible, setEnrollmentTipVisible] = useState(false);
   const { isGuidePreview } = useGuidePreview();
+  const { hasUnreadFriendRequests } = useFriend();
   const profileEyeColor = getProfileHexByColorId(userInfo?.colorId);
 
   const gradeClassLabel =
@@ -242,6 +244,9 @@ const ProfileCard = ({
                       {counts.friendCount}
                     </Text>
                   </View>
+                  {hasUnreadFriendRequests ? (
+                    <View style={styles.quickLinkDot} />
+                  ) : null}
                 </>
               )}
             </TouchableOpacity>
