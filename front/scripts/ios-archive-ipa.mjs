@@ -217,6 +217,46 @@ function maybeBumpVersions() {
   return { marketing, build };
 }
 
+function patchHermesMinimumOSVersion(archivePath) {
+  const minOs =
+    String(process.env.IOS_DEPLOYMENT_TARGET || '').trim() || '16.4';
+  const appDir = path.join(
+    archivePath,
+    'Products',
+    'Applications',
+    'YouthPaper.app',
+  );
+  if (!fs.existsSync(appDir)) {
+    console.warn('[ipa] WARN: YouthPaper.app not found in archive — Hermes MinOS skip');
+    return;
+  }
+  const frameworksDir = path.join(appDir, 'Frameworks');
+  if (!fs.existsSync(frameworksDir)) return;
+
+  const names = fs.readdirSync(frameworksDir);
+  for (const name of names) {
+    if (!/^hermes.*\.framework$/i.test(name)) continue;
+    const plist = path.join(frameworksDir, name, 'Info.plist');
+    if (!fs.existsSync(plist)) continue;
+
+    const set = spawnSync(
+      '/usr/libexec/PlistBuddy',
+      ['-c', `Set :MinimumOSVersion ${minOs}`, plist],
+      { encoding: 'utf8' },
+    );
+    if (set.status !== 0) {
+      run('/usr/libexec/PlistBuddy', [
+        '-c',
+        `Add :MinimumOSVersion string ${minOs}`,
+        plist,
+      ]);
+    }
+    console.log(
+      `[ipa] Hermes ${name} MinimumOSVersion → ${minOs}`,
+    );
+  }
+}
+
 function findIpa() {
   if (!fs.existsSync(EXPORT_DIR)) return null;
   const files = fs
@@ -304,6 +344,8 @@ const archiveArgs = [
 if (marketing) archiveArgs.push(`MARKETING_VERSION=${marketing}`);
 if (build) archiveArgs.push(`CURRENT_PROJECT_VERSION=${build}`);
 run('xcodebuild', archiveArgs, { env });
+
+patchHermesMinimumOSVersion(ARCHIVE_PATH);
 
 console.log('[ipa] Export IPA …');
 run(

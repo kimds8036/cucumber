@@ -53,6 +53,15 @@ const FIX = `
         bc.build_settings['HEADER_SEARCH_PATHS'] = paths
       end
     end
+
+    # hermes from-source builds often omit MinimumOSVersion → ASC 90530
+    hermes_min = (podfile_properties['ios.deploymentTarget'] || '16.4').to_s
+    Dir.glob(File.join(installer.sandbox.root, '**', 'hermesvm.framework', 'Info.plist')).each do |plist|
+      system('/usr/libexec/PlistBuddy', '-c', "Set :MinimumOSVersion #{hermes_min}", plist, out: File::NULL, err: File::NULL)
+      unless $?.success?
+        system('/usr/libexec/PlistBuddy', '-c', "Add :MinimumOSVersion string #{hermes_min}", plist, out: File::NULL, err: File::NULL)
+      end
+    end
 `;
 
 /**
