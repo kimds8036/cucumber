@@ -146,7 +146,7 @@ async function loadDashboard() {
       const attText = u.checkedInToday ? '오늘 등교 완료' : '오늘 미등교';
       const verCls = u.isLatestAppVersion ? 'ops-upc-ver-latest' : 'ops-upc-ver';
       const lastAct = u.lastActivityAt ? fmtDate(u.lastActivityAt) : '-';
-      const lastLabel = u.lastSeenAt ? '인앱' : '최근';
+      const lastLabel = '마지막 접속';
       const gradeClass =
         u.grade != null && u.classNumber != null
           ? ` · ${u.grade}학년 ${u.classNumber}반`
@@ -257,6 +257,7 @@ async function loadDashboard() {
       terms: ['등교 · 학기', '개학일 · 오늘 등교 여부'],
       map: ['전국 분포', '학교 위치 · 지역별 인원'],
       reach: ['이용 · 설치', 'DAU/MAU · /get'],
+      funnel: ['설치 후 미가입', '첫실행 · 전환 · 미전환 추이'],
     };
     const t = titles[view];
     if (t) {
@@ -281,10 +282,10 @@ async function loadDashboard() {
         }
       }
       if (view === 'reach') {
-      await loadAnalyticsOverview();
-      await loadInstallLandingStats();
-      await loadAppInstallFunnelStats();
+        await loadAnalyticsOverview();
+        await loadInstallLandingStats();
       }
+      if (view === 'funnel') await loadAppInstallFunnelStats();
       if (view === 'user') await loadOpsUsersPreview(1);
     } catch (error) {
       alert(error?.message || '모니터링 데이터를 불러오지 못했습니다.');
@@ -1272,18 +1273,85 @@ async function loadDashboard() {
 
   async function loadAppInstallFunnelStats() {
     try {
-      const { data } = await api('/analytics/app-install-funnel');
+      const { data } = await api('/analytics/app-install-funnel?days=14');
       const set = (id, v) => {
         const el = document.getElementById(id);
-        if (el) el.textContent = Number(v || 0).toLocaleString();
+        if (el) el.textContent = typeof v === 'string' ? v : Number(v || 0).toLocaleString();
       };
       set('funnel-open-unconverted', data?.openUnconverted);
       set('funnel-first-open-today', data?.firstOpenTodayUnconverted);
       set('funnel-first-open-7d', data?.firstOpen7dUnconverted);
       set('funnel-converted-today', data?.convertedToday);
       set('funnel-converted-7d', data?.converted7d);
+      set('funnel-convert-rate', `${Number(data?.convertRatePct || 0)}%`);
+      set('funnel-older-1d', data?.unconvertedOlder1d);
+      set('funnel-older-3d', data?.unconvertedOlder3d);
+      set('funnel-older-7d', data?.unconvertedOlder7d);
+      const p = data?.platformUnconverted || {};
+      set(
+        'funnel-platform-mix',
+        `${Number(p.ios || 0)} / ${Number(p.android || 0)} / ${Number(p.other || 0) + Number(p.unknown || 0)}`,
+      );
+      renderFunnelLineChart(data?.series || []);
+      renderFunnelStillOpenChart(data?.series || []);
     } catch (error) {
       console.warn('앱 설치 퍼널 조회 실패:', error);
+      const caption = document.getElementById('funnel-line-caption');
+      if (caption) caption.textContent = error?.message || '퍼널 데이터를 불러오지 못했습니다.';
+    }
+  }
+
+  function renderFunnelLineChart(series) {
+    const svg = document.getElementById('funnel-line-chart');
+    const caption = document.getElementById('funnel-line-caption');
+    const tooltip = document.getElementById('funnel-line-tooltip');
+    if (!svg || !caption) return;
+    if (!Array.isArray(series) || series.length === 0) {
+      svg.innerHTML = '';
+      if (tooltip) tooltip.hidden = true;
+      caption.textContent = '아직 설치·실행 기록이 없습니다. 새 앱에서 로그인 전 화면을 열면 쌓입니다.';
+      return;
+    }
+    svg.setAttribute('viewBox', '0 0 640 260');
+    svg.setAttribute('preserveAspectRatio', 'xMidYMid meet');
+    svg.innerHTML = buildLineChartSvg({
+      series,
+      seriesA: (s) => Number(s.firstOpens || 0),
+      seriesB: (s) => Number(s.converted || 0),
+      colorA: '#2563eb',
+      colorB: '#16a34a',
+      formatTick: (s) => String(s.ymd || '').slice(5),
+    });
+    bindLineChartHover(svg, tooltip, series, (point) => `
+      <div><strong>${esc(point.ymd)}</strong></div>
+      <div>첫실행: ${Number(point.firstOpens || 0).toLocaleString()}건</div>
+      <div>전환: ${Number(point.converted || 0).toLocaleString()}건</div>
+      <div>그날 첫실행 중 아직 미전환: ${Number(point.stillOpenFromDay || 0).toLocaleString()}건</div>
+    `);
+    const first = series[0];
+    const last = series[series.length - 1];
+    caption.textContent = `${esc(first?.ymd || '')} ~ ${esc(last?.ymd || '')} · 점 위에 올리면 상세`;
+  }
+
+  function renderFunnelStillOpenChart(series) {
+    const caption = document.getElementById('funnel-still-open-caption');
+    if (!Array.isArray(series) || !series.length) {
+      if (caption) caption.textContent = '데이터 없음';
+      renderDashBarChart('funnel-still-open-chart', [], [], {
+        color: '#c2410c',
+        emptyText: '아직 미전환 잔존 데이터가 없습니다.',
+      });
+      return;
+    }
+    const values = series.map((s) => Number(s.stillOpenFromDay || 0));
+    const labels = series.map((s) => String(s.ymd || '').slice(5));
+    renderDashBarChart('funnel-still-open-chart', values, labels, {
+      color: '#c2410c',
+      emptyText: '미전환 잔존 없음',
+    });
+    if (caption) {
+      const sum = values.reduce((a, b) => a + b, 0);
+      caption.textContent = `기간 합 ${sum.toLocaleString()}건 (그날 첫실행 중 아직 미가입인 건수 합)`;
     }
   }
 
