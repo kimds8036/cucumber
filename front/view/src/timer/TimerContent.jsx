@@ -30,7 +30,7 @@ import {
 import { useToast } from '../../../context/ToastContext';
 import { useFriendSocketEvents } from '../../../hooks/useFriendSocketEvents';
 import { useFriend } from '../../../context/FriendContext';
-import { useFocusEffect, useIsFocused } from '@react-navigation/native';
+import { useNavigation, useFocusEffect, useIsFocused } from '@react-navigation/native';
 import { runAfterTabTransition } from '../../../utils/runAfterTabTransition';
 import { useFriendStudyEvents } from '../../../hooks/useFriendStudyEvents';
 import { useGuidePreview } from '../../../context/GuidePreviewContext';
@@ -53,6 +53,7 @@ import {
 } from './timerCaptureWatermark';
 
 export function TimerContent() {
+  const navigation = useNavigation();
   const { isGuidePreview } = useGuidePreview();
   const { width } = useWindowDimensions();
   const normalize = useMemo(() => getNormalize(width), [width]);
@@ -419,6 +420,7 @@ export function TimerContent() {
                   canGoNextDay={timer.canGoNextDay}
                   setShowCalendar={timer.setShowCalendar}
                   handleSaveAsImage={handleSaveAsImage}
+                  onOpenStudyRoom={() => navigation.navigate('TimerAniLab')}
                   toggleTimer={timer.toggleTimer}
                   pauseTimer={timer.pauseTimer}
                   startForSubject={timer.startForSubject}

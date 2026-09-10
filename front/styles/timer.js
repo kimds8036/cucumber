@@ -56,7 +56,24 @@ export const createTimerStyles = (width, normalize) => {
       flexDirection: 'row',
       alignItems: 'center',
       gap: normalize(4),
-      paddingHorizontal: normalize(12),
+      paddingHorizontal: normalize(8),
+      paddingVertical: normalize(6),
+    },
+    dateBarRight: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: normalize(4),
+    },
+    studyRoomEntryBtn: {
+      paddingHorizontal: normalize(10),
+      paddingVertical: normalize(6),
+      borderRadius: normalize(8),
+      backgroundColor: colors.primaryDark,
+    },
+    studyRoomEntryText: {
+      fontSize: normalize(fontSizes.md),
+      fontFamily: fonts.bold,
+      color: colors.textWhite,
     },
     saveBtnText: {
       fontSize: normalize(fontSizes.xl),

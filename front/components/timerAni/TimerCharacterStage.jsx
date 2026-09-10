@@ -87,7 +87,7 @@ export default function TimerCharacterStage({
     const walking = phase === 'walking_in' || phase === 'walking_out';
     if (!walking) return undefined;
     const id = setInterval(() => {
-      setFrame((f) => (f + 1) % 4);
+      setFrame((f) => f + 1);
     }, WALK_FRAME_MS);
     return () => clearInterval(id);
   }, [phase]);
