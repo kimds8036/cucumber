@@ -1007,7 +1007,7 @@ export default function TimerAniLab({ navigation }) {
   const selfSeat =
     selfPresent && selfSeatIndex != null ? seatByIndex[selfSeatIndex] : null;
 
-  // 본인: 유예 포함 출석 유지. 본인 입장 걷기는 보여 주지 않음(항상 착석)
+  // 본인: 스터디룸 입장 시(타이머 실행 전제) 복도 걸어 들어와 착석. 퇴장 걷기는 없음.
   useEffect(() => {
     if (!roomReady) {
       setSelfMode('hidden');
@@ -1023,11 +1023,10 @@ export default function TimerAniLab({ navigation }) {
     if (!selfEnterStartedRef.current) {
       selfEnterStartedRef.current = true;
       setMe((prev) => ({ ...prev, gender: randomGender() }));
-      // 시드에 본인 반영(이미 타이머 중으로 입장)
       if (selfUid && initialStudyingSeedRef.current) {
         initialStudyingSeedRef.current.add(selfUid);
       }
-      setSelfMode('seated');
+      setSelfMode('enter');
     }
   }, [roomReady, studyingBootstrapDone, selfPresent, selfSeat?.index, selfUid]);
 
