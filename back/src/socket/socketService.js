@@ -2,7 +2,11 @@ import pool from '../config/database.js';
 import { getIO } from '../socketServer.js';
 import { enqueueNotification } from '../utils/notificationWorker.js';
 import { getTimerDayKey } from '../utils/timerDayKey.js';
+import { isoFromMysqlKstNaiveString } from '../utils/timerSessionTimes.js';
 import { upsertStudyDayTotalForUserKey } from '../utils/studyDayTotal.js';
+
+/** 스터디룸 화면 구독자 소켓 룸 */
+export const STUDY_ROOM_SOCKET_ROOM = 'study_room';
 
 // in-memory throttle map: key = `${fromUserId}:${targetUserId}`
 const lastPokeAtMap = new Map();
@@ -191,6 +195,40 @@ export async function broadcastTimerStatus({ userId, status }) {
     currentTimerStatusMap.set(userId, status);
   }
 
+  const updatedAt = new Date().toISOString();
+  let username = null;
+  let startedAt = null;
+  try {
+    const [userRows] = await pool.execute(
+      'SELECT username FROM users WHERE id = ? AND is_deleted = FALSE LIMIT 1',
+      [userId],
+    );
+    username = userRows[0]?.username || null;
+    if (status === 'studying') {
+      const [sessionRows] = await pool.execute(
+        `SELECT DATE_FORMAT(started_at, '%Y-%m-%d %H:%i:%s.%f') AS started_at_fmt
+         FROM study_sessions
+         WHERE user_id = ? AND ended_at IS NULL
+         ORDER BY id DESC
+         LIMIT 1`,
+        [userId],
+      );
+      startedAt = isoFromMysqlKstNaiveString(sessionRows[0]?.started_at_fmt) || updatedAt;
+    }
+  } catch (err) {
+    console.warn('[FriendSocket] study_room 페이로드 보강 실패', err?.message);
+  }
+
+  // 스터디룸 구독자에게 앱 전체 공부 상태 전파 (친구 여부와 무관)
+  io.to(STUDY_ROOM_SOCKET_ROOM).emit('study_room_timer_status', {
+    type: 'study_room_timer_status',
+    userId,
+    username,
+    status,
+    startedAt,
+    updatedAt,
+  });
+
   // 나와 친구 관계인 모든 유저 ID 조회
   const [rows] = await pool.execute(
     `SELECT 
@@ -204,24 +242,23 @@ export async function broadcastTimerStatus({ userId, status }) {
     [userId, userId, userId],
   );
 
-  if (!rows.length) {
-    console.log('[FriendSocket] 친구가 없어 상태 브로드캐스트 대상 없음', {
+  if (rows.length) {
+    const payload = {
+      type: 'friend_timer_status',
+      userId,
+      status,
+      updatedAt,
+    };
+
+    for (const row of rows) {
+      const friendId = row.friend_id;
+      io.to(`user:${friendId}`).emit('friend_timer_status', payload);
+    }
+  } else {
+    console.log('[FriendSocket] 친구가 없어 friend_timer_status 생략', {
       userId,
       status,
     });
-    return;
-  }
-
-  const payload = {
-    type: 'friend_timer_status',
-    userId,
-    status,
-    updatedAt: new Date().toISOString(),
-  };
-
-  for (const row of rows) {
-    const friendId = row.friend_id;
-    io.to(`user:${friendId}`).emit('friend_timer_status', payload);
   }
 
   // 공부가 끝난 시점(idle)에는 나를 구독한 친구들에게 "공부 끝" 알림 전송
@@ -303,6 +340,40 @@ export async function broadcastTimerStatus({ userId, status }) {
       console.log('[FriendSocket] idle 이지만 대기중인 watcher 없음', { userId });
     }
   }
+}
+
+/**
+ * 스터디룸: 앱 전체에서 현재 공부 중인 사용자 목록
+ * - study_sessions 진행 중(ended_at IS NULL) + 오늘 타이머 day_key
+ */
+export async function listStudyingUsersForStudyRoom() {
+  const todayTimerDayKey = getTimerDayKey();
+  const [rows] = await pool.execute(
+    `SELECT
+       ss.user_id AS userId,
+       u.username AS username,
+       DATE_FORMAT(ss.started_at, '%Y-%m-%d %H:%i:%s.%f') AS started_at_fmt
+     FROM study_sessions ss
+     INNER JOIN users u ON u.id = ss.user_id AND u.is_deleted = FALSE
+     WHERE ss.ended_at IS NULL
+       AND ss.day_key = ?
+     ORDER BY ss.user_id ASC, ss.id DESC`,
+    [todayTimerDayKey],
+  );
+
+  // 유저당 최신 오픈 세션만 (중복 방지)
+  const byUser = new Map();
+  for (const r of rows) {
+    const id = r.userId;
+    if (byUser.has(id)) continue;
+    byUser.set(id, {
+      userId: id,
+      username: r.username || '',
+      startedAt: isoFromMysqlKstNaiveString(r.started_at_fmt),
+      isStudying: true,
+    });
+  }
+  return Array.from(byUser.values());
 }
 
 /**
