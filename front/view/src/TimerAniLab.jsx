@@ -57,8 +57,8 @@ import { useSocket } from '../../context/SocketContext';
 import { useMainShellOptional } from '../../context/MainShellContext';
 
 const CHAIR_DESK = require('../../assets/timer_ani/chair_desk.png');
-/** 경로 속도 (px / ms) */
-const WALK_PX_PER_MS = 0.18;
+/** 경로 속도 (px / ms) — 클수록 빠름 */
+const WALK_PX_PER_MS = 0.3;
 
 function SeatLabels({
   seat,
@@ -244,12 +244,12 @@ function OtherStudyActor({
       // 한 축씩만 (복도 이동)
       if (Math.abs(dx) >= 1.5) {
         setDir(dx >= 0 ? 'right' : 'left');
-        const dur = Math.max(180, Math.round(Math.abs(dx) / WALK_PX_PER_MS));
+        const dur = Math.max(120, Math.round(Math.abs(dx) / WALK_PX_PER_MS));
         animateAxis('x', to.x, dur, (ok) => {
           if (!ok || cancelled) return;
           if (Math.abs(dy) >= 1.5) {
             setDir(dy >= 0 ? 'down' : 'up');
-            const durY = Math.max(180, Math.round(Math.abs(dy) / WALK_PX_PER_MS));
+            const durY = Math.max(120, Math.round(Math.abs(dy) / WALK_PX_PER_MS));
             animateAxis('y', to.y, durY, (ok2) => {
               if (ok2 && !cancelled) next();
             });
@@ -260,7 +260,7 @@ function OtherStudyActor({
         return;
       }
       setDir(dy >= 0 ? 'down' : 'up');
-      const dur = Math.max(180, Math.round(Math.abs(dy) / WALK_PX_PER_MS));
+      const dur = Math.max(120, Math.round(Math.abs(dy) / WALK_PX_PER_MS));
       animateAxis('y', to.y, dur, (ok) => {
         if (ok && !cancelled) next();
       });

@@ -34,4 +34,4 @@ export const STUDY_BY_GENDER = {
 export const GIRL_IDLE_FRONT = GIRL_WALK.down[0];
 export const BOY_IDLE_FRONT = BOY_WALK.down[0];
 
-export const WALK_FRAME_MS = 80;
+export const WALK_FRAME_MS = 55;
