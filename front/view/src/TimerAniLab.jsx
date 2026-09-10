@@ -39,8 +39,8 @@ import {
   buildEnterWaypoints,
   buildExitWaypoints,
   randomGender,
+  pickRandomEmptySeat,
   pickStudyRoomMembers,
-  stableSeatIndex,
   truncateStudyUserId,
 } from '../../utils/studyRoomLayout';
 import {
@@ -59,6 +59,8 @@ import { useMainShellOptional } from '../../context/MainShellContext';
 const CHAIR_DESK = require('../../assets/timer_ani/chair_desk.png');
 /** 경로 속도 (px / ms) — 클수록 빠름 */
 const WALK_PX_PER_MS = 0.3;
+/** 타이머 OFF 후 스터디룸에서 자리·방 유지 유예 */
+const LEAVE_GRACE_MS = 5000;
 
 function SeatLabels({
   seat,
@@ -433,8 +435,10 @@ export default function TimerAniLab({ navigation }) {
   const [meReady, setMeReady] = useState(false);
   /** @type {Record<string, { username: string, gender?: string, startedAtMs: number|null, closedTotalMs?: number }>} */
   const [othersMeta, setOthersMeta] = useState({});
-  /** 앱 전체 공부 중 여부 { [userId]: true } */
+  /** 앱 전체 공부 중 여부 { [userId]: true } — 소켓/API 원본 */
   const [studyingUsers, setStudyingUsers] = useState({});
+  /** 스터디룸에 보이는 인원 (OFF 후 LEAVE_GRACE_MS 유예 포함) */
+  const [roomPresence, setRoomPresence] = useState({});
   /** 친구 userId 집합 — 아이디 라벨 색 구분 */
   const [friendIds, setFriendIds] = useState(() => new Set());
   const [runtime, setRuntime] = useState(() => getTimerRuntimeState());
@@ -442,17 +446,23 @@ export default function TimerAniLab({ navigation }) {
   const [otherModes, setOtherModes] = useState({});
   const [otherStartedAt, setOtherStartedAt] = useState({});
   const [selfMode, setSelfMode] = useState(/** @type {'hidden'|'enter'|'seated'} */ ('hidden'));
+  /** key -> seatIndex (신규만 빈자리 랜덤, 기존 유지) */
+  const [assignments, setAssignments] = useState({});
   const redirectedRef = useRef(false);
   const knownOthersRef = useRef(new Set());
   const firstSyncRef = useRef(true);
   const selfEnterStartedRef = useRef(false);
   /** 퇴장 중에도 좌석 유지 (assignments 에서 빠져도 연출용) */
   const lastSeatIndexRef = useRef(/** @type {Record<string, number>} */ ({}));
+  const roomPresenceRef = useRef(roomPresence);
+  const leaveGraceTimersRef = useRef(/** @type {Record<string, ReturnType<typeof setTimeout>>} */ ({}));
   const [, bumpSeatSnap] = useState(0);
   /** 착석 스프라이트 로드 전까지 빈 책상 유지 */
   const [deskCoverReady, setDeskCoverReady] = useState(
     /** @type {Record<string, boolean>} */ ({}),
   );
+
+  roomPresenceRef.current = roomPresence;
 
   const stageReady = stage.w > 80 && stage.h > 80;
   const roomReady = stageReady && meReady;
@@ -688,17 +698,95 @@ export default function TimerAniLab({ navigation }) {
 
   const studyingOtherIds = useMemo(
     () =>
-      Object.entries(studyingUsers || {})
-        .filter(([, v]) => v === true)
-        .map(([id]) => String(id))
-        .filter((id) => String(me.userId) !== id),
-    [studyingUsers, me.userId],
+      Object.keys(roomPresence || {})
+        .filter((id) => id && String(me.userId) !== id),
+    [roomPresence, me.userId],
   );
 
-  const room = useMemo(
-    () => pickStudyRoomMembers(me.key, studyingOtherIds.map((id) => `u:${id}`)),
-    [me.key, studyingOtherIds],
+  const clearLeaveGrace = useCallback((uid) => {
+    const t = leaveGraceTimersRef.current[uid];
+    if (t) {
+      clearTimeout(t);
+      delete leaveGraceTimersRef.current[uid];
+    }
+  }, []);
+
+  const scheduleLeaveGrace = useCallback((uid) => {
+    if (leaveGraceTimersRef.current[uid]) return;
+    leaveGraceTimersRef.current[uid] = setTimeout(() => {
+      delete leaveGraceTimersRef.current[uid];
+      setRoomPresence((prev) => {
+        if (!prev[uid]) return prev;
+        const next = { ...prev };
+        delete next[uid];
+        return next;
+      });
+    }, LEAVE_GRACE_MS);
+  }, []);
+
+  // 공부 ON → 즉시 출석 / OFF → 5초 뒤 퇴실
+  useEffect(() => {
+    const selfUid = me.userId != null ? String(me.userId) : null;
+    const rawOn = new Set(
+      Object.entries(studyingUsers || {})
+        .filter(([, v]) => v === true)
+        .map(([id]) => String(id)),
+    );
+    if (selfRunning && selfUid) rawOn.add(selfUid);
+
+    rawOn.forEach((uid) => clearLeaveGrace(uid));
+
+    setRoomPresence((prev) => {
+      const next = { ...prev };
+      let changed = false;
+      rawOn.forEach((uid) => {
+        if (!next[uid]) {
+          next[uid] = true;
+          changed = true;
+        }
+      });
+      return changed ? next : prev;
+    });
+
+    Object.keys(roomPresenceRef.current).forEach((uid) => {
+      if (!rawOn.has(uid)) scheduleLeaveGrace(uid);
+    });
+  }, [
+    studyingUsers,
+    selfRunning,
+    me.userId,
+    clearLeaveGrace,
+    scheduleLeaveGrace,
+  ]);
+
+  useEffect(
+    () => () => {
+      Object.keys(leaveGraceTimersRef.current).forEach((uid) => {
+        clearTimeout(leaveGraceTimersRef.current[uid]);
+      });
+      leaveGraceTimersRef.current = {};
+    },
+    [],
   );
+
+  const selfPresentForRoom = !!(
+    me.userId != null && roomPresence[String(me.userId)]
+  );
+
+  const room = useMemo(() => {
+    const otherKeys = studyingOtherIds.map((id) => `u:${id}`);
+    if (selfPresentForRoom) {
+      return pickStudyRoomMembers(me.key, otherKeys);
+    }
+    const seed = otherKeys[0] || me.key;
+    const rest = otherKeys[0] ? otherKeys.slice(1) : [];
+    const base = pickStudyRoomMembers(seed, rest);
+    return {
+      ...base,
+      members: base.members.filter((k) => k !== me.key),
+      redirected: false,
+    };
+  }, [me.key, studyingOtherIds, selfPresentForRoom]);
 
   useEffect(() => {
     if (room.redirected && !redirectedRef.current) {
@@ -710,19 +798,47 @@ export default function TimerAniLab({ navigation }) {
     }
   }, [room.redirected]);
 
-  // 좌석 배정 (안정 해시) + 퇴장용 스냅샷
-  const assignments = useMemo(() => {
-    const taken = new Set();
-    const map = {}; // key -> seatIndex
-    const order = [...room.members];
-    order.forEach((key) => {
-      const idx = stableSeatIndex(key, taken);
-      if (idx == null) return;
-      taken.add(idx);
-      map[key] = idx;
+  // 좌석: 신규만 빈자리 랜덤, 기존 자리 유지
+  useEffect(() => {
+    const members = room.members;
+    setAssignments((prev) => {
+      const memberSet = new Set(members);
+      const next = {};
+      const taken = new Set();
+
+      members.forEach((key) => {
+        if (prev[key] != null) {
+          next[key] = prev[key];
+          taken.add(prev[key]);
+        }
+      });
+
+      Object.entries(otherModes).forEach(([key, mode]) => {
+        if (mode !== 'exit' && mode !== 'enter' && mode !== 'seated') return;
+        if (memberSet.has(key)) return;
+        const idx = prev[key] ?? lastSeatIndexRef.current[key];
+        if (idx != null) taken.add(idx);
+      });
+
+      members.forEach((key) => {
+        if (next[key] != null) return;
+        const idx = pickRandomEmptySeat(taken);
+        if (idx == null) return;
+        next[key] = idx;
+        taken.add(idx);
+      });
+
+      const prevKeys = Object.keys(prev);
+      const nextKeys = Object.keys(next);
+      if (
+        prevKeys.length === nextKeys.length &&
+        nextKeys.every((k) => prev[k] === next[k])
+      ) {
+        return prev;
+      }
+      return next;
     });
-    return map;
-  }, [room.members]);
+  }, [room.members, otherModes]);
 
   useEffect(() => {
     let changed = false;
@@ -735,18 +851,20 @@ export default function TimerAniLab({ navigation }) {
     if (changed) bumpSeatSnap((n) => n + 1);
   }, [assignments]);
 
+  const selfUid = me.userId != null ? String(me.userId) : null;
+  const selfPresent = !!(selfUid && roomPresence[selfUid]);
   const selfSeatIndex = assignments[me.key];
   const selfSeat =
-    selfRunning && selfSeatIndex != null ? seatByIndex[selfSeatIndex] : null;
+    selfPresent && selfSeatIndex != null ? seatByIndex[selfSeatIndex] : null;
 
-  // 본인: 룸 준비 + 타이머 ON → 입장 걷기 / OFF → 즉시 숨김
+  // 본인: 유예 포함 출석 유지. 유예 종료 시에만 숨김
   useEffect(() => {
     if (!roomReady) {
       setSelfMode('hidden');
       selfEnterStartedRef.current = false;
       return;
     }
-    if (!selfRunning || !selfSeat) {
+    if (!selfPresent || !selfSeat) {
       setSelfMode('hidden');
       selfEnterStartedRef.current = false;
       return;
@@ -754,11 +872,11 @@ export default function TimerAniLab({ navigation }) {
     if (!selfEnterStartedRef.current) {
       selfEnterStartedRef.current = true;
       setMe((prev) => ({ ...prev, gender: randomGender() }));
-      setSelfMode('enter');
+      setSelfMode(selfRunning ? 'enter' : 'seated');
     }
-  }, [roomReady, selfRunning, selfSeat?.index]);
+  }, [roomReady, selfPresent, selfSeat?.index, selfRunning]);
 
-  // 타인 모드 동기 — 레이아웃·프로필 준비 후에만
+  // 타인 모드 동기 — presence(유예 포함)
   useEffect(() => {
     if (!roomReady) return;
 
@@ -770,7 +888,7 @@ export default function TimerAniLab({ navigation }) {
 
       roomOtherKeys.forEach((key) => {
         const uid = key.replace(/^u:/, '');
-        if (studyingUsers?.[uid] !== true) return;
+        if (roomPresence?.[uid] !== true) return;
         if (initial) {
           next[key] = 'seated';
           knownOthersRef.current.add(key);
@@ -784,8 +902,7 @@ export default function TimerAniLab({ navigation }) {
         if (key === me.key) return;
         const uid = key.replace(/^u:/, '');
         const still =
-          roomOtherKeys.includes(key) && studyingUsers?.[uid] === true;
-        // 이미 exit/hidden 이면 유지 — assignments 탈락 후에도 퇴장 연출 계속
+          roomOtherKeys.includes(key) && roomPresence?.[uid] === true;
         if (!still && next[key] !== 'hidden' && next[key] !== 'exit') {
           next[key] = 'exit';
         }
@@ -799,14 +916,14 @@ export default function TimerAniLab({ navigation }) {
       const next = { ...prev };
       roomOtherKeys.forEach((key) => {
         const uid = key.replace(/^u:/, '');
-        if (studyingUsers?.[uid] !== true) return;
+        if (roomPresence?.[uid] !== true) return;
         if (next[key]) return;
         const fromMeta = othersMeta[uid]?.startedAtMs;
         next[key] = fromMeta != null ? fromMeta : Date.now();
       });
       return next;
     });
-  }, [roomReady, room.members, studyingUsers, me.key, othersMeta]);
+  }, [roomReady, room.members, roomPresence, me.key, othersMeta]);
 
   const onSelfEnterDone = useCallback(() => setSelfMode('seated'), []);
 

@@ -14,18 +14,19 @@ export function randomGender() {
   return Math.random() < 0.5 ? 'girl' : 'boy';
 }
 
+/** 빈 좌석(0..capacity-1) 중 하나를 균등 랜덤 선택 */
+export function pickRandomEmptySeat(taken, capacity = STUDY_ROOM_CAPACITY) {
+  const empty = [];
+  for (let i = 0; i < capacity; i += 1) {
+    if (!taken.has(i)) empty.push(i);
+  }
+  if (empty.length === 0) return null;
+  return empty[Math.floor(Math.random() * empty.length)];
+}
+
+/** @deprecated 해시 고정 좌석 — pickRandomEmptySeat 사용 */
 export function stableSeatIndex(userKey, taken) {
-  const str = String(userKey ?? '');
-  let h = 0;
-  for (let i = 0; i < str.length; i += 1) {
-    h = (h * 33 + str.charCodeAt(i)) >>> 0;
-  }
-  const start = h % STUDY_ROOM_CAPACITY;
-  for (let i = 0; i < STUDY_ROOM_CAPACITY; i += 1) {
-    const idx = (start + i) % STUDY_ROOM_CAPACITY;
-    if (!taken.has(idx)) return idx;
-  }
-  return null;
+  return pickRandomEmptySeat(taken);
 }
 
 /**
