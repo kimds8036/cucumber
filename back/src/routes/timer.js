@@ -3,7 +3,8 @@ import { body, param } from 'express-validator';
 import pool from '../config/database.js';
 import { authenticate } from '../middleware/auth.js';
 import { validate } from '../middleware/validate.js';
-import { closeIncompleteStudySessions, listStudyingUsersForStudyRoom } from '../socket/socketService.js';
+import { closeIncompleteStudySessions } from '../socket/socketService.js';
+import { getStudyRoomSnapshotForUser } from '../services/studyRoom.service.js';
 import {
   expandLegacyInvertedIntervalSessions,
   flattenSessionsForTimerIntervals,
@@ -868,10 +869,10 @@ router.patch('/tasks/:taskId', authenticate, validate(updateTaskStatusValidators
   }
 });
 
-/** 스터디룸: 앱 전체 현재 공부 중 사용자 */
+/** 스터디룸: 내 방 멤버만 (서버 배정, 최대 16) */
 router.get('/study-room/studying', authenticate, async (req, res) => {
   try {
-    const data = await listStudyingUsersForStudyRoom();
+    const data = await getStudyRoomSnapshotForUser(req.user.userId);
     return res.json({ success: true, data });
   } catch (error) {
     console.error('스터디룸 공부 중 목록 조회 오류:', error);

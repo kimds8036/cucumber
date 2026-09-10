@@ -64,6 +64,11 @@
               <span class="ops-hub-title">타이머</span>
               <span class="ops-hub-desc">공부 시간 · 세션(날짜·사용자)</span>
             </button>
+            <button type="button" class="ops-hub-card" data-ops-view="study-rooms">
+              <span class="ops-hub-kicker">교실</span>
+              <span class="ops-hub-title">스터디룸</span>
+              <span class="ops-hub-desc">활성 방 · 방별 인원 · 멤버</span>
+            </button>
             <button type="button" class="ops-hub-card" data-ops-view="activity">
               <span class="ops-hub-kicker">피드</span>
               <span class="ops-hub-title">앱 활동</span>
@@ -299,6 +304,48 @@
         <div class="section-title" style="margin-top:16px">타이머 세션</div>
         <p class="section-hint">같은 날·같은 사용자를 접어서 봅니다. 최근 세션 50건입니다.</p>
         <div id="ops-timer-sessions-list"></div>
+        </div>
+
+        <div class="ops-view" id="ops-view-study-rooms" hidden>
+        <button type="button" class="btn btn-sm ops-back-btn" data-ops-back>← 모니터링 목록</button>
+        <div class="section-title" style="margin-top:8px">스터디룸</div>
+        <p class="section-hint" id="study-rooms-ops-hint">Redis(또는 서버 메모리) 방 배정 스냅샷 · 새로고침 시 갱신 · 완전 실시간 아님</p>
+        <div class="toolbar" style="margin-bottom:12px">
+          <button type="button" class="btn btn-sm" id="study-rooms-refresh">새로고침</button>
+        </div>
+        <div class="analytics-kpi-grid dash-kpi-compact">
+          <div class="stat-card stat-ok">
+            <div class="stat-num" id="study-rooms-count">0</div>
+            <div class="stat-label">활성 방</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-num" id="study-rooms-members">0</div>
+            <div class="stat-label">방 안 인원</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-num" id="study-rooms-open">0</div>
+            <div class="stat-label">여유 있는 방</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-num" id="study-rooms-capacity">16</div>
+            <div class="stat-label">방당 정원</div>
+          </div>
+        </div>
+        <div class="table-wrap" style="margin-top:12px">
+          <table>
+            <thead>
+              <tr>
+                <th style="width:120px">방 ID</th>
+                <th style="width:70px">인원</th>
+                <th style="width:80px">상태</th>
+                <th>멤버 (@username)</th>
+              </tr>
+            </thead>
+            <tbody id="study-rooms-tbody">
+              <tr><td colspan="4" class="empty-row">불러오는 중…</td></tr>
+            </tbody>
+          </table>
+        </div>
         </div>
 
         <div class="ops-view" id="ops-view-activity" hidden>

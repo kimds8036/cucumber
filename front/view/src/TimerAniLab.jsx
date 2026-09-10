@@ -45,7 +45,6 @@ import {
   buildExitWaypoints,
   randomGender,
   pickRandomEmptySeat,
-  pickStudyRoomMembers,
   truncateStudyUserId,
 } from '../../utils/studyRoomLayout';
 import {
@@ -551,6 +550,8 @@ export default function TimerAniLab({ navigation }) {
   const { socket } = useSocket();
   const [stage, setStage] = useState({ w: 0, h: 0 });
   const [bgSource, setBgSource] = useState(() => getClassroomBgForDate());
+  /** 서버 배정 방 ID */
+  const [serverRoomId, setServerRoomId] = useState(/** @type {string|null} */ (null));
   const [me, setMe] = useState({
     key: 'me',
     userId: null,
@@ -562,7 +563,7 @@ export default function TimerAniLab({ navigation }) {
   const [studyingBootstrapDone, setStudyingBootstrapDone] = useState(false);
   /** @type {Record<string, { username: string, gender?: string, startedAtMs: number|null, closedTotalMs?: number }>} */
   const [othersMeta, setOthersMeta] = useState({});
-  /** 앱 전체 공부 중 여부 { [userId]: true } — 소켓/API 원본 */
+  /** 내 방 공부 중 여부 { [userId]: true } — 서버 방 멤버 + 소켓 */
   const [studyingUsers, setStudyingUsers] = useState({});
   /** 스터디룸에 보이는 인원 (OFF 후 LEAVE_GRACE_MS 유예 포함) */
   const [roomPresence, setRoomPresence] = useState({});
@@ -677,55 +678,73 @@ export default function TimerAniLab({ navigation }) {
       }
     };
 
+    const applyRoomMembers = (members, roomId, relocated) => {
+      const list = Array.isArray(members) ? members : [];
+      const nextStudying = {};
+      const metaPatch = {};
+      list.forEach((item) => {
+        if (item.userId == null) return;
+        const uid = String(item.userId);
+        nextStudying[uid] = true;
+        const startedMs = item.startedAt ? Date.parse(item.startedAt) : NaN;
+        metaPatch[uid] = {
+          username: String(item.username || '학생').replace(/^@/, ''),
+          gender: undefined,
+          startedAtMs: Number.isFinite(startedMs) ? startedMs : null,
+          closedTotalMs: Number(item.closedTotalMs) || 0,
+        };
+      });
+      if (roomId != null) setServerRoomId(String(roomId));
+      setStudyingUsers(nextStudying);
+      if (!initialStudyingSeedRef.current) {
+        initialStudyingSeedRef.current = new Set(Object.keys(nextStudying));
+      }
+      setOthersMeta((prev) => {
+        const next = { ...prev };
+        Object.entries(metaPatch).forEach(([uid, patch]) => {
+          const keepGender = prev[uid]?.gender;
+          next[uid] = {
+            ...prev[uid],
+            ...patch,
+            gender: keepGender || randomGender(),
+          };
+        });
+        return next;
+      });
+      setOtherStartedAt((prev) => {
+        const next = { ...prev };
+        Object.entries(metaPatch).forEach(([uid, meta]) => {
+          const key = `u:${uid}`;
+          if (meta.startedAtMs != null && !next[key]) {
+            next[key] = meta.startedAtMs;
+          }
+        });
+        return next;
+      });
+      if (relocated && !redirectedRef.current) {
+        redirectedRef.current = true;
+        Alert.alert(
+          '스터디룸',
+          '이전 방이 가득 차 다른 스터디룸으로 안내합니다.',
+        );
+      }
+    };
+
     const loadStudying = async () => {
       try {
         const res = await api.get('/api/timer/study-room/studying');
-        const list = res.data?.data ?? [];
+        const data = res.data?.data;
         if (!alive) return;
-        const nextStudying = {};
-        const metaPatch = {};
-        list.forEach((item) => {
-          if (item.userId == null) return;
-          const uid = String(item.userId);
-          nextStudying[uid] = true;
-          const startedMs = item.startedAt
-            ? Date.parse(item.startedAt)
-            : NaN;
-          metaPatch[uid] = {
-            username: String(item.username || '학생').replace(/^@/, ''),
-            // 이미 화면에 있으면 성별 유지, 새로 보이면 랜덤
-            gender: undefined,
-            startedAtMs: Number.isFinite(startedMs) ? startedMs : null,
-            closedTotalMs: Number(item.closedTotalMs) || 0,
-          };
-        });
-        setStudyingUsers(nextStudying);
-        // API 응답 스냅샷 고정 — 이후 소켓으로 새로 켠 사람만 입장 걷기
-        if (!initialStudyingSeedRef.current) {
-          initialStudyingSeedRef.current = new Set(Object.keys(nextStudying));
+        // 신규: { roomId, members } / 구형 배열 호환
+        if (Array.isArray(data)) {
+          applyRoomMembers(data, null, false);
+        } else {
+          applyRoomMembers(
+            data?.members ?? [],
+            data?.roomId ?? null,
+            !!data?.relocated,
+          );
         }
-        setOthersMeta((prev) => {
-          const next = { ...prev };
-          Object.entries(metaPatch).forEach(([uid, patch]) => {
-            const keepGender = prev[uid]?.gender;
-            next[uid] = {
-              ...prev[uid],
-              ...patch,
-              gender: keepGender || randomGender(),
-            };
-          });
-          return next;
-        });
-        setOtherStartedAt((prev) => {
-          const next = { ...prev };
-          Object.entries(metaPatch).forEach(([uid, meta]) => {
-            const key = `u:${uid}`;
-            if (meta.startedAtMs != null && !next[key]) {
-              next[key] = meta.startedAtMs;
-            }
-          });
-          return next;
-        });
       } catch (error) {
         console.error('[StudyRoom] 공부 중 목록 조회 실패:', error);
         if (!initialStudyingSeedRef.current) {
@@ -743,14 +762,71 @@ export default function TimerAniLab({ navigation }) {
     };
   }, [refreshStudyingFriends]);
 
-  // 스터디룸 소켓 구독 — 앱 전체 studying 실시간
+  // 스터디룸 소켓 — 서버가 배정한 방만 수신
   useEffect(() => {
     if (!socket) return undefined;
     socket.emit('study_room:join');
+    const roomIdRef = { current: serverRoomId };
+
+    const onJoined = (payload) => {
+      if (!payload || payload.error) return;
+      if (payload.roomId != null) {
+        roomIdRef.current = String(payload.roomId);
+        setServerRoomId(String(payload.roomId));
+      }
+      const list = payload.members;
+      if (!Array.isArray(list)) return;
+      setStudyingUsers((prev) => {
+        const next = { ...prev };
+        list.forEach((item) => {
+          if (item?.userId != null) next[String(item.userId)] = true;
+        });
+        return next;
+      });
+      list.forEach((item) => {
+        if (item?.userId == null) return;
+        const uid = String(item.userId);
+        const startedMs = item.startedAt ? Date.parse(item.startedAt) : NaN;
+        setOthersMeta((prev) => ({
+          ...prev,
+          [uid]: {
+            username: String(
+              item.username || prev[uid]?.username || '학생',
+            ).replace(/^@/, ''),
+            gender: prev[uid]?.gender || randomGender(),
+            startedAtMs: Number.isFinite(startedMs)
+              ? startedMs
+              : prev[uid]?.startedAtMs ?? null,
+            closedTotalMs:
+              item.closedTotalMs != null
+                ? Number(item.closedTotalMs) || 0
+                : prev[uid]?.closedTotalMs || 0,
+          },
+        }));
+      });
+      if (payload.relocated && !redirectedRef.current) {
+        redirectedRef.current = true;
+        Alert.alert(
+          '스터디룸',
+          '이전 방이 가득 차 다른 스터디룸으로 안내합니다.',
+        );
+      }
+    };
 
     const onStatus = (payload) => {
       const uid = payload?.userId != null ? String(payload.userId) : null;
       if (!uid) return;
+      if (
+        payload.roomId != null &&
+        roomIdRef.current != null &&
+        String(payload.roomId) !== String(roomIdRef.current)
+      ) {
+        return;
+      }
+      if (payload.roomId != null && roomIdRef.current == null) {
+        roomIdRef.current = String(payload.roomId);
+        setServerRoomId(String(payload.roomId));
+      }
       const status = payload.status;
       if (status === 'studying') {
         setStudyingUsers((prev) => ({ ...prev, [uid]: true }));
@@ -763,7 +839,6 @@ export default function TimerAniLab({ navigation }) {
             username: String(
               payload.username || prev[uid]?.username || '학생',
             ).replace(/^@/, ''),
-            // 이미 성별 있으면 유지 (퇴장 중 재랜덤 금지). 신규 등장만 랜덤.
             gender: prev[uid]?.gender || randomGender(),
             startedAtMs: Number.isFinite(startedMs) ? startedMs : Date.now(),
             closedTotalMs:
@@ -787,15 +862,18 @@ export default function TimerAniLab({ navigation }) {
           delete next[uid];
           return next;
         });
-        // 성별은 퇴장 연출 끝날 때까지 유지 (onExitDone 에서 비움)
       }
     };
 
+    socket.on('study_room:joined', onJoined);
     socket.on('study_room_timer_status', onStatus);
     return () => {
       socket.emit('study_room:leave');
+      socket.off('study_room:joined', onJoined);
       socket.off('study_room_timer_status', onStatus);
     };
+    // serverRoomId 초기값만 사용 — 변경 시 재구독하지 않음
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [socket]);
 
   // 타이머 런타임 + 오늘 누적(타이머 화면과 동일 기준)
@@ -923,30 +1001,28 @@ export default function TimerAniLab({ navigation }) {
     me.userId != null && roomPresence[String(me.userId)]
   );
 
+  // 서버가 배정한 방 멤버만 (클라이언트 전체 분할 없음)
   const room = useMemo(() => {
-    const otherKeys = studyingOtherIds.map((id) => `u:${id}`);
-    if (selfPresentForRoom) {
-      return pickStudyRoomMembers(me.key, otherKeys);
+    const members = [];
+    const seen = new Set();
+    Object.keys(roomPresence || {}).forEach((uid) => {
+      if (!roomPresence[uid]) return;
+      const key = `u:${uid}`;
+      if (seen.has(key)) return;
+      seen.add(key);
+      members.push(key);
+    });
+    if (selfPresentForRoom && me.key && !seen.has(me.key)) {
+      members.push(me.key);
     }
-    const seed = otherKeys[0] || me.key;
-    const rest = otherKeys[0] ? otherKeys.slice(1) : [];
-    const base = pickStudyRoomMembers(seed, rest);
+    members.sort((a, b) => a.localeCompare(b, 'en'));
     return {
-      ...base,
-      members: base.members.filter((k) => k !== me.key),
+      roomIndex: 0,
+      members,
       redirected: false,
+      roomId: serverRoomId,
     };
-  }, [me.key, studyingOtherIds, selfPresentForRoom]);
-
-  useEffect(() => {
-    if (room.redirected && !redirectedRef.current) {
-      redirectedRef.current = true;
-      Alert.alert(
-        '스터디룸',
-        '현재 방이 가득 차 다른 스터디룸으로 안내합니다.',
-      );
-    }
-  }, [room.redirected]);
+  }, [roomPresence, selfPresentForRoom, me.key, serverRoomId]);
 
   // 좌석: 신규만 빈자리 랜덤, 기존 자리 유지
   useEffect(() => {
