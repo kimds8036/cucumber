@@ -38,7 +38,7 @@ import {
   buildSeatLayout,
   buildEnterWaypoints,
   buildExitWaypoints,
-  hashToGender,
+  randomGender,
   pickStudyRoomMembers,
   stableSeatIndex,
   truncateStudyUserId,
@@ -50,6 +50,7 @@ import {
 import { formatHMS } from './timer/timerHelpers';
 import { api } from '../../utils/api';
 import { useFriend } from '../../context/FriendContext';
+import { useSocket } from '../../context/SocketContext';
 import { useMainShellOptional } from '../../context/MainShellContext';
 
 const CHAIR_DESK = require('../../assets/timer_ani/chair_desk.png');
@@ -62,6 +63,7 @@ function SeatLabels({
   elapsedMs,
   showTimer,
   z,
+  isFriend = false,
 }) {
   const labelW = Math.max(seat.studyW * 1.35, 88);
   const labelLeft = seat.seatX + (seat.studyW - labelW) / 2;
@@ -96,7 +98,10 @@ function SeatLabels({
           zIndex: z + 6,
         }}
       >
-        <Text style={labelStyles.idText} numberOfLines={1}>
+        <Text
+          style={[labelStyles.idText, isFriend && labelStyles.idTextFriend]}
+          numberOfLines={1}
+        >
           {truncateStudyUserId(displayId)}
         </Text>
       </View>
@@ -126,6 +131,9 @@ const labelStyles = StyleSheet.create({
     textShadowOffset: { width: 0, height: 1 },
     textShadowRadius: 3,
   },
+  idTextFriend: {
+    color: colors.primary,
+  },
 });
 
 /** 본인: 스터디룸 입장·타이머 ON 시 복도 따라 입장 (퇴장은 즉시 숨김) */
@@ -146,6 +154,7 @@ function OtherStudyActor({
   onEnterDone,
   onExitDone,
   elapsedMs,
+  isFriend = false,
 }) {
   const walkMap = WALK_BY_GENDER[gender] || WALK_BY_GENDER.girl;
   const studySrc = STUDY_BY_GENDER[gender] || STUDY_BY_GENDER.girl;
@@ -351,6 +360,7 @@ function OtherStudyActor({
           elapsedMs={elapsedMs}
           showTimer
           z={seat.z}
+          isFriend={isFriend}
         />
       ) : null}
     </>
@@ -368,7 +378,8 @@ export default function TimerAniLab({ navigation }) {
     else shell?.navigation?.goBack?.();
   };
 
-  const { studyingFriends, refreshStudyingFriends } = useFriend();
+  const { refreshStudyingFriends } = useFriend();
+  const { socket } = useSocket();
   const [stage, setStage] = useState({ w: 0, h: 0 });
   const [bgSource, setBgSource] = useState(() => getClassroomBgForDate());
   const [me, setMe] = useState({
@@ -378,7 +389,12 @@ export default function TimerAniLab({ navigation }) {
     gender: 'girl',
   });
   const [meReady, setMeReady] = useState(false);
-  const [friendsMeta, setFriendsMeta] = useState({});
+  /** @type {Record<string, { username: string, gender: string, startedAtMs: number|null }>} */
+  const [othersMeta, setOthersMeta] = useState({});
+  /** 앱 전체 공부 중 여부 { [userId]: true } */
+  const [studyingUsers, setStudyingUsers] = useState({});
+  /** 친구 userId 집합 — 아이디 라벨 색 구분 */
+  const [friendIds, setFriendIds] = useState(() => new Set());
   const [runtime, setRuntime] = useState(() => getTimerRuntimeState());
   const [nowMs, setNowMs] = useState(Date.now());
   const [otherModes, setOtherModes] = useState({});
@@ -432,7 +448,7 @@ export default function TimerAniLab({ navigation }) {
           key: uid != null ? `u:${uid}` : 'me',
           userId: uid,
           username,
-          gender: hashToGender(uid ?? username),
+          gender: randomGender(),
         });
       } catch {
         // keep defaults
@@ -445,32 +461,146 @@ export default function TimerAniLab({ navigation }) {
     };
   }, []);
 
-  // 친구 목록 (이름)
+  // 친구 목록(구분 표시) + 앱 전체 공부 중 목록
   useEffect(() => {
     let alive = true;
     refreshStudyingFriends?.();
-    (async () => {
+
+    const loadFriends = async () => {
       try {
         const res = await api.get('/api/friends/list');
         const list = res.data?.data ?? [];
         if (!alive) return;
-        const meta = {};
+        const ids = new Set();
+        const metaPatch = {};
         list.forEach((f) => {
           if (f.userId == null) return;
-          meta[String(f.userId)] = {
-            username: f.username || f.name || '친구',
-            gender: hashToGender(f.userId),
+          const uid = String(f.userId);
+          ids.add(uid);
+          metaPatch[uid] = {
+            username: String(f.username || f.name || '친구').replace(/^@/, ''),
+            startedAtMs: null,
           };
         });
-        setFriendsMeta(meta);
+        setFriendIds(ids);
+        setOthersMeta((prev) => ({ ...metaPatch, ...prev }));
       } catch {
         // noop
       }
-    })();
+    };
+
+    const loadStudying = async () => {
+      try {
+        const res = await api.get('/api/timer/study-room/studying');
+        const list = res.data?.data ?? [];
+        if (!alive) return;
+        const nextStudying = {};
+        const metaPatch = {};
+        list.forEach((item) => {
+          if (item.userId == null) return;
+          const uid = String(item.userId);
+          nextStudying[uid] = true;
+          const startedMs = item.startedAt
+            ? Date.parse(item.startedAt)
+            : NaN;
+          metaPatch[uid] = {
+            username: String(item.username || '학생').replace(/^@/, ''),
+            // 이미 화면에 있으면 성별 유지, 새로 보이면 랜덤
+            gender: undefined,
+            startedAtMs: Number.isFinite(startedMs) ? startedMs : null,
+          };
+        });
+        setStudyingUsers(nextStudying);
+        setOthersMeta((prev) => {
+          const next = { ...prev };
+          Object.entries(metaPatch).forEach(([uid, patch]) => {
+            const keepGender = prev[uid]?.gender;
+            next[uid] = {
+              ...prev[uid],
+              ...patch,
+              gender: keepGender || randomGender(),
+            };
+          });
+          return next;
+        });
+        setOtherStartedAt((prev) => {
+          const next = { ...prev };
+          Object.entries(metaPatch).forEach(([uid, meta]) => {
+            const key = `u:${uid}`;
+            if (meta.startedAtMs != null && !next[key]) {
+              next[key] = meta.startedAtMs;
+            }
+          });
+          return next;
+        });
+      } catch (error) {
+        console.error('[StudyRoom] 공부 중 목록 조회 실패:', error);
+      }
+    };
+
+    loadFriends();
+    loadStudying();
     return () => {
       alive = false;
     };
   }, [refreshStudyingFriends]);
+
+  // 스터디룸 소켓 구독 — 앱 전체 studying 실시간
+  useEffect(() => {
+    if (!socket) return undefined;
+    socket.emit('study_room:join');
+
+    const onStatus = (payload) => {
+      const uid = payload?.userId != null ? String(payload.userId) : null;
+      if (!uid) return;
+      const status = payload.status;
+      if (status === 'studying') {
+        setStudyingUsers((prev) => ({ ...prev, [uid]: true }));
+        const startedMs = payload.startedAt
+          ? Date.parse(payload.startedAt)
+          : Date.now();
+        setOthersMeta((prev) => ({
+          ...prev,
+          [uid]: {
+            username: String(
+              payload.username || prev[uid]?.username || '학생',
+            ).replace(/^@/, ''),
+            // 새로 공부 시작 → 새 랜덤 성별 (퇴실 후 재입장 포함)
+            gender: prev[uid]?.gender || randomGender(),
+            startedAtMs: Number.isFinite(startedMs) ? startedMs : Date.now(),
+          },
+        }));
+        setOtherStartedAt((prev) => {
+          const key = `u:${uid}`;
+          if (prev[key]) return prev;
+          return {
+            ...prev,
+            [key]: Number.isFinite(startedMs) ? startedMs : Date.now(),
+          };
+        });
+      } else if (status === 'idle') {
+        setStudyingUsers((prev) => {
+          if (!prev[uid]) return prev;
+          const next = { ...prev };
+          delete next[uid];
+          return next;
+        });
+        // 다음 등장 때 다시 랜덤되도록 성별 비움
+        setOthersMeta((prev) => {
+          if (!prev[uid]) return prev;
+          const next = { ...prev };
+          next[uid] = { ...next[uid], gender: undefined };
+          return next;
+        });
+      }
+    };
+
+    socket.on('study_room_timer_status', onStatus);
+    return () => {
+      socket.emit('study_room:leave');
+      socket.off('study_room_timer_status', onStatus);
+    };
+  }, [socket]);
 
   // 타이머 런타임
   useEffect(() => subscribeTimerRuntime((s) => setRuntime({ ...s })), []);
@@ -487,11 +617,11 @@ export default function TimerAniLab({ navigation }) {
 
   const studyingOtherIds = useMemo(
     () =>
-      Object.entries(studyingFriends || {})
+      Object.entries(studyingUsers || {})
         .filter(([, v]) => v === true)
         .map(([id]) => String(id))
         .filter((id) => String(me.userId) !== id),
-    [studyingFriends, me.userId],
+    [studyingUsers, me.userId],
   );
 
   const room = useMemo(
@@ -541,6 +671,7 @@ export default function TimerAniLab({ navigation }) {
     }
     if (!selfEnterStartedRef.current) {
       selfEnterStartedRef.current = true;
+      setMe((prev) => ({ ...prev, gender: randomGender() }));
       setSelfMode('enter');
     }
   }, [roomReady, selfRunning, selfSeat?.index]);
@@ -557,9 +688,8 @@ export default function TimerAniLab({ navigation }) {
 
       roomOtherKeys.forEach((key) => {
         const uid = key.replace(/^u:/, '');
-        if (studyingFriends?.[uid] !== true) return;
+        if (studyingUsers?.[uid] !== true) return;
         if (initial) {
-          // 입장 직 이미 공부 중 → 즉시 착석 (점프 방지용으로 레이아웃 준비 후)
           next[key] = 'seated';
           knownOthersRef.current.add(key);
         } else if (!knownOthersRef.current.has(key)) {
@@ -572,7 +702,7 @@ export default function TimerAniLab({ navigation }) {
         if (key === me.key) return;
         const uid = key.replace(/^u:/, '');
         const still =
-          roomOtherKeys.includes(key) && studyingFriends?.[uid] === true;
+          roomOtherKeys.includes(key) && studyingUsers?.[uid] === true;
         if (!still && next[key] !== 'hidden' && next[key] !== 'exit') {
           next[key] = 'exit';
         }
@@ -586,14 +716,14 @@ export default function TimerAniLab({ navigation }) {
       const next = { ...prev };
       roomOtherKeys.forEach((key) => {
         const uid = key.replace(/^u:/, '');
-        if (studyingFriends?.[uid] === true && !next[key]) {
-          next[key] = Date.now();
-        }
+        if (studyingUsers?.[uid] !== true) return;
+        if (next[key]) return;
+        const fromMeta = othersMeta[uid]?.startedAtMs;
+        next[key] = fromMeta != null ? fromMeta : Date.now();
       });
       return next;
     });
-  }, [roomReady, room.members, studyingFriends, me.key]);
-
+  }, [roomReady, room.members, studyingUsers, me.key, othersMeta]);
   const onSelfEnterDone = useCallback(() => setSelfMode('seated'), []);
 
   const occupiedSeats = useMemo(() => {
@@ -699,28 +829,36 @@ export default function TimerAniLab({ navigation }) {
               const seat = seatByIndex[seatIndex];
               if (!seat) return null;
               const uid = key.replace(/^u:/, '');
-              const meta = friendsMeta[uid] || {
-                username: '친구',
-                gender: hashToGender(uid),
+              const meta = othersMeta[uid] || {
+                username: '학생',
               };
               const mode = otherModes[key] || 'hidden';
               if (mode === 'hidden') return null;
               const started = otherStartedAt[key] || nowMs;
+              const isFriend = friendIds.has(uid);
               return (
                 <OtherStudyActor
                   key={key}
                   seat={seat}
                   layout={layout}
-                  gender={meta.gender}
+                  gender={meta.gender || 'girl'}
                   displayId={meta.username}
                   mode={mode}
                   elapsedMs={Math.max(0, nowMs - started)}
+                  isFriend={isFriend}
                   onEnterDone={() =>
                     setOtherModes((prev) => ({ ...prev, [key]: 'seated' }))
                   }
                   onExitDone={() => {
                     knownOthersRef.current.delete(key);
                     setOtherModes((prev) => ({ ...prev, [key]: 'hidden' }));
+                    setOthersMeta((prev) => {
+                      if (!prev[uid]) return prev;
+                      return {
+                        ...prev,
+                        [uid]: { ...prev[uid], gender: undefined },
+                      };
+                    });
                   }}
                 />
               );

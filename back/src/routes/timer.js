@@ -3,7 +3,7 @@ import { body, param } from 'express-validator';
 import pool from '../config/database.js';
 import { authenticate } from '../middleware/auth.js';
 import { validate } from '../middleware/validate.js';
-import { closeIncompleteStudySessions } from '../socket/socketService.js';
+import { closeIncompleteStudySessions, listStudyingUsersForStudyRoom } from '../socket/socketService.js';
 import {
   expandLegacyInvertedIntervalSessions,
   flattenSessionsForTimerIntervals,
@@ -864,6 +864,20 @@ router.patch('/tasks/:taskId', authenticate, validate(updateTaskStatusValidators
     return res.status(500).json({
       success: false,
       message: '타이머 할일 상태 수정 중 오류가 발생했습니다.',
+    });
+  }
+});
+
+/** 스터디룸: 앱 전체 현재 공부 중 사용자 */
+router.get('/study-room/studying', authenticate, async (req, res) => {
+  try {
+    const data = await listStudyingUsersForStudyRoom();
+    return res.json({ success: true, data });
+  } catch (error) {
+    console.error('스터디룸 공부 중 목록 조회 오류:', error);
+    return res.status(500).json({
+      success: false,
+      message: '스터디룸 공부 중 목록 조회 중 오류가 발생했습니다.',
     });
   }
 });

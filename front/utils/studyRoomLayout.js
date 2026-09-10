@@ -9,13 +9,9 @@ export function truncateStudyUserId(raw) {
   return `${s.slice(0, 9)}..`;
 }
 
-export function hashToGender(seed) {
-  const str = String(seed ?? '');
-  let h = 0;
-  for (let i = 0; i < str.length; i += 1) {
-    h = (h * 31 + str.charCodeAt(i)) >>> 0;
-  }
-  return h % 2 === 0 ? 'girl' : 'boy';
+/** 스터디룸 캐릭터 성별 — 등장할 때마다 랜덤 (DB 성별 없음) */
+export function randomGender() {
+  return Math.random() < 0.5 ? 'girl' : 'boy';
 }
 
 export function stableSeatIndex(userKey, taken) {
