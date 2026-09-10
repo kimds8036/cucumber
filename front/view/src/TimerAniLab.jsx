@@ -45,10 +45,12 @@ import {
 } from '../../utils/studyRoomLayout';
 import {
   getTimerRuntimeState,
+  setTimerRuntimeState,
   subscribeTimerRuntime,
 } from '../../utils/timerRuntimeStore';
 import { formatHMS } from './timer/timerHelpers';
 import { api } from '../../utils/api';
+import { getTimerDayKey, loadDayFromDb } from '../../utils/timerStorage';
 import { useFriend } from '../../context/FriendContext';
 import { useSocket } from '../../context/SocketContext';
 import { useMainShellOptional } from '../../context/MainShellContext';
@@ -155,6 +157,7 @@ function OtherStudyActor({
   onExitDone,
   elapsedMs,
   isFriend = false,
+  onSeatedVisualChange,
 }) {
   const walkMap = WALK_BY_GENDER[gender] || WALK_BY_GENDER.girl;
   const studySrc = STUDY_BY_GENDER[gender] || STUDY_BY_GENDER.girl;
@@ -163,17 +166,36 @@ function OtherStudyActor({
   const [dir, setDir] = useState('up');
   const [frame, setFrame] = useState(0);
   const [phase, setPhase] = useState('hidden'); // walk | seated | hidden
+  const [studyReady, setStudyReady] = useState(false);
   const modeRef = useRef(mode);
   const seatRef = useRef(seat);
   const layoutRef = useRef(layout);
   const onEnterDoneRef = useRef(onEnterDone);
   const onExitDoneRef = useRef(onExitDone);
+  const onSeatedVisualChangeRef = useRef(onSeatedVisualChange);
 
   modeRef.current = mode;
   seatRef.current = seat;
   layoutRef.current = layout;
   onEnterDoneRef.current = onEnterDone;
   onExitDoneRef.current = onExitDone;
+  onSeatedVisualChangeRef.current = onSeatedVisualChange;
+
+  useEffect(() => {
+    const ready = phase === 'seated' && studyReady;
+    onSeatedVisualChangeRef.current?.(ready);
+    return () => onSeatedVisualChangeRef.current?.(false);
+  }, [phase, studyReady]);
+
+  useEffect(() => {
+    if (phase !== 'seated') {
+      setStudyReady(false);
+      return undefined;
+    }
+    // 캐시된 이미지는 onLoad 가 스킵될 수 있어 짧은 폴백
+    const t = setTimeout(() => setStudyReady(true), 80);
+    return () => clearTimeout(t);
+  }, [phase, studySrc]);
 
   useEffect(() => {
     if (phase !== 'walk') return undefined;
@@ -282,12 +304,12 @@ function OtherStudyActor({
     }
 
     if (mode === 'exit') {
-      const points = buildExitWaypoints(
-        layout,
-        seat,
-        x.value,
-        y.value,
-      );
+      // 착석 좌표에서 출발 (shared value 읽기 레이스로 점프·무모션 방지)
+      const startX = seat.seatX;
+      const startY = seat.seatY;
+      x.value = startX;
+      y.value = startY;
+      const points = buildExitWaypoints(layout, seat, startX, startY);
       setPhase('walk');
       runWaypoints(points, () => {
         if (cancelled || modeRef.current !== 'exit') return;
@@ -351,6 +373,10 @@ function OtherStudyActor({
           source={source}
           style={{ width: boxW, height: boxH }}
           resizeMode="contain"
+          fadeDuration={0}
+          onLoad={() => {
+            if (phase === 'seated') setStudyReady(true);
+          }}
         />
       </Animated.View>
       {phase === 'seated' ? (
@@ -389,7 +415,7 @@ export default function TimerAniLab({ navigation }) {
     gender: 'girl',
   });
   const [meReady, setMeReady] = useState(false);
-  /** @type {Record<string, { username: string, gender: string, startedAtMs: number|null }>} */
+  /** @type {Record<string, { username: string, gender?: string, startedAtMs: number|null, closedTotalMs?: number }>} */
   const [othersMeta, setOthersMeta] = useState({});
   /** 앱 전체 공부 중 여부 { [userId]: true } */
   const [studyingUsers, setStudyingUsers] = useState({});
@@ -404,6 +430,13 @@ export default function TimerAniLab({ navigation }) {
   const knownOthersRef = useRef(new Set());
   const firstSyncRef = useRef(true);
   const selfEnterStartedRef = useRef(false);
+  /** 퇴장 중에도 좌석 유지 (assignments 에서 빠져도 연출용) */
+  const lastSeatIndexRef = useRef(/** @type {Record<string, number>} */ ({}));
+  const [, bumpSeatSnap] = useState(0);
+  /** 착석 스프라이트 로드 전까지 빈 책상 유지 */
+  const [deskCoverReady, setDeskCoverReady] = useState(
+    /** @type {Record<string, boolean>} */ ({}),
+  );
 
   const stageReady = stage.w > 80 && stage.h > 80;
   const roomReady = stageReady && meReady;
@@ -508,6 +541,7 @@ export default function TimerAniLab({ navigation }) {
             // 이미 화면에 있으면 성별 유지, 새로 보이면 랜덤
             gender: undefined,
             startedAtMs: Number.isFinite(startedMs) ? startedMs : null,
+            closedTotalMs: Number(item.closedTotalMs) || 0,
           };
         });
         setStudyingUsers(nextStudying);
@@ -568,6 +602,10 @@ export default function TimerAniLab({ navigation }) {
             // 새로 공부 시작 → 새 랜덤 성별 (퇴실 후 재입장 포함)
             gender: prev[uid]?.gender || randomGender(),
             startedAtMs: Number.isFinite(startedMs) ? startedMs : Date.now(),
+            closedTotalMs:
+              payload.closedTotalMs != null
+                ? Number(payload.closedTotalMs) || 0
+                : prev[uid]?.closedTotalMs || 0,
           },
         }));
         setOtherStartedAt((prev) => {
@@ -602,8 +640,28 @@ export default function TimerAniLab({ navigation }) {
     };
   }, [socket]);
 
-  // 타이머 런타임
+  // 타이머 런타임 + 오늘 누적(타이머 화면과 동일 기준)
   useEffect(() => subscribeTimerRuntime((s) => setRuntime({ ...s })), []);
+
+  useEffect(() => {
+    let alive = true;
+    (async () => {
+      try {
+        const day = await loadDayFromDb(getTimerDayKey());
+        if (!alive || day?.totalElapsedMs == null) return;
+        const cur = Number(getTimerRuntimeState().totalElapsedMs) || 0;
+        const fromDb = Number(day.totalElapsedMs) || 0;
+        if (fromDb > cur) {
+          setTimerRuntimeState({ totalElapsedMs: fromDb });
+        }
+      } catch {
+        // noop
+      }
+    })();
+    return () => {
+      alive = false;
+    };
+  }, []);
 
   useEffect(() => {
     const id = setInterval(() => setNowMs(Date.now()), 250);
@@ -611,9 +669,11 @@ export default function TimerAniLab({ navigation }) {
   }, []);
 
   const selfRunning = !!runtime.isRunning;
-  const selfElapsedMs = selfRunning
+  const selfLiveMs = selfRunning
     ? Math.max(0, nowMs - (runtime.startTimestamp || nowMs))
     : 0;
+  // 타이머 화면과 동일: 종료 세션 누적 + (실행 중이면 현재 세션)
+  const selfElapsedMs = Math.max(0, (Number(runtime.totalElapsedMs) || 0) + selfLiveMs);
 
   const studyingOtherIds = useMemo(
     () =>
@@ -639,7 +699,7 @@ export default function TimerAniLab({ navigation }) {
     }
   }, [room.redirected]);
 
-  // 좌석 배정 (안정 해시)
+  // 좌석 배정 (안정 해시) + 퇴장용 스냅샷
   const assignments = useMemo(() => {
     const taken = new Set();
     const map = {}; // key -> seatIndex
@@ -652,6 +712,17 @@ export default function TimerAniLab({ navigation }) {
     });
     return map;
   }, [room.members]);
+
+  useEffect(() => {
+    let changed = false;
+    Object.entries(assignments).forEach(([key, idx]) => {
+      if (lastSeatIndexRef.current[key] !== idx) {
+        lastSeatIndexRef.current[key] = idx;
+        changed = true;
+      }
+    });
+    if (changed) bumpSeatSnap((n) => n + 1);
+  }, [assignments]);
 
   const selfSeatIndex = assignments[me.key];
   const selfSeat =
@@ -703,6 +774,7 @@ export default function TimerAniLab({ navigation }) {
         const uid = key.replace(/^u:/, '');
         const still =
           roomOtherKeys.includes(key) && studyingUsers?.[uid] === true;
+        // 이미 exit/hidden 이면 유지 — assignments 탈락 후에도 퇴장 연출 계속
         if (!still && next[key] !== 'hidden' && next[key] !== 'exit') {
           next[key] = 'exit';
         }
@@ -724,22 +796,47 @@ export default function TimerAniLab({ navigation }) {
       return next;
     });
   }, [roomReady, room.members, studyingUsers, me.key, othersMeta]);
+
   const onSelfEnterDone = useCallback(() => setSelfMode('seated'), []);
+
+  /** 화면에 그릴 타인 키: 배정 + 입장/퇴장 진행 중 */
+  const otherActorKeys = useMemo(() => {
+    const keys = new Set();
+    Object.keys(assignments).forEach((k) => {
+      if (k !== me.key) keys.add(k);
+    });
+    Object.entries(otherModes).forEach(([k, mode]) => {
+      if (k === me.key) return;
+      if (mode === 'enter' || mode === 'seated' || mode === 'exit') {
+        keys.add(k);
+      }
+    });
+    return Array.from(keys);
+  }, [assignments, otherModes, me.key]);
 
   const occupiedSeats = useMemo(() => {
     const set = new Set();
-    // 착석 완료 후에만 빈 책상 숨김 (입장 중에는 책상 유지)
-    if (selfSeat && selfMode === 'seated') {
+    // 착석 스프라이트가 그려진 뒤에만 빈 책상 숨김 (입장·퇴장·로딩 중 유지)
+    if (selfSeat && selfMode === 'seated' && deskCoverReady.self) {
       set.add(selfSeat.index);
     }
     Object.entries(otherModes).forEach(([key, mode]) => {
       if (mode !== 'seated') return;
-      const idx = assignments[key];
+      if (!deskCoverReady[key]) return;
+      const idx = assignments[key] ?? lastSeatIndexRef.current[key];
       if (idx != null) set.add(idx);
     });
     return set;
-  }, [selfSeat, selfMode, otherModes, assignments]);
+  }, [selfSeat, selfMode, otherModes, assignments, deskCoverReady]);
 
+  const resolveOtherSeat = useCallback(
+    (key) => {
+      const idx = assignments[key] ?? lastSeatIndexRef.current[key];
+      if (idx == null) return null;
+      return seatByIndex[idx] || null;
+    },
+    [assignments, seatByIndex],
+  );
   const styles = useMemo(
     () =>
       StyleSheet.create({
@@ -776,6 +873,7 @@ export default function TimerAniLab({ navigation }) {
       <StatusBar translucent backgroundColor="transparent" barStyle="light-content" />
       <View
         style={styles.stage}
+        collapsable={false}
         onLayout={(e) => {
           const { width: w, height: h } = e.nativeEvent.layout;
           setStage((prev) =>
@@ -788,15 +886,18 @@ export default function TimerAniLab({ navigation }) {
           style={styles.bg}
           resizeMode="cover"
           pointerEvents="none"
+          fadeDuration={0}
         />
 
         {stageReady
-          ? layout.seats.map((s) =>
-              occupiedSeats.has(s.index) ? null : (
+          ? layout.seats.map((s) => {
+              const occupied = occupiedSeats.has(s.index);
+              return (
                 <Image
                   key={`desk-${s.index}`}
                   source={CHAIR_DESK}
                   pointerEvents="none"
+                  fadeDuration={0}
                   style={{
                     position: 'absolute',
                     left: s.seatX,
@@ -804,11 +905,13 @@ export default function TimerAniLab({ navigation }) {
                     width: s.studyW,
                     height: s.studyH,
                     zIndex: s.z,
+                    // 언마운트하지 않고 숨김 — 간헐적 미렌더·깜빡임 방지
+                    opacity: occupied ? 0 : 1,
                   }}
                   resizeMode="contain"
                 />
-              ),
-            )
+              );
+            })
           : null}
 
         {roomReady && selfSeat && selfMode !== 'hidden' ? (
@@ -820,13 +923,17 @@ export default function TimerAniLab({ navigation }) {
             mode={selfMode}
             elapsedMs={selfElapsedMs}
             onEnterDone={onSelfEnterDone}
+            onSeatedVisualChange={(ready) =>
+              setDeskCoverReady((prev) =>
+                prev.self === ready ? prev : { ...prev, self: ready },
+              )
+            }
           />
         ) : null}
 
         {roomReady
-          ? Object.entries(assignments).map(([key, seatIndex]) => {
-              if (key === me.key) return null;
-              const seat = seatByIndex[seatIndex];
+          ? otherActorKeys.map((key) => {
+              const seat = resolveOtherSeat(key);
               if (!seat) return null;
               const uid = key.replace(/^u:/, '');
               const meta = othersMeta[uid] || {
@@ -834,7 +941,9 @@ export default function TimerAniLab({ navigation }) {
               };
               const mode = otherModes[key] || 'hidden';
               if (mode === 'hidden') return null;
-              const started = otherStartedAt[key] || nowMs;
+              const started = otherStartedAt[key] || meta.startedAtMs || nowMs;
+              const closedTotal = Number(meta.closedTotalMs) || 0;
+              const liveSessionMs = Math.max(0, nowMs - started);
               const isFriend = friendIds.has(uid);
               return (
                 <OtherStudyActor
@@ -844,14 +953,32 @@ export default function TimerAniLab({ navigation }) {
                   gender={meta.gender || 'girl'}
                   displayId={meta.username}
                   mode={mode}
-                  elapsedMs={Math.max(0, nowMs - started)}
+                  elapsedMs={closedTotal + liveSessionMs}
                   isFriend={isFriend}
+                  onSeatedVisualChange={(ready) =>
+                    setDeskCoverReady((prev) =>
+                      prev[key] === ready ? prev : { ...prev, [key]: ready },
+                    )
+                  }
                   onEnterDone={() =>
                     setOtherModes((prev) => ({ ...prev, [key]: 'seated' }))
                   }
                   onExitDone={() => {
                     knownOthersRef.current.delete(key);
+                    delete lastSeatIndexRef.current[key];
+                    setDeskCoverReady((prev) => {
+                      if (!prev[key]) return prev;
+                      const next = { ...prev };
+                      delete next[key];
+                      return next;
+                    });
                     setOtherModes((prev) => ({ ...prev, [key]: 'hidden' }));
+                    setOtherStartedAt((prev) => {
+                      if (!prev[key]) return prev;
+                      const next = { ...prev };
+                      delete next[key];
+                      return next;
+                    });
                     setOthersMeta((prev) => {
                       if (!prev[uid]) return prev;
                       return {
