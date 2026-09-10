@@ -4,15 +4,6 @@ import { AppState } from 'react-native';
 export const TIMER_RUNNING_NOTIFICATION_IDENTIFIER = 'focux-timer-running';
 let timerNotificationOp = Promise.resolve();
 
-function logTimerNotification(event, payload = {}) {
-  if (!__DEV__) return;
-  console.log(`[TimerNotification][${event}]`, {
-    at: new Date().toISOString(),
-    appState: AppState.currentState,
-    ...payload,
-  });
-}
-
 export function configureTimerNotificationHandler() {
   Notifications.setNotificationHandler({
     handleNotification: async () => ({
@@ -32,13 +23,7 @@ async function hasExistingTimerNotification() {
   ]);
   const matchByData = (n) =>
     n?.content?.data?.identifier === TIMER_RUNNING_NOTIFICATION_IDENTIFIER;
-  const exists = scheduled.some(matchByData) || presented.some(matchByData);
-  logTimerNotification('exists_check', {
-    exists,
-    scheduledCount: scheduled.length,
-    presentedCount: presented.length,
-  });
-  return exists;
+  return scheduled.some(matchByData) || presented.some(matchByData);
 }
 
 export async function hasTimerRunningNotification() {
@@ -53,11 +38,9 @@ export async function showTimerRunningNotification() {
   timerNotificationOp = timerNotificationOp.then(async () => {
     try {
       if (AppState.currentState === 'active') {
-        logTimerNotification('show_skip_active');
         return;
       }
       if (await hasExistingTimerNotification()) {
-        logTimerNotification('show_skip_existing');
         return;
       }
       await Notifications.scheduleNotificationAsync({
@@ -71,7 +54,6 @@ export async function showTimerRunningNotification() {
         },
         trigger: null,
       });
-      logTimerNotification('show_scheduled');
     } catch (error) {
       console.warn('[TimerNotification] show failed:', error?.message ?? error);
     }
@@ -102,10 +84,6 @@ export async function cancelTimerRunningNotification() {
       for (const n of presentedTargets) {
         await Notifications.dismissNotificationAsync(n.request.identifier);
       }
-      logTimerNotification('cancel_done', {
-        cancelledScheduled: targets.length,
-        dismissedPresented: presentedTargets.length,
-      });
     } catch (error) {
       console.warn(
         '[TimerNotification] cancel failed:',

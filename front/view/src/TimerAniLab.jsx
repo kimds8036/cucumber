@@ -66,6 +66,15 @@ const WALK_PX_PER_MS = 0.3;
 /** 타이머 OFF 후 스터디룸에서 자리·방 유지 유예 */
 const LEAVE_GRACE_MS = 5000;
 
+function pickGenderSafe() {
+  try {
+    if (typeof randomGender === 'function') return randomGender();
+  } catch {
+    // fallthrough
+  }
+  return Math.random() < 0.5 ? 'girl' : 'boy';
+}
+
 function SeatLabels({
   seat,
   displayId,
@@ -679,11 +688,14 @@ export default function TimerAniLab({ navigation }) {
     };
 
     const applyRoomMembers = (members, roomId, relocated) => {
-      const list = Array.isArray(members) ? members : [];
+      const list = Array.isArray(members)
+        ? members.filter((item) => item != null && typeof item === 'object')
+        : [];
       const nextStudying = {};
       const metaPatch = {};
-      list.forEach((item) => {
-        if (item.userId == null) return;
+      for (let i = 0; i < list.length; i += 1) {
+        const item = list[i];
+        if (item.userId == null) continue;
         const uid = String(item.userId);
         nextStudying[uid] = true;
         const startedMs = item.startedAt ? Date.parse(item.startedAt) : NaN;
@@ -693,7 +705,7 @@ export default function TimerAniLab({ navigation }) {
           startedAtMs: Number.isFinite(startedMs) ? startedMs : null,
           closedTotalMs: Number(item.closedTotalMs) || 0,
         };
-      });
+      }
       if (roomId != null) setServerRoomId(String(roomId));
       setStudyingUsers(nextStudying);
       if (!initialStudyingSeedRef.current) {
@@ -701,52 +713,66 @@ export default function TimerAniLab({ navigation }) {
       }
       setOthersMeta((prev) => {
         const next = { ...prev };
-        Object.entries(metaPatch).forEach(([uid, patch]) => {
+        Object.keys(metaPatch).forEach((uid) => {
+          const patch = metaPatch[uid];
           const keepGender = prev[uid]?.gender;
           next[uid] = {
             ...prev[uid],
             ...patch,
-            gender: keepGender || randomGender(),
+            gender:
+              keepGender === 'boy' || keepGender === 'girl'
+                ? keepGender
+                : pickGenderSafe(),
           };
         });
         return next;
       });
       setOtherStartedAt((prev) => {
         const next = { ...prev };
-        Object.entries(metaPatch).forEach(([uid, meta]) => {
+        Object.keys(metaPatch).forEach((uid) => {
           const key = `u:${uid}`;
-          if (meta.startedAtMs != null && !next[key]) {
-            next[key] = meta.startedAtMs;
+          const startedAtMs = metaPatch[uid]?.startedAtMs;
+          if (startedAtMs != null && !next[key]) {
+            next[key] = startedAtMs;
           }
         });
         return next;
       });
       if (relocated && !redirectedRef.current) {
         redirectedRef.current = true;
-        Alert.alert(
-          '스터디룸',
-          '이전 방이 가득 차 다른 스터디룸으로 안내합니다.',
-        );
+        setTimeout(() => {
+          if (typeof Alert?.alert === 'function') {
+            Alert.alert(
+              '스터디룸',
+              '이전 방이 가득 차 다른 스터디룸으로 안내합니다.',
+            );
+          }
+        }, 0);
       }
     };
 
     const loadStudying = async () => {
       try {
         const res = await api.get('/api/timer/study-room/studying');
-        const data = res.data?.data;
+        const data = res?.data?.data;
         if (!alive) return;
         // 신규: { roomId, members } / 구형 배열 호환
         if (Array.isArray(data)) {
           applyRoomMembers(data, null, false);
-        } else {
+        } else if (data && typeof data === 'object') {
           applyRoomMembers(
-            data?.members ?? [],
-            data?.roomId ?? null,
-            !!data?.relocated,
+            Array.isArray(data.members) ? data.members : [],
+            data.roomId ?? null,
+            data.relocated === true,
           );
+        } else {
+          applyRoomMembers([], null, false);
         }
       } catch (error) {
-        console.error('[StudyRoom] 공부 중 목록 조회 실패:', error);
+        console.error(
+          '[StudyRoom] 공부 중 목록 조회 실패:',
+          error?.message || error,
+        );
         if (!initialStudyingSeedRef.current) {
           initialStudyingSeedRef.current = new Set();
         }
@@ -793,7 +819,7 @@ export default function TimerAniLab({ navigation }) {
             username: String(
               item.username || prev[uid]?.username || '학생',
             ).replace(/^@/, ''),
-            gender: prev[uid]?.gender || randomGender(),
+            gender: prev[uid]?.gender || pickGenderSafe(),
             startedAtMs: Number.isFinite(startedMs)
               ? startedMs
               : prev[uid]?.startedAtMs ?? null,
@@ -806,10 +832,14 @@ export default function TimerAniLab({ navigation }) {
       });
       if (payload.relocated && !redirectedRef.current) {
         redirectedRef.current = true;
-        Alert.alert(
-          '스터디룸',
-          '이전 방이 가득 차 다른 스터디룸으로 안내합니다.',
-        );
+        setTimeout(() => {
+          if (typeof Alert?.alert === 'function') {
+            Alert.alert(
+              '스터디룸',
+              '이전 방이 가득 차 다른 스터디룸으로 안내합니다.',
+            );
+          }
+        }, 0);
       }
     };
 
@@ -839,7 +869,7 @@ export default function TimerAniLab({ navigation }) {
             username: String(
               payload.username || prev[uid]?.username || '학생',
             ).replace(/^@/, ''),
-            gender: prev[uid]?.gender || randomGender(),
+            gender: prev[uid]?.gender || pickGenderSafe(),
             startedAtMs: Number.isFinite(startedMs) ? startedMs : Date.now(),
             closedTotalMs:
               payload.closedTotalMs != null
