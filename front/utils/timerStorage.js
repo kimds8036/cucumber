@@ -175,15 +175,6 @@ export async function loadDayFromDb(dayKey) {
     const data = res.data?.data;
     if (!data) return null;
     const normalized = normalizeLoadedPayload(data, dayKey);
-    if (__DEV__) {
-      console.log('[TimerTimetablePaint][loadDayFromDb]', {
-        dayKey,
-        success: res.data?.success,
-        totalElapsedMs: normalized.totalElapsedMs,
-        sessions: normalized.sessions,
-        subjects: normalized.subjects,
-      });
-    }
     return normalized;
   } catch (e) {
     // 로그인되지 않은 상태(토큰 없음)에서 타이머 화면을 볼 때는
