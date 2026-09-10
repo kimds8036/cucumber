@@ -3,18 +3,13 @@
  * - SubHeader 우측: 등교중 칩
  * - 본문: games/registry 미니게임 (안내·플레이는 게임 모듈)
  */
-import React, { useEffect, useMemo, useState } from 'react';
-import {
-  View,
-  StyleSheet,
-  useWindowDimensions,
-} from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { View, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import SubHeader from '../frame/subHeader';
 import CommuteHeaderChip from '../../components/CommuteHeaderChip';
 import { colors } from '../../styles/colors';
-import { getNormalize } from '../../styles/frame.style';
 import { loadCommuteCompletedToday } from '../../utils/commuteStorage';
 import { api } from '../../utils/api';
 import {
@@ -22,11 +17,20 @@ import {
   getMiniGame,
 } from '../../games/registry';
 
+const styles = StyleSheet.create({
+  safe: {
+    flex: 1,
+    // 상태바(헤더 위) 영역은 SubHeader와 동일하게 — 게임 크림색이 비치지 않게
+    backgroundColor: colors.background,
+  },
+  gameSlot: {
+    flex: 1,
+    overflow: 'visible',
+  },
+});
+
 export default function CommuteBreakoutGame() {
   const navigation = useNavigation();
-  const { width } = useWindowDimensions();
-  const normalize = useMemo(() => getNormalize(width), [width]);
-  const styles = useMemo(() => createStyles(normalize), [normalize]);
 
   const gameDef = getMiniGame(DEFAULT_COMMUTE_GAME_ID);
   const GameComponent = gameDef.Component;
@@ -87,19 +91,4 @@ export default function CommuteBreakoutGame() {
       </View>
     </SafeAreaView>
   );
-}
-
-function createStyles(normalize) {
-  return StyleSheet.create({
-    safe: {
-      flex: 1,
-      backgroundColor: '#FFF6EE',
-    },
-    gameSlot: {
-      flex: 1,
-      marginHorizontal: normalize(10),
-      marginBottom: normalize(8),
-      overflow: 'visible',
-    },
-  });
 }
