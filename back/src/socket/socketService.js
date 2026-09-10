@@ -4,8 +4,16 @@ import { enqueueNotification } from '../utils/notificationWorker.js';
 import { getTimerDayKey } from '../utils/timerDayKey.js';
 import { isoFromMysqlKstNaiveString } from '../utils/timerSessionTimes.js';
 import { upsertStudyDayTotalForUserKey } from '../utils/studyDayTotal.js';
+import {
+  assignUserToStudyRoom,
+  getStudyRoomSnapshotForUser,
+  leaveStudyRoom,
+  studyRoomSocketName,
+} from '../services/studyRoom.service.js';
 
-/** 스터디룸 화면 구독자 소켓 룸 */
+export { getStudyRoomSnapshotForUser };
+
+/** @deprecated 전역 구독 룸 — 방 단위 study_room:{id} 로 이전 */
 export const STUDY_ROOM_SOCKET_ROOM = 'study_room';
 
 // in-memory throttle map: key = `${fromUserId}:${targetUserId}`
@@ -229,16 +237,32 @@ export async function broadcastTimerStatus({ userId, status }) {
     console.warn('[FriendSocket] study_room 페이로드 보강 실패', err?.message);
   }
 
-  // 스터디룸 구독자에게 앱 전체 공부 상태 전파 (친구 여부와 무관)
-  io.to(STUDY_ROOM_SOCKET_ROOM).emit('study_room_timer_status', {
-    type: 'study_room_timer_status',
-    userId,
-    username,
-    status,
-    startedAt,
-    closedTotalMs,
-    updatedAt,
-  });
+  // 스터디룸: 해당 방 구독자에게만 전파 (전체 목록 방송 없음)
+  let studyRoomId = null;
+  try {
+    if (status === 'studying') {
+      const assigned = await assignUserToStudyRoom(userId);
+      studyRoomId = assigned.roomId;
+    } else {
+      const left = await leaveStudyRoom(userId);
+      studyRoomId = left.roomId;
+    }
+  } catch (err) {
+    console.warn('[FriendSocket] study_room 배정 실패', err?.message);
+  }
+
+  if (studyRoomId) {
+    io.to(studyRoomSocketName(studyRoomId)).emit('study_room_timer_status', {
+      type: 'study_room_timer_status',
+      userId,
+      username,
+      status,
+      startedAt,
+      closedTotalMs,
+      roomId: studyRoomId,
+      updatedAt,
+    });
+  }
 
   // 나와 친구 관계인 모든 유저 ID 조회
   const [rows] = await pool.execute(
@@ -354,42 +378,10 @@ export async function broadcastTimerStatus({ userId, status }) {
 }
 
 /**
- * 스터디룸: 앱 전체에서 현재 공부 중인 사용자 목록
- * - study_sessions 진행 중(ended_at IS NULL) + 오늘 타이머 day_key
+ * @deprecated use getStudyRoomSnapshotForUser from studyRoom.service
  */
 export async function listStudyingUsersForStudyRoom() {
-  const todayTimerDayKey = getTimerDayKey();
-  const [rows] = await pool.execute(
-    `SELECT
-       ss.user_id AS userId,
-       u.username AS username,
-       DATE_FORMAT(ss.started_at, '%Y-%m-%d %H:%i:%s.%f') AS started_at_fmt,
-       COALESCE(sd.total_elapsed_ms, 0) AS closed_total_ms
-     FROM study_sessions ss
-     INNER JOIN users u ON u.id = ss.user_id AND u.is_deleted = FALSE
-     LEFT JOIN study_days sd
-       ON sd.user_id = ss.user_id AND sd.day_key = ss.day_key
-     WHERE ss.ended_at IS NULL
-       AND ss.day_key = ?
-     ORDER BY ss.user_id ASC, ss.id DESC`,
-    [todayTimerDayKey],
-  );
-
-  // 유저당 최신 오픈 세션만 (중복 방지)
-  const byUser = new Map();
-  for (const r of rows) {
-    const id = r.userId;
-    if (byUser.has(id)) continue;
-    byUser.set(id, {
-      userId: id,
-      username: r.username || '',
-      startedAt: isoFromMysqlKstNaiveString(r.started_at_fmt),
-      /** 오늘 종료된 세션 누적(진행 중 제외). 클라이언트에서 startedAt~now 를 더함 */
-      closedTotalMs: Number(r.closed_total_ms) || 0,
-      isStudying: true,
-    });
-  }
-  return Array.from(byUser.values());
+  throw new Error('listStudyingUsersForStudyRoom is removed; use getStudyRoomSnapshotForUser');
 }
 
 /**

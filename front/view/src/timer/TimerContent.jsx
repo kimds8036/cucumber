@@ -30,7 +30,7 @@ import {
 import { useToast } from '../../../context/ToastContext';
 import { useFriendSocketEvents } from '../../../hooks/useFriendSocketEvents';
 import { useFriend } from '../../../context/FriendContext';
-import { useFocusEffect, useIsFocused } from '@react-navigation/native';
+import { useNavigation, useFocusEffect, useIsFocused } from '@react-navigation/native';
 import { runAfterTabTransition } from '../../../utils/runAfterTabTransition';
 import { useFriendStudyEvents } from '../../../hooks/useFriendStudyEvents';
 import { useGuidePreview } from '../../../context/GuidePreviewContext';
@@ -40,6 +40,7 @@ import {
   setTimerRuntimeState,
   TIMER_COUNTDOWN_TOTAL_SECONDS,
 } from '../../../utils/timerRuntimeStore';
+import { preloadStudyRoomAssets } from '../../../utils/preloadStudyRoomAssets';
 import { tdb } from './timerHelpers';
 import { useTimerDay } from './useTimerDay';
 import {
@@ -53,6 +54,7 @@ import {
 } from './timerCaptureWatermark';
 
 export function TimerContent() {
+  const navigation = useNavigation();
   const { isGuidePreview } = useGuidePreview();
   const { width } = useWindowDimensions();
   const normalize = useMemo(() => getNormalize(width), [width]);
@@ -293,6 +295,7 @@ export function TimerContent() {
 
       const cancelEnter = runAfterTabTransition(() => {
         setIsTimerScreenActive?.(true);
+        preloadStudyRoomAssets();
         if (timer.isRunningRef.current) {
           timer.bumpLiveElapsedResync();
           setTimerRuntimeState({
@@ -419,6 +422,10 @@ export function TimerContent() {
                   canGoNextDay={timer.canGoNextDay}
                   setShowCalendar={timer.setShowCalendar}
                   handleSaveAsImage={handleSaveAsImage}
+                  onOpenStudyRoom={() => {
+                    preloadStudyRoomAssets();
+                    navigation.navigate('TimerAniLab');
+                  }}
                   toggleTimer={timer.toggleTimer}
                   pauseTimer={timer.pauseTimer}
                   startForSubject={timer.startForSubject}

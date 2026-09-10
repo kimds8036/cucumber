@@ -94,6 +94,7 @@ const TimerLiveScrollInnerComponent = function TimerLiveScrollInner({
   canGoNextDay,
   setShowCalendar,
   handleSaveAsImage,
+  onOpenStudyRoom,
   toggleTimer,
   pauseTimer,
   startForSubject,
@@ -240,9 +241,19 @@ const TimerLiveScrollInnerComponent = function TimerLiveScrollInner({
               />
             </TouchableOpacity>
           </View>
-          <TouchableOpacity style={styles.saveBtn} onPress={handleSaveAsImage}>
-            <Feather name="download" size={20} color={colors.textPrimary} />
-          </TouchableOpacity>
+          <View style={styles.dateBarRight}>
+            <TouchableOpacity
+              style={styles.studyRoomEntryBtn}
+              onPress={onOpenStudyRoom}
+              activeOpacity={0.85}
+              accessibilityLabel="스터디룸 입장"
+            >
+              <Text style={styles.studyRoomEntryText}>스터디룸 입장</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.saveBtn} onPress={handleSaveAsImage}>
+              <Feather name="download" size={20} color={colors.textPrimary} />
+            </TouchableOpacity>
+          </View>
         </View>
 
         <View style={[styles.timerBlock, tdb('#5E5CE6')]}>

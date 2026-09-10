@@ -8,6 +8,8 @@ let state = {
   countdownBaseTimestamp: null,
   countdownRemainingSec: TIMER_COUNTDOWN_TOTAL_SECONDS,
   countdownTotalSec: TIMER_COUNTDOWN_TOTAL_SECONDS,
+  /** 오늘(타이머일) 종료된 세션 누적 — 진행 중 세션 제외 (타이머 화면과 동일) */
+  totalElapsedMs: 0,
 };
 
 export function setTimerRuntimeState(next) {

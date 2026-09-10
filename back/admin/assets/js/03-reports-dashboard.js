@@ -264,6 +264,7 @@ async function loadDashboard() {
     const titles = {
       user: ['사용자', '배지 · 시간표 · 친구'],
       timer: ['타이머', '공부 시간 · 세션'],
+      'study-rooms': ['스터디룸', '활성 방 · 방별 인원'],
       activity: ['앱 활동', '글 · 댓글 · 쪽지 · 우편'],
       jobs: ['크론', '무슨 일이 도는지 · 최근 실행'],
       terms: ['등교 · 학기', '개학일 · 오늘 등교 여부'],
@@ -284,6 +285,7 @@ async function loadDashboard() {
         await loadBatchJobsOverview();
       }
       if (view === 'timer') await loadTimerOps();
+      if (view === 'study-rooms') await loadStudyRoomOps();
       if (view === 'activity') await loadActivityOps();
       if (view === 'terms') await loadOpsSchoolTerms();
       if (view === 'map') {
@@ -948,6 +950,62 @@ async function loadDashboard() {
     renderTimerSchoolBars(data?.topSchools || []);
     renderTimerSessions(data?.recentSessions || []);
   }
+
+  async function loadStudyRoomOps() {
+    const { data } = await api('/analytics/study-rooms');
+    const set = (id, value) => {
+      const el = document.getElementById(id);
+      if (el) el.textContent = value;
+    };
+    set('study-rooms-count', Number(data?.roomCount || 0).toLocaleString());
+    set('study-rooms-members', Number(data?.memberCount || 0).toLocaleString());
+    set('study-rooms-open', Number(data?.openRoomCount || 0).toLocaleString());
+    set('study-rooms-capacity', Number(data?.capacity || 16).toLocaleString());
+
+    const hint = document.getElementById('study-rooms-ops-hint');
+    if (hint) {
+      const backend = data?.backend === 'redis' ? 'Redis' : '서버 메모리';
+      const at = data?.fetchedAt
+        ? new Date(data.fetchedAt).toLocaleString('ko-KR', { hour12: false })
+        : '-';
+      hint.textContent = `저장소: ${backend} · 조회 ${at} · 새로고침으로 갱신 (완전 실시간 아님)`;
+    }
+
+    const tbody = document.getElementById('study-rooms-tbody');
+    if (!tbody) return;
+    const rooms = data?.rooms || [];
+    if (!rooms.length) {
+      tbody.innerHTML =
+        '<tr><td colspan="4" class="empty-row">활성 스터디룸이 없습니다. 타이머를 켠 사용자가 있으면 여기에 표시됩니다.</td></tr>';
+      return;
+    }
+    const cap = Number(data?.capacity || 16);
+    tbody.innerHTML = rooms
+      .map((room) => {
+        const n = Number(room.memberCount || 0);
+        const status = room.hasSpace
+          ? `<span class="txt-muted">여유 ${cap - n}</span>`
+          : '<strong>만석</strong>';
+        const members = (room.members || [])
+          .map((m) => `@${esc(m.username || '-')} <span class="txt-muted">#${esc(m.userId)}</span>`)
+          .join(' · ');
+        return `
+          <tr>
+            <td><code>${esc(room.roomId)}</code></td>
+            <td>${n} / ${cap}</td>
+            <td>${status}</td>
+            <td style="font-size:13px">${members || '-'}</td>
+          </tr>
+        `;
+      })
+      .join('');
+  }
+
+  document.getElementById('study-rooms-refresh')?.addEventListener('click', () => {
+    loadStudyRoomOps().catch((error) => {
+      alert(error?.message || '스터디룸 현황을 불러오지 못했습니다.');
+    });
+  });
 
   function renderTimerKpi(summary) {
     const set = (id, value) => {
