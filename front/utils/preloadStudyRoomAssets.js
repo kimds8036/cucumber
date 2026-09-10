@@ -1,6 +1,7 @@
 import { Asset } from 'expo-asset';
 import { Image } from 'react-native';
 import { getClassroomBgForDate } from './studyRoomClassroomBg';
+import { WALK_BY_GENDER } from '../assets/timer_ani/frames';
 
 const CHAIR_DESK = require('../assets/timer_ani/chair_desk.png');
 const CLASSROOM_1 = require('../assets/timer_ani/classroom1.png');
@@ -16,8 +17,7 @@ function uniqueModules(mods) {
 }
 
 /**
- * 스터디룸 배경·빈 책상·착석 스프라이트 프리로드
- * - 타이머 화면 포커스 / 입장 직전에 호출
+ * 스터디룸 배경·빈 책상·착석·걷기 프레임 프리로드
  */
 export function preloadStudyRoomAssets() {
   if (preloadPromise) return preloadPromise;
@@ -30,6 +30,8 @@ export function preloadStudyRoomAssets() {
     CHAIR_DESK,
     BOY_STUDY,
     GIRL_STUDY,
+    ...Object.values(WALK_BY_GENDER.girl).flat(),
+    ...Object.values(WALK_BY_GENDER.boy).flat(),
   ]);
 
   preloadPromise = (async () => {

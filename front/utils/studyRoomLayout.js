@@ -58,10 +58,10 @@ export function pickStudyRoomMembers(selfKey, otherKeys) {
 }
 
 export function getWalkSize(studyW, studyH) {
-  // 착석과 같은 크기로 — 작으면 덜 귀여워 보임
+  // 걷기는 인물만 — 착석(책상 포함)과 비슷한 체감 크기
   return {
-    walkW: Math.round(studyW),
-    walkH: Math.round(studyH),
+    walkW: Math.round(studyW * 0.92),
+    walkH: Math.round(studyH * 0.92),
   };
 }
 
@@ -85,8 +85,8 @@ export function buildSeatLayout(stageW, stageH) {
   const gridH = Math.max(80, stageH * 0.66);
   const cellW = gridW / COLS;
   const cellH = gridH / ROWS;
-  // 책상·캐릭터 원래 큰 크기
-  const studyW = Math.min(cellW * 0.72, cellH * 0.56);
+  // 셀 대비 착석 스프라이트(책상 포함) 크기
+  const studyW = Math.min(cellW * 0.66, cellH * 0.52);
   const studyH = studyW * 1.28;
 
   const seats = [];

@@ -14,8 +14,13 @@ import {
   TouchableOpacity,
   Alert,
 } from 'react-native';
+import { useIsFocused } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import {
+  activateKeepAwakeAsync,
+  deactivateKeepAwake,
+} from 'expo-keep-awake';
 import Animated, {
   Easing,
   cancelAnimation,
@@ -68,7 +73,7 @@ function SeatLabels({
   elapsedMs,
   showTimer,
   z,
-  isFriend = false,
+  isSelf = false,
 }) {
   const labelW = Math.max(seat.studyW * 1.35, 88);
   const labelLeft = seat.seatX + (seat.studyW - labelW) / 2;
@@ -104,7 +109,7 @@ function SeatLabels({
         }}
       >
         <Text
-          style={[labelStyles.idText, isFriend && labelStyles.idTextFriend]}
+          style={[labelStyles.idText, isSelf && labelStyles.idTextSelf]}
           numberOfLines={1}
         >
           {truncateStudyUserId(displayId)}
@@ -136,10 +141,92 @@ const labelStyles = StyleSheet.create({
     textShadowOffset: { width: 0, height: 1 },
     textShadowRadius: 3,
   },
-  idTextFriend: {
+  idTextSelf: {
     color: colors.primary,
   },
 });
+
+/**
+ * 이미지 소스 교체 시 이전 프레임을 유지해 빈 프레임(깜빡임)을 줄임.
+ * 걷기 프레임끼리 전환은 즉시, 착석↔걷기는 onLoad 후 교체.
+ * 크기는 반드시 width/height 로 고정 — absoluteFill 만 쓰면 원본 px 로 커질 수 있음.
+ */
+function StableSprite({
+  source,
+  width,
+  height,
+  holdUntilLoad = false,
+  onDisplayed,
+}) {
+  const w = Math.max(1, Math.round(Number(width) || 1));
+  const h = Math.max(1, Math.round(Number(height) || 1));
+  const [shown, setShown] = useState(source);
+  const [pending, setPending] = useState(null);
+  const shownRef = useRef(source);
+  const pendingRef = useRef(null);
+  const onDisplayedRef = useRef(onDisplayed);
+  onDisplayedRef.current = onDisplayed;
+
+  const commit = (next) => {
+    shownRef.current = next;
+    pendingRef.current = null;
+    setShown(next);
+    setPending(null);
+    onDisplayedRef.current?.();
+  };
+
+  useEffect(() => {
+    if (source === shownRef.current) {
+      pendingRef.current = null;
+      setPending(null);
+      return undefined;
+    }
+    if (!holdUntilLoad) {
+      commit(source);
+      return undefined;
+    }
+    pendingRef.current = source;
+    setPending(source);
+    const t = setTimeout(() => {
+      if (pendingRef.current === source) commit(source);
+    }, 90);
+    return () => clearTimeout(t);
+  }, [source, holdUntilLoad]);
+
+  const imgStyle = { width: w, height: h };
+
+  return (
+    <View style={{ width: w, height: h, overflow: 'hidden' }}>
+      <Image
+        source={shown}
+        style={imgStyle}
+        resizeMode="contain"
+        fadeDuration={0}
+      />
+      {pending ? (
+        <Image
+          source={pending}
+          style={{
+            position: 'absolute',
+            left: 0,
+            top: 0,
+            width: w,
+            height: h,
+            opacity: 0,
+          }}
+          resizeMode="contain"
+          fadeDuration={0}
+          onLoad={() => {
+            if (pendingRef.current === pending) commit(pending);
+          }}
+          onLoadEnd={() => {
+            if (pendingRef.current === pending) commit(pending);
+          }}
+        />
+      ) : null}
+    </View>
+  );
+}
 
 /** 본인: 스터디룸 입장·타이머 ON 시 복도 따라 입장 (퇴장은 즉시 숨김) */
 function SelfStudyActor(props) {
@@ -159,7 +246,7 @@ function OtherStudyActor({
   onEnterDone,
   onExitDone,
   elapsedMs,
-  isFriend = false,
+  isSelf = false,
   onSeatedVisualChange,
 }) {
   // 등장~퇴장 동안 성별 고정 (idle 시 meta 비움/재랜덤으로 스프라이트 바뀌는 것 방지)
@@ -198,16 +285,20 @@ function OtherStudyActor({
   useEffect(() => {
     const ready = phase === 'seated' && studyReady;
     onSeatedVisualChangeRef.current?.(ready);
-    return () => onSeatedVisualChangeRef.current?.(false);
+    // seated 이탈 시 cleanup 에서 false 로 책상을 바로 켜면 깜빡임 → seated 일 때만 알림
   }, [phase, studyReady]);
 
   useEffect(() => {
-    if (phase !== 'seated') {
-      setStudyReady(false);
-      return undefined;
-    }
+    if (phase === 'seated') return undefined;
+    onSeatedVisualChangeRef.current?.(false);
+    setStudyReady(false);
+    return undefined;
+  }, [phase]);
+
+  useEffect(() => {
+    if (phase !== 'seated') return undefined;
     // 캐시된 이미지는 onLoad 가 스킵될 수 있어 짧은 폴백
-    const t = setTimeout(() => setStudyReady(true), 80);
+    const t = setTimeout(() => setStudyReady(true), 120);
     return () => clearTimeout(t);
   }, [phase, studySrc]);
 
@@ -245,12 +336,14 @@ function OtherStudyActor({
       }
       // 한 축씩만 (복도 이동)
       if (Math.abs(dx) >= 1.5) {
-        setDir(dx >= 0 ? 'right' : 'left');
+        const nextDir = dx >= 0 ? 'right' : 'left';
+        setDir((prev) => (prev === nextDir ? prev : nextDir));
         const dur = Math.max(120, Math.round(Math.abs(dx) / WALK_PX_PER_MS));
         animateAxis('x', to.x, dur, (ok) => {
           if (!ok || cancelled) return;
           if (Math.abs(dy) >= 1.5) {
-            setDir(dy >= 0 ? 'down' : 'up');
+            const nextDirY = dy >= 0 ? 'down' : 'up';
+            setDir((prev) => (prev === nextDirY ? prev : nextDirY));
             const durY = Math.max(120, Math.round(Math.abs(dy) / WALK_PX_PER_MS));
             animateAxis('y', to.y, durY, (ok2) => {
               if (ok2 && !cancelled) next();
@@ -261,7 +354,8 @@ function OtherStudyActor({
         });
         return;
       }
-      setDir(dy >= 0 ? 'down' : 'up');
+      const nextDir = dy >= 0 ? 'down' : 'up';
+      setDir((prev) => (prev === nextDir ? prev : nextDir));
       const dur = Math.max(120, Math.round(Math.abs(dy) / WALK_PX_PER_MS));
       animateAxis('y', to.y, dur, (ok) => {
         if (ok && !cancelled) next();
@@ -356,43 +450,73 @@ function OtherStudyActor({
     position: 'absolute',
     left: x.value,
     top: y.value,
-    opacity: phase === 'hidden' ? 0 : 1,
   }));
 
-  if (!seat || phase === 'hidden') return null;
-
-  // enter/exit 는 setPhase('walk') 반영 전에도 걷기 스프라이트 강제 (착석 이미지로 이동하는 레이스 방지)
+  // enter/exit 는 setPhase('walk') 반영 전에도 걷기 스프라이트 강제
   const showWalk =
     mode === 'enter' || mode === 'exit' || phase === 'walk';
-  const walkW = layout?.walkW ?? Math.round(seat.studyW);
-  const walkH = layout?.walkH ?? Math.round(seat.studyH);
-  const boxW = showWalk ? walkW : seat.studyW;
-  const boxH = showWalk ? walkH : seat.studyH;
+  const prevShowWalkRef = useRef(showWalk);
+  const holdPoseRef = useRef(false);
+  if (prevShowWalkRef.current !== showWalk) {
+    holdPoseRef.current = true;
+    prevShowWalkRef.current = showWalk;
+  }
+
+  // mode 가 완전히 hidden 일 때만 제거 (exit 중 phase hidden 직 공백 방지)
+  if (!seat || mode === 'hidden') return null;
+  if (phase === 'hidden' && mode !== 'exit' && mode !== 'enter') return null;
+
+  // 걷기는 walk 크기, 착석은 study 크기
+  const boxW = Math.max(
+    1,
+    Math.round(
+      Number(
+        showWalk
+          ? layout?.walkW ?? seat.studyW * 0.92
+          : seat.studyW,
+      ) || 1,
+    ),
+  );
+  const boxH = Math.max(
+    1,
+    Math.round(
+      Number(
+        showWalk
+          ? layout?.walkH ?? seat.studyH * 0.92
+          : seat.studyH,
+      ) || 1,
+    ),
+  );
 
   const walkFrames = walkMap[dir] || walkMap.up;
   const source = showWalk
     ? walkFrames[frame % walkFrames.length]
     : studySrc;
+  const hidden = phase === 'hidden';
 
   return (
     <>
       <Animated.View
+        collapsable={false}
         style={[
           style,
           {
             width: boxW,
             height: boxH,
+            overflow: 'hidden',
+            opacity: hidden ? 0 : 1,
             zIndex: showWalk ? 90 : (seat?.z || 1) + 2,
           },
         ]}
         pointerEvents="none"
       >
-        <Image
+        <StableSprite
           source={source}
-          style={{ width: boxW, height: boxH }}
-          resizeMode="contain"
-          fadeDuration={0}
-          onLoad={() => {
+          width={boxW}
+          height={boxH}
+          holdUntilLoad={holdPoseRef.current || !showWalk}
+          onDisplayed={() => {
+            holdPoseRef.current = false;
             if (!showWalk) setStudyReady(true);
           }}
         />
@@ -404,7 +528,7 @@ function OtherStudyActor({
           elapsedMs={elapsedMs}
           showTimer
           z={seat.z}
-          isFriend={isFriend}
+          isSelf={isSelf}
         />
       ) : null}
     </>
@@ -416,6 +540,7 @@ function OtherStudyActor({
  */
 export default function TimerAniLab({ navigation }) {
   const insets = useSafeAreaInsets();
+  const isFocused = useIsFocused();
   const shell = useMainShellOptional();
   const goBack = () => {
     if (navigation?.canGoBack?.()) navigation.goBack();
@@ -433,6 +558,8 @@ export default function TimerAniLab({ navigation }) {
     gender: 'girl',
   });
   const [meReady, setMeReady] = useState(false);
+  /** 최초 공부중 목록 API 완료 — 이 시점 출석자는 착석, 이후만 입장 걷기 */
+  const [studyingBootstrapDone, setStudyingBootstrapDone] = useState(false);
   /** @type {Record<string, { username: string, gender?: string, startedAtMs: number|null, closedTotalMs?: number }>} */
   const [othersMeta, setOthersMeta] = useState({});
   /** 앱 전체 공부 중 여부 { [userId]: true } — 소켓/API 원본 */
@@ -450,7 +577,8 @@ export default function TimerAniLab({ navigation }) {
   const [assignments, setAssignments] = useState({});
   const redirectedRef = useRef(false);
   const knownOthersRef = useRef(new Set());
-  const firstSyncRef = useRef(true);
+  /** 스터디룸 진입 시점 이미 공부 중이던 userId — 이 사람들은 항상 착석(입장 걷기 없음) */
+  const initialStudyingSeedRef = useRef(/** @type {Set<string>|null} */ (null));
   const selfEnterStartedRef = useRef(false);
   /** 퇴장 중에도 좌석 유지 (assignments 에서 빠져도 연출용) */
   const lastSeatIndexRef = useRef(/** @type {Record<string, number>} */ ({}));
@@ -572,6 +700,10 @@ export default function TimerAniLab({ navigation }) {
           };
         });
         setStudyingUsers(nextStudying);
+        // API 응답 스냅샷 고정 — 이후 소켓으로 새로 켠 사람만 입장 걷기
+        if (!initialStudyingSeedRef.current) {
+          initialStudyingSeedRef.current = new Set(Object.keys(nextStudying));
+        }
         setOthersMeta((prev) => {
           const next = { ...prev };
           Object.entries(metaPatch).forEach(([uid, patch]) => {
@@ -596,6 +728,11 @@ export default function TimerAniLab({ navigation }) {
         });
       } catch (error) {
         console.error('[StudyRoom] 공부 중 목록 조회 실패:', error);
+        if (!initialStudyingSeedRef.current) {
+          initialStudyingSeedRef.current = new Set();
+        }
+      } finally {
+        if (alive) setStudyingBootstrapDone(true);
       }
     };
 
@@ -695,6 +832,19 @@ export default function TimerAniLab({ navigation }) {
     : 0;
   // 타이머 화면과 동일: 종료 세션 누적 + (실행 중이면 현재 세션)
   const selfElapsedMs = Math.max(0, (Number(runtime.totalElapsedMs) || 0) + selfLiveMs);
+
+  // 타이머 화면은 blur 시 keep-awake 해제 → 스터디룸에서도 실행 중이면 유지
+  useEffect(() => {
+    const tag = 'youth-paper-study-room';
+    if (!isFocused || !selfRunning) {
+      deactivateKeepAwake(tag);
+      return undefined;
+    }
+    activateKeepAwakeAsync(tag).catch(() => {});
+    return () => {
+      deactivateKeepAwake(tag);
+    };
+  }, [isFocused, selfRunning]);
 
   const studyingOtherIds = useMemo(
     () =>
@@ -857,13 +1007,14 @@ export default function TimerAniLab({ navigation }) {
   const selfSeat =
     selfPresent && selfSeatIndex != null ? seatByIndex[selfSeatIndex] : null;
 
-  // 본인: 유예 포함 출석 유지. 유예 종료 시에만 숨김
+  // 본인: 유예 포함 출석 유지. 본인 입장 걷기는 보여 주지 않음(항상 착석)
   useEffect(() => {
     if (!roomReady) {
       setSelfMode('hidden');
       selfEnterStartedRef.current = false;
       return;
     }
+    if (!studyingBootstrapDone) return;
     if (!selfPresent || !selfSeat) {
       setSelfMode('hidden');
       selfEnterStartedRef.current = false;
@@ -872,30 +1023,31 @@ export default function TimerAniLab({ navigation }) {
     if (!selfEnterStartedRef.current) {
       selfEnterStartedRef.current = true;
       setMe((prev) => ({ ...prev, gender: randomGender() }));
-      setSelfMode(selfRunning ? 'enter' : 'seated');
+      // 시드에 본인 반영(이미 타이머 중으로 입장)
+      if (selfUid && initialStudyingSeedRef.current) {
+        initialStudyingSeedRef.current.add(selfUid);
+      }
+      setSelfMode('seated');
     }
-  }, [roomReady, selfPresent, selfSeat?.index, selfRunning]);
+  }, [roomReady, studyingBootstrapDone, selfPresent, selfSeat?.index, selfUid]);
 
-  // 타인 모드 동기 — presence(유예 포함)
+  // 타인 모드 동기 — 진입 시 이미 공부 중이면 착석, 이후에 켠 사람만 입장 걷기
   useEffect(() => {
-    if (!roomReady) return;
+    if (!roomReady || !studyingBootstrapDone) return;
+    if (!initialStudyingSeedRef.current) return;
 
+    const seed = initialStudyingSeedRef.current;
     const roomOtherKeys = room.members.filter((k) => k !== me.key);
 
     setOtherModes((prev) => {
       const next = { ...prev };
-      const initial = firstSyncRef.current;
 
       roomOtherKeys.forEach((key) => {
         const uid = key.replace(/^u:/, '');
         if (roomPresence?.[uid] !== true) return;
-        if (initial) {
-          next[key] = 'seated';
-          knownOthersRef.current.add(key);
-        } else if (!knownOthersRef.current.has(key)) {
-          next[key] = 'enter';
-          knownOthersRef.current.add(key);
-        }
+        if (knownOthersRef.current.has(key)) return;
+        knownOthersRef.current.add(key);
+        next[key] = seed.has(uid) ? 'seated' : 'enter';
       });
 
       Object.keys(next).forEach((key) => {
@@ -908,7 +1060,6 @@ export default function TimerAniLab({ navigation }) {
         }
       });
 
-      firstSyncRef.current = false;
       return next;
     });
 
@@ -923,7 +1074,14 @@ export default function TimerAniLab({ navigation }) {
       });
       return next;
     });
-  }, [roomReady, room.members, roomPresence, me.key, othersMeta]);
+  }, [
+    roomReady,
+    studyingBootstrapDone,
+    room.members,
+    roomPresence,
+    me.key,
+    othersMeta,
+  ]);
 
   const onSelfEnterDone = useCallback(() => setSelfMode('seated'), []);
 
@@ -1050,6 +1208,7 @@ export default function TimerAniLab({ navigation }) {
             displayId={me.username}
             mode={selfMode}
             elapsedMs={selfElapsedMs}
+            isSelf
             onEnterDone={onSelfEnterDone}
             onSeatedVisualChange={(ready) =>
               setDeskCoverReady((prev) =>
@@ -1072,7 +1231,6 @@ export default function TimerAniLab({ navigation }) {
               const started = otherStartedAt[key] || meta.startedAtMs || nowMs;
               const closedTotal = Number(meta.closedTotalMs) || 0;
               const liveSessionMs = Math.max(0, nowMs - started);
-              const isFriend = friendIds.has(uid);
               return (
                 <OtherStudyActor
                   key={key}
@@ -1082,7 +1240,7 @@ export default function TimerAniLab({ navigation }) {
                   displayId={meta.username}
                   mode={mode}
                   elapsedMs={closedTotal + liveSessionMs}
-                  isFriend={isFriend}
+                  isSelf={false}
                   onSeatedVisualChange={(ready) =>
                     setDeskCoverReady((prev) =>
                       prev[key] === ready ? prev : { ...prev, [key]: ready },
@@ -1093,6 +1251,7 @@ export default function TimerAniLab({ navigation }) {
                   }
                   onExitDone={() => {
                     knownOthersRef.current.delete(key);
+                    initialStudyingSeedRef.current?.delete(uid);
                     delete lastSeatIndexRef.current[key];
                     setDeskCoverReady((prev) => {
                       if (!prev[key]) return prev;
