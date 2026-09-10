@@ -198,6 +198,7 @@ export async function broadcastTimerStatus({ userId, status }) {
   const updatedAt = new Date().toISOString();
   let username = null;
   let startedAt = null;
+  let closedTotalMs = 0;
   try {
     const [userRows] = await pool.execute(
       'SELECT username FROM users WHERE id = ? AND is_deleted = FALSE LIMIT 1',
@@ -205,6 +206,7 @@ export async function broadcastTimerStatus({ userId, status }) {
     );
     username = userRows[0]?.username || null;
     if (status === 'studying') {
+      const todayTimerDayKey = getTimerDayKey();
       const [sessionRows] = await pool.execute(
         `SELECT DATE_FORMAT(started_at, '%Y-%m-%d %H:%i:%s.%f') AS started_at_fmt
          FROM study_sessions
@@ -214,6 +216,14 @@ export async function broadcastTimerStatus({ userId, status }) {
         [userId],
       );
       startedAt = isoFromMysqlKstNaiveString(sessionRows[0]?.started_at_fmt) || updatedAt;
+      const [dayRows] = await pool.execute(
+        `SELECT total_elapsed_ms
+         FROM study_days
+         WHERE user_id = ? AND day_key = ?
+         LIMIT 1`,
+        [userId, todayTimerDayKey],
+      );
+      closedTotalMs = Number(dayRows[0]?.total_elapsed_ms) || 0;
     }
   } catch (err) {
     console.warn('[FriendSocket] study_room 페이로드 보강 실패', err?.message);
@@ -226,6 +236,7 @@ export async function broadcastTimerStatus({ userId, status }) {
     username,
     status,
     startedAt,
+    closedTotalMs,
     updatedAt,
   });
 
@@ -352,9 +363,12 @@ export async function listStudyingUsersForStudyRoom() {
     `SELECT
        ss.user_id AS userId,
        u.username AS username,
-       DATE_FORMAT(ss.started_at, '%Y-%m-%d %H:%i:%s.%f') AS started_at_fmt
+       DATE_FORMAT(ss.started_at, '%Y-%m-%d %H:%i:%s.%f') AS started_at_fmt,
+       COALESCE(sd.total_elapsed_ms, 0) AS closed_total_ms
      FROM study_sessions ss
      INNER JOIN users u ON u.id = ss.user_id AND u.is_deleted = FALSE
+     LEFT JOIN study_days sd
+       ON sd.user_id = ss.user_id AND sd.day_key = ss.day_key
      WHERE ss.ended_at IS NULL
        AND ss.day_key = ?
      ORDER BY ss.user_id ASC, ss.id DESC`,
@@ -370,6 +384,8 @@ export async function listStudyingUsersForStudyRoom() {
       userId: id,
       username: r.username || '',
       startedAt: isoFromMysqlKstNaiveString(r.started_at_fmt),
+      /** 오늘 종료된 세션 누적(진행 중 제외). 클라이언트에서 startedAt~now 를 더함 */
+      closedTotalMs: Number(r.closed_total_ms) || 0,
       isStudying: true,
     });
   }
