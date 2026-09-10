@@ -1,38 +1,17 @@
 /** 타이머 캐릭터 — 방향별 걷기 프레임 (require는 정적 경로여야 함) */
 
 export const GIRL_WALK = {
-  down: [
-    require('./girl_down_1.png'),
-    require('./girl_down_2.png'),
-    require('./girl_down_3.png'),
-    require('./girl_down_4.png'),
-  ],
+  down: [require('./girl_down_1.png'), require('./girl_down_3.png')],
   up: [require('./girl_up_1.png'), require('./girl_up_2.png')],
-  left: [
-    require('./girl_left_1.png'),
-    require('./girl_left_2.png'),
-    require('./girl_left_3.png'),
-  ],
-  right: [
-    require('./girl_right_1.png'),
-    require('./girl_right_2.png'),
-    require('./girl_right_3.png'),
-  ],
+  left: [require('./girl_left_1.png'), require('./girl_left_2.png')],
+  right: [require('./girl_right_1.png'), require('./girl_right_2.png')],
 };
 
 export const BOY_WALK = {
   down: [require('./boy_down_1.png'), require('./boy_down_2.png')],
   up: [require('./boy_up_1.png'), require('./boy_up_2.png')],
-  left: [
-    require('./boy_left_1.png'),
-    require('./boy_left_2.png'),
-    require('./boy_walk_left_3.png'),
-  ],
-  right: [
-    require('./boy_right_1.png'),
-    require('./boy_right_2.png'),
-    require('./boy_walk_right_3.png'),
-  ],
+  left: [require('./boy_left_1.png'), require('./boy_left_2.png')],
+  right: [require('./boy_right_1.png'), require('./boy_right_2.png')],
 };
 
 /** @typedef {'girl' | 'boy'} TimerAniGender */
