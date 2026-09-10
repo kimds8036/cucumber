@@ -40,6 +40,7 @@ import {
   setTimerRuntimeState,
   TIMER_COUNTDOWN_TOTAL_SECONDS,
 } from '../../../utils/timerRuntimeStore';
+import { preloadStudyRoomAssets } from '../../../utils/preloadStudyRoomAssets';
 import { tdb } from './timerHelpers';
 import { useTimerDay } from './useTimerDay';
 import {
@@ -294,6 +295,7 @@ export function TimerContent() {
 
       const cancelEnter = runAfterTabTransition(() => {
         setIsTimerScreenActive?.(true);
+        preloadStudyRoomAssets();
         if (timer.isRunningRef.current) {
           timer.bumpLiveElapsedResync();
           setTimerRuntimeState({
@@ -420,7 +422,10 @@ export function TimerContent() {
                   canGoNextDay={timer.canGoNextDay}
                   setShowCalendar={timer.setShowCalendar}
                   handleSaveAsImage={handleSaveAsImage}
-                  onOpenStudyRoom={() => navigation.navigate('TimerAniLab')}
+                  onOpenStudyRoom={() => {
+                    preloadStudyRoomAssets();
+                    navigation.navigate('TimerAniLab');
+                  }}
                   toggleTimer={timer.toggleTimer}
                   pauseTimer={timer.pauseTimer}
                   startForSubject={timer.startForSubject}

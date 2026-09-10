@@ -51,6 +51,7 @@ import {
 import { formatHMS } from './timer/timerHelpers';
 import { api } from '../../utils/api';
 import { getTimerDayKey, loadDayFromDb } from '../../utils/timerStorage';
+import { preloadStudyRoomAssets } from '../../utils/preloadStudyRoomAssets';
 import { useFriend } from '../../context/FriendContext';
 import { useSocket } from '../../context/SocketContext';
 import { useMainShellOptional } from '../../context/MainShellContext';
@@ -159,8 +160,19 @@ function OtherStudyActor({
   isFriend = false,
   onSeatedVisualChange,
 }) {
-  const walkMap = WALK_BY_GENDER[gender] || WALK_BY_GENDER.girl;
-  const studySrc = STUDY_BY_GENDER[gender] || STUDY_BY_GENDER.girl;
+  // 등장~퇴장 동안 성별 고정 (idle 시 meta 비움/재랜덤으로 스프라이트 바뀌는 것 방지)
+  const lockedGenderRef = useRef(null);
+  if (mode === 'enter' || mode === 'seated' || mode === 'exit') {
+    if (!lockedGenderRef.current) {
+      lockedGenderRef.current =
+        gender === 'boy' || gender === 'girl' ? gender : randomGender();
+    }
+  } else if (mode === 'hidden') {
+    lockedGenderRef.current = null;
+  }
+  const lockedGender = lockedGenderRef.current || gender || 'girl';
+  const walkMap = WALK_BY_GENDER[lockedGender] || WALK_BY_GENDER.girl;
+  const studySrc = STUDY_BY_GENDER[lockedGender] || STUDY_BY_GENDER.girl;
   const x = useSharedValue(layout?.spawnX ?? 0);
   const y = useSharedValue(layout?.spawnY ?? 0);
   const [dir, setDir] = useState('up');
@@ -286,6 +298,7 @@ function OtherStudyActor({
     if (mode === 'enter') {
       const points = buildEnterWaypoints(layout, seat);
       setPhase('walk');
+      setDir('up');
       runWaypoints(points, () => {
         if (cancelled || modeRef.current !== 'enter') return;
         const s = seatRef.current;
@@ -309,8 +322,9 @@ function OtherStudyActor({
       const startY = seat.seatY;
       x.value = startX;
       y.value = startY;
-      const points = buildExitWaypoints(layout, seat, startX, startY);
       setPhase('walk');
+      setDir('down');
+      const points = buildExitWaypoints(layout, seat, startX, startY);
       runWaypoints(points, () => {
         if (cancelled || modeRef.current !== 'exit') return;
         setPhase('hidden');
@@ -345,16 +359,18 @@ function OtherStudyActor({
 
   if (!seat || phase === 'hidden') return null;
 
+  // enter/exit 는 setPhase('walk') 반영 전에도 걷기 스프라이트 강제 (착석 이미지로 이동하는 레이스 방지)
+  const showWalk =
+    mode === 'enter' || mode === 'exit' || phase === 'walk';
   const walkW = layout?.walkW ?? Math.round(seat.studyW);
   const walkH = layout?.walkH ?? Math.round(seat.studyH);
-  const boxW = phase === 'seated' ? seat.studyW : walkW;
-  const boxH = phase === 'seated' ? seat.studyH : walkH;
+  const boxW = showWalk ? walkW : seat.studyW;
+  const boxH = showWalk ? walkH : seat.studyH;
 
   const walkFrames = walkMap[dir] || walkMap.up;
-  const source =
-    phase === 'seated'
-      ? studySrc
-      : walkFrames[frame % walkFrames.length];
+  const source = showWalk
+    ? walkFrames[frame % walkFrames.length]
+    : studySrc;
 
   return (
     <>
@@ -364,7 +380,7 @@ function OtherStudyActor({
           {
             width: boxW,
             height: boxH,
-            zIndex: phase === 'walk' ? 90 : (seat?.z || 1) + 2,
+            zIndex: showWalk ? 90 : (seat?.z || 1) + 2,
           },
         ]}
         pointerEvents="none"
@@ -375,11 +391,11 @@ function OtherStudyActor({
           resizeMode="contain"
           fadeDuration={0}
           onLoad={() => {
-            if (phase === 'seated') setStudyReady(true);
+            if (!showWalk) setStudyReady(true);
           }}
         />
       </Animated.View>
-      {phase === 'seated' ? (
+      {!showWalk ? (
         <SeatLabels
           seat={seat}
           displayId={displayId}
@@ -456,8 +472,9 @@ export default function TimerAniLab({ navigation }) {
     return m;
   }, [layout.seats]);
 
-  // 배경 시간대
+  // 배경 시간대 + 에셋 프리로드 (타이머에서 안 했으면 여기서라도)
   useEffect(() => {
+    preloadStudyRoomAssets();
     const apply = () => setBgSource(getClassroomBgForDate());
     apply();
     let timer = setTimeout(function tick() {
@@ -599,7 +616,7 @@ export default function TimerAniLab({ navigation }) {
             username: String(
               payload.username || prev[uid]?.username || '학생',
             ).replace(/^@/, ''),
-            // 새로 공부 시작 → 새 랜덤 성별 (퇴실 후 재입장 포함)
+            // 이미 성별 있으면 유지 (퇴장 중 재랜덤 금지). 신규 등장만 랜덤.
             gender: prev[uid]?.gender || randomGender(),
             startedAtMs: Number.isFinite(startedMs) ? startedMs : Date.now(),
             closedTotalMs:
@@ -623,13 +640,7 @@ export default function TimerAniLab({ navigation }) {
           delete next[uid];
           return next;
         });
-        // 다음 등장 때 다시 랜덤되도록 성별 비움
-        setOthersMeta((prev) => {
-          if (!prev[uid]) return prev;
-          const next = { ...prev };
-          next[uid] = { ...next[uid], gender: undefined };
-          return next;
-        });
+        // 성별은 퇴장 연출 끝날 때까지 유지 (onExitDone 에서 비움)
       }
     };
 

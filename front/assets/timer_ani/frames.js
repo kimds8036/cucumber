@@ -26,12 +26,12 @@ export const BOY_WALK = {
   left: [
     require('./boy_left_1.png'),
     require('./boy_left_2.png'),
-    require('./boy_left_3.png'),
+    require('./boy_walk_left_3.png'),
   ],
   right: [
     require('./boy_right_1.png'),
     require('./boy_right_2.png'),
-    require('./boy_right_3.png'),
+    require('./boy_walk_right_3.png'),
   ],
 };
 
