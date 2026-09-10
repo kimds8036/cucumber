@@ -15,6 +15,7 @@ import {
   getMainTabTitle,
   useMainShellOptional,
 } from '../../context/MainShellContext';
+import { navigate as navigateRoot } from '../../navigation/navigationRef';
 
 const MainHeader = ({ headerTitle: headerTitleProp, navigation: navigationProp }) => {
   const shell = useMainShellOptional();
@@ -31,6 +32,25 @@ const MainHeader = ({ headerTitle: headerTitleProp, navigation: navigationProp }
   const normalize = useMemo(() => getNormalize(width), [width]);
   const { hasUnread } = useNotification();
 
+  const openScreen = (name) => {
+    const names = navigation?.getState?.()?.routeNames;
+    if (Array.isArray(names) && names.includes(name) && navigation?.navigate) {
+      navigation.navigate(name);
+      return;
+    }
+    const parent = navigation?.getParent?.();
+    const parentNames = parent?.getState?.()?.routeNames;
+    if (
+      Array.isArray(parentNames) &&
+      parentNames.includes(name) &&
+      parent?.navigate
+    ) {
+      parent.navigate(name);
+      return;
+    }
+    navigateRoot(name);
+  };
+
   return (
     <View style={headerStyles.container}>
       <View style={headerStyles.tabContainer}>
@@ -41,13 +61,13 @@ const MainHeader = ({ headerTitle: headerTitleProp, navigation: navigationProp }
         <CommuteHeaderIndicator />
         <TouchableOpacity
           style={headerStyles.iconButton}
-          onPress={() => navigation?.navigate('Search')}
+          onPress={() => openScreen('Search')}
         >
           <Ionicons name="search" size={normalize(22)} color={colors.primary} />
         </TouchableOpacity>
         <TouchableOpacity
           style={headerStyles.iconButton}
-          onPress={() => navigation?.navigate('Notification')}
+          onPress={() => openScreen('Notification')}
         >
           <FontAwesome5
             name="bell"

@@ -1,4 +1,4 @@
-import { StyleSheet, Platform } from 'react-native';
+import { StyleSheet } from 'react-native';
 import { colors, fonts, fontSizes } from './colors';
 
 export const createSearchResultStyles = (normalize) => {
@@ -16,41 +16,6 @@ export const createSearchResultStyles = (normalize) => {
     },
     scrollBottomSpacer: {
       height: normalize(32),
-    },
-
-    searchBarWrapper: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      backgroundColor: colors.background,
-      paddingHorizontal: normalize(16),
-      paddingTop: normalize(6),
-      paddingBottom: normalize(7),
-      borderBottomWidth: 1,
-      borderBottomColor: colors.textLight20,
-    },
-    searchInputRow: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      backgroundColor: colors.textLight5,
-      borderRadius: normalize(999),
-      paddingHorizontal: normalize(12),
-      paddingVertical: Platform.OS === 'android' ? normalize(6) : normalize(7),
-      gap: normalize(8),
-      flex: 1,
-    },
-    searchInput: {
-      flex: 1,
-      fontSize: normalize(fontSizes.xl),
-      fontFamily: fonts.regular,
-      color: colors.textPrimary,
-      padding: 0,
-      includeFontPadding: false,
-    },
-    searchBackButton: {
-      marginRight: normalize(6),
-      padding: normalize(4),
-      justifyContent: 'center',
-      alignItems: 'center',
     },
 
     tabBar: {

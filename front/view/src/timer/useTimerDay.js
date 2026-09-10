@@ -756,6 +756,10 @@ export function useTimerDay({
   }, [persistTimerSnapshot]);
 
   useEffect(() => {
+    setTimerRuntimeState({ totalElapsedMs });
+  }, [totalElapsedMs]);
+
+  useEffect(() => {
     if (!isFocused || !isRunning || openSessionStartedAtMs == null) {
       if (!isRunning || openSessionStartedAtMs == null) {
         setTimerRuntimeState({

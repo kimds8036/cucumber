@@ -196,19 +196,6 @@ const ProfileCard = ({
                 >
                   {gradeClassLabel}
                 </Text>
-                <Pressable
-                  onPress={showEnrollmentTip}
-                  hitSlop={8}
-                  style={styles.profileEnrollmentInfoBtn}
-                  accessibilityRole="button"
-                  accessibilityLabel="학년·반 변경 안내"
-                >
-                  <Ionicons
-                    name="information-circle-outline"
-                    size={normalize(15)}
-                    color={colors.textLight40}
-                  />
-                </Pressable>
               </View>
               {enrollmentTipVisible ? (
                 <View style={styles.profileInfoTooltip}>

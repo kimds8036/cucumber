@@ -2,7 +2,19 @@ import pool from '../config/database.js';
 import { getIO } from '../socketServer.js';
 import { enqueueNotification } from '../utils/notificationWorker.js';
 import { getTimerDayKey } from '../utils/timerDayKey.js';
+import { isoFromMysqlKstNaiveString } from '../utils/timerSessionTimes.js';
 import { upsertStudyDayTotalForUserKey } from '../utils/studyDayTotal.js';
+import {
+  assignUserToStudyRoom,
+  getStudyRoomSnapshotForUser,
+  leaveStudyRoom,
+  studyRoomSocketName,
+} from '../services/studyRoom.service.js';
+
+export { getStudyRoomSnapshotForUser };
+
+/** @deprecated 전역 구독 룸 — 방 단위 study_room:{id} 로 이전 */
+export const STUDY_ROOM_SOCKET_ROOM = 'study_room';
 
 // in-memory throttle map: key = `${fromUserId}:${targetUserId}`
 const lastPokeAtMap = new Map();
@@ -191,6 +203,67 @@ export async function broadcastTimerStatus({ userId, status }) {
     currentTimerStatusMap.set(userId, status);
   }
 
+  const updatedAt = new Date().toISOString();
+  let username = null;
+  let startedAt = null;
+  let closedTotalMs = 0;
+  try {
+    const [userRows] = await pool.execute(
+      'SELECT username FROM users WHERE id = ? AND is_deleted = FALSE LIMIT 1',
+      [userId],
+    );
+    username = userRows[0]?.username || null;
+    if (status === 'studying') {
+      const todayTimerDayKey = getTimerDayKey();
+      const [sessionRows] = await pool.execute(
+        `SELECT DATE_FORMAT(started_at, '%Y-%m-%d %H:%i:%s.%f') AS started_at_fmt
+         FROM study_sessions
+         WHERE user_id = ? AND ended_at IS NULL
+         ORDER BY id DESC
+         LIMIT 1`,
+        [userId],
+      );
+      startedAt = isoFromMysqlKstNaiveString(sessionRows[0]?.started_at_fmt) || updatedAt;
+      const [dayRows] = await pool.execute(
+        `SELECT total_elapsed_ms
+         FROM study_days
+         WHERE user_id = ? AND day_key = ?
+         LIMIT 1`,
+        [userId, todayTimerDayKey],
+      );
+      closedTotalMs = Number(dayRows[0]?.total_elapsed_ms) || 0;
+    }
+  } catch (err) {
+    console.warn('[FriendSocket] study_room 페이로드 보강 실패', err?.message);
+  }
+
+  // 스터디룸: 해당 방 구독자에게만 전파 (전체 목록 방송 없음)
+  let studyRoomId = null;
+  try {
+    if (status === 'studying') {
+      const assigned = await assignUserToStudyRoom(userId);
+      studyRoomId = assigned.roomId;
+    } else {
+      const left = await leaveStudyRoom(userId);
+      studyRoomId = left.roomId;
+    }
+  } catch (err) {
+    console.warn('[FriendSocket] study_room 배정 실패', err?.message);
+  }
+
+  if (studyRoomId) {
+    io.to(studyRoomSocketName(studyRoomId)).emit('study_room_timer_status', {
+      type: 'study_room_timer_status',
+      userId,
+      username,
+      status,
+      startedAt,
+      closedTotalMs,
+      roomId: studyRoomId,
+      updatedAt,
+    });
+  }
+
   // 나와 친구 관계인 모든 유저 ID 조회
   const [rows] = await pool.execute(
     `SELECT 
@@ -204,24 +277,23 @@ export async function broadcastTimerStatus({ userId, status }) {
     [userId, userId, userId],
   );
 
-  if (!rows.length) {
-    console.log('[FriendSocket] 친구가 없어 상태 브로드캐스트 대상 없음', {
+  if (rows.length) {
+    const payload = {
+      type: 'friend_timer_status',
+      userId,
+      status,
+      updatedAt,
+    };
+
+    for (const row of rows) {
+      const friendId = row.friend_id;
+      io.to(`user:${friendId}`).emit('friend_timer_status', payload);
+    }
+  } else {
+    console.log('[FriendSocket] 친구가 없어 friend_timer_status 생략', {
       userId,
       status,
     });
-    return;
-  }
-
-  const payload = {
-    type: 'friend_timer_status',
-    userId,
-    status,
-    updatedAt: new Date().toISOString(),
-  };
-
-  for (const row of rows) {
-    const friendId = row.friend_id;
-    io.to(`user:${friendId}`).emit('friend_timer_status', payload);
   }
 
   // 공부가 끝난 시점(idle)에는 나를 구독한 친구들에게 "공부 끝" 알림 전송
@@ -303,6 +375,13 @@ export async function broadcastTimerStatus({ userId, status }) {
       console.log('[FriendSocket] idle 이지만 대기중인 watcher 없음', { userId });
     }
   }
+}
+
+/**
+ * @deprecated use getStudyRoomSnapshotForUser from studyRoom.service
+ */
+export async function listStudyingUsersForStudyRoom() {
+  throw new Error('listStudyingUsersForStudyRoom is removed; use getStudyRoomSnapshotForUser');
 }
 
 /**
