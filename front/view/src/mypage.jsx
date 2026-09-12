@@ -34,6 +34,7 @@ import {
 } from '../../utils/timetableSync';
 import { hydratePeriodTimesFromServer } from '../../utils/widget/periodTimeSettings';
 import { buildInviteShareContent } from '../../utils/shareLinks';
+import { requestAppReview } from '../../utils/appReview';
 
 const isSameProfileInfo = (a, b) => {
   if (!a || !b) return false;
@@ -125,6 +126,22 @@ const MyPage = ({ navigation }) => {
         e.response?.data?.message || '초대 링크를 공유하지 못했습니다.',
       );
     }
+  };
+
+  const handleLeaveStoreReview = () => {
+    Alert.alert(
+      '스토어 리뷰',
+      'Youth Paper가 도움이 되셨다면 스토어에 리뷰를 남겨 주세요.',
+      [
+        { text: '나중에', style: 'cancel' },
+        {
+          text: '리뷰 작성',
+          onPress: () => {
+            void requestAppReview({ openStoreFallback: true });
+          },
+        },
+      ],
+    );
   };
 
   const handleDeleteAccount = () => {
@@ -555,6 +572,12 @@ const MyPage = ({ navigation }) => {
             icon="person-add-outline"
             title="친구 초대하기"
             onPress={handleInviteFriends}
+          />
+          <MenuItem
+            icon="star-outline"
+            title="스토어 리뷰 남기기"
+            subtitle="앱이 마음에 드셨다면 리뷰로 응원해 주세요"
+            onPress={handleLeaveStoreReview}
           />
           <MenuItem
             icon="ribbon-outline"

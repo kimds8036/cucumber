@@ -26,6 +26,8 @@ import { colors, fonts } from '../../styles/colors';
 import { createBoardStyles, getNormalize } from '../../styles/board.style';
 import FontAwesome5 from '@expo/vector-icons/FontAwesome5';
 import { api } from '../../utils/api';
+import { loadTips } from '../../utils/tipsApi';
+import { maybeRequestAppReview } from '../../utils/appReview';
 import { normalizeTagsFromApi } from '../../utils/normalizePostTags';
 import { equippedBadgeFromApiRow } from '../../constants/badges';
 import BoardPostCard from '../../components/Boardpostcard';
@@ -406,11 +408,20 @@ export function BoardAllContent({ navigation, posts }) {
         skipNextFocusFetchRef.current = false;
         return;
       }
-      if (posts && posts.length > 0) return;
+      void loadTips({ force: true });
+      const reviewTimer = setTimeout(() => {
+        void maybeRequestAppReview();
+      }, 2500);
+      if (posts && posts.length > 0) {
+        return () => clearTimeout(reviewTimer);
+      }
       const elapsed = Date.now() - lastFullFetchAtRef.current;
-      if (elapsed < BOARD_FOCUS_REFRESH_COOLDOWN_MS) return;
+      if (elapsed < BOARD_FOCUS_REFRESH_COOLDOWN_MS) {
+        return () => clearTimeout(reviewTimer);
+      }
       // 쿨다운 경과 시 1페이지 교체(스피너/스켈레톤 없이)
       fetchPostsRef.current?.(1, false, { soft: true, quiet: true });
+      return () => clearTimeout(reviewTimer);
     }, [posts, isGuidePreview]),
   );
 
