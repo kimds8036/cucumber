@@ -11,6 +11,7 @@ window.PANEL_LOADERS = {
   appeals: () => loadAppeals(),
   inquiries: () => loadInquiries(),
   announcements: () => loadAnnouncements(),
+  tips: () => loadTips(),
   processedInquiries: () => loadProcessedInquiries(),
   manualSignup: () => loadManualSignup(),
   studentIds: () => loadStudentIds(),
