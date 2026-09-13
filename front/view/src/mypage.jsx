@@ -60,7 +60,7 @@ const MyPage = ({ navigation }) => {
   const { width } = useWindowDimensions();
   const normalize = useMemo(() => getNormalize(width), [width]);
   const styles = useMemo(() => createMyPageStyles(normalize), [normalize]);
-  const { logout } = useAuth();
+  const { logout, studentVerificationStatus } = useAuth();
   const TIMETABLE_CACHE_KEY = '@mypage_timetable_cache_v1';
   const TIMETABLE_CACHE_KEY_PREFIX = '@mypage_timetable_cache_v1:';
   const TIMETABLE_CACHE_TTL_MS = 24 * 60 * 60 * 1000;
@@ -374,6 +374,16 @@ const MyPage = ({ navigation }) => {
   );
 
   const handleNavigateToTimetableEdit = () => {
+    // 미인증: 나이스 자동선택 불가 → 직접 선택(편집)으로 직행
+    if (studentVerificationStatus !== 'APPROVED') {
+      navigation.navigate('EditTimetable', {
+        existingTimetable:
+          timetable != null && typeof timetable === 'object' ? timetable : {},
+        timetableCacheKey,
+        returnToMypage: true,
+      });
+      return;
+    }
     navigation.navigate('TimetabelChoice', { timetableCacheKey });
   };
 

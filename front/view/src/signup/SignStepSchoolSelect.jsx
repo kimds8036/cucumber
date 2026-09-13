@@ -153,10 +153,11 @@ function createLocalStyles(normalize, width) {
       paddingHorizontal: width * 0.07,
     },
     fieldLabel: {
-      marginBottom: normalize(10),
+      marginBottom: normalize(6),
       fontFamily: fonts.regular,
-      fontSize: normalize(fontSizes.lg),
-      color: colors.textLight70,
+      fontSize: normalize(fontSizes.md),
+      letterSpacing: 0.2,
+      color: colors.textLight40,
     },
     gradeClassRow: {
       flexDirection: 'row',

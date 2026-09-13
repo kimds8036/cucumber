@@ -42,6 +42,8 @@ import {
   navigateToResendPersonalMail,
 } from '../../utils/personalMail';
 import { normalizeNotificationDisplay } from '../../utils/notificationDisplay';
+import { useAuth } from '../../context/AuthContext';
+import StudentVerificationRejectedModal from '../../components/auth/StudentVerificationRejectedModal';
 
 const PAGE_SIZE = 20;
 const INITIAL_PREFETCH_PAGES = 3;
@@ -182,6 +184,8 @@ const NotificationScreen = ({ navigation }) => {
   const appStateRef = useRef(AppState.currentState);
   const { hasUnread, markNotificationsSeenForBell, getStudySummaryWatchers } =
     useNotification();
+  const { rejectReason, refreshStudentVerification } = useAuth();
+  const [rejectionNoticeVisible, setRejectionNoticeVisible] = useState(false);
   const { markFriendRequestsSeenForBell } = useFriend();
   const getDebugBorderStyle = useCallback(
     (color = '#FF3B30') =>
@@ -831,9 +835,10 @@ const NotificationScreen = ({ navigation }) => {
         return;
       }
       if (n.relatedType === 'student_verification_rejected') {
-        // 거절 게이트는 Auth 상태가 담당 — 알림함에서 나가면 거절 화면으로 복귀
-        preserveListOnNextFocusRef.current = false;
-        popToMainRoot(navigation);
+        preserveListOnNextFocusRef.current = true;
+        void refreshStudentVerification().finally(() => {
+          setRejectionNoticeVisible(true);
+        });
         return;
       }
       if (n.relatedType === 'post' && n.relatedId) {
@@ -1073,6 +1078,15 @@ const NotificationScreen = ({ navigation }) => {
           ]}
         />
       </SafeAreaView>
+      <StudentVerificationRejectedModal
+        visible={rejectionNoticeVisible}
+        rejectReason={rejectReason}
+        onClose={() => setRejectionNoticeVisible(false)}
+        onPressResubmit={() => {
+          setRejectionNoticeVisible(false);
+          navigation?.navigate('StudentIdVerify', { mode: 'rejected' });
+        }}
+      />
     </View>
   );
 };

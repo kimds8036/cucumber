@@ -46,7 +46,10 @@ function formatDateParts(year, month, day) {
   return `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
 }
 
-/** 가입 가능 생년월일 경계 (매년 롤링, 상한 만 21세) */
+/**
+ * 중·고 학적 추론용 상한(만 나이). 가입 차단에는 쓰지 않음 — 전 연령 가입 허용
+ * (`feat/signup-open-access` / docs/가입_개편.md)
+ */
 export const SIGNUP_MAX_AGE = 21;
 
 export function getBirthDateBoundaries(ref = new Date()) {
@@ -68,7 +71,8 @@ export function getBirthDateBoundaries(ref = new Date()) {
 
 /**
  * 생년월일 가입 케이스 판정
- * A: 너무 연장 / B: 만14+ / C: 만14미만(보호자) / D: 너무 어림 / invalid
+ * A: 전통 재학 연령 초과(가입은 허용, 학교·학생증은 인앱 유도)
+ * B: 만14+ 재학 연령대 / C: 만14미만(보호자) / D: 너무 어림(가입 불가) / invalid
  * @returns {BirthDateCase}
  */
 export function classifyBirthDateCase(birthDate, ref = new Date()) {
@@ -76,8 +80,9 @@ export function classifyBirthDateCase(birthDate, ref = new Date()) {
 
   const { minDate, tooYoungCutoff } = getBirthDateBoundaries(ref);
 
-  if (birthDate < minDate) return 'A';
+  // 너무 어린 경우만 가입 불가. 연장(A)은 가입 허용.
   if (birthDate >= tooYoungCutoff) return 'D';
+  if (birthDate < minDate) return 'A';
 
   const age = computeAge(birthDate, ref);
   if (age == null) return 'invalid';

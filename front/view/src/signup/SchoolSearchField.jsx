@@ -93,6 +93,8 @@ const SchoolSearchField = ({
   placeholder = '학교 이름 검색',
   /** true면 검색 목록이 남은 세로 공간을 채움 (학교 선택 전용 화면) */
   expandList = false,
+  /** true면 드롭다운이 아래 레이아웃을 밀지 않고 덮음 */
+  overlayDropdown = false,
   /** true면 검색 결과가 1건 이상일 때만 목록 영역 표시 */
   showListOnlyWithResults = false,
   rowMarginHorizontal,
@@ -102,10 +104,12 @@ const SchoolSearchField = ({
   /** 선택 확정 시 행 우측 취소 버튼 */
   showClearButton = false,
   onClear,
+  /** true면 선택 확정 행을 한 줄로 고정(주소 숨김 · 높이 점프 방지) */
+  compactSelection = false,
 }) => {
   const dropdownStyles = useMemo(
-    () => makeDropdownStyles(normalize, expandList),
-    [normalize, expandList],
+    () => makeDropdownStyles(normalize, expandList, overlayDropdown),
+    [normalize, expandList, overlayDropdown],
   );
   const searchRowStyles = useMemo(
     () =>
@@ -208,9 +212,10 @@ const SchoolSearchField = ({
     const rowMainProps = isSearchTrigger
       ? { onPress: onActivate, activeOpacity: 0.75 }
       : {};
-    const lockedAddress = isLockedSelection
-      ? formatSchoolAddress(selectedSchool)
-      : '';
+    const lockedAddress =
+      isLockedSelection && !compactSelection
+        ? formatSchoolAddress(selectedSchool)
+        : '';
 
     return (
       <View
@@ -219,7 +224,12 @@ const SchoolSearchField = ({
           isLockedSelection && searchRowStyles.rowWrapSelected,
         ]}
       >
-        <View style={searchRowStyles.row}>
+        <View
+          style={[
+            searchRowStyles.row,
+            compactSelection && searchRowStyles.rowCompact,
+          ]}
+        >
           <RowMain style={searchRowStyles.rowMainTap} {...rowMainProps}>
             {!isLockedSelection ? (
               <Feather
@@ -235,11 +245,18 @@ const SchoolSearchField = ({
               />
             )}
             {isLockedSelection ? (
-              <View style={searchRowStyles.selectedTextCol}>
+              <View
+                style={[
+                  searchRowStyles.selectedTextCol,
+                  compactSelection && searchRowStyles.selectedTextColCompact,
+                ]}
+              >
                 <Text
                   style={[
                     searchRowStyles.input,
-                    searchRowStyles.fieldTextFilled,
+                    compactSelection
+                      ? searchRowStyles.fieldTextFilledCompact
+                      : searchRowStyles.fieldTextFilled,
                   ]}
                   numberOfLines={1}
                 >
@@ -283,12 +300,20 @@ const SchoolSearchField = ({
               />
             )}
           </RowMain>
-          {isLockedSelection ? (
+          {showClearButton ? (
             <TouchableOpacity
               onPress={handleClear}
               activeOpacity={0.7}
               hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-              style={searchRowStyles.clearBtn}
+              style={[
+                searchRowStyles.clearBtn,
+                !isLockedSelection && searchRowStyles.clearBtnHidden,
+              ]}
+              disabled={!isLockedSelection}
+              accessibilityElementsHidden={!isLockedSelection}
+              importantForAccessibility={
+                isLockedSelection ? 'yes' : 'no-hide-descendants'
+              }
             >
               <MaterialIcons
                 name="cancel"
@@ -310,7 +335,13 @@ const SchoolSearchField = ({
   };
 
   return (
-    <View style={[dropdownStyles.wrap, expandList && dropdownStyles.wrapExpand]}>
+    <View
+      style={[
+        dropdownStyles.wrap,
+        expandList && dropdownStyles.wrapExpand,
+        overlayDropdown && dropdownStyles.wrapOverlay,
+      ]}
+    >
       {!hideLabel ? (
         <Text
           style={[
@@ -351,7 +382,10 @@ const SchoolSearchField = ({
       )}
 
       <ListSlot
-        style={expandList ? dropdownStyles.listSlot : null}
+        style={[
+          expandList ? dropdownStyles.listSlot : null,
+          overlayDropdown ? dropdownStyles.listSlotOverlay : null,
+        ]}
         {...(expandList ? { onPress: Keyboard.dismiss } : {})}
       >
         {showDropdown ? (
@@ -359,6 +393,7 @@ const SchoolSearchField = ({
             style={[
               dropdownStyles.dropdown,
               expandList && dropdownStyles.dropdownExpand,
+              overlayDropdown && dropdownStyles.dropdownOverlay,
             ]}
           >
             {loading && schools.length === 0 ? (
@@ -452,6 +487,9 @@ export function createSchoolSearchRowStyles(
       paddingHorizontal: normalize(2),
       gap: normalize(8),
     },
+    rowCompact: {
+      minHeight: normalize(40),
+    },
     input: {
       flex: 1,
       paddingVertical: 0,
@@ -481,10 +519,25 @@ export function createSchoolSearchRowStyles(
       color: colors.textPrimary,
       minHeight: undefined,
     },
+    fieldTextFilledCompact: {
+      flex: 1,
+      fontFamily: fonts.regular,
+      fontSize: normalize(fontSizes.xxl),
+      color: colors.textPrimary,
+      minHeight: normalize(Math.round(fontSizes.xxl)),
+      ...Platform.select({
+        android: { includeFontPadding: false, textAlignVertical: 'center' },
+        ios: {},
+      }),
+    },
     selectedTextCol: {
       flex: 1,
       minWidth: 0,
       gap: normalize(2),
+    },
+    selectedTextColCompact: {
+      justifyContent: 'center',
+      gap: 0,
     },
     selectedAddress: {
       fontFamily: fonts.regular,
@@ -496,6 +549,11 @@ export function createSchoolSearchRowStyles(
       justifyContent: 'center',
       alignItems: 'center',
       alignSelf: 'center',
+      width: normalize(20),
+      height: normalize(20),
+    },
+    clearBtnHidden: {
+      opacity: 0,
     },
     rowMainTap: {
       flex: 1,
@@ -507,11 +565,17 @@ export function createSchoolSearchRowStyles(
   });
 }
 
-const makeDropdownStyles = (normalize, expandList = false) =>
+const makeDropdownStyles = (normalize, expandList = false, overlayDropdown = false) =>
   StyleSheet.create({
     wrap: {
       zIndex: 20,
       elevation: 20,
+    },
+    wrapOverlay: {
+      position: 'relative',
+      zIndex: 40,
+      elevation: 40,
+      overflow: 'visible',
     },
     wrapExpand: {
       flex: 1,
@@ -522,8 +586,17 @@ const makeDropdownStyles = (normalize, expandList = false) =>
       minHeight: 0,
       marginTop: normalize(6),
     },
+    listSlotOverlay: {
+      position: 'absolute',
+      left: 0,
+      right: 0,
+      top: '100%',
+      marginTop: normalize(6),
+      zIndex: 50,
+      elevation: 50,
+    },
     dropdown: {
-      marginTop: expandList ? 0 : normalize(6),
+      marginTop: expandList || overlayDropdown ? 0 : normalize(6),
       width: '100%',
       alignSelf: 'center',
       borderWidth: 1,
@@ -531,6 +604,16 @@ const makeDropdownStyles = (normalize, expandList = false) =>
       borderRadius: normalize(16),
       backgroundColor: colors.background,
       overflow: 'hidden',
+    },
+    dropdownOverlay: {
+      ...Platform.select({
+        android: { elevation: 50 },
+        ios: {},
+      }),
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.12,
+      shadowRadius: 8,
     },
     dropdownExpand: {
       flex: 1,

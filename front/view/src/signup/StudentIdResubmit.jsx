@@ -2,9 +2,11 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   View,
   Text,
+  TextInput,
   TouchableOpacity,
   ActivityIndicator,
   StyleSheet,
+  Platform,
   useWindowDimensions,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -19,8 +21,7 @@ import {
   getStudentIdFrameSize,
   resolveStudentIdCropRect,
 } from '../../../utils/studentIdFrameCrop';
-import SchoolSearchField from './SchoolSearchField';
-import SignupHelperText from './SignupHelperText';
+import SchoolSearchField, { GrowingUnderline } from './SchoolSearchField';
 import SubHeader from '../../frame/subHeader';
 import StudentIdCaptureStage, {
   useStudentIdCapture,
@@ -53,12 +54,30 @@ const makeFieldStyles = (normalize) =>
     },
   });
 
+function resolveStudentIdMode(explicitMode, status) {
+  if (
+    explicitMode === 'verify' ||
+    explicitMode === 'rejected' ||
+    explicitMode === 'reverification'
+  ) {
+    return explicitMode;
+  }
+  if (status === 'REJECTED') return 'rejected';
+  if (status === 'APPROVED') return 'reverification';
+  return 'verify';
+}
+
 /**
- * @param {{ mode?: 'rejected'|'reverification', navigation: { goBack: () => void } }} props
+ * @param {{ mode?: 'rejected'|'reverification'|'verify', navigation: { goBack: () => void }, route?: { params?: { mode?: string } } }} props
  */
-const StudentIdResubmit = ({ mode = 'rejected', navigation }) => {
+const StudentIdResubmit = ({ mode: modeProp, navigation, route }) => {
+  const { refreshStudentVerification, studentVerificationStatus } = useAuth();
+  const mode = resolveStudentIdMode(
+    modeProp || route?.params?.mode,
+    studentVerificationStatus,
+  );
   const isReverification = mode === 'reverification';
-  const { refreshStudentVerification } = useAuth();
+  const isFirstVerify = mode === 'verify';
   const { width } = useWindowDimensions();
   const normalize = useMemo(() => getNormalize(width), [width]);
   const loginStyles = useMemo(
@@ -66,7 +85,15 @@ const StudentIdResubmit = ({ mode = 'rejected', navigation }) => {
     [width, normalize],
   );
   const fieldStyles = useMemo(() => makeFieldStyles(normalize), [normalize]);
-  const headerTitle = isReverification ? '학생증 재인증' : '학생증 재출하기';
+  const enrollmentStyles = useMemo(
+    () => createEnrollmentStyles(normalize),
+    [normalize],
+  );
+  const headerTitle = isReverification
+    ? '학생증 재인증'
+    : isFirstVerify
+      ? '학생증 인증'
+      : '학생증 재제출';
 
   const [permission, requestPermission] = useCameraPermissions();
   const cameraRef = useRef(null);
@@ -74,7 +101,10 @@ const StudentIdResubmit = ({ mode = 'rejected', navigation }) => {
     useStudentIdCapture(cameraRef);
   const [busy, setBusy] = useState(false);
   const [selectedSchool, setSelectedSchool] = useState(null);
+  const [schoolGradeNum, setSchoolGradeNum] = useState('');
+  const [schoolClassNum, setSchoolClassNum] = useState('');
   const [statusText, setStatusText] = useState('');
+  const [schoolSearchActive, setSchoolSearchActive] = useState(false);
 
   const handleBack = () => {
     if (busy) return;
@@ -96,27 +126,51 @@ const StudentIdResubmit = ({ mode = 'rejected', navigation }) => {
   }, [permission, requestPermission]);
 
   useEffect(() => {
-    if (!isReverification) return;
     (async () => {
       try {
         const res = await api.get('/api/auth/me');
-        const school = res.data?.data?.school;
+        const me = res.data?.data;
+        const school = me?.school;
         if (school?.id) {
           setSelectedSchool({
             id: school.id,
             name: school.name || '',
           });
         }
+        if (me?.grade != null && me.grade !== '') {
+          setSchoolGradeNum(String(me.grade));
+        }
+        if (me?.classNumber != null && me.classNumber !== '') {
+          setSchoolClassNum(String(me.classNumber));
+        }
       } catch {
         // ignore
       }
     })();
-  }, [isReverification]);
+  }, []);
+
+  const schoolRequired = true; // 인증·재제출·재인증 모두 학교·학년·반 확인
+  const schoolReady = Boolean(selectedSchool?.id);
+  const gradeReady =
+    Number.isFinite(Number(schoolGradeNum)) && Number(schoolGradeNum) >= 1;
+  const classReady =
+    Number.isFinite(Number(schoolClassNum)) && Number(schoolClassNum) >= 1;
+  const enrollmentReady =
+    !schoolRequired || (schoolReady && gradeReady && classReady);
+  const submitDisabled = busy || !enrollmentReady;
 
   const runResubmit = useCallback(async () => {
     if (busy) return;
-    if (isReverification && !selectedSchool?.id) {
+    if (schoolRequired && !selectedSchool?.id) {
       appAlert.alert('알림', '재학 중인 학교를 검색해 선택해 주세요.');
+      return;
+    }
+    if (schoolRequired && !gradeReady) {
+      appAlert.alert('알림', '학년을 입력해 주세요.');
+      return;
+    }
+    if (schoolRequired && !classReady) {
+      appAlert.alert('알림', '반을 입력해 주세요.');
       return;
     }
 
@@ -161,8 +215,10 @@ const StudentIdResubmit = ({ mode = 'rejected', navigation }) => {
         imageBase64: photo.base64,
         cropRegion,
       };
-      if (isReverification && selectedSchool?.id) {
+      if (schoolRequired && selectedSchool?.id) {
         payload.schoolId = selectedSchool.id;
+        payload.grade = Number(schoolGradeNum);
+        payload.classNumber = Number(schoolClassNum);
       }
 
       const res = await api.post('/api/auth/resubmit-student-id', payload, {
@@ -175,14 +231,16 @@ const StudentIdResubmit = ({ mode = 'rejected', navigation }) => {
         res.data?.message ||
           (isReverification
             ? '확인용 학생증이 제출되었습니다. 검토가 완료될 때까지 일부 기능을 사용할 수 없습니다.'
-            : '학생증이 재제출되었습니다. 관리자 승인을 기다려 주세요.'),
+            : isFirstVerify
+              ? '학생증이 제출되었습니다. 관리자 승인을 기다려 주세요.'
+              : '학생증이 재제출되었습니다. 관리자 승인을 기다려 주세요.'),
       );
       navigation.goBack();
     } catch (e) {
       resetCapture();
       appAlert.alert(
         '제출 실패',
-        e?.response?.data?.message || '학생증 재제출 중 오류가 발생했습니다.',
+        e?.response?.data?.message || '학생증 제출 중 오류가 발생했습니다.',
       );
     } finally {
       setBusy(false);
@@ -193,12 +251,18 @@ const StudentIdResubmit = ({ mode = 'rejected', navigation }) => {
   }, [
     busy,
     capture,
+    classReady,
+    gradeReady,
+    isFirstVerify,
     isReverification,
     lastPhotoRef,
     navigation,
     previewLayoutRef,
     refreshStudentVerification,
     resetCapture,
+    schoolClassNum,
+    schoolGradeNum,
+    schoolRequired,
     selectedSchool,
   ]);
 
@@ -241,30 +305,83 @@ const StudentIdResubmit = ({ mode = 'rejected', navigation }) => {
       <SubHeader title={headerTitle} onBack={handleBack} />
 
       <View style={[localStyles.body, { paddingHorizontal: width * 0.07 }]}>
-        {isReverification ? (
+        {schoolRequired ? (
           <View style={localStyles.schoolBlock}>
-            <Text style={localStyles.schoolHint}>
-              중학교에서 고등학교로 진학한 경우, 재학 중인 고등학교를 검색해
-              선택해 주세요.
-            </Text>
+            <Text style={enrollmentStyles.fieldLabel}>재학 중인 학교</Text>
             <SchoolSearchField
               styles={fieldStyles}
               normalize={normalize}
               selectedSchool={selectedSchool}
-              onSelect={setSelectedSchool}
-              label="재학 중인 학교"
+              onSelect={(school) => {
+                setSelectedSchool(school);
+                if (school) setSchoolSearchActive(false);
+              }}
+              hideLabel
+              readOnly={!schoolSearchActive}
+              onActivate={() => setSchoolSearchActive(true)}
+              autoFocus={schoolSearchActive}
+              inputVariant="underline"
+              placeholder="검색하기"
+              showListOnlyWithResults
+              overlayDropdown
+              compactSelection
+              rowMarginHorizontal={0}
+              showClearButton={Boolean(selectedSchool)}
+              onClear={() => {
+                setSelectedSchool(null);
+                setSchoolSearchActive(false);
+              }}
             />
+            {selectedSchool && !schoolSearchActive ? (
+              <View style={enrollmentStyles.gradeClassRow}>
+                <View style={enrollmentStyles.gradeClassCol}>
+                  <Text style={enrollmentStyles.fieldLabel}>학년</Text>
+                  <View style={enrollmentStyles.underlineField}>
+                    <TextInput
+                      style={enrollmentStyles.fieldInput}
+                      value={schoolGradeNum}
+                      onChangeText={(text) =>
+                        setSchoolGradeNum(text.replace(/\D/g, '').slice(0, 1))
+                      }
+                      keyboardType="number-pad"
+                      maxLength={1}
+                      placeholder=""
+                      placeholderTextColor={colors.textSecondary}
+                      returnKeyType="next"
+                    />
+                  </View>
+                  <GrowingUnderline
+                    active={Boolean(schoolGradeNum)}
+                    normalize={normalize}
+                    fillColor={colors.textLight40}
+                  />
+                </View>
+                <View style={enrollmentStyles.gradeClassCol}>
+                  <Text style={enrollmentStyles.fieldLabel}>반</Text>
+                  <View style={enrollmentStyles.underlineField}>
+                    <TextInput
+                      style={enrollmentStyles.fieldInput}
+                      value={schoolClassNum}
+                      onChangeText={(text) =>
+                        setSchoolClassNum(text.replace(/\D/g, '').slice(0, 2))
+                      }
+                      keyboardType="number-pad"
+                      maxLength={2}
+                      placeholder=""
+                      placeholderTextColor={colors.textSecondary}
+                      returnKeyType="done"
+                    />
+                  </View>
+                  <GrowingUnderline
+                    active={Boolean(schoolClassNum)}
+                    normalize={normalize}
+                    fillColor={colors.textLight40}
+                  />
+                </View>
+              </View>
+            ) : null}
           </View>
         ) : null}
-
-        <SignupHelperText
-          normalize={normalize}
-          variant="emphasis"
-          style={localStyles.helper}
-        >
-          학교명과 이름이 선명하게 보이도록 촬영해 주세요. 흐리거나 잘리면 승인되지
-          않을 수 있어요.
-        </SignupHelperText>
 
         <View style={localStyles.cameraWrap} onLayout={onStageLayout}>
           <StudentIdCaptureStage
@@ -296,10 +413,10 @@ const StudentIdResubmit = ({ mode = 'rejected', navigation }) => {
           style={[
             localStyles.submitBtn,
             { borderRadius: normalize(24), paddingVertical: normalize(14) },
-            busy && { opacity: 0.6 },
+            submitDisabled && localStyles.submitBtnDisabled,
           ]}
           activeOpacity={0.9}
-          disabled={busy}
+          disabled={submitDisabled}
           onPress={runResubmit}
         >
           {busy ? (
@@ -321,34 +438,63 @@ const StudentIdResubmit = ({ mode = 'rejected', navigation }) => {
   );
 };
 
+function createEnrollmentStyles(normalize) {
+  return StyleSheet.create({
+    gradeClassRow: {
+      flexDirection: 'row',
+      gap: normalize(20),
+      marginTop: normalize(20),
+    },
+    gradeClassCol: {
+      flex: 1,
+      minWidth: 0,
+    },
+    fieldLabel: {
+      marginBottom: normalize(6),
+      fontFamily: fonts.regular,
+      fontSize: normalize(fontSizes.md),
+      letterSpacing: 0.2,
+      color: colors.textLight40,
+    },
+    underlineField: {
+      paddingVertical: normalize(10),
+      paddingHorizontal: normalize(2),
+      minHeight: normalize(40),
+      justifyContent: 'center',
+    },
+    fieldInput: {
+      paddingVertical: 0,
+      paddingHorizontal: 0,
+      fontFamily: fonts.regular,
+      fontSize: normalize(fontSizes.xxl),
+      minHeight: normalize(fontSizes.xxl),
+      color: colors.textPrimary,
+      ...Platform.select({
+        android: { includeFontPadding: false, textAlignVertical: 'center' },
+        ios: {},
+      }),
+    },
+  });
+}
+
 const localStyles = StyleSheet.create({
   root: {
     flex: 1,
     width: '100%',
     backgroundColor: colors.background,
   },
+  schoolBlock: {
+    width: '100%',
+    marginBottom: 16,
+    flexShrink: 0,
+    zIndex: 40,
+    elevation: 40,
+  },
   body: {
     flex: 1,
     width: '100%',
     minHeight: 0,
-  },
-  schoolBlock: {
-    width: '100%',
-    marginBottom: 12,
-    flexShrink: 0,
-  },
-  schoolHint: {
-    fontFamily: fonts.regular,
-    fontSize: 13,
-    color: colors.textSecondary,
-    lineHeight: 20,
-    marginBottom: 4,
-  },
-  helper: {
-    width: '100%',
-    alignSelf: 'stretch',
-    flexShrink: 0,
-    marginBottom: 10,
+    overflow: 'visible',
   },
   cameraWrap: {
     flex: 1,
@@ -357,6 +503,7 @@ const localStyles = StyleSheet.create({
     borderRadius: 24,
     overflow: 'hidden',
     backgroundColor: '#000',
+    zIndex: 1,
   },
   cameraStage: {
     flex: 1,
@@ -386,6 +533,9 @@ const localStyles = StyleSheet.create({
     backgroundColor: colors.primary,
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  submitBtnDisabled: {
+    opacity: 0.4,
   },
   submitBtnText: {
     fontFamily: fonts.bold,

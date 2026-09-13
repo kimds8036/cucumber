@@ -25,6 +25,7 @@ import { createMailStyles } from '../../styles/mail.style';
 import { colors, fonts } from '../../styles/colors';
 import Loading from '../../components/Loading';
 import { api, getApiUserFacingMessage } from '../../utils/api';
+import { useRequireStudentVerified } from '../../hooks/useRequireStudentVerified';
 import {
   buildSendMailPrefill,
   resolveSchoolPrefill,
@@ -32,6 +33,10 @@ import {
 import { usePersonalMailCharLimit } from '../../hooks/usePersonalMailCharLimit';
 
 const SendMailScreen = ({ navigation, route }) => {
+  const { allowed, Gate } = useRequireStudentVerified(navigation, {
+    message: '개인 우편은 학생증 인증 후 이용할 수 있어요.',
+    reason: 'personal_mail',
+  });
   const prefill = route?.params?.prefill;
   const { width, height } = useWindowDimensions();
   const insets = useSafeAreaInsets();
@@ -212,6 +217,8 @@ const SendMailScreen = ({ navigation, route }) => {
     bottomCtaHeightRef.current = next;
     setBottomCtaHeight(next);
   };
+
+  if (!allowed) return <Gate />;
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>

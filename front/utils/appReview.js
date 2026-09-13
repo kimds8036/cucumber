@@ -21,7 +21,7 @@ const WHACK_NAME_MAX = 10;
  * true: 이용일·쿨다운 무시하고 세션당 1회 (로컬 테스트용)
  * false: 운영 — 누적 이용일 MIN_ACTIVE_DAYS + 쿨다운
  */
-export const REVIEW_PROMPT_TEST_ALWAYS = true;
+export const REVIEW_PROMPT_TEST_ALWAYS = false;
 
 /** 리뷰 유도에 필요한 누적 이용일 (연속 불필요) */
 export const REVIEW_PROMPT_MIN_ACTIVE_DAYS = 10;

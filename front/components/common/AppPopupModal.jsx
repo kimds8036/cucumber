@@ -1,20 +1,23 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { Modal, Pressable, View } from 'react-native';
+import { Animated, Easing, Modal, Pressable, View } from 'react-native';
 import { colors } from '../../styles/colors';
 
-/** fade 종료 후 언마운트 (iOS 투명 터치 차단 레이어 잔존 방지) */
-const DISMISS_MS = 320;
+/** 등장·퇴장 페이드 (시간표·타이머 「저장 완료」와 동일 톤) */
+const FADE_MS = 220;
 
 /**
- * 시간표 「저장 완료」 등 공통 중앙 확인 팝업 셸.
- * - fade + statusBarTranslucent
+ * 앱 공통 중앙 확인 팝업 셸.
+ * - 항상 페이드 인/아웃 (개별 animationType 오버라이드 없음)
  * - visible=false 시 내용은 유지한 채 페이드 아웃 후 언마운트
+ *
+ * 새 확인/안내 팝업은 이 컴포넌트를 쓰세요 (AlertHost / appAlert 포함).
  */
 export default function AppPopupModal({
   visible,
   onClose,
   children,
-  animationType = 'fade',
+  /** @deprecated 무시됨 — 항상 페이드 */
+  animationType: _animationType,
   dismissOnBackdrop = false,
   dismissOnBackPress = true,
   cardStyle,
@@ -23,9 +26,10 @@ export default function AppPopupModal({
   useDefaultContainerWidth = true,
   onDismissed,
 }) {
-  const [mounted, setMounted] = useState(visible);
+  const [mounted, setMounted] = useState(Boolean(visible));
+  const opacity = useRef(new Animated.Value(visible ? 1 : 0)).current;
+  const animRef = useRef(null);
   const dismissedRef = useRef(false);
-  const timerRef = useRef(null);
 
   const finishDismiss = useCallback(() => {
     if (dismissedRef.current) return;
@@ -37,30 +41,48 @@ export default function AppPopupModal({
   useEffect(() => {
     if (visible) {
       dismissedRef.current = false;
-      if (timerRef.current) {
-        clearTimeout(timerRef.current);
-        timerRef.current = null;
-      }
       setMounted(true);
-      return undefined;
     }
+  }, [visible]);
+
+  useEffect(() => {
     if (!mounted) return undefined;
-    timerRef.current = setTimeout(finishDismiss, DISMISS_MS);
+
+    if (animRef.current) {
+      animRef.current.stop();
+      animRef.current = null;
+    }
+
+    if (visible) {
+      opacity.setValue(0);
+    }
+
+    const anim = Animated.timing(opacity, {
+      toValue: visible ? 1 : 0,
+      duration: FADE_MS,
+      easing: visible
+        ? Easing.out(Easing.cubic)
+        : Easing.in(Easing.cubic),
+      useNativeDriver: true,
+    });
+    animRef.current = anim;
+    anim.start(({ finished }) => {
+      if (finished && !visible) finishDismiss();
+    });
+
     return () => {
-      if (timerRef.current) {
-        clearTimeout(timerRef.current);
-        timerRef.current = null;
-      }
+      anim.stop();
+      if (animRef.current === anim) animRef.current = null;
     };
-  }, [visible, mounted, finishDismiss]);
+  }, [visible, mounted, opacity, finishDismiss]);
 
   if (!mounted) return null;
 
   return (
     <Modal
-      visible={visible}
+      visible
       transparent
-      animationType={animationType}
+      animationType="none"
       statusBarTranslucent
       navigationBarTranslucent
       onRequestClose={dismissOnBackPress ? onClose : () => {}}
@@ -68,7 +90,7 @@ export default function AppPopupModal({
         if (!visible) finishDismiss();
       }}
     >
-      <View
+      <Animated.View
         style={{
           flex: 1,
           width: '100%',
@@ -76,6 +98,7 @@ export default function AppPopupModal({
           backgroundColor: overlayColor,
           justifyContent: 'center',
           alignItems: 'center',
+          opacity,
         }}
       >
         <Pressable
@@ -105,7 +128,7 @@ export default function AppPopupModal({
             {children}
           </View>
         </View>
-      </View>
+      </Animated.View>
     </Modal>
   );
 }
