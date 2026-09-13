@@ -8,8 +8,16 @@ import { PERSONAL_MAIL_DUPLICATE_CODE } from '../constants/personalMail.js';
  * POST /api/mails/personal/send
  * GET  /api/mails/personal/:mailId/retry
  */
-export function registerPersonalMailSendRoutes(router, authenticate) {
-  router.post('/personal/send', authenticate, async (req, res) => {
+export function registerPersonalMailSendRoutes(
+  router,
+  authenticate,
+  requireStudentVerified,
+) {
+  const gate = requireStudentVerified
+    ? [authenticate, requireStudentVerified]
+    : [authenticate];
+
+  router.post('/personal/send', ...gate, async (req, res) => {
     try {
       const result = await sendPersonalMailByAddress(req.user.userId, req.body);
 
@@ -33,7 +41,7 @@ export function registerPersonalMailSendRoutes(router, authenticate) {
     }
   });
 
-  router.get('/personal/:mailId/retry', authenticate, async (req, res) => {
+  router.get('/personal/:mailId/retry', ...gate, async (req, res) => {
     try {
       const mailId = parseInt(req.params.mailId, 10);
       const data = await getPersonalMailRetryPayload(mailId, req.user.userId);

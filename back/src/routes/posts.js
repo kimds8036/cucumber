@@ -1,7 +1,7 @@
 import express from 'express';
 import { body, param } from 'express-validator';
 import pool from '../config/database.js';
-import { authenticate, optionalAuthenticate } from '../middleware/auth.js';
+import { authenticate, optionalAuthenticate, requireStudentVerified } from '../middleware/auth.js';
 import { validate } from '../middleware/validate.js';
 import { createNotification } from '../utils/notifications.js';
 import {
@@ -18,14 +18,15 @@ import { isBlockedBy } from '../utils/userBlock.js';
 import { submitContentReport } from '../services/reportSubmission.service.js';
 import { notifyAppealCreated } from '../services/discordWebhook.service.js';
 import { evaluateAndUnlockBadges } from '../services/badge.service.js';
+import { API_ERROR_CODES } from '../constants/apiErrorCodes.js';
 const router = express.Router();
 
 // ─────────────────────────────────────────────────────────────────────────────
 // 검증 체이너 — 핸들러 안의 비즈니스 가드(작성자 본인 학교 확인 등) 는 그대로 둔다.
 // ─────────────────────────────────────────────────────────────────────────────
 const POST_CONTENT_MAX = 5000;
-// 현재 운영 중인 게시판 유형. 새 유형 추가 시 여기에 등록한다.
-const VALID_BOARD_TYPES = ['school', 'national'];
+// national=전체, student=학생 인증 피드, school=우리학교
+const VALID_BOARD_TYPES = ['school', 'national', 'student'];
 
 const postCreateValidators = [
   body('boardType').isString().withMessage('게시판 유형을 선택해주세요.')
@@ -286,6 +287,27 @@ router.get('/', optionalAuthenticate, async (req, res) => {
     if (boardType) {
       conditions.push('p.board_type = ?');
       params.push(boardType);
+    }
+
+    // 학교·학생 게시판: 학생 인증 필수
+    if (boardType === 'school' || boardType === 'student') {
+      if (!userId) {
+        return res.status(401).json({
+          success: false,
+          message: '로그인이 필요합니다.',
+        });
+      }
+      const [svRows] = await pool.execute(
+        'SELECT student_verified FROM users WHERE id = ? LIMIT 1',
+        [userId],
+      );
+      if (!svRows[0]?.student_verified) {
+        return res.status(403).json({
+          success: false,
+          message: '학생 인증이 필요한 기능입니다. 학생증으로 인증해 주세요.',
+          code: API_ERROR_CODES.STUDENT_VERIFICATION_REQUIRED,
+        });
+      }
     }
 
     // 학교 게시판 필터
@@ -1102,6 +1124,28 @@ router.get('/:id', optionalAuthenticate, async (req, res) => {
     }
 
     const post = posts[0];
+    if (
+      (post.board_type === 'school' || post.board_type === 'student')
+    ) {
+      if (!userId) {
+        return res.status(401).json({
+          success: false,
+          message: '로그인이 필요합니다.',
+        });
+      }
+      const [svRows] = await pool.execute(
+        'SELECT student_verified FROM users WHERE id = ? LIMIT 1',
+        [userId],
+      );
+      if (!svRows[0]?.student_verified) {
+        return res.status(403).json({
+          success: false,
+          message: '학생 인증이 필요한 기능입니다. 학생증으로 인증해 주세요.',
+          code: API_ERROR_CODES.STUDENT_VERIFICATION_REQUIRED,
+        });
+      }
+    }
+
     if (post.is_hidden && post.user_id !== userId) {
       return res.status(404).json({
         success: false,
@@ -1237,7 +1281,7 @@ router.post('/', authenticate, blockWhenFlag('post_write_disabled'), uploadPost.
 
     // 사용자 정보 확인
     const [users] = await pool.execute(
-      'SELECT school_id FROM users WHERE id = ?',
+      'SELECT school_id, student_verified FROM users WHERE id = ?',
       [userId]
     );
 
@@ -1249,6 +1293,17 @@ router.post('/', authenticate, blockWhenFlag('post_write_disabled'), uploadPost.
     }
 
     const user = users[0];
+
+    if (
+      (boardType === 'school' || boardType === 'student') &&
+      !user.student_verified
+    ) {
+      return res.status(403).json({
+        success: false,
+        message: '학생 인증이 필요한 기능입니다. 학생증으로 인증해 주세요.',
+        code: API_ERROR_CODES.STUDENT_VERIFICATION_REQUIRED,
+      });
+    }
 
     // 학교 게시판인 경우 사용자의 학교와 일치하는지 확인
     if (boardType === 'school' && user.school_id !== String(schoolId)) {
@@ -1451,7 +1506,7 @@ router.post('/:id/like', authenticate, async (req, res) => {
 
     // 게시글 존재 확인 (삭제되지 않은 글만)
     const [posts] = await pool.execute(
-      'SELECT id, user_id, content FROM posts WHERE id = ? AND is_deleted = FALSE',
+      'SELECT id, user_id, content, board_type FROM posts WHERE id = ? AND is_deleted = FALSE',
       [id],
     );
     if (posts.length === 0) {
@@ -1459,6 +1514,23 @@ router.post('/:id/like', authenticate, async (req, res) => {
         success: false, 
         message: '게시글을 찾을 수 없습니다.' 
       });
+    }
+
+    if (
+      posts[0].board_type === 'school' ||
+      posts[0].board_type === 'student'
+    ) {
+      const [svRows] = await pool.execute(
+        'SELECT student_verified FROM users WHERE id = ? LIMIT 1',
+        [userId],
+      );
+      if (!svRows[0]?.student_verified) {
+        return res.status(403).json({
+          success: false,
+          message: '학생 인증이 필요한 기능입니다. 학생증으로 인증해 주세요.',
+          code: API_ERROR_CODES.STUDENT_VERIFICATION_REQUIRED,
+        });
+      }
     }
 
     // 이미 좋아요를 눌렀는지 확인
@@ -1524,7 +1596,7 @@ router.post('/:id/scrap', authenticate, async (req, res) => {
     const { id } = req.params;
 
     const [posts] = await pool.execute(
-      'SELECT id FROM posts WHERE id = ? AND is_deleted = FALSE',
+      'SELECT id, board_type FROM posts WHERE id = ? AND is_deleted = FALSE',
       [id],
     );
     if (posts.length === 0) {
@@ -1532,6 +1604,23 @@ router.post('/:id/scrap', authenticate, async (req, res) => {
         success: false,
         message: '게시글을 찾을 수 없습니다.',
       });
+    }
+
+    if (
+      posts[0].board_type === 'school' ||
+      posts[0].board_type === 'student'
+    ) {
+      const [svRows] = await pool.execute(
+        'SELECT student_verified FROM users WHERE id = ? LIMIT 1',
+        [userId],
+      );
+      if (!svRows[0]?.student_verified) {
+        return res.status(403).json({
+          success: false,
+          message: '학생 인증이 필요한 기능입니다. 학생증으로 인증해 주세요.',
+          code: API_ERROR_CODES.STUDENT_VERIFICATION_REQUIRED,
+        });
+      }
     }
 
     const [existing] = await pool.execute(

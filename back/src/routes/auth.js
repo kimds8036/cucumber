@@ -379,10 +379,8 @@ const signupValidators = [
     .withMessage('생년월일을 입력해주세요.'),
   body('schoolId').optional({ values: 'falsy' }).isString().trim().isLength({ min: 1, max: 50 }),
   body('claimedSchoolName').optional({ values: 'falsy' }).isString().trim().isLength({ max: 100 }),
-  body('grade').exists({ checkNull: true }).withMessage('학년을 선택해주세요.')
-    .bail().toInt().isInt({ min: 1, max: 6 }).withMessage('학년이 올바르지 않습니다.'),
-  body('classNumber').exists({ checkNull: true }).withMessage('반을 선택해주세요.')
-    .bail().toInt().isInt({ min: 1, max: 50 }).withMessage('반이 올바르지 않습니다.'),
+  body('grade').optional({ values: 'falsy' }).toInt().isInt({ min: 1, max: 6 }).withMessage('학년이 올바르지 않습니다.'),
+  body('classNumber').optional({ values: 'falsy' }).toInt().isInt({ min: 1, max: 50 }).withMessage('반이 올바르지 않습니다.'),
   body('colorId').optional({ values: 'falsy' }).toInt().isInt({ min: 1, max: 4 }),
   body('verificationMethod').optional({ values: 'falsy' }).isString().isIn(['student_id', 'certificate']),
   body('certificateViewUrl').optional({ values: 'falsy' }).isString().isLength({ max: 500 }),
@@ -1402,15 +1400,13 @@ router.post(
     // [SIGNUP_REDESIGN_SKIP] 필수 필드·약관·토큰 검증
     if (!skipValidation) {
       // 소셜: 공개 아이디·비번은 승인 후 SignProfileUsername — 가입 시 생략
+      // 학교·학년·반: 가입 시 선택 아님 — 인앱 학생증 인증 때 설정 (가입_개편)
       const accountRequired = !isSocialSignup;
       if (
         (accountRequired && (!username || !password)) ||
         !name ||
         !phone ||
-        !birthDate ||
-        !resolvedSchoolId ||
-        !grade ||
-        !classNumber
+        !birthDate
       ) {
         return res.status(400).json({
           success: false,
@@ -1425,11 +1421,6 @@ router.post(
             message: '증명서 열람 주소와 열람 번호를 입력해주세요.',
           });
         }
-      } else if (!schoolId?.trim()) {
-        return res.status(400).json({
-          success: false,
-          message: '재학 중인 학교를 선택해 주세요.',
-        });
       }
 
       const requiredConsentOk =
@@ -1447,13 +1438,7 @@ router.post(
         });
       }
 
-      if (!isCertificateSignup && !studentVerificationToken?.trim()) {
-        return res.status(400).json({
-          success: false,
-          message: '학생증 촬영을 먼저 완료해 주세요.',
-          code: 'STUDENT_VERIFICATION_TOKEN_REQUIRED',
-        });
-      }
+      // 학생증 토큰은 선택 — 미제출 가입 후 인앱에서 인증 유도 (가입_개편)
     }
 
     const resolvedColorId = Number(rawColorId) || pickRandomProfileColorId();
@@ -1466,15 +1451,30 @@ router.post(
     }
     const resolvedClassNumber = Number(classNumber) || 1;
 
-    let effectiveSchoolId = resolvedSchoolId;
+    let effectiveSchoolId = resolvedSchoolId
+      ? String(resolvedSchoolId).trim() || null
+      : null;
     if (skipValidation) {
       const trimmedSchool = String(effectiveSchoolId || '').trim();
       if (!trimmedSchool || trimmedSchool === 'REDESIGN_SKIP' || trimmedSchool === 'CERT_PENDING') {
-        const [fallbackSchools] = await pool.execute('SELECT school_id FROM schools LIMIT 1');
-        if (fallbackSchools.length > 0) {
-          effectiveSchoolId = fallbackSchools[0].school_id;
-        }
+        // 스킵 모드: 학교 없이 가입 가능 (NULL)
+        effectiveSchoolId = null;
       }
+    }
+    if (effectiveSchoolId && !isCertificateSignup) {
+      const [schoolOk] = await pool.execute(
+        'SELECT school_id FROM schools WHERE school_id = ? LIMIT 1',
+        [effectiveSchoolId],
+      );
+      if (!schoolOk.length) {
+        return res.status(400).json({
+          success: false,
+          message: '유효하지 않은 학교입니다.',
+        });
+      }
+    }
+    if (isCertificateSignup && !effectiveSchoolId) {
+      effectiveSchoolId = null;
     }
 
     let signupUsername = skipValidation
@@ -1730,14 +1730,18 @@ router.post(
       }
 
       let studentIdManualVerification = null;
-      if (!isCertificateSignup && !skipValidation) {
+      if (
+        !isCertificateSignup &&
+        !skipValidation &&
+        studentVerificationToken?.trim()
+      ) {
         try {
           studentIdManualVerification = await consumeStudentIdManualVerificationToken(
             studentVerificationToken,
             {
               name: anchorName,
               birthDate: anchorBirthDate,
-              schoolId: String(schoolId || effectiveSchoolId).trim(),
+              schoolId: String(schoolId || effectiveSchoolId || '').trim() || undefined,
               phone: anchorPhone,
             },
             connection,
@@ -1957,12 +1961,14 @@ router.post(
         },
       );
 
-      scheduleSchoolTermSync(effectiveSchoolId);
-      try {
-        const { scheduleSchoolStats } = await import('../services/cronSchedule.hooks.js');
-        scheduleSchoolStats(effectiveSchoolId);
-      } catch (e) {
-        console.warn('[signup] school-stats reserve', e?.message || e);
+      if (effectiveSchoolId) {
+        scheduleSchoolTermSync(effectiveSchoolId);
+        try {
+          const { scheduleSchoolStats } = await import('../services/cronSchedule.hooks.js');
+          scheduleSchoolStats(effectiveSchoolId);
+        } catch (e) {
+          console.warn('[signup] school-stats reserve', e?.message || e);
+        }
       }
 
       if (isCertificateSignup && reviewSubmissionId) {
@@ -2636,12 +2642,6 @@ router.post('/resubmit-student-id', authenticate, signupOcrLimiter, async (req, 
         message: '이미 학생 인증이 완료된 계정입니다.',
       });
     }
-    if (!isReverificationResubmit && verification.status !== 'REJECTED') {
-      return res.status(400).json({
-        success: false,
-        message: '재제출은 거절된 경우에만 가능합니다.',
-      });
-    }
     if (isReverificationResubmit && verification.reverificationSubmissionPending) {
       return res.status(400).json({
         success: false,
@@ -2652,6 +2652,19 @@ router.post('/resubmit-student-id', authenticate, signupOcrLimiter, async (req, 
       return res.status(400).json({
         success: false,
         message: '이미 제출된 학생증이 검수 대기 중입니다.',
+      });
+    }
+
+    const canFirstSubmit =
+      !isReverificationResubmit && verification.status === 'UNVERIFIED';
+    if (
+      !isReverificationResubmit &&
+      verification.status !== 'REJECTED' &&
+      !canFirstSubmit
+    ) {
+      return res.status(400).json({
+        success: false,
+        message: '학생증 제출이 가능한 상태가 아닙니다.',
       });
     }
 
@@ -2667,7 +2680,11 @@ router.post('/resubmit-student-id', authenticate, signupOcrLimiter, async (req, 
     }
     const user = userRows[0];
 
-    const submissionPurpose = isReverificationResubmit ? 'reverification' : 'resubmit';
+    const submissionPurpose = isReverificationResubmit
+      ? 'reverification'
+      : canFirstSubmit
+        ? 'signup'
+        : 'resubmit';
     const targetSchoolId = String(bodySchoolId || user.school_id || '').trim();
     if (!targetSchoolId) {
       return res.status(400).json({
