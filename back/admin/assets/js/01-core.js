@@ -248,12 +248,21 @@ function adminUrl(subpath) {
     if (!v) return '-';
     const d = new Date(v);
     if (Number.isNaN(d.getTime())) return '-';
-    const yy = String(d.getFullYear()).slice(2);
-    const mm = String(d.getMonth() + 1).padStart(2, '0');
-    const dd = String(d.getDate()).padStart(2, '0');
-    const hh = String(d.getHours()).padStart(2, '0');
-    const mi = String(d.getMinutes()).padStart(2, '0');
-    return `${yy}.${mm}.${dd} ${hh}:${mi}`;
+    try {
+      const parts = new Intl.DateTimeFormat('en-CA', {
+        timeZone: 'Asia/Seoul',
+        year: '2-digit',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: false,
+      }).formatToParts(d);
+      const p = (type) => parts.find((x) => x.type === type)?.value || '00';
+      return `${p('year')}.${p('month')}.${p('day')} ${p('hour')}:${p('minute')}`;
+    } catch {
+      return '-';
+    }
   }
 
   function esc(v) {

@@ -3,6 +3,7 @@ import { addDaysToYmd } from './analytics.service.js';
 import { formatKstDateYmd } from './reverification.service.js';
 import { resolveUserName } from './userPii.service.js';
 import { getTimerDayKey } from '../utils/timerDayKey.js';
+import { isoFromMysqlKstNaiveString } from '../utils/timerSessionTimes.js';
 
 const KST_NOW_SQL = `CONVERT_TZ(UTC_TIMESTAMP(3), '+00:00', '+09:00')`;
 
@@ -139,8 +140,9 @@ export async function getTimerOpsOverview({ days = 14 } = {}) {
        u.class_number,
        sch.name AS school_name,
        ss.subject_name,
-       ss.started_at,
-       ss.ended_at,
+       DATE_FORMAT(ss.day_key, '%Y-%m-%d') AS day_key,
+       CAST(ss.started_at AS CHAR(30)) AS started_at_s,
+       CAST(ss.ended_at AS CHAR(30)) AS ended_at_s,
        TIMESTAMPDIFF(
          SECOND,
          ss.started_at,
@@ -188,8 +190,11 @@ export async function getTimerOpsOverview({ days = 14 } = {}) {
         grade: r.grade != null ? Number(r.grade) : null,
         classNumber: r.class_number != null ? Number(r.class_number) : null,
         subjectName: r.subject_name || '전체',
-        startedAt: r.started_at,
-        endedAt: r.ended_at,
+        dayKey: ymdOf(r.day_key),
+        startedAt: isoFromMysqlKstNaiveString(r.started_at_s),
+        endedAt: r.ended_at_s
+          ? isoFromMysqlKstNaiveString(r.ended_at_s)
+          : null,
         open,
         hours: Math.round((seconds / 3600) * 10) / 10,
       };
