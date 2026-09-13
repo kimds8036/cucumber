@@ -45,11 +45,13 @@ import {
   cancelInicisFlow,
   getPendingInicisSession,
   resumePendingInicisFlow,
+  runInicisIdentityFlow,
+  fetchInicisServerEnabled,
+  isInicisClientEnabled,
 } from '../../../services/inicisAuth';
 import { useAuth } from '../../../context/AuthContext';
 import { useAppNavigation } from '../../../navigation/useAppNavigation';
 import {
-  showTooOldForSignupAlert,
   showTooYoungForSignupAlert,
 } from './authFeatureAlerts';
 import {
@@ -62,7 +64,6 @@ import {
   pickRandomProfileColorId,
 } from './signupEnrollmentUtils';
 import { SIGNUP_REDESIGN_SKIP_VALIDATION } from './signupRedesignFlags';
-import { ALLOW_ADULT_SIGNUP_IN_DEV } from './signupAdultTestMode';
 import {
   alertSignupDuplicateAndOfferLogin,
   assertPhoneAvailableForSignup,
@@ -122,6 +123,8 @@ const SignKakao = ({ navigation }) => {
     useState(null);
   const [showGuardianConsentModal, setShowGuardianConsentModal] =
     useState(false);
+  /** 보호자 모달 「나중에」— 로그인으로 보내지 않고 가입 화면에 남아 재시도 */
+  const [awaitingGuardianConsent, setAwaitingGuardianConsent] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [screenReady, setScreenReady] = useState(false);
   const [footerHeight, setFooterHeight] = useState(88);
@@ -240,12 +243,12 @@ const SignKakao = ({ navigation }) => {
     }
     if (snapshot.certificateData) setCertificateData(snapshot.certificateData);
     if (snapshot.currentStep) {
-      // 레거시 세션에 school_select가 남아 있으면 가입 직전 단계로 되돌리지 않음
-      // (재학정보 화면은 가입에서 제거됨)
+      // 레거시 세션에 school_select/account가 남아 있으면 카카오 인증 단계로
+      // (STEP.CONSENT는 SignKakao에 없음 — undefined step 방지)
       const step =
         snapshot.currentStep === STEP.SCHOOL_SELECT ||
         snapshot.currentStep === 'account'
-          ? STEP.CONSENT
+          ? STEP.KAKAO_AUTH
           : snapshot.currentStep;
       setCurrentStep(step);
     }
@@ -265,6 +268,7 @@ const SignKakao = ({ navigation }) => {
         setBlockingAlert((prev) => ({ ...prev, visible: false }));
         setSubmitting(false);
         setShowGuardianConsentModal(false);
+        setAwaitingGuardianConsent(false);
       },
     });
   }, [clearFlowSession, navigationRef]);
@@ -306,14 +310,68 @@ const SignKakao = ({ navigation }) => {
       setGuardianInicisClientToken(
         result.inicisClientToken || result.clientToken || null,
       );
+      setAwaitingGuardianConsent(false);
       proceedToSchool();
     } catch (error) {
       if (error?.code !== 'CANCELLED') {
         Alert.alert('알림', '보호자 본인인증을 완료하지 못했습니다.');
       }
-      await abortSignupImmediate();
+      setAwaitingGuardianConsent(true);
     }
-  }, [abortSignupImmediate, proceedToSchool]);
+  }, [proceedToSchool]);
+
+  const runGuardianIdentityVerification = useCallback(async () => {
+    if (SIGNUP_REDESIGN_SKIP_VALIDATION) {
+      setGuardianInicisClientToken('test-guardian-token');
+      setAwaitingGuardianConsent(false);
+      proceedToSchool();
+      return;
+    }
+
+    try {
+      const clientOn = isInicisClientEnabled();
+      let serverOn = false;
+      if (clientOn) {
+        serverOn = await fetchInicisServerEnabled();
+      }
+      if (!clientOn || !serverOn) {
+        Alert.alert(
+          '보호자 인증',
+          '보호자 본인인증 서버에 연결할 수 없습니다. 네트워크를 확인한 뒤 다시 시도해 주세요.',
+        );
+        setAwaitingGuardianConsent(true);
+        return;
+      }
+
+      const pending = await getPendingInicisSession();
+      const result =
+        pending?.purpose === 'guardian_consent'
+          ? await resumePendingInicisFlow('guardian_consent')
+          : await runInicisIdentityFlow('guardian_consent');
+      if (!isMountedRef.current || !result) {
+        setAwaitingGuardianConsent(true);
+        return;
+      }
+      const token = result.inicisClientToken || result.clientToken || null;
+      if (!token) {
+        Alert.alert('알림', '보호자 본인인증을 완료하지 못했습니다.');
+        setAwaitingGuardianConsent(true);
+        return;
+      }
+      setGuardianInicisClientToken(token);
+      setAwaitingGuardianConsent(false);
+      proceedToSchool();
+    } catch (error) {
+      if (error?.code !== 'CANCELLED') {
+        Alert.alert(
+          '보호자 인증 미완료',
+          error?.message ||
+            '보호자 본인인증이 완료되지 않아 가입을 진행할 수 없어요.',
+        );
+      }
+      setAwaitingGuardianConsent(true);
+    }
+  }, [proceedToSchool]);
 
   const applyKakaoIdentity = useCallback(
     async (nextIdentity) => {
@@ -348,6 +406,7 @@ const SignKakao = ({ navigation }) => {
       }
 
       if (birthCase === 'C') {
+        setAwaitingGuardianConsent(true);
         setShowGuardianConsentModal(true);
         return;
       }
@@ -391,7 +450,7 @@ const SignKakao = ({ navigation }) => {
             await clearFlowSession();
             await login({
               studentVerificationStatus:
-                data.studentVerificationStatus || 'PENDING',
+                data.studentVerificationStatus || 'UNVERIFIED',
               rejectReason: data.rejectReason || null,
               reverificationStatus: data.reverificationStatus || 'none',
               reverificationDeadline: data.reverificationDeadline || null,
@@ -445,22 +504,27 @@ const SignKakao = ({ navigation }) => {
   }, [abortSignupImmediate, applyKakaoIdentity, clearFlowSession, login]);
 
   const handleGuardianConsentStart = () => {
+    guardianModalPendingActionRef.current = 'verification';
     setShowGuardianConsentModal(false);
-    guardianModalPendingActionRef.current = 'after_guardian';
-    InteractionManager.runAfterInteractions(async () => {
-      if (SIGNUP_REDESIGN_SKIP_VALIDATION) {
-        setGuardianInicisClientToken('test-guardian-token');
-        proceedToSchool();
-        return;
-      }
-      Alert.alert('알림', '보호자 본인인증은 추후 연동됩니다.');
-    });
   };
 
   const handleGuardianConsentLater = () => {
     guardianModalPendingActionRef.current = null;
     setShowGuardianConsentModal(false);
+    setAwaitingGuardianConsent(true);
   };
+
+  const handleGuardianConsentModalDismissed = useCallback(() => {
+    const pending = guardianModalPendingActionRef.current;
+    guardianModalPendingActionRef.current = null;
+    if (!pending || !isMountedRef.current) return;
+    InteractionManager.runAfterInteractions(() => {
+      if (!isMountedRef.current) return;
+      if (pending === 'verification') {
+        void runGuardianIdentityVerification();
+      }
+    });
+  }, [runGuardianIdentityVerification]);
 
   const proceedFromSchoolSelect = useCallback(() => {
     const grade = Number(schoolGradeNum);
@@ -681,6 +745,10 @@ const SignKakao = ({ navigation }) => {
 
   const handlePrimaryPress = () => {
     if (currentStep === STEP.KAKAO_AUTH) {
+      if (awaitingGuardianConsent) {
+        setShowGuardianConsentModal(true);
+        return;
+      }
       kakaoAuthRanRef.current = true;
       void runKakaoSdkAuth();
       return;
@@ -711,7 +779,9 @@ const SignKakao = ({ navigation }) => {
       if (currentStep === STEP.CERTIFICATE_SUBMIT) return false;
       return false;
     }
-    if (currentStep === STEP.KAKAO_AUTH) return false;
+    if (currentStep === STEP.KAKAO_AUTH) {
+      return !(awaitingGuardianConsent || Boolean(kakaoAuthError));
+    }
     if (currentStep === STEP.SCHOOL_SELECT) {
       if (!selectedSchool?.id || selectedSchool?.manual) return true;
       if (!Number(schoolGradeNum) || Number(schoolGradeNum) < 1) return true;
@@ -725,7 +795,9 @@ const SignKakao = ({ navigation }) => {
   };
 
   const primaryLabel = () => {
-    if (currentStep === STEP.KAKAO_AUTH) return '다시 시도';
+    if (currentStep === STEP.KAKAO_AUTH) {
+      return awaitingGuardianConsent ? '보호자 인증하기' : '다시 시도';
+    }
     if (
       SIGNUP_REDESIGN_SKIP_VALIDATION &&
       currentStep === STEP.STUDENT_VERIFY &&
@@ -740,7 +812,9 @@ const SignKakao = ({ navigation }) => {
   };
 
   const showPrimaryFooter =
-    (currentStep === STEP.KAKAO_AUTH && Boolean(kakaoAuthError) && !kakaoBusy) ||
+    (currentStep === STEP.KAKAO_AUTH &&
+      !kakaoBusy &&
+      (awaitingGuardianConsent || Boolean(kakaoAuthError))) ||
     currentStep === STEP.SCHOOL_SELECT ||
     currentStep === STEP.CERTIFICATE_SUBMIT;
 
@@ -848,7 +922,32 @@ const SignKakao = ({ navigation }) => {
           <View
             style={{ flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: normalize(24) }}
           >
-            {kakaoBusy || !kakaoAuthError ? (
+            {awaitingGuardianConsent && !kakaoBusy ? (
+              <>
+                <Text
+                  style={{
+                    color: colors.textPrimary,
+                    fontSize: normalize(18),
+                    fontWeight: '700',
+                    textAlign: 'center',
+                    marginBottom: normalize(10),
+                  }}
+                >
+                  보호자 본인인증이 필요해요
+                </Text>
+                <Text
+                  style={{
+                    color: colors.textSecondary,
+                    fontSize: normalize(14),
+                    lineHeight: normalize(22),
+                    textAlign: 'center',
+                  }}
+                >
+                  만 14세 미만은 보호자 인증 후 가입을 이어갈 수 있어요.{'\n'}
+                  준비가 되면 아래에서 인증을 시작해 주세요.
+                </Text>
+              </>
+            ) : kakaoBusy || !kakaoAuthError ? (
               <>
                 <ActivityIndicator size="large" color={colors.primary} />
                 <Text
@@ -968,7 +1067,7 @@ const SignKakao = ({ navigation }) => {
         normalize={normalize}
         onStart={handleGuardianConsentStart}
         onLater={handleGuardianConsentLater}
-        onDismissed={() => {}}
+        onDismissed={handleGuardianConsentModalDismissed}
       />
 
       <SignupBlockingAlertModal

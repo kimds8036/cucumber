@@ -55,7 +55,6 @@ import {
 import { useAuth } from '../../../context/AuthContext';
 import { useAppNavigation } from '../../../navigation/useAppNavigation';
 import {
-  showTooOldForSignupAlert,
   showTooYoungForSignupAlert,
 } from './authFeatureAlerts';
 import {
@@ -69,7 +68,6 @@ import {
   pickRandomProfileColorId,
 } from './signupEnrollmentUtils';
 import { SIGNUP_REDESIGN_SKIP_VALIDATION } from './signupRedesignFlags';
-import { ALLOW_ADULT_SIGNUP_IN_DEV } from './signupAdultTestMode';
 import {
   alertSignupDuplicateAndOfferLogin,
   assertPhoneAvailableForSignup,
@@ -945,7 +943,6 @@ const SignPhone = ({ navigation }) => {
   const handleGuardianConsentLater = () => {
     guardianModalPendingActionRef.current = null;
     setShowGuardianConsentModal(false);
-    goToLogin();
   };
 
   const handleStudentIdentityIntroStart = () => {
@@ -1245,8 +1242,8 @@ const SignPhone = ({ navigation }) => {
     if (currentStep === STEP.BIRTH_DATE) {
       if (!isValidBirthDateString(birthDate)) return true;
       const birthCase = classifyBirthDateCase(birthDate);
-      if (birthCase === 'D') return true;
-      if (birthCase === 'A' && !ALLOW_ADULT_SIGNUP_IN_DEV) return true;
+      // D(너무 어림)만 차단. A(성인)는 카카오와 동일하게 가입 허용.
+      if (birthCase === 'D' || birthCase === 'invalid') return true;
       return false;
     }
     if (SIGNUP_REDESIGN_SKIP_VALIDATION) {

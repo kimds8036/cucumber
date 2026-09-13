@@ -37,7 +37,7 @@ export function showIneligibleAgeAlert(onConfirm) {
   ]);
 }
 
-/** A 케이스 — 가입 상한 초과 */
+/** @deprecated 성인(A)도 가입 허용 — 호출하지 말 것. D는 showTooYoungForSignupAlert 사용 */
 export function showTooOldForSignupAlert(onConfirm, _ref = new Date()) {
   Alert.alert('안내', AGE_INELIGIBLE_MESSAGE, [
     { text: '돌아가기', onPress: onConfirm },

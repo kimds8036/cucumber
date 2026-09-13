@@ -1,6 +1,6 @@
 /**
  * 백엔드 signupEnrollment.js 와 동일 규칙 유지
- * 가입 상한(만 21)과 OCR 학교급 추론을 맞춘다.
+ * 초등·중·고 학적 추론 (가입 상한 만 21은 high 클램프용)
  */
 import { SIGNUP_MAX_AGE } from './signupBirthDatePolicy';
 
@@ -15,11 +15,12 @@ export function computeAge(birthDate, ref = new Date()) {
   return age;
 }
 
+/** @returns {'elementary'|'middle'|'high'|null} */
 export function inferExpectedSchoolLevel(birthDate, ref = new Date()) {
   const age = computeAge(birthDate, ref);
   if (age == null) return null;
+  if (age >= 6 && age <= 11) return 'elementary';
   if (age >= 12 && age <= 15) return 'middle';
-  // 고등·가입 상한(만 21)까지 high 로 취급 (19~21은 3학년으로 클램프)
   if (age >= 16 && age <= SIGNUP_MAX_AGE) return 'high';
   return null;
 }
@@ -27,6 +28,10 @@ export function inferExpectedSchoolLevel(birthDate, ref = new Date()) {
 export function inferGradeFromBirthDate(birthDate, schoolLevel, ref = new Date()) {
   const age = computeAge(birthDate, ref);
   if (age == null || !schoolLevel) return null;
+  if (schoolLevel === 'elementary') {
+    const grade = age - 5;
+    return Math.min(6, Math.max(1, grade));
+  }
   if (schoolLevel === 'middle') {
     const grade = age - 11;
     return Math.min(3, Math.max(1, grade));

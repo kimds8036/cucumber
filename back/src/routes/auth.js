@@ -1446,8 +1446,15 @@ router.post(
     const expectedLevel = inferExpectedSchoolLevel(normalizedBirthDate);
     const inferredGrade = inferGradeFromBirthDate(normalizedBirthDate, expectedLevel);
     let resolvedGrade = Number(grade);
-    if (!Number.isFinite(resolvedGrade) || resolvedGrade < 1 || resolvedGrade > 3) {
+    if (!Number.isFinite(resolvedGrade) || resolvedGrade < 1 || resolvedGrade > 6) {
       resolvedGrade = inferredGrade || 1;
+    }
+    if (
+      expectedLevel &&
+      expectedLevel !== 'elementary' &&
+      resolvedGrade > 3
+    ) {
+      resolvedGrade = Math.min(3, resolvedGrade);
     }
     const resolvedClassNumber = Number(classNumber) || 1;
 
