@@ -5,7 +5,7 @@ import {
   STUDY_GRASS_AVG_MULTIPLIER,
   STUDY_GRASS_REDIS_TTL_SECONDS,
 } from '../config/studyGrass.js';
-import { authenticate } from '../middleware/auth.js';
+import { authenticate, requireStudentVerified } from '../middleware/auth.js';
 import { validate } from '../middleware/validate.js';
 import { getBatchRedis } from '../services/batchRedis.service.js';
 import {
@@ -467,7 +467,7 @@ router.get('/search', validate(schoolSearchValidators), async (req, res) => {
 });
 
 // 내 학교 정보 및 통계
-router.get('/me', authenticate, async (req, res) => {
+router.get('/me', authenticate, requireStudentVerified, async (req, res) => {
   try {
     const userId = req.user.userId;
 
@@ -542,7 +542,7 @@ router.get('/me', authenticate, async (req, res) => {
   }
 });
 
-router.get('/me/study-grass', authenticate, async (req, res) => {
+router.get('/me/study-grass', authenticate, requireStudentVerified, async (req, res) => {
   try {
     const userId = req.user.userId;
     const school = await getMySchoolCodes(userId);
@@ -567,7 +567,7 @@ router.get('/me/study-grass', authenticate, async (req, res) => {
   }
 });
 
-router.get('/me/meals/next', authenticate, async (req, res) => {
+router.get('/me/meals/next', authenticate, requireStudentVerified, async (req, res) => {
   try {
     const userId = req.user.userId;
     const requested = Number(req.query?.count ?? 3);
@@ -679,7 +679,7 @@ router.get('/:schoolId/meals/next', validate(schoolIdParamValidators), async (re
   }
 });
 
-router.get('/me/meals/calendar', authenticate, async (req, res) => {
+router.get('/me/meals/calendar', authenticate, requireStudentVerified, async (req, res) => {
   try {
     const userId = req.user.userId;
     const fromYmd = String(req.query?.fromYmd || '').trim();

@@ -36,6 +36,7 @@ import { colors, fonts } from '../../styles/colors';
 import { getNormalize } from '../../styles/frame.style';
 import { createSchoolMailDetailStyles } from '../../styles/SchoolMail.style';
 import { api } from '../../utils/api';
+import { useRequireStudentVerified } from '../../hooks/useRequireStudentVerified';
 import { emitSchoolMailLike, emitSchoolMailDeleted } from '../../utils/listSyncEvents';
 import {
   getSchoolMailFromLabel,
@@ -208,6 +209,10 @@ function CommentBody({ content, styles: st }) {
 }
 
 export default function SchoolMailDetail({ navigation, route }) {
+  const { allowed, Gate } = useRequireStudentVerified(navigation, {
+    message: '학교 우편은 학생증 인증 후 이용할 수 있어요.',
+    reason: 'school_mail',
+  });
   const { width } = useWindowDimensions();
   const normalize = useMemo(() => getNormalize(width), [width]);
   const styles = useMemo(
@@ -266,6 +271,7 @@ export default function SchoolMailDetail({ navigation, route }) {
 
   useEffect(() => {
     let cancelled = false;
+    if (!allowed) return undefined;
     if (mailId == null) {
       setLoading(false);
       setError('우편을 찾을 수 없습니다.');
@@ -311,10 +317,10 @@ export default function SchoolMailDetail({ navigation, route }) {
     return () => {
       cancelled = true;
     };
-  }, [mailId]);
+  }, [mailId, allowed]);
 
   const onRefreshMail = useCallback(async () => {
-    if (mailId == null) return;
+    if (!allowed || mailId == null) return;
     setRefreshing(true);
     setError(null);
     try {
@@ -907,6 +913,8 @@ export default function SchoolMailDetail({ navigation, route }) {
     }
     return <React.Fragment key={c.id}>{nodes}</React.Fragment>;
   };
+
+  if (!allowed) return <Gate />;
 
   return (
     <View

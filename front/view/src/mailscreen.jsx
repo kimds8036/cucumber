@@ -26,6 +26,7 @@ import {
   navigateToResendPersonalMail,
 } from '../../utils/personalMail';
 import ReportModal from '../../components/common/ReportModal.jsx';
+import { useRequireStudentVerified } from '../../hooks/useRequireStudentVerified';
 
 function parseUtcToLocal(createdAt) {
   if (!createdAt) return null;
@@ -1089,6 +1090,10 @@ function MailDetail({ mail: initialMail, onBack, navigation }) {
 }
 
 export default function AnonymousMailScreen({ navigation, route }) {
+  const { allowed, Gate } = useRequireStudentVerified(navigation, {
+    message: '개인 우편은 학생증 인증 후 이용할 수 있어요.',
+    reason: 'personal_mail',
+  });
   const detailMail = route.params?.mail;
   const fallbackRelatedId = route.params?.relatedId;
   const mailForDetail =
@@ -1103,6 +1108,8 @@ export default function AnonymousMailScreen({ navigation, route }) {
           isReceived: true,
           replyToMySent: false,
         };
+
+  if (!allowed) return <Gate />;
 
   return (
     <MailDetail

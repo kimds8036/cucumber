@@ -19,6 +19,9 @@ import EquippedBadge from './EquippedBadge';
 import { getGuideMyPageStats } from '../src/screens/UserGuide/guidePreviewData';
 import { colors } from '../styles/colors';
 import { useFriend } from '../context/FriendContext';
+import { useAuth } from '../context/AuthContext';
+import { useMainShellOptional } from '../context/MainShellContext';
+import StudentVerificationRejectedModal from './auth/StudentVerificationRejectedModal';
 
 const PROFILE_COUNTS_CACHE_TTL_MS = 10 * 60 * 1000;
 const ENROLLMENT_TOOLTIP_MS = 3000;
@@ -32,6 +35,13 @@ const ProfileCard = ({
   const { width } = useWindowDimensions();
   const normalize = useMemo(() => getNormalize(width), [width]);
   const styles = useMemo(() => createProfileCardStyles(normalize), [normalize]);
+  const { studentVerificationStatus, rejectReason, refreshStudentVerification } =
+    useAuth();
+  const shell = useMainShellOptional();
+  const isStudentApproved = studentVerificationStatus === 'APPROVED';
+  const isPending = studentVerificationStatus === 'PENDING';
+  const isRejected = studentVerificationStatus === 'REJECTED';
+  const [rejectionNoticeVisible, setRejectionNoticeVisible] = useState(false);
   const seededCounts =
     userInfo?.postCount != null && userInfo?.scrapCount != null;
   const [counts, setCounts] = useState({
@@ -163,7 +173,12 @@ const ProfileCard = ({
           />
         </View>
 
-        <View style={styles.profileInfo}>
+        <View
+          style={[
+            styles.profileInfo,
+            !isStudentApproved ? styles.profileInfoUnverified : null,
+          ]}
+        >
           <View style={styles.profileNameRow}>
             <Text style={styles.profileName} numberOfLines={1} ellipsizeMode="tail">
               {userInfo.name}
@@ -184,9 +199,14 @@ const ProfileCard = ({
           {userInfo.school ? (
             <Text style={styles.profileSchoolLine} numberOfLines={2}>
               {userInfo.school}
+              {!isStudentApproved ? ' · 인증 전' : ''}
+            </Text>
+          ) : !isStudentApproved ? (
+            <Text style={styles.profileSchoolLine} numberOfLines={1}>
+              학교 미등록 · 인증 전
             </Text>
           ) : null}
-          {gradeClassLabel ? (
+          {isStudentApproved && gradeClassLabel ? (
             <View style={styles.profileEnrollmentBlock}>
               <View style={styles.profileEnrollmentRow}>
                 <Text
@@ -205,6 +225,52 @@ const ProfileCard = ({
                 </View>
               ) : null}
             </View>
+          ) : null}
+          {!isStudentApproved ? (
+            <TouchableOpacity
+              activeOpacity={0.7}
+              onPress={() => {
+                if (isPending) return;
+                if (isRejected) {
+                  void refreshStudentVerification().finally(() => {
+                    setRejectionNoticeVisible(true);
+                  });
+                  return;
+                }
+                shell?.requestStudentVerification?.({
+                  reason: 'mypage',
+                  statusHint: studentVerificationStatus,
+                });
+              }}
+              style={[
+                styles.verifyCtaBtn,
+                isRejected ? styles.verifyCtaBtnRejected : null,
+              ]}
+              disabled={isPending}
+              hitSlop={{ top: 6, bottom: 6, left: 2, right: 2 }}
+            >
+              {isRejected ? (
+                <Ionicons
+                  name="warning"
+                  size={normalize(14)}
+                  color={colors.scrap || '#F5A623'}
+                  style={styles.verifyCtaIcon}
+                />
+              ) : null}
+              <Text
+                style={[
+                  styles.verifyCtaText,
+                  isPending ? styles.verifyCtaTextPending : null,
+                  isRejected ? styles.verifyCtaTextRejected : null,
+                ]}
+              >
+                {isPending
+                  ? '학생증 검수 중이에요'
+                  : isRejected
+                    ? '거절됨 · 사유 보기'
+                    : '학생증으로 인증하기'}
+              </Text>
+            </TouchableOpacity>
           ) : null}
           <View style={styles.quickLinksRow}>
             <TouchableOpacity
@@ -307,7 +373,16 @@ const ProfileCard = ({
             style={styles.timetableActionCard}
             onPress={
               onNavigateToTimetableChoice ||
-              (() => navigation.navigate('TimetabelChoice'))
+              (() =>
+                navigation.navigate(
+                  isStudentApproved ? 'TimetabelChoice' : 'EditTimetable',
+                  isStudentApproved
+                    ? undefined
+                    : {
+                        existingTimetable: {},
+                        returnToMypage: true,
+                      },
+                ))
             }
             activeOpacity={0.7}
           >
@@ -329,6 +404,18 @@ const ProfileCard = ({
           </TouchableOpacity>
         </View>
       )}
+      <StudentVerificationRejectedModal
+        visible={rejectionNoticeVisible}
+        rejectReason={rejectReason}
+        onClose={() => setRejectionNoticeVisible(false)}
+        onPressResubmit={() => {
+          setRejectionNoticeVisible(false);
+          shell?.requestStudentVerification?.({
+            reason: 'mypage_rejected',
+            statusHint: 'REJECTED',
+          });
+        }}
+      />
     </View>
   );
 };

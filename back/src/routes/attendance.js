@@ -1,5 +1,5 @@
 import express from 'express';
-import { authenticate } from '../middleware/auth.js';
+import { authenticate, requireStudentVerified } from '../middleware/auth.js';
 import {
   checkInAttendance,
   getMyAttendances,
@@ -9,7 +9,7 @@ import { evaluateAndUnlockBadges } from '../services/badge.service.js';
 
 const router = express.Router();
 
-router.post('/check-in', authenticate, async (req, res) => {
+router.post('/check-in', authenticate, requireStudentVerified, async (req, res) => {
   try {
     const { latitude, longitude } = req.body || {};
     const result = await checkInAttendance({

@@ -72,8 +72,9 @@ import { KeyboardProvider } from 'react-native-keyboard-controller';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { AppLockProvider } from './context/AppLockContext';
 import { LocationProvider, LocationGate } from './context/LocationContext';
-import StudentVerificationGate from './components/auth/StudentVerificationGate';
 import StudentVerificationRejected from './components/auth/StudentVerificationRejected';
+import StudentVerificationRejectedModal from './components/auth/StudentVerificationRejectedModal';
+import { navigationRef } from './navigation/navigationRef';
 import CertificateResubmit from './view/src/signup/CertificateResubmit';
 import CertificateGuideResubmit from './view/src/signup/CertificateGuideResubmit';
 import AltVerifyChoiceResubmit from './view/src/signup/AltVerifyChoiceResubmit';
@@ -83,6 +84,7 @@ import ReverificationGate from './components/auth/ReverificationGate';
 import ReverificationReminderBanner from './components/auth/ReverificationReminderBanner';
 import ReverificationPendingBanner from './components/auth/ReverificationPendingBanner';
 import ForceUpdateGate from './components/common/ForceUpdateGate';
+import InAppReviewPrompt from './components/common/InAppReviewPrompt';
 import OfflineGate from './components/common/OfflineGate';
 import AppErrorBoundary from './components/common/AppErrorBoundary';
 import LaunchAdModal from './components/ads/LaunchAdModal';
@@ -94,7 +96,6 @@ import { FriendProvider } from './context/FriendContext';
 import { ToastProvider } from './context/ToastContext';
 import ToastHost from './components/common/ToastHost';
 import AlertHost from './components/common/AlertHost';
-import { navigationRef } from './navigation/navigationRef';
 import { getPendingInicisSession } from './services/inicisAuth';
 import {
   clearSignupPendingSession,
@@ -256,6 +257,7 @@ function MainStack({ initialRouteName = 'Main' }) {
         name="NotificationSettings"
         component={NotificationSettings}
       />
+      <Stack.Screen name="StudentIdVerify" component={StudentIdResubmit} />
       <Stack.Screen name="PeriodTimeSettings" component={PeriodTimeSettings} />
       <Stack.Screen name="PeriodTimeSetup" component={PeriodTimeSetup} />
       <Stack.Screen name="SetPinScreen" component={SetPinScreen} />
@@ -322,6 +324,7 @@ function RootNavigator() {
     postLoginRoute,
     setPostLoginRoute,
     studentVerificationStatus,
+    rejectReason,
     reverificationStatus,
     reverificationDeadline,
     reverificationSubmissionPending,
@@ -335,6 +338,7 @@ function RootNavigator() {
   const [showNeisPlusResubmit, setShowNeisPlusResubmit] = useState(false);
   const [showRejectedInquiry, setShowRejectedInquiry] = useState(false);
   const [resubmitMode, setResubmitMode] = useState('rejected');
+  const [showRejectionNotice, setShowRejectionNotice] = useState(false);
   const pollRef = useRef(null);
 
   /**
@@ -453,11 +457,13 @@ function RootNavigator() {
       handleVerificationPush(remoteMessage);
       const data = remoteMessage?.data || {};
       const relatedType = String(data?.relatedType || '').trim();
-      // 검수 게이트 중에는 MainStack 이 없어 navigate 생략 — 상태 갱신만으로 진입/거절 화면 전환
-      if (
-        relatedType === 'student_verification_approved' ||
-        relatedType === 'student_verification_rejected'
-      ) {
+      if (relatedType === 'student_verification_approved') {
+        return;
+      }
+      if (relatedType === 'student_verification_rejected') {
+        void refreshStudentVerification().finally(() => {
+          setShowRejectionNotice(true);
+        });
         return;
       }
       if (!navigationRef.isReady()) return;
@@ -526,14 +532,14 @@ function RootNavigator() {
     );
   }
 
-  // 거절 플로우: SafeAreaView 는 여기 1곳만 (화면 전환 시 remount 점프 방지)
+  // 거절 대안·재제출 화면: 사용자가 연 경우에만 전면 표시
+  // REJECTED/PENDING 도 메인 진입 (가입_개편 — 인앱 인증 유도)
   const inRejectedAltFlow =
     showRejectedInquiry ||
     showAltVerifyChoice ||
     showNeisPlusResubmit ||
     showCertificateGuide ||
-    showCertificateResubmit ||
-    studentVerificationStatus === 'REJECTED';
+    showCertificateResubmit;
 
   if (inRejectedAltFlow) {
     let rejectedBody = (
@@ -625,12 +631,7 @@ function RootNavigator() {
     );
   }
 
-  if (
-    studentVerificationStatus === 'PENDING' &&
-    !reverificationSubmissionPending
-  ) {
-    return <StudentVerificationGate />;
-  }
+  // PENDING 전면 Gate 제거 — 미인증도 라이트 기능으로 메인 진입 (가입_개편)
 
   if (reverificationStatus === 'graduated_blocked') {
     return <AccountBlockedScreen variant="graduated" />;
@@ -683,6 +684,17 @@ function RootNavigator() {
         <WidgetDeepLinkHandler />
         <MainStack initialRouteName={mainInitialRoute} />
       </LocationGate>
+      <InAppReviewPrompt />
+      <StudentVerificationRejectedModal
+        visible={showRejectionNotice}
+        rejectReason={rejectReason}
+        onClose={() => setShowRejectionNotice(false)}
+        onPressResubmit={() => {
+          setShowRejectionNotice(false);
+          setResubmitMode('rejected');
+          setShowResubmit(true);
+        }}
+      />
     </View>
   );
 }

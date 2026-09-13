@@ -23,8 +23,13 @@ import { createMailStyles } from '../../styles/mail.style';
 import { colors } from '../../styles/colors';
 import Loading from '../../components/Loading';
 import { api } from '../../utils/api';
+import { useRequireStudentVerified } from '../../hooks/useRequireStudentVerified';
 
 const SendSchoolMailScreen = ({ navigation, route }) => {
+  const { allowed, Gate } = useRequireStudentVerified(navigation, {
+    message: '학교 우편은 학생증 인증 후 이용할 수 있어요.',
+    reason: 'school_mail',
+  });
   const { width, height } = useWindowDimensions();
   const insets = useSafeAreaInsets();
   const normalize = useMemo(() => getNormalize(width), [width]);
@@ -111,6 +116,8 @@ const SendSchoolMailScreen = ({ navigation, route }) => {
     bottomCtaHeightRef.current = next;
     setBottomCtaHeight(next);
   };
+
+  if (!allowed) return <Gate />;
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>

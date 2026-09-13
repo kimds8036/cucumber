@@ -1,4 +1,4 @@
-import React, { useMemo, useRef } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { View, Text, useWindowDimensions } from 'react-native';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
@@ -7,6 +7,7 @@ import TIP_MESSAGES from '../../constants/tipMessages';
 import { getNormalize } from '../../styles/frame.style';
 import { createAdStyles } from '../../styles/ad.style';
 import { TipPill } from './PillBadge';
+import { pickTipBody } from '../../utils/tipsApi';
 
 const TipPlaceholder = ({
   variant = 'board',
@@ -14,8 +15,10 @@ const TipPlaceholder = ({
   normalize: externalNormalize,
   cardStyleOverride,
   badgeOnLeft = false,
-  /** 값이 바뀌면 Tip 문구를 다시 랜덤 선택 (Pull/Focus 새로고침용) */
+  /** 값이 바뀌면 Tip 문구를 다시 랜덤 선택 (고정 팁이면 유지) */
   refreshKey = 0,
+  /** 부모가 문구를 직접 넘기면 서버 fetch 생략 */
+  message: messageProp,
 }) => {
   const { width } = useWindowDimensions();
   const localNormalize = useMemo(() => getNormalize(width), [width]);
@@ -26,23 +29,31 @@ const TipPlaceholder = ({
   const s = externalStyles || adStyles;
   const n = externalNormalize || localNormalize;
   const lastTipRef = useRef(null);
+  const [tipMessage, setTipMessage] = useState(
+    () => messageProp || TIP_MESSAGES[0] || '',
+  );
 
-  const tipMessage = useMemo(() => {
-    const pool = TIP_MESSAGES;
-    if (!pool.length) return '';
-    if (pool.length === 1) return pool[0];
-    let next = pool[Math.floor(Math.random() * pool.length)];
-    // 새로고침 시 직전과 동일하면 한 번 더 뽑아 체감 교체율 확보
-    if (refreshKey > 0 && next === lastTipRef.current) {
-      next = pool[Math.floor(Math.random() * pool.length)];
-      if (next === lastTipRef.current) {
-        const others = pool.filter((m) => m !== lastTipRef.current);
-        next = others[Math.floor(Math.random() * others.length)];
-      }
+  useEffect(() => {
+    if (messageProp != null && messageProp !== '') {
+      setTipMessage(messageProp);
+      lastTipRef.current = messageProp;
+      return undefined;
     }
-    lastTipRef.current = next;
-    return next;
-  }, [refreshKey]);
+    let cancelled = false;
+    (async () => {
+      const next = await pickTipBody({
+        refreshKey,
+        lastBody: lastTipRef.current,
+      });
+      if (!cancelled && next) {
+        lastTipRef.current = next;
+        setTipMessage(next);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [refreshKey, messageProp]);
 
   switch (variant) {
     case 'topBanner':

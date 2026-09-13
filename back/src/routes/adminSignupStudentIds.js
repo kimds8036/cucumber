@@ -270,7 +270,13 @@ router.patch('/:id', requireAdminApi, validate(reviewValidators), async (req, re
           type: 'system',
           category: 'system',
           title: '학생증이 거절되었습니다',
-          body: '사유를 확인하고 다시 제출해 주세요.',
+          body: (() => {
+            const reason = String(nextNote || '').trim();
+            if (!reason) {
+              return '알림을 열어 사유를 확인하고, 필요하면 다시 제출해 주세요.';
+            }
+            return reason.length > 90 ? `${reason.slice(0, 90)}…` : reason;
+          })(),
           relatedType: 'student_verification_rejected',
           relatedId: submissionId,
           sourceId: `student_verification_rejected_${submissionId}`,

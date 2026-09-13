@@ -138,6 +138,7 @@ const SignKakao = ({ navigation }) => {
   const sessionHydratedRef = useRef(false);
   const kakaoAuthRanRef = useRef(false);
   const guardianModalPendingActionRef = useRef(null);
+  const completeSignupRef = useRef(null);
 
   const identity = useMemo(
     () => ({
@@ -239,9 +240,12 @@ const SignKakao = ({ navigation }) => {
     }
     if (snapshot.certificateData) setCertificateData(snapshot.certificateData);
     if (snapshot.currentStep) {
+      // 레거시 세션에 school_select가 남아 있으면 가입 직전 단계로 되돌리지 않음
+      // (재학정보 화면은 가입에서 제거됨)
       const step =
+        snapshot.currentStep === STEP.SCHOOL_SELECT ||
         snapshot.currentStep === 'account'
-          ? STEP.SCHOOL_SELECT
+          ? STEP.CONSENT
           : snapshot.currentStep;
       setCurrentStep(step);
     }
@@ -287,7 +291,8 @@ const SignKakao = ({ navigation }) => {
   }, [abortSignupImmediate, closeBlockingAlert, submitting]);
 
   const proceedToSchool = useCallback(() => {
-    setCurrentStep(STEP.SCHOOL_SELECT);
+    // 재학정보 화면 스킵 → 바로 가입 완료 (가입_개편)
+    completeSignupRef.current?.();
   }, []);
 
   const resumeInicisFromPending = useCallback(async () => {
@@ -326,11 +331,7 @@ const SignKakao = ({ navigation }) => {
         kakaoAuthRanRef.current = false;
         return;
       }
-      // 학교 선택 전에 즉시 연령 차단 (성인 테스트 모드일 때만 A 통과)
-      if (birthCase === 'A' && !ALLOW_ADULT_SIGNUP_IN_DEV) {
-        showTooOldForSignupAlert(goToLogin);
-        return;
-      }
+      // A(연장): 가입 허용. D만 차단. C는 보호자 동의.
       if (birthCase === 'D') {
         showTooYoungForSignupAlert(goToLogin);
         return;
@@ -350,15 +351,7 @@ const SignKakao = ({ navigation }) => {
         setShowGuardianConsentModal(true);
         return;
       }
-      // B 또는 (A+성인테스트): 학적 추론 불가하면 동일하게 조기 차단
-      const enrollment = buildEnrollmentFromBirthDate(nextIdentity.birthDate);
-      if (
-        !ALLOW_ADULT_SIGNUP_IN_DEV &&
-        (enrollment.schoolLevel == null || enrollment.grade == null)
-      ) {
-        showTooOldForSignupAlert(goToLogin);
-        return;
-      }
+      // 재학정보·학생증 스킵 → 바로 가입
       proceedToSchool();
     },
     [abortSignupImmediate, goToLogin, navigationRef, proceedToSchool],
@@ -472,17 +465,20 @@ const SignKakao = ({ navigation }) => {
   const proceedFromSchoolSelect = useCallback(() => {
     const grade = Number(schoolGradeNum);
     const classNum = Number(schoolClassNum);
-    setFormData((prev) => ({
-      ...prev,
+    const nextForm = {
+      ...formData,
       schoolId: selectedSchool.id,
       schoolName: selectedSchool.name,
       grade: String(grade),
       classNum: String(classNum),
       graduationYear: String(schoolEnrollmentPreview.graduationYear || ''),
-      schoolLevel: schoolEnrollmentPreview.schoolLevel || prev.schoolLevel,
-    }));
-    setCurrentStep(STEP.STUDENT_VERIFY);
+      schoolLevel: schoolEnrollmentPreview.schoolLevel || formData.schoolLevel,
+    };
+    setFormData(nextForm);
+    // 학생증 단계 스킵 → 바로 가입 (가입_개편). handleComplete는 아래 정의·ref로 호출
+    completeSignupRef.current?.(nextForm);
   }, [
+    formData,
     schoolClassNum,
     schoolEnrollmentPreview,
     schoolGradeNum,
@@ -493,10 +489,11 @@ const SignKakao = ({ navigation }) => {
     if (SIGNUP_REDESIGN_SKIP_VALIDATION) {
       const grade = Number(schoolGradeNum) || 2;
       const classNum = Number(schoolClassNum) || 1;
-      setFormData((prev) => ({
-        ...prev,
-        schoolId: selectedSchool?.id || prev.schoolId || 'REDESIGN_SKIP',
-        schoolName: selectedSchool?.name || prev.schoolName || '개편테스트학교',
+      const nextForm = {
+        ...formData,
+        schoolId: selectedSchool?.id || formData.schoolId || 'REDESIGN_SKIP',
+        schoolName:
+          selectedSchool?.name || formData.schoolName || '개편테스트학교',
         grade: String(grade),
         classNum: String(classNum),
         graduationYear: String(
@@ -504,8 +501,9 @@ const SignKakao = ({ navigation }) => {
             new Date().getFullYear() + 2,
         ),
         schoolLevel: schoolEnrollmentPreview.schoolLevel || 'high',
-      }));
-      setCurrentStep(STEP.STUDENT_VERIFY);
+      };
+      setFormData(nextForm);
+      completeSignupRef.current?.(nextForm);
       return;
     }
 
@@ -565,24 +563,19 @@ const SignKakao = ({ navigation }) => {
   const buildSignupPayload = (finalData, verificationToken) => {
     const resolvedBirthDate =
       normalizeBirthDateForCompare(identity.birthDate) || identity.birthDate;
-    const enrollment = buildEnrollmentFromBirthDate(resolvedBirthDate);
 
     return {
       // username/password 생략 — 서버가 카카오 토큰으로 임시 계정 발급
       name: (identity.name || '').trim(),
       phone: String(identity.phoneNumber || '').replace(/\D/g, ''),
       birthDate: resolvedBirthDate,
-      schoolId: finalData.schoolId,
-      grade: Number(finalData.grade) || enrollment.grade || 1,
-      classNumber: Number(finalData.classNum) || 1,
-      graduationYear:
-        Number(finalData.graduationYear) || enrollment.graduationYear,
+      // 재학정보 가입 시 미입력 — 인앱 학생증 인증 때 설정
       colorId: pickRandomProfileColorId(),
       verificationMethod: 'student_id',
       signupMethod: 'kakao',
       kakaoAccessToken: identityData.kakaoAccessToken || '',
       consents: consentData.consents || {},
-      studentVerificationToken: verificationToken,
+      studentVerificationToken: verificationToken || undefined,
       studentInicisClientToken: null,
       guardianInicisClientToken: guardianInicisClientToken || null,
     };
@@ -611,7 +604,7 @@ const SignKakao = ({ navigation }) => {
       await setRefreshToken(refreshToken, { persist: true });
     }
     await login({
-      studentVerificationStatus: status || 'PENDING',
+      studentVerificationStatus: status || 'UNVERIFIED',
       rejectReason: rejectReason || null,
       needsProfileUsername: Boolean(
         loginRes.data?.data?.needsProfileUsername,
@@ -619,15 +612,15 @@ const SignKakao = ({ navigation }) => {
     });
   };
 
-  const handleComplete = async () => {
-    const finalData = { ...formData };
+  const handleComplete = async (overrideFormData = null) => {
+    const finalData = overrideFormData
+      ? { ...overrideFormData }
+      : { ...formData };
     const verificationToken =
       studentVerificationToken ||
       (SIGNUP_REDESIGN_SKIP_VALIDATION ? MOCK_STUDENT_TOKEN : null);
-    if (!verificationToken) {
-      Alert.alert('알림', '학생증 인증을 먼저 완료해 주세요.');
-      return;
-    }
+    // 학생증 토큰 없이도 가입 가능
+
     if (!identityData.kakaoAccessToken && !SIGNUP_REDESIGN_SKIP_VALIDATION) {
       Alert.alert('알림', '카카오 인증이 필요합니다. 다시 시도해 주세요.');
       setCurrentStep(STEP.KAKAO_AUTH);
@@ -638,11 +631,14 @@ const SignKakao = ({ navigation }) => {
     try {
       if (SIGNUP_REDESIGN_SKIP_VALIDATION) {
         await clearFlowSession();
-        await login({ studentVerificationStatus: 'PENDING' });
+        await login({ studentVerificationStatus: 'UNVERIFIED' });
         return;
       }
 
-      const payload = buildSignupPayload(finalData, verificationToken);
+      const payload = buildSignupPayload(
+        finalData,
+        verificationToken || undefined,
+      );
       payload.inviteCode = await peekPendingInviteCode();
       await api.post('/api/auth/signup', payload);
       await consumePendingInviteCode();
@@ -660,6 +656,7 @@ const SignKakao = ({ navigation }) => {
       setSubmitting(false);
     }
   };
+  completeSignupRef.current = handleComplete;
 
   const getStepTitle = () => {
     switch (currentStep) {

@@ -1,6 +1,6 @@
 import express from 'express';
 import pool from '../config/database.js';
-import { authenticate, optionalAuthenticate } from '../middleware/auth.js';
+import { authenticate, optionalAuthenticate, requireStudentVerified } from '../middleware/auth.js';
 import { enqueueNotification } from '../utils/notificationWorker.js';
 import { getKstTodayRangeUtcForSql, getNowForDB } from '../utils/dateUtils.js';
 import { isBlockedBy } from '../utils/userBlock.js';
@@ -11,7 +11,7 @@ import { submitContentReport } from '../services/reportSubmission.service.js';
 
 const router = express.Router();
 
-registerPersonalMailSendRoutes(router, authenticate);
+registerPersonalMailSendRoutes(router, authenticate, requireStudentVerified);
 let ensurePersonalMailRoomSoftDeleteColumnsPromise = null;
 
 async function addColumnIfMissing(tableName, columnName, definitionSql) {
@@ -55,7 +55,7 @@ async function ensurePersonalMailRoomSoftDeleteColumns() {
 // ==================== 개인 우편 API ====================
 
 // 개인 우편 목록 조회 (받은 우편)
-router.get('/personal/received', authenticate, async (req, res) => {
+router.get('/personal/received', authenticate, requireStudentVerified, async (req, res) => {
   try {
     await ensurePersonalMailRoomSoftDeleteColumns();
     const userId = req.user.userId;
@@ -180,7 +180,7 @@ router.get('/personal/received', authenticate, async (req, res) => {
 });
 
 // 개인 우편 목록 조회 (보낸 우편)
-router.get('/personal/sent', authenticate, async (req, res) => {
+router.get('/personal/sent', authenticate, requireStudentVerified, async (req, res) => {
   try {
     await ensurePersonalMailRoomSoftDeleteColumns();
     const userId = req.user.userId;
@@ -280,7 +280,7 @@ router.get('/personal/sent', authenticate, async (req, res) => {
 });
 
 // 개인 우편 룸 삭제 (내 목록에서 숨김 처리)
-router.delete('/personal/rooms/:roomId', authenticate, async (req, res) => {
+router.delete('/personal/rooms/:roomId', authenticate, requireStudentVerified, async (req, res) => {
   try {
     await ensurePersonalMailRoomSoftDeleteColumns();
     const userId = req.user.userId;
@@ -327,7 +327,7 @@ router.delete('/personal/rooms/:roomId', authenticate, async (req, res) => {
 });
 
 // 개인 우편 스레드 전체 조회
-router.get('/personal/:mailId/thread', authenticate, async (req, res) => {
+router.get('/personal/:mailId/thread', authenticate, requireStudentVerified, async (req, res) => {
   try {
     const userId = req.user.userId;
     const { mailId } = req.params;
@@ -409,7 +409,7 @@ router.get('/personal/:mailId/thread', authenticate, async (req, res) => {
 });
 
 // 개인 우편 상세 조회
-router.get('/personal/:mailId', authenticate, async (req, res) => {
+router.get('/personal/:mailId', authenticate, requireStudentVerified, async (req, res) => {
   try {
     const userId = req.user.userId;
     const { mailId } = req.params;
@@ -503,7 +503,7 @@ router.get('/personal/:mailId', authenticate, async (req, res) => {
 });
 
 // 개인 우편 작성
-router.post('/personal', authenticate, async (req, res) => {
+router.post('/personal', authenticate, requireStudentVerified, async (req, res) => {
   try {
     await ensurePersonalMailRoomSoftDeleteColumns();
     const userId = req.user.userId;
@@ -658,7 +658,7 @@ router.post('/personal', authenticate, async (req, res) => {
 });
 
 // 개인 우편 답장
-router.post('/personal/:mailId/reply', authenticate, async (req, res) => {
+router.post('/personal/:mailId/reply', authenticate, requireStudentVerified, async (req, res) => {
   const connection = await pool.getConnection();
   try {
     await ensurePersonalMailRoomSoftDeleteColumns();
@@ -906,11 +906,11 @@ const markPersonalMailAsRead = async (req, res) => {
   }
 };
 
-router.put('/personal/:mailId/read', authenticate, markPersonalMailAsRead);
-router.patch('/personal/:mailId/read', authenticate, markPersonalMailAsRead);
+router.put('/personal/:mailId/read', authenticate, requireStudentVerified, markPersonalMailAsRead);
+router.patch('/personal/:mailId/read', authenticate, requireStudentVerified, markPersonalMailAsRead);
 
 // 개인 우편 삭제
-router.delete('/personal/:mailId', authenticate, async (req, res) => {
+router.delete('/personal/:mailId', authenticate, requireStudentVerified, async (req, res) => {
   try {
     const userId = req.user.userId;
     const { mailId } = req.params;
@@ -949,7 +949,7 @@ router.delete('/personal/:mailId', authenticate, async (req, res) => {
 });
 
 // 읽지 않은 개인 우편 수 조회
-router.get('/personal/unread-count', authenticate, async (req, res) => {
+router.get('/personal/unread-count', authenticate, requireStudentVerified, async (req, res) => {
   try {
     const userId = req.user.userId;
 
@@ -981,7 +981,7 @@ router.get('/personal/unread-count', authenticate, async (req, res) => {
 // ==================== 학교 우편 API ====================
 
 // 댓글 삭제 — /school/:mailId 보다 먼저 등록 (경로 충돌 방지)
-router.delete('/school/comments/:commentId', authenticate, async (req, res) => {
+router.delete('/school/comments/:commentId', authenticate, requireStudentVerified, async (req, res) => {
   try {
     const userId = req.user.userId;
     const commentId = Number(req.params.commentId);
@@ -1037,7 +1037,7 @@ router.delete('/school/comments/:commentId', authenticate, async (req, res) => {
 });
 
 // 학교 우편 목록 조회
-router.get('/school', async (req, res) => {
+router.get('/school', authenticate, requireStudentVerified, async (req, res) => {
   try {
     const { schoolId, page = 1, limit = 20 } = req.query;
     const limitNum = Math.max(1, Math.min(100, parseInt(limit, 10) || 20));
@@ -1107,7 +1107,7 @@ router.get('/school', async (req, res) => {
 });
 
 // 학교 우편 — 내가 쓴 글 (상세 :mailId 보다 먼저)
-router.get('/school/my', authenticate, async (req, res) => {
+router.get('/school/my', authenticate, requireStudentVerified, async (req, res) => {
   try {
     const userId = req.user.userId;
     const page = Math.max(1, parseInt(req.query.page, 10) || 1);
@@ -1160,7 +1160,7 @@ router.get('/school/my', authenticate, async (req, res) => {
 });
 
 // 학교 우편 상세 조회 (비로그인 가능 — is_liked 는 로그인 시만)
-router.get('/school/:mailId', optionalAuthenticate, async (req, res) => {
+router.get('/school/:mailId', authenticate, requireStudentVerified, async (req, res) => {
   try {
     const { mailId } = req.params;
     const uid = req.user?.userId ?? 0;
@@ -1213,7 +1213,7 @@ router.get('/school/:mailId', optionalAuthenticate, async (req, res) => {
 });
 
 // 학교 우편 좋아요 토글
-router.post('/school/:mailId/like', authenticate, async (req, res) => {
+router.post('/school/:mailId/like', authenticate, requireStudentVerified, async (req, res) => {
   const userId = req.user.userId;
   const { mailId } = req.params;
   const connection = await pool.getConnection();
@@ -1268,7 +1268,7 @@ router.post('/school/:mailId/like', authenticate, async (req, res) => {
 });
 
 // 학교 우편 댓글 좋아요 토글
-router.post('/school/comments/:commentId/like', authenticate, async (req, res) => {
+router.post('/school/comments/:commentId/like', authenticate, requireStudentVerified, async (req, res) => {
   const userId = req.user.userId;
   const { commentId } = req.params;
   const connection = await pool.getConnection();
@@ -1325,7 +1325,7 @@ router.post('/school/comments/:commentId/like', authenticate, async (req, res) =
 });
 
 // 학교 우편 신고
-router.post('/school/:mailId/report', authenticate, async (req, res) => {
+router.post('/school/:mailId/report', authenticate, requireStudentVerified, async (req, res) => {
   try {
     const reporterId = req.user.userId;
     const { mailId } = req.params;
@@ -1362,7 +1362,7 @@ router.post('/school/:mailId/report', authenticate, async (req, res) => {
 });
 
 // 학교 우편 댓글 신고
-router.post('/school/comments/:commentId/report', authenticate, async (req, res) => {
+router.post('/school/comments/:commentId/report', authenticate, requireStudentVerified, async (req, res) => {
   try {
     const reporterId = req.user.userId;
     const { commentId } = req.params;
@@ -1399,7 +1399,7 @@ router.post('/school/comments/:commentId/report', authenticate, async (req, res)
 });
 
 // 학교 우편 작성
-router.post('/school', authenticate, async (req, res) => {
+router.post('/school', authenticate, requireStudentVerified, async (req, res) => {
   try {
     const userId = req.user.userId;
     const { schoolId, content } = req.body;
@@ -1485,7 +1485,7 @@ router.post('/school', authenticate, async (req, res) => {
 });
 
 // 학교 우편 삭제
-router.delete('/school/:mailId', authenticate, async (req, res) => {
+router.delete('/school/:mailId', authenticate, requireStudentVerified, async (req, res) => {
   try {
     const userId = req.user.userId;
     const { mailId } = req.params;
@@ -1619,7 +1619,7 @@ router.patch(
 );
 
 // 학교 우편 댓글 목록 조회 (게시글보다 먼저 등록: /comments 가 :mailId에 안 먹히도록)
-router.get('/school/:mailId/comments', optionalAuthenticate, async (req, res) => {
+router.get('/school/:mailId/comments', authenticate, requireStudentVerified, async (req, res) => {
   try {
     const { mailId } = req.params;
     const uid = req.user?.userId ?? 0;
@@ -1677,7 +1677,7 @@ router.get('/school/:mailId/comments', optionalAuthenticate, async (req, res) =>
 });
 
 // 학교 우편 댓글 작성
-router.post('/school/:mailId/comments', authenticate, async (req, res) => {
+router.post('/school/:mailId/comments', authenticate, requireStudentVerified, async (req, res) => {
   try {
     const userId = req.user.userId;
     const { mailId } = req.params;

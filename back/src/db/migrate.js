@@ -11,6 +11,9 @@ import { backfillPersonalMailRecipientNames } from './piiBackfill.js';
 import { seedLegalDocuments } from './seedLegalDocuments.js';
 import { stripLegalDocumentsInDb } from './stripLegalDocumentsInDb.js';
 import { applySchemaNormalization006 } from './normalizeSchema006.js';
+import { applyUsersSchoolOptional014 } from './applyUsersSchoolOptional014.js';
+import { applyLegalDocumentsV2_015 } from './applyLegalDocumentsV2_015.js';
+import { applyPostsNationalToStudent016 } from './applyPostsNationalToStudent016.js';
 import {
   BASELINE_INIT_FILE,
   INCREMENTAL_PRE_SQUASH_V2_FILES,
@@ -67,6 +70,27 @@ async function runPostMigrationHooks(connection, file) {
     const summary = await applySchemaNormalization006(connection);
     if (summary.length > 0) {
       console.log(`  🔧 스키마 정규화: ${summary.join(', ')}`);
+    }
+  }
+
+  if (file === '014_users_school_optional.sql') {
+    const summary = await applyUsersSchoolOptional014(connection);
+    if (summary.length > 0) {
+      console.log(`  🔧 school_id optional: ${summary.join(', ')}`);
+    }
+  }
+
+  if (file === '015_legal_documents_v2.sql') {
+    const summary = await applyLegalDocumentsV2_015(connection);
+    if (summary.length > 0) {
+      console.log(`  📄 legal_documents v2: ${summary.join(', ')}`);
+    }
+  }
+
+  if (file === '016_posts_national_to_student.sql') {
+    const summary = await applyPostsNationalToStudent016(connection);
+    if (summary.length > 0) {
+      console.log(`  📋 posts national→student: ${summary.join(', ')}`);
     }
   }
 
