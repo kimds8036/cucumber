@@ -11,6 +11,7 @@ import { backfillPersonalMailRecipientNames } from './piiBackfill.js';
 import { seedLegalDocuments } from './seedLegalDocuments.js';
 import { stripLegalDocumentsInDb } from './stripLegalDocumentsInDb.js';
 import { applySchemaNormalization006 } from './normalizeSchema006.js';
+import { applyUsersSchoolOptional014 } from './applyUsersSchoolOptional014.js';
 import {
   BASELINE_INIT_FILE,
   INCREMENTAL_PRE_SQUASH_V2_FILES,
@@ -67,6 +68,13 @@ async function runPostMigrationHooks(connection, file) {
     const summary = await applySchemaNormalization006(connection);
     if (summary.length > 0) {
       console.log(`  🔧 스키마 정규화: ${summary.join(', ')}`);
+    }
+  }
+
+  if (file === '014_users_school_optional.sql') {
+    const summary = await applyUsersSchoolOptional014(connection);
+    if (summary.length > 0) {
+      console.log(`  🔧 school_id optional: ${summary.join(', ')}`);
     }
   }
 
