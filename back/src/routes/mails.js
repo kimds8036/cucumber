@@ -52,9 +52,9 @@ async function ensurePersonalMailRoomSoftDeleteColumns() {
   return ensurePersonalMailRoomSoftDeleteColumnsPromise;
 }
 
-// ==================== 개인 ?�편 API ====================
+// ==================== 개인 우편 API ====================
 
-// 개인 ?�편 목록 조회 (받�? ?�편)
+// 개인 우편 목록 조회 (받은 우편)
 router.get('/personal/received', authenticate, requireStudentVerified, async (req, res) => {
   try {
     await ensurePersonalMailRoomSoftDeleteColumns();
@@ -63,7 +63,7 @@ router.get('/personal/received', authenticate, requireStudentVerified, async (re
     const limitNum = Math.max(1, Math.min(100, parseInt(limit, 10) || 20));
     const offsetNum = Math.max(0, (parseInt(page, 10) - 1) * limitNum);
 
-    // 받�? ?�편 조회 (pm. ?�정?�로 is_deleted 모호???�거)
+    // 받은 우편 조회 (pm. 한정으로 is_deleted 모호함 제거)
     const [mails] = await pool.execute(
       `SELECT 
         pm.id,
@@ -171,15 +171,15 @@ router.get('/personal/received', authenticate, requireStudentVerified, async (re
       }
     });
   } catch (error) {
-    console.error('받�? ?�편 목록 조회 ?�류:', error);
+    console.error('받은 우편 목록 조회 오류:', error);
     res.status(500).json({ 
       success: false, 
-      message: '받�? ?�편 목록 조회 �??�류가 발생?�습?�다.' 
+      message: '받은 우편 목록 조회 중 오류가 발생했습니다.' 
     });
   }
 });
 
-// 개인 ?�편 목록 조회 (보낸 ?�편)
+// 개인 우편 목록 조회 (보낸 우편)
 router.get('/personal/sent', authenticate, requireStudentVerified, async (req, res) => {
   try {
     await ensurePersonalMailRoomSoftDeleteColumns();
@@ -188,7 +188,7 @@ router.get('/personal/sent', authenticate, requireStudentVerified, async (req, r
     const limitNum = Math.max(1, Math.min(100, parseInt(limit, 10) || 20));
     const offsetNum = Math.max(0, (parseInt(page, 10) - 1) * limitNum);
 
-    // 보낸 ?�편 조회 (매칭 ?�패·반송 ?�함)
+    // 보낸 우편 조회 (매칭 실패·반송 포함)
     const [mails] = await pool.execute(
       `SELECT 
         pm.id,
@@ -239,7 +239,7 @@ router.get('/personal/sent', authenticate, requireStudentVerified, async (req, r
       [userId, userId, userId, userId]
     );
 
-    // ?�체 개수 조회
+    // 전체 개수 조회
     const [countResult] = await pool.execute(
       `SELECT COUNT(*) as total
        FROM personal_mails pm
@@ -271,15 +271,15 @@ router.get('/personal/sent', authenticate, requireStudentVerified, async (req, r
       }
     });
   } catch (error) {
-    console.error('보낸 ?�편 목록 조회 ?�류:', error);
+    console.error('보낸 우편 목록 조회 오류:', error);
     res.status(500).json({ 
       success: false, 
-      message: '보낸 ?�편 목록 조회 �??�류가 발생?�습?�다.' 
+      message: '보낸 우편 목록 조회 중 오류가 발생했습니다.' 
     });
   }
 });
 
-// 개인 ?�편 �???�� (??목록?�서 ?��? 처리)
+// 개인 우편 룸 삭제 (내 목록에서 숨김 처리)
 router.delete('/personal/rooms/:roomId', authenticate, requireStudentVerified, async (req, res) => {
   try {
     await ensurePersonalMailRoomSoftDeleteColumns();
@@ -289,7 +289,7 @@ router.delete('/personal/rooms/:roomId', authenticate, requireStudentVerified, a
     if (!Number.isFinite(roomId)) {
       return res.status(400).json({
         success: false,
-        message: '?�효?��? ?��? �?ID?�니??',
+        message: '유효하지 않은 룸 ID입니다.',
       });
     }
 
@@ -301,7 +301,7 @@ router.delete('/personal/rooms/:roomId', authenticate, requireStudentVerified, a
     if (rooms.length === 0) {
       return res.status(404).json({
         success: false,
-        message: '?�편 룸을 찾을 ???�거????�� 권한???�습?�다.',
+        message: '우편 룸을 찾을 수 없거나 삭제 권한이 없습니다.',
       });
     }
 
@@ -315,18 +315,18 @@ router.delete('/personal/rooms/:roomId', authenticate, requireStudentVerified, a
 
     res.json({
       success: true,
-      message: '?�편 ?�?��? ??��?�었?�니??',
+      message: '우편 대화가 삭제되었습니다.',
     });
   } catch (error) {
-    console.error('개인 ?�편 �???�� ?�류:', error);
+    console.error('개인 우편 룸 삭제 오류:', error);
     res.status(500).json({
       success: false,
-      message: '?�편 ?�????�� �??�류가 발생?�습?�다.',
+      message: '우편 대화 삭제 중 오류가 발생했습니다.',
     });
   }
 });
 
-// 개인 ?�편 ?�레???�체 조회
+// 개인 우편 스레드 전체 조회
 router.get('/personal/:mailId/thread', authenticate, requireStudentVerified, async (req, res) => {
   try {
     const userId = req.user.userId;
@@ -343,7 +343,7 @@ router.get('/personal/:mailId/thread', authenticate, requireStudentVerified, asy
     if (baseRows.length === 0) {
       return res.status(404).json({
         success: false,
-        message: '?�편??찾을 ???�습?�다.',
+        message: '우편을 찾을 수 없습니다.',
       });
     }
 
@@ -363,7 +363,7 @@ router.get('/personal/:mailId/thread', authenticate, requireStudentVerified, asy
     if (Number(participationRows[0]?.cnt ?? 0) === 0) {
       return res.status(403).json({
         success: false,
-        message: '?�당 ?�레?�에 ?�근??권한???�습?�다.',
+        message: '해당 스레드에 접근할 권한이 없습니다.',
       });
     }
 
@@ -400,21 +400,21 @@ router.get('/personal/:mailId/thread', authenticate, requireStudentVerified, asy
       },
     });
   } catch (error) {
-    console.error('개인 ?�편 ?�레??조회 ?�류:', error);
+    console.error('개인 우편 스레드 조회 오류:', error);
     res.status(500).json({
       success: false,
-      message: '개인 ?�편 ?�레??조회 �??�류가 발생?�습?�다.',
+      message: '개인 우편 스레드 조회 중 오류가 발생했습니다.',
     });
   }
 });
 
-// 개인 ?�편 ?�세 조회
+// 개인 우편 상세 조회
 router.get('/personal/:mailId', authenticate, requireStudentVerified, async (req, res) => {
   try {
     const userId = req.user.userId;
     const { mailId } = req.params;
 
-    // ?�편 조회 (받�? ?�편 ?�는 보낸 ?�편)
+    // 우편 조회 (받은 우편 또는 보낸 우편)
     const [mails] = await pool.execute(
       `SELECT 
         pm.id,
@@ -451,13 +451,13 @@ router.get('/personal/:mailId', authenticate, requireStudentVerified, async (req
     if (mails.length === 0) {
       return res.status(404).json({ 
         success: false, 
-        message: '?�편??찾을 ???�거???�근 권한???�습?�다.' 
+        message: '우편을 찾을 수 없거나 접근 권한이 없습니다.' 
       });
     }
 
     const mail = mails[0];
 
-    // 받�? ?�편??경우 ?�음 처리
+    // 받은 우편인 경우 읽음 처리
     if (
       mail.recipient_id === userId &&
       mail.status === PERSONAL_MAIL_STATUS.SENT
@@ -494,15 +494,15 @@ router.get('/personal/:mailId', authenticate, requireStudentVerified, async (req
       }
     });
   } catch (error) {
-    console.error('개인 ?�편 ?�세 조회 ?�류:', error);
+    console.error('개인 우편 상세 조회 오류:', error);
     res.status(500).json({ 
       success: false, 
-      message: '개인 ?�편 ?�세 조회 �??�류가 발생?�습?�다.' 
+      message: '개인 우편 상세 조회 중 오류가 발생했습니다.' 
     });
   }
 });
 
-// 개인 ?�편 ?�성
+// 개인 우편 작성
 router.post('/personal', authenticate, requireStudentVerified, async (req, res) => {
   try {
     await ensurePersonalMailRoomSoftDeleteColumns();
@@ -512,18 +512,18 @@ router.post('/personal', authenticate, requireStudentVerified, async (req, res) 
     if (!recipientId || !content) {
       return res.status(400).json({ 
         success: false, 
-        message: '?�신??ID?� ?�용???�력?�주?�요.' 
+        message: '수신자 ID와 내용을 입력해주세요.' 
       });
     }
 
     if (userId === parseInt(recipientId)) {
       return res.status(400).json({ 
         success: false, 
-        message: '?�기 ?�신?�게???�편??보낼 ???�습?�다.' 
+        message: '자기 자신에게는 우편을 보낼 수 없습니다.' 
       });
     }
 
-    // ?�신??존재 ?�인
+    // 수신자 존재 확인
     const [users] = await pool.execute(
       'SELECT id FROM users WHERE id = ? AND is_deleted = FALSE',
       [recipientId]
@@ -531,7 +531,7 @@ router.post('/personal', authenticate, requireStudentVerified, async (req, res) 
     if (users.length === 0) {
       return res.status(404).json({ 
         success: false, 
-        message: '?�신?��? 찾을 ???�습?�다.' 
+        message: '수신자를 찾을 수 없습니다.' 
       });
     }
 
@@ -543,7 +543,7 @@ router.post('/personal', authenticate, requireStudentVerified, async (req, res) 
         blockerUserId: Number(recipientId),
         targetUserId: userId,
       });
-      // 루트 ?�편 ?�성 (room_id???�성 ???�데?�트)
+      // 루트 우편 생성 (room_id는 생성 후 업데이트)
       const now = getNowForDB();
       [result] = await connection.execute(
         `INSERT INTO personal_mails (
@@ -605,7 +605,7 @@ router.post('/personal', authenticate, requireStudentVerified, async (req, res) 
       connection.release();
     }
 
-    // ?�성???�편 ?�보 조회
+    // 생성된 우편 정보 조회
     const [newMails] = await pool.execute(
       `SELECT 
         pm.id,
@@ -625,7 +625,7 @@ router.post('/personal', authenticate, requireStudentVerified, async (req, res) 
       [result.insertId]
     );
 
-    // ?�신?�에�??�림 ?�성 (비동�???+ ?�켓 emit)
+    // 수신자에게 알림 생성 (비동기 큐 + 소켓 emit)
     const blockedForReceiver = await isBlockedBy({
       blockerUserId: Number(recipientId),
       targetUserId: userId,
@@ -635,8 +635,8 @@ router.post('/personal', authenticate, requireStudentVerified, async (req, res) 
         userId: Number(recipientId),
         type: 'mail',
         category: 'mail',
-        title: '?�편??,
-        body: '?�로???�편???�착?�습?�다',
+        title: '우편함',
+        body: '새로운 우편이 도착했습니다',
         relatedType: 'personal_mail',
         relatedId: result.insertId,
         sourceId: `personal_mail:${result.insertId}`,
@@ -645,19 +645,19 @@ router.post('/personal', authenticate, requireStudentVerified, async (req, res) 
 
     res.status(201).json({
       success: true,
-      message: '?�편???�송?�었?�니??',
+      message: '우편이 전송되었습니다.',
       data: newMails[0]
     });
   } catch (error) {
-    console.error('개인 ?�편 ?�성 ?�류:', error);
+    console.error('개인 우편 작성 오류:', error);
     res.status(500).json({ 
       success: false, 
-      message: '?�편 ?�성 �??�류가 발생?�습?�다.' 
+      message: '우편 작성 중 오류가 발생했습니다.' 
     });
   }
 });
 
-// 개인 ?�편 ?�장
+// 개인 우편 답장
 router.post('/personal/:mailId/reply', authenticate, requireStudentVerified, async (req, res) => {
   const connection = await pool.getConnection();
   try {
@@ -669,13 +669,13 @@ router.post('/personal/:mailId/reply', authenticate, requireStudentVerified, asy
     if (!content) {
       return res.status(400).json({ 
         success: false, 
-        message: '?�장 ?�용???�력?�주?�요.' 
+        message: '답장 내용을 입력해주세요.' 
       });
     }
 
     await connection.beginTransaction();
 
-    // ?�본 ?�편 조회 (받�? ?�편?��? ?�인) + ?�금
+    // 원본 우편 조회 (받은 우편인지 확인) + 잠금
     const [mails] = await connection.execute(
       `SELECT id, sender_id, recipient_id, root_mail_id, parent_mail_id, room_id
        FROM personal_mails 
@@ -688,15 +688,15 @@ router.post('/personal/:mailId/reply', authenticate, requireStudentVerified, asy
       await connection.rollback();
       return res.status(404).json({ 
         success: false, 
-        message: '?�장???�편??찾을 ???�거??권한???�습?�다.' 
+        message: '답장할 우편을 찾을 수 없거나 권한이 없습니다.' 
       });
     }
 
     const originalMail = mails[0];
-    const recipientId = originalMail.sender_id; // ?�본 발신?�에�??�장
+    const recipientId = originalMail.sender_id; // 원본 발신자에게 답장
     const rootMailId = originalMail.root_mail_id == null ? Number(mailId) : Number(originalMail.root_mail_id);
 
-    // 루트 ?�편 무결??검�? 루트??parent_mail_id 가 ?�어???�다.
+    // 루트 우편 무결성 검증: 루트는 parent_mail_id 가 없어야 한다.
     const [rootRows] = await connection.execute(
       `SELECT id, sender_id, recipient_id, parent_mail_id
        FROM personal_mails
@@ -708,11 +708,11 @@ router.post('/personal/:mailId/reply', authenticate, requireStudentVerified, asy
       await connection.rollback();
       return res.status(409).json({
         success: false,
-        message: '?�레??구조가 ?�바르�? ?�아 ?�장??보낼 ???�습?�다.',
+        message: '스레드 구조가 올바르지 않아 답장을 보낼 수 없습니다.',
       });
     }
 
-    // ?�레???�용?�쌍 ?��???검�? 같�? root ?�래 모든 메일?� ?�일 2???�이?�야 ?�다.
+    // 스레드 사용자쌍 일관성 검증: 같은 root 아래 모든 메일은 동일 2인 쌍이어야 한다.
     const [threadRows] = await connection.execute(
       `SELECT sender_id, recipient_id
        FROM personal_mails
@@ -733,11 +733,11 @@ router.post('/personal/:mailId/reply', authenticate, requireStudentVerified, asy
       await connection.rollback();
       return res.status(409).json({
         success: false,
-        message: '?�레??참여???�보가 ?�치?��? ?�아 ?�장??보낼 ???�습?�다.',
+        message: '스레드 참여자 정보가 일치하지 않아 답장을 보낼 수 없습니다.',
       });
     }
 
-    // �?조회/검�?
+    // 룸 조회/검증
     const [roomRows] = await connection.execute(
       `SELECT id, root_author_id, user1_id, user2_id
        FROM personal_mail_rooms
@@ -749,7 +749,7 @@ router.post('/personal/:mailId/reply', authenticate, requireStudentVerified, asy
       await connection.rollback();
       return res.status(409).json({
         success: false,
-        message: '메일 �??�보가 ?�어 ?�장??보낼 ???�습?�다.',
+        message: '메일 룸 정보가 없어 답장을 보낼 수 없습니다.',
       });
     }
     const room = roomRows[0];
@@ -761,7 +761,7 @@ router.post('/personal/:mailId/reply', authenticate, requireStudentVerified, asy
       await connection.rollback();
       return res.status(409).json({
         success: false,
-        message: '메일 �?참여???�보가 ?�치?��? ?�습?�다.',
+        message: '메일 룸 참여자 정보가 일치하지 않습니다.',
       });
     }
 
@@ -769,7 +769,7 @@ router.post('/personal/:mailId/reply', authenticate, requireStudentVerified, asy
       blockerUserId: Number(recipientId),
       targetUserId: userId,
     });
-    // ?�장 ?�편 ?�성
+    // 답장 우편 생성
     const now = getNowForDB();
     const [result] = await connection.execute(
       `INSERT INTO personal_mails (
@@ -802,7 +802,7 @@ router.post('/personal/:mailId/reply', authenticate, requireStudentVerified, asy
       [Number(result.insertId), getNowForDB(), userId, userId, Number(room.id)]
     );
 
-    // ?�성???�장 ?�보 조회
+    // 생성된 답장 정보 조회
     const [replyMails] = await connection.execute(
       `SELECT 
         pm.id,
@@ -826,20 +826,20 @@ router.post('/personal/:mailId/reply', authenticate, requireStudentVerified, asy
 
     await connection.commit();
 
-    // ?�본 발신??=?�번 ?�장 ?�신???�게 ?�림 ?�성 (비동�???+ ?�켓 emit)
+    // 원본 발신자(=이번 답장 수신자)에게 알림 생성 (비동기 큐 + 소켓 emit)
     if (!isShadowBlocked) {
       const [senderRows] = await pool.execute(
         'SELECT name FROM users WHERE id = ?',
         [userId],
       );
       const replySenderName =
-        String(senderRows[0]?.name ?? '').trim() || '?��?�?;
+        String(senderRows[0]?.name ?? '').trim() || '상대방';
       await enqueueNotification({
         userId: Number(recipientId),
         type: 'mail',
         category: 'mail',
-        title: '?�편??,
-        body: `${replySenderName} ?�이 ?�편 ?�장??보냈?�니??,
+        title: '우편함',
+        body: `${replySenderName} 님이 우편 답장을 보냈습니다`,
         relatedType: 'personal_mail',
         relatedId: result.insertId,
         sourceId: `personal_mail:${result.insertId}`,
@@ -848,7 +848,7 @@ router.post('/personal/:mailId/reply', authenticate, requireStudentVerified, asy
 
     res.status(201).json({
       success: true,
-      message: '?�장???�송?�었?�니??',
+      message: '답장이 전송되었습니다.',
       data: replyMails[0]
     });
   } catch (error) {
@@ -857,23 +857,23 @@ router.post('/personal/:mailId/reply', authenticate, requireStudentVerified, asy
     } catch (_) {
       // no-op
     }
-    console.error('개인 ?�편 ?�장 ?�류:', error);
+    console.error('개인 우편 답장 오류:', error);
     res.status(500).json({ 
       success: false, 
-      message: '?�장 ?�송 �??�류가 발생?�습?�다.' 
+      message: '답장 전송 중 오류가 발생했습니다.' 
     });
   } finally {
     connection.release();
   }
 });
 
-// 개인 ?�편 ?�음 처리
+// 개인 우편 읽음 처리
 const markPersonalMailAsRead = async (req, res) => {
   try {
     const userId = req.user.userId;
     const { mailId } = req.params;
 
-    // ?�편 존재 �?권한 ?�인 (받�? ?�편�??�음 처리 가??
+    // 우편 존재 및 권한 확인 (받은 우편만 읽음 처리 가능)
     const [mails] = await pool.execute(
       `SELECT id FROM personal_mails 
        WHERE id = ? AND recipient_id = ? AND is_deleted = FALSE`,
@@ -883,11 +883,11 @@ const markPersonalMailAsRead = async (req, res) => {
     if (mails.length === 0) {
       return res.status(404).json({ 
         success: false, 
-        message: '?�편??찾을 ???�거???�음 처리??권한???�습?�다.' 
+        message: '우편을 찾을 수 없거나 읽음 처리할 권한이 없습니다.' 
       });
     }
 
-    // ?�음 처리
+    // 읽음 처리
     await pool.execute(
       'UPDATE personal_mails SET status = ? WHERE id = ?',
       [PERSONAL_MAIL_STATUS.READ, mailId]
@@ -895,13 +895,13 @@ const markPersonalMailAsRead = async (req, res) => {
 
     res.json({
       success: true,
-      message: '?�편???�음 처리?�었?�니??'
+      message: '우편이 읽음 처리되었습니다.'
     });
   } catch (error) {
-    console.error('개인 ?�편 ?�음 처리 ?�류:', error);
+    console.error('개인 우편 읽음 처리 오류:', error);
     res.status(500).json({ 
       success: false, 
-      message: '?�음 처리 �??�류가 발생?�습?�다.' 
+      message: '읽음 처리 중 오류가 발생했습니다.' 
     });
   }
 };
@@ -909,13 +909,13 @@ const markPersonalMailAsRead = async (req, res) => {
 router.put('/personal/:mailId/read', authenticate, requireStudentVerified, markPersonalMailAsRead);
 router.patch('/personal/:mailId/read', authenticate, requireStudentVerified, markPersonalMailAsRead);
 
-// 개인 ?�편 ??��
+// 개인 우편 삭제
 router.delete('/personal/:mailId', authenticate, requireStudentVerified, async (req, res) => {
   try {
     const userId = req.user.userId;
     const { mailId } = req.params;
 
-    // ?�편 존재 �?권한 ?�인
+    // 우편 존재 및 권한 확인
     const [mails] = await pool.execute(
       `SELECT id FROM personal_mails 
        WHERE id = ? AND (sender_id = ? OR recipient_id = ?) AND is_deleted = FALSE`,
@@ -925,11 +925,11 @@ router.delete('/personal/:mailId', authenticate, requireStudentVerified, async (
     if (mails.length === 0) {
       return res.status(404).json({ 
         success: false, 
-        message: '?�편??찾을 ???�거????��??권한???�습?�다.' 
+        message: '우편을 찾을 수 없거나 삭제할 권한이 없습니다.' 
       });
     }
 
-    // ??�� 처리 (?�프????��)
+    // 삭제 처리 (소프트 삭제)
     await pool.execute(
       'UPDATE personal_mails SET is_deleted = TRUE WHERE id = ?',
       [mailId]
@@ -937,18 +937,18 @@ router.delete('/personal/:mailId', authenticate, requireStudentVerified, async (
 
     res.json({
       success: true,
-      message: '?�편????��?�었?�니??'
+      message: '우편이 삭제되었습니다.'
     });
   } catch (error) {
-    console.error('개인 ?�편 ??�� ?�류:', error);
+    console.error('개인 우편 삭제 오류:', error);
     res.status(500).json({ 
       success: false, 
-      message: '?�편 ??�� �??�류가 발생?�습?�다.' 
+      message: '우편 삭제 중 오류가 발생했습니다.' 
     });
   }
 });
 
-// ?��? ?��? 개인 ?�편 ??조회
+// 읽지 않은 개인 우편 수 조회
 router.get('/personal/unread-count', authenticate, requireStudentVerified, async (req, res) => {
   try {
     const userId = req.user.userId;
@@ -970,17 +970,17 @@ router.get('/personal/unread-count', authenticate, requireStudentVerified, async
       }
     });
   } catch (error) {
-    console.error('?��? ?��? 개인 ?�편 ??조회 ?�류:', error);
+    console.error('읽지 않은 개인 우편 수 조회 오류:', error);
     res.status(500).json({ 
       success: false, 
-      message: '?��? ?��? ?�편 ??조회 �??�류가 발생?�습?�다.' 
+      message: '읽지 않은 우편 수 조회 중 오류가 발생했습니다.' 
     });
   }
 });
 
-// ==================== ?�교 ?�편 API ====================
+// ==================== 학교 우편 API ====================
 
-// ?��? ??�� ??/school/:mailId 보다 먼�? ?�록 (경로 충돌 방�?)
+// 댓글 삭제 — /school/:mailId 보다 먼저 등록 (경로 충돌 방지)
 router.delete('/school/comments/:commentId', authenticate, requireStudentVerified, async (req, res) => {
   try {
     const userId = req.user.userId;
@@ -997,14 +997,14 @@ router.delete('/school/comments/:commentId', authenticate, requireStudentVerifie
     if (!rows.length) {
       return res.status(404).json({
         success: false,
-        message: '?��???찾을 ???�습?�다.',
+        message: '댓글을 찾을 수 없습니다.',
       });
     }
 
     if (Number(rows[0].user_id) !== Number(userId)) {
       return res.status(403).json({
         success: false,
-        message: '??�� 권한???�습?�다.',
+        message: '삭제 권한이 없습니다.',
       });
     }
 
@@ -1025,18 +1025,18 @@ router.delete('/school/comments/:commentId', authenticate, requireStudentVerifie
 
     return res.json({
       success: true,
-      message: '?��?????��?�었?�니??',
+      message: '댓글이 삭제되었습니다.',
     });
   } catch (error) {
-    console.error('?�교 ?�편 ?��? ??�� ?�류:', error);
+    console.error('학교 우편 댓글 삭제 오류:', error);
     return res.status(500).json({
       success: false,
-      message: '?��? ??�� �??�류가 발생?�습?�다.',
+      message: '댓글 삭제 중 오류가 발생했습니다.',
     });
   }
 });
 
-// ?�교 ?�편 목록 조회
+// 학교 우편 목록 조회
 router.get('/school', authenticate, requireStudentVerified, async (req, res) => {
   try {
     const { schoolId, page = 1, limit = 20 } = req.query;
@@ -1046,11 +1046,11 @@ router.get('/school', authenticate, requireStudentVerified, async (req, res) => 
     if (!schoolId) {
       return res.status(400).json({ 
         success: false, 
-        message: '?�교 ID�??�력?�주?�요.' 
+        message: '학교 ID를 입력해주세요.' 
       });
     }
 
-    // ?�교 ?�편 조회
+    // 학교 우편 조회
     const [mails] = await pool.execute(
       `SELECT 
         sm.id,
@@ -1076,7 +1076,7 @@ router.get('/school', authenticate, requireStudentVerified, async (req, res) => 
       [schoolId]
     );
 
-    // ?�체 개수 조회
+    // 전체 개수 조회
     const [countResult] = await pool.execute(
       `SELECT COUNT(*) as total 
        FROM school_mails 
@@ -1098,15 +1098,15 @@ router.get('/school', authenticate, requireStudentVerified, async (req, res) => 
       }
     });
   } catch (error) {
-    console.error('?�교 ?�편 목록 조회 ?�류:', error);
+    console.error('학교 우편 목록 조회 오류:', error);
     res.status(500).json({ 
       success: false, 
-      message: '?�교 ?�편 목록 조회 �??�류가 발생?�습?�다.' 
+      message: '학교 우편 목록 조회 중 오류가 발생했습니다.' 
     });
   }
 });
 
-// ?�교 ?�편 ???��? ??글 (?�세 :mailId 보다 먼�?)
+// 학교 우편 — 내가 쓴 글 (상세 :mailId 보다 먼저)
 router.get('/school/my', authenticate, requireStudentVerified, async (req, res) => {
   try {
     const userId = req.user.userId;
@@ -1151,15 +1151,15 @@ router.get('/school/my', authenticate, requireStudentVerified, async (req, res) 
       },
     });
   } catch (error) {
-    console.error('???�교 ?�편 목록 ?�류:', error);
+    console.error('내 학교 우편 목록 오류:', error);
     return res.status(500).json({
       success: false,
-      message: '???�교 ?�편 목록 조회 �??�류가 발생?�습?�다.',
+      message: '내 학교 우편 목록 조회 중 오류가 발생했습니다.',
     });
   }
 });
 
-// ?�교 ?�편 ?�세 조회 (비로그인 가????is_liked ??로그???�만)
+// 학교 우편 상세 조회 (비로그인 가능 — is_liked 는 로그인 시만)
 router.get('/school/:mailId', authenticate, requireStudentVerified, async (req, res) => {
   try {
     const { mailId } = req.params;
@@ -1192,7 +1192,7 @@ router.get('/school/:mailId', authenticate, requireStudentVerified, async (req, 
     if (mails.length === 0) {
       return res.status(404).json({ 
         success: false, 
-        message: '?�교 ?�편??찾을 ???�습?�다.' 
+        message: '학교 우편을 찾을 수 없습니다.' 
       });
     }
 
@@ -1204,15 +1204,15 @@ router.get('/school/:mailId', authenticate, requireStudentVerified, async (req, 
       data: row
     });
   } catch (error) {
-    console.error('?�교 ?�편 ?�세 조회 ?�류:', error);
+    console.error('학교 우편 상세 조회 오류:', error);
     res.status(500).json({ 
       success: false, 
-      message: '?�교 ?�편 ?�세 조회 �??�류가 발생?�습?�다.' 
+      message: '학교 우편 상세 조회 중 오류가 발생했습니다.' 
     });
   }
 });
 
-// ?�교 ?�편 좋아???��?
+// 학교 우편 좋아요 토글
 router.post('/school/:mailId/like', authenticate, requireStudentVerified, async (req, res) => {
   const userId = req.user.userId;
   const { mailId } = req.params;
@@ -1223,7 +1223,7 @@ router.post('/school/:mailId/like', authenticate, requireStudentVerified, async 
       [mailId]
     );
     if (mrows.length === 0) {
-      return res.status(404).json({ success: false, message: '?�교 ?�편??찾을 ???�습?�다.' });
+      return res.status(404).json({ success: false, message: '학교 우편을 찾을 수 없습니다.' });
     }
 
     await connection.beginTransaction();
@@ -1260,14 +1260,14 @@ router.post('/school/:mailId/like', authenticate, requireStudentVerified, async 
     res.json({ success: true, liked, likeCount });
   } catch (error) {
     await connection.rollback();
-    console.error('?�교 ?�편 좋아???�류:', error);
-    res.status(500).json({ success: false, message: '좋아??처리 �??�류가 발생?�습?�다.' });
+    console.error('학교 우편 좋아요 오류:', error);
+    res.status(500).json({ success: false, message: '좋아요 처리 중 오류가 발생했습니다.' });
   } finally {
     connection.release();
   }
 });
 
-// ?�교 ?�편 ?��? 좋아???��?
+// 학교 우편 댓글 좋아요 토글
 router.post('/school/comments/:commentId/like', authenticate, requireStudentVerified, async (req, res) => {
   const userId = req.user.userId;
   const { commentId } = req.params;
@@ -1278,7 +1278,7 @@ router.post('/school/comments/:commentId/like', authenticate, requireStudentVeri
       [commentId]
     );
     if (crows.length === 0) {
-      return res.status(404).json({ success: false, message: '?��???찾을 ???�습?�다.' });
+      return res.status(404).json({ success: false, message: '댓글을 찾을 수 없습니다.' });
     }
 
     await connection.beginTransaction();
@@ -1317,14 +1317,14 @@ router.post('/school/comments/:commentId/like', authenticate, requireStudentVeri
     res.json({ success: true, liked, likeCount });
   } catch (error) {
     await connection.rollback();
-    console.error('?�교 ?�편 ?��? 좋아???�류:', error);
-    res.status(500).json({ success: false, message: '?��? 좋아??처리 �??�류가 발생?�습?�다.' });
+    console.error('학교 우편 댓글 좋아요 오류:', error);
+    res.status(500).json({ success: false, message: '댓글 좋아요 처리 중 오류가 발생했습니다.' });
   } finally {
     connection.release();
   }
 });
 
-// ?�교 ?�편 ?�고
+// 학교 우편 신고
 router.post('/school/:mailId/report', authenticate, requireStudentVerified, async (req, res) => {
   try {
     const reporterId = req.user.userId;
@@ -1339,7 +1339,7 @@ router.post('/school/:mailId/report', authenticate, requireStudentVerified, asyn
       description,
       options: {
         targetExistsCheck: {
-          notFoundMessage: '?�교 ?�편??찾을 ???�습?�다.',
+          notFoundMessage: '학교 우편을 찾을 수 없습니다.',
           check: async (db) => {
             const [rows] = await db.execute(
               'SELECT id FROM school_mails WHERE id = ? AND is_deleted = FALSE',
@@ -1353,15 +1353,15 @@ router.post('/school/:mailId/report', authenticate, requireStudentVerified, asyn
 
     return res.status(result.httpStatus).json(result.body);
   } catch (error) {
-    console.error('?�교 ?�편 ?�고 ?�류:', error);
+    console.error('학교 우편 신고 오류:', error);
     res.status(500).json({
       success: false,
-      message: '?�고 처리 �??�류가 발생?�습?�다.',
+      message: '신고 처리 중 오류가 발생했습니다.',
     });
   }
 });
 
-// ?�교 ?�편 ?��? ?�고
+// 학교 우편 댓글 신고
 router.post('/school/comments/:commentId/report', authenticate, requireStudentVerified, async (req, res) => {
   try {
     const reporterId = req.user.userId;
@@ -1376,7 +1376,7 @@ router.post('/school/comments/:commentId/report', authenticate, requireStudentVe
       description,
       options: {
         targetExistsCheck: {
-          notFoundMessage: '?��???찾을 ???�습?�다.',
+          notFoundMessage: '댓글을 찾을 수 없습니다.',
           check: async (db) => {
             const [rows] = await db.execute(
               'SELECT id FROM school_mail_comments WHERE id = ? AND is_deleted = FALSE',
@@ -1390,15 +1390,15 @@ router.post('/school/comments/:commentId/report', authenticate, requireStudentVe
 
     return res.status(result.httpStatus).json(result.body);
   } catch (error) {
-    console.error('?�교 ?�편 ?��? ?�고 ?�류:', error);
+    console.error('학교 우편 댓글 신고 오류:', error);
     res.status(500).json({
       success: false,
-      message: '?�고 처리 �??�류가 발생?�습?�다.',
+      message: '신고 처리 중 오류가 발생했습니다.',
     });
   }
 });
 
-// ?�교 ?�편 ?�성
+// 학교 우편 작성
 router.post('/school', authenticate, requireStudentVerified, async (req, res) => {
   try {
     const userId = req.user.userId;
@@ -1407,11 +1407,11 @@ router.post('/school', authenticate, requireStudentVerified, async (req, res) =>
     if (!schoolId || !content) {
       return res.status(400).json({ 
         success: false, 
-        message: '?�교 ID?� ?�용???�력?�주?�요.' 
+        message: '학교 ID와 내용을 입력해주세요.' 
       });
     }
 
-    // ?�용???�보 ?�인
+    // 사용자 정보 확인
     const [users] = await pool.execute(
       'SELECT school_id FROM users WHERE id = ?',
       [userId]
@@ -1420,11 +1420,11 @@ router.post('/school', authenticate, requireStudentVerified, async (req, res) =>
     if (users.length === 0) {
       return res.status(404).json({ 
         success: false, 
-        message: '?�용?��? 찾을 ???�습?�다.' 
+        message: '사용자를 찾을 수 없습니다.' 
       });
     }
 
-    // ?�교 존재 ?�인
+    // 학교 존재 확인
     const [schools] = await pool.execute(
       'SELECT school_id FROM schools WHERE school_id = ?',
       [schoolId]
@@ -1433,20 +1433,20 @@ router.post('/school', authenticate, requireStudentVerified, async (req, res) =>
     if (schools.length === 0) {
       return res.status(404).json({ 
         success: false, 
-        message: '?�교�?찾을 ???�습?�다.' 
+        message: '학교를 찾을 수 없습니다.' 
       });
     }
 
     const authorSchoolId = users[0].school_id;
 
-    // ?�교 ?�편 ?�성
+    // 학교 우편 생성
     const [result] = await pool.execute(
       `INSERT INTO school_mails (school_id, user_id, author_school_id, content, created_at) 
        VALUES (?, ?, ?, ?, ?)`,
       [schoolId, userId, authorSchoolId, content.trim(), getNowForDB()]
     );
 
-    // ?�성???�편 ?�보 조회
+    // 생성된 우편 정보 조회
     const [newMails] = await pool.execute(
       `SELECT 
         sm.id,
@@ -1472,25 +1472,25 @@ router.post('/school', authenticate, requireStudentVerified, async (req, res) =>
 
     res.status(201).json({
       success: true,
-      message: '?�교 ?�편???�성?�었?�니??',
+      message: '학교 우편이 작성되었습니다.',
       data: newMails[0]
     });
   } catch (error) {
-    console.error('?�교 ?�편 ?�성 ?�류:', error);
+    console.error('학교 우편 작성 오류:', error);
     res.status(500).json({ 
       success: false, 
-      message: '?�교 ?�편 ?�성 �??�류가 발생?�습?�다.' 
+      message: '학교 우편 작성 중 오류가 발생했습니다.' 
     });
   }
 });
 
-// ?�교 ?�편 ??��
+// 학교 우편 삭제
 router.delete('/school/:mailId', authenticate, requireStudentVerified, async (req, res) => {
   try {
     const userId = req.user.userId;
     const { mailId } = req.params;
 
-    // ?�편 존재 �??�성???�인
+    // 우편 존재 및 작성자 확인
     const [mails] = await pool.execute(
       `SELECT id FROM school_mails 
        WHERE id = ? AND user_id = ? AND is_deleted = FALSE`,
@@ -1500,11 +1500,11 @@ router.delete('/school/:mailId', authenticate, requireStudentVerified, async (re
     if (mails.length === 0) {
       return res.status(404).json({ 
         success: false, 
-        message: '?�교 ?�편??찾을 ???�거????��??권한???�습?�다.' 
+        message: '학교 우편을 찾을 수 없거나 삭제할 권한이 없습니다.' 
       });
     }
 
-    // ??�� 처리 (?�프????�� + ?��? ?��?)
+    // 삭제 처리 (소프트 삭제 + 연관 댓글)
     const connection = await pool.getConnection();
     try {
       await connection.beginTransaction();
@@ -1530,18 +1530,18 @@ router.delete('/school/:mailId', authenticate, requireStudentVerified, async (re
 
     res.json({
       success: true,
-      message: '?�교 ?�편????��?�었?�니??'
+      message: '학교 우편이 삭제되었습니다.'
     });
   } catch (error) {
-    console.error('?�교 ?�편 ??�� ?�류:', error);
+    console.error('학교 우편 삭제 오류:', error);
     res.status(500).json({ 
       success: false, 
-      message: '?�교 ?�편 ??�� �??�류가 발생?�습?�다.' 
+      message: '학교 우편 삭제 중 오류가 발생했습니다.' 
     });
   }
 });
 
-// ?�교 ?�편 ?��? 고정 (?�편 ?�성?�만) ??/school/:mailId 보다 먼�?
+// 학교 우편 댓글 고정 (우편 작성자만) — /school/:mailId 보다 먼저
 router.patch(
   '/school/:mailId/comments/:commentId/pin',
   authenticate,
@@ -1559,13 +1559,13 @@ router.patch(
       if (!mails.length) {
         return res.status(404).json({
           success: false,
-          message: '?�교 ?�편??찾을 ???�습?�다.',
+          message: '학교 우편을 찾을 수 없습니다.',
         });
       }
       if (Number(mails[0].user_id) !== Number(userId)) {
         return res.status(403).json({
           success: false,
-          message: '?�편 ?�성?�만 ?��???고정?????�습?�다.',
+          message: '우편 작성자만 댓글을 고정할 수 있습니다.',
         });
       }
 
@@ -1577,7 +1577,7 @@ router.patch(
       if (!comments.length) {
         return res.status(404).json({
           success: false,
-          message: '?��???찾을 ???�습?�다.',
+          message: '댓글을 찾을 수 없습니다.',
         });
       }
 
@@ -1605,20 +1605,20 @@ router.patch(
 
       return res.json({
         success: true,
-        message: pin ? '?��???고정?�었?�니??' : '?��? 고정???�제?�었?�니??',
+        message: pin ? '댓글이 고정되었습니다.' : '댓글 고정이 해제되었습니다.',
         data: { mailId, commentId, isPinned: pin },
       });
     } catch (error) {
-      console.error('?�교 ?�편 ?��? 고정 ?�류:', error);
+      console.error('학교 우편 댓글 고정 오류:', error);
       return res.status(500).json({
         success: false,
-        message: '?��? 고정 처리 �??�류가 발생?�습?�다.',
+        message: '댓글 고정 처리 중 오류가 발생했습니다.',
       });
     }
   },
 );
 
-// ?�교 ?�편 ?��? 목록 조회 (게시글보다 먼�? ?�록: /comments 가 :mailId????먹히?�록)
+// 학교 우편 댓글 목록 조회 (게시글보다 먼저 등록: /comments 가 :mailId에 안 먹히도록)
 router.get('/school/:mailId/comments', authenticate, requireStudentVerified, async (req, res) => {
   try {
     const { mailId } = req.params;
@@ -1631,7 +1631,7 @@ router.get('/school/:mailId/comments', authenticate, requireStudentVerified, asy
     if (mails.length === 0) {
       return res.status(404).json({
         success: false,
-        message: '?�교 ?�편??찾을 ???�습?�다.',
+        message: '학교 우편을 찾을 수 없습니다.',
       });
     }
 
@@ -1668,15 +1668,15 @@ router.get('/school/:mailId/comments', authenticate, requireStudentVerified, asy
       data: { comments },
     });
   } catch (error) {
-    console.error('?�교 ?�편 ?��? 목록 조회 ?�류:', error);
+    console.error('학교 우편 댓글 목록 조회 오류:', error);
     res.status(500).json({
       success: false,
-      message: '?��? 목록 조회 �??�류가 발생?�습?�다.',
+      message: '댓글 목록 조회 중 오류가 발생했습니다.',
     });
   }
 });
 
-// ?�교 ?�편 ?��? ?�성
+// 학교 우편 댓글 작성
 router.post('/school/:mailId/comments', authenticate, requireStudentVerified, async (req, res) => {
   try {
     const userId = req.user.userId;
@@ -1686,7 +1686,7 @@ router.post('/school/:mailId/comments', authenticate, requireStudentVerified, as
     if (!content || !String(content).trim()) {
       return res.status(400).json({
         success: false,
-        message: '?��? ?�용???�력?�주?�요.',
+        message: '댓글 내용을 입력해주세요.',
       });
     }
 
@@ -1697,7 +1697,7 @@ router.post('/school/:mailId/comments', authenticate, requireStudentVerified, as
     if (mails.length === 0) {
       return res.status(404).json({
         success: false,
-        message: '?�교 ?�편??찾을 ???�습?�다.',
+        message: '학교 우편을 찾을 수 없습니다.',
       });
     }
 
@@ -1710,7 +1710,7 @@ router.post('/school/:mailId/comments', authenticate, requireStudentVerified, as
       if (parents.length === 0) {
         return res.status(404).json({
           success: false,
-          message: '부�??��???찾을 ???�습?�다.',
+          message: '부모 댓글을 찾을 수 없습니다.',
         });
       }
     }
@@ -1750,14 +1750,14 @@ router.post('/school/:mailId/comments', authenticate, requireStudentVerified, as
 
     res.status(201).json({
       success: true,
-      message: '?��????�성?�었?�니??',
+      message: '댓글이 작성되었습니다.',
       data: created[0],
     });
   } catch (error) {
-    console.error('?�교 ?�편 ?��? ?�성 ?�류:', error);
+    console.error('학교 우편 댓글 작성 오류:', error);
     res.status(500).json({
       success: false,
-      message: '?��? ?�성 �??�류가 발생?�습?�다.',
+      message: '댓글 작성 중 오류가 발생했습니다.',
     });
   }
 });
