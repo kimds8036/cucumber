@@ -80,8 +80,6 @@ async function runPostMigrationHooks(connection, file) {
     }
   }
 
-<<<<<<< HEAD
-=======
   if (file === '015_legal_documents_v2.sql') {
     const summary = await applyLegalDocumentsV2_015(connection);
     if (summary.length > 0) {
@@ -96,7 +94,6 @@ async function runPostMigrationHooks(connection, file) {
     }
   }
 
->>>>>>> feat/signup-open-access
   // 레거시: 스쿼시 전 DB에 남아 있을 수 있는 파일명 (베이스라인 전 배포 1회)
   if (file === '056_personal_mails_recipient_name_pii.sql') {
     try {
