@@ -21,8 +21,10 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import MainHeader from '../frame/mainHeader';
 import MainFooter from '../frame/mainFooter';
-import { getMainTabTitle } from '../../context/MainShellContext';
+import { getMainTabTitle, useMainShellOptional } from '../../context/MainShellContext';
 import { colors, fonts } from '../../styles/colors';
+import { useAuth } from '../../context/AuthContext';
+import StudentVerificationCtaModal from '../../components/auth/StudentVerificationCtaModal';
 import { createBoardStyles, getNormalize } from '../../styles/board.style';
 import FontAwesome5 from '@expo/vector-icons/FontAwesome5';
 import { api } from '../../utils/api';
@@ -85,12 +87,17 @@ export function BoardAllContent({ navigation, posts }) {
   const normalize = useMemo(() => getNormalize(width), [width]);
   const styles = useMemo(() => createBoardStyles(width, normalize), [width]);
   const { isGuidePreview } = useGuidePreview();
+  const shell = useMainShellOptional();
+  const boardFeedMode = shell?.boardFeedMode ?? 'national';
+  const { studentVerificationStatus } = useAuth();
+  const [studentCtaVisible, setStudentCtaVisible] = useState(false);
   // TODO: /api/ads 연동 후 useAdSlots(AD_PLACEMENTS.FEED_BOARD)
   const adSlots = [];
   const { coords, refreshLocation, permissionGranted } = useLocationContext();
   const distanceStale = permissionGranted && !coords;
 
   const [sortType, setSortType] = useState('latest'); // latest, popular, nearby
+  const prevFeedModeRef = useRef(boardFeedMode);
   const [serverPosts, setServerPosts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
@@ -257,6 +264,20 @@ export function BoardAllContent({ navigation, posts }) {
         setRefreshing(false);
         return;
       }
+      if (
+        boardFeedMode === 'student' &&
+        studentVerificationStatus !== 'APPROVED'
+      ) {
+        if (nextPage === 1 && !append) {
+          setServerPosts([]);
+          setHasMore(false);
+          setPage(1);
+        }
+        setLoading(false);
+        setLoadingMore(false);
+        setRefreshing(false);
+        return;
+      }
       try {
         if (sortType === 'nearby' && !coords) {
           if (nextPage === 1) {
@@ -287,7 +308,7 @@ export function BoardAllContent({ navigation, posts }) {
               ? 'nearby'
               : 'latest';
         const params = {
-          boardType: 'national',
+          boardType: boardFeedMode === 'student' ? 'student' : 'national',
           sort: sortParam,
           page: nextPage,
           limit: 20,
@@ -365,24 +386,43 @@ export function BoardAllContent({ navigation, posts }) {
         }
       } catch (error) {
         console.error('게시글 목록 로드 실패:', error);
-        if (error.response?.data?.message) {
-          console.error('서버 메시지:', error.response.data.message);
+        if (error.response?.data?.code === 'STUDENT_VERIFICATION_REQUIRED') {
+          setServerPosts([]);
+          setHasMore(false);
+          setStudentCtaVisible(true);
+        } else {
+          Alert.alert('오류', '게시글을 불러오는 중 오류가 발생했습니다.');
         }
-        if (error.response?.data?.errorDetail) {
-          console.error('서버 오류 상세:', error.response.data.errorDetail);
-        }
-        Alert.alert('오류', '게시글을 불러오는 중 오류가 발생했습니다.');
         setLoading(false);
         setLoadingMore(false);
         setRefreshing(false);
       }
     },
-    [sortType, coords, posts, isGuidePreview],
+    [
+      sortType,
+      coords,
+      posts,
+      isGuidePreview,
+      boardFeedMode,
+      studentVerificationStatus,
+    ],
   );
 
   useEffect(() => {
     fetchPostsRef.current = fetchPosts;
   }, [fetchPosts]);
+
+  useEffect(() => {
+    if (prevFeedModeRef.current !== boardFeedMode) {
+      prevFeedModeRef.current = boardFeedMode;
+      if (
+        boardFeedMode === 'student' &&
+        studentVerificationStatus !== 'APPROVED'
+      ) {
+        setStudentCtaVisible(true);
+      }
+    }
+  }, [boardFeedMode, studentVerificationStatus]);
 
   useEffect(() => {
     if (isGuidePreview) {
@@ -391,7 +431,7 @@ export function BoardAllContent({ navigation, posts }) {
     }
     refreshLocation();
     fetchPostsRef.current?.(1, false);
-  }, [isGuidePreview]);
+  }, [isGuidePreview, boardFeedMode]);
 
   useEffect(() => {
     if (isGuidePreview) return;
@@ -423,7 +463,7 @@ export function BoardAllContent({ navigation, posts }) {
       return;
     }
     fetchPosts(1, false);
-  }, [sortType, isGuidePreview]);
+  }, [sortType, isGuidePreview, boardFeedMode]);
 
   const handlePullToRefresh = useCallback(() => {
     if (isGuidePreview) return;
@@ -715,7 +755,20 @@ export function BoardAllContent({ navigation, posts }) {
         <TouchableOpacity
           style={styles.floatingButton}
           activeOpacity={0.8}
-          onPress={() => navigation.navigate('BoardWrite', { from: 'Main' })}
+          onPress={() => {
+            if (
+              boardFeedMode === 'student' &&
+              studentVerificationStatus !== 'APPROVED'
+            ) {
+              setStudentCtaVisible(true);
+              return;
+            }
+            navigation.navigate('BoardWrite', {
+              from: 'Main',
+              boardContext:
+                boardFeedMode === 'student' ? 'student' : 'national',
+            });
+          }}
         >
           <FontAwesome5
             name="plus"
@@ -844,6 +897,27 @@ export function BoardAllContent({ navigation, posts }) {
         onBlocked={(uid) => {
           closeFloatingMenu();
           setServerPosts((prev) => filterPostsExcludingUser(prev, uid));
+        }}
+      />
+
+      <StudentVerificationCtaModal
+        visible={studentCtaVisible}
+        status={studentVerificationStatus || 'UNVERIFIED'}
+        onClose={() => {
+          setStudentCtaVisible(false);
+          if (
+            boardFeedMode === 'student' &&
+            studentVerificationStatus !== 'APPROVED'
+          ) {
+            shell?.setBoardFeedMode?.('national');
+          }
+        }}
+        onPressVerify={() => {
+          setStudentCtaVisible(false);
+          shell?.requestStudentVerification?.({
+            reason: 'student_board',
+            statusHint: studentVerificationStatus,
+          });
         }}
       />
     </>

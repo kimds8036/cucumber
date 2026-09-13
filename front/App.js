@@ -72,7 +72,6 @@ import { KeyboardProvider } from 'react-native-keyboard-controller';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { AppLockProvider } from './context/AppLockContext';
 import { LocationProvider, LocationGate } from './context/LocationContext';
-import StudentVerificationGate from './components/auth/StudentVerificationGate';
 import StudentVerificationRejected from './components/auth/StudentVerificationRejected';
 import CertificateResubmit from './view/src/signup/CertificateResubmit';
 import CertificateGuideResubmit from './view/src/signup/CertificateGuideResubmit';
@@ -527,14 +526,14 @@ function RootNavigator() {
     );
   }
 
-  // 거절 플로우: SafeAreaView 는 여기 1곳만 (화면 전환 시 remount 점프 방지)
+  // 거절 대안·재제출 화면: 사용자가 연 경우에만 전면 표시
+  // REJECTED/PENDING 도 메인 진입 (가입_개편 — 인앱 인증 유도)
   const inRejectedAltFlow =
     showRejectedInquiry ||
     showAltVerifyChoice ||
     showNeisPlusResubmit ||
     showCertificateGuide ||
-    showCertificateResubmit ||
-    studentVerificationStatus === 'REJECTED';
+    showCertificateResubmit;
 
   if (inRejectedAltFlow) {
     let rejectedBody = (
@@ -626,12 +625,7 @@ function RootNavigator() {
     );
   }
 
-  if (
-    studentVerificationStatus === 'PENDING' &&
-    !reverificationSubmissionPending
-  ) {
-    return <StudentVerificationGate />;
-  }
+  // PENDING 전면 Gate 제거 — 미인증도 라이트 기능으로 메인 진입 (가입_개편)
 
   if (reverificationStatus === 'graduated_blocked') {
     return <AccountBlockedScreen variant="graduated" />;

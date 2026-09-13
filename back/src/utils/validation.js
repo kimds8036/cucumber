@@ -16,12 +16,14 @@ export const validatePassword = (password) => {
   return passwordRegex.test(password);
 };
 
-/** 가입 상한 만 나이 — 매년 (올해 - N)년 1월 1일 기준으로 롤링 */
+/**
+ * 중·고 학적 추론용 상한(만 나이). 가입 자체는 전 연령 허용
+ * (`feat/signup-open-access`)
+ */
 export const SIGNUP_MAX_AGE = 21;
 
 export function getSignupBirthDateBoundaries(ref = new Date()) {
   const Y = ref.getFullYear();
-  const pad = (n) => String(n).padStart(2, '0');
   return {
     minDate: `${Y - SIGNUP_MAX_AGE}-01-01`,
     tooYoungCutoff: `${Y - 12}-01-01`,
@@ -31,11 +33,11 @@ export function getSignupBirthDateBoundaries(ref = new Date()) {
 }
 
 /**
- * 가입 생년월일 검증 (프론트 signupBirthDatePolicy와 동일 롤링)
+ * 가입 생년월일 검증 — 너무 어린 경우만 거부. 연장(성인)은 허용.
  * @param {string} birthDate YYYY-MM-DD
- * @param {{ allowOverMaxAge?: boolean }} [options] 성인 테스트 시 상한만 완화
+ * @param {{ allowOverMaxAge?: boolean }} [options] 하위 호환(무시, 항상 연장 허용)
  */
-export const validateBirthDate = (birthDate, options = {}) => {
+export const validateBirthDate = (birthDate, _options = {}) => {
   const raw = String(birthDate || '').trim();
   if (!/^\d{4}-\d{2}-\d{2}$/.test(raw)) return false;
   const [y, m, d] = raw.split('-').map(Number);
@@ -48,8 +50,7 @@ export const validateBirthDate = (birthDate, options = {}) => {
     return false;
   }
 
-  const { minDate, tooYoungCutoff } = getSignupBirthDateBoundaries();
+  const { tooYoungCutoff } = getSignupBirthDateBoundaries();
   if (raw >= tooYoungCutoff) return false;
-  if (raw < minDate && !options.allowOverMaxAge) return false;
   return true;
 };

@@ -1,21 +1,58 @@
-import React, { useCallback } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
+import { View } from 'react-native';
 import OurSchoolScreen from '../ourschoolscreen';
-import { useFocusEffect } from '@react-navigation/native';
+import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import {
   MAIN_TAB_TITLES,
   useMainShell,
 } from '../../../context/MainShellContext';
+import { useAuth } from '../../../context/AuthContext';
+import StudentVerificationCtaModal from '../../../components/auth/StudentVerificationCtaModal';
 
 const SchoolTab = ({ navigation }) => {
-  const { setHeaderTitle } = useMainShell();
+  const tabNavigation = useNavigation();
+  const { setHeaderTitle, requestStudentVerification } = useMainShell();
+  const { studentVerificationStatus } = useAuth();
+  const [ctaVisible, setCtaVisible] = useState(false);
+  const isApproved = studentVerificationStatus === 'APPROVED';
 
   useFocusEffect(
     useCallback(() => {
       setHeaderTitle(MAIN_TAB_TITLES.school);
-    }, [setHeaderTitle]),
+      if (!isApproved) {
+        setCtaVisible(true);
+      }
+    }, [setHeaderTitle, isApproved]),
   );
 
-  return <OurSchoolScreen navigation={navigation} />;
+  useEffect(() => {
+    if (isApproved) setCtaVisible(false);
+  }, [isApproved]);
+
+  return (
+    <View style={{ flex: 1 }}>
+      {isApproved ? (
+        <OurSchoolScreen navigation={navigation} />
+      ) : (
+        <View style={{ flex: 1 }} />
+      )}
+      <StudentVerificationCtaModal
+        visible={ctaVisible && !isApproved}
+        status={studentVerificationStatus || 'UNVERIFIED'}
+        onClose={() => {
+          setCtaVisible(false);
+          tabNavigation.navigate('board');
+        }}
+        onPressVerify={() => {
+          setCtaVisible(false);
+          requestStudentVerification({
+            reason: 'school',
+            statusHint: studentVerificationStatus,
+          });
+        }}
+      />
+    </View>
+  );
 };
 
 export default SchoolTab;

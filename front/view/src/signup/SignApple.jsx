@@ -176,6 +176,7 @@ const SignApple = ({ navigation }) => {
   const inicisFlowActiveRef = useRef(false);
   const inicisResumeStepRef = useRef(STEP.BIRTH_DATE);
   const guardianModalPendingActionRef = useRef(null);
+  const completeSignupRef = useRef(null);
 
   const identity = useMemo(
     () => ({
@@ -297,7 +298,13 @@ const SignApple = ({ navigation }) => {
       setRequiresGuardianVerification(snapshot.requiresGuardianVerification);
     }
     if (snapshot.certificateData) setCertificateData(snapshot.certificateData);
-    if (snapshot.currentStep) setCurrentStep(snapshot.currentStep);
+    if (snapshot.currentStep) {
+      const step =
+        snapshot.currentStep === STEP.SCHOOL_SELECT
+          ? STEP.BIRTH_DATE
+          : snapshot.currentStep;
+      setCurrentStep(step);
+    }
   }, []);
 
   const clearFlowSession = useCallback(async () => {
@@ -345,7 +352,8 @@ const SignApple = ({ navigation }) => {
   }, [abortSignupImmediate, closeBlockingAlert, submitting]);
 
   const proceedToSchool = useCallback(() => {
-    setCurrentStep(STEP.SCHOOL_SELECT);
+    // 재학정보 화면 스킵 → 바로 가입 완료 (가입_개편)
+    completeSignupRef.current?.();
   }, []);
 
   const applyBirthDateToState = useCallback((nextBirthDate) => {
@@ -959,8 +967,7 @@ const SignApple = ({ navigation }) => {
       const birthCase = classifyBirthDateCase(nextBirthDate);
       if (
         birthCase === 'D' ||
-        birthCase === 'invalid' ||
-        (birthCase === 'A' && !ALLOW_ADULT_SIGNUP_IN_DEV)
+        birthCase === 'invalid'
       ) {
         return;
       }
@@ -975,10 +982,6 @@ const SignApple = ({ navigation }) => {
     const birthCase = classifyBirthDateCase(nextBirthDate);
     if (birthCase === 'invalid') {
       Alert.alert('알림', '생년월일을 올바르게 입력해 주세요.');
-      return;
-    }
-    if (birthCase === 'A' && !ALLOW_ADULT_SIGNUP_IN_DEV) {
-      showTooOldForSignupAlert(goToLogin);
       return;
     }
     if (birthCase === 'D') {
@@ -1056,17 +1059,19 @@ const SignApple = ({ navigation }) => {
   const proceedFromSchoolSelect = useCallback(() => {
     const grade = Number(schoolGradeNum);
     const classNum = Number(schoolClassNum);
-    setFormData((prev) => ({
-      ...prev,
+    const nextForm = {
+      ...formData,
       schoolId: selectedSchool.id,
       schoolName: selectedSchool.name,
       grade: String(grade),
       classNum: String(classNum),
       graduationYear: String(schoolEnrollmentPreview.graduationYear || ''),
-      schoolLevel: schoolEnrollmentPreview.schoolLevel || prev.schoolLevel,
-    }));
-    setCurrentStep(STEP.STUDENT_VERIFY);
+      schoolLevel: schoolEnrollmentPreview.schoolLevel || formData.schoolLevel,
+    };
+    setFormData(nextForm);
+    completeSignupRef.current?.(nextForm);
   }, [
+    formData,
     schoolClassNum,
     schoolEnrollmentPreview,
     schoolGradeNum,
@@ -1077,10 +1082,11 @@ const SignApple = ({ navigation }) => {
     if (SIGNUP_REDESIGN_SKIP_VALIDATION) {
       const grade = Number(schoolGradeNum) || 2;
       const classNum = Number(schoolClassNum) || 1;
-      setFormData((prev) => ({
-        ...prev,
-        schoolId: selectedSchool?.id || prev.schoolId || 'REDESIGN_SKIP',
-        schoolName: selectedSchool?.name || prev.schoolName || '개편테스트학교',
+      const nextForm = {
+        ...formData,
+        schoolId: selectedSchool?.id || formData.schoolId || 'REDESIGN_SKIP',
+        schoolName:
+          selectedSchool?.name || formData.schoolName || '개편테스트학교',
         grade: String(grade),
         classNum: String(classNum),
         graduationYear: String(
@@ -1088,8 +1094,9 @@ const SignApple = ({ navigation }) => {
             new Date().getFullYear() + 2,
         ),
         schoolLevel: schoolEnrollmentPreview.schoolLevel || 'high',
-      }));
-      setCurrentStep(STEP.STUDENT_VERIFY);
+      };
+      setFormData(nextForm);
+      completeSignupRef.current?.(nextForm);
       return;
     }
 
@@ -1149,24 +1156,19 @@ const SignApple = ({ navigation }) => {
   const buildSignupPayload = (finalData, verificationToken) => {
     const resolvedBirthDate =
       normalizeBirthDateForCompare(identity.birthDate) || identity.birthDate;
-    const enrollment = buildEnrollmentFromBirthDate(resolvedBirthDate);
 
     return {
       // username/password 생략 — 서버가 Apple 토큰으로 임시 계정 발급
       name: (identity.name || '').trim(),
       phone: String(identity.phoneNumber || '').replace(/\D/g, ''),
       birthDate: resolvedBirthDate,
-      schoolId: finalData.schoolId,
-      grade: Number(finalData.grade) || enrollment.grade || 1,
-      classNumber: Number(finalData.classNum) || 1,
-      graduationYear:
-        Number(finalData.graduationYear) || enrollment.graduationYear,
+      // 재학정보 가입 시 미입력 — 인앱 학생증 인증 때 설정
       colorId: pickRandomProfileColorId(),
       verificationMethod: 'student_id',
       signupMethod: 'apple',
       appleIdentityToken: identityData.identityToken || '',
       consents: consentData.consents || {},
-      studentVerificationToken: verificationToken,
+      studentVerificationToken: verificationToken || undefined,
       studentInicisClientToken:
         identityData.inicisClientToken || inicisClientTokenRef.current || null,
       guardianInicisClientToken: guardianInicisClientToken || null,
@@ -1196,7 +1198,7 @@ const SignApple = ({ navigation }) => {
       await setRefreshToken(refreshToken, { persist: true });
     }
     await login({
-      studentVerificationStatus: status || 'PENDING',
+      studentVerificationStatus: status || 'UNVERIFIED',
       rejectReason: rejectReason || null,
       needsProfileUsername: Boolean(
         loginRes.data?.data?.needsProfileUsername,
@@ -1204,15 +1206,19 @@ const SignApple = ({ navigation }) => {
     });
   };
 
-  const handleComplete = async () => {
-    const finalData = { ...formData };
-    const verificationToken = studentVerificationToken || MOCK_STUDENT_TOKEN;
+  const handleComplete = async (overrideFormData = null) => {
+    const finalData = overrideFormData
+      ? { ...overrideFormData }
+      : { ...formData };
+    const verificationToken =
+      studentVerificationToken ||
+      (SIGNUP_REDESIGN_SKIP_VALIDATION ? MOCK_STUDENT_TOKEN : undefined);
 
     setSubmitting(true);
     try {
       if (SIGNUP_REDESIGN_SKIP_VALIDATION) {
         await clearFlowSession();
-        await login({ studentVerificationStatus: 'PENDING' });
+        await login({ studentVerificationStatus: 'UNVERIFIED' });
         return;
       }
 
@@ -1240,6 +1246,7 @@ const SignApple = ({ navigation }) => {
       setSubmitting(false);
     }
   };
+  completeSignupRef.current = handleComplete;
 
   const getStepTitle = () => {
     switch (currentStep) {

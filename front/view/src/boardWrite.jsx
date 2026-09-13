@@ -47,7 +47,11 @@ const BoardWrite = ({ navigation, route }) => {
   const [tagPanelVisible, setTagPanelVisible] = useState(false);
   const boardContext = route?.params?.boardContext || 'national';
   const [selectedBoard, setSelectedBoard] = useState(
-    boardContext === 'school' ? '학교게시판' : '전체게시판',
+    boardContext === 'school'
+      ? '학교게시판'
+      : boardContext === 'student'
+        ? '학생게시판'
+        : '전체게시판',
   );
   const [boardDropdownVisible, setBoardDropdownVisible] = useState(false);
   const tagInputRef = useRef(null);
@@ -193,7 +197,18 @@ const BoardWrite = ({ navigation, route }) => {
       let boardType = 'national';
       let schoolId = null;
 
-      if (boardContext === 'school') {
+      const resolvedContext =
+        selectedBoard === '학교게시판'
+          ? 'school'
+          : selectedBoard === '학생게시판'
+            ? 'student'
+            : boardContext === 'student'
+              ? 'student'
+              : boardContext === 'school'
+                ? 'school'
+                : 'national';
+
+      if (resolvedContext === 'school') {
         const schoolRes = await api.get('/api/schools/me');
         const id = schoolRes.data?.data?.id;
         if (!id) {
@@ -202,6 +217,8 @@ const BoardWrite = ({ navigation, route }) => {
         }
         boardType = 'school';
         schoolId = id;
+      } else if (resolvedContext === 'student') {
+        boardType = 'student';
       }
 
       const formData = new FormData();
@@ -257,9 +274,13 @@ const BoardWrite = ({ navigation, route }) => {
       ]);
     } catch (error) {
       console.error('게시글 작성 오류:', error);
+      const code = error.response?.data?.code;
       Alert.alert(
         '오류',
-        error.response?.data?.message || '게시글 작성 중 오류가 발생했습니다.',
+        code === 'STUDENT_VERIFICATION_REQUIRED'
+          ? '학생 인증이 필요한 게시판입니다. 학생증으로 인증해 주세요.'
+          : error.response?.data?.message ||
+              '게시글 작성 중 오류가 발생했습니다.',
       );
     } finally {
       setIsSubmitting(false);
@@ -353,7 +374,7 @@ const BoardWrite = ({ navigation, route }) => {
         </View>
         {boardDropdownVisible && (
           <View style={styles.boardDropdown}>
-            {['전체게시판', '학교게시판'].map((item) => (
+            {['전체게시판', '학생게시판', '학교게시판'].map((item) => (
               <TouchableOpacity
                 key={item}
                 style={styles.boardDropdownItem}

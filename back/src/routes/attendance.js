@@ -1,5 +1,5 @@
 import express from 'express';
-import { authenticate } from '../middleware/auth.js';
+import { authenticate, requireStudentVerified } from '../middleware/auth.js';
 import {
   checkInAttendance,
   getMyAttendances,
@@ -9,7 +9,7 @@ import { evaluateAndUnlockBadges } from '../services/badge.service.js';
 
 const router = express.Router();
 
-router.post('/check-in', authenticate, async (req, res) => {
+router.post('/check-in', authenticate, requireStudentVerified, async (req, res) => {
   try {
     const { latitude, longitude } = req.body || {};
     const result = await checkInAttendance({
@@ -32,14 +32,14 @@ router.post('/check-in', authenticate, async (req, res) => {
 
     return res.json({
       success: true,
-      message: '등교 체크가 완료되었습니다.',
+      message: '?�교 체크가 ?�료?�었?�니??',
       data: result.data,
     });
   } catch (error) {
-    console.error('등교 체크 오류:', error);
+    console.error('?�교 체크 ?�류:', error);
     return res.status(500).json({
       success: false,
-      message: '등교 체크 중 오류가 발생했습니다.',
+      message: '?�교 체크 �??�류가 발생?�습?�다.',
     });
   }
 });
@@ -55,10 +55,10 @@ router.get('/status', authenticate, async (req, res) => {
     }
     return res.json({ success: true, data: result.data });
   } catch (error) {
-    console.error('등교 상태 조회 오류:', error);
+    console.error('?�교 ?�태 조회 ?�류:', error);
     return res.status(500).json({
       success: false,
-      message: '등교 상태 조회 중 오류가 발생했습니다.',
+      message: '?�교 ?�태 조회 �??�류가 발생?�습?�다.',
     });
   }
 });
@@ -74,10 +74,10 @@ router.get('/me', authenticate, async (req, res) => {
     }
     return res.json({ success: true, data: result.data });
   } catch (error) {
-    console.error('출석 조회 오류:', error);
+    console.error('출석 조회 ?�류:', error);
     return res.status(500).json({
       success: false,
-      message: '출석 조회 중 오류가 발생했습니다.',
+      message: '출석 조회 �??�류가 발생?�습?�다.',
     });
   }
 });

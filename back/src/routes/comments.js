@@ -10,6 +10,7 @@ import { appendUserBlockFilter } from '../utils/userBlockFilter.js';
 import { submitContentReport } from '../services/reportSubmission.service.js';
 import { softDeletePostComment } from '../services/commentCount.service.js';
 import { blockWhenFlag } from '../middleware/systemFlags.js';
+import { API_ERROR_CODES } from '../constants/apiErrorCodes.js';
 
 const router = express.Router();
 
@@ -92,7 +93,7 @@ router.post('/:postId/comments', authenticate, blockWhenFlag('comment_write_disa
 
     // 게시글 존재 확인
     const [posts] = await pool.execute(
-      'SELECT id, user_id, content FROM posts WHERE id = ?',
+      'SELECT id, user_id, content, board_type FROM posts WHERE id = ?',
       [postId],
     );
     if (posts.length === 0) {
@@ -100,6 +101,21 @@ router.post('/:postId/comments', authenticate, blockWhenFlag('comment_write_disa
         success: false,
         message: '게시글을 찾을 수 없습니다.',
       });
+    }
+
+    const postBoardType = posts[0].board_type;
+    if (postBoardType === 'school' || postBoardType === 'student') {
+      const [svRows] = await pool.execute(
+        'SELECT student_verified FROM users WHERE id = ? LIMIT 1',
+        [userId],
+      );
+      if (!svRows[0]?.student_verified) {
+        return res.status(403).json({
+          success: false,
+          message: '학생 인증이 필요한 기능입니다. 학생증으로 인증해 주세요.',
+          code: API_ERROR_CODES.STUDENT_VERIFICATION_REQUIRED,
+        });
+      }
     }
 
     // 대댓글인 경우 부모 댓글 확인

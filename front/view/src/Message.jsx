@@ -20,7 +20,9 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import MainHeader from '../frame/mainHeader';
 import MainFooter from '../frame/mainFooter';
-import { getMainTabTitle } from '../../context/MainShellContext';
+import { getMainTabTitle, useMainShellOptional } from '../../context/MainShellContext';
+import { useAuth } from '../../context/AuthContext';
+import StudentVerificationCtaModal from '../../components/auth/StudentVerificationCtaModal';
 import { createMessageStyles, getNormalize } from '../../styles/message.style';
 import { createMessageRoomMenuSheetStyles } from '../../styles/messageRoomMenuSheet.style';
 import { colors, fonts, fontSizes } from '../../styles/colors';
@@ -351,6 +353,10 @@ const SwipeableRow = ({ children, onDelete }) => {
 // 메인 화면(MainScreen)에서 헤더/푸터 없이 메인 영역만 렌더할 때 사용
 export function MessageContent({ navigation }) {
   const { isGuidePreview, guideMessageTab } = useGuidePreview();
+  const { studentVerificationStatus } = useAuth();
+  const shell = useMainShellOptional();
+  const isStudentApproved = studentVerificationStatus === 'APPROVED';
+  const [mailCtaVisible, setMailCtaVisible] = useState(false);
   // TODO: /api/ads 연동 후 useAdSlots(AD_PLACEMENTS.FEED_NOTE_MAIL)
   const adSlots = [];
   const { width } = useWindowDimensions();
@@ -560,6 +566,10 @@ export function MessageContent({ navigation }) {
   }, []);
 
   const handleMessageTypeChange = (type) => {
+    if (type === 'mail' && !isStudentApproved && !isGuidePreview) {
+      setMailCtaVisible(true);
+      return;
+    }
     setMessageType(type);
     const toValue = type === 'note' ? 0 : 1;
     Animated.spring(slideAnim, {
@@ -651,6 +661,11 @@ export function MessageContent({ navigation }) {
   const fetchMails = useCallback(async () => {
     if (isGuidePreview) {
       setMails(getGuideMails());
+      setLoadingMail(false);
+      return;
+    }
+    if (!isStudentApproved) {
+      setMails([]);
       setLoadingMail(false);
       return;
     }
@@ -798,7 +813,7 @@ export function MessageContent({ navigation }) {
     } finally {
       setLoadingMail(false);
     }
-  }, [isGuidePreview]);
+  }, [isGuidePreview, isStudentApproved]);
 
   useEffect(() => {
     if (!isGuidePreview) return;
@@ -1448,6 +1463,19 @@ export function MessageContent({ navigation }) {
         onBlocked={() => {
           reportBlockSuccessRef.current?.();
           reportBlockSuccessRef.current = null;
+        }}
+      />
+
+      <StudentVerificationCtaModal
+        visible={mailCtaVisible}
+        status={studentVerificationStatus || 'UNVERIFIED'}
+        onClose={() => setMailCtaVisible(false)}
+        onPressVerify={() => {
+          setMailCtaVisible(false);
+          shell?.requestStudentVerification?.({
+            reason: 'personal_mail',
+            statusHint: studentVerificationStatus,
+          });
         }}
       />
     </>

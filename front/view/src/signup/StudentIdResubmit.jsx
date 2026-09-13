@@ -54,10 +54,11 @@ const makeFieldStyles = (normalize) =>
   });
 
 /**
- * @param {{ mode?: 'rejected'|'reverification', navigation: { goBack: () => void } }} props
+ * @param {{ mode?: 'rejected'|'reverification'|'verify', navigation: { goBack: () => void } }} props
  */
 const StudentIdResubmit = ({ mode = 'rejected', navigation }) => {
   const isReverification = mode === 'reverification';
+  const isFirstVerify = mode === 'verify';
   const { refreshStudentVerification } = useAuth();
   const { width } = useWindowDimensions();
   const normalize = useMemo(() => getNormalize(width), [width]);
@@ -66,7 +67,11 @@ const StudentIdResubmit = ({ mode = 'rejected', navigation }) => {
     [width, normalize],
   );
   const fieldStyles = useMemo(() => makeFieldStyles(normalize), [normalize]);
-  const headerTitle = isReverification ? '학생증 재인증' : '학생증 재출하기';
+  const headerTitle = isReverification
+    ? '학생증 재인증'
+    : isFirstVerify
+      ? '학생증 인증'
+      : '학생증 재출하기';
 
   const [permission, requestPermission] = useCameraPermissions();
   const cameraRef = useRef(null);
@@ -96,7 +101,7 @@ const StudentIdResubmit = ({ mode = 'rejected', navigation }) => {
   }, [permission, requestPermission]);
 
   useEffect(() => {
-    if (!isReverification) return;
+    if (!isReverification && !isFirstVerify) return;
     (async () => {
       try {
         const res = await api.get('/api/auth/me');
@@ -111,11 +116,11 @@ const StudentIdResubmit = ({ mode = 'rejected', navigation }) => {
         // ignore
       }
     })();
-  }, [isReverification]);
+  }, [isReverification, isFirstVerify]);
 
   const runResubmit = useCallback(async () => {
     if (busy) return;
-    if (isReverification && !selectedSchool?.id) {
+    if ((isReverification || isFirstVerify) && !selectedSchool?.id) {
       appAlert.alert('알림', '재학 중인 학교를 검색해 선택해 주세요.');
       return;
     }
@@ -161,7 +166,7 @@ const StudentIdResubmit = ({ mode = 'rejected', navigation }) => {
         imageBase64: photo.base64,
         cropRegion,
       };
-      if (isReverification && selectedSchool?.id) {
+      if ((isReverification || isFirstVerify) && selectedSchool?.id) {
         payload.schoolId = selectedSchool.id;
       }
 
@@ -175,14 +180,16 @@ const StudentIdResubmit = ({ mode = 'rejected', navigation }) => {
         res.data?.message ||
           (isReverification
             ? '확인용 학생증이 제출되었습니다. 검토가 완료될 때까지 일부 기능을 사용할 수 없습니다.'
-            : '학생증이 재제출되었습니다. 관리자 승인을 기다려 주세요.'),
+            : isFirstVerify
+              ? '학생증이 제출되었습니다. 관리자 승인을 기다려 주세요.'
+              : '학생증이 재제출되었습니다. 관리자 승인을 기다려 주세요.'),
       );
       navigation.goBack();
     } catch (e) {
       resetCapture();
       appAlert.alert(
         '제출 실패',
-        e?.response?.data?.message || '학생증 재제출 중 오류가 발생했습니다.',
+        e?.response?.data?.message || '학생증 제출 중 오류가 발생했습니다.',
       );
     } finally {
       setBusy(false);
@@ -193,6 +200,7 @@ const StudentIdResubmit = ({ mode = 'rejected', navigation }) => {
   }, [
     busy,
     capture,
+    isFirstVerify,
     isReverification,
     lastPhotoRef,
     navigation,
@@ -241,11 +249,12 @@ const StudentIdResubmit = ({ mode = 'rejected', navigation }) => {
       <SubHeader title={headerTitle} onBack={handleBack} />
 
       <View style={[localStyles.body, { paddingHorizontal: width * 0.07 }]}>
-        {isReverification ? (
+        {isReverification || isFirstVerify ? (
           <View style={localStyles.schoolBlock}>
             <Text style={localStyles.schoolHint}>
-              중학교에서 고등학교로 진학한 경우, 재학 중인 고등학교를 검색해
-              선택해 주세요.
+              {isReverification
+                ? '중학교에서 고등학교로 진학한 경우, 재학 중인 고등학교를 검색해 선택해 주세요.'
+                : '재학 중인 학교를 확인해 주세요. 다르면 검색해 다시 선택해 주세요.'}
             </Text>
             <SchoolSearchField
               styles={fieldStyles}

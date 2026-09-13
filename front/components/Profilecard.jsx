@@ -19,6 +19,8 @@ import EquippedBadge from './EquippedBadge';
 import { getGuideMyPageStats } from '../src/screens/UserGuide/guidePreviewData';
 import { colors } from '../styles/colors';
 import { useFriend } from '../context/FriendContext';
+import { useAuth } from '../context/AuthContext';
+import { useMainShellOptional } from '../context/MainShellContext';
 
 const PROFILE_COUNTS_CACHE_TTL_MS = 10 * 60 * 1000;
 const ENROLLMENT_TOOLTIP_MS = 3000;
@@ -32,6 +34,10 @@ const ProfileCard = ({
   const { width } = useWindowDimensions();
   const normalize = useMemo(() => getNormalize(width), [width]);
   const styles = useMemo(() => createProfileCardStyles(normalize), [normalize]);
+  const { studentVerificationStatus } = useAuth();
+  const shell = useMainShellOptional();
+  const isStudentApproved = studentVerificationStatus === 'APPROVED';
+  const isPending = studentVerificationStatus === 'PENDING';
   const seededCounts =
     userInfo?.postCount != null && userInfo?.scrapCount != null;
   const [counts, setCounts] = useState({
@@ -184,9 +190,10 @@ const ProfileCard = ({
           {userInfo.school ? (
             <Text style={styles.profileSchoolLine} numberOfLines={2}>
               {userInfo.school}
+              {!isStudentApproved ? ' · 인증 전' : ''}
             </Text>
           ) : null}
-          {gradeClassLabel ? (
+          {isStudentApproved && gradeClassLabel ? (
             <View style={styles.profileEnrollmentBlock}>
               <View style={styles.profileEnrollmentRow}>
                 <Text
@@ -205,6 +212,34 @@ const ProfileCard = ({
                 </View>
               ) : null}
             </View>
+          ) : null}
+          {!isStudentApproved ? (
+            <TouchableOpacity
+              activeOpacity={0.85}
+              onPress={() => {
+                if (isPending) return;
+                shell?.requestStudentVerification?.({
+                  reason: 'mypage',
+                  statusHint: studentVerificationStatus,
+                });
+              }}
+              style={{
+                marginTop: normalize(6),
+                alignSelf: 'flex-start',
+                paddingVertical: normalize(4),
+              }}
+            >
+              <Text
+                style={{
+                  fontSize: normalize(13),
+                  color: isPending ? colors.textSecondary : colors.primary,
+                }}
+              >
+                {isPending
+                  ? '학생증 검수 중이에요'
+                  : '학생증으로 인증하기'}
+              </Text>
+            </TouchableOpacity>
           ) : null}
           <View style={styles.quickLinksRow}>
             <TouchableOpacity
