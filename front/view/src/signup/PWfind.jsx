@@ -16,7 +16,7 @@ import { createFindStyles } from '../../../styles/find.style';
 import { CommonActions } from '@react-navigation/native';
 import Skeleton from '../../../components/common/Skeleton';
 import { api } from '../../../utils/api';
-import { isValidPassword } from '../../../utils/signupValidation';
+import { isValidPassword, PASSWORD_ERROR } from '../../../utils/signupValidation';
 import RecoveryInicisFields from './RecoveryInicisFields';
 import SignupStepScroll from './SignupStepScroll';
 
@@ -145,7 +145,7 @@ const PWfind = ({ navigation }) => {
       return;
     }
     if (!isValidPassword(newPassword)) {
-      Alert.alert('알림', '비밀번호는 영문과 숫자를 포함하여 최소 8자 이상이어야 합니다.');
+      Alert.alert('알림', PASSWORD_ERROR);
       return;
     }
     if (!recoveryToken || !verifiedUser) {

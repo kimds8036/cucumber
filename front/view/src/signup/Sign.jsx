@@ -57,7 +57,6 @@ import { useAuth } from '../../../context/AuthContext';
 import { useAppNavigation } from '../../../navigation/useAppNavigation';
 import Skeleton from '../../../components/common/Skeleton';
 import {
-  showTooOldForSignupAlert,
   showTooYoungForSignupAlert,
   GRADE_MISMATCH_HELP_TITLE,
   GRADE_MISMATCH_HELP_MESSAGE,
@@ -1115,7 +1114,6 @@ const Sign = ({ navigation }) => {
   const handleGuardianConsentLater = () => {
     guardianModalPendingActionRef.current = null;
     setShowGuardianConsentModal(false);
-    goToLogin();
   };
 
   const handleAccountNext = () => {

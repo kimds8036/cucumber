@@ -13,6 +13,7 @@ import { stripLegalDocumentsInDb } from './stripLegalDocumentsInDb.js';
 import { applySchemaNormalization006 } from './normalizeSchema006.js';
 import { applyUsersSchoolOptional014 } from './applyUsersSchoolOptional014.js';
 import { applyLegalDocumentsV2_015 } from './applyLegalDocumentsV2_015.js';
+import { applyLegalDocumentsV2_1_017 } from './applyLegalDocumentsV2_1_017.js';
 import { applyPostsNationalToStudent016 } from './applyPostsNationalToStudent016.js';
 import {
   BASELINE_INIT_FILE,
@@ -91,6 +92,13 @@ async function runPostMigrationHooks(connection, file) {
     const summary = await applyPostsNationalToStudent016(connection);
     if (summary.length > 0) {
       console.log(`  📋 posts national→student: ${summary.join(', ')}`);
+    }
+  }
+
+  if (file === '017_legal_documents_v2_1.sql') {
+    const summary = await applyLegalDocumentsV2_1_017(connection);
+    if (summary.length > 0) {
+      console.log(`  📄 legal_documents v2.1: ${summary.join(', ')}`);
     }
   }
 

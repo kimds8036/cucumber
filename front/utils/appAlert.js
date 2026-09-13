@@ -19,7 +19,16 @@ export const appAlert = {
     listeners.add(listener);
     if (pendingAlerts.length > 0) {
       const queued = pendingAlerts.splice(0, pendingAlerts.length);
-      queued.forEach((payload) => listener(payload));
+      // AlertHost 마운트 useEffect 구독 직후 동기 setState 레이스 방지
+      queueMicrotask(() => {
+        queued.forEach((payload) => {
+          try {
+            listener(payload);
+          } catch {
+            // ignore
+          }
+        });
+      });
     }
     return () => listeners.delete(listener);
   },

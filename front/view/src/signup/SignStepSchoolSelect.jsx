@@ -11,6 +11,7 @@ import {
 } from 'react-native';
 import { colors, fonts, fontSizes } from '../../../styles/colors';
 import SchoolSearchField, { GrowingUnderline } from './SchoolSearchField';
+import SignupStepScroll from './SignupStepScroll';
 
 /** 계정 만들기 ↔ 학생증 인증 사이 — 재학 학교·학년·반 */
 const SignStepSchoolSelect = ({
@@ -142,7 +143,13 @@ const SignStepSchoolSelect = ({
     );
   }
 
-  return <View style={[styles.stepFlex, localStyles.body]}>{content}</View>;
+  return (
+    <View style={[styles.stepFlex, localStyles.body]}>
+      <SignupStepScroll normalize={normalize} bottomOffset={bottomOffset}>
+        {content}
+      </SignupStepScroll>
+    </View>
+  );
 };
 
 function createLocalStyles(normalize, width) {

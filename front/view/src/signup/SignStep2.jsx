@@ -4,8 +4,6 @@ import {
   Text,
   TextInput,
   TouchableOpacity,
-  Pressable,
-  Keyboard,
   StyleSheet,
   Platform,
   useWindowDimensions,
@@ -26,7 +24,8 @@ import SignupHelperText from './SignupHelperText';
 import { GrowingUnderline } from './SchoolSearchField';
 
 const USERNAME_VALID_MESSAGE = '사용 가능한 아이디입니다';
-const PASSWORD_INVALID_MESSAGE = '잘못된 비밀번호입니다';
+const PASSWORD_INVALID_MESSAGE =
+  '영문과 숫자를 포함해 8자 이상으로 입력해 주세요.';
 const PASSWORD_CONFIRM_MISMATCH_MESSAGE = '비밀번호가 일치하지 않습니다';
 const PLACEHOLDER_TEXT_COLOR = colors.textSecondary;
 
@@ -342,63 +341,62 @@ const SignStep2 = ({
 
   if (accountOnly) {
     return (
-      <Pressable
-        style={[styles.stepFlex, accountStyles.body]}
-        onPress={Keyboard.dismiss}
-      >
-        {renderAccountUnderlineField({
-          label: '이름',
-          labelExtra: '(본인인증으로 확인된 이름으로 변경할 수 없습니다)',
-          value: verifiedName || '',
-        })}
-        {renderAccountUnderlineField({
-          label: '아이디',
-          value: username,
-          onChangeText: handleUsernameChange,
-          placeholder: USERNAME_HINT,
-          placeholderTextColor: PLACEHOLDER_TEXT_COLOR,
-          underlineStatus: usernameStatus,
-          feedback: renderAccountFieldFeedback(usernameStatus, {
-            successText: USERNAME_VALID_MESSAGE,
-            errorText: USERNAME_ERROR,
-          }),
-        })}
-        {renderAccountUnderlineField({
-          label: '비밀번호',
-          value: password,
-          onChangeText: (text) => {
-            setPassword(text);
-            notifyChange({ password: text });
-          },
-          placeholder: PASSWORD_HINT,
-          placeholderTextColor: PLACEHOLDER_TEXT_COLOR,
-          secureTextEntry: !showPassword,
-          visible: showPassword,
-          onToggleVisible: () => setShowPassword((v) => !v),
-          underlineStatus: passwordStatus,
-          feedback: renderAccountFieldFeedback(passwordStatus, {
-            successText: '',
-            errorText: PASSWORD_INVALID_MESSAGE,
-          }),
-        })}
-        {renderAccountUnderlineField({
-          label: '비밀번호 확인',
-          value: passwordConfirm,
-          onChangeText: (text) => {
-            setPasswordConfirm(text);
-            notifyChange({ passwordConfirm: text });
-          },
-          placeholder: '',
-          secureTextEntry: !showPasswordConfirm,
-          visible: showPasswordConfirm,
-          onToggleVisible: () => setShowPasswordConfirm((v) => !v),
-          underlineStatus: passwordConfirmStatus,
-          feedback: renderAccountFieldFeedback(passwordConfirmStatus, {
-            successText: '',
-            errorText: PASSWORD_CONFIRM_MISMATCH_MESSAGE,
-          }),
-        })}
-      </Pressable>
+      <View style={[styles.stepFlex, accountStyles.body]}>
+        <SignupStepScroll normalize={normalize} bottomOffset={bottomOffset}>
+          {renderAccountUnderlineField({
+            label: '이름',
+            labelExtra: '(본인인증으로 확인된 이름으로 변경할 수 없습니다)',
+            value: verifiedName || '',
+          })}
+          {renderAccountUnderlineField({
+            label: '아이디',
+            value: username,
+            onChangeText: handleUsernameChange,
+            placeholder: USERNAME_HINT,
+            placeholderTextColor: PLACEHOLDER_TEXT_COLOR,
+            underlineStatus: usernameStatus,
+            feedback: renderAccountFieldFeedback(usernameStatus, {
+              successText: USERNAME_VALID_MESSAGE,
+              errorText: USERNAME_ERROR,
+            }),
+          })}
+          {renderAccountUnderlineField({
+            label: '비밀번호',
+            value: password,
+            onChangeText: (text) => {
+              setPassword(text);
+              notifyChange({ password: text });
+            },
+            placeholder: PASSWORD_HINT,
+            placeholderTextColor: PLACEHOLDER_TEXT_COLOR,
+            secureTextEntry: !showPassword,
+            visible: showPassword,
+            onToggleVisible: () => setShowPassword((v) => !v),
+            underlineStatus: passwordStatus,
+            feedback: renderAccountFieldFeedback(passwordStatus, {
+              successText: '',
+              errorText: PASSWORD_INVALID_MESSAGE,
+            }),
+          })}
+          {renderAccountUnderlineField({
+            label: '비밀번호 확인',
+            value: passwordConfirm,
+            onChangeText: (text) => {
+              setPasswordConfirm(text);
+              notifyChange({ passwordConfirm: text });
+            },
+            placeholder: '',
+            secureTextEntry: !showPasswordConfirm,
+            visible: showPasswordConfirm,
+            onToggleVisible: () => setShowPasswordConfirm((v) => !v),
+            underlineStatus: passwordConfirmStatus,
+            feedback: renderAccountFieldFeedback(passwordConfirmStatus, {
+              successText: '',
+              errorText: PASSWORD_CONFIRM_MISMATCH_MESSAGE,
+            }),
+          })}
+        </SignupStepScroll>
+      </View>
     );
   }
 

@@ -43,9 +43,13 @@ export default function AlertHost() {
   useEffect(() => {
     return appAlert.subscribe((payload) => {
       queueRef.current.push(payload);
-      if (!visibleRef.current && !closingRef.current) {
-        present(queueRef.current.shift());
-      }
+      // subscribe 동기 flush / 마운트 직전 setState 레이스 방지
+      queueMicrotask(() => {
+        if (!visibleRef.current && !closingRef.current) {
+          if (queueRef.current.length === 0) return;
+          present(queueRef.current.shift());
+        }
+      });
     });
   }, []);
 
