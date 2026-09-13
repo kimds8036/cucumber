@@ -26,8 +26,9 @@ import { api } from '../../utils/api';
 import { useRequireStudentVerified } from '../../hooks/useRequireStudentVerified';
 
 const SendSchoolMailScreen = ({ navigation, route }) => {
-  const allowed = useRequireStudentVerified(navigation, {
+  const { allowed, Gate } = useRequireStudentVerified(navigation, {
     message: '학교 우편은 학생증 인증 후 이용할 수 있어요.',
+    reason: 'school_mail',
   });
   const { width, height } = useWindowDimensions();
   const insets = useSafeAreaInsets();
@@ -116,7 +117,7 @@ const SendSchoolMailScreen = ({ navigation, route }) => {
     setBottomCtaHeight(next);
   };
 
-  if (!allowed) return null;
+  if (!allowed) return <Gate />;
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>

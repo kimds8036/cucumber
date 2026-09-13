@@ -1,0 +1,14 @@
+---
+description: 앱 확인/안내 팝업은 AppPopupModal 페이드로 통일
+globs: front/**/*.{js,jsx,ts,tsx}
+alwaysApply: false
+---
+
+# 팝업 UI 통일
+
+확인·안내·CTA 등 **중앙 카드형 팝업**은 반드시 `front/components/common/AppPopupModal.jsx`를 사용한다.
+
+- 등장/퇴장은 **페이드만** (스르륵). `animationType="none"` / `slide`로 바꾸지 말 것 — 프로퍼티는 deprecated·무시된다.
+- 단순 알림은 `appAlert` / `AlertHost` (내부가 동일 셸).
+- RN `<Modal>`을 새로 만들어 확인 팝업을 직접 그리지 말 것.
+- 예외: 바텀시트·액션시트·풀스크린 오버레이·이미지 뷰어·장시간 잠금(`SubmittingLockModal`) 등 다른 UX는 기존 전용 컴포넌트 유지.

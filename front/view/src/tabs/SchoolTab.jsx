@@ -8,6 +8,7 @@ import {
 } from '../../../context/MainShellContext';
 import { useAuth } from '../../../context/AuthContext';
 import StudentVerificationCtaModal from '../../../components/auth/StudentVerificationCtaModal';
+import { colors } from '../../../styles/colors';
 
 const SchoolTab = ({ navigation }) => {
   const tabNavigation = useNavigation();
@@ -30,11 +31,11 @@ const SchoolTab = ({ navigation }) => {
   }, [isApproved]);
 
   return (
-    <View style={{ flex: 1 }}>
+    <View style={{ flex: 1, backgroundColor: colors.background }}>
       {isApproved ? (
         <OurSchoolScreen navigation={navigation} />
       ) : (
-        <View style={{ flex: 1 }} />
+        <View style={{ flex: 1, backgroundColor: colors.background }} />
       )}
       <StudentVerificationCtaModal
         visible={ctaVisible && !isApproved}

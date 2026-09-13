@@ -2,7 +2,7 @@ import { InteractionManager, Platform } from 'react-native';
 import { CommonActions } from '@react-navigation/native';
 import { waitForPresentationLayerRelease } from '../../../services/inicisAuth';
 
-/** SignupIosSafeModal(500) / AppPopupModal(320) dismiss 여유 */
+/** SignupIosSafeModal(500) / AppPopupModal(~220) dismiss 여유 */
 const IOS_MODAL_CLEAR_MS = 520;
 const ANDROID_MODAL_CLEAR_MS = 80;
 

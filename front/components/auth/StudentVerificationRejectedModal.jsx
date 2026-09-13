@@ -10,28 +10,23 @@ import AppPopupModal from '../common/AppPopupModal';
 import { colors, fonts, fontSizes } from '../../styles/colors';
 import { getNormalize } from '../../styles/frame.style';
 
+const FALLBACK_REASON =
+  '관리자 확인 결과, 제출하신 자료로 재학을 확인할 수 없습니다.';
+
 /**
- * 제한 기능 진입 시 학생증 인증 유도
- * AppPopupModal 셸 · 여백 탭으로 닫기 금지
+ * 학생증/증명서 거절 사유 안내.
+ * 재제출은 선택 — 닫으면 미인증으로 앱 계속 이용.
  */
-export default function StudentVerificationCtaModal({
+export default function StudentVerificationRejectedModal({
   visible,
   onClose,
-  onPressVerify,
-  status = 'UNVERIFIED',
-  message,
+  onPressResubmit,
+  rejectReason,
 }) {
   const { width } = useWindowDimensions();
   const normalize = useMemo(() => getNormalize(width), [width]);
   const styles = useMemo(() => createStyles(normalize), [normalize]);
-
-  const isPending = status === 'PENDING';
-  const title = isPending ? '학생증 검수 중' : '학생 인증이 필요해요';
-  const body =
-    message ||
-    (isPending
-      ? '제출하신 학생증을 확인하고 있어요. 승인되면 우리학교·학생 게시판·우편을 이용할 수 있어요.'
-      : '우리학교·학생 게시판·우편 등 전용 기능은 학생증 인증 후 이용할 수 있어요.');
+  const reasonText = String(rejectReason || '').trim() || FALLBACK_REASON;
 
   return (
     <AppPopupModal
@@ -44,31 +39,33 @@ export default function StudentVerificationCtaModal({
     >
       <View style={styles.iconWrap}>
         <Ionicons
-          name={isPending ? 'time-outline' : 'school-outline'}
+          name="alert-circle-outline"
           size={normalize(28)}
-          color={colors.primary}
+          color={colors.alertDark || colors.alert}
         />
       </View>
-      <Text style={styles.title}>{title}</Text>
-      <Text style={styles.body}>{body}</Text>
+      <Text style={styles.title}>학생증이 거절되었습니다</Text>
+      <View style={styles.reasonBox}>
+        <Text style={styles.reasonLabel}>거절 사유</Text>
+        <Text style={styles.reasonText}>{reasonText}</Text>
+      </View>
+      <Text style={styles.hint}>
+        다시 제출하지 않아도 미인증 상태로 앱을 이용할 수 있어요.
+      </Text>
       <View style={styles.actions}>
-        {!isPending ? (
-          <TouchableOpacity
-            style={[styles.btn, styles.btnPrimary]}
-            onPress={onPressVerify}
-            activeOpacity={0.85}
-          >
-            <Text style={styles.btnPrimaryText}>학생증으로 인증</Text>
-          </TouchableOpacity>
-        ) : null}
+        <TouchableOpacity
+          style={[styles.btn, styles.btnPrimary]}
+          onPress={onPressResubmit}
+          activeOpacity={0.85}
+        >
+          <Text style={styles.btnPrimaryText}>다시 제출하기</Text>
+        </TouchableOpacity>
         <TouchableOpacity
           style={[styles.btn, styles.btnSecondary]}
           onPress={onClose}
           activeOpacity={0.85}
         >
-          <Text style={styles.btnSecondaryText}>
-            {isPending ? '확인' : '나중에'}
-          </Text>
+          <Text style={styles.btnSecondaryText}>미인증으로 계속</Text>
         </TouchableOpacity>
       </View>
     </AppPopupModal>
@@ -86,7 +83,7 @@ function createStyles(normalize) {
       width: normalize(52),
       height: normalize(52),
       borderRadius: normalize(26),
-      backgroundColor: colors.green || 'rgba(76, 175, 80, 0.12)',
+      backgroundColor: colors.alertLight || '#FFF0F0',
       alignItems: 'center',
       justifyContent: 'center',
       marginBottom: normalize(14),
@@ -96,15 +93,39 @@ function createStyles(normalize) {
       fontSize: normalize(fontSizes.xl + 1),
       color: colors.textPrimary,
       textAlign: 'center',
-      marginBottom: normalize(8),
+      marginBottom: normalize(14),
     },
-    body: {
+    reasonBox: {
+      width: '100%',
+      backgroundColor: colors.alertLight || '#FFF0F0',
+      borderRadius: normalize(12),
+      borderWidth: 1,
+      borderColor: colors.alert,
+      borderLeftWidth: 4,
+      borderLeftColor: colors.alertDark || colors.alert,
+      paddingHorizontal: normalize(14),
+      paddingVertical: normalize(12),
+      marginBottom: normalize(12),
+    },
+    reasonLabel: {
+      fontFamily: fonts.bold,
+      fontSize: normalize(fontSizes.sm + 2),
+      color: colors.alertDark || colors.alert,
+      marginBottom: normalize(6),
+    },
+    reasonText: {
+      fontFamily: fonts.regular,
+      fontSize: normalize(fontSizes.lg),
+      color: colors.textPrimary,
+      lineHeight: normalize(22),
+    },
+    hint: {
       fontFamily: fonts.regular,
       fontSize: normalize(fontSizes.md),
       color: colors.textSecondary,
       textAlign: 'center',
-      lineHeight: normalize(22),
-      marginBottom: normalize(22),
+      lineHeight: normalize(20),
+      marginBottom: normalize(18),
       paddingHorizontal: normalize(4),
     },
     actions: {

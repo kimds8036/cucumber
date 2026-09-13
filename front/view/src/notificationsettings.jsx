@@ -33,7 +33,9 @@ import {
   checkBiometricAvailability,
 } from '../../utils/biometrics';
 import { useAppLock } from '../../context/AppLockContext';
+import { useAuth } from '../../context/AuthContext';
 import { useToast } from '../../context/ToastContext';
+import StudentVerificationCtaModal from '../../components/auth/StudentVerificationCtaModal';
 import { colors } from '../../styles/colors';
 import {
   getNormalize,
@@ -150,6 +152,14 @@ const Settings = ({ navigation, route }) => {
   });
   const { refreshFromStorage } = useAppLock();
   const { showToast } = useToast();
+  const { studentVerificationStatus } = useAuth();
+  const isStudentApproved = studentVerificationStatus === 'APPROVED';
+  const [academicVerifyVisible, setAcademicVerifyVisible] = useState(false);
+
+  const openStudentVerify = () => {
+    setAcademicVerifyVisible(false);
+    navigation.navigate('StudentIdVerify', { mode: 'verify' });
+  };
 
   const loadLocalPrefs = async () => {
     const [appLock, biometric, availability] = await Promise.all([
@@ -593,6 +603,10 @@ const Settings = ({ navigation, route }) => {
   })();
 
   const handleAcademicChange = async () => {
+    if (!isStudentApproved) {
+      setAcademicVerifyVisible(true);
+      return;
+    }
     const grade = Number(gradeInput);
     const classNumber = Number(classInput);
     if (!canSubmitAcademicChange) {
@@ -995,60 +1009,100 @@ const Settings = ({ navigation, route }) => {
             <SectionHeader
               icon="school-outline"
               title="학년·반 변경"
-              description="학교는 변경할 수 없습니다. 학적 변동 시 학년·반만 수정해 주세요."
+              description={
+                isStudentApproved
+                  ? '학교는 변경할 수 없습니다. 학적 변동 시 학년·반만 수정해 주세요.'
+                  : '학생증 인증 후 학년·반을 변경할 수 있어요.'
+              }
             />
-            <View style={styles.card}>
-              <View style={styles.idFieldFirst}>
-                <Text style={styles.pwLabel}>재학 학교</Text>
-                <View style={styles.pwInputWrap}>
-                  <Text
-                    style={[styles.pwInput, { color: colors.textSecondary }]}
-                    numberOfLines={2}
-                  >
-                    {profileHydrated ? schoolName || '—' : '불러오는 중…'}
+            <View
+              style={[
+                styles.card,
+                isStudentApproved
+                  ? styles.academicCard
+                  : styles.academicGateCard,
+              ]}
+            >
+              {!isStudentApproved ? (
+                <>
+                  <Text style={styles.academicGateText}>
+                    학적 변동은 학생 인증이 완료된 뒤에만 이용할 수 있어요.
                   </Text>
-                </View>
-              </View>
-              <View style={styles.idFieldSecond}>
-                <Text style={styles.pwLabel}>학년</Text>
-                <View style={styles.pwInputWrap}>
-                  <TextInput
-                    style={styles.pwInput}
-                    value={gradeInput}
-                    onChangeText={(v) =>
-                      setGradeInput(String(v).replace(/\D/g, '').slice(0, 1))
-                    }
-                    placeholder="1~6"
-                    keyboardType="number-pad"
-                    {...themedTextInputProps}
-                  />
-                </View>
-              </View>
-              <View style={styles.pwFieldMiddle}>
-                <Text style={styles.pwLabel}>반</Text>
-                <View style={styles.pwInputWrap}>
-                  <TextInput
-                    style={styles.pwInput}
-                    value={classInput}
-                    onChangeText={(v) =>
-                      setClassInput(String(v).replace(/\D/g, '').slice(0, 2))
-                    }
-                    placeholder="1~50"
-                    keyboardType="number-pad"
-                    {...themedTextInputProps}
-                  />
-                </View>
-              </View>
-              <TouchableOpacity
-                style={[
-                  styles.actionButton,
-                  !canSubmitAcademicChange && styles.actionButtonDisabled,
-                ]}
-                onPress={handleAcademicChange}
-                disabled={!canSubmitAcademicChange}
-              >
-                <Text style={styles.actionButtonText}>학년·반 변경하기</Text>
-              </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[styles.actionButton, styles.academicGateButton]}
+                    onPress={() => setAcademicVerifyVisible(true)}
+                    activeOpacity={0.85}
+                  >
+                    <Text style={styles.actionButtonText}>
+                      학생증으로 인증하기
+                    </Text>
+                  </TouchableOpacity>
+                </>
+              ) : (
+                <>
+                  <View style={styles.academicSchoolField}>
+                    <Text style={styles.pwLabel}>재학 학교</Text>
+                    <View style={styles.pwInputWrap}>
+                      <Text
+                        style={[
+                          styles.pwInput,
+                          { color: colors.textSecondary },
+                        ]}
+                        numberOfLines={2}
+                      >
+                        {profileHydrated ? schoolName || '—' : '불러오는 중…'}
+                      </Text>
+                    </View>
+                  </View>
+                  <View style={styles.academicGradeClassRow}>
+                    <View style={styles.academicGradeClassCol}>
+                      <Text style={styles.pwLabel}>학년</Text>
+                      <View style={styles.pwInputWrap}>
+                        <TextInput
+                          style={styles.pwInput}
+                          value={gradeInput}
+                          onChangeText={(v) =>
+                            setGradeInput(
+                              String(v).replace(/\D/g, '').slice(0, 1),
+                            )
+                          }
+                          placeholder="1~6"
+                          keyboardType="number-pad"
+                          {...themedTextInputProps}
+                        />
+                      </View>
+                    </View>
+                    <View style={styles.academicGradeClassCol}>
+                      <Text style={styles.pwLabel}>반</Text>
+                      <View style={styles.pwInputWrap}>
+                        <TextInput
+                          style={styles.pwInput}
+                          value={classInput}
+                          onChangeText={(v) =>
+                            setClassInput(
+                              String(v).replace(/\D/g, '').slice(0, 2),
+                            )
+                          }
+                          placeholder="1~50"
+                          keyboardType="number-pad"
+                          {...themedTextInputProps}
+                        />
+                      </View>
+                    </View>
+                  </View>
+                  <TouchableOpacity
+                    style={[
+                      styles.actionButton,
+                      styles.academicSubmitButton,
+                      !canSubmitAcademicChange && styles.actionButtonDisabled,
+                    ]}
+                    onPress={handleAcademicChange}
+                    disabled={!canSubmitAcademicChange}
+                  >
+                    <Text style={styles.actionButtonText}>학년·반 변경하기</Text>
+                  </TouchableOpacity>
+                </>
+              )}
             </View>
 
             {/* ────────────── 비밀번호 변경 ────────────── */}
@@ -1095,6 +1149,13 @@ const Settings = ({ navigation, route }) => {
 
         <View style={styles.scrollBottomSpacer} />
       </KeyboardAwareScrollView>
+      <StudentVerificationCtaModal
+        visible={academicVerifyVisible}
+        status={studentVerificationStatus || 'UNVERIFIED'}
+        message="학적 변동(학년·반 변경)은 학생증 인증 후 이용할 수 있어요."
+        onClose={() => setAcademicVerifyVisible(false)}
+        onPressVerify={openStudentVerify}
+      />
     </SafeAreaView>
   );
 };

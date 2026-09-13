@@ -209,8 +209,9 @@ function CommentBody({ content, styles: st }) {
 }
 
 export default function SchoolMailDetail({ navigation, route }) {
-  const allowed = useRequireStudentVerified(navigation, {
+  const { allowed, Gate } = useRequireStudentVerified(navigation, {
     message: '학교 우편은 학생증 인증 후 이용할 수 있어요.',
+    reason: 'school_mail',
   });
   const { width } = useWindowDimensions();
   const normalize = useMemo(() => getNormalize(width), [width]);
@@ -913,7 +914,7 @@ export default function SchoolMailDetail({ navigation, route }) {
     return <React.Fragment key={c.id}>{nodes}</React.Fragment>;
   };
 
-  if (!allowed) return null;
+  if (!allowed) return <Gate />;
 
   return (
     <View

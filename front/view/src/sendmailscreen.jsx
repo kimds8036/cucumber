@@ -33,8 +33,9 @@ import {
 import { usePersonalMailCharLimit } from '../../hooks/usePersonalMailCharLimit';
 
 const SendMailScreen = ({ navigation, route }) => {
-  const allowed = useRequireStudentVerified(navigation, {
+  const { allowed, Gate } = useRequireStudentVerified(navigation, {
     message: '개인 우편은 학생증 인증 후 이용할 수 있어요.',
+    reason: 'personal_mail',
   });
   const prefill = route?.params?.prefill;
   const { width, height } = useWindowDimensions();
@@ -217,7 +218,7 @@ const SendMailScreen = ({ navigation, route }) => {
     setBottomCtaHeight(next);
   };
 
-  if (!allowed) return null;
+  if (!allowed) return <Gate />;
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>

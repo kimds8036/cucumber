@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   View,
   Text,
@@ -8,6 +8,7 @@ import {
   Easing,
   StyleSheet,
 } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Ionicons } from '@expo/vector-icons';
 import { createHeaderStyles, getNormalize } from '../../styles/frame.style';
 import FontAwesome5 from '@expo/vector-icons/FontAwesome5';
@@ -19,6 +20,9 @@ import {
   useMainShellOptional,
 } from '../../context/MainShellContext';
 import { navigate as navigateRoot } from '../../navigation/navigationRef';
+
+const FEED_MODE_TIP_KEY = '@board_feed_mode_tip_v1';
+const FEED_MODE_TIP_MAX = 2;
 
 const MainHeader = ({
   headerTitle: headerTitleProp,
@@ -44,6 +48,7 @@ const MainHeader = ({
   const setBoardFeedMode = shell?.setBoardFeedMode;
 
   const [slotWidth, setSlotWidth] = useState(0);
+  const [tipVisible, setTipVisible] = useState(false);
   /** 0 = 전체 좌측, 1 = 학생 좌측 */
   const swap = useRef(
     new Animated.Value(boardFeedMode === 'student' ? 1 : 0),
@@ -58,6 +63,61 @@ const MainHeader = ({
       useNativeDriver: true,
     }).start();
   }, [boardFeedMode, isBoardTab, swap]);
+
+  useEffect(() => {
+    if (!isBoardTab || !setBoardFeedMode) {
+      setTipVisible(false);
+      return undefined;
+    }
+    let cancelled = false;
+    (async () => {
+      try {
+        const raw = await AsyncStorage.getItem(FEED_MODE_TIP_KEY);
+        const seen = Number(raw || 0);
+        if (!cancelled && Number.isFinite(seen) && seen < FEED_MODE_TIP_MAX) {
+          setTipVisible(true);
+        }
+      } catch {
+        if (!cancelled) setTipVisible(true);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [isBoardTab, setBoardFeedMode]);
+
+  const dismissFeedModeTip = useCallback(async () => {
+    setTipVisible(false);
+    try {
+      const raw = await AsyncStorage.getItem(FEED_MODE_TIP_KEY);
+      const seen = Number(raw || 0);
+      const next = Math.min(
+        FEED_MODE_TIP_MAX,
+        (Number.isFinite(seen) ? seen : 0) + 1,
+      );
+      await AsyncStorage.setItem(FEED_MODE_TIP_KEY, String(next));
+    } catch {
+      // ignore
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!tipVisible) return undefined;
+    const timer = setTimeout(() => {
+      dismissFeedModeTip();
+    }, 5200);
+    return () => clearTimeout(timer);
+  }, [tipVisible, dismissFeedModeTip]);
+
+  const handleFeedModePress = useCallback(
+    (mode) => {
+      if (mode !== boardFeedMode) {
+        dismissFeedModeTip();
+      }
+      setBoardFeedMode?.(mode);
+    },
+    [boardFeedMode, dismissFeedModeTip, setBoardFeedMode],
+  );
 
   const openScreen = (name) => {
     const names = navigation?.getState?.()?.routeNames;
@@ -86,6 +146,17 @@ const MainHeader = ({
     inputRange: [0, 1],
     outputRange: [slotWidth, 0],
   });
+
+  const renderModeLabel = (label, active) => (
+    <Text
+      style={[
+        modeStyles.segLabel,
+        active ? modeStyles.segLabelActive : modeStyles.segLabelMuted,
+      ]}
+    >
+      {label}
+    </Text>
+  );
 
   return (
     <View style={headerStyles.container}>
@@ -125,18 +196,14 @@ const MainHeader = ({
                   <TouchableOpacity
                     style={modeStyles.segBtn}
                     activeOpacity={0.85}
-                    onPress={() => setBoardFeedMode('national')}
+                    onPress={() => handleFeedModePress('national')}
+                    accessibilityRole="button"
+                    accessibilityLabel="전체 피드"
+                    accessibilityState={{
+                      selected: boardFeedMode === 'national',
+                    }}
                   >
-                    <Text
-                      style={[
-                        modeStyles.segLabel,
-                        boardFeedMode === 'national'
-                          ? modeStyles.segLabelActive
-                          : modeStyles.segLabelMuted,
-                      ]}
-                    >
-                      전체
-                    </Text>
+                    {renderModeLabel('전체', boardFeedMode === 'national')}
                   </TouchableOpacity>
                 </Animated.View>
                 <Animated.View
@@ -151,21 +218,32 @@ const MainHeader = ({
                   <TouchableOpacity
                     style={modeStyles.segBtn}
                     activeOpacity={0.85}
-                    onPress={() => setBoardFeedMode('student')}
+                    onPress={() => handleFeedModePress('student')}
+                    accessibilityRole="button"
+                    accessibilityLabel="학생 전용 피드"
+                    accessibilityState={{
+                      selected: boardFeedMode === 'student',
+                    }}
                   >
-                    <Text
-                      style={[
-                        modeStyles.segLabel,
-                        boardFeedMode === 'student'
-                          ? modeStyles.segLabelActive
-                          : modeStyles.segLabelMuted,
-                      ]}
-                    >
-                      학생
-                    </Text>
+                    {renderModeLabel('학생', boardFeedMode === 'student')}
                   </TouchableOpacity>
                 </Animated.View>
               </>
+            ) : null}
+
+            {tipVisible ? (
+              <TouchableOpacity
+                style={modeStyles.tipBubble}
+                activeOpacity={0.9}
+                onPress={dismissFeedModeTip}
+                accessibilityRole="button"
+                accessibilityLabel="피드 전환 안내 닫기"
+              >
+                <Text style={modeStyles.tipText}>
+                  탭해서 전체 ↔ 학생 피드를 바꿀 수 있어요
+                </Text>
+                <View style={modeStyles.tipArrow} />
+              </TouchableOpacity>
             ) : null}
           </View>
         ) : (
@@ -207,6 +285,7 @@ function createModeStyles(normalize) {
       height: rowHeight,
       justifyContent: 'center',
       overflow: 'visible',
+      zIndex: 5,
     },
     measureRow: {
       position: 'absolute',
@@ -245,6 +324,32 @@ function createModeStyles(normalize) {
     segLabelMuted: {
       color: colors.textLight40 || colors.textSecondary || '#9E9E9E',
       fontFamily: fonts.regular,
+    },
+    tipBubble: {
+      position: 'absolute',
+      left: 0,
+      top: rowHeight + normalize(4),
+      zIndex: 20,
+      maxWidth: normalize(220),
+      paddingHorizontal: normalize(12),
+      paddingVertical: normalize(8),
+      borderRadius: normalize(10),
+      backgroundColor: colors.textPrimary,
+    },
+    tipArrow: {
+      position: 'absolute',
+      top: normalize(-5),
+      left: normalize(18),
+      width: normalize(10),
+      height: normalize(10),
+      backgroundColor: colors.textPrimary,
+      transform: [{ rotate: '45deg' }],
+    },
+    tipText: {
+      fontFamily: fonts.regular,
+      fontSize: normalize(fontSizes.md),
+      color: colors.textWhite || '#fff',
+      lineHeight: normalize(18),
     },
   });
 }

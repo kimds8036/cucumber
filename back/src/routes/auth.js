@@ -15,7 +15,7 @@ import {
 } from '../utils/auth.js';
 import { validatePhone, validateUsername, validatePassword, validateBirthDate } from '../utils/validation.js';
 import { blockWhenFlag } from '../middleware/systemFlags.js';
-import { authenticate } from '../middleware/auth.js';
+import { authenticate, requireStudentVerified } from '../middleware/auth.js';
 import { applySignupInvite } from '../services/invite.service.js';
 import { publicBadgePayload } from '../services/badge.service.js';
 import { validate } from '../middleware/validate.js';
@@ -667,7 +667,7 @@ router.patch('/me/username', authenticate, validate(updateUsernameValidators), a
 });
 
 // 내 학년·반 변경 (학교 변경 불가)
-router.patch('/me/academic', authenticate, validate(updateAcademicValidators), async (req, res) => {
+router.patch('/me/academic', authenticate, requireStudentVerified, validate(updateAcademicValidators), async (req, res) => {
   try {
     const userId = req.user.userId;
     const grade = Number(req.body?.grade);
@@ -2620,7 +2620,8 @@ router.post('/signup/upload-student-id', signupOcrLimiter, async (req, res) => {
 router.post('/resubmit-student-id', authenticate, signupOcrLimiter, async (req, res) => {
   try {
     const userId = req.user.userId;
-    const { imageBase64, cropRegion, schoolId: bodySchoolId } = req.body || {};
+    const { imageBase64, cropRegion, schoolId: bodySchoolId, grade, classNumber } =
+      req.body || {};
 
     if (!imageBase64) {
       return res.status(400).json({
@@ -2691,6 +2692,31 @@ router.post('/resubmit-student-id', authenticate, signupOcrLimiter, async (req, 
         success: false,
         message: '재학 학교를 선택해 주세요.',
       });
+    }
+
+    const resolvedGrade = Number(grade);
+    const resolvedClassNumber = Number(classNumber);
+    const hasEnrollment =
+      Number.isFinite(resolvedGrade) &&
+      resolvedGrade >= 1 &&
+      resolvedGrade <= 6 &&
+      Number.isFinite(resolvedClassNumber) &&
+      resolvedClassNumber >= 1 &&
+      resolvedClassNumber <= 50;
+
+    // 제출 시 학교·학년·반을 프로필에 반영 (검수 전에도 학적 입력 저장)
+    if (targetSchoolId && hasEnrollment) {
+      await pool.execute(
+        `UPDATE users
+         SET school_id = ?, grade = ?, class_number = ?
+         WHERE id = ? AND is_deleted = FALSE`,
+        [targetSchoolId, resolvedGrade, resolvedClassNumber, userId],
+      );
+    } else if (targetSchoolId) {
+      await pool.execute(
+        `UPDATE users SET school_id = ? WHERE id = ? AND is_deleted = FALSE`,
+        [targetSchoolId, userId],
+      );
     }
 
     const [schoolRows] = await pool.execute(

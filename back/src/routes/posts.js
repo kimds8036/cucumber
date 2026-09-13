@@ -73,20 +73,26 @@ function normalizePostImagesFromRow(raw) {
   return [];
 }
 
-/** 좋아요/댓글/스크랩 **발생 시각**이 [start, end] 안에 드는 행을 게시물별로 집계 (전국) */
-const SQL_ENGAGED_EVENTS_NATIONAL = `
+/** 좋아요/댓글/스크랩 **발생 시각**이 [start, end] 안에 드는 행을 게시물별로 집계 */
+function sqlEngagedEventsByBoardType(boardType) {
+  const bt = boardType === 'student' ? 'student' : 'national';
+  return `
 (SELECT pl.post_id AS post_id FROM post_likes pl
-  INNER JOIN posts p ON p.id = pl.post_id AND p.board_type = 'national' AND p.is_deleted = FALSE AND p.is_hidden = FALSE
+  INNER JOIN posts p ON p.id = pl.post_id AND p.board_type = '${bt}' AND p.is_deleted = FALSE AND p.is_hidden = FALSE
   WHERE pl.created_at >= ? AND pl.created_at <= ?)
 UNION ALL
 (SELECT c.post_id FROM comments c
-  INNER JOIN posts p ON p.id = c.post_id AND p.board_type = 'national' AND p.is_deleted = FALSE AND p.is_hidden = FALSE
+  INNER JOIN posts p ON p.id = c.post_id AND p.board_type = '${bt}' AND p.is_deleted = FALSE AND p.is_hidden = FALSE
   WHERE (c.is_deleted = FALSE OR c.is_deleted IS NULL)
     AND c.created_at >= ? AND c.created_at <= ?)
 UNION ALL
 (SELECT ps.post_id FROM post_scraps ps
-  INNER JOIN posts p ON p.id = ps.post_id AND p.board_type = 'national' AND p.is_deleted = FALSE AND p.is_hidden = FALSE
+  INNER JOIN posts p ON p.id = ps.post_id AND p.board_type = '${bt}' AND p.is_deleted = FALSE AND p.is_hidden = FALSE
   WHERE ps.created_at >= ? AND ps.created_at <= ?)`;
+}
+
+const SQL_ENGAGED_EVENTS_NATIONAL = sqlEngagedEventsByBoardType('national');
+const SQL_ENGAGED_EVENTS_STUDENT = sqlEngagedEventsByBoardType('student');
 
 /** 학교 게시물 한정, 동일 집계 */
 const SQL_ENGAGED_EVENTS_SCHOOL = `
@@ -399,14 +405,22 @@ router.get('/', optionalAuthenticate, async (req, res) => {
           );
           total = listTotal;
         }
-      } else if (sort === 'popular' && !search && boardType === 'national') {
+      } else if (
+        sort === 'popular' &&
+        !search &&
+        (boardType === 'national' || boardType === 'student')
+      ) {
         usedEngagementPopular = true;
+        const engSql =
+          boardType === 'student'
+            ? SQL_ENGAGED_EVENTS_STUDENT
+            : SQL_ENGAGED_EVENTS_NATIONAL;
         const { start, end } = getKstThreeDaysThroughToday235959UtcForSql();
         const w6 = engagementWindowParams6(start, end);
         const [countRow] = await pool.execute(
           `SELECT COUNT(*) AS c FROM (
             SELECT u.post_id
-            FROM (${SQL_ENGAGED_EVENTS_NATIONAL}) u
+            FROM (${engSql}) u
             GROUP BY u.post_id
             HAVING COUNT(*) > 5
           ) t`,
@@ -424,7 +438,7 @@ router.get('/', optionalAuthenticate, async (req, res) => {
             `SELECT p.id
              FROM (
                SELECT u.post_id, COUNT(*) AS eng
-               FROM (${SQL_ENGAGED_EVENTS_NATIONAL}) u
+               FROM (${engSql}) u
                GROUP BY u.post_id
                HAVING COUNT(*) > 5
              ) g

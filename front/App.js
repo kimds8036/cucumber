@@ -73,6 +73,8 @@ import { AuthProvider, useAuth } from './context/AuthContext';
 import { AppLockProvider } from './context/AppLockContext';
 import { LocationProvider, LocationGate } from './context/LocationContext';
 import StudentVerificationRejected from './components/auth/StudentVerificationRejected';
+import StudentVerificationRejectedModal from './components/auth/StudentVerificationRejectedModal';
+import { navigationRef } from './navigation/navigationRef';
 import CertificateResubmit from './view/src/signup/CertificateResubmit';
 import CertificateGuideResubmit from './view/src/signup/CertificateGuideResubmit';
 import AltVerifyChoiceResubmit from './view/src/signup/AltVerifyChoiceResubmit';
@@ -94,7 +96,6 @@ import { FriendProvider } from './context/FriendContext';
 import { ToastProvider } from './context/ToastContext';
 import ToastHost from './components/common/ToastHost';
 import AlertHost from './components/common/AlertHost';
-import { navigationRef } from './navigation/navigationRef';
 import { getPendingInicisSession } from './services/inicisAuth';
 import {
   clearSignupPendingSession,
@@ -256,6 +257,7 @@ function MainStack({ initialRouteName = 'Main' }) {
         name="NotificationSettings"
         component={NotificationSettings}
       />
+      <Stack.Screen name="StudentIdVerify" component={StudentIdResubmit} />
       <Stack.Screen name="PeriodTimeSettings" component={PeriodTimeSettings} />
       <Stack.Screen name="PeriodTimeSetup" component={PeriodTimeSetup} />
       <Stack.Screen name="SetPinScreen" component={SetPinScreen} />
@@ -322,6 +324,7 @@ function RootNavigator() {
     postLoginRoute,
     setPostLoginRoute,
     studentVerificationStatus,
+    rejectReason,
     reverificationStatus,
     reverificationDeadline,
     reverificationSubmissionPending,
@@ -335,6 +338,7 @@ function RootNavigator() {
   const [showNeisPlusResubmit, setShowNeisPlusResubmit] = useState(false);
   const [showRejectedInquiry, setShowRejectedInquiry] = useState(false);
   const [resubmitMode, setResubmitMode] = useState('rejected');
+  const [showRejectionNotice, setShowRejectionNotice] = useState(false);
   const pollRef = useRef(null);
 
   /**
@@ -453,11 +457,13 @@ function RootNavigator() {
       handleVerificationPush(remoteMessage);
       const data = remoteMessage?.data || {};
       const relatedType = String(data?.relatedType || '').trim();
-      // 검수 게이트 중에는 MainStack 이 없어 navigate 생략 — 상태 갱신만으로 진입/거절 화면 전환
-      if (
-        relatedType === 'student_verification_approved' ||
-        relatedType === 'student_verification_rejected'
-      ) {
+      if (relatedType === 'student_verification_approved') {
+        return;
+      }
+      if (relatedType === 'student_verification_rejected') {
+        void refreshStudentVerification().finally(() => {
+          setShowRejectionNotice(true);
+        });
         return;
       }
       if (!navigationRef.isReady()) return;
@@ -679,6 +685,16 @@ function RootNavigator() {
         <MainStack initialRouteName={mainInitialRoute} />
       </LocationGate>
       <InAppReviewPrompt />
+      <StudentVerificationRejectedModal
+        visible={showRejectionNotice}
+        rejectReason={rejectReason}
+        onClose={() => setShowRejectionNotice(false)}
+        onPressResubmit={() => {
+          setShowRejectionNotice(false);
+          setResubmitMode('rejected');
+          setShowResubmit(true);
+        }}
+      />
     </View>
   );
 }

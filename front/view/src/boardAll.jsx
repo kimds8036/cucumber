@@ -90,6 +90,10 @@ export function BoardAllContent({ navigation, posts }) {
   const shell = useMainShellOptional();
   const boardFeedMode = shell?.boardFeedMode ?? 'national';
   const { studentVerificationStatus } = useAuth();
+  const studentFeedLocked =
+    boardFeedMode === 'student' &&
+    studentVerificationStatus !== 'APPROVED' &&
+    !isGuidePreview;
   const [studentCtaVisible, setStudentCtaVisible] = useState(false);
   // TODO: /api/ads 연동 후 useAdSlots(AD_PLACEMENTS.FEED_BOARD)
   const adSlots = [];
@@ -97,7 +101,6 @@ export function BoardAllContent({ navigation, posts }) {
   const distanceStale = permissionGranted && !coords;
 
   const [sortType, setSortType] = useState('latest'); // latest, popular, nearby
-  const prevFeedModeRef = useRef(boardFeedMode);
   const [serverPosts, setServerPosts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
@@ -413,16 +416,10 @@ export function BoardAllContent({ navigation, posts }) {
   }, [fetchPosts]);
 
   useEffect(() => {
-    if (prevFeedModeRef.current !== boardFeedMode) {
-      prevFeedModeRef.current = boardFeedMode;
-      if (
-        boardFeedMode === 'student' &&
-        studentVerificationStatus !== 'APPROVED'
-      ) {
-        setStudentCtaVisible(true);
-      }
+    if (studentFeedLocked) {
+      setStudentCtaVisible(true);
     }
-  }, [boardFeedMode, studentVerificationStatus]);
+  }, [studentFeedLocked]);
 
   useEffect(() => {
     if (isGuidePreview) {
@@ -472,7 +469,11 @@ export function BoardAllContent({ navigation, posts }) {
     fetchPostsRef.current?.(1, false, { soft: true });
   }, [isGuidePreview, posts, refreshLocation]);
 
-  const data = posts && posts.length > 0 ? posts : serverPosts;
+  const data = studentFeedLocked
+    ? []
+    : posts && posts.length > 0
+      ? posts
+      : serverPosts;
 
   const handleLoadMore = () => {
     if (sortType === 'nearby' && !coords) return;
@@ -502,7 +503,8 @@ export function BoardAllContent({ navigation, posts }) {
   }, []);
 
   const postsInjected = Boolean(posts && posts.length > 0);
-  const hideListBehindLoader = loading && !postsInjected;
+  const hideListBehindLoader =
+    !studentFeedLocked && loading && !postsInjected;
 
   const dataWithAds = useMemo(
     () =>
@@ -901,7 +903,7 @@ export function BoardAllContent({ navigation, posts }) {
       />
 
       <StudentVerificationCtaModal
-        visible={studentCtaVisible}
+        visible={studentFeedLocked || studentCtaVisible}
         status={studentVerificationStatus || 'UNVERIFIED'}
         onClose={() => {
           setStudentCtaVisible(false);
@@ -914,6 +916,12 @@ export function BoardAllContent({ navigation, posts }) {
         }}
         onPressVerify={() => {
           setStudentCtaVisible(false);
+          if (
+            boardFeedMode === 'student' &&
+            studentVerificationStatus !== 'APPROVED'
+          ) {
+            shell?.setBoardFeedMode?.('national');
+          }
           shell?.requestStudentVerification?.({
             reason: 'student_board',
             statusHint: studentVerificationStatus,
