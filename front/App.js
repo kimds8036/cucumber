@@ -83,6 +83,7 @@ import ReverificationGate from './components/auth/ReverificationGate';
 import ReverificationReminderBanner from './components/auth/ReverificationReminderBanner';
 import ReverificationPendingBanner from './components/auth/ReverificationPendingBanner';
 import ForceUpdateGate from './components/common/ForceUpdateGate';
+import InAppReviewPrompt from './components/common/InAppReviewPrompt';
 import OfflineGate from './components/common/OfflineGate';
 import AppErrorBoundary from './components/common/AppErrorBoundary';
 import LaunchAdModal from './components/ads/LaunchAdModal';
@@ -683,6 +684,7 @@ function RootNavigator() {
         <WidgetDeepLinkHandler />
         <MainStack initialRouteName={mainInitialRoute} />
       </LocationGate>
+      <InAppReviewPrompt />
     </View>
   );
 }

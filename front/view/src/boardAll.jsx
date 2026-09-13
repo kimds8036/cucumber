@@ -26,6 +26,7 @@ import { colors, fonts } from '../../styles/colors';
 import { createBoardStyles, getNormalize } from '../../styles/board.style';
 import FontAwesome5 from '@expo/vector-icons/FontAwesome5';
 import { api } from '../../utils/api';
+import { loadTips } from '../../utils/tipsApi';
 import { normalizeTagsFromApi } from '../../utils/normalizePostTags';
 import { equippedBadgeFromApiRow } from '../../constants/badges';
 import BoardPostCard from '../../components/Boardpostcard';
@@ -406,6 +407,7 @@ export function BoardAllContent({ navigation, posts }) {
         skipNextFocusFetchRef.current = false;
         return;
       }
+      void loadTips({ force: true });
       if (posts && posts.length > 0) return;
       const elapsed = Date.now() - lastFullFetchAtRef.current;
       if (elapsed < BOARD_FOCUS_REFRESH_COOLDOWN_MS) return;
