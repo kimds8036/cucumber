@@ -1,15 +1,16 @@
 /**
  * 인앱 리뷰 유도 팝업
  * 1) 앱이 마음에 드시나요? → 좋아요 / 아니요
- * 2-좋아요) 별점(기본 5) + 칭찬 한마디
- * 2-아니요) 별점 선택 + 개선사항
+ * 2-좋아요) 바로 네이티브 스토어 리뷰 모달 요청
+ * 2-아니요) 별점 + 개선사항(선택) 수집 후 종료
  *
- * 테스트: 로그인 후 메인 진입 시마다(세션당 1회) 표시
- * 이후: 10일 접속자만 (REVIEW_PROMPT_TEST_ALWAYS = false)
+ * 테스트: REVIEW_PROMPT_TEST_ALWAYS=true 이면 이용일 무시·세션당 1회
+ * 운영(false): 누적 이용 10일(연속 X) + 응답 후 90일 쿨다운
  */
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
+  Alert,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -26,12 +27,14 @@ import { getNormalize } from '../../styles/frame.style';
 import { themedTextInputProps } from '../../styles/mypage.style';
 import {
   markReviewPromptCompleted,
+  markReviewPromptDeferred,
+  markReviewPromptNativeAsked,
   requestAppReview,
-  saveInAppReviewFeedback,
   shouldShowInAppReviewPrompt,
+  submitDislikeToWhack,
 } from '../../utils/appReview';
 
-/** @typedef {'ask' | 'positive' | 'negative'} ReviewStep */
+/** @typedef {'ask' | 'negative'} ReviewStep */
 
 function StarRow({ value, onChange, normalize }) {
   return (
@@ -70,7 +73,7 @@ export default function InAppReviewPrompt() {
   const normalize = useMemo(() => getNormalize(width), [width]);
   const [visible, setVisible] = useState(false);
   const [step, setStep] = useState(/** @type {ReviewStep} */ ('ask'));
-  const [stars, setStars] = useState(5);
+  const [stars, setStars] = useState(3);
   const [comment, setComment] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
@@ -80,7 +83,7 @@ export default function InAppReviewPrompt() {
       const show = await shouldShowInAppReviewPrompt();
       if (!cancelled && show) {
         setStep('ask');
-        setStars(5);
+        setStars(3);
         setComment('');
         setVisible(true);
       }
@@ -93,13 +96,34 @@ export default function InAppReviewPrompt() {
 
   const close = useCallback(async () => {
     setVisible(false);
-    await markReviewPromptCompleted();
+    await markReviewPromptDeferred();
   }, []);
 
-  const onLike = () => {
-    setStars(5);
-    setComment('');
-    setStep('positive');
+  const onLike = async () => {
+    if (submitting) return;
+    setSubmitting(true);
+    try {
+      setVisible(false);
+      // 스토어에 실제 리뷰를 남겼는지는 OS가 알려주지 않음 → 영구 숨김 X, 쿨다운만
+      await markReviewPromptNativeAsked();
+      setTimeout(() => {
+        void (async () => {
+          const result = await requestAppReview({ openStoreFallback: true });
+          if (__DEV__) {
+            Alert.alert(
+              '[DEV] 스토어 리뷰',
+              result === 'in_app'
+                ? 'requestReview() 호출됨.\n실제 별점/리뷰 작성 여부는 앱이 알 수 없습니다.\n모달이 안 보이면 OS 할당량·로컬 설치 제한일 수 있습니다.'
+                : result === 'store'
+                  ? '네이티브 불가 → 스토어 페이지를 열었습니다.'
+                  : '네이티브·스토어 모두 실패했습니다.',
+            );
+          }
+        })();
+      }, 350);
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   const onDislike = () => {
@@ -108,46 +132,39 @@ export default function InAppReviewPrompt() {
     setStep('negative');
   };
 
-  const onSubmit = async () => {
-    const text = String(comment || '').trim();
-    if (!text) return;
+  const onSubmitNegative = async () => {
     if (submitting) return;
     setSubmitting(true);
     try {
-      const sentiment = step === 'positive' ? 'positive' : 'negative';
-      await saveInAppReviewFeedback({
-        sentiment,
+      await submitDislikeToWhack({
         stars,
-        comment: text,
+        comment: String(comment || '').trim(),
       });
       setVisible(false);
       await markReviewPromptCompleted();
-      // 좋아요·고평점이면 스토어 인앱 리뷰도 시도
-      if (sentiment === 'positive' && stars >= 4) {
-        setTimeout(() => {
-          void requestAppReview({ openStoreFallback: false });
-        }, 400);
+      if (__DEV__) {
+        Alert.alert(
+          '[DEV] 회초리 접수',
+          '관리자「회초리」에서 인앱리뷰 ★n 문구로 확인할 수 있습니다.',
+        );
       }
+    } catch (e) {
+      Alert.alert(
+        '전송 실패',
+        e?.response?.data?.message ||
+          '피드백을 보내지 못했습니다. 잠시 후 다시 시도해 주세요.',
+      );
     } finally {
       setSubmitting(false);
     }
   };
 
   const title =
-    step === 'ask'
-      ? '앱이 마음에 드시나요?'
-      : step === 'positive'
-        ? '칭찬 한마디 남겨 주세요'
-        : '개선할 점을 알려 주세요';
-
+    step === 'ask' ? '앱이 마음에 드시나요?' : '개선할 점을 알려 주세요';
   const subtitle =
     step === 'ask'
       ? '더 좋은 Youth Paper를 만드는 데 도움이 됩니다.'
-      : step === 'positive'
-        ? '마음에 드신 점을 짧게 적어 주세요.'
-        : '불편했던 점이나 바라는 점을 적어 주세요.';
-
-  const canSubmit = String(comment || '').trim().length > 0 && !submitting;
+      : '별점을 선택하고, 불편한 점이 있으면 적어 주세요. (선택)';
 
   return (
     <AppPopupModal
@@ -195,6 +212,7 @@ export default function InAppReviewPrompt() {
                 justifyContent: 'center',
               }}
               activeOpacity={0.85}
+              disabled={submitting}
               onPress={onDislike}
             >
               <Text
@@ -217,17 +235,24 @@ export default function InAppReviewPrompt() {
                 justifyContent: 'center',
               }}
               activeOpacity={0.85}
-              onPress={onLike}
+              disabled={submitting}
+              onPress={() => {
+                void onLike();
+              }}
             >
-              <Text
-                style={{
-                  fontSize: normalize(14),
-                  fontFamily: fonts.bold,
-                  color: colors.textWhite,
-                }}
-              >
-                좋아요
-              </Text>
+              {submitting ? (
+                <ActivityIndicator color={colors.textWhite} />
+              ) : (
+                <Text
+                  style={{
+                    fontSize: normalize(14),
+                    fontFamily: fonts.bold,
+                    color: colors.textWhite,
+                  }}
+                >
+                  좋아요
+                </Text>
+              )}
             </TouchableOpacity>
           </View>
         ) : (
@@ -248,11 +273,7 @@ export default function InAppReviewPrompt() {
                 textAlignVertical: 'top',
                 marginBottom: normalize(12),
               }}
-              placeholder={
-                step === 'positive'
-                  ? '예: 타이머랑 게시판이 정말 편해요'
-                  : '예: ○○ 기능이 더 있으면 좋겠어요'
-              }
+              placeholder="예: ○○ 기능이 더 있으면 좋겠어요 (선택)"
               placeholderTextColor={colors.textLight40}
               multiline
               maxLength={500}
@@ -263,15 +284,15 @@ export default function InAppReviewPrompt() {
               style={{
                 height: 44,
                 borderRadius: 10,
-                backgroundColor: canSubmit
-                  ? colors.primary
-                  : colors.textLight5,
+                backgroundColor: colors.primary,
                 alignItems: 'center',
                 justifyContent: 'center',
               }}
               activeOpacity={0.85}
-              disabled={!canSubmit}
-              onPress={onSubmit}
+              disabled={submitting}
+              onPress={() => {
+                void onSubmitNegative();
+              }}
             >
               {submitting ? (
                 <ActivityIndicator color={colors.textWhite} />
@@ -280,12 +301,10 @@ export default function InAppReviewPrompt() {
                   style={{
                     fontSize: normalize(14),
                     fontFamily: fonts.bold,
-                    color: canSubmit
-                      ? colors.textWhite
-                      : colors.textSecondary,
+                    color: colors.textWhite,
                   }}
                 >
-                  작성하기
+                  보내기
                 </Text>
               )}
             </TouchableOpacity>

@@ -459,6 +459,7 @@ router.get('/me', authenticate, async (req, res) => {
          u.grade,
          u.class_number,
          u.color_id,
+         u.created_at,
          c.hex_code AS profile_color_hex,
          c.color_number AS profile_color_number,
          u.student_verified,
@@ -500,6 +501,9 @@ router.get('/me', authenticate, async (req, res) => {
         username: user.username,
         name: user.name,
         colorId: user.color_id,
+        createdAt: user.created_at
+          ? new Date(user.created_at).toISOString()
+          : null,
         school: {
           id: user.school_id,
           name: user.school_name,
