@@ -179,7 +179,8 @@ export async function getTimerOpsOverview({ days = 14 } = {}) {
       totalHours: toHours(r.total_ms),
     })),
     recentSessions: sessionRows.map((r) => {
-      const open = !r.ended_at;
+      // ended_at 은 CAST 별칭 ended_at_s 로만 옴 — !r.ended_at 은 항상 true 였음
+      const open = r.ended_at_s == null || r.ended_at_s === '';
       const seconds = Number(r.elapsed_sec || 0);
       return {
         id: Number(r.id),
