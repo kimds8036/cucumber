@@ -4,11 +4,9 @@ import { getTimerDayKey } from '../utils/timerDayKey.js';
 import { isoFromMysqlKstNaiveString } from '../utils/timerSessionTimes.js';
 
 export const STUDY_ROOM_CAPACITY = 16;
-const LAST_ROOM_TTL_SEC = 60 * 60 * 24;
 
 const KEY = {
   user: (uid) => `studyroom:user:${uid}`,
-  last: (uid) => `studyroom:last:${uid}`,
   members: (roomId) => `studyroom:room:${roomId}:members`,
   open: 'studyroom:open',
   rooms: 'studyroom:rooms',
@@ -18,7 +16,6 @@ const KEY = {
 /** Redis 없을 때 / 실패 시 프로세스 메모리 폴백 */
 const mem = {
   userRoom: new Map(),
-  lastRoom: new Map(),
   roomMembers: new Map(),
   openRooms: new Set(),
   nextId: 1,
@@ -77,11 +74,11 @@ async function backend() {
 
 /**
  * 공부 시작 시 방 배정.
- * 1) 이미 속한 방 유지
- * 2) 직전 방(last)에 자리 있으면 복귀
- * 3) 여유 있는 방
- * 4) 새 방
- * @returns {Promise<{ roomId: string, placement: 'existing'|'sticky'|'open'|'new' }>}
+ * 1) 이미 속한 방 유지 (같은 세션)
+ * 2) 여유 있는 방 중 인원 많은 순으로 합류 (혼자 방 분산 방지)
+ * 3) 없으면 새 방
+ * ※ 직전 방(sticky) 복귀는 하지 않음 — 날마다 각자 빈 방에 남는 문제 방지
+ * @returns {Promise<{ roomId: string, placement: 'existing'|'open'|'new', relocated: boolean }>}
  */
 export async function assignUserToStudyRoom(userId) {
   const uid = uidKey(userId);
@@ -95,47 +92,105 @@ export async function assignUserToStudyRoom(userId) {
   return assignMem(uid);
 }
 
+/** open 방 후보를 인원 많은 순으로 정렬 (가득 찬 방 제외) */
+async function listOpenRoomsByFillDescRedis(redis) {
+  const openIds = await redis.smembers(KEY.open);
+  const scored = [];
+  for (const roomId of openIds) {
+    const n = await redis.scard(KEY.members(roomId));
+    if (n <= 0 || n >= STUDY_ROOM_CAPACITY) {
+      await redis.srem(KEY.open, roomId);
+      if (n <= 0) {
+        await redis.del(KEY.members(roomId));
+        await redis.srem(KEY.rooms, roomId);
+      }
+      continue;
+    }
+    scored.push({ roomId, n });
+  }
+  scored.sort((a, b) => b.n - a.n || String(a.roomId).localeCompare(String(b.roomId)));
+  return scored;
+}
+
+function listOpenRoomsByFillDescMem() {
+  const scored = [];
+  for (const roomId of [...mem.openRooms]) {
+    const n = memCount(roomId);
+    if (n <= 0 || n >= STUDY_ROOM_CAPACITY) {
+      mem.openRooms.delete(roomId);
+      if (n <= 0) mem.roomMembers.delete(roomId);
+      continue;
+    }
+    scored.push({ roomId, n });
+  }
+  scored.sort((a, b) => b.n - a.n || String(a.roomId).localeCompare(String(b.roomId)));
+  return scored;
+}
+
+async function tryJoinOpenRoomRedis(redis, roomId, uid) {
+  // SCARD + 정원 검사 + SADD 를 원자적으로 (동시 입장 시 17명 방지)
+  const joined = await redis.eval(
+    `
+    local membersKey = KEYS[1]
+    local openKey = KEYS[2]
+    local capacity = tonumber(ARGV[1])
+    local uid = ARGV[2]
+    local n = redis.call('SCARD', membersKey)
+    if n >= capacity then
+      redis.call('SREM', openKey, ARGV[3])
+      return 0
+    end
+    redis.call('SADD', membersKey, uid)
+    n = redis.call('SCARD', membersKey)
+    if n >= capacity then
+      redis.call('SREM', openKey, ARGV[3])
+    else
+      redis.call('SADD', openKey, ARGV[3])
+    end
+    return 1
+    `,
+    2,
+    KEY.members(roomId),
+    KEY.open,
+    String(STUDY_ROOM_CAPACITY),
+    uid,
+    roomId,
+  );
+  return Number(joined) === 1;
+}
+
 async function assignRedis(uid) {
   const redis = await getBatchRedis();
+  // 레거시 sticky 키 정리 (복귀 로직 제거)
+  await redis.del(`studyroom:last:${uid}`);
+
   const cur = await redis.get(KEY.user(uid));
   if (cur) {
     const inRoom = await redis.sismember(KEY.members(cur), uid);
     if (inRoom) {
-      return { roomId: cur, placement: 'existing', relocated: false };
-    }
-    await redis.del(KEY.user(uid));
-  }
-
-  const last = await redis.get(KEY.last(uid));
-  if (last) {
-    const n = await redis.scard(KEY.members(last));
-    if (n < STUDY_ROOM_CAPACITY) {
-      await redis.sadd(KEY.members(last), uid);
-      await redis.set(KEY.user(uid), last);
-      if (n + 1 >= STUDY_ROOM_CAPACITY) {
-        await redis.srem(KEY.open, last);
-      } else {
-        await redis.sadd(KEY.open, last);
+      const n = await redis.scard(KEY.members(cur));
+      // 혼자만 있으면 유지하지 않고 재배정(다른 방 합류)
+      if (n > 1) {
+        return { roomId: cur, placement: 'existing', relocated: false };
       }
-      await redis.sadd(KEY.rooms, last);
-      return { roomId: last, placement: 'sticky', relocated: false };
+      await redis.srem(KEY.members(cur), uid);
+      await redis.del(KEY.user(uid));
+      if (n <= 1) {
+        await redis.del(KEY.members(cur));
+        await redis.srem(KEY.open, cur);
+        await redis.srem(KEY.rooms, cur);
+      }
+    } else {
+      await redis.del(KEY.user(uid));
     }
   }
-  const stickyBlocked = Boolean(last);
 
-  const openIds = await redis.smembers(KEY.open);
-  for (const roomId of openIds) {
-    const n = await redis.scard(KEY.members(roomId));
-    if (n >= STUDY_ROOM_CAPACITY) {
-      await redis.srem(KEY.open, roomId);
-      continue;
-    }
-    await redis.sadd(KEY.members(roomId), uid);
+  const openRooms = await listOpenRoomsByFillDescRedis(redis);
+  for (const { roomId } of openRooms) {
+    const ok = await tryJoinOpenRoomRedis(redis, roomId, uid);
+    if (!ok) continue;
     await redis.set(KEY.user(uid), roomId);
-    if (n + 1 >= STUDY_ROOM_CAPACITY) {
-      await redis.srem(KEY.open, roomId);
-    }
-    return { roomId, placement: 'open', relocated: stickyBlocked };
+    return { roomId, placement: 'open', relocated: Boolean(cur) };
   }
 
   const next = await redis.incr(KEY.nextId);
@@ -144,45 +199,58 @@ async function assignRedis(uid) {
   await redis.set(KEY.user(uid), roomId);
   await redis.sadd(KEY.open, roomId);
   await redis.sadd(KEY.rooms, roomId);
-  return { roomId, placement: 'new', relocated: stickyBlocked };
+  return { roomId, placement: 'new', relocated: Boolean(cur) };
+}
+
+function tryJoinOpenRoomMem(roomId, uid) {
+  const set = ensureRoomSet(roomId);
+  if (set.size >= STUDY_ROOM_CAPACITY) {
+    mem.openRooms.delete(roomId);
+    return false;
+  }
+  if (set.has(uid)) {
+    mem.userRoom.set(uid, roomId);
+    memMarkOpen(roomId);
+    return true;
+  }
+  if (set.size >= STUDY_ROOM_CAPACITY) {
+    return false;
+  }
+  set.add(uid);
+  mem.userRoom.set(uid, roomId);
+  memMarkOpen(roomId);
+  return true;
 }
 
 function assignMem(uid) {
   const cur = mem.userRoom.get(uid);
   if (cur && ensureRoomSet(cur).has(uid)) {
-    return { roomId: cur, placement: 'existing', relocated: false };
-  }
-  if (cur) mem.userRoom.delete(uid);
-
-  const last = mem.lastRoom.get(uid);
-  if (last && memCount(last) < STUDY_ROOM_CAPACITY) {
-    ensureRoomSet(last).add(uid);
-    mem.userRoom.set(uid, last);
-    memMarkOpen(last);
-    return { roomId: last, placement: 'sticky', relocated: false };
-  }
-  const stickyBlocked = Boolean(last);
-
-  for (const roomId of [...mem.openRooms]) {
-    if (memCount(roomId) >= STUDY_ROOM_CAPACITY) {
-      mem.openRooms.delete(roomId);
-      continue;
+    const n = memCount(cur);
+    if (n > 1) {
+      return { roomId: cur, placement: 'existing', relocated: false };
     }
-    ensureRoomSet(roomId).add(uid);
-    mem.userRoom.set(uid, roomId);
-    memMarkOpen(roomId);
-    return { roomId, placement: 'open', relocated: stickyBlocked };
+    ensureRoomSet(cur).delete(uid);
+    mem.userRoom.delete(uid);
+    memDeleteRoomIfEmpty(cur);
+  } else if (cur) {
+    mem.userRoom.delete(uid);
+  }
+
+  const openRooms = listOpenRoomsByFillDescMem();
+  for (const { roomId } of openRooms) {
+    if (!tryJoinOpenRoomMem(roomId, uid)) continue;
+    return { roomId, placement: 'open', relocated: Boolean(cur) };
   }
 
   const roomId = newRoomIdMem();
   ensureRoomSet(roomId).add(uid);
   mem.userRoom.set(uid, roomId);
   memMarkOpen(roomId);
-  return { roomId, placement: 'new', relocated: stickyBlocked };
+  return { roomId, placement: 'new', relocated: Boolean(cur) };
 }
 
 /**
- * 공부 종료 시 퇴실. last room 은 TTL/메모리에 남겨 복귀 가능.
+ * 공부 종료 시 퇴실. 직전 방 복귀용 last 기록은 남기지 않음.
  * @returns {Promise<{ roomId: string|null }>}
  */
 export async function leaveStudyRoom(userId) {
@@ -199,13 +267,13 @@ export async function leaveStudyRoom(userId) {
 
 async function leaveRedis(uid) {
   const redis = await getBatchRedis();
+  await redis.del(`studyroom:last:${uid}`);
   const roomId = await redis.get(KEY.user(uid));
   if (!roomId) {
     return { roomId: null };
   }
   await redis.srem(KEY.members(roomId), uid);
   await redis.del(KEY.user(uid));
-  await redis.set(KEY.last(uid), roomId, 'EX', LAST_ROOM_TTL_SEC);
   const n = await redis.scard(KEY.members(roomId));
   if (n <= 0) {
     await redis.del(KEY.members(roomId));
@@ -222,7 +290,6 @@ function leaveMem(uid) {
   if (!roomId) return { roomId: null };
   ensureRoomSet(roomId).delete(uid);
   mem.userRoom.delete(uid);
-  mem.lastRoom.set(uid, roomId);
   memDeleteRoomIfEmpty(roomId);
   return { roomId };
 }
