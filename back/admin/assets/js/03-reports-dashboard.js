@@ -965,10 +965,8 @@ async function loadDashboard() {
     const hint = document.getElementById('study-rooms-ops-hint');
     if (hint) {
       const backend = data?.backend === 'redis' ? 'Redis' : '서버 메모리';
-      const at = data?.fetchedAt
-        ? new Date(data.fetchedAt).toLocaleString('ko-KR', { hour12: false })
-        : '-';
-      hint.textContent = `저장소: ${backend} · 조회 ${at} · 새로고침으로 갱신 (완전 실시간 아님)`;
+      const at = data?.fetchedAt ? fmtDate(data.fetchedAt) : '-';
+      hint.textContent = `저장소: ${backend} · 조회 ${at} (KST) · 새로고침으로 갱신 (완전 실시간 아님)`;
     }
 
     const tbody = document.getElementById('study-rooms-tbody');
@@ -1086,20 +1084,28 @@ async function loadDashboard() {
     return `${name}@${row.username || '-'} (#${row.userId || '-'})${grade}`;
   }
 
-  function sessionDayKey(startedAt) {
+  function sessionDayKey(row) {
+    if (row?.dayKey) return String(row.dayKey).slice(0, 10);
+    const startedAt = typeof row === 'string' ? row : row?.startedAt;
     if (!startedAt) return 'unknown';
     const d = new Date(startedAt);
     if (Number.isNaN(d.getTime())) return String(startedAt).slice(0, 10) || 'unknown';
-    const y = d.getFullYear();
-    const m = String(d.getMonth() + 1).padStart(2, '0');
-    const day = String(d.getDate()).padStart(2, '0');
-    return `${y}-${m}-${day}`;
+    try {
+      return new Intl.DateTimeFormat('en-CA', {
+        timeZone: 'Asia/Seoul',
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+      }).format(d);
+    } catch {
+      return String(startedAt).slice(0, 10) || 'unknown';
+    }
   }
 
   function groupTimerSessions(rows) {
     const byDay = new Map();
     for (const r of rows) {
-      const day = sessionDayKey(r.startedAt);
+      const day = sessionDayKey(r);
       if (!byDay.has(day)) byDay.set(day, new Map());
       const users = byDay.get(day);
       const uid = Number(r.userId) || 0;

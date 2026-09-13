@@ -192,6 +192,7 @@ function adminUrl(subpath) {
     appeals: { title: '이의신청 관리', sub: '소명 검토 및 상태 변경' },
     inquiries: { title: '문의 관리', sub: '미처리 문의 — 답변 작성 / 종결' },
     announcements: { title: '공지사항', sub: '앱 고객지원 공지 작성 · 게시' },
+    tips: { title: '인앱 팁', sub: '게시판 상단 팁 · 고정 안내' },
     processedInquiries: { title: '문의 처리 이력', sub: '답변 완료 / 종결 문의 — 재오픈 가능' },
     users: { title: '사용자 제재 현황', sub: '경고 / 임시정지 / 화이트리스트' },
     attendance: { title: '등교 현황', sub: '출석 통계 · 미등교 의심 사용자' },
@@ -247,12 +248,21 @@ function adminUrl(subpath) {
     if (!v) return '-';
     const d = new Date(v);
     if (Number.isNaN(d.getTime())) return '-';
-    const yy = String(d.getFullYear()).slice(2);
-    const mm = String(d.getMonth() + 1).padStart(2, '0');
-    const dd = String(d.getDate()).padStart(2, '0');
-    const hh = String(d.getHours()).padStart(2, '0');
-    const mi = String(d.getMinutes()).padStart(2, '0');
-    return `${yy}.${mm}.${dd} ${hh}:${mi}`;
+    try {
+      const parts = new Intl.DateTimeFormat('en-CA', {
+        timeZone: 'Asia/Seoul',
+        year: '2-digit',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: false,
+      }).formatToParts(d);
+      const p = (type) => parts.find((x) => x.type === type)?.value || '00';
+      return `${p('year')}.${p('month')}.${p('day')} ${p('hour')}:${p('minute')}`;
+    } catch {
+      return '-';
+    }
   }
 
   function esc(v) {
@@ -403,6 +413,7 @@ function adminUrl(subpath) {
       appeals: ['moderator'],
       inquiries: ['moderator', 'support'],
       announcements: ['moderator', 'support'],
+      tips: ['moderator', 'support'],
       processedInquiries: ['moderator', 'support'],
       studentIds: ['moderator', 'verifier'],
       manualSignup: ['moderator'],
