@@ -27,14 +27,14 @@ const router = express.Router();
 
 const schoolSearchValidators = [
   query('query').optional({ values: 'falsy' }).isString().trim().isLength({ max: 100 })
-    .withMessage('검?�어??100???�내?�야 ?�니??'),
+    .withMessage('검색어는 100자 이내여야 합니다.'),
   query('limit').optional({ values: 'falsy' }).toInt().isInt({ min: 1, max: 30 })
-    .withMessage('limit?� 1~30 ?�니??'),
+    .withMessage('limit은 1~30 입니다.'),
 ];
 
 const schoolIdParamValidators = [
   param('schoolId').isString().trim().isLength({ min: 1, max: 40 })
-    .withMessage('?�효?��? ?��? schoolId ?�니??'),
+    .withMessage('유효하지 않은 schoolId 입니다.'),
 ];
 const NEIS_BASE_URL = 'https://open.neis.go.kr/hub/mealServiceDietInfo';
 const NEIS_API_KEY = process.env.NEIS_API_KEY || process.env.NEIS_KEY || '';
@@ -94,7 +94,7 @@ const parseStudyGrassDaysParam = (value) => {
   return Math.min(Math.max(Math.floor(n), 1), MAX_STUDY_GRASS_DAYS);
 };
 
-/** ?�디 API ?�균 분모: schools.total_students, ?�거??0?�면 ?�학 중인 ?��? ??*/
+/** 잔디 API 평균 분모: schools.total_students, 없거나 0이면 재학 중인 유저 수 */
 async function getStudyGrassStudentDenominator(schoolId) {
   const [[schoolRow]] = await pool.execute(
     `SELECT COALESCE(total_students, 0) AS ts FROM schools WHERE school_id = ? LIMIT 1`,
@@ -122,7 +122,7 @@ function studyGrassSeriesFromRaw(rawTotalMs, activeUserCount, studentDenominator
     return { totalElapsedMs: null, activeUserCount: null, hasData: false };
   }
   const hasActivity = rawTotalMs > 0 || activeUserCount > 0;
-  // ?�균 ?�화: (총시�??�생?? × STUDY_GRASS_AVG_MULTIPLIER ??계수??../config/studyGrass.js
+  // 평균 완화: (총시간/학생수) × STUDY_GRASS_AVG_MULTIPLIER — 계수는 ../config/studyGrass.js
   const avgMs = hasActivity
     ? Math.round((rawTotalMs / studentDenominator) * STUDY_GRASS_AVG_MULTIPLIER)
     : 0;
@@ -250,16 +250,16 @@ const mealPriorityAfterNow = (now) => {
 
 const cleanMenuText = (raw) =>
   String(raw || '')
-    .replace(/\([^)]*\)/g, '')           // 괄호 ?�거
-    // NEIS: ?��? ??`1.2.5` ???�레르기 번호(?�으�?구분??구간�?. `?�유200`처럼 ?�이 ?�자만인 경우???�외
-    .replace(/(?<=[가-??)\s*\d+(?:\.\d+)+$/u, '')
-    .replace(/[�???/g, '')              // ?�류 ?�거
-    .replace(/[·*＊✱?�✴]/g, ' ')         // 별표�??�거
-    .replace(/[\\�?]/g, ' ')            // 백슬?�시/?�래?�류 ?�거
-    .replace(/^[^\p{L}\p{N}가-??+/u, '') // �????�수문자 ?�거
-    .replace(/[^\p{L}\p{N}가-??+$/u, '') // �????�수문자 ?�거
-    // NEIS DDISH_NM: ?��? ?�에 붙는 ?�틴 ?��?(?�레르기 ?�기 ?? ?? ?�밥m·물쫄면H) ?�거. ?�자 ?�는 ?�위(200ml ?? 보존
-    .replace(/(?<=[가-??)[a-zA-Z]+$/u, '')
+    .replace(/\([^)]*\)/g, '')           // 괄호 제거
+    // NEIS: 한글 뒤 `1.2.5` 형 알레르기 번호(점으로 구분된 구간만). `우유200`처럼 끝이 숫자만인 경우는 제외
+    .replace(/(?<=[가-힣])\s*\d+(?:\.\d+)+$/u, '')
+    .replace(/[＃#♯]/g, '')              // 샵류 제거
+    .replace(/[·*＊✱✳✴]/g, ' ')         // 별표류 제거
+    .replace(/[\\／/]/g, ' ')            // 백슬래시/슬래시류 제거
+    .replace(/^[^\p{L}\p{N}가-힣]+/u, '') // 맨 앞 특수문자 제거
+    .replace(/[^\p{L}\p{N}가-힣]+$/u, '') // 맨 뒤 특수문자 제거
+    // NEIS DDISH_NM: 한글 뒤에 붙는 라틴 접미(알레르기 표기 등, 예: 쌀밥m·물쫄면H) 제거. 숫자 뒤는 단위(200ml 등) 보존
+    .replace(/(?<=[가-힣])[a-zA-Z]+$/u, '')
     .replace(/\s+/g, ' ')
     .trim();
 
@@ -307,15 +307,15 @@ const sortNextMeals = (meals, now, priorityNow) => {
 
 const currentMealCodeByHour = (now) => {
   const h = getKstParts(now).hour;
-  if (h < 10) return '1'; // 조식 ?�간?�
-  if (h < 14) return '2'; // 중식 ?�간?�
-  if (h < 20) return '3'; // ?�식 ?�간?�
-  return null; // ?�늘 급식 종료 ??
+  if (h < 10) return '1'; // 조식 시간대
+  if (h < 14) return '2'; // 중식 시간대
+  if (h < 20) return '3'; // 석식 시간대
+  return null; // 오늘 급식 종료 후
 };
 
 const fetchNeisRows = async ({ eduOfficeCode, schoolCode, fromYmd, toYmd }) => {
   if (!NEIS_API_KEY) {
-    throw new Error('NEIS_API_KEY가 ?�정?��? ?�았?�니??');
+    throw new Error('NEIS_API_KEY가 설정되지 않았습니다.');
   }
   const params = new URLSearchParams({
     KEY: NEIS_API_KEY,
@@ -361,7 +361,7 @@ function compactYmd(dashYmd) {
   return String(dashYmd || '').replace(/-/g, '');
 }
 
-/** NEIS 급식 맵에 from~to 모든 ?�짜???�교???�정??붙인?? ?�교???�기 조회 1?? */
+/** NEIS 급식 맵에 from~to 모든 날짜의 등교일 판정을 붙인다. 학교당 학기 조회 1회. */
 async function attachSchoolDayMeta(mealsByDate, schoolId, fromYmd, toYmd) {
   const start = toDashYmd(fromYmd);
   const end = toDashYmd(toYmd);
@@ -399,7 +399,7 @@ async function attachSchoolDayMeta(mealsByDate, schoolId, fromYmd, toYmd) {
   return out;
 }
 
-/** schools.stats_updated_at ??NULL???�만 ?�용 (배치 미실???? */
+/** schools.stats_updated_at 이 NULL일 때만 사용 (배치 미실행 등) */
 async function fetchSchoolCountsLive(schoolId) {
   const [[userRow]] = await pool.execute(
     `SELECT COUNT(*) AS c FROM users WHERE school_id = ? AND is_deleted = FALSE`,
@@ -461,17 +461,17 @@ router.get('/search', validate(schoolSearchValidators), async (req, res) => {
 
     res.json({ success: true, data: { schools } });
   } catch (error) {
-    console.error('?�교 검???�류:', error);
-    res.status(500).json({ success: false, message: '?�교 검??�??�류가 발생?�습?�다.' });
+    console.error('학교 검색 오류:', error);
+    res.status(500).json({ success: false, message: '학교 검색 중 오류가 발생했습니다.' });
   }
 });
 
-// ???�교 ?�보 �??�계
+// 내 학교 정보 및 통계
 router.get('/me', authenticate, requireStudentVerified, async (req, res) => {
   try {
     const userId = req.user.userId;
 
-    // ?�용??+ ?�교 기본 ?�보
+    // 사용자 + 학교 기본 정보
     const [rows] = await pool.execute(
       `SELECT 
          u.school_id,
@@ -495,7 +495,7 @@ router.get('/me', authenticate, requireStudentVerified, async (req, res) => {
     if (rows.length === 0 || !rows[0].school_id) {
       return res.status(404).json({
         success: false,
-        message: '?�용?�의 ?�교 ?�보�?찾을 ???�습?�다.',
+        message: '사용자의 학교 정보를 찾을 수 없습니다.',
       });
     }
 
@@ -534,10 +534,10 @@ router.get('/me', authenticate, requireStudentVerified, async (req, res) => {
       },
     });
   } catch (error) {
-    console.error('???�교 ?�보 조회 ?�류:', error);
+    console.error('내 학교 정보 조회 오류:', error);
     res.status(500).json({
       success: false,
-      message: '???�교 ?�보 조회 �??�류가 발생?�습?�다.',
+      message: '내 학교 정보 조회 중 오류가 발생했습니다.',
     });
   }
 });
@@ -549,7 +549,7 @@ router.get('/me/study-grass', authenticate, requireStudentVerified, async (req, 
     if (!school?.school_id) {
       return res.status(404).json({
         success: false,
-        message: '?�용?�의 ?�교 ?�보�?찾을 ???�습?�다.',
+        message: '사용자의 학교 정보를 찾을 수 없습니다.',
       });
     }
     const days = parseStudyGrassDaysParam(req.query?.days);
@@ -559,10 +559,10 @@ router.get('/me/study-grass', authenticate, requireStudentVerified, async (req, 
     });
     return res.json({ success: true, data });
   } catch (error) {
-    console.error('???�교 공�? ?�디�?조회 ?�류:', error);
+    console.error('내 학교 공부 잔디밭 조회 오류:', error);
     return res.status(500).json({
       success: false,
-      message: '???�교 공�? ?�디�?조회 �??�류가 발생?�습?�다.',
+      message: '내 학교 공부 잔디밭 조회 중 오류가 발생했습니다.',
     });
   }
 });
@@ -574,7 +574,7 @@ router.get('/me/meals/next', authenticate, requireStudentVerified, async (req, r
     const count = Number.isFinite(requested) ? Math.min(Math.max(requested, 1), 10) : 3;
     const school = await getMySchoolCodes(userId);
     if (!school?.school_id) {
-      return res.status(404).json({ success: false, message: '?�용?�의 ?�교 ?�보�?찾을 ???�습?�다.' });
+      return res.status(404).json({ success: false, message: '사용자의 학교 정보를 찾을 수 없습니다.' });
     }
     if (!school.edu_office_code || !school.admin_standard_code) {
       return res.json({ success: true, data: { schoolId: school.school_id, meals: [] } });
@@ -606,8 +606,8 @@ router.get('/me/meals/next', authenticate, requireStudentVerified, async (req, r
       const order = d === 0 ? priorityNow : MEAL_CODES;
       for (const code of order) {
         if (!codes.includes(code)) continue;
-        // ?�늘?� ?��? 지???�니(�?�???�??�외?�다.
-        // 20???�후(currentMealCode=null)???�늘 급식??모두 ?�외?�고 ?�음 ?�짜부???�출?�다.
+        // 오늘은 이미 지난 끼니(조/중/석)를 제외한다.
+        // 20시 이후(currentMealCode=null)는 오늘 급식을 모두 제외하고 다음 날짜부터 노출한다.
         if (ymd === todayYmd && !currentMealCode) continue;
         if (ymd === todayYmd && currentMealCode && Number(code) < Number(currentMealCode)) continue;
         const item = map.get(`${ymd}_${code}`);
@@ -619,8 +619,8 @@ router.get('/me/meals/next', authenticate, requireStudentVerified, async (req, r
     sortNextMeals(meals, now, priorityNow);
     return res.json({ success: true, data: { schoolId: school.school_id, meals } });
   } catch (error) {
-    console.error('???�교 ?�음 급식 조회 ?�류:', error);
-    return res.status(500).json({ success: false, message: '???�교 급식 조회 �??�류가 발생?�습?�다.' });
+    console.error('내 학교 다음 급식 조회 오류:', error);
+    return res.status(500).json({ success: false, message: '내 학교 급식 조회 중 오류가 발생했습니다.' });
   }
 });
 
@@ -631,7 +631,7 @@ router.get('/:schoolId/meals/next', validate(schoolIdParamValidators), async (re
     const count = Number.isFinite(requested) ? Math.min(Math.max(requested, 1), 10) : 3;
     const school = await getSchoolCodesById(schoolId);
     if (!school) {
-      return res.status(404).json({ success: false, message: '?�교�?찾을 ???�습?�다.' });
+      return res.status(404).json({ success: false, message: '학교를 찾을 수 없습니다.' });
     }
     if (!school.edu_office_code || !school.admin_standard_code) {
       return res.json({ success: true, data: { schoolId, meals: [] } });
@@ -661,8 +661,8 @@ router.get('/:schoolId/meals/next', validate(schoolIdParamValidators), async (re
       const order = d === 0 ? priorityNow : MEAL_CODES;
       for (const code of order) {
         if (!codes.includes(code)) continue;
-        // ?�늘?� ?��? 지???�니(�?�???�??�외?�다.
-        // 20???�후(currentMealCode=null)???�늘 급식??모두 ?�외?�고 ?�음 ?�짜부???�출?�다.
+        // 오늘은 이미 지난 끼니(조/중/석)를 제외한다.
+        // 20시 이후(currentMealCode=null)는 오늘 급식을 모두 제외하고 다음 날짜부터 노출한다.
         if (ymd === todayYmd && !currentMealCode) continue;
         if (ymd === todayYmd && currentMealCode && Number(code) < Number(currentMealCode)) continue;
         const item = map.get(`${ymd}_${code}`);
@@ -674,8 +674,8 @@ router.get('/:schoolId/meals/next', validate(schoolIdParamValidators), async (re
     sortNextMeals(meals, now, priorityNow);
     return res.json({ success: true, data: { schoolId, meals } });
   } catch (error) {
-    console.error('?�교 ?�음 급식 조회 ?�류:', error);
-    return res.status(500).json({ success: false, message: '?�교 급식 조회 �??�류가 발생?�습?�다.' });
+    console.error('학교 다음 급식 조회 오류:', error);
+    return res.status(500).json({ success: false, message: '학교 급식 조회 중 오류가 발생했습니다.' });
   }
 });
 
@@ -685,11 +685,11 @@ router.get('/me/meals/calendar', authenticate, requireStudentVerified, async (re
     const fromYmd = String(req.query?.fromYmd || '').trim();
     const toYmdValue = String(req.query?.toYmd || '').trim();
     if (!/^\d{8}$/.test(fromYmd) || !/^\d{8}$/.test(toYmdValue)) {
-      return res.status(400).json({ success: false, message: 'fromYmd/toYmd??YYYYMMDD ?�식?�어???�니??' });
+      return res.status(400).json({ success: false, message: 'fromYmd/toYmd는 YYYYMMDD 형식이어야 합니다.' });
     }
     const school = await getMySchoolCodes(userId);
     if (!school?.school_id) {
-      return res.status(404).json({ success: false, message: '?�용?�의 ?�교 ?�보�?찾을 ???�습?�다.' });
+      return res.status(404).json({ success: false, message: '사용자의 학교 정보를 찾을 수 없습니다.' });
     }
     const mealsByDate = {};
     if (school.edu_office_code && school.admin_standard_code) {
@@ -723,8 +723,8 @@ router.get('/me/meals/calendar', authenticate, requireStudentVerified, async (re
       data: { schoolId: school.school_id, mealsByDate: withSchoolDay },
     });
   } catch (error) {
-    console.error('???�교 급식 ?�력 조회 ?�류:', error);
-    return res.status(500).json({ success: false, message: '급식 ?�력 조회 �??�류가 발생?�습?�다.' });
+    console.error('내 학교 급식 달력 조회 오류:', error);
+    return res.status(500).json({ success: false, message: '급식 달력 조회 중 오류가 발생했습니다.' });
   }
 });
 
@@ -734,11 +734,11 @@ router.get('/:schoolId/meals/calendar', validate(schoolIdParamValidators), async
     const fromYmd = String(req.query?.fromYmd || '').trim();
     const toYmdValue = String(req.query?.toYmd || '').trim();
     if (!/^\d{8}$/.test(fromYmd) || !/^\d{8}$/.test(toYmdValue)) {
-      return res.status(400).json({ success: false, message: 'fromYmd/toYmd??YYYYMMDD ?�식?�어???�니??' });
+      return res.status(400).json({ success: false, message: 'fromYmd/toYmd는 YYYYMMDD 형식이어야 합니다.' });
     }
     const school = await getSchoolCodesById(schoolId);
     if (!school) {
-      return res.status(404).json({ success: false, message: '?�교�?찾을 ???�습?�다.' });
+      return res.status(404).json({ success: false, message: '학교를 찾을 수 없습니다.' });
     }
     const mealsByDate = {};
     if (school.edu_office_code && school.admin_standard_code) {
@@ -772,8 +772,8 @@ router.get('/:schoolId/meals/calendar', validate(schoolIdParamValidators), async
       data: { schoolId, mealsByDate: withSchoolDay },
     });
   } catch (error) {
-    console.error('?�교 급식 ?�력 조회 ?�류:', error);
-    return res.status(500).json({ success: false, message: '급식 ?�력 조회 �??�류가 발생?�습?�다.' });
+    console.error('학교 급식 달력 조회 오류:', error);
+    return res.status(500).json({ success: false, message: '급식 달력 조회 중 오류가 발생했습니다.' });
   }
 });
 
@@ -784,23 +784,23 @@ router.get('/:schoolId/study-grass', validate(schoolIdParamValidators), async (r
     if (!school) {
       return res.status(404).json({
         success: false,
-        message: '?�교�?찾을 ???�습?�다.',
+        message: '학교를 찾을 수 없습니다.',
       });
     }
     const days = parseStudyGrassDaysParam(req.query?.days);
     const data = await fetchStudyGrassSeries({ schoolId, days });
     return res.json({ success: true, data });
   } catch (error) {
-    console.error('?�교 공�? ?�디�?조회 ?�류:', error);
+    console.error('학교 공부 잔디밭 조회 오류:', error);
     return res.status(500).json({
       success: false,
-      message: '?�교 공�? ?�디�?조회 �??�류가 발생?�습?�다.',
+      message: '학교 공부 잔디밭 조회 중 오류가 발생했습니다.',
     });
   }
 });
 
-// GET /api/schools/:schoolId - ?�정 ?�교 기본 ?�보 + 게시글/?�편??개수
-// school_id 가 VARCHAR(50)?��?�??�자 변???�이 문자??그�?�??�용
+// GET /api/schools/:schoolId - 특정 학교 기본 정보 + 게시글/우편함 개수
+// school_id 가 VARCHAR(50)이므로 숫자 변환 없이 문자열 그대로 사용
 router.get('/:schoolId', validate(schoolIdParamValidators), async (req, res) => {
   const { schoolId } = req.params;
 
@@ -817,7 +817,7 @@ router.get('/:schoolId', validate(schoolIdParamValidators), async (req, res) => 
     if (!schoolRow) {
       return res.status(404).json({
         success: false,
-        message: '?�교�?찾을 ???�습?�다.',
+        message: '학교를 찾을 수 없습니다.',
       });
     }
 
@@ -849,10 +849,10 @@ router.get('/:schoolId', validate(schoolIdParamValidators), async (req, res) => 
       },
     });
   } catch (error) {
-    console.error('?�교 ?�보 조회 ?�류:', error);
+    console.error('학교 정보 조회 오류:', error);
     res.status(500).json({
       success: false,
-      message: '?�교 ?�보 조회 �??�류가 발생?�습?�다.',
+      message: '학교 정보 조회 중 오류가 발생했습니다.',
     });
   }
 });
