@@ -158,9 +158,11 @@ app.use(express.json({ limit: '8mb' }));
 app.use(express.urlencoded({ extended: true, limit: '8mb' }));
 
 // 5. Rate Limit — Redis 설정 시 rate-limit-redis + 기존 ioredis 공유, 없으면 in-memory
+// express-rate-limit v8: limiter마다 별도 Store 인스턴스 필요 (ERR_ERL_STORE_REUSE)
 logRateLimitStoreMode();
 const authRateLimitStore = createRedisRateLimitStore('auth');
 const apiRateLimitStore = createRedisRateLimitStore('api');
+const apiStrictRateLimitStore = createRedisRateLimitStore('api-strict');
 const adminLoginRateLimitStore = createRedisRateLimitStore('admin-login');
 
 // /api/auth: 로그인·가입 등 POST만 엄격히 제한하고, GET(/me 등)은 앱 초기화·탭 전환에서
@@ -190,7 +192,7 @@ const strictApiLimiter = rateLimit({
   max: Number(process.env.RATE_LIMIT_STRICT_API_PER_MIN || 60),
   standardHeaders: true,
   legacyHeaders: false,
-  ...(apiRateLimitStore ? { store: apiRateLimitStore } : {}),
+  ...(apiStrictRateLimitStore ? { store: apiStrictRateLimitStore } : {}),
   message: { success: false, message: '비상 제한 모드입니다. 잠시 후 다시 시도해주세요.' },
 });
 
