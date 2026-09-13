@@ -12,7 +12,6 @@ import {
   Text,
   StyleSheet,
   TouchableOpacity,
-  Alert,
 } from 'react-native';
 import { useIsFocused } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -585,7 +584,6 @@ export default function TimerAniLab({ navigation }) {
   const [selfMode, setSelfMode] = useState(/** @type {'hidden'|'enter'|'seated'} */ ('hidden'));
   /** key -> seatIndex (신규만 빈자리 랜덤, 기존 유지) */
   const [assignments, setAssignments] = useState({});
-  const redirectedRef = useRef(false);
   const knownOthersRef = useRef(new Set());
   /** 스터디룸 진입 시점 이미 공부 중이던 userId — 이 사람들은 항상 착석(입장 걷기 없음) */
   const initialStudyingSeedRef = useRef(/** @type {Set<string>|null} */ (null));
@@ -687,7 +685,7 @@ export default function TimerAniLab({ navigation }) {
       }
     };
 
-    const applyRoomMembers = (members, roomId, relocated) => {
+    const applyRoomMembers = (members, roomId) => {
       const list = Array.isArray(members)
         ? members.filter((item) => item != null && typeof item === 'object')
         : [];
@@ -738,17 +736,6 @@ export default function TimerAniLab({ navigation }) {
         });
         return next;
       });
-      if (relocated && !redirectedRef.current) {
-        redirectedRef.current = true;
-        setTimeout(() => {
-          if (typeof Alert?.alert === 'function') {
-            Alert.alert(
-              '스터디룸',
-              '이전 방이 가득 차 다른 스터디룸으로 안내합니다.',
-            );
-          }
-        }, 0);
-      }
     };
 
     const loadStudying = async () => {
@@ -758,15 +745,14 @@ export default function TimerAniLab({ navigation }) {
         if (!alive) return;
         // 신규: { roomId, members } / 구형 배열 호환
         if (Array.isArray(data)) {
-          applyRoomMembers(data, null, false);
+          applyRoomMembers(data, null);
         } else if (data && typeof data === 'object') {
           applyRoomMembers(
             Array.isArray(data.members) ? data.members : [],
             data.roomId ?? null,
-            data.relocated === true,
           );
         } else {
-          applyRoomMembers([], null, false);
+          applyRoomMembers([], null);
         }
       } catch (error) {
         console.error(
@@ -830,17 +816,6 @@ export default function TimerAniLab({ navigation }) {
           },
         }));
       });
-      if (payload.relocated && !redirectedRef.current) {
-        redirectedRef.current = true;
-        setTimeout(() => {
-          if (typeof Alert?.alert === 'function') {
-            Alert.alert(
-              '스터디룸',
-              '이전 방이 가득 차 다른 스터디룸으로 안내합니다.',
-            );
-          }
-        }, 0);
-      }
     };
 
     const onStatus = (payload) => {
