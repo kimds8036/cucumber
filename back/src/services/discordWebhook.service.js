@@ -13,8 +13,8 @@ const EMBED_COLOR = {
 };
 
 const PURPOSE_LABEL = {
-  signup: '가입',
-  resubmit: '재제출',
+  signup: '최초 인증',
+  resubmit: '거절 재제출',
   reverification: '재인증',
 };
 
@@ -149,7 +149,7 @@ async function lookupSchoolName(schoolId) {
 }
 
 function purposeLabel(purpose) {
-  return PURPOSE_LABEL[purpose] || purpose || '가입';
+  return PURPOSE_LABEL[purpose] || purpose || '최초 인증';
 }
 
 /**
@@ -204,6 +204,7 @@ export function notifySignupCreated(p) {
  *   schoolName?: string,
  *   purpose?: string,
  *   submissionId?: number,
+ *   birthDate?: string|null,
  *   cloudinaryUrl?: string,
  *   submittedAt?: Date|string,
  * }} p
@@ -217,6 +218,7 @@ export function notifyStudentIdReviewPending(p) {
       color: EMBED_COLOR.review,
       fields: [
         field('유저', `${p.username || '-'} (#${p.userId})`),
+        field('생년월일', p.birthDate || '-'),
         field('학교', schoolName),
         field('목적', purposeLabel(p.purpose)),
         field('제출 ID', p.submissionId != null ? `#${p.submissionId}` : '-'),

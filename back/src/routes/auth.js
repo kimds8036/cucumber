@@ -2029,6 +2029,7 @@ router.post(
           schoolId: studentIdManualVerification.schoolId,
           purpose: 'signup',
           submissionId: reviewSubmissionId,
+          birthDate: resolvedSignupBirthDate || normalizedBirthDate || null,
           cloudinaryUrl: studentIdManualVerification.cloudinaryUrl,
         });
       }
@@ -2827,6 +2828,7 @@ router.post('/resubmit-student-id', authenticate, signupOcrLimiter, async (req, 
       schoolName: schoolRows[0]?.name,
       purpose: submissionPurpose,
       submissionId: sidInsert.insertId,
+      birthDate: user.birth_date || null,
       cloudinaryUrl: uploaded.cloudinaryUrl,
     });
 

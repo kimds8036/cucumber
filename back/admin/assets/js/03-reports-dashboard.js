@@ -8,9 +8,18 @@ async function loadDashboard() {
     document.getElementById('stat-today-answered-inquiries').textContent = String(
       data.todayAnsweredInquiries || 0,
     );
+    const todaySignups = document.getElementById('stat-today-signups');
+    if (todaySignups) todaySignups.textContent = String(data.todayNewSignups || 0);
+    const unverified = document.getElementById('stat-unverified-users');
+    if (unverified) unverified.textContent = String(data.unverifiedUsers || 0);
+    const pendingSid = document.getElementById('stat-pending-student-ids');
+    if (pendingSid) pendingSid.textContent = String(data.pendingStudentIdReviews || 0);
     setNavBadge('badge-reports', data.pendingReports || 0);
     setNavBadge('badge-appeals', data.pendingAppeals || 0);
     setNavBadge('badge-inquiries', data.pendingInquiries || 0);
+    if (data.pendingStudentIdReviews != null) {
+      setNavBadge('badge-student-ids', data.pendingStudentIdReviews || 0);
+    }
   }
 
   async function loadOpsPanel() {
@@ -453,10 +462,15 @@ async function loadDashboard() {
     if (kpis) {
       const who = `${u.displayName ? `${u.displayName} ` : ''}@${u.username || '-'} (#${u.id || '-'})`;
       const school = `${u.schoolName || '-'}${u.grade != null ? ` ${u.grade}학년` : ''}${u.classNumber != null ? ` ${u.classNumber}반` : ''}`;
+      const verifyLabel = u.studentVerified ? '학생인증' : '미인증';
+      const verifyCls = u.studentVerified ? 'stat-ok' : 'stat-warn';
+      const guardianLabel = u.hasGuardianConsent ? '동의됨' : '없음';
       const osLabel = opsOsLabel(s.primaryOs);
       const osCls = s.primaryOs === 'ios' || s.primaryOs === 'android' ? 'stat-ok' : '';
       kpis.innerHTML = `
         <div class="stat-card"><div class="stat-num" style="font-size:14px;line-height:1.3">${esc(who)}</div><div class="stat-label">${esc(school)}</div></div>
+        <div class="stat-card ${verifyCls}"><div class="stat-num" style="font-size:16px">${esc(verifyLabel)}</div><div class="stat-label">학생 인증</div></div>
+        <div class="stat-card"><div class="stat-num" style="font-size:16px">${esc(guardianLabel)}</div><div class="stat-label">보호자 동의</div></div>
         <div class="stat-card ${osCls}"><div class="stat-num" style="font-size:16px">${esc(osLabel)}</div><div class="stat-label">사용 OS</div></div>
         <div class="stat-card"><div class="stat-num">${Number(s.friendCount || 0).toLocaleString()}</div><div class="stat-label">친구 수</div></div>
         <div class="stat-card stat-ok"><div class="stat-num">${Number(badges.ownedCount || 0)}</div><div class="stat-label">획득 배지</div></div>

@@ -89,7 +89,14 @@ async function loadAppeals() {
               ${esc(u.school_name || u.school_id || '학교 미설정')}
               · ${u.grade != null ? `${u.grade}학년` : '-'}
               ${u.class_number != null ? `${u.class_number}반` : ''}
-              ${u.student_verified ? '' : ' · <span class="txt-danger">미인증</span>'}
+              ${(() => {
+                const st = String(u.student_verification_status || (u.student_verified ? 'APPROVED' : 'UNVERIFIED'));
+                if (st === 'APPROVED') return ' · <span class="txt-ok">학생인증</span>';
+                if (st === 'PENDING') return ' · <span class="txt-warn">검수 대기(PENDING)</span>';
+                if (st === 'REJECTED') return ' · <span class="txt-danger">거절(REJECTED)</span>';
+                return ' · <span class="txt-danger">미인증(UNVERIFIED)</span>';
+              })()}
+              ${u.has_guardian_consent ? ' · <span class="txt-ok">보호자 동의</span>' : ''}
             </div>
           </div>
         </div>
@@ -110,6 +117,8 @@ async function loadAppeals() {
           ${u.is_shadow_muted
             ? `<button class="btn btn-sm" onclick="shadowMuteUser(${u.id}, false)">섀도우 해제</button>`
             : `<button class="btn btn-sm btn-amber" onclick="shadowMuteUser(${u.id}, true)">섀도우 뮤트</button>`}
+          <button class="btn btn-sm" onclick="adminWithdrawUser(${u.id})">soft 탈퇴</button>
+          <button class="btn btn-sm btn-red" onclick="adminHardDeleteUser(${u.id})">hard 삭제</button>
           <span style="margin-left:auto;font-size:11px;color:var(--text-tertiary)">${u.suspended_until ? `정지 해제 예정: ${fmtDate(u.suspended_until)}` : ''}</span>
         </div>
       </div>
@@ -171,6 +180,50 @@ async function loadAppeals() {
       });
       await Promise.all([loadUsers(), loadLogs()]);
       alert(enabled ? '섀도우 뮤트를 적용했습니다.' : '섀도우 뮤트를 해제했습니다.');
+    } catch (error) {
+      alert(error.message);
+    }
+  }
+
+  async function adminWithdrawUser(uid) {
+    const u = state.usersById?.get(Number(uid));
+    const uname = u?.username || `#${uid}`;
+    if (!confirm(`@${uname} (UID #${uid}) 계정을 soft 탈퇴할까요?\nPII가 익명화되고 로그인이 막힙니다.`)) return;
+    const note = prompt('사유 (감사 로그)', '관리자 soft 탈퇴') || '';
+    try {
+      await api(`/users/${uid}/withdraw`, {
+        method: 'POST',
+        body: JSON.stringify({ note }),
+      });
+      await Promise.all([loadUsers(), loadLogs()]);
+      alert('soft 탈퇴 처리되었습니다.');
+    } catch (error) {
+      alert(error.message);
+    }
+  }
+
+  async function adminHardDeleteUser(uid) {
+    const u = state.usersById?.get(Number(uid));
+    const uname = u?.username || '';
+    if (!uname) {
+      alert('사용자 아이디를 확인할 수 없습니다. 목록을 새로고침하세요.');
+      return;
+    }
+    if (!confirm(`@${uname} (UID #${uid}) 을 영구 삭제할까요?\n최고관리자만 가능하며, 되돌릴 수 없습니다.`)) return;
+    const typed = prompt(`확인을 위해 아이디를 정확히 입력하세요.\n대상: ${uname}`, '');
+    if (typed === null) return;
+    if (String(typed).trim() !== uname) {
+      alert('아이디가 일치하지 않습니다.');
+      return;
+    }
+    const note = prompt('사유 (감사 로그)', '테스트 계정 hard delete') || '';
+    try {
+      await api(`/users/${uid}/hard`, {
+        method: 'DELETE',
+        body: JSON.stringify({ confirmUsername: uname, note }),
+      });
+      await Promise.all([loadUsers(), loadLogs()]);
+      alert('영구 삭제되었습니다.');
     } catch (error) {
       alert(error.message);
     }
