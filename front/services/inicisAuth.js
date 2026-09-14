@@ -249,30 +249,84 @@ export async function waitForInicisResult(mTxId, {
 }
 
 /**
- * openAuthSessionAsync + youthpaper:// 리다이렉트는 Android에서 앱 cold start → 로그인 화면 복귀를 유발할 수 있음.
- * Custom Tabs만 열고 앱 복귀 시 폴링으로 결과를 확인한다.
+ * Linking / Custom Tabs로 앱을 떠난 뒤 다시 active 될 때까지 대기 (Android openBrowserAsync용).
+ */
+function waitForAppReturnFromBrowser(timeoutMs = 10 * 60 * 1000) {
+  return new Promise((resolve) => {
+    let leftApp = AppState.currentState !== 'active';
+    let settled = false;
+
+    const finish = () => {
+      if (settled) return;
+      settled = true;
+      sub.remove();
+      clearTimeout(timeoutTimer);
+      setTimeout(resolve, 200);
+    };
+
+    const sub = AppState.addEventListener('change', (nextState) => {
+      if (nextState === 'inactive' || nextState === 'background') {
+        leftApp = true;
+        return;
+      }
+      if (nextState === 'active' && leftApp) {
+        finish();
+      }
+    });
+
+    const timeoutTimer = setTimeout(finish, timeoutMs);
+  });
+}
+
+/**
+ * 인앱 브라우저로 KG 이니시스 실행.
+ * - iOS: SFSafariViewController (PAGE_SHEET) — RN Modal이 완전히 내린 뒤에만 호출할 것
+ * - Android: Custom Tabs — open 직후 dismiss 금지 (type:'opened'로 즉시 resolve)
  */
 async function openInicisBrowser(launchUrl) {
-  try {
-    await WebBrowser.dismissBrowser();
-  } catch {
-    // ignore
+  if (!launchUrl) {
+    const err = new Error('본인인증 주소를 확인할 수 없습니다.');
+    err.code = 'NO_LAUNCH_URL';
+    throw err;
   }
+
+  await new Promise((resolve) => {
+    InteractionManager.runAfterInteractions(() => resolve());
+  });
+  await new Promise((resolve) =>
+    setTimeout(resolve, Platform.OS === 'ios' ? 300 : 80),
+  );
+
+  if (Platform.OS === 'ios') {
+    const result = await WebBrowser.openBrowserAsync(launchUrl, {
+      presentationStyle:
+        WebBrowser.WebBrowserPresentationStyle?.PAGE_SHEET ??
+        WebBrowser.WebBrowserPresentationStyle?.FULL_SCREEN,
+      dismissButtonStyle: 'close',
+      enableBarCollapsing: false,
+    });
+    // present 실패 시 곧바로 cancel 이 오는 경우가 많음
+    if (result?.type === 'cancel') {
+      // 사용자가 닫은 것과 구분 불가 — 폴링으로 결과 확인 (미완료면 TIMEOUT)
+      return result;
+    }
+    return result;
+  }
+
   try {
     await WebBrowser.coolDownAsync();
   } catch {
     // ignore
   }
-  const options =
-    Platform.OS === 'ios'
-      ? {
-          presentationStyle:
-            WebBrowser.WebBrowserPresentationStyle?.FULL_SCREEN ??
-            WebBrowser.WebBrowserPresentationStyle?.PAGE_SHEET,
-          dismissButtonStyle: 'close',
-        }
-      : { showInRecents: true, createTask: false };
-  return WebBrowser.openBrowserAsync(launchUrl, options);
+
+  const result = await WebBrowser.openBrowserAsync(launchUrl, {
+    showInRecents: true,
+    createTask: false,
+  });
+  if (result?.type === 'opened') {
+    await waitForAppReturnFromBrowser();
+  }
+  return result;
 }
 
 export async function runInicisIdentityFlow(purpose, options = {}) {
@@ -285,6 +339,11 @@ export async function runInicisIdentityFlow(purpose, options = {}) {
   activeFlowPromise = (async () => {
     let mTxId = null;
     let cancelled = false;
+    const {
+      prepareOpenBrowser,
+      afterBrowserClosed,
+      ...pollOptions
+    } = options;
     registerFlowCancel(() => {
       cancelled = true;
     });
@@ -295,20 +354,29 @@ export async function runInicisIdentityFlow(purpose, options = {}) {
       mTxId = session.mTxId;
       await savePendingSession({ mTxId, purpose });
 
+      // Modal present 중 SFSafari 충돌 방지 — 호출측에서 Modal을 먼저 내릴 것
+      if (typeof prepareOpenBrowser === 'function') {
+        await prepareOpenBrowser();
+      } else {
+        await settleUiForInicisBrowser();
+      }
+      if (cancelled) {
+        const err = new Error('cancelled');
+        err.code = 'CANCELLED';
+        throw err;
+      }
+
       await openInicisBrowser(session.launchUrl);
-      await dismissInicisBrowserSafely();
+      // 열자마자 dismiss 하지 않음 (iOS는 닫힐 때까지 await, Android는 복귀까지 대기)
+
+      if (typeof afterBrowserClosed === 'function') {
+        await afterBrowserClosed();
+      }
       const result = await waitForInicisResult(mTxId, {
-        ...options,
+        ...pollOptions,
         shouldCancel: () => cancelled,
       });
       await clearPendingInicisSession();
-
-      try {
-        await WebBrowser.dismissBrowser();
-      } catch {
-        // ignore
-      }
-
       return result;
     } catch (e) {
       if (e?.code === 'CANCELLED') {
@@ -337,25 +405,37 @@ export async function resumePendingInicisFlow(expectedPurpose, options = {}) {
 
   activeFlowPromise = (async () => {
     let cancelled = false;
+    const {
+      prepareOpenBrowser,
+      afterBrowserClosed,
+      ...pollOptions
+    } = options;
     registerFlowCancel(() => {
       cancelled = true;
     });
     try {
       const launchUrl = buildInicisLaunchUrl(pending.mTxId);
+      if (typeof prepareOpenBrowser === 'function') {
+        await prepareOpenBrowser();
+      } else {
+        await settleUiForInicisBrowser();
+      }
+      if (cancelled) {
+        const err = new Error('cancelled');
+        err.code = 'CANCELLED';
+        throw err;
+      }
       await openInicisBrowser(launchUrl);
-      await dismissInicisBrowserSafely();
+      if (typeof afterBrowserClosed === 'function') {
+        await afterBrowserClosed();
+      }
       const result = await waitForInicisResult(pending.mTxId, {
         timeoutMs: 5 * 60 * 1000,
         intervalMs: 1500,
+        ...pollOptions,
         shouldCancel: () => cancelled,
-        ...options,
       });
       await clearPendingInicisSession();
-      try {
-        await WebBrowser.dismissBrowser();
-      } catch {
-        // ignore
-      }
       return result;
     } catch (e) {
       if (e?.code === 'TIMEOUT') {
@@ -397,7 +477,8 @@ export function waitForPresentationLayerRelease() {
   return new Promise((resolve) => {
     InteractionManager.runAfterInteractions(() => {
       if (Platform.OS === 'ios') {
-        setTimeout(resolve, 150);
+        // SignupIosSafeModal 언마운트(~500ms)와 맞춤
+        setTimeout(resolve, 520);
         return;
       }
       resolve();
@@ -405,12 +486,23 @@ export function waitForPresentationLayerRelease() {
   });
 }
 
+/**
+ * 가입 오버레이(Modal) 직후 iOS에서 SFSafariViewController가 안 뜨는 경우 방지.
+ * (Modal을 연 채로 호출하지 말 것 — prepareOpenBrowser로 Modal을 먼저 내릴 것)
+ */
+export async function settleUiForInicisBrowser() {
+  await waitForPresentationLayerRelease();
+  await new Promise((resolve) =>
+    setTimeout(resolve, Platform.OS === 'ios' ? 200 : 80),
+  );
+}
+
 export function isInicisFlowInProgress() {
   return Boolean(activeFlowPromise);
 }
 
 /** 로딩 오버레이 「직접 열기」— 이미 열린 세션(launched)은 새 mTxId로 재시작 */
-export async function openPendingInicisBrowser() {
+export async function openPendingInicisBrowser(options = {}) {
   const pending = await getPendingInicisSession();
   if (!pending?.mTxId) {
     const err = new Error('진행 중인 본인인증 세션이 없습니다.');
@@ -418,6 +510,14 @@ export async function openPendingInicisBrowser() {
     throw err;
   }
   const { launchUrl } = await resolveFreshInicisLaunchTarget(pending);
+  if (typeof options.prepareOpenBrowser === 'function') {
+    await options.prepareOpenBrowser();
+  } else {
+    await settleUiForInicisBrowser();
+  }
   await openInicisBrowser(launchUrl);
-  await dismissInicisBrowserSafely();
+  if (typeof options.afterBrowserClosed === 'function') {
+    await options.afterBrowserClosed();
+  }
 }
+

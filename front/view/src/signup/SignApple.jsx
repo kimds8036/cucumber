@@ -37,6 +37,7 @@ import usePreventSignupStackExit from './usePreventSignupStackExit';
 import {
   buildAbortSignupConfirmAlert,
   leaveSignupToEntry,
+  waitForSignupModalsToClear,
 } from './signupAbort';
 import { api, setAuthToken, setRefreshToken, getOrCreateDeviceId } from '../../../utils/api';
 import {
@@ -53,7 +54,6 @@ import {
   isInicisClientEnabled,
   openPendingInicisBrowser,
   dismissInicisBrowserSafely,
-  waitForPresentationLayerRelease,
 } from '../../../services/inicisAuth';
 import { loginWithApple } from '../../../services/appleAuth';
 import { useAuth } from '../../../context/AuthContext';
@@ -172,6 +172,7 @@ const SignApple = ({ navigation }) => {
   const birthDateInputRef = useRef('');
   const inicisClientTokenRef = useRef(null);
   const inicisFlowActiveRef = useRef(false);
+  const inicisOverlayVisibleRef = useRef(false);
   const inicisResumeStepRef = useRef(STEP.BIRTH_DATE);
   const guardianModalPendingActionRef = useRef(null);
   const completeSignupRef = useRef(null);
@@ -349,9 +350,10 @@ const SignApple = ({ navigation }) => {
     );
   }, [abortSignupImmediate, closeBlockingAlert, submitting]);
 
-  const proceedToSchool = useCallback(() => {
+  const proceedToSchool = useCallback((signupBundle = null) => {
     // 재학정보 화면 스킵 → 바로 가입 완료 (가입_개편)
-    completeSignupRef.current?.();
+    // setState 반영 전 제출을 막기 위해 form/identity를 인자로 넘긴다.
+    completeSignupRef.current?.(signupBundle);
   }, []);
 
   const applyBirthDateToState = useCallback((nextBirthDate) => {
@@ -378,32 +380,42 @@ const SignApple = ({ navigation }) => {
         return;
       }
 
-      setFormData((prev) => ({
-        ...prev,
+      const nextForm = {
+        ...formData,
         name,
         birthDate: resolvedBirthDate,
         phoneNumber,
         requiresGuardianVerification,
         guardianVerifiedAt,
-      }));
-      setIdentityData((prev) => ({
-        ...prev,
+      };
+      const nextIdentity = {
+        ...merged,
         name,
         birthDate: resolvedBirthDate,
         phoneNumber,
         isVerified: merged.isVerified ?? true,
-        inicisClientToken: merged.inicisClientToken ?? prev.inicisClientToken,
+        inicisClientToken:
+          merged.inicisClientToken ?? identityData.inicisClientToken,
+      };
+
+      setFormData(nextForm);
+      setIdentityData((prev) => ({
+        ...prev,
+        ...nextIdentity,
       }));
       if (resolvedBirthDate) {
-        applyBirthDateToState(resolvedBirthDate);
+        birthDateInputRef.current = resolvedBirthDate;
+        setBirthDate(resolvedBirthDate);
       }
-      proceedToSchool();
+      if (nextIdentity.inicisClientToken) {
+        inicisClientTokenRef.current = nextIdentity.inicisClientToken;
+      }
+      proceedToSchool({ form: nextForm, identity: nextIdentity });
     },
     [
       abortSignupImmediate,
-      applyBirthDateToState,
       birthDate,
-      formData.birthDate,
+      formData,
       guardianVerifiedAt,
       identityData,
       navigationRef,
@@ -416,12 +428,30 @@ const SignApple = ({ navigation }) => {
     await dismissInicisBrowserSafely();
     inicisFlowActiveRef.current = false;
     if (isMountedRef.current) {
+      inicisOverlayVisibleRef.current = false;
       setInicisOverlayVisible(false);
       setInicisManualOpening(false);
       setShowStudentIdentityIntroModal(false);
       setShowGuardianConsentModal(false);
     }
-    await waitForPresentationLayerRelease();
+    await waitForSignupModalsToClear();
+  }, []);
+
+  /** 인앱 브라우저 직전: Modal을 완전히 내려 SFSafari 충돌 방지 */
+  const prepareInicisBrowserOpen = useCallback(async () => {
+    if (isMountedRef.current) {
+      inicisOverlayVisibleRef.current = false;
+      setInicisOverlayVisible(false);
+    }
+    await waitForSignupModalsToClear();
+  }, []);
+
+  /** 브라우저 닫힌 뒤 폴링 중 오버레이 재표시 */
+  const restoreInicisOverlayAfterBrowser = useCallback(async () => {
+    if (isMountedRef.current && inicisFlowActiveRef.current) {
+      inicisOverlayVisibleRef.current = true;
+      setInicisOverlayVisible(true);
+    }
   }, []);
 
   const showInicisAlertAfterOverlay = useCallback(
@@ -573,13 +603,20 @@ const SignApple = ({ navigation }) => {
     return true;
   }, []);
 
-  const executeInicisFlow = useCallback(async (purpose) => {
-    const pending = await getPendingInicisSession();
-    if (pending?.purpose === purpose) {
-      return resumePendingInicisFlow(purpose);
-    }
-    return runInicisIdentityFlow(purpose);
-  }, []);
+  const executeInicisFlow = useCallback(
+    async (purpose) => {
+      const browserUi = {
+        prepareOpenBrowser: prepareInicisBrowserOpen,
+        afterBrowserClosed: restoreInicisOverlayAfterBrowser,
+      };
+      const pending = await getPendingInicisSession();
+      if (pending?.purpose === purpose) {
+        return resumePendingInicisFlow(purpose, browserUi);
+      }
+      return runInicisIdentityFlow(purpose, browserUi);
+    },
+    [prepareInicisBrowserOpen, restoreInicisOverlayAfterBrowser],
+  );
 
   const runStudentIdentityVerificationCore = useCallback(async () => {
     if (SIGNUP_REDESIGN_SKIP_VALIDATION) {
@@ -680,10 +717,15 @@ const SignApple = ({ navigation }) => {
 
   const runStudentIdentityVerification = useCallback(
     async (resumeStep = STEP.BIRTH_DATE) => {
-      if (inicisFlowActiveRef.current) return;
+      if (inicisFlowActiveRef.current) {
+        if (inicisOverlayVisibleRef.current) return;
+        cancelInicisFlow();
+        inicisFlowActiveRef.current = false;
+      }
       inicisResumeStepRef.current = resumeStep;
       inicisFlowActiveRef.current = true;
       setInicisOverlayTitle(INICIS_OVERLAY_TITLE.STUDENT);
+      inicisOverlayVisibleRef.current = true;
       setInicisOverlayVisible(true);
 
       let evaluation = null;
@@ -731,10 +773,15 @@ const SignApple = ({ navigation }) => {
   }, [endInicisOverlay]);
 
   const runGuardianAndStudentVerification = useCallback(async () => {
-    if (inicisFlowActiveRef.current) return;
+    if (inicisFlowActiveRef.current) {
+      if (inicisOverlayVisibleRef.current) return;
+      cancelInicisFlow();
+      inicisFlowActiveRef.current = false;
+    }
     inicisResumeStepRef.current = STEP.BIRTH_DATE;
     inicisFlowActiveRef.current = true;
     setInicisOverlayTitle(INICIS_OVERLAY_TITLE.GUARDIAN);
+    inicisOverlayVisibleRef.current = true;
     setInicisOverlayVisible(true);
 
     try {
@@ -761,6 +808,11 @@ const SignApple = ({ navigation }) => {
     const pending = await getPendingInicisSession();
     if (!pending) return;
 
+    const browserUi = {
+      prepareOpenBrowser: prepareInicisBrowserOpen,
+      afterBrowserClosed: restoreInicisOverlayAfterBrowser,
+    };
+
     inicisResumeStepRef.current = STEP.BIRTH_DATE;
     inicisFlowActiveRef.current = true;
 
@@ -770,7 +822,7 @@ const SignApple = ({ navigation }) => {
       setInicisOverlayTitle(INICIS_OVERLAY_TITLE.GUARDIAN);
       setInicisOverlayVisible(true);
       try {
-        const result = await resumePendingInicisFlow('guardian_consent');
+        const result = await resumePendingInicisFlow('guardian_consent', browserUi);
         if (result) {
           applyGuardianVerifySuccess(result);
           await promptStudentIdentityAfterGuardian();
@@ -792,7 +844,7 @@ const SignApple = ({ navigation }) => {
       let evaluation = null;
       let flowError = null;
       try {
-        const result = await resumePendingInicisFlow('student_signup');
+        const result = await resumePendingInicisFlow('student_signup', browserUi);
         if (result) {
           evaluation = evaluateStudentVerifyResult(result);
         }
@@ -832,7 +884,10 @@ const SignApple = ({ navigation }) => {
     if (inicisManualOpening) return;
     setInicisManualOpening(true);
     try {
-      await openPendingInicisBrowser();
+      await openPendingInicisBrowser({
+        prepareOpenBrowser: prepareInicisBrowserOpen,
+        afterBrowserClosed: restoreInicisOverlayAfterBrowser,
+      });
     } catch (error) {
       showInicisAlertAfterOverlay(
         '알림',
@@ -845,7 +900,7 @@ const SignApple = ({ navigation }) => {
         setInicisManualOpening(false);
       }
     }
-  }, [inicisManualOpening, showInicisAlertAfterOverlay]);
+  }, [inicisManualOpening, prepareInicisBrowserOpen, restoreInicisOverlayAfterBrowser, showInicisAlertAfterOverlay]);
 
   const handleInicisOverlayCancel = useCallback(async () => {
     // Entry 이동은 run* 의 CANCELLED 분기에서만 — 여기서 abort 하면 이중 reset
@@ -1150,30 +1205,42 @@ const SignApple = ({ navigation }) => {
     }));
   };
 
-  const buildSignupPayload = (finalData, verificationToken) => {
+  const buildSignupPayload = (finalData, verificationToken, idSource) => {
+    const id = idSource || identity;
     const resolvedBirthDate =
-      normalizeBirthDateForCompare(identity.birthDate) || identity.birthDate;
+      normalizeBirthDateForCompare(finalData?.birthDate) ||
+      normalizeBirthDateForCompare(id.birthDate) ||
+      id.birthDate ||
+      '';
 
     return {
       // username/password 생략 — 서버가 Apple 토큰으로 임시 계정 발급
-      name: (identity.name || '').trim(),
-      phone: String(identity.phoneNumber || '').replace(/\D/g, ''),
+      name: String(finalData?.name || id.name || '').trim(),
+      phone: String(finalData?.phoneNumber || id.phoneNumber || '').replace(
+        /\D/g,
+        '',
+      ),
       birthDate: resolvedBirthDate,
       // 재학정보 가입 시 미입력 — 인앱 학생증 인증 때 설정
       colorId: pickRandomProfileColorId(),
       verificationMethod: 'student_id',
       signupMethod: 'apple',
-      appleIdentityToken: identityData.identityToken || '',
+      appleIdentityToken:
+        id.identityToken || identityData.identityToken || '',
       consents: consentData.consents || {},
       studentVerificationToken: verificationToken || undefined,
       studentInicisClientToken:
-        identityData.inicisClientToken || inicisClientTokenRef.current || null,
+        id.inicisClientToken ||
+        identityData.inicisClientToken ||
+        inicisClientTokenRef.current ||
+        null,
       guardianInicisClientToken: guardianInicisClientToken || null,
     };
   };
 
-  const finishSignupAndEnterApp = async () => {
-    const identityToken = identityData.identityToken;
+  const finishSignupAndEnterApp = async (identityTokenOverride) => {
+    const identityToken =
+      identityTokenOverride || identityData.identityToken;
     if (!identityToken) {
       throw new Error('Apple 토큰이 없습니다. 다시 로그인해 주세요.');
     }
@@ -1203,10 +1270,19 @@ const SignApple = ({ navigation }) => {
     });
   };
 
-  const handleComplete = async (overrideFormData = null) => {
-    const finalData = overrideFormData
-      ? { ...overrideFormData }
-      : { ...formData };
+  const handleComplete = async (signupBundle = null) => {
+    const bundle =
+      signupBundle &&
+      typeof signupBundle === 'object' &&
+      (signupBundle.form || signupBundle.identity)
+        ? signupBundle
+        : signupBundle
+          ? { form: signupBundle }
+          : null;
+    const finalData = bundle?.form ? { ...bundle.form } : { ...formData };
+    const idSource = bundle?.identity
+      ? { ...identityData, ...bundle.identity }
+      : identityData;
     const verificationToken =
       studentVerificationToken ||
       (SIGNUP_REDESIGN_SKIP_VALIDATION ? MOCK_STUDENT_TOKEN : undefined);
@@ -1219,18 +1295,23 @@ const SignApple = ({ navigation }) => {
         return;
       }
 
-      if (!identityData.identityToken) {
+      const appleToken = idSource.identityToken || identityData.identityToken;
+      if (!appleToken) {
         Alert.alert('알림', 'Apple 인증이 필요합니다. 다시 시도해 주세요.');
         setCurrentStep(STEP.APPLE_AUTH);
         return;
       }
 
-      const payload = buildSignupPayload(finalData, verificationToken);
+      const payload = buildSignupPayload(
+        finalData,
+        verificationToken,
+        idSource,
+      );
       payload.inviteCode = await peekPendingInviteCode();
       await api.post('/api/auth/signup', payload);
       await consumePendingInviteCode();
       await clearFlowSession();
-      await finishSignupAndEnterApp();
+      await finishSignupAndEnterApp(appleToken);
     } catch (error) {
       if (alertSignupDuplicateAndOfferLogin(error, navigation)) {
         return;

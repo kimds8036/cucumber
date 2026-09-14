@@ -45,8 +45,8 @@ import {
   cancelInicisFlow,
   openPendingInicisBrowser,
   dismissInicisBrowserSafely,
-  waitForPresentationLayerRelease,
 } from '../../../services/inicisAuth';
+import { waitForSignupModalsToClear } from './signupAbort';
 import {
   isValidUsername,
   isValidPassword,
@@ -227,6 +227,7 @@ const Sign = ({ navigation }) => {
 
   const inicisResumeStepRef = useRef(STEP.BIRTH_DATE);
   const inicisFlowActiveRef = useRef(false);
+  const inicisOverlayVisibleRef = useRef(false);
   const isMountedRef = useRef(true);
   const initialResumeInicisRef = useRef(route.params?.resumeInicis === true);
   const resumeInicisFromPendingRef = useRef(async () => {});
@@ -239,12 +240,30 @@ const Sign = ({ navigation }) => {
     await dismissInicisBrowserSafely();
     inicisFlowActiveRef.current = false;
     if (isMountedRef.current) {
+      inicisOverlayVisibleRef.current = false;
       setInicisOverlayVisible(false);
       setInicisManualOpening(false);
       setShowStudentIdentityIntroModal(false);
       setShowGuardianConsentModal(false);
     }
-    await waitForPresentationLayerRelease();
+    await waitForSignupModalsToClear();
+  }, []);
+
+  /** 인앱 브라우저 직전: Modal을 완전히 내려 SFSafari 충돌 방지 */
+  const prepareInicisBrowserOpen = useCallback(async () => {
+    if (isMountedRef.current) {
+      inicisOverlayVisibleRef.current = false;
+      setInicisOverlayVisible(false);
+    }
+    await waitForSignupModalsToClear();
+  }, []);
+
+  /** 브라우저 닫힌 뒤 폴링 중 오버레이 재표시 */
+  const restoreInicisOverlayAfterBrowser = useCallback(async () => {
+    if (isMountedRef.current && inicisFlowActiveRef.current) {
+      inicisOverlayVisibleRef.current = true;
+      setInicisOverlayVisible(true);
+    }
   }, []);
 
   const closeBlockingAlert = useCallback(() => {
@@ -424,7 +443,10 @@ const Sign = ({ navigation }) => {
     if (inicisManualOpening) return;
     setInicisManualOpening(true);
     try {
-      await openPendingInicisBrowser();
+      await openPendingInicisBrowser({
+        prepareOpenBrowser: prepareInicisBrowserOpen,
+        afterBrowserClosed: restoreInicisOverlayAfterBrowser,
+      });
     } catch (error) {
       showInicisAlertAfterOverlay(
         '알림',
@@ -436,7 +458,7 @@ const Sign = ({ navigation }) => {
         setInicisManualOpening(false);
       }
     }
-  }, [inicisManualOpening, showInicisAlertAfterOverlay]);
+  }, [inicisManualOpening, prepareInicisBrowserOpen, restoreInicisOverlayAfterBrowser, showInicisAlertAfterOverlay]);
 
   const handleInicisOverlayCancel = useCallback(async () => {
     const wasGuardian = inicisOverlayTitle === INICIS_OVERLAY_TITLE.GUARDIAN;
@@ -642,13 +664,20 @@ const Sign = ({ navigation }) => {
     return true;
   }, []);
 
-  const executeInicisFlow = useCallback(async (purpose) => {
-    const pending = await getPendingInicisSession();
-    if (pending?.purpose === purpose) {
-      return resumePendingInicisFlow(purpose);
-    }
-    return runInicisIdentityFlow(purpose);
-  }, []);
+  const executeInicisFlow = useCallback(
+    async (purpose) => {
+      const browserUi = {
+        prepareOpenBrowser: prepareInicisBrowserOpen,
+        afterBrowserClosed: restoreInicisOverlayAfterBrowser,
+      };
+      const pending = await getPendingInicisSession();
+      if (pending?.purpose === purpose) {
+        return resumePendingInicisFlow(purpose, browserUi);
+      }
+      return runInicisIdentityFlow(purpose, browserUi);
+    },
+    [prepareInicisBrowserOpen, restoreInicisOverlayAfterBrowser],
+  );
 
   const runStudentIdentityVerificationCore = useCallback(async () => {
     if (shouldSkipSignupValidation()) {
@@ -727,10 +756,15 @@ const Sign = ({ navigation }) => {
 
   const runStudentIdentityVerification = useCallback(
     async (resumeStep = STEP.BIRTH_DATE) => {
-      if (inicisFlowActiveRef.current) return;
+      if (inicisFlowActiveRef.current) {
+        if (inicisOverlayVisibleRef.current) return;
+        cancelInicisFlow();
+        inicisFlowActiveRef.current = false;
+      }
       inicisResumeStepRef.current = resumeStep;
       inicisFlowActiveRef.current = true;
       setInicisOverlayTitle(INICIS_OVERLAY_TITLE.STUDENT);
+      inicisOverlayVisibleRef.current = true;
       setInicisOverlayVisible(true);
 
       let evaluation = null;
@@ -774,10 +808,15 @@ const Sign = ({ navigation }) => {
   }, [endInicisOverlay]);
 
   const runGuardianAndStudentVerification = useCallback(async () => {
-    if (inicisFlowActiveRef.current) return;
+    if (inicisFlowActiveRef.current) {
+      if (inicisOverlayVisibleRef.current) return;
+      cancelInicisFlow();
+      inicisFlowActiveRef.current = false;
+    }
     inicisResumeStepRef.current = STEP.BIRTH_DATE;
     inicisFlowActiveRef.current = true;
     setInicisOverlayTitle(INICIS_OVERLAY_TITLE.GUARDIAN);
+    inicisOverlayVisibleRef.current = true;
     setInicisOverlayVisible(true);
 
     try {
@@ -814,6 +853,11 @@ const Sign = ({ navigation }) => {
     const pending = await getPendingInicisSession();
     if (!pending) return;
 
+    const browserUi = {
+      prepareOpenBrowser: prepareInicisBrowserOpen,
+      afterBrowserClosed: restoreInicisOverlayAfterBrowser,
+    };
+
     inicisResumeStepRef.current = STEP.BIRTH_DATE;
     inicisFlowActiveRef.current = true;
 
@@ -823,7 +867,7 @@ const Sign = ({ navigation }) => {
       setInicisOverlayTitle(INICIS_OVERLAY_TITLE.GUARDIAN);
       setInicisOverlayVisible(true);
       try {
-        const result = await resumePendingInicisFlow('guardian_consent');
+        const result = await resumePendingInicisFlow('guardian_consent', browserUi);
         if (result) {
           applyGuardianVerifySuccess(result);
           await promptStudentIdentityAfterGuardian();
@@ -843,7 +887,7 @@ const Sign = ({ navigation }) => {
       let evaluation = null;
       let flowError = null;
       try {
-        const result = await resumePendingInicisFlow('student_signup');
+        const result = await resumePendingInicisFlow('student_signup', browserUi);
         if (result) {
           evaluation = evaluateStudentVerifyResult(result);
         }
