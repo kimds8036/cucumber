@@ -85,6 +85,7 @@ import {
 import {
   notifyCertificateReviewPending,
   notifyStudentIdReviewPending,
+  notifySignupCreated,
 } from '../services/discordWebhook.service.js';
 import {
   verifyKakaoAccessToken,
@@ -2031,6 +2032,15 @@ router.post(
           cloudinaryUrl: studentIdManualVerification.cloudinaryUrl,
         });
       }
+
+      notifySignupCreated({
+        userId,
+        username: signupUsername,
+        signupMethod: signupMethod || 'phone',
+        birthDate: normalizedBirthDate || null,
+        schoolId: effectiveSchoolId || null,
+        studentVerified: Boolean(studentVerifiedOnInsert),
+      });
 
       res.status(201).json({ 
         success: true, 

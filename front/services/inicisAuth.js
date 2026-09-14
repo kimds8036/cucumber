@@ -295,6 +295,12 @@ export async function runInicisIdentityFlow(purpose, options = {}) {
       mTxId = session.mTxId;
       await savePendingSession({ mTxId, purpose });
 
+      await settleUiForInicisBrowser();
+      if (cancelled) {
+        const err = new Error('cancelled');
+        err.code = 'CANCELLED';
+        throw err;
+      }
       await openInicisBrowser(session.launchUrl);
       await dismissInicisBrowserSafely();
       const result = await waitForInicisResult(mTxId, {
@@ -342,6 +348,12 @@ export async function resumePendingInicisFlow(expectedPurpose, options = {}) {
     });
     try {
       const launchUrl = buildInicisLaunchUrl(pending.mTxId);
+      await settleUiForInicisBrowser();
+      if (cancelled) {
+        const err = new Error('cancelled');
+        err.code = 'CANCELLED';
+        throw err;
+      }
       await openInicisBrowser(launchUrl);
       await dismissInicisBrowserSafely();
       const result = await waitForInicisResult(pending.mTxId, {
@@ -405,6 +417,17 @@ export function waitForPresentationLayerRelease() {
   });
 }
 
+/**
+ * 가입 오버레이(Modal) 직후 iOS에서 SFSafariViewController가 안 뜨는 경우 방지.
+ * Apple 로그인 시트·본인인증 오버레이 애니메이션이 끝난 뒤 브라우저를 연다.
+ */
+export async function settleUiForInicisBrowser() {
+  await waitForPresentationLayerRelease();
+  await new Promise((resolve) =>
+    setTimeout(resolve, Platform.OS === 'ios' ? 450 : 120),
+  );
+}
+
 export function isInicisFlowInProgress() {
   return Boolean(activeFlowPromise);
 }
@@ -418,6 +441,7 @@ export async function openPendingInicisBrowser() {
     throw err;
   }
   const { launchUrl } = await resolveFreshInicisLaunchTarget(pending);
+  await settleUiForInicisBrowser();
   await openInicisBrowser(launchUrl);
   await dismissInicisBrowserSafely();
 }

@@ -50,6 +50,7 @@ import {
   isInicisClientEnabled,
   openPendingInicisBrowser,
   dismissInicisBrowserSafely,
+  settleUiForInicisBrowser,
   waitForPresentationLayerRelease,
 } from '../../../services/inicisAuth';
 import { useAuth } from '../../../context/AuthContext';
@@ -680,6 +681,7 @@ const SignPhone = ({ navigation }) => {
       let evaluation = null;
       let flowError = null;
       try {
+        await settleUiForInicisBrowser();
         evaluation = await runStudentIdentityVerificationCore();
       } catch (error) {
         flowError = error;
@@ -729,6 +731,7 @@ const SignPhone = ({ navigation }) => {
     setInicisOverlayVisible(true);
 
     try {
+      await settleUiForInicisBrowser();
       await runGuardianIdentityVerificationCore();
       await promptStudentIdentityAfterGuardian();
     } catch (error) {
