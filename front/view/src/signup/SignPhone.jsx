@@ -37,6 +37,7 @@ import usePreventSignupStackExit from './usePreventSignupStackExit';
 import {
   buildAbortSignupConfirmAlert,
   leaveSignupToEntry,
+  waitForSignupModalsToClear,
 } from './signupAbort';
 import { api, setAuthToken } from '../../../utils/api';
 import { peekPendingInviteCode, consumePendingInviteCode } from '../../../utils/inviteReferral';
@@ -50,8 +51,6 @@ import {
   isInicisClientEnabled,
   openPendingInicisBrowser,
   dismissInicisBrowserSafely,
-  settleUiForInicisBrowser,
-  waitForPresentationLayerRelease,
 } from '../../../services/inicisAuth';
 import { useAuth } from '../../../context/AuthContext';
 import { useAppNavigation } from '../../../navigation/useAppNavigation';
@@ -175,6 +174,7 @@ const SignPhone = ({ navigation }) => {
   const birthDateInputRef = useRef('');
   const inicisClientTokenRef = useRef(null);
   const inicisFlowActiveRef = useRef(false);
+  const inicisOverlayVisibleRef = useRef(false);
   const inicisResumeStepRef = useRef(STEP.BIRTH_DATE);
   const guardianModalPendingActionRef = useRef(null);
   const completeSignupRef = useRef(null);
@@ -416,12 +416,30 @@ const SignPhone = ({ navigation }) => {
     await dismissInicisBrowserSafely();
     inicisFlowActiveRef.current = false;
     if (isMountedRef.current) {
+      inicisOverlayVisibleRef.current = false;
       setInicisOverlayVisible(false);
       setInicisManualOpening(false);
       setShowStudentIdentityIntroModal(false);
       setShowGuardianConsentModal(false);
     }
-    await waitForPresentationLayerRelease();
+    await waitForSignupModalsToClear();
+  }, []);
+
+  /** 인앱 브라우저 직전: Modal을 완전히 내려 SFSafari 충돌 방지 */
+  const prepareInicisBrowserOpen = useCallback(async () => {
+    if (isMountedRef.current) {
+      inicisOverlayVisibleRef.current = false;
+      setInicisOverlayVisible(false);
+    }
+    await waitForSignupModalsToClear();
+  }, []);
+
+  /** 브라우저 닫힌 뒤 폴링 중 오버레이 재표시 */
+  const restoreInicisOverlayAfterBrowser = useCallback(async () => {
+    if (isMountedRef.current && inicisFlowActiveRef.current) {
+      inicisOverlayVisibleRef.current = true;
+      setInicisOverlayVisible(true);
+    }
   }, []);
 
   const showInicisAlertAfterOverlay = useCallback(
@@ -571,13 +589,20 @@ const SignPhone = ({ navigation }) => {
     return true;
   }, []);
 
-  const executeInicisFlow = useCallback(async (purpose) => {
-    const pending = await getPendingInicisSession();
-    if (pending?.purpose === purpose) {
-      return resumePendingInicisFlow(purpose);
-    }
-    return runInicisIdentityFlow(purpose);
-  }, []);
+  const executeInicisFlow = useCallback(
+    async (purpose) => {
+      const browserUi = {
+        prepareOpenBrowser: prepareInicisBrowserOpen,
+        afterBrowserClosed: restoreInicisOverlayAfterBrowser,
+      };
+      const pending = await getPendingInicisSession();
+      if (pending?.purpose === purpose) {
+        return resumePendingInicisFlow(purpose, browserUi);
+      }
+      return runInicisIdentityFlow(purpose, browserUi);
+    },
+    [prepareInicisBrowserOpen, restoreInicisOverlayAfterBrowser],
+  );
 
   const runStudentIdentityVerificationCore = useCallback(async () => {
     if (SIGNUP_REDESIGN_SKIP_VALIDATION) {
@@ -672,16 +697,20 @@ const SignPhone = ({ navigation }) => {
 
   const runStudentIdentityVerification = useCallback(
     async (resumeStep = STEP.BIRTH_DATE) => {
-      if (inicisFlowActiveRef.current) return;
+      if (inicisFlowActiveRef.current) {
+        if (inicisOverlayVisibleRef.current) return;
+        cancelInicisFlow();
+        inicisFlowActiveRef.current = false;
+      }
       inicisResumeStepRef.current = resumeStep;
       inicisFlowActiveRef.current = true;
       setInicisOverlayTitle(INICIS_OVERLAY_TITLE.STUDENT);
+      inicisOverlayVisibleRef.current = true;
       setInicisOverlayVisible(true);
 
       let evaluation = null;
       let flowError = null;
       try {
-        await settleUiForInicisBrowser();
         evaluation = await runStudentIdentityVerificationCore();
       } catch (error) {
         flowError = error;
@@ -724,14 +753,18 @@ const SignPhone = ({ navigation }) => {
   }, [endInicisOverlay]);
 
   const runGuardianAndStudentVerification = useCallback(async () => {
-    if (inicisFlowActiveRef.current) return;
+    if (inicisFlowActiveRef.current) {
+      if (inicisOverlayVisibleRef.current) return;
+      cancelInicisFlow();
+      inicisFlowActiveRef.current = false;
+    }
     inicisResumeStepRef.current = STEP.BIRTH_DATE;
     inicisFlowActiveRef.current = true;
     setInicisOverlayTitle(INICIS_OVERLAY_TITLE.GUARDIAN);
+    inicisOverlayVisibleRef.current = true;
     setInicisOverlayVisible(true);
 
     try {
-      await settleUiForInicisBrowser();
       await runGuardianIdentityVerificationCore();
       await promptStudentIdentityAfterGuardian();
     } catch (error) {
@@ -755,6 +788,11 @@ const SignPhone = ({ navigation }) => {
     const pending = await getPendingInicisSession();
     if (!pending) return;
 
+    const browserUi = {
+      prepareOpenBrowser: prepareInicisBrowserOpen,
+      afterBrowserClosed: restoreInicisOverlayAfterBrowser,
+    };
+
     inicisResumeStepRef.current = STEP.BIRTH_DATE;
     inicisFlowActiveRef.current = true;
 
@@ -764,7 +802,7 @@ const SignPhone = ({ navigation }) => {
       setInicisOverlayTitle(INICIS_OVERLAY_TITLE.GUARDIAN);
       setInicisOverlayVisible(true);
       try {
-        const result = await resumePendingInicisFlow('guardian_consent');
+        const result = await resumePendingInicisFlow('guardian_consent', browserUi);
         if (result) {
           applyGuardianVerifySuccess(result);
           await promptStudentIdentityAfterGuardian();
@@ -786,7 +824,7 @@ const SignPhone = ({ navigation }) => {
       let evaluation = null;
       let flowError = null;
       try {
-        const result = await resumePendingInicisFlow('student_signup');
+        const result = await resumePendingInicisFlow('student_signup', browserUi);
         if (result) {
           evaluation = evaluateStudentVerifyResult(result);
         }
@@ -826,7 +864,10 @@ const SignPhone = ({ navigation }) => {
     if (inicisManualOpening) return;
     setInicisManualOpening(true);
     try {
-      await openPendingInicisBrowser();
+      await openPendingInicisBrowser({
+        prepareOpenBrowser: prepareInicisBrowserOpen,
+        afterBrowserClosed: restoreInicisOverlayAfterBrowser,
+      });
     } catch (error) {
       showInicisAlertAfterOverlay(
         '알림',
@@ -838,7 +879,7 @@ const SignPhone = ({ navigation }) => {
         setInicisManualOpening(false);
       }
     }
-  }, [inicisManualOpening, showInicisAlertAfterOverlay]);
+  }, [inicisManualOpening, prepareInicisBrowserOpen, restoreInicisOverlayAfterBrowser, showInicisAlertAfterOverlay]);
 
   const handleInicisOverlayCancel = useCallback(async () => {
     // Entry 이동은 run* 의 CANCELLED 분기에서만 — 여기서 abort 하면 이중 reset

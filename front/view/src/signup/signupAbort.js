@@ -2,23 +2,19 @@ import { InteractionManager, Platform } from 'react-native';
 import { CommonActions } from '@react-navigation/native';
 import { waitForPresentationLayerRelease } from '../../../services/inicisAuth';
 
-/** SignupIosSafeModal(500) / AppPopupModal(~220) dismiss 여유 */
-const IOS_MODAL_CLEAR_MS = 520;
-const ANDROID_MODAL_CLEAR_MS = 80;
-
 /**
- * iOS Modal·Alert 잔여 터치 레이어가 사라질 때까지 대기
+ * iOS Modal·Alert 잔여 터치 레이어가 사라질 때까지 대기.
+ * waitForPresentationLayerRelease(iOS ~520ms)가 SignupIosSafeModal 언마운트와 맞춤.
  */
 export async function waitForSignupModalsToClear() {
   await waitForPresentationLayerRelease();
-  await new Promise((resolve) => {
-    InteractionManager.runAfterInteractions(() => {
-      setTimeout(
-        resolve,
-        Platform.OS === 'ios' ? IOS_MODAL_CLEAR_MS : ANDROID_MODAL_CLEAR_MS,
-      );
+  if (Platform.OS !== 'ios') {
+    await new Promise((resolve) => {
+      InteractionManager.runAfterInteractions(() => {
+        setTimeout(resolve, 80);
+      });
     });
-  });
+  }
 }
 
 /** 오버레이 취소 + CANCELLED 등이 동시에 들어와도 reset 한 번만 */
