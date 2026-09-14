@@ -1,7 +1,7 @@
 import pool from '../config/database.js';
 import { getAdminBasePath } from '../config/adminPath.js';
 
-/** @typedef {'review' | 'inquiry' | 'report'} DiscordChannel */
+/** @typedef {'review' | 'inquiry' | 'report' | 'signup'} DiscordChannel */
 
 const EMBED_COLOR = {
   review: 0x3b82f6,
@@ -9,6 +9,7 @@ const EMBED_COLOR = {
   report: 0xf59e0b,
   autoHide: 0xef4444,
   appeal: 0x8b5cf6,
+  signup: 0x06b6d4,
 };
 
 const PURPOSE_LABEL = {
@@ -32,6 +33,7 @@ function resolveWebhookUrl(channel) {
     review: process.env.DISCORD_WEBHOOK_URL_REVIEW,
     inquiry: process.env.DISCORD_WEBHOOK_URL_INQUIRY,
     report: process.env.DISCORD_WEBHOOK_URL_REPORT,
+    signup: process.env.DISCORD_WEBHOOK_URL_SIGNUP,
   };
   return String(
     byChannel[channel] || process.env.DISCORD_WEBHOOK_URL || '',
@@ -148,6 +150,49 @@ async function lookupSchoolName(schoolId) {
 
 function purposeLabel(purpose) {
   return PURPOSE_LABEL[purpose] || purpose || '가입';
+}
+
+/**
+ * 신규 회원가입
+ * @param {{
+ *   userId: number,
+ *   username?: string,
+ *   signupMethod?: string,
+ *   birthDate?: string,
+ *   schoolId?: string|null,
+ *   studentVerified?: boolean,
+ *   createdAt?: Date|string,
+ * }} p
+ */
+export function notifySignupCreated(p) {
+  enqueue('signup', async () => {
+    const methodRaw = String(p.signupMethod || 'phone').toLowerCase();
+    const methodLabel =
+      methodRaw === 'kakao'
+        ? '카카오'
+        : methodRaw === 'apple'
+          ? 'Apple'
+          : '전화번호';
+    return {
+      embeds: [
+        {
+          title: '🆕 신규 가입',
+          color: EMBED_COLOR.signup,
+          fields: [
+            field('유저', `${p.username || '-'} (#${p.userId})`),
+            field('가입 수단', methodLabel),
+            field('생년월일', p.birthDate || '-'),
+            field(
+              '학생 인증',
+              p.studentVerified ? '완료' : '미인증(UNVERIFIED)',
+            ),
+            field('관리자', adminPanelHint('users'), false),
+          ],
+          timestamp: isoNow(p.createdAt),
+        },
+      ],
+    };
+  });
 }
 
 /**

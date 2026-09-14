@@ -53,6 +53,7 @@ import {
   isInicisClientEnabled,
   openPendingInicisBrowser,
   dismissInicisBrowserSafely,
+  settleUiForInicisBrowser,
   waitForPresentationLayerRelease,
 } from '../../../services/inicisAuth';
 import { loginWithApple } from '../../../services/appleAuth';
@@ -689,6 +690,8 @@ const SignApple = ({ navigation }) => {
       let evaluation = null;
       let flowError = null;
       try {
+        // Modal 애니메이션 직후 Safari 미개방 방지 (특히 Apple 로그인 직후 iOS)
+        await settleUiForInicisBrowser();
         evaluation = await runStudentIdentityVerificationCore();
       } catch (error) {
         flowError = error;
@@ -738,6 +741,7 @@ const SignApple = ({ navigation }) => {
     setInicisOverlayVisible(true);
 
     try {
+      await settleUiForInicisBrowser();
       await runGuardianIdentityVerificationCore();
       await promptStudentIdentityAfterGuardian();
     } catch (error) {
