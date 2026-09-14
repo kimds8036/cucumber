@@ -18,6 +18,7 @@ import { e164ToLocalKr, normalizeLocalKrPhone } from '../../../utils/phoneFormat
 import SignupStepScroll from './SignupStepScroll';
 import SchoolSearchField from './SchoolSearchField';
 import SignupHelperText from './SignupHelperText';
+import { buildDuplicateAccountAlertMessage } from './signupDuplicateGuard';
 
 const SMS_RESEND_COOLDOWN_SEC = 60;
 
@@ -168,7 +169,13 @@ const SignStepIdentity = ({
         phone: normalized,
       });
       if (!dupRes.data?.data?.available) {
-        Alert.alert('알림', '이미 가입된 전화번호입니다.');
+        Alert.alert(
+          '이미 가입된 계정',
+          buildDuplicateAccountAlertMessage({
+            providers: dupRes.data?.data?.providers,
+            code: 'PHONE_ALREADY_REGISTERED',
+          }),
+        );
         return;
       }
 

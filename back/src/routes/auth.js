@@ -941,11 +941,29 @@ router.post('/check-phone-available', signupPhoneBackendLimiter, async (req, res
       phoneLookupBindParams(phone),
     );
 
+    if (existing.length === 0) {
+      return res.json({
+        success: true,
+        data: {
+          phone,
+          available: true,
+          providers: [],
+          providerLabel: null,
+        },
+      });
+    }
+
+    const existingUserId = Number(existing[0].id);
+    const providers = await listOauthProvidersForUser(pool, existingUserId);
+    const providerLabel = formatSocialProvidersLabel(providers) || null;
+
     return res.json({
       success: true,
       data: {
         phone,
-        available: existing.length === 0,
+        available: false,
+        providers,
+        providerLabel,
       },
     });
   } catch (error) {
@@ -1346,8 +1364,12 @@ router.post(
         if (existingLink) {
           return res.status(409).json({
             success: false,
-            message: '이미 가입된 카카오 계정입니다. 로그인해주세요.',
+            message: '이미 가입된 카카오 계정입니다. 카카오 로그인을 이용해 주세요.',
             code: 'KAKAO_ALREADY_LINKED',
+            data: {
+              providers: ['kakao'],
+              providerLabel: '카카오',
+            },
           });
         }
       } catch (oauthErr) {
@@ -1381,8 +1403,12 @@ router.post(
         if (existingLink) {
           return res.status(409).json({
             success: false,
-            message: '이미 가입된 Apple 계정입니다. 로그인해주세요.',
+            message: '이미 가입된 Apple 계정입니다. Apple 로그인을 이용해 주세요.',
             code: 'APPLE_ALREADY_LINKED',
+            data: {
+              providers: ['apple'],
+              providerLabel: 'Apple',
+            },
           });
         }
       } catch (oauthErr) {
@@ -1607,8 +1633,13 @@ router.post(
     if (existingByUsername.length > 0) {
       return res.status(409).json({
         success: false,
-        message: '이미 사용 중인 아이디입니다. 로그인해주세요.',
+        message:
+          '이미 사용 중인 아이디입니다.\n\n아이디와 비밀번호로 로그인해 주세요.',
         code: 'USERNAME_ALREADY_REGISTERED',
+        data: {
+          providers: [],
+          providerLabel: null,
+        },
       });
     }
     const [existingByPhone] = await pool.execute(
@@ -1621,11 +1652,15 @@ router.post(
       const existingUserId = Number(existingByPhone[0].id);
       const providers = await listOauthProvidersForUser(pool, existingUserId);
       const label = formatSocialProvidersLabel(providers);
+      const loginHow =
+        Array.isArray(providers) && providers.length > 0
+          ? providers.length === 1
+            ? `${label} 로그인을 이용해 주세요.`
+            : `${label.replace(/·/g, ' 또는 ')} 로그인을 이용해 주세요.`
+          : '아이디와 비밀번호로 로그인해 주세요.';
       return res.status(409).json({
         success: false,
-        message: label
-          ? `이미 ${label}로 가입된 전화번호입니다. 로그인해주세요.`
-          : '이미 가입된 전화번호입니다. 로그인해주세요.',
+        message: `이미 가입된 전화번호입니다.\n\n${loginHow}`,
         code: 'PHONE_ALREADY_REGISTERED',
         data: {
           providers,
