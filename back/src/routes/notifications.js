@@ -157,6 +157,8 @@ router.get('/', authenticate, async (req, res) => {
           category: n.category,
           title: display.title,
           content: display.content,
+          // 표시용 content 와 별도로 DB 원문 (거절 사유 등)
+          body: n.body != null ? String(n.body) : '',
           isRead: !!n.is_read,
           createdAt: n.created_at,
           relatedType: n.related_type,

@@ -41,9 +41,10 @@ import {
   mergeTestReturnedMailNotification,
   navigateToResendPersonalMail,
 } from '../../utils/personalMail';
-import { normalizeNotificationDisplay } from '../../utils/notificationDisplay';
-import { useAuth } from '../../context/AuthContext';
-import StudentVerificationRejectedModal from '../../components/auth/StudentVerificationRejectedModal';
+import {
+  normalizeNotificationDisplay,
+  resolveStudentRejectReasonFromNotification,
+} from '../../utils/notificationDisplay';
 
 const PAGE_SIZE = 20;
 const INITIAL_PREFETCH_PAGES = 3;
@@ -106,12 +107,17 @@ const normalizeWatchers = (watchers) => normalizeStudySummaryWatchers(watchers);
 const mapRowToNotificationItem = (n) => {
   const icon = mapTypeToIcon(n.type, n.category);
   const display = normalizeNotificationDisplay(n);
+  const rejectReasonText =
+    n.relatedType === 'student_verification_rejected'
+      ? resolveStudentRejectReasonFromNotification(n)
+      : '';
   return {
     id: n.id,
     type: n.type,
     category: n.category,
     title: display.title,
-    content: display.content,
+    content: rejectReasonText || display.content,
+    body: n.body != null ? String(n.body) : '',
     time: formatTime(n.createdAt),
     createdAt: n.createdAt,
     isRead: !!n.isRead,
@@ -184,8 +190,6 @@ const NotificationScreen = ({ navigation }) => {
   const appStateRef = useRef(AppState.currentState);
   const { hasUnread, markNotificationsSeenForBell, getStudySummaryWatchers } =
     useNotification();
-  const { rejectReason, refreshStudentVerification } = useAuth();
-  const [rejectionNoticeVisible, setRejectionNoticeVisible] = useState(false);
   const { markFriendRequestsSeenForBell } = useFriend();
   const getDebugBorderStyle = useCallback(
     (color = '#FF3B30') =>
@@ -829,16 +833,11 @@ const NotificationScreen = ({ navigation }) => {
         navigation?.navigate('InquiryDetail', { inquiryId: n.relatedId });
         return;
       }
-      if (n.relatedType === 'student_verification_approved') {
-        preserveListOnNextFocusRef.current = false;
-        popToMainRoot(navigation);
-        return;
-      }
-      if (n.relatedType === 'student_verification_rejected') {
-        preserveListOnNextFocusRef.current = true;
-        void refreshStudentVerification().finally(() => {
-          setRejectionNoticeVisible(true);
-        });
+      if (
+        n.relatedType === 'student_verification_approved' ||
+        n.relatedType === 'student_verification_rejected'
+      ) {
+        // 목록에서 사유만 확인 — 탭해도 팝업/이동 없음
         return;
       }
       if (n.relatedType === 'post' && n.relatedId) {
@@ -1078,15 +1077,6 @@ const NotificationScreen = ({ navigation }) => {
           ]}
         />
       </SafeAreaView>
-      <StudentVerificationRejectedModal
-        visible={rejectionNoticeVisible}
-        rejectReason={rejectReason}
-        onClose={() => setRejectionNoticeVisible(false)}
-        onPressResubmit={() => {
-          setRejectionNoticeVisible(false);
-          navigation?.navigate('StudentIdVerify', { mode: 'rejected' });
-        }}
-      />
     </View>
   );
 };

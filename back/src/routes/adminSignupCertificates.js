@@ -184,7 +184,7 @@ router.patch('/:id', requireAdminApi, validate(reviewValidators), async (req, re
             if (!reason) {
               return '알림을 열어 사유를 확인하고, 필요하면 다시 제출해 주세요.';
             }
-            return reason.length > 90 ? `${reason.slice(0, 90)}…` : reason;
+            return reason;
           })(),
           relatedType: 'student_verification_rejected',
           relatedId: submissionId,
