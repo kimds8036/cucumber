@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { View, StyleSheet } from 'react-native';
 import { useAuth } from '../context/AuthContext';
 import { useMainShellOptional } from '../context/MainShellContext';
@@ -16,11 +16,13 @@ export function useRequireStudentVerified(navigation, options = {}) {
   const shell = useMainShellOptional();
   const isApproved = studentVerificationStatus === 'APPROVED';
   const [visible, setVisible] = useState(!isApproved);
+  const pendingVerifyRef = useRef(false);
   const message = options.message;
   const reason = options.reason || 'restricted';
 
   useEffect(() => {
     if (isApproved) {
+      pendingVerifyRef.current = false;
       setVisible(false);
       return;
     }
@@ -28,12 +30,20 @@ export function useRequireStudentVerified(navigation, options = {}) {
   }, [isApproved]);
 
   const handleClose = useCallback(() => {
+    pendingVerifyRef.current = false;
     setVisible(false);
     navigation?.goBack?.();
   }, [navigation]);
 
   const handleVerify = useCallback(() => {
+    // CTA Modal dismiss 완료 후 request (iOS Modal 중첩 방지)
+    pendingVerifyRef.current = true;
     setVisible(false);
+  }, []);
+
+  const handleDismissed = useCallback(() => {
+    if (!pendingVerifyRef.current) return;
+    pendingVerifyRef.current = false;
     shell?.requestStudentVerification?.({
       reason,
       statusHint: studentVerificationStatus,
@@ -51,6 +61,7 @@ export function useRequireStudentVerified(navigation, options = {}) {
             message={message}
             onClose={handleClose}
             onPressVerify={handleVerify}
+            onDismissed={handleDismissed}
           />
         </View>
       );
@@ -63,6 +74,7 @@ export function useRequireStudentVerified(navigation, options = {}) {
     message,
     handleClose,
     handleVerify,
+    handleDismissed,
   ]);
 
   return { allowed: isApproved, Gate };

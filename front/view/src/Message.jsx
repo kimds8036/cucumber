@@ -357,6 +357,7 @@ export function MessageContent({ navigation }) {
   const shell = useMainShellOptional();
   const isStudentApproved = studentVerificationStatus === 'APPROVED';
   const [mailCtaVisible, setMailCtaVisible] = useState(false);
+  const pendingMailVerifyRef = useRef(false);
   // TODO: /api/ads 연동 후 useAdSlots(AD_PLACEMENTS.FEED_NOTE_MAIL)
   const adSlots = [];
   const { width } = useWindowDimensions();
@@ -1469,9 +1470,17 @@ export function MessageContent({ navigation }) {
       <StudentVerificationCtaModal
         visible={mailCtaVisible}
         status={studentVerificationStatus || 'UNVERIFIED'}
-        onClose={() => setMailCtaVisible(false)}
-        onPressVerify={() => {
+        onClose={() => {
+          pendingMailVerifyRef.current = false;
           setMailCtaVisible(false);
+        }}
+        onPressVerify={() => {
+          pendingMailVerifyRef.current = true;
+          setMailCtaVisible(false);
+        }}
+        onDismissed={() => {
+          if (!pendingMailVerifyRef.current) return;
+          pendingMailVerifyRef.current = false;
           shell?.requestStudentVerification?.({
             reason: 'personal_mail',
             statusHint: studentVerificationStatus,

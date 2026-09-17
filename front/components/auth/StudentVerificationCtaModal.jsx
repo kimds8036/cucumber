@@ -18,6 +18,7 @@ export default function StudentVerificationCtaModal({
   visible,
   onClose,
   onPressVerify,
+  onDismissed,
   status = 'UNVERIFIED',
   message,
 }) {
@@ -41,6 +42,7 @@ export default function StudentVerificationCtaModal({
       dismissOnBackPress
       overlayColor="rgba(0,0,0,0.5)"
       cardStyle={styles.card}
+      onDismissed={onDismissed}
     >
       <View style={styles.iconWrap}>
         <Ionicons
