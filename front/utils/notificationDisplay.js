@@ -111,6 +111,16 @@ function resolveLegacyBody(row) {
     return '공부 완료!';
   }
 
+  // 학생인증 거절/승인 — body에 사유·안내가 있으므로 제목으로 덮어쓰지 않음
+  if (
+    relatedType === 'student_verification_rejected' ||
+    relatedType === 'student_verification_approved' ||
+    rawTitle.includes('거절되었') ||
+    rawTitle.includes('학생 인증이 완료')
+  ) {
+    return rawBody || rawTitle;
+  }
+
   if (rawTitle && rawBody && rawTitle !== rawBody && !isKnownNotificationPhrase(rawBody)) {
     return rawTitle;
   }
@@ -118,9 +128,54 @@ function resolveLegacyBody(row) {
   return rawBody || rawTitle;
 }
 
+const STUDENT_REJECT_TITLE_PHRASES = [
+  '학생증이 거절되었습니다',
+  '재학증명서가 거절되었습니다',
+];
+
+/**
+ * 학생인증 거절 알림의 실제 사유.
+ * 표시용 content 가 제목으로 덮인 경우에도 DB 원문 body 를 우선한다.
+ */
+export function resolveStudentRejectReasonFromNotification(row) {
+  const relatedType = String(
+    row?.relatedType ?? row?.related_type ?? '',
+  ).trim();
+  if (
+    relatedType &&
+    relatedType !== 'student_verification_rejected'
+  ) {
+    return '';
+  }
+
+  const candidates = [
+    String(row?.body ?? '').trim(),
+    String(row?.content ?? '').trim(),
+  ].filter(Boolean);
+
+  for (const text of candidates) {
+    if (CATEGORY_TITLES.has(text)) continue;
+    if (STUDENT_REJECT_TITLE_PHRASES.some((p) => text === p)) continue;
+    return text;
+  }
+
+  return candidates[0] || '';
+}
+
 /** 알림 화면 표시용 title + content (구 형식 DB 데이터 호환) */
 export function normalizeNotificationDisplay(row) {
   const rawTitle = String(row?.title ?? '').trim();
+  const relatedType = String(
+    row?.relatedType ?? row?.related_type ?? '',
+  ).trim();
+
+  if (relatedType === 'student_verification_rejected') {
+    const reason = resolveStudentRejectReasonFromNotification(row);
+    return {
+      title: '시스템',
+      content: normalizeHonorificSpacing(reason || resolveLegacyBody(row)),
+    };
+  }
 
   if (isFriendNotification(row)) {
     const content =

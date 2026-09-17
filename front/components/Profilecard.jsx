@@ -407,8 +407,10 @@ const ProfileCard = ({
       <StudentVerificationRejectedModal
         visible={rejectionNoticeVisible}
         rejectReason={rejectReason}
+        canResubmit={isRejected}
         onClose={() => setRejectionNoticeVisible(false)}
         onPressResubmit={() => {
+          if (!isRejected) return;
           setRejectionNoticeVisible(false);
           shell?.requestStudentVerification?.({
             reason: 'mypage_rejected',

@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   Text,
   TouchableOpacity,
@@ -16,22 +16,35 @@ const FALLBACK_REASON =
 /**
  * 학생증/증명서 거절 사유 안내.
  * 재제출은 선택 — 닫으면 미인증으로 앱 계속 이용.
+ * canResubmit=false(예: 이미 PENDING 검수 중)면 재제출 버튼 숨김.
  */
 export default function StudentVerificationRejectedModal({
   visible,
   onClose,
+  onDismissed,
   onPressResubmit,
   rejectReason,
+  canResubmit = true,
 }) {
   const { width } = useWindowDimensions();
   const normalize = useMemo(() => getNormalize(width), [width]);
   const styles = useMemo(() => createStyles(normalize), [normalize]);
-  const reasonText = String(rejectReason || '').trim() || FALLBACK_REASON;
+  const incomingReason = String(rejectReason || '').trim();
+  // 닫힘 애니메이션 중 props 가 비워져도 내용이 바뀌지 않도록 유지
+  const [latchedReason, setLatchedReason] = useState(incomingReason);
+
+  useEffect(() => {
+    if (!visible) return;
+    if (incomingReason) setLatchedReason(incomingReason);
+  }, [visible, incomingReason]);
+
+  const reasonText = latchedReason || FALLBACK_REASON;
 
   return (
     <AppPopupModal
       visible={visible}
       onClose={onClose}
+      onDismissed={onDismissed}
       dismissOnBackdrop={false}
       dismissOnBackPress
       overlayColor="rgba(0,0,0,0.5)"
@@ -50,22 +63,28 @@ export default function StudentVerificationRejectedModal({
         <Text style={styles.reasonText}>{reasonText}</Text>
       </View>
       <Text style={styles.hint}>
-        다시 제출하지 않아도 미인증 상태로 앱을 이용할 수 있어요.
+        {canResubmit
+          ? '다시 제출하지 않아도 미인증 상태로 앱을 이용할 수 있어요.'
+          : '이미 학생증 검수 중이에요. 결과가 나올 때까지 기다려 주세요.'}
       </Text>
       <View style={styles.actions}>
-        <TouchableOpacity
-          style={[styles.btn, styles.btnPrimary]}
-          onPress={onPressResubmit}
-          activeOpacity={0.85}
-        >
-          <Text style={styles.btnPrimaryText}>다시 제출하기</Text>
-        </TouchableOpacity>
+        {canResubmit ? (
+          <TouchableOpacity
+            style={[styles.btn, styles.btnPrimary]}
+            onPress={onPressResubmit}
+            activeOpacity={0.85}
+          >
+            <Text style={styles.btnPrimaryText}>다시 제출하기</Text>
+          </TouchableOpacity>
+        ) : null}
         <TouchableOpacity
           style={[styles.btn, styles.btnSecondary]}
           onPress={onClose}
           activeOpacity={0.85}
         >
-          <Text style={styles.btnSecondaryText}>미인증으로 계속</Text>
+          <Text style={styles.btnSecondaryText}>
+            {canResubmit ? '미인증으로 계속' : '확인'}
+          </Text>
         </TouchableOpacity>
       </View>
     </AppPopupModal>

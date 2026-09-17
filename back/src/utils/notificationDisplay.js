@@ -119,6 +119,16 @@ function resolveLegacyBody(row, mailMeta) {
     return '공부 완료!';
   }
 
+  // 학생인증 거절/승인 — body에 사유·안내가 있으므로 제목으로 덮어쓰지 않음
+  if (
+    relatedType === 'student_verification_rejected' ||
+    relatedType === 'student_verification_approved' ||
+    rawTitle.includes('거절되었') ||
+    rawTitle.includes('학생 인증이 완료')
+  ) {
+    return rawBody || rawTitle;
+  }
+
   if (rawTitle && rawBody && rawTitle !== rawBody && !isKnownNotificationPhrase(rawBody)) {
     return rawTitle;
   }
@@ -131,6 +141,19 @@ function resolveLegacyBody(row, mailMeta) {
  */
 export function normalizeNotificationForClient(row, mailMeta = null) {
   const rawTitle = String(row?.title ?? '').trim();
+  const relatedType = String(row?.relatedType ?? row?.related_type ?? '').trim();
+
+  if (relatedType === 'student_verification_rejected') {
+    const rawBody = String(row?.body ?? '').trim();
+    const content =
+      rawBody && rawBody !== rawTitle
+        ? rawBody
+        : rawBody || resolveLegacyBody(row, mailMeta);
+    return {
+      title: '시스템',
+      content: normalizeHonorificSpacing(content),
+    };
+  }
 
   if (isFriendNotification(row)) {
     const content =

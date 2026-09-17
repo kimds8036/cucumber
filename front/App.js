@@ -329,7 +329,7 @@ function RootNavigator() {
     reverificationStatus,
     reverificationDeadline,
     reverificationSubmissionPending,
-    needsProfileUsername,
+    // needsProfileUsername, // 프로필 아이디 게이트 비활성 중
     refreshStudentVerification,
   } = useAuth();
   const [showResubmit, setShowResubmit] = useState(false);
@@ -341,6 +341,7 @@ function RootNavigator() {
   const [resubmitMode, setResubmitMode] = useState('rejected');
   const [prepBeforeResubmit, setPrepBeforeResubmit] = useState(false);
   const [showRejectionNotice, setShowRejectionNotice] = useState(false);
+  const [rejectionNoticeReason, setRejectionNoticeReason] = useState(null);
   const pollRef = useRef(null);
   const prepConfirmOpenRef = useRef(false);
 
@@ -491,6 +492,12 @@ function RootNavigator() {
         return;
       }
       if (relatedType === 'student_verification_rejected') {
+        const fromPush = String(
+          remoteMessage?.notification?.body ||
+            remoteMessage?.data?.body ||
+            '',
+        ).trim();
+        setRejectionNoticeReason(fromPush || null);
         void refreshStudentVerification().finally(() => {
           setShowRejectionNotice(true);
         });
@@ -692,12 +699,13 @@ function RootNavigator() {
   const mainInitialRoute =
     postLoginRoute === 'GuideOverlay' ? 'GuideOverlay' : 'Main';
 
-  if (
-    studentVerificationStatus === 'APPROVED' &&
-    needsProfileUsername
-  ) {
-    return <SignProfileUsername />;
-  }
+  // 프로필 아이디 설정 전체화면 게이트 — 임시 비활성
+  // if (
+  //   studentVerificationStatus === 'APPROVED' &&
+  //   needsProfileUsername
+  // ) {
+  //   return <SignProfileUsername />;
+  // }
 
   return (
     <View style={{ flex: 1 }}>
@@ -718,9 +726,16 @@ function RootNavigator() {
       <InAppReviewPrompt />
       <StudentVerificationRejectedModal
         visible={showRejectionNotice}
-        rejectReason={rejectReason}
-        onClose={() => setShowRejectionNotice(false)}
+        rejectReason={rejectionNoticeReason || rejectReason}
+        canResubmit={studentVerificationStatus === 'REJECTED'}
+        onClose={() => {
+          setShowRejectionNotice(false);
+        }}
+        onDismissed={() => {
+          setRejectionNoticeReason(null);
+        }}
         onPressResubmit={() => {
+          if (studentVerificationStatus !== 'REJECTED') return;
           setShowRejectionNotice(false);
           beginStudentIdResubmit('rejected');
         }}
