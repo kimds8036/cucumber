@@ -53,7 +53,19 @@ export async function withdrawUserAccount(userId) {
       [id],
     );
     publicIds = sidRows
-      .map((r) => String(r.cloudinary_public_id || '').trim())
+      .flatMap((r) => {
+        const raw = String(r.cloudinary_public_id || '').trim();
+        if (!raw) return [];
+        if (raw.startsWith('{')) {
+          try {
+            const j = JSON.parse(raw);
+            return [j.primary, j.secondary].filter(Boolean);
+          } catch {
+            return [raw];
+          }
+        }
+        return [raw];
+      })
       .filter(Boolean);
 
     await connection.execute(

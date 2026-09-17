@@ -227,7 +227,16 @@ export function notifyStudentIdReviewPending(p) {
       timestamp: isoNow(p.submittedAt),
     };
     if (p.cloudinaryUrl) {
-      embed.image = { url: p.cloudinaryUrl };
+      let imageUrl = p.cloudinaryUrl;
+      try {
+        if (String(imageUrl).trim().startsWith('{')) {
+          const j = JSON.parse(imageUrl);
+          imageUrl = j.primary || j.urls?.[0] || imageUrl;
+        }
+      } catch {
+        /* keep raw */
+      }
+      embed.image = { url: imageUrl };
     }
     return { embeds: [embed] };
   });

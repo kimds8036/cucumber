@@ -1,33 +1,23 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import {
   View,
   Text,
   TouchableOpacity,
-  ActivityIndicator,
+  ScrollView,
   Alert,
   StyleSheet,
   useWindowDimensions,
 } from 'react-native';
-import { useIsFocused } from '@react-navigation/native';
-import { useCameraPermissions } from 'expo-camera';
 import { colors, fonts, fontSizes } from '../../../styles/colors';
-import { createStudentIdCameraLayerStyles } from '../../../styles/studentIdCameraLayers';
 import { api } from '../../../utils/api';
-import {
-  cropRectToNormalized,
-  resolveStudentIdCropRect,
-} from '../../../utils/studentIdFrameCrop';
-import StudentIdCaptureStage, {
-  useStudentIdCapture,
-} from '../../../components/auth/StudentIdCaptureStage';
 import { normalizeBirthDateForCompare } from './signupBirthDatePolicy';
 import SubmittingLockModal from '../../../components/common/SubmittingLockModal';
 import SignupPrimaryFooter from './SignupPrimaryFooter';
 import { SIGNUP_REDESIGN_SKIP_VALIDATION } from './signupRedesignFlags';
+import StudentIdPhotoAttachFields from './StudentIdPhotoAttachFields';
+import SignupPrepMaterialsModal from './SignupPrepMaterialsModal';
 
 const UPLOAD_TIMEOUT_MS = 120_000;
-const CAMERA_INSTRUCTION =
-  '학생증의 이름과 학교명이 잘 보이도록 촬영해 주세요';
 
 const SignStepStudentIdVerify = ({
   styles,
@@ -39,12 +29,9 @@ const SignStepStudentIdVerify = ({
   onCertificateGuide,
   onConfirm,
   submitting = false,
+  showPrepOnMount = true,
 }) => {
-  const isFocused = useIsFocused();
   const { width } = useWindowDimensions();
-  const [stageSize, setStageSize] = useState({ width: 0, height: 0 });
-
-  const layerStyles = useMemo(() => createStudentIdCameraLayerStyles(), []);
   const localStyles = useMemo(
     () => createLocalStyles(normalize, width),
     [normalize, width],
@@ -54,34 +41,18 @@ const SignStepStudentIdVerify = ({
     [localStyles.body, localStyles.stepRoot, styles.stepFlex],
   );
 
-  const stageReady = stageSize.width > 0 && stageSize.height > 0;
-
-  const [permission, requestPermission] = useCameraPermissions();
-  const cameraRef = useRef(null);
-  const { frozenUri, capture, resetCapture, previewLayoutRef, lastPhotoRef } =
-    useStudentIdCapture(cameraRef);
-  const [cameraReady, setCameraReady] = useState(false);
-  const [capturing, setCapturing] = useState(false);
+  const [prepVisible, setPrepVisible] = useState(showPrepOnMount);
   const [uploading, setUploading] = useState(false);
-  const [statusText, setStatusText] = useState('');
+  const [primaryUri, setPrimaryUri] = useState(null);
+  const [primaryBase64, setPrimaryBase64] = useState(null);
+  const [primaryAspect, setPrimaryAspect] = useState(1);
+  const [secondaryUri, setSecondaryUri] = useState(null);
+  const [secondaryBase64, setSecondaryBase64] = useState(null);
+  const [secondaryAspect, setSecondaryAspect] = useState(1);
 
-  const busy = capturing || uploading;
+  const busy = uploading;
 
-  const onStageLayout = useCallback((e) => {
-    const { width: layoutWidth, height } = e.nativeEvent.layout;
-    if (layoutWidth > 0 && height > 0) {
-      setStageSize({ width: layoutWidth, height });
-      previewLayoutRef.current = { width: layoutWidth, height };
-    }
-  }, [previewLayoutRef]);
-
-  useEffect(() => {
-    if (!permission?.granted) {
-      requestPermission();
-    }
-  }, [permission, requestPermission]);
-
-  const validateBeforeCapture = useCallback(() => {
+  const validateBeforeSubmit = useCallback(() => {
     if (SIGNUP_REDESIGN_SKIP_VALIDATION) return true;
 
     if (!identity?.name?.trim() || !identity?.birthDate) {
@@ -92,42 +63,12 @@ const SignStepStudentIdVerify = ({
       Alert.alert('알림', '재학 중인 학교를 먼저 선택해 주세요.');
       return false;
     }
+    if (!primaryBase64) {
+      Alert.alert('알림', '학생증 사진을 첨부해 주세요.');
+      return false;
+    }
     return true;
-  }, [identity, schoolId]);
-
-  const handleCapture = useCallback(async () => {
-    if (alreadyVerified || busy || frozenUri) return;
-    if (!validateBeforeCapture()) return;
-
-    if (!cameraRef.current) {
-      Alert.alert('알림', '카메라가 준비되는 중입니다. 잠시 후 다시 시도해 주세요.');
-      return;
-    }
-
-    const preview = previewLayoutRef.current;
-    if (!preview.width || !preview.height) {
-      Alert.alert('알림', '카메라가 준비되는 중입니다. 잠시 후 다시 시도해 주세요.');
-      return;
-    }
-
-    setCapturing(true);
-    try {
-      const photo = await capture();
-      if (!photo?.base64) {
-        Alert.alert('촬영 실패', '다시 촬영해 주세요.');
-        resetCapture();
-      }
-    } finally {
-      setCapturing(false);
-    }
-  }, [
-    alreadyVerified,
-    busy,
-    frozenUri,
-    validateBeforeCapture,
-    capture,
-    resetCapture,
-  ]);
+  }, [identity, schoolId, primaryBase64]);
 
   const handleSubmit = useCallback(async () => {
     if (alreadyVerified || busy) return;
@@ -148,66 +89,41 @@ const SignStepStudentIdVerify = ({
       return;
     }
 
-    if (!validateBeforeCapture()) return;
-
-    const photo = lastPhotoRef.current;
-    if (!photo?.base64) {
-      Alert.alert('알림', '먼저 학생증을 촬영해 주세요.');
-      return;
-    }
-
-    const preview = previewLayoutRef.current;
-    if (!preview.width || !preview.height) {
-      Alert.alert('알림', '촬영 정보를 불러오지 못했습니다. 다시 촬영해 주세요.');
-      resetCapture();
-      return;
-    }
+    if (!validateBeforeSubmit()) return;
 
     setUploading(true);
-    setStatusText('학생증을 업로드하는 중…');
     try {
-      const cropRect = resolveStudentIdCropRect({
-        photoWidth: photo.width,
-        photoHeight: photo.height,
-        previewWidth: preview.width,
-        previewHeight: preview.height,
-        frameWidth: preview.width,
-        frameHeight: preview.height,
-      });
-
-      const cropRegion =
-        cropRect && photo.width && photo.height
-          ? cropRectToNormalized(cropRect, photo.width, photo.height)
-          : null;
-
       const normalizedBirthDate =
         normalizeBirthDateForCompare(identity.birthDate) || identity.birthDate;
-      const normalizedPhone = String(identity.phoneNumber || '').replace(/\D/g, '');
-
-      const res = await api.post(
-        '/api/auth/signup/upload-student-id',
-        {
-          name: identity.name.trim(),
-          birthDate: normalizedBirthDate,
-          phone: normalizedPhone,
-          schoolId,
-          imageBase64: photo.base64,
-          cropRegion,
-        },
-        { timeout: UPLOAD_TIMEOUT_MS },
+      const normalizedPhone = String(identity.phoneNumber || '').replace(
+        /\D/g,
+        '',
       );
+
+      const body = {
+        name: identity.name.trim(),
+        birthDate: normalizedBirthDate,
+        phone: normalizedPhone,
+        schoolId,
+        imageBase64: primaryBase64,
+      };
+      if (secondaryBase64) {
+        body.imageBase64Secondary = secondaryBase64;
+      }
+
+      const res = await api.post('/api/auth/signup/upload-student-id', body, {
+        timeout: UPLOAD_TIMEOUT_MS,
+      });
 
       const data = res.data?.data;
       if (!res.data?.success || !data?.passed) {
         Alert.alert(
           '학생증 제출 실패',
-          res.data?.message || '학생증을 다시 촬영해 주세요.',
+          res.data?.message || '학생증 사진을 다시 첨부해 주세요.',
         );
-        setStatusText('업로드에 실패했습니다. 다시 시도해 주세요.');
         return;
       }
 
-      setStatusText('');
       onVerified?.({
         name: identity.name,
         manualReview: true,
@@ -233,8 +149,6 @@ const SignStepStudentIdVerify = ({
             : e?.response?.data?.message ||
               '학생증 제출 중 오류가 발생했습니다.';
       Alert.alert('인증 오류', msg);
-      setStatusText('오류가 발생했습니다. 다시 시도해 주세요.');
-      resetCapture();
     } finally {
       setUploading(false);
     }
@@ -244,18 +158,10 @@ const SignStepStudentIdVerify = ({
     identity,
     schoolId,
     onVerified,
-    validateBeforeCapture,
-    lastPhotoRef,
-    resetCapture,
+    validateBeforeSubmit,
+    primaryBase64,
+    secondaryBase64,
   ]);
-
-  const handlePrimaryPress = frozenUri ? handleSubmit : handleCapture;
-
-  const handleRetake = useCallback(() => {
-    if (busy) return;
-    setStatusText('');
-    resetCapture();
-  }, [busy, resetCapture]);
 
   if (alreadyVerified) {
     return (
@@ -282,74 +188,47 @@ const SignStepStudentIdVerify = ({
     );
   }
 
-  if (!permission) {
-    return (
-      <View style={[...bodyStyle, localStyles.centered]}>
-        <ActivityIndicator color={colors.primary} size="large" />
-      </View>
-    );
-  }
-
-  if (!permission.granted) {
-    return (
-      <View style={bodyStyle}>
-        <Text style={styles.inputLabel}>카메라 권한이 필요합니다.</Text>
-        <TouchableOpacity style={styles.manualButton} onPress={requestPermission}>
-          <Text style={styles.manualButtonText}>권한 허용하기</Text>
-        </TouchableOpacity>
-      </View>
-    );
-  }
-
-  const showCamera = isFocused;
-
   return (
     <View style={bodyStyle}>
-      <View style={localStyles.cameraArea}>
-        <View
-          style={localStyles.cameraCard}
-          onLayout={onStageLayout}
-          collapsable={false}
-        >
-          {showCamera ? (
-            <>
-              <StudentIdCaptureStage
-                cameraRef={cameraRef}
-                frozenUri={frozenUri}
-                statusText={statusText}
-                guideTextStyle={localStyles.statusText}
-                hideFrameGuide
-                onCameraReady={() => setCameraReady(true)}
-                stageStyle={[
-                  StyleSheet.absoluteFill,
-                  layerStyles.preview,
-                  localStyles.cameraPreview,
-                ]}
-                previewLayoutRef={previewLayoutRef}
-                onStageLayout={({ width: stageWidth, height }) => {
-                  previewLayoutRef.current = { width: stageWidth, height };
-                }}
-              />
-              {stageReady && !frozenUri ? (
-                <View style={localStyles.instructionOverlay} pointerEvents="none">
-                  <Text style={localStyles.instructionText}>
-                    {CAMERA_INSTRUCTION}
-                  </Text>
-                </View>
-              ) : null}
-            </>
-          ) : (
-            <View style={localStyles.cameraPlaceholder}>
-              <ActivityIndicator color={colors.primary} size="large" />
-            </View>
-          )}
-        </View>
-      </View>
+      <ScrollView
+        style={localStyles.scroll}
+        contentContainerStyle={localStyles.scrollContent}
+        keyboardShouldPersistTaps="handled"
+      >
+        <StudentIdPhotoAttachFields
+          normalize={normalize}
+          busy={busy}
+          primaryUri={primaryUri}
+          primaryAspect={primaryAspect}
+          secondaryUri={secondaryUri}
+          secondaryAspect={secondaryAspect}
+          onPrimaryPicked={({ uri, base64, aspect }) => {
+            setPrimaryUri(uri);
+            setPrimaryBase64(base64);
+            setPrimaryAspect(aspect);
+          }}
+          onSecondaryPicked={({ uri, base64, aspect }) => {
+            setSecondaryUri(uri);
+            setSecondaryBase64(base64);
+            setSecondaryAspect(aspect);
+          }}
+          onClearPrimary={() => {
+            setPrimaryUri(null);
+            setPrimaryBase64(null);
+            setPrimaryAspect(1);
+          }}
+          onClearSecondary={() => {
+            setSecondaryUri(null);
+            setSecondaryBase64(null);
+            setSecondaryAspect(1);
+          }}
+        />
+      </ScrollView>
 
       <View style={localStyles.bottomBlock}>
         <View style={localStyles.altAuthRow}>
           <Text style={localStyles.altAuthPrefix}>
-            학생증 촬영이 어려우신가요?{' '}
+            학생증 제출이 어려우신가요?{' '}
           </Text>
           <TouchableOpacity
             onPress={onCertificateGuide}
@@ -367,49 +246,24 @@ const SignStepStudentIdVerify = ({
           </TouchableOpacity>
         </View>
 
-        {frozenUri ? (
-          <View style={localStyles.dualFooter}>
-            <TouchableOpacity
-              style={[
-                localStyles.dualBtn,
-                localStyles.retakeBtn,
-                busy && localStyles.dualBtnDisabled,
-              ]}
-              onPress={handleRetake}
-              disabled={busy}
-              activeOpacity={0.85}
-            >
-              <Text style={localStyles.retakeBtnText}>다시 촬영하기</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[
-                localStyles.dualBtn,
-                localStyles.submitBtn,
-                busy && localStyles.dualBtnDisabled,
-              ]}
-              onPress={handleSubmit}
-              disabled={busy}
-              activeOpacity={0.85}
-            >
-              {busy ? (
-                <ActivityIndicator color={colors.textWhite} />
-              ) : (
-                <Text style={localStyles.submitBtnText}>제출하기</Text>
-              )}
-            </TouchableOpacity>
-          </View>
-        ) : (
-          <SignupPrimaryFooter
-            label="촬영하기"
-            onPress={handlePrimaryPress}
-            disabled={busy || !showCamera || !cameraReady}
-            loading={busy}
-            embedded
-          />
-        )}
+        <SignupPrimaryFooter
+          label="제출하기"
+          onPress={handleSubmit}
+          disabled={busy || !primaryBase64}
+          loading={busy}
+          embedded
+        />
       </View>
 
       <SubmittingLockModal visible={uploading} message="학생증 제출 중…" />
+
+      <SignupPrepMaterialsModal
+        visible={prepVisible}
+        variant="verify"
+        normalize={normalize}
+        onConfirm={() => setPrepVisible(false)}
+        onCancel={() => setPrepVisible(false)}
+      />
     </View>
   );
 };
@@ -426,137 +280,61 @@ function createLocalStyles(normalize, width) {
       minHeight: 0,
       backgroundColor: 'transparent',
     },
-    centered: {
-      justifyContent: 'center',
-      alignItems: 'center',
-    },
-    cameraArea: {
+    scroll: {
       flex: 1,
-      minHeight: normalize(320),
-      marginBottom: normalize(16),
+      minHeight: 0,
     },
-    cameraCard: {
-      flex: 1,
-      borderRadius: normalize(28),
-      overflow: 'hidden',
-      backgroundColor: '#2C2C2C',
-      position: 'relative',
-    },
-    cameraPreview: {
-      borderRadius: normalize(28),
-    },
-    cameraPlaceholder: {
-      flex: 1,
-      justifyContent: 'center',
-      alignItems: 'center',
-      backgroundColor: '#2C2C2C',
-    },
-    instructionOverlay: {
-      position: 'absolute',
-      top: 0,
-      left: 0,
-      right: 0,
-      zIndex: 3,
-      paddingTop: normalize(20),
-      paddingHorizontal: normalize(20),
-      alignItems: 'center',
-    },
-    instructionText: {
-      fontFamily: fonts.regular,
-      fontSize: normalize(fontSizes.lg+1),
-      color: colors.textWhite,
-      textAlign: 'center',
-      lineHeight: normalize(Math.round(fontSizes.xl * 1.5)),
-    },
-    statusText: {
-      fontFamily: fonts.regular,
-      fontSize: normalize(fontSizes.lg),
-      color: colors.textWhite,
-      textAlign: 'center',
+    scrollContent: {
+      paddingBottom: normalize(16),
     },
     bottomBlock: {
       flexShrink: 0,
-    },
-    dualFooter: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: normalize(10),
       paddingTop: normalize(8),
-      paddingBottom: normalize(8),
-    },
-    dualBtn: {
-      flex: 1,
-      height: normalize(52),
-      borderRadius: normalize(26),
-      alignItems: 'center',
-      justifyContent: 'center',
-    },
-    retakeBtn: {
-      backgroundColor: colors.background,
-      borderWidth: StyleSheet.hairlineWidth * 2,
-      borderColor: colors.border || colors.textLight20,
-    },
-    submitBtn: {
-      backgroundColor: colors.primary,
-    },
-    dualBtnDisabled: {
-      opacity: 0.55,
-    },
-    retakeBtnText: {
-      fontFamily: fonts.bold,
-      fontSize: normalize(fontSizes.xxl),
-      color: colors.textPrimary,
-    },
-    submitBtnText: {
-      fontFamily: fonts.bold,
-      fontSize: normalize(fontSizes.xxl),
-      color: colors.textWhite,
     },
     altAuthRow: {
       flexDirection: 'row',
       flexWrap: 'wrap',
       justifyContent: 'center',
       alignItems: 'center',
-      marginBottom: normalize(8),
-      paddingHorizontal: normalize(4),
+      marginBottom: normalize(12),
     },
     altAuthPrefix: {
       fontFamily: fonts.regular,
-      fontSize: normalize(fontSizes.lg),
+      fontSize: normalize(fontSizes.sm),
       color: colors.textSecondary,
     },
     altAuthAction: {
       fontFamily: fonts.bold,
-      fontSize: normalize(fontSizes.lg),
-      color: colors.textPrimary,
+      fontSize: normalize(fontSizes.sm),
+      color: colors.primaryDark,
+      textDecorationLine: 'underline',
     },
     disabledLink: {
-      opacity: 0.5,
+      opacity: 0.45,
     },
     completeContent: {
       flex: 1,
       justifyContent: 'center',
       alignItems: 'center',
-      paddingHorizontal: normalize(8),
+      paddingHorizontal: normalize(12),
     },
     completeEmoji: {
-      fontSize: normalize(56),
-      marginBottom: normalize(20),
+      fontSize: normalize(40),
+      marginBottom: normalize(12),
     },
     completeTitle: {
       fontFamily: fonts.bold,
-      fontSize: normalize(fontSizes.heading),
+      fontSize: normalize(fontSizes.xl),
       color: colors.textPrimary,
       textAlign: 'center',
-      marginBottom: normalize(16),
+      marginBottom: normalize(8),
     },
     completeSubtitle: {
       fontFamily: fonts.regular,
-      fontSize: normalize(fontSizes.xl),
+      fontSize: normalize(fontSizes.md),
       color: colors.textSecondary,
       textAlign: 'center',
-      lineHeight: normalize(Math.round(fontSizes.xl * 1.5)),
-      marginBottom: normalize(4),
+      lineHeight: normalize(22),
     },
   });
 }

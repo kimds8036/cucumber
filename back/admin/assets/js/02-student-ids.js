@@ -77,9 +77,32 @@ async function loadStudentIds() {
             <span class="pill ${statusClass}">${esc(statusLabel(s.status))}</span>
           </div>
           <div style="display:grid;grid-template-columns:220px 1fr;gap:16px;padding:14px 16px;">
-            <a href="${esc(s.cloudinary_url)}" target="_blank" rel="noopener">
-              <img src="${esc(s.cloudinary_url)}" alt="학생증" style="width:100%;max-width:220px;border-radius:8px;border:0.5px solid var(--border);" />
-            </a>
+            <div style="display:flex;flex-direction:column;gap:8px;">
+              ${(function () {
+                let urls = [];
+                try {
+                  if (String(s.cloudinary_url || '').trim().startsWith('{')) {
+                    const j = JSON.parse(s.cloudinary_url);
+                    urls = [j.primary, j.secondary].filter(Boolean);
+                  } else if (s.cloudinary_url) {
+                    urls = [s.cloudinary_url];
+                  }
+                } catch {
+                  if (s.cloudinary_url) urls = [s.cloudinary_url];
+                }
+                if (!urls.length) {
+                  return '<p class="txt-muted">이미지 없음</p>';
+                }
+                return urls
+                  .map(
+                    (url, i) => `
+                  <a href="${esc(url)}" target="_blank" rel="noopener">
+                    <img src="${esc(url)}" alt="학생증 ${i + 1}" style="width:100%;max-width:220px;border-radius:8px;border:0.5px solid var(--border);" />
+                  </a>`,
+                  )
+                  .join('');
+              })()}
+            </div>
             <div>
               ${s.review_note ? `<p class="txt-muted" style="margin-bottom:8px;white-space:pre-wrap;">메모: ${esc(s.review_note)}</p>` : ''}
               ${canReview ? `
