@@ -47,12 +47,17 @@ export function getCachedTips() {
 }
 
 /**
- * @param {{ refreshKey?: number, lastBody?: string | null }} opts
+ * @param {{ refreshKey?: number, lastBody?: string | null, preferPinned?: boolean }} opts
  * @returns {Promise<string>}
  */
-export async function pickTipBody({ refreshKey = 0, lastBody = null } = {}) {
+export async function pickTipBody({
+  refreshKey = 0,
+  lastBody = null,
+  preferPinned = false,
+} = {}) {
   const data = await loadTips();
-  if (data.pinned?.body) return data.pinned.body;
+  // 고정은 게시판 헤더(상단 배너)에만 적용 — 다른 Tip 슬롯은 활성 풀에서 랜덤
+  if (preferPinned && data.pinned?.body) return data.pinned.body;
 
   const pool = (data.items || []).map((t) => t.body).filter(Boolean);
   const source = pool.length ? pool : TIP_MESSAGES;

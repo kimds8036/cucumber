@@ -278,7 +278,7 @@ const BoardWrite = ({ navigation, route }) => {
       Alert.alert(
         '오류',
         code === 'STUDENT_VERIFICATION_REQUIRED'
-          ? '학생 인증이 필요한 게시판입니다. 학생증으로 인증해 주세요.'
+          ? '학생 인증이 필요한 게시판입니다. 학생인증해 주세요.'
           : error.response?.data?.message ||
               '게시글 작성 중 오류가 발생했습니다.',
       );

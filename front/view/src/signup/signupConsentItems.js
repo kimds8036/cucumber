@@ -24,7 +24,7 @@ export const DEFAULT_CONSENT_ITEMS = [
   {
     key: 'studentOcr',
     required: true,
-    label: '학생증 인증용 개인정보 수집·이용 동의',
+    label: '학생인증용 개인정보 수집·이용 동의',
     detail: 'privacy',
   },
   {

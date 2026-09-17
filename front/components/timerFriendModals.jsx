@@ -434,12 +434,11 @@ export const FriendStoryBar = memo(function FriendStoryBar({
     if (!suggestions.length) return base;
 
     const result = [...base];
-    if (suggestions[0]) {
-      result.splice(Math.min(1, result.length), 0, suggestions[0]);
-    }
-    if (suggestions[1]) {
-      result.splice(Math.min(result.length, Math.max(2, result.length)), 0, suggestions[1]);
-    }
+    suggestions.forEach((suggestion, index) => {
+      // 앞쪽에 추천을 섞되, 친구 목록이 길면 뒤로 밀려 가로 스크롤
+      const insertAt = Math.min(index + 1, result.length);
+      result.splice(insertAt, 0, suggestion);
+    });
     return result;
   }, [friends, studyingFriends]);
 

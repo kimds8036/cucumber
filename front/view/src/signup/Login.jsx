@@ -237,7 +237,7 @@ const Login = ({ navigation }) => {
           },
           REVERIFICATION_RESTRICTED: {
             title: '재인증 필요',
-            highlight: '학생증 재인증이 필요합니다.',
+            highlight: '학생 재인증이 필요합니다.',
             body:
               '새 학년도 재인증 유예 기간이 지났습니다.\n' +
               '앱 이용을 재개하려면 고객센터로 문의해 주세요.',
@@ -467,7 +467,7 @@ const Login = ({ navigation }) => {
         setPolicyModal({
           visible: true,
           title: '재인증 필요',
-          highlight: '학생증 재인증이 필요합니다.',
+          highlight: '학생 재인증이 필요합니다.',
           body:
             '새 학년도 재인증 유예 기간이 지났습니다.\n' +
             '앱 이용을 재개하려면 고객센터로 문의해 주세요.',

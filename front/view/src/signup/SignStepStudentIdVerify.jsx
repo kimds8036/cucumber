@@ -2,7 +2,6 @@ import React, { useCallback, useMemo, useState } from 'react';
 import {
   View,
   Text,
-  TouchableOpacity,
   ScrollView,
   Alert,
   StyleSheet,
@@ -15,7 +14,6 @@ import SubmittingLockModal from '../../../components/common/SubmittingLockModal'
 import SignupPrimaryFooter from './SignupPrimaryFooter';
 import { SIGNUP_REDESIGN_SKIP_VALIDATION } from './signupRedesignFlags';
 import StudentIdPhotoAttachFields from './StudentIdPhotoAttachFields';
-import SignupPrepMaterialsModal from './SignupPrepMaterialsModal';
 
 const UPLOAD_TIMEOUT_MS = 120_000;
 
@@ -29,7 +27,6 @@ const SignStepStudentIdVerify = ({
   onCertificateGuide,
   onConfirm,
   submitting = false,
-  showPrepOnMount = true,
 }) => {
   const { width } = useWindowDimensions();
   const localStyles = useMemo(
@@ -41,7 +38,6 @@ const SignStepStudentIdVerify = ({
     [localStyles.body, localStyles.stepRoot, styles.stepFlex],
   );
 
-  const [prepVisible, setPrepVisible] = useState(showPrepOnMount);
   const [uploading, setUploading] = useState(false);
   const [primaryUri, setPrimaryUri] = useState(null);
   const [primaryBase64, setPrimaryBase64] = useState(null);
@@ -213,39 +209,29 @@ const SignStepStudentIdVerify = ({
             setSecondaryAspect(aspect);
           }}
           onClearPrimary={() => {
-            setPrimaryUri(null);
-            setPrimaryBase64(null);
-            setPrimaryAspect(1);
+            if (secondaryUri) {
+              setPrimaryUri(secondaryUri);
+              setPrimaryBase64(secondaryBase64);
+              setPrimaryAspect(secondaryAspect);
+              setSecondaryUri(null);
+              setSecondaryBase64(null);
+              setSecondaryAspect(1);
+            } else {
+              setPrimaryUri(null);
+              setPrimaryBase64(null);
+              setPrimaryAspect(1);
+            }
           }}
           onClearSecondary={() => {
             setSecondaryUri(null);
             setSecondaryBase64(null);
             setSecondaryAspect(1);
           }}
+          onNoStudentIdPress={onCertificateGuide}
         />
       </ScrollView>
 
       <View style={localStyles.bottomBlock}>
-        <View style={localStyles.altAuthRow}>
-          <Text style={localStyles.altAuthPrefix}>
-            학생증 제출이 어려우신가요?{' '}
-          </Text>
-          <TouchableOpacity
-            onPress={onCertificateGuide}
-            disabled={busy}
-            hitSlop={{ top: 8, bottom: 8, left: 4, right: 4 }}
-          >
-            <Text
-              style={[
-                localStyles.altAuthAction,
-                busy && localStyles.disabledLink,
-              ]}
-            >
-              다른 방법으로 인증하기
-            </Text>
-          </TouchableOpacity>
-        </View>
-
         <SignupPrimaryFooter
           label="제출하기"
           onPress={handleSubmit}
@@ -256,14 +242,6 @@ const SignStepStudentIdVerify = ({
       </View>
 
       <SubmittingLockModal visible={uploading} message="학생증 제출 중…" />
-
-      <SignupPrepMaterialsModal
-        visible={prepVisible}
-        variant="verify"
-        normalize={normalize}
-        onConfirm={() => setPrepVisible(false)}
-        onCancel={() => setPrepVisible(false)}
-      />
     </View>
   );
 };
@@ -290,27 +268,6 @@ function createLocalStyles(normalize, width) {
     bottomBlock: {
       flexShrink: 0,
       paddingTop: normalize(8),
-    },
-    altAuthRow: {
-      flexDirection: 'row',
-      flexWrap: 'wrap',
-      justifyContent: 'center',
-      alignItems: 'center',
-      marginBottom: normalize(12),
-    },
-    altAuthPrefix: {
-      fontFamily: fonts.regular,
-      fontSize: normalize(fontSizes.sm),
-      color: colors.textSecondary,
-    },
-    altAuthAction: {
-      fontFamily: fonts.bold,
-      fontSize: normalize(fontSizes.sm),
-      color: colors.primaryDark,
-      textDecorationLine: 'underline',
-    },
-    disabledLink: {
-      opacity: 0.45,
     },
     completeContent: {
       flex: 1,

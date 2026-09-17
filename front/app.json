@@ -2,7 +2,7 @@
   "expo": {
     "name": "Youth Paper",
     "slug": "youth-paper",
-    "version": "1.9.0",
+    "version": "1.9.1",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
@@ -14,12 +14,12 @@
     },
     "ios": {
       "supportsTablet": true,
-      "buildNumber": "34",
+      "buildNumber": "35",
       "icon": "./assets/icon-ios.png",
       "googleServicesFile": "./GoogleService-Info.plist",
       "infoPlist": {
         "UIViewControllerBasedStatusBarAppearance": false,
-        "NSCameraUsageDescription": "학생증 인증을 위해 카메라 접근 권한이 필요합니다.",
+        "NSCameraUsageDescription": "학생인증을 위해 카메라 접근 권한이 필요합니다.",
         "NSLocationWhenInUseUsageDescription": "게시판 근처 글·거리 표시를 위해 사용 중에만 위치 정보를 사용합니다.",
         "NSAppTransportSecurity": {
           "NSAllowsArbitraryLoads": true
@@ -62,7 +62,7 @@
         "android.permission.READ_MEDIA_IMAGES"
       ],
       "package": "com.ucost.YouthPaper",
-      "versionCode": 34,
+      "versionCode": 35,
       "softwareKeyboardLayoutMode": "pan"
     },
     "web": {

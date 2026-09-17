@@ -43,7 +43,7 @@ export function MainShellProvider({
     setBoardFeedModeState(mode === 'student' ? 'student' : 'national');
   }, []);
 
-  /** 우리학교 등에서 학생증 인증 플로우 요청 (App이 구독) */
+  /** 우리학교 등에서 학생인증 플로우 요청 (App이 구독) */
   const requestStudentVerification = useCallback((payload = {}) => {
     setStudentVerifyRequest({
       id: Date.now(),

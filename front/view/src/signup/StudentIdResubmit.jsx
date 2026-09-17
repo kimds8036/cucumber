@@ -20,7 +20,10 @@ import SubHeader from '../../frame/subHeader';
 import { useAuth } from '../../../context/AuthContext';
 import SubmittingLockModal from '../../../components/common/SubmittingLockModal';
 import StudentIdPhotoAttachFields from './StudentIdPhotoAttachFields';
-import SignupPrepMaterialsModal from './SignupPrepMaterialsModal';
+import AltVerifyChoiceResubmit from './AltVerifyChoiceResubmit';
+import NeisPlusResubmit from './NeisPlusResubmit';
+import CertificateGuideResubmit from './CertificateGuideResubmit';
+import CertificateResubmit from './CertificateResubmit';
 
 const UPLOAD_TIMEOUT_MS = 120_000;
 
@@ -61,7 +64,7 @@ function resolveStudentIdMode(explicitMode, status) {
 }
 
 /**
- * @param {{ mode?: 'rejected'|'reverification'|'verify', navigation: { goBack: () => void }, route?: { params?: { mode?: string, skipPrep?: boolean } } }} props
+ * @param {{ mode?: 'rejected'|'reverification'|'verify', navigation: { goBack: () => void }, route?: { params?: { mode?: string } } }} props
  */
 const StudentIdResubmit = ({ mode: modeProp, navigation, route }) => {
   const { refreshStudentVerification, studentVerificationStatus } = useAuth();
@@ -80,14 +83,13 @@ const StudentIdResubmit = ({ mode: modeProp, navigation, route }) => {
   );
   const localStyles = useMemo(() => createLocalStyles(normalize), [normalize]);
   const headerTitle = isReverification
-    ? '학생증 재인증'
+    ? '학생 재인증'
     : isFirstVerify
-      ? '학생증 인증'
+      ? '학생인증'
       : '학생증 재제출';
 
-  const [prepVisible, setPrepVisible] = useState(
-    () => !route?.params?.skipPrep,
-  );
+  /** null | 'choice' | 'neis' | 'cert-guide' | 'cert' */
+  const [altStep, setAltStep] = useState(null);
   const [busy, setBusy] = useState(false);
   const [selectedSchool, setSelectedSchool] = useState(null);
   const [schoolGradeNum, setSchoolGradeNum] = useState('');
@@ -206,6 +208,52 @@ const StudentIdResubmit = ({ mode: modeProp, navigation, route }) => {
     selectedSchool,
   ]);
 
+  if (altStep === 'choice') {
+    return (
+      <SafeAreaView style={localStyles.root} edges={['top', 'bottom']}>
+        <AltVerifyChoiceResubmit
+          navigation={{ goBack: () => setAltStep(null) }}
+          onSelectNeisPlus={() => setAltStep('neis')}
+          onSelectCertificate={() => setAltStep('cert-guide')}
+        />
+      </SafeAreaView>
+    );
+  }
+  if (altStep === 'neis') {
+    return (
+      <SafeAreaView style={localStyles.root} edges={['top', 'bottom']}>
+        <NeisPlusResubmit
+          navigation={{
+            goBack: () => setAltStep('choice'),
+            closeFlow: () => navigation.goBack(),
+          }}
+        />
+      </SafeAreaView>
+    );
+  }
+  if (altStep === 'cert-guide') {
+    return (
+      <SafeAreaView style={localStyles.root} edges={['top', 'bottom']}>
+        <CertificateGuideResubmit
+          navigation={{ goBack: () => setAltStep('choice') }}
+          onProceed={() => setAltStep('cert')}
+        />
+      </SafeAreaView>
+    );
+  }
+  if (altStep === 'cert') {
+    return (
+      <SafeAreaView style={localStyles.root} edges={['top', 'bottom']}>
+        <CertificateResubmit
+          navigation={{
+            goBack: () => setAltStep('cert-guide'),
+            closeFlow: () => navigation.goBack(),
+          }}
+        />
+      </SafeAreaView>
+    );
+  }
+
   return (
     <SafeAreaView style={localStyles.root} edges={['top', 'bottom']}>
       <SubHeader title={headerTitle} onBack={handleBack} />
@@ -312,15 +360,25 @@ const StudentIdResubmit = ({ mode: modeProp, navigation, route }) => {
             setSecondaryAspect(aspect);
           }}
           onClearPrimary={() => {
-            setPrimaryUri(null);
-            setPrimaryBase64(null);
-            setPrimaryAspect(1);
+            if (secondaryUri) {
+              setPrimaryUri(secondaryUri);
+              setPrimaryBase64(secondaryBase64);
+              setPrimaryAspect(secondaryAspect);
+              setSecondaryUri(null);
+              setSecondaryBase64(null);
+              setSecondaryAspect(1);
+            } else {
+              setPrimaryUri(null);
+              setPrimaryBase64(null);
+              setPrimaryAspect(1);
+            }
           }}
           onClearSecondary={() => {
             setSecondaryUri(null);
             setSecondaryBase64(null);
             setSecondaryAspect(1);
           }}
+          onNoStudentIdPress={() => setAltStep('choice')}
         />
       </ScrollView>
 
@@ -351,17 +409,6 @@ const StudentIdResubmit = ({ mode: modeProp, navigation, route }) => {
       </View>
 
       <SubmittingLockModal visible={busy} message="학생증 제출 중…" />
-
-      <SignupPrepMaterialsModal
-        visible={prepVisible}
-        variant="verify"
-        normalize={normalize}
-        onConfirm={() => setPrepVisible(false)}
-        onCancel={() => {
-          setPrepVisible(false);
-          navigation.goBack();
-        }}
-      />
     </SafeAreaView>
   );
 };

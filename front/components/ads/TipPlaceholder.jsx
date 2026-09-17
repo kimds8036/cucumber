@@ -15,7 +15,7 @@ const TipPlaceholder = ({
   normalize: externalNormalize,
   cardStyleOverride,
   badgeOnLeft = false,
-  /** 값이 바뀌면 Tip 문구를 다시 랜덤 선택 (고정 팁이면 유지) */
+  /** 값이 바뀌면 Tip 문구를 다시 랜덤 선택 (topBanner+고정 팁이면 유지) */
   refreshKey = 0,
   /** 부모가 문구를 직접 넘기면 서버 fetch 생략 */
   message: messageProp,
@@ -44,6 +44,8 @@ const TipPlaceholder = ({
       const next = await pickTipBody({
         refreshKey,
         lastBody: lastTipRef.current,
+        // 게시판 헤더 아래(상단 배너)만 관리자 고정 팁 적용
+        preferPinned: variant === 'topBanner',
       });
       if (!cancelled && next) {
         lastTipRef.current = next;
@@ -53,7 +55,7 @@ const TipPlaceholder = ({
     return () => {
       cancelled = true;
     };
-  }, [refreshKey, messageProp]);
+  }, [refreshKey, messageProp, variant]);
 
   switch (variant) {
     case 'topBanner':

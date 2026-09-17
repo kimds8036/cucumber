@@ -306,7 +306,7 @@ async function loadDashboard() {
       }
       if (view === 'reach') {
         await loadAnalyticsOverview();
-        await loadInstallLandingStats();
+      await loadInstallLandingStats();
       }
       if (view === 'funnel') await loadAppInstallFunnelStats();
       if (view === 'user') await loadOpsUsersPreview(1);

@@ -1,32 +1,46 @@
-import React from 'react';
-import { View, Text, TouchableOpacity } from 'react-native';
-import { colors } from '../../../styles/colors';
+import React, { useMemo } from 'react';
+import {
+  View,
+  Text,
+  TouchableOpacity,
+  useWindowDimensions,
+} from 'react-native';
+import { colors, fonts } from '../../../styles/colors';
+import { getNormalize } from '../../../styles/frame.style';
 import AppPopupModal from '../../../components/common/AppPopupModal';
 
 /**
  * 학생 인증 전 준비물 안내.
+ * AppPopupModal 셸 · AlertHost 버튼 규칙(42 / radius 10, fonts.bold)
  * variant: 'signup' | 'verify'
- * 배경(여백) 탭으로 닫히지 않음 — 버튼으로만 진행/취소.
  */
 const SignupPrepMaterialsModal = ({
   visible,
   variant = 'verify',
-  normalize = (n) => n,
+  normalize: normalizeProp,
   onConfirm,
   onCancel,
+  onDismissed,
 }) => {
+  const { width } = useWindowDimensions();
+  const normalize = useMemo(
+    () => normalizeProp || getNormalize(width),
+    [normalizeProp, width],
+  );
   const isVerify = variant === 'verify';
+
   return (
     <AppPopupModal
       visible={visible}
       onClose={() => {}}
       dismissOnBackdrop={false}
       dismissOnBackPress={false}
+      onDismissed={onDismissed}
     >
       <Text
         style={{
+          fontFamily: fonts.bold,
           fontSize: normalize(18),
-          fontWeight: '700',
           color: colors.textPrimary,
           textAlign: 'center',
           marginBottom: 10,
@@ -38,6 +52,7 @@ const SignupPrepMaterialsModal = ({
       </Text>
       <Text
         style={{
+          fontFamily: fonts.regular,
           fontSize: normalize(14),
           color: colors.textSecondary,
           textAlign: 'center',
@@ -59,8 +74,8 @@ const SignupPrepMaterialsModal = ({
       >
         <Text
           style={{
+            fontFamily: fonts.bold,
             fontSize: normalize(15),
-            fontWeight: '700',
             color: colors.textPrimary,
             marginBottom: normalize(4),
           }}
@@ -69,6 +84,7 @@ const SignupPrepMaterialsModal = ({
         </Text>
         <Text
           style={{
+            fontFamily: fonts.regular,
             fontSize: normalize(13),
             color: colors.textSecondary,
             lineHeight: normalize(19),
@@ -88,8 +104,8 @@ const SignupPrepMaterialsModal = ({
       >
         <Text
           style={{
+            fontFamily: fonts.bold,
             fontSize: normalize(15),
-            fontWeight: '700',
             color: colors.textPrimary,
             marginBottom: normalize(4),
           }}
@@ -98,6 +114,7 @@ const SignupPrepMaterialsModal = ({
         </Text>
         <Text
           style={{
+            fontFamily: fonts.regular,
             fontSize: normalize(13),
             color: colors.textSecondary,
             lineHeight: normalize(19),
@@ -121,8 +138,8 @@ const SignupPrepMaterialsModal = ({
       >
         <Text
           style={{
+            fontFamily: fonts.bold,
             fontSize: normalize(14),
-            fontWeight: '700',
             color: colors.textWhite,
           }}
         >
@@ -144,8 +161,8 @@ const SignupPrepMaterialsModal = ({
       >
         <Text
           style={{
+            fontFamily: fonts.bold,
             fontSize: normalize(14),
-            fontWeight: '700',
             color: colors.textSecondary,
           }}
         >

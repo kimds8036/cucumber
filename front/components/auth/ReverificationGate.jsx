@@ -43,7 +43,7 @@ export default function ReverificationGate({ onResubmit }) {
           새 학년도 재인증이 필요합니다
         </Text>
         <Text style={[styles.body, { fontSize: normalize(15) }]}>
-          매년 3월 학년도 전환에 따라 학생증 재인증이 필요합니다.{'\n'}
+          매년 3월 학년도 전환에 따라 학생 재인증이 필요합니다.{'\n'}
           재인증 유예 기간이 지나 앱 이용이 일시 제한되었습니다.{'\n'}
           아래 버튼으로 올해 학생증을 제출해 주세요.
         </Text>
@@ -53,7 +53,7 @@ export default function ReverificationGate({ onResubmit }) {
           onPress={onResubmit}
         >
           <Text style={[styles.buttonText, { fontSize: normalize(16) }]}>
-            학생증 재인증하기
+            학생 재인증하기
           </Text>
         </TouchableOpacity>
         <ActivityIndicator

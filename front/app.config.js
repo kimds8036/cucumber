@@ -14,7 +14,7 @@ export default ({ config }) => ({
     name: 'Youth Paper',
     slug: 'youth-paper',
     scheme: 'youthpaper',
-    version: '1.9.0',
+    version: '1.9.1',
     orientation: 'portrait',
     icon: './assets/icon.png',
     userInterfaceStyle: 'light',
@@ -28,7 +28,7 @@ export default ({ config }) => ({
 
     ios: {
       supportsTablet: true,
-      buildNumber: '34',
+      buildNumber: '35',
       usesAppleSignIn: true,
       // iOS 전용 아이콘 (안드로이드·공통 icon.png 와 분리)
       icon: './assets/icon-ios.png',
@@ -38,7 +38,7 @@ export default ({ config }) => ({
       infoPlist: {
         UIViewControllerBasedStatusBarAppearance: false,
         NSCameraUsageDescription:
-          '학생증 인증을 위해 카메라 접근 권한이 필요합니다.',
+          '학생인증을 위해 카메라 접근 권한이 필요합니다.',
         NSLocationWhenInUseUsageDescription:
           '게시판 근처 글·거리 표시를 위해 사용 중에만 위치 정보를 사용합니다.',
         NSAppTransportSecurity: {
@@ -55,7 +55,7 @@ export default ({ config }) => ({
     },
 
     android: {
-      versionCode: 34,
+      versionCode: 35,
       usesCleartextTraffic: !isProduction,
       // (선택) 안드로이드도 같은 방식으로 secret 적용 가능
       googleServicesFile:
@@ -121,7 +121,7 @@ export default ({ config }) => ({
         'expo-camera',
         {
           cameraPermission:
-            '학생증 인증을 위해 카메라 접근 권한이 필요합니다.',
+            '학생인증을 위해 카메라 접근 권한이 필요합니다.',
         },
       ],
       [
