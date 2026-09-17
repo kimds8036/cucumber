@@ -91,6 +91,7 @@ export default function AppPopupModal({
       }}
     >
       <Animated.View
+        pointerEvents={visible ? 'auto' : 'none'}
         style={{
           flex: 1,
           width: '100%',

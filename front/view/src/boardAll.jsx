@@ -95,6 +95,9 @@ export function BoardAllContent({ navigation, posts }) {
     studentVerificationStatus !== 'APPROVED' &&
     !isGuidePreview;
   const [studentCtaVisible, setStudentCtaVisible] = useState(false);
+  const [studentCtaClosingForVerify, setStudentCtaClosingForVerify] =
+    useState(false);
+  const pendingStudentVerifyRef = useRef(false);
   // TODO: /api/ads 연동 후 useAdSlots(AD_PLACEMENTS.FEED_BOARD)
   const adSlots = [];
   const { coords, refreshLocation, permissionGranted } = useLocationContext();
@@ -903,9 +906,14 @@ export function BoardAllContent({ navigation, posts }) {
       />
 
       <StudentVerificationCtaModal
-        visible={studentFeedLocked || studentCtaVisible}
+        visible={
+          (studentFeedLocked || studentCtaVisible) &&
+          !studentCtaClosingForVerify
+        }
         status={studentVerificationStatus || 'UNVERIFIED'}
         onClose={() => {
+          pendingStudentVerifyRef.current = false;
+          setStudentCtaClosingForVerify(false);
           setStudentCtaVisible(false);
           if (
             boardFeedMode === 'student' &&
@@ -915,6 +923,8 @@ export function BoardAllContent({ navigation, posts }) {
           }
         }}
         onPressVerify={() => {
+          pendingStudentVerifyRef.current = true;
+          setStudentCtaClosingForVerify(true);
           setStudentCtaVisible(false);
           if (
             boardFeedMode === 'student' &&
@@ -922,6 +932,11 @@ export function BoardAllContent({ navigation, posts }) {
           ) {
             shell?.setBoardFeedMode?.('national');
           }
+        }}
+        onDismissed={() => {
+          setStudentCtaClosingForVerify(false);
+          if (!pendingStudentVerifyRef.current) return;
+          pendingStudentVerifyRef.current = false;
           shell?.requestStudentVerification?.({
             reason: 'student_board',
             statusHint: studentVerificationStatus,

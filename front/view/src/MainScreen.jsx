@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   BackHandler,
   Platform,
@@ -32,13 +32,19 @@ function hasDeepLinkTab(route) {
 
 /** MainShell 인증 요청 → 준비물 팝업(현재 화면) → 학생인증 화면 */
 function StudentVerifyRequestBridge({ children }) {
-  const { studentVerifyRequest, clearStudentVerificationRequest } =
-    useMainShell();
+  const {
+    studentVerifyRequest,
+    clearStudentVerificationRequest,
+    endStudentVerificationUi,
+  } = useMainShell();
   const { studentVerificationStatus } = useAuth();
   const { width } = useWindowDimensions();
   const normalize = useMemo(() => getNormalize(width), [width]);
   const [prepMode, setPrepMode] = useState(null);
   const [verifyMode, setVerifyMode] = useState(null);
+  /** 준비물 확인 후 학생증 화면으로 넘길지 (페이드 완료 후) */
+  const prepConfirmOpenRef = useRef(false);
+  const pendingVerifyModeRef = useRef(null);
 
   useEffect(() => {
     if (!studentVerifyRequest) return;
@@ -50,6 +56,8 @@ function StudentVerifyRequestBridge({ children }) {
         : status === 'APPROVED'
           ? 'reverification'
           : 'verify';
+    prepConfirmOpenRef.current = false;
+    pendingVerifyModeRef.current = null;
     setPrepMode(mode);
     clearStudentVerificationRequest();
   }, [
@@ -58,13 +66,21 @@ function StudentVerifyRequestBridge({ children }) {
     clearStudentVerificationRequest,
   ]);
 
+  const closeVerifyFlow = () => {
+    prepConfirmOpenRef.current = false;
+    pendingVerifyModeRef.current = null;
+    setVerifyMode(null);
+    setPrepMode(null);
+    endStudentVerificationUi();
+  };
+
   return (
     <>
       {verifyMode ? (
         <StudentIdResubmit
           mode={verifyMode}
           navigation={{
-            goBack: () => setVerifyMode(null),
+            goBack: closeVerifyFlow,
           }}
         />
       ) : (
@@ -75,11 +91,26 @@ function StudentVerifyRequestBridge({ children }) {
         variant="verify"
         normalize={normalize}
         onConfirm={() => {
-          // 다음 화면을 먼저 깔고 팝업만 페이드아웃 → 딤이 걷히며 자연스럽게 전환
-          if (prepMode) setVerifyMode(prepMode);
+          // App.js와 동일: 팝업 페이드가 끝난 뒤 화면 전환 (iOS Modal 중첩 방지)
+          pendingVerifyModeRef.current = prepMode;
+          prepConfirmOpenRef.current = true;
           setPrepMode(null);
         }}
-        onCancel={() => setPrepMode(null)}
+        onCancel={() => {
+          prepConfirmOpenRef.current = false;
+          pendingVerifyModeRef.current = null;
+          setPrepMode(null);
+        }}
+        onDismissed={() => {
+          if (prepConfirmOpenRef.current && pendingVerifyModeRef.current) {
+            const mode = pendingVerifyModeRef.current;
+            prepConfirmOpenRef.current = false;
+            pendingVerifyModeRef.current = null;
+            setVerifyMode(mode);
+            return;
+          }
+          endStudentVerificationUi();
+        }}
       />
     </>
   );
