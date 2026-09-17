@@ -11,16 +11,22 @@ const SignStepAltVerifyChoice = ({
   normalize = (n) => n,
   onSelectNeisPlus,
   onSelectCertificate,
+  /** false면 부모가 좌우 여백을 잡음 (재제출 SubHeader 플로우) */
+  insetBody = true,
 }) => {
   const { width } = useWindowDimensions();
   const bodyStyle = useMemo(
     () => ({
       flex: 1,
       minHeight: 0,
-      marginHorizontal: -width * 0.04,
-      paddingHorizontal: width * 0.07,
+      ...(insetBody
+        ? {
+            marginHorizontal: -width * 0.04,
+            paddingHorizontal: width * 0.07,
+          }
+        : null),
     }),
-    [width],
+    [width, insetBody],
   );
 
   return (

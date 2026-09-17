@@ -3,12 +3,14 @@ import { getBatchRedis } from './batchRedis.service.js';
 import { getTimerDayKey } from '../utils/timerDayKey.js';
 import { clampSqlLimit } from '../utils/sqlLimit.js';
 
-const MAX_SUGGESTIONS = 2;
+const MAX_SUGGESTIONS = 5;
+/** 우선 추천(같은 학교·학년 → 같은 학교급) 최대 인원 */
+const PRIORITY_COUNT = 3;
 const REDIS_TTL_SEC = 60 * 60 * 30; // 타이머 day 경계보다 넉넉히
 
 function redisKey(userId, dayKey) {
-  // v2: 같은학년 → 같은 학교급 우선 알고리즘
-  return `timer:friend_suggest:v2:${userId}:${dayKey}`;
+  // v4: 우선 3명 + 랜덤 나머지
+  return `timer:friend_suggest:v4:${userId}:${dayKey}`;
 }
 
 /** 중학교 / 고등학교 밴드 */
@@ -141,42 +143,52 @@ async function pickCandidateIds(userId, limit, filters = {}) {
   return rows.map((r) => Number(r.id)).filter((id) => Number.isFinite(id));
 }
 
-/** 1명: 같은 학년 → 같은 중/고 학교급. 없으면 [] */
-async function pickPriorityId(userId, profile) {
+/**
+ * 우선 최대 PRIORITY_COUNT명:
+ * 같은 학교·같은 학년 → 부족하면 같은 중/고 학교급으로 채움
+ */
+async function pickPriorityIds(userId, profile) {
   if (!profile) return [];
 
+  let ids = [];
+
   if (profile.schoolId && profile.grade != null && Number.isFinite(profile.grade)) {
-    const sameGrade = await pickCandidateIds(userId, 1, {
+    const sameGrade = await pickCandidateIds(userId, PRIORITY_COUNT, {
       schoolId: profile.schoolId,
       grade: profile.grade,
     });
-    if (sameGrade.length) return sameGrade;
+    ids = [...sameGrade];
   }
 
-  if (profile.schoolBand) {
-    const sameBand = await pickCandidateIds(userId, 1, {
+  const need = PRIORITY_COUNT - ids.length;
+  if (need > 0 && profile.schoolBand) {
+    const sameBand = await pickCandidateIds(userId, need, {
       schoolBand: profile.schoolBand,
+      excludeIds: ids,
     });
-    if (sameBand.length) return sameBand;
+    ids = [...ids, ...sameBand].slice(0, PRIORITY_COUNT);
   }
 
-  return [];
+  return ids;
 }
 
 async function ensureDailyIds(userId) {
   const dayKey = getTimerDayKey();
-  let ids = await loadStoredIds(userId, dayKey);
-  if (Array.isArray(ids) && ids.length > 0) {
-    return { dayKey, ids };
+  let ids = (await loadStoredIds(userId, dayKey)) || [];
+
+  if (ids.length >= MAX_SUGGESTIONS) {
+    return { dayKey, ids: ids.slice(0, MAX_SUGGESTIONS) };
   }
 
   const profile = await getMySuggestProfile(userId);
-  const priority = await pickPriorityId(userId, profile);
-  ids = [...priority];
+  if (ids.length === 0) {
+    const priority = await pickPriorityIds(userId, profile);
+    ids = [...priority];
+  }
 
   const remaining = MAX_SUGGESTIONS - ids.length;
   if (remaining > 0) {
-    // 나머지(또는 우선순위 실패 시 둘 다) 랜덤
+    // 나머지: 친구·요청·차단 없는 학생인증 유저 랜덤
     const more = await pickCandidateIds(userId, remaining, {
       excludeIds: ids,
     });
@@ -234,7 +246,7 @@ async function hydrateEligibleSuggestions(userId, ids) {
     }));
 }
 
-/** 타이머 친구 바용 추천 — 하루 최대 2명, 같은 day_key 동안 고정 */
+/** 타이머 친구 바용 추천 — 하루 최대 5명(우선 3 + 랜덤), 같은 day_key 동안 고정 */
 export async function listTimerFriendSuggestions(userId) {
   if (!userId) return [];
   const { ids } = await ensureDailyIds(userId);

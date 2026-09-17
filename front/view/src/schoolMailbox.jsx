@@ -79,7 +79,7 @@ function mapMailForCard(raw, mailboxSchoolId) {
 
 const SchoolMailboxScreen = ({ navigation, route }) => {
   const { allowed, Gate } = useRequireStudentVerified(navigation, {
-    message: '학교 우편은 학생증 인증 후 이용할 수 있어요.',
+    message: '학교 우편은 학생인증 후 이용할 수 있어요.',
     reason: 'school_mail',
   });
   const { width } = useWindowDimensions();

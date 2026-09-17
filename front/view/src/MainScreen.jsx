@@ -1,5 +1,11 @@
-import React, { useEffect, useState } from 'react';
-import { BackHandler, Platform, ToastAndroid, View } from 'react-native';
+import React, { useEffect, useMemo, useState } from 'react';
+import {
+  BackHandler,
+  Platform,
+  ToastAndroid,
+  View,
+  useWindowDimensions,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
 import MainHeader from '../frame/mainHeader';
@@ -8,11 +14,13 @@ import {
   useMainShell,
 } from '../../context/MainShellContext';
 import { colors } from '../../styles/colors';
+import { getNormalize } from '../../styles/frame.style';
 import Skeleton from '../../components/common/Skeleton';
 import { trackScreenView } from '../../utils/analytics';
 import { MAIN_TAB_TO_ANALYTICS_SCREEN } from '../../constants/analyticsScreens';
 import { MainTabNavigatorContainer } from './MainTabNavigator';
 import StudentIdResubmit from './signup/StudentIdResubmit';
+import SignupPrepMaterialsModal from './signup/SignupPrepMaterialsModal';
 import { useAuth } from '../../context/AuthContext';
 
 const MAIN_TABS = new Set(['board', 'message', 'school', 'timer', 'mypage']);
@@ -22,11 +30,14 @@ function hasDeepLinkTab(route) {
   return MAIN_TABS.has(tab);
 }
 
-/** MainShell 인증 요청 → 학생증 제출 화면 */
+/** MainShell 인증 요청 → 준비물 팝업(현재 화면) → 학생인증 화면 */
 function StudentVerifyRequestBridge({ children }) {
   const { studentVerifyRequest, clearStudentVerificationRequest } =
     useMainShell();
   const { studentVerificationStatus } = useAuth();
+  const { width } = useWindowDimensions();
+  const normalize = useMemo(() => getNormalize(width), [width]);
+  const [prepMode, setPrepMode] = useState(null);
   const [verifyMode, setVerifyMode] = useState(null);
 
   useEffect(() => {
@@ -39,7 +50,7 @@ function StudentVerifyRequestBridge({ children }) {
         : status === 'APPROVED'
           ? 'reverification'
           : 'verify';
-    setVerifyMode(mode);
+    setPrepMode(mode);
     clearStudentVerificationRequest();
   }, [
     studentVerifyRequest,
@@ -47,18 +58,31 @@ function StudentVerifyRequestBridge({ children }) {
     clearStudentVerificationRequest,
   ]);
 
-  if (verifyMode) {
-    return (
-      <StudentIdResubmit
-        mode={verifyMode}
-        navigation={{
-          goBack: () => setVerifyMode(null),
+  return (
+    <>
+      {verifyMode ? (
+        <StudentIdResubmit
+          mode={verifyMode}
+          navigation={{
+            goBack: () => setVerifyMode(null),
+          }}
+        />
+      ) : (
+        children
+      )}
+      <SignupPrepMaterialsModal
+        visible={Boolean(prepMode)}
+        variant="verify"
+        normalize={normalize}
+        onConfirm={() => {
+          // 다음 화면을 먼저 깔고 팝업만 페이드아웃 → 딤이 걷히며 자연스럽게 전환
+          if (prepMode) setVerifyMode(prepMode);
+          setPrepMode(null);
         }}
+        onCancel={() => setPrepMode(null)}
       />
-    );
-  }
-
-  return children;
+    </>
+  );
 }
 
 const MainScreen = ({ navigation, route }) => {

@@ -31,7 +31,7 @@ export default function ReverificationPendingBanner() {
     >
       <View style={styles.card}>
         <Text style={[styles.title, { fontSize: normalize(14) }]}>
-          학생증 재인증 검수 중
+          학생 재인증 검수 중
         </Text>
         <Text style={[styles.body, { fontSize: normalize(12) }]}>
           관리자 확인이 완료될 때까지 앱을 계속 이용할 수 있습니다.

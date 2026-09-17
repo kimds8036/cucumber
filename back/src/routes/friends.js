@@ -115,7 +115,7 @@ router.get('/studying-status', authenticate, async (req, res) => {
   }
 });
 
-/** 타이머 친구 바 — 하루 최대 2명의 비친구 추천 */
+/** 타이머 친구 바 — 하루 최대 5명(우선 3: 동교·동학년→학교급, 나머지 랜덤) */
 router.get('/timer-suggestions', authenticate, async (req, res) => {
   try {
     const data = await listTimerFriendSuggestions(req.user.userId);

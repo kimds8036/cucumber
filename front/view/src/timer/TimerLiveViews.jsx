@@ -243,12 +243,24 @@ const TimerLiveScrollInnerComponent = function TimerLiveScrollInner({
           </View>
           <View style={styles.dateBarRight}>
             <TouchableOpacity
-              style={styles.studyRoomEntryBtn}
+              style={[
+                styles.studyRoomEntryBtn,
+                !isRunning && styles.studyRoomEntryBtnDisabled,
+              ]}
               onPress={onOpenStudyRoom}
+              disabled={!isRunning}
               activeOpacity={0.85}
               accessibilityLabel="스터디룸 입장"
+              accessibilityState={{ disabled: !isRunning }}
             >
-              <Text style={styles.studyRoomEntryText}>스터디룸 입장</Text>
+              <Text
+                style={[
+                  styles.studyRoomEntryText,
+                  !isRunning && styles.studyRoomEntryTextDisabled,
+                ]}
+              >
+                스터디룸 입장
+              </Text>
             </TouchableOpacity>
             <TouchableOpacity style={styles.saveBtn} onPress={handleSaveAsImage}>
               <Feather name="download" size={20} color={colors.textPrimary} />

@@ -11,7 +11,7 @@ import { colors, fonts, fontSizes } from '../../styles/colors';
 import { getNormalize } from '../../styles/frame.style';
 
 /**
- * 제한 기능 진입 시 학생증 인증 유도
+ * 제한 기능 진입 시 학생인증 유도
  * AppPopupModal 셸 · 여백 탭으로 닫기 금지
  */
 export default function StudentVerificationCtaModal({
@@ -31,7 +31,7 @@ export default function StudentVerificationCtaModal({
     message ||
     (isPending
       ? '제출하신 학생증을 확인하고 있어요. 승인되면 우리학교·학생 게시판·우편을 이용할 수 있어요.'
-      : '우리학교·학생 게시판·우편 등 전용 기능은 학생증 인증 후 이용할 수 있어요.');
+      : '우리학교·학생 게시판·우편 등 전용 기능은 학생인증 후 이용할 수 있어요.');
 
   return (
     <AppPopupModal
@@ -58,7 +58,7 @@ export default function StudentVerificationCtaModal({
             onPress={onPressVerify}
             activeOpacity={0.85}
           >
-            <Text style={styles.btnPrimaryText}>학생증으로 인증</Text>
+            <Text style={styles.btnPrimaryText}>학생 인증하기</Text>
           </TouchableOpacity>
         ) : null}
         <TouchableOpacity

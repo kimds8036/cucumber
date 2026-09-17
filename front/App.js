@@ -79,6 +79,7 @@ import CertificateResubmit from './view/src/signup/CertificateResubmit';
 import CertificateGuideResubmit from './view/src/signup/CertificateGuideResubmit';
 import AltVerifyChoiceResubmit from './view/src/signup/AltVerifyChoiceResubmit';
 import NeisPlusResubmit from './view/src/signup/NeisPlusResubmit';
+import SignupPrepMaterialsModal from './view/src/signup/SignupPrepMaterialsModal';
 import AccountBlockedScreen from './components/auth/AccountBlockedScreen';
 import ReverificationGate from './components/auth/ReverificationGate';
 import ReverificationReminderBanner from './components/auth/ReverificationReminderBanner';
@@ -338,8 +339,37 @@ function RootNavigator() {
   const [showNeisPlusResubmit, setShowNeisPlusResubmit] = useState(false);
   const [showRejectedInquiry, setShowRejectedInquiry] = useState(false);
   const [resubmitMode, setResubmitMode] = useState('rejected');
+  const [prepBeforeResubmit, setPrepBeforeResubmit] = useState(false);
   const [showRejectionNotice, setShowRejectionNotice] = useState(false);
   const pollRef = useRef(null);
+  const prepConfirmOpenRef = useRef(false);
+
+  const beginStudentIdResubmit = (mode) => {
+    setResubmitMode(mode);
+    prepConfirmOpenRef.current = false;
+    setPrepBeforeResubmit(true);
+  };
+
+  const prepMaterialsModal = (
+    <SignupPrepMaterialsModal
+      visible={prepBeforeResubmit}
+      variant="verify"
+      onConfirm={() => {
+        // 팝업 페이드가 끝난 뒤 화면 전환 (트리 교체로 페이드가 끊기지 않게)
+        prepConfirmOpenRef.current = true;
+        setPrepBeforeResubmit(false);
+      }}
+      onCancel={() => {
+        prepConfirmOpenRef.current = false;
+        setPrepBeforeResubmit(false);
+      }}
+      onDismissed={() => {
+        if (!prepConfirmOpenRef.current) return;
+        prepConfirmOpenRef.current = false;
+        setShowResubmit(true);
+      }}
+    />
+  );
 
   /**
    * __DEV__ 전용: 로그인 후 학생증 재제출 화면만 바로 미리보기
@@ -545,8 +575,7 @@ function RootNavigator() {
     let rejectedBody = (
       <StudentVerificationRejected
         onResubmitStudentId={() => {
-          setResubmitMode('rejected');
-          setShowResubmit(true);
+          beginStudentIdResubmit('rejected');
         }}
         onResubmitCertificate={() => setShowAltVerifyChoice(true)}
         onInquiry={() => setShowRejectedInquiry(true)}
@@ -627,6 +656,7 @@ function RootNavigator() {
         edges={['top', 'bottom']}
       >
         {rejectedBody}
+        {prepMaterialsModal}
       </SafeAreaView>
     );
   }
@@ -643,12 +673,14 @@ function RootNavigator() {
 
   if (reverificationStatus === 'restricted') {
     return (
-      <ReverificationGate
-        onResubmit={() => {
-          setResubmitMode('reverification');
-          setShowResubmit(true);
-        }}
-      />
+      <>
+        <ReverificationGate
+          onResubmit={() => {
+            beginStudentIdResubmit('reverification');
+          }}
+        />
+        {prepMaterialsModal}
+      </>
     );
   }
 
@@ -675,8 +707,7 @@ function RootNavigator() {
           status={reverificationStatus}
           deadline={reverificationDeadline}
           onResubmit={() => {
-            setResubmitMode('reverification');
-            setShowResubmit(true);
+            beginStudentIdResubmit('reverification');
           }}
         />
       ) : null}
@@ -691,10 +722,10 @@ function RootNavigator() {
         onClose={() => setShowRejectionNotice(false)}
         onPressResubmit={() => {
           setShowRejectionNotice(false);
-          setResubmitMode('rejected');
-          setShowResubmit(true);
+          beginStudentIdResubmit('rejected');
         }}
       />
+      {prepMaterialsModal}
     </View>
   );
 }

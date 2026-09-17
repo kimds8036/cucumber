@@ -268,7 +268,7 @@ const ProfileCard = ({
                   ? '학생증 검수 중이에요'
                   : isRejected
                     ? '거절됨 · 사유 보기'
-                    : '학생증으로 인증하기'}
+                    : '학생 인증하기'}
               </Text>
             </TouchableOpacity>
           ) : null}

@@ -24,7 +24,7 @@ import { validate } from '../middleware/validate.js';
 //   extractTextFromImageBase64,
 //   verifyStudentIdOcrForSignup,
 // } from '../services/studentIdOcr.service.js';
-import { uploadSignupStudentIdPhoto } from '../services/signupStudentIdPhoto.service.js';
+import { uploadSignupStudentIdPhoto, packStudentIdCloudinaryPayload } from '../services/signupStudentIdPhoto.service.js';
 import {
   inferExpectedSchoolLevel,
   inferGradeFromBirthDate,
@@ -2029,6 +2029,7 @@ router.post(
           schoolId: studentIdManualVerification.schoolId,
           purpose: 'signup',
           submissionId: reviewSubmissionId,
+          birthDate: resolvedSignupBirthDate || normalizedBirthDate || null,
           cloudinaryUrl: studentIdManualVerification.cloudinaryUrl,
         });
       }
@@ -2572,7 +2573,7 @@ router.post('/withdraw', authenticate, async (req, res) => {
 router.post('/signup/upload-student-id', signupOcrLimiter, async (req, res) => {
   try {
     const skipValidation = isSignupRedesignSkipValidation();
-    const { name, birthDate, imageBase64, cropRegion, phone: rawPhone, schoolId } =
+    const { name, birthDate, imageBase64, imageBase64Secondary, cropRegion, phone: rawPhone, schoolId } =
       req.body || {};
 
     // [SIGNUP_REDESIGN_SKIP] 이미지·학교 필수 검증 우회
@@ -2624,12 +2625,19 @@ router.post('/signup/upload-student-id', signupOcrLimiter, async (req, res) => {
 
     let uploaded;
     try {
-      uploaded = await uploadSignupStudentIdPhoto({ imageBase64, cropRegion });
+      const primary = await uploadSignupStudentIdPhoto({ imageBase64, cropRegion });
+      let secondary = null;
+      if (imageBase64Secondary) {
+        secondary = await uploadSignupStudentIdPhoto({
+          imageBase64: imageBase64Secondary,
+        });
+      }
+      uploaded = packStudentIdCloudinaryPayload(primary, secondary);
     } catch (uploadErr) {
       console.error('[signup/upload-student-id] Cloudinary 오류:', uploadErr);
       return res.status(500).json({
         success: false,
-        message: '학생증 이미지 업로드에 실패했습니다. 다시 촬영해 주세요.',
+        message: '학생증 이미지 업로드에 실패했습니다. 다시 첨부해 주세요.',
       });
     }
 
@@ -2672,7 +2680,7 @@ router.post('/signup/upload-student-id', signupOcrLimiter, async (req, res) => {
 router.post('/resubmit-student-id', authenticate, signupOcrLimiter, async (req, res) => {
   try {
     const userId = req.user.userId;
-    const { imageBase64, cropRegion, schoolId: bodySchoolId, grade, classNumber } =
+    const { imageBase64, imageBase64Secondary, cropRegion, schoolId: bodySchoolId, grade, classNumber } =
       req.body || {};
 
     if (!imageBase64) {
@@ -2786,7 +2794,14 @@ router.post('/resubmit-student-id', authenticate, signupOcrLimiter, async (req, 
 
     let uploaded;
     try {
-      uploaded = await uploadSignupStudentIdPhoto({ imageBase64, cropRegion });
+      const primary = await uploadSignupStudentIdPhoto({ imageBase64, cropRegion });
+      let secondary = null;
+      if (imageBase64Secondary) {
+        secondary = await uploadSignupStudentIdPhoto({
+          imageBase64: imageBase64Secondary,
+        });
+      }
+      uploaded = packStudentIdCloudinaryPayload(primary, secondary);
     } catch (uploadErr) {
       console.error('[resubmit-student-id] Cloudinary 오류:', uploadErr);
       return res.status(500).json({
@@ -2827,6 +2842,7 @@ router.post('/resubmit-student-id', authenticate, signupOcrLimiter, async (req, 
       schoolName: schoolRows[0]?.name,
       purpose: submissionPurpose,
       submissionId: sidInsert.insertId,
+      birthDate: user.birth_date || null,
       cloudinaryUrl: uploaded.cloudinaryUrl,
     });
 

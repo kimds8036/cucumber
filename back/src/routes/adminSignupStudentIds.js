@@ -65,9 +65,15 @@ router.get('/', requireAdminApi, async (req, res) => {
 
     const [rows] = await pool.execute(
       `SELECT s.*, u.username, u.grade AS user_grade, u.class_number AS user_class_number,
-              u.reverification_status, u.student_verified,
+              u.reverification_status, u.student_verified, u.school_id AS user_school_id,
               sch.name AS school_name, sch.region AS school_region, sch.address AS school_address,
-              prev.name AS previous_school_name, prev.region AS previous_school_region
+              prev.name AS previous_school_name, prev.region AS previous_school_region,
+              EXISTS(
+                SELECT 1 FROM identity_verifications iv
+                WHERE iv.linked_user_id = u.id
+                  AND iv.purpose = 'guardian_consent'
+                  AND iv.status = 'consumed'
+              ) AS has_guardian_consent
        FROM signup_student_id_submissions s
        JOIN users u ON u.id = s.user_id
        LEFT JOIN schools sch ON sch.school_id = s.school_id
@@ -78,7 +84,12 @@ router.get('/', requireAdminApi, async (req, res) => {
       params,
     );
 
-    return res.json({ success: true, data: { submissions: rows } });
+    const submissions = rows.map((row) => ({
+      ...row,
+      has_guardian_consent: Boolean(row.has_guardian_consent),
+    }));
+
+    return res.json({ success: true, data: { submissions } });
   } catch (error) {
     console.error('[admin/signup-student-ids] 목록 오류:', error);
     return res.status(500).json({
@@ -180,23 +191,20 @@ router.patch('/:id', requireAdminApi, validate(reviewValidators), async (req, re
             message: '유효하지 않은 학교 ID입니다.',
           });
         }
-        if (isReverification) {
-          await applyUserSchoolUpdate(connection, {
-            userId: submission.user_id,
-            newSchoolId: targetSchoolId,
-            grade: req.body?.grade,
-            classNumber: req.body?.classNumber,
-            gradeException: req.body?.gradeException,
-          });
-        } else if (targetSchoolId !== submission.school_id) {
-          await applyUserSchoolUpdate(connection, {
-            userId: submission.user_id,
-            newSchoolId: targetSchoolId,
-            grade: req.body?.grade,
-            classNumber: req.body?.classNumber,
-            gradeException: req.body?.gradeException,
-          });
-        }
+        // 미인증 가입 후 학생증만 있는 경우 users.school_id 가 NULL일 수 있음 → 항상 제출 학교로 sync
+        await applyUserSchoolUpdate(connection, {
+          userId: submission.user_id,
+          newSchoolId: targetSchoolId,
+          grade: req.body?.grade,
+          classNumber: req.body?.classNumber,
+          gradeException: req.body?.gradeException,
+        });
+      } else if (!isReverification) {
+        await connection.rollback();
+        return res.status(400).json({
+          success: false,
+          message: '승인하려면 제출 건에 학교가 있어야 합니다.',
+        });
       }
 
       if (!isReverification) {
@@ -259,7 +267,7 @@ router.patch('/:id', requireAdminApi, validate(reviewValidators), async (req, re
           type: 'system',
           category: 'system',
           title: '학생 인증이 완료되었습니다',
-          body: 'Youth Paper를 이용할 수 있어요.',
+          body: '학생 인증 완료 · 학교·학생 게시판 등 학교 기능을 이용할 수 있어요.',
           relatedType: 'student_verification_approved',
           relatedId: submissionId,
           sourceId: `student_verification_approved_${submissionId}`,
@@ -287,9 +295,9 @@ router.patch('/:id', requireAdminApi, validate(reviewValidators), async (req, re
     return res.json({
       success: true,
       message: isReapprove
-        ? '거절되었던 학생증을 재승인했습니다. 사용자가 앱을 이용할 수 있습니다.'
+        ? '거절되었던 학생증을 재승인했습니다. 학생 인증이 완료되었습니다.'
         : status === 'approved'
-          ? '학생증이 승인되었습니다.'
+          ? '학생증이 승인되었습니다. 학교·학생 기능이 해금됩니다.'
           : '학생증이 반려되었습니다.',
     });
   } catch (error) {

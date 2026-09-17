@@ -13,7 +13,7 @@ import { colors, fonts, fontSizes } from '../../../styles/colors';
 import SchoolSearchField, { GrowingUnderline } from './SchoolSearchField';
 import SignupStepScroll from './SignupStepScroll';
 
-/** 계정 만들기 ↔ 학생증 인증 사이 — 재학 학교·학년·반 */
+/** 계정 만들기 ↔ 학생인증 사이 — 재학 학교·학년·반 */
 const SignStepSchoolSelect = ({
   styles,
   normalize,

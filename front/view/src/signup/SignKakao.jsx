@@ -633,7 +633,7 @@ const SignKakao = ({ navigation }) => {
       name: (identity.name || '').trim(),
       phone: String(identity.phoneNumber || '').replace(/\D/g, ''),
       birthDate: resolvedBirthDate,
-      // 재학정보 가입 시 미입력 — 인앱 학생증 인증 때 설정
+      // 재학정보 가입 시 미입력 — 인앱 학생인증 때 설정
       colorId: pickRandomProfileColorId(),
       verificationMethod: 'student_id',
       signupMethod: 'kakao',
@@ -729,7 +729,7 @@ const SignKakao = ({ navigation }) => {
       case STEP.SCHOOL_SELECT:
         return '재학 정보 입력';
       case STEP.STUDENT_VERIFY:
-        return studentVerified ? '가입 마무리' : '학생증 인증';
+        return studentVerified ? '가입 마무리' : '학생인증';
       case STEP.ALT_VERIFY_CHOICE:
         return '다른 방법으로 인증';
       case STEP.CERTIFICATE_GUIDE:

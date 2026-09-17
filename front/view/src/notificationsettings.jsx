@@ -1012,7 +1012,7 @@ const Settings = ({ navigation, route }) => {
               description={
                 isStudentApproved
                   ? '학교는 변경할 수 없습니다. 학적 변동 시 학년·반만 수정해 주세요.'
-                  : '학생증 인증 후 학년·반을 변경할 수 있어요.'
+                  : '학생인증 후 학년·반을 변경할 수 있어요.'
               }
             />
             <View
@@ -1034,7 +1034,7 @@ const Settings = ({ navigation, route }) => {
                     activeOpacity={0.85}
                   >
                     <Text style={styles.actionButtonText}>
-                      학생증으로 인증하기
+                      학생 인증하기
                     </Text>
                   </TouchableOpacity>
                 </>
@@ -1152,7 +1152,7 @@ const Settings = ({ navigation, route }) => {
       <StudentVerificationCtaModal
         visible={academicVerifyVisible}
         status={studentVerificationStatus || 'UNVERIFIED'}
-        message="학적 변동(학년·반 변경)은 학생증 인증 후 이용할 수 있어요."
+        message="학적 변동(학년·반 변경)은 학생인증 후 이용할 수 있어요."
         onClose={() => setAcademicVerifyVisible(false)}
         onPressVerify={openStudentVerify}
       />

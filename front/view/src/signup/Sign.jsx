@@ -1542,7 +1542,7 @@ const Sign = ({ navigation }) => {
     }
 
     if (!token) {
-      Alert.alert('알림', '학생증 인증 정보가 없습니다. 다시 제출해 주세요.');
+      Alert.alert('알림', '학생인증 정보가 없습니다. 다시 제출해 주세요.');
       return;
     }
     if (!identityData.inicisClientToken && !inicisClientTokenRef.current) {
@@ -1599,7 +1599,7 @@ const Sign = ({ navigation }) => {
           '',
       ).replace(/\D/g, ''),
       birthDate: resolvedBirthDate || identity.birthDate,
-      // 재학정보 가입 시 미입력 — 인앱 학생증 인증 때 설정
+      // 재학정보 가입 시 미입력 — 인앱 학생인증 때 설정
       colorId: pickRandomProfileColorId(),
       verificationMethod,
       consents: consentData.consents || {},
@@ -1742,7 +1742,7 @@ const Sign = ({ navigation }) => {
       case STEP.SCHOOL_SELECT:
         return '재학 정보 입력';
       case STEP.STUDENT_VERIFY:
-        return studentVerified ? '가입 마무리' : '학생증 인증';
+        return studentVerified ? '가입 마무리' : '학생인증';
       case STEP.ALT_VERIFY_CHOICE:
         return '인증 방법 선택';
       case STEP.CERTIFICATE_GUIDE:

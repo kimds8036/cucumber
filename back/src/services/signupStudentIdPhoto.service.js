@@ -48,3 +48,46 @@ export async function uploadSignupStudentIdPhoto({ imageBase64, cropRegion = nul
     cloudinaryPublicId: result.public_id || null,
   };
 }
+
+/** 1~2장 업로드 결과를 DB 컬럼용으로 묶음 (2장이면 JSON) */
+export function packStudentIdCloudinaryPayload(primary, secondary = null) {
+  if (!secondary?.cloudinaryUrl) {
+    return {
+      cloudinaryUrl: primary.cloudinaryUrl,
+      cloudinaryPublicId: primary.cloudinaryPublicId || null,
+    };
+  }
+  return {
+    cloudinaryUrl: JSON.stringify({
+      v: 1,
+      primary: primary.cloudinaryUrl,
+      secondary: secondary.cloudinaryUrl,
+    }),
+    cloudinaryPublicId: JSON.stringify({
+      v: 1,
+      primary: primary.cloudinaryPublicId || null,
+      secondary: secondary.cloudinaryPublicId || null,
+    }),
+  };
+}
+
+/** 관리자·Discord 표시용 URL 파싱 */
+export function parseStudentIdCloudinaryUrls(raw) {
+  const s = String(raw || '').trim();
+  if (!s) return { primary: null, secondary: null, urls: [] };
+  if (s.startsWith('{')) {
+    try {
+      const j = JSON.parse(s);
+      const primary = j.primary || j.urls?.[0] || null;
+      const secondary = j.secondary || j.urls?.[1] || null;
+      return {
+        primary,
+        secondary,
+        urls: [primary, secondary].filter(Boolean),
+      };
+    } catch {
+      return { primary: s, secondary: null, urls: [s] };
+    }
+  }
+  return { primary: s, secondary: null, urls: [s] };
+}

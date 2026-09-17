@@ -174,7 +174,8 @@ const MainHeader = ({
               pointerEvents="none"
               onLayout={(e) => {
                 const w = e.nativeEvent.layout.width;
-                if (w > 0) setSlotWidth(w);
+                // 글자 폭 + 라벨 간 간격 (좌측은 우리학교 타이틀과 동일하게 0부터)
+                if (w > 0) setSlotWidth(w + normalize(14));
               }}
             >
               <Text style={[modeStyles.segLabel, modeStyles.segLabelActive]}>
@@ -281,7 +282,7 @@ function createModeStyles(normalize) {
   return StyleSheet.create({
     seg: {
       position: 'relative',
-      alignSelf: 'center',
+      alignSelf: 'flex-start',
       height: rowHeight,
       justifyContent: 'center',
       overflow: 'visible',
@@ -290,10 +291,10 @@ function createModeStyles(normalize) {
     measureRow: {
       position: 'absolute',
       opacity: 0,
-      paddingHorizontal: normalize(6),
+      paddingHorizontal: 0,
       minWidth: normalize(52),
       height: rowHeight,
-      alignItems: 'center',
+      alignItems: 'flex-start',
       justifyContent: 'center',
     },
     segItem: {
@@ -307,8 +308,8 @@ function createModeStyles(normalize) {
     segBtn: {
       flex: 1,
       height: rowHeight,
-      paddingHorizontal: normalize(6),
-      alignItems: 'center',
+      paddingHorizontal: 0,
+      alignItems: 'flex-start',
       justifyContent: 'center',
     },
     segLabel: {

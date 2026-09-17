@@ -69,11 +69,20 @@ export const createTimerStyles = (width, normalize) => {
       paddingVertical: normalize(6),
       borderRadius: normalize(8),
       backgroundColor: colors.primaryDark,
+      borderWidth: StyleSheet.hairlineWidth,
+      borderColor: colors.primaryDark,
+    },
+    studyRoomEntryBtnDisabled: {
+      backgroundColor: colors.textLight5,
+      borderColor: colors.textLight10,
     },
     studyRoomEntryText: {
       fontSize: normalize(fontSizes.md),
       fontFamily: fonts.bold,
       color: colors.textWhite,
+    },
+    studyRoomEntryTextDisabled: {
+      color: colors.textLight40,
     },
     saveBtnText: {
       fontSize: normalize(fontSizes.xl),
