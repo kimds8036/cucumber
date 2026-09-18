@@ -91,6 +91,8 @@
         "expo-build-properties",
         {
           "ios": {
+            "useFrameworks": "static",
+            "enableSceneSupport": true,
             "extraPods": [
               {
                 "name": "GoogleUtilities",

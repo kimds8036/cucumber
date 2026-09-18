@@ -149,6 +149,8 @@ export default ({ config }) => ({
         {
           ios: {
             useFrameworks: 'static',
+            // iOS 27 SDK(Xcode 27): UIScene lifecycle 필수 — expo@>=57.0.23
+            enableSceneSupport: true,
             extraPods: [
               { name: 'GoogleUtilities', modular_headers: true },
               { name: 'FirebaseCoreInternal', modular_headers: true },
