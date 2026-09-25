@@ -18,6 +18,8 @@ Pod::Spec.new do |s|
   s.dependency 'ExpoModulesCore'
 
   s.source_files = '**/*.{h,m,mm,swift}'
+  # @expo/vector-icons 폰트 사본. 탭 아이콘 글리프를 네이티브에서 그린다.
+  s.resource_bundles = { 'YouthPaperTabBarFonts' => ['Fonts/*.ttf'] }
 
   s.pod_target_xcconfig = {
     'DEFINES_MODULE' => 'YES',

@@ -10,7 +10,7 @@
 ## 지금 상태
 
 - (작업 전) `modules/tab-bar-test/ios/TabBarTestView.swift`는 색 블록 스크롤 뷰와 그 위의 `UITabBar`를 그렸다. 탭을 눌러도 JS로 알리지 않았다. 1단계에서 `modules/youth-paper-tab-bar`로 바꿨다
-- 탭 순서·아이콘·색: 게시판 `house.fill`, 메시지 `bubble.left.and.bubble.right.fill`, 우리 학교 `building.columns.fill`, 타이머 `timer`, 마이페이지 `person.fill`. 선택 `#A6DA95`(`colors.primary`), 나머지 `#8E8E8E`(`colors.textLight4`)
+- 탭 순서·아이콘·색은 3절 "아이콘·색"을 따른다
 - `App.js`의 `SHOW_TAB_BAR_TEST = true`면 앱 전체 대신 `TabBarTestScreen`만 그린다
 - `TabBarTestScreen`이 스플래시를 직접 내린다. 원래 흐름에서는 `SplashHideWhenReady`가 내린다
 - (작업 전) `getTabBarTestView()`는 `requireNativeViewManager`가 예외를 던지지 않아서 네이티브 뷰가 없는 바이너리에서도 `null`이 아니다. 그 결과 빈 화면이 된다
@@ -45,7 +45,7 @@
 - [x] `ExpoView` 안에는 `UITabBar` 하나만 둔다. 테스트용 스크롤 뷰와 색 블록은 지운다
 - [x] 탭 바는 뷰의 위·좌·우·아래에 붙인다. 테스트처럼 `safeAreaLayoutGuide`에 붙이지 않는다
 - [x] 하단 safe area는 네이티브 탭 바가 채운다. `safeAreaInsetsDidChange`에서 높이를 다시 잰다
-- [x] 탭 항목·SF Symbol·색은 테스트 화면과 같다
+- [x] 탭 라벨은 네이티브에 고정한다. 아이콘·색은 JS prop으로 받는다 (3절 "아이콘·색")
 - [x] `setSelectedIndex(_:)`는 `tabBar.selectedItem`만 바꾼다. 이벤트를 보내지 않는다
 - [x] `UITabBarDelegate.tabBar(_:didSelect:)`에서 `onTabSelect(["index": item.tag])`를 보낸다. 선택 표시는 JS가 `selectedIndex`로 다시 내려줄 때 확정된다
 
@@ -71,7 +71,7 @@
 - [x] `TabBarTestScreen`은 하단에 탭 바를 두고, 누른 탭 키와 탭 바 높이를 화면 가운데에 보여준다
 - [x] 시뮬레이터에서 탭 바가 잘리지 않고 그려진다. 높이 이벤트가 JS에 온다
 - [ ] 다섯 탭을 누를 때마다 가운데 글자가 `board` → `mypage`로 바뀐다
-- [ ] 선택 안 된 탭 색이 `#8E8E8E`인지 본다. 시뮬레이터에서는 검정으로 보인다. iOS 26 유리 탭 바가 `unselectedItemTintColor`를 무시하면 `UITabBarAppearance`로 지정한다
+- [x] 선택 안 된 탭 색은 `UITabBarAppearance`와 색 칠한 아이콘 이미지로 준다 (아이콘·색 절)
 
 ---
 
@@ -90,7 +90,26 @@
 경로: `view/frame/MainFooterIOS.jsx`.
 
 - [x] props는 `MainFooter`와 같다: `activeTab`, `onTabPress`. 없으면 `useMainShellOptional()` 값을 쓰는 것도 `MainFooter`와 같다
-- [x] 탭 키 순서 배열 `['board', 'message', 'school', 'timer', 'mypage']`를 둔다. 네이티브 탭 순서와 같아야 한다
+- [x] 탭 키 순서 배열 `['timer', 'school', 'board', 'message', 'mypage']`를 둔다. 네이티브 탭 순서와 같아야 한다
+- [x] 탭 순서는 타이머, 우리 학교, 게시판, 메시지, 마이페이지다. 기존 흰 푸터(Android·가이드) 순서는 그대로다
+- [x] 선택 기본값은 게시판이다. 네이티브 초기 선택과 JS에서 `activeTab`을 못 찾을 때 모두 게시판
+
+### 아이콘·색
+
+| 탭 | 비활성 | 활성 |
+|---|---|---|
+| 타이머 | `Ionicons time-outline` | `Ionicons time` |
+| 우리 학교 | `Ionicons school-outline` | `Ionicons school` |
+| 게시판 | `Ionicons document-text-outline` | `Ionicons document-text` |
+| 메시지 | `Ionicons chatbubble-outline` | `Ionicons chatbubble` |
+| 마이페이지 | `Ionicons person-outline` | `Ionicons person` |
+
+- [x] 아이콘 이름은 `MainFooterIOS.jsx`의 `TABS`에 둔다. JS가 `getRawGlyphMap()`으로 글리프 코드를 구해 `icons` prop으로 넘긴다
+- [x] 네이티브는 `ios/Fonts/`의 폰트 사본(`Octicons`, `Ionicons`, `MaterialCommunityIcons`)을 `YouthPaperTabBarFonts` 리소스 번들로 넣고 직접 등록한다. 글리프를 `UIImage`로 그려 `image`/`selectedImage`에 쓴다
+- [x] 색은 `activeColor`(`colors.text`), `inactiveColor`(`colors.textLight2`) prop이다. 아이콘은 색을 칠한 이미지, 글자는 `UITabBarAppearance`로 준다
+- [x] 아이콘·색 prop이 바뀔 때만 탭 항목을 다시 만든다. 탭 선택만 바뀌면 다시 만들지 않는다
+- [ ] 기기에서 아이콘 10개가 모두 보이고, 활성·비활성 색이 맞다
+- [ ] `@expo/vector-icons`를 올리면 `ios/Fonts/` 폰트도 같은 버전으로 다시 복사한다. 글리프 코드가 바뀔 수 있다
 - [x] `selectedIndex`는 `activeTab`의 배열 인덱스. 못 찾으면 0
 - [x] `onTabSelect={({ nativeEvent }) => ...}`에서 `nativeEvent.index`를 탭 키로 바꿔 `onTabPress?.(tab)`
 - [x] 높이는 `onPreferredHeightChange`로 받은 값을 쓴다. 첫 값은 49. `FOOTER_HEIGHT`(65)를 쓰지 않는다
@@ -151,4 +170,4 @@
 - 로컬 `front/ios`는 gitignore라 커밋되지 않는다. 팀원은 pull 뒤 `npm install`, `cd ios && pod install`, Xcode 재빌드를 해야 탭 바가 보인다. 안 하면 3단계 판별 덕에 기존 푸터가 나온다
 - 로컬 `ios`의 `SceneDelegate.swift`와 서명 팀 설정은 config plugin 없이 직접 넣은 것이다. `prebuild`를 다시 하면 사라지고 UIScene 크래시와 서명 오류가 다시 난다
 - iOS 26 이상 SDK로 빌드하면 `UITabBar`에 Liquid Glass 재질이 자동으로 적용된다. iOS 26 미만 기기에서는 기본 불투명 탭 바로 보인다
-- 메시지 탭 아이콘은 지금 앱 로고(`Logo.svg`)지만 네이티브 탭 바는 SF Symbol이다. 로고로 바꾸려면 PDF/SVG 에셋을 모듈에 넣는 작업이 따로 필요하다
+- 탭 아이콘은 `@expo/vector-icons` 폰트 글리프를 네이티브에서 그린다. SF Symbol이나 `Logo.svg`는 쓰지 않는다
