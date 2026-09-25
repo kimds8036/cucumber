@@ -4,6 +4,10 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import Login from './view/src/signup/Login';
 import Sign from './view/src/signup/Sign';
 import SignupEntry from './view/src/signup/SignupEntry';
+import TabBarTestScreen from './view/src/TabBarTestScreen';
+
+/** iOS 탭 바 테스트. 끄려면 false. */
+const SHOW_TAB_BAR_TEST = true;
 import SignKakao from './view/src/signup/SignKakao';
 import SignApple from './view/src/signup/SignApple';
 import SignPhone from './view/src/signup/SignPhone';
@@ -934,6 +938,10 @@ export default function App() {
   }, []);
 
   if (!fontsLoaded || bootPhase === 'boot') return null;
+
+  if (SHOW_TAB_BAR_TEST) {
+    return <TabBarTestScreen />;
+  }
 
   if (bootPhase === 'splash_ad' && splashAd) {
     return (

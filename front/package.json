@@ -86,7 +86,8 @@
     "react-native-worklets": "0.10.1",
     "socket.io-client": "^4.8.3",
     "typescript": "~6.0.3",
-    "youth-paper-widget": "file:modules/youth-paper-widget"
+    "youth-paper-widget": "file:modules/youth-paper-widget",
+    "tab-bar-test": "file:modules/tab-bar-test"
   },
   "private": true,
   "devDependencies": {
