@@ -21,6 +21,7 @@ export const CLOUDINARY_FOLDERS = {
   comments: `${BASE_FOLDER}/user/comments`,
   messages: `${BASE_FOLDER}/user/messages`,
   dm: `${BASE_FOLDER}/user/dm`,
+  profiles: `${BASE_FOLDER}/user/profiles`,
   /** 문의 첨부 */
   inquiries: `${BASE_FOLDER}/inquiries`,
 };
@@ -63,6 +64,9 @@ export const uploadPost = createImageUpload(CLOUDINARY_FOLDERS.posts);
 export const uploadComment = createImageUpload(CLOUDINARY_FOLDERS.comments);
 export const uploadMessage = createImageUpload(CLOUDINARY_FOLDERS.messages);
 export const uploadDm = createImageUpload(CLOUDINARY_FOLDERS.dm);
+export const uploadProfile = createImageUpload(CLOUDINARY_FOLDERS.profiles, {
+  maxBytes: 4 * 1024 * 1024,
+});
 export const uploadInquiry = createImageUpload(CLOUDINARY_FOLDERS.inquiries);
 
 /** @deprecated uploadPost 사용 */

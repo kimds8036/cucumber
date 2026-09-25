@@ -100,6 +100,18 @@ export default function MainTabNavigator({
         headerShown: false,
         lazy: true,
         unmountOnBlur: false,
+        tabBarStyle: {
+          position: 'absolute',
+          left: 0,
+          right: 0,
+          bottom: 0,
+          backgroundColor: 'transparent',
+          borderTopWidth: 0,
+          elevation: 0,
+          shadowOpacity: 0,
+        },
+        tabBarBackground: () => null,
+        sceneStyle: { backgroundColor: 'transparent' },
       }}
     >
       <Tab.Screen name="board">

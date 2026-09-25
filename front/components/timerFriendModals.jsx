@@ -7,6 +7,7 @@ import React, { useState, useEffect, useMemo, memo } from 'react';
 import {
   View,
   Text,
+  Image,
   TouchableOpacity,
   ScrollView,
   TextInput,
@@ -97,16 +98,27 @@ export const PokeModal = ({
           {/* 친구 정보 */}
           <View style={s.pokeFriendRow}>
             <View style={s.pokeAvatar}>
-              <ProfileIcon
-                width={normalize(45)}
-                height={normalize(45)}
-                color={getProfileInnerColor(
-                  friend.colorId ??
-                    friend.profileColorId ??
-                    friend.profile_color_id ??
-                    friend.colorIndex,
-                )}
-              />
+              {friend.profileImageUrl ? (
+                <Image
+                  source={{ uri: friend.profileImageUrl }}
+                  style={{
+                    width: normalize(45),
+                    height: normalize(45),
+                    borderRadius: normalize(22),
+                  }}
+                />
+              ) : (
+                <ProfileIcon
+                  width={normalize(45)}
+                  height={normalize(45)}
+                  color={getProfileInnerColor(
+                    friend.colorId ??
+                      friend.profileColorId ??
+                      friend.profile_color_id ??
+                      friend.colorIndex,
+                  )}
+                />
+              )}
               {isStudying ? (
                 <View style={s.pokeStudyingBadge} />
               ) : (
@@ -531,11 +543,18 @@ export const FriendStoryBar = memo(function FriendStoryBar({
                   debugFriendStoryBorder('#5E5CE6'),
                 ]}
               >
-                <ProfileIcon
-                  width={normalize(56)}
-                  height={normalize(56)}
-                  color={iconColor}
-                />
+                {friend.profileImageUrl ? (
+                  <Image
+                    source={{ uri: friend.profileImageUrl }}
+                    style={styles.friendStoryPhoto}
+                  />
+                ) : (
+                  <ProfileIcon
+                    width={normalize(56)}
+                    height={normalize(56)}
+                    color={iconColor}
+                  />
+                )}
                 {isSuggestion ? (
                   <View
                     style={[

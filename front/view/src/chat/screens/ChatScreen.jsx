@@ -52,6 +52,7 @@ export default function ChatScreen({
   chatInputStyles,
   navigation,
   opponentName,
+  opponentImageUrl,
 }) {
   const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
@@ -243,6 +244,7 @@ export default function ChatScreen({
     onPressReplyTarget: handlePressReplyTarget,
     onOpenLongPressMenu: openLongPressMenu,
     opponentName,
+    opponentImageUrl,
   };
 
   useKeyboardHandler(

@@ -32,8 +32,14 @@ export const createTimerStyles = (width, normalize) => {
     scrollContent: {
       paddingHorizontal: width * 0.05,
       paddingTop: normalize(8),
-      paddingBottom: normalize(24),
+      paddingBottom: normalize(120),
       gap: normalize(16),
+    },
+    adBannerSlot: {
+      height: normalize(88),
+      borderRadius: normalize(14),
+      backgroundColor: colors.surface || colors.textLight5,
+      overflow: 'hidden',
     },
     dateBar: {
       flexDirection: 'row',
@@ -202,6 +208,199 @@ export const createTimerStyles = (width, normalize) => {
     timerBtnTextPause: {
       color: colors.textPrimary,
     },
+    timerCardTop: {
+      flexDirection: 'row',
+      justifyContent: 'flex-end',
+      alignItems: 'center',
+      marginBottom: normalize(2),
+    },
+    timerGearBtn: {
+      padding: normalize(6),
+    },
+    timerStatsRow: {
+      flexDirection: 'row',
+      alignItems: 'stretch',
+      gap: normalize(6),
+      marginTop: normalize(14),
+    },
+    timerStatCell: {
+      flex: 1,
+      minHeight: normalize(52),
+      borderRadius: normalize(12),
+      backgroundColor: colors.textLight5,
+      alignItems: 'center',
+      justifyContent: 'center',
+      paddingVertical: normalize(8),
+      paddingHorizontal: normalize(4),
+    },
+    timerStatCellDisabled: {
+      opacity: 0.45,
+    },
+    timerStatValue: {
+      fontSize: normalize(fontSizes.xl),
+      fontFamily: fonts.bold,
+      color: colors.textPrimary,
+    },
+    timerStatLabel: {
+      marginTop: normalize(2),
+      fontSize: normalize(fontSizes.sm),
+      fontFamily: fonts.regular,
+      color: colors.textSecondary,
+    },
+    paneRow: {
+      flexDirection: 'row',
+      alignItems: 'stretch',
+      minHeight: normalize(360),
+      gap: normalize(8),
+    },
+    bookmarkRail: {
+      width: normalize(46),
+      gap: normalize(6),
+      paddingTop: normalize(2),
+    },
+    bookmarkTab: {
+      minHeight: normalize(52),
+      borderRadius: normalize(10),
+      backgroundColor: colors.textLight5,
+      alignItems: 'center',
+      justifyContent: 'center',
+      paddingVertical: normalize(8),
+      paddingHorizontal: normalize(2),
+    },
+    bookmarkTabActive: {
+      backgroundColor: colors.textPrimary,
+    },
+    bookmarkTabText: {
+      fontSize: normalize(10),
+      fontFamily: fonts.bold,
+      color: colors.textSecondary,
+      textAlign: 'center',
+    },
+    bookmarkTabTextActive: {
+      color: colors.textWhite,
+    },
+    paneBody: {
+      flex: 1,
+      minWidth: 0,
+    },
+    grassPaneHeader: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      marginBottom: normalize(8),
+    },
+    grassPaneTitle: {
+      fontSize: normalize(fontSizes.xxl),
+      fontFamily: fonts.bold,
+      color: colors.textPrimary,
+    },
+    weeklyPaneScroll: {
+      flexGrow: 0,
+    },
+    weeklyDayBlock: {
+      marginBottom: normalize(14),
+    },
+    weeklyDayTitle: {
+      fontSize: normalize(fontSizes.xl),
+      fontFamily: fonts.bold,
+      color: colors.textPrimary,
+      marginBottom: normalize(6),
+    },
+    weeklyTaskRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: normalize(8),
+      marginBottom: normalize(6),
+    },
+    weeklyTaskTitle: {
+      flex: 1,
+      fontSize: normalize(fontSizes.lg),
+      fontFamily: fonts.regular,
+      color: colors.textPrimary,
+    },
+    weeklyAddRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: normalize(6),
+    },
+    weeklyAddInput: {
+      flex: 1,
+      borderBottomWidth: StyleSheet.hairlineWidth,
+      borderBottomColor: colors.textLight20,
+      paddingVertical: normalize(6),
+      fontSize: normalize(fontSizes.lg),
+      fontFamily: fonts.regular,
+      color: colors.textPrimary,
+    },
+    weeklyAddBtn: {
+      padding: normalize(4),
+    },
+    timerSettingsOverlay: {
+      flex: 1,
+      backgroundColor: colors.overlay || 'rgba(0,0,0,0.35)',
+      justifyContent: 'flex-end',
+    },
+    timerSettingsSheet: {
+      backgroundColor: colors.background,
+      borderTopLeftRadius: normalize(20),
+      borderTopRightRadius: normalize(20),
+      paddingHorizontal: normalize(20),
+      paddingTop: normalize(10),
+      paddingBottom: normalize(28),
+    },
+    timerSettingsHandle: {
+      alignSelf: 'center',
+      width: normalize(36),
+      height: normalize(4),
+      borderRadius: 2,
+      backgroundColor: colors.textLight20,
+      marginBottom: normalize(14),
+    },
+    timerSettingsTitle: {
+      fontSize: normalize(fontSizes.xxl),
+      fontFamily: fonts.bold,
+      color: colors.textPrimary,
+      marginBottom: normalize(16),
+    },
+    timerSettingsRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      paddingVertical: normalize(14),
+      borderBottomWidth: StyleSheet.hairlineWidth,
+      borderBottomColor: colors.textLight10,
+    },
+    timerSettingsRowText: {
+      flex: 1,
+      paddingRight: normalize(12),
+    },
+    timerSettingsLabel: {
+      fontSize: normalize(fontSizes.xl),
+      fontFamily: fonts.bold,
+      color: colors.textPrimary,
+    },
+    timerSettingsHint: {
+      marginTop: normalize(4),
+      fontSize: normalize(fontSizes.md),
+      fontFamily: fonts.regular,
+      color: colors.textSecondary,
+    },
+    timerSettingsCloseBtn: {
+      marginTop: normalize(18),
+      alignSelf: 'center',
+      paddingVertical: normalize(10),
+      paddingHorizontal: normalize(24),
+    },
+    timerSettingsCloseText: {
+      fontSize: normalize(fontSizes.xl),
+      fontFamily: fonts.bold,
+      color: colors.textPrimary,
+    },
+    friendStoryPhoto: {
+      width: normalize(56),
+      height: normalize(56),
+      borderRadius: normalize(28),
+    },
 
     // 구분선
     divider: {
@@ -220,8 +419,7 @@ export const createTimerStyles = (width, normalize) => {
     },
     todoColumn: {
       flex: 1,
-      minWidth: width * 0.5,
-      maxWidth: width * 0.6,
+      minWidth: 0,
       alignSelf: 'stretch',
     },
     todoHeader: {
@@ -400,7 +598,7 @@ export const createTimerStyles = (width, normalize) => {
     },
     timetableColumn: {
       flex: 1,
-      minWidth: width * 0.35,
+      minWidth: 0,
       alignSelf: 'stretch',
     },
     timetableScroll: {
@@ -596,11 +794,17 @@ export const createTimerStyles = (width, normalize) => {
       paddingHorizontal: normalize(20),
       ...shadow.sm,
     },
+    timetableTitleRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      marginBottom: normalize(10),
+    },
     timetableTitle: {
       fontSize: normalize(fontSizes.xl),
       fontFamily: fonts.bold,
       color: colors.textPrimary,
-      marginBottom: normalize(10),
+      marginBottom: 0,
     },
     timetableHeaderRow: {
       flexDirection: 'row',

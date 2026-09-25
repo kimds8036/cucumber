@@ -2,10 +2,13 @@ import React, { useMemo, useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
+  Image,
+  Alert,
   TouchableOpacity,
   useWindowDimensions,
   Pressable,
 } from 'react-native';
+import * as ImagePicker from 'expo-image-picker';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Feather from '@expo/vector-icons/Feather';
 import { Ionicons } from '@expo/vector-icons';
@@ -31,6 +34,7 @@ const ProfileCard = ({
   navigation,
   timetableSection,
   onNavigateToTimetableChoice,
+  onProfileImageChange,
 }) => {
   const { width } = useWindowDimensions();
   const normalize = useMemo(() => getNormalize(width), [width]);
@@ -165,13 +169,95 @@ const ProfileCard = ({
   return (
     <View style={styles.profileCard}>
       <View style={styles.profileHeader}>
-        <View style={[styles.profileCircle]}>
-          <ProfileIcon
-            width={normalize(70)}
-            height={normalize(70)}
-            color={profileEyeColor}
-          />
-        </View>
+        <TouchableOpacity
+          style={[styles.profileCircle]}
+          activeOpacity={0.8}
+          onPress={() => {
+            const hasPhoto = Boolean(userInfo?.profileImageUrl);
+            Alert.alert(
+              '프로필 사진',
+              hasPhoto ? '사진을 바꾸거나 삭제할 수 있어요.' : '앨범에서 사진 한 장을 고를 수 있어요.',
+              [
+                { text: '취소', style: 'cancel' },
+                {
+                  text: '앨범에서 선택',
+                  onPress: async () => {
+                    const perm =
+                      await ImagePicker.requestMediaLibraryPermissionsAsync();
+                    if (!perm.granted) {
+                      Alert.alert(
+                        '권한 필요',
+                        '프로필 사진을 올리려면 앨범 접근이 필요해요.',
+                      );
+                      return;
+                    }
+                    const result = await ImagePicker.launchImageLibraryAsync({
+                      mediaTypes: 'images',
+                      allowsMultipleSelection: false,
+                      quality: 0.85,
+                    });
+                    if (result.canceled || !result.assets?.[0]?.uri) return;
+                    try {
+                      const formData = new FormData();
+                      formData.append('image', {
+                        uri: result.assets[0].uri,
+                        type: 'image/jpeg',
+                        name: 'profile.jpg',
+                      });
+                      const res = await api.post(
+                        '/api/users/me/profile-image',
+                        formData,
+                        { headers: { 'Content-Type': 'multipart/form-data' } },
+                      );
+                      onProfileImageChange?.(
+                        res.data?.data?.profileImageUrl || result.assets[0].uri,
+                      );
+                    } catch (error) {
+                      console.warn(
+                        '[Profile] 사진 업로드 실패',
+                        error?.message || error,
+                      );
+                      Alert.alert(
+                        '업로드 실패',
+                        '프로필 사진을 올리지 못했어요. 잠시 후 다시 시도해 주세요.',
+                      );
+                    }
+                  },
+                },
+                hasPhoto
+                  ? {
+                      text: '삭제',
+                      style: 'destructive',
+                      onPress: async () => {
+                        try {
+                          await api.delete('/api/users/me/profile-image');
+                          onProfileImageChange?.(null);
+                        } catch (error) {
+                          Alert.alert(
+                            '삭제 실패',
+                            '프로필 사진을 지우지 못했어요.',
+                          );
+                        }
+                      },
+                    }
+                  : null,
+              ].filter(Boolean),
+            );
+          }}
+        >
+          {userInfo?.profileImageUrl ? (
+            <Image
+              source={{ uri: userInfo.profileImageUrl }}
+              style={styles.profilePhoto}
+            />
+          ) : (
+            <ProfileIcon
+              width={normalize(70)}
+              height={normalize(70)}
+              color={profileEyeColor}
+            />
+          )}
+        </TouchableOpacity>
 
         <View
           style={[

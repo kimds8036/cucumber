@@ -28,12 +28,10 @@ import StudentVerificationCtaModal from '../../components/auth/StudentVerificati
 import { createBoardStyles, getNormalize } from '../../styles/board.style';
 import FontAwesome5 from '@expo/vector-icons/FontAwesome5';
 import { api } from '../../utils/api';
-import { loadTips } from '../../utils/tipsApi';
 import { normalizeTagsFromApi } from '../../utils/normalizePostTags';
 import { equippedBadgeFromApiRow } from '../../constants/badges';
 import BoardPostCard from '../../components/Boardpostcard';
 import AdPlaceholder from '../../src/screens/ad/AdPlaceholder';
-import TopAdBanner from '../../components/ads/TopAdBanner';
 import Skeleton from '../../components/common/Skeleton';
 import { useLocationContext } from '../../context/LocationContext';
 import { useGuidePreview } from '../../context/GuidePreviewContext';
@@ -80,6 +78,40 @@ function formatTimeAgo(createdAt) {
   return date.toLocaleDateString('ko-KR', { month: 'long', day: 'numeric' });
 }
 
+const SORT_OPTIONS = [
+  { key: 'latest', label: '최신순' },
+  { key: 'popular', label: '인기순' },
+  { key: 'nearby', label: '거리순' },
+];
+
+function mapApiPostToCard(p) {
+  const thumb =
+    typeof p.thumbnail === 'string' && p.thumbnail.trim()
+      ? p.thumbnail.trim()
+      : null;
+  return {
+    id: p.id,
+    author: '익명',
+    equippedBadge: equippedBadgeFromApiRow(p),
+    time: formatTimeAgo(p.created_at),
+    location: '',
+    content: p.content,
+    likes: p.like_count,
+    comments: p.comment_count,
+    liked: Boolean(p.isLiked ?? false),
+    scrapped: Boolean(p.isScrapped ?? p.is_scrapped ?? false),
+    scrapCount: p.scrapCount ?? 0,
+    isMyPost: !!p.is_author,
+    authorUserId: p.author_user_id,
+    thumbnail: thumb,
+    tags: normalizeTagsFromApi(p.tags),
+    distanceKm:
+      typeof p.distanceKm === 'number' && !Number.isNaN(p.distanceKm)
+        ? p.distanceKm
+        : null,
+  };
+}
+
 // 메인 화면(MainScreen)에서 헤더/푸터 없이 메인 영역만 렌더할 때 사용
 // posts: 외부에서 주입하는 게시글 배열 (없으면 defaultPosts 사용)
 export function BoardAllContent({ navigation, posts }) {
@@ -104,11 +136,12 @@ export function BoardAllContent({ navigation, posts }) {
   const distanceStale = permissionGranted && !coords;
 
   const [sortType, setSortType] = useState('latest'); // latest, popular, nearby
+  const [sortMenuOpen, setSortMenuOpen] = useState(false);
+  const [popularPost, setPopularPost] = useState(null);
   const [serverPosts, setServerPosts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
-  const [tipRefreshKey, setTipRefreshKey] = useState(0);
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
   const [floatingMenuVisible, setFloatingMenuVisible] = useState(false);
@@ -325,34 +358,7 @@ export function BoardAllContent({ navigation, posts }) {
         }
         const response = await api.get('/api/posts', { params });
         const apiPosts = response.data?.data?.posts || [];
-        const mapped = apiPosts.map((p) => {
-          const thumb =
-            typeof p.thumbnail === 'string' && p.thumbnail.trim()
-              ? p.thumbnail.trim()
-              : null;
-          const tags = normalizeTagsFromApi(p.tags);
-          return {
-            id: p.id,
-            author: '익명',
-            equippedBadge: equippedBadgeFromApiRow(p),
-            time: formatTimeAgo(p.created_at),
-            location: '',
-            content: p.content,
-            likes: p.like_count,
-            comments: p.comment_count,
-            liked: Boolean(p.isLiked ?? false),
-            scrapped: Boolean(p.isScrapped ?? p.is_scrapped ?? false),
-            scrapCount: p.scrapCount ?? 0,
-            isMyPost: !!p.is_author,
-            authorUserId: p.author_user_id,
-            thumbnail: thumb,
-            tags,
-            distanceKm:
-              typeof p.distanceKm === 'number' && !Number.isNaN(p.distanceKm)
-                ? p.distanceKm
-                : null,
-          };
-        });
+        const mapped = apiPosts.map(mapApiPostToCard);
         if (append) {
           setServerPosts((prev) => {
             const existingIds = new Set(prev.map((p) => p.id));
@@ -378,10 +384,6 @@ export function BoardAllContent({ navigation, posts }) {
         } else {
           setServerPosts(mapped);
           lastFullFetchAtRef.current = Date.now();
-          // Pull to Refresh / Focus soft 갱신 시에만 Tip 문구 교체
-          if (soft) {
-            setTipRefreshKey((k) => k + 1);
-          }
         }
         setHasMore(apiPosts.length > 0);
         setPage(nextPage);
@@ -447,7 +449,6 @@ export function BoardAllContent({ navigation, posts }) {
         skipNextFocusFetchRef.current = false;
         return;
       }
-      void loadTips({ force: true });
       if (posts && posts.length > 0) return;
       const elapsed = Date.now() - lastFullFetchAtRef.current;
       if (elapsed < BOARD_FOCUS_REFRESH_COOLDOWN_MS) return;
@@ -465,18 +466,59 @@ export function BoardAllContent({ navigation, posts }) {
     fetchPosts(1, false);
   }, [sortType, isGuidePreview, boardFeedMode]);
 
+  const fetchPopularSpotlight = useCallback(async () => {
+    if (isGuidePreview) {
+      const first = getGuideBoardPosts()?.[0];
+      setPopularPost(first || null);
+      return;
+    }
+    if (
+      boardFeedMode === 'student' &&
+      studentVerificationStatus !== 'APPROVED'
+    ) {
+      setPopularPost(null);
+      return;
+    }
+    try {
+      const params = {
+        boardType: boardFeedMode === 'student' ? 'student' : 'national',
+        sort: 'popular',
+        page: 1,
+        limit: 1,
+      };
+      if (coords) {
+        params.viewerLat = coords.latitude;
+        params.viewerLng = coords.longitude;
+      }
+      const response = await api.get('/api/posts', { params });
+      const raw = response.data?.data?.posts?.[0];
+      setPopularPost(raw ? mapApiPostToCard(raw) : null);
+    } catch (error) {
+      console.error('인기 게시글 로드 실패:', error);
+      setPopularPost(null);
+    }
+  }, [boardFeedMode, coords, isGuidePreview, studentVerificationStatus]);
+
   const handlePullToRefresh = useCallback(() => {
     if (isGuidePreview) return;
     if (posts && posts.length > 0) return;
     refreshLocation();
     fetchPostsRef.current?.(1, false, { soft: true });
-  }, [isGuidePreview, posts, refreshLocation]);
+    void fetchPopularSpotlight();
+  }, [isGuidePreview, posts, refreshLocation, fetchPopularSpotlight]);
 
-  const data = studentFeedLocked
+  useEffect(() => {
+    void fetchPopularSpotlight();
+  }, [fetchPopularSpotlight]);
+
+  const sourcePosts = studentFeedLocked
     ? []
     : posts && posts.length > 0
       ? posts
       : serverPosts;
+  const data = popularPost?.id
+    ? sourcePosts.filter((p) => p.id !== popularPost.id)
+    : sourcePosts;
 
   const handleLoadMore = () => {
     if (sortType === 'nearby' && !coords) return;
@@ -488,14 +530,14 @@ export function BoardAllContent({ navigation, posts }) {
     try {
       const res = await api.post(`/api/posts/${post.id}/scrap`);
       const scrapped = Boolean(res.data?.scrapped);
-      setServerPosts((prev) =>
-        prev.map((p) => {
-          if (p.id !== post.id) return p;
-          const cur = p.scrapCount ?? 0;
-          const next = scrapped ? cur + 1 : Math.max(0, cur - 1);
-          return { ...p, scrapped, scrapCount: next };
-        }),
-      );
+      const patch = (p) => {
+        if (p.id !== post.id) return p;
+        const cur = p.scrapCount ?? 0;
+        const next = scrapped ? cur + 1 : Math.max(0, cur - 1);
+        return { ...p, scrapped, scrapCount: next };
+      };
+      setServerPosts((prev) => prev.map(patch));
+      setPopularPost((prev) => (prev ? patch(prev) : prev));
     } catch (error) {
       console.error('스크랩 토글 오류:', error);
       Alert.alert(
@@ -628,60 +670,88 @@ export function BoardAllContent({ navigation, posts }) {
 
   return (
     <>
-      {/* 정렬 버튼 영역 */}
-      <View style={styles.sortContainer}>
-        <TouchableOpacity
-          style={[
-            styles.sortButton,
-            sortType === 'latest' && styles.sortButtonActive,
-          ]}
-          onPress={() => setSortType('latest')}
-        >
-          <Text
-            style={[
-              styles.sortButtonText,
-              sortType === 'latest' && styles.sortButtonTextActive,
-            ]}
+      <View style={styles.boardFeed}>
+      <View style={styles.adBannerSlot} />
+
+      <View style={styles.filterSection}>
+        <View style={styles.sortContainer}>
+          <View style={styles.filterChipRow}>
+            <TouchableOpacity
+              style={[
+                styles.sortButton,
+                boardFeedMode === 'national' && styles.sortButtonActive,
+              ]}
+              onPress={() => shell?.setBoardFeedMode?.('national')}
+            >
+              <Text
+                style={[
+                  styles.sortButtonText,
+                  boardFeedMode === 'national' && styles.sortButtonTextActive,
+                ]}
+              >
+                전체
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[
+                styles.sortButton,
+                boardFeedMode === 'student' && styles.sortButtonActive,
+              ]}
+              onPress={() => shell?.setBoardFeedMode?.('student')}
+            >
+              <Text
+                style={[
+                  styles.sortButtonText,
+                  boardFeedMode === 'student' && styles.sortButtonTextActive,
+                ]}
+              >
+                학생
+              </Text>
+            </TouchableOpacity>
+          </View>
+
+          <TouchableOpacity
+            style={styles.sortDropdownButton}
+            onPress={() => setSortMenuOpen((v) => !v)}
+            activeOpacity={0.7}
           >
-            최신
-          </Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={[
-            styles.sortButton,
-            sortType === 'popular' && styles.sortButtonActive,
-          ]}
-          onPress={() => setSortType('popular')}
-        >
-          <Text
-            style={[
-              styles.sortButtonText,
-              sortType === 'popular' && styles.sortButtonTextActive,
-            ]}
-          >
-            인기
-          </Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={[
-            styles.sortButton,
-            sortType === 'nearby' && styles.sortButtonActive,
-          ]}
-          onPress={() => setSortType('nearby')}
-        >
-          <Text
-            style={[
-              styles.sortButtonText,
-              sortType === 'nearby' && styles.sortButtonTextActive,
-            ]}
-          >
-            근처
-          </Text>
-        </TouchableOpacity>
+            <Text style={styles.sortDropdownLabel}>
+              {SORT_OPTIONS.find((o) => o.key === sortType)?.label || '최신순'}
+            </Text>
+            <Ionicons
+              name={sortMenuOpen ? 'chevron-up' : 'chevron-down'}
+              size={normalize(16)}
+              color={colors.textPrimary}
+            />
+          </TouchableOpacity>
+        </View>
+        {sortMenuOpen ? (
+          <View style={styles.sortDropdownMenu}>
+            {SORT_OPTIONS.map((opt) => (
+              <TouchableOpacity
+                key={opt.key}
+                style={styles.sortDropdownItem}
+                onPress={() => {
+                  setSortType(opt.key);
+                  setSortMenuOpen(false);
+                }}
+              >
+                <Text
+                  style={[
+                    styles.sortDropdownItemText,
+                    sortType === opt.key && styles.sortDropdownItemTextActive,
+                  ]}
+                >
+                  {opt.label}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        ) : null}
       </View>
 
-      {/* 게시글 목록 — 초기 로딩 시 스켈레톤 행을 리스트 데이터로 렌더(측정 방해 방지) */}
-      <View style={{ flex: 1 }}>
+      {/* 게시글 목록 — 필터 아래 독립 영역 */}
+      <View style={styles.postListWrap}>
         <FlatList
           style={styles.postList}
           data={flatListData}
@@ -701,14 +771,27 @@ export function BoardAllContent({ navigation, posts }) {
             )
           }
           ListHeaderComponent={
-            <View
-              style={{
-                marginHorizontal: -(width * 0.04),
-                width,
-              }}
-            >
-              <TopAdBanner tipRefreshKey={tipRefreshKey} />
-            </View>
+            popularPost ? (
+              <BoardPostCard
+                post={popularPost}
+                normalize={normalize}
+                styles={styles}
+                showPopularBadge
+                showDistanceBadge={permissionGranted}
+                distanceStale={distanceStale}
+                distanceLoading={
+                  permissionGranted &&
+                  !(typeof popularPost.distanceKm === 'number') &&
+                  distanceStale
+                }
+                onPress={() =>
+                  navigation.navigate('BoardDetail', {
+                    post: { ...popularPost, author: popularPost.author },
+                    isMyPost: popularPost.isMyPost ?? false,
+                  })
+                }
+              />
+            ) : null
           }
           ListEmptyComponent={
             !loading ? (
@@ -751,8 +834,10 @@ export function BoardAllContent({ navigation, posts }) {
               </View>
             ) : null
           }
-          contentContainerStyle={{ paddingBottom: normalize(80) }}
+          contentContainerStyle={styles.postListContent}
+          removeClippedSubviews={false}
         />
+      </View>
       </View>
 
       {/* 글쓰기 플로팅 버튼 */}
@@ -902,6 +987,9 @@ export function BoardAllContent({ navigation, posts }) {
         onBlocked={(uid) => {
           closeFloatingMenu();
           setServerPosts((prev) => filterPostsExcludingUser(prev, uid));
+          setPopularPost((prev) =>
+            prev && String(prev.authorUserId) === String(uid) ? null : prev,
+          );
         }}
       />
 

@@ -16,6 +16,7 @@ export const createMyPageStyles = (normalize) => {
     scrollView: {
       flex: 1,
       paddingTop: normalize(8),
+      paddingBottom: normalize(100),
     },
     menuSection: {
       marginHorizontal: normalize(16),
@@ -246,6 +247,12 @@ export const createProfileCardStyles = (normalize) =>
       justifyContent: 'center',
       alignItems: 'center',
       marginRight: normalize(12),
+      overflow: 'hidden',
+    },
+    profilePhoto: {
+      width: normalize(70),
+      height: normalize(70),
+      borderRadius: normalize(28),
     },
     profileInfo: {
       flex: 1,

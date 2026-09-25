@@ -81,7 +81,16 @@ function getCurrentSemesterRange(now = new Date()) {
   };
 }
 
-function buildWeekColumns(days, weekCountOverride = null) {
+function parseYmdLocal(ymd) {
+  const [y, m, d] = String(ymd || '')
+    .slice(0, 10)
+    .split('-')
+    .map(Number);
+  if (!y || !m || !d) return null;
+  return new Date(y, m - 1, d);
+}
+
+function buildWeekColumns(days, weekCountOverride = null, range = null) {
   const safeDays = Array.isArray(days) ? days : [];
   const byDayKey = new Map();
   safeDays.forEach((entry) => {
@@ -90,7 +99,12 @@ function buildWeekColumns(days, weekCountOverride = null) {
     byDayKey.set(key, toHours(entry));
   });
 
-  const { startDate, endDate } = getCurrentSemesterRange(new Date());
+  const customStart = range?.startDate ? parseYmdLocal(range.startDate) : null;
+  const customEnd = range?.endDate ? parseYmdLocal(range.endDate) : null;
+  const { startDate, endDate } =
+    customStart && customEnd
+      ? { startDate: customStart, endDate: customEnd }
+      : getCurrentSemesterRange(new Date());
   const semesterStart = new Date(startDate);
   semesterStart.setHours(0, 0, 0, 0);
   const semesterEnd = new Date(endDate);
@@ -172,16 +186,28 @@ export { getLevelFromHours, hoursToColor, toHours };
 const DAY_LABELS = ['일', '월', '화', '수', '목', '금', '토'];
 const WEEKS = 27;
 
-const StudyGrassMap = ({ days = null, weeks = WEEKS }) => {
+const StudyGrassMap = ({
+  days = null,
+  weeks = WEEKS,
+  rangeStart = null,
+  rangeEnd = null,
+}) => {
   const safeWeeksProp =
     Number.isFinite(weeks) && weeks > 0 ? Math.floor(weeks) : WEEKS;
+  const range =
+    rangeStart && rangeEnd
+      ? { startDate: rangeStart, endDate: rangeEnd }
+      : null;
   const {
     weekColumns,
     monthLabels,
     weeks: derivedWeeks,
     semesterStartKey,
     semesterEndKey,
-  } = useMemo(() => buildWeekColumns(days, safeWeeksProp), [days, weeks]);
+  } = useMemo(
+    () => buildWeekColumns(days, range ? null : safeWeeksProp, range),
+    [days, weeks, rangeStart, rangeEnd],
+  );
   const safeWeeks = derivedWeeks || safeWeeksProp;
   const legendColors = useMemo(() => renderLegendColors(), []);
 

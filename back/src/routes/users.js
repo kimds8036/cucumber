@@ -8,6 +8,7 @@ import {
   nameLookupBindParams,
   nameLookupWhereClause,
 } from '../services/userPii.service.js';
+import { cloudinary, uploadProfile } from '../config/cloudinary.js';
 
 const router = express.Router();
 
@@ -192,6 +193,92 @@ router.post('/me/install-convert', authenticate, async (req, res) => {
     return res.status(500).json({
       success: false,
       message: '설치 전환 처리 중 오류가 발생했습니다.',
+    });
+  }
+});
+
+async function destroyProfilePublicId(publicId) {
+  const id = String(publicId || '').trim();
+  if (!id) return;
+  try {
+    await cloudinary.uploader.destroy(id, { invalidate: true });
+  } catch (err) {
+    console.warn('[profile-image] cloudinary destroy failed:', err?.message || err);
+  }
+}
+
+// POST /api/users/me/profile-image — 프로필 사진 1장
+router.post(
+  '/me/profile-image',
+  authenticate,
+  uploadProfile.single('image'),
+  async (req, res) => {
+    try {
+      const userId = req.user.userId;
+      const file = req.file;
+      const url = file?.path || file?.secure_url || null;
+      const publicId = file?.filename || file?.public_id || null;
+      if (!url) {
+        return res.status(400).json({
+          success: false,
+          message: '이미지 파일이 필요합니다.',
+        });
+      }
+
+      const [[prev]] = await pool.execute(
+        `SELECT profile_image_public_id
+         FROM users
+         WHERE id = ?
+         LIMIT 1`,
+        [userId],
+      );
+      await pool.execute(
+        `UPDATE users
+         SET profile_image_url = ?, profile_image_public_id = ?
+         WHERE id = ?`,
+        [url, publicId, userId],
+      );
+      if (prev?.profile_image_public_id && prev.profile_image_public_id !== publicId) {
+        await destroyProfilePublicId(prev.profile_image_public_id);
+      }
+      return res.json({
+        success: true,
+        data: { profileImageUrl: url },
+      });
+    } catch (error) {
+      console.error('프로필 사진 업로드 오류:', error);
+      return res.status(500).json({
+        success: false,
+        message: '프로필 사진 업로드 중 오류가 발생했습니다.',
+      });
+    }
+  },
+);
+
+// DELETE /api/users/me/profile-image
+router.delete('/me/profile-image', authenticate, async (req, res) => {
+  try {
+    const userId = req.user.userId;
+    const [[prev]] = await pool.execute(
+      `SELECT profile_image_public_id
+       FROM users
+       WHERE id = ?
+       LIMIT 1`,
+      [userId],
+    );
+    await pool.execute(
+      `UPDATE users
+       SET profile_image_url = NULL, profile_image_public_id = NULL
+       WHERE id = ?`,
+      [userId],
+    );
+    await destroyProfilePublicId(prev?.profile_image_public_id);
+    return res.json({ success: true, data: { profileImageUrl: null } });
+  } catch (error) {
+    console.error('프로필 사진 삭제 오류:', error);
+    return res.status(500).json({
+      success: false,
+      message: '프로필 사진 삭제 중 오류가 발생했습니다.',
     });
   }
 });

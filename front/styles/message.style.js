@@ -14,6 +14,42 @@ export const createMessageStyles = (width, normalize) => {
       backgroundColor: colors.background,
     },
 
+    adBannerSlot: {
+      marginHorizontal: width * 0.04,
+      marginTop: normalize(4),
+      height: normalize(88),
+      borderRadius: normalize(14),
+      backgroundColor: colors.surface || colors.textLight5,
+      overflow: 'hidden',
+    },
+    filterChipRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: normalize(8),
+      paddingHorizontal: width * 0.04,
+      paddingVertical: normalize(10),
+    },
+    filterChip: {
+      paddingHorizontal: normalize(16),
+      paddingVertical: normalize(8),
+      borderRadius: normalize(20),
+      backgroundColor: colors.background,
+      borderWidth: 1,
+      borderColor: colors.textLight10,
+    },
+    filterChipActive: {
+      backgroundColor: colors.primary,
+      borderColor: colors.primary,
+    },
+    filterChipText: {
+      fontSize: normalize(fontSizes.xl),
+      fontFamily: fonts.bold,
+      color: colors.textSecondary,
+    },
+    filterChipTextActive: {
+      color: colors.background,
+      fontFamily: fonts.bold,
+    },
     // 쪽지/개인우편 토글 영역 (슬라이딩 pill)
     toggleContainer: {
       flexDirection: 'row',
@@ -92,6 +128,7 @@ export const createMessageStyles = (width, normalize) => {
       justifyContent: 'center',
       alignItems: 'center',
       marginRight: normalize(12),
+      overflow: 'hidden',
     },
     listItemBody: {
       flex: 1,
@@ -140,7 +177,7 @@ export const createMessageStyles = (width, normalize) => {
     floatingButton: {
       position: 'absolute',
       right: normalize(20),
-      bottom: normalize(20),
+      bottom: normalize(96),
       width: normalize(50),
       height: normalize(50),
       borderRadius: normalize(28),

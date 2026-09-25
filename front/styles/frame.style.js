@@ -47,15 +47,11 @@ export const createHeaderStyles = (width, height) => {
     },
     iconButton: {
       position: 'relative',
-      padding: normalize(8),
-      minWidth: normalize(40),
-      minHeight: normalize(40),
+      padding: normalize(6),
+      minWidth: normalize(32),
+      minHeight: normalize(32),
       alignItems: 'center',
       justifyContent: 'center',
-      borderRadius: normalize(25),
-      backgroundColor: colors.green,
-      borderWidth: 1,
-      borderColor: colors.primaryLight50,
     },
     badge: {
       position: 'absolute',
@@ -74,49 +70,52 @@ export const createFooterStyles = (width, height) => {
   const normalize = (size) => Math.round(scale * size);
 
   return StyleSheet.create({
+    wrap: {
+      paddingHorizontal: normalize(16),
+      paddingTop: normalize(6),
+      paddingBottom: normalize(8),
+      backgroundColor: 'transparent',
+    },
+    wrapFloating: {
+      backgroundColor: 'transparent',
+    },
     container: {
       flexDirection: 'row',
       justifyContent: 'space-around',
       alignItems: 'stretch',
       backgroundColor: colors.background,
-      paddingVertical: normalize(10),
-      paddingBottom: normalize(-8),
-      height: normalize(65),
-      borderTopWidth: 0.5,
-      borderColor: colors.textLight5,
+      paddingVertical: normalize(8),
+      height: normalize(62),
+      borderRadius: normalize(28),
+      ...Platform.select({
+        ios: {
+          shadowColor: colors.shadow,
+          shadowOffset: { width: 0, height: 4 },
+          shadowOpacity: 0.12,
+          shadowRadius: 12,
+        },
+        android: {
+          elevation: 8,
+        },
+      }),
     },
     tabButton: {
       flex: 1,
       alignItems: 'center',
       justifyContent: 'center',
       paddingVertical: normalize(4),
-      minHeight: normalize(50),
-      position: 'relative',
-    },
-    activeTabIndicator: {
-      position: 'absolute',
-      top: normalize(-10),
-      width: 0,
-      height: 0,
-      backgroundColor: 'transparent',
-      borderStyle: 'solid',
-      borderLeftWidth: normalize(10),
-      borderRightWidth: normalize(10),
-      borderTopWidth: normalize(8),
-      borderLeftColor: 'transparent',
-      borderRightColor: 'transparent',
-      borderTopColor: colors.primary,
+      minHeight: normalize(46),
     },
     tabText: {
       fontSize: normalize(fontSizes.md),
       fontFamily: fonts.bold,
       color: colors.textSecondary,
-      marginTop: normalize(4),
+      marginTop: normalize(2),
       fontWeight: '500',
     },
     activeTabText: {
-      color: colors.primary,
-      fontWeight: '500',
+      color: colors.textPrimary,
+      fontWeight: '600',
     },
   });
 };

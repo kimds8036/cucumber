@@ -209,6 +209,7 @@ async function hydrateEligibleSuggestions(userId, ids) {
        u.id,
        u.username,
        u.color_id,
+       u.profile_image_url,
        c.hex_code AS profile_color_hex,
        c.color_number AS profile_color_number
      FROM users u
@@ -237,6 +238,7 @@ async function hydrateEligibleSuggestions(userId, ids) {
       userId: Number(r.id),
       username: r.username ? `@${r.username}` : '',
       colorId: r.color_id,
+      profileImageUrl: r.profile_image_url || null,
       profileColor: {
         id: r.color_id,
         hexCode: r.profile_color_hex,

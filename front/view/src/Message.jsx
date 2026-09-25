@@ -8,6 +8,7 @@ import React, {
 import {
   View,
   Text,
+  Image,
   TouchableOpacity,
   ScrollView,
   useWindowDimensions,
@@ -372,7 +373,6 @@ export function MessageContent({ navigation }) {
   );
 
   const [messageType, setMessageType] = useState('note'); // 'note' | 'mail' (쪽지 탭에 익명+DM 혼합)
-  const slideAnim = useRef(new Animated.Value(0)).current; // 0=쪽지, 1=개인우편
   const [noteRooms, setNoteRooms] = useState([]);
   const [mails, setMails] = useState([]);
   const [loadingNote, setLoadingNote] = useState(false);
@@ -572,13 +572,6 @@ export function MessageContent({ navigation }) {
       return;
     }
     setMessageType(type);
-    const toValue = type === 'note' ? 0 : 1;
-    Animated.spring(slideAnim, {
-      toValue,
-      useNativeDriver: false,
-      tension: 60,
-      friction: 10,
-    }).start();
   };
 
   const fetchRooms = useCallback(async () => {
@@ -644,6 +637,11 @@ export function MessageContent({ navigation }) {
           other_user_name: r.other_user_name,
           other_user_school_name: r.other_user_school_name,
           other_user_color_id: r.other_user_color_id,
+          profileImageUrl:
+            r.other_user_profile_image_url ||
+            r.other_user_profileImageUrl ||
+            r.profileImageUrl ||
+            null,
           sortTime: parseUtcToLocal(at)?.getTime() ?? 0,
         };
       });
@@ -820,12 +818,10 @@ export function MessageContent({ navigation }) {
     if (!isGuidePreview) return;
     if (guideMessageTab === 'mail') {
       setMessageType('mail');
-      slideAnim.setValue(1);
       return;
     }
     setMessageType('note');
-    slideAnim.setValue(0);
-  }, [isGuidePreview, guideMessageTab, slideAnim]);
+  }, [isGuidePreview, guideMessageTab]);
 
   // 쪽지 탭: 익명 채팅방 + DM 방 동시 조회 후 최신순 병합
   useEffect(() => {
@@ -932,49 +928,42 @@ export function MessageContent({ navigation }) {
 
   return (
     <>
-      {/* 쪽지/개인우편 토글 — 슬라이딩 pill */}
-      <View style={styles.toggleContainer}>
-        <View style={styles.toggleTrack}>
-          <Animated.View
+      <View style={styles.adBannerSlot} />
+      <View style={styles.filterChipRow}>
+        <TouchableOpacity
+          style={[
+            styles.filterChip,
+            messageType === 'note' && styles.filterChipActive,
+          ]}
+          onPress={() => handleMessageTypeChange('note')}
+          activeOpacity={0.8}
+        >
+          <Text
             style={[
-              styles.togglePill,
-              {
-                left: slideAnim.interpolate({
-                  inputRange: [0, 1],
-                  outputRange: ['0%', '50%'],
-                }),
-              },
+              styles.filterChipText,
+              messageType === 'note' && styles.filterChipTextActive,
             ]}
-          />
-          <TouchableOpacity
-            style={styles.toggleOption}
-            onPress={() => handleMessageTypeChange('note')}
-            activeOpacity={1}
           >
-            <Text
-              style={[
-                styles.toggleOptionText,
-                messageType === 'note' && styles.toggleOptionTextActive,
-              ]}
-            >
-              쪽지
-            </Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={styles.toggleOption}
-            onPress={() => handleMessageTypeChange('mail')}
-            activeOpacity={1}
+            쪽지
+          </Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[
+            styles.filterChip,
+            messageType === 'mail' && styles.filterChipActive,
+          ]}
+          onPress={() => handleMessageTypeChange('mail')}
+          activeOpacity={0.8}
+        >
+          <Text
+            style={[
+              styles.filterChipText,
+              messageType === 'mail' && styles.filterChipTextActive,
+            ]}
           >
-            <Text
-              style={[
-                styles.toggleOptionText,
-                messageType === 'mail' && styles.toggleOptionTextActive,
-              ]}
-            >
-              개인 우편
-            </Text>
-          </TouchableOpacity>
-        </View>
+            개인 우편
+          </Text>
+        </TouchableOpacity>
       </View>
 
       {/* 메인 내용 영역 */}
@@ -1050,17 +1039,29 @@ export function MessageContent({ navigation }) {
                               name: item.other_user_name || item.name,
                               schoolName: item.other_user_school_name || '',
                               colorIndex: colorIdx,
+                              profileImageUrl: item.profileImageUrl || null,
                             },
                           });
                         }}
                       >
                         <View style={styles.listItemLeft}>
                           <View style={[styles.profileCircle]}>
-                            <ProfileIcon
-                              width={normalize(35)}
-                              height={normalize(35)}
-                              color={iconColor}
-                            />
+                            {item.profileImageUrl ? (
+                              <Image
+                                source={{ uri: item.profileImageUrl }}
+                                style={{
+                                  width: normalize(35),
+                                  height: normalize(35),
+                                  borderRadius: normalize(18),
+                                }}
+                              />
+                            ) : (
+                              <ProfileIcon
+                                width={normalize(35)}
+                                height={normalize(35)}
+                                color={iconColor}
+                              />
+                            )}
                           </View>
                           <View style={styles.listItemBody}>
                             <Text style={styles.listItemName}>{item.name}</Text>
@@ -1163,7 +1164,7 @@ export function MessageContent({ navigation }) {
             <ScrollView
               style={styles.list}
               showsVerticalScrollIndicator={false}
-              contentContainerStyle={{ paddingBottom: normalize(80) }}
+              contentContainerStyle={{ paddingBottom: normalize(120) }}
             >
               {loadingMail && mails.length === 0 ? (
                 <MessageListSkeleton

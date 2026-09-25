@@ -169,7 +169,7 @@ const MainScreen = ({ navigation, route }) => {
       <StudentVerifyRequestBridge>
         <SafeAreaView
           style={{ flex: 1, backgroundColor: colors.background }}
-          edges={['top', 'bottom']}
+          edges={['top']}
         >
           <MainHeader />
           <View style={{ flex: 1, backgroundColor: colors.background }}>

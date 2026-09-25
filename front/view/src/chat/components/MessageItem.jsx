@@ -18,6 +18,7 @@ export default memo(MessageItem, (prev, next) => {
     a.isReadByOther === b.isReadByOther &&
     a.showProfile === b.showProfile &&
     a.showTimestamp === b.showTimestamp &&
-    a.images?.length === b.images?.length
+    a.images?.length === b.images?.length &&
+    prev.opponentImageUrl === next.opponentImageUrl
   );
 });

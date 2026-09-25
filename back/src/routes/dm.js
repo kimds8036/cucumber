@@ -122,6 +122,7 @@ router.get('/rooms', authenticate, async (req, res) => {
         u.name_enc AS other_user_name_enc,
         s.name AS other_user_school_name,
         u.color_id AS other_user_color_id,
+        u.profile_image_url AS other_user_profile_image_url,
         (
           SELECT COUNT(*)
           FROM dm_messages dm

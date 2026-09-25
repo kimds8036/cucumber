@@ -869,6 +869,319 @@ router.patch('/tasks/:taskId', authenticate, validate(updateTaskStatusValidators
   }
 });
 
+function formatYmdUtc(date) {
+  const y = date.getUTCFullYear();
+  const m = String(date.getUTCMonth() + 1).padStart(2, '0');
+  const d = String(date.getUTCDate()).padStart(2, '0');
+  return `${y}-${m}-${d}`;
+}
+
+function getKstDateParts(date = new Date()) {
+  const formatter = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Asia/Seoul',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    hour12: false,
+  });
+  const parts = formatter.formatToParts(date);
+  const part = (type) => parts.find((p) => p.type === type)?.value || '00';
+  return {
+    year: Number(part('year')),
+    month: Number(part('month')),
+    day: Number(part('day')),
+    hour: Number(part('hour')),
+  };
+}
+
+function getTimerDayKeyNow(date = new Date()) {
+  const kst = getKstDateParts(date);
+  const base = new Date(Date.UTC(kst.year, kst.month - 1, kst.day));
+  if (kst.hour < 6) {
+    base.setUTCDate(base.getUTCDate() - 1);
+  }
+  return formatYmdUtc(base);
+}
+
+function shiftYmd(ymd, deltaDays) {
+  const [y, m, d] = String(ymd || '')
+    .slice(0, 10)
+    .split('-')
+    .map(Number);
+  if (!y || !m || !d) return null;
+  const dt = new Date(Date.UTC(y, m - 1, d));
+  dt.setUTCDate(dt.getUTCDate() + Number(deltaDays || 0));
+  return formatYmdUtc(dt);
+}
+
+function mondayOfYmd(ymd) {
+  const key = String(ymd || '').slice(0, 10);
+  const [y, m, d] = key.split('-').map(Number);
+  if (!y || !m || !d) return null;
+  const dow = new Date(Date.UTC(y, m - 1, d)).getUTCDay();
+  const delta = dow === 0 ? -6 : 1 - dow;
+  return shiftYmd(key, delta);
+}
+
+function normalizeWeekStart(raw) {
+  const key = sanitizeDayKey(raw);
+  if (!key || !/^\d{4}-\d{2}-\d{2}$/.test(key)) return null;
+  return mondayOfYmd(key);
+}
+
+function mapWeeklyRow(row) {
+  return {
+    id: Number(row.id),
+    weekStart: String(row.week_start).slice(0, 10),
+    weekday: Number(row.weekday),
+    title: row.title,
+    isDone: Boolean(row.is_done),
+    sortOrder: Number(row.sort_order || 0),
+  };
+}
+
+function computeStreak(dayKeys, todayKey) {
+  const set = new Set(
+    (dayKeys || []).map((k) => String(k).slice(0, 10)).filter(Boolean),
+  );
+  let cursor = todayKey;
+  if (!set.has(cursor)) {
+    const yesterday = shiftYmd(todayKey, -1);
+    if (!yesterday || !set.has(yesterday)) return 0;
+    cursor = yesterday;
+  }
+  let n = 0;
+  while (cursor && set.has(cursor)) {
+    n += 1;
+    cursor = shiftYmd(cursor, -1);
+  }
+  return n;
+}
+
+// 개인 공부 잔디 (해당 월)
+router.get('/month', authenticate, async (req, res) => {
+  try {
+    const userId = req.user.userId;
+    const kst = getKstDateParts();
+    const year = Number(req.query?.year) || kst.year;
+    const month = Number(req.query?.month) || kst.month;
+    if (!Number.isFinite(year) || year < 2000 || year > 2100) {
+      return res.status(400).json({ success: false, message: 'year가 올바르지 않습니다.' });
+    }
+    if (!Number.isFinite(month) || month < 1 || month > 12) {
+      return res.status(400).json({ success: false, message: 'month가 올바르지 않습니다.' });
+    }
+    const start = `${year}-${String(month).padStart(2, '0')}-01`;
+    const endDate = new Date(Date.UTC(year, month, 0));
+    const end = formatYmdUtc(endDate);
+
+    const [rows] = await pool.execute(
+      `SELECT ss.day_key AS day_key,
+              COALESCE(MAX(sd.total_elapsed_ms), 1800000) AS total_elapsed_ms
+       FROM study_sessions ss
+       LEFT JOIN study_days sd
+         ON sd.user_id = ss.user_id AND sd.day_key = ss.day_key
+       WHERE ss.user_id = ?
+         AND ss.day_key >= ?
+         AND ss.day_key <= ?
+       GROUP BY ss.day_key
+       ORDER BY ss.day_key ASC`,
+      [userId, start, end],
+    );
+
+    const days = (rows || []).map((r) => {
+      const dayKey =
+        r.day_key instanceof Date
+          ? formatYmdUtc(r.day_key)
+          : String(r.day_key).slice(0, 10);
+      return {
+        dayKey,
+        totalElapsedMs: Number(r.total_elapsed_ms || 0),
+      };
+    });
+
+    return res.json({
+      success: true,
+      data: { year, month, start, end, days },
+    });
+  } catch (error) {
+    console.error('타이머 월간 잔디 조회 오류:', error);
+    return res.status(500).json({
+      success: false,
+      message: '월간 공부 잔디 조회 중 오류가 발생했습니다.',
+    });
+  }
+});
+
+// 연속 공부일 (study_sessions 있는 day_key)
+router.get('/streak', authenticate, async (req, res) => {
+  try {
+    const userId = req.user.userId;
+    const todayKey = getTimerDayKeyNow();
+    const [rows] = await pool.execute(
+      `SELECT DISTINCT day_key
+       FROM study_sessions
+       WHERE user_id = ?
+       ORDER BY day_key DESC
+       LIMIT 400`,
+      [userId],
+    );
+    const dayKeys = (rows || []).map((r) =>
+      r.day_key instanceof Date
+        ? formatYmdUtc(r.day_key)
+        : String(r.day_key).slice(0, 10),
+    );
+    return res.json({
+      success: true,
+      data: { streak: computeStreak(dayKeys, todayKey), todayKey },
+    });
+  } catch (error) {
+    console.error('타이머 연속 공부일 조회 오류:', error);
+    return res.status(500).json({
+      success: false,
+      message: '연속 공부일 조회 중 오류가 발생했습니다.',
+    });
+  }
+});
+
+// 위클리 체크리스트
+router.get('/weekly', authenticate, async (req, res) => {
+  try {
+    const userId = req.user.userId;
+    const weekStart =
+      normalizeWeekStart(req.query?.weekStart) || mondayOfYmd(getTimerDayKeyNow());
+    if (!weekStart) {
+      return res.status(400).json({ success: false, message: 'weekStart가 필요합니다.' });
+    }
+    const [rows] = await pool.execute(
+      `SELECT id, week_start, weekday, title, is_done, sort_order
+       FROM user_weekly_tasks
+       WHERE user_id = ? AND week_start = ?
+       ORDER BY weekday ASC, sort_order ASC, id ASC`,
+      [userId, weekStart],
+    );
+    return res.json({
+      success: true,
+      data: {
+        weekStart,
+        tasks: (rows || []).map(mapWeeklyRow),
+      },
+    });
+  } catch (error) {
+    console.error('타이머 위클리 조회 오류:', error);
+    return res.status(500).json({
+      success: false,
+      message: '위클리 조회 중 오류가 발생했습니다.',
+    });
+  }
+});
+
+router.post('/weekly', authenticate, async (req, res) => {
+  try {
+    const userId = req.user.userId;
+    const weekStart =
+      normalizeWeekStart(req.body?.weekStart) || mondayOfYmd(getTimerDayKeyNow());
+    const weekday = Number(req.body?.weekday);
+    const title = String(req.body?.title || '').trim().slice(0, 200);
+    if (!weekStart || !Number.isInteger(weekday) || weekday < 0 || weekday > 6 || !title) {
+      return res.status(400).json({
+        success: false,
+        message: 'weekStart, weekday(0-6), title이 필요합니다.',
+      });
+    }
+    const [[maxRow]] = await pool.execute(
+      `SELECT COALESCE(MAX(sort_order), -1) AS max_order
+       FROM user_weekly_tasks
+       WHERE user_id = ? AND week_start = ? AND weekday = ?`,
+      [userId, weekStart, weekday],
+    );
+    const sortOrder = Number(maxRow?.max_order ?? -1) + 1;
+    const [result] = await pool.execute(
+      `INSERT INTO user_weekly_tasks (user_id, week_start, weekday, title, is_done, sort_order)
+       VALUES (?, ?, ?, ?, 0, ?)`,
+      [userId, weekStart, weekday, title, sortOrder],
+    );
+    return res.status(201).json({
+      success: true,
+      data: {
+        id: Number(result.insertId),
+        weekStart,
+        weekday,
+        title,
+        isDone: false,
+        sortOrder,
+      },
+    });
+  } catch (error) {
+    console.error('타이머 위클리 추가 오류:', error);
+    return res.status(500).json({
+      success: false,
+      message: '위클리 항목 추가 중 오류가 발생했습니다.',
+    });
+  }
+});
+
+router.patch('/weekly/:taskId', authenticate, async (req, res) => {
+  try {
+    const userId = req.user.userId;
+    const taskId = Number(req.params.taskId);
+    if (!Number.isFinite(taskId) || taskId <= 0) {
+      return res.status(400).json({ success: false, message: '유효한 taskId가 필요합니다.' });
+    }
+    const isDone = req.body?.isDone === true || req.body?.isDone === 1 || req.body?.is_done === true;
+    const [result] = await pool.execute(
+      `UPDATE user_weekly_tasks
+       SET is_done = ?, updated_at = CURRENT_TIMESTAMP
+       WHERE id = ? AND user_id = ?`,
+      [isDone ? 1 : 0, taskId, userId],
+    );
+    if (result.affectedRows === 0) {
+      return res.status(404).json({
+        success: false,
+        message: '수정할 위클리 항목을 찾지 못했습니다.',
+      });
+    }
+    return res.json({
+      success: true,
+      data: { id: taskId, isDone },
+    });
+  } catch (error) {
+    console.error('타이머 위클리 수정 오류:', error);
+    return res.status(500).json({
+      success: false,
+      message: '위클리 항목 수정 중 오류가 발생했습니다.',
+    });
+  }
+});
+
+router.delete('/weekly/:taskId', authenticate, async (req, res) => {
+  try {
+    const userId = req.user.userId;
+    const taskId = Number(req.params.taskId);
+    if (!Number.isFinite(taskId) || taskId <= 0) {
+      return res.status(400).json({ success: false, message: '유효한 taskId가 필요합니다.' });
+    }
+    const [result] = await pool.execute(
+      `DELETE FROM user_weekly_tasks WHERE id = ? AND user_id = ?`,
+      [taskId, userId],
+    );
+    if (result.affectedRows === 0) {
+      return res.status(404).json({
+        success: false,
+        message: '삭제할 위클리 항목을 찾지 못했습니다.',
+      });
+    }
+    return res.json({ success: true, data: { id: taskId } });
+  } catch (error) {
+    console.error('타이머 위클리 삭제 오류:', error);
+    return res.status(500).json({
+      success: false,
+      message: '위클리 항목 삭제 중 오류가 발생했습니다.',
+    });
+  }
+});
+
 /** 스터디룸: 내 방 멤버만 (서버 배정, 최대 16) */
 router.get('/study-room/studying', authenticate, async (req, res) => {
   try {

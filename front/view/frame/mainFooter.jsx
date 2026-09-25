@@ -14,6 +14,7 @@ import { colors } from '../../styles/colors';
 import LogoIcon from '../../assets/Logo.svg';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { useMainShellOptional } from '../../context/MainShellContext';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 const MainFooter = ({ activeTab: activeTabProp, onTabPress: onTabPressProp }) => {
   const shell = useMainShellOptional();
@@ -25,125 +26,121 @@ const MainFooter = ({ activeTab: activeTabProp, onTabPress: onTabPressProp }) =>
     [width, height],
   );
   const normalize = useMemo(() => getNormalize(width), [width]);
+  const insets = useSafeAreaInsets();
+
+  const iconColor = (key) =>
+    activeTab === key ? colors.textPrimary : colors.textSecondary;
 
   return (
-    <View style={footerStyles.container}>
-      <TouchableOpacity
-        style={footerStyles.tabButton}
-        activeOpacity={0.7}
-        onPress={() => onTabPress?.('board')}
-      >
-        {activeTab === 'board' && (
-          <View style={footerStyles.activeTabIndicator} />
-        )}
-        <Octicons
-          name="home-fill"
-          size={normalize(30)}
-          color={activeTab === 'board' ? colors.primary : colors.textSecondary}
-        />
-        <Text
-          style={[
-            footerStyles.tabText,
-            activeTab === 'board' && footerStyles.activeTabText,
-          ]}
+    <View
+      pointerEvents="box-none"
+      style={[
+        footerStyles.wrap,
+        footerStyles.wrapFloating,
+        { paddingBottom: Math.max(insets.bottom, normalize(8)) },
+      ]}
+    >
+      <View style={footerStyles.container}>
+        <TouchableOpacity
+          style={footerStyles.tabButton}
+          activeOpacity={0.7}
+          onPress={() => onTabPress?.('board')}
         >
-          게시판
-        </Text>
-      </TouchableOpacity>
+          <Octicons
+            name="home-fill"
+            size={normalize(26)}
+            color={iconColor('board')}
+          />
+          <Text
+            style={[
+              footerStyles.tabText,
+              activeTab === 'board' && footerStyles.activeTabText,
+            ]}
+          >
+            게시판
+          </Text>
+        </TouchableOpacity>
 
-      <TouchableOpacity
-        style={footerStyles.tabButton}
-        activeOpacity={0.7}
-        onPress={() => onTabPress?.('message')}
-      >
-        {activeTab === 'message' && (
-          <View style={footerStyles.activeTabIndicator} />
-        )}
-        <LogoIcon
-          width={normalize(30)}
-          height={normalize(30)}
-          color={
-            activeTab === 'message' ? colors.primary : colors.textSecondary
-          }
-        />
-        <Text
-          style={[
-            footerStyles.tabText,
-            activeTab === 'message' && footerStyles.activeTabText,
-          ]}
+        <TouchableOpacity
+          style={footerStyles.tabButton}
+          activeOpacity={0.7}
+          onPress={() => onTabPress?.('message')}
         >
-          메시지
-        </Text>
-      </TouchableOpacity>
+          <LogoIcon
+            width={normalize(26)}
+            height={normalize(26)}
+            color={iconColor('message')}
+          />
+          <Text
+            style={[
+              footerStyles.tabText,
+              activeTab === 'message' && footerStyles.activeTabText,
+            ]}
+          >
+            메시지
+          </Text>
+        </TouchableOpacity>
 
-      <TouchableOpacity
-        style={footerStyles.tabButton}
-        activeOpacity={0.7}
-        onPress={() => onTabPress?.('school')}
-      >
-        {activeTab === 'school' && (
-          <View style={footerStyles.activeTabIndicator} />
-        )}
-        <FontAwesomeIcon
-          icon={faSchool}
-          size={normalize(33)}
-          color={activeTab === 'school' ? colors.primary : colors.textSecondary}
-        />
-        <Text
-          style={[
-            footerStyles.tabText,
-            activeTab === 'school' && footerStyles.activeTabText,
-          ]}
+        <TouchableOpacity
+          style={footerStyles.tabButton}
+          activeOpacity={0.7}
+          onPress={() => onTabPress?.('school')}
         >
-          우리 학교
-        </Text>
-      </TouchableOpacity>
+          <FontAwesomeIcon
+            icon={faSchool}
+            size={normalize(28)}
+            color={iconColor('school')}
+          />
+          <Text
+            style={[
+              footerStyles.tabText,
+              activeTab === 'school' && footerStyles.activeTabText,
+            ]}
+          >
+            우리 학교
+          </Text>
+        </TouchableOpacity>
 
-      <TouchableOpacity
-        style={footerStyles.tabButton}
-        activeOpacity={0.7}
-        onPress={() => onTabPress?.('timer')}
-      >
-        {activeTab === 'timer' && (
-          <View style={footerStyles.activeTabIndicator} />
-        )}
-        <MaterialIcons
-          name="timer"
-          size={normalize(35)}
-          color={activeTab === 'timer' ? colors.primary : colors.textSecondary}
-        />
-        <Text
-          style={[
-            footerStyles.tabText,
-            activeTab === 'timer' && footerStyles.activeTabText,
-          ]}
+        <TouchableOpacity
+          style={footerStyles.tabButton}
+          activeOpacity={0.7}
+          onPress={() => onTabPress?.('timer')}
         >
-          타이머
-        </Text>
-      </TouchableOpacity>
+          <MaterialIcons
+            name="timer"
+            size={normalize(30)}
+            color={iconColor('timer')}
+          />
+          <Text
+            style={[
+              footerStyles.tabText,
+              activeTab === 'timer' && footerStyles.activeTabText,
+            ]}
+          >
+            타이머
+          </Text>
+        </TouchableOpacity>
 
-      <TouchableOpacity
-        style={footerStyles.tabButton}
-        activeOpacity={0.7}
-        onPress={() => onTabPress?.('mypage')}
-      >
-        {activeTab === 'mypage' && (
-          <View style={footerStyles.activeTabIndicator} />
-        )}
-        <Ionicons
-          name="person"
-          size={normalize(30)}
-          color={activeTab === 'mypage' ? colors.primary : colors.textSecondary}
-        />
-        <Text
-          style={[
-            footerStyles.tabText,
-            activeTab === 'mypage' && footerStyles.activeTabText,
-          ]}
+        <TouchableOpacity
+          style={footerStyles.tabButton}
+          activeOpacity={0.7}
+          onPress={() => onTabPress?.('mypage')}
         >
-          마이페이지
-        </Text>
-      </TouchableOpacity>
+          <Ionicons
+            name="person"
+            size={normalize(26)}
+            color={iconColor('mypage')}
+          />
+          <Text
+            style={[
+              footerStyles.tabText,
+              activeTab === 'mypage' && footerStyles.activeTabText,
+            ]}
+          >
+            마이페이지
+          </Text>
+        </TouchableOpacity>
+      </View>
     </View>
   );
 };

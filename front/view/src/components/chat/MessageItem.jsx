@@ -142,13 +142,24 @@ const DateBanner = ({ msg, normalize }) => (
  * 상대방 메시지일 때만 보이는 프로필 영역
  * @param {{ chatStyles: any, normalize: Function }} props
  */
-const SenderProfile = ({ chatStyles, normalize, colorId }) => (
+const SenderProfile = ({ chatStyles, normalize, colorId, imageUrl }) => (
   <View style={chatStyles.chatProfileCircle}>
-    <ProfileIcon
-      width={normalize(30)}
-      height={normalize(30)}
-      color={getProfileInnerColor(colorId)}
-    />
+    {imageUrl ? (
+      <Image
+        source={{ uri: imageUrl }}
+        style={{
+          width: normalize(30),
+          height: normalize(30),
+          borderRadius: normalize(15),
+        }}
+      />
+    ) : (
+      <ProfileIcon
+        width={normalize(30)}
+        height={normalize(30)}
+        color={getProfileInnerColor(colorId)}
+      />
+    )}
   </View>
 );
 
@@ -530,6 +541,7 @@ const MessageItem = memo(
     onReplyMessage,
     onPressReplyTarget,
     opponentName,
+    opponentImageUrl,
     onOpenLongPressMenu,
   }) => {
     if (msg.type === 'dateBanner') {
@@ -571,6 +583,7 @@ const MessageItem = memo(
             chatStyles={chatStyles}
             normalize={normalize}
             colorId={msg.senderColorId}
+            imageUrl={opponentImageUrl}
           />
         ) : (
           <View style={chatStyles.chatProfileSpacer} pointerEvents="none" />
@@ -599,6 +612,8 @@ const MessageItem = memo(
     if (prevProps.onPressReplyTarget !== nextProps.onPressReplyTarget)
       return false;
     if (prevProps.onOpenLongPressMenu !== nextProps.onOpenLongPressMenu)
+      return false;
+    if (prevProps.opponentImageUrl !== nextProps.opponentImageUrl)
       return false;
 
     const pm = prevProps.msg;

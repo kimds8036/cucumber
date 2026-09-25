@@ -51,6 +51,7 @@ export default function DMChatScreen({ navigation, route }) {
       mainPlaceholder="메시지를 입력하세요"
       chatInputStyles={chatInputStyles}
       opponentName={friendName}
+      opponentImageUrl={friend.profileImageUrl || null}
       navigation={navigation}
     />
   );

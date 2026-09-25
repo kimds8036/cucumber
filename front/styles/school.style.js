@@ -13,7 +13,7 @@ export const createOurSchoolStyles = (normalize) => {
     },
     scrollContent: {
       padding: normalize(16),
-      paddingBottom: normalize(16),
+      paddingBottom: normalize(120),
       paddingTop: normalize(8),
     },
     schoolCardBlock: {
@@ -338,6 +338,13 @@ export const createOurSchoolStyles = (normalize) => {
       fontFamily: fonts.regular,
       color: colors.textSecondary,
       lineHeight: normalize(20),
+    },
+    adBannerSlot: {
+      height: normalize(88),
+      borderRadius: normalize(14),
+      backgroundColor: colors.surface || colors.textLight5,
+      marginBottom: normalize(12),
+      overflow: 'hidden',
     },
     shortcutContainer: {
       flexDirection: 'row',

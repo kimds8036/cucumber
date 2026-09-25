@@ -453,6 +453,7 @@ router.get('/me', authenticate, async (req, res) => {
          u.username,
          u.name_enc,
          u.color_id,
+         u.profile_image_url,
          u.equipped_badge_key,
          u.school_id,
          u.grade,
@@ -500,6 +501,7 @@ router.get('/me', authenticate, async (req, res) => {
         username: user.username,
         name: user.name,
         colorId: user.color_id,
+        profileImageUrl: user.profile_image_url || null,
         createdAt: user.created_at
           ? new Date(user.created_at).toISOString()
           : null,

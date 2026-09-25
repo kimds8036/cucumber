@@ -48,6 +48,8 @@ import {
   TimerLiveScrollInner,
   TimerLivePlannerCapture,
 } from './TimerLiveViews';
+import { useTimerWeeklyAndGrass } from './useTimerWeeklyAndGrass';
+import TimerSettingsSheet from './TimerSettingsSheet';
 import {
   preloadTimerCaptureWatermark,
   waitForTimerCapturePaint,
@@ -166,6 +168,7 @@ export function TimerContent() {
               f.profile_color_id ??
               f.profileColor?.id,
             colorIndex: index % FRIEND_ICON_COLORS.length,
+            profileImageUrl: f.profileImageUrl ?? f.profile_image_url ?? null,
             isSuggestion: false,
           })),
         );
@@ -187,6 +190,7 @@ export function TimerContent() {
                 s.profileColorId ??
                 s.profileColor?.id,
               colorIndex: index % FRIEND_ICON_COLORS.length,
+              profileImageUrl: s.profileImageUrl ?? s.profile_image_url ?? null,
               isSuggestion: true,
             };
           }),
@@ -288,6 +292,8 @@ export function TimerContent() {
     emitTimerStatus,
     pushTimerToast,
   });
+  const extras = useTimerWeeklyAndGrass({ isFocused, isGuidePreview });
+  const [showTimerSettings, setShowTimerSettings] = useState(false);
 
   useFocusEffect(
     React.useCallback(() => {
@@ -402,6 +408,7 @@ export function TimerContent() {
                 onFriendPress={handleFriendPress}
                 onAddFriendPress={handleOpenAddFriend}
               />
+              <View style={styles.adBannerSlot} />
               {showDayContentSkeleton ? (
                 <TimerDayContentSkeleton styles={styles} normalize={normalize} />
               ) : (
@@ -436,6 +443,16 @@ export function TimerContent() {
                   setTaskStatus={timer.setTaskStatus}
                   deleteSubject={timer.deleteSubject}
                   deleteTask={timer.deleteTask}
+                  onOpenSettings={() => setShowTimerSettings(true)}
+                  streakDays={extras.streak}
+                  weeklyRate={extras.weeklyRate}
+                  grassDays={extras.grassDays}
+                  grassMonth={extras.grassMonth}
+                  onGrassMonthChange={extras.setGrassMonth}
+                  weeklyTasks={extras.weeklyTasks}
+                  onAddWeeklyTask={extras.addWeeklyTask}
+                  onToggleWeeklyTask={extras.toggleWeeklyTask}
+                  onDeleteWeeklyTask={extras.deleteWeeklyTask}
                 />
               )}
             </ScrollView>
@@ -480,6 +497,12 @@ export function TimerContent() {
         onClose={() => timer.setShowCalendar(false)}
         currentDayKey={timer.selectedDayKey}
         onSelectDay={timer.setSelectedDayKey}
+      />
+      <TimerSettingsSheet
+        visible={showTimerSettings}
+        onClose={() => setShowTimerSettings(false)}
+        styles={styles}
+        normalize={normalize}
       />
 
       <FriendPokeController

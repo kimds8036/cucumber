@@ -41,6 +41,7 @@ router.get('/list', authenticate, async (req, res) => {
          u.name_enc,
          u.username,
          u.color_id,
+         u.profile_image_url,
          c.hex_code AS profile_color_hex,
          u.school_id,
          s.name AS school_name,
@@ -69,6 +70,7 @@ router.get('/list', authenticate, async (req, res) => {
         name: r.name,
         username: r.username ? `@${r.username}` : '',
         colorId: r.color_id,
+        profileImageUrl: r.profile_image_url || null,
         profileColor: {
           id: r.color_id,
           hexCode: r.profile_color_hex,

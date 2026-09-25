@@ -18,15 +18,107 @@ export const createBoardStyles = (width, normalize) => {
       backgroundColor: colors.background,
     },
 
-    // 정렬 버튼 영역
+    adBannerSlot: {
+      marginHorizontal: width * 0.04,
+      marginTop: normalize(4),
+      marginBottom: 0,
+      height: normalize(88),
+      borderRadius: normalize(14),
+      backgroundColor: colors.surface || colors.textLight5,
+      overflow: 'hidden',
+    },
+
+    boardFeed: {
+      flex: 1,
+    },
+    filterSection: {
+      backgroundColor: colors.background,
+      paddingTop: normalize(8),
+      paddingBottom: normalize(8),
+    },
+    // 피드(전체/학생) + 정렬 드롭다운 — 목록과 겹치지 않게 문서 흐름만 사용
     sortContainer: {
       flexDirection: 'row',
-      paddingHorizontal: width * 0.05,
-      paddingVertical: normalize(10),
-      paddingTop: normalize(8),
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      paddingHorizontal: width * 0.04,
+      paddingVertical: 0,
+    },
+    filterChipRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
       gap: normalize(8),
-      borderBottomWidth: 1,
-      borderBottomColor: colors.textLight10,
+      flexShrink: 1,
+    },
+    sortDropdownWrap: {
+      flexShrink: 0,
+    },
+    sortDropdownButton: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: normalize(2),
+      paddingVertical: normalize(6),
+      paddingHorizontal: normalize(4),
+    },
+    sortDropdownLabel: {
+      fontSize: normalize(fontSizes.xl),
+      fontFamily: fonts.bold,
+      color: colors.textPrimary,
+    },
+    sortDropdownMenu: {
+      alignSelf: 'flex-end',
+      marginRight: width * 0.04,
+      marginTop: normalize(2),
+      minWidth: normalize(112),
+      backgroundColor: colors.background,
+      borderRadius: normalize(12),
+      paddingVertical: normalize(4),
+      borderWidth: StyleSheet.hairlineWidth,
+      borderColor: colors.textLight10,
+      ...shadow.sm,
+    },
+    postListWrap: {
+      flex: 1,
+      overflow: 'visible',
+    },
+    postListContent: {
+      paddingTop: normalize(8),
+      paddingBottom: normalize(120),
+    },
+    sortDropdownItem: {
+      paddingVertical: normalize(10),
+      paddingHorizontal: normalize(14),
+    },
+    sortDropdownItemText: {
+      fontSize: normalize(fontSizes.xl),
+      fontFamily: fonts.regular,
+      color: colors.textSecondary,
+    },
+    sortDropdownItemTextActive: {
+      fontFamily: fonts.bold,
+      color: colors.textPrimary,
+    },
+    popularBadgeRow: {
+      alignSelf: 'flex-start',
+      marginBottom: normalize(8),
+    },
+    popularBadge: {
+      backgroundColor: colors.alertLight || '#FFF0F0',
+      borderRadius: normalize(8),
+      paddingHorizontal: normalize(8),
+      paddingVertical: normalize(3),
+    },
+    popularBadgeText: {
+      fontSize: normalize(fontSizes.md + 1),
+      fontFamily: fonts.bold,
+      color: colors.alertDark || colors.alert,
+    },
+    postFooterTime: {
+      fontSize: normalize(fontSizes.lg),
+      fontFamily: fonts.regular,
+      color: colors.textSecondary,
+      marginLeft: normalize(8),
+      flexShrink: 0,
     },
     sortButton: {
       paddingHorizontal: normalize(16),
@@ -54,6 +146,7 @@ export const createBoardStyles = (width, normalize) => {
     postList: {
       flex: 1,
       paddingHorizontal: width * 0.04,
+      overflow: 'visible',
     },
     postItem: {
       backgroundColor: colors.background,
@@ -63,12 +156,32 @@ export const createBoardStyles = (width, normalize) => {
       ...shadow.md,
     },
 
-    // 게시글 헤더 (좌: 작성자•시간[·위치], 우: 거리 배지 등)
+    postCardMain: {
+      flexDirection: 'column',
+      alignItems: 'stretch',
+    },
+    postCardLeft: {
+      flex: 1,
+      minWidth: 0,
+    },
+    postCardRight: {
+      alignItems: 'flex-end',
+      flexShrink: 0,
+      marginLeft: normalize(10),
+    },
+    // 게시글 헤더 (좌: 시간, 우: 거리 배지)
     postHeader: {
       flexDirection: 'row',
       justifyContent: 'space-between',
       alignItems: 'center',
-      marginBottom: normalize(5),
+      marginBottom: normalize(8),
+    },
+    postHeaderLeft: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      flex: 1,
+      minWidth: 0,
+      gap: normalize(6),
     },
     postAuthorRow: {
       flexDirection: 'row',
@@ -139,8 +252,14 @@ export const createBoardStyles = (width, normalize) => {
     distanceBadgeWrap: {
       flexDirection: 'row',
       alignItems: 'center',
-      marginLeft: normalize(8),
       flexShrink: 0,
+    },
+    postDistanceRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      alignSelf: 'flex-start',
+      marginTop: normalize(2),
+      marginBottom: normalize(6),
     },
     distanceBadgeChip: {
       flexDirection: 'row',
@@ -213,15 +332,22 @@ export const createBoardStyles = (width, normalize) => {
       flexDirection: 'row',
       alignItems: 'flex-start',
     },
+    postBodyRowWithFooter: {
+      marginBottom: normalize(8),
+    },
     postBodyColumn: {
       flex: 1,
       minWidth: 0,
       flexDirection: 'column',
     },
     postBodyColumnWithThumb: {
-      minHeight: normalize(70),
-      justifyContent: 'space-between',
-      marginRight: normalize(10),
+      marginRight: 0,
+    },
+    postPhotoArea: {
+      width: normalize(76),
+      height: normalize(76),
+      borderRadius: normalize(10),
+      backgroundColor: colors.textLight10,
     },
     postFooterStart: {
       justifyContent: 'flex-start',
@@ -272,7 +398,7 @@ export const createBoardStyles = (width, normalize) => {
     floatingButton: {
       position: 'absolute',
       right: normalize(20),
-      bottom: normalize(20),
+      bottom: normalize(96),
       width: normalize(50),
       height: normalize(50),
       borderRadius: normalize(28),

@@ -36,6 +36,16 @@ import {
   TIMER_CAPTURE_WATERMARK,
   preloadTimerCaptureWatermark,
 } from './timerCaptureWatermark';
+import StudyGrassMap from '../../../components/studygrassmap';
+import TimerWeeklyPane from './TimerWeeklyPane';
+import { monthRangeYmd, shiftMonth } from '../../../utils/timerWeek';
+
+const PANE_TABS = [
+  { id: 'todo', label: '투두' },
+  { id: 'timeline', label: '기록' },
+  { id: 'grass', label: '잔디' },
+  { id: 'weekly', label: '위클리' },
+];
 
 const LiveElapsedMsContext = createContext(0);
 
@@ -105,11 +115,26 @@ const TimerLiveScrollInnerComponent = function TimerLiveScrollInner({
   setTaskStatus,
   deleteSubject,
   deleteTask,
+  onOpenSettings,
+  streakDays = 0,
+  weeklyRate = 0,
+  grassDays = [],
+  grassMonth,
+  onGrassMonthChange,
+  weeklyTasks = [],
+  onAddWeeklyTask,
+  onToggleWeeklyTask,
+  onDeleteWeeklyTask,
 }) {
   const liveExtraMs = useContext(LiveElapsedMsContext);
+  const [activePane, setActivePane] = useState('todo');
+  const todayTotalMs = totalElapsedMs + (isRunning ? liveExtraMs : 0);
   const displayTotalMs = isViewingToday
-    ? totalElapsedMs + (isRunning ? liveExtraMs : 0)
+    ? todayTotalMs
     : displayTotalElapsedMs;
+  const grassRange = grassMonth
+    ? monthRangeYmd(grassMonth.year, grassMonth.month)
+    : null;
 
   const getSubjectTotalMs = (subjectId) => {
     if (subjectId == null) return 0;
@@ -205,99 +230,139 @@ const TimerLiveScrollInnerComponent = function TimerLiveScrollInner({
   return (
     <>
       <GuideFocusTarget name={T.TIMER_TIMER_CARD} style={[styles.timerCard, tdb('#34C759')]}>
-        <View style={[styles.dateBar, tdb('#30B0C7')]}>
-          <View style={[styles.dateBarLeft, tdb('#0A84FF')]}>
-            <TouchableOpacity
-              onPress={goPrevDay}
-              hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
-              style={styles.dateBarNavBtn}
-            >
-              <Ionicons
-                name="chevron-back"
-                size={22}
-                color={colors.textPrimary}
-              />
-            </TouchableOpacity>
-            <TouchableOpacity
-              onPress={() => setShowCalendar(true)}
-              style={styles.dateBarDateTouch}
-            >
-              <Text style={styles.dateBarText}>
-                {selectedDayKey
-                  ? selectedDayKey.replace(/-/g, '.')
-                  : '--.--.--'}
-              </Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              onPress={goNextDay}
-              disabled={!canGoNextDay}
-              hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
-              style={styles.dateBarNavBtn}
-            >
-              <Ionicons
-                name="chevron-forward"
-                size={22}
-                color={canGoNextDay ? colors.textPrimary : colors.textLight20}
-              />
-            </TouchableOpacity>
-          </View>
-          <View style={styles.dateBarRight}>
-            <TouchableOpacity
-              style={[
-                styles.studyRoomEntryBtn,
-                !isRunning && styles.studyRoomEntryBtnDisabled,
-              ]}
-              onPress={onOpenStudyRoom}
-              disabled={!isRunning}
-              activeOpacity={0.85}
-              accessibilityLabel="스터디룸 입장"
-              accessibilityState={{ disabled: !isRunning }}
-            >
-              <Text
-                style={[
-                  styles.studyRoomEntryText,
-                  !isRunning && styles.studyRoomEntryTextDisabled,
-                ]}
-              >
-                스터디룸 입장
-              </Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.saveBtn} onPress={handleSaveAsImage}>
-              <Feather name="download" size={20} color={colors.textPrimary} />
-            </TouchableOpacity>
-          </View>
+        <View style={styles.timerCardTop}>
+          <TouchableOpacity
+            style={styles.timerGearBtn}
+            onPress={onOpenSettings}
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+            accessibilityLabel="타이머 설정"
+          >
+            <Ionicons
+              name="settings-outline"
+              size={normalize(20)}
+              color={colors.textPrimary}
+            />
+          </TouchableOpacity>
         </View>
 
         <View style={[styles.timerBlock, tdb('#5E5CE6')]}>
-          <Text style={styles.timerTime}>{formatHMS(displayTotalMs)}</Text>
-          {isViewingToday && (
-            <TouchableOpacity
-              style={[styles.timerBtn, isRunning && styles.timerBtnPause]}
-              onPress={toggleTimer}
-              activeOpacity={0.8}
+          <Text style={styles.timerTime}>{formatHMS(todayTotalMs)}</Text>
+          <TouchableOpacity
+            style={[styles.timerBtn, isRunning && styles.timerBtnPause]}
+            onPress={toggleTimer}
+            activeOpacity={0.8}
+          >
+            <Ionicons
+              name={isRunning ? 'pause' : 'play'}
+              size={normalize(20)}
+              color={isRunning ? colors.textPrimary : colors.textWhite}
+            />
+            <Text
+              style={[
+                styles.timerBtnText,
+                isRunning && styles.timerBtnTextPause,
+              ]}
             >
-              <Ionicons
-                name={isRunning ? 'pause' : 'play'}
-                size={normalize(20)}
-                color={isRunning ? colors.textPrimary : colors.textWhite}
-              />
-              <Text
-                style={[
-                  styles.timerBtnText,
-                  isRunning && styles.timerBtnTextPause,
-                ]}
-              >
-                {isRunning ? '일시정지' : '시작'}
-              </Text>
-            </TouchableOpacity>
-          )}
+              {isRunning ? '일시정지' : '시작'}
+            </Text>
+          </TouchableOpacity>
+        </View>
+
+        <View style={styles.timerStatsRow}>
+          <TouchableOpacity
+            style={[
+              styles.timerStatCell,
+              !isRunning && styles.timerStatCellDisabled,
+            ]}
+            onPress={onOpenStudyRoom}
+            disabled={!isRunning}
+            activeOpacity={0.85}
+            accessibilityLabel="스터디룸 입장"
+          >
+            <Text style={styles.timerStatValue}>입장</Text>
+            <Text style={styles.timerStatLabel}>스터디룸</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.timerStatCell}
+            onPress={() => setActivePane('grass')}
+            activeOpacity={0.85}
+          >
+            <Text style={styles.timerStatValue}>{Number(streakDays) || 0}일</Text>
+            <Text style={styles.timerStatLabel}>연속 공부</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.timerStatCell}
+            onPress={() => setActivePane('weekly')}
+            activeOpacity={0.85}
+          >
+            <Text style={styles.timerStatValue}>{Number(weeklyRate) || 0}%</Text>
+            <Text style={styles.timerStatLabel}>위클리</Text>
+          </TouchableOpacity>
         </View>
       </GuideFocusTarget>
 
-      <View style={[styles.todoTimetableRow, tdb('#BF5AF2')]}>
+      <View style={[styles.paneRow, tdb('#BF5AF2')]}>
+        <View style={styles.bookmarkRail}>
+          {PANE_TABS.map((tab) => {
+            const active = activePane === tab.id;
+            return (
+              <TouchableOpacity
+                key={tab.id}
+                style={[styles.bookmarkTab, active && styles.bookmarkTabActive]}
+                onPress={() => setActivePane(tab.id)}
+                activeOpacity={0.85}
+              >
+                <Text
+                  style={[
+                    styles.bookmarkTabText,
+                    active && styles.bookmarkTabTextActive,
+                  ]}
+                >
+                  {tab.label}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
+        </View>
+        <View style={styles.paneBody}>
+          {activePane === 'todo' ? (
         <GuideFocusTarget name={T.TIMER_TODO_COLUMN} style={[styles.todoColumn, tdb('#FF2D55')]}>
           <View style={[styles.todoHeader, tdb('#64D2FF')]}>
-            <Text style={styles.todoTitle}>투두리스트</Text>
+            <View style={styles.dateBarLeft}>
+              <TouchableOpacity
+                onPress={goPrevDay}
+                hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+                style={styles.dateBarNavBtn}
+              >
+                <Ionicons
+                  name="chevron-back"
+                  size={20}
+                  color={colors.textPrimary}
+                />
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={() => setShowCalendar(true)}
+                style={styles.dateBarDateTouch}
+              >
+                <Text style={styles.todoTitle}>
+                  {selectedDayKey
+                    ? selectedDayKey.replace(/-/g, '.')
+                    : '투두리스트'}
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={goNextDay}
+                disabled={!canGoNextDay}
+                hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+                style={styles.dateBarNavBtn}
+              >
+                <Ionicons
+                  name="chevron-forward"
+                  size={20}
+                  color={canGoNextDay ? colors.textPrimary : colors.textLight20}
+                />
+              </TouchableOpacity>
+            </View>
             {isViewingToday && (
               <TouchableOpacity
                 style={styles.todoAddBtn}
@@ -442,16 +507,87 @@ const TimerLiveScrollInnerComponent = function TimerLiveScrollInner({
             })}
           </ScrollView>
         </GuideFocusTarget>
+          ) : null}
 
+          {activePane === 'timeline' ? (
         <GuideFocusTarget
           name={T.TIMER_TIMETABLE_COLUMN}
           style={[styles.timetableColumn, tdb('#4682B4')]}
         >
-          <Text style={styles.timetableTitle}>공부 기록</Text>
+          <View style={styles.timetableTitleRow}>
+            <Text style={styles.timetableTitle}>공부 타임라인</Text>
+            <TouchableOpacity
+              style={styles.saveBtn}
+              onPress={handleSaveAsImage}
+              accessibilityLabel="플래너 다운로드"
+            >
+              <Feather name="download" size={20} color={colors.textPrimary} />
+            </TouchableOpacity>
+          </View>
           <View style={[styles.timetableScroll, tdb('#CD853F')]}>
             {renderTimetable()}
           </View>
         </GuideFocusTarget>
+          ) : null}
+
+          {activePane === 'grass' ? (
+            <View style={styles.todoColumn}>
+              <View style={styles.grassPaneHeader}>
+                <TouchableOpacity
+                  onPress={() =>
+                    grassMonth &&
+                    onGrassMonthChange?.(
+                      shiftMonth(grassMonth.year, grassMonth.month, -1),
+                    )
+                  }
+                  hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                >
+                  <Ionicons
+                    name="chevron-back"
+                    size={20}
+                    color={colors.textPrimary}
+                  />
+                </TouchableOpacity>
+                <Text style={styles.grassPaneTitle}>
+                  {grassMonth
+                    ? `${grassMonth.year}.${String(grassMonth.month).padStart(2, '0')}`
+                    : '공부 잔디'}
+                </Text>
+                <TouchableOpacity
+                  onPress={() =>
+                    grassMonth &&
+                    onGrassMonthChange?.(
+                      shiftMonth(grassMonth.year, grassMonth.month, 1),
+                    )
+                  }
+                  hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                >
+                  <Ionicons
+                    name="chevron-forward"
+                    size={20}
+                    color={colors.textPrimary}
+                  />
+                </TouchableOpacity>
+              </View>
+              <StudyGrassMap
+                days={grassDays}
+                rangeStart={grassRange?.start}
+                rangeEnd={grassRange?.end}
+              />
+            </View>
+          ) : null}
+
+          {activePane === 'weekly' ? (
+            <TimerWeeklyPane
+              styles={styles}
+              normalize={normalize}
+              tasks={weeklyTasks}
+              onAdd={onAddWeeklyTask}
+              onToggle={onToggleWeeklyTask}
+              onDelete={onDeleteWeeklyTask}
+            />
+          ) : null}
+        </View>
       </View>
     </>
   );

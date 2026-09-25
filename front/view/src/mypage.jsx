@@ -51,7 +51,8 @@ const isSameProfileInfo = (a, b) => {
     a.friendCount === b.friendCount &&
     a.equippedBadge?.key === b.equippedBadge?.key &&
     a.postCount === b.postCount &&
-    a.scrapCount === b.scrapCount
+    a.scrapCount === b.scrapCount &&
+    a.profileImageUrl === b.profileImageUrl
   );
 };
 
@@ -245,6 +246,7 @@ const MyPage = ({ navigation }) => {
           equippedBadge: me.equippedBadge ?? null,
           postCount: Number(stats?.postCount ?? 0),
           scrapCount: Number(stats?.scrapCount ?? 0),
+          profileImageUrl: me.profileImageUrl ?? null,
         };
         setUserInfo(nextUserInfo);
         try {
@@ -495,6 +497,11 @@ const MyPage = ({ navigation }) => {
           <ProfileCard
             userInfo={userInfo}
             navigation={navigation}
+            onProfileImageChange={(url) =>
+              setUserInfo((prev) =>
+                prev ? { ...prev, profileImageUrl: url || null } : prev,
+              )
+            }
             onNavigateToTimetableChoice={handleNavigateToTimetableEdit}
             timetableSection={
               timetableLoading ? (

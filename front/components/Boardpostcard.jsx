@@ -5,7 +5,6 @@ import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { colors, fonts, fontSizes } from '../styles/colors';
 import { normalizeTagsFromApi } from '../utils/normalizePostTags';
 import DistanceBadge from './DistanceBadge';
-import EquippedBadge from './EquippedBadge';
 
 /**
  * BoardPostCard
@@ -35,6 +34,7 @@ const BoardPostCard = ({
   showDistanceBadge = true,
   distanceStale = false,
   distanceLoading = false,
+  showPopularBadge = false,
 }) => {
   const hasThumb =
     typeof post.thumbnail === 'string' && post.thumbnail.trim().length > 0;
@@ -172,7 +172,11 @@ const BoardPostCard = ({
   const likesCount = Number(post.likes) || 0;
   const commentsCount = Number(post.comments) || 0;
   const scrapCount = Number(post.scrapCount) || 0;
-  const hasVisibleStats = likesCount > 0 || commentsCount > 0 || scrapCount > 0;
+  const showDistance =
+    !hideDistanceBadge && showDistanceBadge;
+
+  const showFooter =
+    likesCount > 0 || commentsCount > 0 || scrapCount > 0;
 
   return (
     <TouchableOpacity
@@ -180,34 +184,20 @@ const BoardPostCard = ({
       activeOpacity={0.7}
       onPress={() => onPress?.(post)}
     >
-      {/* 헤더: 좌측 작성자|시간(·위치), 우측 거리 배지 */}
       <View style={styles.postHeader}>
-        <View style={styles.postAuthorRow}>
-          <Text style={styles.postAuthor} numberOfLines={1}>
-            {post.author}
-          </Text>
-          <EquippedBadge
-            badge={post.equippedBadge}
-            size={normalize(13)}
-            style={{ marginLeft: normalize(3) }}
-          />
-          <Text style={styles.postDot}>•</Text>
-          <Text style={styles.postTime} numberOfLines={1}>
-            {post.time}
-          </Text>
-          {post.location ? (
-            <View style={[styles.postTimeRow, styles.postLocationWrap]}>
-              <Text style={styles.postDot}>•</Text>
-              <Text
-                style={[styles.postLocationText, styles.postLocationInlineText]}
-                numberOfLines={1}
-              >
-                {post.location}
-              </Text>
+        <View style={styles.postHeaderLeft}>
+          {showPopularBadge ? (
+            <View style={styles.popularBadge}>
+              <Text style={styles.popularBadgeText}>인기</Text>
             </View>
           ) : null}
+          {post.time ? (
+            <Text style={styles.postTime} numberOfLines={1}>
+              {post.time}
+            </Text>
+          ) : null}
         </View>
-        {!hideDistanceBadge && showDistanceBadge ? (
+        {showDistance ? (
           <DistanceBadge
             distanceKm={hasKm ? km : null}
             stale={distanceStale}
@@ -219,14 +209,13 @@ const BoardPostCard = ({
         ) : null}
       </View>
 
-      {/* 본문/푸터(세로) + 썸네일(가로) */}
-      <View style={styles.postBodyRow}>
-        <View
-          style={[
-            styles.postBodyColumn,
-            hasThumb && styles.postBodyColumnWithThumb,
-          ]}
-        >
+      <View
+        style={[
+          styles.postBodyRow,
+          showFooter && styles.postBodyRowWithFooter,
+        ]}
+      >
+        <View style={styles.postBodyColumn}>
           <Text
             style={[styles.postContent, styles.postContentCompact]}
             numberOfLines={3}
@@ -334,53 +323,55 @@ const BoardPostCard = ({
               ) : null}
             </View>
           ) : null}
-
-          {hasVisibleStats ? (
-            <View style={[styles.postFooter, styles.postFooterStart]}>
-              <View style={styles.postStats}>
-                {likesCount > 0 ? (
-                  <View style={styles.postStatItem}>
-                    <FontAwesome
-                      name="heart-o"
-                      size={normalize(14)}
-                      color={colors.alert}
-                    />
-                    <Text style={styles.postStatText}>{likesCount}</Text>
-                  </View>
-                ) : null}
-                {commentsCount > 0 ? (
-                  <View style={styles.postStatItem}>
-                    <Ionicons
-                      name="chatbubble-outline"
-                      size={normalize(15)}
-                      color={colors.primary}
-                    />
-                    <Text style={styles.postStatText}>{commentsCount}</Text>
-                  </View>
-                ) : null}
-                {scrapCount > 0 ? (
-                  <View style={styles.postStatItem}>
-                    <Ionicons
-                      name="bookmark-outline"
-                      size={normalize(14)}
-                      color={colors.scrap}
-                    />
-                    <Text style={styles.postStatText}>{scrapCount}</Text>
-                  </View>
-                ) : null}
-              </View>
-            </View>
-          ) : null}
         </View>
 
         {hasThumb ? (
-          <Image
-            source={{ uri: post.thumbnail.trim() }}
-            style={styles.postThumb}
-            resizeMode="cover"
-          />
+          <View style={styles.postCardRight}>
+            <Image
+              source={{ uri: post.thumbnail.trim() }}
+              style={styles.postPhotoArea}
+              resizeMode="cover"
+            />
+          </View>
         ) : null}
       </View>
+
+      {showFooter ? (
+        <View style={styles.postFooter}>
+          <View style={styles.postStats}>
+            {likesCount > 0 ? (
+              <View style={styles.postStatItem}>
+                <FontAwesome
+                  name="heart-o"
+                  size={normalize(14)}
+                  color={colors.alert}
+                />
+                <Text style={styles.postStatText}>{likesCount}</Text>
+              </View>
+            ) : null}
+            {commentsCount > 0 ? (
+              <View style={styles.postStatItem}>
+                <Ionicons
+                  name="chatbubble-outline"
+                  size={normalize(15)}
+                  color={colors.primary}
+                />
+                <Text style={styles.postStatText}>{commentsCount}</Text>
+              </View>
+            ) : null}
+            {scrapCount > 0 ? (
+              <View style={styles.postStatItem}>
+                <Ionicons
+                  name="bookmark-outline"
+                  size={normalize(14)}
+                  color={colors.scrap}
+                />
+                <Text style={styles.postStatText}>{scrapCount}</Text>
+              </View>
+            ) : null}
+          </View>
+        </View>
+      ) : null}
     </TouchableOpacity>
   );
 };
