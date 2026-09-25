@@ -94,7 +94,6 @@ export function BoardAllContent({ navigation, posts }) {
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
-  const [tipRefreshKey, setTipRefreshKey] = useState(0);
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
   const [floatingMenuVisible, setFloatingMenuVisible] = useState(false);
@@ -350,10 +349,6 @@ export function BoardAllContent({ navigation, posts }) {
         } else {
           setServerPosts(mapped);
           lastFullFetchAtRef.current = Date.now();
-          // Pull to Refresh / Focus soft 갱신 시에만 Tip 문구 교체
-          if (soft) {
-            setTipRefreshKey((k) => k + 1);
-          }
         }
         setHasMore(apiPosts.length > 0);
         setPage(nextPage);
@@ -581,6 +576,7 @@ export function BoardAllContent({ navigation, posts }) {
 
   return (
     <>
+      <TopAdBanner />
       {/* 정렬 버튼 영역 */}
       <View style={styles.sortContainer}>
         <TouchableOpacity
@@ -652,9 +648,6 @@ export function BoardAllContent({ navigation, posts }) {
                 colors={[colors.primaryDark]}
               />
             )
-          }
-          ListHeaderComponent={
-            <TopAdBanner tipRefreshKey={tipRefreshKey} />
           }
           ListEmptyComponent={
             !loading ? (

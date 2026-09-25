@@ -27,6 +27,7 @@ import { normalizeTagsFromApi } from '../../utils/normalizePostTags';
 import { equippedBadgeFromApiRow } from '../../constants/badges';
 import BoardPostCard from '../../components/Boardpostcard';
 import AdPlaceholder from '../../src/screens/ad/AdPlaceholder';
+import TopAdBanner from '../../components/ads/TopAdBanner';
 import { useLocationContext } from '../../context/LocationContext';
 import Skeleton from '../../components/common/Skeleton';
 import { injectAdSlots } from '../../hooks/useAdSlots';
@@ -275,6 +276,7 @@ const SchoolBoardAll = ({ navigation }) => {
           />
         }
       />
+      <TopAdBanner />
 
       {/* 게시글 목록 — 로딩 중에는 목록을 그리되 가려 두고, 게이트 종료 후 한 번에 표시 */}
       <View style={{ flex: 1 }}>

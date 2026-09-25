@@ -19,6 +19,7 @@ import { api } from '../../utils/api';
 import { subscribeSchoolMailLike, subscribeSchoolMailDeleted } from '../../utils/listSyncEvents';
 import { getSchoolMailFromLabel } from './utils/schoolMailFromLabel';
 import MailboxAdPlaceholder from '../../src/screens/ad/MailboxAdPlaceholder';
+import TopAdBanner from '../../components/ads/TopAdBanner';
 import { injectAdSlots } from '../../hooks/useAdSlots';
 import { AD_PLACEMENTS } from '../../constants/adPlacements';
 
@@ -320,6 +321,7 @@ const SchoolMailboxScreen = ({ navigation, route }) => {
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
       <SubHeader title="학교 우편함" onBack={() => navigation?.goBack()} />
+      <TopAdBanner />
 
       <View style={styles.container}>
         <FlatList

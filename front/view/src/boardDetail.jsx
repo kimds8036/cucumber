@@ -474,7 +474,7 @@ export default function BoardDetail({ navigation, route }) {
                       distanceStale={distanceStale}
                       distanceLoading={distanceLoading}
                     />
-                    <TopAdBanner styles={styles} />
+                    <TopAdBanner />
                   </View>
                 }
                 contentContainerStyle={[
